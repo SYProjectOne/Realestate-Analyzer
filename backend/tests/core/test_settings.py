@@ -141,7 +141,9 @@ def test_invalid_env_rejected(clean_env: pytest.MonkeyPatch) -> None:
 def test_prod_requires_api_token(clean_env: pytest.MonkeyPatch) -> None:
     with pytest.raises(ValidationError):
         make(env="prod")
-    s = make(env="prod", api_token="x" * 32, database_url="postgresql+psycopg://sa:pw@db:5432/subscription")  # prod 는 SQLite 거부(D11-9)
+    s = make(
+        env="prod", api_token="x" * 32, database_url="postgresql+psycopg://sa:pw@db:5432/subscription"
+    )  # prod 는 SQLite 거부(D11-9)
     assert s.env == "prod"
 
 

@@ -43,7 +43,7 @@ def make_settings(db: Path, raw_dir: Path, report_dir: Path, *, env: str = "dev"
         readonly_token=READ_TOKEN,  # type: ignore[arg-type]
         log_json=False,
     )
-    # ENV=prod + SQLite 는 설정 검증이 거부한다(D11-9). prod 화면 동작(라벨·경고) 시험만 검증을 건너뛰어 바꾼다
+    # ENV=prod + SQLite 는 설정 검증이 거부한다(D11-9). prod 화면 동작 시험만 검증을 건너뛰어 바꾼다
     return settings.model_copy(update={"env": env}) if env != "dev" else settings
 
 

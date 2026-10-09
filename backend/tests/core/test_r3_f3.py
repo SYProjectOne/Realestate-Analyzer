@@ -39,7 +39,15 @@ def make(**kwargs: object) -> Settings:
 def test_minor31_prod_rejects_mock_judge(clean_env: pytest.MonkeyPatch) -> None:
     with pytest.raises(ValidationError, match="JUDGE_ADAPTER=mock"):
         make(env="prod", api_token="t" * 32, judge_adapter="mock")
-    assert make(env="prod", api_token="t" * 32, judge_adapter="jev", database_url="postgresql+psycopg://sa:pw@db:5432/subscription").env == "prod"
+    assert (
+        make(
+            env="prod",
+            api_token="t" * 32,
+            judge_adapter="jev",
+            database_url="postgresql+psycopg://sa:pw@db:5432/subscription",
+        ).env
+        == "prod"
+    )
     assert make(env="dev", judge_adapter="mock").judge_adapter == "mock"
 
 
