@@ -63,7 +63,8 @@ def make_settings(db: Path, raw_dir: Path, report_dir: Path, *, env: str = "dev"
         raw_dir=raw_dir,
         reference_dir=db.parent / "reference",
         report_dir=report_dir,
-        judge_adapter="mock",
+        # prod + mock 는 설정 단계에서 거부된다(R3 minor 31) — prod 설정은 jev 로 두고 판정기는 호출하지 않는다(T13 은 API 만)
+        judge_adapter="jev" if env == "prod" else "mock",
         api_token=WRITE_TOKEN,  # type: ignore[arg-type]
         readonly_token=READ_TOKEN,  # type: ignore[arg-type]
         log_json=False,
