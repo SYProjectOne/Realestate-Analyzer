@@ -1,16 +1,19 @@
-/** C4 입주 물량 — 데이터 소스: Market.supply[] (+ 판정 단지 입주월 마커) */
-import type { Id, SupplyRow, YearMonth } from '@/api/types';
+/** C4 입주 물량 — 데이터 소스: Market.supply[] (+ Market.move_in_markers = 판정 단지 입주월 마커) */
+import type { FactLike, LivingAreaName, SupplyPoint } from '@/lib/contract';
 
+/** 판정 단지 입주월 마커. Market.move_in_markers 그대로(move_in_ym = Fact) 또는 'YYYY-MM' 문자열 */
 export interface C04Marker {
-  complex_id: Id;
+  complex_id: number | string;
   name: string;
-  move_in_ym: YearMonth;
+  move_in_ym: FactLike | string;
 }
 
 export interface C04Data {
-  supply: SupplyRow[];
+  supply: SupplyPoint[];
   /** 판정 단지 입주월 markPoint (G3에서는 해당 단지 1개) */
   markers: C04Marker[];
+  /** Market.living_areas — 스택 계열 이름 */
+  livingAreas?: LivingAreaName[];
 }
 
 export const C04_EMPTY: C04Data = { supply: [], markers: [] };

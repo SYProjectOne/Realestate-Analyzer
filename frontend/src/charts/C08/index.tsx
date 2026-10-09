@@ -14,7 +14,7 @@ export interface C08TimelineProps {
 }
 
 /** C8 잔여 이력 타임라인 — 공고일 마커(kind별 모양) + 잔여 세대·경쟁률 라벨 (G3) */
-export function C08Timeline({ data, height = 220, asof }: C08TimelineProps) {
+export function C08Timeline({ data, height = 240, asof }: C08TimelineProps) {
   const palette = useChartPalette();
   const title = t('chart.C08.title');
   return (

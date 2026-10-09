@@ -1,6 +1,10 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { IntakeLike as Intake, RegionLike as Region, SnapshotLike as Snapshot } from '@/lib/contract';
+import type {
+  IntakeLike as Intake,
+  RegionLike as Region,
+  SnapshotLike as Snapshot,
+} from '@/lib/contract';
 import { renderWithProviders } from '@/test/render';
 import {
   CachedBadge,

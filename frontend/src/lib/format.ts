@@ -3,8 +3,11 @@
  * 컴포넌트는 FactCell을 쓰고, 차트 축·툴팁·표 셀은 여기 함수를 쓴다.
  * 단위 문자열(억·만·원·㎡·세대·D-day)도 ko.json에서 온다.
  */
-import type { Fact, IsoDate } from '@/api/types';
 import { t } from '@/i18n';
+import type { FactLike } from './contract';
+
+/** ISO 날짜 `YYYY-MM-DD` */
+export type IsoDate = string;
 
 /** FactCell·DataTableToggle 열의 단위. */
 export type FactUnit =
@@ -26,6 +29,16 @@ export type FactUnit =
   | 'score'
   /** 세대 수 → "1,234세대" */
   | 'households'
+  /** 계약 Fact.unit 'units'(세대) — households와 같다 */
+  | 'units'
+  /** 연도 → "2028" (천 단위 구분 없음) */
+  | 'year'
+  /** 개월 → "24개월" */
+  | 'months'
+  /** 년 → "5년" */
+  | 'years'
+  /** 미터 → "350m" */
+  | 'm'
   /** 건수·개수 → "1,234" */
   | 'count'
   /** 경쟁률 → "12.3:1" */
@@ -167,7 +180,16 @@ export function formatValue(value: number, unit: FactUnit, options: FormatOption
     case 'score':
       return formatScore(value, digits);
     case 'households':
+    case 'units':
       return formatCount(value, 'households');
+    case 'year':
+      return String(Math.round(value));
+    case 'months':
+      return t('unit.months', { n: formatNumber(value, digits ?? 0) });
+    case 'years':
+      return t('unit.years', { n: formatNumber(value, digits ?? 0) });
+    case 'm':
+      return `${formatNumber(value, digits ?? 0)}${t('unit.meter')}`;
     case 'count':
       return formatCount(value);
     case 'ratio':
@@ -188,7 +210,7 @@ export function formatValue(value: number, unit: FactUnit, options: FormatOption
  * 숫자 단위인데 v가 숫자 문자열이면 숫자로 해석한다.
  */
 export function formatFactValue(
-  fact: Fact,
+  fact: FactLike,
   unit: FactUnit,
   options: FormatOptions = {},
 ): string | null {
@@ -201,7 +223,37 @@ export function formatFactValue(
   return formatValue(n, unit, options);
 }
 
-/** "확인 불가" / "확인 불가(사유)" */
-export function formatUnknown(reason?: string | null): string {
-  return reason ? t('empty.unknownWithReason', { reason }) : t('empty.unknown');
+/** "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1 */
+export function formatUnknown(reason?: string | null, checkedAt?: string | null): string {
+  if (!reason) return t('empty.unknown');
+  const date = checkedAt ? /^\d{4}-\d{2}-\d{2}/.exec(checkedAt)?.[0] : undefined;
+  return date
+    ? t('empty.unknownWithReasonDate', { reason, date })
+    : t('empty.unknownWithReason', { reason });
+}
+
+/** 계약 Fact.unit 힌트 → FactUnit (FactCell에서 unit prop을 생략했을 때). 숫자면 'number', 아니면 'text' */
+export function unitFromHint(hint: string | null | undefined, v: unknown): FactUnit {
+  switch (hint) {
+    case 'won':
+    case 'm2':
+    case 'pct':
+    case 'prob':
+    case 'score':
+    case 'units':
+    case 'count':
+    case 'date':
+    case 'ym':
+    case 'year':
+    case 'months':
+    case 'years':
+    case 'm':
+    case 'text':
+      return hint;
+    case 'ratio':
+      // 계약 ratio = 0~1 비율 → 퍼센트로
+      return 'prob';
+    default:
+      return typeof v === 'number' ? 'number' : 'text';
+  }
 }

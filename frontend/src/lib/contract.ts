@@ -90,6 +90,8 @@ export interface IntakeLike {
   path: IntakePath;
   checked_at?: string | null;
   reason?: string | null;
+  evidence_url?: string | null;
+  http_status?: number | null;
 }
 
 /** RegionPicker 옵션 */

@@ -59,3 +59,40 @@ export function baseOption(palette: ChartPalette) {
     animation: false,
   } as const;
 }
+
+/** 축 공통 스타일(라이트/다크 토큰): 축선·격자 = border, 축 라벨 = muted */
+export function axisStyle(palette: ChartPalette) {
+  return {
+    axisLine: { lineStyle: { color: palette.border } },
+    axisTick: { lineStyle: { color: palette.border } },
+    axisLabel: { color: palette.muted },
+    splitLine: { lineStyle: { color: palette.border } },
+    nameTextStyle: { color: palette.muted },
+  } as const;
+}
+
+/** 툴팁 바탕·글자색을 테마 토큰으로 */
+export function tooltipStyle(palette: ChartPalette) {
+  return {
+    backgroundColor: palette.bg,
+    borderColor: palette.border,
+    textStyle: { color: palette.fg },
+    confine: true,
+  } as const;
+}
+
+/** 범례 — 계열은 색만으로 구분하지 않는다(범례 텍스트 병기) */
+export function legendStyle(palette: ChartPalette) {
+  return { bottom: 0, textStyle: { color: palette.fg }, inactiveColor: palette.grayed } as const;
+}
+
+/** null 성분·미판정 막대의 빗금(decal) — 색이 아니라 무늬로 구분 */
+export function hatchDecal(palette: ChartPalette) {
+  return {
+    symbol: 'rect',
+    color: palette.bg,
+    dashArrayX: [1, 0],
+    dashArrayY: [2, 4],
+    rotation: Math.PI / 4,
+  };
+}

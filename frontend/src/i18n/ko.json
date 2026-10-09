@@ -48,11 +48,14 @@
     "reprocessed": "재가공",
     "unknown": "확인 불가",
     "unknownWithReason": "확인 불가({reason})",
+    "unknownWithReasonDate": "확인 불가({reason}, {date})",
+    "withReason": "{label}({reason})",
     "humanPrefix": "사람 {label}"
   },
   "empty": {
     "unknown": "확인 불가",
     "unknownWithReason": "확인 불가({reason})",
+    "unknownWithReasonDate": "확인 불가({reason}, {date})",
     "noData": "데이터 없음"
   },
   "intake": {
@@ -68,7 +71,13 @@
       "headless_shot": "렌더 캡처",
       "unofficial_ref": "비공식 참고"
     },
-    "none": "접수 상태 확인 불가"
+    "none": "접수 상태 확인 불가",
+    "withReason": "{status}({reason})",
+    "withReasonDate": "{status}({reason}, {date})"
+  },
+  "picker": {
+    "snapshotDegraded": "{date} · 일부 수집 실패",
+    "snapshotBuilding": "{date} · 생성 중"
   },
   "badge": {
     "cached": "캐시",
@@ -80,7 +89,8 @@
     "newBuild": "신축({year})",
     "unresolved": "미해결",
     "unjudged": "미판정",
-    "sampleEstimated": "표본 {n}, 추정"
+    "sampleEstimated": "표본 {n}, 추정",
+    "sampleEstimatedArea": "{area} 표본 {n}, 추정"
   },
   "provenance": {
     "title": "출처",
@@ -92,7 +102,30 @@
     "conflicts": "상충 출처",
     "noConflicts": "상충 없음",
     "rawDocument": "원문 파일 열기",
-    "open": "출처 보기: {label}"
+    "open": "출처 보기: {label}",
+    "value": "값",
+    "chosen": "채택",
+    "notChosen": "미채택",
+    "sourceRank": "{rank}순위 출처",
+    "source": "출처 종류",
+    "httpStatus": "HTTP 상태",
+    "formula": "산출식",
+    "judgment": "판정 로그",
+    "rawText": "원문에서 보기",
+    "rawTextHide": "원문 닫기",
+    "rawLoading": "원문 불러오는 중…",
+    "rawError": "원문을 불러오지 못했습니다",
+    "openConflict": "이 출처 열기",
+    "kind": {
+      "field": "공고·수집 값",
+      "score_component": "점수 성분",
+      "score_total": "종합 점수",
+      "judgment": "판정기 로그",
+      "human_check": "사람 확인",
+      "raw_document": "원문",
+      "comparable_set": "비교군"
+    },
+    "error": "출처를 불러오지 못했습니다({detail})"
   },
   "job": {
     "title": "작업 진행",
@@ -103,7 +136,9 @@
       "failed": "실패"
     },
     "none": "진행 중인 작업 없음",
-    "error": "오류: {detail}"
+    "error": "오류: {detail}",
+    "progress": "{done}/{total}",
+    "step": "단계 {step}"
   },
   "table": {
     "show": "표로 보기",
@@ -134,7 +169,10 @@
     "dplus": "D+{n}",
     "ratio": "{ratio}:1",
     "half1": "{year}년 상반기",
-    "half2": "{year}년 하반기"
+    "half2": "{year}년 하반기",
+    "months": "{n}개월",
+    "years": "{n}년",
+    "meter": "m"
   },
   "chart": {
     "C01": {
@@ -151,20 +189,26 @@
         "asof_plus_3y": "기준일+3년",
         "asof_plus_5y": "기준일+5년"
       },
-      "threshold": { "likely": "likely", "unlikely": "unlikely" },
+      "threshold": { "likely": "likely 0.85", "unlikely": "unlikely 0.15" },
+      "verdict": { "likely": "가능성 높음", "uncertain": "불확실", "unlikely": "가능성 낮음" },
+      "annualized": "필요 연율 {pct}",
       "empty": "사다리 판정 없음"
     },
     "C02": {
       "title": "가격 갭",
       "current": "현재 구매가",
       "comps": "비교 단지 실거래",
+      "range": "실거래 범위",
       "adjusted": "연식 보정 중앙값",
+      "unadjusted": "미보정 중앙값",
+      "emptyPrefix": "비교군 없음",
       "empty": "비교군 없음({reason})"
     },
     "C03": {
       "title": "벤치마크 분양가 → 실거래",
       "sale": "분양가",
       "trade": "최근 실거래",
+      "range": "분양가 → 실거래 범위",
       "peak": "고점",
       "presale": "분양권",
       "annualized": "연율 {pct}",
@@ -181,6 +225,7 @@
       "total": "합계",
       "postCompletion": "준공 후",
       "basis": "월말 기준",
+      "basisScope": "월말 기준 · {scope}",
       "empty": "미분양 자료 없음"
     },
     "C06": {
@@ -192,14 +237,19 @@
         "gap": "가격 갭",
         "benchmark": "벤치마크",
         "supply": "공급",
-        "liquidity": "유동성"
+        "liquidity": "유동성",
+        "move_in": "입주 시기"
       },
+      "unjudgedTip": "미판정 — 판정되면 최대 기여 {max}",
+      "raw": "원값 {raw}",
+      "contribution": "기여 {value}",
       "empty": "점수 없음"
     },
     "C07": {
       "title": "판정기 확률",
       "escape": "질문 남김",
       "confidence": "신뢰도 {confidence}",
+      "unresolved": "판정 미해결",
       "empty": "판정 없음"
     },
     "C08": {
@@ -229,7 +279,28 @@
       "title": "가중치 민감도",
       "variant": "변형",
       "baseline": "기준",
+      "complex": "단지 {id}",
+      "entered": "진입 {names}",
+      "exited": "이탈 {names}",
+      "stable": "변동 없는 가중치 있음",
       "empty": "민감도 없음"
+    },
+    "gallery": {
+      "title": "차트 갤러리",
+      "note": "개발 전용 — 차트 10개 × 정상·빈·특수 상태 (계약 예시 데이터)",
+      "state": {
+        "normal": "정상",
+        "empty": "빈 데이터",
+        "special": "특수 상태",
+        "escaped": "질문 남김"
+      }
+    },
+    "status": {
+      "ok": "판정",
+      "review": "미해결(검토)",
+      "escaped": "미해결(질문)",
+      "blocked": "미해결(차단)",
+      "error": "미해결(오류)"
     },
     "notRendered": "차트 준비 중",
     "col": {
@@ -259,7 +330,13 @@
       "peak": "고점",
       "variant": "변형",
       "changed": "변동",
-      "top5": "TOP 5"
+      "top5": "TOP 5",
+      "status": "상태",
+      "verdict": "판정",
+      "nTrades": "거래 수",
+      "annualized": "연율",
+      "window": "거래 기간",
+      "rank": "순위"
     },
     "yes": "예",
     "no": "아니오",

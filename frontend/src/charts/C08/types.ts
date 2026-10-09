@@ -1,5 +1,5 @@
-/** C8 잔여 이력 타임라인 — 데이터 소스: ComplexDetail.events[] (kind, notice_date, units, ratio) */
-import type { RemainingEvent, RemainingKind } from '@/api/types';
+/** C8 잔여 이력 타임라인 — 데이터 소스: ComplexDetail.events[] (kind, notice_date, units, ratio_text) */
+import type { RemainingEvent, RemainingKind } from '@/lib/contract';
 
 export interface C08Data {
   events: RemainingEvent[];

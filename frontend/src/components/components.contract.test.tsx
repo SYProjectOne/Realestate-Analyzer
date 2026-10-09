@@ -56,9 +56,7 @@ describe('라벨·배지 표시 문자열(계약 fact.json 규칙)', () => {
             reason: '403',
           }}
         />
-        <IntakeBadge
-          intake={{ status: '가능', path: 'human_check', checked_at: '2026-10-09' }}
-        />
+        <IntakeBadge intake={{ status: '가능', path: 'human_check', checked_at: '2026-10-09' }} />
       </>,
     );
     expect(screen.getByText('접수 확인 불가(403, 2026-10-07) · 공식 팝업')).toBeInTheDocument();
@@ -79,7 +77,10 @@ describe('FactCell 클릭 → ProvenancePanel', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: /1,573세대/ }));
     const panel = await screen.findByRole('dialog', { name: '출처' });
-    await within(panel).findByText('https://www.applyhome.co.kr/', { selector: 'a' });
+    // 원문 주소(본 출처 + 상충 후보 각각)
+    expect(
+      (await within(panel).findAllByText('https://www.applyhome.co.kr/', { selector: 'a' })).length,
+    ).toBeGreaterThan(0);
 
     // 발췌 안의 값은 <mark>로 강조
     const marks = within(panel).getAllByText('1,573', { selector: 'mark' });
@@ -87,7 +88,9 @@ describe('FactCell 클릭 → ProvenancePanel', () => {
 
     // 상충 그룹: 두 후보 모두, 채택 표시
     const group = within(panel).getByRole('list', { name: '상충 출처' });
-    expect(within(group).getByText('1,769')).toBeInTheDocument();
+    // 미채택 후보의 값 + 그 후보 발췌 안의 하이라이트
+    expect(within(group).getAllByText('1,769').length).toBeGreaterThan(0);
+    expect(within(group).getByText('1,769', { selector: 'mark' })).toBeInTheDocument();
     expect(within(group).getByText('미채택')).toBeInTheDocument();
     expect(within(group).getByText('채택')).toBeInTheDocument();
   });

@@ -104,9 +104,7 @@ describe('C02 가격 갭', () => {
     expect(C02.compBadge(false, 2025)).toBe('신축(2025)');
     // 미보정 중앙값도 함께(표)
     const table = C02.toTable({ gap });
-    expect(table.columns.map((c) => c.key)).toEqual(
-      expect.arrayContaining(['median', 'adjusted']),
-    );
+    expect(table.columns.map((c) => c.key)).toEqual(expect.arrayContaining(['median', 'adjusted']));
   });
 
   it('비교군 0 → "비교군 없음(사유)" — 사유를 두 번 감싸지 않는다', () => {
@@ -145,7 +143,10 @@ describe('C03 벤치마크', () => {
 
   it('표본 < 3 → "표본 n, 추정" 배지(생활권별)', () => {
     expect(C03.sampleBadges(data)).toEqual(['계양구 표본 0, 추정']);
-    const two = { benchmarks: m.benchmarks.filter((b) => b.living_area === 'la_2').slice(0, 2), asofYear: 2026 };
+    const two = {
+      benchmarks: m.benchmarks.filter((b) => b.living_area === 'la_2').slice(0, 2),
+      asofYear: 2026,
+    };
     expect(C03.sampleBadges(two)).toEqual(['표본 2, 추정']);
   });
 
@@ -299,7 +300,12 @@ describe('C08 잔여 이력', () => {
     const o = C08.buildOption({ events });
     expect(opt(o).xAxis.type).toBe('time');
     const symbols = Object.fromEntries(series(o).map((s) => [s.id, s.symbol]));
-    expect(symbols).toEqual({ 본청약: 'circle', 무순위: 'rect', 임의: 'triangle', 선착순: 'diamond' });
+    expect(symbols).toEqual({
+      본청약: 'circle',
+      무순위: 'rect',
+      임의: 'triangle',
+      선착순: 'diamond',
+    });
   });
 
   it('월만 확인된 공고일(YYYY-MM)도 그린다, 라벨 = 잔여 세대·경쟁률', () => {
