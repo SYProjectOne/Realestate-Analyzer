@@ -25,6 +25,9 @@ export const componentLabel = (c: ComponentKey) => t(`chart.C06.component.${c}`)
 /** 성분 최댓값(0~10) — 미판정 툴팁의 "최대 기여 w × 10" (막대 길이는 0) */
 const SCORE_MAX = 10;
 
+/** 범례 메모 "빗금 = 미판정(…)" — 미판정 성분이 있을 때만 차트 오른쪽 위에 둔다(m26) */
+export const unjudgedNote = () => t('chart.C06.unjudgedNote');
+
 export function emptyReason(data: C06Data): string | null {
   return data.rows.length > 0 ? null : t('chart.C06.empty');
 }
@@ -134,6 +137,8 @@ export function buildOption(
         },
     ...(horizontal ? { inverse: true } : {}),
   };
+  // 미판정(null) 성분이 하나라도 있나 — 범례 메모를 붙인다
+  const anyUnjudged = rows.some((row) => keys.some((k) => contribution(viewOf(row, k)) === null));
   const valueAxis = {
     type: 'value' as const,
     min: 0,
@@ -158,6 +163,21 @@ export function buildOption(
     },
     xAxis: horizontal ? valueAxis : categoryAxis,
     yAxis: horizontal ? categoryAxis : valueAxis,
+    // m26: 0길이 막대는 빗금이 안 보인다 → "빗금 = 미판정" 메모(오른쪽 위, 범례는 아래)
+    ...(anyUnjudged
+      ? {
+          graphic: [
+            {
+              type: 'text' as const,
+              id: 'unjudged-note',
+              right: 8,
+              top: 0,
+              silent: true,
+              style: { text: unjudgedNote(), fill: palette.muted, fontSize: 10 },
+            },
+          ],
+        }
+      : {}),
     series: keys.map((key, index) => ({
       type: 'bar' as const,
       id: key,
@@ -166,15 +186,25 @@ export function buildOption(
       barMaxWidth: 40,
       itemStyle: { color: palette.categorical[index % palette.categorical.length] },
       emphasis: { focus: 'series' as const },
+      // 한 행에 미판정 성분이 여럿이면 같은 자리에 "미판정" 라벨이 겹친다 → 하나만 남긴다
+      labelLayout: { hideOverlap: true },
       data: rows.map((row) => {
         const view = viewOf(row, key);
         const value = contribution(view);
         if (value !== null) return value;
         // null 성분 → 스택 길이 0(종합 점수를 부풀리지 않는다, R3 minor 26) + 회색 빗금 + "미판정" 라벨.
+        // 길이 0 막대는 면이 없어 빗금이 안 보이므로(m26) 점선 테두리로 막대 폭만큼의 선을 남긴다.
         // 판정되면 낼 수 있는 최대 기여(w × 10)는 툴팁에만 쓴다.
         return {
           value: 0,
-          itemStyle: { color: palette.grayed, opacity: 0.6, decal: hatchDecal(palette) },
+          itemStyle: {
+            color: palette.grayed,
+            opacity: 0.6,
+            decal: hatchDecal(palette),
+            borderColor: palette.fg,
+            borderWidth: 1,
+            borderType: 'dashed' as const,
+          },
           label: {
             show: true,
             position: horizontal ? ('right' as const) : ('top' as const),

@@ -14,6 +14,8 @@ x-backend-env: &backend-env
   RAW_DIR: /data/raw
   REFERENCE_DIR: /data/reference
   REPORT_DIR: /data/reports
+  # 프록시 헤더를 믿을 대역 = 아래 내부망(web nginx 만 X-Forwarded-For 를 보낸다, 재리뷰 F3)
+  FORWARDED_ALLOW_IPS: ${INTERNAL_SUBNET:-172.30.0.0/24}
 
 x-env-file: &env-file
   - path: .env
@@ -84,6 +86,12 @@ services:
       - "${WEB_PORT:-8080}:8080"
     depends_on:
       - api
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${INTERNAL_SUBNET:-172.30.0.0/24}
 
 volumes:
   pgdata:

@@ -1883,6 +1883,16 @@ export const generatedHandlers = [
         "due_date": null,
         "status": "na",
         "note": "신규 분양 매수에는 해당 없음"
+      },
+      {
+        "id": 60,
+        "complex_id": 11,
+        "complex_name": "고촌센트럴자이",
+        "kind": "사실 재확인",
+        "title": "사실 재확인: 전매제한 기간(검증 모순)",
+        "due_date": null,
+        "status": "open",
+        "note": "claim 6991 수정 접수 — 사실 강등. 공고문 원문 확인 후 사람 확인(전화·방문)으로 입력하면 복원"
       }
     ], { status: 200 }),
   ),
@@ -4255,7 +4265,48 @@ export const generatedHandlers = [
         "ordinal": 0,
         "child_count": 0,
         "remaining": true,
-        "pending_job_id": null
+        "pending_job_id": null,
+        "entity": null,
+        "entity_id": null,
+        "field": null,
+        "field_name": null,
+        "demotion": null
+      },
+      {
+        "id": 6991,
+        "snapshot_id": 12,
+        "section": "complex:11",
+        "complex_id": 11,
+        "complex_name": "고촌센트럴자이",
+        "text": "고촌센트럴자이 전매제한 기간은 36개월이다",
+        "evidence_text": "fp_4103: 전매제한기간 : 당첨자발표일로부터 1년",
+        "verify_status": "contradicted",
+        "judgment_seq": 132,
+        "prov": "jl_132",
+        "parent_claim_id": null,
+        "ordinal": 2,
+        "child_count": 0,
+        "remaining": true,
+        "pending_job_id": 9102,
+        "entity": "complex",
+        "entity_id": 11,
+        "field": "resale_months",
+        "field_name": "전매제한 기간",
+        "demotion": {
+          "id": 3,
+          "claim_id": 6991,
+          "entity": "complex",
+          "entity_id": 11,
+          "field": "resale_months",
+          "status": "demoted",
+          "label": "확인 불가",
+          "reason": "검증 모순",
+          "created_at": "2026-10-09T11:02:00+09:00",
+          "restored_at": null,
+          "restored_by": null,
+          "checklist_item_id": 60,
+          "rejudge_job_id": 9103
+        }
       }
     ], { status: 200 }),
   ),
@@ -8687,6 +8738,8 @@ export const generatedHandlers = [
       "scenario_code": "base",
       "scenario_name": "기본",
       "degraded": false,
+      "rejudge_needed": false,
+      "benchmark_absence": null,
       "score_run_id": 88,
       "weights": {
         "p10": 0.35,
@@ -10249,6 +10302,8 @@ export const generatedHandlers = [
       "benchmarks": [
         {
           "id": 1,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "힐스테이트 송도 더스카이",
           "completed_year": 2024,
@@ -10328,6 +10383,8 @@ export const generatedHandlers = [
         },
         {
           "id": 2,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "더샵 송도 프라임뷰 F20",
           "completed_year": 2022,
@@ -10407,6 +10464,8 @@ export const generatedHandlers = [
         },
         {
           "id": 3,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "송도자이 크리스탈오션",
           "completed_year": 2024,
@@ -10486,6 +10545,8 @@ export const generatedHandlers = [
         },
         {
           "id": 4,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "송도자이 더 스타",
           "completed_year": 2024,
@@ -10565,6 +10626,8 @@ export const generatedHandlers = [
         },
         {
           "id": 5,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "힐스테이트 레이크 송도 4차",
           "completed_year": 2025,
@@ -10644,6 +10707,8 @@ export const generatedHandlers = [
         },
         {
           "id": 6,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "송도 럭스오션 SK뷰",
           "completed_year": 2025,
@@ -10723,6 +10788,8 @@ export const generatedHandlers = [
         },
         {
           "id": 7,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_1",
           "name": "송도자이풍경채 그라노블(분양권)",
           "completed_year": null,
@@ -10802,6 +10869,8 @@ export const generatedHandlers = [
         },
         {
           "id": 8,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_2",
           "name": "검단 금호어울림 센트럴(원당)",
           "completed_year": 2021,
@@ -10881,6 +10950,8 @@ export const generatedHandlers = [
         },
         {
           "id": 9,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_2",
           "name": "힐스테이트 신검단 센트럴(불로)",
           "completed_year": 2025,
@@ -10960,6 +11031,8 @@ export const generatedHandlers = [
         },
         {
           "id": 10,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_2",
           "name": "롯데캐슬 넥스티엘 RC1(원당)",
           "completed_year": 2026,
@@ -11039,6 +11112,8 @@ export const generatedHandlers = [
         },
         {
           "id": 11,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_4",
           "name": "한강메트로자이 2단지(걸포)",
           "completed_year": 2020,
@@ -11119,6 +11194,8 @@ export const generatedHandlers = [
         },
         {
           "id": 12,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_4",
           "name": "힐스테이트 리버시티 1단지(고촌)",
           "completed_year": 2020,
@@ -11199,6 +11276,8 @@ export const generatedHandlers = [
         },
         {
           "id": 13,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_4",
           "name": "고촌 센트럴자이(후분양)",
           "completed_year": 2024,
@@ -11278,6 +11357,8 @@ export const generatedHandlers = [
         },
         {
           "id": 14,
+          "snapshot_id": 12,
+          "substitute": false,
           "living_area": "la_4",
           "name": "김포 북변 우미린 파크리브(분양권)",
           "completed_year": null,
@@ -11356,26 +11437,31 @@ export const generatedHandlers = [
           "note": "마이너스 프리미엄 추정 — 옵션·계약조건 미반영 가능"
         }
       ],
+      "benchmark_absence": null,
       "benchmark_flags": [
         {
           "living_area": "la_1",
           "sample_n": 6,
-          "no_recent_sale_case": true
+          "no_recent_sale_case": true,
+          "substituted": false
         },
         {
           "living_area": "la_2",
           "sample_n": 3,
-          "no_recent_sale_case": true
+          "no_recent_sale_case": true,
+          "substituted": false
         },
         {
           "living_area": "la_3",
           "sample_n": 0,
-          "no_recent_sale_case": true
+          "no_recent_sale_case": true,
+          "substituted": false
         },
         {
           "living_area": "la_4",
           "sample_n": 3,
-          "no_recent_sale_case": false
+          "no_recent_sale_case": false,
+          "substituted": false
         }
       ],
       "supply": [

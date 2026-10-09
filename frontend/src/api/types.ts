@@ -232,6 +232,8 @@ export type ScenarioPreviewRow = ScenarioPreview['requirements_pre'][number];
 // ─── 잡·시장·운영·보고서 ──────────────────────────────────────
 
 export type JobName = S['JobName'];
+/** POST /jobs 로 넣을 수 있는 잡 이름 — claim.reverify 제외(계약 2026-10-09.6, PATCH /claims 전용) */
+export type JobCreateName = S['JobCreateName'];
 export type JobRun = S['JobRun'];
 export type JobStatus = JobRun['status'];
 export type JobCreate = S['JobCreate'];
@@ -255,6 +257,16 @@ export type JudgmentStats = S['JudgmentStats'];
 export type JudgmentOps = S['JudgmentOps'];
 export type JudgmentOpsParams = NonNullable<operations['getJudgmentOps']['parameters']['query']>;
 export type ChecklistItem = S['ChecklistItem'];
+export type ChecklistKind = ChecklistItem['kind'];
+/** 체크리스트 종류(계약 2026-10-09.4 '계약', 2026-10-09.6 '사실 재확인' — D10-3 강등 사실 재확인). 표시 = ko.json `page.G7.checkKind` */
+export const CHECKLIST_KINDS = [
+  '법적 확인',
+  '중도금',
+  '만료',
+  '공고 예상',
+  '계약',
+  '사실 재확인',
+] as const satisfies readonly ChecklistKind[];
 export type ChecklistPatch = S['ChecklistPatch'];
 export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];

@@ -30,7 +30,7 @@ RA_TABLES = {
     "score_total", "ladder", "decision", "human_check", "checklist_item", "change_event", "job_run",
 }  # fmt: skip
 D2_TABLES = {"legal_dong", "admin_dong", "admin_legal_map", "household_stat"}
-R3_TABLES = {"share_link"}  # 계약 2026-10-09.4
+R3_TABLES = {"share_link", "fact_demotion"}  # 계약 2026-10-09.4 · 2026-10-09.6
 RA_WEIGHTS = {
     "base": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10},
     "A": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "move_in": 0.10},
@@ -270,11 +270,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0005() -> None:
+def test_migration_head_is_0006() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0005"]
+    assert script.get_heads() == ["0006"]
+    assert script.get_revision("0006").down_revision == "0005"
     assert script.get_revision("0005").down_revision == "0004"
     assert script.get_revision("0004").down_revision == "0003"
     assert script.get_revision("0003").down_revision == "0002"
@@ -411,6 +412,68 @@ def test_postgres_0004_0005_roundtrip(pg_engine: Engine, postgres_url: str) -> N
         check_0004_0005_roundtrip(postgres_url, mp)
     finally:
         mp.undo()
+
+
+def check_0005_0006_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0006(계약 2026-10-09.6): claim 대상 컬럼·fact_demotion·checklist '사실 재확인'·benchmark.snapshot_id —
+    head(행 넣기) → 0005('사실 재확인' → '법적 확인', 컬럼·테이블 제거) → head."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    engine = sa.create_engine(url)
+    try:
+        insp = sa.inspect(engine)
+        assert {"entity", "entity_id", "field"} <= {c["name"] for c in insp.get_columns("claim")}
+        assert "snapshot_id" in {c["name"] for c in insp.get_columns("benchmark")}
+        assert "fact_demotion" in insp.get_table_names()
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO checklist_item (kind, title, status) VALUES ('사실 재확인', 't', 'open')"
+                )
+            )
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
+            conn.execute(
+                sa.text("INSERT INTO checklist_item (kind, title, status) VALUES ('없는 값', 't', 'open')")
+            )
+        command.downgrade(cfg, "0005")
+        insp = sa.inspect(engine)
+        assert "fact_demotion" not in insp.get_table_names()
+        assert not {"entity", "entity_id", "field"} & {c["name"] for c in insp.get_columns("claim")}
+        assert "snapshot_id" not in {c["name"] for c in insp.get_columns("benchmark")}
+        with engine.connect() as conn:
+            kinds = [r[0] for r in conn.execute(sa.text("SELECT kind FROM checklist_item"))]
+        assert kinds == ["법적 확인"]
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO checklist_item (kind, title, status) VALUES ('사실 재확인', 't', 'open')"
+                )
+            )
+        command.upgrade(cfg, "head")
+        with engine.begin() as conn:
+            conn.execute(sa.text("DELETE FROM checklist_item"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0005_0006_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0005_0006_roundtrip(sqlite_url(tmp_path), monkeypatch)
+    engine = sa.create_engine(sqlite_url(tmp_path))
+    try:
+        assert autogen_diff(engine) == []
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.postgres
+def test_postgres_0005_0006_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0005_0006_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
 
 
 @pytest.mark.postgres

@@ -20,6 +20,7 @@ import {
   enumText,
   NoSnapshot,
   QueryState,
+  RejudgeNeededBadge,
   Section,
   tdClass,
   thClass,
@@ -43,7 +44,8 @@ export function parseIds(raw: string | null): number[] {
 
 /**
  * G4 비교 `/compare?ids=` (RA §7-1) — ids 2~6 검사, 상황 토글 공유.
- * CompareGrid(열 = 단지) · C6 가로 · C1 overlay · C2 나란히 · TermsTable · DecisionPanel(C7·배지) · C10
+ * CompareGrid(열 = 단지) · C6 가로 · C1 overlay · C2 나란히 · TermsTable · DecisionPanel(C7·배지·가상 후보) · C10
+ * D10-1: 순위 칸에 '재판정 필요' 배지(저장값 그대로). 가상 후보 wait_new(계약 .5)는 DecisionPanel 에 따로.
  */
 export function ComparePage() {
   const [params] = useSearchParams();
@@ -172,6 +174,7 @@ function CompareGrid({
                   {row.rank !== null ? formatRank(row.rank) : t('empty.unknown')}
                   <TieBadge tie={row.tie_group !== null} />
                   <UnstableBadge unstable={row.unstable} />
+                  <RejudgeNeededBadge needed={row.rejudge_needed} />
                 </span>
               </td>
             ))}
@@ -361,6 +364,7 @@ function DecisionPanel({ view, scenarioKey }: { view: CompareView; scenarioKey: 
       ) : (
         <div className="flex flex-col gap-3">
           <C07Decision data={{ decision }} />
+          <VirtualCandidates decision={decision} />
           {decision.warnings.length > 0 ? (
             <div className="text-sm">
               <h3 className="font-medium">{t('page.G4.warnings')}</h3>
@@ -375,6 +379,38 @@ function DecisionPanel({ view, scenarioKey }: { view: CompareView; scenarioKey: 
         </div>
       )}
     </Section>
+  );
+}
+
+/** 가상 후보(option_key 'wait_new', complex_id null — 계약 .5 '모집공고 대기')인가 */
+const isVirtual = (item: DecisionSet['items'][number]) => item.option_key === 'wait_new';
+
+/**
+ * 가상 후보 '모집공고 대기'(계약 2026-10-09.5) — 단지가 아니라 비교 표 열이 없으므로 따로 보인다.
+ * 표시 = 서버 label + 판정기 decide 선택 확률(Fact) + 선택·동률 배지(서버 값).
+ */
+function VirtualCandidates({ decision }: { decision: DecisionSet }) {
+  const items = decision.items.filter(isVirtual);
+  if (items.length === 0) return null;
+  return (
+    <ul aria-label={t('page.G4.virtual')} className="flex flex-col gap-1 text-sm">
+      {items.map((item) => (
+        <li
+          key={item.option_key}
+          data-option={item.option_key}
+          className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border px-2 py-1"
+        >
+          <span className="font-medium">
+            {t('page.G4.virtualCandidate', { label: item.label })}
+          </span>
+          <span className="text-xs text-muted">{t('page.G4.row.prob')}</span>
+          <FactCell fact={item.prob} unit="prob" />
+          {item.chosen ? <Badge tone="strong">{t('chart.chosen')}</Badge> : null}
+          <TieBadge tie={decision.status === 'ok' && item.tie} />
+          <MismatchBadge mismatch={item.mismatch} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -401,7 +437,10 @@ function RequirementsTable({ decision }: { decision: DecisionSet }) {
           {items.map((item) => (
             <tr key={`${item.option_key}-${item.complex_id ?? item.label}`}>
               <th scope="row" className={`${tdClass} text-left font-normal`}>
-                {item.label}
+                <span className="inline-flex flex-wrap items-center gap-1">
+                  {item.label}
+                  {isVirtual(item) ? <Badge tone="muted">{t('chart.C07.virtual')}</Badge> : null}
+                </span>
               </th>
               {cols.map((c) => {
                 const check = item.requirements?.[c];

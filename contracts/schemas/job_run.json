@@ -47,12 +47,12 @@
     },
     "JobCreate": {
       "title": "JobCreate",
-      "description": "POST /jobs 본문. payload는 job_name별 스키마로 검증한다(불일치 422). kind는 서버가 manual(재판정이면 rejudge)로 채운다.",
+      "description": "POST /jobs 본문. payload는 job_name별 스키마로 검증한다(불일치 422). kind는 서버가 manual(재판정이면 rejudge)로 채운다. job_name 은 JobCreateName — claim.reverify 는 PATCH /claims/{id} 로만 등록한다(같은 대상 검사·사실 강등을 건너뛰지 않게, R3 재리뷰 N-C3·계약 2026-10-09.6) → POST /jobs 로 넣으면 422.",
       "type": "object",
       "additionalProperties": false,
       "required": ["job_name", "payload"],
       "properties": {
-        "job_name": { "$ref": "#/$defs/JobName" },
+        "job_name": { "$ref": "#/$defs/JobCreateName" },
         "payload": { "type": "object", "additionalProperties": true }
       },
       "allOf": [
@@ -62,9 +62,14 @@
         { "if": { "properties": { "job_name": { "const": "report" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/report.json" } } } },
         { "if": { "properties": { "job_name": { "const": "snapshot.publish" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/snapshot_publish.json" } } } },
         { "if": { "properties": { "job_name": { "const": "reference.refresh" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/reference_refresh.json" } } } },
-        { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } },
-        { "if": { "properties": { "job_name": { "const": "claim.reverify" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/claim_reverify.json" } } } }
+        { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } }
       ]
+    },
+    "JobCreateName": {
+      "title": "JobCreateName",
+      "description": "POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).",
+      "type": "string",
+      "enum": ["collect.daily", "collect.weekly", "rejudge", "report", "snapshot.publish", "reference.refresh", "region.bootstrap"]
     }
   },
   "examples": [

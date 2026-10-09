@@ -50,6 +50,9 @@ RUN playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
 
 COPY backend/ ./
 COPY contracts/ /app/contracts/
+# 운영 스크립트(runbook §6 원문 월별 압축) — exec worker /app/infra/raw_archive.sh (재리뷰 m34)
+COPY infra/raw_archive.sh /app/infra/raw_archive.sh
+RUN chmod 755 /app/infra/raw_archive.sh
 RUN uv sync --frozen --no-dev
 
 RUN useradd --system --uid 10001 --create-home --home-dir /home/app app \

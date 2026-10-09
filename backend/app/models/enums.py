@@ -55,7 +55,9 @@ REQ_JUDGE = ("supported", "contradicted", "unknown")
 # score_total.judge_scope (0003, CHECK 없음). 미해결 = 계약 2026-10-09.4 (D9-1)
 JUDGE_SCOPE = ("판정 대상", "보류", "참고", "미해결", "제외")
 HUMAN_CHECK_KIND = ("phone", "visit", "email")
-CHECKLIST_KIND = ("법적 확인", "중도금", "만료", "공고 예상", "계약")  # 계약 = 0004(F1a M7)
+# 계약 = 0004(F1a M7), 사실 재확인 = 0006(D10-3)
+CHECKLIST_KIND = ("법적 확인", "중도금", "만료", "공고 예상", "계약", "사실 재확인")
+DEMOTION_RESTORED_BY = ("human_check", "new_source")  # 0006 fact_demotion.restored_by (D10-3)
 CHECKLIST_STATUS = ("open", "done", "na")
 CHANGE_ENTITY = (
     "complex",

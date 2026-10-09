@@ -1,9 +1,19 @@
-import type { MouseEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useState, type MouseEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
-import { useDashboard } from '@/api/hooks';
+import { useCanWrite } from '@/api/auth';
+import { useCreateJob, useDashboard } from '@/api/hooks';
 import type { ChangeEvent, Dashboard, ScoreRow } from '@/api/types';
 import { C05Unsold, C06ScoreBreakdown } from '@/charts';
-import { Badge, EmptyState, FactCell, IntakeBadge, TieBadge, UnstableBadge } from '@/components';
+import {
+  Badge,
+  EmptyState,
+  FactCell,
+  IntakeBadge,
+  JobProgress,
+  TieBadge,
+  UnstableBadge,
+} from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
@@ -13,6 +23,7 @@ import {
   JudgeScopeBadge,
   NoSnapshot,
   QueryState,
+  RejudgeNeededBadge,
   Section,
   useGlobalSearch,
   usePageContext,
@@ -22,6 +33,8 @@ import {
  * G1 홈 대시보드 `/` (RA §7-1) — KpiTiles(5), Top5Cards, ChangeFeed, C5 작게, C6.
  * 상황 토글(헤더, URL ?scenario=) → dashboard 재조회. 카드 클릭 → G3, 피드 항목 → G3 해당 탭.
  * 지역이 하나도 없으면 /regions/new 로 보낸다(D2-5).
+ * D10-1: 범위·순위·총점은 스냅샷 저장값 — rejudge_needed 면 '재판정 필요' 배지·안내 + rejudge 잡 제안.
+ * N-M3: benchmark_absence 면 '벤치마크 없음(<reason>)'(종합 미계산의 이유, D9-2).
  */
 export function DashboardPage() {
   const { isEmpty } = useActiveRegion();
@@ -46,6 +59,20 @@ function DashboardBody({ data }: { data: Dashboard }) {
   const top = data.top5.filter((row) => row.rank === null || row.rank <= 5);
   return (
     <div className="flex flex-col gap-4">
+      {data.rejudge_needed ? <RejudgeNotice data={data} /> : null}
+      {data.benchmark_absence ? (
+        <p
+          role="note"
+          data-testid="benchmark-absence"
+          data-code={data.benchmark_absence.code}
+          className="flex flex-wrap items-center gap-2 rounded border border-border bg-surface px-3 py-2 text-sm"
+        >
+          <Badge tone="muted">
+            {t('page.common.benchmarkAbsent', { reason: data.benchmark_absence.reason })}
+          </Badge>
+          <span className="text-xs text-muted">{t('page.G1.benchmarkAbsentHint')}</span>
+        </p>
+      ) : null}
       <KpiTiles data={data} />
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <Section
@@ -68,6 +95,66 @@ function DashboardBody({ data }: { data: Dashboard }) {
         <C06ScoreBreakdown data={{ rows: top, weights: data.weights, orientation: 'vertical' }} />
         <C05Unsold data={{ unsold: data.unsold_series }} height={200} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * D10-1 전역 안내: 저장된 범위 ≠ 현재 계산 범위 → '재판정 필요' + rejudge 잡 제안(쓰기 토큰만).
+ * 대상 = rejudge_needed 인 TOP 5 단지(없으면 null = 스냅샷 판정 대상 전부). 저장값은 그대로 보인다.
+ */
+function RejudgeNotice({ data }: { data: Dashboard }) {
+  const qc = useQueryClient();
+  const canWrite = useCanWrite();
+  const createJob = useCreateJob();
+  const [jobId, setJobId] = useState<number | null>(null);
+  const flagged = data.top5.filter((row) => row.rejudge_needed).map((row) => row.complex_id);
+  const run = () => {
+    createJob.mutate(
+      {
+        job_name: 'rejudge',
+        payload: {
+          snapshot_id: data.snapshot_id,
+          scenario_id: null,
+          complex_ids: flagged.length > 0 ? flagged : null,
+          reason: t('page.G1.rejudgeReason'),
+        },
+      },
+      { onSuccess: (job) => setJobId(job.id) },
+    );
+  };
+  return (
+    <div
+      role="note"
+      data-testid="rejudge-notice"
+      className="flex flex-col gap-2 rounded border border-border bg-surface px-3 py-2 text-sm"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span>{t('page.G1.rejudgeNotice')}</span>
+        <button
+          type="button"
+          data-write
+          onClick={run}
+          disabled={!canWrite || createJob.isPending || jobId !== null}
+          title={canWrite ? undefined : t('auth.readOnlyHint')}
+          className="rounded bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
+        >
+          {t('page.G1.rejudgeRun')}
+        </button>
+      </div>
+      {createJob.error ? (
+        <p role="alert" className="text-sm text-danger">
+          {t('page.common.loadError', { detail: createJob.error.message })}
+        </p>
+      ) : null}
+      {jobId !== null ? (
+        <JobProgress
+          jobId={jobId}
+          onDone={() =>
+            void qc.invalidateQueries({ queryKey: ['snapshots', String(data.snapshot_id)] })
+          }
+        />
+      ) : null}
     </div>
   );
 }
@@ -179,6 +266,7 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
         />
         <UnstableBadge unstable={row.unstable} />
         <JudgeScopeBadge scope={row.judge_scope} hideTarget />
+        <RejudgeNeededBadge needed={row.rejudge_needed} />
       </div>
     </li>
   );

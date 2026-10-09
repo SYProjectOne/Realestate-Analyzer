@@ -1,0 +1,16 @@
+{
+  "summary": "고친 문장이 원 주장과 다른 사실 필드를 말함(D10-3)",
+  "value": {
+    "code": "validation_error",
+    "detail": "고친 문장은 원 주장과 같은 대상(단지·필드 '전매제한 기간')만 말해야 한다 — '입주 예정 시기' 용어가 있다",
+    "field_errors": [
+      {
+        "loc": [
+          "body",
+          "text"
+        ],
+        "msg": "같은 대상(section·complex·field)이 아니다(D10-3)"
+      }
+    ]
+  }
+}

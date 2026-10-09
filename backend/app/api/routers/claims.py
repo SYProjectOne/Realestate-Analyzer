@@ -7,7 +7,14 @@
 - ``PATCH /claims/{id}``: 사람이 고친 문장 → ``claim.reverify`` 잡(202). api 는 판정기를 부르지 않는다 —
   worker 가 원자 분할 → 원 주장 근거로 verify → parent_claim_id 자식 행. 원 주장 행은 고치지 않는다.
   문장은 판정기로 가므로 guard(전화번호·주민번호·이메일·비밀값)를 먼저 통과해야 한다(422).
+- D10-3(계약 2026-10-09.6, R3 재리뷰 N-C3 — ``app.api.demotion``): 고친 문장은 원 주장과 같은 대상(section·complex·
+  field)만(422). 원 주장이 DB 사실에서 생성됐으면 접수와 함께 그 사실을 강등한다(값 비움·'확인 불가(검증 모순)'·
+  체크리스트 '사실 재확인'·change_event critical·그 단지 rejudge 잡 — rejudge 를 claim.reverify 보다 먼저 넣는다:
+  worker 가 등록 순서로 집으므로 재검증 뒤 publish 가 강등 전 점수로 나가지 않는다).
+  목록은 ``entity·entity_id·field·field_name·demotion`` 을 싣고, 읽기 전에 ``sync_demotions`` 로 새 원문 복원을 반영한다.
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -20,10 +27,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.contract import check_body
+from app.api.demotion import (
+    FIELD_NAMES,
+    ClaimTarget,
+    TargetMismatch,
+    check_same_target,
+    claim_target,
+    demote,
+    demotion_view,
+    latest_demotions,
+    sync_demotions,
+)
 from app.api.deps import DB, get_snapshot
 from app.api.errors import conflict, not_found, validation_error
 from app.api.jobs import enqueue, job_view
-from app.models import Claim, Complex, JobRun
+from app.models import Claim, Complex, FactDemotion, JobRun
 
 router = APIRouter(tags=["ops"])
 
@@ -58,7 +76,12 @@ def _children(session: Session, snapshot_id: int) -> Counter[int]:
 
 
 def claim_view(
-    c: Claim, names: dict[int, str], children: Counter[int], pending: dict[int, int]
+    c: Claim,
+    names: dict[int, str],
+    children: Counter[int],
+    pending: dict[int, int],
+    target: ClaimTarget | None = None,
+    demotion: FactDemotion | None = None,
 ) -> dict[str, Any]:
     n = children.get(c.id, 0)
     return {
@@ -77,6 +100,11 @@ def claim_view(
         "child_count": n,
         "remaining": c.verify_status == "contradicted" and n == 0,
         "pending_job_id": pending.get(c.id),
+        "entity": target.entity if target is not None else None,
+        "entity_id": target.entity_id if target is not None else None,
+        "field": target.field if target is not None else None,
+        "field_name": FIELD_NAMES.get(target.field, target.field) if target is not None else None,
+        "demotion": demotion_view(demotion),
     }
 
 
@@ -87,6 +115,8 @@ def list_claims(
     status: Annotated[str | None, Query(pattern="^(verified|contradicted|unsupported|review)$")] = None,
 ) -> JSONResponse:
     snap = get_snapshot(session, sid)
+    if sync_demotions(session):
+        session.commit()
     stmt = select(Claim).where(Claim.snapshot_id == snap.id)
     if status:
         stmt = stmt.where(Claim.verify_status == status)
@@ -98,7 +128,10 @@ def list_claims(
         names = {cid: name for cid, name in session.execute(stmt_names)}
     children = _children(session, snap.id)
     pending = pending_reverify(session, {c.id for c in rows})
-    return JSONResponse([claim_view(c, names, children, pending) for c in rows])
+    demotions = latest_demotions(session, {c.id for c in rows})
+    return JSONResponse(
+        [claim_view(c, names, children, pending, claim_target(session, c), demotions.get(c.id)) for c in rows]
+    )
 
 
 @router.patch("/claims/{id}", status_code=202)
@@ -126,6 +159,13 @@ def revise_claim(session: DB, id: int, body: Annotated[Any, Body()] = None) -> J
     waiting = pending_reverify(session, {claim.id}).get(claim.id)
     if waiting is not None:
         raise conflict(f"claim {id} re-verification is already queued (job {waiting})")
+    target = claim_target(session, claim)
+    try:
+        check_same_target(session, claim, text, target)
+    except TargetMismatch as exc:
+        raise validation_error(f"{exc} (D10-3 같은 대상만)", ("body", "text")) from exc
+    if target is not None:
+        demote(session, claim, target)  # rejudge 잡이 claim.reverify 보다 먼저 등록된다(모듈 설명)
     job = enqueue(session, REVERIFY, {"snapshot_id": claim.snapshot_id, "claim_id": claim.id, "text": text})
     session.commit()
     return JSONResponse(job_view(job), status_code=202)

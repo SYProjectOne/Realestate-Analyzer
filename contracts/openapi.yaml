@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.5
+  version: 2026-10-09.6
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -852,6 +852,14 @@ paths:
         사람이 고친 문장으로 claim.reverify 잡을 등록한다(202 JobRun). api 는 판정기를 부르지 않는다 — worker 가 문장을 원자 주장으로 나눠
         원 주장의 근거로 verify 하고 parent_claim_id 로 연결된 새 주장 행을 만든다. 원 주장이 contradicted 가 아니거나, 이미 분할 재검증
         자식이 있거나, 같은 주장의 claim.reverify 잡이 queued·running 이면 409 conflict.
+
+        D10-3(계약 2026-10-09.6, R3 재리뷰 N-C3):
+        - 같은 대상만: 고친 문장의 원자 주장마다 원 주장 field 의 용어가 있고 다른 사실 필드 용어가 없어야 하며, 같은 지역의 다른 단지 이름만
+          가리키면 안 된다(문자열 대조) — 어기면 422 validation_error(loc body.text, 예시 claimTarget).
+        - 원 주장이 DB 사실에서 생성됐으면(ClaimView.entity·entity_id·field) 접수와 함께 그 사실을 강등한다(FactDemotion): 사실 테이블 값을
+          비우고 chosen 출처 행 = '확인 불가(검증 모순)', 체크리스트 '사실 재확인', change_event critical, 그 단지 rejudge 잡. 사람 확인
+          (POST /ops/human-checks, 같은 단지·같은 field) 또는 새 원문이 오면 복원한다.
+        - claim.reverify 잡은 이 경로로만 등록한다(POST /jobs 의 claim.reverify 는 422 — JobCreateName).
       parameters:
         - name: id
           in: path
@@ -882,7 +890,14 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
               examples:
                 notContradicted: { $ref: './examples/error_409_claim.json' }
-        '422': { $ref: '#/components/responses/ValidationError' }
+        '422':
+          description: 본문 검증 실패 또는 같은 대상(section·complex·field)이 아닌 문장(D10-3)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                invalid: { $ref: './examples/error_422.json' }
+                claimTarget: { $ref: './examples/error_422_claim_target.json' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /catalysts:
@@ -993,6 +1008,7 @@ components:
       description: |
         API_TOKEN(쓰기 포함 전부), READONLY_TOKEN(GET만, 운영자 열람용 고정 토큰) 또는 공유 링크 토큰(POST /share-links 가 발급, GET만, 만료 30일 = SHARE_TOKEN_TTL_DAYS — 만료·회수되면 401). 읽기 전용 토큰·공유 링크 토큰으로 GET 이외 메서드를 부르면 403 forbidden.
         두 환경 토큰(API_TOKEN·READONLY_TOKEN)이 모두 비면(개발 기본값) 인증 없이 열지만 루프백(127.0.0.1·::1) 접속만 받는다(그 밖 401) — 서버도 127.0.0.1 에만 바인드한다(app.serve). ENV=prod 는 API_TOKEN 필수.
+        D10-7(계약 2026-10-09.6): 공유 링크 토큰은 화면 조회 GET 만 — `/ops/*`·`/jobs`·`/jobs/*` 는 GET 이라도 403 forbidden(운영 화면·잡 큐는 공유 범위 밖). READONLY_TOKEN 은 모든 GET.
 
   parameters:
     RegionId:
@@ -1163,6 +1179,10 @@ components:
     # 계약 2026-10-09.4 (R3 F3)
     ClaimView: { $ref: './schemas/claim.json#/$defs/ClaimView' }
     ClaimPatch: { $ref: './schemas/claim.json#/$defs/ClaimPatch' }
+    # 계약 2026-10-09.6 (R3b G3)
+    FactDemotion: { $ref: './schemas/claim.json#/$defs/FactDemotion' }
+    JobCreateName: { $ref: './schemas/job_run.json#/$defs/JobCreateName' }
+    BenchmarkAbsence: { $ref: './schemas/market.json#/$defs/BenchmarkAbsence' }
     ClaimReverifyPayload: { $ref: './schemas/job_payloads/claim_reverify.json' }
     CatalystCreate: { $ref: './schemas/catalyst.json#/$defs/CatalystCreate' }
     CatalystCreated: { $ref: './schemas/catalyst.json#/$defs/CatalystCreated' }

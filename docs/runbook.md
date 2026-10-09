@@ -75,7 +75,7 @@ curl -s http://127.0.0.1:8000/health
 증상: worker 로그 `JudgeUnavailable`, 화면 배너 "미판정 모드".
 
 1. 수집·정규화는 계속된다. 판정·점수·publish 는 보류된다.
-2. 원인 확인: `npx -y @jkudish/jev-mcp@latest` 가 worker 컨테이너에서 실행되는지(`docker compose exec worker npx --version`),
+2. 원인 확인: `npx -y @jkudish/jev-mcp@latest` 가 worker 컨테이너에서 실행되는지(`docker compose -f infra/docker-compose.yml exec worker npx --version`),
    네트워크, JEV 자체 키(JEV 환경변수).
 3. 복구되면 worker 가 감지해 미처리 `rejudge` 를 자동 실행한다. 수동: G5 재판정 버튼 또는 `rejudge` 잡 등록.
 4. 급할 때 `JUDGE_ADAPTER=mock` 으로 띄우면 화면은 동작하지만 판정은 모두 review 로 남는다 — 운영에서는 쓰지 않는다.
@@ -98,9 +98,13 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
 
 삭제 금지(D1 #14 보존 기간 무기한).
 
-1. `du -sh /data/raw/*` (Docker: `docker compose exec worker du -sh /data/raw/*`) 로 소스별 용량을 본다.
-2. 지난달 이전 날짜 디렉터리를 월별로 압축한다: `infra/raw_archive.sh /data/raw <source> <yyyy-mm>`
-   (Docker: `docker compose exec worker …`). 결과 `<source>/<yyyy-mm>.tar.gz` 는 RAW_DIR 기준 상대 경로(`tar -C`)로 넣어
+1. `du -sh /data/raw/*` (Docker: `docker compose -f infra/docker-compose.yml exec worker du -sh /data/raw/*`) 로
+   소스별 용량을 본다.
+2. 지난달 이전 날짜 디렉터리를 월별로 압축한다(저장소 루트에서): `bash infra/raw_archive.sh <RAW_DIR> <source> <yyyy-mm>`
+   — RAW_DIR 은 상대 경로여도 된다(스크립트가 절대 경로로 바꾼다).
+   Docker: `docker compose -f infra/docker-compose.yml exec worker /app/infra/raw_archive.sh /data/raw <source> <yyyy-mm>`
+   (worker 이미지에 실행 권한으로 `/app/infra/raw_archive.sh` 가 들어 있다 — 작업 디렉터리가 `/app/backend` 라 상대 경로
+   `infra/…` 는 없다). 결과 `<source>/<yyyy-mm>.tar.gz` 는 RAW_DIR 기준 상대 경로(`tar -C`)로 넣어
    구성원 이름이 DB `raw_document.path` 와 같다 — 스크립트가 `tar -tzf` 목록과 디스크 파일을 대조한 뒤에만 원본을 지운다.
    API `GET /raw/{id}` 는 원본이 없으면 이 압축에서 읽는다(R3 minor 34). 손으로 `tar -czf … /data/raw/…`(절대 경로)로 묶으면
    구성원 이름이 달라져 읽지 못한다 — 스크립트만 쓴다.
@@ -132,7 +136,7 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
   `SHARE_TOKEN_TTL_DAYS`(기본 30일), 서버에는 sha256 만 남는다. 링크 `<origin>/share#<token>` 은 발급 때 한 번만 보인다.
   잃어버리거나 노출되면 같은 패널에서 회수(`DELETE /share-links/{id}`) — 그 토큰은 바로 401.
 - `READONLY_TOKEN` 은 운영자 열람용 고정 토큰이다(만료 없음 — 남에게 주지 않는다).
-- 키가 노출되면: 발급처에서 폐기·재발급 → `.env` 교체 → `docker compose up -d` (로그는 이미 마스킹되지만 확인).
+- 키가 노출되면: 발급처에서 폐기·재발급 → `infra/.env` 교체 → `docker compose -f infra/docker-compose.yml up -d` (로그는 이미 마스킹되지만 확인).
 
 ## 10. R4 운영 시험 — 인천·김포 실데이터 1회 실행 (준비 문서, WP9 R3)
 

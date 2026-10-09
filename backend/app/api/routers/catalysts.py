@@ -14,7 +14,10 @@
 - 분류(kind·stage)는 판정기 classify 가 한다(규칙 3): 지역 최신 스냅샷에 rejudge(complex_ids=[] → P4 호재
   classify·점수 재계산)를 등록한다 — 같은 스냅샷에 대기 중인 rejudge 가 있으면 그 잡에 합친다
   (``scheduler.rejudge.enqueue_rejudge``). 스냅샷이 없으면 job=null(다음 파이프라인 P4 가 분류).
-- 같은 지역·같은 URL 이 이미 있으면 그 행을 돌려준다(후보 함수를 다시 부르지 않는다).
+- URL 정규화(``normalize_url``, 재리뷰 F3): scheme·host 소문자, 기본 포트·fragment·추적 쿼리
+  (utm_*·fbclid·gclid 등) 제거, 남은 쿼리 정렬, 끝 '/' 제거. 같은 지역에 정규화 URL 이 같은 호재가 이미
+  있으면 그 행을 돌려주고(후보 함수를 다시 부르지 않는다) rejudge 를 다시 등록하지 않는다(job=null).
+  후보 함수가 기존 행을 돌려줘도(created=False) 다시 등록하지 않는다.
 - 제목·발췌는 guard(전화번호·주민번호·이메일·비밀값)를 통과해야 한다 — 판정기 payload 로 가는 문장이다(422).
 """
 
@@ -23,6 +26,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 from typing import Annotated, Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
@@ -37,7 +41,14 @@ from app.api.jobs import job_view, now_iso
 from app.api.routers.complexes import catalyst_view
 from app.models import Catalyst, Snapshot
 
-__all__ = ["CANDIDATE_FUNCTION", "CANDIDATE_MODULE", "CandidateUnavailable", "candidate_factory", "router"]
+__all__ = [
+    "CANDIDATE_FUNCTION",
+    "CANDIDATE_MODULE",
+    "CandidateUnavailable",
+    "candidate_factory",
+    "normalize_url",
+    "router",
+]
 
 router = APIRouter(tags=["market"])
 
@@ -61,6 +72,38 @@ def candidate_factory() -> Callable[..., Any]:
     return fn  # type: ignore[no-any-return]
 
 
+_TRACKING = ("utm_", "fbclid", "gclid", "igshid", "mc_cid", "mc_eid", "ref_src")
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def normalize_url(url: str) -> str:
+    """같은 기사·공고를 같은 문자열로(문자열 정규화 — 판단 아님)."""
+    parts = urlsplit(url.strip())
+    scheme = parts.scheme.lower()
+    host = (parts.hostname or "").lower()
+    port = parts.port
+    netloc = host if port is None or _DEFAULT_PORTS.get(scheme) == port else f"{host}:{port}"
+    query = sorted(
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=True)
+        if not k.lower().startswith(_TRACKING)
+    )
+    path = parts.path.rstrip("/") if parts.path not in ("", "/") else ""
+    return urlunsplit((scheme, netloc, path, urlencode(query), ""))
+
+
+def _existing(session: Session, region_id: int, url: str) -> Catalyst | None:
+    want = normalize_url(url)
+    for row in session.scalars(
+        select(Catalyst)
+        .where(Catalyst.region_id == region_id, Catalyst.source_url.is_not(None))
+        .order_by(Catalyst.id)
+    ):
+        if row.source_url and normalize_url(row.source_url) == want:
+            return row
+    return None
+
+
 def _snapshot_for(session: Session, region_id: int) -> Snapshot | None:
     snap = default_snapshot(session, region_id)
     if snap is not None:
@@ -77,7 +120,7 @@ def _snapshot_for(session: Session, region_id: int) -> Snapshot | None:
 def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] = None) -> JSONResponse:
     check_body("createCatalyst", body)
     region = get_region(session, int(body["region_id"]))
-    url = str(body["url"]).strip()
+    url = normalize_url(str(body["url"]))
     title = str(body["title"]).strip()
     excerpt = (str(body.get("excerpt") or "").strip()) or None
     if not title:
@@ -90,6 +133,12 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
             f"공개할 수 없는 정보가 있다({', '.join(guard.kinds())}) — 판정기로 보내지 않는다",
             ("body",),
         )
+    have = _existing(session, region.id, url)
+    if have is not None:  # 같은 기사·공고 — 후보 함수·rejudge 를 다시 부르지 않는다
+        snap = _snapshot_for(session, region.id)
+        checked = (snap.asof_date if snap is not None else now_iso())[:10]
+        fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [have.id]))
+        return JSONResponse({"catalyst": catalyst_view(have, checked, fm=fm), "job": None}, status_code=201)
     try:
         make = candidate_factory()
     except CandidateUnavailable as exc:
@@ -104,7 +153,7 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
     session.flush()
     snap = _snapshot_for(session, region.id)
     job_out: dict[str, Any] | None = None
-    if snap is not None:
+    if snap is not None and getattr(made, "created", True) is not False:
         from app.scheduler.rejudge import enqueue_rejudge
 
         job = enqueue_rejudge(session, snap.id, [], f"호재 URL 입력: {title}"[:200])
