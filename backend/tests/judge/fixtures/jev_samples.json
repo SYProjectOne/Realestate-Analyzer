@@ -1,0 +1,445 @@
+{
+  "recorded_at": "2026-10-09",
+  "server_info": {
+    "name": "jev-mcp",
+    "title": null,
+    "version": "0.14.1",
+    "description": null,
+    "website_url": null,
+    "icons": null
+  },
+  "note": "one real call per tool with synthetic public text (WP3 R1 format probe)",
+  "calls": {
+    "jev_screen": {
+      "arguments": {
+        "text": "공급금액 최고가 608,000,000원, 계약금 10%, 입주예정 2028년 3월",
+        "purpose": "청약 단지 공고 발췌에서 가격을 읽는다"
+      },
+      "duration_ms": 297,
+      "is_error": false,
+      "response": {
+        "tool": "jev_screen",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "probabilities": {
+          "injection": 0.02,
+          "substance": 0.98,
+          "relevance": 0.98
+        },
+        "thresholds": {
+          "block_at": 0.75,
+          "review_at": 0.25
+        },
+        "recommendation": {
+          "action": "pass",
+          "reason": "no signals above thresholds"
+        },
+        "usage": {
+          "input_tokens": 563,
+          "output_tokens": 57
+        }
+      }
+    },
+    "jev_extract": {
+      "arguments": {
+        "document": "공급금액 최고가 608,000,000원, 계약금 10%, 입주예정 2028년 3월",
+        "fields": [
+          {
+            "id": "max_price",
+            "pattern": "[0-9,]+원",
+            "description": "공급금액 최고가(원)"
+          }
+        ]
+      },
+      "duration_ms": 250,
+      "is_error": false,
+      "response": {
+        "tool": "jev_extract",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "summary": {
+          "fields": 1,
+          "extracted": 1,
+          "auto": 1,
+          "review": 0,
+          "not_found": 0,
+          "invalid": 0
+        },
+        "thresholds": {
+          "auto_accept": 0.85,
+          "minimum_margin": 0.5
+        },
+        "results": [
+          {
+            "id": "max_price",
+            "value": "608,000,000원",
+            "status": "auto",
+            "reason": null,
+            "confidence": 0.98,
+            "top_probability": 0.99,
+            "margin": 0.98,
+            "candidates_considered": 1,
+            "candidates_truncated": false,
+            "matches_skipped_too_long": 0
+          }
+        ],
+        "usage": {
+          "input_tokens": 478,
+          "output_tokens": 37
+        }
+      }
+    },
+    "jev_audit": {
+      "arguments": {
+        "source": "공급금액 최고가 608,000,000원, 계약금 10%, 입주예정 2028년 3월",
+        "records": [
+          {
+            "id": "max_price",
+            "request": "공급금액 최고가(원)",
+            "value": "608,000,000원"
+          }
+        ]
+      },
+      "duration_ms": 188,
+      "is_error": false,
+      "response": {
+        "tool": "jev_audit",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "action": "pass",
+        "wrong_at": 0.7,
+        "truncated": false,
+        "summary": {
+          "records": 1,
+          "flagged": 0,
+          "invalid": 0
+        },
+        "records": [
+          {
+            "id": "max_price",
+            "value": "608,000,000원",
+            "checks": {
+              "hallucinated": 0.02,
+              "off_target": 0.02,
+              "incomplete": 0.03,
+              "format": 0.28
+            },
+            "p_wrong": 0.28,
+            "action": "ok"
+          }
+        ],
+        "usage": {
+          "input_tokens": 769,
+          "output_tokens": 86
+        }
+      }
+    },
+    "jev_classify": {
+      "arguments": {
+        "items": [
+          {
+            "id": "c1",
+            "text": "사업주체 민간 시행사, 민영주택 아파트 일반분양"
+          }
+        ],
+        "classes": [
+          {
+            "id": "private_sale_apt",
+            "description": "민간 사업주체가 분양하는 아파트"
+          },
+          {
+            "id": "public_rental",
+            "description": "공공 임대주택"
+          }
+        ]
+      },
+      "duration_ms": 233,
+      "is_error": false,
+      "response": {
+        "tool": "jev_classify",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "summary": {
+          "items": 1,
+          "auto": 1,
+          "review": 0,
+          "invalid_response": 0,
+          "by_class": {
+            "private_sale_apt": 1
+          }
+        },
+        "thresholds": {
+          "auto_accept": 0.85,
+          "minimum_margin": 0.5
+        },
+        "results": [
+          {
+            "id": "c1",
+            "classification": "private_sale_apt",
+            "probabilities": {
+              "private_sale_apt": 1,
+              "public_rental": 0
+            },
+            "confidence": 1,
+            "margin": 1,
+            "top_probability": 1,
+            "decision": "auto"
+          }
+        ],
+        "usage": {
+          "input_tokens": 423,
+          "output_tokens": 35
+        }
+      }
+    },
+    "jev_compare": {
+      "arguments": {
+        "passage_a": "총 1,573세대",
+        "passage_b": "총 1,769세대",
+        "aspects": [
+          "세대수"
+        ]
+      },
+      "duration_ms": 187,
+      "is_error": false,
+      "response": {
+        "tool": "jev_compare",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "overall": {
+          "relation": "contradicts",
+          "probabilities": {
+            "same_fact": 0,
+            "contradicts": 0.9400000000000001,
+            "different_facts": 0.06
+          },
+          "confidence": 0.91,
+          "margin": 0.8800000000000001,
+          "decision": "auto"
+        },
+        "aspects": [
+          {
+            "aspect": "세대수",
+            "relation": "contradicts",
+            "probabilities": {
+              "same_fact": 0,
+              "contradicts": 0.9,
+              "different_facts": 0.1
+            },
+            "confidence": 0.85,
+            "margin": 0.8,
+            "decision": "auto"
+          }
+        ],
+        "thresholds": {
+          "auto_accept": 0.85,
+          "minimum_margin": 0.5
+        },
+        "usage": {
+          "input_tokens": 543,
+          "output_tokens": 89
+        }
+      }
+    },
+    "jev_noul": {
+      "arguments": {
+        "propositions": [
+          "서울은 대한민국의 수도이다.",
+          "달은 치즈로 만들어져 있다."
+        ]
+      },
+      "duration_ms": 187,
+      "is_error": false,
+      "response": {
+        "tool": "jev_noul",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "status": "ok",
+        "results": [
+          {
+            "id": "proposition0",
+            "proposition": "서울은 대한민국의 수도이다.",
+            "probability": 0.98,
+            "label": "likely",
+            "auto": true
+          },
+          {
+            "id": "proposition1",
+            "proposition": "달은 치즈로 만들어져 있다.",
+            "probability": 0.01,
+            "label": "unlikely",
+            "auto": true
+          }
+        ],
+        "thresholds": {
+          "auto_accept": 0.85
+        },
+        "usage": {
+          "input_tokens": 479,
+          "output_tokens": 46
+        }
+      }
+    },
+    "jev_rerank": {
+      "arguments": {
+        "query": "신축 아파트",
+        "candidates": [
+          {
+            "id": "complex:1",
+            "text": "2028년 입주 신축 아파트"
+          },
+          {
+            "id": "complex:2",
+            "text": "1990년 준공 상가 건물"
+          }
+        ]
+      },
+      "duration_ms": 202,
+      "is_error": false,
+      "response": {
+        "tool": "jev_rerank",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "query": "신축 아파트",
+        "summary": {
+          "candidates": 2,
+          "returned": 2
+        },
+        "ranked": [
+          {
+            "rank": 1,
+            "id": "complex:1",
+            "relevance": 0.94,
+            "text": "2028년 입주 신축 아파트"
+          },
+          {
+            "rank": 2,
+            "id": "complex:2",
+            "relevance": 0.03,
+            "text": "1990년 준공 상가 건물"
+          }
+        ],
+        "usage": {
+          "input_tokens": 433,
+          "output_tokens": 40
+        }
+      }
+    },
+    "jev_decide": {
+      "arguments": {
+        "decision": "두 단지 중 어느 쪽을 먼저 검토할까",
+        "evidence": "A 단지: 계약금 5%. B 단지: 계약금 20%.",
+        "priorities": "초기 자금 부담이 적은 쪽을 우선한다",
+        "candidates": [
+          {
+            "id": "complex_1",
+            "description": "A 단지"
+          },
+          {
+            "id": "complex_2",
+            "description": "B 단지"
+          }
+        ],
+        "requirements": [
+          "계약금이 10% 이하이다"
+        ]
+      },
+      "duration_ms": 202,
+      "is_error": false,
+      "response": {
+        "tool": "jev_decide",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "recommendation": {
+          "selected": "complex_1",
+          "escaped": false,
+          "confidence": 1,
+          "probabilities": {
+            "complex_1": 1,
+            "complex_2": 0,
+            "ask_user": 0,
+            "investigate": 0,
+            "none": 0
+          },
+          "contradicted_requirements": []
+        },
+        "requirements_checked": 1,
+        "checks": [
+          {
+            "candidate": "complex_1",
+            "requirement": 0,
+            "answer": "supported"
+          },
+          {
+            "candidate": "complex_2",
+            "requirement": 0,
+            "answer": "contradicted"
+          }
+        ],
+        "warnings": [],
+        "usage": {
+          "input_tokens": 814,
+          "output_tokens": 152
+        }
+      }
+    },
+    "jev_verify": {
+      "arguments": {
+        "claims": [
+          "A 단지의 계약금은 5%이다.",
+          "B 단지의 계약금은 5%이다."
+        ],
+        "evidence": "A 단지: 계약금 5%. B 단지: 계약금 20%."
+      },
+      "duration_ms": 203,
+      "is_error": false,
+      "response": {
+        "tool": "jev_verify",
+        "model": "jev-1.13.0",
+        "provider": "typesafe",
+        "auto_accept": 0.8,
+        "subject_at": 0.5,
+        "summary": {
+          "verified": 1,
+          "contradicted": 1,
+          "unsupported": 0,
+          "needs_review": 0
+        },
+        "results": [
+          {
+            "id": "claim0",
+            "claim": "A 단지의 계약금은 5%이다.",
+            "verdict": "verified",
+            "probabilities": {
+              "supports": 1,
+              "contradicts": 0,
+              "says_nothing": 0
+            },
+            "confidence": 1,
+            "action": "auto",
+            "supporting_evidence": null,
+            "same_subject": 0.93
+          },
+          {
+            "id": "claim1",
+            "claim": "B 단지의 계약금은 5%이다.",
+            "verdict": "contradicted",
+            "probabilities": {
+              "supports": 0,
+              "contradicts": 1,
+              "says_nothing": 0
+            },
+            "confidence": 1,
+            "action": "auto",
+            "supporting_evidence": null,
+            "same_subject": 0.91
+          }
+        ],
+        "usage": {
+          "input_tokens": 882,
+          "output_tokens": 128
+        }
+      }
+    }
+  }
+}
