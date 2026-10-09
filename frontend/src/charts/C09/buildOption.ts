@@ -18,8 +18,14 @@ export function groupByStage(catalysts: CatalystView[]): Record<CatalystStage, C
     CatalystStage,
     CatalystView[]
   >;
-  for (const c of catalysts) out[c.stage].push(c);
+  // 보드 5열 밖 단계('호재 아님' — 계약 .8, D11-2 판정 제외)는 보드에 넣지 않는다(excludedCatalysts 로 따로 센다)
+  for (const c of catalysts) out[c.stage]?.push(c);
   return out;
+}
+
+/** 보드 단계 밖(예: '호재 아님' — D11-2 판정 제외, 사람이 넣은 호재는 판정과 무관하게 남는다) */
+export function excludedCatalysts(catalysts: CatalystView[]): CatalystView[] {
+  return catalysts.filter((c) => !(C09_STAGES as readonly string[]).includes(c.stage));
 }
 
 /** 타임라인 항목: **확정 + 예정 연월 있는 것만**, 날짜순. 이름 겹침을 피하려고 4단으로 엇갈린다 */

@@ -513,6 +513,17 @@ describe('C09 호재 단계', () => {
     expect(opt(o).xAxis.type).toBe('time');
   });
 
+  it("계약 .8 '호재 아님' 단계는 보드에 넣지 않고(throw 없음) 따로 센다", () => {
+    const notCatalyst = {
+      ...catalysts[0]!,
+      id: 999,
+      stage: '호재 아님',
+    } as unknown as (typeof catalysts)[number];
+    const groups = C09.groupByStage([...catalysts, notCatalyst]);
+    expect(Object.values(groups).flat()).toHaveLength(catalysts.length);
+    expect(C09.excludedCatalysts([...catalysts, notCatalyst]).map((c) => c.id)).toEqual([999]);
+  });
+
   it('보드 5열 묶음 + 언론·미확정 회색 + 위치 미확정 표시', () => {
     const groups = C09.groupByStage(catalysts);
     expect(Object.keys(groups)).toEqual(['확정', '계획', '추진', '언론', '미확정']);
