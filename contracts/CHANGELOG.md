@@ -53,6 +53,11 @@ R2 WP5·WP7 요청(`docs/design/wp/CONTRACT_CHANGES_R1.md` "R2 WP5·WP7 요청"�
   SQLite·Postgres 16(pgserver) 둘 다 테스트. autogenerate diff 0.
 - 열거 `enums.JUDGE_SCOPE`(CHECK 없음 — SQLite ADD/DROP COLUMN 호환) = `score_row.json#/$defs/JudgeScope`.
 
+### 픽스처 문서 (WP9 R3 — 계약 버전 변경 없음, 데이터 무변경)
+
+- `fixtures/incheon_gimpo_2026-10-08/README.md`: 'R3 통합 회귀 매핑' 절 추가(T1~T18 → `backend/tests/regress/` 테스트·e2e 흐름).
+  사유: R3 통합 회귀 매핑 표 갱신(WP9 지시). 픽스처 파일·생성기 출력은 그대로(`test_tools.py` 바이트 일치 유지).
+
 ## 2026-10-09.2
 
 R1 계약 변경 요청 일괄 반영(`docs/design/wp/CONTRACT_CHANGES_R1.md` 승인 목록 전부 + CEO 추가 승인 4건). 마이그레이션 `0002_r1`
