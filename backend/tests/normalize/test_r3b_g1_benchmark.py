@@ -198,3 +198,43 @@ def test_f1a_same_url_is_read_once(db_session: Session, add_raw: AddRaw, region:
     monkeypatch.setattr(bm, "read_raw_row", spy)
     build_benchmarks(db_session, region.id, asof_date=ASOF)
     assert len(calls) == 2  # 목록 1(최신) + 주택형 1
+
+
+# ---------------------------------------------------------------- 계약 .6 benchmark.snapshot_id (F1a)
+
+
+def _snap(db_session: Session, region: Region, asof: str) -> int:
+    from app.models import Snapshot
+
+    s = Snapshot(region_id=region.id, asof_date=asof, status="building", created_at=f"{asof}T06:00:00+09:00")
+    db_session.add(s)
+    db_session.flush()
+    return s.id
+
+
+def test_snapshot_rows_of_published_snapshot_are_preserved(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+    """발행 스냅샷이 인용한 벤치마크 행은 다음 스냅샷 조립이 지우거나 고치지 않는다."""
+    _notice(add_raw, region, "2021000101", "송도 센트럴")
+    _trades(db_session, add_raw, region, "송도센트럴")
+    s1 = _snap(db_session, region, "2026-10-07")
+    build_benchmarks(db_session, region.id, asof_date="2026-10-07", snapshot_id=s1)
+    first = {b.id: (b.snapshot_id, b.trade_median_won) for b in _rows(db_session)}
+    assert first and {sid for sid, _ in first.values()} == {s1}
+    db_session.execute(bm.RtmsTrade.__table__.delete())  # 다음 날 실거래가 사라져도
+    s2 = _snap(db_session, region, ASOF)
+    res = build_benchmarks(db_session, region.id, asof_date=ASOF)  # 스냅샷 생략 → 이 기준일의 스냅샷
+    assert res.removed == 0
+    assert {b.id: (b.snapshot_id, b.trade_median_won) for b in _rows(db_session) if b.snapshot_id == s1} == first
+    assert not [b for b in _rows(db_session) if b.snapshot_id == s2]
+
+
+def test_legacy_auto_rows_are_adopted_and_rebuild_is_idempotent(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+    _notice(add_raw, region, "2021000101", "송도 센트럴")
+    _trades(db_session, add_raw, region, "송도센트럴")
+    build_benchmarks(db_session, region.id, asof_date=ASOF)  # 스냅샷 없음 → snapshot_id NULL(옛 동작)
+    n = len(_rows(db_session))
+    assert {b.snapshot_id for b in _rows(db_session)} == {None}
+    sid = _snap(db_session, region, ASOF)
+    res = build_benchmarks(db_session, region.id, asof_date=ASOF, snapshot_id=sid)
+    assert res.inserted == 0 and len(_rows(db_session)) == n
+    assert {b.snapshot_id for b in _rows(db_session)} == {sid}
