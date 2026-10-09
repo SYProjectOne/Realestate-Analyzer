@@ -140,7 +140,7 @@ def env_file_path() -> Path:
 def load_settings(env_file: Path | str | None = None) -> Settings:
     """``env_file``(없으면 ``env_file_path()``)을 읽은 새 Settings. 환경변수가 파일보다 우선한다."""
     path = Path(env_file) if env_file is not None else env_file_path()
-    return Settings(_env_file=path)  # type: ignore[call-arg]
+    return Settings(_env_file=path)
 
 
 _settings: Settings | None = None

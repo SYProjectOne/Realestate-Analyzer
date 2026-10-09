@@ -190,7 +190,7 @@ def test_ncp_provider_headers_url_and_idempotent(
 def test_ncp_wrong_path_404_is_failure_row(
     db_engine: Engine, region_ctx: tuple[Region, Snapshot], http: HttpClient
 ) -> None:
-    """키가 틀리거나 경로가 틀리면(예: naveropenapi.apigw.ntruss.com/search/v1/news → 404) 실패 행, 예외 없음."""
+    """키·경로가 틀리면(예: naveropenapi.apigw.ntruss.com/search/v1/news → 404) 실패 행, 예외 없음."""
     region, snapshot = region_ctx
     with respx.mock(assert_all_called=False) as router:
         router.get(NCP_NEWS_URL).respond(
