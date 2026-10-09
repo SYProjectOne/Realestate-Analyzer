@@ -763,7 +763,9 @@
   },
   "picker": {
     "snapshotDegraded": "{date} · 일부 수집 실패",
-    "snapshotBuilding": "{date} · 생성 중"
+    "snapshotBuilding": "{date} · 생성 중",
+    "revision": "{date} · 리비전 {n}",
+    "revisionReason": "리비전 {n}: {reason}"
   },
   "badge": {
     "cached": "캐시",

@@ -32,6 +32,7 @@ import type {
   JobRun,
   Provenance,
   RegionCreated,
+  Snapshot,
   ReportRequest,
   ShareLinkCreate,
   ShareLinkCreated,
@@ -49,6 +50,8 @@ import { mswPath } from './mswPath';
 
 export const MOCK_ROWS_KEY = 'msw.complexes.rows';
 export const MOCK_DEGRADED_KEY = 'msw.degraded';
+/** localStorage `msw.revisions` = 1 이면 최신 기준일에 발행 리비전 2(계약 .8 초안 D11-1)를 덧붙인다 */
+export const MOCK_REVISIONS_KEY = 'msw.revisions';
 /** GET /jobs/{id}를 이 횟수만큼 부르면 done */
 export const MOCK_JOB_POLLS_TO_DONE = 2;
 
@@ -217,6 +220,27 @@ export const extraHandlers = [
       return HttpResponse.json({ ...health, status: 'degraded', judge: 'degraded' });
     }
     return HttpResponse.json(health);
+  }),
+
+  // GET /regions/{id}/snapshots — 리비전(계약 .8 초안): 없는 필드는 1, 플래그면 최신 기준일 리비전 2
+  http.get(mswPath('/regions/:id/snapshots'), async ({ request }) => {
+    const list = (await base<Snapshot[]>(request)).map((s) => ({
+      revision: 1,
+      revision_of: null,
+      revision_reason: null,
+      ...s,
+    }));
+    if (readFlag(MOCK_REVISIONS_KEY) !== '1' || list.length === 0) return HttpResponse.json(list);
+    const latest = list[0]!;
+    const rev2 = {
+      ...latest,
+      id: Math.max(...list.map((s) => s.id)) + 1,
+      revision: 2,
+      revision_of: latest.id,
+      revision_reason: '사람 확인 입력(재판정)',
+      status: 'published' as const,
+    };
+    return HttpResponse.json([rev2, ...list]);
   }),
 
   // GET /snapshots/{sid}/complexes — 필터·대량 행·사람 확인 반영
