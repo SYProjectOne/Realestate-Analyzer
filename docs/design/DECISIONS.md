@@ -144,3 +144,5 @@
 - D11-7 지역 선택 확장(`PATCH /regions/{id}` selections 추가·제거) = RA "지역 추가": 새 리비전에서 후보 전체 rerank 1회 + 보고서 §12 "지역 추가" 장(이전 리비전과 비교).
 - D11-8 백업: worker가 매일 03:00 `backup` 잡(Postgres면 pg_dump, rawdata는 증분 복사)을 실행하고 결과를 job_run에 남긴다. SQLite 개발 모드에서는 파일 복사.
 - D11-9 prod에서 SQLite DATABASE_URL 거부. 차트 스크린샷 linux 기준 이미지는 Docker/WSL 설치 후 생성(현재 둘 다 없음 — 사람 할 일과 함께 기록).
+- D11-10 (2026-10-10) RA "지역 추가 → 통합 순위 재산출"은 D2 구조에서 지역 확장(`PATCH /regions/{id}` → `region.expand` → 새 리비전에서 확장된 지역의 후보 전체 rerank·점수)으로 충족한다. 지역(region)끼리는 독립 분석이며 지역 간 합산 순위는 만들지 않는다(여러 시군구를 보려면 한 지역에 함께 선택).
+- D11-11 호재 좌표·예상 시기(`lat`·`lon`·`expected_ym`)는 사람 입력(`PATCH /catalysts`)으로만 채운다 — 뉴스 자동 추출은 추정이 섞여 쓰지 않는다.
