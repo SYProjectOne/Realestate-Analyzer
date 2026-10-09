@@ -66,7 +66,8 @@ class Settings(BaseSettings):
     readonly_token: SecretStr | None = None
     share_token_ttl_days: int = Field(default=30, ge=1)
     # 프록시 헤더(X-Forwarded-For·Proto)를 믿을 상대 주소(쉼표 구분 IP·CIDR — uvicorn forwarded_allow_ips).
-    # 기본 루프백만. compose 는 web(nginx)이 있는 내부망 대역만 준다. '*'(모두)는 ENV=prod 에서 거부(재리뷰 F3).
+    # 기본 루프백만. compose 는 web(nginx)이 있는 내부망 대역만 준다.
+    # '*'(모두)는 ENV=prod 에서 거부(재리뷰 F3).
     forwarded_allow_ips: str = "127.0.0.1"
 
     # --- 판정기 (ADR-5, D6)

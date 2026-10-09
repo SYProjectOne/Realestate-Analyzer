@@ -106,8 +106,9 @@ def test_contract(case: Any, st_app: Any) -> None:
     excluded = []
     if op_id in SEMANTIC_422 and response.status_code == 422:
         excluded.append(positive_data_acceptance)
-    # 음성 사례 '정수 → 배열'에서 원소가 0·1개면 조회 문자열이 정상 값(생략·단일 값)과 같아진다 — 서버가 구별할 수
-    # 없는 거짓 양성(R3b: GET /ops/sources region_id 간헐 실패). 원소 2개 이상(같은 키 반복)은 strict_query 가 422.
+    # 음성 사례 '정수 → 배열'에서 원소가 0·1개면 조회 문자열이 정상 값(생략·단일 값)과 같아진다
+    # — 서버가 구별할 수 없는 거짓 양성(R3b: GET /ops/sources region_id 간헐 실패).
+    # 원소 2개 이상(같은 키 반복)은 strict_query 가 422.
     if any(isinstance(v, list) and len(v) <= 1 for v in (case.query or {}).values()):
         excluded.append(negative_data_rejection)
     case.validate_response(response, excluded_checks=excluded, transport_kwargs={"base_url": BASE_URL})

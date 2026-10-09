@@ -42,8 +42,9 @@ def uvicorn_kwargs(settings: Settings) -> dict[str, Any]:
         "host": bind_host(settings),
         "port": settings.api_port,
         "proxy_headers": True,
-        # 프록시 헤더(X-Forwarded-For)는 FORWARDED_ALLOW_IPS(기본 127.0.0.1, compose = web 이 있는 내부망 대역)가
-        # 보낸 것만 믿는다(재리뷰 F3 — 전에는 '*'). 무인증이면 루프백 바인드라 외부에서 헤더를 꾸밀 수 없다.
+        # 프록시 헤더(X-Forwarded-For)는 FORWARDED_ALLOW_IPS(기본 127.0.0.1, compose = web 이 있는
+        # 내부망 대역)가 보낸 것만 믿는다(재리뷰 F3 — 전에는 '*').
+        # 무인증이면 루프백 바인드라 외부에서 헤더를 꾸밀 수 없다.
         "forwarded_allow_ips": settings.forwarded_allow_ips,
         "log_config": None,
     }
