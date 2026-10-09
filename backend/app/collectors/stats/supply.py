@@ -15,6 +15,9 @@
 합산은 그대로 ``estimate_supply``(라벨 '추정', reason '추정 집계': 공급세대 = 일반+특별, 조합원분 제외라
 실제 입주 세대보다 작을 수 있다). 잔여세대(무순위·임의공급) 행은 남은 세대만 적혀 있어 단지 입주물량이
 아니므로 쓰지 않고, 민간사전청약(09)은 본청약 공고에 다시 나오므로 뺀다.
+
+출처(R3 W3): ``write_supply_provenance`` 가 추정 행의 units·year·ym 마다 field_provenance(라벨 추정, 원문 = 단지의
+채택 출처)를 쓴다 — 출처 없는 supply 행은 API 가 dev 에서 contract_violation(500)으로 막는다.
 """
 
 from __future__ import annotations
@@ -29,18 +32,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.collectors.reference.load import LoadStats
-from app.models import Supply
+from app.models import FieldProvenance, Supply
 
 __all__ = [
     "SUPPLY_ESTIMATE_LABEL",
     "SUPPLY_ESTIMATE_REASON",
+    "SUPPLY_SOURCE_FIELDS",
     "SupplyInput",
+    "SupplyProvenance",
     "SupplyRecord",
     "SupplySource",
     "aggregate_supply",
     "estimate_supply",
     "load_supply",
     "supply_inputs_from_applyhome_api",
+    "write_supply_provenance",
 ]
 
 SUPPLY_ESTIMATE_LABEL = "추정"
@@ -203,3 +209,103 @@ def load_supply(session: Session, region_id: int, records: Iterable[SupplyRecord
             stats.unchanged += 1
     session.flush()
     return stats
+
+
+# ---------------------------------------------------------------- 출처 (R3 W3)
+
+# supply 컬럼 → 그 값을 만든 단지 필드(채택 출처를 가리킨다)
+SUPPLY_SOURCE_FIELDS: dict[str, str] = {"units": "units_total", "year": "move_in_ym", "ym": "move_in_ym"}
+
+
+@dataclass
+class SupplyProvenance:
+    written: int = 0  # 새로 채택한 출처 행
+    missing: int = 0  # 단지 쪽 채택 출처가 없어 쓰지 못한 (행, 필드) — 지어내지 않는다
+
+    def stats(self) -> dict[str, int]:
+        return {"written": self.written, "missing": self.missing}
+
+
+def write_supply_provenance(session: Session, region_id: int) -> SupplyProvenance:
+    """추정 집계 supply 행(단지별)의 units·year·ym 출처 행(R3 W3, RA §3 '숫자 하나도 출처 없이 남기지 않는다').
+
+    출처 = 그 단지의 채택 출처(complex.units_total / move_in_ym)의 원문·URL·확인일·발췌, 라벨 '추정'(합산 집계),
+    reason '추정 집계(단지 <필드> 출처)'. 같은 원문·같은 값의 채택 행이 이미 있으면 그대로(멱등), 값·원문이 바뀌면
+    새 행을 채택하고 옛 행은 chosen=false 로 남긴다(삭제 없음). 단지 출처가 없으면 ``missing`` 으로 센다.
+    """
+    out = SupplyProvenance()
+    rows = [
+        s
+        for s in session.scalars(
+            select(Supply)
+            .where(Supply.region_id == region_id, Supply.reason == SUPPLY_ESTIMATE_REASON)
+            .order_by(Supply.id)
+        )
+        if s.complex_id is not None
+    ]
+    if not rows:
+        return out
+    cids = sorted({s.complex_id for s in rows if s.complex_id is not None})
+    srcs: dict[tuple[int, str], FieldProvenance] = {}
+    for fp in session.scalars(
+        select(FieldProvenance)
+        .where(
+            FieldProvenance.entity == "complex",
+            FieldProvenance.entity_id.in_(cids),
+            FieldProvenance.field.in_(sorted(set(SUPPLY_SOURCE_FIELDS.values()))),
+            FieldProvenance.chosen.is_(True),
+        )
+        .order_by(FieldProvenance.id)
+    ):
+        if fp.entity_id is not None and fp.label != "확인 불가" and (fp.url or "").strip():
+            srcs[(fp.entity_id, fp.field)] = fp
+    current: dict[tuple[int, str], list[FieldProvenance]] = {}
+    for fp in session.scalars(
+        select(FieldProvenance).where(
+            FieldProvenance.entity == "supply",
+            FieldProvenance.entity_id.in_([s.id for s in rows]),
+            FieldProvenance.chosen.is_(True),
+        )
+    ):
+        if fp.entity_id is not None:
+            current.setdefault((fp.entity_id, fp.field), []).append(fp)
+    for row in rows:
+        assert row.complex_id is not None
+        for name, src_field in SUPPLY_SOURCE_FIELDS.items():
+            value = getattr(row, name)
+            src = srcs.get((row.complex_id, src_field))
+            if value is None:
+                continue
+            if src is None:
+                out.missing += 1
+                continue
+            text = str(value)
+            chosen = current.get((row.id, name), [])
+            if any(fp.value_text == text and fp.raw_document_id == src.raw_document_id and fp.url == src.url for fp in chosen):
+                continue
+            for fp in chosen:
+                fp.chosen = False
+            session.add(
+                FieldProvenance(
+                    entity="supply",
+                    entity_id=row.id,
+                    entity_key=f"complex:{row.complex_id}",
+                    field=name,
+                    value_text=text,
+                    value_norm=text,
+                    raw_document_id=src.raw_document_id,
+                    url=src.url,
+                    checked_at=src.checked_at,
+                    label=SUPPLY_ESTIMATE_LABEL,
+                    reason=f"{SUPPLY_ESTIMATE_REASON}(단지 {src_field} 출처)",
+                    source_rank=src.source_rank,
+                    chosen=True,
+                    excerpt=src.excerpt,
+                    excerpt_start=src.excerpt_start,
+                    excerpt_end=src.excerpt_end,
+                    observed_on=src.observed_on,
+                )
+            )
+            out.written += 1
+    session.flush()
+    return out

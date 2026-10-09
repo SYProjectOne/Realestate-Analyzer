@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Final
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.collectors.stats.supply import SupplyInput, estimate_supply, load_supply
+from app.collectors.stats.supply import SupplyInput, estimate_supply, load_supply, write_supply_provenance
 from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
@@ -315,6 +315,7 @@ def collect(
                     if ev is not None:
                         events.append(ev)
                 res.loaded["supply"] = _supply(session, region_id)
+                res.loaded["supply_provenance"] = write_supply_provenance(session, region_id).stats()
                 ev = _market_event(session, snap_dto.id, "supply", res.loaded["supply"], detected_at)
                 if ev is not None:
                     events.append(ev)
