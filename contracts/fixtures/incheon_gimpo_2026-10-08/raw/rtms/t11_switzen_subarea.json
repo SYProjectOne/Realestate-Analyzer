@@ -1,0 +1,256 @@
+{
+  "case": "T11 (W5 변형)",
+  "description": "스위첸 생활권을 사용자가 편집한 하위 생활권(장기·운양 법정동)으로 둔 변형 — 그 생활권 2020년 이후 준공 거래 0건 → 대체 = 가장 최근 준공 한강센트럴자이(2017) → 보정(c=0.015 × min(2028−2017, 8) = 0.12). 리버시티(2020)·고촌 센트럴자이(2024)는 신축이고 이 생활권 밖(향산리·신곡리)이라 비교군·대체 모두 아님.",
+  "decision": "docs/design/wp/R3_FIX.md 'WP9 통합 발견 배정' W5 (RA §6-2 '준공 2020년 이후 = 신축' 유지)",
+  "target_complex_id": 4,
+  "living_area_edit": {
+    "split_from": "la_4",
+    "new_area": {
+      "name": "김포 장기·운양",
+      "legal_dong_codes": [
+        "4157010300",
+        "4157010400"
+      ]
+    },
+    "complex_ids": [
+      4
+    ],
+    "note": "스위첸 소재 법정동(고촌읍 향산리)은 그대로 두고 단지만 하위 생활권에 둔다(사용자 편집 변형 — 같은 향산리의 리버시티가 들어오지 않게)."
+  },
+  "expected": {
+    "new_build_trades_in_area": 0,
+    "substitute_members": [
+      "한강센트럴자이 1단지",
+      "한강센트럴자이 2단지"
+    ],
+    "substitute_completed_year": 2017,
+    "y_ref": 2028,
+    "coef_used": 0.12,
+    "label": "추정",
+    "reason": "대체·보정 c=0.015"
+  },
+  "source_url": "https://dapt.kr/",
+  "label": "재가공",
+  "checked_at": "2026-10-07",
+  "reported": {
+    "장기 한강센트럴자이 1·2(2017)": "4.5~5.2억(보고서 §12-3-3, 건수 미기재) · 최고 7.42억(2021-09)"
+  },
+  "synthetic_rows": {
+    "한강센트럴자이": "보고서는 범위(4.5~5.2억)만 — 6건(단지별 3건) 가격·날짜·층은 범위 안 합성",
+    "운양": "운양 KCC스위첸(2018)·운양 푸르지오(2016) 거래는 넣지 않는다 — 넣으면 규칙상 가장 최근 준공 KCC스위첸(2018)이 대체가 된다(CEO W5: 대체 = 한강센트럴자이)"
+  },
+  "trades": [
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "한강센트럴자이 1단지",
+      "completed_year": 2017,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 450000000,
+      "deal_date": "2026-05-14",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157010400"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "한강센트럴자이 1단지",
+      "completed_year": 2017,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 480000000,
+      "deal_date": "2026-07-02",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157010400"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "한강센트럴자이 1단지",
+      "completed_year": 2017,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 500000000,
+      "deal_date": "2026-08-27",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157010400"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "한강센트럴자이 2단지",
+      "completed_year": 2017,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 470000000,
+      "deal_date": "2026-06-09",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157010400"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "한강센트럴자이 2단지",
+      "completed_year": 2017,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 490000000,
+      "deal_date": "2026-08-11",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157010400"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "한강센트럴자이 2단지",
+      "completed_year": 2017,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 520000000,
+      "deal_date": "2026-09-16",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157010400"
+    }
+  ],
+  "outside_trades": [
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "힐스테이트 리버시티 1단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": 7,
+      "price_won": 580000000,
+      "deal_date": "2026-09-14",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025321"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "힐스테이트 리버시티 1단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 610000000,
+      "deal_date": "2026-06-10",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025321"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": 11,
+      "price_won": 590000000,
+      "deal_date": "2026-09-20",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025321"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.91,
+      "floor": null,
+      "price_won": 587000000,
+      "deal_date": "2026-08-04",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025321"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 560000000,
+      "deal_date": "2026-05-12",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025321"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 630000000,
+      "deal_date": "2026-07-08",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025321"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "고촌 센트럴자이",
+      "completed_year": 2024,
+      "area_m2": 84.0,
+      "floor": 6,
+      "price_won": 750000000,
+      "deal_date": "2026-09-05",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025324"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "고촌 센트럴자이",
+      "completed_year": 2024,
+      "area_m2": 84.0,
+      "floor": 11,
+      "price_won": 780000000,
+      "deal_date": "2026-04-10",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025324"
+    },
+    {
+      "id": null,
+      "living_area": null,
+      "apt_name": "고촌 센트럴자이",
+      "completed_year": 2024,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 740000000,
+      "deal_date": "2026-06-22",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false,
+      "legal_dong_code": "4157025324"
+    }
+  ]
+}

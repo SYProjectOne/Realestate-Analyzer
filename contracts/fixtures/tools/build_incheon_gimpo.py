@@ -548,7 +548,8 @@ def rtms_t11() -> dict[str, Any]:
     ]
     return {
         "case": "T11",
-        "description": "스위첸(고촌 향산리) 비교군: 같은 산단 신축 입주 거래 0건 → 리버시티(2020)·고촌 센트럴자이(2024) 대체, 보정·미보정 중앙값 둘 다, 라벨 '추정(대체·보정 c=0.015)'",
+        "description": "스위첸(고촌 향산리) 비교군 — 픽스처 그대로(생활권 = 김포시 전체): 리버시티(2020)·고촌 센트럴자이(2024)는 "
+                       "RA §6-2 '준공 2020년 이후 = 신축'이라 1차 비교군(대체 아님, CEO W5). 대체·보정 경로는 t11_switzen_subarea.json(하위 생활권 변형).",
         "target_complex_id": 4,
         "source_url": "https://dapt.kr/apt/BjA168.html",
         "source_urls": [
@@ -566,6 +567,64 @@ def rtms_t11() -> dict[str, Any]:
         },
         "synthetic_rows": {"1,4,5,8": "범위 끝값 — 가격은 보고서 범위, 날짜·층은 합성"},
         "trades": rows,
+    }
+
+
+JANGGI, UNYANG, HYANGSAN, SINGOK = "4157010400", "4157010300", "4157025321", "4157025324"
+
+
+def rtms_t11_subarea() -> dict[str, Any]:
+    """T11 W5 변형(CEO 2026-10-09): 스위첸 생활권 = 사용자가 편집한 하위 생활권(장기·운양 법정동).
+
+    그 생활권의 2020년 이후 준공 거래 0건 → 대체 = 가장 최근 준공 한강센트럴자이(2017) → 연식 보정.
+    리버시티(2020)·고촌 센트럴자이(2024)는 신축(RA §6-2)이고 향산리·신곡리라 이 생활권 밖이다.
+    """
+    jg = "한강센트럴자이 1단지", "한강센트럴자이 2단지"
+
+    def at(code: str, row: dict[str, Any]) -> dict[str, Any]:
+        return {**row, "living_area": None, "legal_dong_code": code}
+
+    sub = [
+        at(JANGGI, trade(jg[0], 2017, 84.0, None, 450_000_000, "2026-05-14")),  # 보고서 범위 하단 4.5억
+        at(JANGGI, trade(jg[0], 2017, 84.0, None, 480_000_000, "2026-07-02")),
+        at(JANGGI, trade(jg[0], 2017, 84.0, None, 500_000_000, "2026-08-27")),
+        at(JANGGI, trade(jg[1], 2017, 84.0, None, 470_000_000, "2026-06-09")),
+        at(JANGGI, trade(jg[1], 2017, 84.0, None, 490_000_000, "2026-08-11")),
+        at(JANGGI, trade(jg[1], 2017, 84.0, None, 520_000_000, "2026-09-16")),  # 보고서 범위 상단 5.2억
+    ]
+    outside = [at(HYANGSAN if "리버시티" in t["apt_name"] else SINGOK, t) for t in rtms_t11()["trades"]]
+    return {
+        "case": "T11 (W5 변형)",
+        "description": "스위첸 생활권을 사용자가 편집한 하위 생활권(장기·운양 법정동)으로 둔 변형 — 그 생활권 2020년 이후 준공 거래 0건 → "
+                       "대체 = 가장 최근 준공 한강센트럴자이(2017) → 보정(c=0.015 × min(2028−2017, 8) = 0.12). "
+                       "리버시티(2020)·고촌 센트럴자이(2024)는 신축이고 이 생활권 밖(향산리·신곡리)이라 비교군·대체 모두 아님.",
+        "decision": "docs/design/wp/R3_FIX.md 'WP9 통합 발견 배정' W5 (RA §6-2 '준공 2020년 이후 = 신축' 유지)",
+        "target_complex_id": 4,
+        "living_area_edit": {
+            "split_from": "la_4",
+            "new_area": {"name": "김포 장기·운양", "legal_dong_codes": [UNYANG, JANGGI]},
+            "complex_ids": [4],
+            "note": "스위첸 소재 법정동(고촌읍 향산리)은 그대로 두고 단지만 하위 생활권에 둔다(사용자 편집 변형 — 같은 향산리의 리버시티가 들어오지 않게).",
+        },
+        "expected": {
+            "new_build_trades_in_area": 0,
+            "substitute_members": list(jg),
+            "substitute_completed_year": 2017,
+            "y_ref": 2028,
+            "coef_used": 0.12,
+            "label": "추정",
+            "reason": "대체·보정 c=0.015",
+        },
+        "source_url": "https://dapt.kr/",
+        "label": "재가공",
+        "checked_at": CHECKED,
+        "reported": {"장기 한강센트럴자이 1·2(2017)": "4.5~5.2억(보고서 §12-3-3, 건수 미기재) · 최고 7.42억(2021-09)"},
+        "synthetic_rows": {
+            "한강센트럴자이": "보고서는 범위(4.5~5.2억)만 — 6건(단지별 3건) 가격·날짜·층은 범위 안 합성",
+            "운양": "운양 KCC스위첸(2018)·운양 푸르지오(2016) 거래는 넣지 않는다 — 넣으면 규칙상 가장 최근 준공 KCC스위첸(2018)이 대체가 된다(CEO W5: 대체 = 한강센트럴자이)",
+        },
+        "trades": sub,
+        "outside_trades": outside,
     }
 
 
@@ -709,6 +768,7 @@ def build() -> dict[str, bytes]:
     out.update({f"raw/{k}": v for k, v in reg.files.items()})
     out["raw/rtms/t4_metroxi2_84.json"] = dumps(rtms_t4()).encode("utf-8")
     out["raw/rtms/t11_switzen_comparables.json"] = dumps(rtms_t11()).encode("utf-8")
+    out["raw/rtms/t11_switzen_subarea.json"] = dumps(rtms_t11_subarea()).encode("utf-8")
     out["raw/t5_harrington/candidates.json"] = dumps(t5).encode("utf-8")
 
     # T8: 팝업 이미지 동일/변경 쌍

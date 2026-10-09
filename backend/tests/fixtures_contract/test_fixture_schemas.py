@@ -43,8 +43,10 @@ NO_SCHEMA: dict[str, str] = {
     "raw/applyhome_list/2026-10-08.json": "같은 목록(바이트 동일) — T8·T17",
     "raw/guard/t14_payloads.json": "guard 입력 payload(JudgePayload = 임의 JSON 객체) — T14",
     "raw/t13_missing_provenance/expected.json": "지운 출처 id 목록(테스트 기대값) — T13",
+    "raw/rtms/t11_switzen_subarea.json": "T11 W5 변형 입력: 생활권 편집(하위 생활권) + 거래 행(TradeInput 모양 + legal_dong_code — "
+    "생활권은 법정동으로 배정되므로 living_area 는 null; trades 는 아래 테스트가 TradeInput 으로 검사) — T11",
 }
-SKIP_DIRS = {"judgments"}  # 봉투는 test_judgments.py
+SKIP_DIRS = {"judgments", "judgments_synth"}  # 봉투는 test_judgments.py·test_judgments_synth.py
 
 
 def items(doc: Any, shape: str) -> list[Any]:
