@@ -12,6 +12,9 @@ import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 
+// jsdom에는 canvas가 없다 — ECharts 렌더러 자체는 Playwright(e2e/pages)가 본다
+vi.mock('echarts-for-react', () => ({ default: () => null }));
+
 beforeEach(() => resetMockState());
 
 describe('화면 10개 핵심 요소 (MSW)', () => {
@@ -85,9 +88,7 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
 
   it('G8 /reports: 생성 버튼 + 보고서 목록', async () => {
     renderRoute('/reports');
-    expect(
-      await screen.findByRole('button', { name: t('page.G8.generate') }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t('page.G8.generate') })).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: t('page.G8.list') })).toBeInTheDocument();
   });
 });
@@ -97,11 +98,14 @@ describe('숫자 셀 클릭 → 출처 패널', () => {
     renderRoute('/');
     const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
     const first = within(top5).getAllByRole('listitem')[0] as HTMLElement;
-    const factButton = within(first).getAllByRole('button', {
-      name: (name) => name.startsWith(t('provenance.open', { label: '' }).trim()),
-    })[0] as HTMLElement;
-    await userEvent.click(factButton);
-    expect(await screen.findByRole('dialog', { name: t('provenance.title') })).toBeInTheDocument();
+    const factButton = first.querySelector<HTMLButtonElement>('button[data-prov]');
+    expect(factButton).not.toBeNull();
+    await userEvent.click(factButton as HTMLButtonElement);
+    const dialog = await screen.findByRole('dialog', { name: t('provenance.title') });
+    // 출처 패널이 GET /provenance/{id}를 받아 라벨·원문 주소를 보인다
+    expect(await within(dialog).findByText(t('provenance.url'))).toBeInTheDocument();
+    // 카드 클릭으로 G3로 넘어가지 않았다
+    expect(screen.getByRole('heading', { level: 1, name: t('page.G1.title') })).toBeInTheDocument();
   });
 });
 
@@ -115,11 +119,41 @@ describe('G2 1,000행 가상 스크롤', () => {
       track: 'B',
       judge_scope: '판정 대상',
       intake: null,
-      price_low: { v: 500_000_000, label: '확인됨', prov: 'fp_1', checked_at: '2026-10-07', human: false },
-      price_high: { v: 600_000_000, label: '확인됨', prov: 'fp_2', checked_at: '2026-10-07', human: false },
-      price_mid: { v: 550_000_000, label: '추정', prov: 'fp_3', checked_at: '2026-10-07', human: false },
-      resale_end: { v: '2027-01-01', label: '추정', prov: 'fp_4', checked_at: '2026-10-07', human: false },
-      move_in_ym: { v: '2028-03', label: '확인됨', prov: 'fp_5', checked_at: '2026-10-07', human: false },
+      price_low: {
+        v: 500_000_000,
+        label: '확인됨',
+        prov: 'fp_1',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      price_high: {
+        v: 600_000_000,
+        label: '확인됨',
+        prov: 'fp_2',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      price_mid: {
+        v: 550_000_000,
+        label: '추정',
+        prov: 'fp_3',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      resale_end: {
+        v: '2027-01-01',
+        label: '추정',
+        prov: 'fp_4',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      move_in_ym: {
+        v: '2028-03',
+        label: '확인됨',
+        prov: 'fp_5',
+        checked_at: '2026-10-07',
+        human: false,
+      },
       gap_pct: { v: 1.5, label: '추정', prov: 'sc_1', checked_at: '2026-10-08', human: false },
       total: { v: 5, label: '추정', prov: 'st_1', checked_at: '2026-10-08', human: false },
       rank: 1,
@@ -129,12 +163,48 @@ describe('G2 1,000행 가상 스크롤', () => {
       inclusion_class: 'private_sale_apt',
       inclusion_decision: 'auto',
       inclusion_prob: { v: 1, label: '추정', prov: 'jl_2', checked_at: '2026-10-07', human: false },
-      land_type: { v: '공공택지', label: '확인됨', prov: 'fp_6', checked_at: '2026-10-07', human: false },
-      price_cap: { v: '적용', label: '확인됨', prov: 'fp_7', checked_at: '2026-10-07', human: false },
-      regulated: { v: '비규제', label: '확인됨', prov: 'fp_8', checked_at: '2026-10-07', human: false },
-      residency_months: { v: 0, label: '확인됨', prov: 'fp_9', checked_at: '2026-10-07', human: false },
-      down_payment_pct: { v: 10, label: '확인됨', prov: 'fp_10', checked_at: '2026-10-07', human: false },
-      units_total: { v: 1000, label: '확인됨', prov: 'fp_11', checked_at: '2026-10-07', human: false },
+      land_type: {
+        v: '공공택지',
+        label: '확인됨',
+        prov: 'fp_6',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      price_cap: {
+        v: '적용',
+        label: '확인됨',
+        prov: 'fp_7',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      regulated: {
+        v: '비규제',
+        label: '확인됨',
+        prov: 'fp_8',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      residency_months: {
+        v: 0,
+        label: '확인됨',
+        prov: 'fp_9',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      down_payment_pct: {
+        v: 10,
+        label: '확인됨',
+        prov: 'fp_10',
+        checked_at: '2026-10-07',
+        human: false,
+      },
+      units_total: {
+        v: 1000,
+        label: '확인됨',
+        prov: 'fp_11',
+        checked_at: '2026-10-07',
+        human: false,
+      },
       last_change: null,
     };
     const items = Array.from({ length: n }, (_, i) => ({
