@@ -251,7 +251,14 @@ def test_notice_type_code_and_price_by_type_candidates() -> None:
     # 임의공급 공고: 잔여 세대 가격만 — 면적·세대수(complex_type)는 내지 않는다
     ct = {f for (e, _, f) in imui if e == "complex_type"}
     assert ct == {"max_price_won", "floor_sample_price_won", "floor_sample_text", "notice_type_code"}
-    for (e, _, f), c in imui.items():
+    unread = {"2025000302:98B", "2025000302:98B1", "2025000302:98C"}
+    for (e, k, f), c in imui.items():
+        if e == "complex_type" and k in unread:
+            # R3 minor 3: 잔여 세대 공고도 못 읽은 타입의 가격은 판정기 extract 로 넘긴다(추측 금지)
+            assert f in ("max_price_won", "floor_sample_price_won", "notice_type_code"), f
+            if f != "notice_type_code":
+                assert c.value is None and c.label == "확인 불가" and c.needs_extract, (k, f)
+            continue
         if e == "complex_type" or f.startswith("price_by_type."):
             assert c.excerpt and c.label == "확인됨" and not c.needs_extract, f
 
