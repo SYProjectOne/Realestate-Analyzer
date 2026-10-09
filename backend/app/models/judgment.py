@@ -17,8 +17,8 @@ __all__ = ["Claim", "JudgmentLog"]
 class JudgmentLog(Base):
     """판정기 호출 1건 = 1행(성공·실패 불문). input_hash UNIQUE = 같은 입력 재호출 금지가 DB 제약.
 
-    status='error' 행(판정기 오류·미수신)은 같은 input_hash로 다시 부르면 새 행을 넣지 않고 이 행을
-    UPDATE한다.
+    status='error' 행(판정기 오류·미수신)은 같은 input_hash로 다시 부르면
+    새 행을 넣지 않고 이 행을 UPDATE한다.
     ok·review·escaped·blocked는 최종 — 다시 부르지 않고 cached 봉투를 돌려준다(WP3 cache.py).
     input_json에는 guard를 통과한 공개 텍스트만 들어간다. 로그(logging)에는 input_hash·길이만.
     """

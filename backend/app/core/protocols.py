@@ -106,10 +106,8 @@ class JudgeUnavailable(Exception):
     """판정기를 쓸 수 없음(프로세스 기동 실패·연결 끊김·타임아웃·프로토콜 오류).
 
     JudgeAdapter가 던지는 예외는 이것 하나뿐이다. 판정기의 review·escaped·blocked 같은 '판정 결과'는
-    예외가 아니라
-    봉투(status)로 돌려준다. 이 예외를 받은 쪽(WP7 degraded.py)은 수집·정규화를 계속하고 degraded 모드로
-    전환한다
-    (snapshot.degraded=true, 점수 미계산, 화면 배너, 복구 후 rejudge 자동 등록 — T18).
+    예외가 아니라 봉투(status)로 돌려준다. 이 예외를 받은 쪽(WP7 degraded.py)은 수집·정규화를 계속하고
+    degraded 모드로 전환한다(snapshot.degraded=true, 점수 미계산, 화면 배너, 복구 후 rejudge 자동 등록 — T18).
     던지기 전에 어댑터는 judgment_log에 status='error' 행을 남긴다(실패도 데이터).
     """
 
@@ -118,10 +116,9 @@ def input_hash(tool: JudgeTool, purpose: str, payload: JudgePayload, adapter_ver
     """같은 입력 재호출 금지의 키 (judgment_log.input_hash, UNIQUE).
 
     ``'sha256:' + sha256(canonical_json({tool, purpose, payload, adapter_version}))``.
-    canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=False, UTF-8. adapter_version이
-    바뀌면(판정기 서버
-    버전 포함, DECISIONS D6) 모든 hash가 바뀌어 전체 재판정 1회가 된다. WP3 cache.py와 WP5 시나리오 미리보기
-    (cache_hits 계산)가 같은 정의를 쓰도록 여기 한 곳에 둔다.
+    canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=False, UTF-8.
+    adapter_version이 바뀌면(판정기 서버 버전 포함, DECISIONS D6) 모든 hash가 바뀌어 전체 재판정 1회가 된다.
+    WP3 cache.py와 WP5 시나리오 미리보기(cache_hits 계산)가 같은 정의를 쓰도록 여기 한 곳에 둔다.
     """
     doc = {"tool": tool, "purpose": purpose, "payload": payload, "adapter_version": adapter_version}
     canonical = json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -136,17 +133,16 @@ class Collector(Protocol):
     - 멱등: 같은 sha256이면 저장하지 않는다(raw_document.sha256 UNIQUE). 이미 있는 원문은 기존 행을 돌려준다.
       같은 입력으로 두 번 실행해도 raw_document 행 수가 늘지 않는다(T17).
     - 실패도 데이터: 403·5xx는 ``RawDocument(http_status=403, path=None)``, DNS 실패·타임아웃은
-      ``http_status=None, error_text='DNS'|'timeout'``으로 반환한다. 예외로 삼키지 않는다. 실패 행의
-      sha256 규칙은
-      contracts/schemas/raw_document.json(같은 날 재시도는 중복 없음, 날마다 한 행).
+      ``http_status=None, error_text='DNS'|'timeout'``으로 반환한다. 예외로 삼키지 않는다.
+      실패 행의 sha256 규칙은 contracts/schemas/raw_document.json(같은 날 재시도는 중복 없음, 날마다 한 행).
     - robots·속도 제한·재시도·백오프는 ``app.core.http``가 강제한다 — 수집기가 우회하지 않는다.
     - 지역은 region 행으로만 안다(sido_codes·sigungu_codes·legal_dong_codes). 지역명을 코드에 두지 않는다.
       청약홈 목록은 sido_codes로 조회하고 주소를 legal_dong 이름으로 매칭해 region.legal_dong_codes 안의 것만
       남긴다(매칭 실패는 버리지 않고 inclusion_class='범위 경계' 후보로 넘긴다, D2-6).
     - since: 이 시각(ISO) 이후 바뀐 것만(가능한 소스만). None이면 전부.
     - 공식 홈페이지는 httpx → 실패·동적이면 Playwright 렌더 → 스크린샷 + DOM 텍스트 + image_hash.
-    - 원문 파일은 RAW_DIR/{source_kind}/{yyyy-mm-dd}/{sha256}.{ext}. 개인정보·로그인 필요 자료는 수집하지
-      않는다.
+    - 원문 파일은 RAW_DIR/{source_kind}/{yyyy-mm-dd}/{sha256}.{ext}.
+    - 개인정보·로그인 필요 자료는 수집하지 않는다.
     """
 
     def fetch(self, region: Region, snapshot: Snapshot, since: str | None) -> list[RawDocument]: ...
@@ -162,8 +158,8 @@ class Parser(Protocol):
     - 금액은 원 단위 정수(만원 표기는 ×10,000), 면적 ㎡ 소수 2자리, 날짜 ISO. value_text는 원문 표기 그대로.
     - source_rank는 RA §3 표: 세대수·면적·일정·경쟁률 = 청약홈 상세(1) > 공고문(2) > 언론(3);
       가격·발코니·옵션·납부·전매·거주의무 = 공고문 최신(1) > 청약홈(2) > 언론(3).
-    - 정규식·표 파서가 실패한 필드는 needs_extract=True로 표시해 판정기 extract payload로 넘긴다(파서가
-      판단하지 않는다).
+    - 정규식·표 파서가 실패한 필드는 needs_extract=True로 표시해 판정기 extract payload로 넘긴다
+      (파서가 판단하지 않는다).
     - 실패한 원문(http_status≠200, 스캔 PDF)은 빈 목록 또는 label='확인 불가'(reason='스캔' 등) 후보를 낸다.
     """
 
@@ -189,28 +185,27 @@ class Resolver(Protocol):
 
 @runtime_checkable
 class JudgeAdapter(Protocol):
-    """판정기 어댑터 (WP3: JevMcpAdapter, MockAdapter). 9개 메서드 ``<tool>(payload, purpose) ->
-    JudgmentEnvelope``.
+    """판정기 어댑터 (WP3: JevMcpAdapter, MockAdapter).
+
+    9개 메서드 ``<tool>(payload, purpose) -> JudgmentEnvelope``.
 
     규칙
     - 호출 전 ``input_hash(tool, purpose, payload, adapter_version)``로 judgment_log를 조회한다.
-      있으면(status가
-      error가 아니면) 판정기를 부르지 않고 그 행을 ``cached=True`` 봉투로 돌려준다. 없으면 호출하고
-      judgment_log에 기록한 뒤 ``cached=False`` 봉투를 돌려준다. 같은 payload 2회 → 실제 호출 1회(T17).
-    - 모든 호출은 성공·실패 불문 judgment_log 행을 가진다(judgment_seq). status='error' 행은 같은 hash로
-      재시도할 때
-      새 행을 넣지 않고 갱신한다(input_hash UNIQUE).
+      있으면(status가 error가 아니면) 판정기를 부르지 않고 그 행을 ``cached=True`` 봉투로 돌려준다.
+      없으면 호출하고 judgment_log에 기록한 뒤 ``cached=False`` 봉투를 돌려준다.
+      같은 payload 2회 → 실제 호출 1회(T17).
+    - 모든 호출은 성공·실패 불문 judgment_log 행을 가진다(judgment_seq).
+      status='error' 행은 같은 hash로 재시도할 때 새 행을 넣지 않고 갱신한다(input_hash UNIQUE).
     - 예외는 ``JudgeUnavailable`` 하나로. review·escaped·blocked는 예외가 아니라 봉투 status.
     - payload는 판정기에 보내기 전 judge/guard.py를 통과해야 한다(전화번호·주민번호·이메일·환경변수 값 → 거부,
       status='blocked' 행, T14). 로그에는 payload 원문 금지 — input_hash와 길이만.
-    - 임계값을 넘기지 않는다: JEV 기본값을 그대로 쓰고, 응답의 임계값·decision을 raw(output_json)에 그대로
-      저장한다
-      (DECISIONS D6). adapter_version = '<어댑터 코드 버전>+jev-mcp@<initialize.serverInfo.version>'.
-    - result는 도구별 정규화 모양(contracts/schemas/judgment_envelope.json $defs: ScreenResult …
-      VerifyResult).
-    - MockAdapter: contracts/fixtures/<fixture>/judgments/ 에서 input_hash로 녹화를 찾고, 없으면
-      status='review'
-      봉투를 돌려준다(테스트가 조용히 통과하지 않게).
+    - 임계값을 넘기지 않는다: JEV 기본값을 그대로 쓰고, 응답의 임계값·decision을 raw(output_json)에
+      그대로 저장한다(DECISIONS D6).
+      adapter_version = '<어댑터 코드 버전>+jev-mcp@<initialize.serverInfo.version>'.
+    - result는 도구별 정규화 모양
+      (contracts/schemas/judgment_envelope.json $defs: ScreenResult … VerifyResult).
+    - MockAdapter: contracts/fixtures/<fixture>/judgments/ 에서 input_hash로 녹화를 찾고,
+      없으면 status='review' 봉투를 돌려준다(테스트가 조용히 통과하지 않게).
     - 메서드는 동기다(worker 스레드에서 호출). MCP 클라이언트가 비동기면 구현 내부에서 이벤트 루프를 돌린다.
     """
 
@@ -270,9 +265,8 @@ class ScoreEngine(Protocol):
     - 종합 S = Σ w_i s_i를 10진(Decimal) 연산으로 계산하고 원값을 ScoreTotal.total에 둔다(표시 반올림은 API).
     - 동점: total 내림차순(동률이면 complex_id 오름차순) 정렬, 그룹 리더와 |ΔS| < 0.05인 뒤따르는 단지는 같은
       rank(경쟁 순위)·같은 tie_group. 원값으로 비교한다.
-    - unstable: 민감도 12변형(±0.10, 나머지 비례 재정규화) 중 하나라도 TOP 5 집합(rank ≤ 5 전부)이 바뀌면
-      그 집합에
-      들어오거나 나간 단지 True (RA §6-6, contracts/schemas/sensitivity.json).
+    - unstable: 민감도 12변형(±0.10, 나머지 비례 재정규화) 중 하나라도 TOP 5 집합(rank ≤ 5 전부)이
+      바뀌면 그 집합에 들어오거나 나간 단지 True (RA §6-6, contracts/schemas/sensitivity.json).
     - scenario.weights에 move_in이 있으면(A·D) liquidity 대신 s_movein = clamp(10 − 2×입주까지 연수, 0, 10).
       scenario.policy.p10_horizon의 사다리를 p10 성분에 쓴다(C = asof_plus_5y).
     - inputs.complexes[].fixed_components가 있으면 그 성분은 식을 건너뛰고 고정값을 쓴다(회귀 (a)단계,
@@ -291,12 +285,12 @@ class RequirementPrecalc(Protocol):
       '접수 가능(공식 팝업 2026-10-07); 전매 종료 2028-09 < 매도 시작 2030-03 → 충족',
       '거주의무 0개월, 재당첨 제한 미적용(비규제) → 충족',
       '계약금 7,490만 ≤ 자기자본 1억; 잔금 부족 0 → 충족 (중도금 이자후불제)'.
-    - 접근 가능성: intake_status '가능' and path≠unofficial_ref (A: 가점제 공급, B·D: 무순위·임의·선착순
-      공식 경로,
-      C: 전매 종료 ≤ asof_date + holding_years). 접수 상태 '확인 불가'면 status '확인 불가'.
+    - 접근 가능성: intake_status '가능' and path≠unofficial_ref
+      (A: 가점제 공급, B·D: 무순위·임의·선착순 공식 경로, C: 전매 종료 ≤ asof_date + holding_years).
+      접수 상태 '확인 불가'면 status '확인 불가'.
     - 자금: P_mid × 계약금% ≤ 자기자본 and P_mid − 대출한도 − 자기자본 ≤ 0. 자기자본·한도가 None이면 '미입력'.
-    - 결과는 decide payload의 증거에 그대로 삽입되고 decision.req_*_pre에 저장된다. 판정기 결과와 다르면
-      mismatch.
+    - 결과는 decide payload의 증거에 그대로 삽입되고 decision.req_*_pre에 저장된다.
+      판정기 결과와 다르면 mismatch.
     - asof_date(YYYY-MM-DD)는 키워드로 받는다(전매 종료·입주까지 기간 계산). 순수 함수.
     """
 
