@@ -273,7 +273,8 @@ def _row_source_ok(obj: Any, docs: dict[int, RawDocument]) -> bool:
     rid = getattr(obj, "raw_document_id", None)
     doc = docs.get(rid) if rid is not None else None
     label = getattr(obj, "label", None)
-    return doc is not None and bool((doc.url or "").strip() and doc.fetched_at) and bool((label or "").strip())
+    has_doc = doc is not None and bool((doc.url or "").strip() and doc.fetched_at)
+    return has_doc and bool((label or "").strip())
 
 
 def _problem(hit: FieldProvenance | None) -> str | None:

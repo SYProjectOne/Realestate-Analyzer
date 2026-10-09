@@ -3,7 +3,8 @@
 후보 행 = ``kind='기타'``, ``stage='미확정'``, ``decision``·``stage_prob``·``judgment_seq`` 없음,
 ``location_confirmed=false``(위치 미확정 → ``catalyst_link`` 를 만들지 않는다). 이름 = 제목, note = 발췌,
 source_url = 원문 링크. 종류·단계는 판정기 P4 classify(``scheduler/pipeline.py``)가 정한다 — 여기서는 키워드로
-거르거나 단계를 정하지 않는다(AGENTS 규칙 3). 그래서 뉴스 항목은 전부 후보가 된다.
+거르거나 단계를 정하지 않는다(AGENTS 규칙 3). 뉴스 항목은 호출자가 넘기는 ``accept``(판정기 P1 screen 호재 관련성,
+D10-6)를 통과한 것만 후보가 된다(``accept`` 가 없으면 전부).
 
 멱등: 같은 지역·같은 source_url 이면 기존 행을 돌려준다(제목이 바뀌어도 새 행을 만들지 않는다).
 
@@ -21,7 +22,7 @@ source_url = 원문 링크. 종류·단계는 판정기 P4 classify(``scheduler/
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -30,7 +31,7 @@ from urllib.parse import urlsplit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.collectors.news.collector import parse_news_json
+from app.collectors.news.collector import NewsItem, parse_news_json
 from app.core.contracts_gen import ProvenanceRow
 from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.paths import resolve_raw_path
@@ -68,9 +69,10 @@ class CatalystCandidate:
 class NewsCatalysts:
     inserted: int
     existing: int
+    rejected: int = 0  # accept(호재 관련성 screen)를 통과하지 못해 후보로 만들지 않은 항목
 
     def stats(self) -> dict[str, int]:
-        return {"inserted": self.inserted, "existing": self.existing}
+        return {"inserted": self.inserted, "existing": self.existing, "rejected": self.rejected}
 
 
 def _clean(text: str | None) -> str:
@@ -145,7 +147,7 @@ def _write_provenance(session: Session, row: Catalyst, raw_document_id: int | No
                 value_norm=text, raw_document_id=doc.id if doc is not None else None, url=url, checked_at=checked,
                 observed_on=None, label=SOURCE_LABEL, reason=reason, source_rank=2, chosen=True,
                 conflict_group=None, excerpt=excerpt, excerpt_start=None, excerpt_end=None,
-            )  # fmt: skip
+            )
             for field_name, text in (("name", row.name), ("source_url", url))
         ],
     )
@@ -163,9 +165,20 @@ def _read(doc: RawDTO) -> bytes | None:
     return None
 
 
-def catalysts_from_news(session: Session, region_id: int, docs: Iterable[RawDTO]) -> NewsCatalysts:
-    """뉴스 원문(성공 행)의 항목마다 후보 행. 실패 행·다른 원문은 건너뛴다. flush 만 한다."""
-    inserted = existing = 0
+def catalysts_from_news(
+    session: Session,
+    region_id: int,
+    docs: Iterable[RawDTO],
+    *,
+    accept: Callable[[NewsItem], bool] | None = None,
+) -> NewsCatalysts:
+    """뉴스 원문(성공 행)의 항목마다 후보 행. 실패 행·다른 원문은 건너뛴다. flush 만 한다.
+
+    ``accept``(D10-6): 새 URL 항목을 후보로 만들기 전에 부르는 검사 — 파이프라인은 판정기 P1 screen(호재 관련성,
+    ``judge.pipeline.p1_screen_catalyst``)의 usable 을 넘긴다. False 면 후보를 만들지 않고 ``rejected`` 로 센다.
+    이미 후보인 URL 은 다시 검사하지 않는다. 여기서는 판단하지 않는다(키워드 필터 없음).
+    """
+    inserted = existing = rejected = 0
     for doc in docs:
         if doc.source_kind != "news" or doc.http_status != 200 or doc.error_text:
             continue
@@ -173,6 +186,9 @@ def catalysts_from_news(session: Session, region_id: int, docs: Iterable[RawDTO]
         if content is None:
             continue
         for item in parse_news_json(content, raw_document_id=doc.id):
+            if accept is not None and not _known(session, region_id, item.url) and not accept(item):
+                rejected += 1
+                continue
             try:
                 out = catalyst_candidate(
                     session,
@@ -188,4 +204,15 @@ def catalysts_from_news(session: Session, region_id: int, docs: Iterable[RawDTO]
                 inserted += 1
             else:
                 existing += 1
-    return NewsCatalysts(inserted, existing)
+    return NewsCatalysts(inserted, existing, rejected)
+
+
+def _known(session: Session, region_id: int, url: str) -> bool:
+    """같은 지역에 이 URL 의 후보 행이 이미 있는가(catalyst_candidate 의 멱등 키와 같다)."""
+    link = url.strip()
+    return (
+        session.scalars(
+            select(Catalyst.id).where(Catalyst.region_id == region_id, Catalyst.source_url == link)
+        ).first()
+        is not None
+    )

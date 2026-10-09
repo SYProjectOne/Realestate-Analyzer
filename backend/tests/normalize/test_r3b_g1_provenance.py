@@ -9,11 +9,14 @@ M6: 호재 후보(뉴스·사람 URL)를 만들 때 field_provenance 출처 행�
 
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.collectors.news.collector import NewsItem
 from app.models import Base, Catalyst, FieldProvenance, HouseholdStat, Region
-from app.normalize.catalyst import catalyst_candidate
+from app.normalize.catalyst import catalyst_candidate, catalysts_from_news
 from app.normalize.provenance import (
     FACT_TABLES,
     NON_FACT_TABLES,
@@ -74,3 +77,25 @@ def test_m6_catalyst_candidate_writes_provenance(db_session: Session, region: Re
     out.catalyst.judgment_seq = 1
     db_session.flush()
     assert missing_provenance(db_session, ("catalyst",)) == []
+
+
+def test_nm2_news_candidates_only_after_screen(db_session: Session, region: Region, add_raw: AddRaw) -> None:
+    """D10-6: 뉴스 항목은 screen(호재 관련성) 통과분만 후보 — 판정은 호출자가 넘기는 accept(G2 = P1 screen)."""
+    body = {"items": [
+        {"title": "GTX-B 착공", "originallink": "https://news.example.com/a1", "description": "착공"},
+        {"title": "송도 신규 분양 일정", "originallink": "https://news.example.com/a2", "description": "청약"},
+    ]}  # fmt: skip
+    doc = add_raw(json.dumps(body, ensure_ascii=False), source_kind="news", url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=y", region_id=region.id, ext="json")
+    seen: list[str] = []
+
+    def accept(item: NewsItem) -> bool:
+        seen.append(item.url)
+        return item.url.endswith("a1")
+
+    res = catalysts_from_news(db_session, region.id, [doc], accept=accept)
+    assert [c.source_url for c in db_session.scalars(select(Catalyst))] == ["https://news.example.com/a1"]
+    assert (res.inserted, res.existing, res.rejected) == (1, 0, 1)
+    assert res.stats()["rejected"] == 1
+    again = catalysts_from_news(db_session, region.id, [doc], accept=accept)
+    assert (again.inserted, again.existing, again.rejected) == (0, 1, 1)
+    assert seen.count("https://news.example.com/a1") == 1  # 이미 후보인 URL 은 다시 검사하지 않는다
