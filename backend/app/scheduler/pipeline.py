@@ -46,7 +46,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
-from app.analysis.scope import pick_intake, runs_ladder
+from app.analysis.scope import runs_ladder
 from app.core.contracts_gen import Claim as ClaimDTO
 from app.core.contracts_gen import (
     JudgmentEnvelope,
@@ -95,7 +95,9 @@ from app.scheduler.intake import (
     NO_TEXT,
     UNCLASSIFIED,
     carry_classification,
+    intake_change_events,
     intake_text,
+    reset_stale_classification,
 )
 from app.scheduler.judge_version import last_logged, record_version_change
 from app.scheduler.payloads import (
@@ -466,7 +468,10 @@ def _p4_intake(
 ) -> None:
     """'접수 문구 미분류' 행 → (문구 해시가 직전 분류와 같으면 복사, D10-2) → 판정기 classify(배치) → 가능/미정/불가/확인 불가.
     문구가 없으면 판정기 호출 없이 사유만."""
-    res.intake_carried += len(carry_classification(session, snap.id))
+    version = caller.known_version()
+    if version is not None:  # 판정기 버전이 바뀌었으면 옛 버전 분류는 다시(R3 3차 minor 3)
+        reset_stale_classification(session, snap.id, version)
+    res.intake_carried += len(carry_classification(session, snap.id, adapter_version=version))
     rows = list(
         session.scalars(
             select(IntakeStatus)
@@ -748,55 +753,8 @@ def _intake_changes(
     prev: Snapshot | None,
     complex_ids: Sequence[int],
 ) -> list[ChangeEvent]:
-    """표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical).
-
-    판단하지 않는다 — 두 스냅샷의 접수 행 status 문자열 비교(산술)만. 이전 스냅샷에 표시 행이 없으면 기준선(이벤트 없음).
-    같은 스냅샷·단지·새 상태의 intake_status 이벤트가 이미 있으면(사람 확인 입력 API·이전 실행) 만들지 않는다.
-    """
-    if prev is None or not complex_ids:
-        return []
-    ids = list(complex_ids)
-    rows: dict[tuple[int, int], list[IntakeStatus]] = {}
-    for r in session.scalars(
-        select(IntakeStatus).where(
-            IntakeStatus.snapshot_id.in_([snap.id, prev.id]), IntakeStatus.complex_id.in_(ids)
-        )
-    ):
-        rows.setdefault((r.snapshot_id, r.complex_id), []).append(r)
-    existing = {
-        (e.complex_id, e.new_text)
-        for e in session.scalars(
-            select(ChangeEvent).where(
-                ChangeEvent.snapshot_id == snap.id,
-                ChangeEvent.entity == "intake_status",
-                ChangeEvent.field == "status",
-            )
-        )
-    }
-    events: list[ChangeEvent] = []
-    for cid in sorted(ids):
-        now = pick_intake(rows.get((snap.id, cid), []))
-        before = pick_intake(rows.get((prev.id, cid), []))
-        if now is None or before is None or now.status == before.status:
-            continue
-        if (cid, now.status) in existing:
-            continue
-        ev = ChangeEvent(
-            snapshot_id=snap.id,
-            entity="intake_status",
-            entity_id=now.id,
-            field="status",
-            old_text=before.status,
-            new_text=now.status,
-            detected_at=ctx.iso_now(),
-            severity="critical",
-            triggers_rejudge=True,
-            complex_id=cid,
-        )
-        session.add(ev)
-        events.append(ev)
-    session.flush()
-    return events
+    """표시 접수 상태 변경 → change_event(intake_status, critical) — ``intake.intake_change_events``(수집과 같은 함수)."""
+    return intake_change_events(session, snap, prev, complex_ids, detected_at=ctx.iso_now())
 
 
 def _notify(ctx: SchedulerContext, session: Session, events: Sequence[ChangeEvent]) -> list[int]:

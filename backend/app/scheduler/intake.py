@@ -8,6 +8,8 @@
   접수 classify 앞에서 부른다. 그래서 변경 없는 날(T8) publish 스냅샷의 접수 상태·판정 범위·순위가 전날과 같고,
   다음 변경일에 단지마다 D9-3 critical 이벤트가 쏟아지지 않는다.
 - 판단하지 않는다: 문자열 해시 비교(산술)만. 문구가 바뀌었으면 미분류로 두어 판정기가 다시 분류한다.
+- 판정기 버전(R3 3차 minor 3): ``adapter_version`` 을 주면 그 버전으로 분류한 행만 복사한다. 버전이 바뀐 전체 재판정(D6)에서는
+  ``reset_stale_classification`` 이 다른 버전으로 분류(·복사)된 행을 미분류로 되돌려 판정기가 다시 분류한다.
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -15,12 +17,15 @@
 from __future__ import annotations
 
 import hashlib
+import re
+from collections.abc import Sequence
 from typing import Final
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import IntakeStatus, RawDocument, Snapshot
+from app.analysis.scope import pick_intake
+from app.models import ChangeEvent, IntakeStatus, JudgmentLog, RawDocument, Snapshot
 from app.normalize._text import read_raw_text
 from app.normalize.store import parser_for, raw_dto
 
@@ -31,8 +36,11 @@ __all__ = [
     "NO_TEXT",
     "UNCLASSIFIED",
     "carry_classification",
+    "classified_version",
+    "intake_change_events",
     "intake_text",
     "pending_complexes",
+    "reset_stale_classification",
     "text_sha256",
 ]
 
@@ -96,8 +104,64 @@ def _previous_classified(session: Session, snap: Snapshot, row: IntakeStatus) ->
     return None
 
 
-def carry_classification(session: Session, snapshot_id: int) -> list[int]:
-    """이 스냅샷의 '접수 문구 미분류' 행 중 문구 해시가 직전 분류 행과 같은 것 → 분류 복사. 복사한 행 id."""
+_SEQ_RE = re.compile(re.escape(CLASSIFIED_MARK) + r" jl_(\d+)")
+
+
+def classified_version(session: Session, row: IntakeStatus) -> str | None:
+    """그 행의 분류를 낸 판정 봉투의 adapter_version(note 의 ``판정기 classify jl_<seq>`` — 복사 행도 원 표식을 지닌다).
+    표식·로그가 없으면 None(버전 미상)."""
+    found = _SEQ_RE.findall(row.note or "")
+    if not found:
+        return None
+    log = session.get(JudgmentLog, int(found[-1]))
+    return log.adapter_version if log is not None else None
+
+
+def _strip_marks(note: str | None) -> str | None:
+    parts = [p for p in (note or "").split(" · ") if p and not p.startswith((CLASSIFIED_MARK, COPIED_MARK))]
+    return " · ".join(parts) or None
+
+
+def reset_stale_classification(session: Session, snapshot_id: int, adapter_version: str) -> list[int]:
+    """판정기 버전이 바뀐 뒤(D6 전체 재판정): 이 스냅샷에서 **다른 버전**으로 분류(또는 그 분류를 복사)한 접수 행을
+    '접수 문구 미분류'로 되돌린다 — 파이프라인 접수 classify 가 새 버전으로 다시 분류한다(R3 3차 minor 3). 되돌린 행 id."""
+    out: list[int] = []
+    for row in session.scalars(
+        select(IntakeStatus)
+        .where(
+            IntakeStatus.snapshot_id == snapshot_id,
+            IntakeStatus.path.in_(INTAKE_PATHS),
+            IntakeStatus.reason.is_distinct_from(UNCLASSIFIED),
+        )
+        .order_by(IntakeStatus.id)
+    ):
+        if CLASSIFIED_MARK not in (row.note or ""):
+            continue  # 판정기 분류가 아닌 행(접수 문구 없음·사람 확인 등)
+        ver = classified_version(session, row)
+        if ver is not None and ver != adapter_version:
+            row.reason = UNCLASSIFIED
+            row.note = _strip_marks(row.note)
+            out.append(row.id)
+    if out:
+        session.flush()
+    return out
+
+
+def _image_changed(session: Session, prev: IntakeStatus, row: IntakeStatus) -> bool:
+    """두 접수 행의 원문 중 하나라도 그림 해시(``raw_document.image_hash``)가 있고 서로 다르면 True."""
+    a = session.get(RawDocument, prev.raw_document_id) if prev.raw_document_id is not None else None
+    b = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
+    ha, hb = (a.image_hash if a else None), (b.image_hash if b else None)
+    return (ha is not None or hb is not None) and ha != hb
+
+
+def carry_classification(
+    session: Session, snapshot_id: int, *, adapter_version: str | None = None
+) -> list[int]:
+    """이 스냅샷의 '접수 문구 미분류' 행 중 문구 해시가 직전 분류 행과 같은 것 → 분류 복사. 복사한 행 id.
+
+    ``adapter_version`` 을 주면 직전 분류가 다른 판정기 버전이면 복사하지 않는다(R3 3차 minor 3 — 미분류로 남아 판정기가
+    새 버전으로 분류한다)."""
     snap = session.get(Snapshot, snapshot_id)
     if snap is None:
         return []
@@ -121,6 +185,12 @@ def carry_classification(session: Session, snapshot_id: int) -> list[int]:
                 row.reason = NO_TEXT
                 out.append(row.id)
             continue
+        if adapter_version is not None and CLASSIFIED_MARK in (prev.note or ""):
+            ver = classified_version(session, prev)
+            if ver is not None and ver != adapter_version:
+                continue
+        if prev.raw_document_id != row.raw_document_id and _image_changed(session, prev, row):
+            continue  # 팝업 그림이 바뀌었다 — DOM 문구가 같아도 그림 속 접수 안내는 다를 수 있다(R3 3차 minor 4)
         if prev.raw_document_id != row.raw_document_id:  # 같은 원문 행(같은 sha256)이면 문구도 같다
             now_text = intake_text(session, row).strip()
             if text_sha256(now_text) != text_sha256(intake_text(session, prev).strip()):
@@ -153,3 +223,63 @@ def pending_complexes(session: Session, snapshot_id: int) -> list[int]:
             )
         )
     )
+
+
+def intake_change_events(
+    session: Session,
+    snap: Snapshot,
+    prev: Snapshot | None,
+    complex_ids: Sequence[int],
+    *,
+    detected_at: str,
+) -> list[ChangeEvent]:
+    """표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical).
+
+    판단하지 않는다 — 두 스냅샷의 접수 행 status 문자열 비교(산술)만. 이전 스냅샷에 표시 행이 없으면 기준선(이벤트 없음).
+    같은 스냅샷·단지·새 상태의 intake_status 이벤트가 이미 있으면(사람 확인 입력 API·이전 실행) 만들지 않는다.
+    수집(공식 홈페이지 403 처럼 분류 없이 표시 접수가 바뀌는 날 — R3 3차 minor 4)과 파이프라인(분류 뒤)이 같이 쓴다.
+    """
+    if prev is None or not complex_ids:
+        return []
+    ids = list(complex_ids)
+    rows: dict[tuple[int, int], list[IntakeStatus]] = {}
+    for r in session.scalars(
+        select(IntakeStatus).where(
+            IntakeStatus.snapshot_id.in_([snap.id, prev.id]), IntakeStatus.complex_id.in_(ids)
+        )
+    ):
+        rows.setdefault((r.snapshot_id, r.complex_id), []).append(r)
+    existing = {
+        (e.complex_id, e.new_text)
+        for e in session.scalars(
+            select(ChangeEvent).where(
+                ChangeEvent.snapshot_id == snap.id,
+                ChangeEvent.entity == "intake_status",
+                ChangeEvent.field == "status",
+            )
+        )
+    }
+    events: list[ChangeEvent] = []
+    for cid in sorted(ids):
+        now = pick_intake(rows.get((snap.id, cid), []))
+        before = pick_intake(rows.get((prev.id, cid), []))
+        if now is None or before is None or now.status == before.status:
+            continue
+        if (cid, now.status) in existing:
+            continue
+        ev = ChangeEvent(
+            snapshot_id=snap.id,
+            entity="intake_status",
+            entity_id=now.id,
+            field="status",
+            old_text=before.status,
+            new_text=now.status,
+            detected_at=detected_at,
+            severity="critical",
+            triggers_rejudge=True,
+            complex_id=cid,
+        )
+        session.add(ev)
+        events.append(ev)
+    session.flush()
+    return events

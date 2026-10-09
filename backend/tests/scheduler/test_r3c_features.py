@@ -5,6 +5,7 @@
 | M-10 · D11-2 | '호재 아님' 판정은 catalyst·연결·출처를 지우지 않는다. 뉴스 후보는 stage '호재 아님', 사람이 넣은 호재는 단계 유지 + 판정 병기 |
 | D11-7 | region.expand 잡: 새 기준일 스냅샷(바탕 = 이전 발행) → 전체 판정 → publish, 보고서 비교 기준 = 바탕(§12 지역 추가 장) |
 | D11-8 | backup 잡: SQLite 백업 파일 + 원문 증분 복사(두 번째는 건너뜀), 매일 03:00 시간표 |
+| minor 3 | 접수 분류 복사는 같은 판정기 버전의 분류만, 버전이 바뀐 재판정은 옛 버전 분류를 미분류로 되돌린다 |
 """
 
 # ruff: noqa: E501
@@ -221,3 +222,47 @@ def test_d11_8_backup_failure_is_a_failed_job_with_stats(
         run_backup(bad, now=datetime(2026, 10, 8, 3, 0))
     assert err.value.stats["db"]["error"]  # type: ignore[attr-defined]
     assert issubclass(JobError, RuntimeError)
+
+
+def test_minor3_intake_carry_respects_adapter_version(factory: sessionmaker[Session], seeded: int) -> None:
+    from app.models import IntakeStatus, JudgmentLog
+    from app.scheduler.intake import (
+        CLASSIFIED_MARK,
+        UNCLASSIFIED,
+        carry_classification,
+        classified_version,
+        reset_stale_classification,
+    )
+
+    with factory() as s:
+        base = s.get(Snapshot, seeded)
+        assert base is not None
+        log = JudgmentLog(tool="classify", purpose="p4:intake", input_hash="sha256:" + "a" * 64, input_len=1,
+                          input_json={}, output_json={}, status="ok", adapter_version="v1",
+                          created_at="2026-10-07T06:00:00+09:00")  # fmt: skip
+        s.add(log)
+        later = Snapshot(region_id=base.region_id, asof_date="2026-10-08", status="building",
+                         created_at="2026-10-08T06:00:00+09:00")  # fmt: skip
+        s.add(later)
+        s.flush()
+        cid = 1
+        prev = IntakeStatus(complex_id=cid, snapshot_id=seeded, status="가능", path="official_popup",
+                            checked_at="2026-10-07T06:00:00+09:00", reason="접수 중",
+                            note=f"{CLASSIFIED_MARK} jl_{log.seq}")  # fmt: skip
+        row = IntakeStatus(complex_id=cid, snapshot_id=later.id, status="확인 불가", path="official_popup",
+                           checked_at="2026-10-08T06:00:00+09:00", reason=UNCLASSIFIED)  # fmt: skip
+        s.add_all([prev, row])
+        s.flush()
+        assert classified_version(s, prev) == "v1"
+        # 판정기 v2 로 바뀐 뒤: v1 분류는 복사하지 않는다 → 미분류로 남아 판정기가 다시 분류
+        assert carry_classification(s, later.id, adapter_version="v2") == []
+        assert row.reason == UNCLASSIFIED
+        # 같은 버전이면 복사(D10-2 — 판정 호출 없음)
+        assert carry_classification(s, later.id, adapter_version="v1") == [row.id]
+        assert (row.status, row.reason) == ("가능", "접수 중") and classified_version(s, row) == "v1"
+        # 버전이 바뀐 전체 재판정: 복사된 v1 분류를 미분류로 되돌린다(표식도 지운다)
+        assert reset_stale_classification(s, later.id, "v2") == [row.id]
+        assert row.reason == UNCLASSIFIED and CLASSIFIED_MARK not in (row.note or "")
+        assert reset_stale_classification(s, later.id, "v1") == []  # 이미 미분류
+        s.rollback()
+
