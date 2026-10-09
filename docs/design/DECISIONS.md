@@ -116,3 +116,10 @@
 - R1 8명: WP1a(applyhome·notice_pdf·OCR), WP1b(official_site·rtms·stats·news·reference), WP2, WP3, WP4, WP6a(pages), WP6b(charts·components), WP9-픽스처.
 - `expected_scores_v2.json` 골든 파일은 R1 끝에 사람이 확인한다(RA §9).
 - R4 실제 JEV 실행은 R3 통과 후 사람 확인을 받고 돌린다.
+
+## D9. R3 리뷰 후속 결정 (2026-10-09, CEO)
+
+원문: `docs/design/wp/R3_FIX.md` "CEO 결정" 절.
+- D9-1 판정 범위는 meta §1-3-4를 공용 함수 `analysis/scope.py` 하나로 계산(제외·보류·미해결·참고·판정 대상). classify 미해결은 판정 대상이 아니다. 접수 확인 불가·불가는 "참고 후보(순위만)" — 사다리 미실행.
+- D9-2 벤치마크는 청약홈 과거 공고 분양가 + 입주 후 실거래(rtms)로 자동 생성. 단지 매칭은 정규화 이름+법정동(모호하면 매칭 안 함). sale_period = 분양 연도 ≥ 기준연도−3 → 고가 분양기. 생활권 표본 0 → 지역 전체 대체(추정), 그래도 0 → 종합 미계산 + 사유 표시.
+- D9-3 접수 상태 변경은 critical change_event.
