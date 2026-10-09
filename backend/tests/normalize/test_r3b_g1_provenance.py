@@ -30,7 +30,15 @@ from ._support import AddRaw
 
 def test_m16_fact_tables_come_from_metadata_and_cover_every_table() -> None:
     assert {"supply", "household_stat", "remaining_event", "catalyst"} <= set(FACT_TABLES)
-    assert {"complex", "complex_type", "payment_terms", "competition", "rtms_trade", "unsold", "benchmark"} <= set(FACT_TABLES)
+    assert {
+        "complex",
+        "complex_type",
+        "payment_terms",
+        "competition",
+        "rtms_trade",
+        "unsold",
+        "benchmark",
+    } <= set(FACT_TABLES)
     tables = {m.class_.__tablename__ for m in Base.registry.mappers}
     assert set(FACT_TABLES) | set(NON_FACT_TABLES) == tables  # 새 테이블은 둘 중 하나로 분류해야 한다
     assert not set(FACT_TABLES) & set(NON_FACT_TABLES)
@@ -56,25 +64,48 @@ def test_m16_household_stat_row_level_source(db_session: Session, add_raw: AddRa
     assert sorted(probs) == [("household_stat", "households", "no_row"), ("household_stat", "ym", "no_row")]
 
 
-def test_m6_catalyst_candidate_writes_provenance(db_session: Session, region: Region, add_raw: AddRaw) -> None:
-    doc = add_raw("{}", source_kind="news", url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=x", region_id=region.id)
+def test_m6_catalyst_candidate_writes_provenance(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
+    doc = add_raw(
+        "{}",
+        source_kind="news",
+        url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=x",
+        region_id=region.id,
+    )
     out = catalyst_candidate(db_session, region.id, url="https://news.example.com/a/1", title="GTX-B 착공",
                              excerpt="국토부 발표", raw_document_id=doc.id)  # fmt: skip
-    fps = list(db_session.scalars(select(FieldProvenance).where(FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == out.catalyst.id)))
+    fps = list(
+        db_session.scalars(
+            select(FieldProvenance).where(
+                FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == out.catalyst.id
+            )
+        )
+    )
     by_field = {fp.field: fp for fp in fps}
     assert set(by_field) >= {"name", "source_url"}
     name = by_field["name"]
     assert name.chosen and name.label == "비공식" and name.url == "https://news.example.com/a/1"
     assert name.checked_at and name.raw_document_id == doc.id and name.value_text == "GTX-B 착공"
     # 사람 URL 입력(원문 행 없음)도 출처 행이 남는다
-    human = catalyst_candidate(db_session, region.id, url="https://www.example.go.kr/notice/9", title="공원 조성 고시")
-    fp = db_session.scalars(select(FieldProvenance).where(FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == human.catalyst.id, FieldProvenance.field == "name")).one()
+    human = catalyst_candidate(
+        db_session, region.id, url="https://www.example.go.kr/notice/9", title="공원 조성 고시"
+    )
+    fp = db_session.scalars(
+        select(FieldProvenance).where(
+            FieldProvenance.entity == "catalyst",
+            FieldProvenance.entity_id == human.catalyst.id,
+            FieldProvenance.field == "name",
+        )
+    ).one()
     assert fp.url == "https://www.example.go.kr/notice/9" and fp.label and fp.checked_at
     assert missing_provenance(db_session, ("catalyst",)) == []
     # 판정 확률은 judgment_seq 포인터가 출처 — 없으면 걸린다
     out.catalyst.stage_prob = 0.9  # type: ignore[assignment]
     db_session.flush()
-    assert [(p.field, p.problem) for p in missing_provenance(db_session, ("catalyst",))] == [("stage_prob", "no_row")]
+    assert [(p.field, p.problem) for p in missing_provenance(db_session, ("catalyst",))] == [
+        ("stage_prob", "no_row")
+    ]
     out.catalyst.judgment_seq = 1
     db_session.flush()
     assert missing_provenance(db_session, ("catalyst",)) == []
@@ -86,7 +117,13 @@ def test_nm2_news_candidates_only_after_screen(db_session: Session, region: Regi
         {"title": "GTX-B 착공", "originallink": "https://news.example.com/a1", "description": "착공"},
         {"title": "송도 신규 분양 일정", "originallink": "https://news.example.com/a2", "description": "청약"},
     ]}  # fmt: skip
-    doc = add_raw(json.dumps(body, ensure_ascii=False), source_kind="news", url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=y", region_id=region.id, ext="json")
+    doc = add_raw(
+        json.dumps(body, ensure_ascii=False),
+        source_kind="news",
+        url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=y",
+        region_id=region.id,
+        ext="json",
+    )
     seen: list[str] = []
 
     def accept(item: NewsItem) -> bool:

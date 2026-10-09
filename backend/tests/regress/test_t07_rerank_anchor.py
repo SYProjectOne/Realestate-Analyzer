@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, by_key, load_json
+from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, by_key, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -68,7 +68,9 @@ def _score_rows(env: RegressEnv, ids: list[int], scenario: str = "base") -> dict
     if len(chunks[-1]) == 1:  # 비교는 2~6개
         chunks[-1] = [chunks[-2].pop(), *chunks[-1]]
     for chunk in chunks:
-        body = api_get(env, f"/snapshots/{SNAP}/compare", ids=",".join(map(str, chunk)), scenario=scenario)
+        body = api_get(
+            env, f"/snapshots/{cur(env)}/compare", ids=",".join(map(str, chunk)), scenario=scenario
+        )
         out.update({r["complex_id"]: r for r in body["rows"]})
     return out
 
@@ -90,7 +92,9 @@ def test_t07_recorded_anchors_8_then_16_superset(env: RegressEnv) -> None:
         cid = ids[r["key"]]
         assert prev[cid]["relevance"] == pytest.approx(r["relevance_prev"]), r["key"]
         assert new[cid]["relevance"] == pytest.approx(r["relevance"]), r["key"]
-        assert _q4(new[cid]["relevance"] - prev[cid]["relevance"]) == pytest.approx(r["delta_rerank"]), r["key"]
+        assert _q4(new[cid]["relevance"] - prev[cid]["relevance"]) == pytest.approx(r["delta_rerank"]), r[
+            "key"
+        ]
 
 
 def test_t07_recorded_anchors_score_delta(env: RegressEnv) -> None:
@@ -124,7 +128,7 @@ def test_t07_devseed_scores_use_only_call_124(env: RegressEnv) -> None:
     from app.models import ScoreRun
 
     with env.session() as s:
-        runs = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP)))
+        runs = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == cur(env))))
     assert runs and {r.rerank_judgment_seq for r in runs} == {SEQ_NEW}
     new = _items(_rerank_envelopes(env)[SEQ_NEW])
     rows = _score_rows(env, list(range(1, 17)))
@@ -145,7 +149,15 @@ def _rejudge(env: RegressEnv, reason: str, scenario_id: int | None = 1) -> int:
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": scenario_id, "complex_ids": None, "reason": reason}},
+        json={
+            "job_name": "rejudge",
+            "payload": {
+                "snapshot_id": SNAP,
+                "scenario_id": scenario_id,
+                "complex_ids": None,
+                "reason": reason,
+            },
+        },
     )
     assert r.status_code == 202, r.text
     job_id = int(r.json()["id"])
@@ -165,7 +177,11 @@ def _latest_base_run(env: RegressEnv) -> Any:
     from app.models import ScoreRun
 
     with env.session() as s:
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == 1).order_by(ScoreRun.id.desc())).first()
+        run = s.scalars(
+            select(ScoreRun)
+            .where(ScoreRun.snapshot_id == cur(env), ScoreRun.scenario_id == 1)
+            .order_by(ScoreRun.id.desc())
+        ).first()
         assert run is not None
         s.expunge(run)
         return run
@@ -220,9 +236,15 @@ def test_t07_pipeline_candidates_8_to_16_one_call_delta_and_new_call_only(env: R
     with env.session() as s:
         comps = {
             c.complex_id: c
-            for c in s.scalars(select(ScoreComponent).where(ScoreComponent.score_run_id == run2.id, ScoreComponent.component == "rerank"))
+            for c in s.scalars(
+                select(ScoreComponent).where(
+                    ScoreComponent.score_run_id == run2.id, ScoreComponent.component == "rerank"
+                )
+            )
         }
-        totals = {t.complex_id: t for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run2.id))}
+        totals = {
+            t.complex_id: t for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run2.id))
+        }
         all_comps = list(s.scalars(select(ScoreComponent).where(ScoreComponent.score_run_id == run2.id)))
     bad: list[str] = []
     for cid, item in it2.items():
@@ -247,7 +269,11 @@ def test_t07_pipeline_candidates_8_to_16_one_call_delta_and_new_call_only(env: R
         elif c.delta is not None:
             bad.append(f"{cid}: 새 후보인데 delta {c.delta}")
     # 다른 성분에는 delta 없음
-    bad += [f"{c.complex_id}/{c.component}: delta {c.delta}" for c in all_comps if c.component != "rerank" and c.delta is not None]
+    bad += [
+        f"{c.complex_id}/{c.component}: delta {c.delta}"
+        for c in all_comps
+        if c.component != "rerank" and c.delta is not None
+    ]
     # 종합 = Σ w·s (rerank 는 위의 새 호출 값) — 미계산 성분이 있으면 null
     weights = {k: Decimal(str(v)) for k, v in (run2.weights or {}).items()}
     by_cx: dict[int, dict[str, Any]] = {}
@@ -269,7 +295,9 @@ def test_t07_pipeline_candidates_8_to_16_one_call_delta_and_new_call_only(env: R
         raw = rows[cid]["components"]["rerank"]["raw"]
         assert raw is not None and raw["prov"] == f"jl_{s2}", (cid, raw)
         if cid in it1:
-            assert d is not None and d["v"] == pytest.approx(_score_delta(it2[cid], it1[cid], n, len(it1)), abs=1e-4), (cid, d)
+            assert d is not None and d["v"] == pytest.approx(
+                _score_delta(it2[cid], it1[cid], n, len(it1)), abs=1e-4
+            ), (cid, d)
         else:
             assert d is None, (cid, d)
 

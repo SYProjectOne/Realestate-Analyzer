@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "region_expand.json",
+  "title": "RegionExpandPayload",
+  "description": "job_name='region.expand' 페이로드 (DECISIONS D11-7, 계약 2026-10-09.8). PATCH /regions/{id} 가 넣는다(POST /jobs 로는 등록 불가 — JobCreateName). 지역 선택(selections)이 바뀐 뒤: 추가된 시군구·시도의 daily+weekly 수집 → 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장') → 후보 전체 판정·rerank 1회 → publish. 보고서는 이 리비전과 바탕 리비전(revision_of) 비교로 §12 '지역 추가' 장을 만든다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["region_id"],
+  "properties": {
+    "region_id": { "type": "integer" },
+    "added": { "description": "추가된 선택 [{kind, code, full_name}]", "type": "array", "items": { "type": "object" } },
+    "removed": { "description": "제거된 선택 [{kind, code, full_name}]", "type": "array", "items": { "type": "object" } },
+    "change_event_id": { "type": ["integer", "null"] }
+  },
+  "examples": [{ "region_id": 1, "added": [{ "kind": "sigungu", "code": "41570", "full_name": "경기도 김포시" }], "removed": [], "change_event_id": 3320 }]
+}

@@ -24,8 +24,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 from urllib.parse import urlsplit
 
 from sqlalchemy import select
@@ -70,11 +71,16 @@ class NewsCatalysts:
     inserted: int
     existing: int
     rejected: int = 0  # accept(호재 관련성 screen)를 통과하지 못해 후보로 만들지 않은 항목
+    invalid: list[dict[str, str]] = dataclass_field(default_factory=list)
+    """후보 조건(CatalystInputError)에 맞지 않아 행을 만들지 못한 항목 — 실패도 기록(규칙 7, R3 3차 minor 24)."""
 
-    def stats(self) -> dict[str, int]:
-        out = {"inserted": self.inserted, "existing": self.existing}
+    def stats(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"inserted": self.inserted, "existing": self.existing}
         if self.rejected:  # screen 을 쓴 실행에서 걸러진 항목이 있을 때만(기존 stats 모양 유지)
             out["rejected"] = self.rejected
+        if self.invalid:
+            out["invalid"] = len(self.invalid)
+            out["invalid_items"] = self.invalid[:20]
         return out
 
 
@@ -137,7 +143,9 @@ def catalyst_candidate(
 def _write_provenance(session: Session, row: Catalyst, raw_document_id: int | None) -> None:
     """후보 행의 출처 행(name·source_url) — 라벨 '비공식', URL = 원문 링크(M6)."""
     doc = session.get(RawDocument, raw_document_id) if raw_document_id is not None else None
-    checked = (doc.fetched_at[:10] if doc is not None and doc.fetched_at else None) or now_kst().date().isoformat()
+    checked = (
+        doc.fetched_at[:10] if doc is not None and doc.fetched_at else None
+    ) or now_kst().date().isoformat()
     reason = "뉴스 검색 결과(언론 기사)" if doc is not None else "사람 입력 URL"
     excerpt = (f"{row.name} — {row.note}" if row.note else row.name)[:_NOTE_MAX]
     key = f"catalyst:{row.id}"
@@ -146,10 +154,24 @@ def _write_provenance(session: Session, row: Catalyst, raw_document_id: int | No
         session,
         [
             ProvenanceRow(
-                entity="catalyst", entity_id=row.id, entity_key=key, field=field_name, value_text=text,
-                value_norm=text, raw_document_id=doc.id if doc is not None else None, url=url, checked_at=checked,
-                observed_on=None, label=SOURCE_LABEL, reason=reason, source_rank=2, chosen=True,
-                conflict_group=None, excerpt=excerpt, excerpt_start=None, excerpt_end=None,
+                entity="catalyst",
+                entity_id=row.id,
+                entity_key=key,
+                field=field_name,
+                value_text=text,
+                value_norm=text,
+                raw_document_id=doc.id if doc is not None else None,
+                url=url,
+                checked_at=checked,
+                observed_on=None,
+                label=SOURCE_LABEL,
+                reason=reason,
+                source_rank=2,
+                chosen=True,
+                conflict_group=None,
+                excerpt=excerpt,
+                excerpt_start=None,
+                excerpt_end=None,
             )
             for field_name, text in (("name", row.name), ("source_url", url))
         ],
@@ -182,6 +204,7 @@ def catalysts_from_news(
     이미 후보인 URL 은 다시 검사하지 않는다. 여기서는 판단하지 않는다(키워드 필터 없음).
     """
     inserted = existing = rejected = 0
+    invalid: list[dict[str, str]] = []
     for doc in docs:
         if doc.source_kind != "news" or doc.http_status != 200 or doc.error_text:
             continue
@@ -201,13 +224,16 @@ def catalysts_from_news(
                     excerpt=item.excerpt,
                     raw_document_id=doc.id,
                 )
-            except CatalystInputError:
+            except CatalystInputError as exc:
+                invalid.append(
+                    {"url": item.url[:300], "title": (item.title or "")[:80], "reason": str(exc)[:120]}
+                )
                 continue
             if out.created:
                 inserted += 1
             else:
                 existing += 1
-    return NewsCatalysts(inserted, existing, rejected)
+    return NewsCatalysts(inserted, existing, rejected, invalid)
 
 
 def _known(session: Session, region_id: int, url: str) -> bool:

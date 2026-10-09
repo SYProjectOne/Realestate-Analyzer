@@ -77,11 +77,12 @@ def test_extract_requests_group_by_entity() -> None:
     cands = parse_notice_text((NOTICE / fname).read_text(encoding="utf-8"), raw)
     reqs = build_extract_requests(cands)
     assert reqs and all(r.fields and r.text and len(r.text) <= 2000 for r in reqs)
-    by = {(r.entity, r.entity_key): r for r in reqs}
-    assert "resale_months" in by[("complex", "2026000329")].fields
-    assert by[("complex", "2026000329")].payload["source_url"] == raw.url
+    # 발췌 합본이 2,000자를 넘으면 같은 엔티티도 요청 여러 건으로 나뉜다(R3 3차 minor 23)
+    mine = [r for r in reqs if (r.entity, r.entity_key) == ("complex", "2026000329")]
+    assert "resale_months" in {f for r in mine for f in r.fields}
+    assert all(r.payload["source_url"] == raw.url for r in mine)
     # 머리 표 발췌의 분양문의 전화번호는 판정기 요청 데이터에 넣지 않는다(guard 전 단계 마스킹)
-    head_text = by[("complex", "2026000329")].text
+    head_text = " ".join(r.text for r in mine)
     assert "1670-7830" not in head_text and "[REDACTED:phone]" in head_text
 
 

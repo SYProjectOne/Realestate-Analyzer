@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 from sqlalchemy import func, select
 
-from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, load_json
+from .conftest import FIXTURE, WRITE, RegressEnv, api_get, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -26,7 +26,7 @@ SCENARIO_D = "D"  # 즉시 구매: 접수 '가능'이 아니면 후보 제외
 
 
 def _row(env: RegressEnv, scenario: str) -> dict[str, Any]:
-    body = api_get(env, f"/snapshots/{SNAP}/complexes", scenario=scenario, size=100)
+    body = api_get(env, f"/snapshots/{cur(env)}/complexes", scenario=scenario, size=100)
     return next(r for r in body["items"] if r["complex_id"] == CID)
 
 
@@ -55,18 +55,20 @@ def test_t03_before_unknown_403_and_excluded_from_d(env: RegressEnv) -> None:
     from app.models import RawDocument
 
     detail = api_get(env, f"/complexes/{CID}")
-    cur = detail["intake_current"]
-    assert (cur["status"], cur["http_status"]) == ("확인 불가", 403), cur
-    assert "403" in (cur.get("reason") or ""), cur
-    assert cur.get("checked_at"), cur  # 화면 "확인 불가(403, 날짜)"의 날짜
+    ic = detail["intake_current"]
+    assert (ic["status"], ic["http_status"]) == ("확인 불가", 403), ic
+    assert "403" in (ic.get("reason") or ""), ic
+    assert ic.get("checked_at"), ic  # 화면 "확인 불가(403, 날짜)"의 날짜
     with env.session() as s:
         failed = s.scalars(
-            select(RawDocument).where(RawDocument.source_kind == "official_site", RawDocument.http_status == 403)
+            select(RawDocument).where(
+                RawDocument.source_kind == "official_site", RawDocument.http_status == 403
+            )
         ).all()
     assert failed, "official_site 403 원문 행(실패도 데이터)이 없다"
     # 상황 후보 제외(D)
     assert _row(env, SCENARIO_D).get("rank") is None
-    top5 = api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=SCENARIO_D)["top5"]
+    top5 = api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario=SCENARIO_D)["top5"]
     assert CID not in [t["complex_id"] for t in top5]
 
 
@@ -86,17 +88,23 @@ def test_t03_human_check_rejudge_mock_judge_d91(env: RegressEnv) -> None:
     'D9-1로 인한 차이'(픽스처 README). 흐름 자체(사람 확인 → intake 행 → rejudge 1 → 재판정)와 TOP 5 유지는 그대로 본다.
     후보 포함까지의 흐름은 classify 가 auto 인 fake 변형(위 테스트)이 본다.
     """
-    before = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario="base")["top5"]]
+    before = [
+        t["complex_id"] for t in api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario="base")["top5"]
+    ]
     assert before
     _human_check_then_rejudge(env, "mock")
     assert env.mock_misses == [], f"합성 녹화에 없는 payload(→ review): {env.mock_misses[:5]}"
     row = _row(env, SCENARIO_D)
     assert (row["intake"]["status"], row["intake"]["path"]) == ("가능", "human_check"), row["intake"]
-    after = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario="base")["top5"]]
+    after = [
+        t["complex_id"] for t in api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario="base")["top5"]
+    ]
     assert after, "mock 재판정 후 G1 통합 TOP 5 가 비었다(종합 점수 전부 미계산)"
     assert CID not in after
     # D9-1: classify 미해결 → 판정 대상 아님(계약 .4 전에는 score_total 에 '제외'로 실린다)
     assert row.get("rank") is None and row["total"]["v"] is None, row
     assert row.get("judge_scope") in ("미해결", "제외"), row.get("judge_scope")
-    d_top5 = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=SCENARIO_D)["top5"]]
+    d_top5 = [
+        t["complex_id"] for t in api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario=SCENARIO_D)["top5"]
+    ]
     assert d_top5 and CID not in d_top5

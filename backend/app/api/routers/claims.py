@@ -11,7 +11,9 @@
   field)만(422). 원 주장이 DB 사실에서 생성됐으면 접수와 함께 그 사실을 강등한다(값 비움·'확인 불가(검증 모순)'·
   체크리스트 '사실 재확인'·change_event critical·그 단지 rejudge 잡 — rejudge 를 claim.reverify 보다 먼저 넣는다:
   worker 가 등록 순서로 집으므로 재검증 뒤 publish 가 강등 전 점수로 나가지 않는다).
-  목록은 ``entity·entity_id·field·field_name·demotion`` 을 싣고, 읽기 전에 ``sync_demotions`` 로 새 원문 복원을 반영한다.
+  목록은 ``entity·entity_id·field·field_name·demotion`` 을 싣는다. GET 은 DB 를 쓰지 않는다(minor 13) — 강등 상태는
+  ``app.facts_view`` 오버레이로 읽는 순간 계산한다(새 출처 다른 값·사람 확인이면 'restored').
+- D11-3(계약 .8): 강등은 사실 값을 지우지 않는 읽기 시점 오버레이. 대상이 불완전한 주장(사실 행을 못 찾음)은 422(minor 14).
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -36,11 +38,11 @@ from app.api.demotion import (
     demote,
     demotion_view,
     latest_demotions,
-    sync_demotions,
 )
 from app.api.deps import DB, get_snapshot
 from app.api.errors import conflict, not_found, validation_error
 from app.api.jobs import enqueue, job_view
+from app.facts_view import DemotionOverlay, load_overlay
 from app.models import Claim, Complex, FactDemotion, JobRun
 
 router = APIRouter(tags=["ops"])
@@ -82,6 +84,7 @@ def claim_view(
     pending: dict[int, int],
     target: ClaimTarget | None = None,
     demotion: FactDemotion | None = None,
+    overlay: DemotionOverlay | None = None,
 ) -> dict[str, Any]:
     n = children.get(c.id, 0)
     return {
@@ -103,8 +106,8 @@ def claim_view(
         "entity": target.entity if target is not None else None,
         "entity_id": target.entity_id if target is not None else None,
         "field": target.field if target is not None else None,
-        "field_name": FIELD_NAMES.get(target.field, target.field) if target is not None else None,
-        "demotion": demotion_view(demotion),
+        "field_name": FIELD_NAMES.get(target.logical, target.logical) if target is not None else None,
+        "demotion": demotion_view(demotion, overlay),
     }
 
 
@@ -114,9 +117,7 @@ def list_claims(
     sid: int,
     status: Annotated[str | None, Query(pattern="^(verified|contradicted|unsupported|review)$")] = None,
 ) -> JSONResponse:
-    snap = get_snapshot(session, sid)
-    if sync_demotions(session):
-        session.commit()
+    snap = get_snapshot(session, sid)  # GET 은 DB 를 쓰지 않는다(minor 13) — 강등 상태는 오버레이로 읽는다
     stmt = select(Claim).where(Claim.snapshot_id == snap.id)
     if status:
         stmt = stmt.where(Claim.verify_status == status)
@@ -128,9 +129,11 @@ def list_claims(
         names = {cid: name for cid, name in session.execute(stmt_names)}
     children = _children(session, snap.id)
     pending = pending_reverify(session, {c.id for c in rows})
-    demotions = latest_demotions(session, {c.id for c in rows})
+    targets = {c.id: claim_target(session, c) for c in rows}
+    demotions = latest_demotions(session, rows, targets)
+    overlay = load_overlay(session, complex_ids=ids) if demotions else None
     return JSONResponse(
-        [claim_view(c, names, children, pending, claim_target(session, c), demotions.get(c.id)) for c in rows]
+        [claim_view(c, names, children, pending, targets[c.id], demotions.get(c.id), overlay) for c in rows]
     )
 
 
@@ -165,6 +168,11 @@ def revise_claim(session: DB, id: int, body: Annotated[Any, Body()] = None) -> J
     except TargetMismatch as exc:
         raise validation_error(f"{exc} (D10-3 같은 대상만)", ("body", "text")) from exc
     if target is not None:
+        if not target.complete:  # minor 14: 대상 행을 못 찾으면 강등 없이 reverify(→ publish 해제)하지 않는다
+            raise validation_error(
+                f"원 주장의 사실({target.name}) 행을 찾을 수 없다 — 사람 확인(POST /ops/human-checks)으로 값을 먼저 입력한다",
+                ("body", "text"),
+            )
         demote(session, claim, target)  # rejudge 잡이 claim.reverify 보다 먼저 등록된다(모듈 설명)
     job = enqueue(session, REVERIFY, {"snapshot_id": claim.snapshot_id, "claim_id": claim.id, "text": text})
     session.commit()

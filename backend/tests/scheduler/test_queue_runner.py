@@ -184,8 +184,9 @@ def test_schedule_and_startup_reference(
     ctx = make_ctx()
     sched = build_scheduler(ctx)
     jobs = {j.id: j for j in sched.get_jobs()}
-    assert set(jobs) == {"collect.daily", "collect.weekly", "reference.refresh"}
+    assert set(jobs) == {"collect.daily", "collect.weekly", "reference.refresh", "backup"}  # backup: D11-8
     fields = {name: {f.name: str(f) for f in jobs[name].trigger.fields} for name in jobs}
+    assert (fields["backup"]["hour"], fields["backup"]["minute"]) == ("3", "0")
     assert (fields["collect.daily"]["hour"], fields["collect.daily"]["minute"]) == ("6", "0")
     assert fields["collect.weekly"]["day_of_week"] == "mon" and fields["collect.weekly"]["minute"] == "30"
     assert (fields["reference.refresh"]["day"], fields["reference.refresh"]["hour"]) == ("1", "5")

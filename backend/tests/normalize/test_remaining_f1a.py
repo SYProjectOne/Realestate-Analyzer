@@ -130,15 +130,22 @@ def test_api_remaining_notice_attaches_to_original_complex(
     assert res.inserted == 1 and res.unmatched == []
 
 
-def test_opt_rounds_without_original_share_one_complex(
+def test_opt_rounds_without_original_share_one_complex(  # 이름 키는 공급 구분 괄호만 지운다(D10-4)
     db_session: Session, add_raw: AddRaw, region: Region
 ) -> None:
     first = _api_notice(
-        db_session, add_raw, region, "2026940200", "리아츠 송도(22차)", secd="11", kind="opt", notice="2026-08-01",
+        db_session, add_raw, region, "2026940200", "리아츠 송도(임의공급 22차)", secd="11", kind="opt", notice="2026-08-01",
         rcpt=("2026-08-05", "2026-08-06"),
     )  # fmt: skip
     _api_notice(
-        db_session, add_raw, region, "2026940212", "리아츠 송도(23차)", secd="11", kind="opt", comp=False
+        db_session,
+        add_raw,
+        region,
+        "2026940212",
+        "리아츠 송도(임의공급 23차)",
+        secd="11",
+        kind="opt",
+        comp=False,
     )
     res = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
     evs = _events(db_session)
@@ -158,7 +165,14 @@ def test_resync_is_idempotent_and_new_event_is_critical(
         db_session, region.id, "2024000777", "더샵 송도마리나베이", address="송도동", legal_dong_code=SONGDO
     )
     # 접수가 기준일 이후(진행·예정) — 새 행은 critical(과거 공고는 info: test_r3b_g1_remaining)
-    _api_notice(db_session, add_raw, region, "2026910242", "더샵 송도마리나베이(3회차)", rcpt=("2026-10-12", "2026-10-12"))
+    _api_notice(
+        db_session,
+        add_raw,
+        region,
+        "2026910242",
+        "더샵 송도마리나베이(3회차)",
+        rcpt=("2026-10-12", "2026-10-12"),
+    )
     first = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
     db_session.add_all(first.events)
     db_session.flush()
@@ -195,14 +209,14 @@ def test_remaining_event_fields_have_provenance(db_session: Session, add_raw: Ad
 
 
 WEB_LIST = """<html><body><table><tbody>
-<tr data-pbno="2026940300" data-hmno="2026940300" data-hsecd="11" data-honm="송도 웹 단지(2차)">
-<td>인천</td><td>임의공급</td><td class="txt_l"><a href="#a"><b>송도 웹 단지(2차)</b></a></td>
+<tr data-pbno="2026940300" data-hmno="2026940300" data-hsecd="11" data-honm="송도 웹 단지(임의공급 2차)">
+<td>인천</td><td>임의공급</td><td class="txt_l"><a href="#a"><b>송도 웹 단지(임의공급 2차)</b></a></td>
 <td>시행사</td><td>2026-10-01</td><td>2026-10-05 ~ 2026-10-06</td><td>2026-10-08</td><td></td></tr>
 </tbody></table></body></html>"""
 
 WEB_DETAIL = """<html><body><div id="printArea">
 <table class="tbl_st"><caption class="blind">입주자모집공고 주요정보</caption>
-<thead><tr><th scope="col" colspan="2">송도 웹 단지(2차)</th></tr></thead>
+<thead><tr><th scope="col" colspan="2">송도 웹 단지(임의공급 2차)</th></tr></thead>
 <tbody><tr><td>공급위치</td><td class="txt_l">인천광역시 연수구 송도동 77</td></tr>
 <tr><td>공급규모</td><td class="txt_l">3세대</td></tr></tbody></table>
 <table class="tbl_st"><caption class="blind">입주자모집공고 청약일정.</caption><tbody>
@@ -227,7 +241,7 @@ def test_web_remaining_notice(db_session: Session, add_raw: AddRaw, region: Regi
         db_session,
         region.id,
         hm,
-        "송도 웹 단지(2차)",
+        "송도 웹 단지(임의공급 2차)",
         address="인천광역시 연수구 송도동 77",
         legal_dong_code=SONGDO,
     )
@@ -259,7 +273,7 @@ def test_unknown_supply_kind_is_skipped_not_guessed(
     db_session: Session, add_raw: AddRaw, region: Region
 ) -> None:
     hm = "2026940300"
-    self_cx = add_complex(db_session, region.id, hm, "송도 웹 단지(2차)", legal_dong_code=SONGDO)
+    self_cx = add_complex(db_session, region.id, hm, "송도 웹 단지(임의공급 2차)", legal_dong_code=SONGDO)
     add_raw(
         WEB_DETAIL,
         source_kind="applyhome_detail",
@@ -271,5 +285,5 @@ def test_unknown_supply_kind_is_skipped_not_guessed(
     res = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
     assert _events(db_session) == []
     assert res.unmatched == [
-        {"notice_no": hm, "name": "송도 웹 단지(2차)", "reason": "확인 불가(공급 구분 없음)"}
+        {"notice_no": hm, "name": "송도 웹 단지(임의공급 2차)", "reason": "확인 불가(공급 구분 없음)"}
     ]

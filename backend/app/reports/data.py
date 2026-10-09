@@ -14,6 +14,8 @@ judgment_log, claim, score_*, ladder, decision)은 스냅샷별이다(RA §3). F
 fp_=field_provenance, sc_=score_component, st_=score_total, jl_=judgment_log seq, rd_=raw_document.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import re
@@ -29,13 +31,14 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.complex_input import masked
 from app.core.contracts_gen import Fact
 from app.core.logging import get_logger
 from app.core.protocols import CONTRACT_VERSION
 from app.core.settings import get_settings
 from app.core.time import now_kst
+from app.facts_view import DEMOTION_REASON, DemotionOverlay, load_overlay
 from app.models import (
-    Benchmark,
     Catalyst,
     CatalystLink,
     ChangeEvent,
@@ -619,6 +622,18 @@ class _ProvIndex:
                     key = (row.entity, row.entity_id, row.field)
                     if key not in self._rows or row.id < self._rows[key].id:
                         self._rows[key] = row
+        # D11-3 강등 오버레이(API·파이프라인과 같은 ``app.facts_view``): 강등 중인 사실은 '확인 불가(검증
+        # 모순)'
+        self.overlay = DemotionOverlay()
+        if any(keys.values()):
+            from app.facts_view import chosen_from_rows
+
+            ids_all = {i for ids in keys.values() for i in ids}
+            self.overlay = load_overlay(
+                session,
+                ids=ids_all,
+                chosen=chosen_from_rows(r for r in self.all_rows if r.chosen),
+            )
 
     def fact(
         self,
@@ -630,9 +645,11 @@ class _ProvIndex:
         *,
         prov_field: str | None = None,
     ) -> Fact:
-        """DB 값 + 채택 출처 행 → Fact. ``prov_field`` = 출처 행 이름이 컬럼과 다를 때."""
+        """DB 값 + 채택 출처 행 → Fact. ``prov_field`` = 출처 행 이름이 컬럼과 다를 때. 강등 중이면 '확인 불가(검증 모순)'."""
         name = prov_field or fld
         row = self._rows.get((entity, entity_id, name))
+        if self.overlay.is_demoted(entity, entity_id, name):
+            return unknown_fact(DEMOTION_REASON, unit=unit)
         if row is None:
             if value is None:
                 return unknown_fact("값 없음", unit=unit)
@@ -819,8 +836,14 @@ class _Loader:
                 for t in types
                 if t.complex_id == c.id
             ]
-            my_types = [t for t in types if t.complex_id == c.id]
-            my_pays = [p for p in pays if p.complex_id == c.id]
+            # 강등 중인 사실(D11-3)은 현재 구매가·판정 범위 계산에서도 빠진다(API ``load_bundles`` 와 같은
+            # 오버레이)
+            my_types = [
+                masked(t, P.overlay.fields("complex_type", t.id)) for t in types if t.complex_id == c.id
+            ]
+            my_pays = [
+                masked(p, P.overlay.fields("payment_terms", p.id)) for p in pays if p.complex_id == c.id
+            ]
             view = current_price(my_types, my_pays)
             basis = next((tv for tv in tviews if tv.type_code == view.basis_type_code), None)
             if basis is not None:
@@ -1304,7 +1327,11 @@ def _year_fact(mp: _ProvIndex, bid: int, fld: str, value: int | None) -> Fact:
 
 def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[SupplyView], list[UnsoldView]]:
     s, rid = ctx.session, ctx.region.id
-    benches = list(s.scalars(select(Benchmark).where(Benchmark.region_id == rid).order_by(Benchmark.id)))
+    # M-6: 그 스냅샷(리비전)이 인용하는 벤치마크만(``api.benchmarks.benchmarks_for`` — 파이프라인·API 와 같은
+    # 함수). 지역 전체 행을 읽으면 다른 스냅샷·미래 조립분이 섞여 사례가 중복된다
+    from app.api.benchmarks import benchmarks_for
+
+    benches = benchmarks_for(s, ctx.snap)
     supplies = list(
         s.scalars(select(Supply).where(Supply.region_id == rid).order_by(Supply.living_area, Supply.year))
     )

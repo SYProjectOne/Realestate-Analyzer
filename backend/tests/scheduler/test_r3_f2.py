@@ -225,7 +225,6 @@ def test_m3_minor20_minor21_api_and_pipeline_share_price_inputs_and_intake(
         f7, b7 = region_facts[7], bundles[7]
         view = bundle_price(b7)
         assert view.from_terms and (view.low_won, view.high_won) == (f7.price_low, f7.price_high)
-        assert f7.price_label == "확인됨"
         for (
             ref
         ) in view.extra_refs:  # 시드에 옵션 출처 행이 없다 — 출처 행을 채워 dev 규칙(누락 = 예외) 그대로
@@ -253,6 +252,10 @@ def test_m3_minor20_minor21_api_and_pipeline_share_price_inputs_and_intake(
         fm = FactMaker(test_settings, provenance_for(s, bundles.values()))
         pr = price_range(fm, b7)
         assert (pr["price_low"]["v"], pr["price_high"]["v"]) == (view.low_won, view.high_won)
+        # 라벨도 같다: 구매가 구성 필드(공급가·발코니·옵션) 출처 라벨 중 가장 약한 것(R3 3차 minor 6)
+        from app.api.facts import weakest
+
+        assert f7.price_label == weakest([pr["price_low"]["label"], pr["price_high"]["label"]])
         max_fp = s.scalars(
             select(FieldProvenance.id).where(
                 FieldProvenance.entity == "payment_terms", FieldProvenance.entity_id == pt.id,
@@ -268,7 +271,14 @@ def test_m3_minor20_minor21_api_and_pipeline_share_price_inputs_and_intake(
             cid: list(s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded, Ladder.complex_id == cid)))
             for cid in bundles
         }
-        skip = {"price_label", "resale_label", "residency_label", "down_payment_label", "move_in_label", "winner_label"}
+        skip = {
+            "price_label",
+            "resale_label",
+            "residency_label",
+            "down_payment_label",
+            "move_in_label",
+            "winner_label",
+        }
         for cid, b in bundles.items():
             api = score_input(b).model_dump(exclude=skip)
             pipe = complex_input(region_facts[cid], snap.asof_date, ladders[cid]).model_dump(exclude=skip)

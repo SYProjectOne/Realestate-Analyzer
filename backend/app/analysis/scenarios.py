@@ -270,8 +270,21 @@ def _access_intake(c: ComplexScoreInput, asof_date: str, prefix: str) -> Require
     return _pre("미충족", f"{prefix}접수 {status}({where})")
 
 
+_REMAINDER_KINDS: Final = frozenset({"무순위", "임의", "선착순"})
+
+
 def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPre:
+    """§6-7 접근성. 공통 조건(R3 3차 RA 부분): 접수 경로가 비공식(unofficial_ref)뿐이면 어떤 상황이든 미충족(A·C 에도 AND).
+    B·D(통장 없이·지금 계약)는 공급 경로도 본다 — 현재 공고가 무순위·임의·선착순이어야 한다(본청약 접수는 통장·가점 경로)."""
     rule = sc.requirements.access
+    if c.intake_path == "unofficial_ref":
+        return _pre("미충족", f"접수 {c.intake_status or '상태 미상'}(비공식 경로만, 판정 미사용)")
+    if rule.code in ("official_path_no_account", "official_path"):
+        kind = c.current_supply_kind
+        if kind is None:
+            return _pre("확인 불가", "공급 경로(현재 공고 종류) 확인 불가")
+        if kind not in _REMAINDER_KINDS:
+            return _pre("미충족", f"현재 공고 {kind}(통장·가점 경로) — 무순위·임의·선착순 공고 아님")
     if rule.code == "priority_supply":
         if c.has_priority_supply is None:
             return _pre("확인 불가", "가점제 1순위 공급 여부 확인 불가")
@@ -296,7 +309,11 @@ def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPr
         if end <= exit_:
             return _pre("충족", f"{head} ≤ {tail}")
         return _pre("미충족", f"{head} > {tail}")
-    prefix = "통장·가점 없이 공식 경로: " if rule.code == "official_path_no_account" else ""
+    prefix = (
+        f"통장·가점 없이 공식 경로({c.current_supply_kind}): "
+        if rule.code == "official_path_no_account"
+        else (f"{c.current_supply_kind} 공고: " if rule.code == "official_path" else "")
+    )
     return _access_intake(c, asof_date, prefix)
 
 
@@ -305,9 +322,15 @@ def _regulation(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
     res = _known(c.residency_months, c.residency_label)
     res_note = _label_note(c.residency_label)
     if rule.code == "no_residency_obligation":
+        # B·C·D(R3 3차 RA 부분): 거주의무에 더해 재당첨 제한·규제지역도 본다(기본 상황과 같은 규칙)
+        head = "거주의무 확인 불가" if res is None else f"거주의무 {res}개월{res_note}"
+        tail, conflict = _rewin_regulated(c, sc)
+        text = ", ".join([head, *tail])
+        if (res is not None and res > 0) or conflict:
+            return _pre("미충족", text)
         if res is None:
-            return _pre("확인 불가", "거주의무 확인 불가")
-        return _pre("충족" if res == 0 else "미충족", f"거주의무 {res}개월{res_note}")
+            return _pre("확인 불가", text)
+        return _pre("충족", text)
     params = sc.params
     parts: list[str] = []
     conflict = False
@@ -319,6 +342,22 @@ def _regulation(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
         conflict = conflict or not accepted
     else:
         parts.append("거주의무 0개월")
+    tail, rr_conflict = _rewin_regulated(c, sc)
+    parts.extend(tail)
+    conflict = conflict or rr_conflict
+    text = ", ".join(parts)
+    if conflict:
+        return _pre("미충족", text)
+    if res is None:
+        return _pre("확인 불가", text)
+    return _pre("충족", text)
+
+
+def _rewin_regulated(c: ComplexScoreInput, sc: Scenario) -> tuple[list[str], bool]:
+    """재당첨 제한·규제지역 문구와 충돌 여부(상황 params: rewin_restricted·homeless)."""
+    params = sc.params
+    parts: list[str] = []
+    conflict = False
     years = c.rewin_restriction_years
     if years is None:
         parts.append("재당첨 제한 확인 불가")
@@ -335,12 +374,7 @@ def _regulation(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
         conflict = conflict or params.homeless is False
     else:
         parts.append("비규제")
-    text = ", ".join(parts)
-    if conflict:
-        return _pre("미충족", text)
-    if res is None:
-        return _pre("확인 불가", text)
-    return _pre("충족", text)
+    return parts, conflict
 
 
 def _interim_note(text: str | None) -> str:

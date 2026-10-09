@@ -52,6 +52,7 @@ from app.core.contracts_gen import ProvenanceRow
 from app.core.paths import resolve_raw_path
 from app.models import Benchmark, FieldProvenance, LegalDong, RawDocument, Region, RtmsTrade, Snapshot
 from app.normalize._text import area_from_long_code, strip_supply_round
+from app.normalize.archive import archived_notices_many
 from app.normalize.fields import norm_value
 from app.normalize.living_area import assign_legal_dong, living_area_of
 from app.normalize.provenance import upsert_provenance
@@ -339,7 +340,9 @@ def latest_ok_docs(session: Session, region_id: int, source_kind: str, path_part
         )
         .group_by(RawDocument.url)
     )
-    return list(session.scalars(select(RawDocument).where(RawDocument.id.in_(latest)).order_by(RawDocument.id)))
+    return list(
+        session.scalars(select(RawDocument).where(RawDocument.id.in_(latest)).order_by(RawDocument.id))
+    )
 
 
 def latest_by_urls(session: Session, urls: Iterable[str]) -> dict[str, RawDocument]:
@@ -429,6 +432,45 @@ def _sale_price(notice: _Notice, models: dict[tuple[str, str], tuple[RawDocument
     return _SalePrice(best, priced[best], doc, excerpt, span)
 
 
+def _archive_price(notice: _Notice, docs: list[RawDocument]) -> _SalePrice | None:
+    """분양가 = 자체 아카이브 공고문 우선(RA §3 benchmark, R3 3차 RA 부분 — ``normalize.archive.archived_notices``).
+
+    그 공고(주택관리번호)의 보관 공고문 중 가장 이른 것(최초 공고 = 분양가)의 공급금액 표에서 84㎡ 최근접 주택형 최고가
+    (공고문 파서 ``NoticeParser`` — 라벨 확인됨 후보만). 공고문이 없거나 표를 못 읽으면 None → 청약홈 API 주택형 목록."""
+    from app.normalize.notice_parser import NoticeParser
+    from app.normalize.store import raw_dto
+
+    for doc in docs:  # ``archive.archived_notices_many`` — 오래된 것부터
+        try:
+            cands = NoticeParser().parse(raw_dto(doc))
+        except Exception:  # 원문 파일 없음 등 — 다음 공고문 또는 API
+            continue
+        by_type: dict[str, dict[str, Any]] = {}
+        for c in cands:
+            key = c.entity_key or ""
+            if c.entity != "complex_type" or not key.startswith(f"{notice.hm}:") or c.value is None:
+                continue
+            if c.label != "확인됨":
+                continue
+            by_type.setdefault(key.split(":", 1)[1], {})[c.field] = c
+        priced = {
+            str(d["notice_type_code"].value): d["max_price_won"]
+            for d in by_type.values()
+            if "max_price_won" in d and "notice_type_code" in d
+        }
+        best = judge_type((ty, area_from_long_code(ty)) for ty in priced)
+        if best is None:
+            continue
+        c = priced[best]
+        span = (
+            (c.excerpt_start, c.excerpt_end)
+            if c.excerpt_start is not None and c.excerpt_end is not None
+            else None
+        )
+        return _SalePrice(best, int(c.value), doc, c.excerpt, span)
+    return None
+
+
 # ---------------------------------------------------------------- 실거래 묶음
 
 
@@ -513,7 +555,9 @@ class _Case:
     post: list[RtmsTrade]  # 입주 후(분양권이면 분양권) 전체 — 고점
     window: str
     presale: bool
-    trade_label: Label  # 창 안 실거래 라벨(Open API 만 = 확인됨, 재가공 섞임 = 재가공) — 분양가 라벨과 섞지 않는다
+    trade_label: (
+        Label  # 창 안 실거래 라벨(Open API 만 = 확인됨, 재가공 섞임 = 재가공) — 분양가 라벨과 섞지 않는다
+    )
 
 
 @dataclass
@@ -575,10 +619,13 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
         if n.housing == "민영" and n.secd != PRESUBSCRIPTION_SECD
     ]
     index = LegalIndex(session, (n.address for n in notices))
+    archived = archived_notices_many(session, (n.hm for n in notices), region_id=region.id)
     sgg_names = region_sigungu_names(session, scope)
     codes = sorted({c for n in notices if (c := index.code(n.address, scope)) is not None and c in scope})
     legal_by_code = (
-        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))} if codes else {}
+        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))}
+        if codes
+        else {}
     )
     out: list[_Case] = []
     taken: dict[tuple[str, str], _Case] = {}  # 실거래 묶음 → 첫(가장 이른) 공고: 분양가 = 최초 공고
@@ -601,7 +648,7 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
         if n.move_in_ym is None:
             skip(n, "확인 불가(입주예정월 없음)")
             continue
-        sale = _sale_price(n, models)
+        sale = _archive_price(n, archived.get(n.hm, [])) or _sale_price(n, models)
         if sale is None:
             skip(
                 n,
@@ -697,7 +744,8 @@ def _note(case: _Case, vals: dict[str, Any], tag: str, substitute_for: str | Non
         f"{SUBSTITUTE_NOTE} — 생활권 {substitute_for} 자체 표본 0, 원 생활권 {case.living_area}"
         if substitute_for
         else "",
-        f"분양가 = 청약홈 공식 API 공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가"
+        f"분양가 = {'자체 아카이브 공고문' if case.sale.doc.source_kind == 'notice_pdf' else '청약홈 공식 API'} "
+        f"공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가"
         f"(84㎡ 최근접, 라벨 {vals['sale_price_label']})",
         f"{kind} = rtms 전용 80~85㎡·해제 제외 {case.window} {vals['n_trades']}건(고점 = 입주 후 받은 전체, "
         f"라벨 {'추정' if substitute_for else case.trade_label})",
@@ -823,8 +871,8 @@ def build_benchmarks(
 
     행은 스냅샷에 묶인다(계약 .6 ``benchmark.snapshot_id``): 다시 돌리면 **같은 스냅샷**의 자기 행만 갱신·삭제하고,
     다른 스냅샷(발행본이 인용한 행)은 건드리지 않는다. ``snapshot_id`` 를 안 주면 이 지역·기준일의 가장 새 스냅샷.
-    스냅샷 없이 만든 옛 자동 행(머리표 있음, snapshot_id NULL)은 처음 조립하는 스냅샷이 넘겨받는다.
-    snapshot_id NULL 이고 머리표 없는 행은 수동·시드 행이라 건드리지 않는다.
+    스냅샷 없이 만든 옛 자동 행(머리표 있음, snapshot_id NULL — 0006 이전)은 건드리지 않는다(minor 25: 넘겨받으면 0006
+    이전 발행 스냅샷이 인용한 벤치마크가 사라진다). snapshot_id NULL 이고 머리표 없는 행은 수동·시드 행이라 건드리지 않는다.
     """
     region = session.get(Region, region_id)
     if region is None:
@@ -857,7 +905,6 @@ def build_benchmarks(
                 wanted.append((tag, c, vals, la))
 
     existing: dict[str, Benchmark] = {}
-    legacy: dict[str, Benchmark] = {}
     for b in session.scalars(
         select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)
     ):
@@ -866,13 +913,8 @@ def build_benchmarks(
         tag_of = b.note.split("]", 1)[0] + "]"
         if b.snapshot_id == sid:
             existing.setdefault(tag_of, b)
-        elif b.snapshot_id is None:
-            legacy.setdefault(tag_of, b)  # 스냅샷 없이 만든 옛 자동 행
-    if sid is not None:
-        for tag_of, b in legacy.items():
-            if tag_of not in existing:
-                b.snapshot_id = sid
-                existing[tag_of] = b
+        # 스냅샷 없이 만든 옛 자동 행(snapshot_id NULL, 0006 이전)은 넘겨받지 않는다(minor 25) — 0006 이전 발행 스냅샷이
+        # 인용하던 행이라 그대로 두고(``api.benchmarks.benchmarks_for`` 가 조립분이 없는 스냅샷에만 보인다) 새 행을 만든다
     seen: set[str] = set()
     for tag, case, vals, sub in wanted:
         seen.add(tag)

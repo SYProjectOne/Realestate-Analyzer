@@ -185,6 +185,53 @@ def test_n_c2_no_change_day_keeps_scope_rank_and_no_event_flood(
         assert {c: v[0] for c, v in _base_totals(s, day3).items()} == {c: v[0] for c, v in totals1.items()}
 
 
+def test_n_c2_changed_phrase_is_not_carried_and_reclassified_before_publish(
+    make_ctx: Callable[..., SchedulerContext],
+    factory: sessionmaker[Session],
+    seeded: int,
+    jev: SynthJev,
+    clock: Clock,
+) -> None:
+    """N-C2 반대 경우(R3 3차 minor 8): 2일차 접수 문구가 바뀌면 분류를 복사하지 않고(미분류 → 재판정 대상) 판정기가 다시
+    분류한 뒤 publish 한다 — 이전 분류를 복사한 채 publish 하지 않는다."""
+    http = HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0)
+    page = {"html": (WP1B_FIXTURES / "hndapt_index.html").read_bytes()}
+
+    def official(_ctx: SchedulerContext) -> OfficialSiteCollector:
+        return OfficialSiteCollector(
+            http=http, render="never", targets=[SiteTarget(SITE, CX)], session_factory=factory
+        )
+
+    with respx.mock(assert_all_called=False) as router:
+        router.get(ROBOTS).respond(200, content=(WP1B_FIXTURES / "hndapt_robots.txt").read_bytes())
+        router.get(SITE).mock(
+            side_effect=lambda _req: __import__("httpx").Response(
+                200, content=page["html"], headers={"content-type": "text/html; charset=utf-8"}
+            )
+        )
+        ctx = make_ctx(collectors={"official_site": official})
+        day1 = _daily(factory, ctx, clock, date(2026, 10, 8))
+        page["html"] = page["html"].replace("마감재리스트".encode(), "잔여세대 선착순 계약 안내".encode())
+        calls = len(jev.calls)
+        day2 = _daily(factory, ctx, clock, date(2026, 10, 9))
+    http.close()
+    with factory() as s:
+        row2 = s.scalars(
+            select(IntakeStatus).where(
+                IntakeStatus.snapshot_id == day2,
+                IntakeStatus.complex_id == CX,
+                IntakeStatus.path == "official_popup",
+            )
+        ).one()
+        assert COPIED_MARK not in (row2.note or ""), row2.note  # 문구가 바뀌었으니 복사하지 않는다
+        assert (
+            "판정기 classify" in (row2.note or "") and row2.reason != "접수 문구 미분류"
+        )  # publish 전에 다시 분류
+        assert len(jev.calls) > calls  # 판정기 실제 호출(접수 classify)
+        snap2 = s.get(Snapshot, day2)
+        assert snap2 is not None and snap2.status == "published" and day2 != day1
+
+
 def test_f2_copy_intake_uses_pick_intake_rule(factory: sessionmaker[Session], seeded: int) -> None:
     """같은 경로 두 행: 나중 id 가 더 옛 날짜면 표시 행(pick_intake = 날짜 우선)을 복사한다 — id 순이면 가짜 D9-3."""
     with factory() as s:
@@ -323,7 +370,12 @@ def test_n_m2_news_screen_at_collect_then_classify_discards_not_catalyst(
     assert not out.degraded, out.error
     with factory() as s:
         kept = {c.name: c for c in s.scalars(select(Catalyst))}
-        assert set(kept) == {"트램 기본계획 고시", "사람 입력 호재"}
+        # '호재 아님'은 지우지 않고 단계로 남긴다(R3 3차 M-10 · D11-2)
+        assert kept["송도 모델하우스 견본주택 개관"].stage == "호재 아님"
+        assert {n for n, c in kept.items() if c.stage != "호재 아님"} == {
+            "트램 기본계획 고시",
+            "사람 입력 호재",
+        }
         tram = kept["트램 기본계획 고시"]
         assert (
             tram.stage == "확정" and tram.judgment_seq is not None and tram.kind == "교통"
@@ -359,6 +411,7 @@ def test_n_m4_benchmark_substitute_marked_in_formula_and_label() -> None:
          "move_in_ym": None, "ladders": [], "winner_date": None, "resale_months": None, "resale_release_on_registration": None,
          "residency_months": None, "down_payment_pct": None, "intake_status": None, "intake_path": None}
     )  # fmt: skip
+
     def rows_(substitute: bool) -> list[BenchmarkInput]:
         return [
             BenchmarkInput(id=i, living_area="la_9", name=f"b{i}", completed_year=2022, sale_year=2024,

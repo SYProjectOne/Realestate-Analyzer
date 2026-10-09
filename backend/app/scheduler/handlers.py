@@ -196,7 +196,7 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
             stats["list_complex_ids"] = daily.list_complex_ids
         with ctx.session_factory() as session:
             if not result.degraded:
-                ok, n = snapshots.publish(session, daily.snapshot_id, now=ctx.iso_now())
+                ok, n = snapshots.publish(session, result.snapshot_id, now=ctx.iso_now())
                 stats.update({"published": ok, "contradicted": n})
             region = session.get(Region, region_id)
             assert region is not None
@@ -237,6 +237,79 @@ def handle_report(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     return dict(stats)
 
 
+def handle_backup(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
+    """D11-8 백업(``scheduler.backup.run_backup``): DB 덤프·파일 복사 + 원문 증분 복사. 실패는 stats 와 함께 failed."""
+    from app.core.settings import get_settings
+    from app.scheduler.backup import run_backup
+
+    keep = (job.payload or {}).get("keep_days")
+    try:
+        return run_backup(get_settings(), now=ctx.now(), keep_days=int(keep) if keep else None)
+    except RuntimeError as exc:
+        raise JobError(str(exc)[:300], getattr(exc, "stats", {})) from exc
+
+
+def handle_region_expand(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
+    """D11-7 지역 선택 확장(PATCH /regions/{id}): 단지 법정동·생활권 재배정 → 추가 선택 포함 수집(daily+weekly) →
+    기준일 리비전(발행됐으면 새 리비전, 사유 '지역 확장') → 후보 전체 판정·rerank 1회 → publish. 보고서는 바탕 리비전 비교로
+    §12 '지역 추가' 장을 만든다(``reports.export`` — revision_of)."""
+    from app.normalize.living_area import assign_complex_area
+    from app.scheduler.pipeline import run_pipeline
+
+    p = job.payload or {}
+    region_id = int(p["region_id"])
+    asof = ctx.today().isoformat()
+    added = ", ".join(str(s.get("full_name")) for s in p.get("added") or []) or "-"
+    reason = f"지역 확장: 추가 {added}"[:200]
+    with ctx.session_factory() as session:
+        region = session.get(Region, region_id)
+        if region is None:
+            raise JobError(f"region {region_id} 없음")
+        moved = 0
+        for cx in session.scalars(select(Complex).where(Complex.region_id == region_id)):
+            before = (cx.legal_dong_code, cx.living_area, cx.inclusion_class)
+            res = assign_complex_area(session, cx)
+            if res.in_region and cx.inclusion_class == "범위 경계":
+                cx.inclusion_class = (
+                    "미분류"  # 범위 밖이던 단지가 확장으로 들어왔다 — 포함 분류는 다음 P4 classify
+                )
+            if (cx.legal_dong_code, cx.living_area, cx.inclusion_class) != before:
+                moved += 1
+        base = snapshots.latest_for_region(session, region_id)
+        today = snapshots.latest_revision(session, region_id, asof)
+        if today is not None and today.status == "published":
+            snapshots.new_revision(session, today, reason=reason, created_at=ctx.iso_now())
+        elif today is None:
+            row = snapshots.get_or_create(session, region_id, asof, created_at=ctx.iso_now())
+            prev = base if base is not None and base.status == "published" else None
+            row.revision_of = (
+                prev.id if prev is not None else None
+            )  # 지역 추가 장의 비교 기준(이전 발행 스냅샷)
+            row.revision_reason = reason
+        else:
+            today.revision_reason = today.revision_reason or reason
+        session.commit()
+    daily = collect(ctx, region_id, [*DAILY_SOURCES, "notice_pdf"], asof_date=asof, detect_list=False)
+    weekly = collect(ctx, region_id, list(WEEKLY_SOURCES), asof_date=asof, detect_list=False)
+    result = run_pipeline(ctx, daily.snapshot_id, complex_ids=None, reason=reason)
+    stats: dict[str, Any] = {
+        "region_id": region_id,
+        "snapshot_id": result.snapshot_id,
+        "complexes_reassigned": moved,
+        "daily": daily.stats(),
+        "weekly": weekly.stats(),
+        "pipeline": result.stats(),
+        "degraded": result.degraded,
+    }
+    if result.degraded:
+        raise JobError("judge_unavailable: 판정기 연결 실패 — degraded 모드", stats)
+    with ctx.session_factory() as session:
+        ok, n = snapshots.publish(session, result.snapshot_id, now=ctx.iso_now())
+        session.commit()
+    stats.update({"published": ok, "contradicted": n})
+    return stats
+
+
 HANDLERS: Final[dict[str, Handler]] = {
     "collect.daily": handle_collect_daily,
     "collect.weekly": handle_collect_weekly,
@@ -246,4 +319,6 @@ HANDLERS: Final[dict[str, Handler]] = {
     "region.bootstrap": handle_region_bootstrap,
     "report": handle_report,
     "claim.reverify": handle_claim_reverify,  # 계약 2026-10-09.4 (R3 M8, reverify.py)
+    "backup": handle_backup,  # 계약 2026-10-09.8 (D11-8, backup.py)
+    "region.expand": handle_region_expand,  # 계약 2026-10-09.8 (D11-7)
 }

@@ -1,0 +1,15 @@
+{
+  "summary": "위치 확인 + 영향 생활권",
+  "value": {
+    "location_confirmed": true,
+    "lat": 37.5961,
+    "lon": 126.6712,
+    "living_area_ids": [
+      "la_2"
+    ],
+    "complex_ids": [
+      2
+    ],
+    "expected_ym": "2025-06"
+  }
+}

@@ -122,6 +122,8 @@ def test_nc3_patch_rejects_other_field_or_other_complex(client: TestClient) -> N
 
 
 def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) -> None:
+    """D10-3 + D11-3(계약 .8): 강등은 사실 값을 지우지 않는 읽기 시점 오버레이 — 화면·주장 목록은 즉시 '확인 불가(검증 모순)',
+    사람 확인은 resolver 0순위 후보로 값을 바꾸고 강등을 복원한다."""
     before = _ensure_resale(12)
     cid = _fact_claim()
     with get_session() as s:
@@ -134,14 +136,11 @@ def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) 
     reverify_job = r.json()["id"]
     with get_session() as s:
         cx = s.get(Complex, CX)
-        assert cx is not None and cx.resale_months is None, "강등 = 사실 값 비움(점수·요건 입력에서 빠짐)"
-        chosen = _chosen(s, "complex", CX, "resale_months")
-        assert [(fp.label, fp.reason) for fp in chosen] == [("확인 불가", "검증 모순")]
-        assert all(not s.get(FieldProvenance, i).chosen for i in orig_ids), (
-            "원래 출처 행은 chosen=false 로 보관"
-        )  # type: ignore[union-attr]
+        assert cx is not None and cx.resale_months == before, "강등은 사실 값을 지우지 않는다(D11-3 오버레이)"
+        assert {fp.id for fp in _chosen(s, "complex", CX, "resale_months")} == orig_ids, "출처 행도 그대로"
         d = s.scalars(select(FactDemotion).where(FactDemotion.claim_id == cid)).one()
         assert (d.entity, d.entity_id, d.field, d.restored_at) == ("complex", CX, "resale_months", None)
+        assert d.value_norm == str(before), "모순 값(value_norm) 기록"
         claim = s.get(Claim, cid)
         assert (claim.entity, claim.entity_id, claim.field) == ("complex", CX, "resale_months")  # type: ignore[union-attr]
         item = s.get(ChecklistItem, d.checklist_item_id)
@@ -157,7 +156,7 @@ def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) 
         assert rejudge.id < reverify_job, (
             "rejudge 가 claim.reverify 보다 먼저(재검증 publish 가 강등 전 점수로 나가지 않게)"
         )
-    # 화면: 주장 목록·단지 상세
+    # 화면: 주장 목록·단지 상세 — 오버레이로 즉시(창 없음)
     listed = client.get(
         f"/api/snapshots/{SNAP}/claims", params={"status": "contradicted"}, headers=READ
     ).json()
@@ -167,13 +166,13 @@ def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) 
     assert row["demotion"]["status"] == "demoted" and row["demotion"]["reason"] == "검증 모순"
     detail = client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ)
     assert detail.status_code == 200, detail.text
-    facts = [f for f in _walk(detail.json()) if f.get("reason") == "검증 모순"]
-    assert facts and all(f["label"] == "확인 불가" and f["v"] is None for f in facts)
+    resale = detail.json()["header"]["resale_months"]
+    assert resale["label"] == "확인 불가" and resale["v"] is None and resale["reason"] == "검증 모순"
+    assert detail.json()["header"]["resale_end"]["v"] is None, "강등 사실로 만든 산술 값도 확인 불가"
     checklist = client.get("/api/ops/checklist", headers=READ).json()
     validate("listChecklist", 200, checklist)
     assert any(i["kind"] == "사실 재확인" and i["complex_id"] == CX for i in checklist)
-    # 같은 사실의 다른 주장 수정은 강등을 겹치지 않는다
-    # 사람 확인 → 복원
+    # 사람 확인 → 복원(0순위 후보)
     hc = client.post(
         "/api/ops/human-checks",
         headers=WRITE,
@@ -184,22 +183,28 @@ def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) 
     hc = client.post(
         "/api/ops/human-checks",
         headers=WRITE,
-        json={"complex_id": CX, "field": "resale_months", "value_text": "12", "kind": "phone",
+        json={"complex_id": CX, "field": "resale_months", "value_text": "24", "kind": "phone",
               "checked_at": "2026-10-09T10:00:00+09:00", "entered_by": "운영자", "note": "견본주택 통화"},
     )  # fmt: skip
     assert hc.status_code == 201, hc.text
     body = hc.json()
     validate("createHumanCheck", 201, body)
+    assert (body["entity"], body["entity_id"]) == ("complex", CX)
     assert body["suggested_job"]["job_name"] == "rejudge" and body["change_event_id"] is not None
     with get_session() as s:
-        assert s.get(Complex, CX).resale_months == 12  # type: ignore[union-attr]
+        assert s.get(Complex, CX).resale_months == 24  # type: ignore[union-attr]
         chosen = _chosen(s, "complex", CX, "resale_months")
-        assert [(fp.label, fp.reason) for fp in chosen] == [("확인됨", "사람 확인(phone)")]
+        assert [(fp.label, fp.reason, fp.source_rank) for fp in chosen] == [("확인됨", "사람 확인(phone)", 0)]
         d = s.scalars(select(FactDemotion).where(FactDemotion.claim_id == cid)).one()
         assert d.restored_by == "human_check" and d.restored_at and d.human_check_id == body["id"]
         assert s.get(ChecklistItem, d.checklist_item_id).status == "done"  # type: ignore[union-attr]
     row = next(c for c in client.get(f"/api/snapshots/{SNAP}/claims", headers=READ).json() if c["id"] == cid)
     assert row["demotion"]["status"] == "restored" and row["demotion"]["restored_by"] == "human_check"
+    detail = client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ).json()
+    assert (
+        detail["header"]["resale_months"]["v"] == 24
+        and detail["header"]["resale_months"]["label"] == "확인됨"
+    )
 
 
 def _walk(obj: Any) -> list[dict[str, Any]]:
@@ -215,51 +220,68 @@ def _walk(obj: Any) -> list[dict[str, Any]]:
     return out
 
 
-def test_nc3_new_source_restores_but_same_source_redemotes(client: TestClient) -> None:
+def test_nc3_same_value_new_source_keeps_demotion_other_value_releases(client: TestClient) -> None:
+    """C-4(R3 3차): 같은 값의 새 원문(sha 만 다름)·값 없는 행은 강등을 풀지 않는다. 다른 값을 낸 새 출처만 푼다.
+    GET 은 DB 를 쓰지 않는다(minor 13) — 복원 기록은 쓰기 경로(``sync_demotions``)."""
+    from app.api.demotion import sync_demotions
+
     _ensure_resale(12)
     cid = _fact_claim()
     with get_session() as s:
         name = s.get(Complex, CX).name  # type: ignore[union-attr]
+        for fp in _chosen(s, "complex", CX, "resale_months"):
+            fp.value_norm = "12"  # 정규화 출처 행(계약 .2 이후)은 정준 값을 가진다
     assert (
         client.patch(
             f"/api/claims/{cid}", json={"text": f"{name} 전매제한 기간은 12개월이다"}, headers=WRITE
         ).status_code
         == 202
     )
+    raws = []
     with get_session() as s:
         d = s.scalars(select(FactDemotion).where(FactDemotion.claim_id == cid)).one()
         orig = s.get(FieldProvenance, d.original_fp_id)
         assert orig is not None
-        # 같은 원문을 다시 정규화(정규화가 원래 행을 다시 chosen 으로) → 새 원문이 아니다 → 다시 강등
-        for fp in _chosen(s, "complex", CX, "resale_months"):
-            fp.chosen = False
-        orig.chosen = True
-        s.get(Complex, CX).resale_months = 12  # type: ignore[union-attr]
-    client.get(f"/api/snapshots/{SNAP}/claims", headers=READ)
+        raws = [r.id for r in s.scalars(select(RawDocument).where(RawDocument.id != orig.raw_document_id))]
+        assert len(raws) >= 2
+
+    def new_source(raw_id: int, value: int | None) -> None:
+        with get_session() as s:
+            raw = s.get(RawDocument, raw_id)
+            assert raw is not None
+            for fp in _chosen(s, "complex", CX, "resale_months"):
+                fp.chosen = False
+            s.add(
+                FieldProvenance(
+                    entity="complex", entity_id=CX, field="resale_months",
+                    value_text=f"{value}개월" if value is not None else None,
+                    value_norm=str(value) if value is not None else None,
+                    raw_document_id=raw.id, url=raw.url, checked_at="2026-10-10",
+                    label="확인됨" if value is not None else "확인 불가", source_rank=1, chosen=True,
+                    excerpt=f"전매제한 {value}개월",
+                )
+            )  # fmt: skip
+            if value is not None:
+                s.get(Complex, CX).resale_months = value  # type: ignore[union-attr]
+
+    def shown() -> dict[str, Any]:
+        detail = client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ).json()
+        return detail["header"]["resale_months"]  # type: ignore[no-any-return]
+
+    new_source(raws[0], 12)  # 같은 값 재수집(다른 원문)
+    assert shown()["reason"] == "검증 모순" and shown()["v"] is None
     with get_session() as s:
-        assert s.get(Complex, CX).resale_months is None  # type: ignore[union-attr]
-        assert [fp.reason for fp in _chosen(s, "complex", CX, "resale_months")] == ["검증 모순"]
+        assert sync_demotions(s) == 0 or s.get(FactDemotion, d.id).restored_at is None  # type: ignore[union-attr]
         assert s.get(FactDemotion, d.id).restored_at is None  # type: ignore[union-attr]
-        # 다른 원문 출처가 chosen(새 공고문) → 복원(new_source)
-        other_raw = s.scalars(
-            select(RawDocument).where(RawDocument.id != orig.raw_document_id).order_by(RawDocument.id)
-        ).first()
-        assert other_raw is not None
-        for fp in _chosen(s, "complex", CX, "resale_months"):
-            fp.chosen = False
-        s.add(
-            FieldProvenance(
-                entity="complex", entity_id=CX, field="resale_months", value_text="24개월",
-                raw_document_id=other_raw.id, url=other_raw.url, checked_at="2026-10-10", label="확인됨",
-                source_rank=1, chosen=True, excerpt="전매제한 24개월",
-            )
-        )  # fmt: skip
-        s.get(Complex, CX).resale_months = 24  # type: ignore[union-attr]
-    client.get("/api/ops/checklist", headers=READ)
+    new_source(raws[1], 24)  # 다른 값 → 오버레이가 풀린다(GET 은 쓰지 않는다)
+    assert shown()["v"] == 24
+    row = next(c for c in client.get(f"/api/snapshots/{SNAP}/claims", headers=READ).json() if c["id"] == cid)
+    assert row["demotion"]["status"] == "restored" and row["demotion"]["restored_at"] is None
     with get_session() as s:
+        assert s.get(FactDemotion, d.id).restored_at is None, "GET 은 복원 기록을 쓰지 않는다"  # type: ignore[union-attr]
+        sync_demotions(s)  # 쓰기 경로
         d2 = s.get(FactDemotion, d.id)
         assert d2 is not None and d2.restored_by == "new_source"
-        assert s.get(Complex, CX).resale_months == 24  # type: ignore[union-attr]
         assert s.get(ChecklistItem, d2.checklist_item_id).status == "done"  # type: ignore[union-attr]
 
 
@@ -310,7 +332,9 @@ def test_nm4_sample_n_counts_own_rows_only_and_flags_substitute(client: TestClie
             )
         )
         # note 에 표식 문구만 있고 컬럼이 false 인 행은 대체가 아니다(문자열 판별 금지)
-        s.add(Benchmark(**base, living_area="la_1", name="문구만", note="사람 메모: 추정(대체: 지역 전체) 아님"))
+        s.add(
+            Benchmark(**base, living_area="la_1", name="문구만", note="사람 메모: 추정(대체: 지역 전체) 아님")
+        )
     body = client.get(f"/api/snapshots/{SNAP}/market", headers=READ).json()
     validate("getMarket", 200, body)
     flags = {f["living_area"]: f for f in body["benchmark_flags"]}

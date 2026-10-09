@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 from types import ModuleType
+from typing import Any
 
 from ._support import BACKEND, CONTRACTS
 
@@ -39,6 +40,32 @@ def test_manifest_reason_is_in_changelog() -> None:
     assert isinstance(reason, str) and len(reason.strip()) >= 8
     changelog = (CONTRACTS / "CHANGELOG.md").read_text(encoding="utf-8")
     assert reason in changelog, f"매니페스트 사유가 CHANGELOG 에 없다: {reason!r}"
+
+
+def test_manifest_refuses_reason_reuse_on_change(tmp_path: Any, monkeypatch: Any) -> None:
+    """R3 3차 RA 부분: 픽스처가 바뀌면 사유도 새로 — 이전 사유(이력 포함)를 다시 쓰면 거부."""
+    import json
+
+    import pytest
+
+    tool = _tool()
+    path = tmp_path / "m.json"
+    cur = tool.file_hashes()
+    first = next(iter(cur))
+    old = {
+        "reason": "이전 변경 사유 문장",
+        "files": {**cur, first: "0" * 64},
+        "history": [{"reason": "더 오래된 사유", "files_digest": "x"}],
+    }
+    path.write_text(json.dumps(old, ensure_ascii=False), encoding="utf-8")
+    for reused in ("이전 변경 사유 문장", "더 오래된 사유"):
+        with pytest.raises(tool.ReasonReused):
+            tool.write_manifest(reused, path)
+    data = tool.write_manifest("이번 변경의 새 사유 문장", path)
+    assert data["files_digest"] == tool.files_digest(cur)
+    assert [h["reason"] for h in data["history"]] == ["더 오래된 사유", "이전 변경 사유 문장"]
+    # 픽스처가 그대로면 같은 사유로 다시 써도 된다(재생성 멱등)
+    assert tool.write_manifest("이번 변경의 새 사유 문장", path)["reason"] == "이번 변경의 새 사유 문장"
 
 
 def test_manifest_detects_a_change(tmp_path: object) -> None:

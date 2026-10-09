@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import FIXTURE, SNAP, WRITE, FakeJev, RegressEnv, api_get, by_key, load_json
+from .conftest import FIXTURE, SNAP, WRITE, FakeJev, RegressEnv, api_get, by_key, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -52,7 +52,12 @@ def test_t02_compare_api_decisions_b_tie_both_chosen(env: RegressEnv) -> None:
     t2 = _t2()
     ids = by_key()
     chosen_ids = [ids[k] for k in t2["expected"]["chosen"]]
-    body = api_get(env, f"/snapshots/{SNAP}/compare", ids=",".join(str(i) for i in chosen_ids), scenario=t2["scenario"])
+    body = api_get(
+        env,
+        f"/snapshots/{cur(env)}/compare",
+        ids=",".join(str(i) for i in chosen_ids),
+        scenario=t2["scenario"],
+    )
     ds = body["decisions"][t2["scenario"]]
     assert ds["judgment_seq"] == t2["judgment_seq"], ds
     assert ds["status"] == "ok"
@@ -87,7 +92,7 @@ def test_t02_dashboard_decision_badges(env: RegressEnv) -> None:
     t2 = _t2()
     ids = by_key()
     chosen_ids = {ids[k] for k in t2["expected"]["chosen"]}
-    dash = api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=t2["scenario"])
+    dash = api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario=t2["scenario"])
     assert dash["scenario_code"] == t2["scenario"]
     seen: set[int] = set()
     for r in dash["top5"]:
@@ -119,7 +124,12 @@ class LowConfidenceJev(FakeJev):
         probs = {cid: 0.01 for cid in ids}
         probs[top[0]], probs[top[1]] = 0.54, 0.42
         probs.update({"ask_user": 0.02, "investigate": 0.0})
-        out["recommendation"] = {"selected": top[0], "escaped": False, "confidence": 0.48, "probabilities": probs}
+        out["recommendation"] = {
+            "selected": top[0],
+            "escaped": False,
+            "confidence": 0.48,
+            "probabilities": probs,
+        }
         return out
 
 
@@ -134,7 +144,10 @@ def test_t02_pipeline_low_confidence_decide_marks_top2_tie(env: RegressEnv) -> N
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": sc_b, "complex_ids": None, "reason": "T2 회귀"}},
+        json={
+            "job_name": "rejudge",
+            "payload": {"snapshot_id": SNAP, "scenario_id": sc_b, "complex_ids": None, "reason": "T2 회귀"},
+        },
     )
     assert r.status_code == 202, r.text
     job_id = r.json()["id"]
@@ -142,11 +155,19 @@ def test_t02_pipeline_low_confidence_decide_marks_top2_tie(env: RegressEnv) -> N
     job = api_get(env, f"/jobs/{job_id}")
     assert job["status"] == "done", job
     # 상황 B decide 실제 호출 1회(판정기 버전 변경 → 전체 재판정 1회(D6)가 같은 drain 에서 돌아도 B 는 캐시)
-    decides = [a for t, a in env.jev.calls if t.removeprefix("jev_") == "decide" and "B 가점" in str(a.get("decision"))]
+    decides = [
+        a
+        for t, a in env.jev.calls
+        if t.removeprefix("jev_") == "decide" and "B 가점" in str(a.get("decision"))
+    ]
     assert len(decides) == 1, [t for t, _ in env.jev.calls]
 
     with env.session() as s:
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == sc_b).order_by(ScoreRun.id.desc())).first()
+        run = s.scalars(
+            select(ScoreRun)
+            .where(ScoreRun.snapshot_id == cur(env), ScoreRun.scenario_id == sc_b)
+            .order_by(ScoreRun.id.desc())
+        ).first()
         assert run is not None and run.id > 5, "새 score_run 이 없다"
         rows = list(s.scalars(select(Decision).where(Decision.score_run_id == run.id)))
         assert rows, "decision 행 없음"
@@ -155,11 +176,17 @@ def test_t02_pipeline_low_confidence_decide_marks_top2_tie(env: RegressEnv) -> N
         top2 = sorted(cx, key=lambda d: -float(d.prob or 0))[:2]
         assert [float(d.prob or 0) for d in top2] == [pytest.approx(0.54), pytest.approx(0.42)]
         top2_ids = sorted(int(d.complex_id or 0) for d in top2)
-        assert sorted(int(d.complex_id or 0) for d in cx if d.tie) == top2_ids, [(d.complex_id, d.prob, d.tie) for d in cx]
-        assert sorted(int(d.complex_id or 0) for d in cx if d.chosen) == top2_ids, [(d.complex_id, d.prob, d.chosen) for d in cx]
+        assert sorted(int(d.complex_id or 0) for d in cx if d.tie) == top2_ids, [
+            (d.complex_id, d.prob, d.tie) for d in cx
+        ]
+        assert sorted(int(d.complex_id or 0) for d in cx if d.chosen) == top2_ids, [
+            (d.complex_id, d.prob, d.chosen) for d in cx
+        ]
         assert not any(d.tie or d.chosen for d in rows if d.option_key != "complex")
 
-    body = api_get(env, f"/snapshots/{SNAP}/compare", ids=",".join(str(i) for i in top2_ids), scenario="B")
+    body = api_get(
+        env, f"/snapshots/{cur(env)}/compare", ids=",".join(str(i) for i in top2_ids), scenario="B"
+    )
     ds = body["decisions"]["B"]
     assert ds["score_run_id"] == run.id and ds["tie"] is True
     assert ds["confidence"]["v"] == pytest.approx(0.48)
@@ -177,13 +204,24 @@ def test_t02_pipeline_confident_decide_no_tie(env: RegressEnv) -> None:
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": sc_b, "complex_ids": None, "reason": "T2 대조"}},
+        json={
+            "job_name": "rejudge",
+            "payload": {"snapshot_id": SNAP, "scenario_id": sc_b, "complex_ids": None, "reason": "T2 대조"},
+        },
     )
     assert r.status_code == 202, r.text
     env.worker(env.ctx("fake"))
     with env.session() as s:
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == sc_b).order_by(ScoreRun.id.desc())).first()
+        run = s.scalars(
+            select(ScoreRun)
+            .where(ScoreRun.snapshot_id == cur(env), ScoreRun.scenario_id == sc_b)
+            .order_by(ScoreRun.id.desc())
+        ).first()
         assert run is not None and run.id > 5
-        cx = [d for d in s.scalars(select(Decision).where(Decision.score_run_id == run.id)) if d.option_key == "complex"]
+        cx = [
+            d
+            for d in s.scalars(select(Decision).where(Decision.score_run_id == run.id))
+            if d.option_key == "complex"
+        ]
         assert cx and not any(d.tie for d in cx)
         assert sum(1 for d in cx if d.chosen) == 1

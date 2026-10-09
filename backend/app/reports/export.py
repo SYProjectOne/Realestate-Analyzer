@@ -5,6 +5,8 @@
 거부·없음은 파일을 만들기 전에 예외로 끝난다. 쓰기는 임시 파일 → rename(원자적).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import hashlib
@@ -26,7 +28,7 @@ from app.reports.diff import diff_snapshots
 from app.reports.pdf import html_to_pdf
 from app.reports.render import render_html
 
-__all__ = ["GeneratedReport", "ReportExporter", "generate", "report_filename"]
+__all__ = ["GeneratedReport", "ReportExporter", "default_compare", "generate", "report_filename"]
 
 FORMATS: tuple[ExportFormat, ...] = ("html", "pdf")
 
@@ -69,6 +71,15 @@ def _atomic_write(path: Path, data: bytes) -> None:
         raise
 
 
+def default_compare(session: Session, snapshot_id: int) -> int | None:
+    """비교 스냅샷을 주지 않았을 때의 비교 기준(D11-1): 리비전이면 바탕(revision_of) — 리비전 diff 표가 '판정기 버전 변경
+    → 이전 run 과 delta 표'(RA §10)이고, 지역 확장 리비전이면 §12 '지역 추가' 장이 된다(D11-7). 리비전 1 이면 None."""
+    from app.models import Snapshot
+
+    snap_row = session.get(Snapshot, snapshot_id)
+    return snap_row.revision_of if snap_row is not None else None
+
+
 def generate(
     session: Session,
     snapshot_id: int,
@@ -85,6 +96,8 @@ def generate(
     """
     if fmt not in FORMATS:
         raise ValueError(f"보고서 형식은 html|pdf: {fmt!r}")
+    if compare_snapshot_id is None:
+        compare_snapshot_id = default_compare(session, snapshot_id)
     data = load_report(session, snapshot_id, scenario_id=scenario_id, compare_snapshot_id=compare_snapshot_id)
     diff = (
         diff_snapshots(session, compare_snapshot_id, snapshot_id, scenario_code=data.scenario_code)

@@ -26,6 +26,7 @@ from app.models import (
 from app.scheduler import runner
 from app.scheduler.context import SchedulerContext
 from app.scheduler.rejudge import enqueue_rejudge
+from app.scheduler.snapshots import latest_revision
 
 from .conftest import SynthJev
 
@@ -121,8 +122,15 @@ def test_second_rejudge_makes_no_real_calls_t17(
     with factory() as s:
         assert _count(s, JudgmentLog) == n_log
         # 기대값 갱신(R3 마무리) 27 → 33: 판정 대상 9 → 11(그란테르·마리나베이 접수 '미정')
-        assert _count(s, Ladder, Ladder.snapshot_id == seeded) == 33  # 갱신(중복 행 없음), 판정 대상 11 × 3
-        assert _count(s, ScoreRun, ScoreRun.snapshot_id == seeded) == 10
+        assert _count(s, Ladder, Ladder.snapshot_id == seeded) == 33  # 판정 대상 11 × 3
+        # 발행 뒤 재판정은 같은 기준일 새 리비전에 쓴다 — 발행 리비전은 그대로(D11-1, R3 3차 M-2)
+        base = s.get(Snapshot, seeded)
+        assert base is not None
+        rev = latest_revision(s, base.region_id, base.asof_date)
+        assert rev is not None and rev.id != seeded and rev.revision == 2 and rev.revision_of == seeded
+        assert _count(s, ScoreRun, ScoreRun.snapshot_id == seeded) == 5
+        assert _count(s, ScoreRun, ScoreRun.snapshot_id == rev.id) == 5
+        assert _count(s, Ladder, Ladder.snapshot_id == rev.id) == 33  # 중복 행 없음
         assert _count(s, ScoreRun, ScoreRun.prev_score_run_id.is_not(None)) == 5
 
 

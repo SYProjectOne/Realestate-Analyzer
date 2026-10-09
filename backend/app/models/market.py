@@ -144,16 +144,24 @@ class Catalyst(Base):
 
 
 class CatalystLink(Base):
-    """호재 ↔ 단지. location_confirmed=false면 행 없음(연결 금지)."""
+    """호재 ↔ 단지. location_confirmed=false면 행 없음(연결 금지). 0008(D11-5): 사람이 위치를 확인할 때
+    (PATCH /catalysts/{id}) 만든다 — 단지 좌표가 없으면 distance_m NULL, weight 1, label 추정."""
 
     __tablename__ = "catalyst_link"
-    __table_args__ = (UniqueConstraint("catalyst_id", "complex_id"),)
+    __table_args__ = (
+        UniqueConstraint("catalyst_id", "complex_id"),
+        CheckConstraint(in_check("label", LABELS), name="label"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     catalyst_id: Mapped[int] = mapped_column(ForeignKey("catalyst.id"))
     complex_id: Mapped[int] = mapped_column(ForeignKey("complex.id"), index=True)
     distance_m: Mapped[int | None] = mapped_column(Integer)
     weight: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
+    label: Mapped[str | None] = mapped_column(String(8))  # 0008
+    reason: Mapped[str | None] = mapped_column(
+        String(120)
+    )  # 0008: 연결 근거(같은 생활권·단지 지정·좌표 거리)
 
 
 class Supply(Base):

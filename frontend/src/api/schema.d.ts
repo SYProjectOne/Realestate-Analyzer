@@ -78,7 +78,13 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 지역 선택 확장·축소 (D11-7, RA '지역 추가')
+         * @description selections(바뀐 뒤 전체)로 법정동·시군구·시도 코드와 생활권을 다시 계산하고 change_event(critical) + region.expand 잡을 등록한다.
+         *     잡은 추가된 선택을 수집하고, 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장')에서 후보 전체를 판정·rerank 한 뒤
+         *     publish 한다. 보고서는 그 리비전과 바탕 리비전 비교로 §12 '지역 추가' 장을 만든다(계약 2026-10-09.8). 바뀐 것이 없으면 409.
+         */
+        patch: operations["updateRegion"];
         trace?: never;
     };
     "/regions/{id}/living-areas": {
@@ -451,8 +457,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 사람 확인 입력 → intake_status 행 + change_event (G7, T3)
-         * @description field='intake_status'이면 같은 스냅샷에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행').
+         * 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
+         * @description field='intake_status'이면 그 기준일의 쓰기 가능 리비전(최신 리비전이 발행됐으면 새 리비전 — D11-1)에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행'). field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등(검증 모순)을 복원하며 change_event + suggested_job 을 돌려준다(계약 2026-10-09.8). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
          */
         post: operations["createHumanCheck"];
         delete?: never;
@@ -574,6 +580,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalysts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 호재 위치 확인 → catalyst_link (D11-5)
+         * @description 사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
+         *     distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
+         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인). 연결이 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다(계약 2026-10-09.8).
+         */
+        patch: operations["updateCatalyst"];
+        trace?: never;
+    };
     "/share-links": {
         parameters: {
             query?: never;
@@ -666,6 +694,15 @@ export interface components {
             }[];
         };
         /**
+         * BackupPayload
+         * @description job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고, 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').
+         * @example {}
+         */
+        BackupPayload: {
+            /** @description 이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한) */
+            keep_days?: number | null;
+        };
+        /**
          * BenchmarkAbsence
          * @description 벤치마크 없음 사유(D9-2 '그래도 0 → 종합 미계산 + 사유 표시', R3 재리뷰 N-M3, 계약 2026-10-09.6). 지역에 점수에 쓸 벤치마크 행(분양권 제외)이 하나도 없을 때만 객체, 있으면 null. 화면(G1·G6)·보고서 표시 = '벤치마크 없음(<reason>)'. 이때 benchmark 성분은 미계산이고 종합 점수도 미계산이다(RA §6-4).
          *     - code: not_collected = 지역 실거래(rtms)가 아직 없다(수집 전) · presale_only = 분양권 거래(입주 전) 사례만 있어 점수에서 제외 · no_sample = 실거래는 있으나 입주 후 실거래가 있는 과거 분양 사례가 생활권·지역 전체 모두 0.
@@ -743,6 +780,38 @@ export interface components {
             job: components["schemas"]["JobRun"] | null;
         };
         /**
+         * CatalystLinkView
+         * @description catalyst_link 1행(계약 .8): 단지·거리(좌표 없으면 null)·가중치·라벨·근거
+         */
+        CatalystLinkView: {
+            complex_id: number;
+            distance_m: number | null;
+            weight: number | null;
+            label: components["schemas"]["Label"];
+            reason: string | null;
+        };
+        /**
+         * CatalystPatch
+         * @description PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인). 링크가 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다.
+         */
+        CatalystPatch: {
+            location_confirmed: boolean;
+            lat?: number | null;
+            lon?: number | null;
+            living_area_ids?: string[] | null;
+            complex_ids?: number[] | null;
+            expected_ym?: string | null;
+        };
+        /**
+         * CatalystUpdated
+         * @description PATCH /catalysts/{id} 200 — 갱신한 호재 + 연결 목록 + 등록한 점수 재계산 잡(연결이 그대로면 null)
+         */
+        CatalystUpdated: {
+            catalyst: components["schemas"]["CatalystView"];
+            links: components["schemas"]["CatalystLinkView"][];
+            job: components["schemas"]["JobRun"] | null;
+        };
+        /**
          * CatalystView
          * @description 호재 1건의 화면 표현 (RA §3 catalyst + catalyst_link) — C9 보드·타임라인, G3 CatalystList. stage는 판정기 classify 결과(review면 '미확정'). location_confirmed=false면 단지 연결 없음(catalyst_link 행 없음, 점수 가중치 0, '연결 없음' 표시). 미확정·언론은 회색. 타임라인에는 stage='확정'인 것만 expected_ym으로 그린다.
          *     ComplexDetail.catalysts에서는 그 단지와의 연결(linked, distance_m, weight)이 채워지고, Market.catalysts에서는 linked_complex_ids가 채워진다.
@@ -788,8 +857,11 @@ export interface components {
             name: string;
             /** @enum {string} */
             kind: "교통" | "개발" | "학교" | "상업" | "생활인프라" | "기타";
-            /** @enum {string} */
-            stage: "확정" | "계획" | "추진" | "언론" | "미확정";
+            /**
+             * @description 판정기 classify 단계. '호재 아님'(계약 2026-10-09.8, D11-2) = 판정기가 호재가 아니라고 본 뉴스 후보 — 지우지 않고 제외로 남긴다(목록·보드에서 '호재 아님' 배지, 점수·타임라인 제외). 사람이 넣은 호재는 단계가 바뀌지 않고 판정 결과가 note 에 병기된다
+             * @enum {string}
+             */
+            stage: "확정" | "계획" | "추진" | "언론" | "미확정" | "호재 아님";
             stage_prob: components["schemas"]["Fact"];
             /** @enum {string|null} */
             decision: "auto" | "review" | "manual_review" | null;
@@ -799,6 +871,10 @@ export interface components {
             distance_m?: components["schemas"]["Fact"] | null;
             weight?: number | null;
             linked_complex_ids?: number[] | null;
+            /** @description 위치 위도(사람 확인, 계약 .8 — PATCH /catalysts/{id}). 없으면 null */
+            lat?: number | null;
+            /** @description 위치 경도(사람 확인, 계약 .8). 없으면 null */
+            lon?: number | null;
             judgment_seq: number | null;
             source_url?: string | null;
             note?: string | null;
@@ -846,7 +922,7 @@ export interface components {
         };
         /**
          * ChecklistItem
-         * @description 체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·새 원문으로 복원되면 done; 계약 2026-10-09.6).
+         * @description 체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·다른 값의 새 원문으로 복원되면 done(closed_by auto), 강등이 남았는데 사람이 닫으면 다시 열린다; 계약 2026-10-09.6·.8). 자동 항목의 근거 사실이 사라지거나 강등되면 동기화가 na(closed_by auto)로 닫고, 근거가 돌아오면 다시 연다(M-9).
          * @example {
          *       "id": 51,
          *       "complex_id": 7,
@@ -870,6 +946,11 @@ export interface components {
             /** @enum {string} */
             status: "open" | "done" | "na";
             note: string | null;
+            /**
+             * @description 닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행
+             * @enum {string|null}
+             */
+            closed_by?: "auto" | "human" | null;
         };
         /**
          * ChecklistPatch
@@ -1870,6 +1951,11 @@ export interface components {
             rewin_restriction_years?: number | null;
             /** @description 가점제 1순위 공급(본청약·예정 공고) 경로가 있음 */
             has_priority_supply?: boolean | null;
+            /**
+             * @description 현재 조건(최신 공고 payment_terms.notice_kind)의 공급 경로 — 계약 2026-10-09.8. 상황 B·D 접근성(§6-7: 통장 없이 무순위·임의·선착순으로 지금 계약)은 이 값이 무순위·임의·선착순이고 접수 가능일 때만 충족. null = 공고 없음·미상
+             * @enum {string|null}
+             */
+            current_supply_kind?: "본청약" | "무순위" | "임의" | "선착순" | null;
             fixed_components?: components["schemas"]["FixedComponents"] | null;
         };
         /**
@@ -2716,6 +2802,7 @@ export interface components {
             field: string;
             value_text: string | null;
             value: number | string | boolean | null;
+            /** @description §3 출처 우선순위(1이 가장 높음). 0 = 사람 확인(human_check — resolver 0순위 후보, D11-3·계약 2026-10-09.8): 재정규화에도 원문 후보를 이긴다 */
             source_rank: number;
             source_kind?: components["schemas"]["SourceKind"] | null;
             /** @default true */
@@ -2812,11 +2899,13 @@ export interface components {
         };
         /**
          * HumanCheck
-         * @description 사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만.
+         * @description 사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 그 기준일의 쓰기 가능 리비전(발행됐으면 새 리비전 — D11-1)에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). field 가 강등 가능한 사실 필드(HumanCheckField — max_price_won·move_in_ym·resale_months·residency_months·down_payment_pct)면 그 값이 resolver 0순위 후보(source_rank 0, 라벨 확인됨, reason '사람 확인(kind)')로 사실을 바꾸고 재정규화에도 유지되며, 같은 사실의 강등(검증 모순)을 복원한다(D11-3, 계약 2026-10-09.8). entity·entity_id = 바뀐 사실 행(가격은 현재 공고의 payment_terms 또는 기준 타입 complex_type). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만(note ≤ 500자, guard: 전화·주민번호·이메일·비밀값 금지 → 422).
          * @example {
          *       "id": 3,
          *       "complex_id": 4,
          *       "field": "intake_status",
+         *       "entity": null,
+         *       "entity_id": null,
          *       "value_text": "가능",
          *       "kind": "phone",
          *       "checked_at": "2026-10-09T10:20:00+09:00",
@@ -2850,11 +2939,41 @@ export interface components {
          *         }
          *       }
          *     }
+         * @example {
+         *       "id": 4,
+         *       "complex_id": 2,
+         *       "field": "resale_months",
+         *       "entity": "complex",
+         *       "entity_id": 2,
+         *       "value_text": "12",
+         *       "kind": "phone",
+         *       "checked_at": "2026-10-09T11:00:00+09:00",
+         *       "entered_by": "운영자",
+         *       "note": "분양사무소 통화: 전매제한 12개월(공고문 확인)",
+         *       "created_intake": null,
+         *       "change_event_id": 3311,
+         *       "suggested_job": {
+         *         "job_name": "rejudge",
+         *         "payload": {
+         *           "snapshot_id": 12,
+         *           "scenario_id": null,
+         *           "complex_ids": [
+         *             2
+         *           ],
+         *           "reason": "사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원"
+         *         }
+         *       }
+         *     }
          */
         HumanCheck: {
             id: number;
             complex_id: number;
+            /** @description HumanCheckField 값(옛 행은 자유 문자열일 수 있다) */
             field: string;
+            /** @description 바뀐 사실 행의 테이블(complex·complex_type·payment_terms). 접수 상태·기타·옛 행은 null (계약 .8) */
+            entity?: string | null;
+            /** @description 바뀐 사실 행 id. 접수 상태·기타·옛 행은 null (계약 .8) */
+            entity_id?: number | null;
             value_text: string;
             /** @enum {string} */
             kind: "phone" | "visit" | "email";
@@ -2871,7 +2990,9 @@ export interface components {
          */
         HumanCheckCreate: {
             complex_id: number;
-            field: string;
+            field: components["schemas"]["HumanCheckField"];
+            /** @description 사실 행 지정(선택): 가격은 그 단지의 payment_terms 또는 complex_type id, 계약금은 payment_terms id. 없으면 현재 공고·기준 타입·현재 납부 조건 */
+            entity_id?: number | null;
             value_text: string;
             /** @enum {string} */
             kind: "phone" | "visit" | "email";
@@ -2879,6 +3000,12 @@ export interface components {
             entered_by: components["schemas"]["EnteredByRole"];
             note?: string | null;
         } & unknown;
+        /**
+         * HumanCheckField
+         * @description 사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 '6.02' → 422).
+         * @enum {string}
+         */
+        HumanCheckField: "intake_status" | "max_price_won" | "move_in_ym" | "resale_months" | "residency_months" | "down_payment_pct" | "other";
         /**
          * InclusionClass
          * @description 포함/제외 분류. 판정기 classify 7클래스(사업주체 명의 기준) + '범위 경계'(DECISIONS D2-6) + '미분류'. private_sale_apt만 포함; review면 포함하되 미해결 표기(meta §1-3-3).
@@ -2959,19 +3086,19 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
-        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
         /**
          * JobCreateName
-         * @description POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).
+         * @description POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6) − region.expand(계약 .8). claim.reverify 는 PATCH /claims/{id} 만(D10-3 같은 대상 검사·사실 강등), region.expand 는 PATCH /regions/{id} 만(선택 검증·지역 갱신) 등록한다. backup 은 수동 등록 가능(payload {}).
          * @enum {string}
          */
-        JobCreateName: "collect.daily" | "collect.weekly" | "rejudge" | "report" | "snapshot.publish" | "reference.refresh" | "region.bootstrap";
+        JobCreateName: "collect.daily" | "collect.weekly" | "rejudge" | "report" | "snapshot.publish" | "reference.refresh" | "region.bootstrap" | "backup";
         /**
          * JobName
-         * @description 잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
+         * @description 잡 이름 10종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록 + 계약 2026-10-09.8 backup(D11-8: 매일 03:00 백업 — Postgres pg_dump·SQLite 파일 복사 + 원문 증분 복사, 결과 stats) · region.expand(D11-7: PATCH /regions/{id} 가 등록 — 추가된 선택의 수집 + 새 리비전 전체 재판정·rerank)
          * @enum {string}
          */
-        JobName: "collect.daily" | "collect.weekly" | "rejudge" | "report" | "snapshot.publish" | "reference.refresh" | "region.bootstrap" | "claim.reverify";
+        JobName: "collect.daily" | "collect.weekly" | "rejudge" | "report" | "snapshot.publish" | "reference.refresh" | "region.bootstrap" | "claim.reverify" | "backup" | "region.expand";
         /**
          * JobRun
          * @description 잡 1건 (RA §3 job_run, ADR-3). api는 행을 넣기만 하고(queued) worker가 polling해 집는다. 잡 잠금: worker는 UPDATE … SET status='running', locked_by=<worker id> WHERE id=? AND status='queued' 가 1행을 바꿨을 때만 실행한다(동시 실행 2개 → 하나만 동작).
@@ -3032,7 +3159,7 @@ export interface components {
                 total: number;
                 step?: string | null;
             } | null;
-        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
         /**
          * JudgeScope
          * @description 판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).
@@ -3727,6 +3854,10 @@ export interface components {
             price_by_type?: {
                 [key: string]: components["schemas"]["NoticeTypePrice"];
             };
+            /** @description 이 공고에 명시된 할인(타입별, 원 단위 — 계약 2026-10-09.8, D11-6). 키 = complex_type.type_code. 공고문·청약홈에 할인 금액이 적힌 것만(추정 금지). 출처 행은 field_provenance(entity='payment_terms', field='discount_by_type.<type_code>'). §6-1 구매가 차감은 라벨 확인됨일 때만. 없으면 {} */
+            discount_by_type?: {
+                [key: string]: components["schemas"]["Fact"];
+            };
             /** @description 최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 % */
             change_vs_first?: {
                 down_payment_pct_delta?: components["schemas"]["Fact"] | null;
@@ -3735,7 +3866,7 @@ export interface components {
         };
         /**
          * PriceRange
-         * @description 현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션, high = 최고가 + 발코니 + 필수 옵션, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만').
+         * @description 현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션 − 할인(확인됨일 때만, D11-6), high = 최고가 + 발코니 + 필수 옵션 − 할인, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만 − 할인 1,000만').
          */
         PriceRange: {
             basis_type_code: string | null;
@@ -3744,6 +3875,8 @@ export interface components {
             price_mid: components["schemas"]["Fact"];
             composition?: string | null;
             change_vs_first_pct?: components["schemas"]["Fact"] | null;
+            /** @description 공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null */
+            discount?: components["schemas"]["Fact"] | null;
         };
         /**
          * Provenance
@@ -4176,6 +4309,49 @@ export interface components {
         RegionCreated: {
             region: components["schemas"]["Region"];
             job_id: number;
+        };
+        /**
+         * RegionExpandPayload
+         * @description job_name='region.expand' 페이로드 (DECISIONS D11-7, 계약 2026-10-09.8). PATCH /regions/{id} 가 넣는다(POST /jobs 로는 등록 불가 — JobCreateName). 지역 선택(selections)이 바뀐 뒤: 추가된 시군구·시도의 daily+weekly 수집 → 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장') → 후보 전체 판정·rerank 1회 → publish. 보고서는 이 리비전과 바탕 리비전(revision_of) 비교로 §12 '지역 추가' 장을 만든다.
+         * @example {
+         *       "region_id": 1,
+         *       "added": [
+         *         {
+         *           "kind": "sigungu",
+         *           "code": "41570",
+         *           "full_name": "경기도 김포시"
+         *         }
+         *       ],
+         *       "removed": [],
+         *       "change_event_id": 3320
+         *     }
+         */
+        RegionExpandPayload: {
+            region_id: number;
+            /** @description 추가된 선택 [{kind, code, full_name}] */
+            added?: Record<string, never>[];
+            /** @description 제거된 선택 [{kind, code, full_name}] */
+            removed?: Record<string, never>[];
+            change_event_id?: number | null;
+        };
+        /**
+         * RegionPatch
+         * @description PATCH /regions/{id} 본문 — 지역 선택 확장·축소(DECISIONS D11-7 = RA '지역 추가', 계약 2026-10-09.8). selections 는 바뀐 뒤의 전체 목록(GET /regions/resolve 후보, 1개 이상). 서버는 법정동·시군구·시도 코드와 생활권(새 시군구는 새 생활권, 빠진 법정동은 생활권에서 제거 — 빈 생활권은 지운다)을 다시 계산하고 change_event(critical, entity=region, field=selections) + region.expand 잡(추가 선택 수집 → 새 리비전에서 후보 전체 판정·rerank 1회 → publish)을 등록한다. 바뀐 것이 없으면 409 conflict.
+         */
+        RegionPatch: {
+            selections: components["schemas"]["RegionSelection"][];
+            name?: string | null;
+        };
+        /**
+         * RegionPatched
+         * @description PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택
+         */
+        RegionPatched: {
+            region: components["schemas"]["Region"];
+            change_event: components["schemas"]["ChangeEvent"];
+            job_id: number;
+            added: components["schemas"]["RegionSelection"][];
+            removed: components["schemas"]["RegionSelection"][];
         };
         /**
          * RegionSelection
@@ -6064,13 +6240,16 @@ export interface components {
         };
         /**
          * Snapshot
-         * @description 기준일 스냅샷 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8). (region_id, asof_date) 유일, 하루 1개.
+         * @description 기준일 스냅샷 리비전 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8, DECISIONS D11-1). (region_id, asof_date, revision) 유일(계약 2026-10-09.8). 발행(published) 리비전은 불변 — 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집)은 같은 기준일의 새 리비전(revision+1, revision_of = 바탕 리비전)에 쓰고 완성된 뒤 한 번에 published 가 된다. 화면 기본 = 최신 published 리비전, ?snapshot= 은 리비전 스냅샷 id. 리비전 사이 diff(보고서 diff 표)가 RA §10 '판정기 버전 변경 → 이전 run 과 delta 표'와 '지역 추가 장'을 겸한다.
          *     status: building(수집·판정 중) → ready(점수까지 계산됨) → published(claim contradicted 0 검사 통과). contradicted_claims > 0 이면 published가 될 수 없고 보고서 생성 버튼은 비활성(G8).
          *     degraded=true: 이 스냅샷을 만드는 동안 판정기가 없었다(JudgeUnavailable) — 수집·정규화만 있고 점수는 미계산(T18). 화면 G1·G7 배너.
          * @example {
          *       "id": 12,
          *       "region_id": 1,
          *       "asof_date": "2026-10-08",
+         *       "revision": 1,
+         *       "revision_of": null,
+         *       "revision_reason": null,
          *       "status": "published",
          *       "degraded": false,
          *       "created_at": "2026-10-08T06:00:03+09:00",
@@ -6084,6 +6263,15 @@ export interface components {
             region_id: number;
             /** Format: date */
             asof_date: string;
+            /**
+             * @description 같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1). 서버 응답에는 늘 실린다(스키마 기본 1 — 옛 입력·픽스처 호환)
+             * @default 1
+             */
+            revision?: number;
+            /** @description 바탕 리비전(이 리비전을 만든 발행 스냅샷 id). 리비전 1 은 null */
+            revision_of?: number | null;
+            /** @description 리비전을 만든 사유(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집 등). 리비전 1 은 null */
+            revision_reason?: string | null;
             /** @enum {string} */
             status: "building" | "ready" | "published";
             degraded: boolean;
@@ -6495,6 +6683,46 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateRegion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["RegionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegionPatch"];
+            };
+        };
+        responses: {
+            /** @description 갱신됨 + region.expand 잡 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionPatched"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 선택이 그대로(바뀐 것 없음) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -7365,6 +7593,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalystCreated"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateCatalyst: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalystPatch"];
+            };
+        };
+        responses: {
+            /** @description 갱신된 호재 + 연결 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalystUpdated"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -44,12 +44,15 @@ def test_nm2_catalyst_classes_include_not_catalyst() -> None:
 
 def test_nm2_catalyst_screen_payload_is_relevance_check() -> None:
     payload = P.catalyst_screen_payload(
-        title="GTX-B 송도역 착공", excerpt="국토부는 GTX-B 노선 착공을 발표했다. 문의 010-1234-5678",
+        title="GTX-B 송도역 착공",
+        excerpt="국토부는 GTX-B 노선 착공을 발표했다. 문의 010-1234-5678",
         url="https://news.example.com/a/1",
     )
     assert_jev_valid("screen", payload)
     assert "GTX-B 송도역 착공" in payload["text"] and "010-1234-5678" not in payload["text"]
-    assert "호재" in payload["purpose"] and "분양" in payload["purpose"]  # 분양 광고·일정 기사는 호재 아님을 목적에 적는다
+    assert (
+        "호재" in payload["purpose"] and "분양" in payload["purpose"]
+    )  # 분양 광고·일정 기사는 호재 아님을 목적에 적는다
     assert not {"block_at", "review_at"} & set(payload)
 
 
@@ -70,7 +73,13 @@ def _classify_raw(label: str, decision: str = "auto") -> dict[str, Any]:
 
 def test_nm2_pipeline_screen_and_not_catalyst(make_adapter: Callable[..., Any]) -> None:
     adapter = make_adapter(FakeTransport(responses={"jev_classify": _classify_raw("호재 아님")}))
-    s = pipeline.p1_screen_catalyst(adapter, catalyst_key="7", title="송도 분양 일정", excerpt="청약 접수 안내", url="https://n.example.com/1")
+    s = pipeline.p1_screen_catalyst(
+        adapter,
+        catalyst_key="7",
+        title="송도 분양 일정",
+        excerpt="청약 접수 안내",
+        url="https://n.example.com/1",
+    )
     assert s.usable is True  # 녹화 screen = pass
     out = pipeline.p4_classify_catalyst(adapter, catalyst_key="7", text="송도 분양 일정")
     assert out.label == P.NOT_CATALYST and pipeline.is_not_catalyst(out)
@@ -119,12 +128,18 @@ def test_f1b_adapter_code_version_bumped_and_canonical_fingerprint_pinned() -> N
     지문을 갱신한다(전체 재판정 1회). R3 정준화 변경으로 0.1.0 → 0.2.0."""
     assert ADAPTER_CODE_VERSION != "0.1.0"
     got = hashlib.sha256(canonical_hash_json(CANONICAL_SAMPLE).encode("utf-8")).hexdigest()
-    assert got == CANONICAL_FINGERPRINT, "정준화 규칙 변경 — ADAPTER_CODE_VERSION 을 올리고 CANONICAL_FINGERPRINT 갱신"
+    assert got == CANONICAL_FINGERPRINT, (
+        "정준화 규칙 변경 — ADAPTER_CODE_VERSION 을 올리고 CANONICAL_FINGERPRINT 갱신"
+    )
 
 
-def test_f1b_mock_replay_rows_are_marked_synthetic(tmp_path: Path, session_factory: sessionmaker[Session], samples: dict[str, Any]) -> None:
+def test_f1b_mock_replay_rows_are_marked_synthetic(
+    tmp_path: Path, session_factory: sessionmaker[Session], samples: dict[str, Any]
+) -> None:
     (tmp_path / "judgments").mkdir()
-    (tmp_path / "judgments" / "_meta.json").write_text(json.dumps({"adapter_version": "0.2.0+jev-mcp@0.14.1"}), encoding="utf-8")
+    (tmp_path / "judgments" / "_meta.json").write_text(
+        json.dumps({"adapter_version": "0.2.0+jev-mcp@0.14.1"}), encoding="utf-8"
+    )
     mock = MockAdapter(tmp_path, secrets=[], session_factory=session_factory)
     payload = P.screen_payload("공고 발췌", task="t")
     from app.core.contracts_gen import JudgmentEnvelope
@@ -141,5 +156,7 @@ def test_f1b_mock_replay_rows_are_marked_synthetic(tmp_path: Path, session_facto
     with session_factory() as s:
         row = s.scalars(select(JudgmentLog).where(JudgmentLog.input_hash == key)).one()
         assert row.output_json.get(SYNTHETIC_KEY) and is_synthetic(row.output_json)
-    plain = MockAdapter(tmp_path, secrets=[]).call("screen", payload, "screen:x")  # DB 없이: 녹화와 동일(픽스처 규칙)
+    plain = MockAdapter(tmp_path, secrets=[]).call(
+        "screen", payload, "screen:x"
+    )  # DB 없이: 녹화와 동일(픽스처 규칙)
     assert not is_synthetic(plain.raw)

@@ -274,8 +274,8 @@ def list_rows(
     scenario = resolve_scenario(session, scenario_value)
     region = session.get(Region, snap.region_id)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id)
-    ctx = score_ctx(session, snap.id, scenario)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=scenario.id)
+    ctx = score_ctx(session, snap.id, scenario, with_flags=False)
     rows = [r for r in complex_rows_data(bundles, ctx) if _match(r, filters)]
     last = last_changes(session, [r.b.cx.id for r in rows])
     rows = sort_rows(rows, sort, {k: v.detected_at for k, v in last.items()})
@@ -291,7 +291,7 @@ def build_rows(
     last: Mapping[int, ChangeEvent],
 ) -> list[dict[str, Any]]:
     bundles: list[ComplexBundle] = [r.b for r in rows]
-    fm = FactMaker(settings_of(request), provenance_for(session, bundles))
+    fm = FactMaker(settings_of(request), provenance_for(session, bundles, list_rows=True))
     days = ladder_days(session, bundles)
     days.update(ctx.jl_days)
     from app.api.views import judgment_days
@@ -396,7 +396,8 @@ def export_complexes_csv(
     for col in _CSV_FACTS:
         head += [col, f"{col}_label", f"{col}_checked_at", f"{col}_prov"]
     # rank 는 total(Fact)에서 파생한 서수 — 라벨·출처는 total 의 것(R3 minor 18)
-    head += ["rank", "rank_label", "rank_prov", "inclusion_class"]
+    # rejudge_needed(D10-1): 저장 범위 ≠ 현재 사실 범위면 1 — CSV 에도 '재판정 필요'가 보이게(R3 3차 minor 2)
+    head += ["rank", "rank_label", "rank_prov", "inclusion_class", "rejudge_needed"]
     w.writerow(head)
     for it in items:
         intake = it["intake"] or {}
@@ -421,6 +422,7 @@ def export_complexes_csv(
             _csv_text(total["label"]) if ranked else "",
             (total.get("prov") or "") if ranked else "",
             _csv_text(it["inclusion_class"]),
+            1 if it.get("rejudge_needed") else 0,
         ]
         w.writerow(row)
     body = ("﻿" + buf.getvalue()).encode("utf-8")
@@ -570,13 +572,13 @@ def freshness(session: Session, region_id: int) -> dict[str, Any]:
     return {"last_success_at": last_fact, "stale_sources": stale, "failing_sources": failing}
 
 
-def _kpi_count(ctx: ScoreCtx, value: int, first_cid: int | None) -> dict[str, Any]:
+def _kpi_count(ctx: ScoreCtx, value: int, first_cid: int | None, *, reason: str = "집계") -> dict[str, Any]:
     """KPI 집계 수. 출처 = 이 점수 실행 전체 ``st_<score_run_id>``.
 
     단지 하나의 score_total 이 아니다(R3 minor 22)."""
     if ctx.run is None or first_cid is None:
         return unknown("미판정", None, unit="count")
-    return fact(value, "추정", f"st_{ctx.run.id}", ctx.checked, reason="집계", unit="count")
+    return fact(value, "추정", f"st_{ctx.run.id}", ctx.checked, reason=reason, unit="count")
 
 
 def _move_in_peak(session: Session, region_id: int, fm: FactMaker) -> dict[str, Any]:
@@ -613,7 +615,7 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         raise not_found(f"region {snap.region_id}")
     names = area_names(region)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     ctx = score_ctx(session, snap.id, sc)
     rows = complex_rows_data(bundles, ctx)
     fm = FactMaker(settings_of(request), ProvIndex())
@@ -668,8 +670,16 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         "weights": ctx.weights,
         "kpis": {
             "judged_count": _kpi_count(ctx, len(judged), first),
+            # 접수 가능 수 = 이 스냅샷(리비전)의 표시 접수 행. 발행 리비전은 불변이라 점수 실행이 본
+            # 접수 행과 같다(D11-1 — 사람 확인 접수는 새 리비전에 들어간다). 발행 전이면 실행 뒤 바뀐
+            # 행일 수 있다(R3 3차 minor 1).
             "intake_open_count": _kpi_count(
-                ctx, sum(1 for r in rows if r.intake and r.intake.status == "가능"), first
+                ctx,
+                sum(1 for r in rows if r.intake and r.intake.status == "가능"),
+                first,
+                reason="집계(이 스냅샷 접수 행)"
+                if snap.status == "published"
+                else "집계(발행 전 — 점수 실행 뒤 접수 행이 바뀌었을 수 있음)",
             ),
             "unsold": unsold_kpi,
             "move_in_peak": _move_in_peak(session, region.id, fm),

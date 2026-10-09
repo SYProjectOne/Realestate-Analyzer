@@ -59,6 +59,65 @@ export const generatedHandlers = [
       }
     }, { status: 201 }),
   ),
+  http.patch(mswPath("/catalysts/:id"), () =>
+    HttpResponse.json({
+      "catalyst": {
+        "id": 41,
+        "name": "인천1호선 검단연장 개통",
+        "kind": "교통",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 1,
+          "label": "추정",
+          "reason": "판정기 classify",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2025-06",
+          "label": "확인됨",
+          "prov": "fp_5101",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": true,
+        "distance_m": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "역 거리 미측정",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "weight": null,
+        "linked_complex_ids": null,
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": "2025-06-28 개통",
+        "lat": 37.5961,
+        "lon": 126.6712
+      },
+      "links": [
+        {
+          "complex_id": 2,
+          "distance_m": null,
+          "weight": 1,
+          "label": "추정",
+          "reason": "사람 지정(단지 좌표 없음)"
+        },
+        {
+          "complex_id": 5,
+          "distance_m": null,
+          "weight": 1,
+          "label": "추정",
+          "reason": "같은 생활권(la_2, 단지 좌표 없음)"
+        }
+      ],
+      "job": null
+    }, { status: 200 }),
+  ),
   http.patch(mswPath("/claims/:id"), () =>
     HttpResponse.json({
       "id": 931,
@@ -2797,6 +2856,9 @@ export const generatedHandlers = [
           "id": 12,
           "region_id": 1,
           "asof_date": "2026-10-08",
+          "revision": 1,
+          "revision_of": null,
+          "revision_reason": null,
           "status": "published",
           "degraded": false,
           "created_at": "2026-10-08T06:00:03+09:00",
@@ -3285,6 +3347,9 @@ export const generatedHandlers = [
         "id": 12,
         "region_id": 1,
         "asof_date": "2026-10-08",
+        "revision": 1,
+        "revision_of": null,
+        "revision_reason": null,
         "status": "published",
         "degraded": false,
         "created_at": "2026-10-08T06:00:03+09:00",
@@ -3292,6 +3357,289 @@ export const generatedHandlers = [
         "contradicted_claims": 0,
         "complex_count": 16
       }
+    }, { status: 200 }),
+  ),
+  http.patch(mswPath("/regions/:id"), () =>
+    HttpResponse.json({
+      "region": {
+        "id": 1,
+        "name": "인천 송도·검단·계양 + 김포",
+        "query_text": "송도, 검단, 계양구, 김포시",
+        "selections": [
+          {
+            "kind": "legal_dong",
+            "code": "2818510600",
+            "full_name": "인천광역시 연수구 송도동"
+          },
+          {
+            "kind": "sigungu",
+            "code": "28290",
+            "full_name": "인천광역시 검단구"
+          },
+          {
+            "kind": "sigungu",
+            "code": "28245",
+            "full_name": "인천광역시 계양구"
+          },
+          {
+            "kind": "sigungu",
+            "code": "41570",
+            "full_name": "경기도 김포시"
+          }
+        ],
+        "sido_codes": [
+          "28",
+          "41"
+        ],
+        "sigungu_codes": [
+          "28185",
+          "28245",
+          "28290",
+          "41570"
+        ],
+        "legal_dong_codes": [
+          "2818510600",
+          "2829010400",
+          "2829010500",
+          "2829010300",
+          "2829010600",
+          "2829010700",
+          "2824510900",
+          "2824511000",
+          "4157010100",
+          "4157010300",
+          "4157010400",
+          "4157010500",
+          "4157010600",
+          "4157025021",
+          "4157025022"
+        ],
+        "living_areas": [
+          {
+            "id": "la_1",
+            "name": "연수구",
+            "legal_dong_codes": [
+              "2818510600"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2818510600",
+                "name": "송도동",
+                "full_name": "인천광역시 연수구 송도동"
+              }
+            ],
+            "households": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "집계 전",
+              "prov": null,
+              "checked_at": "2026-10-08"
+            },
+            "supply_ref_units": null
+          },
+          {
+            "id": "la_2",
+            "name": "검단 원당·당하",
+            "legal_dong_codes": [
+              "2829010400",
+              "2829010500"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2829010400",
+                "name": "당하동",
+                "full_name": "인천광역시 검단구 당하동"
+              },
+              {
+                "code": "2829010500",
+                "name": "원당동",
+                "full_name": "인천광역시 검단구 원당동"
+              }
+            ],
+            "households": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "집계 전",
+              "prov": null,
+              "checked_at": "2026-10-08"
+            },
+            "supply_ref_units": null
+          },
+          {
+            "id": "la_5",
+            "name": "검단 마전·불로",
+            "legal_dong_codes": [
+              "2829010300",
+              "2829010600",
+              "2829010700"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2829010300",
+                "name": "마전동",
+                "full_name": "인천광역시 검단구 마전동"
+              },
+              {
+                "code": "2829010600",
+                "name": "대곡동",
+                "full_name": "인천광역시 검단구 대곡동"
+              },
+              {
+                "code": "2829010700",
+                "name": "금곡동",
+                "full_name": "인천광역시 검단구 금곡동"
+              }
+            ],
+            "households": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "집계 전",
+              "prov": null,
+              "checked_at": "2026-10-08"
+            },
+            "supply_ref_units": null
+          },
+          {
+            "id": "la_3",
+            "name": "계양구",
+            "legal_dong_codes": [
+              "2824510900",
+              "2824511000"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2824510900",
+                "name": "박촌동",
+                "full_name": "인천광역시 계양구 박촌동"
+              },
+              {
+                "code": "2824511000",
+                "name": "동양동",
+                "full_name": "인천광역시 계양구 동양동"
+              }
+            ],
+            "households": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "집계 전",
+              "prov": null,
+              "checked_at": "2026-10-08"
+            },
+            "supply_ref_units": null
+          },
+          {
+            "id": "la_4",
+            "name": "김포시",
+            "legal_dong_codes": [
+              "4157010100",
+              "4157010300",
+              "4157010400",
+              "4157010500",
+              "4157010600",
+              "4157025021",
+              "4157025022"
+            ],
+            "legal_dongs": [
+              {
+                "code": "4157010100",
+                "name": "북변동",
+                "full_name": "경기도 김포시 북변동"
+              },
+              {
+                "code": "4157010300",
+                "name": "운양동",
+                "full_name": "경기도 김포시 운양동"
+              },
+              {
+                "code": "4157010400",
+                "name": "장기동",
+                "full_name": "경기도 김포시 장기동"
+              },
+              {
+                "code": "4157010500",
+                "name": "감정동",
+                "full_name": "경기도 김포시 감정동"
+              },
+              {
+                "code": "4157010600",
+                "name": "사우동",
+                "full_name": "경기도 김포시 사우동"
+              },
+              {
+                "code": "4157025021",
+                "name": "통진읍 도사리",
+                "full_name": "경기도 김포시 통진읍 도사리"
+              },
+              {
+                "code": "4157025022",
+                "name": "통진읍 마송리",
+                "full_name": "경기도 김포시 통진읍 마송리"
+              }
+            ],
+            "households": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "집계 전",
+              "prov": null,
+              "checked_at": "2026-10-08"
+            },
+            "supply_ref_units": null
+          }
+        ],
+        "age_premium_coef": {
+          "c_per_year": 0.015,
+          "cap_years": 8,
+          "label": "추정"
+        },
+        "supply_ref_pct": 0.08,
+        "applyhome_query": {
+          "sido_codes": [
+            "28",
+            "41"
+          ],
+          "from_ym": "2024-10"
+        },
+        "status": "ready",
+        "created_at": "2026-10-07T08:00:00+09:00",
+        "latest_snapshot": {
+          "id": 12,
+          "region_id": 1,
+          "asof_date": "2026-10-08",
+          "revision": 1,
+          "revision_of": null,
+          "revision_reason": null,
+          "status": "published",
+          "degraded": false,
+          "created_at": "2026-10-08T06:00:03+09:00",
+          "published_at": "2026-10-08T07:42:10+09:00",
+          "contradicted_claims": 0,
+          "complex_count": 16
+        }
+      },
+      "change_event": {
+        "id": 3321,
+        "snapshot_id": 12,
+        "entity": "region",
+        "entity_id": 1,
+        "field": "selections",
+        "old_text": "선택 3개",
+        "new_text": "선택 4개(추가: 경기도 김포시)",
+        "detected_at": "2026-10-08T11:00:00+09:00",
+        "severity": "critical",
+        "triggers_rejudge": true,
+        "complex_id": null,
+        "complex_name": null,
+        "tab": null
+      },
+      "job_id": 961,
+      "added": [
+        {
+          "kind": "sigungu",
+          "code": "41570",
+          "full_name": "경기도 김포시"
+        }
+      ],
+      "removed": []
     }, { status: 200 }),
   ),
   http.put(mswPath("/regions/:id/living-areas"), () =>
@@ -3540,6 +3888,9 @@ export const generatedHandlers = [
           "id": 12,
           "region_id": 1,
           "asof_date": "2026-10-08",
+          "revision": 1,
+          "revision_of": null,
+          "revision_reason": null,
           "status": "published",
           "degraded": false,
           "created_at": "2026-10-08T06:00:03+09:00",
@@ -3572,6 +3923,9 @@ export const generatedHandlers = [
         "id": 12,
         "region_id": 1,
         "asof_date": "2026-10-08",
+        "revision": 1,
+        "revision_of": null,
+        "revision_reason": null,
         "status": "published",
         "degraded": false,
         "created_at": "2026-10-08T06:00:03+09:00",
@@ -3583,6 +3937,9 @@ export const generatedHandlers = [
         "id": 11,
         "region_id": 1,
         "asof_date": "2026-10-07",
+        "revision": 1,
+        "revision_of": null,
+        "revision_reason": null,
         "status": "published",
         "degraded": false,
         "created_at": "2026-10-07T06:00:02+09:00",
@@ -3594,6 +3951,9 @@ export const generatedHandlers = [
         "id": 10,
         "region_id": 1,
         "asof_date": "2026-10-06",
+        "revision": 1,
+        "revision_of": null,
+        "revision_reason": null,
         "status": "ready",
         "degraded": false,
         "created_at": "2026-10-06T06:00:01+09:00",
@@ -13685,6 +14045,12 @@ export const generatedOperations = [
   },
   {
     "method": "patch",
+    "path": "/catalysts/{id}",
+    "operationId": "updateCatalyst",
+    "status": 200
+  },
+  {
+    "method": "patch",
     "path": "/claims/{id}",
     "operationId": "reviseClaim",
     "status": 202
@@ -13777,6 +14143,12 @@ export const generatedOperations = [
     "method": "get",
     "path": "/regions/{id}",
     "operationId": "getRegion",
+    "status": 200
+  },
+  {
+    "method": "patch",
+    "path": "/regions/{id}",
+    "operationId": "updateRegion",
     "status": 200
   },
   {

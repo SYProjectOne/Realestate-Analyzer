@@ -88,7 +88,16 @@ MAX_EXAMPLES = int(os.environ.get("ST_MAX_EXAMPLES", "30"))  # 깊게 돌릴 때
 # (가중치 합≠1, 생활권 누락·중복, 참조에 없는
 # 지역 코드). schemathesis positive_data_acceptance 는 스키마만 보므로 이 operation 에서는 뺀다.
 # createCatalyst: guard(개인정보·비밀값)·호재 후보 조건(CatalystInputError) → 422 (계약 2026-10-09.4)
-SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion", "createCatalyst"}
+SEMANTIC_422 = {
+    "createScenario",
+    "updateLivingAreas",
+    "createRegion",
+    "createCatalyst",
+    # 계약 .8: 선택 코드·단지·생활권·사실 값 형·범위·guard 는 스키마 밖 의미 검사(422)
+    "updateRegion",
+    "updateCatalyst",
+    "createHumanCheck",
+}
 
 
 # /health 는 servers 가 루트('/')라 이 테스트(base_url /api)에서 빼고 test_health_contract 로 본다.
@@ -148,7 +157,9 @@ def test_all_operations_covered() -> None:
     from app.main import create_app
 
     ops = {(op.method.upper(), op.path) for op in (r.ok() for r in schema.get_all_operations())}
-    assert len(ops) == 37  # 31 + 계약 2026-10-09.4 의 6개
+    assert (
+        len(ops) == 39
+    )  # 31 + 계약 2026-10-09.4 의 6개 + 계약 .8 의 2개(PATCH /regions/{id}, PATCH /catalysts/{id})
     app = create_app()
     routes = {
         (method.upper(), path.removeprefix("/api") if path != "/health" else path)

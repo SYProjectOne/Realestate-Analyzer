@@ -37,7 +37,7 @@ from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
 from app.normalize.store import store_raw_document
 from app.scheduler import assemble, detect, snapshots
-from app.scheduler.intake import UNCLASSIFIED, carry_classification, pending_complexes
+from app.scheduler.intake import UNCLASSIFIED, carry_classification, intake_change_events, pending_complexes
 from app.scheduler.persist import copy_intake
 
 if TYPE_CHECKING:
@@ -340,6 +340,15 @@ def collect(
             res.intake_copied = copy_intake(session, prev.id, snap_dto.id)
         # D10-2: 문구 해시가 직전 분류 행과 같으면 분류 복사(판정 호출 없음) — 변경 없는 날 범위·순위 불변
         res.intake_carried = carry_classification(session, snap_dto.id)
+        # D9-3: 분류 없이 표시 접수가 바뀐 단지(공식 홈페이지 403·수집 실패 → '확인 불가', 경로 바뀜 등)도 이벤트 +
+        # 재판정(R3 3차 minor 4). 미분류 행이 남은 단지는 판정기 분류 뒤 파이프라인이 같은 함수로 본다
+        waiting = set(pending_complexes(session, snap_dto.id))
+        shown = set(
+            session.scalars(select(IntakeStatus.complex_id).where(IntakeStatus.snapshot_id == snap_dto.id))
+        )
+        events.extend(
+            intake_change_events(session, snap_row, prev, sorted(shown - waiting), detected_at=detected_at)
+        )
         events.extend(
             detect.popup_changes(
                 session, res.official_docs, asof_date=asof, snapshot_id=snap_dto.id, detected_at=detected_at

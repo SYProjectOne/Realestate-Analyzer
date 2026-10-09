@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import re
 import tarfile
 from collections import Counter
@@ -216,6 +217,8 @@ def catalyst_view(
         "distance_m": None,
         "weight": None,
         "linked_complex_ids": list(linked_ids) if linked_ids is not None else None,
+        "lat": float(c.lat) if c.lat is not None else None,  # 계약 .8 — 사람 위치 확인(D11-5)
+        "lon": float(c.lon) if c.lon is not None else None,
         "judgment_seq": seq,
         "source_url": c.source_url,
         "note": c.note,
@@ -286,7 +289,7 @@ def get_complex_detail(
     sc = resolve_scenario(session, scenario)
     region = session.get(Region, cx.region_id)
     names = area_names(region)
-    b = load_bundles(session, [cx], snap.id)[cx.id]
+    b = load_bundles(session, [cx], snap.id, scenario_id=sc.id)[cx.id]
     comps = list(
         session.scalars(select(Competition).where(Competition.complex_id == cx.id).order_by(Competition.id))
     )
@@ -316,6 +319,7 @@ def get_complex_detail(
         for c in session.scalars(select(Catalyst).where(Catalyst.id.in_([lk.catalyst_id for lk in links])))
     }
     cat_days = judgment_days(session, (c.judgment_seq for c in cats.values()))
+    prov.load(session, "catalyst", cats)  # 예정월 출처(사람 위치 확인 — D11-5)
     has_score = ctx.run is not None and cx.id in ctx.totals
     body = {
         "snapshot_id": snap.id,
@@ -689,6 +693,24 @@ def _open_member(archive: FsPath, member: str) -> tuple[tarfile.TarFile, IO[byte
     return None
 
 
+@functools.lru_cache(maxsize=64)
+def _members(archive: str, mtime_ns: int, size: int) -> frozenset[str]:
+    """압축 구성원 이름 목록 — (경로, 수정 시각, 크기)마다 한 번만 훑는다(R3 3차 minor 17: 원본이 없을 때
+    요청마다 압축 전체를 훑던 CPU 부담 — 공유 토큰으로 반복 요청 가능). 압축이 바뀌면 다시 훑는다."""
+    del mtime_ns, size  # 캐시 키
+    names: set[str] = set()
+    with tarfile.open(archive, "r|gz") as tar:
+        for info in tar:
+            if info.isfile():
+                names.add(info.name)
+    return frozenset(names)
+
+
+def _has_member(archive: FsPath, member: str) -> bool:
+    st = archive.stat()
+    return member in _members(str(archive), st.st_mtime_ns, st.st_size)
+
+
 def _chunks(tar: tarfile.TarFile, fh: IO[bytes]) -> Iterator[bytes]:
     try:
         while chunk := fh.read(_CHUNK):
@@ -716,6 +738,8 @@ def archived_stream(rel: str, raw_dir: FsPath) -> Iterator[bytes] | None:
     member = PurePosixPath(*parts).as_posix()
     for archive in archives:
         try:
+            if not _has_member(archive, member):
+                continue  # 목록(캐시)에 없으면 압축을 풀지 않는다
             opened = _open_member(archive, member)
         except (OSError, tarfile.TarError, EOFError):
             continue

@@ -53,7 +53,6 @@ from app.core.contracts_gen import (
     ScoreInputs,
 )
 from app.core.contracts_gen import Scenario as ScenarioDTO
-from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.db import get_engine, get_session, reset_engine
 from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings, set_settings
@@ -1061,6 +1060,21 @@ def _scenario_dto(sc: Scenario) -> ScenarioDTO:
     )
 
 
+def _p10_backed(inputs: ScoreInputs, horizon: str) -> ScoreInputs:
+    """고정 p10(보고서 (a)단계 = 입주+1년 사다리 값)은 그 시나리오 시점의 사다리 입력이 있는 단지에만 남긴다.
+
+    상황 C(기준일+5년)는 픽스처에 5년 사다리가 없다 — 1년 값을 고정 성분으로 쓰면 성분 3.9 인데
+    화면 p10 사실값(그 시점 사다리)은 null 이 된다(R3 3차 minor 7). 빼면 p10 이 '사다리 없음'(미판정)으로
+    계산되고 종합도 미판정이다(D9-1)."""
+    out = []
+    for c in inputs.complexes:
+        fc = c.fixed_components
+        if fc is not None and fc.p10 is not None and not any(lad.horizon == horizon for lad in c.ladders):
+            c = c.model_copy(update={"fixed_components": fc.model_copy(update={"p10": None})})
+        out.append(c)
+    return inputs.model_copy(update={"complexes": out})
+
+
 def _load_scores(
     session: Session,
     inputs: ScoreInputs,
@@ -1073,16 +1087,9 @@ def _load_scores(
     have = select(ScoreRun.id).where(ScoreRun.snapshot_id == snap.id).limit(1)
     if session.scalars(have).first() is not None:
         return 0
-    snap_dto = SnapshotDTO.model_validate(
-        {
-            "id": snap.id,
-            "region_id": snap.region_id,
-            "asof_date": snap.asof_date,
-            "status": snap.status,
-            "degraded": snap.degraded,
-            "created_at": snap.created_at,
-        }
-    )
+    from app.scheduler.snapshots import snapshot_dto
+
+    snap_dto = snapshot_dto(snap)
     created = snap.published_at or snap.created_at
     decide_by_code: dict[str, tuple[int, dict[str, Any]]] = {}
     for seq, env in envs.items():
@@ -1101,7 +1108,8 @@ def _load_scores(
     )
     for sc in scenarios:
         dto = _scenario_dto(sc)
-        detail = run_detailed(snap_dto, dto, inputs, with_sensitivity=True)
+        sc_inputs = _p10_backed(inputs, dto.policy.p10_horizon)
+        detail = run_detailed(snap_dto, dto, sc_inputs, with_sensitivity=True)
         res = detail.result
         run = ScoreRun(
             snapshot_id=snap.id,

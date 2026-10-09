@@ -43,12 +43,40 @@ def load_manifest(path: Path = MANIFEST) -> dict[str, Any]:
     return data
 
 
+def files_digest(files: dict[str, str]) -> str:
+    """파일 해시 목록 전체의 sha256(경로 순) — 픽스처 집합 1개의 지문."""
+    body = "\n".join(f"{k} {v}" for k, v in sorted(files.items()))
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+class ReasonReused(ValueError):
+    """픽스처가 바뀌었는데 이전 사유를 그대로 쓰려 했다(R3 3차 RA 부분 — 변경마다 새 사유)."""
+
+
 def write_manifest(reason: str, path: Path = MANIFEST) -> dict[str, Any]:
+    """매니페스트를 다시 쓴다. 픽스처 지문이 바뀌었는데 사유가 이전(이력 어느 것이든)과 같으면 ``ReasonReused``.
+    이전 (사유, 지문)은 ``history`` 에 남는다(사유 재사용 검사·감사 기록)."""
+    files = file_hashes()
+    digest = files_digest(files)
+    old: dict[str, Any] = load_manifest(path) if path.is_file() else {}
+    history: list[dict[str, str]] = list(old.get("history") or [])
+    if old.get("reason"):
+        prev_digest = str(old.get("files_digest") or files_digest(old.get("files") or {}))
+        prev = {"reason": str(old["reason"]), "files_digest": prev_digest}
+        if not history or history[-1] != prev:
+            history.append(prev)
+    changed = bool(old) and files_digest(old.get("files") or {}) != digest
+    if changed and any(h["reason"] == reason for h in history):
+        raise ReasonReused(
+            f"픽스처가 바뀌었는데 이전 사유를 다시 썼다: {reason!r} — 이번 변경의 사유를 새로 적는다"
+        )
     data = {
         "description": "contracts/fixtures/** sha256. 픽스처를 바꾸면 backend/scripts/fixture_manifest.py --reason 으로 "
-        "다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6).",
+        "다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6). 변경마다 새 사유(history).",
         "reason": reason,
-        "files": file_hashes(),
+        "files_digest": digest,
+        "history": history,
+        "files": files,
     }
     path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
     return data
@@ -75,7 +103,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if changes else 0
     if not args.reason or len(args.reason.strip()) < 8:
         ap.error("--reason 은 8자 이상(무엇을 왜 바꿨는지)")
-    data = write_manifest(args.reason.strip())
+    try:
+        data = write_manifest(args.reason.strip())
+    except ReasonReused as exc:
+        ap.error(str(exc))
     sys.stdout.write(f"{MANIFEST}: {len(data['files'])} files\n")
     return 0
 

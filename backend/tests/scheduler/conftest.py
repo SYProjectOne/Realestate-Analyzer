@@ -391,7 +391,7 @@ def seed_fixture(
                 )
                 s.add(ct)
                 s.flush()
-                for f in ("max_price_won", "floor_sample_price_won", "balcony_won"):
+                for f in ("max_price_won", "floor_sample_price_won", "balcony_won", "options_required_won"):
                     add_prov("complex_type", ct.id, f, t.get(f))
             for p in b["payment_terms"]:
                 dp = _v(p["down_payment_pct"])

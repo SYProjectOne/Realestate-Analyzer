@@ -93,7 +93,9 @@ def handle_rejudge(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     if result.degraded:
         raise JobError("judge_unavailable: 판정기 연결 실패 — degraded 모드(복구 후 재판정 자동 등록)", stats)
     with ctx.session_factory() as session:
-        enqueue(session, "snapshot.publish", {"snapshot_id": snapshot_id}, kind="scheduled", now=ctx.now())
+        enqueue(
+            session, "snapshot.publish", {"snapshot_id": result.snapshot_id}, kind="scheduled", now=ctx.now()
+        )
         session.commit()
     return stats
 

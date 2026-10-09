@@ -46,6 +46,7 @@ from app.scheduler.inputs import (
     gap_of,
     load_facts,
 )
+from app.scheduler.snapshots import snapshot_dto
 
 __all__ = [
     "PlannedCall",
@@ -326,10 +327,7 @@ def scenario_payloads(
         return plan
     inputs = base.model_copy(update={"rerank": anchor})
     dp = decide_plan(
-        SnapshotDTO(
-            id=snap.id, region_id=snap.region_id, asof_date=snap.asof_date, status=snap.status,
-            degraded=bool(snap.degraded), created_at=snap.created_at, published_at=snap.published_at,
-        ),
+        snapshot_dto(snap),
         scenario,
         inputs,
         cards,

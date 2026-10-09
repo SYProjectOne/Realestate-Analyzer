@@ -42,7 +42,9 @@ class DecideSpy(SynthJev):
         return out
 
 
-def _ctx(make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], jev: SynthJev) -> SchedulerContext:
+def _ctx(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], jev: SynthJev
+) -> SchedulerContext:
     return make_ctx(adapter_factory=lambda: JevMcpAdapter(transport=jev, session_factory=factory, secrets=[]))
 
 
@@ -58,7 +60,9 @@ def test_wait_new_virtual_candidate_only_for_policy_scenarios(
     ids = [c["id"] for c in a["candidates"]]
     assert ids[-1] == WAIT_NEW_OPTION and len(ids) <= DECIDE_MAX
     assert sum(1 for i in ids if i.startswith("complex_")) == DECIDE_MAX - 1  # TOP 5 + 모집공고 대기
-    assert next(c for c in a["candidates"] if c["id"] == WAIT_NEW_OPTION)["description"] == WAIT_NEW_DESCRIPTION
+    assert (
+        next(c for c in a["candidates"] if c["id"] == WAIT_NEW_OPTION)["description"] == WAIT_NEW_DESCRIPTION
+    )
     # 근거 = 지역 (A) 트랙 공고 예정 목록 요약(픽스처 15·16 = track A, 공고 전)
     with factory() as s:
         names = {c.id: c.name for c in s.scalars(select(Complex).where(Complex.track == "A"))}
@@ -70,15 +74,25 @@ def test_wait_new_virtual_candidate_only_for_policy_scenarios(
             assert len(other["candidates"]) <= DECIDE_MAX and WAIT_NEW_OPTION not in other["evidence"]
     # decision 행: 가상 후보 = option_key wait_new · complex_id null · 선택(보고서 #126)
     with factory() as s:
-        run_a = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 2)).one()
+        run_a = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 2)
+        ).one()
         rows = list(s.scalars(select(Decision).where(Decision.score_run_id == run_a.id)))
         wait = [r for r in rows if r.option_key == WAIT_NEW_OPTION]
         assert len(wait) == 1 and wait[0].complex_id is None and wait[0].chosen
         assert float(wait[0].prob or 0) == 0.94
         assert wait[0].req_access_judge == "supported" and wait[0].req_access_pre is None  # 판정기 판정만
         assert sum(1 for r in rows if r.option_key == "complex") == DECIDE_MAX - 1
-        other_runs = list(s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id != 2)))
-        assert not list(s.scalars(select(Decision).where(Decision.score_run_id.in_(other_runs), Decision.option_key == WAIT_NEW_OPTION)))
+        other_runs = list(
+            s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id != 2))
+        )
+        assert not list(
+            s.scalars(
+                select(Decision).where(
+                    Decision.score_run_id.in_(other_runs), Decision.option_key == WAIT_NEW_OPTION
+                )
+            )
+        )
 
 
 def test_wait_new_preview_payload_matches_pipeline(
@@ -104,7 +118,9 @@ def test_wait_new_evidence_lists_only_upcoming_track_a(factory: sessionmaker[Ses
         region = s.get(Region, snap.region_id)
         assert region is not None
         # R3b F2: 포함 분류 전(미해결)은 넣지 않는다 — 시드 직후는 전부 '미분류'
-        assert wait_new_evidence(load_facts(s, snap, region), snap.asof_date).startswith("지역 (A) 트랙 공고 예정 0곳")
+        assert wait_new_evidence(load_facts(s, snap, region), snap.asof_date).startswith(
+            "지역 (A) 트랙 공고 예정 0곳"
+        )
         for cx in s.scalars(select(Complex).where(Complex.region_id == region.id)):
             cx.inclusion_class, cx.inclusion_decision = "private_sale_apt", "auto"
         s.flush()
@@ -126,7 +142,9 @@ def test_reference_scope_leftover_ladder_not_used_for_score_or_api(
     jev = SynthJev()
     run_pipeline(_ctx(make_ctx, factory, jev), seeded)
     with factory() as s:
-        for lad in list(s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded, Ladder.complex_id == 2))):
+        for lad in list(
+            s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded, Ladder.complex_id == 2))
+        ):
             s.add(Ladder(snapshot_id=seeded, complex_id=13, horizon=lad.horizon, target_ym=lad.target_ym,
                          months_from_asof=lad.months_from_asof, p5=lad.p5, p10=lad.p10, p20=lad.p20, p_flat=lad.p_flat,
                          verdicts=lad.verdicts, annualized=lad.annualized, status=lad.status,
@@ -134,8 +152,12 @@ def test_reference_scope_leftover_ladder_not_used_for_score_or_api(
         s.commit()
     run_pipeline(_ctx(make_ctx, factory, jev), seeded)
     with factory() as s:
-        last = max(s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 1)))
-        t13 = s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == last, ScoreTotal.complex_id == 13)).one()
+        last = max(
+            s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 1))
+        )
+        t13 = s.scalars(
+            select(ScoreTotal).where(ScoreTotal.score_run_id == last, ScoreTotal.complex_id == 13)
+        ).one()
         assert t13.judge_scope == "참고" and t13.total is None and t13.rank is None
         cx = s.get(Complex, 13)
         assert cx is not None

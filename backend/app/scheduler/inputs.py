@@ -23,7 +23,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Final, cast
+from typing import Any, Final, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -32,7 +32,7 @@ from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.gap import compute_gap
 from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms
 from app.analysis.scope import EXCLUDED_CLASSES, INTAKE_PRIORITY, JudgeScope, judge_scope, pick_intake
-from app.analysis.types import GapResult, Label
+from app.analysis.types import GapResult, Label, weakest_label
 from app.core.contracts_gen import (
     AgePremiumCoef,
     BenchmarkInput,
@@ -45,9 +45,9 @@ from app.core.contracts_gen import (
     TradeInput,
     UnsoldInput,
 )
+from app.facts_view import chosen_from_rows, load_overlay
 from app.judge.payloads import EvidenceCard
 from app.models import (
-    Benchmark,
     Complex,
     ComplexType,
     FieldProvenance,
@@ -61,7 +61,7 @@ from app.models import (
     Supply,
     Unsold,
 )
-from app.normalize.fields import is_ocr
+from app.normalize.fields import OCR_LABEL, OCR_REASON, is_ocr
 from app.normalize.living_area import living_area_of, region_household_facts
 
 __all__ = [
@@ -127,15 +127,22 @@ class ComplexFacts:
     ocr_fields: frozenset[str] = (
         frozenset()
     )  # complex 행에서 판정기 추출 전 OCR 값 필드(점수 입력 null, R3 C3)
+    demoted: frozenset[str] = frozenset()
+    """complex 행에서 강등(검증 모순) 중인 필드 — ``app.facts_view`` 오버레이(D11-3). 읽기는 ``fact_row``·``score_row``."""
 
     @property
     def complex_id(self) -> int:
         return self.row.id
 
     @property
+    def fact_row(self) -> Complex:
+        """읽기용 complex 행(강등 필드 = None, D11-3). 판정 카드·사실 문장·체크리스트가 쓴다. 쓰기는 ``row`` 에."""
+        return masked(self.row, self.demoted)
+
+    @property
     def score_row(self) -> Complex:
-        """점수 입력용 complex 행(OCR 값 필드 = None). 쓰기는 ``row`` 에."""
-        return masked(self.row, self.ocr_fields)
+        """점수 입력용 complex 행(OCR 값·강등 필드 = None). 쓰기는 ``row`` 에."""
+        return masked(self.row, self.ocr_fields | self.demoted)
 
 
 def display_intake(rows: Iterable[IntakeStatus]) -> IntakeStatus | None:
@@ -160,20 +167,30 @@ def _chosen_provenance(
     return out
 
 
-def ocr_pending_fields(session: Session, entity: str, ids: Sequence[int]) -> dict[int, frozenset[str]]:
+def ocr_pending_fields(
+    session: Session, entity: str, ids: Sequence[int], *, id_query: Any | None = None
+) -> dict[int, frozenset[str]]:
     """entity_id → 판정기 추출 전 OCR 값 필드들(chosen 출처 행이 OCR 판독, ``normalize.fields.is_ocr``).
 
-    extract 가 반영되면 chosen 이 추출 행으로 바뀌므로 여기서 빠진다. screen 거부·extract 실패·review 면 남는다."""
+    extract 가 반영되면 chosen 이 추출 행으로 바뀌므로 여기서 빠진다. screen 거부·extract 실패·review 면 남는다.
+    ``id_query``: ids 대신 쓸 id 하위 질의(지역 단지 전부 — IN 목록 펼침 없음)."""
     want = sorted(set(ids))
     out: dict[int, set[str]] = defaultdict(set)
-    for i in range(0, len(want), 500):
+    conds = (
+        [FieldProvenance.entity_id.in_(id_query)]
+        if id_query is not None
+        else [FieldProvenance.entity_id.in_(want[i : i + 500]) for i in range(0, len(want), 500)]
+    )
+    for cond in conds:
         stmt = select(
             FieldProvenance.entity_id, FieldProvenance.field, FieldProvenance.label, FieldProvenance.reason
         ).where(
             FieldProvenance.entity == entity,
-            FieldProvenance.entity_id.in_(want[i : i + 500]),
+            cond,
             FieldProvenance.chosen.is_(True),
-            FieldProvenance.label == "추정",
+            FieldProvenance.label == OCR_LABEL,
+            # reason 이 'OCR'(앞 표식 뒤)로 끝나는 행만 — 아래 is_ocr 가 정확히 가린다(SQL 은 줄이기만, 목록 성능)
+            FieldProvenance.reason.like(f"%{OCR_REASON}"),
         )
         for eid, name, label, reason in session.execute(stmt):
             if eid is not None and is_ocr(label, reason):
@@ -208,14 +225,27 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
     ocr_cx = _ocr_of(cx_prov)
     ocr_type = _ocr_of(type_prov)
     ocr_terms = _ocr_of(terms_prov)
+    # D11-3 강등 오버레이: 사실 테이블 값은 그대로, 읽기에서 모순 값을 뺀다(점수·범위·카드·사실 문장 공통)
+    overlay = load_overlay(
+        session,
+        complex_ids=ids,
+        chosen=chosen_from_rows([*cx_prov.values(), *type_prov.values(), *terms_prov.values()]),
+    )
     area_names = {str(a.get("id")): str(a.get("name") or "") for a in region.living_areas or []}
 
     out: list[ComplexFacts] = []
     for cx in complexes:
         f = ComplexFacts(row=cx, living_area_name=area_names.get(cx.living_area or "") or None)
         f.ocr_fields = ocr_cx.get(cx.id, frozenset())
-        cx_types = [masked(t, ocr_type.get(t.id, frozenset())) for t in types.get(cx.id, [])]
-        f.payments = [masked(p, ocr_terms.get(p.id, frozenset())) for p in terms.get(cx.id, [])]
+        f.demoted = overlay.fields("complex", cx.id)
+        cx_types = [
+            masked(t, ocr_type.get(t.id, frozenset()) | overlay.fields("complex_type", t.id))
+            for t in types.get(cx.id, [])
+        ]
+        f.payments = [
+            masked(p, ocr_terms.get(p.id, frozenset()) | overlay.fields("payment_terms", p.id))
+            for p in terms.get(cx.id, [])
+        ]
         cur = current_terms(f.payments)
         f.terms = cur
         _price(f, cx_types, type_prov, terms_prov)
@@ -225,23 +255,31 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
         down = terms_prov.get((cur.id, "down_payment_pct")) if cur is not None else None
         move_in = cx_prov.get((cx.id, "move_in_ym"))
         winner = cx_prov.get((cx.id, "winner_date"))
+
+        def lab(fp: FieldProvenance | None, value: object) -> Label | None:
+            if fp is not None and overlay.is_demoted(fp.entity, fp.entity_id, fp.field):
+                return None  # 강등(검증 모순) = 값 없음
+            if fp is None:
+                # 값은 있는데 출처 행이 없으면 '확인 불가'(API 의 '확인 불가(출처 누락)'과 같다) — null 로 두면 점수
+                # 라벨 합성이 '확인됨'으로 본다(R3 3차 minor 6, AGENTS 규칙 5)
+                return "확인 불가" if value is not None else None
+            return _label(fp.label)
+
         f.labels = {
-            "resale": _label(resale.label) if resale else None,
-            "residency": _label(residency.label) if residency else None,
-            "down_payment": _label(down.label) if down else None,
-            "move_in": _label(move_in.label) if move_in else None,  # 계약 .4 move_in_label(M2)
+            "resale": lab(resale, cx.resale_months),
+            "residency": lab(residency, cx.residency_months),
+            "down_payment": lab(down, cur.down_payment_pct if cur is not None else None),
+            "move_in": lab(move_in, cx.move_in_ym),  # 계약 .4 move_in_label(M2)
             # 당첨일 라벨(R3 M2) → ComplexScoreInput.winner_label(계약 .7) — 유동성·전매 종료 라벨 합성
-            "winner": _label(winner.label) if winner else None,
+            "winner": lab(winner, cx.winner_date),
         }
-        for fp in (
-            resale,
-            residency,
-            down,
-            cx_prov.get((cx.id, "move_in_ym")),
-            type_prov.get((f.basis.id, "max_price_won")) if f.basis is not None else None,
-        ):
-            if fp is not None and fp.excerpt and fp.label != "확인 불가":
-                f.evidence.append((f"fp_{fp.id}", fp.excerpt))
+        price_fp = _prov_of(f.price.max_ref, type_prov, terms_prov) if f.price is not None else None
+        for fp in (resale, residency, down, move_in, price_fp):
+            if fp is None or not fp.excerpt or fp.label == "확인 불가":
+                continue
+            if overlay.is_demoted(fp.entity, fp.entity_id, fp.field):
+                continue  # 강등된 사실은 verify 근거·사실 문장에 쓰지 않는다
+            f.evidence.append((f"fp_{fp.id}", fp.excerpt))
         sr = judge_scope(
             inclusion_class=cx.inclusion_class,
             inclusion_decision=cx.inclusion_decision,
@@ -277,10 +315,15 @@ def _price(
     if not view.known:
         return
     f.price_low, f.price_high = view.low_won, view.high_won
-    fp = _prov_of(view.max_ref, type_prov, terms_prov)
-    # 최신 공고 가격(price_by_type)을 썼는데 그 출처 행이 없으면 타입 행 라벨로 대신하지 않는다(R3 재리뷰 F2) —
-    # API(FactMaker.field)처럼 '확인 불가(가격 출처 누락)'(null → gap 성분 사유)
-    f.price_label = _label(fp.label) if fp is not None else None
+    # 라벨 = 구매가에 쓴 모든 필드(low·high 구성: 공급가·발코니·옵션·할인) 출처 라벨 중 가장 약한 것 — API
+    # ``FactMaker.combine`` 과 같다(R3 3차 minor 6: 이전에는 최고가 출처만). 출처 행이 하나라도 없으면 타입 행
+    # 라벨로 대신하지 않는다(R3 재리뷰 F2) — null → gap 성분 '확인 불가(가격 출처 누락)'
+    refs = [*view.low_refs, *view.high_refs]
+    fps = [_prov_of(r, type_prov, terms_prov) for r in refs] or [
+        _prov_of(view.max_ref, type_prov, terms_prov)
+    ]
+    labs = [_label(fp.label) if fp is not None else None for fp in fps]
+    f.price_label = weakest_label(*[x for x in labs if x is not None]) if labs and None not in labs else None
     f.price_composition = "+".join(view.composition)
 
 
@@ -376,7 +419,9 @@ def build_score_inputs(
     facts: Sequence[ComplexFacts],
     anchor: RerankAnchor,
 ) -> ScoreInputs:
-    """ScoreInputs(계약 2026-10-09.2): 사다리는 이 스냅샷의 ladder 행에서."""
+    """ScoreInputs(계약 2026-10-09.2): 사다리는 이 스냅샷의 ladder 행에서, 벤치마크는 이 스냅샷이 인용하는 행만(C-1)."""
+    from app.api.benchmarks import benchmarks_for
+
     ids = [f.complex_id for f in facts]
     ladders: dict[int, list[Ladder]] = defaultdict(list)
     if ids:
@@ -397,9 +442,10 @@ def build_score_inputs(
             substitute=bool(b.substitute),  # 계약 2026-10-09.7: 지역 전체 대체 행(N-M4 식·라벨 '대체')
             label=_label(b.sale_price_label) or "추정",
         )
-        for b in session.scalars(
-            select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)
-        )
+        # C-1: 그 스냅샷(리비전)이 인용하는 벤치마크 행만(``api.benchmarks.benchmarks_for`` — API·보고서와
+        # 같은 함수). 지역 전체 행을 읽으면 주간 수집마다 새로 조립된 행이 이전 행과 겹쳐 사례가 이중
+        # 집계되고, 과거 스냅샷 재채점에 미래 행이 섞인다
+        for b in benchmarks_for(session, snapshot)
     ]
     supply = [
         SupplyInput(
@@ -462,8 +508,9 @@ def _with_label(text: str, label: Label | None) -> str:
 
 
 def evidence_card(f: ComplexFacts, *, gap: GapResult | None = None) -> EvidenceCard:
-    """판정기 증거 카드(문자열). 날짜에 따라 바뀌는 문구(D±)는 넣지 않는다 — 같은 사실이면 같은 카드."""
-    cx = f.row
+    """판정기 증거 카드(문자열). 날짜에 따라 바뀌는 문구(D±)는 넣지 않는다 — 같은 사실이면 같은 카드.
+    강등 중인 사실(D11-3)은 카드에 없다(``fact_row``)."""
+    cx = f.fact_row
     price = None
     if f.price_low is not None and f.price_high is not None:
         lo, hi = fmt_eok(f.price_low), fmt_eok(f.price_high)

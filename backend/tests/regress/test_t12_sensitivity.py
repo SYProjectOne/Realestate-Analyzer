@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, by_key, load_json
+from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, by_key, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -29,8 +29,8 @@ def test_t12_sensitivity_api_matches_golden(env: RegressEnv) -> None:
     """GET /snapshots/12/sensitivity?scenario=base = t12_sensitivity: 12 변형·변형별 TOP 5 집합·changed·entered·exited·가중치·unstable."""
     g = _golden()
     ids = by_key()
-    body = api_get(env, f"/snapshots/{SNAP}/sensitivity", scenario="base")
-    assert body["snapshot_id"] == SNAP and body["score_run_id"] is not None
+    body = api_get(env, f"/snapshots/{cur(env)}/sensitivity", scenario="base")
+    assert body["snapshot_id"] == cur(env) and body["score_run_id"] is not None
     cells = body["cells"]
     assert len(cells) == 12 == len(g["cells"])
     assert [c["variant"] for c in cells] == [c["variant"] for c in g["cells"]]
@@ -62,13 +62,13 @@ def test_t12_unstable_flags_exposed_in_rows(env: RegressEnv) -> None:
     g = _golden()
     ids = by_key()
     want = {ids[k] for k in g["unstable_keys"]}
-    body = api_get(env, f"/snapshots/{SNAP}/complexes", scenario="base", size=100)
+    body = api_get(env, f"/snapshots/{cur(env)}/complexes", scenario="base", size=100)
     flags = {r["complex_id"]: r["unstable"] for r in body["items"]}
     assert {cid for cid, f in flags.items() if f} == want, flags
-    dash = api_get(env, f"/snapshots/{SNAP}/dashboard", scenario="base")
+    dash = api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario="base")
     for r in dash["top5"]:
         assert r["unstable"] is (r["complex_id"] in want), r["complex_id"]
-    sens = api_get(env, f"/snapshots/{SNAP}/sensitivity", scenario="base")
+    sens = api_get(env, f"/snapshots/{cur(env)}/sensitivity", scenario="base")
     assert set(sens["unstable_complex_ids"]) == {cid for cid, f in flags.items() if f}
 
 
@@ -83,7 +83,9 @@ def test_t12_v2_golden_sensitivity_from_file_inputs() -> None:
     ids = {c["key"]: c["complex_id"] for c in v2["complexes"]}
     inputs = ScoreInputs.model_validate(v2["inputs"])
     snaps = {s["id"]: s for s in load_json(FIXTURE / "snapshots.json")}
-    detail = run_detailed(Snapshot.model_validate(snaps[inputs.snapshot_id]), builtin("base"), inputs, with_sensitivity=True)
+    detail = run_detailed(
+        Snapshot.model_validate(snaps[inputs.snapshot_id]), builtin("base"), inputs, with_sensitivity=True
+    )
     sens = detail.sensitivity
     assert sens is not None
     assert len(sens.cells) == 12
@@ -101,18 +103,21 @@ def test_t12_pipeline_stored_unstable_equals_sensitivity_api(env: RegressEnv) ->
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": 1, "complex_ids": None, "reason": "T12 회귀"}},
+        json={
+            "job_name": "rejudge",
+            "payload": {"snapshot_id": SNAP, "scenario_id": 1, "complex_ids": None, "reason": "T12 회귀"},
+        },
     )
     assert r.status_code == 202, r.text
     job_id = r.json()["id"]
     env.worker(env.ctx("fake"))
     assert api_get(env, f"/jobs/{job_id}")["status"] == "done"
-    sens = api_get(env, f"/snapshots/{SNAP}/sensitivity", scenario="base")
+    sens = api_get(env, f"/snapshots/{cur(env)}/sensitivity", scenario="base")
     assert sens["score_run_id"] is not None and sens["score_run_id"] > 5, "새 run 이 아니다"
     assert len(sens["cells"]) == 12
     assert sens["unstable"] is any(c["changed"] for c in sens["cells"])
     moved = set().union(*({*c["entered"], *c["exited"]} for c in sens["cells"]))
     assert set(sens["unstable_complex_ids"]) == moved
-    body = api_get(env, f"/snapshots/{SNAP}/complexes", scenario="base", size=100)
+    body = api_get(env, f"/snapshots/{cur(env)}/complexes", scenario="base", size=100)
     stored = {r["complex_id"] for r in body["items"] if r["unstable"]}
     assert stored == set(sens["unstable_complex_ids"]), (sorted(stored), sens["unstable_complex_ids"])

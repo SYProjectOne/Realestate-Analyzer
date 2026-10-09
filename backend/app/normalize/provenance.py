@@ -30,8 +30,15 @@ from sqlalchemy import JSON, BigInteger, Float, Integer, Numeric, String, select
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import ProvenanceRow
+from app.facts_view import is_human
 from app.models import Base, FieldProvenance, RawDocument
-from app.normalize.fields import JSON_FIELDS, PRICE_BY_TYPE_ITEMS, is_numeric_field, price_by_type_field
+from app.normalize.fields import (
+    JSON_FIELDS,
+    PRICE_BY_TYPE_ITEMS,
+    discount_field,
+    is_numeric_field,
+    price_by_type_field,
+)
 
 __all__ = [
     "FACT_TABLES",
@@ -249,6 +256,12 @@ def missing_provenance(session: Session, entities: tuple[str, ...] | None = None
                 if problem is not None:
                     out.append(MissingProvenance(entity, obj.id, f, problem))
             if entity == "payment_terms":
+                for type_code, won in (getattr(obj, "discount_by_type", None) or {}).items():
+                    if won is None:
+                        continue
+                    problem = _problem(prov.get((obj.id, discount_field(str(type_code)))))
+                    if problem is not None:  # 할인(계약 .8 D11-6)도 출처 전수 검사
+                        out.append(MissingProvenance(entity, obj.id, discount_field(str(type_code)), problem))
                 for type_code, entry in (getattr(obj, "price_by_type", None) or {}).items():
                     for item in PRICE_BY_TYPE_ITEMS:
                         field = price_by_type_field(str(type_code), item)
@@ -283,6 +296,8 @@ def _problem(hit: FieldProvenance | None) -> str | None:
         return "no_row"
     if not (hit.label or "").strip():
         return "empty_label"
+    if is_human(hit.reason) and hit.raw_document_id is None and (hit.checked_at or "").strip():
+        return None  # 사람 확인 출처 행(D11-3): 입력 시각·종류가 출처(human_check — URL 없음)
     if hit.label != "확인 불가" and not (hit.url or "").strip():
         return "no_url"
     if hit.label != "확인 불가" and not (hit.checked_at or "").strip():

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.contract import check_body
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found, validation_error
-from app.api.facts import LABEL_UNKNOWN, FactMaker, fact, unknown
+from app.api.facts import LABEL_UNKNOWN, FactMaker, fact, unknown, weakest
 from app.api.jobs import now_iso
 from app.api.routers.complexes import gap_view
 from app.api.routers.snapshots import SCENARIO_PATTERN
@@ -155,7 +155,7 @@ def get_compare(
         raise not_found(f"complex {missing[0]} in snapshot {sid}")
     region = session.get(Region, snap.region_id)
     names = area_names(region)
-    bundles = load_bundles(session, list(complexes.values()), snap.id)
+    bundles = load_bundles(session, list(complexes.values()), snap.id, scenario_id=sc.id)
     ctx = score_ctx(session, snap.id, sc)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
     days = ladder_days(session, bundles.values())
@@ -344,7 +344,7 @@ def preview_scenario(
         raise not_found(f"scenario {id}")
     snap = get_snapshot(session, snapshot)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
     inputs = []
     for b in bundles.values():
@@ -359,6 +359,10 @@ def preview_scenario(
             labels["down_payment"] = _label(
                 fm.field("payment_terms", pay.id, "down_payment_pct", pay.down_payment_pct)
             )
+        # 가격 라벨 = 구매가 범위(low·high) 구성 필드 중 가장 약한 것 — 파이프라인과 같다(minor 6)
+        pr = price_range(fm, b)
+        if pr["price_low"]["v"] is not None and pr["price_high"]["v"] is not None:
+            labels["price"] = weakest([pr["price_low"]["label"], pr["price_high"]["label"]])
         cx_in = score_input(b, labels, asof_date=snap.asof_date)
         if cx_in.judge_scope in ("제외", "미해결"):
             continue

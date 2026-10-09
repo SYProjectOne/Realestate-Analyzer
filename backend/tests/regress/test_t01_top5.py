@@ -59,7 +59,11 @@ def test_t01a_full_list_ranks_and_totals(env: RegressEnv) -> None:
         if c.get("computed_total") is None:
             assert total["v"] is None, (c["key"], total)
             continue
-        assert abs(float(total["v"]) - float(c["computed_total"])) <= TOL, (c["key"], total, c["computed_total"])
+        assert abs(float(total["v"]) - float(c["computed_total"])) <= TOL, (
+            c["key"],
+            total,
+            c["computed_total"],
+        )
         assert row.get("rank") == c["expected_rank"], (c["key"], row.get("rank"), c["expected_rank"])
 
 
@@ -109,7 +113,11 @@ def _db_inputs(env: RegressEnv, seq: int) -> tuple[Any, Any, dict[int, str]]:
         jl = s.get(JudgmentLog, seq)
         assert jl is not None and jl.tool == "rerank", f"judgment_log #{seq}(rerank 녹화) 없음"
         anchor = RerankAnchor(judgment_seq=seq, status="ok", items=(jl.result_json or {})["items"])
-        return base.model_copy(update={"rerank": anchor}), snapshot_dto(snap), {f.complex_id: f.scope for f in facts}
+        return (
+            base.model_copy(update={"rerank": anchor}),
+            snapshot_dto(snap),
+            {f.complex_id: f.scope for f in facts},
+        )
 
 
 def _v2_d91_inputs(v2: dict[str, Any], scopes: dict[int, str]) -> Any:
@@ -156,7 +164,12 @@ def test_t01b_db_inputs_match_v2_inputs(env: RegressEnv) -> None:
         cid = g["complex_id"]
         for k in SCORE_FIELDS:
             gv, wv = g.get(k), w.get(k)
-            if k.startswith("price_") and isinstance(gv, int) and isinstance(wv, int) and abs(gv - wv) <= PRICE_TOL_WON:
+            if (
+                k.startswith("price_")
+                and isinstance(gv, int)
+                and isinstance(wv, int)
+                and abs(gv - wv) <= PRICE_TOL_WON
+            ):
                 continue
             if gv != wv and k not in NON_SCORE_DIFF.get(cid, set()):
                 bad.append(f"complex {cid} {k}: DB {gv!r} != v2 {wv!r}")
@@ -175,7 +188,9 @@ def test_t01b_v2_golden_from_db_inputs(env: RegressEnv) -> None:
     v2 = load_json(FIXTURE / "expected_scores_v2.json")
     inputs, dto, scopes = _db_inputs(env, v2["inputs"]["rerank"]["judgment_seq"])
     got = {t.complex_id: t for t in run_detailed(dto, builtin("base"), inputs).result.totals}
-    want = {t.complex_id: t for t in run_detailed(dto, builtin("base"), _v2_d91_inputs(v2, scopes)).result.totals}
+    want = {
+        t.complex_id: t for t in run_detailed(dto, builtin("base"), _v2_d91_inputs(v2, scopes)).result.totals
+    }
     keys = {c["complex_id"]: c["key"] for c in v2["complexes"]}
     bad: list[str] = []
     for cid in sorted(keys):
@@ -187,7 +202,9 @@ def test_t01b_v2_golden_from_db_inputs(env: RegressEnv) -> None:
             continue
         gt = None if g.total is None else Decimal(str(g.total))
         wt = None if w.total is None else Decimal(str(w.total))
-        if (gt is None) != (wt is None) or (gt is not None and wt is not None and abs(gt - wt) > Decimal("0.01")):
+        if (gt is None) != (wt is None) or (
+            gt is not None and wt is not None and abs(gt - wt) > Decimal("0.01")
+        ):
             bad.append(f"{keys[cid]}: total {gt} != {wt}")
         if (g.rank, g.tie_group) != (w.rank, w.tie_group):
             bad.append(f"{keys[cid]}: (rank, tie_group) {(g.rank, g.tie_group)} != {(w.rank, w.tie_group)}")
@@ -203,7 +220,11 @@ def test_t01b_v2_golden_from_db_inputs(env: RegressEnv) -> None:
         if cid in D91_SCOPE_DIFF or cid in RULE_PRICE or c["total"] is None:
             continue
         t = got[cid]
-        assert t.total is not None and abs(float(t.total) - c["total"]) <= TOL, (c["key"], t.total, c["total"])
+        assert t.total is not None and abs(float(t.total) - c["total"]) <= TOL, (
+            c["key"],
+            t.total,
+            c["total"],
+        )
 
 
 def test_t01b_v2_golden_from_file_inputs() -> None:
@@ -222,7 +243,11 @@ def test_t01b_v2_golden_from_file_inputs() -> None:
         if c["total"] is None:
             assert t.total is None, c["key"]
             continue
-        assert t.total is not None and abs(float(t.total) - c["total"]) <= TOL, (c["key"], t.total, c["total"])
+        assert t.total is not None and abs(float(t.total) - c["total"]) <= TOL, (
+            c["key"],
+            t.total,
+            c["total"],
+        )
         assert (t.rank, t.tie_group) == (c["rank"], c["tie_group"]), c["key"]
 
 
@@ -230,5 +255,8 @@ def test_t01b_v2_top5_summary(env: RegressEnv) -> None:
     """v2 TOP 5(골든 summary.top5_b) 순서 = 골든 complexes 의 rank ≤ 5."""
     v2 = load_json(FIXTURE / "expected_scores_v2.json")
     ids = by_key()
-    top5 = sorted((c for c in v2["complexes"] if c["rank"] is not None and c["rank"] <= 5), key=lambda c: (c["rank"], c["complex_id"]))
+    top5 = sorted(
+        (c for c in v2["complexes"] if c["rank"] is not None and c["rank"] <= 5),
+        key=lambda c: (c["rank"], c["complex_id"]),
+    )
     assert [c["complex_id"] for c in top5] == [ids[o["key"]] for o in v2["summary"]["top5_b"]]

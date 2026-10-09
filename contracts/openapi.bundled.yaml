@@ -4,7 +4,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.7
+  version: 2026-10-09.8
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -272,6 +272,9 @@ paths:
                       id: 12
                       region_id: 1
                       asof_date: '2026-10-08'
+                      revision: 1
+                      revision_of: null
+                      revision_reason: null
                       status: published
                       degraded: false
                       created_at: '2026-10-08T06:00:03+09:00'
@@ -717,6 +720,9 @@ paths:
                       id: 12
                       region_id: 1
                       asof_date: '2026-10-08'
+                      revision: 1
+                      revision_of: null
+                      revision_reason: null
                       status: published
                       degraded: false
                       created_at: '2026-10-08T06:00:03+09:00'
@@ -727,6 +733,275 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+      - regions
+      operationId: updateRegion
+      summary: 지역 선택 확장·축소 (D11-7, RA '지역 추가')
+      description: |
+        selections(바뀐 뒤 전체)로 법정동·시군구·시도 코드와 생활권을 다시 계산하고 change_event(critical) + region.expand 잡을 등록한다.
+        잡은 추가된 선택을 수집하고, 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장')에서 후보 전체를 판정·rerank 한 뒤
+        publish 한다. 보고서는 그 리비전과 바탕 리비전 비교로 §12 '지역 추가' 장을 만든다(계약 2026-10-09.8). 바뀐 것이 없으면 409.
+      parameters:
+      - $ref: '#/components/parameters/RegionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionPatch'
+            examples:
+              expand:
+                summary: 지역 확장(김포시 추가)
+                value:
+                  selections:
+                  - kind: legal_dong
+                    code: '2818510600'
+                    full_name: 인천광역시 연수구 송도동
+                  - kind: sigungu
+                    code: '28290'
+                    full_name: 인천광역시 검단구
+                  - kind: sigungu
+                    code: '28245'
+                    full_name: 인천광역시 계양구
+                  - kind: sigungu
+                    code: '41570'
+                    full_name: 경기도 김포시
+      responses:
+        '200':
+          description: 갱신됨 + region.expand 잡
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionPatched'
+              examples:
+                expand:
+                  summary: 지역 확장 결과
+                  value:
+                    region:
+                      id: 1
+                      name: 인천 송도·검단·계양 + 김포
+                      query_text: 송도, 검단, 계양구, 김포시
+                      selections:
+                      - kind: legal_dong
+                        code: '2818510600'
+                        full_name: 인천광역시 연수구 송도동
+                      - kind: sigungu
+                        code: '28290'
+                        full_name: 인천광역시 검단구
+                      - kind: sigungu
+                        code: '28245'
+                        full_name: 인천광역시 계양구
+                      - kind: sigungu
+                        code: '41570'
+                        full_name: 경기도 김포시
+                      sido_codes:
+                      - '28'
+                      - '41'
+                      sigungu_codes:
+                      - '28185'
+                      - '28245'
+                      - '28290'
+                      - '41570'
+                      legal_dong_codes:
+                      - '2818510600'
+                      - '2829010400'
+                      - '2829010500'
+                      - '2829010300'
+                      - '2829010600'
+                      - '2829010700'
+                      - '2824510900'
+                      - '2824511000'
+                      - '4157010100'
+                      - '4157010300'
+                      - '4157010400'
+                      - '4157010500'
+                      - '4157010600'
+                      - '4157025021'
+                      - '4157025022'
+                      living_areas:
+                      - id: la_1
+                        name: 연수구
+                        legal_dong_codes:
+                        - '2818510600'
+                        legal_dongs:
+                        - code: '2818510600'
+                          name: 송도동
+                          full_name: 인천광역시 연수구 송도동
+                        households:
+                          v: null
+                          label: 확인 불가
+                          reason: 집계 전
+                          prov: null
+                          checked_at: '2026-10-08'
+                        supply_ref_units: null
+                      - id: la_2
+                        name: 검단 원당·당하
+                        legal_dong_codes:
+                        - '2829010400'
+                        - '2829010500'
+                        legal_dongs:
+                        - code: '2829010400'
+                          name: 당하동
+                          full_name: 인천광역시 검단구 당하동
+                        - code: '2829010500'
+                          name: 원당동
+                          full_name: 인천광역시 검단구 원당동
+                        households:
+                          v: null
+                          label: 확인 불가
+                          reason: 집계 전
+                          prov: null
+                          checked_at: '2026-10-08'
+                        supply_ref_units: null
+                      - id: la_5
+                        name: 검단 마전·불로
+                        legal_dong_codes:
+                        - '2829010300'
+                        - '2829010600'
+                        - '2829010700'
+                        legal_dongs:
+                        - code: '2829010300'
+                          name: 마전동
+                          full_name: 인천광역시 검단구 마전동
+                        - code: '2829010600'
+                          name: 대곡동
+                          full_name: 인천광역시 검단구 대곡동
+                        - code: '2829010700'
+                          name: 금곡동
+                          full_name: 인천광역시 검단구 금곡동
+                        households:
+                          v: null
+                          label: 확인 불가
+                          reason: 집계 전
+                          prov: null
+                          checked_at: '2026-10-08'
+                        supply_ref_units: null
+                      - id: la_3
+                        name: 계양구
+                        legal_dong_codes:
+                        - '2824510900'
+                        - '2824511000'
+                        legal_dongs:
+                        - code: '2824510900'
+                          name: 박촌동
+                          full_name: 인천광역시 계양구 박촌동
+                        - code: '2824511000'
+                          name: 동양동
+                          full_name: 인천광역시 계양구 동양동
+                        households:
+                          v: null
+                          label: 확인 불가
+                          reason: 집계 전
+                          prov: null
+                          checked_at: '2026-10-08'
+                        supply_ref_units: null
+                      - id: la_4
+                        name: 김포시
+                        legal_dong_codes:
+                        - '4157010100'
+                        - '4157010300'
+                        - '4157010400'
+                        - '4157010500'
+                        - '4157010600'
+                        - '4157025021'
+                        - '4157025022'
+                        legal_dongs:
+                        - code: '4157010100'
+                          name: 북변동
+                          full_name: 경기도 김포시 북변동
+                        - code: '4157010300'
+                          name: 운양동
+                          full_name: 경기도 김포시 운양동
+                        - code: '4157010400'
+                          name: 장기동
+                          full_name: 경기도 김포시 장기동
+                        - code: '4157010500'
+                          name: 감정동
+                          full_name: 경기도 김포시 감정동
+                        - code: '4157010600'
+                          name: 사우동
+                          full_name: 경기도 김포시 사우동
+                        - code: '4157025021'
+                          name: 통진읍 도사리
+                          full_name: 경기도 김포시 통진읍 도사리
+                        - code: '4157025022'
+                          name: 통진읍 마송리
+                          full_name: 경기도 김포시 통진읍 마송리
+                        households:
+                          v: null
+                          label: 확인 불가
+                          reason: 집계 전
+                          prov: null
+                          checked_at: '2026-10-08'
+                        supply_ref_units: null
+                      age_premium_coef:
+                        c_per_year: 0.015
+                        cap_years: 8
+                        label: 추정
+                      supply_ref_pct: 0.08
+                      applyhome_query:
+                        sido_codes:
+                        - '28'
+                        - '41'
+                        from_ym: 2024-10
+                      status: ready
+                      created_at: '2026-10-07T08:00:00+09:00'
+                      latest_snapshot:
+                        id: 12
+                        region_id: 1
+                        asof_date: '2026-10-08'
+                        revision: 1
+                        revision_of: null
+                        revision_reason: null
+                        status: published
+                        degraded: false
+                        created_at: '2026-10-08T06:00:03+09:00'
+                        published_at: '2026-10-08T07:42:10+09:00'
+                        contradicted_claims: 0
+                        complex_count: 16
+                    change_event:
+                      id: 3321
+                      snapshot_id: 12
+                      entity: region
+                      entity_id: 1
+                      field: selections
+                      old_text: 선택 3개
+                      new_text: '선택 4개(추가: 경기도 김포시)'
+                      detected_at: '2026-10-08T11:00:00+09:00'
+                      severity: critical
+                      triggers_rejudge: true
+                      complex_id: null
+                      complex_name: null
+                      tab: null
+                    job_id: 961
+                    added:
+                    - kind: sigungu
+                      code: '41570'
+                      full_name: 경기도 김포시
+                    removed: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 선택이 그대로(바뀐 것 없음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unchanged:
+                  summary: 완료되지 않은 보고서
+                  value:
+                    code: conflict
+                    detail: report 911 is not done (status=running)
+        '422':
+          $ref: '#/components/responses/ValidationError'
         '500':
           $ref: '#/components/responses/InternalError'
   /regions/{id}/living-areas:
@@ -963,6 +1238,9 @@ paths:
                         id: 12
                         region_id: 1
                         asof_date: '2026-10-08'
+                        revision: 1
+                        revision_of: null
+                        revision_reason: null
                         status: published
                         degraded: false
                         created_at: '2026-10-08T06:00:03+09:00'
@@ -1033,6 +1311,9 @@ paths:
                   - id: 12
                     region_id: 1
                     asof_date: '2026-10-08'
+                    revision: 1
+                    revision_of: null
+                    revision_reason: null
                     status: published
                     degraded: false
                     created_at: '2026-10-08T06:00:03+09:00'
@@ -1042,6 +1323,9 @@ paths:
                   - id: 11
                     region_id: 1
                     asof_date: '2026-10-07'
+                    revision: 1
+                    revision_of: null
+                    revision_reason: null
                     status: published
                     degraded: false
                     created_at: '2026-10-07T06:00:02+09:00'
@@ -1051,6 +1335,9 @@ paths:
                   - id: 10
                     region_id: 1
                     asof_date: '2026-10-06'
+                    revision: 1
+                    revision_of: null
+                    revision_reason: null
                     status: ready
                     degraded: false
                     created_at: '2026-10-06T06:00:01+09:00'
@@ -13457,8 +13744,8 @@ paths:
       tags:
       - ops
       operationId: createHumanCheck
-      summary: 사람 확인 입력 → intake_status 행 + change_event (G7, T3)
-      description: field='intake_status'이면 같은 스냅샷에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행').
+      summary: 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
+      description: field='intake_status'이면 그 기준일의 쓰기 가능 리비전(최신 리비전이 발행됐으면 새 리비전 — D11-1)에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행'). field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등(검증 모순)을 복원하며 change_event + suggested_job 을 돌려준다(계약 2026-10-09.8). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
       requestBody:
         required: true
         content:
@@ -13990,6 +14277,107 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '500':
           $ref: '#/components/responses/InternalError'
+  /catalysts/{id}:
+    patch:
+      tags:
+      - market
+      operationId: updateCatalyst
+      summary: 호재 위치 확인 → catalyst_link (D11-5)
+      description: |
+        사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
+        distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
+        expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인). 연결이 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다(계약 2026-10-09.8).
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalystPatch'
+            examples:
+              confirm:
+                summary: 위치 확인 + 영향 생활권
+                value:
+                  location_confirmed: true
+                  lat: 37.5961
+                  lon: 126.6712
+                  living_area_ids:
+                  - la_2
+                  complex_ids:
+                  - 2
+                  expected_ym: 2025-06
+      responses:
+        '200':
+          description: 갱신된 호재 + 연결
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalystUpdated'
+              examples:
+                confirm:
+                  summary: 위치 확인 결과
+                  value:
+                    catalyst:
+                      id: 41
+                      name: 인천1호선 검단연장 개통
+                      kind: 교통
+                      stage: 확정
+                      stage_prob:
+                        v: 1.0
+                        label: 추정
+                        reason: 판정기 classify
+                        prov: jl_64
+                        checked_at: '2026-10-07'
+                        unit: prob
+                      decision: auto
+                      expected_ym:
+                        v: 2025-06
+                        label: 확인됨
+                        prov: fp_5101
+                        checked_at: '2026-10-07'
+                        unit: ym
+                      location_confirmed: true
+                      linked: true
+                      distance_m:
+                        v: null
+                        label: 확인 불가
+                        reason: 역 거리 미측정
+                        prov: null
+                        checked_at: '2026-10-07'
+                      weight: null
+                      linked_complex_ids: null
+                      judgment_seq: 64
+                      source_url: null
+                      note: 2025-06-28 개통
+                      lat: 37.5961
+                      lon: 126.6712
+                    links:
+                    - complex_id: 2
+                      distance_m: null
+                      weight: 1
+                      label: 추정
+                      reason: 사람 지정(단지 좌표 없음)
+                    - complex_id: 5
+                      distance_m: null
+                      weight: 1
+                      label: 추정
+                      reason: 같은 생활권(la_2, 단지 좌표 없음)
+                    job: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /share-links:
     get:
       tags:
@@ -14388,6 +14776,21 @@ components:
                 type:
                 - string
                 - 'null'
+    BackupPayload:
+      title: BackupPayload
+      description: 'job_name=''backup'' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고, 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 ''삭제 없음'').'
+      type: object
+      additionalProperties: false
+      properties:
+        keep_days:
+          x-nonfact: 운영 설정값(보존 일수)
+          description: 이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+      examples:
+      - {}
     BenchmarkAbsence:
       title: BenchmarkAbsence
       description: |-
@@ -14594,6 +14997,98 @@ components:
           anyOf:
           - $ref: '#/components/schemas/JobRun'
           - type: 'null'
+    CatalystLinkView:
+      title: CatalystLinkView
+      description: 'catalyst_link 1행(계약 .8): 단지·거리(좌표 없으면 null)·가중치·라벨·근거'
+      type: object
+      additionalProperties: false
+      required:
+      - complex_id
+      - distance_m
+      - weight
+      - label
+      - reason
+      properties:
+        complex_id:
+          type: integer
+        distance_m:
+          x-nonfact: 연결 계산값(단지 좌표가 없으면 null — 출처 = 사람 위치 확인)
+          type:
+          - integer
+          - 'null'
+        weight:
+          x-nonfact: §6 수식의 호재 가중치 상수(가정 — 출처 데이터 아님)
+          type:
+          - number
+          - 'null'
+        label:
+          $ref: '#/components/schemas/Label'
+        reason:
+          type:
+          - string
+          - 'null'
+    CatalystPatch:
+      title: CatalystPatch
+      description: 'PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason ''같은 생활권'' 또는 ''사람 지정''). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인). 링크가 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다.'
+      type: object
+      additionalProperties: false
+      required:
+      - location_confirmed
+      properties:
+        location_confirmed:
+          type: boolean
+        lat:
+          type:
+          - number
+          - 'null'
+          minimum: -90
+          maximum: 90
+        lon:
+          type:
+          - number
+          - 'null'
+          minimum: -180
+          maximum: 180
+        living_area_ids:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+            maxLength: 64
+          maxItems: 50
+        complex_ids:
+          type:
+          - array
+          - 'null'
+          items:
+            type: integer
+          maxItems: 1000
+        expected_ym:
+          type:
+          - string
+          - 'null'
+          pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
+    CatalystUpdated:
+      title: CatalystUpdated
+      description: PATCH /catalysts/{id} 200 — 갱신한 호재 + 연결 목록 + 등록한 점수 재계산 잡(연결이 그대로면 null)
+      type: object
+      additionalProperties: false
+      required:
+      - catalyst
+      - links
+      - job
+      properties:
+        catalyst:
+          $ref: '#/components/schemas/CatalystView'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalystLinkView'
+        job:
+          anyOf:
+          - $ref: '#/components/schemas/JobRun'
+          - type: 'null'
     CatalystView:
       title: CatalystView
       description: |-
@@ -14626,6 +15121,7 @@ components:
           - 생활인프라
           - 기타
         stage:
+          description: 판정기 classify 단계. '호재 아님'(계약 2026-10-09.8, D11-2) = 판정기가 호재가 아니라고 본 뉴스 후보 — 지우지 않고 제외로 남긴다(목록·보드에서 '호재 아님' 배지, 점수·타임라인 제외). 사람이 넣은 호재는 단계가 바뀌지 않고 판정 결과가 note 에 병기된다
           type: string
           enum:
           - 확정
@@ -14633,6 +15129,7 @@ components:
           - 추진
           - 언론
           - 미확정
+          - 호재 아님
         stage_prob:
           $ref: '#/components/schemas/Fact'
         decision:
@@ -14667,6 +15164,18 @@ components:
           - 'null'
           items:
             type: integer
+        lat:
+          x-nonfact: 사람이 확인한 위치 좌표(지도 메타 — 점수 수치 아님)
+          description: 위치 위도(사람 확인, 계약 .8 — PATCH /catalysts/{id}). 없으면 null
+          type:
+          - number
+          - 'null'
+        lon:
+          x-nonfact: 사람이 확인한 위치 좌표(지도 메타 — 점수 수치 아님)
+          description: 위치 경도(사람 확인, 계약 .8). 없으면 null
+          type:
+          - number
+          - 'null'
         judgment_seq:
           type:
           - integer
@@ -14820,7 +15329,7 @@ components:
         tab: payment
     ChecklistItem:
       title: ChecklistItem
-      description: '체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 ''확인 권고'' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title ''사실 재확인: <필드 이름>(검증 모순)'', 사람 확인·새 원문으로 복원되면 done; 계약 2026-10-09.6).'
+      description: '체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 ''확인 권고'' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title ''사실 재확인: <필드 이름>(검증 모순)'', 사람 확인·다른 값의 새 원문으로 복원되면 done(closed_by auto), 강등이 남았는데 사람이 닫으면 다시 열린다; 계약 2026-10-09.6·.8). 자동 항목의 근거 사실이 사라지거나 강등되면 동기화가 na(closed_by auto)로 닫고, 근거가 돌아오면 다시 연다(M-9).'
       type: object
       additionalProperties: false
       required:
@@ -14869,6 +15378,15 @@ components:
           type:
           - string
           - 'null'
+        closed_by:
+          description: '닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행'
+          type:
+          - string
+          - 'null'
+          enum:
+          - auto
+          - human
+          - null
       examples:
       - id: 51
         complex_id: 7
@@ -16535,6 +17053,17 @@ components:
           type:
           - boolean
           - 'null'
+        current_supply_kind:
+          description: '현재 조건(최신 공고 payment_terms.notice_kind)의 공급 경로 — 계약 2026-10-09.8. 상황 B·D 접근성(§6-7: 통장 없이 무순위·임의·선착순으로 지금 계약)은 이 값이 무순위·임의·선착순이고 접수 가능일 때만 충족. null = 공고 없음·미상'
+          type:
+          - string
+          - 'null'
+          enum:
+          - 본청약
+          - 무순위
+          - 임의
+          - 선착순
+          - null
         fixed_components:
           anyOf:
           - $ref: '#/components/schemas/FixedComponents'
@@ -18070,8 +18599,9 @@ components:
           - boolean
           - 'null'
         source_rank:
+          description: '§3 출처 우선순위(1이 가장 높음). 0 = 사람 확인(human_check — resolver 0순위 후보, D11-3·계약 2026-10-09.8): 재정규화에도 원문 후보를 이긴다'
           type: integer
-          minimum: 1
+          minimum: 0
           maximum: 9
         source_kind:
           anyOf:
@@ -18340,7 +18870,7 @@ components:
         time: '2026-10-09T09:00:00+09:00'
     HumanCheck:
       title: HumanCheck
-      description: '사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field=''intake_status''이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만.'
+      description: '사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field=''intake_status''이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 그 기준일의 쓰기 가능 리비전(발행됐으면 새 리비전 — D11-1)에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). field 가 강등 가능한 사실 필드(HumanCheckField — max_price_won·move_in_ym·resale_months·residency_months·down_payment_pct)면 그 값이 resolver 0순위 후보(source_rank 0, 라벨 확인됨, reason ''사람 확인(kind)'')로 사실을 바꾸고 재정규화에도 유지되며, 같은 사실의 강등(검증 모순)을 복원한다(D11-3, 계약 2026-10-09.8). entity·entity_id = 바뀐 사실 행(가격은 현재 공고의 payment_terms 또는 기준 타입 complex_type). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만(note ≤ 500자, guard: 전화·주민번호·이메일·비밀값 금지 → 422).'
       type: object
       additionalProperties: false
       required:
@@ -18361,6 +18891,18 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+          description: HumanCheckField 값(옛 행은 자유 문자열일 수 있다)
+        entity:
+          description: 바뀐 사실 행의 테이블(complex·complex_type·payment_terms). 접수 상태·기타·옛 행은 null (계약 .8)
+          type:
+          - string
+          - 'null'
+          maxLength: 32
+        entity_id:
+          description: 바뀐 사실 행 id. 접수 상태·기타·옛 행은 null (계약 .8)
+          type:
+          - integer
+          - 'null'
         value_text:
           type: string
         kind:
@@ -18394,6 +18936,8 @@ components:
       - id: 3
         complex_id: 4
         field: intake_status
+        entity: null
+        entity_id: null
         value_text: 가능
         kind: phone
         checked_at: '2026-10-09T10:20:00+09:00'
@@ -18422,6 +18966,26 @@ components:
             complex_ids:
             - 4
             reason: '사람 확인 입력: 오퍼스 한강 스위첸 접수 가능'
+      - id: 4
+        complex_id: 2
+        field: resale_months
+        entity: complex
+        entity_id: 2
+        value_text: '12'
+        kind: phone
+        checked_at: '2026-10-09T11:00:00+09:00'
+        entered_by: 운영자
+        note: '분양사무소 통화: 전매제한 12개월(공고문 확인)'
+        created_intake: null
+        change_event_id: 3311
+        suggested_job:
+          job_name: rejudge
+          payload:
+            snapshot_id: 12
+            scenario_id: null
+            complex_ids:
+            - 2
+            reason: '사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원'
     HumanCheckCreate:
       title: HumanCheckCreate
       description: POST /ops/human-checks 본문
@@ -18438,12 +19002,16 @@ components:
         complex_id:
           type: integer
         field:
-          type: string
-          minLength: 1
-          maxLength: 64
+          $ref: '#/components/schemas/HumanCheckField'
+        entity_id:
+          description: '사실 행 지정(선택): 가격은 그 단지의 payment_terms 또는 complex_type id, 계약금은 payment_terms id. 없으면 현재 공고·기준 타입·현재 납부 조건'
+          type:
+          - integer
+          - 'null'
         value_text:
           type: string
           minLength: 1
+          maxLength: 200
         kind:
           type: string
           enum:
@@ -18459,6 +19027,7 @@ components:
           type:
           - string
           - 'null'
+          maxLength: 500
       allOf:
       - if:
           properties:
@@ -18472,6 +19041,18 @@ components:
               - 미정
               - 확인 불가
               - 불가
+    HumanCheckField:
+      title: HumanCheckField
+      description: '사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 ''6.02'' → 422).'
+      type: string
+      enum:
+      - intake_status
+      - max_price_won
+      - move_in_ym
+      - resale_months
+      - residency_months
+      - down_payment_pct
+      - other
     InclusionClass:
       title: InclusionClass
       description: 포함/제외 분류. 판정기 classify 7클래스(사업주체 명의 기준) + '범위 경계'(DECISIONS D2-6) + '미분류'. private_sale_apt만 포함; review면 포함하되 미해결 표기(meta §1-3-3).
@@ -18691,9 +19272,17 @@ components:
           properties:
             payload:
               $ref: '#/components/schemas/RegionBootstrapPayload'
+      - if:
+          properties:
+            job_name:
+              const: backup
+        then:
+          properties:
+            payload:
+              $ref: '#/components/schemas/BackupPayload'
     JobCreateName:
       title: JobCreateName
-      description: POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).
+      description: POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6) − region.expand(계약 .8). claim.reverify 는 PATCH /claims/{id} 만(D10-3 같은 대상 검사·사실 강등), region.expand 는 PATCH /regions/{id} 만(선택 검증·지역 갱신) 등록한다. backup 은 수동 등록 가능(payload {}).
       type: string
       enum:
       - collect.daily
@@ -18703,9 +19292,10 @@ components:
       - snapshot.publish
       - reference.refresh
       - region.bootstrap
+      - backup
     JobName:
       title: JobName
-      description: 잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
+      description: '잡 이름 10종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록 + 계약 2026-10-09.8 backup(D11-8: 매일 03:00 백업 — Postgres pg_dump·SQLite 파일 복사 + 원문 증분 복사, 결과 stats) · region.expand(D11-7: PATCH /regions/{id} 가 등록 — 추가된 선택의 수집 + 새 리비전 전체 재판정·rerank)'
       type: string
       enum:
       - collect.daily
@@ -18716,6 +19306,8 @@ components:
       - reference.refresh
       - region.bootstrap
       - claim.reverify
+      - backup
+      - region.expand
     JobRun:
       title: JobRun
       description: |-
@@ -18862,6 +19454,22 @@ components:
           properties:
             payload:
               $ref: '#/components/schemas/ClaimReverifyPayload'
+      - if:
+          properties:
+            job_name:
+              const: backup
+        then:
+          properties:
+            payload:
+              $ref: '#/components/schemas/BackupPayload'
+      - if:
+          properties:
+            job_name:
+              const: region.expand
+        then:
+          properties:
+            payload:
+              $ref: '#/components/schemas/RegionExpandPayload'
       examples:
       - id: 905
         job_name: rejudge
@@ -20153,6 +20761,11 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/NoticeTypePrice'
+        discount_by_type:
+          description: 이 공고에 명시된 할인(타입별, 원 단위 — 계약 2026-10-09.8, D11-6). 키 = complex_type.type_code. 공고문·청약홈에 할인 금액이 적힌 것만(추정 금지). 출처 행은 field_provenance(entity='payment_terms', field='discount_by_type.<type_code>'). §6-1 구매가 차감은 라벨 확인됨일 때만. 없으면 {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Fact'
         change_vs_first:
           description: 최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 %
           anyOf:
@@ -20259,7 +20872,7 @@ components:
             unit: pct
     PriceRange:
       title: PriceRange
-      description: '현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션, high = 최고가 + 발코니 + 필수 옵션, mid = (low+high)/2. composition은 구성 설명 문자열(예 ''공급가 + 발코니 314만'').'
+      description: '현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션 − 할인(확인됨일 때만, D11-6), high = 최고가 + 발코니 + 필수 옵션 − 할인, mid = (low+high)/2. composition은 구성 설명 문자열(예 ''공급가 + 발코니 314만 − 할인 1,000만'').'
       type: object
       additionalProperties: false
       required:
@@ -20283,6 +20896,11 @@ components:
           - string
           - 'null'
         change_vs_first_pct:
+          anyOf:
+          - $ref: '#/components/schemas/Fact'
+          - type: 'null'
+        discount:
+          description: 공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null
           anyOf:
           - $ref: '#/components/schemas/Fact'
           - type: 'null'
@@ -20990,6 +21608,84 @@ components:
           $ref: '#/components/schemas/Region'
         job_id:
           type: integer
+    RegionExpandPayload:
+      title: RegionExpandPayload
+      description: 'job_name=''region.expand'' 페이로드 (DECISIONS D11-7, 계약 2026-10-09.8). PATCH /regions/{id} 가 넣는다(POST /jobs 로는 등록 불가 — JobCreateName). 지역 선택(selections)이 바뀐 뒤: 추가된 시군구·시도의 daily+weekly 수집 → 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason ''지역 확장'') → 후보 전체 판정·rerank 1회 → publish. 보고서는 이 리비전과 바탕 리비전(revision_of) 비교로 §12 ''지역 추가'' 장을 만든다.'
+      type: object
+      additionalProperties: false
+      required:
+      - region_id
+      properties:
+        region_id:
+          type: integer
+        added:
+          description: 추가된 선택 [{kind, code, full_name}]
+          type: array
+          items:
+            type: object
+        removed:
+          description: 제거된 선택 [{kind, code, full_name}]
+          type: array
+          items:
+            type: object
+        change_event_id:
+          type:
+          - integer
+          - 'null'
+      examples:
+      - region_id: 1
+        added:
+        - kind: sigungu
+          code: '41570'
+          full_name: 경기도 김포시
+        removed: []
+        change_event_id: 3320
+    RegionPatch:
+      title: RegionPatch
+      description: PATCH /regions/{id} 본문 — 지역 선택 확장·축소(DECISIONS D11-7 = RA '지역 추가', 계약 2026-10-09.8). selections 는 바뀐 뒤의 전체 목록(GET /regions/resolve 후보, 1개 이상). 서버는 법정동·시군구·시도 코드와 생활권(새 시군구는 새 생활권, 빠진 법정동은 생활권에서 제거 — 빈 생활권은 지운다)을 다시 계산하고 change_event(critical, entity=region, field=selections) + region.expand 잡(추가 선택 수집 → 새 리비전에서 후보 전체 판정·rerank 1회 → publish)을 등록한다. 바뀐 것이 없으면 409 conflict.
+      type: object
+      additionalProperties: false
+      required:
+      - selections
+      properties:
+        selections:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/RegionSelection'
+        name:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 100
+    RegionPatched:
+      title: RegionPatched
+      description: 'PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택'
+      type: object
+      additionalProperties: false
+      required:
+      - region
+      - change_event
+      - job_id
+      - added
+      - removed
+      properties:
+        region:
+          $ref: '#/components/schemas/Region'
+        change_event:
+          $ref: '#/components/schemas/ChangeEvent'
+        job_id:
+          type: integer
+        added:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegionSelection'
+        removed:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegionSelection'
     RegionSelection:
       title: RegionSelection
       description: 사용자가 고른 후보 1개 (RegionCandidate의 kind·code·full_name)
@@ -23350,7 +24046,7 @@ components:
     Snapshot:
       title: Snapshot
       description: |-
-        기준일 스냅샷 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8). (region_id, asof_date) 유일, 하루 1개.
+        기준일 스냅샷 리비전 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8, DECISIONS D11-1). (region_id, asof_date, revision) 유일(계약 2026-10-09.8). 발행(published) 리비전은 불변 — 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집)은 같은 기준일의 새 리비전(revision+1, revision_of = 바탕 리비전)에 쓰고 완성된 뒤 한 번에 published 가 된다. 화면 기본 = 최신 published 리비전, ?snapshot= 은 리비전 스냅샷 id. 리비전 사이 diff(보고서 diff 표)가 RA §10 '판정기 버전 변경 → 이전 run 과 delta 표'와 '지역 추가 장'을 겸한다.
         status: building(수집·판정 중) → ready(점수까지 계산됨) → published(claim contradicted 0 검사 통과). contradicted_claims > 0 이면 published가 될 수 없고 보고서 생성 버튼은 비활성(G8).
         degraded=true: 이 스냅샷을 만드는 동안 판정기가 없었다(JudgeUnavailable) — 수집·정규화만 있고 점수는 미계산(T18). 화면 G1·G7 배너.
       type: object
@@ -23370,6 +24066,24 @@ components:
         asof_date:
           type: string
           format: date
+        revision:
+          x-nonfact: 버전 번호(같은 기준일 리비전)
+          description: 같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1). 서버 응답에는 늘 실린다(스키마 기본 1 — 옛 입력·픽스처 호환)
+          type: integer
+          minimum: 1
+          default: 1
+        revision_of:
+          x-nonfact: 스냅샷 식별자(바탕 리비전 id)
+          description: 바탕 리비전(이 리비전을 만든 발행 스냅샷 id). 리비전 1 은 null
+          type:
+          - integer
+          - 'null'
+        revision_reason:
+          description: 리비전을 만든 사유(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집 등). 리비전 1 은 null
+          type:
+          - string
+          - 'null'
+          maxLength: 200
         status:
           type: string
           enum:
@@ -23403,6 +24117,9 @@ components:
       - id: 12
         region_id: 1
         asof_date: '2026-10-08'
+        revision: 1
+        revision_of: null
+        revision_reason: null
         status: published
         degraded: false
         created_at: '2026-10-08T06:00:03+09:00'

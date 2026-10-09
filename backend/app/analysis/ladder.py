@@ -37,6 +37,18 @@ def target_label(ym: str) -> str:
     return f"{ym[:4]} {'상반기' if month <= 6 else '하반기'}"
 
 
+def ladder_target(
+    horizon: Horizon, asof_date: str, *, move_in_ym: str | None, immediate: bool
+) -> LadderTarget | None:
+    """horizon 1개의 목표(사다리 명제·판정기 payload 용 — ``judge.payloads.ladder_specs`` 가 이 함수를 쓴다, 한 구현).
+
+    입주월을 모르고 즉시 입주도 아니면 move_in_plus_1y 목표는 없다(None — 명제를 만들지 않는다; 추측해 기준일 + 1년으로
+    두지 않는다). 점수의 공급 창(``ladder_targets``)은 같은 경우 기준일을 쓴다(성분 계산 기준선 — 판정이 아니다)."""
+    if horizon == "move_in_plus_1y" and not move_in_ym and not immediate:
+        return None
+    return ladder_targets(asof_date, move_in_ym=move_in_ym, immediate=immediate)[horizon]
+
+
 def ladder_targets(asof_date: str, *, move_in_ym: str | None, immediate: bool) -> dict[Horizon, LadderTarget]:
     asof_ym = ym_of(parse_date(asof_date))
     base = (

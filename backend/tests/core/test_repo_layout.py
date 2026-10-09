@@ -56,6 +56,23 @@ def test_core_readme_owner() -> None:
     assert re.search(r"주인[^\n]*WP0", readme)
 
 
+@pytest.mark.parametrize(
+    ("rel", "owners"),
+    [
+        ("frontend/README.md", ("WP0", "WP6a", "WP6b")),
+        ("frontend/src/components/README.md", ("WP6b",)),
+        ("frontend/src/charts/README.md", ("WP6b",)),
+        ("e2e/README.md", ("WP9",)),
+    ],
+)
+def test_frontend_and_e2e_readme_owners(rel: str, owners: tuple[str, ...]) -> None:
+    """README 주인 검사는 backend 만이 아니다(R3 3차 RA 부분) — 프론트·e2e 도 주인이 적혀 있다."""
+    readme = (ROOT / rel).read_text(encoding="utf-8")
+    assert "주인" in readme, f"{rel} 에 주인 없음"
+    for owner in owners:
+        assert re.search(rf"\b{owner}\b", readme), f"{rel} 에 주인 {owner} 없음"
+
+
 def test_empty_package_markers() -> None:
     for rel in ["app/__init__.py", "app/core/__init__.py"]:
         assert (BACKEND / rel).read_text(encoding="utf-8").strip() == ""

@@ -84,7 +84,9 @@ def test_every_row_three_fields_exact(e: dict[str, Any]) -> None:
         assert app.value == int(str(row["REQ_CNT"]).replace(",", "")) and app.value_text == row["REQ_CNT"]
         assert ratio.value == str(row["CMPET_RATE"]).strip()
         if e["kind"] == "apt":
-            assert RESIDE[row["RESIDE_SECD"]] == row["RESIDE_SENM"], "거주 코드·이름 일치(파서는 이름으로 round 를 만든다)"
+            assert RESIDE[row["RESIDE_SECD"]] == row["RESIDE_SENM"], (
+                "거주 코드·이름 일치(파서는 이름으로 round 를 만든다)"
+            )
             assert isinstance(row["SUBSCRPT_RANK_CODE"], int)
         else:
             assert "SUBSCRPT_RANK_CODE" not in row and "RESIDE_SECD" not in row
@@ -96,7 +98,11 @@ def test_every_row_three_fields_exact(e: dict[str, Any]) -> None:
 
 def test_ratio_text_shapes_seen_in_real_responses() -> None:
     seen = {str(r["CMPET_RATE"]) for e in ENTRIES for r in _rows(e)}
-    assert "-" in seen and any(s.startswith("(△") for s in seen) and any(s.replace(".", "").isdigit() for s in seen)
+    assert (
+        "-" in seen
+        and any(s.startswith("(△") for s in seen)
+        and any(s.replace(".", "").isdigit() for s in seen)
+    )
 
 
 def test_report_values_match_recording() -> None:
@@ -118,8 +124,14 @@ def test_store_competition_rows_and_type_codes(db_session: Session, region: Regi
         assert store_raw_document(db_session, raw).candidates
     cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026940173")).one()
     comps = db_session.scalars(select(Competition).where(Competition.complex_id == cx.id)).all()
-    types = {t.type_code for t in db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id))}
-    assert len(comps) == 7 and {c.kind for c in comps} == {"임의"} and {c.round for c in comps} == {"임의 2026940173"}
+    types = {
+        t.type_code for t in db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id))
+    }
+    assert (
+        len(comps) == 7
+        and {c.kind for c in comps} == {"임의"}
+        and {c.round for c in comps} == {"임의 2026940173"}
+    )
     assert {c.type_code for c in comps} <= types, ({c.type_code for c in comps}, types)
     c84a = next(c for c in comps if c.type_code == "84A")
     assert (c84a.supply, c84a.applied, c84a.ratio_or_shortfall_text) == (2, 15, "7.50")
@@ -137,18 +149,30 @@ def test_letterless_house_ty_competition_matches_complex_types(
     """칸타빌 임의공급 2차(2026940116): 공고문 주택형 84A(84.9582㎡)·84B(84.7529㎡)가 이미 있는 단지에 API 상세·주택형·경쟁률
     실응답을 저장하면, 경쟁률 행의 type_code 도 그 주택형(84B 등)이어야 화면(C8 경쟁률·타입별 표)이 맞는다."""
     with zipfile.ZipFile(API_ZIP) as z:
-        detail = _zip_entry(z, "getOPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116")
-        model = _zip_entry(z, "getOPTLttotPblancMdl?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116")
+        detail = _zip_entry(
+            z, "getOPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116"
+        )
+        model = _zip_entry(
+            z, "getOPTLttotPblancMdl?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116"
+        )
     cmpet = next(e for e in ENTRIES if e["house_manage_no"] == "2026940116")
-    store_raw_document(db_session, add_raw(detail[1], source_kind="applyhome_detail", url=detail[0], region_id=region.id, ext="json"))
+    store_raw_document(
+        db_session,
+        add_raw(detail[1], source_kind="applyhome_detail", url=detail[0], region_id=region.id, ext="json"),
+    )
     cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026940116")).one()
     # 공고문(웹·PDF) 파서가 만든 것과 같은 약식 주택형이 이미 있는 상태(픽스처 complexes.json 칸타빌: 84A·84B)
     db_session.add_all([ComplexType(complex_id=cx.id, type_code="84A", area_m2=84.9582),
                         ComplexType(complex_id=cx.id, type_code="84B", area_m2=84.7529)])  # fmt: skip
     db_session.flush()
     for url, text in (model, (cmpet["url"], _text(cmpet))):
-        store_raw_document(db_session, add_raw(text, source_kind="applyhome_detail", url=url, region_id=region.id, ext="json"))
-    types = {t.type_code for t in db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id))}
+        store_raw_document(
+            db_session,
+            add_raw(text, source_kind="applyhome_detail", url=url, region_id=region.id, ext="json"),
+        )
+    types = {
+        t.type_code for t in db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id))
+    }
     # 주택형(Mdl)은 저장 단계가 전용면적으로 기존 약식 타입(84A·84B)에 맞춘다 — 새 '84.xxxx' 행이 생기지 않는다
     assert not {t for t in types if t.startswith("84.")}, sorted(types)
     comps = db_session.scalars(select(Competition).where(Competition.complex_id == cx.id)).all()
@@ -165,16 +189,28 @@ def test_letterless_house_ty_ambiguous_area_is_not_matched(
     from app.normalize.store import TYPE_AMBIGUOUS
 
     with zipfile.ZipFile(API_ZIP) as z:
-        detail = _zip_entry(z, "getOPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116")
+        detail = _zip_entry(
+            z, "getOPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116"
+        )
     cmpet = next(e for e in ENTRIES if e["house_manage_no"] == "2026940116")
-    store_raw_document(db_session, add_raw(detail[1], source_kind="applyhome_detail", url=detail[0], region_id=region.id, ext="json"))
+    store_raw_document(
+        db_session,
+        add_raw(detail[1], source_kind="applyhome_detail", url=detail[0], region_id=region.id, ext="json"),
+    )
     cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026940116")).one()
     db_session.add_all([ComplexType(complex_id=cx.id, type_code="84A", area_m2=84.75, notice_type_code="084.7529A"),
                         ComplexType(complex_id=cx.id, type_code="84B", area_m2=84.75, notice_type_code="084.7529B"),
                         ComplexType(complex_id=cx.id, type_code="84C", area_m2=84.96, notice_type_code="084.9582C")])  # fmt: skip
     db_session.flush()
-    store_raw_document(db_session, add_raw(_text(cmpet), source_kind="applyhome_detail", url=cmpet["url"], region_id=region.id, ext="json"))
-    codes = {c.type_code for c in db_session.scalars(select(Competition).where(Competition.complex_id == cx.id))}
+    store_raw_document(
+        db_session,
+        add_raw(
+            _text(cmpet), source_kind="applyhome_detail", url=cmpet["url"], region_id=region.id, ext="json"
+        ),
+    )
+    codes = {
+        c.type_code for c in db_session.scalars(select(Competition).where(Competition.complex_id == cx.id))
+    }
     assert TYPE_AMBIGUOUS in codes and "84C" in codes, codes
     assert not codes & {"84A", "84B"}, codes
 
@@ -195,11 +231,15 @@ def test_live_competition_api_matches_recording() -> None:
         pytest.skip("DATA_GO_KR_KEY 없음 (ENV_FILE 로 .env 경로를 준다)")
     e = next(x for x in ENTRIES if x["house_manage_no"] == "2026000367")
     with HttpClient(max_retries=1) as http:
-        r = api.ApplyhomeApi(http, key).get(api.ENDPOINTS["apt"].competition, api.item_params("2026000367", "2026000367"))
+        r = api.ApplyhomeApi(http, key).get(
+            api.ENDPOINTS["apt"].competition, api.item_params("2026000367", "2026000367")
+        )
     assert r.status == 200 and key not in r.url and "serviceKey" not in r.url
     page = api.parse_page(r)
     assert page.ok and len(page.rows) == e["rows"] == 48
     key_of = lambda x: (x["HOUSE_TY"], x["SUBSCRPT_RANK_CODE"], x["RESIDE_SECD"])  # noqa: E731
     assert sorted(page.rows, key=key_of) == sorted(_rows(e), key=key_of)
-    cands = parse_applyhome_api_json((r.content or b"").decode("utf-8"), dto(source_kind="applyhome_detail", url=r.url))
+    cands = parse_applyhome_api_json(
+        (r.content or b"").decode("utf-8"), dto(source_kind="applyhome_detail", url=r.url)
+    )
     assert len(cands) == 3 * 48

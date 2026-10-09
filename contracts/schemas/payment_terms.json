@@ -37,6 +37,11 @@
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/NoticeTypePrice" }
     },
+    "discount_by_type": {
+      "description": "이 공고에 명시된 할인(타입별, 원 단위 — 계약 2026-10-09.8, D11-6). 키 = complex_type.type_code. 공고문·청약홈에 할인 금액이 적힌 것만(추정 금지). 출처 행은 field_provenance(entity='payment_terms', field='discount_by_type.<type_code>'). §6-1 구매가 차감은 라벨 확인됨일 때만. 없으면 {}",
+      "type": "object",
+      "additionalProperties": { "$ref": "fact.json" }
+    },
     "change_vs_first": {
       "description": "최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 %",
       "anyOf": [

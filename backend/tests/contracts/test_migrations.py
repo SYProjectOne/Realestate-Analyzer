@@ -116,7 +116,7 @@ def check_seeds(engine: Engine) -> None:
 UNIQUE_REQUIRED = {
     ("judgment_log", ("input_hash",)),
     ("raw_document", ("sha256",)),
-    ("snapshot", ("region_id", "asof_date")),
+    ("snapshot", ("region_id", "asof_date", "revision")),
     ("complex", ("region_id", "applyhome_id")),  # 0004 (W4)
     ("complex_type", ("complex_id", "type_code")),
     ("payment_terms", ("complex_id", "notice_no")),
@@ -270,11 +270,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0007() -> None:
+def test_migration_head_is_0008() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0007"]
+    assert script.get_heads() == ["0008"]
+    assert script.get_revision("0008").down_revision == "0007"
     assert script.get_revision("0007").down_revision == "0006"
     assert script.get_revision("0006").down_revision == "0005"
     assert script.get_revision("0005").down_revision == "0004"
@@ -531,6 +532,122 @@ def test_sqlite_0006_0007_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         assert autogen_diff(engine) == []
     finally:
         engine.dispose()
+
+
+def check_0007_0008_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0008(계약 2026-10-09.8): 스냅샷 리비전·강등 모순 값·사람 확인 대상·체크리스트 closed_by·할인·호재 연결 라벨·
+    호재 아님·잡 이름. 0007 에서 행을 넣고 head → 기존 스냅샷 = 리비전 1, 강등 value_norm = 원래 출처 행 값, 같은 기준일
+    리비전 2 허용·같은 리비전 중복 거부. 리비전 2 가 있으면 downgrade 거부(데이터 손실 방지), 지우면 0007 로 돌아간다."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "0007")
+    engine = sa.create_engine(url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO region (id, name, query_text, selections, sido_codes, sigungu_codes, legal_dong_codes, "
+                    "living_areas, age_premium_coef, applyhome_query, status, created_at) VALUES "
+                    "(902, 'r', 'q', '[]', '[]', '[]', '[]', '[]', '{}', '{}', 'ready', '2026-10-10')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot (id, region_id, asof_date, status, degraded, created_at) VALUES "
+                    "(9001, 902, '2026-10-08', 'published', false, '2026-10-08')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO complex (id, region_id, name, former_names, apply_dates, contract_dates, inclusion_class) "
+                    "VALUES (9101, 902, 'c', '[]', '[]', '[]', '미분류')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO claim (id, snapshot_id, section, complex_id, text) VALUES (9201, 9001, 'complex:9101', 9101, 't')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO field_provenance (id, entity, entity_id, field, value_text, label, source_rank, chosen, value_norm) "
+                    "VALUES (9301, 'complex', 9101, 'resale_months', '12개월', '확인됨', 1, false, '12')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO fact_demotion (id, claim_id, snapshot_id, complex_id, entity, entity_id, field, original_fp_id, created_at) "
+                    "VALUES (9401, 9201, 9001, 9101, 'complex', 9101, 'resale_months', 9301, '2026-10-09')"
+                )
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:
+            assert conn.execute(sa.text("SELECT revision FROM snapshot WHERE id = 9001")).scalar_one() == 1
+            assert (
+                conn.execute(sa.text("SELECT value_norm FROM fact_demotion WHERE id = 9401")).scalar_one()
+                == "12"
+            )
+        with engine.begin() as conn:  # 같은 기준일 리비전 2 허용
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot (id, region_id, asof_date, status, degraded, created_at, revision, revision_of) "
+                    "VALUES (9002, 902, '2026-10-08', 'building', false, '2026-10-09', 2, 9001)"
+                )
+            )
+            conn.execute(sa.text("UPDATE catalyst SET stage = stage"))
+            conn.execute(
+                sa.text(
+                    "INSERT INTO job_run (job_name, kind, payload, scheduled_at, status, stats) "
+                    "VALUES ('backup', 'scheduled', '{}', '2026-10-10T03:00:00+09:00', 'queued', '{}')"
+                )
+            )
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:  # 같은 리비전 중복 거부
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot (region_id, asof_date, status, degraded, created_at, revision) "
+                    "VALUES (902, '2026-10-08', 'building', false, '2026-10-09', 2)"
+                )
+            )
+        with pytest.raises(RuntimeError, match="리비전 2"):
+            command.downgrade(cfg, "0007")
+        with engine.begin() as conn:
+            conn.execute(sa.text("DELETE FROM snapshot WHERE id = 9002"))
+        command.downgrade(cfg, "0007")
+        insp = sa.inspect(engine)
+        assert "revision" not in {c["name"] for c in insp.get_columns("snapshot")}
+        with engine.connect() as conn:
+            assert (
+                conn.execute(sa.text("SELECT COUNT(*) FROM job_run WHERE job_name = 'backup'")).scalar_one()
+                == 0
+            )
+        command.upgrade(cfg, "head")
+        with engine.begin() as conn:
+            for t in ("fact_demotion", "field_provenance", "claim", "complex", "snapshot"):
+                conn.execute(sa.text(f"DELETE FROM {t} WHERE id >= 9000"))
+            conn.execute(sa.text("DELETE FROM job_run"))
+            conn.execute(sa.text("DELETE FROM region WHERE id = 902"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0007_0008_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0007_0008_roundtrip(sqlite_url(tmp_path), monkeypatch)
+    engine = sa.create_engine(sqlite_url(tmp_path))
+    try:
+        assert autogen_diff(engine) == []
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.postgres
+def test_postgres_0007_0008_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0007_0008_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
 
 
 @pytest.mark.postgres

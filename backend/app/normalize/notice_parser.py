@@ -50,7 +50,7 @@ from app.normalize._text import (
     round_area,
     stamp_observed_on,
 )
-from app.normalize.fields import OCR_LABEL, OCR_REASON, is_numeric_field, price_by_type_field
+from app.normalize.fields import OCR_LABEL, OCR_REASON, discount_field, is_numeric_field, price_by_type_field
 
 __all__ = ["NoticeParser", "PriceRow", "TypeSpec", "mark_ocr", "ocr_spans", "parse_notice_text"]
 
@@ -357,6 +357,7 @@ def _header(ctx: _Ctx) -> None:
         if ok_cols:
             break
 
+    _trustee_officetel(ctx)
     if "전매제한" not in found:
         rm = re.search(r"전매제한은[^\n]*?(\d+\s*(?:개월|년))[^\n]*", text)
         if rm:
@@ -366,6 +367,28 @@ def _header(ctx: _Ctx) -> None:
     if "거주의무기간" not in found and ctx.notice_kind == "본청약":
         b.missing("complex", key, "residency_months", ctx.head_span)
     _schedule(ctx)
+
+
+# 신탁(수탁자)·오피스텔 실 수(RA complex.trustee·officetel_units — R3 3차 RA 부분). 표에 이름표가 붙은 값만
+# 읽는다: '수탁자(사업주체) 한국자산신탁(주)'·'신탁사: 우리자산신탁 주식회사', '오피스텔 250실'. 납부 계좌
+# 예금주처럼 이름표 없는 신탁사 이름은 신탁 관계를 단정할 수 없어 읽지 않는다(추측 금지).
+_TRUSTEE_RE = re.compile(
+    r"(?:수탁자|신탁사|신탁회사)(?:\s*\([^)\r\n]{0,20}\))?\s*[:：]?\s*"
+    r"((?:주식회사\s*)?[가-힣A-Za-z]{2,20}신탁(?:\s*주식회사|\s*\(주\)|\s*㈜)?)"
+)
+_OFFICETEL_RE = re.compile(r"오피스텔\s*(?:총\s*)?(\d{1,3}(?:,\d{3})*|\d+)\s*실")
+
+
+def _trustee_officetel(ctx: _Ctx) -> None:
+    text, b, key = ctx.text, ctx.b, ctx.complex_key
+    m = _TRUSTEE_RE.search(text)
+    if m:
+        name = " ".join(m.group(1).split())
+        b.add("complex", key, "trustee", name, name, m.span(1))
+    o = _OFFICETEL_RE.search(text)
+    if o:
+        units = int(o.group(1).replace(",", ""))
+        b.add("complex", key, "officetel_units", units, o.group(0), o.span())
 
 
 def _header_value(ctx: _Ctx, col: str, val: str, span: tuple[int, int]) -> None:
@@ -695,6 +718,32 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
     b.add("payment_terms", pay_key, f("units"), units, str(units), t.span)
     if t.long:
         b.add("payment_terms", pay_key, f("notice_type_code"), t.long, t.long, t.span)
+    disc = _discount_line(ctx.text, t)
+    if disc is not None:
+        won, span = disc
+        b.add("payment_terms", pay_key, discount_field(t.short), won, f"{won:,}", span)
+
+
+# 공고문에 명시된 할인(D11-6, 계약 .8): '84A 분양가 할인 10,000,000원' · '할인금액(84㎡): 10,000,000원' 처럼
+# 할인 금액이 숫자로 적힌 줄만. '선납할인은 적용 되지 않습니다'·'할인 없음' 같은 안내 문장은 금액이 없어
+# 후보가 되지 않는다(추정 금지)
+_DISCOUNT_RE = re.compile(
+    r"(?:분양가\s*)?할인\s*(?:금액|액)?\s*(?:\([^)]*\))?\s*[:：]?\s*(\d{1,3}(?:,\d{3})+)\s*원"
+)
+
+
+def _discount_line(text: str, t: TypeSpec) -> tuple[int, tuple[int, int]] | None:
+    """타입 표기(약식 '84A'·공고 주택형 '084.9582A'·면적 '84㎡')와 할인 금액이 같은 줄에 있는 첫 줄."""
+    marks = {t.short, *(x for x in (t.long, f"{t.short.rstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}㎡") if x)}
+    for ls, le in _line_spans(text, 0, len(text)):
+        line = text[ls:le]
+        if "할인" not in line or "선납" in line:
+            continue
+        m = _DISCOUNT_RE.search(line)
+        if m is None or not any(mk and mk in line for mk in marks):
+            continue
+        return int(m.group(1).replace(",", "")), (ls + m.start(1), ls + m.end(1))
+    return None
 
 
 def _rows_of(ctx: _Ctx, t: TypeSpec) -> list[PriceRow]:
@@ -872,6 +921,8 @@ def _options(ctx: _Ctx) -> None:
         if m:
             line = _BULLET_RE.sub("", m.group(0)).strip()
             b.add("complex_type", tkey, "options_required_won", 0, line, m.span())
+            # 옵션 설명 원문(RA complex_type.options_text — R3 3차 RA 부분): 선택품목 안내 문장 그대로
+            b.add("complex_type", tkey, "options_text", line[:500], line[:500], m.span())
         else:
             b.missing(
                 "complex_type", tkey, "options_required_won", ctx.head_span, reason="선택품목 문장 없음"

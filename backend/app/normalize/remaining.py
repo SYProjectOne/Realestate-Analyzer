@@ -288,13 +288,14 @@ def _web_result(urls: dict[str, RawDocument], n: _Notice) -> None:
 
 # ---------------------------------------------------------------- 단지 묶기
 
-_TRAILING_ROUND_RE: Final = re.compile(r"\(\s*\d+\s*(?:차|회차)\s*\)\s*$")
+_TRAILING_ROUND_RE: Final = re.compile(r"\(\s*\d+\s*회차\s*\)\s*$")
 
 
 def remainder_name_key(name: str) -> str:
-    """잔여 공고 이름 키: 이름 끝의 공급 회차 괄호('리아츠 송도(23차)')까지 뗀 정규화 이름. 잔여 공고(공식 API·웹
-    잔여세대 화면으로 들어온 것)끼리 묶거나, 정확한 이름으로 원래 단지를 못 찾았을 때만 쓴다(문자열 처리).
-    단지 행 병합(store, D10-4)·벤치마크 매칭(D10-5)은 이 키를 쓰지 않는다."""
+    """잔여 공고 이름 키: 이름 끝의 공급 **회차** 괄호('… (3회차)')만 뗀 정규화 이름. 잔여 공고(공식 API·웹 잔여세대
+    화면으로 들어온 것)끼리 묶거나, 정확한 이름으로 원래 단지를 못 찾았을 때만 쓴다(문자열 처리).
+    차수 '(N차)'는 어떤 괄호에서도 떼지 않는다(D11-4·M-8: '(2차)' 잔여 이벤트가 1차 C8 에 붙던 문제) — 원래 단지를 못
+    찾으면 ``unmatched`` 에 사유를 남긴다. 단지 행 병합(store, D10-4)·벤치마크 매칭(D10-5)은 이 키를 쓰지 않는다."""
     return normalize_apt_name(_TRAILING_ROUND_RE.sub("", name))
 
 
@@ -328,7 +329,9 @@ def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[t
         strict, name, code = keyed[(n.hm, n.pb)]
         here = [c for c in originals if c.legal_dong_code == code] if code and name else []
         hits = [c for c in here if normalize_apt_name(c.name) == strict]
-        if not hits:  # 잔여 공고 이름 끝 회차 '(23차)' 를 뗀 키로 한 번 더(원래 단지가 정확히 1개일 때만 묶는다)
+        if (
+            not hits
+        ):  # 잔여 공고 이름 끝 회차 '(23차)' 를 뗀 키로 한 번 더(원래 단지가 정확히 1개일 때만 묶는다)
             hits = [c for c in here if remainder_name_key(c.name) == name]
         if len(hits) == 1:
             out[(n.hm, n.pb)] = _Anchor(hits[0].id, None)

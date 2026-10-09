@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.7
+  version: 2026-10-09.8
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -153,6 +153,43 @@ paths:
                 fixture: { $ref: './examples/region_get.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [regions]
+      operationId: updateRegion
+      summary: 지역 선택 확장·축소 (D11-7, RA '지역 추가')
+      description: |
+        selections(바뀐 뒤 전체)로 법정동·시군구·시도 코드와 생활권을 다시 계산하고 change_event(critical) + region.expand 잡을 등록한다.
+        잡은 추가된 선택을 수집하고, 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장')에서 후보 전체를 판정·rerank 한 뒤
+        publish 한다. 보고서는 그 리비전과 바탕 리비전 비교로 §12 '지역 추가' 장을 만든다(계약 2026-10-09.8). 바뀐 것이 없으면 409.
+      parameters:
+        - $ref: '#/components/parameters/RegionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegionPatch' }
+            examples:
+              expand: { $ref: './examples/region_patch_req.json' }
+      responses:
+        '200':
+          description: 갱신됨 + region.expand 잡
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionPatched' }
+              examples:
+                expand: { $ref: './examples/region_patched.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 선택이 그대로(바뀐 것 없음)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                unchanged: { $ref: './examples/error_409_conflict.json' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /regions/{id}/living-areas:
@@ -709,8 +746,8 @@ paths:
     post:
       tags: [ops]
       operationId: createHumanCheck
-      summary: 사람 확인 입력 → intake_status 행 + change_event (G7, T3)
-      description: field='intake_status'이면 같은 스냅샷에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행').
+      summary: 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
+      description: field='intake_status'이면 그 기준일의 쓰기 가능 리비전(최신 리비전이 발행됐으면 새 리비전 — D11-1)에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행'). field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등(검증 모순)을 복원하며 change_event + suggested_job 을 돌려준다(계약 2026-10-09.8). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
       requestBody:
         required: true
         content:
@@ -932,6 +969,41 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /catalysts/{id}:
+    patch:
+      tags: [market]
+      operationId: updateCatalyst
+      summary: 호재 위치 확인 → catalyst_link (D11-5)
+      description: |
+        사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
+        distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
+        expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인). 연결이 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다(계약 2026-10-09.8).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CatalystPatch' }
+            examples:
+              confirm: { $ref: './examples/catalyst_patch_req.json' }
+      responses:
+        '200':
+          description: 갱신된 호재 + 연결
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalystUpdated' }
+              examples:
+                confirm: { $ref: './examples/catalyst_updated.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /share-links:
     get:
       tags: [ops]
@@ -1146,6 +1218,8 @@ components:
     RegionCreated: { $ref: './schemas/region.json#/$defs/RegionCreated' }
     LivingAreasUpdate: { $ref: './schemas/region.json#/$defs/LivingAreasUpdate' }
     LivingAreasUpdated: { $ref: './schemas/region.json#/$defs/LivingAreasUpdated' }
+    RegionPatch: { $ref: './schemas/region.json#/$defs/RegionPatch' }
+    RegionPatched: { $ref: './schemas/region.json#/$defs/RegionPatched' }
     RegionCandidate: { $ref: './schemas/region_candidate.json' }
     LivingArea: { $ref: './schemas/living_area.json' }
     Snapshot: { $ref: './schemas/snapshot.json' }
@@ -1173,6 +1247,7 @@ components:
     ChecklistPatch: { $ref: './schemas/checklist_item.json#/$defs/ChecklistPatch' }
     HumanCheck: { $ref: './schemas/human_check.json' }
     HumanCheckCreate: { $ref: './schemas/human_check.json#/$defs/HumanCheckCreate' }
+    HumanCheckField: { $ref: './schemas/human_check.json#/$defs/HumanCheckField' }
     EnteredByRole: { $ref: './schemas/human_check.json#/$defs/EnteredByRole' }
     ReportRequest: { $ref: './schemas/job_payloads/report.json' }
     Report: { $ref: './schemas/report.json' }
@@ -1184,8 +1259,13 @@ components:
     JobCreateName: { $ref: './schemas/job_run.json#/$defs/JobCreateName' }
     BenchmarkAbsence: { $ref: './schemas/market.json#/$defs/BenchmarkAbsence' }
     ClaimReverifyPayload: { $ref: './schemas/job_payloads/claim_reverify.json' }
+    BackupPayload: { $ref: './schemas/job_payloads/backup.json' }
+    RegionExpandPayload: { $ref: './schemas/job_payloads/region_expand.json' }
     CatalystCreate: { $ref: './schemas/catalyst.json#/$defs/CatalystCreate' }
     CatalystCreated: { $ref: './schemas/catalyst.json#/$defs/CatalystCreated' }
+    CatalystPatch: { $ref: './schemas/catalyst.json#/$defs/CatalystPatch' }
+    CatalystLinkView: { $ref: './schemas/catalyst.json#/$defs/CatalystLinkView' }
+    CatalystUpdated: { $ref: './schemas/catalyst.json#/$defs/CatalystUpdated' }
     ShareLink: { $ref: './schemas/share_link.json' }
     ShareLinkCreate: { $ref: './schemas/share_link.json#/$defs/ShareLinkCreate' }
     ShareLinkCreated: { $ref: './schemas/share_link.json#/$defs/ShareLinkCreated' }

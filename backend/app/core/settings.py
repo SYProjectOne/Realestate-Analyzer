@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 
@@ -26,6 +27,18 @@ DEFAULT_ROBOTS_EXEMPT_HOSTS = (
     "api.odcloud.kr",
     "openapi.naver.com",
     "naverapihub.apigw.ntruss.com",
+)
+# 판정기 자식 프로세스에 넘기는 자격 증명 env 이름(CEO 요청 — minor 32 후속). 기동 실패 stderr·오류
+# 문자열에서 그 값을 가린다(``judge.jev_mcp.judge_secret_values``). 이름 패턴(KEY·TOKEN·SECRET …) 검사는
+# 그대로 더해진다(이 목록 밖 대비).
+DEFAULT_JUDGE_SECRET_ENV_NAMES = (
+    "OPENROUTER_API_KEY",
+    "AI_GATEWAY_API_KEY",
+    "CLOUDFLARE_API_TOKEN",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "TYPESAFE_API_KEY",
+    "JEV_API_KEY",
+    "NODE_AUTH_TOKEN",
 )
 DEFAULT_ENV_FILE = ".env"
 NewsApiProvider = Literal["ncp", "naver_developers"]
@@ -75,6 +88,10 @@ class Settings(BaseSettings):
     jev_mcp_cmd: str = DEFAULT_JEV_MCP_CMD
     judge_call_timeout_s: float = Field(default=120.0, gt=0)  # 도구 호출 1건
     judge_start_timeout_s: float = Field(default=300.0, gt=0)  # 기동(initialize, 첫 npx 다운로드 포함)
+    # 판정기 자격 증명 env 이름(쉼표 구분 또는 JSON 배열) — 값은 판정기 stderr·오류에서 가린다
+    judge_secret_env_names: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEFAULT_JUDGE_SECRET_ENV_NAMES)
+    )
 
     # --- 외부 키 (없으면 해당 기능 비활성: D1 #5·#6·#7)
     data_go_kr_key: SecretStr | None = None
@@ -108,7 +125,7 @@ class Settings(BaseSettings):
     def _empty_path_is_none(cls, value: Any) -> Any:
         return None if isinstance(value, str) and not value.strip() else value
 
-    @field_validator("http_robots_exempt_hosts", mode="before")
+    @field_validator("http_robots_exempt_hosts", "judge_secret_env_names", mode="before")
     @classmethod
     def _split_hosts(cls, value: Any) -> Any:
         if isinstance(value, str):
@@ -146,6 +163,12 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
+
+    def judge_secret_env_values(self, env: Mapping[str, str] | None = None) -> list[str]:
+        """``judge_secret_env_names`` 의 env 값(빈 값 제외). ``env`` 가 없으면 이 프로세스 환경."""
+        src = os.environ if env is None else env
+        upper = {k.upper(): v for k, v in src.items()}
+        return [v for name in self.judge_secret_env_names if (v := upper.get(name.strip().upper()))]
 
     def secret_values(self) -> list[str]:
         """설정에 들어 있는 비밀값 전부(빈 값 제외). 로그·외부 전송 마스킹에 쓴다."""

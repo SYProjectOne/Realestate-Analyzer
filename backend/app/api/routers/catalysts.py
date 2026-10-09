@@ -21,10 +21,13 @@
 - 제목·발췌는 guard(전화번호·주민번호·이메일·비밀값)를 통과해야 한다 — 판정기 payload 로 가는 문장이다(422).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Annotated, Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -35,11 +38,11 @@ from sqlalchemy.orm import Session
 
 from app.api.contract import check_body
 from app.api.deps import DB, default_snapshot, get_region, settings_of
-from app.api.errors import ApiError, validation_error
+from app.api.errors import ApiError, not_found, validation_error
 from app.api.facts import FactMaker, ProvIndex
 from app.api.jobs import job_view, now_iso
 from app.api.routers.complexes import catalyst_view
-from app.models import Catalyst, Snapshot
+from app.models import Catalyst, CatalystLink, Snapshot
 
 __all__ = [
     "CANDIDATE_FUNCTION",
@@ -163,3 +166,118 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
     fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [row.id]))
     view = catalyst_view(row, checked, fm=fm)
     return JSONResponse({"catalyst": view, "job": job_out}, status_code=201)
+
+
+# ====================================================================== D11-5 위치 확인 → catalyst_link (계약 .8)
+
+LINK_WEIGHT = Decimal("1")
+"""단지 좌표가 없어 거리를 잴 수 없을 때의 연결 가중치(같은 생활권·사람 지정 = 1, D11-5)."""
+
+
+def _link_view(link: CatalystLink) -> dict[str, Any]:
+    return {
+        "complex_id": link.complex_id,
+        "distance_m": link.distance_m,
+        "weight": float(link.weight) if link.weight is not None else None,
+        "label": link.label or "추정",
+        "reason": link.reason,
+    }
+
+
+@router.patch("/catalysts/{id}")
+def update_catalyst(
+    session: DB, request: Request, id: int, body: Annotated[Any, Body()] = None
+) -> JSONResponse:
+    """사람이 호재 위치를 확인하고 영향 범위(단지·생활권)를 지정한다(D11-5). location_confirmed=true 면 catalyst_link 를
+    만든다 — 단지 좌표가 없으므로 distance_m NULL, weight 1, 라벨 추정. false 면 연결을 모두 지운다(RA: 위치 미확정 =
+    연결 없음). expected_ym 은 사람 확인 출처 행(reason '사람 확인(위치 확인)')으로 남긴다. 연결이 바뀌면 지역 최신
+    스냅샷에 rejudge(점수 재계산 — 대상 단지 0개)를 등록한다."""
+    from app.models import Complex
+
+    check_body("updateCatalyst", body)
+    cat = session.get(Catalyst, id)
+    if cat is None:
+        raise not_found(f"catalyst {id}")
+    region = get_region(session, cat.region_id)
+    confirmed = bool(body["location_confirmed"])
+    area_ids = [str(a) for a in body.get("living_area_ids") or []]
+    known_areas = {str(a.get("id")) for a in region.living_areas or []}
+    bad = [a for a in area_ids if a not in known_areas]
+    if bad:
+        raise validation_error(f"이 지역에 없는 생활권: {', '.join(bad)}", ("body", "living_area_ids"))
+    want: dict[int, str] = {}
+    for cid in body.get("complex_ids") or []:
+        cx = session.get(Complex, int(cid))
+        if cx is None or cx.region_id != region.id:
+            raise validation_error(f"이 지역의 단지가 아니다: {cid}", ("body", "complex_ids"))
+        want[cx.id] = "사람 지정(단지 좌표 없음)"
+    if area_ids:
+        for cx in session.scalars(
+            select(Complex).where(Complex.region_id == region.id, Complex.living_area.in_(area_ids))
+        ):
+            want.setdefault(cx.id, f"같은 생활권({cx.living_area}, 단지 좌표 없음)")
+    if confirmed and not want:
+        raise validation_error(
+            "위치를 확인했으면 영향 단지(complex_ids) 또는 생활권(living_area_ids)을 하나 이상 지정한다",
+            ("body",),
+        )
+    cat.location_confirmed = confirmed
+    if "lat" in body:
+        cat.lat = Decimal(str(body["lat"])) if body["lat"] is not None else None
+    if "lon" in body:
+        cat.lon = Decimal(str(body["lon"])) if body["lon"] is not None else None
+    if body.get("expected_ym"):
+        _human_expected_ym(session, cat, str(body["expected_ym"]))
+    links = {
+        lk.complex_id: lk
+        for lk in session.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat.id))
+    }
+    before = set(links)
+    target = set(want) if confirmed else set()
+    for cid in before - target:
+        session.delete(links.pop(cid))
+    for cid in sorted(target):
+        lk = links.get(cid)
+        if lk is None:
+            lk = CatalystLink(catalyst_id=cat.id, complex_id=cid)
+            session.add(lk)
+            links[cid] = lk
+        lk.distance_m, lk.weight, lk.label, lk.reason = None, LINK_WEIGHT, "추정", want[cid][:120]
+    session.flush()
+    job_out: dict[str, Any] | None = None
+    snap = _snapshot_for(session, region.id)
+    if snap is not None and before != target:
+        from app.scheduler.rejudge import enqueue_rejudge
+
+        job = enqueue_rejudge(session, snap.id, [], f"호재 위치 확인: {cat.name}"[:200])
+        job_out = job_view(job)
+    session.commit()
+    checked = (snap.asof_date if snap is not None else now_iso())[:10]
+    fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [cat.id]))
+    view = catalyst_view(cat, checked, fm=fm, linked_ids=sorted(target))
+    return JSONResponse(
+        {"catalyst": view, "links": [_link_view(links[c]) for c in sorted(target)], "job": job_out}
+    )
+
+
+def _human_expected_ym(session: Session, cat: Catalyst, ym: str) -> None:
+    """사람이 확인한 예정월 → catalyst.expected_ym + 출처 행(사람 확인 — chosen, 이전 chosen 은 내린다)."""
+    from app.models import FieldProvenance
+
+    for fp in session.scalars(
+        select(FieldProvenance).where(
+            FieldProvenance.entity == "catalyst",
+            FieldProvenance.entity_id == cat.id,
+            FieldProvenance.field == "expected_ym",
+            FieldProvenance.chosen.is_(True),
+        )
+    ):
+        fp.chosen = False
+    session.add(
+        FieldProvenance(
+            entity="catalyst", entity_id=cat.id, field="expected_ym", value_text=ym, value_norm=ym,
+            raw_document_id=None, url=cat.source_url, checked_at=now_iso(), label="확인됨",
+            reason="사람 확인(위치 확인)", source_rank=0, chosen=True, excerpt=f"사람 확인: 예정 {ym}",
+        )
+    )  # fmt: skip
+    cat.expected_ym = ym

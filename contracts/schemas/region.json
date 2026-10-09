@@ -101,6 +101,31 @@
         "change_event": { "$ref": "change_event.json" },
         "job_id": { "type": "integer" }
       }
+    },
+    "RegionPatch": {
+      "title": "RegionPatch",
+      "description": "PATCH /regions/{id} 본문 — 지역 선택 확장·축소(DECISIONS D11-7 = RA '지역 추가', 계약 2026-10-09.8). selections 는 바뀐 뒤의 전체 목록(GET /regions/resolve 후보, 1개 이상). 서버는 법정동·시군구·시도 코드와 생활권(새 시군구는 새 생활권, 빠진 법정동은 생활권에서 제거 — 빈 생활권은 지운다)을 다시 계산하고 change_event(critical, entity=region, field=selections) + region.expand 잡(추가 선택 수집 → 새 리비전에서 후보 전체 판정·rerank 1회 → publish)을 등록한다. 바뀐 것이 없으면 409 conflict.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selections"],
+      "properties": {
+        "selections": { "type": "array", "minItems": 1, "maxItems": 50, "items": { "$ref": "#/$defs/RegionSelection" } },
+        "name": { "type": ["string", "null"], "minLength": 1, "maxLength": 100 }
+      }
+    },
+    "RegionPatched": {
+      "title": "RegionPatched",
+      "description": "PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "change_event", "job_id", "added", "removed"],
+      "properties": {
+        "region": { "$ref": "#" },
+        "change_event": { "$ref": "change_event.json" },
+        "job_id": { "type": "integer" },
+        "added": { "type": "array", "items": { "$ref": "#/$defs/RegionSelection" } },
+        "removed": { "type": "array", "items": { "$ref": "#/$defs/RegionSelection" } }
+      }
     }
   },
   "examples": [

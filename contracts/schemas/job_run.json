@@ -36,14 +36,16 @@
     { "if": { "properties": { "job_name": { "const": "snapshot.publish" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/snapshot_publish.json" } } } },
     { "if": { "properties": { "job_name": { "const": "reference.refresh" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/reference_refresh.json" } } } },
     { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } },
-    { "if": { "properties": { "job_name": { "const": "claim.reverify" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/claim_reverify.json" } } } }
+    { "if": { "properties": { "job_name": { "const": "claim.reverify" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/claim_reverify.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "backup" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/backup.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "region.expand" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_expand.json" } } } }
   ],
   "$defs": {
     "JobName": {
       "title": "JobName",
-      "description": "잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)",
+      "description": "잡 이름 10종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록 + 계약 2026-10-09.8 backup(D11-8: 매일 03:00 백업 — Postgres pg_dump·SQLite 파일 복사 + 원문 증분 복사, 결과 stats) · region.expand(D11-7: PATCH /regions/{id} 가 등록 — 추가된 선택의 수집 + 새 리비전 전체 재판정·rerank)",
       "type": "string",
-      "enum": ["collect.daily", "collect.weekly", "rejudge", "report", "snapshot.publish", "reference.refresh", "region.bootstrap", "claim.reverify"]
+      "enum": ["collect.daily", "collect.weekly", "rejudge", "report", "snapshot.publish", "reference.refresh", "region.bootstrap", "claim.reverify", "backup", "region.expand"]
     },
     "JobCreate": {
       "title": "JobCreate",
@@ -62,14 +64,15 @@
         { "if": { "properties": { "job_name": { "const": "report" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/report.json" } } } },
         { "if": { "properties": { "job_name": { "const": "snapshot.publish" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/snapshot_publish.json" } } } },
         { "if": { "properties": { "job_name": { "const": "reference.refresh" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/reference_refresh.json" } } } },
-        { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } }
+        { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "backup" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/backup.json" } } } }
       ]
     },
     "JobCreateName": {
       "title": "JobCreateName",
-      "description": "POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).",
+      "description": "POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6) − region.expand(계약 .8). claim.reverify 는 PATCH /claims/{id} 만(D10-3 같은 대상 검사·사실 강등), region.expand 는 PATCH /regions/{id} 만(선택 검증·지역 갱신) 등록한다. backup 은 수동 등록 가능(payload {}).",
       "type": "string",
-      "enum": ["collect.daily", "collect.weekly", "rejudge", "report", "snapshot.publish", "reference.refresh", "region.bootstrap"]
+      "enum": ["collect.daily", "collect.weekly", "rejudge", "report", "snapshot.publish", "reference.refresh", "region.bootstrap", "backup"]
     }
   },
   "examples": [

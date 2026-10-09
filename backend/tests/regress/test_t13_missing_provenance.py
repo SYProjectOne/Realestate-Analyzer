@@ -35,7 +35,9 @@ CID = 2  # 엘리프
 def _replace(env: RegressEnv) -> None:
     from app.api import devseed
 
-    devseed.replace_bundles(env.settings, bundles_path=T13 / "complexes.json", provenance_path=T13 / "provenance.json")
+    devseed.replace_bundles(
+        env.settings, bundles_path=T13 / "complexes.json", provenance_path=T13 / "provenance.json"
+    )
     reset_engine()
 
 
@@ -75,7 +77,12 @@ def test_t13_prod_unknown_label_and_warning(env: RegressEnv, caplog: pytest.LogC
         }
         assert set(got) == set(exp["fields"])
         for name, fact in got.items():
-            assert (fact["label"], fact.get("reason"), fact["v"], fact["prov"]) == ("확인 불가", "출처 누락", None, None), name
+            assert (fact["label"], fact.get("reason"), fact["v"], fact["prov"]) == (
+                "확인 불가",
+                "출처 누락",
+                None,
+                None,
+            ), name
         warned = [r for r in caplog.records if r.levelno >= logging.WARNING and "출처 누락" in r.getMessage()]
         assert len(warned) >= len(exp["fields"])
         # 리스트·대시보드도 500 없이
@@ -94,7 +101,13 @@ def test_t13_frontend_lint_flags_raw_number_outside_factcell() -> None:
     for name, code in (("raw", probe), ("factcell", ok)):
         p = subprocess.run(
             [npx, "eslint", "--stdin", "--stdin-filename", "src/pages/dashboard/index.tsx", "-f", "json"],
-            input=code, cwd=frontend, capture_output=True, text=True, encoding="utf-8", timeout=180, check=False,
+            input=code,
+            cwd=frontend,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=180,
+            check=False,
         )
         out[name] = [m["ruleId"] for m in json.loads(p.stdout)[0]["messages"]]
     assert "local/no-raw-number-render" in out["raw"], out

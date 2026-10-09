@@ -6,8 +6,6 @@
 리뷰 재현: '(1차)/(2차)' 괄호 제거로 이름 키가 같아지고 주소('…일원')도 같으면 2차가 1차 행을 덮어씀.
 """
 
-# ruff: noqa: E501
-
 from __future__ import annotations
 
 from typing import Any
@@ -34,9 +32,22 @@ class _Fields:
     def parse(self, raw: RawDocumentDTO) -> list[FieldCandidate]:
         return [
             FieldCandidate(
-                entity="complex", entity_id=None, entity_key=self.key, field=f, value_text=v, value=v,
-                source_rank=1, source_kind="applyhome_detail", primary=True, label="확인됨", excerpt=v,
-                excerpt_start=0, excerpt_end=1, raw_document_id=raw.id, url=raw.url, checked_at="2026-10-09",
+                entity="complex",
+                entity_id=None,
+                entity_key=self.key,
+                field=f,
+                value_text=v,
+                value=v,
+                source_rank=1,
+                source_kind="applyhome_detail",
+                primary=True,
+                label="확인됨",
+                excerpt=v,
+                excerpt_start=0,
+                excerpt_end=1,
+                raw_document_id=raw.id,
+                url=raw.url,
+                checked_at="2026-10-09",
                 observed_on="2026-09-01",
             )
             for f, v in self.values.items()
@@ -80,11 +91,22 @@ def test_nc4_zone_address_is_never_merged(db_session: Session, add_raw: AddRaw, 
     """주소가 구역 표현('일원')이면 이름이 같아도 병합하지 않는다(잔여 공고여도)."""
     addr = "인천광역시 연수구 송도동 6-1 일원"
     _store(db_session, add_raw, region, APT_DETAIL, "2025000201", 1, name="송도 단지", address=addr)
-    _store(db_session, add_raw, region, REMNDR_DETAIL, "2025910202", 2, name="송도 단지(무순위 1회차)", address=addr)
+    _store(
+        db_session,
+        add_raw,
+        region,
+        REMNDR_DETAIL,
+        "2025910202",
+        2,
+        name="송도 단지(무순위 1회차)",
+        address=addr,
+    )
     assert _keys(db_session) == ["2025000201", "2025910202"]
 
 
-def test_nc4_general_apt_notices_are_never_merged(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_nc4_general_apt_notices_are_never_merged(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     """일반 APT 공고끼리는 이름·주소가 완전히 같아도 병합하지 않는다."""
     addr = "인천광역시 연수구 송도동 32-15"
     _store(db_session, add_raw, region, APT_DETAIL, "2025000301", 1, name="같은 단지", address=addr)
@@ -97,7 +119,16 @@ def test_nc4_remainder_notice_still_binds_to_same_block(
 ) -> None:
     """잔여 공고(웹 상세·API 임의공급)는 같은 블록 단지 1개에 묶는다 — 기존 W12c 동작 유지."""
     addr = "인천광역시 연수구 송도동 32-15 (G5-11BL)"
-    _store(db_session, add_raw, region, APT_DETAIL, "2026000169", 1, name="더샵 송도그란테르 G5-11블록", address=addr)
+    _store(
+        db_session,
+        add_raw,
+        region,
+        APT_DETAIL,
+        "2026000169",
+        1,
+        name="더샵 송도그란테르 G5-11블록",
+        address=addr,
+    )
     _store(db_session, add_raw, region, REMNDR_DETAIL, "2026910207", 2,
            name="더샵 송도그란테르 G5-11블록(조합원 자격상실세대 3회차)", address=addr + "번지")  # fmt: skip
     _store(db_session, add_raw, region, API_OPT, "2026910208", 3,

@@ -1,22 +1,24 @@
-"""D10-3 주장 대상·사실 강등·복원 (계약 2026-10-09.6, R3 재리뷰 N-C3).
-
-contradicted 주장의 문장을 사람이 고쳐 publish 를 푸는 동안 그 판정의 근거가 된 DB 사실이 그대로 점수·화면에 나가던
-문제(N-C3)를 막는다.
+"""주장 대상·사실 강등·복원 — D10-3 + D11-3 (계약 2026-10-09.8, R3 3차 리뷰 C-3·C-4·M-3·M-4·minor 9~14·20·21).
 
 - **주장 대상**(``claim_target``): 주장이 생성된 DB 사실 (entity, entity_id, field). ``claim.entity·entity_id·field``
-  (P9 가 채우는 계약 컬럼)가 있으면 그것, 없으면(0006 이전 행·P9 미갱신) P9 사실 문장 형식(section
-  ``complex:<id>``, ``scheduler.pipeline._claim_text`` 의 필드 용어)과 근거 출처 id(``fp_<id>``)로 되찾는다 —
-  우리가 만든 문장 형식의 문자열 대조이지 판단이 아니다(규칙 3).
-- **같은 대상 검사**(``check_same_target``): 고친 문장의 원자 주장(``judge.claims.split_texts``)마다 원 주장
-  field 의 용어가 있고 다른 사실 필드의 용어가 없어야 하며, 같은 지역의 다른 단지 이름만 가리키면 안 된다.
-  어기면 422(``TargetMismatch``).
-- **강등**(``demote``): 사실 테이블 값을 비우고(점수·요건 입력에서 빠짐 — 파이프라인은 값 null 을 '입력 없음'으로
-  본다) chosen 출처 행 = 강등 행(라벨 '확인 불가', reason '검증 모순', 원문 없음)으로, 원래 chosen 행은 chosen=false
-  로 보관한다. 체크리스트 '사실 재확인' 항목, change_event(critical, triggers_rejudge), 그 단지 rejudge 잡.
-  ``write_chosen`` 의 채택 보류(CONFLICT_HOLD)와 같은 표현(값 null + chosen '확인 불가' 행)이다.
-- **복원**: 사람 확인(``restore_by_human`` — POST /ops/human-checks 같은 단지·같은 field, 그 값이 사실) 또는
-  새 원문(``sync_demotions`` — 정규화가 다른 원문 출처 행을 chosen 으로 올렸으면 'new_source'). 같은 원문
-  출처(원래 행·같은 raw_document)가 다시 chosen 이 됐으면 새 원문이 아니므로 강등을 다시 건다.
+  (P9 가 채우는 계약 컬럼)가 있으면 그것, 없으면(0006 이전 행) P9 사실 문장 형식(section ``complex:<id>``, 필드 용어)과
+  근거 출처 id(``fp_<id>``)로 되찾는다. 가격(max_price_won)은 점수·화면이 실제로 쓰는 필드(``analysis.price_view``
+  현재 구매가의 max_ref — 최신 공고 ``payment_terms.price_by_type.<타입>.max_price_won``)를 대상으로 한다(M-4).
+  대상이 불완전하면(entity_id 를 못 찾음) None 이 아니라 ``incomplete`` 대상 — PATCH 는 422(minor 14: 강등 없이
+  reverify 로 publish 가 풀리지 않게).
+- **같은 대상 검사**(``check_same_target``): 원자 주장마다 원 주장 field 용어가 있고 다른 사실 필드 용어가 없어야 하며,
+  같은 지역의 다른 단지 이름만 가리키면 안 된다. 어기면 422(``TargetMismatch``).
+- **강등**(``demote``): 사실 테이블 값을 **지우지 않는다**(D11-3). ``fact_demotion`` 에 모순 값(value_norm)을 기록하면
+  ``app.facts_view`` 오버레이가 읽는 모든 곳(API·파이프라인·보고서·CSV)에서 그 값을 '확인 불가(검증 모순)'로 만든다.
+  체크리스트 '사실 재확인', change_event(critical, triggers_rejudge), 그 단지 rejudge 잡(발행 스냅샷이면 새 리비전 — D11-1).
+- **사람 확인**(``apply_human_check``): ``human_check`` 를 resolver **0순위 후보**(source_rank 0, label 확인됨, reason
+  '사람 확인(kind)')로 그 필드 그룹을 다시 resolve 한다 — 사실 테이블·출처 행이 바뀌고, 같은 원문을 다시 정규화해도
+  (``normalize.store._reparse_existing`` 가 사람 확인 출처 행을 후보로 되살린다) 사람 확인 값이 이긴다(C-3).
+  값은 필드 형·범위를 검사한다(정수 필드에 '6.02' 거부, 개월 0~240 등 — minor 11). 같은 사실의 강등은 복원 기록.
+- **복원 기록**(``sync_demotions``, 쓰기 경로 전용 — 파이프라인 시작·수집 끝·사람 확인·체크리스트 동기화): 오버레이가 풀린
+  강등(chosen 이 사람 확인 / 새 출처의 **다른 값**)에 restored_at·restored_by 를 남기고 체크리스트를 닫는다. 같은 값 재수집·
+  값 없는 행은 chosen 값이 그대로라 풀리지 않는다(C-4). 강등이 남았는데 사람이 '사실 재확인'을 done 으로 닫았으면 다시 연다
+  (minor 12). GET 은 이 함수를 부르지 않는다(minor 13 — 읽기 전용·공유 토큰은 DB 를 쓰지 않는다).
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -28,10 +30,20 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
-from sqlalchemy import Integer, Numeric, String, select
+from sqlalchemy import Integer, Numeric, select
 from sqlalchemy.orm import Session
 
 from app.api.jobs import now_iso
+from app.facts_view import (
+    DEMOTION_LABEL,
+    DEMOTION_REASON,
+    ChosenRef,
+    DemotionOverlay,
+    is_human,
+    load_overlay,
+    logical_field,
+    overlay_applies,
+)
 from app.models import (
     ChangeEvent,
     ChecklistItem,
@@ -50,22 +62,24 @@ __all__ = [
     "FIELD_ENTITY",
     "FIELD_NAMES",
     "FIELD_TERMS",
+    "HUMAN_FIELDS",
     "ClaimTarget",
+    "HumanTarget",
     "TargetMismatch",
     "ValueParseError",
+    "apply_human_check",
     "check_same_target",
     "checklist_title",
     "claim_target",
     "demote",
     "demotion_view",
     "fields_in",
+    "human_target",
     "latest_demotions",
-    "restore_by_human",
+    "parse_human_value",
     "sync_demotions",
 ]
 
-DEMOTION_LABEL: Final = "확인 불가"
-DEMOTION_REASON: Final = "검증 모순"
 CHECKLIST_KIND: Final = "사실 재확인"
 
 # P9 사실 문장(scheduler.pipeline._claim_text)의 필드 → 문장 용어. 용어는 문장 형식의 일부다(판단 아님).
@@ -77,7 +91,7 @@ FIELD_TERMS: Final[dict[str, tuple[str, ...]]] = {
     "down_payment_pct": ("계약금",),
 }
 FIELD_ENTITY: Final[dict[str, str]] = {
-    "max_price_won": "complex_type",
+    "max_price_won": "complex_type",  # 최신 공고 가격이 있으면 payment_terms(price_by_type) — ``price_ref``
     "move_in_ym": "complex",
     "resale_months": "complex",
     "residency_months": "complex",
@@ -90,6 +104,8 @@ FIELD_NAMES: Final[dict[str, str]] = {
     "residency_months": "거주의무 기간",
     "down_payment_pct": "계약금 비율",
 }
+HUMAN_FIELDS: Final = (*FIELD_TERMS, "intake_status", "other")
+"""POST /ops/human-checks field 값(계약 .8 HumanCheckField): 강등 가능한 사실 필드 + 접수 상태 + 기타(기록만)."""
 _MODELS: Final[dict[str, Any]] = {
     "complex": Complex,
     "complex_type": ComplexType,
@@ -97,7 +113,15 @@ _MODELS: Final[dict[str, Any]] = {
 }
 _SECTION_RE: Final = re.compile(r"^complex:(\d+)$")
 _FP_RE: Final = re.compile(r"\bfp_(\d+)\b")
-_YM_RE: Final = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+_YM_RE: Final = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+# 사람 확인 값 범위(minor 11) — 형만 맞고 터무니없는 값('6.02개월'·'-3'·'2999-01')은 거부
+_RANGES: Final[dict[str, tuple[Decimal, Decimal]]] = {
+    "resale_months": (Decimal(0), Decimal(240)),
+    "residency_months": (Decimal(0), Decimal(240)),
+    "rewin_restriction_years": (Decimal(0), Decimal(20)),
+    "down_payment_pct": (Decimal(0), Decimal(100)),
+    "max_price_won": (Decimal(10_000_000), Decimal(100_000_000_000)),
+}
 
 
 class TargetMismatch(ValueError):
@@ -105,12 +129,12 @@ class TargetMismatch(ValueError):
 
 
 class ValueParseError(ValueError):
-    """사람 확인 값을 사실 컬럼 형으로 바꿀 수 없다 → 422."""
+    """사람 확인 값을 사실 컬럼 형·범위로 바꿀 수 없다 → 422."""
 
 
 @dataclass(frozen=True)
 class ClaimTarget:
-    field: str
+    field: str  # 출처 필드 경로(가격은 'price_by_type.<타입>.max_price_won' 일 수 있다)
     entity: str | None
     entity_id: int | None
 
@@ -119,13 +143,43 @@ class ClaimTarget:
         return self.entity is not None and self.entity_id is not None
 
     @property
+    def logical(self) -> str:
+        return logical_field(self.field)
+
+    @property
     def name(self) -> str:
-        return FIELD_NAMES.get(self.field, self.field)
+        return FIELD_NAMES.get(self.logical, self.logical)
+
+
+@dataclass(frozen=True)
+class HumanTarget:
+    entity: str
+    entity_id: int
+    field: str  # 출처 필드 경로
 
 
 def fields_in(text: str) -> set[str]:
-    """문장에 용어가 나오는 사실 필드."""
+    """문장에 용어가 나오는 사실 필드(논리 이름)."""
     return {f for f, terms in FIELD_TERMS.items() if any(t in text for t in terms)}
+
+
+def price_ref(session: Session, complex_id: int) -> tuple[str, int, str] | None:
+    """점수·화면이 쓰는 기준 타입 최고 공급금액의 출처 필드(``analysis.price_view.current_price``.max_ref)."""
+    from app.analysis.price_view import current_price
+
+    types = list(session.scalars(select(ComplexType).where(ComplexType.complex_id == complex_id)))
+    terms = list(session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == complex_id)))
+    ref = current_price(types, terms).max_ref
+    return (ref.entity, ref.entity_id, ref.field) if ref is not None else None
+
+
+def _current_terms_id(session: Session, complex_id: int) -> int | None:
+    from app.analysis.price_view import current_terms
+
+    cur = current_terms(
+        list(session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == complex_id)))
+    )
+    return cur.id if cur is not None else None
 
 
 def _evidence_fp(session: Session, claim: Claim, entity: str, field: str) -> int | None:
@@ -147,20 +201,37 @@ def _evidence_fp(session: Session, claim: Claim, entity: str, field: str) -> int
 
 
 def claim_target(session: Session, claim: Claim) -> ClaimTarget | None:
-    """주장이 생성된 DB 사실. 계약 컬럼이 있으면 그것, 없으면 P9 문장 형식으로 되찾는다(없으면 None)."""
+    """주장이 생성된 DB 사실. 계약 컬럼이 있으면 그것(대상이 불완전하면 지금 사실로 채운다), 없으면 P9 문장 형식으로
+    되찾는다. 사실 문장이 아니면 None."""
     if claim.field:
-        return ClaimTarget(claim.field, claim.entity, claim.entity_id)
+        target = ClaimTarget(claim.field, claim.entity, claim.entity_id)
+        return target if target.complete else _fill(session, claim, target.logical)
     m = _SECTION_RE.match(claim.section or "")
     if m is None or claim.complex_id is None or int(m.group(1)) != claim.complex_id:
         return None
     found = fields_in(claim.text or "")
     if len(found) != 1:
         return None
-    field = next(iter(found))
-    entity = FIELD_ENTITY[field]
+    return _fill(session, claim, next(iter(found)))
+
+
+def _fill(session: Session, claim: Claim, logical: str) -> ClaimTarget:
+    """논리 필드 → 지금 사실의 대상 행. 못 찾으면 entity_id None(불완전)."""
+    cid = claim.complex_id
+    entity = FIELD_ENTITY.get(logical)
+    if cid is None or entity is None:
+        return ClaimTarget(logical, entity, None)
     if entity == "complex":
-        return ClaimTarget(field, entity, claim.complex_id)
-    return ClaimTarget(field, entity, _evidence_fp(session, claim, entity, field))
+        return ClaimTarget(logical, "complex", cid)
+    if logical == "max_price_won":
+        ref = price_ref(session, cid)
+        if ref is not None:
+            return ClaimTarget(ref[2], ref[0], ref[1])
+        return ClaimTarget(logical, entity, _evidence_fp(session, claim, entity, logical))
+    eid = _evidence_fp(session, claim, entity, logical)
+    if eid is None and entity == "payment_terms":
+        eid = _current_terms_id(session, cid)
+    return ClaimTarget(logical, entity, eid)
 
 
 def _norm(name: str) -> str:
@@ -194,11 +265,11 @@ def check_same_target(session: Session, claim: Claim, text: str, target: ClaimTa
         if target is None:
             continue
         found = fields_in(piece)
-        if target.field not in found:
+        if target.logical not in found:
             raise TargetMismatch(
                 f"원 주장의 대상('{target.name}')에 대한 문장이 아니다('{piece}') — 같은 사실만 고칠 수 있다"
             )
-        extra = sorted(found - {target.field})
+        extra = sorted(found - {target.logical})
         if extra:
             names = ", ".join(f"'{FIELD_NAMES[f]}'" for f in extra)
             raise TargetMismatch(
@@ -207,22 +278,42 @@ def check_same_target(session: Session, claim: Claim, text: str, target: ClaimTa
 
 
 def checklist_title(field: str) -> str:
-    return f"사실 재확인: {FIELD_NAMES.get(field, field)}(검증 모순)"
+    logical = logical_field(field)
+    return f"사실 재확인: {FIELD_NAMES.get(logical, logical)}(검증 모순)"
 
 
-def _chosen(session: Session, entity: str, entity_id: int, field: str) -> list[FieldProvenance]:
-    return list(
-        session.scalars(
-            select(FieldProvenance)
-            .where(
-                FieldProvenance.entity == entity,
-                FieldProvenance.entity_id == entity_id,
-                FieldProvenance.field == field,
-                FieldProvenance.chosen.is_(True),
-            )
-            .order_by(FieldProvenance.id)
+def _chosen(session: Session, entity: str, entity_id: int, field: str) -> FieldProvenance | None:
+    return session.scalars(
+        select(FieldProvenance)
+        .where(
+            FieldProvenance.entity == entity,
+            FieldProvenance.entity_id == entity_id,
+            FieldProvenance.field == field,
+            FieldProvenance.chosen.is_(True),
         )
-    )
+        .order_by(FieldProvenance.id)
+    ).first()
+
+
+def _ref(fp: FieldProvenance | None) -> ChosenRef | None:
+    return ChosenRef(fp.id, fp.value_norm, fp.reason, fp.raw_document_id) if fp is not None else None
+
+
+def _current_value(obj: Any, field: str) -> Any:
+    """사실 행의 현재 값(price_by_type 경로 포함)."""
+    from app.normalize.fields import split_price_by_type
+
+    pbt = split_price_by_type(field)
+    if pbt is not None:
+        entry = (getattr(obj, "price_by_type", None) or {}).get(pbt[0]) or {}
+        return entry.get(pbt[1]) if isinstance(entry, dict) else None
+    return getattr(obj, field, None)
+
+
+def _has_field(obj: Any, field: str) -> bool:
+    from app.normalize.fields import split_price_by_type
+
+    return (split_price_by_type(field) is not None and hasattr(obj, "price_by_type")) or hasattr(obj, field)
 
 
 def _value_text(value: Any) -> str | None:
@@ -246,7 +337,7 @@ def _active(session: Session, entity: str, entity_id: int, field: str) -> FactDe
     ).first()
 
 
-def _complex_of(session: Session, entity: str, obj: Any) -> int | None:
+def _complex_of(entity: str, obj: Any) -> int | None:
     return int(obj.id) if entity == "complex" else getattr(obj, "complex_id", None)
 
 
@@ -266,63 +357,40 @@ def _checklist(session: Session, complex_id: int | None, field: str, note: str) 
         session.add(item)
     else:
         item.status = "open"
+        item.closed_by = None
     session.flush()
     return item
-
-
-def _apply(session: Session, d: FactDemotion, obj: Any, *, now: str) -> FieldProvenance:
-    """값 비움 + 강등 행 chosen(다른 chosen 행은 내림). 강등 행이 없으면 만든다."""
-    for fp in _chosen(session, d.entity, d.entity_id, d.field):
-        fp.chosen = False
-    row = session.get(FieldProvenance, d.demotion_fp_id) if d.demotion_fp_id is not None else None
-    if row is None:
-        orig = session.get(FieldProvenance, d.original_fp_id) if d.original_fp_id is not None else None
-        row = FieldProvenance(
-            entity=d.entity,
-            entity_id=d.entity_id,
-            field=d.field,
-            value_text=None,
-            raw_document_id=None,  # 원문 없음 — 정규화가 이 행을 후보로 되살리지 않는다
-            url=None,
-            checked_at=now[:10],
-            label=DEMOTION_LABEL,
-            reason=DEMOTION_REASON,
-            source_rank=orig.source_rank if orig is not None else 9,
-            chosen=True,
-            excerpt=f"주장 {d.claim_id} 수정 접수 — 강등 전 값 {d.original_value_text or '없음'}"[:500],
-        )
-        session.add(row)
-        session.flush()
-        d.demotion_fp_id = row.id
-    row.chosen = True
-    setattr(obj, d.field, None)
-    session.flush()
-    return row
 
 
 def demote(
     session: Session, claim: Claim, target: ClaimTarget, *, rejudge: bool = True
 ) -> FactDemotion | None:
-    """사실 강등(모듈 설명). 대상 행이 없거나 대상이 불완전하면 None. 같은 사실이 이미 강등 중이면 그 행."""
+    """사실 강등(모듈 설명) — 사실 테이블은 그대로 두고 모순 값을 기록한다. 대상 행이 없거나 불완전하면 None.
+
+    같은 사실이 같은 모순 값으로 이미 강등 중이면 그 행(같은 사실의 두 번째 주장 — ``latest_demotions`` 가 대상으로 찾는다)."""
     if not target.complete or target.entity not in _MODELS:
         return None
     assert target.entity is not None and target.entity_id is not None
-    model = _MODELS[target.entity]
-    obj = session.get(model, target.entity_id)
-    if obj is None or not hasattr(obj, target.field):
+    obj = session.get(_MODELS[target.entity], target.entity_id)
+    if obj is None or not _has_field(obj, target.field):
         return None
-    if claim.field is None:  # 0006 이전 행·P9 미갱신 — 되찾은 대상을 저장한다
+    if claim.field is None or claim.entity_id is None:  # 0006 이전 행·불완전 대상 — 되찾은 대상을 저장
         claim.entity, claim.entity_id, claim.field = target.entity, target.entity_id, target.field
-    now = now_iso()
-    existing = _active(session, target.entity, target.entity_id, target.field)
-    if existing is not None:
-        _apply(session, existing, obj, now=now)
-        return existing
+    from app.normalize.fields import norm_value
+
     chosen = _chosen(session, target.entity, target.entity_id, target.field)
-    original = chosen[-1] if chosen else None
-    value = getattr(obj, target.field)
-    old_text = (original.value_text if original is not None else None) or _value_text(value)
-    cid = _complex_of(session, target.entity, obj)
+    value = _current_value(obj, target.field)
+    value_norm = (
+        chosen.value_norm
+        if chosen is not None and chosen.value_norm is not None
+        else norm_value(float(value) if isinstance(value, Decimal) else value)
+    )
+    existing = _active(session, target.entity, target.entity_id, target.field)
+    if existing is not None and existing.value_norm == value_norm:
+        return existing
+    now = now_iso()
+    old_text = (chosen.value_text if chosen is not None else None) or _value_text(value)
+    cid = _complex_of(target.entity, obj)
     d = FactDemotion(
         claim_id=claim.id,
         snapshot_id=claim.snapshot_id,
@@ -330,26 +398,27 @@ def demote(
         entity=target.entity,
         entity_id=target.entity_id,
         field=target.field,
-        original_fp_id=original.id if original is not None else None,
+        original_fp_id=chosen.id if chosen is not None else None,
+        demotion_fp_id=None,  # 0008: 강등 출처 행을 만들지 않는다(읽기 시점 오버레이)
         original_value_text=old_text,
+        value_norm=value_norm,
         created_at=now,
     )
     session.add(d)
     session.flush()
-    _apply(session, d, obj, now=now)
     item = _checklist(
         session,
         cid,
         target.field,
-        f"주장 {claim.id} 수정 접수 — 강등 전 값 {old_text or '없음'}. 원문 확인 후 사람 확인(전화·방문)으로 "
-        "입력하면 복원된다",
+        f"주장 {claim.id} 수정 접수 — 모순 값 {old_text or '없음'}. 원문 확인 후 사람 확인(전화·방문)으로 입력하거나 "
+        "새 원문이 다른 값을 내면 복원된다",
     )
     d.checklist_item_id = item.id
     ce = ChangeEvent(
         snapshot_id=claim.snapshot_id,
         entity=target.entity,
         entity_id=target.entity_id,
-        field=target.field,
+        field=target.field[:64],
         old_text=old_text,
         new_text=f"{DEMOTION_LABEL}({DEMOTION_REASON})",
         detected_at=now,
@@ -370,67 +439,153 @@ def demote(
             change_event_ids=[ce.id],
         )
         d.rejudge_job_id = job.id
+    from app.normalize.checklist import sync_checklist_for
+
+    sync_checklist_for(session, [cid] if cid is not None else [])
     session.flush()
     return d
 
 
-def _parse(model: Any, field: str, text: str) -> Any:
-    col = model.__table__.columns.get(field)
-    if col is None:
-        raise ValueParseError(f"알 수 없는 필드 {field}")
-    raw = text.strip().replace(",", "")
+# ---------------------------------------------------------------- 사람 확인 (resolver 0순위 후보)
+
+
+def human_target(
+    session: Session, complex_id: int, field: str, entity_id: int | None = None
+) -> HumanTarget | None:
+    """사람 확인 field(논리) → 사실 행. 접수 상태·기타는 None(사실 행 없음). 찾을 수 없으면 ``ValueParseError``."""
+    if field not in FIELD_TERMS:
+        return None
+    entity = FIELD_ENTITY[field]
+    if entity == "complex":
+        if entity_id is not None and entity_id != complex_id:
+            raise ValueParseError(f"entity_id {entity_id} 는 단지 {complex_id} 의 행이 아니다")
+        return HumanTarget("complex", complex_id, field)
+    if field == "max_price_won":
+        ref = price_ref(session, complex_id)
+        if entity_id is not None:
+            t = session.get(ComplexType, entity_id)
+            if t is not None and t.complex_id == complex_id:
+                return HumanTarget("complex_type", t.id, "max_price_won")
+            pt = session.get(PaymentTerms, entity_id)
+            if (
+                pt is not None
+                and pt.complex_id == complex_id
+                and ref is not None
+                and ref[0] == "payment_terms"
+            ):
+                return HumanTarget("payment_terms", pt.id, ref[2])
+            raise ValueParseError(f"entity_id {entity_id} 는 단지 {complex_id} 의 가격 행이 아니다")
+        if ref is None:
+            raise ValueParseError("이 단지에는 기준 타입 가격 행이 없다 — 사람 확인 대상을 정할 수 없다")
+        return HumanTarget(ref[0], ref[1], ref[2])
+    # down_payment_pct → 현재 납부 조건(또는 지정 행)
+    if entity_id is not None:
+        pt = session.get(PaymentTerms, entity_id)
+        if pt is None or pt.complex_id != complex_id:
+            raise ValueParseError(f"entity_id {entity_id} 는 단지 {complex_id} 의 납부 조건이 아니다")
+        return HumanTarget("payment_terms", pt.id, field)
+    tid = _current_terms_id(session, complex_id)
+    if tid is None:
+        raise ValueParseError("이 단지에는 납부 조건 행이 없다 — 사람 확인 대상을 정할 수 없다")
+    return HumanTarget("payment_terms", tid, field)
+
+
+def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
+    """사람 확인 값 → 사실 값(형·범위 검사, minor 11). 못 바꾸면 ``ValueParseError``."""
+    logical = logical_field(target.field)
+    raw = text.strip().replace(",", "").replace(" ", "")
+    if logical.endswith("_ym"):
+        m = _YM_RE.match(raw)
+        if m is None or not 2000 <= int(m.group(1)) <= 2100:
+            raise ValueParseError(f"'{text}' 은 연월(YYYY-MM, 2000~2100)이 아니다")
+        return raw
+    model = _MODELS[target.entity]
+    col = model.__table__.columns.get(logical)
+    integer = logical == "max_price_won" or (col is not None and isinstance(col.type, Integer))
+    numeric = integer or (col is not None and isinstance(col.type, Numeric))
+    if not numeric:
+        raise ValueParseError(f"알 수 없는 필드 {target.field}")
+    for suffix in ("개월", "년", "원", "%"):
+        raw = raw.removesuffix(suffix)
     try:
-        if isinstance(col.type, Integer):
-            return int(Decimal(raw))
-        if isinstance(col.type, Numeric):
-            return Decimal(raw.rstrip("%"))
+        dec = Decimal(raw)
     except (InvalidOperation, ValueError) as exc:
-        raise ValueParseError(f"'{text}' 은 {field} 값(숫자)이 아니다") from exc
-    if isinstance(col.type, String) and field.endswith("_ym") and not _YM_RE.match(raw):
-        raise ValueParseError(f"'{text}' 은 연월(YYYY-MM)이 아니다")
-    return raw
+        raise ValueParseError(f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 값(숫자)이 아니다") from exc
+    if not dec.is_finite():
+        raise ValueParseError(f"'{text}' 은 유한한 숫자가 아니다")
+    if integer and dec != dec.to_integral_value():
+        raise ValueParseError(
+            f"'{text}' 은 정수가 아니다({FIELD_NAMES.get(logical, logical)}) — 소수를 자르지 않는다"
+        )
+    lo, hi = _RANGES.get(logical, (Decimal("-1e18"), Decimal("1e18")))
+    if not lo <= dec <= hi:
+        raise ValueParseError(f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 범위({lo}~{hi}) 밖이다")
+    if integer:
+        return int(dec)
+    if dec.as_tuple().exponent < -2:  # type: ignore[operator]
+        raise ValueParseError(f"'{text}' 은 소수 둘째 자리까지만 받는다")
+    return float(dec)
 
 
-def restore_by_human(session: Session, hc: HumanCheck) -> list[FactDemotion]:
-    """사람 확인 = 복원: 같은 단지·같은 field 의 강등을 그 값으로 되살린다(라벨 확인됨, reason '사람 확인(kind)')."""
+def apply_human_check(
+    session: Session, hc: HumanCheck, *, snapshot_id: int | None = None
+) -> list[FactDemotion]:
+    """사람 확인 = resolver 0순위 후보로 그 필드 그룹을 다시 resolve(사실 테이블·출처 행) + 같은 사실 강등 복원 기록.
+
+    ``hc.entity·entity_id``(``human_target`` 이 채움)와 ``hc.field``(논리)가 사실 행을 가리켜야 한다."""
+    if hc.entity is None or hc.entity_id is None or hc.field not in FIELD_TERMS:
+        return []
+    target = human_target(session, hc.complex_id, hc.field, hc.entity_id)
+    if target is None:
+        return []
+    value = parse_human_value(target, hc.value_text)
+    from app.core.contracts_gen import FieldCandidate
+    from app.normalize.store import resolve_field_group
+
+    stamp = hc.created_at or now_iso()
+    cand = FieldCandidate.model_validate(
+        {
+            "entity": target.entity,
+            "entity_id": target.entity_id,
+            "entity_key": None,
+            "field": target.field,
+            "value_text": hc.value_text.strip()[:200],
+            "value": value,
+            "source_rank": 0,
+            "source_kind": None,
+            "primary": True,
+            "label": "확인됨",
+            "reason": f"사람 확인({hc.kind})",
+            "excerpt": (hc.note or f"사람 확인 hc_{hc.id} ({hc.entered_by})")[:500],
+            "excerpt_start": None,
+            "excerpt_end": None,
+            "raw_document_id": None,
+            "url": None,
+            "checked_at": stamp,  # 같은 필드의 사람 확인이 여럿이면 최신이 이긴다(resolver 최신 규칙)
+            "observed_on": hc.checked_at[:10],
+            "needs_extract": False,
+        }
+    )
+    resolve_field_group(
+        session, target.entity, target.entity_id, target.field, [cand], snapshot_id=snapshot_id
+    )
     out: list[FactDemotion] = []
     for d in session.scalars(
         select(FactDemotion)
         .where(
-            FactDemotion.complex_id == hc.complex_id,
-            FactDemotion.field == hc.field,
+            FactDemotion.entity == target.entity,
+            FactDemotion.entity_id == target.entity_id,
+            FactDemotion.field == target.field,
             FactDemotion.restored_at.is_(None),
         )
         .order_by(FactDemotion.id)
     ):
-        model = _MODELS.get(d.entity)
-        obj = session.get(model, d.entity_id) if model is not None else None
-        if obj is None:
-            continue
-        value = _parse(model, d.field, hc.value_text)
-        for fp in _chosen(session, d.entity, d.entity_id, d.field):
-            fp.chosen = False
-        orig = session.get(FieldProvenance, d.original_fp_id) if d.original_fp_id is not None else None
-        session.add(
-            FieldProvenance(
-                entity=d.entity,
-                entity_id=d.entity_id,
-                field=d.field,
-                value_text=hc.value_text,
-                raw_document_id=None,
-                url=None,
-                checked_at=hc.checked_at[:10],
-                label="확인됨",
-                reason=f"사람 확인({hc.kind})",
-                source_rank=orig.source_rank if orig is not None else 0,
-                chosen=True,
-                excerpt=(hc.note or f"사람 확인 hc_{hc.id}")[:500],
-            )
-        )
-        setattr(obj, d.field, value)
         _restored(session, d, "human_check", human_check_id=hc.id)
         out.append(d)
     session.flush()
+    from app.normalize.checklist import sync_checklist_for
+
+    sync_checklist_for(session, [hc.complex_id])
     return out
 
 
@@ -442,13 +597,15 @@ def _restored(session: Session, d: FactDemotion, by: str, *, human_check_id: int
         item = session.get(ChecklistItem, d.checklist_item_id)
         if item is not None and item.status == "open":
             item.status = "done"
+            item.closed_by = "auto"
 
 
 def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int:
-    """강등 중인 사실의 chosen 출처 행이 바뀌었으면(정규화가 출처를 다시 골랐으면) 정리한다(바뀐 수).
+    """쓰기 경로 전용: 오버레이가 풀린 강등에 복원 기록, 강등이 남았는데 닫힌 '사실 재확인'은 다시 연다. 바뀐 수.
 
-    - 다른 원문 출처 행(raw_document 가 원래 행과 다름)이 chosen → 새 원문 = 복원('new_source').
-    - 원래 행·같은 원문 행이 다시 chosen(같은 원문을 다시 정규화) → 새 원문이 아니다 → 강등을 다시 건다.
+    - chosen 이 사람 확인 → 'human_check'(사람 확인 입력 API 가 이미 기록했으면 건너뜀)
+    - chosen 이 원문 출처의 **다른 값** → 'new_source'
+    - chosen 값이 모순 값과 같다(같은 값 재수집·값 없는 행 — chosen 그대로) → 강등 유지(C-4)
     """
     stmt = select(FactDemotion).where(FactDemotion.restored_at.is_(None))
     if complex_ids is not None:
@@ -458,54 +615,73 @@ def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int
     n = 0
     for d in list(session.scalars(stmt.order_by(FactDemotion.id))):
         chosen = _chosen(session, d.entity, d.entity_id, d.field)
-        if any(fp.id == d.demotion_fp_id for fp in chosen) and len(chosen) == 1:
+        if overlay_applies(d, _ref(chosen)):
+            if d.checklist_item_id is not None:
+                item = session.get(ChecklistItem, d.checklist_item_id)
+                if item is not None and item.status != "open":
+                    item.status, item.closed_by = "open", None  # minor 12: 강등이 남았으면 다시 연다
+                    n += 1
             continue
-        model = _MODELS.get(d.entity)
-        obj = session.get(model, d.entity_id) if model is not None else None
-        if obj is None:
-            continue
-        orig = session.get(FieldProvenance, d.original_fp_id) if d.original_fp_id is not None else None
-        fresh = [
-            fp
-            for fp in chosen
-            if fp.id != d.demotion_fp_id
-            and fp.raw_document_id is not None
-            and fp.id != d.original_fp_id
-            and (orig is None or fp.raw_document_id != orig.raw_document_id)
-        ]
-        if fresh:
-            demo = session.get(FieldProvenance, d.demotion_fp_id) if d.demotion_fp_id is not None else None
-            if demo is not None:
-                demo.chosen = False
-            _restored(session, d, "new_source")
+        if chosen is not None and is_human(chosen.reason):
+            _restored(session, d, "human_check")
         else:
-            _apply(session, d, obj, now=now_iso())
+            _restored(session, d, "new_source")
         n += 1
     session.flush()
     return n
 
 
-def latest_demotions(session: Session, claim_ids: set[int]) -> dict[int, FactDemotion]:
-    if not claim_ids:
+def latest_demotions(
+    session: Session, claims: list[Claim], targets: dict[int, ClaimTarget | None] | None = None
+) -> dict[int, FactDemotion]:
+    """주장 id → 그 주장의 강등(없으면 같은 사실(대상)의 최신 강등 — minor 9: 같은 사실의 두 번째 주장).
+    대상 = ``targets``(``claim_target`` — 계약 컬럼이 빈 옛 주장도 문장 형식으로 되찾은 것) 또는 claim 컬럼."""
+    if not claims:
         return {}
     out: dict[int, FactDemotion] = {}
+    ids = sorted({c.id for c in claims})
     for d in session.scalars(
-        select(FactDemotion).where(FactDemotion.claim_id.in_(sorted(claim_ids))).order_by(FactDemotion.id)
+        select(FactDemotion).where(FactDemotion.claim_id.in_(ids)).order_by(FactDemotion.id)
     ):
         out[d.claim_id] = d
+    want: dict[int, tuple[str, int, str]] = {}
+    for c in claims:
+        if c.id in out:
+            continue
+        t = (targets or {}).get(c.id)
+        if t is not None and t.entity is not None and t.entity_id is not None:
+            want[c.id] = (t.entity, t.entity_id, t.field)
+        elif c.entity and c.entity_id is not None and c.field:
+            want[c.id] = (c.entity, c.entity_id, c.field)
+    if want:
+        by_target: dict[tuple[str, int, str], FactDemotion] = {}
+        for d in session.scalars(
+            select(FactDemotion)
+            .where(FactDemotion.entity_id.in_(sorted({k[1] for k in want.values()})))
+            .order_by(FactDemotion.id)
+        ):
+            by_target[(d.entity, d.entity_id, d.field)] = d
+        for cid, key in want.items():
+            hit = by_target.get(key)
+            if hit is not None:
+                out[cid] = hit
     return out
 
 
-def demotion_view(d: FactDemotion | None) -> dict[str, Any] | None:
+def demotion_view(d: FactDemotion | None, overlay: DemotionOverlay | None = None) -> dict[str, Any] | None:
+    """FactDemotion 계약 모양. status 는 읽는 순간의 오버레이(복원 기록 전이라도 풀렸으면 'restored')."""
     if d is None:
         return None
+    restored = d.restored_at is not None
+    if not restored and overlay is not None and not overlay.is_demoted(d.entity, d.entity_id, d.field):
+        restored = (d.entity, d.entity_id, d.field) in overlay.pending
     return {
         "id": d.id,
         "claim_id": d.claim_id,
         "entity": d.entity,
         "entity_id": d.entity_id,
         "field": d.field,
-        "status": "restored" if d.restored_at else "demoted",
+        "status": "restored" if restored else "demoted",
         "label": DEMOTION_LABEL,
         "reason": DEMOTION_REASON,
         "created_at": d.created_at,
@@ -514,3 +690,7 @@ def demotion_view(d: FactDemotion | None) -> dict[str, Any] | None:
         "checklist_item_id": d.checklist_item_id,
         "rejudge_job_id": d.rejudge_job_id,
     }
+
+
+def overlay_for(session: Session, complex_ids: set[int] | None = None) -> DemotionOverlay:
+    return load_overlay(session, complex_ids=complex_ids)

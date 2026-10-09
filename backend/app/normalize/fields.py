@@ -29,6 +29,7 @@ __all__ = [
     "PRIMARY_SOURCES",
     "RULE_TEXT",
     "SourceKind",
+    "discount_field",
     "field_group",
     "has_tag",
     "is_numeric_field",
@@ -37,6 +38,7 @@ __all__ = [
     "price_by_type_field",
     "rule_text",
     "source_rank",
+    "split_discount",
     "split_price_by_type",
     "strip_tags",
     "value_from_norm",
@@ -246,6 +248,22 @@ def split_price_by_type(field: str) -> tuple[str, str] | None:
     return type_code, item
 
 
+_DISCOUNT = "discount_by_type."
+
+
+def discount_field(type_code: str) -> str:
+    """공고에 명시된 할인(타입별, 계약 2026-10-09.8 — D11-6) 출처 필드: 'discount_by_type.<type_code>'."""
+    return f"{_DISCOUNT}{type_code}"
+
+
+def split_discount(field: str) -> str | None:
+    """'discount_by_type.84A' → '84A'. 아니면 None."""
+    if not field.startswith(_DISCOUNT):
+        return None
+    code = field[len(_DISCOUNT) :]
+    return code or None
+
+
 # ---------------------------------------------------------------- value_norm (계약 2026-10-09.2)
 
 # 값이 불리언인 필드(파서가 bool 로 낸다)
@@ -281,6 +299,8 @@ def norm_value(value: float | int | str | bool | None) -> str | None:
 
 
 def _int_field(field: str) -> bool:
+    if split_discount(field) is not None:
+        return True
     pbt = split_price_by_type(field)
     if pbt is not None:
         return pbt[1] in ("max_price_won", "floor_sample_price_won", "units")
@@ -365,6 +385,8 @@ def is_numeric_field(entity: str, field: str, value: object = None) -> bool:
 
     NUMERIC_FIELDS·INT_FIELDS·DECIMAL_FIELDS·JSON 일정 필드·price_by_type 숫자 항목, 또는 값이 숫자.
     """
+    if split_discount(field) is not None:
+        return True
     pbt = split_price_by_type(field)
     if pbt is not None:
         return pbt[1] in ("max_price_won", "floor_sample_price_won", "units")

@@ -1,5 +1,7 @@
 """기준: region (RA §3 + DECISIONS D2-2), snapshot."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -51,11 +53,17 @@ class Region(Base):
 
 
 class Snapshot(Base):
-    """기준일 스냅샷. (region_id, asof_date) 유일 — 하루 1개."""
+    """기준일 스냅샷 리비전. (region_id, asof_date, revision) 유일 — 0008(계약 .8, D11-1).
+
+    발행(published) 리비전은 불변이다. 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역
+    확장)은
+    같은 기준일의 새 리비전(revision+1, ``revision_of`` = 바탕 리비전, ``revision_reason``)에 쓰고, 완성된 뒤 한
+    번에
+    published 가 된다(``scheduler.snapshots.writable``)."""
 
     __tablename__ = "snapshot"
     __table_args__ = (
-        UniqueConstraint("region_id", "asof_date"),
+        UniqueConstraint("region_id", "asof_date", "revision"),
         CheckConstraint(in_check("status", SNAPSHOT_STATUS), name="status"),
     )
 
@@ -66,3 +74,7 @@ class Snapshot(Base):
     degraded: Mapped[bool] = mapped_column(Boolean, server_default=false())
     created_at: Mapped[str] = mapped_column(String(32))
     published_at: Mapped[str | None] = mapped_column(String(32))
+    # 0008 (계약 2026-10-09.8, D11-1): 같은 기준일 리비전(1부터)·바탕 리비전·사유
+    revision: Mapped[int] = mapped_column(Integer, server_default="1")
+    revision_of: Mapped[int | None] = mapped_column(ForeignKey("snapshot.id"))
+    revision_reason: Mapped[str | None] = mapped_column(String(200))

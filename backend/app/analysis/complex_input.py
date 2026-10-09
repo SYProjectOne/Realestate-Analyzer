@@ -123,6 +123,11 @@ class _Masked:
             for parts in nested:
                 if len(parts) == 2 and isinstance(out.get(parts[0]), dict):
                     out[parts[0]][parts[1]] = None
+                elif len(parts) == 1:  # '<속성>.<키>' — 키 하나(할인 discount_by_type.<타입>, 계약 .8)
+                    whole = f"{name}.{parts[0]}"
+                    key = next((k for k in out if f"{name}.{k}" == whole), None)
+                    if key is not None:
+                        out.pop(key)
             return out
         return value
 
@@ -241,5 +246,15 @@ def build_complex_input(
         regulated=regulated_flag(cx.regulated),
         rewin_restriction_years=cx.rewin_restriction_years,
         has_priority_supply=priority_supply(payments),
+        current_supply_kind=_supply_kind(terms),
         fixed_components=None,
     )
+
+
+_SUPPLY_KINDS: Final = frozenset({"본청약", "무순위", "임의", "선착순"})
+
+
+def _supply_kind(terms: Any) -> Any:
+    """현재 조건(최신 공고)의 공급 경로(계약 .8 ``current_supply_kind`` — §6-7 B·D 접근성). 모르면 None."""
+    kind = getattr(terms, "notice_kind", None) if terms is not None else None
+    return kind if kind in _SUPPLY_KINDS else None

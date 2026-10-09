@@ -44,7 +44,7 @@ SOURCE_KIND = (
 SALE_PERIOD = ("저가 분양기", "고가 분양기")
 TRADE_SOURCE = ("openapi", "reprocessed")
 CATALYST_KIND = ("교통", "개발", "학교", "상업", "생활인프라", "기타")
-CATALYST_STAGE = ("확정", "계획", "추진", "언론", "미확정")
+CATALYST_STAGE = ("확정", "계획", "추진", "언론", "미확정", "호재 아님")  # 호재 아님 = 0008(D11-2)
 JUDGE_TOOL = ("screen", "extract", "audit", "classify", "compare", "noul", "rerank", "decide", "verify")
 JUDGMENT_STATUS = ("ok", "review", "escaped", "blocked", "error")
 VERIFY_STATUS = ("verified", "contradicted", "unsupported", "review")
@@ -59,6 +59,7 @@ HUMAN_CHECK_KIND = ("phone", "visit", "email")
 CHECKLIST_KIND = ("법적 확인", "중도금", "만료", "공고 예상", "계약", "사실 재확인")
 DEMOTION_RESTORED_BY = ("human_check", "new_source")  # 0006 fact_demotion.restored_by (D10-3)
 CHECKLIST_STATUS = ("open", "done", "na")
+CHECKLIST_CLOSED_BY = ("auto", "human")  # 0008 checklist_item.closed_by (M-9)
 CHANGE_ENTITY = (
     "complex",
     "complex_type",
@@ -86,6 +87,8 @@ JOB_NAME = (
     "reference.refresh",
     "region.bootstrap",
     "claim.reverify",  # 계약 2026-10-09.4 (0004 CHECK)
+    "backup",  # 계약 2026-10-09.8 (0008, D11-8)
+    "region.expand",  # 계약 2026-10-09.8 (0008, D11-7)
 )
 JOB_KIND = ("scheduled", "manual", "rejudge")
 JOB_STATUS = ("queued", "running", "done", "failed")
