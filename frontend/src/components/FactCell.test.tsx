@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Fact } from '@/api/types';
+import type { FactLike as Fact } from '@/lib/contract';
 import { FactCell } from './FactCell';
 
 const fact = (overrides: Partial<Fact> = {}): Fact => ({
@@ -30,9 +30,24 @@ describe('FactCell', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('값이 없으면 "확인 불가(사유)"', () => {
+  it('값이 없으면 "확인 불가(사유, 확인일)" 한 번만(계약 fact.json 표시 규칙 1)', () => {
     render(<FactCell fact={fact({ v: null, label: '확인 불가', reason: '스캔' })} unit="won" />);
-    expect(screen.getAllByText('확인 불가(스캔)').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('확인 불가(스캔, 2026-10-08)')).toHaveLength(1);
+  });
+
+  it('확인일이 없으면 "확인 불가(사유)"', () => {
+    render(
+      <FactCell
+        fact={fact({ v: null, label: '확인 불가', reason: '스캔', checked_at: null })}
+        unit="won"
+      />,
+    );
+    expect(screen.getByText('확인 불가(스캔)')).toBeInTheDocument();
+  });
+
+  it('다른 라벨의 사유는 "<라벨>(<사유>)" 배지', () => {
+    render(<FactCell fact={fact({ reason: '대체·보정 c=0.015' })} unit="won" />);
+    expect(screen.getByText('추정(대체·보정 c=0.015)')).toBeInTheDocument();
   });
 
   it('fact 자체가 없으면 emptyReason으로 "확인 불가(사유)"', () => {

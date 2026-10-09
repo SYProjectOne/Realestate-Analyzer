@@ -1,6 +1,10 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Intake, Region, Snapshot } from '@/api/types';
+import type {
+  IntakeLike as Intake,
+  RegionLike as Region,
+  SnapshotLike as Snapshot,
+} from '@/lib/contract';
 import { renderWithProviders } from '@/test/render';
 import {
   CachedBadge,
@@ -155,13 +159,7 @@ describe('DataTableToggle · JobProgressView', () => {
         job={{
           id: 'j',
           job_name: 'rejudge',
-          kind: 'manual',
-          payload: {},
-          scheduled_at: null,
-          started_at: null,
-          finished_at: null,
           status: 'running',
-          stats: null,
           error_text: null,
         }}
       />,

@@ -1,5 +1,5 @@
-/** C7 판정기 확률 — 데이터 소스: CompareView.decisions[scenario] (decide prob per 후보 + escape) */
-import type { DecisionSet } from '@/api/types';
+/** C7 판정기 확률 — 데이터 소스: CompareView.decisions[scenario] (decide items: 후보별 prob + escape 선택지) */
+import type { DecisionSet } from '@/lib/contract';
 
 export interface C07Data {
   /** 현재 시나리오의 decide 결과. null = 판정 없음 */

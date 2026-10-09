@@ -1,8 +1,8 @@
 /** C9 호재 단계 — 데이터 소스: Market.catalysts[] (G6) / ComplexDetail.catalysts[] (G3 작게) */
-import type { Catalyst, CatalystStage } from '@/api/types';
+import type { CatalystStage, CatalystView } from '@/lib/contract';
 
 export interface C09Data {
-  catalysts: Catalyst[];
+  catalysts: CatalystView[];
   /** G3 작게: 보드만, 타임라인 숨김 */
   compact?: boolean;
 }

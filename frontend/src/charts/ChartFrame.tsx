@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import type { IsoDate, Label } from '@/api/types';
 import { DataTableToggle, type DataTable } from '@/components/DataTableToggle';
 import { EmptyState } from '@/components/EmptyState';
 import { LabelBadge } from '@/components/LabelBadge';
+import type { Label } from '@/lib/contract';
+import type { IsoDate } from '@/lib/format';
 
 export interface ChartFrameProps {
   /** 차트 제목(ko.json `chart.Cxx.title`) */
@@ -49,7 +50,11 @@ export function ChartFrame({
         {badges}
         {subtitle ? <span className="w-full text-xs text-muted">{subtitle}</span> : null}
       </figcaption>
-      {emptyReason !== null ? <EmptyState message={emptyReason} /> : children}
+      {emptyReason !== null && emptyReason !== undefined ? (
+        <EmptyState message={emptyReason} />
+      ) : (
+        children
+      )}
       {table ? <DataTableToggle table={table} caption={title} asof={asof} /> : null}
     </figure>
   );
