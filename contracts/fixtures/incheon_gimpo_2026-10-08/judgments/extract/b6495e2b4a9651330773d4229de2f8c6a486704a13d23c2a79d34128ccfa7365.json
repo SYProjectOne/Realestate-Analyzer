@@ -1,0 +1,39 @@
+{
+  "tool": "extract",
+  "purpose": "extract:notice:2",
+  "input_hash": "sha256:b6495e2b4a9651330773d4229de2f8c6a486704a13d23c2a79d34128ccfa7365",
+  "input_len": 100,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "fields": [
+      {
+        "name": "eligibility",
+        "value_text": null,
+        "decision": "review",
+        "confidence": null,
+        "excerpt": null
+      }
+    ],
+    "counts": {
+      "auto": 15,
+      "review": 1,
+      "total": 16
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "보고서는 review 필드 이름 일부만 기재 — fields에는 기재된 것만, 나머지는 counts"
+  },
+  "duration_ms": null,
+  "judgment_seq": 44,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 2,
+  "error_text": null
+}

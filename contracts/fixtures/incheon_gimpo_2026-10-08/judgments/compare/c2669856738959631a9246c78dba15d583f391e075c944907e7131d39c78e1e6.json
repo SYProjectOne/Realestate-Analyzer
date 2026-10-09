@@ -1,0 +1,40 @@
+{
+  "tool": "compare",
+  "purpose": "compare:catalyst:line5_stations",
+  "input_hash": "sha256:c2669856738959631a9246c78dba15d583f391e075c944907e7131d39c78e1e6",
+  "input_len": 74,
+  "status": "ok",
+  "confidence": 0.99,
+  "cached": false,
+  "result": {
+    "overall": "contradicts",
+    "prob": 0.99,
+    "aspects": [
+      {
+        "aspect": "정거장 수",
+        "relation": "contradicts",
+        "prob": 1.0
+      },
+      {
+        "aspect": "연장",
+        "relation": "same_fact",
+        "prob": null
+      },
+      {
+        "aspect": "총사업비",
+        "relation": "same_fact",
+        "prob": null
+      }
+    ]
+  },
+  "raw": {
+    "decision": "auto"
+  },
+  "duration_ms": null,
+  "judgment_seq": 112,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

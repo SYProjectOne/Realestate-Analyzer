@@ -1,0 +1,15 @@
+# 재구성 발췌 — 무순위 공고(2025-08)
+# 원문: https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025910122&pblancNo=2025910122&atchmnflSeqNo=1561312&atchmnflSn=4
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+84A 329세대
+84A 105건(△224)
+84B 27세대
+84B 41건 1.52
+84C 133세대
+84C 10건(△123)
+99A 10세대
+99A 17건 1.70
+99B 11세대
+99B 8건(△3)
+무순위 접수 2025-08-11
+무순위 잔여 510세대

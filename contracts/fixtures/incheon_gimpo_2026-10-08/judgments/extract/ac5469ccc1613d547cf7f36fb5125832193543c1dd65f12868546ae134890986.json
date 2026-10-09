@@ -1,0 +1,60 @@
+{
+  "tool": "extract",
+  "purpose": "extract:notice:9",
+  "input_hash": "sha256:ac5469ccc1613d547cf7f36fb5125832193543c1dd65f12868546ae134890986",
+  "input_len": 90,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "fields": [
+      {
+        "name": "apply_date",
+        "value_text": null,
+        "decision": "review",
+        "confidence": null,
+        "excerpt": null
+      },
+      {
+        "name": "winner_date",
+        "value_text": null,
+        "decision": "review",
+        "confidence": null,
+        "excerpt": null
+      },
+      {
+        "name": "resale_period",
+        "value_text": null,
+        "decision": "review",
+        "confidence": null,
+        "excerpt": null
+      },
+      {
+        "name": "down_payment_first",
+        "value_text": null,
+        "decision": "review",
+        "confidence": null,
+        "excerpt": null
+      }
+    ],
+    "counts": {
+      "auto": 10,
+      "review": 4,
+      "total": 14
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "보고서는 review 필드 이름 일부만 기재 — fields에는 기재된 것만, 나머지는 counts"
+  },
+  "duration_ms": null,
+  "judgment_seq": 98,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 9,
+  "error_text": null
+}

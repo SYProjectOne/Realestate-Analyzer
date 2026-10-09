@@ -1,0 +1,2069 @@
+[
+  {
+    "judgment_seq": 1,
+    "tool": "screen",
+    "purpose": "screen:notice:1",
+    "input_hash": "sha256:057e8a3da1bf7fbc9dcae0ca9b76e7202489b0e7854ee40eac6a8e24b5151bbe",
+    "file": "screen/057e8a3da1bf7fbc9dcae0ca9b76e7202489b0e7854ee40eac6a8e24b5151bbe.json",
+    "report_ref": "부록 A #1",
+    "payload": {
+      "report_ref": "부록 A #1",
+      "text": "더샵 송도그란테르 G5-1블록 입주자모집공고 … 주택유형 해당지역 기타지역 규제지역 여…"
+    }
+  },
+  {
+    "judgment_seq": 2,
+    "tool": "screen",
+    "purpose": "screen:notice:3",
+    "input_hash": "sha256:e1f36b56946578c71fff88d0076e5de6244e2f49fd1007629b75fd230ea452d8",
+    "file": "screen/e1f36b56946578c71fff88d0076e5de6244e2f49fd1007629b75fd230ea452d8.json",
+    "report_ref": "부록 A #2",
+    "payload": {
+      "report_ref": "부록 A #2",
+      "text": "송도 한내들 센트럴리버 입주자모집공고 … 주택유형 해당지역 기타지역 규제지역여부 / 민…"
+    }
+  },
+  {
+    "judgment_seq": 3,
+    "tool": "screen",
+    "purpose": "screen:notice:3:임의",
+    "input_hash": "sha256:07f61fb91860ea544a312f4664b50f08a0e147ccd7d1e125c1027f5ecc5a797d",
+    "file": "screen/07f61fb91860ea544a312f4664b50f08a0e147ccd7d1e125c1027f5ecc5a797d.json",
+    "report_ref": "부록 A #3",
+    "payload": {
+      "report_ref": "부록 A #3",
+      "text": "민영 비규제지역 최초 당첨자 발표일(2025.12.23.)로부터 6개월 없음 미적용 …… (한내들 임의공급 공고)"
+    }
+  },
+  {
+    "judgment_seq": 4,
+    "tool": "screen",
+    "purpose": "screen:notice:1:무순위",
+    "input_hash": "sha256:cd002802cf0e451c54e712c7f471c3588fcc83ddf46384ddc6074616ba167f36",
+    "file": "screen/cd002802cf0e451c54e712c7f471c3588fcc83ddf46384ddc6074616ba167f36.json",
+    "report_ref": "부록 A #4",
+    "payload": {
+      "report_ref": "부록 A #4",
+      "text": "더샵 송도그란테르 G5-1블록 민영주택 무순위 입주자모집공고 … 주택유형 규제지역 여부…"
+    }
+  },
+  {
+    "judgment_seq": 5,
+    "tool": "screen",
+    "purpose": "screen:news:1",
+    "input_hash": "sha256:19d83788648f36ab206ecf6332a6faee1080ba4e249d927b2038e9eaeed362b3",
+    "file": "screen/19d83788648f36ab206ecf6332a6faee1080ba4e249d927b2038e9eaeed362b3.json",
+    "report_ref": "부록 A #5",
+    "payload": {
+      "report_ref": "부록 A #5",
+      "text": "인천에서 처음으로 평당 3000만원 시대를 연 '더샵 송도그란테르'가 100% 계약 달… (인천일보 2026-08-05)"
+    }
+  },
+  {
+    "judgment_seq": 6,
+    "tool": "screen",
+    "purpose": "screen:notice:12",
+    "input_hash": "sha256:4b9f6dc6a838a5f1563927a49fa641b39d552c6ab6455d1437bed2984ce7b12d",
+    "file": "screen/4b9f6dc6a838a5f1563927a49fa641b39d552c6ab6455d1437bed2984ce7b12d.json",
+    "report_ref": "부록 A #6",
+    "payload": {
+      "report_ref": "부록 A #6",
+      "text": "더샵 송도마리나베이(조합원 자격상실세대 3회차) 무순위(사후) 입주자모집공고 … 민영 …"
+    }
+  },
+  {
+    "judgment_seq": 7,
+    "tool": "screen",
+    "purpose": "screen:news:worldmeridian",
+    "input_hash": "sha256:f40559187a43e93bacf8ddf929d4b06a4d390395f4dc2c5f9f9f031b1cf562c1",
+    "file": "screen/f40559187a43e93bacf8ddf929d4b06a4d390395f4dc2c5f9f9f031b1cf562c1.json",
+    "report_ref": "부록 A #7",
+    "payload": {
+      "report_ref": "부록 A #7",
+      "text": "인천 송도국제도시 핵심 입지에 자리한 '송도 월드메르디앙'이 마지막 잔여 8세대를 대상… (kairnews, 광고성)"
+    }
+  },
+  {
+    "judgment_seq": 8,
+    "tool": "screen",
+    "purpose": "screen:news:homingroots",
+    "input_hash": "sha256:23f8a41bda90c9aac9197743f79f7e0449bd8530a3a884f75a0f5e24f056c7b5",
+    "file": "screen/23f8a41bda90c9aac9197743f79f7e0449bd8530a3a884f75a0f5e24f056c7b5.json",
+    "report_ref": "부록 A #8",
+    "payload": {
+      "report_ref": "부록 A #8",
+      "text": "[헤럴드] 인천글로벌시티(IGCD)는 송도국제도시 11공구 Rc1블록(연수구 송도동 5… (홈잉루츠 송도)"
+    }
+  },
+  {
+    "judgment_seq": 9,
+    "tool": "screen",
+    "purpose": "screen:notice:lake4",
+    "input_hash": "sha256:b2c6bd2cd9209d1819dfdef6994c5d46047030fe1206d0cf2ccf1cd58662d5e9",
+    "file": "screen/b2c6bd2cd9209d1819dfdef6994c5d46047030fe1206d0cf2ccf1cd58662d5e9.json",
+    "report_ref": "부록 A #9",
+    "payload": {
+      "report_ref": "부록 A #9",
+      "text": "힐스테이트 레이크 송도 4차 (임의공급 4차) 입주자모집공고 … 주택유형 규제지역여부 …"
+    }
+  },
+  {
+    "judgment_seq": 10,
+    "tool": "screen",
+    "purpose": "screen:news:15",
+    "input_hash": "sha256:bef96c7842cf745cc37e4ac1390cd33b2e7c29b6b6b8d2b192b831c96a2a13d2",
+    "file": "screen/bef96c7842cf745cc37e4ac1390cd33b2e7c29b6b6b8d2b192b831c96a2a13d2.json",
+    "report_ref": "부록 A #10",
+    "payload": {
+      "report_ref": "부록 A #10",
+      "text": "반도건설이 오는 10월 인천 계양신도시 AC3·AC4블록에 '계양신도시 카이브 유보라'를 … (한경 2026-08-27)"
+    }
+  },
+  {
+    "judgment_seq": 11,
+    "tool": "screen",
+    "purpose": "screen:news:gyeyang_a4a7",
+    "input_hash": "sha256:06f2f5563e643e1e85ed4cd1bde1eb2ee17c4a35c017b589e930521adf3df591",
+    "file": "screen/06f2f5563e643e1e85ed4cd1bde1eb2ee17c4a35c017b589e930521adf3df591.json",
+    "report_ref": "부록 A #11",
+    "payload": {
+      "report_ref": "부록 A #11",
+      "text": "[아주경제 2023-05-25] LH는 인천계양 테크노밸리 공동주택용지(A4·A7블록)…"
+    }
+  },
+  {
+    "judgment_seq": 12,
+    "tool": "screen",
+    "purpose": "screen:notice:gyeyang_gosi",
+    "input_hash": "sha256:4b4e15fb5c6d97772afa8d73a301bd95f3d347e39821e7f42952f70a8a9c700f",
+    "file": "screen/4b4e15fb5c6d97772afa8d73a301bd95f3d347e39821e7f42952f70a8a9c700f.json",
+    "report_ref": "부록 A #12",
+    "payload": {
+      "report_ref": "부록 A #12",
+      "text": "국토교통부고시 제2025-937호(2025-12-30) 인천계양 테크노밸리 공공주택지구…"
+    }
+  },
+  {
+    "judgment_seq": 13,
+    "tool": "screen",
+    "purpose": "screen:notice:jakjeon",
+    "input_hash": "sha256:89467879ceeaec019406949334e52ec4a7f032fdbe705d24850193851ba31dea",
+    "file": "screen/89467879ceeaec019406949334e52ec4a7f032fdbe705d24850193851ba31dea.json",
+    "report_ref": "부록 A #13",
+    "payload": {
+      "report_ref": "부록 A #13",
+      "text": "주택유형 민영 / 규제지역여부 비규제지역 / 무순위(사후) 자격요건 … (인천 작전 한라비발디 무순위 공고)"
+    }
+  },
+  {
+    "judgment_seq": 14,
+    "tool": "screen",
+    "purpose": "screen:news:gyeyang_price",
+    "input_hash": "sha256:77d71cb260bb1c8f7e3d62c2d0cd7be037de7edbdbbc7968ccfdc87b0cc87163",
+    "file": "screen/77d71cb260bb1c8f7e3d62c2d0cd7be037de7edbdbbc7968ccfdc87b0cc87163.json",
+    "report_ref": "부록 A #14",
+    "payload": {
+      "report_ref": "부록 A #14",
+      "text": "[데일리안 2026-09-07] 2024년 입주한 힐스테이트자이계양 전용 84㎡는 8억…"
+    }
+  },
+  {
+    "judgment_seq": 15,
+    "tool": "screen",
+    "purpose": "screen:phase1:gtxd",
+    "input_hash": "sha256:63ca81c267cf78e6c244b22a4cfecfcab58f93f701fe5832aea4e45a24a2c32e",
+    "file": "screen/63ca81c267cf78e6c244b22a4cfecfcab58f93f701fe5832aea4e45a24a2c32e.json",
+    "report_ref": "부록 A #15",
+    "payload": {
+      "report_ref": "부록 A #15",
+      "text": "[한국경제 2025-07-18] 18일 국토교통부에 따르면… 서부권 광역급행철도 사업이… (GTX-D 예타)"
+    }
+  },
+  {
+    "judgment_seq": 16,
+    "tool": "screen",
+    "purpose": "screen:notice:ab22",
+    "input_hash": "sha256:8e78f4e9f9a920e1e2aa87d3e27c91ac188711a9388308dba49bb81c1b48b617",
+    "file": "screen/8e78f4e9f9a920e1e2aa87d3e27c91ac188711a9388308dba49bb81c1b48b617.json",
+    "report_ref": "부록 A #16",
+    "payload": {
+      "report_ref": "부록 A #16",
+      "text": "더샵 검단레이크파크(AB22BL) 입주자모집공고: 주택유형 민영 / 해당지역 인천광역시…"
+    }
+  },
+  {
+    "judgment_seq": 17,
+    "tool": "screen",
+    "purpose": "screen:notice:6",
+    "input_hash": "sha256:750d0c0f6044ae40f4a6fd0c90d6e886fa81507f9ec75a75fafe5be0dd4331c5",
+    "file": "screen/750d0c0f6044ae40f4a6fd0c90d6e886fa81507f9ec75a75fafe5be0dd4331c5.json",
+    "report_ref": "부록 A #17",
+    "payload": {
+      "report_ref": "부록 A #17",
+      "text": "더샵 검단레이크파크(AB23BL) 무순위 입주자모집공고: AB23BL, AB22BL 중…"
+    }
+  },
+  {
+    "judgment_seq": 18,
+    "tool": "screen",
+    "purpose": "screen:notice:paragon",
+    "input_hash": "sha256:786186d67f6e68ca0f636d6ceefa27e0b1d90fa27bada01ac8bfb6e91b3ea995",
+    "file": "screen/786186d67f6e68ca0f636d6ceefa27e0b1d90fa27bada01ac8bfb6e91b3ea995.json",
+    "report_ref": "부록 A #18",
+    "payload": {
+      "report_ref": "부록 A #18",
+      "text": "검단호수공원역 파라곤(AA36BL) 입주자모집공고: 재당첨제한 10년 / 전매제한 3년…"
+    }
+  },
+  {
+    "judgment_seq": 19,
+    "tool": "screen",
+    "purpose": "screen:notice:5",
+    "input_hash": "sha256:6f527a536f86783c1438ec621c03fe22feb7e462b1995320836639b8f1583bf3",
+    "file": "screen/6f527a536f86783c1438ec621c03fe22feb7e462b1995320836639b8f1583bf3.json",
+    "report_ref": "부록 A #19",
+    "payload": {
+      "report_ref": "부록 A #19",
+      "text": "검단 센트레빌 에듀시티(AB8BL) 입주자모집공고: 주택유형 민영 / 해당지역 인천광역…"
+    }
+  },
+  {
+    "judgment_seq": 20,
+    "tool": "screen",
+    "purpose": "screen:notice:2",
+    "input_hash": "sha256:d16b8b3913bf914126e2c68857c326749e88d9838510076bebc29947acf64e6a",
+    "file": "screen/d16b8b3913bf914126e2c68857c326749e88d9838510076bebc29947acf64e6a.json",
+    "report_ref": "부록 A #20",
+    "payload": {
+      "report_ref": "부록 A #20",
+      "text": "엘리프 검단 포레듀(AA32블록) 입주자모집공고: 재당첨제한 10년 / 전매제한 3년(…"
+    }
+  },
+  {
+    "judgment_seq": 21,
+    "tool": "screen",
+    "purpose": "screen:notice:jungheung",
+    "input_hash": "sha256:c8aae870ebd41c1f5dbf9ef259278b67fee45818a65568faf40195ed4469d74b",
+    "file": "screen/c8aae870ebd41c1f5dbf9ef259278b67fee45818a65568faf40195ed4469d74b.json",
+    "report_ref": "부록 A #21",
+    "payload": {
+      "report_ref": "부록 A #21",
+      "text": "검단호수공원역 중흥S-클래스(AA24블록) 입주자모집공고: 주택유형 민영 / 해당지역 …"
+    }
+  },
+  {
+    "judgment_seq": 22,
+    "tool": "screen",
+    "purpose": "screen:news:16",
+    "input_hash": "sha256:200e9f9e08e728d8e9fd20acec8ff6ecf68829da72c96bc548874fea7da37cdf",
+    "file": "screen/200e9f9e08e728d8e9fd20acec8ff6ecf68829da72c96bc548874fea7da37cdf.json",
+    "report_ref": "부록 A #22",
+    "payload": {
+      "report_ref": "부록 A #22",
+      "text": "[파이낸셜뉴스 2026-09-16] 동부건설이 오는 10월 인천 검단구 오류동 '검단 … (그랑포레)"
+    }
+  },
+  {
+    "judgment_seq": 23,
+    "tool": "screen",
+    "purpose": "screen:phase2:geomdan_trades",
+    "input_hash": "sha256:2d8aff757deee89c426c27ec59f14153a3b75052c5e5c61846b28c63049fec18",
+    "file": "screen/2d8aff757deee89c426c27ec59f14153a3b75052c5e5c61846b28c63049fec18.json",
+    "report_ref": "부록 A #23",
+    "payload": {
+      "report_ref": "부록 A #23",
+      "text": "[검단 실거래 — dapt.kr(국토부 실거래 재가공), 2026-01~06, 전용 8…"
+    }
+  },
+  {
+    "judgment_seq": 24,
+    "tool": "screen",
+    "purpose": "screen:phase2:geomdan_catalyst",
+    "input_hash": "sha256:f104c6e4177432ceb98fe79f5081ea1ebb3b302288c09dc44907ae9af336a86c",
+    "file": "screen/f104c6e4177432ceb98fe79f5081ea1ebb3b302288c09dc44907ae9af336a86c.json",
+    "report_ref": "부록 A #24",
+    "payload": {
+      "report_ref": "부록 A #24",
+      "text": "[검단 호재·공급 — 2026-10-07 기준] 인천1호선 검단연장(계양~검단, 6.8…"
+    }
+  },
+  {
+    "judgment_seq": 25,
+    "tool": "screen",
+    "purpose": "screen:phase2:songdo_benchmark",
+    "input_hash": "sha256:505b24a33b78eb4abd549b4f7c1d7194ef9603f4f12af8bb62039a204d2bd899",
+    "file": "screen/505b24a33b78eb4abd549b4f7c1d7194ef9603f4f12af8bb62039a204d2bd899.json",
+    "report_ref": "부록 A #25",
+    "payload": {
+      "report_ref": "부록 A #25",
+      "text": "[송도 벤치마크 — 청약홈 공급금액(최고가) → dapt.kr 2026-04~09 실거…"
+    }
+  },
+  {
+    "judgment_seq": 26,
+    "tool": "screen",
+    "purpose": "screen:phase2:songdo_market",
+    "input_hash": "sha256:7f1551f5176dec443eb3afe66acda76b05424d015997d2a2be19efa42b13855e",
+    "file": "screen/7f1551f5176dec443eb3afe66acda76b05424d015997d2a2be19efa42b13855e.json",
+    "report_ref": "부록 A #26",
+    "payload": {
+      "report_ref": "부록 A #26",
+      "text": "[송도 비교 시세 — dapt.kr 2026-04~09 실거래] (a) 한내들 센트럴리…"
+    }
+  },
+  {
+    "judgment_seq": 27,
+    "tool": "screen",
+    "purpose": "screen:phase2:songdo_catalyst",
+    "input_hash": "sha256:e6a1574807dbb070ff5be07ec5b162372d05f80aefcb1896e082b6fa669d2a80",
+    "file": "screen/e6a1574807dbb070ff5be07ec5b162372d05f80aefcb1896e082b6fa669d2a80.json",
+    "report_ref": "부록 A #27",
+    "payload": {
+      "report_ref": "부록 A #27",
+      "text": "[송도 호재 단계 — 근거 원문] GTX-B(송도~마석 82.8km): \"신한은행은 공…"
+    }
+  },
+  {
+    "judgment_seq": 28,
+    "tool": "screen",
+    "purpose": "screen:phase2:gtxd",
+    "input_hash": "sha256:4cc9921843233b2651dbeff87f6f04352c4ce2059ef24fe39db062b760a5efaa",
+    "file": "screen/4cc9921843233b2651dbeff87f6f04352c4ce2059ef24fe39db062b760a5efaa.json",
+    "report_ref": "부록 A #28",
+    "payload": {
+      "report_ref": "부록 A #28",
+      "text": "[Phase 2 목적: 호재 단계 평가] [한국경제 2025-07-18] 서부권 광역급행철도(GTX-D) 예타 통과…"
+    }
+  },
+  {
+    "judgment_seq": 29,
+    "tool": "extract",
+    "purpose": "extract:notice:1",
+    "input_hash": "sha256:b3c7cc5ea85e9c5d733f66f6d3ed33442f428c3af3f00194159f6ebba966c490",
+    "file": "extract/b3c7cc5ea85e9c5d733f66f6d3ed33442f428c3af3f00194159f6ebba966c490.json",
+    "report_ref": "부록 A #29",
+    "payload": {
+      "report_ref": "부록 A #29",
+      "document": "더샵 송도그란테르 G5-1블록 입주자모집공고(2026-05-07) 핵심 수치 · 13필드",
+      "field_count": 13
+    }
+  },
+  {
+    "judgment_seq": 30,
+    "tool": "extract",
+    "purpose": "extract:notice:3",
+    "input_hash": "sha256:436b620feff656ed23e805d39de82fd806c3ddd546819db368e1da9da07c74f5",
+    "file": "extract/436b620feff656ed23e805d39de82fd806c3ddd546819db368e1da9da07c74f5.json",
+    "report_ref": "부록 A #30",
+    "payload": {
+      "report_ref": "부록 A #30",
+      "document": "송도 한내들 센트럴리버 입주자모집공고(2025-12-04) · 15필드",
+      "field_count": 15
+    }
+  },
+  {
+    "judgment_seq": 31,
+    "tool": "extract",
+    "purpose": "extract:notice:3:임의",
+    "input_hash": "sha256:5d1de9193895acf01eef51b9833c58b33d4d74d2ced282a79dd83ba9df957309",
+    "file": "extract/5d1de9193895acf01eef51b9833c58b33d4d74d2ced282a79dd83ba9df957309.json",
+    "report_ref": "부록 A #31",
+    "payload": {
+      "report_ref": "부록 A #31",
+      "document": "송도 한내들 임의공급 공고(2026-05-06)·공식 홈페이지 안내 · 13필드",
+      "field_count": 13
+    }
+  },
+  {
+    "judgment_seq": 32,
+    "tool": "extract",
+    "purpose": "extract:notice:1:무순위",
+    "input_hash": "sha256:91dbcf4012743233f4823969e0f22f8eea9880a38755b5de947bac628b1f1a0d",
+    "file": "extract/91dbcf4012743233f4823969e0f22f8eea9880a38755b5de947bac628b1f1a0d.json",
+    "report_ref": "부록 A #32",
+    "payload": {
+      "report_ref": "부록 A #32",
+      "document": "더샵 송도그란테르 무순위 1·2차 공고 · 14필드",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 33,
+    "tool": "extract",
+    "purpose": "extract:notice:12",
+    "input_hash": "sha256:5ecde39f3e2e28aae31ed867200d1902d5d661246f0669a13ca61c9228bec48f",
+    "file": "extract/5ecde39f3e2e28aae31ed867200d1902d5d661246f0669a13ca61c9228bec48f.json",
+    "report_ref": "부록 A #33",
+    "payload": {
+      "report_ref": "부록 A #33",
+      "document": "더샵 송도마리나베이 3회차 무순위 공고(2026-09-10) · 13필드",
+      "field_count": 13
+    }
+  },
+  {
+    "judgment_seq": 34,
+    "tool": "extract",
+    "purpose": "extract:notice:ab22",
+    "input_hash": "sha256:0485abe3910ad35c86c303795de25b3ea58379f90502f545ff12423270f85f06",
+    "file": "extract/0485abe3910ad35c86c303795de25b3ea58379f90502f545ff12423270f85f06.json",
+    "report_ref": "부록 A #34",
+    "payload": {
+      "report_ref": "부록 A #34",
+      "document": "더샵 검단레이크파크 AB22BL 입주자모집공고(2026-06-12) · 16필드",
+      "field_count": 16
+    }
+  },
+  {
+    "judgment_seq": 35,
+    "tool": "extract",
+    "purpose": "extract:notice:6",
+    "input_hash": "sha256:ea343687f163031c6ece997a458a7870d8860b2f72d7d2fbf081df4251c64e5b",
+    "file": "extract/ea343687f163031c6ece997a458a7870d8860b2f72d7d2fbf081df4251c64e5b.json",
+    "report_ref": "부록 A #35",
+    "payload": {
+      "report_ref": "부록 A #35",
+      "document": "더샵 검단레이크파크 AB23BL 무순위 공고(2026-08-07)·청약홈 경쟁률 · 12필드",
+      "field_count": 12
+    }
+  },
+  {
+    "judgment_seq": 36,
+    "tool": "extract",
+    "purpose": "extract:notice:paragon",
+    "input_hash": "sha256:63a731f8124be904a8da700e53ecf26cdbd496bd5af860c0ec9920e8624f8592",
+    "file": "extract/63a731f8124be904a8da700e53ecf26cdbd496bd5af860c0ec9920e8624f8592.json",
+    "report_ref": "부록 A #36",
+    "payload": {
+      "report_ref": "부록 A #36",
+      "document": "검단호수공원역 파라곤(AA36BL) 공고·청약홈 상세 · 15필드",
+      "field_count": 15
+    }
+  },
+  {
+    "judgment_seq": 37,
+    "tool": "extract",
+    "purpose": "extract:notice:5",
+    "input_hash": "sha256:7e6227896c5fe248b6314aaeb8ff91027c99c1a25014f2d63107bea983e5a8c1",
+    "file": "extract/7e6227896c5fe248b6314aaeb8ff91027c99c1a25014f2d63107bea983e5a8c1.json",
+    "report_ref": "부록 A #37",
+    "payload": {
+      "report_ref": "부록 A #37",
+      "document": "검단 센트레빌 에듀시티(AB8BL) 본공고(2025-09-19)·임의공급 공고 · 16필드",
+      "field_count": 16
+    }
+  },
+  {
+    "judgment_seq": 38,
+    "tool": "extract",
+    "purpose": "extract:notice:2",
+    "input_hash": "sha256:9f6a7580e2e612070183fa0f1dac3f5dd725a1200beb0f4190ab5a11677796c7",
+    "file": "extract/9f6a7580e2e612070183fa0f1dac3f5dd725a1200beb0f4190ab5a11677796c7.json",
+    "report_ref": "부록 A #38",
+    "payload": {
+      "report_ref": "부록 A #38",
+      "document": "엘리프 검단 포레듀(AA32BL) 본공고·임의공급 3차 공고(2026-08-14) · 17필드",
+      "field_count": 17
+    }
+  },
+  {
+    "judgment_seq": 39,
+    "tool": "extract",
+    "purpose": "extract:notice:3",
+    "input_hash": "sha256:07d33deea6b04ff41e24bf059f56fdfc29eebf6cd567693da331c3890c65dff4",
+    "file": "extract/07d33deea6b04ff41e24bf059f56fdfc29eebf6cd567693da331c3890c65dff4.json",
+    "report_ref": "부록 A #39",
+    "payload": {
+      "report_ref": "부록 A #39",
+      "document": "송도 한내들 센트럴리버 입주자모집공고(2025-12-04) · 14필드",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 40,
+    "tool": "extract",
+    "purpose": "extract:notice:3:임의",
+    "input_hash": "sha256:76b55a187d99b177fecab516349a9fd81f92ca09a432600b01a4c8ed73014a8f",
+    "file": "extract/76b55a187d99b177fecab516349a9fd81f92ca09a432600b01a4c8ed73014a8f.json",
+    "report_ref": "부록 A #40",
+    "payload": {
+      "report_ref": "부록 A #40",
+      "document": "송도 한내들 임의공급 공고(2026-05-06)·홈페이지 안내문 · 11필드",
+      "field_count": 11
+    }
+  },
+  {
+    "judgment_seq": 41,
+    "tool": "extract",
+    "purpose": "extract:notice:1:무순위",
+    "input_hash": "sha256:234a868b2823fc39bc1a094d3d3fef5e1b9df3a057822101130f57b32908a7de",
+    "file": "extract/234a868b2823fc39bc1a094d3d3fef5e1b9df3a057822101130f57b32908a7de.json",
+    "report_ref": "부록 A #41",
+    "payload": {
+      "report_ref": "부록 A #41",
+      "document": "더샵 송도그란테르 무순위 1차(2026-07-30)·2차(2026-08-24) 공고 · 13필드",
+      "field_count": 13
+    }
+  },
+  {
+    "judgment_seq": 42,
+    "tool": "extract",
+    "purpose": "extract:notice:ab22",
+    "input_hash": "sha256:458239501e6f75c31072107ed77ed7f79fb0f2bf2429c54bf1128051986586fd",
+    "file": "extract/458239501e6f75c31072107ed77ed7f79fb0f2bf2429c54bf1128051986586fd.json",
+    "report_ref": "부록 A #42",
+    "payload": {
+      "report_ref": "부록 A #42",
+      "document": "더샵 검단레이크파크 AB22BL 입주자모집공고(2026-06-12)·청약홈 상세 · 15필드",
+      "field_count": 15
+    }
+  },
+  {
+    "judgment_seq": 43,
+    "tool": "extract",
+    "purpose": "extract:notice:6",
+    "input_hash": "sha256:a831aa8fba15ca32cfa42b6f369e885480189055f0b67e66933eb0dfbd4d388c",
+    "file": "extract/a831aa8fba15ca32cfa42b6f369e885480189055f0b67e66933eb0dfbd4d388c.json",
+    "report_ref": "부록 A #43",
+    "payload": {
+      "report_ref": "부록 A #43",
+      "document": "더샵 검단레이크파크 AB23BL 무순위 공고(2026-08-07)·청약홈 경쟁률 · 14필드",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 44,
+    "tool": "extract",
+    "purpose": "extract:notice:2",
+    "input_hash": "sha256:b6495e2b4a9651330773d4229de2f8c6a486704a13d23c2a79d34128ccfa7365",
+    "file": "extract/b6495e2b4a9651330773d4229de2f8c6a486704a13d23c2a79d34128ccfa7365.json",
+    "report_ref": "부록 A #44",
+    "payload": {
+      "report_ref": "부록 A #44",
+      "document": "엘리프 검단 포레듀 본공고·임의공급 3차 공고(2026-08-14) · 16필드",
+      "field_count": 16
+    }
+  },
+  {
+    "judgment_seq": 45,
+    "tool": "extract",
+    "purpose": "extract:notice:5",
+    "input_hash": "sha256:b6d04666fbcd45a03c942a06449cb1e1dc22f65ab628034e3b4dd7f98e341c40",
+    "file": "extract/b6d04666fbcd45a03c942a06449cb1e1dc22f65ab628034e3b4dd7f98e341c40.json",
+    "report_ref": "부록 A #45",
+    "payload": {
+      "report_ref": "부록 A #45",
+      "document": "검단 센트레빌 에듀시티 본공고(2025-09-19)·임의공급 공고(2026-04-15) · 15필드",
+      "field_count": 15
+    }
+  },
+  {
+    "judgment_seq": 46,
+    "tool": "extract",
+    "purpose": "extract:notice:paragon_hoban3",
+    "input_hash": "sha256:abca7ecf187d204bdee13a56666ec779e16d84b2287ac6b126d0cc0f8f186865",
+    "file": "extract/abca7ecf187d204bdee13a56666ec779e16d84b2287ac6b126d0cc0f8f186865.json",
+    "report_ref": "부록 A #46",
+    "payload": {
+      "report_ref": "부록 A #46",
+      "document": "검단호수공원역 파라곤 공고(2026-03-27)·호반써밋Ⅲ 본청약 공고 · 13필드",
+      "field_count": 13
+    }
+  },
+  {
+    "judgment_seq": 47,
+    "tool": "extract",
+    "purpose": "extract:news:15_16",
+    "input_hash": "sha256:4a60c72f12dc3428b89ed4e1969e6d32732e99c717877be4d7f1b95c304f6115",
+    "file": "extract/4a60c72f12dc3428b89ed4e1969e6d32732e99c717877be4d7f1b95c304f6115.json",
+    "report_ref": "부록 A #47",
+    "payload": {
+      "report_ref": "부록 A #47",
+      "document": "계양신도시 카이브 유보라 보도(2026-08~09)·검단 센트레빌 그랑포레 보도 · 14필드",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 48,
+    "tool": "extract",
+    "purpose": "extract:notice:12",
+    "input_hash": "sha256:f1acb354e60cf82f75cd5510ddacc287a3b1965ce5de687c3a950aa86fffe922",
+    "file": "extract/f1acb354e60cf82f75cd5510ddacc287a3b1965ce5de687c3a950aa86fffe922.json",
+    "report_ref": "부록 A #48",
+    "payload": {
+      "report_ref": "부록 A #48",
+      "document": "더샵 송도마리나베이 무순위 공고(2026-09-10)·월드메르디앙 송도 보도 · 14필드",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 49,
+    "tool": "audit",
+    "purpose": "audit:notice:1",
+    "input_hash": "sha256:2c35993e8a9f18f46b1641b3a8215613579428231fe5e29bf30eb7ae35067076",
+    "file": "audit/2c35993e8a9f18f46b1641b3a8215613579428231fe5e29bf30eb7ae35067076.json",
+    "report_ref": "부록 A #49",
+    "payload": {
+      "report_ref": "부록 A #49",
+      "records": "그란테르 G5-1 본공고",
+      "record_count": 13
+    }
+  },
+  {
+    "judgment_seq": 50,
+    "tool": "audit",
+    "purpose": "audit:notice:3",
+    "input_hash": "sha256:663a305a4e1ec7d239e68c53448a758546b5ec6bcfc6be4487cdd065080f8405",
+    "file": "audit/663a305a4e1ec7d239e68c53448a758546b5ec6bcfc6be4487cdd065080f8405.json",
+    "report_ref": "부록 A #50",
+    "payload": {
+      "report_ref": "부록 A #50",
+      "records": "한내들 본공고",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 51,
+    "tool": "audit",
+    "purpose": "audit:notice:3:임의",
+    "input_hash": "sha256:16c0b14fb6f9dc23e8fa55fd4c31d628f1a59d44831fb80d6446c6f29e5caf87",
+    "file": "audit/16c0b14fb6f9dc23e8fa55fd4c31d628f1a59d44831fb80d6446c6f29e5caf87.json",
+    "report_ref": "부록 A #51",
+    "payload": {
+      "report_ref": "부록 A #51",
+      "records": "한내들 임의공급",
+      "record_count": 12
+    }
+  },
+  {
+    "judgment_seq": 52,
+    "tool": "audit",
+    "purpose": "audit:notice:1:무순위",
+    "input_hash": "sha256:d1b036d30840073f7f9711088c831995864151fef42b5a99cf5e3222b3bfaa9b",
+    "file": "audit/d1b036d30840073f7f9711088c831995864151fef42b5a99cf5e3222b3bfaa9b.json",
+    "report_ref": "부록 A #52",
+    "payload": {
+      "report_ref": "부록 A #52",
+      "records": "그란테르 무순위",
+      "record_count": 13
+    }
+  },
+  {
+    "judgment_seq": 53,
+    "tool": "audit",
+    "purpose": "audit:notice:ab22",
+    "input_hash": "sha256:dd9d2e5eafc3dd72be11960e9a75cf3742139dce2ff794991722f382523306c0",
+    "file": "audit/dd9d2e5eafc3dd72be11960e9a75cf3742139dce2ff794991722f382523306c0.json",
+    "report_ref": "부록 A #53",
+    "payload": {
+      "report_ref": "부록 A #53",
+      "records": "AB22 본공고",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 54,
+    "tool": "audit",
+    "purpose": "audit:notice:6",
+    "input_hash": "sha256:8121bfa9dac7727833d2c7a0feec4ff3537eac3250a5b3088f894c5fae94e9f8",
+    "file": "audit/8121bfa9dac7727833d2c7a0feec4ff3537eac3250a5b3088f894c5fae94e9f8.json",
+    "report_ref": "부록 A #54",
+    "payload": {
+      "report_ref": "부록 A #54",
+      "records": "AB23 무순위",
+      "record_count": 14
+    }
+  },
+  {
+    "judgment_seq": 55,
+    "tool": "audit",
+    "purpose": "audit:notice:2",
+    "input_hash": "sha256:d065b7ce41d3c194697f186cd0d682231d65948f94506cd2b95d07faecae31b3",
+    "file": "audit/d065b7ce41d3c194697f186cd0d682231d65948f94506cd2b95d07faecae31b3.json",
+    "report_ref": "부록 A #55",
+    "payload": {
+      "report_ref": "부록 A #55",
+      "records": "엘리프",
+      "record_count": 16
+    }
+  },
+  {
+    "judgment_seq": 56,
+    "tool": "audit",
+    "purpose": "audit:notice:5",
+    "input_hash": "sha256:eeee56963e2e9d4a99bdebc23abed60c8f2badd722099e0e3cc152e6b7fe6af5",
+    "file": "audit/eeee56963e2e9d4a99bdebc23abed60c8f2badd722099e0e3cc152e6b7fe6af5.json",
+    "report_ref": "부록 A #56",
+    "payload": {
+      "report_ref": "부록 A #56",
+      "records": "센트레빌",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 57,
+    "tool": "audit",
+    "purpose": "audit:notice:paragon_hoban3",
+    "input_hash": "sha256:d335b6444ba41e3f67ca93bc48fd3113fe1cefe6ac4b2dc3cf7a46ee4ad37ab8",
+    "file": "audit/d335b6444ba41e3f67ca93bc48fd3113fe1cefe6ac4b2dc3cf7a46ee4ad37ab8.json",
+    "report_ref": "부록 A #57",
+    "payload": {
+      "report_ref": "부록 A #57",
+      "records": "파라곤·호반써밋Ⅲ",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 58,
+    "tool": "audit",
+    "purpose": "audit:news:15_16",
+    "input_hash": "sha256:b0355831dd1fc19aeaabfc02407fb0de5a96efae59dbde31062e2d0447c48eb8",
+    "file": "audit/b0355831dd1fc19aeaabfc02407fb0de5a96efae59dbde31062e2d0447c48eb8.json",
+    "report_ref": "부록 A #58",
+    "payload": {
+      "report_ref": "부록 A #58",
+      "records": "카이브 유보라·그랑포레 보도",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 59,
+    "tool": "audit",
+    "purpose": "audit:notice:12",
+    "input_hash": "sha256:aac1696b389ce059b3006bf43c33cf47d82c956092a7e22c9819a40caef4e9f6",
+    "file": "audit/aac1696b389ce059b3006bf43c33cf47d82c956092a7e22c9819a40caef4e9f6.json",
+    "report_ref": "부록 A #59",
+    "payload": {
+      "report_ref": "부록 A #59",
+      "records": "마리나베이·월드메르디앙",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 60,
+    "tool": "extract",
+    "purpose": "extract:notice:jakjeon_lotte_park",
+    "input_hash": "sha256:b7929b628ca849423f050e22fa69e5b9f20c45e61f63e279da19e238bdf947dc",
+    "file": "extract/b7929b628ca849423f050e22fa69e5b9f20c45e61f63e279da19e238bdf947dc.json",
+    "report_ref": "부록 A #60",
+    "payload": {
+      "report_ref": "부록 A #60",
+      "document": "인천 작전 한라비발디 무순위 공고(2026-05-22)·계양 롯데캐슬 파크시티 1단지 임의공급 · 15필드",
+      "field_count": 15
+    }
+  },
+  {
+    "judgment_seq": 61,
+    "tool": "extract",
+    "purpose": "extract:notice:jungheung_lake4",
+    "input_hash": "sha256:6ffa01eeb14d2e54bcef3f3317a8c95837d9b357b63745c655ac75bfc79b5738",
+    "file": "extract/6ffa01eeb14d2e54bcef3f3317a8c95837d9b357b63745c655ac75bfc79b5738.json",
+    "report_ref": "부록 A #61",
+    "payload": {
+      "report_ref": "부록 A #61",
+      "document": "검단호수공원역 중흥S-클래스 공고(2025-07-04)·힐스테이트 레이크 송도 4차 임의공급 등 · 16필드",
+      "field_count": 16
+    }
+  },
+  {
+    "judgment_seq": 62,
+    "tool": "classify",
+    "purpose": "classify:inclusion:incheon",
+    "input_hash": "sha256:21d941c348d7c436cd4d75bcb8e4c9730f7463d979c54907691dcb319193caa0",
+    "file": "classify/21d941c348d7c436cd4d75bcb8e4c9730f7463d979c54907691dcb319193caa0.json",
+    "report_ref": "부록 A #62",
+    "payload": {
+      "report_ref": "부록 A #62",
+      "candidates": [
+        "더샵 송도그란테르",
+        "송도 한내들 센트럴리버",
+        "더샵 송도마리나베이",
+        "송도 하늘채 아이비원",
+        "힐스테이트 레이크 송도 4차",
+        "계양신도시 카이브 유보라",
+        "더샵 검단레이크파크 AB22·AB23",
+        "엘리프 검단 포레듀",
+        "검단 센트레빌 에듀시티",
+        "제일풍경채 검단Ⅳ",
+        "호반써밋Ⅲ AB13",
+        "검단호수공원역 파라곤",
+        "검단호수공원역 중흥S-클래스",
+        "검단신도시 푸르지오 더 파크",
+        "인천 작전 한라비발디",
+        "계양 롯데캐슬 파크시티",
+        "검단 스타힐스 가현숲",
+        "래미안 송도역 센트리폴",
+        "연수 월드메르디앙 어반포레",
+        "월드메르디앙 송도",
+        "검단 센트레빌 그랑포레",
+        "왕길역 아테라",
+        "홈잉루츠 송도",
+        "송도 11공구 RC2BL",
+        "계양 A21 대방",
+        "계양 A15 신해·우미",
+        "계양 A5 호반",
+        "송도자이풍경채 그라노블",
+        "계양 A7 한림",
+        "계양 A4 금강",
+        "힐스테이트 검단 웰카운티",
+        "e편한세상 검단 웰카운티",
+        "인천계양 A17 신혼희망타운",
+        "인천계양 A6 공공분양",
+        "iH 송도 11공구 Rc5BL",
+        "검암역 푸르지오 프라베뉴",
+        "계양 AC2-1 보편형 공공임대",
+        "더샵 송도그란테르 오피스텔 96실"
+      ],
+      "classes": [
+        "private_sale_apt",
+        "public_sale",
+        "public_rental",
+        "private_rental",
+        "non_apartment",
+        "manual_review"
+      ],
+      "input_summary": "후보 단지 포함/제외(사업주체 명의·공급유형) · 38건"
+    }
+  },
+  {
+    "judgment_seq": 63,
+    "tool": "audit",
+    "purpose": "audit:notice:adjacent",
+    "input_hash": "sha256:fb1916d456c727490421e858184908cf49758e38e14edc7a3f8bdf222d11d4e5",
+    "file": "audit/fb1916d456c727490421e858184908cf49758e38e14edc7a3f8bdf222d11d4e5.json",
+    "report_ref": "부록 A #63",
+    "payload": {
+      "report_ref": "부록 A #63",
+      "records": "한라비발디·롯데캐슬·중흥·레이크 4차 등",
+      "record_count": 24
+    }
+  },
+  {
+    "judgment_seq": 64,
+    "tool": "classify",
+    "purpose": "classify:catalyst:incheon",
+    "input_hash": "sha256:6af4f1a4d6c459538cc49dd6171b2fee047cc9d38d6f6af1fc27e858453db5b7",
+    "file": "classify/6af4f1a4d6c459538cc49dd6171b2fee047cc9d38d6f6af1fc27e858453db5b7.json",
+    "report_ref": "부록 A #64",
+    "payload": {
+      "report_ref": "부록 A #64",
+      "candidates": [
+        "인천1호선 검단연장 개통 2025-06",
+        "검단구 신설 2026-07",
+        "셀트리온 3공장 가동",
+        "송도 워터프런트 1-2단계 2027 초 준공",
+        "계양신도시 조성·2026-12 첫 입주",
+        "롯데바이오 송도 1공장 2026-11 준공",
+        "검단~드림로 개통",
+        "GTX-D 1단계 예타 통과·기본계획 중",
+        "송도아라1초 2030-03 개교",
+        "GTX-D Y자·2호선 청라연장 5차 철도망 건의",
+        "인천2호선 고양연장 예타 중",
+        "6·8공구 랜드마크 타워 높이 조정 검토",
+        "인천1호선 송도 8공구 연장 예타 미통과",
+        "인천대입구역 복합개발",
+        "계양 S-BRT",
+        "검단 스타필드·대학병원",
+        "송도세브란스병원(지상부 미착공)",
+        "GTX-B 개통 2030 vs 2031",
+        "삼성바이오 제3캠퍼스",
+        "송도트램",
+        "11-1공구 기반시설",
+        "IBD 업무용지",
+        "대장홍대선",
+        "계양AX파크",
+        "서울5호선 김포·검단 연장",
+        "검단 법조타운",
+        "iH 특화구역",
+        "검단지구 5단계 준공"
+      ],
+      "classes": [
+        "확정",
+        "계획",
+        "추진",
+        "언론",
+        "미확정"
+      ],
+      "input_summary": "호재 실현 단계(확정/계획/추진/언론보도만/manual_review) · 28건"
+    }
+  },
+  {
+    "judgment_seq": 65,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:3a0267bd959764d10bcf52993ff65f0164ab453060eae7cee56d8738fbc14297",
+    "file": "noul/3a0267bd959764d10bcf52993ff65f0164ab453060eae7cee56d8738fbc14297.json",
+    "report_ref": "부록 A #65",
+    "payload": {
+      "report_ref": "부록 A #65",
+      "complex_id": 3,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2030-03",
+      "propositions": [
+        "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 +5% 이상이다",
+        "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 +10% 이상이다",
+        "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 +20% 이상이다",
+        "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 66,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:1b30f9070a963b14e394f0022538412e37967b493cc9e0ab377528ba19e8d61d",
+    "file": "noul/1b30f9070a963b14e394f0022538412e37967b493cc9e0ab377528ba19e8d61d.json",
+    "report_ref": "부록 A #66",
+    "payload": {
+      "report_ref": "부록 A #66",
+      "complex_id": 1,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2030-08",
+      "propositions": [
+        "더샵 송도그란테르 입주 후 1년(2030-08) 실거래가가 현재 구매가(12.45~13.18억) 대비 +5% 이상이다",
+        "더샵 송도그란테르 입주 후 1년(2030-08) 실거래가가 현재 구매가(12.45~13.18억) 대비 +10% 이상이다",
+        "더샵 송도그란테르 입주 후 1년(2030-08) 실거래가가 현재 구매가(12.45~13.18억) 대비 +20% 이상이다",
+        "더샵 송도그란테르 입주 후 1년(2030-08) 실거래가가 현재 구매가(12.45~13.18억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 67,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:b40168d2baa1635eb5c16d1d0a0994fd89a782a5156d795613d1b128a8eba99f",
+    "file": "noul/b40168d2baa1635eb5c16d1d0a0994fd89a782a5156d795613d1b128a8eba99f.json",
+    "report_ref": "부록 A #67",
+    "payload": {
+      "report_ref": "부록 A #67",
+      "complex_id": 12,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2027-10",
+      "propositions": [
+        "더샵 송도마리나베이 84C 32층 입주 후 1년(2027-10) 실거래가가 현재 구매가(8.087억) 대비 +5% 이상이다",
+        "더샵 송도마리나베이 84C 32층 입주 후 1년(2027-10) 실거래가가 현재 구매가(8.087억) 대비 +10% 이상이다",
+        "더샵 송도마리나베이 84C 32층 입주 후 1년(2027-10) 실거래가가 현재 구매가(8.087억) 대비 +20% 이상이다",
+        "더샵 송도마리나베이 84C 32층 입주 후 1년(2027-10) 실거래가가 현재 구매가(8.087억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 68,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:3fd6385314c3819ee23698df9a0dfa93898eaacb559c6db07a4529d4bed3e623",
+    "file": "noul/3fd6385314c3819ee23698df9a0dfa93898eaacb559c6db07a4529d4bed3e623.json",
+    "report_ref": "부록 A #68",
+    "payload": {
+      "report_ref": "부록 A #68",
+      "complex_id": 2,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2029-03",
+      "propositions": [
+        "엘리프 검단 포레듀 84A 입주 후 1년(2029-03) 실거래가가 현재 구매가(5.78~6.08억) 대비 +5% 이상이다",
+        "엘리프 검단 포레듀 84A 입주 후 1년(2029-03) 실거래가가 현재 구매가(5.78~6.08억) 대비 +10% 이상이다",
+        "엘리프 검단 포레듀 84A 입주 후 1년(2029-03) 실거래가가 현재 구매가(5.78~6.08억) 대비 +20% 이상이다",
+        "엘리프 검단 포레듀 84A 입주 후 1년(2029-03) 실거래가가 현재 구매가(5.78~6.08억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 69,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:e95eaf7d5811c503bc1beb896f8ede99dbc5af84edbca933c1e1c01d774c2103",
+    "file": "noul/e95eaf7d5811c503bc1beb896f8ede99dbc5af84edbca933c1e1c01d774c2103.json",
+    "report_ref": "부록 A #69",
+    "payload": {
+      "report_ref": "부록 A #69",
+      "complex_id": 6,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2030-12",
+      "propositions": [
+        "더샵 검단레이크파크 AB23 84㎡ 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.51~6.68억) 대비 +5% 이상이다",
+        "더샵 검단레이크파크 AB23 84㎡ 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.51~6.68억) 대비 +10% 이상이다",
+        "더샵 검단레이크파크 AB23 84㎡ 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.51~6.68억) 대비 +20% 이상이다",
+        "더샵 검단레이크파크 AB23 84㎡ 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.51~6.68억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 70,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:2a431286f8cc04b29110eef7e86fc2a1105d2fbdee5e09923a193d593f9ec52f",
+    "file": "noul/2a431286f8cc04b29110eef7e86fc2a1105d2fbdee5e09923a193d593f9ec52f.json",
+    "report_ref": "부록 A #70",
+    "payload": {
+      "report_ref": "부록 A #70",
+      "complex_id": 5,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2029-08",
+      "propositions": [
+        "검단 센트레빌 에듀시티 84A 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.07~6.22억) 대비 +5% 이상이다",
+        "검단 센트레빌 에듀시티 84A 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.07~6.22억) 대비 +10% 이상이다",
+        "검단 센트레빌 에듀시티 84A 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.07~6.22억) 대비 +20% 이상이다",
+        "검단 센트레빌 에듀시티 84A 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.07~6.22억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 71,
+    "tool": "rerank",
+    "purpose": "rerank:region:incheon8",
+    "input_hash": "sha256:68519803d92b82cf46b4214b6a09347e5a5bfe3d570b0d1e30f9b7b815f626d6",
+    "file": "rerank/68519803d92b82cf46b4214b6a09347e5a5bfe3d570b0d1e30f9b7b815f626d6.json",
+    "report_ref": "부록 A #71",
+    "payload": {
+      "report_ref": "부록 A #71",
+      "query": "현재 구매가 대비 향후 3~5년 집값 상승 여력이 가장 큰 민간분양 단지",
+      "cards": [
+        "complex:2",
+        "complex:3",
+        "complex:1",
+        "complex:5",
+        "complex:6",
+        "complex:16",
+        "complex:15",
+        "complex:12"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 72,
+    "tool": "compare",
+    "purpose": "compare:payment:1",
+    "input_hash": "sha256:e6bb3d4ac0adf7d0fac22eb953eb4e08ef7f98e381ac9418d83651be5e91ee28",
+    "file": "compare/e6bb3d4ac0adf7d0fac22eb953eb4e08ef7f98e381ac9418d83651be5e91ee28.json",
+    "report_ref": "부록 A #72",
+    "payload": {
+      "report_ref": "부록 A #72",
+      "pair": "그란테르 계약금 조건(공고문 vs 위키트리) · aspects 3"
+    }
+  },
+  {
+    "judgment_seq": 73,
+    "tool": "compare",
+    "purpose": "compare:move_in:1",
+    "input_hash": "sha256:4e1efccbb4f90ae3ea2719fb1b6aa6af1c5462b5d7b290d9fe16ea46e14388e4",
+    "file": "compare/4e1efccbb4f90ae3ea2719fb1b6aa6af1c5462b5d7b290d9fe16ea46e14388e4.json",
+    "report_ref": "부록 A #73",
+    "payload": {
+      "report_ref": "부록 A #73",
+      "pair": "그란테르 입주 시기(청약홈 vs 기사) · aspects 2"
+    }
+  },
+  {
+    "judgment_seq": 74,
+    "tool": "compare",
+    "purpose": "compare:move_in:6",
+    "input_hash": "sha256:de7e6845196ac9f0d82b9dac69488dc5abce527902fc53031820e7f62aaed429",
+    "file": "compare/de7e6845196ac9f0d82b9dac69488dc5abce527902fc53031820e7f62aaed429.json",
+    "report_ref": "부록 A #74",
+    "payload": {
+      "report_ref": "부록 A #74",
+      "pair": "더샵 검단레이크파크 입주(공고문 2029-12 vs 세계일보 2028-11) · aspects 1"
+    }
+  },
+  {
+    "judgment_seq": 75,
+    "tool": "compare",
+    "purpose": "compare:benchmark:hoban1",
+    "input_hash": "sha256:bb1012595dc4b67e92963e665b1c46c6c86507340b862dda6f5dbbdf7713b43c",
+    "file": "compare/bb1012595dc4b67e92963e665b1c46c6c86507340b862dda6f5dbbdf7713b43c.json",
+    "report_ref": "부록 A #75",
+    "payload": {
+      "report_ref": "부록 A #75",
+      "pair": "호반써밋 1차 84㎡ 분양가(데일리안 4.07 vs 헤럴드 4.5억) · aspects 1"
+    }
+  },
+  {
+    "judgment_seq": 76,
+    "tool": "compare",
+    "purpose": "compare:schedule:gyeyang_a21",
+    "input_hash": "sha256:1c992860bdf25d63f19ec2fe922d9188d0d6ae6bc1d662a9c955ff8c809e1066",
+    "file": "compare/1c992860bdf25d63f19ec2fe922d9188d0d6ae6bc1d662a9c955ff8c809e1066.json",
+    "report_ref": "부록 A #76",
+    "payload": {
+      "report_ref": "부록 A #76",
+      "pair": "계양 A21 분양 시기(한경 vs 리치고) · aspects 3"
+    }
+  },
+  {
+    "judgment_seq": 77,
+    "tool": "compare",
+    "purpose": "compare:catalyst:gtxb",
+    "input_hash": "sha256:f2d0e8c10af4985e75d55ea321802f06f32db7a9ed6af22ea4a1dd7b1c5d77ad",
+    "file": "compare/f2d0e8c10af4985e75d55ea321802f06f32db7a9ed6af22ea4a1dd7b1c5d77ad.json",
+    "report_ref": "부록 A #77",
+    "payload": {
+      "report_ref": "부록 A #77",
+      "pair": "GTX-B 개통 목표(국토부 2030 vs 사업자 2031) · aspects 2"
+    }
+  },
+  {
+    "judgment_seq": 78,
+    "tool": "decide",
+    "purpose": "decide:scenario_base:incheon8",
+    "input_hash": "sha256:0088689a29c46624c959eb3df536d2582cc8a3bc638eb8271034047219b25571",
+    "file": "decide/0088689a29c46624c959eb3df536d2582cc8a3bc638eb8271034047219b25571.json",
+    "report_ref": "부록 A #78",
+    "payload": {
+      "report_ref": "부록 A #78",
+      "situation": "기본값(일반 무주택자, 실거주+시세차익 병행) TOP 5 중 1순위 · 후보 5 · 요건 3(접수 가능 / 보유기간 내 매도 / 자기자본 4억)",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:5",
+        "complex:6",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 79,
+    "tool": "verify",
+    "purpose": "verify:section_7-1",
+    "input_hash": "sha256:807558272810d5fb64b60dd68156c8ece3d49c9fa88b230dad1f90ac895c76a4",
+    "file": "verify/807558272810d5fb64b60dd68156c8ece3d49c9fa88b230dad1f90ac895c76a4.json",
+    "report_ref": "부록 A #79",
+    "payload": {
+      "report_ref": "부록 A #79",
+      "section": "7-1",
+      "claim_count": 15,
+      "evidence_count": 9,
+      "input_summary": "7-1 그란테르 claims 15 · evidence 9",
+      "known_claims": {
+        "c79-01": "GTX-B 착공계 제출 2025-08(기사 '지난달' 표현)"
+      }
+    }
+  },
+  {
+    "judgment_seq": 80,
+    "tool": "verify",
+    "purpose": "verify:section_7-2",
+    "input_hash": "sha256:ad247f77164025ef3d3187ff868c343821f3bac1cfb808857446c9f0cd1b1e90",
+    "file": "verify/ad247f77164025ef3d3187ff868c343821f3bac1cfb808857446c9f0cd1b1e90.json",
+    "report_ref": "부록 A #80",
+    "payload": {
+      "report_ref": "부록 A #80",
+      "section": "7-2",
+      "claim_count": 15,
+      "evidence_count": 2,
+      "input_summary": "7-2 엘리프 claims 15 · evidence 2",
+      "known_claims": {}
+    }
+  },
+  {
+    "judgment_seq": 81,
+    "tool": "verify",
+    "purpose": "verify:section_7-3",
+    "input_hash": "sha256:9e69e669bb43b58d657f9cc753742f02759c02ecd88c8e45c538d16530920521",
+    "file": "verify/9e69e669bb43b58d657f9cc753742f02759c02ecd88c8e45c538d16530920521.json",
+    "report_ref": "부록 A #81",
+    "payload": {
+      "report_ref": "부록 A #81",
+      "section": "7-3",
+      "claim_count": 15,
+      "evidence_count": 3,
+      "input_summary": "7-3 한내들 claims 15 · evidence 3",
+      "known_claims": {
+        "c81-01": "연수구 미분양 귀속"
+      }
+    }
+  },
+  {
+    "judgment_seq": 82,
+    "tool": "verify",
+    "purpose": "verify:section_7-4",
+    "input_hash": "sha256:06f2d69bf9292c5530b9650014e6b301102bf9becad3455e002aeb8c4112a651",
+    "file": "verify/06f2d69bf9292c5530b9650014e6b301102bf9becad3455e002aeb8c4112a651.json",
+    "report_ref": "부록 A #82",
+    "payload": {
+      "report_ref": "부록 A #82",
+      "section": "7-4",
+      "claim_count": 13,
+      "evidence_count": 2,
+      "input_summary": "7-4 센트레빌 claims 13 · evidence 2",
+      "known_claims": {
+        "c82-01": "2028 입주 열거(전수 아님)"
+      }
+    }
+  },
+  {
+    "judgment_seq": 83,
+    "tool": "verify",
+    "purpose": "verify:section_7-5",
+    "input_hash": "sha256:8773eec228f6156fc6c3792a494c464fec5b870d756195c6c4bc4a28af46cded",
+    "file": "verify/8773eec228f6156fc6c3792a494c464fec5b870d756195c6c4bc4a28af46cded.json",
+    "report_ref": "부록 A #83",
+    "payload": {
+      "report_ref": "부록 A #83",
+      "section": "7-5",
+      "claim_count": 13,
+      "evidence_count": 3,
+      "input_summary": "7-5 더샵 검단 claims 13 · evidence 3",
+      "known_claims": {
+        "c83-01": "재당첨제한(당첨 경로별)"
+      }
+    }
+  },
+  {
+    "judgment_seq": 84,
+    "tool": "decide",
+    "purpose": "decide:scenario_A:incheon8",
+    "input_hash": "sha256:f3b8d6e9df7ca6cc48601578b74447dcf86d1086c3053a8b19e05ed4f6b909e9",
+    "file": "decide/f3b8d6e9df7ca6cc48601578b74447dcf86d1086c3053a8b19e05ed4f6b909e9.json",
+    "report_ref": "부록 A #84",
+    "payload": {
+      "report_ref": "부록 A #84",
+      "situation": "상황 A 가점 높은 실수요 · 후보 6(TOP 5 + 모집공고 대기) · 요건 3",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:5",
+        "complex:6",
+        "wait_new",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 85,
+    "tool": "decide",
+    "purpose": "decide:scenario_B:incheon8",
+    "input_hash": "sha256:65e6ad8d27da970b3c6ef82e2624fe1161ae39031ff2ada2af1b787c83764c8a",
+    "file": "decide/65e6ad8d27da970b3c6ef82e2624fe1161ae39031ff2ada2af1b787c83764c8a.json",
+    "report_ref": "부록 A #85",
+    "payload": {
+      "report_ref": "부록 A #85",
+      "situation": "상황 B 가점 낮은 무주택 · 후보 6 · 요건 3",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:5",
+        "complex:6",
+        "wait_new",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 86,
+    "tool": "decide",
+    "purpose": "decide:scenario_C:incheon8",
+    "input_hash": "sha256:2eba37a7947daa9796e3025beb54eb21141469985948858be0f329c85d75312d",
+    "file": "decide/2eba37a7947daa9796e3025beb54eb21141469985948858be0f329c85d75312d.json",
+    "report_ref": "부록 A #86",
+    "payload": {
+      "report_ref": "부록 A #86",
+      "situation": "상황 C 시세차익 우선 · 후보 6 · 요건 3",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:5",
+        "complex:6",
+        "wait_new",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 87,
+    "tool": "decide",
+    "purpose": "decide:scenario_D:incheon8",
+    "input_hash": "sha256:2cc75ed180662e9189bb306e6549c066602bbfd6b43c20ca1f7bddc0bb749ebb",
+    "file": "decide/2cc75ed180662e9189bb306e6549c066602bbfd6b43c20ca1f7bddc0bb749ebb.json",
+    "report_ref": "부록 A #87",
+    "payload": {
+      "report_ref": "부록 A #87",
+      "situation": "상황 D 즉시 구매 · 후보 5 · 요건 3",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:5",
+        "complex:6",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 88,
+    "tool": "verify",
+    "purpose": "verify:section_8-F1",
+    "input_hash": "sha256:a69446a6f9b28448e33938f1d3879022d1ae2fef50d339b7d074b66065aae2ad",
+    "file": "verify/a69446a6f9b28448e33938f1d3879022d1ae2fef50d339b7d074b66065aae2ad.json",
+    "report_ref": "부록 A #88",
+    "payload": {
+      "report_ref": "부록 A #88",
+      "section": "8-F1",
+      "claim_count": 16,
+      "evidence_count": 4,
+      "input_summary": "최종 F1 claims 16 · evidence 4(공고 발췌·접수 현황·JEV 기록)",
+      "known_claims": {
+        "c88-01": "상황 A 요약: 센트레빌 unknown 제외 4곳 contradicted"
+      }
+    }
+  },
+  {
+    "judgment_seq": 89,
+    "tool": "verify",
+    "purpose": "verify:section_8-F2",
+    "input_hash": "sha256:6330288b050207c8d0d4a29b5b216119322288a9eef19c95cfa7b5ab563ab8d9",
+    "file": "verify/6330288b050207c8d0d4a29b5b216119322288a9eef19c95cfa7b5ab563ab8d9.json",
+    "report_ref": "부록 A #89",
+    "payload": {
+      "report_ref": "부록 A #89",
+      "section": "8-F2",
+      "claim_count": 16,
+      "evidence_count": 3,
+      "input_summary": "최종 F2 claims 16 · evidence 3(공고·기사·1·6장 기록)",
+      "known_claims": {
+        "c89-01": "그란테르 전매 도과일 2026-11-28(산술)",
+        "c89-02": "전매 해제 '등기 시 해제'(AB23 포함 표기)"
+      }
+    }
+  },
+  {
+    "judgment_seq": 90,
+    "tool": "screen",
+    "purpose": "screen:notice:9",
+    "input_hash": "sha256:37eeaa5a3476ad42c0ba860fefca46fe1ebabdf96cb7bf0035c2bc2220ba43fb",
+    "file": "screen/37eeaa5a3476ad42c0ba860fefca46fe1ebabdf96cb7bf0035c2bc2220ba43fb.json",
+    "report_ref": "부록 A #90",
+    "payload": {
+      "report_ref": "부록 A #90",
+      "text": "한강 푸르지오 리버프론트 공고·무순위 발췌"
+    }
+  },
+  {
+    "judgment_seq": 91,
+    "tool": "screen",
+    "purpose": "screen:notice:7",
+    "input_hash": "sha256:91e3c2244607d703267689e7be717f0dc55a79ed9bcc67ddb0f888da3f70cb81",
+    "file": "screen/91e3c2244607d703267689e7be717f0dc55a79ed9bcc67ddb0f888da3f70cb81.json",
+    "report_ref": "부록 A #91",
+    "payload": {
+      "report_ref": "부록 A #91",
+      "text": "김포 칸타빌 에디션 공고·임의공급·홈페이지 발췌"
+    }
+  },
+  {
+    "judgment_seq": 92,
+    "tool": "screen",
+    "purpose": "screen:notice:11",
+    "input_hash": "sha256:69ae35cb9841724201d5b0d8fc31fcba08c20a43578d350c77a69938adcbc133",
+    "file": "screen/69ae35cb9841724201d5b0d8fc31fcba08c20a43578d350c77a69938adcbc133.json",
+    "report_ref": "부록 A #92",
+    "payload": {
+      "report_ref": "부록 A #92",
+      "text": "고촌센트럴자이 임의공급 13차 발췌"
+    }
+  },
+  {
+    "judgment_seq": 93,
+    "tool": "screen",
+    "purpose": "screen:notice:10",
+    "input_hash": "sha256:a16ac5b3ce045ba88457c53097fb167b91442f707b8f05fa932dadde1d62da80",
+    "file": "screen/a16ac5b3ce045ba88457c53097fb167b91442f707b8f05fa932dadde1d62da80.json",
+    "report_ref": "부록 A #93",
+    "payload": {
+      "report_ref": "부록 A #93",
+      "text": "풍무역 롯데캐슬 시그니처 공고·임의 3차 발췌"
+    }
+  },
+  {
+    "judgment_seq": 94,
+    "tool": "screen",
+    "purpose": "screen:notice:8",
+    "input_hash": "sha256:a3a61d737dc8b56c3d53065c53a608fdd4ca2636e8000dbef1f8aa2506232112",
+    "file": "screen/a3a61d737dc8b56c3d53065c53a608fdd4ca2636e8000dbef1f8aa2506232112.json",
+    "report_ref": "부록 A #94",
+    "payload": {
+      "report_ref": "부록 A #94",
+      "text": "수자인 그라센트 2차 공고·임의 3차 발췌"
+    }
+  },
+  {
+    "judgment_seq": 95,
+    "tool": "screen",
+    "purpose": "screen:notice:4",
+    "input_hash": "sha256:1af2229d82f62e5ff1a1f10beb14b2e21773bf0872f9053b718f8a8fefc93784",
+    "file": "screen/1af2229d82f62e5ff1a1f10beb14b2e21773bf0872f9053b718f8a8fefc93784.json",
+    "report_ref": "부록 A #95",
+    "payload": {
+      "report_ref": "부록 A #95",
+      "text": "오퍼스 한강 스위첸 공고·무순위 발췌"
+    }
+  },
+  {
+    "judgment_seq": 96,
+    "tool": "screen",
+    "purpose": "screen:phase2:gimpo_benchmark",
+    "input_hash": "sha256:e0da18882118e1ad3f2d383b2f9701894325edb78956aa53a1ab3b5ce23d8e5f",
+    "file": "screen/e0da18882118e1ad3f2d383b2f9701894325edb78956aa53a1ab3b5ce23d8e5f.json",
+    "report_ref": "부록 A #96",
+    "payload": {
+      "report_ref": "부록 A #96",
+      "text": "김포 벤치마크·비교시세 텍스트(Phase 2)"
+    }
+  },
+  {
+    "judgment_seq": 97,
+    "tool": "screen",
+    "purpose": "screen:phase2:gimpo_policy",
+    "input_hash": "sha256:ff43f39d49027ba4cfa1dc1acec4316090bcc322e5fc0a27c44381e0da50a57c",
+    "file": "screen/ff43f39d49027ba4cfa1dc1acec4316090bcc322e5fc0a27c44381e0da50a57c.json",
+    "report_ref": "부록 A #97",
+    "payload": {
+      "report_ref": "부록 A #97",
+      "text": "김포 호재·제도·공급 텍스트(Phase 2)"
+    }
+  },
+  {
+    "judgment_seq": 98,
+    "tool": "extract",
+    "purpose": "extract:notice:9",
+    "input_hash": "sha256:ac5469ccc1613d547cf7f36fb5125832193543c1dd65f12868546ae134890986",
+    "file": "extract/ac5469ccc1613d547cf7f36fb5125832193543c1dd65f12868546ae134890986.json",
+    "report_ref": "부록 A #98",
+    "payload": {
+      "report_ref": "부록 A #98",
+      "document": "리버프론트 14필드(분양가·발코니·계약금·전매·입주·잔여 등)",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 99,
+    "tool": "extract",
+    "purpose": "extract:notice:7",
+    "input_hash": "sha256:b0675d3ceb94a7e4265eb2f4a0b984eec0d2451b4c7ee43a5e14d60930b5cff1",
+    "file": "extract/b0675d3ceb94a7e4265eb2f4a0b984eec0d2451b4c7ee43a5e14d60930b5cff1.json",
+    "report_ref": "부록 A #99",
+    "payload": {
+      "report_ref": "부록 A #99",
+      "document": "칸타빌 15필드",
+      "field_count": 15
+    }
+  },
+  {
+    "judgment_seq": 100,
+    "tool": "extract",
+    "purpose": "extract:notice:11",
+    "input_hash": "sha256:c485d45239e080e9e9246d4868d854461aca7d408ce85914f1637dd098766cf2",
+    "file": "extract/c485d45239e080e9e9246d4868d854461aca7d408ce85914f1637dd098766cf2.json",
+    "report_ref": "부록 A #100",
+    "payload": {
+      "report_ref": "부록 A #100",
+      "document": "고촌센트럴자이 14필드",
+      "field_count": 14
+    }
+  },
+  {
+    "judgment_seq": 101,
+    "tool": "extract",
+    "purpose": "extract:notice:10",
+    "input_hash": "sha256:d4b97412458bc62cd4d87e5f9301f61044072c9619dae59b13169a5ef0a8e66c",
+    "file": "extract/d4b97412458bc62cd4d87e5f9301f61044072c9619dae59b13169a5ef0a8e66c.json",
+    "report_ref": "부록 A #101",
+    "payload": {
+      "report_ref": "부록 A #101",
+      "document": "롯데캐슬 12필드",
+      "field_count": 12
+    }
+  },
+  {
+    "judgment_seq": 102,
+    "tool": "extract",
+    "purpose": "extract:notice:8",
+    "input_hash": "sha256:b186d6252340057d4ba5346e61c6ce84ddb5106dcaee930bce8d13b6d7430c06",
+    "file": "extract/b186d6252340057d4ba5346e61c6ce84ddb5106dcaee930bce8d13b6d7430c06.json",
+    "report_ref": "부록 A #102",
+    "payload": {
+      "report_ref": "부록 A #102",
+      "document": "그라센트 2차 12필드",
+      "field_count": 12
+    }
+  },
+  {
+    "judgment_seq": 103,
+    "tool": "extract",
+    "purpose": "extract:notice:4",
+    "input_hash": "sha256:09bb9e91c94a273248c0dfb4c0b6942123e3b2b2862be7a8369ddec1dae64958",
+    "file": "extract/09bb9e91c94a273248c0dfb4c0b6942123e3b2b2862be7a8369ddec1dae64958.json",
+    "report_ref": "부록 A #103",
+    "payload": {
+      "report_ref": "부록 A #103",
+      "document": "스위첸 13필드",
+      "field_count": 13
+    }
+  },
+  {
+    "judgment_seq": 104,
+    "tool": "audit",
+    "purpose": "audit:notice:9",
+    "input_hash": "sha256:7fa5212a1e7e1ecb084a65c7b37895f0ce5e824ebef9b5a8da190a3330c204da",
+    "file": "audit/7fa5212a1e7e1ecb084a65c7b37895f0ce5e824ebef9b5a8da190a3330c204da.json",
+    "report_ref": "부록 A #104",
+    "payload": {
+      "report_ref": "부록 A #104",
+      "records": "리버프론트 추출 레코드 vs 원문",
+      "record_count": 16
+    }
+  },
+  {
+    "judgment_seq": 105,
+    "tool": "audit",
+    "purpose": "audit:notice:7",
+    "input_hash": "sha256:83cca1668d4c8f563ff01702f01b87fa886eee63f21871d37f6dfb84e23031d2",
+    "file": "audit/83cca1668d4c8f563ff01702f01b87fa886eee63f21871d37f6dfb84e23031d2.json",
+    "report_ref": "부록 A #105",
+    "payload": {
+      "report_ref": "부록 A #105",
+      "records": "칸타빌 추출 레코드 vs 원문",
+      "record_count": 18
+    }
+  },
+  {
+    "judgment_seq": 106,
+    "tool": "audit",
+    "purpose": "audit:notice:11",
+    "input_hash": "sha256:4996f52d0b6d4cd457ba3959edcdde9dc5357b5081b7cc8c6a0ac2666f1eb8c1",
+    "file": "audit/4996f52d0b6d4cd457ba3959edcdde9dc5357b5081b7cc8c6a0ac2666f1eb8c1.json",
+    "report_ref": "부록 A #106",
+    "payload": {
+      "report_ref": "부록 A #106",
+      "records": "고촌센트럴자이 추출 레코드 vs 원문",
+      "record_count": 16
+    }
+  },
+  {
+    "judgment_seq": 107,
+    "tool": "audit",
+    "purpose": "audit:notice:10",
+    "input_hash": "sha256:c5f2c6ebe1e076833efc74af90175f8132f6da968e7b80c94f044a069898450c",
+    "file": "audit/c5f2c6ebe1e076833efc74af90175f8132f6da968e7b80c94f044a069898450c.json",
+    "report_ref": "부록 A #107",
+    "payload": {
+      "report_ref": "부록 A #107",
+      "records": "롯데캐슬 추출 레코드 vs 원문",
+      "record_count": 14
+    }
+  },
+  {
+    "judgment_seq": 108,
+    "tool": "audit",
+    "purpose": "audit:notice:8",
+    "input_hash": "sha256:e9284d3e5e5cebdbb56ebd8d9d30495ee7e13a193e4acec9edde835092850f4d",
+    "file": "audit/e9284d3e5e5cebdbb56ebd8d9d30495ee7e13a193e4acec9edde835092850f4d.json",
+    "report_ref": "부록 A #108",
+    "payload": {
+      "report_ref": "부록 A #108",
+      "records": "그라센트 2차 추출 레코드 vs 원문",
+      "record_count": 13
+    }
+  },
+  {
+    "judgment_seq": 109,
+    "tool": "audit",
+    "purpose": "audit:notice:4",
+    "input_hash": "sha256:b68e1f8a89052a0ebed034bd19c8ccdeae5b29d0c072033b144f8e2817487c87",
+    "file": "audit/b68e1f8a89052a0ebed034bd19c8ccdeae5b29d0c072033b144f8e2817487c87.json",
+    "report_ref": "부록 A #109",
+    "payload": {
+      "report_ref": "부록 A #109",
+      "records": "스위첸 추출 레코드 vs 원문",
+      "record_count": 15
+    }
+  },
+  {
+    "judgment_seq": 110,
+    "tool": "classify",
+    "purpose": "classify:inclusion:gimpo",
+    "input_hash": "sha256:20cddcdbe746cfcd08743f66bfe23de726c8601cd5bf9b2124229670976e274b",
+    "file": "classify/20cddcdbe746cfcd08743f66bfe23de726c8601cd5bf9b2124229670976e274b.json",
+    "report_ref": "부록 A #110",
+    "payload": {
+      "report_ref": "부록 A #110",
+      "candidates": [
+        "한강 푸르지오 리버프론트",
+        "호반써밋 풍무Ⅲ",
+        "풍무역세권 수자인 그라센트 2차",
+        "김포 칸타빌 에디션",
+        "한강 수자인 오브센트",
+        "고촌센트럴자이",
+        "풍무역 롯데캐슬 시그니처",
+        "호반써밋 풍무Ⅱ",
+        "수자인 그라센트 1차",
+        "풍무역세권 B5블록 호반써밋",
+        "해링턴플레이스 풍무 1~3BL",
+        "풍무역 푸르지오 더 마크",
+        "오퍼스 한강 스위첸",
+        "사우역 지엔하임",
+        "김포 북변 우미 린 파크리브",
+        "김포한강Cc-03 구래역 예미지",
+        "리버프론트 오피스텔 250실",
+        "호반써밋Ⅱ 오피스텔 98실",
+        "김포고촌2지구 A1 공공분양",
+        "전호 공공지원 민간임대",
+        "쌍용 더 플래티넘 한강(양평군)",
+        "북변5구역 재개발",
+        "한강2 콤팩트시티",
+        "한강시네폴리스 추가 블록"
+      ],
+      "classes": [
+        "private_sale_apt",
+        "public_sale",
+        "public_rental",
+        "private_rental",
+        "non_apartment",
+        "out_of_scope",
+        "manual_review"
+      ],
+      "input_summary": "포함/제외 24건(사업주체 명의, 7클래스)"
+    }
+  },
+  {
+    "judgment_seq": 111,
+    "tool": "classify",
+    "purpose": "classify:catalyst:gimpo",
+    "input_hash": "sha256:ae609b0af03398f59edec1c8b21d2f45776e6d1de7a1b2bb93a848d84b9ed1bc",
+    "file": "classify/ae609b0af03398f59edec1c8b21d2f45776e6d1de7a1b2bb93a848d84b9ed1bc.json",
+    "report_ref": "부록 A #111",
+    "payload": {
+      "report_ref": "부록 A #111",
+      "candidates": [
+        "풍무역세권 도시개발 6,599세대 분양·공사 중",
+        "한강시네폴리스 산단·주거 3,461세대 분양·착공",
+        "수도권 제2순환 김포~파주 한강하저터널",
+        "김포골드라인 증차",
+        "GTX-D 서부권 광역급행철도 예타 통과",
+        "인천2호선 고양 연장 예타 진행 중",
+        "인하대병원 김포 부지제공 협약",
+        "김포한강선(가칭)",
+        "김포한강2 콤팩트시티",
+        "김포 서울 편입",
+        "김포 사이언스파크",
+        "서울 5호선 김포·검단 연장",
+        "걸포4·감정4지구",
+        "계양~강화 고속도로",
+        "북변5구역 재개발"
+      ],
+      "classes": [
+        "확정",
+        "계획",
+        "추진",
+        "언론",
+        "미확정"
+      ],
+      "input_summary": "호재 단계 15건(확정/계획/추진/언론보도만/미확정)"
+    }
+  },
+  {
+    "judgment_seq": 112,
+    "tool": "compare",
+    "purpose": "compare:catalyst:line5_stations",
+    "input_hash": "sha256:c2669856738959631a9246c78dba15d583f391e075c944907e7131d39c78e1e6",
+    "file": "compare/c2669856738959631a9246c78dba15d583f391e075c944907e7131d39c78e1e6.json",
+    "report_ref": "부록 A #112",
+    "payload": {
+      "report_ref": "부록 A #112",
+      "pair": "5호선 정거장 수 쿠키뉴스 9 vs 헤럴드 10 (aspects 3)"
+    }
+  },
+  {
+    "judgment_seq": 113,
+    "tool": "compare",
+    "purpose": "compare:competition:hoban3",
+    "input_hash": "sha256:7c9568521062daff45c7d79aa88e43e6f2468898060db2348b06fad11e88a1b5",
+    "file": "compare/7c9568521062daff45c7d79aa88e43e6f2468898060db2348b06fad11e88a1b5.json",
+    "report_ref": "부록 A #113",
+    "payload": {
+      "report_ref": "부록 A #113",
+      "pair": "호반써밋Ⅲ 모집가구 한경 226 vs fnnews·청약홈 266 (2)"
+    }
+  },
+  {
+    "judgment_seq": 114,
+    "tool": "compare",
+    "purpose": "compare:catalyst:hangang2",
+    "input_hash": "sha256:ba36ca88c41d06e3508aee14375718fbdb5586ecd353dfcdf336c66255b1c407",
+    "file": "compare/ba36ca88c41d06e3508aee14375718fbdb5586ecd353dfcdf336c66255b1c407.json",
+    "report_ref": "부록 A #114",
+    "payload": {
+      "report_ref": "부록 A #114",
+      "pair": "한강2 지구계획 신청 연도 2024-07 vs 2025-07 (3)"
+    }
+  },
+  {
+    "judgment_seq": 115,
+    "tool": "compare",
+    "purpose": "compare:resale:9",
+    "input_hash": "sha256:b38afa952b69801d9b3f2b2e2a9767d3e22afb0d1a3dca91a724af03245b4d64",
+    "file": "compare/b38afa952b69801d9b3f2b2e2a9767d3e22afb0d1a3dca91a724af03245b4d64.json",
+    "report_ref": "부록 A #115",
+    "payload": {
+      "report_ref": "부록 A #115",
+      "pair": "리버프론트 전매 뉴시스 2년 vs 공고문 3년 (2)"
+    }
+  },
+  {
+    "judgment_seq": 116,
+    "tool": "compare",
+    "purpose": "compare:price:11",
+    "input_hash": "sha256:d09ddf164eb5818bd568eb4053b291b54ef253761b049f42c307c22ccc483f50",
+    "file": "compare/d09ddf164eb5818bd568eb4053b291b54ef253761b049f42c307c22ccc483f50.json",
+    "report_ref": "부록 A #116",
+    "payload": {
+      "report_ref": "부록 A #116",
+      "pair": "고촌센트럴자이 84㎡ 분양가 사전보도 8억 중반 vs 7억 초중반·공고 75,840 (2)"
+    }
+  },
+  {
+    "judgment_seq": 117,
+    "tool": "compare",
+    "purpose": "compare:competition:b5_hoban",
+    "input_hash": "sha256:abf8df5d7faa4c4eeff3c40ebcd4003de20cb0b71778c3cb095ef1d5fb5da4b7",
+    "file": "compare/abf8df5d7faa4c4eeff3c40ebcd4003de20cb0b71778c3cb095ef1d5fb5da4b7.json",
+    "report_ref": "부록 A #117",
+    "payload": {
+      "report_ref": "부록 A #117",
+      "pair": "B5 호반써밋 최고 경쟁률 14 vs 24.6 (2)"
+    }
+  },
+  {
+    "judgment_seq": 118,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:2e7a75ecaddbb77ac8dce116aa48c7b818a98dd72387188c02d4c2f3dceb258b",
+    "file": "noul/2e7a75ecaddbb77ac8dce116aa48c7b818a98dd72387188c02d4c2f3dceb258b.json",
+    "report_ref": "부록 A #118",
+    "payload": {
+      "report_ref": "부록 A #118",
+      "complex_id": 7,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2030-12",
+      "propositions": [
+        "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 +5% 이상이다",
+        "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 +10% 이상이다",
+        "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 +20% 이상이다",
+        "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 119,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:c9a8c362ca58a43b4b097ff9b9cbaf26b6f4a9816fc954f50b8ee2fed9114760",
+    "file": "noul/c9a8c362ca58a43b4b097ff9b9cbaf26b6f4a9816fc954f50b8ee2fed9114760.json",
+    "report_ref": "부록 A #119",
+    "payload": {
+      "report_ref": "부록 A #119",
+      "complex_id": 9,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2032-01",
+      "propositions": [
+        "한강 푸르지오 리버프론트 입주 후 1년(2032-01) 실거래가가 현재 구매가(6.54~7.83억) 대비 +5% 이상이다",
+        "한강 푸르지오 리버프론트 입주 후 1년(2032-01) 실거래가가 현재 구매가(6.54~7.83억) 대비 +10% 이상이다",
+        "한강 푸르지오 리버프론트 입주 후 1년(2032-01) 실거래가가 현재 구매가(6.54~7.83억) 대비 +20% 이상이다",
+        "한강 푸르지오 리버프론트 입주 후 1년(2032-01) 실거래가가 현재 구매가(6.54~7.83억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 120,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:24816855d43069239a05464cd8d7fb747d066ae7ee8651379c017356c0cdcdaa",
+    "file": "noul/24816855d43069239a05464cd8d7fb747d066ae7ee8651379c017356c0cdcdaa.json",
+    "report_ref": "부록 A #120",
+    "payload": {
+      "report_ref": "부록 A #120",
+      "complex_id": 11,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2027-10",
+      "propositions": [
+        "고촌센트럴자이 입주 후 1년(2027-10) 실거래가가 현재 구매가(7.584억(즉시 입주)) 대비 +5% 이상이다",
+        "고촌센트럴자이 입주 후 1년(2027-10) 실거래가가 현재 구매가(7.584억(즉시 입주)) 대비 +10% 이상이다",
+        "고촌센트럴자이 입주 후 1년(2027-10) 실거래가가 현재 구매가(7.584억(즉시 입주)) 대비 +20% 이상이다",
+        "고촌센트럴자이 입주 후 1년(2027-10) 실거래가가 현재 구매가(7.584억(즉시 입주)) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 121,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:67ad18ed727b7faf957e3d31835d7be02f446a260e30419a23b2a55bd0e78729",
+    "file": "noul/67ad18ed727b7faf957e3d31835d7be02f446a260e30419a23b2a55bd0e78729.json",
+    "report_ref": "부록 A #121",
+    "payload": {
+      "report_ref": "부록 A #121",
+      "complex_id": 10,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2029-07",
+      "propositions": [
+        "풍무역 롯데캐슬 시그니처 입주 후 1년(2029-07) 실거래가가 현재 구매가(7.97억) 대비 +5% 이상이다",
+        "풍무역 롯데캐슬 시그니처 입주 후 1년(2029-07) 실거래가가 현재 구매가(7.97억) 대비 +10% 이상이다",
+        "풍무역 롯데캐슬 시그니처 입주 후 1년(2029-07) 실거래가가 현재 구매가(7.97억) 대비 +20% 이상이다",
+        "풍무역 롯데캐슬 시그니처 입주 후 1년(2029-07) 실거래가가 현재 구매가(7.97억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 122,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:de3c6fab502a6b395e94143fdb3b308d89916b7d425915b66e2c00fe29c03914",
+    "file": "noul/de3c6fab502a6b395e94143fdb3b308d89916b7d425915b66e2c00fe29c03914.json",
+    "report_ref": "부록 A #122",
+    "payload": {
+      "report_ref": "부록 A #122",
+      "complex_id": 8,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2030-01",
+      "propositions": [
+        "풍무역세권 수자인 그라센트 2차 입주 후 1년(2030-01) 실거래가가 현재 구매가(6.61~7.18억) 대비 +5% 이상이다",
+        "풍무역세권 수자인 그라센트 2차 입주 후 1년(2030-01) 실거래가가 현재 구매가(6.61~7.18억) 대비 +10% 이상이다",
+        "풍무역세권 수자인 그라센트 2차 입주 후 1년(2030-01) 실거래가가 현재 구매가(6.61~7.18억) 대비 +20% 이상이다",
+        "풍무역세권 수자인 그라센트 2차 입주 후 1년(2030-01) 실거래가가 현재 구매가(6.61~7.18억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 123,
+    "tool": "noul",
+    "purpose": "noul:ladder:move_in_plus_1y",
+    "input_hash": "sha256:5b905a591201b9fc8c1acad65aeee8f16d8e6bdd247c71677f63998fa8c724e6",
+    "file": "noul/5b905a591201b9fc8c1acad65aeee8f16d8e6bdd247c71677f63998fa8c724e6.json",
+    "report_ref": "부록 A #123",
+    "payload": {
+      "report_ref": "부록 A #123",
+      "complex_id": 4,
+      "horizon": "move_in_plus_1y",
+      "target_ym": "2029-08",
+      "propositions": [
+        "오퍼스 한강 스위첸 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.26~6.99억) 대비 +5% 이상이다",
+        "오퍼스 한강 스위첸 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.26~6.99억) 대비 +10% 이상이다",
+        "오퍼스 한강 스위첸 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.26~6.99억) 대비 +20% 이상이다",
+        "오퍼스 한강 스위첸 입주 후 1년(2029-08) 실거래가가 현재 구매가(6.26~6.99억) 대비 보합 또는 하락이다"
+      ],
+      "context": "단지 증거 카드 + 생활권 벤치마크 + 제도"
+    }
+  },
+  {
+    "judgment_seq": 124,
+    "tool": "rerank",
+    "purpose": "rerank:region",
+    "input_hash": "sha256:90aa02a9b1a77f19bccce2f09b935208481f4019aa6d3803919b39fb79c880ac",
+    "file": "rerank/90aa02a9b1a77f19bccce2f09b935208481f4019aa6d3803919b39fb79c880ac.json",
+    "report_ref": "부록 A #124",
+    "payload": {
+      "report_ref": "부록 A #124",
+      "query": "현재 구매가 대비 향후 3~5년 집값 상승 여력이 가장 큰 민간분양 단지",
+      "cards": [
+        "complex:3",
+        "complex:1",
+        "complex:2",
+        "complex:4",
+        "complex:5",
+        "complex:8",
+        "complex:6",
+        "complex:9",
+        "complex:7",
+        "complex:10",
+        "complex:15",
+        "complex:16",
+        "complex:11",
+        "complex:14",
+        "complex:12",
+        "complex:13"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 125,
+    "tool": "decide",
+    "purpose": "decide:scenario_base",
+    "input_hash": "sha256:9b3215b5cde584fe7c6febd19468d6581688bb64a44dc8b14a5ac7372152b5d7",
+    "file": "decide/9b3215b5cde584fe7c6febd19468d6581688bb64a44dc8b14a5ac7372152b5d7.json",
+    "report_ref": "부록 A #125",
+    "payload": {
+      "report_ref": "부록 A #125",
+      "situation": "기본값 재판정, 후보 6(그란테르·엘리프·한내들·스위첸·칸타빌·센트레빌), 요건 3",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:4",
+        "complex:7",
+        "complex:5",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 126,
+    "tool": "decide",
+    "purpose": "decide:scenario_A",
+    "input_hash": "sha256:d5ec1122791b2ec15dff97c27de128c5ee9d3c48aa8851a98e47401364d05105",
+    "file": "decide/d5ec1122791b2ec15dff97c27de128c5ee9d3c48aa8851a98e47401364d05105.json",
+    "report_ref": "부록 A #126",
+    "payload": {
+      "report_ref": "부록 A #126",
+      "situation": "상황 A 재판정, 후보 6(+wait_new)",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:4",
+        "complex:7",
+        "wait_new",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 127,
+    "tool": "decide",
+    "purpose": "decide:scenario_B",
+    "input_hash": "sha256:839e5a0be73b52df40ba45e812cdf30253aa41dfb98dd96b8e927316eef3374f",
+    "file": "decide/839e5a0be73b52df40ba45e812cdf30253aa41dfb98dd96b8e927316eef3374f.json",
+    "report_ref": "부록 A #127",
+    "payload": {
+      "report_ref": "부록 A #127",
+      "situation": "상황 B 재판정, 후보 6",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:4",
+        "complex:7",
+        "wait_new",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 128,
+    "tool": "decide",
+    "purpose": "decide:scenario_C",
+    "input_hash": "sha256:727b9848c4ac2f7818ef901f8ec6e99f22246b90366430bbe19a70902cdb9a79",
+    "file": "decide/727b9848c4ac2f7818ef901f8ec6e99f22246b90366430bbe19a70902cdb9a79.json",
+    "report_ref": "부록 A #128",
+    "payload": {
+      "report_ref": "부록 A #128",
+      "situation": "상황 C 재판정, 후보 6",
+      "options": [
+        "complex:1",
+        "complex:2",
+        "complex:3",
+        "complex:4",
+        "complex:7",
+        "wait_new",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 129,
+    "tool": "decide",
+    "purpose": "decide:scenario_D",
+    "input_hash": "sha256:7cf51ffde5ace749927affd66f3592cdb5f26db2c08aef86c9443a1fd375fbc1",
+    "file": "decide/7cf51ffde5ace749927affd66f3592cdb5f26db2c08aef86c9443a1fd375fbc1.json",
+    "report_ref": "부록 A #129",
+    "payload": {
+      "report_ref": "부록 A #129",
+      "situation": "상황 D 재판정, 후보 6(+고촌센트럴자이)",
+      "options": [
+        "complex:2",
+        "complex:3",
+        "complex:4",
+        "complex:7",
+        "complex:5",
+        "complex:11",
+        "ask_user",
+        "investigate"
+      ]
+    }
+  },
+  {
+    "judgment_seq": 130,
+    "tool": "verify",
+    "purpose": "verify:section_12-1·12-2",
+    "input_hash": "sha256:b822f948875f8f42865451bbe8de6314b709923c36898dc5c06c31fd666fca8b",
+    "file": "verify/b822f948875f8f42865451bbe8de6314b709923c36898dc5c06c31fd666fca8b.json",
+    "report_ref": "부록 A #130",
+    "payload": {
+      "report_ref": "부록 A #130",
+      "section": "12-1·12-2",
+      "claim_count": 16,
+      "evidence_count": 0,
+      "input_summary": "12-1·12-2 주장 16 vs 전수조사 표·JEV 출력",
+      "known_claims": {}
+    }
+  },
+  {
+    "judgment_seq": 131,
+    "tool": "verify",
+    "purpose": "verify:section_12-3·12-4",
+    "input_hash": "sha256:e9b240750fb14c8b516f806a92e7e00864c9301a0543935b83f4446c1b228747",
+    "file": "verify/e9b240750fb14c8b516f806a92e7e00864c9301a0543935b83f4446c1b228747.json",
+    "report_ref": "부록 A #131",
+    "payload": {
+      "report_ref": "부록 A #131",
+      "section": "12-3·12-4",
+      "claim_count": 16,
+      "evidence_count": 0,
+      "input_summary": "12-3·12-4 주장 16",
+      "known_claims": {
+        "c131-01": "고촌센트럴자이 +10%·+20%와 롯데캐슬 +20%만 unlikely, 나머지 전부 uncertain",
+        "c131-02": "호재 classify 집계",
+        "c131-03": "noul 수치 나열"
+      }
+    }
+  },
+  {
+    "judgment_seq": 132,
+    "tool": "verify",
+    "purpose": "verify:section_12-5",
+    "input_hash": "sha256:ac6eab0d2826d7d85faaf694101c51c6ba8d04264caac5a95a775c9c83e2b207",
+    "file": "verify/ac6eab0d2826d7d85faaf694101c51c6ba8d04264caac5a95a775c9c83e2b207.json",
+    "report_ref": "부록 A #132",
+    "payload": {
+      "report_ref": "부록 A #132",
+      "section": "12-5",
+      "claim_count": 16,
+      "evidence_count": 0,
+      "input_summary": "12-5 주장 + 분할 재표현 주장 16",
+      "known_claims": {
+        "c132-01": "엘리프 전매 종료→매도 가능 해석"
+      }
+    }
+  }
+]

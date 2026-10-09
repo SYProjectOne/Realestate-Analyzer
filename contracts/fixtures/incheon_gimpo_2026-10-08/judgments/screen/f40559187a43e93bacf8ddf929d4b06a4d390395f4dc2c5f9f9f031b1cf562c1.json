@@ -1,0 +1,28 @@
+{
+  "tool": "screen",
+  "purpose": "screen:news:worldmeridian",
+  "input_hash": "sha256:f40559187a43e93bacf8ddf929d4b06a4d390395f4dc2c5f9f9f031b1cf562c1",
+  "input_len": 99,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": 0.01,
+    "substance": 0.99,
+    "relevance": 0.97
+  },
+  "raw": {
+    "thresholds": {
+      "block": 0.75,
+      "review": 0.25
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": 7,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

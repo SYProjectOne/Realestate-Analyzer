@@ -1,0 +1,37 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:3",
+  "input_hash": "sha256:663a305a4e1ec7d239e68c53448a758546b5ec6bcfc6be4487cdd065080f8405",
+  "input_len": 63,
+  "status": "review",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "flagged",
+    "items": [
+      {
+        "field": "winner_date_jev",
+        "p_wrong": 0.9,
+        "flagged": true,
+        "note": "12.17(2순위일) 오선택 → 12.23으로 정정"
+      }
+    ],
+    "counts": {
+      "records": 15,
+      "flagged": 1
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "escalate"
+  },
+  "duration_ms": null,
+  "judgment_seq": 50,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 3,
+  "error_text": null
+}

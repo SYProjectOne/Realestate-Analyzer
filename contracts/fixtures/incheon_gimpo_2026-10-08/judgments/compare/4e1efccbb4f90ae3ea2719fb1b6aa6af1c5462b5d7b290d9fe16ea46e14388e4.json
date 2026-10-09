@@ -1,0 +1,35 @@
+{
+  "tool": "compare",
+  "purpose": "compare:move_in:1",
+  "input_hash": "sha256:4e1efccbb4f90ae3ea2719fb1b6aa6af1c5462b5d7b290d9fe16ea46e14388e4",
+  "input_len": 68,
+  "status": "review",
+  "confidence": 0.68,
+  "cached": false,
+  "result": {
+    "overall": "same_fact",
+    "prob": 0.68,
+    "aspects": [
+      {
+        "aspect": "입주 시작",
+        "relation": "same_fact",
+        "prob": 1.0
+      },
+      {
+        "aspect": "입주 종료",
+        "relation": "different_facts",
+        "prob": 0.44
+      }
+    ]
+  },
+  "raw": {
+    "decision": "review"
+  },
+  "duration_ms": null,
+  "judgment_seq": 73,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 1,
+  "error_text": null
+}

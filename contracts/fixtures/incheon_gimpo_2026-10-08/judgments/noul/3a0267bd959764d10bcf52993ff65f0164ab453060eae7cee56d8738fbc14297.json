@@ -1,0 +1,53 @@
+{
+  "tool": "noul",
+  "purpose": "noul:ladder:move_in_plus_1y",
+  "input_hash": "sha256:3a0267bd959764d10bcf52993ff65f0164ab453060eae7cee56d8738fbc14297",
+  "input_len": 424,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "horizon": "move_in_plus_1y",
+    "target_ym": "2030-03",
+    "propositions": [
+      {
+        "key": "p5",
+        "text": "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 +5% 이상이다",
+        "prob": 0.39,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p10",
+        "text": "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 +10% 이상이다",
+        "prob": 0.31,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p20",
+        "text": "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 +20% 이상이다",
+        "prob": 0.16,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p_flat",
+        "text": "송도 한내들 센트럴리버 입주 후 1년(2030-03) 실거래가가 현재 구매가(8.13~8.99억) 대비 보합 또는 하락이다",
+        "prob": 0.63,
+        "verdict": "uncertain",
+        "decision": "review"
+      }
+    ]
+  },
+  "raw": {
+    "note": "보고서는 명제 '입주 후 1년'만 판정(asof_plus_3y·5y 미판정). target_ym은 입주월 + 12개월(즉시 입주는 기준일 + 12개월)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 65,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 3,
+  "error_text": null
+}

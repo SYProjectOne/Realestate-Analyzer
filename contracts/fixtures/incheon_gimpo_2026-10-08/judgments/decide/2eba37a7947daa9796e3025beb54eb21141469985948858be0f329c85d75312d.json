@@ -1,0 +1,66 @@
+{
+  "tool": "decide",
+  "purpose": "decide:scenario_C:incheon8",
+  "input_hash": "sha256:2eba37a7947daa9796e3025beb54eb21141469985948858be0f329c85d75312d",
+  "input_len": 174,
+  "status": "ok",
+  "confidence": 0.98,
+  "cached": false,
+  "result": {
+    "selected": "complex:2",
+    "probs": {
+      "complex:2": 0.98,
+      "complex:3": 0.01
+    },
+    "checks": {
+      "complex:1": {
+        "access": "supported",
+        "regulation": "supported",
+        "funds": "contradicted"
+      },
+      "complex:2": {
+        "access": "supported",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:3": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:5": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:6": {
+        "access": "contradicted",
+        "regulation": "contradicted",
+        "funds": "contradicted"
+      },
+      "wait_new": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      }
+    },
+    "warnings": [],
+    "escaped": false,
+    "question": null
+  },
+  "raw": {
+    "requirement_order": [
+      "access",
+      "regulation",
+      "funds"
+    ],
+    "note": "probs는 보고서에 기재된 값만(나머지 후보 확률 미기재)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 86,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

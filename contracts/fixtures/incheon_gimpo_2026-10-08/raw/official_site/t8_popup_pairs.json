@@ -1,0 +1,47 @@
+{
+  "yesterday": {
+    "id": 9062,
+    "source_kind": "official_site",
+    "url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+    "fetched_at": "2026-10-07T00:00:00+09:00",
+    "http_status": 200,
+    "sha256": "1ef92f6e1a3915ddd7da5b51b9356e1cb57ec5b821ed716268db763cc40f4684",
+    "path": "official_site/elif_popup_2026-10-07.png",
+    "content_type": "image/png",
+    "text_path": null,
+    "complex_id": 2,
+    "region_id": 1,
+    "error_text": null,
+    "image_hash": "1ef92f6e1a3915ddd7da5b51b9356e1cb57ec5b821ed716268db763cc40f4684"
+  },
+  "today_same": {
+    "id": null,
+    "source_kind": "official_site",
+    "url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+    "fetched_at": "2026-10-08T00:00:00+09:00",
+    "http_status": 200,
+    "sha256": "1ef92f6e1a3915ddd7da5b51b9356e1cb57ec5b821ed716268db763cc40f4684",
+    "path": "official_site/elif_popup_2026-10-08_same.png",
+    "content_type": "image/png",
+    "text_path": null,
+    "complex_id": 2,
+    "region_id": 1,
+    "error_text": null,
+    "image_hash": "1ef92f6e1a3915ddd7da5b51b9356e1cb57ec5b821ed716268db763cc40f4684"
+  },
+  "today_changed": {
+    "id": null,
+    "source_kind": "official_site",
+    "url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+    "fetched_at": "2026-10-08T00:00:00+09:00",
+    "http_status": 200,
+    "sha256": "63d47158d6ae920b273e772f198b16d25d9e9608d171c75bd33d75a107da5816",
+    "path": "official_site/elif_popup_2026-10-08_changed.png",
+    "content_type": "image/png",
+    "text_path": null,
+    "complex_id": 2,
+    "region_id": 1,
+    "error_text": null,
+    "image_hash": "63d47158d6ae920b273e772f198b16d25d9e9608d171c75bd33d75a107da5816"
+  }
+}

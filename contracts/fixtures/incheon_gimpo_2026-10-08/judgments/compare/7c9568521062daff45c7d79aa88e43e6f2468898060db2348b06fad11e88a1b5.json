@@ -1,0 +1,35 @@
+{
+  "tool": "compare",
+  "purpose": "compare:competition:hoban3",
+  "input_hash": "sha256:7c9568521062daff45c7d79aa88e43e6f2468898060db2348b06fad11e88a1b5",
+  "input_len": 75,
+  "status": "ok",
+  "confidence": 0.98,
+  "cached": false,
+  "result": {
+    "overall": "contradicts",
+    "prob": 0.98,
+    "aspects": [
+      {
+        "aspect": "모집가구",
+        "relation": "contradicts",
+        "prob": null
+      },
+      {
+        "aspect": "접수건수",
+        "relation": "same_fact",
+        "prob": null
+      }
+    ]
+  },
+  "raw": {
+    "decision": "auto"
+  },
+  "duration_ms": null,
+  "judgment_seq": 113,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}
