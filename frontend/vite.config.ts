@@ -49,15 +49,15 @@ export default defineConfig({
     chunkSizeWarningLimit: MAX_CHUNK_KB,
     rollupOptions: {
       output: {
-        // echarts(트리 셰이킹 후에도 ~650kB)를 렌더 엔진(zrender)·계열·나머지로 나눈다. 셋 다 차트가
-        // 뷰포트에 들어올 때 lazy 로 받는다(EChart.tsx).
+        // echarts(트리 셰이킹 후에도 ~650kB)를 렌더 엔진(zrender + 공용 tslib)과 echarts 로 나눈다(순환 청크 없음).
+        // 둘 다 차트가 뷰포트에 들어올 때 lazy 로 받는다(EChart.tsx).
         manualChunks(id) {
           const path = id.replace(/\\/g, '/');
           if (!path.includes('/node_modules/')) return undefined;
-          if (path.includes('/node_modules/zrender/')) return 'zrender';
-          if (path.includes('/node_modules/echarts/lib/chart/')) return 'echarts-charts';
-          if (path.includes('/node_modules/echarts/lib/component/')) return 'echarts-components';
-          if (path.includes('/node_modules/echarts/')) return 'echarts-core';
+          if (/\/node_modules\/(zrender|tslib)\//.test(path)) return 'zrender';
+          // MSW 모드 빌드(e2e/pages·dev:msw) 전용 — 운영 빌드에는 없다
+          if (/\/node_modules\/(msw|@mswjs|@bundled-es-modules)\//.test(path)) return 'msw';
+          if (path.includes('/node_modules/echarts/')) return 'echarts';
           return undefined;
         },
       },
