@@ -2,7 +2,7 @@
 
 원본 설계도는 `docs/source/RA_v1.md`(이하 RA)이다. 이 문서는 §11 미결 사항에 대한 사람(라홈)의 답과, 그 답 때문에 바뀐 계약·WP 카드만 적는다. RA와 이 문서가 충돌하면 **이 문서가 이긴다**. RA가 말하지 않는 화면·운영 규칙은 `docs/source/meta_prompt.md` §2-6~§2-9를 따른다.
 
-계약 버전: `2026-10-09.1`
+계약 버전: `2026-10-09.2`
 
 ## D1. §11 미결 사항 답
 
@@ -74,7 +74,7 @@
 
 ## D3. 회귀 데이터
 
-인천·김포 보고서는 `docs/source/incheon_gimpo_report.md`(Claude Docs 원문 변환본)다. 픽스처 지역 정의 = 인천 연수구(송도동)·서구/검단구(검단)·계양구 + 김포시. 보고서는 2026-07 검단구 분구 이후 "검단구"를 쓴다 — 법정동 코드 표가 아직 서구 코드면 둘 다 후보로 나와야 한다.
+인천·김포 보고서는 `docs/source/incheon_gimpo_report.md`(Claude Docs 원문 변환본)다. 픽스처 지역 정의 = 인천 연수구(송도동)·서구/검단구(검단)·계양구 + 김포시. 보고서는 2026-07 검단구 분구 이후 "검단구"를 쓴다 — 법정동 코드 표가 아직 서구 코드면 둘 다 후보로 나와야 한다. (2026-10-09 확인: 공식 법정동코드 전체자료는 분구를 반영해 서구 28260을 폐지하고 검단구 28290을 둔다 — 계약 2026-10-09.2부터 예시·픽스처는 검단구 현행 코드.)
 
 ## D4. 보고서 = HTML + PDF (WP8 카드 변경)
 
@@ -98,6 +98,7 @@
 - 실행 명령 기본값: `JEV_MCP_CMD="npx -y @jkudish/jev-mcp@latest"` (설치된 Claude 설정은 0.13.0 고정; 프로그램은 최신 추종).
 - 어댑터는 **임계값을 넘기지 않는다** — JEV 기본값을 그대로 쓴다. RA WP3 카드의 숫자 목록은 "현재 기본값 참고"일 뿐 설정에 하드코딩하지 않는다.
 - MCP `initialize` 응답의 `serverInfo.version`을 읽어 `adapter_version = "<어댑터 코드 버전>+jev-mcp@<서버 버전>"`으로 만든다. 서버 버전이 바뀌면 input_hash가 모두 바뀌어 전체 재판정 1회(RA §10 runbook "판정기 버전 변경"). 이때 `change_event(entity=judge, field=version, severity=critical)`을 남긴다.
+- **보강(2026-10-09, 계약 2026-10-09.2)**: adapter_version에 JEV 응답의 `model`(예 `jev-1.13.0`)도 포함한다 — `"<코드>+jev-mcp@<서버 버전>+<model>"`. 모델이 바뀌어도(`jev-latest`가 새 모델을 가리키는 등, 서버 버전은 그대로일 수 있음) 재판정한다. 모델은 응답에만 보이므로 어댑터는 시작 시 judgment_log에서 같은 코드·서버 버전의 마지막 모델을 읽고(없으면 접미 없이), 응답의 model이 다르면 그 호출부터 새 버전의 input_hash로 기록한다. 모델 변경도 `change_event(entity=judge, field=version, severity=critical)` 대상이다(WP7).
 - 도구가 응답에 담아 주는 임계값·결정(auto/review 등)을 `judgment_log.output_json`에 그대로 저장하고, 보고서 부록 A에 사용된 임계값을 도구별로 적는다(meta §2-1 "보고서에 적는다").
 - JEV 도구 이름: `jev_screen, jev_extract, jev_audit, jev_classify, jev_compare, jev_noul, jev_rerank, jev_decide, jev_verify` (설치본에는 find·gate·review도 있으나 미사용).
 

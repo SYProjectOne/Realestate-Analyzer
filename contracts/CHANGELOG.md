@@ -2,6 +2,67 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.2
+
+R1 계약 변경 요청 일괄 반영(`docs/design/wp/CONTRACT_CHANGES_R1.md` 승인 목록 전부 + CEO 추가 승인 4건). 마이그레이션 `0002_r1`
+(컬럼 추가만, 모두 NULL 허용 — 0001 DB 는 `alembic upgrade head` 한 번). 필드 삭제·의미 변경 없음(AuditItem.p_wrong 의 null 허용만 넓힘).
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 WP |
+| --- | --- | --- | --- | --- |
+| 1 | WP4 #1 | `schemas/score_inputs.json` LivingAreaScoreInput | `unsold_scope_codes: string[]`(기본 []) — 생활권 ↔ 미분양 scope_code(시군구 5자리). 비면 '지역 합계' | WP7(채움), WP4(사용 — 이번에 반영) |
+| 2 | WP4 #2 | ComplexScoreInput | `intake_checked_at`(ISO, 날짜만 허용) | WP7, WP4(근거 문구 — 반영) |
+| 3 | WP4 #3 | ComplexScoreInput | 공고 필드 라벨 `down_payment_label`·`resale_label`·`residency_label`(Label\|null) | WP7, WP4(확인 불가 처리 — 반영) |
+| 4 | WP2 #1 | `schemas/field_candidate.json` | entity enum 에 `intake_status`(field='status_text', 문구 후보 — 분류는 판정기/사람) | WP2, WP7 |
+| 5 | WP2 #2 | FieldCandidate · ProvenanceRow | `observed_on`(원문 시점, 공고일) + `field_provenance.observed_on` String(10) | WP2 |
+| 6 | WP2 #3 | ProvenanceRow · `field_provenance` | `value_norm`(정규화 값 정준 문자열, Text) | WP2 |
+| 7 | WP2 #4 | `schemas/complex_type.json` · `complex_type` | `notice_type_code`(공고상 주택형 원문 '084.9582A', String(32)) | WP2, WP5 |
+| 8 | WP2 #5 | `schemas/payment_terms.json` · `payment_terms` | `price_by_type`(json: {type_code: NoticeTypePrice{max_price_won, floor_sample_price_won, floor_sample_text, units, notice_type_code}}) — 임의공급 공고별 가격. 출처 행 field=`price_by_type.<type>.<항목>` | WP2, WP4, WP5 |
+| 9 | WP1b #1 | `schemas/raw_document.json` · `raw_document` | `meta`(json\|null, 수집기 부가 정보) | WP1b, WP1a, WP2 |
+| 10 | WP1a #2 | raw_document | `table_path`(공고문 표 JSON 상대 경로, Text) — notice_pdf 수집기가 채움(이번에 반영) | WP1a, WP2 |
+| 11 | WP1a #1 | raw_document.error_text | 값 목록 명시: DNS·timeout·connect·TLS·network·robots·`robots.txt <코드>`·invalid_url·render / scan·ocr·`scan_partial:<p>`·`ocr_partial:<p>`·`pdf_parse: …`·not_pdf | WP1a, WP1b, WP2, WP6 |
+| 12 | WP1a #3 | `schemas/region.json` | `$defs/ApplyhomeQuery{from_ym 'YYYY-MM', areas {sido_code: 약칭}}` 키 정의. `Region.applyhome_query` 는 자유 객체(additionalProperties) 유지 | WP1a, WP5 |
+| 13 | WP9 #2 | `schemas/judgment_envelope.json` ClassifyResult | 배치 분류 `items[]: ClassifyItem{id, candidate, complex_id, label, prob, decision, distribution}`; 최상위 = 요약(label 'batch', prob = auto 비율, decision = 모두 auto일 때만 auto). 봉투 status = 모든 항목이 유효 응답이면 ok — 항목별 미해결은 `items[].decision`으로 거른다 | WP3(이번에 정규화 맞춤), WP4, WP7, WP9 |
+| 14 | WP9 #3 | AuditItem | `p_wrong: number\|null` — 판정기가 안 주면 null(0·1로 지어내지 않음) | WP3(이번에 반영), WP9(픽스처 null) |
+| 15 | WP9 #4·WP1b #2 | `examples/*`, 스키마 예시 | 폐지 코드 교체: 서구 28260 → 검단구 28290, 2826011400/500/600/700/800 → 2829010400(당하)/500(원당)/300(마전)/600(대곡)/700(금곡), 행정동 2826058500 → 2829051000(검단동 = 마전·금곡). 생활권 이름 '서구(검단)' → '검단구' | WP5, WP6(MSW 데이터) |
+| 16 | WP9 #1 | `fixtures/README.md`, `judgments/_meta.json`·`_index.json` | MockAdapter adapter_version `"mock-fixture-2026-10-08"` 명시, `_index.json` 설명 | WP3, WP9 |
+| 17 | WP9 주의·WP1b #2 | `fixtures/incheon_gimpo_2026-10-08/` | 법정동 사본을 gist → 공식 사본(`fixtures/reference/legal_dong_full.zip`) 발췌로 교체, 검단 법정동 현행 2829 코드, 생성기 재실행 | WP2, WP4, WP9 |
+| 18 | WP3 제안 | DECISIONS D6 · `judgment_envelope` 설명 · protocols | adapter_version = `<코드>+jev-mcp@<서버>+<응답 model>`(예 `0.1.0+jev-mcp@0.14.1+jev-1.13.0`) — 모델이 바뀌어도 재판정. 모델을 모르면 접미 없이 | WP3(이번에 반영), WP7 |
+| 19 | CEO 추가 1 | `schemas/living_area.json` | `legal_dongs: LegalDongRef[]{code, name, full_name}`(선택, 응답에서 서버가 채움) | WP5, WP6a |
+| 20 | CEO 추가 2 | `schemas/sensitivity.json` | SensitivityRank `name`(선택), Sensitivity `complex_names{id: name}`(선택) | WP4, WP5, WP6 |
+| 21 | CEO 추가 3 | 속성 없는 object 전부 | `additionalProperties: true` 명시(job_run.payload·stats, JobCreate.payload, envelope result·raw, RequirementRule.params, RetryHint.payload, region.applyhome_query) → TS `Record<string, unknown>`. 프론트 생성 `defaultNonNullable: false` | WP6 |
+
+### WP0 직접 항목 (계약 밖 공통 코드)
+
+- `core/db.py`: SQLite 연결에서 pysqlite 자체 BEGIN 을 끄고(`isolation_level=None`) `begin` 이벤트가 `BEGIN` 을 낸다(SQLAlchemy 문서 방식) —
+  `session.begin_nested()`(SAVEPOINT) 롤백이 바깥 트랜잭션을 깨지 않는다(WP2 요청).
+- `core/http.py`: `FetchResult.robots_status·robots_error_kind·robots_error` + `robots_reason`(차단 원인 보존 — 수집기가 robots.txt 를 다시 받지 않음).
+  키 인증 공식 API 호스트(`HTTP_ROBOTS_EXEMPT_HOSTS`, 기본 `apis.data.go.kr,openapi.naver.com`)는 robots 검사 예외(크롤링 아님, 약관이 규율). 속도 제한·재시도는 그대로(WP1b 요청).
+- `core/settings.py`: `JUDGE_CALL_TIMEOUT_S=120`, `JUDGE_START_TIMEOUT_S=300`(JevMcpAdapter 기본값), `HTTP_ROBOTS_EXEMPT_HOSTS`. `infra/.env.example` 갱신, `NEWS_API_KEY=<ClientID>:<Secret>`.
+- `backend/pyproject.toml`: `mcp>=2,<3`, `[project.optional-dependencies] ocr = ["rapidocr>=3.10,<4", "onnxruntime>=1.18"]`(D5 채택), `uv lock`.
+- CI: 백엔드 테스트 매트릭스에 `fixtures_contract`·`contracts` 추가.
+- 테스트: 계약 버전 검사는 CHANGELOG 맨 위 항목과 비교한다. 0001→0002 왕복(SQLite·Postgres) 테스트 추가.
+- 프론트(WP0 소유 설정): `scripts/gen-api.ts` `defaultNonNullable: false`, `src/api/types.ts` 보정 코드(`Loosen`·`Fact.human` 재정의) 제거,
+  `lighthouse@12` devDependency, `npm run e2e` = 스모크(`tests/e2e`) + 화면(`e2e/pages`) 둘 다(`e2e:smoke`·`e2e:pages` 개별).
+
+### 영향 WP 코드 적응(이번 변경에 포함, 최소)
+
+- WP3 `judge/`: adapter_version 에 model(위 #18, `base.py`·`cache.last_adapter_version`·`log.record` 재키), 배치 classify 요약(#13),
+  audit p_wrong null(#14), JevMcpAdapter 기본 timeout = 설정값.
+- WP4 `analysis/`: `supply_component` 가 `unsold_scope_codes` 로 생활권 미분양을 고른다(없으면 기존대로 scope_code = 생활권 id, 그것도
+  없으면 지역 합계). 요건 사전 계산이 `*_label`('확인 불가' → 값 미사용, 추정 등 → 근거에 표기)과 `intake_checked_at`('확인 날짜(D±n)')을 쓴다.
+- WP1a `notice_pdf`: `table_path` 를 채운다. WP1a/1b/WP2 raw_document DTO 변환에 `table_path`·`meta`.
+- WP1b `rawstore.fetch_failure`: robots 차단 원인을 `FetchResult.robots_*` 로 가린다(robots.txt 재요청 없음). news 테스트: 키 인증 API robots 예외.
+- WP9 `fixtures_contract`: `expected_scores_v2.json` 을 `score_inputs.json`(key inputs)으로 검증(기존 매핑 누락으로 실패하던 테스트).
+
+### 회귀·픽스처 메모
+
+- 픽스처 지역의 검단 법정동은 이제 검단구(28290) 현행 코드다. 공식 사본에서 서구(28260)·그 법정동은 폐지라 `/regions/resolve?q=검단`은
+  검단구만 낸다(D3 보강: 옛 코드가 폐지되면 새 코드만).
+- `expected_scores.json` 은 그대로다. `expected_scores_v2.json`(WP4 생성기 재실행)은 검단 생활권 id 가 28260 → 28290(생활권 id = 시군구
+  코드 관례), contract_version, 입력의 새 기본 필드(`unsold_scope_codes: []`)만 바뀌고 점수·순위·성분 값은 같다(재계산 diff 0 확인).
+
 ## 2026-10-09.1
 
 최초 계약(R0, WP0-A). 원본: `docs/source/RA_v1.md` §3·§4, `docs/design/DECISIONS.md` v1.1(D2 지역 입력, D4 보고서 HTML/PDF, D6 판정기).

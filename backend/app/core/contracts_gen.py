@@ -25,9 +25,27 @@ class AgePremiumCoef(BaseModel):
     label: Literal["추정"]
 
 
+class ApplyhomeQuery(BaseModel):
+    """
+    청약홈 조회 파라미터(collectors/applyhome 이 읽는다, 2026-10-09.2에 키 정의). 모든 키 선택:
+    - from_ym: 목록 조회 시작월 'YYYY-MM'(없으면 기준월 −10개월). 끝은 기준월 +1개월, 12개월 창으로 나눠 조회.
+    - areas: {시도 코드 2자리: 청약홈 지역 약칭('서울'·'경기'·'인천' …)} — 없으면 legal_dong.sido_name(또는 selections 첫 토큰)에서 행정구역 접미사를 떼어 만든다.
+    그 밖의 키는 수집기가 무시한다(이전 예시의 sido_codes 등 — 조회 시도는 region.sido_codes).
+    """
+
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    from_ym: Annotated[str | None, Field(pattern="^[0-9]{4}-[0-9]{2}$")] = None
+    areas: dict[str, str] | None = None
+
+
 class AuditItem(BaseModel):
     field: str
-    p_wrong: float
+    p_wrong: float | None
+    """
+    틀렸을 확률 0~1. 판정기가 주지 않았으면 null(0·1로 지어내지 않는다) — 2026-10-09.2
+    """
     flagged: bool
     note: str | None = None
 
@@ -268,15 +286,34 @@ class Claim(BaseModel):
     """
 
 
+class ClassifyItem(BaseModel):
+    """
+    배치 분류의 후보 1개. id = 판정기 입력 항목 id(어댑터가 보낸 값), candidate = 사람이 읽는 후보 이름, complex_id = 단지 행이 있으면 그 id.
+    """
+
+    id: str | None = None
+    candidate: str | None = None
+    complex_id: int | None = None
+    label: str
+    prob: float
+    decision: Literal["auto", "review", "manual_review"]
+    distribution: dict[str, float] | None = None
+
+
 class ClassifyResult(BaseModel):
     """
     P4 분류. 포함/제외 7클래스(private_sale_apt, public_sale, public_rental, private_rental, non_apartment, out_of_scope, manual_review) 또는 호재 단계 5클래스(확정, 계획, 추진, 언론, 미확정). decision=review면 미해결.
+    배치 분류(2026-10-09.2): 한 호출에 후보 여럿을 보내면 items[]에 후보별 결과를 입력 순서대로 담는다. 이때 최상위는 요약이다 — label='batch', prob = decision=auto 인 항목 비율(소수 4자리), decision = 모든 항목이 auto면 auto 아니면 review. 봉투 status는 모든 항목이 유효한 응답(invalid_response 아님)이면 ok — 항목별 미해결은 status가 아니라 items[].decision으로 거른다(auto만 사용, WP4·WP7).
     """
 
     label: str
     prob: float
     decision: Literal["auto", "review", "manual_review"]
     distribution: dict[str, float] | None = None
+    items: list[ClassifyItem] | None = None
+    """
+    배치 분류의 후보별 결과(입력 순서). 단건 분류면 없음
+    """
 
 
 class CollectDailyPayload(BaseModel):
@@ -611,12 +648,28 @@ class ComplexScoreInput(BaseModel):
     ladders: list[LadderInput]
     winner_date: str | None
     resale_months: int | None
+    resale_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+    """
+    전매제한(resale_months·등기 시 해제) 값의 Fact 라벨. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다) — 2026-10-09.2
+    """
     resale_release_on_registration: bool | None
     residency_months: int | None
+    residency_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+    """
+    거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2
+    """
     down_payment_pct: float | None
+    down_payment_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+    """
+    계약금 비율(down_payment_pct, 현재 payment_terms) 값의 Fact 라벨 — 2026-10-09.2
+    """
     interim_terms_text: str | None = None
     intake_status: Literal["가능", "미정", "확인 불가", "불가"] | None
     intake_path: Literal["human_check", "official_popup", "headless_shot", "unofficial_ref"] | None
+    intake_checked_at: str | None = None
+    """
+    표시 접수 상태(intake_status 행)의 확인 시각 ISO 8601(날짜만도 허용). 요건 사전 계산 근거에 '확인 D±'로 쓴다 — 2026-10-09.2
+    """
     regulated: bool | None = None
     rewin_restriction_years: int | None = None
     has_priority_supply: bool | None = None
@@ -640,6 +693,10 @@ class ComplexType(BaseModel):
     type_code: Annotated[str, Field(max_length=16, min_length=1)]
     """
     공고문 표기 그대로(예 '84A', '84.9582A'를 정규화한 '84A')
+    """
+    notice_type_code: Annotated[str | None, Field(max_length=32)] = None
+    """
+    공고·청약홈의 주택형 원문 표기(예 '084.9582A', '084.9582'). 같은 단지의 약식 타입(type_code)과 공고 표를 잇는 키 — 2026-10-09.2(complex_type.notice_type_code)
     """
     area_m2: Fact
     """
@@ -1203,6 +1260,8 @@ class FieldCandidate(BaseModel):
     - source_rank: §3 출처 우선순위(1이 가장 높음). 세대수·면적·일정·경쟁률은 청약홈 상세(1) > 공고문(2) > 언론(3); 가격·발코니·옵션·납부·전매·거주의무는 공고문 최신(1) > 청약홈(2) > 언론(3).
     - primary: 1차 자료(청약홈·공고문·Open API·공식 홈페이지) 여부. 같은 source_rank의 1차 vs 1차 상충만 compare 대상(ResolvedFields 설명).
     - needs_extract: 정규식·표 파서가 실패해 판정기 extract로 넘길 필드.
+    - entity='intake_status'(2026-10-09.2): 공식 홈페이지·팝업의 접수 상태 **문구 후보**. field='status_text', value=원문 문구(예 '선착순 동·호지정 계약 중'), entity_key='<단지 키>:<path>'(path = official_popup|headless_shot). 상태(가능/미정/불가) 분류는 판정기 classify 또는 사람 확인이 한다 — 파서는 정하지 않는다.
+    - observed_on(2026-10-09.2): 원문이 말하는 시점(공고문의 입주자모집공고일, 통계 기준월의 말일 등) YYYY-MM-DD. checked_at(수집·확인일)과 다르다. 같은 source_rank에서 '공고문 최신'을 가르는 기준.
     """
 
     model_config = ConfigDict(
@@ -1214,6 +1273,7 @@ class FieldCandidate(BaseModel):
         "payment_terms",
         "competition",
         "remaining_event",
+        "intake_status",
         "benchmark",
         "rtms_trade",
         "catalyst",
@@ -1264,6 +1324,10 @@ class FieldCandidate(BaseModel):
     raw_document_id: int | None
     url: str | None = None
     checked_at: str | None = None
+    observed_on: str | None = None
+    """
+    원문이 말하는 시점(공고일 등) YYYY-MM-DD. 모르면 null
+    """
     needs_extract: bool | None = False
 
 
@@ -1533,7 +1597,7 @@ class JudgmentEnvelope(BaseModel):
     - status가 review·escaped·blocked·error이면 result는 표시만 하고 점수·추천에 쓰지 않는다 — 거르는 곳은 프론트가 아니라 WP4(analysis).
     - cached=true는 같은 input_hash의 이전 행을 돌려준 것. 화면은 '캐시' 배지.
     - input_hash = 'sha256:' + hex(sha256(canonical JSON {tool, purpose, payload, adapter_version})). canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=false, UTF-8.
-    - adapter_version = '<어댑터 코드 버전>+jev-mcp@<서버 버전>' (DECISIONS D6).
+    - adapter_version = '<어댑터 코드 버전>+jev-mcp@<서버 버전>+<모델>' (DECISIONS D6, 2026-10-09.2: 모델 = JEV 응답의 model, 예 jev-1.13.0 — 모델이 바뀌면 재판정). 모델을 아직 모르면 '+<모델>' 없이. MockAdapter는 녹화의 _meta.json 값.
     - result는 도구별 정규화 결과($defs의 <Tool>Result), raw는 판정기 원응답 그대로(임계값·decision 포함, DECISIONS D6).
     - 로그에는 payload 원문을 남기지 않는다(input_hash·길이만, AGENTS 13).
     """
@@ -1770,6 +1834,19 @@ class LastChange(BaseModel):
     change_event_id: int | None = None
 
 
+class LegalDongRef(BaseModel):
+    """
+    법정동 1개의 코드와 표시 이름. name = 시군구 아래 이름(읍면동 + 리, 예 '송도동', '통진읍 도사리'), full_name = legal_dong.full_name.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    code: Annotated[str, Field(pattern="^[0-9]{10}$")]
+    name: str
+    full_name: str | None = None
+
+
 class LivingArea(BaseModel):
     """
     생활권 1개 (DECISIONS D2-2, region.living_areas json의 원소). 기본값은 시군구 1개당 생활권 1개이고, 사용자가 G0-2 화면에서 법정동을 옮겨 나누거나 묶는다. 한 region 안에서 모든 법정동은 정확히 한 생활권에 속한다. complex.living_area 는 단지 주소의 법정동 코드로 자동 배정된다.
@@ -1787,6 +1864,10 @@ class LivingArea(BaseModel):
     legal_dong_codes: Annotated[list[str], Field(min_length=1)]
     """
     법정동 코드 10자리 문자열
+    """
+    legal_dongs: list[LegalDongRef] | None = None
+    """
+    legal_dong_codes 와 같은 순서의 법정동 코드·이름(G0-2 생활권 편집 화면 표시용, 2026-10-09.2). 응답에서 서버가 legal_dong 표로 채운다 — 저장 json(region.living_areas)에는 없어도 된다
     """
     households: Fact | None
     """
@@ -1850,6 +1931,10 @@ class LivingAreaScoreInput(BaseModel):
     id: str
     name: str | None = None
     households: Annotated[int | None, Field(ge=0)]
+    unsold_scope_codes: list[str] | None = []
+    """
+    이 생활권에 해당하는 미분양 통계 범위 코드(UnsoldInput.scope_code, 시군구 5자리) 목록 — 생활권 법정동의 sigungu_code 집합(2026-10-09.2, WP4). 비어 있으면 미분양은 '지역 합계'로 본다
+    """
 
 
 class LivingAreasUpdate(BaseModel):
@@ -1906,6 +1991,27 @@ class MoveInMarker(BaseModel):
     name: str
     living_area: str | None
     move_in_ym: Fact
+
+
+class NoticeTypePrice(BaseModel):
+    """
+    공고 1건의 타입 1개 공급가. 값 정의는 complex_type 의 같은 이름 필드와 같다(원 단위). DB(payment_terms.price_by_type json)에는 맨값 {max_price_won, floor_sample_price_won, floor_sample_text, units}으로 저장하고 API는 Fact로 낸다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    notice_type_code: str | None = None
+    """
+    공고 표기 주택형(예 '084.9582A')
+    """
+    units: Fact | None = None
+    """
+    이 공고의 공급 세대수
+    """
+    max_price_won: Fact
+    floor_sample_price_won: Fact
+    floor_sample_text: str | None = None
 
 
 class NoulProposition(BaseModel):
@@ -1973,6 +2079,10 @@ class PaymentTerms(BaseModel):
     balance_pct: Fact
     interim_schedule: list[InterimInstallment]
     is_current: bool
+    price_by_type: dict[str, NoticeTypePrice] | None = None
+    """
+    이 공고의 타입별 공급가(임의공급·무순위는 공고마다 가격이 바뀐다, 2026-10-09.2). 키 = complex_type.type_code. 현재 구매가(complex_type 가격)는 is_current 행의 값이고, change_vs_first.price_change_pct 는 판정 기준 타입(84㎡에 가장 가까움)의 max_price_won 으로 계산한다. 출처 행은 field_provenance(entity='payment_terms', field='price_by_type.<type_code>.<항목>'). 공고에 가격 표가 없으면 {}
+    """
     change_vs_first: PaymentChange | None = None
     """
     최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 %
@@ -2119,9 +2229,17 @@ class ProvenanceRow(BaseModel):
     entity_key: str | None = None
     field: str
     value_text: str | None
+    value_norm: str | None = None
+    """
+    정규화 값(FieldCandidate.value)의 정준 문자열 — 정수·소수는 10진 표기('1573', '84.98'), 날짜 ISO, 불리언 'true'/'false', 없으면 null. field_provenance.value_norm(0002). 옛 출처를 다시 파싱하지 않고 값 비교에 쓴다 — 2026-10-09.2
+    """
     raw_document_id: int | None
     url: str | None
     checked_at: str | None
+    observed_on: str | None = None
+    """
+    FieldCandidate.observed_on(원문 시점, 공고일 등). field_provenance.observed_on(0002) — 2026-10-09.2
+    """
     label: Annotated[
         Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"],
         Field(examples=["확인됨", "추정", "확인 불가"], title="Label"),
@@ -2185,13 +2303,24 @@ class RawDocument(BaseModel):
     """
     추출 텍스트(pdfplumber txt, DOM 텍스트) 상대 경로
     """
+    table_path: str | None = None
+    """
+    추출 표 JSON 상대 경로(공고문 PDF: pdfplumber extract_tables → [{page, tables: [[[셀…]…]…]}], 표가 있는 페이지만). 표가 없거나 실패 행이면 null — 2026-10-09.2
+    """
     complex_id: int | None
     region_id: int | None = None
     error_text: str | None = None
     """
-    DNS·타임아웃·파싱 실패 사유. 'scan'이면 스캔 PDF(확인 불가(스캔))
+    실패·부분 실패 사유 한 단어(+세부). 값 목록(2026-10-09.2):
+    - 응답 없음: 'DNS' · 'timeout' · 'connect' · 'TLS' · 'network' · 'robots'(robots.txt 규칙상 불허) · 'robots.txt <코드>'(robots.txt 5xx로 전부 불허) · 'invalid_url' · 'render'(헤드리스 렌더 실패)
+    - 성공 응답이지만 내용 문제(공고문 PDF): 'scan'(텍스트 레이어 없음 → 확인 불가(스캔)) · 'ocr'(전 페이지 OCR → 값 라벨 '추정(OCR)') · 'scan_partial:<p,…>' · 'ocr_partial:<p,…>'(1부터 센 페이지) · 'pdf_parse: <사유>'(파서 모두 실패) · 'not_pdf'(200이지만 PDF 아님)
+    - 그 밖의 파싱 실패는 '<단계>: <사유>' 형식. 4xx·5xx 응답은 error_text 대신 http_status
     """
     image_hash: Annotated[str | None, Field(max_length=64)] = None
+    meta: dict[str, Any] | None = None
+    """
+    수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, popups[]}, intake_candidates[]}, notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2
+    """
 
 
 class ReferenceRefreshPayload(BaseModel):
@@ -2243,7 +2372,7 @@ class Region(BaseModel):
     supply_ref_pct: Annotated[float, Field(gt=0.0, le=1.0)]
     applyhome_query: dict[str, Any]
     """
-    청약홈 조회 파라미터(시도 코드·조회 시작월 등). collectors/applyhome 이 쓰고 읽는다
+    청약홈 조회 파라미터 — 키 정의는 $defs/ApplyhomeQuery(from_ym, areas). 저장·전달은 자유 json 객체(수집기는 ApplyhomeQuery.model_validate 로 읽을 수 있다)
     """
     status: Literal["resolving", "bootstrapping", "ready", "failed"]
     created_at: str
@@ -2269,7 +2398,7 @@ class RegionCandidate(BaseModel):
     GET /regions/resolve?q= 의 후보 1건 (DECISIONS D2-3). 자유 지명을 legal_dong·admin_dong 참조 테이블과 문자열 매칭한 결과다(판정기 호출 없음 — 문자열 매칭은 판단이 아님).
     매칭 규칙: 공백과 접미사 '시/군/구/동/읍/면'을 무시하고 이름 부분 일치. 정렬은 match(exact > prefix > partial) → kind(sido > sigungu > admin_dong > legal_dong) → full_name.
     legal_dong_codes는 이 후보를 고르면 region에 들어갈 법정동(10자리) 전체다. sido·sigungu 후보는 하위 법정동 전부, admin_dong 후보는 admin_legal_map으로 펼친 법정동이다. 폐지 코드(active=false)는 포함하지 않는다.
-    분구·개편으로 옛 코드와 새 코드가 함께 있으면 둘 다 후보로 나온다(DECISIONS D3: 서구/검단구).
+    분구·개편으로 옛 코드와 새 코드가 함께 active면 둘 다 후보로 나온다(DECISIONS D3). 공식 표에서 옛 코드가 폐지되면(예 2026-07 분구 후 서구 28260 폐지·검단구 28290 신설) 새 코드만 나온다.
     """
 
     model_config = ConfigDict(
@@ -2946,6 +3075,10 @@ class Sensitivity(BaseModel):
     unstable: bool
     unstable_complex_ids: list[int]
     stable_components: list[Literal["p10", "rerank", "gap", "benchmark", "supply", "liquidity", "move_in"]]
+    complex_names: dict[str, str] | None = None
+    """
+    base_top5·cells[].top5·entered·exited·ranks 에 나오는 단지 id(문자열 키) → 단지 이름(표시용, 2026-10-09.2)
+    """
 
 
 class SensitivityCell(BaseModel):
@@ -2980,6 +3113,10 @@ class SensitivityRank(BaseModel):
         extra="forbid",
     )
     complex_id: int
+    name: str | None = None
+    """
+    단지 이름(표시용, 2026-10-09.2). 없으면 화면이 complex_names 또는 id로 찾는다
+    """
     rank: int | None
     total: float | None
 

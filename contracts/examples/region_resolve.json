@@ -1,43 +1,43 @@
 {
   "summary": "'검단' 검색 후보",
-  "description": "코드는 형식 예시다(실제 코드는 reference.refresh가 적재한 legal_dong 표 기준). 분구 후 검단구 코드가 생기면 서구·검단구 후보가 함께 나온다(DECISIONS D3).",
+  "description": "코드는 행정표준코드관리시스템 법정동코드 전체자료(contracts/fixtures/reference/legal_dong_full.zip) 기준. 2026-07 분구로 서구(28260)는 폐지 코드(active=false)라 후보에 나오지 않고 검단구(28290)만 나온다. 분구 직후 표가 아직 옛 코드뿐이면 옛 코드가 active라 그것이 나온다(DECISIONS D3).",
   "value": [
     {
       "kind": "sigungu",
-      "code": "28260",
-      "full_name": "인천광역시 서구",
+      "code": "28290",
+      "full_name": "인천광역시 검단구",
       "legal_dong_codes": [
-        "2826011400",
-        "2826011500",
-        "2826011600",
-        "2826011700",
-        "2826011800"
+        "2829010400",
+        "2829010500",
+        "2829010300",
+        "2829010600",
+        "2829010700"
       ],
       "match": "partial",
-      "sigungu_code": "28260",
+      "sigungu_code": "28290",
       "sido_code": "28"
     },
     {
       "kind": "admin_dong",
-      "code": "2826058500",
-      "full_name": "인천광역시 서구 검단동",
+      "code": "2829051000",
+      "full_name": "인천광역시 검단구 검단동",
       "legal_dong_codes": [
-        "2826011600",
-        "2826011700"
+        "2829010300",
+        "2829010700"
       ],
       "match": "exact",
-      "sigungu_code": "28260",
+      "sigungu_code": "28290",
       "sido_code": "28"
     },
     {
       "kind": "legal_dong",
-      "code": "2826011600",
-      "full_name": "인천광역시 서구 마전동",
+      "code": "2829010300",
+      "full_name": "인천광역시 검단구 마전동",
       "legal_dong_codes": [
-        "2826011600"
+        "2829010300"
       ],
       "match": "partial",
-      "sigungu_code": "28260",
+      "sigungu_code": "28290",
       "sido_code": "28"
     }
   ]

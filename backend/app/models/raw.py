@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text, false
+from typing import Any
+
+from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -33,6 +35,9 @@ class RawDocument(Base):
     region_id: Mapped[int | None] = mapped_column(ForeignKey("region.id"))
     error_text: Mapped[str | None] = mapped_column(Text)
     image_hash: Mapped[str | None] = mapped_column(String(64))
+    # 0002 (계약 2026-10-09.2)
+    table_path: Mapped[str | None] = mapped_column(Text)  # 공고문 표 JSON 상대 경로
+    meta: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # 수집기 부가 정보
 
 
 class FieldProvenance(Base):
@@ -63,3 +68,6 @@ class FieldProvenance(Base):
     excerpt_start: Mapped[int | None] = mapped_column(Integer)
     excerpt_end: Mapped[int | None] = mapped_column(Integer)
     compare_judgment_seq: Mapped[int | None] = mapped_column(Integer)
+    # 0002 (계약 2026-10-09.2)
+    value_norm: Mapped[str | None] = mapped_column(Text)  # 정규화 값의 정준 문자열
+    observed_on: Mapped[str | None] = mapped_column(String(10))  # 원문 시점(공고일 등)

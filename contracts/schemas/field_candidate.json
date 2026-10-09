@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "field_candidate.json",
   "title": "FieldCandidate",
-  "description": "필드 값 후보 1개 (RA §4-3 Parser 출력). 원문 발췌(excerpt) 필수 — 출처 없는 숫자는 하나도 남기지 않는다.\n- entity/field: 저장 대상 테이블·컬럼(예 entity='complex_type', field='max_price_won'). 아직 행이 없으면 entity_id=null이고 entity_key로 식별(예 applyhome_id, 'applyhome_id:type_code').\n- value: 정규화 값(원 단위 정수, ㎡ 소수 2자리, ISO 날짜), value_text: 원문 표기 그대로.\n- source_rank: §3 출처 우선순위(1이 가장 높음). 세대수·면적·일정·경쟁률은 청약홈 상세(1) > 공고문(2) > 언론(3); 가격·발코니·옵션·납부·전매·거주의무는 공고문 최신(1) > 청약홈(2) > 언론(3).\n- primary: 1차 자료(청약홈·공고문·Open API·공식 홈페이지) 여부. 같은 source_rank의 1차 vs 1차 상충만 compare 대상(ResolvedFields 설명).\n- needs_extract: 정규식·표 파서가 실패해 판정기 extract로 넘길 필드.",
+  "description": "필드 값 후보 1개 (RA §4-3 Parser 출력). 원문 발췌(excerpt) 필수 — 출처 없는 숫자는 하나도 남기지 않는다.\n- entity/field: 저장 대상 테이블·컬럼(예 entity='complex_type', field='max_price_won'). 아직 행이 없으면 entity_id=null이고 entity_key로 식별(예 applyhome_id, 'applyhome_id:type_code').\n- value: 정규화 값(원 단위 정수, ㎡ 소수 2자리, ISO 날짜), value_text: 원문 표기 그대로.\n- source_rank: §3 출처 우선순위(1이 가장 높음). 세대수·면적·일정·경쟁률은 청약홈 상세(1) > 공고문(2) > 언론(3); 가격·발코니·옵션·납부·전매·거주의무는 공고문 최신(1) > 청약홈(2) > 언론(3).\n- primary: 1차 자료(청약홈·공고문·Open API·공식 홈페이지) 여부. 같은 source_rank의 1차 vs 1차 상충만 compare 대상(ResolvedFields 설명).\n- needs_extract: 정규식·표 파서가 실패해 판정기 extract로 넘길 필드.\n- entity='intake_status'(2026-10-09.2): 공식 홈페이지·팝업의 접수 상태 **문구 후보**. field='status_text', value=원문 문구(예 '선착순 동·호지정 계약 중'), entity_key='<단지 키>:<path>'(path = official_popup|headless_shot). 상태(가능/미정/불가) 분류는 판정기 classify 또는 사람 확인이 한다 — 파서는 정하지 않는다.\n- observed_on(2026-10-09.2): 원문이 말하는 시점(공고문의 입주자모집공고일, 통계 기준월의 말일 등) YYYY-MM-DD. checked_at(수집·확인일)과 다르다. 같은 source_rank에서 '공고문 최신'을 가르는 기준.",
   "type": "object",
   "additionalProperties": false,
   "required": ["entity", "entity_id", "field", "value_text", "value", "source_rank", "label", "excerpt", "raw_document_id"],
   "properties": {
-    "entity": { "type": "string", "enum": ["complex", "complex_type", "payment_terms", "competition", "remaining_event", "benchmark", "rtms_trade", "catalyst", "supply", "unsold", "household_stat"] },
+    "entity": { "type": "string", "enum": ["complex", "complex_type", "payment_terms", "competition", "remaining_event", "intake_status", "benchmark", "rtms_trade", "catalyst", "supply", "unsold", "household_stat"] },
     "entity_id": { "type": ["integer", "null"] },
     "entity_key": { "type": ["string", "null"] },
     "field": { "type": "string", "minLength": 1, "maxLength": 64 },
@@ -24,6 +24,7 @@
     "raw_document_id": { "type": ["integer", "null"] },
     "url": { "type": ["string", "null"] },
     "checked_at": { "type": ["string", "null"], "format": "date" },
+    "observed_on": { "description": "원문이 말하는 시점(공고일 등) YYYY-MM-DD. 모르면 null", "type": ["string", "null"], "format": "date" },
     "needs_extract": { "type": "boolean", "default": false }
   },
   "examples": [
@@ -31,7 +32,14 @@
       "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,573",
       "value": 1573, "source_rank": 1, "source_kind": "applyhome_detail", "primary": true, "label": "확인됨", "reason": null,
       "excerpt": "공급세대수 1,573세대", "excerpt_start": 1180, "excerpt_end": 1193, "raw_document_id": 9101,
-      "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "needs_extract": false
+      "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "observed_on": "2025-07-04", "needs_extract": false
+    },
+    {
+      "entity": "intake_status", "entity_id": null, "entity_key": "2025000302:official_popup", "field": "status_text",
+      "value_text": "선착순 동·호지정 계약 중", "value": "선착순 동·호지정 계약 중", "source_rank": 1, "source_kind": "official_site",
+      "primary": true, "label": "확인됨", "reason": null, "excerpt": "엘리프 검단 포레듀 선착순 동·호지정 계약 중",
+      "excerpt_start": 212, "excerpt_end": 236, "raw_document_id": 9031, "url": "https://example-official-site.test/",
+      "checked_at": "2026-10-07", "observed_on": null, "needs_extract": false
     }
   ]
 }

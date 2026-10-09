@@ -60,6 +60,13 @@
       "items": {
         "$ref": "scenario.json#/$defs/ComponentKey"
       }
+    },
+    "complex_names": {
+      "description": "base_top5·cells[].top5·entered·exited·ranks 에 나오는 단지 id(문자열 키) → 단지 이름(표시용, 2026-10-09.2)",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "$defs": {
@@ -117,6 +124,13 @@
             "properties": {
               "complex_id": {
                 "type": "integer"
+              },
+              "name": {
+                "description": "단지 이름(표시용, 2026-10-09.2). 없으면 화면이 complex_names 또는 id로 찾는다",
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "rank": {
                 "type": [

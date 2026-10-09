@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "region_candidate.json",
   "title": "RegionCandidate",
-  "description": "GET /regions/resolve?q= 의 후보 1건 (DECISIONS D2-3). 자유 지명을 legal_dong·admin_dong 참조 테이블과 문자열 매칭한 결과다(판정기 호출 없음 — 문자열 매칭은 판단이 아님).\n매칭 규칙: 공백과 접미사 '시/군/구/동/읍/면'을 무시하고 이름 부분 일치. 정렬은 match(exact > prefix > partial) → kind(sido > sigungu > admin_dong > legal_dong) → full_name.\nlegal_dong_codes는 이 후보를 고르면 region에 들어갈 법정동(10자리) 전체다. sido·sigungu 후보는 하위 법정동 전부, admin_dong 후보는 admin_legal_map으로 펼친 법정동이다. 폐지 코드(active=false)는 포함하지 않는다.\n분구·개편으로 옛 코드와 새 코드가 함께 있으면 둘 다 후보로 나온다(DECISIONS D3: 서구/검단구).",
+  "description": "GET /regions/resolve?q= 의 후보 1건 (DECISIONS D2-3). 자유 지명을 legal_dong·admin_dong 참조 테이블과 문자열 매칭한 결과다(판정기 호출 없음 — 문자열 매칭은 판단이 아님).\n매칭 규칙: 공백과 접미사 '시/군/구/동/읍/면'을 무시하고 이름 부분 일치. 정렬은 match(exact > prefix > partial) → kind(sido > sigungu > admin_dong > legal_dong) → full_name.\nlegal_dong_codes는 이 후보를 고르면 region에 들어갈 법정동(10자리) 전체다. sido·sigungu 후보는 하위 법정동 전부, admin_dong 후보는 admin_legal_map으로 펼친 법정동이다. 폐지 코드(active=false)는 포함하지 않는다.\n분구·개편으로 옛 코드와 새 코드가 함께 active면 둘 다 후보로 나온다(DECISIONS D3). 공식 표에서 옛 코드가 폐지되면(예 2026-07 분구 후 서구 28260 폐지·검단구 28290 신설) 새 코드만 나온다.",
   "type": "object",
   "additionalProperties": false,
   "required": ["kind", "code", "full_name", "legal_dong_codes", "match"],

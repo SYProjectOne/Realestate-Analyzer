@@ -10,6 +10,7 @@
     "id": { "type": ["integer", "null"] },
     "complex_id": { "type": ["integer", "null"] },
     "type_code": { "description": "공고문 표기 그대로(예 '84A', '84.9582A'를 정규화한 '84A')", "type": "string", "minLength": 1, "maxLength": 16 },
+    "notice_type_code": { "description": "공고·청약홈의 주택형 원문 표기(예 '084.9582A', '084.9582'). 같은 단지의 약식 타입(type_code)과 공고 표를 잇는 키 — 2026-10-09.2(complex_type.notice_type_code)", "type": ["string", "null"], "maxLength": 32 },
     "area_m2": { "description": "전용면적 ㎡ 소수 2자리", "$ref": "fact.json" },
     "units": { "$ref": "fact.json" },
     "max_price_won": { "description": "공급금액 최고가(원)", "$ref": "fact.json" },
@@ -22,7 +23,7 @@
   },
   "examples": [
     {
-      "id": 31, "complex_id": 2, "type_code": "84A",
+      "id": 31, "complex_id": 2, "type_code": "84A", "notice_type_code": "084.9800A",
       "area_m2": { "v": 84.98, "label": "확인됨", "prov": "fp_2101", "checked_at": "2026-10-07", "unit": "m2" },
       "units": { "v": 2, "label": "확인됨", "reason": "임의공급 3차 잔여", "prov": "fp_2102", "checked_at": "2026-10-07", "unit": "units" },
       "max_price_won": { "v": 605000000, "label": "확인됨", "prov": "fp_2103", "checked_at": "2026-10-07", "unit": "won" },

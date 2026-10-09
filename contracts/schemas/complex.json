@@ -82,7 +82,7 @@
   "examples": [
     {
       "id": 2, "region_id": 1, "applyhome_id": "2025000302", "name": "엘리프 검단 포레듀", "former_names": [],
-      "address": "인천광역시 검단구 마전동 AA32블록", "legal_dong_code": "2826011600", "living_area": "la_2", "living_area_name": "서구(검단)",
+      "address": "인천광역시 검단구 마전동 AA32블록", "legal_dong_code": "2829010300", "living_area": "la_2", "living_area_name": "검단구",
       "official_site_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/", "developer": null, "trustee": null, "builder": null,
       "housing_type": { "v": "민영", "label": "확인됨", "prov": "fp_2001", "checked_at": "2026-10-07", "unit": "text" },
       "land_type": { "v": "공공택지", "label": "확인됨", "prov": "fp_2002", "checked_at": "2026-10-07", "unit": "text" },

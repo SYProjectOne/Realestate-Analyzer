@@ -105,6 +105,8 @@ class ComplexType(Base):
     balcony_won: Mapped[int | None] = mapped_column(BigInteger)
     options_required_won: Mapped[int | None] = mapped_column(BigInteger)
     options_text: Mapped[str | None] = mapped_column(Text)
+    # 0002 (계약 2026-10-09.2): 공고상 주택형 원문('084.9582A')
+    notice_type_code: Mapped[str | None] = mapped_column(String(32))
 
 
 class PaymentTerms(Base):
@@ -127,6 +129,9 @@ class PaymentTerms(Base):
     interim_terms_text: Mapped[str | None] = mapped_column(Text)
     balance_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     interim_schedule: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    # 0002 (계약 2026-10-09.2): 이 공고의 타입별 공급가
+    # {type_code: {max_price_won, floor_sample_price_won, floor_sample_text, units, notice_type_code}}
+    price_by_type: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
 class Competition(Base):

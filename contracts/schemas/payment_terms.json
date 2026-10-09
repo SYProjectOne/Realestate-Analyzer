@@ -32,6 +32,11 @@
       }
     },
     "is_current": { "type": "boolean" },
+    "price_by_type": {
+      "description": "이 공고의 타입별 공급가(임의공급·무순위는 공고마다 가격이 바뀐다, 2026-10-09.2). 키 = complex_type.type_code. 현재 구매가(complex_type 가격)는 is_current 행의 값이고, change_vs_first.price_change_pct 는 판정 기준 타입(84㎡에 가장 가까움)의 max_price_won 으로 계산한다. 출처 행은 field_provenance(entity='payment_terms', field='price_by_type.<type_code>.<항목>'). 공고에 가격 표가 없으면 {}",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/NoticeTypePrice" }
+    },
     "change_vs_first": {
       "description": "최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 %",
       "anyOf": [
@@ -48,6 +53,22 @@
       ]
     }
   },
+  "$defs": {
+    "NoticeTypePrice": {
+      "title": "NoticeTypePrice",
+      "description": "공고 1건의 타입 1개 공급가. 값 정의는 complex_type 의 같은 이름 필드와 같다(원 단위). DB(payment_terms.price_by_type json)에는 맨값 {max_price_won, floor_sample_price_won, floor_sample_text, units}으로 저장하고 API는 Fact로 낸다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_price_won", "floor_sample_price_won"],
+      "properties": {
+        "notice_type_code": { "description": "공고 표기 주택형(예 '084.9582A')", "type": ["string", "null"] },
+        "units": { "description": "이 공고의 공급 세대수", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "max_price_won": { "$ref": "fact.json" },
+        "floor_sample_price_won": { "$ref": "fact.json" },
+        "floor_sample_text": { "type": ["string", "null"] }
+      }
+    }
+  },
   "examples": [
     {
       "id": 77, "complex_id": 7, "notice_no": "2026940116", "notice_kind": "임의",
@@ -61,6 +82,15 @@
         { "seq": 1, "due_date": { "v": "2026-07-24", "label": "확인됨", "prov": "fp_4414", "checked_at": "2026-10-07", "unit": "date" }, "pct": { "v": 10, "label": "확인됨", "prov": "fp_4414", "checked_at": "2026-10-07", "unit": "pct" } }
       ],
       "is_current": true,
+      "price_by_type": {
+        "84B": {
+          "notice_type_code": "084.7529B",
+          "units": { "v": 2, "label": "확인됨", "prov": "fp_4416", "checked_at": "2026-10-07", "unit": "units" },
+          "max_price_won": { "v": 642000000, "label": "확인됨", "prov": "fp_4417", "checked_at": "2026-10-07", "unit": "won" },
+          "floor_sample_price_won": { "v": 618000000, "label": "확인됨", "prov": "fp_4418", "checked_at": "2026-10-07", "unit": "won" },
+          "floor_sample_text": "3층"
+        }
+      },
       "change_vs_first": {
         "down_payment_pct_delta": { "v": -5, "label": "추정", "reason": "산술", "prov": "fp_4411", "checked_at": "2026-10-07", "unit": "pct" },
         "price_change_pct": { "v": 0, "label": "추정", "reason": "산술", "prov": "fp_4415", "checked_at": "2026-10-07", "unit": "pct" }

@@ -1,4 +1,4 @@
-"""백엔드 모듈 사이 계약 — 내부 프로토콜 (RA §4-3, 계약 2026-10-09.1, WP0 소유).
+"""백엔드 모듈 사이 계약 — 내부 프로토콜 (RA §4-3, 계약 2026-10-09.2, WP0 소유).
 
 구현 에이전트는 이 파일의 docstring만 보고 구현한다. 각 Protocol의 docstring은 RA §4-3 표의 "규칙" 열과
 그 규칙을 지키는 데 필요한 계약 세부를 옮긴 것이다.
@@ -74,7 +74,7 @@ __all__ = [
     "input_hash",
 ]
 
-CONTRACT_VERSION: Final = "2026-10-09.1"
+CONTRACT_VERSION: Final = "2026-10-09.2"
 
 JudgeTool = Literal["screen", "extract", "audit", "classify", "compare", "noul", "rerank", "decide", "verify"]
 JUDGE_TOOLS: Final[tuple[JudgeTool, ...]] = (
@@ -117,7 +117,8 @@ def input_hash(tool: JudgeTool, purpose: str, payload: JudgePayload, adapter_ver
 
     ``'sha256:' + sha256(canonical_json({tool, purpose, payload, adapter_version}))``.
     canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=False, UTF-8.
-    adapter_version이 바뀌면(판정기 서버 버전 포함, DECISIONS D6) 모든 hash가 바뀌어 전체 재판정 1회가 된다.
+    adapter_version이 바뀌면(판정기 서버 버전·모델 포함, DECISIONS D6) 모든 hash가 바뀌어
+    전체 재판정 1회가 된다.
     WP3 cache.py와 WP5 시나리오 미리보기(cache_hits 계산)가 같은 정의를 쓰도록 여기 한 곳에 둔다.
     """
     doc = {"tool": tool, "purpose": purpose, "payload": payload, "adapter_version": adapter_version}
@@ -134,8 +135,12 @@ class Collector(Protocol):
       같은 입력으로 두 번 실행해도 raw_document 행 수가 늘지 않는다(T17).
     - 실패도 데이터: 403·5xx는 ``RawDocument(http_status=403, path=None)``, DNS 실패·타임아웃은
       ``http_status=None, error_text='DNS'|'timeout'``으로 반환한다. 예외로 삼키지 않는다.
-      실패 행의 sha256 규칙은 contracts/schemas/raw_document.json(같은 날 재시도는 중복 없음, 날마다 한 행).
+      실패 행의 sha256 규칙과 error_text 값 목록은 contracts/schemas/raw_document.json(같은 날 재시도는
+      중복 없음, 날마다 한 행).
     - robots·속도 제한·재시도·백오프는 ``app.core.http``가 강제한다 — 수집기가 우회하지 않는다.
+      robots 차단 원인은 ``FetchResult.robots_reason``(다시 요청하지 않는다). 키 인증 공식 API 호스트
+      (``HTTP_ROBOTS_EXEMPT_HOSTS``)는 robots 검사 예외(2026-10-09.2).
+    - 표 JSON 은 ``table_path``, 수집기 부가 정보는 ``meta``(json)에 둔다(2026-10-09.2).
     - 지역은 region 행으로만 안다(sido_codes·sigungu_codes·legal_dong_codes). 지역명을 코드에 두지 않는다.
       청약홈 목록은 sido_codes로 조회하고 주소를 legal_dong 이름으로 매칭해 region.legal_dong_codes 안의 것만
       남긴다(매칭 실패는 버리지 않고 inclusion_class='범위 경계' 후보로 넘긴다, D2-6).
@@ -161,6 +166,8 @@ class Parser(Protocol):
     - 정규식·표 파서가 실패한 필드는 needs_extract=True로 표시해 판정기 extract payload로 넘긴다
       (파서가 판단하지 않는다).
     - 실패한 원문(http_status≠200, 스캔 PDF)은 빈 목록 또는 label='확인 불가'(reason='스캔' 등) 후보를 낸다.
+    - observed_on = 원문이 말하는 시점(공고일 등). 공식 홈페이지 접수 문구는 entity='intake_status',
+      field='status_text' 후보로 낸다(분류하지 않는다, 2026-10-09.2).
     """
 
     def parse(self, raw: RawDocument) -> list[FieldCandidate]: ...
@@ -201,7 +208,8 @@ class JudgeAdapter(Protocol):
       status='blocked' 행, T14). 로그에는 payload 원문 금지 — input_hash와 길이만.
     - 임계값을 넘기지 않는다: JEV 기본값을 그대로 쓰고, 응답의 임계값·decision을 raw(output_json)에
       그대로 저장한다(DECISIONS D6).
-      adapter_version = '<어댑터 코드 버전>+jev-mcp@<initialize.serverInfo.version>'.
+      adapter_version = '<어댑터 코드 버전>+jev-mcp@<initialize.serverInfo.version>+<응답 model>'
+      (2026-10-09.2, D6 보강: 모델이 바뀌어도 재판정. 모델을 아직 모르면 '+<model>' 없이).
     - result는 도구별 정규화 모양
       (contracts/schemas/judgment_envelope.json $defs: ScreenResult … VerifyResult).
     - MockAdapter: contracts/fixtures/<fixture>/judgments/ 에서 input_hash로 녹화를 찾고,

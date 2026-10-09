@@ -104,8 +104,15 @@ def test_bundled_openapi_is_valid_and_self_contained(bundled: dict[str, Any]) ->
 
 
 def test_contract_version(bundled: dict[str, Any], source_openapi: dict[str, Any]) -> None:
-    assert source_openapi["info"]["version"] == "2026-10-09.1"
-    assert bundled["info"]["version"] == "2026-10-09.1"
+    """info.version = CHANGELOG 맨 위 항목 = protocols.CONTRACT_VERSION."""
+    from app.core.protocols import CONTRACT_VERSION
+
+    changelog = (OPENAPI_SRC.parent / "CHANGELOG.md").read_text(encoding="utf-8")
+    top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)", changelog, re.M)
+    assert top is not None
+    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.2"
+    assert source_openapi["info"]["version"] == CONTRACT_VERSION
+    assert bundled["info"]["version"] == CONTRACT_VERSION
 
 
 def test_required_operations_present(bundled: dict[str, Any]) -> None:

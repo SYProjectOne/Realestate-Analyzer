@@ -2,7 +2,7 @@
   "summary": "생활권 편집 검증 실패",
   "value": {
     "code": "validation_error",
-    "detail": "legal_dong 2826011600 is not assigned to any living area",
+    "detail": "legal_dong 2829010300 is not assigned to any living area",
     "field_errors": [
       {
         "loc": [

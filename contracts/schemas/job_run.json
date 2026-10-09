@@ -10,12 +10,12 @@
     "id": { "type": "integer" },
     "job_name": { "$ref": "#/$defs/JobName" },
     "kind": { "type": "string", "enum": ["scheduled", "manual", "rejudge"] },
-    "payload": { "type": "object" },
+    "payload": { "type": "object", "additionalProperties": true },
     "scheduled_at": { "type": "string", "format": "date-time" },
     "started_at": { "type": ["string", "null"], "format": "date-time" },
     "finished_at": { "type": ["string", "null"], "format": "date-time" },
     "status": { "type": "string", "enum": ["queued", "running", "done", "failed"] },
-    "stats": { "type": "object" },
+    "stats": { "type": "object", "additionalProperties": true },
     "error_text": { "type": ["string", "null"] },
     "progress": {
       "description": "진행률(선택). 화면 JobProgress가 2초 폴링",
@@ -52,7 +52,7 @@
       "required": ["job_name", "payload"],
       "properties": {
         "job_name": { "$ref": "#/$defs/JobName" },
-        "payload": { "type": "object" }
+        "payload": { "type": "object", "additionalProperties": true }
       },
       "allOf": [
         { "if": { "properties": { "job_name": { "const": "collect.daily" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/collect_daily.json" } } } },

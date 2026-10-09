@@ -30,7 +30,7 @@
     { "code": "not_found", "detail": "complex 999 not found" },
     { "code": "contract_violation", "detail": "complex 4 field max_price_won has no field_provenance row" },
     {
-      "code": "validation_error", "detail": "legal_dong 2826011600 is not assigned to any living area",
+      "code": "validation_error", "detail": "legal_dong 2829010300 is not assigned to any living area",
       "field_errors": [{ "loc": ["body", "living_areas"], "msg": "every legal_dong must belong to exactly one living area" }]
     }
   ]
