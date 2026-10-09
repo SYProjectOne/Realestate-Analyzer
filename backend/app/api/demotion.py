@@ -631,8 +631,11 @@ def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int
     return n
 
 
-def latest_demotions(session: Session, claims: list[Claim]) -> dict[int, FactDemotion]:
-    """주장 id → 그 주장의 강등(없으면 같은 사실(대상)의 최신 강등 — minor 9: 같은 사실의 두 번째 주장)."""
+def latest_demotions(
+    session: Session, claims: list[Claim], targets: dict[int, ClaimTarget | None] | None = None
+) -> dict[int, FactDemotion]:
+    """주장 id → 그 주장의 강등(없으면 같은 사실(대상)의 최신 강등 — minor 9: 같은 사실의 두 번째 주장).
+    대상 = ``targets``(``claim_target`` — 계약 컬럼이 빈 옛 주장도 문장 형식으로 되찾은 것) 또는 claim 컬럼."""
     if not claims:
         return {}
     out: dict[int, FactDemotion] = {}
@@ -641,20 +644,27 @@ def latest_demotions(session: Session, claims: list[Claim]) -> dict[int, FactDem
         select(FactDemotion).where(FactDemotion.claim_id.in_(ids)).order_by(FactDemotion.id)
     ):
         out[d.claim_id] = d
-    keys = {(c.entity, c.entity_id, c.field) for c in claims if c.id not in out and c.field and c.entity_id}
-    if keys:
+    want: dict[int, tuple[str, int, str]] = {}
+    for c in claims:
+        if c.id in out:
+            continue
+        t = (targets or {}).get(c.id)
+        if t is not None and t.entity is not None and t.entity_id is not None:
+            want[c.id] = (t.entity, t.entity_id, t.field)
+        elif c.entity and c.entity_id is not None and c.field:
+            want[c.id] = (c.entity, c.entity_id, c.field)
+    if want:
         by_target: dict[tuple[str, int, str], FactDemotion] = {}
         for d in session.scalars(
             select(FactDemotion)
-            .where(FactDemotion.entity_id.in_(sorted({k[1] for k in keys if k[1] is not None})))
+            .where(FactDemotion.entity_id.in_(sorted({k[1] for k in want.values()})))
             .order_by(FactDemotion.id)
         ):
             by_target[(d.entity, d.entity_id, d.field)] = d
-        for c in claims:
-            if c.id not in out and c.entity and c.entity_id is not None and c.field:
-                hit = by_target.get((c.entity, c.entity_id, c.field))
-                if hit is not None:
-                    out[c.id] = hit
+        for cid, key in want.items():
+            hit = by_target.get(key)
+            if hit is not None:
+                out[cid] = hit
     return out
 
 

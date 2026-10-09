@@ -27,6 +27,7 @@ from app.core.contracts_gen import ComplexRow as ComplexRowDTO
 from app.core.contracts_gen import ComplexScoreInput
 from app.core.contracts_gen import ScoreRow as ScoreRowDTO
 from app.models import (
+    ChangeEvent,
     Competition,
     Complex,
     ComplexType,
@@ -273,6 +274,10 @@ class ComplexBundle:
     stored_scope: str | None = None  # score_total.judge_scope(이 스냅샷 마지막 점수 실행, 계약 2026-10-09.3)
     asof_date: str | None = None  # 스냅샷 기준일(요건 사전 계산의 즉시 입주 판단, R3 minor 20)
     scored_run: bool = False  # 이 스냅샷에 점수 실행이 있다(행이 없으면 그 실행에서 점수 대상 아님)
+    changed_after_run: bool = False
+    """점수 실행 뒤 재판정을 부르는 변경(change_event triggers_rejudge — 가격·입주월·강등·사람 확인 등)이 있었다(minor 5)."""
+    latest: bool = True
+    """이 스냅샷이 지역의 최신(기준일·리비전)인가 — 과거 스냅샷은 오늘 사실과 비교하지 않는다(minor 5)."""
     ocr_pending: dict[tuple[str, int], frozenset[str]] = field(default_factory=dict)
     """판정기 추출 전 OCR 값 필드((entity, id) → 필드들) — 점수 입력에서 null(R3 C3, 파이프라인과 같은 규칙)."""
 
@@ -322,9 +327,32 @@ def load_bundles(
     if scenario_id is not None:
         run_stmt = run_stmt.where(ScoreRun.scenario_id == scenario_id)
     last_run = session.scalars(run_stmt.order_by(ScoreRun.id.desc()).limit(1)).first()
+    if snap is not None:
+        newest = session.scalars(
+            select(Snapshot.id)
+            .where(Snapshot.region_id == snap.region_id)
+            .order_by(Snapshot.asof_date.desc(), Snapshot.revision.desc(), Snapshot.id.desc())
+            .limit(1)
+        ).first()
+        for b in out.values():
+            b.latest = newest == snap.id
     if last_run is not None:
         for b in out.values():
             b.scored_run = True
+        run_at = session.scalar(select(ScoreRun.created_at).where(ScoreRun.id == last_run))
+        if run_at:
+            for chunk in _chunks(ids):
+                for (cid,) in session.execute(
+                    select(ChangeEvent.complex_id)
+                    .where(
+                        ChangeEvent.complex_id.in_(chunk),
+                        ChangeEvent.triggers_rejudge.is_(True),
+                        ChangeEvent.detected_at > run_at,
+                    )
+                    .distinct()
+                ):
+                    if cid in out:
+                        out[cid].changed_after_run = True
         for chunk in _chunks(ids):
             # 저장 범위 = 이 스냅샷 마지막 점수 실행의 score_total.judge_scope(D10-1 — 한 실행의 시나리오는 같은 범위)
             for cid, scope in session.execute(
@@ -447,9 +475,16 @@ def shown_scope(b: ComplexBundle, ctx: ScoreCtx | None = None) -> str:
 def rejudge_needed(b: ComplexBundle, ctx: ScoreCtx | None = None) -> bool:
     """D10-1 '재판정 필요': 저장 판정 범위가 있고 현재 사실로 계산한 범위와 다르다(사람 확인·새 공고 등 이후 변경).
 
-    점수 실행이 있는 스냅샷에서 그 단지 행이 없는데(그 실행에서 점수 밖) 지금은 점수 대상이면 역시 True."""
+    점수 실행이 있는 스냅샷에서 그 단지 행이 없는데(그 실행에서 점수 밖) 지금은 점수 대상이면 역시 True.
+    R3 3차 minor 5: 범위가 같아도 점수 실행 뒤 재판정을 부르는 변경(가격·입주월·강등·사람 확인 — change_event
+    triggers_rejudge)이 있었으면 True. 지역 최신 스냅샷(기준일·리비전)이 아니면 오늘 사실과 비교하지 않는다(False) —
+    과거 스냅샷은 그때의 기록이다."""
+    if not b.latest:
+        return False
     current = scope_rules.contract_scope(scope_result(b).scope)
     stored = _stored(b, ctx)
+    if stored and b.changed_after_run:
+        return True
     if stored:
         return stored != current
     has_run = (ctx is not None and ctx.run is not None) or b.scored_run
@@ -625,6 +660,15 @@ def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None =
         reason = view.empty_reason or "분양가 미공개"
         if notice is not None and notice["label"] == LABEL_UNKNOWN and notice.get("reason"):
             reason = str(notice["reason"])
+        cur = current_payment(b.payments)
+        if t is not None and (
+            fm.prov.demoted("complex_type", t.id, "max_price_won")
+            or (
+                cur is not None
+                and fm.prov.demoted("payment_terms", cur.id, f"price_by_type.{t.type_code}.max_price_won")
+            )
+        ):
+            reason = "검증 모순"  # 강등된 가격(D11-3·M-4) — 옛 공고 가격으로 돌아가지 않는다
         u = unknown(reason, None, unit="won")
         return {
             "basis_type_code": view.basis_type_code,

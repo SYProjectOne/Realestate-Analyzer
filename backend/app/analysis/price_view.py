@@ -161,7 +161,9 @@ def current_price(
     from_terms = False
     by_type = cur.price_by_type if cur is not None else None
     latest = by_type.get(t.type_code) if isinstance(by_type, Mapping) else None
-    if cur is not None and isinstance(latest, Mapping) and _int(latest.get("max_price_won")) is not None:
+    # 현재 공고에 그 타입 가격 칸이 있으면 그 값만 쓴다 — 값이 비었으면(채택 보류·강등 오버레이로 가림) 옛 공고문 가격으로
+    # 돌아가지 않고 미공개(R3 3차 M-4: 강등된 최신 가격 대신 옛 가격이 '현재 구매가'로 보이던 문제)
+    if cur is not None and isinstance(latest, Mapping) and "max_price_won" in latest:
         key = f"price_by_type.{t.type_code}"
         max_won = _int(latest.get("max_price_won"))
         floor_won = _int(latest.get("floor_sample_price_won"))

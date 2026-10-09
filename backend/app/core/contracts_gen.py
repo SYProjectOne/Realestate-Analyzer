@@ -3602,9 +3602,9 @@ class Snapshot(BaseModel):
     id: int
     region_id: int
     asof_date: str
-    revision: Annotated[int, Field(ge=1)]
+    revision: Annotated[int | None, Field(ge=1)] = 1
     """
-    같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1)
+    같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1). 서버 응답에는 늘 실린다(스키마 기본 1 — 옛 입력·픽스처 호환)
     """
     revision_of: int | None = None
     """

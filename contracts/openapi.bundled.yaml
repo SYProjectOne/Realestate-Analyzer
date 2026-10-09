@@ -24040,7 +24040,6 @@ components:
       - id
       - region_id
       - asof_date
-      - revision
       - status
       - degraded
       - created_at
@@ -24054,9 +24053,10 @@ components:
           format: date
         revision:
           x-nonfact: 버전 번호(같은 기준일 리비전)
-          description: 같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1)
+          description: 같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1). 서버 응답에는 늘 실린다(스키마 기본 1 — 옛 입력·픽스처 호환)
           type: integer
           minimum: 1
+          default: 1
         revision_of:
           description: 바탕 리비전(이 리비전을 만든 발행 스냅샷 id). 리비전 1 은 null
           type:

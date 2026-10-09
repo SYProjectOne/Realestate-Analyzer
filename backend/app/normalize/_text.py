@@ -66,6 +66,8 @@ def normalize_site_url(text: str | None) -> str | None:
     s = "".join(str(text).split())
     if not s:
         return None
+    if "\\" in s or "@" in s:
+        return None  # 사용자 정보·역슬래시 속임('http://공개.kr\@10.0.0.1') — 화면 링크로 쓰지 않는다(minor 19)
     if "://" not in s:
         if not _BARE_HOST_RE.match(s):
             return None
@@ -81,6 +83,8 @@ def normalize_site_url(text: str | None) -> str | None:
         return None
     host = host.lower().rstrip(".")
     if any(host == h or host.endswith("." + h) for h in _NOT_SITE_HOSTS):
+        return None
+    if not _public_host(host):
         return None
     netloc = f"{host}:{port}" if port else host
     return urlunsplit((scheme, netloc, parts.path or "/", parts.query, ""))
@@ -103,6 +107,28 @@ def _keep_phase(match: re.Match[str]) -> str:
             continue  # '임의공급 4차' — 공급 회차
         kept.append(re.sub(r"\s+", "", token))
     return f"({' '.join(kept)})" if kept else ""
+
+
+_INTERNAL_SUFFIXES = (".local", ".internal", ".localdomain", ".lan", ".home", ".corp", ".intranet")
+_INTERNAL_HOSTS = frozenset({"localhost", "metadata", "metadata.google.internal", "instance-data"})
+_NUMERIC_HOST_RE = re.compile(r"^(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+))*$")
+
+
+def _public_host(host: str) -> bool:
+    """단지 홈페이지로 보일 수 있는 공개 호스트인가(R3 3차 minor 19 — 화면 링크가 사용자 브라우저를 내부망으로 보내지 않게).
+
+    IP 리터럴은 전역(공인) 주소만, 정수·16진·점 줄인 IP 표기('2130706433'·'0x7f.1'·'127.1')·메타데이터·로컬 이름은 거부.
+    판단이 아니라 표기 검사다(수집 이그레스 검사는 SEC 의 ``collectors.official_site.egress``)."""
+    import ipaddress
+
+    h = host.strip("[]")
+    if h in _INTERNAL_HOSTS or h.endswith(_INTERNAL_SUFFIXES):
+        return False
+    try:
+        ip = ipaddress.ip_address(h)
+    except ValueError:
+        return not _NUMERIC_HOST_RE.match(h)
+    return ip.is_global
 
 
 def strip_supply_round(name: str) -> str:

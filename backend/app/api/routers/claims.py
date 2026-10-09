@@ -129,13 +129,11 @@ def list_claims(
         names = {cid: name for cid, name in session.execute(stmt_names)}
     children = _children(session, snap.id)
     pending = pending_reverify(session, {c.id for c in rows})
-    demotions = latest_demotions(session, rows)
+    targets = {c.id: claim_target(session, c) for c in rows}
+    demotions = latest_demotions(session, rows, targets)
     overlay = load_overlay(session, complex_ids=ids) if demotions else None
     return JSONResponse(
-        [
-            claim_view(c, names, children, pending, claim_target(session, c), demotions.get(c.id), overlay)
-            for c in rows
-        ]
+        [claim_view(c, names, children, pending, targets[c.id], demotions.get(c.id), overlay) for c in rows]
     )
 
 

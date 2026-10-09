@@ -74,10 +74,25 @@ def build_extract_requests(
             groups.setdefault((c.raw_document_id, c.entity, c.entity_key), []).append(c)
     secrets = get_settings().secret_values()
     out: list[ExtractRequest] = []
+    sep = "\n…\n"
     for (rid, entity, key), cs in groups.items():
         fields = list(OrderedDict.fromkeys(c.field for c in cs))
-        for start in range(0, len(fields), max_fields):
-            chunk = fields[start : start + max_fields]
+        # 필드 상한(max_fields)과 발췌 합본 상한(max_text)을 둘 다 지키게 나눈다 — 합본을 잘라 뒤 필드의 발췌가
+        # 판정기에 가지 않던 문제(R3 3차 minor 23). 발췌 하나가 상한보다 길면 그 하나만 자른다
+        chunks: list[list[str]] = []
+        cur: list[str] = []
+        cur_ex: list[str] = []
+        for f in fields:
+            mine = list(dict.fromkeys(c.excerpt for c in cs if c.field == f))
+            new_ex = [e for e in mine if e not in cur_ex]
+            if cur and (len(cur) >= max_fields or len(sep.join([*cur_ex, *new_ex])) > max_text):
+                chunks.append(cur)
+                cur, cur_ex, new_ex = [], [], mine
+            cur.append(f)
+            cur_ex.extend(new_ex)
+        if cur:
+            chunks.append(cur)
+        for chunk in chunks:
             members = [c for c in cs if c.field in set(chunk)]
             excerpts: list[str] = []
             for c in members:
@@ -90,7 +105,7 @@ def build_extract_requests(
                     entity=entity,
                     entity_key=key,
                     fields=chunk,
-                    text=redact_text("\n…\n".join(excerpts), secrets)[:max_text],
+                    text=redact_text(sep.join(excerpts), secrets)[:max_text],
                     reasons={c.field: (c.reason or "파싱 실패") for c in members},
                 )
             )

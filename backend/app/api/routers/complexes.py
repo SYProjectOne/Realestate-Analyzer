@@ -318,6 +318,7 @@ def get_complex_detail(
         for c in session.scalars(select(Catalyst).where(Catalyst.id.in_([lk.catalyst_id for lk in links])))
     }
     cat_days = judgment_days(session, (c.judgment_seq for c in cats.values()))
+    prov.load(session, "catalyst", cats)  # 예정월 출처(사람 위치 확인 — D11-5)
     has_score = ctx.run is not None and cx.id in ctx.totals
     body = {
         "snapshot_id": snap.id,

@@ -55,31 +55,36 @@ def _check_stored(client: TestClient, body: dict[str, Any]) -> dict[int, ScoreTo
     return stored
 
 
-def _flags(cids: list[int]) -> dict[int, tuple[str, str, bool]]:
-    """단지 → (현재 사실 범위, 화면 범위, 재판정 필요)."""
+def _flags(cids: list[int], sid: int = SNAP) -> dict[int, tuple[str, str, bool, bool]]:
+    """단지 → (현재 사실 범위, 화면 범위, 재판정 필요, 점수 실행 뒤 재판정 변경 있음)."""
     with get_session() as s:
         sc = s.scalars(select(Scenario).where(Scenario.code == "base")).one()
-        ctx = score_ctx(s, SNAP, sc)
-        bundles = load_bundles(s, list(s.scalars(select(Complex).where(Complex.id.in_(cids)))), SNAP)
+        ctx = score_ctx(s, sid, sc)
+        bundles = load_bundles(s, list(s.scalars(select(Complex).where(Complex.id.in_(cids)))), sid)
         return {
-            c: (scope_result(b).scope, shown_scope(b, ctx), rejudge_needed(b, ctx))
+            c: (scope_result(b).scope, shown_scope(b, ctx), rejudge_needed(b, ctx), b.changed_after_run)
             for c, b in bundles.items()
         }
 
 
 def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClient) -> None:
+    """N-C1(D10-1): 화면은 점수 실행 저장값. D11-1(계약 .8): 발행 스냅샷은 불변 — 사람 확인 접수는 새 리비전에 들어가고
+    발행 12 의 화면·KPI 는 그대로다. R3 3차 minor 5: '재판정 필요' = 저장 범위 ≠ 현재 범위 또는 점수 실행 뒤 재판정 변경,
+    지역 최신 스냅샷만(과거 리비전은 오늘 사실과 비교하지 않는다)."""
     before = _dashboard(client)
     stored = _check_stored(client, before)
     assert before["top5"], "devseed 기본 스냅샷에 TOP 5 가 있어야 한다"
     first = before["top5"][0]
     cid = first["complex_id"]
     flags_before = _flags([x["complex_id"] for x in before["top5"]])
-    # 리뷰 재현(devseed 기본): 현재 사실 범위가 저장값과 다른 TOP 5 단지(예: 지금은 '미해결')도 화면은 저장값 + 재판정 필요
-    for c, (cur, shown, flag) in flags_before.items():
+    for c, (cur, shown, flag, changed) in flags_before.items():
         assert shown == stored[c].judge_scope == "판정 대상", c
-        assert flag == (cur != shown), c
+        assert flag == (cur != shown or changed), c
+    assert {x["complex_id"]: x["rejudge_needed"] for x in before["top5"]} == {
+        c: f for c, (_cur, _shown, f, _ch) in flags_before.items()
+    }
 
-    # 리뷰 재현: 1위 단지에 사람 확인 '불가' → 현재 사실 범위 '참고'
+    # 1위 단지에 사람 확인 '불가' → 같은 기준일 새 리비전(발행 12 는 불변)
     r = client.post(
         "/api/ops/human-checks",
         headers=WRITE,
@@ -89,50 +94,42 @@ def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClie
         },
     )  # fmt: skip
     assert r.status_code == 201, r.text
+    rev = r.json()["created_intake"]["snapshot_id"]
+    assert rev != SNAP
 
     after = _dashboard(client)
     _check_stored(client, after)
     row = next(x for x in after["top5"] if x["complex_id"] == cid)
-    # 저장값 그대로(현재 사실과 섞지 않는다): 범위·순위·총점 불변
+    # 발행 12: 저장값·범위·순위·총점·KPI 그대로(현재 사실과 섞지 않는다)
     assert (row["judge_scope"], row["rank"], row["total"]["v"]) == (
         first["judge_scope"], first["rank"], first["total"]["v"],
     )  # fmt: skip
-    assert after["kpis"]["judged_count"]["v"] == before["kpis"]["judged_count"]["v"]
-    # 계약 .6 rejudge_needed: 행·대시보드에 '재판정 필요'(저장값은 그대로)
-    assert row["rejudge_needed"] is True and after["rejudge_needed"] is True
-    assert {x["complex_id"]: x["rejudge_needed"] for x in before["top5"]} == {
-        c: f for c, (_cur, _shown, f) in flags_before.items()
-    }
+    assert after["kpis"] == {**before["kpis"], "data_freshness": after["kpis"]["data_freshness"]}
+    # 12 는 이제 과거 리비전 — 오늘 사실과 비교하지 않는다(재판정 필요 없음, 새 리비전이 재판정 대상)
+    assert row["rejudge_needed"] is False and after["rejudge_needed"] is False
 
-    # 현재 사실로 계산한 범위는 '참고' → '재판정 필요'(계약 .6 전 내부 플래그)
+    # 새 리비전(building, 점수 실행 전): 현재 사실로 계산한 범위 '참고'(사람 확인 '불가')
     with get_session() as s:
         cx = s.get(Complex, cid)
         assert cx is not None
-        sc = s.scalars(select(Scenario).where(Scenario.code == "base")).one()
-        ctx = score_ctx(s, SNAP, sc)
-        b = load_bundles(s, [cx], SNAP)[cid]
+        b = load_bundles(s, [cx], rev)[cid]
         assert scope_result(b).scope == "참고"
-        assert shown_scope(b, ctx) == stored[cid].judge_scope == "판정 대상"
-        assert rejudge_needed(b, ctx) is True
-    # 바뀌지 않은 다른 TOP 5 단지의 재판정 필요 여부는 그대로
-    others = [x["complex_id"] for x in after["top5"] if x["complex_id"] != cid]
-    assert {o: f for o, f in _flags(others).items()} == {o: flags_before[o] for o in others}
+        snap12 = load_bundles(s, [cx], SNAP)[cid]
+        assert scope_result(snap12).scope == flags_before[cid][0], "발행 12 의 접수 행은 그대로"
 
     # 단지 목록(G2)·상세도 저장값
     lst = client.get(f"/api/snapshots/{SNAP}/complexes?size=1000", headers=WRITE)
     assert lst.status_code == 200, lst.text
     items = {it["complex_id"]: it for it in lst.json()["items"]}
     assert items[cid]["judge_scope"] == "판정 대상" and items[cid]["rank"] == first["rank"]
-    assert items[cid]["rejudge_needed"] is True
     for c, it in items.items():
         t = stored.get(c)
         if t is not None and t.judge_scope:
             assert it["judge_scope"] == t.judge_scope, c
-    det = client.get(f"/api/complexes/{cid}", headers=WRITE)
+    det = client.get(f"/api/complexes/{cid}", params={"snapshot": SNAP}, headers=WRITE)
     assert det.status_code == 200, det.text
     score = det.json()["score"]
     assert score is not None and score["judge_scope"] == "판정 대상" and score["rank"] == first["rank"]
-    assert score["rejudge_needed"] is True
 
 
 def test_n_c1_unscored_complex_without_row_falls_back_and_flags(client: TestClient) -> None:
