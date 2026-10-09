@@ -340,8 +340,14 @@ def check_0003_0004_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
             )  # fmt: skip
         with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
             conn.execute(jobs.insert(), _job_row("claim.verify"))
+        assert "raw_value_unadjusted" in {
+            c["name"] for c in sa.inspect(engine).get_columns("score_component")
+        }
         command.downgrade(cfg, "0003")
         assert "share_link" not in sa.inspect(engine).get_table_names()
+        assert "raw_value_unadjusted" not in {
+            c["name"] for c in sa.inspect(engine).get_columns("score_component")
+        }
         with engine.connect() as conn:
             names = [r[0] for r in conn.execute(sa.text("SELECT job_name FROM job_run"))]
         assert names == ["rejudge"]

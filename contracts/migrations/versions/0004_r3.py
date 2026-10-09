@@ -11,6 +11,7 @@ backend/app/models 를 같은 커밋에서 맞추고 tests/contracts 의 autogen
 | --- | --- | --- |
 | share_link 테이블 | 읽기 전용 공유 링크(token_sha256 유일, label, created_at, expires_at, revoked_at) | M9 (RA §10 보안 5) |
 | job_run.job_name CHECK | 값 'claim.reverify' 추가(contradicted 주장 문장 수정 → 원자 분할 재검증 잡) | M8 |
+| score_component.raw_value_unadjusted | Numeric(18,6) NULL — gap 성분의 미보정 원값(미보정 중앙값 기준 gap%) | W7 |
 
 score_total.judge_scope 의 새 값 '미해결'(D9-1)은 CHECK 가 없는 String(8) 이라 DDL 변경이 없다.
 
@@ -93,9 +94,11 @@ def upgrade() -> None:
         sa.UniqueConstraint("token_sha256", name=op.f("uq_share_link_token_sha256")),
     )
     _set_job_names(JOB_NAMES_0001, JOB_NAMES_0004)
+    op.add_column("score_component", sa.Column("raw_value_unadjusted", sa.Numeric(18, 6), nullable=True))
 
 
 def downgrade() -> None:
+    op.drop_column("score_component", "raw_value_unadjusted")
     op.execute(sa.text("DELETE FROM job_run WHERE job_name = 'claim.reverify'"))
     _set_job_names(JOB_NAMES_0004, JOB_NAMES_0001)
     op.drop_table("share_link")

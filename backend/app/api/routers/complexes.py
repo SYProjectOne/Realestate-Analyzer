@@ -67,6 +67,13 @@ router = APIRouter(tags=["complexes"])
 # ====================================================================== 가격 갭·호재
 
 
+def _coef_reason(c_per_year: Any) -> str:
+    """대체 단지 보정 라벨 = 연간 계수 c(지역 설정, RA §6-2) — 총 보정률(c × 연수, coef_used)이 아니다(R3 W6).
+
+    예 '대체·보정 c=0.015'. 총 보정률은 ``coef_used`` 필드로 따로 나간다."""
+    return "대체·보정" if c_per_year is None else f"대체·보정 c={float(c_per_year):g}"
+
+
 def gap_view(
     session: Session, fm: FactMaker, ctx: ScoreCtx, cx: Complex, snapshot_id: int, price: dict[str, Any]
 ) -> dict[str, Any]:
@@ -80,6 +87,9 @@ def gap_view(
         )
     )
     checked = ctx.checked
+    region = session.get(Region, cx.region_id)
+    coef = dict((region.age_premium_coef if region is not None else None) or {})
+    c_per_year = coef.get("c_per_year")
     comps: list[dict[str, Any]] = []
     for m in members:
         prov = f"cs_{m.id}"
@@ -109,7 +119,7 @@ def gap_view(
                     "추정",
                     prov,
                     checked,
-                    reason=f"대체·보정 c={float(m.coef_used or 0):g}",
+                    reason=_coef_reason(c_per_year),
                     unit="won",
                 )
                 if m.adjusted_median_won is not None
@@ -131,6 +141,13 @@ def gap_view(
         gap_pct = unknown("분양가 미공개", checked, unit="pct")
     else:
         gap_pct = unknown((gap_row.reason if gap_row else None) or "미판정", checked, unit="pct")
+    gap_unadj = None
+    raw_unadj = getattr(gap_row, "raw_value_unadjusted", None) if gap_row is not None else None
+    if raw_unadj is not None and run_id is not None and gap_pct["label"] != LABEL_UNKNOWN:
+        # 미보정 중앙값 기준 gap%(R3 W7) — 점수 실행이 score_component 에 저장한 값. 없으면 null(옛 실행)
+        gap_unadj = fact(
+            raw_unadj, label, f"sc_{run_id}_{cx.id}_gap", checked, reason="미보정 중앙값 기준", unit="pct"
+        )
     if gap_row is not None and run_id is not None and gap_row.score_0_10 is not None:
         score = fact(
             gap_row.score_0_10,
@@ -154,7 +171,7 @@ def gap_view(
         "price_mid": price["price_mid"],
         "comps": comps,
         "gap_pct": gap_pct,
-        "gap_pct_unadjusted": None,
+        "gap_pct_unadjusted": gap_unadj,
         "score": score,
         "empty_reason": empty,
     }

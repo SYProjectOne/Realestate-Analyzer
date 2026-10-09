@@ -582,6 +582,55 @@ def test_minor34_raw_reads_from_monthly_archive(api_settings: Settings, tmp_path
         assert c.get(f"/api/raw/{rid}", headers=WRITE).status_code == 404
 
 
+# ====================================================================== W6 · W7 가격 갭
+
+
+def test_w6_substitute_label_shows_annual_coef(client: TestClient) -> None:
+    from app.models import ComparableSet, Region
+
+    with get_session() as s:
+        region = s.get(Region, 1)
+        assert region is not None
+        c = float(region.age_premium_coef["c_per_year"])
+        sub = s.scalars(select(ComparableSet).where(ComparableSet.snapshot_id == SNAP)).first()
+        assert sub is not None
+        sub.substitute = True
+        sub.adjusted = True
+        sub.coef_used = 0.12  # type: ignore[assignment]  # 총 보정률(c × 8년)
+        sub.adjusted_median_won = (sub.median_won or 500_000_000) + 1
+        cid = sub.complex_id
+    detail = client.get(f"/api/complexes/{cid}", headers=WRITE).json()
+    adj = [m["adjusted_median"] for m in detail["gap"]["comps"] if m["adjusted_median"]]
+    assert adj and all(a["reason"] == f"대체·보정 c={c:g}" for a in adj), adj
+    assert all("0.12" not in a["reason"] for a in adj)
+
+
+def test_w7_gap_pct_unadjusted_reads_stored_value(client: TestClient) -> None:
+    from decimal import Decimal
+
+    from app.models import ScoreComponent, ScoreRun
+
+    with get_session() as s:
+        run = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == 1)
+        ).first()
+        assert run is not None
+        row = s.scalars(
+            select(ScoreComponent).where(
+                ScoreComponent.score_run_id == run.id,
+                ScoreComponent.component == "gap",
+                ScoreComponent.raw_value.is_not(None),
+            )
+        ).first()
+        assert row is not None
+        row.raw_value_unadjusted = Decimal("-7.25")
+        cid, run_id = row.complex_id, run.id
+    gap = client.get(f"/api/complexes/{cid}", headers=WRITE).json()["gap"]
+    un = gap["gap_pct_unadjusted"]
+    assert un is not None and un["v"] == -7.25 and un["prov"] == f"sc_{run_id}_{cid}_gap"
+    assert un["reason"] == "미보정 중앙값 기준"
+
+
 # ====================================================================== W11 · F4 요청 devseed
 
 
