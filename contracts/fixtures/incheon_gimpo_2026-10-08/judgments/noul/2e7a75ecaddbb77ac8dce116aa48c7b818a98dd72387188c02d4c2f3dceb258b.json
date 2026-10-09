@@ -1,0 +1,53 @@
+{
+  "tool": "noul",
+  "purpose": "noul:ladder:move_in_plus_1y",
+  "input_hash": "sha256:2e7a75ecaddbb77ac8dce116aa48c7b818a98dd72387188c02d4c2f3dceb258b",
+  "input_len": 417,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "horizon": "move_in_plus_1y",
+    "target_ym": "2030-12",
+    "propositions": [
+      {
+        "key": "p5",
+        "text": "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 +5% 이상이다",
+        "prob": 0.36,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p10",
+        "text": "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 +10% 이상이다",
+        "prob": 0.29,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p20",
+        "text": "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 +20% 이상이다",
+        "prob": 0.19,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p_flat",
+        "text": "김포 칸타빌 에디션 입주 후 1년(2030-12) 실거래가가 현재 구매가(6.64~6.97억) 대비 보합 또는 하락이다",
+        "prob": 0.64,
+        "verdict": "uncertain",
+        "decision": "review"
+      }
+    ]
+  },
+  "raw": {
+    "note": "보고서는 명제 '입주 후 1년'만 판정(asof_plus_3y·5y 미판정). target_ym은 입주월 + 12개월(즉시 입주는 기준일 + 12개월)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 118,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 7,
+  "error_text": null
+}

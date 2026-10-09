@@ -1,0 +1,9 @@
+{
+  "complex_id": 4,
+  "field": "intake_status",
+  "value_text": "가능",
+  "kind": "phone",
+  "checked_at": "2026-10-09",
+  "entered_by": "운영자",
+  "note": "T3 테스트 입력(RA §9) — 실제 통화 기록 아님. 기대: intake 행(path=human_check) + rejudge 잡 1 → 상황 후보 포함"
+}

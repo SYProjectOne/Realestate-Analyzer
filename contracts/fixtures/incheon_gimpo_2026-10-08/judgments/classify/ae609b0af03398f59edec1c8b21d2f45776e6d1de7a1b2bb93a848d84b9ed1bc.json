@@ -1,0 +1,144 @@
+{
+  "tool": "classify",
+  "purpose": "classify:catalyst:gimpo",
+  "input_hash": "sha256:ae609b0af03398f59edec1c8b21d2f45776e6d1de7a1b2bb93a848d84b9ed1bc",
+  "input_len": 392,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "label": "batch",
+    "prob": 0.7333,
+    "decision": "review",
+    "items": [
+      {
+        "candidate": "풍무역세권 도시개발 6,599세대 분양·공사 중",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "한강시네폴리스 산단·주거 3,461세대 분양·착공",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "수도권 제2순환 김포~파주 한강하저터널",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포골드라인 증차",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.93,
+        "decision": "auto"
+      },
+      {
+        "candidate": "GTX-D 서부권 광역급행철도 예타 통과",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.97,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인천2호선 고양 연장 예타 진행 중",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.98,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인하대병원 김포 부지제공 협약",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.89,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포한강선(가칭)",
+        "complex_id": null,
+        "label": "언론",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포한강2 콤팩트시티",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 0.9,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포 서울 편입",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포 사이언스파크",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 0.94,
+        "decision": "auto"
+      },
+      {
+        "candidate": "서울 5호선 김포·검단 연장",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.52,
+        "decision": "review"
+      },
+      {
+        "candidate": "걸포4·감정4지구",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.51,
+        "decision": "review"
+      },
+      {
+        "candidate": "계양~강화 고속도로",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.8,
+        "decision": "review"
+      },
+      {
+        "candidate": "북변5구역 재개발",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.69,
+        "decision": "review"
+      }
+    ],
+    "counts": {
+      "auto": 11,
+      "review": 4,
+      "confirmed": 6,
+      "planned": 3,
+      "promoting": 2,
+      "media_only": 1,
+      "manual_review": 3
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "배치 호출 1회 — ClassifyResult 최상위 label='batch', prob=auto 비율. 후보별 값은 items(계약 변경 요청: 배치 분류 결과 모양)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 111,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

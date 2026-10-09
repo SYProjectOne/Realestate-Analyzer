@@ -1,0 +1,8 @@
+# 재구성 발췌 — 임의공급 공고(2026-04-15)
+# 원문: https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026940078&pblancNo=2026940078&atchmnflSeqNo=1789033&atchmnflSn=3
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+84A 108건 2.84:1
+84B 41건 2.05:1
+임의공급 공고 2026-04-15
+임의공급 접수 2026-04-17
+임의공급 80세대

@@ -1,0 +1,30 @@
+{
+  "case": "T6",
+  "expected_min_atomic_claims": 2,
+  "claims": [
+    {
+      "id": null,
+      "snapshot_id": 12,
+      "section": "12-3·12-4",
+      "complex_id": null,
+      "text": "고촌센트럴자이 +10%·+20%와 롯데캐슬 +20%만 unlikely, 나머지 전부 uncertain",
+      "evidence_text": "jev_noul #118~123 판정 label",
+      "verify_status": "contradicted",
+      "judgment_seq": 131,
+      "parent_claim_id": null,
+      "ordinal": 0
+    },
+    {
+      "id": null,
+      "snapshot_id": 12,
+      "section": "RA §9 T6",
+      "complex_id": null,
+      "text": "3개는 unlikely이고 나머지는 uncertain",
+      "evidence_text": null,
+      "verify_status": null,
+      "judgment_seq": null,
+      "parent_claim_id": null,
+      "ordinal": 0
+    }
+  ]
+}

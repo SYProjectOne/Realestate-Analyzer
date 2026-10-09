@@ -1,0 +1,5 @@
+# 재구성 발췌 — 청약홈 분양정보 상세·무순위 목록
+# 원문: https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2025000302&pblancNo=2025000302
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+무순위·임의공급 185세대 2025-10
+임의공급 2차 2026-04

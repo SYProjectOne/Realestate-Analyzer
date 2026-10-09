@@ -1,0 +1,167 @@
+{
+  "case": "T4",
+  "description": "메트로자이 2단지 84㎡ 거래 중 1건만 크게 벗어남(11억, 타입 오류 의심) → 1.5×IQR 이상치 제외 + comparable_set '이상치 제외' 기록, 원본 행 유지",
+  "apt_name": "한강메트로자이 2단지",
+  "source_url": "https://dapt.kr/apt/BjA163.html",
+  "label": "재가공",
+  "checked_at": "2026-10-07",
+  "reported": {
+    "range_won": [
+      590000000,
+      680000000
+    ],
+    "count": 10,
+    "latest": "2026-09-18 30층 6.8억",
+    "peak": "11억(2021-09-24, 타입 오류 가능성 — 보고서 §12-3-1·§12-6-3)"
+  },
+  "synthetic_rows": {
+    "1-9": "보고서는 범위(5.9~6.8억, 10건)만 기재 — 개별 거래 가격·날짜는 범위 안에서 합성",
+    "10": "11억 거래는 보고서상 2021-09-24. T4 재현을 위해 비교 창(기준일 이전 6개월) 안 2026-09-24로 옮긴 테스트 변형"
+  },
+  "area_note": "전용 84㎡형(소수점 보고서 미기재)",
+  "trades": [
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": 30,
+      "price_won": 680000000,
+      "deal_date": "2026-09-18",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 590000000,
+      "deal_date": "2026-04-15",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 600000000,
+      "deal_date": "2026-05-07",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 610000000,
+      "deal_date": "2026-05-28",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 620000000,
+      "deal_date": "2026-06-11",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 630000000,
+      "deal_date": "2026-06-30",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 640000000,
+      "deal_date": "2026-07-14",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 650000000,
+      "deal_date": "2026-08-02",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 660000000,
+      "deal_date": "2026-08-21",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 670000000,
+      "deal_date": "2026-09-05",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "한강메트로자이 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 1100000000,
+      "deal_date": "2026-09-24",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    }
+  ]
+}

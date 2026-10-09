@@ -1,0 +1,39 @@
+{
+  "tool": "extract",
+  "purpose": "extract:notice:3:임의",
+  "input_hash": "sha256:76b55a187d99b177fecab516349a9fd81f92ca09a432600b01a4c8ed73014a8f",
+  "input_len": 98,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "fields": [
+      {
+        "name": "apply_date",
+        "value_text": "2026-05-08",
+        "decision": "review",
+        "confidence": null,
+        "excerpt": null
+      }
+    ],
+    "counts": {
+      "auto": 10,
+      "review": 1,
+      "total": 11
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "보고서는 review 필드 이름 일부만 기재 — fields에는 기재된 것만, 나머지는 counts"
+  },
+  "duration_ms": null,
+  "judgment_seq": 40,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 3,
+  "error_text": null
+}

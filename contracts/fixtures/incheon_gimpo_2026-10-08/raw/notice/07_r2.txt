@@ -1,0 +1,10 @@
+# 재구성 발췌 — 임의공급 2차 공고(2026-06)
+# 원문: https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026940116&pblancNo=2026940116&atchmnflSeqNo=1851103&atchmnflSn=4
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+계약금 5%(계약 시)
+중도금 60%(6회, 26-07-24~29-05-25)
+잔금 35%
+84A 22세대 69건 3.14
+84B 7세대 2.71
+임의 2차 접수 06-12~15
+임의 2차 잔여 50세대

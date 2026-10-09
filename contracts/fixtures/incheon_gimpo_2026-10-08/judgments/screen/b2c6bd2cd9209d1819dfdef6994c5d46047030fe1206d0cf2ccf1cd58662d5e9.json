@@ -1,0 +1,28 @@
+{
+  "tool": "screen",
+  "purpose": "screen:notice:lake4",
+  "input_hash": "sha256:b2c6bd2cd9209d1819dfdef6994c5d46047030fe1206d0cf2ccf1cd58662d5e9",
+  "input_len": 83,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": 0.02,
+    "substance": 0.99,
+    "relevance": 0.96
+  },
+  "raw": {
+    "thresholds": {
+      "block": 0.75,
+      "review": 0.25
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": 9,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

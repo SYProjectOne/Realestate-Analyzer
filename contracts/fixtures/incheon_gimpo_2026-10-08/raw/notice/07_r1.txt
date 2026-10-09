@@ -1,0 +1,9 @@
+# 재구성 발췌 — 임의공급 1차 공고(2026-03)
+# 원문: https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026940049&pblancNo=2026940049&atchmnflSeqNo=1766135&atchmnflSn=1
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+66A 50세대
+66A 46건(△4)
+84A 50세대
+84A 28건(△22)
+임의 1차 접수 03-24~25
+임의 1차 100세대(66A 50·84A 50)

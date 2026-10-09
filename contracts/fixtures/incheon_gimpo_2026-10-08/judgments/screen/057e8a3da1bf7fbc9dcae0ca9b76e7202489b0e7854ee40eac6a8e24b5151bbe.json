@@ -1,0 +1,28 @@
+{
+  "tool": "screen",
+  "purpose": "screen:notice:1",
+  "input_hash": "sha256:057e8a3da1bf7fbc9dcae0ca9b76e7202489b0e7854ee40eac6a8e24b5151bbe",
+  "input_len": 83,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": 0.01,
+    "substance": 0.99,
+    "relevance": 0.92
+  },
+  "raw": {
+    "thresholds": {
+      "block": 0.75,
+      "review": 0.25
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": 1,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 1,
+  "error_text": null
+}

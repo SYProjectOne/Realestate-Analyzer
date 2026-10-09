@@ -1,0 +1,28 @@
+{
+  "tool": "screen",
+  "purpose": "screen:phase2:geomdan_catalyst",
+  "input_hash": "sha256:f104c6e4177432ceb98fe79f5081ea1ebb3b302288c09dc44907ae9af336a86c",
+  "input_len": 84,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": 0.02,
+    "substance": 0.99,
+    "relevance": 0.92
+  },
+  "raw": {
+    "thresholds": {
+      "block": 0.75,
+      "review": 0.25
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": 24,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

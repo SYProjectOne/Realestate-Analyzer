@@ -1,0 +1,70 @@
+{
+  "tool": "decide",
+  "purpose": "decide:scenario_C",
+  "input_hash": "sha256:727b9848c4ac2f7818ef901f8ec6e99f22246b90366430bbe19a70902cdb9a79",
+  "input_len": 163,
+  "status": "ok",
+  "confidence": 0.91,
+  "cached": false,
+  "result": {
+    "selected": "complex:2",
+    "probs": {
+      "complex:2": 0.92,
+      "complex:3": 0.04,
+      "complex:4": 0.01,
+      "complex:7": 0.01,
+      "complex:1": 0.0,
+      "wait_new": 0.0
+    },
+    "checks": {
+      "complex:1": {
+        "access": "supported",
+        "regulation": "supported",
+        "funds": "contradicted"
+      },
+      "complex:2": {
+        "access": "supported",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:3": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:4": {
+        "access": "supported",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:7": {
+        "access": "contradicted",
+        "regulation": "contradicted",
+        "funds": "supported"
+      },
+      "wait_new": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      }
+    },
+    "warnings": [],
+    "escaped": false,
+    "question": null
+  },
+  "raw": {
+    "requirement_order": [
+      "access",
+      "regulation",
+      "funds"
+    ],
+    "source": "expected_scores.json decide_integrated.C"
+  },
+  "duration_ms": null,
+  "judgment_seq": 128,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

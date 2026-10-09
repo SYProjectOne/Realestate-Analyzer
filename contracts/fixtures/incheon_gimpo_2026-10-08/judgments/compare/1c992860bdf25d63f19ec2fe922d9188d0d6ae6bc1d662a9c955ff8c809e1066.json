@@ -1,0 +1,40 @@
+{
+  "tool": "compare",
+  "purpose": "compare:schedule:gyeyang_a21",
+  "input_hash": "sha256:1c992860bdf25d63f19ec2fe922d9188d0d6ae6bc1d662a9c955ff8c809e1066",
+  "input_len": 70,
+  "status": "ok",
+  "confidence": 0.95,
+  "cached": false,
+  "result": {
+    "overall": "contradicts",
+    "prob": 0.95,
+    "aspects": [
+      {
+        "aspect": "시기",
+        "relation": "contradicts",
+        "prob": null
+      },
+      {
+        "aspect": "세대수",
+        "relation": "same_fact",
+        "prob": null
+      },
+      {
+        "aspect": "사업자",
+        "relation": "same_fact",
+        "prob": null
+      }
+    ]
+  },
+  "raw": {
+    "decision": "auto"
+  },
+  "duration_ms": null,
+  "judgment_seq": 76,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

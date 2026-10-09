@@ -1,0 +1,40 @@
+{
+  "tool": "compare",
+  "purpose": "compare:payment:1",
+  "input_hash": "sha256:e6bb3d4ac0adf7d0fac22eb953eb4e08ef7f98e381ac9418d83651be5e91ee28",
+  "input_len": 71,
+  "status": "ok",
+  "confidence": 1.0,
+  "cached": false,
+  "result": {
+    "overall": "contradicts",
+    "prob": 1.0,
+    "aspects": [
+      {
+        "aspect": "계약금 비율",
+        "relation": "contradicts",
+        "prob": null
+      },
+      {
+        "aspect": "1차 계약금",
+        "relation": "same_fact",
+        "prob": null
+      },
+      {
+        "aspect": "잔금 비율",
+        "relation": "contradicts",
+        "prob": null
+      }
+    ]
+  },
+  "raw": {
+    "decision": "auto"
+  },
+  "duration_ms": null,
+  "judgment_seq": 72,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 1,
+  "error_text": null
+}

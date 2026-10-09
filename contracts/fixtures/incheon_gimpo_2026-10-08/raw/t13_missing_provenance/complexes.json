@@ -1,0 +1,649 @@
+[
+  {
+    "fixture_key": "elif",
+    "complex": {
+      "id": 2,
+      "region_id": 1,
+      "applyhome_id": "2025000302",
+      "name": "엘리프 검단 포레듀",
+      "former_names": [],
+      "address": "인천광역시 검단구 마전동 AA32BL",
+      "legal_dong_code": "2826011300",
+      "living_area": "la_2",
+      "living_area_name": "서구(검단)",
+      "official_site_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+      "developer": null,
+      "trustee": null,
+      "builder": null,
+      "housing_type": {
+        "v": "민영",
+        "label": "확인됨",
+        "prov": "fp_2_001",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "land_type": {
+        "v": "공공택지",
+        "label": "확인됨",
+        "prov": "fp_2_002",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "price_cap": {
+        "v": "적용",
+        "label": "확인됨",
+        "prov": "fp_2_003",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "regulated": {
+        "v": "비규제",
+        "label": "확인됨",
+        "prov": "fp_2_004",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "units_total": {
+        "v": 669,
+        "label": "확인됨",
+        "prov": "fp_2_005",
+        "checked_at": "2026-10-07",
+        "unit": "units"
+      },
+      "units_general": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "보고서 미기재",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "units_special": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "보고서 미기재",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "officetel_units": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "보고서 미기재",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "notice_date": {
+        "v": "2025-08-22",
+        "label": "확인됨",
+        "prov": "fp_2_006",
+        "checked_at": "2026-10-07",
+        "unit": "date"
+      },
+      "apply_dates": [],
+      "winner_date": {
+        "v": "2025-09-10",
+        "label": "확인됨",
+        "prov": "fp_2_007",
+        "checked_at": "2026-10-07",
+        "unit": "date"
+      },
+      "contract_dates": [],
+      "move_in_ym": {
+        "v": "2028-03",
+        "label": "확인됨",
+        "prov": "fp_2_008",
+        "checked_at": "2026-10-07",
+        "unit": "ym"
+      },
+      "resale_months": {
+        "v": 36,
+        "label": "확인됨",
+        "prov": "fp_2_009",
+        "checked_at": "2026-10-07",
+        "unit": "months"
+      },
+      "resale_end": {
+        "v": "2028-09-10",
+        "label": "추정",
+        "reason": "산술",
+        "prov": "fp_2_010",
+        "checked_at": "2026-10-07",
+        "unit": "date"
+      },
+      "resale_release_on_registration": {
+        "v": "등기 시 해제",
+        "label": "확인됨",
+        "prov": "fp_2_011",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "residency_months": {
+        "v": 0,
+        "label": "확인됨",
+        "prov": "fp_2_012",
+        "checked_at": "2026-10-07",
+        "unit": "months"
+      },
+      "rewin_restriction_years": {
+        "v": 10,
+        "label": "확인됨",
+        "prov": "fp_2_013",
+        "checked_at": "2026-10-07",
+        "unit": "years"
+      },
+      "inclusion_class": "private_sale_apt",
+      "inclusion_decision": "auto",
+      "inclusion_prob": {
+        "v": 1.0,
+        "label": "추정",
+        "reason": "판정기 classify",
+        "prov": "jl_62",
+        "checked_at": "2026-10-07",
+        "unit": "prob"
+      },
+      "track": "B"
+    },
+    "types": [
+      {
+        "id": null,
+        "complex_id": 2,
+        "type_code": "84A",
+        "area_m2": {
+          "v": 84.0,
+          "label": "추정",
+          "reason": "타입명 기준",
+          "prov": "fp_2_014",
+          "checked_at": "2026-10-07",
+          "unit": "m2"
+        },
+        "units": {
+          "v": 2,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_015",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "max_price_won": {
+          "v": 605000000,
+          "label": "확인됨",
+          "prov": "fp_2_016",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "floor_sample_price_won": {
+          "v": 575000000,
+          "label": "확인됨",
+          "prov": "fp_2_017",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "floor_sample_text": "3층",
+        "balcony_won": {
+          "v": 3140000,
+          "label": "확인됨",
+          "prov": "fp_2_018",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "options_required_won": {
+          "v": 0,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 기준",
+          "prov": "fp_2_019",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "options_text": null,
+        "is_basis": true
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "type_code": "84B",
+        "area_m2": {
+          "v": 84.0,
+          "label": "추정",
+          "reason": "타입명 기준",
+          "prov": "fp_2_020",
+          "checked_at": "2026-10-07",
+          "unit": "m2"
+        },
+        "units": {
+          "v": 8,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_021",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "max_price_won": {
+          "v": 578000000,
+          "label": "확인됨",
+          "prov": "fp_2_022",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "floor_sample_price_won": {
+          "v": 566000000,
+          "label": "확인됨",
+          "prov": "fp_2_023",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "floor_sample_text": "최저층(보고서 층 미기재)",
+        "balcony_won": {
+          "v": 3700000,
+          "label": "확인됨",
+          "prov": "fp_2_024",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "options_required_won": {
+          "v": 0,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 기준",
+          "prov": "fp_2_025",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "options_text": null,
+        "is_basis": false
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "type_code": "84F",
+        "area_m2": {
+          "v": 84.0,
+          "label": "추정",
+          "reason": "타입명 기준",
+          "prov": "fp_2_026",
+          "checked_at": "2026-10-07",
+          "unit": "m2"
+        },
+        "units": {
+          "v": 6,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_027",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "max_price_won": {
+          "v": 602000000,
+          "label": "확인됨",
+          "prov": "fp_2_028",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "floor_sample_price_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "대표 층 공급금액 보고서 미기재",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "floor_sample_text": null,
+        "balcony_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "발코니 확장비 보고서 미기재",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "options_required_won": {
+          "v": 0,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 기준",
+          "prov": "fp_2_029",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "options_text": null,
+        "is_basis": false
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "type_code": "64A",
+        "area_m2": {
+          "v": 64.0,
+          "label": "추정",
+          "reason": "타입명 기준",
+          "prov": "fp_2_030",
+          "checked_at": "2026-10-07",
+          "unit": "m2"
+        },
+        "units": {
+          "v": 4,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_031",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "max_price_won": {
+          "v": 507000000,
+          "label": "확인됨",
+          "prov": "fp_2_032",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "floor_sample_price_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "대표 층 공급금액 보고서 미기재",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "floor_sample_text": null,
+        "balcony_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "발코니 확장비 보고서 미기재",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "options_required_won": {
+          "v": 0,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 기준",
+          "prov": "fp_2_033",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "options_text": null,
+        "is_basis": false
+      }
+    ],
+    "payment_terms": [
+      {
+        "id": null,
+        "complex_id": 2,
+        "notice_no": "2026940173",
+        "notice_kind": "임의",
+        "effective_from": {
+          "v": "2026-08-14",
+          "label": "확인됨",
+          "prov": "fp_2_034",
+          "checked_at": "2026-10-07",
+          "unit": "date"
+        },
+        "down_payment_pct": {
+          "v": 5,
+          "label": "확인됨",
+          "prov": "fp_2_035",
+          "checked_at": "2026-10-07",
+          "unit": "pct"
+        },
+        "down_payment_first_won": {
+          "v": 5000000,
+          "label": "비공식",
+          "prov": "fp_2_036",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "interim_pct": {
+          "v": 60,
+          "label": "확인됨",
+          "prov": "fp_2_037",
+          "checked_at": "2026-10-07",
+          "unit": "pct"
+        },
+        "interim_terms_text": "중도금 60% 이자후불",
+        "balance_pct": {
+          "v": 35,
+          "label": "확인됨",
+          "prov": "fp_2_038",
+          "checked_at": "2026-10-07",
+          "unit": "pct"
+        },
+        "interim_schedule": [],
+        "is_current": true,
+        "change_vs_first": null
+      }
+    ],
+    "competition": [
+      {
+        "id": null,
+        "complex_id": 2,
+        "round": "임의 3차",
+        "kind": "임의",
+        "type_code": "64A",
+        "supply": {
+          "v": 4,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_039",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "applied": {
+          "v": 58,
+          "label": "추정",
+          "reason": "산술",
+          "prov": "fp_2_040",
+          "checked_at": "2026-10-07",
+          "unit": "count"
+        },
+        "ratio_or_shortfall_text": "14.50",
+        "raw_document_id": 9007
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "round": "임의 3차",
+        "kind": "임의",
+        "type_code": "84A",
+        "supply": {
+          "v": 2,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_041",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "applied": {
+          "v": 15,
+          "label": "추정",
+          "reason": "산술",
+          "prov": "fp_2_042",
+          "checked_at": "2026-10-07",
+          "unit": "count"
+        },
+        "ratio_or_shortfall_text": "7.50",
+        "raw_document_id": 9007
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "round": "임의 3차",
+        "kind": "임의",
+        "type_code": "84B",
+        "supply": {
+          "v": 8,
+          "label": "확인됨",
+          "reason": "임의공급 3차 잔여",
+          "prov": "fp_2_043",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "applied": {
+          "v": 37,
+          "label": "추정",
+          "reason": "산술",
+          "prov": "fp_2_044",
+          "checked_at": "2026-10-07",
+          "unit": "count"
+        },
+        "ratio_or_shortfall_text": "4.63",
+        "raw_document_id": 9007
+      }
+    ],
+    "remaining_events": [
+      {
+        "id": null,
+        "complex_id": 2,
+        "kind": "본청약",
+        "notice_no": "2025000302",
+        "notice_date": {
+          "v": "2025-08-22",
+          "label": "확인됨",
+          "prov": "fp_2_045",
+          "checked_at": "2026-10-07",
+          "unit": "date"
+        },
+        "apply_dates": [],
+        "units": {
+          "v": 669,
+          "label": "확인됨",
+          "prov": "fp_2_046",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "units_by_type": {},
+        "ratio_text": null,
+        "result_text": null,
+        "raw_document_id": 9006
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "kind": "임의",
+        "notice_no": null,
+        "notice_date": {
+          "v": "2025-10",
+          "label": "확인됨",
+          "prov": "fp_2_047",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "apply_dates": [],
+        "units": {
+          "v": 185,
+          "label": "확인됨",
+          "prov": "fp_2_048",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "units_by_type": {},
+        "ratio_text": null,
+        "result_text": "64A·84B·98B 등 다수 미달",
+        "raw_document_id": 9008
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "kind": "임의",
+        "notice_no": null,
+        "notice_date": {
+          "v": "2026-04",
+          "label": "확인됨",
+          "prov": "fp_2_049",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "apply_dates": [],
+        "units": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "임의공급 2차 세대수 보고서 미기재",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "units_by_type": {},
+        "ratio_text": null,
+        "result_text": null,
+        "raw_document_id": 9008
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "kind": "임의",
+        "notice_no": "2026940173",
+        "notice_date": {
+          "v": "2026-08-14",
+          "label": "확인됨",
+          "prov": "fp_2_050",
+          "checked_at": "2026-10-07",
+          "unit": "date"
+        },
+        "apply_dates": [
+          {
+            "v": "2026-08-19",
+            "label": "확인됨",
+            "prov": "fp_2_051",
+            "checked_at": "2026-10-07",
+            "unit": "date"
+          },
+          {
+            "v": "2026-08-24",
+            "label": "확인됨",
+            "prov": "fp_2_052",
+            "checked_at": "2026-10-07",
+            "unit": "date"
+          }
+        ],
+        "units": {
+          "v": 25,
+          "label": "확인됨",
+          "prov": "fp_2_053",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "units_by_type": {
+          "64A": 4,
+          "84A": 2,
+          "84B": 8,
+          "84F": 6,
+          "98A·B·C": 5
+        },
+        "ratio_text": "64A 14.50 · 84A 7.50 · 84B 4.63 · 98C 미달 1",
+        "result_text": "98C만 미달",
+        "raw_document_id": 9007
+      },
+      {
+        "id": null,
+        "complex_id": 2,
+        "kind": "선착순",
+        "notice_no": null,
+        "notice_date": {
+          "v": "2026-10-07",
+          "label": "확인됨",
+          "prov": "fp_2_054",
+          "checked_at": "2026-10-07",
+          "unit": "date"
+        },
+        "apply_dates": [],
+        "units": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "잔여 동·호수 확인 불가",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "units_by_type": {},
+        "ratio_text": null,
+        "result_text": "선착순 동·호지정 계약 중",
+        "raw_document_id": 9009
+      }
+    ],
+    "intake": [
+      {
+        "id": null,
+        "complex_id": 2,
+        "snapshot_id": 12,
+        "status": "가능",
+        "path": "official_popup",
+        "evidence_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+        "screenshot_path": null,
+        "raw_document_id": 9062,
+        "checked_at": "2026-10-07",
+        "http_status": 200,
+        "reason": null,
+        "note": "팝업 '선착순 동·호지정'",
+        "entered_by": null
+      }
+    ]
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:2",
+  "input_hash": "sha256:d065b7ce41d3c194697f186cd0d682231d65948f94506cd2b95d07faecae31b3",
+  "input_len": 59,
+  "status": "review",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "flagged",
+    "items": [
+      {
+        "field": "eligibility",
+        "p_wrong": 0.0,
+        "flagged": true,
+        "note": "'…세대주인 미성년자' 절단 incomplete → 원문 보완"
+      }
+    ],
+    "counts": {
+      "records": 16,
+      "flagged": 1
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "escalate",
+    "note": "p_wrong 미기재 항목은 0.0이 아니라 '보고서 미기재' — note 참조"
+  },
+  "duration_ms": null,
+  "judgment_seq": 55,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 2,
+  "error_text": null
+}

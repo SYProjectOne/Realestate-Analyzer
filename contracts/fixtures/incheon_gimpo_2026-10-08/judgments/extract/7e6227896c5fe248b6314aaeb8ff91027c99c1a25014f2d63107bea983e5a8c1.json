@@ -1,0 +1,24 @@
+{
+  "tool": "extract",
+  "purpose": "extract:notice:5",
+  "input_hash": "sha256:7e6227896c5fe248b6314aaeb8ff91027c99c1a25014f2d63107bea983e5a8c1",
+  "input_len": 106,
+  "status": "error",
+  "confidence": null,
+  "cached": false,
+  "result": {},
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "reason": "응답 미수신(사용자 턴 전환)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 37,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 5,
+  "error_text": "no response: 사용자 턴 전환으로 응답 미수신 → 같은 목적의 새 입력으로 재호출"
+}
