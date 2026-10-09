@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     api_token: SecretStr | None = None
     readonly_token: SecretStr | None = None
     share_token_ttl_days: int = Field(default=30, ge=1)
+    # 프록시 헤더(X-Forwarded-For·Proto)를 믿을 상대 주소(쉼표 구분 IP·CIDR — uvicorn forwarded_allow_ips).
+    # 기본 루프백만. compose 는 web(nginx)이 있는 내부망 대역만 준다.
+    # '*'(모두)는 ENV=prod 에서 거부(재리뷰 F3).
+    forwarded_allow_ips: str = "127.0.0.1"
 
     # --- 판정기 (ADR-5, D6)
     judge_adapter: Literal["jev", "mock"] = "jev"
@@ -126,6 +130,9 @@ class Settings(BaseSettings):
         if self.env == "prod" and self.judge_adapter == "mock":
             # 운영에서 mock 판정기는 지어낸 판정을 실데이터처럼 저장한다(R3 minor 31)
             raise ValueError("ENV=prod 에서는 JUDGE_ADAPTER=mock 을 쓸 수 없다(jev 만)")
+        if self.env == "prod" and "*" in self.forwarded_allow_ips:
+            # 아무나 X-Forwarded-For 로 루프백·다른 주소인 척할 수 있다
+            raise ValueError("ENV=prod 에서는 FORWARDED_ALLOW_IPS='*' 를 쓸 수 없다(web 프록시 대역만)")
         return self
 
     @property

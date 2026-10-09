@@ -1,9 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
+import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import { ROLE_STORAGE_KEY, TOKEN_STORAGE_KEY } from '@/api/auth';
+import type { Market } from '@/api/types';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
+import { generatedHandlers } from '@/mocks/handlers.gen';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
@@ -38,6 +40,70 @@ describe('G6 지역 시장', () => {
       await screen.findByRole('heading', { name: t('page.G6.regulation') }),
     ).toBeInTheDocument();
     expect(screen.getByRole('table', { name: t('page.G6.prices') })).toBeInTheDocument();
+  });
+});
+
+describe('N-M3·N-M4 G6 벤치마크 없음 · 지역 전체 대체(계약 2026-10-09.6)', () => {
+  function patchMarket(fn: (m: Market) => Market) {
+    server.use(
+      http.get(mswPath('/snapshots/:sid/market'), async ({ request }) => {
+        const res = await getResponse(generatedHandlers as RequestHandler[], request.clone());
+        return HttpResponse.json(fn((await res?.json()) as Market));
+      }),
+    );
+  }
+
+  it('benchmark_absence → "벤치마크 없음(<reason>)"', async () => {
+    const reason = '실거래 수집 전';
+    patchMarket((m) => ({
+      ...m,
+      benchmarks: [],
+      benchmark_absence: { code: 'not_collected', reason },
+    }));
+    renderRoute('/market');
+    const notice = await screen.findByTestId('benchmark-absence');
+    expect(notice).toHaveTextContent(`벤치마크 없음(${reason})`);
+  });
+
+  it('benchmark_absence=null(계약 예시) → 표시 없음', async () => {
+    renderRoute('/market');
+    await screen.findByText(t('chart.C03.title'));
+    expect(screen.queryByTestId('benchmark-absence')).toBeNull();
+  });
+
+  it('substituted 플래그 → "대체(지역 전체)" 배지, 표본 n(자기 생활권만) < 3 → "표본 n, 추정"', async () => {
+    let area = '';
+    patchMarket((m) => {
+      const first = m.benchmark_flags[0];
+      area = first?.living_area ?? '';
+      const subs = m.benchmarks
+        .filter((b) => !b.is_presale)
+        .slice(0, 3)
+        .map((b, i) => ({ ...b, id: 9100 + i, living_area: area, substitute: true }));
+      return {
+        ...m,
+        benchmarks: [...m.benchmarks.filter((b) => b.living_area !== area), ...subs],
+        benchmark_flags: m.benchmark_flags.map((f) =>
+          f.living_area === area
+            ? { ...f, sample_n: 0, substituted: true }
+            : { ...f, substituted: false },
+        ),
+      };
+    });
+    renderRoute('/market');
+    const flags = await screen.findByRole('list', { name: t('page.G6.flags') });
+    const substituted = within(flags).getAllByTestId('flag-substituted');
+    expect(substituted).toHaveLength(1);
+    expect(substituted[0]).toHaveTextContent(t('badge.substituteRegion'));
+    // C3: 대체 행 3개가 있어도 자기 표본 0 → 표본 배지가 남는다(N-M4), 대체 배지
+    const badges = screen.getAllByTestId('sample-badge').map((b) => b.textContent ?? '');
+    expect(badges.some((b) => b.includes('표본 0, 추정'))).toBe(true);
+    expect(screen.getByTestId('substitute-badge')).toHaveTextContent(t('badge.substituteRegion'));
+    // 표로 보기: 대체 행 표시
+    const figure = screen.getByText(t('chart.C03.title')).closest('figure') as HTMLElement;
+    await userEvent.click(within(figure).getByRole('button', { name: t('table.show') }));
+    const table = within(figure).getByRole('table');
+    expect(within(table).getAllByText(/대체\(지역 전체\)/)).toHaveLength(3);
   });
 });
 

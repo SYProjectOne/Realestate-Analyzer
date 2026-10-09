@@ -645,18 +645,26 @@ export function useClaims(
 
 /**
  * PATCH /claims/{id} (reviseClaim, 202 → JobRun claim.reverify) — 사람이 고친 문장으로 원자 분할 재검증.
- * 409 conflict = contradicted 아님·이미 분할됨·재검증 대기 중(ApiError.detail 을 화면이 보인다).
+ * 409 conflict = contradicted 아님·이미 분할됨·재검증 대기 중, 422 = 같은 대상(단지·필드)이 아님(D10-3) —
+ * ApiError.detail 을 화면이 보인다. 409 는 목록이 낡았다는 뜻이므로 claims 목록을 다시 불러온다(R3 재리뷰 F3).
+ * 접수되면 사실 주장의 사실이 강등되므로(D10-3) 체크리스트도 무효화한다.
  */
 export function useReviseClaim(): M<{ id: IdLike; patch: ClaimPatch }, JobRun> {
   const qc = useQueryClient();
+  const invalidateClaims = () =>
+    qc.invalidateQueries({
+      predicate: (q) => q.queryKey[0] === 'snapshots' && q.queryKey[2] === 'claims',
+    });
   return useMutation({
     mutationFn: ({ id, patch }) =>
       apiFetch<JobRun>(`/claims/${enc(id)}`, { method: 'PATCH', body: patch }),
     onSuccess: () => {
-      void qc.invalidateQueries({
-        predicate: (q) => q.queryKey[0] === 'snapshots' && q.queryKey[2] === 'claims',
-      });
+      void invalidateClaims();
       void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+      void qc.invalidateQueries({ queryKey: ['ops', 'checklist'] });
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 409) void invalidateClaims();
     },
   });
 }

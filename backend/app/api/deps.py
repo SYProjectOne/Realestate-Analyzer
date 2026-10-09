@@ -5,6 +5,8 @@
   만료·회수면 401.
   두 환경 토큰이 모두 비어 있으면(개발 기본값) 인증 없이 열되 루프백(127.0.0.1·::1) 접속만 받는다(R3 M11) —
   ENV=prod 는 설정 검증이 API_TOKEN 을 강제한다. ``app.serve`` 도 그때는 127.0.0.1 에만 바인드한다.
+- D10-7(계약 2026-10-09.6): 공유 링크 토큰은 화면 조회 GET 만 — ``/ops/*``·``/jobs``·``/jobs/*`` 는 GET 이라도
+  403(운영 화면·잡 큐는 공유 범위 밖). READONLY_TOKEN(운영자 열람용)은 모든 GET.
 - ``require_write``: 쓰기 토큰만(공유 링크 관리처럼 GET 이라도 읽기 전용 토큰에 보이면 안 되는 것).
 - ``?snapshot=`` 이 없으면 지역의 최신 published, 없으면 최신 ready 스냅샷.
 - ``?scenario=`` 는 내장 code(base|A|B|C|D) 또는 사용자 시나리오 숫자 id, 생략 시 base.
@@ -38,6 +40,7 @@ __all__ = [
     "require_write",
     "resolve_scenario",
     "settings_of",
+    "share_link_allows",
     "strict_query",
 ]
 
@@ -45,6 +48,20 @@ log = get_logger("app.api")
 
 Role = Literal["write", "read"]
 _READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+# D10-7: 공유 링크 토큰이 GET 으로도 못 여는 경로(API_PREFIX 뒤). 운영 화면(G7)·잡 큐
+_SHARE_DENIED_PREFIXES = ("/ops/", "/jobs/")
+_SHARE_DENIED_PATHS = frozenset({"/ops", "/jobs"})
+
+
+def share_link_allows(path: str, api_prefix: str = "/api") -> bool:
+    """공유 링크 토큰으로 이 경로를 GET 할 수 있는가(D10-7)."""
+    rel = path[len(api_prefix) :] if api_prefix and path.startswith(api_prefix) else path
+    rel = "/" + rel.lstrip("/")
+    rel = rel.rstrip("/") or "/"
+    return rel not in _SHARE_DENIED_PATHS and not any(
+        (rel + "/").startswith(p) for p in _SHARE_DENIED_PREFIXES
+    )
+
 
 DB = Annotated[Session, Depends(session_dependency)]
 
@@ -107,7 +124,12 @@ def _share_link_role(request: Request, token: str) -> Role:
     if status == "revoked":
         raise _unauthorized("공유 링크가 회수됐다")
     request.state.share_link = True
-    return _read_only(request)
+    role = _read_only(request)
+    if not share_link_allows(request.url.path, settings_of(request).api_prefix):
+        raise ApiError(
+            403, "forbidden", "공유 링크 토큰은 화면 조회만 — 운영(/ops)·잡(/jobs)은 열 수 없다(D10-7)"
+        )
+    return role
 
 
 def require_auth(request: Request) -> Role:

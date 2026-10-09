@@ -2,7 +2,34 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
-### fixtures (R3b G1 — 계약 .6 항목 아래로 옮길 것, G3)
+## 2026-10-09.6
+
+R3 재리뷰(`docs/design/wp/R3_REVIEW2.md`) 후속 — CEO 결정 D10(`docs/design/DECISIONS.md`)과 R3b 수정 라운드 배정
+(`docs/design/wp/R3B_FIX.md`). 계약 소유자 = R3b G3. 마이그레이션 `0006`(`0006_r3b.py`: 테이블 1개 추가 + 컬럼 4개 추가 +
+checklist_item CHECK 값 1개 추가 — 0005 DB 는 `alembic upgrade head` 한 번). 필드 삭제 없음. 의미 변경 = 아래 #5(POST /jobs 의
+claim.reverify 거부)·#4(BenchmarkFlag.sample_n = 자기 생활권 표본만) 두 가지.
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 |
+| --- | --- | --- | --- | --- |
+| 1 | G2 요청 · N-C1 · D10-1 | `score_row.json`·`complex_row.json`·`dashboard.json` `rejudge_needed` | boolean(선택, 기본 false). 행의 judge_scope·rank·total·성분은 그 스냅샷 score_run **저장값**이고, 현재 사실로 계산한 범위가 저장 범위와 다르면 true — 화면은 '재판정 필요' 배지 + rejudge 잡 제안만(저장값·현재값을 한 행에 섞지 않는다). Dashboard 는 top5·KPI 중 하나라도 true 면 true | G2(씀, `api/views.py`·`routers/snapshots.py`), G3(프론트 배지), G4(보고서 표기 선택) |
+| 2 | N-C3 · D10-3 | `claim.json` Claim·ClaimView `entity`·`entity_id`·`field`, 마이그레이션 `claim.entity·entity_id·field` | 주장이 생성된 DB 사실(field_provenance 의 entity·entity_id·field). P9 사실 문장 주장만 채운다 — NULL = 사실 주장 아님 또는 0006 이전 행(API 는 P9 문장 형식으로 대상을 되찾아 PATCH 때 채운다: `app.api.claim_target`). ClaimView 에 `field_name`(표시 이름)·`demotion`(FactDemotion) | G2(P9 저장 시 채움 — 요청), G3(API·G7), G1(ClaimSplitter 는 그대로) |
+| 3 | N-C3 · D10-3 | `claim.json#/$defs/FactDemotion`, 테이블 `fact_demotion`, `checklist_item.kind` '사실 재확인', `fact.json` reason '검증 모순', PATCH /claims 422 | **강등 라벨 = '확인 불가(검증 모순)'**(label '확인 불가' + reason '검증 모순'). PATCH /claims/{id} 는 같은 대상(section·complex·field)만 허용(원자 주장마다 원 field 용어 있음·다른 사실 필드 용어 없음·다른 단지 이름만 가리키지 않음 — 문자열 대조, 어기면 422 `error_422_claim_target`). 사실 주장이면 접수와 함께 강등: 사실 테이블 값 비움(점수·요건 입력에서 빠짐) + chosen 출처 행 = 강등 행(원래 chosen 행은 chosen=false 보관) + 체크리스트 '사실 재확인: <필드 이름>(검증 모순)' + change_event critical(triggers_rejudge) + 그 단지 rejudge 잡. 복원 = 사람 확인(POST /ops/human-checks 같은 단지·같은 field — 그 값이 사실, 라벨 확인됨 reason '사람 확인(…)') 또는 새 원문(정규화가 다른 출처 행을 chosen 으로 올림 — 다음 조회 때 `restored_by='new_source'`로 기록), 체크리스트 done | G3(API·G7), G2(점수 입력은 값 null 로 자연히 빠짐 — 변경 없음), G1(체크리스트 동기화가 '사실 재확인' 항목을 건드리지 않음) |
+| 4 | G1 요청 · F1a minor(`models/market.py:39`) | `benchmark.snapshot_id`(FK snapshot.id, NULL, 색인), `market.json` BenchmarkView `snapshot_id`·`substitute` | 벤치마크 행을 조립한 스냅샷 — 재조립이 발행 스냅샷이 인용한 행을 지우지 않게(G1 이 씀). API(G6 market)는 그 스냅샷 행(snapshot_id = sid)을, 없으면 sid 이전 가장 최근 조립분을, 그것도 없으면 NULL 행(이전 행·사람 입력)을 보인다. `substitute` = 지역 전체 대체 행(note '추정(대체: 지역 전체)') | G1(씀), G3(읽음), G4(보고서 인용 — 선택) |
+| 5 | N-M3 · N-M4 · D9-2 | `market.json#/$defs/BenchmarkAbsence`, Market·Dashboard `benchmark_absence`, BenchmarkFlag `substituted`·`sample_n` 의미 | 벤치마크 없음 사유: 점수에 쓸 벤치마크 행(분양권 제외)이 지역에 0이면 `{code, reason}`(not_collected 실거래 수집 전 · presale_only 분양권 사례만 · no_sample 생활권·지역 전체 표본 0), 있으면 null. 화면 '벤치마크 없음(<reason>)'. **sample_n = 자기 생활권 표본만**(대체 행·분양권 제외 — 대체까지 세면 '표본 3 미만' 배지가 빠지던 N-M4), substituted = 자기 표본 0 → 지역 전체 대체 | G3(API·G1·G6), G4(보고서 §5 사유 — 같은 함수 `app.api.benchmarks.benchmark_absence` 사용 권장) |
+| 6 | N-C3(F3 minor) | `job_run.json#/$defs/JobCreateName`, JobCreate.job_name | POST /jobs 로 등록할 수 있는 잡 = JobName − claim.reverify. claim.reverify 는 PATCH /claims/{id} 로만(같은 대상 검사·강등 우회 방지) → POST /jobs 는 422 | G3, 프론트(G5·G7 잡 등록 폼 타입). SourceStatus.retry(RetryHint).job_name 도 JobCreateName(POST /jobs 로 그대로 보내는 값) |
+| 7 | D10-7 | bearerAuth 설명 | 공유 링크 토큰은 화면 조회 GET 만 — `/ops/*`·`/jobs`·`/jobs/*` 는 GET 도 403. READONLY_TOKEN 은 모든 GET | G3 |
+
+### 마이그레이션·검증
+
+- `0006`: `claim.entity·entity_id·field` + `benchmark.snapshot_id`(FK·색인) + `fact_demotion` 테이블 + `checklist_item.kind` CHECK '사실 재확인'.
+  SQLite 는 batch(재생성 정의 고정), Postgres 는 ALTER. downgrade 는 fact_demotion 삭제 → '사실 재확인' 항목을 '법적 확인'으로 → CHECK·컬럼
+  되돌림(강등으로 비운 사실 값은 되돌리지 않는다 — 출처 행은 남는다). head → 0005 → head 왕복을 SQLite·Postgres 16(pgserver) 둘 다 테스트
+  (`tests/contracts/test_migrations.py::test_sqlite_0005_0006_roundtrip`, Postgres 같은 함수), autogenerate diff 0.
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.6`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
+
+### fixtures (R3b G1 — 계약 .6)
 
 매니페스트(`contracts/fixtures.sha256.json`) 사유: R3b G1: 호재 분류 payload 에 '호재 아님' 클래스(D10-6) — 합성 판정 녹화 재생성
 생성기(`tools/record_synth_judgments.py`)로만 다시 만들었다(classify 호재 단계 녹화의 hash 가 바뀜). 계약 스키마 변경 없음.

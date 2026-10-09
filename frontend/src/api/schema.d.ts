@@ -538,6 +538,14 @@ export interface paths {
          * @description 사람이 고친 문장으로 claim.reverify 잡을 등록한다(202 JobRun). api 는 판정기를 부르지 않는다 — worker 가 문장을 원자 주장으로 나눠
          *     원 주장의 근거로 verify 하고 parent_claim_id 로 연결된 새 주장 행을 만든다. 원 주장이 contradicted 가 아니거나, 이미 분할 재검증
          *     자식이 있거나, 같은 주장의 claim.reverify 잡이 queued·running 이면 409 conflict.
+         *
+         *     D10-3(계약 2026-10-09.6, R3 재리뷰 N-C3):
+         *     - 같은 대상만: 고친 문장의 원자 주장마다 원 주장 field 의 용어가 있고 다른 사실 필드 용어가 없어야 하며, 같은 지역의 다른 단지 이름만
+         *       가리키면 안 된다(문자열 대조) — 어기면 422 validation_error(loc body.text, 예시 claimTarget).
+         *     - 원 주장이 DB 사실에서 생성됐으면(ClaimView.entity·entity_id·field) 접수와 함께 그 사실을 강등한다(FactDemotion): 사실 테이블 값을
+         *       비우고 chosen 출처 행 = '확인 불가(검증 모순)', 체크리스트 '사실 재확인', change_event critical, 그 단지 rejudge 잡. 사람 확인
+         *       (POST /ops/human-checks, 같은 단지·같은 field) 또는 새 원문이 오면 복원한다.
+         *     - claim.reverify 잡은 이 경로로만 등록한다(POST /jobs 의 claim.reverify 는 422 — JobCreateName).
          */
         patch: operations["reviseClaim"];
         trace?: never;
@@ -657,6 +665,17 @@ export interface components {
                 note?: string | null;
             }[];
         };
+        /**
+         * BenchmarkAbsence
+         * @description 벤치마크 없음 사유(D9-2 '그래도 0 → 종합 미계산 + 사유 표시', R3 재리뷰 N-M3, 계약 2026-10-09.6). 지역에 점수에 쓸 벤치마크 행(분양권 제외)이 하나도 없을 때만 객체, 있으면 null. 화면(G1·G6)·보고서 표시 = '벤치마크 없음(<reason>)'. 이때 benchmark 성분은 미계산이고 종합 점수도 미계산이다(RA §6-4).
+         *     - code: not_collected = 지역 실거래(rtms)가 아직 없다(수집 전) · presale_only = 분양권 거래(입주 전) 사례만 있어 점수에서 제외 · no_sample = 실거래는 있으나 입주 후 실거래가 있는 과거 분양 사례가 생활권·지역 전체 모두 0.
+         *     - reason: 표시 문자열(한국어).
+         */
+        BenchmarkAbsence: {
+            /** @enum {string} */
+            code: "not_collected" | "presale_only" | "no_sample";
+            reason: string;
+        };
         /** BenchmarkInput */
         BenchmarkInput: {
             id?: number | null;
@@ -675,6 +694,10 @@ export interface components {
          */
         BenchmarkView: {
             id: number;
+            /** @description 이 행을 조립한 스냅샷(계약 2026-10-09.6, G1 요청 — 재조립이 발행 스냅샷이 인용한 행을 지우지 않게). null = 0006 이전 행·사람 입력(모든 스냅샷에 보인다). */
+            snapshot_id: number | null;
+            /** @description 지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. */
+            substitute: boolean;
             living_area: string | null;
             name: string;
             completed_year: number | null;
@@ -818,7 +841,7 @@ export interface components {
         };
         /**
          * ChecklistItem
-         * @description 체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상.
+         * @description 체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·새 원문으로 복원되면 done; 계약 2026-10-09.6).
          * @example {
          *       "id": 51,
          *       "complex_id": 7,
@@ -835,7 +858,7 @@ export interface components {
             complex_id: number | null;
             complex_name?: string | null;
             /** @enum {string} */
-            kind: "법적 확인" | "중도금" | "만료" | "공고 예상" | "계약";
+            kind: "법적 확인" | "중도금" | "만료" | "공고 예상" | "계약" | "사실 재확인";
             title: string;
             /** Format: date */
             due_date: string | null;
@@ -888,10 +911,16 @@ export interface components {
             parent_claim_id?: number | null;
             /** @description 같은 원문에서 나온 순서 */
             ordinal?: number | null;
+            /** @description 주장이 생성된 DB 사실의 테이블(field_provenance.entity — complex·complex_type·payment_terms). P9 가 사실 문장에서 만든 주장만 채운다(계약 2026-10-09.6, D10-3). null = 사실에서 생성되지 않은 주장(보고서 문장 등)이거나 0006 이전 행. */
+            entity?: string | null;
+            /** @description 그 사실 행 id(field_provenance.entity_id). */
+            entity_id?: number | null;
+            /** @description 그 사실 필드(field_provenance.field — move_in_ym·resale_months·residency_months·down_payment_pct·max_price_won 등). */
+            field?: string | null;
         };
         /**
          * ClaimPatch
-         * @description PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict.
+         * @description PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict. 같은 대상만 허용한다(D10-3): 원자 주장마다 원 주장 field 의 용어(예 resale_months → '전매')가 있고 다른 사실 필드의 용어가 없어야 하며, 같은 지역의 다른 단지 이름만 가리키면 안 된다(문자열 대조, 판단 아님) — 어기면 422 validation_error(loc body.text). 원 주장이 DB 사실에서 생성됐으면 그 사실을 강등하고(FactDemotion: 값 비움·'확인 불가(검증 모순)'·체크리스트 '사실 재확인'·rejudge 잡) 사람 확인 또는 새 원문이 오면 복원한다(D10-3, 계약 2026-10-09.6).
          */
         ClaimPatch: {
             text: string;
@@ -937,6 +966,15 @@ export interface components {
             child_count: number;
             remaining: boolean;
             pending_job_id: number | null;
+            /** @description 주장이 생성된 DB 사실의 테이블(field_provenance.entity — complex·complex_type·payment_terms). P9 가 사실 문장에서 만든 주장만 채운다(계약 2026-10-09.6, D10-3). null = 사실에서 생성되지 않은 주장(보고서 문장 등)이거나 0006 이전 행. */
+            entity: string | null;
+            /** @description 그 사실 행 id(field_provenance.entity_id). */
+            entity_id: number | null;
+            /** @description 그 사실 필드(field_provenance.field — move_in_ym·resale_months·residency_months·down_payment_pct·max_price_won 등). */
+            field: string | null;
+            /** @description field 의 표시 이름(예 '전매제한 기간'). 대상 없음이면 null. */
+            field_name: string | null;
+            demotion: components["schemas"]["FactDemotion"] | null;
         };
         /**
          * ClassifyItem
@@ -1733,6 +1771,11 @@ export interface components {
             /** @enum {string|null} */
             track: "A" | "B" | null;
             judge_scope: components["schemas"]["JudgeScope"];
+            /**
+             * @description D10-1(계약 2026-10-09.6): judge_scope·rank·total 은 스냅샷 score_run 저장값. 현재 계산 범위가 저장값과 다르면 true('재판정 필요' 배지). 없으면 false.
+             * @default false
+             */
+            rejudge_needed?: boolean;
             intake: components["schemas"]["Intake"] | null;
             price_low: components["schemas"]["Fact"];
             price_high: components["schemas"]["Fact"];
@@ -1960,6 +2003,8 @@ export interface components {
          *       "scenario_code": "base",
          *       "scenario_name": "기본",
          *       "degraded": false,
+         *       "rejudge_needed": false,
+         *       "benchmark_absence": null,
          *       "score_run_id": 88,
          *       "weights": {
          *         "p10": 0.35,
@@ -2049,6 +2094,13 @@ export interface components {
             scenario_code: string | null;
             scenario_name: string;
             degraded: boolean;
+            /**
+             * @description D10-1(계약 2026-10-09.6): top5·KPI 는 이 스냅샷 score_run 저장값. 현재 계산 범위가 저장값과 다른 단지가 하나라도 있으면 true — 전역 '재판정 필요' 배지 + rejudge 잡 제안. 없으면 false.
+             * @default false
+             */
+            rejudge_needed?: boolean;
+            /** @description 벤치마크 없음 사유(market.json BenchmarkAbsence, N-M3·D9-2). null = 벤치마크 있음. G1 은 '벤치마크 없음(<reason>)'을 표시한다(종합 미계산의 이유). */
+            benchmark_absence: components["schemas"]["BenchmarkAbsence"] | null;
             score_run_id: number | null;
             weights: components["schemas"]["Weights"];
             kpis: components["schemas"]["Kpis"];
@@ -2501,7 +2553,7 @@ export interface components {
          *     필드
          *     - v: 값. number | string | null. 금액은 원 단위 정수, 면적은 ㎡, 확률·비율은 0~1 소수, 퍼센트 값(gap% 등)은 unit=pct 인 숫자(예: -5.2 = -5.2%). 날짜는 'YYYY-MM-DD', 연월은 'YYYY-MM'. 참/거짓 성격의 공고 항목은 표시용 한국어 문자열로 담는다(예: regulated='비규제', price_cap='적용', resale_release_on_registration='등기 시 해제').
          *     - label: Label 5종 중 하나. label='확인 불가'이면 v=null 이어도 되고 reason 필수. 그 밖의 라벨이면 v와 prov는 null일 수 없다(값이 없으면 라벨은 '확인 불가').
-         *     - reason: 라벨 보조 문자열. '확인 불가'의 사유("403", "DNS", "공고 전", "스캔", "출처 누락", "미판정" 등) 또는 다른 라벨의 한정어("대체·보정 c=0.015", "OCR", "표본 2", "주민등록 세대", "산술").
+         *     - reason: 라벨 보조 문자열. '확인 불가'의 사유("403", "DNS", "공고 전", "스캔", "출처 누락", "미판정", "검증 모순" 등 — "검증 모순" = contradicted 주장 수정으로 강등된 사실, D10-3·계약 2026-10-09.6) 또는 다른 라벨의 한정어("대체·보정 c=0.015", "OCR", "표본 2", "주민등록 세대", "산술").
          *     - prov: 출처 id. GET /provenance/{prov} 로 출처 패널을 연다. 접두어: fp_=field_provenance 행, sc_=score_component 행, st_=score_total 행, jl_=judgment_log seq, hc_=human_check 행, rd_=raw_document 행, cs_=comparable_set 행. label='확인 불가'일 때만 null 허용.
          *     - checked_at: 확인일 'YYYY-MM-DD'. 모를 때만 null.
          *     - unit: 표시 단위 힌트(FactCell이 억·만·% 포맷에 사용). 생략 시 원값 그대로 표시.
@@ -2573,6 +2625,29 @@ export interface components {
              */
             human?: boolean;
         } & (unknown & unknown);
+        /**
+         * FactDemotion
+         * @description D10-3 사실 강등(계약 2026-10-09.6, R3 재리뷰 N-C3). contradicted 주장이 DB 사실에서 생성됐고 사람이 문장을 고치면(PATCH /claims/{id}) 그 사실 필드를 강등한다: 사실 테이블 값을 비우고(점수·요건 입력에서 빠짐) chosen 출처 행 = 라벨 '확인 불가' + reason '검증 모순'(화면 '확인 불가(검증 모순)'), 원래 출처 행은 chosen=false 로 보관, 체크리스트 '사실 재확인' 항목, change_event(critical, triggers_rejudge), 그 단지 rejudge 잡. 복원: 사람 확인(POST /ops/human-checks 같은 단지·같은 field → 그 값이 사실, 출처 hc_) 또는 새 원문(정규화가 다른 원문 출처를 chosen 으로 올림) — status 'restored', 체크리스트 항목 done.
+         */
+        FactDemotion: {
+            id: number;
+            claim_id: number;
+            entity: string;
+            entity_id: number;
+            field: string;
+            /** @enum {string} */
+            status: "demoted" | "restored";
+            /** @constant */
+            label: "확인 불가";
+            /** @constant */
+            reason: "검증 모순";
+            created_at: string;
+            restored_at: string | null;
+            /** @enum {string|null} */
+            restored_by: "human_check" | "new_source" | null;
+            checklist_item_id: number | null;
+            rejudge_job_id: number | null;
+        };
         /**
          * FieldCandidate
          * @description 필드 값 후보 1개 (RA §4-3 Parser 출력). 원문 발췌(excerpt) 필수 — 출처 없는 숫자는 하나도 남기지 않는다.
@@ -2870,14 +2945,20 @@ export interface components {
         } & (unknown & unknown);
         /**
          * JobCreate
-         * @description POST /jobs 본문. payload는 job_name별 스키마로 검증한다(불일치 422). kind는 서버가 manual(재판정이면 rejudge)로 채운다.
+         * @description POST /jobs 본문. payload는 job_name별 스키마로 검증한다(불일치 422). kind는 서버가 manual(재판정이면 rejudge)로 채운다. job_name 은 JobCreateName — claim.reverify 는 PATCH /claims/{id} 로만 등록한다(같은 대상 검사·사실 강등을 건너뛰지 않게, R3 재리뷰 N-C3·계약 2026-10-09.6) → POST /jobs 로 넣으면 422.
          */
         JobCreate: {
-            job_name: components["schemas"]["JobName"];
+            job_name: components["schemas"]["JobCreateName"];
             payload: {
                 [key: string]: unknown;
             };
-        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        /**
+         * JobCreateName
+         * @description POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).
+         * @enum {string}
+         */
+        JobCreateName: "collect.daily" | "collect.weekly" | "rejudge" | "report" | "snapshot.publish" | "reference.refresh" | "region.bootstrap";
         /**
          * JobName
          * @description 잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
@@ -3393,10 +3474,15 @@ export interface components {
          *       "benchmark_flags": [
          *         {
          *           "living_area": "la_4",
-         *           "sample_n": 1,
-         *           "no_recent_sale_case": false
+         *           "sample_n": 0,
+         *           "no_recent_sale_case": true,
+         *           "substituted": false
          *         }
          *       ],
+         *       "benchmark_absence": {
+         *         "code": "no_sample",
+         *         "reason": "입주 후 실거래가 있는 과거 분양 사례 없음(생활권·지역 전체 표본 0)"
+         *       },
          *       "supply": [],
          *       "move_in_markers": [],
          *       "unsold": [
@@ -3437,10 +3523,12 @@ export interface components {
                 name: string;
             }[];
             benchmarks: components["schemas"]["BenchmarkView"][];
+            benchmark_absence: components["schemas"]["BenchmarkAbsence"] | null;
             benchmark_flags: {
                 living_area: string;
                 sample_n: number;
                 no_recent_sale_case: boolean;
+                substituted: boolean;
             }[];
             supply: components["schemas"]["SupplyPoint"][];
             move_in_markers: {
@@ -4883,6 +4971,7 @@ export interface components {
          *     - delta_rerank: 이전 run 대비 rerank **점수(0~10) 차**(§6-5 — 고정 앵커의 이번 rerank 성분 점수 − 이전 호출 점수, unit 'score', R3 minor 25·계약 2026-10-09.4).
          *     - decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).
          *     - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).
+         *     - rejudge_needed: 저장 범위 ≠ 현재 계산 범위면 true(D10-1, 계약 2026-10-09.6 — 선택, 기본 false). judge_scope·rank·total 은 항상 저장값.
          * @example {
          *       "complex_id": 2,
          *       "name": "엘리프 검단 포레듀",
@@ -5049,6 +5138,11 @@ export interface components {
             intake: components["schemas"]["Intake"] | null;
             decision?: components["schemas"]["DecisionBadge"] | null;
             judge_scope: components["schemas"]["JudgeScope"];
+            /**
+             * @description D10-1(계약 2026-10-09.6): 이 행의 범위·순위·총점·성분은 그 스냅샷 score_run 의 **저장값**이다. 현재 사실로 계산한 판정 범위(analysis/scope.py)가 저장된 범위와 다르면 true — 화면은 '재판정 필요' 배지 + rejudge 잡 제안만 하고 저장값과 현재값을 한 행에 섞지 않는다. 없으면 false.
+             * @default false
+             */
+            rejudge_needed?: boolean;
         };
         /**
          * ScoreRunResult
@@ -6075,7 +6169,7 @@ export interface components {
                 raw_document_id: number | null;
             }[];
             retry: {
-                job_name: components["schemas"]["JobName"];
+                job_name: components["schemas"]["JobCreateName"];
                 payload: {
                     [key: string]: unknown;
                 };
@@ -7232,7 +7326,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            422: components["responses"]["ValidationError"];
+            /** @description 본문 검증 실패 또는 같은 대상(section·complex·field)이 아닌 문장(D10-3) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             500: components["responses"]["InternalError"];
         };
     };

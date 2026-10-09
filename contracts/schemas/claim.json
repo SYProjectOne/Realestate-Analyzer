@@ -16,7 +16,10 @@
     "verify_status": { "description": "verify 전이면 null", "type": ["string", "null"], "enum": ["verified", "contradicted", "unsupported", "review", null] },
     "judgment_seq": { "type": ["integer", "null"] },
     "parent_claim_id": { "type": ["integer", "null"] },
-    "ordinal": { "description": "같은 원문에서 나온 순서", "type": ["integer", "null"], "minimum": 0 }
+    "ordinal": { "description": "같은 원문에서 나온 순서", "type": ["integer", "null"], "minimum": 0 },
+    "entity": { "description": "주장이 생성된 DB 사실의 테이블(field_provenance.entity — complex·complex_type·payment_terms). P9 가 사실 문장에서 만든 주장만 채운다(계약 2026-10-09.6, D10-3). null = 사실에서 생성되지 않은 주장(보고서 문장 등)이거나 0006 이전 행.", "type": ["string", "null"], "maxLength": 32 },
+    "entity_id": { "description": "그 사실 행 id(field_provenance.entity_id).", "type": ["integer", "null"] },
+    "field": { "description": "그 사실 필드(field_provenance.field — move_in_ym·resale_months·residency_months·down_payment_pct·max_price_won 등).", "type": ["string", "null"], "maxLength": 64 }
   },
   "$defs": {
     "ClaimView": {
@@ -24,7 +27,7 @@
       "description": "G7 주장 목록 1행 — GET /snapshots/{sid}/claims (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' → contradicted 목록 표시 → 문장 수정 → 원자 분할 재검증).\n- remaining=true: 분할 재검증(자식 주장)이 없는 contradicted — 스냅샷 publish·보고서 생성을 막는 주장(judge.claims.remaining_contradicted 와 같은 규칙).\n- child_count: parent_claim_id 로 이 주장을 가리키는 자식 주장 수. pending_job_id: 이 주장의 claim.reverify 잡 중 queued·running 인 것(없으면 null) — 있으면 수정 버튼을 끈다.\n- prov: 판정 로그 출처(jl_<judgment_seq>, verify 전이면 null) — 출처 패널로 연다.\n- id·snapshot_id·complex_id·parent_claim_id·judgment_seq·ordinal·child_count·pending_job_id 는 비수치 메타(식별자·개수)다.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "snapshot_id", "section", "complex_id", "complex_name", "text", "evidence_text", "verify_status", "judgment_seq", "prov", "parent_claim_id", "ordinal", "child_count", "remaining", "pending_job_id"],
+      "required": ["id", "snapshot_id", "section", "complex_id", "complex_name", "text", "evidence_text", "verify_status", "judgment_seq", "prov", "parent_claim_id", "ordinal", "child_count", "remaining", "pending_job_id", "entity", "entity_id", "field", "field_name", "demotion"],
       "properties": {
         "id": { "type": "integer" },
         "snapshot_id": { "type": "integer" },
@@ -40,12 +43,39 @@
         "ordinal": { "type": ["integer", "null"], "minimum": 0, "x-nonfact": "같은 원문에서 나온 순서(정렬 키)" },
         "child_count": { "type": "integer", "minimum": 0, "x-nonfact": "자식 주장 개수(표시용 메타, 출처 데이터 아님)" },
         "remaining": { "type": "boolean" },
-        "pending_job_id": { "type": ["integer", "null"] }
+        "pending_job_id": { "type": ["integer", "null"] },
+        "entity": { "description": "주장이 생성된 DB 사실의 테이블(field_provenance.entity — complex·complex_type·payment_terms). P9 가 사실 문장에서 만든 주장만 채운다(계약 2026-10-09.6, D10-3). null = 사실에서 생성되지 않은 주장(보고서 문장 등)이거나 0006 이전 행.", "type": ["string", "null"], "maxLength": 32 },
+        "entity_id": { "description": "그 사실 행 id(field_provenance.entity_id).", "type": ["integer", "null"] },
+        "field": { "description": "그 사실 필드(field_provenance.field — move_in_ym·resale_months·residency_months·down_payment_pct·max_price_won 등).", "type": ["string", "null"], "maxLength": 64 },
+        "field_name": { "description": "field 의 표시 이름(예 '전매제한 기간'). 대상 없음이면 null.", "type": ["string", "null"] },
+        "demotion": { "anyOf": [{ "$ref": "#/$defs/FactDemotion" }, { "type": "null" }] }
+      }
+    },
+    "FactDemotion": {
+      "title": "FactDemotion",
+      "description": "D10-3 사실 강등(계약 2026-10-09.6, R3 재리뷰 N-C3). contradicted 주장이 DB 사실에서 생성됐고 사람이 문장을 고치면(PATCH /claims/{id}) 그 사실 필드를 강등한다: 사실 테이블 값을 비우고(점수·요건 입력에서 빠짐) chosen 출처 행 = 라벨 '확인 불가' + reason '검증 모순'(화면 '확인 불가(검증 모순)'), 원래 출처 행은 chosen=false 로 보관, 체크리스트 '사실 재확인' 항목, change_event(critical, triggers_rejudge), 그 단지 rejudge 잡. 복원: 사람 확인(POST /ops/human-checks 같은 단지·같은 field → 그 값이 사실, 출처 hc_) 또는 새 원문(정규화가 다른 원문 출처를 chosen 으로 올림) — status 'restored', 체크리스트 항목 done.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim_id", "entity", "entity_id", "field", "status", "label", "reason", "created_at", "restored_at", "restored_by", "checklist_item_id", "rejudge_job_id"],
+      "properties": {
+        "id": { "type": "integer" },
+        "claim_id": { "type": "integer" },
+        "entity": { "type": "string", "maxLength": 32 },
+        "entity_id": { "type": "integer" },
+        "field": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["demoted", "restored"] },
+        "label": { "type": "string", "const": "확인 불가" },
+        "reason": { "type": "string", "const": "검증 모순" },
+        "created_at": { "type": "string" },
+        "restored_at": { "type": ["string", "null"] },
+        "restored_by": { "type": ["string", "null"], "enum": ["human_check", "new_source", null] },
+        "checklist_item_id": { "type": ["integer", "null"] },
+        "rejudge_job_id": { "type": ["integer", "null"] }
       }
     },
     "ClaimPatch": {
       "title": "ClaimPatch",
-      "description": "PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict.",
+      "description": "PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict. 같은 대상만 허용한다(D10-3): 원자 주장마다 원 주장 field 의 용어(예 resale_months → '전매')가 있고 다른 사실 필드의 용어가 없어야 하며, 같은 지역의 다른 단지 이름만 가리키면 안 된다(문자열 대조, 판단 아님) — 어기면 422 validation_error(loc body.text). 원 주장이 DB 사실에서 생성됐으면 그 사실을 강등하고(FactDemotion: 값 비움·'확인 불가(검증 모순)'·체크리스트 '사실 재확인'·rejudge 잡) 사람 확인 또는 새 원문이 오면 복원한다(D10-3, 계약 2026-10-09.6).",
       "type": "object",
       "additionalProperties": false,
       "required": ["text"],

@@ -5,13 +5,13 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, CheckConstraint, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-from app.models.enums import JUDGE_TOOL, JUDGMENT_STATUS, VERIFY_STATUS, in_check
+from app.models.enums import DEMOTION_RESTORED_BY, JUDGE_TOOL, JUDGMENT_STATUS, VERIFY_STATUS, in_check
 
-__all__ = ["Claim", "JudgmentLog"]
+__all__ = ["Claim", "FactDemotion", "JudgmentLog"]
 
 
 class JudgmentLog(Base):
@@ -64,3 +64,42 @@ class Claim(Base):
     judgment_seq: Mapped[int | None] = mapped_column(ForeignKey("judgment_log.seq"))
     parent_claim_id: Mapped[int | None] = mapped_column(ForeignKey("claim.id"))
     ordinal: Mapped[int | None] = mapped_column(Integer)
+    # 0006 (계약 2026-10-09.6, D10-3): 주장이 생성된 DB 사실(field_provenance 의 entity·entity_id·field).
+    # 사실 문장이 아니면 NULL
+    entity: Mapped[str | None] = mapped_column(String(32))
+    entity_id: Mapped[int | None] = mapped_column(Integer)
+    field: Mapped[str | None] = mapped_column(String(64))
+
+
+class FactDemotion(Base):
+    """D10-3 사실 강등 1건 (0006, 계약 2026-10-09.6 — R3 재리뷰 N-C3).
+
+    contradicted 주장(DB 사실에서 생성)의 문장을 사람이 고치면(PATCH /claims/{id}) 그 사실 필드를
+    강등한다: 사실 테이블 값을 비우고, ``demotion_fp_id`` 행(라벨 '확인 불가', reason '검증 모순')을
+    chosen 으로, 원래 chosen 행(``original_fp_id``)은 chosen=false 로 보관한다.
+    복원(``restored_at``·``restored_by``)은 사람 확인(human_check) 또는 새 원문(정규화가 다른 원문
+    출처를 chosen 으로 올림 — ``new_source``).
+    """
+
+    __tablename__ = "fact_demotion"
+    __table_args__ = (
+        Index("ix_fact_demotion_entity_entity_id_field", "entity", "entity_id", "field"),
+        CheckConstraint(in_check("restored_by", DEMOTION_RESTORED_BY), name="restored_by"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claim_id: Mapped[int] = mapped_column(ForeignKey("claim.id"), index=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("snapshot.id"))
+    complex_id: Mapped[int | None] = mapped_column(ForeignKey("complex.id"))
+    entity: Mapped[str] = mapped_column(String(32))
+    entity_id: Mapped[int] = mapped_column(Integer)
+    field: Mapped[str] = mapped_column(String(64))
+    original_fp_id: Mapped[int | None] = mapped_column(ForeignKey("field_provenance.id"))
+    demotion_fp_id: Mapped[int | None] = mapped_column(ForeignKey("field_provenance.id"))
+    original_value_text: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(32))
+    restored_at: Mapped[str | None] = mapped_column(String(32))
+    restored_by: Mapped[str | None] = mapped_column(String(16))
+    human_check_id: Mapped[int | None] = mapped_column(ForeignKey("human_check.id"))
+    checklist_item_id: Mapped[int | None] = mapped_column(ForeignKey("checklist_item.id"))
+    rejudge_job_id: Mapped[int | None] = mapped_column(Integer)

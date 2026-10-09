@@ -60,6 +60,9 @@ class Benchmark(Base):
     peak_ym: Mapped[str | None] = mapped_column(String(7))
     is_presale: Mapped[bool] = mapped_column(Boolean, server_default=false())
     note: Mapped[str | None] = mapped_column(Text)
+    # 0006 (계약 2026-10-09.6, G1 요청): 이 행을 조립한 스냅샷 — 재조립이 발행 스냅샷이 인용한 행을
+    # 지우지 않게. NULL = 이전 행·사람 입력
+    snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("snapshot.id"), index=True)
 
 
 class RtmsTrade(Base):

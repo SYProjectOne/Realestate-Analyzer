@@ -8,6 +8,8 @@
     "scenario_code": "base",
     "scenario_name": "기본",
     "degraded": false,
+    "rejudge_needed": false,
+    "benchmark_absence": null,
     "score_run_id": 88,
     "weights": {
       "p10": 0.35,

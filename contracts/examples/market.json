@@ -26,6 +26,8 @@
     "benchmarks": [
       {
         "id": 1,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "힐스테이트 송도 더스카이",
         "completed_year": 2024,
@@ -105,6 +107,8 @@
       },
       {
         "id": 2,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "더샵 송도 프라임뷰 F20",
         "completed_year": 2022,
@@ -184,6 +188,8 @@
       },
       {
         "id": 3,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "송도자이 크리스탈오션",
         "completed_year": 2024,
@@ -263,6 +269,8 @@
       },
       {
         "id": 4,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "송도자이 더 스타",
         "completed_year": 2024,
@@ -342,6 +350,8 @@
       },
       {
         "id": 5,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "힐스테이트 레이크 송도 4차",
         "completed_year": 2025,
@@ -421,6 +431,8 @@
       },
       {
         "id": 6,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "송도 럭스오션 SK뷰",
         "completed_year": 2025,
@@ -500,6 +512,8 @@
       },
       {
         "id": 7,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_1",
         "name": "송도자이풍경채 그라노블(분양권)",
         "completed_year": null,
@@ -579,6 +593,8 @@
       },
       {
         "id": 8,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_2",
         "name": "검단 금호어울림 센트럴(원당)",
         "completed_year": 2021,
@@ -658,6 +674,8 @@
       },
       {
         "id": 9,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_2",
         "name": "힐스테이트 신검단 센트럴(불로)",
         "completed_year": 2025,
@@ -737,6 +755,8 @@
       },
       {
         "id": 10,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_2",
         "name": "롯데캐슬 넥스티엘 RC1(원당)",
         "completed_year": 2026,
@@ -816,6 +836,8 @@
       },
       {
         "id": 11,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_4",
         "name": "한강메트로자이 2단지(걸포)",
         "completed_year": 2020,
@@ -896,6 +918,8 @@
       },
       {
         "id": 12,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_4",
         "name": "힐스테이트 리버시티 1단지(고촌)",
         "completed_year": 2020,
@@ -976,6 +1000,8 @@
       },
       {
         "id": 13,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_4",
         "name": "고촌 센트럴자이(후분양)",
         "completed_year": 2024,
@@ -1055,6 +1081,8 @@
       },
       {
         "id": 14,
+        "snapshot_id": 12,
+        "substitute": false,
         "living_area": "la_4",
         "name": "김포 북변 우미린 파크리브(분양권)",
         "completed_year": null,
@@ -1133,26 +1161,31 @@
         "note": "마이너스 프리미엄 추정 — 옵션·계약조건 미반영 가능"
       }
     ],
+    "benchmark_absence": null,
     "benchmark_flags": [
       {
         "living_area": "la_1",
         "sample_n": 6,
-        "no_recent_sale_case": true
+        "no_recent_sale_case": true,
+        "substituted": false
       },
       {
         "living_area": "la_2",
         "sample_n": 3,
-        "no_recent_sale_case": true
+        "no_recent_sale_case": true,
+        "substituted": false
       },
       {
         "living_area": "la_3",
         "sample_n": 0,
-        "no_recent_sale_case": true
+        "no_recent_sale_case": true,
+        "substituted": false
       },
       {
         "living_area": "la_4",
         "sample_n": 3,
-        "no_recent_sale_case": false
+        "no_recent_sale_case": false,
+        "substituted": false
       }
     ],
     "supply": [
