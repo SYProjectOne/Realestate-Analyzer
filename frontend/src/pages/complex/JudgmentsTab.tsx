@@ -1,7 +1,7 @@
 import type { JudgmentEnvelope } from '@/api/types';
-import { Badge, CachedBadge, EmptyState } from '@/components';
+import { Badge, CachedBadge, EmptyState, MetaText, MetaValue } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatConfidence, formatDate, formatNumber } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { enumText, idText, isUnresolved, tdClass, thClass } from '../_shared';
 
 const COLS = ['seq', 'tool', 'purpose', 'status', 'confidence', 'duration', 'createdAt'] as const;
@@ -56,12 +56,22 @@ export function JudgmentTable({
                   {env.error_text ? <span className="block text-xs">{env.error_text}</span> : null}
                 </td>
                 <td className={tdClass}>
-                  {env.confidence === null ? t('empty.unknown') : formatConfidence(env.confidence)}
+                  {env.confidence === null ? (
+                    t('empty.unknown')
+                  ) : (
+                    <MetaValue kind="confidence" value={env.confidence} as="confidence" />
+                  )}
                 </td>
                 <td className={tdClass}>
-                  {env.duration_ms === null
-                    ? t('empty.unknown')
-                    : t('page.G3.judgment.ms', { ms: formatNumber(env.duration_ms) })}
+                  {env.duration_ms === null ? (
+                    t('empty.unknown')
+                  ) : (
+                    <MetaText
+                      kind="duration"
+                      k="page.G3.judgment.ms"
+                      params={{ ms: { n: env.duration_ms, as: 'number' } }}
+                    />
+                  )}
                 </td>
                 <td className={tdClass}>{formatDate(env.created_at, asof)}</td>
               </tr>

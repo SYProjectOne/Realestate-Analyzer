@@ -1,7 +1,7 @@
 import { Badge } from '@/components/Badge';
+import { MetaValue } from '@/components/MetaValue';
 import { UnstableBadge } from '@/components/UnstableBadge';
 import { t } from '@/i18n';
-import { formatRank } from '@/lib/format';
 import { ChartFrame } from '../ChartFrame';
 import { EChart } from '../EChart';
 import { useChartPalette } from '../palette';
@@ -47,7 +47,7 @@ export function C10Sensitivity({ data, height = 240 }: C10SensitivityProps) {
               </th>
               {positions.map((p) => (
                 <th key={p} scope="col" className="border-b border-border px-2 py-1 text-muted">
-                  {formatRank(p)}
+                  <MetaValue kind="rank" value={p} as="rank" />
                 </th>
               ))}
               <th scope="col" className="border-b border-border px-2 py-1 text-muted">
@@ -75,7 +75,11 @@ export function C10Sensitivity({ data, height = 240 }: C10SensitivityProps) {
                     >
                       {x ? x.name : ''}
                       {x && x.rank !== null && x.rank !== p ? (
-                        <span className="text-muted">{` (${formatRank(x.rank)})`}</span>
+                        <span className="text-muted">
+                          {' ('}
+                          <MetaValue kind="rank" value={x.rank} as="rank" />
+                          {')'}
+                        </span>
                       ) : null}
                     </td>
                   );

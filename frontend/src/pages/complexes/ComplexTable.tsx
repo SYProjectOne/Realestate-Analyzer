@@ -9,9 +9,9 @@ import { observeElementRect, useVirtualizer, type Virtualizer } from '@tanstack/
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
-import { Badge, FactCell, IntakeBadge, TieBadge, UnstableBadge } from '@/components';
+import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatDate, formatRank } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
 import { nextSort, type SortKey } from './params';
 
@@ -186,7 +186,9 @@ export function ComplexTable({
           <span className="inline-flex flex-wrap items-center gap-1">
             <FactCell fact={row.original.total} unit="score" />
             {row.original.rank !== null ? (
-              <Badge tone="neutral">{formatRank(row.original.rank)}</Badge>
+              <Badge tone="neutral">
+                <MetaValue kind="rank" value={row.original.rank} as="rank" />
+              </Badge>
             ) : null}
             <TieBadge tie={row.original.tie_group !== null} />
             <UnstableBadge unstable={row.original.unstable} />

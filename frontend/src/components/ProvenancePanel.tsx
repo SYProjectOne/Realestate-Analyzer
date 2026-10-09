@@ -4,11 +4,12 @@ import { apiFetch } from '@/api/client';
 import { useProvenance } from '@/api/hooks';
 import { t, tDynamic } from '@/i18n';
 import type { Provenance, ProvenanceConflict } from '@/lib/contract';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { Badge } from './Badge';
 import { EmptyState } from './EmptyState';
 import { ExternalLink } from './ExternalLink';
 import { LabelBadge } from './LabelBadge';
+import { MetaText, MetaValue } from './MetaValue';
 import { RawDocumentPreview } from './RawDocumentPreview';
 import { ProvenanceContext } from './provenanceContext';
 
@@ -82,12 +83,8 @@ function ConflictItem({
         </Badge>
         <LabelBadge label={item.label} reason={item.reason} checkedAt={item.checked_at} />
         <span className="text-xs text-muted">
-          {[
-            item.source_kind ?? null,
-            t('provenance.sourceRank', { rank: formatNumber(item.source_rank) }),
-          ]
-            .filter(Boolean)
-            .join(' · ')}
+          {item.source_kind ? `${item.source_kind} · ` : null}
+          <MetaText kind="rank" k="provenance.sourceRank" params={{ rank: item.source_rank }} />
         </span>
       </div>
       {item.excerpt ? (
@@ -172,16 +169,26 @@ function ProvenanceBody({
         <>
           <dt className="text-muted">{t('provenance.source')}</dt>
           <dd>
-            {data.source_rank !== null && data.source_rank !== undefined
-              ? `${data.source_kind} · ${t('provenance.sourceRank', { rank: formatNumber(data.source_rank) })}`
-              : data.source_kind}
+            {data.source_kind}
+            {data.source_rank !== null && data.source_rank !== undefined ? (
+              <>
+                {' · '}
+                <MetaText
+                  kind="rank"
+                  k="provenance.sourceRank"
+                  params={{ rank: data.source_rank }}
+                />
+              </>
+            ) : null}
           </dd>
         </>
       ) : null}
       {data.http_status !== null && data.http_status !== undefined ? (
         <>
           <dt className="text-muted">{t('provenance.httpStatus')}</dt>
-          <dd>{formatNumber(data.http_status)}</dd>
+          <dd>
+            <MetaValue kind="status" value={data.http_status} as="plain" />
+          </dd>
         </>
       ) : null}
       {data.formula_text ? (
@@ -193,7 +200,10 @@ function ProvenanceBody({
       {data.judgment_seq !== null && data.judgment_seq !== undefined ? (
         <>
           <dt className="text-muted">{t('provenance.judgment')}</dt>
-          <dd>{`#${formatNumber(data.judgment_seq)}`}</dd>
+          <dd>
+            {'#'}
+            <MetaValue kind="seq" value={data.judgment_seq} as="plain" />
+          </dd>
         </>
       ) : null}
       <dt className="text-muted">{t('provenance.excerpt')}</dt>

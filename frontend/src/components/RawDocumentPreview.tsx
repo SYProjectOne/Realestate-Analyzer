@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { previewKind, useDownload, useObjectUrl, type FetchedFile } from '@/api/download';
 import { rawDocumentRequest, useRawFile } from '@/api/hooks';
 import { t } from '@/i18n';
-import { formatCount } from '@/lib/format';
 import { EmptyState } from './EmptyState';
+import { MetaText } from './MetaValue';
 
 /** 텍스트 미리보기 최대 글자 수(큰 원문이 화면을 멈추지 않게) */
 const TEXT_PREVIEW_MAX = 200_000;
@@ -126,7 +126,7 @@ function TextPreview({ blob }: { blob: Blob }) {
     <>
       {truncated ? (
         <p className="text-xs text-muted">
-          {t('provenance.rawTruncated', { n: formatCount(TEXT_PREVIEW_MAX) })}
+          <MetaText kind="size" k="provenance.rawTruncated" params={{ n: TEXT_PREVIEW_MAX }} />
         </p>
       ) : null}
       <pre

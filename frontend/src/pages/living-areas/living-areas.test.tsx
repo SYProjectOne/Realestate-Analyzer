@@ -9,7 +9,7 @@ import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 import { moveCodes, validate, type DraftArea } from './index';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 const A: DraftArea = { key: 'a', id: 'la_1', name: '가', codes: ['1', '2'] };

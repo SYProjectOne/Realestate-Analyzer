@@ -11,13 +11,15 @@ import {
   FactCell,
   IntakeBadge,
   JobProgress,
+  MetaText,
+  MetaValue,
   TieBadge,
   UnstableBadge,
 } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount, formatDate, formatRank } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import {
   enumText,
   JudgeScopeBadge,
@@ -193,13 +195,16 @@ function KpiTiles({ data }: { data: Dashboard }) {
       key: 'freshness',
       title: t('page.G1.kpi.freshness'),
       body: <FactCell fact={kpis.data_freshness.last_success_at} unit="date" asof={asof} />,
+      // 수집 대상 개수 — 운영 메타(사실 아님)
       sub: (
-        <span>
-          {t('page.G1.kpi.freshnessSub', {
-            failing: formatCount(kpis.data_freshness.failing_sources),
-            stale: formatCount(kpis.data_freshness.stale_sources),
-          })}
-        </span>
+        <MetaText
+          kind="count"
+          k="page.G1.kpi.freshnessSub"
+          params={{
+            failing: kpis.data_freshness.failing_sources,
+            stale: kpis.data_freshness.stale_sources,
+          }}
+        />
       ),
     },
   ];
@@ -243,7 +248,11 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
         >
           {row.name}
         </Link>
-        {row.rank !== null ? <Badge tone="strong">{formatRank(row.rank)}</Badge> : null}
+        {row.rank !== null ? (
+          <Badge tone="strong">
+            <MetaValue kind="rank" value={row.rank} as="rank" />
+          </Badge>
+        ) : null}
       </div>
       {row.living_area_name ? (
         <span className="text-xs text-muted">{row.living_area_name}</span>
@@ -257,6 +266,14 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
         <dd>
           <FactCell fact={row.p10} unit="prob" />
         </dd>
+        {row.delta_rerank ? (
+          <>
+            <dt className="text-muted">{t('page.common.deltaRerank')}</dt>
+            <dd data-testid="top5-delta-rerank">
+              <FactCell fact={row.delta_rerank} unit="score" />
+            </dd>
+          </>
+        ) : null}
       </dl>
       <div className="flex flex-wrap gap-1">
         <IntakeBadge intake={row.intake} asof={asof} />

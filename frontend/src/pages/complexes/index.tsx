@@ -2,11 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useDownload } from '@/api/download';
 import { complexesCsvRequest, useComplexesProgressive } from '@/api/hooks';
-import { EmptyState } from '@/components';
+import { EmptyState, MetaText } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
 import { NoSnapshot, QueryState, useGlobalSearch, usePageContext } from '../_shared';
 import { ComplexTable } from './ComplexTable';
 import { FilterBar } from './FilterBar';
@@ -124,10 +123,11 @@ export function ComplexesPage() {
           {(page) => (
             <>
               <p className="text-sm text-muted" aria-live="polite">
-                {t('page.G2.count', {
-                  shown: formatCount(page.items.length),
-                  total: formatCount(page.total),
-                })}
+                <MetaText
+                  kind="count"
+                  k="page.G2.count"
+                  params={{ shown: page.items.length, total: page.total }}
+                />
                 {query.loadingMore ? (
                   <span role="status" className="ml-2">
                     {t('page.G2.loadingMore')}
@@ -189,9 +189,12 @@ function CompareTray({
       className="sticky bottom-10 flex flex-wrap items-center gap-2 rounded-sm border border-border bg-surface p-2 shadow-sm"
     >
       <span className="text-sm font-medium">{t('page.G2.tray')}</span>
-      <span className="text-sm text-muted">
-        {t('page.G2.trayCount', { n: formatCount(ids.length) })}
-      </span>
+      <MetaText
+        kind="count"
+        className="text-sm text-muted"
+        k="page.G2.trayCount"
+        params={{ n: ids.length }}
+      />
       {ids.map((id) => {
         const name = names.get(id) ?? `#${id}`;
         return (

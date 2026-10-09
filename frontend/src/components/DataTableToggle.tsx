@@ -1,9 +1,10 @@
 import { useId, useState } from 'react';
 import { t } from '@/i18n';
 import type { FactLike } from '@/lib/contract';
-import { formatValue, type FactUnit, type IsoDate } from '@/lib/format';
+import type { FactUnit, IsoDate } from '@/lib/format';
 import { EmptyState } from './EmptyState';
 import { FactCell } from './FactCell';
+import { MetaValue } from './MetaValue';
 
 export interface DataColumn {
   key: string;
@@ -53,7 +54,8 @@ function Cell({
     );
   }
   if (typeof cell === 'number')
-    return <span className="tabular-nums">{formatValue(cell, column.unit ?? 'number')}</span>;
+    // 차트 파생값(라벨 없는 숫자) — 비수치 메타로 표시한다. 사실은 Fact 셀로 온다.
+    return <MetaValue kind="derived" value={cell} as={column.unit ?? 'number'} />;
   return <span>{cell}</span>;
 }
 

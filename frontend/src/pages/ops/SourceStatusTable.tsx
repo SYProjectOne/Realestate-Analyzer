@@ -2,9 +2,9 @@ import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useOpsSources } from '@/api/hooks';
 import type { JobCreateName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState, ExternalLink } from '@/components';
+import { Badge, EmptyState, ExternalLink, MetaValue } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatCount, formatDate, formatNumber } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
 
 const COLS = [
@@ -71,7 +71,8 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                   {row.failing_targets.length > 0 ? (
                     <details className="mt-1 text-xs font-normal">
                       <summary className="cursor-pointer text-danger">
-                        {t('page.G7.src.failing')} · {formatCount(row.failing_targets.length)}
+                        {t('page.G7.src.failing')} ·{' '}
+                        <MetaValue kind="count" value={row.failing_targets.length} />
                       </summary>
                       <ul className="mt-1 flex flex-col gap-1">
                         {row.failing_targets.map((target) => (
@@ -108,14 +109,16 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                     <EmptyState inline />
                   )}
                 </td>
-                <td className={tdClass}>{formatCount(row.successes_7d)}</td>
+                <td className={tdClass}>
+                  <MetaValue kind="count" value={row.successes_7d} />
+                </td>
                 <td className={`${tdClass} ${failing ? 'font-semibold text-danger' : ''}`}>
-                  {formatCount(row.failures_7d)}
+                  <MetaValue kind="count" value={row.failures_7d} />
                 </td>
                 <td className={tdClass}>
-                  {row.last_http_status === null
-                    ? ''
-                    : formatNumber(row.last_http_status).replace(/,/g, '')}
+                  {row.last_http_status === null ? null : (
+                    <MetaValue kind="status" value={row.last_http_status} as="plain" />
+                  )}
                 </td>
                 <td className={`${tdClass} max-w-xs break-all text-xs`}>
                   {row.last_error_text ?? ''}

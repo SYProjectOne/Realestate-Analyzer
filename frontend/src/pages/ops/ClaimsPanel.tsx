@@ -4,9 +4,8 @@ import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { useClaims, useReviseClaim } from '@/api/hooks';
 import type { ClaimView } from '@/api/types';
-import { Badge, JobProgress, useOpenProvenance } from '@/components';
+import { Badge, JobProgress, MetaText, useOpenProvenance } from '@/components';
 import { t } from '@/i18n';
-import { formatCount } from '@/lib/format';
 import { enumText, idText, QueryState, Section, useGlobalSearch } from '../_shared';
 
 /**
@@ -88,7 +87,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
         ) : null}
         {split ? (
           <Badge tone="muted">
-            {t('page.G7.claims.split', { n: formatCount(claim.child_count) })}
+            <MetaText kind="count" k="page.G7.claims.split" params={{ n: claim.child_count }} />
           </Badge>
         ) : null}
         {claim.field_name ? (

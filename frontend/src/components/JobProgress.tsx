@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useJob } from '@/api/hooks';
 import { t, tDynamic } from '@/i18n';
 import type { JobLike } from '@/lib/contract';
-import { formatCount } from '@/lib/format';
+import { MetaText } from './MetaValue';
 
 export interface JobProgressViewProps {
   job: JobLike | undefined;
@@ -40,12 +40,12 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
         <span className="text-muted">{job.job_name}</span>
         <span>{status}</span>
         {progress ? (
-          <span className="tabular-nums text-muted">
-            {t('job.progress', {
-              done: formatCount(progress.done),
-              total: formatCount(progress.total),
-            })}
-          </span>
+          <MetaText
+            kind="progress"
+            className="tabular-nums text-muted"
+            k="job.progress"
+            params={{ done: progress.done, total: progress.total }}
+          />
         ) : null}
         {progress?.step ? (
           <span className="text-muted">{t('job.step', { step: progress.step })}</span>

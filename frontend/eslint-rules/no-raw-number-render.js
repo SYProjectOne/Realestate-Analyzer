@@ -31,9 +31,18 @@
  *  7. `formatNumber(<신뢰도·확률 같은 값>)` 금지 — confidence·prob 은 FactCell(Fact) 또는 formatConfidence·formatProb.
  *  8. `<FactCell showLabel={false}>` 금지 — 라벨은 항상 보인다(AGENTS 규칙 5).
  *
+ * R3c 강화(3차 리뷰 "FactCell 규칙이 lib/format 함수 허용"):
+ *  9. `src/lib/format.ts` 의 숫자 포맷 함수(formatNumber·formatCount·formatRank·formatWon …) 호출 금지 —
+ *     결과 문자열은 라벨 없는 숫자다. 사실은 <FactCell>, 사실이 아닌 숫자는 "비수치 메타"
+ *     <MetaValue>/<MetaText>(src/components/MetaValue.tsx) 또는 metaText()/metaNumber()(src/lib/meta.ts).
+ *     변수에 담았다가 렌더하는 우회도 막도록 JSX 밖 호출도 검사한다. 날짜(formatDate·formatDday)는 숫자 포맷이 아니다.
+ * 10. 사실 값(`….v`)을 메타로 넘기지 않는다: metaText/metaNumber 인자, <MetaValue value>, <MetaText params>.
+ * 11. metaText()/metaNumber() 를 JSX 자식에 바로 쓰지 않는다 — <MetaText>/<MetaValue>(data-meta 표시)를 쓴다.
+ *
  * 예외 파일(기본, 1~5·8): src/components/FactCell*, src/lib/format.ts, src/charts/**\/buildOption.ts
  * 예외 파일(6·7 — 호출 검사): src/lib/format.ts(포맷 구현)·*.test.* 만. buildOption.ts 의 툴팁·라벨 문자열도 검사한다.
- * 옵션 { exceptFiles: string[], exceptCallFiles: string[] } (정규식 소스)로 바꿀 수 있다.
+ * 예외 파일(9 — 숫자 포맷 호출): format.ts·FactCell*·MetaValue*·lib/meta.ts·charts/**\/buildOption.ts(축·툴팁)·*.test.*
+ * 옵션 { exceptFiles, exceptCallFiles, exceptFormatFiles: string[] } (정규식 소스)로 바꿀 수 있다.
  */
 
 import ts from 'typescript';
@@ -50,6 +59,37 @@ export const DEFAULT_EXCEPT_CALLS = [
   // 테스트는 기대 문자열을 만들 뿐 화면에 렌더하지 않는다
   String.raw`\.test\.[jt]sx?$`,
 ];
+
+/** 9(숫자 포맷 호출) 예외 — 포맷 구현·FactCell·비수치 메타·차트 축/툴팁·테스트 */
+export const DEFAULT_EXCEPT_FORMAT = [
+  String.raw`(^|[\\/])src[\\/]lib[\\/]format\.ts$`,
+  String.raw`(^|[\\/])src[\\/]lib[\\/]meta\.ts$`,
+  String.raw`(^|[\\/])src[\\/]components[\\/]FactCell[^\\/]*$`,
+  String.raw`(^|[\\/])src[\\/]components[\\/]MetaValue[^\\/]*$`,
+  String.raw`(^|[\\/])src[\\/]charts[\\/](.+[\\/])?buildOption\.tsx?$`,
+  String.raw`\.test\.[jt]sx?$`,
+];
+
+/** 9: 숫자를 문자열로 만드는 format.ts 함수(날짜·확인 불가 문구는 제외) */
+const NUMERIC_FORMATTERS = new Set([
+  'formatNumber',
+  'formatWon',
+  'formatEok',
+  'formatPercent',
+  'formatProb',
+  'formatArea',
+  'formatConfidence',
+  'formatScore',
+  'formatCount',
+  'formatRank',
+  'formatRatio',
+  'formatValue',
+  'formatFactValue',
+]);
+
+/** 10·11: 비수치 메타 함수·컴포넌트 */
+const META_FNS = new Set(['metaText', 'metaNumber']);
+const META_COMPONENTS = new Set(['MetaValue', 'MetaText']);
 
 /** 5: 화면 글자로 렌더되지 않는 props(위 머리말의 근거) */
 const SAFE_PROPS = new Set([
@@ -173,6 +213,7 @@ const rule = {
         properties: {
           exceptFiles: { type: 'array', items: { type: 'string' } },
           exceptCallFiles: { type: 'array', items: { type: 'string' } },
+          exceptFormatFiles: { type: 'array', items: { type: 'string' } },
         },
         additionalProperties: false,
       },
@@ -191,6 +232,12 @@ const rule = {
         '신뢰도·확률은 formatNumber 로 포맷하지 않는다 — FactCell(Fact) 또는 formatConfidence·formatProb 를 쓴다.',
       hiddenLabel:
         'FactCell 라벨을 숨기지 않는다(showLabel={false} 금지) — 모든 수치는 라벨과 함께 보인다.',
+      formatOutsideFact:
+        'lib/format 숫자 포맷 결과는 라벨 없는 숫자다 — 사실은 <FactCell>, 사실이 아닌 숫자는 <MetaValue>/<MetaText> 또는 metaText()(src/lib/meta.ts)를 쓴다.',
+      factAsMeta:
+        '사실 값(.v)을 비수치 메타로 보이지 않는다 — <FactCell fact> 로 라벨·출처와 함께 보인다.',
+      metaCallInJsx:
+        'metaText()/metaNumber() 를 JSX 자식에 바로 쓰지 않는다 — <MetaText>/<MetaValue>(data-meta)를 쓴다.',
     },
   },
 
@@ -200,10 +247,14 @@ const rule = {
     const callPatterns = (options.exceptCallFiles ?? DEFAULT_EXCEPT_CALLS).map(
       (source) => new RegExp(source),
     );
+    const formatPatterns = (options.exceptFormatFiles ?? DEFAULT_EXCEPT_FORMAT).map(
+      (source) => new RegExp(source),
+    );
     const filename = context.filename ?? context.getFilename();
     const skipJsx = patterns.some((re) => re.test(filename));
     const skipCalls = callPatterns.some((re) => re.test(filename));
-    if (skipJsx && skipCalls) return {};
+    const skipFormat = formatPatterns.some((re) => re.test(filename));
+    if (skipJsx && skipCalls && skipFormat) return {};
 
     const services = context.sourceCode?.parserServices ?? context.parserServices;
     const typed = Boolean(services?.program && services?.esTreeNodeToTSNodeMap);
@@ -238,6 +289,38 @@ const rule = {
       return (
         callee?.type === 'MemberExpression' && MANUAL_FORMAT_METHODS.has(propertyName(callee) ?? '')
       );
+    }
+
+    /** 11: metaText()/metaNumber() 호출 */
+    function isMetaCall(node) {
+      const expr = unwrap(node);
+      if (expr?.type !== 'CallExpression') return false;
+      const callee = unwrap(expr.callee);
+      return callee?.type === 'Identifier' && META_FNS.has(callee.name);
+    }
+
+    /** 10: 식 안에 사실 값 접근(`….v`)이 있는가 — 함수 본문은 보지 않는다 */
+    function findFactValue(node) {
+      if (!node || typeof node.type !== 'string') return null;
+      if (
+        node.type === 'ArrowFunctionExpression' ||
+        node.type === 'FunctionExpression' ||
+        node.type === 'JSXElement'
+      )
+        return null;
+      if (node.type === 'MemberExpression' && propertyName(node) === 'v') return node;
+      for (const key of Object.keys(node)) {
+        if (key === 'parent' || key === 'loc' || key === 'range') continue;
+        const child = node[key];
+        const list = Array.isArray(child) ? child : [child];
+        for (const item of list) {
+          if (item && typeof item === 'object' && typeof item.type === 'string') {
+            const found = findFactValue(item);
+            if (found) return found;
+          }
+        }
+      }
+      return null;
     }
 
     function heuristicNumeric(node) {
@@ -317,7 +400,9 @@ const rule = {
           return;
         case 'TemplateLiteral':
           for (const inner of expr.expressions) {
-            if (isManualFormat(inner)) context.report({ node: inner, messageId: 'manualFormat' });
+            if (isMetaCall(inner)) context.report({ node: inner, messageId: 'metaCallInJsx' });
+            else if (isManualFormat(inner))
+              context.report({ node: inner, messageId: 'manualFormat' });
             else if (isNumeric(inner)) context.report({ node: inner, messageId: 'rawNumber' });
           }
           return;
@@ -327,7 +412,8 @@ const rule = {
         case 'FunctionExpression':
           return;
         default:
-          if (isManualFormat(expr)) context.report({ node: expr, messageId: 'manualFormat' });
+          if (isMetaCall(expr)) context.report({ node: expr, messageId: 'metaCallInJsx' });
+          else if (isManualFormat(expr)) context.report({ node: expr, messageId: 'manualFormat' });
           else if (isNumeric(expr)) context.report({ node: expr, messageId: 'rawNumber' });
       }
     }
@@ -487,17 +573,39 @@ const rule = {
         }
         if (!value || value.type !== 'JSXExpressionContainer') return;
         if (value.expression.type === 'JSXEmptyExpression') return;
+        // 10: <MetaValue value={fact.v}> · <MetaText params={{ n: fact.v }}>
+        if (
+          META_COMPONENTS.has(elementName(node.parent) ?? '') &&
+          (name === 'value' || name === 'params')
+        ) {
+          const found = findFactValue(value.expression);
+          if (found) context.report({ node: found, messageId: 'factAsMeta' });
+          return;
+        }
         if (isSafeProp(name)) return;
         if (contextualNumberOnly(value.expression)) return;
         checkProp(value.expression, (n) => context.report({ node: n, messageId: 'rawNumberProp' }));
       };
     }
-    if (!skipCalls) {
+    if (!skipCalls || !skipFormat) {
       visitors.CallExpression = (node) => {
+        const callee = unwrap(node.callee);
+        const calleeName = callee?.type === 'Identifier' ? callee.name : null;
+        if (!skipFormat && calleeName && NUMERIC_FORMATTERS.has(calleeName)) {
+          // 9: 라벨 없는 숫자 문자열 — 7(신뢰도)보다 앞선다(어차피 호출 자체가 금지)
+          context.report({ node, messageId: 'formatOutsideFact' });
+          return;
+        }
+        if (skipCalls) return;
         const params = i18nParams(node);
         if (params) checkParams(params);
-        const callee = unwrap(node.callee);
-        if (callee?.type === 'Identifier' && callee.name === 'formatNumber') {
+        if (calleeName && META_FNS.has(calleeName)) {
+          for (const arg of node.arguments) {
+            const found = findFactValue(arg);
+            if (found) context.report({ node: found, messageId: 'factAsMeta' });
+          }
+        }
+        if (calleeName === 'formatNumber') {
           const name = argName(node.arguments[0]);
           if (name && CONFIDENCE_NAME.test(name)) {
             context.report({ node, messageId: 'confidenceFormat' });

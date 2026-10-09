@@ -19,6 +19,13 @@ export {
   type JobProgressViewProps,
 } from './JobProgress';
 export { LabelBadge, labelText, type LabelBadgeProps } from './LabelBadge';
+export {
+  MetaText,
+  MetaValue,
+  type MetaKind,
+  type MetaTextProps,
+  type MetaValueProps,
+} from './MetaValue';
 export { MismatchBadge, type MismatchBadgeProps } from './MismatchBadge';
 export { ProvenancePanel, ProvenanceProvider, type ProvenancePanelProps } from './ProvenancePanel';
 export { useOpenProvenance } from './provenanceContext';

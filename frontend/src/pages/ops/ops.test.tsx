@@ -11,7 +11,7 @@ import { enumText } from '../_shared';
 import { matching, recordRequests } from '../_shared/testing';
 import { since30 } from './JudgmentStatsPanel';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 describe('G7 데이터·운영', () => {

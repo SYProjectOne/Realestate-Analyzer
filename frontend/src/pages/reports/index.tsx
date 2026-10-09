@@ -5,11 +5,12 @@ import { useDownload } from '@/api/download';
 import { reportRequest, useChanges, useCreateReport, useReports } from '@/api/hooks';
 import { ApiError } from '@/api/client';
 import type { ChangeEvent, Report, ReportFormat, Snapshot } from '@/api/types';
-import { Badge, EmptyState, JobProgress, SnapshotPicker } from '@/components';
+import { Badge, EmptyState, JobProgress, MetaText, SnapshotPicker } from '@/components';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount, formatDate, formatNumber } from '@/lib/format';
+import { formatDate } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import { enumText, QueryState, Section, tdClass, thClass, usePageContext } from '../_shared';
 
 const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
@@ -18,7 +19,7 @@ const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
 export function blockReason(snapshot: Snapshot | null): string | null {
   if (!snapshot) return null;
   const n = snapshot.contradicted_claims ?? 0;
-  if (n > 0) return t('page.G8.blocked', { n: formatCount(n) });
+  if (n > 0) return metaText('page.G8.blocked', { n });
   return null;
 }
 
@@ -212,9 +213,13 @@ function ReportRow({
         ) : null}
       </td>
       <td className={tdClass}>
-        {report.size_bytes === null
-          ? ''
-          : t('page.G8.sizeKb', { kb: formatNumber(report.size_bytes / 1024) })}
+        {report.size_bytes === null ? null : (
+          <MetaText
+            kind="size"
+            k="page.G8.sizeKb"
+            params={{ kb: { n: report.size_bytes / 1024, as: 'number' } }}
+          />
+        )}
       </td>
       <td className={tdClass}>
         {report.status === 'done' ? (

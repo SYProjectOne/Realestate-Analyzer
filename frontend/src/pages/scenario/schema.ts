@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import type { ComponentKey, Scenario, ScenarioCreate, ScenarioParams, Weights } from '@/api/types';
 import { t } from '@/i18n';
-import { formatNumber } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 
 const EOK = 100_000_000;
 export const WEIGHT_TOLERANCE = 0.001;
@@ -31,8 +31,8 @@ function optionalNumber(min: number, max: number, int = false) {
   return z.preprocess(
     blankToUndefined,
     n
-      .min(min, t('page.G5.error.min', { min: formatNumber(min) }))
-      .max(max, t('page.G5.error.max', { max: formatNumber(max) }))
+      .min(min, metaText('page.G5.error.min', { min: { n: min, as: 'number' } }))
+      .max(max, metaText('page.G5.error.max', { max: { n: max, as: 'number' } }))
       .optional(),
   );
 }
@@ -84,7 +84,9 @@ export function toScenarioCreate(
     }
   }
   if (!weightsSchema.safeParse(weights).success) {
-    errors.weights = t('page.G5.error.weightsSum', { sum: formatNumber(weightsSum(weights), 2) });
+    errors.weights = metaText('page.G5.error.weightsSum', {
+      sum: { n: weightsSum(weights), as: 'number', digits: 2 },
+    });
   }
   if (!parsed.success || errors.weights) return { ok: false, errors };
   const v = parsed.data;

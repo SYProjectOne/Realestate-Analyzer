@@ -16,7 +16,7 @@ import {
   toListParams,
 } from './params';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 describe('G2 params', () => {

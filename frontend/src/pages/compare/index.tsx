@@ -8,6 +8,7 @@ import {
   EmptyState,
   FactCell,
   IntakeBadge,
+  MetaValue,
   MismatchBadge,
   TieBadge,
   UnstableBadge,
@@ -15,7 +16,7 @@ import {
 import { scenarioKey as keyOf } from '@/hooks/useScenario';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount, formatRank } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import {
   enumText,
   NoSnapshot,
@@ -58,7 +59,7 @@ export function ComparePage() {
   return (
     <PageShell title={t('page.G4.title')}>
       {!valid ? (
-        <EmptyState message={t('page.G4.invalidIds', { n: formatCount(ids.length) })}>
+        <EmptyState message={metaText('page.G4.invalidIds', { n: ids.length })}>
           <Link to={`/complexes${search}`} className="underline">
             {t('page.common.backToList')}
           </Link>
@@ -171,7 +172,11 @@ function CompareGrid({
             {rows.map((row) => (
               <td key={row.complex_id} className={tdClass}>
                 <span className="inline-flex flex-wrap gap-1">
-                  {row.rank !== null ? formatRank(row.rank) : t('empty.unknown')}
+                  {row.rank !== null ? (
+                    <MetaValue kind="rank" value={row.rank} as="rank" />
+                  ) : (
+                    t('empty.unknown')
+                  )}
                   <TieBadge tie={row.tie_group !== null} />
                   <UnstableBadge unstable={row.unstable} />
                   <RejudgeNeededBadge needed={row.rejudge_needed} />
@@ -186,6 +191,20 @@ function CompareGrid({
             {rows.map((row) => (
               <td key={row.complex_id} className={tdClass}>
                 <FactCell fact={row.p10} unit="prob" />
+              </td>
+            ))}
+          </tr>
+          <tr data-testid="compare-delta-rerank">
+            <th scope="row" className={thClass}>
+              {t('page.common.deltaRerank')}
+            </th>
+            {rows.map((row) => (
+              <td key={row.complex_id} className={tdClass}>
+                <FactCell
+                  fact={row.delta_rerank}
+                  unit="score"
+                  emptyReason={t('page.common.deltaRerankNone')}
+                />
               </td>
             ))}
           </tr>

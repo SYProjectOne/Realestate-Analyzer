@@ -6,7 +6,7 @@ import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { renderRoute } from '@/test/render';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 describe('가격 범위 하단(price_low) 라벨이 보인다', () => {

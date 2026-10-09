@@ -361,7 +361,8 @@
         "rankBefore": "이전 순위",
         "rankAfter": "새 순위",
         "totalBefore": "이전 종합",
-        "totalAfter": "새 종합"
+        "totalAfter": "새 종합",
+        "deltaRerank": "rerank 변화(새 run, 이전 run 대비)"
       },
       "noDiff": "순위 변동 없음",
       "escaped": "판정기가 질문을 남겼습니다",
@@ -616,6 +617,8 @@
       "yes": "예",
       "no": "아니오",
       "none": "없음",
+      "deltaRerank": "rerank 변화(이전 run 대비)",
+      "deltaRerankNone": "이전 run 없음",
       "all": "전체",
       "save": "저장",
       "cancel": "취소",

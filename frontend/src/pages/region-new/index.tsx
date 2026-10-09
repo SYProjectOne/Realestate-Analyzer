@@ -4,10 +4,9 @@ import { useCanWrite } from '@/api/auth';
 import { useCreateRegion, useResolveRegion } from '@/api/hooks';
 import type { RegionCandidate, RegionCreated, RegionSelection } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState, JobProgress } from '@/components';
+import { Badge, EmptyState, JobProgress, MetaText } from '@/components';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
 import { enumText, Section, useDebounced } from '../_shared';
 
 const DEBOUNCE_MS = 300;
@@ -105,9 +104,12 @@ export function RegionNewPage() {
                       <Badge tone={c.match === 'exact' ? 'strong' : 'muted'}>
                         {enumText('page.common.match', c.match)}
                       </Badge>
-                      <span className="text-xs text-muted">
-                        {t('page.G0.dongCount', { n: formatCount(c.legal_dong_codes.length) })}
-                      </span>
+                      <MetaText
+                        kind="count"
+                        className="text-xs text-muted"
+                        k="page.G0.dongCount"
+                        params={{ n: c.legal_dong_codes.length }}
+                      />
                     </label>
                   </li>
                 );

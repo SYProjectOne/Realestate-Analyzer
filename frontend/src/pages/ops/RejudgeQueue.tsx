@@ -1,7 +1,7 @@
 import { useJobs } from '@/api/hooks';
-import { Badge } from '@/components';
+import { Badge, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatCount, formatDate } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { enumText, idText, QueryState, Section, tdClass, thClass } from '../_shared';
 
 const COLS = ['name', 'status', 'scheduled', 'started', 'finished', 'progress', 'error'] as const;
@@ -55,12 +55,13 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
                       {job.finished_at ? formatDate(job.finished_at, asof) : ''}
                     </td>
                     <td className={tdClass}>
-                      {job.progress
-                        ? t('page.G7.job.progressValue', {
-                            done: formatCount(job.progress.done),
-                            total: formatCount(job.progress.total),
-                          })
-                        : ''}
+                      {job.progress ? (
+                        <MetaText
+                          kind="progress"
+                          k="page.G7.job.progressValue"
+                          params={{ done: job.progress.done, total: job.progress.total }}
+                        />
+                      ) : null}
                       {job.progress?.step ? (
                         <span className="block text-xs text-muted">{job.progress.step}</span>
                       ) : null}

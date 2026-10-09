@@ -1,8 +1,7 @@
 import { useOpsJudgments } from '@/api/hooks';
 import type { JudgmentOps } from '@/api/types';
-import { Badge } from '@/components';
+import { Badge, MetaText, MetaValue } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatCount, formatNumber } from '@/lib/format';
 import { JudgmentTable } from '../complex/JudgmentsTab';
 import { QueryState, Section } from '../_shared';
 
@@ -46,15 +45,21 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
         {tiles.map((tile) => (
           <li key={tile.key} className="flex flex-col rounded-sm border border-border p-2">
             <span className="text-xs text-muted">{t(`page.G7.stat.${tile.key}` as TKey)}</span>
-            <span className="text-lg font-semibold tabular-nums">{formatCount(tile.value)}</span>
+            <MetaValue kind="count" value={tile.value} className="text-lg font-semibold" />
           </li>
         ))}
         <li className="flex flex-col rounded-sm border border-border p-2">
           <span className="text-xs text-muted">{t('page.G7.stat.avg')}</span>
           <span className="text-lg font-semibold tabular-nums">
-            {stats.avg_duration_ms === null
-              ? t('empty.unknown')
-              : t('page.G3.judgment.ms', { ms: formatNumber(stats.avg_duration_ms) })}
+            {stats.avg_duration_ms === null ? (
+              t('empty.unknown')
+            ) : (
+              <MetaText
+                kind="duration"
+                k="page.G3.judgment.ms"
+                params={{ ms: { n: stats.avg_duration_ms, as: 'number' } }}
+              />
+            )}
           </span>
         </li>
       </ul>
@@ -62,11 +67,7 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
         <h3 className="text-sm font-medium">{t('page.G7.stat.byTool')}</h3>
         <ul aria-label={t('page.G7.stat.byTool')} className="flex flex-col gap-1 text-xs">
           {stats.by_tool.map((b) => {
-            const text = t('page.G7.stat.bar', {
-              tool: b.tool,
-              calls: formatCount(b.calls),
-              failures: formatCount(b.failures),
-            });
+            const params = { tool: b.tool, calls: b.calls, failures: b.failures };
             return (
               <li key={b.tool} className="grid grid-cols-[6rem_1fr] items-center gap-2">
                 <span>{b.tool}</span>
@@ -76,7 +77,12 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
                     className="h-3 rounded-sm bg-accent"
                     style={{ width: `${(b.calls / max) * 100}%`, minWidth: b.calls > 0 ? 2 : 0 }}
                   />
-                  <span className="whitespace-nowrap text-muted">{text}</span>
+                  <MetaText
+                    kind="count"
+                    className="whitespace-nowrap text-muted"
+                    k="page.G7.stat.bar"
+                    params={params}
+                  />
                 </span>
               </li>
             );

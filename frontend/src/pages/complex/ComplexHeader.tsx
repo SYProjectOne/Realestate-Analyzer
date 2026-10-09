@@ -4,12 +4,12 @@ import {
   ExternalLink,
   FactCell,
   IntakeBadge,
+  MetaValue,
   TieBadge,
   UnstableBadge,
   useOpenProvenance,
 } from '@/components';
 import { t } from '@/i18n';
-import { formatRank } from '@/lib/format';
 import { enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
 
 /** G3 ComplexHeader — 접수 배지 · 현재 구매가 범위 · 전매 D-day · 입주 · 포함 분류 · 종합 점수 */
@@ -36,7 +36,11 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
         ) : null}
         {score ? (
           <>
-            {score.rank !== null ? <Badge tone="strong">{formatRank(score.rank)}</Badge> : null}
+            {score.rank !== null ? (
+              <Badge tone="strong">
+                <MetaValue kind="rank" value={score.rank} as="rank" />
+              </Badge>
+            ) : null}
             <TieBadge tie={score.tie_group !== null} />
             <UnstableBadge unstable={score.unstable} />
             <JudgeScopeBadge scope={score.judge_scope} />

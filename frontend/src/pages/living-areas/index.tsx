@@ -5,10 +5,10 @@ import { ApiError } from '@/api/client';
 import { useRegion, useUpdateLivingAreas } from '@/api/hooks';
 import type { LivingAreasUpdated, Region } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { EmptyState, FactCell, JobProgress } from '@/components';
+import { EmptyState, FactCell, JobProgress, MetaText } from '@/components';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import { QueryState } from '../_shared';
 
 export interface DraftArea {
@@ -212,7 +212,7 @@ function Editor({ region }: { region: Region }) {
               {
                 key,
                 id: null,
-                name: t('page.G0_2.newName', { n: formatCount(nextNo) }),
+                name: metaText('page.G0_2.newName', { n: nextNo }),
                 codes: [],
               },
             ]);
@@ -227,10 +227,10 @@ function Editor({ region }: { region: Region }) {
       {unassigned.length > 0 ? (
         <section
           className="rounded-sm border border-danger p-2"
-          aria-label={t('page.G0_2.unassigned', { n: formatCount(unassigned.length) })}
+          aria-label={metaText('page.G0_2.unassigned', { n: unassigned.length })}
         >
           <p className="text-sm text-danger">
-            {t('page.G0_2.unassigned', { n: formatCount(unassigned.length) })}
+            <MetaText kind="count" k="page.G0_2.unassigned" params={{ n: unassigned.length }} />
           </p>
           <ul className="flex flex-wrap gap-2">{unassigned.map(dong)}</ul>
         </section>
@@ -268,7 +268,11 @@ function Editor({ region }: { region: Region }) {
         {dirty ? <span className="text-xs text-muted">{t('page.G0_2.dirty')}</span> : null}
         {check.duplicated.length > 0 ? (
           <span role="alert" className="text-sm text-danger">
-            {t('page.G0_2.duplicated', { n: formatCount(check.duplicated.length) })}
+            <MetaText
+              kind="count"
+              k="page.G0_2.duplicated"
+              params={{ n: check.duplicated.length }}
+            />
           </span>
         ) : null}
         {check.emptyName ? (
@@ -349,7 +353,9 @@ function AreaCard({
           <FactCell fact={households} unit="households" emptyReason={t('page.common.none')} />
         </dd>
         <dt className="text-muted">{t('page.G0_2.dongs')}</dt>
-        <dd>{t('page.G0_2.dongCount', { n: formatCount(area.codes.length) })}</dd>
+        <dd>
+          <MetaText kind="count" k="page.G0_2.dongCount" params={{ n: area.codes.length }} />
+        </dd>
       </dl>
       {children}
     </section>
