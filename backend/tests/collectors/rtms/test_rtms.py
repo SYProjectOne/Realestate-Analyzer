@@ -226,13 +226,85 @@ def test_load_trades_updates_cancellation_without_duplicates(
     assert rows == {"테스트아파트A": True, "테스트아파트B": True, "테스트아파트C": False}
 
 
+REAL = "openapi_trade_28185_202609.xml"  # 2026-10-09 실제 응답 녹화(연수구 28185, 202609, numOfRows 1000)
+
+
+def test_parse_recorded_real_response(fixtures_dir: Path) -> None:
+    """실제 녹화(합성 아님): 333건, 해제 2건 보존, 키는 녹화본에 없다(키는 쿼리로만 가고 응답에 안 나온다)."""
+    content = (fixtures_dir / REAL).read_bytes()
+    assert b"serviceKey" not in content
+    page = parse_trade_xml(content)
+    assert page.ok and page.total_count == 333 and len(page.items) == 333 and page.skipped == 0
+    assert sum(t.cancelled for t in page.items) == 2
+    assert all(t.source == "openapi" and t.label == "확인됨" for t in page.items)
+    assert all(t.deal_date.startswith("2026-09-") and t.price_won > 0 for t in page.items)
+    # 실제 응답에는 umdCd 가 없다(sggCd·umdNm 만) → 법정동 코드는 비우고 동 이름은 남긴다
+    assert all(t.dong for t in page.items)
+
+
+def test_openapi_path_with_real_recording(
+    db_engine: Engine,
+    region_ctx: tuple[Region, Snapshot],
+    fixtures_dir: Path,
+    http: HttpClient,
+    count: Callable[[type[Any]], int],
+) -> None:
+    """source=openapi 경로를 실제 녹화로: 연수구 202609 → rtms_trade 333행(해제 2 포함), 재실행 증가 0."""
+    region, snapshot = region_ctx
+    snap = snapshot.model_copy(update={"asof_date": "2026-09-30"})
+    body = (fixtures_dir / REAL).read_bytes()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.params["LAWD_CD"] == "28185":
+            return httpx.Response(
+                200, content=body, headers={"content-type": "application/xml;charset=utf-8"}
+            )
+        return httpx.Response(
+            200,
+            content=(fixtures_dir / "openapi_trade_empty.xml").read_bytes(),
+            headers={"content-type": "application/xml"},
+        )
+
+    with respx.mock(assert_all_called=False) as router:
+        route = router.get(RTMS_API_URL).mock(side_effect=handler)
+        collector = RtmsCollector(service_key=FAKE_KEY, http=http, months=1)
+        assert collector.mode == "openapi"
+        docs = collector.fetch(region, snap, None)
+        assert route.call_count == 2 and len(docs) == 2
+        assert collector.load_stats is not None and collector.load_stats.inserted == 333
+        RtmsCollector(service_key=FAKE_KEY, http=http, months=1).fetch(region, snap, None)
+    assert count(RtmsTrade) == 333
+    with Session(db_engine) as s:
+        rows = s.scalars(select(RtmsTrade)).all()
+        urls = [d.url for d in s.scalars(select(RawDocument))]
+    assert {r.source for r in rows} == {"openapi"} and sum(r.cancelled for r in rows) == 2
+    assert all("serviceKey" not in u for u in urls)
+
+
+def _live_key(name: str) -> str | None:
+    """실제 키: ``ENV_FILE``(worktree 에서는 메인 체크아웃의 .env)을 읽은 설정 → 없으면 환경변수."""
+    from app.core.settings import load_settings
+
+    secret = getattr(load_settings(), name.lower())
+    value = secret.get_secret_value() if secret is not None else None
+    return value or os.environ.get(name)
+
+
 @pytest.mark.live
 def test_live_openapi_with_real_key(region_ctx: tuple[Region, Snapshot]) -> None:
-    """DATA_GO_KR_KEY 가 환경에 있을 때만(지금은 키 없음 — D1 #5)."""
-    key = os.environ.get("DATA_GO_KR_KEY")
+    """실제 키로 연수구(28185) 2026-09 1회.
+
+    실행: ``ENV_FILE=<메인 체크아웃>/.env uv run pytest -m live tests/collectors/rtms``
+    """
+    key = _live_key("DATA_GO_KR_KEY")
     if not key:
-        pytest.skip("DATA_GO_KR_KEY 없음")
+        pytest.skip("DATA_GO_KR_KEY 없음 (ENV_FILE 로 .env 경로를 준다)")
     region, snapshot = region_ctx
+    yeonsu = region.model_copy(update={"sigungu_codes": ["28185"]})
+    snap = snapshot.model_copy(update={"asof_date": "2026-09-30"})
     c = RtmsCollector(service_key=key, months=1)
-    docs = c.fetch(region, snapshot, None)
-    assert docs and all(d.http_status == 200 for d in docs)
+    docs = c.fetch(yeonsu, snap, None)
+    assert docs and all(d.http_status == 200 for d in docs), [(d.http_status, d.error_text) for d in docs]
+    assert c.pages and all(p.result_code in {"00", "000"} for p in c.pages)
+    assert len(c.trades) >= 100  # 녹화 시점 333건 — 신고가 늘어도 줄지 않는다(해제는 플래그로 남음)
+    assert all(key not in (d.url or "") for d in docs)

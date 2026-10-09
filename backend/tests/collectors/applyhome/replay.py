@@ -1,4 +1,4 @@
-"""녹화 HTTP 재생 (respx). 녹화 = zip 하나(``manifest.json`` + 응답 본문 파일).
+"""녹화 HTTP 재생 (respx). 녹화 = zip 하나(``manifest.json`` + 응답 본문 파일). 웹 + API 녹화는 ``merged``.
 
 키 = (METHOD, scheme://host/path, 정렬된 쿼리, 정렬된 POST 폼 중 ``KEY_FORM_FIELDS``).
 녹화에 없는 요청은 ``AssertionError`` — 테스트가 조용히 통과하지 않게 한다.
@@ -18,6 +18,7 @@ import httpx
 import respx
 
 KEY_FORM_FIELDS = ("beginPd", "endPd", "suplyAreaCode", "pageIndex")
+SECRET_PARAMS = frozenset({"serviceKey"})
 ROBOTS_404 = "The requested URL was not found on this server."
 
 Key = tuple[str, str, tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]]
@@ -26,7 +27,10 @@ Key = tuple[str, str, tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]]
 def request_key(method: str, url: str, form: dict[str, str] | None = None) -> Key:
     parts = urlsplit(url)
     base = f"{parts.scheme}://{parts.netloc}{parts.path}"
-    query = tuple(sorted(parse_qsl(parts.query, keep_blank_values=True)))
+    # serviceKey(공공데이터포털 키)는 녹화에 없다 — 빼고 맞춘다
+    query = tuple(
+        sorted((k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k not in SECRET_PARAMS)
+    )
     body = tuple(sorted((k, v) for k, v in (form or {}).items() if k in KEY_FORM_FIELDS))
     return (method.upper(), base, query, body)
 
@@ -102,8 +106,29 @@ class Recording:
             entry.status, content=self.body(entry), headers={"content-type": entry.content_type}
         )
 
-    def mock(self) -> respx.MockRouter:
+    def mock(self, first: Callable[[respx.MockRouter], None] | None = None) -> respx.MockRouter:
+        """녹화 재생 라우터. ``first`` = 녹화보다 먼저 맞출 라우트(respx 는 등록 순서로 맞춘다)."""
         router = respx.mock(assert_all_called=False)
+        if first is not None:
+            first(router)
         router.route(host="www.applyhome.co.kr").mock(side_effect=self.handler)
         router.route(host="static.applyhome.co.kr").mock(side_effect=self.handler)
+        router.route(host="api.odcloud.kr").mock(side_effect=self.handler)
         return router
+
+    def merged(self, other: Recording) -> Recording:
+        """두 녹화를 하나로(같은 키는 other 우선) — 웹 녹화 + API 녹화 재생."""
+        merged = MergedRecording(archive=self.archive, entries={**self.entries, **other.entries})
+        merged.sources = {k: self for k in self.entries} | {k: other for k in other.entries}
+        return merged
+
+
+@dataclass(slots=True)
+class MergedRecording(Recording):
+    sources: dict[Key, Recording] = field(default_factory=dict)
+
+    def body(self, entry: Entry) -> bytes:
+        if entry.file is None:
+            return b""
+        src = self.sources.get(request_key(entry.method, entry.url, entry.form), self)
+        return src.archive.read(entry.file)
