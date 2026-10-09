@@ -7,8 +7,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from app.analysis._common import Q2, dec
 from app.analysis.types import Label, PurchasePrice
@@ -61,6 +62,25 @@ def price_of(complex_: ComplexScoreInput) -> PurchasePrice | None:
     assert lo is not None and hi is not None
     lo, hi = min(lo, hi), max(lo, hi)
     return PurchasePrice(low_won=lo, high_won=hi, mid_won=(Decimal(lo) + Decimal(hi)) / 2)
+
+
+def price_change_vs_first(
+    first: Mapping[str, Any] | None, latest: Mapping[str, Any] | None, type_code: str | None
+) -> Decimal | None:
+    """공고별 타입 가격(payment_terms.price_by_type, 2026-10-09.2)으로 판정 타입 최고가의 최초 대비 증감률(%).
+
+    ``first``·``latest`` = 최초·현재 조건 행의 price_by_type, ``type_code`` = 판정 타입(``judge_type``).
+    어느 한쪽에 그 타입의 max_price_won 이 없으면 None(계산하지 않는다 — 다른 타입으로 대신하지 않음).
+    """
+    if not type_code or not first or not latest:
+        return None
+    a, b = first.get(type_code), latest.get(type_code)
+    if not isinstance(a, Mapping) or not isinstance(b, Mapping):
+        return None
+    lo, hi = a.get("max_price_won"), b.get("max_price_won")
+    if not isinstance(lo, int) or not isinstance(hi, int) or isinstance(lo, bool) or lo <= 0:
+        return None
+    return price_change_pct(lo, hi)
 
 
 def price_change_pct(initial_won: int, latest_won: int) -> Decimal:

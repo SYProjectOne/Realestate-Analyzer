@@ -1,0 +1,35 @@
+{% from "macros.html.j2" import fact, disclaimer %}
+{% set x = data.extra %}
+<section id="s12">
+  <h2>{{ EXTRA_TITLE }}</h2>
+  <p class="lead">{{ x.summary }}</p>
+  <table>
+    <tbody>
+      <tr><th>추가된 단지</th><td>{{ x.added | join(", ") if x.added else "없음" }}</td></tr>
+      <tr><th>빠진 단지</th><td>{{ x.removed | join(", ") if x.removed else "없음" }}</td></tr>
+      <tr><th>rerank</th><td>#{{ x.rerank_prev_seq or "—" }} → #{{ x.rerank_seq or "—" }}(후보군이 바뀌면 전체 재실행)</td></tr>
+    </tbody>
+  </table>
+  <h3>12-1. 순위 변화({{ x.base_asof }} → {{ data.asof_date }}, {{ data.scenario_name }})</h3>
+  <table>
+    <thead><tr><th>단지</th><th>이전 순위</th><th>현재 순위</th><th>이전 종합</th><th>현재 종합</th></tr></thead>
+    <tbody>
+    {% for name, r0, r1, t0, t1 in x.rank_rows %}
+      <tr><td>{{ name }}</td><td>{{ r0 }}</td><td>{{ r1 }}</td><td>{% if t0 %}{{ fact(t0) }}{% else %}—{% endif %}</td><td>{% if t1 %}{{ fact(t1) }}{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h3>12-2. 파생 테이블 diff(이전 → 현재)</h3>
+  {% if diff %}
+  <table id="diff-table">
+    <thead><tr><th>테이블</th><th>단지</th><th>항목</th><th>이전</th><th>현재</th><th>구분</th><th>라벨</th></tr></thead>
+    <tbody>
+    {% for r in diff.rows %}<tr data-kind="{{ r.kind }}"><td>{{ r.table }}</td><td>{{ r.complex_name }}</td><td>{{ r.field }}</td><td>{{ r.old }}</td><td>{{ r.new }}</td><td>{{ {"added": "추가", "removed": "제외", "changed": "변경"}[r.kind] }}</td><td>{{ r.label }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>diff 없음</p>
+  {% endif %}
+  {{ disclaimer() }}
+</section>

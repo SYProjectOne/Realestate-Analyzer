@@ -1,0 +1,39 @@
+{# 공용 매크로. 모든 수치는 fact() 로만 — 값 + 라벨 텍스트 배지 + 출처 id(data-prov). #}
+{% macro fact(f) -%}
+<span class="fact" data-prov="{{ f.prov or '' }}"><span class="v">{{ f | fv }}</span><span class="lb" data-label="{{ f.label }}" title="{{ f | fl }} · 출처 {{ f.prov or '없음' }}">{{ f | fl | truncate(28, true, "…", 0) }}</span></span>
+{%- endmacro %}
+
+{% macro intake(i) -%}
+{% if i %}<span class="intake">{{ i.text }}<span class="badge">{{ i.path_label }} {{ i.checked_at[:10] }}</span></span>{% else %}<span class="intake">확인 불가(접수 상태 기록 없음)</span>{% endif %}
+{%- endmacro %}
+
+{% macro sec_head(n) -%}
+<h2>{{ SECTION_TITLES[n - 1] }}</h2>
+{%- endmacro %}
+
+{% macro disclaimer() -%}
+<p class="disclaimer">{{ DISCLAIMER }}</p>
+{%- endmacro %}
+
+{% macro cell(x) -%}
+{% if x is mapping or x is string or x is number or x is none %}{{ x if x is not none else '—' }}{% else %}{{ fact(x) }}{% endif %}
+{%- endmacro %}
+
+{% macro chart(spec, has_echarts) -%}
+{% if spec %}
+<figure class="chart-fig">
+  <figcaption>{{ spec.title }} <span class="small">{{ spec.subtitle }}</span></figcaption>
+  <div class="chart" id="chart-{{ spec.id }}" data-option-id="opt-{{ spec.id }}" style="height: {{ spec.height }}px" role="img" aria-label="{{ spec.title }}">{% if not has_echarts %}차트 번들 없음 — 아래 표를 본다{% endif %}</div>
+  <script type="application/json" id="opt-{{ spec.id }}">{{ spec.option | json_script }}</script>
+  <details open>
+    <summary>표로 보기</summary>
+    <table class="chart-table">
+      <thead><tr>{% for c in spec.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for row in spec.rows %}<tr>{% for x in row %}<td>{{ cell(x) }}</td>{% endfor %}</tr>{% endfor %}
+      </tbody>
+    </table>
+  </details>
+</figure>
+{% endif %}
+{%- endmacro %}

@@ -5,6 +5,7 @@ from app.collectors.official_site.collector import (
     OfficialSiteCollector,
     SiteOutcome,
     SiteTarget,
+    read_site_meta,
 )
 from app.collectors.official_site.render import (
     PlaywrightRenderer,
@@ -24,4 +25,5 @@ __all__ = [
     "SiteOutcome",
     "SiteTarget",
     "popup_hash",
+    "read_site_meta",
 ]

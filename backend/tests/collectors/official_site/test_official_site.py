@@ -25,7 +25,9 @@ from app.collectors.official_site import (
     RenderResult,
     SiteTarget,
     popup_hash,
+    read_site_meta,
 )
+from app.collectors.reference.rawstore import RawStore
 from app.core.contracts_gen import Region, Snapshot
 from app.core.http import HttpClient
 from app.core.paths import resolve_raw_path
@@ -137,7 +139,7 @@ def test_robots_disallow_is_recorded_as_robots(
     assert (row.http_status, row.error_text) == (None, "robots")
 
 
-# --- 성공: 녹화 HTML(실제 단지 홈페이지) + 렌더 + 메타
+# --- 성공: 녹화 HTML(실제 단지 홈페이지) + 렌더 + 메타(raw_document.meta, 계약 2026-10-09.2)
 
 
 def test_recorded_page_saves_html_screenshot_and_meta_idempotently(
@@ -160,22 +162,85 @@ def test_recorded_page_saves_html_screenshot_and_meta_idempotently(
         assert out.render_reason == "팝업 표식" and out.rendered
         assert renderer.calls == [SITE]
         n = count(RawDocument)
-        OfficialSiteCollector(http=http, renderer=FakeRenderer()).fetch(region, snapshot, None)
-        assert count(RawDocument) == n == 3  # T17: html·png·meta, 두 번째 실행 증가 0
+        again = OfficialSiteCollector(http=http, renderer=FakeRenderer()).fetch(region, snapshot, None)
+        assert count(RawDocument) == n == 2  # T17: html·png(메타는 html 행의 meta 컬럼), 두 번째 실행 증가 0
 
-    html_doc, png_doc, meta_doc = docs
+    html_doc, png_doc = docs
+    assert [d.id for d in again] == [d.id for d in docs]
     assert (html_doc.content_type or "").startswith("text/html") and html_doc.text_path
     dom_text = resolve_raw_path(html_doc.text_path).read_text(encoding="utf-8")
     assert "송도 한내들 센트럴리버" in dom_text and "<script" not in dom_text
     assert png_doc.content_type == "image/png" and png_doc.image_hash == out.image_hash is not None
     assert resolve_raw_path(png_doc.path or "").read_bytes() == PNG
-    assert meta_doc.content_type == META_CONTENT_TYPE
-    meta = json.loads(resolve_raw_path(meta_doc.path or "").read_text(encoding="utf-8"))
-    assert meta["image_hash"] == out.image_hash
+    # 메타는 별도 JSON 행이 아니라 html 행의 meta 컬럼
+    assert not [d for d in _docs(db_engine) if d.content_type == META_CONTENT_TYPE]
+    meta = html_doc.meta
+    assert meta is not None and meta == out.meta
+    (row,) = [d for d in _docs(db_engine) if d.id == html_doc.id]
+    assert row.meta == meta
+    assert meta["image_hash"] == out.image_hash and meta["render"]["rendered"] is True
+    assert meta["render"]["screenshot_sha256"] == png_doc.sha256
     texts = [c["text"] for c in meta["intake_candidates"]]
     assert "계약안내문" in texts  # 녹화 HTML 의 메뉴(후보일 뿐, 판단은 WP2·판정기)
     assert "잔여 세대 선착순 동호지정 계약 중" in texts  # 렌더 후 텍스트
     assert {d.complex_id for d in docs} == {4}
+    assert png_doc.meta is None
+    assert read_site_meta(html_doc, raw_dir=raw_dir) == meta
+
+
+def test_meta_follows_latest_render_on_same_html(
+    db_engine: Engine, region_ctx: tuple[Region, Snapshot], http: HttpClient
+) -> None:
+    """같은 HTML(같은 행)이라도 렌더 결과(팝업)가 바뀌면 meta 는 최신 관찰로 갱신된다. 새 스크린샷은 새 행."""
+    region, snapshot = region_ctx
+    body = (
+        "<html><body><div class='popup'>잔여 세대 안내</div>"
+        + "<p>단지 안내 문단</p>" * 40
+        + "</body></html>"
+    )
+    other = RenderResult(
+        url=SITE,
+        final_url=SITE,
+        status=200,
+        screenshot_png=PNG + b"2",
+        dom_text="분양 완료",
+        popups=(PopupShot(selector="#pop2", sha256="b" * 64, width=100, height=100),),
+    )
+    with respx.mock(assert_all_called=False) as router:
+        router.get(ROBOTS).respond(404)
+        router.get(SITE).respond(200, text=body, headers={"content-type": "text/html"})
+        first = OfficialSiteCollector(http=http, renderer=FakeRenderer(), targets=[SiteTarget(SITE, 4)])
+        d1 = first.fetch(region, snapshot, None)
+        second = OfficialSiteCollector(http=http, renderer=FakeRenderer(other), targets=[SiteTarget(SITE, 4)])
+        d2 = second.fetch(region, snapshot, None)
+    assert d1[0].id == d2[0].id and d1[1].id != d2[1].id
+    (html_row,) = [d for d in _docs(db_engine) if d.id == d1[0].id]
+    assert html_row.meta is not None and html_row.meta["image_hash"] == second.outcomes[0].image_hash
+    assert html_row.meta["image_hash"] != first.outcomes[0].image_hash
+    assert len(_docs(db_engine)) == 3
+
+
+def test_legacy_meta_row_is_still_readable(
+    db_session: Session, raw_dir: Path, region_ctx: tuple[Region, Snapshot]
+) -> None:
+    """2026-10-09.1 까지의 별도 메타 JSON 행(content_type META_CONTENT_TYPE)도 같은 함수로 읽는다."""
+    legacy = {"kind": "official_site.meta", "url": SITE, "image_hash": None, "intake_candidates": []}
+    store = RawStore(db_session, raw_dir=raw_dir)
+    doc = store.save_content(
+        source_kind="official_site",
+        url=SITE,
+        content=json.dumps(legacy, ensure_ascii=False).encode("utf-8"),
+        ext="json",
+        content_type=META_CONTENT_TYPE,
+        complex_id=4,
+    )
+    assert doc.meta is None
+    assert read_site_meta(doc, raw_dir=raw_dir) == legacy
+    html = store.save_content(
+        source_kind="official_site", url=SITE, content=b"<html></html>", ext="html", content_type="text/html"
+    )
+    assert read_site_meta(html, raw_dir=raw_dir) is None
+    assert read_site_meta(html.model_copy(update={"meta": {"k": 1}}), raw_dir=raw_dir) == {"k": 1}
 
 
 def test_static_page_without_markers_skips_render(
@@ -190,7 +255,8 @@ def test_static_page_without_markers_skips_render(
         c = OfficialSiteCollector(http=http, renderer=renderer, targets=[SiteTarget(SITE, 4)])
         docs = c.fetch(region, snapshot, None)
     assert renderer.calls == [] and c.outcomes[0].render_reason == "정적"
-    assert [d.content_type for d in docs] == ["text/html", META_CONTENT_TYPE]
+    assert [d.content_type for d in docs] == ["text/html"]
+    assert docs[0].meta is not None and docs[0].meta["render"]["rendered"] is False
 
 
 def test_render_failure_is_a_row(
@@ -270,7 +336,8 @@ def test_collector_end_to_end_with_local_server(
     with HttpClient(rate_per_host=1000, max_retries=0, jitter=0) as client:
         c = OfficialSiteCollector(http=client, renderer=renderer, targets=[SiteTarget(local_site, 4)])
         docs = c.fetch(region, snapshot, None)
-    assert [d.content_type for d in docs][1:] == ["image/png", META_CONTENT_TYPE]
+    assert [d.content_type for d in docs][1:] == ["image/png"]
+    assert docs[0].meta is not None and docs[0].meta["render"]["rendered"] is True
     png = docs[1]
     assert png.image_hash is not None and len(png.image_hash) == 64
     assert resolve_raw_path(png.path or "").read_bytes().startswith(b"\x89PNG")

@@ -4,20 +4,35 @@
 원문 위치와 함께 모아 넘길 뿐이다. 상태 분류(가능/미정/불가)는 판정기(classify) 또는 사람 확인(G7)이 한다
 (AGENTS 규칙 3). 403·DNS·타임아웃 원문은 문구 없이 실패 사유만 담는다(실패도 데이터, T3).
 
-FieldCandidate.entity에 intake_status가 없어(계약 2026-10-09.1) ``Parser.parse``는 빈 목록을 돌려주고,
-``read_site``가 전용 결과(``SiteTextResult``)를 돌려준다 — 보고서의 '계약 변경 요청' 참고.
+``Parser.parse``(계약 2026-10-09.2): 키워드가 든 줄마다 FieldCandidate(entity='intake_status',
+field='status_text', value=그 줄 문구, entity_key='<단지 키>:<path>')를 낸다.
+path = 렌더 스크린샷 행(image/png)이면 'headless_shot', 아니면 'official_popup'.
+단지 키 = ``complex_key(complex_id)``(store가 주택관리번호를 준다), 모르면 'complex_id=<id>'.
+실패 원문(403·DNS 등)과 옛 메타 JSON 행(2026-10-09.1까지의 별도 행)은 후보가 없다.
+실패 사유는 raw_document 행과 ``read_site``(``SiteTextResult.reason``)에 있다.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
-from app.normalize._text import checked_on, line_span, read_raw_text
+from app.normalize._text import CandidateBuilder, checked_on, line_span, read_raw_text
 
-__all__ = ["KEYWORDS", "OfficialSiteParser", "SiteTextHit", "SiteTextResult", "read_site", "scan_text"]
+__all__ = [
+    "KEYWORDS",
+    "OfficialSiteParser",
+    "SiteTextHit",
+    "SiteTextResult",
+    "intake_candidates",
+    "read_site",
+    "scan_text",
+]
+
+ComplexKey = Callable[[int], str | None]
 
 # 접수 상태와 관련된 공고·팝업 문구(표기 변형 포함). 문구 → 그대로 보여 줄 키워드 이름.
 KEYWORDS: dict[str, str] = {
@@ -99,16 +114,70 @@ def read_site(raw: RawDocument, *, raw_dir: Path | None = None) -> SiteTextResul
     return res
 
 
-class OfficialSiteParser:
-    """``Parser`` 모양을 맞춘 구현. 접수 상태는 FieldCandidate로 낼 수 없어(계약) 빈 목록 — ``read_site``
-    사용."""
+def _path(raw: RawDocument) -> str:
+    return "headless_shot" if (raw.content_type or "").startswith("image/") else "official_popup"
 
-    def __init__(self, *, raw_dir: Path | None = None) -> None:
+
+def _is_meta_row(raw: RawDocument) -> bool:
+    return (raw.content_type or "").startswith("application/json")
+
+
+def intake_candidates(
+    raw: RawDocument, text: str, *, complex_key: ComplexKey | None = None
+) -> list[FieldCandidate]:
+    """원문 텍스트 → intake_status 문구 후보(줄마다 1개, 문서 순서). 분류하지 않는다."""
+    key: str | None = None
+    if raw.complex_id is not None and complex_key is not None:
+        key = complex_key(raw.complex_id)
+    if not key:
+        key = f"complex_id={raw.complex_id}" if raw.complex_id is not None else f"url={raw.url}"
+    entity_key = f"{key}:{_path(raw)}"
+    b = CandidateBuilder(raw, text)
+    seen: set[int] = set()
+    for h in scan_text(text):
+        ls, le = line_span(text, h.start)
+        if ls in seen:
+            continue
+        seen.add(ls)
+        line = text[ls:le].strip()
+        if not line:
+            continue
+        lead = len(text[ls:le]) - len(text[ls:le].lstrip())
+        start = ls + lead
+        b.add(
+            "intake_status",
+            entity_key,
+            "status_text",
+            line,
+            line,
+            (start, start + len(line)),
+            excerpt=line,
+            rank=1,
+        )
+    return b.out
+
+
+class OfficialSiteParser:
+    """``Parser`` 구현 — 접수 상태 문구 후보(entity='intake_status', 계약 2026-10-09.2). 실패 정보까지 보려면
+    ``read``(``SiteTextResult``)."""
+
+    def __init__(self, *, raw_dir: Path | None = None, complex_key: ComplexKey | None = None) -> None:
         self._raw_dir = raw_dir
+        self._complex_key = complex_key
 
     def parse(self, raw: RawDocument) -> list[FieldCandidate]:
-        del raw
-        return []
+        if _is_meta_row(raw) or raw.http_status not in (None, 200) or raw.error_text:
+            return []
+        src = raw
+        if _path(raw) == "headless_shot":
+            if not raw.text_path:
+                return []
+            # 스크린샷 바이트가 아니라 렌더 후 DOM 텍스트만 읽는다
+            src = raw.model_copy(update={"path": None})
+        text = read_raw_text(src, raw_dir=self._raw_dir)
+        if text is None:
+            return []
+        return intake_candidates(raw, text, complex_key=self._complex_key)
 
     def read(self, raw: RawDocument) -> SiteTextResult:
         return read_site(raw, raw_dir=self._raw_dir)

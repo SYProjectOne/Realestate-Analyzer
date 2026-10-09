@@ -1,0 +1,48 @@
+{% from "macros.html.j2" import disclaimer %}
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ data.region_name }} 청약 분석 보고서 — {{ data.asof_date }}</title>
+<style>
+{{ css }}
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ data.region_name }} 민간분양 청약 분석 보고서</h1>
+  <p class="meta">기준일 {{ data.asof_date }} · 스냅샷 #{{ data.snapshot_id }}({{ data.snapshot_status }}{% if data.degraded %}, 미판정 모드{% endif %}) · 시나리오 {{ data.scenario_name }} · 계약 {{ data.contract_version }} · 생성 {{ data.generated_at }}</p>
+  <p class="meta">입력 지명: {{ data.region_query }}{% if data.extra %} · 비교 스냅샷 #{{ data.extra.base_snapshot_id }}({{ data.extra.base_asof }}){% endif %}</p>
+  {{ disclaimer() }}
+  <p class="note">모든 수치 옆 배지는 라벨(확인됨·추정·비공식·재가공·확인 불가)이고, 마우스를 올리면 출처 id(fp_ 출처 행, sc_ 구성 점수, st_ 종합 점수, jl_ 판정기 호출 번호)가 보인다. 판단은 판정기가 했고 이 문서는 기록·점수·표시만 한다.</p>
+</header>
+<nav id="toc">
+  <strong>목차</strong>
+  <ol>
+  {% for t in SECTION_TITLES %}<li><a href="#s{{ loop.index }}">{{ t }}</a></li>{% endfor %}
+  {% if data.extra %}<li><a href="#s12">{{ EXTRA_TITLE }}</a></li>{% endif %}
+  </ol>
+</nav>
+<main>
+{% include "s01.html.j2" %}
+{% include "s02.html.j2" %}
+{% include "s03.html.j2" %}
+{% include "s04.html.j2" %}
+{% include "s05.html.j2" %}
+{% include "s06.html.j2" %}
+{% include "s07.html.j2" %}
+{% include "s08.html.j2" %}
+{% include "s09.html.j2" %}
+{% include "s10.html.j2" %}
+{% include "s11.html.j2" %}
+{% if data.extra %}{% include "s12.html.j2" %}{% endif %}
+</main>
+<footer>
+  {{ disclaimer() }}
+  <p class="small">이 문서는 공개 분양 정보와 판정기 기록으로 만든 상대 비교다. 수익을 보장하지 않는다. 생성: subscription-analyzer 보고서 내보내기(스냅샷 #{{ data.snapshot_id }}).</p>
+</footer>
+{% if has_echarts %}<script>{{ echarts_js }}</script>{% endif %}
+<script>{{ init_js }}</script>
+</body>
+</html>

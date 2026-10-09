@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import calendar
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -24,11 +26,13 @@ __all__ = [
     "canonical_json",
     "checked_on",
     "line_span",
+    "month_end",
     "normalize_type_code",
     "parse_date",
     "parse_won",
     "read_raw_text",
     "round_area",
+    "stamp_observed_on",
 ]
 
 AMOUNT_RE = re.compile(r"\d{1,3}(?:,\d{3})+")
@@ -109,6 +113,28 @@ def area_from_long_code(code: str) -> float | None:
     """'084.7531A' → 84.75 (주택형 = 주거전용면적)."""
     m = _LONG_TYPE_RE.match(code.strip())
     return round_area(f"{int(m.group(1))}.{m.group(2)}") if m else None
+
+
+def month_end(ym: str) -> str | None:
+    """'2026-08' → '2026-08-31' (통계 기준월의 원문 시점). 형식이 아니면 None."""
+    m = re.fullmatch(r"(\d{4})-(\d{2})", ym.strip())
+    if m is None:
+        return None
+    y, mo = int(m.group(1)), int(m.group(2))
+    if not 1 <= mo <= 12:
+        return None
+    return f"{y:04d}-{mo:02d}-{calendar.monthrange(y, mo)[1]:02d}"
+
+
+def stamp_observed_on(
+    cands: list[FieldCandidate], observed: str | Callable[[FieldCandidate], str | None] | None
+) -> list[FieldCandidate]:
+    """후보에 observed_on(원문 시점, 계약 2026-10-09.2)을 붙인 새 목록. 값 또는 후보별 함수."""
+    out: list[FieldCandidate] = []
+    for c in cands:
+        d = observed(c) if callable(observed) else observed
+        out.append(c if c.observed_on == d else c.model_copy(update={"observed_on": d}))
+    return out
 
 
 def canonical_json(obj: Any) -> str:

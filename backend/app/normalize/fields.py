@@ -6,21 +6,29 @@ RA §3의 우선순위 규칙을 옮긴 것뿐이다.
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from typing import Final, Literal
 
 __all__ = [
+    "BOOL_FIELDS",
     "CRITICAL_FIELDS",
+    "DECIMAL_FIELDS",
     "FIELD_GROUP",
     "INT_FIELDS",
     "JSON_FIELDS",
     "LABEL_BY_SOURCE",
     "NUMERIC_FIELDS",
+    "PRICE_BY_TYPE_ITEMS",
     "PRIMARY_SOURCES",
     "RULE_TEXT",
     "SourceKind",
     "field_group",
+    "norm_value",
+    "price_by_type_field",
     "rule_text",
     "source_rank",
+    "split_price_by_type",
+    "value_from_norm",
 ]
 
 SourceKind = Literal[
@@ -197,3 +205,90 @@ def source_rank(entity: str, field: str, source_kind: str) -> int:
 
 def rule_text(entity: str, field: str) -> str:
     return RULE_TEXT[field_group(entity, field)]
+
+
+# ---------------------------------------------------------------- 공고별 타입 가격 (계약 2026-10-09.2)
+
+# payment_terms.price_by_type 의 항목. 출처 행 field = 'price_by_type.<type_code>.<항목>'
+PRICE_BY_TYPE_ITEMS: Final = (
+    "max_price_won",
+    "floor_sample_price_won",
+    "floor_sample_text",
+    "units",
+    "notice_type_code",
+)
+_PRICE_BY_TYPE = "price_by_type."
+
+
+def price_by_type_field(type_code: str, item: str) -> str:
+    return f"{_PRICE_BY_TYPE}{type_code}.{item}"
+
+
+def split_price_by_type(field: str) -> tuple[str, str] | None:
+    """'price_by_type.84A.max_price_won' → ('84A', 'max_price_won'). 아니면 None."""
+    if not field.startswith(_PRICE_BY_TYPE):
+        return None
+    type_code, _, item = field[len(_PRICE_BY_TYPE) :].rpartition(".")
+    if not type_code or item not in PRICE_BY_TYPE_ITEMS:
+        return None
+    return type_code, item
+
+
+# ---------------------------------------------------------------- value_norm (계약 2026-10-09.2)
+
+# 값이 불리언인 필드(파서가 bool 로 낸다)
+BOOL_FIELDS: Final = frozenset({"resale_release_on_registration", "cancelled", "is_presale"})
+# INT_FIELDS 밖의 정수 필드(실거래·미분양)
+_EXTRA_INT_FIELDS: Final = frozenset({"floor", "completed_year", "total", "post_completion", "price_won"})
+# 소수 필드(㎡·%·확률)
+DECIMAL_FIELDS: Final = frozenset(
+    {"area_m2", "down_payment_pct", "interim_pct", "balance_pct", "inclusion_prob"}
+)
+
+
+def norm_value(value: float | int | str | bool | None) -> str | None:
+    """정규화 값 → value_norm 정준 문자열(field_provenance.value_norm).
+
+    정수·소수는 10진 표기('1573', '84.98', 10.0 → '10'), 불리언 'true'/'false',
+    문자열(ISO 날짜·정규 JSON 등)은
+    그대로, 없으면 None.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        try:
+            d = Decimal(str(value)).normalize()
+        except InvalidOperation:  # pragma: no cover - nan/inf
+            return str(value)
+        return format(d, "f")
+    return value
+
+
+def _int_field(field: str) -> bool:
+    pbt = split_price_by_type(field)
+    if pbt is not None:
+        return pbt[1] in ("max_price_won", "floor_sample_price_won", "units")
+    return field in INT_FIELDS or field in _EXTRA_INT_FIELDS
+
+
+def value_from_norm(field: str, norm: str | None) -> float | int | str | bool | None:
+    """value_norm → FieldCandidate.value (필드 종류로 형을 되돌린다). ``norm_value`` 의 역."""
+    if norm is None:
+        return None
+    if field in BOOL_FIELDS and norm in ("true", "false"):
+        return norm == "true"
+    if _int_field(field):
+        try:
+            return int(norm)
+        except ValueError:
+            return norm
+    if field in DECIMAL_FIELDS:
+        try:
+            return float(norm)
+        except ValueError:
+            return norm
+    return norm

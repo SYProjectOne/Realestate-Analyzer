@@ -21,12 +21,13 @@ from sqlalchemy.orm import Session
 
 from app.core.time import now_kst
 from app.models import ChangeEvent, PaymentTerms
-from app.normalize.fields import CRITICAL_FIELDS, NUMERIC_FIELDS
+from app.normalize.fields import CRITICAL_FIELDS, NUMERIC_FIELDS, split_price_by_type
 
 __all__ = [
     "PAYMENT_DIFF_FIELDS",
     "current_terms",
     "detected_now",
+    "first_terms",
     "fmt_value",
     "make_event",
     "new_notice_event",
@@ -52,6 +53,9 @@ def detected_now(now: datetime | None = None) -> str:
 def severity_for(entity: str, field: str) -> str:
     if (entity, field) in CRITICAL_FIELDS or entity == "notice":
         return "critical"
+    pbt = split_price_by_type(field) if entity == "payment_terms" else None
+    if pbt is not None:  # 공고별 타입 가격(2026-10-09.2): 가격 변경 = critical
+        return "critical" if pbt[1] in ("max_price_won", "floor_sample_price_won") else "notice"
     if field in NUMERIC_FIELDS.get(entity, ()) or field in {
         "apply_dates",
         "contract_dates",
@@ -164,6 +168,17 @@ def current_terms(session: Session, complex_id: int, *, exclude_id: int | None =
     if not rows:
         return None
     return max(rows, key=lambda r: (r.effective_from, r.notice_no))
+
+
+def first_terms(session: Session, complex_id: int) -> PaymentTerms | None:
+    """최초 조건 = effective_from이 가장 이른 행(같으면 notice_no 작은 것).
+
+    최초 대비 증감(change_vs_first)의 기준.
+    """
+    rows = list(session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == complex_id)))
+    if not rows:
+        return None
+    return min(rows, key=lambda r: (r.effective_from, r.notice_no))
 
 
 def payment_change_events(

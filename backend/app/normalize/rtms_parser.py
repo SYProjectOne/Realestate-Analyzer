@@ -18,7 +18,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
-from app.normalize._text import CandidateBuilder, parse_won, read_raw_text, round_area
+from app.normalize._text import CandidateBuilder, parse_won, read_raw_text, round_area, stamp_observed_on
 
 __all__ = ["RtmsParser", "is_openapi_url", "parse_rtms_xml"]
 
@@ -129,4 +129,6 @@ def parse_rtms_xml(text: str, raw: RawDocument) -> list[FieldCandidate]:
                 rank=1 if openapi else 2,
                 primary=openapi,
             )
-    return b.out
+    # 원문 시점 = 거래일(계약 2026-10-09.2 observed_on)
+    deals = {str(c.entity_key): c.value for c in b.out if c.field == "deal_date" and isinstance(c.value, str)}
+    return stamp_observed_on(b.out, lambda c: deals.get(str(c.entity_key)))

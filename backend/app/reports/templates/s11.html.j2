@@ -1,0 +1,15 @@
+{% from "macros.html.j2" import sec_head %}
+<section id="s11">
+  {{ sec_head(11) }}
+  <p class="lead">참고자료 {{ data.references | length }}건(공고문·청약홈·공식 홈페이지 접속 결과·언론·재가공 출처 전부, URL 전문).</p>
+  <table>
+    <thead><tr><th>#</th><th>종류</th><th>단지</th><th>URL</th><th>확인일</th><th>접속 결과·라벨</th></tr></thead>
+    <tbody>
+    {% for r in data.references %}
+      <tr><td>{{ loop.index }}</td><td>{{ r.kind }}</td><td>{{ r.complex_name }}</td><td class="url"><a class="ref-url" href="{{ r.url }}" rel="noreferrer noopener">{{ r.url }}</a></td><td>{{ r.checked_at or "—" }}</td><td>{{ r.result }}</td></tr>
+    {% else %}
+      <tr><td colspan="6">참고자료 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
