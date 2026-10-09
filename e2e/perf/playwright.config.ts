@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 import os from 'node:os';
-import { BACKEND, backendCommand, backendEnv, FRONTEND, WRITE_TOKEN } from '../env';
+import { BACKEND, backendCommand, backendEnv, FRONTEND, OUTPUT_DIR, WRITE_TOKEN } from '../env';
 
 /**
  * T16 성능 측정(RA §9) — 합성 1,000단지(`devseed --synth 1000`, contracts/fixtures/tools/synth.py) 위 실제 API + 프론트.
@@ -22,7 +22,7 @@ export default defineConfig({
   retries: 0,
   timeout: 180_000,
   expect: { timeout: 30_000 },
-  outputDir: '../test-results/perf',
+  outputDir: path.join(OUTPUT_DIR, 'perf'),
   reporter: [['list']],
   use: { baseURL: `http://localhost:${WEB_PORT}`, locale: 'ko-KR' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],

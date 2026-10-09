@@ -13,9 +13,12 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+import socket
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+import tempfile
+import time
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -217,24 +220,124 @@ def summarize_playwright(path: Path) -> list[tuple[str, str]]:
     return out
 
 
+# e2e 실행 격리 — 여러 worktree(또는 같은 worktree 의 두 프로세스)가 regress 를 동시에 돌려도
+# 포트·데이터 폴더·리포트 파일이 겹치지 않게 실행마다 OS 가 준 빈 포트와 고유 임시 폴더를 환경변수로 넘긴다.
+# e2e/env.ts·e2e/playwright.config.ts·e2e/perf/playwright.config.ts 가 읽고,
+# 없으면 기존 고정값(수동 실행 호환).
+# frontend/e2e/api·pages 설정 변수도 같이 넘긴다(그 설정도 같은 이름을 읽는다 — 하위 명령에서 부를 때 격리).
+E2E_PORT_VARS = (
+    "E2E_FLOW_API_PORT", "E2E_FLOW_WEB_PORT", "E2E_PERF_API_PORT", "E2E_PERF_WEB_PORT",  # e2e/
+    "E2E_API_PORT", "E2E_API_WEB_PORT", "E2E_PAGES_PORT", "E2E_PERF_PORT",  # frontend/e2e/api·pages
+)
+E2E_DATA_VARS = (("E2E_FLOW_DATA", "flows"), ("E2E_PERF_DATA", "perf"), ("E2E_API_DATA", "api"))
+
+
+def free_ports(n: int) -> list[int]:
+    """OS 가 준 빈 TCP 포트 n 개(서로 다름). 모두 잡은 뒤 한꺼번에 놓아 같은 포트가 두 번 나오지 않게 한다."""
+    socks: list[socket.socket] = []
+    try:
+        for _ in range(n):
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(("127.0.0.1", 0))
+            socks.append(s)
+        return [int(s.getsockname()[1]) for s in socks]
+    finally:
+        for s in socks:
+            s.close()
+
+
+def _rmtree(path: Path, attempts: int = 20) -> bool:
+    """Windows 에서 방금 끝난 서버가 SQLite 파일을 잠깐 쥐고 있을 수 있다 — 잠시 재시도."""
+    for _ in range(attempts):
+        if not path.exists():
+            return True
+        shutil.rmtree(path, ignore_errors=True)
+        if not path.exists():
+            return True
+        time.sleep(0.5)
+    return not path.exists()
+
+
+@dataclass(frozen=True)
+class E2EIsolation:
+    """regress 1회분의 격리 자원: 임시 폴더(root) 아래 데이터·리포트, worktree 안 Playwright 산출물 폴더."""
+
+    root: Path
+    env: dict[str, str]
+    junit: Path
+    results: Path
+    output: Path
+
+    @classmethod
+    def create(cls, base_env: Mapping[str, str]) -> E2EIsolation:
+        root = Path(tempfile.mkdtemp(prefix="sa-e2e-run-"))
+        env: dict[str, str] = {}
+        for var, port in zip(E2E_PORT_VARS, free_ports(len(E2E_PORT_VARS)), strict=True):
+            if var not in base_env:
+                env[var] = str(port)
+        for var, sub in E2E_DATA_VARS:
+            if var not in base_env:
+                (root / sub).mkdir()
+                env[var] = (root / sub).as_posix()
+        results = root / "results.json"
+        output = E2E / "test-results" / root.name
+        env["E2E_RESULTS_JSON"] = results.as_posix()
+        env["E2E_OUTPUT_DIR"] = output.as_posix()
+        return cls(root=root, env=env, junit=root / "regress-junit.xml", results=results, output=output)
+
+    def apply(self, step: Step) -> tuple[list[str], dict[str, str]]:
+        """단계의 명령(junit 경로 → 이 실행 것)과 환경변수(격리 값 우선)."""
+        cmd = [f"--junitxml={self.junit}" if a.startswith("--junitxml=") else a for a in step.cmd]
+        return cmd, {**os.environ, **step.env, **self.env}
+
+    def publish(self) -> None:
+        """요약에 쓴 리포트를 기본 위치(e2e/playwright-report/)에 복사 — 동시 실행이면 마지막 것이 남는다."""
+        REGRESS_JUNIT.parent.mkdir(parents=True, exist_ok=True)
+        for src, dst in ((self.junit, REGRESS_JUNIT), (self.results, E2E_RESULTS)):
+            if src.is_file():
+                tmp = dst.with_name(f"{dst.name}.{self.root.name}")
+                shutil.copyfile(src, tmp)
+                os.replace(tmp, dst)
+            else:
+                dst.unlink(missing_ok=True)
+
+    def cleanup(self, keep_output: bool) -> None:
+        """임시 폴더는 항상 지운다. 실패한 실행의 Playwright 산출물(trace)은 keep_output 이면 남긴다."""
+        if not _rmtree(self.root):
+            print(f"임시 폴더를 지우지 못했다: {self.root}", file=sys.stderr)
+        artifacts = [p for p in self.output.iterdir() if p.name != ".last-run.json"] if self.output.is_dir() else []
+        if not keep_output or not artifacts:
+            _rmtree(self.output)
+
+
 def run_regress(steps: Sequence[Step]) -> int:
-    """모든 단계를 끝까지 돌리고(실패해도 계속) 케이스별 요약을 출력한다."""
-    for f in (REGRESS_JUNIT, E2E_RESULTS):
-        if f.is_file():
-            f.unlink()
-    REGRESS_JUNIT.parent.mkdir(parents=True, exist_ok=True)
+    """모든 단계를 끝까지 돌리고(실패해도 계속) 케이스별 요약을 출력한다. 실행마다 포트·폴더를 격리한다."""
+    iso = E2EIsolation.create(os.environ)
+    shown = " ".join(f"{k}={iso.env[k]}" for k in (*E2E_PORT_VARS, "E2E_FLOW_DATA") if k in iso.env)
+    print(f"# e2e 격리: {shown}", flush=True)
+    code = 1
+    try:
+        code = _run_regress(steps, iso)
+    finally:
+        iso.cleanup(keep_output=code != 0)
+    return code
+
+
+def _run_regress(steps: Sequence[Step], iso: E2EIsolation) -> int:
     codes: list[int] = []
     for step in steps:
         print(f"$ {step.show()}", flush=True)
+        cmd, env = iso.apply(step)
         try:
-            code = subprocess.call(_resolve(step.cmd), cwd=step.cwd, env={**os.environ, **step.env})
+            code = subprocess.call(_resolve(cmd), cwd=step.cwd, env=env)
         except FileNotFoundError:
             print(f"명령을 찾을 수 없다: {step.cmd[0]}", file=sys.stderr)
             code = 127
         codes.append(code)
+    iso.publish()
     print("\n==== 회귀 요약 (RA §9) ====")
-    if REGRESS_JUNIT.is_file():
-        rows = summarize_junit(REGRESS_JUNIT)
+    if iso.junit.is_file():
+        rows = summarize_junit(iso.junit)
         if not rows:
             print("회귀 테스트가 아직 없다(WP9) — 실패로 처리", file=sys.stderr)
             codes.append(NO_TESTS_COLLECTED)
@@ -244,13 +347,13 @@ def run_regress(steps: Sequence[Step]) -> int:
             print(f"  [{mark}] {case:<28} 통과 {ok:>3} · 실패 {bad:>2} · 건너뜀 {skip}{extra}")
     else:
         print("  (pytest junit 없음)")
-    if E2E_RESULTS.is_file():
+    if iso.results.is_file():
         print("  -- e2e --")
-        for title, status in summarize_playwright(E2E_RESULTS):
+        for title, status in summarize_playwright(iso.results):
             print(f"  [{'PASS' if status in ('passed', 'expected') else 'FAIL'}] {title} ({status})")
-    bad = [c for c in codes if c not in (0,)]
-    print(f"결과: {'통과' if not bad else '실패'} (단계 종료 코드 {codes})")
-    return bad[0] if bad else 0
+    failed = [c for c in codes if c not in (0,)]
+    print(f"결과: {'통과' if not failed else '실패'} (단계 종료 코드 {codes})")
+    return failed[0] if failed else 0
 
 
 def t_check(args: list[str]) -> list[Step]:

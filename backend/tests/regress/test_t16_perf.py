@@ -13,9 +13,12 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -33,11 +36,57 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
+PERF_LOCK = Path(tempfile.gettempdir()) / "sa-regress-t16-perf.lock"
+PERF_LOCK_WAIT_S = 900.0
+
+
+@contextmanager
+def perf_lock() -> Iterator[None]:
+    """측정 구간 상호 배제(머신 전체) — 여러 worktree 가 regress 를 동시에 돌리면 두 측정이 같은 CPU 를
+    다투어 1 s 기준을 넘는다(포트·폴더 충돌이 아니라 측정 간섭). 측정만 차례로 한다. 프로세스가 죽으면 OS 가 잠금을 푼다."""
+    PERF_LOCK.touch(exist_ok=True)
+    with PERF_LOCK.open("r+b") as fh:
+        deadline = time.monotonic() + PERF_LOCK_WAIT_S
+        while True:
+            try:
+                if sys.platform == "win32":
+                    import msvcrt
+
+                    fh.seek(0)
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    pytest.fail(f"T16 측정 잠금 대기 {PERF_LOCK_WAIT_S:.0f}s 초과: {PERF_LOCK}")
+                time.sleep(0.5)
+        try:
+            yield
+        finally:
+            if sys.platform == "win32":
+                import msvcrt
+
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+
 @pytest.fixture
 def server(env: RegressEnv) -> Iterator[str]:
     from app.api import devseed
     from app.core.db import reset_engine
 
+    with perf_lock():
+        yield from _server(env, devseed, reset_engine)
+
+
+def _server(env: RegressEnv, devseed: Any, reset_engine: Callable[[], None]) -> Iterator[str]:
     assert devseed.load_synth(env.settings, n=1000, snapshot_id=SNAP) == 1000
     reset_engine()
     port = _free_port()

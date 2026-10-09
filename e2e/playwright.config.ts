@@ -1,5 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
-import { API_PORT, BACKEND, backendCommand, backendEnv, FRONTEND, WEB_PORT, WRITE_TOKEN } from './env';
+import {
+  API_PORT,
+  BACKEND,
+  backendCommand,
+  backendEnv,
+  FRONTEND,
+  OUTPUT_DIR,
+  RESULTS_JSON,
+  WEB_PORT,
+  WRITE_TOKEN,
+} from './env';
 
 /**
  * WP9 R3 사용자 흐름 e2e — 실제 API(uvicorn, devseed DB) + Mock 판정기 + 실제 프론트(vite, MSW 끔).
@@ -19,8 +29,8 @@ export default defineConfig({
   retries: 0,
   timeout: 240_000,
   expect: { timeout: 20_000 },
-  outputDir: './test-results',
-  reporter: [['list'], ['json', { outputFile: 'playwright-report/results.json' }]],
+  outputDir: OUTPUT_DIR,
+  reporter: [['list'], ['json', { outputFile: RESULTS_JSON }]],
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
     trace: 'retain-on-failure',

@@ -18,12 +18,20 @@ export const E2E = fileURLToPath(new URL('.', import.meta.url));
 export const ROOT = path.resolve(E2E, '..');
 export const BACKEND = path.join(ROOT, 'backend');
 export const FRONTEND = path.join(ROOT, 'frontend');
+/*
+ * 포트·데이터 폴더·산출물 위치는 환경변수 우선, 없으면 고정 기본값(수동 실행 호환).
+ * `python scripts/tasks.py regress` 는 실행마다 OS 가 준 빈 포트와 고유 임시 폴더를 넘긴다(동시 실행 격리, 끝나면 정리).
+ */
 export const API_PORT = Number(process.env.E2E_FLOW_API_PORT ?? 18865);
 export const WEB_PORT = Number(process.env.E2E_FLOW_WEB_PORT ?? 15492);
 export const WRITE_TOKEN = process.env.E2E_FLOW_TOKEN ?? 'e2e-flow-write-token-0123456789ab';
 export const READ_TOKEN = process.env.E2E_FLOW_READ_TOKEN ?? 'e2e-flow-read-token-0123456789abc';
 export const DATA = (process.env.E2E_FLOW_DATA ?? path.join(os.tmpdir(), 'sa-e2e-flows')).replaceAll('\\', '/');
 export const API = `http://127.0.0.1:${API_PORT}`;
+/** Playwright outputDir(trace 등) — 실행마다 따로(Playwright 가 시작 때 비운다) */
+export const OUTPUT_DIR = process.env.E2E_OUTPUT_DIR ?? path.join(E2E, 'test-results');
+/** json 리포트(scripts/tasks.py 요약이 읽는다) */
+export const RESULTS_JSON = process.env.E2E_RESULTS_JSON ?? path.join(E2E, 'playwright-report', 'results.json');
 /** 합성 판정 녹화(MockAdapter fixture_dir) — contracts/fixtures/tools/record_synth_judgments.py 가 만든다 */
 export const SYNTH_JUDGMENTS = path
   .join(ROOT, 'contracts', 'fixtures', 'incheon_gimpo_2026-10-08', 'judgments_synth')
