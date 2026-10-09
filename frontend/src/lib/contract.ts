@@ -1,66 +1,51 @@
 /**
- * 계약 타입 별칭 (계약 2026-10-09.1) — 생성물 `src/api/schema.d.ts`(contracts/openapi.bundled.yaml)에서 직접 온다.
- *
- * 차트·공통 컴포넌트(WP6b)는 응답 모양을 이 파일로만 본다. `src/api/types.ts`는 계약 머지 전 임시 타입이라
- * 모양이 다르고(id 문자열, Benchmark ↔ BenchmarkView 등) WP6a가 생성 타입 별칭으로 바꾸는 중이다.
- * 컴포넌트 props는 아래 `*Like` 구조 타입으로 받아 임시 타입·계약 타입 어느 쪽이 와도 컴파일된다.
+ * 계약 타입 별칭 (계약 2026-10-09.1) — 원본은 `src/api/types.ts`(생성물 `src/api/schema.d.ts`의 별칭)다.
+ * 이 파일은 차트·공통 컴포넌트(WP6b)가 쓰던 이름을 그대로 re-export 하고, props용 `*Like` 구조 타입만 따로 둔다.
  */
-import type { components } from '@/api/schema';
+import type { IntakePath, IntakeStatus, Label, Market } from '@/api/types';
 
-type Schemas = components['schemas'];
+export type {
+  BenchmarkView,
+  CatalystStage,
+  CatalystView,
+  CompareView,
+  ComplexDetail,
+  ComponentKey,
+  ComponentView,
+  Dashboard,
+  Decision,
+  DecisionSet,
+  EnvelopeStatus,
+  Fact,
+  FactUnitHint,
+  Gap,
+  GapComp,
+  Intake,
+  IntakePath,
+  IntakeStatus,
+  JobRun,
+  Label,
+  LadderHorizon,
+  LadderRow,
+  Market,
+  Provenance,
+  ProvenanceConflict,
+  Region,
+  RemainingEvent,
+  RemainingKind,
+  ScoreRow,
+  Sensitivity,
+  SensitivityCell,
+  Snapshot,
+  SupplyPoint,
+  UnsoldPoint,
+  Verdict3,
+  Weights,
+} from '@/api/types';
+export { COMPONENT_KEYS } from '@/api/types';
 
-// ─── 공통 ───────────────────────────────────────────────────
-export type Label = Schemas['Label'];
-export type Fact = Schemas['Fact'];
-export type FactUnitHint = NonNullable<Fact['unit']>;
-export type Intake = Schemas['Intake'];
-export type EnvelopeStatus = Schemas['LadderRow']['status'];
-
-// ─── 화면 응답 ──────────────────────────────────────────────
-export type ComplexDetail = Schemas['ComplexDetail'];
-export type Market = Schemas['Market'];
-export type Dashboard = Schemas['Dashboard'];
-export type CompareView = Schemas['CompareView'];
-export type Provenance = Schemas['Provenance'];
-export type ProvenanceConflict = Schemas['ProvenanceConflict'];
-export type JobRun = Schemas['JobRun'];
-export type Snapshot = Schemas['Snapshot'];
-export type Region = Schemas['Region'];
-
-// ─── 차트 입력 ──────────────────────────────────────────────
-export type LadderRow = Schemas['LadderRow'];
-export type LadderHorizon = LadderRow['horizon'];
-export type Verdict3 = Schemas['Verdict3'];
-export type Gap = Schemas['Gap'];
-export type GapComp = Schemas['GapComp'];
-export type BenchmarkView = Schemas['BenchmarkView'];
 export type BenchmarkFlag = Market['benchmark_flags'][number];
-export type SupplyPoint = Schemas['SupplyPoint'];
 export type MoveInMarker = Market['move_in_markers'][number];
-export type UnsoldPoint = Schemas['UnsoldPoint'];
-export type ScoreRow = Schemas['ScoreRow'];
-export type ComponentKey = Schemas['ComponentKey'];
-export type ComponentView = Schemas['ComponentView'];
-export type Weights = Schemas['Weights'];
-export type DecisionSet = Schemas['DecisionSet'];
-export type Decision = Schemas['Decision'];
-export type RemainingEvent = Schemas['RemainingEvent'];
-export type RemainingKind = RemainingEvent['kind'];
-export type CatalystView = Schemas['CatalystView'];
-export type CatalystStage = CatalystView['stage'];
-export type Sensitivity = Schemas['Sensitivity'];
-export type SensitivityCell = Schemas['SensitivityCell'];
-
-/** 성분 표시 순서(ScoreRow.components·Weights 키). move_in은 상황 A·D에서 liquidity 대신 온다 */
-export const COMPONENT_KEYS: readonly ComponentKey[] = [
-  'p10',
-  'rerank',
-  'gap',
-  'benchmark',
-  'supply',
-  'liquidity',
-  'move_in',
-];
 
 /** 생활권 id → 이름 (Market.living_areas / Region.living_areas) */
 export interface LivingAreaName {
@@ -80,9 +65,6 @@ export interface FactLike {
   human?: boolean;
   unit?: string;
 }
-
-export type IntakeStatus = Intake['status'];
-export type IntakePath = Intake['path'];
 
 /** IntakeBadge 입력 */
 export interface IntakeLike {

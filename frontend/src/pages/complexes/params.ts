@@ -1,0 +1,92 @@
+/** G2 필터·정렬 ↔ URL 쿼리 ↔ API 쿼리(filter[...] deepObject) */
+import type { ComplexFilter, ComplexListParams } from '@/api/types';
+
+/** URL 쿼리 키 = API filter 키. 가격은 URL에서 억 단위(읽기 쉬움), API로는 원 */
+export const FILTER_KEYS = [
+  'living_area',
+  'intake_status',
+  'land_type',
+  'resale_end_before',
+  'price_min',
+  'price_max',
+  'move_in_year',
+  'inclusion_class',
+  'judge_scope',
+  'q',
+] as const;
+export type FilterKey = (typeof FILTER_KEYS)[number];
+export type FilterValues = Partial<Record<FilterKey, string>>;
+
+export const SORT_KEYS = [
+  'total',
+  'rank',
+  'name',
+  'price_mid',
+  'price_low',
+  'move_in_ym',
+  'resale_end',
+  'gap_pct',
+  'p10',
+  'living_area',
+  'last_change',
+] as const;
+export type SortKey = (typeof SORT_KEYS)[number];
+export const DEFAULT_SORT = '-total';
+/** G2는 한 번에 받아 가상 스크롤한다(계약 size 최대 1000 — RA "리스트 1,000단지") */
+export const PAGE_SIZE = 1000;
+
+const EOK = 100_000_000;
+
+export function readFilters(params: URLSearchParams): FilterValues {
+  const out: FilterValues = {};
+  for (const key of FILTER_KEYS) {
+    const v = params.get(key);
+    if (v) out[key] = v;
+  }
+  return out;
+}
+
+export function readSort(params: URLSearchParams): string {
+  const sort = params.get('sort');
+  if (!sort) return DEFAULT_SORT;
+  const key = sort.replace(/^-/, '');
+  return (SORT_KEYS as readonly string[]).includes(key) ? sort : DEFAULT_SORT;
+}
+
+export function toApiFilter(values: FilterValues): ComplexFilter {
+  const filter: ComplexFilter = {};
+  if (values.living_area) filter.living_area = values.living_area;
+  if (values.intake_status) filter.intake_status = values.intake_status;
+  if (values.land_type) filter.land_type = values.land_type;
+  if (values.inclusion_class) filter.inclusion_class = values.inclusion_class;
+  if (values.judge_scope) filter.judge_scope = values.judge_scope;
+  if (values.resale_end_before) filter.resale_end_before = values.resale_end_before;
+  if (values.q) filter.q = values.q;
+  const min = Number(values.price_min);
+  if (values.price_min && Number.isFinite(min)) filter.price_min = Math.round(min * EOK);
+  const max = Number(values.price_max);
+  if (values.price_max && Number.isFinite(max)) filter.price_max = Math.round(max * EOK);
+  const year = Number(values.move_in_year);
+  if (values.move_in_year && Number.isInteger(year)) filter.move_in_year = year;
+  return filter;
+}
+
+export function toListParams(
+  values: FilterValues,
+  sort: string,
+  scenario: string | null,
+): ComplexListParams {
+  return {
+    page: 1,
+    size: PAGE_SIZE,
+    sort,
+    ...(scenario ? { scenario } : {}),
+    filter: toApiFilter(values),
+  };
+}
+
+/** 헤더 클릭: 같은 키면 방향을 뒤집고, 새 키면 내림차순부터 */
+export function nextSort(current: string, key: SortKey): string {
+  if (current === `-${key}`) return key;
+  return `-${key}`;
+}
