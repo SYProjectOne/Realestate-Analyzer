@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.scenarios import BUILTIN_SCENARIOS
 from app.api import devseed
 from app.core.contracts_gen import ComplexScoreInput, FixedComponents, RerankAnchor, RerankItem
 from app.core.settings import Settings
@@ -56,7 +57,7 @@ def _prev_inputs(session: Session) -> tuple[Any, list[int]]:
     """스냅샷 11(T7 인천 8단지) 점수 입력 — devseed 입력을 좁힌다."""
     region = session.get(Region, 1)
     assert region is not None
-    inputs = devseed._score_inputs(FIXTURE, region)  # noqa: SLF001 — 같은 저장소의 적재기 재사용
+    inputs = devseed._score_inputs(FIXTURE, region)  # 같은 저장소의 적재기 재사용(비공개 함수)
     assert inputs is not None
     expected = _load("expected_scores.json")
     by_key = {c["key"]: c for c in expected["complexes"]}
@@ -163,20 +164,19 @@ def seed(settings: Settings, session_factory: Any) -> SeedInfo:
         prev, prev_ids = _prev_inputs(session)
         snap_prev = session.get(Snapshot, SNAP_PREV)
         assert snap_prev is not None
-        devseed._load_scores(session, prev, snap_prev, envs)  # noqa: SLF001
+        devseed._load_scores(session, prev, snap_prev, envs)
         _copy_intake(session, prev_ids)
         _claims(session, envs)
         session.commit()
         info.complex_ids[SNAP_PREV] = prev_ids
-        cur = {c.complex_id for c in devseed._score_inputs(FIXTURE, session.get(Region, 1)).complexes}  # type: ignore[arg-type,union-attr]  # noqa: SLF001
-        info.complex_ids[SNAP_CUR] = sorted(cur)
+        region = session.get(Region, 1)
+        assert region is not None
+        cur_inputs = devseed._score_inputs(FIXTURE, region)
+        assert cur_inputs is not None
+        info.complex_ids[SNAP_CUR] = sorted(c.complex_id for c in cur_inputs.complexes)
+        codes = {s.id: s.code or str(s.id) for s in BUILTIN_SCENARIOS}
         for run in session.scalars(select(ScoreRun)):
-            sc = run.scenario_id
-            code = next(
-                (s.code for s in devseed.BUILTIN_SCENARIOS if s.id == sc),
-                str(sc),
-            )
-            info.score_runs[(run.snapshot_id, code or str(sc))] = run.id
+            info.score_runs[(run.snapshot_id, codes.get(run.scenario_id, str(run.scenario_id)))] = run.id
     return info
 
 

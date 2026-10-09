@@ -13,7 +13,7 @@ from typing import Any, Final
 
 from app.core.contracts_gen import Fact
 from app.reports.data import COMPONENT_LABELS, ChartSpec, ReportData
-from app.reports.fmt import fmt_score
+from app.reports.fmt import fact_label_text, fact_value_text, fmt_score, round_half_up
 
 __all__ = ["build_charts"]
 
@@ -48,6 +48,21 @@ def _num(f: Fact) -> float | None:
     return float(f.v) if isinstance(f.v, (int, float)) else None
 
 
+def _prob_item(f: Fact, *, unresolved: bool = False, suffix: str | None = None) -> dict[str, Any]:
+    """확률 막대 한 칸: 값은 소수 2자리 반올림(ROUND_HALF_UP), 라벨 = '0.35 추정[ · 덧말]'(표와 같은 문자열).
+
+    option 은 JSON 이라 formatter 함수를 못 쓴다 — 칸마다 문자열 formatter 를 둔다. 미해결이면 '미해결'."""
+    v = _num(f)
+    value = None if v is None else float(round_half_up(v, 2))
+    if unresolved:
+        text = "미해결"
+    elif value is None:
+        text = fact_label_text(f)
+    else:
+        text = f"{fact_value_text(f)} {f.label}" + (f" · {suffix}" if suffix else "")
+    return {"value": value, "label": {"show": True, "formatter": text}}
+
+
 def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
     """C6 종합 점수 분해: 가중 기여 stacked bar(정렬 = 종합 점수), 부제 = 가중치, 미판정 = 회색."""
     rows = [s for s in data.scores if s.rank is not None]
@@ -63,10 +78,10 @@ def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
         for s in rows:
             comp = s.components.get(k)
             if comp is None or comp.contribution is None:
-                w = data.weights.get(k, 0.0)
+                # 미판정: 길이 0 + 라벨만(최대 기여 w×10 으로 스택을 부풀리지 않는다 — R3 minor 26)
                 values.append(
                     {
-                        "value": round(w * 10, 4),
+                        "value": 0,
                         "itemStyle": {"color": GRAYED, "opacity": 0.5},
                         "label": {"show": True, "formatter": "미판정", "fontSize": 9},
                     }
@@ -121,14 +136,19 @@ def c01_ladder(data: ReportData) -> ChartSpec | None:
     cats = ["+5%", "+10%", "+20%", "보합·하락"]
     series = []
     for i, lad in enumerate(ladders):
-        vals = [_num(lad.p5), _num(lad.p10), _num(lad.p20), _num(lad.p_flat)]
         unresolved = lad.status != "ok"
+        vals = [
+            _prob_item(lad.p5, unresolved=unresolved),
+            _prob_item(lad.p10, unresolved=unresolved, suffix=lad.verdict_p10),
+            _prob_item(lad.p20, unresolved=unresolved),
+            _prob_item(lad.p_flat, unresolved=unresolved),
+        ]
         series.append(
             {
                 "type": "bar",
                 "name": lad.name + (" (미해결)" if unresolved else ""),
                 "itemStyle": {"color": GRAYED if unresolved else CATEGORICAL[i % len(CATEGORICAL)]},
-                "label": {"show": True, "position": "right", "fontSize": 9, "formatter": "{c}"},
+                "label": {"show": True, "position": "right", "fontSize": 9},
                 "data": vals,
                 **(
                     {
@@ -183,9 +203,10 @@ def c07_decision(data: ReportData) -> ChartSpec | None:
             {
                 "type": "bar",
                 "name": "decide 확률",
-                "label": {"show": True, "position": "right", "fontSize": 9, "formatter": "{c}"},
+                "label": {"show": True, "position": "right", "fontSize": 9},
                 "data": [
-                    {"value": _num(d.prob), "itemStyle": {"color": STRONG if d.chosen else GRAYED}}
+                    _prob_item(d.prob, suffix="동률" if d.tie else None)
+                    | {"itemStyle": {"color": STRONG if d.chosen else GRAYED}}
                     for d in items
                 ],
             }

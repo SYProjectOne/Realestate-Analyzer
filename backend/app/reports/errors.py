@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["ReportBlocked", "ReportError", "ReportNotFound"]
+__all__ = ["ReportBlocked", "ReportError", "ReportNotFound", "ReportProvenanceMissing"]
 
 
 class ReportError(Exception):
@@ -19,3 +19,11 @@ class ReportBlocked(ReportError):
 
 class ReportNotFound(ReportError):
     """스냅샷·비교 스냅샷·시나리오가 없음."""
+
+
+class ReportProvenanceMissing(ReportError):
+    """값이 있는데 출처 행(field_provenance)이 없음 — ENV=dev 에서만.
+
+    T13, API ``FactMaker.missing`` 과 같은 규칙.
+
+    ENV=prod 는 예외 대신 경고 로그 + '확인 불가(출처 누락)'으로 표시한다."""

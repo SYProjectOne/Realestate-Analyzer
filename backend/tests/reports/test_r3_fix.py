@@ -374,15 +374,16 @@ def test_c2_report_scope_per_complex(factory: sessionmaker[Session], out_dir: Pa
     assert by[14].judge_scope == "미해결"
     assert by[12].judge_scope == "참고"  # 공식 팝업 '불가'
     assert by[13].judge_scope == "참고"  # 공식 팝업 '확인 불가'(비공식 미정은 표시에 안 씀)
-    assert by[15].judge_scope == "참고"  # 비공식만 — 표시 접수 상태 없음
+    assert by[15].judge_scope == "보류"  # 분양가 미공개(공고 전) — 접수보다 먼저 본다
     unresolved = {r.complex_id for r in data.classify_rows if r.unresolved}
     assert {4, 14, 16} <= unresolved
     soup = BeautifulSoup(rep.path.read_text(encoding="utf-8"), "lxml")
     sec = soup.find("section", id="s3")
     assert isinstance(sec, Tag)
     rows = {
-        tr.find("td").get_text(strip=True): tr.get_text(" ", strip=True)
+        tr.td.get_text(strip=True): tr.get_text(" ", strip=True)
         for tr in sec.select("table")[0].select("tbody tr")
+        if tr.td is not None
     }
     assert "미해결(분류 판정 미해결)" in rows[by[4].name]
     assert "참고 후보(순위만)" in rows[by[12].name]
@@ -405,9 +406,8 @@ def test_m3_current_price_prefers_latest_price_by_type(scratch: Session) -> None
     )
     scratch.flush()
     cx = load_report(scratch, 12).complex_by_id[7]
-    extra = sum(
-        int(f.v) for f in (cx.basis.balcony, cx.basis.options) if cx.basis and isinstance(f.v, (int, float))
-    )
+    assert cx.basis is not None
+    extra = sum(int(f.v) for f in (cx.basis.balcony, cx.basis.options) if isinstance(f.v, (int, float)))
     assert cx.price_high.v == 777_000_000 + extra
     assert cx.price_low.v == 700_000_000 + extra
     assert cx.price_high.prov == f"fp_{fp_max}"
@@ -417,5 +417,5 @@ def test_m3_current_price_prefers_latest_price_by_type(scratch: Session) -> None
 def test_m3_current_price_falls_back_to_complex_type(factory: sessionmaker[Session]) -> None:
     with factory() as s:
         cx = load_report(s, 12).complex_by_id[7]
-    assert cx.basis is not None and isinstance(cx.basis.max_price.v, int)
+    assert cx.basis is not None and isinstance(cx.basis.max_price.v, (int, float))
     assert cx.price_high.prov == cx.basis.max_price.prov

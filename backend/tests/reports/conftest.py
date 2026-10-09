@@ -17,7 +17,7 @@ from ._seed import SeedInfo, seed
 
 @pytest.fixture(scope="session")
 def report_env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[tuple[Settings, Engine, SeedInfo]]:
-    """세션 공용: 임시 sqlite 에 devseed 픽스처 적재 + 보고서 보충(_seed). 테스트는 읽기만(바꾸면 rollback)."""
+    """세션 공용: 임시 sqlite 에 devseed 적재 + 보고서 보충(_seed). 테스트는 읽기만(바꾸면 rollback)."""
     import os
 
     saved = {n: os.environ.pop(n) for n in env_var_names() if n in os.environ}
