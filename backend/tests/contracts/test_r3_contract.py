@@ -62,10 +62,11 @@ def test_claims_list_and_patch_operations(bundled: dict[str, Any]) -> None:
 
 
 def test_claim_reverify_job_payload(schema_registry: Registry[Any]) -> None:
-    ok = {"job_name": "claim.reverify", "payload": {"snapshot_id": 12, "claim_id": 7001, "text": "a"}}
-    assert _errors("job_run.json", schema_registry, ok, "/$defs/JobCreate") == []
-    bad = {"job_name": "claim.reverify", "payload": {"snapshot_id": 12, "claim_id": 7001, "text": ""}}
-    assert _errors("job_run.json", schema_registry, bad, "/$defs/JobCreate")
+    # 계약 2026-10-09.6: claim.reverify 는 POST /jobs(JobCreate)로 넣을 수 없다 — payload 스키마 자체만 검사한다
+    ok = {"snapshot_id": 12, "claim_id": 7001, "text": "a"}
+    assert _errors("job_payloads/claim_reverify.json", schema_registry, ok) == []
+    bad = {"snapshot_id": 12, "claim_id": 7001, "text": ""}
+    assert _errors("job_payloads/claim_reverify.json", schema_registry, bad)
     assert _errors("claim.json", schema_registry, {"text": ""}, "/$defs/ClaimPatch")
     assert _errors("claim.json", schema_registry, {"text": "x" * 2001}, "/$defs/ClaimPatch")
     assert _errors("claim.json", schema_registry, {"text": "고친 문장"}, "/$defs/ClaimPatch") == []

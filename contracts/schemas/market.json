@@ -5,7 +5,7 @@
   "description": "GET /snapshots/{sid}/market — G6 지역 시장 (RA §4-2, §7-2 C3·C4·C5·C9). 벤치마크(C3), 입주 물량(C4, 생활권 스택 + 판정 단지 입주월 마커), 미분양(C5, 24개월 2계열, 결측 월은 v=null — connectNulls=false), 호재(C9), 규제 요약 카드, 생활권별 비교 시세 표.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["snapshot_id", "asof_date", "region_id", "living_areas", "benchmarks", "benchmark_flags", "supply", "move_in_markers", "unsold", "catalysts", "regulation", "living_area_prices"],
+  "required": ["snapshot_id", "asof_date", "region_id", "living_areas", "benchmarks", "benchmark_flags", "benchmark_absence", "supply", "move_in_markers", "unsold", "catalysts", "regulation", "living_area_prices"],
   "properties": {
     "snapshot_id": { "type": "integer" },
     "asof_date": { "type": "string", "format": "date" },
@@ -18,16 +18,18 @@
       }
     },
     "benchmarks": { "type": "array", "items": { "$ref": "#/$defs/BenchmarkView" } },
+    "benchmark_absence": { "anyOf": [{ "$ref": "#/$defs/BenchmarkAbsence" }, { "type": "null" }] },
     "benchmark_flags": {
       "type": "array",
       "items": {
         "title": "BenchmarkFlag",
-        "description": "생활권별 벤치마크 표본 경고: sample_n < 3 → '표본 n, 추정' 배지; no_recent_sale_case = 최근 3년 분양 사례 0건",
-        "type": "object", "additionalProperties": false, "required": ["living_area", "sample_n", "no_recent_sale_case"],
+        "description": "생활권별 벤치마크 표본 경고: sample_n < 3 → '표본 n, 추정' 배지; no_recent_sale_case = 최근 3년 분양 사례 0건(자기 생활권 표본 기준).\n- sample_n: **자기 생활권 표본만**(분양권·지역 전체 대체 행 제외 — R3 재리뷰 N-M4, 계약 2026-10-09.6). 대체 행까지 세면 '표본 3 미만' 배지가 빠진다.\n- substituted: 자기 표본 0 → 지역 전체 표본을 대체로 보인다(D9-2, 라벨 추정, 표시 '대체(지역 전체)').",
+        "type": "object", "additionalProperties": false, "required": ["living_area", "sample_n", "no_recent_sale_case", "substituted"],
         "properties": {
           "living_area": { "type": "string" },
-          "sample_n": { "type": "integer", "minimum": 0 },
-          "no_recent_sale_case": { "type": "boolean" }
+          "sample_n": { "type": "integer", "minimum": 0, "x-nonfact": "자기 생활권 벤치마크 행 개수(집계 메타)" },
+          "no_recent_sale_case": { "type": "boolean" },
+          "substituted": { "type": "boolean" }
         }
       }
     },
@@ -67,14 +69,27 @@
     }
   },
   "$defs": {
+    "BenchmarkAbsence": {
+      "title": "BenchmarkAbsence",
+      "description": "벤치마크 없음 사유(D9-2 '그래도 0 → 종합 미계산 + 사유 표시', R3 재리뷰 N-M3, 계약 2026-10-09.6). 지역에 점수에 쓸 벤치마크 행(분양권 제외)이 하나도 없을 때만 객체, 있으면 null. 화면(G1·G6)·보고서 표시 = '벤치마크 없음(<reason>)'. 이때 benchmark 성분은 미계산이고 종합 점수도 미계산이다(RA §6-4).\n- code: not_collected = 지역 실거래(rtms)가 아직 없다(수집 전) · presale_only = 분양권 거래(입주 전) 사례만 있어 점수에서 제외 · no_sample = 실거래는 있으나 입주 후 실거래가 있는 과거 분양 사례가 생활권·지역 전체 모두 0.\n- reason: 표시 문자열(한국어).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "reason"],
+      "properties": {
+        "code": { "type": "string", "enum": ["not_collected", "presale_only", "no_sample"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
     "BenchmarkView": {
       "title": "BenchmarkView",
       "description": "벤치마크 1개(C3 dumbbell 1행): 분양가 → 최근 실거래 범위, 고점 마커. gain_* = (실거래 − 분양가)/분양가(%), annualized_pct = 분양 연도부터 연율. is_presale=true(분양권)는 별도 마커이고 benchmark 점수에서 제외.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "living_area", "name", "completed_year", "sale_year", "sale_period", "sale_price_84_won", "trade_low_won", "trade_median_won", "trade_high_won", "trade_window", "peak_won", "peak_ym", "is_presale"],
+      "required": ["id", "snapshot_id", "substitute", "living_area", "name", "completed_year", "sale_year", "sale_period", "sale_price_84_won", "trade_low_won", "trade_median_won", "trade_high_won", "trade_window", "peak_won", "peak_ym", "is_presale"],
       "properties": {
         "id": { "type": "integer" },
+        "snapshot_id": { "description": "이 행을 조립한 스냅샷(계약 2026-10-09.6, G1 요청 — 재조립이 발행 스냅샷이 인용한 행을 지우지 않게). null = 0006 이전 행·사람 입력(모든 스냅샷에 보인다).", "type": ["integer", "null"] },
+        "substitute": { "description": "지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다.", "type": "boolean" },
         "living_area": { "type": ["string", "null"] },
         "name": { "type": "string" },
         "completed_year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": ["integer", "null"] },
@@ -149,7 +164,8 @@
     {
       "snapshot_id": 12, "asof_date": "2026-10-08", "region_id": 1,
       "living_areas": [{ "id": "la_4", "name": "김포시" }],
-      "benchmarks": [], "benchmark_flags": [{ "living_area": "la_4", "sample_n": 1, "no_recent_sale_case": false }],
+      "benchmarks": [], "benchmark_flags": [{ "living_area": "la_4", "sample_n": 0, "no_recent_sale_case": true, "substituted": false }],
+      "benchmark_absence": { "code": "no_sample", "reason": "입주 후 실거래가 있는 과거 분양 사례 없음(생활권·지역 전체 표본 0)" },
       "supply": [], "move_in_markers": [],
       "unsold": [
         { "ym": "2026-08", "scope_code": "41570", "scope_name": "김포시", "total": { "v": 787, "label": "재가공", "prov": "fp_6108", "checked_at": "2026-10-07", "unit": "units" }, "post_completion": { "v": 52, "label": "재가공", "prov": "fp_6108", "checked_at": "2026-10-07", "unit": "units" } }

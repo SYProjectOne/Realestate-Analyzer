@@ -232,6 +232,8 @@ export type ScenarioPreviewRow = ScenarioPreview['requirements_pre'][number];
 // ─── 잡·시장·운영·보고서 ──────────────────────────────────────
 
 export type JobName = S['JobName'];
+/** POST /jobs 로 넣을 수 있는 잡 이름 — claim.reverify 제외(계약 2026-10-09.6, PATCH /claims 전용) */
+export type JobCreateName = S['JobCreateName'];
 export type JobRun = S['JobRun'];
 export type JobStatus = JobRun['status'];
 export type JobCreate = S['JobCreate'];

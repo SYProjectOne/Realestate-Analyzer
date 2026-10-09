@@ -29,6 +29,11 @@ const base: ClaimView = {
   child_count: 0,
   remaining: true,
   pending_job_id: null,
+  entity: null,
+  entity_id: null,
+  field: null,
+  field_name: null,
+  demotion: null,
 };
 
 function useClaims(rows: ClaimView[]) {
