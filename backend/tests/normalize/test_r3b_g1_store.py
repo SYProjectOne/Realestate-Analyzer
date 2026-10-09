@@ -38,7 +38,7 @@ class _Fields:
                 source_rank=1, source_kind="applyhome_detail", primary=True, label="확인됨", excerpt=v,
                 excerpt_start=0, excerpt_end=1, raw_document_id=raw.id, url=raw.url, checked_at="2026-10-09",
                 observed_on="2026-09-01",
-            )  # fmt: skip
+            )
             for f, v in self.values.items()
         ]
 

@@ -157,7 +157,8 @@ def test_resync_is_idempotent_and_new_event_is_critical(
     original = add_complex(
         db_session, region.id, "2024000777", "더샵 송도마리나베이", address="송도동", legal_dong_code=SONGDO
     )
-    _api_notice(db_session, add_raw, region, "2026910242", "더샵 송도마리나베이(3회차)")
+    # 접수가 기준일 이후(진행·예정) — 새 행은 critical(과거 공고는 info: test_r3b_g1_remaining)
+    _api_notice(db_session, add_raw, region, "2026910242", "더샵 송도마리나베이(3회차)", rcpt=("2026-10-12", "2026-10-12"))
     first = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
     db_session.add_all(first.events)
     db_session.flush()
