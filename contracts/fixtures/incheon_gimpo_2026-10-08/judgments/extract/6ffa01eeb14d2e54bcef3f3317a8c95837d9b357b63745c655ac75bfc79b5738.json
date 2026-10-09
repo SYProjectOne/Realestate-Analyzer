@@ -1,0 +1,31 @@
+{
+  "tool": "extract",
+  "purpose": "extract:notice:jungheung_lake4",
+  "input_hash": "sha256:6ffa01eeb14d2e54bcef3f3317a8c95837d9b357b63745c655ac75bfc79b5738",
+  "input_len": 116,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "fields": [],
+    "counts": {
+      "auto": 11,
+      "review": 5,
+      "total": 16
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "보고서는 review 필드 이름 일부만 기재 — fields에는 기재된 것만, 나머지는 counts"
+  },
+  "duration_ms": null,
+  "judgment_seq": 61,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

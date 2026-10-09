@@ -1,0 +1,141 @@
+{
+  "case": "T11",
+  "description": "스위첸(고촌 향산리) 비교군: 같은 산단 신축 입주 거래 0건 → 리버시티(2020)·고촌 센트럴자이(2024) 대체, 보정·미보정 중앙값 둘 다, 라벨 '추정(대체·보정 c=0.015)'",
+  "target_complex_id": 4,
+  "source_url": "https://dapt.kr/apt/BjA168.html",
+  "source_urls": [
+    "https://dapt.kr/apt/BjA168.html",
+    "https://dapt.kr/apt/BjA176.html",
+    "https://dapt.kr/apt/BjA205.html",
+    "https://biz.newdaily.co.kr/site/data/html/2026/08/19/2026081900101.html"
+  ],
+  "label": "재가공",
+  "checked_at": "2026-10-07",
+  "reported": {
+    "리버시티 1단지": "5.8~6.1억(8) · 09-14 7층 5.8억",
+    "리버시티 2단지": "5.6~6.3억(10) · 09-20 11층 5.9억 · 08-04 84.91㎡ 5.87억",
+    "고촌 센트럴자이": "7.4~7.8억(6) · 09-05 6층 7.5억, 04-10 11층 7.8억"
+  },
+  "synthetic_rows": {
+    "1,4,5,8": "범위 끝값 — 가격은 보고서 범위, 날짜·층은 합성"
+  },
+  "trades": [
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "힐스테이트 리버시티 1단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": 7,
+      "price_won": 580000000,
+      "deal_date": "2026-09-14",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "힐스테이트 리버시티 1단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 610000000,
+      "deal_date": "2026-06-10",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": 11,
+      "price_won": 590000000,
+      "deal_date": "2026-09-20",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.91,
+      "floor": null,
+      "price_won": 587000000,
+      "deal_date": "2026-08-04",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 560000000,
+      "deal_date": "2026-05-12",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "힐스테이트 리버시티 2단지",
+      "completed_year": 2020,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 630000000,
+      "deal_date": "2026-07-08",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "고촌 센트럴자이",
+      "completed_year": 2024,
+      "area_m2": 84.0,
+      "floor": 6,
+      "price_won": 750000000,
+      "deal_date": "2026-09-05",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "고촌 센트럴자이",
+      "completed_year": 2024,
+      "area_m2": 84.0,
+      "floor": 11,
+      "price_won": 780000000,
+      "deal_date": "2026-04-10",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    },
+    {
+      "id": null,
+      "living_area": "la_4",
+      "apt_name": "고촌 센트럴자이",
+      "completed_year": 2024,
+      "area_m2": 84.0,
+      "floor": null,
+      "price_won": 740000000,
+      "deal_date": "2026-06-22",
+      "cancelled": false,
+      "source": "reprocessed",
+      "is_presale": false
+    }
+  ]
+}

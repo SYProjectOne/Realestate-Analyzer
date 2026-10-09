@@ -24,9 +24,7 @@ describe('G4 비교', () => {
   ])('%s → ids 2~6 검사 안내, API 호출 없음', async (path, n) => {
     const rec = recordRequests();
     renderRoute(path);
-    expect(
-      await screen.findByText(t('page.G4.invalidIds', { n: String(n) })),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(t('page.G4.invalidIds', { n: String(n) }))).toBeInTheDocument();
     expect(matching(rec.requests, 'GET', '/compare')).toHaveLength(0);
     rec.stop();
   });

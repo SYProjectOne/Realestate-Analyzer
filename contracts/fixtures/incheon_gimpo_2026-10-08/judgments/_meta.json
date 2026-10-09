@@ -1,0 +1,6 @@
+{
+  "adapter_version": "mock-fixture-2026-10-08",
+  "recorded_at": "2026-10-07",
+  "source": "docs/source/incheon_gimpo_report.md",
+  "note": "보고서 부록 A #1~#132 재구성 녹화. 실제 JEV 서버 버전은 jev-1.13.0(보고서 §2)이나 payload가 원문 전체가 아닌 재구성이라 실제 어댑터 버전 문자열을 쓰지 않는다(MockAdapter 전용). contracts/fixtures/README.md 보강 요청 대상."
+}

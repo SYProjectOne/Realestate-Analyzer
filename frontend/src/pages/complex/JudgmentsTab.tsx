@@ -42,9 +42,7 @@ export function JudgmentTable({
                 className={unresolved ? 'text-grayed' : ''}
                 data-unresolved={unresolved || undefined}
               >
-                <td className={tdClass}>
-                  {idText(env.judgment_seq)}
-                </td>
+                <td className={tdClass}>{idText(env.judgment_seq)}</td>
                 <td className={tdClass}>{env.tool}</td>
                 <td className={`${tdClass} break-all`}>{env.purpose}</td>
                 <td className={tdClass}>

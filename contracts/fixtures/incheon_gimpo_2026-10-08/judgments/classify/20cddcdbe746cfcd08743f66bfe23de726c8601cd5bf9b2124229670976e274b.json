@@ -1,0 +1,208 @@
+{
+  "tool": "classify",
+  "purpose": "classify:inclusion:gimpo",
+  "input_hash": "sha256:20cddcdbe746cfcd08743f66bfe23de726c8601cd5bf9b2124229670976e274b",
+  "input_len": 577,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "label": "batch",
+    "prob": 0.7083,
+    "decision": "review",
+    "items": [
+      {
+        "candidate": "한강 푸르지오 리버프론트",
+        "complex_id": 9,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "호반써밋 풍무Ⅲ",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "풍무역세권 수자인 그라센트 2차",
+        "complex_id": 8,
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포 칸타빌 에디션",
+        "complex_id": 7,
+        "label": "private_sale_apt",
+        "prob": 0.97,
+        "decision": "auto"
+      },
+      {
+        "candidate": "한강 수자인 오브센트",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.96,
+        "decision": "auto"
+      },
+      {
+        "candidate": "고촌센트럴자이",
+        "complex_id": 11,
+        "label": "private_sale_apt",
+        "prob": 0.95,
+        "decision": "auto"
+      },
+      {
+        "candidate": "풍무역 롯데캐슬 시그니처",
+        "complex_id": 10,
+        "label": "private_sale_apt",
+        "prob": 0.95,
+        "decision": "auto"
+      },
+      {
+        "candidate": "호반써밋 풍무Ⅱ",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.93,
+        "decision": "auto"
+      },
+      {
+        "candidate": "수자인 그라센트 1차",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.87,
+        "decision": "auto"
+      },
+      {
+        "candidate": "풍무역세권 B5블록 호반써밋",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.87,
+        "decision": "auto"
+      },
+      {
+        "candidate": "해링턴플레이스 풍무 1~3BL",
+        "complex_id": 13,
+        "label": "private_sale_apt",
+        "prob": 0.85,
+        "decision": "auto"
+      },
+      {
+        "candidate": "풍무역 푸르지오 더 마크",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.74,
+        "decision": "review"
+      },
+      {
+        "candidate": "오퍼스 한강 스위첸",
+        "complex_id": 4,
+        "label": "private_sale_apt",
+        "prob": 0.72,
+        "decision": "review"
+      },
+      {
+        "candidate": "사우역 지엔하임",
+        "complex_id": 14,
+        "label": "private_sale_apt",
+        "prob": 0.7,
+        "decision": "review"
+      },
+      {
+        "candidate": "김포 북변 우미 린 파크리브",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.69,
+        "decision": "review"
+      },
+      {
+        "candidate": "김포한강Cc-03 구래역 예미지",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.67,
+        "decision": "review"
+      },
+      {
+        "candidate": "리버프론트 오피스텔 250실",
+        "complex_id": null,
+        "label": "non_apartment",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "호반써밋Ⅱ 오피스텔 98실",
+        "complex_id": null,
+        "label": "non_apartment",
+        "prob": 0.98,
+        "decision": "auto"
+      },
+      {
+        "candidate": "김포고촌2지구 A1 공공분양",
+        "complex_id": null,
+        "label": "public_sale",
+        "prob": 0.96,
+        "decision": "auto"
+      },
+      {
+        "candidate": "전호 공공지원 민간임대",
+        "complex_id": null,
+        "label": "private_rental",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "쌍용 더 플래티넘 한강(양평군)",
+        "complex_id": null,
+        "label": "out_of_scope",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "북변5구역 재개발",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.88,
+        "decision": "auto"
+      },
+      {
+        "candidate": "한강2 콤팩트시티",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.52,
+        "decision": "review"
+      },
+      {
+        "candidate": "한강시네폴리스 추가 블록",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.79,
+        "decision": "review"
+      }
+    ],
+    "counts": {
+      "auto": 17,
+      "review": 7,
+      "private_sale_apt": 16,
+      "non_apartment": 2,
+      "public_sale": 1,
+      "private_rental": 1,
+      "out_of_scope": 1,
+      "manual_review": 3
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "배치 호출 1회 — ClassifyResult 최상위 label='batch', prob=auto 비율. 후보별 값은 items(계약 변경 요청: 배치 분류 결과 모양)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 110,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

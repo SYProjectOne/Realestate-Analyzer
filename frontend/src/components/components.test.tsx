@@ -1,6 +1,10 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Intake, Region, Snapshot } from '@/api/types';
+import type {
+  IntakeLike as Intake,
+  RegionLike as Region,
+  SnapshotLike as Snapshot,
+} from '@/lib/contract';
 import { renderWithProviders } from '@/test/render';
 import {
   CachedBadge,
@@ -99,9 +103,9 @@ describe('선택기', () => {
 
   it('RegionPicker: "지역 추가" 선택 → onAddRegion', async () => {
     const onAdd = vi.fn();
-    const region = { id: 1, name: '픽스처 지역' } as unknown as Region;
+    const region = { id: 'rg_1', name: '픽스처 지역' } as Region;
     renderWithProviders(
-      <RegionPicker regions={[region]} value="1" onChange={() => {}} onAddRegion={onAdd} />,
+      <RegionPicker regions={[region]} value="rg_1" onChange={() => {}} onAddRegion={onAdd} />,
     );
     await userEvent.selectOptions(screen.getByLabelText('지역'), '+ 지역 추가');
     expect(onAdd).toHaveBeenCalled();
@@ -110,12 +114,12 @@ describe('선택기', () => {
   it('SnapshotPicker: 선택 → onChange(id)', async () => {
     const onChange = vi.fn();
     const snapshots = [
-      { id: 2, asof_date: '2026-10-08' },
-      { id: 1, asof_date: '2026-10-07' },
-    ] as unknown as Snapshot[];
-    renderWithProviders(<SnapshotPicker snapshots={snapshots} value="2" onChange={onChange} />);
-    await userEvent.selectOptions(screen.getByLabelText('기준일'), '1');
-    expect(onChange).toHaveBeenCalledWith('1');
+      { id: 's2', asof_date: '2026-10-08' },
+      { id: 's1', asof_date: '2026-10-07' },
+    ] as Snapshot[];
+    renderWithProviders(<SnapshotPicker snapshots={snapshots} value="s2" onChange={onChange} />);
+    await userEvent.selectOptions(screen.getByLabelText('기준일'), 's1');
+    expect(onChange).toHaveBeenCalledWith('s1');
   });
 });
 
@@ -153,15 +157,9 @@ describe('DataTableToggle · JobProgressView', () => {
     renderWithProviders(
       <JobProgressView
         job={{
-          id: 1,
+          id: 'j',
           job_name: 'rejudge',
-          kind: 'manual',
-          payload: {},
-          scheduled_at: '2026-10-08T10:00:00+09:00',
-          started_at: null,
-          finished_at: null,
           status: 'running',
-          stats: {},
           error_text: null,
         }}
       />,

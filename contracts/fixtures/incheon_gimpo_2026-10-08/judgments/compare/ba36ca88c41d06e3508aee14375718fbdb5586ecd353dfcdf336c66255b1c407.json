@@ -1,0 +1,40 @@
+{
+  "tool": "compare",
+  "purpose": "compare:catalyst:hangang2",
+  "input_hash": "sha256:ba36ca88c41d06e3508aee14375718fbdb5586ecd353dfcdf336c66255b1c407",
+  "input_len": 73,
+  "status": "ok",
+  "confidence": 0.99,
+  "cached": false,
+  "result": {
+    "overall": "contradicts",
+    "prob": 0.99,
+    "aspects": [
+      {
+        "aspect": "신청 시점",
+        "relation": "contradicts",
+        "prob": 1.0
+      },
+      {
+        "aspect": "지구지정",
+        "relation": "same_fact",
+        "prob": null
+      },
+      {
+        "aspect": "현 단계",
+        "relation": "same_fact",
+        "prob": null
+      }
+    ]
+  },
+  "raw": {
+    "decision": "auto"
+  },
+  "duration_ms": null,
+  "judgment_seq": 114,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

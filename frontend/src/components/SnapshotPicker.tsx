@@ -1,20 +1,28 @@
 import { useId } from 'react';
-import type { Snapshot } from '@/api/types';
 import { t } from '@/i18n';
+import type { SnapshotLike } from '@/lib/contract';
 import { formatDate } from '@/lib/format';
 
 export interface SnapshotPickerProps {
   /** 기준일 목록 (GET /regions/{id}/snapshots), 최신이 앞 */
-  snapshots: Snapshot[];
-  /** 선택 snapshot id (URL ?snapshot=). null이면 첫 항목 */
-  value: string | null;
+  snapshots: readonly SnapshotLike[];
+  /** 선택 snapshot id (URL ?snapshot=). null이면 첫 항목. 숫자 id도 받는다 */
+  value: string | number | null;
   onChange: (snapshotId: string) => void;
   disabled?: boolean;
   /** 라벨 문구 (기본 t('header.snapshot')). G8 SnapshotPairPicker가 두 개를 쓸 때 바꾼다 */
   label?: string;
 }
 
-/** 기준일 선택 select. 상태(building 등)는 옵션 텍스트에 함께. */
+/** 옵션 문구: 기준일 + (일부 수집 실패 / 생성 중) */
+export function snapshotText(snapshot: SnapshotLike): string {
+  const date = formatDate(snapshot.asof_date);
+  if (snapshot.degraded) return t('picker.snapshotDegraded', { date });
+  if (snapshot.status === 'building') return t('picker.snapshotBuilding', { date });
+  return date;
+}
+
+/** 기준일 선택 select. 상태(degraded·building)는 옵션 텍스트에 함께. */
 export function SnapshotPicker({
   snapshots,
   value,
@@ -23,7 +31,7 @@ export function SnapshotPicker({
   label,
 }: SnapshotPickerProps) {
   const id = useId();
-  const selected = value ?? snapshots[0]?.id ?? '';
+  const selected = String(value ?? snapshots[0]?.id ?? '');
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
       <label htmlFor={id} className="text-muted">
@@ -39,7 +47,7 @@ export function SnapshotPicker({
         {snapshots.length === 0 ? <option value="">{t('header.snapshotNone')}</option> : null}
         {snapshots.map((snapshot) => (
           <option key={snapshot.id} value={snapshot.id}>
-            {formatDate(snapshot.asof_date)}
+            {snapshotText(snapshot)}
           </option>
         ))}
       </select>

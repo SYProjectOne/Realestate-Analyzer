@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>chart gallery (dev)</title>
+    <script>
+      // 테스트 전용 엔트리(개발 서버에서만): /src/charts/gallery/gallery.html. 테마 키는 src/lib/theme.tsx와 같다.
+      try {
+        var t = localStorage.getItem('sa.theme');
+        if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

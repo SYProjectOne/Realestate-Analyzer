@@ -55,7 +55,9 @@ describe('G8 보고서', () => {
     const snapshots = await exampleSnapshots();
     server.use(
       http.get(mswPath('/regions/:id/snapshots'), () =>
-        HttpResponse.json(snapshots.map((s, i) => (i === 0 ? { ...s, contradicted_claims: 2 } : s))),
+        HttpResponse.json(
+          snapshots.map((s, i) => (i === 0 ? { ...s, contradicted_claims: 2 } : s)),
+        ),
       ),
     );
     renderRoute('/reports');

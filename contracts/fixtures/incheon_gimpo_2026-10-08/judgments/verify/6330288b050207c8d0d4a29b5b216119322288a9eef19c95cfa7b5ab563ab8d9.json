@@ -1,0 +1,122 @@
+{
+  "tool": "verify",
+  "purpose": "verify:section_8-F2",
+  "input_hash": "sha256:6330288b050207c8d0d4a29b5b216119322288a9eef19c95cfa7b5ab563ab8d9",
+  "input_len": 234,
+  "status": "review",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "claims": [
+      {
+        "claim_id": "c89-01",
+        "verdict": "verified",
+        "confidence": 0.48,
+        "action": "review"
+      },
+      {
+        "claim_id": "c89-02",
+        "verdict": "verified",
+        "confidence": 0.41,
+        "action": "review"
+      },
+      {
+        "claim_id": "c89-03",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-04",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-05",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-06",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-07",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-08",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-09",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-10",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-11",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-12",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-13",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-14",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-15",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      },
+      {
+        "claim_id": "c89-16",
+        "verdict": "verified",
+        "confidence": null,
+        "action": "auto"
+      }
+    ]
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.8
+    },
+    "note": "보고서가 문장을 적은 주장만 known_claims, 나머지는 집계로 생성한 id"
+  },
+  "duration_ms": null,
+  "judgment_seq": 89,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

@@ -25,7 +25,9 @@ describe('G7 데이터·운영', () => {
     expect(await screen.findByRole('table', { name: t('page.G7.checklist') })).toBeInTheDocument();
     expect(await screen.findByRole('list', { name: t('page.G7.stat.byTool') })).toBeInTheDocument();
     await waitFor(() =>
-      expect(matching(rec.requests, 'GET', '/ops/judgments')[0]?.url.searchParams.get('since')).toBeTruthy(),
+      expect(
+        matching(rec.requests, 'GET', '/ops/judgments')[0]?.url.searchParams.get('since'),
+      ).toBeTruthy(),
     );
     rec.stop();
   });
@@ -34,7 +36,9 @@ describe('G7 데이터·운영', () => {
     const rec = recordRequests();
     renderRoute('/ops');
     const table = await screen.findByRole('table', { name: t('page.G7.sources') });
-    const retry = within(table).getAllByRole('button', { name: t('page.G7.src.retry') })[0] as HTMLElement;
+    const retry = within(table).getAllByRole('button', {
+      name: t('page.G7.src.retry'),
+    })[0] as HTMLElement;
     await userEvent.click(retry);
     await waitFor(() => expect(matching(rec.requests, 'POST', '/jobs')).toHaveLength(1));
     const body = (await matching(rec.requests, 'POST', '/jobs')[0]?.body) as { job_name: string };
@@ -56,7 +60,9 @@ describe('G7 데이터·운영', () => {
 
     const result = await within(form).findByTestId('human-check-result');
     expect(within(result).getByTestId('intake-badge')).toHaveTextContent(t('intake.status.가능'));
-    expect(within(result).getByTestId('intake-badge')).toHaveTextContent(t('intake.path.human_check'));
+    expect(within(result).getByTestId('intake-badge')).toHaveTextContent(
+      t('intake.path.human_check'),
+    );
     const posted = (await matching(rec.requests, 'POST', '/ops/human-checks')[0]?.body) as {
       complex_id: number;
       field: string;

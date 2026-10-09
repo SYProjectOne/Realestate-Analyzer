@@ -1,14 +1,14 @@
-import type { Fact, IsoDate } from '@/api/types';
-import { formatFactValue, type FactUnit } from '@/lib/format';
+import type { FactLike } from '@/lib/contract';
+import { formatFactValue, unitFromHint, type FactUnit, type IsoDate } from '@/lib/format';
 import { EmptyState } from './EmptyState';
 import { LabelBadge } from './LabelBadge';
 import { useOpenProvenance } from './provenanceContext';
 
 export interface FactCellProps {
-  /** 계약의 Fact. null/undefined 또는 v=null이면 "확인 불가(사유)" */
-  fact: Fact | null | undefined;
-  /** 표시 단위 (src/lib/format.ts FactUnit) */
-  unit: FactUnit;
+  /** 계약의 Fact. null/undefined 또는 v=null이면 "확인 불가(사유, 확인일)" */
+  fact: FactLike | null | undefined;
+  /** 표시 단위 (src/lib/format.ts FactUnit). 생략하면 계약 `fact.unit` 힌트를 따른다 */
+  unit?: FactUnit;
   /** 날짜 D± 기준일(보통 스냅샷 asof_date) */
   asof?: IsoDate | null;
   /** 소수 자릿수 덮어쓰기 */
@@ -38,16 +38,27 @@ export function FactCell({
 }: FactCellProps) {
   const contextOpen = useOpenProvenance();
   const open = onOpenProvenance ?? contextOpen;
-  const text = fact ? formatFactValue(fact, unit, { asof, digits }) : null;
+  const resolvedUnit = unit ?? unitFromHint(fact?.unit, fact?.v);
+  const text = fact ? formatFactValue(fact, resolvedUnit, { asof, digits }) : null;
 
   const content =
     text === null ? (
-      <EmptyState inline reason={fact?.reason ?? emptyReason} />
+      // 값이 없으면 라벨 배지 대신 "확인 불가(사유, 확인일)" 한 번만
+      <EmptyState
+        inline
+        reason={fact?.reason ?? emptyReason}
+        checkedAt={fact ? fact.checked_at : null}
+      />
     ) : (
       <>
         <span className="tabular-nums">{text}</span>
         {showLabel && fact ? (
-          <LabelBadge label={fact.label} human={fact.human} reason={fact.reason} />
+          <LabelBadge
+            label={fact.label}
+            human={fact.human}
+            reason={fact.reason}
+            checkedAt={fact.checked_at}
+          />
         ) : null}
       </>
     );

@@ -1,0 +1,30 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:7",
+  "input_hash": "sha256:83cca1668d4c8f563ff01702f01b87fa886eee63f21871d37f6dfb84e23031d2",
+  "input_len": 73,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "items": [],
+    "counts": {
+      "records": 18,
+      "flagged": 0
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "pass"
+  },
+  "duration_ms": null,
+  "judgment_seq": 105,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 7,
+  "error_text": null
+}

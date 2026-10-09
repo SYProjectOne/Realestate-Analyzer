@@ -1,0 +1,741 @@
+{
+ "2025000271_harrington1.txt": {
+  "applyhome_id": "2025000271",
+  "types": {
+   "74A": {
+    "area_m2": 74.86,
+    "units": 94,
+    "max_price_won": 698000000,
+    "floor_sample_price_won": 635000000,
+    "balcony_won": 21000000
+   },
+   "74B": {
+    "area_m2": 74.94,
+    "units": 49,
+    "max_price_won": 687000000,
+    "floor_sample_price_won": 587000000,
+    "balcony_won": 21000000
+   },
+   "74C": {
+    "area_m2": 74.73,
+    "units": 46,
+    "max_price_won": 680000000,
+    "floor_sample_price_won": 619000000,
+    "balcony_won": 21000000
+   },
+   "84A": {
+    "area_m2": 84.75,
+    "units": 266,
+    "max_price_won": 770000000,
+    "floor_sample_price_won": 659000000,
+    "balcony_won": 26000000
+   },
+   "84B": {
+    "area_m2": 84.68,
+    "units": 124,
+    "max_price_won": 758000000,
+    "floor_sample_price_won": 648000000,
+    "balcony_won": 26000000
+   },
+   "84C": {
+    "area_m2": 84.9,
+    "units": 91,
+    "max_price_won": 754000000,
+    "floor_sample_price_won": 644000000,
+    "balcony_won": 26000000
+   }
+  }
+ },
+ "2025000273_harrington2.txt": {
+  "applyhome_id": "2025000273",
+  "types": {
+   "74A": {
+    "area_m2": 74.86,
+    "units": 126,
+    "max_price_won": 699000000,
+    "floor_sample_price_won": 636000000,
+    "balcony_won": 21000000
+   },
+   "74B": {
+    "area_m2": 74.94,
+    "units": 42,
+    "max_price_won": 688000000,
+    "floor_sample_price_won": 626000000,
+    "balcony_won": 21000000
+   },
+   "74C": {
+    "area_m2": 74.73,
+    "units": 51,
+    "max_price_won": 681000000,
+    "floor_sample_price_won": 583000000,
+    "balcony_won": 21000000
+   },
+   "84A": {
+    "area_m2": 84.75,
+    "units": 335,
+    "max_price_won": 772000000,
+    "floor_sample_price_won": 660000000,
+    "balcony_won": 26000000
+   },
+   "84B": {
+    "area_m2": 84.68,
+    "units": 85,
+    "max_price_won": 759000000,
+    "floor_sample_price_won": 649000000,
+    "balcony_won": 26000000
+   },
+   "84C": {
+    "area_m2": 84.9,
+    "units": 25,
+    "max_price_won": 755000000,
+    "floor_sample_price_won": 646000000,
+    "balcony_won": 26000000
+   }
+  }
+ },
+ "2025000274_harrington3.txt": {
+  "applyhome_id": "2025000274",
+  "types": {
+   "59A": {
+    "area_m2": 59.96,
+    "units": 40,
+    "max_price_won": 596000000,
+    "floor_sample_price_won": 542000000,
+    "balcony_won": 18000000
+   },
+   "59B": {
+    "area_m2": 59.78,
+    "units": 20,
+    "max_price_won": 587000000,
+    "floor_sample_price_won": 534000000,
+    "balcony_won": 18000000
+   },
+   "59C": {
+    "area_m2": 59.79,
+    "units": 20,
+    "max_price_won": 582000000,
+    "floor_sample_price_won": 530000000,
+    "balcony_won": 18000000
+   },
+   "74A": {
+    "area_m2": 74.86,
+    "units": 80,
+    "max_price_won": 697000000,
+    "floor_sample_price_won": 634000000,
+    "balcony_won": 21000000
+   },
+   "74B": {
+    "area_m2": 74.94,
+    "units": 41,
+    "max_price_won": 685000000,
+    "floor_sample_price_won": 586000000,
+    "balcony_won": 21000000
+   },
+   "74C": {
+    "area_m2": 74.73,
+    "units": 38,
+    "max_price_won": 679000000,
+    "floor_sample_price_won": 617000000,
+    "balcony_won": 21000000
+   }
+  }
+ },
+ "2025000573_kantavil.txt": {
+  "applyhome_id": "2025000573",
+  "types": {
+   "66A": {
+    "area_m2": 66.95,
+    "units": 197,
+    "max_price_won": 540000000,
+    "floor_sample_price_won": 482000000,
+    "balcony_won": 17000000
+   },
+   "66B": {
+    "area_m2": 66.97,
+    "units": 118,
+    "max_price_won": 543000000,
+    "floor_sample_price_won": 484000000,
+    "balcony_won": 17000000
+   },
+   "84A": {
+    "area_m2": 84.96,
+    "units": 212,
+    "max_price_won": 678000000,
+    "floor_sample_price_won": 605000000,
+    "balcony_won": 19000000
+   },
+   "84B": {
+    "area_m2": 84.75,
+    "units": 63,
+    "max_price_won": 685000000,
+    "floor_sample_price_won": 611000000,
+    "balcony_won": 19000000
+   },
+   "104A": {
+    "area_m2": 104.74,
+    "units": 10,
+    "max_price_won": 974000000,
+    "floor_sample_price_won": 974000000,
+    "balcony_won": 20000000
+   },
+   "104B": {
+    "area_m2": 104.96,
+    "units": 3,
+    "max_price_won": 979000000,
+    "floor_sample_price_won": 979000000,
+    "balcony_won": 20000000
+   },
+   "127A": {
+    "area_m2": 127.46,
+    "units": 7,
+    "max_price_won": 1176000000,
+    "floor_sample_price_won": 1176000000,
+    "balcony_won": 24000000
+   },
+   "127B": {
+    "area_m2": 127.71,
+    "units": 2,
+    "max_price_won": 1190000000,
+    "floor_sample_price_won": 1190000000,
+    "balcony_won": 24000000
+   }
+  }
+ },
+ "2025000076_lotte.txt": {
+  "applyhome_id": "2025000076",
+  "types": {
+   "65A": {
+    "area_m2": 65.98,
+    "units": 267,
+    "max_price_won": 632000000,
+    "floor_sample_price_won": 560000000,
+    "balcony_won": 29800000
+   },
+   "65B": {
+    "area_m2": 65.9,
+    "units": 134,
+    "max_price_won": 618000000,
+    "floor_sample_price_won": 536000000,
+    "balcony_won": 30000000
+   },
+   "75A": {
+    "area_m2": 75.82,
+    "units": 59,
+    "max_price_won": 716000000,
+    "floor_sample_price_won": 643000000,
+    "balcony_won": 34000000
+   },
+   "75B": {
+    "area_m2": 76.0,
+    "units": 39,
+    "max_price_won": 697000000,
+    "floor_sample_price_won": 605000000,
+    "balcony_won": 34000000
+   },
+   "75C": {
+    "area_m2": 75.99,
+    "units": 23,
+    "max_price_won": 695000000,
+    "floor_sample_price_won": 616000000,
+    "balcony_won": 34000000
+   },
+   "84A": {
+    "area_m2": 84.79,
+    "units": 98,
+    "max_price_won": 784000000,
+    "floor_sample_price_won": 696000000,
+    "balcony_won": 38000000
+   },
+   "84B": {
+    "area_m2": 84.99,
+    "units": 100,
+    "max_price_won": 765000000,
+    "floor_sample_price_won": 664000000,
+    "balcony_won": 38000000
+   }
+  }
+ },
+ "2025000222_switzen.txt": {
+  "applyhome_id": "2025000222",
+  "types": {
+   "84A": {
+    "area_m2": 84.98,
+    "units": 619,
+    "max_price_won": 693000000,
+    "floor_sample_price_won": 628000000,
+    "balcony_won": 5981000
+   },
+   "84B": {
+    "area_m2": 84.99,
+    "units": 120,
+    "max_price_won": 689000000,
+    "floor_sample_price_won": 635000000,
+    "balcony_won": 6994000
+   },
+   "84C": {
+    "area_m2": 84.99,
+    "units": 194,
+    "max_price_won": 683000000,
+    "floor_sample_price_won": 620000000,
+    "balcony_won": 6080000
+   },
+   "99A": {
+    "area_m2": 99.98,
+    "units": 48,
+    "max_price_won": 837000000,
+    "floor_sample_price_won": 784000000,
+    "balcony_won": 5607000
+   },
+   "99B": {
+    "area_m2": 99.99,
+    "units": 48,
+    "max_price_won": 833000000,
+    "floor_sample_price_won": 778000000,
+    "balcony_won": 6386000
+   }
+  }
+ },
+ "2026000367_riverfront.txt": {
+  "applyhome_id": "2026000367",
+  "types": {
+   "84A": {
+    "area_m2": 84.74,
+    "units": 888,
+    "max_price_won": 773000000,
+    "floor_sample_price_won": 644000000
+   },
+   "84B": {
+    "area_m2": 84.56,
+    "units": 68,
+    "max_price_won": 768000000,
+    "floor_sample_price_won": 680000000
+   },
+   "84C": {
+    "area_m2": 84.92,
+    "units": 537,
+    "max_price_won": 742000000,
+    "floor_sample_price_won": 655000000
+   },
+   "84D": {
+    "area_m2": 84.82,
+    "units": 148,
+    "max_price_won": 737000000,
+    "floor_sample_price_won": 670000000
+   },
+   "84E": {
+    "area_m2": 84.71,
+    "units": 98,
+    "max_price_won": 752000000,
+    "floor_sample_price_won": 643000000
+   },
+   "84F": {
+    "area_m2": 84.9,
+    "units": 36,
+    "max_price_won": 742000000,
+    "floor_sample_price_won": 676000000
+   },
+   "106A": {
+    "area_m2": 106.87,
+    "units": 288,
+    "max_price_won": 951000000,
+    "floor_sample_price_won": 780000000
+   },
+   "106B": {
+    "area_m2": 106.98,
+    "units": 144,
+    "max_price_won": 950000000,
+    "floor_sample_price_won": 780000000
+   },
+   "122": {
+    "area_m2": 122.75,
+    "units": 216,
+    "max_price_won": 1186000000,
+    "floor_sample_price_won": 908000000
+   },
+   "180A": {
+    "area_m2": 180.26,
+    "units": 4,
+    "max_price_won": 2996000000,
+    "floor_sample_price_won": 2996000000
+   },
+   "180B": {
+    "area_m2": 180.94,
+    "units": 2,
+    "max_price_won": 2922000000,
+    "floor_sample_price_won": 2922000000
+   },
+   "180C": {
+    "area_m2": 180.93,
+    "units": 3,
+    "max_price_won": 2999000000,
+    "floor_sample_price_won": 2999000000
+   }
+  }
+ },
+ "2025000656_gienheim.txt": {
+  "applyhome_id": "2025000656",
+  "types": {
+   "84A": {
+    "area_m2": 84.57,
+    "units": 134,
+    "max_price_won": 698900000,
+    "floor_sample_price_won": 650600000,
+    "balcony_won": 18100000
+   },
+   "84B": {
+    "area_m2": 84.48,
+    "units": 82,
+    "max_price_won": 682600000,
+    "floor_sample_price_won": 635500000,
+    "balcony_won": 15200000
+   },
+   "84C": {
+    "area_m2": 84.87,
+    "units": 31,
+    "max_price_won": 697400000,
+    "floor_sample_price_won": 649300000,
+    "balcony_won": 18400000
+   },
+   "101A": {
+    "area_m2": 101.6,
+    "units": 92,
+    "max_price_won": 830100000,
+    "floor_sample_price_won": 772800000,
+    "balcony_won": 19400000
+   },
+   "101B": {
+    "area_m2": 101.19,
+    "units": 38,
+    "max_price_won": 813600000,
+    "floor_sample_price_won": 757500000,
+    "balcony_won": 18300000
+   },
+   "124P": {
+    "area_m2": 124.94,
+    "units": 2,
+    "max_price_won": 1261300000,
+    "floor_sample_price_won": 1261300000,
+    "balcony_won": 38300000
+   },
+   "133P": {
+    "area_m2": 133.06,
+    "units": 3,
+    "max_price_won": 1354200000,
+    "floor_sample_price_won": 1354200000,
+    "balcony_won": 29800000
+   },
+   "141P": {
+    "area_m2": 141.1,
+    "units": 1,
+    "max_price_won": 1420300000,
+    "floor_sample_price_won": 1420300000,
+    "balcony_won": 41600000
+   },
+   "151P": {
+    "area_m2": 151.89,
+    "units": 2,
+    "max_price_won": 1532400000,
+    "floor_sample_price_won": 1532400000,
+    "balcony_won": 35000000
+   }
+  }
+ },
+ "2026000329_hoban3.txt": {
+  "applyhome_id": "2026000329",
+  "types": {
+   "59A": {
+    "area_m2": 59.98,
+    "units": 130,
+    "max_price_won": 597400000,
+    "floor_sample_price_won": 555500000,
+    "balcony_won": 5970000
+   },
+   "59B": {
+    "area_m2": 59.98,
+    "units": 108,
+    "max_price_won": 586100000,
+    "floor_sample_price_won": 545100000,
+    "balcony_won": 4460000
+   },
+   "84A": {
+    "area_m2": 84.99,
+    "units": 178,
+    "max_price_won": 762500000,
+    "floor_sample_price_won": 709100000,
+    "balcony_won": 5860000
+   },
+   "84B": {
+    "area_m2": 84.98,
+    "units": 103,
+    "max_price_won": 752200000,
+    "floor_sample_price_won": 699500000,
+    "balcony_won": 7130000
+   },
+   "84C": {
+    "area_m2": 84.99,
+    "units": 65,
+    "max_price_won": 743500000,
+    "floor_sample_price_won": 702600000,
+    "balcony_won": 7100000
+   },
+   "84D": {
+    "area_m2": 84.98,
+    "units": 76,
+    "max_price_won": 735900000,
+    "floor_sample_price_won": 684400000,
+    "balcony_won": 5500000
+   }
+  }
+ },
+ "2026000073_grascent2.txt": {
+  "applyhome_id": "2026000073",
+  "types": {
+   "84": {
+    "area_m2": 84.99,
+    "units": 509,
+    "max_price_won": 711500000,
+    "floor_sample_price_won": 654100000,
+    "balcony_won": 6640000
+   },
+   "105": {
+    "area_m2": 105.21,
+    "units": 130,
+    "max_price_won": 825300000,
+    "floor_sample_price_won": 758800000,
+    "balcony_won": 6370000
+   }
+  }
+ },
+ "2025000302_elif.txt": {
+  "applyhome_id": "2025000302",
+  "types": {
+   "64A": {
+    "area_m2": 64.84,
+    "units": 112,
+    "max_price_won": 507000000,
+    "floor_sample_price_won": 462000000,
+    "balcony_won": 3390000
+   },
+   "64B": {
+    "area_m2": 64.57,
+    "units": 26,
+    "max_price_won": 478000000,
+    "floor_sample_price_won": 435000000,
+    "balcony_won": 2980000
+   },
+   "64C": {
+    "area_m2": 64.78,
+    "units": 9,
+    "max_price_won": 502000000,
+    "floor_sample_price_won": 467000000,
+    "balcony_won": 5410000
+   },
+   "64D": {
+    "area_m2": 64.71,
+    "units": 66,
+    "max_price_won": 478000000,
+    "floor_sample_price_won": 435000000,
+    "balcony_won": 4070000
+   },
+   "84A": {
+    "area_m2": 84.78,
+    "units": 43,
+    "max_price_won": 609000000,
+    "floor_sample_price_won": 551000000,
+    "balcony_won": 3140000
+   },
+   "84B": {
+    "area_m2": 84.99,
+    "units": 96,
+    "max_price_won": 581000000,
+    "floor_sample_price_won": 526000000,
+    "balcony_won": 3700000
+   },
+   "84C": {
+    "area_m2": 84.86,
+    "units": 8,
+    "max_price_won": 609000000,
+    "floor_sample_price_won": 567000000,
+    "balcony_won": 3980000
+   },
+   "84C1": {
+    "area_m2": 84.86,
+    "units": 6,
+    "max_price_won": 609000000,
+    "floor_sample_price_won": 579000000,
+    "balcony_won": 3810000
+   },
+   "84D": {
+    "area_m2": 84.92,
+    "units": 26,
+    "max_price_won": 591000000,
+    "floor_sample_price_won": 562000000
+   },
+   "84E": {
+    "area_m2": 84.88,
+    "units": 35,
+    "max_price_won": 606000000,
+    "floor_sample_price_won": 551000000
+   },
+   "84F": {
+    "area_m2": 84.85,
+    "units": 41,
+    "max_price_won": 602000000,
+    "floor_sample_price_won": 548000000
+   },
+   "98A": {
+    "area_m2": 98.97,
+    "units": 44,
+    "max_price_won": 689000000,
+    "floor_sample_price_won": 627000000
+   },
+   "98B": {
+    "area_m2": 98.99,
+    "units": 45,
+    "max_price_won": 675000000,
+    "floor_sample_price_won": 614000000
+   },
+   "98B1": {
+    "area_m2": 98.99,
+    "units": 60,
+    "max_price_won": 667000000,
+    "floor_sample_price_won": 607000000
+   },
+   "98C": {
+    "area_m2": 98.92,
+    "units": 44,
+    "max_price_won": 692000000,
+    "floor_sample_price_won": 630000000
+   },
+   "110P1": {
+    "area_m2": 110.94,
+    "units": 1,
+    "max_price_won": 1158000000,
+    "floor_sample_price_won": 1158000000
+   },
+   "110P2": {
+    "area_m2": 110.93,
+    "units": 2,
+    "max_price_won": 1175000000,
+    "floor_sample_price_won": 1175000000
+   },
+   "110P3": {
+    "area_m2": 110.69,
+    "units": 3,
+    "max_price_won": 1156000000,
+    "floor_sample_price_won": 1156000000
+   },
+   "110S1": {
+    "area_m2": 110.89,
+    "units": 1,
+    "max_price_won": 980000000,
+    "floor_sample_price_won": 980000000
+   },
+   "110S2": {
+    "area_m2": 110.53,
+    "units": 1,
+    "max_price_won": 980000000,
+    "floor_sample_price_won": 980000000
+   }
+  }
+ },
+ "2025000435_centreville.txt": {
+  "applyhome_id": "2025000435",
+  "types": {
+   "74A": {
+    "area_m2": 74.89,
+    "units": 149,
+    "max_price_won": 548500000,
+    "floor_sample_price_won": 521100000,
+    "balcony_won": 7326000
+   },
+   "74B": {
+    "area_m2": 74.98,
+    "units": 71,
+    "max_price_won": 538300000,
+    "floor_sample_price_won": 511400000,
+    "balcony_won": 6834000
+   },
+   "84A": {
+    "area_m2": 84.97,
+    "units": 579,
+    "max_price_won": 616200000,
+    "floor_sample_price_won": 585400000,
+    "balcony_won": 5966000
+   },
+   "84B": {
+    "area_m2": 85.0,
+    "units": 261,
+    "max_price_won": 599600000,
+    "floor_sample_price_won": 569700000,
+    "balcony_won": 7240000
+   },
+   "101A": {
+    "area_m2": 101.8,
+    "units": 275,
+    "max_price_won": 699400000,
+    "floor_sample_price_won": 664500000,
+    "balcony_won": 5086000
+   },
+   "101B": {
+    "area_m2": 101.87,
+    "units": 66,
+    "max_price_won": 699400000,
+    "floor_sample_price_won": 664400000,
+    "balcony_won": 6088000
+   },
+   "101C": {
+    "area_m2": 101.98,
+    "units": 125,
+    "max_price_won": 683100000,
+    "floor_sample_price_won": 648900000,
+    "balcony_won": 6344000
+   },
+   "120P": {
+    "area_m2": 120.59,
+    "units": 8,
+    "balcony_won": 5326000
+   }
+  }
+ },
+ "2026000194_lakepark22.txt": {
+  "applyhome_id": "2026000194",
+  "types": {
+   "59A": {
+    "area_m2": 59.95,
+    "units": 354,
+    "max_price_won": 490100000,
+    "floor_sample_price_won": 456600000,
+    "balcony_won": 4346000
+   },
+   "59B": {
+    "area_m2": 59.83,
+    "units": 326,
+    "max_price_won": 482400000,
+    "floor_sample_price_won": 449300000,
+    "balcony_won": 4116000
+   },
+   "84A": {
+    "area_m2": 84.52,
+    "units": 441,
+    "max_price_won": 653300000,
+    "floor_sample_price_won": 608500000,
+    "balcony_won": 5458000
+   },
+   "84B": {
+    "area_m2": 84.03,
+    "units": 177,
+    "max_price_won": 646600000,
+    "floor_sample_price_won": 602300000,
+    "balcony_won": 3670000
+   },
+   "84C": {
+    "area_m2": 84.18,
+    "units": 156,
+    "max_price_won": 636800000,
+    "floor_sample_price_won": 599700000,
+    "balcony_won": 4920000
+   }
+  }
+ }
+}

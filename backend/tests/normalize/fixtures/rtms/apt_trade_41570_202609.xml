@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptDong>101</aptDong>
+        <aptNm>풍무센트럴푸르지오</aptNm>
+        <buildYear>2020</buildYear>
+        <cdealDay> </cdealDay>
+        <cdealType> </cdealType>
+        <dealAmount>  72,500</dealAmount>
+        <dealDay>12</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <excluUseAr>84.9877</excluUseAr>
+        <floor>15</floor>
+        <sggCd>41570</sggCd>
+        <umdCd>10700</umdCd>
+        <umdNm>풍무동</umdNm>
+      </item>
+      <item>
+        <aptDong>103</aptDong>
+        <aptNm>풍무센트럴푸르지오</aptNm>
+        <buildYear>2020</buildYear>
+        <cdealDay>26.09.20</cdealDay>
+        <cdealType>O</cdealType>
+        <dealAmount>  69,000</dealAmount>
+        <dealDay>3</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <excluUseAr>84.9877</excluUseAr>
+        <floor>7</floor>
+        <sggCd>41570</sggCd>
+        <umdCd>10700</umdCd>
+        <umdNm>풍무동</umdNm>
+      </item>
+      <item>
+        <aptDong> </aptDong>
+        <aptNm>한강센트럴자이1단지</aptNm>
+        <buildYear>2017</buildYear>
+        <cdealDay> </cdealDay>
+        <cdealType> </cdealType>
+        <dealAmount>  61,800</dealAmount>
+        <dealDay>27</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>직거래</dealingGbn>
+        <excluUseAr>84.8100</excluUseAr>
+        <floor>11</floor>
+        <sggCd>41570</sggCd>
+        <umdCd>10400</umdCd>
+        <umdNm>장기동</umdNm>
+      </item>
+    </items>
+    <numOfRows>10</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>3</totalCount>
+  </body>
+</response>

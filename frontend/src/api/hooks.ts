@@ -60,7 +60,8 @@ export type ScenarioKey = string;
 
 const enc = (v: IdLike) => encodeURIComponent(String(v));
 const key = (v: IdLike | null | undefined) => (v === null || v === undefined ? '' : String(v));
-const has = (v: IdLike | null | undefined): v is IdLike => v !== null && v !== undefined && v !== '';
+const has = (v: IdLike | null | undefined): v is IdLike =>
+  v !== null && v !== undefined && v !== '';
 
 export interface ChangesParams {
   since?: string | null;

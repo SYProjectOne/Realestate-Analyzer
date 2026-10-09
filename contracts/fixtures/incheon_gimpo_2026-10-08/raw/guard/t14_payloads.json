@@ -1,0 +1,50 @@
+{
+  "case": "T14",
+  "env": {
+    "DATA_GO_KR_KEY": "fx-t14-not-a-real-key-7f3a"
+  },
+  "note": "모든 값은 테스트용 가짜(실제 번호·주소·키 아님). guard는 호출 전 거부하고 judgment_log에 status=blocked 행, 로그엔 input_hash·길이만.",
+  "cases": [
+    {
+      "kind": "phone",
+      "tool": "screen",
+      "purpose": "screen:t14:phone",
+      "payload": {
+        "text": "엘리프 검단 포레듀 선착순 문의 010-1234-5678"
+      },
+      "expect_status": "blocked"
+    },
+    {
+      "kind": "email",
+      "tool": "screen",
+      "purpose": "screen:t14:email",
+      "payload": {
+        "text": "계약 서류 회신 test.user@example.com"
+      },
+      "expect_status": "blocked"
+    },
+    {
+      "kind": "resident_no",
+      "tool": "extract",
+      "purpose": "extract:t14:resident",
+      "payload": {
+        "document": "계약자 900101-1234567"
+      },
+      "expect_status": "blocked"
+    },
+    {
+      "kind": "env_value",
+      "tool": "verify",
+      "purpose": "verify:t14:env",
+      "payload": {
+        "claims": [
+          {
+            "id": "c1",
+            "text": "인증키 fx-t14-not-a-real-key-7f3a"
+          }
+        ]
+      },
+      "expect_status": "blocked"
+    }
+  ]
+}

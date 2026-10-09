@@ -1,0 +1,30 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:ab22",
+  "input_hash": "sha256:dd9d2e5eafc3dd72be11960e9a75cf3742139dce2ff794991722f382523306c0",
+  "input_len": 64,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "items": [],
+    "counts": {
+      "records": 15,
+      "flagged": 0
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "pass"
+  },
+  "duration_ms": null,
+  "judgment_seq": 53,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

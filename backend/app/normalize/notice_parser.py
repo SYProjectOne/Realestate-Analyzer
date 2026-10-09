@@ -1,0 +1,728 @@
+"""입주자모집공고문 텍스트(pdfplumber 추출) → 필드 후보 (WP2, RA §5 WP2 카드).
+
+읽는 것
+- 머리 표: 주택유형·규제지역·재당첨제한·전매제한·거주의무기간·분양가상한제·택지유형,
+  청약 일정(공고일·당첨자발표일)
+- 단지 유의사항: 최초 주택관리번호·최초 공고일(임의공급·무순위 공고), 전매제한 문장
+- 공급대상 표: 주택형(공고 표기·약식 표기)·전용면적·공급세대수
+- 공급금액 표: 층별 행(대지비+건축비[+부가세]=공급금액) → 타입별 최고가·최저층 공급금액,
+  계약금·중도금·잔금 비율, 1차 계약금 정액, 중도금 회차 날짜
+- 발코니 확장 금액 표, 중도금 이자 조건 문장, 선택품목 문장, 입주시기, 공급위치·공급규모
+
+규칙(app.core.protocols.Parser)
+- 모든 후보에 원문 발췌(줄 단위)와 오프셋을 붙인다. 금액은 원 단위 정수, 면적 ㎡ 소수 2자리, 날짜 ISO.
+- 표 파서가 못 읽은 필드는 label='확인 불가' + needs_extract=True 후보로 낸다(판정기 extract 요청은
+  ``app.normalize.extract_request``가 만든다 — 여기서는 판정기를 부르지 않는다).
+- 행 → 타입 배정은 공급대상 표의 타입별 공급세대수 합계로 검증한다(행 세대수 합 = 타입 세대수).
+  합이 맞지 않으면 추측하지 않고 해당 타입 가격을 needs_extract로 넘긴다.
+- 임의공급·무순위·선착순 공고는 잔여 세대 일부만 싣기 때문에 타입 최고가·세대수(complex_type)를 내지 않고
+  납부 조건(payment_terms)과 단지 공통 항목만 낸다(가정 — 보고서에 기록).
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+
+from app.core.contracts_gen import FieldCandidate, RawDocument
+from app.normalize._text import (
+    AMOUNT_RE,
+    CandidateBuilder,
+    amounts_in,
+    canonical_json,
+    parse_date,
+    parse_won,
+    read_raw_text,
+    round_area,
+)
+
+__all__ = ["NoticeParser", "PriceRow", "TypeSpec", "parse_notice_text"]
+
+_TITLE_RE = re.compile(
+    r"^(?P<name>.+?)\s*(?P<kind>임의공급|무순위(?:\s*\(사후\))?|선착순|계약취소\s*주택|재공급)?\s*(?:\(\s*\d+\s*차\s*\))?\s*입주자\s*모집\s*공고",
+    re.M,
+)
+_ORIG_NO_RE = re.compile(r"최초\s*주택관리번호는\s*(\d{10})")
+_THIS_NO_RE = re.compile(r"주택관리번호는\s*(\d{10})")
+_ORIG_DATE_RE = re.compile(r"최초\s*입주자모집공고일은\s*([0-9.\s]+)")
+_THIS_DATE_RE = re.compile(r"(?:임의공급|무순위[^\s]*|선착순)\s*입주자모집공고일은\s*([0-9.\s]+)")
+_HOUSE_NO_URL_RE = re.compile(r"houseManageNo=(\d{10})")
+
+_SECTION3_RE = re.compile(r"^\d\s+공급(?:대상|내역)\s*및\s*공급금액", re.M)
+_PRICE_HEAD_RE = re.compile(r"^■\s*공급\s*금액", re.M)
+_BALCONY_HEAD_RE = re.compile(
+    r"^■?\s*(?:\(\d\)|\d\.)?\s*발코니\s*확장\s*(?:공사비|공급금액|금액|대금|공사\s*금액)", re.M
+)
+_LOCATION_RE = re.compile(r"■\s*공급위치\s*:\s*(.+)")
+_SCALE_RE = re.compile(r"■\s*공급규모\s*:\s*(.+)")
+_MOVE_IN_RE = re.compile(r"■\s*입주(?:시기|예정월?|예정일)\s*:\s*(\d{4})\s*년\s*(\d{1,2})\s*월")
+_SPECIAL_RE = re.compile(r"\[\s*특별공급\s*([\d,]+)\s*세대")
+_DP_RE = re.compile(r"계약금\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?")
+_INTERIM_RE = re.compile(r"중도금\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?")
+_BALANCE_RE = re.compile(r"잔금\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?")
+_INSTALL_RE = re.compile(r"(\d)\s*(?:회|차)\s*\(\s*(\d+(?:\.\d+)?)\s*%\s*\)")
+_DATE_TOKEN_RE = re.compile(r"(?<![\d.])(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}|\d{2}\.\d{1,2}\.\d{1,2})\.?(?![\d])")
+_INTEREST_RE = re.compile(r"^.*중도금.*(?:이자후불|무이자|이자\s*대납|이자를\s*대납).*$", re.M)
+_OPTIONS_RE = re.compile(r"^.*선택\s*품목.*(?:미포함|포함되지|포함되어\s*있지).*$", re.M)
+_BULLET_RE = re.compile(r"^[\s•\-Ÿ⦁※•]+")
+
+# 공급대상 표 행: '04 084.7531A 84A 84.7531 28.0364 ... 50.1011 266 27 ...'
+# 하위 타입 행: '84C 84.8600 ... 59.1353 8'
+_TYPE_ROW_RE = re.compile(
+    r"(?:^|\s)(?:\d{2}\s+)?(?P<long>0?\d{2,3}\.\d{4}[A-Z]?)\s+(?P<short>\d{2,3}[A-Z]{0,2}\d?)\s+"
+    r"(?P<area>0?\d{2,3}\.\d{2,4})(?P<areas>(?:\s+\d+\.\d+){3,6})\s+(?P<units>[\d,]+)(?=\s|$)"
+)
+_SUBTYPE_ROW_RE = re.compile(
+    r"^(?P<short>\d{2,3}[A-Z]{1,2}\d?)\s+(?P<area>\d{2,3}\.\d{2,4})(?P<areas>(?:\s+\d+\.\d+){3,6})\s+(?P<units>[\d,]+)(?=\s|$)"
+)
+_FLOOR_RE = re.compile(
+    r"(\d+\s*층?\s*[~\-]\s*\d+\s*층|\d+\s*층\s*이상|\d+층|\d+\s*~\s*\d+|기준층|최상층|최하층|\d+F)"
+)
+
+# 머리 표 열 이름 → (필드, 값 패턴)
+_HEADER_VALUE = {
+    "재당첨제한": r"없음|\d+\s*년",
+    "전매제한": r"없음|\d+\s*(?:개월|년)(?:\s*\([^)]*\))?",
+    "거주의무기간": r"없음|\d+\s*(?:개월|년)",
+    "분양가상한제": r"미적용|적용",
+    "택지유형": r"(?:민간택지|공공택지)(?:\s*,\s*[^\s]+)?",
+}
+
+
+@dataclass
+class TypeSpec:
+    short: str
+    long: str
+    area_text: str
+    units: int
+    span: tuple[int, int]
+
+
+@dataclass
+class PriceRow:
+    total: int
+    units: int
+    floor_text: str
+    after_total: list[int]
+    span: tuple[int, int]
+
+
+@dataclass
+class _Ctx:
+    text: str
+    raw: RawDocument
+    b: CandidateBuilder
+    complex_key: str
+    notice_no: str
+    notice_kind: str
+    head_span: tuple[int, int] = (0, 1)
+    types: list[TypeSpec] = field(default_factory=list)
+
+
+def _months(token: str) -> int | None:
+    m = re.search(r"(\d+)\s*(개월|년)", token)
+    if m is None:
+        return 0 if "없음" in token else None
+    n = int(m.group(1))
+    return n if m.group(2) == "개월" else n * 12
+
+
+def _years(token: str) -> int | None:
+    m = re.search(r"(\d+)\s*년", token)
+    if m is None:
+        return 0 if "없음" in token else None
+    return int(m.group(1))
+
+
+def _line_spans(text: str, start: int, end: int) -> list[tuple[int, int]]:
+    out: list[tuple[int, int]] = []
+    pos = start
+    while pos < end:
+        nl = text.find("\n", pos, end)
+        stop = end if nl < 0 else nl
+        out.append((pos, stop))
+        pos = stop + 1
+    return out
+
+
+class NoticeParser:
+    """``Parser`` 구현 — source_kind='notice_pdf'."""
+
+    source_kind = "notice_pdf"
+
+    def __init__(self, *, raw_dir: Path | None = None) -> None:
+        self._raw_dir = raw_dir
+
+    def parse(self, raw: RawDocument) -> list[FieldCandidate]:
+        if raw.http_status not in (None, 200) or (raw.error_text or "").lower() == "scan":
+            return _failed(raw)
+        text = read_raw_text(raw, raw_dir=self._raw_dir)
+        if text is None:
+            return _failed(raw)
+        return parse_notice_text(text, raw)
+
+
+def _failed(raw: RawDocument) -> list[FieldCandidate]:
+    """실패 원문(403·스캔 등)은 후보를 내지 않는다.
+
+    실패 자체는 raw_document 행(http_status·error_text)에 남아 있다.
+    """
+    del raw
+    return []
+
+
+def _house_no(raw: RawDocument, text: str) -> str:
+    m = _HOUSE_NO_URL_RE.search(raw.url)
+    if m:
+        return m.group(1)
+    qs = parse_qs(urlsplit(raw.url).query)
+    if "pblancNo" in qs:
+        return qs["pblancNo"][0]
+    m2 = _THIS_NO_RE.search(text)
+    return m2.group(1) if m2 else ""
+
+
+def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
+    """공고문 텍스트 → 후보 목록 (순수 함수: 파일·DB 접근 없음)."""
+    b = CandidateBuilder(raw, text)
+    notice_no = _house_no(raw, text)
+    orig = _ORIG_NO_RE.search(text)
+    complex_key = orig.group(1) if orig else notice_no
+    title = _TITLE_RE.search(text[:2000])
+    kind_text = (title.group("kind") or "") if title else ""
+    notice_kind = (
+        "임의"
+        if kind_text.startswith("임의")
+        else "무순위"
+        if kind_text.startswith(("무순위", "계약취소"))
+        else "선착순"
+        if kind_text.startswith("선착순")
+        else "본청약"
+    )
+    head_end = text.find("\n1 공통")
+    ctx = _Ctx(
+        text=text,
+        raw=raw,
+        b=b,
+        complex_key=complex_key,
+        notice_no=notice_no or complex_key,
+        notice_kind=notice_kind,
+        head_span=(0, head_end if head_end > 0 else min(len(text), 2000)),
+    )
+    if title is not None:
+        name = title.group("name").strip()
+        b.add("complex", complex_key, "name", name, name, title.span("name"))
+    _header(ctx)
+    _section3(ctx)
+    if notice_kind == "본청약":
+        ctx.types = _type_table(ctx)
+    _price_table(ctx)
+    if notice_kind == "본청약":
+        _balcony(ctx)
+        _options(ctx)
+    return b.out
+
+
+# ---------------------------------------------------------------- 머리 표
+
+
+def _header(ctx: _Ctx) -> None:
+    text, b, key = ctx.text, ctx.b, ctx.complex_key
+    hs, he = ctx.head_span
+    head = text[hs:he]
+
+    m = re.search(r"(?<![가-힣])(민영|국민)(?![가-힣])", head)
+    if m:
+        b.add("complex", key, "housing_type", m.group(1), m.group(1), (hs + m.start(), hs + m.end()))
+    m = re.search(r"(비규제지역|투기과열지구|조정대상지역|규제지역)(?!\s*여부)", head)
+    if m:
+        v = "비규제" if m.group(1) == "비규제지역" else "규제"
+        b.add("complex", key, "regulated", v, m.group(1), (hs + m.start(), hs + m.end()))
+
+    found: set[str] = set()
+    for hm in re.finditer(r"^.*(?:재당첨제한|전매제한|분양가상한제).*$", head, re.M):
+        cols = [
+            c
+            for c in re.findall(
+                r"재당첨제한|전매제한|거주의무기간|분양가상한제|택지유형|주택유형|규제지역여부", hm.group(0)
+            )
+        ]
+        cols = [c for c in cols if c in _HEADER_VALUE]
+        if len(cols) < 2:
+            continue
+        line_end = hs + hm.end()
+        nl = text.find("\n", line_end + 1)
+        vline_start = line_end + 1
+        vline = text[vline_start : nl if nl > 0 else len(text)]
+        pos = 0
+        ok_cols: list[tuple[str, str, tuple[int, int]]] = []
+        for col in cols:
+            vm = re.compile(r"\s*(" + _HEADER_VALUE[col] + r")").match(vline, pos)
+            if vm is None:
+                break
+            ok_cols.append((col, vm.group(1), (vline_start + vm.start(1), vline_start + vm.end(1))))
+            pos = vm.end()
+        for col, val, span in ok_cols:
+            found.add(col)
+            _header_value(ctx, col, val, span)
+        if ok_cols:
+            break
+
+    if "전매제한" not in found:
+        rm = re.search(r"전매제한은[^\n]*?(\d+\s*(?:개월|년))[^\n]*", text)
+        if rm:
+            _header_value(ctx, "전매제한", rm.group(0), (rm.start(), rm.end()))
+        else:
+            b.missing("complex", key, "resale_months", ctx.head_span)
+    if "거주의무기간" not in found and ctx.notice_kind == "본청약":
+        b.missing("complex", key, "residency_months", ctx.head_span)
+    _schedule(ctx)
+
+
+def _header_value(ctx: _Ctx, col: str, val: str, span: tuple[int, int]) -> None:
+    b, key = ctx.b, ctx.complex_key
+    if col == "재당첨제한":
+        b.add("complex", key, "rewin_restriction_years", _years(val), val, span)
+    elif col == "전매제한":
+        b.add("complex", key, "resale_months", _months(val), val, span)
+        release = "소유권이전등기" in val.replace(" ", "")
+        if not release:
+            # 머리 표 값 바로 아래 줄의 '(단, 기간 내 소유권이전등기 시 해제)' 같은 보충 문장
+            nxt = ctx.text[span[1] : ctx.text.find("\n", ctx.text.find("\n", span[1]) + 1)]
+            release = "소유권이전등기" in nxt.replace(" ", "") and "해제" in nxt
+        b.add(
+            "complex",
+            key,
+            "resale_release_on_registration",
+            release,
+            "등기 시 해제" if release else "해당 없음",
+            span,
+        )
+    elif col == "거주의무기간":
+        b.add("complex", key, "residency_months", _months(val), val, span)
+    elif col == "분양가상한제":
+        b.add("complex", key, "price_cap", val, val, span)
+    elif col == "택지유형":
+        v = "공공택지" if val.startswith("공공") else "민간택지"
+        b.add("complex", key, "land_type", v, val, span)
+
+
+def _schedule(ctx: _Ctx) -> None:
+    """머리 일정 표: '구분 입주자모집공고일 … 당첨자발표일 …' / '일정 25.07.04.(금) …'."""
+    text, b, key = ctx.text, ctx.b, ctx.complex_key
+    hs, he = ctx.head_span
+    od = _ORIG_DATE_RE.search(text)
+    if od and ctx.notice_kind != "본청약":
+        d = parse_date(od.group(1))
+        if d:
+            b.add("complex", key, "notice_date", d, od.group(1).strip(), od.span(1))
+        return
+    hm = re.search(r"^구분\s+입주자모집공고일.*$", text[hs:he], re.M)
+    vm = re.search(r"^일\s*정\s+(.*)$", text[hs:he], re.M)
+    if hm is None or vm is None:
+        return
+    cols = re.findall(r"입주자모집공고일|특별공급|1순위|2순위|당첨자발표일|서류접수|계약체결", hm.group(0))
+    vstart = hs + vm.start(1)
+    tokens = list(
+        re.finditer(
+            r"(\d{2,4}\.\s*\d{1,2}\.\s*\d{1,2}\.?(?:\s*\([^)]*\))?)"
+            r"(?:\s*~\s*(\d{2,4}\.\s*\d{1,2}\.\s*\d{1,2}\.?(?:\s*\([^)]*\))?))?",
+            vm.group(1),
+        )
+    )
+    if not tokens:
+        return
+    first = tokens[0]
+    d0 = parse_date(first.group(1))
+    if d0:
+        b.add(
+            "complex", key, "notice_date", d0, first.group(0), (vstart + first.start(), vstart + first.end())
+        )
+    if len(tokens) == len(cols) and "당첨자발표일" in cols:
+        t = tokens[cols.index("당첨자발표일")]
+        dw = parse_date(t.group(1))
+        if dw:
+            b.add("complex", key, "winner_date", dw, t.group(0), (vstart + t.start(), vstart + t.end()))
+
+
+# ---------------------------------------------------------------- 공급 개요
+
+
+def _section3(ctx: _Ctx) -> None:
+    text, b, key = ctx.text, ctx.b, ctx.complex_key
+    m = _LOCATION_RE.search(text)
+    if m:
+        addr = m.group(1).strip()
+        b.add("complex", key, "address", addr, addr, m.span(1))
+    m = _SCALE_RE.search(text)
+    if m:
+        scale = m.group(1)
+        gm = re.search(r"일반\s*분양\s*([\d,]+)\s*세대", scale) or re.search(r"총\s*([\d,]+)\s*세대", scale)
+        if gm:
+            s = m.start(1) + gm.start(1)
+            b.add(
+                "complex",
+                key,
+                "units_total",
+                int(gm.group(1).replace(",", "")),
+                gm.group(0),
+                (s, s + len(gm.group(1))),
+            )
+        else:
+            b.missing("complex", key, "units_total", m.span())
+        sm = _SPECIAL_RE.search(text, m.end(), m.end() + 400)
+        if sm and ctx.notice_kind == "본청약":
+            b.add("complex", key, "units_special", int(sm.group(1).replace(",", "")), sm.group(0), sm.span())
+    m = _MOVE_IN_RE.search(text)
+    if m:
+        ym = f"{int(m.group(1)):04d}-{int(m.group(2)):02d}"
+        b.add("complex", key, "move_in_ym", ym, m.group(0).replace("■", "").strip(), m.span())
+    else:
+        b.missing("complex", key, "move_in_ym", ctx.head_span)
+
+
+def _type_table(ctx: _Ctx) -> list[TypeSpec]:
+    text = ctx.text
+    s3 = _SECTION3_RE.search(text)
+    p = _PRICE_HEAD_RE.search(text, s3.end() if s3 else 0)
+    start = s3.end() if s3 else 0
+    end = p.start() if p else len(text)
+    out: list[TypeSpec] = []
+    seen: set[str] = set()
+    for ls, le in _line_spans(text, start, end):
+        line = text[ls:le]
+        m = _TYPE_ROW_RE.search(line) or _SUBTYPE_ROW_RE.search(line)
+        if m is None:
+            continue
+        short = m.group("short")
+        if short in seen:
+            continue
+        seen.add(short)
+        long = m.groupdict().get("long") or ""
+        out.append(
+            TypeSpec(
+                short=short,
+                long=long,
+                area_text=m.group("area").lstrip("0") or m.group("area"),
+                units=int(m.group("units").replace(",", "")),
+                span=(ls, le),
+            )
+        )
+    return out
+
+
+# ---------------------------------------------------------------- 공급금액 표
+
+
+def _price_rows(text: str, start: int, end: int) -> list[PriceRow]:
+    rows: list[PriceRow] = []
+    for ls, le in _line_spans(text, start, end):
+        row = _price_row(text[ls:le], (ls, le))
+        if row is not None:
+            rows.append(row)
+    return rows
+
+
+def _price_row(line: str, span: tuple[int, int]) -> PriceRow | None:
+    amts = amounts_in(line)
+    if len(amts) < 3:
+        return None
+    # '-'(부가세 없음)를 0으로 끼워 넣은 금액 열 (값, 원문 시작 위치)
+    cols: list[tuple[int, int]] = []
+    prev_end = amts[0][1]
+    for v, s, e in amts:
+        if cols and re.fullmatch(r"\s*[-−–]\s*", line[prev_end:s]):
+            cols.append((0, prev_end))
+        cols.append((v, s))
+        prev_end = e
+    values = [v for v, _ in cols]
+    # 공급금액 열 = 앞 열(대지비+건축비[+부가세])의 합. 공고 표의 원 단위 끝수(±10원)는 허용한다.
+    # 동·호 표기('401,405동')가 금액처럼 보일 수 있어 시작 열도 0~2 중에서 찾는다.
+    found: tuple[int, int] | None = None
+    for s0 in range(0, 3):
+        for k in range(s0 + 2, min(len(values), s0 + 4)):
+            if (
+                values[k] > 0
+                and values[s0] > 0
+                and values[k] == max(values)  # 공급금액은 행에서 가장 큰 금액(납부 회차는 그 일부)
+                and abs(values[k] - sum(values[s0:k])) <= 10
+            ):
+                found = (s0, k)
+                break
+        if found:
+            break
+    if found is None:
+        return None
+    s0, k = found
+    before = line[: cols[s0][1]]
+    ints = list(re.finditer(r"(?<![\d,~\-.])(\d{1,4})(?![\d,층F~\-.])", before))
+    if not ints:
+        return None
+    units_m = ints[-1]
+    floors = [
+        fm for fm in _FLOOR_RE.finditer(before) if fm.end() <= units_m.start() or fm.start() >= units_m.end()
+    ]
+    if floors:
+        floor_text = floors[-1].group(0).replace(" ", "")
+    elif len(ints) >= 2 and len(before[ints[-2].start() :].split()) == 2:
+        # '1 6 …'처럼 층 번호만 있는 표: 세대수 바로 앞 정수가 층
+        floor_text = ints[-2].group(1) + "층"
+    else:
+        floor_text = ""
+    return PriceRow(
+        total=values[k],
+        units=int(units_m.group(1)),
+        floor_text=floor_text,
+        after_total=values[k + 1 :],
+        span=span,
+    )
+
+
+def _assign(rows: list[PriceRow], types: list[TypeSpec]) -> dict[str, list[PriceRow]]:
+    """행을 공급대상 표 순서대로 타입에 배정한다. 타입의 행 세대수 합 = 공급세대수일 때만 배정하고,
+    처음 어긋난 타입부터는 배정하지 않는다(뒤 타입의 행 경계를 알 수 없으므로)."""
+    out: dict[str, list[PriceRow]] = {}
+    i = 0
+    for t in types:
+        acc = 0
+        group: list[PriceRow] = []
+        while i < len(rows) and acc < t.units:
+            group.append(rows[i])
+            acc += rows[i].units
+            i += 1
+        if acc != t.units or not group:
+            break
+        out[t.short] = group
+    return out
+
+
+def _price_table(ctx: _Ctx) -> None:
+    text, b = ctx.text, ctx.b
+    s3 = _SECTION3_RE.search(text)
+    p = _PRICE_HEAD_RE.search(text, s3.end() if s3 else 0)
+    pay_key = f"{ctx.complex_key}:{ctx.notice_no}"
+    if p is None:
+        b.missing("payment_terms", pay_key, "down_payment_pct", ctx.head_span, reason="공급금액 표 없음")
+        if ctx.notice_kind == "본청약":
+            for t in ctx.types:
+                b.missing(
+                    "complex_type",
+                    f"{ctx.complex_key}:{t.short}",
+                    "max_price_won",
+                    t.span,
+                    reason="공급금액 표 없음",
+                )
+        return
+    end = _price_section_end(text, p.end())
+    rows = _price_rows(text, p.end(), end)
+    head_end = rows[0].span[0] if rows else min(len(text), p.end() + 800)
+    _payment_terms(ctx, (p.start(), head_end), rows, pay_key)
+    if ctx.notice_kind != "본청약":
+        return
+    groups = _assign(rows, ctx.types)
+    for t in ctx.types:
+        tkey = f"{ctx.complex_key}:{t.short}"
+        b.add("complex_type", tkey, "area_m2", round_area(t.area_text), t.long or t.area_text, t.span)
+        b.add("complex_type", tkey, "units", t.units, str(t.units), t.span)
+        g = groups.get(t.short)
+        if not g:
+            b.missing("complex_type", tkey, "max_price_won", p.span(), reason="공급금액 표 행 배정 실패")
+            b.missing(
+                "complex_type", tkey, "floor_sample_price_won", p.span(), reason="공급금액 표 행 배정 실패"
+            )
+            continue
+        top = max(g, key=lambda r: r.total)
+        low = min(g, key=lambda r: r.total)
+        b.add("complex_type", tkey, "max_price_won", top.total, f"{top.total:,}", top.span)
+        b.add("complex_type", tkey, "floor_sample_price_won", low.total, f"{low.total:,}", low.span)
+        b.add(
+            "complex_type",
+            tkey,
+            "floor_sample_text",
+            low.floor_text or None,
+            low.floor_text or None,
+            low.span,
+        )
+    if not ctx.types:
+        b.missing(
+            "complex_type", f"{ctx.complex_key}:?", "max_price_won", p.span(), reason="공급대상 표 없음"
+        )
+
+
+def _price_section_end(text: str, start: int) -> int:
+    seen_amount = False
+    for ls, le in _line_spans(text, start, len(text)):
+        line = text[ls:le]
+        if AMOUNT_RE.search(line):
+            seen_amount = True
+        if (
+            seen_amount
+            and re.match(r"^(■|•|Ÿ|⦁|\[…\]|※\s*상기|발코니)", line)
+            and not _PRICE_HEAD_RE.match(line)
+        ):
+            return ls
+    return len(text)
+
+
+def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: str) -> None:
+    text, b = ctx.text, ctx.b
+    hs, he = head
+    kind_span = head
+    b.add("payment_terms", key, "notice_kind", ctx.notice_kind, ctx.notice_kind, kind_span)
+    # effective_from: 이 공고의 공고일
+    eff: tuple[str, str, tuple[int, int]] | None = None
+    tm = _THIS_DATE_RE.search(text)
+    if tm and ctx.notice_kind != "본청약":
+        d = parse_date(tm.group(1))
+        if d:
+            eff = (d, tm.group(1).strip(), tm.span(1))
+    if eff is None:
+        for c in reversed(b.out):
+            if c.entity == "complex" and c.field == "notice_date" and isinstance(c.value, str):
+                eff = (c.value, c.value_text or c.value, (c.excerpt_start or 0, c.excerpt_end or 1))
+                break
+    if eff is None:
+        b.missing("payment_terms", key, "effective_from", ctx.head_span)
+    else:
+        b.add("payment_terms", key, "effective_from", eff[0], eff[1], eff[2])
+
+    dpm = _DP_RE.search(text, hs, he)
+    itm = _INTERIM_RE.search(text, hs, he)
+    blm = _BALANCE_RE.search(text, hs, he)
+    if dpm is None:
+        for f in ("down_payment_pct", "interim_pct", "balance_pct"):
+            b.missing("payment_terms", key, f, head)
+        return
+    dp = float(dpm.group(1))
+    b.add("payment_terms", key, "down_payment_pct", dp, dpm.group(0), dpm.span())
+    if blm is not None:
+        b.add("payment_terms", key, "balance_pct", float(blm.group(1)), blm.group(0), blm.span())
+    else:
+        b.missing("payment_terms", key, "balance_pct", head, reason="잔금 비율 표기 해석 실패")
+    no_interim = itm is None and blm is not None and dp + float(blm.group(1)) == 100.0
+    if itm is not None:
+        b.add("payment_terms", key, "interim_pct", float(itm.group(1)), itm.group(0), itm.span())
+    elif no_interim and blm is not None:
+        b.add("payment_terms", key, "interim_pct", 0.0, "중도금 없음", (dpm.start(), blm.end()))
+    else:
+        b.missing("payment_terms", key, "interim_pct", head)
+
+    # 1차 계약금 정액: 공급금액 다음 두 열의 합 = 계약금이고 첫 열이 모든 행에서 같으면 정액
+    if rows:
+        firsts = {r.after_total[0] for r in rows if len(r.after_total) >= 2}
+        r0 = rows[0]
+        due = round(r0.total * dp / 100)
+        if (
+            len(firsts) == 1
+            and len(r0.after_total) >= 2
+            and r0.after_total[0] + r0.after_total[1] == due
+            and r0.after_total[0] != r0.after_total[1]
+        ):
+            fixed = r0.after_total[0]
+            b.add("payment_terms", key, "down_payment_first_won", fixed, f"{fixed:,}", r0.span)
+        else:
+            b.add(
+                "payment_terms",
+                key,
+                "down_payment_first_won",
+                None,
+                None,
+                r0.span,
+                label="확인 불가",
+                reason="정액 표기 없음",
+            )
+
+    # 중도금 회차·날짜
+    installs = [(int(m.group(1)), float(m.group(2))) for m in _INSTALL_RE.finditer(text, hs, he)]
+    installs = sorted(dict(installs).items())
+    dates = [m for m in _DATE_TOKEN_RE.finditer(text, hs, he)]
+    if installs and len(dates) >= len(installs):
+        use = dates[len(dates) - len(installs) :]
+        sched: list[dict[str, object]] = []
+        for (seq, pct), dm in zip(installs, use, strict=True):
+            d = parse_date(dm.group(1))
+            if d is None:
+                sched = []
+                break
+            sched.append({"seq": seq, "due_date": d, "pct": pct})
+        if sched:
+            span = (use[0].start(), use[-1].end())
+            b.add(
+                "payment_terms", key, "interim_schedule", canonical_json(sched), text[span[0] : span[1]], span
+            )
+        else:
+            b.missing("payment_terms", key, "interim_schedule", head, reason="중도금 날짜 해석 실패")
+    elif installs or itm is not None:
+        b.missing("payment_terms", key, "interim_schedule", head, reason="중도금 회차·날짜 해석 실패")
+    elif no_interim:
+        b.add("payment_terms", key, "interim_schedule", "[]", "중도금 없음", dpm.span())
+
+    im = _INTEREST_RE.search(text)
+    if im:
+        line = _BULLET_RE.sub("", im.group(0)).strip()
+        b.add("payment_terms", key, "interim_terms_text", line, line, im.span())
+
+
+# ---------------------------------------------------------------- 발코니·옵션
+
+
+def _balcony(ctx: _Ctx) -> None:
+    text, b = ctx.text, ctx.b
+    shorts = [t.short for t in ctx.types]
+    if not shorts:
+        return
+    m = _BALCONY_HEAD_RE.search(text)
+    found: dict[str, tuple[int, str, tuple[int, int]]] = {}
+    if m is not None:
+        spans = _line_spans(text, m.start(), min(len(text), m.end() + 2000))[:24]
+        type_alt = "|".join(sorted((re.escape(s) for s in shorts), key=len, reverse=True))
+        row_re = re.compile(rf"^((?:{type_alt})(?:\s*[·,]\s*(?:{type_alt}))*)\s+({AMOUNT_RE.pattern})")
+        for ls, le in spans:
+            rm = row_re.match(text[ls:le])
+            if rm:
+                for s in re.split(r"\s*[·,]\s*", rm.group(1)):
+                    found.setdefault(s, (parse_won(rm.group(2)), rm.group(2), (ls, le)))
+        if not found:
+            # 가로 표: '구분 84A 84B …' 다음 줄들 중 금액 개수가 타입 수와 같은 줄
+            for i, (ls, le) in enumerate(spans):
+                hdr = re.findall(rf"(?<![\w])({type_alt})(?![\w])", text[ls:le])
+                if len(hdr) < 2:
+                    continue
+                for ls2, le2 in spans[i + 1 : i + 4]:
+                    amts = amounts_in(text[ls2:le2])
+                    if len(amts) == len(hdr):
+                        for s, (v, _, _) in zip(hdr, amts, strict=True):
+                            found.setdefault(s, (v, f"{v:,}", (ls2, le2)))
+                        break
+                if found:
+                    break
+    for t in ctx.types:
+        tkey = f"{ctx.complex_key}:{t.short}"
+        if t.short in found:
+            v, vt, span = found[t.short]
+            b.add("complex_type", tkey, "balcony_won", v, vt, span)
+        else:
+            b.missing(
+                "complex_type",
+                tkey,
+                "balcony_won",
+                m.span() if m else ctx.head_span,
+                reason="발코니 표 해석 실패",
+            )
+
+
+def _options(ctx: _Ctx) -> None:
+    """'상기 공급금액은 추가 선택품목 비용이 포함되지 아니한 가격' → 필수 옵션 0원(선택품목은 별도 계약)."""
+    text, b = ctx.text, ctx.b
+    m = _OPTIONS_RE.search(text)
+    for t in ctx.types:
+        tkey = f"{ctx.complex_key}:{t.short}"
+        if m:
+            line = _BULLET_RE.sub("", m.group(0)).strip()
+            b.add("complex_type", tkey, "options_required_won", 0, line, m.span())
+        else:
+            b.missing(
+                "complex_type", tkey, "options_required_won", ctx.head_span, reason="선택품목 문장 없음"
+            )

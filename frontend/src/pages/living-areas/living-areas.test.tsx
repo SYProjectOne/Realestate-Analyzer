@@ -92,6 +92,8 @@ describe('G0-2 생활권 편집', () => {
     await screen.findAllByRole('textbox', { name: t('page.G0_2.areaName') });
     await userEvent.click(screen.getByRole('button', { name: t('page.G0_2.save') }));
     const alert = await screen.findByText(t('page.G0_2.saveError', { detail: '법정동 배정 오류' }));
-    expect(within(alert.parentElement as HTMLElement).getByText('living_areas.0: 중복')).toBeInTheDocument();
+    expect(
+      within(alert.parentElement as HTMLElement).getByText('living_areas.0: 중복'),
+    ).toBeInTheDocument();
   });
 });

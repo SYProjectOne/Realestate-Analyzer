@@ -1,0 +1,37 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:4",
+  "input_hash": "sha256:b68e1f8a89052a0ebed034bd19c8ccdeae5b29d0c072033b144f8e2817487c87",
+  "input_len": 73,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "items": [
+      {
+        "field": "shortfall_total_350",
+        "p_wrong": 0.67,
+        "flagged": false,
+        "note": "공고 경쟁률표에서 산술한 값(최고 p_wrong)"
+      }
+    ],
+    "counts": {
+      "records": 15,
+      "flagged": 0
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "pass"
+  },
+  "duration_ms": null,
+  "judgment_seq": 109,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 4,
+  "error_text": null
+}

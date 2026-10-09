@@ -1,8 +1,10 @@
-/** C1 상승 확률 사다리 — 데이터 소스: ComplexDetail.ladder[horizon] (p5, p10, p20, p_flat) */
-import type { Id, LadderBar, LadderHorizon, LadderRow } from '@/api/types';
+/** C1 상승 확률 사다리 — 데이터 소스: ComplexDetail.ladder[horizon] (p5, p10, p20, p_flat) / CompareView.ladders[id] */
+import type { LadderHorizon, LadderRow } from '@/lib/contract';
+
+export type LadderBar = 'p5' | 'p10' | 'p20' | 'p_flat';
 
 export interface C01OverlaySeries {
-  complex_id: Id;
+  complex_id: number | string;
   name: string;
   ladder: LadderRow[];
 }
@@ -24,5 +26,7 @@ export const C01_HORIZONS: readonly LadderHorizon[] = [
 ];
 /** markLine 임계: likely 0.85 / unlikely 0.15 (meta §2-7) */
 export const C01_THRESHOLDS = { likely: 0.85, unlikely: 0.15 } as const;
+/** overlay 단지별 마커 모양 — 색만으로 단지를 구분하지 않는다 */
+export const C01_OVERLAY_SYMBOLS = ['circle', 'rect', 'triangle', 'diamond', 'pin', 'roundRect'];
 
 export const C01_EMPTY: C01Data = { ladder: [], horizon: 'move_in_plus_1y' };

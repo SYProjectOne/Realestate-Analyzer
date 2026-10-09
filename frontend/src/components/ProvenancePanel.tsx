@@ -1,26 +1,292 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { apiFetch } from '@/api/client';
 import { rawDocumentUrl, useProvenance } from '@/api/hooks';
-import { t } from '@/i18n';
-import { formatDate } from '@/lib/format';
+import { t, tDynamic } from '@/i18n';
+import type { Provenance, ProvenanceConflict } from '@/lib/contract';
+import { formatDate, formatNumber } from '@/lib/format';
+import { Badge } from './Badge';
 import { EmptyState } from './EmptyState';
 import { LabelBadge } from './LabelBadge';
 import { ProvenanceContext } from './provenanceContext';
 
 export interface ProvenancePanelProps {
-  /** field_provenance id. null이면 닫힘 */
+  /** 출처 id(fp_/sc_/st_/jl_/hc_/rd_/cs_). null이면 닫힘 */
   provId: string | null;
   onClose: () => void;
 }
 
+/** 원문 하이라이트 창: excerpt 오프셋 앞뒤로 보여 줄 글자 수 */
+const RAW_CONTEXT = 160;
+
+type RawDocId = Parameters<typeof rawDocumentUrl>[0];
+
+/** text 안의 needle을 모두 <mark>로. needle이 없거나 못 찾으면 그대로. */
+export function Highlighted({ text, needle }: { text: string; needle?: string | null }) {
+  if (!needle) return <>{text}</>;
+  const parts = text.split(needle);
+  if (parts.length === 1) return <>{text}</>;
+  const out: ReactNode[] = [];
+  parts.forEach((part, index) => {
+    if (index > 0) out.push(<mark key={`m${index}`}>{needle}</mark>);
+    if (part) out.push(<span key={`t${index}`}>{part}</span>);
+  });
+  return <>{out}</>;
+}
+
+/** 원문 텍스트(GET /raw/{id}?as=text)에서 excerpt_start~end 구간을 앞뒤 문맥과 함께 하이라이트 */
+function RawExcerpt({ rawId, start, end }: { rawId: number; start: number; end: number }) {
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['raw', rawId, 'text'],
+    queryFn: ({ signal }) =>
+      apiFetch<string>(`/raw/${encodeURIComponent(String(rawId))}`, {
+        query: { as: 'text' },
+        signal,
+      }),
+    staleTime: Infinity,
+  });
+  if (isLoading) return <p className="text-muted">{t('provenance.rawLoading')}</p>;
+  if (error || typeof data !== 'string')
+    return <EmptyState inline message={t('provenance.rawError')} />;
+  const from = Math.max(0, start - RAW_CONTEXT);
+  const to = Math.min(data.length, end + RAW_CONTEXT);
+  return (
+    <pre
+      className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded border border-border p-2 text-xs"
+      data-testid="raw-excerpt"
+    >
+      {from > 0 ? '…' : ''}
+      {data.slice(from, start)}
+      <mark>{data.slice(start, end)}</mark>
+      {data.slice(end, to)}
+      {to < data.length ? '…' : ''}
+    </pre>
+  );
+}
+
+function ConflictItem({
+  item,
+  current,
+  onOpen,
+}: {
+  item: ProvenanceConflict;
+  current: boolean;
+  onOpen?: (prov: string) => void;
+}) {
+  return (
+    <li className="flex flex-col gap-1 border-b border-border/60 pb-2" data-prov={item.id}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-medium">{item.value_text ?? t('empty.unknown')}</span>
+        <Badge tone={item.chosen ? 'strong' : 'muted'}>
+          {item.chosen ? t('provenance.chosen') : t('provenance.notChosen')}
+        </Badge>
+        <LabelBadge label={item.label} reason={item.reason} checkedAt={item.checked_at} />
+        <span className="text-xs text-muted">
+          {[
+            item.source_kind ?? null,
+            t('provenance.sourceRank', { rank: formatNumber(item.source_rank) }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+      </div>
+      {item.excerpt ? (
+        <blockquote className="whitespace-pre-wrap border-l-2 border-border pl-2 text-xs">
+          <Highlighted text={item.excerpt} needle={item.value_text} />
+        </blockquote>
+      ) : null}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {item.url ? (
+          <a href={item.url} target="_blank" rel="noreferrer noopener" className="underline">
+            {item.url}
+          </a>
+        ) : null}
+        {!current && onOpen ? (
+          <button type="button" className="underline" onClick={() => onOpen(item.id)}>
+            {t('provenance.openConflict')}
+          </button>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function ProvenanceBody({
+  data,
+  onOpenConflict,
+}: {
+  data: Provenance;
+  onOpenConflict: (prov: string) => void;
+}) {
+  const [showRaw, setShowRaw] = useState(false);
+  const canShowRaw =
+    data.raw_document_id !== null &&
+    data.excerpt_start !== null &&
+    data.excerpt_start !== undefined &&
+    data.excerpt_end !== null &&
+    data.excerpt_end !== undefined;
+
+  // 상충 그룹 = 지금 출처(채택 여부 포함) + 같은 conflict_group의 다른 후보 전부(T5)
+  const group: ProvenanceConflict[] = data.conflict_group
+    ? [
+        {
+          id: data.id,
+          value_text: data.value_text ?? null,
+          label: data.label,
+          reason: data.reason ?? null,
+          url: data.url,
+          checked_at: data.checked_at,
+          source_kind: data.source_kind ?? null,
+          source_rank: data.source_rank ?? 0,
+          chosen: data.chosen ?? false,
+          excerpt: null,
+          raw_document_id: data.raw_document_id,
+        },
+        ...data.conflicts,
+      ]
+    : data.conflicts;
+
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+      {data.entity || data.field ? (
+        <>
+          <dt className="sr-only">{t('chart.col.kind')}</dt>
+          <dd className="col-span-2 text-xs text-muted">
+            {[data.entity, data.field].filter(Boolean).join(' · ')}
+          </dd>
+        </>
+      ) : null}
+      {data.value_text ? (
+        <>
+          <dt className="text-muted">{t('provenance.value')}</dt>
+          <dd className="font-medium">{data.value_text}</dd>
+        </>
+      ) : null}
+      <dt className="text-muted">{t('provenance.label')}</dt>
+      <dd>
+        <LabelBadge label={data.label} reason={data.reason} checkedAt={data.checked_at} />
+      </dd>
+      <dt className="text-muted">{t('provenance.checkedAt')}</dt>
+      <dd>{data.checked_at ? formatDate(data.checked_at) : <EmptyState inline />}</dd>
+      <dt className="text-muted">{t('provenance.url')}</dt>
+      <dd className="break-all">
+        {data.url ? (
+          <a href={data.url} target="_blank" rel="noreferrer noopener" className="underline">
+            {data.url}
+          </a>
+        ) : (
+          <EmptyState inline />
+        )}
+      </dd>
+      {data.source_kind ? (
+        <>
+          <dt className="text-muted">{t('provenance.source')}</dt>
+          <dd>
+            {data.source_rank !== null && data.source_rank !== undefined
+              ? `${data.source_kind} · ${t('provenance.sourceRank', { rank: formatNumber(data.source_rank) })}`
+              : data.source_kind}
+          </dd>
+        </>
+      ) : null}
+      {data.http_status !== null && data.http_status !== undefined ? (
+        <>
+          <dt className="text-muted">{t('provenance.httpStatus')}</dt>
+          <dd>{formatNumber(data.http_status)}</dd>
+        </>
+      ) : null}
+      {data.formula_text ? (
+        <>
+          <dt className="text-muted">{t('provenance.formula')}</dt>
+          <dd className="whitespace-pre-wrap">{data.formula_text}</dd>
+        </>
+      ) : null}
+      {data.judgment_seq !== null && data.judgment_seq !== undefined ? (
+        <>
+          <dt className="text-muted">{t('provenance.judgment')}</dt>
+          <dd>{`#${formatNumber(data.judgment_seq)}`}</dd>
+        </>
+      ) : null}
+      <dt className="text-muted">{t('provenance.excerpt')}</dt>
+      <dd className="flex flex-col gap-1">
+        {data.excerpt ? (
+          <blockquote className="whitespace-pre-wrap border-l-2 border-border pl-2">
+            <Highlighted text={data.excerpt} needle={data.value_text} />
+          </blockquote>
+        ) : (
+          <EmptyState inline />
+        )}
+        {canShowRaw ? (
+          <>
+            <button
+              type="button"
+              aria-expanded={showRaw}
+              onClick={() => setShowRaw((prev) => !prev)}
+              className="self-start rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
+            >
+              {showRaw ? t('provenance.rawTextHide') : t('provenance.rawText')}
+            </button>
+            {showRaw ? (
+              <RawExcerpt
+                rawId={data.raw_document_id as number}
+                start={data.excerpt_start as number}
+                end={data.excerpt_end as number}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </dd>
+      <dt className="text-muted">{t('provenance.conflicts')}</dt>
+      <dd>
+        {data.conflicts.length === 0 ? (
+          t('provenance.noConflicts')
+        ) : (
+          <ul aria-label={t('provenance.conflicts')} className="flex flex-col gap-2">
+            {group.map((item) => (
+              <ConflictItem
+                key={item.id}
+                item={item}
+                current={item.id === data.id}
+                onOpen={onOpenConflict}
+              />
+            ))}
+          </ul>
+        )}
+      </dd>
+      {data.raw_document_id !== null ? (
+        <>
+          <dt className="sr-only">{t('provenance.rawDocument')}</dt>
+          <dd className="col-span-2">
+            <a
+              href={rawDocumentUrl(data.raw_document_id as unknown as RawDocId)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline"
+            >
+              {t('provenance.rawDocument')}
+            </a>
+          </dd>
+        </>
+      ) : null}
+    </dl>
+  );
+}
+
 /**
- * 출처 패널(오른쪽 서랍): GET /provenance/{id} → 원문 주소·확인일·라벨·발췌·상충 출처·원문 파일 링크.
+ * 출처 패널(오른쪽 서랍): GET /provenance/{id} → 값·라벨(사유)·확인일·원문 주소·출처 종류/순위·HTTP 상태·
+ * 산출식·원문 발췌(값 하이라이트, 원문 텍스트 오프셋 하이라이트)·상충 그룹(채택/미채택)·원문 파일 링크.
  * 보통 직접 쓰지 않고 앱 루트의 ProvenanceProvider가 FactCell 클릭으로 연다.
  */
 export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
-  const { data, error, isLoading } = useProvenance(provId);
+  // 상충 후보의 "이 출처 열기" → 같은 패널에서 그 출처로 이동
+  const [shown, setShown] = useState<{ from: string | null; id: string } | null>(null);
+  const active = shown && shown.from === provId ? shown.id : provId;
+  const query = useProvenance(active);
+  const data = query.data as Provenance | undefined;
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!provId) return;
+    closeRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
@@ -35,11 +301,18 @@ export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
       role="dialog"
       aria-modal="false"
       aria-label={t('provenance.title')}
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col gap-3 overflow-y-auto border-l border-border bg-surface p-4 shadow-xl"
+      data-prov={active ?? undefined}
+      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col gap-3 overflow-y-auto border-l border-border bg-surface p-4 text-fg shadow-xl"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{t('provenance.title')}</h2>
+        {data ? (
+          <span className="mr-auto text-xs text-muted">
+            {tDynamic(`provenance.kind.${data.kind}`, data.id)}
+          </span>
+        ) : null}
         <button
+          ref={closeRef}
           type="button"
           onClick={onClose}
           className="rounded border border-border px-2 py-0.5 text-sm"
@@ -47,66 +320,16 @@ export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
           {t('provenance.close')}
         </button>
       </div>
-      {isLoading ? <p className="text-sm text-muted">{t('app.loading')}</p> : null}
-      {error ? <EmptyState reason={error.message} /> : null}
+      {query.isLoading ? <p className="text-sm text-muted">{t('app.loading')}</p> : null}
+      {query.error ? (
+        <EmptyState message={t('provenance.error', { detail: query.error.message })} />
+      ) : null}
       {data ? (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
-          <dt className="text-muted">{t('provenance.label')}</dt>
-          <dd>
-            <LabelBadge label={data.label} />
-          </dd>
-          <dt className="text-muted">{t('provenance.checkedAt')}</dt>
-          <dd>{data.checked_at ? formatDate(data.checked_at) : <EmptyState inline />}</dd>
-          <dt className="text-muted">{t('provenance.url')}</dt>
-          <dd className="break-all">
-            {data.url ? (
-              <a href={data.url} target="_blank" rel="noreferrer noopener" className="underline">
-                {data.url}
-              </a>
-            ) : (
-              <EmptyState inline />
-            )}
-          </dd>
-          <dt className="text-muted">{t('provenance.excerpt')}</dt>
-          <dd>
-            {data.excerpt ? (
-              <blockquote className="whitespace-pre-wrap border-l-2 border-border pl-2">
-                {data.excerpt}
-              </blockquote>
-            ) : (
-              <EmptyState inline />
-            )}
-          </dd>
-          <dt className="text-muted">{t('provenance.conflicts')}</dt>
-          <dd>
-            {data.conflicts.length === 0 ? (
-              t('provenance.noConflicts')
-            ) : (
-              <ul className="list-disc pl-4">
-                {data.conflicts.map((conflict) => (
-                  <li key={conflict.id}>
-                    <span>{conflict.value_text}</span> <LabelBadge label={conflict.label} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </dd>
-          {data.raw_document_id ? (
-            <>
-              <dt className="sr-only">{t('provenance.rawDocument')}</dt>
-              <dd className="col-span-2">
-                <a
-                  href={rawDocumentUrl(data.raw_document_id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  {t('provenance.rawDocument')}
-                </a>
-              </dd>
-            </>
-          ) : null}
-        </dl>
+        <ProvenanceBody
+          key={data.id}
+          data={data}
+          onOpenConflict={(id) => setShown({ from: provId, id })}
+        />
       ) : null}
     </aside>
   );

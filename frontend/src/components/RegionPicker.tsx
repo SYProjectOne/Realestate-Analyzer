@@ -1,14 +1,14 @@
 import { useId } from 'react';
-import type { Region } from '@/api/types';
 import { t } from '@/i18n';
+import type { RegionLike } from '@/lib/contract';
 
 export const ADD_REGION_VALUE = '__add_region__';
 
 export interface RegionPickerProps {
-  /** GET /regions */
-  regions: Region[];
-  /** 선택 region id (URL ?region=). null이면 첫 항목 */
-  value: string | null;
+  /** GET /regions (계약 Region·임시 Region 모두 — id·name만 쓴다) */
+  regions: readonly RegionLike[];
+  /** 선택 region id (URL ?region=). null이면 첫 항목. 숫자 id도 받는다 */
+  value: string | number | null;
   onChange: (regionId: string) => void;
   /** "지역 추가" 항목 선택 → 보통 navigate('/regions/new') (D2-5) */
   onAddRegion: () => void;
@@ -24,7 +24,7 @@ export function RegionPicker({
   disabled = false,
 }: RegionPickerProps) {
   const id = useId();
-  const selected = value ?? regions[0]?.id ?? '';
+  const selected = String(value ?? regions[0]?.id ?? '');
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
       <label htmlFor={id} className="text-muted">

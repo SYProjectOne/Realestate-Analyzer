@@ -1,0 +1,4 @@
+# T5 상충 사례 입력(RA §9 T5 · meta_prompt §2-9 '해링턴 세대수 1,573 vs 1,769').
+# 1,573 = 보고서 §12-3-6 해링턴 1~3BL 합계(670+664+239). 1,769 = RA가 정의한 상충 값(원천 보고서 본문에 없음).
+# 원문: https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2025000271&pblancNo=2025000271
+공급세대수 1,573세대

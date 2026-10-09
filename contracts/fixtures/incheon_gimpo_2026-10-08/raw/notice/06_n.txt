@@ -1,0 +1,10 @@
+# 재구성 발췌 — AB22BL 입주자모집공고(2026-06-12, 2개 블록 일정 공통)
+# 원문: https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000194&pblancNo=2026000194&atchmnflSeqNo=1854107&atchmnflSn=4
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+주택유형 민영
+공공택지
+분양가상한제 적용
+규제지역 여부 비규제지역
+입주자모집공고 2026-06-12
+1순위 2026-06-25
+계약 2026-07-14~18

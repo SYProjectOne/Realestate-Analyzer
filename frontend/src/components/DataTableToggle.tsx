@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
-import type { Fact, IsoDate } from '@/api/types';
 import { t } from '@/i18n';
-import { formatValue, type FactUnit } from '@/lib/format';
+import type { FactLike } from '@/lib/contract';
+import { formatValue, type FactUnit, type IsoDate } from '@/lib/format';
 import { EmptyState } from './EmptyState';
 import { FactCell } from './FactCell';
 
@@ -14,7 +14,7 @@ export interface DataColumn {
 }
 
 /** 셀: Fact(라벨·출처 포함) > 숫자(차트 파생값, unit으로 포맷) > 문자열 > 빈 값 */
-export type DataCell = Fact | number | string | null | undefined;
+export type DataCell = FactLike | number | string | null | undefined;
 
 export interface DataTable {
   columns: DataColumn[];
@@ -32,7 +32,7 @@ export interface DataTableToggleProps {
   onOpenProvenance?: (prov: string) => void;
 }
 
-const isFact = (cell: DataCell): cell is Fact =>
+const isFact = (cell: DataCell): cell is FactLike =>
   typeof cell === 'object' && cell !== null && 'label' in cell && 'v' in cell;
 
 function Cell({
@@ -49,12 +49,7 @@ function Cell({
   if (cell === null || cell === undefined) return <EmptyState inline />;
   if (isFact(cell)) {
     return (
-      <FactCell
-        fact={cell}
-        unit={column.unit ?? 'number'}
-        asof={asof}
-        onOpenProvenance={onOpenProvenance}
-      />
+      <FactCell fact={cell} unit={column.unit} asof={asof} onOpenProvenance={onOpenProvenance} />
     );
   }
   if (typeof cell === 'number')

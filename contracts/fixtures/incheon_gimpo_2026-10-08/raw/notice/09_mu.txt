@@ -1,0 +1,14 @@
+# 재구성 발췌 — 무순위(사후) 공고(2026-09-09)
+# 원문: https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026910227&pblancNo=2026910227&atchmnflSeqNo=1966341&atchmnflSn=6
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+84A 705
+84A 119(△586)
+84E 70
+84E 25(△45)
+106B 55
+106B 22(△33)
+180B 2
+180B 0
+무순위(사후) 공고 09-09
+무순위 접수 09-14
+잔여 832(84A 705·84E 70·106B 55·180B 2)

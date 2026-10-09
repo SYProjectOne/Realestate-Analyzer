@@ -1,0 +1,31 @@
+{
+  "tool": "extract",
+  "purpose": "extract:news:15_16",
+  "input_hash": "sha256:4a60c72f12dc3428b89ed4e1969e6d32732e99c717877be4d7f1b95c304f6115",
+  "input_len": 107,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "fields": [],
+    "counts": {
+      "auto": 14,
+      "review": 0,
+      "total": 14
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "보고서는 review 필드 이름 일부만 기재 — fields에는 기재된 것만, 나머지는 counts"
+  },
+  "duration_ms": null,
+  "judgment_seq": 47,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

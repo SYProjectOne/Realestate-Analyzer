@@ -1,0 +1,31 @@
+{
+  "tool": "extract",
+  "purpose": "extract:notice:jakjeon_lotte_park",
+  "input_hash": "sha256:b7929b628ca849423f050e22fa69e5b9f20c45e61f63e279da19e238bdf947dc",
+  "input_len": 115,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "fields": [],
+    "counts": {
+      "auto": 14,
+      "review": 1,
+      "total": 15
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "보고서는 review 필드 이름 일부만 기재 — fields에는 기재된 것만, 나머지는 counts"
+  },
+  "duration_ms": null,
+  "judgment_seq": 60,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

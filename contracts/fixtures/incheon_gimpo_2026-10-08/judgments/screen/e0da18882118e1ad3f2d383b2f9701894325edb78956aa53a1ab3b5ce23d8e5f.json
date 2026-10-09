@@ -1,0 +1,28 @@
+{
+  "tool": "screen",
+  "purpose": "screen:phase2:gimpo_benchmark",
+  "input_hash": "sha256:e0da18882118e1ad3f2d383b2f9701894325edb78956aa53a1ab3b5ce23d8e5f",
+  "input_len": 60,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": null,
+    "substance": null,
+    "relevance": 0.98
+  },
+  "raw": {
+    "thresholds": {
+      "block": 0.75,
+      "review": 0.25
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": 96,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

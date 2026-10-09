@@ -15,7 +15,14 @@ import { fromScenario, rebalance, toScenarioCreate, weightsSum } from './schema'
 vi.mock('echarts-for-react', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
-const W: Weights = { p10: 0.35, rerank: 0.2, gap: 0.15, benchmark: 0.1, supply: 0.1, liquidity: 0.1 };
+const W: Weights = {
+  p10: 0.35,
+  rerank: 0.2,
+  gap: 0.15,
+  benchmark: 0.1,
+  supply: 0.1,
+  liquidity: 0.1,
+};
 
 describe('G5 가중치 합 1 제약', () => {
   it('하나를 바꾸면 나머지가 비례로 맞춰져 합이 1', () => {
@@ -56,7 +63,11 @@ describe('G5 zod 검증', () => {
     if (!r.ok) expect(r.errors.weights).toContain('1');
   });
   it('통과하면 억 → 원으로 바꾼 ScenarioCreate', () => {
-    const r = toScenarioCreate({ ...base, equity_won: '2', loan_limit_won: '6', score: '20' }, W, null);
+    const r = toScenarioCreate(
+      { ...base, equity_won: '2', loan_limit_won: '6', score: '20' },
+      W,
+      null,
+    );
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.body.params.equity_won).toBe(200_000_000);
@@ -154,6 +165,8 @@ describe('G5 시나리오 화면', () => {
     const title = await screen.findByText(t('page.G5.escaped'));
     const banner = title.closest('[role="alert"]');
     expect(banner).not.toBeNull();
-    expect(within(banner as HTMLElement).getByText('자기자본 범위를 알려 주세요')).toBeInTheDocument();
+    expect(
+      within(banner as HTMLElement).getByText('자기자본 범위를 알려 주세요'),
+    ).toBeInTheDocument();
   });
 });

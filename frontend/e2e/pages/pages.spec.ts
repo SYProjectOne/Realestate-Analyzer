@@ -49,7 +49,10 @@ test.describe('화면 10개 핵심 요소', () => {
     await expect(table.locator('tbody tr').first()).toBeVisible();
     await page.getByLabel(P.G2.filter.intake_status).selectOption('가능');
     await expect(page).toHaveURL(/intake_status=/);
-    await expect(page.getByRole('link', { name: P.G2.csv })).toHaveAttribute('href', /complexes\.csv/);
+    await expect(page.getByRole('link', { name: P.G2.csv })).toHaveAttribute(
+      'href',
+      /complexes\.csv/,
+    );
   });
 
   test('G3 단지 상세: 탭 8개(해시) · 원문 하이라이트', async ({ page }) => {
@@ -63,7 +66,9 @@ test.describe('화면 10개 핵심 요소', () => {
 
   test('G4 비교: 3열 비교 표 · C7', async ({ page }) => {
     await ready(page, '/compare?ids=2,7,4', P.G4.title);
-    await expect(page.getByRole('table', { name: P.G4.grid }).getByRole('columnheader')).toHaveCount(4);
+    await expect(
+      page.getByRole('table', { name: P.G4.grid }).getByRole('columnheader'),
+    ).toHaveCount(4);
     await expect(page.getByText(ko.chart.C07.title)).toBeVisible();
   });
 
@@ -77,7 +82,12 @@ test.describe('화면 10개 핵심 요소', () => {
 
   test('G6 지역 시장: C3·C4·C5·C9 · 규제 카드', async ({ page }) => {
     await ready(page, '/market', P.G6.title);
-    for (const title of [ko.chart.C03.title, ko.chart.C04.title, ko.chart.C05.title, ko.chart.C09.title]) {
+    for (const title of [
+      ko.chart.C03.title,
+      ko.chart.C04.title,
+      ko.chart.C05.title,
+      ko.chart.C09.title,
+    ]) {
       await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
     }
     await expect(page.getByRole('heading', { name: P.G6.regulation })).toBeVisible();
@@ -95,7 +105,9 @@ test.describe('화면 10개 핵심 요소', () => {
     await form.getByRole('button', { name: P.G7.hc.submit }).click();
     await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.path.human_check);
     await expect(
-      page.getByRole('region', { name: ko.app.notifications }).getByRole('button', { name: P.G7.rejudge }),
+      page
+        .getByRole('region', { name: ko.app.notifications })
+        .getByRole('button', { name: P.G7.rejudge }),
     ).toBeVisible();
   });
 
@@ -146,8 +158,12 @@ test.describe('모바일(≤768px)', () => {
     await ready(page, '/', P.G1.title);
     await expect(page.getByText(ko.app.mobileReadOnly)).toBeVisible();
     await ready(page, '/complexes', P.G2.title);
-    await expect(page.getByRole('table', { name: P.G2.table }).locator('tbody tr').first()).toBeVisible();
-    await expect(page.getByRole('table', { name: P.G2.table }).getByRole('checkbox')).toHaveCount(0);
+    await expect(
+      page.getByRole('table', { name: P.G2.table }).locator('tbody tr').first(),
+    ).toBeVisible();
+    await expect(page.getByRole('table', { name: P.G2.table }).getByRole('checkbox')).toHaveCount(
+      0,
+    );
     await expect(page.getByRole('complementary', { name: P.G2.tray })).toHaveCount(0);
     await ready(page, '/ops', P.G7.title);
     await expect(page.getByText(ko.app.mobileUnsupported)).toBeVisible();
@@ -155,5 +171,5 @@ test.describe('모바일(≤768px)', () => {
 });
 
 test('차트 갤러리 라우트(/__charts, dev)', async ({ page }) => {
-  await ready(page, '/__charts', ko.app.chartGallery);
+  await ready(page, '/__charts', ko.chart.gallery.title);
 });

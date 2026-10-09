@@ -1,0 +1,4 @@
+# 재구성 발췌 — 청약홈 규제지역정보(2026-10-07)
+# 원문: https://www.applyhome.co.kr/ai/aic/selectSpecltSubscrptRndAreaList.do
+# 값은 docs/source/incheon_gimpo_report.md(확인일 2026-10-07)에 기재된 것만 옮겼다. 원문 PDF·페이지 그대로가 아니다.
+인천 미지정(조정대상지역·투기과열지구)

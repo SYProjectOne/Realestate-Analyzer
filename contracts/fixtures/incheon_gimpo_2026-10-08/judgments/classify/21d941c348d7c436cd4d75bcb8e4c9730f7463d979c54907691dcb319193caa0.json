@@ -1,0 +1,305 @@
+{
+  "tool": "classify",
+  "purpose": "classify:inclusion:incheon",
+  "input_hash": "sha256:21d941c348d7c436cd4d75bcb8e4c9730f7463d979c54907691dcb319193caa0",
+  "input_len": 768,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "label": "batch",
+    "prob": 0.7895,
+    "decision": "review",
+    "items": [
+      {
+        "candidate": "더샵 송도그란테르",
+        "complex_id": 1,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도 한내들 센트럴리버",
+        "complex_id": 3,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "더샵 송도마리나베이",
+        "complex_id": 12,
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도 하늘채 아이비원",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "힐스테이트 레이크 송도 4차",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양신도시 카이브 유보라",
+        "complex_id": 15,
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "더샵 검단레이크파크 AB22·AB23",
+        "complex_id": 6,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "엘리프 검단 포레듀",
+        "complex_id": 2,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단 센트레빌 에듀시티",
+        "complex_id": 5,
+        "label": "private_sale_apt",
+        "prob": 0.85,
+        "decision": "auto"
+      },
+      {
+        "candidate": "제일풍경채 검단Ⅳ",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "호반써밋Ⅲ AB13",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단호수공원역 파라곤",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단호수공원역 중흥S-클래스",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단신도시 푸르지오 더 파크",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인천 작전 한라비발디",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.98,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양 롯데캐슬 파크시티",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.96,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단 스타힐스 가현숲",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "래미안 송도역 센트리폴",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.95,
+        "decision": "auto"
+      },
+      {
+        "candidate": "연수 월드메르디앙 어반포레",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "월드메르디앙 송도",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.75,
+        "decision": "review"
+      },
+      {
+        "candidate": "검단 센트레빌 그랑포레",
+        "complex_id": 16,
+        "label": "private_sale_apt",
+        "prob": 0.84,
+        "decision": "review"
+      },
+      {
+        "candidate": "왕길역 아테라",
+        "complex_id": null,
+        "label": "private_sale_apt",
+        "prob": 0.75,
+        "decision": "review"
+      },
+      {
+        "candidate": "홈잉루츠 송도",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.97,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도 11공구 RC2BL",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양 A21 대방",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양 A15 신해·우미",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양 A5 호반",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도자이풍경채 그라노블",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.83,
+        "decision": "review"
+      },
+      {
+        "candidate": "계양 A7 한림",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.74,
+        "decision": "review"
+      },
+      {
+        "candidate": "계양 A4 금강",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.75,
+        "decision": "review"
+      },
+      {
+        "candidate": "힐스테이트 검단 웰카운티",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.77,
+        "decision": "review"
+      },
+      {
+        "candidate": "e편한세상 검단 웰카운티",
+        "complex_id": null,
+        "label": "manual_review",
+        "prob": 0.72,
+        "decision": "review"
+      },
+      {
+        "candidate": "인천계양 A17 신혼희망타운",
+        "complex_id": null,
+        "label": "public_sale",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인천계양 A6 공공분양",
+        "complex_id": null,
+        "label": "public_sale",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "iH 송도 11공구 Rc5BL",
+        "complex_id": null,
+        "label": "public_sale",
+        "prob": 0.96,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검암역 푸르지오 프라베뉴",
+        "complex_id": null,
+        "label": "public_sale",
+        "prob": 0.94,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양 AC2-1 보편형 공공임대",
+        "complex_id": null,
+        "label": "public_rental",
+        "prob": 0.98,
+        "decision": "auto"
+      },
+      {
+        "candidate": "더샵 송도그란테르 오피스텔 96실",
+        "complex_id": null,
+        "label": "non_apartment",
+        "prob": 1.0,
+        "decision": "auto"
+      }
+    ],
+    "counts": {
+      "auto": 30,
+      "review": 8,
+      "private_sale_apt": 22,
+      "manual_review": 10,
+      "public_sale": 4,
+      "non_apartment": 1,
+      "public_rental": 1
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "배치 호출 1회 — ClassifyResult 최상위 label='batch', prob=auto 비율. 후보별 값은 items(계약 변경 요청: 배치 분류 결과 모양)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 62,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

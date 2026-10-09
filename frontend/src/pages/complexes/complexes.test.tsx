@@ -13,13 +13,19 @@ beforeEach(() => resetMockState());
 
 describe('G2 params', () => {
   it('가격(억) → 원, 입주연도 정수, 빈 값은 빠진다', () => {
-    const values = readFilters(new URLSearchParams('price_max=7&move_in_year=2028&q=&land_type=공공택지'));
+    const values = readFilters(
+      new URLSearchParams('price_max=7&move_in_year=2028&q=&land_type=공공택지'),
+    );
     expect(toApiFilter(values)).toEqual({
       price_max: 700_000_000,
       move_in_year: 2028,
       land_type: '공공택지',
     });
-    expect(toListParams(values, '-total', 'B')).toMatchObject({ size: 1000, sort: '-total', scenario: 'B' });
+    expect(toListParams(values, '-total', 'B')).toMatchObject({
+      size: 1000,
+      sort: '-total',
+      scenario: 'B',
+    });
   });
   it('정렬: 같은 키는 방향을 뒤집고 새 키는 내림차순부터', () => {
     expect(nextSort('-total', 'total')).toBe('total');
@@ -41,7 +47,9 @@ describe('G2 단지 리스트', () => {
     await waitFor(() => expect(router.state.location.search).toContain('intake_status='));
     await waitFor(() => {
       const calls = matching(rec.requests, 'GET', /\/snapshots\/\d+\/complexes$/);
-      expect(calls.some((c) => c.url.searchParams.get('filter[intake_status]') === '가능')).toBe(true);
+      expect(calls.some((c) => c.url.searchParams.get('filter[intake_status]') === '가능')).toBe(
+        true,
+      );
     });
     expect(screen.getByRole('link', { name: t('page.G2.csv') }).getAttribute('href')).toContain(
       encodeURIComponent('filter[intake_status]'),
@@ -52,7 +60,9 @@ describe('G2 단지 리스트', () => {
   it('열 머리 클릭 → sort 쿼리(서버 정렬)', async () => {
     const { router } = renderRoute('/complexes');
     const table = await screen.findByRole('table', { name: t('page.G2.table') });
-    await userEvent.click(within(table).getByRole('button', { name: new RegExp(t('page.G2.col.name')) }));
+    await userEvent.click(
+      within(table).getByRole('button', { name: new RegExp(t('page.G2.col.name')) }),
+    );
     await waitFor(() => expect(router.state.location.search).toContain('sort=-name'));
   });
 
@@ -79,7 +89,7 @@ describe('G2 단지 리스트', () => {
       }),
     );
     expect(
-      screen.getByRole('columnheader', { name: new RegExp(t('page.G2.col.p10')) }),
+      screen.getByRole('columnheader', { name: (n) => n.includes(t('page.G2.col.p10')) }),
     ).toBeInTheDocument();
   });
 

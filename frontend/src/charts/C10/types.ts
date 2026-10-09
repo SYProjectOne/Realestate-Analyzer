@@ -1,14 +1,10 @@
-/** C10 민감도 — 데이터 소스: Sensitivity.cells[] (가중치 ±10%p 12변형 × TOP 5) */
-import type { Sensitivity } from '@/api/types';
+/** C10 민감도 — 데이터 소스: GET /sensitivity → Sensitivity.cells[] (가중치 ±0.10 변형 12개 × TOP 5) */
+import type { Sensitivity } from '@/lib/contract';
 
 export interface C10Data {
   sensitivity: Sensitivity | null;
-  /** complex_id → 단지명 (Sensitivity는 id만 준다; 화면이 ScoreRow 등에서 채운다) */
+  /** complex_id → 단지명 (Sensitivity에는 id만 있다 — Dashboard.top5·CompareView.rows에서 만든다) */
   names?: Record<string, string>;
-}
-
-export function c10Name(data: C10Data, id: number): string {
-  return data.names?.[String(id)] ?? `#${id}`;
 }
 
 export const C10_EMPTY: C10Data = { sensitivity: null };

@@ -48,7 +48,10 @@ describe('G0 지역 입력', () => {
 
   it('칩의 × → 선택 해제', async () => {
     renderRoute('/regions/new');
-    await userEvent.type(await screen.findByRole('searchbox', { name: t('page.G0.search') }), '검단');
+    await userEvent.type(
+      await screen.findByRole('searchbox', { name: t('page.G0.search') }),
+      '검단',
+    );
     const list = await screen.findByRole('list', { name: t('page.G0.candidates') });
     await userEvent.click(within(list).getAllByRole('checkbox')[0] as HTMLElement);
     const chips = screen.getByRole('list', { name: t('page.G0.selected') });

@@ -1,0 +1,44 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:3:임의",
+  "input_hash": "sha256:16c0b14fb6f9dc23e8fa55fd4c31d628f1a59d44831fb80d6446c6f29e5caf87",
+  "input_len": 64,
+  "status": "review",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "flagged",
+    "items": [
+      {
+        "field": "apply_date",
+        "p_wrong": 0.72,
+        "flagged": true,
+        "note": "머리글 없는 표 → 청약홈 상세로 확인"
+      },
+      {
+        "field": "eligibility",
+        "p_wrong": 0.0,
+        "flagged": true,
+        "note": "절단 → 원문 보완"
+      }
+    ],
+    "counts": {
+      "records": 12,
+      "flagged": 2
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "escalate",
+    "note": "p_wrong 미기재 항목은 0.0이 아니라 '보고서 미기재' — note 참조"
+  },
+  "duration_ms": null,
+  "judgment_seq": 51,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": 3,
+  "error_text": null
+}

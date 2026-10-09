@@ -1,0 +1,235 @@
+{
+  "tool": "classify",
+  "purpose": "classify:catalyst:incheon",
+  "input_hash": "sha256:6af4f1a4d6c459538cc49dd6171b2fee047cc9d38d6f6af1fc27e858453db5b7",
+  "input_len": 626,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "label": "batch",
+    "prob": 0.6071,
+    "decision": "review",
+    "items": [
+      {
+        "candidate": "인천1호선 검단연장 개통 2025-06",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단구 신설 2026-07",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "셀트리온 3공장 가동",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도 워터프런트 1-2단계 2027 초 준공",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양신도시 조성·2026-12 첫 입주",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.96,
+        "decision": "auto"
+      },
+      {
+        "candidate": "롯데바이오 송도 1공장 2026-11 준공",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.95,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단~드림로 개통",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.94,
+        "decision": "auto"
+      },
+      {
+        "candidate": "GTX-D 1단계 예타 통과·기본계획 중",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.93,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도아라1초 2030-03 개교",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.98,
+        "decision": "auto"
+      },
+      {
+        "candidate": "GTX-D Y자·2호선 청라연장 5차 철도망 건의",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.99,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인천2호선 고양연장 예타 중",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "6·8공구 랜드마크 타워 높이 조정 검토",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.93,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인천1호선 송도 8공구 연장 예타 미통과",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.85,
+        "decision": "auto"
+      },
+      {
+        "candidate": "인천대입구역 복합개발",
+        "complex_id": null,
+        "label": "언론",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "계양 S-BRT",
+        "complex_id": null,
+        "label": "언론",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "검단 스타필드·대학병원",
+        "complex_id": null,
+        "label": "언론",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "송도세브란스병원(지상부 미착공)",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 1.0,
+        "decision": "auto"
+      },
+      {
+        "candidate": "GTX-B 개통 2030 vs 2031",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 0.55,
+        "decision": "review"
+      },
+      {
+        "candidate": "삼성바이오 제3캠퍼스",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.83,
+        "decision": "review"
+      },
+      {
+        "candidate": "송도트램",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.84,
+        "decision": "review"
+      },
+      {
+        "candidate": "11-1공구 기반시설",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.46,
+        "decision": "review"
+      },
+      {
+        "candidate": "IBD 업무용지",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.76,
+        "decision": "review"
+      },
+      {
+        "candidate": "대장홍대선",
+        "complex_id": null,
+        "label": "확정",
+        "prob": 0.52,
+        "decision": "review"
+      },
+      {
+        "candidate": "계양AX파크",
+        "complex_id": null,
+        "label": "추진",
+        "prob": 0.68,
+        "decision": "review"
+      },
+      {
+        "candidate": "서울5호선 김포·검단 연장",
+        "complex_id": null,
+        "label": "계획",
+        "prob": 0.56,
+        "decision": "review"
+      },
+      {
+        "candidate": "검단 법조타운",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 0.58,
+        "decision": "review"
+      },
+      {
+        "candidate": "iH 특화구역",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 0.37,
+        "decision": "review"
+      },
+      {
+        "candidate": "검단지구 5단계 준공",
+        "complex_id": null,
+        "label": "미확정",
+        "prob": 0.59,
+        "decision": "review"
+      }
+    ],
+    "counts": {
+      "auto": 17,
+      "review": 11,
+      "confirmed": 12,
+      "planned": 4,
+      "promoting": 6,
+      "media_only": 3,
+      "manual_review": 3
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "auto_accept": 0.85,
+      "margin": 0.5
+    },
+    "note": "배치 호출 1회 — ClassifyResult 최상위 label='batch', prob=auto 비율. 후보별 값은 items(계약 변경 요청: 배치 분류 결과 모양)"
+  },
+  "duration_ms": null,
+  "judgment_seq": 64,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

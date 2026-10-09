@@ -9,14 +9,7 @@ import {
   useScenarios,
   useSensitivity,
 } from '@/api/hooks';
-import type {
-  ComponentKey,
-  JobRun,
-  Scenario,
-  ScenarioPreview,
-  ScoreRow,
-  Weights,
-} from '@/api/types';
+import type { ComponentKey, Scenario, ScenarioPreview, ScoreRow, Weights } from '@/api/types';
 import { useToast } from '@/app/toast';
 import { C07Decision, C10Sensitivity } from '@/charts';
 import { Badge, EmptyState, FactCell, JobProgress } from '@/components';
@@ -494,7 +487,7 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
     );
   };
 
-  const onDone = (_job: JobRun) => {
+  const onDone = () => {
     void qc.invalidateQueries({ queryKey: ['snapshots', String(snapshotId)] });
     setFinished(true);
   };

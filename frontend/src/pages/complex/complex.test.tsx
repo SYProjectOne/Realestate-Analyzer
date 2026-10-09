@@ -46,7 +46,9 @@ describe('G3 단지 상세', () => {
     );
     await userEvent.click(within(tablist).getByRole('tab', { name: t('page.G3.tab.ladder') }));
     await waitFor(() => expect(router.state.location.hash).toBe('#ladder'));
-    expect(screen.getByRole('radiogroup', { name: t('page.G3.ladder.horizons') })).toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: t('page.G3.ladder.horizons') }),
+    ).toBeInTheDocument();
   });
 
   it('헤더: 접수 배지 · 현재 구매가 범위 · 전매 D-day', async () => {

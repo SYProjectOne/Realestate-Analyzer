@@ -1,0 +1,38 @@
+{
+  "tool": "audit",
+  "purpose": "audit:notice:paragon_hoban3",
+  "input_hash": "sha256:d335b6444ba41e3f67ca93bc48fd3113fe1cefe6ac4b2dc3cf7a46ee4ad37ab8",
+  "input_len": 65,
+  "status": "review",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "flagged",
+    "items": [
+      {
+        "field": "hoban_price_84b_15f_jev",
+        "p_wrong": 0.0,
+        "flagged": true,
+        "note": "건축비 328,524,948 오선택 → 565,900,000 정정"
+      }
+    ],
+    "counts": {
+      "records": 15,
+      "flagged": 1
+    }
+  },
+  "raw": {
+    "thresholds": {
+      "wrong_at": 0.7
+    },
+    "decision": "escalate",
+    "note": "p_wrong 미기재 항목은 0.0이 아니라 '보고서 미기재' — note 참조"
+  },
+  "duration_ms": null,
+  "judgment_seq": 57,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

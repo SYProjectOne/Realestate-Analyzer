@@ -1,0 +1,19 @@
+{
+  "case": "T13",
+  "removed_prov_ids": [
+    "fp_2_005",
+    "fp_2_016",
+    "fp_2_018",
+    "fp_2_035"
+  ],
+  "fields": [
+    "complex.units_total",
+    "types[84A].max_price_won",
+    "types[84A].balcony_won",
+    "payment_terms[0].down_payment_pct"
+  ],
+  "expected": {
+    "dev": "contract_violation 500",
+    "prod": "label '확인 불가', reason '출처 누락' + 경고 로그"
+  }
+}

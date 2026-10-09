@@ -1,0 +1,42 @@
+[
+  {
+    "entity": "complex",
+    "entity_id": null,
+    "entity_key": "applyhome_id:2025000271+2025000273+2025000274",
+    "field": "units_total",
+    "value_text": "1,573세대",
+    "value": 1573,
+    "source_rank": 1,
+    "source_kind": "applyhome_detail",
+    "primary": true,
+    "label": "확인됨",
+    "reason": null,
+    "excerpt": "공급세대수 1,573세대",
+    "excerpt_start": 271,
+    "excerpt_end": 284,
+    "raw_document_id": 9066,
+    "url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2025000271&pblancNo=2025000271",
+    "checked_at": "2026-10-07",
+    "needs_extract": false
+  },
+  {
+    "entity": "complex",
+    "entity_id": null,
+    "entity_key": "applyhome_id:2025000271+2025000273+2025000274",
+    "field": "units_total",
+    "value_text": "1,769세대",
+    "value": 1769,
+    "source_rank": 2,
+    "source_kind": "notice_pdf",
+    "primary": true,
+    "label": "확인됨",
+    "reason": null,
+    "excerpt": "총 1,769세대",
+    "excerpt_start": 294,
+    "excerpt_end": 303,
+    "raw_document_id": 9067,
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000271&pblancNo=2025000271&atchmnflSeqNo=1553566&atchmnflSn=4",
+    "checked_at": "2026-10-07",
+    "needs_extract": false
+  }
+]

@@ -1,0 +1,634 @@
+[
+ {
+  "file": "2025000271_harrington1.txt",
+  "house_manage_no": "2025000271",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000271&pblancNo=2025000271&atchmnflSeqNo=1553566&atchmnflSn=4",
+  "source_pdf_sha256": "eff06594e11f0c4556d8e19227cf83d504b879fe1ffe98b3072b6eab06881c89",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    131,
+    134
+   ],
+   [
+    173,
+    175
+   ],
+   [
+    178,
+    269
+   ],
+   [
+    284,
+    285
+   ],
+   [
+    390,
+    392
+   ],
+   [
+    394,
+    396
+   ],
+   [
+    399,
+    401
+   ],
+   [
+    1550,
+    1551
+   ],
+   [
+    1607,
+    1621
+   ]
+  ]
+ },
+ {
+  "file": "2025000273_harrington2.txt",
+  "house_manage_no": "2025000273",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000273&pblancNo=2025000273&atchmnflSeqNo=1552473&atchmnflSn=4",
+  "source_pdf_sha256": "c7affd20e4734396a27378981717a690966673d13339976c6fa19d89673bf8bb",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    131,
+    134
+   ],
+   [
+    173,
+    175
+   ],
+   [
+    178,
+    267
+   ],
+   [
+    282,
+    283
+   ],
+   [
+    388,
+    390
+   ],
+   [
+    392,
+    394
+   ],
+   [
+    397,
+    399
+   ],
+   [
+    1546,
+    1547
+   ],
+   [
+    1603,
+    1617
+   ]
+  ]
+ },
+ {
+  "file": "2025000274_harrington3.txt",
+  "house_manage_no": "2025000274",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000274&pblancNo=2025000274&atchmnflSeqNo=1552474&atchmnflSn=5",
+  "source_pdf_sha256": "74c631b0f9841d428d2c50dbde636173cce894e794aa6f0318f68493fbb80c8b",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    131,
+    134
+   ],
+   [
+    173,
+    175
+   ],
+   [
+    178,
+    258
+   ],
+   [
+    273,
+    274
+   ],
+   [
+    379,
+    381
+   ],
+   [
+    383,
+    385
+   ],
+   [
+    388,
+    390
+   ],
+   [
+    1539,
+    1540
+   ],
+   [
+    1595,
+    1609
+   ]
+  ]
+ },
+ {
+  "file": "2025000573_kantavil.txt",
+  "house_manage_no": "2025000573",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000573&pblancNo=2025000573&atchmnflSeqNo=1621189&atchmnflSn=5",
+  "source_pdf_sha256": "bc507e4b79d74b4955aed48c53699ae4487978d896e16a20475f3148879928f0",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    16
+   ],
+   [
+    177,
+    179
+   ],
+   [
+    180,
+    288
+   ],
+   [
+    317,
+    318
+   ],
+   [
+    1641,
+    1642
+   ],
+   [
+    1697,
+    1711
+   ]
+  ]
+ },
+ {
+  "file": "2025000076_lotte.txt",
+  "house_manage_no": "2025000076",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000076&pblancNo=2025000076&atchmnflSeqNo=1484057&atchmnflSn=2",
+  "source_pdf_sha256": "afebeee30e848a98a69ff29831faa49be9aabe5f301f084c424d7b99b590c4fa",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    17
+   ],
+   [
+    173,
+    175
+   ],
+   [
+    178,
+    369
+   ],
+   [
+    401,
+    402
+   ],
+   [
+    1520,
+    1521
+   ],
+   [
+    1565,
+    1579
+   ]
+  ]
+ },
+ {
+  "file": "2025000222_switzen.txt",
+  "house_manage_no": "2025000222",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000222&pblancNo=2025000222&atchmnflSeqNo=1553383&atchmnflSn=2",
+  "source_pdf_sha256": "c43bfa14c509b6b4d5fee33ba5d3cec4699757a4208dc4e2f5437180dc44bde5",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    20
+   ],
+   [
+    132,
+    135
+   ],
+   [
+    180,
+    333
+   ],
+   [
+    351,
+    352
+   ],
+   [
+    1659,
+    1660
+   ],
+   [
+    1739,
+    1753
+   ]
+  ]
+ },
+ {
+  "file": "2026000367_riverfront.txt",
+  "house_manage_no": "2026000367",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000367&pblancNo=2026000367&atchmnflSeqNo=1929413&atchmnflSn=4",
+  "source_pdf_sha256": "5955b503285b166bf717d0c68b7dec43805b1764096e2ab50fd570525c43e90a",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    21
+   ],
+   [
+    137,
+    140
+   ],
+   [
+    170,
+    172
+   ],
+   [
+    173,
+    424
+   ],
+   [
+    442,
+    443
+   ],
+   [
+    1871,
+    1872
+   ],
+   [
+    1955,
+    1969
+   ]
+  ]
+ },
+ {
+  "file": "2025000656_gienheim.txt",
+  "house_manage_no": "2025000656",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000656&pblancNo=2025000656&atchmnflSeqNo=1670027&atchmnflSn=3",
+  "source_pdf_sha256": "e403577c94408599290fdb2d7810c4a85d78be045333b03e3fb52340a661534f",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    134,
+    137
+   ],
+   [
+    171,
+    173
+   ],
+   [
+    181,
+    286
+   ],
+   [
+    296,
+    297
+   ],
+   [
+    396,
+    398
+   ],
+   [
+    399,
+    401
+   ],
+   [
+    1686,
+    1687
+   ],
+   [
+    1757,
+    1771
+   ]
+  ]
+ },
+ {
+  "file": "2026000329_hoban3.txt",
+  "house_manage_no": "2026000329",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000329&pblancNo=2026000329&atchmnflSeqNo=1902012&atchmnflSn=5",
+  "source_pdf_sha256": "578cfd867577c319916c12bdadf52b12acdf9981b9ce791d0694b764125d64e2",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    18
+   ],
+   [
+    138,
+    141
+   ],
+   [
+    174,
+    176
+   ],
+   [
+    177,
+    277
+   ],
+   [
+    285,
+    286
+   ],
+   [
+    373,
+    375
+   ],
+   [
+    377,
+    379
+   ],
+   [
+    383,
+    385
+   ],
+   [
+    1755,
+    1756
+   ],
+   [
+    1847,
+    1861
+   ]
+  ]
+ },
+ {
+  "file": "2026000073_grascent2.txt",
+  "house_manage_no": "2026000073",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000073&pblancNo=2026000073&atchmnflSeqNo=1775993&atchmnflSn=3",
+  "source_pdf_sha256": "ea4976ddc7a73f40d06d606421e6e7b50e3c3a7665b5fb58b1ae1b6226f068fa",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    12
+   ],
+   [
+    116,
+    119
+   ],
+   [
+    144,
+    146
+   ],
+   [
+    149,
+    226
+   ],
+   [
+    303,
+    305
+   ],
+   [
+    306,
+    308
+   ],
+   [
+    311,
+    313
+   ],
+   [
+    332,
+    334
+   ],
+   [
+    351,
+    353
+   ],
+   [
+    1344,
+    1358
+   ],
+   [
+    1673,
+    1674
+   ]
+  ]
+ },
+ {
+  "file": "2025000302_elif.txt",
+  "house_manage_no": "2025000302",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000302&pblancNo=2025000302&atchmnflSeqNo=1554198&atchmnflSn=13",
+  "source_pdf_sha256": "c07633ff485402155f43816ae0f3d670a95d6d64b379253a67dda89a1888e4ae",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    142,
+    145
+   ],
+   [
+    170,
+    172
+   ],
+   [
+    173,
+    391
+   ],
+   [
+    409,
+    410
+   ],
+   [
+    1744,
+    1745
+   ],
+   [
+    1805,
+    1819
+   ]
+  ]
+ },
+ {
+  "file": "2026940173_elif_imui3.txt",
+  "house_manage_no": "2026940173",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026940173&pblancNo=2026940173&atchmnflSeqNo=1951097&atchmnflSn=6",
+  "source_pdf_sha256": "0b39a27ab68e9f89ecc6777057f43a29c853cc0cd6c6b14e2d42bf75d331fe56",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    35,
+    38
+   ],
+   [
+    61,
+    143
+   ],
+   [
+    170,
+    184
+   ]
+  ]
+ },
+ {
+  "file": "2025000435_centreville.txt",
+  "house_manage_no": "2025000435",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000435&pblancNo=2025000435&atchmnflSeqNo=1582277&atchmnflSn=5",
+  "source_pdf_sha256": "1fdfa2abf520ba7bd49f92e011ffff900eaa0a097dcb326b49898a9932f6c550",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    13
+   ],
+   [
+    130,
+    133
+   ],
+   [
+    168,
+    170
+   ],
+   [
+    173,
+    295
+   ],
+   [
+    302,
+    303
+   ],
+   [
+    330,
+    332
+   ],
+   [
+    1744,
+    1745
+   ],
+   [
+    1865,
+    1879
+   ]
+  ]
+ },
+ {
+  "file": "2026000194_lakepark22.txt",
+  "house_manage_no": "2026000194",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000194&pblancNo=2026000194&atchmnflSeqNo=1854107&atchmnflSn=4",
+  "source_pdf_sha256": "e9101c20aefd1586690dacd41f71a596af46c44a983601618231f6a6e996af1f",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    12
+   ],
+   [
+    129,
+    132
+   ],
+   [
+    166,
+    168
+   ],
+   [
+    171,
+    314
+   ],
+   [
+    318,
+    319
+   ],
+   [
+    379,
+    381
+   ],
+   [
+    383,
+    385
+   ],
+   [
+    388,
+    390
+   ],
+   [
+    1612,
+    1613
+   ],
+   [
+    1749,
+    1763
+   ]
+  ]
+ },
+ {
+  "file": "2026940185_gochon13.txt",
+  "house_manage_no": "2026940185",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026940185&pblancNo=2026940185&atchmnflSeqNo=1962078&atchmnflSn=2",
+  "source_pdf_sha256": "2b3de3c9ad91889a751195eb353e32984311ef1b1827bd26e70d065487f2b146",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    14
+   ],
+   [
+    39,
+    42
+   ],
+   [
+    62,
+    64
+   ],
+   [
+    65,
+    105
+   ]
+  ]
+ },
+ {
+  "file": "2026910242_marinabay.txt",
+  "house_manage_no": "2026910242",
+  "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026910242&pblancNo=2026910242&atchmnflSeqNo=1972087&atchmnflSn=2",
+  "source_pdf_sha256": "33ed9f7cb7619ec60a087fb20e7e4cc37ce78fdfddff21e0cc4d3643e84ded77",
+  "fetched_at": "2026-10-09",
+  "line_ranges": [
+   [
+    0,
+    15
+   ],
+   [
+    44,
+    48
+   ],
+   [
+    75,
+    77
+   ],
+   [
+    78,
+    98
+   ]
+  ]
+ }
+]

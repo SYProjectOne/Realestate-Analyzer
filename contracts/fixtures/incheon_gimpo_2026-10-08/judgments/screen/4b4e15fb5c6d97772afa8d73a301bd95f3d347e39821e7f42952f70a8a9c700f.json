@@ -1,0 +1,28 @@
+{
+  "tool": "screen",
+  "purpose": "screen:notice:gyeyang_gosi",
+  "input_hash": "sha256:4b4e15fb5c6d97772afa8d73a301bd95f3d347e39821e7f42952f70a8a9c700f",
+  "input_len": 84,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": 0.02,
+    "substance": 0.98,
+    "relevance": 0.82
+  },
+  "raw": {
+    "thresholds": {
+      "block": 0.75,
+      "review": 0.25
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": 12,
+  "created_at": "2026-10-07",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 11,
+  "complex_id": null,
+  "error_text": null
+}

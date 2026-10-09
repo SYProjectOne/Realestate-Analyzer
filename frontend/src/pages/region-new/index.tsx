@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
 import { useCreateRegion, useResolveRegion } from '@/api/hooks';
-import type { JobRun, RegionCandidate, RegionCreated, RegionSelection } from '@/api/types';
+import type { RegionCandidate, RegionCreated, RegionSelection } from '@/api/types';
 import { useToast } from '@/app/toast';
 import { Badge, EmptyState, JobProgress } from '@/components';
 import { t } from '@/i18n';
@@ -166,7 +166,7 @@ export function RegionNewPage() {
             <div className="flex flex-col gap-2">
               <JobProgress
                 jobId={String(created.job_id)}
-                onDone={(_job: JobRun) => {
+                onDone={() => {
                   setDone(true);
                   toast({ message: t('page.G0.done') });
                 }}

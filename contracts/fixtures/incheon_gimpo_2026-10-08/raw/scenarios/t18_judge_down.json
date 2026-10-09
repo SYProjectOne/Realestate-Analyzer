@@ -1,0 +1,31 @@
+{
+  "case": "T18",
+  "adapter": "mock",
+  "raise": "JudgeUnavailable",
+  "when": "모든 판정 메서드 호출(9개 도구)",
+  "inputs": {
+    "raw_documents": "raw/documents.json",
+    "complexes": "complexes.json"
+  },
+  "expected_snapshot": {
+    "id": 13,
+    "region_id": 1,
+    "asof_date": "2026-10-09",
+    "status": "building",
+    "degraded": true,
+    "created_at": "2026-10-09T00:00:00+09:00",
+    "published_at": null,
+    "contradicted_claims": null,
+    "complex_count": 16
+  },
+  "expected": {
+    "collect_and_normalize": "성공(raw_document·complex 행 생성)",
+    "scores_computed": false,
+    "banner": [
+      "G1",
+      "G7"
+    ],
+    "judgment_log": "호출마다 status=error 행(같은 hash 재시도는 UPDATE)",
+    "rejudge_jobs_after_recovery": 1
+  }
+}

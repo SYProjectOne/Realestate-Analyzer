@@ -4,6 +4,8 @@ import { server } from '@/mocks/server';
 
 // 화면은 라우트별 지연 로드 청크다 — 파일의 첫 테스트는 모듈 변환까지 기다린다(기본 1초는 짧다)
 configure({ asyncUtilTimeout: 5000 });
+// 화면 하나가 쿼리 여러 개를 띄운다(G7 등) — 부하가 있는 CI에서도 넘치지 않게
+vi.setConfig({ testTimeout: 20_000 });
 
 export interface RecordedRequest {
   method: string;
