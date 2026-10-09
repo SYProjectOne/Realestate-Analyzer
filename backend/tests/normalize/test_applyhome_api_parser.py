@@ -1,9 +1,10 @@
 """청약홈 공식 API JSON → 후보 (R2X).
 
 픽스처 ``fixtures/applyhome_api/``: 2026-10-09 실제 API 응답 녹화(collectors 녹화 zip 에서 발췌,
-serviceKey 없음)와 같은 날 웹 상세 HTML. ``synthetic_getAPTLttotPblancCmpet_*.json`` 만 **합성**이다 —
-경쟁률 서비스(ApplyhomeInfoCmpetRtSvc)는 키가 활용신청되지 않아 401 이라 실제 응답을 녹화할 수 없다
-(swagger 응답 모델 필드 그대로, 값은 가상).
+serviceKey 없음)와 같은 날 웹 상세 HTML. 경쟁률(``get*LttotPblancCmpet_*.json``)도 실응답이다 —
+경쟁률 서비스(data.go.kr 15098905) 활용신청 승인(2026-10-09) 뒤
+``contracts/fixtures/tools/record_applyhome_cmpet.py`` 로 녹화한
+``tests/collectors/applyhome/fixtures/applyhome_cmpet_2026-10-09/`` 의 발췌(WP9-후속, 합성 픽스처 교체).
 """
 
 from __future__ import annotations
@@ -123,14 +124,17 @@ def test_list_page_and_failures_yield_nothing() -> None:
 
 
 def test_competition_keys_match_web_popup_format() -> None:
-    c = _parse("synthetic_getAPTLttotPblancCmpet_2026000367.json", url=CMPET_URL)
+    """실응답(한강 푸르지오 리버프론트 본청약 2026000367): 키 = 웹 경쟁률 팝업 형식, 값 = 원문 그대로."""
+    c = _parse("getAPTLttotPblancCmpet_2026000367.json", url=CMPET_URL)
     v = _vals(c, "competition")
     k = "2026000367:본청약:1순위 해당지역:84A"  # 웹 경쟁률 팝업과 같은 키 형식
-    assert (v[(k, "supply")], v[(k, "applied")], v[(k, "ratio_or_shortfall_text")]) == (100, 1250, "12.50")
-    assert v[("2026000367:본청약:2순위 해당지역:59B", "ratio_or_shortfall_text")] == "(△71)"
+    assert (v[(k, "supply")], v[(k, "applied")], v[(k, "ratio_or_shortfall_text")]) == (667, 216, "(△451)")
+    assert v[("2026000367:본청약:2순위 기타지역:84A", "ratio_or_shortfall_text")] == "1.52"
+    # 1순위 마감 → 2순위 미실시는 '-'
+    assert v[("2026000367:본청약:2순위 해당지역:84E", "ratio_or_shortfall_text")] == "-"
     assert all(x.source_rank == 1 and x.observed_on is None for x in c)
     remndr = CMPET_URL.replace("getAPTLttotPblancCmpet", "getRemndrLttotPblancCmpet")
-    rk = {str(x.entity_key) for x in _parse("synthetic_getAPTLttotPblancCmpet_2026000367.json", url=remndr)}
+    rk = {str(x.entity_key) for x in _parse("getAPTLttotPblancCmpet_2026000367.json", url=remndr)}
     assert "2026000367:무순위:무순위 2026000367:84A" in rk
 
 
@@ -141,7 +145,7 @@ def test_store_creates_complex_types_and_competition(
     for name, url in (
         ("getAPTLttotPblancDetail_2026000367.json", None),
         ("getAPTLttotPblancMdl_2026000367.json", None),
-        ("synthetic_getAPTLttotPblancCmpet_2026000367.json", CMPET_URL),
+        ("getAPTLttotPblancCmpet_2026000367.json", CMPET_URL),
     ):
         raw = add_raw(
             (API / name).read_text(encoding="utf-8"),
