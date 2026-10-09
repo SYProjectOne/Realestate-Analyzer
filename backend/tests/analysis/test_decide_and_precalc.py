@@ -131,6 +131,22 @@ def test_regulation_rules() -> None:
     assert calc.evaluate(thesharp, builtin("A"), asof_date=ASOF).regulation.status == "충족"
 
 
+def test_notice_field_labels_and_intake_checked_at() -> None:
+    """계약 2026-10-09.2: 공고 필드 라벨(확인 불가 → 값 미사용, 추정 → 근거에 표기)·접수 확인 시각."""
+    calc = RequirementPrecalculator()
+    checked = _elif(intake_checked_at="2026-10-07T09:20:00+09:00")
+    acc = calc.evaluate(checked, builtin("base"), asof_date=ASOF).access
+    assert acc.status == "충족" and "확인 2026-10-07(D+1)" in acc.evidence
+    unknown_res = _elif(residency_label="확인 불가")
+    assert calc.evaluate(unknown_res, builtin("B"), asof_date=ASOF).regulation.status == "확인 불가"
+    est = calc.evaluate(_elif(residency_label="추정"), builtin("B"), asof_date=ASOF).regulation
+    assert est.evidence == "거주의무 0개월(추정) → 충족"
+    resale = calc.evaluate(_elif(resale_label="확인 불가"), builtin("C"), asof_date=ASOF).access
+    assert resale.status == "확인 불가"
+    funds = calc.evaluate(_elif(down_payment_label="확인 불가"), builtin("A"), asof_date=ASOF).funds
+    assert funds.status == "확인 불가" and "계약금 비율" in funds.evidence
+
+
 def test_every_evidence_non_empty_for_all_scenarios() -> None:
     calc = RequirementPrecalculator()
     for sc in BUILTIN_SCENARIOS:

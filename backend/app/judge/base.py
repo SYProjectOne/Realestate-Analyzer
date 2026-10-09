@@ -14,7 +14,10 @@
     judgment_log 행(insert, error 행이면 update) → cached=False 봉투
 
 - 어댑터는 임계값을 넘기지 않는다. payload 는 JEV 입력 그대로(``payloads.py``)이고 임계 인자를 넣지 않는다.
-- adapter_version = ``<ADAPTER_CODE_VERSION>+jev-mcp@<initialize.serverInfo.version>``.
+- adapter_version = ``<ADAPTER_CODE_VERSION>+jev-mcp@<initialize.serverInfo.version>+<응답 model>``
+  (DECISIONS D6 보강, 계약 2026-10-09.2). 모델은 응답에만 보이므로: 시작할 때 judgment_log 에서 같은 코드·서버
+  버전의 마지막 모델을 읽고(없으면 접미 없이), 응답의 ``model`` 이 다르면 그 자리에서 버전을 바꾸고 이 호출을
+  새 버전의 input_hash 로 기록한다 — 모델이 바뀌면 그 뒤 모든 hash 가 바뀌어 재판정된다.
 - 로그에는 input_hash·길이·도구·상태만(``log.py``). payload 원문은 judgment_log.input_json 에만(guard 통과분).
 """
 
@@ -44,6 +47,7 @@ __all__ = [
     "ToolResponse",
     "Transport",
     "make_adapter_version",
+    "model_of",
 ]
 
 ADAPTER_CODE_VERSION: Final = "0.1.0"
@@ -58,11 +62,20 @@ SessionFactory = Callable[[], Session]
 _ERROR_TEXT_MAX = 300
 
 
-def make_adapter_version(server_version: str) -> str:
-    """``'<코드 버전>+jev-mcp@<서버 버전>'`` (judgment_log.adapter_version 은 64자)."""
+def make_adapter_version(server_version: str, model: str | None = None) -> str:
+    """``'<코드 버전>+jev-mcp@<서버 버전>[+<모델>]'`` (judgment_log.adapter_version 은 64자)."""
     version = (server_version or "unknown").strip() or "unknown"
     out = f"{ADAPTER_CODE_VERSION}+{SERVER_TAG}@{version}"
+    name = (model or "").strip()
+    if name:
+        out += f"+{name}"
     return out[:64]
+
+
+def model_of(raw: dict[str, Any]) -> str | None:
+    """판정기 원응답의 모델 이름(JEV: ``"model": "jev-1.13.0"``). 없으면 None."""
+    value = raw.get("model") if isinstance(raw, dict) else None
+    return value.strip() if isinstance(value, str) and value.strip() else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,15 +159,37 @@ class CachedJudgeAdapter:
         self._session_factory = session_factory
         self._secrets = list(secrets) if secrets is not None else guard.default_secrets()
         self._adapter_version: str | None = None
+        self._server_version: str | None = None
+        self._model: str | None = None
 
     # ------------------------------------------------------------------ 버전
 
     @property
     def adapter_version(self) -> str:
-        """판정기 서버 버전을 읽어 만든다(처음 한 번 연결). 연결 실패면 JudgeUnavailable."""
+        """판정기 서버 버전(처음 한 번 연결) + 마지막으로 본 모델. 연결 실패면 JudgeUnavailable."""
         if self._adapter_version is None:
-            self._adapter_version = make_adapter_version(self._transport.server_version())
+            self._server_version = self._transport.server_version()
+            if self._model is None:
+                self._model = self._last_model(make_adapter_version(self._server_version))
+            self._adapter_version = make_adapter_version(self._server_version, self._model)
         return self._adapter_version
+
+    def _last_model(self, prefix: str) -> str | None:
+        """같은 코드·서버 버전으로 기록된 마지막 행의 모델(재시작해도 같은 hash 가 되도록)."""
+        with self._session_factory() as session:
+            last = cache.last_adapter_version(session, prefix + "+")
+        if not last:
+            return None
+        return last[len(prefix) + 1 :] or None
+
+    def _observe_model(self, raw: dict[str, Any]) -> bool:
+        """응답의 모델이 지금 버전과 다르면 버전을 바꾸고 True."""
+        model = model_of(raw)
+        if model is None or model == self._model or self._server_version is None:
+            return False
+        self._model = model
+        self._adapter_version = make_adapter_version(self._server_version, model)
+        return True
 
     def close(self) -> None:
         self._transport.close()
@@ -254,6 +289,18 @@ class CachedJudgeAdapter:
                 self._record_error(session, existing, tool, purpose, key, length, payload, version,
                                    snapshot_id, complex_id, f"tool error: {message}", response)  # fmt: skip
                 raise JudgeUnavailable(f"{TOOL_NAMES[tool]} 오류 응답")
+
+            if self._observe_model(response.raw):
+                # 모델이 바뀌었다(또는 처음 알았다) → 이 응답은 새 버전의 hash 로 기록한다
+                version = self.adapter_version
+                key = cache.compute_hash(tool, purpose, payload, version)
+                renewed = cache.find(session, key)
+                if renewed is not None and cache.is_final(renewed):
+                    env = cache.envelope_from_row(renewed, cached=True, result=self._result_of(renewed))
+                    log.log_call(env, cached=True)
+                    return env
+                # 새 hash 에 행이 없으면 옛 hash 의 error 행(있으면)을 새 hash 로 옮겨 갱신한다
+                existing = renewed if renewed is not None else existing
 
             normalized = self.normalize(tool, response.raw, payload, purpose)
             row = log.record(

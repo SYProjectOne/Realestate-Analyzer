@@ -63,7 +63,54 @@ def test_input_hash_matches_contract_definition(
 
 def test_adapter_version_from_server_info() -> None:
     assert make_adapter_version("0.14.1") == f"{ADAPTER_CODE_VERSION}+jev-mcp@0.14.1"
+    assert make_adapter_version("0.14.1", "jev-1.13.0") == f"{ADAPTER_CODE_VERSION}+jev-mcp@0.14.1+jev-1.13.0"
+    assert make_adapter_version("0.14.1", " ") == f"{ADAPTER_CODE_VERSION}+jev-mcp@0.14.1"
     assert len(make_adapter_version("1" * 80)) <= 64
+
+
+def _with_model(model: str) -> dict[str, Any]:
+    from .conftest import load_samples
+
+    raw: dict[str, Any] = load_samples()["calls"]["jev_screen"]["response"]
+    return raw | {"model": model}
+
+
+def test_adapter_version_includes_response_model(
+    make_adapter: Callable[..., Any], session_factory: sessionmaker[Session]
+) -> None:
+    """D6 보강(계약 2026-10-09.2): 응답의 model 이 adapter_version 에 들어가고, 그 버전의 hash 로 기록된다."""
+    transport = FakeTransport(responses={"jev_screen": _with_model("jev-1.13.0")})
+    adapter = make_adapter(transport)
+    assert adapter.adapter_version == f"{ADAPTER_CODE_VERSION}+jev-mcp@0.14.1"  # 아직 모델 모름
+    first = adapter.screen(PAYLOAD, "screen:notice:1")
+    want = f"{ADAPTER_CODE_VERSION}+jev-mcp@0.14.1+jev-1.13.0"
+    assert adapter.adapter_version == want == first.adapter_version
+    assert first.input_hash == input_hash("screen", "screen:notice:1", PAYLOAD, want)
+    again = adapter.screen(PAYLOAD, "screen:notice:1")
+    assert again.cached is True and len(transport.calls) == 1
+
+    # 재시작(새 어댑터): judgment_log 의 마지막 모델로 같은 버전 → 판정기 호출 없이 캐시
+    restarted = make_adapter(FakeTransport(responses={"jev_screen": _with_model("jev-1.13.0")}))
+    assert restarted.adapter_version == want
+    assert restarted.screen(PAYLOAD, "screen:notice:1").cached is True
+    assert len(rows(session_factory)) == 1
+
+
+def test_model_change_rejudges(
+    make_adapter: Callable[..., Any], session_factory: sessionmaker[Session]
+) -> None:
+    """모델이 바뀌면(서버 버전 그대로여도) 새 hash → 같은 입력도 재판정."""
+    t1 = FakeTransport(responses={"jev_screen": _with_model("jev-1.13.0")})
+    make_adapter(t1).screen(PAYLOAD, "screen:notice:1")
+    t2 = FakeTransport(responses={"jev_screen": _with_model("jev-1.14.0")})
+    a2 = make_adapter(t2)
+    other = {"text": "다른 공개 문장", "purpose": "공고 발췌 검사"}
+    first_new = a2.screen(other, "screen:notice:2")  # 새 입력에서 새 모델을 알게 된다
+    assert first_new.adapter_version is not None and first_new.adapter_version.endswith("+jev-1.14.0")
+    redo = a2.screen(PAYLOAD, "screen:notice:1")  # 옛 모델로 판정했던 입력 → 재판정
+    assert redo.cached is False and redo.adapter_version == first_new.adapter_version
+    assert len(t2.calls) == 2
+    assert len(rows(session_factory)) == 3
 
 
 def test_server_version_change_changes_input_hash(

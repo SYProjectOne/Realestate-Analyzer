@@ -5,7 +5,7 @@
    통과하는 것에서 모집공고문 링크(``getAtchmnfl.do``)를 모은다 — 청약홈 수집기가 먼저 돌아야 한다.
 2. 링크마다 PDF 를 받는다. 이미 성공한 URL 은 다시 받지 않고 기존 행을 돌려준다(첨부 번호가 바뀌면 새 URL).
 3. 새 PDF 는 ``extract_pdf`` 로 텍스트(+표 JSON)를 뽑아 원문 옆에 ``{sha256}.txt``·``{sha256}.json`` 으로
-   저장하고 ``text_path`` 에 txt 상대 경로를 둔다.
+   저장하고 ``text_path`` 에 txt, ``table_path`` 에 표 JSON 상대 경로를 둔다(계약 2026-10-09.2).
 
 raw_document.error_text (성공 행에서의 의미)
 - ``scan``: 텍스트 레이어가 전혀 없음 → 화면 '확인 불가(스캔)', 사람 입력(OCR 미설치·미채택 시 기본값)
@@ -204,6 +204,7 @@ class NoticePdfCollector:
             if ex.tables:
                 payload = json.dumps(ex.tables, ensure_ascii=False).encode("utf-8")
                 write_text_atomic(raw_path(SOURCE, day, row.sha256, "json"), payload)
+                row.table_path = raw_relpath(SOURCE, day, row.sha256, "json").as_posix()
 
         return store.save(
             result,

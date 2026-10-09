@@ -149,6 +149,52 @@ def test_verify_mapping(samples: dict[str, Any]) -> None:
     assert norm("verify", raw).status == "review"
 
 
+def test_classify_batch_is_summary_plus_items(samples: dict[str, Any]) -> None:
+    """계약 2026-10-09.2 ClassifyResult.items: 최상위 = 요약(label 'batch', prob = auto 비율),
+    항목별 decision."""
+    c = copy.deepcopy(samples["jev_classify"]["response"])
+    first = c["results"][0]
+    c["results"] = [
+        first | {"id": "complex:1"},
+        first | {"id": "complex:2", "decision": "review", "top_probability": 0.6},
+        first | {"id": "complex:3", "classification": "public_rental"},
+    ]
+    n = norm("classify", c)
+    r = ClassifyResult.model_validate(n.result)
+    assert (n.status, r.label, r.prob, r.decision) == ("ok", "batch", 0.6667, "review")
+    assert r.items is not None
+    assert [(i.id, i.label, i.decision) for i in r.items] == [
+        ("complex:1", "private_sale_apt", "auto"),
+        ("complex:2", "private_sale_apt", "review"),
+        ("complex:3", "public_rental", "auto"),
+    ]
+    c["results"][1] = c["results"][0] | {"id": "complex:2"}
+    assert norm("classify", c).result["decision"] == "auto"
+    c["results"][2] |= {"status": "invalid_response", "classification": None}
+    assert norm("classify", c).status == "review"  # 항목 하나라도 무효 응답이면 봉투 review
+
+
+def test_timeouts_default_from_settings(session_factory: sessionmaker[Session], test_settings: Any) -> None:
+    """JUDGE_CALL_TIMEOUT_S·JUDGE_START_TIMEOUT_S(계약 2026-10-09.2)가 기본값이다."""
+    from app.core.settings import set_settings
+
+    set_settings(test_settings.model_copy(update={"judge_call_timeout_s": 7.0, "judge_start_timeout_s": 9.0}))
+    try:
+        adapter = JevMcpAdapter(cmd="jev-test-cmd", session_factory=session_factory)
+        transport = adapter._transport
+        assert isinstance(transport, McpStdioTransport)
+        assert (transport._timeout_s, transport._startup_timeout_s) == (7.0, 9.0)  # 프로세스는 아직 안 띄움
+    finally:
+        set_settings(test_settings)
+
+
+def test_audit_missing_p_wrong_is_null(samples: dict[str, Any]) -> None:
+    a = copy.deepcopy(samples["jev_audit"]["response"])
+    a["records"][0].pop("p_wrong", None)
+    item = AuditResult.model_validate(norm("audit", a).result).items[0]
+    assert item.p_wrong is None  # 지어내지 않는다(계약 2026-10-09.2)
+
+
 def test_classify_extract_audit_compare_rerank_review_paths(samples: dict[str, Any]) -> None:
     c = copy.deepcopy(samples["jev_classify"]["response"])
     assert ClassifyResult.model_validate(norm("classify", c).result).label == "private_sale_apt"

@@ -153,10 +153,12 @@ def _to_dto(row: RawDocumentRow) -> RawDocument:
         path=row.path,
         content_type=row.content_type,
         text_path=row.text_path,
+        table_path=row.table_path,
         complex_id=row.complex_id,
         region_id=row.region_id,
         error_text=row.error_text,
         image_hash=row.image_hash,
+        meta=row.meta,
     )
 
 

@@ -269,15 +269,20 @@ class JevMcpAdapter(CachedJudgeAdapter):
         transport: Transport | None = None,
         session_factory: SessionFactory | None = None,
         secrets: Sequence[str] | None = None,
-        timeout_s: float = DEFAULT_TIMEOUT_S,
-        startup_timeout_s: float = DEFAULT_STARTUP_TIMEOUT_S,
+        timeout_s: float | None = None,
+        startup_timeout_s: float | None = None,
     ) -> None:
         if transport is None:
-            if cmd is None:
-                from app.core.settings import get_settings
+            from app.core.settings import get_settings
 
-                cmd = get_settings().jev_mcp_cmd
-            transport = McpStdioTransport(cmd, timeout_s=timeout_s, startup_timeout_s=startup_timeout_s)
+            s = get_settings()
+            transport = McpStdioTransport(
+                cmd if cmd is not None else s.jev_mcp_cmd,
+                timeout_s=timeout_s if timeout_s is not None else s.judge_call_timeout_s,
+                startup_timeout_s=startup_timeout_s
+                if startup_timeout_s is not None
+                else s.judge_start_timeout_s,
+            )
         super().__init__(transport, session_factory=session_factory, secrets=secrets)
 
     def normalize(
@@ -362,7 +367,7 @@ def _audit(raw: dict[str, Any], payload: JudgePayload, purpose: str) -> Normaliz
         items.append(
             {
                 "field": str(r.get("id")),
-                "p_wrong": p_wrong if p_wrong is not None else 1.0,
+                "p_wrong": p_wrong,  # 판정기가 안 주면 null(계약 2026-10-09.2)
                 "flagged": action != "ok",
                 "note": None if action == "ok" else str(action),
             }
@@ -395,11 +400,20 @@ def _classify(raw: dict[str, Any], payload: JudgePayload, purpose: str) -> Norma
     graded = [_classify_one(r) for r in results]
     status, result = graded[0]
     if len(graded) > 1:
+        # 배치(계약 2026-10-09.2 ClassifyResult.items): 최상위는 요약, 항목별 decision 으로 거른다.
+        items = [{"id": r.get("id"), **g[1]} for r, g in zip(results, graded, strict=True)]
+        auto = sum(1 for it in items if it["decision"] == "auto")
         result = {
-            **result,
-            "items": [{"id": r.get("id"), **g[1]} for r, g in zip(results, graded, strict=True)],
+            "label": "batch",
+            "prob": round(auto / len(items), 4),
+            "decision": "auto" if auto == len(items) else "review",
+            "items": items,
         }
-        status = "ok" if all(s == "ok" for s, _ in graded) else "review"
+        valid = all(
+            r.get("status") != "invalid_response" and r.get("classification") is not None for r in results
+        )
+        status = "ok" if valid else "review"
+        return Normalized(status, result, _min_conf([_num(r.get("confidence")) for r in results]))
     return Normalized(status, result, _num(results[0].get("confidence")))
 
 

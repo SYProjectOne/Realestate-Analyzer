@@ -45,6 +45,7 @@ def record(
     if existing is not None and existing.status != "error":
         raise ValueError("최종 판정 행은 갱신하지 않는다 (같은 입력 재호출 금지)")
     row = existing if existing is not None else JudgmentLog(input_hash=input_hash)
+    row.input_hash = input_hash  # error 행 재시도 중 모델을 알게 되면 새 버전의 hash 로 옮긴다(D6 보강)
     row.tool = tool
     row.purpose = purpose
     row.input_len = input_len

@@ -20,7 +20,7 @@ from app.core.protocols import JudgePayload, JudgeTool, input_hash
 from app.core.snapshot import canonical_json
 from app.models import JudgmentLog
 
-__all__ = ["compute_hash", "envelope_from_row", "find", "is_final", "payload_length"]
+__all__ = ["compute_hash", "envelope_from_row", "find", "is_final", "last_adapter_version", "payload_length"]
 
 
 def compute_hash(tool: JudgeTool, purpose: str, payload: JudgePayload, adapter_version: str) -> str:
@@ -34,6 +34,17 @@ def payload_length(payload: JudgePayload) -> int:
 
 def find(session: Session, key: str) -> JudgmentLog | None:
     return session.scalars(select(JudgmentLog).where(JudgmentLog.input_hash == key)).one_or_none()
+
+
+def last_adapter_version(session: Session, prefix: str) -> str | None:
+    """prefix 로 시작하는 adapter_version 중 가장 최근 행(seq 최대)의 값. 없으면 None."""
+    stmt = (
+        select(JudgmentLog.adapter_version)
+        .where(JudgmentLog.adapter_version.startswith(prefix, autoescape=True))
+        .order_by(JudgmentLog.seq.desc())
+        .limit(1)
+    )
+    return session.scalars(stmt).first()
 
 
 def is_final(row: JudgmentLog) -> bool:

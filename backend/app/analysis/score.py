@@ -262,9 +262,15 @@ def _units(u: Decimal) -> str:
 
 
 def _unsold_points(
-    unsold: Sequence[UnsoldInput], living_area: str, asof_idx: int
+    unsold: Sequence[UnsoldInput],
+    living_area: str,
+    asof_idx: int,
+    scope_codes: Sequence[str] = (),
 ) -> tuple[list[tuple[int, Decimal]], list[tuple[int, Decimal]], str]:
-    scoped = [u for u in unsold if u.scope_code == living_area]
+    # 생활권 ↔ 미분양 scope_code(시군구) 매핑: LivingAreaScoreInput.unsold_scope_codes(계약 2026-10-09.2).
+    # 매핑이 없으면 scope_code 가 생활권 id 와 같은 행(이전 입력 호환), 그것도 없으면 지역 합계.
+    codes = set(scope_codes)
+    scoped = [u for u in unsold if (u.scope_code in codes if codes else u.scope_code == living_area)]
     scope = "생활권"
     if not scoped:
         scoped = list(unsold)
@@ -291,6 +297,7 @@ def supply_component(
     households: Mapping[str, int | None],
     ref_pct: float,
     asof_date: str,
+    unsold_scopes: Mapping[str, Sequence[str]] | None = None,
 ) -> ComponentResult:
     cid = complex_.complex_id
     la = complex_.living_area
@@ -328,7 +335,7 @@ def supply_component(
     u_ref = Decimal(hh) * dec(ref_pct)
     base = clamp(TEN - TEN * units / u_ref)
     asof_idx = ym_index(ym_of(parse_date(asof_date)))
-    totals, post, scope = _unsold_points(unsold, la, asof_idx)
+    totals, post, scope = _unsold_points(unsold, la, asof_idx, (unsold_scopes or {}).get(la, ()))
     pen = 0
     notes: list[str] = []
     k = slope(totals)
@@ -517,6 +524,7 @@ def _component(
             households=households,
             ref_pct=inputs.region.supply_ref_pct,
             asof_date=inputs.asof_date,
+            unsold_scopes={la.id: la.unsold_scope_codes or [] for la in inputs.living_areas},
         )
     if key == "liquidity":
         return liquidity_component(cx, asof_date=inputs.asof_date)
