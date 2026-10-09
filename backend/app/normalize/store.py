@@ -69,7 +69,15 @@ from app.normalize.resolver import resolve
 from app.normalize.rtms_parser import RtmsParser
 from app.normalize.stats_parser import StatsParser
 
-__all__ = ["StoreError", "StoreResult", "parser_for", "raw_dto", "store_raw_document"]
+__all__ = [
+    "StoreError",
+    "StoreResult",
+    "candidate_from_row",
+    "parser_for",
+    "raw_dto",
+    "store_raw_document",
+    "write_chosen",
+]
 
 
 class _Parser(Protocol):
@@ -521,7 +529,73 @@ def _set_price_by_type(
     )
 
 
-def _candidate_from_row(fp: FieldProvenance, source_kind: str | None) -> FieldCandidate:
+def write_chosen(
+    session: Session,
+    chosen: list[FieldCandidate],
+    *,
+    created: set[tuple[str, int]] | frozenset[tuple[str, int]] = frozenset(),
+    snapshot_id: int | None,
+    detected_at: str,
+) -> tuple[list[ChangeEvent], set[int]]:
+    """채택(chosen) 후보 값을 사실 테이블에 쓴다. 바뀐 값은 change_event(새 행이면 initial).
+
+    값 없는 후보('확인 불가')는 건너뛴다. 반환 = (이벤트, 주소가 바뀐 단지 id — 생활권 재배정 대상).
+    ``store_raw_document`` 와 판정 결과 반영(``normalize.judged``)이 같이 쓴다.
+    """
+    events: list[ChangeEvent] = []
+    touched_complex: set[int] = set()
+    for c in chosen:
+        model = _MODELS.get(c.entity)
+        if model is None or c.entity_id is None or c.value is None or c.label == "확인 불가":
+            continue
+        obj = session.get(model, c.entity_id)
+        if obj is None:
+            continue
+        pbt = split_price_by_type(c.field) if c.entity == "payment_terms" else None
+        if pbt is not None:
+            ev_pbt = _set_price_by_type(
+                obj,
+                c,
+                pbt,
+                initial=(c.entity, c.entity_id) in created,
+                snapshot_id=snapshot_id,
+                detected_at=detected_at,
+            )
+            if ev_pbt is not None:
+                events.append(ev_pbt)
+            continue
+        if not hasattr(model, c.field) or c.field == "id":
+            continue
+        new = _coerce(c.field, c.value)
+        old_v = getattr(obj, c.field)
+        if changes.fmt_value(old_v) == changes.fmt_value(new):
+            continue
+        initial = (c.entity, c.entity_id) in created
+        if c.entity == "complex" and c.field == "name" and old_v and not initial:
+            names = list(obj.former_names or [])
+            if old_v not in names:
+                obj.former_names = [*names, old_v]
+        setattr(obj, c.field, new)
+        cid = obj.id if c.entity == "complex" else getattr(obj, "complex_id", None)
+        ev = changes.value_change_event(
+            entity=c.entity,
+            entity_id=c.entity_id,
+            field=c.field,
+            old=old_v,
+            new=new,
+            snapshot_id=snapshot_id,
+            complex_id=cid,
+            detected_at=detected_at,
+            initial=initial,
+        )
+        if ev is not None:
+            events.append(ev)
+        if c.entity == "complex" and c.field == "address":
+            touched_complex.add(obj.id)
+    return events, touched_complex
+
+
+def candidate_from_row(fp: FieldProvenance, source_kind: str | None) -> FieldCandidate:
     """저장된 출처 행 → 후보(옛 원문을 다시 파싱하지 않는다). primary 는 출처 종류로 되살린다
     (실거래는 rank 1 = Open API 1차, 그 밖 rank = 재가공 2차 — rtms_parser 와 같은 규칙)."""
     primary = (source_kind in PRIMARY_SOURCES) if source_kind is not None else True
@@ -597,7 +671,7 @@ def _reparse_existing(
         if rid not in kinds:
             raw_row = session.get(RawDocument, rid)
             kinds[rid] = raw_row.source_kind if raw_row is not None else None
-        out.append(_candidate_from_row(fp, kinds[rid]))
+        out.append(candidate_from_row(fp, kinds[rid]))
     for rid in sorted(legacy_raw):
         row = session.get(RawDocument, rid)
         if row is None:
@@ -641,55 +715,14 @@ def store_raw_document(
         resolved = resolve(bound + old)
         fps = upsert_provenance(session, resolved.provenance)
         events = list(binder.events)
-        touched_complex: set[int] = set()
-        for c in resolved.chosen:
-            model = _MODELS.get(c.entity)
-            if model is None or c.entity_id is None or c.value is None or c.label == "확인 불가":
-                continue
-            obj = session.get(model, c.entity_id)
-            if obj is None:
-                continue
-            pbt = split_price_by_type(c.field) if c.entity == "payment_terms" else None
-            if pbt is not None:
-                ev_pbt = _set_price_by_type(
-                    obj,
-                    c,
-                    pbt,
-                    initial=(c.entity, c.entity_id) in binder.created,
-                    snapshot_id=snapshot_id,
-                    detected_at=detected_at,
-                )
-                if ev_pbt is not None:
-                    events.append(ev_pbt)
-                continue
-            if not hasattr(model, c.field) or c.field == "id":
-                continue
-            new = _coerce(c.field, c.value)
-            old_v = getattr(obj, c.field)
-            if changes.fmt_value(old_v) == changes.fmt_value(new):
-                continue
-            initial = (c.entity, c.entity_id) in binder.created
-            if c.entity == "complex" and c.field == "name" and old_v and not initial:
-                names = list(obj.former_names or [])
-                if old_v not in names:
-                    obj.former_names = [*names, old_v]
-            setattr(obj, c.field, new)
-            cid = obj.id if c.entity == "complex" else getattr(obj, "complex_id", None)
-            ev = changes.value_change_event(
-                entity=c.entity,
-                entity_id=c.entity_id,
-                field=c.field,
-                old=old_v,
-                new=new,
-                snapshot_id=snapshot_id,
-                complex_id=cid,
-                detected_at=detected_at,
-                initial=initial,
-            )
-            if ev is not None:
-                events.append(ev)
-            if c.entity == "complex" and c.field == "address":
-                touched_complex.add(obj.id)
+        written, touched_complex = write_chosen(
+            session,
+            resolved.chosen,
+            created=binder.created,
+            snapshot_id=snapshot_id,
+            detected_at=detected_at,
+        )
+        events.extend(written)
         session.flush()
         for terms in binder.new_terms:
             events.extend(

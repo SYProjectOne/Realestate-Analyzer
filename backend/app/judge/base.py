@@ -11,7 +11,7 @@
          │
     normalize(tool, raw, payload, purpose) → status·result·confidence
          │
-    judgment_log 행(insert, error 행이면 update) → cached=False 봉투
+    judgment_log 행(insert, error 행이면 update; result_json = 정규화 결과) → cached=False 봉투
 
 - 어댑터는 임계값을 넘기지 않는다. payload 는 JEV 입력 그대로(``payloads.py``)이고 임계 인자를 넣지 않는다.
 - adapter_version = ``<ADAPTER_CODE_VERSION>+jev-mcp@<initialize.serverInfo.version>+<응답 model>``
@@ -320,14 +320,19 @@ class CachedJudgeAdapter:
                 complex_id=complex_id,
                 error_text=None,
                 created_at=_now(),
+                result_json=normalized.result,
             )
             return self._commit(session, row, result=normalized.result, key=key)
 
     # ------------------------------------------------------------------ 내부
 
     def _result_of(self, row: Any) -> dict[str, Any]:
+        """캐시 행의 정규화 결과: result_json(계약 2026-10-09.3), 옛 행(NULL)은 원응답을 다시 정규화."""
         if row.status in {"blocked", "error"}:
             return {}
+        stored = getattr(row, "result_json", None)
+        if isinstance(stored, dict) and stored:
+            return dict(stored)
         return self.normalize(row.tool, row.output_json, row.input_json, row.purpose).result
 
     def _commit(self, session: Session, row: Any, *, result: dict[str, Any], key: str) -> JudgmentEnvelope:

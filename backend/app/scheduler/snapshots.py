@@ -1,16 +1,20 @@
-"""스냅샷 행 다루기 (RA §3 스냅샷 규칙, ADR-8): 만들기·이전 찾기·publish(contradicted 0 검사)·DTO 변환."""
+"""스냅샷 행 다루기 (RA §3 스냅샷 규칙, ADR-8): 만들기·이전 찾기·publish·DTO 변환.
+
+publish 는 남은 contradicted 0 검사 — 보고서 생성 거부와 같은 정의(``judge.claims.remaining_contradicted``).
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import Region as RegionDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
-from app.models import Claim, Region, Snapshot
+from app.judge.claims import remaining_contradicted
+from app.models import Region, Snapshot
 
 __all__ = [
     "contradicted_count",
@@ -60,12 +64,8 @@ def latest_for_region(session: Session, region_id: int) -> Snapshot | None:
 
 
 def contradicted_count(session: Session, snapshot_id: int) -> int:
-    stmt = (
-        select(func.count())
-        .select_from(Claim)
-        .where(Claim.snapshot_id == snapshot_id, Claim.verify_status == "contradicted")
-    )
-    return int(session.scalar(stmt) or 0)
+    """남은 contradicted 수 — 분할 자식 없는 contradicted(``judge.claims.remaining_contradicted``)."""
+    return len(remaining_contradicted(session, snapshot_id))
 
 
 def publish(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int]:

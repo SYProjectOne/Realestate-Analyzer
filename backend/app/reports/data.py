@@ -519,13 +519,13 @@ class ReportData:
 
 
 def count_remaining_contradicted(session: Session, snapshot_id: int) -> list[Claim]:
-    """남은 contradicted 주장 = 분할 재검증(자식 주장)이 없는 contradicted 행.
+    """남은 contradicted 주장 — 정의는 ``app.judge.claims.remaining_contradicted`` 하나(WP7 publish 와 공용).
 
-    T6: 복합 주장은 원자 주장으로 나눠 다시 검증한다 — 자식이 있으면 그 결과를 쓴다.
+    분할 재검증(자식 주장)이 없는 contradicted 행(T6).
     """
-    rows = list(session.scalars(select(Claim).where(Claim.snapshot_id == snapshot_id)))
-    parents = {r.parent_claim_id for r in rows if r.parent_claim_id is not None}
-    return [r for r in rows if r.verify_status == "contradicted" and r.id not in parents]
+    from app.judge.claims import remaining_contradicted
+
+    return remaining_contradicted(session, snapshot_id)
 
 
 class _ProvIndex:
