@@ -28,7 +28,9 @@ test.describe('화면 10개 핵심 요소', () => {
     await ready(page, '/regions/1/living-areas', P.G0_2.title);
     await expect(page.getByRole('textbox', { name: P.G0_2.areaName }).first()).toBeVisible();
     expect(await page.getByRole('textbox', { name: P.G0_2.areaName }).count()).toBeGreaterThan(1);
-    await expect(page.getByRole('button', { name: P.G0_2.save })).toBeVisible();
+    await expect(page.getByRole('button', { name: P.G0_2.save, exact: true })).toBeVisible();
+    // D11-7 지역 범위 확장 패널(계약 .8 초안)
+    await expect(page.getByRole('region', { name: P.G0_2.expand.title })).toBeVisible();
   });
 
   test('G1 홈: KPI 5 · TOP 5 · 변경 피드 · C6 차트 SVG', async ({ page }) => {
