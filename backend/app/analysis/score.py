@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
 from app.analysis._common import (
@@ -94,7 +94,6 @@ BENCHMARK_SCALE: Final = Decimal("0.5")
 RECENT_SALE_YEARS: Final = 3
 SUPPLY_WINDOW_MONTHS: Final = 12
 UNSOLD_WINDOW_MONTHS: Final = 12
-YEAR_ONLY_MONTH: Final = 7  # 연 단위 입주 물량은 7월(연중)로 본다
 
 
 def _unscored(cid: int, comp: ComponentKey, why: str, *, reason: str | None = None) -> ComponentResult:
@@ -255,6 +254,13 @@ def benchmark_component(
 # ------------------------------------------------------------------ supply
 
 
+def _units(u: Decimal) -> str:
+    """세대수 표기: 정수면 '12,857', 아니면 소수 1자리 '7,023.7'."""
+    if u == u.to_integral_value():
+        return f"{int(u):,}"
+    return f"{u.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP):,}"
+
+
 def _unsold_points(
     unsold: Sequence[UnsoldInput], living_area: str, asof_idx: int
 ) -> tuple[list[tuple[int, Decimal]], list[tuple[int, Decimal]], str]:
@@ -295,27 +301,32 @@ def supply_component(
     )["move_in_plus_1y"].target_ym
     start, end = add_months_ym(target, -SUPPLY_WINDOW_MONTHS), add_months_ym(target, SUPPLY_WINDOW_MONTHS)
     lo, hi = ym_index(start), ym_index(end)
-    units = 0
+    units = ZERO
     year_only = False
     labels: list[Label] = []
     for row in supply:
         if row.living_area != la:
             continue
-        ym = row.ym or f"{row.year:04d}-{YEAR_ONLY_MONTH:02d}"
-        if lo <= ym_index(ym) <= hi:
-            units += row.units
+        if row.ym:
+            share = Decimal(1) if lo <= ym_index(row.ym) <= hi else ZERO
+        else:  # 연 단위 물량은 12개월에 균등 분배해 창에 걸친 개월 비율만 센다
+            months = sum(1 for m in range(12) if lo <= row.year * 12 + m <= hi)
+            share = Decimal(months) / 12
+            year_only = year_only or months > 0
+        if share > 0:
+            units += Decimal(row.units) * share
             labels.append(row.label)
-            year_only = year_only or row.ym is None
+    units = q4(units)
     hh = households.get(la)
     if hh is None or hh <= 0:
         return _unscored(
             cid,
             "supply",
-            f"공급 미계산: 생활권 세대수 없음(U_ref = 세대수 × {num(dec(ref_pct), 4)}), U_window {units:,}세대({start}~{end})",
+            f"공급 미계산: 생활권 세대수 없음(U_ref = 세대수 × {num(dec(ref_pct), 4)}), U_window {_units(units)}세대({start}~{end})",
             reason="세대수 없음",
         )
     u_ref = Decimal(hh) * dec(ref_pct)
-    base = clamp(TEN - TEN * Decimal(units) / u_ref)
+    base = clamp(TEN - TEN * units / u_ref)
     asof_idx = ym_index(ym_of(parse_date(asof_date)))
     totals, post, scope = _unsold_points(unsold, la, asof_idx)
     pen = 0
@@ -334,14 +345,14 @@ def supply_component(
             pen += 1
     s = q4(max(ZERO, base - pen))
     text = (
-        f"clamp(10 − 10 × {units:,}/{num(u_ref, 0)}, 0, 10) − pen={pen} = {num(s)} "
-        f"(U_window {start}~{end} 입주 {units:,}세대, U_ref = 세대수 {hh:,} × {num(dec(ref_pct), 4)}; {'; '.join(notes)})"
+        f"clamp(10 − 10 × {_units(units)}/{num(u_ref, 0)}, 0, 10) − pen={pen} = {num(s)} "
+        f"(U_window {start}~{end} 입주 {_units(units)}세대, U_ref = 세대수 {hh:,} × {num(dec(ref_pct), 4)}; {'; '.join(notes)})"
     )
-    reason = "U_ref 추정(세대수 × 기준치)" + (", 연 단위 입주는 7월로 가정" if year_only else "")
+    reason = "U_ref 추정(세대수 × 기준치)" + (", 연 단위 입주 물량은 12개월 균등 분배로 가정" if year_only else "")
     return ComponentResult(
         complex_id=cid,
         component="supply",
-        raw_value=Decimal(units),
+        raw_value=units,
         score=s,
         formula_text=text,
         label=weakest_label("추정", *labels),

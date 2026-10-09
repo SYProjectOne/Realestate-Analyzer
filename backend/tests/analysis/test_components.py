@@ -316,6 +316,16 @@ def test_supply_window_ref_and_penalty() -> None:
     assert nohh.score is None and "세대수" in nohh.formula_text
 
 
+def test_supply_year_only_rows_spread_over_months() -> None:
+    """월 미상 연 단위 물량은 12개월 균등 분배 — 창(2028-03~2030-03)에 걸친 2028년 10개월분만 센다."""
+    rows = [SupplyInput(living_area="la_1", year=2028, ym=None, units=12_000, label="추정")]
+    c = supply_component(
+        make_complex(), rows, [], households={"la_1": 1_000_000}, ref_pct=0.08, asof_date=ASOF
+    )
+    assert c.raw_value == D(10_000)
+    assert c.reason is not None and "균등 분배" in c.reason
+
+
 def test_scenario_a_uses_move_in_instead_of_liquidity() -> None:
     cx = make_complex(
         fixed_components={"source": "t", "p10": 4, "rerank": 8, "gap": 5, "benchmark": 5, "supply": 3}
