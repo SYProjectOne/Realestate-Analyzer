@@ -180,7 +180,9 @@ class _Core:
     ) -> None:
         s = get_settings()
         self.allow_private = (
-            allow_private if allow_private is not None else bool(getattr(s, "http_allow_private_hosts", False))
+            allow_private
+            if allow_private is not None
+            else bool(getattr(s, "http_allow_private_hosts", False))
         )
         self._resolver = resolver
         self._resolved: dict[str, bool] = {}

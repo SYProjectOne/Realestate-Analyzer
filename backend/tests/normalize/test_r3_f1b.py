@@ -172,9 +172,7 @@ def test_c3_ocr_audit_flagged_or_review_means_ocr_value_is_not_used(
 
 def test_c3_ocr_extract_review_drops_ocr_value(db_session: Session, region: Region, add_raw: AddRaw) -> None:
     req, tid = _store_ocr_harrington(db_session, region, add_raw)
-    out = apply_extracted(
-        db_session, req, [ExtractedValue("max_price_won", None, "review")], judgment_seq=31
-    )
+    out = apply_extracted(db_session, req, [ExtractedValue("max_price_won", None, "review")], judgment_seq=31)
     assert out.skipped["max_price_won"] == "review(미반영)"
     t = db_session.get(ComplexType, tid)
     assert t is not None and t.max_price_won is None
@@ -183,7 +181,9 @@ def test_c3_ocr_extract_review_drops_ocr_value(db_session: Session, region: Regi
 # ====================================================================== M1 같은 rank 1차·1차 상충
 
 
-def _cand(kind: str, value: float | str, *, raw_id: int, observed: str, key: str = "2099000001") -> FieldCandidate:
+def _cand(
+    kind: str, value: float | str, *, raw_id: int, observed: str, key: str = "2099000001"
+) -> FieldCandidate:
     return FieldCandidate(
         entity="complex",
         entity_id=None,
@@ -251,7 +251,9 @@ def _store_conflict(
 
 def _group(db_session: Session, cx: Complex) -> str:
     fp = db_session.scalars(
-        select(FieldProvenance).where(FieldProvenance.entity_id == cx.id, FieldProvenance.field == "developer")
+        select(FieldProvenance).where(
+            FieldProvenance.entity_id == cx.id, FieldProvenance.field == "developer"
+        )
     ).first()
     assert fp is not None and fp.conflict_group
     return fp.conflict_group
@@ -312,7 +314,9 @@ def test_m1_new_uncompared_primary_rival_holds_again(
     assert cx.developer is None  # 새 상충 = compare 필요 → 다시 보류
 
 
-def test_m1_compare_same_fact_adopts_priority_lead(db_session: Session, region: Region, add_raw: AddRaw) -> None:
+def test_m1_compare_same_fact_adopts_priority_lead(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
     cx = _store_conflict(db_session, region, add_raw, ("notice_pdf", "official_site"), ("가건설", "나건설"))
     res = apply_compare(db_session, _group(db_session, cx), relation="same_fact", judgment_seq=8)
     assert res.changed and cx.developer == "나건설"  # 상충 아님 → §3 우선순위(최신) 대표
@@ -343,7 +347,8 @@ def test_m16_missing_provenance_covers_market_tables_pointer_columns_and_price_b
     db_session.add(RtmsTrade(region_id=region.id, apt_name="거래", area_m2=84.9, price_won=600_000_000,
                              deal_date="2026-09-01", source="openapi"))  # fmt: skip
     db_session.add(PaymentTerms(complex_id=cx.id, notice_no="N1", effective_from="2026-09-01",
-                                interim_schedule=[], price_by_type={"84A": {"max_price_won": 1}}))  # fmt: skip
+                                interim_schedule=[],
+                                price_by_type={"84A": {"max_price_won": 1}}))  # fmt: skip
     db_session.flush()
     probs = {(p.entity, p.field) for p in missing_provenance(db_session)}
     assert ("complex", "inclusion_prob") in probs
@@ -400,7 +405,11 @@ def test_minor3_all_sixteen_notices_have_price_or_needs_extract_for_every_type()
                 if t in UNREAD.get(fname, set()):
                     assert c.value is None and c.needs_extract and c.label == "확인 불가", (fname, t, f)
                 else:
-                    assert isinstance(c.value, int | float) and c.value > 0 and not c.needs_extract, (fname, t, f)
+                    assert isinstance(c.value, int | float) and c.value > 0 and not c.needs_extract, (
+                        fname,
+                        t,
+                        f,
+                    )
 
 
 @pytest.mark.parametrize("fname", sorted(REMAIN_PRICES))
@@ -433,16 +442,31 @@ class _Fields:
     def parse(self, raw: RawDocumentDTO) -> list[FieldCandidate]:
         return [
             FieldCandidate(
-                entity="complex", entity_id=None, entity_key=self.key, field=f, value_text=v, value=v, source_rank=1,
-                source_kind="applyhome_detail", primary=True, label="확인됨", excerpt=v, excerpt_start=0,
-                excerpt_end=1, raw_document_id=raw.id, url=raw.url, checked_at="2026-10-09",
+                entity="complex",
+                entity_id=None,
+                entity_key=self.key,
+                field=f,
+                value_text=v,
+                value=v,
+                source_rank=1,
+                source_kind="applyhome_detail",
+                primary=True,
+                label="확인됨",
+                excerpt=v,
+                excerpt_start=0,
+                excerpt_end=1,
+                raw_document_id=raw.id,
+                url=raw.url,
+                checked_at="2026-10-09",
                 observed_on="2026-09-01",
-            )  # fmt: skip
+            )
             for f, v in self.values.items()
         ]
 
 
-def _store_fields(db_session: Session, add_raw: AddRaw, region: Region, key: str, n: int, **values: str) -> Any:
+def _store_fields(
+    db_session: Session, add_raw: AddRaw, region: Region, key: str, n: int, **values: str
+) -> Any:
     url = f"https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do?houseManageNo={key}&n={n}"
     raw = add_raw(f"{key} {n} {values}", source_kind="applyhome_detail", url=url, region_id=region.id)
     return store_raw_document(db_session, raw, parser=_Fields(key, values))
@@ -451,7 +475,9 @@ def _store_fields(db_session: Session, add_raw: AddRaw, region: Region, key: str
 def test_w4_other_region_complex_is_never_overwritten(
     db_session: Session, region: Region, add_raw: AddRaw
 ) -> None:
-    _store_fields(db_session, add_raw, region, "2026000164", 1, name="더샵 송도그란테르", builder="포스코이앤씨")
+    _store_fields(
+        db_session, add_raw, region, "2026000164", 1, name="더샵 송도그란테르", builder="포스코이앤씨"
+    )
     cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026000164")).one()
     other = _region2(db_session, region)
     res = _store_fields(db_session, add_raw, other, "2026000164", 2, name="더샵 송도그란테르 G5-1블록",
@@ -464,7 +490,9 @@ def test_w12c_remainder_detail_binds_to_same_block_complex(
     db_session: Session, region: Region, add_raw: AddRaw
 ) -> None:
     addr = "인천광역시 연수구 송도동 32-15 (G5-11BL)"
-    _store_fields(db_session, add_raw, region, "2026000169", 1, name="더샵 송도그란테르 G5-11블록", address=addr)
+    _store_fields(
+        db_session, add_raw, region, "2026000169", 1, name="더샵 송도그란테르 G5-11블록", address=addr
+    )
     # 잔여 세대 상세(최초 번호 없음) — 이름 뒤 회차 괄호·주소 표기 차이는 정규화로 같다
     res = _store_fields(db_session, add_raw, region, "2026910207", 2,
                         name="더샵 송도그란테르 G5-11블록(조합원 자격상실세대 3회차)",
@@ -481,7 +509,9 @@ def test_w12c_ambiguous_or_missing_address_does_not_merge(
     _store_fields(db_session, add_raw, region, "2026000101", 1, name="같은 이름 단지", address=addr)
     _store_fields(db_session, add_raw, region, "2026000102", 2, name="다른 이름 단지", address=addr)
     _store_fields(db_session, add_raw, region, "2026000103", 3, name="같은 이름 단지", address=addr + " 외")
-    _store_fields(db_session, add_raw, region, "2026910300", 4, name="같은 이름 단지", address=addr)  # 정확히 1개
+    _store_fields(
+        db_session, add_raw, region, "2026910300", 4, name="같은 이름 단지", address=addr
+    )  # 정확히 1개
     _store_fields(db_session, add_raw, region, "2026910301", 5, name="같은 이름 단지")  # 주소 없음 → 새 행
     keys = sorted(c.applyhome_id or "" for c in db_session.scalars(select(Complex)))
     assert keys == ["2026000101", "2026000102", "2026000103", "2026910301"]

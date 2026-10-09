@@ -4,7 +4,8 @@
   같은 출처 행(엔티티·필드·원문·발췌 위치·값 표기가 같음)은 갱신하고, 없으면 넣는다.
   행을 지우지 않는다(chosen=false로 보관).
 - ``missing_provenance``: 사실 테이블의 모든 수치 컬럼 값마다 chosen 출처 행이 있고 라벨·URL·확인일이
-  비어 있지 않은지 전수 검사한다(완료 기준·T13의 전제). 검사할 컬럼은 손으로 적지 않고 **모델 컬럼 메타데이터**
+  비어 있지 않은지 전수 검사한다(완료 기준·T13의 전제). 검사할 컬럼은 손으로 적지 않고
+  **모델 컬럼 메타데이터**
   에서 모은다(R3 M16, ``numeric_columns``): 정수·소수 컬럼(PK·FK·``*_judgment_seq`` 제외), 날짜·연월 문자열
   컬럼(``*_date``·``*_ym``·``ym``·``effective_from``), 일정 JSON(``fields.JSON_FIELDS``, 비어 있지 않을 때),
   payment_terms.price_by_type 의 숫자 항목. 새 컬럼이 생기면 자동으로 검사 대상이 된다.
@@ -75,13 +76,13 @@ def numeric_columns(model: Any) -> tuple[str, ...]:
         if col.primary_key or col.foreign_keys or name.endswith("_judgment_seq"):
             continue
         t = col.type
-        if isinstance(t, Integer | BigInteger | Numeric | Float):
-            out.append(name)
-        elif isinstance(t, String) and (name.endswith(_DATE_SUFFIXES) or name in _DATE_NAMES):
-            out.append(name)
-        elif isinstance(t, JSON) and name in JSON_FIELDS:
+        numeric = isinstance(t, Integer | BigInteger | Numeric | Float)
+        date_like = isinstance(t, String) and (name.endswith(_DATE_SUFFIXES) or name in _DATE_NAMES)
+        schedule = isinstance(t, JSON) and name in JSON_FIELDS
+        if numeric or date_like or schedule:
             out.append(name)
     return tuple(out)
+
 
 _UNITS: dict[str, str] = {
     "units_total": "units",

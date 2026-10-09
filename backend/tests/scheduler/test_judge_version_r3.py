@@ -1,4 +1,6 @@
-"""R3 M12: 판정기 버전 변경 감지는 error·blocked 행을 근거로 쓰지 않는다 + 모델을 처음 알게 된 것은 변경 아님."""
+"""R3 M12: 판정기 버전 변경 감지는 error·blocked 행을 근거로 쓰지 않는다.
+
+모델을 처음 알게 된 것(접미만 붙음)은 변경이 아니다."""
 
 from __future__ import annotations
 

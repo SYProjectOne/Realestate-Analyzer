@@ -349,7 +349,11 @@ def apply_extracted(
             )
             judged = next((r for r in rows if _is_judged_row(r)), None)
             origin = next(
-                (r for r in rows if r is not judged and (r.label == "확인 불가" or is_ocr(r.label, r.reason))),
+                (
+                    r
+                    for r in rows
+                    if r is not judged and (r.label == "확인 불가" or is_ocr(r.label, r.reason))
+                ),
                 None,
             )
             base = origin or judged

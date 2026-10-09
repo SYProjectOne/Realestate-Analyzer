@@ -25,7 +25,8 @@ rank 1 채택(T5: 청약홈 상세 1,573 vs 공고문 1,769 → compare 없음),
   다시 보류한다(새 상충 = compare 필요).
 
 OCR 판독 후보(label '추정' + reason 'OCR', R3 C3)는 같은 원문의 판정기 추출 행(reason '판정기 추출 …'·
-'판정기 감사 flagged …')이 생기면 값 없는 후보로 본다 — 판정기 결과(채택·감사 flagged·review)가 OCR 값을 대신한다.
+'판정기 감사 flagged …')이 생기면 값 없는 후보로 본다 — 판정기 결과(채택·감사 flagged·review)가
+OCR 값을 대신한다.
 """
 
 from __future__ import annotations

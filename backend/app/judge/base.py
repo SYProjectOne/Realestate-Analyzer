@@ -200,7 +200,8 @@ class CachedJudgeAdapter:
         return last[len(prefix) + 1 :] or None
 
     def _known_version(self, session: Session) -> str | None:
-        """서버에 묻지 않고 아는 버전: 확인한 버전, 없으면 judgment_log 마지막 정상 행의 버전(캐시 선조회용)."""
+        """서버에 묻지 않고 아는 버전: 확인한 버전, 없으면 judgment_log 마지막 정상 행의 버전
+        (판정기 다운 시 캐시 재생용)."""
         if self._adapter_version is not None:
             return self._adapter_version
         return cache.last_adapter_version(session, f"{ADAPTER_CODE_VERSION}+{SERVER_TAG}@", final_only=True)
@@ -218,7 +219,8 @@ class CachedJudgeAdapter:
 
     @contextmanager
     def _call_slot(self, key: str) -> Iterator[None]:
-        """실제 호출 구간 잠금: 같은 hash 는 한 번에 하나, 모델 확정 전에는 모든 호출을 하나씩(경합 시 실제 호출
+        """실제 호출 구간 잠금: 같은 hash 는 한 번에 하나, 모델 확정 전에는 모든 호출을 하나씩(경합 시 실제
+        호출
         2회 방지, R3 minor 11). 잠금을 얻은 뒤 호출자는 버전·캐시를 다시 본다."""
         with self._key_locks[hash(key) % _LOCK_STRIPES]:
             if self._model_confirmed:

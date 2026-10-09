@@ -1,7 +1,8 @@
 """R3 M13: 팝업 변경 감지 해시 안정화 — 시각·애니메이션은 무시, 글자·그림 변경은 잡는다.
 
 - 단위: 시각 표기 정규화, 서명 기반 popup_hash, dHash 거리.
-- 수집기: 같은 화면(서명 같고 dHash 임계값 안)이면 직전 스크린샷 행 재사용(raw_document 증가 0, image_hash 동일),
+- 수집기: 같은 화면(서명 같고 dHash 임계값 안)이면 직전 스크린샷 행 재사용
+  (raw_document 증가 0, image_hash 동일),
   글자가 바뀌거나 그림이 크게 바뀌면 새 해시·새 행.
 - 실제 Playwright: 시계(초 단위 갱신)·CSS 애니메이션이 있는 로컬 페이지 3회 렌더 → 같은 해시.
 """
@@ -137,7 +138,9 @@ def test_m13_collector_reuses_screenshot_row_for_same_screen_and_detects_real_ch
             assert [d.content_type for d in docs][1:] == ["image/png"]
             hashes.append(c.outcomes[0].image_hash)
             with Session(db_engine) as s:
-                png_counts.append(len(list(s.scalars(select(RawDocument).where(RawDocument.content_type == "image/png")))))
+                png_counts.append(
+                    len(list(s.scalars(select(RawDocument).where(RawDocument.content_type == "image/png"))))
+                )
     assert hashes[0] == hashes[1] == hashes[2]  # 가짜 팝업 변경 없음
     assert png_counts[:3] == [1, 1, 1]  # 같은 화면 → 스크린샷 행 재사용(raw_document 증가 0)
     assert hashes[3] != hashes[2] and png_counts[3] == 2  # 글자 변경

@@ -1,4 +1,5 @@
-"""R3 수정 F1b — core: minor 10(canonical JSON) · minor 12(redact 보강) · minor 17(http 내부망 차단·리다이렉트)."""
+"""R3 수정 F1b — core: minor 10(canonical JSON) · minor 12(redact 보강) ·
+minor 17(http 내부망 차단·리다이렉트)."""
 
 from __future__ import annotations
 
@@ -98,7 +99,10 @@ def test_minor12_integers() -> None:
 
 def test_minor12_news_secret_part_alone_and_decoded_key() -> None:
     news = "myClientId123:mySecretValue456"
-    assert redact_text("X-NCP-APIGW-API-KEY: mySecretValue456", [news]) == "X-NCP-APIGW-API-KEY: [REDACTED:secret]"
+    assert (
+        redact_text("X-NCP-APIGW-API-KEY: mySecretValue456", [news])
+        == "X-NCP-APIGW-API-KEY: [REDACTED:secret]"
+    )
     encoded = "AbC%2BdEf%2F123%3D%3D"  # 포털이 주는 인코딩 키를 그대로 .env 에 넣은 경우
     assert "AbC+dEf/123==" not in redact_text("serviceKey AbC+dEf/123== 사용", [encoded])
 

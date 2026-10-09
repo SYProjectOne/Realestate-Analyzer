@@ -313,7 +313,8 @@ def value_from_norm(field: str, norm: str | None) -> float | int | str | bool | 
 
 OCR_LABEL: Final = "추정"
 OCR_REASON: Final = "OCR"
-"""OCR 로 읽은 공고문(raw.error_text 'ocr'·'ocr_partial:<p>') 값: label '추정', reason 'OCR' = 표시 '추정(OCR)'
+"""OCR 로 읽은 공고문(raw.error_text 'ocr'·'ocr_partial:<p>') 값: label '추정', reason 'OCR'
+= 표시 '추정(OCR)'
 (DECISIONS D5-4). 수치 필드는 needs_extract=True — 판정기 extract/audit 를 반드시 거친다."""
 EXTRACT_REASON: Final = "판정기 추출"
 AUDIT_FLAG_REASON: Final = "판정기 감사 flagged"

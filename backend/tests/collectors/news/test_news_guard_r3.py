@@ -1,4 +1,6 @@
-"""R3 M10: 뉴스 질의어도 guard(판정기 payload 와 같은 공용 필터)를 통과해야 보낸다 — 거부 시 요청 없음 + 실패 행."""
+"""R3 M10: 뉴스 질의어도 guard(판정기 payload 와 같은 공용 필터)를 통과해야 보낸다.
+
+거부 시 요청 없음 + 실패 행."""
 
 from __future__ import annotations
 

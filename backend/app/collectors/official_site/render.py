@@ -53,7 +53,9 @@ _FREEZE_JS = """
 () => {
   try { document.getAnimations().forEach((a) => { try { a.pause(); a.currentTime = 0; } catch (e) {} }); }
   catch (e) {}
-  document.querySelectorAll('video, audio').forEach((m) => { try { m.pause(); m.currentTime = 0; } catch (e) {} });
+  document.querySelectorAll('video, audio').forEach((m) => {
+    try { m.pause(); m.currentTime = 0; } catch (e) {}
+  });
   return true;
 }
 """
@@ -95,6 +97,7 @@ def dhash(png: bytes, size: int = 8) -> str | None:
 
 def hamming(a: str, b: str) -> int:
     return (int(a, 16) ^ int(b, 16)).bit_count()
+
 
 _POPUP_JS = """
 () => {
@@ -167,10 +170,8 @@ class RenderResult:
 def popup_signature(p: PopupShot) -> str:
     """팝업 1개의 안정 서명(모듈 설명 2). 글자·이미지가 있으면 픽셀을 보지 않는다."""
     images = ",".join(sorted(p.images))
-    if p.text or images:
-        content = f"text:{p.text}|img:{images}"
-    else:  # 글자도 이미지 주소도 없는 그림 팝업 — 그림 자체(dHash, 없으면 바이트 해시)
-        content = f"pix:{p.dhash or p.sha256}"
+    # 글자도 이미지 주소도 없는 그림 팝업은 그림 자체(dHash, 없으면 바이트 해시)
+    content = f"text:{p.text}|img:{images}" if p.text or images else f"pix:{p.dhash or p.sha256}"
     return hashlib.sha256(f"{content}|{p.width}x{p.height}".encode()).hexdigest()
 
 

@@ -16,7 +16,6 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
-
 from urllib.parse import urlsplit
 
 from app.core.redact import find_sensitive, sensitive_int_kind
