@@ -110,7 +110,7 @@ def test_contract_version(bundled: dict[str, Any], source_openapi: dict[str, Any
     changelog = (OPENAPI_SRC.parent / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)", changelog, re.M)
     assert top is not None
-    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.2"
+    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.3"
     assert source_openapi["info"]["version"] == CONTRACT_VERSION
     assert bundled["info"]["version"] == CONTRACT_VERSION
 
@@ -155,8 +155,10 @@ def test_operations_declare_error_responses(bundled: dict[str, Any]) -> None:
             media = (_resolve_response(bundled, op["responses"][code]).get("content") or {}).get(
                 "application/json"
             )
-            if media is None or media["schema"] != {"$ref": "#/components/schemas/Error"}:
-                problems.append(f"{method} {path} {code}: Error 스키마")
+            # 헬스체크 503 = 같은 Health 본문
+            want = "Health" if (path, code) == ("/health", "503") else "Error"
+            if media is None or media["schema"] != {"$ref": f"#/components/schemas/{want}"}:
+                problems.append(f"{method} {path} {code}: {want} 스키마")
     assert problems == []
 
 

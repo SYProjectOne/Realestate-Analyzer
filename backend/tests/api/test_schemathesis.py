@@ -55,31 +55,25 @@ def st_app(seeded_db: Seeded, tmp_path_factory: pytest.TempPathFactory) -> Itera
 BASE_URL = "http://testserver/api"
 MAX_EXAMPLES = int(os.environ.get("ST_MAX_EXAMPLES", "30"))  # 깊게 돌릴 때 ST_MAX_EXAMPLES=300
 
-# 계약 공백(보고서 '계약 변경 요청'): 아래 GET 목록 operation 은 조회 파라미터가 있지만 422·404 를 문서화하지
-# 않았다. 잘못된 파라미터에 API 는 422 validation_error 로 답하고(올바른 동작),
-# 이 경우에만 상태 코드 문서 검사를 뺀다.
-UNDOCUMENTED_422 = {"listJobs", "getJudgmentOps", "listChecklist", "listSourceStatus", "listReports"}
 # 계약 설명이 '스키마는 맞지만 의미가 틀린 본문 → 422'를 명시한 operation
 # (가중치 합≠1, 생활권 누락·중복, 참조에 없는
 # 지역 코드). schemathesis positive_data_acceptance 는 스키마만 보므로 이 operation 에서는 뺀다.
 SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion"}
 
 
-# /health 는 WP0(app.main) 소관이고 응답이 계약 Health 와 다르다 → test_health_contract(xfail)로 따로 둔다.
+# /health 는 servers 가 루트('/')라 이 테스트(base_url /api)에서 빼고 test_health_contract 로 본다.
 # POST /jobs 의 JobCreate(job_name 별 if/then payload)는 schemathesis 가 생성하지 못한다(UnsupportedSchema)
 # → test_contract_create_job 이 계약 예시 + job_name 7종 본문으로 같은 검사를 돌린다.
 @schema.exclude(path="/health").exclude(operation_id="createJob").parametrize()
 @settings(max_examples=MAX_EXAMPLES, deadline=None, suppress_health_check=list(HealthCheck))
 def test_contract(case: Any, st_app: Any) -> None:
-    from schemathesis.checks import positive_data_acceptance, status_code_conformance
+    from schemathesis.checks import positive_data_acceptance
 
     case.operation.app = st_app
     case.operation.schema.app = st_app  # 재전송 검사(ignored_auth 등)도 같은 ASGI 앱으로
     response = case.call(base_url=BASE_URL)
     op_id = case.operation.definition.raw.get("operationId")
     excluded = []
-    if response.status_code == 422 and op_id in UNDOCUMENTED_422:
-        excluded.append(status_code_conformance)
     if op_id in SEMANTIC_422 and response.status_code == 422:
         excluded.append(positive_data_acceptance)
     case.validate_response(response, excluded_checks=excluded, transport_kwargs={"base_url": BASE_URL})
@@ -129,13 +123,21 @@ def test_all_operations_covered() -> None:
     assert not missing, missing
 
 
-@pytest.mark.xfail(
-    strict=True, reason="WP0 app.main /health 응답 {status, version, env, db} ≠ 계약 Health — 계약 변경 요청"
-)
 def test_health_contract(st_app: Any) -> None:
+    """GET /health(루트·/api 둘 다) = 계약 Health(2026-10-09.3)."""
     from fastapi.testclient import TestClient
 
     from ._support import validate
 
     with TestClient(st_app) as client:
-        validate("getHealth", 200, client.get("/health").json())
+        for path in ("/health", "/api/health"):
+            r = client.get(path)
+            assert r.status_code == 200
+            validate("getHealth", 200, r.json())
+
+
+def test_operations_document_422_for_query_params() -> None:
+    """계약 2026-10-09.3: 조회 파라미터가 있는 목록 GET 5개는 422 를 문서화한다."""
+    ops = {o.definition.raw.get("operationId"): o for o in (r.ok() for r in schema.get_all_operations())}
+    for op_id in ("listJobs", "getJudgmentOps", "listChecklist", "listSourceStatus", "listReports"):
+        assert "422" in ops[op_id].definition.raw["responses"], op_id

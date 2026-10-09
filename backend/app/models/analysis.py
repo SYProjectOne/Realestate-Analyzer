@@ -108,6 +108,8 @@ class ScoreTotal(Base):
     rank: Mapped[int | None] = mapped_column(Integer)
     tie_group: Mapped[int | None] = mapped_column(Integer)
     unstable: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # 0003 (계약 2026-10-09.3): 이 실행이 쓴 판정 범위(enums.JUDGE_SCOPE). 옛 행은 NULL
+    judge_scope: Mapped[str | None] = mapped_column(String(8))
 
 
 class Ladder(Base):

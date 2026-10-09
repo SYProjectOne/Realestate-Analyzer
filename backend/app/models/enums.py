@@ -1,4 +1,4 @@
-"""열거 값 (계약 2026-10-09.2). DB는 문자열 + CheckConstraint로 강제한다(RA §3).
+"""열거 값 (계약 2026-10-09.3). DB는 문자열 + CheckConstraint로 강제한다(RA §3).
 
 값은 contracts/schemas/*.json 의 enum과 같다. contracts/migrations/versions/0001_init.py 는 자립해야 하므로
 같은 값을 리터럴로 다시 적는다 — 둘이 다르면 tests/contracts/test_models.py 가 실패한다.
@@ -52,6 +52,7 @@ COMPONENT = ("p10", "rerank", "gap", "benchmark", "supply", "liquidity", "move_i
 HORIZON = ("move_in_plus_1y", "asof_plus_3y", "asof_plus_5y")
 OPTION_KEY = ("complex", "wait_new", "ask_user", "investigate", "none")
 REQ_JUDGE = ("supported", "contradicted", "unknown")
+JUDGE_SCOPE = ("판정 대상", "보류", "참고", "제외")  # score_total.judge_scope (0003, CHECK 없음)
 HUMAN_CHECK_KIND = ("phone", "visit", "email")
 CHECKLIST_KIND = ("법적 확인", "중도금", "만료", "공고 예상")
 CHECKLIST_STATUS = ("open", "done", "na")

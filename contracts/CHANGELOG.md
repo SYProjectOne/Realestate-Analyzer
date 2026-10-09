@@ -2,6 +2,32 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.3
+
+R2 WP5·WP7 요청(`docs/design/wp/CONTRACT_CHANGES_R1.md` "R2 WP5·WP7 요청"·"R2 (WP0 처리 대기)") 반영. 마이그레이션 `0003_r2`
+(컬럼 추가만, 모두 NULL 허용 — 0002 DB 는 `alembic upgrade head` 한 번). 필드 삭제·의미 변경 없음.
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 WP |
+| --- | --- | --- | --- | --- |
+| 1 | WP5-1 | `schemas/health.json`, `openapi.yaml` getHealth, `app/main.py` | `/health` 응답 = 계약 `Health{status, contract_version, app_version, db, judge, time}`. judge = 지역마다 최신 스냅샷의 degraded(하나라도 → degraded, 모두 정상 → ok, 스냅샷 없음·DB 장애 → unknown). DB 장애면 **503 + 같은 Health 본문**(문서화, 예시 `health_db_down.json`) — 판정기 장애만이면 200 | WP5, WP6(전역 배너) |
+| 2 | WP5-2 | `openapi.yaml` | listJobs·getJudgmentOps·listChecklist·listSourceStatus·listReports 에 422(ValidationError) | WP5, WP6 |
+| 3 | WP5-3 | `judgment_log.result_json`(JSON) | 정규화 결과(봉투 result)를 저장한다(WP3 `log.record`). `output_json._result` 관례 폐지 — 읽는 쪽은 `result_json`, NULL(옛 행)이면 `output_json` 을 다시 정규화 | WP3(씀), WP5·WP8(읽음), devseed |
+| 4 | WP5-4 | `score_total.judge_scope`(String(8), 값 = score_row `JudgeScope`) | 점수 실행이 쓴 판정 범위를 저장(WP7). API 의 사다리 기반 추정 제거 — 행이 없을 때만(제외·옛 행) 규칙(제외/보류/판정 대상)으로 채운다 | WP7(씀), WP5(읽음) |
+| 5 | WP5-5 | WP7 `scheduler.payloads.scenario_payloads` | 시나리오 → 판정 payload(tool, purpose, payload) 목록 빌더 공개. 미리보기 `cache_hits`/`cache_misses` = 같은 input_hash 의 최종 judgment_log 행 존재 여부 | WP5, WP7 |
+| 6 | WP7 | WP3 `judge.payloads.classify_intake_payload`·`pipeline.p4_classify_intake` | 접수 상태 classify(공식 홈페이지 DOM 텍스트·팝업 문구 → 가능/미정/불가/확인 불가, 배치). review·manual_review = '확인 불가(판정 미해결)'. WP7 파이프라인이 수집 후 '접수 문구 미분류' 행(official_popup·headless_shot)을 분류해 갱신 | WP3, WP7, WP4(요건 사전 계산이 쓰는 값) |
+| 7 | WP7 | WP2 `normalize.judged.apply_extracted`·`apply_compare` | needs_extract 추출값 → 사실 테이블·출처 행(라벨: extract auto + audit 통과 = 확인됨, audit 전·미해결 = 추정(판정기 추출), extract review = 미반영, audit flagged = 미반영·'확인 불가(판정기 감사 flagged)'). compare contradicts → 1차 공고 자료(공고문·청약홈) 채택·나머지 병기(conflict_group 유지) | WP2, WP7 |
+| 8 | WP7 제안 | WP3 `classify_inclusion_payload(items=…)` | 포함/제외 classify 배치화: 지역 단지(범위 경계 제외) 64개씩 1회(계약 2026-10-09.2 ClassifyResult.items[]) | WP3, WP7 |
+| 9 | R2 WP8 | `infra/Dockerfile.worker`, Settings `REPORT_ECHARTS_JS` | worker 이미지에 echarts 6.1.0 `echarts.min.js` 포함, 경로는 Settings(`report_echarts_js`)로 | WP8, WP0 |
+| 10 | R2 WP8·WP7 | WP3 `judge.claims.remaining_contradicted` | "남은 contradicted" = 분할 자식(parent_claim_id 로 가리키는 행) 없는 contradicted. 보고서 생성 거부(WP8)와 publish 검사(WP7)가 같은 함수 | WP7, WP8 |
+
+### 마이그레이션·검증
+
+- `0003_r2`: `judgment_log.result_json` JSON, `score_total.judge_scope` String(8). head → 0002 → head 왕복(행 유지, 값 NULL)을
+  SQLite·Postgres 16(pgserver) 둘 다 테스트. autogenerate diff 0.
+- 열거 `enums.JUDGE_SCOPE`(CHECK 없음 — SQLite ADD/DROP COLUMN 호환) = `score_row.json#/$defs/JudgeScope`.
+
 ## 2026-10-09.2
 
 R1 계약 변경 요청 일괄 반영(`docs/design/wp/CONTRACT_CHANGES_R1.md` 승인 목록 전부 + CEO 추가 승인 4건). 마이그레이션 `0002_r1`
