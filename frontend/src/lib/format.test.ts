@@ -87,13 +87,20 @@ describe('날짜 D±', () => {
 });
 
 describe('formatFactValue', () => {
-  const fact = (v: number | string | null): Fact => ({ v, label: '추정', prov: 'fp_1', checked_at: '2026-10-08' });
+  const fact = (v: number | string | null): Fact => ({
+    v,
+    label: '추정',
+    prov: 'fp_1',
+    checked_at: '2026-10-08',
+  });
 
   it('단위별로 디스패치한다', () => {
     expect(formatFactValue(fact(749_000_000), 'won')).toBe('7억 4,900만원');
     expect(formatFactValue(fact(0.48), 'prob')).toBe('48%');
     expect(formatFactValue(fact(84.97), 'm2')).toBe('84.97㎡');
-    expect(formatFactValue(fact('2026-10-11'), 'date', { asof: '2026-10-08' })).toBe('2026-10-11 (D-3)');
+    expect(formatFactValue(fact('2026-10-11'), 'date', { asof: '2026-10-08' })).toBe(
+      '2026-10-11 (D-3)',
+    );
     expect(formatFactValue(fact('원문 그대로'), 'text')).toBe('원문 그대로');
   });
 

@@ -46,7 +46,9 @@ describe('FactCell', () => {
   });
 
   it('날짜는 기준일 대비 D±를 함께 보여 준다', () => {
-    render(<FactCell fact={fact({ v: '2026-10-11', label: '확인됨' })} unit="date" asof="2026-10-08" />);
+    render(
+      <FactCell fact={fact({ v: '2026-10-11', label: '확인됨' })} unit="date" asof="2026-10-08" />,
+    );
     expect(screen.getByText('2026-10-11 (D-3)')).toBeInTheDocument();
   });
 

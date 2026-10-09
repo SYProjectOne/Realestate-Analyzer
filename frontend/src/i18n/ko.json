@@ -167,6 +167,7 @@
       "trade": "최근 실거래",
       "peak": "고점",
       "presale": "분양권",
+      "annualized": "연율 {pct}",
       "empty": "벤치마크 없음"
     },
     "C04": {
@@ -230,6 +231,38 @@
       "baseline": "기준",
       "empty": "민감도 없음"
     },
-    "notRendered": "차트 준비 중"
+    "notRendered": "차트 준비 중",
+    "col": {
+      "name": "이름",
+      "kind": "구분",
+      "year": "연도",
+      "month": "월",
+      "low": "하단",
+      "median": "중앙값",
+      "high": "상단",
+      "adjusted": "보정 중앙값",
+      "units": "세대",
+      "livingArea": "생활권",
+      "total": "종합",
+      "prob": "확률",
+      "flags": "표시",
+      "noticeNo": "공고 번호",
+      "noticeDate": "공고일",
+      "ratio": "경쟁률",
+      "stage": "단계",
+      "expected": "예정",
+      "location": "위치 확정",
+      "horizon": "시점",
+      "target": "목표 시점",
+      "saleYear": "분양 연도",
+      "salePrice": "분양가(84㎡)",
+      "peak": "고점",
+      "variant": "변형",
+      "changed": "변동",
+      "top5": "TOP 5"
+    },
+    "yes": "예",
+    "no": "아니오",
+    "chosen": "선택"
   }
 }

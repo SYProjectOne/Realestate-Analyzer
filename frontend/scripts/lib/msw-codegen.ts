@@ -37,7 +37,8 @@ export function resolveRef(doc: Obj, node: unknown, depth = 0): unknown {
   if (depth > 32) throw new Error('$ref 깊이 초과(순환?)');
   if (!isObj(node) || typeof node.$ref !== 'string') return node;
   const ref = node.$ref;
-  if (!ref.startsWith('#/')) throw new Error(`외부 $ref는 지원하지 않는다(번들 파일을 쓸 것): ${ref}`);
+  if (!ref.startsWith('#/'))
+    throw new Error(`외부 $ref는 지원하지 않는다(번들 파일을 쓸 것): ${ref}`);
   let target: unknown = doc;
   for (const raw of ref.slice(2).split('/')) {
     const key = raw.replace(/~1/g, '/').replace(/~0/g, '~');
@@ -54,7 +55,8 @@ function deepResolve(doc: Obj, node: unknown, depth = 0): Json {
   if (Array.isArray(resolved)) return resolved.map((item) => deepResolve(doc, item, depth + 1));
   if (isObj(resolved)) {
     const out: { [key: string]: Json } = {};
-    for (const [key, value] of Object.entries(resolved)) out[key] = deepResolve(doc, value, depth + 1);
+    for (const [key, value] of Object.entries(resolved))
+      out[key] = deepResolve(doc, value, depth + 1);
     return out;
   }
   if (resolved instanceof Date) return resolved.toISOString();
@@ -66,10 +68,12 @@ function pickExample(doc: Obj, media: Obj): { found: true; value: Json } | { fou
   if (isObj(media.examples)) {
     const first = Object.values(media.examples)[0];
     const example = resolveRef(doc, first);
-    if (isObj(example) && 'value' in example) return { found: true, value: deepResolve(doc, example.value) };
+    if (isObj(example) && 'value' in example)
+      return { found: true, value: deepResolve(doc, example.value) };
   }
   const schema = resolveRef(doc, media.schema);
-  if (isObj(schema) && 'example' in schema) return { found: true, value: deepResolve(doc, schema.example) };
+  if (isObj(schema) && 'example' in schema)
+    return { found: true, value: deepResolve(doc, schema.example) };
   return { found: false };
 }
 
@@ -143,7 +147,8 @@ export function generateMswHandlers(doc: Obj, sourceDisplay: string): CodegenRes
           `  http.${method}(mswPath(${JSON.stringify(mswPath)}), () =>\n    HttpResponse.json(${body}, { status: ${status} }),\n  ),`,
         );
       } else {
-        const text = typeof example.value === 'string' ? example.value : JSON.stringify(example.value);
+        const text =
+          typeof example.value === 'string' ? example.value : JSON.stringify(example.value);
         handlerLines.push(
           `  http.${method}(mswPath(${JSON.stringify(mswPath)}), () =>\n    new HttpResponse(${JSON.stringify(text)}, { status: ${status}, headers: { 'Content-Type': ${JSON.stringify(contentType)} } }),\n  ),`,
         );
@@ -153,7 +158,10 @@ export function generateMswHandlers(doc: Obj, sourceDisplay: string): CodegenRes
   }
 
   const skippedComment = skipped.length
-    ? ['// 건너뜀(예시 없음 → handlers.extra.ts에서 보강):', ...skipped.map((s) => `//   ${s.method.toUpperCase()} ${s.path} — ${s.reason}`)]
+    ? [
+        '// 건너뜀(예시 없음 → handlers.extra.ts에서 보강):',
+        ...skipped.map((s) => `//   ${s.method.toUpperCase()} ${s.path} — ${s.reason}`),
+      ]
     : ['// 건너뜀: 없음'];
 
   const code = [
@@ -169,7 +177,12 @@ export function generateMswHandlers(doc: Obj, sourceDisplay: string): CodegenRes
     '];',
     '',
     `export const generatedOperations = ${JSON.stringify(
-      operations.map(({ method, path, operationId, status }) => ({ method, path, operationId, status })),
+      operations.map(({ method, path, operationId, status }) => ({
+        method,
+        path,
+        operationId,
+        status,
+      })),
       null,
       2,
     )} as const;`,

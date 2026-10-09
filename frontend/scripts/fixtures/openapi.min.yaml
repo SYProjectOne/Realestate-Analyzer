@@ -114,8 +114,20 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Snapshot' }
               example:
-                - { id: ss_20261008, region_id: rg_1, asof_date: '2026-10-08', status: published, created_at: '2026-10-08T07:10:00+09:00' }
-                - { id: ss_20261007, region_id: rg_1, asof_date: '2026-10-07', status: published, created_at: '2026-10-07T07:05:00+09:00' }
+                - {
+                    id: ss_20261008,
+                    region_id: rg_1,
+                    asof_date: '2026-10-08',
+                    status: published,
+                    created_at: '2026-10-08T07:10:00+09:00',
+                  }
+                - {
+                    id: ss_20261007,
+                    region_id: rg_1,
+                    asof_date: '2026-10-07',
+                    status: published,
+                    created_at: '2026-10-07T07:05:00+09:00',
+                  }
   /snapshots/{sid}/dashboard:
     get:
       operationId: getDashboard
@@ -132,13 +144,17 @@ paths:
                 snapshot_id: ss_20261008
                 asof_date: '2026-10-08'
                 scenario_id: sc_default
-                weights: { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }
+                weights:
+                  { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }
                 kpis:
                   judged_count: { v: 16, label: 확인됨, prov: fp_kpi_1, checked_at: '2026-10-08' }
-                  intake_open_count: { v: 5, label: 확인됨, prov: fp_kpi_2, checked_at: '2026-10-08' }
+                  intake_open_count:
+                    { v: 5, label: 확인됨, prov: fp_kpi_2, checked_at: '2026-10-08' }
                   unsold_total: { v: 1873, label: 재가공, prov: fp_kpi_3, checked_at: '2026-09-30' }
-                  move_in_peak_year: { v: 2028, label: 추정, prov: fp_kpi_4, checked_at: '2026-10-08' }
-                  data_freshness: { v: '2026-10-08', label: 확인됨, prov: fp_kpi_5, checked_at: '2026-10-08' }
+                  move_in_peak_year:
+                    { v: 2028, label: 추정, prov: fp_kpi_4, checked_at: '2026-10-08' }
+                  data_freshness:
+                    { v: '2026-10-08', label: 확인됨, prov: fp_kpi_5, checked_at: '2026-10-08' }
                 top5:
                   - complex_id: cx_1
                     name: 송도 예시 단지
@@ -154,7 +170,14 @@ paths:
                       benchmark: { v: 7.0, label: 추정, prov: fp_c4, checked_at: '2026-10-08' }
                       supply: { v: 6.5, label: 추정, prov: fp_c5, checked_at: '2026-10-08' }
                       liquidity: { v: 8.0, label: 추정, prov: fp_c6, checked_at: '2026-10-08' }
-                    intake: { status: 가능, path: official_popup, evidence_url: 'https://example.invalid/popup', checked_at: '2026-10-08T06:10:00+09:00', http_status: 200 }
+                    intake:
+                      {
+                        status: 가능,
+                        path: official_popup,
+                        evidence_url: 'https://example.invalid/popup',
+                        checked_at: '2026-10-08T06:10:00+09:00',
+                        http_status: 200,
+                      }
                     decision: { prob: 0.41, chosen: true, tie: false, mismatch: false }
                 changes:
                   - id: ce_1
@@ -214,11 +237,86 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Scenario' }
               example:
-                - { id: sc_default, name: 기본, is_builtin: true, params: {}, weights: { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }, requirements: {} }
-                - { id: sc_A, name: A, is_builtin: true, params: {}, weights: { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }, requirements: {} }
-                - { id: sc_B, name: B, is_builtin: true, params: {}, weights: { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }, requirements: {} }
-                - { id: sc_C, name: C, is_builtin: true, params: {}, weights: { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }, requirements: {} }
-                - { id: sc_D, name: D, is_builtin: true, params: {}, weights: { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }, requirements: {} }
+                - {
+                    id: sc_default,
+                    name: 기본,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_A,
+                    name: A,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_B,
+                    name: B,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_C,
+                    name: C,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_D,
+                    name: D,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
   /jobs/{id}:
     get:
       operationId: getJob
@@ -309,7 +407,8 @@ components:
       type: object
       required: [code, detail]
       properties:
-        code: { type: string, enum: [intake_unknown, judge_unavailable, contract_violation, not_found] }
+        code:
+          { type: string, enum: [intake_unknown, judge_unavailable, contract_violation, not_found] }
         detail: { type: string }
     Health:
       type: object
@@ -344,7 +443,8 @@ components:
           oneOf: [{ $ref: '#/components/schemas/Fact' }, { type: 'null' }]
     Region:
       type: object
-      required: [id, name, query_text, selections, living_areas, status, latest_snapshot_id, created_at]
+      required:
+        [id, name, query_text, selections, living_areas, status, latest_snapshot_id, created_at]
       properties:
         id: { type: string }
         name: { type: string }
@@ -401,7 +501,19 @@ components:
             mismatch: { type: boolean }
     ChangeEvent:
       type: object
-      required: [id, snapshot_id, entity, entity_id, field, old_text, new_text, detected_at, severity, triggers_rejudge]
+      required:
+        [
+          id,
+          snapshot_id,
+          entity,
+          entity_id,
+          field,
+          old_text,
+          new_text,
+          detected_at,
+          severity,
+          triggers_rejudge,
+        ]
       properties:
         id: { type: string }
         snapshot_id: { type: string }

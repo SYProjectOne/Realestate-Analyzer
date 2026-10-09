@@ -58,12 +58,14 @@ export const queryKeys = {
   regionResolve: (q: string) => ['regions', 'resolve', q] as const,
   snapshots: (regionId: Id) => ['regions', regionId, 'snapshots'] as const,
   dashboard: (sid: Id, scenario: Id | null) => ['snapshots', sid, 'dashboard', scenario] as const,
-  complexes: (sid: Id, params: ComplexListParams) => ['snapshots', sid, 'complexes', params] as const,
+  complexes: (sid: Id, params: ComplexListParams) =>
+    ['snapshots', sid, 'complexes', params] as const,
   complex: (id: Id, snapshot: Id | null) => ['complexes', id, snapshot] as const,
   provenance: (provId: string) => ['provenance', provId] as const,
   compare: (sid: Id, ids: readonly Id[], scenario: Id | null) =>
     ['snapshots', sid, 'compare', [...ids], scenario] as const,
-  sensitivity: (sid: Id, scenario: Id | null) => ['snapshots', sid, 'sensitivity', scenario] as const,
+  sensitivity: (sid: Id, scenario: Id | null) =>
+    ['snapshots', sid, 'sensitivity', scenario] as const,
   scenarios: () => ['scenarios'] as const,
   scenarioPreview: (id: Id, snapshot: Id | null) => ['scenarios', id, 'preview', snapshot] as const,
   job: (id: Id) => ['jobs', id] as const,
@@ -78,7 +80,10 @@ export const queryKeys = {
 
 /** GET /health */
 export function useHealth(): Q<Health> {
-  return useQuery({ queryKey: queryKeys.health(), queryFn: ({ signal }) => apiFetch<Health>('/health', { signal }) });
+  return useQuery({
+    queryKey: queryKeys.health(),
+    queryFn: ({ signal }) => apiFetch<Health>('/health', { signal }),
+  });
 }
 
 // ─── 지역 (D2-3) ───────────────────────────────────────────
@@ -135,7 +140,8 @@ export function useUpdateLivingAreas(regionId: Id): M<LivingAreasUpdateRequest, 
 export function useSnapshots(regionId: Id | null | undefined): Q<Snapshot[]> {
   return useQuery({
     queryKey: queryKeys.snapshots(regionId ?? ''),
-    queryFn: ({ signal }) => apiFetch<Snapshot[]>(`/regions/${enc(regionId ?? '')}/snapshots`, { signal }),
+    queryFn: ({ signal }) =>
+      apiFetch<Snapshot[]>(`/regions/${enc(regionId ?? '')}/snapshots`, { signal }),
     enabled: !!regionId,
   });
 }
@@ -147,14 +153,20 @@ export function useDashboard(sid: Id | null | undefined, scenario: Id | null): Q
   return useQuery({
     queryKey: queryKeys.dashboard(sid ?? '', scenario),
     queryFn: ({ signal }) =>
-      apiFetch<Dashboard>(`/snapshots/${enc(sid ?? '')}/dashboard`, { query: { scenario }, signal }),
+      apiFetch<Dashboard>(`/snapshots/${enc(sid ?? '')}/dashboard`, {
+        query: { scenario },
+        signal,
+      }),
     enabled: !!sid,
     placeholderData: keepPreviousData,
   });
 }
 
 /** GET /snapshots/{sid}/complexes — G2 표 */
-export function useComplexes(sid: Id | null | undefined, params: ComplexListParams = {}): Q<Page<ComplexRow>> {
+export function useComplexes(
+  sid: Id | null | undefined,
+  params: ComplexListParams = {},
+): Q<Page<ComplexRow>> {
   return useQuery({
     queryKey: queryKeys.complexes(sid ?? '', params),
     queryFn: ({ signal }) =>
@@ -198,11 +210,18 @@ export function rawDocumentUrl(rawDocumentId: Id): string {
 }
 
 /** GET /snapshots/{sid}/compare?ids=&scenario= — G4 (ids 2~6개일 때만 호출) */
-export function useCompare(sid: Id | null | undefined, ids: readonly Id[], scenario: Id | null): Q<CompareView> {
+export function useCompare(
+  sid: Id | null | undefined,
+  ids: readonly Id[],
+  scenario: Id | null,
+): Q<CompareView> {
   return useQuery({
     queryKey: queryKeys.compare(sid ?? '', ids, scenario),
     queryFn: ({ signal }) =>
-      apiFetch<CompareView>(`/snapshots/${enc(sid ?? '')}/compare`, { query: { ids, scenario }, signal }),
+      apiFetch<CompareView>(`/snapshots/${enc(sid ?? '')}/compare`, {
+        query: { ids, scenario },
+        signal,
+      }),
     enabled: !!sid && ids.length >= 2 && ids.length <= 6,
   });
 }
@@ -212,7 +231,10 @@ export function useSensitivity(sid: Id | null | undefined, scenario: Id | null):
   return useQuery({
     queryKey: queryKeys.sensitivity(sid ?? '', scenario),
     queryFn: ({ signal }) =>
-      apiFetch<Sensitivity>(`/snapshots/${enc(sid ?? '')}/sensitivity`, { query: { scenario }, signal }),
+      apiFetch<Sensitivity>(`/snapshots/${enc(sid ?? '')}/sensitivity`, {
+        query: { scenario },
+        signal,
+      }),
     enabled: !!sid,
   });
 }
@@ -227,7 +249,10 @@ export function useMarket(sid: Id | null | undefined): Q<Market> {
 }
 
 /** GET /snapshots/{sid}/changes?since= — G1 피드, G8 */
-export function useChanges(sid: Id | null | undefined, since: string | null = null): Q<ChangeEvent[]> {
+export function useChanges(
+  sid: Id | null | undefined,
+  since: string | null = null,
+): Q<ChangeEvent[]> {
   return useQuery({
     queryKey: queryKeys.changes(sid ?? '', since),
     queryFn: ({ signal }) =>
@@ -257,11 +282,17 @@ export function useCreateScenario(): M<ScenarioCreateRequest, Scenario> {
 }
 
 /** GET /scenarios/{id}/preview?snapshot= — G5 (판정기 호출 없음) */
-export function useScenarioPreview(id: Id | null | undefined, snapshot: Id | null): Q<ScenarioPreview> {
+export function useScenarioPreview(
+  id: Id | null | undefined,
+  snapshot: Id | null,
+): Q<ScenarioPreview> {
   return useQuery({
     queryKey: queryKeys.scenarioPreview(id ?? '', snapshot),
     queryFn: ({ signal }) =>
-      apiFetch<ScenarioPreview>(`/scenarios/${enc(id ?? '')}/preview`, { query: { snapshot }, signal }),
+      apiFetch<ScenarioPreview>(`/scenarios/${enc(id ?? '')}/preview`, {
+        query: { snapshot },
+        signal,
+      }),
     enabled: !!id,
   });
 }
@@ -304,7 +335,8 @@ export function useOpsSources(): Q<SourceStatus[]> {
 export function useOpsJudgments(since: string | null = null): Q<JudgmentStats> {
   return useQuery({
     queryKey: queryKeys.opsJudgments(since),
-    queryFn: ({ signal }) => apiFetch<JudgmentStats>('/ops/judgments', { query: { since }, signal }),
+    queryFn: ({ signal }) =>
+      apiFetch<JudgmentStats>('/ops/judgments', { query: { since }, signal }),
   });
 }
 

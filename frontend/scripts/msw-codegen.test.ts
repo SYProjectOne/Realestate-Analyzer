@@ -1,8 +1,9 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { compareRoutes, generateMswHandlers, toMswPath } from './lib/msw-codegen';
-import { FIXTURE_OPENAPI, resolveOpenapiSource } from './lib/openapi-source';
+import { CONTRACT_CANDIDATES, FIXTURE_OPENAPI, resolveOpenapiSource } from './lib/openapi-source';
 
 describe('msw-codegen', () => {
   it('경로 파라미터를 MSW 형식으로 바꾼다', () => {
@@ -17,18 +18,24 @@ describe('msw-codegen', () => {
   it('example · examples($ref) · schema.example에서 예시를 꺼내고 없는 건 건너뛴다', () => {
     const doc = {
       paths: {
-        '/a': { get: { responses: { '200': { content: { 'application/json': { example: { x: 1 } } } } } } },
+        '/a': {
+          get: { responses: { '200': { content: { 'application/json': { example: { x: 1 } } } } } },
+        },
         '/b/{id}': {
           get: {
             responses: {
               '200': {
-                content: { 'application/json': { examples: { one: { $ref: '#/components/examples/B' } } } },
+                content: {
+                  'application/json': { examples: { one: { $ref: '#/components/examples/B' } } },
+                },
               },
             },
           },
         },
         '/c': { post: { responses: { '201': { $ref: '#/components/responses/C' } } } },
-        '/d': { get: { responses: { '200': { content: { 'application/json': { schema: {} } } } } } },
+        '/d': {
+          get: { responses: { '200': { content: { 'application/json': { schema: {} } } } } },
+        },
         '/e': { delete: { responses: { '204': { description: 'gone' } } } },
       },
       components: {
@@ -45,10 +52,21 @@ describe('msw-codegen', () => {
       'post /c 201',
       'delete /e 204',
     ]);
-    expect(result.skipped).toEqual([{ method: 'get', path: '/d', reason: '예시 없음 (application/json)' }]);
+    expect(result.skipped).toEqual([
+      { method: 'get', path: '/d', reason: '예시 없음 (application/json)' },
+    ]);
     expect(result.code).toContain('"y": "b"');
-    expect(result.code).toContain("mswPath(\"/b/:id\")");
+    expect(result.code).toContain('mswPath("/b/:id")');
     expect(result.code).toContain('AUTO-GENERATED');
+  });
+
+  it('source=contract: 번들 → openapi.yaml 순으로 찾고, 없으면 분명한 오류', () => {
+    const existing = CONTRACT_CANDIDATES.find((c) => existsSync(c));
+    if (existing) {
+      expect(resolveOpenapiSource('contract').path).toBe(existing);
+    } else {
+      expect(() => resolveOpenapiSource('contract')).toThrow(/계약 파일이 없다/);
+    }
   });
 
   it('임시 최소 openapi(fixture)에서 핸들러를 만든다', () => {

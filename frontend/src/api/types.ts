@@ -57,15 +57,7 @@ export interface Intake {
 }
 
 export type JudgeTool =
-  | 'screen'
-  | 'extract'
-  | 'audit'
-  | 'classify'
-  | 'compare'
-  | 'noul'
-  | 'rerank'
-  | 'decide'
-  | 'verify';
+  'screen' | 'extract' | 'audit' | 'classify' | 'compare' | 'noul' | 'rerank' | 'decide' | 'verify';
 export type EnvelopeStatus = 'ok' | 'review' | 'escaped' | 'blocked' | 'error';
 
 export interface JudgmentEnvelope {
@@ -82,7 +74,8 @@ export interface JudgmentEnvelope {
   created_at: IsoDateTime;
 }
 
-export type ApiErrorCode = 'intake_unknown' | 'judge_unavailable' | 'contract_violation' | 'not_found';
+export type ApiErrorCode =
+  'intake_unknown' | 'judge_unavailable' | 'contract_violation' | 'not_found';
 export interface ApiErrorBody {
   code: ApiErrorCode;
   detail: string;
@@ -151,7 +144,14 @@ export interface Snapshot {
 
 // ─── 점수·대시보드 ─────────────────────────────────────────────
 
-export const SCORE_COMPONENTS = ['p10', 'rerank', 'gap', 'benchmark', 'supply', 'liquidity'] as const;
+export const SCORE_COMPONENTS = [
+  'p10',
+  'rerank',
+  'gap',
+  'benchmark',
+  'supply',
+  'liquidity',
+] as const;
 export type ScoreComponent = (typeof SCORE_COMPONENTS)[number];
 export type Weights = Record<ScoreComponent, number>;
 
@@ -405,7 +405,10 @@ export interface RequirementPre {
 }
 export interface ScenarioPreview {
   weights: Weights;
-  requirements_pre: Record<Id, { access: RequirementPre; regulation: RequirementPre; funds: RequirementPre }>;
+  requirements_pre: Record<
+    Id,
+    { access: RequirementPre; regulation: RequirementPre; funds: RequirementPre }
+  >;
   cache_hits: number;
 }
 

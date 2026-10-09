@@ -1,6 +1,7 @@
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { t } from '@/i18n';
+import { MOBILE_QUERY } from '@/lib/useMediaQuery';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { routeDefs } from './routes';
@@ -38,19 +39,43 @@ describe('라우트 10개', () => {
   it('지역이 하나도 없으면 / → /regions/new', async () => {
     server.use(http.get(mswPath('/regions'), () => HttpResponse.json([])));
     renderRoute('/');
-    expect(await screen.findByRole('heading', { level: 1, name: t('page.G0.title') })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: t('page.G0.title') }),
+    ).toBeInTheDocument();
   });
 
   it('헤더에 RegionPicker(+지역 추가)·SnapshotPicker·ScenarioToggle·테마 토글이 있다', async () => {
     renderRoute('/');
     expect(await screen.findByRole('option', { name: t('header.regionAdd') })).toBeInTheDocument();
     expect(await screen.findByLabelText(t('header.snapshot'))).toBeInTheDocument();
-    expect(await screen.findByRole('radiogroup', { name: t('header.scenario') })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('radiogroup', { name: t('header.scenario') }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: new RegExp(t('header.theme')) })).toBeInTheDocument();
+  });
+
+  it('모바일(≤768px): G1은 읽기 전용 안내, G7은 데스크톱 안내', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: query === MOBILE_QUERY,
+    })) as typeof window.matchMedia;
+    try {
+      renderRoute('/');
+      expect(await screen.findByText(t('app.mobileReadOnly'))).toBeInTheDocument();
+      expect(screen.getByRole('main')).toHaveAttribute('data-readonly', 'true');
+      cleanup();
+      renderRoute('/ops');
+      expect(await screen.findByText(t('app.mobileUnsupported'))).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   it('없는 경로는 404 제목', async () => {
     renderRoute('/no-such-page');
-    expect(await screen.findByRole('heading', { level: 1, name: t('page.notFound.title') })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: t('page.notFound.title') }),
+    ).toBeInTheDocument();
   });
 });

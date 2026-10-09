@@ -48,7 +48,8 @@ export function getAuthToken(): string | null {
   return import.meta.env.VITE_API_TOKEN ?? null;
 }
 
-export type QueryValue = string | number | boolean | null | undefined | readonly (string | number)[];
+export type QueryValue =
+  string | number | boolean | null | undefined | readonly (string | number)[];
 
 /** `{ page: 1, filter: { living_area: 'x' } }` → `page=1&filter[living_area]=x` (RA §4-2 목록 규칙). */
 export function buildQuery(params?: Record<string, QueryValue | Record<string, string>>): string {
@@ -70,7 +71,10 @@ export function buildQuery(params?: Record<string, QueryValue | Record<string, s
   return qs ? `?${qs}` : '';
 }
 
-export function apiUrl(path: string, query?: Record<string, QueryValue | Record<string, string>>): string {
+export function apiUrl(
+  path: string,
+  query?: Record<string, QueryValue | Record<string, string>>,
+): string {
   const base = API_BASE.replace(/\/$/, '');
   const relative = `${base}${path}${buildQuery(query)}`;
   // Node(vitest)의 fetch는 상대 URL을 못 받으므로 현재 origin 기준 절대 URL로 만든다.

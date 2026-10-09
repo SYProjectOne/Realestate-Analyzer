@@ -12,10 +12,18 @@ const OUTPUT = resolve(FRONTEND_ROOT, 'src/mocks/handlers.gen.ts');
 
 function main(): void {
   const source = resolveOpenapiSource();
-  const doc = parse(readFileSync(source.path, 'utf8'), { maxAliasCount: -1 }) as Record<string, unknown>;
-  const { code, operations, skipped } = generateMswHandlers(doc, `${source.display} (${source.mode})`);
+  const doc = parse(readFileSync(source.path, 'utf8'), { maxAliasCount: -1 }) as Record<
+    string,
+    unknown
+  >;
+  const { code, operations, skipped } = generateMswHandlers(
+    doc,
+    `${source.display} (${source.mode})`,
+  );
   writeFileSync(OUTPUT, code, 'utf8');
-  console.log(`gen:msw  ${source.display} → src/mocks/handlers.gen.ts  (핸들러 ${operations.length}, 건너뜀 ${skipped.length})`);
+  console.log(
+    `gen:msw  ${source.display} → src/mocks/handlers.gen.ts  (핸들러 ${operations.length}, 건너뜀 ${skipped.length})`,
+  );
   for (const s of skipped) console.log(`  skip ${s.method.toUpperCase()} ${s.path}: ${s.reason}`);
 }
 

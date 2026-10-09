@@ -37,7 +37,9 @@ function toDisplay(path: string): string {
   return relative(REPO_ROOT, path).split('\\').join('/');
 }
 
-export function resolveOpenapiSource(source: string = process.env.OPENAPI_SOURCE ?? readConfiguredSource()): OpenapiSource {
+export function resolveOpenapiSource(
+  source: string = process.env.OPENAPI_SOURCE ?? readConfiguredSource(),
+): OpenapiSource {
   if (source === 'fixture') {
     return { path: FIXTURE_OPENAPI, display: toDisplay(FIXTURE_OPENAPI), mode: 'fixture' };
   }

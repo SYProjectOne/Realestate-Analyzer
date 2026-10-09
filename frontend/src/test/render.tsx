@@ -12,7 +12,9 @@ export function createTestQueryClient(): QueryClient {
 }
 
 /** 앱 라우트 전체를 메모리 라우터로 렌더한다(MSW 핸들러 사용). */
-export function renderRoute(path: string): RenderResult & { router: ReturnType<typeof createMemoryRouter> } {
+export function renderRoute(
+  path: string,
+): RenderResult & { router: ReturnType<typeof createMemoryRouter> } {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
   const result = render(
     <AppProviders queryClient={createTestQueryClient()}>

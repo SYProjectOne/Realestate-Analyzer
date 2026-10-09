@@ -1,8 +1,10 @@
 // @vitest-environment node
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { afterAll, describe, it } from 'vitest';
-import rule from './no-raw-number-render.js';
+import { afterAll, describe, expect, it } from 'vitest';
+import rule, { DEFAULT_EXCEPT } from './no-raw-number-render.js';
 
 RuleTester.afterAll = afterAll;
 RuleTester.describe = describe;
@@ -35,8 +37,13 @@ ruleTester.run('no-raw-number-render (휴리스틱 모드)', rule, {
     // 예외 파일
     valid('<span>{fact.v}</span>', 'src/components/FactCell.tsx'),
     valid('<span>{fact.v}</span>', 'C:\\repo\\frontend\\src\\components\\FactCellInner.tsx'),
-    valid('const o = { label: <b>{count}</b> }', 'src/charts/C06/buildOption.ts'),
-    valid('const x = <i>{n}</i>', 'src/lib/format.ts'),
+    valid('const o = { label: <b>{count}</b> }', 'src/charts/C06/buildOption.tsx'),
+    // 옵션으로 예외 목록을 바꿀 수 있다
+    {
+      code: '<i>{n}</i>',
+      filename: 'src/stories/demo.tsx',
+      options: [{ exceptFiles: ['stories'] }],
+    },
   ],
   invalid: [
     invalid('<span>{42}</span>', 'rawNumber'),
@@ -58,5 +65,65 @@ ruleTester.run('no-raw-number-render (휴리스틱 모드)', rule, {
     invalid('<>{ready && fact.v}</>', 'rawNumber'),
     invalid('<span>{(fact.v as number)}</span>', 'rawNumber'),
     invalid('<span>{fact.v!}</span>', 'rawNumber'),
+    // 예외 목록에 없는 차트 index.tsx는 검사 대상
+    invalid('<b>{count}</b>', 'rawNumber', 'src/charts/C06/index.tsx'),
   ],
+});
+
+// ─── 타입 모드 (eslint.config.js와 같이 projectService 사용) ───────────────
+const fixtures = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__');
+const typedTester = new RuleTester({
+  languageOptions: {
+    parser: tseslint.parser,
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+      projectService: true,
+      tsconfigRootDir: fixtures,
+    },
+  },
+});
+const typedFile = join(fixtures, 'file.tsx');
+const tv = (code) => ({ code, filename: typedFile });
+const ti = (code, messageId = 'rawNumber') => ({
+  code,
+  filename: typedFile,
+  errors: [{ messageId }],
+});
+
+typedTester.run('no-raw-number-render (타입 모드)', rule, {
+  valid: [
+    // 이름이 숫자처럼 보여도 타입이 string이면 허용
+    tv('declare const count: string; const el = <span>{count}</span>;'),
+    tv('declare const fact: { v: string }; const el = <span>{fact.v}</span>;'),
+    tv(
+      'declare const f: (n: number) => string; declare const x: number; const el = <span>{f(x)}</span>;',
+    ),
+    // children: ReactNode 같은 "렌더 가능한 무엇이든" 슬롯(객체 타입 포함 유니온)은 허용
+    tv(
+      'type Node = { type: string } | string | number | null; declare const children: Node; const el = <div>{children}</div>;',
+    ),
+  ],
+  invalid: [
+    // 이름과 무관하게 타입이 number면 금지
+    ti('declare const foo: number; const el = <span>{foo}</span>;'),
+    ti('declare const fact: { v: number | string | null }; const el = <span>{fact.v}</span>;'),
+    ti('declare const r: { rank: number }; const el = <span>{r.rank}</span>;'),
+    ti(
+      'declare const xs: string[]; declare const ok: boolean; const el = <span>{ok && xs.length}</span>;',
+    ),
+  ],
+});
+
+describe('기본 예외 파일', () => {
+  const matches = (path) => DEFAULT_EXCEPT.some((source) => new RegExp(source).test(path));
+  it('FactCell*, lib/format.ts, charts/**/buildOption.ts는 예외', () => {
+    expect(matches('src/components/FactCell.tsx')).toBe(true);
+    expect(matches('C:\\x\\frontend\\src\\lib\\format.ts')).toBe(true);
+    expect(matches('/x/frontend/src/charts/C01/buildOption.ts')).toBe(true);
+  });
+  it('그 밖은 검사 대상', () => {
+    expect(matches('src/components/LabelBadge.tsx')).toBe(false);
+    expect(matches('src/lib/format.test.ts')).toBe(false);
+    expect(matches('src/charts/C01/index.tsx')).toBe(false);
+  });
 });
