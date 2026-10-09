@@ -15,19 +15,29 @@
      ``DHASH_THRESHOLD``) — 수집기가 직전 렌더와 비교해 넘으면 해시를 바꾸고, 안 넘으면 직전 스크린샷 행을
      재사용한다(같은 화면이면 raw_document 가 늘지 않는다).
 - 실패는 예외 대신 ``RenderResult.error`` 로 돌려준다(실패도 데이터).
-- **SSRF(R3b F1b)**: 브라우저도 ``core.http`` 와 같은 내부망 규칙을 따른다(``BrowserGuard``).
+- **SSRF(R3b F1b → R3b 마무리)**: 브라우저도 ``core.http`` 와 같은 내부망 규칙을 따른다(``BrowserGuard``).
   1) ``page.goto`` 전에 URL 을 검사한다(http/https 만, localhost·내부망 IP·DNS 가 내부망으로 풀리는
-     이름 차단).
-  2) 본 호스트는 검사 때 푼 IP 로 고정한다(chromium ``--host-resolver-rules=MAP host ip``) — 브라우저가 다시
-     풀 때 다른 IP 를 받는 DNS rebinding 을 막는다.
-  3) 모든 하위 요청(이미지·스크립트·iframe·JS 이동)은 ``context.route`` 에서 같은 검사 → 내부망이면 abort.
+     이름 차단). 막히면 브라우저를 띄우지 않는다.
+  2) **연결 전 검사 = 출구 프록시**(``egress.EgressProxy``): chromium 의 모든 연결(하위 리소스·iframe·JS 이동·
+     **리다이렉트 단계**·WebSocket)은 렌더 1회용 로컬 프록시로만 나간다(Playwright 는 ``<-loopback>`` 으로 루프백도
+     프록시로 보낸다). 프록시는 요청마다 ``connect_address`` 로 목적지를 검사하고 **검사한 IP 로만** 연결한다 —
+     본 호스트 외 이름도 렌더당 한 번 풀어 답 전부를 검사하고 그 IP 로 고정(DNS rebinding 차단). 리다이렉트 단계는
+     Playwright ``route`` 를 거치지 않지만(1.63 실측) 새 프록시 요청이므로 나가기 전에 막힌다(``route.fetch`` 로
+     대신 받지 않는다 — 차단 우선).
+  3) 이름 해석 차단: ``--host-resolver-rules`` = 본 호스트 고정 IP + ``MAP * ~NOTFOUND``(프록시 127.0.0.1 만 EXCLUDE) — 프록시를 우회하는
+     경로가 생겨도 브라우저가 직접 이름을 풀지 못한다. QUIC 끔, WebRTC 는 프록시 밖 UDP 금지.
+  4) 모든 하위 요청은 ``context.route`` 에서도 먼저 같은 검사 → 내부망이면 abort(프록시까지 가지 않는다).
      서비스 워커는 route 를 우회하므로 막는다(``service_workers='block'``).
-  4) Playwright route 는 리다이렉트 단계를 거치지 않는다 → ``request`` 이벤트에서 리다이렉트로 온 요청이
-     내부망이면(요청은 이미 나갔으므로) 렌더 결과를 버리고 ``blocked_host`` 오류로 돌려준다. 최종 URL 도
-     검사한다.
+  5) WebSocket: ``context.route_web_socket``(Playwright ≥ 1.48 — pyproject 하한)으로 모든 WebSocket 을 서버에
+     연결하지 않는다(모의 소켓, 기록만 — 처리기에서 ``close()`` 를 부르면 동기 API 가 멈춘다, 1.63 실측). 프록시도
+     평문 ``Upgrade`` 요청을 막는다(이중).
+  6) 본문 이동이 리다이렉트로 내부망을 가리키면(프록시가 막았어도) 렌더 결과를 버리고 ``blocked_host`` 오류로
+     돌려준다(``request`` 이벤트 — 하위 리소스 리다이렉트는 기록만). 최종 URL 도 검사한다.
   내부망 허용(``allow_private``, 테스트 로컬 서버)은 ``core.http.allow_private_hosts`` 를 따른다
-  (prod 면 거부).
+  (prod 면 거부). 허용이어도 프록시·WebSocket 차단은 그대로다.
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -36,6 +46,7 @@ import hashlib
 import io
 import ipaddress
 import re
+import threading
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -44,12 +55,14 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpcore
 
+from app.collectors.official_site.egress import EgressProxy
 from app.core.http import (
     BLOCKED_HOST,
     BlockedHostError,
     Resolver,
     allow_private_hosts,
     host_block_reason,
+    ip_blocked,
     pinned_addresses,
     system_resolve,
 )
@@ -286,7 +299,9 @@ class BrowserGuard:
         self._cache: dict[str, str | None] = {}
         self.pins: dict[str, str] = {}
         self.blocked: list[str] = []  # abort 한 하위 요청(사유 + URL)
+        self.websockets: list[str] = []  # 연결하지 않은 WebSocket 주소
         self.violation: str | None = None  # 렌더 결과를 버려야 하는 사유(본문 이동·리다이렉트·최종 URL)
+        self._connect_lock = threading.Lock()
 
     def url_reason(self, url: str) -> str | None:
         """이 주소로 요청하면 안 되는 사유. http/https 만 허용(about·data·blob 은 네트워크 없음)."""
@@ -333,13 +348,44 @@ class BrowserGuard:
         self.pins[host] = ips[0]
         return None
 
+    def connect_address(self, host: str, port: int) -> str:
+        """출구 프록시의 연결 직전 검사: 연결할 IP(막아야 하면 ``BlockedHostError``, DNS 실패는 ``ConnectError``).
+
+        본 호스트는 ``prepare`` 때 고정한 IP. 그 밖의 이름은 렌더당 **한 번** 풀어 답 전부를 검사하고 첫 IP 로
+        고정한다(같은 렌더 안에서 다시 풀지 않는다 — rebinding 차단). IP 문자열은 그 IP 를 검사한다.
+        ``allow_private`` 면 고정 IP 또는 이름 그대로(시스템 DNS)."""
+        h = host.strip("[]").rstrip(".")
+        with self._connect_lock:
+            pinned = self.pins.get(h) or self.pins.get(h.lower())
+            if pinned is not None:
+                return pinned
+            if self.allow_private:
+                return h
+            if _is_ip(h):
+                if ip_blocked(h):
+                    raise BlockedHostError(f"{BLOCKED_HOST}: 내부망 주소 {h}")
+                return h
+            ips = pinned_addresses(h, self._resolver)
+            self.pins[h.lower()] = ips[0]
+            return ips[0]
+
     def launch_args(self) -> list[str]:
-        if not self.pins:
-            return []
-        rules = ", ".join(
-            f"MAP {host} {f'[{ip}]' if ':' in ip else ip}" for host, ip in sorted(self.pins.items())
-        )
-        return [f"--host-resolver-rules={rules}"]
+        """chromium 인자: 이름 해석 차단(고정 + ``MAP * ~NOTFOUND``)·QUIC 끔·WebRTC 프록시 밖 UDP 금지.
+
+        ``allow_private`` 이고 고정이 없으면 이름 해석 규칙을 두지 않는다(로컬 시험 서버)."""
+        args = ["--disable-quic", "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"]
+        rules = [f"MAP {host} {f'[{ip}]' if ':' in ip else ip}" for host, ip in sorted(self.pins.items())]
+        if not self.allow_private:
+            # 출구 프록시(127.0.0.1)만 예외 — MAP 규칙은 IP 문자열에도 걸린다(실측: 프록시 연결 실패)
+            rules += ["MAP * ~NOTFOUND", "EXCLUDE 127.0.0.1"]
+        if rules:
+            args.insert(0, f"--host-resolver-rules={', '.join(rules)}")
+        return args
+
+    def on_websocket(self, ws: Any) -> None:
+        """``context.route_web_socket`` 처리기: 서버에 연결하지 않는다(모의 소켓 — 네트워크 없음), 기록만."""
+        self.websockets.append(str(ws.url))
+        self.blocked.append(f"{BLOCKED_HOST}: WebSocket 차단 ({ws.url})")
 
     def on_route(self, route: Any) -> None:
         request = route.request
@@ -356,8 +402,13 @@ class BrowserGuard:
         if request.redirected_from is None:
             return
         reason = self.url_reason(str(request.url))
-        if reason is not None:
+        if reason is None:
+            return
+        # 연결은 출구 프록시가 이미 막았다(요청 전). 본문 이동이면 결과를 버리고, 하위 리소스면 기록만 한다.
+        if _is_main_navigation(request):
             self.violation = self.violation or f"{reason} (리다이렉트 {request.url})"
+        else:
+            self.blocked.append(f"{reason} (리다이렉트 {request.url})")
 
 
 def _is_ip(host: str) -> bool:
@@ -428,10 +479,19 @@ class PlaywrightRenderer:
             return RenderResult(url=url, error=f"render: {first[:200]}")
 
     def _render_with(self, p: Any, url: str, guard: BrowserGuard, ua: str) -> RenderResult:
-        """브라우저 1회: 검사 훅을 goto 보다 먼저 걸고, 위반이 있으면 결과를 버린다."""
+        """브라우저 1회(출구 프록시 안): 검사 훅을 goto 보다 먼저 걸고, 위반이 있으면 결과를 버린다."""
+        with EgressProxy(guard.connect_address, timeout_s=self.timeout_ms / 1000) as proxy:
+            try:
+                return self._browse(p, url, guard, ua, proxy)
+            finally:
+                guard.blocked.extend(proxy.blocked)
+
+    def _browse(self, p: Any, url: str, guard: BrowserGuard, ua: str, proxy: EgressProxy) -> RenderResult:
         from playwright.sync_api import Error as PlaywrightError
 
-        browser = p.chromium.launch(headless=True, args=guard.launch_args())
+        browser = p.chromium.launch(
+            headless=True, args=guard.launch_args(), proxy={"server": proxy.server, "bypass": "<-loopback>"}
+        )
         try:
             context = browser.new_context(
                 viewport={"width": self.viewport[0], "height": self.viewport[1]},
@@ -441,6 +501,7 @@ class PlaywrightRenderer:
                 service_workers="block",
             )
             context.route("**/*", guard.on_route)
+            context.route_web_socket("**/*", guard.on_websocket)
             context.on("request", guard.on_request)
             page = context.new_page()
             try:
