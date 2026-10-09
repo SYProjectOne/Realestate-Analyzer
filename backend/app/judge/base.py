@@ -357,6 +357,8 @@ class CachedJudgeAdapter:
             # 새 hash 에 행이 없으면 옛 hash 의 error 행(있으면)을 새 hash 로 옮겨 갱신한다
             existing = renewed if renewed is not None else existing
 
+        if existing is None:
+            existing = self._bare_error_row(session, tool, purpose, payload, version)
         normalized = self.normalize(tool, response.raw, payload, purpose)
         row = log.record(
             session,
@@ -378,6 +380,19 @@ class CachedJudgeAdapter:
             result_json=normalized.result,
         )
         return self._commit(session, row, result=normalized.result, key=key)
+
+    def _bare_error_row(
+        self, session: Session, tool: JudgeTool, purpose: str, payload: JudgePayload, version: str
+    ) -> Any:
+        """W12a: 모델을 모를 때(접미 없는 버전) 같은 입력으로 남긴 error 행. 이번 정상 응답이 그 행을 대신한다
+        (새 hash 로 옮겨 갱신) — 판정기 첫 사용 중 다운된 흔적이 복구 뒤 error 로 남지 않게."""
+        if self._server_version is None:
+            return None
+        bare = make_adapter_version(self._server_version)
+        if bare == version:
+            return None
+        row = cache.find(session, cache.compute_hash(tool, purpose, payload, bare))
+        return row if row is not None and row.status == "error" else None
 
     def _cached(self, session: Session, key: str) -> JudgmentEnvelope | None:
         existing = cache.find(session, key)
