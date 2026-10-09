@@ -38,12 +38,15 @@ export class ApiError extends Error {
   readonly status: number | null;
   /** 422 validation_error의 필드별 오류(계약 Error.field_errors) */
   readonly fieldErrors: FieldError[];
+  /** 응답 본문(JSON 이면 파싱한 값) — 오류 응답이 계약 본문을 담는 경우(GET /health 503 = Health) */
+  readonly body: unknown;
 
   constructor(
     code: ClientErrorCode,
     detail: string,
     status: number | null,
     fieldErrors: FieldError[] = [],
+    body: unknown = null,
   ) {
     super(`${code}: ${detail}`);
     this.name = 'ApiError';
@@ -51,6 +54,7 @@ export class ApiError extends Error {
     this.detail = detail;
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.body = body;
   }
 }
 
@@ -120,9 +124,16 @@ export async function toApiError(response: Response): Promise<ApiError> {
       parsed.data.detail,
       response.status,
       parsed.data.field_errors ?? [],
+      payload,
     );
   }
-  return new ApiError('http', response.statusText || `HTTP ${response.status}`, response.status);
+  return new ApiError(
+    'http',
+    response.statusText || `HTTP ${response.status}`,
+    response.status,
+    [],
+    payload,
+  );
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { apiFetch, type QueryParams } from './client';
+import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
 import type {
   ChangeEvent,
@@ -111,11 +111,25 @@ export const queryKeys = {
 
 // ─── 공통 ───────────────────────────────────────────────────
 
+/**
+ * GET /health 는 DB 장애면 503 + 같은 Health 본문(status=degraded, db=error)을 준다(계약 2026-10-09.3) —
+ * 오류로 버리지 않고 본문을 그대로 쓴다(배너가 떠야 한다). 인증 없음.
+ */
+async function fetchHealth(signal?: AbortSignal): Promise<Health> {
+  try {
+    return await apiFetch<Health>('/health', { signal });
+  } catch (err) {
+    const body = err instanceof ApiError && err.status === 503 ? err.body : null;
+    if (body && typeof body === 'object' && 'status' in body) return body as Health;
+    throw err;
+  }
+}
+
 /** GET /health (getHealth) — status=degraded면 전역 배너 */
 export function useHealth(): Q<Health> {
   return useQuery({
     queryKey: queryKeys.health(),
-    queryFn: ({ signal }) => apiFetch<Health>('/health', { signal }),
+    queryFn: ({ signal }) => fetchHealth(signal),
     staleTime: 60_000,
   });
 }
