@@ -50,6 +50,13 @@ REQUIRED_OPERATIONS = {
     ("post", "/reports"),
     ("get", "/reports"),
     ("get", "/reports/{id}"),
+    # 계약 2026-10-09.4 (R3 F3)
+    ("get", "/snapshots/{sid}/claims"),
+    ("patch", "/claims/{id}"),
+    ("post", "/catalysts"),
+    ("post", "/share-links"),
+    ("get", "/share-links"),
+    ("delete", "/share-links/{id}"),
 }
 
 
@@ -110,7 +117,7 @@ def test_contract_version(bundled: dict[str, Any], source_openapi: dict[str, Any
     changelog = (OPENAPI_SRC.parent / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)", changelog, re.M)
     assert top is not None
-    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.3"
+    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.4"
     assert source_openapi["info"]["version"] == CONTRACT_VERSION
     assert bundled["info"]["version"] == CONTRACT_VERSION
 

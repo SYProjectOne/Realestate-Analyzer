@@ -1,6 +1,6 @@
-"""SQLAlchemy 모델 (WP0 소유, 계약 2026-10-09.3).
+"""SQLAlchemy 모델 (WP0 소유, 계약 2026-10-09.4).
 
-contracts/migrations/versions/(0001_init + 0002_r1 + 0003_r2) head 와 1:1.
+contracts/migrations/versions/(0001_init + 0002_r1 + 0003_r2 + 0004_r3) head 와 1:1.
 
 다른 WP는 읽기만 한다. 컬럼이 더 필요하면 계약 변경 요청(AGENTS.md)으로.
 """
@@ -10,7 +10,7 @@ from app.models.base import NAMING_CONVENTION, Base
 from app.models.complex import Competition, Complex, ComplexType, IntakeStatus, PaymentTerms, RemainingEvent
 from app.models.judgment import Claim, JudgmentLog
 from app.models.market import Benchmark, Catalyst, CatalystLink, ComparableSet, RtmsTrade, Supply, Unsold
-from app.models.ops import ChangeEvent, ChecklistItem, HumanCheck, JobRun
+from app.models.ops import ChangeEvent, ChecklistItem, HumanCheck, JobRun, ShareLink
 from app.models.raw import FieldProvenance, RawDocument
 from app.models.reference import AdminDong, AdminLegalMap, HouseholdStat, LegalDong
 from app.models.region import Region, Snapshot
@@ -48,6 +48,7 @@ __all__ = [
     "ScoreComponent",
     "ScoreRun",
     "ScoreTotal",
+    "ShareLink",
     "Snapshot",
     "Supply",
     "Unsold",

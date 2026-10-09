@@ -8,6 +8,8 @@ name: subscription-analyzer
 x-backend-env: &backend-env
   ENV: ${ENV:-prod}
   TZ: Asia/Seoul
+  # 토큰 없이는 기동하지 않는다(R3 M11 — 무인증 API 가 열린 채 뜨는 것을 막는다)
+  API_TOKEN: ${API_TOKEN:?API_TOKEN 을 infra/.env 에 설정(32자 랜덤)}
   DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sa}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 를 infra/.env 에 설정}@db:5432/${POSTGRES_DB:-subscription}
   RAW_DIR: /data/raw
   REFERENCE_DIR: /data/reference
@@ -43,8 +45,9 @@ services:
     restart: unless-stopped
     env_file: *env-file
     environment: *backend-env
+    # web(nginx)이 내부망 api:8000 으로 프록시한다 — 호스트에는 기본 루프백으로만 연다(API_BIND 로 바꿀 수 있음)
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-8000}:8000"
     volumes:
       - rawdata:/data:ro
     depends_on:

@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.3
+  version: 2026-10-09.4
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -815,13 +815,184 @@ paths:
                 running: { $ref: './examples/error_409_conflict.json' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  # ---------------------------------------------------------------- 계약 2026-10-09.4 (R3 F3)
+  /snapshots/{sid}/claims:
+    get:
+      tags: [ops]
+      operationId: listClaims
+      summary: 원자 주장 목록 — contradicted 대응 (G7 ClaimsPanel, RA §10)
+      description: |
+        스냅샷의 주장(claim) 행. `?status=contradicted` 면 contradicted 만(G7 '스냅샷 published 안 됨' 대응 목록). remaining=true 인 행이
+        publish·보고서 생성을 막는다(분할 재검증 자식이 없는 contradicted — judge.claims.remaining_contradicted). 정렬 = id 오름차순.
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [verified, contradicted, unsupported, review] }
+      responses:
+        '200':
+          description: 주장 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ClaimView' } }
+              examples:
+                contradicted: { $ref: './examples/claims_contradicted.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /claims/{id}:
+    patch:
+      tags: [ops]
+      operationId: reviseClaim
+      summary: contradicted 주장 문장 수정 → 원자 분할 재검증 잡 등록 (G7)
+      description: |
+        사람이 고친 문장으로 claim.reverify 잡을 등록한다(202 JobRun). api 는 판정기를 부르지 않는다 — worker 가 문장을 원자 주장으로 나눠
+        원 주장의 근거로 verify 하고 parent_claim_id 로 연결된 새 주장 행을 만든다. 원 주장이 contradicted 가 아니거나, 이미 분할 재검증
+        자식이 있거나, 같은 주장의 claim.reverify 잡이 queued·running 이면 409 conflict.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClaimPatch' }
+            examples:
+              revise: { $ref: './examples/claim_patch_req.json' }
+      responses:
+        '202':
+          description: claim.reverify 잡 등록됨(queued)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobRun' }
+              examples:
+                queued: { $ref: './examples/claim_reverify_job.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: contradicted 가 아님·이미 분할됨·재검증 대기 중
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                notContradicted: { $ref: './examples/error_409_claim.json' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /catalysts:
+    post:
+      tags: [market]
+      operationId: createCatalyst
+      summary: 호재 URL 사람 입력 → 호재 후보 + 분류 잡 (G6·G3, DECISIONS D1-6)
+      description: |
+        공개 기사·공고 URL 과 제목(·발췌)으로 호재 후보 행을 만든다(normalize.catalyst 공개 함수 — stage '미확정', location_confirmed=false,
+        단지 연결 없음, 출처 = 이 URL). 분류(kind·stage)는 판정기 classify 가 한다: 지역 최신 스냅샷에 rejudge 잡
+        (complex_ids=[] → P4 호재 classify·점수 재계산)을 등록해 함께 돌려준다(스냅샷이 없으면 job=null). 같은 지역에 같은 URL 이 이미
+        있으면 그 행을 돌려준다(새 행 없음). 제목·발췌는 guard(전화번호·주민번호·이메일·비밀값) 통과 — 걸리면 422.
+        URL·제목이 호재 후보 조건(normalize.catalyst.catalyst_candidate — 공개 http(s) 호스트 등)에 맞지 않아도 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CatalystCreate' }
+            examples:
+              news: { $ref: './examples/catalyst_create_req.json' }
+      responses:
+        '201':
+          description: 호재 후보 + 분류 잡
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalystCreated' }
+              examples:
+                created: { $ref: './examples/catalyst_created.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /share-links:
+    get:
+      tags: [ops]
+      operationId: listShareLinks
+      summary: 공유 링크 목록 (G7 SharePanel, 쓰기 토큰만)
+      description: 발급한 공유 링크(토큰 없이 메타만, 최신순). 읽기 전용 토큰·공유 링크 토큰으로 부르면 403 forbidden(공유받은 사람이 다른 링크를 보지 못한다).
+      responses:
+        '200':
+          description: 최신순
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ShareLink' } }
+              examples:
+                list: { $ref: './examples/share_links_list.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [ops]
+      operationId: createShareLink
+      summary: 읽기 전용 공유 링크 발급 (만료 30일, RA §10 보안 5)
+      description: |
+        읽기 전용(GET 만) 공유 토큰을 발급한다. 만료 = 발급 시각 + SHARE_TOKEN_TTL_DAYS(기본 30일) — 요청으로 바꿀 수 없다. 토큰은 이 응답에서
+        한 번만 나가고 서버에는 sha256 만 남는다. 프론트는 `<origin>/share#<token>` 링크를 보여 준다. 쓰기 토큰만(읽기 전용·공유 토큰 403).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShareLinkCreate' }
+            examples:
+              family: { $ref: './examples/share_link_create_req.json' }
+      responses:
+        '201':
+          description: 발급됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareLinkCreated' }
+              examples:
+                created: { $ref: './examples/share_link_created.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /share-links/{id}:
+    delete:
+      tags: [ops]
+      operationId: revokeShareLink
+      summary: 공유 링크 회수 (즉시 401)
+      description: revoked_at 을 채운다(멱등 — 이미 회수됐으면 그대로). 그 토큰으로 오는 요청은 바로 401.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 회수됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareLink' }
+              examples:
+                revoked: { $ref: './examples/share_link_revoked.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       description: |
-        API_TOKEN(쓰기 포함 전부) 또는 READONLY_TOKEN(GET만, 공유 링크용·만료 30일). 읽기 전용 토큰으로 GET 이외 메서드를 부르면 403 forbidden.
+        API_TOKEN(쓰기 포함 전부), READONLY_TOKEN(GET만, 운영자 열람용 고정 토큰) 또는 공유 링크 토큰(POST /share-links 가 발급, GET만, 만료 30일 = SHARE_TOKEN_TTL_DAYS — 만료·회수되면 401). 읽기 전용 토큰·공유 링크 토큰으로 GET 이외 메서드를 부르면 403 forbidden.
+        두 환경 토큰(API_TOKEN·READONLY_TOKEN)이 모두 비면(개발 기본값) 인증 없이 열지만 루프백(127.0.0.1·::1) 접속만 받는다(그 밖 401) — 서버도 127.0.0.1 에만 바인드한다(app.serve). ENV=prod 는 API_TOKEN 필수.
 
   parameters:
     RegionId:
@@ -986,5 +1157,15 @@ components:
     ChecklistPatch: { $ref: './schemas/checklist_item.json#/$defs/ChecklistPatch' }
     HumanCheck: { $ref: './schemas/human_check.json' }
     HumanCheckCreate: { $ref: './schemas/human_check.json#/$defs/HumanCheckCreate' }
+    EnteredByRole: { $ref: './schemas/human_check.json#/$defs/EnteredByRole' }
     ReportRequest: { $ref: './schemas/job_payloads/report.json' }
     Report: { $ref: './schemas/report.json' }
+    # 계약 2026-10-09.4 (R3 F3)
+    ClaimView: { $ref: './schemas/claim.json#/$defs/ClaimView' }
+    ClaimPatch: { $ref: './schemas/claim.json#/$defs/ClaimPatch' }
+    ClaimReverifyPayload: { $ref: './schemas/job_payloads/claim_reverify.json' }
+    CatalystCreate: { $ref: './schemas/catalyst.json#/$defs/CatalystCreate' }
+    CatalystCreated: { $ref: './schemas/catalyst.json#/$defs/CatalystCreated' }
+    ShareLink: { $ref: './schemas/share_link.json' }
+    ShareLinkCreate: { $ref: './schemas/share_link.json#/$defs/ShareLinkCreate' }
+    ShareLinkCreated: { $ref: './schemas/share_link.json#/$defs/ShareLinkCreated' }

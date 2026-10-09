@@ -1,4 +1,7 @@
-"""운영: human_check, checklist_item, change_event, job_run — RA §3."""
+"""운영: human_check, checklist_item, change_event, job_run — RA §3.
+
+share_link — 계약 2026-10-09.4 (RA §10 보안 5).
+"""
 
 from __future__ import annotations
 
@@ -20,7 +23,7 @@ from app.models.enums import (
     in_check,
 )
 
-__all__ = ["ChangeEvent", "ChecklistItem", "HumanCheck", "JobRun"]
+__all__ = ["ChangeEvent", "ChecklistItem", "HumanCheck", "JobRun", "ShareLink"]
 
 
 class HumanCheck(Base):
@@ -106,3 +109,21 @@ class JobRun(Base):
     error_text: Mapped[str | None] = mapped_column(Text)
     locked_by: Mapped[str | None] = mapped_column(String(64))
     progress: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+
+
+class ShareLink(Base):
+    """읽기 전용 공유 링크(RA §10 보안 5, ADR-9, 계약 2026-10-09.4 — 0004).
+
+    토큰 원문은 저장하지 않는다: ``token_sha256`` = sha256(토큰) hex.
+    만료 = ``expires_at``(발급 + SHARE_TOKEN_TTL_DAYS), 회수 = ``revoked_at``.
+    상태(active/expired/revoked)는 조회 시각으로 계산한다(컬럼 아님).
+    """
+
+    __tablename__ = "share_link"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    label: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[str] = mapped_column(String(32))
+    expires_at: Mapped[str] = mapped_column(String(32))
+    revoked_at: Mapped[str | None] = mapped_column(String(32))

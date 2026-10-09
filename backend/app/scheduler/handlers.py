@@ -9,6 +9,7 @@
 | snapshot.publish | contradicted claim 0 이면 published, 아니면 failed(publish_blocked) |
 | reference.refresh | 법정동·행정동·매핑·세대 현황 갱신(collectors.reference) |
 | region.bootstrap | region.status=bootstrapping → daily+weekly 수집 → 전체 파이프라인 → publish → ready(실패 failed) |
+| claim.reverify | contradicted 주장의 고친 문장 → 원자 분할 → verify → parent_claim_id 자식 행(reverify.py, 계약 2026-10-09.4) |
 | report | WP8 ``app.reports.job.run_report_job(payload, session=…)`` (예외 → failed: blocked·not_found·invalid_payload) |
 """
 
@@ -28,6 +29,7 @@ from app.scheduler.collect import collect
 from app.scheduler.jobs import DAILY_SOURCES, WEEKLY_SOURCES, JobError
 from app.scheduler.persist import carry_forward
 from app.scheduler.rejudge import enqueue_rejudge, handle_rejudge
+from app.scheduler.reverify import handle_claim_reverify
 
 if TYPE_CHECKING:
     from app.scheduler.context import SchedulerContext
@@ -238,4 +240,5 @@ HANDLERS: Final[dict[str, Handler]] = {
     "reference.refresh": handle_reference_refresh,
     "region.bootstrap": handle_region_bootstrap,
     "report": handle_report,
+    "claim.reverify": handle_claim_reverify,  # 계약 2026-10-09.4 (R3 M8, reverify.py)
 }

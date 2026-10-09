@@ -26,8 +26,8 @@
         }
       }
     },
-    "cache_hits": { "type": "integer", "minimum": 0 },
-    "cache_misses": { "type": "integer", "minimum": 0 },
+    "cache_hits": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "cache_misses": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
     "calls_by_tool": { "description": "도구별 예상 실제 호출 수(0 이상 정수)", "type": "object", "additionalProperties": { "type": "integer" } }
   },
   "examples": [

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claim_reverify.json",
+  "title": "ClaimReverifyPayload",
+  "description": "job_name='claim.reverify' 페이로드 (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' 대응). PATCH /claims/{id} 가 등록한다. worker 는 text 를 원자 주장으로 나눠(ClaimSplitter, T6) 원 주장의 근거로 verify 하고, 결과를 parent_claim_id=claim_id 인 새 주장 행으로 저장한다(같은 입력 재호출 아님 — 문장이 다르므로 input_hash 가 다르다). 원 주장 행은 고치지 않는다. 자식 주장이 생기면 원 주장은 '남은 contradicted' 가 아니다(judge.claims.remaining_contradicted) — 자식 중 contradicted 가 있으면 그것이 publish 를 막는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "claim_id", "text"],
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "claim_id": { "description": "고칠 contradicted 주장 id(부모)", "type": "integer" },
+    "text": { "description": "사람이 고친 문장(원자 분할 전)", "type": "string", "minLength": 1, "maxLength": 2000 }
+  },
+  "examples": [{ "snapshot_id": 12, "claim_id": 6990, "text": "고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었다." }]
+}

@@ -13,7 +13,10 @@ export interface FactCellProps {
   asof?: IsoDate | null;
   /** 소수 자릿수 덮어쓰기 */
   digits?: number;
-  /** 라벨 배지 표시 (기본 true). 표에서 열 머리에 라벨을 따로 둘 때만 끈다 */
+  /**
+   * 라벨 배지 표시 (기본 true). 화면 코드에서 false 는 lint(no-raw-number-render, R3 minor 27)가 막는다 —
+   * 모든 수치는 라벨과 함께 보인다. 갤러리·테스트 전용.
+   */
   showLabel?: boolean;
   /** fact 자체가 없을 때 사유 */
   emptyReason?: string;

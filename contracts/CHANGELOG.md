@@ -2,6 +2,48 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.4
+
+R3 독립 리뷰(`docs/design/wp/R3_REVIEW.md`) 후속 — CEO 결정 D9(`docs/design/DECISIONS.md`)와 R3 수정 라운드 F3 카드
+(`docs/design/wp/R3_FIX.md`). 계약 소유자 = R3 F3. 마이그레이션 `0004_r3`(테이블 1개 추가 + job_run CHECK 값 1개 추가 —
+0003 DB 는 `alembic upgrade head` 한 번 — 컬럼·CHECK·유일 제약 변경 포함, 아래). 필드 삭제 없음. 의미 변경 = JudgeScope 값 하나 추가(아래 #1)뿐.
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 |
+| --- | --- | --- | --- | --- |
+| 1 | C2 · D9-1 · F2 요청 | `schemas/score_row.json#/$defs/JudgeScope`, `enums.JUDGE_SCOPE` | 값 `미해결` 추가(판정 대상·보류·참고·**미해결**·제외). 포함/제외 classify 가 review·escaped·미분류면 미해결 — 판정 대상 아님, 사다리·점수 없음. 설명에 D9-1 규칙 5개(공용 함수 `analysis/scope.py judge_scope()`) | F2(씀), F3·F4(읽음·표시) |
+| 2 | M8 · RA §10 | `GET /snapshots/{sid}/claims?status=`, `PATCH /claims/{id}`, `schemas/claim.json#/$defs/ClaimView·ClaimPatch`, `job_payloads/claim_reverify.json`, JobName `claim.reverify` | contradicted 목록(remaining = 분할 자식 없는 contradicted = publish 막는 것, pending_job_id) + 사람 문장 수정 → `claim.reverify` 잡(202). worker 가 원자 분할(ClaimSplitter) → 원 주장 근거로 verify → parent_claim_id 자식 행. 원 주장이 contradicted 아님·이미 분할·잡 대기 중이면 409 | F3(API·G7·worker 핸들러), WP3(splitter·verify 재사용) |
+| 3 | M6 · D1-6 | `POST /catalysts`, `schemas/catalyst.json#/$defs/CatalystCreate·CatalystCreated` | 사람이 넣는 호재 URL(http(s)만)+제목+발췌 → `normalize.catalyst` 공개 함수(F1a)로 후보 행(stage 미확정, location_confirmed=false) → 지역 최신 스냅샷에 rejudge(complex_ids=[] → P4 classify) 등록 | F1a(후보 함수), F3(API·G6), F2(P4) |
+| 4 | M9 · RA §10 보안 5 | `GET·POST /share-links`, `DELETE /share-links/{id}`, `schemas/share_link.json`, 테이블 `share_link`, bearerAuth 설명 | 읽기 전용 공유 토큰 발급(쓰기 토큰만) — 만료 = 발급 + `SHARE_TOKEN_TTL_DAYS`(기본 30), sha256 만 저장, 만료·회수 401, GET 이외 403, 공유 토큰으로 목록 403. 링크 = `<origin>/share#<token>` | F3 |
+| 5 | M11 | bearerAuth 설명 | 두 환경 토큰이 모두 비면 루프백 접속만(그 밖 401) + 127.0.0.1 바인드(`python -m app.serve`) | F3, infra |
+| 6 | minor 15 | `schemas/human_check.json#/$defs/EnteredByRole`, `enums.ENTERED_BY_ROLE` | HumanCheckCreate.entered_by = 역할 enum(`운영자`·`검토자`) — 자유 입력 금지(RA §10 보안 2). DB CHECK 는 두지 않는다(옛 행 보존) | F3(API·G7 폼) |
+| 8 | M8 | `schemas/snapshot.json` contradicted_claims, `POST /reports` 409 | 의미 명시: **남은** contradicted 수(분할 재검증 자식이 있는 주장은 빼고 센다 — `judge.claims.remaining_contradicted`). 보고서 생성 거부(409 publish_blocked)도 같은 함수 — 문장 수정·재검증 후 막히지 않는다 | F3(API), F4·F2(같은 함수) |
+| 9 | W7 (WP9 통합 발견) · F2 요청 | `score_component.unadjusted_gap_pct`(Numeric(18,6))·`unadjusted_median_won`(BigInteger), `ComplexDetail.gap.gap_pct_unadjusted` | gap 성분의 미보정 갭%·중앙값. 점수 엔진은 flags 태그(`analysis.gap.unadjusted_tags`)로 싣고 `scheduler/persist.py` 가 컬럼으로 옮긴다(태그는 flags 에서 뺀다). API 는 컬럼(없으면 옛 행 태그)을 Fact(prov `sc_<run>_<cx>_gap`, reason '미보정 중앙값 기준')로, 없으면 null | F2(씀), F3(읽음) |
+| 10 | F2 요청 | `score_inputs.json` ComplexScoreInput `move_in_label` | 입주월 값의 Fact 라벨(입주 성분 라벨 합성, R3 M2). 파이프라인·미리보기 라벨 키 `move_in` | F2, F3 |
+| 11 | F2 요청 · minor 25 | `score_row.json` delta_rerank | 설명·단위 = 이전 run 대비 rerank **점수(0~10) 차**, unit `score`(예시 갱신). API `views.score_row` unit 'score' | F2, F3, 프론트 |
+| 12 | F2 요청 · W12b | `score_component.score_0_10` | Numeric(6,3) → Numeric(7,4)(점수 엔진 정밀도 4자리) | F2 |
+| 13 | F2 요청 · M3 | API `routers/analysis.py`(compare·미리보기) | 현재 구매가 = `views.bundle_price(b)`(§6-1 최신 공고 가격 우선), 미리보기 `score_input(b, labels, asof_date=기준일)`·미해결 제외 | F3 |
+| 14 | F1b 요청 · M1 | `schemas/resolved_fields.json` needs_compare 설명 | '채택 보류' 규칙(대표 출처 행 reason '출처 상충 — compare 대기', ResolvedFields.chosen 은 '확인 불가' 후보) — 계약 의미 명시, 필드 변경 없음 | F1b |
+| 15 | F1b 요청 · W4 | `complex` 유일 제약 | `applyhome_id` → `(region_id, applyhome_id)`(같은 공고 단지가 지역마다 따로) — `normalize.store` 가 다른 지역 행을 건너뛰지 않고 자기 행을 만든다 | F1b |
+| 16 | F1b 요청 · minor 17 | Settings `HTTP_ALLOW_PRIVATE_HOSTS`(bool, 기본 false) | 사설 IP·localhost 목적지 허용(로컬 녹화 서버 테스트만) | F1b, infra |
+| 17 | F1b 요청 · M13 | `schemas/raw_document.json` meta 설명 | official_site `render.signature`, `popups[].text_sha256·dhash·signature`(시각·애니메이션 무시 안정 해시) 문서화 | F1b |
+| 18 | F1a 요청 · M6 | `POST /catalysts` | 후보 함수 = `app.normalize.catalyst.catalyst_candidate(session, region_id, url=, title=, excerpt=)`, `CatalystInputError` → 422 | F1a, F3 |
+| 19 | F1a 요청 · M7 | `checklist_item.kind`(CHECK·enum) | 값 `계약` 추가(계약일 항목; downgrade 는 '만료'로 되돌린다) | F1a, 프론트 |
+| 20 | F1b 요청(CEO 위임) · M1 | `scheduler/pipeline.py` P5 | compare 결과가 same_fact·different_facts 여도 `apply_compare` 호출(채택 보류는 compare 결과로만 푼다) | F3(이번 처리) |
+| 7 | minor 29 | 응답 스키마의 맨 숫자 | 응답에 나가는 숫자 필드는 Fact 이거나 `x-nonfact: "<근거>"` 주석(비수치 메타 — 식별자·개수·가중치 가정·설정값·판정기 봉투 원값)을 단다. 이름 규칙 `id`·`*_id(s)`·`*_seq`·`page`·`size` 는 메타. 테스트 `tests/contracts/test_r3_contract.py` 가 강제 | F3, 프론트(표시 규칙) |
+
+### 마이그레이션·검증
+
+- `0004_r3`: `share_link(id, token_sha256 UNIQUE, label, created_at, expires_at, revoked_at)` + `job_run.job_name` CHECK 에 `claim.reverify`
+  + `score_component.unadjusted_gap_pct·unadjusted_median_won`, `score_0_10` (7,4), `complex` (region_id, applyhome_id) 유일, `checklist_item.kind` '계약'.
+  SQLite 는 batch(재생성 정의 고정), Postgres 는 ALTER. head → 0003 → head 왕복을 SQLite·Postgres 16(pgserver) 둘 다 테스트
+  (downgrade 는 `claim.reverify` 잡 행을 먼저 지운다 — 옛 CHECK 를 통과할 수 없는 큐의 일시 행). autogenerate diff 0, CHECK 리터럴 일치.
+- 픽스처 변경 사유 강제(minor 6): `contracts/fixtures.sha256.json`(픽스처 sha256 + 사유) — 픽스처를 바꾸면
+  `uv run python scripts/fixture_manifest.py --reason '<사유>'` 로 다시 만들고 같은 사유를 여기 적는다(`tests/contracts/test_fixture_manifest.py`).
+  사유: R3 F3: 픽스처 매니페스트 도입(minor 6) — 데이터 변경 없음
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.4`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
+
 ## 2026-10-09.3
 
 R2 WP5·WP7 요청(`docs/design/wp/CONTRACT_CHANGES_R1.md` "R2 WP5·WP7 요청"·"R2 (WP0 처리 대기)") 반영. 마이그레이션 `0003_r2`

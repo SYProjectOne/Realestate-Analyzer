@@ -55,7 +55,7 @@ export function buildOption(
     const text =
       list.length === 1
         ? `${first.name}\n${first.ym}`
-        : t('chart.C04.markerMore', { name: first.name, n: list.length - 1 });
+        : t('chart.C04.markerMore', { name: first.name, n: formatCount(list.length - 1) });
     return {
       name: list.map((x) => x.name).join(', '),
       coord: [String(year), totalOf(year)],

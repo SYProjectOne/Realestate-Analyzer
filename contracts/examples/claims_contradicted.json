@@ -1,0 +1,22 @@
+{
+  "summary": "contradicted 주장 1건(남음 — publish 막힘)",
+  "value": [
+    {
+      "id": 6990,
+      "snapshot_id": 12,
+      "section": "complex:11",
+      "complex_id": 11,
+      "complex_name": "고촌센트럴자이",
+      "text": "고촌센트럴자이의 +10% 이상 명제는 likely로 판정되었고 +20% 이상은 uncertain이다.",
+      "evidence_text": "jl_120: +10% 0.11 unlikely(auto); +20% 0.04 unlikely(auto)",
+      "verify_status": "contradicted",
+      "judgment_seq": 131,
+      "prov": "jl_131",
+      "parent_claim_id": null,
+      "ordinal": 0,
+      "child_count": 0,
+      "remaining": true,
+      "pending_job_id": null
+    }
+  ]
+}

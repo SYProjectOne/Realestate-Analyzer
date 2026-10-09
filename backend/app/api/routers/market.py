@@ -15,7 +15,7 @@ from app.api.deps import DB, get_snapshot, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, fact, weakest
 from app.api.routers.complexes import catalyst_view
-from app.api.routers.snapshots import unsold_points
+from app.api.routers.snapshots import partial_missing, unsold_points
 from app.api.views import area_names, judge_scope, judgment_days, load_bundles
 from app.models import Benchmark, Catalyst, CatalystLink, Complex, Region, RtmsTrade, Supply
 
@@ -118,7 +118,8 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
     supply_views = []
     for (area_id, year), group in sorted(grouped.items(), key=lambda kv: (kv[0][1], kv[0][0] or "")):
         facts = [fm.field("supply", s.id, "units", s.units, unit="units") for s in group]
-        known = [f for f in facts if f["label"] != LABEL_UNKNOWN]
+        partial = partial_missing(facts, "units")  # 일부 누락이면 합계 대신 확인 불가(R3 M4)
+        known = facts if partial is None else []
         if known:
             label = weakest(f["label"] for f in known)
             units = fact(
@@ -130,7 +131,7 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
                 unit="units",
             )
         else:
-            units = facts[0]
+            units = partial if partial is not None else facts[0]
         supply_views.append(
             {
                 "living_area": area_id,
@@ -177,8 +178,11 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
     ):
         links[lk.catalyst_id].append(lk.complex_id)
     days = judgment_days(session, (c.judgment_seq for c in cats))
+    fm.prov.load(session, "catalyst", (c.id for c in cats))
     cat_views = [
-        catalyst_view(c, days.get(c.judgment_seq or -1) or checked, linked_ids=sorted(links.get(c.id, [])))
+        catalyst_view(
+            c, days.get(c.judgment_seq or -1) or checked, linked_ids=sorted(links.get(c.id, [])), fm=fm
+        )
         for c in cats
         if want is None
         or not links.get(c.id)
@@ -229,15 +233,17 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
         med_t = ts[len(ts) // 2]
         label = weakest(f["label"] for f in tfacts.values())
         mid_val = int(median(t.price_won for t in ts))
+        # 확인일 = 그 Fact 가 가리키는 실거래 출처의 확인일(스냅샷 기준일이 아니다, R3 minor 22)
+        med_f, low_f, high_f = tfacts[med_t.id], tfacts[ts[0].id], tfacts[ts[-1].id]
         prices.append(
             {
                 "living_area": la_id,
                 "name": names.get(la_id, la_id),
                 "median_won": fact(
-                    mid_val, label, tfacts[med_t.id]["prov"], checked, reason=f"표본 {len(ts)}", unit="won"
+                    mid_val, label, med_f["prov"], med_f["checked_at"], reason=f"표본 {len(ts)}", unit="won"
                 ),
-                "low_won": fact(ts[0].price_won, label, tfacts[ts[0].id]["prov"], checked, unit="won"),
-                "high_won": fact(ts[-1].price_won, label, tfacts[ts[-1].id]["prov"], checked, unit="won"),
+                "low_won": fact(ts[0].price_won, label, low_f["prov"], low_f["checked_at"], unit="won"),
+                "high_won": fact(ts[-1].price_won, label, high_f["prov"], high_f["checked_at"], unit="won"),
                 "n_trades": len(ts),
                 "trade_window": f"{_months_back(asof, 6).isoformat()[:7]}~{snap.asof_date[:7]}",
                 "basis": "전용 80~85㎡, 기준일 전 6개월, 분양권·해제 제외",

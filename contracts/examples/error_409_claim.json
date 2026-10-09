@@ -1,0 +1,7 @@
+{
+  "summary": "contradicted 가 아닌 주장",
+  "value": {
+    "code": "conflict",
+    "detail": "claim 7001 is not contradicted (verify_status=verified)"
+  }
+}

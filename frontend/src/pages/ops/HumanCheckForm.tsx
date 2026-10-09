@@ -1,7 +1,12 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useCanWrite } from '@/api/auth';
 import { useComplexes, useCreateHumanCheck, useCreateJob } from '@/api/hooks';
-import type { HumanCheck, HumanCheckCreate } from '@/api/types';
+import {
+  ENTERED_BY_ROLES,
+  type EnteredByRole,
+  type HumanCheck,
+  type HumanCheckCreate,
+} from '@/api/types';
 import { useToast } from '@/app/toast';
 import { IntakeBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
@@ -39,13 +44,13 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const [value, setValue] = useState('');
   const [kind, setKind] = useState<(typeof KINDS)[number]>('phone');
   const [checkedAt, setCheckedAt] = useState(nowLocal);
-  const [enteredBy, setEnteredBy] = useState('');
+  const [enteredBy, setEnteredBy] = useState<EnteredByRole | ''>('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<HumanCheck | null>(null);
 
   const submit = () => {
-    if (!complexId || !value.trim() || !enteredBy.trim()) {
+    if (!complexId || !value.trim() || !enteredBy) {
       setError(t('page.G7.hc.required'));
       return;
     }
@@ -56,7 +61,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
       value_text: value.trim(),
       kind,
       checked_at: toIso(checkedAt),
-      entered_by: enteredBy.trim(),
+      entered_by: enteredBy,
       note: note.trim() || null,
     };
     create.mutate(body, {
@@ -184,12 +189,19 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         </Field>
         <Field label="enteredBy">
           {(id) => (
-            <input
+            <select
               id={id}
               value={enteredBy}
-              onChange={(e) => setEnteredBy(e.target.value)}
+              onChange={(e) => setEnteredBy(e.target.value as EnteredByRole | '')}
               className={inputClass}
-            />
+            >
+              <option value="">{t('page.common.none')}</option>
+              {ENTERED_BY_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {enumText('page.G7.hcRole', role)}
+                </option>
+              ))}
+            </select>
           )}
         </Field>
         <Field label="note" wide>

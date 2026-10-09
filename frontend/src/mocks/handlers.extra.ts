@@ -8,10 +8,15 @@
  *  - G2 대량 행: localStorage `msw.complexes.rows` = N 이면 예시 행을 N개로 복제(가상 스크롤 확인용)
  *  - 판정기 장애: localStorage `msw.degraded` = 1 이면 /health status=degraded
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
+ *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
+ *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
  * 지역명은 목 데이터(계약 예시)에만 있다.
  */
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type {
+  CatalystCreate,
+  CatalystCreated,
+  ClaimPatch,
   ComplexDetail,
   ComplexRow,
   ComplexRowPage,
@@ -25,6 +30,8 @@ import type {
   Provenance,
   RegionCreated,
   ReportRequest,
+  ShareLinkCreate,
+  ShareLinkCreated,
 } from '@/api/types';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
@@ -245,6 +252,49 @@ export const extraHandlers = [
           name: typeof body.name === 'string' ? body.name : created.region.name,
         },
       },
+      { status: 201 },
+    );
+  }),
+
+  // PATCH /claims/{id} (202 → claim.reverify 잡) — 상태 있는 잡
+  http.patch(mswPath('/claims/:id'), async ({ request, params }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<ClaimPatch>;
+    const example = await base<JobRun>(request, 'PATCH', body);
+    const job = registerJob('claim.reverify', {
+      ...example.payload,
+      claim_id: Number(params.id),
+      text: body.text ?? '',
+    });
+    return HttpResponse.json(job, { status: 202 });
+  }),
+
+  // POST /catalysts (201) — 예시 응답 + 요청 값, 분류 잡은 상태 있는 잡
+  http.post(mswPath('/catalysts'), async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<CatalystCreate>;
+    const created = await base<CatalystCreated>(request, 'POST', body);
+    const job = created.job ? registerJob(created.job.job_name, created.job.payload) : null;
+    return HttpResponse.json(
+      {
+        catalyst: {
+          ...created.catalyst,
+          name: body.title ?? created.catalyst.name,
+          source_url: body.url ?? created.catalyst.source_url,
+        },
+        job,
+      } satisfies CatalystCreated,
+      { status: 201 },
+    );
+  }),
+
+  // POST /share-links (201) — 요청 label 반영
+  http.post(mswPath('/share-links'), async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<ShareLinkCreate>;
+    const created = await base<ShareLinkCreated>(request, 'POST', body);
+    return HttpResponse.json(
+      {
+        ...created,
+        link: { ...created.link, label: body.label ?? null },
+      } satisfies ShareLinkCreated,
       { status: 201 },
     );
   }),

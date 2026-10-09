@@ -21,12 +21,11 @@ from app.api.views import (
     COMPONENT_ORDER,
     HATCH_LABELS,
     area_names,
-    basis_type,
+    bundle_price,
     current_payment,
     ladder_days,
     ladder_view,
     load_bundles,
-    price_numbers,
     price_range,
     provenance_for,
     scenario_view,
@@ -179,7 +178,8 @@ def get_compare(
             if pay is not None
             else unknown("납부 조건 없음", None, unit="pct")
         )
-        low, high = price_numbers(basis_type(b.types))
+        view = bundle_price(b)  # §6-1 현재 구매가(최신 공고 가격 우선, R3 M3)
+        low, high = view.low_won, view.high_won
         mid = (Decimal(low) + Decimal(high)) / 2 if low is not None and high is not None else None
         if mid is not None and pay is not None and pay.down_payment_pct is not None:
             dp = mid * pay.down_payment_pct / 100
@@ -350,14 +350,15 @@ def preview_scenario(
         labels = {
             "resale": _label(fm.field("complex", b.cx.id, "resale_months", b.cx.resale_months)),
             "residency": _label(fm.field("complex", b.cx.id, "residency_months", b.cx.residency_months)),
+            "move_in": _label(fm.field("complex", b.cx.id, "move_in_ym", b.cx.move_in_ym)),
         }
         pay = current_payment(b.payments)
         if pay is not None:
             labels["down_payment"] = _label(
                 fm.field("payment_terms", pay.id, "down_payment_pct", pay.down_payment_pct)
             )
-        cx_in = score_input(b, labels)
-        if cx_in.judge_scope == "제외":
+        cx_in = score_input(b, labels, asof_date=snap.asof_date)
+        if cx_in.judge_scope in ("제외", "미해결"):
             continue
         inputs.append(cx_in)
     dto = scenario_dto(sc)

@@ -5,6 +5,7 @@ import type { MobilePolicy, RouteHandle } from '@/hooks/useMobileLayout';
 import type { TKey } from '@/i18n';
 import { AppLayout } from '@/layout/AppLayout';
 import { NotFoundPage } from '@/pages/not-found';
+import { SharePage } from '@/pages/share';
 
 /** 화면마다 별도 청크(첫 화면 번들을 줄인다 — Lighthouse 성능). AppLayout의 Suspense가 받는다. */
 function page<K extends string>(
@@ -122,6 +123,15 @@ const DEV_ROUTES: RouteObject[] =
     : [];
 
 export const appRoutes: RouteObject[] = [
+  /**
+   * 공유 링크 착지(`/share#<token>`, M9) — AppLayout 밖: 토큰을 저장하기 전에 API 를 부르지 않는다.
+   * 화면 10개(routeDefs)가 아니라 진입 도우미다.
+   */
+  {
+    path: '/share',
+    element: <SharePage />,
+    handle: { screen: 'share', mobile: 'readonly' } satisfies RouteHandle,
+  },
   {
     element: <AppLayout />,
     children: [

@@ -1,6 +1,6 @@
 /**
  * WP6a 완료 기준 — Playwright(MSW): 화면 10개 핵심 요소, 숫자 셀 → 출처 패널,
- * G2 1,000행 가상 스크롤, 다크 테마, 모바일 읽기 전용, 차트 실제 렌더(SVG).
+ * G2 2,500행 가상 스크롤(W8·W9 — 프레임 간격 T16 은 perf.spec.ts), 다크 테마, 모바일 읽기 전용, 차트 실제 렌더(SVG).
  */
 import { expect, test, type Page } from '@playwright/test';
 import ko from '../../src/i18n/ko.json' with { type: 'json' };
@@ -106,7 +106,7 @@ test.describe('화면 10개 핵심 요소', () => {
     await expect(complex.locator('option').nth(1)).toBeAttached();
     await complex.selectOption({ index: 1 });
     await form.getByLabel(P.G7.hc.value).selectOption('가능');
-    await form.getByLabel(P.G7.hc.enteredBy).fill('운영자');
+    await form.getByLabel(P.G7.hc.enteredBy).selectOption('운영자');
     await form.getByRole('button', { name: P.G7.hc.submit }).click();
     await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.path.human_check);
     await expect(
@@ -129,6 +129,42 @@ test.describe('화면 10개 핵심 요소', () => {
   });
 });
 
+test.describe('R3 F3 화면(계약 2026-10-09.4)', () => {
+  test('G7 contradicted 주장 문장 수정 → claim.reverify 잡 진행', async ({ page }) => {
+    await ready(page, '/ops', P.G7.title);
+    const section = page.getByRole('region', { name: P.G7.claims.title });
+    const item = section.getByTestId('claim-6990');
+    await expect(item.getByText(P.G7.claims.remaining)).toBeVisible();
+    await item.getByLabel(P.G7.claims.revise).fill('고친 문장이다.');
+    await item.getByRole('button', { name: P.G7.claims.submit }).click();
+    await expect(item.getByTestId('claim-job')).toContainText('claim.reverify');
+  });
+
+  test('G7 공유 링크 발급 → /share#토큰 으로 들어오면 읽기 전용', async ({ page }) => {
+    await ready(page, '/ops', P.G7.title);
+    const section = page.getByRole('region', { name: P.G7.share.title });
+    await section.getByLabel(P.G7.share.label).fill('검토 요청');
+    await section.getByRole('button', { name: P.G7.share.create }).click();
+    const link = section.getByTestId('share-created').getByRole('textbox');
+    await expect(link).toHaveValue(/\/share#.+/);
+    const url = await link.inputValue();
+    await page.goto(url);
+    await expect(page.getByRole('heading', { level: 1, name: P.G1.title })).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    expect(new URL(page.url()).hash).toBe('');
+    await expect(page.getByTestId('readonly-banner')).toBeVisible();
+  });
+
+  test('G6 호재 URL 입력 → 후보 저장 + 분류 잡', async ({ page }) => {
+    await ready(page, '/market', P.G6.title);
+    const form = page.getByRole('form', { name: P.G6.catalyst.title });
+    await form.getByLabel(P.G6.catalyst.url).fill('https://www.example-news.kr/article/1');
+    await form.getByLabel(P.G6.catalyst.titleField).fill('e2e 호재');
+    await form.getByRole('button', { name: P.G6.catalyst.submit }).click();
+    await expect(page.getByTestId('catalyst-created')).toContainText('e2e 호재');
+  });
+});
+
 test('숫자 셀 클릭 → 출처 패널', async ({ page }) => {
   await ready(page, '/', P.G1.title);
   const card = page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem').first();
@@ -139,17 +175,20 @@ test('숫자 셀 클릭 → 출처 패널', async ({ page }) => {
   await expect(page).toHaveURL(/\/(\?.*)?$/);
 });
 
-test('G2 1,000행 가상 스크롤', async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.setItem('msw.complexes.rows', '1000'));
+test('G2 1,000행 넘는 목록: 첫 페이지 먼저, 나머지 이어 받아 마지막 행까지(W8·W9)', async ({
+  page,
+}) => {
+  await page.addInitScript(() => window.localStorage.setItem('msw.complexes.rows', '2500'));
   await ready(page, '/complexes', P.G2.title);
   const table = page.getByRole('table', { name: P.G2.table });
-  await expect(table).toHaveAttribute('aria-rowcount', '1001');
+  await expect(table).toHaveAttribute('aria-rowcount', '2501');
   await expect(table.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
+  await expect(page.getByText(/2,500 \/ 2,500/)).toBeVisible({ timeout: 30_000 });
   expect(await table.locator('tbody tr[aria-rowindex]').count()).toBeLessThan(100);
   await page.getByTestId('complex-table-scroll').evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
-  await expect(table.locator('tr[aria-rowindex="1001"]')).toBeVisible();
+  await expect(table.locator('tr[aria-rowindex="2501"]')).toBeVisible();
   expect(await table.locator('tbody tr[aria-rowindex]').count()).toBeLessThan(100);
 });
 

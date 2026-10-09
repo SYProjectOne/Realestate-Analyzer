@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis import price_view as pv
@@ -23,7 +23,6 @@ from app.analysis.ladder import target_label
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown
 from app.core.contracts_gen import ComplexScoreInput
 from app.models import (
-    Claim,
     Competition,
     Complex,
     ComplexType,
@@ -168,11 +167,10 @@ def area_names(region: Region | None) -> dict[str, str]:
 
 
 def snapshot_view(session: Session, snap: Snapshot) -> dict[str, Any]:
-    contradicted = session.scalar(
-        select(func.count())
-        .select_from(Claim)
-        .where(Claim.snapshot_id == snap.id, Claim.verify_status == "contradicted")
-    )
+    # 남은 contradicted(분할 재검증 자식 없는 것)만 — publish·보고서와 같은 정의(계약 2026-10-09.4, R3 M8)
+    from app.judge.claims import remaining_contradicted
+
+    contradicted = len(remaining_contradicted(session, snap.id))
     ids: set[int] = set(
         session.scalars(select(IntakeStatus.complex_id).where(IntakeStatus.snapshot_id == snap.id).distinct())
     )
@@ -945,7 +943,7 @@ def score_row(
             f"sc_{ctx.run.id}_{cid}_rerank",
             ctx.checked,
             reason="이전 run 대비",
-            unit="ratio",
+            unit="score",  # rerank 점수(0~10) 차 — 계약 2026-10-09.4(F2 요청, minor 25)
         )
     cur = pick_intake(b.intake)
     return {

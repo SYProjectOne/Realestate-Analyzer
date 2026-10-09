@@ -1,4 +1,4 @@
-"""열거 값 (계약 2026-10-09.3). DB는 문자열 + CheckConstraint로 강제한다(RA §3).
+"""열거 값 (계약 2026-10-09.4). DB는 문자열 + CheckConstraint로 강제한다(RA §3).
 
 값은 contracts/schemas/*.json 의 enum과 같다. contracts/migrations/versions/0001_init.py 는 자립해야 하므로
 같은 값을 리터럴로 다시 적는다 — 둘이 다르면 tests/contracts/test_models.py 가 실패한다.
@@ -52,9 +52,10 @@ COMPONENT = ("p10", "rerank", "gap", "benchmark", "supply", "liquidity", "move_i
 HORIZON = ("move_in_plus_1y", "asof_plus_3y", "asof_plus_5y")
 OPTION_KEY = ("complex", "wait_new", "ask_user", "investigate", "none")
 REQ_JUDGE = ("supported", "contradicted", "unknown")
-JUDGE_SCOPE = ("판정 대상", "보류", "참고", "제외")  # score_total.judge_scope (0003, CHECK 없음)
+# score_total.judge_scope (0003, CHECK 없음). 미해결 = 계약 2026-10-09.4 (D9-1)
+JUDGE_SCOPE = ("판정 대상", "보류", "참고", "미해결", "제외")
 HUMAN_CHECK_KIND = ("phone", "visit", "email")
-CHECKLIST_KIND = ("법적 확인", "중도금", "만료", "공고 예상")
+CHECKLIST_KIND = ("법적 확인", "중도금", "만료", "공고 예상", "계약")  # 계약 = 0004(F1a M7)
 CHECKLIST_STATUS = ("open", "done", "na")
 CHANGE_ENTITY = (
     "complex",
@@ -82,11 +83,16 @@ JOB_NAME = (
     "snapshot.publish",
     "reference.refresh",
     "region.bootstrap",
+    "claim.reverify",  # 계약 2026-10-09.4 (0004 CHECK)
 )
 JOB_KIND = ("scheduled", "manual", "rejudge")
 JOB_STATUS = ("queued", "running", "done", "failed")
 SCENARIO_CODE = ("base", "A", "B", "C", "D")
 HOUSEHOLD_SCOPE = ("admin_dong", "sigungu")
+# human_check.json#/$defs/EnteredByRole (API 검증만, CHECK 없음 — 옛 행 보존)
+ENTERED_BY_ROLE = ("운영자", "검토자")
+# share_link.json status (조회 시각으로 계산하는 값 — 컬럼 아님)
+SHARE_LINK_STATUS = ("active", "expired", "revoked")
 
 
 def in_check(column: str, values: Sequence[str]) -> str:

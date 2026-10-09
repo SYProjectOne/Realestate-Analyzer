@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Query
@@ -13,13 +14,12 @@ from app.api.deps import DB
 from app.api.errors import not_found
 from app.api.jobs import enqueue, job_view
 from app.models import JobRun
+from app.models.enums import JOB_NAME
 
 router = APIRouter(tags=["jobs"])
 
-JOB_NAMES = (
-    "^(collect\\.daily|collect\\.weekly|rejudge|report|snapshot\\.publish"
-    "|reference\\.refresh|region\\.bootstrap)$"
-)
+# 계약 JobName(enums.JOB_NAME — 2026-10-09.4 claim.reverify 포함)
+JOB_NAMES = "^(" + "|".join(re.escape(n) for n in JOB_NAME) + ")$"
 
 
 @router.get("/jobs")

@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { INTAKE_STATUSES, type LivingArea } from '@/api/types';
+import { INTAKE_STATUSES, JUDGE_SCOPES, type LivingArea } from '@/api/types';
 import { t, type TKey } from '@/i18n';
 import { enumText } from '../_shared';
 import type { FilterKey, FilterValues } from './params';
@@ -15,7 +15,7 @@ const INCLUSION = [
   '범위 경계',
   '미분류',
 ] as const;
-const SCOPES = ['판정 대상', '보류', '참고', '제외'] as const;
+const SCOPES = JUDGE_SCOPES;
 const LAND_TYPES = ['공공택지', '민간택지'] as const;
 
 interface Option {

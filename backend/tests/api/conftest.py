@@ -37,7 +37,8 @@ def make_settings(db: Path, raw_dir: Path, report_dir: Path, *, env: str = "dev"
         raw_dir=raw_dir,
         reference_dir=db.parent / "reference",
         report_dir=report_dir,
-        judge_adapter="mock",
+        # ENV=prod 는 mock 판정기를 거부한다(R3 minor 31) — API 테스트는 판정기를 부르지 않는다
+        judge_adapter="jev" if env == "prod" else "mock",
         api_token=WRITE_TOKEN,  # type: ignore[arg-type]
         readonly_token=READ_TOKEN,  # type: ignore[arg-type]
         log_json=False,

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useDownload } from '@/api/download';
-import { complexesCsvRequest, useComplexes } from '@/api/hooks';
+import { complexesCsvRequest, useComplexesProgressive } from '@/api/hooks';
 import { EmptyState } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
@@ -10,7 +10,14 @@ import { formatCount } from '@/lib/format';
 import { NoSnapshot, QueryState, useGlobalSearch, usePageContext } from '../_shared';
 import { ComplexTable } from './ComplexTable';
 import { FilterBar } from './FilterBar';
-import { FILTER_KEYS, readFilters, readSort, toListParams, type FilterKey } from './params';
+import {
+  FILTER_KEYS,
+  FIRST_PAGE_SIZE,
+  readFilters,
+  readSort,
+  toListParams,
+  type FilterKey,
+} from './params';
 
 const MAX_COMPARE = 6;
 const MIN_COMPARE = 2;
@@ -19,6 +26,7 @@ const MIN_COMPARE = 2;
  * G2 단지 리스트 `/complexes` (RA §7-1)
  * FilterBar(URL 쿼리) · ComplexTable(TanStack Table + 가상 스크롤, 열 선택 저장) · CompareTray(2~6 → /compare?ids=)
  * CSV는 같은 필터·정렬로 서버가 만든다(complexesCsvRequest → Bearer fetch → 저장).
+ * 목록은 첫 페이지(작게)를 먼저 그리고 나머지 페이지를 이어 받는다(useComplexesProgressive, W8·W9).
  */
 export function ComplexesPage() {
   const { snapshotId, scenarioKey, asof, readOnly, isLoading } = usePageContext();
@@ -30,7 +38,7 @@ export function ComplexesPage() {
     () => toListParams(filters, sort, scenarioKey),
     [filters, sort, scenarioKey],
   );
-  const query = useComplexes(snapshotId, listParams);
+  const query = useComplexesProgressive(snapshotId, listParams, FIRST_PAGE_SIZE);
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
   const globalSearch = useGlobalSearch();
 
@@ -120,6 +128,11 @@ export function ComplexesPage() {
                   shown: formatCount(page.items.length),
                   total: formatCount(page.total),
                 })}
+                {query.loadingMore ? (
+                  <span role="status" className="ml-2">
+                    {t('page.G2.loadingMore')}
+                  </span>
+                ) : null}
               </p>
               {page.items.length === 0 ? (
                 <EmptyState message={t('page.G2.empty')} />

@@ -17,6 +17,7 @@ npm run dev:msw     # MSW 모드: API 없이 계약 예시 응답
 npm test | npm run lint | npm run typecheck | npm run build
 npm run e2e         # Playwright MSW 모드(스모크 tests/e2e + 화면 e2e/pages). 최초 1회 npx playwright install chromium
 npm run e2e:api     # Playwright 실 API 모드(e2e/api): devseed DB + uvicorn + vite 를 스스로 띄운다
+npm run lighthouse  # MSW 빌드 + preview → 주요 화면 Lighthouse(성능·접근성·권장 사항) 표, 80 미만이면 exit 1
 ```
 
 ## 실 API 모드 ↔ MSW 모드

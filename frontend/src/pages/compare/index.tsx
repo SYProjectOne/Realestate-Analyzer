@@ -80,6 +80,8 @@ function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: st
   return (
     <div className="flex flex-col gap-4">
       <CompareGrid view={view} rows={rows} scenarioKey={scenarioKey} />
+      {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
+      <h2 className="sr-only">{t('page.common.charts')}</h2>
       <C06ScoreBreakdown
         data={{ rows, weights: view.components.weights, orientation: 'horizontal' }}
         height={Math.max(180, rows.length * 48)}
@@ -208,7 +210,10 @@ function CompareGrid({
                     {(item?.chosen ?? badge?.chosen) ? (
                       <Badge tone="strong">{t('chart.chosen')}</Badge>
                     ) : null}
-                    <TieBadge tie={item?.tie ?? badge?.tie ?? false} />
+                    {/* 동률 = 서버 값만, 확정(ok) 봉투일 때만(R3 minor 28) */}
+                    <TieBadge
+                      tie={item ? decision?.status === 'ok' && item.tie : (badge?.tie ?? false)}
+                    />
                     <MismatchBadge mismatch={item?.mismatch ?? badge?.mismatch ?? false} />
                   </span>
                 </td>

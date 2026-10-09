@@ -1,6 +1,7 @@
 import type { Fact } from '@/api/types';
 import {
   formatArea,
+  formatConfidence,
   formatCount,
   formatDate,
   formatDday,
@@ -110,5 +111,17 @@ describe('formatFactValue', () => {
 
   it('숫자 단위인데 v가 숫자 문자열이면 숫자로 해석한다', () => {
     expect(formatFactValue(fact('35000000'), 'won')).toBe('3,500만원');
+  });
+});
+
+describe('formatConfidence (R3 minor 27)', () => {
+  it('판정기 신뢰도 0~1 → 소수 둘째 자리', () => {
+    expect(formatConfidence(0.48)).toBe('0.48');
+    expect(formatConfidence(0.6)).toBe('0.60');
+    expect(formatConfidence(1)).toBe('1.00');
+  });
+  it('범위 밖·NaN → 확인 불가', () => {
+    expect(formatConfidence(1.2)).toBe(formatConfidence(Number.NaN));
+    expect(formatConfidence(-0.1)).not.toMatch(/\d/);
   });
 });

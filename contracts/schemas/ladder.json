@@ -12,7 +12,7 @@
     "horizon": { "type": "string", "enum": ["move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"] },
     "target_ym": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
     "target_label": { "description": "부제용 '2029 상반기' 형식", "type": ["string", "null"] },
-    "months_from_asof": { "type": "integer", "minimum": 1 },
+    "months_from_asof": { "x-nonfact": "기준일에서 horizon 까지 개월 수(사다리 정의 메타)", "type": "integer", "minimum": 1 },
     "p5": { "$ref": "fact.json" },
     "p10": { "$ref": "fact.json" },
     "p20": { "$ref": "fact.json" },

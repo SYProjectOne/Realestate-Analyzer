@@ -245,6 +245,31 @@ describe('C06 종합 점수 분해', () => {
     expect(hatched.label.formatter).toBe('미판정');
   });
 
+  it('minor 26: 미판정 막대는 스택 길이 0 — w×10 으로 부풀리지 않는다(빗금·라벨로만 표시)', () => {
+    const rows = rowsWithUnjudged();
+    const o = C06.buildOption({ rows, weights: d.weights });
+    const s = series(o);
+    const valueOf = (x: any) => (typeof x === 'object' && x !== null ? x.value : x) as number;
+    // 미판정 항목은 값 0 + 빗금 + 라벨
+    const hatchedAll = s.flatMap((x) =>
+      x.data.filter((v: any) => typeof v === 'object' && v?.itemStyle?.decal),
+    );
+    expect(hatchedAll.length).toBeGreaterThan(0);
+    for (const h of hatchedAll) {
+      expect(h.value).toBe(0);
+      expect(h.label.show).toBe(true);
+    }
+    // 행마다 스택 합 = 서버 기여 합(미판정 = 0)
+    const sorted = C06.sortedRows(rows);
+    sorted.forEach((row, i) => {
+      const stack = s.reduce((acc, x) => acc + (valueOf(x.data[i]) ?? 0), 0);
+      const expected = Object.values(
+        C06.contributions(row, C06.componentKeys({ rows, weights: d.weights })),
+      ).reduce<number>((acc, v) => acc + (v ?? 0), 0);
+      expect(stack).toBeCloseTo(expected, 6);
+    });
+  });
+
   it('상황 A·D의 move_in 성분도 키로 받는다', () => {
     const row = structuredCloneRow(d.top5[0]!);
     row.components.move_in = row.components.liquidity;
@@ -276,6 +301,43 @@ describe('C07 판정기 확률', () => {
     const data = { decision: c.decisions.B! };
     expect(C07.isTie(data)).toBe(true);
     expect(C07.confidenceText(data)).toBe('신뢰도 0.48');
+  });
+
+  it('minor 28: 동률은 서버 tie 만 — confidence 로 브라우저가 다시 계산하지 않는다', () => {
+    const decision = structuredCloneRow(c.decisions.base!);
+    decision.tie = false;
+    decision.confidence = { ...(decision.confidence as any), v: 0.3 };
+    expect(C07.isTie({ decision })).toBe(false);
+    decision.tie = true;
+    decision.confidence = { ...(decision.confidence as any), v: 0.9 };
+    expect(C07.isTie({ decision })).toBe(true);
+  });
+
+  it('minor 28: 봉투 review·blocked·error·escaped 면 동률 표시 없음(전체·항목 모두)', () => {
+    for (const status of ['review', 'blocked', 'error', 'escaped'] as const) {
+      const decision = structuredCloneRow(c.decisions.B!);
+      decision.status = status;
+      expect(decision.tie).toBe(true);
+      expect(C07.isTie({ decision })).toBe(false);
+      const o = C07.buildOption({ decision });
+      const labels = decision.items.map((_, i) =>
+        series(o)[0].label.formatter({ dataIndex: i, value: 0.5 }),
+      );
+      expect(labels.some((l: string) => l.includes('동률'))).toBe(false);
+      expect(C07.toTable({ decision }).rows.some((r) => String(r.flags).includes('동률'))).toBe(
+        false,
+      );
+    }
+  });
+
+  it('minor 28: ok 봉투의 항목 동률·선택은 서버 값 그대로', () => {
+    const decision = c.decisions.B!;
+    const o = C07.buildOption({ decision });
+    decision.items.forEach((item, i) => {
+      const label = series(o)[0].label.formatter({ dataIndex: i, value: 0.5 }) as string;
+      expect(label.includes('동률')).toBe(item.tie);
+      expect(label.includes('선택')).toBe(item.chosen);
+    });
   });
 
   it('escaped → 막대 대신 질문 텍스트', () => {

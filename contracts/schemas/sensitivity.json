@@ -32,7 +32,7 @@
     "base_weights": {
       "$ref": "scenario.json#/$defs/Weights"
     },
-    "base_top5": {
+    "base_top5": { "x-nonfact": "식별자 목록(complex_id)",
       "type": "array",
       "items": {
         "type": "integer"
@@ -93,7 +93,7 @@
         "component": {
           "$ref": "scenario.json#/$defs/ComponentKey"
         },
-        "delta": {
+        "delta": { "x-nonfact": "가중치 변형 크기(±0.10 가정, §6-6)",
           "type": "number",
           "enum": [
             0.1,
@@ -103,7 +103,7 @@
         "weights": {
           "$ref": "scenario.json#/$defs/Weights"
         },
-        "top5": {
+        "top5": { "x-nonfact": "식별자 목록(complex_id)",
           "type": "array",
           "items": {
             "type": "integer"
@@ -150,13 +150,13 @@
         "changed": {
           "type": "boolean"
         },
-        "entered": {
+        "entered": { "x-nonfact": "식별자 목록(complex_id)",
           "type": "array",
           "items": {
             "type": "integer"
           }
         },
-        "exited": {
+        "exited": { "x-nonfact": "식별자 목록(complex_id)",
           "type": "array",
           "items": {
             "type": "integer"

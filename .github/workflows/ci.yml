@@ -111,6 +111,8 @@ jobs:
         run: uv run ruff check app tests
       - name: mypy (strict)
         run: uv run mypy app
+      - name: contract generated files are fresh (bundle + pydantic)
+        run: uv run python scripts/gen_contracts.py --check
 
   backend-tests:
     needs: changes
@@ -140,6 +142,10 @@ jobs:
           python-version: "3.12"
       - if: steps.decide.outputs.run == 'true'
         run: uv sync --all-extras --frozen
+      # 보고서 PDF(D4)·공식 홈페이지 렌더(수집)는 Playwright chromium 이 필요하다(R3 minor 2)
+      - if: steps.decide.outputs.run == 'true' && (matrix.module == 'reports' || matrix.module == 'collectors')
+        name: playwright install chromium
+        run: uv run playwright install --with-deps chromium
       - name: pytest tests/${{ matrix.module }}
         if: steps.decide.outputs.run == 'true'
         run: |
@@ -162,7 +168,13 @@ jobs:
       - name: docker compose config
         run: |
           cp infra/.env.example infra/.env
+          # API_TOKEN 이 비면 compose 가 거부해야 한다(R3 M11)
+          if docker compose -f infra/docker-compose.yml config -q 2>/dev/null; then
+            echo "API_TOKEN 없이 compose config 가 통과했다"; exit 1
+          fi
+          echo "API_TOKEN=ci-$(openssl rand -hex 16)" >> infra/.env
           docker compose -f infra/docker-compose.yml config -q
+          bash -n infra/backup.sh infra/raw_archive.sh
 
   frontend:
     needs: changes
@@ -197,6 +209,64 @@ jobs:
       - if: steps.decide.outputs.run == 'true'
         name: test
         run: npm test
+      - if: steps.decide.outputs.run == 'true'
+        name: build
+        run: npm run build
+
+  # R3 minor 2: 프론트 e2e(MSW 스모크 + 화면 e2e). 차트 스크린샷 기준 이미지는 win32 에서 만든 것이라
+  # linux CI 에서는 비교를 끈다(--ignore-snapshots) — 스냅샷 비교는 개발 기기(win32)에서 npm run e2e 로.
+  frontend-e2e:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: playwright install chromium
+        run: npx playwright install --with-deps chromium
+      - name: e2e smoke (tests/e2e)
+        run: npx playwright test --ignore-snapshots
+      - name: e2e pages (e2e/pages, T16 프레임 측정 포함)
+        run: npx playwright test -c e2e/pages --ignore-snapshots
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: ignore
+
+  # R3 M15: Lighthouse 80 이상(성능·접근성·권장 사항) — npm run lighthouse 가 점수 미달이면 exit 1
+  frontend-lighthouse:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: playwright install chromium (Lighthouse 용 Chrome)
+        run: npx playwright install --with-deps chromium
+      - name: npm run lighthouse
+        run: npm run lighthouse
 
   # WP9 R3: 회귀(RA §9 T1~T18 통합 + e2e 흐름 3개). main push·수동·contracts/공통·회귀 관련 변경 때.
   # 실패해도 다른 잡과 독립 — 결과 요약은 로그 '회귀 요약' 절과 아티팩트(junit·Playwright json·trace).

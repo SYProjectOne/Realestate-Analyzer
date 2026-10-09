@@ -80,7 +80,7 @@ from app.models import (
 from app.models.enums import CATALYST_STAGE, INCLUSION_CLASS
 from app.normalize._text import read_raw_text
 from app.normalize.extract_request import FIELD_DESCRIPTIONS, build_extract_requests
-from app.normalize.judged import AuditMark, ExtractedValue, apply_compare, apply_extracted
+from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
 from app.scheduler.degraded import clear_degraded, mark_degraded
@@ -556,7 +556,9 @@ def _p5(
             chosen.compare_judgment_seq = chosen.compare_judgment_seq or s
             r.compare_judgment_seq = s
             n += 1
-            if out.resolved and out.relation == "contradicts":
+            # contradicts·same_fact·different_facts 모두 apply_compare 가 채택·병기 표식을 남긴다(R3 M1 —
+            # 채택 보류는 compare 결과로만 푼다; review·escaped 는 보류 유지)
+            if out.resolved and out.relation in COMPARE_RESOLVED:
                 adopted = apply_compare(
                     session, group, relation=out.relation, judgment_seq=s, snapshot_id=snap.id
                 )

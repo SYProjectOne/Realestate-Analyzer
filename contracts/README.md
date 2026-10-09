@@ -12,7 +12,8 @@
 | `examples/*.json` | **원본** | OpenAPI Example Object(`summary`, `value`). 인천·김포 보고서 기반 응답 예시 — 프론트 MSW 데이터 |
 | `openapi.bundled.yaml` | 생성 | 외부 `$ref` 없는 자립 번들. 프론트 타입(`openapi-typescript`)·MSW는 이것 |
 | `../backend/app/core/contracts_gen.py` | 생성 | 번들 components 전부의 pydantic v2 모델 |
-| `migrations/` | **원본** | Alembic. `versions/0001_init.py`(초기) → `0002_r1.py`(2026-10-09.2 컬럼 추가)가 DDL 원본, `../backend/app/models`가 head의 거울 |
+| `migrations/` | **원본** | Alembic. `versions/0001_init.py`(초기) → `0002_r1.py`(.2) → `0003_r2.py`(.3) → `0004_r3.py`(.4 share_link·claim.reverify·미보정 갭)가 DDL 원본, `../backend/app/models`가 head의 거울 |
+| `fixtures.sha256.json` | 생성 | 픽스처 sha256 + 바꾼 사유(`backend/scripts/fixture_manifest.py`). 사유는 CHANGELOG 에 같은 문장으로(테스트가 강제) |
 | `fixtures/` | WP9 | 회귀 픽스처([`fixtures/README.md`](fixtures/README.md)). `expected_scores.json` 시드만 WP0-A |
 
 ## 생성 명령 (backend/ 에서)

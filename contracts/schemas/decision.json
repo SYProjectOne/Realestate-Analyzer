@@ -17,7 +17,7 @@
     "chosen": { "type": "boolean" },
     "tie": { "type": "boolean" },
     "mismatch": { "type": "boolean" },
-    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "confidence": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": ["number", "null"], "minimum": 0, "maximum": 1 },
     "requirements": { "anyOf": [{ "$ref": "#/$defs/RequirementChecks" }, { "type": "null" }] },
     "judgment_seq": { "type": ["integer", "null"] }
   },

@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import re
+import tarfile
+from collections import Counter
 from collections.abc import Sequence
+from pathlib import Path as FsPath
+from pathlib import PurePosixPath
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.gap import unadjusted_from_flags
 from app.api.deps import DB, default_snapshot, get_complex, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, day, fact, unknown
@@ -36,6 +42,7 @@ from app.api.views import (
     type_view,
 )
 from app.core.paths import resolve_raw_path
+from app.core.settings import get_settings
 from app.models import (
     Catalyst,
     CatalystLink,
@@ -61,6 +68,13 @@ router = APIRouter(tags=["complexes"])
 # ====================================================================== 가격 갭·호재
 
 
+def _coef_reason(c_per_year: Any) -> str:
+    """대체 단지 보정 라벨 = 연간 계수 c(지역 설정, RA §6-2) — 총 보정률(c × 연수, coef_used)이 아니다(R3 W6).
+
+    예 '대체·보정 c=0.015'. 총 보정률은 ``coef_used`` 필드로 따로 나간다."""
+    return "대체·보정" if c_per_year is None else f"대체·보정 c={float(c_per_year):g}"
+
+
 def gap_view(
     session: Session, fm: FactMaker, ctx: ScoreCtx, cx: Complex, snapshot_id: int, price: dict[str, Any]
 ) -> dict[str, Any]:
@@ -74,13 +88,22 @@ def gap_view(
         )
     )
     checked = ctx.checked
+    region = session.get(Region, cx.region_id)
+    coef = dict((region.age_premium_coef if region is not None else None) or {})
+    c_per_year = coef.get("c_per_year")
     comps: list[dict[str, Any]] = []
     for m in members:
         prov = f"cs_{m.id}"
 
-        def money(v: int | None, prov: str = prov) -> dict[str, Any]:
+        # 비교군 시세 = 실거래를 묶은 통계(재가공), 대체 단지면 추정 — gap 점수 라벨이 아니다(R3 minor 22)
+        comp_label = "추정" if m.substitute else "재가공"
+        comp_reason = "대체 단지" if m.substitute else (f"실거래 {m.n_trades}건 통계" if m.n_trades else None)
+
+        def money(
+            v: int | None, prov: str = prov, lb: str = comp_label, rs: str | None = comp_reason
+        ) -> dict[str, Any]:
             return (
-                fact(v, label, prov, checked, unit="won")
+                fact(v, lb, prov, checked, reason=rs, unit="won")
                 if v is not None
                 else unknown("값 없음", checked, unit="won")
             )
@@ -97,7 +120,7 @@ def gap_view(
                     "추정",
                     prov,
                     checked,
-                    reason=f"대체·보정 c={float(m.coef_used or 0):g}",
+                    reason=_coef_reason(c_per_year),
                     unit="won",
                 )
                 if m.adjusted_median_won is not None
@@ -119,6 +142,17 @@ def gap_view(
         gap_pct = unknown("분양가 미공개", checked, unit="pct")
     else:
         gap_pct = unknown((gap_row.reason if gap_row else None) or "미판정", checked, unit="pct")
+    gap_unadj = None
+    raw_unadj = None
+    if gap_row is not None:
+        raw_unadj = gap_row.unadjusted_gap_pct
+        if raw_unadj is None:  # 컬럼 이전(0004 전) 실행은 flags 태그(analysis.gap.unadjusted_tags)
+            raw_unadj = unadjusted_from_flags(gap_row.flags)[0]
+    if raw_unadj is not None and run_id is not None and gap_pct["label"] != LABEL_UNKNOWN:
+        # 미보정 중앙값 기준 gap%(R3 W7) — 점수 실행이 score_component 에 저장한 값. 없으면 null(옛 실행)
+        gap_unadj = fact(
+            raw_unadj, label, f"sc_{run_id}_{cx.id}_gap", checked, reason="미보정 중앙값 기준", unit="pct"
+        )
     if gap_row is not None and run_id is not None and gap_row.score_0_10 is not None:
         score = fact(
             gap_row.score_0_10,
@@ -142,7 +176,7 @@ def gap_view(
         "price_mid": price["price_mid"],
         "comps": comps,
         "gap_pct": gap_pct,
-        "gap_pct_unadjusted": None,
+        "gap_pct_unadjusted": gap_unadj,
         "score": score,
         "empty_reason": empty,
     }
@@ -154,12 +188,21 @@ def catalyst_view(
     *,
     link: CatalystLink | None = None,
     linked_ids: Sequence[int] | None = None,
+    fm: FactMaker | None = None,
 ) -> dict[str, Any]:
+    """호재 1건. expected_ym 의 출처 = catalyst 의 field_provenance(호재 문구 원문) — classify 판정 seq 가
+    아니다(R3 minor 22). ``fm`` 이 없으면(출처 색인 없이) 예정 시기는 '확인 불가(출처 미조회)'."""
     seq = c.judgment_seq
     if c.stage_prob is not None and seq is not None:
         prob = fact(c.stage_prob, "추정", f"jl_{seq}", checked, reason="판정기 classify", unit="prob")
     else:
         prob = unknown("미판정", checked, unit="prob")
+    if c.expected_ym is None:
+        expected = unknown("예정 시기 미기재", checked, unit="ym")
+    elif fm is None:
+        expected = unknown("출처 미조회", checked, unit="ym")
+    else:
+        expected = fm.field("catalyst", c.id, "expected_ym", c.expected_ym, unit="ym")
     out: dict[str, Any] = {
         "id": c.id,
         "name": c.name,
@@ -167,9 +210,7 @@ def catalyst_view(
         "stage": c.stage,
         "stage_prob": prob,
         "decision": c.decision,
-        "expected_ym": fact(c.expected_ym, "비공식", f"jl_{seq}", checked, reason="호재 문구", unit="ym")
-        if c.expected_ym is not None and seq is not None
-        else unknown("예정 시기 미기재", checked, unit="ym"),
+        "expected_ym": expected,
         "location_confirmed": bool(c.location_confirmed),
         "linked": None,
         "distance_m": None,
@@ -311,7 +352,7 @@ def get_complex_detail(
         "gap": gap_view(session, fm, ctx, cx, snap.id, price),
         "catalysts": [
             catalyst_view(
-                cats[lk.catalyst_id], cat_days.get(cats[lk.catalyst_id].judgment_seq or -1), link=lk
+                cats[lk.catalyst_id], cat_days.get(cats[lk.catalyst_id].judgment_seq or -1), link=lk, fm=fm
             )
             for lk in links
             if lk.catalyst_id in cats
@@ -443,6 +484,32 @@ def _score_total_formula(session: Session, run: ScoreRun, cid: int) -> str:
     return "S = Σ w·s = " + " + ".join(terms) if terms else "S = Σ w·s"
 
 
+def _score_run_prov(session: Session, prov_id: str, run_id: int) -> dict[str, Any]:
+    """``st_<score_run_id>``: 점수 실행 전체 — 대시보드 KPI 집계(판정 대상 수 등)의 출처(R3 minor 22)."""
+    run = session.get(ScoreRun, run_id)
+    if run is None:
+        raise not_found(f"provenance {prov_id}")
+    scopes = Counter(
+        s or "미기록"
+        for s in session.scalars(select(ScoreTotal.judge_scope).where(ScoreTotal.score_run_id == run.id))
+    )
+    out = _blank(prov_id, "score_total", "추정")
+    out.update(
+        entity="score_run",
+        entity_id=run.id,
+        field="judge_scope",
+        value_text=" · ".join(f"{k} {v}" for k, v in sorted(scopes.items())) or None,
+        reason="집계",
+        checked_at=day(run.created_at),
+        formula_text=(
+            "판정 대상 수 = 이 점수 실행의 score_total.judge_scope='판정 대상' 단지 수; "
+            "접수 가능 수 = 같은 스냅샷 접수 표시값 '가능' 단지 수"
+        ),
+        judgment_seq=run.rerank_judgment_seq,
+    )
+    return out
+
+
 @router.get("/provenance/{prov_id}")
 def get_provenance(
     session: DB,
@@ -479,6 +546,8 @@ def get_provenance(
             formula_text=row.formula_text,
         )
         return JSONResponse(out)
+    if prefix == "st" and rest.isdigit():
+        return JSONResponse(_score_run_prov(session, prov_id, int(rest)))
     if prefix == "st":
         ids = _ints(rest, 2)
         if ids is None:
@@ -595,6 +664,43 @@ def _media_type(content_type: str | None, path: str) -> str:
     return "text/plain; charset=utf-8"
 
 
+_MONTH_ARCHIVE = re.compile(r"^\d{4}-\d{2}\.tar\.gz$")
+
+
+def archived_member(rel: str, raw_dir: FsPath) -> bytes | None:
+    """월별 압축(runbook §6 · ``infra/raw_archive.sh``) 안의 원문(R3 minor 34).
+
+    압축 = ``<RAW_DIR>/<source>/<yyyy-mm>.tar.gz``,
+    구성원 이름 = RAW_DIR 기준 상대 경로(DB 의 ``path`` 그대로).
+    같은 달 압축을 먼저, 없으면 그 소스의 다른 압축(*.tar.gz)을 본다. 없으면 None."""
+    parts = PurePosixPath(rel.replace("\\", "/")).parts
+    if len(parts) < 2:
+        return None
+    src_dir = raw_dir / parts[0]
+    if not src_dir.is_dir():
+        return None
+    month = parts[1][:7] if len(parts) >= 3 else None
+    archives = sorted(src_dir.glob("*.tar.gz"))
+    archives.sort(key=lambda a: (a.name != f"{month}.tar.gz", not _MONTH_ARCHIVE.match(a.name), a.name))
+    member = PurePosixPath(*parts).as_posix()
+    for archive in archives:
+        try:
+            with tarfile.open(archive, "r:gz") as tar:
+                try:
+                    info = tar.getmember(member)
+                except KeyError:
+                    continue
+                if not info.isfile():
+                    continue
+                fh = tar.extractfile(info)
+                if fh is None:
+                    continue
+                return fh.read()
+        except (OSError, tarfile.TarError):
+            continue
+    return None
+
+
 @router.get("/raw/{raw_document_id}")
 def get_raw_document(
     session: DB,
@@ -612,7 +718,16 @@ def get_raw_document(
     except ValueError as exc:
         raise not_found(f"raw_document {raw_document_id}") from exc
     if not path.is_file():
-        raise not_found(f"raw_document {raw_document_id} file")
+        data = archived_member(rel, get_settings().raw_dir)
+        if data is None:
+            raise not_found(f"raw_document {raw_document_id} file")
+        if as_ == "text":
+            return PlainTextResponse(data.decode("utf-8", errors="replace"))
+        return Response(
+            content=data,
+            media_type=_media_type(raw.content_type, rel),
+            headers={"Content-Disposition": f'attachment; filename="{path.name}"'},
+        )
     if as_ == "text":
         return PlainTextResponse(path.read_text(encoding="utf-8", errors="replace"))
     return FileResponse(path, media_type=_media_type(raw.content_type, rel), filename=path.name)

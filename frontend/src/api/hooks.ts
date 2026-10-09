@@ -1,12 +1,14 @@
 /**
- * TanStack Query 훅 — RA §4-2 + D2-3 엔드포인트마다 하나 (계약 2026-10-09.1, operationId 주석).
+ * TanStack Query 훅 — RA §4-2 + D2-3 엔드포인트마다 하나 (계약 2026-10-09.4, operationId 주석).
  *
  * 화면은 이 훅만 부른다. 반환 타입은 `./types`(생성 타입 별칭).
  * 쿼리 키는 `queryKeys`로만 만든다(무효화 일관성).
  * id 인자는 `IdLike`(number | string): URL 경로·쿼리에서 온 문자열을 그대로 넘겨도 된다.
  */
+import { useEffect, useMemo } from 'react';
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -16,10 +18,15 @@ import {
 import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
 import type {
+  CatalystCreate,
+  CatalystCreated,
   ChangeEvent,
   ChangeSeverity,
   ChecklistItem,
   ChecklistPatch,
+  ClaimListParams,
+  ClaimPatch,
+  ClaimView,
   CompareView,
   ComplexDetail,
   ComplexListParams,
@@ -48,6 +55,9 @@ import type {
   ScenarioPreview,
   Sensitivity,
   Snapshot,
+  ShareLink,
+  ShareLinkCreate,
+  ShareLinkCreated,
   SourceStatus,
 } from './types';
 
@@ -107,6 +117,9 @@ export const queryKeys = {
   opsJudgments: (params: JudgmentOpsParams) => ['ops', 'judgments', params] as const,
   checklist: (params: ChecklistParams) => ['ops', 'checklist', params] as const,
   reports: (snapshotId: IdLike | null) => ['reports', key(snapshotId)] as const,
+  claims: (sid: IdLike, params: ClaimListParams) =>
+    ['snapshots', key(sid), 'claims', params] as const,
+  shareLinks: () => ['share-links'] as const,
 };
 
 // ─── 공통 ───────────────────────────────────────────────────
@@ -243,6 +256,68 @@ export function useComplexes(
     enabled: has(sid),
     placeholderData: keepPreviousData,
   });
+}
+
+export interface ComplexPagesResult {
+  /** 지금까지 받은 행(items)과 서버 total. 첫 페이지 전이면 undefined */
+  data: ComplexRowPage | undefined;
+  error: Error | null;
+  isLoading: boolean;
+  /** 나머지 페이지를 받는 중 */
+  loadingMore: boolean;
+}
+
+/**
+ * G2 목록을 점진적으로 받는다(WP9 W8·W9).
+ *  1. 첫 요청 = page 1, size = firstSize(작게) — 첫 화면을 빨리 그린다.
+ *  2. total 이 그보다 크면 size = params.size(기본 1000, 계약 최대) 페이지를 1부터 차례로 모두 받는다 —
+ *     total 의 모든 행에 닿는다. 다 받으면 그 행들로 바꾼다(첫 페이지 행은 1페이지에 포함).
+ */
+export function useComplexesProgressive(
+  sid: IdLike | null | undefined,
+  params: ComplexListParams,
+  firstSize: number,
+): ComplexPagesResult {
+  const pageSize = params.size ?? 1000;
+  const first = useComplexes(sid, { ...params, page: 1, size: firstSize });
+  const firstPage = first.isPlaceholderData ? undefined : first.data;
+  const needMore = firstPage !== undefined && firstPage.total > firstPage.items.length;
+  const rest = useInfiniteQuery({
+    queryKey: [...queryKeys.complexes(key(sid), { ...params, size: pageSize }), 'pages'] as const,
+    queryFn: ({ pageParam, signal }) =>
+      apiFetch<ComplexRowPage>(`/snapshots/${enc(key(sid))}/complexes`, {
+        query: complexQuery({ ...params, page: pageParam, size: pageSize }),
+        signal,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last, all) => {
+      const loaded = all.reduce((n, p) => n + p.items.length, 0);
+      return last.items.length > 0 && loaded < last.total ? all.length + 1 : undefined;
+    },
+    enabled: has(sid) && needMore,
+  });
+  const { hasNextPage, isFetchingNextPage, isFetching, fetchNextPage } = rest;
+  // 받은 페이지 수가 바뀔 때마다 다음 페이지(상태 플래그는 빠른 응답이면 같은 값으로 돌아온다)
+  const loadedPages = rest.data?.pages.length ?? 0;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isFetching) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, isFetching, fetchNextPage, loadedPages]);
+
+  const data = useMemo<ComplexRowPage | undefined>(() => {
+    const pages = needMore ? rest.data?.pages : undefined;
+    if (pages && pages.length > 0) {
+      const last = pages[pages.length - 1] as ComplexRowPage;
+      return { ...last, page: 1, size: pageSize, items: pages.flatMap((p) => p.items) };
+    }
+    return first.data;
+  }, [needMore, rest.data, first.data, pageSize]);
+
+  return {
+    data,
+    error: first.error ?? rest.error ?? null,
+    isLoading: first.isLoading,
+    loadingMore: needMore && (rest.isFetching || !!rest.hasNextPage),
+  };
 }
 
 /**
@@ -548,4 +623,85 @@ export function useCreateReport(): M<ReportRequest, JobRun> {
 /** GET /reports/{id} (downloadReport) — 보고서 파일(Bearer → `useDownload`) */
 export function reportRequest(id: IdLike, filename?: string | null): FileRequest {
   return { path: `/reports/${enc(id)}`, fallbackName: filename ?? `report_${key(id)}` };
+}
+
+// ─── 주장 수정 (G7, 계약 2026-10-09.4 · M8) ────────────────
+
+/** GET /snapshots/{sid}/claims?status= (listClaims) — G7 contradicted 목록 */
+export function useClaims(
+  sid: IdLike | null | undefined,
+  params: ClaimListParams = {},
+): Q<ClaimView[]> {
+  return useQuery({
+    queryKey: queryKeys.claims(key(sid), params),
+    queryFn: ({ signal }) =>
+      apiFetch<ClaimView[]>(`/snapshots/${enc(key(sid))}/claims`, {
+        query: { status: params.status },
+        signal,
+      }),
+    enabled: has(sid),
+  });
+}
+
+/**
+ * PATCH /claims/{id} (reviseClaim, 202 → JobRun claim.reverify) — 사람이 고친 문장으로 원자 분할 재검증.
+ * 409 conflict = contradicted 아님·이미 분할됨·재검증 대기 중(ApiError.detail 을 화면이 보인다).
+ */
+export function useReviseClaim(): M<{ id: IdLike; patch: ClaimPatch }, JobRun> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }) =>
+      apiFetch<JobRun>(`/claims/${enc(id)}`, { method: 'PATCH', body: patch }),
+    onSuccess: () => {
+      void qc.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === 'snapshots' && q.queryKey[2] === 'claims',
+      });
+      void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
+  });
+}
+
+// ─── 호재 URL (G6, 계약 2026-10-09.4 · M6) ─────────────────
+
+/** POST /catalysts (createCatalyst, 201) — 사람이 넣는 호재 URL. job 이 null 이면 다음 파이프라인이 분류 */
+export function useCreateCatalyst(): M<CatalystCreate, CatalystCreated> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => apiFetch<CatalystCreated>('/catalysts', { method: 'POST', body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === 'snapshots' && q.queryKey[2] === 'market',
+      });
+      void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
+  });
+}
+
+// ─── 공유 링크 (G7, 계약 2026-10-09.4 · M9) ────────────────
+
+/** GET /share-links (listShareLinks) — 쓰기 토큰만(읽기·공유 토큰은 403). enabled 로 쓰기 권한일 때만 부른다 */
+export function useShareLinks(enabled = true): Q<ShareLink[]> {
+  return useQuery({
+    queryKey: queryKeys.shareLinks(),
+    queryFn: ({ signal }) => apiFetch<ShareLink[]>('/share-links', { signal }),
+    enabled,
+  });
+}
+
+/** POST /share-links (createShareLink, 201) — 토큰은 이 응답에서 한 번만 온다 */
+export function useCreateShareLink(): M<ShareLinkCreate, ShareLinkCreated> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => apiFetch<ShareLinkCreated>('/share-links', { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shareLinks() }),
+  });
+}
+
+/** DELETE /share-links/{id} (revokeShareLink) → ShareLink(status=revoked) */
+export function useRevokeShareLink(): M<IdLike, ShareLink> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => apiFetch<ShareLink>(`/share-links/${enc(id)}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shareLinks() }),
+  });
 }
