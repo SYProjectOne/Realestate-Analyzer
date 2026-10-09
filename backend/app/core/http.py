@@ -15,6 +15,18 @@
   다시 검사한다**(httpx request 훅). 테스트의 로컬 서버는 ``allow_private=True``(또는 설정
   ``HTTP_ALLOW_PRIVATE_HOSTS`` — Settings 에 그 필드가 있으면) 로 허용한다. DNS 확인은 실제 네트워크(주입한
   transport 가 없을 때)에서만 한다 — 주입 transport 테스트는 오프라인으로 돈다.
+  - 차단 대역(R3b F1b): 전역 주소가 아닌 것 전부(``not is_global`` — CGNAT 100.64/10·0/8·192.0.0/24·
+    198.18/15·240/4·문서용·ULA fc00::/7·링크로컬 …) + 멀티캐스트 + 폐지된 site-local fec0::/10, 그리고
+    IPv6 안에 감싼 IPv4(::ffff:a.b.c.d·::a.b.c.d·NAT64 64:ff9b::/96·64:ff9b:1::/48·6to4 2002::/16·
+    Teredo)는 감싼 IPv4 로 다시 본다.
+  - **DNS rebinding 차단**: 사전 검사가 이름을 푼 뒤 연결 때 다시 풀면 공격자 DNS 가 두 번째에 내부 IP 를
+    줄 수 있다. 그래서 기본 transport(``PinnedTransport``/``PinnedAsyncTransport``)는 **연결 시점에** 이름을
+    한 번 풀어 답 전부를 검사하고(하나라도 내부면 차단), 검사한 IP 로 직접 연결한다(Host 헤더·TLS SNI·
+    인증서 검증은 원래 이름 그대로). 리다이렉트로 새 호스트에 연결할 때도 같다. 이 transport 는 환경변수
+    프록시(HTTP_PROXY)를 쓰지 않는다(프록시가 이름을 풀면 고정할 수 없다). ``allow_private`` 면 httpx 기본
+    transport 를 쓴다.
+  - ``ENV=prod`` 에서 내부망 허용(설정 ``HTTP_ALLOW_PRIVATE_HOSTS=true`` 또는 ``allow_private=True``)은
+    클라이언트를 만들 때 ``PrivateHostsInProdError`` 로 거부한다(``allow_private_hosts``).
 
 동기 ``HttpClient`` 와 비동기 ``AsyncHttpClient`` 는 같은 규칙을 공유한다. 테스트는 ``sleep``·``clock`` 을
 주입해 실제로 기다리지 않는다.
@@ -36,6 +48,7 @@ from datetime import UTC, datetime
 from types import TracebackType
 from typing import Any, Literal, Self
 
+import httpcore
 import httpx
 
 from app.core.settings import get_settings
@@ -132,21 +145,222 @@ def _system_resolve(host: str) -> list[str]:
     return sorted({str(info[4][0]) for info in infos})
 
 
-def _ip_blocked(text: str) -> bool:
+system_resolve = _system_resolve  # 공개 이름(Playwright 렌더러 등 다른 모듈용)
+
+
+_NAT64_NETS = (ipaddress.IPv6Network("64:ff9b::/96"), ipaddress.IPv6Network("64:ff9b:1::/48"))
+_V4_COMPAT_NET = ipaddress.IPv6Network("::/96")  # 폐지된 IPv4-compatible(::a.b.c.d)
+_SITE_LOCAL_NET = ipaddress.IPv6Network("fec0::/10")  # 폐지됐지만 ipaddress 는 is_global 로 본다
+
+
+def _embedded_v4(ip: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
+    """IPv6 주소가 감싼 IPv4(매핑·호환·NAT64·6to4·Teredo 클라이언트). 없으면 None."""
+    if ip.ipv4_mapped is not None:
+        return ip.ipv4_mapped
+    if ip.sixtofour is not None:
+        return ip.sixtofour
+    if ip.teredo is not None:
+        return ip.teredo[1]
+    if any(ip in net for net in _NAT64_NETS) or (ip in _V4_COMPAT_NET and int(ip) > 1):
+        return ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    return None
+
+
+def ip_blocked(text: str) -> bool:
+    """내부망·특수 대역 IP 인가(모듈 설명). IP 문자열이 아니면 False."""
     try:
-        ip = ipaddress.ip_address(text.split("%", 1)[0])
+        ip = ipaddress.ip_address(text.strip("[]").split("%", 1)[0])
     except ValueError:
         return False
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        ip = ip.ipv4_mapped
+    if isinstance(ip, ipaddress.IPv6Address):
+        v4 = _embedded_v4(ip)
+        if v4 is not None:
+            # 감싼 IPv4 가 판단 기준(NAT64·매핑 주소는 ::/8 '예약'에 걸려 공개 IPv4 도 막힌다)
+            return ip_blocked(str(v4))
+        if ip in _SITE_LOCAL_NET:
+            return True
     return bool(
-        ip.is_private
+        not ip.is_global
+        or ip.is_multicast
+        or ip.is_private
         or ip.is_loopback
         or ip.is_link_local
         or ip.is_reserved
-        or ip.is_multicast
         or ip.is_unspecified
     )
+
+
+_ip_blocked = ip_blocked  # 옛 이름(호환)
+
+
+class PrivateHostsInProdError(ValueError):
+    """ENV=prod 에서 내부망 허용을 켰다(설정 오류 — 조용히 넘기지 않는다)."""
+
+
+def allow_private_hosts(explicit: bool | None = None) -> bool:
+    """내부망 허용 여부: ``explicit`` 가 None 이면 설정 ``HTTP_ALLOW_PRIVATE_HOSTS``.
+
+    ENV=prod 에서 허용이 True 면 ``PrivateHostsInProdError`` (SSRF — 운영은 언제나 차단).
+    수집 HTTP 클라이언트와 Playwright 렌더러가 만들 때 부른다.
+    """
+    s = get_settings()
+    allow = explicit if explicit is not None else bool(getattr(s, "http_allow_private_hosts", False))
+    if allow and getattr(s, "env", "dev") == "prod":
+        raise PrivateHostsInProdError(
+            "ENV=prod 에서는 내부망 허용(HTTP_ALLOW_PRIVATE_HOSTS=true / allow_private=True)을 "
+            "쓸 수 없다(SSRF)"
+        )
+    return allow
+
+
+def _is_localhost(h: str) -> bool:
+    return h == "localhost" or h.endswith(".localhost")
+
+
+def host_block_reason(host: str, resolver: Resolver | None) -> str | None:
+    """호스트 이름·IP 가 내부망이면 사유(``blocked_host: …``), 아니면 None.
+
+    ``resolver`` 가 None 이거나 RFC 2606 예약 TLD 면 DNS 를 묻지 않는다(IP·localhost 만 본다).
+    """
+    h = host.strip("[]").rstrip(".").lower()
+    if not h:
+        return None
+    if _is_localhost(h):
+        return f"{BLOCKED_HOST}: localhost"
+    if ip_blocked(h):
+        return f"{BLOCKED_HOST}: 내부망 주소 {h}"
+    if resolver is None or h.endswith(_UNRESOLVABLE_TLDS):
+        return None
+    return f"{BLOCKED_HOST}: {h} → 내부망 주소" if any(ip_blocked(a) for a in resolver(h)) else None
+
+
+def pinned_addresses(host: str, resolver: Resolver) -> list[str]:
+    """연결 직전: 이름을 한 번 풀어 답 전부를 검사하고 연결할 IP 목록을 돌려준다(DNS rebinding 차단).
+
+    내부망이 하나라도 있으면 ``BlockedHostError``, 답이 없으면 ``httpcore.ConnectError``.
+    IP 문자열이면 그 IP 하나(검사 후). 예약 TLD 예외 없이 언제나 묻는다.
+    """
+    h = host.strip("[]").rstrip(".")
+    try:
+        ipaddress.ip_address(h.split("%", 1)[0])
+        ips = [h]
+    except ValueError:
+        if _is_localhost(h.lower()):
+            raise BlockedHostError(f"{BLOCKED_HOST}: localhost") from None
+        ips = list(resolver(h))
+    if not ips:
+        raise httpcore.ConnectError(f"DNS 응답 없음: {h}")
+    bad = [a for a in ips if ip_blocked(a)]
+    if bad:
+        raise BlockedHostError(f"{BLOCKED_HOST}: {h} → 내부망 주소 {bad[0]} (연결 시점 DNS)")
+    return ips
+
+
+class _PinnedBackend(httpcore.NetworkBackend):
+    """연결 시점 DNS 검사 + 검사한 IP 로 연결(동기). TLS SNI 는 httpcore 가 원래 이름으로 준다."""
+
+    def __init__(self, resolver: Resolver, inner: httpcore.NetworkBackend | None = None) -> None:
+        self._resolver = resolver
+        self._inner = inner if inner is not None else httpcore.SyncBackend()
+
+    def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options: Iterable[Any] | None = None,
+    ) -> httpcore.NetworkStream:
+        last: httpcore.ConnectError | None = None
+        for ip in pinned_addresses(host, self._resolver):
+            try:
+                return self._inner.connect_tcp(
+                    ip, port, timeout=timeout, local_address=local_address, socket_options=socket_options
+                )
+            except httpcore.ConnectError as exc:  # 다음 검증 IP 로(타임아웃은 그대로 올린다)
+                last = exc
+        raise last or httpcore.ConnectError(f"연결 실패: {host}")
+
+    def connect_unix_socket(
+        self, path: str, timeout: float | None = None, socket_options: Iterable[Any] | None = None
+    ) -> httpcore.NetworkStream:
+        raise BlockedHostError(f"{BLOCKED_HOST}: unix socket")
+
+    def sleep(self, seconds: float) -> None:
+        self._inner.sleep(seconds)
+
+
+class _AsyncPinnedBackend(httpcore.AsyncNetworkBackend):
+    """``_PinnedBackend`` 의 비동기판. 이름 풀기는 스레드에서 한다(이벤트 루프를 막지 않는다)."""
+
+    def __init__(self, resolver: Resolver, inner: httpcore.AsyncNetworkBackend | None = None) -> None:
+        self._resolver = resolver
+        self._inner = inner if inner is not None else httpcore.AnyIOBackend()
+
+    async def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options: Iterable[Any] | None = None,
+    ) -> httpcore.AsyncNetworkStream:
+        ips = await asyncio.to_thread(pinned_addresses, host, self._resolver)
+        last: httpcore.ConnectError | None = None
+        for ip in ips:
+            try:
+                return await self._inner.connect_tcp(
+                    ip, port, timeout=timeout, local_address=local_address, socket_options=socket_options
+                )
+            except httpcore.ConnectError as exc:
+                last = exc
+        raise last or httpcore.ConnectError(f"연결 실패: {host}")
+
+    async def connect_unix_socket(
+        self, path: str, timeout: float | None = None, socket_options: Iterable[Any] | None = None
+    ) -> httpcore.AsyncNetworkStream:
+        raise BlockedHostError(f"{BLOCKED_HOST}: unix socket")
+
+    async def sleep(self, seconds: float) -> None:
+        await self._inner.sleep(seconds)
+
+
+_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=5.0)  # httpx 기본
+
+
+class PinnedTransport(httpx.HTTPTransport):
+    """httpx 기본 transport 와 같되 연결을 ``_PinnedBackend`` 로 한다(모듈 설명: DNS rebinding).
+
+    ``inner`` 는 테스트용(실제 소켓 대신 기록·로컬 포워딩).
+    """
+
+    def __init__(
+        self, resolver: Resolver = _system_resolve, *, inner: httpcore.NetworkBackend | None = None
+    ) -> None:
+        super().__init__()
+        self._pool = httpcore.ConnectionPool(
+            ssl_context=httpx.create_ssl_context(),
+            max_connections=_LIMITS.max_connections,
+            max_keepalive_connections=_LIMITS.max_keepalive_connections,
+            keepalive_expiry=_LIMITS.keepalive_expiry,
+            network_backend=_PinnedBackend(resolver, inner),
+        )
+
+
+class PinnedAsyncTransport(httpx.AsyncHTTPTransport):
+    """``PinnedTransport`` 의 비동기판."""
+
+    def __init__(
+        self, resolver: Resolver = _system_resolve, *, inner: httpcore.AsyncNetworkBackend | None = None
+    ) -> None:
+        super().__init__()
+        self._pool = httpcore.AsyncConnectionPool(
+            ssl_context=httpx.create_ssl_context(),
+            max_connections=_LIMITS.max_connections,
+            max_keepalive_connections=_LIMITS.max_keepalive_connections,
+            keepalive_expiry=_LIMITS.keepalive_expiry,
+            network_backend=_AsyncPinnedBackend(resolver, inner),
+        )
 
 
 @dataclass(slots=True)
@@ -179,13 +393,9 @@ class _Core:
         resolver: Resolver | None = None,
     ) -> None:
         s = get_settings()
-        self.allow_private = (
-            allow_private
-            if allow_private is not None
-            else bool(getattr(s, "http_allow_private_hosts", False))
-        )
+        self.allow_private = allow_private_hosts(allow_private)  # prod 면 허용 거부(모듈 설명)
         self._resolver = resolver
-        self._resolved: dict[str, bool] = {}
+        self._resolved: dict[str, str | None] = {}
         self.user_agent = user_agent or s.http_user_agent
         self.rate_per_host = rate_per_host if rate_per_host is not None else s.http_rate_per_host
         if self.rate_per_host <= 0:
@@ -261,17 +471,9 @@ class _Core:
         if self.allow_private:
             return None
         h = host.strip("[]").rstrip(".").lower()
-        if not h:
-            return None
-        if h == "localhost" or h.endswith(".localhost"):
-            return f"{BLOCKED_HOST}: localhost"
-        if _ip_blocked(h):
-            return f"{BLOCKED_HOST}: 내부망 주소 {h}"
-        if self._resolver is None or h.endswith(_UNRESOLVABLE_TLDS):
-            return None
         if h not in self._resolved:
-            self._resolved[h] = any(_ip_blocked(a) for a in self._resolver(h))
-        return f"{BLOCKED_HOST}: {h} → 내부망 주소" if self._resolved[h] else None
+            self._resolved[h] = host_block_reason(h, self._resolver)
+        return self._resolved[h]
 
     def _request_hook_check(self, request: httpx.Request) -> None:
         """모든 요청(리다이렉트 포함) 직전 검사."""
@@ -421,6 +623,8 @@ class HttpClient(_Core):
             allow_private=allow_private,
             resolver=resolver if resolver is not None else (_system_resolve if transport is None else None),
         )
+        if transport is None and not self.allow_private:
+            transport = PinnedTransport(resolver or _system_resolve)  # 연결 시점 DNS 검사(rebinding)
         self._sleep = sleep
         self._robots_lock = threading.Lock()
         self._client = httpx.Client(
@@ -551,6 +755,8 @@ class AsyncHttpClient(_Core):
             allow_private=allow_private,
             resolver=resolver if resolver is not None else (_system_resolve if transport is None else None),
         )
+        if transport is None and not self.allow_private:
+            transport = PinnedAsyncTransport(resolver or _system_resolve)
         self._sleep = sleep
         self._robots_locks: dict[str, asyncio.Lock] = {}
 
