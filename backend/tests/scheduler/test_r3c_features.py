@@ -292,4 +292,3 @@ def test_minor6_value_without_provenance_is_unknown_label_not_confirmed(
         assert f7.labels["resale"] == "확인 불가"
         assert f7.labels["residency"] is not None  # 출처 행이 있는 값은 그 라벨
         s.rollback()
-

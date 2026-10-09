@@ -144,7 +144,13 @@ def test_minor4_official_site_403_day_changes_shown_intake_with_event_and_rejudg
 
     day1, _ = _day1(make_ctx, factory, clock)
     with factory() as s:
-        before = pick_intake(list(s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == day1, IntakeStatus.complex_id == 2))))
+        before = pick_intake(
+            list(
+                s.scalars(
+                    select(IntakeStatus).where(IntakeStatus.snapshot_id == day1, IntakeStatus.complex_id == 2)
+                )
+            )
+        )
         assert before is not None and before.status != "확인 불가", before.status if before else None
     blocked = popup_row("yesterday") | {
         "url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/?d=2026-10-08", "fetched_at": "2026-10-08T00:00:00+09:00",
@@ -160,9 +166,23 @@ def test_minor4_official_site_403_day_changes_shown_intake_with_event_and_rejudg
     assert runner.run_once(ctx) == jid
     with factory() as s:
         day2 = s.scalars(select(Snapshot).where(Snapshot.asof_date == "2026-10-08")).one()
-        now = pick_intake(list(s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == day2.id, IntakeStatus.complex_id == 2))))
+        now = pick_intake(
+            list(
+                s.scalars(
+                    select(IntakeStatus).where(
+                        IntakeStatus.snapshot_id == day2.id, IntakeStatus.complex_id == 2
+                    )
+                )
+            )
+        )
         assert now is not None and (now.status, now.http_status) == ("확인 불가", 403)
-        evs = list(s.scalars(select(ChangeEvent).where(ChangeEvent.snapshot_id == day2.id, ChangeEvent.entity == "intake_status")))
+        evs = list(
+            s.scalars(
+                select(ChangeEvent).where(
+                    ChangeEvent.snapshot_id == day2.id, ChangeEvent.entity == "intake_status"
+                )
+            )
+        )
         assert [(e.complex_id, e.old_text, e.new_text, e.severity, e.triggers_rejudge) for e in evs] == [
             (2, before.status, "확인 불가", "critical", True)
         ]
@@ -196,10 +216,11 @@ def test_minor4_image_only_popup_change_is_not_carried(
         day2 = s.scalars(select(Snapshot).where(Snapshot.asof_date == "2026-10-08")).one()
         shot = s.scalars(
             select(IntakeStatus).where(
-                IntakeStatus.snapshot_id == day2.id, IntakeStatus.complex_id == 2, IntakeStatus.path == "headless_shot"
+                IntakeStatus.snapshot_id == day2.id,
+                IntakeStatus.complex_id == 2,
+                IntakeStatus.path == "headless_shot",
             )
         ).one()
         assert shot.reason == UNCLASSIFIED, (shot.reason, shot.note)
         job = s.get(JobRun, jid)
         assert job is not None and 2 in job.stats["intake_pending_classify"], job.stats
-

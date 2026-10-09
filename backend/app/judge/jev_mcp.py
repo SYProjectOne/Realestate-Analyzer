@@ -118,10 +118,13 @@ def subprocess_env() -> dict[str, str]:
 
 
 def judge_secret_values(env: Mapping[str, str]) -> list[str]:
-    """stderr·오류 문자열에서 가릴 값: 설정의 비밀값 + 자식 프로세스 env 중 이름이 자격 증명인 값."""
+    """stderr·오류 문자열에서 가릴 값: 설정의 비밀값 + 판정기 자격 증명 env(설정
+    ``JUDGE_SECRET_ENV_NAMES``) 값 + 자식 프로세스 env 중 이름이 자격 증명 모양인 값(목록 밖 대비)."""
     from app.core.settings import get_settings
 
-    values = list(get_settings().secret_values())
+    settings = get_settings()
+    values = list(settings.secret_values())
+    values += settings.judge_secret_env_values(env)
     values += [v for name, v in env.items() if v and _CREDENTIAL_NAME_RE.search(name)]
     return list(dict.fromkeys(values))
 

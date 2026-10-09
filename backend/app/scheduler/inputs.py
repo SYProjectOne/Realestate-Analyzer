@@ -309,7 +309,9 @@ def _price(
     # ``FactMaker.combine`` 과 같다(R3 3차 minor 6: 이전에는 최고가 출처만). 출처 행이 하나라도 없으면 타입 행
     # 라벨로 대신하지 않는다(R3 재리뷰 F2) — null → gap 성분 '확인 불가(가격 출처 누락)'
     refs = [*view.low_refs, *view.high_refs]
-    fps = [_prov_of(r, type_prov, terms_prov) for r in refs] or [_prov_of(view.max_ref, type_prov, terms_prov)]
+    fps = [_prov_of(r, type_prov, terms_prov) for r in refs] or [
+        _prov_of(view.max_ref, type_prov, terms_prov)
+    ]
     labs = [_label(fp.label) if fp is not None else None for fp in fps]
     f.price_label = weakest_label(*[x for x in labs if x is not None]) if labs and None not in labs else None
     f.price_composition = "+".join(view.composition)
