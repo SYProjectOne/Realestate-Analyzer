@@ -38,7 +38,7 @@ def make(**kwargs: object) -> Settings:
 
 
 def test_all_ra_env_vars_are_fields() -> None:
-    assert REQUIRED_ENV <= set(env_var_names())
+    assert set(env_var_names()) >= REQUIRED_ENV
 
 
 def test_defaults(clean_env: pytest.MonkeyPatch) -> None:

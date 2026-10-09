@@ -1,4 +1,6 @@
-"""저장소 뼈대 검증: 패키지 README(주인), infra(compose·Dockerfile·nginx·.env.example), CI, pre-commit, 작업 러너.
+"""저장소 뼈대 검증.
+
+패키지 README(주인), infra(compose·Dockerfile·nginx·.env.example), CI, pre-commit, 작업 러너.
 
 Docker가 없는 환경에서도 compose 구조를 YAML 파싱으로 검증한다.
 """
@@ -98,7 +100,7 @@ def test_compose_services_and_volumes() -> None:
 def test_compose_has_no_inline_secrets() -> None:
     text = (INFRA / "docker-compose.yml").read_text(encoding="utf-8")
     for key in ("API_TOKEN", "READONLY_TOKEN", "DATA_GO_KR_KEY", "NEWS_API_KEY", "POSTGRES_PASSWORD"):
-        for m in re.finditer(rf"{key}\s*[:=]\s*(\S+)", text):
+        for m in re.finditer(rf"^\s*-?\s*{key}\s*[:=]\s*(\S+)", text, re.M):
             assert m.group(1).startswith("${"), f"{key} 는 변수 치환만 허용: {m.group(0)}"
 
 
@@ -156,9 +158,8 @@ def test_ci_workflow() -> None:
     jobs = ci["jobs"]
     assert {"changes", "backend-lint", "backend-tests", "frontend"} <= set(jobs)
 
-    filters = yaml.safe_load(
-        next(s for s in jobs["changes"]["steps"] if "paths-filter" in str(s.get("uses", "")))["with"]["filters"]
-    )
+    step = next(s for s in jobs["changes"]["steps"] if "paths-filter" in str(s.get("uses", "")))
+    filters = yaml.safe_load(step["with"]["filters"])
     assert "contracts/**" in str(filters["contracts"])
 
     matrix = jobs["backend-tests"]["strategy"]["matrix"]["module"]
@@ -228,7 +229,8 @@ def test_docs_exist() -> None:
     for n in range(1, 12):
         assert any(name.startswith(f"ADR-{n:02d}-") for name in adr), f"ADR-{n:02d} 없음"
     runbook = (ROOT / "docs" / "runbook.md").read_text(encoding="utf-8")
-    for situation in ("청약홈", "403", "판정기 장애", "판정기 버전", "지역 추가", "디스크", "published", "Docker"):
+    situations = ("청약홈", "403", "판정기 장애", "판정기 버전", "지역 추가", "디스크", "published", "Docker")
+    for situation in situations:
         assert situation in runbook
     assert "G0" in (ROOT / "docs" / "region-add.md").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")

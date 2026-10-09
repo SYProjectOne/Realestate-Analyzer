@@ -1,0 +1,24 @@
+# docker build 컨텍스트 = 저장소 루트 (infra/Dockerfile.*)
+.git
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+**/dist
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+**/.env
+**/.env.*
+!**/.env.example
+data/
+backend/data/
+.claude/
+docs/
+e2e/test-results/
+frontend/test-results/
+frontend/playwright-report/
