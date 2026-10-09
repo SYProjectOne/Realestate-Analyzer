@@ -52,10 +52,12 @@ test.describe('화면 10개 핵심 요소', () => {
       .getByLabel(P.G2.filter.intake_status)
       .selectOption('가능');
     await expect(page).toHaveURL(/intake_status=/);
-    await expect(page.getByRole('link', { name: P.G2.csv })).toHaveAttribute(
-      'href',
-      /complexes\.csv/,
-    );
+    // CSV 는 Bearer fetch → Blob 저장(링크 아님)
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: P.G2.csv }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/\.csv$/);
   });
 
   test('G3 단지 상세: 탭 8개(해시) · 원문 하이라이트', async ({ page }) => {
@@ -114,10 +116,16 @@ test.describe('화면 10개 핵심 요소', () => {
     ).toBeVisible();
   });
 
-  test('G8 보고서: 생성 버튼 · 목록', async ({ page }) => {
+  test('G8 보고서: 생성 버튼 · 목록 · 다운로드', async ({ page }) => {
     await ready(page, '/reports', P.G8.title);
     await expect(page.getByRole('button', { name: P.G8.generate })).toBeEnabled();
-    await expect(page.getByRole('table', { name: P.G8.list })).toBeVisible();
+    const list = page.getByRole('table', { name: P.G8.list });
+    await expect(list).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      list.getByRole('button').first().click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^report_/);
   });
 });
 

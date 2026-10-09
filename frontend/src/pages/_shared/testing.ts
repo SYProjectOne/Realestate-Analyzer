@@ -10,6 +10,8 @@ vi.setConfig({ testTimeout: 20_000 });
 export interface RecordedRequest {
   method: string;
   url: URL;
+  /** 요청 헤더(Authorization 확인용) */
+  headers: Headers;
   body: Promise<unknown>;
 }
 
@@ -21,6 +23,7 @@ export function recordRequests(): { requests: RecordedRequest[]; stop: () => voi
     requests.push({
       method: request.method,
       url: new URL(request.url),
+      headers: new Headers(request.headers),
       body: clone
         .text()
         .then((text) => (text ? (JSON.parse(text) as unknown) : null))
@@ -42,4 +45,23 @@ export function matching(
       r.method === method &&
       (typeof suffix === 'string' ? r.url.pathname.endsWith(suffix) : suffix.test(r.url.pathname)),
   );
+}
+
+export interface CapturedDownload {
+  filename: string;
+  href: string;
+}
+
+/**
+ * `saveBlob`의 `<a download>` 클릭을 가로채 기록한다(jsdom 은 다운로드·이동을 하지 않는다).
+ * vitest `restoreMocks` 가 테스트 끝에 되돌린다.
+ */
+export function captureDownloads(): CapturedDownload[] {
+  const saved: CapturedDownload[] = [];
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    if (this.hasAttribute('download')) saved.push({ filename: this.download, href: this.href });
+  });
+  return saved;
 }

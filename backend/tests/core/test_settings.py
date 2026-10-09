@@ -59,7 +59,13 @@ def test_judge_timeouts_and_robots_exempt_defaults(clean_env: pytest.MonkeyPatch
     s = make()
     assert s.judge_call_timeout_s == 120
     assert s.judge_start_timeout_s == 300
-    assert s.http_robots_exempt_hosts == ["apis.data.go.kr", "openapi.naver.com"]
+    assert s.http_robots_exempt_hosts == [
+        "apis.data.go.kr",
+        "api.odcloud.kr",
+        "openapi.naver.com",
+        "naverapihub.apigw.ntruss.com",
+    ]
+    assert s.news_api_provider == "ncp"
 
 
 @pytest.mark.parametrize(
@@ -149,3 +155,24 @@ def test_get_settings_override(test_settings: Settings) -> None:
     other = make(env="dev", database_url="sqlite:///./other.db")
     set_settings(other)
     assert get_settings() is other
+
+
+def test_env_file_from_env_var(clean_env: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """ENV_FILE 이 가리키는 파일을 읽는다(worktree 에서 메인 체크아웃의 .env). 환경변수가 파일보다 우선."""
+    from app.core.settings import env_file_path, load_settings
+
+    env = tmp_path / "other.env"
+    env.write_text("NEWS_API_PROVIDER=naver_developers\nHTTP_RATE_PER_HOST=3\n", encoding="utf-8")
+    clean_env.delenv("ENV_FILE", raising=False)
+    assert env_file_path() == Path(".env")
+    clean_env.setenv("ENV_FILE", str(env))
+    assert env_file_path() == env
+    s = load_settings()
+    assert s.news_api_provider == "naver_developers" and s.http_rate_per_host == 3.0
+    clean_env.setenv("HTTP_RATE_PER_HOST", "2")
+    assert load_settings(env).http_rate_per_host == 2.0
+    set_settings(None)
+    try:
+        assert get_settings().news_api_provider == "naver_developers"
+    finally:
+        set_settings(None)

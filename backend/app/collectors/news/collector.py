@@ -1,15 +1,22 @@
-"""뉴스 수집기 — 네이버 검색 API(뉴스) 형식 (source_kind='news', DECISIONS D1 #6).
+"""뉴스 수집기 — 네이버 검색(뉴스) API (source_kind='news', DECISIONS D1 #6).
 
+제공자 (``NEWS_API_PROVIDER``, 기본 ``ncp``)
+- ``ncp``: NAVER Cloud Platform **NAVER API HUB** "NAVER 검색"(개발자센터 검색 API 의 이관처).
+  ``GET https://naverapihub.apigw.ntruss.com/search/v1/news?query=&display=(1~100)&start=(1~1000)&sort=sim|date``,
+  헤더 ``X-NCP-APIGW-API-KEY-ID`` / ``X-NCP-APIGW-API-KEY`` (NCP 콘솔 API HUB Application 인증 정보).
+  문서: api.ncloud-docs.com/docs/naver-api-hub-search-news (2026-10-09 확인, 실제 호출 200 확인).
+  응답 필드는 개발자센터와 같다: lastBuildDate·total·start·display·items[title·originallink·link·description·
+  pubDate]. 응답 content-type 이 ``text/plain`` 이어도 본문은 JSON 이다.
+- ``naver_developers``(레거시): ``GET https://openapi.naver.com/v1/search/news.json``,
+  헤더 ``X-Naver-Client-Id`` / ``X-Naver-Client-Secret``.
+
+공통
 - ``NEWS_API_KEY`` 가 없으면 비활성: ``enabled=False``, ``disabled_reason='비활성(키 없음)'``, fetch 는
-  네트워크 없이 [].
-  호재는 사람이 URL 로 입력할 수 있다(D1 #6).
-- 키 형식: ``<Client ID>:<Client Secret>`` (네이버는 두 값을 헤더 X-Naver-Client-Id / X-Naver-Client-Secret
-  로 받는다).
-- 요청: ``GET https://openapi.naver.com/v1/search/news.json?query=…&display=…&start=1&sort=date``.
+  네트워크 없이 []. 호재는 사람이 URL 로 입력할 수 있다(D1 #6).
+- 키 형식: ``<ID>:<Secret>`` (두 값을 위 헤더로 보낸다). 키는 헤더로만 가고 URL·원문 행에 남지 않는다.
 - 남기는 것: 응답 JSON 원문(raw_document) + ``items`` = URL·제목·발췌(+게시일)만. 본문 기사는 받지 않는다.
-- openapi.naver.com/robots.txt 는 ``Disallow: /`` 이지만 키 인증 API 라 core.http 의 robots 예외
-  (``HTTP_ROBOTS_EXEMPT_HOSTS``, 계약 2026-10-09.2)다. 예외 목록에서 빼면 실패 행
-  (error_text='robots')만 남는다.
+- 두 호스트 모두 키 인증 API 라 core.http 의 robots 예외(``HTTP_ROBOTS_EXEMPT_HOSTS``)다.
+  openapi.naver.com/robots.txt 는 ``Disallow: /`` — 예외 목록에서 빼면 실패 행(error_text='robots')만 남는다.
 - 질의어: ``queries`` 를 주면 그것, 아니면 ``"<region.name> 분양"`` 1개(지역명은 region 행에서 온다).
 """
 
@@ -30,18 +37,38 @@ from app.collectors.reference.rawstore import RawStore, fetch_failure
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
 from app.core.http import HttpClient
-from app.core.settings import get_settings
+from app.core.settings import NewsApiProvider, get_settings
 
 __all__ = [
     "DISABLED_NO_KEY",
     "NAVER_NEWS_URL",
+    "NCP_NEWS_URL",
+    "PROVIDERS",
     "NewsCollector",
     "NewsItem",
+    "Provider",
     "parse_credentials",
     "parse_news_json",
 ]
 
-NAVER_NEWS_URL = "https://openapi.naver.com/v1/search/news.json"
+NAVER_NEWS_URL = "https://openapi.naver.com/v1/search/news.json"  # 레거시 개발자센터
+NCP_NEWS_URL = "https://naverapihub.apigw.ntruss.com/search/v1/news"  # NAVER Cloud API HUB
+
+
+@dataclass(frozen=True, slots=True)
+class Provider:
+    name: NewsApiProvider
+    url: str
+    id_header: str
+    secret_header: str
+
+
+PROVIDERS: dict[str, Provider] = {
+    "ncp": Provider("ncp", NCP_NEWS_URL, "X-NCP-APIGW-API-KEY-ID", "X-NCP-APIGW-API-KEY"),
+    "naver_developers": Provider(
+        "naver_developers", NAVER_NEWS_URL, "X-Naver-Client-Id", "X-Naver-Client-Secret"
+    ),
+}
 DISABLED_NO_KEY = "비활성(키 없음)"
 SessionFactory = Callable[[], AbstractContextManager[Session]]
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -102,6 +129,7 @@ class NewsCollector:
         self,
         *,
         api_key: str | object | None = _UNSET,
+        provider: NewsApiProvider | None = None,
         http: HttpClient | None = None,
         queries: Sequence[str] | None = None,
         display: int = 20,
@@ -113,6 +141,7 @@ class NewsCollector:
             key = secret.get_secret_value() if secret is not None else None
         else:
             key = api_key if isinstance(api_key, str) else None
+        self.provider = PROVIDERS[provider or get_settings().news_api_provider]
         self._credentials = parse_credentials(key)
         self._key_present = bool(key)
         self._http = http
@@ -140,7 +169,8 @@ class NewsCollector:
         if self._credentials is None:
             return []
         cid, secret = self._credentials
-        headers = {"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": secret}
+        prov = self.provider
+        headers = {prov.id_header: cid, prov.secret_header: secret}
         http = self._http or HttpClient()
         docs: list[RawDocument] = []
         try:
@@ -148,8 +178,8 @@ class NewsCollector:
                 store = RawStore(session, raw_dir=self._raw_dir)
                 for q in self.queries_for(region):
                     params = {"query": q, "display": str(self._display), "start": "1", "sort": "date"}
-                    shown = f"{NAVER_NEWS_URL}?{urlencode(params)}"
-                    r = http.get(NAVER_NEWS_URL, params=params, headers=headers)
+                    shown = f"{prov.url}?{urlencode(params)}"
+                    r = http.get(prov.url, params=params, headers=headers)
                     if not r.ok:
                         docs.append(
                             store.save_result(

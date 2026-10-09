@@ -13,7 +13,8 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { apiFetch, apiUrl, type QueryParams } from './client';
+import { apiFetch, ApiError, type QueryParams } from './client';
+import { fetchFile, type FetchedFile, type FileRequest } from './download';
 import type {
   ChangeEvent,
   ChangeSeverity,
@@ -88,6 +89,7 @@ export const queryKeys = {
     ['complexes', key(id), key(snapshot), scenario] as const,
   provenance: (provId: string) => ['provenance', provId] as const,
   rawText: (rawId: IdLike) => ['raw', key(rawId), 'text'] as const,
+  rawFile: (rawId: IdLike) => ['raw', key(rawId), 'file'] as const,
   compare: (sid: IdLike, ids: readonly IdLike[], scenario: ScenarioKey | null) =>
     ['snapshots', key(sid), 'compare', ids.map(String), scenario] as const,
   sensitivity: (sid: IdLike, scenario: ScenarioKey | null) =>
@@ -109,11 +111,25 @@ export const queryKeys = {
 
 // ─── 공통 ───────────────────────────────────────────────────
 
+/**
+ * GET /health 는 DB 장애면 503 + 같은 Health 본문(status=degraded, db=error)을 준다(계약 2026-10-09.3) —
+ * 오류로 버리지 않고 본문을 그대로 쓴다(배너가 떠야 한다). 인증 없음.
+ */
+async function fetchHealth(signal?: AbortSignal): Promise<Health> {
+  try {
+    return await apiFetch<Health>('/health', { signal });
+  } catch (err) {
+    const body = err instanceof ApiError && err.status === 503 ? err.body : null;
+    if (body && typeof body === 'object' && 'status' in body) return body as Health;
+    throw err;
+  }
+}
+
 /** GET /health (getHealth) — status=degraded면 전역 배너 */
 export function useHealth(): Q<Health> {
   return useQuery({
     queryKey: queryKeys.health(),
-    queryFn: ({ signal }) => apiFetch<Health>('/health', { signal }),
+    queryFn: ({ signal }) => fetchHealth(signal),
     staleTime: 60_000,
   });
 }
@@ -229,10 +245,17 @@ export function useComplexes(
   });
 }
 
-/** GET /snapshots/{sid}/complexes.csv (exportComplexesCsv) — G2 CSV 링크(같은 필터·정렬, 페이지 없음) */
-export function complexesCsvUrl(sid: IdLike, params: ComplexListParams = {}): string {
+/**
+ * GET /snapshots/{sid}/complexes.csv (exportComplexesCsv) — G2 CSV(같은 필터·정렬, 페이지 없음).
+ * Bearer 가 필요하므로 링크가 아니라 `download.ts`의 `useDownload`로 받는다.
+ */
+export function complexesCsvRequest(sid: IdLike, params: ComplexListParams = {}): FileRequest {
   const { page: _page, size: _size, ...rest } = params;
-  return apiUrl(`/snapshots/${enc(sid)}/complexes.csv`, complexQuery(rest));
+  return {
+    path: `/snapshots/${enc(sid)}/complexes.csv`,
+    query: complexQuery(rest),
+    fallbackName: `complexes_${key(sid)}.csv`,
+  };
 }
 
 /** GET /complexes/{id}?snapshot=&scenario= (getComplex) — G3 */
@@ -262,9 +285,30 @@ export function useProvenance(provId: string | null | undefined): Q<Provenance> 
   });
 }
 
-/** GET /raw/{raw_document_id} (getRawDocument) — 원문 파일 링크(G3·G7). `as=text`면 추출 텍스트 */
-export function rawDocumentUrl(rawDocumentId: IdLike, as: 'file' | 'text' = 'file'): string {
-  return apiUrl(`/raw/${enc(rawDocumentId)}`, as === 'text' ? { as } : undefined);
+/** GET /raw/{raw_document_id} (getRawDocument) — 원문 파일(G3·G7). `as=text`면 추출 텍스트 */
+export function rawDocumentRequest(
+  rawDocumentId: IdLike,
+  as: 'file' | 'text' = 'file',
+): FileRequest {
+  return {
+    path: `/raw/${enc(rawDocumentId)}`,
+    query: as === 'text' ? { as } : undefined,
+    fallbackName: `raw_${key(rawDocumentId)}${as === 'text' ? '.txt' : ''}`,
+  };
+}
+
+/** GET /raw/{id} — 원문 파일 Blob(미리보기: 텍스트·PNG). 열 때만 받는다(enabled). */
+export function useRawFile(
+  rawDocumentId: IdLike | null | undefined,
+  enabled = true,
+): Q<FetchedFile> {
+  return useQuery({
+    queryKey: queryKeys.rawFile(key(rawDocumentId)),
+    queryFn: ({ signal }) => fetchFile(rawDocumentRequest(key(rawDocumentId)), { signal }),
+    enabled: enabled && has(rawDocumentId),
+    staleTime: Infinity,
+    gcTime: 60_000,
+  });
 }
 
 /** GET /raw/{id}?as=text — G3 원문 하이라이트 탭(지연 로드: enabled로 켠다) */
@@ -501,7 +545,7 @@ export function useCreateReport(): M<ReportRequest, JobRun> {
   });
 }
 
-/** GET /reports/{id} (downloadReport) — 파일 다운로드 링크 */
-export function reportDownloadUrl(id: IdLike): string {
-  return apiUrl(`/reports/${enc(id)}`);
+/** GET /reports/{id} (downloadReport) — 보고서 파일(Bearer → `useDownload`) */
+export function reportRequest(id: IdLike, filename?: string | null): FileRequest {
+  return { path: `/reports/${enc(id)}`, fallbackName: filename ?? `report_${key(id)}` };
 }

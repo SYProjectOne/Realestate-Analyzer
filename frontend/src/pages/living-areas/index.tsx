@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router';
+import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { useRegion, useUpdateLivingAreas } from '@/api/hooks';
 import type { LivingAreasUpdated, Region } from '@/api/types';
@@ -90,6 +91,7 @@ function Editor({ region }: { region: Region }) {
   const [saved, setSaved] = useState<LivingAreasUpdated | null>(null);
   const [nextNo, setNextNo] = useState(1);
   const update = useUpdateLivingAreas(region.id);
+  const canWrite = useCanWrite();
   const toast = useToast();
   const moveId = useId();
 
@@ -257,7 +259,8 @@ function Editor({ region }: { region: Region }) {
         <button
           type="button"
           onClick={save}
-          disabled={!check.ok || update.isPending}
+          disabled={!canWrite || !check.ok || update.isPending}
+          title={canWrite ? undefined : t('auth.readOnlyHint')}
           className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G0_2.save')}

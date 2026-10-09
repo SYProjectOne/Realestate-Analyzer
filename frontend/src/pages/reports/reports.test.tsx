@@ -8,7 +8,8 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
-import { matching, recordRequests } from '../_shared/testing';
+import { TOKEN_STORAGE_KEY } from '@/api/auth';
+import { captureDownloads, matching, recordRequests } from '../_shared/testing';
 
 vi.mock('echarts-for-react', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -67,11 +68,36 @@ describe('G8 보고서', () => {
     expect(reason).toHaveAttribute('role', 'alert');
   });
 
-  it('보고서 목록: 완료된 것만 다운로드 링크', async () => {
+  it('보고서 목록: 완료된 것만 다운로드 버튼 → GET /reports/{id}(Bearer) → 파일 이름으로 저장', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const saved = captureDownloads();
+    const rec = recordRequests();
     renderRoute('/reports');
     const table = await screen.findByRole('table', { name: t('page.G8.list') });
-    const links = within(table).getAllByRole('link');
-    expect(links.length).toBeGreaterThan(0);
-    for (const link of links) expect(link.getAttribute('href')).toMatch(/\/reports\/\d+$/);
+    expect(within(table).queryAllByRole('link')).toHaveLength(0);
+    const buttons = within(table).getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(0);
+    const button = buttons[0] as HTMLElement;
+    const name = button.textContent ?? '';
+    await userEvent.click(button);
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const get = matching(rec.requests, 'GET', /\/reports\/\d+$/);
+    expect(get).toHaveLength(1);
+    expect(get[0]?.headers.get('authorization')).toBe('Bearer tok-write');
+    // 응답에 Content-Disposition 이 없으면 목록의 filename 으로 저장
+    expect(saved[0]?.filename).toBe(name);
+    rec.stop();
+  });
+
+  it('읽기 전용 토큰이면 생성 버튼 비활성 + 안내, 다운로드는 된다', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-read');
+    window.localStorage.setItem('sa.token.role', 'read');
+    renderRoute('/reports');
+    const button = await screen.findByRole('button', { name: t('page.G8.generate') });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', t('auth.readOnlyHint'));
+    expect(screen.getByTestId('readonly-banner')).toHaveTextContent(t('auth.readOnlyBanner'));
+    const table = await screen.findByRole('table', { name: t('page.G8.list') });
+    for (const b of within(table).getAllByRole('button')) expect(b).toBeEnabled();
   });
 });
