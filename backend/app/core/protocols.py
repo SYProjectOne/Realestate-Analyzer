@@ -20,6 +20,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+from collections.abc import Mapping
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Final, Literal, Protocol, runtime_checkable
 
@@ -71,6 +74,8 @@ __all__ = [
     "ScoreRunResult",
     "ScoreTotal",
     "Snapshot",
+    "canonical_hash_json",
+    "canonical_value",
     "input_hash",
 ]
 
@@ -112,18 +117,63 @@ class JudgeUnavailable(Exception):
     """
 
 
+def canonical_value(obj: Any) -> Any:
+    """hash 용 정준 값(R3 minor 10). 같은 '값'이면 같은 JSON 이 되도록 숫자 표기를 맞춘다.
+
+    - 정수와 같은 실수·Decimal 은 정수로: ``1``·``1.0``·``Decimal("1.00")`` → ``1`` (``-0.0`` → ``0``).
+    - 정수가 아닌 Decimal 은 float 로(``Decimal("0.10")`` → ``0.1``; float 와 같은 표기). float 정밀도를 넘는
+      Decimal 자릿수는 버려진다 — payload 숫자는 확률·비율·금액(원 정수)이라 문제없다.
+    - NaN·±Infinity(float·Decimal)는 ``ValueError`` — JSON 이 아니고 같은 값 비교도 안 된다.
+    - bool 은 bool 그대로(int 의 하위형이지만 정수로 바꾸지 않는다). dict 키는 문자열이어야 한다.
+    - tuple 은 list 와 같다. 그 밖의 형은 ``TypeError``(조용히 str() 하지 않는다).
+    """
+    if obj is None or isinstance(obj, bool | str):
+        return obj
+    if isinstance(obj, int):
+        return int(obj)
+    if isinstance(obj, float):
+        if not math.isfinite(obj):
+            raise ValueError(f"canonical JSON: 유한하지 않은 수 {obj!r}")
+        return int(obj) if obj.is_integer() else obj
+    if isinstance(obj, Decimal):
+        if not obj.is_finite():
+            raise ValueError(f"canonical JSON: 유한하지 않은 수 {obj!r}")
+        if obj == obj.to_integral_value():
+            return int(obj)
+        return canonical_value(float(obj))
+    if isinstance(obj, Mapping):
+        out: dict[str, Any] = {}
+        for k, v in obj.items():
+            if not isinstance(k, str):
+                raise TypeError(f"canonical JSON: 키는 문자열이어야 한다 ({type(k).__name__})")
+            out[k] = canonical_value(v)
+        return out
+    if isinstance(obj, list | tuple):
+        return [canonical_value(v) for v in obj]
+    raise TypeError(f"canonical JSON: 지원하지 않는 형 {type(obj).__name__}")
+
+
+def canonical_hash_json(obj: Any) -> str:
+    """hash 키용 canonical JSON 문자열: ``canonical_value`` + 키 정렬, 구분자 (',', ':'), ensure_ascii=False,
+    allow_nan=False. ``input_hash`` 와 judgment_log.input_len 이 같은 정의를 쓴다."""
+    return json.dumps(
+        canonical_value(obj), sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    )
+
+
 def input_hash(tool: JudgeTool, purpose: str, payload: JudgePayload, adapter_version: str) -> str:
     """같은 입력 재호출 금지의 키 (judgment_log.input_hash, UNIQUE).
 
-    ``'sha256:' + sha256(canonical_json({tool, purpose, payload, adapter_version}))``.
-    canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=False, UTF-8.
+    ``'sha256:' + sha256(canonical_hash_json({tool, purpose, payload, adapter_version}))``.
+    canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=False, allow_nan=False, UTF-8,
+    숫자 정준화(``canonical_value``: 1 = 1.0 = Decimal('1'), Decimal('0.5') = 0.5, NaN·Infinity 거부).
+    정준화는 정수와 같은 실수만 바꾸므로 정수가 아닌 값·문자열만 담은 기존 payload 의 hash 는 그대로다.
     adapter_version이 바뀌면(판정기 서버 버전·모델 포함, DECISIONS D6) 모든 hash가 바뀌어
     전체 재판정 1회가 된다.
     WP3 cache.py와 WP5 시나리오 미리보기(cache_hits 계산)가 같은 정의를 쓰도록 여기 한 곳에 둔다.
     """
     doc = {"tool": tool, "purpose": purpose, "payload": payload, "adapter_version": adapter_version}
-    canonical = json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return "sha256:" + hashlib.sha256(canonical_hash_json(doc).encode("utf-8")).hexdigest()
 
 
 @runtime_checkable

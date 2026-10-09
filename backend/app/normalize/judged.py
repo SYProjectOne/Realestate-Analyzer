@@ -13,9 +13,18 @@
   추출 출처 행은 원래 needs_extract 출처 행과 같은 원문·발췌·rank 로 새 행 1개(재실행이면 그 행을 갱신).
   채택은 그 필드의 모든 출처를 다시 resolve(RA §3) 해서 정한다.
 
-``apply_compare`` — P5 compare 가 contradicts 면 1차 공고 자료(공고문·청약홈)를 채택하고 나머지는 병기한다
-  (chosen 변경 + 사실 테이블 값 + change_event). conflict_group 은 그대로 둔다(상충 이력). 1차 공고 자료가
-  없으면(둘 다 2차) 채택을 바꾸지 않고 병기 표시만 한다(meta §2-1 P5).
+  OCR 판독값(label '추정' + reason 'OCR', R3 C3 / D5-4)도 extract 대상이다. 결과 라벨은 원문이 OCR 이므로
+  감사 통과여도 '추정'(reason '판정기 추출 jl_<n>·감사 jl_<m>(OCR)')이고, review 면 OCR 값을 쓰지 않는다
+  (추출 출처 행 '확인 불가', reason '판정기 추출 jl_<n> review(미반영) — OCR 값 미채택'). 추출 출처 행이
+  생기면 resolver 가 그 원문의 OCR 판독 행을 값 없는 것으로 본다.
+
+``apply_compare`` — P5 compare 결과로 같은 rank 1차·1차 상충(채택 보류)을 푼다(R3 M1, RA §3):
+  - contradicts → 공고문(notice_pdf, 최신) 채택·나머지 병기. 공고문이 없으면 1차 공고 자료(청약홈) 최신.
+    1차 공고 자료가 없으면(둘 다 2차) 채택하지 않고 병기 표시만 한다(meta §2-1 P5).
+  - same_fact·different_facts → 상충이 아니다 → §3 우선순위 대표(현재 chosen 행) 채택·나머지 병기.
+  - review·degraded(relation 없음) → 채택 보류 유지(점수 미사용).
+  채택은 출처 행 reason 표식(``COMPARE_ADOPTED``·``COMPARE_SIDE``)으로 남기고 그 필드를 다시 resolve 한다
+  — 이후 같은 필드에 새 원문이 와도 표식이 남아 compare 결과가 유지된다. conflict_group 은 그대로(상충 이력).
 """
 
 from __future__ import annotations
@@ -35,7 +44,20 @@ from app.models import ChangeEvent, Complex, FieldProvenance, RawDocument
 from app.normalize import changes
 from app.normalize._text import parse_date
 from app.normalize.extract_request import ExtractRequest
-from app.normalize.fields import INT_FIELDS, norm_value, split_price_by_type
+from app.normalize.fields import (
+    AUDIT_FLAG_REASON,
+    COMPARE_ADOPTED,
+    COMPARE_SIDE,
+    EXTRACT_REASON,
+    INT_FIELDS,
+    OCR_REASON,
+    has_tag,
+    is_ocr,
+    norm_value,
+    split_price_by_type,
+    strip_tags,
+    with_tag,
+)
 from app.normalize.living_area import assign_complex_area
 from app.normalize.provenance import upsert_provenance
 from app.normalize.resolver import resolve
@@ -54,11 +76,10 @@ __all__ = [
     "parse_extracted",
 ]
 
-EXTRACT_REASON: Final = "판정기 추출"
-AUDIT_FLAG_REASON: Final = "판정기 감사 flagged"
 COMPARE_PRIMARY_SOURCES: Final = frozenset({"notice_pdf", "applyhome_detail", "applyhome_list"})
 """P5 contradicts 때 채택할 '1차 자료'(공고문·청약홈, meta §2-1)."""
-_COMPARE_SIDE: Final = "판정기 compare 상충"
+COMPARE_RESOLVED: Final = frozenset({"contradicts", "same_fact", "different_facts"})
+"""채택을 정하는 compare relation. 그 밖(review·None=degraded)은 채택 보류 유지."""
 _REASON_MAX: Final = 120
 
 _WON_FIELDS: Final = frozenset(
@@ -326,37 +347,41 @@ def apply_extracted(
                     .order_by(FieldProvenance.id)
                 )
             )
-            judged = next(
-                (r for r in rows if (r.reason or "").startswith((EXTRACT_REASON, AUDIT_FLAG_REASON))),
+            judged = next((r for r in rows if _is_judged_row(r)), None)
+            origin = next(
+                (r for r in rows if r is not judged and (r.label == "확인 불가" or is_ocr(r.label, r.reason))),
                 None,
             )
-            origin = next((r for r in rows if r is not judged and r.label == "확인 불가"), None)
             base = origin or judged
             if base is None or base.entity_id is None:
                 out.skipped[v.field] = "대상 출처 행 없음"
                 continue
-            if v.decision != "auto":
-                out.skipped[v.field] = "review(미반영)"
-                continue
-            if not (v.value_text or "").strip():
-                out.skipped[v.field] = "값 없음(판정기 not_found)"
-                continue
-            mark = (audit or {}).get(v.field)
-            if mark is not None and mark.flagged:
-                label, value, reason = (
-                    "확인 불가",
-                    None,
-                    f"{AUDIT_FLAG_REASON} {_jl(audit_seq)} — 원문 대조 필요",
-                )
-            else:
-                value = parse_extracted(v.field, v.value_text)
-                if value is None:
-                    out.skipped[v.field] = "형식 해석 실패"
+            ocr = origin is not None and is_ocr(origin.label, origin.reason)
+            ocr_tag = f"({OCR_REASON})" if ocr else ""
+            value: int | float | str | None
+            if v.decision != "auto" or not (v.value_text or "").strip():
+                why = "review(미반영)" if v.decision != "auto" else "값 없음(판정기 not_found)"
+                out.skipped[v.field] = why
+                if not ocr:
                     continue
-                if mark is not None:
-                    label, reason = "확인됨", f"{EXTRACT_REASON} {_jl(judgment_seq)}·감사 {_jl(audit_seq)}"
+                # OCR 값은 판정기가 확정하지 못하면 쓰지 않는다(D5-4)
+                label, value = "확인 불가", None
+                reason = f"{EXTRACT_REASON} {_jl(judgment_seq)} {why} — OCR 값 미채택"
+            else:
+                mark = (audit or {}).get(v.field)
+                if mark is not None and mark.flagged:
+                    label, value = "확인 불가", None
+                    reason = f"{AUDIT_FLAG_REASON} {_jl(audit_seq)} — 원문 대조 필요{ocr_tag}"
                 else:
-                    label, reason = "추정", f"{EXTRACT_REASON} {_jl(judgment_seq)}(감사 전)"
+                    value = parse_extracted(v.field, v.value_text)
+                    if value is None:
+                        out.skipped[v.field] = "형식 해석 실패"
+                        continue
+                    if mark is not None:
+                        label = "추정" if ocr else "확인됨"
+                        reason = f"{EXTRACT_REASON} {_jl(judgment_seq)}·감사 {_jl(audit_seq)}{ocr_tag}"
+                    else:
+                        label, reason = "추정", f"{EXTRACT_REASON} {_jl(judgment_seq)}(감사 전){ocr_tag}"
             row = judged
             if row is None:
                 row = FieldProvenance(
@@ -389,11 +414,17 @@ def apply_extracted(
                 detected_at=detected_at,
             )
             out.change_events.extend(events)
+            if v.field in out.skipped:
+                continue
             if label == "확인 불가":
                 out.flagged[v.field] = row.id
             else:
                 out.applied[v.field] = row.id
     return out
+
+
+def _is_judged_row(r: FieldProvenance) -> bool:
+    return (strip_tags(r.reason) or "").startswith((EXTRACT_REASON, AUDIT_FLAG_REASON))
 
 
 # ====================================================================== compare
@@ -423,9 +454,8 @@ def apply_compare(
     snapshot_id: int | None = None,
     now: datetime | None = None,
 ) -> CompareApplyResult:
-    """P5 결과 반영. contradicts → 1차 공고 자료 채택(이미 채택이면 유지)·나머지 병기.
-
-    그 밖 relation 은 기록만.
+    """P5 결과 반영(모듈 설명). contradicts → 공고문 채택·병기, same_fact·different_facts → 우선순위 대표
+    채택·병기, review·None → 채택 보류 유지.
 
     모든 그룹 행의 compare_judgment_seq 가 비어 있으면 채운다. commit 은 호출자.
     """
@@ -444,46 +474,48 @@ def apply_compare(
             r.compare_judgment_seq = judgment_seq
     current = next((r for r in valued if r.chosen), None)
     res.chosen_id = current.id if current is not None else None
-    if relation != "contradicts" or len(valued) < 2:
-        res.note = f"relation={relation} — 채택 유지"
+    if relation not in COMPARE_RESOLVED or len(valued) < 2:
+        res.note = f"relation={relation} — 채택 보류 유지(점수 미사용)"
         session.flush()
         return res
     kinds = _kinds(session, valued)
-    primary = [r for r in valued if kinds.get(r.raw_document_id or -1) in COMPARE_PRIMARY_SOURCES]
-    tag = f"{_COMPARE_SIDE} {_jl(judgment_seq)}"
-    if not primary:
+    jl = _jl(judgment_seq)
+    target: FieldProvenance | None
+    if relation == "contradicts":
+        notices = [r for r in valued if kinds.get(r.raw_document_id or -1) == "notice_pdf"]
+        primary = [r for r in valued if kinds.get(r.raw_document_id or -1) in COMPARE_PRIMARY_SOURCES]
+        pool = notices or primary
+        target = max(pool, key=_recency) if pool else None
+        why = "공고문 채택" if notices else "1차 공고 자료 채택"
+    else:
+        target = current if current is not None else max(valued, key=_recency)
+        why = f"{relation} — 우선순위 채택"
+    if target is None:
         for r in valued:
-            if not (r.reason or "").startswith(_COMPARE_SIDE):
-                r.reason = f"{tag} — 2차끼리 병기, 판정 미사용"[:_REASON_MAX]
+            r.reason = with_tag(r.reason, COMPARE_SIDE, f"{jl} — 2차끼리 병기, 판정 미사용")
         res.side_ids = [r.id for r in valued]
-        res.note = "1차 공고 자료 없음 — 병기, 판정 미사용(채택 유지)"
+        res.note = "1차 공고 자료 없음 — 병기, 판정 미사용"
         session.flush()
         return res
-    target = current if current is not None and current in primary else max(primary, key=_recency)
     with session.begin_nested():
         for r in valued:
-            r.chosen = r is target
             if r is target:
-                if r.reason is None:
-                    r.reason = f"{tag} — 1차 자료 채택"[:_REASON_MAX]
-            elif not (r.reason or "").startswith(_COMPARE_SIDE):
-                r.reason = f"{tag} — 1차 자료 채택, 병기"[:_REASON_MAX]
-        for r in rows:
-            if r not in valued:
-                r.chosen = False
+                r.reason = with_tag(r.reason, COMPARE_ADOPTED, f"{jl} — {why}(병기)")
+            elif not has_tag(r.reason, COMPARE_SIDE):
+                r.reason = with_tag(r.reason, COMPARE_SIDE, f"{jl} — {why}")
         session.flush()
-        res.changed = current is not target
-        res.chosen_id = target.id
-        res.side_ids = [r.id for r in valued if r is not target]
-        res.note = "1차 자료 채택·병기"
-        cand = _candidate(target, kinds.get(target.raw_document_id or -1))
         assert target.entity_id is not None
-        written, touched = write_chosen(session, [cand], snapshot_id=snapshot_id, detected_at=detected_at)
-        for cid in sorted(touched):
-            cx = session.get(Complex, cid)
-            if cx is not None:
-                assign_complex_area(session, cx)
-        session.add_all(written)
-        session.flush()
-        res.change_events = written
+        chosen_fp, events = _reresolve(
+            session,
+            target.entity,
+            target.entity_id,
+            target.field,
+            snapshot_id=snapshot_id,
+            detected_at=detected_at,
+        )
+        res.changed = current is not target or bool(events)  # 채택 행 또는 사실 테이블 값이 바뀜
+        res.chosen_id = chosen_fp.id if chosen_fp is not None else None
+        res.side_ids = [r.id for r in valued if r is not target]
+        res.note = f"{why}·병기"
+        res.change_events = events
     return res

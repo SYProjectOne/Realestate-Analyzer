@@ -54,6 +54,7 @@ from app.normalize import changes
 from app.normalize.applyhome_parser import ApplyhomeParser
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
 from app.normalize.fields import (
+    CONFLICT_HOLD,
     DECIMAL_FIELDS,
     INT_FIELDS,
     JSON_FIELDS,
@@ -529,6 +530,18 @@ def _set_price_by_type(
     )
 
 
+_KEEP: Any = object()
+
+
+def _held_value(model: Any, field_name: str) -> Any:
+    """채택 보류 시 비운 값: NULL 가능 컬럼은 None, NOT NULL JSON 목록(일정)은 [] (값 없음).
+    그 밖의 NOT NULL 컬럼(실거래 가격 등 행의 키 성격)은 비울 수 없다 → ``_KEEP``(그대로 둠)."""
+    column = model.__table__.columns.get(field_name)
+    if column is None or column.nullable:
+        return None
+    return [] if field_name in JSON_FIELDS else _KEEP
+
+
 def write_chosen(
     session: Session,
     chosen: list[FieldCandidate],
@@ -539,14 +552,19 @@ def write_chosen(
 ) -> tuple[list[ChangeEvent], set[int]]:
     """채택(chosen) 후보 값을 사실 테이블에 쓴다. 바뀐 값은 change_event(새 행이면 initial).
 
-    값 없는 후보('확인 불가')는 건너뛴다. 반환 = (이벤트, 주소가 바뀐 단지 id — 생활권 재배정 대상).
+    값 없는 후보('확인 불가')는 건너뛴다 — 단, 같은 rank 1차·1차 상충의 채택 보류 후보(reason
+    ``CONFLICT_HOLD``, R3 M1)는 사실 테이블 값을 비운다(compare 로 풀릴 때까지 점수 미사용).
+    반환 = (이벤트, 주소가 바뀐 단지 id — 생활권 재배정 대상).
     ``store_raw_document`` 와 판정 결과 반영(``normalize.judged``)이 같이 쓴다.
     """
     events: list[ChangeEvent] = []
     touched_complex: set[int] = set()
     for c in chosen:
         model = _MODELS.get(c.entity)
-        if model is None or c.entity_id is None or c.value is None or c.label == "확인 불가":
+        held = c.value is None and c.reason == CONFLICT_HOLD
+        if model is None or c.entity_id is None:
+            continue
+        if (c.value is None or c.label == "확인 불가") and not held:
             continue
         obj = session.get(model, c.entity_id)
         if obj is None:
@@ -566,7 +584,9 @@ def write_chosen(
             continue
         if not hasattr(model, c.field) or c.field == "id":
             continue
-        new = _coerce(c.field, c.value)
+        new = _held_value(model, c.field) if held else _coerce(c.field, c.value)
+        if new is _KEEP:
+            continue
         old_v = getattr(obj, c.field)
         if changes.fmt_value(old_v) == changes.fmt_value(new):
             continue

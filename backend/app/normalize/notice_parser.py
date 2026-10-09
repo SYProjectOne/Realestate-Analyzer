@@ -24,6 +24,11 @@
   행 배정이 검증된 타입만 낸다.
   complex_type.notice_type_code = 공고상 주택형 원문('084.7800A').
 - observed_on = 이 공고의 공고일(임의공급이면 임의공급 공고일) — 모든 후보에 같다.
+- OCR 원문(R3 C3, DECISIONS D5-4): raw.error_text 가 ``ocr``(전 페이지 OCR)·``ocr_partial:<p,…>``(그 페이지만
+  OCR, 1부터 센 번호; 텍스트 파일은 페이지마다 ``\f`` 로 나뉜다)이면 OCR 로 읽은 구간에서 나온 값 후보를
+  label '추정' + reason 'OCR'(표시 '추정(OCR)')로 내고, 수치·날짜 필드는 모두 needs_extract=True 로 표시한다
+  (판정기 extract/audit 를 반드시 거친다 — 반영은 ``normalize.judged.apply_extracted``). 파서가 못 읽은
+  필드('확인 불가')는 그대로. ``scan``(전 페이지 텍스트 없음)은 후보가 없다(확인 불가(스캔)).
 """
 
 from __future__ import annotations
@@ -45,9 +50,9 @@ from app.normalize._text import (
     round_area,
     stamp_observed_on,
 )
-from app.normalize.fields import price_by_type_field
+from app.normalize.fields import OCR_LABEL, OCR_REASON, is_numeric_field, price_by_type_field
 
-__all__ = ["NoticeParser", "PriceRow", "TypeSpec", "parse_notice_text"]
+__all__ = ["NoticeParser", "PriceRow", "TypeSpec", "mark_ocr", "ocr_spans", "parse_notice_text"]
 
 _TITLE_RE = re.compile(
     r"^(?P<name>.+?)\s*(?P<kind>임의공급|무순위(?:\s*\(사후\))?|선착순|계약취소\s*주택|재공급)?\s*(?:\(\s*\d+\s*차\s*\))?\s*입주자\s*모집\s*공고",
@@ -86,6 +91,17 @@ _TYPE_ROW_RE = re.compile(
 _SUBTYPE_ROW_RE = re.compile(
     r"^(?P<short>\d{2,3}[A-Z]{1,2}\d?)\s+(?P<area>\d{2,3}\.\d{2,4})(?P<areas>(?:\s+\d+\.\d+){3,6})\s+(?P<units>[\d,]+)(?=\s|$)"
 )
+# 잔여 세대 공고(임의·무순위)의 공급대상 표: 면적 없이 '01 084.9766C 84C 1 119 3204'(잔여 세대수 + 동·호)
+_REMAIN_TYPE_ROW_RE = re.compile(
+    r"(?:^|\s)(?:\d{2}\s+)?(?P<long>0?\d{2,3}\.\d{4}[A-Z]?)\s+(?P<short>\d{2,3}[A-Z]{0,2}\d?)\s+(?P<units>\d{1,4})(?=\s|$)"
+)
+# 잔여 세대 공고: 면적 열은 있고 세대수 열이 동·호 목록으로 갈라진 행(세대수 없음)
+_NOUNITS_TYPE_ROW_RE = re.compile(
+    r"(?:^|\s)(?:\d{2}\s+)?(?P<long>0?\d{2,3}\.\d{4}[A-Z]?)\s+(?P<short>\d{2,3}[A-Z]{0,2}\d?)\s+"
+    r"(?P<area>0?\d{2,3}\.\d{2,4})(?P<areas>(?:\s+\d+\.\d+){3,6})\s*$"
+)
+_TOTAL_ROW_RE = re.compile(r"^합\s*계\s+([\d,]+)", re.M)
+_LEADING_TYPE_RE = re.compile(r"^\s*(?:0?\d{2,3}\.\d{4}[A-Z]?\s+)?(\d{2,3}[A-Z]{0,2}\d?)\s")
 _FLOOR_RE = re.compile(
     r"(\d+\s*층?\s*[~\-]\s*\d+\s*층|\d+\s*층\s*이상|\d+층|\d+\s*~\s*\d+|기준층|최상층|최하층|\d+F)"
 )
@@ -105,7 +121,7 @@ class TypeSpec:
     short: str
     long: str
     area_text: str
-    units: int
+    units: int | None  # 잔여 세대 공고에서 세대수 열이 없으면 None
     span: tuple[int, int]
 
 
@@ -128,6 +144,7 @@ class _Ctx:
     notice_kind: str
     head_span: tuple[int, int] = (0, 1)
     types: list[TypeSpec] = field(default_factory=list)
+    assigned: dict[str, list[PriceRow]] = field(default_factory=dict)
 
 
 def _months(token: str) -> int | None:
@@ -170,7 +187,57 @@ class NoticeParser:
         text = read_raw_text(raw, raw_dir=self._raw_dir)
         if text is None:
             return _failed(raw)
-        return parse_notice_text(text, raw)
+        return mark_ocr(parse_notice_text(text, raw), ocr_spans(raw.error_text, text))
+
+
+def ocr_spans(error_text: str | None, text: str) -> list[tuple[int, int]]:
+    """OCR 로 읽은 텍스트 구간 [시작, 끝) 목록. OCR 원문이 아니면 [].
+
+    ``ocr`` → 전체. ``ocr_partial:3,4`` → 3·4쪽(``\f`` 로 나뉜 페이지). 페이지 번호를 못 읽으면 전체로 본다
+    (보수적으로: OCR 값이 '확인됨'으로 남는 것보다 낫다).
+    """
+    et = (error_text or "").strip().lower()
+    if et == "ocr":
+        return [(0, len(text))]
+    if not et.startswith("ocr_partial:"):
+        return []
+    try:
+        pages = {int(p) for p in et.split(":", 1)[1].split(",") if p.strip()}
+    except ValueError:
+        return [(0, len(text))]
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    for no, page in enumerate(text.split("\f"), start=1):
+        end = pos + len(page)
+        if no in pages:
+            spans.append((pos, end))
+        pos = end + 1
+    return spans or [(0, len(text))]
+
+
+def mark_ocr(cands: list[FieldCandidate], spans: list[tuple[int, int]]) -> list[FieldCandidate]:
+    """OCR 구간에서 나온 값 후보 → label '추정' + reason 'OCR'; 수치·날짜 필드는 needs_extract=True."""
+    if not spans:
+        return cands
+    out: list[FieldCandidate] = []
+    for c in cands:
+        start = c.excerpt_start or 0
+        end = max(start + 1, c.excerpt_end or start + 1)
+        in_ocr = any(start < e and s < end for s, e in spans)
+        if not in_ocr or c.label == "확인 불가":
+            out.append(c)
+            continue
+        numeric = is_numeric_field(c.entity, c.field, c.value)
+        out.append(
+            c.model_copy(
+                update={
+                    "label": OCR_LABEL,
+                    "reason": OCR_REASON,
+                    "needs_extract": bool(c.needs_extract) or numeric,
+                }
+            )
+        )
+    return out
 
 
 def _failed(raw: RawDocument) -> list[FieldCandidate]:
@@ -411,22 +478,28 @@ def _type_table(ctx: _Ctx) -> list[TypeSpec]:
     end = p.start() if p else len(text)
     out: list[TypeSpec] = []
     seen: set[str] = set()
+    main = ctx.notice_kind == "본청약"
     for ls, le in _line_spans(text, start, end):
         line = text[ls:le]
         m = _TYPE_ROW_RE.search(line) or _SUBTYPE_ROW_RE.search(line)
+        if m is None and not main:
+            m = _NOUNITS_TYPE_ROW_RE.search(line) or _REMAIN_TYPE_ROW_RE.search(line)
         if m is None:
             continue
         short = m.group("short")
         if short in seen:
             continue
         seen.add(short)
-        long = m.groupdict().get("long") or ""
+        groups = m.groupdict()
+        long = groups.get("long") or ""
+        area = groups.get("area") or long
+        units = groups.get("units")
         out.append(
             TypeSpec(
                 short=short,
                 long=long,
-                area_text=m.group("area").lstrip("0") or m.group("area"),
-                units=int(m.group("units").replace(",", "")),
+                area_text=area.lstrip("0") or area,
+                units=int(units.replace(",", "")) if units else None,
                 span=(ls, le),
             )
         )
@@ -477,7 +550,8 @@ def _price_row(line: str, span: tuple[int, int]) -> PriceRow | None:
         return None
     s0, k = found
     before = line[: cols[s0][1]]
-    ints = list(re.finditer(r"(?<![\d,~\-.])(\d{1,4})(?![\d,층F~\-.])", before))
+    # 타입 표기('84A')의 숫자는 세대수·층이 아니다 → 뒤에 영문자가 붙은 숫자는 제외
+    ints = list(re.finditer(r"(?<![\d,~\-.])(\d{1,4})(?![\d,층F~\-.A-Z])", before))
     if not ints:
         return None
     units_m = ints[-1]
@@ -506,6 +580,8 @@ def _assign(rows: list[PriceRow], types: list[TypeSpec]) -> dict[str, list[Price
     out: dict[str, list[PriceRow]] = {}
     i = 0
     for t in types:
+        if t.units is None:
+            break
         acc = 0
         group: list[PriceRow] = []
         while i < len(rows) and acc < t.units:
@@ -515,6 +591,24 @@ def _assign(rows: list[PriceRow], types: list[TypeSpec]) -> dict[str, list[Price
         if acc != t.units or not group:
             break
         out[t.short] = group
+    return out
+
+
+def _assign_by_label(
+    text: str, rows: list[PriceRow], types: list[TypeSpec], total: int | None
+) -> dict[str, list[PriceRow]]:
+    """잔여 세대 공고에서 공급대상 표에 세대수가 없을 때: 공급금액 행이 **행 머리에 타입을 적은 경우만**
+    그 타입에 배정한다(표를 읽는 것이지 추측이 아니다). 모든 행에 타입 표기가 있어야 하고, 공급대상 표의
+    '합 계' 세대수가 있으면 행 세대수 합과 같아야 한다. 하나라도 어긋나면 배정하지 않는다(needs_extract)."""
+    shorts = {t.short for t in types}
+    out: dict[str, list[PriceRow]] = {}
+    for r in rows:
+        m = _LEADING_TYPE_RE.match(text[r.span[0] : r.span[1]])
+        if m is None or m.group(1) not in shorts:
+            return {}
+        out.setdefault(m.group(1), []).append(r)
+    if not out or (total is not None and sum(r.units for r in rows) != total):
+        return {}
     return out
 
 
@@ -541,19 +635,25 @@ def _price_table(ctx: _Ctx) -> None:
     _payment_terms(ctx, (p.start(), head_end), rows, pay_key)
     main = ctx.notice_kind == "본청약"
     groups = _assign(rows, ctx.types)
+    if not main and any(t.units is None for t in ctx.types):
+        s3 = _SECTION3_RE.search(text)
+        tm = _TOTAL_ROW_RE.search(text, s3.end() if s3 else 0, p.start())
+        total = int(tm.group(1).replace(",", "")) if tm else None
+        groups = _assign_by_label(text, rows, ctx.types, total)
     for t in ctx.types:
         tkey = f"{ctx.complex_key}:{t.short}"
-        if main:
+        if main and t.units is not None:
             b.add("complex_type", tkey, "area_m2", round_area(t.area_text), t.long or t.area_text, t.span)
             b.add("complex_type", tkey, "units", t.units, str(t.units), t.span)
         if t.long:
             b.add("complex_type", tkey, "notice_type_code", t.long, t.long, t.span)
         g = groups.get(t.short)
+        ctx.assigned = groups
         if not g:
-            if main:
-                why = "공급금액 표 행 배정 실패"
-                b.missing("complex_type", tkey, "max_price_won", p.span(), reason=why)
-                b.missing("complex_type", tkey, "floor_sample_price_won", p.span(), reason=why)
+            # 표를 못 읽은 타입 — 본청약·잔여 세대 공고 모두 판정기 extract 로 넘긴다(추측 금지, R3 minor 3)
+            why = "공급금액 표 행 배정 실패"
+            b.missing("complex_type", tkey, "max_price_won", p.span(), reason=why)
+            b.missing("complex_type", tkey, "floor_sample_price_won", p.span(), reason=why)
             continue
         top = max(g, key=lambda r: r.total)
         low = min(g, key=lambda r: r.total)
@@ -591,9 +691,14 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
         low.floor_text or None,
         low.span,
     )
-    b.add("payment_terms", pay_key, f("units"), t.units, str(t.units), t.span)
+    units = t.units if t.units is not None else sum(r.units for r in _rows_of(ctx, t))
+    b.add("payment_terms", pay_key, f("units"), units, str(units), t.span)
     if t.long:
         b.add("payment_terms", pay_key, f("notice_type_code"), t.long, t.long, t.span)
+
+
+def _rows_of(ctx: _Ctx, t: TypeSpec) -> list[PriceRow]:
+    return ctx.assigned.get(t.short, [])
 
 
 def _price_section_end(text: str, start: int) -> int:
