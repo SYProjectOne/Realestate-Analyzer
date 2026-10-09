@@ -51,6 +51,8 @@ rejudge 아님), HumanCheck 대상은 (entity, field) 쌍 목록이 아니라 **
   catalyst → '미확정', 새 잡 이름 행 삭제, 나머지 컬럼 삭제. head → 0007 → head 왕복 SQLite·Postgres 16(pgserver) 테스트, autogenerate diff 0.
 - `0006` docstring 에 downgrade 손실 표(fact_demotion·claim 대상 컬럼·'사실 재확인' 항목 — 재upgrade 뒤 재강등 가능) 추가(CEO 요청).
 - `infra/.env.example`: `ENV=prod` + Postgres `DATABASE_URL` 기본, 로컬 dev(SQLite) 안내는 주석으로(D11-9 prod+SQLite 거부와 맞춤).
+  새 설정 `JUDGE_SECRET_ENV_NAMES`(쉼표 구분 — 판정기 자격 증명 env 이름, 그 값은 판정기 stderr·오류에서 가림; CEO 요청 minor 32 후속).
+  계약 스키마 변경 아님.
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.8`. 백엔드 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성.
   MSW 예시: `catalyst_patch_req.json`·`catalyst_updated.json`·`region_patch_req.json`·`region_patched.json` 추가, 스냅샷·지역 예시에 revision.
 - **프론트 생성물(`src/api/schema.d.ts`·`src/mocks/handlers.gen.ts`)은 이 브랜치에서 커밋하지 않았다** — 프론트 소유(R3c FE)가 머지 뒤
