@@ -344,12 +344,28 @@ _CSV_FACTS = (
 )
 
 
+# 스프레드시트가 수식으로 해석하는 첫 글자(CSV 수식 인젝션, OWASP) — 문자열 셀은 앞에 작은따옴표를 붙인다.
+# 숫자 값(int·float)은 그대로 둔다(음수 gap_pct 등). R3 minor 18.
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_text(v: Any) -> str:
+    if v is None:
+        return ""
+    text = str(v)
+    return "'" + text if text.startswith(_FORMULA_START) else text
+
+
 def _csv_value(v: Any) -> str:
     if v is None:
         return ""
+    if isinstance(v, bool):
+        return _csv_text(v)
     if isinstance(v, float) and v.is_integer():
         return str(int(v))
-    return str(v)
+    if isinstance(v, int | float):
+        return str(v)
+    return _csv_text(v)
 
 
 @router.get("/snapshots/{sid}/complexes.csv")
@@ -376,26 +392,34 @@ def export_complexes_csv(
         "intake_checked_at",
     ]
     for col in _CSV_FACTS:
-        head += [col, f"{col}_label", f"{col}_checked_at"]
-    head += ["rank", "inclusion_class"]
+        head += [col, f"{col}_label", f"{col}_checked_at", f"{col}_prov"]
+    # rank 는 total(Fact)에서 파생한 서수 — 라벨·출처는 total 의 것(R3 minor 18)
+    head += ["rank", "rank_label", "rank_prov", "inclusion_class"]
     w.writerow(head)
     for it in items:
         intake = it["intake"] or {}
         row = [
             it["complex_id"],
-            it["name"],
-            it["living_area"] or "",
-            it["living_area_name"] or "",
-            it["judge_scope"],
-            intake.get("status", ""),
-            intake.get("reason") or "",
+            _csv_text(it["name"]),
+            _csv_text(it["living_area"]),
+            _csv_text(it["living_area_name"]),
+            _csv_text(it["judge_scope"]),
+            _csv_text(intake.get("status")),
+            _csv_text(intake.get("reason")),
             (intake.get("checked_at") or "")[:10],
         ]
         for col in _CSV_FACTS:
             f = it[col]
             label = f["label"] if f["label"] != LABEL_UNKNOWN else f"확인 불가({f.get('reason') or ''})"
-            row += [_csv_value(f["v"]), label, f.get("checked_at") or ""]
-        row += [it["rank"] or "", it["inclusion_class"]]
+            row += [_csv_value(f["v"]), _csv_text(label), f.get("checked_at") or "", f.get("prov") or ""]
+        total = it["total"]
+        ranked = it["rank"] is not None
+        row += [
+            it["rank"] if ranked else "",
+            _csv_text(total["label"]) if ranked else "",
+            (total.get("prov") or "") if ranked else "",
+            _csv_text(it["inclusion_class"]),
+        ]
         w.writerow(row)
     body = ("﻿" + buf.getvalue()).encode("utf-8")
     return Response(
@@ -471,11 +495,27 @@ def unsold_points(
     return out
 
 
+def partial_missing(facts: Sequence[dict[str, Any]], unit: str) -> dict[str, Any] | None:
+    """합계 규칙(R3 M4): 원천이 하나라도 확인 불가면 합계도 '확인 불가(일부 누락 n건)'.
+
+    부분합을 합계로 내지 않는다.
+
+    전부 확인 불가면 첫 원천의 사유를 그대로. 모두 있으면 None(호출자가 합한다)."""
+    missing = [f for f in facts if f["label"] == LABEL_UNKNOWN]
+    if not missing:
+        return None
+    if len(missing) == len(facts):
+        return facts[0]
+    checked = max((f["checked_at"] for f in facts if f.get("checked_at")), default=None)
+    return unknown(f"일부 누락 {len(missing)}건", checked, unit=unit)
+
+
 def _sum_fact(fm: FactMaker, rows: Sequence[Unsold], name: str) -> dict[str, Any]:
     facts = [fm.field("unsold", u.id, name, getattr(u, name), unit="units") for u in rows]
-    known = [f for f in facts if f["label"] != LABEL_UNKNOWN]
-    if not known:
-        return facts[0]
+    partial = partial_missing(facts, "units")
+    if partial is not None:
+        return partial
+    known = facts
     total = sum(f["v"] for f in known)
     parts = "·".join(
         f"{u.scope_name or u.scope_code} {getattr(u, name)}" for u in rows if getattr(u, name) is not None
@@ -529,9 +569,12 @@ def freshness(session: Session, region_id: int) -> dict[str, Any]:
 
 
 def _kpi_count(ctx: ScoreCtx, value: int, first_cid: int | None) -> dict[str, Any]:
+    """KPI 집계 수. 출처 = 이 점수 실행 전체 ``st_<score_run_id>``.
+
+    단지 하나의 score_total 이 아니다(R3 minor 22)."""
     if ctx.run is None or first_cid is None:
         return unknown("미판정", None, unit="count")
-    return fact(value, "추정", f"st_{ctx.run.id}_{first_cid}", ctx.checked, reason="집계", unit="count")
+    return fact(value, "추정", f"st_{ctx.run.id}", ctx.checked, reason="집계", unit="count")
 
 
 def _move_in_peak(session: Session, region_id: int, fm: FactMaker) -> dict[str, Any]:
@@ -540,14 +583,16 @@ def _move_in_peak(session: Session, region_id: int, fm: FactMaker) -> dict[str, 
         u = unknown("입주 물량 없음", None)
         return {"year": {**u, "unit": "year"}, "units": {**u, "unit": "units"}}
     fm.prov.load(session, "supply", (s.id for s in rows))
+    all_facts = {s.id: fm.field("supply", s.id, "units", s.units, unit="units") for s in rows}
+    # 피크 연도는 연도별 합의 최댓값 — 어느 행이든 빠지면 합·피크가 부분값이다(R3 M4)
+    partial = partial_missing(list(all_facts.values()), "units")
+    if partial is not None:
+        return {"year": {**partial, "unit": "year"}, "units": partial}
     by_year: dict[int, list[Supply]] = {}
     for s in rows:
         by_year.setdefault(s.year, []).append(s)
-    year, group = max(by_year.items(), key=lambda kv: (sum(s.units for s in kv[1]), -kv[0]))
-    facts = [fm.field("supply", s.id, "units", s.units, unit="units") for s in group]
-    known = [f for f in facts if f["label"] != LABEL_UNKNOWN]
-    if not known:
-        return {"year": unknown("출처 누락", None, unit="year"), "units": facts[0]}
+    year, group = max(by_year.items(), key=lambda kv: (sum(s.units or 0 for s in kv[1]), -kv[0]))
+    known = [all_facts[s.id] for s in group]
     label = weakest(f["label"] for f in known)
     checked = max((f["checked_at"] for f in known if f.get("checked_at")), default=None)
     units = fact(

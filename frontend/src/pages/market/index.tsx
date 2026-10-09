@@ -16,15 +16,17 @@ import {
   unitOf,
   usePageContext,
 } from '../_shared';
+import { CatalystUrlForm } from './CatalystUrlForm';
 
 export const LIVING_AREA_PARAM = 'living_area';
 
 /**
  * G6 지역 시장 `/market` (RA §7-1) — C3·C4·C5·C9(보드+타임라인) · RegulationCard · LivingAreaCompare.
  * 생활권 필터는 URL `?living_area=` → GET /snapshots/{sid}/market?living_area=
+ * 호재 URL 입력(M6, POST /catalysts) — 사람이 넣은 공개 URL → 호재 후보 + 분류 잡.
  */
 export function MarketPage() {
-  const { snapshotId, isLoading } = usePageContext();
+  const { regionId, snapshotId, isLoading } = usePageContext();
   const [livingArea, setLivingArea] = useUrlParam(LIVING_AREA_PARAM);
   const query = useMarket(snapshotId, livingArea);
   const selectId = useId();
@@ -57,6 +59,7 @@ export function MarketPage() {
       ) : (
         <QueryState query={query}>{(market) => <MarketBody market={market} />}</QueryState>
       )}
+      {isLoading ? null : <CatalystUrlForm regionId={regionId} />}
     </PageShell>
   );
 }
@@ -69,6 +72,8 @@ function MarketBody({ market }: { market: Market }) {
   const areaName = (id: string) => market.living_areas.find((la) => la.id === id)?.name ?? id;
   return (
     <div className="flex flex-col gap-4">
+      {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
+      <h2 className="sr-only">{t('page.common.charts')}</h2>
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-2">
           <C03Benchmark data={{ benchmarks: market.benchmarks, asofYear }} />

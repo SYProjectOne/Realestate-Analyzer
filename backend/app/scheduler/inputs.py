@@ -185,10 +185,12 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
         resale = cx_prov.get((cx.id, "resale_months"))
         residency = cx_prov.get((cx.id, "residency_months"))
         down = terms_prov.get((cur.id, "down_payment_pct")) if cur is not None else None
+        move_in = cx_prov.get((cx.id, "move_in_ym"))
         f.labels = {
             "resale": _label(resale.label) if resale else None,
             "residency": _label(residency.label) if residency else None,
             "down_payment": _label(down.label) if down else None,
+            "move_in": _label(move_in.label) if move_in else None,  # 계약 .4 move_in_label(M2)
         }
         for fp in (
             resale,

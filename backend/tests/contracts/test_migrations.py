@@ -30,6 +30,7 @@ RA_TABLES = {
     "score_total", "ladder", "decision", "human_check", "checklist_item", "change_event", "job_run",
 }  # fmt: skip
 D2_TABLES = {"legal_dong", "admin_dong", "admin_legal_map", "household_stat"}
+R3_TABLES = {"share_link"}  # 계약 2026-10-09.4
 RA_WEIGHTS = {
     "base": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10},
     "A": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "move_in": 0.10},
@@ -94,7 +95,7 @@ def autogen_diff(engine: Engine) -> list[Any]:
 
 def check_tables(engine: Engine) -> None:
     tables = set(sa.inspect(engine).get_table_names()) - {"alembic_version"}
-    assert tables == RA_TABLES | D2_TABLES
+    assert tables == RA_TABLES | D2_TABLES | R3_TABLES
 
 
 def check_seeds(engine: Engine) -> None:
@@ -116,7 +117,7 @@ UNIQUE_REQUIRED = {
     ("judgment_log", ("input_hash",)),
     ("raw_document", ("sha256",)),
     ("snapshot", ("region_id", "asof_date")),
-    ("complex", ("applyhome_id",)),
+    ("complex", ("region_id", "applyhome_id")),  # 0004 (W4)
     ("complex_type", ("complex_id", "type_code")),
     ("payment_terms", ("complex_id", "notice_no")),
     ("admin_legal_map", ("admin_code", "legal_code")),
@@ -259,11 +260,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0003() -> None:
+def test_migration_head_is_0004() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0003"]
+    assert script.get_heads() == ["0004"]
+    assert script.get_revision("0004").down_revision == "0003"
     assert script.get_revision("0003").down_revision == "0002"
     assert script.get_revision("0002").down_revision == "0001"
 
@@ -308,6 +310,68 @@ def check_0002_0003_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_sqlite_0002_0003_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     check_0002_0003_roundtrip(sqlite_url(tmp_path), monkeypatch)
+
+
+def _job_row(job_name: str) -> dict[str, Any]:
+    return {
+        "job_name": job_name, "kind": "manual", "payload": {}, "scheduled_at": "2026-10-09T00:00:00+09:00",
+        "status": "queued", "stats": {},
+    }  # fmt: skip
+
+
+def check_0003_0004_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0004(계약 2026-10-09.4): share_link 테이블 + job_run.job_name CHECK 에 claim.reverify.
+
+    head → 0003(share_link 제거, claim.reverify 잡 행 삭제 — 옛 CHECK 를 통과할 수 없다, 다른 잡 행 유지) → head.
+    """
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    engine = sa.create_engine(url)
+    jobs = Base.metadata.tables["job_run"]
+    links = Base.metadata.tables["share_link"]
+    try:
+        with engine.begin() as conn:
+            conn.execute(jobs.insert(), [_job_row("claim.reverify"), _job_row("rejudge")])
+            conn.execute(
+                links.insert(),
+                {"token_sha256": "d" * 64, "label": None, "created_at": "2026-10-09T00:00:00+09:00",
+                 "expires_at": "2026-11-08T00:00:00+09:00", "revoked_at": None},
+            )  # fmt: skip
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
+            conn.execute(jobs.insert(), _job_row("claim.verify"))
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("score_component")}
+        assert {"unadjusted_gap_pct", "unadjusted_median_won"} <= cols
+        command.downgrade(cfg, "0003")
+        assert "share_link" not in sa.inspect(engine).get_table_names()
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("score_component")}
+        assert not {"unadjusted_gap_pct", "unadjusted_median_won"} & cols
+        with engine.connect() as conn:
+            names = [r[0] for r in conn.execute(sa.text("SELECT job_name FROM job_run"))]
+        assert names == ["rejudge"]
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
+            conn.execute(jobs.insert(), _job_row("claim.reverify"))
+        command.upgrade(cfg, "head")
+        assert "share_link" in sa.inspect(engine).get_table_names()
+        with engine.begin() as conn:
+            conn.execute(jobs.insert(), _job_row("claim.reverify"))
+            conn.execute(sa.text("DELETE FROM job_run"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0003_0004_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0003_0004_roundtrip(sqlite_url(tmp_path), monkeypatch)
+
+
+@pytest.mark.postgres
+def test_postgres_0003_0004_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0003_0004_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
 
 
 def test_region_has_d2_2_columns() -> None:

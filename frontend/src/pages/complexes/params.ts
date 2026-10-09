@@ -32,8 +32,12 @@ export const SORT_KEYS = [
 ] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
 export const DEFAULT_SORT = '-total';
-/** G2는 한 번에 받아 가상 스크롤한다(계약 size 최대 1000 — RA "리스트 1,000단지") */
+/**
+ * G2 목록 페이지 크기(계약 size 최대 1000). 첫 화면은 FIRST_PAGE_SIZE 로 먼저 그리고(W8 — T16 첫 렌더 1초),
+ * 나머지는 PAGE_SIZE 페이지를 이어 받아 같은 가상 스크롤 표에 붙인다(W9 — total 의 모든 행에 닿는다).
+ */
 export const PAGE_SIZE = 1000;
+export const FIRST_PAGE_SIZE = 100;
 
 const EOK = 100_000_000;
 

@@ -77,15 +77,15 @@
         "id": { "type": "integer" },
         "living_area": { "type": ["string", "null"] },
         "name": { "type": "string" },
-        "completed_year": { "type": ["integer", "null"] },
-        "sale_year": { "type": ["integer", "null"] },
+        "completed_year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": ["integer", "null"] },
+        "sale_year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": ["integer", "null"] },
         "sale_period": { "type": ["string", "null"], "enum": ["저가 분양기", "고가 분양기", null] },
         "sale_price_84_won": { "$ref": "fact.json" },
         "trade_low_won": { "$ref": "fact.json" },
         "trade_median_won": { "$ref": "fact.json" },
         "trade_high_won": { "$ref": "fact.json" },
         "trade_window": { "type": ["string", "null"] },
-        "n_trades": { "type": ["integer", "null"] },
+        "n_trades": { "x-nonfact": "벤치마크 근거 실거래 표본 수(집계 메타)", "type": ["integer", "null"] },
         "peak_won": { "$ref": "fact.json" },
         "peak_ym": { "$ref": "fact.json" },
         "is_presale": { "type": "boolean" },
@@ -103,7 +103,7 @@
       "required": ["living_area", "year", "units"],
       "properties": {
         "living_area": { "type": ["string", "null"] },
-        "year": { "type": "integer" },
+        "year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": "integer" },
         "units": { "$ref": "fact.json" },
         "complexes": { "type": ["array", "null"], "items": { "type": "string" } }
       }

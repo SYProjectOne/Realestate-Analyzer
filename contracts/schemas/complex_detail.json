@@ -48,16 +48,16 @@
       "required": ["name", "completed_year", "low", "median", "high", "adjusted_median", "substitute", "adjusted", "n_trades"],
       "properties": {
         "name": { "type": "string" },
-        "completed_year": { "type": ["integer", "null"] },
+        "completed_year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": ["integer", "null"] },
         "low": { "$ref": "fact.json" },
         "median": { "$ref": "fact.json" },
         "high": { "$ref": "fact.json" },
         "adjusted_median": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
         "substitute": { "type": "boolean" },
         "adjusted": { "type": "boolean" },
-        "coef_used": { "type": ["number", "null"] },
-        "n_trades": { "description": "거래 건수. 재가공 사이트처럼 건수를 모르면 null", "type": ["integer", "null"], "minimum": 0 },
-        "outliers_excluded": { "type": "integer", "minimum": 0, "default": 0 },
+        "coef_used": { "x-nonfact": "적용한 연식 보정 계수(지역 설정 가정값)", "type": ["number", "null"] },
+        "n_trades": { "x-nonfact": "비교 단지 실거래 표본 수(집계 메타)", "description": "거래 건수. 재가공 사이트처럼 건수를 모르면 null", "type": ["integer", "null"], "minimum": 0 },
+        "outliers_excluded": { "x-nonfact": "제외한 이상치 거래 수(집계 메타)", "type": "integer", "minimum": 0, "default": 0 },
         "trade_window": { "type": ["string", "null"] }
       }
     },

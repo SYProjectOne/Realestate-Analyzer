@@ -1,8 +1,11 @@
 """의존성: Bearer 인증(ADR-9), DB 세션, 스냅샷·시나리오 해석 (RA §4-2, openapi 공통 규칙).
 
-- 쓰기 토큰(API_TOKEN) = 전부, 읽기 전용 토큰(READONLY_TOKEN) = GET 만(그 밖 403 forbidden),
-  없거나 틀리면 401.
-  두 토큰이 모두 비어 있으면(개발 기본값) 인증 없이 연다 — ENV=prod 는 설정 검증이 API_TOKEN 을 강제한다.
+- 쓰기 토큰(API_TOKEN) = 전부, 읽기 전용 토큰(READONLY_TOKEN)·공유 링크 토큰 = GET 만(그 밖 403 forbidden),
+  없거나 틀리면 401. 공유 링크 토큰(POST /share-links 발급, 계약 2026-10-09.4)은 sha256 으로 찾고,
+  만료·회수면 401.
+  두 환경 토큰이 모두 비어 있으면(개발 기본값) 인증 없이 열되 루프백(127.0.0.1·::1) 접속만 받는다(R3 M11) —
+  ENV=prod 는 설정 검증이 API_TOKEN 을 강제한다. ``app.serve`` 도 그때는 127.0.0.1 에만 바인드한다.
+- ``require_write``: 쓰기 토큰만(공유 링크 관리처럼 GET 이라도 읽기 전용 토큰에 보이면 안 되는 것).
 - ``?snapshot=`` 이 없으면 지역의 최신 published, 없으면 최신 ready 스냅샷.
 - ``?scenario=`` 는 내장 code(base|A|B|C|D) 또는 사용자 시나리오 숫자 id, 생략 시 base.
 """
@@ -10,6 +13,7 @@
 from __future__ import annotations
 
 import hmac
+import ipaddress
 from typing import Annotated, Literal
 
 from fastapi import Depends, Request
@@ -31,6 +35,7 @@ __all__ = [
     "get_snapshot",
     "in_db_range",
     "require_auth",
+    "require_write",
     "resolve_scenario",
     "settings_of",
     "strict_query",
@@ -58,25 +63,80 @@ def _same(a: str, b: str) -> bool:
     return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 
+_LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
+
+
+def _is_loopback(host: str | None) -> bool:
+    if not host:
+        return False
+    if host in _LOOPBACK:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _unauthorized(detail: str) -> ApiError:
+    return ApiError(401, "unauthorized", detail, headers={"WWW-Authenticate": "Bearer"})
+
+
+def _read_only(request: Request) -> Role:
+    if request.method.upper() not in _READ_METHODS:
+        raise ApiError(403, "forbidden", "읽기 전용 토큰은 GET 만 허용한다")
+    return "read"
+
+
+def _share_link_role(request: Request, token: str) -> Role:
+    """공유 링크 토큰(계약 2026-10-09.4). 없으면 401, 만료·회수면 401(사유), 유효하면 읽기 전용."""
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from app.api.share import link_status, lookup
+    from app.core.db import get_sessionmaker
+
+    try:
+        with get_sessionmaker(settings_of(request))() as session:
+            row = lookup(session, token)
+            status = link_status(row) if row is not None else None
+    except SQLAlchemyError:  # share_link 테이블 없음(마이그레이션 전) 등 — 공유 링크 없음으로 본다
+        status = None
+    if status is None:
+        raise _unauthorized("토큰이 맞지 않는다")
+    if status == "expired":
+        raise _unauthorized("공유 링크가 만료됐다")
+    if status == "revoked":
+        raise _unauthorized("공유 링크가 회수됐다")
+    request.state.share_link = True
+    return _read_only(request)
+
+
 def require_auth(request: Request) -> Role:
     """라우터 공통 의존성. 본문 검증보다 먼저 돈다(읽기 전용 토큰 POST → 403)."""
     s = settings_of(request)
     write = _secret(s.api_token)
     read = _secret(s.readonly_token)
     if write is None and read is None:
+        client = request.client.host if request.client is not None else None
+        if not _is_loopback(client):
+            raise _unauthorized("토큰이 설정되지 않은 서버는 루프백(127.0.0.1) 접속만 받는다")
         return "write"
     header = request.headers.get("authorization") or ""
     scheme, _, token = header.partition(" ")
     token = token.strip()
     if scheme.lower() != "bearer" or not token:
-        raise ApiError(401, "unauthorized", "Bearer 토큰이 필요하다", headers={"WWW-Authenticate": "Bearer"})
+        raise _unauthorized("Bearer 토큰이 필요하다")
     if write is not None and _same(token, write):
         return "write"
     if read is not None and _same(token, read):
-        if request.method.upper() not in _READ_METHODS:
-            raise ApiError(403, "forbidden", "읽기 전용 토큰은 GET 만 허용한다")
-        return "read"
-    raise ApiError(401, "unauthorized", "토큰이 맞지 않는다", headers={"WWW-Authenticate": "Bearer"})
+        return _read_only(request)
+    return _share_link_role(request, token)
+
+
+def require_write(role: Annotated[Role, Depends(require_auth)]) -> Role:
+    """쓰기 토큰만. 읽기 전용 토큰·공유 링크 토큰이면 GET 이라도 403(공유 링크 목록 등)."""
+    if role != "write":
+        raise ApiError(403, "forbidden", "쓰기 토큰만 볼 수 있다(읽기 전용·공유 링크 토큰 불가)")
+    return role
 
 
 def get_region(session: Session, region_id: int) -> Region:

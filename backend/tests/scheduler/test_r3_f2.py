@@ -261,7 +261,7 @@ def test_m3_minor20_minor21_api_and_pipeline_share_price_inputs_and_intake(
             cid: list(s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded, Ladder.complex_id == cid)))
             for cid in bundles
         }
-        skip = {"price_label", "resale_label", "residency_label", "down_payment_label"}
+        skip = {"price_label", "resale_label", "residency_label", "down_payment_label", "move_in_label"}
         for cid, b in bundles.items():
             api = score_input(b).model_dump(exclude=skip)
             pipe = complex_input(region_facts[cid], snap.asof_date, ladders[cid]).model_dump(exclude=skip)
@@ -652,7 +652,9 @@ def test_w7_w12b_unadjusted_gap_persisted_and_score_precision(
         ]
         assert gaps
         for c in gaps:
-            gap_u, median_u = unadjusted_from_flags(c.flags)
+            # 계약 2026-10-09.4: 미보정 갭·중앙값은 컬럼(score_component.unadjusted_*) — flags 태그는 저장 시 뺀다
+            gap_u, median_u = c.unadjusted_gap_pct, c.unadjusted_median_won
+            assert unadjusted_from_flags(c.flags) == (None, None)
             assert gap_u is not None and median_u is not None and median_u > 0, c.complex_id
             if "substitute" not in (c.flags or []):
                 assert abs(gap_u - Decimal(c.raw_value)) < Decimal("0.0002")  # 대체 없으면 보정 = 미보정

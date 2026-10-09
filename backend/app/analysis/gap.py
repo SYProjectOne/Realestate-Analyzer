@@ -63,6 +63,11 @@ def unadjusted_tags(g: GapResult) -> tuple[str, ...]:
     return (f"{UNADJUSTED_GAP_TAG}{format(g.gap_pct_unadjusted, 'f')}", f"{UNADJUSTED_MEDIAN_TAG}{median}")
 
 
+def is_unadjusted_tag(flag: str) -> bool:
+    """``unadjusted_tags`` 가 만든 태그인가(저장 시 컬럼으로 옮기고 flags 에서는 뺀다 — 계약 2026-10-09.4)."""
+    return flag.startswith((UNADJUSTED_GAP_TAG, UNADJUSTED_MEDIAN_TAG))
+
+
 def unadjusted_from_flags(flags: Iterable[str] | None) -> tuple[Decimal | None, int | None]:
     """``unadjusted_tags`` 의 역 — (미보정 gap%, 미보정 중앙값 원). 없으면 (None, None)."""
     gap: Decimal | None = None

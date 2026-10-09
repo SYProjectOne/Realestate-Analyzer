@@ -1,10 +1,10 @@
-"""SQLAlchemy 선언 기반 (계약 2026-10-09.3).
+"""SQLAlchemy 선언 기반 (계약 2026-10-09.4).
 
 원칙(RA §3): 금액 ``*_won``은 BigInteger(원 단위 정수), 면적은 Numeric(8,2)(㎡), 날짜는 ISO 문자열
 (날짜 String(10), 연월 String(7), 시각 String(32) ISO 8601 +09:00), json은 SQLAlchemy JSON,
 열거는 문자열 + CheckConstraint. 파생 테이블은 snapshot_id를 가진다.
 
-모델은 contracts/migrations/versions/(0001_init + 0002_r1 + 0003_r2) head 와 1:1이다
+모델은 contracts/migrations/versions/(0001_init + 0002_r1 + 0003_r2 + 0004_r3) head 와 1:1이다
 (테스트가 autogenerate diff 0을 강제).
 컬럼을 바꾸려면 오케스트레이터가 새 마이그레이션과 함께 바꾼다.
 """

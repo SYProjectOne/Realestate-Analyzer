@@ -42,7 +42,8 @@ def test_cli_seeds_fixture_twice(tmp_path: Path, capsys: pytest.CaptureFixture[s
             m.__name__: _count(m) for m in (Region, Snapshot, Complex, FieldProvenance, JudgmentLog, ScoreRun)
         }
         assert first["Region"] == 1 and first["Snapshot"] == 2 and first["Complex"] == 16
-        assert first["ScoreRun"] == 5  # 내장 시나리오 5개 × 스냅샷 12
+        # 내장 시나리오 5개 × 스냅샷 2개(12 + 11 의 T7 인천 8단지 — R3 F4 요청)
+        assert first["ScoreRun"] == 10
         assert _count(Scenario) == 5
         assert _count(LegalDong) == 0  # --reference none
         # 판정기를 부르지 않는다: judgment_log 는 녹화 132건 그대로(새 행 없음)

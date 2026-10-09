@@ -58,6 +58,10 @@ class Settings(BaseSettings):
 
     # --- API (ADR-9)
     api_prefix: str = "/api"
+    # 바인드 주소(app.serve). 기본 루프백 — 컨테이너는 Dockerfile 이 API_HOST=0.0.0.0 을 준다.
+    # 토큰(API_TOKEN·READONLY_TOKEN)이 모두 비면 무엇을 줘도 127.0.0.1 로 바인드한다(M11).
+    api_host: str = "127.0.0.1"
+    api_port: int = Field(default=8000, ge=1, le=65535)
     api_token: SecretStr | None = None
     readonly_token: SecretStr | None = None
     share_token_ttl_days: int = Field(default=30, ge=1)
@@ -88,6 +92,9 @@ class Settings(BaseSettings):
     http_robots_exempt_hosts: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: list(DEFAULT_ROBOTS_EXEMPT_HOSTS)
     )
+    # 사설 IP·localhost·링크 로컬 목적지 허용(기본 차단 — SSRF 방지, R3 minor 17).
+    # 로컬 녹화 서버 테스트만 True
+    http_allow_private_hosts: bool = False
 
     # --- worker
     worker_heartbeat_s: float = Field(default=60.0, gt=0)
@@ -116,7 +123,15 @@ class Settings(BaseSettings):
     def _prod_guards(self) -> Self:
         if self.env == "prod" and (self.api_token is None or not self.api_token.get_secret_value()):
             raise ValueError("ENV=prod 에서는 API_TOKEN 이 필요하다")
+        if self.env == "prod" and self.judge_adapter == "mock":
+            # 운영에서 mock 판정기는 지어낸 판정을 실데이터처럼 저장한다(R3 minor 31)
+            raise ValueError("ENV=prod 에서는 JUDGE_ADAPTER=mock 을 쓸 수 없다(jev 만)")
         return self
+
+    @property
+    def auth_enabled(self) -> bool:
+        """API_TOKEN·READONLY_TOKEN 중 하나라도 있으면 True. 둘 다 비면 루프백 전용 무인증(M11)."""
+        return any(t is not None and t.get_secret_value() for t in (self.api_token, self.readonly_token))
 
     @property
     def is_sqlite(self) -> bool:

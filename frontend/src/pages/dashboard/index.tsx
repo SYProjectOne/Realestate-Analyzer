@@ -10,6 +10,7 @@ import { PageShell } from '@/layout/PageShell';
 import { formatCount, formatDate, formatRank } from '@/lib/format';
 import {
   enumText,
+  JudgeScopeBadge,
   NoSnapshot,
   QueryState,
   Section,
@@ -177,6 +178,7 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
           confidence={row.decision?.tie ? (row.decision.confidence ?? null) : null}
         />
         <UnstableBadge unstable={row.unstable} />
+        <JudgeScopeBadge scope={row.judge_scope} hideTarget />
       </div>
     </li>
   );

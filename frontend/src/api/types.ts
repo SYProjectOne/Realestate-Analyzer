@@ -138,7 +138,18 @@ export type DecisionBadge = S['DecisionBadge'];
 /** 호환 별칭 */
 export type ScoreRowDecision = DecisionBadge;
 export type ScoreRow = S['ScoreRow'];
+/**
+ * 판정 범위(meta §1-3-4, D9-1). 화면 표시 문구는 ko.json `page.common.judgeScope` —
+ * 보류 '보류 — 공고 후 재판정', 참고 '참고 후보(순위만)', 미해결 '미해결(분류 판정 미해결)'(계약 2026-10-09.4).
+ */
 export type JudgeScope = S['JudgeScope'];
+export const JUDGE_SCOPES = [
+  '판정 대상',
+  '보류',
+  '참고',
+  '미해결',
+  '제외',
+] as const satisfies readonly JudgeScope[];
 
 export type ChangeEvent = S['ChangeEvent'];
 export type ChangeSeverity = ChangeEvent['severity'];
@@ -247,6 +258,25 @@ export type ChecklistItem = S['ChecklistItem'];
 export type ChecklistPatch = S['ChecklistPatch'];
 export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];
+/** 사람 확인 입력자 = 역할만(계약 2026-10-09.4 EnteredByRole, RA §10 보안 2 — 사람 이름 자유 입력 금지) */
+export type EnteredByRole = S['EnteredByRole'];
+export const ENTERED_BY_ROLES = ['운영자', '검토자'] as const satisfies readonly EnteredByRole[];
+
+// ─── 계약 2026-10-09.4: 주장 수정·호재 URL·공유 링크 ─────────────
+
+/** G7 주장 목록 행(GET /snapshots/{sid}/claims) — remaining = publish 를 막는 contradicted */
+export type ClaimView = S['ClaimView'];
+export type ClaimVerifyStatus = NonNullable<ClaimView['verify_status']>;
+export type ClaimPatch = S['ClaimPatch'];
+export type ClaimListParams = NonNullable<operations['listClaims']['parameters']['query']>;
+/** 사람이 넣는 호재 URL(POST /catalysts) */
+export type CatalystCreate = S['CatalystCreate'];
+export type CatalystCreated = S['CatalystCreated'];
+/** 읽기 전용 공유 링크(GET·POST /share-links, DELETE /share-links/{id}) */
+export type ShareLink = S['ShareLink'];
+export type ShareLinkStatus = ShareLink['status'];
+export type ShareLinkCreate = S['ShareLinkCreate'];
+export type ShareLinkCreated = S['ShareLinkCreated'];
 
 export type ReportFormat = S['ReportRequest']['format'];
 export type ReportRequest = S['ReportRequest'];

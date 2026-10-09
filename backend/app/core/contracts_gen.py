@@ -128,6 +128,38 @@ class BenchmarkView(BaseModel):
     note: str | None = None
 
 
+class CatalystCreate(BaseModel):
+    """
+    POST /catalysts 본문 — 사람이 넣는 호재 URL(DECISIONS D1-6, 계약 2026-10-09.4). 서버는 normalize.catalyst 의 공개 함수로 catalyst 후보 행(stage '미확정', location_confirmed=false, catalyst_link 없음, 출처 행 = 이 URL)을 만들고, 분류(kind·stage)는 판정기 classify 가 한다 — 지역 최신 스냅샷에 rejudge 잡(complex_ids=[] → P4 호재 classify + 점수 재계산)을 등록한다. url 은 http(s)만(공개 페이지). 판정은 하지 않는다(규칙 3).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    region_id: int
+    url: Annotated[
+        str,
+        Field(max_length=2000, min_length=10, pattern="^https?://[^\\s/]+(/[^\\s]*)?$"),
+    ]
+    title: Annotated[str, Field(max_length=200, min_length=1)]
+    excerpt: Annotated[str | None, Field(max_length=2000)] = None
+    """
+    기사·공고 발췌(사람이 붙여 넣은 공개 문장, 개인정보 금지 — guard 통과)
+    """
+
+
+class CatalystCreated(BaseModel):
+    """
+    POST /catalysts 201 — 만든 호재 후보(CatalystView, stage '미확정')와 등록한 분류 잡(지역에 스냅샷이 없으면 null — 다음 파이프라인 P4 가 분류한다).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    catalyst: CatalystView
+    job: JobRun | None
+
+
 class CatalystView(BaseModel):
     """
     호재 1건의 화면 표현 (RA §3 catalyst + catalyst_link) — C9 보드·타임라인, G3 CatalystList. stage는 판정기 classify 결과(review면 '미확정'). location_confirmed=false면 단지 연결 없음(catalyst_link 행 없음, 점수 가중치 0, '연결 없음' 표시). 미확정·언론은 회색. 타임라인에는 stage='확정'인 것만 expected_ym으로 그린다.
@@ -221,7 +253,7 @@ class ChecklistItem(BaseModel):
     id: int
     complex_id: int | None
     complex_name: str | None = None
-    kind: Literal["법적 확인", "중도금", "만료", "공고 예상"]
+    kind: Literal["법적 확인", "중도금", "만료", "공고 예상", "계약"]
     title: Annotated[str, Field(min_length=1)]
     due_date: str | None
     status: Literal["open", "done", "na"]
@@ -284,6 +316,65 @@ class Claim(BaseModel):
     """
     같은 원문에서 나온 순서
     """
+
+
+class ClaimPatch(BaseModel):
+    """
+    PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    text: Annotated[str, Field(max_length=2000, min_length=1)]
+
+
+class ClaimReverifyPayload(BaseModel):
+    """
+    job_name='claim.reverify' 페이로드 (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' 대응). PATCH /claims/{id} 가 등록한다. worker 는 text 를 원자 주장으로 나눠(ClaimSplitter, T6) 원 주장의 근거로 verify 하고, 결과를 parent_claim_id=claim_id 인 새 주장 행으로 저장한다(같은 입력 재호출 아님 — 문장이 다르므로 input_hash 가 다르다). 원 주장 행은 고치지 않는다. 자식 주장이 생기면 원 주장은 '남은 contradicted' 가 아니다(judge.claims.remaining_contradicted) — 자식 중 contradicted 가 있으면 그것이 publish 를 막는다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    snapshot_id: int
+    claim_id: int
+    """
+    고칠 contradicted 주장 id(부모)
+    """
+    text: Annotated[str, Field(max_length=2000, min_length=1)]
+    """
+    사람이 고친 문장(원자 분할 전)
+    """
+
+
+class ClaimView(BaseModel):
+    """
+    G7 주장 목록 1행 — GET /snapshots/{sid}/claims (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' → contradicted 목록 표시 → 문장 수정 → 원자 분할 재검증).
+    - remaining=true: 분할 재검증(자식 주장)이 없는 contradicted — 스냅샷 publish·보고서 생성을 막는 주장(judge.claims.remaining_contradicted 와 같은 규칙).
+    - child_count: parent_claim_id 로 이 주장을 가리키는 자식 주장 수. pending_job_id: 이 주장의 claim.reverify 잡 중 queued·running 인 것(없으면 null) — 있으면 수정 버튼을 끈다.
+    - prov: 판정 로그 출처(jl_<judgment_seq>, verify 전이면 null) — 출처 패널로 연다.
+    - id·snapshot_id·complex_id·parent_claim_id·judgment_seq·ordinal·child_count·pending_job_id 는 비수치 메타(식별자·개수)다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: int
+    snapshot_id: int
+    section: Annotated[str, Field(max_length=32)]
+    complex_id: int | None
+    complex_name: str | None
+    text: str
+    evidence_text: str | None
+    verify_status: Literal["verified", "contradicted", "unsupported", "review"] | None
+    judgment_seq: int | None
+    prov: Annotated[str | None, Field(pattern="^jl_[0-9]+$")]
+    parent_claim_id: int | None
+    ordinal: Annotated[int | None, Field(ge=0)]
+    child_count: Annotated[int, Field(ge=0)]
+    remaining: bool
+    pending_job_id: int | None
 
 
 class ClassifyItem(BaseModel):
@@ -423,6 +514,9 @@ class Complex(BaseModel):
     id: int
     region_id: int
     applyhome_id: Annotated[str | None, Field(max_length=32)]
+    """
+    청약홈 공고 단지 id. (region_id, applyhome_id) 유일(계약 2026-10-09.4 — 같은 공고 단지가 지역마다 따로 있을 수 있다, W4). 공고 전이면 null
+    """
     name: Annotated[str, Field(max_length=200, min_length=1)]
     former_names: list[str]
     address: str | None
@@ -562,9 +656,17 @@ class ComplexRow(BaseModel):
     living_area: str | None
     living_area_name: str | None
     track: Literal["A", "B"] | None
-    judge_scope: Annotated[Literal["판정 대상", "보류", "참고", "제외"], Field(title="JudgeScope")]
+    judge_scope: Annotated[
+        Literal["판정 대상", "보류", "참고", "미해결", "제외"],
+        Field(title="JudgeScope"),
+    ]
     """
-    판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.
+    판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).
+    - 제외: 포함/제외 classify(auto)가 제외 클래스(공공·임대·비아파트·범위 밖) 또는 '범위 경계'.
+    - 보류: 포함 확정이나 분양가 미공개(공고 전) — 표시 '보류 — 공고 후 재판정'. 사다리·가격 갭 없음, rerank만.
+    - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
+    - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
+    - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
     """
     intake: Intake | None
     price_low: Fact
@@ -635,9 +737,17 @@ class ComplexScoreInput(BaseModel):
     complex_id: int
     name: str
     living_area: str | None
-    judge_scope: Annotated[Literal["판정 대상", "보류", "참고", "제외"], Field(title="JudgeScope")]
+    judge_scope: Annotated[
+        Literal["판정 대상", "보류", "참고", "미해결", "제외"],
+        Field(title="JudgeScope"),
+    ]
     """
-    판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.
+    판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).
+    - 제외: 포함/제외 classify(auto)가 제외 클래스(공공·임대·비아파트·범위 밖) 또는 '범위 경계'.
+    - 보류: 포함 확정이나 분양가 미공개(공고 전) — 표시 '보류 — 공고 후 재판정'. 사다리·가격 갭 없음, rerank만.
+    - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
+    - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
+    - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
     """
     price_low_won: int | None
     price_high_won: int | None
@@ -659,6 +769,10 @@ class ComplexScoreInput(BaseModel):
     거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2
     """
     down_payment_pct: float | None
+    move_in_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+    """
+    입주 예정월(move_in_ym) 값의 Fact 라벨(계약 2026-10-09.4, F2 요청 — 입주 성분 라벨 합성 R3 M2). null이면 라벨 미상(값이 있으면 '확인됨'으로 본다)
+    """
     down_payment_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
     """
     계약금 비율(down_payment_pct, 현재 payment_terms) 값의 Fact 라벨 — 2026-10-09.2
@@ -953,9 +1067,17 @@ class ExpectedComplex(BaseModel):
     """
     보고서 구분(인천 송도/검단/계양, 김포)
     """
-    judge_scope: Annotated[Literal["판정 대상", "보류", "참고", "제외"], Field(title="JudgeScope")]
+    judge_scope: Annotated[
+        Literal["판정 대상", "보류", "참고", "미해결", "제외"],
+        Field(title="JudgeScope"),
+    ]
     """
-    판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.
+    판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).
+    - 제외: 포함/제외 classify(auto)가 제외 클래스(공공·임대·비아파트·범위 밖) 또는 '범위 경계'.
+    - 보류: 포함 확정이나 분양가 미공개(공고 전) — 표시 '보류 — 공고 후 재판정'. 사다리·가격 갭 없음, rerank만.
+    - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
+    - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
+    - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
     """
     intake_note: str | None = None
     components: Annotated[ExpectedComponents, Field(title="ExpectedComponents")]
@@ -1418,7 +1540,7 @@ class Health(BaseModel):
 
 class HumanCheck(BaseModel):
     """
-    사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만("운영자"), 사람 이름 금지. 통화 내용은 요약만.
+    사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만.
     """
 
     model_config = ConfigDict(
@@ -1450,7 +1572,10 @@ class HumanCheckCreate(BaseModel):
     value_text: Annotated[str, Field(min_length=1)]
     kind: Literal["phone", "visit", "email"]
     checked_at: Annotated[str, Field(min_length=10)]
-    entered_by: Annotated[str, Field(max_length=32, min_length=1)]
+    entered_by: Annotated[Literal["운영자", "검토자"], Field(title="EnteredByRole")]
+    """
+    사람 확인 입력자 = 역할 문자열만(RA §10 보안 2 — 사람 이름 금지, 계약 2026-10-09.4). 자유 입력을 받지 않는다. 옛 행(자유 문자열)은 응답 HumanCheck.entered_by 에 그대로 나갈 수 있다.
+    """
     note: str | None = None
 
 
@@ -1528,11 +1653,12 @@ class JobCreate(BaseModel):
             "snapshot.publish",
             "reference.refresh",
             "region.bootstrap",
+            "claim.reverify",
         ],
         Field(title="JobName"),
     ]
     """
-    잡 이름 7종 (RA §4-4 + DECISIONS D2-4)
+    잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
     """
     payload: dict[str, Any]
 
@@ -1570,11 +1696,12 @@ class JobRun(BaseModel):
             "snapshot.publish",
             "reference.refresh",
             "region.bootstrap",
+            "claim.reverify",
         ],
         Field(title="JobName"),
     ]
     """
-    잡 이름 7종 (RA §4-4 + DECISIONS D2-4)
+    잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
     """
     kind: Literal["scheduled", "manual", "rejudge"]
     payload: dict[str, Any]
@@ -2319,7 +2446,7 @@ class RawDocument(BaseModel):
     image_hash: Annotated[str | None, Field(max_length=64)] = None
     meta: dict[str, Any] | None = None
     """
-    수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, popups[]}, intake_candidates[]}, notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2
+    수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, signature, popups[{selector, sha256, width, height, images, text_sha256, dhash, signature}]}, intake_candidates[]} — render.signature·popups[].signature 는 시각·애니메이션을 무시한 안정 해시(DOM 텍스트 정규화 sha256 + perceptual dhash, 변경 감지는 이것으로 — R3 M13, 계약 2026-10-09.4 문서화), notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2
     """
 
 
@@ -2723,7 +2850,7 @@ class ResolvedFields(BaseModel):
     """
     Resolver.resolve(candidates)의 결과 (RA §4-3). §3 우선순위로 (entity, entity_id|entity_key, field)마다 후보 하나를 chosen으로 정하고, 모든 후보를 field_provenance 행(provenance)으로 돌려준다(chosen 하나, 나머지 chosen=false 보관).
     값이 다른 후보가 둘 이상이면 conflict_group으로 묶는다(T5: 해링턴 1,573 vs 1,769 → conflict_group 1건, chosen=청약홈 상세).
-    needs_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같아 §3 우선순위로 가를 수 없을 때만 true. 이 경우에도 일단 하나를 chosen으로 두고 WP3 compare 결과가 contradicts면 공고문 채택·병기한다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.
+    needs_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같으며 출처 종류가 달라 §3 우선순위로 가를 수 없을 때만 true(같은 출처 종류는 최신 규칙). 이 경우 **채택 보류**(R3 M1, 계약 2026-10-09.4): 우선순위 대표 후보(최신)의 출처 행은 chosen=true(compare 상대를 찾는 기준)이고 reason 앞에 '출처 상충 — compare 대기'를 붙이며, ResolvedFields.chosen 에는 값 없는 '확인 불가' 후보를 내 사실 테이블 값을 비운다(점수 미사용, 화면 '확인 불가(출처 상충 …)'). compare 결과로만 채택한다 — contradicts면 공고문 채택·병기, same_fact·different_facts 도 apply_compare 가 표식을 남긴다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.
     """
 
     model_config = ConfigDict(
@@ -2751,11 +2878,12 @@ class RetryHint(BaseModel):
             "snapshot.publish",
             "reference.refresh",
             "region.bootstrap",
+            "claim.reverify",
         ],
         Field(title="JobName"),
     ]
     """
-    잡 이름 7종 (RA §4-4 + DECISIONS D2-4)
+    잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
     """
     payload: dict[str, Any]
 
@@ -2974,9 +3102,9 @@ class ScoreRow(BaseModel):
     - total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.
     - components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').
     - p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).
-    - delta_rerank: 이전 run 대비 rerank relevance 변화(§6-5).
+    - delta_rerank: 이전 run 대비 rerank **점수(0~10) 차**(§6-5 — 고정 앵커의 이번 rerank 성분 점수 − 이전 호출 점수, unit 'score', R3 minor 25·계약 2026-10-09.4).
     - decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).
-    - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 제외 (meta §1-3-4).
+    - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).
     """
 
     model_config = ConfigDict(
@@ -2996,9 +3124,17 @@ class ScoreRow(BaseModel):
     delta_rerank: Fact | None = None
     intake: Intake | None
     decision: DecisionBadge | None = None
-    judge_scope: Annotated[Literal["판정 대상", "보류", "참고", "제외"], Field(title="JudgeScope")]
+    judge_scope: Annotated[
+        Literal["판정 대상", "보류", "참고", "미해결", "제외"],
+        Field(title="JudgeScope"),
+    ]
     """
-    판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.
+    판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).
+    - 제외: 포함/제외 classify(auto)가 제외 클래스(공공·임대·비아파트·범위 밖) 또는 '범위 경계'.
+    - 보류: 포함 확정이나 분양가 미공개(공고 전) — 표시 '보류 — 공고 후 재판정'. 사다리·가격 갭 없음, rerank만.
+    - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
+    - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
+    - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
     """
 
 
@@ -3121,6 +3257,53 @@ class SensitivityRank(BaseModel):
     total: float | None
 
 
+class ShareLink(BaseModel):
+    """
+    읽기 전용 공유 링크 1건 (RA §10 보안 5 '공유 링크는 읽기 전용 토큰으로만, 만료 30일', ADR-9, 계약 2026-10-09.4).
+    - 발급: POST /share-links(쓰기 토큰만). 서버가 무작위 토큰(32바이트 urlsafe)을 만들어 발급 응답(ShareLinkCreated.token)에서 한 번만 보여 준다 — DB 에는 sha256 만 저장(share_link.token_sha256), 목록·조회 응답에는 토큰이 없다.
+    - 만료: expires_at = created_at + SHARE_TOKEN_TTL_DAYS(기본 30일). 만료·회수(revoked_at)된 토큰은 401 unauthorized.
+    - 권한: 공유 토큰은 읽기 전용(GET 만, 그 밖 403 forbidden — READONLY_TOKEN 과 같은 규칙). 공유 토큰으로 /share-links 는 볼 수 없다(403).
+    - 프론트 링크 모양: `<origin>/share#<token>` — 토큰은 URL 조각(#)에만 둬 서버 로그·Referer 로 새지 않는다.
+    - status: active(유효) / expired(만료) / revoked(회수) — 조회 시각 기준 서버 계산.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: int
+    label: Annotated[str | None, Field(max_length=64)]
+    """
+    누구에게 줬는지 메모(역할·용도만, 사람 이름 금지)
+    """
+    created_at: str
+    expires_at: str
+    revoked_at: str | None
+    status: Literal["active", "expired", "revoked"]
+
+
+class ShareLinkCreate(BaseModel):
+    """
+    POST /share-links 본문. 만료 기간은 서버 설정(SHARE_TOKEN_TTL_DAYS, 기본 30일)으로만 정한다 — 요청으로 늘릴 수 없다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    label: Annotated[str | None, Field(max_length=64)] = None
+
+
+class ShareLinkCreated(BaseModel):
+    """
+    POST /share-links 201 — 발급한 링크와 토큰(이 응답에서 한 번만). 프론트는 `<origin>/share#<token>` 을 보여 준다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    link: ShareLink
+    token: Annotated[str, Field(max_length=128, min_length=32)]
+
+
 class Snapshot(BaseModel):
     """
     기준일 스냅샷 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8). (region_id, asof_date) 유일, 하루 1개.
@@ -3140,7 +3323,7 @@ class Snapshot(BaseModel):
     published_at: str | None = None
     contradicted_claims: Annotated[int | None, Field(ge=0)] = None
     """
-    verify_status=contradicted claim 수
+    남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시)
     """
     complex_count: Annotated[int | None, Field(ge=0)] = None
 

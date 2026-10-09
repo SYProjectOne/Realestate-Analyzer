@@ -2,7 +2,7 @@ import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useOpsSources } from '@/api/hooks';
 import type { JobName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState } from '@/components';
+import { Badge, EmptyState, ExternalLink } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatCount, formatDate, formatNumber } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
@@ -19,6 +19,9 @@ const COLS = [
   'retry',
 ] as const;
 
+/** 소스 표 자리(소스 8종 표 높이) — 늦게 채워져도 아래 패널이 밀리지 않게(CLS) */
+export const SOURCES_MIN_HEIGHT = 'min-h-[24rem]';
+
 /** G7 SourceStatusTable — 소스·최종 수집·성공/실패·http_status·재시도 버튼(POST /jobs retry) */
 export function SourceStatusTable({
   regionId,
@@ -29,7 +32,7 @@ export function SourceStatusTable({
 }) {
   const query = useOpsSources(regionId);
   return (
-    <Section title={t('page.G7.sources')}>
+    <Section title={t('page.G7.sources')} className={SOURCES_MIN_HEIGHT}>
       <QueryState
         query={query}
         empty={(rows) => (rows.length === 0 ? t('page.common.none') : null)}
@@ -75,14 +78,7 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                           <li key={`${target.url}-${target.fetched_at}`} className="break-all">
                             {target.complex_name ? `${target.complex_name} · ` : ''}
                             {formatUnknownTarget(target.http_status, target.reason)} ·{' '}
-                            <a
-                              href={target.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="underline"
-                            >
-                              {target.url}
-                            </a>
+                            <ExternalLink href={target.url} />
                           </li>
                         ))}
                       </ul>

@@ -48,6 +48,8 @@ from app.api.contract import CONTRACTS_DIR
 from app.core.contracts_gen import (
     ComplexScoreInput,
     FixedComponents,
+    RerankAnchor,
+    RerankItem,
     ScoreInputs,
 )
 from app.core.contracts_gen import Scenario as ScenarioDTO
@@ -61,6 +63,7 @@ from app.models import (
     Catalyst,
     ChangeEvent,
     ChecklistItem,
+    Claim,
     ComparableSet,
     Competition,
     Complex,
@@ -109,6 +112,8 @@ class SeedReport:
     judgments: int = 0
     score_runs: int = 0
     raw_documents: int = 0
+    households: int = 0
+    claims: int = 0
     notes: list[str] = field(default_factory=list)
 
 
@@ -495,7 +500,13 @@ def load_bundles(
 # ====================================================================== 참조·지역·원문·스냅샷
 
 
-def _load_reference(session: Session, mode: ReferenceMode, sidos: set[str], report: SeedReport) -> None:
+def _load_reference(
+    session: Session,
+    mode: ReferenceMode,
+    sidos: set[str],
+    report: SeedReport,
+    raw_dir: Path | None = None,
+) -> None:
     if mode == "none":
         return
     from app.collectors.reference.jscode import parse_jscode_zip
@@ -517,6 +528,26 @@ def _load_reference(session: Session, mode: ReferenceMode, sidos: set[str], repo
         src = str(manifest.get("legal_dong_full.zip", {}).get("downloaded_at", ""))[:10] or "2026-10-09"
         upsert_legal_dongs(session, records, source_date=src)
         report.legal_dongs = len(records)
+    households = sorted(REFERENCE_FIXTURE.glob("jumin_households_*.csv"))
+    if households and raw_dir is not None:  # 주민등록 세대 현황(D2-1) — 생활권 세대수(R3 W11)
+        from app.collectors.reference.rawstore import RawStore
+        from app.collectors.stats.households import load_household_stats, parse_household_csv
+
+        content = households[-1].read_bytes()
+        # 원문 행(source_kind=stats) = 세대수 Fact 의 출처(rd_<id>).
+        # reference.refresh 사본 경로와 같은 모양(sha 같으면 재사용)
+        doc = RawStore(session, raw_dir=raw_dir).save_content(
+            source_kind="stats",
+            url=f"fixture://reference/{households[-1].name}",
+            content=content,
+            http_status=None,
+            ext="csv",
+            content_type="text/csv",
+        )
+        _, recs = parse_household_csv(content)
+        kept = [r for r in recs if keep(r.scope_code)]
+        load_household_stats(session, kept, raw_document_id=doc.id)
+        report.households = len(kept)
     js = sorted(REFERENCE_FIXTURE.glob("jscode*.zip"))
     if js:
         data = parse_jscode_zip(js[-1].read_bytes())
@@ -823,6 +854,116 @@ def _score_inputs(fixture: Path, region: Region) -> ScoreInputs | None:
     return ScoreInputs.model_validate(raw)
 
 
+def _prev_snapshot_inputs(fixture: Path, cur: ScoreInputs) -> tuple[ScoreInputs, list[int]] | None:
+    """이전 스냅샷(T7 — 보고서 §12-4-3 인천 8단지) 점수 입력.
+
+    현재 입력을 그 단지·rerank 이전 앵커(relevance_prev × 10)로 좁힌다. expected_scores.json 에 t7 블록이
+    없으면 None. (R3 F4 요청: 보고서 diff 시험)"""
+    path = fixture / "expected_scores.json"
+    if not path.exists():
+        return None
+    expected = _load(path)
+    t7 = expected.get("t7_incheon_only")
+    if not isinstance(t7, dict) or not t7.get("rows"):
+        return None
+    by_key = {c["key"]: c for c in expected["complexes"]}
+    rows = {int(by_key[r["key"]]["complex_id"]): r for r in t7["rows"] if r["key"] in by_key}
+    ids = sorted(rows)
+    ranked = sorted(rows.items(), key=lambda kv: -float(kv[1]["relevance_prev"]))
+    anchor = RerankAnchor(
+        judgment_seq=t7.get("rerank_judgment_seq_prev"),
+        status="ok",
+        items=[
+            RerankItem(
+                candidate_id=f"complex:{cid}",
+                complex_id=cid,
+                relevance=float(r["relevance_prev"]),
+                rank=n + 1,
+            )
+            for n, (cid, r) in enumerate(ranked)
+        ],
+    )
+    by_id = {int(c["complex_id"]): c for c in expected["complexes"]}
+    complexes = []
+    for cx in cur.complexes:
+        if cx.complex_id not in rows:
+            continue
+        comps = {k: by_id[cx.complex_id]["components"].get(k) for k in COMPONENT_KEYS}
+        comps["rerank"] = round(float(rows[cx.complex_id]["relevance_prev"]) * 10, 4)
+        fixed = FixedComponents(
+            source="보고서 §12-4-3 (T7)", **{k: v for k, v in comps.items() if v is not None}
+        )
+        complexes.append(cx.model_copy(update={"fixed_components": fixed}))
+    prev_sid = int(t7.get("snapshot_id_prev") or cur.snapshot_id - 1)
+    prev_day = str(t7.get("asof_date_prev") or "2026-10-07")
+    prev = cur.model_copy(
+        update={"snapshot_id": prev_sid, "asof_date": prev_day, "rerank": anchor, "complexes": complexes}
+    )
+    return prev, ids
+
+
+def _copy_intake(session: Session, src_sid: int, dst_sid: int, ids: Sequence[int]) -> None:
+    """이전 스냅샷 접수 상태 = 현재 스냅샷 행 복사(파이프라인은 스냅샷마다 접수 행을 남긴다)."""
+    for row in list(
+        session.scalars(
+            select(IntakeStatus).where(IntakeStatus.snapshot_id == src_sid, IntakeStatus.complex_id.in_(ids))
+        )
+    ):
+        session.add(
+            IntakeStatus(
+                complex_id=row.complex_id, snapshot_id=dst_sid, status=row.status, path=row.path,
+                evidence_url=row.evidence_url, screenshot_path=row.screenshot_path,
+                raw_document_id=row.raw_document_id, http_status=row.http_status, checked_at=row.checked_at,
+                reason=row.reason, note=row.note, entered_by=row.entered_by,
+            )
+        )  # fmt: skip
+    session.flush()
+
+
+# 녹화 verify 봉투의 contradicted 복합 주장(T6)을 원자 분할 재검증한 자식 문장 — 보고서 §12-4 원문
+_SPLIT_CHILDREN = (
+    "고촌센트럴자이 +10%·+20%와 롯데캐슬 +20% 명제는 unlikely이다",
+    "나머지 명제는 uncertain이다",
+)
+
+
+def _load_claims(session: Session, envs: dict[int, dict[str, Any]]) -> int:
+    """verify 봉투 → claim 행(판정기 호출 없음).
+
+    contradicted 복합 주장에는 분할 자식(verified) 2개를 둔다(T6) — 남은 contradicted 0 이라 publish·보고서는
+    막히지 않는다."""
+    jdir_index = {int(r["judgment_seq"]): r for r in _load(DEFAULT_FIXTURE / "judgments" / "_index.json")}
+    n = 0
+    for seq, e in sorted(envs.items()):
+        if e.get("tool") != "verify" or e.get("snapshot_id") is None:
+            continue
+        payload = jdir_index.get(seq, {}).get("payload") or {}
+        known = payload.get("known_claims") or {}
+        section = str(payload.get("section", ""))[:32]
+        for k, c in enumerate((e.get("result") or {}).get("claims", [])):
+            text = (
+                known.get(c.get("claim_id")) or f"주장 {c.get('claim_id')} (보고서 미기재 — 집계로 만든 id)"
+            )
+            row = Claim(
+                snapshot_id=e["snapshot_id"], section=section, text=text, evidence_text=None,
+                verify_status=c.get("verdict"), judgment_seq=seq, ordinal=k,
+            )  # fmt: skip
+            session.add(row)
+            session.flush()
+            n += 1
+            if c.get("verdict") == "contradicted":
+                for j, child in enumerate(_SPLIT_CHILDREN):
+                    session.add(
+                        Claim(
+                            snapshot_id=e["snapshot_id"], section=section, text=child,
+                            verify_status="verified", parent_claim_id=row.id, ordinal=j,
+                        )
+                    )  # fmt: skip
+                    n += 1
+    session.flush()
+    return n
+
+
 def _load_market(session: Session, inputs: ScoreInputs, region: Region, writer: _ProvWriter) -> None:
     checked = inputs.asof_date
     for b in inputs.benchmarks:
@@ -926,6 +1067,12 @@ def _load_scores(
     snap: Snapshot,
     envs: dict[int, dict[str, Any]],
 ) -> int:
+    """스냅샷 점수(내장 시나리오마다 score_run).
+
+    그 스냅샷에 점수 실행이 이미 있으면 건너뛴다(멱등 — 0 반환)."""
+    have = select(ScoreRun.id).where(ScoreRun.snapshot_id == snap.id).limit(1)
+    if session.scalars(have).first() is not None:
+        return 0
     snap_dto = SnapshotDTO.model_validate(
         {
             "id": snap.id,
@@ -1126,6 +1273,16 @@ def _load_examples(session: Session) -> None:
 # ====================================================================== 진입점
 
 
+def _guard(settings: Settings) -> None:
+    """devseed 는 지어낸 출처 행(합성 단지·녹화 판정)을 넣는다.
+
+    ENV=prod 이거나 SQLite 가 아닌 DB 면 거부한다(R3 minor 30)."""
+    if settings.env == "prod":
+        raise RuntimeError("devseed 는 ENV=prod 에서 쓰지 않는다(운영 DB 에 지어낸 출처 행 금지)")
+    if not settings.is_sqlite:
+        raise RuntimeError("devseed 는 SQLite 개발 DB 에서만 쓴다(운영 DB 보호)")
+
+
 def _reset_schema(settings: Settings) -> None:
     engine = get_engine(settings)
     if not settings.is_sqlite:
@@ -1143,6 +1300,7 @@ def seed(
 ) -> SeedReport:
     """픽스처 전체 적재(한 트랜잭션). reset=True 면 SQLite 스키마를 지우고 다시 만든다."""
     s = settings or get_settings()
+    _guard(s)
     if reset:
         _reset_schema(s)
     else:
@@ -1152,7 +1310,7 @@ def seed(
     with get_session(s) as session:
         if session.get(Region, region_data["id"]) is not None:
             raise RuntimeError(f"region {region_data['id']} 이 이미 있다 — --reset 으로 다시 만든다")
-        _load_reference(session, reference, set(region_data.get("sido_codes") or []), report)
+        _load_reference(session, reference, set(region_data.get("sido_codes") or []), report, s.raw_dir)
         _ensure_scenarios(session)
         region = _load_region(session, region_data)
         report.raw_documents = _load_raw(session, fixture_dir, s.raw_dir)
@@ -1174,8 +1332,13 @@ def seed(
             _load_market(session, inputs, region, writer)
             report.provenance += writer.flush(session)
             report.score_runs = _load_scores(session, inputs, snaps[inputs.snapshot_id], envs)
+            prev = _prev_snapshot_inputs(fixture_dir, inputs)
+            if prev is not None and prev[0].snapshot_id in snaps:
+                report.score_runs += _load_scores(session, prev[0], snaps[prev[0].snapshot_id], envs)
+                _copy_intake(session, inputs.snapshot_id, prev[0].snapshot_id, prev[1])
         else:
             report.notes.append("expected_scores_v2.json 입력 없음 — 점수·시장 미적재")
+        report.claims = _load_claims(session, envs)
         _load_examples(session)
     log.info("devseed.done", extra={"complexes": report.complexes, "provenance": report.provenance})
     return report
@@ -1192,6 +1355,7 @@ def replace_bundles(
 
     사실 테이블·출처 행만 교체하고 점수·판정 행은 그대로 둔다."""
     s = settings or get_settings()
+    _guard(s)
     bundles = _load(bundles_path)
     prov = _prov_rows(provenance_path)
     with get_session(s) as session:
@@ -1247,6 +1411,7 @@ def load_synth(settings: Settings | None = None, *, n: int = 1000, snapshot_id: 
 
     출처 행은 Fact 에서 합성한다(성능 전용)."""
     s = settings or get_settings()
+    _guard(s)
     bundles = _synth_generate(n)
     with get_session(s) as session:
         count, _ = load_bundles(session, bundles, {}, snapshot_id=snapshot_id, missing="create")
@@ -1271,7 +1436,8 @@ def main(argv: list[str] | None = None) -> int:
     sys.stdout.write(
         f"devseed: db={settings.database_url} raw={settings.raw_dir} complexes={report.complexes} "
         f"provenance={report.provenance} judgments={report.judgments} score_runs={report.score_runs} "
-        f"legal_dongs={report.legal_dongs} admin_dongs={report.admin_dongs}\n"
+        f"legal_dongs={report.legal_dongs} admin_dongs={report.admin_dongs} "
+        f"households={report.households} claims={report.claims}\n"
     )
     for note in report.notes:
         sys.stdout.write(f"  note: {note}\n")

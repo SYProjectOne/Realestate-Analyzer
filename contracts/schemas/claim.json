@@ -18,6 +18,42 @@
     "parent_claim_id": { "type": ["integer", "null"] },
     "ordinal": { "description": "같은 원문에서 나온 순서", "type": ["integer", "null"], "minimum": 0 }
   },
+  "$defs": {
+    "ClaimView": {
+      "title": "ClaimView",
+      "description": "G7 주장 목록 1행 — GET /snapshots/{sid}/claims (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' → contradicted 목록 표시 → 문장 수정 → 원자 분할 재검증).\n- remaining=true: 분할 재검증(자식 주장)이 없는 contradicted — 스냅샷 publish·보고서 생성을 막는 주장(judge.claims.remaining_contradicted 와 같은 규칙).\n- child_count: parent_claim_id 로 이 주장을 가리키는 자식 주장 수. pending_job_id: 이 주장의 claim.reverify 잡 중 queued·running 인 것(없으면 null) — 있으면 수정 버튼을 끈다.\n- prov: 판정 로그 출처(jl_<judgment_seq>, verify 전이면 null) — 출처 패널로 연다.\n- id·snapshot_id·complex_id·parent_claim_id·judgment_seq·ordinal·child_count·pending_job_id 는 비수치 메타(식별자·개수)다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "snapshot_id", "section", "complex_id", "complex_name", "text", "evidence_text", "verify_status", "judgment_seq", "prov", "parent_claim_id", "ordinal", "child_count", "remaining", "pending_job_id"],
+      "properties": {
+        "id": { "type": "integer" },
+        "snapshot_id": { "type": "integer" },
+        "section": { "type": "string", "maxLength": 32 },
+        "complex_id": { "type": ["integer", "null"] },
+        "complex_name": { "type": ["string", "null"] },
+        "text": { "type": "string" },
+        "evidence_text": { "type": ["string", "null"] },
+        "verify_status": { "type": ["string", "null"], "enum": ["verified", "contradicted", "unsupported", "review", null] },
+        "judgment_seq": { "type": ["integer", "null"] },
+        "prov": { "type": ["string", "null"], "pattern": "^jl_[0-9]+$" },
+        "parent_claim_id": { "type": ["integer", "null"] },
+        "ordinal": { "type": ["integer", "null"], "minimum": 0, "x-nonfact": "같은 원문에서 나온 순서(정렬 키)" },
+        "child_count": { "type": "integer", "minimum": 0, "x-nonfact": "자식 주장 개수(표시용 메타, 출처 데이터 아님)" },
+        "remaining": { "type": "boolean" },
+        "pending_job_id": { "type": ["integer", "null"] }
+      }
+    },
+    "ClaimPatch": {
+      "title": "ClaimPatch",
+      "description": "PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    }
+  },
   "examples": [
     {
       "id": 7001, "snapshot_id": 12, "section": "12-4", "complex_id": 11,

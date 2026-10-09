@@ -198,6 +198,7 @@
         "residency_months": { "type": ["integer", "null"] },
         "residency_label": { "description": "거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
         "down_payment_pct": { "type": ["number", "null"] },
+        "move_in_label": { "description": "입주 예정월(move_in_ym) 값의 Fact 라벨(계약 2026-10-09.4, F2 요청 — 입주 성분 라벨 합성 R3 M2). null이면 라벨 미상(값이 있으면 '확인됨'으로 본다)", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
         "down_payment_label": { "description": "계약금 비율(down_payment_pct, 현재 payment_terms) 값의 Fact 라벨 — 2026-10-09.2", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
         "interim_terms_text": { "type": ["string", "null"] },
         "intake_status": { "type": ["string", "null"], "enum": ["가능", "미정", "확인 불가", "불가", null] },

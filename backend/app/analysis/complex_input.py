@@ -153,7 +153,7 @@ def build_complex_input(
     labels: Mapping[str, Label | None] | None = None,
     ladders: Iterable[LadderRowLike] = (),
 ) -> ComplexScoreInput:
-    """``labels`` 키: price·resale·residency·down_payment(없으면 null = 계약 설명대로 값이 있으면 확인됨)."""
+    """``labels`` 키: price·resale·residency·down_payment·move_in(없으면 null = 계약 설명대로 값이 있으면 확인됨)."""
     lab = labels or {}
     return ComplexScoreInput(
         complex_id=cx.id,
@@ -164,6 +164,7 @@ def build_complex_input(
         price_high_won=price.high_won,
         price_label=lab.get("price"),
         move_in_ym=cx.move_in_ym,
+        move_in_label=lab.get("move_in"),  # 계약 2026-10-09.4 (F2 요청, M2)
         immediate_move_in=immediate_move_in(cx.move_in_ym, asof_date),
         completed_year=None,
         ladders=ladder_inputs(ladders),

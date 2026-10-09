@@ -11,10 +11,29 @@
  *     숫자를 암시하는 이름(count·total·price·*_won·units …), String()/Number()로 감싼 숫자.
  *  3. 어느 모드든 JSX 안의 `.toFixed()`·`.toLocaleString()`·`.toPrecision()`은 수동 포맷으로 금지.
  *  4. JSX 텍스트에 숫자가 있으면 금지(문자열은 ko.json, 숫자는 FactCell).
- * 속성(attribute) 값은 검사하지 않는다(`tabIndex={0}`, `aria-valuenow={n}` 허용).
  *
- * 예외 파일(기본): src/components/FactCell*, src/lib/format.ts, src/charts/**\/buildOption.ts
- * 옵션 { exceptFiles: string[] } (정규식 소스)로 바꿀 수 있다.
+ * R3 minor 27 확장:
+ *  5. JSX 속성(props)으로 넘기는 숫자 식도 검사한다(`title={count}`, `label={fact.v}`, `<Badge text={n}>` …).
+ *     예외(SAFE_PROPS — 화면 글자로 렌더되지 않는 값):
+ *       - FactCell 의 fact(숫자가 가야 할 자리)
+ *       - React/DOM 구조: key·id·ref·tabIndex·className·style·htmlFor·name·role·type
+ *       - 주소: to·href·src (URL 안의 id 는 표시 숫자가 아니다)
+ *       - data-* 전부, aria-* (단 글자로 읽히는 aria-label·aria-valuetext·aria-description·aria-roledescription 은 검사)
+ *       - 크기·범위·입력 제약: width·height·min·max·step·rows·cols·size·span·colSpan·rowSpan·start·maxLength·minLength
+ *         ·x·y·cx·cy·r·strokeWidth·opacity·zIndex
+ *       - 폼 컨트롤 값: value·defaultValue(입력 칸·progress 는 원값을 편집·표시해야 한다 — 포맷하면 파싱이 깨진다)
+ *       - 이름 규칙: *Id·*Ids·*_id·*Index·*Ms·*Px, index·dataIndex·seriesIndex·delay·duration·timeout·digits·page·size
+ *         (식별자·시간·자릿수 — 표시 숫자가 아님)
+ *       - 타입 모드에서 받는 쪽 prop 타입이 숫자뿐(number | null | undefined)이면 허용 — 그 컴포넌트가 포맷하고
+ *         그 컴포넌트의 렌더도 이 규칙이 검사한다. ReactNode·string 이 섞인 슬롯으로 숫자를 넘기면 금지.
+ *  6. i18n `t(key, { p: <숫자> })`·`tDynamic(key, fallback, { … })` 파라미터의 숫자 식 금지 — formatCount 등으로
+ *     문자열을 만들어 넘긴다(t 는 String(n) 으로 끼워 넣어 천 단위·단위가 빠진다). 파라미터 이름이 id·*Id·*_id 면 허용.
+ *  7. `formatNumber(<신뢰도·확률 같은 값>)` 금지 — confidence·prob 은 FactCell(Fact) 또는 formatConfidence·formatProb.
+ *  8. `<FactCell showLabel={false}>` 금지 — 라벨은 항상 보인다(AGENTS 규칙 5).
+ *
+ * 예외 파일(기본, 1~5·8): src/components/FactCell*, src/lib/format.ts, src/charts/**\/buildOption.ts
+ * 예외 파일(6·7 — 호출 검사): src/lib/format.ts(포맷 구현)·*.test.* 만. buildOption.ts 의 툴팁·라벨 문자열도 검사한다.
+ * 옵션 { exceptFiles: string[], exceptCallFiles: string[] } (정규식 소스)로 바꿀 수 있다.
  */
 
 import ts from 'typescript';
@@ -24,6 +43,84 @@ export const DEFAULT_EXCEPT = [
   String.raw`(^|[\\/])src[\\/]lib[\\/]format\.ts$`,
   String.raw`(^|[\\/])src[\\/]charts[\\/](.+[\\/])?buildOption\.tsx?$`,
 ];
+
+/** 6·7(호출 검사) 예외 — 포맷 구현 자체 */
+export const DEFAULT_EXCEPT_CALLS = [
+  String.raw`(^|[\\/])src[\\/]lib[\\/]format\.ts$`,
+  // 테스트는 기대 문자열을 만들 뿐 화면에 렌더하지 않는다
+  String.raw`\.test\.[jt]sx?$`,
+];
+
+/** 5: 화면 글자로 렌더되지 않는 props(위 머리말의 근거) */
+const SAFE_PROPS = new Set([
+  // FactCell 의 fact — 숫자가 가야 할 바로 그 자리(라벨·출처와 함께 포맷)
+  'fact',
+  'key',
+  'id',
+  'ref',
+  'tabIndex',
+  'className',
+  'style',
+  'htmlFor',
+  'name',
+  'role',
+  'type',
+  'to',
+  'href',
+  'src',
+  'width',
+  'height',
+  'min',
+  'max',
+  'step',
+  'rows',
+  'cols',
+  'size',
+  'span',
+  'colSpan',
+  'rowSpan',
+  'start',
+  'maxLength',
+  'minLength',
+  'x',
+  'y',
+  'cx',
+  'cy',
+  'r',
+  'strokeWidth',
+  'opacity',
+  'zIndex',
+  'value',
+  'defaultValue',
+  'index',
+  'dataIndex',
+  'seriesIndex',
+  'delay',
+  'duration',
+  'timeout',
+  'digits',
+  'page',
+]);
+/** aria-* 중 글자로 읽히는 것(검사 대상) */
+const TEXT_ARIA = new Set([
+  'aria-label',
+  'aria-valuetext',
+  'aria-description',
+  'aria-roledescription',
+  'aria-placeholder',
+]);
+const SAFE_PROP_NAME = /(Id|Ids|_id|_ids|Index|Ms|Px)$/;
+
+function isSafeProp(name) {
+  if (SAFE_PROPS.has(name)) return true;
+  if (name.startsWith('data-')) return true;
+  if (name.startsWith('aria-')) return !TEXT_ARIA.has(name);
+  return SAFE_PROP_NAME.test(name);
+}
+
+/** 7: 신뢰도·확률 같은 이름(formatNumber 로 포맷 금지) */
+const CONFIDENCE_NAME =
+  /^(confidence|conf|prob|probability|p_wrong|pWrong)$|(_prob|_confidence|Prob|Confidence)$/;
 
 const MANUAL_FORMAT_METHODS = new Set([
   'toFixed',
@@ -73,7 +170,10 @@ const rule = {
     schema: [
       {
         type: 'object',
-        properties: { exceptFiles: { type: 'array', items: { type: 'string' } } },
+        properties: {
+          exceptFiles: { type: 'array', items: { type: 'string' } },
+          exceptCallFiles: { type: 'array', items: { type: 'string' } },
+        },
         additionalProperties: false,
       },
     ],
@@ -83,14 +183,27 @@ const rule = {
       rawNumberText:
         'JSX 텍스트에 숫자를 직접 쓰지 않는다 — 문구는 ko.json, 숫자는 FactCell/format.',
       manualFormat: 'toFixed/toLocaleString 같은 수동 포맷 금지 — src/lib/format.ts 함수를 쓴다.',
+      rawNumberProp:
+        'JSX 속성으로 숫자를 넘기지 않는다 — FactCell 또는 src/lib/format.ts 로 만든 문자열을 넘긴다 (no-raw-number-render).',
+      rawNumberParam:
+        'i18n t() 파라미터에 숫자를 넣지 않는다 — formatCount·formatScore 등으로 만든 문자열을 넣는다.',
+      confidenceFormat:
+        '신뢰도·확률은 formatNumber 로 포맷하지 않는다 — FactCell(Fact) 또는 formatConfidence·formatProb 를 쓴다.',
+      hiddenLabel:
+        'FactCell 라벨을 숨기지 않는다(showLabel={false} 금지) — 모든 수치는 라벨과 함께 보인다.',
     },
   },
 
   create(context) {
     const options = context.options[0] ?? {};
     const patterns = (options.exceptFiles ?? DEFAULT_EXCEPT).map((source) => new RegExp(source));
+    const callPatterns = (options.exceptCallFiles ?? DEFAULT_EXCEPT_CALLS).map(
+      (source) => new RegExp(source),
+    );
     const filename = context.filename ?? context.getFilename();
-    if (patterns.some((re) => re.test(filename))) return {};
+    const skipJsx = patterns.some((re) => re.test(filename));
+    const skipCalls = callPatterns.some((re) => re.test(filename));
+    if (skipJsx && skipCalls) return {};
 
     const services = context.sourceCode?.parserServices ?? context.parserServices;
     const typed = Boolean(services?.program && services?.esTreeNodeToTSNodeMap);
@@ -222,17 +335,177 @@ const rule = {
     const isChildPosition = (node) =>
       node.parent?.type === 'JSXElement' || node.parent?.type === 'JSXFragment';
 
-    return {
-      JSXExpressionContainer(node) {
+    /** 타입 모드: 받는 쪽(prop) 타입이 숫자뿐인가(number | null | undefined) */
+    function contextualNumberOnly(node) {
+      if (!checker) return false;
+      let tsNode;
+      try {
+        tsNode = services.esTreeNodeToTSNodeMap.get(node);
+      } catch {
+        return false;
+      }
+      if (!tsNode) return false;
+      const type = checker.getContextualType(tsNode);
+      if (!type) return false;
+      if (type.getFlags() & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return false;
+      const parts = type.isUnion() ? type.types : [type];
+      const allowed =
+        ts.TypeFlags.NumberLike |
+        ts.TypeFlags.BigIntLike |
+        ts.TypeFlags.Null |
+        ts.TypeFlags.Undefined |
+        ts.TypeFlags.Void;
+      return (
+        parts.some((p) => (p.getFlags() & ts.TypeFlags.NumberLike) !== 0) &&
+        parts.every((p) => (p.getFlags() & allowed) !== 0)
+      );
+    }
+
+    /** 5: 속성 값 식 검사(조건·논리 양쪽, 템플릿 안쪽). 함수·객체·배열·JSX 는 건너뛴다 */
+    function checkProp(node, report) {
+      const expr = unwrap(node);
+      if (!expr) return;
+      switch (expr.type) {
+        case 'ConditionalExpression':
+          checkProp(expr.consequent, report);
+          checkProp(expr.alternate, report);
+          return;
+        case 'LogicalExpression':
+          checkProp(expr.left, report);
+          checkProp(expr.right, report);
+          return;
+        case 'TemplateLiteral':
+          for (const inner of expr.expressions) {
+            if (isManualFormat(inner)) context.report({ node: inner, messageId: 'manualFormat' });
+            else if (isNumeric(inner)) report(inner);
+          }
+          return;
+        case 'JSXElement':
+        case 'JSXFragment':
+        case 'ArrowFunctionExpression':
+        case 'FunctionExpression':
+        case 'ObjectExpression':
+        case 'ArrayExpression':
+          return;
+        default:
+          if (isManualFormat(expr)) context.report({ node: expr, messageId: 'manualFormat' });
+          else if (isNumeric(expr)) report(expr);
+      }
+    }
+
+    function attrName(attr) {
+      const n = attr.name;
+      if (n.type === 'JSXIdentifier') return n.name;
+      if (n.type === 'JSXNamespacedName') return `${n.namespace.name}:${n.name.name}`;
+      return null;
+    }
+
+    function elementName(opening) {
+      const n = opening?.name;
+      if (!n) return null;
+      if (n.type === 'JSXIdentifier') return n.name;
+      if (n.type === 'JSXMemberExpression') return n.property.name;
+      return null;
+    }
+
+    /** 6: t(key, {…})·tDynamic(key, fallback, {…}) 의 파라미터 객체 */
+    function i18nParams(node) {
+      const callee = unwrap(node.callee);
+      const name =
+        callee?.type === 'Identifier'
+          ? callee.name
+          : callee?.type === 'MemberExpression'
+            ? propertyName(callee)
+            : null;
+      if (name === 't') return node.arguments[1] ?? null;
+      if (name === 'tDynamic') return node.arguments[2] ?? null;
+      return null;
+    }
+
+    function checkParams(arg) {
+      const obj = unwrap(arg);
+      if (!obj) return;
+      if (obj.type === 'ObjectExpression') {
+        for (const prop of obj.properties) {
+          if (prop.type !== 'Property') continue;
+          // {id}·{complexId} 같은 식별자 파라미터는 표시 숫자가 아니다
+          const key = prop.key.type === 'Identifier' ? prop.key.name : null;
+          if (key && (key === 'id' || SAFE_PROP_NAME.test(key))) continue;
+          const value = unwrap(prop.value);
+          if (!value) continue;
+          if (value.type === 'ConditionalExpression') {
+            for (const branch of [value.consequent, value.alternate]) {
+              if (isNumeric(branch)) context.report({ node: branch, messageId: 'rawNumberParam' });
+            }
+          } else if (isManualFormat(value)) {
+            context.report({ node: value, messageId: 'manualFormat' });
+          } else if (isNumeric(value)) {
+            context.report({ node: value, messageId: 'rawNumberParam' });
+          }
+        }
+      }
+    }
+
+    function argName(node) {
+      const expr = unwrap(node);
+      if (!expr) return null;
+      if (expr.type === 'Identifier') return expr.name;
+      if (expr.type === 'MemberExpression') {
+        const name = propertyName(expr);
+        // fact.v → 그 Fact 의 이름(confidence.v)
+        if (name === 'v') return argName(expr.object);
+        return name;
+      }
+      if (expr.type === 'LogicalExpression') return argName(expr.left);
+      return null;
+    }
+
+    const visitors = {};
+    if (!skipJsx) {
+      visitors.JSXExpressionContainer = (node) => {
         if (!isChildPosition(node)) return;
         if (node.expression.type === 'JSXEmptyExpression') return;
         check(node.expression);
-      },
-      JSXText(node) {
+      };
+      visitors.JSXText = (node) => {
         if (!isChildPosition(node)) return;
         if (/\d/.test(node.value)) context.report({ node, messageId: 'rawNumberText' });
-      },
-    };
+      };
+      visitors.JSXAttribute = (node) => {
+        const name = attrName(node);
+        if (name === null) return;
+        const value = node.value;
+        if (
+          name === 'showLabel' &&
+          elementName(node.parent) === 'FactCell' &&
+          value?.type === 'JSXExpressionContainer' &&
+          value.expression.type === 'Literal' &&
+          value.expression.value === false
+        ) {
+          context.report({ node, messageId: 'hiddenLabel' });
+          return;
+        }
+        if (!value || value.type !== 'JSXExpressionContainer') return;
+        if (value.expression.type === 'JSXEmptyExpression') return;
+        if (isSafeProp(name)) return;
+        if (contextualNumberOnly(value.expression)) return;
+        checkProp(value.expression, (n) => context.report({ node: n, messageId: 'rawNumberProp' }));
+      };
+    }
+    if (!skipCalls) {
+      visitors.CallExpression = (node) => {
+        const params = i18nParams(node);
+        if (params) checkParams(params);
+        const callee = unwrap(node.callee);
+        if (callee?.type === 'Identifier' && callee.name === 'formatNumber') {
+          const name = argName(node.arguments[0]);
+          if (name && CONFIDENCE_NAME.test(name)) {
+            context.report({ node, messageId: 'confidenceFormat' });
+          }
+        }
+      };
+    }
+    return visitors;
   },
 };
 

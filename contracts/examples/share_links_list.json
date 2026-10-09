@@ -1,0 +1,21 @@
+{
+  "summary": "발급한 링크(최신순, 토큰 없음)",
+  "value": [
+    {
+      "id": 3,
+      "label": "가족 공유",
+      "created_at": "2026-10-09T10:00:00+09:00",
+      "expires_at": "2026-11-08T10:00:00+09:00",
+      "revoked_at": null,
+      "status": "active"
+    },
+    {
+      "id": 1,
+      "label": "검토 요청",
+      "created_at": "2026-09-01T09:00:00+09:00",
+      "expires_at": "2026-10-01T09:00:00+09:00",
+      "revoked_at": null,
+      "status": "expired"
+    }
+  ]
+}

@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { resetAuthForTests } from '@/api/auth';
 import { server } from '@/mocks/server';
+
+// 화면은 라우트별 지연 로드 청크다 — 병렬 실행 부하에서도 첫 findBy 가 1초 기본값에 걸리지 않게(모든 테스트 파일)
+configure({ asyncUtilTimeout: 5000 });
 
 // 계약 밖 요청은 조용히 통과시키지 않는다 — 핸들러가 없으면 테스트가 실패한다.
 beforeAll(() => {

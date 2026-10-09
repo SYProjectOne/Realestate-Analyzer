@@ -22,6 +22,7 @@ from app.models import (
     Complex,
     HumanCheck,
     IntakeStatus,
+    JobRun,
     JudgmentLog,
     RawDocument,
     Region,
@@ -112,6 +113,30 @@ def list_source_status(session: DB, request: Request, region_id: int | None = No
     return JSONResponse(out)
 
 
+def cache_hits(session: Any, since: str, tool: str | None = None) -> tuple[int, dict[str, int]]:
+    """캐시 재생 수(R3 minor 23): 판정기를 다시 부르지 않은 호출은 judgment_log 에 행을 남기지 않으므로
+    worker 잡 집계(``job_run.stats.cached`` — scheduler.pipeline.CountingCaller)를 더한다.
+    도구별은 잡이 ``stats.cached_by_tool`` 을 남길 때만(없으면 도구별 0, 합계에는 들어간다).
+    ``tool`` 을 주면 그 도구 수만(도구별 집계가 없는 잡은 셀 수 없어 0)."""
+    total = 0
+    by_tool: dict[str, int] = defaultdict(int)
+    stmt = select(JobRun.stats).where(JobRun.started_at.is_not(None), JobRun.started_at >= since)
+    for stats in session.scalars(stmt):
+        if not isinstance(stats, dict):
+            continue
+        per_tool = stats.get("cached_by_tool")
+        if isinstance(per_tool, dict):
+            for name, n in per_tool.items():
+                if isinstance(n, int) and n > 0:
+                    by_tool[str(name)] += n
+        n_all = stats.get("cached")
+        if tool is None and isinstance(n_all, int) and n_all > 0:
+            total += n_all
+    if tool is not None:
+        total = by_tool.get(tool, 0)
+    return total, dict(by_tool)
+
+
 @router.get("/ops/judgments")
 def get_judgment_ops(
     session: DB,
@@ -142,12 +167,13 @@ def get_judgment_ops(
     latest_snap = session.scalars(
         select(Snapshot).order_by(Snapshot.created_at.desc(), Snapshot.id.desc())
     ).first()
+    cached_total, cached_by_tool = cache_hits(session, start, tool)
     stats = {
         "since": start,
         "until": now.date().isoformat(),
-        "total_calls": len(rows),
+        "total_calls": len(rows) + cached_total,
         "real_calls": len(rows),
-        "cached_hits": 0,
+        "cached_hits": cached_total,
         "failures": count(rows, "error"),
         "blocked": count(rows, "blocked"),
         "review": count(rows, "review"),
@@ -157,7 +183,7 @@ def get_judgment_ops(
             {
                 "tool": t,
                 "calls": len(items),
-                "cached": 0,
+                "cached": cached_by_tool.get(t, 0),
                 "failures": count(items, "error"),
                 "review": count(items, "review"),
                 "escaped": count(items, "escaped"),

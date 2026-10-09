@@ -22,7 +22,8 @@
     "e2e": "playwright test && playwright test -c e2e/pages",
     "e2e:smoke": "playwright test",
     "e2e:pages": "playwright test -c e2e/pages",
-    "e2e:api": "playwright test -c e2e/api"
+    "e2e:api": "playwright test -c e2e/api",
+    "lighthouse": "tsx scripts/lighthouse.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",

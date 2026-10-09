@@ -156,7 +156,7 @@ def test_raw_document(client: TestClient) -> None:
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
     assert "주택유형" in r.text
     assert client.get("/api/raw/9059", headers=WRITE).status_code == 404  # 실패 행(path=null)
-    assert client.get("/api/raw/1", headers=WRITE).status_code == 404
+    assert client.get("/api/raw/999999", headers=WRITE).status_code == 404  # 없는 id
 
 
 def test_compare(client: TestClient) -> None:

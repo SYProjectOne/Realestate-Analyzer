@@ -9,14 +9,14 @@
   "properties": {
     "since": { "type": "string" },
     "until": { "type": "string" },
-    "total_calls": { "type": "integer", "minimum": 0 },
-    "real_calls": { "type": "integer", "minimum": 0 },
-    "cached_hits": { "type": "integer", "minimum": 0 },
-    "failures": { "type": "integer", "minimum": 0 },
-    "blocked": { "type": "integer", "minimum": 0 },
-    "review": { "type": "integer", "minimum": 0 },
-    "escaped": { "type": "integer", "minimum": 0 },
-    "avg_duration_ms": { "type": ["number", "null"] },
+    "total_calls": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "real_calls": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "cached_hits": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "failures": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "blocked": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "review": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "escaped": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "avg_duration_ms": { "x-nonfact": "평균 소요 ms(운영 메타)", "type": ["number", "null"] },
     "by_tool": {
       "type": "array",
       "items": {
@@ -54,7 +54,7 @@
       "properties": {
         "stats": { "$ref": "#" },
         "items": { "type": "array", "items": { "$ref": "judgment_envelope.json" } },
-        "total": { "type": "integer", "minimum": 0 },
+        "total": { "x-nonfact": "목록 건수(페이지 메타)", "type": "integer", "minimum": 0 },
         "page": { "type": "integer", "minimum": 1 },
         "size": { "type": "integer", "minimum": 1 }
       }

@@ -8,6 +8,76 @@ import { http, HttpResponse } from 'msw';
 import { mswPath } from './mswPath';
 
 export const generatedHandlers = [
+  http.post(mswPath("/catalysts"), () =>
+    HttpResponse.json({
+      "catalyst": {
+        "id": 57,
+        "name": "김포 골드라인 연장 기본계획 승인",
+        "kind": "기타",
+        "stage": "미확정",
+        "stage_prob": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "분류 전",
+          "prov": null,
+          "checked_at": "2026-10-09"
+        },
+        "decision": null,
+        "expected_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "분류 전",
+          "prov": null,
+          "checked_at": "2026-10-09"
+        },
+        "location_confirmed": false,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [],
+        "judgment_seq": null,
+        "source_url": "https://www.example-news.kr/article/2026/10/08/12345",
+        "note": "사람 입력 URL — 판정기 classify 대기"
+      },
+      "job": {
+        "id": 932,
+        "job_name": "rejudge",
+        "kind": "rejudge",
+        "payload": {
+          "snapshot_id": 12,
+          "scenario_id": null,
+          "complex_ids": [],
+          "reason": "호재 URL 입력: 김포 골드라인 연장 기본계획 승인"
+        },
+        "scheduled_at": "2026-10-09T11:05:00+09:00",
+        "started_at": null,
+        "finished_at": null,
+        "status": "queued",
+        "stats": {},
+        "error_text": null,
+        "progress": null
+      }
+    }, { status: 201 }),
+  ),
+  http.patch(mswPath("/claims/:id"), () =>
+    HttpResponse.json({
+      "id": 931,
+      "job_name": "claim.reverify",
+      "kind": "manual",
+      "payload": {
+        "snapshot_id": 12,
+        "claim_id": 6990,
+        "text": "고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었고 +20% 이상 명제도 unlikely로 판정되었다."
+      },
+      "scheduled_at": "2026-10-09T11:00:00+09:00",
+      "started_at": null,
+      "finished_at": null,
+      "status": "queued",
+      "stats": {},
+      "error_text": null,
+      "progress": null
+    }, { status: 202 }),
+  ),
   http.get(mswPath("/complexes/:id"), () =>
     HttpResponse.json({
       "snapshot_id": 12,
@@ -4025,6 +4095,49 @@ export const generatedHandlers = [
       }
     }, { status: 200 }),
   ),
+  http.get(mswPath("/share-links"), () =>
+    HttpResponse.json([
+      {
+        "id": 3,
+        "label": "가족 공유",
+        "created_at": "2026-10-09T10:00:00+09:00",
+        "expires_at": "2026-11-08T10:00:00+09:00",
+        "revoked_at": null,
+        "status": "active"
+      },
+      {
+        "id": 1,
+        "label": "검토 요청",
+        "created_at": "2026-09-01T09:00:00+09:00",
+        "expires_at": "2026-10-01T09:00:00+09:00",
+        "revoked_at": null,
+        "status": "expired"
+      }
+    ], { status: 200 }),
+  ),
+  http.post(mswPath("/share-links"), () =>
+    HttpResponse.json({
+      "link": {
+        "id": 3,
+        "label": "가족 공유",
+        "created_at": "2026-10-09T10:00:00+09:00",
+        "expires_at": "2026-11-08T10:00:00+09:00",
+        "revoked_at": null,
+        "status": "active"
+      },
+      "token": "q3Zt0w9mK1xR7bY2cV8nH4sL6dF5gJ0aP3eU1iO9tQw"
+    }, { status: 201 }),
+  ),
+  http.delete(mswPath("/share-links/:id"), () =>
+    HttpResponse.json({
+      "id": 3,
+      "label": "가족 공유",
+      "created_at": "2026-10-09T10:00:00+09:00",
+      "expires_at": "2026-11-08T10:00:00+09:00",
+      "revoked_at": "2026-10-10T08:00:00+09:00",
+      "status": "revoked"
+    }, { status: 200 }),
+  ),
   http.get(mswPath("/snapshots/:sid/changes"), () =>
     HttpResponse.json([
       {
@@ -4116,6 +4229,27 @@ export const generatedHandlers = [
         "complex_id": null,
         "complex_name": null,
         "tab": null
+      }
+    ], { status: 200 }),
+  ),
+  http.get(mswPath("/snapshots/:sid/claims"), () =>
+    HttpResponse.json([
+      {
+        "id": 6990,
+        "snapshot_id": 12,
+        "section": "complex:11",
+        "complex_id": 11,
+        "complex_name": "고촌센트럴자이",
+        "text": "고촌센트럴자이의 +10% 이상 명제는 likely로 판정되었고 +20% 이상은 uncertain이다.",
+        "evidence_text": "jl_120: +10% 0.11 unlikely(auto); +20% 0.04 unlikely(auto)",
+        "verify_status": "contradicted",
+        "judgment_seq": 131,
+        "prov": "jl_131",
+        "parent_claim_id": null,
+        "ordinal": 0,
+        "child_count": 0,
+        "remaining": true,
+        "pending_job_id": null
       }
     ], { status: 200 }),
   ),
@@ -13452,6 +13586,18 @@ export const generatedHandlers = [
 
 export const generatedOperations = [
   {
+    "method": "post",
+    "path": "/catalysts",
+    "operationId": "createCatalyst",
+    "status": 201
+  },
+  {
+    "method": "patch",
+    "path": "/claims/{id}",
+    "operationId": "reviseClaim",
+    "status": 202
+  },
+  {
     "method": "get",
     "path": "/complexes/{id}",
     "operationId": "getComplex",
@@ -13585,8 +13731,32 @@ export const generatedOperations = [
   },
   {
     "method": "get",
+    "path": "/share-links",
+    "operationId": "listShareLinks",
+    "status": 200
+  },
+  {
+    "method": "post",
+    "path": "/share-links",
+    "operationId": "createShareLink",
+    "status": 201
+  },
+  {
+    "method": "delete",
+    "path": "/share-links/{id}",
+    "operationId": "revokeShareLink",
+    "status": 200
+  },
+  {
+    "method": "get",
     "path": "/snapshots/{sid}/changes",
     "operationId": "listChanges",
+    "status": 200
+  },
+  {
+    "method": "get",
+    "path": "/snapshots/{sid}/claims",
+    "operationId": "listClaims",
     "status": 200
   },
   {

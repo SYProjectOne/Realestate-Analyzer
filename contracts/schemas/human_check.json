@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "human_check.json",
   "title": "HumanCheck",
-  "description": "사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(\"운영자\"), 사람 이름 금지. 통화 내용은 요약만.",
+  "description": "사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "complex_id", "field", "value_text", "kind", "checked_at", "entered_by", "note"],
@@ -25,6 +25,12 @@
     }
   },
   "$defs": {
+    "EnteredByRole": {
+      "title": "EnteredByRole",
+      "description": "사람 확인 입력자 = 역할 문자열만(RA §10 보안 2 — 사람 이름 금지, 계약 2026-10-09.4). 자유 입력을 받지 않는다. 옛 행(자유 문자열)은 응답 HumanCheck.entered_by 에 그대로 나갈 수 있다.",
+      "type": "string",
+      "enum": ["운영자", "검토자"]
+    },
     "HumanCheckCreate": {
       "title": "HumanCheckCreate",
       "description": "POST /ops/human-checks 본문",
@@ -37,7 +43,7 @@
         "value_text": { "type": "string", "minLength": 1 },
         "kind": { "type": "string", "enum": ["phone", "visit", "email"] },
         "checked_at": { "type": "string", "minLength": 10 },
-        "entered_by": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "entered_by": { "$ref": "#/$defs/EnteredByRole" },
         "note": { "type": ["string", "null"] }
       },
       "allOf": [

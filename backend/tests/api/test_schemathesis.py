@@ -45,11 +45,40 @@ def st_app(seeded_db: Seeded, tmp_path_factory: pytest.TempPathFactory) -> Itera
     shutil.copyfile(seeded_db.db, db)
     s = make_settings(db, seeded_db.raw_dir, base / "reports")
     set_settings(s)
+    mp = pytest.MonkeyPatch()
+    _catalyst_double(mp)
     try:
         yield create_app(s)
     finally:
+        mp.undo()
         set_settings(None)
         reset_engine()
+
+
+def _catalyst_double(mp: pytest.MonkeyPatch) -> None:
+    """POST /catalysts 의 후보 함수(F1a ``app.normalize.catalyst.catalyst_from_url``)가 아직 없으면
+    대역을 쓴다.
+
+    있으면 실제 함수를 그대로 검사한다(머지 후 자동)."""
+    from app.api.routers import catalysts
+    from app.models import Catalyst
+
+    try:
+        catalysts.candidate_factory()
+        return
+    except catalysts.CandidateUnavailable:
+        pass
+
+    def fake(session: Any, region_id: int, *, url: str, title: str, excerpt: str | None = None) -> Any:
+        row = Catalyst(
+            region_id=region_id, name=title, kind="기타", stage="미확정", location_confirmed=False,
+            source_url=url, note=excerpt,
+        )  # fmt: skip
+        session.add(row)
+        session.flush()
+        return row
+
+    mp.setattr(catalysts, "candidate_factory", lambda: fake)
 
 
 BASE_URL = "http://testserver/api"
@@ -58,12 +87,13 @@ MAX_EXAMPLES = int(os.environ.get("ST_MAX_EXAMPLES", "30"))  # 깊게 돌릴 때
 # 계약 설명이 '스키마는 맞지만 의미가 틀린 본문 → 422'를 명시한 operation
 # (가중치 합≠1, 생활권 누락·중복, 참조에 없는
 # 지역 코드). schemathesis positive_data_acceptance 는 스키마만 보므로 이 operation 에서는 뺀다.
-SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion"}
+# createCatalyst: guard(개인정보·비밀값)·호재 후보 조건(CatalystInputError) → 422 (계약 2026-10-09.4)
+SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion", "createCatalyst"}
 
 
 # /health 는 servers 가 루트('/')라 이 테스트(base_url /api)에서 빼고 test_health_contract 로 본다.
 # POST /jobs 의 JobCreate(job_name 별 if/then payload)는 schemathesis 가 생성하지 못한다(UnsupportedSchema)
-# → test_contract_create_job 이 계약 예시 + job_name 7종 본문으로 같은 검사를 돌린다.
+# → test_contract_create_job 이 계약 예시 + job_name 8종 본문으로 같은 검사를 돌린다.
 @schema.exclude(path="/health").exclude(operation_id="createJob").parametrize()
 @settings(max_examples=MAX_EXAMPLES, deadline=None, suppress_health_check=list(HealthCheck))
 def test_contract(case: Any, st_app: Any) -> None:
@@ -90,6 +120,7 @@ CREATE_JOB_BODIES: list[dict[str, Any]] = [
     {"job_name": "snapshot.publish", "payload": {"snapshot_id": 12}},
     {"job_name": "reference.refresh", "payload": {}},
     {"job_name": "region.bootstrap", "payload": {"region_id": 1}},
+    {"job_name": "claim.reverify", "payload": {"snapshot_id": 12, "claim_id": 1, "text": "고친 문장"}},
     {"job_name": "rejudge", "payload": {"snapshot_id": 12}},  # 필수 누락 → 422
     {"job_name": "report", "payload": {"snapshot_id": 12, "format": "md"}},  # enum 밖 → 422
     {"job_name": "nope", "payload": {}},  # 잡 이름 밖 → 422
@@ -112,7 +143,7 @@ def test_all_operations_covered() -> None:
     from app.main import create_app
 
     ops = {(op.method.upper(), op.path) for op in (r.ok() for r in schema.get_all_operations())}
-    assert len(ops) == 31
+    assert len(ops) == 37  # 31 + 계약 2026-10-09.4 의 6개
     app = create_app()
     routes = {
         (method.upper(), path.removeprefix("/api") if path != "/health" else path)

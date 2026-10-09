@@ -1,0 +1,52 @@
+{
+  "summary": "호재 후보(미확정) + 분류 잡",
+  "value": {
+    "catalyst": {
+      "id": 57,
+      "name": "김포 골드라인 연장 기본계획 승인",
+      "kind": "기타",
+      "stage": "미확정",
+      "stage_prob": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "분류 전",
+        "prov": null,
+        "checked_at": "2026-10-09"
+      },
+      "decision": null,
+      "expected_ym": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "분류 전",
+        "prov": null,
+        "checked_at": "2026-10-09"
+      },
+      "location_confirmed": false,
+      "linked": null,
+      "distance_m": null,
+      "weight": null,
+      "linked_complex_ids": [],
+      "judgment_seq": null,
+      "source_url": "https://www.example-news.kr/article/2026/10/08/12345",
+      "note": "사람 입력 URL — 판정기 classify 대기"
+    },
+    "job": {
+      "id": 932,
+      "job_name": "rejudge",
+      "kind": "rejudge",
+      "payload": {
+        "snapshot_id": 12,
+        "scenario_id": null,
+        "complex_ids": [],
+        "reason": "호재 URL 입력: 김포 골드라인 연장 기본계획 승인"
+      },
+      "scheduled_at": "2026-10-09T11:05:00+09:00",
+      "started_at": null,
+      "finished_at": null,
+      "status": "queued",
+      "stats": {},
+      "error_text": null,
+      "progress": null
+    }
+  }
+}

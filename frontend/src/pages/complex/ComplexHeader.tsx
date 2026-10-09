@@ -1,6 +1,7 @@
 import type { ComplexDetail } from '@/api/types';
 import {
   Badge,
+  ExternalLink,
   FactCell,
   IntakeBadge,
   TieBadge,
@@ -9,7 +10,7 @@ import {
 } from '@/components';
 import { t } from '@/i18n';
 import { formatRank } from '@/lib/format';
-import { enumText } from '../_shared';
+import { enumText, JudgeScopeBadge } from '../_shared';
 
 /** G3 ComplexHeader — 접수 배지 · 현재 구매가 범위 · 전매 D-day · 입주 · 포함 분류 · 종합 점수 */
 export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
@@ -38,24 +39,24 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
             {score.rank !== null ? <Badge tone="strong">{formatRank(score.rank)}</Badge> : null}
             <TieBadge tie={score.tie_group !== null} />
             <UnstableBadge unstable={score.unstable} />
+            <JudgeScopeBadge scope={score.judge_scope} />
           </>
         ) : null}
         {header.official_site_url ? (
-          <a
+          <ExternalLink
             href={header.official_site_url}
-            target="_blank"
-            rel="noreferrer noopener"
             className="ml-auto text-sm underline"
+            fallback={header.official_site_url}
           >
             {t('page.G3.header.officialSite')}
-          </a>
+          </ExternalLink>
         ) : null}
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">
         <div className="flex flex-col">
           <dt className="text-xs text-muted">{t('page.G3.header.price')}</dt>
           <dd className="flex flex-wrap items-center gap-1">
-            <FactCell fact={price.price_low} unit="won" showLabel={false} />
+            <FactCell fact={price.price_low} unit="won" />
             <span aria-hidden>~</span>
             <FactCell fact={price.price_high} unit="won" />
           </dd>

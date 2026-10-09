@@ -106,7 +106,7 @@ def test_compose_has_no_inline_secrets() -> None:
 
 def test_dockerfiles() -> None:
     api = (INFRA / "Dockerfile.api").read_text(encoding="utf-8")
-    assert "uvicorn" in api and "app.main:app" in api
+    assert "app.serve" in api  # = uvicorn app.main:app (R3 M11: 토큰 없으면 127.0.0.1)
     worker = (INFRA / "Dockerfile.worker").read_text(encoding="utf-8")
     assert "playwright install" in worker and "chromium" in worker
     assert "npx" in worker and "node" in worker

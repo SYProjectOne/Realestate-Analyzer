@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useProvenance, useRawText } from '@/api/hooks';
 import type { ComplexDetail, Fact } from '@/api/types';
-import { EmptyState, FactCell, LabelBadge, RawDocumentPreview } from '@/components';
+import { EmptyState, ExternalLink, FactCell, LabelBadge, RawDocumentPreview } from '@/components';
 import { t, tDynamic } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { unitOf } from '../_shared';
@@ -138,14 +138,7 @@ export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
             <LabelBadge label={prov.data.label} reason={prov.data.reason} />
             {prov.data.checked_at ? <span>{formatDate(prov.data.checked_at)}</span> : null}
             {prov.data.url ? (
-              <a
-                href={prov.data.url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="break-all underline"
-              >
-                {prov.data.url}
-              </a>
+              <ExternalLink href={prov.data.url} className="break-all underline" />
             ) : null}
           </div>
         ) : prov.isLoading ? (

@@ -57,7 +57,7 @@ export function C09Catalyst({ data, height = 180 }: C09CatalystProps) {
                       {c.expected_ym.v !== null ? (
                         <>
                           {' · '}
-                          <FactCell fact={c.expected_ym} unit="ym" showLabel={false} />
+                          <FactCell fact={c.expected_ym} unit="ym" />
                         </>
                       ) : null}
                     </span>

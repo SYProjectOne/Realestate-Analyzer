@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.gap import is_unadjusted_tag, unadjusted_from_flags
 from app.analysis.scenarios import requirement_mismatch
 from app.analysis.score import ScoreRunDetail, decide_outcome, weighted_total
 from app.analysis.sensitivity import weights_map
@@ -200,6 +201,8 @@ def save_score_run(
     session.add(run)
     session.flush()
     for c in res.components:
+        # 미보정 갭%·중앙값(gap 성분): 엔진이 flags 태그로 싣는다 → 계약 2026-10-09.4 컬럼에 저장(R3 W7)
+        un_gap, un_median = unadjusted_from_flags(c.flags)
         session.add(
             ScoreComponent(
                 score_run_id=run.id,
@@ -211,7 +214,9 @@ def save_score_run(
                 label=c.label,
                 reason=(c.reason or None) and str(c.reason)[:120],
                 delta=to_dec(c.delta),
-                flags=list(c.flags or []),
+                flags=[f for f in c.flags or [] if not is_unadjusted_tag(f)],
+                unadjusted_gap_pct=to_dec(un_gap, Decimal("0.000001")) if un_gap is not None else None,
+                unadjusted_median_won=un_median,
             )
         )
     weights = weights_map(res.weights)
@@ -371,21 +376,26 @@ def copy_claims(
         )
     }
     n = 0
+    # 분할 재검증 연결(parent_claim_id)도 새 id 로 옮긴다 — 끊기면 해결된 contradicted 가 다시 '남은' 것이 되어
+    # publish 가 막힌다(R3 M8). 부모가 자식보다 먼저 만들어지므로 id 순서로 대응표를 채운다.
+    new_ids: dict[int, int] = {}
     for src in session.scalars(stmt.order_by(Claim.id)):
         if src.complex_id in have:
             continue
-        session.add(
-            Claim(
-                snapshot_id=dst_snapshot_id,
-                section=src.section,
-                complex_id=src.complex_id,
-                text=src.text,
-                evidence_text=src.evidence_text,
-                verify_status=src.verify_status,
-                judgment_seq=src.judgment_seq,
-                ordinal=src.ordinal,
-            )
+        row = Claim(
+            snapshot_id=dst_snapshot_id,
+            section=src.section,
+            complex_id=src.complex_id,
+            text=src.text,
+            evidence_text=src.evidence_text,
+            verify_status=src.verify_status,
+            judgment_seq=src.judgment_seq,
+            parent_claim_id=new_ids.get(src.parent_claim_id) if src.parent_claim_id is not None else None,
+            ordinal=src.ordinal,
         )
+        session.add(row)
+        session.flush()
+        new_ids[src.id] = row.id
         n += 1
     session.flush()
     return n
@@ -483,6 +493,8 @@ def carry_forward(
                     reason=c.reason,
                     delta=c.delta,
                     flags=list(c.flags or []),
+                    unadjusted_gap_pct=c.unadjusted_gap_pct,
+                    unadjusted_median_won=c.unadjusted_median_won,
                 )
             )
         for t in session.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == src.id)):

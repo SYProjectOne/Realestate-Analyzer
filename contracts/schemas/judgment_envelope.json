@@ -15,13 +15,13 @@
       "maxLength": 128
     },
     "input_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-    "input_len": { "description": "canonical payload 길이(문자 수). 로그용", "type": ["integer", "null"] },
+    "input_len": { "x-nonfact": "판정기 입력 길이(호출 메타 — 로그 규칙 13)", "description": "canonical payload 길이(문자 수). 로그용", "type": ["integer", "null"] },
     "status": { "type": "string", "enum": ["ok", "review", "escaped", "blocked", "error"] },
-    "confidence": { "description": "판정기가 준 신뢰도 0~1. 없으면 null", "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "confidence": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "description": "판정기가 준 신뢰도 0~1. 없으면 null", "type": ["number", "null"], "minimum": 0, "maximum": 1 },
     "cached": { "type": "boolean" },
     "result": { "description": "도구별 정규화 결과 ($defs의 ScreenResult … VerifyResult). error·blocked면 {}.", "type": "object", "additionalProperties": true },
     "raw": { "description": "판정기 원응답(JSON). 임계값·decision을 포함해 그대로 저장. blocked면 {\"reason\": …}.", "type": "object", "additionalProperties": true },
-    "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "duration_ms": { "x-nonfact": "호출 소요 ms(운영 메타)", "type": ["integer", "null"], "minimum": 0 },
     "judgment_seq": { "description": "judgment_log.seq. 성공·실패 불문 모든 호출이 행을 가진다", "type": ["integer", "null"] },
     "created_at": { "description": "ISO 8601 시각", "type": "string", "minLength": 10 },
     "adapter_version": { "type": ["string", "null"], "maxLength": 64 },
@@ -60,9 +60,9 @@
       "required": ["verdict"],
       "properties": {
         "verdict": { "type": "string", "enum": ["pass", "skip", "block"] },
-        "injection": { "type": ["number", "null"] },
-        "substance": { "type": ["number", "null"] },
-        "relevance": { "type": ["number", "null"] }
+        "injection": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": ["number", "null"] },
+        "substance": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": ["number", "null"] },
+        "relevance": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": ["number", "null"] }
       }
     },
     "ExtractResult": {
@@ -118,7 +118,7 @@
       "required": ["label", "prob", "decision"],
       "properties": {
         "label": { "type": "string" },
-        "prob": { "type": "number" },
+        "prob": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": "number" },
         "decision": { "type": "string", "enum": ["auto", "review", "manual_review"] },
         "distribution": { "type": "object", "additionalProperties": { "type": "number" } },
         "items": { "description": "배치 분류의 후보별 결과(입력 순서). 단건 분류면 없음", "type": "array", "items": { "$ref": "#/$defs/ClassifyItem" } }
@@ -134,7 +134,7 @@
         "candidate": { "type": ["string", "null"] },
         "complex_id": { "type": ["integer", "null"] },
         "label": { "type": "string" },
-        "prob": { "type": "number" },
+        "prob": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": "number" },
         "decision": { "type": "string", "enum": ["auto", "review", "manual_review"] },
         "distribution": { "type": "object", "additionalProperties": { "type": "number" } }
       }
@@ -146,7 +146,7 @@
       "required": ["overall"],
       "properties": {
         "overall": { "type": "string", "enum": ["same_fact", "contradicts", "different_facts", "review"] },
-        "prob": { "type": ["number", "null"] },
+        "prob": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": ["number", "null"] },
         "aspects": {
           "type": "array",
           "items": {
@@ -207,8 +207,8 @@
       "properties": {
         "candidate_id": { "type": "string" },
         "complex_id": { "type": ["integer", "null"] },
-        "relevance": { "type": "number" },
-        "rank": { "type": "integer", "minimum": 1 }
+        "relevance": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": "number" },
+        "rank": { "x-nonfact": "판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다", "type": "integer", "minimum": 1 }
       }
     },
     "DecideResult": {

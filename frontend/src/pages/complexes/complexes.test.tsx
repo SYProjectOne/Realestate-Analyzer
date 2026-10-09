@@ -2,12 +2,19 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { t } from '@/i18n';
 import { MOBILE_QUERY } from '@/lib/useMediaQuery';
-import { resetMockState } from '@/mocks/handlers.extra';
+import { MOCK_ROWS_KEY, resetMockState } from '@/mocks/handlers.extra';
 import { renderRoute } from '@/test/render';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import { captureDownloads, matching, recordRequests } from '../_shared/testing';
 import { COLUMN_STORAGE_KEY } from './ComplexTable';
-import { nextSort, readFilters, toApiFilter, toListParams } from './params';
+import {
+  FIRST_PAGE_SIZE,
+  nextSort,
+  PAGE_SIZE,
+  readFilters,
+  toApiFilter,
+  toListParams,
+} from './params';
 
 vi.mock('echarts-for-react', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -23,10 +30,13 @@ describe('G2 params', () => {
       land_type: '공공택지',
     });
     expect(toListParams(values, '-total', 'B')).toMatchObject({
-      size: 1000,
+      page: 1,
+      size: PAGE_SIZE,
       sort: '-total',
       scenario: 'B',
     });
+    expect(PAGE_SIZE).toBe(1000);
+    expect(FIRST_PAGE_SIZE).toBeLessThanOrEqual(100);
   });
   it('정렬: 같은 키는 방향을 뒤집고 새 키는 내림차순부터', () => {
     expect(nextSort('-total', 'total')).toBe('total');
@@ -118,5 +128,56 @@ describe('G2 단지 리스트', () => {
     } finally {
       window.matchMedia = original;
     }
+  });
+});
+
+describe('G2 첫 화면·전체 행 (W8·W9)', () => {
+  const listCalls = (rec: ReturnType<typeof recordRequests>) =>
+    matching(rec.requests, 'GET', /\/snapshots\/\d+\/complexes$/);
+
+  it('W8: 첫 요청은 작은 페이지(size ≤ 100) — 첫 행을 먼저 그린다', async () => {
+    window.localStorage.setItem(MOCK_ROWS_KEY, '1000');
+    const rec = recordRequests();
+    renderRoute('/complexes');
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(1));
+    const first = listCalls(rec)[0];
+    expect(first?.url.searchParams.get('page')).toBe('1');
+    expect(Number(first?.url.searchParams.get('size'))).toBeLessThanOrEqual(100);
+    expect(Number(first?.url.searchParams.get('size'))).toBe(FIRST_PAGE_SIZE);
+    rec.stop();
+  });
+
+  it('W9: total 이 1,000 을 넘어도 모든 행에 닿는다(페이지를 이어 받는다)', async () => {
+    window.localStorage.setItem(MOCK_ROWS_KEY, '1500');
+    const rec = recordRequests();
+    renderRoute('/complexes');
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    expect(table).toHaveAttribute('aria-rowcount', '1501');
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText(t('page.G2.count', { shown: '1,500', total: '1,500' })),
+        ).toBeInTheDocument(),
+      { timeout: 10_000 },
+    );
+    const pages = listCalls(rec)
+      .filter((r) => r.url.searchParams.get('size') === String(PAGE_SIZE))
+      .map((r) => r.url.searchParams.get('page'));
+    expect(pages).toEqual(['1', '2']);
+    // 같은 페이지를 두 번 받지 않는다
+    expect(new Set(pages).size).toBe(pages.length);
+    // 마지막 행까지 스크롤해 보는 것은 실제 브라우저 e2e(e2e/pages 'G2 2,500행')가 본다(jsdom 은 레이아웃이 없다)
+    rec.stop();
+  });
+
+  it('W9: total ≤ 첫 페이지면 추가 요청이 없다', async () => {
+    const rec = recordRequests();
+    renderRoute('/complexes');
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(1));
+    await new Promise((r) => setTimeout(r, 200));
+    expect(listCalls(rec)).toHaveLength(1);
+    rec.stop();
   });
 });
