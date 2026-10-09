@@ -9,7 +9,7 @@ import {
 } from '@/components';
 import { t } from '@/i18n';
 import { formatRank } from '@/lib/format';
-import { enumText } from '../_shared';
+import { enumText, JudgeScopeBadge } from '../_shared';
 
 /** G3 ComplexHeader — 접수 배지 · 현재 구매가 범위 · 전매 D-day · 입주 · 포함 분류 · 종합 점수 */
 export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
@@ -38,6 +38,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
             {score.rank !== null ? <Badge tone="strong">{formatRank(score.rank)}</Badge> : null}
             <TieBadge tie={score.tie_group !== null} />
             <UnstableBadge unstable={score.unstable} />
+            <JudgeScopeBadge scope={score.judge_scope} />
           </>
         ) : null}
         {header.official_site_url ? (

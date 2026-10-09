@@ -138,7 +138,18 @@ export type DecisionBadge = S['DecisionBadge'];
 /** 호환 별칭 */
 export type ScoreRowDecision = DecisionBadge;
 export type ScoreRow = S['ScoreRow'];
+/**
+ * 판정 범위(meta §1-3-4, D9-1). 화면 표시 문구는 ko.json `page.common.judgeScope` —
+ * 보류 '보류 — 공고 후 재판정', 참고 '참고 후보(순위만)', 미해결 '미해결(분류 판정 미해결)'(계약 2026-10-09.4).
+ */
 export type JudgeScope = S['JudgeScope'];
+export const JUDGE_SCOPES = [
+  '판정 대상',
+  '보류',
+  '참고',
+  '미해결',
+  '제외',
+] as const satisfies readonly JudgeScope[];
 
 export type ChangeEvent = S['ChangeEvent'];
 export type ChangeSeverity = ChangeEvent['severity'];

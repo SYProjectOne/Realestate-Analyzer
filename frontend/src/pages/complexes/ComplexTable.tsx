@@ -12,7 +12,7 @@ import type { ComplexRow } from '@/api/types';
 import { Badge, FactCell, IntakeBadge, TieBadge, UnstableBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate, formatRank } from '@/lib/format';
-import { enumText } from '../_shared';
+import { enumText, JudgeScopeBadge } from '../_shared';
 import { nextSort, type SortKey } from './params';
 
 /** 열 선택 저장(브라우저별 편의 설정) */
@@ -190,6 +190,7 @@ export function ComplexTable({
             ) : null}
             <TieBadge tie={row.original.tie_group !== null} />
             <UnstableBadge unstable={row.original.unstable} />
+            <JudgeScopeBadge scope={row.original.judge_scope} hideTarget />
           </span>
         ),
       },

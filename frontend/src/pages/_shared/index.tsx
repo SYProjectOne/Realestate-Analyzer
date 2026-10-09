@@ -4,8 +4,8 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import type { Fact } from '@/api/types';
-import { EmptyState } from '@/components';
+import type { Fact, JudgeScope } from '@/api/types';
+import { Badge, EmptyState } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { useScenario } from '@/hooks/useScenario';
@@ -132,6 +132,27 @@ export function useGlobalSearch(): string {
 export function enumText(prefix: string, value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return t('page.common.none');
   return tDynamic(`${prefix}.${value}`, value);
+}
+
+/**
+ * 판정 범위 배지(C2, 계약 2026-10-09.4) — 표시 문구는 ko.json `page.common.judgeScope`.
+ * `hideTarget`이면 '판정 대상'은 그리지 않는다(표·카드에서 예외만 드러낸다).
+ */
+export function JudgeScopeBadge({
+  scope,
+  hideTarget = false,
+}: {
+  scope: JudgeScope | null | undefined;
+  hideTarget?: boolean;
+}) {
+  if (!scope || (hideTarget && scope === '판정 대상')) return null;
+  return (
+    <span data-testid="judge-scope" data-scope={scope}>
+      <Badge tone={scope === '판정 대상' ? 'neutral' : 'muted'}>
+        {enumText('page.common.judgeScope', scope)}
+      </Badge>
+    </span>
+  );
 }
 
 /** 행 번호 표기 "#127" (판정 seq·잡 id — 수치가 아니라 식별자) */
