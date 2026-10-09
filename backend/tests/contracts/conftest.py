@@ -3,6 +3,7 @@
 # ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterator
 from typing import Any
@@ -40,6 +41,7 @@ def postgres_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
         yield given
         return
     pgserver = pytest.importorskip("pgserver", reason="pgserver not installed and TEST_POSTGRES_URL not set")
+    logging.getLogger("pgserver").setLevel(logging.WARNING)  # atexit 정리 로그가 닫힌 캡처 스트림에 쓰지 않게
     pgdata = tmp_path_factory.mktemp("pgdata")
     try:
         server = pgserver.get_server(pgdata, cleanup_mode="stop")
