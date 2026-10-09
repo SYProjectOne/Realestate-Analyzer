@@ -376,7 +376,9 @@ def test_robots_exempt_hosts_skip_robots_txt() -> None:
 def test_robots_exempt_hosts_default_from_settings(test_settings: Any) -> None:
     c = HttpClient()
     try:
-        assert c.robots_exempt_hosts == frozenset({"apis.data.go.kr", "openapi.naver.com"})
+        assert c.robots_exempt_hosts == frozenset(
+            {"apis.data.go.kr", "api.odcloud.kr", "openapi.naver.com", "naverapihub.apigw.ntruss.com"}
+        )
     finally:
         c.close()
 
