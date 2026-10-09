@@ -1,4 +1,9 @@
-"""데이터·운영 (G7): 소스 상태, 판정기 호출 집계, 체크리스트, 사람 확인(T3)."""
+"""데이터·운영 (G7): 소스 상태, 판정기 호출 집계, 체크리스트, 사람 확인(T3).
+
+사람 확인이 강등된 사실(D10-3 '확인 불가(검증 모순)', 같은 단지·같은 field)을 가리키면 그 값으로 복원한다
+(``app.api.demotion.restore_by_human`` — 체크리스트 '사실 재확인' done, change_event + rejudge 잡 제안).
+체크리스트 목록은 읽기 전에 ``sync_demotions`` 로 새 원문 복원을 반영한다(계약 2026-10-09.6).
+"""
 
 from __future__ import annotations
 
@@ -11,8 +16,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api.contract import check_body
+from app.api.demotion import ValueParseError, restore_by_human, sync_demotions
 from app.api.deps import DB, default_snapshot, get_complex, in_db_range, settings_of
-from app.api.errors import not_found
+from app.api.errors import not_found, validation_error
 from app.api.jobs import now_iso
 from app.api.views import envelope_view, intake_view, pick_intake
 from app.core.time import now_kst
@@ -237,6 +243,8 @@ def list_checklist(
 ) -> JSONResponse:
     if not in_db_range(complex_id):
         return JSONResponse([])
+    if sync_demotions(session):
+        session.commit()
     stmt = select(ChecklistItem)
     if status:
         stmt = stmt.where(ChecklistItem.status == status)
@@ -279,6 +287,39 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
     created: dict[str, Any] | None = None
     change_id: int | None = None
     suggested: dict[str, Any] | None = None
+    if hc.field != "intake_status":
+        try:
+            restored = restore_by_human(session, hc)
+        except ValueParseError as exc:
+            session.rollback()
+            raise validation_error(str(exc), ("body", "value_text")) from exc
+        if restored:
+            d = restored[0]
+            ce = ChangeEvent(
+                snapshot_id=d.snapshot_id,
+                entity=d.entity,
+                entity_id=d.entity_id,
+                field=d.field,
+                old_text="확인 불가(검증 모순)",
+                new_text=f"{hc.value_text} (사람 확인)",
+                detected_at=now_iso(),
+                severity="critical",
+                triggers_rejudge=True,
+                complex_id=cx.id,
+            )
+            session.add(ce)
+            session.flush()
+            change_id = ce.id
+            suggested = {
+                "job_name": "rejudge",
+                "payload": {
+                    "snapshot_id": d.snapshot_id,
+                    "scenario_id": None,
+                    "complex_ids": [cx.id],
+                    "reason": f"사람 확인 입력: {cx.name} {hc.field} 복원"[:200],
+                    "change_event_ids": [ce.id],
+                },
+            }
     if hc.field == "intake_status":
         snap = default_snapshot(session, cx.region_id)
         if snap is None:

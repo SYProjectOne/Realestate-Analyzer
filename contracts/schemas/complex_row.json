@@ -13,6 +13,7 @@
     "living_area_name": { "type": ["string", "null"] },
     "track": { "type": ["string", "null"], "enum": ["A", "B", null] },
     "judge_scope": { "$ref": "score_row.json#/$defs/JudgeScope" },
+    "rejudge_needed": { "description": "D10-1(계약 2026-10-09.6): judge_scope·rank·total 은 스냅샷 score_run 저장값. 현재 계산 범위가 저장값과 다르면 true('재판정 필요' 배지). 없으면 false.", "type": "boolean", "default": false },
     "intake": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
     "price_low": { "$ref": "fact.json" },
     "price_high": { "$ref": "fact.json" },

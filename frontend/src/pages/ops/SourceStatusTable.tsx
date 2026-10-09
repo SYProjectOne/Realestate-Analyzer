@@ -1,6 +1,6 @@
 import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useOpsSources } from '@/api/hooks';
-import type { JobName, SourceStatus } from '@/api/types';
+import type { JobCreateName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
 import { Badge, EmptyState, ExternalLink } from '@/components';
 import { t, type TKey } from '@/i18n';
@@ -47,7 +47,7 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
   const createJob = useCreateJob();
   const canWrite = useCanWrite();
   const toast = useToast();
-  const retry = (job: { job_name: JobName; payload: Record<string, unknown> }) =>
+  const retry = (job: { job_name: JobCreateName; payload: Record<string, unknown> }) =>
     createJob.mutate(job, { onSuccess: () => toast({ message: t('page.G7.src.retried') }) });
   return (
     <div className="overflow-x-auto">

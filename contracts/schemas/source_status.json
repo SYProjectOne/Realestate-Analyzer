@@ -37,7 +37,7 @@
       "anyOf": [
         {
           "title": "RetryHint", "type": "object", "additionalProperties": false, "required": ["job_name", "payload"],
-          "properties": { "job_name": { "$ref": "job_run.json#/$defs/JobName" }, "payload": { "type": "object", "additionalProperties": true } }
+          "properties": { "job_name": { "$ref": "job_run.json#/$defs/JobCreateName" }, "payload": { "type": "object", "additionalProperties": true } }
         },
         { "type": "null" }
       ]

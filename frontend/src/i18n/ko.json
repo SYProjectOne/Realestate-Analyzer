@@ -90,7 +90,11 @@
       "changes": "최근 변경",
       "noChanges": "최근 변경 없음",
       "rejudge": "재판정 대상",
-      "unsoldSmall": "미분양 추이"
+      "unsoldSmall": "미분양 추이",
+      "rejudgeNotice": "재판정 필요 — 이 화면의 판정 범위·순위·점수는 스냅샷에 저장된 값입니다. 현재 사실로 계산한 범위가 저장값과 다른 단지가 있습니다.",
+      "rejudgeRun": "재판정 잡 등록",
+      "rejudgeReason": "재판정 필요(저장 범위 ≠ 현재 범위)",
+      "benchmarkAbsentHint": "벤치마크 성분이 없어 종합 점수를 계산하지 않았습니다"
     },
     "G2": {
       "title": "단지 리스트",
@@ -292,7 +296,9 @@
       "noDecision": "이 상황의 판정이 없습니다",
       "warnings": "경고",
       "requirements": "요건",
-      "sensitivity": "민감도"
+      "sensitivity": "민감도",
+      "virtual": "가상 후보(단지 아님)",
+      "virtualCandidate": "가상 후보: {label}"
     },
     "G5": {
       "title": "시나리오(내 조건)",
@@ -450,6 +456,14 @@
         "done": "완료",
         "na": "해당 없음"
       },
+      "checkKind": {
+        "법적 확인": "법적 확인",
+        "중도금": "중도금",
+        "만료": "만료",
+        "공고 예상": "공고 예상",
+        "계약": "계약",
+        "사실 재확인": "사실 재확인"
+      },
       "stats": "판정기 호출(30일)",
       "stat": {
         "total": "호출",
@@ -508,6 +522,14 @@
         "revise": "고친 문장",
         "submit": "고쳐서 재검증",
         "error": "수정하지 못했습니다: {detail}",
+        "field": "대상 필드: {name}",
+        "demoteHint": "DB 사실에서 나온 주장입니다 — 고쳐서 재검증을 접수하면 같은 대상(단지·필드)만 허용되고, 그 사실은 '확인 불가(검증 모순)'으로 강등되어 점수·요건에서 빠집니다(사람 확인 또는 새 원문으로 복원).",
+        "restored": "복원됨({by})",
+        "restoredPlain": "복원됨",
+        "restoredBy": {
+          "human_check": "사람 확인",
+          "new_source": "새 원문"
+        },
         "status": {
           "verified": "검증됨",
           "contradicted": "모순(contradicted)",
@@ -648,6 +670,9 @@
         "prefix": "앞부분 일치",
         "partial": "부분 일치"
       },
+      "rejudgeNeeded": "재판정 필요",
+      "rejudgeNeededHint": "이 스냅샷에 저장된 판정 범위·순위·점수입니다. 현재 사실로 계산한 범위가 저장값과 달라 재판정이 필요합니다",
+      "benchmarkAbsent": "벤치마크 없음({reason})",
       "loadError": "불러오지 못했습니다: {detail}",
       "backToList": "단지 리스트로",
       "charts": "차트"
@@ -656,7 +681,12 @@
       "title": "공유 링크",
       "applying": "읽기 전용 공유 링크를 적용하는 중입니다…",
       "missing": "공유 링크에 토큰이 없습니다. 받은 주소 전체(# 뒤까지)를 그대로 여세요.",
-      "home": "홈으로"
+      "home": "홈으로",
+      "confirmTitle": "이 브라우저에 쓰기 토큰이 저장되어 있습니다",
+      "confirmBody": "공유 링크는 읽기 전용입니다. 저장된 토큰을 공유 토큰으로 바꾸면 이 브라우저의 다른 탭도 저장·실행을 할 수 없게 됩니다.",
+      "tabOnly": "이 탭에서만 읽기 전용으로 보기",
+      "replace": "저장된 토큰을 공유 토큰으로 바꾸기",
+      "cancel": "취소"
     }
   },
   "header": {
@@ -715,6 +745,7 @@
     "mismatch": "증거와 상이",
     "unstable": "순위 불안정",
     "substitute": "대체({year})",
+    "substituteRegion": "대체(지역 전체)",
     "newBuild": "신축({year})",
     "unresolved": "미해결",
     "unjudged": "미판정",
@@ -877,6 +908,7 @@
         "move_in": "입주 시기"
       },
       "unjudgedTip": "미판정 — 판정되면 최대 기여 {max}",
+      "unjudgedNote": "빗금 = 미판정(성분 점수 없음 · 기여 0, 점선 테두리)",
       "raw": "원값 {raw}",
       "contribution": "기여 {value}",
       "empty": "점수 없음"
@@ -1010,7 +1042,9 @@
     "current": "현재: {state}",
     "readOnlyBanner": "읽기 전용 토큰입니다 — 저장·실행 버튼이 꺼져 있습니다. 쓰려면 쓰기 토큰(API_TOKEN)으로 바꾸세요",
     "readOnlyHint": "읽기 전용 토큰으로는 저장·실행할 수 없습니다",
-    "change": "토큰 바꾸기"
+    "change": "토큰 바꾸기",
+    "pinnedBanner": "다른 탭에서 저장된 토큰이 바뀌었습니다 — 이 탭은 기존 토큰을 유지합니다",
+    "useNewToken": "새 토큰 사용"
   },
   "download": {
     "pending": "내려받는 중…",

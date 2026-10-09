@@ -66,6 +66,33 @@ export function rowsWithUnjudged(): ScoreRow[] {
   return rows;
 }
 
+/**
+ * C07 정상: 계약 예시 base 결정 + 가상 후보 '모집공고 대기'(wait_new, 계약 2026-10-09.5 — complex_id null).
+ * 재리뷰 F3 'C07 기준 이미지가 tie·wait_new 전' → 정상 상태 기준 이미지에 가상 후보가 보이게 한다(특수 = 동률).
+ */
+export function decisionWithWaitNew(): DecisionSet {
+  const base = compare().decisions.base;
+  if (!base) throw new Error('compare_b 예시에 base 결정이 없다');
+  const first = base.items[0];
+  if (!first) throw new Error('compare_b 예시 base 결정에 후보가 없다');
+  return {
+    ...base,
+    items: [
+      ...base.items,
+      {
+        ...first,
+        option_key: 'wait_new',
+        complex_id: null,
+        label: '모집공고 대기',
+        prob: { ...first.prob, v: 0.09 },
+        chosen: false,
+        tie: false,
+        mismatch: false,
+      },
+    ],
+  };
+}
+
 /** C07 특수: 판정기가 escape hatch로 질문을 남긴 decide 봉투 */
 export function escapedDecision(): DecisionSet {
   const base = compare().decisions.base;

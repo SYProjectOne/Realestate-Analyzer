@@ -2,7 +2,8 @@
 # 원문 월별 압축 (runbook §6 디스크 부족, R3 minor 34). 삭제가 아니라 압축 — 보존 무기한(D1 #14).
 #
 #   infra/raw_archive.sh <RAW_DIR> <source> <yyyy-mm>
-#   예) docker compose exec worker infra/raw_archive.sh /data/raw applyhome_list 2026-08
+#   예) docker compose -f infra/docker-compose.yml exec worker /app/infra/raw_archive.sh /data/raw applyhome_list 2026-08
+#   RAW_DIR 은 상대 경로여도 된다 — 먼저 절대 경로로 바꾼다(재리뷰 F3: cd 뒤 tar -C 상대 경로 실패).
 #
 # 결과: <RAW_DIR>/<source>/<yyyy-mm>.tar.gz. 구성원 이름은 RAW_DIR 기준 상대 경로(<source>/<yyyy-mm-dd>/<sha256>.<ext>)
 # = DB raw_document.path 그대로라서 API GET /raw/{id} 가 원본이 없으면 이 압축에서 읽는다(api.routers.complexes).
@@ -10,6 +11,8 @@
 set -euo pipefail
 
 RAW_DIR="${1:?RAW_DIR}"
+[ -d "$RAW_DIR" ] || { echo "RAW_DIR 없음: $RAW_DIR" >&2; exit 2; }
+RAW_DIR="$(cd "$RAW_DIR" && pwd)"
 SOURCE="${2:?source (예: applyhome_list)}"
 MONTH="${3:?yyyy-mm}"
 

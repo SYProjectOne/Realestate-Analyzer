@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import {
   clearAuth,
   dismissTokenPrompt,
+  releaseTabPin,
   requestToken,
   setAuth,
   useAuth,
@@ -49,6 +50,35 @@ export function ReadOnlyBanner() {
       <span>{t('auth.readOnlyBanner')}</span>
       <button type="button" onClick={() => requestToken('manual')} className="text-xs underline">
         {t('auth.change')}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 다른 탭이 저장 토큰을 읽기 전용 토큰으로 바꿔 이 탭이 기존 토큰을 고정해 쓰는 중(N-M7, `auth.externalChange`).
+ * "새 토큰 사용" → 고정을 풀고 저장소의 새 토큰으로(모든 쿼리 다시).
+ */
+export function TokenPinnedBanner() {
+  const auth = useAuth();
+  const qc = useQueryClient();
+  if (!auth.externalChange) return null;
+  return (
+    <div
+      role="note"
+      data-testid="token-pinned-banner"
+      className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-1.5 text-sm"
+    >
+      <span>{t('auth.pinnedBanner')}</span>
+      <button
+        type="button"
+        onClick={() => {
+          releaseTabPin();
+          void qc.invalidateQueries();
+        }}
+        className="text-xs underline"
+      >
+        {t('auth.useNewToken')}
       </button>
     </div>
   );
@@ -175,7 +205,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             >
               {checking ? t('auth.checking') : t('auth.save')}
             </button>
-            {auth.source === 'storage' || auth.source === 'memory' ? (
+            {auth.source === 'storage' || auth.source === 'memory' || auth.source === 'tab' ? (
               <button
                 type="button"
                 onClick={clear}

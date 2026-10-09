@@ -9,6 +9,8 @@
     "scenario_code": "B",
     "scenario_name": "B 가점 낮음·소액 자기자본",
     "degraded": false,
+    "rejudge_needed": false,
+    "benchmark_absence": null,
     "score_run_id": 90,
     "weights": {
       "p10": 0.3,

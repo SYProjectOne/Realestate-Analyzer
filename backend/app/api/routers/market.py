@@ -1,4 +1,9 @@
-"""지역 시장 (G6): 벤치마크(C3)·입주 물량(C4)·미분양(C5)·호재(C9)·규제 카드·생활권 시세."""
+"""지역 시장 (G6): 벤치마크(C3)·입주 물량(C4)·미분양(C5)·호재(C9)·규제 카드·생활권 시세.
+
+벤치마크(계약 2026-10-09.6, ``app.api.benchmarks``): 스냅샷이 인용하는 행(benchmark.snapshot_id),
+생활권 표본 sample_n = 자기 표본만(대체·분양권 제외, N-M4), substituted·substitute = 지역 전체 대체(D9-2),
+벤치마크 없음 사유 benchmark_absence(N-M3).
+"""
 
 from __future__ import annotations
 
@@ -11,13 +16,14 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
+from app.api.benchmarks import benchmark_absence, benchmarks_for, is_substitute, own_sample_n
 from app.api.deps import DB, get_snapshot, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, fact, weakest
 from app.api.routers.complexes import catalyst_view
 from app.api.routers.snapshots import partial_missing, unsold_points
 from app.api.views import area_names, judge_scope, judgment_days, load_bundles
-from app.models import Benchmark, Catalyst, CatalystLink, Complex, Region, RtmsTrade, Supply
+from app.models import Catalyst, CatalystLink, Complex, Region, RtmsTrade, Supply
 
 router = APIRouter(tags=["market"])
 
@@ -45,13 +51,9 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
     checked = snap.asof_date
     asof = date.fromisoformat(snap.asof_date)
 
-    benches = [
-        b
-        for b in session.scalars(
-            select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)
-        )
-        if want is None or b.living_area in want
-    ]
+    region_benches = benchmarks_for(session, snap)
+    absence = benchmark_absence(session, region.id, region_benches)
+    benches = [b for b in region_benches if want is None or b.living_area in want]
     fm.prov.load(session, "benchmark", (b.id for b in benches))
     bench_views = []
     for b in benches:
@@ -72,6 +74,8 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
         bench_views.append(
             {
                 "id": b.id,
+                "snapshot_id": b.snapshot_id,
+                "substitute": is_substitute(b),
                 "living_area": b.living_area,
                 "name": b.name,
                 "completed_year": b.completed_year,
@@ -94,12 +98,14 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
         )
     flags = []
     for la_id in sorted({b.living_area for b in benches if b.living_area} | (want or set(names))):
-        own = [b for b in benches if b.living_area == la_id and not b.is_presale]
+        own = [b for b in benches if b.living_area == la_id and not b.is_presale and not is_substitute(b)]
+        subs = [b for b in benches if b.living_area == la_id and not b.is_presale and is_substitute(b)]
         flags.append(
             {
                 "living_area": la_id,
-                "sample_n": len(own),
+                "sample_n": own_sample_n(benches, la_id),
                 "no_recent_sale_case": not any((b.sale_year or 0) >= asof.year - 3 for b in own),
+                "substituted": not own and bool(subs),
             }
         )
 
@@ -258,6 +264,7 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
             "living_areas": [{"id": k, "name": v} for k, v in names.items() if want is None or k in want],
             "benchmarks": bench_views,
             "benchmark_flags": flags,
+            "benchmark_absence": absence,
             "supply": supply_views,
             "move_in_markers": markers,
             "unsold": unsold,

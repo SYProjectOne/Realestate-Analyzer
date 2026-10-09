@@ -21,6 +21,7 @@ import {
   ASOF,
   compare,
   complexNames,
+  decisionWithWaitNew,
   dashboard,
   elif,
   escapedDecision,
@@ -203,8 +204,8 @@ export const GALLERY_CASES: GalleryCase[] = [
   {
     chart: 'C07',
     state: 'normal',
-    note: 'CompareView.decisions.base · MismatchBadge',
-    render: () => <C07Decision data={{ decision: c.decisions.base ?? null }} />,
+    note: 'CompareView.decisions.base · MismatchBadge · 가상 후보 wait_new',
+    render: () => <C07Decision data={{ decision: decisionWithWaitNew() }} />,
   },
   {
     chart: 'C07',

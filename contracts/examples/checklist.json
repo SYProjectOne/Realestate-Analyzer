@@ -90,6 +90,16 @@
       "due_date": null,
       "status": "na",
       "note": "신규 분양 매수에는 해당 없음"
+    },
+    {
+      "id": 60,
+      "complex_id": 11,
+      "complex_name": "고촌센트럴자이",
+      "kind": "사실 재확인",
+      "title": "사실 재확인: 전매제한 기간(검증 모순)",
+      "due_date": null,
+      "status": "open",
+      "note": "claim 6991 수정 접수 — 사실 강등. 공고문 원문 확인 후 사람 확인(전화·방문)으로 입력하면 복원"
     }
   ]
 }

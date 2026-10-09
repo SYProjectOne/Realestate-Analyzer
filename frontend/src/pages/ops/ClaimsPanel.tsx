@@ -91,6 +91,12 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
             {t('page.G7.claims.split', { n: formatCount(claim.child_count) })}
           </Badge>
         ) : null}
+        {claim.field_name ? (
+          <span data-testid="claim-field" className="text-xs text-muted">
+            {t('page.G7.claims.field', { name: claim.field_name })}
+          </span>
+        ) : null}
+        <DemotionBadge demotion={claim.demotion} />
         {claim.prov && openProvenance ? (
           <button
             type="button"
@@ -125,6 +131,9 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
         <label htmlFor={textId} className="text-xs text-muted">
           {t('page.G7.claims.revise')}
         </label>
+        {claim.field !== null ? (
+          <p className="text-xs text-muted">{t('page.G7.claims.demoteHint')}</p>
+        ) : null}
         <textarea
           id={textId}
           value={text}
@@ -155,5 +164,26 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
         </div>
       ) : null}
     </li>
+  );
+}
+
+/**
+ * D10-3 사실 강등 상태(계약 2026-10-09.6 FactDemotion): 강등 = 라벨+사유 그대로 '확인 불가(검증 모순)',
+ * 복원 = '복원됨(사람 확인|새 원문)'. 강등 없음(null)이면 그리지 않는다.
+ */
+function DemotionBadge({ demotion }: { demotion: ClaimView['demotion'] }) {
+  if (!demotion) return null;
+  const text =
+    demotion.status === 'demoted'
+      ? t('label.withReason', { label: demotion.label, reason: demotion.reason })
+      : demotion.restored_by
+        ? t('page.G7.claims.restored', {
+            by: enumText('page.G7.claims.restoredBy', demotion.restored_by),
+          })
+        : t('page.G7.claims.restoredPlain');
+  return (
+    <span data-testid="claim-demotion" data-status={demotion.status}>
+      <Badge tone={demotion.status === 'demoted' ? 'muted' : 'neutral'}>{text}</Badge>
+    </span>
   );
 }

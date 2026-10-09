@@ -1,4 +1,10 @@
-"""잡 큐 (G5·G7·G8): api 는 job_run 행만 넣는다(판정기를 부르지 않는다)."""
+"""잡 큐 (G5·G7·G8): api 는 job_run 행만 넣는다(판정기를 부르지 않는다).
+
+claim.reverify 는 POST /jobs 로 넣을 수 없다(계약 2026-10-09.6 JobCreateName → 422) — PATCH /claims/{id} 의 같은 대상
+검사·사실 강등(D10-3)을 건너뛰지 않게.
+"""
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -11,7 +17,7 @@ from sqlalchemy import select
 
 from app.api.contract import check_body
 from app.api.deps import DB
-from app.api.errors import not_found
+from app.api.errors import not_found, validation_error
 from app.api.jobs import enqueue, job_view
 from app.models import JobRun
 from app.models.enums import JOB_NAME
@@ -44,6 +50,8 @@ def list_jobs(
 @router.post("/jobs", status_code=202)
 def create_job(session: DB, body: Annotated[Any, Body()] = None) -> JSONResponse:
     check_body("createJob", body)
+    if body["job_name"] == "claim.reverify":  # 계약 JobCreateName 이 이미 막는다 — 이중 방어(D10-3)
+        raise validation_error("claim.reverify 는 PATCH /claims/{id} 로만 등록한다", ("body", "job_name"))
     row = enqueue(session, body["job_name"], body["payload"])
     session.commit()
     return JSONResponse(job_view(row), status_code=202)
