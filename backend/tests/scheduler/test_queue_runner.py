@@ -1,5 +1,7 @@
 """job_run 큐·잠금·runner (ADR-3): 동시 실행 2개 → 하나만, 실패는 잡 failed, --once, 시간표."""
 
+# ruff: noqa: E501  (한국어 docstring·픽스처 행)
+
 from __future__ import annotations
 
 import threading

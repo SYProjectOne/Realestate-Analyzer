@@ -5,6 +5,8 @@
 2일차 다른 해시: change_event critical 1 + rejudge 잡 1(그 단지만).
 """
 
+# ruff: noqa: E501  (한국어 docstring·픽스처 행)
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -76,8 +78,12 @@ def test_no_change_day_zero_events_zero_rejudge_zero_judge_calls(
         # 이전 판정을 복사해 오늘 스냅샷도 publish(같은 사실 = 같은 판정)
         assert day2.status == "published"
         assert _count(s, ScoreRun, ScoreRun.snapshot_id == day2.id) == runs_day1
-        assert _count(s, Ladder, Ladder.snapshot_id == day2.id) == _count(s, Ladder, Ladder.snapshot_id == day1)
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == day2.id, ScoreRun.scenario_id == 1)).one()
+        assert _count(s, Ladder, Ladder.snapshot_id == day2.id) == _count(
+            s, Ladder, Ladder.snapshot_id == day1
+        )
+        run = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == day2.id, ScoreRun.scenario_id == 1)
+        ).one()
         assert run.prev_score_run_id is not None
         assert _count(s, ScoreTotal, ScoreTotal.score_run_id == run.id, ScoreTotal.total.is_not(None)) > 0
         assert _count(s, IntakeStatus, IntakeStatus.snapshot_id == day2.id) >= _count(

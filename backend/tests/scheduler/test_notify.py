@@ -11,6 +11,14 @@ from app.models import ChangeEvent
 from app.scheduler.notify import Notifier
 
 
+def _recorder(sent: list[Any]) -> Any:
+    def post(url: str, body: dict[str, Any]) -> int:
+        sent.append(body)
+        return 200
+
+    return post
+
+
 def _ev(severity: str = "critical", new_text: str = "a1b2", complex_id: int | None = 2) -> ChangeEvent:
     return ChangeEvent(
         snapshot_id=1, entity="complex", entity_id=complex_id, field="official_popup_hash", old_text="0f0f",
@@ -21,7 +29,7 @@ def _ev(severity: str = "critical", new_text: str = "a1b2", complex_id: int | No
 
 def test_no_webhook_is_noop() -> None:
     sent: list[Any] = []
-    n = Notifier(webhook_url=None, post=lambda u, b: sent.append(b) or 200, secrets=[])
+    n = Notifier(webhook_url=None, post=_recorder(sent), secrets=[])
     assert n.notify([_ev()]).skipped == "no_webhook" and sent == []
 
 
@@ -43,7 +51,11 @@ def test_only_critical_sent_with_public_fields() -> None:
 
 def test_guard_blocks_personal_info_and_secrets() -> None:
     sent: list[Any] = []
-    n = Notifier(webhook_url="https://hooks.example.test/x", post=lambda u, b: sent.append(b) or 200, secrets=["s3cr3t-key"])
+    n = Notifier(
+        webhook_url="https://hooks.example.test/x",
+        post=_recorder(sent),
+        secrets=["s3cr3t-key"],
+    )
     assert n.notify([_ev(new_text="분양 문의 010-1234-5678")]).skipped == "guard"
     assert n.notify([_ev(new_text="key=s3cr3t-key")]).skipped == "guard"
     assert sent == []

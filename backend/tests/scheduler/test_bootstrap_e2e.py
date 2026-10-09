@@ -8,6 +8,8 @@
   행이 만들어지고 publish 까지 가는 흐름을 본다(점수 값 재현은 test_pipeline.py 의 SynthJev 쪽).
 """
 
+# ruff: noqa: E501  (한국어 docstring·픽스처 행)
+
 from __future__ import annotations
 
 import importlib.util
@@ -30,7 +32,7 @@ from app.core.http import HttpClient
 from app.judge.mock import MockAdapter
 from app.models import Complex, Decision, JobRun, Ladder, LegalDong, Region, ScoreRun, ScoreTotal, Snapshot
 from app.scheduler import runner
-from app.scheduler.context import SchedulerContext
+from app.scheduler.context import SchedulerContext, default_collectors
 from app.scheduler.jobs import enqueue
 
 from .conftest import APPLYHOME_RECORDING, FIXTURE, REFERENCE_COPY, Clock, seed_region, seed_scenarios
@@ -94,7 +96,10 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
 
     def reference(day: date) -> dict[str, Any]:
         rep = ReferenceCollector(http=ref_http, fallback_dir=REFERENCE_COPY, today=day).refresh()
-        return {"used_fallback": rep.used_fallback, "legal_dong": rep.legal_dong.inserted if rep.legal_dong else 0}
+        return {
+            "used_fallback": rep.used_fallback,
+            "legal_dong": rep.legal_dong.inserted if rep.legal_dong else 0,
+        }
 
     ctx = make_ctx(
         adapter_factory=lambda: MockAdapter(FIXTURE),
@@ -104,6 +109,8 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
             "notice_pdf": lambda c: _Empty(),
             "official_site": lambda c: _Empty(),
             "stats": lambda c: _Empty(),
+            "rtms": default_collectors()["rtms"],  # 키 없음 → 비활성
+            "news": default_collectors()["news"],  # 키 없음 → 비활성
         },
     )
     with factory() as s:
@@ -126,7 +133,9 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
         assert region is not None and region.status == "ready"
         stats = jobs[boot].stats  # type: ignore[union-attr]
         assert stats["daily"]["documents"]["applyhome"] > 0 and stats["daily"]["stored"] > 0
+        assert stats["daily"]["store_errors"] == [], stats["daily"]
         assert stats["weekly"]["skipped"]["rtms"] == "비활성(키 없음)"  # 키 없음 → 비활성(호출 0)
+        assert "news" in stats["weekly"]["skipped"]
         assert stats["pipeline"]["statuses"].get("review", 0) > 0  # 녹화 없는 판정 = review(조용한 통과 없음)
         snap = s.scalars(select(Snapshot).where(Snapshot.region_id == 1)).one()
         assert snap.asof_date == TODAY.isoformat() and snap.status == "published" and not snap.degraded

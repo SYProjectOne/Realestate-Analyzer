@@ -4,6 +4,8 @@
 여기서는 그 행들을 같은 모양으로 넣고 WP7 이 처리하는 부분(재판정 후 D 상황 후보 포함)을 검사한다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·픽스처 행)
+
 from __future__ import annotations
 
 import json
@@ -38,12 +40,18 @@ def _d_total(s: Session, snapshot_id: int, complex_id: int) -> ScoreTotal:
 def test_human_check_then_rejudge_includes_complex(
     make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int
 ) -> None:
-    hc = json.loads((FIXTURE / "raw" / "human_check" / "t3_switzen_possible.json").read_text(encoding="utf-8"))
+    hc = json.loads(
+        (FIXTURE / "raw" / "human_check" / "t3_switzen_possible.json").read_text(encoding="utf-8")
+    )
     cid = int(hc["complex_id"])
     ctx = make_ctx()
     with factory() as s:
-        before = s.scalars(select(IntakeStatus).where(IntakeStatus.complex_id == cid)).all()
-        assert before and all(i.status == "확인 불가" for i in before)  # 403
+        before = s.scalars(
+            select(IntakeStatus).where(IntakeStatus.complex_id == cid, IntakeStatus.path != "unofficial_ref")
+        ).all()
+        assert before and all(
+            i.status == "확인 불가" and i.http_status == 403 for i in before
+        )  # 공식 경로 403
         enqueue_rejudge(s, seeded, None, "최초 판정")
         s.commit()
     runner.run_until_idle(ctx)
@@ -92,6 +100,8 @@ def test_human_check_then_rejudge_includes_complex(
             .order_by(ScoreRun.id.desc())
         ).first()  # fmt: skip
         assert run is not None
-        mine = s.scalars(select(Decision).where(Decision.score_run_id == run.id, Decision.complex_id == cid)).first()
+        mine = s.scalars(
+            select(Decision).where(Decision.score_run_id == run.id, Decision.complex_id == cid)
+        ).first()
         if mine is not None:  # 상위 6 후보 안이면 요건 사전 계산이 '접수 가능(사람 확인)'을 쓴다
             assert mine.req_access_pre and "사람 확인" in mine.req_access_pre["evidence"]

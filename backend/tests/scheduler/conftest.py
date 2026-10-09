@@ -8,6 +8,8 @@
 - ``Clock``: ctx.today/now 를 테스트가 정한다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·픽스처 행)
+
 from __future__ import annotations
 
 import hashlib
@@ -33,14 +35,18 @@ from app.core.time import KST
 from app.judge.base import ToolResponse
 from app.judge.jev_mcp import JevMcpAdapter
 from app.models import (
+    Benchmark,
     ComplexType,
     FieldProvenance,
     IntakeStatus,
     PaymentTerms,
     RawDocument,
     Region,
+    RtmsTrade,
     Scenario,
     Snapshot,
+    Supply,
+    Unsold,
 )
 from app.models import Complex as ComplexRow
 from app.scheduler.context import SchedulerContext
@@ -49,7 +55,9 @@ from app.scheduler.notify import Notifier
 REPO = Path(__file__).resolve().parents[3]
 FIXTURE = REPO / "contracts" / "fixtures" / "incheon_gimpo_2026-10-08"
 REFERENCE_COPY = REPO / "contracts" / "fixtures" / "reference"
-APPLYHOME_RECORDING = REPO / "backend" / "tests" / "collectors" / "applyhome" / "fixtures" / "applyhome_2026-10-09.zip"
+APPLYHOME_RECORDING = (
+    REPO / "backend" / "tests" / "collectors" / "applyhome" / "fixtures" / "applyhome_2026-10-09.zip"
+)
 
 
 def _h(text: str) -> int:
@@ -93,10 +101,17 @@ class SynthJev:
         }
 
     def _extract(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"results": [{"id": f["id"], "value": None, "status": "not_found", "confidence": 0.9} for f in a["fields"]]}
+        return {
+            "results": [
+                {"id": f["id"], "value": None, "status": "not_found", "confidence": 0.9} for f in a["fields"]
+            ]
+        }
 
     def _audit(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"action": "pass", "records": [{"id": r["id"], "action": "ok", "p_wrong": 0.05} for r in a["records"]]}
+        return {
+            "action": "pass",
+            "records": [{"id": r["id"], "action": "ok", "p_wrong": 0.05} for r in a["records"]],
+        }
 
     def _classify(self, a: dict[str, Any]) -> dict[str, Any]:
         first = a["classes"][0]["id"]
@@ -116,7 +131,12 @@ class SynthJev:
 
     def _compare(self, a: dict[str, Any]) -> dict[str, Any]:
         return {
-            "overall": {"relation": "same_fact", "probabilities": {"same_fact": 0.9}, "confidence": 0.9, "decision": "auto"},
+            "overall": {
+                "relation": "same_fact",
+                "probabilities": {"same_fact": 0.9},
+                "confidence": 0.9,
+                "decision": "auto",
+            },
             "aspects": [],
         }
 
@@ -127,7 +147,9 @@ class SynthJev:
             prob = round(base - 0.1 * i if i < 3 else 1 - base, 2)
             prob = min(0.95, max(0.05, prob))
             label = "likely" if prob >= 0.6 else "unlikely" if prob <= 0.3 else "uncertain"
-            out.append({"id": f"proposition{i}", "proposition": p, "probability": prob, "label": label, "auto": True})
+            out.append(
+                {"id": f"proposition{i}", "proposition": p, "probability": prob, "label": label, "auto": True}
+            )
         return {"status": "ok", "results": out}
 
     def _rerank(self, a: dict[str, Any]) -> dict[str, Any]:
@@ -151,7 +173,12 @@ class SynthJev:
             for j in range(len(a["requirements"]))
         ]
         return {
-            "recommendation": {"selected": ids[0], "escaped": False, "confidence": 0.8, "probabilities": probs},
+            "recommendation": {
+                "selected": ids[0],
+                "escaped": False,
+                "confidence": 0.8,
+                "probabilities": probs,
+            },
             "checks": checks,
             "warnings": [],
         }
@@ -206,7 +233,9 @@ class RowsCollector:
 
 def popup_row(key: str) -> dict[str, Any]:
     """t8_popup_pairs.json 의 yesterday·today_same·today_changed → raw_document 컬럼."""
-    pairs = json.loads((FIXTURE / "raw" / "official_site" / "t8_popup_pairs.json").read_text(encoding="utf-8"))
+    pairs = json.loads(
+        (FIXTURE / "raw" / "official_site" / "t8_popup_pairs.json").read_text(encoding="utf-8")
+    )
     d = dict(pairs[key])
     d.pop("id", None)
     return d
@@ -259,14 +288,22 @@ def seed_region(s: Session, **overrides: Any) -> Region:
     return row
 
 
-def seed_fixture(factory: sessionmaker[Session], *, asof: str = "2026-10-07", status: str = "building") -> int:
+def seed_fixture(
+    factory: sessionmaker[Session], *, asof: str = "2026-10-07", status: str = "building"
+) -> int:
     """지역·시나리오·단지 16개·타입·납부 조건·출처·접수 상태(스냅샷 1개)를 넣는다. 스냅샷 id 를 돌려준다."""
     prov = {p["id"]: p for p in json.loads((FIXTURE / "provenance.json").read_text(encoding="utf-8"))}
     bundles = json.loads((FIXTURE / "complexes.json").read_text(encoding="utf-8"))
     with factory() as s:
         seed_scenarios(s)
         region = seed_region(s)
-        snap = Snapshot(region_id=region.id, asof_date=asof, status=status, degraded=False, created_at=f"{asof}T06:00:00+09:00")
+        snap = Snapshot(
+            region_id=region.id,
+            asof_date=asof,
+            status=status,
+            degraded=False,
+            created_at=f"{asof}T06:00:00+09:00",
+        )
         s.add(snap)
         s.flush()
 
@@ -377,6 +414,62 @@ def seed_fixture(factory: sessionmaker[Session], *, asof: str = "2026-10-07", st
         return snap.id
 
 
+def seed_market(factory: sessionmaker[Session], region_id: int = 1) -> None:
+    """expected_scores_v2.json 의 시장 입력(거래·벤치마크·입주물량·미분양·세대수 가정)을 DB 행으로.
+
+    v2 입력의 생활권 id(시군구 코드) → 픽스처 지역 생활권(la_*)으로 바꾼다. 세대수는 v2 가정값(라벨 추정).
+    """
+    v2 = json.loads((FIXTURE / "expected_scores_v2.json").read_text(encoding="utf-8"))["inputs"]
+    with factory() as s:
+        region = s.get(Region, region_id)
+        assert region is not None
+        areas = [dict(a) for a in region.living_areas]
+        by_code = {a["legal_dong_codes"][0][:5]: a for a in areas}
+        la = {code: a["id"] for code, a in by_code.items()}
+        first_dong = {code: a["legal_dong_codes"][0] for code, a in by_code.items()}
+        for item in v2["living_areas"]:
+            a = by_code.get(item["id"])
+            if a is not None and item["households"] is not None:
+                a["households"] = {
+                    "v": item["households"], "label": "추정", "reason": "v2 가정값", "prov": "rd_0",
+                    "checked_at": "2026-10-07",
+                }  # fmt: skip
+        region.living_areas = areas
+        for t in v2["trades"]:
+            s.add(
+                RtmsTrade(
+                    region_id=region_id, apt_name=t["apt_name"], legal_dong_code=first_dong.get(t["living_area"]),
+                    completed_year=t["completed_year"], area_m2=Decimal(str(t["area_m2"])), floor=t["floor"],
+                    price_won=t["price_won"], deal_date=t["deal_date"], cancelled=t["cancelled"],
+                    is_presale=t["is_presale"], source=t["source"],
+                )
+            )  # fmt: skip
+        for b in v2["benchmarks"]:
+            s.add(
+                Benchmark(
+                    region_id=region_id, living_area=la.get(b["living_area"]), name=b["name"],
+                    completed_year=b["completed_year"], sale_year=b["sale_year"],
+                    sale_price_84_won=b["sale_price_84_won"], sale_price_label=b["label"],
+                    trade_median_won=b["trade_median_won"], is_presale=b["is_presale"],
+                )
+            )  # fmt: skip
+        for u in v2["supply"]:
+            s.add(
+                Supply(
+                    region_id=region_id, living_area=la.get(u["living_area"]), year=u["year"], ym=u["ym"],
+                    units=u["units"], label=u["label"], complex_id=u["complex_id"],
+                )
+            )  # fmt: skip
+        for u in v2["unsold"]:
+            s.add(
+                Unsold(
+                    region_id=region_id, scope_code=u["scope_code"], ym=u["ym"], total=u["total"],
+                    post_completion=u["post_completion"], source_label=u["label"],
+                )
+            )  # fmt: skip
+        s.commit()
+
+
 # ---------------------------------------------------------------- 문맥
 
 
@@ -426,5 +519,7 @@ def make_ctx(
 
 @pytest.fixture
 def seeded(factory: sessionmaker[Session], test_settings: Any) -> int:
-    """픽스처 지역·단지(스냅샷 2026-10-07, building). 스냅샷 id."""
-    return seed_fixture(factory)
+    """픽스처 지역·단지·시장 자료(스냅샷 2026-10-07, building). 스냅샷 id."""
+    sid = seed_fixture(factory)
+    seed_market(factory)
+    return sid

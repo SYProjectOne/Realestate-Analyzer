@@ -34,7 +34,9 @@ def _count(s: Session, model: Any, *where: Any) -> int:
     return int(s.scalar(select(func.count()).select_from(model).where(*where)) or 0)
 
 
-def _rejudge(factory: sessionmaker[Session], ctx: SchedulerContext, sid: int, ids: list[int] | None) -> list[int]:
+def _rejudge(
+    factory: sessionmaker[Session], ctx: SchedulerContext, sid: int, ids: list[int] | None
+) -> list[int]:
     with factory() as s:
         enqueue_rejudge(s, sid, ids, "테스트")
         s.commit()
@@ -60,7 +62,15 @@ def test_full_rejudge_writes_derived_rows_and_publishes(
         snap = s.get(Snapshot, seeded)
         assert snap is not None and snap.status == "published" and snap.published_at and not snap.degraded
         # P4: 포함 분류(판정기 auto 결과 기록)
-        assert _count(s, Complex, Complex.inclusion_class == "private_sale_apt", Complex.inclusion_decision == "auto") == 16
+        assert (
+            _count(
+                s,
+                Complex,
+                Complex.inclusion_class == "private_sale_apt",
+                Complex.inclusion_decision == "auto",
+            )
+            == 16
+        )
         # P6: 사다리 3시점(입주월 있는 판정 대상), 판정기 seq 기록
         assert _count(s, Ladder, Ladder.snapshot_id == seeded) >= 30
         assert _count(s, Ladder, Ladder.snapshot_id == seeded, Ladder.judgment_seq.is_(None)) == 0
@@ -74,7 +84,12 @@ def test_full_rejudge_writes_derived_rows_and_publishes(
         totals = list(s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == base.id)))
         scored = [t for t in totals if t.total is not None]
         assert len(scored) >= 8 and all(t.rank is not None for t in scored)
-        assert _count(s, ScoreComponent, ScoreComponent.score_run_id == base.id, ScoreComponent.formula_text == "") == 0
+        assert (
+            _count(
+                s, ScoreComponent, ScoreComponent.score_run_id == base.id, ScoreComponent.formula_text == ""
+            )
+            == 0
+        )
         # P8: decide — 시나리오마다 후보 + escape hatch, chosen 은 analysis.decide_outcome 규칙
         decisions = list(s.scalars(select(Decision).where(Decision.score_run_id == base.id)))
         assert decisions and sum(d.chosen for d in decisions) == 1
@@ -138,6 +153,9 @@ def test_judge_version_change_records_event_and_full_rejudge_once(
 
     ctx = make_ctx(adapter_factory=adapter)
     with factory() as s:
+        cx = s.get(Complex, 2)
+        assert cx is not None
+        cx.move_in_ym = "2028-06"  # 새 입력이 있어야 판정기 응답(model)을 본다 — 같은 입력은 캐시
         enqueue_rejudge(s, seeded, [2], "단지 2 변경")
         s.commit()
     first = runner.run_once(ctx)  # rejudge 1개만
@@ -147,8 +165,15 @@ def test_judge_version_change_records_event_and_full_rejudge_once(
         assert len(events) == 1
         ev = events[0]
         assert ev.field == "version" and ev.severity == "critical" and ev.triggers_rejudge
-        assert ev.old_text and ev.old_text.endswith("+jev-1.13.0") and ev.new_text and ev.new_text.endswith("+jev-1.14.0")
-        queued = list(s.scalars(select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "queued")))
+        assert (
+            ev.old_text
+            and ev.old_text.endswith("+jev-1.13.0")
+            and ev.new_text
+            and ev.new_text.endswith("+jev-1.14.0")
+        )
+        queued = list(
+            s.scalars(select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "queued"))
+        )
         assert len(queued) == 1 and queued[0].payload["complex_ids"] is None
         assert ev.id in queued[0].payload["change_event_ids"]
     runner.run_until_idle(ctx)

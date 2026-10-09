@@ -4,19 +4,39 @@
 - **읽기 허용**: — (다른 WP 는 읽지 않는다)
 - 쓰기 금지 이유(RA §2): —
 
-## 범위 (RA §2·§4-4·§5, DECISIONS D2-4)
+## 범위 (RA §2·§4-4·§5, DECISIONS D2-4·D6)
 
-잡 정의·실행: `jobs.py`(`collect.daily` 06:00, `collect.weekly` 월 06:30, `reference.refresh`, `region.bootstrap`,
-`rejudge`, `report`, `snapshot.publish`), `runner.py`(job_run polling, 락), `detect.py`, `rejudge.py`,
-`notify.py`(`WEBHOOK_URL` 이 비면 보내지 않음), `degraded.py`.
+| 모듈 | 내용 |
+| --- | --- |
+| `jobs.py` | 잡 이름 7개, `enqueue`(같은 queued 잡 중복 없음), APScheduler 시간표(06:00 daily · 월 06:30 weekly · 매월 1일 05:00 reference) — 시간표는 job_run 행만 넣는다, `ensure_reference`(참조 표가 비면 1회) |
+| `runner.py` | `main(argv)`(`python -m app.worker [--once] [--interval 초] [--no-schedule]`), job_run polling, 잠금(`UPDATE … WHERE status='queued'` 1행일 때만 실행), done/failed + stats·error_text |
+| `handlers.py` | 잡 이름 → 처리 함수(collect.daily·weekly, rejudge, snapshot.publish, reference.refresh, region.bootstrap, report) |
+| `collect.py` | 수집기(WP1) → `normalize.store`(WP2) → intake_status 행(분류 없이 '확인 불가(사유)') → 변경 감지 |
+| `detect.py` | 팝업 이미지 해시(기준일 전 마지막 해시와 비교) · 청약홈 목록 diff → change_event |
+| `pipeline.py` | P1 screen → P2 extract → P3 audit → P4 classify → P5 compare → P6 noul → P7 rerank → 점수(`analysis`) → P8 decide → P9 verify → 저장 |
+| `inputs.py` | DB → `ScoreInputs`(2026-10-09.2 필드: unsold_scope_codes·intake_checked_at·*_label) · 증거 카드 |
+| `persist.py` | ladder·score_run/component/total·decision·claim·comparable_set 쓰기, 변경 없는 날 파생 행 복사 |
+| `rejudge.py` | rejudge 잡 등록(같은 스냅샷 queued 잡에 단지 합침)·실행 |
+| `degraded.py` | `JudgeUnavailable` → `snapshot.degraded=true`, 복구 감지 시 degraded 스냅샷마다 rejudge 1개 |
+| `judge_version.py` | adapter_version(서버 버전·모델) 변경 → `change_event(judge, version, critical)` + 전체 재판정 1회 |
+| `notify.py` | `WEBHOOK_URL` 있으면 critical change_event 만 전송(guard 통과분), 없으면 no-op |
+| `context.py` | `SchedulerContext`(세션·어댑터·수집기·알림·시계) — 테스트는 전부 바꿔 끼운다 |
 
-## 연결 방법 (WP0 뼈대와의 접점)
+## 다른 WP 가 알아야 할 것
 
-- `app/scheduler/runner.py` 에 `def main(argv: list[str] | None = None) -> int` 를 두면
-  `python -m app.worker [args]` 가 인자 목록을 그대로 넘겨 위임한다. `--once`(한 번 돌고 종료)를 지원할 것 —
-  운영 점검과 CI 가 `python -m app.worker --once` 를 쓴다.
-- 없으면 worker 는 heartbeat 로그만 남긴다.
-- 로그는 `app.core.logging.configure_logging()` 이 worker 시작 시 이미 설정한다.
+- **degraded 플래그** = `snapshot.degraded`(계약 컬럼). 판정기 장애 중 만든 스냅샷은 `degraded=true`·`status=building`
+  (점수 없음). 복구 후 rejudge 가 끝나면 `false`. 전역 판정기 상태가 필요하면 지역 최신 스냅샷의 값을 읽는다.
+- **사람 확인(T3)**: API(WP5)가 `human_check` + `intake_status(path=human_check, status=…)` + `change_event` 를 넣고
+  `app.scheduler.rejudge.enqueue_rejudge(session, snapshot_id, [complex_id], "사람 확인 입력", change_event_ids=[…])`
+  를 부르면(또는 같은 모양 job_run 행) 같은 스냅샷 queued rejudge 에 합쳐진다. 새 스냅샷은 이전 스냅샷의 접수 행
+  (사람 확인 포함)을 확인 시각 그대로 복사한다.
+- **report 잡**: `app.reports.job` 의 `run_report_job(payload: dict) -> dict`(없으면 `run_report`·`handle_report_job`·`run`
+  순서로 찾음)을 부른다. 반환 dict 가 job_run.stats(`{path, filename, size_bytes, sha256, content_type}`).
+- **변경 없는 날**(T8): 이전 publish 스냅샷의 ladder·score_run·decision·claim·comparable_set 을 복사하고 publish
+  (판정기 호출 0, `score_run.prev_score_run_id` = 원본 run).
+- 판정기 호출은 `ctx.adapter()`(= `app.judge.get_adapter`) + `app.judge.pipeline` 단계 함수로만 한다(규칙 4).
+  decide 의 chosen·tie 는 `app.analysis.score.decide_outcome`, mismatch 는 `app.analysis.scenarios.requirement_mismatch`.
+- mock 어댑터의 녹화 디렉터리: 환경변수 `JUDGE_FIXTURE_DIR`(없으면 `contracts/fixtures/incheon_gimpo_2026-10-08`).
 
 ## 규칙
 

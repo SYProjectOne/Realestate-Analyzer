@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from typing import Any
 
 from sqlalchemy import func, select
@@ -16,7 +17,7 @@ from app.scheduler.context import SchedulerContext
 from app.scheduler.degraded import RECOVERY_REASON, check_recovery
 from app.scheduler.jobs import enqueue
 
-from .conftest import FIXTURE, RowsCollector, popup_row
+from .conftest import FIXTURE, Clock, RowsCollector, popup_row
 
 
 def _count(s: Session, model: Any, *where: Any) -> int:
@@ -24,8 +25,9 @@ def _count(s: Session, model: Any, *where: Any) -> int:
 
 
 def test_judge_down_degraded_then_recovery_enqueues_one_rejudge(
-    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int, clock: Clock
 ) -> None:
+    clock.day = date(2026, 10, 7)  # 픽스처 스냅샷 기준일
     down = MockAdapter(FIXTURE, unavailable=True)  # 모든 호출 JudgeUnavailable
     state = {"up": False}
     site = RowsCollector(factory, [popup_row("yesterday")])
@@ -70,7 +72,9 @@ def test_judge_down_degraded_then_recovery_enqueues_one_rejudge(
     assert len(first) == 1
     assert check_recovery(ctx) == []
     with factory() as s:
-        queued = list(s.scalars(select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "queued")))
+        queued = list(
+            s.scalars(select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "queued"))
+        )
         assert len(queued) == 1 and queued[0].payload == {
             "snapshot_id": seeded,
             "scenario_id": None,
