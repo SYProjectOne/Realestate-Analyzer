@@ -11,6 +11,7 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
+import './_shared/testing';
 
 // jsdom에는 canvas가 없다 — ECharts 렌더러 자체는 Playwright(e2e/pages)가 본다
 vi.mock('echarts-for-react', () => ({ default: () => null }));

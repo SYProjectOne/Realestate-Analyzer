@@ -134,6 +134,11 @@ export function enumText(prefix: string, value: string | null | undefined): stri
   return tDynamic(`${prefix}.${value}`, value);
 }
 
+/** 행 번호 표기 "#127" (판정 seq·잡 id — 수치가 아니라 식별자) */
+export function idText(id: number | string | null | undefined): string {
+  return id === null || id === undefined ? '' : `#${String(id)}`;
+}
+
 /** 봉투 상태가 점수·추천에 쓰이지 않는(회색 "미해결") 상태인가 */
 export function isUnresolved(status: string | null | undefined): boolean {
   return status === 'review' || status === 'escaped' || status === 'blocked' || status === 'error';
