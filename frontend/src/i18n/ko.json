@@ -1,0 +1,235 @@
+{
+  "app": {
+    "name": "청약 분석",
+    "disclaimer": "투자 권유 아님 · 상대 비교",
+    "loading": "불러오는 중…",
+    "error": "불러오지 못했습니다: {detail}",
+    "mobileReadOnly": "모바일에서는 읽기 전용입니다",
+    "mobileUnsupported": "이 화면은 데스크톱에서 이용하세요",
+    "skipToContent": "본문으로 건너뛰기"
+  },
+  "nav": {
+    "G1": "홈",
+    "G2": "단지 리스트",
+    "G4": "비교",
+    "G5": "시나리오",
+    "G6": "지역 시장",
+    "G7": "데이터·운영",
+    "G8": "보고서"
+  },
+  "page": {
+    "G0": { "title": "지역 입력" },
+    "G0_2": { "title": "생활권 편집" },
+    "G1": { "title": "홈 대시보드" },
+    "G2": { "title": "단지 리스트" },
+    "G3": { "title": "단지 상세" },
+    "G4": { "title": "비교" },
+    "G5": { "title": "시나리오(내 조건)" },
+    "G6": { "title": "지역 시장" },
+    "G7": { "title": "데이터·운영" },
+    "G8": { "title": "보고서" },
+    "notFound": { "title": "페이지를 찾을 수 없습니다" }
+  },
+  "header": {
+    "region": "지역",
+    "regionAdd": "+ 지역 추가",
+    "regionNone": "지역 없음",
+    "snapshot": "기준일",
+    "snapshotNone": "스냅샷 없음",
+    "scenario": "상황",
+    "theme": "테마",
+    "themeLight": "라이트",
+    "themeDark": "다크"
+  },
+  "label": {
+    "confirmed": "확인됨",
+    "estimated": "추정",
+    "unofficial": "비공식",
+    "reprocessed": "재가공",
+    "unknown": "확인 불가",
+    "unknownWithReason": "확인 불가({reason})",
+    "humanPrefix": "사람 {label}"
+  },
+  "empty": {
+    "unknown": "확인 불가",
+    "unknownWithReason": "확인 불가({reason})",
+    "noData": "데이터 없음"
+  },
+  "intake": {
+    "status": {
+      "가능": "접수 가능",
+      "미정": "접수 미정",
+      "확인 불가": "접수 확인 불가",
+      "불가": "접수 불가"
+    },
+    "path": {
+      "human_check": "사람 확인",
+      "official_popup": "공식 팝업",
+      "headless_shot": "렌더 캡처",
+      "unofficial_ref": "비공식 참고"
+    },
+    "none": "접수 상태 확인 불가"
+  },
+  "badge": {
+    "cached": "캐시",
+    "tie": "동률",
+    "tieWithConfidence": "동률(신뢰도 {confidence})",
+    "mismatch": "증거와 상이",
+    "unstable": "순위 불안정",
+    "substitute": "대체({year})",
+    "newBuild": "신축({year})",
+    "unresolved": "미해결",
+    "unjudged": "미판정",
+    "sampleEstimated": "표본 {n}, 추정"
+  },
+  "provenance": {
+    "title": "출처",
+    "close": "닫기",
+    "url": "원문 주소",
+    "checkedAt": "확인일",
+    "label": "라벨",
+    "excerpt": "원문 발췌",
+    "conflicts": "상충 출처",
+    "noConflicts": "상충 없음",
+    "rawDocument": "원문 파일 열기",
+    "open": "출처 보기: {label}"
+  },
+  "job": {
+    "title": "작업 진행",
+    "status": {
+      "queued": "대기",
+      "running": "실행 중",
+      "done": "완료",
+      "failed": "실패"
+    },
+    "none": "진행 중인 작업 없음",
+    "error": "오류: {detail}"
+  },
+  "table": {
+    "show": "표로 보기",
+    "hide": "표 닫기",
+    "caption": "{title} 데이터"
+  },
+  "scenario": {
+    "builtin": {
+      "default": "기본",
+      "A": "A",
+      "B": "B",
+      "C": "C",
+      "D": "D",
+      "custom": "내 조건"
+    }
+  },
+  "unit": {
+    "eok": "억",
+    "man": "만",
+    "won": "원",
+    "percent": "%",
+    "m2": "㎡",
+    "households": "세대",
+    "count": "건",
+    "rank": "{rank}위",
+    "dday": "D-day",
+    "dminus": "D-{n}",
+    "dplus": "D+{n}",
+    "ratio": "{ratio}:1",
+    "half1": "{year}년 상반기",
+    "half2": "{year}년 하반기"
+  },
+  "chart": {
+    "C01": {
+      "title": "상승 확률 사다리",
+      "subtitle": "목표 시점 {target}",
+      "bar": {
+        "p5": "+5%",
+        "p10": "+10%",
+        "p20": "+20%",
+        "p_flat": "보합·하락"
+      },
+      "horizon": {
+        "move_in_plus_1y": "입주+1년",
+        "asof_plus_3y": "기준일+3년",
+        "asof_plus_5y": "기준일+5년"
+      },
+      "threshold": { "likely": "likely", "unlikely": "unlikely" },
+      "empty": "사다리 판정 없음"
+    },
+    "C02": {
+      "title": "가격 갭",
+      "current": "현재 구매가",
+      "comps": "비교 단지 실거래",
+      "adjusted": "연식 보정 중앙값",
+      "empty": "비교군 없음({reason})"
+    },
+    "C03": {
+      "title": "벤치마크 분양가 → 실거래",
+      "sale": "분양가",
+      "trade": "최근 실거래",
+      "peak": "고점",
+      "presale": "분양권",
+      "empty": "벤치마크 없음"
+    },
+    "C04": {
+      "title": "입주 물량",
+      "label": "추정 집계",
+      "marker": "판정 단지 입주",
+      "empty": "입주 물량 없음"
+    },
+    "C05": {
+      "title": "미분양 추이",
+      "total": "합계",
+      "postCompletion": "준공 후",
+      "basis": "월말 기준",
+      "empty": "미분양 자료 없음"
+    },
+    "C06": {
+      "title": "종합 점수 분해",
+      "weights": "가중치 {weights}",
+      "component": {
+        "p10": "+10% 확률",
+        "rerank": "판정기 순위",
+        "gap": "가격 갭",
+        "benchmark": "벤치마크",
+        "supply": "공급",
+        "liquidity": "유동성"
+      },
+      "empty": "점수 없음"
+    },
+    "C07": {
+      "title": "판정기 확률",
+      "escape": "질문 남김",
+      "confidence": "신뢰도 {confidence}",
+      "empty": "판정 없음"
+    },
+    "C08": {
+      "title": "잔여 이력",
+      "kind": {
+        "본청약": "본청약",
+        "무순위": "무순위",
+        "임의": "임의공급",
+        "선착순": "선착순"
+      },
+      "empty": "본청약만"
+    },
+    "C09": {
+      "title": "호재 단계",
+      "stage": {
+        "확정": "확정",
+        "계획": "계획",
+        "추진": "추진",
+        "언론": "언론",
+        "미확정": "미확정"
+      },
+      "timeline": "확정 호재 타임라인",
+      "noLink": "위치 미확정 · 단지 연결 없음",
+      "empty": "호재 없음"
+    },
+    "C10": {
+      "title": "가중치 민감도",
+      "variant": "변형",
+      "baseline": "기준",
+      "empty": "민감도 없음"
+    },
+    "notRendered": "차트 준비 중"
+  }
+}
