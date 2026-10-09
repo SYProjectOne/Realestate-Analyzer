@@ -1200,8 +1200,8 @@ def score_input(
     """DB 행 → ComplexScoreInput(요건 사전 계산·미리보기) — 파이프라인과 같은 빌더
     ``analysis.complex_input.build_complex_input``(R3 minor 20). 판정 값은 사다리 행 그대로(봉투 status 포함).
 
-    '미해결' 단지는 계약 .3 Literal 에 값이 없어 judge_scope='제외'로 실린다
-    (``analysis.scope.contract_scope``).
+    범위는 **현재 사실**로 계산한 값(``scope_result`` — 미리보기는 지금 사실로 다시 판정할 때의 입력)이고 '미해결'은
+    계약 값 그대로 실린다(계약 .4). 판정기 추출 전 OCR 값은 null(``score_price``·``ocr_pending``, R3 C3).
     ``asof_date`` 가 없으면 묶음의 스냅샷 기준일(``load_bundles`` 가 채움)로 즉시 입주를 판단한다.
     """
     labels = {k: v for k, v in (fm_labels or {}).items() if v in _LABEL_VALUES}
