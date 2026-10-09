@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- 합성 픽스처(녹화 아님): 거래 0건 월의 응답 모양. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items/>
+    <numOfRows>1000</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>0</totalCount>
+  </body>
+</response>

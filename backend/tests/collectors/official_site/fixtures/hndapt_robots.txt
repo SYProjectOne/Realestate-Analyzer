@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /bds_admin/
+Disallow: /board/adm/
+Disallow: /test_web/
+
+Sitemap: https://sd.hndapt.co.kr/sitemap.xml
