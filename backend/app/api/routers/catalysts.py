@@ -26,6 +26,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.api.contract import check_body
 from app.api.deps import DB, default_snapshot, get_region, settings_of
@@ -59,7 +60,7 @@ def candidate_factory() -> Callable[..., Any]:
     return fn  # type: ignore[no-any-return]
 
 
-def _snapshot_for(session: Any, region_id: int) -> Snapshot | None:
+def _snapshot_for(session: Session, region_id: int) -> Snapshot | None:
     snap = default_snapshot(session, region_id)
     if snap is not None:
         return snap

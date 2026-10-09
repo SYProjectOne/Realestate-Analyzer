@@ -2,7 +2,8 @@
 
 - 바인드 주소 = ``API_HOST``(기본 127.0.0.1), 포트 = ``API_PORT``(기본 8000).
 - 토큰(API_TOKEN·READONLY_TOKEN)이 모두 비면 무인증 서버다 → ``API_HOST`` 를 무시하고 127.0.0.1 에만
-  바인드하고 경고를 남긴다. 무인증 서버는 인증 의존성도 루프백 접속만 받는다(``api.deps.require_auth``) — 이중 방어.
+  바인드하고 경고를 남긴다. 무인증 서버는 인증 의존성도 루프백 접속만 받는다(``api.deps.require_auth``)
+  — 이중 방어.
 - 컨테이너(infra/Dockerfile.api)는 ``API_HOST=0.0.0.0`` 을 주고, compose 는 API_TOKEN 이 비면 기동하지 않는다.
 """
 

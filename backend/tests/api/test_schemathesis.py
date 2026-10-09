@@ -45,11 +45,42 @@ def st_app(seeded_db: Seeded, tmp_path_factory: pytest.TempPathFactory) -> Itera
     shutil.copyfile(seeded_db.db, db)
     s = make_settings(db, seeded_db.raw_dir, base / "reports")
     set_settings(s)
+    mp = pytest.MonkeyPatch()
+    _catalyst_double(mp)
     try:
         yield create_app(s)
     finally:
+        mp.undo()
         set_settings(None)
         reset_engine()
+
+
+def _catalyst_double(mp: pytest.MonkeyPatch) -> None:
+    """POST /catalysts 의 후보 함수(F1a ``app.normalize.catalyst.catalyst_from_url``)가 아직 없으면
+    대역을 쓴다.
+
+    있으면 실제 함수를 그대로 검사한다(머지 후 자동)."""
+    from app.api.routers import catalysts
+    from app.models import Catalyst
+
+    try:
+        catalysts.candidate_factory()
+        return
+    except catalysts.CandidateUnavailable:
+        pass
+
+    def fake(
+        session: Any, *, region_id: int, url: str, title: str, excerpt: str | None, checked_at: str
+    ) -> Any:
+        row = Catalyst(
+            region_id=region_id, name=title, kind="기타", stage="미확정", location_confirmed=False,
+            source_url=url, note=excerpt,
+        )  # fmt: skip
+        session.add(row)
+        session.flush()
+        return row
+
+    mp.setattr(catalysts, "candidate_factory", lambda: fake)
 
 
 BASE_URL = "http://testserver/api"

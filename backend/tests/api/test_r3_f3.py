@@ -71,7 +71,8 @@ def test_m8_list_contradicted_claims(client: TestClient) -> None:
     body = r.json()
     validate("listClaims", 200, body)
     by_id = {c["id"]: c for c in body}
-    assert set(by_id) == {bad, split_parent}
+    assert {bad, split_parent} <= set(by_id) and ok not in by_id
+    assert all(c["verify_status"] == "contradicted" for c in body)
     assert by_id[bad]["remaining"] is True and by_id[bad]["child_count"] == 0
     assert by_id[bad]["complex_name"] == "엘리프 검단 포레듀"
     assert by_id[split_parent]["remaining"] is False and by_id[split_parent]["child_count"] == 1
@@ -579,6 +580,36 @@ def test_minor34_raw_reads_from_monthly_archive(api_settings: Settings, tmp_path
         # 압축에도 없으면 404
         archive.unlink()
         assert c.get(f"/api/raw/{rid}", headers=WRITE).status_code == 404
+
+
+# ====================================================================== W11 · F4 요청 devseed
+
+
+def test_w11_devseed_loads_household_stat(client: TestClient) -> None:
+    from app.models import HouseholdStat
+
+    with get_session() as s:
+        rows = list(s.scalars(select(HouseholdStat)))
+    assert rows, "참조 사본(jumin_households_*.csv)의 세대 현황을 적재한다"
+    assert {r.scope_kind for r in rows} == {"sigungu", "admin_dong"}
+    assert all(r.label == "추정" and r.reason for r in rows)
+    region = client.get("/api/regions/1", headers=WRITE).json()
+    assert any(a.get("households") for a in region["living_areas"])
+
+
+def test_f4_devseed_prev_snapshot_scores_and_claims(client: TestClient) -> None:
+    from app.judge.claims import remaining_contradicted
+    from app.models import IntakeStatus, ScoreRun
+
+    with get_session() as s:
+        runs11 = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == 11)))
+        assert len(runs11) == 5
+        assert s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == 11)).first() is not None
+        claims = list(s.scalars(select(Claim)))
+        assert any(c.verify_status == "contradicted" for c in claims)
+        assert all(remaining_contradicted(s, sid) == [] for sid in (11, 12))
+    dash = client.get("/api/snapshots/11/dashboard", headers=WRITE).json()
+    assert len(dash["top5"]) >= 5
 
 
 # ====================================================================== minor 30 devseed
