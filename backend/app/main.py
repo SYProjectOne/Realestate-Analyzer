@@ -77,7 +77,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     prefix = s.api_prefix.rstrip("/")
     if prefix:
         app.add_api_route(
-            f"{prefix}/health", health, methods=["GET"], response_model=Health, tags=["ops"],
+            f"{prefix}/health",
+            health,
+            methods=["GET"],
+            response_model=Health,
+            tags=["ops"],
             include_in_schema=False,
         )
 

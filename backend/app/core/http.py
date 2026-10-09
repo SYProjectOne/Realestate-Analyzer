@@ -195,9 +195,7 @@ class _Core:
         ttl = min(self.robots_ttl_s, ROBOTS_UNREACHABLE_TTL_S)
         return _RobotsEntry(None, allow_all=False, expires_at=now + ttl)
 
-    def _result(
-        self, url: str, method: str, a: _Attempt, attempts: int, started: float
-    ) -> FetchResult:
+    def _result(self, url: str, method: str, a: _Attempt, attempts: int, started: float) -> FetchResult:
         elapsed_ms = max(0, round((self._clock() - started) * 1000))
         if a.response is not None:
             resp = a.response
@@ -363,9 +361,7 @@ class HttpClient(_Core):
                 self._sleep(wait)
             attempts += 1
             try:
-                resp = self._client.request(
-                    method, url, params=params, data=data, json=json, headers=headers
-                )
+                resp = self._client.request(method, url, params=params, data=data, json=json, headers=headers)
                 a = _Attempt(response=resp)
             except httpx.HTTPError as exc:
                 a = self._classify(exc)

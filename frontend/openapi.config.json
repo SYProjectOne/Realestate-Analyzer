@@ -1,4 +1,4 @@
 {
   "$comment": "gen:api / gen:msw 입력. source = fixture(scripts/fixtures/openapi.min.yaml) | contract(../contracts/openapi.bundled.yaml 있으면 그것, 없으면 ../contracts/openapi.yaml). 실제 계약 전환은 source 한 줄만 바꾼다. 환경변수 OPENAPI_SOURCE(fixture|contract|파일 경로)가 있으면 그것이 이긴다.",
-  "source": "fixture"
+  "source": "contract"
 }
