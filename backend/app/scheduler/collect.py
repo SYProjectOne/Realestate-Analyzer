@@ -9,7 +9,10 @@
 3. 접수 상태 행(intake_status): 공식 홈페이지 원문 → 실패면 '확인 불가(<상태>)', 성공이면 문구 분류 전이라
    '확인 불가(접수 문구 미분류)' — 가능/불가 판단은 판정기·사람 몫(AGENTS 규칙 3). 이전 스냅샷의 (단지, 경로)
    행 중 오늘 없는 것은 복사(사람 확인 행 포함, 확인 시각 유지).
-4. 변경 감지(detect.py): 팝업 해시·목록 diff + 정규화 이벤트(새 공고·가격·계약금·중도금일 = critical).
+4. 데이터 조립(assemble.py, R3 F1a): 이번에 돈 단계에 따라 잔여 공고 이력·체크리스트(청약홈·공고문),
+   벤치마크(실거래 = collect.weekly: 청약홈 과거 공고 + rtms 과거 월 → benchmark), 호재 후보(뉴스).
+   조립 예외는 ``errors['assemble.<단계>']``.
+5. 변경 감지(detect.py): 팝업 해시·목록 diff + 정규화 이벤트(새 공고·가격·계약금·중도금일 = critical).
 
 수집기 예외는 다른 단계를 막지 않고 ``errors`` 에 남긴다(잡은 끝에 failed). 수집기의 실패 응답(403 등)은
 예외가 아니라 원문 행이다.
@@ -32,7 +35,7 @@ from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
 from app.normalize.store import store_raw_document
-from app.scheduler import detect, snapshots
+from app.scheduler import assemble, detect, snapshots
 from app.scheduler.persist import copy_intake
 
 if TYPE_CHECKING:
@@ -72,6 +75,7 @@ class CollectResult:
     list_complex_ids: list[int] | None = None
     intake_rows: int = 0
     intake_copied: int = 0
+    assembled: dict[str, Any] = field(default_factory=dict)
     official_docs: list[RawDTO] = field(default_factory=list, repr=False)
 
     def stats(self) -> dict[str, Any]:
@@ -89,6 +93,7 @@ class CollectResult:
             "rejudge_complex_ids": self.rejudge_complex_ids,
             "intake_rows": self.intake_rows,
             "intake_copied": self.intake_copied,
+            "assembled": self.assembled,
         }
         if self.list_complex_ids is not None:
             out["list_complex_ids"] = self.list_complex_ids
@@ -250,6 +255,8 @@ def collect(
     list_ids: set[int] = set()
     phrases: dict[int, list[str]] = defaultdict(list)
     ran_applyhome = False
+    ran: list[str] = []
+    step_docs: dict[str, list[RawDTO]] = {}
 
     for step in steps:
         factory = ctx.collectors.get(step)
@@ -263,10 +270,12 @@ def collect(
                 continue
             docs = collector.fetch(region_dto, snap_dto, since)
         except Exception as exc:  # 수집기 버그·환경 오류: 다른 단계는 계속, 잡은 failed
-            res.errors[step] = f"{type(exc).__name__}: {str(exc)[:200]}"
+            res.errors[step] = assemble.safe_error(exc)
             log.exception("worker.collect.error", extra={"step": step, "region_id": region_id})
             continue
         res.documents[step] = len(docs)
+        ran.append(step)
+        step_docs[step] = list(docs)
         ran_applyhome = ran_applyhome or step == "applyhome"
         if step == "official_site":
             res.official_docs = list(docs)
@@ -277,7 +286,7 @@ def collect(
                 try:
                     out = store_raw_document(session, doc, snapshot_id=snap_dto.id)
                 except Exception as exc:  # 원문 1건 실패(SAVEPOINT 롤백) — 기록하고 다음 원문
-                    res.store_errors.append(f"rd{doc.id}:{type(exc).__name__}: {str(exc)[:120]}")
+                    res.store_errors.append(f"rd{doc.id}:{assemble.safe_error(exc)[:160]}")
                     continue
                 res.stored += 1
                 events.extend(out.change_events)
@@ -310,6 +319,11 @@ def collect(
                 if ev is not None:
                     events.append(ev)
             session.commit()
+
+    asm = assemble.assemble(ctx, region_dto, snap_dto, steps=ran, docs=step_docs, detected_at=detected_at)
+    res.assembled = asm.stats
+    res.errors.update(asm.errors)
+    events.extend(asm.events)
 
     with ctx.session_factory() as session:
         snap_row = session.get(Snapshot, snap_dto.id)
