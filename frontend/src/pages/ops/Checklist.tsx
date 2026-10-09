@@ -9,7 +9,7 @@ import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
 const STATUSES = ['open', 'done', 'na'] as const;
 const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
 
-/** G7 Checklist + Calendar — 법적 확인·중도금일·만료·공고 예상. 상태는 PATCH /ops/checklist/{id} */
+/** G7 Checklist + Calendar — 법적 확인·중도금일·만료·공고 예상·계약·사실 재확인(D10-3). 종류 문구 = ko.json page.G7.checkKind. 상태는 PATCH /ops/checklist/{id} */
 export function ChecklistPanel({ asof }: { asof: string | null }) {
   const query = useChecklist();
   return (
@@ -48,7 +48,7 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
           {items.map((item) => (
             <tr key={item.id} className={item.status === 'open' ? '' : 'text-grayed'}>
               <td className={tdClass}>
-                <Badge tone="neutral">{item.kind}</Badge>
+                <Badge tone="neutral">{enumText('page.G7.checkKind', item.kind)}</Badge>
               </td>
               <th scope="row" className={`${tdClass} text-left font-normal`}>
                 {item.title}
@@ -108,7 +108,7 @@ function Calendar({ items, asof }: { items: ChecklistItem[]; asof: string | null
             {list.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center gap-1">
                 <span className="tabular-nums">{formatDate(item.due_date, asof)}</span>
-                <Badge tone="neutral">{item.kind}</Badge>
+                <Badge tone="neutral">{enumText('page.G7.checkKind', item.kind)}</Badge>
                 <span>
                   {item.complex_name ? `${item.complex_name} · ` : ''}
                   {item.title}

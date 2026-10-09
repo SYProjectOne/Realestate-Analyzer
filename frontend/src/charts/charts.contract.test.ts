@@ -153,6 +153,40 @@ describe('C03 벤치마크', () => {
   it('0개 → "벤치마크 없음"', () => {
     expect(C03.emptyReason({ benchmarks: [], asofYear: null })).toBe('벤치마크 없음');
   });
+
+  describe('N-M4 지역 전체 대체 행(substitute, 계약 2026-10-09.6)', () => {
+    // la_1 자기 표본 0 → 지역 전체 행 2개를 대체로 복사(라벨 추정)
+    const own = m.benchmarks.filter((b) => b.living_area === 'la_2' && !b.is_presale).slice(0, 2);
+    const subs = m.benchmarks
+      .filter((b) => !b.is_presale)
+      .slice(0, 2)
+      .map((b, i) => ({ ...b, id: 9000 + i, living_area: 'la_1', substitute: true }));
+    const withSubs = { benchmarks: [...own, ...subs], asofYear: 2026 };
+
+    it('표·축·툴팁에 "대체(지역 전체)" 표시, 마커는 속 빈 원', () => {
+      const table = C03.toTable(withSubs);
+      const names = table.rows.map((r) => String(r.name));
+      expect(names.filter((n) => n.includes('대체(지역 전체)'))).toHaveLength(2);
+      expect(names.slice(0, 2).every((n) => !n.includes('대체'))).toBe(true);
+      const o = C03.buildOption(withSubs);
+      expect((opt(o).yAxis.data as string[])[2]).toContain('대체(지역 전체)');
+      const sale = seriesById(o, 'sale');
+      expect(sale.data[2].symbol).toBe('emptyCircle');
+      expect(sale.data[0].symbol).toBe('circle');
+      expect(sale.tooltip.formatter({ dataIndex: 2 })).toContain('대체(지역 전체)');
+    });
+
+    it('표본 배지는 대체 행을 세지 않는다(플래그 없을 때 fallback)', () => {
+      expect(C03.sampleBadges(withSubs)).toEqual(
+        expect.arrayContaining([expect.stringContaining('표본 0, 추정')]),
+      );
+    });
+
+    it('대체 행이 있으면 "대체(지역 전체)" 배지 문구', () => {
+      expect(C03.substituteBadge(withSubs)).toBe('대체(지역 전체)');
+      expect(C03.substituteBadge(data)).toBeNull();
+    });
+  });
 });
 
 describe('C04 입주 물량', () => {
@@ -268,6 +302,32 @@ describe('C06 종합 점수 분해', () => {
       ).reduce<number>((acc, v) => acc + (v ?? 0), 0);
       expect(stack).toBeCloseTo(expected, 6);
     });
+  });
+
+  it('m26: 미판정이 보이게 — 빗금 막대에 테두리(길이 0이어도 선으로 보임) + 라벨 겹침 숨김 + 범례 메모', () => {
+    const o = C06.buildOption({ rows: rowsWithUnjudged(), weights: d.weights });
+    const hatched = series(o).flatMap((x) =>
+      x.data.filter((v: any) => typeof v === 'object' && v?.itemStyle?.decal),
+    );
+    expect(hatched.length).toBeGreaterThan(0);
+    for (const h of hatched) {
+      expect(h.itemStyle.borderWidth).toBeGreaterThan(0);
+      expect(h.itemStyle.borderType).toBe('dashed');
+      expect(h.label.formatter).toBe('미판정');
+    }
+    // 한 행에 미판정 성분이 여럿이면 같은 자리 라벨이 겹친다 → 하나만
+    expect(series(o).every((x) => x.labelLayout?.hideOverlap === true)).toBe(true);
+    // 범례 아래 메모 "빗금 = 미판정"
+    const graphic = ([] as any[]).concat(opt(o).graphic ?? []);
+    const note = graphic.find((g) => g.id === 'unjudged-note');
+    expect(note?.style?.text).toBe(C06.unjudgedNote());
+    expect(C06.unjudgedNote()).toContain('빗금 = 미판정');
+  });
+
+  it('m26: 미판정이 없으면 메모가 없다', () => {
+    const o = C06.buildOption({ rows: d.top5, weights: d.weights });
+    const graphic = ([] as any[]).concat(opt(o).graphic ?? []);
+    expect(graphic.find((g) => g.id === 'unjudged-note')).toBeUndefined();
   });
 
   it('상황 A·D의 move_in 성분도 키로 받는다', () => {

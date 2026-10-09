@@ -1,11 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { t } from '@/i18n';
+import { CHECKLIST_KINDS, type ChecklistItem } from '@/api/types';
+import { t, tDynamic } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
+import { enumText } from '../_shared';
 import { matching, recordRequests } from '../_shared/testing';
 import { since30 } from './JudgmentStatsPanel';
 
@@ -149,5 +151,35 @@ describe('G7 데이터·운영', () => {
     );
     renderRoute('/ops');
     expect(await screen.findByTestId('degraded-banner')).toHaveTextContent(t('app.degraded'));
+  });
+});
+
+describe('D10-3 체크리스트 종류 "사실 재확인"(계약 2026-10-09.6)', () => {
+  it('모든 ChecklistItem.kind 에 표시 문구가 있다', () => {
+    for (const kind of CHECKLIST_KINDS) {
+      expect(tDynamic(`page.G7.checkKind.${kind}`, '')).not.toBe('');
+      expect(enumText('page.G7.checkKind', kind)).not.toBe('');
+    }
+    expect(CHECKLIST_KINDS).toContain('사실 재확인');
+  });
+
+  it('"사실 재확인" 항목이 표·캘린더에 종류 배지와 함께 보인다', async () => {
+    const item: ChecklistItem = {
+      id: 9001,
+      complex_id: 11,
+      complex_name: '고촌센트럴자이',
+      kind: '사실 재확인',
+      title: '사실 재확인: 전매제한 기간(검증 모순)',
+      due_date: '2026-10-20',
+      status: 'open',
+      note: null,
+    };
+    server.use(http.get(mswPath('/ops/checklist'), () => HttpResponse.json([item])));
+    renderRoute('/ops');
+    const table = await screen.findByRole('table', { name: t('page.G7.checklist') });
+    const row = within(table).getByRole('row', { name: /사실 재확인: 전매제한 기간/ });
+    expect(within(row).getByText(t('page.G7.checkKind.사실 재확인'))).toBeInTheDocument();
+    const calendar = await screen.findByRole('list', { name: t('page.G7.calendar') });
+    expect(within(calendar).getByText(t('page.G7.checkKind.사실 재확인'))).toBeInTheDocument();
   });
 });

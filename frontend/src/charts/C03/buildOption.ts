@@ -12,8 +12,9 @@ export function emptyReason(data: C03Data): string | null {
 }
 
 /**
- * 표본 < 3 배지 — 생활권별("계양구 표본 0, 추정"). 표본 = benchmark_flags.sample_n(분양권 제외),
- * 플래그가 없으면 분양권이 아닌 벤치마크 수. 생활권이 하나뿐이면 이름 없이 "표본 2, 추정".
+ * 표본 < 3 배지 — 생활권별("계양구 표본 0, 추정"). 표본 = benchmark_flags.sample_n(자기 생활권 표본만 — 분양권·
+ * 지역 전체 대체 행 제외, 계약 2026-10-09.6 N-M4), 플래그가 없으면 분양권·대체 행이 아닌 벤치마크 수.
+ * 생활권이 하나뿐이면 이름 없이 "표본 2, 추정".
  */
 export function sampleBadges(data: C03Data): string[] {
   const counts = new Map<string, number>();
@@ -22,7 +23,7 @@ export function sampleBadges(data: C03Data): string[] {
   } else {
     for (const b of data.benchmarks) {
       const key = b.living_area ?? '';
-      counts.set(key, (counts.get(key) ?? 0) + (b.is_presale ? 0 : 1));
+      counts.set(key, (counts.get(key) ?? 0) + (b.is_presale || b.substitute ? 0 : 1));
     }
   }
   const single = counts.size <= 1;
@@ -37,6 +38,11 @@ export function sampleBadges(data: C03Data): string[] {
     );
   }
   return out;
+}
+
+/** 지역 전체 대체 행(substitute, 라벨 추정)이 하나라도 있으면 "대체(지역 전체)" 배지 문구, 없으면 null */
+export function substituteBadge(data: C03Data): string | null {
+  return data.benchmarks.some((b) => b.substitute) ? t('badge.substituteRegion') : null;
 }
 
 /** (호환) 첫 번째 표본 배지 또는 null */
@@ -65,7 +71,11 @@ function annualizedOf(b: BenchmarkView, asofYear: number | null): number | null 
     : annualizedPct(num(b.sale_price_84_won), num(b.trade_median_won), b.sale_year, asofYear);
 }
 
-const rowName = (b: BenchmarkView) => (b.sale_year ? `${b.name} (${b.sale_year})` : b.name);
+/** 대체 행 표시 접미(" · 대체(지역 전체)") — 색이 아니라 텍스트로 구분(D7) */
+const substituteSuffix = (b: BenchmarkView) =>
+  b.substitute ? ` · ${t('badge.substituteRegion')}` : '';
+const rowName = (b: BenchmarkView) =>
+  `${b.sale_year ? `${b.name} (${b.sale_year})` : b.name}${substituteSuffix(b)}`;
 const fmt = (n: number | null) => (n === null ? t('empty.unknown') : formatWon(n));
 
 export function buildOption(
@@ -170,8 +180,8 @@ export function buildOption(
         itemStyle: { color: palette.fg },
         data: rows.map((b, i) => ({
           value: [num(b.sale_price_84_won), i],
-          // 분양권은 별도 마커 모양(색만으로 구분하지 않음)
-          symbol: b.is_presale ? 'diamond' : 'circle',
+          // 분양권·지역 전체 대체 행은 별도 마커 모양(색만으로 구분하지 않음)
+          symbol: b.is_presale ? 'diamond' : b.substitute ? 'emptyCircle' : 'circle',
         })),
         tooltip: { formatter: (p: unknown) => tooltipFor((p as { dataIndex: number }).dataIndex) },
       },
@@ -207,7 +217,7 @@ export function toTable(data: C03Data): DataTable {
       { key: 'window', header: t('chart.col.window') },
     ],
     rows: data.benchmarks.map((b) => ({
-      name: b.is_presale ? `${b.name} · ${t('chart.C03.presale')}` : b.name,
+      name: `${b.is_presale ? `${b.name} · ${t('chart.C03.presale')}` : b.name}${substituteSuffix(b)}`,
       living_area: livingAreaName(b.living_area, data.livingAreas),
       sale_year: b.sale_year === null ? null : String(b.sale_year),
       sale_price: b.sale_price_84_won,

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
 import { CHART_IDS } from '../types';
 import { ChartGallery, GALLERY_CASES } from './ChartGallery';
+import { decisionWithWaitNew } from './fixtures';
 
 // jsdom에는 canvas가 없다 — ECharts 렌더는 Playwright(tests/e2e/charts-gallery.spec.ts)가 본다
 vi.mock('../EChart', () => ({
@@ -75,5 +76,15 @@ describe('ChartGallery (차트 10개 × 정상/빈/특수)', () => {
     const cells = within(table).getAllByRole('button');
     await userEvent.click(cells[0]!);
     expect(await screen.findByRole('dialog', { name: '출처' })).toBeInTheDocument();
+  });
+});
+
+describe('C07 기준 이미지(재리뷰 F3 — tie·wait_new 후)', () => {
+  it('정상 상태는 가상 후보 모집공고 대기(wait_new)를, 특수 상태는 동률을 담는다', () => {
+    const virtual = decisionWithWaitNew().items.filter((i) => i.option_key === 'wait_new');
+    expect(virtual).toHaveLength(1);
+    expect(virtual[0]?.complex_id).toBeNull();
+    const normal = GALLERY_CASES.find((c) => c.chart === 'C07' && c.state === 'normal');
+    expect(normal?.note).toContain('wait_new');
   });
 });

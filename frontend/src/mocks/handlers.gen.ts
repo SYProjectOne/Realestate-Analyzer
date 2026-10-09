@@ -1885,7 +1885,7 @@ export const generatedHandlers = [
         "note": "신규 분양 매수에는 해당 없음"
       },
       {
-        "id": 58,
+        "id": 60,
         "complex_id": 11,
         "complex_name": "고촌센트럴자이",
         "kind": "사실 재확인",
@@ -4304,7 +4304,7 @@ export const generatedHandlers = [
           "created_at": "2026-10-09T11:02:00+09:00",
           "restored_at": null,
           "restored_by": null,
-          "checklist_item_id": 58,
+          "checklist_item_id": 60,
           "rejudge_job_id": 9103
         }
       }

@@ -1,13 +1,20 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { ROLE_STORAGE_KEY, TOKEN_STORAGE_KEY } from '@/api/auth';
+import {
+  ROLE_STORAGE_KEY,
+  TAB_REASON_KEY,
+  TAB_ROLE_KEY,
+  TAB_TOKEN_KEY,
+  TOKEN_STORAGE_KEY,
+} from '@/api/auth';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
+import { shareTokenFromHash } from './index';
 
 vi.mock('echarts-for-react', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -38,6 +45,129 @@ describe('M9 /share 라우트 — 공유 링크로 들어오기', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(t('page.share.missing'));
     expect(router.state.location.pathname).toBe('/share');
     expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('N-M7 공유 링크 — 잘못된 인코딩 · 저장된 쓰기 토큰 덮어쓰기 확인', () => {
+  it('shareTokenFromHash: 잘못된 퍼센트 인코딩(URIError)은 throw 하지 않고 null', () => {
+    expect(shareTokenFromHash('#%E0%A4%A')).toBeNull();
+    expect(shareTokenFromHash('#%')).toBeNull();
+    expect(shareTokenFromHash('#abc%20')).toBe('abc');
+    expect(shareTokenFromHash('#')).toBeNull();
+  });
+
+  it('잘못된 인코딩의 /share#… → 토큰 없음 안내, 저장하지 않는다', async () => {
+    const { router } = renderRoute('/share#%E0%A4%A');
+    expect(await screen.findByRole('alert')).toHaveTextContent(t('page.share.missing'));
+    expect(router.state.location.pathname).toBe('/share');
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+  });
+
+  function storeWrite(role: 'write' | null = 'write') {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-mine');
+    if (role) window.localStorage.setItem(ROLE_STORAGE_KEY, role);
+  }
+
+  async function confirmDialog() {
+    return screen.findByRole('alertdialog', { name: t('page.share.confirmTitle') });
+  }
+
+  it('저장된 쓰기 토큰이 있으면 덮어쓰지 않고 확인 다이얼로그(기본 = 이 탭에서만)', async () => {
+    storeWrite();
+    const { router } = renderRoute(`/share#${SHARE_TOKEN}`);
+    const dialog = await confirmDialog();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleDescription(t('page.share.confirmBody'));
+    const tabOnly = within(dialog).getByRole('button', { name: t('page.share.tabOnly') });
+    expect(within(dialog).getByRole('button', { name: t('page.share.replace') })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: t('page.share.cancel') })).toBeVisible();
+    await waitFor(() => expect(tabOnly).toHaveFocus());
+    // 아직 아무것도 바꾸지 않았다
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe('tok-mine');
+    expect(router.state.location.pathname).toBe('/share');
+  });
+
+  it('"이 탭에서만 읽기 전용으로 보기" → sessionStorage 에만, 저장된 쓰기 토큰은 그대로', async () => {
+    storeWrite();
+    const { router } = renderRoute(`/share#${SHARE_TOKEN}`);
+    const dialog = await confirmDialog();
+    await userEvent.click(within(dialog).getByRole('button', { name: t('page.share.tabOnly') }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(window.sessionStorage.getItem(TAB_TOKEN_KEY)).toBe(SHARE_TOKEN);
+    expect(window.sessionStorage.getItem(TAB_ROLE_KEY)).toBe('read');
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe('tok-mine');
+    expect(window.localStorage.getItem(ROLE_STORAGE_KEY)).toBe('write');
+    expect(await screen.findByTestId('readonly-banner')).toBeInTheDocument();
+  });
+
+  it('"저장된 토큰을 공유 토큰으로 바꾸기" → localStorage 를 읽기 전용 공유 토큰으로', async () => {
+    storeWrite();
+    const { router } = renderRoute(`/share#${SHARE_TOKEN}`);
+    const dialog = await confirmDialog();
+    await userEvent.click(within(dialog).getByRole('button', { name: t('page.share.replace') }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe(SHARE_TOKEN);
+    expect(window.localStorage.getItem(ROLE_STORAGE_KEY)).toBe('read');
+    expect(window.sessionStorage.getItem(TAB_TOKEN_KEY)).toBeNull();
+  });
+
+  it('"취소" → 아무것도 적용하지 않고 홈으로', async () => {
+    storeWrite();
+    const replace = vi.spyOn(window.history, 'replaceState');
+    const { router } = renderRoute(`/share#${SHARE_TOKEN}`);
+    const dialog = await confirmDialog();
+    await userEvent.click(within(dialog).getByRole('button', { name: t('page.share.cancel') }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe('tok-mine');
+    expect(window.localStorage.getItem(ROLE_STORAGE_KEY)).toBe('write');
+    expect(window.sessionStorage.getItem(TAB_TOKEN_KEY)).toBeNull();
+    // 토큰이 주소창에 남지 않는다
+    const urls = replace.mock.calls.map((c) => String(c[2] ?? ''));
+    expect(urls.some((u) => u.includes(SHARE_TOKEN))).toBe(false);
+    expect(replace).toHaveBeenCalled();
+  });
+
+  it('권한을 모르는 저장 토큰(role 없음)도 확인한다', async () => {
+    storeWrite(null);
+    renderRoute(`/share#${SHARE_TOKEN}`);
+    expect(await confirmDialog()).toBeInTheDocument();
+  });
+
+  it('저장된 토큰이 읽기 전용이면 확인 없이 바로 적용(지금처럼 localStorage)', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-old-read');
+    window.localStorage.setItem(ROLE_STORAGE_KEY, 'read');
+    const { router } = renderRoute(`/share#${SHARE_TOKEN}`);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe(SHARE_TOKEN);
+  });
+});
+
+describe('N-M7 다른 탭 토큰 변경 배너', () => {
+  it('다른 탭 변경으로 고정된 토큰이면 배너 + "새 토큰 사용" → 고정 해제', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-share');
+    window.localStorage.setItem(ROLE_STORAGE_KEY, 'read');
+    window.sessionStorage.setItem(TAB_TOKEN_KEY, 'tok-mine');
+    window.sessionStorage.setItem(TAB_ROLE_KEY, 'write');
+    window.sessionStorage.setItem(TAB_REASON_KEY, 'pinned');
+    renderRoute('/');
+    const banner = await screen.findByTestId('token-pinned-banner');
+    expect(banner).toHaveTextContent(t('auth.pinnedBanner'));
+    expect(screen.queryByTestId('readonly-banner')).toBeNull();
+    await userEvent.click(within(banner).getByRole('button', { name: t('auth.useNewToken') }));
+    await waitFor(() => expect(screen.queryByTestId('token-pinned-banner')).toBeNull());
+    expect(window.sessionStorage.getItem(TAB_TOKEN_KEY)).toBeNull();
+    // 이제 저장소의 읽기 전용 토큰
+    expect(await screen.findByTestId('readonly-banner')).toBeInTheDocument();
+  });
+
+  it('공유 링크를 이 탭에만 연 경우(reason share)는 배너가 없다', async () => {
+    window.sessionStorage.setItem(TAB_TOKEN_KEY, 'tok-share');
+    window.sessionStorage.setItem(TAB_ROLE_KEY, 'read');
+    window.sessionStorage.setItem(TAB_REASON_KEY, 'share');
+    renderRoute('/');
+    expect(await screen.findByTestId('readonly-banner')).toBeInTheDocument();
+    expect(screen.queryByTestId('token-pinned-banner')).toBeNull();
   });
 });
 

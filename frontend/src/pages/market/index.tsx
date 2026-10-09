@@ -24,6 +24,8 @@ export const LIVING_AREA_PARAM = 'living_area';
  * G6 지역 시장 `/market` (RA §7-1) — C3·C4·C5·C9(보드+타임라인) · RegulationCard · LivingAreaCompare.
  * 생활권 필터는 URL `?living_area=` → GET /snapshots/{sid}/market?living_area=
  * 호재 URL 입력(M6, POST /catalysts) — 사람이 넣은 공개 URL → 호재 후보 + 분류 잡.
+ * 계약 2026-10-09.6: benchmark_absence → '벤치마크 없음(<reason>)'(N-M3), 표본 = 자기 생활권만(sample_n) ·
+ * 자기 표본 0 이면 지역 전체 대체(substituted → '대체(지역 전체)' 배지, 대체 행은 C3 에 표시)(N-M4).
  */
 export function MarketPage() {
   const { regionId, snapshotId, isLoading } = usePageContext();
@@ -76,11 +78,30 @@ function MarketBody({ market }: { market: Market }) {
       <h2 className="sr-only">{t('page.common.charts')}</h2>
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <C03Benchmark data={{ benchmarks: market.benchmarks, asofYear }} />
+          {market.benchmark_absence ? (
+            <p
+              role="note"
+              data-testid="benchmark-absence"
+              data-code={market.benchmark_absence.code}
+              className="text-sm"
+            >
+              <Badge tone="muted">
+                {t('page.common.benchmarkAbsent', { reason: market.benchmark_absence.reason })}
+              </Badge>
+            </p>
+          ) : null}
+          <C03Benchmark
+            data={{
+              benchmarks: market.benchmarks,
+              asofYear,
+              flags: market.benchmark_flags,
+              livingAreas: market.living_areas,
+            }}
+          />
           {market.benchmark_flags.length > 0 ? (
             <ul aria-label={t('page.G6.flags')} className="flex flex-wrap gap-1 text-xs">
               {market.benchmark_flags.map((flag) => (
-                <li key={flag.living_area}>
+                <li key={flag.living_area} className="inline-flex flex-wrap items-center gap-1">
                   <Badge tone={flag.sample_n < 3 ? 'muted' : 'neutral'}>
                     {t('page.G6.flag', {
                       name: areaName(flag.living_area),
@@ -88,6 +109,11 @@ function MarketBody({ market }: { market: Market }) {
                     })}
                     {flag.no_recent_sale_case ? ` · ${t('page.G6.noRecentSale')}` : ''}
                   </Badge>
+                  {flag.substituted ? (
+                    <Badge tone="muted" data-testid="flag-substituted">
+                      {t('badge.substituteRegion')}
+                    </Badge>
+                  ) : null}
                 </li>
               ))}
             </ul>

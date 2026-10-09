@@ -155,6 +155,19 @@ export function JudgeScopeBadge({
   );
 }
 
+/**
+ * '재판정 필요' 배지(D10-1, 계약 2026-10-09.6 rejudge_needed). 행의 범위·순위·총점은 그 스냅샷의 저장값이고,
+ * 현재 사실로 계산한 범위가 저장값과 다르다는 표시만 한다(현재값을 같은 행에 섞지 않는다). false·없음이면 그리지 않는다.
+ */
+export function RejudgeNeededBadge({ needed }: { needed: boolean | null | undefined }) {
+  if (!needed) return null;
+  return (
+    <span data-testid="rejudge-needed" title={t('page.common.rejudgeNeededHint')}>
+      <Badge tone="strong">{t('page.common.rejudgeNeeded')}</Badge>
+    </span>
+  );
+}
+
 /** 행 번호 표기 "#127" (판정 seq·잡 id — 수치가 아니라 식별자) */
 export function idText(id: number | string | null | undefined): string {
   return id === null || id === undefined ? '' : `#${String(id)}`;

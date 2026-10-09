@@ -39,4 +39,29 @@ describe('G4 비교', () => {
     // 상황 B 예시: confidence 0.48 → 동률
     expect(screen.getAllByTestId('tie-badge').length).toBeGreaterThan(0);
   });
+
+  it('가상 후보 wait_new(complex_id null, 계약 .5) → 상황별 판정에 "가상 후보: <label>" + 선택 확률', async () => {
+    renderRoute('/compare?ids=2,7,4&scenario=B');
+    const panel = await screen.findByRole('region', { name: t('page.G4.decision') });
+    const list = await within(panel).findByRole('list', { name: t('page.G4.virtual') });
+    const items = within(list).getAllByRole('listitem');
+    expect(items).toHaveLength(1);
+    const item = items[0] as HTMLElement;
+    expect(item).toHaveAttribute('data-option', 'wait_new');
+    expect(item).toHaveTextContent(
+      t('page.G4.virtualCandidate', { label: '모집공고 대기 후 1순위 청약' }),
+    );
+    expect(item).toHaveTextContent(t('page.G4.row.prob'));
+    expect(item).toHaveTextContent('0%');
+    // 요건 표에서도 가상 후보임을 표시
+    const req = within(panel).getByRole('table', { name: t('page.G4.requirements') });
+    const row = within(req).getByRole('row', { name: /모집공고 대기 후 1순위 청약/ });
+    expect(within(row).getByText(t('chart.C07.virtual'))).toBeInTheDocument();
+  });
+
+  it('wait_new 가 없는 상황(base) → 가상 후보 목록 없음', async () => {
+    renderRoute('/compare?ids=2,7,4&scenario=base');
+    const panel = await screen.findByRole('region', { name: t('page.G4.decision') });
+    expect(within(panel).queryByRole('list', { name: t('page.G4.virtual') })).toBeNull();
+  });
 });
