@@ -86,7 +86,12 @@ def test_judge_scope_is_the_stored_value(client: TestClient) -> None:
         s.commit()
     body = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=WRITE).json()
     scope = {it["complex_id"]: it["judge_scope"] for it in body["items"]}
-    assert scope[target] == "참고"  # 사다리로 추정하지 않고 저장 값
+    # 기대값 갱신(R3 마무리): R3 C2 이후 API 는 저장 값이 아니라 공용 함수
+    # (analysis.scope.judge_scope)로 현재 사실에서 계산한다. 예전에는 첫 '판정 대상' 저장 행이
+    # 그란테르(1)였고 픽스처 접수 '불가'라 계산 값도 우연히 '참고'였다 — W1(접수 '미정') 뒤로는
+    # 계산 값 = '판정 대상'. 저장 값을 바꿔도 화면 범위는 바뀌지 않는다(사다리로도 추정하지 않음).
+    assert target == 1
+    assert scope[target] == "판정 대상"
 
 
 def test_envelope_result_reads_result_json(client: TestClient) -> None:

@@ -37,7 +37,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -198,6 +198,8 @@ class _Binder:
         self.new_terms: list[PaymentTerms] = []
         self._complex: dict[str, Complex] = {}
         self.foreign: set[str] = set()
+        # (단지, 공급 구분, 회차) → '타입 모호'로 묶은 원 주택형
+        self._ambiguous: dict[tuple[int, str, str], str] = {}
 
     # -- complex
     def complex_for(
@@ -377,9 +379,46 @@ class _Binder:
         return row
 
     # -- competition
+    def competition_type(self, cx: Complex, kind: str, rnd: str, tcode: str) -> str:
+        """경쟁률 행의 주택형 → 단지 주택형(type_code).
+
+        청약홈 임의공급·무순위 경쟁률 실응답의 ``HOUSE_TY`` 는 문자 접미사가 없다
+        ('084.7529 ' → 파서 '84.7529'). 그런 면적 코드는 단지 주택형과 **전용면적 소수 4자리**로
+        맞춘다(주택형 원문 ``notice_type_code`` 의 면적, 원문이 없는 타입은 저장 정밀도인
+        ``area_m2`` 소수 2자리). 맞는 타입이 하나면 그 type_code, 여럿이면 매칭하지 않고
+        ``TYPE_AMBIGUOUS``('확인 불가(타입 모호)'), 없으면 원 코드 그대로(공고문 타입이 아직 없음 —
+        판단이 아니라 문자열 대조).
+        """
+        if "." not in tcode:
+            return tcode
+        try:
+            area = Decimal(tcode)
+        except InvalidOperation:
+            return tcode
+        hits: list[str] = []
+        for t in self.s.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id)):
+            precise = _notice_area(t.notice_type_code)
+            if precise is not None:
+                same = precise.quantize(_Q4) == area.quantize(_Q4)
+            elif t.area_m2 is not None:
+                same = Decimal(t.area_m2).quantize(_Q2) == area.quantize(_Q2)
+            else:
+                same = False
+            if same:
+                hits.append(t.type_code)
+        if len(hits) == 1:
+            return hits[0]
+        if not hits:
+            return tcode
+        key = (cx.id, kind, rnd)
+        first = self._ambiguous.setdefault(key, tcode)
+        # 같은 회차에 모호한 면적이 둘 이상이면 행이 합쳐지지 않게 두 번째부터는 원 코드(매칭 안 함)
+        return TYPE_AMBIGUOUS if first == tcode else tcode
+
     def competition_for(
         self, cx: Complex, kind: str, rnd: str, tcode: str, *, create: bool
     ) -> Competition | None:
+        tcode = self.competition_type(cx, kind, rnd, tcode)
         row = self.s.scalars(
             select(Competition).where(
                 Competition.complex_id == cx.id,
@@ -507,6 +546,19 @@ class _Binder:
             un = self.unsold_for(raw, vals, create=create)
             return un.id if un else None
         return None
+
+
+TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
+"""면적 코드 경쟁률 행이 같은 면적의 단지 주택형 여럿에 맞을 때의 type_code(매칭하지 않음)."""
+_Q4 = Decimal("0.0001")
+_Q2 = Decimal("0.01")
+_NOTICE_AREA_RE = re.compile(r"^0*(\d+\.\d+)")
+
+
+def _notice_area(code: str | None) -> Decimal | None:
+    """주택형 원문('084.9582A', '084.7529') → 전용면적 84.9582. 형식이 아니면 None."""
+    m = _NOTICE_AREA_RE.match((code or "").strip())
+    return Decimal(m.group(1)) if m else None
 
 
 _APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)

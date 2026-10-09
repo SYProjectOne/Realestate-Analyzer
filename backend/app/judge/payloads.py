@@ -38,6 +38,8 @@ __all__ = [
     "INTAKE_STATUS_BY_CLASS",
     "RERANK_QUERY",
     "VERIFY_MAX_CLAIMS",
+    "WAIT_NEW_DESCRIPTION",
+    "WAIT_NEW_OPTION",
     "AuditRecord",
     "DecideCandidate",
     "EvidenceCard",
@@ -363,6 +365,13 @@ class DecideCandidate:
     pre: RequirementPreSet | None = None  # RequirementPrecalc.evaluate 결과(WP4) → 증거에 그대로 삽입
 
 
+WAIT_NEW_OPTION: Final = "wait_new"
+WAIT_NEW_DESCRIPTION: Final = (
+    "모집공고 대기 — 12개월 내 공고 예정 단지를 기다림(지금 후보 대신 가점제 1순위 청약)"
+)
+"""P8 가상 후보(보고서 §8-2·§12-5-2 '모집공고 대기'). decision 행은 option_key 'wait_new'·complex_id null."""
+
+
 def decide_option_id(complex_id: int) -> str:
     return f"complex_{complex_id}"
 
@@ -385,10 +394,15 @@ def decide_payload(
     priorities: str,
     include_wait_new: bool = False,
     extra_evidence: str | None = None,
+    wait_new_evidence: str | None = None,
 ) -> JudgePayload:
-    """후보 ≤6(+모집공고 대기) + 증거(카드 + 요건 사전 계산 문자열) + 우선순위 + 요건 3개. 임계값 없음.
+    """후보 ≤6(단지 + 가상 후보 '모집공고 대기') + 증거(카드 + 요건 사전 계산 문자열)
+    + 우선순위 + 요건 3개. 임계값 없음.
 
     요건 순서는 (접근 가능성, 규제 제약, 자금) 고정 — 정규화가 순서로 access/regulation/funds 를 매긴다.
+    ``include_wait_new``: 가상 후보 ``wait_new``(12개월 내 공고 예정 단지를 기다림,
+    보고서 §8-2·§12-5-2) — 근거 ``wait_new_evidence``(지역 (A) 트랙 공고 예정 목록 요약)는
+    단지 블록 뒤 ``[wait_new]`` 블록으로 들어간다.
     """
     n_options = len(candidates) + (1 if include_wait_new else 0)
     if not 2 <= n_options <= DECIDE_MAX:
@@ -399,7 +413,11 @@ def decide_payload(
         raise ValueError("요건은 (접근 가능성, 규제 제약, 자금) 3개")
     ordered = sorted(candidates, key=lambda c: c.card.complex_id)
     header = public_text(extra_evidence) if extra_evidence else ""
-    budget = (_DECIDE_EVIDENCE_MAX - len(header) - 200) // max(1, len(ordered))
+    wait_block = ""
+    if include_wait_new:
+        wait_body = public_text(wait_new_evidence) if wait_new_evidence else "공고 예정 목록 없음"
+        wait_block = f"[{WAIT_NEW_OPTION}] {WAIT_NEW_DESCRIPTION}\n{_cut(wait_body, EVIDENCE_CARD_MAX)}"
+    budget = (_DECIDE_EVIDENCE_MAX - len(header) - len(wait_block) - 200) // max(1, len(ordered))
     blocks: list[str] = []
     for c in ordered:
         pre = c.pre
@@ -415,6 +433,8 @@ def decide_payload(
         blocks.append(
             f"{head}\n{evidence_card_text(c.card, limit=min(EVIDENCE_CARD_MAX, card_budget))}\n{pre_text}"
         )
+    if wait_block:
+        blocks.append(wait_block)
     evidence = "\n\n".join([header, *blocks] if header else blocks)
     options: list[dict[str, str]] = []
     for c in ordered:
@@ -425,9 +445,7 @@ def decide_payload(
             desc += f", 현재 구매가 {public_text(c.card.price_range)}"
         options.append({"id": decide_option_id(c.card.complex_id), "description": _cut(desc, 2000)})
     if include_wait_new:
-        options.append(
-            {"id": "wait_new", "description": "지금 후보 대신 새 모집공고(본청약·잔여)를 기다린다"}
-        )
+        options.append({"id": WAIT_NEW_OPTION, "description": WAIT_NEW_DESCRIPTION})
     decision = (
         f"상황 '{public_text(scenario_name)}'에서 후보 단지 중 어느 것을 우선 검토할 것인가 "
         "(투자 권유가 아닌 상대 비교, 증거의 수치와 요건 사전 계산만 근거로)"

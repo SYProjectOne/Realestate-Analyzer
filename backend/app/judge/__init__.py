@@ -30,9 +30,12 @@ def get_adapter(
     if s.judge_adapter == "mock":
         if fixture_dir is None:
             raise ValueError("JUDGE_ADAPTER=mock 에는 fixture_dir(contracts/fixtures/<fixture>)가 필요하다")
+        from app.core.db import get_sessionmaker
         from app.judge.mock import MockAdapter
 
-        return MockAdapter(fixture_dir)
+        # 재생 봉투를 judgment_log 에 남겨 판정 확률의 출처(jl_<seq>)가 실제 어댑터와 같게(R3 마무리)
+        # 세션은 호출 때마다 지금 엔진에서(엔진이 닫혔다 다시 만들어져도 닫힌 엔진에 연결을 남기지 않게)
+        return MockAdapter(fixture_dir, session_factory=lambda: get_sessionmaker(s)())
     from app.judge.jev_mcp import JevMcpAdapter
 
     return JevMcpAdapter(s.jev_mcp_cmd)

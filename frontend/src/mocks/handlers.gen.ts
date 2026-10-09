@@ -3700,7 +3700,8 @@ export const generatedHandlers = [
         },
         "policy": {
           "p10_horizon": "move_in_plus_1y",
-          "exclude_intake_not_open": false
+          "exclude_intake_not_open": false,
+          "include_wait_new": false
         },
         "created_at": "2026-10-09T00:00:00+09:00"
       },
@@ -3754,7 +3755,8 @@ export const generatedHandlers = [
         },
         "policy": {
           "p10_horizon": "move_in_plus_1y",
-          "exclude_intake_not_open": false
+          "exclude_intake_not_open": false,
+          "include_wait_new": true
         },
         "created_at": "2026-10-09T00:00:00+09:00"
       },
@@ -3808,7 +3810,8 @@ export const generatedHandlers = [
         },
         "policy": {
           "p10_horizon": "move_in_plus_1y",
-          "exclude_intake_not_open": false
+          "exclude_intake_not_open": false,
+          "include_wait_new": false
         },
         "created_at": "2026-10-09T00:00:00+09:00"
       },
@@ -3862,7 +3865,8 @@ export const generatedHandlers = [
         },
         "policy": {
           "p10_horizon": "asof_plus_5y",
-          "exclude_intake_not_open": false
+          "exclude_intake_not_open": false,
+          "include_wait_new": false
         },
         "created_at": "2026-10-09T00:00:00+09:00"
       },
@@ -3913,7 +3917,8 @@ export const generatedHandlers = [
         },
         "policy": {
           "p10_horizon": "move_in_plus_1y",
-          "exclude_intake_not_open": true
+          "exclude_intake_not_open": true,
+          "include_wait_new": false
         },
         "created_at": "2026-10-09T00:00:00+09:00"
       }
@@ -3966,7 +3971,8 @@ export const generatedHandlers = [
       },
       "policy": {
         "p10_horizon": "move_in_plus_1y",
-        "exclude_intake_not_open": false
+        "exclude_intake_not_open": false,
+        "include_wait_new": false
       },
       "created_at": "2026-10-08T10:00:00+09:00"
     }, { status: 201 }),

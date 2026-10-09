@@ -69,7 +69,8 @@ def test_t01a_full_list_ranks_and_totals(env: RegressEnv) -> None:
 # (``app.analysis.scope.judge_scope``)을 따르므로 아래 단지만 범위가 달라진다(README 'D9-1로 인한 차이').
 D91_SCOPE_DIFF: dict[int, tuple[str, str]] = {
     4: ("판정 대상", "미해결"),  # 오퍼스 한강 스위첸 — classify #110 review(.72)
-    12: ("판정 대상", "참고"),  # 더샵 송도마리나베이 — 접수 '불가'(마감, 4회차 미정)
+    # 12 더샵 송도마리나베이: 기대값 갱신(R3 마무리) — CEO 결정으로 픽스처 접수 '미정'(마감·4회차 미정 = 공고 이력 + 추가
+    # 공급 미정, meta §1-3-4) → D9-1 '판정 대상' = 골든 v2 와 같아 차이 표에서 빠졌다.
     14: ("참고", "미해결"),  # 사우역 지엔하임 — classify #110 review(.70)
     16: ("보류", "미해결"),  # 검단 센트레빌 그랑포레 — classify #62 review(.84)
 }
@@ -84,7 +85,10 @@ SCORE_FIELDS = ("living_area", "judge_scope", "price_low_won", "price_high_won",
                 "residency_months", "down_payment_pct", "intake_status")  # fmt: skip
 # 앱 규칙상 v2 와 표현이 다른 필드(점수 동일): 즉시 입주 단지는 move_in_ym(준공월)을 그대로 두고 completed_year=None,
 # 공고 전 단지(15·16)는 비공식 접수 행만 있어 표시 접수 행 없음(None) — v2 는 '미정'.
-NON_SCORE_DIFF: dict[int, set[str]] = {11: {"move_in_ym", "completed_year"}, 12: {"move_in_ym", "completed_year"},
+# 마리나베이(12) intake_status: 기대값 갱신(R3 마무리) — 픽스처 '미정'(CEO 결정) vs v2 보고서 표기 '불가'. 둘 다 '가능'이
+# 아니라 점수·D 제외가 같다(판정 범위는 위 D9-1 로 따로 비교).
+NON_SCORE_DIFF: dict[int, set[str]] = {11: {"move_in_ym", "completed_year"},
+                                       12: {"move_in_ym", "completed_year", "intake_status"},
                                        15: {"intake_status"}, 16: {"intake_status"}}  # fmt: skip
 
 
@@ -109,13 +113,19 @@ def _db_inputs(env: RegressEnv, seq: int) -> tuple[Any, Any, dict[int, str]]:
 
 
 def _v2_d91_inputs(v2: dict[str, Any], scopes: dict[int, str]) -> Any:
-    """골든 v2 inputs + D9-1 판정 범위 + 기준 타입 규칙 가격 = DB 경로의 기대 입력."""
-    from app.analysis.scope import contract_scope
+    """골든 v2 inputs + D9-1 판정 범위 + 기준 타입 규칙 가격 = DB 경로의 기대 입력.
+
+    D9-1 참여 규칙(R3 마무리): 사다리는 '판정 대상'만 점수 입력에 싣는다(``analysis.complex_input``) — 골든 v2 가 사다리를
+    가진 단지라도 D9-1 범위가 판정 대상이 아니면(스위첸 4 = 미해결) 기대 입력의 사다리를 비운다.
+    """
+    from app.analysis.scope import contract_scope, runs_ladder
     from app.core.contracts_gen import ScoreInputs
 
     want = json.loads(json.dumps(v2["inputs"]))
     for c in want["complexes"]:
         c["judge_scope"] = contract_scope(scopes[c["complex_id"]])  # type: ignore[arg-type]
+        if not runs_ladder(scopes[c["complex_id"]]):
+            c["ladders"] = []
         if c["complex_id"] in RULE_PRICE:
             c["price_low_won"], c["price_high_won"] = RULE_PRICE[c["complex_id"]]
     return ScoreInputs.model_validate(want)

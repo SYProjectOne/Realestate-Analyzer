@@ -425,14 +425,19 @@ def p8_decide(
     candidates: Sequence[P.DecideCandidate],
     snapshot_id: int | None,
     include_wait_new: bool = False,
+    wait_new_evidence: str | None = None,
 ) -> DecisionSet:
-    """P8 상황별 결정 → DecisionSet(후보 + escape hatch 행). escaped 면 멈추고 question 을 그대로 보인다."""
+    """P8 상황별 결정 → DecisionSet(후보 + 가상 후보 '모집공고 대기' + escape hatch 행).
+
+    escaped 면 멈추고 question 을 그대로 보인다. 가상 후보(wait_new)는 단지 후보처럼 선택·동률·
+    요건 판정(사전 계산 없음 — 판정기 판정만)을 싣고 complex_id 는 null 이다."""
     payload = P.decide_payload(
         scenario_name=scenario_name,
         requirements=requirements,
         candidates=candidates,
         priorities=priorities,
         include_wait_new=include_wait_new,
+        wait_new_evidence=wait_new_evidence,
     )
     env = adapter.call(
         "decide", payload, P.decide_purpose(scenario_code or scenario_id), snapshot_id=snapshot_id
@@ -445,7 +450,7 @@ def p8_decide(
     conf = env.confidence
 
     option_ids = [f"complex:{c.card.complex_id}" for c in candidates] + (
-        ["wait_new"] if include_wait_new else []
+        [P.WAIT_NEW_OPTION] if include_wait_new else []
     )
     tie_ids: set[str] = set()
     if env.status == "ok" and conf is not None and conf < TIE_CONFIDENCE:
@@ -476,10 +481,29 @@ def p8_decide(
                 judgment_seq=env.judgment_seq,
             )
         )
-    extra = (["wait_new"] if include_wait_new else []) + [
-        h for h in ("ask_user", "investigate", "none") if h in probs
-    ]
-    for key in extra:
+    if include_wait_new:
+        key = P.WAIT_NEW_OPTION
+        judged = checks.get(key, {}) if usable else {}
+        items.append(
+            Decision(
+                scenario_id=scenario_id,
+                option_key=key,
+                complex_id=None,
+                label=_HATCH_LABELS[key],
+                prob=_prob_fact(env, probs.get(key), "판정기 decide", usable=usable),
+                chosen=env.status == "ok" and (key == selected or key in tie_ids),
+                tie=key in tie_ids,
+                mismatch=False,
+                confidence=conf,
+                requirements=RequirementChecks(
+                    access=_req_check(None, judged.get("access")),
+                    regulation=_req_check(None, judged.get("regulation")),
+                    funds=_req_check(None, judged.get("funds")),
+                ),
+                judgment_seq=env.judgment_seq,
+            )
+        )
+    for key in (h for h in ("ask_user", "investigate", "none") if h in probs):
         items.append(
             Decision(
                 scenario_id=scenario_id,

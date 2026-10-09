@@ -4,7 +4,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.4
+  version: 2026-10-09.5
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -9822,6 +9822,7 @@ paths:
                     policy:
                       p10_horizon: move_in_plus_1y
                       exclude_intake_not_open: false
+                      include_wait_new: false
                     created_at: '2026-10-09T00:00:00+09:00'
                   - id: 2
                     code: A
@@ -9865,6 +9866,7 @@ paths:
                     policy:
                       p10_horizon: move_in_plus_1y
                       exclude_intake_not_open: false
+                      include_wait_new: true
                     created_at: '2026-10-09T00:00:00+09:00'
                   - id: 3
                     code: B
@@ -9908,6 +9910,7 @@ paths:
                     policy:
                       p10_horizon: move_in_plus_1y
                       exclude_intake_not_open: false
+                      include_wait_new: false
                     created_at: '2026-10-09T00:00:00+09:00'
                   - id: 4
                     code: C
@@ -9951,6 +9954,7 @@ paths:
                     policy:
                       p10_horizon: asof_plus_5y
                       exclude_intake_not_open: false
+                      include_wait_new: false
                     created_at: '2026-10-09T00:00:00+09:00'
                   - id: 5
                     code: D
@@ -9992,6 +9996,7 @@ paths:
                     policy:
                       p10_horizon: move_in_plus_1y
                       exclude_intake_not_open: true
+                      include_wait_new: false
                     created_at: '2026-10-09T00:00:00+09:00'
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -10088,6 +10093,7 @@ paths:
                     policy:
                       p10_horizon: move_in_plus_1y
                       exclude_intake_not_open: false
+                      include_wait_new: false
                     created_at: '2026-10-08T10:00:00+09:00'
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -21319,7 +21325,7 @@ components:
         - params: G5 폼 10필드(+ 규제 사전 계산용 선택 2필드). 비어 있는 값은 사전 계산에서 '미입력'.
         - weights: 6개 가중치, 합 = 1. A·D는 liquidity 대신 move_in(s_movein = clamp(10 − 2×입주까지 연수, 0, 10)).
         - requirements: decide 요건 3개(접근 가능성·규제 제약·자금)의 규칙 코드. 사전 계산(RequirementPrecalc)이 이 코드로 충족/미충족 + 근거 문자열을 만든다.
-        - policy: p10_horizon(종합 점수 p10 성분에 쓸 사다리 시점; C는 asof_plus_5y), exclude_intake_not_open(D: 접수 불가 단지는 후보 제외).
+        - policy: p10_horizon(종합 점수 p10 성분에 쓸 사다리 시점; C는 asof_plus_5y), exclude_intake_not_open(D: 접수 불가 단지는 후보 제외), include_wait_new(A: decide 가상 후보 '모집공고 대기', 계약 .5).
         ?scenario= 쿼리는 code(base|A|B|C|D) 또는 숫자 id를 받는다.
       type: object
       additionalProperties: false
@@ -21548,6 +21554,10 @@ components:
           - asof_plus_5y
         exclude_intake_not_open:
           type: boolean
+        include_wait_new:
+          description: '계약 2026-10-09.5: P8 decide 후보에 가상 후보 ''모집공고 대기''(option wait_new — 12개월 내 공고 예정 단지를 기다림)를 넣는다. 단지 후보는 순위 상위 ≤5 + wait_new(합 ≤6). 근거 = 지역 (A) 트랙 공고 예정 목록 요약(decide evidence). decision 행은 option_key ''wait_new''·complex_id null·label ''모집공고 대기''. 생략 = false. 내장 A(가점 높음·실거주)만 true(마이그레이션 0005, 보고서 §8-2·§12-5-2 #126).'
+          type: boolean
+          default: false
     ScenarioPreview:
       title: ScenarioPreview
       description: 'GET /scenarios/{id}/preview?snapshot= — G5 WeightPreview·RequirementPreview·RunButton (RA §4-2). 판정기를 부르지 않는다: 가중치와 단지별 요건 3개 사전 계산(RequirementPrecalc), 그리고 ''재판정 실행'' 시 캐시 히트 예상(같은 input_hash가 judgment_log에 있는 호출 수). cache_hits + cache_misses = 예상 호출 수; cache_misses가 실제 판정기 호출 수.'

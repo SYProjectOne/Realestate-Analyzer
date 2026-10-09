@@ -84,7 +84,8 @@ def decision_set(
             else unknown("미판정", checked, unit="prob")
         )
         reqs = None
-        if r.option_key == "complex":
+        # 가상 후보 '모집공고 대기'(계약 .5)도 요건 판정(판정기 판정만, 사전 계산 없음)을 보인다
+        if r.option_key in ("complex", "wait_new"):
             reqs = {}
             for key, pre, judge in (
                 ("access", r.req_access_pre, r.req_access_judge),

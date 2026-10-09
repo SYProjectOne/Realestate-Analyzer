@@ -199,12 +199,18 @@ def test_builtin_scenarios_equal_migration_seed() -> None:
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     seed: list[dict[str, Any]] = mod.BUILTIN_SCENARIOS
+    spec5 = importlib.util.spec_from_file_location("mig0005", MIGRATION_0001.with_name("0005_wait_new.py"))
+    assert spec5 and spec5.loader
+    mod5 = importlib.util.module_from_spec(spec5)
+    spec5.loader.exec_module(mod5)
+    wait_new: dict[str, bool] = mod5.BUILTIN_WAIT_NEW
     assert len(BUILTIN_SCENARIOS) == 5
     for idx, (sc, row) in enumerate(zip(BUILTIN_SCENARIOS, seed, strict=True), start=1):
         assert sc.id == idx
         assert sc.code == row["code"] and sc.name == row["name"] and sc.is_builtin
         assert sc.weights.model_dump(exclude_none=True) == row["weights"]
         assert sc.requirements.model_dump(exclude_none=True) == row["requirements"]
-        assert sc.policy.model_dump() == row["policy"]
+        # 0005(계약 2026-10-09.5): 내장 시나리오 policy.include_wait_new(A 만 true) — 0001 시드 + 0005 = 현재
+        assert sc.policy.model_dump() == {**row["policy"], "include_wait_new": wait_new[row["code"]]}
         assert sc.params.model_dump() == row["params"]
         assert abs(sum(sc.weights.model_dump(exclude_none=True).values()) - 1) < 1e-9

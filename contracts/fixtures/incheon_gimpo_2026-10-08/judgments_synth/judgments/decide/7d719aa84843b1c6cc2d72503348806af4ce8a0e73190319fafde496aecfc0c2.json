@@ -171,7 +171,7 @@
     ],
     "synth": {
       "label": "합성",
-      "basis": "보고서 #125 decide"
+      "basis": "보고서 #125 decide(선택·확률·확신도 그대로)"
     }
   },
   "duration_ms": null,

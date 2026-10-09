@@ -16,7 +16,7 @@ MockAdapter 재판정이 전부 review(종합 점수 미계산). 여기서는 **
 | classify(접수 상태) | complexes.json 공식 경로 접수 행(가능→open, 미정→pending, 불가→closed, 확인 불가→unknown) |
 | noul | 입주 후 1년(move_in_plus_1y) = 보고서 #65~70·#118~123 의 단지별 p5·p10·p20·보합(라벨·auto 그대로). 3년·5년 = 보고서에 없음 → review |
 | rerank | #124 relevance(후보 안에서 relevance 내림차순, 같은 값 = 같은 순위) |
-| decide | 상황별 #125~#129(통합). 선택 = 보고서 선택(후보에 없으면 보고서 확률이 가장 큰 후보), 확률·요건 판정은 후보에 있는 것만 |
+| decide | 상황별 #125~#129(통합). 선택·확률·확신도 = 보고서 그대로(A = 가상 후보 wait_new .94, 계약 .5) — 보고서 선택이 후보에 없으면 녹화 실패(대체 없음), 요건 판정은 후보에 있는 것만 |
 | verify | 보고서 §8-5·§12-5-5 최종 검증 = verified(auto) — 파이프라인 주장 문장과 1:1 대응은 없음 |
 | screen·extract·audit·compare | SynthJev 기본(pass·not_found·ok·same_fact) — 보고서에 필드별 대응 값 없음(지어내지 않음) |
 
@@ -57,7 +57,7 @@ from app.core.contracts_gen import JudgmentEnvelope  # noqa: E402
 from app.core.protocols import JudgePayload, JudgeTool  # noqa: E402
 from app.judge import cache, guard  # noqa: E402
 from app.judge.jev_mcp import normalize  # noqa: E402
-from app.judge.mock import load_meta_version  # noqa: E402
+from app.judge.mock import load_meta_version, log_replay  # noqa: E402
 
 LABEL = "합성"
 ADAPTER_VERSION = load_meta_version(FIXTURE)  # = judgments/_meta.json (mock-fixture-2026-10-08)
@@ -241,14 +241,10 @@ class ReportSynthJev(SynthJev):  # type: ignore[misc, valid-type]
                 probs[h] = float(rprobs[h])
         want = res.get("selected")
         selected = next((jid for jid in cand_ids if opt(jid) == want), None)
-        same = selected is not None
+        if selected is None:  # 대체 선택(경고 경로)은 없다 — 보고서 선택이 후보에 없으면 녹화 실패(R3 마무리)
+            raise RuntimeError(f"보고서 #{seq} 선택 '{want}'이(가) decide 후보 {cand_ids} 에 없음 — 합성 녹화 불가")
         confidence = env.get("confidence")
         warnings = list(res.get("warnings") or [])
-        if selected is None:
-            pool = [j for j in cand_ids if j.startswith("complex_")] or cand_ids
-            selected = max(pool, key=lambda j: (probs.get(j, 0.0), -cand_ids.index(j)))
-            confidence = None  # 보고서 확신도는 보고서 선택에 대한 것 — 대체 선택에 붙이지 않는다
-            warnings = [f"[합성] 보고서 선택 '{want}'이(가) 이 payload 후보에 없음 — 보고서 확률이 가장 큰 후보로 대체"]
         checks = [
             {"candidate": jid, "requirement": j, "answer": rchecks.get(opt(jid), {}).get(k, "unknown")}
             for jid in cand_ids for j, k in enumerate(REQ_KEYS[: len(a["requirements"])])
@@ -258,7 +254,7 @@ class ReportSynthJev(SynthJev):  # type: ignore[misc, valid-type]
             "checks": checks,
             "warnings": warnings,
         }
-        basis = f"보고서 #{seq} decide" + ("" if same else "(보고서 선택 단지가 후보에 없음 → 보고서 확률 최대 후보)")
+        basis = f"보고서 #{seq} decide(선택·확률·확신도 그대로)"
         return body, basis
 
     # --- verify
@@ -270,10 +266,16 @@ class ReportSynthJev(SynthJev):  # type: ignore[misc, valid-type]
 
 
 class RecordingAdapter:
-    """JudgeCaller — MockAdapter 와 같은 hash(adapter_version = 녹화 _meta)로 합성 봉투를 만들고 모은다. DB 에 쓰지 않는다."""
+    """JudgeCaller — MockAdapter 와 같은 hash(adapter_version = 녹화 _meta)로 합성 봉투를 만들고 모은다.
 
-    def __init__(self, jev: ReportSynthJev, store: dict[str, JudgmentEnvelope], runs: dict[str, set[str]], run: str) -> None:
+    재생(MockAdapter + session_factory)과 똑같이 흐름 DB 의 judgment_log 에 남겨 judgment_seq 를 단다(``log_replay``) —
+    그래야 녹화 흐름의 점수·순위(→ decide 후보)가 회귀·e2e 재생과 같다(R3 마무리). 녹화 파일의 봉투는 seq 없이 쓴다.
+    """
+
+    def __init__(self, jev: ReportSynthJev, store: dict[str, JudgmentEnvelope], runs: dict[str, set[str]], run: str,
+                 session_factory: Callable[[], Any]) -> None:  # fmt: skip
         self.jev, self.store, self.runs, self.run = jev, store, runs, run
+        self.session_factory = session_factory
         self.payloads: dict[str, Any] = {}
 
     @property
@@ -291,7 +293,8 @@ class RecordingAdapter:
             raise RuntimeError(f"guard 차단 payload({tool} {purpose}) — 합성 녹화 대상 아님")
         self.runs.setdefault(key, set()).add(self.run)
         if key in self.store:
-            return self.store[key].model_copy(update={"cached": True})
+            hit = self.store[key].model_copy(update={"cached": True})
+            return log_replay(self.session_factory, hit, payload, snapshot_id=snapshot_id, complex_id=complex_id)
         raw = self.jev.respond(tool, payload, purpose)
         norm = normalize(tool, raw, payload, purpose)
         env = JudgmentEnvelope(
@@ -302,7 +305,7 @@ class RecordingAdapter:
         )  # fmt: skip
         self.store[key] = env
         PAYLOADS[key] = json.loads(json.dumps(payload, ensure_ascii=False, default=str))
-        return env
+        return log_replay(self.session_factory, env, payload, snapshot_id=snapshot_id, complex_id=complex_id)
 
     def __getattr__(self, name: str) -> Callable[[JudgePayload, str], JudgmentEnvelope]:
         if name in ("screen", "extract", "audit", "classify", "compare", "noul", "rerank", "decide", "verify"):
@@ -415,7 +418,8 @@ def _run(seed: Path, work: Path, name: str, jev: ReportSynthJev, store: dict[str
     shutil.copyfile(seed, db)
     st = _settings(db, work)
     set_settings(st)
-    adapter = RecordingAdapter(jev, store, runs, name)
+    # 세션은 호출 때마다 지금 엔진에서(앱 수명 주기가 엔진을 닫고 다시 만들 수 있다 — 닫힌 엔진에 연결을 남기지 않게)
+    adapter = RecordingAdapter(jev, store, runs, name, lambda: get_sessionmaker(st)())
     headers = {"Authorization": f"Bearer {WRITE_TOKEN}"}
     try:
         with TestClient(create_app(st), raise_server_exceptions=True) as client:

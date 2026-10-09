@@ -11,6 +11,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from sqlalchemy import select
+
+from app.models import Ladder
 
 from .conftest import SNAP, WRITE, RegressEnv, api_get
 
@@ -19,9 +22,11 @@ pytestmark = pytest.mark.regress
 # 합성 녹화(보고서 classify #62·#110) + 픽스처 접수 행 → D9-1. 계약 .4 전에는 '미해결'이 score_total 에 '제외'로 실린다.
 EXPECTED_SCOPE: dict[int, tuple[str, ...]] = {
     1: ("판정 대상",), 2: ("판정 대상",), 3: ("판정 대상",), 4: ("미해결", "제외"), 5: ("판정 대상",), 6: ("판정 대상",),
-    7: ("판정 대상",), 8: ("판정 대상",), 9: ("판정 대상",), 10: ("판정 대상",), 11: ("판정 대상",), 12: ("참고",),
+    7: ("판정 대상",), 8: ("판정 대상",), 9: ("판정 대상",), 10: ("판정 대상",), 11: ("판정 대상",), 12: ("판정 대상",),
     13: ("참고",), 14: ("미해결", "제외"), 15: ("보류",), 16: ("미해결", "제외"),
 }  # fmt: skip
+# 기대값 갱신(R3 마무리): 12 더샵 송도마리나베이 '참고' → '판정 대상' — CEO 결정으로 접수 '미정'(마감·4회차 미정 = 공고 이력 +
+# 추가 공급 미정, meta §1-3-4).
 
 
 def _full_rejudge(env: RegressEnv, judge: str) -> None:
@@ -51,13 +56,33 @@ def test_d91_scope_after_mock_rejudge_matches_readme(env: RegressEnv) -> None:
     assert top5 and not set(top5) & {4, 14, 16}
 
 
-@pytest.mark.xfail(strict=True, reason="WP9-후속 발견(F2 scheduler/inputs·analysis — 읽기만): 같은 스냅샷에 남은 ladder 행이 "
-                   "'참고'(사다리 미실행) 단지에도 ScoreInputs.ladders 로 들어가 종합 점수·순위가 생긴다(마리나베이 4.18, 8위)")  # fmt: skip
+def _leave_ladder_rows(env: RegressEnv, *, src: int, dst: int) -> int:
+    """같은 스냅샷에 ``dst`` 단지의 사다리 행을 남겨 둔다(``src`` 행 복사) — 이전 범위의 판정·이월·devseed 행 재현."""
+    with env.session() as s:
+        rows = list(s.scalars(select(Ladder).where(Ladder.snapshot_id == SNAP, Ladder.complex_id == src)))
+        for lad in rows:
+            s.add(Ladder(snapshot_id=SNAP, complex_id=dst, horizon=lad.horizon, target_ym=lad.target_ym,
+                         months_from_asof=lad.months_from_asof, p5=lad.p5, p10=lad.p10, p20=lad.p20, p_flat=lad.p_flat,
+                         verdicts=lad.verdicts, annualized=lad.annualized, status=lad.status,
+                         judgment_seq=lad.judgment_seq, proposition_text=lad.proposition_text))  # fmt: skip
+        s.commit()
+        return len(rows)
+
+
 def test_d91_reference_scope_has_no_total_or_rank(env: RegressEnv) -> None:
-    """D9-1 '참고 후보(순위만)': 사다리 미실행 → 종합 미판정·순위 없음. 마리나베이(12, 접수 불가)는 devseed(보고서 #67) 사다리 행이
-    남아 있어도 점수에 쓰이면 안 된다(해링턴 13 은 사다리 행이 없어 이미 미판정)."""
+    """D9-1 '참고 후보(순위만)': 사다리 미실행 → 종합 미판정·순위 없음, 같은 스냅샷에 남은 사다리 행이 있어도.
+
+    (R3 마무리) 원래 재현 = 마리나베이(12, 접수 '불가') 의 devseed(보고서 #67) 사다리 행이 점수에 쓰여 4.18·8위가 나오던 것.
+    CEO 결정으로 마리나베이 접수가 '미정'(판정 대상)이 되어, 같은 결함을 해링턴(13, 접수 '확인 불가' = 참고)에 엘리프(2)의
+    사다리 행을 남겨 두는 방식으로 재현한다 — 점수 입력(``analysis.complex_input``)·API 표시(``api.views.load_bundles``)가
+    참여 규칙(``analysis.scope.runs_ladder``)으로 걸러야 한다."""
+    assert _leave_ladder_rows(env, src=2, dst=13) > 0
     _full_rejudge(env, "mock")
     rows = _rows(env)
+    assert rows[13]["judge_scope"] == "참고", rows[13]["judge_scope"]
     bad = {cid: (r["total"]["v"], r.get("rank")) for cid, r in rows.items()
            if r.get("judge_scope") in ("참고", "보류", "미해결", "제외") and (r["total"]["v"] is not None or r.get("rank") is not None)}  # fmt: skip
     assert not bad, bad
+    assert rows[13]["p10"]["v"] is None, rows[13]["p10"]  # API 표시도 남은 사다리 행을 쓰지 않는다
+    detail = api_get(env, "/complexes/13", snapshot=SNAP)
+    assert detail["ladder"] == [], detail["ladder"]

@@ -340,6 +340,33 @@ describe('C07 판정기 확률', () => {
     });
   });
 
+  it('계약 .5 가상 후보 모집공고 대기(wait_new): 선택 강조 + "가상 후보", 질문 남김 아님', () => {
+    const decision = structuredCloneRow(c.decisions.B!);
+    decision.tie = false;
+    decision.items = decision.items.map((item) => ({ ...item, chosen: false, tie: false }));
+    const base = decision.items[0]!;
+    decision.items.push({
+      ...base,
+      id: 999,
+      option_key: 'wait_new',
+      complex_id: null,
+      label: '모집공고 대기',
+      chosen: true,
+      tie: false,
+      mismatch: false,
+    });
+    const i = decision.items.length - 1;
+    const o = C07.buildOption({ decision });
+    const label = series(o)[0].label.formatter({ dataIndex: i, value: 0.94 }) as string;
+    expect(label).toContain('선택');
+    expect(label).not.toContain('질문 남김');
+    expect(series(o)[0].data[i].itemStyle.color).toBe(DEFAULT_PALETTE.strong);
+    const row = C07.toTable({ decision }).rows[i]!;
+    expect(row.name).toBe('모집공고 대기');
+    expect(String(row.flags)).toContain('가상 후보');
+    expect(String(row.flags)).not.toContain('질문 남김');
+  });
+
   it('escaped → 막대 대신 질문 텍스트', () => {
     const reason = C07.emptyReason({ decision: escapedDecision() });
     expect(reason).toContain('질문 남김');
