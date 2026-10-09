@@ -103,3 +103,6 @@ class FactDemotion(Base):
     human_check_id: Mapped[int | None] = mapped_column(ForeignKey("human_check.id"))
     checklist_item_id: Mapped[int | None] = mapped_column(ForeignKey("checklist_item.id"))
     rejudge_job_id: Mapped[int | None] = mapped_column(Integer)
+    # 0008 (계약 2026-10-09.8, D11-3): 강등한 모순 값(field_provenance.value_norm 정준 문자열). chosen 값이 이 값과
+    # 같은 동안 읽기 시점 오버레이(``app.facts_view``)로 '확인 불가(검증 모순)'. NULL = 0006 시절 행(값을 비운 강등)
+    value_norm: Mapped[str | None] = mapped_column(Text)

@@ -136,6 +136,9 @@ class PaymentTerms(Base):
     # 0002 (계약 2026-10-09.2): 이 공고의 타입별 공급가
     # {type_code: {max_price_won, floor_sample_price_won, floor_sample_text, units, notice_type_code}}
     price_by_type: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # 0008 (계약 2026-10-09.8, D11-6): 공고문·청약홈에 명시된 할인 {type_code: 원}. 출처 행 field = 'discount_by_type.<type>'.
+    # 라벨 확인됨일 때만 §6-1 구매가에서 뺀다(``analysis.price_view``)
+    discount_by_type: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
 class Competition(Base):
