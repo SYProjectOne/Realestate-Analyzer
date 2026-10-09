@@ -42,7 +42,9 @@ def registry() -> Registry[Any]:
     reg: Registry[Any] = Registry()
     for path in sorted(SCHEMAS.rglob("*.json")):
         rel = path.relative_to(SCHEMAS).as_posix()
-        reg = reg.with_resource(rel, Resource.from_contents(load_json(path), default_specification=DRAFT202012))
+        reg = reg.with_resource(
+            rel, Resource.from_contents(load_json(path), default_specification=DRAFT202012)
+        )
     return reg
 
 
@@ -57,7 +59,7 @@ def schema_errors(ref: str, value: Any) -> list[str]:
 
 
 def is_fact(node: Any) -> bool:
-    return isinstance(node, dict) and FACT_KEYS <= set(node)
+    return isinstance(node, dict) and set(node) >= FACT_KEYS
 
 
 def iter_facts(node: Any, path: str = "") -> Iterator[tuple[str, dict[str, Any]]]:

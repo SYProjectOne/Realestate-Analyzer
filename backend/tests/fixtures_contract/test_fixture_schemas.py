@@ -94,7 +94,9 @@ def test_complexes_are_the_16_report_complexes() -> None:
     want = {c["complex_id"]: (c["key"], c["name"]) for c in expected["complexes"]}
     got = {b["complex"]["id"]: (b["fixture_key"], b["complex"]["name"]) for b in bundles}
     assert len(bundles) == 16
-    assert got == want, "complex_id·fixture_key·이름이 expected_scores.json과 같아야 한다(MSW 예시와 같은 번호)"
+    assert got == want, (
+        "complex_id·fixture_key·이름이 expected_scores.json과 같아야 한다(MSW 예시와 같은 번호)"
+    )
     applyhome_ids = [b["complex"]["applyhome_id"] for b in bundles if b["complex"]["applyhome_id"]]
     assert len(applyhome_ids) == len(set(applyhome_ids)), "applyhome_id 유일"
 

@@ -3,7 +3,6 @@
 README.md의 '| T<n> |' 행에서 백틱으로 적은 경로를 모아 존재를 검사하고, 사례별 핵심 내용을 확인한다.
 """
 
-# ruff: noqa: E501  (한국어 assertion 메시지)
 from __future__ import annotations
 
 import re
@@ -25,7 +24,11 @@ def mapping() -> dict[str, list[str]]:
     for line in README.read_text(encoding="utf-8").splitlines():
         m = ROW.match(line)
         if m:
-            out[m.group(1)] = [p for p in PATH.findall(m.group(2)) if "/" in p or p.endswith((".json", ".txt", ".md", ".py", ".png"))]
+            out[m.group(1)] = [
+                p
+                for p in PATH.findall(m.group(2))
+                if "/" in p or p.endswith((".json", ".txt", ".md", ".py", ".png"))
+            ]
     return out
 
 
@@ -61,7 +64,11 @@ def test_t3_switzen_403() -> None:
     assert d403 and d403[0]["http_status"] == 403 and d403[0]["path"] is None
     intake = bundle(4)["intake"]
     official = [i for i in intake if i["path"] == "official_popup"]
-    assert official[0]["status"] == "확인 불가" and official[0]["http_status"] == 403 and official[0]["reason"] == "403"
+    assert (
+        official[0]["status"] == "확인 불가"
+        and official[0]["http_status"] == 403
+        and official[0]["reason"] == "403"
+    )
     hc = load_json(RAW / "human_check/t3_switzen_possible.json")
     assert hc["complex_id"] == 4 and hc["field"] == "intake_status" and hc["value_text"] == "가능"
 
@@ -106,8 +113,15 @@ def test_t9_payment_terms_two_notices() -> None:
     assert first["down_payment_pct"]["v"] == 10 and cur["down_payment_pct"]["v"] == 5
     assert cur["change_vs_first"]["down_payment_pct_delta"]["v"] == -5
     assert cur["notice_kind"] == "임의"
-    docs = {d["url"] for d in load_json(RAW / "documents.json") if d["complex_id"] == 7 and d["source_kind"] == "notice_pdf"}
-    assert len(docs) == 2, "같은 단지 공고 2건(원문 발췌)"
+    urls = {
+        d["url"]
+        for d in load_json(RAW / "documents.json")
+        if d["complex_id"] == 7 and d["source_kind"] == "notice_pdf"
+    }
+    for t in terms:
+        assert any(f"houseManageNo={t['notice_no']}" in u for u in urls), (
+            f"공고 {t['notice_no']} 원문 발췌 없음"
+        )
 
 
 def test_t10_move_in_far_apart() -> None:
@@ -127,7 +141,11 @@ def test_t13_removed_provenance() -> None:
     exp = load_json(RAW / "t13_missing_provenance/expected.json")
     removed = set(exp["removed_prov_ids"])
     prov = {r["id"] for r in load_json(RAW / "t13_missing_provenance/provenance.json")}
-    used = {f["prov"] for _, f in iter_facts(load_json(RAW / "t13_missing_provenance/complexes.json")) if f["prov"]}
+    used = {
+        f["prov"]
+        for _, f in iter_facts(load_json(RAW / "t13_missing_provenance/complexes.json"))
+        if f["prov"]
+    }
     assert removed and removed <= used and not (removed & prov)
 
 

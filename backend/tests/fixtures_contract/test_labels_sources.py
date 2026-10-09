@@ -8,7 +8,6 @@
 - 출처 행의 url은 http(s) URL, checked_at은 날짜, 라벨은 Fact 라벨과 같다.
 """
 
-# ruff: noqa: E501  (한국어 assertion 메시지)
 from __future__ import annotations
 
 import re

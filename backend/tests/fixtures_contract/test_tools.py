@@ -20,7 +20,9 @@ pytestmark = pytest.mark.regress
 def test_hash_tool_uses_protocols_input_hash() -> None:
     mod = load_tool("hash")
     payload = {"text": "엘리프 검단 포레듀", "n": 1}
-    assert mod.fixture_hash("screen", "screen:notice:2", payload, "v1") == input_hash("screen", "screen:notice:2", payload, "v1")
+    assert mod.fixture_hash("screen", "screen:notice:2", payload, "v1") == input_hash(
+        "screen", "screen:notice:2", payload, "v1"
+    )
     assert mod.input_hash is input_hash, "규칙 복제 금지: app.core.protocols.input_hash를 그대로 쓴다"
 
 
@@ -61,7 +63,9 @@ def test_synth_is_deterministic_and_labelled() -> None:
 
 def test_synth_cli_writes_file(tmp_path: Path) -> None:
     out = tmp_path / "synth.json"
-    subprocess.run([sys.executable, str(TOOLS / "synth.py"), "--n", "20", "--out", str(out)], cwd=BACKEND, check=True)
+    subprocess.run(
+        [sys.executable, str(TOOLS / "synth.py"), "--n", "20", "--out", str(out)], cwd=BACKEND, check=True
+    )
     assert len(json.loads(out.read_text(encoding="utf-8"))) == 20
 
 

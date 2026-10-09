@@ -20,7 +20,9 @@ from ._fx import FIXTURE, JUDGMENTS, load_json, schema_errors
 pytestmark = pytest.mark.regress
 
 META = load_json(JUDGMENTS / "_meta.json") if (JUDGMENTS / "_meta.json").is_file() else {}
-INDEX: list[dict[str, Any]] = load_json(JUDGMENTS / "_index.json") if (JUDGMENTS / "_index.json").is_file() else []
+INDEX: list[dict[str, Any]] = (
+    load_json(JUDGMENTS / "_index.json") if (JUDGMENTS / "_index.json").is_file() else []
+)
 EXPECTED = load_json(FIXTURE / "expected_scores.json")
 FILES = sorted(p for p in JUDGMENTS.glob("*/*.json"))
 
