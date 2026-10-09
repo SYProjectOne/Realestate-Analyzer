@@ -1,0 +1,33 @@
+{
+  "summary": "사용자 시나리오 저장",
+  "value": {
+    "name": "내 조건 — 자기자본 2.5억, 실거주",
+    "params": {
+      "residence": "인천",
+      "homeless": true,
+      "household_size": 3,
+      "subscription": {
+        "has_account": true,
+        "score": 34
+      },
+      "equity_won": 250000000,
+      "loan_limit_won": 600000000,
+      "purpose": "실거주",
+      "holding_years": 4,
+      "preferred_area_m2": 84,
+      "move_in_by": "2029-12",
+      "rewin_restricted": false,
+      "accepts_residency_obligation": true
+    },
+    "weights": {
+      "p10": 0.3,
+      "rerank": 0.15,
+      "gap": 0.2,
+      "benchmark": 0.1,
+      "supply": 0.1,
+      "move_in": 0.15
+    },
+    "requirements": null,
+    "policy": null
+  }
+}

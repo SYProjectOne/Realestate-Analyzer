@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intake.json",
+  "title": "Intake",
+  "description": "접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.\n표시 문자열: status='확인 불가'이면 '확인 불가(<reason>, <checked_at 날짜>)' (예: '확인 불가(403, 2026-10-07)'). path=human_check이면 배지에 '사람' 접두어.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "path", "checked_at"],
+  "properties": {
+    "id": { "description": "intake_status.id", "type": ["integer", "null"] },
+    "complex_id": { "type": ["integer", "null"] },
+    "snapshot_id": { "type": ["integer", "null"] },
+    "status": {
+      "description": "가능 / 미정 / 확인 불가 / 불가",
+      "type": "string",
+      "enum": ["가능", "미정", "확인 불가", "불가"]
+    },
+    "path": {
+      "description": "근거 경로. human_check(전화·방문) > official_popup(공식 홈페이지 팝업) > headless_shot(헤드리스 렌더 스크린샷) > unofficial_ref(언론·블로그, 판정 미사용)",
+      "type": "string",
+      "enum": ["human_check", "official_popup", "headless_shot", "unofficial_ref"]
+    },
+    "evidence_url": { "type": ["string", "null"], "format": "uri" },
+    "screenshot_path": { "description": "RAW_DIR 기준 상대 경로", "type": ["string", "null"] },
+    "raw_document_id": { "type": ["integer", "null"] },
+    "checked_at": { "description": "확인 시각 ISO 8601 (날짜만도 허용)", "type": "string", "minLength": 10, "maxLength": 32 },
+    "http_status": { "description": "공식 홈페이지 응답 코드. DNS 실패·타임아웃은 null + reason", "type": ["integer", "null"] },
+    "reason": { "description": "확인 불가·불가 사유 (\"403\", \"DNS\", \"동적 팝업\", \"마감\", \"공고 전\")", "type": ["string", "null"], "maxLength": 120 },
+    "note": { "type": ["string", "null"] },
+    "entered_by": { "description": "human_check일 때 역할 문자열(\"운영자\"). 사람 이름 금지(RA §10)", "type": ["string", "null"], "maxLength": 32 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "확인 불가" } }, "required": ["status"] },
+      "then": { "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1 } } }
+    },
+    {
+      "if": { "properties": { "path": { "const": "unofficial_ref" } }, "required": ["path"] },
+      "then": { "properties": { "status": { "not": { "const": "가능" } } } }
+    }
+  ],
+  "examples": [
+    {
+      "id": 501, "complex_id": 2, "snapshot_id": 12, "status": "가능", "path": "official_popup",
+      "evidence_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/", "screenshot_path": "official_site/2026-10-07/7f3a.png",
+      "raw_document_id": 9012, "checked_at": "2026-10-07T09:12:00+09:00", "http_status": 200,
+      "reason": null, "note": "팝업 '선착순 동·호지정 계약 중'", "entered_by": null
+    },
+    {
+      "id": 504, "complex_id": 4, "snapshot_id": 12, "status": "확인 불가", "path": "official_popup",
+      "evidence_url": "https://opus-switzen.com/", "screenshot_path": null, "raw_document_id": 9031,
+      "checked_at": "2026-10-07T09:14:00+09:00", "http_status": 403, "reason": "403", "note": null, "entered_by": null
+    }
+  ]
+}

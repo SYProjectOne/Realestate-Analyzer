@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "complex.json",
+  "title": "Complex",
+  "description": "단지 1개 = 한 공고 단지 (RA §3 complex, meta §1-5). 수치·날짜·공고 항목은 Fact, 이름·주소 같은 식별 문자열은 맨 문자열이다. ComplexDetail.header 와 픽스처 complexes.json(ComplexBundle.complex)이 이 모양이다.\n- applyhome_id 유일(공고 전 단지는 null). 개명은 former_names에 추가하고 행은 유지.\n- living_area: region.living_areas[].id. 단지 주소의 법정동 코드(legal_dong_code)로 자동 배정.\n- housing_type(민영/국민), land_type(공공택지/민간택지), price_cap(적용/미적용), regulated(규제/비규제)는 v가 그 한국어 문자열인 Fact.\n- resale_end = winner_date + resale_months (산술, 라벨 추정 reason '산술'); resale_release_on_registration은 v='등기 시 해제' | '해당 없음' (공고에 문구가 있을 때만 '등기 시 해제').\n- inclusion_class: 포함/제외 분류(판정기 classify 7클래스) 또는 '범위 경계'(주소가 region 법정동에 매칭 안 됨, D2-6) 또는 '미분류'(classify 전). inclusion_decision이 review·manual_review면 미해결.\n- track: (A) 청약 진행·예정 / (B) 잔여물건 (meta §1-3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "region_id", "applyhome_id", "name", "former_names", "address", "living_area", "developer", "trustee", "builder", "housing_type", "land_type", "price_cap", "regulated", "units_total", "units_general", "units_special", "officetel_units", "notice_date", "apply_dates", "winner_date", "contract_dates", "move_in_ym", "resale_months", "resale_release_on_registration", "residency_months", "rewin_restriction_years", "inclusion_class", "inclusion_decision", "inclusion_prob"],
+  "properties": {
+    "id": { "type": "integer" },
+    "region_id": { "type": "integer" },
+    "applyhome_id": { "type": ["string", "null"], "maxLength": 32 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "former_names": { "type": "array", "items": { "type": "string" } },
+    "address": { "type": ["string", "null"] },
+    "legal_dong_code": { "type": ["string", "null"], "pattern": "^[0-9]{10}$" },
+    "living_area": { "description": "region.living_areas[].id. 배정 전이면 null", "type": ["string", "null"] },
+    "living_area_name": { "type": ["string", "null"] },
+    "official_site_url": { "type": ["string", "null"] },
+    "developer": { "description": "사업주체(시행) — 포함/제외 기준", "type": ["string", "null"] },
+    "trustee": { "description": "신탁(수탁)사", "type": ["string", "null"] },
+    "builder": { "description": "시공사", "type": ["string", "null"] },
+    "housing_type": { "$ref": "fact.json" },
+    "land_type": { "$ref": "fact.json" },
+    "price_cap": { "$ref": "fact.json" },
+    "regulated": { "$ref": "fact.json" },
+    "units_total": { "$ref": "fact.json" },
+    "units_general": { "$ref": "fact.json" },
+    "units_special": { "$ref": "fact.json" },
+    "officetel_units": { "description": "주상복합 오피스텔 실수 — 분리 보관, 판정 제외", "$ref": "fact.json" },
+    "notice_date": { "$ref": "fact.json" },
+    "apply_dates": { "type": "array", "items": { "$ref": "#/$defs/ScheduleItem" } },
+    "winner_date": { "description": "당첨자 발표일 = 전매 기산일", "$ref": "fact.json" },
+    "contract_dates": { "type": "array", "items": { "$ref": "#/$defs/ScheduleItem" } },
+    "move_in_ym": { "description": "입주 예정 YYYY-MM (즉시 입주면 준공 연월, reason '즉시 입주')", "$ref": "fact.json" },
+    "resale_months": { "$ref": "fact.json" },
+    "resale_end": { "description": "전매제한 종료일(산술)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "resale_release_on_registration": { "$ref": "fact.json" },
+    "residency_months": { "description": "거주의무 개월. 없음이면 v=0", "$ref": "fact.json" },
+    "rewin_restriction_years": { "$ref": "fact.json" },
+    "inclusion_class": { "$ref": "#/$defs/InclusionClass" },
+    "inclusion_decision": { "type": ["string", "null"], "enum": ["auto", "review", "manual_review", null] },
+    "inclusion_prob": { "$ref": "fact.json" },
+    "track": { "type": ["string", "null"], "enum": ["A", "B", null] }
+  },
+  "$defs": {
+    "InclusionClass": {
+      "title": "InclusionClass",
+      "description": "포함/제외 분류. 판정기 classify 7클래스(사업주체 명의 기준) + '범위 경계'(DECISIONS D2-6) + '미분류'. private_sale_apt만 포함; review면 포함하되 미해결 표기(meta §1-3-3).",
+      "type": "string",
+      "enum": ["private_sale_apt", "public_sale", "public_rental", "private_rental", "non_apartment", "out_of_scope", "manual_review", "범위 경계", "미분류"]
+    },
+    "ScheduleItem": {
+      "title": "ScheduleItem",
+      "description": "일정 1개(접수·계약). kind는 원문 구분(특별공급, 1순위, 2순위, 무순위, 임의, 계약 등).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "start", "end"],
+      "properties": {
+        "kind": { "type": "string", "maxLength": 32 },
+        "start": { "$ref": "fact.json" },
+        "end": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
+      }
+    },
+    "ComplexBundle": {
+      "title": "ComplexBundle",
+      "description": "단지 1개의 사실 묶음. 픽스처 contracts/fixtures/<fixture>/complexes.json 은 이 배열이다(RA §4-5).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complex", "types", "payment_terms", "competition", "remaining_events", "intake"],
+      "properties": {
+        "fixture_key": { "description": "픽스처 안 안정 키(예 'elif_geomdan')", "type": ["string", "null"] },
+        "complex": { "$ref": "#" },
+        "types": { "type": "array", "items": { "$ref": "complex_type.json" } },
+        "payment_terms": { "type": "array", "items": { "$ref": "payment_terms.json" } },
+        "competition": { "type": "array", "items": { "$ref": "competition.json" } },
+        "remaining_events": { "type": "array", "items": { "$ref": "remaining_event.json" } },
+        "intake": { "type": "array", "items": { "$ref": "intake.json" } }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": 2, "region_id": 1, "applyhome_id": "2025000302", "name": "엘리프 검단 포레듀", "former_names": [],
+      "address": "인천광역시 검단구 마전동 AA32블록", "legal_dong_code": "2826011600", "living_area": "la_2", "living_area_name": "서구(검단)",
+      "official_site_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/", "developer": null, "trustee": null, "builder": null,
+      "housing_type": { "v": "민영", "label": "확인됨", "prov": "fp_2001", "checked_at": "2026-10-07", "unit": "text" },
+      "land_type": { "v": "공공택지", "label": "확인됨", "prov": "fp_2002", "checked_at": "2026-10-07", "unit": "text" },
+      "price_cap": { "v": "적용", "label": "확인됨", "prov": "fp_2003", "checked_at": "2026-10-07", "unit": "text" },
+      "regulated": { "v": "비규제", "label": "확인됨", "prov": "fp_2004", "checked_at": "2026-10-07", "unit": "text" },
+      "units_total": { "v": 669, "label": "확인됨", "prov": "fp_2005", "checked_at": "2026-10-07", "unit": "units" },
+      "units_general": { "v": null, "label": "확인 불가", "reason": "예시 미기재", "prov": null, "checked_at": "2026-10-07" },
+      "units_special": { "v": null, "label": "확인 불가", "reason": "예시 미기재", "prov": null, "checked_at": "2026-10-07" },
+      "officetel_units": { "v": 0, "label": "확인됨", "prov": "fp_2005", "checked_at": "2026-10-07", "unit": "units" },
+      "notice_date": { "v": "2025-08-22", "label": "확인됨", "prov": "fp_2006", "checked_at": "2026-10-07", "unit": "date" },
+      "apply_dates": [],
+      "winner_date": { "v": "2025-09-10", "label": "확인됨", "prov": "fp_2007", "checked_at": "2026-10-07", "unit": "date" },
+      "contract_dates": [],
+      "move_in_ym": { "v": "2028-03", "label": "확인됨", "prov": "fp_2008", "checked_at": "2026-10-07", "unit": "ym" },
+      "resale_months": { "v": 36, "label": "확인됨", "prov": "fp_2009", "checked_at": "2026-10-07", "unit": "months" },
+      "resale_end": { "v": "2028-09-10", "label": "추정", "reason": "산술", "prov": "fp_2009", "checked_at": "2026-10-07", "unit": "date" },
+      "resale_release_on_registration": { "v": "등기 시 해제", "label": "확인됨", "prov": "fp_2010", "checked_at": "2026-10-07", "unit": "text" },
+      "residency_months": { "v": 0, "label": "확인됨", "prov": "fp_2011", "checked_at": "2026-10-07", "unit": "months" },
+      "rewin_restriction_years": { "v": 10, "label": "확인됨", "prov": "fp_2012", "checked_at": "2026-10-07", "unit": "years" },
+      "inclusion_class": "private_sale_apt", "inclusion_decision": "auto",
+      "inclusion_prob": { "v": 1.0, "label": "추정", "reason": "판정기 classify", "prov": "jl_62", "checked_at": "2026-10-07", "unit": "prob" },
+      "track": "B"
+    }
+  ]
+}

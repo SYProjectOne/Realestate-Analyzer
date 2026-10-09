@@ -1,0 +1,7 @@
+{
+  "summary": "토큰 없음",
+  "value": {
+    "code": "unauthorized",
+    "detail": "missing or invalid bearer token"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "judgment_stats.json",
+  "title": "JudgmentStats",
+  "description": "판정기 호출 집계 — G7 JudgmentStats(30일 호출 수·실패·도구별 막대) (RA §4-2, meta §2-8 관측). real_calls = cached=false로 실제 판정기를 부른 수, cached_hits = 캐시로 돌려준 수.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["since", "until", "total_calls", "real_calls", "cached_hits", "failures", "blocked", "review", "escaped", "avg_duration_ms", "by_tool", "daily", "adapter_version", "degraded"],
+  "properties": {
+    "since": { "type": "string" },
+    "until": { "type": "string" },
+    "total_calls": { "type": "integer", "minimum": 0 },
+    "real_calls": { "type": "integer", "minimum": 0 },
+    "cached_hits": { "type": "integer", "minimum": 0 },
+    "failures": { "type": "integer", "minimum": 0 },
+    "blocked": { "type": "integer", "minimum": 0 },
+    "review": { "type": "integer", "minimum": 0 },
+    "escaped": { "type": "integer", "minimum": 0 },
+    "avg_duration_ms": { "type": ["number", "null"] },
+    "by_tool": {
+      "type": "array",
+      "items": {
+        "title": "ToolStat", "type": "object", "additionalProperties": false,
+        "required": ["tool", "calls", "cached", "failures", "review", "escaped", "blocked", "avg_duration_ms"],
+        "properties": {
+          "tool": { "$ref": "judgment_envelope.json#/$defs/JudgeTool" },
+          "calls": { "type": "integer", "minimum": 0 },
+          "cached": { "type": "integer", "minimum": 0 },
+          "failures": { "type": "integer", "minimum": 0 },
+          "review": { "type": "integer", "minimum": 0 },
+          "escaped": { "type": "integer", "minimum": 0 },
+          "blocked": { "type": "integer", "minimum": 0 },
+          "avg_duration_ms": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "daily": {
+      "type": "array",
+      "items": {
+        "title": "DailyCount", "type": "object", "additionalProperties": false, "required": ["date", "calls", "failures"],
+        "properties": { "date": { "type": "string", "format": "date" }, "calls": { "type": "integer", "minimum": 0 }, "failures": { "type": "integer", "minimum": 0 } }
+      }
+    },
+    "adapter_version": { "type": ["string", "null"] },
+    "degraded": { "type": "boolean" }
+  },
+  "$defs": {
+    "JudgmentOps": {
+      "title": "JudgmentOps",
+      "description": "GET /ops/judgments?since= 응답 = 집계 + 봉투 목록(최신순, page·size).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stats", "items", "total", "page", "size"],
+      "properties": {
+        "stats": { "$ref": "#" },
+        "items": { "type": "array", "items": { "$ref": "judgment_envelope.json" } },
+        "total": { "type": "integer", "minimum": 0 },
+        "page": { "type": "integer", "minimum": 1 },
+        "size": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "examples": [
+    {
+      "since": "2026-09-08", "until": "2026-10-08", "total_calls": 132, "real_calls": 132, "cached_hits": 0, "failures": 9,
+      "blocked": 0, "review": 24, "escaped": 0, "avg_duration_ms": 2140.5,
+      "by_tool": [{ "tool": "decide", "calls": 10, "cached": 0, "failures": 0, "review": 0, "escaped": 0, "blocked": 0, "avg_duration_ms": 1830.0 }],
+      "daily": [{ "date": "2026-10-07", "calls": 132, "failures": 9 }],
+      "adapter_version": "0.1.0+jev-mcp@1.13.0", "degraded": false
+    }
+  ]
+}

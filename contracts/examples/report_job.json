@@ -1,0 +1,20 @@
+{
+  "summary": "report 잡 등록(202)",
+  "value": {
+    "id": 911,
+    "job_name": "report",
+    "kind": "manual",
+    "payload": {
+      "snapshot_id": 12,
+      "format": "pdf",
+      "compare_snapshot_id": 11
+    },
+    "scheduled_at": "2026-10-08T08:00:00+09:00",
+    "started_at": null,
+    "finished_at": null,
+    "status": "queued",
+    "stats": {},
+    "error_text": null,
+    "progress": null
+  }
+}

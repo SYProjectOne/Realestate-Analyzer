@@ -1,0 +1,12 @@
+{
+  "summary": "G7 재시도(공식 홈페이지만)",
+  "value": {
+    "job_name": "collect.daily",
+    "payload": {
+      "region_id": 1,
+      "sources": [
+        "official_site"
+      ]
+    }
+  }
+}

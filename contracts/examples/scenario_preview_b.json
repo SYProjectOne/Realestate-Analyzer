@@ -1,0 +1,125 @@
+{
+  "summary": "G5 상황 B 미리보기(판정기 호출 없음)",
+  "value": {
+    "scenario_id": 3,
+    "snapshot_id": 12,
+    "weights": {
+      "p10": 0.3,
+      "rerank": 0.15,
+      "gap": 0.2,
+      "benchmark": 0.1,
+      "supply": 0.1,
+      "liquidity": 0.15
+    },
+    "requirements": {
+      "access": {
+        "code": "official_path_no_account",
+        "text": "통장 없이 공식 접수 경로(무순위·임의·선착순)로 접근 가능"
+      },
+      "regulation": {
+        "code": "no_residency_obligation",
+        "text": "거주의무 없음"
+      },
+      "funds": {
+        "code": "equity_and_loan",
+        "text": "자기자본 2억 이하로 계약금·잔금 충당",
+        "params": {
+          "equity_won": 200000000,
+          "loan_limit_won": 600000000
+        }
+      }
+    },
+    "requirements_pre": [
+      {
+        "complex_id": 1,
+        "name": "더샵 송도그란테르",
+        "excluded": false,
+        "access": {
+          "status": "미충족",
+          "evidence": "접수 불가(마감, 추가 공고 미정) → 미충족"
+        },
+        "regulation": {
+          "status": "충족",
+          "evidence": "거주의무 0개월 → 충족"
+        },
+        "funds": {
+          "status": "미충족",
+          "evidence": "잔금 부족 = 12.81억 − 대출한도 6.00억 − 자기자본 2.00억 = 4.82억 > 0 → 미충족"
+        }
+      },
+      {
+        "complex_id": 2,
+        "name": "엘리프 검단 포레듀",
+        "excluded": false,
+        "access": {
+          "status": "충족",
+          "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+        },
+        "regulation": {
+          "status": "충족",
+          "evidence": "거주의무 0개월 → 충족"
+        },
+        "funds": {
+          "status": "충족",
+          "evidence": "계약금 2,965만(5%) ≤ 자기자본 2.00억; 잔금 부족 0 → 충족 (중도금 이자후불제)"
+        }
+      },
+      {
+        "complex_id": 3,
+        "name": "송도 한내들 센트럴리버",
+        "excluded": false,
+        "access": {
+          "status": "충족",
+          "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+        },
+        "regulation": {
+          "status": "충족",
+          "evidence": "거주의무 0개월 → 충족"
+        },
+        "funds": {
+          "status": "미충족",
+          "evidence": "잔금 부족 = 8.56억 − 대출한도 6.00억 − 자기자본 2.00억 = 0.56억 > 0 → 미충족"
+        }
+      },
+      {
+        "complex_id": 4,
+        "name": "오퍼스 한강 스위첸",
+        "excluded": false,
+        "access": {
+          "status": "확인 불가",
+          "evidence": "접수 상태 확인 불가(403, 2026-10-07) → 확인 불가"
+        },
+        "regulation": {
+          "status": "충족",
+          "evidence": "거주의무 0개월 → 충족"
+        },
+        "funds": {
+          "status": "충족",
+          "evidence": "계약금 6,625만(10%) ≤ 자기자본 2.00억; 잔금 부족 0 → 충족 (중도금 이자후불제)"
+        }
+      },
+      {
+        "complex_id": 7,
+        "name": "김포 칸타빌 에디션",
+        "excluded": false,
+        "access": {
+          "status": "충족",
+          "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+        },
+        "regulation": {
+          "status": "충족",
+          "evidence": "거주의무 0개월 → 충족"
+        },
+        "funds": {
+          "status": "충족",
+          "evidence": "계약금 3,402만(5%) ≤ 자기자본 2.00억; 잔금 부족 0 → 충족 (중도금 이자후불제)"
+        }
+      }
+    ],
+    "cache_hits": 18,
+    "cache_misses": 1,
+    "calls_by_tool": {
+      "decide": 1
+    }
+  }
+}

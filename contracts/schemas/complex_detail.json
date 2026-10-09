@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "complex_detail.json",
+  "title": "ComplexDetail",
+  "description": "GET /complexes/{id}?snapshot=&scenario= — G3 단지 상세 전체 (RA §4-2). 탭 8개의 데이터를 한 번에 준다: PriceTable(types), PaymentTerms(payment), C8(events·competition), C1(ladder 3 horizon), C2(gap), CatalystList(catalysts), ProvenanceTab(출처는 각 Fact.prov → /provenance), JudgmentLogTab(judgments).\n- header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).\n- price: 판정 기준 타입의 현재 구매가 범위(§6-1).\n- score: 이 시나리오의 ScoreRow(점수 없으면 null).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "asof_date", "scenario_id", "header", "price", "intake_current", "types", "payment", "competition", "events", "intake", "ladder", "gap", "catalysts", "judgments", "score"],
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "asof_date": { "type": "string", "format": "date" },
+    "scenario_id": { "type": ["integer", "null"] },
+    "header": { "$ref": "complex.json" },
+    "price": { "$ref": "#/$defs/PriceRange" },
+    "intake_current": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
+    "types": { "type": "array", "items": { "$ref": "complex_type.json" } },
+    "payment": { "type": "array", "items": { "$ref": "payment_terms.json" } },
+    "competition": { "type": "array", "items": { "$ref": "competition.json" } },
+    "events": { "type": "array", "items": { "$ref": "remaining_event.json" } },
+    "intake": { "type": "array", "items": { "$ref": "intake.json" } },
+    "ladder": { "type": "array", "maxItems": 3, "items": { "$ref": "ladder.json" } },
+    "gap": { "$ref": "#/$defs/Gap" },
+    "catalysts": { "type": "array", "items": { "$ref": "catalyst.json" } },
+    "judgments": { "type": "array", "items": { "$ref": "judgment_envelope.json" } },
+    "score": { "anyOf": [{ "$ref": "score_row.json" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "PriceRange": {
+      "title": "PriceRange",
+      "description": "현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션, high = 최고가 + 발코니 + 필수 옵션, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만').",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis_type_code", "price_low", "price_high", "price_mid"],
+      "properties": {
+        "basis_type_code": { "type": ["string", "null"] },
+        "price_low": { "$ref": "fact.json" },
+        "price_high": { "$ref": "fact.json" },
+        "price_mid": { "$ref": "fact.json" },
+        "composition": { "type": ["string", "null"] },
+        "change_vs_first_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
+      }
+    },
+    "GapComp": {
+      "title": "GapComp",
+      "description": "비교 단지 1개(C2 위스커 1열). adjusted_median은 연식 보정 중앙값(점선 테두리 점), substitute=true면 '대체(준공년)' 배지. outliers_excluded는 1.5×IQR 밖이라 뺀 거래 수(T4, comparable_set에 '이상치 제외' 기록).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "completed_year", "low", "median", "high", "adjusted_median", "substitute", "adjusted", "n_trades"],
+      "properties": {
+        "name": { "type": "string" },
+        "completed_year": { "type": ["integer", "null"] },
+        "low": { "$ref": "fact.json" },
+        "median": { "$ref": "fact.json" },
+        "high": { "$ref": "fact.json" },
+        "adjusted_median": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "substitute": { "type": "boolean" },
+        "adjusted": { "type": "boolean" },
+        "coef_used": { "type": ["number", "null"] },
+        "n_trades": { "description": "거래 건수. 재가공 사이트처럼 건수를 모르면 null", "type": ["integer", "null"], "minimum": 0 },
+        "outliers_excluded": { "type": "integer", "minimum": 0, "default": 0 },
+        "trade_window": { "type": ["string", "null"] }
+      }
+    },
+    "Gap": {
+      "title": "Gap",
+      "description": "가격 갭 C2 데이터 (RA §7-2 C2, §6-2). comps가 비면 empty_reason('비교군 없음(사유)'). gap_pct는 보정 중앙값 기준, gap_pct_unadjusted는 미보정 기준(둘 다 표시).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["price_low", "price_high", "price_mid", "comps", "gap_pct", "gap_pct_unadjusted", "score", "empty_reason"],
+      "properties": {
+        "price_low": { "$ref": "fact.json" },
+        "price_high": { "$ref": "fact.json" },
+        "price_mid": { "$ref": "fact.json" },
+        "comps": { "type": "array", "items": { "$ref": "#/$defs/GapComp" } },
+        "gap_pct": { "$ref": "fact.json" },
+        "gap_pct_unadjusted": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "score": { "$ref": "fact.json" },
+        "empty_reason": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "examples": [
+    {
+      "snapshot_id": 12, "asof_date": "2026-10-08", "scenario_id": 1,
+      "header": {
+        "id": 15, "region_id": 1, "applyhome_id": null, "name": "계양신도시 카이브 유보라", "former_names": [],
+        "address": "인천광역시 계양구 동양동(AC3·AC4)", "legal_dong_code": null, "living_area": "la_3", "living_area_name": "계양구",
+        "official_site_url": null, "developer": "반도건설", "trustee": null, "builder": "반도건설",
+        "housing_type": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "land_type": { "v": "공공택지", "label": "비공식", "prov": "fp_8801", "checked_at": "2026-10-07", "unit": "text" },
+        "price_cap": { "v": "적용", "label": "비공식", "prov": "fp_8802", "checked_at": "2026-10-07", "unit": "text" },
+        "regulated": { "v": "비규제", "label": "확인됨", "prov": "fp_8803", "checked_at": "2026-10-07", "unit": "text" },
+        "units_total": { "v": 1110, "label": "비공식", "prov": "fp_8804", "checked_at": "2026-10-07", "unit": "units" },
+        "units_general": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "units_special": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "officetel_units": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "notice_date": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "apply_dates": [], "contract_dates": [],
+        "winner_date": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "move_in_ym": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "resale_months": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "resale_release_on_registration": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "residency_months": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "rewin_restriction_years": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "inclusion_class": "private_sale_apt", "inclusion_decision": "auto",
+        "inclusion_prob": { "v": 0.99, "label": "추정", "reason": "판정기 classify", "prov": "jl_62", "checked_at": "2026-10-07", "unit": "prob" },
+        "track": "A"
+      },
+      "price": {
+        "basis_type_code": null,
+        "price_low": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "price_high": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "price_mid": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "composition": null, "change_vs_first_pct": null
+      },
+      "intake_current": null, "types": [], "payment": [], "competition": [], "events": [], "intake": [], "ladder": [],
+      "gap": {
+        "price_low": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "price_high": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "price_mid": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },
+        "comps": [],
+        "gap_pct": { "v": null, "label": "확인 불가", "reason": "분양가 미공개", "prov": null, "checked_at": "2026-10-07" },
+        "gap_pct_unadjusted": null,
+        "score": { "v": null, "label": "확인 불가", "reason": "미판정", "prov": null, "checked_at": "2026-10-07" },
+        "empty_reason": "비교군 없음(분양가 미공개 — 공고 후 재판정)"
+      },
+      "catalysts": [], "judgments": [], "score": null
+    }
+  ]
+}

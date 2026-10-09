@@ -1,0 +1,217 @@
+{
+  "summary": "G3 공고 전 보류 단지(빈 탭)",
+  "value": {
+    "snapshot_id": 12,
+    "asof_date": "2026-10-08",
+    "scenario_id": 1,
+    "header": {
+      "id": 15,
+      "region_id": 1,
+      "applyhome_id": null,
+      "name": "계양신도시 카이브 유보라",
+      "former_names": [],
+      "address": "인천광역시 계양구 동양동(AC3·AC4)",
+      "legal_dong_code": null,
+      "living_area": "la_3",
+      "living_area_name": "계양구",
+      "official_site_url": null,
+      "developer": "반도건설",
+      "trustee": null,
+      "builder": "반도건설",
+      "housing_type": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "land_type": {
+        "v": "공공택지",
+        "label": "비공식",
+        "prov": "fp_8801",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "price_cap": {
+        "v": "적용",
+        "label": "비공식",
+        "prov": "fp_8802",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "regulated": {
+        "v": "비규제",
+        "label": "확인됨",
+        "prov": "fp_8803",
+        "checked_at": "2026-10-07",
+        "unit": "text"
+      },
+      "units_total": {
+        "v": 1110,
+        "label": "비공식",
+        "prov": "fp_8804",
+        "checked_at": "2026-10-07",
+        "unit": "units"
+      },
+      "units_general": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "units_special": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "officetel_units": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "notice_date": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "apply_dates": [],
+      "contract_dates": [],
+      "winner_date": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "move_in_ym": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "resale_months": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "resale_release_on_registration": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "residency_months": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "rewin_restriction_years": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "inclusion_class": "private_sale_apt",
+      "inclusion_decision": "auto",
+      "inclusion_prob": {
+        "v": 0.99,
+        "label": "추정",
+        "reason": "판정기 classify",
+        "prov": "jl_62",
+        "checked_at": "2026-10-07",
+        "unit": "prob"
+      },
+      "track": "A"
+    },
+    "price": {
+      "basis_type_code": null,
+      "price_low": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "price_high": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "price_mid": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "composition": null,
+      "change_vs_first_pct": null
+    },
+    "intake_current": null,
+    "types": [],
+    "payment": [],
+    "competition": [],
+    "events": [],
+    "intake": [],
+    "ladder": [],
+    "gap": {
+      "price_low": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "price_high": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "price_mid": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "공고 전",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "comps": [],
+      "gap_pct": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "분양가 미공개",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "gap_pct_unadjusted": null,
+      "score": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "미판정",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "empty_reason": "비교군 없음(분양가 미공개 — 공고 후 재판정)"
+    },
+    "catalysts": [],
+    "judgments": [],
+    "score": null
+  }
+}

@@ -1,0 +1,418 @@
+{
+  "summary": "G7 판정기 호출(30일)",
+  "description": "보고서 부록 A 집계(132회). review·failures 분포는 도구별 원자료가 없어 예시값.",
+  "value": {
+    "stats": {
+      "since": "2026-09-08",
+      "until": "2026-10-08",
+      "total_calls": 132,
+      "real_calls": 132,
+      "cached_hits": 0,
+      "failures": 9,
+      "blocked": 0,
+      "review": 3,
+      "escaped": 0,
+      "avg_duration_ms": 2140.5,
+      "by_tool": [
+        {
+          "tool": "screen",
+          "calls": 36,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "extract",
+          "calls": 28,
+          "cached": 0,
+          "failures": 9,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "audit",
+          "calls": 18,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "classify",
+          "calls": 4,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "compare",
+          "calls": 12,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "noul",
+          "calls": 12,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "rerank",
+          "calls": 2,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "decide",
+          "calls": 10,
+          "cached": 0,
+          "failures": 0,
+          "review": 0,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        },
+        {
+          "tool": "verify",
+          "calls": 10,
+          "cached": 0,
+          "failures": 0,
+          "review": 3,
+          "escaped": 0,
+          "blocked": 0,
+          "avg_duration_ms": null
+        }
+      ],
+      "daily": [
+        {
+          "date": "2026-10-07",
+          "calls": 132,
+          "failures": 9
+        },
+        {
+          "date": "2026-10-08",
+          "calls": 0,
+          "failures": 0
+        }
+      ],
+      "adapter_version": "0.1.0+jev-mcp@1.13.0",
+      "degraded": false
+    },
+    "items": [
+      {
+        "tool": "decide",
+        "purpose": "decide:scenario_B",
+        "input_hash": "sha256:5b1f0e6a3c2d4b8e9f7a6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f",
+        "input_len": 6120,
+        "status": "ok",
+        "confidence": 0.48,
+        "cached": true,
+        "result": {
+          "selected": "complex:7",
+          "probs": {
+            "complex:7": 0.54,
+            "complex:2": 0.42,
+            "complex:3": 0.01,
+            "complex:4": 0.01,
+            "complex:1": 0.0,
+            "complex:5": 0.0,
+            "ask_user": 0.01,
+            "investigate": 0.01
+          },
+          "checks": {
+            "complex:7": {
+              "access": "supported",
+              "regulation": "supported",
+              "funds": "supported"
+            },
+            "complex:2": {
+              "access": "supported",
+              "regulation": "supported",
+              "funds": "supported"
+            },
+            "complex:4": {
+              "access": "unknown",
+              "regulation": "supported",
+              "funds": "contradicted"
+            }
+          },
+          "warnings": [],
+          "escaped": false,
+          "question": null
+        },
+        "raw": {
+          "selected": "cantavil",
+          "confidence": 0.48,
+          "escaped": false,
+          "thresholds": {
+            "auto_accept": 0.6
+          }
+        },
+        "duration_ms": 1830,
+        "judgment_seq": 127,
+        "created_at": "2026-10-07T15:41:00+09:00",
+        "adapter_version": "0.1.0+jev-mcp@1.13.0",
+        "snapshot_id": 12,
+        "complex_id": null,
+        "error_text": null
+      },
+      {
+        "tool": "verify",
+        "purpose": "verify:section_12-3_12-4",
+        "input_hash": "sha256:8383838383838383838383838383838383838383838383838383838383838383",
+        "input_len": 7400,
+        "status": "review",
+        "confidence": 0.35,
+        "cached": false,
+        "result": {
+          "claims": [
+            {
+              "claim_id": "c131-07",
+              "verdict": "contradicted",
+              "confidence": 0.35,
+              "action": "review"
+            },
+            {
+              "claim_id": "c131-01",
+              "verdict": "verified",
+              "confidence": 0.93,
+              "action": "auto"
+            }
+          ]
+        },
+        "raw": {
+          "summary": {
+            "verified": 15,
+            "contradicted": 1,
+            "review": 3
+          }
+        },
+        "duration_ms": 5210,
+        "judgment_seq": 131,
+        "created_at": "2026-10-07T16:20:00+09:00",
+        "adapter_version": "0.1.0+jev-mcp@1.13.0",
+        "snapshot_id": 12,
+        "complex_id": null,
+        "error_text": null
+      },
+      {
+        "tool": "rerank",
+        "purpose": "rerank:region",
+        "input_hash": "sha256:7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c",
+        "input_len": 30210,
+        "status": "ok",
+        "confidence": null,
+        "cached": false,
+        "result": {
+          "query": "현재 구매가 대비 향후 3~5년 집값 상승 여력이 가장 큰 민간분양 단지",
+          "items": [
+            {
+              "candidate_id": "complex:1",
+              "complex_id": 1,
+              "relevance": 0.89,
+              "rank": 1
+            },
+            {
+              "candidate_id": "complex:2",
+              "complex_id": 2,
+              "relevance": 0.89,
+              "rank": 2
+            },
+            {
+              "candidate_id": "complex:3",
+              "complex_id": 3,
+              "relevance": 0.89,
+              "rank": 3
+            },
+            {
+              "candidate_id": "complex:4",
+              "complex_id": 4,
+              "relevance": 0.87,
+              "rank": 4
+            },
+            {
+              "candidate_id": "complex:5",
+              "complex_id": 5,
+              "relevance": 0.83,
+              "rank": 5
+            },
+            {
+              "candidate_id": "complex:8",
+              "complex_id": 8,
+              "relevance": 0.83,
+              "rank": 6
+            },
+            {
+              "candidate_id": "complex:6",
+              "complex_id": 6,
+              "relevance": 0.77,
+              "rank": 7
+            },
+            {
+              "candidate_id": "complex:9",
+              "complex_id": 9,
+              "relevance": 0.75,
+              "rank": 8
+            },
+            {
+              "candidate_id": "complex:7",
+              "complex_id": 7,
+              "relevance": 0.73,
+              "rank": 9
+            },
+            {
+              "candidate_id": "complex:10",
+              "complex_id": 10,
+              "relevance": 0.59,
+              "rank": 10
+            },
+            {
+              "candidate_id": "complex:15",
+              "complex_id": 15,
+              "relevance": 0.54,
+              "rank": 11
+            },
+            {
+              "candidate_id": "complex:16",
+              "complex_id": 16,
+              "relevance": 0.54,
+              "rank": 12
+            },
+            {
+              "candidate_id": "complex:11",
+              "complex_id": 11,
+              "relevance": 0.53,
+              "rank": 13
+            },
+            {
+              "candidate_id": "complex:14",
+              "complex_id": 14,
+              "relevance": 0.39,
+              "rank": 14
+            },
+            {
+              "candidate_id": "complex:12",
+              "complex_id": 12,
+              "relevance": 0.37,
+              "rank": 15
+            },
+            {
+              "candidate_id": "complex:13",
+              "complex_id": 13,
+              "relevance": 0.37,
+              "rank": 16
+            }
+          ]
+        },
+        "raw": {
+          "n_candidates": 16
+        },
+        "duration_ms": 4820,
+        "judgment_seq": 124,
+        "created_at": "2026-10-07T15:30:00+09:00",
+        "adapter_version": "0.1.0+jev-mcp@1.13.0",
+        "snapshot_id": 12,
+        "complex_id": null,
+        "error_text": null
+      },
+      {
+        "tool": "noul",
+        "purpose": "noul:ladder:move_in_plus_1y",
+        "input_hash": "sha256:7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b",
+        "input_len": 1985,
+        "status": "ok",
+        "confidence": null,
+        "cached": false,
+        "result": {
+          "horizon": "move_in_plus_1y",
+          "target_ym": "2029-08",
+          "propositions": [
+            {
+              "key": "p5",
+              "text": "… +5% 이상이다",
+              "prob": 0.4,
+              "verdict": "uncertain",
+              "decision": "review"
+            },
+            {
+              "key": "p10",
+              "text": "… +10% 이상이다",
+              "prob": 0.33,
+              "verdict": "uncertain",
+              "decision": "review"
+            },
+            {
+              "key": "p20",
+              "text": "… +20% 이상이다",
+              "prob": 0.19,
+              "verdict": "uncertain",
+              "decision": "review"
+            },
+            {
+              "key": "p_flat",
+              "text": "… 이하(보합·하락)이다",
+              "prob": 0.63,
+              "verdict": "uncertain",
+              "decision": "review"
+            }
+          ]
+        },
+        "raw": {
+          "thresholds": {
+            "auto_accept": 0.85
+          }
+        },
+        "duration_ms": 2380,
+        "judgment_seq": 123,
+        "created_at": "2026-10-07T15:20:00+09:00",
+        "adapter_version": "0.1.0+jev-mcp@1.13.0",
+        "snapshot_id": 12,
+        "complex_id": 4,
+        "error_text": null
+      },
+      {
+        "tool": "extract",
+        "purpose": "extract:notice:3",
+        "input_hash": "sha256:1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e",
+        "input_len": 11800,
+        "status": "error",
+        "confidence": null,
+        "cached": false,
+        "result": {},
+        "raw": {},
+        "duration_ms": null,
+        "judgment_seq": 30,
+        "created_at": "2026-10-07T11:02:00+09:00",
+        "adapter_version": "0.1.0+jev-mcp@1.13.0",
+        "snapshot_id": 12,
+        "complex_id": 3,
+        "error_text": "응답 미수신(세션 전환) — 같은 input_hash 재시도 시 이 행을 갱신"
+      }
+    ],
+    "total": 132,
+    "page": 1,
+    "size": 5
+  }
+}

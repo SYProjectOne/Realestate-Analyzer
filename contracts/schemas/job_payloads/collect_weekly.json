@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "collect_weekly.json",
+  "title": "CollectWeeklyPayload",
+  "description": "job_name='collect.weekly' 페이로드 (RA §4-4). 스케줄러가 매주 월 06:30. rtms=실거래 Open API(키 없으면 재가공 폴백, 라벨 재가공), stats=미분양·입주 물량, news=뉴스 검색 API(키 없으면 비활성 — 잡은 성공으로 끝나고 stats.skipped에 기록).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["region_id", "sources"],
+  "properties": {
+    "region_id": { "type": "integer" },
+    "sources": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "type": "string", "enum": ["rtms", "stats", "news"] },
+      "default": ["rtms", "stats", "news"]
+    },
+    "asof_date": { "type": ["string", "null"], "format": "date" }
+  },
+  "examples": [{ "region_id": 1, "sources": ["rtms", "stats", "news"] }]
+}

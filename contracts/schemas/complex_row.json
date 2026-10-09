@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "complex_row.json",
+  "title": "ComplexRow",
+  "description": "G2 단지 리스트 표 1행 — 열과 1:1 (RA §4-2): 이름(name) · 생활권(living_area_name) · 접수(intake) · 현재 구매가 범위(price_low~price_high) · 전매 종료(resale_end) · 입주(move_in_ym) · 가격 갭(gap_pct) · 종합 점수(total, rank) · 포함 분류(inclusion_class) · 마지막 변경(last_change). 나머지 필드는 FilterBar(택지유형·가격대·입주연도·전매 종료일)와 열 선택용.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["complex_id", "name", "living_area", "living_area_name", "track", "judge_scope", "intake", "price_low", "price_high", "price_mid", "resale_end", "move_in_ym", "gap_pct", "total", "rank", "tie_group", "unstable", "p10", "inclusion_class", "inclusion_decision", "inclusion_prob", "land_type", "price_cap", "regulated", "residency_months", "down_payment_pct", "units_total", "last_change"],
+  "properties": {
+    "complex_id": { "type": "integer" },
+    "name": { "type": "string" },
+    "living_area": { "type": ["string", "null"] },
+    "living_area_name": { "type": ["string", "null"] },
+    "track": { "type": ["string", "null"], "enum": ["A", "B", null] },
+    "judge_scope": { "$ref": "score_row.json#/$defs/JudgeScope" },
+    "intake": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
+    "price_low": { "$ref": "fact.json" },
+    "price_high": { "$ref": "fact.json" },
+    "price_mid": { "$ref": "fact.json" },
+    "resale_end": { "$ref": "fact.json" },
+    "move_in_ym": { "$ref": "fact.json" },
+    "gap_pct": { "$ref": "fact.json" },
+    "total": { "$ref": "fact.json" },
+    "rank": { "type": ["integer", "null"], "minimum": 1 },
+    "tie_group": { "type": ["integer", "null"], "minimum": 1 },
+    "unstable": { "type": "boolean" },
+    "p10": { "$ref": "fact.json" },
+    "inclusion_class": { "$ref": "complex.json#/$defs/InclusionClass" },
+    "inclusion_decision": { "type": ["string", "null"], "enum": ["auto", "review", "manual_review", null] },
+    "inclusion_prob": { "$ref": "fact.json" },
+    "land_type": { "$ref": "fact.json" },
+    "price_cap": { "$ref": "fact.json" },
+    "regulated": { "$ref": "fact.json" },
+    "residency_months": { "$ref": "fact.json" },
+    "down_payment_pct": { "$ref": "fact.json" },
+    "units_total": { "$ref": "fact.json" },
+    "last_change": {
+      "anyOf": [
+        {
+          "title": "LastChange", "type": "object", "additionalProperties": false, "required": ["at", "field", "severity"],
+          "properties": {
+            "at": { "type": "string", "format": "date-time" },
+            "field": { "type": "string" },
+            "severity": { "type": "string", "enum": ["info", "notice", "critical"] },
+            "change_event_id": { "type": ["integer", "null"] }
+          }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "ComplexRowPage": {
+      "title": "ComplexRowPage",
+      "description": "목록 응답 래퍼 (RA §4-2): {items, total, snapshot_id, asof_date} + page·size·sort·scenario_id.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "total", "snapshot_id", "asof_date", "page", "size"],
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#" } },
+        "total": { "type": "integer", "minimum": 0 },
+        "snapshot_id": { "type": "integer" },
+        "asof_date": { "type": "string", "format": "date" },
+        "page": { "type": "integer", "minimum": 1 },
+        "size": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "sort": { "type": ["string", "null"] },
+        "scenario_id": { "type": ["integer", "null"] }
+      }
+    }
+  },
+  "examples": [
+    {
+      "complex_id": 4, "name": "오퍼스 한강 스위첸", "living_area": "la_4", "living_area_name": "김포시", "track": "B", "judge_scope": "판정 대상",
+      "intake": { "status": "확인 불가", "path": "official_popup", "checked_at": "2026-10-07T09:14:00+09:00", "http_status": 403, "reason": "403", "evidence_url": "https://opus-switzen.com/" },
+      "price_low": { "v": 626000000, "label": "확인됨", "prov": "fp_4101", "checked_at": "2026-10-07", "unit": "won" },
+      "price_high": { "v": 699000000, "label": "확인됨", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },
+      "price_mid": { "v": 662500000, "label": "추정", "reason": "산술", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },
+      "resale_end": { "v": "2028-07-18", "label": "추정", "reason": "산술", "prov": "fp_4103", "checked_at": "2026-10-07", "unit": "date" },
+      "move_in_ym": { "v": "2028-08", "label": "확인됨", "prov": "fp_4104", "checked_at": "2026-10-07", "unit": "ym" },
+      "gap_pct": { "v": 0.0, "label": "추정", "reason": "대체·혼재 중앙", "prov": "sc_88_4_gap", "checked_at": "2026-10-08", "unit": "pct" },
+      "total": { "v": 4.995, "label": "추정", "prov": "st_88_4", "checked_at": "2026-10-08", "unit": "score" },
+      "rank": 4, "tie_group": null, "unstable": false,
+      "p10": { "v": 0.33, "label": "추정", "reason": "판정기 noul", "prov": "jl_123", "checked_at": "2026-10-07", "unit": "prob" },
+      "inclusion_class": "private_sale_apt", "inclusion_decision": "review",
+      "inclusion_prob": { "v": 0.72, "label": "추정", "reason": "판정기 classify", "prov": "jl_110", "checked_at": "2026-10-07", "unit": "prob" },
+      "land_type": { "v": "공공택지", "label": "확인됨", "prov": "fp_4105", "checked_at": "2026-10-07", "unit": "text" },
+      "price_cap": { "v": "적용", "label": "확인됨", "prov": "fp_4106", "checked_at": "2026-10-07", "unit": "text" },
+      "regulated": { "v": "비규제", "label": "확인됨", "prov": "fp_4107", "checked_at": "2026-10-07", "unit": "text" },
+      "residency_months": { "v": 0, "label": "확인됨", "prov": "fp_4108", "checked_at": "2026-10-07", "unit": "months" },
+      "down_payment_pct": { "v": 10, "label": "확인됨", "prov": "fp_4109", "checked_at": "2026-10-07", "unit": "pct" },
+      "units_total": { "v": 1029, "label": "확인됨", "prov": "fp_4110", "checked_at": "2026-10-07", "unit": "units" },
+      "last_change": null
+    }
+  ]
+}

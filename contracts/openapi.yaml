@@ -1,0 +1,978 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
+  version: 2026-10-09.1
+  summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
+  description: |
+    원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
+    프론트 타입 생성·MSW는 자립 번들 `contracts/openapi.bundled.yaml`을 쓴다(`backend/scripts/gen_contracts.py`가 생성).
+
+    공통 규칙
+    - 인증: 모든 요청은 `Authorization: Bearer <token>`. 쓰기 토큰(API_TOKEN)은 전부, 읽기 전용 토큰(READONLY_TOKEN)은 **GET만** 허용 — 그 밖의 메서드는 403 forbidden. `/health`만 인증 없음.
+    - 수치는 맨값으로 나가지 않는다: 모든 수치·날짜 필드는 `Fact {v, label, prov, checked_at}`로 감싼다(RA §4-1). 출처(field_provenance)가 없는 수치는 ENV=dev에서 500 contract_violation, ENV=prod에서 라벨 '확인 불가', reason '출처 누락' + 경고 로그(WP5 미들웨어).
+    - Fact 표시 문자열: label='확인 불가'이면 `확인 불가(<reason>, <checked_at>)` (예 '확인 불가(403, 2026-10-07)'), 그 밖에 reason이 있으면 `<label>(<reason>)`, 없으면 `<label>`; human=true면 '사람 확인됨'.
+    - 목록: `?page&size&sort&filter[...]`, 응답 `{items, total, snapshot_id, asof_date, page, size}`.
+    - 상황(`?scenario=`)은 내장 code(base|A|B|C|D) 또는 사용자 시나리오 숫자 id. 생략 시 base.
+    - 기준일(`?snapshot=`)은 snapshot id. 생략 시 그 지역의 최신 published(없으면 최신 ready) 스냅샷.
+    - 시각은 ISO 8601(+09:00), 날짜는 YYYY-MM-DD, 연월은 YYYY-MM.
+    - 화면 하단 고정 문구 '투자 권유 아님 · 상대 비교'는 프론트 책임(DECISIONS D7).
+    - 예시 응답의 단지·가격·확률·순위는 인천·김포 보고서(docs/source/incheon_gimpo_report.md) 값이다. 보고서에 없는 id·해시·법정동 코드·세대수 등은 형식 예시용 가상값이다.
+servers:
+  - url: /api
+    description: web(nginx)이 /api/* 를 api 서비스로 프록시
+tags:
+  - name: ops-health
+  - name: regions
+    description: 지역 입력·생활권 (G0, G0-2, 헤더 RegionPicker)
+  - name: snapshots
+    description: 기준일 스냅샷·대시보드·단지 표 (G1, G2, G8)
+  - name: complexes
+    description: 단지 상세·출처·원문 (G3, 출처 패널)
+  - name: analysis
+    description: 비교·민감도·시나리오 (G4, G5)
+  - name: market
+    description: 지역 시장 (G6)
+  - name: jobs
+    description: 잡 큐 (G5, G7, G8)
+  - name: ops
+    description: 데이터·운영 (G7)
+  - name: reports
+    description: 보고서 HTML·PDF (G8)
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    servers:
+      - url: /
+        description: 루트(docker compose 헬스체크)
+      - url: /api
+        description: API 접두(web 프록시 경유)
+    get:
+      tags: [ops-health]
+      operationId: getHealth
+      summary: 헬스체크 (인증 없음)
+      security: []
+      responses:
+        '200':
+          description: 서버 상태
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              examples:
+                ok: { $ref: './examples/health.json' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /regions:
+    get:
+      tags: [regions]
+      operationId: listRegions
+      summary: 지역·생활권·최신 스냅샷 (전체 헤더)
+      description: 지역이 하나도 없으면 빈 배열 — 프론트는 `/`에서 `/regions/new`(G0)로 보낸다.
+      responses:
+        '200':
+          description: 지역 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Region' } }
+              examples:
+                fixture: { $ref: './examples/regions_list.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [regions]
+      operationId: createRegion
+      summary: 지역 생성 + region.bootstrap 잡 등록 (G0 '분석 시작')
+      description: selections를 펼쳐 sido/sigungu/legal_dong 코드와 기본 생활권(시군구당 1개)을 만들고 region.status='bootstrapping'으로 두며 region.bootstrap 잡을 등록한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegionCreate' }
+            examples:
+              fixture: { $ref: './examples/region_create_req.json' }
+      responses:
+        '201':
+          description: 생성됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionCreated' }
+              examples:
+                created: { $ref: './examples/region_created.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /regions/resolve:
+    get:
+      tags: [regions]
+      operationId: resolveRegion
+      summary: 자유 지명 → 후보 (G0 자동완성)
+      description: 이름 부분 일치(공백·'시/군/구/동/읍/면' 접미사 무시), 정확 일치 우선. 판정기 호출 없음. 결과 최대 50개.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 50 }
+          example: 검단
+      responses:
+        '200':
+          description: '후보 목록(정렬: match → kind → full_name)'
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/RegionCandidate' } }
+              examples:
+                geomdan: { $ref: './examples/region_resolve.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /regions/{id}:
+    get:
+      tags: [regions]
+      operationId: getRegion
+      summary: 지역 상세(선택·생활권·세대수·상태)
+      parameters:
+        - $ref: '#/components/parameters/RegionId'
+      responses:
+        '200':
+          description: 지역
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Region' }
+              examples:
+                fixture: { $ref: './examples/region_get.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /regions/{id}/living-areas:
+    put:
+      tags: [regions]
+      operationId: updateLivingAreas
+      summary: 생활권 편집 (G0-2)
+      description: 모든 법정동은 정확히 한 생활권에 속해야 한다(누락·중복이면 422). 저장하면 change_event(critical) + rejudge 잡이 생긴다. 법정동이 남은 생활권은 삭제할 수 없다.
+      parameters:
+        - $ref: '#/components/parameters/RegionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LivingAreasUpdate' }
+            examples:
+              split: { $ref: './examples/living_areas_update_req.json' }
+      responses:
+        '200':
+          description: 갱신됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LivingAreasUpdated' }
+              examples:
+                split: { $ref: './examples/living_areas_updated.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: 생활권 검증 실패
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                unassigned: { $ref: './examples/error_422_living_areas.json' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /regions/{id}/snapshots:
+    get:
+      tags: [snapshots]
+      operationId: listSnapshots
+      summary: 기준일 목록 (G1 SnapshotPicker, G8 SnapshotPairPicker)
+      parameters:
+        - $ref: '#/components/parameters/RegionId'
+      responses:
+        '200':
+          description: 최신순
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Snapshot' } }
+              examples:
+                fixture: { $ref: './examples/snapshots_list.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/dashboard:
+    get:
+      tags: [snapshots]
+      operationId: getDashboard
+      summary: KPI 타일·TOP 5·최근 변경 (G1)
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - $ref: '#/components/parameters/Scenario'
+      responses:
+        '200':
+          description: 대시보드
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+              examples:
+                base: { $ref: './examples/dashboard_base.json' }
+                scenarioB: { $ref: './examples/dashboard_b.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/complexes:
+    get:
+      tags: [snapshots]
+      operationId: listComplexes
+      summary: 단지 표 — 필터·정렬·페이지 (G2)
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - $ref: '#/components/parameters/Scenario'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/ComplexSort'
+        - $ref: '#/components/parameters/ComplexFilter'
+      responses:
+        '200':
+          description: 한 페이지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplexRowPage' }
+              examples:
+                all16: { $ref: './examples/complexes_page.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/complexes.csv:
+    get:
+      tags: [snapshots]
+      operationId: exportComplexesCsv
+      summary: 같은 필터의 CSV (G2)
+      description: UTF-8 BOM 포함 CSV. 수치 열마다 `<열>_label`, `<열>_checked_at` 열이 붙는다(라벨 없는 수치 금지). page·size는 무시하고 필터 결과 전부.
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - $ref: '#/components/parameters/Scenario'
+        - $ref: '#/components/parameters/ComplexSort'
+        - $ref: '#/components/parameters/ComplexFilter'
+      responses:
+        '200':
+          description: CSV 파일
+          content:
+            text/csv:
+              schema: { type: string }
+              example: |
+                complex_id,name,living_area,intake_status,price_low,price_low_label,price_low_checked_at,price_high,price_high_label,price_high_checked_at,total,total_label,rank
+                1,더샵 송도그란테르,연수구,불가,1245000000,확인됨,2026-10-07,1318000000,확인됨,2026-10-07,5.87,추정,1
+                4,오퍼스 한강 스위첸,김포시,확인 불가(403 2026-10-07),626000000,확인됨,2026-10-07,699000000,확인됨,2026-10-07,5.00,추정,4
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /complexes/{id}:
+    get:
+      tags: [complexes]
+      operationId: getComplex
+      summary: 단지 상세 전체 (G3)
+      parameters:
+        - $ref: '#/components/parameters/ComplexId'
+        - $ref: '#/components/parameters/SnapshotQuery'
+        - $ref: '#/components/parameters/Scenario'
+      responses:
+        '200':
+          description: 단지 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplexDetail' }
+              examples:
+                elif: { $ref: './examples/complex_detail_elif.json' }
+                preNotice: { $ref: './examples/complex_detail_kaive.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /provenance/{prov_id}:
+    get:
+      tags: [complexes]
+      operationId: getProvenance
+      summary: 출처 행 + 원문 발췌 + 상충 그룹 (출처 패널)
+      parameters:
+        - name: prov_id
+          in: path
+          required: true
+          description: Fact.prov 값(fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어)
+          schema: { type: string, pattern: '^(fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+$' }
+      responses:
+        '200':
+          description: 출처
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Provenance' }
+              examples:
+                conflict: { $ref: './examples/provenance_conflict.json' }
+                scoreFormula: { $ref: './examples/provenance_score.json' }
+                fetch403: { $ref: './examples/provenance_403.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /raw/{raw_document_id}:
+    get:
+      tags: [complexes]
+      operationId: getRawDocument
+      summary: 원문 파일(PDF·txt·HTML·스크린샷) (G3, G7)
+      description: '`?as=text`면 추출 텍스트(text_path)를 text/plain으로 준다(원문 하이라이트용). 실패 행(path=null)은 404.'
+      parameters:
+        - name: raw_document_id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: as
+          in: query
+          required: false
+          schema: { type: string, enum: [file, text], default: file }
+      responses:
+        '200':
+          description: 원문 파일
+          content:
+            application/pdf:
+              schema: { type: string, contentMediaType: application/pdf }
+            text/plain:
+              schema: { type: string }
+            text/html:
+              schema: { type: string }
+            image/png:
+              schema: { type: string, contentMediaType: image/png }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/compare:
+    get:
+      tags: [analysis]
+      operationId: getCompare
+      summary: 2~6개 비교 (G4)
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - $ref: '#/components/parameters/Scenario'
+        - name: ids
+          in: query
+          required: true
+          description: 비교할 complex_id 2~6개, 쉼표 구분(`ids=2,7,4`). 범위를 벗어나면 422.
+          style: form
+          explode: false
+          schema: { type: array, minItems: 2, maxItems: 6, items: { type: integer } }
+      responses:
+        '200':
+          description: 비교 뷰
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompareView' }
+              examples:
+                scenarioB: { $ref: './examples/compare_b.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/sensitivity:
+    get:
+      tags: [analysis]
+      operationId: getSensitivity
+      summary: 가중치 ±10%p 순위 변동 12변형 (G4, G5, C10)
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - $ref: '#/components/parameters/Scenario'
+      responses:
+        '200':
+          description: 민감도
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sensitivity' }
+              examples:
+                base: { $ref: './examples/sensitivity_base.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /scenarios:
+    get:
+      tags: [analysis]
+      operationId: listScenarios
+      summary: 내장 5 + 사용자 시나리오 (G5, ScenarioToggle)
+      responses:
+        '200':
+          description: 시나리오 목록(내장 먼저, id 순)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Scenario' } }
+              examples:
+                builtin: { $ref: './examples/scenarios_list.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [analysis]
+      operationId: createScenario
+      summary: 사용자 시나리오 저장 (G5)
+      description: 가중치 합이 1이 아니거나 liquidity·move_in이 둘 다/둘 다 없으면 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScenarioCreate' }
+            examples:
+              mine: { $ref: './examples/scenario_create_req.json' }
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Scenario' }
+              examples:
+                mine: { $ref: './examples/scenario_created.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /scenarios/{id}/preview:
+    get:
+      tags: [analysis]
+      operationId: previewScenario
+      summary: 가중치·요건 사전 계산·캐시 히트 (판정기 호출 없음, G5)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: snapshot
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 미리보기
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScenarioPreview' }
+              examples:
+                scenarioB: { $ref: './examples/scenario_preview_b.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /jobs:
+    get:
+      tags: [jobs]
+      operationId: listJobs
+      summary: 잡 목록 (G7 RejudgeQueue)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [queued, running, done, failed] }
+        - name: job_name
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/JobName' }
+        - $ref: '#/components/parameters/Since'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 최신순
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/JobRun' } }
+              examples:
+                queue: { $ref: './examples/jobs_list.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [jobs]
+      operationId: createJob
+      summary: 재판정·수집·보고서 잡 등록 (G5, G7, G8)
+      description: payload는 job_name별 스키마(contracts/schemas/job_payloads)로 검증한다. api는 판정기를 부르지 않고 job_run 행만 넣는다(worker가 집는다).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobCreate' }
+            examples:
+              rejudge: { $ref: './examples/job_create_rejudge.json' }
+              retry: { $ref: './examples/job_create_retry.json' }
+      responses:
+        '202':
+          description: 등록됨(queued)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobRun' }
+              examples:
+                queued: { $ref: './examples/job_queued.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /jobs/{id}:
+    get:
+      tags: [jobs]
+      operationId: getJob
+      summary: 진행 상태 (JobProgress, 2초 폴링)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 잡
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobRun' }
+              examples:
+                running: { $ref: './examples/job_running.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/market:
+    get:
+      tags: [market]
+      operationId: getMarket
+      summary: 벤치마크·입주물량·미분양·호재·규제 요약 (G6)
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: living_area
+          in: query
+          required: false
+          description: 생활권 필터(region.living_areas[].id)
+          schema: { type: string }
+      responses:
+        '200':
+          description: 지역 시장
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Market' }
+              examples:
+                fixture: { $ref: './examples/market.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /snapshots/{sid}/changes:
+    get:
+      tags: [snapshots]
+      operationId: listChanges
+      summary: 변경 피드 (G1, G8 SnapshotDiffTable)
+      description: since(시각)를 주면 그 이후 감지분, compare_snapshot을 주면 그 스냅샷 다음부터 sid까지의 변경. 둘 다 없으면 sid 스냅샷의 변경만.
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - $ref: '#/components/parameters/Since'
+        - name: compare_snapshot
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: severity
+          in: query
+          required: false
+          schema: { type: string, enum: [info, notice, critical] }
+      responses:
+        '200':
+          description: 최신순
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ChangeEvent' } }
+              examples:
+                feed: { $ref: './examples/changes.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /ops/sources:
+    get:
+      tags: [ops]
+      operationId: listSourceStatus
+      summary: 소스별 최종 수집·성공·실패 (G7)
+      parameters:
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 소스 상태
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/SourceStatus' } }
+              examples:
+                fixture: { $ref: './examples/sources.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /ops/judgments:
+    get:
+      tags: [ops]
+      operationId: getJudgmentOps
+      summary: 판정기 호출 수·실패·소요·도구별 + 봉투 목록 (G7)
+      parameters:
+        - $ref: '#/components/parameters/Since'
+        - name: tool
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/JudgeTool' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 집계 + 목록
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JudgmentOps' }
+              examples:
+                last30d: { $ref: './examples/judgments_ops.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /ops/checklist:
+    get:
+      tags: [ops]
+      operationId: listChecklist
+      summary: 체크리스트·캘린더 (G7)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [open, done, na] }
+        - name: complex_id
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 항목(due_date 오름차순, 날짜 없는 것은 뒤)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ChecklistItem' } }
+              examples:
+                fixture: { $ref: './examples/checklist.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /ops/checklist/{id}:
+    patch:
+      tags: [ops]
+      operationId: updateChecklistItem
+      summary: 체크리스트 상태·메모 변경 (G7)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChecklistPatch' }
+            examples:
+              done: { $ref: './examples/checklist_patch_req.json' }
+      responses:
+        '200':
+          description: 갱신됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChecklistItem' }
+              examples:
+                done: { $ref: './examples/checklist_item_done.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /ops/human-checks:
+    post:
+      tags: [ops]
+      operationId: createHumanCheck
+      summary: 사람 확인 입력 → intake_status 행 + change_event (G7, T3)
+      description: field='intake_status'이면 같은 스냅샷에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행').
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HumanCheckCreate' }
+            examples:
+              phone: { $ref: './examples/human_check_req.json' }
+      responses:
+        '201':
+          description: 저장됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HumanCheck' }
+              examples:
+                phone: { $ref: './examples/human_check_created.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /reports:
+    get:
+      tags: [reports]
+      operationId: listReports
+      summary: 보고서 목록 (G8 ReportList)
+      parameters:
+        - name: snapshot_id
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 최신순
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Report' } }
+              examples:
+                fixture: { $ref: './examples/reports_list.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [reports]
+      operationId: createReport
+      summary: 보고서 생성 잡 등록 — html|pdf, diff 옵션 (G8)
+      description: 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportRequest' }
+            examples:
+              pdfDiff: { $ref: './examples/report_req.json' }
+      responses:
+        '202':
+          description: report 잡 등록됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobRun' }
+              examples:
+                queued: { $ref: './examples/report_job.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: contradicted claim 남음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                blocked: { $ref: './examples/error_409_publish_blocked.json' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /reports/{id}:
+    get:
+      tags: [reports]
+      operationId: downloadReport
+      summary: 보고서 다운로드 (id = report 잡의 job_run.id)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 단일 자립 HTML 또는 PDF
+          content:
+            text/html:
+              schema: { type: string }
+            application/pdf:
+              schema: { type: string, contentMediaType: application/pdf }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 아직 완료되지 않음
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                running: { $ref: './examples/error_409_conflict.json' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API_TOKEN(쓰기 포함 전부) 또는 READONLY_TOKEN(GET만, 공유 링크용·만료 30일). 읽기 전용 토큰으로 GET 이외 메서드를 부르면 403 forbidden.
+
+  parameters:
+    RegionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    SnapshotId:
+      name: sid
+      in: path
+      required: true
+      schema: { type: integer }
+    ComplexId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    SnapshotQuery:
+      name: snapshot
+      in: query
+      required: false
+      description: 기준일 스냅샷 id. 생략 시 최신 published.
+      schema: { type: integer }
+    Scenario:
+      name: scenario
+      in: query
+      required: false
+      description: 내장 code(base|A|B|C|D) 또는 사용자 시나리오 id. 생략 시 base.
+      schema: { type: string, pattern: '^(base|A|B|C|D|[0-9]+)$', default: base }
+    Page:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, default: 1 }
+    Size:
+      name: size
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 50 }
+    Since:
+      name: since
+      in: query
+      required: false
+      description: ISO 날짜(YYYY-MM-DD) 또는 시각. 이 시점 이후.
+      schema: { type: string, minLength: 10, maxLength: 32 }
+    ComplexSort:
+      name: sort
+      in: query
+      required: false
+      description: 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id).
+      schema:
+        type: string
+        pattern: '^-?(total|rank|name|price_mid|price_low|move_in_ym|resale_end|gap_pct|p10|living_area|last_change)$'
+        default: -total
+    ComplexFilter:
+      name: filter
+      in: query
+      required: false
+      description: |
+        G2 FilterBar. deepObject: `filter[living_area]=la_2&filter[intake_status]=가능&filter[price_max]=700000000`.
+        living_area·intake_status·land_type·inclusion_class·judge_scope는 쉼표로 여러 값.
+      style: deepObject
+      explode: true
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          living_area: { type: string }
+          intake_status: { type: string }
+          land_type: { type: string }
+          inclusion_class: { type: string }
+          judge_scope: { type: string }
+          resale_end_before: { type: string, format: date }
+          price_min: { type: integer, minimum: 0 }
+          price_max: { type: integer, minimum: 0 }
+          move_in_year: { type: integer, minimum: 2000, maximum: 2100 }
+          q: { type: string, maxLength: 50 }
+
+  responses:
+    Unauthorized:
+      description: 토큰 없음·불일치
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            unauthorized: { $ref: './examples/error_401.json' }
+    Forbidden:
+      description: 읽기 전용 토큰으로 GET 이외 호출
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            readonly: { $ref: './examples/error_403.json' }
+    NotFound:
+      description: 리소스 없음
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            notFound: { $ref: './examples/error_404.json' }
+    ValidationError:
+      description: 요청 검증 실패
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            invalid: { $ref: './examples/error_422.json' }
+    InternalError:
+      description: contract_violation(출처 없는 수치, dev) 또는 internal
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            contractViolation: { $ref: './examples/error_500.json' }
+    JudgeUnavailable:
+      description: 판정기 장애(degraded) — 판정기가 꼭 필요한 동작만. 조회는 계속된다
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            degraded: { $ref: './examples/error_503.json' }
+
+  schemas:
+    # 공통 (RA §4-1)
+    Fact: { $ref: './schemas/fact.json' }
+    Label: { $ref: './schemas/label.json' }
+    Intake: { $ref: './schemas/intake.json' }
+    JudgmentEnvelope: { $ref: './schemas/judgment_envelope.json' }
+    JudgeTool: { $ref: './schemas/judgment_envelope.json#/$defs/JudgeTool' }
+    Error: { $ref: './schemas/error.json' }
+    Health: { $ref: './schemas/health.json' }
+    # 지역 (DECISIONS D2)
+    Region: { $ref: './schemas/region.json' }
+    RegionCreate: { $ref: './schemas/region.json#/$defs/RegionCreate' }
+    RegionCreated: { $ref: './schemas/region.json#/$defs/RegionCreated' }
+    LivingAreasUpdate: { $ref: './schemas/region.json#/$defs/LivingAreasUpdate' }
+    LivingAreasUpdated: { $ref: './schemas/region.json#/$defs/LivingAreasUpdated' }
+    RegionCandidate: { $ref: './schemas/region_candidate.json' }
+    LivingArea: { $ref: './schemas/living_area.json' }
+    Snapshot: { $ref: './schemas/snapshot.json' }
+    # 화면 응답 (RA §4-2)
+    Dashboard: { $ref: './schemas/dashboard.json' }
+    ScoreRow: { $ref: './schemas/score_row.json' }
+    ComplexRow: { $ref: './schemas/complex_row.json' }
+    ComplexRowPage: { $ref: './schemas/complex_row.json#/$defs/ComplexRowPage' }
+    ComplexDetail: { $ref: './schemas/complex_detail.json' }
+    Provenance: { $ref: './schemas/provenance.json' }
+    CompareView: { $ref: './schemas/compare_view.json' }
+    Sensitivity: { $ref: './schemas/sensitivity.json' }
+    Scenario: { $ref: './schemas/scenario.json' }
+    ScenarioCreate: { $ref: './schemas/scenario.json#/$defs/ScenarioCreate' }
+    ScenarioPreview: { $ref: './schemas/scenario_preview.json' }
+    JobRun: { $ref: './schemas/job_run.json' }
+    JobName: { $ref: './schemas/job_run.json#/$defs/JobName' }
+    JobCreate: { $ref: './schemas/job_run.json#/$defs/JobCreate' }
+    Market: { $ref: './schemas/market.json' }
+    ChangeEvent: { $ref: './schemas/change_event.json' }
+    SourceStatus: { $ref: './schemas/source_status.json' }
+    JudgmentStats: { $ref: './schemas/judgment_stats.json' }
+    JudgmentOps: { $ref: './schemas/judgment_stats.json#/$defs/JudgmentOps' }
+    ChecklistItem: { $ref: './schemas/checklist_item.json' }
+    ChecklistPatch: { $ref: './schemas/checklist_item.json#/$defs/ChecklistPatch' }
+    HumanCheck: { $ref: './schemas/human_check.json' }
+    HumanCheckCreate: { $ref: './schemas/human_check.json#/$defs/HumanCheckCreate' }
+    ReportRequest: { $ref: './schemas/job_payloads/report.json' }
+    Report: { $ref: './schemas/report.json' }

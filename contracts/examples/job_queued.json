@@ -1,0 +1,21 @@
+{
+  "summary": "등록됨(202)",
+  "value": {
+    "id": 905,
+    "job_name": "rejudge",
+    "kind": "rejudge",
+    "payload": {
+      "snapshot_id": 12,
+      "scenario_id": 3,
+      "complex_ids": null,
+      "reason": "G5 재판정 실행"
+    },
+    "scheduled_at": "2026-10-08T10:02:00+09:00",
+    "started_at": null,
+    "finished_at": null,
+    "status": "queued",
+    "stats": {},
+    "error_text": null,
+    "progress": null
+  }
+}

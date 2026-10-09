@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "score_component.json",
+  "title": "ScoreComponent",
+  "description": "구성 점수 1개 (RA §3 score_component, §6-4). (score_run_id, complex_id, component) 유일. formula_text는 식을 값으로 채운 문자열이고 화면 툴팁에 그대로 보인다(빈 문자열 금지).\n식(각 0~10):\n- p10 = 10 × P(+10%, policy.p10_horizon) — noul status가 review·escaped·error면 score_0_10=null, 종합 점수 미계산(\"미판정\").\n- rerank = 10 × (N − rank)/(N − 1), 한 score_run의 값은 한 judgment_seq 호출에서만(§6-5). delta = 이전 run 대비 차이.\n- gap = clamp(5 − gap%/4, 0, 10), gap% = (P_mid − median(T_adj))/median(T_adj) × 100 (§6-2). 대체·보정이면 label 추정 reason '대체·보정 c=…'.\n- benchmark = clamp(10 × median(gain)/0.5, 0, 10), is_presale=false만. 표본 3 미만이면 reason '표본 n'.\n- supply = clamp(10 − 10 × U_window/U_ref, 0, 10) − pen (미분양 12개월 기울기>0 → 2, 준공 후 미분양 증가 → +1).\n- liquidity = clamp(10 − 2×Y_resale − 3×[거주의무>0] − D/5, 0, 10).\n- move_in = clamp(10 − 2×입주까지 연수, 0, 10) (A·D).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["complex_id", "component", "raw_value", "score_0_10", "formula_text", "label"],
+  "properties": {
+    "score_run_id": { "type": ["integer", "null"] },
+    "complex_id": { "type": "integer" },
+    "component": { "$ref": "scenario.json#/$defs/ComponentKey" },
+    "raw_value": { "description": "식의 입력 원값(p10=확률, rerank=relevance, gap=gap%, benchmark=median gain, supply=U_window, liquidity=Y_resale, move_in=입주까지 연수)", "type": ["number", "null"] },
+    "score_0_10": { "type": ["number", "null"], "minimum": 0, "maximum": 10 },
+    "formula_text": { "type": "string", "minLength": 1 },
+    "label": { "$ref": "label.json" },
+    "reason": { "type": ["string", "null"] },
+    "delta": { "description": "rerank 성분의 delta_rerank(이전 run 대비 relevance 차). 다른 성분은 null", "type": ["number", "null"] },
+    "flags": { "description": "예: ['no_recent_sale_case', 'substitute']", "type": "array", "items": { "type": "string" } }
+  },
+  "examples": [
+    {
+      "score_run_id": 88, "complex_id": 4, "component": "gap", "raw_value": 0.0, "score_0_10": 5.0,
+      "formula_text": "clamp(5 − 0.0/4, 0, 10) = 5.0 (P_mid 6.625억, 비교군 중앙 6.62억: 리버시티 +0~+20 / 센트럴자이 −10~−20 혼재)",
+      "label": "추정", "reason": "대체·보정 c=0.015", "delta": null, "flags": ["substitute"]
+    },
+    {
+      "score_run_id": 88, "complex_id": 2, "component": "rerank", "raw_value": 0.89, "score_0_10": 8.9,
+      "formula_text": "보고서 (a)단계: relevance 0.89 × 10 = 8.9 (jl_124)", "label": "추정", "reason": null, "delta": -0.02, "flags": []
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dashboard.json",
+  "title": "Dashboard",
+  "description": "GET /snapshots/{sid}/dashboard?scenario= — G1 홈 (RA §4-2, meta §2-6 G1). KPI 타일 5종(판정 대상 수·접수 가능 수·미분양·입주 피크 연도·데이터 신선도), 통합 TOP 5 카드(ScoreRow; 공동 5위면 6개 이상), 최근 변경 피드, C5 작은 미분양 추이(unsold_series), C6 점수 분해(top5[].components + weights). 상황 토글을 바꾸면 scenario만 바꿔 다시 조회한다. degraded=true면 전역 배너('판정기 미연결 — 점수 미계산').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["region_id", "snapshot_id", "asof_date", "scenario_id", "scenario_code", "scenario_name", "degraded", "score_run_id", "weights", "kpis", "top5", "changes", "unsold_series"],
+  "properties": {
+    "region_id": { "type": "integer" },
+    "snapshot_id": { "type": "integer" },
+    "asof_date": { "type": "string", "format": "date" },
+    "scenario_id": { "type": "integer" },
+    "scenario_code": { "type": ["string", "null"] },
+    "scenario_name": { "type": "string" },
+    "degraded": { "type": "boolean" },
+    "score_run_id": { "type": ["integer", "null"] },
+    "weights": { "$ref": "scenario.json#/$defs/Weights" },
+    "kpis": { "$ref": "#/$defs/Kpis" },
+    "top5": { "type": "array", "items": { "$ref": "score_row.json" } },
+    "changes": { "type": "array", "items": { "$ref": "change_event.json" } },
+    "unsold_series": { "type": "array", "items": { "$ref": "market.json#/$defs/UnsoldPoint" } }
+  },
+  "$defs": {
+    "Kpis": {
+      "title": "Kpis",
+      "description": "KPI 타일 5종. 개수 집계(judged_count, intake_open_count)는 label 추정 reason '집계'이고 prov는 그 score_run의 대표 score_total 행(st_<run>_<complex>) — 타일 클릭은 출처 패널 대신 G2 필터 목록으로 간다. 미분양·입주 피크는 원천 행(fp_)을 prov로 쓴다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["judged_count", "intake_open_count", "unsold", "move_in_peak", "data_freshness"],
+      "properties": {
+        "judged_count": { "description": "판정 대상 수(judge_scope='판정 대상')", "$ref": "fact.json" },
+        "intake_open_count": { "description": "접수 가능 수(표시 intake status='가능')", "$ref": "fact.json" },
+        "unsold": {
+          "title": "KpiUnsold", "type": "object", "additionalProperties": false, "required": ["ym", "total", "post_completion"],
+          "properties": {
+            "ym": { "type": ["string", "null"] },
+            "total": { "$ref": "fact.json" },
+            "post_completion": { "$ref": "fact.json" }
+          }
+        },
+        "move_in_peak": {
+          "title": "KpiMoveInPeak", "type": "object", "additionalProperties": false, "required": ["year", "units"],
+          "properties": {
+            "year": { "$ref": "fact.json" },
+            "units": { "$ref": "fact.json" }
+          }
+        },
+        "data_freshness": {
+          "title": "KpiFreshness",
+          "description": "last_success_at.v = 소스 중 가장 오래된 '최종 성공 수집' 시각(ISO). stale_sources = 기준(일간 소스 26시간, 주간 소스 8일)보다 오래된 소스 수, failing_sources = 최근 시도가 실패한 소스 수.",
+          "type": "object", "additionalProperties": false, "required": ["last_success_at", "stale_sources", "failing_sources"],
+          "properties": {
+            "last_success_at": { "$ref": "fact.json" },
+            "stale_sources": { "type": "integer", "minimum": 0 },
+            "failing_sources": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "region_id": 1, "snapshot_id": 12, "asof_date": "2026-10-08", "scenario_id": 1, "scenario_code": "base", "scenario_name": "기본", "degraded": false, "score_run_id": 88,
+      "weights": { "p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10 },
+      "kpis": {
+        "judged_count": { "v": 12, "label": "추정", "reason": "집계", "prov": "st_88_1", "checked_at": "2026-10-08", "unit": "count" },
+        "intake_open_count": { "v": 3, "label": "추정", "reason": "집계", "prov": "st_88_1", "checked_at": "2026-10-08", "unit": "count" },
+        "unsold": {
+          "ym": "2026-08",
+          "total": { "v": 2029, "label": "재가공", "reason": "연수 505·검단 737·계양 0·김포 787 합", "prov": "fp_6100", "checked_at": "2026-10-07", "unit": "units" },
+          "post_completion": { "v": 992, "label": "재가공", "reason": "연수 203·검단 737·김포 52 합", "prov": "fp_6100", "checked_at": "2026-10-07", "unit": "units" }
+        },
+        "move_in_peak": {
+          "year": { "v": 2028, "label": "추정", "reason": "추정 집계", "prov": "fp_6200", "checked_at": "2026-10-07", "unit": "year" },
+          "units": { "v": 8860, "label": "추정", "reason": "추정 집계(김포)", "prov": "fp_6200", "checked_at": "2026-10-07", "unit": "units" }
+        },
+        "data_freshness": {
+          "last_success_at": { "v": "2026-10-08T06:04:12+09:00", "label": "확인됨", "prov": "rd_9200", "checked_at": "2026-10-08", "unit": "text" },
+          "stale_sources": 0, "failing_sources": 1
+        }
+      },
+      "top5": [], "changes": [], "unsold_series": []
+    }
+  ]
+}

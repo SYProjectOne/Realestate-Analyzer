@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "region_bootstrap.json",
+  "title": "RegionBootstrapPayload",
+  "description": "job_name='region.bootstrap' 페이로드 (DECISIONS D2-4). POST /regions가 넣는다. collect.daily + collect.weekly 즉시 실행 → 스냅샷 생성 → 판정 파이프라인 P1~P9 → 점수 → publish. 진행 중 region.status='bootstrapping', 끝나면 ready/failed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["region_id"],
+  "properties": { "region_id": { "type": "integer" } },
+  "examples": [{ "region_id": 1 }]
+}

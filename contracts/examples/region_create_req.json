@@ -1,0 +1,29 @@
+{
+  "summary": "지역 생성 요청",
+  "value": {
+    "name": "인천 송도·검단·계양 + 김포",
+    "query_text": "송도, 검단, 계양구, 김포시",
+    "selections": [
+      {
+        "kind": "legal_dong",
+        "code": "2818510600",
+        "full_name": "인천광역시 연수구 송도동"
+      },
+      {
+        "kind": "sigungu",
+        "code": "28260",
+        "full_name": "인천광역시 서구"
+      },
+      {
+        "kind": "sigungu",
+        "code": "28245",
+        "full_name": "인천광역시 계양구"
+      },
+      {
+        "kind": "sigungu",
+        "code": "41570",
+        "full_name": "경기도 김포시"
+      }
+    ]
+  }
+}

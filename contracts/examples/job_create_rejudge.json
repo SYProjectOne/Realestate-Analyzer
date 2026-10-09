@@ -1,0 +1,12 @@
+{
+  "summary": "G5 재판정 실행",
+  "value": {
+    "job_name": "rejudge",
+    "payload": {
+      "snapshot_id": 12,
+      "scenario_id": 3,
+      "complex_ids": null,
+      "reason": "G5 재판정 실행"
+    }
+  }
+}

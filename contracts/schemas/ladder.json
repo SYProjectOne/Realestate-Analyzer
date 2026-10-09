@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ladder.json",
+  "title": "LadderRow",
+  "description": "상승 확률 사다리 1개 시점 (RA §3 ladder, §6-3) — noul 1회 결과. (snapshot_id, complex_id, horizon) 유일, horizon 3종.\n- move_in_plus_1y: 입주월 + 12개월(즉시 입주면 기준일 + 12개월), 단지 자체 판단·s_p10 입력\n- asof_plus_3y: 기준일 + 36개월, 입주 시기가 다른 단지 비교(목표 시점이 모든 단지에서 같다, T10)\n- asof_plus_5y: 기준일 + 60개월, 상황 C\n명제 템플릿(meta §2-2): \"{단지} 전용 {타입}을 {기준일} 현재 구매가({범위}, 구성)로 매수할 경우, {시점 설명}인 {target_label} 실거래가가 현재 구매가 대비 +5% / +10% / +20% 이상이다 / 이하(보합·하락)이다\".\nannualized: 임계 상승률 g(0.05, 0.10, 0.20)를 연율로 환산 r = (1+g)^(12/m) − 1, m = months_from_asof.\nstatus가 review·escaped면 C1은 회색 막대 + '미해결', 확률은 점수에 쓰지 않는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["complex_id", "horizon", "target_ym", "months_from_asof", "p5", "p10", "p20", "p_flat", "verdicts", "annualized", "status", "judgment_seq"],
+  "properties": {
+    "complex_id": { "type": "integer" },
+    "snapshot_id": { "type": ["integer", "null"] },
+    "horizon": { "type": "string", "enum": ["move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"] },
+    "target_ym": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+    "target_label": { "description": "부제용 '2029 상반기' 형식", "type": ["string", "null"] },
+    "months_from_asof": { "type": "integer", "minimum": 1 },
+    "p5": { "$ref": "fact.json" },
+    "p10": { "$ref": "fact.json" },
+    "p20": { "$ref": "fact.json" },
+    "p_flat": { "$ref": "fact.json" },
+    "verdicts": {
+      "title": "LadderVerdicts",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p5", "p10", "p20", "p_flat"],
+      "properties": {
+        "p5": { "anyOf": [{ "$ref": "judgment_envelope.json#/$defs/Verdict3" }, { "type": "null" }] },
+        "p10": { "anyOf": [{ "$ref": "judgment_envelope.json#/$defs/Verdict3" }, { "type": "null" }] },
+        "p20": { "anyOf": [{ "$ref": "judgment_envelope.json#/$defs/Verdict3" }, { "type": "null" }] },
+        "p_flat": { "anyOf": [{ "$ref": "judgment_envelope.json#/$defs/Verdict3" }, { "type": "null" }] }
+      }
+    },
+    "annualized": {
+      "title": "LadderAnnualized",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p5", "p10", "p20"],
+      "properties": {
+        "p5": { "type": ["number", "null"] },
+        "p10": { "type": ["number", "null"] },
+        "p20": { "type": ["number", "null"] }
+      }
+    },
+    "status": { "type": "string", "enum": ["ok", "review", "escaped", "blocked", "error"] },
+    "judgment_seq": { "type": ["integer", "null"] },
+    "proposition_text": { "type": ["string", "null"] }
+  },
+  "examples": [
+    {
+      "complex_id": 2, "snapshot_id": 12, "horizon": "move_in_plus_1y", "target_ym": "2029-03", "target_label": "2029 상반기", "months_from_asof": 29,
+      "p5": { "v": 0.48, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" },
+      "p10": { "v": 0.45, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" },
+      "p20": { "v": 0.36, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" },
+      "p_flat": { "v": 0.48, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" },
+      "verdicts": { "p5": "uncertain", "p10": "uncertain", "p20": "uncertain", "p_flat": "uncertain" },
+      "annualized": { "p5": 0.0204, "p10": 0.0402, "p20": 0.0784 },
+      "status": "ok", "judgment_seq": 68,
+      "proposition_text": "엘리프 검단 포레듀 전용 84A를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +10% 이상이다"
+    }
+  ]
+}

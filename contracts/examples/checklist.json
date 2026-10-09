@@ -1,0 +1,95 @@
+{
+  "summary": "G7 체크리스트·캘린더",
+  "value": [
+    {
+      "id": 51,
+      "complex_id": 7,
+      "complex_name": "김포 칸타빌 에디션",
+      "kind": "법적 확인",
+      "title": "선착순 잔여 동·호·층과 계약 조건(계약금 5%·중도금 이자후불·할인 유무)을 견본주택에서 문서로 확인",
+      "due_date": null,
+      "status": "open",
+      "note": "K1"
+    },
+    {
+      "id": 52,
+      "complex_id": 4,
+      "complex_name": "오퍼스 한강 스위첸",
+      "kind": "법적 확인",
+      "title": "잔여·선착순·할인 조건을 분양사무소 공식 문서로 확인(홈페이지 403)",
+      "due_date": null,
+      "status": "open",
+      "note": "K2"
+    },
+    {
+      "id": 53,
+      "complex_id": 8,
+      "complex_name": "풍무역세권 수자인 그라센트 2차",
+      "kind": "공고 예상",
+      "title": "임의공급 4차 공고 여부(청약홈 무순위/잔여세대 주 1회)",
+      "due_date": "2026-10-31",
+      "status": "open",
+      "note": "K3"
+    },
+    {
+      "id": 54,
+      "complex_id": 10,
+      "complex_name": "풍무역 롯데캐슬 시그니처",
+      "kind": "중도금",
+      "title": "중도금 1회차 납부일(임의공급 계약자)",
+      "due_date": "2026-10-15",
+      "status": "open",
+      "note": null
+    },
+    {
+      "id": 55,
+      "complex_id": 3,
+      "complex_name": "송도 한내들 센트럴리버",
+      "kind": "중도금",
+      "title": "중도금 1회차 실행(당초 10-18에서 변경)",
+      "due_date": "2026-10-30",
+      "status": "open",
+      "note": null
+    },
+    {
+      "id": 56,
+      "complex_id": 1,
+      "complex_name": "더샵 송도그란테르",
+      "kind": "만료",
+      "title": "G5-1 전매제한 도과(최초 발표 05-28 + 6개월, 산술)",
+      "due_date": "2026-11-28",
+      "status": "open",
+      "note": "verify review 미해결"
+    },
+    {
+      "id": 57,
+      "complex_id": null,
+      "complex_name": null,
+      "kind": "만료",
+      "title": "김포 토지거래허가구역(사우·풍무·고촌·한강2) 지정 만료 — 연장 여부",
+      "due_date": "2026-12-31",
+      "status": "open",
+      "note": "K8"
+    },
+    {
+      "id": 58,
+      "complex_id": 15,
+      "complex_name": "계양신도시 카이브 유보라",
+      "kind": "공고 예상",
+      "title": "모집공고 확인 후 분양가 공개 시 재판정",
+      "due_date": "2026-10-31",
+      "status": "open",
+      "note": "언론 '10월 분양'"
+    },
+    {
+      "id": 59,
+      "complex_id": null,
+      "complex_name": null,
+      "kind": "법적 확인",
+      "title": "1주택 비과세 거주요건(김포 2020-11-20~2022-11-13 취득분) 법령 원문 확인",
+      "due_date": null,
+      "status": "na",
+      "note": "신규 분양 매수에는 해당 없음"
+    }
+  ]
+}

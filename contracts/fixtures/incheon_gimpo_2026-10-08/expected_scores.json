@@ -1,0 +1,1268 @@
+{
+  "fixture": "incheon_gimpo_2026-10-08",
+  "contract_version": "2026-10-09.1",
+  "stage": "a",
+  "source": {
+    "report": "docs/source/incheon_gimpo_report.md",
+    "sections": [
+      "§12-4-3 통합 종합 점수표",
+      "§12-4-4 통합 TOP 5",
+      "§12-4-2 통합 rerank(#124)",
+      "§6-3·§6-5 인천 8후보",
+      "§12-5-2 상황별 decide(#125~129)"
+    ],
+    "report_asof": "2026-10-07",
+    "fixture_asof": "2026-10-08",
+    "note": "보고서 기준일은 2026-10-07, RA §9 회귀 픽스처 기준일은 2026-10-08(같은 데이터)."
+  },
+  "weights": {
+    "p10": 0.35,
+    "rerank": 0.2,
+    "gap": 0.15,
+    "benchmark": 0.1,
+    "supply": 0.1,
+    "liquidity": 0.1
+  },
+  "tie_rule": {
+    "epsilon": 0.05,
+    "compare_on": "raw",
+    "grouping": "leader",
+    "rank_method": "competition",
+    "decide_tie_confidence": 0.6,
+    "description": "total 내림차순(동률이면 complex_id 오름차순) 정렬 후, 그룹 리더와의 차이가 0.05 미만인 뒤따르는 단지를 같은 그룹으로 묶는다(반올림 전 원값, 10진 연산). 그룹은 같은 rank(경쟁 순위 1,2,2,4)이고 2개 이상일 때만 tie_group 번호(1부터). decide confidence < 0.6이면 확률 상위 2개 tie=true·chosen=true."
+  },
+  "tolerance": 0.01,
+  "complexes": [
+    {
+      "key": "granter",
+      "complex_id": 1,
+      "name": "더샵 송도그란테르",
+      "area": "인천 송도",
+      "judge_scope": "판정 대상",
+      "intake_note": "마감·추가 미정",
+      "components": {
+        "p10": 3.9,
+        "rerank": 8.9,
+        "gap": 5.5,
+        "benchmark": 5.0,
+        "supply": 7.0,
+        "liquidity": 7.0
+      },
+      "raw": {
+        "p10_prob": 0.39,
+        "rerank_relevance": 0.89,
+        "rerank_relevance_incheon8": 0.89
+      },
+      "report_total": 5.87,
+      "report_rank": 1,
+      "computed_total": 5.87,
+      "expected_rank": 1,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "±5% → 5.5",
+        "benchmark": "IBD +12~82% / 9억대 −18~+9% → 5",
+        "supply": "IBD 추가 공급 없음 → 7",
+        "liquidity": "전매 6개월·거주의무 없음, 대출 6억 한도 → 7"
+      }
+    },
+    {
+      "key": "elif",
+      "complex_id": 2,
+      "name": "엘리프 검단 포레듀",
+      "area": "인천 검단",
+      "judge_scope": "판정 대상",
+      "intake_note": "선착순 가능",
+      "components": {
+        "p10": 4.5,
+        "rerank": 8.9,
+        "gap": 6.3,
+        "benchmark": 5.0,
+        "supply": 3.0,
+        "liquidity": 6.0
+      },
+      "raw": {
+        "p10_prob": 0.45,
+        "rerank_relevance": 0.89,
+        "rerank_relevance_incheon8": 0.91
+      },
+      "report_total": 5.7,
+      "report_rank": 2,
+      "computed_total": 5.7,
+      "expected_rank": 2,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "혼재(−30~+20) → 6.3",
+        "benchmark": "검단 저가분 +54~103% / 2023~24 −1~+10% → 5",
+        "supply": "2028 동시 입주 → 3",
+        "liquidity": "전매 3년(2028-09)·거주의무 없음 → 6"
+      }
+    },
+    {
+      "key": "hannaedeul",
+      "complex_id": 3,
+      "name": "송도 한내들 센트럴리버",
+      "area": "인천 송도",
+      "judge_scope": "판정 대상",
+      "intake_note": "선착순 가능",
+      "components": {
+        "p10": 3.1,
+        "rerank": 8.9,
+        "gap": 4.4,
+        "benchmark": 4.0,
+        "supply": 5.0,
+        "liquidity": 9.0
+      },
+      "raw": {
+        "p10_prob": 0.31,
+        "rerank_relevance": 0.89,
+        "rerank_relevance_incheon8": 0.9
+      },
+      "report_total": 5.33,
+      "report_rank": 3,
+      "computed_total": 5.325,
+      "expected_rank": 3,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "−5~+10% → 4.4",
+        "benchmark": "11공구 분양권 ±8% / 9억대 −18~+9% → 4",
+        "supply": "2029~30 11공구 대기 물량 → 5",
+        "liquidity": "전매 도과·거주의무 없음 → 9"
+      }
+    },
+    {
+      "key": "switzen",
+      "complex_id": 4,
+      "name": "오퍼스 한강 스위첸",
+      "area": "김포",
+      "judge_scope": "판정 대상",
+      "intake_note": "선착순(비공식) 확인 불가",
+      "components": {
+        "p10": 3.3,
+        "rerank": 8.7,
+        "gap": 5.0,
+        "benchmark": 4.5,
+        "supply": 3.0,
+        "liquidity": 6.0
+      },
+      "raw": {
+        "p10_prob": 0.33,
+        "rerank_relevance": 0.87,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": 5.0,
+      "report_rank": 4,
+      "computed_total": 4.995,
+      "expected_rank": 4,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "리버시티 +0~+20 / 센트럴자이 −10~−20 → 혼재 중앙 0 → 5.0",
+        "benchmark": "리버시티 +45~63 / 고촌센트럴자이 −2~+3 → 4.5",
+        "supply": "2028 김포 8,860 동시 입주(본 단지 포함) → 3",
+        "liquidity": "전매 3년(2028-07, 등기 시 해제)·거주의무 없음 → 6"
+      }
+    },
+    {
+      "key": "centreville_educity",
+      "complex_id": 5,
+      "name": "검단 센트레빌 에듀시티",
+      "area": "인천 검단",
+      "judge_scope": "판정 대상",
+      "intake_note": "선착순(비공식) 미정",
+      "components": {
+        "p10": 2.6,
+        "rerank": 8.3,
+        "gap": 4.6,
+        "benchmark": 4.5,
+        "supply": 3.0,
+        "liquidity": 6.0
+      },
+      "raw": {
+        "p10_prob": 0.26,
+        "rerank_relevance": 0.83,
+        "rerank_relevance_incheon8": 0.83
+      },
+      "report_total": 4.61,
+      "report_rank": 5,
+      "computed_total": 4.61,
+      "expected_rank": 5,
+      "tie_group": 1,
+      "component_notes": {
+        "gap": "−5~+8% → 4.6",
+        "benchmark": "당하동 +54~63% / 2023~24 −1~+10% → 4.5",
+        "supply": "2028 동시 입주 → 3",
+        "liquidity": "전매 3년(2028-10)·거주의무 없음 → 6"
+      }
+    },
+    {
+      "key": "thesharp_ab23",
+      "complex_id": 6,
+      "name": "더샵 검단레이크파크 AB23",
+      "area": "인천 검단",
+      "judge_scope": "판정 대상",
+      "intake_note": "미정(마감임박)",
+      "components": {
+        "p10": 2.9,
+        "rerank": 7.7,
+        "gap": 7.0,
+        "benchmark": 5.0,
+        "supply": 3.0,
+        "liquidity": 2.0
+      },
+      "raw": {
+        "p10_prob": 0.29,
+        "rerank_relevance": 0.77,
+        "rerank_relevance_incheon8": 0.77
+      },
+      "report_total": 4.61,
+      "report_rank": 5,
+      "computed_total": 4.605,
+      "expected_rank": 5,
+      "tie_group": 1,
+      "component_notes": {
+        "gap": "−20~−27% / +3~8% → 7.0",
+        "benchmark": "검단 → 5",
+        "supply": "2029-12 2,857 동시 입주 → 3",
+        "liquidity": "전매 3년(2029-07)·거주의무 3년 → 2"
+      }
+    },
+    {
+      "key": "cantavil",
+      "complex_id": 7,
+      "name": "김포 칸타빌 에디션",
+      "area": "김포",
+      "judge_scope": "판정 대상",
+      "intake_note": "선착순 가능(공식 확인)",
+      "components": {
+        "p10": 2.9,
+        "rerank": 7.3,
+        "gap": 3.1,
+        "benchmark": 4.0,
+        "supply": 2.5,
+        "liquidity": 9.0
+      },
+      "raw": {
+        "p10_prob": 0.29,
+        "rerank_relevance": 0.73,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": 4.49,
+      "report_rank": 7,
+      "computed_total": 4.49,
+      "expected_rank": 7,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "걸포 메트로자이(2020) +0~+15 → 중앙 +7.5 → 3.1",
+        "benchmark": "메트로자이 +31~70 / 우미린 분양권 −12~−26 → 4",
+        "supply": "2028 8,860(북변 오브센트 3,058 포함)+북변5 대기 → 2.5",
+        "liquidity": "전매 도과·거주의무·재당첨 없음·계약금 5% → 9"
+      }
+    },
+    {
+      "key": "gracent2",
+      "complex_id": 8,
+      "name": "풍무역세권 수자인 그라센트 2차",
+      "area": "김포",
+      "judge_scope": "판정 대상",
+      "intake_note": "미정(4차 미확인)",
+      "components": {
+        "p10": 2.7,
+        "rerank": 8.3,
+        "gap": 3.75,
+        "benchmark": 5.0,
+        "supply": 2.0,
+        "liquidity": 5.0
+      },
+      "raw": {
+        "p10_prob": 0.27,
+        "rerank_relevance": 0.83,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": 4.37,
+      "report_rank": 8,
+      "computed_total": 4.3675,
+      "expected_rank": 8,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "풍무 센트럴 푸르지오 −8~−15 / 사우 아이파크 +10~+25(둘 다 2018 대체) → 중앙 +5 → 3.75",
+        "benchmark": "풍무 센트럴 푸르지오 +95~110(2015, 추정) / 2023 이후 사례 없음 → 5",
+        "supply": "풍무역세권 자체 2028~30 5,811 연속 입주 → 2",
+        "liquidity": "전매 3년(2029-04)·거주의무 없음·중도금 이자 대납 → 5"
+      }
+    },
+    {
+      "key": "riverfront",
+      "complex_id": 9,
+      "name": "한강 푸르지오 리버프론트",
+      "area": "김포",
+      "judge_scope": "판정 대상",
+      "intake_note": "미정(선착순 추정)",
+      "components": {
+        "p10": 2.8,
+        "rerank": 7.5,
+        "gap": 2.4,
+        "benchmark": 4.5,
+        "supply": 2.5,
+        "liquidity": 4.0
+      },
+      "raw": {
+        "p10_prob": 0.28,
+        "rerank_relevance": 0.75,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": 3.94,
+      "report_rank": 9,
+      "computed_total": 3.94,
+      "expected_rank": 9,
+      "tie_group": 2,
+      "component_notes": {
+        "gap": "리버시티 +11~+33 / 센트럴자이 −12~0 → 중앙 +10.5 → 2.4",
+        "benchmark": "4.5",
+        "supply": "2028 8,860 + 2031 본 단지 2,432 단일 대량 → 2.5",
+        "liquidity": "전매 3년(2029-08)·입주 2031까지 차익 실현 불가 → 4"
+      }
+    },
+    {
+      "key": "lottecastle",
+      "complex_id": 10,
+      "name": "풍무역 롯데캐슬 시그니처",
+      "area": "김포",
+      "judge_scope": "판정 대상",
+      "intake_note": "미정(4차 없음)",
+      "components": {
+        "p10": 1.7,
+        "rerank": 5.9,
+        "gap": 3.5,
+        "benchmark": 5.0,
+        "supply": 2.0,
+        "liquidity": 9.0
+      },
+      "raw": {
+        "p10_prob": 0.17,
+        "rerank_relevance": 0.59,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": 3.9,
+      "report_rank": 10,
+      "computed_total": 3.9,
+      "expected_rank": 9,
+      "tie_group": 2,
+      "component_notes": {
+        "gap": "풍무 센트럴 푸르지오(2018 대체) +2~+10 → 중앙 +6 → 3.5",
+        "benchmark": "5",
+        "supply": "풍무·사우 2028 4,773 + 2029~30 3,331 → 2",
+        "liquidity": "전매 도과·거주의무 없음 → 9"
+      }
+    },
+    {
+      "key": "gochon_centralxi",
+      "complex_id": 11,
+      "name": "고촌센트럴자이",
+      "area": "김포",
+      "judge_scope": "판정 대상",
+      "intake_note": "미정(14차 미확인), 즉시 입주",
+      "components": {
+        "p10": 1.1,
+        "rerank": 5.3,
+        "gap": 5.0,
+        "benchmark": 3.0,
+        "supply": 5.0,
+        "liquidity": 9.0
+      },
+      "raw": {
+        "p10_prob": 0.11,
+        "rerank_relevance": 0.53,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": 3.9,
+      "report_rank": 10,
+      "computed_total": 3.895,
+      "expected_rank": 9,
+      "tie_group": 2,
+      "component_notes": {
+        "gap": "동일 단지 7.4~7.8 → 갭 0 → 5.0",
+        "benchmark": "본 단지 −2~+3 → 3",
+        "supply": "고촌 2028 1,029·2031 2,432, 임의공급 13회 반복 → 5",
+        "liquidity": "즉시 입주·전매 도과·전세 가능 → 9"
+      }
+    },
+    {
+      "key": "marinabay",
+      "complex_id": 12,
+      "name": "더샵 송도마리나베이",
+      "area": "인천 송도",
+      "judge_scope": "판정 대상",
+      "intake_note": "마감",
+      "components": {
+        "p10": 2.1,
+        "rerank": 3.7,
+        "gap": 1.5,
+        "benchmark": 3.0,
+        "supply": 6.0,
+        "liquidity": 9.0
+      },
+      "raw": {
+        "p10_prob": 0.21,
+        "rerank_relevance": 0.37,
+        "rerank_relevance_incheon8": 0.43
+      },
+      "report_total": 3.5,
+      "report_rank": 12,
+      "computed_total": 3.5,
+      "expected_rank": 12,
+      "tie_group": null,
+      "component_notes": {
+        "gap": "+8~+20% → 1.5",
+        "benchmark": "구축 완만·고점 −51% → 3",
+        "supply": "신규 입주 완료 → 6",
+        "liquidity": "즉시 입주·전매 도과 → 9"
+      }
+    },
+    {
+      "key": "harrington_1bl",
+      "complex_id": 13,
+      "name": "해링턴플레이스 풍무 1BL",
+      "area": "김포",
+      "judge_scope": "참고",
+      "intake_note": "접수 확인 불가",
+      "components": {
+        "p10": null,
+        "rerank": 3.7,
+        "gap": null,
+        "benchmark": null,
+        "supply": null,
+        "liquidity": null
+      },
+      "raw": {
+        "p10_prob": null,
+        "rerank_relevance": 0.37,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": null,
+      "report_rank": null,
+      "computed_total": null,
+      "expected_rank": null,
+      "tie_group": null,
+      "component_notes": {
+        "rerank": "relevance 0.37 × 10 (보고서 #124); 사다리 없음 → 종합 미계산"
+      }
+    },
+    {
+      "key": "gnheim",
+      "complex_id": 14,
+      "name": "사우역 지엔하임",
+      "area": "김포",
+      "judge_scope": "참고",
+      "intake_note": "접수 확인 불가",
+      "components": {
+        "p10": null,
+        "rerank": 3.9,
+        "gap": null,
+        "benchmark": null,
+        "supply": null,
+        "liquidity": null
+      },
+      "raw": {
+        "p10_prob": null,
+        "rerank_relevance": 0.39,
+        "rerank_relevance_incheon8": null
+      },
+      "report_total": null,
+      "report_rank": null,
+      "computed_total": null,
+      "expected_rank": null,
+      "tie_group": null,
+      "component_notes": {
+        "rerank": "relevance 0.39 × 10 (보고서 #124); 사다리 없음 → 종합 미계산"
+      }
+    },
+    {
+      "key": "kaive_yubora",
+      "complex_id": 15,
+      "name": "계양신도시 카이브 유보라",
+      "area": "인천 계양",
+      "judge_scope": "보류",
+      "intake_note": "공고 전",
+      "components": {
+        "p10": null,
+        "rerank": 5.4,
+        "gap": null,
+        "benchmark": null,
+        "supply": null,
+        "liquidity": null
+      },
+      "raw": {
+        "p10_prob": null,
+        "rerank_relevance": 0.54,
+        "rerank_relevance_incheon8": 0.56
+      },
+      "report_total": null,
+      "report_rank": null,
+      "computed_total": null,
+      "expected_rank": null,
+      "tie_group": null,
+      "component_notes": {
+        "rerank": "relevance 0.54 × 10 (보고서 #124); 사다리 없음 → 종합 미계산"
+      }
+    },
+    {
+      "key": "grandforet",
+      "complex_id": 16,
+      "name": "검단 센트레빌 그랑포레",
+      "area": "인천 검단",
+      "judge_scope": "보류",
+      "intake_note": "공고 전",
+      "components": {
+        "p10": null,
+        "rerank": 5.4,
+        "gap": null,
+        "benchmark": null,
+        "supply": null,
+        "liquidity": null
+      },
+      "raw": {
+        "p10_prob": null,
+        "rerank_relevance": 0.54,
+        "rerank_relevance_incheon8": 0.57
+      },
+      "report_total": null,
+      "report_rank": null,
+      "computed_total": null,
+      "expected_rank": null,
+      "tie_group": null,
+      "component_notes": {
+        "rerank": "relevance 0.54 × 10 (보고서 #124); 사다리 없음 → 종합 미계산"
+      }
+    }
+  ],
+  "t1": {
+    "source": "RA §9 T1 = 보고서 §12-4-3·§12-4-4 통합 값",
+    "order": [
+      {
+        "key": "granter",
+        "total": 5.87,
+        "rank": 1
+      },
+      {
+        "key": "elif",
+        "total": 5.7,
+        "rank": 2
+      },
+      {
+        "key": "hannaedeul",
+        "total": 5.33,
+        "rank": 3
+      },
+      {
+        "key": "switzen",
+        "total": 5.0,
+        "rank": 4
+      },
+      {
+        "key": "centreville_educity",
+        "total": 4.61,
+        "rank": 5
+      },
+      {
+        "key": "thesharp_ab23",
+        "total": 4.61,
+        "rank": 5
+      }
+    ],
+    "matches_report": true,
+    "note": "T1(그란테르 5.87 > 엘리프 5.70 > 한내들 5.33 > 스위첸(김포) 5.00 > 센트레빌 = 더샵 AB23 4.61, ±0.01)은 보고서 §12-4-3과 같다. §6-5·§7·§8-1에 적힌 엘리프 5.73·한내들 5.35는 인천 8후보 rerank(#71, §6-3) 기준 값이라 T1이 아니다 — t7_incheon_only의 이전 값이다. 가중 합 원값은 한내들 5.325, 스위첸 4.995, 더샵 AB23 4.605(반올림 half-up → 5.33·5.00·4.61)."
+  },
+  "t2": {
+    "scenario": "B",
+    "judgment_seq": 127,
+    "confidence": 0.48,
+    "probs": {
+      "cantavil": 0.54,
+      "elif": 0.42
+    },
+    "expected": {
+      "tie": true,
+      "chosen": [
+        "cantavil",
+        "elif"
+      ],
+      "rule": "decide confidence 0.48 < 0.6 → 확률 상위 2개(칸타빌 0.54, 엘리프 0.42) 모두 tie=true·chosen=true, C7에 TieBadge"
+    }
+  },
+  "decide_integrated": {
+    "base": {
+      "judgment_seq": 125,
+      "confidence": 0.67,
+      "probs": {
+        "elif": 0.71,
+        "hannaedeul": 0.15,
+        "cantavil": 0.09,
+        "switzen": 0.0,
+        "centreville_educity": 0.0,
+        "granter": 0.0,
+        "ask_user": 0.02,
+        "investigate": 0.02
+      },
+      "selected": "elif",
+      "tie": false,
+      "warnings": [
+        "요건 2(입주 후 2년 내 매도 가능)가 선택 후보에서 contradicted — 엘리프 전매 3년 종료 2028-09 < 입주 2028-03 + 2년 = 2030-03이므로 증거와 상이, 그대로 보고"
+      ],
+      "requirement_order": [
+        "access",
+        "regulation",
+        "funds"
+      ],
+      "checks": {
+        "granter": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "elif": {
+          "access": "supported",
+          "regulation": "contradicted",
+          "funds": "supported"
+        },
+        "hannaedeul": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "switzen": {
+          "access": "unknown",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "cantavil": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "centreville_educity": {
+          "access": "unknown",
+          "regulation": "contradicted",
+          "funds": "supported"
+        }
+      }
+    },
+    "A": {
+      "judgment_seq": 126,
+      "confidence": 0.93,
+      "probs": {
+        "wait_new": 0.94,
+        "investigate": 0.03,
+        "elif": 0.01,
+        "cantavil": 0.01,
+        "granter": 0.0,
+        "hannaedeul": 0.0,
+        "switzen": 0.0
+      },
+      "selected": "wait_new",
+      "tie": false,
+      "warnings": [],
+      "requirement_order": [
+        "access",
+        "regulation",
+        "funds"
+      ],
+      "checks": {
+        "granter": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "elif": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "hannaedeul": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "switzen": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "cantavil": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "wait_new": {
+          "access": "supported",
+          "regulation": "unknown",
+          "funds": "unknown"
+        }
+      }
+    },
+    "B": {
+      "judgment_seq": 127,
+      "confidence": 0.48,
+      "probs": {
+        "cantavil": 0.54,
+        "elif": 0.42,
+        "hannaedeul": 0.01,
+        "switzen": 0.01,
+        "granter": 0.0,
+        "wait_new": 0.0
+      },
+      "selected": "cantavil",
+      "tie": true,
+      "warnings": [],
+      "requirement_order": [
+        "access",
+        "funds",
+        "regulation"
+      ],
+      "checks": {
+        "granter": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "elif": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "hannaedeul": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "switzen": {
+          "access": "unknown",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "cantavil": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "wait_new": {
+          "access": "contradicted",
+          "regulation": "unknown",
+          "funds": "unknown"
+        }
+      }
+    },
+    "C": {
+      "judgment_seq": 128,
+      "confidence": 0.91,
+      "probs": {
+        "elif": 0.92,
+        "hannaedeul": 0.04,
+        "switzen": 0.01,
+        "cantavil": 0.01,
+        "granter": 0.0,
+        "wait_new": 0.0
+      },
+      "selected": "elif",
+      "tie": false,
+      "warnings": [],
+      "requirement_order": [
+        "access",
+        "regulation",
+        "funds"
+      ],
+      "checks": {
+        "granter": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "contradicted"
+        },
+        "elif": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "hannaedeul": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "switzen": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "cantavil": {
+          "access": "contradicted",
+          "regulation": "contradicted",
+          "funds": "supported"
+        },
+        "wait_new": {
+          "access": "unknown",
+          "regulation": "unknown",
+          "funds": "unknown"
+        }
+      }
+    },
+    "D": {
+      "judgment_seq": 129,
+      "confidence": 0.92,
+      "probs": {
+        "elif": 0.93,
+        "cantavil": 0.05,
+        "hannaedeul": 0.01,
+        "centreville_educity": 0.0,
+        "switzen": 0.0,
+        "gochon_centralxi": 0.0
+      },
+      "selected": "elif",
+      "tie": false,
+      "warnings": [],
+      "requirement_order": [
+        "access",
+        "funds",
+        "regulation"
+      ],
+      "checks": {
+        "elif": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "hannaedeul": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "switzen": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "cantavil": {
+          "access": "supported",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "centreville_educity": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        },
+        "gochon_centralxi": {
+          "access": "contradicted",
+          "regulation": "supported",
+          "funds": "supported"
+        }
+      }
+    }
+  },
+  "t7_incheon_only": {
+    "source": "보고서 §6-3(인천 8카드 rerank) → §12-4-2(#124, 16카드)",
+    "rerank_judgment_seq_prev": 71,
+    "rerank_judgment_seq": 124,
+    "rows": [
+      {
+        "key": "granter",
+        "relevance_prev": 0.89,
+        "relevance": 0.89,
+        "delta_rerank": 0.0,
+        "report_total_prev": 5.87,
+        "computed_total_prev": 5.87
+      },
+      {
+        "key": "elif",
+        "relevance_prev": 0.91,
+        "relevance": 0.89,
+        "delta_rerank": -0.02,
+        "report_total_prev": 5.73,
+        "computed_total_prev": 5.74
+      },
+      {
+        "key": "hannaedeul",
+        "relevance_prev": 0.9,
+        "relevance": 0.89,
+        "delta_rerank": -0.01,
+        "report_total_prev": 5.35,
+        "computed_total_prev": 5.345
+      },
+      {
+        "key": "centreville_educity",
+        "relevance_prev": 0.83,
+        "relevance": 0.83,
+        "delta_rerank": 0.0,
+        "report_total_prev": 4.61,
+        "computed_total_prev": 4.61
+      },
+      {
+        "key": "thesharp_ab23",
+        "relevance_prev": 0.77,
+        "relevance": 0.77,
+        "delta_rerank": 0.0,
+        "report_total_prev": 4.61,
+        "computed_total_prev": 4.605
+      },
+      {
+        "key": "grandforet",
+        "relevance_prev": 0.57,
+        "relevance": 0.54,
+        "delta_rerank": -0.03,
+        "report_total_prev": null,
+        "computed_total_prev": null
+      },
+      {
+        "key": "kaive_yubora",
+        "relevance_prev": 0.56,
+        "relevance": 0.54,
+        "delta_rerank": -0.02,
+        "report_total_prev": null,
+        "computed_total_prev": null
+      },
+      {
+        "key": "marinabay",
+        "relevance_prev": 0.43,
+        "relevance": 0.37,
+        "delta_rerank": -0.06,
+        "report_total_prev": 3.62,
+        "computed_total_prev": 3.62
+      }
+    ]
+  },
+  "t12_sensitivity": {
+    "status": "WP0-A가 RA §6-6 규칙(±0.10, 나머지 비례 재정규화, TOP 5 = rank ≤ 5 공동 포함)으로 위 입력에서 계산한 값. 사람 확인 전 — expected_scores_v2.json에서 확정.",
+    "base_top5": [
+      "granter",
+      "elif",
+      "hannaedeul",
+      "switzen",
+      "centreville_educity",
+      "thesharp_ab23"
+    ],
+    "unstable": true,
+    "unstable_keys": [
+      "centreville_educity",
+      "thesharp_ab23",
+      "cantavil"
+    ],
+    "stable_components": [
+      "supply"
+    ],
+    "cells": [
+      {
+        "variant": "p10+0.10",
+        "weights": {
+          "p10": 0.45,
+          "rerank": 0.169231,
+          "gap": 0.126923,
+          "benchmark": 0.084615,
+          "supply": 0.084615,
+          "liquidity": 0.084615
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity",
+          "thesharp_ab23"
+        ],
+        "changed": false,
+        "entered": [],
+        "exited": []
+      },
+      {
+        "variant": "p10-0.10",
+        "weights": {
+          "p10": 0.25,
+          "rerank": 0.230769,
+          "gap": 0.173077,
+          "benchmark": 0.115385,
+          "supply": 0.115385,
+          "liquidity": 0.115385
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "thesharp_ab23"
+        ]
+      },
+      {
+        "variant": "rerank+0.10",
+        "weights": {
+          "p10": 0.30625,
+          "rerank": 0.3,
+          "gap": 0.13125,
+          "benchmark": 0.0875,
+          "supply": 0.0875,
+          "liquidity": 0.0875
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "thesharp_ab23"
+        ]
+      },
+      {
+        "variant": "rerank-0.10",
+        "weights": {
+          "p10": 0.39375,
+          "rerank": 0.1,
+          "gap": 0.16875,
+          "benchmark": 0.1125,
+          "supply": 0.1125,
+          "liquidity": 0.1125
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "thesharp_ab23"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "centreville_educity"
+        ]
+      },
+      {
+        "variant": "gap+0.10",
+        "weights": {
+          "p10": 0.308824,
+          "rerank": 0.176471,
+          "gap": 0.25,
+          "benchmark": 0.088235,
+          "supply": 0.088235,
+          "liquidity": 0.088235
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "thesharp_ab23"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "centreville_educity"
+        ]
+      },
+      {
+        "variant": "gap-0.10",
+        "weights": {
+          "p10": 0.391176,
+          "rerank": 0.223529,
+          "gap": 0.05,
+          "benchmark": 0.111765,
+          "supply": 0.111765,
+          "liquidity": 0.111765
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity",
+          "cantavil"
+        ],
+        "changed": true,
+        "entered": [
+          "cantavil"
+        ],
+        "exited": [
+          "thesharp_ab23"
+        ]
+      },
+      {
+        "variant": "benchmark+0.10",
+        "weights": {
+          "p10": 0.311111,
+          "rerank": 0.177778,
+          "gap": 0.133333,
+          "benchmark": 0.2,
+          "supply": 0.088889,
+          "liquidity": 0.088889
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "thesharp_ab23"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "centreville_educity"
+        ]
+      },
+      {
+        "variant": "benchmark-0.10",
+        "weights": {
+          "p10": 0.388889,
+          "rerank": 0.222222,
+          "gap": 0.166667,
+          "benchmark": 0.0,
+          "supply": 0.111111,
+          "liquidity": 0.111111
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "thesharp_ab23"
+        ]
+      },
+      {
+        "variant": "supply+0.10",
+        "weights": {
+          "p10": 0.311111,
+          "rerank": 0.177778,
+          "gap": 0.133333,
+          "benchmark": 0.088889,
+          "supply": 0.2,
+          "liquidity": 0.088889
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity",
+          "thesharp_ab23"
+        ],
+        "changed": false,
+        "entered": [],
+        "exited": []
+      },
+      {
+        "variant": "supply-0.10",
+        "weights": {
+          "p10": 0.388889,
+          "rerank": 0.222222,
+          "gap": 0.166667,
+          "benchmark": 0.111111,
+          "supply": 0.0,
+          "liquidity": 0.111111
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "centreville_educity",
+          "thesharp_ab23"
+        ],
+        "changed": false,
+        "entered": [],
+        "exited": []
+      },
+      {
+        "variant": "liquidity+0.10",
+        "weights": {
+          "p10": 0.311111,
+          "rerank": 0.177778,
+          "gap": 0.133333,
+          "benchmark": 0.088889,
+          "supply": 0.088889,
+          "liquidity": 0.2
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "cantavil"
+        ],
+        "changed": true,
+        "entered": [
+          "cantavil"
+        ],
+        "exited": [
+          "centreville_educity",
+          "thesharp_ab23"
+        ]
+      },
+      {
+        "variant": "liquidity-0.10",
+        "weights": {
+          "p10": 0.388889,
+          "rerank": 0.222222,
+          "gap": 0.166667,
+          "benchmark": 0.111111,
+          "supply": 0.111111,
+          "liquidity": 0.0
+        },
+        "top5": [
+          "granter",
+          "elif",
+          "hannaedeul",
+          "switzen",
+          "thesharp_ab23"
+        ],
+        "changed": true,
+        "entered": [],
+        "exited": [
+          "centreville_educity"
+        ]
+      }
+    ]
+  },
+  "discrepancies": [
+    {
+      "what": "엘리프·한내들 종합 점수",
+      "report": "§6-5·§7-2·§8-1: 엘리프 5.73, 한내들 5.35 / §12-4-3: 5.70, 5.33",
+      "contract": "T1 기대값 = §12-4-3 통합 값(5.70, 5.33)",
+      "resolution": "§6-5는 인천 8카드 rerank(엘리프 0.91, 한내들 0.90) 기준. 통합 16카드(#124)에서 0.89로 내려가 점수가 바뀜(§6-5 고정 앵커 규칙의 사례). t7에 둘 다 둔다."
+    },
+    {
+      "what": "§6-5 엘리프 재계산",
+      "report": "5.73",
+      "contract": "가중 합 원값 5.74",
+      "resolution": "보고서 반올림 차 0.01. t7 computed_total_prev에 원값을 둔다(±0.01 경계)."
+    },
+    {
+      "what": "공동 순위(9~11위)",
+      "report": "리버프론트 9위 3.94, 롯데캐슬·고촌센트럴자이 공동 10위 3.90",
+      "contract": "RA §6-4 동점 규칙(|ΔS| < 0.05, 리더 기준)으로 리버프론트 3.94·롯데캐슬 3.90·고촌 3.895 모두 공동 9위(tie_group 2)",
+      "resolution": "ScoreEngine은 expected_rank를 내야 한다. report_rank는 보고서 원값 기록용. T1(TOP 5)은 둘이 같다."
+    },
+    {
+      "what": "rerank 성분 식",
+      "report": "relevance × 10 (0.89 → 8.9)",
+      "contract": "RA §6-4: 10 × (N − rank)/(N − 1)",
+      "resolution": "(a)단계는 보고서 값을 고정 입력(ScoreInputs.fixed_components)으로 쓴다. (b)단계 expected_scores_v2에서 RA 식으로 다시 계산한다."
+    },
+    {
+      "what": "공급·유동성·벤치마크·가격 갭 성분",
+      "report": "사람이 매긴 등급(component_notes)",
+      "contract": "RA §6-4 식",
+      "resolution": "(a)단계 고정 입력. (b)단계 차이는 정상이며 설명되면 된다(RA §9)."
+    },
+    {
+      "what": "기준일",
+      "report": "2026-10-07",
+      "contract": "fixture 2026-10-08 (RA §4-5 디렉터리 이름)",
+      "resolution": "같은 데이터. source.note에 기록."
+    }
+  ]
+}

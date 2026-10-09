@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "job_run.json",
+  "title": "JobRun",
+  "description": "잡 1건 (RA §3 job_run, ADR-3). api는 행을 넣기만 하고(queued) worker가 polling해 집는다. 잡 잠금: worker는 UPDATE … SET status='running', locked_by=<worker id> WHERE id=? AND status='queued' 가 1행을 바꿨을 때만 실행한다(동시 실행 2개 → 하나만 동작).\npayload는 job_name별 스키마(job_payloads/*.json)를 따른다. stats는 잡이 남기는 집계(수집 건수, 판정 호출 수, cached 수, degraded 여부, report의 파일 정보 등).\nreport 잡이 done이면 stats = {path, filename, size_bytes, sha256, content_type}이고 GET /reports/{id}(id = job_run.id)가 그 파일을 준다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "job_name", "kind", "payload", "scheduled_at", "started_at", "finished_at", "status", "stats", "error_text"],
+  "properties": {
+    "id": { "type": "integer" },
+    "job_name": { "$ref": "#/$defs/JobName" },
+    "kind": { "type": "string", "enum": ["scheduled", "manual", "rejudge"] },
+    "payload": { "type": "object" },
+    "scheduled_at": { "type": "string", "format": "date-time" },
+    "started_at": { "type": ["string", "null"], "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" },
+    "status": { "type": "string", "enum": ["queued", "running", "done", "failed"] },
+    "stats": { "type": "object" },
+    "error_text": { "type": ["string", "null"] },
+    "progress": {
+      "description": "진행률(선택). 화면 JobProgress가 2초 폴링",
+      "anyOf": [
+        {
+          "title": "JobProgress", "type": "object", "additionalProperties": false, "required": ["done", "total"],
+          "properties": { "done": { "type": "integer", "minimum": 0 }, "total": { "type": "integer", "minimum": 0 }, "step": { "type": ["string", "null"] } }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "job_name": { "const": "collect.daily" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/collect_daily.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "collect.weekly" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/collect_weekly.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "rejudge" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/rejudge.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "report" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/report.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "snapshot.publish" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/snapshot_publish.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "reference.refresh" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/reference_refresh.json" } } } },
+    { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } }
+  ],
+  "$defs": {
+    "JobName": {
+      "title": "JobName",
+      "description": "잡 이름 7종 (RA §4-4 + DECISIONS D2-4)",
+      "type": "string",
+      "enum": ["collect.daily", "collect.weekly", "rejudge", "report", "snapshot.publish", "reference.refresh", "region.bootstrap"]
+    },
+    "JobCreate": {
+      "title": "JobCreate",
+      "description": "POST /jobs 본문. payload는 job_name별 스키마로 검증한다(불일치 422). kind는 서버가 manual(재판정이면 rejudge)로 채운다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_name", "payload"],
+      "properties": {
+        "job_name": { "$ref": "#/$defs/JobName" },
+        "payload": { "type": "object" }
+      },
+      "allOf": [
+        { "if": { "properties": { "job_name": { "const": "collect.daily" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/collect_daily.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "collect.weekly" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/collect_weekly.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "rejudge" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/rejudge.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "report" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/report.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "snapshot.publish" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/snapshot_publish.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "reference.refresh" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/reference_refresh.json" } } } },
+        { "if": { "properties": { "job_name": { "const": "region.bootstrap" } } }, "then": { "properties": { "payload": { "$ref": "job_payloads/region_bootstrap.json" } } } }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "id": 905, "job_name": "rejudge", "kind": "rejudge",
+      "payload": { "snapshot_id": 12, "scenario_id": 3, "complex_ids": [7, 2], "reason": "G5 재판정 실행" },
+      "scheduled_at": "2026-10-08T10:02:00+09:00", "started_at": "2026-10-08T10:02:01+09:00", "finished_at": null,
+      "status": "running", "stats": { "judge_calls": 3, "cached": 14 }, "error_text": null,
+      "progress": { "done": 17, "total": 22, "step": "decide" }
+    }
+  ]
+}

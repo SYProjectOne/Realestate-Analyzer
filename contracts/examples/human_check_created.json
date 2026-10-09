@@ -1,0 +1,40 @@
+{
+  "summary": "intake 행 + change_event + 재판정 제안(T3)",
+  "value": {
+    "id": 3,
+    "complex_id": 4,
+    "field": "intake_status",
+    "value_text": "가능",
+    "kind": "phone",
+    "checked_at": "2026-10-09T10:20:00+09:00",
+    "entered_by": "운영자",
+    "note": "분양사무소 통화: 선착순 동·호지정 계약 가능, 조건은 공고문과 같다고 안내",
+    "created_intake": {
+      "id": 640,
+      "complex_id": 4,
+      "snapshot_id": 12,
+      "status": "가능",
+      "path": "human_check",
+      "evidence_url": null,
+      "screenshot_path": null,
+      "raw_document_id": null,
+      "checked_at": "2026-10-09T10:20:00+09:00",
+      "http_status": null,
+      "reason": null,
+      "note": "분양사무소 통화",
+      "entered_by": "운영자"
+    },
+    "change_event_id": 3310,
+    "suggested_job": {
+      "job_name": "rejudge",
+      "payload": {
+        "snapshot_id": 12,
+        "scenario_id": null,
+        "complex_ids": [
+          4
+        ],
+        "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능"
+      }
+    }
+  }
+}

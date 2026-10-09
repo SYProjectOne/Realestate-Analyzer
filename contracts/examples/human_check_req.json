@@ -1,0 +1,12 @@
+{
+  "summary": "스위첸 전화 확인 '가능'",
+  "value": {
+    "complex_id": 4,
+    "field": "intake_status",
+    "value_text": "가능",
+    "kind": "phone",
+    "checked_at": "2026-10-09T10:20:00+09:00",
+    "entered_by": "운영자",
+    "note": "분양사무소 통화: 선착순 동·호지정 계약 가능, 조건은 공고문과 같다고 안내"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report.json",
+  "title": "ReportRequest",
+  "description": "POST /reports 본문이자 job_name='report' 페이로드 (DECISIONS D4). format은 html(단일 자립 HTML: CSS·ECharts 인라인, 외부 리소스 0) 또는 pdf(같은 HTML을 Playwright chromium page.pdf()로 인쇄). compare_snapshot_id를 주면 두 스냅샷 diff 장을 붙인다. 스냅샷에 contradicted claim이 남아 있으면 생성 거부(409 publish_blocked).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "format"],
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "format": { "type": "string", "enum": ["html", "pdf"] },
+    "compare_snapshot_id": { "type": ["integer", "null"] },
+    "scenario_id": { "description": "본문 종합 점수표에 쓸 시나리오(생략 시 기본)", "type": ["integer", "null"] }
+  },
+  "examples": [{ "snapshot_id": 12, "format": "pdf", "compare_snapshot_id": 11 }]
+}

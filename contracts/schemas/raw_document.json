@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "raw_document.json",
+  "title": "RawDocument",
+  "description": "원문 1건 (RA §3 raw_document) — Collector.fetch의 반환 원소, Parser.parse의 입력. 원문 파일은 RAW_DIR/{source_kind}/{yyyy-mm-dd}/{sha256}.{ext}.\n- 멱등: sha256 유일 — 같은 내용이면 저장하지 않고 기존 행을 돌려준다.\n- 실패도 데이터: 403·5xx는 http_status에, DNS 실패·타임아웃은 http_status=null + error_text. 실패 행의 sha256 = sha256('fail:' + url + ':' + (http_status 또는 error 종류) + ':' + fetched_at의 날짜) — 같은 날 재시도는 중복 저장되지 않고 날마다 한 행이 남는다. 실패 행은 path=null.\n- official_site의 팝업 스크린샷은 image_hash(지각 해시 또는 sha256)를 남겨 변경 감지(WP7)에 쓴다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_kind", "url", "fetched_at", "http_status", "sha256", "path", "content_type", "text_path", "complex_id"],
+  "properties": {
+    "id": { "type": ["integer", "null"] },
+    "source_kind": { "$ref": "#/$defs/SourceKind" },
+    "url": { "type": "string", "minLength": 1 },
+    "fetched_at": { "type": "string", "format": "date-time" },
+    "http_status": { "type": ["integer", "null"] },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "description": "RAW_DIR 기준 상대 경로. 실패 행은 null", "type": ["string", "null"] },
+    "content_type": { "type": ["string", "null"] },
+    "text_path": { "description": "추출 텍스트(pdfplumber txt, DOM 텍스트) 상대 경로", "type": ["string", "null"] },
+    "complex_id": { "type": ["integer", "null"] },
+    "region_id": { "type": ["integer", "null"] },
+    "error_text": { "description": "DNS·타임아웃·파싱 실패 사유. 'scan'이면 스캔 PDF(확인 불가(스캔))", "type": ["string", "null"] },
+    "image_hash": { "type": ["string", "null"], "maxLength": 64 }
+  },
+  "$defs": {
+    "SourceKind": {
+      "title": "SourceKind",
+      "description": "원문 출처 종류 (RA §3 + DECISIONS D2-1 reference)",
+      "type": "string",
+      "enum": ["applyhome_list", "applyhome_detail", "notice_pdf", "official_site", "rtms", "stats", "news", "reference"]
+    }
+  },
+  "examples": [
+    {
+      "id": 9031, "source_kind": "official_site", "url": "https://opus-switzen.com/", "fetched_at": "2026-10-07T09:14:00+09:00",
+      "http_status": 403, "sha256": "3f1d2c4b5a69788796a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3",
+      "path": null, "content_type": null, "text_path": null, "complex_id": 4, "region_id": 1, "error_text": null, "image_hash": null
+    },
+    {
+      "id": 9001, "source_kind": "notice_pdf",
+      "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000302&pblancNo=2025000302&atchmnflSeqNo=1554198&atchmnflSn=13",
+      "fetched_at": "2026-10-07T06:05:11+09:00", "http_status": 200,
+      "sha256": "a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091",
+      "path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.pdf",
+      "content_type": "application/pdf",
+      "text_path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.txt",
+      "complex_id": 2, "region_id": 1, "error_text": null, "image_hash": null
+    }
+  ]
+}

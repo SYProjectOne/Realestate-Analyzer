@@ -1,0 +1,44 @@
+{
+  "summary": "'검단' 검색 후보",
+  "description": "코드는 형식 예시다(실제 코드는 reference.refresh가 적재한 legal_dong 표 기준). 분구 후 검단구 코드가 생기면 서구·검단구 후보가 함께 나온다(DECISIONS D3).",
+  "value": [
+    {
+      "kind": "sigungu",
+      "code": "28260",
+      "full_name": "인천광역시 서구",
+      "legal_dong_codes": [
+        "2826011400",
+        "2826011500",
+        "2826011600",
+        "2826011700",
+        "2826011800"
+      ],
+      "match": "partial",
+      "sigungu_code": "28260",
+      "sido_code": "28"
+    },
+    {
+      "kind": "admin_dong",
+      "code": "2826058500",
+      "full_name": "인천광역시 서구 검단동",
+      "legal_dong_codes": [
+        "2826011600",
+        "2826011700"
+      ],
+      "match": "exact",
+      "sigungu_code": "28260",
+      "sido_code": "28"
+    },
+    {
+      "kind": "legal_dong",
+      "code": "2826011600",
+      "full_name": "인천광역시 서구 마전동",
+      "legal_dong_codes": [
+        "2826011600"
+      ],
+      "match": "partial",
+      "sigungu_code": "28260",
+      "sido_code": "28"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claim.json",
+  "title": "Claim",
+  "description": "원자 주장 1건 (RA §3 claim, §4-3 ClaimSplitter). 1 사실 = 1 주장: 접속사·열거를 나누고, 숫자가 2개 이상이면 분할한다(\"3개는 unlikely이고 나머지는 uncertain\" → 2개 이상, T6). 복합 문장을 그대로 verify에 보내지 않는다.\ncontradicted가 남으면 그 스냅샷은 published 불가. contradicted 주장은 문장을 고쳐 다시 나눈 새 주장(parent_claim_id로 연결)으로 재검증한다(같은 입력 재호출 아님).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "section", "complex_id", "text", "evidence_text", "verify_status", "judgment_seq"],
+  "properties": {
+    "id": { "type": ["integer", "null"] },
+    "snapshot_id": { "type": ["integer", "null"] },
+    "section": { "description": "보고서 섹션 키(예 '6', '7-2', '8-1', '12-4')", "type": "string", "maxLength": 32 },
+    "complex_id": { "type": ["integer", "null"] },
+    "text": { "type": "string", "minLength": 1 },
+    "evidence_text": { "type": ["string", "null"] },
+    "verify_status": { "description": "verify 전이면 null", "type": ["string", "null"], "enum": ["verified", "contradicted", "unsupported", "review", null] },
+    "judgment_seq": { "type": ["integer", "null"] },
+    "parent_claim_id": { "type": ["integer", "null"] },
+    "ordinal": { "description": "같은 원문에서 나온 순서", "type": ["integer", "null"], "minimum": 0 }
+  },
+  "examples": [
+    {
+      "id": 7001, "snapshot_id": 12, "section": "12-4", "complex_id": 11,
+      "text": "고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었다.",
+      "evidence_text": "jev_noul #120: +10% 0.11 unlikely(auto)", "verify_status": "verified", "judgment_seq": 132,
+      "parent_claim_id": 6990, "ordinal": 0
+    }
+  ]
+}

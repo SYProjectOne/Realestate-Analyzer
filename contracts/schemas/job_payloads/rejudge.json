@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rejudge.json",
+  "title": "RejudgePayload",
+  "description": "job_name='rejudge' 페이로드 (RA §4-4). 변경 감지(WP7) 또는 G5 '재판정 실행' 버튼이 넣는다. 판정 파이프라인 P1~P9를 complex_ids에 대해서만 다시 돈다(생략 시 스냅샷의 판정 대상 전부). 같은 입력은 판정기를 다시 부르지 않는다(cached). scenario_id=null 이면 내장 5개 + 사용자 시나리오 전부의 점수·decide를 다시 만든다. rerank는 후보군이 바뀌면 전체 1회 재호출(§6-5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "scenario_id", "reason"],
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "scenario_id": { "type": ["integer", "null"] },
+    "complex_ids": { "type": ["array", "null"], "uniqueItems": true, "items": { "type": "integer" } },
+    "reason": { "description": "사람이 읽는 사유 (\"팝업 변경: 김포 칸타빌 에디션\", \"G5 재판정 실행\", \"사람 확인 입력\")", "type": "string", "minLength": 1, "maxLength": 200 },
+    "change_event_ids": { "type": ["array", "null"], "items": { "type": "integer" } }
+  },
+  "examples": [{ "snapshot_id": 12, "scenario_id": null, "complex_ids": [4], "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능", "change_event_ids": [3310] }]
+}

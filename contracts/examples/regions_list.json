@@ -1,0 +1,158 @@
+{
+  "summary": "지역 1개(회귀 픽스처)",
+  "value": [
+    {
+      "id": 1,
+      "name": "인천 송도·검단·계양 + 김포",
+      "query_text": "송도, 검단, 계양구, 김포시",
+      "selections": [
+        {
+          "kind": "legal_dong",
+          "code": "2818510600",
+          "full_name": "인천광역시 연수구 송도동"
+        },
+        {
+          "kind": "sigungu",
+          "code": "28260",
+          "full_name": "인천광역시 서구"
+        },
+        {
+          "kind": "sigungu",
+          "code": "28245",
+          "full_name": "인천광역시 계양구"
+        },
+        {
+          "kind": "sigungu",
+          "code": "41570",
+          "full_name": "경기도 김포시"
+        }
+      ],
+      "sido_codes": [
+        "28",
+        "41"
+      ],
+      "sigungu_codes": [
+        "28185",
+        "28245",
+        "28260",
+        "41570"
+      ],
+      "legal_dong_codes": [
+        "2818510600",
+        "2826011400",
+        "2826011500",
+        "2826011600",
+        "2826011700",
+        "2826011800",
+        "2824510900",
+        "2824511000",
+        "4157010100",
+        "4157010300",
+        "4157010400",
+        "4157010500",
+        "4157010600",
+        "4157025021",
+        "4157025022"
+      ],
+      "living_areas": [
+        {
+          "id": "la_1",
+          "name": "연수구",
+          "legal_dong_codes": [
+            "2818510600"
+          ],
+          "households": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "집계 전",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "supply_ref_units": null
+        },
+        {
+          "id": "la_2",
+          "name": "서구(검단)",
+          "legal_dong_codes": [
+            "2826011400",
+            "2826011500",
+            "2826011600",
+            "2826011700",
+            "2826011800"
+          ],
+          "households": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "집계 전",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "supply_ref_units": null
+        },
+        {
+          "id": "la_3",
+          "name": "계양구",
+          "legal_dong_codes": [
+            "2824510900",
+            "2824511000"
+          ],
+          "households": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "집계 전",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "supply_ref_units": null
+        },
+        {
+          "id": "la_4",
+          "name": "김포시",
+          "legal_dong_codes": [
+            "4157010100",
+            "4157010300",
+            "4157010400",
+            "4157010500",
+            "4157010600",
+            "4157025021",
+            "4157025022"
+          ],
+          "households": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "집계 전",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "supply_ref_units": null
+        }
+      ],
+      "age_premium_coef": {
+        "c_per_year": 0.015,
+        "cap_years": 8,
+        "label": "추정"
+      },
+      "supply_ref_pct": 0.08,
+      "applyhome_query": {
+        "sido_codes": [
+          "28",
+          "41"
+        ],
+        "from_ym": "2024-10"
+      },
+      "status": "ready",
+      "created_at": "2026-10-07T08:00:00+09:00",
+      "latest_snapshot": {
+        "id": 12,
+        "region_id": 1,
+        "asof_date": "2026-10-08",
+        "status": "published",
+        "degraded": false,
+        "created_at": "2026-10-08T06:00:03+09:00",
+        "published_at": "2026-10-08T07:42:10+09:00",
+        "contradicted_claims": 0,
+        "complex_count": 16
+      }
+    }
+  ]
+}

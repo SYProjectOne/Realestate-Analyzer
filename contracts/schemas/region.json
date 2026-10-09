@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "region.json",
+  "title": "Region",
+  "description": "사용자가 입력한 지역 1개 (RA §3 region + DECISIONS D2-2). 프로그램은 특정 지역 전용이 아니다 — 지역은 사용자가 고른 후보(selections)의 묶음이고 코드에 지역명을 하드코딩하지 않는다.\n- sido_codes: 청약홈 목록 조회용(2자리). 결과 단지 주소를 legal_dong 이름으로 매칭해 legal_dong_codes에 속한 것만 남긴다(D2-6). 매칭 실패 단지는 complex.inclusion_class='범위 경계'.\n- sigungu_codes: 실거래 Open API 조회용(5자리).\n- legal_dong_codes: 이 지역의 법정동 전체(10자리).\n- living_areas: 생활권 정의. 모든 법정동은 정확히 한 생활권에 속한다.\n- age_premium_coef: 가격 갭 연식 보정 계수 c와 상한(기본 0.015/년, 8년, 라벨 추정 — DECISIONS D1-2).\n- supply_ref_pct: 공급 기준치 U_ref = 생활권 세대수 × 이 비율(기본 0.08, 라벨 추정 — D1-3).\n- status: resolving(후보 확정 중) → bootstrapping(region.bootstrap 잡 실행 중) → ready / failed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "query_text", "selections", "sido_codes", "sigungu_codes", "legal_dong_codes", "living_areas", "age_premium_coef", "supply_ref_pct", "applyhome_query", "status", "created_at"],
+  "properties": {
+    "id": { "type": "integer" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "query_text": { "description": "사용자가 입력한 원문", "type": "string" },
+    "selections": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/RegionSelection" } },
+    "sido_codes": { "type": "array", "description": "시도 코드 2자리 문자열", "items": { "type": "string" } },
+    "sigungu_codes": { "type": "array", "description": "시군구 코드 5자리 문자열", "items": { "type": "string" } },
+    "legal_dong_codes": { "type": "array", "description": "법정동 코드 10자리 문자열", "items": { "type": "string" } },
+    "living_areas": { "type": "array", "items": { "$ref": "living_area.json" } },
+    "age_premium_coef": { "$ref": "#/$defs/AgePremiumCoef" },
+    "supply_ref_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "default": 0.08 },
+    "applyhome_query": { "description": "청약홈 조회 파라미터(시도 코드·조회 시작월 등). collectors/applyhome 이 쓰고 읽는다", "type": "object" },
+    "status": { "type": "string", "enum": ["resolving", "bootstrapping", "ready", "failed"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "latest_snapshot": { "description": "GET /regions 에서 최신 스냅샷(없으면 null)", "anyOf": [{ "$ref": "snapshot.json" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "RegionSelection": {
+      "title": "RegionSelection",
+      "description": "사용자가 고른 후보 1개 (RegionCandidate의 kind·code·full_name)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "code", "full_name"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["sido", "sigungu", "admin_dong", "legal_dong"] },
+        "code": { "type": "string", "pattern": "^[0-9]{2}([0-9]{3}([0-9]{5})?)?$" },
+        "full_name": { "type": "string" }
+      }
+    },
+    "AgePremiumCoef": {
+      "title": "AgePremiumCoef",
+      "description": "연식 보정 T_adj = T × (1 + c × min(Y_ref − Y_built, cap_years)) (RA §6-2). 라벨은 항상 추정.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["c_per_year", "cap_years", "label"],
+      "properties": {
+        "c_per_year": { "type": "number", "minimum": 0, "maximum": 0.1, "default": 0.015 },
+        "cap_years": { "type": "integer", "minimum": 0, "maximum": 30, "default": 8 },
+        "label": { "const": "추정" }
+      }
+    },
+    "RegionCreate": {
+      "title": "RegionCreate",
+      "description": "POST /regions 본문. 서버가 selections를 펼쳐 sido/sigungu/legal_dong 코드와 기본 생활권(시군구당 1개)을 만들고 region.bootstrap 잡을 등록한다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "query_text", "selections"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "query_text": { "type": "string" },
+        "selections": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/RegionSelection" } }
+      }
+    },
+    "RegionCreated": {
+      "title": "RegionCreated",
+      "description": "POST /regions 201 응답: 만든 region + 등록된 region.bootstrap 잡 id",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "job_id"],
+      "properties": {
+        "region": { "$ref": "#" },
+        "job_id": { "type": "integer" }
+      }
+    },
+    "LivingAreasUpdate": {
+      "title": "LivingAreasUpdate",
+      "description": "PUT /regions/{id}/living-areas 본문. 모든 법정동이 정확히 한 생활권에 속해야 한다(누락·중복이면 422 validation_error).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["living_areas"],
+      "properties": {
+        "living_areas": { "type": "array", "minItems": 1, "items": { "$ref": "living_area.json#/$defs/LivingAreaInput" } }
+      }
+    },
+    "LivingAreasUpdated": {
+      "title": "LivingAreasUpdated",
+      "description": "PUT /regions/{id}/living-areas 200 응답: 갱신된 region + change_event(severity=critical, entity=region, field=living_areas) + 등록된 rejudge 잡 id",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "change_event", "job_id"],
+      "properties": {
+        "region": { "$ref": "#" },
+        "change_event": { "$ref": "change_event.json" },
+        "job_id": { "type": "integer" }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": 1, "name": "인천 송도·검단·계양 + 김포", "query_text": "송도, 검단, 계양구, 김포시",
+      "selections": [
+        { "kind": "legal_dong", "code": "2818510600", "full_name": "인천광역시 연수구 송도동" },
+        { "kind": "sigungu", "code": "28260", "full_name": "인천광역시 서구" },
+        { "kind": "sigungu", "code": "28245", "full_name": "인천광역시 계양구" },
+        { "kind": "sigungu", "code": "41570", "full_name": "경기도 김포시" }
+      ],
+      "sido_codes": ["28", "41"], "sigungu_codes": ["28185", "28245", "28260", "41570"],
+      "legal_dong_codes": ["2818510600", "2826011500", "2826011600", "2824510900", "4157010100", "4157025021"],
+      "living_areas": [
+        { "id": "la_1", "name": "연수구", "legal_dong_codes": ["2818510600"], "households": null, "supply_ref_units": null },
+        { "id": "la_2", "name": "서구(검단)", "legal_dong_codes": ["2826011500", "2826011600"], "households": null, "supply_ref_units": null },
+        { "id": "la_3", "name": "계양구", "legal_dong_codes": ["2824510900"], "households": null, "supply_ref_units": null },
+        { "id": "la_4", "name": "김포시", "legal_dong_codes": ["4157010100", "4157025021"], "households": null, "supply_ref_units": null }
+      ],
+      "age_premium_coef": { "c_per_year": 0.015, "cap_years": 8, "label": "추정" },
+      "supply_ref_pct": 0.08, "applyhome_query": { "sido_codes": ["28", "41"], "from_ym": "2024-10" },
+      "status": "ready", "created_at": "2026-10-07T08:00:00+09:00", "latest_snapshot": null
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "score_row.json",
+  "title": "ScoreRow",
+  "description": "종합 점수 1행 (RA §4-2 ScoreRow) — G1 Top5Cards, G4 CompareGrid, C6 점수 분해의 데이터. 한 score_run(시나리오 1개) 기준.\n- total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.\n- components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').\n- p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).\n- delta_rerank: 이전 run 대비 rerank relevance 변화(§6-5).\n- decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).\n- judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 제외 (meta §1-3-4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["complex_id", "name", "total", "rank", "tie_group", "unstable", "p10", "components", "intake", "judge_scope"],
+  "properties": {
+    "complex_id": { "type": "integer" },
+    "name": { "type": "string" },
+    "living_area": { "type": ["string", "null"] },
+    "living_area_name": { "type": ["string", "null"] },
+    "score_run_id": { "type": ["integer", "null"] },
+    "total": { "$ref": "fact.json" },
+    "rank": { "type": ["integer", "null"], "minimum": 1 },
+    "tie_group": { "type": ["integer", "null"], "minimum": 1 },
+    "unstable": { "type": "boolean" },
+    "p10": { "$ref": "fact.json" },
+    "components": { "$ref": "#/$defs/Components" },
+    "delta_rerank": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "intake": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
+    "decision": { "anyOf": [{ "$ref": "#/$defs/DecisionBadge" }, { "type": "null" }] },
+    "judge_scope": { "$ref": "#/$defs/JudgeScope" }
+  },
+  "$defs": {
+    "JudgeScope": {
+      "title": "JudgeScope",
+      "description": "판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.",
+      "type": "string",
+      "enum": ["판정 대상", "보류", "참고", "제외"]
+    },
+    "ComponentView": {
+      "title": "ComponentView",
+      "description": "성분 1개의 화면 표현. contribution = weight × score.v (score.v=null이면 null).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "raw", "formula_text", "weight", "contribution"],
+      "properties": {
+        "score": { "$ref": "fact.json" },
+        "raw": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "formula_text": { "type": "string", "minLength": 1 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "contribution": { "type": ["number", "null"] }
+      }
+    },
+    "Components": {
+      "title": "Components",
+      "description": "성분 6개. liquidity와 move_in 중 시나리오가 쓰는 하나만 있다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p10", "rerank", "gap", "benchmark", "supply"],
+      "properties": {
+        "p10": { "$ref": "#/$defs/ComponentView" },
+        "rerank": { "$ref": "#/$defs/ComponentView" },
+        "gap": { "$ref": "#/$defs/ComponentView" },
+        "benchmark": { "$ref": "#/$defs/ComponentView" },
+        "supply": { "$ref": "#/$defs/ComponentView" },
+        "liquidity": { "$ref": "#/$defs/ComponentView" },
+        "move_in": { "$ref": "#/$defs/ComponentView" }
+      },
+      "if": { "required": ["liquidity"] },
+      "then": { "not": { "required": ["move_in"] } },
+      "else": { "required": ["move_in"] }
+    },
+    "DecisionBadge": {
+      "title": "DecisionBadge",
+      "description": "ScoreRow에 붙는 decide 요약. tie=true면 TieBadge, mismatch=true면 MismatchBadge('증거와 상이').",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prob", "chosen", "tie", "mismatch"],
+      "properties": {
+        "prob": { "$ref": "fact.json" },
+        "chosen": { "type": "boolean" },
+        "tie": { "type": "boolean" },
+        "mismatch": { "type": "boolean" },
+        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    }
+  },
+  "examples": [
+    {
+      "complex_id": 2, "name": "엘리프 검단 포레듀", "living_area": "la_2", "living_area_name": "서구(검단)", "score_run_id": 88,
+      "total": { "v": 5.7, "label": "추정", "prov": "st_88_2", "checked_at": "2026-10-08", "unit": "score" },
+      "rank": 2, "tie_group": null, "unstable": false,
+      "p10": { "v": 0.45, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" },
+      "components": {
+        "p10": { "score": { "v": 4.5, "label": "추정", "prov": "sc_88_2_p10", "checked_at": "2026-10-08", "unit": "score" }, "raw": { "v": 0.45, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" }, "formula_text": "10 × 0.45 = 4.5", "weight": 0.35, "contribution": 1.575 },
+        "rerank": { "score": { "v": 8.9, "label": "추정", "prov": "sc_88_2_rerank", "checked_at": "2026-10-08", "unit": "score" }, "raw": { "v": 0.89, "label": "추정", "reason": "판정기 rerank", "prov": "jl_124", "checked_at": "2026-10-07", "unit": "prob" }, "formula_text": "relevance 0.89 × 10 = 8.9 (보고서 (a)단계)", "weight": 0.20, "contribution": 1.78 },
+        "gap": { "score": { "v": 6.3, "label": "추정", "prov": "sc_88_2_gap", "checked_at": "2026-10-08", "unit": "score" }, "raw": null, "formula_text": "보고서 등급: 혼재(−30~+20) → 6.3", "weight": 0.15, "contribution": 0.945 },
+        "benchmark": { "score": { "v": 5.0, "label": "추정", "prov": "sc_88_2_benchmark", "checked_at": "2026-10-08", "unit": "score" }, "raw": null, "formula_text": "보고서 등급: 검단 저가분 +54~103% / 2023~24 −1~+10% → 5", "weight": 0.10, "contribution": 0.5 },
+        "supply": { "score": { "v": 3.0, "label": "추정", "prov": "sc_88_2_supply", "checked_at": "2026-10-08", "unit": "score" }, "raw": null, "formula_text": "보고서 등급: 2028 동시 입주 → 3", "weight": 0.10, "contribution": 0.3 },
+        "liquidity": { "score": { "v": 6.0, "label": "추정", "prov": "sc_88_2_liquidity", "checked_at": "2026-10-08", "unit": "score" }, "raw": null, "formula_text": "보고서 등급: 전매 3년(2028-09)·거주의무 없음 → 6", "weight": 0.10, "contribution": 0.6 }
+      },
+      "delta_rerank": { "v": -0.02, "label": "추정", "reason": "0.91 → 0.89", "prov": "sc_88_2_rerank", "checked_at": "2026-10-08", "unit": "ratio" },
+      "intake": { "status": "가능", "path": "official_popup", "checked_at": "2026-10-07T09:12:00+09:00", "http_status": 200, "evidence_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/" },
+      "decision": { "prob": { "v": 0.71, "label": "추정", "reason": "판정기 decide", "prov": "jl_125", "checked_at": "2026-10-07", "unit": "prob" }, "chosen": true, "tie": false, "mismatch": true, "confidence": 0.67 },
+      "judge_scope": "판정 대상"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "summary": "contradicted claim 남음",
+  "value": {
+    "code": "publish_blocked",
+    "detail": "snapshot 12 has 1 contradicted claim(s); fix and re-verify before publishing or generating a report"
+  }
+}

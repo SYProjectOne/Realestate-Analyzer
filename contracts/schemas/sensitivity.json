@@ -1,0 +1,885 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sensitivity.json",
+  "title": "Sensitivity",
+  "description": "GET /snapshots/{sid}/sensitivity?scenario= — C10 민감도 (RA §6-6). 가중치 6개 각각 ±0.10을 주고(0~1로 자름) 나머지 5개를 원래 비율대로 재정규화해 합 1을 맞춘 12개 변형마다 종합 점수·순위를 다시 구한다: w_i' = clamp(w_i ± 0.10, 0, 1), w_j' = w_j × (1 − w_i')/(1 − w_i) (j≠i).\nTOP 5 집합 = rank ≤ 5 인 단지 전부(공동 5위 포함, 동점 규칙은 ScoreRunResult와 같음). 한 변형이라도 집합이 바뀌면 unstable=true, 들어오거나 나간 단지가 unstable_complex_ids(score_total.unstable=true). stable_components = 두 변형 모두 집합이 그대로인 성분(화면에서 회색).\ncells는 성분 순서(p10, rerank, gap, benchmark, supply, liquidity|move_in) × (+, −) 순 12개.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "snapshot_id",
+    "scenario_id",
+    "score_run_id",
+    "base_weights",
+    "base_top5",
+    "cells",
+    "unstable",
+    "unstable_complex_ids",
+    "stable_components"
+  ],
+  "properties": {
+    "snapshot_id": {
+      "type": "integer"
+    },
+    "scenario_id": {
+      "type": "integer"
+    },
+    "score_run_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "base_weights": {
+      "$ref": "scenario.json#/$defs/Weights"
+    },
+    "base_top5": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/SensitivityCell"
+      }
+    },
+    "unstable": {
+      "type": "boolean"
+    },
+    "unstable_complex_ids": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "stable_components": {
+      "type": "array",
+      "items": {
+        "$ref": "scenario.json#/$defs/ComponentKey"
+      }
+    }
+  },
+  "$defs": {
+    "SensitivityCell": {
+      "title": "SensitivityCell",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant",
+        "component",
+        "delta",
+        "weights",
+        "top5",
+        "ranks",
+        "changed",
+        "entered",
+        "exited"
+      ],
+      "properties": {
+        "variant": {
+          "description": "'<component>+0.10' 또는 '<component>-0.10'",
+          "type": "string"
+        },
+        "component": {
+          "$ref": "scenario.json#/$defs/ComponentKey"
+        },
+        "delta": {
+          "type": "number",
+          "enum": [
+            0.1,
+            -0.1
+          ]
+        },
+        "weights": {
+          "$ref": "scenario.json#/$defs/Weights"
+        },
+        "top5": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "ranks": {
+          "description": "기준 TOP 5 ∪ 변형 TOP 5 단지의 변형 순위·점수(C10 작은 선)",
+          "type": "array",
+          "items": {
+            "title": "SensitivityRank",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "complex_id",
+              "rank",
+              "total"
+            ],
+            "properties": {
+              "complex_id": {
+                "type": "integer"
+              },
+              "rank": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "entered": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "exited": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "snapshot_id": 12,
+      "scenario_id": 1,
+      "score_run_id": 88,
+      "base_weights": {
+        "p10": 0.35,
+        "rerank": 0.2,
+        "gap": 0.15,
+        "benchmark": 0.1,
+        "supply": 0.1,
+        "liquidity": 0.1
+      },
+      "base_top5": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cells": [
+        {
+          "variant": "p10+0.10",
+          "component": "p10",
+          "delta": 0.1,
+          "weights": {
+            "p10": 0.45,
+            "rerank": 0.169231,
+            "gap": 0.126923,
+            "benchmark": 0.084615,
+            "supply": 0.084615,
+            "liquidity": 0.084615
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.5669
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.5154
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 4.9827
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 4.7342
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 4.3008
+            },
+            {
+              "complex_id": 6,
+              "rank": 5,
+              "total": 4.3427
+            }
+          ],
+          "changed": false,
+          "entered": [],
+          "exited": []
+        },
+        {
+          "variant": "p10-0.10",
+          "component": "p10",
+          "delta": -0.1,
+          "weights": {
+            "p10": 0.25,
+            "rerank": 0.230769,
+            "gap": 0.173077,
+            "benchmark": 0.115385,
+            "supply": 0.115385,
+            "liquidity": 0.115385
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 6.1731
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.8846
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.6673
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 5.2558
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 4.9192
+            },
+            {
+              "complex_id": 6,
+              "rank": 6,
+              "total": 4.8673
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            6
+          ]
+        },
+        {
+          "variant": "rerank+0.10",
+          "component": "rerank",
+          "delta": 0.1,
+          "weights": {
+            "p10": 0.30625,
+            "rerank": 0.3,
+            "gap": 0.13125,
+            "benchmark": 0.0875,
+            "supply": 0.0875,
+            "liquidity": 0.0875
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 6.2488
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 6.1
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.7719
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 5.4581
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 5.0712
+            },
+            {
+              "complex_id": 6,
+              "rank": 6,
+              "total": 4.9919
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            6
+          ]
+        },
+        {
+          "variant": "rerank-0.10",
+          "component": "rerank",
+          "delta": -0.1,
+          "weights": {
+            "p10": 0.39375,
+            "rerank": 0.1,
+            "gap": 0.16875,
+            "benchmark": 0.1125,
+            "supply": 0.1125,
+            "liquidity": 0.1125
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.4912
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.3
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 4.8781
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 4.5319
+            },
+            {
+              "complex_id": 5,
+              "rank": 6,
+              "total": 4.1488
+            },
+            {
+              "complex_id": 6,
+              "rank": 5,
+              "total": 4.2181
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            5
+          ]
+        },
+        {
+          "variant": "gap+0.10",
+          "component": "gap",
+          "delta": 0.1,
+          "weights": {
+            "p10": 0.308824,
+            "rerank": 0.176471,
+            "gap": 0.25,
+            "benchmark": 0.088235,
+            "supply": 0.088235,
+            "liquidity": 0.088235
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.8265
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.7706
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.2162
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 4.9956
+            },
+            {
+              "complex_id": 5,
+              "rank": 6,
+              "total": 4.6088
+            },
+            {
+              "complex_id": 6,
+              "rank": 5,
+              "total": 4.8868
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            5
+          ]
+        },
+        {
+          "variant": "gap-0.10",
+          "component": "gap",
+          "delta": -0.1,
+          "weights": {
+            "p10": 0.391176,
+            "rerank": 0.223529,
+            "gap": 0.05,
+            "benchmark": 0.111765,
+            "supply": 0.111765,
+            "liquidity": 0.111765
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            7
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.9135
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.6294
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.4338
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 4.9944
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 4.6112
+            },
+            {
+              "complex_id": 6,
+              "rank": 8,
+              "total": 4.3232
+            },
+            {
+              "complex_id": 7,
+              "rank": 5,
+              "total": 4.6535
+            }
+          ],
+          "changed": true,
+          "entered": [
+            7
+          ],
+          "exited": [
+            6
+          ]
+        },
+        {
+          "variant": "benchmark+0.10",
+          "component": "benchmark",
+          "delta": 0.1,
+          "weights": {
+            "p10": 0.311111,
+            "rerank": 0.177778,
+            "gap": 0.133333,
+            "benchmark": 0.2,
+            "supply": 0.088889,
+            "liquidity": 0.088889
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.7733
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.6222
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.1778
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 4.94
+            },
+            {
+              "complex_id": 5,
+              "rank": 6,
+              "total": 4.5978
+            },
+            {
+              "complex_id": 6,
+              "rank": 5,
+              "total": 4.6489
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            5
+          ]
+        },
+        {
+          "variant": "benchmark-0.10",
+          "component": "benchmark",
+          "delta": -0.1,
+          "weights": {
+            "p10": 0.388889,
+            "rerank": 0.222222,
+            "gap": 0.166667,
+            "benchmark": 0.0,
+            "supply": 0.111111,
+            "liquidity": 0.111111
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.9667
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.7778
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.4722
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 5.05
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 4.6222
+            },
+            {
+              "complex_id": 6,
+              "rank": 6,
+              "total": 4.5611
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            6
+          ]
+        },
+        {
+          "variant": "supply+0.10",
+          "component": "supply",
+          "delta": 0.1,
+          "weights": {
+            "p10": 0.311111,
+            "rerank": 0.177778,
+            "gap": 0.133333,
+            "benchmark": 0.088889,
+            "supply": 0.2,
+            "liquidity": 0.088889
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.9956
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.4
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.2889
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 4.7733
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 4.4311
+            },
+            {
+              "complex_id": 6,
+              "rank": 5,
+              "total": 4.4267
+            }
+          ],
+          "changed": false,
+          "entered": [],
+          "exited": []
+        },
+        {
+          "variant": "supply-0.10",
+          "component": "supply",
+          "delta": -0.1,
+          "weights": {
+            "p10": 0.388889,
+            "rerank": 0.222222,
+            "gap": 0.166667,
+            "benchmark": 0.111111,
+            "supply": 0.0,
+            "liquidity": 0.111111
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 2,
+              "total": 5.7444
+            },
+            {
+              "complex_id": 2,
+              "rank": 1,
+              "total": 6.0
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 5.3611
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 5.2167
+            },
+            {
+              "complex_id": 5,
+              "rank": 5,
+              "total": 4.7889
+            },
+            {
+              "complex_id": 6,
+              "rank": 5,
+              "total": 4.7833
+            }
+          ],
+          "changed": false,
+          "entered": [],
+          "exited": []
+        },
+        {
+          "variant": "liquidity+0.10",
+          "component": "liquidity",
+          "delta": 0.1,
+          "weights": {
+            "p10": 0.311111,
+            "rerank": 0.177778,
+            "gap": 0.133333,
+            "benchmark": 0.088889,
+            "supply": 0.088889,
+            "liquidity": 0.2
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            7
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.9956
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.7333
+            },
+            {
+              "complex_id": 3,
+              "rank": 2,
+              "total": 5.7333
+            },
+            {
+              "complex_id": 4,
+              "rank": 4,
+              "total": 5.1067
+            },
+            {
+              "complex_id": 5,
+              "rank": 6,
+              "total": 4.7644
+            },
+            {
+              "complex_id": 6,
+              "rank": 10,
+              "total": 4.3156
+            },
+            {
+              "complex_id": 7,
+              "rank": 5,
+              "total": 4.9911
+            }
+          ],
+          "changed": true,
+          "entered": [
+            7
+          ],
+          "exited": [
+            5,
+            6
+          ]
+        },
+        {
+          "variant": "liquidity-0.10",
+          "component": "liquidity",
+          "delta": -0.1,
+          "weights": {
+            "p10": 0.388889,
+            "rerank": 0.222222,
+            "gap": 0.166667,
+            "benchmark": 0.111111,
+            "supply": 0.111111,
+            "liquidity": 0.0
+          },
+          "top5": [
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "ranks": [
+            {
+              "complex_id": 1,
+              "rank": 1,
+              "total": 5.7444
+            },
+            {
+              "complex_id": 2,
+              "rank": 2,
+              "total": 5.6667
+            },
+            {
+              "complex_id": 3,
+              "rank": 3,
+              "total": 4.9167
+            },
+            {
+              "complex_id": 4,
+              "rank": 3,
+              "total": 4.8833
+            },
+            {
+              "complex_id": 5,
+              "rank": 6,
+              "total": 4.4556
+            },
+            {
+              "complex_id": 6,
+              "rank": 3,
+              "total": 4.8944
+            }
+          ],
+          "changed": true,
+          "entered": [],
+          "exited": [
+            5
+          ]
+        }
+      ],
+      "unstable": true,
+      "unstable_complex_ids": [
+        5,
+        6,
+        7
+      ],
+      "stable_components": [
+        "supply"
+      ]
+    }
+  ]
+}

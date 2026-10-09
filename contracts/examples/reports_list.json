@@ -1,0 +1,44 @@
+{
+  "summary": "G8 보고서 목록",
+  "value": [
+    {
+      "id": 911,
+      "snapshot_id": 12,
+      "compare_snapshot_id": 11,
+      "format": "pdf",
+      "status": "running",
+      "created_at": "2026-10-08T08:00:00+09:00",
+      "finished_at": null,
+      "filename": null,
+      "size_bytes": null,
+      "sha256": null,
+      "blocked_reason": null
+    },
+    {
+      "id": 910,
+      "snapshot_id": 12,
+      "compare_snapshot_id": null,
+      "format": "html",
+      "status": "done",
+      "created_at": "2026-10-08T07:50:00+09:00",
+      "finished_at": "2026-10-08T07:50:20+09:00",
+      "filename": "report_2026-10-08.html",
+      "size_bytes": 2310144,
+      "sha256": "0d5e8f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
+      "blocked_reason": null
+    },
+    {
+      "id": 903,
+      "snapshot_id": 11,
+      "compare_snapshot_id": null,
+      "format": "pdf",
+      "status": "done",
+      "created_at": "2026-10-07T22:00:00+09:00",
+      "finished_at": "2026-10-07T22:01:12+09:00",
+      "filename": "report_2026-10-07.pdf",
+      "size_bytes": 1802240,
+      "sha256": "5c2d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
+      "blocked_reason": null
+    }
+  ]
+}

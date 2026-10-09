@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "score_run.json",
+  "title": "ScoreRunResult",
+  "description": "ScoreEngine.run(snapshot, scenario, inputs)의 결과 = score_run 1행 + score_component·score_total 행들 (RA §3, §4-3, §6). 순수 함수 결과라 같은 inputs면 같은 값이다.\n종합 S = Σ w_i s_i — 10진 연산(Decimal)으로 계산해 원값을 total에 저장한다(부동소수 합을 쓰면 5.325가 5.3249…가 되어 반올림이 바뀐다). 성분 중 하나라도 score_0_10=null이면 total=null(미계산), rank=null.\n동점(§6-4): 정렬은 total 내림차순(동률이면 complex_id 오름차순). 그룹의 첫 단지(리더)와 |ΔS| < 0.05 인 뒤따르는 단지는 같은 tie_group·같은 rank(공동 순위). rank는 경쟁 순위(1,2,2,4): 그룹 rank = 1 + 그룹 앞 단지 수. 비교는 반올림 전 원값으로 한다. tie_group은 1부터 매기고 단독 단지는 null.\nunstable: 민감도 12변형 중 하나라도 TOP 5 집합(rank ≤ 5인 단지 전부 — 공동 5위 포함)이 바뀌면 그 집합에 들어오거나 나간 단지 true.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "scenario_id", "weights", "rerank_judgment_seq", "components", "totals"],
+  "properties": {
+    "score_run_id": { "type": ["integer", "null"] },
+    "snapshot_id": { "type": "integer" },
+    "scenario_id": { "type": "integer" },
+    "weights": { "$ref": "scenario.json#/$defs/Weights" },
+    "rerank_judgment_seq": { "description": "이 run의 rerank 값이 나온 단 하나의 호출(§6-5)", "type": ["integer", "null"] },
+    "prev_score_run_id": { "description": "delta_rerank 비교 대상 run", "type": ["integer", "null"] },
+    "created_at": { "type": ["string", "null"], "format": "date-time" },
+    "components": { "type": "array", "items": { "$ref": "score_component.json" } },
+    "totals": { "type": "array", "items": { "$ref": "#/$defs/ScoreTotal" } }
+  },
+  "$defs": {
+    "ScoreTotal": {
+      "title": "ScoreTotal",
+      "description": "score_total 1행. (score_run_id, complex_id) 유일.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complex_id", "total", "rank", "tie_group", "unstable"],
+      "properties": {
+        "complex_id": { "type": "integer" },
+        "total": { "type": ["number", "null"], "minimum": 0, "maximum": 10 },
+        "rank": { "type": ["integer", "null"], "minimum": 1 },
+        "tie_group": { "type": ["integer", "null"], "minimum": 1 },
+        "unstable": { "type": "boolean" }
+      }
+    }
+  },
+  "examples": [
+    {
+      "score_run_id": 88, "snapshot_id": 12, "scenario_id": 1,
+      "weights": { "p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10 },
+      "rerank_judgment_seq": 124, "prev_score_run_id": 71, "created_at": "2026-10-08T07:30:00+09:00",
+      "components": [
+        { "complex_id": 5, "component": "p10", "raw_value": 0.26, "score_0_10": 2.6, "formula_text": "10 × 0.26 = 2.6 (jl_70)", "label": "추정", "reason": null, "delta": null, "flags": [] }
+      ],
+      "totals": [
+        { "complex_id": 1, "total": 5.87, "rank": 1, "tie_group": null, "unstable": false },
+        { "complex_id": 5, "total": 4.61, "rank": 5, "tie_group": 1, "unstable": true },
+        { "complex_id": 6, "total": 4.605, "rank": 5, "tie_group": 1, "unstable": true }
+      ]
+    }
+  ]
+}

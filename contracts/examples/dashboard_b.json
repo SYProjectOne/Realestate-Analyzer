@@ -1,0 +1,1540 @@
+{
+  "summary": "G1 상황 B(동률 배지)",
+  "description": "상황 B 가중치로 다시 계산한 TOP 5. decide #127은 confidence 0.48 < 0.6이라 칸타빌·엘리프가 함께 tie=true·chosen=true(T2).",
+  "value": {
+    "region_id": 1,
+    "snapshot_id": 12,
+    "asof_date": "2026-10-08",
+    "scenario_id": 3,
+    "scenario_code": "B",
+    "scenario_name": "B 가점 낮음·소액 자기자본",
+    "degraded": false,
+    "score_run_id": 90,
+    "weights": {
+      "p10": 0.3,
+      "rerank": 0.15,
+      "gap": 0.2,
+      "benchmark": 0.1,
+      "supply": 0.1,
+      "liquidity": 0.15
+    },
+    "kpis": {
+      "judged_count": {
+        "v": 12,
+        "label": "추정",
+        "prov": "st_90_1",
+        "checked_at": "2026-10-08",
+        "reason": "집계",
+        "unit": "count"
+      },
+      "intake_open_count": {
+        "v": 3,
+        "label": "추정",
+        "prov": "st_90_2",
+        "checked_at": "2026-10-08",
+        "reason": "집계",
+        "unit": "count"
+      },
+      "unsold": {
+        "ym": "2026-08",
+        "total": {
+          "v": 2029,
+          "label": "재가공",
+          "prov": "fp_6100",
+          "checked_at": "2026-10-07",
+          "reason": "연수 505·검단 737·계양 0·김포 787 합",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 992,
+          "label": "재가공",
+          "prov": "fp_6100",
+          "checked_at": "2026-10-07",
+          "reason": "연수 203·검단 737·김포 52 합",
+          "unit": "units"
+        }
+      },
+      "move_in_peak": {
+        "year": {
+          "v": 2028,
+          "label": "추정",
+          "prov": "fp_6200",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "year"
+        },
+        "units": {
+          "v": 14093,
+          "label": "추정",
+          "prov": "fp_6200",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계(송도 2,433·검단 약 3,800·김포 8,860)",
+          "unit": "units"
+        }
+      },
+      "data_freshness": {
+        "last_success_at": {
+          "v": "2026-10-08T06:04:12+09:00",
+          "label": "확인됨",
+          "prov": "rd_9200",
+          "checked_at": "2026-10-08",
+          "unit": "text"
+        },
+        "stale_sources": 0,
+        "failing_sources": 1
+      }
+    },
+    "top5": [
+      {
+        "complex_id": 1,
+        "name": "더샵 송도그란테르",
+        "living_area": "la_1",
+        "living_area_name": "연수구",
+        "score_run_id": 90,
+        "total": {
+          "v": 5.86,
+          "label": "추정",
+          "prov": "st_90_1",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 1,
+        "tie_group": null,
+        "unstable": false,
+        "p10": {
+          "v": 0.39,
+          "label": "추정",
+          "prov": "jl_66",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 3.9,
+              "label": "추정",
+              "prov": "sc_90_1_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.39,
+              "label": "추정",
+              "prov": "jl_66",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.39 = 3.9 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 1.17
+          },
+          "rerank": {
+            "score": {
+              "v": 8.9,
+              "label": "추정",
+              "prov": "sc_90_1_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.89,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.89 × 10 = 8.9 (#124)",
+            "weight": 0.15,
+            "contribution": 1.335
+          },
+          "gap": {
+            "score": {
+              "v": 5.5,
+              "label": "추정",
+              "prov": "sc_90_1_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: ±5% → 5.5",
+            "weight": 0.2,
+            "contribution": 1.1
+          },
+          "benchmark": {
+            "score": {
+              "v": 5.0,
+              "label": "추정",
+              "prov": "sc_90_1_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: IBD +12~82% / 9억대 −18~+9% → 5",
+            "weight": 0.1,
+            "contribution": 0.5
+          },
+          "supply": {
+            "score": {
+              "v": 7.0,
+              "label": "추정",
+              "prov": "sc_90_1_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: IBD 추가 공급 없음 → 7",
+            "weight": 0.1,
+            "contribution": 0.7
+          },
+          "liquidity": {
+            "score": {
+              "v": 7.0,
+              "label": "추정",
+              "prov": "sc_90_1_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 6개월·거주의무 없음, 대출 6억 한도 → 7",
+            "weight": 0.15,
+            "contribution": 1.05
+          }
+        },
+        "delta_rerank": {
+          "v": 0.0,
+          "label": "추정",
+          "prov": "sc_90_1_rerank",
+          "checked_at": "2026-10-08",
+          "reason": "0.89 → 0.89 (#71 → #124)",
+          "unit": "ratio"
+        },
+        "intake": {
+          "id": 501,
+          "complex_id": 1,
+          "snapshot_id": 12,
+          "status": "불가",
+          "path": "official_popup",
+          "evidence_url": "https://xn--2i0bq5hvjp1kpzchxro8a528e.kr/",
+          "screenshot_path": "official_site/2026-10-07/01a7f3.png",
+          "raw_document_id": 9201,
+          "checked_at": "2026-10-07T09:11:00+09:00",
+          "http_status": 200,
+          "reason": "마감",
+          "note": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'",
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.0,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": false,
+          "tie": false,
+          "mismatch": false,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 2,
+        "name": "엘리프 검단 포레듀",
+        "living_area": "la_2",
+        "living_area_name": "서구(검단)",
+        "score_run_id": 90,
+        "total": {
+          "v": 5.65,
+          "label": "추정",
+          "prov": "st_90_2",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 2,
+        "tie_group": null,
+        "unstable": false,
+        "p10": {
+          "v": 0.45,
+          "label": "추정",
+          "prov": "jl_68",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 4.5,
+              "label": "추정",
+              "prov": "sc_90_2_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.45,
+              "label": "추정",
+              "prov": "jl_68",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.45 = 4.5 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 1.35
+          },
+          "rerank": {
+            "score": {
+              "v": 8.9,
+              "label": "추정",
+              "prov": "sc_90_2_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.89,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.89 × 10 = 8.9 (#124)",
+            "weight": 0.15,
+            "contribution": 1.335
+          },
+          "gap": {
+            "score": {
+              "v": 6.3,
+              "label": "추정",
+              "prov": "sc_90_2_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 혼재(−30~+20) → 6.3",
+            "weight": 0.2,
+            "contribution": 1.26
+          },
+          "benchmark": {
+            "score": {
+              "v": 5.0,
+              "label": "추정",
+              "prov": "sc_90_2_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 검단 저가분 +54~103% / 2023~24 −1~+10% → 5",
+            "weight": 0.1,
+            "contribution": 0.5
+          },
+          "supply": {
+            "score": {
+              "v": 3.0,
+              "label": "추정",
+              "prov": "sc_90_2_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 동시 입주 → 3",
+            "weight": 0.1,
+            "contribution": 0.3
+          },
+          "liquidity": {
+            "score": {
+              "v": 6.0,
+              "label": "추정",
+              "prov": "sc_90_2_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 3년(2028-09)·거주의무 없음 → 6",
+            "weight": 0.15,
+            "contribution": 0.9
+          }
+        },
+        "delta_rerank": {
+          "v": -0.02,
+          "label": "추정",
+          "prov": "sc_90_2_rerank",
+          "checked_at": "2026-10-08",
+          "reason": "0.91 → 0.89 (#71 → #124)",
+          "unit": "ratio"
+        },
+        "intake": {
+          "id": 502,
+          "complex_id": 2,
+          "snapshot_id": 12,
+          "status": "가능",
+          "path": "official_popup",
+          "evidence_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+          "screenshot_path": "official_site/2026-10-07/02a7f3.png",
+          "raw_document_id": 9202,
+          "checked_at": "2026-10-07T09:12:00+09:00",
+          "http_status": 200,
+          "reason": null,
+          "note": "팝업 '선착순 동·호지정 계약 중'",
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.42,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": true,
+          "tie": true,
+          "mismatch": false,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 3,
+        "name": "송도 한내들 센트럴리버",
+        "living_area": "la_1",
+        "living_area_name": "연수구",
+        "score_run_id": 90,
+        "total": {
+          "v": 5.4,
+          "label": "추정",
+          "prov": "st_90_3",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 3,
+        "tie_group": null,
+        "unstable": false,
+        "p10": {
+          "v": 0.31,
+          "label": "추정",
+          "prov": "jl_65",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 3.1,
+              "label": "추정",
+              "prov": "sc_90_3_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.31,
+              "label": "추정",
+              "prov": "jl_65",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.31 = 3.1 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 0.93
+          },
+          "rerank": {
+            "score": {
+              "v": 8.9,
+              "label": "추정",
+              "prov": "sc_90_3_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.89,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.89 × 10 = 8.9 (#124)",
+            "weight": 0.15,
+            "contribution": 1.335
+          },
+          "gap": {
+            "score": {
+              "v": 4.4,
+              "label": "추정",
+              "prov": "sc_90_3_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: −5~+10% → 4.4",
+            "weight": 0.2,
+            "contribution": 0.88
+          },
+          "benchmark": {
+            "score": {
+              "v": 4.0,
+              "label": "추정",
+              "prov": "sc_90_3_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 11공구 분양권 ±8% / 9억대 −18~+9% → 4",
+            "weight": 0.1,
+            "contribution": 0.4
+          },
+          "supply": {
+            "score": {
+              "v": 5.0,
+              "label": "추정",
+              "prov": "sc_90_3_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2029~30 11공구 대기 물량 → 5",
+            "weight": 0.1,
+            "contribution": 0.5
+          },
+          "liquidity": {
+            "score": {
+              "v": 9.0,
+              "label": "추정",
+              "prov": "sc_90_3_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 도과·거주의무 없음 → 9",
+            "weight": 0.15,
+            "contribution": 1.35
+          }
+        },
+        "delta_rerank": {
+          "v": -0.01,
+          "label": "추정",
+          "prov": "sc_90_3_rerank",
+          "checked_at": "2026-10-08",
+          "reason": "0.9 → 0.89 (#71 → #124)",
+          "unit": "ratio"
+        },
+        "intake": {
+          "id": 503,
+          "complex_id": 3,
+          "snapshot_id": 12,
+          "status": "가능",
+          "path": "official_popup",
+          "evidence_url": "https://sd.hndapt.co.kr/",
+          "screenshot_path": "official_site/2026-10-07/03a7f3.png",
+          "raw_document_id": 9203,
+          "checked_at": "2026-10-07T09:13:00+09:00",
+          "http_status": 200,
+          "reason": null,
+          "note": "선착순 동·호 지정 계약 중",
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.01,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": false,
+          "tie": false,
+          "mismatch": false,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 4,
+        "name": "오퍼스 한강 스위첸",
+        "living_area": "la_4",
+        "living_area_name": "김포시",
+        "score_run_id": 90,
+        "total": {
+          "v": 4.95,
+          "label": "추정",
+          "prov": "st_90_4",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 4,
+        "tie_group": null,
+        "unstable": false,
+        "p10": {
+          "v": 0.33,
+          "label": "추정",
+          "prov": "jl_123",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 3.3,
+              "label": "추정",
+              "prov": "sc_90_4_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.33,
+              "label": "추정",
+              "prov": "jl_123",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.33 = 3.3 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 0.99
+          },
+          "rerank": {
+            "score": {
+              "v": 8.7,
+              "label": "추정",
+              "prov": "sc_90_4_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.87,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.87 × 10 = 8.7 (#124)",
+            "weight": 0.15,
+            "contribution": 1.305
+          },
+          "gap": {
+            "score": {
+              "v": 5.0,
+              "label": "추정",
+              "prov": "sc_90_4_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 리버시티 +0~+20 / 센트럴자이 −10~−20 → 혼재 중앙 0 → 5.0",
+            "weight": 0.2,
+            "contribution": 1.0
+          },
+          "benchmark": {
+            "score": {
+              "v": 4.5,
+              "label": "추정",
+              "prov": "sc_90_4_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 리버시티 +45~63 / 고촌센트럴자이 −2~+3 → 4.5",
+            "weight": 0.1,
+            "contribution": 0.45
+          },
+          "supply": {
+            "score": {
+              "v": 3.0,
+              "label": "추정",
+              "prov": "sc_90_4_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 김포 8,860 동시 입주(본 단지 포함) → 3",
+            "weight": 0.1,
+            "contribution": 0.3
+          },
+          "liquidity": {
+            "score": {
+              "v": 6.0,
+              "label": "추정",
+              "prov": "sc_90_4_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 3년(2028-07, 등기 시 해제)·거주의무 없음 → 6",
+            "weight": 0.15,
+            "contribution": 0.9
+          }
+        },
+        "delta_rerank": null,
+        "intake": {
+          "id": 504,
+          "complex_id": 4,
+          "snapshot_id": 12,
+          "status": "확인 불가",
+          "path": "official_popup",
+          "evidence_url": "https://opus-switzen.com/",
+          "screenshot_path": null,
+          "raw_document_id": 9204,
+          "checked_at": "2026-10-07T09:14:00+09:00",
+          "http_status": 403,
+          "reason": "403",
+          "note": null,
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.01,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": false,
+          "tie": false,
+          "mismatch": true,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 5,
+        "name": "검단 센트레빌 에듀시티",
+        "living_area": "la_2",
+        "living_area_name": "서구(검단)",
+        "score_run_id": 90,
+        "total": {
+          "v": 4.6,
+          "label": "추정",
+          "prov": "st_90_5",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 5,
+        "tie_group": 1,
+        "unstable": true,
+        "p10": {
+          "v": 0.26,
+          "label": "추정",
+          "prov": "jl_70",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 2.6,
+              "label": "추정",
+              "prov": "sc_90_5_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.26,
+              "label": "추정",
+              "prov": "jl_70",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.26 = 2.6 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 0.78
+          },
+          "rerank": {
+            "score": {
+              "v": 8.3,
+              "label": "추정",
+              "prov": "sc_90_5_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.83,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.83 × 10 = 8.3 (#124)",
+            "weight": 0.15,
+            "contribution": 1.245
+          },
+          "gap": {
+            "score": {
+              "v": 4.6,
+              "label": "추정",
+              "prov": "sc_90_5_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: −5~+8% → 4.6",
+            "weight": 0.2,
+            "contribution": 0.92
+          },
+          "benchmark": {
+            "score": {
+              "v": 4.5,
+              "label": "추정",
+              "prov": "sc_90_5_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 당하동 +54~63% / 2023~24 −1~+10% → 4.5",
+            "weight": 0.1,
+            "contribution": 0.45
+          },
+          "supply": {
+            "score": {
+              "v": 3.0,
+              "label": "추정",
+              "prov": "sc_90_5_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 동시 입주 → 3",
+            "weight": 0.1,
+            "contribution": 0.3
+          },
+          "liquidity": {
+            "score": {
+              "v": 6.0,
+              "label": "추정",
+              "prov": "sc_90_5_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 3년(2028-10)·거주의무 없음 → 6",
+            "weight": 0.15,
+            "contribution": 0.9
+          }
+        },
+        "delta_rerank": {
+          "v": 0.0,
+          "label": "추정",
+          "prov": "sc_90_5_rerank",
+          "checked_at": "2026-10-08",
+          "reason": "0.83 → 0.83 (#71 → #124)",
+          "unit": "ratio"
+        },
+        "intake": {
+          "id": 505,
+          "complex_id": 5,
+          "snapshot_id": 12,
+          "status": "미정",
+          "path": "official_popup",
+          "evidence_url": null,
+          "screenshot_path": "official_site/2026-10-07/05a7f3.png",
+          "raw_document_id": 9205,
+          "checked_at": "2026-10-07T09:15:00+09:00",
+          "http_status": 200,
+          "reason": null,
+          "note": "공식 홈페이지는 방문예약제(선착순 공지 없음)",
+          "entered_by": null
+        },
+        "decision": null,
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 7,
+        "name": "김포 칸타빌 에디션",
+        "living_area": "la_4",
+        "living_area_name": "김포시",
+        "score_run_id": 90,
+        "total": {
+          "v": 4.59,
+          "label": "추정",
+          "prov": "st_90_7",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 5,
+        "tie_group": 1,
+        "unstable": true,
+        "p10": {
+          "v": 0.29,
+          "label": "추정",
+          "prov": "jl_118",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 2.9,
+              "label": "추정",
+              "prov": "sc_90_7_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.29,
+              "label": "추정",
+              "prov": "jl_118",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.29 = 2.9 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 0.87
+          },
+          "rerank": {
+            "score": {
+              "v": 7.3,
+              "label": "추정",
+              "prov": "sc_90_7_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.73,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.73 × 10 = 7.3 (#124)",
+            "weight": 0.15,
+            "contribution": 1.095
+          },
+          "gap": {
+            "score": {
+              "v": 3.1,
+              "label": "추정",
+              "prov": "sc_90_7_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 걸포 메트로자이(2020) +0~+15 → 중앙 +7.5 → 3.1",
+            "weight": 0.2,
+            "contribution": 0.62
+          },
+          "benchmark": {
+            "score": {
+              "v": 4.0,
+              "label": "추정",
+              "prov": "sc_90_7_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 메트로자이 +31~70 / 우미린 분양권 −12~−26 → 4",
+            "weight": 0.1,
+            "contribution": 0.4
+          },
+          "supply": {
+            "score": {
+              "v": 2.5,
+              "label": "추정",
+              "prov": "sc_90_7_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 8,860(북변 오브센트 3,058 포함)+북변5 대기 → 2.5",
+            "weight": 0.1,
+            "contribution": 0.25
+          },
+          "liquidity": {
+            "score": {
+              "v": 9.0,
+              "label": "추정",
+              "prov": "sc_90_7_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 도과·거주의무·재당첨 없음·계약금 5% → 9",
+            "weight": 0.15,
+            "contribution": 1.35
+          }
+        },
+        "delta_rerank": null,
+        "intake": {
+          "id": 507,
+          "complex_id": 7,
+          "snapshot_id": 12,
+          "status": "가능",
+          "path": "official_popup",
+          "evidence_url": "https://cantaviltheedition.com/",
+          "screenshot_path": "official_site/2026-10-07/07a7f3.png",
+          "raw_document_id": 9207,
+          "checked_at": "2026-10-07T09:17:00+09:00",
+          "http_status": 200,
+          "reason": null,
+          "note": "팝업 '선착순 동·호지정 계약 중 / 전매제한 FREE / 거주의무 FREE'",
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.54,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": true,
+          "tie": true,
+          "mismatch": false,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      }
+    ],
+    "changes": [
+      {
+        "id": 3301,
+        "snapshot_id": 12,
+        "entity": "payment_terms",
+        "entity_id": 77,
+        "field": "down_payment_pct",
+        "old_text": "10",
+        "new_text": "5",
+        "detected_at": "2026-10-08T06:21:40+09:00",
+        "severity": "critical",
+        "triggers_rejudge": true,
+        "complex_id": 7,
+        "complex_name": "김포 칸타빌 에디션",
+        "tab": "payment"
+      },
+      {
+        "id": 3302,
+        "snapshot_id": 12,
+        "entity": "intake_status",
+        "entity_id": 502,
+        "field": "popup_image_hash",
+        "old_text": "9be1…c04",
+        "new_text": "47d0…a1e",
+        "detected_at": "2026-10-08T06:09:12+09:00",
+        "severity": "critical",
+        "triggers_rejudge": true,
+        "complex_id": 2,
+        "complex_name": "엘리프 검단 포레듀",
+        "tab": "events"
+      },
+      {
+        "id": 3303,
+        "snapshot_id": 12,
+        "entity": "notice",
+        "entity_id": null,
+        "field": "new_notice",
+        "old_text": null,
+        "new_text": "임의공급 3차 2026940187 (잔여 8)",
+        "detected_at": "2026-10-08T06:04:55+09:00",
+        "severity": "critical",
+        "triggers_rejudge": true,
+        "complex_id": 8,
+        "complex_name": "풍무역세권 수자인 그라센트 2차",
+        "tab": "events"
+      },
+      {
+        "id": 3304,
+        "snapshot_id": 12,
+        "entity": "payment_terms",
+        "entity_id": 31,
+        "field": "interim_schedule[1].due_date",
+        "old_text": "2026-10-18",
+        "new_text": "2026-10-30",
+        "detected_at": "2026-10-08T06:12:30+09:00",
+        "severity": "critical",
+        "triggers_rejudge": false,
+        "complex_id": 3,
+        "complex_name": "송도 한내들 센트럴리버",
+        "tab": "payment"
+      },
+      {
+        "id": 3305,
+        "snapshot_id": 12,
+        "entity": "intake_status",
+        "entity_id": 504,
+        "field": "http_status",
+        "old_text": "403",
+        "new_text": "403",
+        "detected_at": "2026-10-08T06:09:30+09:00",
+        "severity": "info",
+        "triggers_rejudge": false,
+        "complex_id": 4,
+        "complex_name": "오퍼스 한강 스위첸",
+        "tab": "provenance"
+      }
+    ],
+    "unsold_series": [
+      {
+        "ym": "2024-09",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2024-10",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2024-11",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2024-12",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-01",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-02",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-03",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-04",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-05",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-06",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 571,
+          "label": "재가공",
+          "prov": "fp_6109",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-07",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 492,
+          "label": "재가공",
+          "prov": "fp_6110",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-08",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 2141,
+          "label": "재가공",
+          "prov": "fp_6111",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-09",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-10",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-11",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-12",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 1536,
+          "label": "재가공",
+          "prov": "fp_6115",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-01",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-02",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-03",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 1162,
+          "label": "재가공",
+          "prov": "fp_6118",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-04",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-05",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-06",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 879,
+          "label": "재가공",
+          "prov": "fp_6121",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-07",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 830,
+          "label": "재가공",
+          "prov": "fp_6122",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-08",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 787,
+          "label": "재가공",
+          "prov": "fp_6123",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 52,
+          "label": "재가공",
+          "prov": "fp_6123",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        }
+      }
+    ]
+  }
+}

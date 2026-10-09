@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "expected_scores.json",
+  "title": "ExpectedScores",
+  "description": "회귀 골든 파일 contracts/fixtures/<fixture>/expected_scores.json 의 스키마 (RA §9 (a)단계). 보고서의 구성 점수 6개를 입력으로 고정하고 가중 합·순위·동점만 검증한다(손 등급 시절의 숫자 그대로). (b)단계(§6-4 식으로 다시 계산한 값)는 expected_scores_v2.json으로 따로 고정한다(R1 끝, 사람 확인).\n- complexes[].components: 보고서 구성 점수(0~10, 입력). null이면 그 단지는 종합 미계산(보류·참고).\n- complexes[].report_total / report_rank: 보고서에 적힌 값(기대값의 원천). computed_total: 가중 합 원값(반올림 전) — |computed_total − report_total| ≤ tolerance.\n- complexes[].expected_rank / tie_group: RA §6-4 동점 규칙(|ΔS| < epsilon, 반올림 전 원값 비교, 리더 기준 그룹, 경쟁 순위)을 적용한 순위 — ScoreEngine이 내야 하는 값. 보고서 순위와 다르면 discrepancies에 적는다.\n- t1·t2: RA §9 수용 테스트 기대값. t7: 인천 8후보 → 16후보 rerank 변화. t12: §6-6 민감도를 같은 입력으로 계산한 값(사람 확인 전).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["fixture", "contract_version", "stage", "source", "weights", "tie_rule", "tolerance", "complexes", "t1", "t2"],
+  "properties": {
+    "fixture": { "type": "string" },
+    "contract_version": { "type": "string" },
+    "stage": { "const": "a" },
+    "source": {
+      "title": "ExpectedSource",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report", "sections", "report_asof", "fixture_asof"],
+      "properties": {
+        "report": { "type": "string" },
+        "sections": { "type": "array", "items": { "type": "string" } },
+        "report_asof": { "type": "string", "format": "date" },
+        "fixture_asof": { "type": "string", "format": "date" },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "weights": { "$ref": "scenario.json#/$defs/Weights" },
+    "tie_rule": {
+      "title": "TieRule",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epsilon", "compare_on", "grouping", "rank_method", "decide_tie_confidence"],
+      "properties": {
+        "epsilon": { "type": "number" },
+        "compare_on": { "const": "raw" },
+        "grouping": { "const": "leader" },
+        "rank_method": { "const": "competition" },
+        "decide_tie_confidence": { "type": "number" },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "tolerance": { "type": "number" },
+    "complexes": {
+      "type": "array",
+      "items": {
+        "title": "ExpectedComplex",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "name", "area", "judge_scope", "components", "raw", "report_total", "report_rank", "computed_total", "expected_rank", "tie_group"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "complex_id": { "description": "OpenAPI 예시·픽스처에서 쓰는 id(1~16)", "type": ["integer", "null"] },
+          "name": { "type": "string" },
+          "area": { "description": "보고서 구분(인천 송도/검단/계양, 김포)", "type": "string" },
+          "judge_scope": { "$ref": "score_row.json#/$defs/JudgeScope" },
+          "intake_note": { "type": ["string", "null"] },
+          "components": {
+            "title": "ExpectedComponents",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["p10", "rerank", "gap", "benchmark", "supply", "liquidity"],
+            "properties": {
+              "p10": { "type": ["number", "null"] },
+              "rerank": { "type": ["number", "null"] },
+              "gap": { "type": ["number", "null"] },
+              "benchmark": { "type": ["number", "null"] },
+              "supply": { "type": ["number", "null"] },
+              "liquidity": { "type": ["number", "null"] }
+            }
+          },
+          "raw": {
+            "title": "ExpectedRaw",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "p10_prob": { "type": ["number", "null"] },
+              "rerank_relevance": { "type": ["number", "null"] },
+              "rerank_relevance_incheon8": { "type": ["number", "null"] }
+            }
+          },
+          "report_total": { "type": ["number", "null"] },
+          "report_rank": { "type": ["integer", "null"] },
+          "computed_total": { "type": ["number", "null"] },
+          "expected_rank": { "type": ["integer", "null"] },
+          "tie_group": { "type": ["integer", "null"] },
+          "component_notes": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      }
+    },
+    "t1": {
+      "title": "ExpectedT1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "order", "matches_report", "note"],
+      "properties": {
+        "source": { "type": "string" },
+        "order": {
+          "type": "array",
+          "items": {
+            "title": "ExpectedRankEntry", "type": "object", "additionalProperties": false, "required": ["key", "total", "rank"],
+            "properties": { "key": { "type": "string" }, "total": { "type": "number" }, "rank": { "type": "integer" } }
+          }
+        },
+        "matches_report": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+    "t2": {
+      "title": "ExpectedT2",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario", "judgment_seq", "confidence", "probs", "expected"],
+      "properties": {
+        "scenario": { "type": "string" },
+        "judgment_seq": { "type": ["integer", "null"] },
+        "confidence": { "type": "number" },
+        "probs": { "type": "object", "additionalProperties": { "type": "number" } },
+        "expected": {
+          "title": "ExpectedT2Outcome", "type": "object", "additionalProperties": false, "required": ["tie", "chosen", "rule"],
+          "properties": { "tie": { "type": "boolean" }, "chosen": { "type": "array", "items": { "type": "string" } }, "rule": { "type": "string" } }
+        }
+      }
+    },
+    "decide_integrated": {
+      "description": "보고서 §12-5-2 상황별 decide 5회(#125~129) 결과. checks는 요건 순서를 access/regulation/funds로 옮긴 것.",
+      "type": "object",
+      "additionalProperties": {
+        "title": "ExpectedDecide",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["judgment_seq", "confidence", "probs", "selected", "tie", "warnings", "checks"],
+        "properties": {
+          "judgment_seq": { "type": "integer" },
+          "confidence": { "type": "number" },
+          "probs": { "type": "object", "additionalProperties": { "type": "number" } },
+          "selected": { "type": "string" },
+          "tie": { "type": "boolean" },
+          "warnings": { "type": "array", "items": { "type": "string" } },
+          "requirement_order": { "type": "array", "items": { "type": "string" } },
+          "checks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["access", "regulation", "funds"],
+              "properties": {
+                "access": { "type": "string", "enum": ["supported", "contradicted", "unknown"] },
+                "regulation": { "type": "string", "enum": ["supported", "contradicted", "unknown"] },
+                "funds": { "type": "string", "enum": ["supported", "contradicted", "unknown"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "t7_incheon_only": {
+      "title": "ExpectedT7",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "rerank_judgment_seq_prev", "rerank_judgment_seq", "rows"],
+      "properties": {
+        "source": { "type": "string" },
+        "rerank_judgment_seq_prev": { "type": ["integer", "null"] },
+        "rerank_judgment_seq": { "type": ["integer", "null"] },
+        "rows": {
+          "type": "array",
+          "items": {
+            "title": "ExpectedT7Row", "type": "object", "additionalProperties": false,
+            "required": ["key", "relevance_prev", "relevance", "delta_rerank", "report_total_prev", "computed_total_prev"],
+            "properties": {
+              "key": { "type": "string" },
+              "relevance_prev": { "type": "number" },
+              "relevance": { "type": "number" },
+              "delta_rerank": { "type": "number" },
+              "report_total_prev": { "type": ["number", "null"] },
+              "computed_total_prev": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "t12_sensitivity": {
+      "title": "ExpectedT12",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "base_top5", "unstable", "unstable_keys", "stable_components", "cells"],
+      "properties": {
+        "status": { "type": "string" },
+        "base_top5": { "type": "array", "items": { "type": "string" } },
+        "unstable": { "type": "boolean" },
+        "unstable_keys": { "type": "array", "items": { "type": "string" } },
+        "stable_components": { "type": "array", "items": { "type": "string" } },
+        "cells": {
+          "type": "array",
+          "items": {
+            "title": "ExpectedT12Cell", "type": "object", "additionalProperties": false,
+            "required": ["variant", "weights", "top5", "changed", "entered", "exited"],
+            "properties": {
+              "variant": { "type": "string" },
+              "weights": { "type": "object", "additionalProperties": { "type": "number" } },
+              "top5": { "type": "array", "items": { "type": "string" } },
+              "changed": { "type": "boolean" },
+              "entered": { "type": "array", "items": { "type": "string" } },
+              "exited": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "discrepancies": {
+      "type": "array",
+      "items": {
+        "title": "ExpectedDiscrepancy", "type": "object", "additionalProperties": false, "required": ["what", "report", "contract", "resolution"],
+        "properties": {
+          "what": { "type": "string" },
+          "report": { "type": "string" },
+          "contract": { "type": "string" },
+          "resolution": { "type": "string" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "fixture": "example", "contract_version": "2026-10-09.1", "stage": "a",
+      "source": { "report": "docs/source/incheon_gimpo_report.md", "sections": ["§12-4-3"], "report_asof": "2026-10-07", "fixture_asof": "2026-10-08", "note": null },
+      "weights": { "p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10 },
+      "tie_rule": { "epsilon": 0.05, "compare_on": "raw", "grouping": "leader", "rank_method": "competition", "decide_tie_confidence": 0.6, "description": null },
+      "tolerance": 0.01,
+      "complexes": [
+        {
+          "key": "granter", "complex_id": 1, "name": "더샵 송도그란테르", "area": "인천 송도", "judge_scope": "판정 대상", "intake_note": "마감·추가 미정",
+          "components": { "p10": 3.9, "rerank": 8.9, "gap": 5.5, "benchmark": 5.0, "supply": 7.0, "liquidity": 7.0 },
+          "raw": { "p10_prob": 0.39, "rerank_relevance": 0.89, "rerank_relevance_incheon8": 0.89 },
+          "report_total": 5.87, "report_rank": 1, "computed_total": 5.87, "expected_rank": 1, "tie_group": null, "component_notes": {}
+        }
+      ],
+      "t1": { "source": "RA §9 T1", "order": [{ "key": "granter", "total": 5.87, "rank": 1 }], "matches_report": true, "note": "" },
+      "t2": { "scenario": "B", "judgment_seq": 127, "confidence": 0.48, "probs": { "cantavil": 0.54, "elif": 0.42 }, "expected": { "tie": true, "chosen": ["cantavil", "elif"], "rule": "confidence < 0.6 → 상위 2개 tie" } }
+    }
+  ]
+}

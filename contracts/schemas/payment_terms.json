@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "payment_terms.json",
+  "title": "PaymentTerms",
+  "description": "공고별 납부 조건 1행 (RA §3 payment_terms). (complex_id, notice_no) 유일. 최신 effective_from 행이 현재 조건(is_current=true)이고, 최초 공고 대비 증감은 계산해 change_vs_first에 둔다(임의공급 계약금 10%→5% 같은 변경, T9). pct 값은 퍼센트 숫자(5 = 5%).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["notice_no", "effective_from", "down_payment_pct", "down_payment_first_won", "interim_pct", "balance_pct", "interim_schedule", "is_current"],
+  "properties": {
+    "id": { "type": ["integer", "null"] },
+    "complex_id": { "type": ["integer", "null"] },
+    "notice_no": { "description": "청약홈 주택관리번호/공고번호", "type": "string", "maxLength": 32 },
+    "notice_kind": { "type": ["string", "null"], "enum": ["본청약", "무순위", "임의", "선착순", null] },
+    "effective_from": { "description": "이 조건이 적용되는 공고일 YYYY-MM-DD", "$ref": "fact.json" },
+    "down_payment_pct": { "$ref": "fact.json" },
+    "down_payment_first_won": { "description": "1차 계약금 정액(원). 정액 표기가 없으면 확인 불가", "$ref": "fact.json" },
+    "interim_pct": { "$ref": "fact.json" },
+    "interim_terms_text": { "description": "중도금 조건 원문(무이자·이자후불제·이자 대납 등)", "type": ["string", "null"] },
+    "balance_pct": { "$ref": "fact.json" },
+    "interim_schedule": {
+      "type": "array",
+      "items": {
+        "title": "InterimInstallment",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seq", "due_date", "pct"],
+        "properties": {
+          "seq": { "type": "integer", "minimum": 1 },
+          "due_date": { "$ref": "fact.json" },
+          "pct": { "$ref": "fact.json" }
+        }
+      }
+    },
+    "is_current": { "type": "boolean" },
+    "change_vs_first": {
+      "description": "최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 %",
+      "anyOf": [
+        {
+          "title": "PaymentChange",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "down_payment_pct_delta": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+            "price_change_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
+          }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "id": 77, "complex_id": 7, "notice_no": "2026940116", "notice_kind": "임의",
+      "effective_from": { "v": "2026-06-05", "label": "확인됨", "prov": "fp_4410", "checked_at": "2026-10-07", "unit": "date" },
+      "down_payment_pct": { "v": 5, "label": "확인됨", "prov": "fp_4411", "checked_at": "2026-10-07", "unit": "pct" },
+      "down_payment_first_won": { "v": null, "label": "확인 불가", "reason": "정액 표기 없음", "prov": null, "checked_at": "2026-10-07" },
+      "interim_pct": { "v": 60, "label": "확인됨", "prov": "fp_4412", "checked_at": "2026-10-07", "unit": "pct" },
+      "interim_terms_text": "중도금 60%(6회, 2026-07-24~2029-05-25) 이자후불제",
+      "balance_pct": { "v": 35, "label": "확인됨", "prov": "fp_4413", "checked_at": "2026-10-07", "unit": "pct" },
+      "interim_schedule": [
+        { "seq": 1, "due_date": { "v": "2026-07-24", "label": "확인됨", "prov": "fp_4414", "checked_at": "2026-10-07", "unit": "date" }, "pct": { "v": 10, "label": "확인됨", "prov": "fp_4414", "checked_at": "2026-10-07", "unit": "pct" } }
+      ],
+      "is_current": true,
+      "change_vs_first": {
+        "down_payment_pct_delta": { "v": -5, "label": "추정", "reason": "산술", "prov": "fp_4411", "checked_at": "2026-10-07", "unit": "pct" },
+        "price_change_pct": { "v": 0, "label": "추정", "reason": "산술", "prov": "fp_4415", "checked_at": "2026-10-07", "unit": "pct" }
+      }
+    }
+  ]
+}

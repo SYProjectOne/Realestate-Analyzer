@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "error.json",
+  "title": "Error",
+  "description": "모든 4xx·5xx 응답 본문 (RA §4-1).\ncode 의미와 HTTP 상태:\n- unauthorized (401): 토큰 없음·불일치\n- forbidden (403): 읽기 전용 토큰으로 GET 이외 호출\n- not_found (404): 리소스 없음\n- validation_error (422): 요청 검증 실패 (field_errors 채움). 생활권 편집에서 법정동 누락·중복도 여기\n- conflict (409): 상태 충돌 (예: 완료되지 않은 보고서 다운로드)\n- publish_blocked (409): contradicted claim이 남아 publish·보고서 생성 불가 (detail에 개수)\n- intake_unknown (422): 접수 상태가 확인 불가라 요청한 동작(후보 포함 등)을 할 수 없음\n- judge_unavailable (503): 판정기 다운(degraded). 조회는 계속 가능\n- contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev)\n- internal (500): 그 밖의 서버 오류",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "detail"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": ["unauthorized", "forbidden", "not_found", "validation_error", "conflict", "publish_blocked", "intake_unknown", "judge_unavailable", "contract_violation", "internal"]
+    },
+    "detail": { "type": "string" },
+    "field_errors": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["loc", "msg"],
+        "properties": {
+          "loc": { "type": "array", "items": { "type": ["string", "integer"] } },
+          "msg": { "type": "string" }
+        }
+      }
+    },
+    "request_id": { "type": ["string", "null"] }
+  },
+  "examples": [
+    { "code": "not_found", "detail": "complex 999 not found" },
+    { "code": "contract_violation", "detail": "complex 4 field max_price_won has no field_provenance row" },
+    {
+      "code": "validation_error", "detail": "legal_dong 2826011600 is not assigned to any living area",
+      "field_errors": [{ "loc": ["body", "living_areas"], "msg": "every legal_dong must belong to exactly one living area" }]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fact.json",
+  "title": "Fact",
+  "description": "수치·날짜는 맨값으로 나가지 않는다 (RA §4-1). 모든 수치·날짜 필드는 Fact로 감싼다.\n\n필드\n- v: 값. number | string | null. 금액은 원 단위 정수, 면적은 ㎡, 확률·비율은 0~1 소수, 퍼센트 값(gap% 등)은 unit=pct 인 숫자(예: -5.2 = -5.2%). 날짜는 'YYYY-MM-DD', 연월은 'YYYY-MM'. 참/거짓 성격의 공고 항목은 표시용 한국어 문자열로 담는다(예: regulated='비규제', price_cap='적용', resale_release_on_registration='등기 시 해제').\n- label: Label 5종 중 하나. label='확인 불가'이면 v=null 이어도 되고 reason 필수. 그 밖의 라벨이면 v와 prov는 null일 수 없다(값이 없으면 라벨은 '확인 불가').\n- reason: 라벨 보조 문자열. '확인 불가'의 사유(\"403\", \"DNS\", \"공고 전\", \"스캔\", \"출처 누락\", \"미판정\" 등) 또는 다른 라벨의 한정어(\"대체·보정 c=0.015\", \"OCR\", \"표본 2\", \"주민등록 세대\", \"산술\").\n- prov: 출처 id. GET /provenance/{prov} 로 출처 패널을 연다. 접두어: fp_=field_provenance 행, sc_=score_component 행, st_=score_total 행, jl_=judgment_log seq, hc_=human_check 행, rd_=raw_document 행, cs_=comparable_set 행. label='확인 불가'일 때만 null 허용.\n- checked_at: 확인일 'YYYY-MM-DD'. 모를 때만 null.\n- unit: 표시 단위 힌트(FactCell이 억·만·% 포맷에 사용). 생략 시 원값 그대로 표시.\n- human: 사람 확인(전화·방문) 값이면 true. label은 반드시 '확인됨'. 화면은 '사람 확인됨' 배지.\n\n표시 문자열 규칙 (FactCell, 보고서 공통)\n1. label='확인 불가' → '확인 불가(<reason>, <checked_at>)'; checked_at이 null이면 '확인 불가(<reason>)'. 예: '확인 불가(403, 2026-10-07)'.\n2. 그 밖에 reason이 있으면 '<label>(<reason>)'. 예: '추정(대체·보정 c=0.015)'.\n3. reason이 없으면 '<label>'. human=true이면 '사람 확인됨'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "label", "prov", "checked_at"],
+  "properties": {
+    "v": {
+      "description": "값. number | string | null.",
+      "type": ["number", "string", "null"]
+    },
+    "label": { "$ref": "label.json" },
+    "reason": {
+      "description": "'확인 불가' 사유 또는 라벨 한정어. label='확인 불가'이면 필수.",
+      "type": ["string", "null"],
+      "maxLength": 120
+    },
+    "prov": {
+      "description": "출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용.",
+      "type": ["string", "null"],
+      "pattern": "^(fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+$"
+    },
+    "checked_at": {
+      "description": "확인일 YYYY-MM-DD.",
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "unit": {
+      "description": "표시 단위 힌트. won=원, m2=㎡, pct=퍼센트 숫자(5.2=5.2%), ratio=0~1 비율, prob=0~1 확률, score=0~10 점수, units=세대, count=건, date=YYYY-MM-DD, ym=YYYY-MM, year=연도, months=개월, years=년, m=미터, text=문자열.",
+      "type": "string",
+      "enum": ["won", "m2", "pct", "ratio", "prob", "score", "units", "count", "date", "ym", "year", "months", "years", "m", "text"]
+    },
+    "human": {
+      "description": "사람 확인(전화·방문) 값이면 true. label은 '확인됨'이어야 한다.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "label": { "const": "확인 불가" } }, "required": ["label"] },
+      "then": { "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1 } } },
+      "else": { "properties": { "v": { "type": ["number", "string"] }, "prov": { "type": "string" } } }
+    },
+    {
+      "if": { "properties": { "human": { "const": true } }, "required": ["human"] },
+      "then": { "properties": { "label": { "const": "확인됨" } } }
+    }
+  ],
+  "examples": [
+    { "v": 578000000, "label": "확인됨", "prov": "fp_2041", "checked_at": "2026-10-07", "unit": "won" },
+    { "v": 5.0, "label": "추정", "reason": "대체·보정 c=0.015", "prov": "sc_88_4_gap", "checked_at": "2026-10-08", "unit": "score" },
+    { "v": null, "label": "확인 불가", "reason": "403", "prov": null, "checked_at": "2026-10-07" },
+    { "v": "2028-03", "label": "확인됨", "prov": "fp_2050", "checked_at": "2026-10-07", "unit": "ym" },
+    { "v": "가능", "label": "확인됨", "prov": "hc_3", "checked_at": "2026-10-09", "unit": "text", "human": true }
+  ]
+}

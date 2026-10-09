@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "market.json",
+  "title": "Market",
+  "description": "GET /snapshots/{sid}/market — G6 지역 시장 (RA §4-2, §7-2 C3·C4·C5·C9). 벤치마크(C3), 입주 물량(C4, 생활권 스택 + 판정 단지 입주월 마커), 미분양(C5, 24개월 2계열, 결측 월은 v=null — connectNulls=false), 호재(C9), 규제 요약 카드, 생활권별 비교 시세 표.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "asof_date", "region_id", "living_areas", "benchmarks", "benchmark_flags", "supply", "move_in_markers", "unsold", "catalysts", "regulation", "living_area_prices"],
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "asof_date": { "type": "string", "format": "date" },
+    "region_id": { "type": "integer" },
+    "living_areas": {
+      "type": "array",
+      "items": {
+        "title": "LivingAreaRef", "type": "object", "additionalProperties": false, "required": ["id", "name"],
+        "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+      }
+    },
+    "benchmarks": { "type": "array", "items": { "$ref": "#/$defs/BenchmarkView" } },
+    "benchmark_flags": {
+      "type": "array",
+      "items": {
+        "title": "BenchmarkFlag",
+        "description": "생활권별 벤치마크 표본 경고: sample_n < 3 → '표본 n, 추정' 배지; no_recent_sale_case = 최근 3년 분양 사례 0건",
+        "type": "object", "additionalProperties": false, "required": ["living_area", "sample_n", "no_recent_sale_case"],
+        "properties": {
+          "living_area": { "type": "string" },
+          "sample_n": { "type": "integer", "minimum": 0 },
+          "no_recent_sale_case": { "type": "boolean" }
+        }
+      }
+    },
+    "supply": { "type": "array", "items": { "$ref": "#/$defs/SupplyPoint" } },
+    "move_in_markers": {
+      "type": "array",
+      "items": {
+        "title": "MoveInMarker", "type": "object", "additionalProperties": false, "required": ["complex_id", "name", "living_area", "move_in_ym"],
+        "properties": {
+          "complex_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "living_area": { "type": ["string", "null"] },
+          "move_in_ym": { "$ref": "fact.json" }
+        }
+      }
+    },
+    "unsold": { "type": "array", "items": { "$ref": "#/$defs/UnsoldPoint" } },
+    "catalysts": { "type": "array", "items": { "$ref": "catalyst.json" } },
+    "regulation": { "$ref": "#/$defs/RegulationSummary" },
+    "living_area_prices": {
+      "type": "array",
+      "items": {
+        "title": "LivingAreaPrice",
+        "description": "LivingAreaCompare 표 1행: 생활권별 84㎡ 실거래 중앙값(비교 기준 단지·기간 포함)",
+        "type": "object", "additionalProperties": false, "required": ["living_area", "name", "median_won", "low_won", "high_won", "n_trades", "trade_window", "basis"],
+        "properties": {
+          "living_area": { "type": "string" },
+          "name": { "type": "string" },
+          "median_won": { "$ref": "fact.json" },
+          "low_won": { "$ref": "fact.json" },
+          "high_won": { "$ref": "fact.json" },
+          "n_trades": { "type": "integer", "minimum": 0 },
+          "trade_window": { "type": ["string", "null"] },
+          "basis": { "description": "기준 단지·대체 여부 설명", "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "BenchmarkView": {
+      "title": "BenchmarkView",
+      "description": "벤치마크 1개(C3 dumbbell 1행): 분양가 → 최근 실거래 범위, 고점 마커. gain_* = (실거래 − 분양가)/분양가(%), annualized_pct = 분양 연도부터 연율. is_presale=true(분양권)는 별도 마커이고 benchmark 점수에서 제외.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "living_area", "name", "completed_year", "sale_year", "sale_period", "sale_price_84_won", "trade_low_won", "trade_median_won", "trade_high_won", "trade_window", "peak_won", "peak_ym", "is_presale"],
+      "properties": {
+        "id": { "type": "integer" },
+        "living_area": { "type": ["string", "null"] },
+        "name": { "type": "string" },
+        "completed_year": { "type": ["integer", "null"] },
+        "sale_year": { "type": ["integer", "null"] },
+        "sale_period": { "type": ["string", "null"], "enum": ["저가 분양기", "고가 분양기", null] },
+        "sale_price_84_won": { "$ref": "fact.json" },
+        "trade_low_won": { "$ref": "fact.json" },
+        "trade_median_won": { "$ref": "fact.json" },
+        "trade_high_won": { "$ref": "fact.json" },
+        "trade_window": { "type": ["string", "null"] },
+        "n_trades": { "type": ["integer", "null"] },
+        "peak_won": { "$ref": "fact.json" },
+        "peak_ym": { "$ref": "fact.json" },
+        "is_presale": { "type": "boolean" },
+        "gain_low_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "gain_high_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "annualized_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "SupplyPoint": {
+      "title": "SupplyPoint",
+      "description": "입주 물량 1점(C4): 생활권 × 연도. 공고문 입주예정월 합산이면 label 추정 reason '추정 집계'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["living_area", "year", "units"],
+      "properties": {
+        "living_area": { "type": ["string", "null"] },
+        "year": { "type": "integer" },
+        "units": { "$ref": "fact.json" },
+        "complexes": { "type": ["array", "null"], "items": { "type": "string" } }
+      }
+    },
+    "UnsoldPoint": {
+      "title": "UnsoldPoint",
+      "description": "미분양 1개월(C5): 월말 기준. 결측 월은 total.v=null(label 확인 불가). scope는 통계 단위(시군구).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ym", "total", "post_completion"],
+      "properties": {
+        "ym": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+        "scope_code": { "type": ["string", "null"] },
+        "scope_name": { "type": ["string", "null"] },
+        "total": { "$ref": "fact.json" },
+        "post_completion": { "$ref": "fact.json" }
+      }
+    },
+    "RegulationSummary": {
+      "title": "RegulationSummary",
+      "description": "RegulationCard: 규제지역·전매·거주의무·대출·세제 요약 항목들(보고서 §1 표의 행). 각 항목은 값 Fact + 메모.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "title": "RegulationItem", "type": "object", "additionalProperties": false, "required": ["key", "title", "value"],
+            "properties": {
+              "key": { "type": "string", "enum": ["regulated_area", "price_cap", "resale", "residency", "loan", "tax", "land_permit", "other"] },
+              "title": { "type": "string" },
+              "scope": { "description": "적용 범위(시군구명 또는 생활권명)", "type": ["string", "null"] },
+              "value": { "$ref": "fact.json" },
+              "note": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "snapshot_id": 12, "asof_date": "2026-10-08", "region_id": 1,
+      "living_areas": [{ "id": "la_4", "name": "김포시" }],
+      "benchmarks": [], "benchmark_flags": [{ "living_area": "la_4", "sample_n": 1, "no_recent_sale_case": false }],
+      "supply": [], "move_in_markers": [],
+      "unsold": [
+        { "ym": "2026-08", "scope_code": "41570", "scope_name": "김포시", "total": { "v": 787, "label": "재가공", "prov": "fp_6108", "checked_at": "2026-10-07", "unit": "units" }, "post_completion": { "v": 52, "label": "재가공", "prov": "fp_6108", "checked_at": "2026-10-07", "unit": "units" } }
+      ],
+      "catalysts": [], "regulation": { "items": [] }, "living_area_prices": []
+    }
+  ]
+}
