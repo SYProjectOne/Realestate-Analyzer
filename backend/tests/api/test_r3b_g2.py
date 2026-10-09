@@ -98,6 +98,11 @@ def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClie
         first["judge_scope"], first["rank"], first["total"]["v"],
     )  # fmt: skip
     assert after["kpis"]["judged_count"]["v"] == before["kpis"]["judged_count"]["v"]
+    # 계약 .6 rejudge_needed: 행·대시보드에 '재판정 필요'(저장값은 그대로)
+    assert row["rejudge_needed"] is True and after["rejudge_needed"] is True
+    assert {x["complex_id"]: x["rejudge_needed"] for x in before["top5"]} == {
+        c: f for c, (_cur, _shown, f) in flags_before.items()
+    }
 
     # 현재 사실로 계산한 범위는 '참고' → '재판정 필요'(계약 .6 전 내부 플래그)
     with get_session() as s:
@@ -118,6 +123,7 @@ def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClie
     assert lst.status_code == 200, lst.text
     items = {it["complex_id"]: it for it in lst.json()["items"]}
     assert items[cid]["judge_scope"] == "판정 대상" and items[cid]["rank"] == first["rank"]
+    assert items[cid]["rejudge_needed"] is True
     for c, it in items.items():
         t = stored.get(c)
         if t is not None and t.judge_scope:
@@ -126,6 +132,7 @@ def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClie
     assert det.status_code == 200, det.text
     score = det.json()["score"]
     assert score is not None and score["judge_scope"] == "판정 대상" and score["rank"] == first["rank"]
+    assert score["rejudge_needed"] is True
 
 
 def test_n_c1_unscored_complex_without_row_falls_back_and_flags(client: TestClient) -> None:

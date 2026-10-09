@@ -611,3 +611,51 @@ def test_m23_cached_by_tool_in_job_stats_and_ops_counts(
         assert sum(second["cached_by_tool"].values()) == second["cached"]
         total, by_tool = cache_hits(s, "2000-01-01")
         assert total >= second["cached"] and by_tool.get("noul", 0) >= second["cached_by_tool"]["noul"]
+
+
+# ====================================================================== 계약 .6 (G3) 연동: P9 주장 대상 · 강등 정리
+
+
+def test_p9_claims_carry_fact_target_and_pipeline_syncs_demotions(
+    make_ctx: Callable[..., SchedulerContext],
+    factory: sessionmaker[Session],
+    seeded: int,
+    jev: SynthJev,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api import demotion
+    from app.models import Claim
+
+    synced: list[set[int] | None] = []
+    real = demotion.sync_demotions
+
+    def spy(session: Session, complex_ids: set[int] | None = None) -> int:
+        synced.append(complex_ids)
+        return real(session, complex_ids)
+
+    monkeypatch.setattr(demotion, "sync_demotions", spy)
+    run_pipeline(_ctx(make_ctx, factory, jev), seeded, complex_ids=[2])
+    assert synced == [{2}]  # load_facts 앞에서 강등 정리(D10-3)
+    with factory() as s:
+        claims = list(s.scalars(select(Claim).where(Claim.snapshot_id == seeded, Claim.complex_id == 2)))
+        assert claims
+        by_field = {c.field: c for c in claims if c.field}
+        assert by_field["resale_months"].entity == "complex" and by_field["resale_months"].entity_id == 2
+        if "max_price_won" in by_field:
+            t = s.get(ComplexType, by_field["max_price_won"].entity_id)
+            assert by_field["max_price_won"].entity == "complex_type" and t is not None and t.complex_id == 2
+        if "down_payment_pct" in by_field:
+            pt = s.get(PaymentTerms, by_field["down_payment_pct"].entity_id)
+            assert (
+                by_field["down_payment_pct"].entity == "payment_terms"
+                and pt is not None
+                and pt.complex_id == 2
+            )
+        for c in claims:  # 대상이 정해진 주장은 API 의 판별(claim_target)과 같은 대상
+            if c.field:
+                tgt = demotion.claim_target(s, c)
+                assert tgt is not None and (tgt.field, tgt.entity, tgt.entity_id) == (
+                    c.field,
+                    c.entity,
+                    c.entity_id,
+                )

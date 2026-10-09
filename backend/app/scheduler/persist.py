@@ -365,6 +365,8 @@ def save_claims(session: Session, claims: Iterable[ClaimDTO], seq: SeqResolver) 
         row.verify_status = c.verify_status
         row.judgment_seq = seq(c.judgment_seq)
         row.ordinal = c.ordinal
+        # 주장이 생성된 DB 사실(계약 2026-10-09.6, D10-3) — P9 사실 문장 주장만
+        row.entity, row.entity_id, row.field = c.entity, c.entity_id, c.field
         out.append(row)
     session.flush()
     return out
@@ -403,6 +405,9 @@ def copy_claims(
             judgment_seq=src.judgment_seq,
             parent_claim_id=new_ids.get(src.parent_claim_id) if src.parent_claim_id is not None else None,
             ordinal=src.ordinal,
+            entity=src.entity,
+            entity_id=src.entity_id,
+            field=src.field,
         )
         session.add(row)
         session.flush()

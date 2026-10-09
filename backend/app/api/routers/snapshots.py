@@ -27,6 +27,7 @@ from app.api.views import (
     ladder_days,
     load_bundles,
     provenance_for,
+    scope_result,
     score_ctx,
     score_row,
 )
@@ -629,6 +630,14 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         judged = [cid for cid, t in ctx.totals.items() if t.judge_scope == "판정 대상" and cid in bundles]
     else:  # 계약 .3 이전 실행(저장 범위 없음) — 표시 범위로
         judged = [r.b.cx.id for r in rows if r.scope == "판정 대상"]
+    # 재판정 필요(계약 .6, D10-1): TOP 5 행 또는 KPI(판정 대상 수 — 저장·현재 범위 중 하나가
+    # '판정 대상')에 걸린 단지가 하나라도 있으면 true
+    top_set = set(top_ids)
+    rejudge = any(
+        r.rejudge_needed
+        and (r.b.cx.id in top_set or r.scope == "판정 대상" or scope_result(r.b).scope == "판정 대상")
+        for r in rows
+    )
     first = top_ids[0] if top_ids else (min(ctx.totals) if ctx.totals else None)
     unsold_all = unsold_points(session, region.id, fm)
     latest_unsold = next((p for p in reversed(unsold_all) if p["total"]["label"] != LABEL_UNKNOWN), None)
@@ -669,5 +678,6 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         "top5": top5,
         "changes": changes_for(session, snap, limit=20),
         "unsold_series": unsold_all,
+        "rejudge_needed": rejudge,
     }
     return JSONResponse(body)

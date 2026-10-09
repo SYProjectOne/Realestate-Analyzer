@@ -47,6 +47,7 @@ from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
 from app.analysis.scope import pick_intake, runs_ladder
+from app.core.contracts_gen import Claim as ClaimDTO
 from app.core.contracts_gen import (
     JudgmentEnvelope,
     RerankAnchor,
@@ -829,6 +830,36 @@ def _notify(ctx: SchedulerContext, session: Session, events: Sequence[ChangeEven
 # ---------------------------------------------------------------- P9
 
 
+def _claim_targets(f: ComplexFacts) -> dict[str, tuple[str, int]]:
+    """P9 사실 문장의 필드 → 주장이 생성된 DB 사실(entity, entity_id) — 계약 2026-10-09.6 claim.entity·entity_id·field."""
+    out: dict[str, tuple[str, int]] = {}
+    cx = f.row
+    if f.basis is not None:
+        out["max_price_won"] = ("complex_type", f.basis.id)
+    for name in ("move_in_ym", "resale_months", "residency_months"):
+        out[name] = ("complex", cx.id)
+    if f.terms is not None:
+        out["down_payment_pct"] = ("payment_terms", f.terms.id)
+    return out
+
+
+def _with_targets(claims: Sequence[ClaimDTO], f: ComplexFacts) -> list[ClaimDTO]:
+    """원자 주장마다 그 문장이 가리키는 사실 필드가 하나면 대상(entity·entity_id·field)을 단다(D10-3 — 강등·같은 대상 검사).
+    필드 용어 판별은 API 와 같은 함수(``api.demotion.fields_in``)."""
+    from app.api.demotion import fields_in
+
+    targets = _claim_targets(f)
+    out: list[ClaimDTO] = []
+    for c in claims:
+        found = fields_in(c.text or "") & set(targets)
+        if len(found) == 1:
+            name = next(iter(found))
+            entity, eid = targets[name]
+            c = c.model_copy(update={"entity": entity, "entity_id": eid, "field": name})
+        out.append(c)
+    return out
+
+
 def _claim_text(f: ComplexFacts) -> str:
     cx = f.row
     name = cx.name
@@ -851,6 +882,13 @@ def _claim_text(f: ComplexFacts) -> str:
 # ---------------------------------------------------------------- 본체
 
 
+def _sync_demotions(session: Session, complex_ids: Sequence[int] | None) -> None:
+    from app.api.demotion import sync_demotions
+
+    if sync_demotions(session, set(complex_ids) if complex_ids is not None else None):
+        session.commit()
+
+
 def run_pipeline(
     ctx: SchedulerContext,
     snapshot_id: int,
@@ -868,6 +906,9 @@ def run_pipeline(
             raise LookupError(f"region {snap.region_id} 없음")
         prev = previous(session, snap, published_only=True) or previous(session, snap)
         earlier = [prev.id] if prev is not None else []
+        # 강등 정리(D10-3, G3 ``api.demotion``): 새 원문이 출처를 다시 골랐으면 복원, 같은 원문 재정규화면 강등 유지 —
+        # 강등된 사실은 값이 비어 점수·요건 입력에서 빠진다
+        _sync_demotions(session, complex_ids)
         facts = load_facts(session, snap, region)
         all_ids = [f.complex_id for f in facts]
         targets = all_ids if complex_ids is None else sorted(set(complex_ids) & set(all_ids))
@@ -978,16 +1019,15 @@ def run_pipeline(
                 if not text:
                     continue
                 try:
-                    claims.extend(
-                        jp.p9_verify(
-                            caller,
-                            section=f"complex:{f.complex_id}",
-                            text=text,
-                            evidence=f.evidence,
-                            snapshot_id=snap.id,
-                            complex_id=f.complex_id,
-                        )
+                    verified = jp.p9_verify(
+                        caller,
+                        section=f"complex:{f.complex_id}",
+                        text=text,
+                        evidence=f.evidence,
+                        snapshot_id=snap.id,
+                        complex_id=f.complex_id,
                     )
+                    claims.extend(_with_targets(verified, f))
                 except ValueError as exc:  # 복합 문장·근거 없음 — verify 하지 않고 기록
                     res.skipped[f"verify:{f.complex_id}"] = type(exc).__name__
             res.claims = len(persist.save_claims(session, claims, seq))
