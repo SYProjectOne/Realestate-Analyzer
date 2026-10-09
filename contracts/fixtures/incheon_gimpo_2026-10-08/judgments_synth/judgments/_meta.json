@@ -1,0 +1,21 @@
+{
+  "adapter_version": "mock-fixture-2026-10-08",
+  "label": "합성",
+  "recorded_at": "2026-10-09",
+  "generator": "contracts/fixtures/tools/record_synth_judgments.py",
+  "note": "합성 판정 녹화(CEO W2). 실제 파이프라인 payload hash 그대로, 값은 결정적 가짜 판정기(ReportSynthJev = WP7 SynthJev + 보고서 수치). 실제 JEV 응답이 아니다 — R4 실호출 녹화로 교체 가능. adapter_version 은 judgments/_meta.json 과 같다(devseed judgment_log 와 버전이 같아야 mock 재판정이 '판정기 버전 변경'을 만들지 않는다).",
+  "runs": {
+    "full": "rejudge(스냅샷 12, 단지 전부, 시나리오 전부)",
+    "t3": "사람 확인(스위첸 가능) → suggested_job rejudge [4]"
+  },
+  "counts": {
+    "classify": 44,
+    "decide": 6,
+    "extract": 78,
+    "noul": 30,
+    "rerank": 1,
+    "screen": 78,
+    "verify": 10
+  },
+  "index": "_index.json = [{tool, purpose, input_hash, file, status, complex_id, basis, runs, payload}] — payload·purpose·adapter_version 으로 app.core.protocols.input_hash 를 다시 계산하면 input_hash 와 같다."
+}

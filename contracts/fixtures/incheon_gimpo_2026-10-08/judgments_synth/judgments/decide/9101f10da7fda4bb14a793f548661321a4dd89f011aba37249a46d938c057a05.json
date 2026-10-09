@@ -1,0 +1,182 @@
+{
+  "tool": "decide",
+  "purpose": "decide:scenario_A",
+  "input_hash": "sha256:9101f10da7fda4bb14a793f548661321a4dd89f011aba37249a46d938c057a05",
+  "input_len": 3491,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "selected": "complex:2",
+    "probs": {
+      "complex:1": 0.0,
+      "complex:2": 0.01,
+      "complex:3": 0.0,
+      "complex:5": 0.0,
+      "complex:6": 0.0,
+      "complex:8": 0.0,
+      "investigate": 0.03
+    },
+    "checks": {
+      "complex:1": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "contradicted"
+      },
+      "complex:2": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:3": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "contradicted"
+      },
+      "complex:5": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      },
+      "complex:6": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      },
+      "complex:8": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      }
+    },
+    "warnings": [
+      "[합성] 보고서 선택 'wait_new'이(가) 이 payload 후보에 없음 — 보고서 확률이 가장 큰 후보로 대체"
+    ],
+    "escaped": false,
+    "question": null
+  },
+  "raw": {
+    "tool": "jev_decide",
+    "model": "jev-1.13.0",
+    "recommendation": {
+      "selected": "complex_2",
+      "escaped": false,
+      "confidence": null,
+      "probabilities": {
+        "complex_1": 0.0,
+        "complex_2": 0.01,
+        "complex_3": 0.0,
+        "complex_5": 0.0,
+        "complex_6": 0.0,
+        "complex_8": 0.0,
+        "investigate": 0.03
+      }
+    },
+    "checks": [
+      {
+        "candidate": "complex_1",
+        "requirement": 0,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_1",
+        "requirement": 1,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_1",
+        "requirement": 2,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_2",
+        "requirement": 0,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_2",
+        "requirement": 1,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_2",
+        "requirement": 2,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_3",
+        "requirement": 0,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_3",
+        "requirement": 1,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_3",
+        "requirement": 2,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_5",
+        "requirement": 0,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_5",
+        "requirement": 1,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_5",
+        "requirement": 2,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_6",
+        "requirement": 0,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_6",
+        "requirement": 1,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_6",
+        "requirement": 2,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_8",
+        "requirement": 0,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_8",
+        "requirement": 1,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_8",
+        "requirement": 2,
+        "answer": "unknown"
+      }
+    ],
+    "warnings": [
+      "[합성] 보고서 선택 'wait_new'이(가) 이 payload 후보에 없음 — 보고서 확률이 가장 큰 후보로 대체"
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 #126 decide(보고서 선택 단지가 후보에 없음 → 보고서 확률 최대 후보)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

@@ -78,13 +78,25 @@ def test_t03_human_check_rejudge_includes_candidate_fake_judge(env: RegressEnv) 
     assert "jev_rerank" in env.jev.tools()  # 재판정이 실제 어댑터 경로로 돌았다
 
 
-def test_t03_human_check_rejudge_includes_candidate_mock_judge(env: RegressEnv) -> None:
-    """e2e(JUDGE_ADAPTER=mock)와 같은 구성. RA §9: 재판정 후 후보 포함 + G1 TOP 5 유지."""
+def test_t03_human_check_rejudge_mock_judge_d91(env: RegressEnv) -> None:
+    """e2e 흐름 (b)와 같은 구성(JUDGE_ADAPTER=mock, 합성 판정 녹화 ``judgments_synth/``).
+
+    합성 녹화는 보고서 classify 를 따른다 — 스위첸은 #110 review(.72)라 DECISIONS D9-1 '미해결(분류 판정 미해결)'.
+    그래서 사람 확인 '가능' 뒤에도 판정 대상이 아니다(사다리·점수·상황 후보 없음) — RA §9 '후보 포함'과 다른
+    'D9-1로 인한 차이'(픽스처 README). 흐름 자체(사람 확인 → intake 행 → rejudge 1 → 재판정)와 TOP 5 유지는 그대로 본다.
+    후보 포함까지의 흐름은 classify 가 auto 인 fake 변형(위 테스트)이 본다.
+    """
     before = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario="base")["top5"]]
     assert before
     _human_check_then_rejudge(env, "mock")
+    assert env.mock_misses == [], f"합성 녹화에 없는 payload(→ review): {env.mock_misses[:5]}"
     row = _row(env, SCENARIO_D)
-    assert row["intake"]["status"] == "가능", row["intake"]
+    assert (row["intake"]["status"], row["intake"]["path"]) == ("가능", "human_check"), row["intake"]
     after = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario="base")["top5"]]
     assert after, "mock 재판정 후 G1 통합 TOP 5 가 비었다(종합 점수 전부 미계산)"
-    assert row.get("rank") is not None and row["total"]["v"] is not None, row
+    assert CID not in after
+    # D9-1: classify 미해결 → 판정 대상 아님(계약 .4 전에는 score_total 에 '제외'로 실린다)
+    assert row.get("rank") is None and row["total"]["v"] is None, row
+    assert row.get("judge_scope") in ("미해결", "제외"), row.get("judge_scope")
+    d_top5 = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=SCENARIO_D)["top5"]]
+    assert d_top5 and CID not in d_top5

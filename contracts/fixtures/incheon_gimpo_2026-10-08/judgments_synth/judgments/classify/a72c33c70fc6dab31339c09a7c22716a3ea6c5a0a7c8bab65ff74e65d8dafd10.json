@@ -1,0 +1,44 @@
+{
+  "tool": "classify",
+  "purpose": "classify:catalyst:22",
+  "input_hash": "sha256:a72c33c70fc6dab31339c09a7c22716a3ea6c5a0a7c8bab65ff74e65d8dafd10",
+  "input_len": 470,
+  "status": "review",
+  "confidence": 0.76,
+  "cached": false,
+  "result": {
+    "label": "확정",
+    "prob": 0.76,
+    "decision": "review",
+    "distribution": {
+      "확정": 0.76
+    }
+  },
+  "raw": {
+    "tool": "jev_classify",
+    "model": "jev-1.13.0",
+    "results": [
+      {
+        "id": "catalyst:22",
+        "classification": "확정",
+        "probabilities": {
+          "확정": 0.76
+        },
+        "top_probability": 0.76,
+        "confidence": 0.76,
+        "decision": "review"
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 #64·#111 같은 이름 항목"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

@@ -2,7 +2,8 @@
  * e2e 공통 설정(WP9 R3) — playwright.config.ts(서버 기동)와 spec(worker 실행·API 확인)이 같이 쓴다.
  *
  * 백엔드: `python -m app.api.devseed`(인천·김포 픽스처 → 임시 SQLite) → `support/reference_offline.py`
- * (reference.refresh 잡을 공식 사본으로, 네트워크 없음) → uvicorn. 판정기 = Mock(JUDGE_ADAPTER=mock).
+ * (reference.refresh 잡을 공식 사본으로, 네트워크 없음) → uvicorn. 판정기 = Mock(JUDGE_ADAPTER=mock) — 재판정이 재생하는 녹화는
+ * 합성 판정 녹화 `judgments_synth/`(JUDGE_FIXTURE_DIR, 실제 파이프라인 payload hash, 라벨 '합성' — CEO W2).
  * 잡은 상주 worker 없이 테스트가 직접 돌린다:
  *  - `runWorkerOnce()` = 실제 CLI `python -m app.worker --once` (재판정·보고서 — 수집 없음)
  *  - `runReplayWorker()` = 같은 진입점(runner.main --once)에 녹화 재생 수집기를 넣은 대역(지역 bootstrap —
@@ -23,6 +24,10 @@ export const WRITE_TOKEN = process.env.E2E_FLOW_TOKEN ?? 'e2e-flow-write-token-0
 export const READ_TOKEN = process.env.E2E_FLOW_READ_TOKEN ?? 'e2e-flow-read-token-0123456789abc';
 export const DATA = (process.env.E2E_FLOW_DATA ?? path.join(os.tmpdir(), 'sa-e2e-flows')).replaceAll('\\', '/');
 export const API = `http://127.0.0.1:${API_PORT}`;
+/** 합성 판정 녹화(MockAdapter fixture_dir) — contracts/fixtures/tools/record_synth_judgments.py 가 만든다 */
+export const SYNTH_JUDGMENTS = path
+  .join(ROOT, 'contracts', 'fixtures', 'incheon_gimpo_2026-10-08', 'judgments_synth')
+  .replaceAll('\\', '/');
 
 export function backendEnv(data: string = DATA): Record<string, string> {
   return {
@@ -34,6 +39,7 @@ export function backendEnv(data: string = DATA): Record<string, string> {
     API_TOKEN: WRITE_TOKEN,
     READONLY_TOKEN: READ_TOKEN,
     JUDGE_ADAPTER: 'mock',
+    JUDGE_FIXTURE_DIR: SYNTH_JUDGMENTS,
     LOG_JSON: 'false',
     LOG_LEVEL: 'WARNING',
     // 저장소 .env(실제 키)를 읽지 않게

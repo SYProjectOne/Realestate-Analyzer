@@ -1,0 +1,43 @@
+{
+  "tool": "extract",
+  "purpose": "extract:rd9002:1",
+  "input_hash": "sha256:76ef2a9e4e59baf6bff5e89a4949cdf50b5c954b4c4fd9e274112184268039c0",
+  "input_len": 517,
+  "status": "ok",
+  "confidence": 0.9,
+  "cached": false,
+  "result": {
+    "fields": [
+      {
+        "name": "down_payment_pct",
+        "value_text": null,
+        "decision": "auto",
+        "confidence": 0.9,
+        "excerpt": null
+      }
+    ]
+  },
+  "raw": {
+    "tool": "jev_extract",
+    "model": "jev-1.13.0",
+    "results": [
+      {
+        "id": "down_payment_pct",
+        "value": null,
+        "status": "not_found",
+        "confidence": 0.9
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "SynthJev 기본(보고서에 필드별 대응 값 없음)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 1,
+  "error_text": null
+}

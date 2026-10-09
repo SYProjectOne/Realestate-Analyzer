@@ -1,0 +1,89 @@
+{
+  "tool": "noul",
+  "purpose": "noul:ladder:move_in_plus_1y:2029-03:c2",
+  "input_hash": "sha256:1cddb980f9fa6b75557451362772d470625bbd1cc6269a73ef045402d1491b33",
+  "input_len": 741,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "horizon": "move_in_plus_1y",
+    "target_ym": "2029-03",
+    "propositions": [
+      {
+        "key": "p5",
+        "text": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +5% 이상이다",
+        "prob": 0.48,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p10",
+        "text": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +10% 이상이다",
+        "prob": 0.45,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p20",
+        "text": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +20% 이상이다",
+        "prob": 0.36,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p_flat",
+        "text": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 이하(보합·하락)이다",
+        "prob": 0.48,
+        "verdict": "uncertain",
+        "decision": "review"
+      }
+    ]
+  },
+  "raw": {
+    "tool": "jev_noul",
+    "model": "jev-1.13.0",
+    "status": "ok",
+    "results": [
+      {
+        "id": "proposition0",
+        "proposition": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +5% 이상이다",
+        "probability": 0.48,
+        "label": "uncertain",
+        "auto": false
+      },
+      {
+        "id": "proposition1",
+        "proposition": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +10% 이상이다",
+        "probability": 0.45,
+        "label": "uncertain",
+        "auto": false
+      },
+      {
+        "id": "proposition2",
+        "proposition": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +20% 이상이다",
+        "probability": 0.36,
+        "label": "uncertain",
+        "auto": false
+      },
+      {
+        "id": "proposition3",
+        "proposition": "엘리프 검단 포레듀 전용 84A(84㎡)를 2026-10-08 현재 구매가(5.78~6.08억, 공급가+발코니)로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 이하(보합·하락)이다",
+        "probability": 0.48,
+        "label": "uncertain",
+        "auto": false
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 #68 noul(입주 후 1년)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 2,
+  "error_text": null
+}
