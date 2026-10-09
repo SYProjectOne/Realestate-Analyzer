@@ -24,6 +24,7 @@ PAYLOAD_SCHEMAS: dict[str, str] = {
     "snapshot.publish": "SnapshotPublishPayload",
     "reference.refresh": "ReferenceRefreshPayload",
     "region.bootstrap": "RegionBootstrapPayload",
+    "claim.reverify": "ClaimReverifyPayload",  # 계약 2026-10-09.4 (PATCH /claims/{id})
 }
 
 

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import ContractViolation
 from app.core.logging import get_logger
-from app.core.settings import Settings
+from app.core.settings import Settings, get_settings
 from app.models import FieldProvenance
 
 __all__ = [
@@ -101,7 +101,12 @@ def fact(
     if human:
         out["human"] = True
     if label != LABEL_UNKNOWN and not prov:
-        raise ContractViolation(f"Fact without prov (label {label})")
+        # 출처 없는 수치: dev 만 예외, prod 는 '확인 불가(출처 누락)' + 경고 로그(errors.py 규칙, R3 minor 38)
+        detail = f"Fact without prov (label {label})"
+        if get_settings().env == "dev":
+            raise ContractViolation(detail)
+        log.warning("출처 누락: %s", detail, extra={"label": label})
+        return unknown(MISSING_REASON, checked_at, unit=unit)
     return out
 
 

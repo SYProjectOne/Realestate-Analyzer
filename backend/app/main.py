@@ -8,6 +8,9 @@
 - ``app.api`` 패키지에 ``router`` 가 있으면 ``API_PREFIX``(기본 ``/api``) 아래에 붙인다(WP5).
   없으면 건너뛴다. 인증 의존성은 WP5 가 router 쪽에 단다.
 - nginx(web)는 ``/api/*`` 를 경로 그대로 api:8000 으로 넘긴다 → 개발·운영 경로가 같다.
+- ``/docs``·``/redoc``·``/openapi.json``(R3 minor 19): ENV=prod 는 끈다(404). dev 는 API 와 같은 인증
+  (``api.deps.require_auth`` — 토큰이 없으면 루프백 전용)을 건다. 계약 원본은 contracts/openapi.yaml 이다.
+- 기동은 ``python -m app.serve``(R3 M11 — 토큰이 없으면 127.0.0.1 바인드).
 """
 
 from __future__ import annotations
@@ -77,6 +80,29 @@ def _load_api_router() -> APIRouter | None:
     return router if isinstance(router, APIRouter) else None
 
 
+def _install_docs(app: FastAPI) -> None:
+    """dev 전용 API 문서. 인증은 API 라우터와 같은 ``require_auth``(R3 minor 19)."""
+    from fastapi import Depends
+    from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+    from fastapi.responses import HTMLResponse, JSONResponse
+
+    from app.api.deps import require_auth
+
+    auth = [Depends(require_auth)]
+
+    def openapi_json() -> JSONResponse:
+        return JSONResponse(app.openapi())
+
+    def docs() -> HTMLResponse:
+        return get_swagger_ui_html(openapi_url="/openapi.json", title=f"{app.title} — docs")
+
+    def redoc() -> HTMLResponse:
+        return get_redoc_html(openapi_url="/openapi.json", title=f"{app.title} — redoc")
+
+    for path, endpoint in (("/openapi.json", openapi_json), ("/docs", docs), ("/redoc", redoc)):
+        app.add_api_route(path, endpoint, methods=["GET"], dependencies=auth, include_in_schema=False)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     s = settings or get_settings()
 
@@ -87,7 +113,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         reset_engine()
 
-    app = FastAPI(title="subscription-analyzer", version=app_version(), lifespan=lifespan)
+    app = FastAPI(
+        title="subscription-analyzer",
+        version=app_version(),
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.state.settings = s
 
     def health(response: Response) -> Health:
@@ -118,6 +151,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     router = _load_api_router()
+    if router is not None and s.env == "dev":
+        _install_docs(app)
     if router is not None:
         app.include_router(router, prefix=prefix)
         # WP5: 오류 본문을 계약 Error 로 맞추는 처리기(app.api.install) — 라우터 연결에 필요한 최소 수정

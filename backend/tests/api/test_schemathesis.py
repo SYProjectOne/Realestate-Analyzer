@@ -63,7 +63,7 @@ SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion"}
 
 # /health 는 servers 가 루트('/')라 이 테스트(base_url /api)에서 빼고 test_health_contract 로 본다.
 # POST /jobs 의 JobCreate(job_name 별 if/then payload)는 schemathesis 가 생성하지 못한다(UnsupportedSchema)
-# → test_contract_create_job 이 계약 예시 + job_name 7종 본문으로 같은 검사를 돌린다.
+# → test_contract_create_job 이 계약 예시 + job_name 8종 본문으로 같은 검사를 돌린다.
 @schema.exclude(path="/health").exclude(operation_id="createJob").parametrize()
 @settings(max_examples=MAX_EXAMPLES, deadline=None, suppress_health_check=list(HealthCheck))
 def test_contract(case: Any, st_app: Any) -> None:
@@ -90,6 +90,7 @@ CREATE_JOB_BODIES: list[dict[str, Any]] = [
     {"job_name": "snapshot.publish", "payload": {"snapshot_id": 12}},
     {"job_name": "reference.refresh", "payload": {}},
     {"job_name": "region.bootstrap", "payload": {"region_id": 1}},
+    {"job_name": "claim.reverify", "payload": {"snapshot_id": 12, "claim_id": 1, "text": "고친 문장"}},
     {"job_name": "rejudge", "payload": {"snapshot_id": 12}},  # 필수 누락 → 422
     {"job_name": "report", "payload": {"snapshot_id": 12, "format": "md"}},  # enum 밖 → 422
     {"job_name": "nope", "payload": {}},  # 잡 이름 밖 → 422
@@ -112,7 +113,7 @@ def test_all_operations_covered() -> None:
     from app.main import create_app
 
     ops = {(op.method.upper(), op.path) for op in (r.ok() for r in schema.get_all_operations())}
-    assert len(ops) == 31
+    assert len(ops) == 37  # 31 + 계약 2026-10-09.4 의 6개
     app = create_app()
     routes = {
         (method.upper(), path.removeprefix("/api") if path != "/health" else path)

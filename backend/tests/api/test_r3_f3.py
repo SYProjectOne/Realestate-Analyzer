@@ -409,7 +409,10 @@ def test_m4_unsold_partial_sum_is_unknown(client: TestClient) -> None:
     assert kpi["ym"] != latest or kpi["total"]["label"] == "확인 불가"
 
 
-def test_m4_supply_partial_sum_is_unknown(client: TestClient) -> None:
+def test_m4_supply_partial_sum_is_unknown(api_settings: Settings) -> None:
+    """supply.units 는 NOT NULL — 누락은 출처 행 없음(prod: '확인 불가(출처 누락)')으로만 생긴다."""
+    from app.main import create_app
+
     with get_session() as s:
         rows = list(s.scalars(select(Supply)))
         by_key: dict[tuple[str | None, int], list[Supply]] = {}
@@ -421,12 +424,16 @@ def test_m4_supply_partial_sum_is_unknown(client: TestClient) -> None:
                 FieldProvenance.entity == "supply", FieldProvenance.entity_id == group[0].id
             )
         )
-        group[0].units = None  # type: ignore[assignment]
-    market = client.get(f"/api/snapshots/{SNAP}/market", headers=WRITE).json()
-    view = next(v for v in market["supply"] if (v["living_area"], v["year"]) == key)
-    assert view["units"]["label"] == "확인 불가" and view["units"]["reason"] == "일부 누락 1건"
-    peak = client.get(f"/api/snapshots/{SNAP}/dashboard", headers=WRITE).json()["kpis"]["move_in_peak"]
-    assert peak["units"]["label"] == "확인 불가" and "일부 누락" in peak["units"]["reason"]
+    prod = api_settings.model_copy(update={"env": "prod", "judge_adapter": "jev"})
+    set_settings(prod)
+    with TestClient(create_app(prod), raise_server_exceptions=False) as c:
+        market = c.get(f"/api/snapshots/{SNAP}/market", headers=WRITE).json()
+        view = next(v for v in market["supply"] if (v["living_area"], v["year"]) == key)
+        assert view["units"]["label"] == "확인 불가" and view["units"]["reason"] == "일부 누락 1건"
+        dash = c.get(f"/api/snapshots/{SNAP}/dashboard", headers=WRITE).json()
+        peak = dash["kpis"]["move_in_peak"]
+        assert peak["units"]["label"] == "확인 불가" and "일부 누락" in peak["units"]["reason"]
+        assert peak["year"]["label"] == "확인 불가"
 
 
 # ====================================================================== minor 22 출처 링크

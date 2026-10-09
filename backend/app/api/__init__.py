@@ -10,12 +10,36 @@ from fastapi import APIRouter, Depends, FastAPI
 
 from app.api.deps import require_auth, strict_query
 from app.api.errors import install_handlers
-from app.api.routers import analysis, complexes, jobs, market, ops, regions, reports, snapshots
+from app.api.routers import (
+    analysis,
+    catalysts,
+    claims,
+    complexes,
+    jobs,
+    market,
+    ops,
+    regions,
+    reports,
+    share_links,
+    snapshots,
+)
 
 __all__ = ["install", "router"]
 
 router = APIRouter(dependencies=[Depends(require_auth), Depends(strict_query)])
-for _module in (regions, snapshots, complexes, analysis, market, jobs, ops, reports):
+for _module in (
+    regions,
+    snapshots,
+    complexes,
+    analysis,
+    market,
+    jobs,
+    ops,
+    reports,
+    claims,  # 계약 2026-10-09.4 (R3 M8)
+    catalysts,  # (R3 M6)
+    share_links,  # (R3 M9)
+):
     router.include_router(_module.router)
 
 
