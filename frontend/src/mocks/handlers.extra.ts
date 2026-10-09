@@ -10,6 +10,8 @@
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
  *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
  *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
+ *  - 계약 .8 초안(src/api/contract8.ts): 사람 확인 field enum·값 형·길이 검사(422), 사실 필드 사람 확인 → 같은 단지·필드의
+ *    강등(GET claims demotion)을 복원(restored_by human_check). CORE 머지 후 생성 핸들러로 바뀌는 부분은 여기서만 흉내 낸다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
  */
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
@@ -17,6 +19,7 @@ import type {
   CatalystCreate,
   CatalystCreated,
   ClaimPatch,
+  ClaimView,
   ComplexDetail,
   ComplexRow,
   ComplexRowPage,
@@ -33,6 +36,14 @@ import type {
   ShareLinkCreate,
   ShareLinkCreated,
 } from '@/api/types';
+import {
+  HUMAN_CHECK_FIELDS,
+  HUMAN_CHECK_NOTE_MAX,
+  HUMAN_CHECK_RULES,
+  HUMAN_CHECK_VALUE_MAX,
+  humanCheckFieldOf,
+  type HumanCheckField,
+} from '@/api/contract8';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
 
@@ -72,6 +83,8 @@ const state = {
   nextJobId: 5000,
   jobs: new Map<number, MockJob>(),
   intakeOverrides: new Map<number, Intake>(),
+  /** 사람 확인으로 복원된 사실: `<complex_id>:<field>` (계약 .8 초안) */
+  restoredFacts: new Set<string>(),
 };
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
@@ -79,6 +92,25 @@ export function resetMockState(): void {
   state.nextJobId = 5000;
   state.jobs.clear();
   state.intakeOverrides.clear();
+  state.restoredFacts.clear();
+}
+
+/** 계약 .8 초안 사람 확인 검사 — 서버(422)와 같은 규칙. 통과하면 null */
+function humanCheckProblem(body: Partial<HumanCheckCreate>): string | null {
+  const field = body.field as HumanCheckField;
+  if (!(HUMAN_CHECK_FIELDS as readonly string[]).includes(field))
+    return `field: ${String(body.field)}`;
+  const value = (body.value_text ?? '').trim();
+  if (!value || value.length > HUMAN_CHECK_VALUE_MAX) return 'value_text 길이';
+  if ((body.note ?? '').length > HUMAN_CHECK_NOTE_MAX) return 'note 길이';
+  const rule = HUMAN_CHECK_RULES[field];
+  if (!rule) return null;
+  if (rule.kind === 'ym') return /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? null : 'YYYY-MM';
+  if (!(rule.kind === 'int' ? /^-?\d+$/ : /^-?\d+(\.\d+)?$/).test(value)) return '숫자 형식';
+  const n = Number(value);
+  if ((rule.min !== undefined && n < rule.min) || (rule.max !== undefined && n > rule.max))
+    return '범위';
+  return null;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -308,8 +340,37 @@ export const extraHandlers = [
 
   // POST /ops/human-checks (201) — 응답을 요청 값으로 맞추고 intake를 덮어쓴다
   http.post(mswPath('/ops/human-checks'), async ({ request }) => {
-    const body = (await request.json().catch(() => ({}))) as HumanCheckCreate;
+    const body = (await request.json().catch(() => ({}))) as HumanCheckCreate & {
+      entity_id?: number | null;
+    };
+    const problem = humanCheckProblem(body);
+    if (problem)
+      return HttpResponse.json({ detail: `사람 확인 값 오류: ${problem}` }, { status: 422 });
     const example = await base<HumanCheck>(request, 'POST', body);
+    if (body.field !== 'intake_status') {
+      // 사실 필드(계약 .8): 0순위 후보 → 같은 단지·필드 강등 복원. 접수 배지는 그대로
+      state.restoredFacts.add(`${body.complex_id}:${body.field}`);
+      const entity = ['max_price_won', 'down_payment_pct'].includes(body.field)
+        ? 'payment_terms'
+        : body.field === 'other'
+          ? null
+          : 'complex';
+      return HttpResponse.json(
+        {
+          ...example,
+          ...body,
+          entity,
+          entity_id: entity ? (body.entity_id ?? body.complex_id) : null,
+          note: body.note ?? null,
+          created_intake: null,
+          suggested_job: {
+            job_name: 'rejudge',
+            payload: { ...(example.suggested_job?.payload ?? {}), complex_ids: [body.complex_id] },
+          },
+        },
+        { status: 201 },
+      );
+    }
     const intake: Intake = {
       ...(example.created_intake ?? {
         status: '가능',
@@ -343,6 +404,23 @@ export const extraHandlers = [
       },
     };
     return HttpResponse.json(created, { status: 201 });
+  }),
+
+  // GET /snapshots/{sid}/claims — 사람 확인으로 복원된 사실의 강등 상태(계약 .8 초안)
+  http.get(mswPath('/snapshots/:sid/claims'), async ({ request }) => {
+    const claims = await base<ClaimView[]>(request);
+    return HttpResponse.json(
+      claims.map((claim) => {
+        const d = claim.demotion;
+        const field = humanCheckFieldOf(d?.field) ?? humanCheckFieldOf(claim.field);
+        if (!d || d.status !== 'demoted' || !field) return claim;
+        if (!state.restoredFacts.has(`${claim.complex_id}:${field}`)) return claim;
+        return {
+          ...claim,
+          demotion: { ...d, status: 'restored', restored_by: 'human_check', restored_at: nowIso() },
+        } satisfies ClaimView;
+      }),
+    );
   }),
 
   // GET /raw/{id}?as=text — 원문 텍스트(목). 출처 예시의 발췌를 excerpt_start 위치에 둔다

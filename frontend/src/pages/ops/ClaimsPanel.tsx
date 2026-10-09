@@ -1,13 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
+import { humanCheckFieldOf } from '@/api/contract8';
 import { invalidateFactViews, useClaims, useReviseClaim } from '@/api/hooks';
 import type { ClaimView } from '@/api/types';
 import { Badge, JobProgress, MetaText, useOpenProvenance } from '@/components';
 import { t } from '@/i18n';
 import { enumText, idText, QueryState, Section, useGlobalSearch } from '../_shared';
+import { HUMAN_CHECK_ANCHOR, humanCheckSearch } from './HumanCheckForm';
 
 /**
  * G7 ClaimsPanel (M8, 계약 2026-10-09.4) — 지금 스냅샷의 contradicted 주장 목록.
@@ -98,6 +100,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
           </span>
         ) : null}
         <DemotionBadge demotion={claim.demotion} />
+        {canWrite ? <RestoreByHumanLink claim={claim} /> : null}
         {claim.prov && openProvenance ? (
           <button
             type="button"
@@ -187,5 +190,40 @@ function DemotionBadge({ demotion }: { demotion: ClaimView['demotion'] }) {
     <span data-testid="claim-demotion" data-status={demotion.status}>
       <Badge tone={demotion.status === 'demoted' ? 'muted' : 'neutral'}>{text}</Badge>
     </span>
+  );
+}
+
+/**
+ * 강등된(검증 모순) 사실을 사람 확인으로 복원하는 바로가기(M-5, D11-3): 같은 화면의 사람 확인 폼을
+ * 단지·필드·사실 행(entity_id)으로 미리 채우고 폼으로 스크롤한다. 사람 확인 필드로 옮길 수 없는 강등이면 그리지 않는다.
+ */
+function RestoreByHumanLink({ claim }: { claim: ClaimView }) {
+  const [params] = useSearchParams();
+  const demotion = claim.demotion;
+  if (!demotion || demotion.status !== 'demoted') return null;
+  const field = humanCheckFieldOf(demotion.field) ?? humanCheckFieldOf(claim.field);
+  if (!field) return null;
+  const search = humanCheckSearch(params, {
+    complexId: claim.complex_id,
+    field,
+    entityId: demotion.entity_id,
+  });
+  return (
+    <Link
+      to={{ search, hash: HUMAN_CHECK_ANCHOR }}
+      data-testid="claim-restore-human"
+      className="text-xs underline"
+      onClick={() => {
+        // 라우터는 해시로 스크롤하지 않는다 — 폼으로 직접 옮긴다
+        requestAnimationFrame(() => {
+          const form = document.getElementById(HUMAN_CHECK_ANCHOR);
+          if (form && typeof form.scrollIntoView === 'function') {
+            form.scrollIntoView({ block: 'start' });
+          }
+        });
+      }}
+    >
+      {t('page.G7.claims.restoreByHuman')}
+    </Link>
   );
 }

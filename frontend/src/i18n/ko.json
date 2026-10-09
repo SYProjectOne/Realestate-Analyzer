@@ -491,13 +491,36 @@
         "submit": "사람 확인 저장",
         "saved": "저장했습니다 — 접수 배지를 갱신했습니다",
         "required": "단지·필드·값·입력자(역할)는 필수입니다",
-        "latest": "방금 저장한 접수 상태"
+        "latest": "방금 저장한 접수 상태",
+        "tooLong": "값은 {max}자 이하로 입력하세요",
+        "badYm": "입주 예정은 YYYY-MM 형식으로 입력하세요",
+        "badInt": "정수만 입력하세요(소수 불가)",
+        "badNumber": "숫자만 입력하세요",
+        "min": "{min} 이상이어야 합니다",
+        "max": "{max} 이하여야 합니다",
+        "noteTooLong": "메모는 {max}자 이하로 입력하세요",
+        "noteHint": "통화·방문 내용 요약만 — 전화번호·주민번호·이메일·비밀값은 서버가 거부합니다",
+        "savedFact": "저장했습니다 — 사실을 사람 확인 값으로 바꿨습니다(같은 사실의 검증 모순 강등 복원)",
+        "factSaved": "{field} = {value} (사람 확인 — 출처 우선순위 0)",
+        "entityPinned": "강등된 사실 행(주장의 대상)을 지정했습니다"
       },
       "hcField": {
         "intake_status": "접수 상태",
+        "max_price_won": "최고 공급금액(기준 타입·현재 공고)",
+        "move_in_ym": "입주 예정",
+        "resale_months": "전매 제한(개월)",
+        "residency_months": "거주의무(개월)",
+        "down_payment_pct": "계약금 비율(%)",
         "price": "가격",
         "units": "잔여 세대",
-        "other": "기타"
+        "other": "기타(기록만)"
+      },
+      "hcHint": {
+        "max_price_won": "원 단위 정수(예: 605000000)",
+        "move_in_ym": "YYYY-MM",
+        "resale_months": "개월 정수 0~240",
+        "residency_months": "개월 정수 0~240",
+        "down_payment_pct": "퍼센트 0~100"
       },
       "hcKind": {
         "phone": "전화",
@@ -524,6 +547,7 @@
         "submit": "고쳐서 재검증",
         "error": "수정하지 못했습니다: {detail}",
         "field": "대상 필드: {name}",
+        "restoreByHuman": "사람 확인으로 복원",
         "demoteHint": "DB 사실에서 나온 주장입니다 — 고쳐서 재검증을 접수하면 같은 대상(단지·필드)만 허용되고, 그 사실은 '확인 불가(검증 모순)'으로 강등되어 점수·요건에서 빠집니다(사람 확인 또는 새 원문으로 복원).",
         "restored": "복원됨({by})",
         "restoredPlain": "복원됨",
