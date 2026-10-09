@@ -74,7 +74,7 @@ export function DataTableToggle({
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((prev) => !prev)}
-        className="rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
+        className="rounded-sm border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
       >
         {open ? t('table.hide') : t('table.show')}
       </button>

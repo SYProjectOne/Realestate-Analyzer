@@ -132,7 +132,7 @@ export function CatalystUrlForm({ regionId }: { regionId: number | null }) {
             type="submit"
             disabled={disabled || create.isPending}
             title={canWrite ? undefined : t('auth.readOnlyHint')}
-            className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+            className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
           >
             {t('page.G6.catalyst.submit')}
           </button>
@@ -163,7 +163,7 @@ export function CatalystUrlForm({ regionId }: { regionId: number | null }) {
 }
 
 const inputClass =
-  'w-full rounded border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60';
+  'w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60';
 
 function Field({
   label,

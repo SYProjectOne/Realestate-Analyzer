@@ -40,7 +40,7 @@ export function ChartFrame({
   const uniqueLabels = [...new Set(labels)];
   return (
     <figure
-      className={`flex flex-col gap-2 rounded border border-border bg-surface p-3 ${className}`}
+      className={`flex flex-col gap-2 rounded-sm border border-border bg-surface p-3 ${className}`}
     >
       <figcaption className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold">{title}</h3>

@@ -115,7 +115,7 @@ function ConfirmDialog({
       onKeyDown={(e) => {
         if (e.key === 'Escape') onCancel();
       }}
-      className="flex flex-col gap-3 rounded border border-border bg-surface p-4 shadow-xl"
+      className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-4 shadow-xl"
     >
       <h2 id={titleId} className="text-base font-semibold">
         {t('page.share.confirmTitle')}
@@ -128,21 +128,21 @@ function ConfirmDialog({
           ref={defaultRef}
           type="button"
           onClick={onTabOnly}
-          className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg"
+          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg"
         >
           {t('page.share.tabOnly')}
         </button>
         <button
           type="button"
           onClick={onReplace}
-          className="rounded border border-border px-3 py-1.5 text-sm"
+          className="rounded-sm border border-border px-3 py-1.5 text-sm"
         >
           {t('page.share.replace')}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded border border-border px-3 py-1.5 text-sm"
+          className="rounded-sm border border-border px-3 py-1.5 text-sm"
         >
           {t('page.share.cancel')}
         </button>

@@ -42,7 +42,7 @@ export function SnapshotPicker({
         value={selected}
         disabled={disabled || snapshots.length === 0}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded border border-border bg-surface px-2 py-1 text-fg"
+        className="rounded-sm border border-border bg-surface px-2 py-1 text-fg"
       >
         {snapshots.length === 0 ? <option value="">{t('header.snapshotNone')}</option> : null}
         {snapshots.map((snapshot) => (

@@ -88,7 +88,7 @@ function ImagePreview({ file }: { file: FetchedFile }) {
       src={url}
       alt={t('provenance.rawImageAlt', { name: file.filename ?? '' })}
       data-testid="raw-preview-image"
-      className="max-h-[60vh] max-w-full self-start rounded border border-border bg-bg object-contain"
+      className="max-h-[60vh] max-w-full self-start rounded-sm border border-border bg-bg object-contain"
     />
   );
 }
@@ -131,7 +131,7 @@ function TextPreview({ blob }: { blob: Blob }) {
       ) : null}
       <pre
         data-testid="raw-preview-text"
-        className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded border border-border bg-bg p-2 text-xs"
+        className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-bg p-2 text-xs"
       >
         {truncated ? text.slice(0, TEXT_PREVIEW_MAX) : text}
       </pre>

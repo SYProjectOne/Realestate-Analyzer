@@ -44,12 +44,12 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
       ) : null}
       <ul className="grid grid-cols-3 gap-2 md:grid-cols-7" aria-label={t('page.G7.stats')}>
         {tiles.map((tile) => (
-          <li key={tile.key} className="flex flex-col rounded border border-border p-2">
+          <li key={tile.key} className="flex flex-col rounded-sm border border-border p-2">
             <span className="text-xs text-muted">{t(`page.G7.stat.${tile.key}` as TKey)}</span>
             <span className="text-lg font-semibold tabular-nums">{formatCount(tile.value)}</span>
           </li>
         ))}
-        <li className="flex flex-col rounded border border-border p-2">
+        <li className="flex flex-col rounded-sm border border-border p-2">
           <span className="text-xs text-muted">{t('page.G7.stat.avg')}</span>
           <span className="text-lg font-semibold tabular-nums">
             {stats.avg_duration_ms === null
@@ -73,7 +73,7 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
                 <span className="flex items-center gap-2">
                   <span
                     aria-hidden
-                    className="h-3 rounded bg-accent"
+                    className="h-3 rounded-sm bg-accent"
                     style={{ width: `${(b.calls / max) * 100}%`, minWidth: b.calls > 0 ? 2 : 0 }}
                   />
                   <span className="whitespace-nowrap text-muted">{text}</span>

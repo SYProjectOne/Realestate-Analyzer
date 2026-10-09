@@ -62,13 +62,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role="status"
             aria-live="polite"
-            className="pointer-events-auto flex max-w-lg items-center gap-3 rounded border border-border bg-surface px-3 py-2 text-sm shadow-lg"
+            className="pointer-events-auto flex max-w-lg items-center gap-3 rounded-sm border border-border bg-surface px-3 py-2 text-sm shadow-lg"
           >
             <span>{item.message}</span>
             {item.action ? (
               <button
                 type="button"
-                className="rounded bg-accent px-2 py-0.5 text-accent-fg"
+                className="rounded-sm bg-accent px-2 py-0.5 text-accent-fg"
                 onClick={() => {
                   item.action?.onClick();
                   dismiss(item.id);
@@ -80,7 +80,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <button
               type="button"
               aria-label={t('app.toastClose')}
-              className="ml-auto rounded px-1 text-muted hover:text-fg"
+              className="ml-auto rounded-sm px-1 text-muted hover:text-fg"
               onClick={() => dismiss(item.id)}
             >
               ×

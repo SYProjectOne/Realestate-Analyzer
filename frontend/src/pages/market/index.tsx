@@ -44,7 +44,7 @@ export function MarketPage() {
             id={selectId}
             value={livingArea ?? ''}
             onChange={(e) => setLivingArea(e.target.value || null, { replace: true })}
-            className="rounded border border-border bg-surface px-2 py-1"
+            className="rounded-sm border border-border bg-surface px-2 py-1"
           >
             <option value="">{t('page.G6.allAreas')}</option>
             {(query.data?.living_areas ?? []).map((la) => (

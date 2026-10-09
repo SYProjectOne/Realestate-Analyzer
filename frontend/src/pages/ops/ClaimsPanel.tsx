@@ -65,7 +65,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
   return (
     <li
       data-testid={`claim-${claim.id}`}
-      className="flex flex-col gap-2 rounded border border-border p-2 text-sm"
+      className="flex flex-col gap-2 rounded-sm border border-border p-2 text-sm"
     >
       <div className="flex flex-wrap items-center gap-2">
         {claim.complex_id !== null ? (
@@ -140,14 +140,14 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
           rows={2}
           disabled={locked}
           onChange={(e) => setText(e.target.value)}
-          className="w-full rounded border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60"
+          className="w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60"
         />
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             disabled={!canSubmit}
             title={canWrite ? undefined : t('auth.readOnlyHint')}
-            className="rounded bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
+            className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
           >
             {t('page.G7.claims.submit')}
           </button>

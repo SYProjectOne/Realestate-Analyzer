@@ -20,7 +20,7 @@ const COLS = [
 ] as const;
 
 /** 소스 표 자리(소스 8종 표 높이) — 늦게 채워져도 아래 패널이 밀리지 않게(CLS) */
-export const SOURCES_MIN_HEIGHT = 'min-h-[24rem]';
+export const SOURCES_MIN_HEIGHT = 'min-h-96';
 
 /** G7 SourceStatusTable — 소스·최종 수집·성공/실패·http_status·재시도 버튼(POST /jobs retry) */
 export function SourceStatusTable({
@@ -128,7 +128,7 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                       disabled={!canWrite || createJob.isPending}
                       title={canWrite ? undefined : t('auth.readOnlyHint')}
                       onClick={() => row.retry && retry(row.retry)}
-                      className="rounded border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+                      className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
                     >
                       {t('page.G7.src.retry')}
                     </button>

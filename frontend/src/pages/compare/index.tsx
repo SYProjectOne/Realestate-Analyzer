@@ -137,7 +137,7 @@ function CompareGrid({
   const decisionOf = (id: number) => decision?.items.find((i) => i.complex_id === id) ?? null;
   const search = useGlobalSearch();
   return (
-    <div className="overflow-x-auto rounded border border-border bg-surface">
+    <div className="overflow-x-auto rounded-sm border border-border bg-surface">
       <table aria-label={t('page.G4.grid')} className="w-full border-collapse text-sm">
         <thead>
           <tr>
@@ -398,7 +398,7 @@ function VirtualCandidates({ decision }: { decision: DecisionSet }) {
         <li
           key={item.option_key}
           data-option={item.option_key}
-          className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border px-2 py-1"
+          className="flex flex-wrap items-center gap-2 rounded-sm border border-dashed border-border px-2 py-1"
         >
           <span className="font-medium">
             {t('page.G4.virtualCandidate', { label: item.label })}

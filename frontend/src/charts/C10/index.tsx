@@ -80,7 +80,7 @@ export function C10Sensitivity({ data, height = 240 }: C10SensitivityProps) {
                     </td>
                   );
                 })}
-                <td className="min-w-[14rem] px-2 py-1">
+                <td className="min-w-56 px-2 py-1">
                   {row.changed
                     ? [
                         row.entered.length > 0

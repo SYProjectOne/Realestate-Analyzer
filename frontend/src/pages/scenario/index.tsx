@@ -68,7 +68,7 @@ function ScenarioBody({ scenarios, current }: { scenarios: Scenario[]; current: 
   return (
     <div className="flex flex-col gap-4">
       {decision && (decision.escaped || decision.status === 'escaped') ? (
-        <div role="alert" className="rounded border border-danger bg-surface p-3 text-sm">
+        <div role="alert" className="rounded-sm border border-danger bg-surface p-3 text-sm">
           <p className="font-semibold text-danger">{t('page.G5.escaped')}</p>
           {decision.question ? <p className="mt-1">{decision.question}</p> : null}
         </div>
@@ -105,7 +105,7 @@ function BaseScenarioPicker({
         id={id}
         value={current ? keyOf(current) : ''}
         onChange={(e) => setScenario(e.target.value || null)}
-        className="rounded border border-border bg-surface px-2 py-1"
+        className="rounded-sm border border-border bg-surface px-2 py-1"
       >
         {scenarios.map((s) => (
           <option key={s.id} value={keyOf(s)}>
@@ -181,7 +181,7 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
         e.preventDefault();
         submit();
       }}
-      className="flex flex-col gap-3 rounded border border-border bg-surface p-3"
+      className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-3"
     >
       <h2 className="text-base font-semibold">{t('page.G5.form')}</h2>
       <TextField
@@ -228,7 +228,7 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
         type="submit"
         disabled={!canWrite || create.isPending}
         title={canWrite ? undefined : t('auth.readOnlyHint')}
-        className="self-start rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+        className="self-start rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
       >
         {t('page.G5.save')}
       </button>
@@ -286,7 +286,7 @@ function TextField({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border bg-surface px-2 py-1"
+        className="rounded-sm border border-border bg-surface px-2 py-1"
       />
     </FieldShell>
   );
@@ -333,7 +333,7 @@ function SelectField({
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border bg-surface px-2 py-1"
+        className="rounded-sm border border-border bg-surface px-2 py-1"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -359,7 +359,7 @@ function WeightPreview({
   return (
     <fieldset
       aria-label={t('page.G5.weights')}
-      className="flex flex-col gap-2 rounded border border-border p-2"
+      className="flex flex-col gap-2 rounded-sm border border-border p-2"
     >
       <legend className="px-1 text-sm font-medium">{t('page.G5.weights')}</legend>
       <p className="text-xs text-muted">{t('page.G5.weightsHint')}</p>
@@ -504,7 +504,7 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           onClick={run}
           disabled={!canWrite || !current || !snapshotId || createJob.isPending}
           title={canWrite ? undefined : t('auth.readOnlyHint')}
-          className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G5.run')}
         </button>

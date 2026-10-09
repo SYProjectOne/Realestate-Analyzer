@@ -36,7 +36,7 @@ export function EmptyState({
     <div
       role="status"
       data-testid="empty-state"
-      className={`flex flex-col items-center justify-center gap-2 rounded border border-dashed border-border p-6 text-sm text-grayed ${className}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border p-6 text-sm text-grayed ${className}`}
     >
       <p>{text}</p>
       {children}

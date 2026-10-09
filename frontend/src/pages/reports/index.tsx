@@ -78,7 +78,7 @@ export function ReportsPage() {
               id={compareSelectId}
               value={compareId}
               onChange={(e) => setCompareId(e.target.value)}
-              className="rounded border border-border bg-surface px-2 py-1"
+              className="rounded-sm border border-border bg-surface px-2 py-1"
             >
               <option value="">{t('page.G8.noCompare')}</option>
               {snapshots
@@ -116,7 +116,7 @@ export function ReportsPage() {
             disabled={!canWrite || !selectedId || !!blocked || create.isPending}
             title={canWrite ? undefined : t('auth.readOnlyHint')}
             aria-describedby={blocked ? 'g8-blocked' : undefined}
-            className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+            className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
           >
             {t('page.G8.generate')}
           </button>

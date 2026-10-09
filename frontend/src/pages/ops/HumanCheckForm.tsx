@@ -220,7 +220,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
             type="submit"
             disabled={!canWrite || create.isPending}
             title={canWrite ? undefined : t('auth.readOnlyHint')}
-            className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+            className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
           >
             {t('page.G7.hc.submit')}
           </button>
@@ -249,7 +249,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   );
 }
 
-const inputClass = 'w-full rounded border border-border bg-surface px-2 py-1 text-sm';
+const inputClass = 'w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm';
 
 function Field({
   label,

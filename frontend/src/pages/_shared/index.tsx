@@ -64,7 +64,7 @@ export function Section({
     <section
       id={id}
       aria-label={title}
-      className={`flex flex-col gap-3 rounded border border-border bg-surface p-3 ${className}`}
+      className={`flex flex-col gap-3 rounded-sm border border-border bg-surface p-3 ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{title}</h2>

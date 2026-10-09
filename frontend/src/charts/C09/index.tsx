@@ -50,7 +50,7 @@ export function C09Catalyst({ data, height = 180 }: C09CatalystProps) {
               </Badge>
               <ul className={`flex flex-col gap-1.5 ${grayed ? 'text-grayed' : ''}`}>
                 {groups[stage].map((c) => (
-                  <li key={c.id} className="break-words">
+                  <li key={c.id} className="wrap-break-word">
                     <span className={grayed ? '' : 'text-fg'}>{c.name}</span>
                     <span className="block text-[10px] text-muted">
                       {c.kind}

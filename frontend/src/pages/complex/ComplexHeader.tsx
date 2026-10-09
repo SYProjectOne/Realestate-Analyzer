@@ -20,7 +20,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
   return (
     <section
       aria-label={header.name}
-      className="flex flex-col gap-3 rounded border border-border bg-surface p-3"
+      className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-3"
     >
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">{header.name}</h2>

@@ -1,6 +1,17 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@config '../tailwind.config.ts';
+
+/* Tailwind v4 기본 테두리색은 currentcolor — 테두리 토큰을 기본으로 둔다(라이트/다크 공통). */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: rgb(var(--color-border));
+  }
+}
 
 /*
  * 디자인 토큰 — 색은 여기서만 정의하고 tailwind.config.ts가 rgb(var(--color-*))로 참조한다.

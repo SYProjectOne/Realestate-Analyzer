@@ -52,7 +52,7 @@ function RawExcerpt({ rawId, start, end }: { rawId: number; start: number; end: 
   const to = Math.min(data.length, end + RAW_CONTEXT);
   return (
     <pre
-      className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded border border-border p-2 text-xs"
+      className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-sm border border-border p-2 text-xs"
       data-testid="raw-excerpt"
     >
       {from > 0 ? '…' : ''}
@@ -211,7 +211,7 @@ function ProvenanceBody({
               type="button"
               aria-expanded={showRaw}
               onClick={() => setShowRaw((prev) => !prev)}
-              className="self-start rounded border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
+              className="self-start rounded-sm border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
             >
               {showRaw ? t('provenance.rawTextHide') : t('provenance.rawText')}
             </button>
@@ -298,7 +298,7 @@ export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
           ref={closeRef}
           type="button"
           onClick={onClose}
-          className="rounded border border-border px-2 py-0.5 text-sm"
+          className="rounded-sm border border-border px-2 py-0.5 text-sm"
         >
           {t('provenance.close')}
         </button>
