@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 import pytest
@@ -30,6 +31,7 @@ from ._assemble_support import (
     add_list,
     add_model,
     add_trade,
+    list_url,
     notice_row,
     rtms_url,
 )
@@ -362,3 +364,53 @@ def test_note_records_sources_and_formula(
     assert row is not None and row.note is not None
     note: Any = row.note
     assert "청약홈" in note and "2021 < 2026−3" in note and "저가 분양기" in note
+
+
+def test_later_notice_of_same_complex_is_not_double_counted(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
+    """같은 실거래 단지에 공고가 둘(최초 분양 + 나중 재공급)이면 최초 공고 하나만 표본(분양가 = 최초 공고)."""
+    _seed(db_session, add_raw, region)
+    add_list(
+        add_raw,
+        region.id,
+        "인천",
+        [
+            notice_row(
+                "2025000999",
+                "힐스테이트 레이크 송도 2차(자격상실 재공급)",
+                "인천광역시 연수구 송도동 1-1",
+                "2025-02-01",
+                "202406",
+            ),
+            notice_row(
+                "2021520777", "송도 사전청약 단지", "인천광역시 연수구 송도동 3", "2021-01-01", "202401"
+            )
+            | {"HOUSE_SECD": "09"},
+        ],
+        url=list_url("인천", begin=date(2016, 10, 2)),
+    )
+    add_model(add_raw, region.id, "2025000999", [("084.9500A", 88000, 1)])
+    res = build_benchmarks(db_session, region.id, asof_date=ASOF)
+    own = [
+        b
+        for b in _rows(db_session)
+        if b.note and "대체" not in b.note and b.living_area == _la(region, "28185")
+    ]
+    assert [(b.name, b.sale_year) for b in own] == [("힐스테이트 레이크 송도 2차", 2021)]
+    reasons = {u["notice_no"]: u["reason"] for u in res.unmatched}
+    assert reasons["2025000999"].startswith("중복(같은 실거래 단지")
+    assert "2021520777" not in reasons  # 민간사전청약은 대상 아님
+
+
+def test_presale_notice_without_model_is_not_missing_price(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
+    add_list(
+        add_raw,
+        region.id,
+        "인천",
+        [notice_row("2024000001", "입주 전 단지", "인천광역시 연수구 송도동 5", "2024-01-01", "202812")],
+    )
+    res = build_benchmarks(db_session, region.id, asof_date=ASOF)
+    assert [u["reason"] for u in res.unmatched] == ["입주 전(과거 공고 조회 대상 아님)"]

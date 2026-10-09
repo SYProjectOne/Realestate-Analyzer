@@ -85,6 +85,7 @@ RECENT_SALE_YEARS: Final = 3  # sale_period 경계(D9-2) = analysis.score 의 '�
 MIN_CONTAIN_LEN: Final = 4
 SUBSTITUTE_NOTE: Final = "추정(대체: 지역 전체)"
 AMBIGUOUS: Final = "확인 불가(매칭 모호)"
+PRESUBSCRIPTION_SECD: Final = "09"  # 민간사전청약 — 본청약 공고가 다시 나온다(supply.py 와 같은 규칙)
 _API_LIST_PATH: Final = "getAPTLttotPblancDetail"
 _API_MODEL_PATH: Final = "getAPTLttotPblancMdl"
 _LAWD_RE: Final = re.compile(r"[?&]LAWD_CD=(\d{5})")
@@ -266,6 +267,7 @@ class _Notice:
     notice_date: str | None
     move_in_ym: str | None
     housing: str | None
+    secd: str | None  # HOUSE_SECD (01 APT·09 민간사전청약·10 신혼희망타운)
     doc: RawDocument
     text: str
 
@@ -315,6 +317,7 @@ def _notices(session: Session, region_id: int) -> list[_Notice]:
                 notice_date=iso_day(d.get("RCRIT_PBLANC_DE")),
                 move_in_ym=iso_ym(d.get("MVN_PREARNGE_YM")),
                 housing=str(d.get("HOUSE_DTL_SECD_NM") or "").strip() or None,
+                secd=str(d.get("HOUSE_SECD") or "").strip() or None,
                 doc=doc,
                 text=text,
             )
@@ -518,12 +521,13 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
     groups = _trade_groups(session, region.id)
     legal_cache: dict[str, LegalDong | None] = {}
     out: list[_Case] = []
+    taken: dict[tuple[str, str], _Case] = {}  # 실거래 묶음 → 첫(가장 이른) 공고: 분양가 = 최초 공고
 
     def skip(n: _Notice, reason: str) -> None:
         res.unmatched.append({"notice_no": n.pb, "name": n.name, "reason": reason})
 
-    for n in _notices(session, region.id):
-        if n.housing != "민영":
+    for n in sorted(_notices(session, region.id), key=lambda x: (x.notice_date or "9999", x.hm, x.pb)):
+        if n.housing != "민영" or n.secd == PRESUBSCRIPTION_SECD:
             continue
         code = address_legal_code(session, n.address, scope)
         if code is None or code not in scope:
@@ -537,7 +541,12 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
             continue
         sale = _sale_price(n, models)
         if sale is None:
-            skip(n, "확인 불가(분양가 원문 없음)")
+            skip(
+                n,
+                "입주 전(과거 공고 조회 대상 아님)"
+                if n.move_in_ym > asof_ym
+                else "확인 불가(분양가 원문 없음)",
+            )
             continue
         if code not in legal_cache:
             legal_cache[code] = session.get(LegalDong, code)
@@ -546,6 +555,8 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
             skip(n, "확인 불가(법정동 표 없음)")
             continue
         move_year = int(n.move_in_ym[:4])
+        if n.move_in_ym is None:
+            continue
         cands = _match(normalize_apt_name(n.name), _dong_name(lrow), lrow.sigungu_code, move_year, groups)
         presale = n.move_in_ym > asof_ym
         if not cands:
@@ -570,6 +581,11 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
             skip(n, empty_reason if not post else f"실거래 없음(최근 {TRADE_WINDOW_MONTHS}개월 거래 없음)")
             continue
         trade_label: Label = "확인됨" if all(t.source == "openapi" for t in window) else "재가공"
+        group_key = (cands[0].name, cands[0].dong)
+        prev = taken.get(group_key)
+        if prev is not None:
+            skip(n, f"중복(같은 실거래 단지 — 앞선 공고 {prev.notice.pb})")
+            continue
         out.append(
             _Case(
                 tag=f"{BENCHMARK_TAG}{n.hm}:{n.pb}]",
@@ -583,6 +599,7 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
                 label=weakest_label("확인됨", trade_label),
             )
         )
+        taken[group_key] = out[-1]
     return out
 
 
