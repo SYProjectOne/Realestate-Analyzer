@@ -56,11 +56,12 @@ def test_imui_notice_keys_to_original_complex() -> None:
     assert f[(p, "notice_kind")] == "임의" and f[(p, "effective_from")] == "2026-08-14"
     assert f[(p, "down_payment_pct")] == 5 and f[(p, "down_payment_first_won")] == 5_000_000
     assert f[("2025000302", "notice_date")] == "2025-08-22"  # 단지의 공고일은 최초 공고일
-    # 임의공급 공고는 잔여 세대만 실으므로 complex_type을 내지 않는다
+    # 임의공급 공고는 잔여 세대만 실으므로 complex_type의 면적·세대수는 내지 않는다. 가격은 현재 구매가
+    # (계약 2026-10-09.2: complex_type 가격 = 현재 조건 공고의 값)로 낸다.
     fname = "2026940173_elif_imui3.txt"
     raw = dto(source_kind="notice_pdf", url=notice_manifest()[fname]["url"])
     cands = parse_notice_text((NOTICE / fname).read_text(encoding="utf-8"), raw)
-    assert not [c for c in cands if c.entity == "complex_type"]
+    assert not [c for c in cands if c.entity == "complex_type" and c.field in ("area_m2", "units")]
 
 
 def test_no_interim_notice() -> None:

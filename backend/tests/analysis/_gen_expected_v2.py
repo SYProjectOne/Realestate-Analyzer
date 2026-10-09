@@ -1,4 +1,4 @@
-"""expected_scores_v2.json 생성기 (RA §9 (b)단계 draft, 사람 확인 대기).
+"""expected_scores_v2.json 생성기 (RA §9 (b)단계 골든 — 사람 확인 2026-10-09: 세대수만 실측으로 교체 후 고정).
 
     cd backend && uv run python tests/analysis/_gen_expected_v2.py
 
@@ -24,19 +24,35 @@ if str(BACKEND) not in sys.path:  # 스크립트로 실행할 때
 from app.analysis.ladder import ladder_targets  # noqa: E402
 from app.analysis.scenarios import builtin  # noqa: E402
 from app.analysis.score import run_detailed  # noqa: E402
+from app.collectors.reference.jscode import parse_jscode_zip  # noqa: E402
+from app.collectors.stats.households import parse_household_csv  # noqa: E402
 from app.core.contracts_gen import ScoreInputs, Snapshot  # noqa: E402
 from app.core.protocols import CONTRACT_VERSION  # noqa: E402
+from app.normalize.living_area import HouseholdInput, aggregate_households  # noqa: E402
 
 REPO = BACKEND.parent
 FIXTURE = REPO / "contracts" / "fixtures" / "incheon_gimpo_2026-10-08"
 ASOF = "2026-10-08"
 EOK = 100_000_000
+STATUS = "사람 확인 완료(2026-10-09, 세대수 실측 교체)"
 
-LA_SONGDO, LA_GEOMDAN, LA_GYEYANG, LA_GIMPO = "28185", "28290", "28245", "41570"
+REFERENCE = REPO / "contracts" / "fixtures" / "reference"
+JUMIN_CSV = REFERENCE / "jumin_households_202609.csv"
+JSCODE_ZIP = REFERENCE / "jscode20260930.zip"
+
+# 생활권 id = 픽스처 region.json 의 la_* (계약 living_area.json), 미분양 scope_code = 시군구 코드(unsold_scope_codes)
+LA_SONGDO, LA_GEOMDAN, LA_GYEYANG, LA_GIMPO = "la_1", "la_2", "la_3", "la_4"
+SC_SONGDO, SC_GEOMDAN, SC_GYEYANG, SC_GIMPO = "28185", "28290", "28245", "41570"
+UNSOLD_SCOPE = {
+    LA_SONGDO: [SC_SONGDO],
+    LA_GEOMDAN: [SC_GEOMDAN],
+    LA_GYEYANG: [SC_GYEYANG],
+    LA_GIMPO: [SC_GIMPO],
+}
 
 ASSUMPTIONS = [
-    "생활권 = DECISIONS D1 #1 기본값(시군구 1개당 1개): 연수구(송도)·검단구(검단, 2026-07 분구 후 현행 코드 28290)·계양구·김포시. 보고서의 하위 생활권(고촌·풍무·사우·북변·당하 등) 구분은 쓰지 않는다. 생활권 id는 미분양 scope_code(시군구 코드)와 맞추려고 시군구 코드를 그대로 썼다(계약 변경 요청 참조).",
-    "생활권 세대수(U_ref = 세대수 × 8%)는 보고서에 없다 — 연수구 160,000 · 검단 90,000 · 김포시 212,500(보고서 '김포시 인구 약 51만' ÷ 가구원 2.4명)은 가정값이다. household_stat(WP1 reference) 값으로 바꿔야 한다. 계양구는 판정 대상이 없어 null.",
+    "생활권 = DECISIONS D1 #1 기본값(시군구 1개당 1개): 연수구(송도)·검단구(검단, 2026-07 분구 후 현행 코드 28290)·계양구·김포시. 보고서의 하위 생활권(고촌·풍무·사우·북변·당하 등) 구분은 쓰지 않는다. 생활권 id·법정동은 픽스처 region.json(la_1 연수구 = 송도동 2818510600만, la_2 검단구 전체, la_3 계양구 전체, la_4 김포시 전체)을 따르고, 미분양은 unsold_scope_codes(시군구 코드 28185·28290·28245·41570)로 고른다(계약 2026-10-09.2).",
+    "생활권 세대수(U_ref = 세대수 × 8%) = 행안부 주민등록 세대수 2026-09(contracts/fixtures/reference/jumin_households_202609.csv, 행정동) 실측. 행정동↔법정동 매핑(jscode20260930.zip KIKmix)으로 행정동 세대수를 매핑된 법정동 수로 균등 분할(1:N)해 생활권 법정동(region.json)에 합산하고 마지막에 한 번 반올림했다(app.normalize.living_area.aggregate_households, 라벨 '추정(주민등록 세대)'). 연수구 생활권은 픽스처 정의상 송도동만이라 송도1~5동 세대수다. 사람 확인(2026-10-09)으로 이전 가정값(연수구 160,000·검단 90,000·김포 212,500·계양 null)을 이 값으로 바꿨다.",
     "실거래는 보고서의 '범위(건수)'만 있으므로 범위 안에서 건수만큼 등간격 가격을 만들어 넣었다(건수 '10+'는 10, 미기재는 5 또는 3). 거래일은 2026-05~09로 고르게 배치(검단 §5-2의 '2026-01~06' 거래도 창 안으로 가정). 출처는 dapt 재가공 → source=reprocessed.",
     "캐슬앤파밀리에시티 2단지의 '3층 4.0억 1건(특이 저가)'은 그대로 넣었다 — 1.5×IQR 이상치 규칙(T4)이 실제로 빼는지 확인용.",
     "분양권 거래(그라노블·금강펜테리움·우미린 파크리브)는 is_presale=true로 넣어 비교군·벤치마크에서 빠지게 했다. 롯데캐슬 넥스티엘 5.8억(2026-02-02)은 기준일 전 6개월 밖이라 빠진다.",
@@ -50,7 +66,7 @@ ASSUMPTIONS = [
 ]
 
 EXPLANATION = (
-    "(b) TOP 5 = 엘리프 6.38 > 한내들 6.30 > 그란테르 5.48 > 스위첸 4.99 = 센트레빌 4.94(공동 4위). (a) TOP 5(그란테르 5.87 > 엘리프 5.70 > "
+    "(b) TOP 5 = 엘리프 6.38 > 한내들 6.16 > 그란테르 5.38 > 센트레빌 5.15 > 스위첸 4.97. (a) TOP 5(그란테르 5.87 > 엘리프 5.70 > "
     "한내들 5.33 > 스위첸 5.00 > 센트레빌 = 더샵 AB23 4.61)와 같은 단지 5개가 남고 더샵 AB23이 7위로 빠졌으며 1·3위가 바뀌었다. "
     "p10은 (a)·(b) 같은 식(10×확률)이라 차이가 없고, 차이는 다섯 성분에서 나온다. "
     "① rerank: 보고서 relevance×10(0.37~0.89 → 3.7~8.9로 좁음) 대신 RA 순위식 10×(N−rank)/(N−1)(N=16)이라 공동 1위 3곳은 10, "
@@ -60,11 +76,11 @@ EXPLANATION = (
     "김포 풀(중앙 5.99억)에는 마산 동일스위트 4억대가 섞여 김포 신규 분양 단지는 모두 +11~+33%(0~2.3점)가 된다. 캐슬앤파밀리에시티 2단지 4.0억 1건은 이상치로 빠졌다(T4). "
     "③ benchmark: 보고서는 '2023 이후 분양분은 분양가 근처'를 감안해 4~5점을 줬지만 RA 식은 생활권 전체 사례의 중앙 gain만 본다 — 검단 +61%·김포 +49%(2017~19 저가 분양분 위주)라 10·9.88점, "
     "송도는 +18.5%라 3.71점이고 2023 이후 분양 사례가 없어 no_recent_sale_case 플래그가 붙는다. "
-    "④ supply: 세대수가 보고서에 없어 가정값(연수구 16만·검단 9만·김포 21.25만 세대)을 썼으므로 사람 확인이 가장 필요한 성분이다. 검단은 연 1만 세대 입주로 엘리프·센트레빌·그랑포레가 0~0.24점, "
-    "송도는 확인된 입주 물량이 적어 8.4~9.2점(보고서 5~7)이다. "
+    "④ supply: 세대수는 보고서에 없어 행안부 주민등록 세대수 2026-09 실측(송도동 생활권 85,393·검단구 113,858·계양구 129,449·김포시 208,158 세대, 행정동→법정동 1:N 균등 분할)을 썼다(사람 확인 2026-10-09에 가정값 16만·9만·21.25만에서 교체). "
+    "검단은 연 1만 세대 입주로 엘리프·그랑포레 0점, 센트레빌 2.29점이고, 송도는 확인된 입주 물량이 적어 7.0~8.5점(보고서 5~7)이다. "
     "⑤ liquidity: 식이 보고서 등급과 대체로 비슷하나 대출 한도·즉시 입주 같은 사람 판단이 빠져 그란테르 7→8.70, 계약금 10%인 단지(스위첸·리버프론트·그라센트)는 1~1.5점 낮다. "
-    "민감도(±0.10 12변형)에서 그란테르·스위첸·센트레빌·더샵 AB23·칸타빌·마리나베이가 TOP 5 경계를 오가 unstable이고, 변동 없는 성분이 없다 — "
-    "(b) 순위는 (a)보다 가중치에 민감하다. 사람 확인 항목: 세대수 가정, 생활권 범위(시군구 1개 vs 하위 생활권), 거래 합성(범위→등간격), 벤치마크 분양가 환산값."
+    "민감도(±0.10 12변형)에서 그란테르·스위첸·센트레빌·더샵 AB23·칸타빌이 TOP 5 경계를 오가 unstable이고, 변동 없는 성분이 없다 — "
+    "(b) 순위는 (a)보다 가중치에 민감하다. 남은 가정(사람 확인 2026-10-09에 그대로 두기로 함): 생활권 범위(시군구 1개 vs 하위 생활권), 거래 합성(범위→등간격), 벤치마크 분양가 환산값."
 )
 
 
@@ -278,9 +294,9 @@ def build_supply() -> list[dict[str, Any]]:
 
 def build_unsold() -> list[dict[str, Any]]:
     rows = [
-        {"ym": "2026-08", "scope_code": LA_SONGDO, "total": 505, "post_completion": 203, "label": "재가공"},
-        {"ym": "2026-08", "scope_code": LA_GEOMDAN, "total": 737, "post_completion": 737, "label": "재가공"},
-        {"ym": "2026-08", "scope_code": LA_GYEYANG, "total": 0, "post_completion": 0, "label": "재가공"},
+        {"ym": "2026-08", "scope_code": SC_SONGDO, "total": 505, "post_completion": 203, "label": "재가공"},
+        {"ym": "2026-08", "scope_code": SC_GEOMDAN, "total": 737, "post_completion": 737, "label": "재가공"},
+        {"ym": "2026-08", "scope_code": SC_GYEYANG, "total": 0, "post_completion": 0, "label": "재가공"},
     ]
     for ym, total in [
         ("2025-06", 571),
@@ -295,7 +311,7 @@ def build_unsold() -> list[dict[str, Any]]:
         rows.append(
             {
                 "ym": ym,
-                "scope_code": LA_GIMPO,
+                "scope_code": SC_GIMPO,
                 "total": total,
                 "post_completion": 52 if ym == "2026-08" else None,
                 "label": "재가공",
@@ -725,7 +741,39 @@ def load_a() -> dict[str, Any]:
     return data
 
 
-def build_inputs() -> ScoreInputs:
+def load_region() -> dict[str, Any]:
+    with (FIXTURE / "region.json").open(encoding="utf-8") as f:
+        data: dict[str, Any] = json.load(f)
+    return data
+
+
+def measured_households() -> dict[str, int]:
+    """생활권별 주민등록 세대수(2026-09 실측): 행정동 세대수 → 법정동 1:N 균등 분할 → 생활권 합(반올림 1회)."""
+    ym, recs = parse_household_csv(JUMIN_CSV.read_bytes())
+    assert ym == "2026-09", ym
+    stats = [
+        HouseholdInput(r.scope_code, r.households, None, ym) for r in recs if r.scope_kind == "admin_dong"
+    ]
+    mix = parse_jscode_zip(JSCODE_ZIP.read_bytes()).mappings
+    aggs = aggregate_households(load_region()["living_areas"], stats, mix)
+    return {aid: a.households for aid, a in aggs.items()}
+
+
+def build_living_areas(households: dict[str, int | None]) -> list[dict[str, Any]]:
+    names = {la["id"]: la["name"] for la in load_region()["living_areas"]}
+    return [
+        {
+            "id": la,
+            "name": names[la],
+            "households": households.get(la),
+            "unsold_scope_codes": UNSOLD_SCOPE[la],
+        }
+        for la in (LA_SONGDO, LA_GEOMDAN, LA_GYEYANG, LA_GIMPO)
+    ]
+
+
+def build_inputs(households: dict[str, int | None] | None = None) -> ScoreInputs:
+    hh: dict[str, int | None] = dict(measured_households()) if households is None else households
     return ScoreInputs.model_validate(
         {
             "snapshot_id": 12,
@@ -743,12 +791,7 @@ def build_inputs() -> ScoreInputs:
                     for cid, rel, rank in RERANK
                 ],
             },
-            "living_areas": [
-                {"id": LA_SONGDO, "name": "연수구(송도)", "households": 160_000},
-                {"id": LA_GEOMDAN, "name": "검단구(검단)", "households": 90_000},
-                {"id": LA_GYEYANG, "name": "계양구", "households": None},
-                {"id": LA_GIMPO, "name": "김포시", "households": 212_500},
-            ],
+            "living_areas": build_living_areas(hh),
             "trades": build_trades(),
             "benchmarks": build_benchmarks(),
             "supply": build_supply(),
@@ -790,7 +833,7 @@ def explain(key: str, comp: str, a_score: float, b: Any, a_note: str | None, det
         return (
             head
             + note
-            + f"RA: U_window(입주+1년 ±12개월 입주 세대)/U_ref(세대수 가정 × 8%) 식(보고서는 사람 등급, 세대수는 가정값). {b.formula_text}"
+            + f"RA: U_window(입주+1년 ±12개월 입주 세대)/U_ref(주민등록 세대수 2026-09 × 8%) 식(보고서는 사람 등급). {b.formula_text}"
         )
     if comp == "liquidity":
         return (
@@ -899,7 +942,7 @@ def main() -> None:
         "fixture": "incheon_gimpo_2026-10-08",
         "contract_version": CONTRACT_VERSION,
         "stage": "b",
-        "status": "사람 확인 대기",
+        "status": STATUS,
         "generated_by": "backend/tests/analysis/_gen_expected_v2.py (app.analysis, 시나리오 base)",
         "inputs_source": "docs/source/incheon_gimpo_report.md §4(B)·§5·§6-2·§12-2·§12-3·§12-4 (확인일 2026-10-07)",
         "scenario": "base",

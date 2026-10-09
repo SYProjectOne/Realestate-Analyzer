@@ -8,6 +8,8 @@
 
 source_rank는 RA §3 표(app.normalize.fields): 세대수·면적·일정·경쟁률은 청약홈 1, 가격은 청약홈 2.
 청약홈 상세 화면에는 층별 가격이 없으므로 가격은 '최고가 기준' 하나만 낸다(max_price_won).
+complex_type.notice_type_code = 청약홈 주택형 원문('084.9582').
+observed_on = 그 단지의 모집공고일(계약 2026-10-09.2).
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from app.normalize._text import (
     parse_date,
     parse_won,
     read_raw_text,
+    stamp_observed_on,
 )
 
 __all__ = ["ApplyhomeParser", "parse_applyhome_html"]
@@ -104,7 +107,13 @@ def parse_applyhome_html(html: str, raw: RawDocument) -> list[FieldCandidate]:
         _competition(soup, b, pos, raw)
     else:
         _detail(soup, b, pos, raw)
-    return b.out
+    # 원문 시점 = 그 단지(주택관리번호)의 모집공고일. 경쟁률 화면처럼 공고일이 없으면 None.
+    days = {
+        str(c.entity_key): c.value
+        for c in b.out
+        if c.entity == "complex" and c.field == "notice_date" and isinstance(c.value, str)
+    }
+    return stamp_observed_on(b.out, lambda c: days.get(str(c.entity_key or "").split(":")[0]))
 
 
 # ---------------------------------------------------------------- 목록
@@ -284,6 +293,7 @@ def _supply(tbl: Tag, b: CandidateBuilder, pos: _Pos, key: str) -> None:
             area = area_from_long_code(long_code)
             if area is not None:
                 b.add("complex_type", tkey, "area_m2", area, long_code, span, excerpt=ex)
+            b.add("complex_type", tkey, "notice_type_code", long_code, long_code, span, excerpt=ex)
             if texts[4].isdigit():
                 b.add("complex_type", tkey, "units", int(texts[4]), texts[4], span, excerpt=ex)
         elif texts and texts[0] == "계" and len(texts) >= 4:

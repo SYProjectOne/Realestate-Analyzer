@@ -5,8 +5,14 @@
    DNS·TLS·timeout 은 http_status=None + error_text. 실패하면 렌더하지 않는다(접근 거부를 우회하지 않음).
 2. 렌더(동적·팝업 표식이 있거나 render='always'): 전체 화면 PNG(text_path = 렌더 후 DOM 텍스트,
    image_hash = 팝업 해시). 렌더 실패는 실패 행(error_text='render: …').
-3. 메타 JSON(content_type ``application/json``): 접수 상태 후보 문구·팝업 목록·해시. 시각을 넣지 않아
-   내용이 같으면 sha256 이 같다(멱등). 상태 판단은 하지 않는다(WP2·판정기).
+메타(계약 2026-10-09.2 ``raw_document.meta``): 1번 HTML 행의 meta 컬럼에 둔다(별도 행 없음).
+   키 = {kind, url, final_url, complex_id, html_sha256, render{reason, rendered, error, screenshot_sha256,
+   popups[]}, image_hash, intake_candidates[{text, keywords, source}]}. 시각을 넣지 않는다.
+   같은 HTML(같은 행)을 다시 수집하면 meta 는 최신 관찰(렌더 결과)로 바뀐다 — 렌더 이력은 스크린샷 행
+   (image_hash)마다 남는다.
+   상태 판단은 하지 않는다(WP2·판정기).
+   2026-10-09.1 까지는 메타가 별도 JSON 행(content_type ``META_CONTENT_TYPE``)이었다 — ``read_site_meta`` 가
+   두 모양을 다 읽는다(호환).
 
 대상: ``targets`` 를 주면 그것만, 아니면 region 의 complex.official_site_url 전부.
 """
@@ -14,6 +20,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
@@ -29,12 +36,32 @@ from app.collectors.reference.rawstore import Failure, RawStore, fetch_failure
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
 from app.core.http import HttpClient
-from app.core.snapshot import canonical_json
+from app.core.paths import resolve_raw_path
 from app.models import Complex
+from app.models import RawDocument as RawDocumentRow
 
-__all__ = ["META_CONTENT_TYPE", "OfficialSiteCollector", "SiteOutcome", "SiteTarget"]
+__all__ = ["META_CONTENT_TYPE", "OfficialSiteCollector", "SiteOutcome", "SiteTarget", "read_site_meta"]
 
+# 2026-10-09.1 까지의 별도 메타 행 content_type(읽기 호환용 — 새로 만들지 않는다)
 META_CONTENT_TYPE = "application/json; profile=official_site.meta"
+
+
+def read_site_meta(raw: RawDocument, *, raw_dir: Path | None = None) -> dict[str, Any] | None:
+    """official_site 메타 읽기.
+
+    새 행은 ``raw.meta``, 옛 별도 메타 행(``META_CONTENT_TYPE``)은 그 JSON 파일.
+    """
+    if raw.meta is not None:
+        return dict(raw.meta)
+    if raw.content_type != META_CONTENT_TYPE or not raw.path:
+        return None
+    p = resolve_raw_path(raw.path, raw_dir=raw_dir)
+    if not p.exists():
+        return None
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else None
+
+
 RenderMode = Literal["auto", "always", "never"]
 SessionFactory = Callable[[], AbstractContextManager[Session]]
 
@@ -174,19 +201,19 @@ class OfficialSiteCollector:
                     )
                 )
         out.meta = self._meta(target, r.final_url, html_doc, dom_text, reason, rendered, out.image_hash)
-        out.documents.append(
-            store.save_content(
-                source_kind="official_site",
-                url=target.url,
-                content=canonical_json(out.meta).encode("utf-8"),
-                ext="json",
-                content_type=META_CONTENT_TYPE,
-                region_id=region_id,
-                complex_id=target.complex_id,
-                image_hash=out.image_hash,
-            )
-        )
+        out.documents[0] = self._attach_meta(store, html_doc, out.meta)
         return out
+
+    @staticmethod
+    def _attach_meta(store: RawStore, doc: RawDocument, meta: dict[str, Any]) -> RawDocument:
+        """HTML 행의 meta 컬럼에 쓴다(같은 행이면 최신 관찰로 갱신). commit 은 세션 컨텍스트가 한다."""
+        row = store.session.get(RawDocumentRow, doc.id)
+        if row is None:  # pragma: no cover - save_content 가 방금 만든/찾은 행
+            return doc
+        if row.meta != meta:
+            row.meta = meta
+            store.session.flush()
+        return doc.model_copy(update={"meta": meta})
 
     @staticmethod
     def _meta(

@@ -7,7 +7,8 @@
 1. 값이 있는 후보가 값 없는 후보('확인 불가', needs_extract)보다 앞선다.
 2. source_rank 오름차순(§3 표: app.normalize.fields.source_rank).
 3. 1차(primary) 자료가 2차보다 앞선다.
-4. 같은 출처 종류끼리는 최신이 앞선다(checked_at → raw_document_id 내림차순) — '공고문 최신' 규칙.
+4. 같은 출처 종류끼리는 최신이 앞선다(observed_on = 원문 시점·공고일 → checked_at → raw_document_id
+   내림차순) — '공고문 최신' 규칙. observed_on 이 없는 후보(옛 출처)는 가장 오래된 것으로 본다.
 
 상충(conflict_group): 값이 다른 후보가 둘 이상이면 '<entity>:<id 또는 key>:<field>'로 묶는다.
 needs_compare: chosen과 값이 다르면서 같은 source_rank인 1차 후보가 **다른 출처 종류**일 때만 true
@@ -23,7 +24,7 @@ from collections.abc import Hashable, Iterable
 from decimal import Decimal, InvalidOperation
 
 from app.core.contracts_gen import ConflictGroup, FieldCandidate, ProvenanceRow, ResolvedFields
-from app.normalize.fields import rule_text
+from app.normalize.fields import norm_value, rule_text
 
 __all__ = ["PriorityResolver", "group_key", "resolve", "same_value", "to_provenance_row"]
 
@@ -64,9 +65,17 @@ def _priority(c: FieldCandidate) -> tuple[int, int, int]:
 
 
 def _ordered(cands: list[tuple[int, FieldCandidate]]) -> list[tuple[int, FieldCandidate]]:
-    # 1) 최신순(checked_at → raw_document_id 내림차순, 같으면 입력 순서) → 2) 우선순위로 안정 정렬
+    # 1) 최신순(observed_on → checked_at → raw_document_id 내림차순, 같으면 입력 순서)
+    # 2) 우선순위로 안정 정렬
     by_recent = sorted(
-        cands, key=lambda oc: (oc[1].checked_at or "", oc[1].raw_document_id or 0, -oc[0]), reverse=True
+        cands,
+        key=lambda oc: (
+            oc[1].observed_on or "",
+            oc[1].checked_at or "",
+            oc[1].raw_document_id or 0,
+            -oc[0],
+        ),
+        reverse=True,
     )
     return sorted(by_recent, key=lambda oc: _priority(oc[1]))
 
@@ -90,6 +99,8 @@ def to_provenance_row(c: FieldCandidate, *, chosen: bool, conflict_group: str | 
         excerpt=c.excerpt,
         excerpt_start=c.excerpt_start,
         excerpt_end=c.excerpt_end,
+        value_norm=norm_value(c.value),
+        observed_on=c.observed_on,
     )
 
 
