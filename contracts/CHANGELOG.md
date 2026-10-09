@@ -55,9 +55,24 @@ rejudge 아님), HumanCheck 대상은 (entity, field) 쌍 목록이 아니라 **
   계약 스키마 변경 아님.
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.8`. 백엔드 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성.
   MSW 예시: `catalyst_patch_req.json`·`catalyst_updated.json`·`region_patch_req.json`·`region_patched.json` 추가, 스냅샷·지역 예시에 revision.
-- **프론트 생성물(`src/api/schema.d.ts`·`src/mocks/handlers.gen.ts`)은 이 브랜치에서 커밋하지 않았다** — 프론트 소유(R3c FE)가 머지 뒤
-  `npm run gen:api`·`gen:msw` 로 다시 만든다. 이 계약으로 생성하면 `tsc` 오류 2건이 난다(프론트가 고칠 곳): `charts/C09/buildOption.ts`
-  i18n 키 `chart.C09.stage.호재 아님` 없음, `pages/ops/HumanCheckForm.tsx` field 선택지('units'·'price')가 `HumanCheckField` enum 밖.
+- 프론트 생성물(`src/api/schema.d.ts`·`src/mocks/handlers.gen.ts`)은 main(R3c FE 머지 뒤) 위에서 `npm ci` → `npm run gen:api`·`gen:msw`
+  로 다시 만들어 커밋했다. `npm run typecheck` 통과(오류 0). 화면은 아직 초안 타입(`frontend/src/api/contract8.ts`)을 쓴다 — 아래 차이를
+  FE 가 생성 타입으로 옮기며 맞춘다.
+
+### FE 초안 타입(`frontend/src/api/contract8.ts`)과 확정 계약의 차이
+
+typecheck 를 깨는 차이는 없다(초안 타입은 생성 타입과 따로 선언돼 있다). 런타임·화면에서 맞춰야 할 것:
+
+| 대상 | 초안(contract8.ts) | 확정(.8) |
+| --- | --- | --- |
+| `PATCH /regions/{id}` 응답 | `RegionPatched {region, job: JobRun}` | `RegionPatched {region, change_event, job_id, added, removed}` — 잡은 객체가 아니라 `job_id`(region.expand), 변경 이벤트·추가/제거 선택이 같이 온다 |
+| `PATCH /regions/{id}` 본문 | `{selections}` | `{selections, name?}` |
+| `PATCH /catalysts/{id}` 응답 | `CatalystPatched {catalyst, links}` | `CatalystUpdated {catalyst, links, job}` — `job` 필수(연결이 그대로면 null, 바뀌면 rejudge 잡) |
+| catalyst_link 행 | `CatalystLink {complex_id, distance_m, weight: number, label}` | `CatalystLinkView {complex_id, distance_m, weight: number\|null, label, reason}` — `reason`('같은 생활권'·'사람 지정') 필수 |
+| `PATCH /catalysts/{id}` 본문 | `living_area_ids?`·`complex_ids?` 배열 | 같은 이름, null 허용 + `expected_ym?`(YYYY-MM) 추가. 영향 범위 없이 `location_confirmed=true` 는 422 |
+| 사람 확인 값 범위(`HUMAN_CHECK_RULES`) | `max_price_won` min 1, `move_in_ym` 형식만 | 서버: `max_price_won` 10,000,000 ~ 100,000,000,000(원), `move_in_ym` 2000-01 ~ 2100-12, `down_payment_pct` 소수 둘째 자리까지, 정수 필드 소수는 422(자르지 않음) |
+| `HumanCheck` 응답 | (초안에 없음) | `entity`·`entity_id`(서버가 정한 사실 행, 접수 상태·기타는 null) |
+| `HumanCheckField`·길이 상한·Snapshot `revision*`·stage '호재 아님' | — | 초안과 같다 |
 
 ### fixtures (R3c CORE — 계약 .8)
 
