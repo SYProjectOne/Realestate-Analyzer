@@ -41,9 +41,13 @@
   원천 하나라도 `확인 불가`면 그 사유로 `확인 불가`.
 - 점수 `sc_<run>_<complex>_<component>`·`st_<run>_<complex>`, 판정기 값 `jl_<seq>`(라벨 추정), 사람 확인 `hc_<id>`,
   원문 `rd_<id>`, 비교군 `cs_<id>`.
-- `judge_scope`(판정 대상/보류/참고/제외)는 저장 컬럼이 없어 행에서 정한다: 제외 = 포함/제외 분류 제외·범위 경계,
-  보류 = 판정 기준 타입 가격 없음, 참고 = 사다리(status ok) 없음, 그 밖 = 판정 대상.
-- 판정 봉투 `result`: judgment_log.output_json 의 `_result`(녹화·devseed 행) 또는 `judge.jev_mcp.normalize`(실제 JEV 행).
+- `judge_scope`(판정 대상/보류/참고/제외) = 점수 실행이 저장한 `score_total.judge_scope`(계약 2026-10-09.3, WP7 — 그
+  스냅샷의 마지막 run). 저장 값이 없을 때만(제외 단지·점수 전 스냅샷·옛 행) 사실 규칙: 제외 = 포함/제외 분류 제외·범위 경계,
+  보류 = 판정 기준 타입 가격 없음, 그 밖 = 판정 대상(사다리로 '참고'를 추정하지 않는다).
+- 시나리오 미리보기 `cache_hits`·`cache_misses`·`calls_by_tool` = `app.scheduler.payloads.scenario_payloads`(재판정 때
+  파이프라인이 보낼 noul·rerank·decide payload)의 input_hash 마다 judgment_log 최종 행이 있는지(같은 입력 재호출 금지 규칙).
+  adapter_version 은 마지막 judgment_log 행의 값. 앞 단계(noul·rerank)가 미스면 decide 도 미스로 센다.
+- 판정 봉투 `result`: judgment_log.result_json(계약 2026-10-09.3). NULL 인 옛 행만 `judge.jev_mcp.normalize` 로 다시 만든다.
 
 ## devseed — DB 가 비어 있어도 화면 연결
 

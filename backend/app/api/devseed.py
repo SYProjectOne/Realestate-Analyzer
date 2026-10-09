@@ -11,7 +11,8 @@
 - 내장 시나리오 5개(마이그레이션 0001 시드와 같은 ``analysis.scenarios.BUILTIN_SCENARIOS``)가 없으면 넣는다.
 - ``<fixture>/region.json``·``snapshots.json``·``raw/documents.json``(원문 파일은 RAW_DIR 로 복사)·
   ``complexes.json``(+ ``provenance.json`` → field_provenance: Fact 마다 (entity, 행 id, field) 출처 행 1개)·
-  ``judgments/``(녹화 봉투 → judgment_log; 정규화 결과는 ``output_json._result``).
+  ``judgments/``(녹화 봉투 → judgment_log; 원응답 = output_json, 정규화 결과 = result_json,
+  계약 2026-10-09.3).
 - 사다리(noul 녹화) → ladder, 호재 분류(classify 녹화) → catalyst, decide 녹화 → decision.
 - 점수: ``expected_scores_v2.json`` 의 입력(ScoreInputs, 생활권 id 는 region 의 la_* 로 맞춤)에
   ``expected_scores.json``(a)단계 구성 점수를 ``fixed_components`` 로 넣어 내장 시나리오 5개를
@@ -656,7 +657,8 @@ def _load_judgments(session: Session, fixture: Path) -> dict[int, dict[str, Any]
                 input_hash=env["input_hash"],
                 input_len=env.get("input_len"),
                 input_json=payload,
-                output_json={**(env.get("raw") or {}), "_result": env.get("result") or {}},
+                output_json=dict(env.get("raw") or {}),
+                result_json=dict(env.get("result") or {}),
                 status=env["status"],
                 confidence=_dec(env.get("confidence")),
                 duration_ms=env.get("duration_ms"),
@@ -988,6 +990,9 @@ def _load_scores(
                     rank=tot.rank,
                     tie_group=tot.tie_group,
                     unstable=tot.unstable,
+                    judge_scope=cx_inputs[tot.complex_id].judge_scope
+                    if tot.complex_id in cx_inputs
+                    else None,
                 )
             )
         if sc.code == "base":

@@ -265,6 +265,7 @@ class ComplexBundle:
     payments: list[PaymentTerms] = field(default_factory=list)
     intake: list[IntakeStatus] = field(default_factory=list)
     ladders: list[Ladder] = field(default_factory=list)
+    stored_scope: str | None = None  # score_total.judge_scope(이 스냅샷 마지막 점수 실행, 계약 2026-10-09.3)
 
 
 def _chunks(ids: Sequence[int], n: int = 500) -> Iterable[Sequence[int]]:
@@ -297,6 +298,18 @@ def load_bundles(
                 select(Ladder).where(Ladder.complex_id.in_(chunk), Ladder.snapshot_id == snapshot_id)
             ):
                 out[lad.complex_id].ladders.append(lad)
+        scopes = session.execute(
+            select(ScoreTotal.complex_id, ScoreTotal.judge_scope)
+            .join(ScoreRun, ScoreRun.id == ScoreTotal.score_run_id)
+            .where(
+                ScoreRun.snapshot_id == snapshot_id,
+                ScoreTotal.complex_id.in_(chunk),
+                ScoreTotal.judge_scope.is_not(None),
+            )
+            .order_by(ScoreRun.id)
+        )
+        for cid, scope in scopes:  # 마지막 실행이 이긴다
+            out[cid].stored_scope = scope
     return out
 
 
@@ -320,14 +333,18 @@ def price_numbers(t: ComplexType | None) -> tuple[int | None, int | None]:
 
 
 def judge_scope(b: ComplexBundle) -> str:
-    """meta §1-3-4: 제외(분류 제외·범위 경계) / 보류(분양가 미공개) / 참고(사다리 없음) / 판정 대상."""
+    """판정 범위(meta §1-3-4) = 점수 실행이 저장한 score_total.judge_scope(계약 2026-10-09.3, WP7).
+
+    저장 값이 없을 때(점수 실행 밖 — 제외 단지·점수 전 스냅샷·0003 이전 행)만 사실 규칙:
+    제외(분류 제외·범위 경계) / 보류(분양가 미공개) / 판정 대상. 사다리로 '참고'를 추정하지 않는다.
+    """
     if b.cx.inclusion_class in _EXCLUDED_CLASSES:
         return "제외"
+    if b.stored_scope:
+        return b.stored_scope
     low, _ = price_numbers(basis_type(b.types))
     if low is None:
         return "보류"
-    if not any(lad.status == "ok" for lad in b.ladders):
-        return "참고"
     return "판정 대상"
 
 
@@ -656,13 +673,13 @@ def event_view(fm: FactMaker, e: RemainingEvent) -> dict[str, Any]:
 
 
 def envelope_result(row: JudgmentLog) -> dict[str, Any]:
-    """정규화 결과: 녹화·devseed 행은 output_json._result, 실제 JEV 행은 judge.jev_mcp.normalize."""
+    """정규화 결과 = judgment_log.result_json(계약 2026-10-09.3). NULL(옛 행)이면 원응답을 다시 정규화."""
     if row.status in {"blocked", "error"}:
         return {}
     out = row.output_json or {}
-    stored = out.get("_result")
-    if isinstance(stored, dict):
-        return stored
+    stored = row.result_json
+    if isinstance(stored, dict) and stored:
+        return dict(stored)
     try:
         from app.judge.jev_mcp import normalize
 
@@ -672,7 +689,7 @@ def envelope_result(row: JudgmentLog) -> dict[str, Any]:
 
 
 def envelope_view(row: JudgmentLog) -> dict[str, Any]:
-    raw = {k: v for k, v in (row.output_json or {}).items() if k != "_result"}
+    raw = dict(row.output_json or {})
     return {
         "tool": row.tool,
         "purpose": row.purpose[:128],

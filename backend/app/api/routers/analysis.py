@@ -35,7 +35,7 @@ from app.api.views import (
     score_row,
 )
 from app.core.contracts_gen import Scenario as ScenarioDTO
-from app.models import Complex, Decision, JudgmentLog, Ladder, Region, Scenario, ScoreRun, Snapshot
+from app.models import Complex, Decision, JudgmentLog, Region, Scenario, ScoreRun, Snapshot
 
 router = APIRouter(tags=["analysis"])
 
@@ -319,56 +319,17 @@ def create_scenario(session: DB, body: Annotated[Any, Body()] = None) -> JSONRes
     return JSONResponse(scenario_view(sc), status_code=201)
 
 
-def _cache_estimate(
-    session: Session, snap: Snapshot, sc: Scenario, judged: list[int], horizon: str
-) -> tuple[int, int, dict[str, int]]:
-    """'재판정 실행' 시 판정기 호출 예상.
+def cache_estimate(session: Session, snap: Snapshot, sc: Scenario) -> tuple[int, int, dict[str, int]]:
+    """'재판정 실행' 시 판정기 호출 예상(계약 2026-10-09.3 WP5-5). 판정기를 부르지 않는다.
 
-    judgment_log·ladder 에 최종 행이 있으면 캐시 히트(같은 입력 재호출 금지).
+    WP7 빌더(``scheduler.payloads.scenario_payloads``)가 만든 payload 마다 같은 input_hash 의 최종
+    judgment_log 행이 있으면 히트.
+    """
+    from app.scheduler.payloads import cache_status, scenario_payloads
 
-    decide 1회(시나리오 purpose), noul(정책 시점) 단지별 1회, rerank 1회(run 의 앵커가 있으면 히트)."""
-    from app.judge.payloads import decide_purpose
-
-    hits = misses = 0
-    by_tool: dict[str, int] = {"decide": 0, "noul": 0, "rerank": 0}
-    purpose = decide_purpose(sc.code or sc.id)
-    final = session.scalars(
-        select(JudgmentLog.seq).where(
-            JudgmentLog.tool == "decide",
-            JudgmentLog.purpose == purpose,
-            JudgmentLog.snapshot_id == snap.id,
-            JudgmentLog.status != "error",
-        )
-    ).first()
-    if final is not None and sc.is_builtin:
-        hits += 1
-    else:
-        misses += 1
-        by_tool["decide"] += 1
-    have = set(
-        session.scalars(
-            select(Ladder.complex_id).where(
-                Ladder.snapshot_id == snap.id, Ladder.horizon == horizon, Ladder.status != "error"
-            )
-        )
-    )
-    for cid in judged:
-        if cid in have:
-            hits += 1
-        else:
-            misses += 1
-            by_tool["noul"] += 1
-    run = session.scalars(
-        select(ScoreRun)
-        .where(ScoreRun.snapshot_id == snap.id, ScoreRun.rerank_judgment_seq.is_not(None))
-        .limit(1)
-    ).first()
-    if run is not None:
-        hits += 1
-    else:
-        misses += 1
-        by_tool["rerank"] += 1
-    return hits, misses, by_tool
+    plan = scenario_payloads(session, snap.id, scenario_dto(sc))
+    st = cache_status(session, plan)
+    return st.hits, st.misses, st.calls_by_tool
 
 
 @router.get("/scenarios/{id}/preview")
@@ -401,9 +362,7 @@ def preview_scenario(
         inputs.append(cx_in)
     dto = scenario_dto(sc)
     rows = precalc_rows(inputs, dto, asof_date=snap.asof_date)
-    horizon = str((sc.policy or {}).get("p10_horizon") or "move_in_plus_1y")
-    judged = [c.complex_id for c in inputs if c.judge_scope == "판정 대상"]
-    hits, misses, by_tool = _cache_estimate(session, snap, sc, judged, horizon)
+    hits, misses, by_tool = cache_estimate(session, snap, sc)
     return JSONResponse(
         {
             "scenario_id": sc.id,
