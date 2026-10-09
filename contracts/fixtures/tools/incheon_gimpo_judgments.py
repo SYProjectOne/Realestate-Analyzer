@@ -602,7 +602,7 @@ for seq, cid, tail, target, n, verdict, items in AUDITS:
         {
             "verdict": "flagged" if flagged else "pass",
             "items": [
-                {"field": f, "p_wrong": p if p is not None else 0.0, "flagged": fl, "note": note}
+                {"field": f, "p_wrong": p, "flagged": fl, "note": note}
                 for f, p, fl, note in items
             ],
             "counts": {"records": n, "flagged": flagged},
@@ -610,7 +610,7 @@ for seq, cid, tail, target, n, verdict, items in AUDITS:
         complex_id=cid,
         raw_extra={
             "decision": verdict,
-            "note": "p_wrong 미기재 항목은 0.0이 아니라 '보고서 미기재' — note 참조",
+            "note": "p_wrong 미기재 항목은 null(계약 2026-10-09.2: 지어내지 않음) — note 참조",
         }
         if any(p is None for _, p, _, _ in items)
         else {"decision": verdict},

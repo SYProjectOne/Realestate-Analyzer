@@ -13,7 +13,8 @@ contracts/fixtures/
 │  ├─ expected_scores.json          # RA §9 (a)단계 골든 (schemas/expected_scores.json) ← WP0-A 시드
 │  ├─ expected_scores_v2.json       # (b)단계: §6-4 식 재계산 값, R1 끝에 사람 확인 후 고정
 │  ├─ judgments/
-│  │  ├─ _meta.json                 # {"adapter_version": "<녹화 당시 값>", "recorded_at": "…"}
+│  │  ├─ _meta.json                 # {"adapter_version": "mock-fixture-2026-10-08", "recorded_at", "source", "note", "index"}
+│  │  ├─ _index.json                # 녹화 목록 [{judgment_seq, tool, purpose, input_hash, file, report_ref, payload}]
 │  │  └─ <tool>/<hex>.json          # JudgmentEnvelope 1개. <hex> = input_hash에서 'sha256:'를 뺀 64자
 │  ├─ raw/                          # 공고문 txt 발췌, 공식 홈페이지 응답(403 포함) 녹화, 청약홈 HTML
 │  └─ http/                         # respx 녹화(수집기 테스트용, WP1)
@@ -24,6 +25,11 @@ contracts/fixtures/
 ## MockAdapter 규칙 (WP3)
 
 1. `JudgeAdapter`와 같은 9개 메서드. `adapter_version`은 `judgments/_meta.json`의 값을 그대로 쓴다(녹화와 해시를 맞추기 위해).
+   인천·김포 픽스처의 값은 **`"mock-fixture-2026-10-08"`** — MockAdapter 전용 고정 문자열이다. 실제 어댑터의
+   `"<코드>+jev-mcp@<서버>+<model>"`(DECISIONS D6)과 일부러 다르다: 녹화 payload가 보고서 재구성이라 실제 판정기 hash와 섞이면 안 된다.
+   이 값을 바꾸면 모든 input_hash·파일 이름이 바뀐다(생성기 `tools/build_incheon_gimpo.py`의 `ADAPTER_VERSION`).
+   `judgments/_index.json`은 녹화 전부의 목록 `[{judgment_seq, tool, purpose, input_hash, file, report_ref, payload}]`(seq 순)이다 —
+   payload·purpose·adapter_version으로 `app.core.protocols.input_hash`를 다시 계산하면 `input_hash`·`file`과 같고, Fact의 `prov='jl_<seq>'`가 가리키는 출처표다.
 2. 호출마다 `app.core.protocols.input_hash(tool, purpose, payload, adapter_version)`을 계산해
    `judgments/<tool>/<hex>.json`을 찾는다. 있으면 그 봉투를 `cached=True`로 돌려준다.
 3. **없으면 `status="review"`** 봉투(`result={}`, `raw={"reason": "no recording"}`, `confidence=None`)를 돌려준다 —
@@ -32,9 +38,11 @@ contracts/fixtures/
 
 ## 지역 정의 (DECISIONS D3)
 
-인천 연수구(송도동) · 서구/검단구(검단: 원당·당하·마전·불로·오류·왕길 등) · 계양구 + 김포시.
-2026-07 검단구 분구 이후 보고서는 '검단구'를 쓴다. 법정동 코드 표가 아직 서구 코드면 `GET /regions/resolve?q=검단`에서
-서구·검단구 후보가 **둘 다** 나와야 한다. 생활권 기본값은 시군구 1개당 1개(연수구 / 서구(검단) / 계양구 / 김포시).
+인천 연수구(송도동) · 검단구(검단: 원당·당하·마전·불로·오류·왕길 등) · 계양구 + 김포시.
+2026-07 검단구 분구 이후 보고서는 '검단구'를 쓴다. 공식 법정동코드 전체자료(`reference/legal_dong_full.zip`)도 서구(28260)를
+폐지하고 검단구(28290)를 두므로 픽스처·예시는 **검단구 현행 코드**를 쓴다(계약 2026-10-09.2). 법정동 표가 아직 옛 서구 코드만
+가진 환경이면 `GET /regions/resolve?q=검단`에서 서구 후보가 나와야 하고, 둘 다 active면 둘 다 나와야 한다(D3).
+생활권 기본값은 시군구 1개당 1개(연수구 / 검단구 / 계양구 / 김포시).
 
 ## expected_scores.json (RA §9 (a)단계)
 

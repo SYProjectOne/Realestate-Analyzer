@@ -11,7 +11,7 @@
     "items": [
       {
         "field": "contract_start",
-        "p_wrong": 0.0,
+        "p_wrong": null,
         "flagged": true,
         "note": "incomplete → 계약 기간 06-13~16으로 기록"
       }
@@ -26,7 +26,7 @@
       "wrong_at": 0.7
     },
     "decision": "escalate",
-    "note": "p_wrong 미기재 항목은 0.0이 아니라 '보고서 미기재' — note 참조"
+    "note": "p_wrong 미기재 항목은 null(계약 2026-10-09.2: 지어내지 않음) — note 참조"
   },
   "duration_ms": null,
   "judgment_seq": 49,

@@ -1,6 +1,6 @@
 # 인천·김포 회귀 픽스처 (기준일 2026-10-08) — WP9
 
-원천: `docs/source/incheon_gimpo_report.md`(보고서 기준일·확인일 2026-10-07, 같은 데이터). 계약: 2026-10-09.1.
+원천: `docs/source/incheon_gimpo_report.md`(보고서 기준일·확인일 2026-10-07, 같은 데이터). 계약: 2026-10-09.2.
 상위 규칙은 [`../README.md`](../README.md)(디렉터리·MockAdapter·지역 정의)이고, 여기에는 이 픽스처의 내용과 T1~T18 매핑만 적는다.
 
 ## 만드는 법
@@ -24,12 +24,12 @@ uv run pytest tests/fixtures_contract                                      # 스
 
 | 경로 | 스키마 | 내용 |
 | --- | --- | --- |
-| `region.json` | `region.json` | 지역 1개(DECISIONS D3): 송도동 + 검단 법정동 10개(서구 코드) + 계양구 + 김포시, 생활권 4개(시군구당 1개) |
+| `region.json` | `region.json` | 지역 1개(DECISIONS D3): 송도동 + 검단 법정동 10개(검단구 28290 현행 코드) + 계양구 + 김포시, 생활권 4개(시군구당 1개) |
 | `complexes.json` | `complex.json#/$defs/ComplexBundle` ×16 | complex_id 1~16 = `expected_scores.json`·`contracts/examples` 번호. 수치는 전부 Fact |
 | `provenance.json` | `provenance.json` ×N | Fact의 `prov`(fp_…)가 가리키는 출처 행: URL·확인일·라벨·발췌·원문 오프셋 |
 | `snapshots.json` | `snapshot.json` ×2 | 11 = 2026-10-07(인천 8, 판정 #1~89), 12 = 2026-10-08(통합 16, #90~132) — T15용 두 스냅샷 |
 | `expected_scores.json` | `expected_scores.json` | RA §9 (a)단계 골든(WP0-A 시드, 이 WP는 수정하지 않음) |
-| `judgments/_meta.json` | — | `adapter_version = "mock-fixture-2026-10-08"`(MockAdapter가 그대로 쓴다) |
+| `judgments/_meta.json` | — | `adapter_version = "mock-fixture-2026-10-08"` — MockAdapter 전용 고정값(실제 어댑터의 `<코드>+jev-mcp@<서버>+<model>`과 일부러 다름, 바꾸면 모든 hash·파일 이름이 바뀜). `note`·`index`에 설명 |
 | `judgments/_index.json` | — | 녹화 132개의 `judgment_seq · tool · purpose · input_hash · file · payload` — payload로 해시를 다시 계산할 수 있다 |
 | `judgments/<tool>/<hex>.json` | `judgment_envelope.json` | 봉투 1개. `<hex>` = input_hash에서 `sha256:`을 뺀 64자 |
 | `raw/documents.json` | `raw_document.json` ×N | 원문 행(성공·실패). 발췌 txt·PNG·목록 파일의 sha256과 일치 |
@@ -46,11 +46,13 @@ uv run pytest tests/fixtures_contract                                      # 스
 4. **판정기 출력은 `추정` + `prov = jl_<seq>`**(예: inclusion_prob).
 5. **판정 녹화 payload는 보고서 '입력 요약'의 재구성**이다. 보고서에 없는 출력(개별 추출 필드명, 주장 문장 대부분)은 지어내지 않고
    `counts`·`known_claims`로만 남겼다. 시각이 없어 `created_at`은 날짜만, `duration_ms`는 null. 배치 classify(#62·64·110·111)는
-   `result.label = "batch"`, `prob` = auto 비율, 후보별 값은 `result.items`(계약에 배치 모양이 없어 보고에 변경 요청).
-   audit 항목 중 보고서에 p_wrong이 없는 것은 0.0으로 두고 `raw.note`에 적었다. noul은 '입주 후 1년'(move_in_plus_1y)만
+   `result.label = "batch"`, `prob` = auto 비율, 후보별 값은 `result.items`(계약 2026-10-09.2 `ClassifyItem`).
+   audit 항목 중 보고서에 p_wrong이 없는 것은 null로 두고(계약 2026-10-09.2: AuditItem.p_wrong nullable) `raw.note`에 적었다. noul은 '입주 후 1년'(move_in_plus_1y)만
    판정됐다 — asof_plus_3y·5y는 녹화가 없어 MockAdapter가 `review`를 돌려준다(의도).
-6. **법정동 코드**는 법정동코드 전체자료 사본(`raw/reference/legal_dong_excerpt.tsv`, 출처 URL 포함)에서 가져왔다. 검단구(2026-07 분구)
-   코드는 사본에 없어 서구 코드다(D3). `contracts/examples`가 쓰는 2826011600은 폐지 코드(불노동)라 여기서는 쓰지 않는다.
+6. **법정동 코드**는 행정표준코드관리시스템 법정동코드 전체자료 **공식 사본**(`contracts/fixtures/reference/legal_dong_full.zip`,
+   WP1b 수집)에서 생성기가 그대로 발췌한다(`raw/reference/legal_dong_excerpt.tsv` — 생성기 표와 이름·존재 여부가 다르면 생성 실패).
+   2026-07 분구로 서구(28260)는 폐지, 검단 법정동은 검단구(28290) 현행 코드다. 옛 서구 코드는 발췌에 폐지 행으로 남긴다.
+   (이전 gist 사본 기반 서구 코드는 계약 2026-10-09.2에서 교체.)
 7. **생활권 세대수**는 주민등록 세대 현황 파일이 없어 `확인 불가`다(WP1b reference 수집 후 채움).
 8. **complex_id 6(더샵 AB23)·11(고촌센트럴자이)·12(마리나베이)의 applyhome_id는 null** — 보고서에 그 단지 최초 공고의 주택관리번호가 없다.
 9. 칸타빌(7)의 판정 기준 타입은 84B(84.7529㎡가 84㎡에 가장 가까움, complex_type 규칙). 보고서 본문은 84A로 서술한다.
