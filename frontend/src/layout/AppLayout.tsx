@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 import { DegradedBanner } from '@/app/DegradedBanner';
+import { ReadOnlyBanner, TokenDialog } from '@/app/TokenDialog';
 import { ToastProvider } from '@/app/toast';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { t } from '@/i18n';
@@ -28,6 +29,7 @@ export function AppLayout() {
         </a>
         <Header />
         <DegradedBanner />
+        <ReadOnlyBanner />
         {readOnly ? (
           <p role="note" className="bg-surface px-4 py-1 text-xs text-muted">
             {t('app.mobileReadOnly')}
@@ -48,6 +50,7 @@ export function AppLayout() {
           </Suspense>
         </main>
         <Disclaimer />
+        <TokenDialog />
       </div>
     </ToastProvider>
   );

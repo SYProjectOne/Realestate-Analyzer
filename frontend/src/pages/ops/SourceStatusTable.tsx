@@ -1,3 +1,4 @@
+import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useOpsSources } from '@/api/hooks';
 import type { JobName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
@@ -41,6 +42,7 @@ export function SourceStatusTable({
 
 function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null }) {
   const createJob = useCreateJob();
+  const canWrite = useCanWrite();
   const toast = useToast();
   const retry = (job: { job_name: JobName; payload: Record<string, unknown> }) =>
     createJob.mutate(job, { onSuccess: () => toast({ message: t('page.G7.src.retried') }) });
@@ -127,7 +129,8 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                     <button
                       type="button"
                       data-write
-                      disabled={createJob.isPending}
+                      disabled={!canWrite || createJob.isPending}
+                      title={canWrite ? undefined : t('auth.readOnlyHint')}
                       onClick={() => row.retry && retry(row.retry)}
                       className="rounded border border-border px-2 py-0.5 text-xs disabled:opacity-50"
                     >

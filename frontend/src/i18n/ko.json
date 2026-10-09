@@ -155,7 +155,8 @@
         "moveIn": "입주",
         "inclusion": "포함 분류",
         "total": "종합 점수",
-        "officialSite": "공식 홈페이지"
+        "officialSite": "공식 홈페이지",
+        "intakeEvidence": "접수 근거 원문"
       },
       "tabs": "단지 상세 탭",
       "tab": {
@@ -675,7 +676,13 @@
       "raw_document": "원문",
       "comparable_set": "비교군"
     },
-    "error": "출처를 불러오지 못했습니다({detail})"
+    "error": "출처를 불러오지 못했습니다({detail})",
+    "rawPreview": "원문 미리보기",
+    "rawPreviewHide": "미리보기 닫기",
+    "rawSave": "원문 파일 저장",
+    "rawPreviewUnsupported": "이 형식({type})은 미리보기를 지원하지 않습니다 — 저장해서 여세요",
+    "rawImageAlt": "원문 이미지 {name}",
+    "rawTruncated": "앞 {n}자만 표시합니다"
   },
   "job": {
     "title": "작업 진행",
@@ -892,5 +899,42 @@
     "yes": "예",
     "no": "아니오",
     "chosen": "선택"
+  },
+  "auth": {
+    "button": "API 토큰",
+    "state": {
+      "none": "토큰 없음",
+      "write": "쓰기 토큰",
+      "read": "읽기 전용 토큰",
+      "unknown": "토큰 설정됨"
+    },
+    "title": "API 토큰 설정",
+    "intro": "서버의 API_TOKEN(쓰기) 또는 READONLY_TOKEN(읽기 전용)을 입력하세요. 이 브라우저에만 저장됩니다.",
+    "reason": {
+      "missing": "이 서버는 API 토큰이 필요합니다",
+      "invalid": "지금 토큰이 서버와 맞지 않습니다(401). 다시 입력하세요",
+      "manual": "토큰을 바꾸거나 지울 수 있습니다"
+    },
+    "label": "토큰",
+    "show": "토큰 보이기",
+    "save": "확인 후 저장",
+    "checking": "토큰 확인 중…",
+    "clear": "저장한 토큰 지우기",
+    "close": "닫기",
+    "empty": "토큰을 입력하세요",
+    "invalid": "토큰이 맞지 않습니다(401)",
+    "checkError": "토큰을 확인하지 못했습니다: {detail}",
+    "savedWrite": "쓰기 토큰을 저장했습니다",
+    "savedRead": "읽기 전용 토큰을 저장했습니다 — 저장·실행 버튼은 꺼집니다",
+    "cleared": "저장한 토큰을 지웠습니다",
+    "notPersisted": "브라우저 저장소를 쓸 수 없어 이 탭에서만 유지됩니다",
+    "current": "현재: {state}",
+    "readOnlyBanner": "읽기 전용 토큰입니다 — 저장·실행 버튼이 꺼져 있습니다. 쓰려면 쓰기 토큰(API_TOKEN)으로 바꾸세요",
+    "readOnlyHint": "읽기 전용 토큰으로는 저장·실행할 수 없습니다",
+    "change": "토큰 바꾸기"
+  },
+  "download": {
+    "pending": "내려받는 중…",
+    "error": "내려받지 못했습니다: {detail}"
   }
 }

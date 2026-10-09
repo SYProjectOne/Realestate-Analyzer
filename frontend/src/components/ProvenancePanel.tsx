@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiFetch } from '@/api/client';
-import { rawDocumentUrl, useProvenance } from '@/api/hooks';
+import { useProvenance } from '@/api/hooks';
 import { t, tDynamic } from '@/i18n';
 import type { Provenance, ProvenanceConflict } from '@/lib/contract';
 import { formatDate, formatNumber } from '@/lib/format';
 import { Badge } from './Badge';
 import { EmptyState } from './EmptyState';
 import { LabelBadge } from './LabelBadge';
+import { RawDocumentPreview } from './RawDocumentPreview';
 import { ProvenanceContext } from './provenanceContext';
 
 export interface ProvenancePanelProps {
@@ -18,8 +19,6 @@ export interface ProvenancePanelProps {
 
 /** 원문 하이라이트 창: excerpt 오프셋 앞뒤로 보여 줄 글자 수 */
 const RAW_CONTEXT = 160;
-
-type RawDocId = Parameters<typeof rawDocumentUrl>[0];
 
 /** text 안의 needle을 모두 <mark>로. needle이 없거나 못 찾으면 그대로. */
 export function Highlighted({ text, needle }: { text: string; needle?: string | null }) {
@@ -256,14 +255,7 @@ function ProvenanceBody({
         <>
           <dt className="sr-only">{t('provenance.rawDocument')}</dt>
           <dd className="col-span-2">
-            <a
-              href={rawDocumentUrl(data.raw_document_id as unknown as RawDocId)}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline"
-            >
-              {t('provenance.rawDocument')}
-            </a>
+            <RawDocumentPreview rawId={data.raw_document_id as unknown as number} />
           </dd>
         </>
       ) : null}
@@ -273,7 +265,7 @@ function ProvenanceBody({
 
 /**
  * 출처 패널(오른쪽 서랍): GET /provenance/{id} → 값·라벨(사유)·확인일·원문 주소·출처 종류/순위·HTTP 상태·
- * 산출식·원문 발췌(값 하이라이트, 원문 텍스트 오프셋 하이라이트)·상충 그룹(채택/미채택)·원문 파일 링크.
+ * 산출식·원문 발췌(값 하이라이트, 원문 텍스트 오프셋 하이라이트)·상충 그룹(채택/미채택)·원문 미리보기·저장(Bearer fetch).
  * 보통 직접 쓰지 않고 앱 루트의 ProvenanceProvider가 FactCell 클릭으로 연다.
  */
 export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {

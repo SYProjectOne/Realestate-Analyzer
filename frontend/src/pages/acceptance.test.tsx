@@ -46,10 +46,8 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
     const table = await screen.findByRole('table', { name: t('page.G2.table') });
     await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(2));
     expect(screen.getByRole('search', { name: t('page.G2.filters') })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: t('page.G2.csv') })).toHaveAttribute(
-      'href',
-      expect.stringContaining('/complexes.csv'),
-    );
+    // CSV 는 링크가 아니라 버튼(Bearer fetch → Blob 저장)
+    expect(screen.getByRole('button', { name: t('page.G2.csv') })).toBeEnabled();
   });
 
   it('G3 /complexes/2: 헤더 접수 배지 + 탭 8개', async () => {

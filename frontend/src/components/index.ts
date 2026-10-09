@@ -21,6 +21,7 @@ export { LabelBadge, labelText, type LabelBadgeProps } from './LabelBadge';
 export { MismatchBadge, type MismatchBadgeProps } from './MismatchBadge';
 export { ProvenancePanel, ProvenanceProvider, type ProvenancePanelProps } from './ProvenancePanel';
 export { useOpenProvenance } from './provenanceContext';
+export { RawDocumentPreview, type RawDocumentPreviewProps } from './RawDocumentPreview';
 export { ADD_REGION_VALUE, RegionPicker, type RegionPickerProps } from './RegionPicker';
 export { ScenarioToggle, type ScenarioOption, type ScenarioToggleProps } from './ScenarioToggle';
 export { SnapshotPicker, type SnapshotPickerProps } from './SnapshotPicker';

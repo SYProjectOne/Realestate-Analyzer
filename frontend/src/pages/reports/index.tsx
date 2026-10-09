@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
-import { reportDownloadUrl, useChanges, useCreateReport, useReports } from '@/api/hooks';
+import { useCanWrite } from '@/api/auth';
+import { useDownload } from '@/api/download';
+import { reportRequest, useChanges, useCreateReport, useReports } from '@/api/hooks';
 import { ApiError } from '@/api/client';
 import type { ChangeEvent, Report, ReportFormat, Snapshot } from '@/api/types';
 import { Badge, EmptyState, JobProgress, SnapshotPicker } from '@/components';
@@ -33,6 +35,7 @@ export function ReportsPage() {
   const [format, setFormat] = useState<ReportFormat>('html');
   const [jobId, setJobId] = useState<number | null>(null);
   const create = useCreateReport();
+  const canWrite = useCanWrite();
   const qc = useQueryClient();
   const formatId = useId();
   const compareSelectId = useId();
@@ -110,7 +113,8 @@ export function ReportsPage() {
           <button
             type="button"
             onClick={generate}
-            disabled={!selectedId || !!blocked || create.isPending}
+            disabled={!canWrite || !selectedId || !!blocked || create.isPending}
+            title={canWrite ? undefined : t('auth.readOnlyHint')}
             aria-describedby={blocked ? 'g8-blocked' : undefined}
             className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
           >
@@ -188,6 +192,7 @@ function ReportRow({
   asof: string | null;
   dateOf: (id: number | null) => string;
 }) {
+  const file = useDownload();
   return (
     <tr>
       <td className={tdClass}>{formatDate(report.created_at, asof)}</td>
@@ -213,13 +218,19 @@ function ReportRow({
       </td>
       <td className={tdClass}>
         {report.status === 'done' ? (
-          <a
-            href={reportDownloadUrl(report.id)}
-            download={report.filename ?? undefined}
-            className="underline"
+          <button
+            type="button"
+            disabled={file.pending}
+            onClick={() => void file.download(reportRequest(report.id, report.filename))}
+            className="text-left underline disabled:opacity-50"
           >
-            {report.filename ?? t('page.common.download')}
-          </a>
+            {file.pending ? t('download.pending') : (report.filename ?? t('page.common.download'))}
+          </button>
+        ) : null}
+        {file.error ? (
+          <span role="alert" className="block text-xs text-danger">
+            {t('download.error', { detail: file.error.message })}
+          </span>
         ) : null}
       </td>
     </tr>

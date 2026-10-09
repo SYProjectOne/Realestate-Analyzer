@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { complexesCsvUrl, useComplexes } from '@/api/hooks';
+import { useDownload } from '@/api/download';
+import { complexesCsvRequest, useComplexes } from '@/api/hooks';
 import { EmptyState } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
@@ -17,7 +18,7 @@ const MIN_COMPARE = 2;
 /**
  * G2 단지 리스트 `/complexes` (RA §7-1)
  * FilterBar(URL 쿼리) · ComplexTable(TanStack Table + 가상 스크롤, 열 선택 저장) · CompareTray(2~6 → /compare?ids=)
- * CSV는 같은 필터·정렬로 서버가 만든다(complexesCsvUrl).
+ * CSV는 같은 필터·정렬로 서버가 만든다(complexesCsvRequest → Bearer fetch → 저장).
  */
 export function ComplexesPage() {
   const { snapshotId, scenarioKey, asof, readOnly, isLoading } = usePageContext();
@@ -77,16 +78,28 @@ export function ComplexesPage() {
     });
   }, []);
 
-  const csvHref = snapshotId ? complexesCsvUrl(snapshotId, listParams) : undefined;
+  const csv = useDownload();
 
   return (
     <PageShell
       title={t('page.G2.title')}
       actions={
-        csvHref ? (
-          <a href={csvHref} download className="rounded border border-border px-2 py-1 text-sm">
-            {t('page.G2.csv')}
-          </a>
+        snapshotId ? (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={csv.pending}
+              onClick={() => void csv.download(complexesCsvRequest(snapshotId, listParams))}
+              className="rounded border border-border px-2 py-1 text-sm disabled:opacity-50"
+            >
+              {csv.pending ? t('download.pending') : t('page.G2.csv')}
+            </button>
+            {csv.error ? (
+              <span role="alert" className="text-xs text-danger">
+                {t('download.error', { detail: csv.error.message })}
+              </span>
+            ) : null}
+          </span>
         ) : null
       }
     >

@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
+import { useCanWrite } from '@/api/auth';
 import { useCreateRegion, useResolveRegion } from '@/api/hooks';
 import type { RegionCandidate, RegionCreated, RegionSelection } from '@/api/types';
 import { useToast } from '@/app/toast';
@@ -28,6 +29,7 @@ export function RegionNewPage() {
   const [selected, setSelected] = useState<RegionSelection[]>([]);
   const [name, setName] = useState('');
   const create = useCreateRegion();
+  const canWrite = useCanWrite();
   const [created, setCreated] = useState<RegionCreated | null>(null);
   const [done, setDone] = useState(false);
   const toast = useToast();
@@ -41,7 +43,8 @@ export function RegionNewPage() {
         : [...prev, { kind: c.kind, code: c.code, full_name: c.full_name }],
     );
 
-  const canStart = selected.length > 0 && name.trim().length > 0 && !create.isPending && !created;
+  const canStart =
+    canWrite && selected.length > 0 && name.trim().length > 0 && !create.isPending && !created;
 
   const start = () => {
     if (!canStart) return;
@@ -149,12 +152,15 @@ export function RegionNewPage() {
               type="button"
               onClick={start}
               disabled={!canStart}
+              title={canWrite ? undefined : t('auth.readOnlyHint')}
               className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
             >
               {t('page.G0.start')}
             </button>
             {!canStart && !created ? (
-              <span className="text-xs text-muted">{t('page.G0.startDisabled')}</span>
+              <span className="text-xs text-muted">
+                {canWrite ? t('page.G0.startDisabled') : t('auth.readOnlyHint')}
+              </span>
             ) : null}
           </div>
           {create.error ? (

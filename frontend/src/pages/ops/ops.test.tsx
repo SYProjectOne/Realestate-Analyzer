@@ -114,4 +114,24 @@ describe('G7 데이터·운영', () => {
     renderRoute('/ops');
     expect(await screen.findByTestId('degraded-banner')).toHaveTextContent(t('app.degraded'));
   });
+
+  it('DB 장애 → /health 503(같은 Health 본문)도 전역 배너', async () => {
+    server.use(
+      http.get(mswPath('/health'), () =>
+        HttpResponse.json(
+          {
+            status: 'degraded',
+            contract_version: '2026-10-09.3',
+            app_version: '0.1.0',
+            db: 'error',
+            judge: 'unknown',
+            time: '2026-10-08T09:00:00+09:00',
+          },
+          { status: 503 },
+        ),
+      ),
+    );
+    renderRoute('/ops');
+    expect(await screen.findByTestId('degraded-banner')).toHaveTextContent(t('app.degraded'));
+  });
 });

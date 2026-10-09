@@ -1,5 +1,12 @@
 import type { ComplexDetail } from '@/api/types';
-import { Badge, FactCell, IntakeBadge, TieBadge, UnstableBadge } from '@/components';
+import {
+  Badge,
+  FactCell,
+  IntakeBadge,
+  TieBadge,
+  UnstableBadge,
+  useOpenProvenance,
+} from '@/components';
 import { t } from '@/i18n';
 import { formatRank } from '@/lib/format';
 import { enumText } from '../_shared';
@@ -7,6 +14,8 @@ import { enumText } from '../_shared';
 /** G3 ComplexHeader — 접수 배지 · 현재 구매가 범위 · 전매 D-day · 입주 · 포함 분류 · 종합 점수 */
 export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
   const { header, price, intake_current: intake, score, asof_date: asof } = detail;
+  const openProvenance = useOpenProvenance();
+  const intakeRaw = intake?.raw_document_id ?? null;
   return (
     <section
       aria-label={header.name}
@@ -15,6 +24,15 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">{header.name}</h2>
         <IntakeBadge intake={intake} asof={asof} />
+        {intakeRaw !== null && openProvenance ? (
+          <button
+            type="button"
+            onClick={() => openProvenance(`rd_${intakeRaw}`)}
+            className="text-xs underline"
+          >
+            {t('page.G3.header.intakeEvidence')}
+          </button>
+        ) : null}
         {score ? (
           <>
             {score.rank !== null ? <Badge tone="strong">{formatRank(score.rank)}</Badge> : null}
