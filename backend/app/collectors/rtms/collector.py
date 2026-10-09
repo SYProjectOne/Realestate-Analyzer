@@ -38,6 +38,7 @@ from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
 from app.core.http import FetchResult, HttpClient
 from app.core.settings import get_settings
+from app.models import RawDocument as RtmsRaw
 from app.models import RtmsTrade
 
 __all__ = [
@@ -176,6 +177,48 @@ class RtmsCollector:
                         else:
                             docs.extend(self._fallback_month(store, region.id, lawd, ym))
                 if self._load:
+                    self.load_stats = load_trades(session, region.id, self.trades)
+        finally:
+            if self._http is None:
+                http.close()
+        return docs
+
+    def backfill(self, region: Region, snapshot: Snapshot, *, months: int) -> list[RawDocument]:
+        """벤치마크용 과거 월 채우기(R3 C1, D9-2 '입주 후 실거래'): 기준월 − (months−1) ~ 기준월 중 아직 성공
+        원문이 없는 (시군구, 월)만 Open API 로 받아 적재한다. 멱등 — 채울 달이 없으면 호출 0.
+
+        '받은 적 있음' = 같은 조회 주소(1쪽)의 성공 원문 행. 거래 0건 달의 응답은 시군구·월이 달라도 본문이
+        같을 수 있어(같은 sha256 → 원문 1행) 다음 실행에서 다시 받을 수 있다(비용 작음, 정확성 영향 없음).
+        키가 없으면(재가공 폴백 포함) 하지 않는다 — 재가공 원천은 인터페이스만 있다.
+        """
+        self.trades, self.pages, self.load_stats = [], [], None
+        self._seen_docs = set()
+        if self.mode != "openapi":
+            return []
+        end = snapshot.asof_date[:7]
+        wanted = month_range(_shift(end, -(max(1, months) - 1)), end)
+        http = self._http or HttpClient()
+        docs: list[RawDocument] = []
+        try:
+            with self._session_factory() as session:
+                have = {
+                    url
+                    for url in session.scalars(
+                        select(RtmsRaw.url).where(
+                            RtmsRaw.source_kind == "rtms",
+                            RtmsRaw.path.is_not(None),
+                            RtmsRaw.http_status == 200,
+                            RtmsRaw.error_text.is_(None),
+                        )
+                    )
+                }
+                store = RawStore(session, raw_dir=self._raw_dir)
+                for lawd in region.sigungu_codes:
+                    for ym in wanted:
+                        if self._shown_url(lawd, ym, 1) in have:
+                            continue
+                        docs.extend(self._openapi_month(http, store, region.id, lawd, ym))
+                if self._load and self.trades:
                     self.load_stats = load_trades(session, region.id, self.trades)
         finally:
             if self._http is None:
