@@ -72,7 +72,10 @@ class NewsCatalysts:
     rejected: int = 0  # accept(호재 관련성 screen)를 통과하지 못해 후보로 만들지 않은 항목
 
     def stats(self) -> dict[str, int]:
-        return {"inserted": self.inserted, "existing": self.existing, "rejected": self.rejected}
+        out = {"inserted": self.inserted, "existing": self.existing}
+        if self.rejected:  # screen 을 쓴 실행에서 걸러진 항목이 있을 때만(기존 stats 모양 유지)
+            out["rejected"] = self.rejected
+        return out
 
 
 def _clean(text: str | None) -> str:
