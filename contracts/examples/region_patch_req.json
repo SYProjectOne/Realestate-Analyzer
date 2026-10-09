@@ -1,0 +1,27 @@
+{
+  "summary": "지역 확장(김포시 추가)",
+  "value": {
+    "selections": [
+      {
+        "kind": "legal_dong",
+        "code": "2818510600",
+        "full_name": "인천광역시 연수구 송도동"
+      },
+      {
+        "kind": "sigungu",
+        "code": "28290",
+        "full_name": "인천광역시 검단구"
+      },
+      {
+        "kind": "sigungu",
+        "code": "28245",
+        "full_name": "인천광역시 계양구"
+      },
+      {
+        "kind": "sigungu",
+        "code": "41570",
+        "full_name": "경기도 김포시"
+      }
+    ]
+  }
+}

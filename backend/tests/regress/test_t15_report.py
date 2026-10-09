@@ -65,7 +65,9 @@ def test_t15_html_via_api_self_contained(env: RegressEnv, sid: int, compare: int
         h2 = sec.find("h2")
         assert isinstance(h2, Tag) and title in h2.get_text(" ", strip=True), (n, title)
     # 외부 URL 리소스 0
-    for tag in soup.find_all(["script", "img", "iframe", "source", "video", "audio", "embed", "track", "input"]):
+    for tag in soup.find_all(
+        ["script", "img", "iframe", "source", "video", "audio", "embed", "track", "input"]
+    ):
         assert not EXT.match(str(tag.get("src") or "")), tag
     for tag in soup.find_all("link"):
         assert not EXT.match(str(tag.get("href") or "")), tag
@@ -80,7 +82,11 @@ def test_t15_html_via_api_self_contained(env: RegressEnv, sid: int, compare: int
         u = urlparse(href)
         assert u.scheme in ("http", "https") and u.netloc and " " not in href, href
     with env.session() as s:
-        urls = {u for u in s.scalars(select(RawDocument.url).where(RawDocument.region_id == 1)) if u and u.startswith("http")}
+        urls = {
+            u
+            for u in s.scalars(select(RawDocument.url).where(RawDocument.region_id == 1))
+            if u and u.startswith("http")
+        }
     assert urls <= set(links), sorted(urls - set(links))[:5]
     if sid == SNAP:
         # §8 숫자 20개 이상 = score_total
@@ -123,7 +129,16 @@ def test_t15_contradicted_claim_refuses(env: RegressEnv) -> None:
     from app.scheduler.jobs import enqueue
 
     with env.session() as s:
-        s.add(Claim(snapshot_id=SNAP, section="regress T15", complex_id=None, text="회귀 테스트 contradicted 주장", verify_status="contradicted", ordinal=0))
+        s.add(
+            Claim(
+                snapshot_id=SNAP,
+                section="regress T15",
+                complex_id=None,
+                text="회귀 테스트 contradicted 주장",
+                verify_status="contradicted",
+                ordinal=0,
+            )
+        )
         s.commit()
     r = env.client.post("/api/reports", headers=WRITE, json={"snapshot_id": SNAP, "format": "html"})
     assert r.status_code == 409 and r.json()["code"] == "publish_blocked", r.text
@@ -134,5 +149,7 @@ def test_t15_contradicted_claim_refuses(env: RegressEnv) -> None:
     env.worker(env.ctx("mock"))
     with env.session() as s:
         job = s.get(JobRun, jid)
-        assert job is not None and job.status == "failed" and "blocked" in (job.error_text or ""), (job.status if job else None)
+        assert job is not None and job.status == "failed" and "blocked" in (job.error_text or ""), (
+            job.status if job else None
+        )
     assert not any(env.settings.report_dir.rglob("*.html")) if env.settings.report_dir.exists() else True

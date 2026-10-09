@@ -216,6 +216,8 @@ def catalyst_view(
         "distance_m": None,
         "weight": None,
         "linked_complex_ids": list(linked_ids) if linked_ids is not None else None,
+        "lat": float(c.lat) if c.lat is not None else None,  # 계약 .8 — 사람 위치 확인(D11-5)
+        "lon": float(c.lon) if c.lon is not None else None,
         "judgment_seq": seq,
         "source_url": c.source_url,
         "note": c.note,

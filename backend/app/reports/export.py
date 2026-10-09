@@ -5,6 +5,8 @@
 거부·없음은 파일을 만들기 전에 예외로 끝난다. 쓰기는 임시 파일 → rename(원자적).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import hashlib
@@ -85,6 +87,14 @@ def generate(
     """
     if fmt not in FORMATS:
         raise ValueError(f"보고서 형식은 html|pdf: {fmt!r}")
+    if compare_snapshot_id is None:
+        # D11-1: 리비전 2 이상이면 바탕 리비전과 비교한다 — 리비전 diff 표가 '판정기 버전 변경 delta 표'(RA §10)이고,
+        # 지역 확장 리비전이면 §12 '지역 추가' 장이 된다(D11-7)
+        from app.models import Snapshot
+
+        snap_row = session.get(Snapshot, snapshot_id)
+        if snap_row is not None and snap_row.revision_of is not None:
+            compare_snapshot_id = snap_row.revision_of
     data = load_report(session, snapshot_id, scenario_id=scenario_id, compare_snapshot_id=compare_snapshot_id)
     diff = (
         diff_snapshots(session, compare_snapshot_id, snapshot_id, scenario_code=data.scenario_code)

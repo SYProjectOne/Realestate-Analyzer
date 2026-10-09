@@ -61,7 +61,9 @@ def test_t03_before_unknown_403_and_excluded_from_d(env: RegressEnv) -> None:
     assert cur.get("checked_at"), cur  # 화면 "확인 불가(403, 날짜)"의 날짜
     with env.session() as s:
         failed = s.scalars(
-            select(RawDocument).where(RawDocument.source_kind == "official_site", RawDocument.http_status == 403)
+            select(RawDocument).where(
+                RawDocument.source_kind == "official_site", RawDocument.http_status == 403
+            )
         ).all()
     assert failed, "official_site 403 원문 행(실패도 데이터)이 없다"
     # 상황 후보 제외(D)
@@ -98,5 +100,7 @@ def test_t03_human_check_rejudge_mock_judge_d91(env: RegressEnv) -> None:
     # D9-1: classify 미해결 → 판정 대상 아님(계약 .4 전에는 score_total 에 '제외'로 실린다)
     assert row.get("rank") is None and row["total"]["v"] is None, row
     assert row.get("judge_scope") in ("미해결", "제외"), row.get("judge_scope")
-    d_top5 = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=SCENARIO_D)["top5"]]
+    d_top5 = [
+        t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=SCENARIO_D)["top5"]
+    ]
     assert d_top5 and CID not in d_top5

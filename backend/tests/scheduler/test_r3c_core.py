@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -52,7 +51,9 @@ from app.scheduler.pipeline import run_pipeline
 HM = "2026990001"  # 테스트 공고(픽스처 단지와 겹치지 않는 주택관리번호)
 
 
-def _detail_body(hm: str, *, move_in: str | None, name: str = "테스트 리비전 단지", stamp: str = "") -> dict[str, Any]:
+def _detail_body(
+    hm: str, *, move_in: str | None, name: str = "테스트 리비전 단지", stamp: str = ""
+) -> dict[str, Any]:
     row: dict[str, Any] = {
         "HOUSE_MANAGE_NO": hm, "PBLANC_NO": hm, "HOUSE_NM": name,
         "HSSPLY_ADRES": "인천광역시 연수구 송도동 1-1", "TOT_SUPLY_HSHLDCO": 300,
@@ -283,7 +284,8 @@ def test_d11_1_rejudge_after_publish_writes_new_revision(
         s.commit()
         assert ok, n
         before_ladders = sorted(
-            (lad.id, lad.complex_id, lad.horizon, str(lad.p10)) for lad in s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded))
+            (lad.id, lad.complex_id, lad.horizon, str(lad.p10))
+            for lad in s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded))
         )
         before_runs = sorted(r.id for r in s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == seeded)))
         target = s.scalars(select(Complex.id).where(Complex.region_id == 1).order_by(Complex.id)).first()
@@ -295,15 +297,25 @@ def test_d11_1_rejudge_after_publish_writes_new_revision(
     with factory() as s:
         old, new = s.get(Snapshot, seeded), s.get(Snapshot, rev)
         assert old is not None and new is not None
-        assert old.status == "published" and (new.revision, new.revision_of, new.asof_date) == (2, seeded, old.asof_date)
+        assert old.status == "published" and (new.revision, new.revision_of, new.asof_date) == (
+            2,
+            seeded,
+            old.asof_date,
+        )
         assert new.status == "ready"
         after_ladders = sorted(
-            (lad.id, lad.complex_id, lad.horizon, str(lad.p10)) for lad in s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded))
+            (lad.id, lad.complex_id, lad.horizon, str(lad.p10))
+            for lad in s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded))
         )
         assert after_ladders == before_ladders, "발행 리비전의 사다리는 제자리에서 바뀌지 않는다(M-2)"
-        assert sorted(r.id for r in s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == seeded))) == before_runs
+        assert (
+            sorted(r.id for r in s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == seeded)))
+            == before_runs
+        )
         assert s.scalar(select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == rev))
-        assert s.scalar(select(func.count()).select_from(ScoreTotal).join(ScoreRun).where(ScoreRun.snapshot_id == rev))
+        assert s.scalar(
+            select(func.count()).select_from(ScoreTotal).join(ScoreRun).where(ScoreRun.snapshot_id == rev)
+        )
         pub = s.scalars(select(Snapshot).where(Snapshot.id == rev)).one()
         ok, _ = snapshots.publish(s, pub.id, now="2026-10-07T09:00:00+09:00")
         s.commit()

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "backup.json",
+  "title": "BackupPayload",
+  "description": "job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고, 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "keep_days": { "description": "이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)", "type": ["integer", "null"], "minimum": 1 }
+  },
+  "examples": [{}]
+}

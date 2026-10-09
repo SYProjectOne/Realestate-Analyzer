@@ -359,6 +359,7 @@ def test_n_m4_benchmark_substitute_marked_in_formula_and_label() -> None:
          "move_in_ym": None, "ladders": [], "winner_date": None, "resale_months": None, "resale_release_on_registration": None,
          "residency_months": None, "down_payment_pct": None, "intake_status": None, "intake_path": None}
     )  # fmt: skip
+
     def rows_(substitute: bool) -> list[BenchmarkInput]:
         return [
             BenchmarkInput(id=i, living_area="la_9", name=f"b{i}", completed_year=2022, sale_year=2024,

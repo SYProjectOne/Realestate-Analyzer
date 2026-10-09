@@ -3,6 +3,8 @@
 정규식은 판단이 아니다(AGENTS 규칙 3). 여기 함수는 표기를 바꾸기만 하고 값을 고르지 않는다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import calendar
@@ -84,9 +86,31 @@ def normalize_site_url(text: str | None) -> str | None:
     return urlunsplit((scheme, netloc, parts.path or "/", parts.query, ""))
 
 
+# 공급 구분 괄호 안의 단지 차수·단지·블록 표기(D11-4·M-7): '(2차 잔여세대)'의 '2차'. 공급 구분 낱말 바로 뒤의 'N차'
+# ('임의공급 4차'·'무순위 2차' = 그 공급의 회차)와 'N회차'는 차수가 아니다
+_PHASE_IN_PAREN_RE = re.compile(r"(?<![0-9])(\d+\s*(?:차|단지)|[A-Za-z]{1,3}\d+(?:-\d+)?\s*(?:블록|BL))")
+_SUPPLY_WORD_BEFORE_RE = re.compile(
+    r"(?:회|임의공급|임의|무순위|잔여세대|잔여|선착순|재공급|조합원|취소|자격상실|사후)\s*$"
+)
+
+
+def _keep_phase(match: re.Match[str]) -> str:
+    inner = match.group(0)[1:-1]
+    kept: list[str] = []
+    for m in _PHASE_IN_PAREN_RE.finditer(inner):
+        token = m.group(1)
+        if token.endswith("차") and _SUPPLY_WORD_BEFORE_RE.search(inner[: m.start()]):
+            continue  # '임의공급 4차' — 공급 회차
+        kept.append(re.sub(r"\s+", "", token))
+    return f"({' '.join(kept)})" if kept else ""
+
+
 def strip_supply_round(name: str) -> str:
-    """단지명에서 잔여 공고의 회차·공급 구분 괄호만 뗀다(문자열 처리 — 판단 아님)."""
-    return _SUPPLY_ROUND_PAREN_RE.sub("", name)
+    """단지명에서 잔여 공고의 회차·공급 구분 괄호만 뗀다(문자열 처리 — 판단 아님).
+
+    차수·단지·블록 표기는 어떤 괄호 안에 있어도 남긴다(D11-4·M-7): '힐스테이트 송도(2차 잔여세대)' → '힐스테이트 송도(2차)'
+    (1차와 다른 단지). 공급 구분 낱말 바로 뒤 'N차'('(임의공급 4차)')·'N회차'는 공급 회차라 지운다."""
+    return _SUPPLY_ROUND_PAREN_RE.sub(_keep_phase, name)
 
 
 _DATE_RE = re.compile(r"(?<!\d)(\d{2}|\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})(?!\d)")

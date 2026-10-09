@@ -27,7 +27,7 @@
   "$defs": {
     "PriceRange": {
       "title": "PriceRange",
-      "description": "현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션, high = 최고가 + 발코니 + 필수 옵션, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만').",
+      "description": "현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션 − 할인(확인됨일 때만, D11-6), high = 최고가 + 발코니 + 필수 옵션 − 할인, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만 − 할인 1,000만').",
       "type": "object",
       "additionalProperties": false,
       "required": ["basis_type_code", "price_low", "price_high", "price_mid"],
@@ -37,7 +37,8 @@
         "price_high": { "$ref": "fact.json" },
         "price_mid": { "$ref": "fact.json" },
         "composition": { "type": ["string", "null"] },
-        "change_vs_first_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
+        "change_vs_first_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "discount": { "description": "공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
       }
     },
     "GapComp": {

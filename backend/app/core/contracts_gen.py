@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 
 class AgePremiumCoef(BaseModel):
@@ -57,6 +57,20 @@ class AuditResult(BaseModel):
 
     verdict: Literal["pass", "flagged"]
     items: list[AuditItem]
+
+
+class BackupPayload(BaseModel):
+    """
+    job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고, 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    keep_days: Annotated[int | None, Field(ge=1)] = None
+    """
+    이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)
+    """
 
 
 class BenchmarkAbsence(BaseModel):
@@ -189,6 +203,62 @@ class CatalystCreated(BaseModel):
     job: JobRun | None
 
 
+class CatalystLinkView(BaseModel):
+    """
+    catalyst_link 1행(계약 .8): 단지·거리(좌표 없으면 null)·가중치·라벨·근거
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    complex_id: int
+    distance_m: int | None
+    weight: float | None
+    label: Annotated[
+        Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"],
+        Field(examples=["확인됨", "추정", "확인 불가"], title="Label"),
+    ]
+    """
+    수치·날짜의 신뢰 라벨 5종 (meta §2-2, RA §3). 빈칸 금지.
+    - 확인됨: 공고문·청약홈·Open API 원문에서 그대로 읽은 값
+    - 추정: 산술·가정으로 만든 값 (점수, 연식 보정, 합산 집계 등)
+    - 비공식: 언론·블로그·홍보 자료
+    - 재가공: 원본이 아닌 가공 데이터 (실거래 재가공 사이트 등)
+    - 확인 불가: 찾지 못했거나 읽지 못한 값. 사유는 Fact.reason / Intake.reason 에 따로 둔다 (예: label="확인 불가", reason="403").
+    "사람 확인"은 라벨이 아니다: intake_status.path=human_check 또는 Fact.human=true 로 표현하고 화면은 확인됨 배지에 "사람" 접두어를 붙인다.
+    """
+    reason: str | None
+
+
+class CatalystPatch(BaseModel):
+    """
+    PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인). 링크가 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    location_confirmed: bool
+    lat: Annotated[float | None, Field(ge=-90.0, le=90.0)] = None
+    lon: Annotated[float | None, Field(ge=-180.0, le=180.0)] = None
+    living_area_ids: Annotated[list[LivingAreaId] | None, Field(max_length=50)] = None
+    complex_ids: Annotated[list[int] | None, Field(max_length=1000)] = None
+    expected_ym: Annotated[str | None, Field(pattern="^[0-9]{4}-(0[1-9]|1[0-2])$")] = None
+
+
+class CatalystUpdated(BaseModel):
+    """
+    PATCH /catalysts/{id} 200 — 갱신한 호재 + 연결 목록 + 등록한 점수 재계산 잡(연결이 그대로면 null)
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    catalyst: CatalystView
+    links: list[CatalystLinkView]
+    job: JobRun | None
+
+
 class CatalystView(BaseModel):
     """
     호재 1건의 화면 표현 (RA §3 catalyst + catalyst_link) — C9 보드·타임라인, G3 CatalystList. stage는 판정기 classify 결과(review면 '미확정'). location_confirmed=false면 단지 연결 없음(catalyst_link 행 없음, 점수 가중치 0, '연결 없음' 표시). 미확정·언론은 회색. 타임라인에는 stage='확정'인 것만 expected_ym으로 그린다.
@@ -201,7 +271,10 @@ class CatalystView(BaseModel):
     id: int
     name: str
     kind: Literal["교통", "개발", "학교", "상업", "생활인프라", "기타"]
-    stage: Literal["확정", "계획", "추진", "언론", "미확정"]
+    stage: Literal["확정", "계획", "추진", "언론", "미확정", "호재 아님"]
+    """
+    판정기 classify 단계. '호재 아님'(계약 2026-10-09.8, D11-2) = 판정기가 호재가 아니라고 본 뉴스 후보 — 지우지 않고 제외로 남긴다(목록·보드에서 '호재 아님' 배지, 점수·타임라인 제외). 사람이 넣은 호재는 단계가 바뀌지 않고 판정 결과가 note 에 병기된다
+    """
     stage_prob: Fact
     decision: Literal["auto", "review", "manual_review"] | None
     expected_ym: Fact
@@ -210,6 +283,14 @@ class CatalystView(BaseModel):
     distance_m: Fact | None = None
     weight: float | None = None
     linked_complex_ids: list[int] | None = None
+    lat: float | None = None
+    """
+    위치 위도(사람 확인, 계약 .8 — PATCH /catalysts/{id}). 없으면 null
+    """
+    lon: float | None = None
+    """
+    위치 경도(사람 확인, 계약 .8). 없으면 null
+    """
     judgment_seq: int | None
     source_url: str | None = None
     note: str | None = None
@@ -273,7 +354,7 @@ class ChangeEvent(BaseModel):
 
 class ChecklistItem(BaseModel):
     """
-    체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·새 원문으로 복원되면 done; 계약 2026-10-09.6).
+    체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·다른 값의 새 원문으로 복원되면 done(closed_by auto), 강등이 남았는데 사람이 닫으면 다시 열린다; 계약 2026-10-09.6·.8). 자동 항목의 근거 사실이 사라지거나 강등되면 동기화가 na(closed_by auto)로 닫고, 근거가 돌아오면 다시 연다(M-9).
     """
 
     model_config = ConfigDict(
@@ -287,6 +368,10 @@ class ChecklistItem(BaseModel):
     due_date: str | None
     status: Literal["open", "done", "na"]
     note: str | None
+    closed_by: Literal["auto", "human"] | None = None
+    """
+    닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행
+    """
 
 
 class ChecklistPatch(BaseModel):
@@ -1782,11 +1867,12 @@ class JobCreate(BaseModel):
             "snapshot.publish",
             "reference.refresh",
             "region.bootstrap",
+            "backup",
         ],
         Field(title="JobCreateName"),
     ]
     """
-    POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).
+    POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6) − region.expand(계약 .8). claim.reverify 는 PATCH /claims/{id} 만(D10-3 같은 대상 검사·사실 강등), region.expand 는 PATCH /regions/{id} 만(선택 검증·지역 갱신) 등록한다. backup 은 수동 등록 가능(payload {}).
     """
     payload: dict[str, Any]
 
@@ -1825,11 +1911,13 @@ class JobRun(BaseModel):
             "reference.refresh",
             "region.bootstrap",
             "claim.reverify",
+            "backup",
+            "region.expand",
         ],
         Field(title="JobName"),
     ]
     """
-    잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
+    잡 이름 10종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록 + 계약 2026-10-09.8 backup(D11-8: 매일 03:00 백업 — Postgres pg_dump·SQLite 파일 복사 + 원문 증분 복사, 결과 stats) · region.expand(D11-7: PATCH /regions/{id} 가 등록 — 추가된 선택의 수집 + 새 리비전 전체 재판정·rerank)
     """
     kind: Literal["scheduled", "manual", "rejudge"]
     payload: dict[str, Any]
@@ -2134,6 +2222,10 @@ class LivingArea(BaseModel):
     """
 
 
+class LivingAreaId(RootModel[str]):
+    root: Annotated[str, Field(max_length=64)]
+
+
 class LivingAreaInput(BaseModel):
     """
     PUT /regions/{id}/living-areas 의 생활권 1개. id를 주면 그 생활권의 이름·구성을 바꾸고, 없으면 새 생활권을 만든다. 빠진 기존 생활권은 삭제된다(비어 있을 때만 허용 — 법정동이 남아 있으면 422).
@@ -2339,6 +2431,10 @@ class PaymentTerms(BaseModel):
     """
     이 공고의 타입별 공급가(임의공급·무순위는 공고마다 가격이 바뀐다, 2026-10-09.2). 키 = complex_type.type_code. 현재 구매가(complex_type 가격)는 is_current 행의 값이고, change_vs_first.price_change_pct 는 판정 기준 타입(84㎡에 가장 가까움)의 max_price_won 으로 계산한다. 출처 행은 field_provenance(entity='payment_terms', field='price_by_type.<type_code>.<항목>'). 공고에 가격 표가 없으면 {}
     """
+    discount_by_type: dict[str, Fact] | None = None
+    """
+    이 공고에 명시된 할인(타입별, 원 단위 — 계약 2026-10-09.8, D11-6). 키 = complex_type.type_code. 공고문·청약홈에 할인 금액이 적힌 것만(추정 금지). 출처 행은 field_provenance(entity='payment_terms', field='discount_by_type.<type_code>'). §6-1 구매가 차감은 라벨 확인됨일 때만. 없으면 {}
+    """
     change_vs_first: PaymentChange | None = None
     """
     최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 %
@@ -2347,7 +2443,7 @@ class PaymentTerms(BaseModel):
 
 class PriceRange(BaseModel):
     """
-    현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션, high = 최고가 + 발코니 + 필수 옵션, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만').
+    현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션 − 할인(확인됨일 때만, D11-6), high = 최고가 + 발코니 + 필수 옵션 − 할인, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만 − 할인 1,000만').
     """
 
     model_config = ConfigDict(
@@ -2359,6 +2455,10 @@ class PriceRange(BaseModel):
     price_mid: Fact
     composition: str | None = None
     change_vs_first_pct: Fact | None = None
+    discount: Fact | None = None
+    """
+    공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null
+    """
 
 
 class Provenance(BaseModel):
@@ -2700,6 +2800,53 @@ class RegionCreated(BaseModel):
     job_id: int
 
 
+class RegionExpandPayload(BaseModel):
+    """
+    job_name='region.expand' 페이로드 (DECISIONS D11-7, 계약 2026-10-09.8). PATCH /regions/{id} 가 넣는다(POST /jobs 로는 등록 불가 — JobCreateName). 지역 선택(selections)이 바뀐 뒤: 추가된 시군구·시도의 daily+weekly 수집 → 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장') → 후보 전체 판정·rerank 1회 → publish. 보고서는 이 리비전과 바탕 리비전(revision_of) 비교로 §12 '지역 추가' 장을 만든다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    region_id: int
+    added: list[dict[str, Any]] | None = None
+    """
+    추가된 선택 [{kind, code, full_name}]
+    """
+    removed: list[dict[str, Any]] | None = None
+    """
+    제거된 선택 [{kind, code, full_name}]
+    """
+    change_event_id: int | None = None
+
+
+class RegionPatch(BaseModel):
+    """
+    PATCH /regions/{id} 본문 — 지역 선택 확장·축소(DECISIONS D11-7 = RA '지역 추가', 계약 2026-10-09.8). selections 는 바뀐 뒤의 전체 목록(GET /regions/resolve 후보, 1개 이상). 서버는 법정동·시군구·시도 코드와 생활권(새 시군구는 새 생활권, 빠진 법정동은 생활권에서 제거 — 빈 생활권은 지운다)을 다시 계산하고 change_event(critical, entity=region, field=selections) + region.expand 잡(추가 선택 수집 → 새 리비전에서 후보 전체 판정·rerank 1회 → publish)을 등록한다. 바뀐 것이 없으면 409 conflict.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    selections: Annotated[list[RegionSelection], Field(max_length=50, min_length=1)]
+    name: Annotated[str | None, Field(max_length=100, min_length=1)] = None
+
+
+class RegionPatched(BaseModel):
+    """
+    PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    region: Region
+    change_event: ChangeEvent
+    job_id: int
+    added: list[RegionSelection]
+    removed: list[RegionSelection]
+
+
 class RegionScoreParams(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -3007,11 +3154,12 @@ class RetryHint(BaseModel):
             "snapshot.publish",
             "reference.refresh",
             "region.bootstrap",
+            "backup",
         ],
         Field(title="JobCreateName"),
     ]
     """
-    POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6). claim.reverify 는 PATCH /claims/{id} 만 등록한다(D10-3 같은 대상 검사·사실 강등).
+    POST /jobs 로 등록할 수 있는 잡 이름 = JobName − claim.reverify(계약 2026-10-09.6) − region.expand(계약 .8). claim.reverify 는 PATCH /claims/{id} 만(D10-3 같은 대상 검사·사실 강등), region.expand 는 PATCH /regions/{id} 만(선택 검증·지역 갱신) 등록한다. backup 은 수동 등록 가능(payload {}).
     """
     payload: dict[str, Any]
 

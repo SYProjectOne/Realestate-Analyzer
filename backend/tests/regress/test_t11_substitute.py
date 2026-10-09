@@ -175,7 +175,9 @@ def test_t11a_fixture_as_given_new_builds_not_substitute(env: RegressEnv) -> Non
     assert {n for n in members} == {t["apt_name"] for t in trades}, sorted(members)
     for name, m in members.items():
         assert m.completed_year is not None and m.completed_year >= 2020, (name, m.completed_year)
-        assert (m.substitute, m.adjusted, m.coef_used, m.adjusted_median_won) == (False, False, None, None), name
+        assert (m.substitute, m.adjusted, m.coef_used, m.adjusted_median_won) == (False, False, None, None), (
+            name
+        )
 
 
 def _sub_run(env: RegressEnv) -> tuple[int, dict[str, Any], dict[str, Any]]:
@@ -193,7 +195,9 @@ def test_t11b_subarea_substitute_saved_with_both_medians(env: RegressEnv) -> Non
     """W5 변형 → comparable_set·API: 대체 = 한강센트럴자이 1·2단지(2017)만, substitute·adjusted, c×년수 0.12, 보정·미보정 중앙값."""
     sid, doc, members = _sub_run(env)
     exp = doc["expected"]
-    assert set(members) == set(exp["substitute_members"]), sorted(members)  # 리버시티·고촌 센트럴자이(신축, 생활권 밖) 없음
+    assert set(members) == set(exp["substitute_members"]), sorted(
+        members
+    )  # 리버시티·고촌 센트럴자이(신축, 생활권 밖) 없음
     by_apt: dict[str, list[int]] = {}
     for t in doc["trades"]:
         by_apt.setdefault(t["apt_name"], []).append(t["price_won"])
@@ -206,14 +210,20 @@ def test_t11b_subarea_substitute_saved_with_both_medians(env: RegressEnv) -> Non
         assert m.median_won is not None and min(prices) <= m.median_won <= max(prices), (name, m.median_won)
         # 보정 중앙 = 미보정 중앙 × (1 + c·min(Y_ref − Y_built, 8)) (원 단위 반올림 ±1)
         assert m.adjusted_median_won is not None
-        assert abs(m.adjusted_median_won - _won(Decimal(m.median_won) * factor)) <= 1, (name, m.adjusted_median_won)
+        assert abs(m.adjusted_median_won - _won(Decimal(m.median_won) * factor)) <= 1, (
+            name,
+            m.adjusted_median_won,
+        )
     gap = api_get(env, f"/complexes/{TARGET}", snapshot=sid)["gap"]
     comps = {c["name"]: c for c in gap["comps"]}
     assert set(comps) == set(exp["substitute_members"])
     for name, c in comps.items():
         assert c["substitute"] is True and c["adjusted"] is True, c
         assert c["median"]["v"] == members[name].median_won
-        assert c["adjusted_median"] is not None and c["adjusted_median"]["v"] == members[name].adjusted_median_won
+        assert (
+            c["adjusted_median"] is not None
+            and c["adjusted_median"]["v"] == members[name].adjusted_median_won
+        )
         assert c["adjusted_median"]["v"] > c["median"]["v"]
         assert c["coef_used"] == pytest.approx(0.12)  # 저장값 = c × min(Y_ref − Y_built, 8)
     for key in ("gap_pct", "score"):
@@ -233,7 +243,9 @@ def test_t11b_api_adjusted_median_label(env: RegressEnv) -> None:
         for c in gap["comps"]
         if (c["adjusted_median"]["label"], c["adjusted_median"]["reason"]) != ("추정", REASON)
     }
-    assert not bad, f"adjusted_median 라벨이 '추정({REASON})' 가 아님(연식 보정 총 배율 c×년수를 c 로 표기 — F3 W6): {bad}"
+    assert not bad, (
+        f"adjusted_median 라벨이 '추정({REASON})' 가 아님(연식 보정 총 배율 c×년수를 c 로 표기 — F3 W6): {bad}"
+    )
 
 
 def test_t11c_api_gap_shows_adjusted_and_unadjusted(env: RegressEnv) -> None:

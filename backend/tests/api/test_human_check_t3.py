@@ -5,6 +5,8 @@ human_check 행 + intake_status(path=human_check) 행 + change_event(critical, t
 D11-1(계약 .8): 발행 스냅샷(12)은 불변 — 사람 확인 접수 행·변경 이벤트는 같은 기준일의 새 리비전(building)에 들어가고,
 재판정·publish 뒤 그 리비전이 기본 화면이 된다. 발행 12 의 접수 행은 그대로다."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
@@ -130,11 +132,16 @@ def test_human_check_validation(client: TestClient) -> None:
     assert body["created_intake"] is None and (body["entity"], body["entity_id"]) == ("complex", 4)
     assert body["suggested_job"]["job_name"] == "rejudge"
     detail = client.get("/api/complexes/4", headers=WRITE).json()
-    assert detail["header"]["move_in_ym"]["v"] == "2028-08" and detail["header"]["move_in_ym"]["label"] == "확인됨"
+    assert (
+        detail["header"]["move_in_ym"]["v"] == "2028-08"
+        and detail["header"]["move_in_ym"]["label"] == "확인됨"
+    )
     # minor 11: 형·범위 — 정수 필드 소수·범위 밖·연월 아님은 422(잘라 쓰지 않는다)
     for field, value in (("resale_months", "6.02"), ("resale_months", "-3"), ("residency_months", "999"),
                          ("move_in_ym", "2999-01"), ("move_in_ym", "2028-13"), ("down_payment_pct", "150")):  # fmt: skip
-        r = client.post("/api/ops/human-checks", headers=WRITE, json={**req, "field": field, "value_text": value})
+        r = client.post(
+            "/api/ops/human-checks", headers=WRITE, json={**req, "field": field, "value_text": value}
+        )
         assert r.status_code == 422, (field, value, r.text)
     # 길이·guard: note 500자 초과·전화번호는 422
     r = client.post("/api/ops/human-checks", headers=WRITE, json={**req, "note": "가" * 501})

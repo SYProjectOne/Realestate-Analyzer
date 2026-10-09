@@ -106,8 +106,22 @@ def _server(env: RegressEnv, devseed: Any, reset_engine: Callable[[], None]) -> 
         "ENV_FILE": str(env.tmp / "none.env"),
     }
     proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
-        cwd=BACKEND, env=child_env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--log-level",
+            "warning",
+        ],
+        cwd=BACKEND,
+        env=child_env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
     )
     base = f"http://127.0.0.1:{port}"
     try:

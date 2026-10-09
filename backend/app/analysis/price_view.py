@@ -14,7 +14,7 @@ DB 접근 없음. ORM 행이든 DTO 든 아래 Protocol 속성만 있으면 된�
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Final, Protocol
@@ -85,6 +85,10 @@ class PriceView:
     max_ref: FieldRef | None = None
     floor_ref: FieldRef | None = None  # 대표층 가격 출처(없으면 아래도 최고가)
     extra_refs: tuple[FieldRef, ...] = ()  # 발코니·필수 옵션
+    discount_ref: FieldRef | None = (
+        None  # 공고에 명시된 할인(계약 .8 D11-6 — 확인됨일 때만 low·high 에서 뺐다)
+    )
+    discount_applied: bool = False
     from_terms: bool = False  # 최신 공고(payment_terms.price_by_type) 값을 썼는가
     terms_id: int | None = None
     composition: tuple[str, ...] = field(default_factory=tuple)  # ("공급가", "발코니", "옵션")
@@ -99,11 +103,15 @@ class PriceView:
     def low_refs(self) -> tuple[FieldRef, ...]:
         """P_low 를 만든 수치들(대표층 또는 최고가 + 발코니·옵션)."""
         base = self.floor_ref or self.max_ref
-        return ((base,) if base is not None else ()) + self.extra_refs
+        return ((base,) if base is not None else ()) + self.extra_refs + self._discount
 
     @property
     def high_refs(self) -> tuple[FieldRef, ...]:
-        return ((self.max_ref,) if self.max_ref is not None else ()) + self.extra_refs
+        return ((self.max_ref,) if self.max_ref is not None else ()) + self.extra_refs + self._discount
+
+    @property
+    def _discount(self) -> tuple[FieldRef, ...]:
+        return (self.discount_ref,) if self.discount_ref is not None and self.discount_applied else ()
 
 
 def basis_type[T: TypeRowLike](types: Iterable[T]) -> T | None:
@@ -127,8 +135,20 @@ def _int(v: Any) -> int | None:
         return None
 
 
-def current_price(types: Sequence[TypeRowLike], terms: Sequence[PaymentTermsLike]) -> PriceView:
-    """현재 구매가(§6-1). 기준 타입이 없거나 최고가가 없으면 미공개."""
+DiscountLabel = Callable[[FieldRef], str | None]
+
+
+def current_price(
+    types: Sequence[TypeRowLike],
+    terms: Sequence[PaymentTermsLike],
+    *,
+    discount_label: DiscountLabel | None = None,
+) -> PriceView:
+    """현재 구매가(§6-1). 기준 타입이 없거나 최고가가 없으면 미공개.
+
+    할인(D11-6, 계약 .8): 현재 공고 ``discount_by_type[기준 타입]`` 이 있고 그 라벨이 '확인됨'이면 low·high 에서 뺀다
+    (``price.purchase_price``). ``discount_label`` = 할인 출처 필드 → 라벨(호출자가 chosen 출처 행으로). 없으면 값이 남아
+    있는 것 = 확인됨으로 본다 — 점수 입력은 판정기 추출 전 OCR 값을 이미 가렸다(``analysis.complex_input.masked``)."""
     t = basis_type(types)
     if t is None:
         return PriceView(None, None, None, None, empty_reason=MISSING_PRICE_REASON)
@@ -159,17 +179,29 @@ def current_price(types: Sequence[TypeRowLike], terms: Sequence[PaymentTermsLike
         for name in ("balcony_won", "options_required_won")
         if getattr(t, name) is not None
     )
+    discount_ref: FieldRef | None = None
+    discount_label_v: str | None = None
+    disc_map = getattr(cur, "discount_by_type", None) if cur is not None else None
+    disc = _int(disc_map.get(t.type_code)) if isinstance(disc_map, Mapping) else None
+    if cur is not None and disc:
+        discount_ref = FieldRef("payment_terms", cur.id, f"discount_by_type.{t.type_code}", disc)
+        discount_label_v = discount_label(discount_ref) if discount_label is not None else "확인됨"
+    applied = bool(disc) and discount_label_v == "확인됨"
     p = purchase_price(
         floor_won=floor_won,
         max_won=int(max_won),
         balcony_won=t.balcony_won,
         options_won=t.options_required_won,
+        discount_won=disc,
+        discount_label="확인됨" if applied else None,
     )
     parts = ["공급가"]
     if t.balcony_won:
         parts.append("발코니")
     if t.options_required_won:
         parts.append("옵션")
+    if applied:
+        parts.append("할인")
     first = min(terms, key=lambda q: (q.effective_from or "", q.notice_no or "", q.id), default=None)
     change = None
     if first is not None and cur is not None and first.id != cur.id:
@@ -182,6 +214,8 @@ def current_price(types: Sequence[TypeRowLike], terms: Sequence[PaymentTermsLike
         max_ref=max_ref,
         floor_ref=floor_ref,
         extra_refs=extras,
+        discount_ref=discount_ref,
+        discount_applied=applied,
         from_terms=from_terms,
         terms_id=cur.id if cur is not None else None,
         composition=tuple(parts),

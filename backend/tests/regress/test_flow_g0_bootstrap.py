@@ -53,17 +53,31 @@ def boot(env: RegressEnv) -> dict[str, Any]:
 
     off = _offline()
     with env.session() as s:
-        before = {c.id: (c.region_id, c.name, c.builder) for c in s.scalars(select(Complex).where(Complex.region_id == 1))}
+        before = {
+            c.id: (c.region_id, c.name, c.builder)
+            for c in s.scalars(select(Complex).where(Complex.region_id == 1))
+        }
     cands = env.client.get("/api/regions/resolve", headers=WRITE, params={"q": "송도"}).json()
     pick = next(c for c in cands if c["kind"] == "legal_dong" and c["full_name"] == PICK)
     r = env.client.post(
-        "/api/regions", headers=WRITE,
-        json={"name": "송도 회귀", "query_text": "송도", "selections": [{k: pick[k] for k in ("kind", "code", "full_name")}]},
+        "/api/regions",
+        headers=WRITE,
+        json={
+            "name": "송도 회귀",
+            "query_text": "송도",
+            "selections": [{k: pick[k] for k in ("kind", "code", "full_name")}],
+        },
     )
     assert r.status_code == 201, r.text
     body = r.json()
     rid, job_id = body["region"]["id"], body["job_id"]
-    web = HttpClient(max_retries=0, jitter=0.0, rate_per_host=1000.0, sleep=lambda _s: None, transport=off.replay_transport(RECORDING))
+    web = HttpClient(
+        max_retries=0,
+        jitter=0.0,
+        rate_per_host=1000.0,
+        sleep=lambda _s: None,
+        transport=off.replay_transport(RECORDING),
+    )
     base = default_collectors()
     env.clock.day = TODAY
     ctx = env.ctx(
@@ -84,15 +98,29 @@ def boot(env: RegressEnv) -> dict[str, Any]:
     with env.session() as s:
         job = s.get(JobRun, job_id)
         region = s.get(Region, rid)
-        assert job is not None and job.status == "done", (job.status if job else None, job.error_text if job else None)
+        assert job is not None and job.status == "done", (
+            job.status if job else None,
+            job.error_text if job else None,
+        )
         assert region is not None and region.status == "ready"
-        after = {c.id: (c.region_id, c.name, c.builder) for c in s.scalars(select(Complex).where(Complex.id.in_(list(before))))}
+        after = {
+            c.id: (c.region_id, c.name, c.builder)
+            for c in s.scalars(select(Complex).where(Complex.id.in_(list(before))))
+        }
         stats = dict(job.stats or {})
-    return {"region_id": rid, "snapshot_id": stats["snapshot_id"], "before": before, "after": after, "stats": stats}
+    return {
+        "region_id": rid,
+        "snapshot_id": stats["snapshot_id"],
+        "before": before,
+        "after": after,
+        "stats": stats,
+    }
 
 
 def test_g0_bootstrap_creates_region_complexes(env: RegressEnv, boot: dict[str, Any]) -> None:
-    body = env.client.get(f"/api/snapshots/{boot['snapshot_id']}/complexes", headers=WRITE, params={"size": 200})
+    body = env.client.get(
+        f"/api/snapshots/{boot['snapshot_id']}/complexes", headers=WRITE, params={"size": 200}
+    )
     assert body.status_code == 200, body.text[:300]
     items = body.json()["items"]
     assert items, "새 지역 단지 0개"
@@ -111,10 +139,21 @@ def test_g0_bootstrap_does_not_touch_other_region(env: RegressEnv, boot: dict[st
     """기존 지역 1 의 단지 행(이름·시공사·소속)과 변경 이력은 새 지역 bootstrap 과 무관해야 한다."""
     from app.models import ChangeEvent
 
-    changed = {cid: (boot["before"][cid], boot["after"].get(cid)) for cid in boot["before"] if boot["before"][cid] != boot["after"].get(cid)}
+    changed = {
+        cid: (boot["before"][cid], boot["after"].get(cid))
+        for cid in boot["before"]
+        if boot["before"][cid] != boot["after"].get(cid)
+    }
     with env.session() as s:
         foreign = [
             (e.complex_id, e.field, e.old_text, e.new_text)
-            for e in s.scalars(select(ChangeEvent).where(ChangeEvent.snapshot_id == boot["snapshot_id"], ChangeEvent.complex_id.in_(list(boot["before"]))))
+            for e in s.scalars(
+                select(ChangeEvent).where(
+                    ChangeEvent.snapshot_id == boot["snapshot_id"],
+                    ChangeEvent.complex_id.in_(list(boot["before"])),
+                )
+            )
         ]
-    assert not changed and not foreign, f"지역 1 단지가 지역 {boot['region_id']} bootstrap 으로 바뀜: {changed} / 새 스냅샷의 지역 1 변경 이벤트: {foreign[:6]}"
+    assert not changed and not foreign, (
+        f"지역 1 단지가 지역 {boot['region_id']} bootstrap 으로 바뀜: {changed} / 새 스냅샷의 지역 1 변경 이벤트: {foreign[:6]}"
+    )

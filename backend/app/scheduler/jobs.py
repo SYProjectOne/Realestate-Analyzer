@@ -4,6 +4,7 @@
 - 매일 06:00 ``collect.daily`` — 지역(status ready)마다 ``{region_id, sources:[applyhome_list, official_site]}``
 - 매주 월 06:30 ``collect.weekly`` — ``{region_id, sources:[rtms, stats, news]}``
 - 매월 1일 05:00 ``reference.refresh`` — ``{}``
+- 매일 03:00 ``backup`` — ``{}`` (DECISIONS D11-8: DB 덤프·파일 복사 + 원문 증분 복사, 결과는 job_run.stats)
 - 기동 시 참조 표(legal_dong)가 비어 있으면 ``reference.refresh`` 1회(``ensure_reference``)
 
 APScheduler 는 잡을 **실행하지 않고 job_run 행만 넣는다**(ADR-3: DB job_run 이 큐, 상태가 G7에 보인다).
@@ -55,6 +56,9 @@ JobName = Literal[
     "snapshot.publish",
     "reference.refresh",
     "region.bootstrap",
+    "claim.reverify",
+    "backup",
+    "region.expand",
 ]
 JobKind = Literal["scheduled", "manual", "rejudge"]
 JOB_NAMES: Final[tuple[JobName, ...]] = (
@@ -65,6 +69,9 @@ JOB_NAMES: Final[tuple[JobName, ...]] = (
     "snapshot.publish",
     "reference.refresh",
     "region.bootstrap",
+    "claim.reverify",
+    "backup",  # 계약 2026-10-09.8 (D11-8)
+    "region.expand",  # 계약 2026-10-09.8 (D11-7)
 )
 DAILY_SOURCES: Final = ("applyhome_list", "official_site")
 WEEKLY_SOURCES: Final = ("rtms", "stats", "news")
@@ -73,6 +80,7 @@ CRON: Final[dict[str, dict[str, Any]]] = {
     "collect.daily": {"hour": 6, "minute": 0},
     "collect.weekly": {"day_of_week": "mon", "hour": 6, "minute": 30},
     "reference.refresh": {"day": 1, "hour": 5, "minute": 0},
+    "backup": {"hour": 3, "minute": 0},  # D11-8 매일 03:00
 }
 
 
@@ -163,8 +171,14 @@ def _enqueue_reference(ctx: SchedulerContext) -> None:
         session.commit()
 
 
+def _enqueue_backup(ctx: SchedulerContext) -> None:
+    with ctx.session_factory() as session:
+        enqueue(session, "backup", {}, now=ctx.now())
+        session.commit()
+
+
 def build_scheduler(ctx: SchedulerContext) -> BackgroundScheduler:
-    """시간표 3개를 단 BackgroundScheduler(시작은 호출자). 콜백은 job_run 행만 넣는다."""
+    """시간표 4개를 단 BackgroundScheduler(시작은 호출자). 콜백은 job_run 행만 넣는다."""
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
 
@@ -192,6 +206,15 @@ def build_scheduler(ctx: SchedulerContext) -> BackgroundScheduler:
         CronTrigger(timezone=TIMEZONE, **CRON["reference.refresh"]),
         args=[ctx],
         id="reference.refresh",
+        replace_existing=True,
+        coalesce=True,
+        misfire_grace_time=3600,
+    )
+    sched.add_job(
+        _enqueue_backup,
+        CronTrigger(timezone=TIMEZONE, **CRON["backup"]),
+        args=[ctx],
+        id="backup",
         replace_existing=True,
         coalesce=True,
         misfire_grace_time=3600,

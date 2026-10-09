@@ -33,7 +33,10 @@ def _full_rejudge(env: RegressEnv, judge: str) -> None:
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": None, "complex_ids": None, "reason": "D9-1 회귀"}},
+        json={
+            "job_name": "rejudge",
+            "payload": {"snapshot_id": SNAP, "scenario_id": None, "complex_ids": None, "reason": "D9-1 회귀"},
+        },
     )
     assert r.status_code == 202, r.text
     assert env.worker(env.ctx(judge)) == 0
@@ -50,7 +53,11 @@ def test_d91_scope_after_mock_rejudge_matches_readme(env: RegressEnv) -> None:
     _full_rejudge(env, "mock")
     assert env.mock_misses == [], env.mock_misses[:5]
     rows = _rows(env)
-    bad = {cid: rows[cid].get("judge_scope") for cid, ok in EXPECTED_SCOPE.items() if rows[cid].get("judge_scope") not in ok}
+    bad = {
+        cid: rows[cid].get("judge_scope")
+        for cid, ok in EXPECTED_SCOPE.items()
+        if rows[cid].get("judge_scope") not in ok
+    }
     assert not bad, bad
     top5 = [t["complex_id"] for t in api_get(env, f"/snapshots/{SNAP}/dashboard", scenario="base")["top5"]]
     assert top5 and not set(top5) & {4, 14, 16}

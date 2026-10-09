@@ -50,7 +50,7 @@ from app.normalize._text import (
     round_area,
     stamp_observed_on,
 )
-from app.normalize.fields import OCR_LABEL, OCR_REASON, is_numeric_field, price_by_type_field
+from app.normalize.fields import OCR_LABEL, OCR_REASON, discount_field, is_numeric_field, price_by_type_field
 
 __all__ = ["NoticeParser", "PriceRow", "TypeSpec", "mark_ocr", "ocr_spans", "parse_notice_text"]
 
@@ -695,6 +695,32 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
     b.add("payment_terms", pay_key, f("units"), units, str(units), t.span)
     if t.long:
         b.add("payment_terms", pay_key, f("notice_type_code"), t.long, t.long, t.span)
+    disc = _discount_line(ctx.text, t)
+    if disc is not None:
+        won, span = disc
+        b.add("payment_terms", pay_key, discount_field(t.short), won, f"{won:,}", span)
+
+
+# 공고문에 명시된 할인(D11-6, 계약 .8): '84A 분양가 할인 10,000,000원' · '할인금액(84㎡): 10,000,000원' 처럼
+# 할인 금액이 숫자로 적힌 줄만. '선납할인은 적용 되지 않습니다'·'할인 없음' 같은 안내 문장은 금액이 없어
+# 후보가 되지 않는다(추정 금지)
+_DISCOUNT_RE = re.compile(
+    r"(?:분양가\s*)?할인\s*(?:금액|액)?\s*(?:\([^)]*\))?\s*[:：]?\s*(\d{1,3}(?:,\d{3})+)\s*원"
+)
+
+
+def _discount_line(text: str, t: TypeSpec) -> tuple[int, tuple[int, int]] | None:
+    """타입 표기(약식 '84A'·공고 주택형 '084.9582A'·면적 '84㎡')와 할인 금액이 같은 줄에 있는 첫 줄."""
+    marks = {t.short, *(x for x in (t.long, f"{t.short.rstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}㎡") if x)}
+    for ls, le in _line_spans(text, 0, len(text)):
+        line = text[ls:le]
+        if "할인" not in line or "선납" in line:
+            continue
+        m = _DISCOUNT_RE.search(line)
+        if m is None or not any(mk and mk in line for mk in marks):
+            continue
+        return int(m.group(1).replace(",", "")), (ls + m.start(1), ls + m.end(1))
+    return None
 
 
 def _rows_of(ctx: _Ctx, t: TypeSpec) -> list[PriceRow]:

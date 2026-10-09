@@ -1,0 +1,60 @@
+{
+  "summary": "위치 확인 결과",
+  "value": {
+    "catalyst": {
+      "id": 41,
+      "name": "인천1호선 검단연장 개통",
+      "kind": "교통",
+      "stage": "확정",
+      "stage_prob": {
+        "v": 1.0,
+        "label": "추정",
+        "reason": "판정기 classify",
+        "prov": "jl_64",
+        "checked_at": "2026-10-07",
+        "unit": "prob"
+      },
+      "decision": "auto",
+      "expected_ym": {
+        "v": "2025-06",
+        "label": "확인됨",
+        "prov": "fp_5101",
+        "checked_at": "2026-10-07",
+        "unit": "ym"
+      },
+      "location_confirmed": true,
+      "linked": true,
+      "distance_m": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "역 거리 미측정",
+        "prov": null,
+        "checked_at": "2026-10-07"
+      },
+      "weight": null,
+      "linked_complex_ids": null,
+      "judgment_seq": 64,
+      "source_url": null,
+      "note": "2025-06-28 개통",
+      "lat": 37.5961,
+      "lon": 126.6712
+    },
+    "links": [
+      {
+        "complex_id": 2,
+        "distance_m": null,
+        "weight": 1,
+        "label": "추정",
+        "reason": "사람 지정(단지 좌표 없음)"
+      },
+      {
+        "complex_id": 5,
+        "distance_m": null,
+        "weight": 1,
+        "label": "추정",
+        "reason": "같은 생활권(la_2, 단지 좌표 없음)"
+      }
+    ],
+    "job": null
+  }
+}

@@ -19,7 +19,9 @@ from ._assemble_support import ASOF, add_complex
 
 def _items(db_session: Session, complex_id: int) -> list[ChecklistItem]:
     return list(
-        db_session.scalars(select(ChecklistItem).where(ChecklistItem.complex_id == complex_id).order_by(ChecklistItem.id))
+        db_session.scalars(
+            select(ChecklistItem).where(ChecklistItem.complex_id == complex_id).order_by(ChecklistItem.id)
+        )
     )
 
 
@@ -45,7 +47,9 @@ def test_nm5_review_repro_resale_change_updates_same_item(db_session: Session, r
     assert res.inserted == 0 and res.updated == 1
 
 
-def test_nm5_residency_and_legal_estimate_value_change_updates_same_item(db_session: Session, region: Region) -> None:
+def test_nm5_residency_and_legal_estimate_value_change_updates_same_item(
+    db_session: Session, region: Region
+) -> None:
     cx = _cx(db_session, region)
     fp = FieldProvenance(entity="complex", entity_id=cx.id, field="resale_months", value_text="12",
                          url="https://example.com/n.pdf", checked_at="2026-10-08", label="추정", source_rank=2,
@@ -61,7 +65,10 @@ def test_nm5_residency_and_legal_estimate_value_change_updates_same_item(db_sess
     items = _items(db_session, cx.id)
     assert len(items) == n
     titles = {i.title for i in items}
-    assert "거주의무 만료(입주예정월 + 36개월, 추정)" in titles and "거주의무 만료(입주예정월 + 24개월, 추정)" not in titles
+    assert (
+        "거주의무 만료(입주예정월 + 36개월, 추정)" in titles
+        and "거주의무 만료(입주예정월 + 24개월, 추정)" not in titles
+    )
     assert "전매제한 기간 확인(추정 값 24)" in titles and "전매제한 기간 확인(추정 값 12)" not in titles
 
 
@@ -95,11 +102,15 @@ def test_nm5_old_duplicate_open_items_collapse(db_session: Session, region: Regi
 
 def test_f1a_contract_deadline_uses_contract_kind(db_session: Session, region: Region) -> None:
     cx = _cx(db_session, region)
-    old = ChecklistItem(complex_id=cx.id, kind="만료", title="계약 체결 마감", due_date="2026-10-21", status="open")
+    old = ChecklistItem(
+        complex_id=cx.id, kind="만료", title="계약 체결 마감", due_date="2026-10-21", status="open"
+    )
     db_session.add(old)
     db_session.flush()
     sync_checklist(db_session, region.id, asof_date=ASOF)
-    contract = [(i.kind, i.title, i.due_date) for i in _items(db_session, cx.id) if i.title == "계약 체결 마감"]
+    contract = [
+        (i.kind, i.title, i.due_date) for i in _items(db_session, cx.id) if i.title == "계약 체결 마감"
+    ]
     assert contract == [("계약", "계약 체결 마감", "2026-10-22")]  # 옛 '만료' 행을 같은 항목으로 옮김
 
 
@@ -120,11 +131,17 @@ def test_f2_unresolved_exclusion_keeps_items_open(db_session: Session, region: R
 def test_fact_recheck_items_are_never_touched(db_session: Session, region: Region) -> None:
     """계약 .6 D10-3: '사실 재확인' 항목(강등 — API 가 만들고 닫는다)은 체크리스트 동기화가 고치거나 닫지 않는다."""
     cx = _cx(db_session, region)
-    item = ChecklistItem(complex_id=cx.id, kind="사실 재확인", title="사실 재확인: 전매제한 기간(검증 모순)", status="open")
+    item = ChecklistItem(
+        complex_id=cx.id, kind="사실 재확인", title="사실 재확인: 전매제한 기간(검증 모순)", status="open"
+    )
     db_session.add(item)
     db_session.flush()
     sync_checklist(db_session, region.id, asof_date=ASOF)
     cx.inclusion_class, cx.inclusion_decision = "public_rental", "auto"
     db_session.flush()
     sync_checklist(db_session, region.id, asof_date=ASOF)
-    assert (item.kind, item.title, item.status) == ("사실 재확인", "사실 재확인: 전매제한 기간(검증 모순)", "open")
+    assert (item.kind, item.title, item.status) == (
+        "사실 재확인",
+        "사실 재확인: 전매제한 기간(검증 모순)",
+        "open",
+    )

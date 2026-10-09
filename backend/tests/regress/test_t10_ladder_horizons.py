@@ -27,8 +27,16 @@ GAINS = {"p5": 0.05, "p10": 0.10, "p20": 0.20}
 
 # 기대 목표 시점(§6-3 식을 손으로 푼 값)
 EXPECTED = {
-    RIVERFRONT: {"move_in_plus_1y": ("2032-01", 63), "asof_plus_3y": ("2029-10", 36), "asof_plus_5y": ("2031-10", 60)},
-    GOCHON: {"move_in_plus_1y": ("2027-10", 12), "asof_plus_3y": ("2029-10", 36), "asof_plus_5y": ("2031-10", 60)},
+    RIVERFRONT: {
+        "move_in_plus_1y": ("2032-01", 63),
+        "asof_plus_3y": ("2029-10", 36),
+        "asof_plus_5y": ("2031-10", 60),
+    },
+    GOCHON: {
+        "move_in_plus_1y": ("2027-10", 12),
+        "asof_plus_3y": ("2029-10", 36),
+        "asof_plus_5y": ("2031-10", 60),
+    },
 }
 
 
@@ -61,7 +69,15 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": 1, "complex_ids": [RIVERFRONT, GOCHON], "reason": "T10 회귀"}},
+        json={
+            "job_name": "rejudge",
+            "payload": {
+                "snapshot_id": SNAP,
+                "scenario_id": 1,
+                "complex_ids": [RIVERFRONT, GOCHON],
+                "reason": "T10 회귀",
+            },
+        },
     )
     assert r.status_code == 202, r.text
     job_id = r.json()["id"]
@@ -72,7 +88,9 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
         names = {c.id: c.name for c in s.scalars(select(Complex).where(Complex.id.in_([RIVERFRONT, GOCHON])))}
         rows = {
             (lad.complex_id, lad.horizon): lad
-            for lad in s.scalars(select(Ladder).where(Ladder.snapshot_id == SNAP, Ladder.complex_id.in_([RIVERFRONT, GOCHON])))
+            for lad in s.scalars(
+                select(Ladder).where(Ladder.snapshot_id == SNAP, Ladder.complex_id.in_([RIVERFRONT, GOCHON]))
+            )
         }
         for row in rows.values():
             s.expunge(row)
@@ -91,7 +109,12 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
         else:
             assert sum("입주(2031-01) 후 1년 시점인 2032 상반기" in j for j in joined) == 1, joined
         for props in mine:
-            assert [p.rsplit(" ", 1)[-1] for p in props] == ["이상이다", "이상이다", "이상이다", "이하(보합·하락)이다"], props
+            assert [p.rsplit(" ", 1)[-1] for p in props] == [
+                "이상이다",
+                "이상이다",
+                "이상이다",
+                "이하(보합·하락)이다",
+            ], props
             assert "+5%" in props[0] and "+10%" in props[1] and "+20%" in props[2]
 
     # 2) ladder 행: 3 horizon, ok, 새 판정 seq, 목표 시점·개월·연율
@@ -115,7 +138,9 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
                 bad.append(f"{cid}/{h}: p10 없음")
     assert not bad, "\n".join(bad)
     # asof_plus_3y(·5y) 목표 시점이 두 단지 동일, move_in_plus_1y 는 다르다
-    assert rows[(RIVERFRONT, "asof_plus_3y")].target_ym == rows[(GOCHON, "asof_plus_3y")].target_ym == "2029-10"
+    assert (
+        rows[(RIVERFRONT, "asof_plus_3y")].target_ym == rows[(GOCHON, "asof_plus_3y")].target_ym == "2029-10"
+    )
     assert rows[(RIVERFRONT, "asof_plus_5y")].target_ym == rows[(GOCHON, "asof_plus_5y")].target_ym
     assert rows[(RIVERFRONT, "move_in_plus_1y")].target_ym != rows[(GOCHON, "move_in_plus_1y")].target_ym
 
@@ -125,11 +150,25 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
         assert set(api) == HORIZONS, (cid, sorted(api))
         for h, (ym, months) in EXPECTED[cid].items():
             view = api[h]
-            assert (view["target_ym"], view["months_from_asof"], view["status"]) == (ym, months, "ok"), (cid, h, view)
+            assert (view["target_ym"], view["months_from_asof"], view["status"]) == (ym, months, "ok"), (
+                cid,
+                h,
+                view,
+            )
             assert view["annualized"] == pytest.approx(_annual(months), abs=1e-4), (cid, h)
-            assert view["p10"]["label"] == "추정" and view["p10"]["prov"] == f"jl_{view['judgment_seq']}", view["p10"]
+            assert view["p10"]["label"] == "추정" and view["p10"]["prov"] == f"jl_{view['judgment_seq']}", (
+                view["p10"]
+            )
             assert view["target_label"], view
     cmp = api_get(env, f"/snapshots/{SNAP}/compare", ids=f"{RIVERFRONT},{GOCHON}")
     by_h = {cid: {lad["horizon"]: lad for lad in cmp["ladders"][str(cid)]} for cid in (RIVERFRONT, GOCHON)}
-    assert by_h[RIVERFRONT]["asof_plus_3y"]["target_ym"] == by_h[GOCHON]["asof_plus_3y"]["target_ym"] == "2029-10"
-    assert by_h[RIVERFRONT]["asof_plus_3y"]["months_from_asof"] == by_h[GOCHON]["asof_plus_3y"]["months_from_asof"] == 36
+    assert (
+        by_h[RIVERFRONT]["asof_plus_3y"]["target_ym"]
+        == by_h[GOCHON]["asof_plus_3y"]["target_ym"]
+        == "2029-10"
+    )
+    assert (
+        by_h[RIVERFRONT]["asof_plus_3y"]["months_from_asof"]
+        == by_h[GOCHON]["asof_plus_3y"]["months_from_asof"]
+        == 36
+    )

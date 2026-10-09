@@ -610,8 +610,16 @@ def _man(won: int) -> str:
 
 
 def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None = None) -> dict[str, Any]:
-    """§6-1 현재 구매가 범위 = ``bundle_price``(최신 공고 가격 우선, R3 M3). 출처는 쓴 필드 그대로."""
-    view = bundle_price(b)
+    """§6-1 현재 구매가 범위 = ``bundle_price``(최신 공고 가격 우선, R3 M3). 출처는 쓴 필드 그대로.
+    할인(D11-6, 계약 .8)은 그 출처 행 라벨이 '확인됨'일 때만 뺀다 — ``discount`` Fact 는 늘 보인다."""
+
+    def disc_label(ref: pv.FieldRef) -> str | None:
+        fp = fm.prov.get(ref.entity, ref.entity_id, ref.field)
+        return (
+            fp.label if fp is not None and not fm.prov.demoted(ref.entity, ref.entity_id, ref.field) else None
+        )
+
+    view = pv.current_price(b.types, b.payments, discount_label=disc_label)
     t = basis_type(b.types)
     if t is None or not view.known:
         reason = view.empty_reason or "분양가 미공개"
@@ -625,6 +633,7 @@ def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None =
             "price_mid": dict(u),
             "composition": None,
             "change_vs_first_pct": None,
+            "discount": None,
         }
 
     def ref_fact(ref: pv.FieldRef) -> dict[str, Any]:
@@ -640,13 +649,21 @@ def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None =
         parts.append(f"발코니 {_man(t.balcony_won)}")
     if t.options_required_won:
         parts.append(f"필수 옵션 {_man(t.options_required_won)}")
+    composition = " + ".join(parts)
+    discount = None
+    if view.discount_ref is not None:
+        ref = view.discount_ref
+        discount = fm.field(ref.entity, ref.entity_id, ref.field, ref.value, unit="won")
+        if view.discount_applied:
+            composition += f" − 할인 {_man(int(ref.value))}"
     return {
         "basis_type_code": t.type_code,
         "price_low": low,
         "price_high": high,
         "price_mid": mid,
-        "composition": " + ".join(parts),
+        "composition": composition,
         "change_vs_first_pct": _price_change(fm, b, t),
+        "discount": discount,
     }
 
 

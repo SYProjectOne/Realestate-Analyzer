@@ -83,7 +83,9 @@ def test_t12_v2_golden_sensitivity_from_file_inputs() -> None:
     ids = {c["key"]: c["complex_id"] for c in v2["complexes"]}
     inputs = ScoreInputs.model_validate(v2["inputs"])
     snaps = {s["id"]: s for s in load_json(FIXTURE / "snapshots.json")}
-    detail = run_detailed(Snapshot.model_validate(snaps[inputs.snapshot_id]), builtin("base"), inputs, with_sensitivity=True)
+    detail = run_detailed(
+        Snapshot.model_validate(snaps[inputs.snapshot_id]), builtin("base"), inputs, with_sensitivity=True
+    )
     sens = detail.sensitivity
     assert sens is not None
     assert len(sens.cells) == 12
@@ -101,7 +103,10 @@ def test_t12_pipeline_stored_unstable_equals_sensitivity_api(env: RegressEnv) ->
     r = env.client.post(
         "/api/jobs",
         headers=WRITE,
-        json={"job_name": "rejudge", "payload": {"snapshot_id": SNAP, "scenario_id": 1, "complex_ids": None, "reason": "T12 회귀"}},
+        json={
+            "job_name": "rejudge",
+            "payload": {"snapshot_id": SNAP, "scenario_id": 1, "complex_ids": None, "reason": "T12 회귀"},
+        },
     )
     assert r.status_code == 202, r.text
     job_id = r.json()["id"]

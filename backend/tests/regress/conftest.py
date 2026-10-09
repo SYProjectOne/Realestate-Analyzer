@@ -39,7 +39,9 @@ from app.core.time import KST
 BACKEND = Path(__file__).resolve().parents[2]
 REPO = BACKEND.parent
 FIXTURE = REPO / "contracts" / "fixtures" / "incheon_gimpo_2026-10-08"
-SYNTH = FIXTURE / "judgments_synth"  # 합성 판정 녹화(W2) — mock 재판정이 재생하는 녹화(MockAdapter fixture_dir)
+SYNTH = (
+    FIXTURE / "judgments_synth"
+)  # 합성 판정 녹화(W2) — mock 재판정이 재생하는 녹화(MockAdapter fixture_dir)
 REFERENCE = REPO / "contracts" / "fixtures" / "reference"
 
 WRITE_TOKEN = "w" * 32
@@ -106,39 +108,69 @@ class FakeJev:
             raise JudgeUnavailable("fake: down")
         self.calls.append((tool_name, json.loads(json.dumps(arguments, ensure_ascii=False, default=str))))
         fn = getattr(self, "_" + tool_name.removeprefix("jev_"))
-        return ToolResponse(raw={"tool": tool_name, "model": self.model, **fn(arguments)}, is_error=False, duration_ms=1)
+        return ToolResponse(
+            raw={"tool": tool_name, "model": self.model, **fn(arguments)}, is_error=False, duration_ms=1
+        )
 
     def tools(self) -> list[str]:
         return [t for t, _ in self.calls]
 
     # --- 도구별 (JEV 0.14.x 응답 모양)
     def _screen(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"probabilities": {"injection": 0.01, "substance": 0.97, "relevance": 0.97}, "recommendation": {"action": "pass"}}
+        return {
+            "probabilities": {"injection": 0.01, "substance": 0.97, "relevance": 0.97},
+            "recommendation": {"action": "pass"},
+        }
 
     def _extract(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"results": [{"id": f["id"], "value": None, "status": "not_found", "confidence": 0.9} for f in a.get("fields", [])]}
+        return {
+            "results": [
+                {"id": f["id"], "value": None, "status": "not_found", "confidence": 0.9}
+                for f in a.get("fields", [])
+            ]
+        }
 
     def _audit(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"action": "pass", "records": [{"id": r["id"], "action": "ok", "p_wrong": 0.05} for r in a.get("records", [])]}
+        return {
+            "action": "pass",
+            "records": [{"id": r["id"], "action": "ok", "p_wrong": 0.05} for r in a.get("records", [])],
+        }
 
     def _classify(self, a: dict[str, Any]) -> dict[str, Any]:
         first = a["classes"][0]["id"]
         return {
             "results": [
-                {"id": it["id"], "classification": first, "probabilities": {first: 0.96}, "top_probability": 0.96, "confidence": 0.95, "decision": "auto"}
+                {
+                    "id": it["id"],
+                    "classification": first,
+                    "probabilities": {first: 0.96},
+                    "top_probability": 0.96,
+                    "confidence": 0.95,
+                    "decision": "auto",
+                }
                 for it in a["items"]
             ]
         }
 
     def _compare(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"overall": {"relation": "same_fact", "probabilities": {"same_fact": 0.9}, "confidence": 0.9, "decision": "auto"}, "aspects": []}
+        return {
+            "overall": {
+                "relation": "same_fact",
+                "probabilities": {"same_fact": 0.9},
+                "confidence": 0.9,
+                "decision": "auto",
+            },
+            "aspects": [],
+        }
 
     def _noul(self, a: dict[str, Any]) -> dict[str, Any]:
         out = []
         for i, p in enumerate(a["propositions"]):
             prob = min(0.95, max(0.05, round(0.3 + (_h(p[:60]) % 40) / 100 - 0.08 * i, 2)))
             label = "likely" if prob >= 0.6 else "unlikely" if prob <= 0.3 else "uncertain"
-            out.append({"id": f"proposition{i}", "proposition": p, "probability": prob, "label": label, "auto": True})
+            out.append(
+                {"id": f"proposition{i}", "proposition": p, "probability": prob, "label": label, "auto": True}
+            )
         return {"status": "ok", "results": out}
 
     def _rerank(self, a: dict[str, Any]) -> dict[str, Any]:
@@ -146,18 +178,39 @@ class FakeJev:
         n = len(cands)
         return {
             "query": a["query"],
-            "ranked": [{"rank": i + 1, "id": c["id"], "relevance": round(0.95 - 0.8 * i / max(1, n - 1), 3)} for i, c in enumerate(cands)],
+            "ranked": [
+                {"rank": i + 1, "id": c["id"], "relevance": round(0.95 - 0.8 * i / max(1, n - 1), 3)}
+                for i, c in enumerate(cands)
+            ],
         }
 
     def _decide(self, a: dict[str, Any]) -> dict[str, Any]:
         ids = [c["id"] for c in a["candidates"]]
         probs: dict[str, float] = {cid: round(0.6 / (i + 1), 3) for i, cid in enumerate(ids)}
         probs.update({"ask_user": 0.02, "investigate": 0.01})
-        checks = [{"candidate": cid, "requirement": j, "answer": "supported"} for cid in ids for j in range(len(a["requirements"]))]
-        return {"recommendation": {"selected": ids[0], "escaped": False, "confidence": 0.8, "probabilities": probs}, "checks": checks, "warnings": []}
+        checks = [
+            {"candidate": cid, "requirement": j, "answer": "supported"}
+            for cid in ids
+            for j in range(len(a["requirements"]))
+        ]
+        return {
+            "recommendation": {
+                "selected": ids[0],
+                "escaped": False,
+                "confidence": 0.8,
+                "probabilities": probs,
+            },
+            "checks": checks,
+            "warnings": [],
+        }
 
     def _verify(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {"results": [{"id": f"claim{i}", "claim": c, "verdict": self.verdict, "confidence": 0.95, "action": "auto"} for i, c in enumerate(a["claims"])]}
+        return {
+            "results": [
+                {"id": f"claim{i}", "claim": c, "verdict": self.verdict, "confidence": 0.95, "action": "auto"}
+                for i, c in enumerate(a["claims"])
+            ]
+        }
 
 
 # ---------------------------------------------------------------- 환경
@@ -202,15 +255,24 @@ def offline_reference_refresh(settings: Settings) -> Callable[[date], dict[str, 
         def fail(request: httpx.Request) -> httpx.Response:
             raise httpx.ConnectError("[regress] offline", request=request)
 
-        http = HttpClient(max_retries=0, jitter=0.0, sleep=lambda _s: None, transport=httpx.MockTransport(fail))
+        http = HttpClient(
+            max_retries=0, jitter=0.0, sleep=lambda _s: None, transport=httpx.MockTransport(fail)
+        )
         try:
             rep = ReferenceCollector(
-                http=http, session_factory=lambda: get_session(settings), raw_dir=settings.raw_dir,
-                fallback_dir=REFERENCE, today=day,
+                http=http,
+                session_factory=lambda: get_session(settings),
+                raw_dir=settings.raw_dir,
+                fallback_dir=REFERENCE,
+                today=day,
             ).refresh()
         finally:
             http.close()
-        return {"used_fallback": list(rep.used_fallback), "household_ym": rep.household_ym, "errors": list(rep.errors)}
+        return {
+            "used_fallback": list(rep.used_fallback),
+            "household_ym": rep.household_ym,
+            "errors": list(rep.errors),
+        }
 
     return refresh
 
@@ -230,11 +292,16 @@ def prepare_db(settings: Settings) -> dict[str, Any]:
     with factory() as s:
         job_id = enqueue(s, "reference.refresh", {}).id
         s.commit()
-    ctx = replace(default_context(settings), collectors={}, reference_refresh=offline_reference_refresh(settings))
+    ctx = replace(
+        default_context(settings), collectors={}, reference_refresh=offline_reference_refresh(settings)
+    )
     runner.main(["--once"], ctx=ctx)
     with factory() as s:
         job = s.get(JobRun, job_id)
-        assert job is not None and job.status == "done", (job.status if job else None, job.error_text if job else None)
+        assert job is not None and job.status == "done", (
+            job.status if job else None,
+            job.error_text if job else None,
+        )
         return dict(job.stats or {})
 
 
@@ -271,7 +338,9 @@ class RegressEnv:
     tmp: Path
     jev: FakeJev = field(default_factory=FakeJev)
     clock: Clock = field(default_factory=Clock)
-    mock_misses: list[tuple[str, str]] = field(default_factory=list)  # mock 재판정에서 녹화가 없던 (도구, purpose)
+    mock_misses: list[tuple[str, str]] = field(
+        default_factory=list
+    )  # mock 재판정에서 녹화가 없던 (도구, purpose)
     _ctxs: list[Any] = field(default_factory=list)
 
     @property
@@ -299,14 +368,18 @@ class RegressEnv:
         factory = self.factory
 
         if judge == "fake":
+
             def adapter() -> Any:
                 return JevMcpAdapter(transport=self.jev, session_factory=factory, secrets=[])
         elif judge == "mock":
-            inner = base.adapter_factory  # JUDGE_ADAPTER=mock → get_adapter(settings, fixture_dir=JUDGE_FIXTURE_DIR=SYNTH)
+            inner = (
+                base.adapter_factory
+            )  # JUDGE_ADAPTER=mock → get_adapter(settings, fixture_dir=JUDGE_FIXTURE_DIR=SYNTH)
 
             def adapter() -> Any:
                 return MissSpy(inner(), self.mock_misses)
         elif judge == "down":
+
             def adapter() -> Any:
                 return MockAdapter(FIXTURE, unavailable=True)
         else:
@@ -339,7 +412,9 @@ class RegressEnv:
 def env(seed_db: Seeded, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[RegressEnv]:
     for name in env_var_names():
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("JUDGE_FIXTURE_DIR", str(SYNTH))  # mock 재판정 = 합성 판정 녹화(e2e/env.ts 와 같은 구성)
+    monkeypatch.setenv(
+        "JUDGE_FIXTURE_DIR", str(SYNTH)
+    )  # mock 재판정 = 합성 판정 녹화(e2e/env.ts 와 같은 구성)
     db = tmp_path / "regress.db"
     shutil.copyfile(seed_db.db, db)
     settings = make_settings(db, seed_db.raw_dir, tmp_path / "reports")

@@ -168,7 +168,9 @@ def test_real_chromium_blocks_redirect_hop_rebinding_and_websocket_before_reques
     assert "intra.r3b-lab.kr" in blocked and "WebSocket" in blocked
 
 
-def test_real_chromium_main_redirect_to_internal_discarded(lab_rules: None, sites: tuple[_Site, _Site]) -> None:
+def test_real_chromium_main_redirect_to_internal_discarded(
+    lab_rules: None, sites: tuple[_Site, _Site]
+) -> None:
     _need_chromium()
     public, internal = sites
     public.redirect = lambda path: f"http://{INTERNAL}:{internal.port}/secret"
@@ -235,7 +237,9 @@ def test_proxy_blocks_plain_websocket_upgrade_and_non_http(sites: tuple[_Site, _
         )
         ftp = _raw(proxy, b"GET ftp://named.lab/x HTTP/1.1\r\nHost: x\r\n\r\n")
         dns = _raw(proxy, b"GET http://intra.lab/x HTTP/1.1\r\nHost: intra.lab\r\n\r\n")
-    assert ws.startswith(b"HTTP/1.1 403") and ftp.startswith(b"HTTP/1.1 403") and dns.startswith(b"HTTP/1.1 403")
+    assert (
+        ws.startswith(b"HTTP/1.1 403") and ftp.startswith(b"HTTP/1.1 403") and dns.startswith(b"HTTP/1.1 403")
+    )
     assert public.seen == []
     assert len(proxy.blocked) == 3
 
@@ -253,7 +257,9 @@ def test_guard_connect_address_resolves_once_per_render(lab_rules: None) -> None
     assert guard.connect_address("cdn.r3b-lab.kr", 443) == PUBLIC
     assert calls == ["cdn.r3b-lab.kr"]
     with pytest.raises(BlockedHostError):
-        BrowserGuard(allow_private=False, resolver=lambda h: [PUBLIC, "10.0.0.7"]).connect_address("mix.kr", 80)
+        BrowserGuard(allow_private=False, resolver=lambda h: [PUBLIC, "10.0.0.7"]).connect_address(
+            "mix.kr", 80
+        )
     with pytest.raises(BlockedHostError):
         guard.connect_address("169.254.169.254", 80)
 

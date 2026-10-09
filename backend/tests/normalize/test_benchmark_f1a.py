@@ -330,8 +330,12 @@ def test_new_own_sample_replaces_substitute(db_session: Session, add_raw: AddRaw
     build_benchmarks(db_session, region.id, asof_date=ASOF)
     gyeyang = _la(region, "28245")
     # 이름이 완전히 같은 실거래 단지가 생기면 계양구 자체 표본이 생긴다
-    c_doc = db_session.scalars(select(RtmsTrade.raw_document_id).where(RtmsTrade.apt_name == "푸르지오작전1단지")).first()
-    add_trade(db_session, region.id, "푸르지오작전", 62000, "2026-02-01", legal=JAKJEON, raw_document_id=c_doc)
+    c_doc = db_session.scalars(
+        select(RtmsTrade.raw_document_id).where(RtmsTrade.apt_name == "푸르지오작전1단지")
+    ).first()
+    add_trade(
+        db_session, region.id, "푸르지오작전", 62000, "2026-02-01", legal=JAKJEON, raw_document_id=c_doc
+    )
     res = build_benchmarks(db_session, region.id, asof_date=ASOF)
     rows = [b for b in _rows(db_session) if b.living_area == gyeyang]
     assert [b.name for b in rows] == ["푸르지오 작전"]

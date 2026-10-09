@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "checklist_item.json",
   "title": "ChecklistItem",
-  "description": "체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·새 원문으로 복원되면 done; 계약 2026-10-09.6).",
+  "description": "체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·다른 값의 새 원문으로 복원되면 done(closed_by auto), 강등이 남았는데 사람이 닫으면 다시 열린다; 계약 2026-10-09.6·.8). 자동 항목의 근거 사실이 사라지거나 강등되면 동기화가 na(closed_by auto)로 닫고, 근거가 돌아오면 다시 연다(M-9).",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "complex_id", "kind", "title", "due_date", "status", "note"],
@@ -14,7 +14,8 @@
     "title": { "type": "string", "minLength": 1 },
     "due_date": { "type": ["string", "null"], "format": "date" },
     "status": { "type": "string", "enum": ["open", "done", "na"] },
-    "note": { "type": ["string", "null"] }
+    "note": { "type": ["string", "null"] },
+    "closed_by": { "description": "닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행", "type": ["string", "null"], "enum": ["auto", "human", null] }
   },
   "$defs": {
     "ChecklistPatch": {

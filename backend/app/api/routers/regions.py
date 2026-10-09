@@ -1,5 +1,7 @@
 """지역 (DECISIONS D2-3): GET/POST /regions, /regions/resolve, /regions/{id}, PUT living-areas, snapshots."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
@@ -165,6 +167,129 @@ def create_region(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
 def get_region_detail(session: DB, id: int) -> JSONResponse:
     region = get_region(session, id)
     return JSONResponse(region_view(session, region, latest=default_snapshot(session, region.id)))
+
+
+def _sel_key(sel: dict[str, Any]) -> tuple[str, str]:
+    return (str(sel["kind"]), str(sel["code"]))
+
+
+def _expand_all(session: Session, selections: list[dict[str, Any]]) -> list[str]:
+    """선택 목록 → 법정동 코드(중복 없이 순서 유지). 모르는 선택은 422."""
+    codes: list[str] = []
+    errors: list[dict[str, Any]] = []
+    for i, sel in enumerate(selections):
+        got = _expand(session, sel)
+        if not got:
+            errors.append(
+                {
+                    "loc": ["body", "selections", i, "code"],
+                    "msg": f"알 수 없는 {sel['kind']} 코드 {sel['code']}",
+                }
+            )
+        codes.extend(c for c in got if c not in codes)
+    if errors:
+        raise ApiError(
+            422, "validation_error", "선택한 후보를 참조 데이터에서 찾을 수 없다", field_errors=errors
+        )
+    return codes
+
+
+def _expanded_areas(session: Session, old: list[dict[str, Any]], codes: list[str]) -> list[dict[str, Any]]:
+    """생활권 갱신(D11-7): 남은 법정동은 원래 생활권 그대로, 빠진 법정동은 제거(빈 생활권은 삭제), 새 법정동은 새 시군구마다 새
+    생활권(기본값 규칙 — ``default_living_areas``, id 는 기존과 겹치지 않게 이어 붙인다)."""
+    from app.normalize.living_area import default_living_areas
+    from app.normalize.region_resolve import LegalRow
+
+    keep = set(codes)
+    out: list[dict[str, Any]] = []
+    assigned: set[str] = set()
+    for a in old:
+        dongs = [c for c in a.get("legal_dong_codes") or [] if c in keep]
+        assigned.update(dongs)
+        if dongs:
+            out.append({**a, "legal_dong_codes": dongs})
+    fresh = [c for c in codes if c not in assigned]
+    if fresh:
+        legal = [
+            LegalRow(
+                code=r.code, sido_name=r.sido_name, sigungu_name=r.sigungu_name, eupmyeondong_name=r.eupmyeondong_name,
+                ri_name=r.ri_name, full_name=r.full_name, sigungu_code=r.sigungu_code, active=bool(r.active),
+            )
+            for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(fresh)))
+        ]  # fmt: skip
+        used = {str(a.get("id")) for a in out}
+        n = 1 + max((int(i[3:]) for i in used if i.startswith("la_") and i[3:].isdigit()), default=0)
+        for a in default_living_areas(fresh, legal):
+            while f"la_{n}" in used:
+                n += 1
+            a["id"] = f"la_{n}"
+            used.add(a["id"])
+            out.append(a)
+    return out
+
+
+@router.patch("/regions/{id}")
+def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> JSONResponse:
+    """지역 선택 확장·축소(D11-7 = RA '지역 추가', 계약 .8): 코드·생활권을 다시 계산하고 change_event(critical) +
+    region.expand 잡(추가 선택 수집 → 새 리비전에서 후보 전체 판정·rerank → publish)을 등록한다."""
+    from app.api.errors import conflict
+    from app.api.routers.snapshots import change_view
+
+    region = get_region(session, id)
+    check_body("updateRegion", body)
+    new_sel = [
+        {"kind": s["kind"], "code": s["code"], "full_name": s["full_name"]} for s in body["selections"]
+    ]
+    old_sel = list(region.selections or [])
+    old_keys = {_sel_key(s) for s in old_sel}
+    new_keys = {_sel_key(s) for s in new_sel}
+    added = [s for s in new_sel if _sel_key(s) not in old_keys]
+    removed = [s for s in old_sel if _sel_key(s) not in new_keys]
+    name = body.get("name")
+    if not added and not removed and (not name or name == region.name):
+        raise conflict("선택이 바뀌지 않았다")
+    codes = _expand_all(session, new_sel)
+    old_count = len(old_sel)
+    region.selections = new_sel
+    region.legal_dong_codes = codes
+    region.sigungu_codes = sorted({c[:5] for c in codes})
+    region.sido_codes = sorted({c[:2] for c in codes})
+    region.living_areas = _expanded_areas(session, list(region.living_areas or []), codes)
+    if name:
+        region.name = str(name)
+    snap = default_snapshot(session, region.id)
+    names = ", ".join(s["full_name"] for s in added) or "-"
+    gone = ", ".join(s["full_name"] for s in removed) or "-"
+    ce = ChangeEvent(
+        snapshot_id=snap.id if snap else None,
+        entity="region",
+        entity_id=region.id,
+        field="selections",
+        old_text=f"선택 {old_count}개",
+        new_text=f"선택 {len(new_sel)}개(추가: {names}; 제거: {gone})"[:500],
+        detected_at=now_iso(),
+        severity="critical",
+        triggers_rejudge=True,
+        complex_id=None,
+    )
+    session.add(ce)
+    session.flush()
+    job = enqueue(
+        session,
+        "region.expand",
+        {"region_id": region.id, "added": added, "removed": removed, "change_event_id": ce.id},
+        kind="manual",
+    )
+    session.commit()
+    return JSONResponse(
+        {
+            "region": region_view(session, region, latest=default_snapshot(session, region.id)),
+            "change_event": change_view(ce, {}),
+            "job_id": job.id,
+            "added": added,
+            "removed": removed,
+        }
+    )
 
 
 def _issue_errors(issues: list[Any]) -> list[dict[str, Any]]:

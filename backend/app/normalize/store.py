@@ -74,6 +74,7 @@ from app.normalize.fields import (
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
+    split_discount,
     split_price_by_type,
     value_from_norm,
 )
@@ -597,8 +598,10 @@ def _notice_area(code: str | None) -> Decimal | None:
 _APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)
 """complex.applyhome_id 가 전역 유일(현 스키마)인가. (region_id, applyhome_id) 유일로 바뀌면 False."""
 
-_KEY_DROP_RE = re.compile(r"[\s·,.\-()（）\[\]]+|번지")
-_ZONE_RE = re.compile(r"일원|일대|(?:^|\s)외(?:\s|\d|$)|필지")
+# 하이픈은 지우지 않는다(minor 18: 'AA1-31' 과 'AA13-1' 이 같은 키가 되던 문제) — 공백·문장부호·괄호·'번지'만
+_KEY_DROP_RE = re.compile(r"[\s·,.()（）\[\]]+|번지")
+# 구역 표현: '…일원'·'일대'·'외 n필지'·'1056-1외'·'AA13블록외 2'(minor 18 — 숫자·블록 바로 뒤 '외'도)
+_ZONE_RE = re.compile(r"일원|일대|(?:^|\s|\d|블록|BL|bl)외(?:\s|\d|$)|필지")
 _REMAINDER_PATHS = ("Remndr", "getOPT", "OPTLttot")
 _REMAINDER_KINDS = ("무순위", "임의", "잔여", "선착순", "재공급", "계약취소")
 
@@ -704,6 +707,40 @@ def _set_price_by_type(
     )
 
 
+def _set_discount(
+    obj: PaymentTerms,
+    c: FieldCandidate,
+    type_code: str,
+    *,
+    held: bool,
+    initial: bool,
+    snapshot_id: int | None,
+    detected_at: str,
+) -> ChangeEvent | None:
+    """payment_terms.discount_by_type[type] = 원(계약 .8, D11-6 — 공고에 명시된 할인). 채택 보류면 그 항목을 지운다."""
+    cur = dict(obj.discount_by_type or {})
+    old_v = cur.get(type_code)
+    new: int | None = None if held or c.value is None else int(c.value)
+    if changes.fmt_value(old_v) == changes.fmt_value(new):
+        return None
+    if new is None:
+        cur.pop(type_code, None)
+    else:
+        cur[type_code] = new
+    obj.discount_by_type = cur
+    return changes.value_change_event(
+        entity="payment_terms",
+        entity_id=obj.id,
+        field=c.field,
+        old=old_v,
+        new=new,
+        snapshot_id=snapshot_id,
+        complex_id=obj.complex_id,
+        detected_at=detected_at,
+        initial=initial or old_v is None,
+    )
+
+
 _KEEP: Any = object()
 
 
@@ -742,6 +779,20 @@ def write_chosen(
             continue
         obj = session.get(model, c.entity_id)
         if obj is None:
+            continue
+        disc = split_discount(c.field) if c.entity == "payment_terms" else None
+        if disc is not None:
+            ev_d = _set_discount(
+                obj,
+                c,
+                disc,
+                held=held,
+                initial=(c.entity, c.entity_id) in created,
+                snapshot_id=snapshot_id,
+                detected_at=detected_at,
+            )
+            if ev_d is not None:
+                events.append(ev_d)
             continue
         pbt = split_price_by_type(c.field) if c.entity == "payment_terms" else None
         if pbt is not None:

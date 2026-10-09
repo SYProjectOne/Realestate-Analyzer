@@ -201,7 +201,10 @@ def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) 
     row = next(c for c in client.get(f"/api/snapshots/{SNAP}/claims", headers=READ).json() if c["id"] == cid)
     assert row["demotion"]["status"] == "restored" and row["demotion"]["restored_by"] == "human_check"
     detail = client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ).json()
-    assert detail["header"]["resale_months"]["v"] == 24 and detail["header"]["resale_months"]["label"] == "확인됨"
+    assert (
+        detail["header"]["resale_months"]["v"] == 24
+        and detail["header"]["resale_months"]["label"] == "확인됨"
+    )
 
 
 def _walk(obj: Any) -> list[dict[str, Any]]:
@@ -329,7 +332,9 @@ def test_nm4_sample_n_counts_own_rows_only_and_flags_substitute(client: TestClie
             )
         )
         # note 에 표식 문구만 있고 컬럼이 false 인 행은 대체가 아니다(문자열 판별 금지)
-        s.add(Benchmark(**base, living_area="la_1", name="문구만", note="사람 메모: 추정(대체: 지역 전체) 아님"))
+        s.add(
+            Benchmark(**base, living_area="la_1", name="문구만", note="사람 메모: 추정(대체: 지역 전체) 아님")
+        )
     body = client.get(f"/api/snapshots/{SNAP}/market", headers=READ).json()
     validate("getMarket", 200, body)
     flags = {f["living_area"]: f for f in body["benchmark_flags"]}

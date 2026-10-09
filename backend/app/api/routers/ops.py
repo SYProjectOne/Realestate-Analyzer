@@ -232,6 +232,7 @@ def checklist_view(item: ChecklistItem, names: dict[int, str]) -> dict[str, Any]
         "due_date": item.due_date,
         "status": item.status,
         "note": item.note,
+        "closed_by": item.closed_by,
     }
 
 

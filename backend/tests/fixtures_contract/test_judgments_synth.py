@@ -46,7 +46,9 @@ def test_meta_label_and_version() -> None:
 def test_index_covers_every_file_once() -> None:
     assert sorted(r["file"] for r in INDEX) == [p.relative_to(SJ).as_posix() for p in FILES]
     assert len({r["input_hash"] for r in INDEX}) == len(INDEX)
-    assert META["counts"] == {t: sum(1 for r in INDEX if r["tool"] == t) for t in sorted({r["tool"] for r in INDEX})}
+    assert META["counts"] == {
+        t: sum(1 for r in INDEX if r["tool"] == t) for t in sorted({r["tool"] for r in INDEX})
+    }
 
 
 @pytest.mark.parametrize("row", INDEX, ids=[r["file"][:20] for r in INDEX])
