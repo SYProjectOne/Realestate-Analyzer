@@ -120,3 +120,119 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
 - 비밀은 `infra/.env`(Docker) 또는 `backend/.env`(로컬)에만. 커밋 금지(pre-commit `no-dotenv`·`gitleaks`).
 - 공유 링크는 `READONLY_TOKEN` 으로만, 만료 30일(`SHARE_TOKEN_TTL_DAYS`).
 - 키가 노출되면: 발급처에서 폐기·재발급 → `.env` 교체 → `docker compose up -d` (로그는 이미 마스킹되지만 확인).
+
+## 10. R4 운영 시험 — 인천·김포 실데이터 1회 실행 (준비 문서, WP9 R3)
+
+RA §8-1 R4 게이트: "실제 JEV 연결, 인천·김포 → 실제 1회 실행 호출 수·시간 기록; 2회차 호출 0 확인; runbook 갱신".
+RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로 늘 수 있으나 이유를 기록), 2회차 실제 호출 0.
+**R3 회귀(`python scripts/tasks.py regress`)의 결과와 발견 목록을 사람이 확인한 뒤에만 실행한다(DECISIONS D8).**
+아래 명령은 준비만 해 둔 것이다 — 실행하지 않았다.
+
+### 10-1 준비
+
+```bash
+cd backend
+uv sync --all-extras && uv run playwright install chromium     # 공식 홈페이지 렌더·보고서 PDF
+node --version                                                 # Node 20+ (npx 로 JEV MCP 기동)
+mkdir -p ../r4 && cp ../infra/.env.example ../r4/.env
+```
+
+`r4/.env` 에 넣을 것(커밋 금지, 규칙 10):
+
+| 키 | 값 |
+| --- | --- |
+| `ENV` | `prod` (출처 없는 수치는 500 이 아니라 '확인 불가(출처 누락)' + 경고 로그) |
+| `DATABASE_URL` | `sqlite:///../r4/r4.db` (새 파일 — devseed DB 와 섞지 않는다) |
+| `RAW_DIR` / `REPORT_DIR` / `REFERENCE_DIR` | `../r4/raw` / `../r4/reports` / `../r4/reference` |
+| `API_TOKEN` / `READONLY_TOKEN` | 32자 이상 임의값 |
+| `JUDGE_ADAPTER` | `jev` |
+| `JEV_MCP_CMD` | 기본 `npx -y @jkudish/jev-mcp@latest` (재현이 중요하면 실행 전 버전 고정 `@jkudish/jev-mcp@<버전>` — 1·2회차 사이에 버전이 바뀌면 전체 재판정이 돈다, §4) |
+| `DATA_GO_KR_KEY` | 사람이 발급한 키(청약홈 API·실거래, D1 #5·5a) |
+| `NEWS_API_PROVIDER` / `NEWS_API_KEY` | `ncp` / `<ID>:<Secret>` (D1 #6) |
+| `LOG_JSON` | `true` (실행 기록용) |
+
+```bash
+export ENV_FILE=../r4/.env
+uv run alembic upgrade head                                      # 스키마 + 내장 시나리오 5개
+uv run pytest -m live tests/judge/test_live.py -s                # JEV 연결 smoke(1건 호출 + 캐시 확인)
+uv run uvicorn app.main:app --port 8000 &                        # API (다른 터미널 권장)
+H="Authorization: Bearer <API_TOKEN>"
+```
+
+### 10-2 참조 표 → 지역 생성 → 1회차
+
+```bash
+# 참조 표(법정동·행정동·매핑·주민등록 세대) — 실패하면 contracts/fixtures/reference 사본으로 적재된다
+curl -s -X POST localhost:8000/api/jobs -H "$H" -H 'Content-Type: application/json' \
+     -d '{"job_name":"reference.refresh","payload":{}}'
+uv run python -m app.worker --once
+
+# 지역 = 회귀 픽스처 지역 정의(D3)와 같은 선택 — contracts/fixtures/incheon_gimpo_2026-10-08/region.json 의 selections
+uv run python - <<'PY' > ../r4/region_request.json
+import json; r = json.load(open("../contracts/fixtures/incheon_gimpo_2026-10-08/region.json", encoding="utf-8"))
+print(json.dumps({"name": r["name"], "query_text": r["query_text"], "selections": r["selections"]}, ensure_ascii=False))
+PY
+curl -s -X POST localhost:8000/api/regions -H "$H" -H 'Content-Type: application/json' \
+     --data-binary @../r4/region_request.json | tee ../r4/region_created.json   # region.id, job_id(region.bootstrap)
+
+# 1회차: bootstrap(수집 → 정규화 → 판정 P1~P9 → 점수 → publish). 시간을 잰다.
+date -Iseconds | tee ../r4/run1_start.txt
+time uv run python -m app.worker --once 2>&1 | tee ../r4/run1.log
+date -Iseconds | tee ../r4/run1_end.txt
+```
+
+### 10-3 판정기 호출 수 집계 (SQLite: `sqlite3 ../r4/r4.db`, Postgres 는 `json_extract` → `->>`)
+
+`judgment_log` 는 **실제로 판정기에 간 호출 1건 = 1행**이다(같은 input_hash 재호출은 행을 만들지 않고 cached 봉투,
+guard 차단은 `status='blocked'` 행이지만 판정기로 가지 않음, 오류는 `status='error'` 행을 같은 hash 로 UPDATE).
+
+```sql
+-- 1회차 실제 호출 수(도구별·상태별). blocked 는 판정기로 가지 않았으므로 따로 센다.
+SELECT tool, status, COUNT(*) AS n FROM judgment_log GROUP BY tool, status ORDER BY tool, status;
+SELECT COUNT(*) AS real_calls FROM judgment_log WHERE status <> 'blocked';          -- 게이트: ≤ 132 (넘으면 이유 기록)
+SELECT adapter_version, COUNT(*) FROM judgment_log GROUP BY adapter_version;         -- 버전 1개여야 한다(§4)
+-- 잡별 집계(파이프라인 stats: judge_calls = 실제 호출, cached = 캐시 적중, blocked = guard 차단) + 시간
+SELECT id, job_name, status, started_at, finished_at,
+       json_extract(stats, '$.pipeline.judge_calls') AS judge_calls,
+       json_extract(stats, '$.pipeline.cached')      AS cached,
+       json_extract(stats, '$.pipeline.blocked')     AS blocked,
+       json_extract(stats, '$.pipeline.by_tool')     AS by_tool,
+       json_extract(stats, '$.judge_calls')          AS rejudge_calls          -- rejudge 잡은 최상위에 있다
+FROM job_run ORDER BY id;
+-- 실패(오류) 행과 사유 — 실패도 데이터(규칙 7)
+SELECT tool, purpose, error_text FROM judgment_log WHERE status = 'error';
+```
+
+화면으로는 G7 '판정 로그'(`GET /api/ops/judgments`)에서 같은 수를 본다. 기록할 것: 실제 호출 수(도구별),
+cached·blocked·error 수, 1회차 소요 시간(run1_start~end), 132 와의 차이와 이유(원자 분할로 verify 가 늘어난 수 등),
+`adapter_version`(서버 버전 + model).
+
+### 10-4 2회차 — 실제 호출 0 확인
+
+```bash
+SQL='SELECT COUNT(*) FROM judgment_log;'
+sqlite3 ../r4/r4.db "$SQL" | tee ../r4/before_run2.txt
+# (a) 같은 스냅샷 전체 재판정: 모든 payload 가 같으므로 전부 cached
+SID=$(curl -s localhost:8000/api/regions/<region_id> -H "$H" | uv run python -c "import json,sys;print(json.load(sys.stdin)['latest_snapshot']['id'])")
+curl -s -X POST localhost:8000/api/jobs -H "$H" -H 'Content-Type: application/json' \
+     -d "{\"job_name\":\"rejudge\",\"payload\":{\"snapshot_id\":$SID,\"scenario_id\":null,\"complex_ids\":null,\"reason\":\"R4 2회차\"}}"
+time uv run python -m app.worker --once 2>&1 | tee ../r4/run2.log
+sqlite3 ../r4/r4.db "$SQL" | tee ../r4/after_run2.txt            # before 와 같아야 한다(새 행 0)
+sqlite3 ../r4/r4.db "SELECT id, json_extract(stats,'$.judge_calls'), json_extract(stats,'$.cached') FROM job_run WHERE job_name='rejudge' ORDER BY id DESC LIMIT 1;"
+#   → judge_calls = 0, cached = 1회차 호출 수와 비슷(같은 입력 재호출 금지, 규칙 4)
+# (b) 다음 날 일일 수집(변경 없는 날, T8): collect.daily → 변경 0 이면 판정 0 + 이전 판정 복사 + publish
+curl -s -X POST localhost:8000/api/jobs -H "$H" -H 'Content-Type: application/json' \
+     -d '{"job_name":"collect.daily","payload":{"region_id":<region_id>,"sources":["applyhome_list","official_site"]}}'
+uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제로 바뀐 공고가 없으면 여전히 같은 수
+```
+
+통과: (a)에서 새 `judgment_log` 행 0 · `judge_calls` 0. (b)는 실제 사이트 변화가 있으면 그 단지만 재판정된다(호출 > 0 이
+정상) — 그때는 `change_event` 목록(G1 '최근 변경')과 호출 수가 맞는지 기록한다.
+
+### 10-5 끝난 뒤
+
+- 결과(호출 수·시간·버전·2회차 0 여부)를 이 절 아래 표로 남기고 `docs/adr/ADR-05-judge-smoke.md` 에 링크한다.
+- 보고서: `uv run python -m app.reports.cli --snapshot <SID> --format pdf` (부록 A 에 도구별 임계값·호출 로그).
+- (제안, WP9) 1회차 `judgment_log`(input_json·output_json)를 Mock 녹화로 내보내면 e2e·회귀의 Mock 판정기가 파이프라인
+  payload 를 재생할 수 있다(현재 픽스처 녹화는 보고서 재구성이라 파이프라인 payload 와 hash 가 달라 Mock 재판정이 전부
+  review — R3 발견). 내보낼 때 hash 는 `input_hash(tool, purpose, input_json, <픽스처 _meta adapter_version>)` 로 다시 계산한다.
