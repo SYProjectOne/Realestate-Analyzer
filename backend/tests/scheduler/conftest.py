@@ -417,14 +417,16 @@ def seed_fixture(
 def seed_market(factory: sessionmaker[Session], region_id: int = 1) -> None:
     """expected_scores_v2.json 의 시장 입력(거래·벤치마크·입주물량·미분양·세대수 가정)을 DB 행으로.
 
-    v2 입력의 생활권 id(시군구 코드) → 픽스처 지역 생활권(la_*)으로 바꾼다. 세대수는 v2 가정값(라벨 추정).
+    v2 입력의 생활권 id(la_* 또는 시군구 코드) → 픽스처 지역 생활권(la_*). 세대수는 v2 입력값.
     """
     v2 = json.loads((FIXTURE / "expected_scores_v2.json").read_text(encoding="utf-8"))["inputs"]
     with factory() as s:
         region = s.get(Region, region_id)
         assert region is not None
         areas = [dict(a) for a in region.living_areas]
+        # v2 입력의 생활권 id: la_* (계약 2026-10-09.2 이후) 또는 시군구 코드(이전 생성기) — 둘 다 받는다
         by_code = {a["legal_dong_codes"][0][:5]: a for a in areas}
+        by_code.update({a["id"]: a for a in areas})
         la = {code: a["id"] for code, a in by_code.items()}
         first_dong = {code: a["legal_dong_codes"][0] for code, a in by_code.items()}
         for item in v2["living_areas"]:

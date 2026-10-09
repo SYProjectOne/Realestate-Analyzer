@@ -9,14 +9,13 @@
 | snapshot.publish | contradicted claim 0 이면 published, 아니면 failed(publish_blocked) |
 | reference.refresh | 법정동·행정동·매핑·세대 현황 갱신(collectors.reference) |
 | region.bootstrap | region.status=bootstrapping → daily+weekly 수집 → 전체 파이프라인 → publish → ready(실패 failed) |
-| report | WP8 ``app.reports.job`` 에 위임(아래 ``REPORT_ENTRYPOINTS``) |
+| report | WP8 ``app.reports.job.run_report_job(payload, session=…)`` (예외 → failed: blocked·not_found·invalid_payload) |
 """
 
 # ruff: noqa: E501  (한국어 docstring·로그 필드)
 
 from __future__ import annotations
 
-import importlib
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Final
 
@@ -33,14 +32,11 @@ from app.scheduler.rejudge import enqueue_rejudge, handle_rejudge
 if TYPE_CHECKING:
     from app.scheduler.context import SchedulerContext
 
-__all__ = ["HANDLERS", "REPORT_ENTRYPOINTS", "Handler"]
+__all__ = ["HANDLERS", "Handler"]
 
 log = get_logger("app.scheduler.handlers")
 
 Handler = Callable[["SchedulerContext", JobRun], dict[str, Any]]
-REPORT_ENTRYPOINTS: Final = ("run_report_job", "run_report", "handle_report_job", "run")
-"""WP8 ``app.reports.job`` 에서 찾는 함수 이름(앞에서부터). 시그니처 ``fn(payload: dict) -> dict``(stats =
-{path, filename, size_bytes, sha256, content_type}, contracts/schemas/job_run.json)."""
 
 
 def _since(session: Any, region_id: int, job_name: str, exclude_id: int) -> str | None:
@@ -213,16 +209,25 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
 
 
 def handle_report(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
+    """WP8 잡 규약(app/reports/README.md '잡 규약'): ``run_report_job(payload, session=…)`` → stats.
+
+    ReportBlocked → failed ``blocked: <사유>`` + stats.blocked_reason, ReportNotFound → ``not_found: <사유>``,
+    ValueError(payload 검증) → ``invalid_payload: …``.
+    """
+    from app.reports import job as report_job
+    from app.reports.errors import ReportBlocked, ReportNotFound
+
     try:
-        module = importlib.import_module("app.reports.job")
-    except ModuleNotFoundError as exc:
-        raise JobError("보고서 모듈(app.reports.job, WP8) 없음") from exc
-    for name in REPORT_ENTRYPOINTS:
-        fn = getattr(module, name, None)
-        if callable(fn):
-            out = fn(dict(job.payload or {}))
-            return dict(out) if isinstance(out, dict) else {"result": str(out)}
-    raise JobError(f"app.reports.job 에 진입 함수가 없다({', '.join(REPORT_ENTRYPOINTS)})")
+        with ctx.session_factory() as session:
+            stats = report_job.run_report_job(dict(job.payload or {}), session=session)
+            session.commit()
+    except ReportBlocked as exc:
+        raise JobError(f"blocked: {exc.reason}", {"blocked_reason": exc.reason}) from exc
+    except ReportNotFound as exc:
+        raise JobError(f"not_found: {exc.reason}") from exc
+    except ValueError as exc:
+        raise JobError(f"invalid_payload: {str(exc)[:300]}") from exc
+    return dict(stats)
 
 
 HANDLERS: Final[dict[str, Handler]] = {

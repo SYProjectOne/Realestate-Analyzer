@@ -116,16 +116,51 @@ def test_failed_handler_marks_job_failed_and_worker_continues(
     assert _job(factory, good).status == "done"
 
 
-def test_unknown_report_module_fails_cleanly(
-    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], db_engine: Any
+def test_report_job_follows_wp8_contract(
+    make_ctx: Callable[..., SchedulerContext],
+    factory: sessionmaker[Session],
+    db_engine: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """app.reports.job.run_report_job(payload, session=…) 위임 · 예외 → failed(blocked·not_found·invalid_payload)."""
+    from app.reports import job as report_job
+    from app.reports.errors import ReportBlocked
+
     ctx = make_ctx()
     with factory() as s:
-        jid = enqueue(s, "report", {"snapshot_id": 1, "format": "pdf"}).id
+        missing = enqueue(s, "report", {"snapshot_id": 999, "format": "pdf"}).id
+        bad = enqueue(s, "report", {"snapshot_id": 1, "format": "docx"}).id
+        s.commit()
+    runner.run_until_idle(ctx)  # 실제 WP8 모듈: 스냅샷 없음 / format 형식 오류
+    assert _job(factory, missing).status == "failed"
+    assert (_job(factory, missing).error_text or "").startswith("not_found:")
+    assert (_job(factory, bad).error_text or "").startswith("invalid_payload:")
+
+    seen: list[tuple[dict[str, Any], bool]] = []
+
+    def fake_ok(payload: dict[str, Any], *, session: Session | None = None) -> dict[str, Any]:
+        seen.append((payload, session is not None))
+        return {"path": "r.html", "filename": "r.html", "format": "html", "blocked_reason": None}
+
+    def fake_blocked(payload: dict[str, Any], *, session: Session | None = None) -> dict[str, Any]:
+        raise ReportBlocked("contradicted 2건")
+
+    monkeypatch.setattr(report_job, "run_report_job", fake_ok)
+    with factory() as s:
+        ok = enqueue(s, "report", {"snapshot_id": 1, "format": "html"}).id
         s.commit()
     runner.run_until_idle(ctx)
-    row = _job(factory, jid)
-    assert row.status == "failed" and "app.reports.job" in (row.error_text or "")
+    assert _job(factory, ok).status == "done" and _job(factory, ok).stats["filename"] == "r.html"
+    assert seen == [({"snapshot_id": 1, "format": "html"}, True)]
+
+    monkeypatch.setattr(report_job, "run_report_job", fake_blocked)
+    with factory() as s:
+        blocked = enqueue(s, "report", {"snapshot_id": 1, "format": "pdf"}).id
+        s.commit()
+    runner.run_until_idle(ctx)
+    row = _job(factory, blocked)
+    assert row.status == "failed" and row.error_text == "blocked: contradicted 2건"
+    assert row.stats == {"blocked_reason": "contradicted 2건"}
 
 
 def test_main_once_without_schema_returns_zero(test_settings: Settings) -> None:

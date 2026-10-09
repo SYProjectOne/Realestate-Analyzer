@@ -11,7 +11,7 @@
 | `jobs.py` | 잡 이름 7개, `enqueue`(같은 queued 잡 중복 없음), APScheduler 시간표(06:00 daily · 월 06:30 weekly · 매월 1일 05:00 reference) — 시간표는 job_run 행만 넣는다, `ensure_reference`(참조 표가 비면 1회) |
 | `runner.py` | `main(argv)`(`python -m app.worker [--once] [--interval 초] [--no-schedule]`), job_run polling, 잠금(`UPDATE … WHERE status='queued'` 1행일 때만 실행), done/failed + stats·error_text |
 | `handlers.py` | 잡 이름 → 처리 함수(collect.daily·weekly, rejudge, snapshot.publish, reference.refresh, region.bootstrap, report) |
-| `collect.py` | 수집기(WP1) → `normalize.store`(WP2) → intake_status 행(분류 없이 '확인 불가(사유)') → 변경 감지 |
+| `collect.py` | 수집기(WP1) → `normalize.store`(WP2) → intake_status 행(분류 없이 '확인 불가(사유)', 파서의 접수 문구 후보는 note) → 변경 감지 |
 | `detect.py` | 팝업 이미지 해시(기준일 전 마지막 해시와 비교) · 청약홈 목록 diff → change_event |
 | `pipeline.py` | P1 screen → P2 extract → P3 audit → P4 classify → P5 compare → P6 noul → P7 rerank → 점수(`analysis`) → P8 decide → P9 verify → 저장 |
 | `inputs.py` | DB → `ScoreInputs`(2026-10-09.2 필드: unsold_scope_codes·intake_checked_at·*_label) · 증거 카드 |
@@ -30,8 +30,9 @@
   `app.scheduler.rejudge.enqueue_rejudge(session, snapshot_id, [complex_id], "사람 확인 입력", change_event_ids=[…])`
   를 부르면(또는 같은 모양 job_run 행) 같은 스냅샷 queued rejudge 에 합쳐진다. 새 스냅샷은 이전 스냅샷의 접수 행
   (사람 확인 포함)을 확인 시각 그대로 복사한다.
-- **report 잡**: `app.reports.job` 의 `run_report_job(payload: dict) -> dict`(없으면 `run_report`·`handle_report_job`·`run`
-  순서로 찾음)을 부른다. 반환 dict 가 job_run.stats(`{path, filename, size_bytes, sha256, content_type}`).
+- **report 잡**(WP8 README '잡 규약'): `app.reports.job.run_report_job(payload, session=…)` → job_run.stats.
+  `ReportBlocked` → failed `blocked: <사유>` + stats `{blocked_reason}`, `ReportNotFound` → `not_found: <사유>`,
+  `ValueError`(payload 검증) → `invalid_payload: …`.
 - **변경 없는 날**(T8): 이전 publish 스냅샷의 ladder·score_run·decision·claim·comparable_set 을 복사하고 publish
   (판정기 호출 0, `score_run.prev_score_run_id` = 원본 run).
 - 판정기 호출은 `ctx.adapter()`(= `app.judge.get_adapter`) + `app.judge.pipeline` 단계 함수로만 한다(규칙 4).

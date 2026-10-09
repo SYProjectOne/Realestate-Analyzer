@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
@@ -112,8 +112,16 @@ def _load_stats(obj: Any) -> dict[str, int] | None:
     return {k: int(getattr(obj, k, 0) or 0) for k in keys if hasattr(obj, k)}
 
 
-def intake_rows(session: Session, snapshot_id: int, docs: Sequence[RawDTO]) -> int:
-    """공식 홈페이지 원문 → intake_status 행(단지·경로마다 1개, 이미 있으면 만들지 않음). 분류는 하지 않는다."""
+def intake_rows(
+    session: Session,
+    snapshot_id: int,
+    docs: Sequence[RawDTO],
+    phrases: Mapping[int, Sequence[str]] | None = None,
+) -> int:
+    """공식 홈페이지 원문 → intake_status 행(단지·경로마다 1개, 이미 있으면 만들지 않음). 분류는 하지 않는다.
+
+    ``phrases``: 단지별 접수 문구 후보(normalize official_site 파서의 intake_status 후보, 분류 전) → note 에 원문 그대로.
+    """
     by_complex: dict[int, list[RawDTO]] = defaultdict(list)
     for d in docs:
         if d.source_kind == "official_site" and d.complex_id is not None:
@@ -153,7 +161,9 @@ def intake_rows(session: Session, snapshot_id: int, docs: Sequence[RawDTO]) -> i
                 http_status=http,
                 checked_at=main.fetched_at,
                 reason=reason[:120],
-                note=None,
+                note=("문구 후보: " + " / ".join(dict.fromkeys((phrases or {}).get(cid, []))))[:500]
+                if (phrases or {}).get(cid)
+                else None,
                 entered_by=None,
             )
         )
@@ -238,6 +248,7 @@ def collect(
     detected_at = ctx.iso_now()
     events: list[ChangeEvent] = []
     list_ids: set[int] = set()
+    phrases: dict[int, list[str]] = defaultdict(list)
     ran_applyhome = False
 
     for step in steps:
@@ -270,6 +281,12 @@ def collect(
                     continue
                 res.stored += 1
                 events.extend(out.change_events)
+                if doc.complex_id is not None:
+                    phrases[doc.complex_id].extend(
+                        str(c.value_text)
+                        for c in out.candidates
+                        if c.entity == "intake_status" and c.value_text
+                    )
                 if doc.source_kind == "applyhome_list":
                     list_ids.update(out.complex_ids)
             session.commit()
@@ -297,7 +314,7 @@ def collect(
     with ctx.session_factory() as session:
         snap_row = session.get(Snapshot, snap_dto.id)
         assert snap_row is not None
-        res.intake_rows = intake_rows(session, snap_dto.id, res.official_docs)
+        res.intake_rows = intake_rows(session, snap_dto.id, res.official_docs, phrases)
         prev = snapshots.previous(session, snap_row)
         if prev is not None:
             res.intake_copied = copy_intake(session, prev.id, snap_dto.id)
