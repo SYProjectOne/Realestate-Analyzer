@@ -1,6 +1,7 @@
 """expected_scores_v2.json 골든 고정(사람 확인 2026-10-09: 세대수만 실측으로 교체 후 고정) — 회귀(RA §9 (b)).
 
-- 생활권 id 는 픽스처 region.json 의 la_* 이고, 미분양은 unsold_scope_codes(시군구 코드)로 고른다(2026-10-09.2).
+- 생활권 id 는 픽스처 region.json 의 la_* 이고, 미분양은 unsold_scope_codes(시군구 코드)로 고른다
+  (2026-10-09.2).
 - 생활권 세대수 = 행안부 주민등록 세대수(contracts/fixtures/reference/jumin_households_202609.csv, 행정동)를
   행정동↔법정동 매핑(jscode KIKmix)으로 1:N 균등 분할해 생활권 법정동에 합산한 값(라벨 '추정(주민등록 세대)').
 - 파일 안의 inputs 로 다시 계산하면 종합 점수 ±0.01, 순위·tie_group 이 파일과 같아야 한다.
