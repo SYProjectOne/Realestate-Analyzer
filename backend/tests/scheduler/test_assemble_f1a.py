@@ -242,3 +242,44 @@ def test_weekly_news_becomes_catalyst_candidates(
         [cat] = s.scalars(select(Catalyst)).all()
         assert (cat.name, cat.stage, cat.location_confirmed) == ("송도 트램 기본계획", "미확정", False)
     assert res.stats()["assembled"]["catalyst"] == {"inserted": 1, "existing": 0}
+
+
+class _NoStats:
+    def fetch(self, region: RegionDTO, snapshot: SnapshotDTO, since: str | None) -> list[RawDTO]:
+        return []
+
+
+def test_weekly_supply_rows_have_provenance_w3(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], clock: Clock
+) -> None:
+    """R3 W3: collect.weekly(stats) 가 적재한 입주물량 추정 행마다 units 출처 행(추정)이 있다."""
+    from app.models import FieldProvenance, Supply
+
+    _seed(factory)
+    with factory() as s:
+        cx = Complex(
+            region_id=1, applyhome_id="2025000888", name="입주 단지", former_names=[], apply_dates=[], contract_dates=[],
+            living_area="la_1", move_in_ym="2028-06", units_total=700, inclusion_class="미분류",
+        )  # fmt: skip
+        s.add(cx)
+        s.flush()
+        for f, v in (("units_total", "700"), ("move_in_ym", "2028-06")):
+            s.add(
+                FieldProvenance(
+                    entity="complex", entity_id=cx.id, field=f, value_text=v, url="https://www.applyhome.co.kr/x",
+                    checked_at="2026-10-08", label="확인됨", source_rank=1, chosen=True,
+                )
+            )  # fmt: skip
+        s.commit()
+    ctx = make_ctx(collectors={"stats": lambda c: _NoStats()})
+    res = collect(ctx, 1, ["stats"], asof_date="2026-10-08")
+    with factory() as s:
+        [sup] = s.scalars(select(Supply)).all()
+        fp = s.scalars(
+            select(FieldProvenance).where(
+                FieldProvenance.entity == "supply", FieldProvenance.entity_id == sup.id,
+                FieldProvenance.field == "units", FieldProvenance.chosen.is_(True),
+            )
+        ).one()  # fmt: skip
+        assert (fp.label, fp.value_text) == ("추정", "700")
+    assert res.stats()["loaded"]["supply_provenance"] == {"written": 3, "missing": 0}
