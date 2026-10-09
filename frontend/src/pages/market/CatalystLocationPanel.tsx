@@ -1,10 +1,16 @@
 import { useId, useState } from 'react';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import type { CatalystLink, CatalystPatch, CatalystPatched } from '@/api/contract8';
 import { useComplexes, useUpdateCatalystLocation } from '@/api/hooks';
-import type { CatalystView, Fact, Market } from '@/api/types';
-import { Badge, FactCell, MetaValue } from '@/components';
+import type {
+  CatalystLinkView,
+  CatalystPatch,
+  CatalystUpdated,
+  CatalystView,
+  Fact,
+  Market,
+} from '@/api/types';
+import { Badge, FactCell, JobProgress, MetaValue } from '@/components';
 import { t } from '@/i18n';
 import { enumText, Section, tdClass, thClass } from '../_shared';
 
@@ -18,12 +24,22 @@ export function parseCoord(raw: string, kind: 'lat' | 'lon'): number | null | 'i
   return Math.abs(n) <= limit ? n : 'invalid';
 }
 
-/** 링크 거리 → Fact(라벨은 서버가 준 link.label). 좌표 없는 단지는 distance_m=null → '확인 불가(단지 좌표 없음)' */
-export function distanceFact(link: CatalystLink): Fact {
+/** 예상 시기 YYYY-MM(빈 값 허용) */
+export function parseYm(raw: string): string | null | 'invalid' {
+  const v = raw.trim();
+  if (!v) return null;
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(v) ? v : 'invalid';
+}
+
+/**
+ * 링크 거리 → Fact(라벨은 서버가 준 link.label). 좌표 없는 단지는 distance_m=null → '확인 불가(<서버 reason>)'
+ * — reason 은 서버가 정한 연결 근거('같은 생활권(…, 단지 좌표 없음)'·'사람 지정(단지 좌표 없음)').
+ */
+export function distanceFact(link: CatalystLinkView): Fact {
   return {
     v: link.distance_m,
     label: link.distance_m === null ? '확인 불가' : link.label,
-    reason: link.distance_m === null ? t('page.G6.loc.noCoord') : null,
+    reason: link.distance_m === null ? (link.reason ?? t('page.G6.loc.noCoord')) : null,
     prov: null,
     checked_at: null,
     unit: 'm',
@@ -31,9 +47,11 @@ export function distanceFact(link: CatalystLink): Fact {
 }
 
 /**
- * G6 호재 위치 확인 (D11-5, 계약 .8 초안 PATCH /catalysts/{id}) — catalyst_link 는 사람이 위치를 확인할 때만 생긴다
- * (location_confirmed=false 면 링크 없음, RA). 좌표(lat·lon) 또는 영향 생활권·단지를 고르면 서버가 링크를 만들고,
- * 단지 좌표가 없으면 distance_m=null·weight=1(같은 생활권)·라벨 추정. 판단(호재 단계)은 판정기 몫 — 여기서는 위치만.
+ * G6 호재 위치 확인 (D11-5, 계약 .8 PATCH /catalysts/{id} → CatalystUpdated {catalyst, links, job}) — catalyst_link 는
+ * 사람이 위치를 확인할 때만 생긴다(location_confirmed=false 면 링크 없음, RA). 영향 생활권·단지를 하나 이상 고르면
+ * (좌표 lat·lon·예상 시기 expected_ym 은 선택 — D11-11 사람 입력만) 서버가 링크를 만들고, 단지 좌표가 없으면
+ * distance_m=null·weight=1·라벨 추정·reason(연결 근거). 연결이 바뀌면 응답 job(rejudge)을 진행 표시로 보인다.
+ * 판단(호재 단계)은 판정기 몫 — 여기서는 위치만.
  * '호재 아님'(D11-2) 은 목록에서 회색 배지로만 보인다(링크 대상 아님).
  */
 export function CatalystLocationPanel({
@@ -44,7 +62,7 @@ export function CatalystLocationPanel({
   snapshotId: string | null;
 }) {
   const [openId, setOpenId] = useState<number | null>(null);
-  const [result, setResult] = useState<CatalystPatched | null>(null);
+  const [result, setResult] = useState<CatalystUpdated | null>(null);
   const complexes = useComplexes(snapshotId, { page: 1, size: 1000, sort: 'name' });
   const names = new Map((complexes.data?.items ?? []).map((c) => [c.complex_id, c.name]));
   const catalysts = market.catalysts;
@@ -89,7 +107,7 @@ function CatalystRow({
   onToggle: () => void;
   market: Market;
   complexes: { complex_id: number; name: string }[];
-  onSaved: (patched: CatalystPatched) => void;
+  onSaved: (patched: CatalystUpdated) => void;
 }) {
   const canWrite = useCanWrite();
   const update = useUpdateCatalystLocation();
@@ -168,6 +186,7 @@ function LocationForm({
   const baseId = useId();
   const [lat, setLat] = useState('');
   const [lon, setLon] = useState('');
+  const [ym, setYm] = useState('');
   const [areas, setAreas] = useState<string[]>([]);
   const [complexIds, setComplexIds] = useState<number[]>(catalyst.linked_complex_ids ?? []);
   const [error, setError] = useState<string | null>(null);
@@ -183,7 +202,13 @@ function LocationForm({
       setError(t('page.G6.loc.bothCoord'));
       return;
     }
-    if (la === null && areas.length === 0 && complexIds.length === 0) {
+    const expected = parseYm(ym);
+    if (expected === 'invalid') {
+      setError(t('page.G6.loc.badYm'));
+      return;
+    }
+    // 서버: 영향 범위(생활권·단지) 없이 location_confirmed=true 는 422 — 좌표만으로는 연결을 만들지 않는다
+    if (areas.length === 0 && complexIds.length === 0) {
       setError(t('page.G6.loc.needTarget'));
       return;
     }
@@ -191,6 +216,7 @@ function LocationForm({
     onSubmit({
       location_confirmed: true,
       ...(la !== null && lo !== null ? { lat: la, lon: lo } : {}),
+      ...(expected !== null ? { expected_ym: expected } : {}),
       living_area_ids: areas,
       complex_ids: complexIds,
     });
@@ -224,6 +250,16 @@ function LocationForm({
           inputMode="decimal"
           value={lon}
           onChange={(e) => setLon(e.target.value)}
+          className={inputClass}
+        />
+      </label>
+      <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-ym`}>
+        <span className="text-xs text-muted">{t('page.G6.loc.expectedYm')}</span>
+        <input
+          id={`${baseId}-ym`}
+          type="month"
+          value={ym}
+          onChange={(e) => setYm(e.target.value)}
           className={inputClass}
         />
       </label>
@@ -279,8 +315,26 @@ function LocationForm({
   );
 }
 
-/** 저장 결과: 만들어진 catalyst_link(단지·거리·가중치) */
-function LinksTable({ result, names }: { result: CatalystPatched; names: Map<number, string> }) {
+/** 저장 결과: 만들어진 catalyst_link(단지·거리·가중치·근거) + 연결이 바뀌었으면 rejudge 잡 진행 */
+function LinksTable({ result, names }: { result: CatalystUpdated; names: Map<number, string> }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <LinksBody result={result} names={names} />
+      {result.job ? (
+        <div data-testid="catalyst-job">
+          <p className="text-xs text-muted">{t('page.G6.loc.jobHint')}</p>
+          <JobProgress jobId={result.job.id} />
+        </div>
+      ) : (
+        <p className="text-xs text-muted" data-testid="catalyst-job-none">
+          {t('page.G6.loc.noJob')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function LinksBody({ result, names }: { result: CatalystUpdated; names: Map<number, string> }) {
   const caption = t('page.G6.loc.links', { name: result.catalyst.name });
   if (result.links.length === 0) {
     return (
@@ -307,6 +361,9 @@ function LinksTable({ result, names }: { result: CatalystPatched; names: Map<num
           <th scope="col" className={thClass}>
             {t('page.G6.loc.col.weight')}
           </th>
+          <th scope="col" className={thClass}>
+            {t('page.G6.loc.col.reason')}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -319,9 +376,14 @@ function LinksTable({ result, names }: { result: CatalystPatched; names: Map<num
               <FactCell fact={distanceFact(link)} unit="m" />
             </td>
             <td className={tdClass}>
-              {/* 가중치 = 거리·생활권에서 정한 계산 계수(사실 아님) */}
-              <MetaValue kind="derived" value={link.weight} as="number" digits={2} />
+              {/* 가중치 = 거리·생활권에서 정한 계산 계수(사실 아님). null = 서버가 정하지 않음 */}
+              {link.weight === null ? (
+                <span className="text-muted">{t('page.common.none')}</span>
+              ) : (
+                <MetaValue kind="derived" value={link.weight} as="number" digits={2} />
+              )}
             </td>
+            <td className={`${tdClass} text-xs`}>{link.reason ?? t('page.common.none')}</td>
           </tr>
         ))}
       </tbody>

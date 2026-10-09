@@ -1,10 +1,15 @@
 /**
- * D11-1 스냅샷 리비전(계약 .8 초안): 같은 기준일의 리비전을 고를 수 있고, 기본 = 최신 published 리비전.
+ * D11-1 스냅샷 리비전(계약 .8 Snapshot.revision·revision_of·revision_reason): 같은 기준일의 리비전을 고를 수 있고, 기본 = 최신 published 리비전.
  */
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
+import type { Snapshot } from '@/api/types';
 import type { SnapshotLike } from '@/lib/contract';
 import { t } from '@/i18n';
-import { MOCK_REVISIONS_KEY, resetMockState } from '@/mocks/handlers.extra';
+import { resetMockState } from '@/mocks/handlers.extra';
+import { generatedHandlers } from '@/mocks/handlers.gen';
+import { mswPath } from '@/mocks/mswPath';
+import { server } from '@/mocks/server';
 import { renderRoute, renderWithProviders } from '@/test/render';
 import { defaultSnapshot, SnapshotPicker, snapshotText, snapshotTitle } from './SnapshotPicker';
 
@@ -71,8 +76,24 @@ describe('스냅샷 리비전 표시·기본 선택', () => {
     expect(select).toHaveValue('13');
   });
 
-  it('헤더 기준일 선택에 리비전 2 가 보인다(MSW 초안 응답)', async () => {
-    window.localStorage.setItem(MOCK_REVISIONS_KEY, '1');
+  it('헤더: 계약 응답에 같은 기준일 리비전 2(published)가 있으면 옵션에 보인다', async () => {
+    // 계약 예시(snapshots_list.json, 리비전 1뿐)에 재판정 리비전 2 를 앞에 더한 응답
+    server.use(
+      http.get(mswPath('/regions/:id/snapshots'), async ({ request }) => {
+        const res = await getResponse(generatedHandlers as RequestHandler[], request.clone());
+        const list = (await res!.json()) as Snapshot[];
+        const latest = list[0]!;
+        const rev2: Snapshot = {
+          ...latest,
+          id: 99,
+          revision: 2,
+          revision_of: latest.id,
+          revision_reason: '사람 확인 입력(재판정)',
+          status: 'published',
+        };
+        return HttpResponse.json([rev2, ...list]);
+      }),
+    );
     renderRoute('/');
     const select = await screen.findByLabelText(t('header.snapshot'));
     expect(
@@ -80,5 +101,16 @@ describe('스냅샷 리비전 표시·기본 선택', () => {
         name: new RegExp(t('picker.revision', { date: '2026-10-08', n: '2' })),
       }),
     ).toBeInTheDocument();
+  });
+
+  it('헤더: 계약 예시(리비전 1뿐)면 옵션은 기준일만, 기본 = 최신 published', async () => {
+    renderRoute('/');
+    const select = await screen.findByLabelText(t('header.snapshot'));
+    await waitFor(() => expect(within(select).getAllByRole('option').length).toBeGreaterThan(1));
+    const texts = within(select)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(texts[0]).toBe('2026-10-08');
+    await waitFor(() => expect(select).toHaveValue('12'));
   });
 });

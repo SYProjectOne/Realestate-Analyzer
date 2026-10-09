@@ -3,17 +3,15 @@
  * 여기 핸들러가 생성 핸들러보다 **먼저** 매칭된다(handlers.ts 순서).
  *
  * 원칙: 응답 모양은 생성 핸들러(=계약 예시)에서 `getResponse`로 받아 그대로 쓰고, 상태만 덧붙인다.
- *  - 잡: POST /jobs·/reports·/regions 가 만든 잡은 GET /jobs/{id} 폴링마다 queued → running → done
+ *  - 잡: POST /jobs·/reports·/regions·PATCH /regions 가 만든 잡은 GET /jobs/{id} 폴링마다 queued → running → done
  *  - 사람 확인: POST /ops/human-checks 후 단지 목록·상세의 intake가 그 값으로 바뀐다(배지 즉시 갱신)
  *  - G2 대량 행: localStorage `msw.complexes.rows` = N 이면 예시 행을 N개로 복제(가상 스크롤 확인용)
  *  - 판정기 장애: localStorage `msw.degraded` = 1 이면 /health status=degraded
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
  *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
  *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
- *  - 호재 위치 PATCH /catalysts/{id}(계약 .8 초안): 위치 확인 → 링크, GET market 에 반영
- *  - 지역 확장 PATCH /regions/{id}(계약 .8 초안): selections 교체 + region.expand 잡
- *  - 계약 .8 초안(src/api/contract8.ts): 사람 확인 field enum·값 형·길이 검사(422), 사실 필드 사람 확인 → 같은 단지·필드의
- *    강등(GET claims demotion)을 복원(restored_by human_check). CORE 머지 후 생성 핸들러로 바뀌는 부분은 여기서만 흉내 낸다.
+ *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
+ *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
  */
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
@@ -21,7 +19,6 @@ import type {
   CatalystCreate,
   CatalystCreated,
   ClaimPatch,
-  ClaimView,
   ComplexDetail,
   ComplexRow,
   ComplexRowPage,
@@ -32,33 +29,18 @@ import type {
   JobCreate,
   JobName,
   JobRun,
-  Market,
   Provenance,
-  Region,
   RegionCreated,
-  Snapshot,
+  RegionPatched,
   ReportRequest,
   ShareLinkCreate,
   ShareLinkCreated,
 } from '@/api/types';
-import {
-  type CatalystLink,
-  type CatalystPatch,
-  type RegionPatch,
-  HUMAN_CHECK_FIELDS,
-  HUMAN_CHECK_NOTE_MAX,
-  HUMAN_CHECK_RULES,
-  HUMAN_CHECK_VALUE_MAX,
-  humanCheckFieldOf,
-  type HumanCheckField,
-} from '@/api/contract8';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
 
 export const MOCK_ROWS_KEY = 'msw.complexes.rows';
 export const MOCK_DEGRADED_KEY = 'msw.degraded';
-/** localStorage `msw.revisions` = 1 이면 최신 기준일에 발행 리비전 2(계약 .8 초안 D11-1)를 덧붙인다 */
-export const MOCK_REVISIONS_KEY = 'msw.revisions';
 /** GET /jobs/{id}를 이 횟수만큼 부르면 done */
 export const MOCK_JOB_POLLS_TO_DONE = 2;
 
@@ -93,10 +75,6 @@ const state = {
   nextJobId: 5000,
   jobs: new Map<number, MockJob>(),
   intakeOverrides: new Map<number, Intake>(),
-  /** 사람 확인으로 복원된 사실: `<complex_id>:<field>` (계약 .8 초안) */
-  restoredFacts: new Set<string>(),
-  /** 사람이 확인한 호재 위치(계약 .8 초안 PATCH /catalysts/{id}) */
-  catalystLocations: new Map<number, { confirmed: boolean; complexIds: number[] }>(),
 };
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
@@ -104,26 +82,6 @@ export function resetMockState(): void {
   state.nextJobId = 5000;
   state.jobs.clear();
   state.intakeOverrides.clear();
-  state.restoredFacts.clear();
-  state.catalystLocations.clear();
-}
-
-/** 계약 .8 초안 사람 확인 검사 — 서버(422)와 같은 규칙. 통과하면 null */
-function humanCheckProblem(body: Partial<HumanCheckCreate>): string | null {
-  const field = body.field as HumanCheckField;
-  if (!(HUMAN_CHECK_FIELDS as readonly string[]).includes(field))
-    return `field: ${String(body.field)}`;
-  const value = (body.value_text ?? '').trim();
-  if (!value || value.length > HUMAN_CHECK_VALUE_MAX) return 'value_text 길이';
-  if ((body.note ?? '').length > HUMAN_CHECK_NOTE_MAX) return 'note 길이';
-  const rule = HUMAN_CHECK_RULES[field];
-  if (!rule) return null;
-  if (rule.kind === 'ym') return /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? null : 'YYYY-MM';
-  if (!(rule.kind === 'int' ? /^-?\d+$/ : /^-?\d+(\.\d+)?$/).test(value)) return '숫자 형식';
-  const n = Number(value);
-  if ((rule.min !== undefined && n < rule.min) || (rule.max !== undefined && n > rule.max))
-    return '범위';
-  return null;
 }
 
 const nowIso = () => new Date().toISOString();
@@ -232,27 +190,6 @@ export const extraHandlers = [
     return HttpResponse.json(health);
   }),
 
-  // GET /regions/{id}/snapshots — 리비전(계약 .8 초안): 없는 필드는 1, 플래그면 최신 기준일 리비전 2
-  http.get(mswPath('/regions/:id/snapshots'), async ({ request }) => {
-    const list = (await base<Snapshot[]>(request)).map((s) => ({
-      revision: 1,
-      revision_of: null,
-      revision_reason: null,
-      ...s,
-    }));
-    if (readFlag(MOCK_REVISIONS_KEY) !== '1' || list.length === 0) return HttpResponse.json(list);
-    const latest = list[0]!;
-    const rev2 = {
-      ...latest,
-      id: Math.max(...list.map((s) => s.id)) + 1,
-      revision: 2,
-      revision_of: latest.id,
-      revision_reason: '사람 확인 입력(재판정)',
-      status: 'published' as const,
-    };
-    return HttpResponse.json([rev2, ...list]);
-  }),
-
   // GET /snapshots/{sid}/complexes — 필터·대량 행·사람 확인 반영
   http.get(mswPath('/snapshots/:sid/complexes'), async ({ request }) => {
     const page = await base<ComplexRowPage>(request);
@@ -322,6 +259,14 @@ export const extraHandlers = [
     );
   }),
 
+  // PATCH /regions/{id} — 생성 핸들러 응답(계약 예시 RegionPatched) 그대로 + 그 job_id 를 상태 있는 region.expand 잡으로
+  http.patch(mswPath('/regions/:id'), async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const patched = await base<RegionPatched>(request, 'PATCH', body);
+    registerJob('region.expand', { region_id: patched.region.id }, patched.job_id);
+    return HttpResponse.json(patched);
+  }),
+
   // PATCH /claims/{id} (202 → claim.reverify 잡) — 상태 있는 잡
   http.patch(mswPath('/claims/:id'), async ({ request, params }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<ClaimPatch>;
@@ -374,34 +319,23 @@ export const extraHandlers = [
 
   // POST /ops/human-checks (201) — 응답을 요청 값으로 맞추고 intake를 덮어쓴다
   http.post(mswPath('/ops/human-checks'), async ({ request }) => {
-    const body = (await request.json().catch(() => ({}))) as HumanCheckCreate & {
-      entity_id?: number | null;
-    };
-    const problem = humanCheckProblem(body);
-    if (problem)
-      return HttpResponse.json({ detail: `사람 확인 값 오류: ${problem}` }, { status: 422 });
+    const body = (await request.json().catch(() => ({}))) as HumanCheckCreate;
     const example = await base<HumanCheck>(request, 'POST', body);
     if (body.field !== 'intake_status') {
-      // 사실 필드(계약 .8): 0순위 후보 → 같은 단지·필드 강등 복원. 접수 배지는 그대로
-      state.restoredFacts.add(`${body.complex_id}:${body.field}`);
-      const entity = ['max_price_won', 'down_payment_pct'].includes(body.field)
-        ? 'payment_terms'
-        : body.field === 'other'
-          ? null
-          : 'complex';
+      // 사실 필드: 접수 행 없음(접수 배지는 그대로). 사실 행(entity·entity_id)은 서버가 정한다 — 목은 비운다
       return HttpResponse.json(
         {
           ...example,
           ...body,
-          entity,
-          entity_id: entity ? (body.entity_id ?? body.complex_id) : null,
+          entity: null,
+          entity_id: null,
           note: body.note ?? null,
           created_intake: null,
           suggested_job: {
             job_name: 'rejudge',
             payload: { ...(example.suggested_job?.payload ?? {}), complex_ids: [body.complex_id] },
           },
-        },
+        } satisfies HumanCheck,
         { status: 201 },
       );
     }
@@ -438,102 +372,6 @@ export const extraHandlers = [
       },
     };
     return HttpResponse.json(created, { status: 201 });
-  }),
-
-  // PATCH /regions/{id} (계약 .8 초안, D11-7) — 지역 선택 확장 → Region + region.expand 잡(새 리비전 rerank)
-  http.patch(mswPath('/regions/:id'), async ({ request }) => {
-    const body = (await request.json().catch(() => ({}))) as Partial<RegionPatch>;
-    const selections = body.selections ?? [];
-    if (selections.length === 0) {
-      return HttpResponse.json({ detail: '선택이 하나 이상 필요합니다' }, { status: 422 });
-    }
-    const region = await base<Region>(new Request(request.url));
-    const job = registerJob('region.expand' as JobName, { region_id: region.id });
-    return HttpResponse.json({ region: { ...region, selections }, job });
-  }),
-
-  // PATCH /catalysts/{id} (계약 .8 초안, D11-5) — 위치 확인 → catalyst_link(목: 단지 좌표 없음 → 거리 null·가중치 1·추정)
-  http.patch(mswPath('/catalysts/:id'), async ({ request, params }) => {
-    const body = (await request.json().catch(() => ({}))) as Partial<CatalystPatch>;
-    const id = Number(params.id);
-    const market = await base<Market>(
-      new Request(new URL('/api/snapshots/0/market', request.url).toString()),
-    );
-    const catalyst = market.catalysts.find((c) => c.id === id);
-    if (!catalyst) return HttpResponse.json({ detail: 'catalyst 없음' }, { status: 404 });
-    const confirmed = body.location_confirmed === true;
-    const hasCoord = typeof body.lat === 'number' && typeof body.lon === 'number';
-    const areas = body.living_area_ids ?? [];
-    const picked = body.complex_ids ?? [];
-    if (confirmed && !hasCoord && areas.length === 0 && picked.length === 0) {
-      return HttpResponse.json(
-        { detail: '좌표 또는 영향 생활권·단지가 필요합니다' },
-        { status: 422 },
-      );
-    }
-    let ids: number[] = [];
-    if (confirmed) {
-      const page = await base<ComplexRowPage>(
-        new Request(new URL('/api/snapshots/0/complexes', request.url).toString()),
-      );
-      const inAreas = page.items
-        .filter((r) => r.living_area !== null && areas.includes(r.living_area ?? ''))
-        .map((r) => r.complex_id);
-      ids = [...new Set([...picked, ...inAreas])];
-    }
-    state.catalystLocations.set(id, { confirmed, complexIds: ids });
-    const links: CatalystLink[] = ids.map((cid) => ({
-      complex_id: cid,
-      distance_m: null,
-      weight: 1,
-      label: '추정',
-    }));
-    return HttpResponse.json({
-      catalyst: {
-        ...catalyst,
-        location_confirmed: confirmed,
-        linked: ids.length > 0,
-        linked_complex_ids: ids,
-      },
-      links,
-    });
-  }),
-
-  // GET /snapshots/{sid}/market — 사람이 확인한 호재 위치 반영(계약 .8 초안)
-  http.get(mswPath('/snapshots/:sid/market'), async ({ request }) => {
-    const market = await base<Market>(request);
-    if (state.catalystLocations.size === 0) return HttpResponse.json(market);
-    return HttpResponse.json({
-      ...market,
-      catalysts: market.catalysts.map((c) => {
-        const loc = state.catalystLocations.get(c.id);
-        return loc
-          ? {
-              ...c,
-              location_confirmed: loc.confirmed,
-              linked: loc.complexIds.length > 0,
-              linked_complex_ids: loc.complexIds,
-            }
-          : c;
-      }),
-    } satisfies Market);
-  }),
-
-  // GET /snapshots/{sid}/claims — 사람 확인으로 복원된 사실의 강등 상태(계약 .8 초안)
-  http.get(mswPath('/snapshots/:sid/claims'), async ({ request }) => {
-    const claims = await base<ClaimView[]>(request);
-    return HttpResponse.json(
-      claims.map((claim) => {
-        const d = claim.demotion;
-        const field = humanCheckFieldOf(d?.field) ?? humanCheckFieldOf(claim.field);
-        if (!d || d.status !== 'demoted' || !field) return claim;
-        if (!state.restoredFacts.has(`${claim.complex_id}:${field}`)) return claim;
-        return {
-          ...claim,
-          demotion: { ...d, status: 'restored', restored_by: 'human_check', restored_at: nowIso() },
-        } satisfies ClaimView;
-      }),
-    );
   }),
 
   // GET /raw/{id}?as=text — 원문 텍스트(목). 출처 예시의 발췌를 excerpt_start 위치에 둔다

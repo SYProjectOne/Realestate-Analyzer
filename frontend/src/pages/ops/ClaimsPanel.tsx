@@ -3,13 +3,13 @@ import { useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { humanCheckFieldOf } from '@/api/contract8';
 import { invalidateFactViews, useClaims, useReviseClaim } from '@/api/hooks';
 import type { ClaimView } from '@/api/types';
 import { Badge, JobProgress, MetaText, useOpenProvenance } from '@/components';
 import { t } from '@/i18n';
 import { enumText, idText, QueryState, Section, useGlobalSearch } from '../_shared';
 import { HUMAN_CHECK_ANCHOR, humanCheckSearch } from './HumanCheckForm';
+import { humanCheckFieldOf } from './humanCheckRules';
 
 /**
  * G7 ClaimsPanel (M8, 계약 2026-10-09.4) — 지금 스냅샷의 contradicted 주장 목록.

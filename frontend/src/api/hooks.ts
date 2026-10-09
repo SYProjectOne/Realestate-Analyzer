@@ -17,11 +17,12 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { apiFetch, ApiError, type QueryParams } from './client';
-import type { CatalystPatch, CatalystPatched, RegionPatch, RegionPatched } from './contract8';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
 import type {
   CatalystCreate,
   CatalystCreated,
+  CatalystPatch,
+  CatalystUpdated,
   ChangeEvent,
   ChangeSeverity,
   ChecklistItem,
@@ -50,6 +51,8 @@ import type {
   RegionCandidate,
   RegionCreate,
   RegionCreated,
+  RegionPatch,
+  RegionPatched,
   Report,
   ReportRequest,
   Scenario,
@@ -696,25 +699,30 @@ export function useCreateCatalyst(): M<CatalystCreate, CatalystCreated> {
 }
 
 /**
- * PATCH /catalysts/{id} (계약 .8 초안, D11-5) — 사람이 호재 위치를 확인(location_confirmed, lat/lon 또는 영향
- * 생활권·단지)하면 서버가 catalyst_link 를 만든다(좌표 없는 단지는 distance_m=null·weight=1·라벨 추정).
- * location_confirmed=false 면 링크를 지운다. 단지 상세(호재 탭)·시장·점수 입력이 바뀌므로 사실 화면 캐시를 무효화한다.
+ * PATCH /catalysts/{id} (updateCatalyst, 계약 .8, D11-5) — 사람이 호재 위치를 확인(location_confirmed + 영향
+ * 생활권·단지, 선택 lat/lon·expected_ym)하면 서버가 catalyst_link 를 만든다(좌표 없는 단지는 distance_m=null·
+ * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 응답 `job` = 연결이 바뀌었을 때의 rejudge 잡
+ * (그대로면 null). 단지 상세(호재 탭)·시장·점수 입력이 바뀌므로 사실 화면 캐시와 잡 목록을 무효화한다.
  */
 export function useUpdateCatalystLocation(): M<
   { id: IdLike; patch: CatalystPatch },
-  CatalystPatched
+  CatalystUpdated
 > {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }) =>
-      apiFetch<CatalystPatched>(`/catalysts/${enc(id)}`, { method: 'PATCH', body: patch }),
-    onSuccess: () => invalidateFactViews(qc),
+      apiFetch<CatalystUpdated>(`/catalysts/${enc(id)}`, { method: 'PATCH', body: patch }),
+    onSuccess: (data) => {
+      invalidateFactViews(qc);
+      if (data.job) void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
   });
 }
 
 /**
- * PATCH /regions/{id} (계약 .8 초안, D11-7) — 지역 선택 확장(selections 추가·제거) = RA "지역 추가".
- * 응답 잡(region.expand)이 새 리비전에서 후보 전체 rerank 1회 + 보고서 §12 "지역 추가" 장을 만든다.
+ * PATCH /regions/{id} (updateRegion, 계약 .8, D11-7) — 지역 선택 확장(selections 추가·제거, 선택 name) = RA "지역 추가".
+ * 응답 = {region, change_event(critical), job_id(region.expand), added, removed}. 잡이 새 리비전에서 후보 전체
+ * rerank 1회 + 보고서 §12 "지역 추가" 장을 만든다. 선택이 그대로면 409.
  */
 export function useUpdateRegionSelections(regionId: IdLike): M<RegionPatch, RegionPatched> {
   const qc = useQueryClient();
