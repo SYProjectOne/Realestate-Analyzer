@@ -452,6 +452,45 @@ def test_d11_7_patch_on_literal_resolve_path_is_405(client: TestClient) -> None:
     assert r.headers.get("allow") == "GET"
 
 
+def test_minor7_every_scenario_p10_component_has_its_fact(client: TestClient) -> None:
+    """devseed 상황 C(기준일+5년) p10 성분 3.9 인데 사실값 null 이던 것(R3 3차 minor 7) — 시나리오 전부에서 p10 성분이
+    있으면 그 시점 사다리 사실값도 있다(성분과 사실값이 같은 사다리)."""
+    bad = []
+    for sc in ("base", "A", "B", "C", "D"):
+        r = client.get(f"/api/snapshots/{SNAP}/dashboard", params={"scenario": sc}, headers=WRITE)
+        assert r.status_code == 200, r.text
+        for row in r.json()["top5"]:
+            if row["components"]["p10"]["score"]["v"] is not None and row["p10"]["v"] is None:
+                bad.append((sc, row["complex_id"], row["components"]["p10"]["score"]["v"]))
+    assert not bad, bad
+
+
+def test_minor17_missing_raw_does_not_rescan_archives_per_request(tmp_path: Any) -> None:
+    """원본도 압축 구성원도 없는 원문을 반복 요청해도 압축을 다시 훑지 않는다(구성원 목록 캐시 — R3 3차 minor 17).
+    압축이 바뀌면(크기·시각) 목록을 다시 만든다."""
+    import tarfile
+
+    from app.api.routers import complexes as cx_router
+
+    src = tmp_path / "notice_pdf"
+    src.mkdir()
+    payload = tmp_path / "x.bin"
+    payload.write_bytes(b"x" * 1000)
+    archive = src / "2026-10.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        tar.add(payload, arcname="notice_pdf/2026-10-08/present.pdf")
+    cx_router._members.cache_clear()
+    for _ in range(5):
+        assert cx_router.archived_stream("notice_pdf/2026-10-08/missing.pdf", tmp_path) is None
+    info = cx_router._members.cache_info()
+    assert (info.misses, info.hits) == (1, 4), info
+    assert cx_router.archived_member("notice_pdf/2026-10-08/present.pdf", tmp_path) == b"x" * 1000
+    with tarfile.open(archive, "w:gz") as tar:  # 압축 교체 → 새 목록
+        tar.add(payload, arcname="notice_pdf/2026-10-08/missing.pdf")
+        tar.add(payload, arcname="notice_pdf/2026-10-08/present.pdf")
+    assert cx_router.archived_member("notice_pdf/2026-10-08/missing.pdf", tmp_path) == b"x" * 1000
+
+
 def _walk(obj: Any) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if isinstance(obj, dict):

@@ -42,7 +42,9 @@ def _check_stored(client: TestClient, body: dict[str, Any]) -> dict[int, ScoreTo
     # TOP 5: 범위·순위·총점 = 저장값(같은 실행)
     for row in body["top5"]:
         t = stored[row["complex_id"]]
-        assert row["judge_scope"] == (t.judge_scope or row["judge_scope"]), row["complex_id"]
+        # 저장 범위가 있으면 그 값 그대로(R3 3차 minor 8: 전에는 저장값 None 이면 늘 참인 단언)
+        assert t.judge_scope is not None, row["complex_id"]
+        assert row["judge_scope"] == t.judge_scope, row["complex_id"]
         assert row["rank"] == t.rank and row["score_run_id"] == body["score_run_id"]
         # p10 성분 점수가 있으면 p10 사실값도 있다(성분과 사실값이 같은 사다리 — 리뷰: 성분 3.9 인데 사실값 null)
         if row["components"]["p10"]["score"]["v"] is not None:

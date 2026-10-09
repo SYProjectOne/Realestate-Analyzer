@@ -185,6 +185,53 @@ def test_n_c2_no_change_day_keeps_scope_rank_and_no_event_flood(
         assert {c: v[0] for c, v in _base_totals(s, day3).items()} == {c: v[0] for c, v in totals1.items()}
 
 
+def test_n_c2_changed_phrase_is_not_carried_and_reclassified_before_publish(
+    make_ctx: Callable[..., SchedulerContext],
+    factory: sessionmaker[Session],
+    seeded: int,
+    jev: SynthJev,
+    clock: Clock,
+) -> None:
+    """N-C2 반대 경우(R3 3차 minor 8): 2일차 접수 문구가 바뀌면 분류를 복사하지 않고(미분류 → 재판정 대상) 판정기가 다시
+    분류한 뒤 publish 한다 — 이전 분류를 복사한 채 publish 하지 않는다."""
+    http = HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0)
+    page = {"html": (WP1B_FIXTURES / "hndapt_index.html").read_bytes()}
+
+    def official(_ctx: SchedulerContext) -> OfficialSiteCollector:
+        return OfficialSiteCollector(
+            http=http, render="never", targets=[SiteTarget(SITE, CX)], session_factory=factory
+        )
+
+    with respx.mock(assert_all_called=False) as router:
+        router.get(ROBOTS).respond(200, content=(WP1B_FIXTURES / "hndapt_robots.txt").read_bytes())
+        router.get(SITE).mock(
+            side_effect=lambda _req: __import__("httpx").Response(
+                200, content=page["html"], headers={"content-type": "text/html; charset=utf-8"}
+            )
+        )
+        ctx = make_ctx(collectors={"official_site": official})
+        day1 = _daily(factory, ctx, clock, date(2026, 10, 8))
+        page["html"] = page["html"].replace("마감재리스트".encode(), "잔여세대 선착순 계약 안내".encode())
+        calls = len(jev.calls)
+        day2 = _daily(factory, ctx, clock, date(2026, 10, 9))
+    http.close()
+    with factory() as s:
+        row2 = s.scalars(
+            select(IntakeStatus).where(
+                IntakeStatus.snapshot_id == day2,
+                IntakeStatus.complex_id == CX,
+                IntakeStatus.path == "official_popup",
+            )
+        ).one()
+        assert COPIED_MARK not in (row2.note or ""), row2.note  # 문구가 바뀌었으니 복사하지 않는다
+        assert (
+            "판정기 classify" in (row2.note or "") and row2.reason != "접수 문구 미분류"
+        )  # publish 전에 다시 분류
+        assert len(jev.calls) > calls  # 판정기 실제 호출(접수 classify)
+        snap2 = s.get(Snapshot, day2)
+        assert snap2 is not None and snap2.status == "published" and day2 != day1
+
+
 def test_f2_copy_intake_uses_pick_intake_rule(factory: sessionmaker[Session], seeded: int) -> None:
     """같은 경로 두 행: 나중 id 가 더 옛 날짜면 표시 행(pick_intake = 날짜 우선)을 복사한다 — id 순이면 가짜 D9-3."""
     with factory() as s:

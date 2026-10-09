@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import re
 import tarfile
 from collections import Counter
@@ -692,6 +693,24 @@ def _open_member(archive: FsPath, member: str) -> tuple[tarfile.TarFile, IO[byte
     return None
 
 
+@functools.lru_cache(maxsize=64)
+def _members(archive: str, mtime_ns: int, size: int) -> frozenset[str]:
+    """압축 구성원 이름 목록 — (경로, 수정 시각, 크기)마다 한 번만 훑는다(R3 3차 minor 17: 원본이 없을 때
+    요청마다 압축 전체를 훑던 CPU 부담 — 공유 토큰으로 반복 요청 가능). 압축이 바뀌면 다시 훑는다."""
+    del mtime_ns, size  # 캐시 키
+    names: set[str] = set()
+    with tarfile.open(archive, "r|gz") as tar:
+        for info in tar:
+            if info.isfile():
+                names.add(info.name)
+    return frozenset(names)
+
+
+def _has_member(archive: FsPath, member: str) -> bool:
+    st = archive.stat()
+    return member in _members(str(archive), st.st_mtime_ns, st.st_size)
+
+
 def _chunks(tar: tarfile.TarFile, fh: IO[bytes]) -> Iterator[bytes]:
     try:
         while chunk := fh.read(_CHUNK):
@@ -719,6 +738,8 @@ def archived_stream(rel: str, raw_dir: FsPath) -> Iterator[bytes] | None:
     member = PurePosixPath(*parts).as_posix()
     for archive in archives:
         try:
+            if not _has_member(archive, member):
+                continue  # 목록(캐시)에 없으면 압축을 풀지 않는다
             opened = _open_member(archive, member)
         except (OSError, tarfile.TarError, EOFError):
             continue
