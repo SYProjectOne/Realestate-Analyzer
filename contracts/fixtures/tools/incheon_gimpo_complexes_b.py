@@ -1231,9 +1231,18 @@ COMPLEXES_B: list[dict[str, Any]] = [
             "units_special": U(NOT_STATED),
             "officetel_units": U(NOT_STATED),
             "notice_date": U("최초 공고일 보고서 미기재(지역주택조합 일반분양분)"),
-            "winner_date": U("최초 당첨자 발표일 보고서 미기재"),
+            # W1(골든 v2 가정): 발표일 미기재 → 이번 무순위 접수일, 전매제한 도과 → 0개월
+            "winner_date": D(
+                "2026-09-15",
+                "date",
+                "최초 당첨자 발표일 보고서 미기재 — 이번 무순위(3회차 사후) 접수일 2026-09-15로 대체",
+                "m",
+                reason="접수일로 대체",
+            ),
             "move_in_ym": S("m", "2020-07", "ym", "총 3,100세대, 2020-07 준공", reason="즉시 입주"),
-            "resale_months": U("전매제한 도과(개월 수 보고서 미기재)"),
+            "resale_months": D(
+                0, "months", "조합원 자격상실분 무순위 · 전매제한 도과(보고서 §4 (B)) → 0개월", "m", reason="전매제한 도과"
+            ),
             "resale_end": None,
             "resale_release_on_registration": U(NOT_STATED),
             "residency_months": S("m", 0, "months", "거주의무 없음"),

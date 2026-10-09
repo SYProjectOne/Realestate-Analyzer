@@ -180,22 +180,22 @@
     "entity": "complex",
     "entity_id": 1,
     "field": "winner_date",
-    "value_text": "당첨자 발표 2026-05-28",
-    "label": "확인됨",
-    "reason": null,
+    "value_text": "블록별 당첨자 발표 2026-05-28~06-02 중 마지막 2026-06-02(보수적, 골든 v2 가정; G5-1 공고 2026-05-28)",
+    "label": "추정",
+    "reason": "블록별 발표일 중 마지막",
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
-    "excerpt": "당첨자 발표 2026-05-28",
-    "excerpt_start": 380,
-    "excerpt_end": 397,
-    "raw_document_id": 9001,
+    "excerpt": "블록별 당첨자 발표 2026-05-28~06-02 중 마지막 2026-06-02(보수적, 골든 v2 가정; G5-1 공고 2026-05-28)",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
     "source_kind": "notice_pdf",
     "http_status": 200,
-    "source_rank": 1,
+    "source_rank": null,
     "chosen": true,
     "conflict_group": null,
     "conflicts": [],
-    "formula_text": null,
+    "formula_text": "블록별 당첨자 발표 2026-05-28~06-02 중 마지막 2026-06-02(보수적, 골든 v2 가정; G5-1 공고 2026-05-28)",
     "judgment_seq": null,
     "compare_judgment_seq": null
   },
@@ -211,8 +211,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "계약 2026-06-13~16",
-    "excerpt_start": 398,
-    "excerpt_end": 414,
+    "excerpt_start": 380,
+    "excerpt_end": 396,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -236,8 +236,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "계약 2026-06-13~16",
-    "excerpt_start": 398,
-    "excerpt_end": 414,
+    "excerpt_start": 380,
+    "excerpt_end": 396,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -286,8 +286,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "전매제한 6개월(최초 당첨자 발표일 기준)",
-    "excerpt_start": 415,
-    "excerpt_end": 438,
+    "excerpt_start": 397,
+    "excerpt_end": 420,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -305,12 +305,12 @@
     "entity": "complex",
     "entity_id": 1,
     "field": "resale_end",
-    "value_text": "당첨자 발표 2026-05-28 + 6개월 = 2026-11-28",
+    "value_text": "당첨자 발표 2026-06-02 + 6개월 = 2026-12-02",
     "label": "추정",
     "reason": "산술",
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
-    "excerpt": "당첨자 발표 2026-05-28 + 6개월 = 2026-11-28",
+    "excerpt": "당첨자 발표 2026-06-02 + 6개월 = 2026-12-02",
     "excerpt_start": null,
     "excerpt_end": null,
     "raw_document_id": null,
@@ -320,7 +320,7 @@
     "chosen": true,
     "conflict_group": null,
     "conflicts": [],
-    "formula_text": "당첨자 발표 2026-05-28 + 6개월 = 2026-11-28",
+    "formula_text": "당첨자 발표 2026-06-02 + 6개월 = 2026-12-02",
     "judgment_seq": null,
     "compare_judgment_seq": null
   },
@@ -336,8 +336,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "거주의무 없음",
-    "excerpt_start": 439,
-    "excerpt_end": 446,
+    "excerpt_start": 421,
+    "excerpt_end": 428,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -361,8 +361,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "재당첨제한 없음",
-    "excerpt_start": 447,
-    "excerpt_end": 455,
+    "excerpt_start": 429,
+    "excerpt_end": 437,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -411,8 +411,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "84C 30~31층 1,318,000,000원(발코니 확장 포함 금액)",
-    "excerpt_start": 456,
-    "excerpt_end": 495,
+    "excerpt_start": 438,
+    "excerpt_end": 477,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -461,8 +461,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "공급금액은 발코니 확장 포함 금액",
-    "excerpt_start": 496,
-    "excerpt_end": 514,
+    "excerpt_start": 478,
+    "excerpt_end": 496,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -536,8 +536,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "118K 1,871,000,000원(블록별 최고가 상단)",
-    "excerpt_start": 515,
-    "excerpt_end": 546,
+    "excerpt_start": 497,
+    "excerpt_end": 528,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -561,8 +561,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "118K 1,793,000,000원(블록별 최고가 하단)",
-    "excerpt_start": 547,
-    "excerpt_end": 578,
+    "excerpt_start": 529,
+    "excerpt_end": 560,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -586,8 +586,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "공급금액은 발코니 확장 포함 금액",
-    "excerpt_start": 496,
-    "excerpt_end": 514,
+    "excerpt_start": 478,
+    "excerpt_end": 496,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -661,8 +661,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "124A 1,879,000,000원",
-    "excerpt_start": 579,
-    "excerpt_end": 598,
+    "excerpt_start": 561,
+    "excerpt_end": 580,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -686,8 +686,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "공급금액은 발코니 확장 포함 금액",
-    "excerpt_start": 496,
-    "excerpt_end": 514,
+    "excerpt_start": 478,
+    "excerpt_end": 496,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -761,8 +761,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "계약금 5%",
-    "excerpt_start": 599,
-    "excerpt_end": 605,
+    "excerpt_start": 581,
+    "excerpt_end": 587,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -786,8 +786,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "1차 계약금 1,000만원",
-    "excerpt_start": 606,
-    "excerpt_end": 620,
+    "excerpt_start": 588,
+    "excerpt_end": 602,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -811,8 +811,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "중도금 60% 이자후불",
-    "excerpt_start": 621,
-    "excerpt_end": 633,
+    "excerpt_start": 603,
+    "excerpt_end": 615,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -836,8 +836,8 @@
     "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164&pblancNo=2026000164&atchmnflSeqNo=1797790&atchmnflSn=4",
     "checked_at": "2026-10-07",
     "excerpt": "잔금 35%",
-    "excerpt_start": 634,
-    "excerpt_end": 640,
+    "excerpt_start": 616,
+    "excerpt_end": 622,
     "raw_document_id": 9001,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -2805,22 +2805,22 @@
     "entity": "complex_type",
     "entity_id": null,
     "field": "floor_sample_price_won",
-    "value_text": "84㎡ 2층 842,100,000원",
-    "label": "확인됨",
-    "reason": null,
-    "url": "https://sd.hndapt.co.kr/pdf/송도%20한내들%20센트럴리버_입주자모집공고_전문.pdf",
+    "value_text": "현재 구매가 하단 8.134억 = 임의공급 84D 최저 813,400,000원(보고서 §4 (B) '8.13~8.99억', 84㎡ 타입 묶음 범위; 본청약 84A 2층 842,100,000원)",
+    "label": "추정",
+    "reason": "보고서 현재 구매가 범위(타입 묶음)",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026940088&pblancNo=2026940088&atchmnflSeqNo=1797241&atchmnflSn=4",
     "checked_at": "2026-10-07",
-    "excerpt": "84㎡ 2층 842,100,000원",
-    "excerpt_start": 265,
-    "excerpt_end": 284,
-    "raw_document_id": 9011,
+    "excerpt": "현재 구매가 하단 8.134억 = 임의공급 84D 최저 813,400,000원(보고서 §4 (B) '8.13~8.99억', 84㎡ 타입 묶음 범위; 본청약 84A 2층 842,100,000원)",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
     "source_kind": "notice_pdf",
     "http_status": 200,
-    "source_rank": 1,
+    "source_rank": null,
     "chosen": true,
     "conflict_group": null,
     "conflicts": [],
-    "formula_text": null,
+    "formula_text": "현재 구매가 하단 8.134억 = 임의공급 84D 최저 813,400,000원(보고서 §4 (B) '8.13~8.99억', 84㎡ 타입 묶음 범위; 본청약 84A 2층 842,100,000원)",
     "judgment_seq": null,
     "compare_judgment_seq": null
   },
@@ -2836,8 +2836,8 @@
     "url": "https://sd.hndapt.co.kr/pdf/송도%20한내들%20센트럴리버_입주자모집공고_전문.pdf",
     "checked_at": "2026-10-07",
     "excerpt": "발코니 확장 전세대 무상",
-    "excerpt_start": 285,
-    "excerpt_end": 298,
+    "excerpt_start": 265,
+    "excerpt_end": 278,
     "raw_document_id": 9011,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -2961,8 +2961,8 @@
     "url": "https://sd.hndapt.co.kr/pdf/송도%20한내들%20센트럴리버_입주자모집공고_전문.pdf",
     "checked_at": "2026-10-07",
     "excerpt": "발코니 확장 전세대 무상",
-    "excerpt_start": 285,
-    "excerpt_end": 298,
+    "excerpt_start": 265,
+    "excerpt_end": 278,
     "raw_document_id": 9011,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -3061,8 +3061,8 @@
     "url": "https://sd.hndapt.co.kr/pdf/송도%20한내들%20센트럴리버_입주자모집공고_전문.pdf",
     "checked_at": "2026-10-07",
     "excerpt": "발코니 확장 전세대 무상",
-    "excerpt_start": 285,
-    "excerpt_end": 298,
+    "excerpt_start": 265,
+    "excerpt_end": 278,
     "raw_document_id": 9011,
     "source_kind": "notice_pdf",
     "http_status": 200,
@@ -3130,22 +3130,22 @@
     "entity": "payment_terms",
     "entity_id": null,
     "field": "down_payment_pct",
-    "value_text": "계약금 5%(1차 500만, 입주 때까지 총 2,000만)",
-    "label": "확인됨",
-    "reason": null,
+    "value_text": "계약금 (1차 500만 + 입주 때까지 2,000만 = 2,500만) ÷ P_mid 8.56억 = 2.92%",
+    "label": "추정",
+    "reason": "정액 계약금 환산",
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
-    "excerpt": "계약금 5%(1차 500만, 입주 때까지 총 2,000만)",
-    "excerpt_start": 163,
-    "excerpt_end": 195,
-    "raw_document_id": 9014,
+    "excerpt": "계약금 (1차 500만 + 입주 때까지 2,000만 = 2,500만) ÷ P_mid 8.56억 = 2.92%",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
     "source_kind": "official_site",
     "http_status": 200,
-    "source_rank": 2,
+    "source_rank": null,
     "chosen": true,
     "conflict_group": null,
     "conflicts": [],
-    "formula_text": null,
+    "formula_text": "계약금 (1차 500만 + 입주 때까지 2,000만 = 2,500만) ÷ P_mid 8.56억 = 2.92%",
     "judgment_seq": null,
     "compare_judgment_seq": null
   },
@@ -3161,8 +3161,8 @@
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
     "excerpt": "1차 계약금 500만원",
-    "excerpt_start": 196,
-    "excerpt_end": 208,
+    "excerpt_start": 163,
+    "excerpt_end": 175,
     "raw_document_id": 9014,
     "source_kind": "official_site",
     "http_status": 200,
@@ -3186,8 +3186,8 @@
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
     "excerpt": "중도금 60% 이자후불(연 4.80%, 2026-09-22 기준)",
-    "excerpt_start": 209,
-    "excerpt_end": 245,
+    "excerpt_start": 176,
+    "excerpt_end": 212,
     "raw_document_id": 9014,
     "source_kind": "official_site",
     "http_status": 200,
@@ -3211,8 +3211,8 @@
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
     "excerpt": "잔금 35%",
-    "excerpt_start": 246,
-    "excerpt_end": 252,
+    "excerpt_start": 213,
+    "excerpt_end": 219,
     "raw_document_id": 9014,
     "source_kind": "official_site",
     "http_status": 200,
@@ -3236,8 +3236,8 @@
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
     "excerpt": "중도금 1회차 2026-10-30(당초 10-18에서 변경)",
-    "excerpt_start": 253,
-    "excerpt_end": 286,
+    "excerpt_start": 220,
+    "excerpt_end": 253,
     "raw_document_id": 9014,
     "source_kind": "official_site",
     "http_status": 200,
@@ -3261,8 +3261,8 @@
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
     "excerpt": "중도금 2회차 2026-12-18",
-    "excerpt_start": 287,
-    "excerpt_end": 305,
+    "excerpt_start": 254,
+    "excerpt_end": 272,
     "raw_document_id": 9014,
     "source_kind": "official_site",
     "http_status": 200,
@@ -3486,8 +3486,8 @@
     "url": "https://sd.hndapt.co.kr/",
     "checked_at": "2026-10-07",
     "excerpt": "선착순 동·호수 지정 계약 중(팝업 2026-10-07)",
-    "excerpt_start": 306,
-    "excerpt_end": 337,
+    "excerpt_start": 273,
+    "excerpt_end": 304,
     "raw_document_id": 9014,
     "source_kind": "official_site",
     "http_status": 200,
@@ -3929,6 +3929,31 @@
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
+    "field": "floor_sample_price_won",
+    "value_text": "현재 구매가 하단 = 84㎡ 묶음 최저 84C 1층 620,000,000원(보고서 '6.26~6.99억'; 84A 저층가 미기재)",
+    "label": "추정",
+    "reason": "보고서 현재 구매가 범위(타입 묶음)",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000222&pblancNo=2025000222&atchmnflSeqNo=1553383&atchmnflSn=2",
+    "checked_at": "2026-10-07",
+    "excerpt": "현재 구매가 하단 = 84㎡ 묶음 최저 84C 1층 620,000,000원(보고서 '6.26~6.99억'; 84A 저층가 미기재)",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
+    "source_kind": "notice_pdf",
+    "http_status": 200,
+    "source_rank": null,
+    "chosen": true,
+    "conflict_group": null,
+    "conflicts": [],
+    "formula_text": "현재 구매가 하단 = 84㎡ 묶음 최저 84C 1층 620,000,000원(보고서 '6.26~6.99억'; 84A 저층가 미기재)",
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  },
+  {
+    "id": "fp_4_019",
+    "kind": "field",
+    "entity": "complex_type",
+    "entity_id": null,
     "field": "balcony_won",
     "value_text": "발코니 84A 5,981,000원",
     "label": "확인됨",
@@ -3950,7 +3975,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_019",
+    "id": "fp_4_020",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -3975,7 +4000,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_020",
+    "id": "fp_4_021",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4000,7 +4025,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_021",
+    "id": "fp_4_022",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4025,7 +4050,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_022",
+    "id": "fp_4_023",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4050,7 +4075,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_023",
+    "id": "fp_4_024",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4075,7 +4100,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_024",
+    "id": "fp_4_025",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4100,7 +4125,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_025",
+    "id": "fp_4_026",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4125,7 +4150,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_026",
+    "id": "fp_4_027",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4150,7 +4175,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_027",
+    "id": "fp_4_028",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4175,7 +4200,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_028",
+    "id": "fp_4_029",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4200,7 +4225,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_029",
+    "id": "fp_4_030",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4225,7 +4250,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_030",
+    "id": "fp_4_031",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4250,7 +4275,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_031",
+    "id": "fp_4_032",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4275,7 +4300,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_032",
+    "id": "fp_4_033",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4300,7 +4325,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_033",
+    "id": "fp_4_034",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4325,7 +4350,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_034",
+    "id": "fp_4_035",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4350,7 +4375,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_035",
+    "id": "fp_4_036",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -4375,7 +4400,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_036",
+    "id": "fp_4_037",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -4400,7 +4425,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_037",
+    "id": "fp_4_038",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -4425,7 +4450,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_038",
+    "id": "fp_4_039",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -4450,7 +4475,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_039",
+    "id": "fp_4_040",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -4475,7 +4500,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_040",
+    "id": "fp_4_041",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -4500,7 +4525,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_041",
+    "id": "fp_4_042",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4525,7 +4550,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_042",
+    "id": "fp_4_043",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4550,7 +4575,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_043",
+    "id": "fp_4_044",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4575,7 +4600,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_044",
+    "id": "fp_4_045",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4600,7 +4625,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_045",
+    "id": "fp_4_046",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4625,7 +4650,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_046",
+    "id": "fp_4_047",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4650,7 +4675,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_047",
+    "id": "fp_4_048",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4675,7 +4700,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_048",
+    "id": "fp_4_049",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4700,7 +4725,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_049",
+    "id": "fp_4_050",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4725,7 +4750,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_050",
+    "id": "fp_4_051",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -4750,7 +4775,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_051",
+    "id": "fp_4_052",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -4775,7 +4800,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_052",
+    "id": "fp_4_053",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -4800,7 +4825,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_053",
+    "id": "fp_4_054",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -4825,7 +4850,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_4_054",
+    "id": "fp_4_055",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -6729,6 +6754,31 @@
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
+    "field": "floor_sample_price_won",
+    "value_text": "현재 구매가 하단 = 84㎡ 묶음 최저 84C 최고가 645,900,000원(보고서 '84C 6.51억'; 84A 저층가는 공고 층별가, 보고서 미기재)",
+    "label": "추정",
+    "reason": "보고서 현재 구매가 범위(타입 묶음)",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026910216&pblancNo=2026910216&atchmnflSeqNo=1945122&atchmnflSn=3",
+    "checked_at": "2026-10-07",
+    "excerpt": "현재 구매가 하단 = 84㎡ 묶음 최저 84C 최고가 645,900,000원(보고서 '84C 6.51억'; 84A 저층가는 공고 층별가, 보고서 미기재)",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
+    "source_kind": "notice_pdf",
+    "http_status": 200,
+    "source_rank": null,
+    "chosen": true,
+    "conflict_group": null,
+    "conflicts": [],
+    "formula_text": "현재 구매가 하단 = 84㎡ 묶음 최저 84C 최고가 645,900,000원(보고서 '84C 6.51억'; 84A 저층가는 공고 층별가, 보고서 미기재)",
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  },
+  {
+    "id": "fp_6_019",
+    "kind": "field",
+    "entity": "complex_type",
+    "entity_id": null,
     "field": "balcony_won",
     "value_text": "발코니 84A 5,458,000원",
     "label": "확인됨",
@@ -6750,7 +6800,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_019",
+    "id": "fp_6_020",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6775,7 +6825,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_020",
+    "id": "fp_6_021",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6800,7 +6850,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_021",
+    "id": "fp_6_022",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6825,7 +6875,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_022",
+    "id": "fp_6_023",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6850,7 +6900,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_023",
+    "id": "fp_6_024",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6875,7 +6925,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_024",
+    "id": "fp_6_025",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6900,7 +6950,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_025",
+    "id": "fp_6_026",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6925,7 +6975,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_026",
+    "id": "fp_6_027",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6950,7 +7000,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_027",
+    "id": "fp_6_028",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -6975,7 +7025,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_028",
+    "id": "fp_6_029",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -7000,7 +7050,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_029",
+    "id": "fp_6_030",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -7025,7 +7075,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_030",
+    "id": "fp_6_031",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -7050,7 +7100,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_031",
+    "id": "fp_6_032",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -7075,7 +7125,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_032",
+    "id": "fp_6_033",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -7100,7 +7150,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_033",
+    "id": "fp_6_034",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7125,7 +7175,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_034",
+    "id": "fp_6_035",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7150,7 +7200,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_035",
+    "id": "fp_6_036",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7175,7 +7225,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_036",
+    "id": "fp_6_037",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7200,7 +7250,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_037",
+    "id": "fp_6_038",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7225,7 +7275,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_038",
+    "id": "fp_6_039",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7250,7 +7300,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_039",
+    "id": "fp_6_040",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7275,7 +7325,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_040",
+    "id": "fp_6_041",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -7300,7 +7350,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_041",
+    "id": "fp_6_042",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -7325,7 +7375,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_042",
+    "id": "fp_6_043",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -7350,7 +7400,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_043",
+    "id": "fp_6_044",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -7375,7 +7425,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_044",
+    "id": "fp_6_045",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -7400,7 +7450,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_045",
+    "id": "fp_6_046",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -7425,7 +7475,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_6_046",
+    "id": "fp_6_047",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -14904,6 +14954,31 @@
     "kind": "field",
     "entity": "complex",
     "entity_id": 12,
+    "field": "winner_date",
+    "value_text": "최초 당첨자 발표일 보고서 미기재 — 이번 무순위(3회차 사후) 접수일 2026-09-15로 대체",
+    "label": "추정",
+    "reason": "접수일로 대체",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026910242&pblancNo=2026910242&atchmnflSeqNo=1972087&atchmnflSn=2",
+    "checked_at": "2026-10-07",
+    "excerpt": "최초 당첨자 발표일 보고서 미기재 — 이번 무순위(3회차 사후) 접수일 2026-09-15로 대체",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
+    "source_kind": "notice_pdf",
+    "http_status": 200,
+    "source_rank": null,
+    "chosen": true,
+    "conflict_group": null,
+    "conflicts": [],
+    "formula_text": "최초 당첨자 발표일 보고서 미기재 — 이번 무순위(3회차 사후) 접수일 2026-09-15로 대체",
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  },
+  {
+    "id": "fp_12_007",
+    "kind": "field",
+    "entity": "complex",
+    "entity_id": 12,
     "field": "move_in_ym",
     "value_text": "총 3,100세대, 2020-07 준공",
     "label": "확인됨",
@@ -14925,7 +15000,32 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_007",
+    "id": "fp_12_008",
+    "kind": "field",
+    "entity": "complex",
+    "entity_id": 12,
+    "field": "resale_months",
+    "value_text": "조합원 자격상실분 무순위 · 전매제한 도과(보고서 §4 (B)) → 0개월",
+    "label": "추정",
+    "reason": "전매제한 도과",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026910242&pblancNo=2026910242&atchmnflSeqNo=1972087&atchmnflSn=2",
+    "checked_at": "2026-10-07",
+    "excerpt": "조합원 자격상실분 무순위 · 전매제한 도과(보고서 §4 (B)) → 0개월",
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
+    "source_kind": "notice_pdf",
+    "http_status": 200,
+    "source_rank": null,
+    "chosen": true,
+    "conflict_group": null,
+    "conflicts": [],
+    "formula_text": "조합원 자격상실분 무순위 · 전매제한 도과(보고서 §4 (B)) → 0개월",
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  },
+  {
+    "id": "fp_12_009",
     "kind": "field",
     "entity": "complex",
     "entity_id": 12,
@@ -14950,7 +15050,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_008",
+    "id": "fp_12_010",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -14975,7 +15075,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_009",
+    "id": "fp_12_011",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -15000,7 +15100,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_010",
+    "id": "fp_12_012",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -15025,7 +15125,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_011",
+    "id": "fp_12_013",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -15050,7 +15150,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_012",
+    "id": "fp_12_014",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -15075,7 +15175,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_013",
+    "id": "fp_12_015",
     "kind": "field",
     "entity": "complex_type",
     "entity_id": null,
@@ -15100,7 +15200,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_014",
+    "id": "fp_12_016",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -15125,7 +15225,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_015",
+    "id": "fp_12_017",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -15150,7 +15250,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_016",
+    "id": "fp_12_018",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -15175,7 +15275,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_017",
+    "id": "fp_12_019",
     "kind": "field",
     "entity": "payment_terms",
     "entity_id": null,
@@ -15200,7 +15300,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_018",
+    "id": "fp_12_020",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -15225,7 +15325,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_019",
+    "id": "fp_12_021",
     "kind": "field",
     "entity": "competition",
     "entity_id": null,
@@ -15250,7 +15350,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_020",
+    "id": "fp_12_022",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -15275,7 +15375,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_021",
+    "id": "fp_12_023",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
@@ -15300,7 +15400,7 @@
     "compare_judgment_seq": null
   },
   {
-    "id": "fp_12_022",
+    "id": "fp_12_024",
     "kind": "field",
     "entity": "remaining_event",
     "entity_id": null,
