@@ -35,6 +35,7 @@ jobs:
       fixtures_contract: ${{ steps.filter.outputs.fixtures_contract }}
       frontend: ${{ steps.filter.outputs.frontend }}
       infra: ${{ steps.filter.outputs.infra }}
+      regress: ${{ steps.filter.outputs.regress }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -89,6 +90,10 @@ jobs:
               - 'frontend/**'
             infra:
               - 'infra/**'
+            regress:
+              - 'backend/tests/regress/**'
+              - 'e2e/**'
+              - 'scripts/tasks.py'
 
   backend-lint:
     needs: changes
@@ -192,3 +197,48 @@ jobs:
       - if: steps.decide.outputs.run == 'true'
         name: test
         run: npm test
+
+  # WP9 R3: 회귀(RA §9 T1~T18 통합 + e2e 흐름 3개). main push·수동·contracts/공통·회귀 관련 변경 때.
+  # 실패해도 다른 잡과 독립 — 결과 요약은 로그 '회귀 요약' 절과 아티팩트(junit·Playwright json·trace).
+  regress:
+    needs: changes
+    if: >-
+      github.event_name != 'pull_request' || needs.changes.outputs.contracts == 'true' ||
+      needs.changes.outputs.shared == 'true' || needs.changes.outputs.fixtures_contract == 'true' ||
+      needs.changes.outputs.regress == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      JUDGE_ADAPTER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - working-directory: backend
+        run: |
+          uv sync --all-extras --frozen
+          uv run playwright install --with-deps chromium   # 보고서 PDF(D4)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: python scripts/tasks.py regress
+        run: python scripts/tasks.py regress
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regress-results
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          if-no-files-found: ignore

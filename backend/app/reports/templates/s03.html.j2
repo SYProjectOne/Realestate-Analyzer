@@ -1,16 +1,18 @@
 {% from "macros.html.j2" import fact, sec_head, disclaimer %}
 <section id="s3">
   {{ sec_head(3) }}
-  <p class="lead">사업주체 명의 기준 7클래스 중 민간분양 아파트(private_sale_apt)만 포함한다 — 포함 {{ data.classify_rows | selectattr("inclusion_class", "equalto", "private_sale_apt") | list | length }}개, 그 밖 {{ data.excluded | length }}개, 미해결(review) {{ data.classify_rows | selectattr("unresolved") | list | length }}개.</p>
+  {% set cxs = data.complexes %}
+  <p class="lead">사업주체 명의 기준 7클래스 중 민간분양 아파트(private_sale_apt)만 포함한다. 판정 범위(meta §1-3-4) — 판정 대상 {{ cxs | selectattr("judge_scope", "equalto", "판정 대상") | list | length }}개, 참고 후보(순위만) {{ cxs | selectattr("judge_scope", "equalto", "참고") | list | length }}개, 보류(공고 전) {{ cxs | selectattr("judge_scope", "equalto", "보류") | list | length }}개, 미해결(분류 판정 미해결) {{ cxs | selectattr("judge_scope", "equalto", "미해결") | list | length }}개, 제외 {{ data.excluded | length }}개.</p>
   <table>
-    <thead><tr><th>단지</th><th>분류</th><th>확률</th><th>판정</th><th>비고</th></tr></thead>
+    <thead><tr><th>단지</th><th>분류</th><th>확률</th><th>판정</th><th>판정 범위</th><th>비고</th></tr></thead>
     <tbody>
     {% for r in data.classify_rows %}
-      <tr><td>{{ r.name }}</td><td>{{ r.inclusion_class }}</td><td>{{ fact(r.prob) }}</td><td>{{ r.decision or "미판정" }}</td>
-        <td>{% if r.unresolved %}<span class="badge warn">미해결 — 사람 검수</span>{% endif %}</td></tr>
+      <tr><td>{{ r.name }}</td><td>{{ r.inclusion_class }}</td><td>{{ fact(r.prob) }}</td><td>{{ r.decision or "미판정" }}</td><td>{{ r.scope_text }}</td>
+        <td>{% if r.unresolved %}<span class="badge warn">미해결 — 사람 검수, 사다리·점수 없음</span>{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>
+  <p class="note">참고 후보 = 포함 확정·가격 있음이나 접수 상태가 확인 불가·불가 — 순위(rerank)만, 사다리 미실행. 보류 = 분양가 미공개(공고 후 재판정).</p>
   <h3>제외·경계 목록</h3>
   <table>
     <thead><tr><th>단지</th><th>분류</th><th>사유</th></tr></thead>

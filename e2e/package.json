@@ -1,0 +1,20 @@
+{
+  "name": "subscription-analyzer-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WP9 R3 사용자 흐름 e2e(실제 API + devseed DB + Mock 판정기) · T16 성능 측정",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "perf": "playwright test -c perf/playwright.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}

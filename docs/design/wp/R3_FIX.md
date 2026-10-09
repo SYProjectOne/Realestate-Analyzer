@@ -56,3 +56,17 @@
 - M14 `_dates`가 실제 저장 형태(`[{"kind","date"}]`, `interim_schedule.due_date`) 처리 + 3개월 캘린더 테스트.
 - minor 7 부록 A 도구별 임계값 테스트. minor 26 C1·C7 라벨 반올림·라벨 표기. minor 39 출처 누락 시 dev 예외·prod 경고 로그(API와 같은 규칙).
 - C2·M3: F2의 `analysis/scope.py`·`analysis/price_view.py`가 머지되면 그것을 쓰도록 — 이번 라운드에는 F2와 동시 진행이므로 **인터페이스(함수 이름·시그니처)를 R3_FIX에 적힌 대로 가정**하고 import를 지연(없으면 기존 동작)시키는 대신, F2 머지 후 CEO가 재지시할 수 있게 보고에 적는다. `tests/reports/_seed.py` → `app.api.devseed` 재사용으로 교체.
+
+## WP9 통합 발견 배정 (2026-10-09 추가) — `backend/tests/regress/` 실패 8개 + e2e 2개
+CEO 결정:
+- **W1 (T1 b)**: 골든 v2(사람 승인)가 기준. `complexes.json`을 v2 inputs와 맞춘다(그란테르 접수 = "미정"(추가 공급 미정, 공고 이력 있음 — meta §1-3-4), 한내들 계약금 2.92%(1차 500만+2,000만 환산, 추정), 가격 반올림 규칙 등). 차이 목록은 CHANGELOG. → WP9-후속
+- **W5 (T11)**: RA §6-2 규칙(준공 2020년 이후 = 신축) 유지. T11 픽스처는 스위첸 생활권을 사용자가 편집한 하위 생활권(장기·운양 법정동)으로 둔 변형 — 2020년 이후 신축 거래 0건 → 대체 = 가장 최근 준공 한강센트럴자이(2017) → 보정. 리버시티(2020)는 신축이므로 대체 아님. → WP9-후속
+- **W2 (Mock 판정기 해시 불일치)**: 회귀·e2e용 Mock 녹화를 "합성 판정 녹화"로 재생성 — FakeJev/SynthJev(결정적)로 파이프라인을 한 번 돌려 실제 payload hash 그대로 봉투를 저장(라벨: 합성, README 명시). 보고서 재구성 녹화는 T7 등 보고서 대조용으로 유지. R4 실호출 후 실녹화로 교체 가능. → WP9-후속
+배정:
+- W3 입주물량 추정 행 provenance 누락(`collectors/stats/supply.py:185`, `scheduler/collect.py:194`) → **F1a**
+- W4 applyhome_id 조회에 지역 조건 없음(`normalize/store.py:196`, `archive.py:159`) + W12c 같은 블록 단지 중복 행 → **F1b**
+- W6 화면 라벨 c=0.12(`api/routers/complexes.py:100`) · W7 미보정 갭 None(`complexes.py:145`) API 쪽 → **F3**; W7 저장(comparable_set/gap 미보정값 영속) → **F2**
+- W8 G2 첫 요청 size 1000 > 1초, W9 G2 1,000행 잘림(페이징) → **F3**
+- W10 worker 녹화 재생·오프라인 모드(`scheduler/context.py` default_collectors) → **F2**
+- W11 devseed `household_stat` 미적재 → **F3**
+- W12a 판정기 첫 사용 중 다운 시 모델 없는 버전 error 행 잔존 → **F1b**(M12와 함께); W12b `score_0_10` 소수 3자리 저장 → **F2**

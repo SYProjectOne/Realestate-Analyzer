@@ -82,6 +82,38 @@ uv run pytest tests/fixtures_contract                                      # 스
 | T17 | 멱등성 | `raw/applyhome_list/2026-10-07.json` `raw/documents.json` `judgments/_index.json` | 같은 원문 2회 → raw_document 증가 0; 같은 payload 2회 → 실제 호출 1 | WP1·WP3 |
 | T18 | 판정기 다운 | `raw/scenarios/t18_judge_down.json` `raw/documents.json` | degraded=true, 점수 미계산, 복구 후 rejudge 1 | WP7 |
 
+## R3 통합 회귀 매핑 (WP9 R3, 계약 2026-10-09.3)
+
+위 표의 각 사례를 **시스템 경계**(devseed 적재 + reference.refresh 오프라인 → API·worker → 응답·DB 행)에서 다시 검사하는
+테스트. 위치 `backend/tests/regress/` (모두 `@pytest.mark.regress`), e2e 는 저장소 루트 `e2e/`. 실행:
+`python scripts/tasks.py regress` (요약 출력) — 백엔드만 `--no-e2e`, T16 프론트 측정 추가 `--perf`.
+
+| 사례 | 회귀 테스트(backend/tests/regress/) | 경계 | e2e |
+| --- | --- | --- | --- |
+| R3·T1 | test_t01_top5.py — (a) 대시보드·리스트 = expected_scores.json, (b) DB 입력 → v2 골든·파일 입력 → v2 골든 | API · DB→점수 입력 | — |
+| R3·T2 | test_t02_tie.py — #127 B tie·chosen(API compare·dashboard), 낮은 confidence decide → top2 tie(worker) | API · worker | — |
+| R3·T3 | test_t03_switzen_403.py — 403 확인 불가·D 제외 → 사람 확인 → rejudge 1 → 후보 포함(판정기 fake·mock) | API · worker | flows/2-g7-human-check-rejudge |
+| R3·T4 | test_t04_outlier.py — collect.weekly(rtms 사본) → comparable_set '이상치 제외', 원본 행 유지 | worker · API | — |
+| R3·T5 | test_t05_conflict.py — conflict_group 1, 청약홈 chosen, compare 미호출, 출처 패널 둘 다 | store · worker · API | — |
+| R3·T6 | test_t06_claim_split.py — 복합 문장 분할, verify 입력 원자 주장만, 복합 문장 거부 | judge 경로 · worker | — |
+| R3·T7 | test_t07_rerank_anchor.py — #71→#124, 후보 8→16 1회 호출·delta_rerank·새 호출 값만 | API · worker | — |
+| R3·T8 | test_t08_no_change_day.py — 같은 목록·팝업 → 이벤트·rejudge·호출 0, 바뀐 팝업 → critical 1·rejudge 1 | worker | — |
+| R3·T9 | test_t09_payment_terms.py — 공고 2건 → payment_terms 2행·현재=최신·critical·유동성 +1 | worker · API | — |
+| R3·T10 | test_t10_ladder_horizons.py — 3 horizon·asof_plus_3y 같은 목표·연율 | worker · API | — |
+| R3·T11 | test_t11_substitute.py — substitute·보정/미보정 중앙값·라벨 c=0.015·API 미보정 갭 | worker · API | — |
+| R3·T12 | test_t12_sensitivity.py — /sensitivity 12 변형 = 골든, unstable 플래그 | API · worker | — |
+| R3·T13 | test_t13_missing_provenance.py — dev 500 contract_violation / prod 확인 불가(출처 누락)+경고 / 프론트 lint | API · eslint | — |
+| R3·T14 | test_t14_guard.py — 차단·blocked 행·로그 원문 없음(실제 어댑터·mock) | judge 경로 · API | — |
+| R3·T15 | test_t15_report.py — POST /reports html·pdf(11·12, diff) → worker → 다운로드 검사, contradicted 거부 | API · worker | flows/1-g8-report-pdf |
+| R3·T16 | test_t16_perf.py — uvicorn HTTP 첫 페이지 < 1 s(size 50·G2 의 size 1000) | HTTP | perf/t16.perf.ts(rAF 프레임 간격) |
+| R3·T17 | test_t17_idempotency.py — 수집 2회 raw 증가 0, 같은 payload 실제 호출 1, 재판정 2회차 호출 0 | worker · adapter | — |
+| R3·T18 | test_t18_judge_down.py — degraded·점수 미계산·/health·대시보드 배너 데이터, 복구 후 rejudge 1 | worker · API | — |
+| (D2) | test_flow_g0_bootstrap.py — '송도' → POST /regions → bootstrap(청약홈 녹화 재생) → G1·G2, 기존 지역 불변 | API · worker | flows/3-g0-region-bootstrap |
+
+판정기: `fake` = 실제 어댑터(JevMcpAdapter: guard·캐시·judgment_log)에 결정적 가짜 전송, `mock` = JUDGE_ADAPTER=mock 녹화 재생.
+**주의**: 이 픽스처의 녹화 payload 는 보고서 재구성이라 파이프라인 payload 와 hash 가 다르다(위 '데이터 주의' 5) → Mock 으로
+재판정하면 전부 review 가 되어 종합 점수가 미계산이 된다(T3 mock 변형·e2e 흐름 2 실패 원인). R4 실호출 녹화로 대체 예정(runbook §10-5).
+
 ## 판정 녹화 쓰는 법 (WP3 MockAdapter)
 
 ```python
