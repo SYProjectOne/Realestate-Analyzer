@@ -32,7 +32,7 @@ from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.gap import compute_gap
 from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms
 from app.analysis.scope import EXCLUDED_CLASSES, INTAKE_PRIORITY, JudgeScope, judge_scope, pick_intake
-from app.analysis.types import GapResult, Label
+from app.analysis.types import GapResult, Label, weakest_label
 from app.core.contracts_gen import (
     AgePremiumCoef,
     BenchmarkInput,
@@ -246,18 +246,22 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
         move_in = cx_prov.get((cx.id, "move_in_ym"))
         winner = cx_prov.get((cx.id, "winner_date"))
 
-        def lab(fp: FieldProvenance | None) -> Label | None:
-            if fp is None or overlay.is_demoted(fp.entity, fp.entity_id, fp.field):
+        def lab(fp: FieldProvenance | None, value: object) -> Label | None:
+            if fp is not None and overlay.is_demoted(fp.entity, fp.entity_id, fp.field):
                 return None  # 강등(검증 모순) = 값 없음
+            if fp is None:
+                # 값은 있는데 출처 행이 없으면 '확인 불가'(API 의 '확인 불가(출처 누락)'과 같다) — null 로 두면 점수
+                # 라벨 합성이 '확인됨'으로 본다(R3 3차 minor 6, AGENTS 규칙 5)
+                return "확인 불가" if value is not None else None
             return _label(fp.label)
 
         f.labels = {
-            "resale": lab(resale),
-            "residency": lab(residency),
-            "down_payment": lab(down),
-            "move_in": lab(move_in),  # 계약 .4 move_in_label(M2)
+            "resale": lab(resale, cx.resale_months),
+            "residency": lab(residency, cx.residency_months),
+            "down_payment": lab(down, cur.down_payment_pct if cur is not None else None),
+            "move_in": lab(move_in, cx.move_in_ym),  # 계약 .4 move_in_label(M2)
             # 당첨일 라벨(R3 M2) → ComplexScoreInput.winner_label(계약 .7) — 유동성·전매 종료 라벨 합성
-            "winner": lab(winner),
+            "winner": lab(winner, cx.winner_date),
         }
         price_fp = _prov_of(f.price.max_ref, type_prov, terms_prov) if f.price is not None else None
         for fp in (resale, residency, down, move_in, price_fp):
@@ -301,10 +305,13 @@ def _price(
     if not view.known:
         return
     f.price_low, f.price_high = view.low_won, view.high_won
-    fp = _prov_of(view.max_ref, type_prov, terms_prov)
-    # 최신 공고 가격(price_by_type)을 썼는데 그 출처 행이 없으면 타입 행 라벨로 대신하지 않는다(R3 재리뷰 F2) —
-    # API(FactMaker.field)처럼 '확인 불가(가격 출처 누락)'(null → gap 성분 사유)
-    f.price_label = _label(fp.label) if fp is not None else None
+    # 라벨 = 구매가에 쓴 모든 필드(low·high 구성: 공급가·발코니·옵션·할인) 출처 라벨 중 가장 약한 것 — API
+    # ``FactMaker.combine`` 과 같다(R3 3차 minor 6: 이전에는 최고가 출처만). 출처 행이 하나라도 없으면 타입 행
+    # 라벨로 대신하지 않는다(R3 재리뷰 F2) — null → gap 성분 '확인 불가(가격 출처 누락)'
+    refs = [*view.low_refs, *view.high_refs]
+    fps = [_prov_of(r, type_prov, terms_prov) for r in refs] or [_prov_of(view.max_ref, type_prov, terms_prov)]
+    labs = [_label(fp.label) if fp is not None else None for fp in fps]
+    f.price_label = weakest_label(*[x for x in labs if x is not None]) if labs and None not in labs else None
     f.price_composition = "+".join(view.composition)
 
 

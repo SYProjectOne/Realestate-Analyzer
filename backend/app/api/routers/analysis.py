@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.contract import check_body
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found, validation_error
-from app.api.facts import LABEL_UNKNOWN, FactMaker, fact, unknown
+from app.api.facts import LABEL_UNKNOWN, FactMaker, fact, unknown, weakest
 from app.api.jobs import now_iso
 from app.api.routers.complexes import gap_view
 from app.api.routers.snapshots import SCENARIO_PATTERN
@@ -359,6 +359,10 @@ def preview_scenario(
             labels["down_payment"] = _label(
                 fm.field("payment_terms", pay.id, "down_payment_pct", pay.down_payment_pct)
             )
+        # 가격 라벨 = 구매가 범위(low·high) 구성 필드 중 가장 약한 것 — 파이프라인과 같다(minor 6)
+        pr = price_range(fm, b)
+        if pr["price_low"]["v"] is not None and pr["price_high"]["v"] is not None:
+            labels["price"] = weakest([pr["price_low"]["label"], pr["price_high"]["label"]])
         cx_in = score_input(b, labels, asof_date=snap.asof_date)
         if cx_in.judge_scope in ("제외", "미해결"):
             continue

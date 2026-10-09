@@ -5,6 +5,7 @@
 | M-10 · D11-2 | '호재 아님' 판정은 catalyst·연결·출처를 지우지 않는다. 뉴스 후보는 stage '호재 아님', 사람이 넣은 호재는 단계 유지 + 판정 병기 |
 | D11-7 | region.expand 잡: 새 기준일 스냅샷(바탕 = 이전 발행) → 전체 판정 → publish, 보고서 비교 기준 = 바탕(§12 지역 추가 장) |
 | D11-8 | backup 잡: SQLite 백업 파일 + 원문 증분 복사(두 번째는 건너뜀), 매일 03:00 시간표 |
+| minor 6 | 파이프라인 사실 라벨: 값이 있는데 출처 행이 없으면 '확인 불가'(null 이면 점수 라벨 합성이 '확인됨'으로 본다) |
 | minor 3 | 접수 분류 복사는 같은 판정기 버전의 분류만, 버전이 바뀐 재판정은 옛 버전 분류를 미분류로 되돌린다 |
 """
 
@@ -264,5 +265,31 @@ def test_minor3_intake_carry_respects_adapter_version(factory: sessionmaker[Sess
         assert reset_stale_classification(s, later.id, "v2") == [row.id]
         assert row.reason == UNCLASSIFIED and CLASSIFIED_MARK not in (row.note or "")
         assert reset_stale_classification(s, later.id, "v1") == []  # 이미 미분류
+        s.rollback()
+
+
+def test_minor6_value_without_provenance_is_unknown_label_not_confirmed(
+    factory: sessionmaker[Session], seeded: int
+) -> None:
+    from sqlalchemy import delete
+
+    from app.models import Complex, Region
+    from app.scheduler.inputs import load_facts
+
+    with factory() as s:
+        cx = s.get(Complex, 7)
+        assert cx is not None and cx.resale_months is not None
+        s.execute(
+            delete(FieldProvenance).where(
+                FieldProvenance.entity == "complex", FieldProvenance.entity_id == 7,
+                FieldProvenance.field == "resale_months",
+            )
+        )  # fmt: skip
+        s.flush()
+        snap, region = s.get(Snapshot, seeded), s.get(Region, 1)
+        assert snap is not None and region is not None
+        f7 = next(f for f in load_facts(s, snap, region) if f.complex_id == 7)
+        assert f7.labels["resale"] == "확인 불가"
+        assert f7.labels["residency"] is not None  # 출처 행이 있는 값은 그 라벨
         s.rollback()
 

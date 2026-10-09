@@ -26,6 +26,7 @@ rejudge 아님), HumanCheck 대상은 (entity, field) 쌍 목록이 아니라 **
 | S7 | '호재 아님' | 판정기 '호재 아님'이면 catalyst 행을 지웠다(연결·출처까지) | 지우지 않는다. 뉴스 후보 → `stage` '호재 아님'(목록·보드·점수에서 제외), 사람이 넣은 호재 → 단계 유지 + note 에 '판정기: 호재 아님' 병기. `catalysts_discarded` 항목에 `kept: true` | D11-2 · M-10 |
 | S8 | `rejudge_needed` | 저장 범위 ≠ 현재 범위면 어느 스냅샷이든 true | 그 지역 **최신 리비전**에서, score_run 실행 **뒤** 바뀐 사실로 범위가 달라질 때만 true(발행된 옛 리비전은 늘 false). 목록 CSV 에 `rejudge_needed` 열(0/1) | minor 2 · minor 5 |
 | S9 | 상황 B·D 접근성 | 접수 상태만 봤다 | §6-7: A·C = 비공식 경로 포함 접수 가능 AND 통장 조건, B·D = **현재 조건 공고의 공급 경로**(`ComplexScoreInput.current_supply_kind` 무순위·임의·선착순)이고 접수 가능일 때만 충족. 규제 = 재당첨제한·규제지역도 본다 | RA 부분(§6-7) |
+| S11 | `ComplexScoreInput` 라벨(파이프라인·미리보기) | `price_label` = 최고가 출처 라벨만, 미리보기는 null. 값이 있는데 출처 행이 없으면 null(→ '확인됨'으로 합성) | `price_label` = 구매가 low·high 구성 필드(공급가·대표층가·발코니·옵션·할인) 출처 라벨 중 가장 약한 것(API `price_range` 와 같음, 출처 행이 하나라도 없으면 null → gap '확인 불가(가격 출처 누락)'). 파이프라인은 값이 있는데 출처 행이 없는 사실 라벨을 **'확인 불가'** 로 싣는다(null 의미 '값이 있으면 확인됨'은 외부 입력용으로만 남음) | minor 6 |
 | S10 | 계약 외 메서드 | 매개변수 경로와 모양이 같은 글자 경로(`/regions/resolve` PATCH)가 422 | 계약에 없는 메서드면 405 + `Allow`(글자 그대로 경로 우선 매칭) | D11-7 후속 |
 
 ### 스키마 추가(선택 필드 — 옛 입력도 그대로 검증)
@@ -58,8 +59,11 @@ rejudge 아님), HumanCheck 대상은 (entity, field) 쌍 목록이 아니라 **
 
 ### fixtures (R3c CORE — 계약 .8)
 
-매니페스트(`contracts/fixtures.sha256.json`) 사유: R3c CORE: 계약 .8 스냅샷 리비전(발행 스냅샷 재판정은 새 리비전 — 봉투 snapshot_id 12→13)과 §6-7 상황 B·D 접근성(현재 공고 공급 경로)으로 상황 decide payload 3건 변경 — 합성 판정 녹화 재생성
-생성기(`tools/record_synth_judgments.py`)로만 다시 만들었고 `--check` 일치(봉투 293개, decide 3건 hash 교체, 나머지는 snapshot_id 표기만). 계약 스키마 외 데이터 변경 없음.
+이 브랜치에서 두 번 다시 만들었다(변경마다 새 사유 — 매니페스트 history):
+1. 매니페스트 사유: R3c CORE: 계약 .8 스냅샷 리비전(발행 스냅샷 재판정은 새 리비전 — 봉투 snapshot_id 12→13)과 §6-7 상황 B·D 접근성(현재 공고 공급 경로)으로 상황 decide payload 3건 변경 — 합성 판정 녹화 재생성
+2. 매니페스트(`contracts/fixtures.sha256.json`) 사유: R3c CORE: minor 6 파이프라인 구매가 라벨 = 구성 필드(공급가·발코니·옵션) 중 가장 약한 라벨(API 와 같음)로 카드·명제의 가격 라벨이 바뀌어 decide 5·noul 30·rerank 1 payload 변경 — 합성 판정 녹화 재생성
+
+생성기(`tools/record_synth_judgments.py`)로만 다시 만들었고 `--check` 일치(봉투 293개). 계약 스키마 외 데이터 변경 없음.
 
 ## 2026-10-09.7
 
