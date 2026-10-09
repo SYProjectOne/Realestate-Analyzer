@@ -24,6 +24,8 @@ sale_period = 분양(모집공고) 연도 ≥ 기준연도 − 3 → '고가 분
 머리표가 없는 행(사람·devseed 입력)은 건드리지 않는다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 import json
@@ -236,7 +238,9 @@ def prov_row(
 
 def unchoose_provenance(session: Session, entity: str, entity_id: int) -> None:
     for fp in session.scalars(
-        select(FieldProvenance).where(FieldProvenance.entity == entity, FieldProvenance.entity_id == entity_id)
+        select(FieldProvenance).where(
+            FieldProvenance.entity == entity, FieldProvenance.entity_id == entity_id
+        )
     ):
         fp.chosen = False
 
@@ -348,7 +352,11 @@ def _sale_price(notice: _Notice, models: dict[tuple[str, str], tuple[RawDocument
     if best is None:
         return None
     span = json_object_at(text, "HOUSE_TY", best)
-    excerpt = text[span[0] : span[1]] if span else f'"HOUSE_TY":"{best}","LTTOT_TOP_AMOUNT":"{priced[best] // 10_000}"'
+    excerpt = (
+        text[span[0] : span[1]]
+        if span
+        else f'"HOUSE_TY":"{best}","LTTOT_TOP_AMOUNT":"{priced[best] // 10_000}"'
+    )
     return _SalePrice(best, priced[best], doc, excerpt, span)
 
 
@@ -388,17 +396,22 @@ def _trade_groups(session: Session, region_id: int) -> list[_Group]:
     doc_ids = {t.raw_document_id for t in trades if t.raw_document_id is not None}
     lawd: dict[int, str] = {}
     if doc_ids:
-        for rid, url in session.execute(select(RawDocument.id, RawDocument.url).where(RawDocument.id.in_(doc_ids))):
+        for rid, url in session.execute(
+            select(RawDocument.id, RawDocument.url).where(RawDocument.id.in_(doc_ids))
+        ):
             m = _LAWD_RE.search(url or "")
             if m:
                 lawd[rid] = m.group(1)
     codes = {t.legal_dong_code for t in trades if t.legal_dong_code}
     by_code = (
-        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))} if codes else {}
+        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))}
+        if codes
+        else {}
     )
     groups: dict[tuple[str, str], _Group] = {}
     for t in trades:
         row = by_code.get(t.legal_dong_code) if t.legal_dong_code else None
+        sgg: str | None
         if row is not None:
             dong, sgg = _dong_name(row), row.sigungu_code
         else:
@@ -406,13 +419,17 @@ def _trade_groups(session: Session, region_id: int) -> list[_Group]:
             sgg = t.legal_dong_code[:5] if t.legal_dong_code else lawd.get(t.raw_document_id or -1)
         if not dong:
             continue
-        g = groups.setdefault((normalize_apt_name(t.apt_name), dong), _Group(normalize_apt_name(t.apt_name), dong))
+        g = groups.setdefault(
+            (normalize_apt_name(t.apt_name), dong), _Group(normalize_apt_name(t.apt_name), dong)
+        )
         g.sggs.add(sgg)
         g.trades.append(t)
     return list(groups.values())
 
 
-def _match(name: str, dong: str, sgg: str | None, move_in_year: int | None, groups: Sequence[_Group]) -> list[_Group]:
+def _match(
+    name: str, dong: str, sgg: str | None, move_in_year: int | None, groups: Sequence[_Group]
+) -> list[_Group]:
     """정규화 이름 + 법정동 → 후보 묶음(0·1·여럿)."""
     here = [g for g in groups if g.dong == dong and (sgg is None or sgg in g.sggs or g.sggs <= {None})]
     exact = [g for g in here if g.name == name]
@@ -421,7 +438,9 @@ def _match(name: str, dong: str, sgg: str | None, move_in_year: int | None, grou
     pool = exact or [
         g
         for g in here
-        if len(name) >= MIN_CONTAIN_LEN and len(g.name) >= MIN_CONTAIN_LEN and (g.name in name or name in g.name)
+        if len(name) >= MIN_CONTAIN_LEN
+        and len(g.name) >= MIN_CONTAIN_LEN
+        and (g.name in name or name in g.name)
     ]
     if move_in_year is not None:
         pool = [g for g in pool if g.build_year is None or abs(g.build_year - move_in_year) <= 1]
@@ -596,7 +615,9 @@ def _note(case: _Case, vals: dict[str, Any], tag: str, substitute_for: str | Non
     kind = "분양권 거래(입주 전)" if case.presale else "입주 후 실거래"
     parts = [
         tag,
-        f"{SUBSTITUTE_NOTE} — 생활권 {substitute_for} 자체 표본 0, 원 생활권 {case.living_area}" if substitute_for else "",
+        f"{SUBSTITUTE_NOTE} — 생활권 {substitute_for} 자체 표본 0, 원 생활권 {case.living_area}"
+        if substitute_for
+        else "",
         f"분양가 = 청약홈 공식 API 공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가(84㎡ 최근접, 확인됨)",
         f"{kind} = rtms 전용 80~85㎡·해제 제외 {case.window} {vals['n_trades']}건(고점 = 입주 후 받은 전체)",
         f"sale_period: {vals['_period_formula']}(라벨 추정)",
@@ -604,7 +625,9 @@ def _note(case: _Case, vals: dict[str, Any], tag: str, substitute_for: str | Non
     return " · ".join(p for p in parts if p)
 
 
-def _write_prov(session: Session, row: Benchmark, case: _Case, vals: dict[str, Any], tag: str, sub: bool) -> None:
+def _write_prov(
+    session: Session, row: Benchmark, case: _Case, vals: dict[str, Any], tag: str, sub: bool
+) -> None:
     n, sale = case.notice, case.sale
     label: Label = "추정" if sub else case.label
     trade_labels: list[Label] = ["확인됨" if t.source == "openapi" else "재가공" for t in case.trades]
@@ -615,10 +638,12 @@ def _write_prov(session: Session, row: Benchmark, case: _Case, vals: dict[str, A
     median_src = sorted(case.trades, key=lambda t: (t.price_won, t.deal_date))[len(case.trades) // 2]
     low = min(case.trades, key=lambda t: (t.price_won, t.deal_date))
     high = max(case.trades, key=lambda t: (t.price_won, t.deal_date))
-    docs = {
-        t.raw_document_id for t in (median_src, low, high, peak) if t.raw_document_id is not None
-    }
-    by_id = {d.id: d for d in session.scalars(select(RawDocument).where(RawDocument.id.in_(docs)))} if docs else {}
+    docs = {t.raw_document_id for t in (median_src, low, high, peak) if t.raw_document_id is not None}
+    by_id = (
+        {d.id: d for d in session.scalars(select(RawDocument).where(RawDocument.id.in_(docs)))}
+        if docs
+        else {}
+    )
     span = json_object_at(n.text, "HOUSE_MANAGE_NO", n.hm)
     notice_ex = n.text[span[0] : span[1]] if span else n.name
     rows = [
@@ -655,7 +680,13 @@ def _write_prov(session: Session, row: Benchmark, case: _Case, vals: dict[str, A
         )  # fmt: skip
 
     trade_prov("trade_low_won", vals["trade_low_won"], low, _fmt_won(low.price_won), f"최저({win})")
-    trade_prov("trade_median_won", vals["trade_median_won"], median_src, _fmt_won(vals["trade_median_won"]), f"중앙값({win})")
+    trade_prov(
+        "trade_median_won",
+        vals["trade_median_won"],
+        median_src,
+        _fmt_won(vals["trade_median_won"]),
+        f"중앙값({win})",
+    )
     trade_prov("trade_high_won", vals["trade_high_won"], high, _fmt_won(high.price_won), f"최고({win})")
     trade_prov("n_trades", vals["n_trades"], median_src, f"{vals['n_trades']}건", f"건수({win})")
     trade_prov("peak_won", vals["peak_won"], peak, _fmt_won(peak.price_won), "입주 후 받은 거래 중 최고")
@@ -714,7 +745,9 @@ def build_benchmarks(session: Session, region_id: int, *, asof_date: str) -> Ben
                 wanted.append((tag, c, vals, la))
 
     existing: dict[str, Benchmark] = {}
-    for b in session.scalars(select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)):
+    for b in session.scalars(
+        select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)
+    ):
         if b.note and b.note.startswith(BENCHMARK_TAG):
             existing.setdefault(b.note.split("]", 1)[0] + "]", b)
     seen: set[str] = set()
@@ -742,4 +775,3 @@ def build_benchmarks(session: Session, region_id: int, *, asof_date: str) -> Ben
             res.removed += 1
     session.flush()
     return res
-

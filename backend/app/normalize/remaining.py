@@ -20,6 +20,8 @@ kind: 04·06 → '무순위', 11(임의공급 엔드포인트 포함) → '임�
 값 변경 = notice(결과 문구만 바뀌면 info). 수치·날짜(notice_date·apply_dates·units)는 field_provenance(확인됨).
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 import json
@@ -171,7 +173,9 @@ def _api_notices(session: Session, region_id: int) -> dict[tuple[str, str], _Not
 
 
 def _api_units(session: Session, n: _Notice, kind: ah_api.ApiKind) -> None:
-    doc = _latest_by_url(session, ah_api.doc_url(ah_api.ENDPOINTS[kind].model, ah_api.item_params(n.hm, n.pb)))
+    doc = _latest_by_url(
+        session, ah_api.doc_url(ah_api.ENDPOINTS[kind].model, ah_api.item_params(n.hm, n.pb))
+    )
     text = read_raw_row(doc) if doc is not None else None
     if doc is None or text is None:
         return
@@ -181,7 +185,9 @@ def _api_units(session: Session, n: _Notice, kind: ah_api.ApiKind) -> None:
         gen, spc = d.get("SUPLY_HSHLDCO"), d.get("SPSPLY_HSHLDCO")
         if not ty or not isinstance(gen, int) or isinstance(gen, bool):
             continue
-        units[normalize_type_code(ty)] = gen + (spc if isinstance(spc, int) and not isinstance(spc, bool) else 0)
+        units[normalize_type_code(ty)] = gen + (
+            spc if isinstance(spc, int) and not isinstance(spc, bool) else 0
+        )
     if units:
         n.units, n.units_doc = units, doc
         n.units_excerpt = "; ".join(f"{k} {v}세대" for k, v in units.items())
@@ -337,7 +343,11 @@ def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[t
 def _prov(session: Session, ev: RemainingEvent, n: _Notice) -> None:
     key = f"{n.hm}:{n.kind}:{n.pb}"
     span = json_object_at(n.text, "HOUSE_MANAGE_NO", n.hm) if n.api else None
-    ex = n.text[span[0] : span[1]] if span else f"{n.name} 모집공고일 {n.notice_date} 청약접수 {' ~ '.join(n.apply_dates)}"
+    ex = (
+        n.text[span[0] : span[1]]
+        if span
+        else f"{n.name} 모집공고일 {n.notice_date} 청약접수 {' ~ '.join(n.apply_dates)}"
+    )
     rows: list[ProvenanceRow] = []
     if n.notice_date:
         rows.append(
@@ -430,20 +440,20 @@ def sync_remaining_events(
                 )
             )  # fmt: skip
         else:
-            changed = {k: v for k, v in vals.items() if fmt_value(getattr(row, k)) != fmt_value(v)}
+            changed = {a: v for a, v in vals.items() if fmt_value(getattr(row, a)) != fmt_value(v)}
             if not changed:
                 res.unchanged += 1
             else:
-                for k, v in changed.items():
-                    old = getattr(row, k)
-                    setattr(row, k, v)
-                    if k == "raw_document_id":
+                for attr, v in changed.items():
+                    old = getattr(row, attr)
+                    setattr(row, attr, v)
+                    if attr == "raw_document_id":
                         continue
                     res.events.append(
                         make_event(
-                            entity="remaining_event", entity_id=row.id, field=k, old=old, new=v,
+                            entity="remaining_event", entity_id=row.id, field=attr, old=old, new=v,
                             snapshot_id=snapshot_id, complex_id=row.complex_id, detected_at=detected_at,
-                            severity="info" if k in ("result_text", "ratio_text") else "notice",
+                            severity="info" if attr in ("result_text", "ratio_text") else "notice",
                         )
                     )  # fmt: skip
                 res.updated += 1

@@ -19,6 +19,8 @@
 판단 없음 — 날짜 산술과 표 조회뿐이다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 import calendar
@@ -136,11 +138,15 @@ def _wants(
             pct = _v(it.get("pct"))
             if not isinstance(seq, int):
                 continue
-            note = f"자동: 공고 {cur.notice_no}({cur.notice_kind or '공급'}) 납부 조건" + (f", {pct}%" if pct is not None else "")
+            note = f"자동: 공고 {cur.notice_no}({cur.notice_kind or '공급'}) 납부 조건" + (
+                f", {pct}%" if pct is not None else ""
+            )
             dated("중도금", f"중도금 {seq}회차 납부일", _day(it.get("due_date")), note)
     if cx.winner_date and cx.resale_months:
         end = add_months_date(cx.winner_date, int(cx.resale_months))
-        note = "자동: 당첨자 발표일 기산" + (" · 등기 시 해제 가능" if cx.resale_release_on_registration else "")
+        note = "자동: 당첨자 발표일 기산" + (
+            " · 등기 시 해제 가능" if cx.resale_release_on_registration else ""
+        )
         dated("만료", f"전매제한 종료(당첨자 발표일 + {cx.resale_months}개월, 산술)", end, note)
     if cx.move_in_ym and cx.residency_months:
         end = add_months_date(f"{cx.move_in_ym}-01", int(cx.residency_months))
@@ -196,7 +202,9 @@ def _estimated(session: Session, complex_ids: list[int]) -> dict[int, dict[str, 
 def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> ChecklistSync:
     """지역 단지들의 체크리스트 항목을 사실 테이블과 맞춘다. flush 만 한다(commit 은 호출자)."""
     res = ChecklistSync()
-    complexes = list(session.scalars(select(Complex).where(Complex.region_id == region_id).order_by(Complex.id)))
+    complexes = list(
+        session.scalars(select(Complex).where(Complex.region_id == region_id).order_by(Complex.id))
+    )
     ids = [c.id for c in complexes]
     terms: dict[int, list[PaymentTerms]] = defaultdict(list)
     if ids:
@@ -218,16 +226,21 @@ def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> Check
             continue
         for w in _wants(cx, terms.get(cx.id, []), estimated.get(cx.id, {}), asof_date):
             res.by_kind[w.kind] = res.by_kind.get(w.kind, 0) + 1
-            it = existing.get((w.complex_id, w.kind, w.title))
-            if it is None:
+            found = existing.get((w.complex_id, w.kind, w.title))
+            if found is None:
                 it = ChecklistItem(
-                    complex_id=w.complex_id, kind=w.kind, title=w.title, due_date=w.due_date, status="open", note=w.note
+                    complex_id=w.complex_id,
+                    kind=w.kind,
+                    title=w.title,
+                    due_date=w.due_date,
+                    status="open",
+                    note=w.note,
                 )
                 session.add(it)
                 existing[(w.complex_id, w.kind, w.title)] = it
                 res.inserted += 1
-            elif it.status == "open" and it.due_date != w.due_date:
-                it.due_date = w.due_date
+            elif found.status == "open" and found.due_date != w.due_date:
+                found.due_date = w.due_date
                 res.updated += 1
             else:
                 res.unchanged += 1

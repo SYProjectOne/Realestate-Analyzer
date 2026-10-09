@@ -29,27 +29,41 @@ def test_human_url_becomes_unclassified_candidate(db_session: Session, region: R
     )
     assert out.created
     cat = out.catalyst
-    assert (cat.name, cat.kind, cat.stage, cat.decision) == ("○○선 연장 기본계획 고시", "기타", "미확정", None)
+    assert (cat.name, cat.kind, cat.stage, cat.decision) == (
+        "○○선 연장 기본계획 고시",
+        "기타",
+        "미확정",
+        None,
+    )
     assert cat.location_confirmed is False and cat.lat is None and cat.lon is None
     assert cat.source_url == "https://www.example.go.kr/notice/123"
     assert cat.note is not None and "기본계획을 고시했다" in cat.note
     assert cat.stage_prob is None and cat.judgment_seq is None and cat.expected_ym is None
     assert db_session.scalar(select(func.count()).select_from(CatalystLink)) == 0
 
-    again = catalyst_candidate(db_session, region.id, url="https://www.example.go.kr/notice/123", title="다른 제목")
+    again = catalyst_candidate(
+        db_session, region.id, url="https://www.example.go.kr/notice/123", title="다른 제목"
+    )
     assert not again.created and again.catalyst.id == cat.id
 
 
 @pytest.mark.parametrize(
     ("url", "title"),
-    [("javascript:alert(1)", "제목"), ("ftp://x.y/z", "제목"), ("https://x.y/z", "   "), ("not a url", "제목")],
+    [
+        ("javascript:alert(1)", "제목"),
+        ("ftp://x.y/z", "제목"),
+        ("https://x.y/z", "   "),
+        ("not a url", "제목"),
+    ],
 )
 def test_invalid_input_is_rejected(db_session: Session, region: Region, url: str, title: str) -> None:
     with pytest.raises(CatalystInputError):
         catalyst_candidate(db_session, region.id, url=url, title=title)
 
 
-def test_news_items_become_candidates_without_filtering(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_news_items_become_candidates_without_filtering(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     body = {
         "items": [
             {
@@ -69,7 +83,13 @@ def test_news_items_become_candidates_without_filtering(db_session: Session, add
             {"title": "", "originallink": "https://news.example.com/empty", "description": "제목 없음"},
         ]
     }
-    doc = add_raw(json.dumps(body, ensure_ascii=False), source_kind="news", url=NEWS_URL, region_id=region.id, ext="json")
+    doc = add_raw(
+        json.dumps(body, ensure_ascii=False),
+        source_kind="news",
+        url=NEWS_URL,
+        region_id=region.id,
+        ext="json",
+    )
     res = catalysts_from_news(db_session, region.id, [doc])
     rows = list(db_session.scalars(select(Catalyst).order_by(Catalyst.id)))
     assert [(c.name, c.source_url) for c in rows] == [

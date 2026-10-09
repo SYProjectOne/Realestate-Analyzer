@@ -65,15 +65,20 @@ def test_supply_rows_get_estimate_provenance_from_complex_sources(
         assert again.written == 0 and s.scalar(select(func.count()).select_from(FieldProvenance)) == n
 
         # 세대수가 바뀌면 새 출처 행이 채택되고 옛 행은 남는다(chosen=false)
-        s.scalars(select(FieldProvenance).where(FieldProvenance.field == "units_total")).one().value_text = "520"
+        s.scalars(
+            select(FieldProvenance).where(FieldProvenance.field == "units_total")
+        ).one().value_text = "520"
         load_supply(s, region.id, estimate_supply([SupplyInput(4, "la_1", "2029-03", 520)]))
         write_supply_provenance(s, region.id)
         assert _prov(s, row.id)["units"].value_text == "520"
-        assert s.scalar(
-            select(func.count()).select_from(FieldProvenance).where(
-                FieldProvenance.entity == "supply", FieldProvenance.field == "units"
+        assert (
+            s.scalar(
+                select(func.count())
+                .select_from(FieldProvenance)
+                .where(FieldProvenance.entity == "supply", FieldProvenance.field == "units")
             )
-        ) == 2
+            == 2
+        )
 
 
 def test_missing_complex_source_is_counted_not_invented(

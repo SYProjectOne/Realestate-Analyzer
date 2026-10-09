@@ -72,7 +72,9 @@ def detail_url(hm: str, kind: ah_api.ApiKind) -> str:
     return ah_api.doc_url(ah_api.ENDPOINTS[kind].detail, ah_api.item_params(hm, hm))
 
 
-def model_rows(hm: str, types: list[tuple[str, int | None, int]], *, special: int = 0) -> list[dict[str, Any]]:
+def model_rows(
+    hm: str, types: list[tuple[str, int | None, int]], *, special: int = 0
+) -> list[dict[str, Any]]:
     """types = [(주택형 원문, 최고가(만원) | None, 일반 세대수)]."""
     return [
         {

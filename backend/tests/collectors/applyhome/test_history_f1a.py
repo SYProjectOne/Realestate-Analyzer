@@ -7,6 +7,8 @@
 - 키가 없으면 [] (웹 목록은 조회 기간 제한이 있어 과거 N년을 받지 못한다).
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 import json
@@ -63,10 +65,14 @@ class Api:
         path = request.url.path
         if path.endswith("getAPTLttotPblancDetail"):
             rows = LISTS[p["cond[SUBSCRPT_AREA_CODE_NM::EQ]"]]
-            return httpx.Response(200, json={"data": rows, "matchCount": len(rows), "page": 1, "perPage": 100})
+            return httpx.Response(
+                200, json={"data": rows, "matchCount": len(rows), "page": 1, "perPage": 100}
+            )
         if path.endswith("getAPTLttotPblancMdl"):
             hm = p["cond[HOUSE_MANAGE_NO::EQ]"]
-            data = [{"HOUSE_MANAGE_NO": hm, "PBLANC_NO": hm, "HOUSE_TY": "084.9000A", "LTTOT_TOP_AMOUNT": "60000"}]
+            data = [
+                {"HOUSE_MANAGE_NO": hm, "PBLANC_NO": hm, "HOUSE_TY": "084.9000A", "LTTOT_TOP_AMOUNT": "60000"}
+            ]
             return httpx.Response(200, json={"data": data, "matchCount": 1})
         raise AssertionError(f"예상 밖 요청: {request.url}")
 
@@ -76,12 +82,16 @@ def client() -> HttpClient:
     return HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0)
 
 
-def test_history_window_and_model_pages(db_session: Session, seeded_region: Region, client: HttpClient) -> None:
+def test_history_window_and_model_pages(
+    db_session: Session, seeded_region: Region, client: HttpClient
+) -> None:
     api = Api()
     snap = make_snapshot(asof="2026-10-08")
     with respx.mock() as router:
         router.route(host="api.odcloud.kr").mock(side_effect=api)
-        col = ApplyhomeCollector(http=client, session=db_session, today=lambda: date(2026, 10, 8), service_key=FAKE_KEY)
+        col = ApplyhomeCollector(
+            http=client, session=db_session, today=lambda: date(2026, 10, 8), service_key=FAKE_KEY
+        )
         docs = col.fetch_history(seeded_region, snap)
 
     lists = [u for u in api.calls if u.path.endswith("Detail")]

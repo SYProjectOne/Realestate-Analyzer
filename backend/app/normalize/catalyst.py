@@ -12,6 +12,8 @@ source_url = 원문 링크. 종류·단계는 판정기 P4 classify(``scheduler/
 - ``catalysts_from_news(session, region_id, docs)`` — 뉴스 원문(source_kind='news', 성공 행) → 후보들.
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -89,7 +91,9 @@ def catalyst_candidate(
     if not name:
         raise CatalystInputError("제목이 비어 있다")
     found = session.scalars(
-        select(Catalyst).where(Catalyst.region_id == region_id, Catalyst.source_url == link).order_by(Catalyst.id)
+        select(Catalyst)
+        .where(Catalyst.region_id == region_id, Catalyst.source_url == link)
+        .order_by(Catalyst.id)
     ).first()
     if found is not None:
         return CatalystCandidate(found, created=False)

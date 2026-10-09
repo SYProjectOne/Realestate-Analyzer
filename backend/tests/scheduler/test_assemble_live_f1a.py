@@ -49,7 +49,11 @@ def test_live_benchmark_samples_incheon_gimpo(db_session: Session, raw_dir: Path
     key = _live_key()
     if not key:
         pytest.skip("DATA_GO_KR_KEY 없음 (ENV_FILE 로 .env 경로를 준다)")
-    upsert_legal_dongs(db_session, parse_legal_dong_zip((REFERENCE / "legal_dong_full.zip").read_bytes()), source_date="2026-09-01")
+    upsert_legal_dongs(
+        db_session,
+        parse_legal_dong_zip((REFERENCE / "legal_dong_full.zip").read_bytes()),
+        source_date="2026-09-01",
+    )
     r = json.loads((FIXTURE / "region.json").read_text(encoding="utf-8"))
     region = Region(
         id=r["id"], name=r["name"], query_text=r["query_text"], selections=r["selections"], sido_codes=r["sido_codes"],
@@ -58,7 +62,13 @@ def test_live_benchmark_samples_incheon_gimpo(db_session: Session, raw_dir: Path
         status="ready", created_at=r["created_at"],
     )  # fmt: skip
     db_session.add(region)
-    snap = Snapshot(region_id=region.id, asof_date=ASOF, status="building", degraded=False, created_at=f"{ASOF}T06:00:00+09:00")
+    snap = Snapshot(
+        region_id=region.id,
+        asof_date=ASOF,
+        status="building",
+        degraded=False,
+        created_at=f"{ASOF}T06:00:00+09:00",
+    )
     db_session.add(snap)
     db_session.commit()
     region_dto, snap_dto = snapshots.region_dto(region), snapshots.snapshot_dto(snap)
@@ -86,7 +96,9 @@ def test_live_benchmark_samples_incheon_gimpo(db_session: Session, raw_dir: Path
     for b in rows:
         if b.note and "대체" in b.note:
             continue
-        print(f"  {b.living_area} {b.name} 분양 {b.sale_year}({b.sale_period}) {b.sale_price_84_won:,} → 중앙 {b.trade_median_won:,} ({b.n_trades}건 {b.trade_window}) presale={b.is_presale}")
+        print(
+            f"  {b.living_area} {b.name} 분양 {b.sale_year}({b.sale_period}) {b.sale_price_84_won:,} → 중앙 {b.trade_median_won:,} ({b.n_trades}건 {b.trade_window}) presale={b.is_presale}"
+        )
     for u in res.unmatched[:40]:
         print("  미매칭:", u)
     for b in rows:

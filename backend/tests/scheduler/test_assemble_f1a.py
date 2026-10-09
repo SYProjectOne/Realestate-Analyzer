@@ -60,7 +60,9 @@ def _seed(factory: sessionmaker[Session]) -> None:
         s.commit()
 
 
-def _save(s: Session, content: str, *, source_kind: str, url: str, region_id: int, ext: str = "json") -> RawDTO:
+def _save(
+    s: Session, content: str, *, source_kind: str, url: str, region_id: int, ext: str = "json"
+) -> RawDTO:
     data = content.encode("utf-8")
     sha = hashlib.sha256(data).hexdigest()
     row = s.scalars(select(RawDocument).where(RawDocument.sha256 == sha)).first()
@@ -98,7 +100,12 @@ class FakeApplyhome:
             "HSSPLY_ADRES": ADDR, "RCRIT_PBLANC_DE": "2021-03-10", "MVN_PREARNGE_YM": "202406",
             "HOUSE_DTL_SECD_NM": "민영", "SUBSCRPT_AREA_CODE_NM": "인천",
         }  # fmt: skip
-        model = {"HOUSE_MANAGE_NO": "2021000101", "PBLANC_NO": "2021000101", "HOUSE_TY": "084.9000A", "LTTOT_TOP_AMOUNT": "70000"}
+        model = {
+            "HOUSE_MANAGE_NO": "2021000101",
+            "PBLANC_NO": "2021000101",
+            "HOUSE_TY": "084.9000A",
+            "LTTOT_TOP_AMOUNT": "70000",
+        }
         with self.factory() as s:
             lst = _save(
                 s, _page([row]), source_kind="applyhome_list", region_id=region.id,
@@ -209,11 +216,18 @@ def test_daily_collect_assembles_remaining_events_and_checklist(
     with factory() as s:
         original = s.scalars(select(Complex).where(Complex.applyhome_id == "2025000777")).one()
         [ev] = s.scalars(select(RemainingEvent)).all()
-        assert (ev.complex_id, ev.kind, ev.notice_no, ev.apply_dates) == (original.id, "무순위", "2026910500", ["2026-10-12"])
+        assert (ev.complex_id, ev.kind, ev.notice_no, ev.apply_dates) == (
+            original.id,
+            "무순위",
+            "2026910500",
+            ["2026-10-12"],
+        )
         items = s.scalars(select(ChecklistItem).where(ChecklistItem.complex_id == original.id)).all()
         assert {i.kind for i in items} >= {"법적 확인"}
         crit = s.scalars(select(ChangeEvent).where(ChangeEvent.entity == "remaining_event")).all()
-        assert [c.id for c in crit if c.severity == "critical"] and all(c.id in res.change_event_ids for c in crit)
+        assert [c.id for c in crit if c.severity == "critical"] and all(
+            c.id in res.change_event_ids for c in crit
+        )
     st = res.stats()["assembled"]
     assert st["remaining"]["inserted"] == 1 and st["checklist"]["inserted"] >= 2
     assert ah.history_calls == []  # 일일 수집은 과거 공고를 받지 않는다
@@ -224,7 +238,15 @@ class FakeNews:
     factory: sessionmaker[Session]
 
     def fetch(self, region: RegionDTO, snapshot: SnapshotDTO, since: str | None) -> list[RawDTO]:
-        body = {"items": [{"title": "송도 트램 기본계획", "originallink": "https://news.example.com/1", "description": "발췌"}]}
+        body = {
+            "items": [
+                {
+                    "title": "송도 트램 기본계획",
+                    "originallink": "https://news.example.com/1",
+                    "description": "발췌",
+                }
+            ]
+        }
         with self.factory() as s:
             doc = _save(s, json.dumps(body, ensure_ascii=False), source_kind="news", region_id=region.id,
                         url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=q")  # fmt: skip

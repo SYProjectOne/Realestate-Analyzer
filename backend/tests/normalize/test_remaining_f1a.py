@@ -5,6 +5,8 @@ kind·notice_no·notice_date·apply_dates·units_by_type·result_text. 공고는
 잔여 공고 단지 중 가장 먼저 생긴 행에 묶는다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 from sqlalchemy import func, select
@@ -21,7 +23,9 @@ SONGDO = "2818510600"
 DETECTED = "2026-10-09T06:00:00+09:00"
 
 
-def _remndr_row(hm: str, name: str, secd: str, notice: str, rcpt: tuple[str, str], units: int) -> dict[str, object]:
+def _remndr_row(
+    hm: str, name: str, secd: str, notice: str, rcpt: tuple[str, str], units: int
+) -> dict[str, object]:
     return {
         "HOUSE_MANAGE_NO": hm,
         "PBLANC_NO": hm,
@@ -61,7 +65,9 @@ def _api_notice(
     comp: bool = True,
 ) -> int:
     """잔여 공고 1건: store 가 만든 자기 단지 행 + API 상세·주택형 원문 + 웹 경쟁률 원문."""
-    self_cx = add_complex(db_session, region.id, hm, name, address="인천광역시 연수구 송도동 308-1번지", legal_dong_code=SONGDO)
+    self_cx = add_complex(
+        db_session, region.id, hm, name, address="인천광역시 연수구 송도동 308-1번지", legal_dong_code=SONGDO
+    )
     api_kind = "remndr" if kind == "remndr" else "opt"
     add_raw(
         api_page([_remndr_row(hm, name, secd, notice, rcpt, 1)]),
@@ -102,7 +108,12 @@ def test_api_remaining_notice_attaches_to_original_complex(
     db_session: Session, add_raw: AddRaw, region: Region
 ) -> None:
     original = add_complex(
-        db_session, region.id, "2024000777", "더샵 송도마리나베이", address="인천광역시 연수구 송도동 308-1", legal_dong_code=SONGDO
+        db_session,
+        region.id,
+        "2024000777",
+        "더샵 송도마리나베이",
+        address="인천광역시 연수구 송도동 308-1",
+        legal_dong_code=SONGDO,
     )
     _api_notice(db_session, add_raw, region, "2026910242", "더샵 송도마리나베이(조합원 자격상실세대 3회차)")
     res = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
@@ -119,12 +130,16 @@ def test_api_remaining_notice_attaches_to_original_complex(
     assert res.inserted == 1 and res.unmatched == []
 
 
-def test_opt_rounds_without_original_share_one_complex(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_opt_rounds_without_original_share_one_complex(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     first = _api_notice(
         db_session, add_raw, region, "2026940200", "리아츠 송도(22차)", secd="11", kind="opt", notice="2026-08-01",
         rcpt=("2026-08-05", "2026-08-06"),
     )  # fmt: skip
-    _api_notice(db_session, add_raw, region, "2026940212", "리아츠 송도(23차)", secd="11", kind="opt", comp=False)
+    _api_notice(
+        db_session, add_raw, region, "2026940212", "리아츠 송도(23차)", secd="11", kind="opt", comp=False
+    )
     res = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
     evs = _events(db_session)
     assert [(e.kind, e.notice_no, e.complex_id) for e in evs] == [
@@ -136,7 +151,9 @@ def test_opt_rounds_without_original_share_one_complex(db_session: Session, add_
     assert {u["notice_no"] for u in res.unmatched} == {"2026940200", "2026940212"}  # 원래 단지 못 찾음 기록
 
 
-def test_resync_is_idempotent_and_new_event_is_critical(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_resync_is_idempotent_and_new_event_is_critical(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     original = add_complex(
         db_session, region.id, "2024000777", "더샵 송도마리나베이", address="송도동", legal_dong_code=SONGDO
     )
@@ -205,10 +222,23 @@ WEB_DETAIL = """<html><body><div id="printArea">
 
 def test_web_remaining_notice(db_session: Session, add_raw: AddRaw, region: Region) -> None:
     hm = "2026940300"
-    self_cx = add_complex(db_session, region.id, hm, "송도 웹 단지(2차)", address="인천광역시 연수구 송도동 77", legal_dong_code=SONGDO)
+    self_cx = add_complex(
+        db_session,
+        region.id,
+        hm,
+        "송도 웹 단지(2차)",
+        address="인천광역시 연수구 송도동 77",
+        legal_dong_code=SONGDO,
+    )
     original = add_complex(db_session, region.id, "2025000123", "송도 웹 단지", legal_dong_code=SONGDO)
     form = site.list_form("인천", "202512", "202611", 1)
-    add_raw(WEB_LIST, source_kind="applyhome_list", url=site.list_doc_url("remndr", form), region_id=region.id, ext="html")
+    add_raw(
+        WEB_LIST,
+        source_kind="applyhome_list",
+        url=site.list_doc_url("remndr", form),
+        region_id=region.id,
+        ext="html",
+    )
     add_raw(
         WEB_DETAIL,
         source_kind="applyhome_detail",
@@ -224,7 +254,9 @@ def test_web_remaining_notice(db_session: Session, add_raw: AddRaw, region: Regi
     assert ev.units_by_type == {"84A": 2, "59B": 1}
 
 
-def test_unknown_supply_kind_is_skipped_not_guessed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_unknown_supply_kind_is_skipped_not_guessed(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     hm = "2026940300"
     self_cx = add_complex(db_session, region.id, hm, "송도 웹 단지(2차)", legal_dong_code=SONGDO)
     add_raw(
@@ -237,4 +269,6 @@ def test_unknown_supply_kind_is_skipped_not_guessed(db_session: Session, add_raw
     )
     res = sync_remaining_events(db_session, region.id, snapshot_id=None, detected_at=DETECTED)
     assert _events(db_session) == []
-    assert res.unmatched == [{"notice_no": hm, "name": "송도 웹 단지(2차)", "reason": "확인 불가(공급 구분 없음)"}]
+    assert res.unmatched == [
+        {"notice_no": hm, "name": "송도 웹 단지(2차)", "reason": "확인 불가(공급 구분 없음)"}
+    ]

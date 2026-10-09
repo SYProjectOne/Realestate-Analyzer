@@ -214,7 +214,8 @@ class ApplyhomeCollector:
           성공 원문이 이미 있으면 다시 받지 않는다(지난 공고는 바뀌지 않는다).
         - 원문은 단지 행에 묶지 않는다(complex_id 없음). 수집 단계 정규화(store)로 넘기지 않으므로 과거 공고가
           단지 목록에 들어가지 않는다 — 조립(``normalize/benchmark.py``)만 읽는다.
-        - 키가 없으면 [] (웹 목록은 조회 기간 제한이 있어 과거 N년을 받을 수 없다). 실패 응답은 행으로 돌려준다.
+        - 키가 없으면 [] (웹 목록은 조회 기간 제한이 있어 과거 N년을 받을 수 없다).
+          실패 응답은 행으로 돌려준다.
         """
         self.history_stats = {"lists": 0, "notices_in_region": 0, "models_fetched": 0, "models_reused": 0}
         if self._key is None:

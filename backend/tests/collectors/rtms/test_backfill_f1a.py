@@ -49,7 +49,9 @@ def test_backfill_fetches_only_missing_months(
         assert route.call_count == 2
         col = RtmsCollector(service_key=FAKE_KEY, http=http, months=1)
         docs = col.backfill(region, snapshot, months=3)
-        months = sorted({(c.request.url.params["LAWD_CD"], c.request.url.params["DEAL_YMD"]) for c in route.calls[2:]})
+        months = sorted(
+            {(c.request.url.params["LAWD_CD"], c.request.url.params["DEAL_YMD"]) for c in route.calls[2:]}
+        )
         assert months == [("28185", "202608"), ("28185", "202609"), ("41570", "202608"), ("41570", "202609")]
         assert len(docs) == 4
         assert col.load_stats is not None and col.load_stats.inserted > 0

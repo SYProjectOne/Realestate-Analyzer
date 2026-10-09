@@ -7,6 +7,8 @@
 - 생활권 표본 0 → 지역 전체로 대체(라벨 추정, '추정(대체: 지역 전체)'), 그래도 0 → 행 없음
 """
 
+# ruff: noqa: E501  (한국어 docstring·발췌 문구)
+
 from __future__ import annotations
 
 from typing import Any
@@ -49,13 +51,28 @@ def _seed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
         "인천",
         [
             # A: 송도 2021 분양 → 2024-06 입주 (저가 분양기)
-            notice_row("2021000101", "힐스테이트 레이크 송도 2차", "인천광역시 연수구 송도동 1-1", "2021-03-10", "202406"),
+            notice_row(
+                "2021000101",
+                "힐스테이트 레이크 송도 2차",
+                "인천광역시 연수구 송도동 1-1",
+                "2021-03-10",
+                "202406",
+            ),
             # C: 계양 — 같은 동에 이름이 겹치는 실거래 단지 둘 → 매칭 모호
             notice_row("2022000303", "푸르지오 작전", "인천광역시 계양구 작전동 5", "2022-01-05", "202503"),
             # D: 입주 전(2027-12) — 분양권 거래 없음 → 표본 아님
-            notice_row("2024000404", "송도 미래 아파트", "인천광역시 연수구 송도동 9", "2024-02-01", "202712"),
+            notice_row(
+                "2024000404", "송도 미래 아파트", "인천광역시 연수구 송도동 9", "2024-02-01", "202712"
+            ),
             # E: 국민주택 — 민영 아님
-            notice_row("2020000505", "공공 송도", "인천광역시 연수구 송도동 7", "2020-05-01", "202305", housing="국민"),
+            notice_row(
+                "2020000505",
+                "공공 송도",
+                "인천광역시 연수구 송도동 7",
+                "2020-05-01",
+                "202305",
+                housing="국민",
+            ),
             # F: 지역 밖(부평구 = 지역 법정동 아님)
             notice_row("2021000606", "부평 래미안", "인천광역시 부평구 부평동 1", "2021-01-01", "202401"),
         ],
@@ -67,11 +84,21 @@ def _seed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
         [
             # B: 김포 장기동 2023 분양 → 2026-01 입주 (고가 분양기)
             notice_row(
-                "2023000202", "e편한세상 김포 장기 리버", "경기도 김포시 장기동 100", "2023-05-01", "202601", area="경기"
+                "2023000202",
+                "e편한세상 김포 장기 리버",
+                "경기도 김포시 장기동 100",
+                "2023-05-01",
+                "202601",
+                area="경기",
             ),
         ],
     )
-    add_model(add_raw, rid, "2021000101", [("059.9876A", 50000, 100), ("084.9500A", 70000, 300), ("101.0000A", 90000, 50)])
+    add_model(
+        add_raw,
+        rid,
+        "2021000101",
+        [("059.9876A", 50000, 100), ("084.9500A", 70000, 300), ("101.0000A", 90000, 50)],
+    )
     add_model(add_raw, rid, "2022000303", [("084.8000A", 55000, 200)])
     add_model(add_raw, rid, "2024000404", [("084.1000A", 99000, 200)])
     add_model(add_raw, rid, "2020000505", [("084.0000A", 30000, 200)])
@@ -79,23 +106,80 @@ def _seed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
     add_model(add_raw, rid, "2023000202", [("074.9000A", 50000, 100), ("084.9900A", 60000, 200)])
 
     # A 실거래(법정동 코드 있음)
-    a_doc = add_raw("<response>a</response>", source_kind="rtms", url=rtms_url("28185", "202609"), region_id=rid, ext="xml")
+    a_doc = add_raw(
+        "<response>a</response>",
+        source_kind="rtms",
+        url=rtms_url("28185", "202609"),
+        region_id=rid,
+        ext="xml",
+    )
     for price, day in ((80000, "2025-12-15"), (90000, "2026-03-02"), (100000, "2026-09-20")):
-        add_trade(db_session, rid, "힐스테이트레이크송도2차", price, day, legal=SONGDO, built=2024, raw_document_id=a_doc.id)
+        add_trade(
+            db_session,
+            rid,
+            "힐스테이트레이크송도2차",
+            price,
+            day,
+            legal=SONGDO,
+            built=2024,
+            raw_document_id=a_doc.id,
+        )
     add_trade(  # 창 밖 고점
-        db_session, rid, "힐스테이트레이크송도2차", 105000, "2025-03-10", legal=SONGDO, built=2024, raw_document_id=a_doc.id
+        db_session,
+        rid,
+        "힐스테이트레이크송도2차",
+        105000,
+        "2025-03-10",
+        legal=SONGDO,
+        built=2024,
+        raw_document_id=a_doc.id,
     )
     add_trade(db_session, rid, "힐스테이트레이크송도2차", 200000, "2026-05-01", legal=SONGDO, cancelled=True)
     add_trade(db_session, rid, "힐스테이트레이크송도2차", 60000, "2026-04-01", legal=SONGDO, area="59.98")
     add_trade(db_session, rid, "힐스테이트레이크송도2차", 70000, "2026-04-01", legal="2818510500")  # 다른 동
     # B 실거래: 법정동 코드 없음 → 원문 URL 의 LAWD_CD + 동 이름으로 법정동을 찾는다
-    doc = add_raw("<response/>", source_kind="rtms", url=rtms_url("41570", "202606"), region_id=rid, ext="xml")
+    doc = add_raw(
+        "<response/>", source_kind="rtms", url=rtms_url("41570", "202606"), region_id=rid, ext="xml"
+    )
     for price, day in ((50000, "2025-12-20"), (65000, "2026-02-10"), (70000, "2026-06-10")):
-        add_trade(db_session, rid, "e편한세상김포장기리버", price, day, dong="장기동", built=2026, raw_document_id=doc.id)
+        add_trade(
+            db_session,
+            rid,
+            "e편한세상김포장기리버",
+            price,
+            day,
+            dong="장기동",
+            built=2026,
+            raw_document_id=doc.id,
+        )
     # C 실거래: 이름이 둘 다 '푸르지오작전'을 포함
-    c_doc = add_raw("<response>c</response>", source_kind="rtms", url=rtms_url("28245", "202601"), region_id=rid, ext="xml")
-    add_trade(db_session, rid, "푸르지오작전1단지", 60000, "2026-01-10", legal=JAKJEON, built=2025, raw_document_id=c_doc.id)
-    add_trade(db_session, rid, "푸르지오작전2단지", 61000, "2026-01-11", legal=JAKJEON, built=2025, raw_document_id=c_doc.id)
+    c_doc = add_raw(
+        "<response>c</response>",
+        source_kind="rtms",
+        url=rtms_url("28245", "202601"),
+        region_id=rid,
+        ext="xml",
+    )
+    add_trade(
+        db_session,
+        rid,
+        "푸르지오작전1단지",
+        60000,
+        "2026-01-10",
+        legal=JAKJEON,
+        built=2025,
+        raw_document_id=c_doc.id,
+    )
+    add_trade(
+        db_session,
+        rid,
+        "푸르지오작전2단지",
+        61000,
+        "2026-01-11",
+        legal=JAKJEON,
+        built=2025,
+        raw_document_id=c_doc.id,
+    )
     db_session.flush()
 
 
@@ -105,7 +189,9 @@ def _rows(db_session: Session) -> list[Benchmark]:
 
 def test_normalize_apt_name_is_string_only() -> None:
     assert normalize_apt_name("힐스테이트 레이크 송도 2차") == normalize_apt_name("힐스테이트레이크송도2차")
-    assert normalize_apt_name("더샵 송도마리나베이(조합원 자격상실세대 3회차)") == normalize_apt_name("더샵송도마리나베이")
+    assert normalize_apt_name("더샵 송도마리나베이(조합원 자격상실세대 3회차)") == normalize_apt_name(
+        "더샵송도마리나베이"
+    )
     assert normalize_apt_name("e편한세상 김포") == normalize_apt_name("E편한세상김포")
     assert normalize_apt_name("검단신도시 AB12블록 우미린") == normalize_apt_name("검단신도시 우미린")
 
@@ -116,7 +202,9 @@ def test_sale_period_formula() -> None:
     assert "2026−3" in sale_period(2023, 2026)[1]
 
 
-def test_build_benchmarks_from_history_and_trades(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_build_benchmarks_from_history_and_trades(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     _seed(db_session, add_raw, region)
     res = build_benchmarks(db_session, region.id, asof_date=ASOF)
 
@@ -128,7 +216,11 @@ def test_build_benchmarks_from_history_and_trades(db_session: Session, add_raw: 
     assert a.living_area == _la(region, "28185")
     assert a.sale_price_84_won == 700_000_000  # 84㎡에 가장 가까운 084.9500A 최고가
     assert a.sale_price_label == "확인됨"
-    assert (a.trade_low_won, a.trade_median_won, a.trade_high_won) == (800_000_000, 900_000_000, 1_000_000_000)
+    assert (a.trade_low_won, a.trade_median_won, a.trade_high_won) == (
+        800_000_000,
+        900_000_000,
+        1_000_000_000,
+    )
     assert a.n_trades == 3  # 해제·59㎡·다른 동·창 밖 거래 제외
     assert a.trade_window == "2025-11~2026-10"
     assert (a.peak_won, a.peak_ym) == (1_050_000_000, "2025-03")
@@ -201,7 +293,12 @@ def test_living_area_without_sample_uses_region_wide_substitute(
 
 
 def test_no_sample_anywhere_creates_no_rows(db_session: Session, add_raw: AddRaw, region: Region) -> None:
-    add_list(add_raw, region.id, "인천", [notice_row("2021000101", "단지", "인천광역시 연수구 송도동 1", "2021-01-01", "202401")])
+    add_list(
+        add_raw,
+        region.id,
+        "인천",
+        [notice_row("2021000101", "단지", "인천광역시 연수구 송도동 1", "2021-01-01", "202401")],
+    )
     add_model(add_raw, region.id, "2021000101", [("084.0000A", 50000, 10)])
     res = build_benchmarks(db_session, region.id, asof_date=ASOF)
     assert _rows(db_session) == []
@@ -244,7 +341,9 @@ def test_presale_rows_are_marked(db_session: Session, add_raw: AddRaw, region: R
 
 
 def test_untagged_rows_are_left_alone(db_session: Session, add_raw: AddRaw, region: Region) -> None:
-    seeded = Benchmark(region_id=region.id, living_area="la_1", name="수동 입력", sale_price_84_won=1, is_presale=False)
+    seeded = Benchmark(
+        region_id=region.id, living_area="la_1", name="수동 입력", sale_price_84_won=1, is_presale=False
+    )
     db_session.add(seeded)
     db_session.flush()
     _seed(db_session, add_raw, region)
@@ -254,7 +353,9 @@ def test_untagged_rows_are_left_alone(db_session: Session, add_raw: AddRaw, regi
 
 
 @pytest.mark.parametrize("name", ["힐스테이트 레이크 송도 2차"])
-def test_note_records_sources_and_formula(db_session: Session, add_raw: AddRaw, region: Region, name: str) -> None:
+def test_note_records_sources_and_formula(
+    db_session: Session, add_raw: AddRaw, region: Region, name: str
+) -> None:
     _seed(db_session, add_raw, region)
     build_benchmarks(db_session, region.id, asof_date=ASOF)
     row = db_session.scalars(select(Benchmark).where(Benchmark.name == name)).first()

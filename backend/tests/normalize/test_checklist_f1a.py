@@ -85,10 +85,12 @@ def test_announcement_expected(db_session: Session, region: Region) -> None:
     future = add_complex(db_session, region.id, "2026000222", "공고 예정 단지", notice_date="2026-11-05")
     pre = add_complex(db_session, region.id, None, "공고 전 단지")
     sync_checklist(db_session, region.id, asof_date=ASOF)
-    assert [(i.kind, i.title, i.due_date) for i in _items(db_session, future.id) if i.kind == "공고 예상"] == [
-        ("공고 예상", "모집공고 예정", "2026-11-05")
+    assert [
+        (i.kind, i.title, i.due_date) for i in _items(db_session, future.id) if i.kind == "공고 예상"
+    ] == [("공고 예상", "모집공고 예정", "2026-11-05")]
+    assert [(i.kind, i.due_date) for i in _items(db_session, pre.id) if i.kind == "공고 예상"] == [
+        ("공고 예상", None)
     ]
-    assert [(i.kind, i.due_date) for i in _items(db_session, pre.id) if i.kind == "공고 예상"] == [("공고 예상", None)]
 
 
 def test_estimated_legal_fact_becomes_legal_check(db_session: Session, region: Region) -> None:
@@ -133,7 +135,14 @@ def test_sync_is_idempotent_and_updates_open_due_date(db_session: Session, regio
 
 def test_excluded_complex_gets_no_items_and_open_items_become_na(db_session: Session, region: Region) -> None:
     cid = _seed(db_session, region)
-    rental = add_complex(db_session, region.id, "2026000333", "임대 단지", inclusion_class="public_rental", notice_date="2026-11-01")
+    rental = add_complex(
+        db_session,
+        region.id,
+        "2026000333",
+        "임대 단지",
+        inclusion_class="public_rental",
+        notice_date="2026-11-01",
+    )
     sync_checklist(db_session, region.id, asof_date=ASOF)
     assert _items(db_session, rental.id) == []
     from app.models import Complex
@@ -155,7 +164,9 @@ def test_fact_dict_values_are_read(db_session: Session, region: Region) -> None:
             complex_id=cx.id,
             notice_no="2026000444",
             effective_from="2026-09-01",
-            interim_schedule=[{"seq": 3, "due_date": {"v": "2026-12-01", "label": "확인됨"}, "pct": {"v": 10}}],
+            interim_schedule=[
+                {"seq": 3, "due_date": {"v": "2026-12-01", "label": "확인됨"}, "pct": {"v": 10}}
+            ],
             price_by_type={},
         )
     )

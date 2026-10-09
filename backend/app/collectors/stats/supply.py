@@ -16,8 +16,9 @@
 실제 입주 세대보다 작을 수 있다). 잔여세대(무순위·임의공급) 행은 남은 세대만 적혀 있어 단지 입주물량이
 아니므로 쓰지 않고, 민간사전청약(09)은 본청약 공고에 다시 나오므로 뺀다.
 
-출처(R3 W3): ``write_supply_provenance`` 가 추정 행의 units·year·ym 마다 field_provenance(라벨 추정, 원문 = 단지의
-채택 출처)를 쓴다 — 출처 없는 supply 행은 API 가 dev 에서 contract_violation(500)으로 막는다.
+출처(R3 W3): ``write_supply_provenance`` 가 추정 행의 units·year·ym 마다 field_provenance
+(라벨 추정, 원문 = 단지의 채택 출처)를 쓴다 — 출처 없는 supply 행은 API 가 dev 에서
+contract_violation(500)으로 막는다.
 """
 
 from __future__ import annotations
@@ -227,11 +228,13 @@ class SupplyProvenance:
 
 
 def write_supply_provenance(session: Session, region_id: int) -> SupplyProvenance:
-    """추정 집계 supply 행(단지별)의 units·year·ym 출처 행(R3 W3, RA §3 '숫자 하나도 출처 없이 남기지 않는다').
+    """추정 집계 supply 행(단지별)의 units·year·ym 출처 행
+    (R3 W3, RA §3 '숫자 하나도 출처 없이 남기지 않는다').
 
-    출처 = 그 단지의 채택 출처(complex.units_total / move_in_ym)의 원문·URL·확인일·발췌, 라벨 '추정'(합산 집계),
-    reason '추정 집계(단지 <필드> 출처)'. 같은 원문·같은 값의 채택 행이 이미 있으면 그대로(멱등), 값·원문이 바뀌면
-    새 행을 채택하고 옛 행은 chosen=false 로 남긴다(삭제 없음). 단지 출처가 없으면 ``missing`` 으로 센다.
+    출처 = 그 단지의 채택 출처(complex.units_total / move_in_ym)의 원문·URL·확인일·발췌,
+    라벨 '추정'(합산 집계), reason '추정 집계(단지 <필드> 출처)'. 같은 원문·같은 값의 채택 행이
+    이미 있으면 그대로(멱등), 값·원문이 바뀌면 새 행을 채택하고 옛 행은 chosen=false 로 남긴다
+    (삭제 없음). 단지 출처가 없으면 ``missing`` 으로 센다.
     """
     out = SupplyProvenance()
     rows = [
@@ -281,7 +284,10 @@ def write_supply_provenance(session: Session, region_id: int) -> SupplyProvenanc
                 continue
             text = str(value)
             chosen = current.get((row.id, name), [])
-            if any(fp.value_text == text and fp.raw_document_id == src.raw_document_id and fp.url == src.url for fp in chosen):
+            if any(
+                fp.value_text == text and fp.raw_document_id == src.raw_document_id and fp.url == src.url
+                for fp in chosen
+            ):
                 continue
             for fp in chosen:
                 fp.chosen = False
