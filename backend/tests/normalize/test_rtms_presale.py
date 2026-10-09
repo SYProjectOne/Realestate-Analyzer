@@ -71,3 +71,16 @@ def test_store_writes_is_presale(db_session: Session, region: Region, add_raw: A
         ("테스트분양권아파트P", True, False),
         ("테스트분양권아파트Q", True, True),
     ]
+
+
+def test_store_keeps_same_valued_trade_and_presale_apart(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
+    """R3b: trade_for 행 키에 is_presale — 값이 같은 매매·분양권 거래가 한 행으로 합쳐지지 않는다."""
+    xml = PRESALE_XML.read_text(encoding="utf-8")
+    pre = add_raw(xml, source_kind="rtms", url=PRESALE_URL, region_id=region.id, ext="xml")
+    store_raw_document(db_session, pre)
+    trade = add_raw(xml + "\n", source_kind="rtms", url=TRADE_URL, region_id=region.id, ext="xml")
+    store_raw_document(db_session, trade)
+    rows = db_session.scalars(select(RtmsTrade).where(RtmsTrade.apt_name == "테스트분양권아파트P")).all()
+    assert sorted(r.is_presale for r in rows) == [False, True]
