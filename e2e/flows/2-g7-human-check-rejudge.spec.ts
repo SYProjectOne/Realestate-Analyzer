@@ -40,7 +40,8 @@ test('G7 사람 확인 가능 → 재판정 잡 → G3 접수 배지(가능·사
   await expect(complex.locator('option', { hasText: SWITZEN })).toBeAttached();
   await complex.selectOption({ label: SWITZEN });
   await form.getByLabel(P.G7.hc.value).selectOption('가능');
-  await form.getByLabel(P.G7.hc.enteredBy).fill('e2e 운영자');
+  // 계약 .4 minor 15: entered_by = 역할 enum(운영자·검토자) 선택 — 자유 입력 아님
+  await form.getByLabel(P.G7.hc.enteredBy).selectOption('운영자');
   const saved = page.waitForResponse(
     (r) => r.url().endsWith('/api/ops/human-checks') && r.request().method() === 'POST',
   );
