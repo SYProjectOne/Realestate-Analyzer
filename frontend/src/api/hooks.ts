@@ -5,8 +5,10 @@
  * 쿼리 키는 `queryKeys`로만 만든다(무효화 일관성).
  * id 인자는 `IdLike`(number | string): URL 경로·쿼리에서 온 문자열을 그대로 넘겨도 된다.
  */
+import { useEffect, useMemo } from 'react';
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -254,6 +256,68 @@ export function useComplexes(
     enabled: has(sid),
     placeholderData: keepPreviousData,
   });
+}
+
+export interface ComplexPagesResult {
+  /** 지금까지 받은 행(items)과 서버 total. 첫 페이지 전이면 undefined */
+  data: ComplexRowPage | undefined;
+  error: Error | null;
+  isLoading: boolean;
+  /** 나머지 페이지를 받는 중 */
+  loadingMore: boolean;
+}
+
+/**
+ * G2 목록을 점진적으로 받는다(WP9 W8·W9).
+ *  1. 첫 요청 = page 1, size = firstSize(작게) — 첫 화면을 빨리 그린다.
+ *  2. total 이 그보다 크면 size = params.size(기본 1000, 계약 최대) 페이지를 1부터 차례로 모두 받는다 —
+ *     total 의 모든 행에 닿는다. 다 받으면 그 행들로 바꾼다(첫 페이지 행은 1페이지에 포함).
+ */
+export function useComplexesProgressive(
+  sid: IdLike | null | undefined,
+  params: ComplexListParams,
+  firstSize: number,
+): ComplexPagesResult {
+  const pageSize = params.size ?? 1000;
+  const first = useComplexes(sid, { ...params, page: 1, size: firstSize });
+  const firstPage = first.isPlaceholderData ? undefined : first.data;
+  const needMore = firstPage !== undefined && firstPage.total > firstPage.items.length;
+  const rest = useInfiniteQuery({
+    queryKey: [...queryKeys.complexes(key(sid), { ...params, size: pageSize }), 'pages'] as const,
+    queryFn: ({ pageParam, signal }) =>
+      apiFetch<ComplexRowPage>(`/snapshots/${enc(key(sid))}/complexes`, {
+        query: complexQuery({ ...params, page: pageParam, size: pageSize }),
+        signal,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last, all) => {
+      const loaded = all.reduce((n, p) => n + p.items.length, 0);
+      return last.items.length > 0 && loaded < last.total ? all.length + 1 : undefined;
+    },
+    enabled: has(sid) && needMore,
+  });
+  const { hasNextPage, isFetchingNextPage, isFetching, fetchNextPage } = rest;
+  // 받은 페이지 수가 바뀔 때마다 다음 페이지(상태 플래그는 빠른 응답이면 같은 값으로 돌아온다)
+  const loadedPages = rest.data?.pages.length ?? 0;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && !isFetching) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, isFetching, fetchNextPage, loadedPages]);
+
+  const data = useMemo<ComplexRowPage | undefined>(() => {
+    const pages = needMore ? rest.data?.pages : undefined;
+    if (pages && pages.length > 0) {
+      const last = pages[pages.length - 1] as ComplexRowPage;
+      return { ...last, page: 1, size: pageSize, items: pages.flatMap((p) => p.items) };
+    }
+    return first.data;
+  }, [needMore, rest.data, first.data, pageSize]);
+
+  return {
+    data,
+    error: first.error ?? rest.error ?? null,
+    isLoading: first.isLoading,
+    loadingMore: needMore && (rest.isFetching || !!rest.hasNextPage),
+  };
 }
 
 /**

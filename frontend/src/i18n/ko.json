@@ -142,7 +142,8 @@
       "compare": "비교",
       "clearSelection": "선택 해제",
       "empty": "조건에 맞는 단지가 없습니다",
-      "table": "단지 표"
+      "table": "단지 표",
+      "loadingMore": "나머지 단지를 불러오는 중…"
     },
     "G3": {
       "title": "단지 상세",
