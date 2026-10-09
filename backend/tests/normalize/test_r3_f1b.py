@@ -409,3 +409,101 @@ def test_minor3_remainder_notice_prices_to_the_won(fname: str) -> None:
     for t, (top, low) in REMAIN_PRICES[fname].items():
         assert got[t]["max_price_won"].value == top, (fname, t)
         assert got[t]["floor_sample_price_won"].value == low, (fname, t)
+
+
+# ====================================================================== W4·W12c 단지 키(지역·같은 블록)
+
+
+def _region2(db_session: Session, region: Region) -> Region:
+    other = Region(
+        name="다른 지역", query_text="다른", selections=[], sido_codes=region.sido_codes,
+        sigungu_codes=region.sigungu_codes, legal_dong_codes=region.legal_dong_codes,
+        living_areas=region.living_areas, age_premium_coef=region.age_premium_coef, applyhome_query={},
+        status="ready", created_at="2026-10-09T06:00:00+09:00",
+    )  # fmt: skip
+    db_session.add(other)
+    db_session.flush()
+    return other
+
+
+class _Fields:
+    def __init__(self, key: str, values: dict[str, str]) -> None:
+        self.key, self.values = key, values
+
+    def parse(self, raw: RawDocumentDTO) -> list[FieldCandidate]:
+        return [
+            FieldCandidate(
+                entity="complex", entity_id=None, entity_key=self.key, field=f, value_text=v, value=v, source_rank=1,
+                source_kind="applyhome_detail", primary=True, label="확인됨", excerpt=v, excerpt_start=0,
+                excerpt_end=1, raw_document_id=raw.id, url=raw.url, checked_at="2026-10-09",
+                observed_on="2026-09-01",
+            )  # fmt: skip
+            for f, v in self.values.items()
+        ]
+
+
+def _store_fields(db_session: Session, add_raw: AddRaw, region: Region, key: str, n: int, **values: str) -> Any:
+    url = f"https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do?houseManageNo={key}&n={n}"
+    raw = add_raw(f"{key} {n} {values}", source_kind="applyhome_detail", url=url, region_id=region.id)
+    return store_raw_document(db_session, raw, parser=_Fields(key, values))
+
+
+def test_w4_other_region_complex_is_never_overwritten(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
+    _store_fields(db_session, add_raw, region, "2026000164", 1, name="더샵 송도그란테르", builder="포스코이앤씨")
+    cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026000164")).one()
+    other = _region2(db_session, region)
+    res = _store_fields(db_session, add_raw, other, "2026000164", 2, name="더샵 송도그란테르 G5-1블록",
+                        builder="㈜포스코이앤씨")  # fmt: skip
+    assert (cx.region_id, cx.name, cx.builder) == (region.id, "더샵 송도그란테르", "포스코이앤씨")
+    assert res.foreign_keys == ["2026000164"] and len(res.skipped) == 2 and not res.change_events
+
+
+def test_w12c_remainder_detail_binds_to_same_block_complex(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
+    addr = "인천광역시 연수구 송도동 32-15 (G5-11BL)"
+    _store_fields(db_session, add_raw, region, "2026000169", 1, name="더샵 송도그란테르 G5-11블록", address=addr)
+    # 잔여 세대 상세(최초 번호 없음) — 이름 뒤 회차 괄호·주소 표기 차이는 정규화로 같다
+    res = _store_fields(db_session, add_raw, region, "2026910207", 2,
+                        name="더샵 송도그란테르 G5-11블록(조합원 자격상실세대 3회차)",
+                        address="인천광역시 연수구 송도동 32-15번지 (G5-11BL)")  # fmt: skip
+    rows = list(db_session.scalars(select(Complex).where(Complex.name.contains("G5-11"))))
+    assert len(rows) == 1 and rows[0].applyhome_id == "2026000169"
+    assert res.complex_ids == [rows[0].id]
+
+
+def test_w12c_ambiguous_or_missing_address_does_not_merge(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
+    addr = "인천광역시 연수구 송도동 32-15"
+    _store_fields(db_session, add_raw, region, "2026000101", 1, name="같은 이름 단지", address=addr)
+    _store_fields(db_session, add_raw, region, "2026000102", 2, name="다른 이름 단지", address=addr)
+    _store_fields(db_session, add_raw, region, "2026000103", 3, name="같은 이름 단지", address=addr + " 외")
+    _store_fields(db_session, add_raw, region, "2026910300", 4, name="같은 이름 단지", address=addr)  # 정확히 1개
+    _store_fields(db_session, add_raw, region, "2026910301", 5, name="같은 이름 단지")  # 주소 없음 → 새 행
+    keys = sorted(c.applyhome_id or "" for c in db_session.scalars(select(Complex)))
+    assert keys == ["2026000101", "2026000102", "2026000103", "2026910301"]
+
+
+def test_w12c_two_candidates_is_ambiguous(db_session: Session, region: Region, add_raw: AddRaw) -> None:
+    addr = "인천광역시 연수구 송도동 1"
+    _store_fields(db_session, add_raw, region, "2026000201", 1, name="쌍둥이 단지", address=addr)
+    cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026000201")).one()
+    db_session.add(Complex(region_id=region.id, applyhome_id="2026000202", name="쌍둥이 단지", address=addr,
+                           former_names=[], apply_dates=[], contract_dates=[]))  # fmt: skip
+    db_session.flush()
+    _store_fields(db_session, add_raw, region, "2026910203", 2, name="쌍둥이 단지", address=addr)
+    assert db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026910203")).one() is not cx
+
+
+def test_w4_archived_notices_scoped_by_region(db_session: Session, region: Region, add_raw: AddRaw) -> None:
+    from app.normalize.archive import archived_notices
+
+    url = "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2026000164"
+    raw = add_raw("공고문", source_kind="notice_pdf", url=url, region_id=region.id)
+    other = _region2(db_session, region)
+    assert [r.id for r in archived_notices(db_session, "2026000164")] == [raw.id]
+    assert [r.id for r in archived_notices(db_session, "2026000164", region_id=region.id)] == [raw.id]
+    assert archived_notices(db_session, "2026000164", region_id=other.id) == []

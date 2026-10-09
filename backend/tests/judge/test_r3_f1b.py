@@ -98,3 +98,22 @@ def test_m12_error_rows_are_not_model_evidence(
     fresh = make_adapter(FakeTransport())
     assert fresh.adapter_version == ok.adapter_version  # 마지막 '정상' 행의 모델
     assert fresh.adapter_version.startswith(f"{ADAPTER_CODE_VERSION}+jev-mcp@0.14.1")
+
+
+def test_w12a_error_row_written_before_model_known_is_superseded_after_recovery(
+    make_adapter: Callable[..., Any], session_factory: sessionmaker[Session]
+) -> None:
+    """판정기 첫 사용 중 다운(모델 모름) → 접미 없는 버전의 error 행. 복구 후 다른 호출이 먼저 모델을 확정해도
+    같은 입력을 다시 부르면 그 error 행이 새 버전의 정상 행으로 갱신된다(잔존 error 행 없음)."""
+    down = FakeTransport(fail="unavailable")
+    with pytest.raises(JudgeUnavailable):
+        make_adapter(down).screen(PAYLOAD, "screen:notice:1")
+    (err,) = _rows(session_factory)
+    assert err.status == "error" and err.adapter_version == make_adapter_version("0.14.1")
+    adapter = make_adapter(FakeTransport())
+    adapter.screen({"text": "다른 공고 발췌"}, "screen:notice:2")  # 이 호출이 모델을 확정
+    env = adapter.screen(PAYLOAD, "screen:notice:1")
+    assert env.status == "ok" and (env.adapter_version or "").endswith("+jev-1.13.0")
+    rows = _rows(session_factory)
+    assert [r.status for r in rows] == ["ok", "ok"]  # error 행은 새 hash 의 정상 행으로 옮겨졌다
+    assert env.judgment_seq == err.seq
