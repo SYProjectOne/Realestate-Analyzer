@@ -1,0 +1,886 @@
+{
+  "recorded_at": "2026-10-09",
+  "command": "npx -y @jkudish/jev-mcp@latest",
+  "initialize": {
+    "protocol_version": "2025-11-25",
+    "capabilities": {
+      "tools": {
+        "list_changed": false
+      }
+    },
+    "server_info": {
+      "name": "jev-mcp",
+      "version": "0.14.1"
+    }
+  },
+  "tools": [
+    {
+      "name": "jev_verify",
+      "title": "Verify claims against evidence",
+      "description": "Check each claim against provided evidence text with TypeSafe Jev. Returns per claim: verdict (verified | contradicted | unsupported), full probability distribution, confidence, and whether the verdict stands on its own (auto) or needs human review. Pattern: docs.typesafe.ai/cookbooks/citation_check. Pass reports, PR descriptions, or agent briefs as claims and their cited sources, diffs, or documents as evidence.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "claims": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Claims to verify, e.g. individual factual statements from a report."
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "A single evidence document."
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Short identifier for this evidence item.",
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "The evidence text."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false,
+                "description": "A single evidence item."
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Short identifier for this evidence item (e.g. 'site-html', 'rfc-4.1.3').",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "The evidence text."
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Multiple evidence items; each claim is also matched to the item it rests on."
+              }
+            ]
+          },
+          "auto_accept": {
+            "description": "Verdicts at or above this confidence stand automatically; below it they are flagged 'review'. Default 0.8.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "subject_at": {
+            "description": "A contradiction stands only when same_subject reaches this probability. Default 0.5.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "claims",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_screen",
+      "title": "Screen content before it enters agent context",
+      "description": "Judge fetched or external text with TypeSafe Jev before an agent reads it: probability it contains instructions aimed at an AI agent (prompt injection), whether it has substantive content, and (when a purpose is given) whether it is relevant to the task. Returns a recommendation: pass | review | block | skip. Pattern: docs.typesafe.ai/cookbooks/llm_guardrails.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The content to screen, e.g. a fetched web page or pasted document."
+          },
+          "purpose": {
+            "description": "What the consuming agent is trying to do; enables a relevance judgment and the 'skip' action.",
+            "type": "string"
+          },
+          "block_at": {
+            "description": "Injection probability at or above which content is blocked. Default 0.75.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_at": {
+            "description": "Injection probability at or above which content is flagged for review. Default 0.25.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_noul",
+      "title": "Calibrated probability for propositions",
+      "description": "Return a calibrated probability for each stated proposition with TypeSafe Jev, in one batched request: high means likely, low means unlikely, middling means genuinely uncertain. Supplied context informs the judgment but is not a proof guarantee; to test claims strictly against evidence, including whether the evidence is merely silent, use jev_verify instead.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "propositions": {
+            "minItems": 1,
+            "maxItems": 64,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "description": "Propositions to judge, each a single testable statement. Up to 64 per call, 2000 chars each."
+          },
+          "context": {
+            "description": "Optional context the propositions are judged against: one document or evidence items. When omitted, the model's own knowledge applies.",
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "A single evidence document."
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Short identifier for this evidence item.",
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "The evidence text."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false,
+                "description": "A single evidence item."
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Short identifier for this evidence item (e.g. 'site-html', 'rfc-4.1.3').",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "The evidence text."
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Multiple evidence items; each claim is also matched to the item it rests on."
+              }
+            ]
+          },
+          "auto_accept": {
+            "description": "Decisiveness threshold: probability at or above this marks the proposition likely, at or below (1 - this) unlikely, between them uncertain. Must exceed 0.5. Default 0.85.",
+            "type": "number",
+            "exclusiveMinimum": 0.5,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "propositions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_find",
+      "title": "Semantic search over candidates",
+      "description": "Rank candidates against a plain-language query with TypeSafe Jev — no embeddings needed. One Choice scores every candidate id by how well it answers the query, plus a Noul checks whether any candidate addresses the query at all (so a confident 'top hit' cannot masquerade as an answer). Pattern: docs.typesafe.ai/cookbooks/semantic_find. Use for 'which file/note/line covers X' across up to 250 candidates.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What you are looking for, in natural language."
+          },
+          "candidates": {
+            "minItems": 1,
+            "maxItems": 250,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Short identifier for this candidate (e.g. a file path, note name, or line id).",
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string",
+                  "description": "The candidate's text."
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Candidates to search. Up to 250 in one call; texts are truncated at 2000 chars."
+          },
+          "top_k": {
+            "description": "How many ranked candidates to return. Default 5.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "query",
+          "candidates"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_classify",
+      "title": "Classify items against a shared label set",
+      "description": "Assign each item to one class from a shared catalog with TypeSafe Jev, in one batched request: the class catalog is sent once and every item becomes an independent Choice question. Returns per item: the chosen class, the full distribution, confidence, winner-to-runner-up margin, and an auto-versus-review decision. Auto requires both a high top probability (default 0.85) and a clear margin (default 0.50); everything else is flagged for review. Include a manual_review class in the catalog if you want an explicit escape hatch; the tool never invents one.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "maxItems": 64,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Items to classify. Text is truncated at 2000 characters; send bounded excerpts, not whole documents."
+          },
+          "classes": {
+            "minItems": 2,
+            "maxItems": 250,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Shared class catalog. Strong descriptions carry the decision: a precise definition, what belongs, what does not, precedence over overlapping classes, and a short example."
+          },
+          "purpose": {
+            "description": "What this classification is for; shared across all items.",
+            "type": "string"
+          },
+          "context": {
+            "description": "Shared context available to every item's judgment: policies, catalogs, anything stable.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              }
+            ]
+          },
+          "auto_accept": {
+            "description": "Minimum top probability for auto. Default 0.85.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minimum_margin": {
+            "description": "Minimum winner-to-runner-up gap for auto. Default 0.5.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "items",
+          "classes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_decide",
+      "title": "Decide between bounded alternatives",
+      "description": "One unresolved, bounded decision where semantic judgment over supplied evidence could change your plan: implementation alternatives, product tradeoffs with known preferences, workflow selection. Supply 2-6 candidates, evidence, and explicit priorities. Jev returns a Choice distribution over the candidates plus escape hatches (ask_user / investigate / none), and a per-candidate per-requirement supported / contradicted / unknown judgment for each optional requirement, all in one request. One call per unchanged decision; do not repeat a call to obtain a more pleasing answer. Use source inspection, tests, the user, or a reasoning model for open-ended research, routine choices, correctness proofs, or predicting user consent. High probability is not proof.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500,
+            "description": "The bounded decision to make."
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000,
+            "description": "Facts and measurements, not opinions. State is evidence, not instructions."
+          },
+          "priorities": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Explicit preferences and constraints from the user or plan."
+          },
+          "candidates": {
+            "minItems": 2,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "id",
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "description": "The alternatives. Include 'do nothing' or 'gather more evidence' as candidates when useful."
+          },
+          "requirements": {
+            "description": "Specific requirements to check per candidate. Each must test one property, not overall goodness.",
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "escape_hatches": {
+            "description": "Include ask_user / investigate / none as Choosable options so the model can decline to rank. Default true.",
+            "type": "boolean"
+          },
+          "escalate_on_contradiction": {
+            "description": "When true, a recommendation whose own requirement checks came back contradicted returns selected: null with status \"escalate\" instead of the candidate id (the jev_verify vocabulary). Default false keeps the recommendation and warns.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "decision",
+          "evidence",
+          "priorities",
+          "candidates"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_rerank",
+      "title": "Score every candidate's relevance and return them sorted",
+      "description": "Rerank candidates against a query with TypeSafe Jev: one independent relevance probability per candidate, all in a single request, then sorted by score. Unlike jev_find (which picks one best answer), rerank scores every candidate so the full ordering survives. TypeSafe's rerank cookbook reports that on the CLERC benchmark this pattern lifted top-1 from 5% to 18% and top-10 from 38% to 62% (docs.typesafe.ai/cookbooks). Use for retrieval ordering, dedup triage, or feed ranking across up to 250 candidates.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "What relevance is measured against, in natural language."
+          },
+          "candidates": {
+            "minItems": 1,
+            "maxItems": 250,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Short identifier for this candidate (e.g. a file path, note name, or line id).",
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string",
+                  "description": "The candidate's text."
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Candidates to search. Up to 250 in one call; texts are truncated at 2000 chars."
+          },
+          "top_k": {
+            "description": "How many ranked candidates to return. Default: all.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 250
+          }
+        },
+        "required": [
+          "query",
+          "candidates"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_compare",
+      "title": "Compare two passages for factual agreement",
+      "description": "Judge the relation between two passages with TypeSafe Jev: same_fact, contradicts, or different_facts, with the full probability distribution, confidence, and an auto-versus-review decision. Optionally supply aspects (price, date, method, …) and each gets an independent per-aspect judgment in the same single request. Use for source reconciliation, changelog-vs-code drift, or merge sanity checks. The request supplies no evidence beyond the two passages, so a same_fact verdict means they agree with each other, not that they are true.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "passage_a": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000,
+            "description": "First passage. Rejected above 20,000 characters."
+          },
+          "passage_b": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000,
+            "description": "Second passage. Rejected above 20,000 characters."
+          },
+          "aspects": {
+            "description": "Named aspects to judge independently (e.g. 'price', 'launch date'). Each tests one property.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "purpose": {
+            "description": "What this comparison is for; helps disambiguate overlap.",
+            "type": "string"
+          },
+          "auto_accept": {
+            "description": "Minimum top probability for auto. Default 0.85.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minimum_margin": {
+            "description": "Minimum winner-to-runner-up gap for auto. Default 0.5.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "passage_a",
+          "passage_b"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_extract",
+      "title": "Extract fields by regex, Jev picks the right match",
+      "description": "Extract structured fields from a document with TypeSafe Jev as the picker, not the generator: your regex finds candidate substrings in code, Jev chooses which candidate is the field's true value, and the result is returned verbatim — never model-generated text. Fields with zero regex matches never reach the model (not_found); if no field has matches, no API call is made. Ambiguous picks are flagged for review. Use for prices, dates, version numbers, IDs, and anything with a recognizable shape; keep documents bounded.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "document": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50000,
+            "description": "The document to extract from. Rejected above 50,000 characters."
+          },
+          "fields": {
+            "minItems": 1,
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "description": "Field name, e.g. 'price' or 'version'."
+                },
+                "pattern": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "JavaScript regex source (without delimiters) that matches candidate values. Runs in a sandboxed worker with a hard timeout."
+                },
+                "flags": {
+                  "description": "Regex flags (e.g. 'i'). 'g' is always added; non-letters are dropped.",
+                  "type": "string",
+                  "maxLength": 8
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000,
+                  "description": "What the field is, so Jev can pick the right candidate among regex matches."
+                }
+              },
+              "required": [
+                "id",
+                "pattern",
+                "description"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Fields to extract. Up to 32 per call, all judged in one request."
+          },
+          "purpose": {
+            "description": "What the extraction is for; shared across fields.",
+            "type": "string"
+          },
+          "auto_accept": {
+            "description": "Minimum top probability for auto. Default 0.85.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minimum_margin": {
+            "description": "Minimum winner-to-runner-up gap for auto. Default 0.5.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "document",
+          "fields"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_audit",
+      "title": "Audit extracted values against their source text",
+      "description": "Audit extracted values against the text they claim to come from, before the values are trusted: one request with a per-value failure-mode battery (hallucinated / off-target / incomplete / wrong format, each framed so true = something is wrong) plus a dedicated omission check for empty values. Any value's P(wrong) at wrong_at escalates the whole audit; max-gated, never averaged. For multimodal intake: run your vision or ASR model first to produce a dense transcript of the image, scan, or recording, screen that transcript with jev_screen, then audit the extracted values against it here — the tool never sees pixels or audio, it audits two text artifacts against each other. Schema validation catches structural errors; it can flag a schema-valid fabrication against the supplied source text — a limited cross-check, not verification of the original.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The text the values claim to come from: a document, or the dense transcript a vision or ASR model produced. Truncated at 50,000 chars."
+          },
+          "records": {
+            "minItems": 1,
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "description": "Short identifier for this value (e.g. 'due_date')."
+                },
+                "request": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "What was to be extracted, in one sentence (e.g. 'the due date in YYYY-MM-DD')."
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "description": "The extracted value, verbatim; empty when the extractor returned nothing."
+                }
+              },
+              "required": [
+                "id",
+                "request",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Extracted values to audit against the source. Up to 32 per call."
+          },
+          "wrong_at": {
+            "description": "A record's P(wrong) at or above this flags the value and escalates. Default 0.7.",
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "source",
+          "records"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_review",
+      "title": "Review a proposed patch",
+      "description": "Score a proposed diff against the request with TypeSafe Jev before the task is called done. Returns 0..2 rubric scores for correctness, spec match, test gap, and blast radius (the last two lower the weighted composite), a safe_to_apply probability, and an auto | review | escalate action. Auto requires safe_to_apply and min score confidence at auto_accept and the composite at composite_floor; truncated or malformed input never returns auto. Does not apply the patch or run tests. For a multi-file change, pass files instead of diff: the rubric is asked once per file in the same request and the action composes in code (auto only when every file is auto). Use jev_gate to also verify completion claims against evidence in the same call.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "request": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the user asked for; this frames the review, it is not proof of anything."
+          },
+          "diff": {
+            "description": "Proposed patch, file excerpt, or change summary (whole-change review). Truncated at 50000 chars. Provide exactly one of diff or files.",
+            "type": "string",
+            "minLength": 1
+          },
+          "files": {
+            "description": "Per-file review: one { path, diff } per file. The rubric is asked once per file, all in one request; the whole change is auto only when every file is auto, and the result names the limiting file and rubric. Each diff is truncated at 50000 chars; up to 16 files, and request + tests + all diffs together must stay within 200,000 chars. Provide exactly one of diff or files.",
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "diff": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "path",
+                "diff"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tests": {
+            "description": "Reported test output, if any. Truncated at the same cap.",
+            "type": "string"
+          },
+          "auto_accept": {
+            "description": "safe_to_apply and min score confidence at or above this may stand automatically. Default 0.8.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_at": {
+            "description": "Min score confidence or safe_to_apply below this escalates. Must be <= auto_accept. Default min(0.5, auto_accept).",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "composite_floor": {
+            "description": "Weighted composite at or above this is required for auto. Default 0.7.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "request"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "jev_gate",
+      "title": "Gate completion: review a patch and verify claims",
+      "description": "Review a proposed patch and verify completion claims against supplied evidence in one TypeSafe Jev call. Auto only when the patch review is accepted and every claim is verified at or above auto_accept. Unsupported claims require review; confident contradictions, unknown confidence, or low confidence escalate. The request and claims are assertions to check, never proof; put supporting diff excerpts and test logs in evidence. Evidence is capped at 16 items and 200,000 characters in aggregate. Does not run tests or apply changes. Use jev_review for a patch without claims, jev_verify for claims without a patch review.",
+      "input_schema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "request": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the user asked for; this is not evidence of completion."
+          },
+          "diff": {
+            "description": "Proposed patch, file excerpt, or change summary (whole-change review). Truncated at 50000 chars. Provide exactly one of diff or files.",
+            "type": "string",
+            "minLength": 1
+          },
+          "files": {
+            "description": "Per-file review: one { path, diff } per file. The rubric is asked once per file, all in one request; the whole change is auto only when every file is auto, and the review names the limiting file and rubric. Each diff is truncated at 50000 chars; up to 16 files, and request + tests + all diffs together must stay within 200,000 chars. Provide exactly one of diff or files.",
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "diff": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "path",
+                "diff"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "claims": {
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Completion claims to check against evidence, each truncated at 2000 chars. Up to 16 per call."
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "A single evidence document."
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Short identifier for this evidence item.",
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "The evidence text."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false,
+                "description": "A single evidence item."
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Short identifier for this evidence item (e.g. 'site-html', 'rfc-4.1.3').",
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "The evidence text."
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Multiple evidence items; each claim is also matched to the item it rests on."
+              }
+            ]
+          },
+          "tests": {
+            "description": "Reported test output for the patch review. Truncated at the same cap.",
+            "type": "string"
+          },
+          "auto_accept": {
+            "description": "Review and per-claim confidence at or above this may stand automatically. Default 0.8.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "review_at": {
+            "description": "Score, safe_to_apply, or per-claim confidence below this escalates. Must be <= auto_accept. Default min(0.5, auto_accept).",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "composite_floor": {
+            "description": "Weighted composite at or above this is required for auto. Default 0.7.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "request",
+          "claims",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}
