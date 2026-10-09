@@ -88,6 +88,10 @@ export interface SnapshotLike {
   asof_date: string;
   status?: string;
   degraded?: boolean;
+  /** 같은 기준일 리비전 번호(계약 .8, D11-1). 옛 응답엔 없다(= 1) */
+  revision?: number;
+  /** 리비전을 만든 사유(리비전 1 은 null) */
+  revision_reason?: string | null;
 }
 
 /** JobProgressView 입력 */

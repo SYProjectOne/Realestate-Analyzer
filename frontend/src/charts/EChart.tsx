@@ -4,7 +4,8 @@ import { useInView } from '@/lib/useInView';
 import type { EChartsOption } from './types';
 
 // echarts 번들은 차트가 뷰포트에 처음 들어올 때 받는다(RA §7 "뷰포트 진입 시 lazy load").
-const ReactECharts = lazy(() => import('echarts-for-react'));
+// 전체 echarts 가 아니라 쓰는 계열·컴포넌트만 등록한 런타임(EChartRuntime) — 최대 청크 ≤ 500kB.
+const ReactECharts = lazy(() => import('./EChartRuntime'));
 
 export interface EChartProps {
   option: EChartsOption;

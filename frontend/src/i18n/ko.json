@@ -67,7 +67,21 @@
       "save": "저장",
       "saved": "생활권을 저장했습니다 — 재판정 잡이 등록됐습니다",
       "saveError": "저장하지 못했습니다: {detail}",
-      "dirty": "저장하지 않은 변경이 있습니다"
+      "dirty": "저장하지 않은 변경이 있습니다",
+      "expand": {
+        "title": "지역 범위 확장(지역 추가)",
+        "intro": "지금 지역 선택에 시도·시군구·동을 더하거나 뺍니다. 저장하면 같은 기준일의 새 리비전에서 후보 전체 순위를 다시 매기고, 보고서에 '지역 추가' 장(이전 리비전과 비교)이 생깁니다.",
+        "current": "현재 지역 선택",
+        "remove": "{name} 빼기",
+        "search": "추가할 지역 검색",
+        "candidates": "추가 후보",
+        "add": "추가",
+        "have": "이미 있음",
+        "diff": "추가 {added} · 제거 {removed} — 저장하지 않음",
+        "submit": "범위 저장 → 새 리비전 재판정",
+        "saved": "지역 범위를 저장했습니다 — 새 리비전 재판정 잡이 등록됐습니다",
+        "jobHint": "새 리비전에서 후보 전체 rerank 1회 + 보고서 '지역 추가' 장"
+      }
     },
     "G1": {
       "title": "홈 대시보드",
@@ -361,7 +375,8 @@
         "rankBefore": "이전 순위",
         "rankAfter": "새 순위",
         "totalBefore": "이전 종합",
-        "totalAfter": "새 종합"
+        "totalAfter": "새 종합",
+        "deltaRerank": "rerank 변화(새 run, 이전 run 대비)"
       },
       "noDiff": "순위 변동 없음",
       "escaped": "판정기가 질문을 남겼습니다",
@@ -398,6 +413,34 @@
         "titleRequired": "제목을 입력하세요",
         "saved": "호재 후보를 저장했습니다: {name}",
         "noJob": "이 지역에 스냅샷이 없어 분류 잡을 등록하지 않았습니다 — 다음 파이프라인 실행 때 분류합니다"
+      },
+      "loc": {
+        "title": "호재 위치 확인",
+        "intro": "호재 위치를 사람이 확인해야 단지와 연결됩니다(위치 미확정이면 연결 없음). 좌표 또는 영향 생활권·단지를 고르세요 — 단지 좌표가 없으면 거리는 확인 불가, 가중치 1(같은 생활권), 라벨 추정입니다. 단계 분류는 판정기가 합니다.",
+        "none": "호재가 없습니다",
+        "confirmed": "위치 확인됨",
+        "unconfirmed": "위치 미확정",
+        "open": "위치 확인",
+        "unconfirm": "위치 확인 취소",
+        "formFor": "{name} 위치 확인",
+        "lat": "위도(선택)",
+        "lon": "경도(선택)",
+        "areas": "영향 생활권",
+        "complexes": "영향 단지(여러 개 선택)",
+        "submit": "위치 확인 → 단지 연결",
+        "badCoord": "위도는 -90~90, 경도는 -180~180 사이 숫자여야 합니다",
+        "bothCoord": "위도와 경도는 함께 입력하세요",
+        "needTarget": "좌표 또는 영향 생활권·단지를 하나 이상 고르세요",
+        "links": "{name} 단지 연결",
+        "noLinks": "위치를 확인했지만 연결된 단지가 없습니다",
+        "cleared": "위치 확인을 취소했습니다 — 단지 연결을 지웠습니다",
+        "unknownComplex": "(목록에 없는 단지)",
+        "noCoord": "단지 좌표 없음 — 같은 생활권 가중치 1",
+        "col": {
+          "complex": "단지",
+          "distance": "거리",
+          "weight": "가중치"
+        }
       }
     },
     "G7": {
@@ -490,13 +533,36 @@
         "submit": "사람 확인 저장",
         "saved": "저장했습니다 — 접수 배지를 갱신했습니다",
         "required": "단지·필드·값·입력자(역할)는 필수입니다",
-        "latest": "방금 저장한 접수 상태"
+        "latest": "방금 저장한 접수 상태",
+        "tooLong": "값은 {max}자 이하로 입력하세요",
+        "badYm": "입주 예정은 YYYY-MM 형식으로 입력하세요",
+        "badInt": "정수만 입력하세요(소수 불가)",
+        "badNumber": "숫자만 입력하세요",
+        "min": "{min} 이상이어야 합니다",
+        "max": "{max} 이하여야 합니다",
+        "noteTooLong": "메모는 {max}자 이하로 입력하세요",
+        "noteHint": "통화·방문 내용 요약만 — 전화번호·주민번호·이메일·비밀값은 서버가 거부합니다",
+        "savedFact": "저장했습니다 — 사실을 사람 확인 값으로 바꿨습니다(같은 사실의 검증 모순 강등 복원)",
+        "factSaved": "{field} = {value} (사람 확인 — 출처 우선순위 0)",
+        "entityPinned": "강등된 사실 행(주장의 대상)을 지정했습니다"
       },
       "hcField": {
         "intake_status": "접수 상태",
+        "max_price_won": "최고 공급금액(기준 타입·현재 공고)",
+        "move_in_ym": "입주 예정",
+        "resale_months": "전매 제한(개월)",
+        "residency_months": "거주의무(개월)",
+        "down_payment_pct": "계약금 비율(%)",
         "price": "가격",
         "units": "잔여 세대",
-        "other": "기타"
+        "other": "기타(기록만)"
+      },
+      "hcHint": {
+        "max_price_won": "원 단위 정수(예: 605000000)",
+        "move_in_ym": "YYYY-MM",
+        "resale_months": "개월 정수 0~240",
+        "residency_months": "개월 정수 0~240",
+        "down_payment_pct": "퍼센트 0~100"
       },
       "hcKind": {
         "phone": "전화",
@@ -523,6 +589,7 @@
         "submit": "고쳐서 재검증",
         "error": "수정하지 못했습니다: {detail}",
         "field": "대상 필드: {name}",
+        "restoreByHuman": "사람 확인으로 복원",
         "demoteHint": "DB 사실에서 나온 주장입니다 — 고쳐서 재검증을 접수하면 같은 대상(단지·필드)만 허용되고, 그 사실은 '확인 불가(검증 모순)'으로 강등되어 점수·요건에서 빠집니다(사람 확인 또는 새 원문으로 복원).",
         "restored": "복원됨({by})",
         "restoredPlain": "복원됨",
@@ -616,6 +683,8 @@
       "yes": "예",
       "no": "아니오",
       "none": "없음",
+      "deltaRerank": "rerank 변화(이전 run 대비)",
+      "deltaRerankNone": "이전 run 없음",
       "all": "전체",
       "save": "저장",
       "cancel": "취소",
@@ -736,7 +805,9 @@
   },
   "picker": {
     "snapshotDegraded": "{date} · 일부 수집 실패",
-    "snapshotBuilding": "{date} · 생성 중"
+    "snapshotBuilding": "{date} · 생성 중",
+    "revision": "{date} · 리비전 {n}",
+    "revisionReason": "리비전 {n}: {reason}"
   },
   "badge": {
     "cached": "캐시",
@@ -929,6 +1000,7 @@
         "임의": "임의공급",
         "선착순": "선착순"
       },
+      "labels": "잔여 세대·경쟁률",
       "empty": "본청약만"
     },
     "C09": {
@@ -938,10 +1010,12 @@
         "계획": "계획",
         "추진": "추진",
         "언론": "언론",
-        "미확정": "미확정"
+        "미확정": "미확정",
+        "호재 아님": "호재 아님(제외)"
       },
       "timeline": "확정 호재 타임라인",
       "noLink": "위치 미확정 · 단지 연결 없음",
+      "excluded": "호재 아님(판정 제외) {n}건 — 보드에 넣지 않음",
       "empty": "호재 없음"
     },
     "C10": {

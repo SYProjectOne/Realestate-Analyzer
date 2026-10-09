@@ -10,6 +10,9 @@
   ``ToolResponse.is_error`` 로 돌려주고 어댑터가 error 행 + JudgeUnavailable 로 바꾼다.
 - 자식 프로세스 환경변수는 MCP SDK 기본(PATH 등) + 판정기 자격 증명·설정(TYPESAFE_*, OPENROUTER_*, JEV_* …)만.
   DATA_GO_KR_KEY 같은 이 프로그램의 비밀값은 넘기지 않는다.
+- 기동 실패 메시지의 stderr 꼬리는 ``judge_secret_values`` (설정 비밀값 + 자식에게 넘긴 자격 증명 env 값)로
+  **전체를 가린 뒤** 자른다(R3c SEC minor 32 — 판정기가 자기 키를 stderr 에 찍어도 judgment_log·로그에
+  남지 않게).
 
 정규화 (``normalize``) — 실제 JEV 0.14.1 응답 모양(tests/judge/fixtures/jev_samples.json) 기준
 | 도구 | JEV 응답 | 봉투 status |
@@ -37,7 +40,7 @@ import shutil
 import tempfile
 import threading
 import time
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Any, Final
 
@@ -53,6 +56,7 @@ __all__ = [
     "DEFAULT_TIMEOUT_S",
     "JevMcpAdapter",
     "McpStdioTransport",
+    "judge_secret_values",
     "normalize",
     "split_command",
     "subprocess_env",
@@ -79,6 +83,8 @@ _LADDER_PURPOSE_RE = re.compile(
     r"^noul:ladder:(move_in_plus_1y|asof_plus_3y|asof_plus_5y):(\d{4}-\d{2})(?::|$)"
 )
 _STDERR_TAIL = 300
+_CREDENTIAL_NAME_RE = re.compile(r"(?i)(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH)")
+"""자식 프로세스 env 중 값이 비밀인 이름(OPENROUTER_API_KEY·CLOUDFLARE_API_TOKEN·NODE_AUTH_TOKEN …)."""
 
 # ====================================================================== 전송
 
@@ -111,6 +117,15 @@ def subprocess_env() -> dict[str, str]:
     return env
 
 
+def judge_secret_values(env: Mapping[str, str]) -> list[str]:
+    """stderr·오류 문자열에서 가릴 값: 설정의 비밀값 + 자식 프로세스 env 중 이름이 자격 증명인 값."""
+    from app.core.settings import get_settings
+
+    values = list(get_settings().secret_values())
+    values += [v for name, v in env.items() if v and _CREDENTIAL_NAME_RE.search(name)]
+    return list(dict.fromkeys(values))
+
+
 async def _timed[R](fn: Callable[[], Awaitable[R]], timeout_s: float) -> R:
     with anyio.fail_after(timeout_s):
         return await fn()
@@ -139,6 +154,7 @@ class McpStdioTransport:
         self._session: Any = None
         self._errlog: Any = None
         self._server_version: str | None = None
+        self._redact_values: list[str] = []
 
     # ------------------------------------------------------------------ 공개
 
@@ -189,9 +205,12 @@ class McpStdioTransport:
         from mcp.client.stdio import StdioServerParameters, stdio_client
 
         exe = shutil.which(self._argv[0]) or self._argv[0]
-        params = StdioServerParameters(
-            command=exe, args=self._argv[1:], env=self._env if self._env is not None else subprocess_env()
-        )
+        env = self._env if self._env is not None else subprocess_env()
+        params = StdioServerParameters(command=exe, args=self._argv[1:], env=env)
+        try:
+            self._redact_values = judge_secret_values(env)
+        except Exception:  # 설정을 못 읽어도(검증 오류) 자식 env 의 자격 증명은 가린다
+            self._redact_values = [v for k, v in env.items() if v and _CREDENTIAL_NAME_RE.search(k)]
         try:
             # 프로세스 수명 동안 열어 둔다(_teardown 이 닫음)
             self._errlog = tempfile.TemporaryFile(  # noqa: SIM115
@@ -225,7 +244,8 @@ class McpStdioTransport:
             text = str(self._errlog.read())
         except (OSError, ValueError):
             return ""
-        return redact_text(" ".join(text.split())[-_STDERR_TAIL:])
+        # 가린 뒤 자른다(자른 뒤 가리면 잘린 비밀값 조각이 패턴에 안 걸려 남는다)
+        return redact_text(" ".join(text.split()), self._redact_values)[-_STDERR_TAIL:]
 
     def _teardown(self) -> None:
         # 이미 죽은 프로세스를 정리하다 나는 오류는 무시한다

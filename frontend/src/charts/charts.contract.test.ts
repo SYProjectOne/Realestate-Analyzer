@@ -465,7 +465,36 @@ describe('C08 잔여 이력', () => {
     const o = C08.buildOption({ events });
     const s = series(o).find((x) => x.id === '무순위');
     expect(s.data[0].value[0]).toBe('2025-10-01');
-    expect(s.data[0].label.formatter).toContain('185세대');
+    // RA §7 C8: 라벨은 scatter 라벨이 아니라 custom 계열
+    expect(s.data[0].label).toBeUndefined();
+    const labels = seriesById(o, 'labels');
+    expect(labels.type).toBe('custom');
+    expect(labels.silent).toBe(true);
+    expect(labels.data.map((d: any) => d.text)).toContainEqual(expect.stringContaining('185세대'));
+    expect(typeof labels.renderItem).toBe('function');
+    // 범례는 kind 4종만
+    expect(opt(o).legend.data).toEqual(['본청약', '무순위', '임의공급', '선착순']);
+  });
+
+  it('custom 라벨: 같은 줄 가까운 이웃은 위·아래로 엇갈리고, renderItem 은 text 를 그린다', () => {
+    const ev = (notice_date: string, units: number) =>
+      ({
+        ...events[1]!,
+        kind: '무순위',
+        notice_date: { ...events[1]!.notice_date, v: notice_date },
+        units: { ...events[1]!.units, v: units },
+        ratio_text: null,
+      }) as (typeof events)[number];
+    const data = { events: [ev('2025-01-01', 10), ev('2025-02-01', 20), ev('2025-12-01', 30)] };
+    const items = C08.labelItems(data);
+    expect(items.map((i) => i.place)).toEqual(['top', 'bottom', 'top']);
+    const o = C08.buildOption(data);
+    const labels = seriesById(o, 'labels');
+    const api = { value: (d: number) => d, coord: () => [100, 50] };
+    const el = labels.renderItem({ dataIndex: 1 }, api);
+    expect(el.type).toBe('text');
+    expect(el.style.text).toBe(items[1]!.text);
+    expect(el.y).toBeGreaterThan(50);
   });
 
   it('이벤트 0 → "본청약만"', () => {
@@ -482,6 +511,17 @@ describe('C09 호재 단계', () => {
     const confirmed = catalysts.filter((c) => c.stage === '확정' && c.expected_ym.v);
     expect(items).toHaveLength(confirmed.length);
     expect(opt(o).xAxis.type).toBe('time');
+  });
+
+  it("계약 .8 '호재 아님' 단계는 보드에 넣지 않고(throw 없음) 따로 센다", () => {
+    const notCatalyst = {
+      ...catalysts[0]!,
+      id: 999,
+      stage: '호재 아님',
+    } as unknown as (typeof catalysts)[number];
+    const groups = C09.groupByStage([...catalysts, notCatalyst]);
+    expect(Object.values(groups).flat()).toHaveLength(catalysts.length);
+    expect(C09.excludedCatalysts([...catalysts, notCatalyst]).map((c) => c.id)).toEqual([999]);
   });
 
   it('보드 5열 묶음 + 언론·미확정 회색 + 위치 미확정 표시', () => {

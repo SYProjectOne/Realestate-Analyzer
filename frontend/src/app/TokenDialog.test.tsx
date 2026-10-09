@@ -10,7 +10,7 @@ import { server } from '@/mocks/server';
 import '@/pages/_shared/testing';
 import { renderRoute } from '@/test/render';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 const TOKENS = { 'tok-write': 'write', 'tok-read': 'read' } as const;

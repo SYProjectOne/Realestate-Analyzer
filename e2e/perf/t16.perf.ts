@@ -2,8 +2,12 @@
  * T16 성능 측정(RA §9: `/complexes` 첫 페이지 1초 이내, G2 스크롤 60fps(가상화)) — 합성 1,000단지.
  * 측정값을 콘솔(`T16 …` 줄)과 playwright-report/perf-results.json 에 남긴다.
  * 판정: API 첫 페이지(size 50) 중앙값 < 1 s; G2 가상화(DOM 행 < 200, aria-rowcount ≥ 1001);
- *       스크롤 rAF 간격 p50 ≤ 20 ms(≈ 50 fps 이상 — 헤드리스 60 Hz 에서 60 fps 면 16.7 ms).
+ *       스크롤 rAF 간격 — D10-8: p50 ≤ 17 ms(60 fps) + p95 ≤ 34 ms(두 프레임 이상 끊김이 5% 이하).
  */
+
+/** D10-8 T16 화면 기준(ms) — RA "60fps" 를 p50 으로 해석, 끊김은 p95 로 묶는다 */
+export const FRAME_P50_MAX_MS = 17;
+export const FRAME_P95_MAX_MS = 34;
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
@@ -56,6 +60,23 @@ test('T16 API 첫 페이지 + G2 가상 스크롤 프레임 간격', async ({ pa
   out.g2_aria_rowcount = rowcount;
   expect(domRows).toBeLessThan(200);
 
+  // 진단: 스크롤 없이 rAF 간격(이 브라우저·화면의 기본 프레임 주기) — 스크롤 결과와 비교용
+  const idle = await page.evaluate(async () => {
+    const deltas: number[] = [];
+    let last = performance.now();
+    await new Promise<void>((resolve) => {
+      const tick = (now: number): void => {
+        deltas.push(now - last);
+        last = now;
+        if (deltas.length > 120) resolve();
+        else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    return deltas.slice(1);
+  });
+  out.idle_frame_ms = stats(idle);
+
   const frames = await scroller.evaluate(async (el: HTMLElement) => {
     const deltas: number[] = [];
     const end = el.scrollHeight - el.clientHeight;
@@ -74,7 +95,12 @@ test('T16 API 첫 페이지 + G2 가상 스크롤 프레임 간격', async ({ pa
     return { deltas: deltas.slice(1), reachedEnd: el.scrollTop >= end - 1 };
   });
   const st = stats(frames.deltas);
-  out.g2_scroll_frame_ms = { ...st, fps_p50: Math.round((1000 / st.p50) * 10) / 10, reached_end: frames.reachedEnd };
+  out.g2_scroll_frame_ms = {
+    ...st,
+    fps_p50: Math.round((1000 / st.p50) * 10) / 10,
+    reached_end: frames.reachedEnd,
+    criterion: { p50_max: FRAME_P50_MAX_MS, p95_max: FRAME_P95_MAX_MS, source: 'D10-8' },
+  };
   const lastIndex = Number(await scroller.locator('tbody tr[aria-rowindex]').last().getAttribute('aria-rowindex'));
   out.g2_last_rendered_rowindex = lastIndex;
 
@@ -84,7 +110,8 @@ test('T16 API 첫 페이지 + G2 가상 스크롤 프레임 간격', async ({ pa
   await writeFile(path.join(dir, 'perf-results.json'), JSON.stringify(out, null, 2), 'utf-8');
 
   expect((out.api_first_page_size_50_ms as { p50: number }).p50).toBeLessThan(1000);
-  expect(st.p50).toBeLessThanOrEqual(20);
+  expect(st.p50, `G2 스크롤 프레임 간격 p50 ≤ ${FRAME_P50_MAX_MS}ms(D10-8)`).toBeLessThanOrEqual(FRAME_P50_MAX_MS);
+  expect(st.p95, `G2 스크롤 프레임 간격 p95 ≤ ${FRAME_P95_MAX_MS}ms(D10-8)`).toBeLessThanOrEqual(FRAME_P95_MAX_MS);
   // 끝까지 스크롤하면 마지막 행(aria-rowcount)이 보여야 한다 — 전체 행이 화면에 닿는가
   // G2 가 실제로 부르는 첫 페이지(size 1000) 응답도 1 s 이내여야 한다(RA §9 T16 '첫 페이지')
   const timing = resp.request().timing();

@@ -312,7 +312,7 @@ function ThemeSwitch() {
       type="button"
       aria-pressed={theme === 'dark'}
       onClick={toggleTheme}
-      className="rounded border border-border px-2 py-1 text-sm"
+      className="rounded-sm border border-border px-2 py-1 text-sm"
     >
       {`${t('header.theme')}: ${theme === 'dark' ? t('header.themeDark') : t('header.themeLight')}`}
     </button>
@@ -323,7 +323,7 @@ export function ChartGallery() {
   const ids = testIds(GALLERY_CASES);
   const charts = [...new Set(GALLERY_CASES.map((item) => item.chart))];
   return (
-    <div className="mx-auto flex max-w-screen-2xl flex-col gap-6 p-4">
+    <div className="mx-auto flex max-w-(--breakpoint-2xl) flex-col gap-6 p-4">
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-semibold">{t('chart.gallery.title')}</h1>
         <p className="text-sm text-muted">{t('chart.gallery.note')}</p>

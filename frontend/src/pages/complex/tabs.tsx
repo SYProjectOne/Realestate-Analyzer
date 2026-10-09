@@ -2,9 +2,9 @@
 import { useState, type ReactNode } from 'react';
 import type { ComplexDetail, LadderHorizon } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
-import { Badge, EmptyState, ExternalLink, FactCell } from '@/components';
+import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatCount, formatHalfYear } from '@/lib/format';
+import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
 
 export function PriceTab({ detail }: { detail: ComplexDetail }) {
@@ -151,7 +151,7 @@ export function PaymentTab({ detail }: { detail: ComplexDetail }) {
                 {term.interim_schedule.map((item) => (
                   <tr key={item.seq}>
                     <th scope="row" className={`${tdClass} text-left font-normal`}>
-                      {t('page.G3.payment.seq', { n: formatCount(item.seq) })}
+                      <MetaText kind="seq" k="page.G3.payment.seq" params={{ n: item.seq }} />
                     </th>
                     <td className={tdClass}>
                       <FactCell fact={item.due_date} unit="date" asof={asof} />

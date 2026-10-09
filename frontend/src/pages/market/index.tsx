@@ -2,20 +2,21 @@ import { useId } from 'react';
 import { useMarket } from '@/api/hooks';
 import type { Market } from '@/api/types';
 import { C03Benchmark, C04Supply, C05Unsold, C09Catalyst } from '@/charts';
-import { Badge, EmptyState, FactCell } from '@/components';
+import { Badge, EmptyState, FactCell, MetaText } from '@/components';
 import { useUrlParam } from '@/hooks/useUrlParam';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
 import {
   NoSnapshot,
   QueryState,
+  sampleCountFact,
   Section,
   tdClass,
   thClass,
   unitOf,
   usePageContext,
 } from '../_shared';
+import { CatalystLocationPanel } from './CatalystLocationPanel';
 import { CatalystUrlForm } from './CatalystUrlForm';
 
 export const LIVING_AREA_PARAM = 'living_area';
@@ -44,7 +45,7 @@ export function MarketPage() {
             id={selectId}
             value={livingArea ?? ''}
             onChange={(e) => setLivingArea(e.target.value || null, { replace: true })}
-            className="rounded border border-border bg-surface px-2 py-1"
+            className="rounded-sm border border-border bg-surface px-2 py-1"
           >
             <option value="">{t('page.G6.allAreas')}</option>
             {(query.data?.living_areas ?? []).map((la) => (
@@ -59,7 +60,14 @@ export function MarketPage() {
       {!snapshotId && !isLoading ? (
         <NoSnapshot />
       ) : (
-        <QueryState query={query}>{(market) => <MarketBody market={market} />}</QueryState>
+        <QueryState query={query}>
+          {(market) => (
+            <>
+              <MarketBody market={market} />
+              <CatalystLocationPanel market={market} snapshotId={snapshotId} />
+            </>
+          )}
+        </QueryState>
       )}
       {isLoading ? null : <CatalystUrlForm regionId={regionId} />}
     </PageShell>
@@ -103,10 +111,11 @@ function MarketBody({ market }: { market: Market }) {
               {market.benchmark_flags.map((flag) => (
                 <li key={flag.living_area} className="inline-flex flex-wrap items-center gap-1">
                   <Badge tone={flag.sample_n < 3 ? 'muted' : 'neutral'}>
-                    {t('page.G6.flag', {
-                      name: areaName(flag.living_area),
-                      n: formatCount(flag.sample_n),
-                    })}
+                    <MetaText
+                      kind="count"
+                      k="page.G6.flag"
+                      params={{ name: areaName(flag.living_area), n: flag.sample_n }}
+                    />
                     {flag.no_recent_sale_case ? ` · ${t('page.G6.noRecentSale')}` : ''}
                   </Badge>
                   {flag.substituted ? (
@@ -195,7 +204,9 @@ function LivingAreaCompare({ market }: { market: Market }) {
                   <td className={tdClass}>
                     <FactCell fact={row.high_won} unit="eok" />
                   </td>
-                  <td className={tdClass}>{formatCount(row.n_trades, 'count')}</td>
+                  <td className={tdClass}>
+                    <FactCell fact={sampleCountFact(row.median_won, row.n_trades)} unit="count" />
+                  </td>
                   <td className={tdClass}>{row.trade_window ?? t('empty.unknown')}</td>
                   <td className={`${tdClass} text-xs text-muted`}>{row.basis ?? ''}</td>
                 </tr>

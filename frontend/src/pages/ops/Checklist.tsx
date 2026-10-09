@@ -70,7 +70,7 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
                       patch: { status: e.target.value as ChecklistItem['status'] },
                     })
                   }
-                  className="rounded border border-border bg-surface px-1 py-0.5 text-xs"
+                  className="rounded-sm border border-border bg-surface px-1 py-0.5 text-xs"
                 >
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>

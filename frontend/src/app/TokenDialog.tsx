@@ -28,7 +28,7 @@ export function TokenButton() {
     <button
       type="button"
       onClick={() => requestToken('manual')}
-      className="rounded border border-border px-2 py-1 text-xs"
+      className="rounded-sm border border-border px-2 py-1 text-xs"
       data-testid="token-button"
       aria-haspopup="dialog"
     >
@@ -152,7 +152,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-md flex-col gap-3 rounded border border-border bg-surface p-4 text-fg shadow-xl"
+        className="flex w-full max-w-md flex-col gap-3 rounded-sm border border-border bg-surface p-4 text-fg shadow-xl"
       >
         <h2 id={titleId} className="text-base font-semibold">
           {t('auth.title')}
@@ -186,7 +186,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             autoComplete="off"
             spellCheck={false}
             onChange={(e) => setValue(e.target.value)}
-            className="rounded border border-border bg-bg px-2 py-1.5 font-mono text-sm"
+            className="rounded-sm border border-border bg-bg px-2 py-1.5 font-mono text-sm"
           />
           <label className="inline-flex items-center gap-1 text-xs text-muted">
             <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
@@ -201,7 +201,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             <button
               type="submit"
               disabled={checking}
-              className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+              className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
             >
               {checking ? t('auth.checking') : t('auth.save')}
             </button>
@@ -209,7 +209,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
               <button
                 type="button"
                 onClick={clear}
-                className="rounded border border-border px-3 py-1.5 text-sm"
+                className="rounded-sm border border-border px-3 py-1.5 text-sm"
               >
                 {t('auth.clear')}
               </button>
@@ -217,7 +217,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             <button
               type="button"
               onClick={dismissTokenPrompt}
-              className="ml-auto rounded border border-border px-3 py-1.5 text-sm"
+              className="ml-auto rounded-sm border border-border px-3 py-1.5 text-sm"
             >
               {t('auth.close')}
             </button>

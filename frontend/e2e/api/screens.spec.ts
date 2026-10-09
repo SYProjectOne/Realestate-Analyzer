@@ -144,7 +144,8 @@ test('G7 사람 확인 입력 → 결과 배지 · 단지 상세 접수 배지 �
   await expect(complex.locator('option', { hasText: '송도 한내들 센트럴리버' })).toBeAttached();
   await complex.selectOption({ label: '송도 한내들 센트럴리버' });
   await form.getByLabel(P.G7.hc.value).selectOption('미정');
-  await form.getByLabel(P.G7.hc.enteredBy).fill('e2e 운영자');
+  // 계약 2026-10-09.7: entered_by = 역할 enum(운영자·검토자) — 개인 이름을 받지 않는다
+  await form.getByLabel(P.G7.hc.enteredBy).selectOption('운영자');
   const saved = page.waitForResponse(
     (r) => r.url().endsWith('/api/ops/human-checks') && r.request().method() === 'POST',
   );

@@ -160,12 +160,12 @@ export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
               ) : null}
               <pre
                 data-testid="raw-text"
-                className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded border border-border bg-bg p-2 text-xs"
+                className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-sm border border-border bg-bg p-2 text-xs"
               >
                 {parts.before}
                 <mark
                   aria-label={t('page.G3.provenance.highlight')}
-                  className="rounded bg-accent px-0.5 text-accent-fg"
+                  className="rounded-sm bg-accent px-0.5 text-accent-fg"
                   ref={(el) => el?.scrollIntoView?.({ block: 'center' })}
                 >
                   {parts.mark}

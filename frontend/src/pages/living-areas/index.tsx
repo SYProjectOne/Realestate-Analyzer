@@ -5,11 +5,12 @@ import { ApiError } from '@/api/client';
 import { useRegion, useUpdateLivingAreas } from '@/api/hooks';
 import type { LivingAreasUpdated, Region } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { EmptyState, FactCell, JobProgress } from '@/components';
+import { EmptyState, FactCell, JobProgress, MetaText } from '@/components';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import { QueryState } from '../_shared';
+import { RegionExpandPanel } from './RegionExpandPanel';
 
 export interface DraftArea {
   /** 화면 안 키(기존 생활권은 서버 id) */
@@ -77,7 +78,12 @@ export function LivingAreasPage() {
     <PageShell title={t('page.G0_2.title')}>
       <p className="text-sm text-muted">{t('page.G0_2.intro')}</p>
       <QueryState query={query}>
-        {(region) => <Editor key={region.id} region={region} />}
+        {(region) => (
+          <>
+            <Editor key={region.id} region={region} />
+            <RegionExpandPanel key={`expand-${region.id}`} region={region} />
+          </>
+        )}
       </QueryState>
     </PageShell>
   );
@@ -161,7 +167,7 @@ function Editor({ region }: { region: Region }) {
       key={code}
       draggable
       onDragStart={(e) => e.dataTransfer.setData('text/plain', code)}
-      className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-bg"
+      className="flex items-center gap-2 rounded-sm px-1 py-0.5 hover:bg-bg"
     >
       <label className="inline-flex cursor-grab items-center gap-2 text-sm">
         <input
@@ -178,7 +184,7 @@ function Editor({ region }: { region: Region }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2 rounded border border-border bg-surface p-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 rounded-sm border border-border bg-surface p-2 text-sm">
         <label htmlFor={moveId} className="text-muted">
           {t('page.G0_2.moveTo')}
         </label>
@@ -186,7 +192,7 @@ function Editor({ region }: { region: Region }) {
           id={moveId}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
-          className="rounded border border-border bg-surface px-2 py-1"
+          className="rounded-sm border border-border bg-surface px-2 py-1"
         >
           {areas.map((a) => (
             <option key={a.key} value={a.key}>
@@ -198,7 +204,7 @@ function Editor({ region }: { region: Region }) {
           type="button"
           onClick={() => move([...selected], target)}
           disabled={selected.size === 0}
-          className="rounded border border-border px-2 py-1 disabled:opacity-50"
+          className="rounded-sm border border-border px-2 py-1 disabled:opacity-50"
         >
           {t('page.G0_2.move')}
         </button>
@@ -212,13 +218,13 @@ function Editor({ region }: { region: Region }) {
               {
                 key,
                 id: null,
-                name: t('page.G0_2.newName', { n: formatCount(nextNo) }),
+                name: metaText('page.G0_2.newName', { n: nextNo }),
                 codes: [],
               },
             ]);
             setNextNo((n) => n + 1);
           }}
-          className="ml-auto rounded border border-border px-2 py-1"
+          className="ml-auto rounded-sm border border-border px-2 py-1"
         >
           {t('page.G0_2.add')}
         </button>
@@ -226,11 +232,11 @@ function Editor({ region }: { region: Region }) {
 
       {unassigned.length > 0 ? (
         <section
-          className="rounded border border-danger p-2"
-          aria-label={t('page.G0_2.unassigned', { n: formatCount(unassigned.length) })}
+          className="rounded-sm border border-danger p-2"
+          aria-label={metaText('page.G0_2.unassigned', { n: unassigned.length })}
         >
           <p className="text-sm text-danger">
-            {t('page.G0_2.unassigned', { n: formatCount(unassigned.length) })}
+            <MetaText kind="count" k="page.G0_2.unassigned" params={{ n: unassigned.length }} />
           </p>
           <ul className="flex flex-wrap gap-2">{unassigned.map(dong)}</ul>
         </section>
@@ -261,14 +267,18 @@ function Editor({ region }: { region: Region }) {
           onClick={save}
           disabled={!canWrite || !check.ok || update.isPending}
           title={canWrite ? undefined : t('auth.readOnlyHint')}
-          className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G0_2.save')}
         </button>
         {dirty ? <span className="text-xs text-muted">{t('page.G0_2.dirty')}</span> : null}
         {check.duplicated.length > 0 ? (
           <span role="alert" className="text-sm text-danger">
-            {t('page.G0_2.duplicated', { n: formatCount(check.duplicated.length) })}
+            <MetaText
+              kind="count"
+              k="page.G0_2.duplicated"
+              params={{ n: check.duplicated.length }}
+            />
           </span>
         ) : null}
         {check.emptyName ? (
@@ -321,7 +331,7 @@ function AreaCard({
       aria-label={area.name || area.key}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
-      className="flex flex-col gap-2 rounded border border-border bg-surface p-3"
+      className="flex flex-col gap-2 rounded-sm border border-border bg-surface p-3"
     >
       <div className="flex items-center gap-2">
         <label htmlFor={nameId} className="sr-only">
@@ -331,14 +341,14 @@ function AreaCard({
           id={nameId}
           value={area.name}
           onChange={(e) => onRename(e.target.value)}
-          className="flex-1 rounded border border-border bg-surface px-2 py-1 font-medium"
+          className="flex-1 rounded-sm border border-border bg-surface px-2 py-1 font-medium"
         />
         <button
           type="button"
           onClick={onDelete}
           disabled={!empty}
           title={empty ? undefined : t('page.G0_2.deleteDisabled')}
-          className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
+          className="rounded-sm border border-border px-2 py-1 text-xs disabled:opacity-50"
         >
           {t('page.G0_2.delete')}
         </button>
@@ -349,7 +359,9 @@ function AreaCard({
           <FactCell fact={households} unit="households" emptyReason={t('page.common.none')} />
         </dd>
         <dt className="text-muted">{t('page.G0_2.dongs')}</dt>
-        <dd>{t('page.G0_2.dongCount', { n: formatCount(area.codes.length) })}</dd>
+        <dd>
+          <MetaText kind="count" k="page.G0_2.dongCount" params={{ n: area.codes.length }} />
+        </dd>
       </dl>
       {children}
     </section>

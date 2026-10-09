@@ -39,7 +39,7 @@
 ## 공용
 
 - `ChartFrame` props: `title`, `subtitle?`, `labels?: Label[]`(중복 제거해 텍스트 배지), `badges?: ReactNode`, `table?: DataTable`(→ `DataTableToggle`), `emptyReason?: string \| null`, `asof?`, `children`.
-- `EChart` props: `option`, `height?`, `ariaLabel`. **뷰포트 진입 시 lazy**(IntersectionObserver → `React.lazy(echarts-for-react)`), SVG 렌더러. IO가 없는 환경(jsdom)은 즉시 렌더.
+- `EChart` props: `option`, `height?`, `ariaLabel`. **뷰포트 진입 시 lazy**(IntersectionObserver → `React.lazy(./EChartRuntime)` — 쓰는 계열·컴포넌트만 등록한 echarts/core, 테스트는 `vi.mock('@/charts/EChartRuntime')`), SVG 렌더러. IO가 없는 환경(jsdom)은 즉시 렌더.
 - `useChartPalette()`: CSS 토큰(`src/index.css`)을 읽어 라이트/다크에 맞춘 팔레트. 의미 색은 `strong`(확정·강조)과 `grayed`(비공식·미확정·미해결) 둘. 계열 구분은 `categorical`(Okabe-Ito) + 범례/라벨 병기.
 
 ## 차트별 계약

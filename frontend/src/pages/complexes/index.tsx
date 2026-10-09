@@ -2,11 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useDownload } from '@/api/download';
 import { complexesCsvRequest, useComplexesProgressive } from '@/api/hooks';
-import { EmptyState } from '@/components';
+import { EmptyState, MetaText } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
 import { NoSnapshot, QueryState, useGlobalSearch, usePageContext } from '../_shared';
 import { ComplexTable } from './ComplexTable';
 import { FilterBar } from './FilterBar';
@@ -98,7 +97,7 @@ export function ComplexesPage() {
               type="button"
               disabled={csv.pending}
               onClick={() => void csv.download(complexesCsvRequest(snapshotId, listParams))}
-              className="rounded border border-border px-2 py-1 text-sm disabled:opacity-50"
+              className="rounded-sm border border-border px-2 py-1 text-sm disabled:opacity-50"
             >
               {csv.pending ? t('download.pending') : t('page.G2.csv')}
             </button>
@@ -124,10 +123,11 @@ export function ComplexesPage() {
           {(page) => (
             <>
               <p className="text-sm text-muted" aria-live="polite">
-                {t('page.G2.count', {
-                  shown: formatCount(page.items.length),
-                  total: formatCount(page.total),
-                })}
+                <MetaText
+                  kind="count"
+                  k="page.G2.count"
+                  params={{ shown: page.items.length, total: page.total }}
+                />
                 {query.loadingMore ? (
                   <span role="status" className="ml-2">
                     {t('page.G2.loadingMore')}
@@ -186,12 +186,15 @@ function CompareTray({
     <aside
       aria-label={t('page.G2.tray')}
       data-write
-      className="sticky bottom-10 flex flex-wrap items-center gap-2 rounded border border-border bg-surface p-2 shadow"
+      className="sticky bottom-10 flex flex-wrap items-center gap-2 rounded-sm border border-border bg-surface p-2 shadow-sm"
     >
       <span className="text-sm font-medium">{t('page.G2.tray')}</span>
-      <span className="text-sm text-muted">
-        {t('page.G2.trayCount', { n: formatCount(ids.length) })}
-      </span>
+      <MetaText
+        kind="count"
+        className="text-sm text-muted"
+        k="page.G2.trayCount"
+        params={{ n: ids.length }}
+      />
       {ids.map((id) => {
         const name = names.get(id) ?? `#${id}`;
         return (
@@ -199,7 +202,7 @@ function CompareTray({
             key={id}
             type="button"
             onClick={() => onRemove(id)}
-            className="rounded border border-border px-1.5 py-0.5 text-xs"
+            className="rounded-sm border border-border px-1.5 py-0.5 text-xs"
             aria-label={t('page.common.remove', { name })}
           >
             {name} ×
@@ -214,20 +217,20 @@ function CompareTray({
           <button
             type="button"
             onClick={onClear}
-            className="rounded border border-border px-2 py-1 text-sm"
+            className="rounded-sm border border-border px-2 py-1 text-sm"
           >
             {t('page.G2.clearSelection')}
           </button>
         ) : null}
         {ok ? (
-          <Link to={href} className="rounded bg-accent px-3 py-1 text-sm text-accent-fg">
+          <Link to={href} className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg">
             {t('page.G2.compare')}
           </Link>
         ) : (
           <button
             type="button"
             disabled
-            className="rounded bg-accent px-3 py-1 text-sm text-accent-fg opacity-50"
+            className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg opacity-50"
           >
             {t('page.G2.compare')}
           </button>

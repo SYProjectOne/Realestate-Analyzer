@@ -107,3 +107,35 @@ test('T16(D10-8): G2 2,500행 스크롤 — 프레임 간격(rAF) 3회 중앙값
   expect(p95).toBeLessThanOrEqual(T16_P95_FRAME_MS);
   expect(await table.locator('tbody tr[aria-rowindex]').count()).toBeLessThan(100);
 });
+
+/**
+ * R3c: 운영 빌드는 echarts 를 트리 셰이킹(EChartRuntime 이 쓰는 계열·컴포넌트만 등록)하고 청크를 나눈다 —
+ * 등록 누락·청크 순서 문제는 dev 서버가 아니라 운영 빌드에서만 드러나므로 여기서 실제로 그려지는지 본다.
+ * 차트가 있는 화면(G6 C3·C4·C5·C9, G4 C1·C2·C6·C7·C10, G3 C8·C1)의 echart 영역마다 SVG 도형이 그려져야 한다.
+ */
+test('운영 빌드: 모든 차트가 SVG 로 그려진다(트리 셰이킹 등록 누락 없음)', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error' || /not (registered|exists)/i.test(m.text())) errors.push(m.text());
+  });
+  for (const [path, title] of [
+    ['/market', P.G6.title],
+    ['/compare?ids=2,7,4', P.G4.title],
+    // G3 탭: C8 잔여 이력(custom 라벨 계열)·C1 사다리 (C9 는 G6 에서)
+    ['/complexes/2#events', P.G3.title],
+    ['/complexes/2#ladder', P.G3.title],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    const charts = page.getByTestId('echart');
+    await expect(charts.first()).toBeVisible();
+    const n = await charts.count();
+    for (let i = 0; i < n; i += 1) {
+      const chart = charts.nth(i);
+      await chart.scrollIntoViewIfNeeded();
+      await expect(chart.locator('svg path, svg text').first()).toBeAttached({ timeout: 15_000 });
+    }
+  }
+  expect(errors).toEqual([]);
+});

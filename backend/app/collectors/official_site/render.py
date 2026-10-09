@@ -35,6 +35,10 @@
      돌려준다(``request`` 이벤트 — 하위 리소스 리다이렉트는 기록만). 최종 URL 도 검사한다.
   내부망 허용(``allow_private``, 테스트 로컬 서버)은 ``core.http.allow_private_hosts`` 를 따른다
   (prod 면 거부). 허용이어도 프록시·WebSocket 차단은 그대로다.
+  7) (R3c SEC) 목적지 포트는 공개 웹(80·443, ``egress.PUBLIC_WEB_PORTS``)만 — goto 전·route·프록시 모두 같은
+     규칙(``allowed_ports``; ``allow_private`` 로컬 시험은 기본 제한 없음). 프록시는 렌더마다 무작위 토큰으로
+     인증한다. 이름의 답은 **전부** 검사해 v4 우선으로 고정하고 프록시가 앞 주소 연결 실패 시 다음 주소로
+     폴백한다. 이름 풀기는 전역 락 밖(호스트별 락 — 같은 이름은 렌더당 한 번, 다른 이름은 서로 기다리지 않는다).
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -48,14 +52,14 @@ import ipaddress
 import re
 import threading
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpcore
 
-from app.collectors.official_site.egress import EgressProxy
+from app.collectors.official_site.egress import PUBLIC_WEB_PORTS, EgressProxy, netloc_port, port_block_reason
 from app.core.http import (
     BLOCKED_HOST,
     BlockedHostError,
@@ -291,13 +295,25 @@ class BrowserGuard:
     - ``launch_args()``: chromium 인자(``--host-resolver-rules``)
     - ``on_route(route)``: ``context.route('**/*', …)`` 처리기 — 내부망이면 abort('blockedbyclient')
     - ``on_request(request)``: ``context.on('request', …)`` — 리다이렉트로 온 내부망 요청이면 ``violation``
+
+    ``allowed_ports``: 목적지 포트 허용 목록. None 이면 기본 — 공개 웹(80·443), ``allow_private``(로컬 시험
+    서버, prod 거부)면 제한 없음.
     """
 
-    def __init__(self, *, allow_private: bool, resolver: Resolver) -> None:
+    def __init__(
+        self, *, allow_private: bool, resolver: Resolver, allowed_ports: Collection[int] | None = None
+    ) -> None:
         self.allow_private = allow_private
         self._resolver = resolver
+        if allowed_ports is not None:
+            self.allowed_ports: frozenset[int] | None = frozenset(allowed_ports)
+        else:
+            self.allowed_ports = None if allow_private else PUBLIC_WEB_PORTS
         self._cache: dict[str, str | None] = {}
-        self.pins: dict[str, str] = {}
+        self.pins: dict[str, str] = {}  # 이름 → 첫 IP(--host-resolver-rules MAP)
+        self.addresses: dict[str, list[str]] = {}  # 이름 → 검사한 IP 전부(v4 우선, 프록시 폴백 순서)
+        self._failures: dict[str, Exception] = {}  # 이름 → 연결 시점 검사 실패(렌더당 한 번)
+        self._host_locks: dict[str, threading.Lock] = {}
         self.blocked: list[str] = []  # abort 한 하위 요청(사유 + URL)
         self.websockets: list[str] = []  # 연결하지 않은 WebSocket 주소
         self.violation: str | None = None  # 렌더 결과를 버려야 하는 사유(본문 이동·리다이렉트·최종 URL)
@@ -317,6 +333,11 @@ class BrowserGuard:
             return f"{BLOCKED_HOST}: 허용하지 않는 스킴 {scheme or '(없음)'}"
         if not host:
             return f"{BLOCKED_HOST}: 호스트 없음"
+        port_reason = port_block_reason(
+            netloc_port(parts.netloc, 443 if scheme == "https" else 80), self.allowed_ports
+        )
+        if port_reason is not None:
+            return port_reason
         if self.allow_private:
             return None
         if host not in self._cache:
@@ -334,43 +355,76 @@ class BrowserGuard:
         is_name = bool(host) and not _is_ip(host or "") and parts.scheme.lower() in {"http", "https"}
         if self.allow_private or not is_name or host is None:
             return self.url_reason(url)
+        scheme = parts.scheme.lower()
+        port_reason = port_block_reason(
+            netloc_port(parts.netloc, 443 if scheme == "https" else 80), self.allowed_ports
+        )
+        if port_reason is not None:  # 이름을 풀기 전에
+            return port_reason
         local = host_block_reason(host, None)  # localhost 이름(DNS 없이)
         if local is not None:
             return local
         try:
-            ips = pinned_addresses(host, self._resolver)
+            ips = _v4_first(pinned_addresses(host, self._resolver))
         except BlockedHostError as exc:
             self._cache[host] = str(exc)
             return str(exc)
         except httpcore.ConnectError:
             return None  # DNS 실패 — 브라우저도 실패해 render 오류로 남는다(고정할 IP 없음)
         self._cache[host] = None
-        self.pins[host] = ips[0]
         ascii_host = _ascii_host(host)  # 국문 도메인: 브라우저는 punycode 로 묻는다(프록시 CONNECT·MAP 규칙)
-        if ascii_host != host:
-            self.pins[ascii_host] = ips[0]
+        for name in {host, ascii_host}:
+            self.pins[name] = ips[0]
+            self.addresses[name.lower()] = ips
         return None
 
-    def connect_address(self, host: str, port: int) -> str:
-        """출구 프록시의 연결 직전 검사: 연결할 IP(막아야 하면 ``BlockedHostError``, DNS 실패는 ``ConnectError``).
+    def connect_address(self, host: str, port: int) -> list[str]:
+        """출구 프록시의 연결 직전 검사: 연결할 IP 목록(앞에서부터 시도, v4 우선). 막아야 하면
+        ``BlockedHostError``, DNS 실패는 ``ConnectError``.
 
-        본 호스트는 ``prepare`` 때 고정한 IP. 그 밖의 이름은 렌더당 **한 번** 풀어 답 전부를 검사하고 첫 IP 로
-        고정한다(같은 렌더 안에서 다시 풀지 않는다 — rebinding 차단). IP 문자열은 그 IP 를 검사한다.
+        본 호스트는 ``prepare`` 때 고정한 IP 들. 그 밖의 이름은 렌더당 **한 번** 풀어 답 전부를 검사하고 그 목록으로
+        고정한다(같은 렌더 안에서 다시 풀지 않는다 — rebinding 차단. 실패도 렌더 동안 기억). 이름 풀기는 전역 락
+        밖에서 호스트별 락으로 한다(느린 DNS 하나가 다른 호스트 연결을 막지 않는다). IP 문자열은 그 IP 를 검사한다.
         ``allow_private`` 면 고정 IP 또는 이름 그대로(시스템 DNS)."""
         h = host.strip("[]").rstrip(".")
+        key = h.lower()
         with self._connect_lock:
-            pinned = self.pins.get(h) or self.pins.get(h.lower())
-            if pinned is not None:
-                return pinned
+            found = self._pinned(h)
+            if found is not None:
+                return found
             if self.allow_private:
-                return h
+                return [h]
             if _is_ip(h):
                 if ip_blocked(h):
                     raise BlockedHostError(f"{BLOCKED_HOST}: 내부망 주소 {h}")
-                return h
-            ips = pinned_addresses(h, self._resolver)
-            self.pins[h.lower()] = ips[0]
-            return ips[0]
+                return [h]
+            host_lock = self._host_locks.setdefault(key, threading.Lock())
+        with host_lock:
+            with self._connect_lock:
+                found = self._pinned(h)
+                if found is not None:
+                    return found
+                failed = self._failures.get(key)
+            if failed is not None:
+                raise type(failed)(str(failed))
+            try:
+                ips = _v4_first(pinned_addresses(h, self._resolver))  # 전역 락 밖 DNS(이 호스트만 기다린다)
+            except (BlockedHostError, httpcore.ConnectError) as exc:
+                with self._connect_lock:
+                    self._failures[key] = exc
+                raise
+            with self._connect_lock:
+                self.addresses[key] = ips
+                self.pins[key] = ips[0]
+            return list(ips)
+
+    def _pinned(self, h: str) -> list[str] | None:
+        """고정된 주소 목록(``_connect_lock`` 안에서 부른다)."""
+        found = self.addresses.get(h) or self.addresses.get(h.lower())
+        if found:
+            return list(found)
+        pinned = self.pins.get(h) or self.pins.get(h.lower())
+        return [pinned] if pinned is not None else None
 
     def launch_args(self) -> list[str]:
         """chromium 인자: 이름 해석 차단(고정 + ``MAP * ~NOTFOUND``)·QUIC 끔·WebRTC 프록시 밖 UDP 금지.
@@ -414,6 +468,13 @@ class BrowserGuard:
             self.blocked.append(f"{reason} (리다이렉트 {request.url})")
 
 
+def _v4_first(ips: Sequence[str]) -> list[str]:
+    """IPv4 를 앞에(각 계열 안의 순서는 유지), 중복 제거. 시스템 DNS 는 문자열 정렬이라 v6 가 앞에 올 수 있다 —
+    v6 경로가 없는 머신에서 첫 주소만 쓰면 502(minor 29). 프록시는 이 순서로 시도하고 실패하면 다음 주소로."""
+    seen = list(dict.fromkeys(ips))
+    return [ip for ip in seen if ":" not in ip] + [ip for ip in seen if ":" in ip]
+
+
 def _ascii_host(host: str) -> str:
     try:
         return host.encode("idna").decode("ascii").lower()
@@ -455,6 +516,7 @@ class PlaywrightRenderer:
         full_page: bool = True,
         allow_private: bool | None = None,
         resolver: Resolver | None = None,
+        allowed_ports: Collection[int] | None = None,
     ) -> None:
         self.timeout_ms = timeout_ms
         self.settle_ms = settle_ms
@@ -463,9 +525,12 @@ class PlaywrightRenderer:
         self.full_page = full_page
         self.allow_private = allow_private_hosts(allow_private)
         self._resolver: Resolver = resolver if resolver is not None else system_resolve
+        self.allowed_ports = frozenset(allowed_ports) if allowed_ports is not None else None
 
     def guard(self) -> BrowserGuard:
-        return BrowserGuard(allow_private=self.allow_private, resolver=self._resolver)
+        return BrowserGuard(
+            allow_private=self.allow_private, resolver=self._resolver, allowed_ports=self.allowed_ports
+        )
 
     def render(self, url: str) -> RenderResult:
         guard = self.guard()
@@ -490,7 +555,9 @@ class PlaywrightRenderer:
 
     def _render_with(self, p: Any, url: str, guard: BrowserGuard, ua: str) -> RenderResult:
         """브라우저 1회(출구 프록시 안): 검사 훅을 goto 보다 먼저 걸고, 위반이 있으면 결과를 버린다."""
-        with EgressProxy(guard.connect_address, timeout_s=self.timeout_ms / 1000) as proxy:
+        with EgressProxy(
+            guard.connect_address, timeout_s=self.timeout_ms / 1000, allowed_ports=guard.allowed_ports
+        ) as proxy:
             try:
                 return self._browse(p, url, guard, ua, proxy)
             finally:
@@ -500,7 +567,9 @@ class PlaywrightRenderer:
         from playwright.sync_api import Error as PlaywrightError
 
         browser = p.chromium.launch(
-            headless=True, args=guard.launch_args(), proxy={"server": proxy.server, "bypass": "<-loopback>"}
+            headless=True,
+            args=guard.launch_args(),
+            proxy={"server": proxy.server, "bypass": "<-loopback>", **proxy.credentials},  # 렌더 1회용 토큰
         )
         try:
             context = browser.new_context(

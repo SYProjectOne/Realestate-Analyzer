@@ -5,7 +5,7 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 describe('G0 지역 입력', () => {

@@ -11,7 +11,7 @@ import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 describe('G6 지역 시장', () => {

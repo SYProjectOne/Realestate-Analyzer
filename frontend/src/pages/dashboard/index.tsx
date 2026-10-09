@@ -11,13 +11,15 @@ import {
   FactCell,
   IntakeBadge,
   JobProgress,
+  MetaText,
+  MetaValue,
   TieBadge,
   UnstableBadge,
 } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount, formatDate, formatRank } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import {
   enumText,
   JudgeScopeBadge,
@@ -65,7 +67,7 @@ function DashboardBody({ data }: { data: Dashboard }) {
           role="note"
           data-testid="benchmark-absence"
           data-code={data.benchmark_absence.code}
-          className="flex flex-wrap items-center gap-2 rounded border border-border bg-surface px-3 py-2 text-sm"
+          className="flex flex-wrap items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm"
         >
           <Badge tone="muted">
             {t('page.common.benchmarkAbsent', { reason: data.benchmark_absence.reason })}
@@ -127,7 +129,7 @@ function RejudgeNotice({ data }: { data: Dashboard }) {
     <div
       role="note"
       data-testid="rejudge-notice"
-      className="flex flex-col gap-2 rounded border border-border bg-surface px-3 py-2 text-sm"
+      className="flex flex-col gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm"
     >
       <div className="flex flex-wrap items-center gap-2">
         <span>{t('page.G1.rejudgeNotice')}</span>
@@ -137,7 +139,7 @@ function RejudgeNotice({ data }: { data: Dashboard }) {
           onClick={run}
           disabled={!canWrite || createJob.isPending || jobId !== null}
           title={canWrite ? undefined : t('auth.readOnlyHint')}
-          className="rounded bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
+          className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G1.rejudgeRun')}
         </button>
@@ -193,13 +195,16 @@ function KpiTiles({ data }: { data: Dashboard }) {
       key: 'freshness',
       title: t('page.G1.kpi.freshness'),
       body: <FactCell fact={kpis.data_freshness.last_success_at} unit="date" asof={asof} />,
+      // 수집 대상 개수 — 운영 메타(사실 아님)
       sub: (
-        <span>
-          {t('page.G1.kpi.freshnessSub', {
-            failing: formatCount(kpis.data_freshness.failing_sources),
-            stale: formatCount(kpis.data_freshness.stale_sources),
-          })}
-        </span>
+        <MetaText
+          kind="count"
+          k="page.G1.kpi.freshnessSub"
+          params={{
+            failing: kpis.data_freshness.failing_sources,
+            stale: kpis.data_freshness.stale_sources,
+          }}
+        />
       ),
     },
   ];
@@ -208,7 +213,7 @@ function KpiTiles({ data }: { data: Dashboard }) {
       {tiles.map((tile) => (
         <li
           key={tile.key}
-          className="flex flex-col gap-1 rounded border border-border bg-surface p-3"
+          className="flex flex-col gap-1 rounded-sm border border-border bg-surface p-3"
           data-kpi={tile.key}
         >
           <span className="text-xs text-muted">{tile.title}</span>
@@ -232,7 +237,7 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
   return (
     <li
       onClick={onClick}
-      className="flex cursor-pointer flex-col gap-2 rounded border border-border p-3 hover:border-accent"
+      className="flex cursor-pointer flex-col gap-2 rounded-sm border border-border p-3 hover:border-accent"
       data-complex-id={row.complex_id}
     >
       <div className="flex items-start justify-between gap-2">
@@ -243,7 +248,11 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
         >
           {row.name}
         </Link>
-        {row.rank !== null ? <Badge tone="strong">{formatRank(row.rank)}</Badge> : null}
+        {row.rank !== null ? (
+          <Badge tone="strong">
+            <MetaValue kind="rank" value={row.rank} as="rank" />
+          </Badge>
+        ) : null}
       </div>
       {row.living_area_name ? (
         <span className="text-xs text-muted">{row.living_area_name}</span>
@@ -257,6 +266,14 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
         <dd>
           <FactCell fact={row.p10} unit="prob" />
         </dd>
+        {row.delta_rerank ? (
+          <>
+            <dt className="text-muted">{t('page.common.deltaRerank')}</dt>
+            <dd data-testid="top5-delta-rerank">
+              <FactCell fact={row.delta_rerank} unit="score" />
+            </dd>
+          </>
+        ) : null}
       </dl>
       <div className="flex flex-wrap gap-1">
         <IntakeBadge intake={row.intake} asof={asof} />

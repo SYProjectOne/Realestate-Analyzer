@@ -1,5 +1,6 @@
 import { Badge } from '@/components/Badge';
 import { FactCell } from '@/components/FactCell';
+import { MetaText } from '@/components/MetaValue';
 import { t } from '@/i18n';
 import { ChartFrame } from '../ChartFrame';
 import { EChart } from '../EChart';
@@ -8,6 +9,7 @@ import { collectLabels } from '../util';
 import {
   buildOption,
   emptyReason,
+  excludedCatalysts,
   groupByStage,
   stageLabel,
   timelineItems,
@@ -25,6 +27,7 @@ export function C09Catalyst({ data, height = 180 }: C09CatalystProps) {
   const palette = useChartPalette();
   const title = t('chart.C09.title');
   const groups = groupByStage(data.catalysts);
+  const excluded = excludedCatalysts(data.catalysts);
   const showTimeline = !data.compact && timelineItems(data.catalysts).length > 0;
   return (
     <ChartFrame
@@ -50,7 +53,7 @@ export function C09Catalyst({ data, height = 180 }: C09CatalystProps) {
               </Badge>
               <ul className={`flex flex-col gap-1.5 ${grayed ? 'text-grayed' : ''}`}>
                 {groups[stage].map((c) => (
-                  <li key={c.id} className="break-words">
+                  <li key={c.id} className="wrap-break-word">
                     <span className={grayed ? '' : 'text-fg'}>{c.name}</span>
                     <span className="block text-[10px] text-muted">
                       {c.kind}
@@ -71,6 +74,11 @@ export function C09Catalyst({ data, height = 180 }: C09CatalystProps) {
           );
         })}
       </div>
+      {excluded.length > 0 ? (
+        <p className="text-xs text-grayed" data-testid="catalyst-excluded">
+          <MetaText kind="count" k="chart.C09.excluded" params={{ n: excluded.length }} />
+        </p>
+      ) : null}
       {showTimeline ? (
         <EChart
           option={buildOption(data, { palette })}
