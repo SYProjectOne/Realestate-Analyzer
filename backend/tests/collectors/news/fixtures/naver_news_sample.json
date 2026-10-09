@@ -1,0 +1,23 @@
+{
+  "_note": "합성 픽스처(녹화 아님): NEWS_API_KEY 가 없어 실제 응답을 녹화할 수 없다. 네이버 검색 API(뉴스) 문서의 응답 모양을 따른 가상값.",
+  "lastBuildDate": "Fri, 09 Oct 2026 11:00:00 +0900",
+  "total": 2,
+  "start": 1,
+  "display": 2,
+  "items": [
+    {
+      "title": "테스트 지역 <b>분양</b> 단지 선착순 계약 &quot;진행&quot;",
+      "originallink": "https://news.example.test/article/1",
+      "link": "https://n.news.example.test/mnews/article/1",
+      "description": "테스트 지역 <b>분양</b> 단지가 잔여 세대 선착순 계약을 진행한다고 밝혔다.",
+      "pubDate": "Fri, 09 Oct 2026 09:30:00 +0900"
+    },
+    {
+      "title": "링크만 있는 기사",
+      "originallink": "",
+      "link": "https://n.news.example.test/mnews/article/2",
+      "description": "원문 링크가 없으면 link 를 쓴다.",
+      "pubDate": "Thu, 08 Oct 2026 18:00:00 +0900"
+    }
+  ]
+}
