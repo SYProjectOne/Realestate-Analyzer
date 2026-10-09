@@ -384,6 +384,6 @@ def list_snapshots(session: DB, id: int) -> JSONResponse:
     snaps = session.scalars(
         select(Snapshot)
         .where(Snapshot.region_id == region.id)
-        .order_by(Snapshot.asof_date.desc(), Snapshot.id.desc())
+        .order_by(Snapshot.asof_date.desc(), Snapshot.revision.desc(), Snapshot.id.desc())
     )
     return JSONResponse([snapshot_view(session, s) for s in snaps])

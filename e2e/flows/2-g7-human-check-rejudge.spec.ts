@@ -80,15 +80,26 @@ test('G7 사람 확인 가능 → 재판정 잡 → G3 접수 배지(가능·사
   await expect(header.getByTestId('intake-badge')).toContainText(ko.intake.status['가능']);
   await expect(header.getByTestId('intake-badge')).toContainText(ko.intake.path.human_check);
 
+  // 계약 .8(D11-1): 발행 스냅샷 12 는 불변 — 사람 확인·재판정은 같은 기준일 새 리비전에 들어간다.
+  // 화면(SnapshotPicker 기본 = 목록 첫째)과 같이 지역 최신 리비전을 읽는다.
+  const snaps = await apiGet<{ id: number; asof_date: string; revision?: number; revision_of?: number | null }[]>(
+    request,
+    '/regions/1/snapshots',
+  );
+  const latest = snaps[0];
+  expect(latest.id).not.toBe(12);
+  expect(latest.revision ?? 1).toBeGreaterThan(1);
+  expect(latest.revision_of).toBe(12);
+
   // 후: D9-1 — 스위첸은 classify 미해결이라 상황 D 후보가 아니다(판정 범위 미해결, 순위 없음)
   const rows = await apiGet<{ items: { complex_id: number; rank: number | null; judge_scope?: string | null }[] }>(
     request,
-    '/snapshots/12/complexes?scenario=D&size=100',
+    `/snapshots/${latest.id}/complexes?scenario=D&size=100`,
   );
   const sw = rows.items.find((r) => r.complex_id === 4);
   expect(sw?.rank ?? null).toBeNull();
   expect(['미해결', '제외']).toContain(sw?.judge_scope);
-  const after = await apiGet<{ top5: Top5Row[] }>(request, '/snapshots/12/dashboard?scenario=D');
+  const after = await apiGet<{ top5: Top5Row[] }>(request, `/snapshots/${latest.id}/dashboard?scenario=D`);
   expect(after.top5.length).toBeGreaterThan(0);
   expect(after.top5.map((r) => r.complex_id)).not.toContain(4);
   await ready(page, '/?region=1&scenario=D', P.G1.title);
@@ -96,7 +107,7 @@ test('G7 사람 확인 가능 → 재판정 잡 → G3 접수 배지(가능·사
   await expect(top5).not.toContainText(SWITZEN);
 
   // 통합(base) TOP 5 도 비지 않는다(합성 녹화 재생 — 종합 점수 유지)
-  const base = await apiGet<{ top5: Top5Row[] }>(request, '/snapshots/12/dashboard?scenario=base');
+  const base = await apiGet<{ top5: Top5Row[] }>(request, `/snapshots/${latest.id}/dashboard?scenario=base`);
   expect(base.top5.length).toBeGreaterThan(0);
   await ready(page, '/?region=1', P.G1.title);
   await expect(top5.getByRole('listitem')).not.toHaveCount(0);
