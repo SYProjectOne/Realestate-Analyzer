@@ -18,6 +18,15 @@ SQLite 는 CHECK 를 ALTER 로 못 바꾸므로 checklist_item 은 batch 모드(
 
 downgrade: fact_demotion 을 지우고, '사실 재확인' 항목은 '법적 확인'(옛 CHECK 안의 값)으로 바꾼 뒤 CHECK·컬럼을 되돌린다.
 강등으로 비운 사실 값은 되돌리지 않는다(강등 출처 행·원래 출처 행은 field_provenance 에 남는다).
+
+downgrade 손실(R3 3차 minor 33 — 문서화만, 이 파일의 DDL 은 바꾸지 않는다):
+
+| 잃는 것 | 내용 | 다시 upgrade 한 뒤 |
+| --- | --- | --- |
+| fact_demotion 행 전부 | 강등 기록(주장·사실·모순 값·체크리스트·rejudge 잡·복원 시각/경로) | 복구되지 않는다. contradicted 주장 문장을 다시 고치면(PATCH /claims) 같은 사실이 다시 강등된다(재강등 경로). 0008 이후는 사실 값을 지우지 않는 오버레이라 강등 기록만 다시 만들면 된다 |
+| claim.entity · entity_id · field | 주장이 생성된 DB 사실 | 비어 돌아온다. API 가 P9 문장 형식·근거 fp 로 되찾고(``api.demotion.claim_target``) PATCH 때 다시 채운다. 다음 파이프라인 P9 는 새 주장에 채운다 |
+| checklist_item kind '사실 재확인' | '법적 확인'으로 바뀐다(옛 CHECK 값) | 원래 kind 로 돌아오지 않는다 — 제목('사실 재확인: …(검증 모순)')은 남으므로 재강등 시 같은 제목의 새 '사실 재확인' 항목이 생긴다 |
+| benchmark.snapshot_id | 조립한 스냅샷 | 비어 돌아온다(옛 자동 행 취급 — ``api.benchmarks.benchmarks_for`` 가 조립분이 없는 스냅샷에만 보인다). 다음 주간 수집이 스냅샷 행을 새로 조립한다 |
 """
 
 from __future__ import annotations
