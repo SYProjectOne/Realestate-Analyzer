@@ -2,14 +2,19 @@
 
 기존 ``test_perf_t16`` 은 점수 행 없이·워밍업 뒤에 쟀다. 여기서는 점수 실행에 합성 단지
 1,000개의 score_total·score_component(7성분) 행을 넣고, 새 앱의 첫 요청(cold)으로 G2 첫 페이지를 잰다.
+
+경계 안정화(R3 재리뷰 '기타': 1초 경계 흔들림): 한 번 잰 값 대신 반복 측정의 **중앙값**으로 판정한다 —
+cold 는 새 앱·커넥션 풀 초기화를 ``COLD_RUNS`` 번, 나머지는 ``WARM_RUNS`` 번. 기준(1초·CSV 5초)은 그대로다.
 """
 
 from __future__ import annotations
 
 import shutil
+import statistics
 import time
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -22,6 +27,8 @@ from ._support import WRITE, validate
 from .conftest import Seeded, make_settings
 
 SNAP = 12
+COLD_RUNS = 3
+WARM_RUNS = 5
 COMPONENTS = ("p10", "rerank", "gap", "benchmark", "supply", "liquidity", "move_in")
 
 
@@ -60,35 +67,40 @@ def test_minor9_cold_first_page_with_scores_and_csv(seeded_db: Seeded, tmp_path:
     shutil.copyfile(seeded_db.db, db)
     settings = make_settings(db, seeded_db.raw_dir, tmp_path / "reports")
     set_settings(settings)
-    timings: dict[str, float] = {}
+    runs: dict[str, list[float]] = {}
+
+    def timed(key: str, client: TestClient, path: str, params: dict[str, Any] | None = None) -> Any:
+        t0 = time.perf_counter()
+        r = client.get(path, params=params, headers=WRITE)
+        runs.setdefault(key, []).append(time.perf_counter() - t0)
+        assert r.status_code == 200, r.text
+        return r
+
     try:
         assert devseed.load_synth(settings, n=1000, snapshot_id=SNAP) == 1000
         assert _score_synth(SNAP) >= 1000
-        reset_engine()  # cold: 커넥션 풀·캐시 없이
-        with TestClient(create_app(settings), raise_server_exceptions=False) as client:
-            t0 = time.perf_counter()
-            r = client.get(f"/api/snapshots/{SNAP}/complexes", headers=WRITE)  # 워밍업 없음
-            timings["cold_first_page"] = time.perf_counter() - t0
-            assert r.status_code == 200, r.text
-            body = r.json()
-            validate("listComplexes", 200, body)
-            assert body["total"] >= 1000 and len(body["items"]) == 50
-            assert all(it["total"]["label"] != "확인 불가" for it in body["items"][:10]), "점수 행이 있다"
-            for params in ({"sort": "-price_mid"}, {"page": 5}, {"size": 100}):
-                t0 = time.perf_counter()
-                r = client.get(f"/api/snapshots/{SNAP}/complexes", params=params, headers=WRITE)
-                timings[str(params)] = time.perf_counter() - t0
-                assert r.status_code == 200
-            t0 = time.perf_counter()
-            csv = client.get(f"/api/snapshots/{SNAP}/complexes.csv", headers=WRITE)
-            timings["csv_all"] = time.perf_counter() - t0
-            assert csv.status_code == 200
-            assert csv.content.decode("utf-8-sig").count("\n") >= 1000
-        print("T16 r3 timings(s):", {k: round(v, 3) for k, v in timings.items()})
-        assert timings["cold_first_page"] < 1.0, timings
+        for cold in range(COLD_RUNS):
+            reset_engine()  # cold: 커넥션 풀·캐시 없이 새 앱
+            with TestClient(create_app(settings), raise_server_exceptions=False) as client:
+                r = timed("cold_first_page", client, f"/api/snapshots/{SNAP}/complexes")  # 워밍업 없음
+                if cold:
+                    continue
+                body = r.json()
+                validate("listComplexes", 200, body)
+                assert body["total"] >= 1000 and len(body["items"]) == 50
+                assert all(it["total"]["label"] != "확인 불가" for it in body["items"][:10]), "점수 행이 있다"
+                for _ in range(WARM_RUNS):
+                    for params in ({"sort": "-price_mid"}, {"page": 5}, {"size": 100}):
+                        timed(str(params), client, f"/api/snapshots/{SNAP}/complexes", params)
+                for _ in range(COLD_RUNS):
+                    csv = timed("csv_all", client, f"/api/snapshots/{SNAP}/complexes.csv")
+                assert csv.content.decode("utf-8-sig").count("\n") >= 1000
+        timings = {k: statistics.median(v) for k, v in runs.items()}
+        print("T16 r3 timings(s, median):", {k: round(v, 3) for k, v in timings.items()})
+        assert timings["cold_first_page"] < 1.0, runs
         for key in ("{'sort': '-price_mid'}", "{'page': 5}", "{'size': 100}"):
-            assert timings[key] < 1.0, timings
-        assert timings["csv_all"] < 5.0, timings
+            assert timings[key] < 1.0, runs
+        assert timings["csv_all"] < 5.0, runs
     finally:
         set_settings(None)
         reset_engine()

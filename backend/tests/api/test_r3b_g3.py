@@ -362,3 +362,114 @@ def test_benchmark_rows_follow_snapshot_id(client: TestClient) -> None:
         b["name"] for b in client.get(f"/api/snapshots/{SNAP}/market", headers=READ).json()["benchmarks"]
     }
     assert names == {"옛 행"}
+
+
+# ====================================================================== D10-7 공유 토큰 GET 범위
+
+
+def test_d10_7_share_token_reads_screens_but_not_ops_or_jobs(client: TestClient) -> None:
+    token = client.post("/api/share-links", json={"label": "공유"}, headers=WRITE).json()["token"]
+    share = {"Authorization": f"Bearer {token}"}
+    for path in (f"/api/snapshots/{SNAP}/dashboard", f"/api/snapshots/{SNAP}/complexes", "/api/regions"):
+        assert client.get(path, headers=share).status_code == 200, path
+    for path in ("/api/ops/sources", "/api/ops/judgments", "/api/ops/checklist", "/api/jobs", "/api/jobs/1"):
+        r = client.get(path, headers=share)
+        assert r.status_code == 403, (path, r.text)
+        assert r.json()["code"] == "forbidden"
+        # 운영자 열람용 READONLY_TOKEN 은 모든 GET
+        assert client.get(path, headers=READ).status_code in (200, 404), path
+
+
+def test_d10_7_share_link_allows_helper() -> None:
+    from app.api.deps import share_link_allows
+
+    assert share_link_allows("/api/snapshots/12/market")
+    assert share_link_allows("/api/raw/3")
+    assert share_link_allows("/api/jobsite")  # 접두어만 같은 다른 경로는 막지 않는다
+    for denied in ("/api/ops", "/api/ops/", "/api/ops/checklist", "/api/jobs", "/api/jobs/", "/api/jobs/7"):
+        assert not share_link_allows(denied), denied
+
+
+# ====================================================================== F3 minor
+
+
+def test_f3_archived_raw_is_streamed_in_chunks(
+    api_settings: Any, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """압축 원문을 요청마다 통째로 메모리에 올리지 않는다 — 목록 전체(getmember)·read() 전체 대신 64KiB 조각 응답."""
+    import shutil
+    import tarfile
+    from pathlib import Path
+
+    from app.api.routers import complexes as cx_router
+    from app.core.settings import set_settings
+    from app.main import create_app
+
+    with get_session() as s:
+        doc = s.scalars(
+            select(RawDocument).where(RawDocument.path.is_not(None)).order_by(RawDocument.id)
+        ).first()
+        assert doc is not None and doc.path
+        rid, rel = doc.id, doc.path
+    copy = tmp_path / "raw_copy"
+    shutil.copytree(api_settings.raw_dir, copy)
+    big = b"0123456789abcdef" * 20000  # 320KB → 64KiB 조각 여러 개
+    (copy / rel).write_bytes(big)
+    parts = Path(rel).parts
+    month = parts[1][:7] if len(parts) >= 3 else "misc"
+    archive = copy / parts[0] / f"{month}.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        tar.add(copy / rel, arcname=Path(rel).as_posix())
+    (copy / rel).unlink()
+
+    def no_getmember(self: Any, name: str) -> Any:
+        raise AssertionError("getmember 는 구성원 목록 전체를 읽는다")
+
+    monkeypatch.setattr(tarfile.TarFile, "getmember", no_getmember)
+    stream = cx_router.archived_stream(rel, copy)
+    assert stream is not None
+    chunks = list(stream)
+    assert len(chunks) >= 4 and max(map(len, chunks)) <= 64 * 1024 and b"".join(chunks) == big
+    s2 = api_settings.model_copy(update={"raw_dir": copy})
+    set_settings(s2)
+    with TestClient(create_app(s2), raise_server_exceptions=False) as c:
+        r = c.get(f"/api/raw/{rid}", headers=WRITE)
+        assert r.status_code == 200 and r.content == big
+        assert "attachment" in r.headers.get("content-disposition", "")
+
+
+def test_f3_catalyst_url_normalized_and_not_rejudged_twice(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.api.routers import catalysts
+    from app.models import Catalyst
+
+    calls: list[str] = []
+
+    def factory() -> Any:
+        def fn(session: Any, region_id: int, *, url: str, title: str, excerpt: str | None = None) -> Any:
+            calls.append(url)
+            row = Catalyst(
+                region_id=region_id, name=title, kind="기타", stage="미확정",
+                location_confirmed=False, source_url=url,
+            )  # fmt: skip
+            session.add(row)
+            session.flush()
+            return row
+
+        return fn
+
+    monkeypatch.setattr(catalysts, "candidate_factory", factory)
+    norm = catalysts.normalize_url("HTTPS://News.Example.org:443/a/1/?utm_source=x&b=2&a=1#frag")
+    assert norm == "https://news.example.org/a/1?a=1&b=2"
+    body = {"region_id": 1, "url": "https://news.example.org/a/1?utm_source=kakao", "title": "역 신설"}
+    first = client.post("/api/catalysts", json=body, headers=WRITE)
+    assert first.status_code == 201, first.text
+    assert first.json()["job"] is not None and calls == ["https://news.example.org/a/1"]
+    body2 = {"region_id": 1, "url": "https://NEWS.example.org/a/1/#top", "title": "역 신설(다른 제목)"}
+    again = client.post("/api/catalysts", json=body2, headers=WRITE)
+    assert again.status_code == 201
+    validate("createCatalyst", 201, again.json())
+    assert again.json()["catalyst"]["id"] == first.json()["catalyst"]["id"], "같은 기사 = 같은 행"
+    assert again.json()["job"] is None, "같은 URL 은 rejudge 를 다시 등록하지 않는다"
+    assert len(calls) == 1
