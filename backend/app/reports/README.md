@@ -19,7 +19,7 @@
 | 모듈 | 내용 |
 | --- | --- |
 | `data.py` | `load_report(session, snapshot_id, *, scenario_id=None, compare_snapshot_id=None) -> ReportData`. DB → 뷰 모델, 모든 수치 `Fact`(fp_/sc_/st_/jl_). 값이 있는데 출처 행 없음 = ENV=dev `ReportProvenanceMissing` / ENV=prod 경고 로그 + '확인 불가(출처 누락)'(API `FactMaker.missing` 과 같은 규칙) |
-| `policy.py` | **판정 범위·현재 구매가 계산 지점(각 함수 하나)** — `judge_scope(inclusion_class=, inclusion_decision=, has_price=, intake_status=)`(D9-1), `current_price_source(basis, payments)`(§6-1: 최신 공고 `price_by_type` 우선). F2 `analysis/scope.py`·`analysis/price_view.py` 머지 후 두 함수 본문만 공용 함수 호출로 바꾼다 |
+| `policy.py` | **판정 범위·현재 구매가 = 공용 함수 호출만**(규칙 중복 없음) — `judge_scope(...)` = `analysis.scope.judge_scope`(→ `ScopeResult` 범위·사유), `current_price(types, payments)` = `analysis.price_view.current_price`, `current_terms`·`pick_intake`(공용 정렬), `complex_scope(cx, types, payments, intakes)`, `shows_ladder(scope)`(사다리 참여 = '판정 대상'만), `scope_note(result)`('판정 범위: <문구> — <사유>') |
 | `render.py` | `render_html(data, *, diff=None, echarts_js=None) -> RenderResult` — Jinja2 단일 자립 HTML(CSS·ECharts·option JSON 인라인) |
 | `charts.py` | C1 사다리·C4 입주 물량·C6 점수 분해·C7 decide option(프론트 `buildOption.ts` 규칙), 차트마다 같은 데이터 표 |
 | `pdf.py` | `html_to_pdf(html, pdf)` — chromium, file: 외 네트워크 차단, `window.__reportReady` 대기 |
@@ -56,8 +56,21 @@ stats = run_report_job(job.payload, session=session)
 - 부록 A = 같은 지역에서 기준일이 이 스냅샷 이하인 스냅샷들의 judgment_log 전부(누계). 임계값은 `output_json` 안의
   `thresholds` 를 도구별로 모은다(D6). 같은 키의 값이 호출마다 다르면(JEV 업데이트) 호출 순으로 모두 `a / b`.
 - 판정 범위(§3 열·§6 비고): 제외 · 미해결(classify review·manual_review·미분류) · 보류(분양가 미공개) ·
-  참고 후보(표시 접수 상태 확인 불가·불가·없음) · 판정 대상(가능·미정). 표시 접수 상태 = human_check > official_popup >
-  headless_shot(unofficial_ref 미사용).
+  참고 후보(표시 접수 상태 확인 불가·불가·없음) · 판정 대상(가능·미정). 표시 접수 상태 = 공용 `pick_intake`
+  (human_check > official_popup > headless_shot, 같은 경로면 확인 날짜 → id; unofficial_ref 미사용).
+- **스냅샷 저장값 기준(D10-1)**: 판정 범위·순위·종합·성분 = 그 스냅샷 보고서 시나리오 score_run 의 저장값
+  (`score_total.judge_scope` 등). 현재 사실로 공용 함수 계산한 범위(`ComplexView.current_scope`)가 다르면 '재판정 필요'
+  배지(§3·§6-4·§7·§8-1)만 — 한 행에 섞지 않는다. 저장값이 없는 단지(점수 행 없음)만 현재 사실 범위(`scope_source`).
+  §12 diff 의 사다리 참여도 각 스냅샷 저장 범위 기준.
+- 사다리 참여 규칙(D9-1, API `views.load_bundles` 와 같음): 사다리 행·p10 은 '판정 대상' 단지만 표시·집계한다.
+  참고·보류·미해결·제외 단지에 남은 사다리 행(이전 범위 판정·이월)은 `ReportData.ladders`·`ladder_other`·부록 A
+  반영 위치·§12 diff 에 쓰지 않고, C1·§6-1·§7·§8-1 의 확률 자리에 '판정 범위: <문구> — <사유>'(`ladder_scoped_out`).
+- 상황별 decide(§8-2): 상황 요약 표(선택·확률·confidence·차순위) + 상황마다 C7(보고서 시나리오 `c07`, 그 밖
+  `c07_<코드>`). 가상 후보 '모집공고 대기'(wait_new, 계약 .5 — 내장 A)는 '가상 후보' 배지·막대 라벨, 근거 =
+  그 decide 입력(judgment_log.input_json.evidence)의 `[wait_new]` 블록 그대로(없으면 '근거 블록 기록 없음').
+- 벤치마크(§5-1, N-M3·N-M4): 지역 생활권마다 묶음(`benchmark_areas`). 행이 없으면 '벤치마크 없음(사유)' — 사유 =
+  그 생활권 단지의 저장된 벤치마크 성분 산출식, 없으면 기본 문구. 지역 전체 대체 행(note `추정(대체: 지역 전체)`)은
+  '대체' 배지를 달고 지역 건수·최근 3년 사례 집계에 다시 세지 않는다.
 - 캘린더(§8-4, 기준일~+3개월): apply_dates `[{kind,date}]`·`[{kind,start,end}]`, contract_dates `[{from,to}]`,
   interim_schedule `[{seq,due_date}]`(문자열 또는 Fact 모양), remaining_event.apply_dates + 체크리스트 기한.
   문자열 날짜의 출처 = 그 필드의 출처 행(complex.apply_dates 등).
@@ -70,9 +83,9 @@ stats = run_report_job(job.payload, session=session)
 
 ## 테스트
 
-`uv run pytest tests/reports` — 픽스처 적재는 `app.api.devseed.seed` 그대로, `tests/reports/_seed.py` 는 devseed 가
-안 만드는 보고서 시험용 행만 보충한다(스냅샷 11 T7 점수 — devseed `_score_inputs`·`_load_scores` 재사용, 스냅샷 11
-접수 상태, verify 봉투 → claim). 판정기 호출 없음. 리뷰 항목별 테스트는 `test_r3_fix.py`.
+`uv run pytest tests/reports` — 픽스처 적재는 `app.api.devseed.seed` 하나(스냅샷 11·12 점수·decide·접수 상태·claim
+포함). `tests/reports/_seed.py` 는 시험이 쓰는 id 수집과 contradicted 주장 추가 함수만 둔다. 판정기 호출 없음.
+리뷰 항목별 테스트는 `test_r3_fix.py`, 판정 범위 정합(공용 함수·참여 규칙·wait_new)은 `test_scope_participation.py`.
 
 ## 규칙
 

@@ -1,20 +1,23 @@
 {% from "macros.html.j2" import fact, sec_head, chart %}
 <section id="s5">
   {{ sec_head(5) }}
-  <p class="lead">생활권별 벤치마크 {{ data.benchmarks | length }}건, 호재 {{ data.catalysts | length }}건(미해결 {{ data.catalysts | selectattr("unresolved") | list | length }}), 출처 충돌 {{ data.conflicts | length }}건, 입주 물량 {{ data.supply | length }}행, 미분양 {{ data.unsold | length }}행.</p>
+  <p class="lead">생활권별 벤치마크 {{ data.benchmarks | rejectattr("substitute") | list | length }}건{% if data.benchmarks | selectattr("substitute") | list %}(+ 지역 전체 대체 {{ data.benchmarks | selectattr("substitute") | list | length }}행, 중복 집계 안 함){% endif %}, 호재 {{ data.catalysts | length }}건(미해결 {{ data.catalysts | selectattr("unresolved") | list | length }}), 출처 충돌 {{ data.conflicts | length }}건, 입주 물량 {{ data.supply | length }}행, 미분양 {{ data.unsold | length }}행.</p>
   <h3>5-1. 벤치마크 — 분양가 → 최근 실거래(전용 84㎡)</h3>
-  {% for la, rows in data.benchmarks | groupby("living_area_name") %}
-  <h4>{{ la }} — 최근 3년 분양분 사례: {{ "있음" if data.recent_sale_cases.get(la) else "없음(저가 분양기 사례만 — 해석 주의)" }}</h4>
+  {% for a in data.benchmark_areas %}
+  {% if a.rows %}
+  <h4 class="bench-area">{{ a.living_area_name }} — {% if a.own_n %}자체 표본 {{ a.own_n }}건{% else %}자체 표본 0 — 지역 전체 대체(추정) {{ a.substitute_n }}행{% endif %} · 최근 3년 분양분 사례: {{ "있음" if a.recent else "없음(저가 분양기 사례만 — 해석 주의)" }}</h4>
   <table>
     <thead><tr><th>단지</th><th>준공</th><th>분양 연도</th><th>분양가</th><th>실거래 중앙값</th><th>변동률</th><th>비고</th></tr></thead>
     <tbody>
-    {% for b in rows %}
-      <tr><td>{{ b.name }}</td><td>{{ fact(b.completed_year) }}</td><td>{{ fact(b.sale_year) }}</td><td>{{ fact(b.sale_price) }}</td><td>{{ fact(b.trade_median) }}</td><td>{{ fact(b.change_pct) }}</td><td>{{ "분양권(벤치마크 점수 제외)" if b.is_presale else "" }}</td></tr>
+    {% for b in a.rows %}
+      <tr><td>{{ b.name }}</td><td>{{ fact(b.completed_year) }}</td><td>{{ fact(b.sale_year) }}</td><td>{{ fact(b.sale_price) }}</td><td>{{ fact(b.trade_median) }}</td><td>{{ fact(b.change_pct) }}</td><td>{% if b.substitute %}<span class="badge warn">대체(지역 전체, 추정) — 지역 집계에 다시 세지 않음</span>{% endif %}{{ "분양권(벤치마크 점수 제외)" if b.is_presale else "" }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p>벤치마크 없음 — 확인 불가(수집 전)</p>
+  <h4 class="bench-area">{{ a.living_area_name }}</h4>
+  <p class="bench-empty">{{ a.empty_reason }}</p>
+  {% endif %}
   {% endfor %}
   <h3>5-2. 호재 단계(판정기 classify)</h3>
   <table>

@@ -349,12 +349,10 @@ def test_minor39_fixture_report_has_no_missing_provenance(factory: sessionmaker[
 def test_c2_judge_scope_rule(
     cls: str, decision: str | None, has_price: bool, intake: str | None, want: str
 ) -> None:
-    assert (
-        judge_scope(
-            inclusion_class=cls, inclusion_decision=decision, has_price=has_price, intake_status=intake
-        )
-        == want
+    got = judge_scope(
+        inclusion_class=cls, inclusion_decision=decision, has_price=has_price, intake_status=intake
     )
+    assert got.scope == want
 
 
 def test_c2_scope_texts_follow_d9_1() -> None:
@@ -370,8 +368,10 @@ def test_c2_report_scope_per_complex(factory: sessionmaker[Session], out_dir: Pa
     by = data.complex_by_id
     assert by[2].judge_scope == "판정 대상"  # auto · 가능
     assert by[6].judge_scope == "판정 대상"  # auto · 미정
-    assert by[4].judge_scope == "미해결"  # classify review
-    assert by[14].judge_scope == "미해결"
+    # D10-1: 표시 범위 = 스냅샷 저장값. 4·14 는 저장값('판정 대상'·'참고')과 현재 사실('미해결')이 달라 배지
+    assert (by[4].judge_scope, by[4].current_scope) == ("판정 대상", "미해결")  # classify review
+    assert (by[14].judge_scope, by[14].current_scope) == ("참고", "미해결")
+    assert by[4].rejudge_needed and by[14].rejudge_needed
     # 기대값 갱신(R3 마무리): 마리나베이(12) '참고' → '판정 대상' — CEO 결정으로 공식 팝업
     # '불가' → '미정'(마감·4회차 미정 = 공고 이력 + 추가 공급 미정, meta §1-3-4).
     # '참고' 표시 확인은 해링턴(13)으로.
@@ -388,7 +388,7 @@ def test_c2_report_scope_per_complex(factory: sessionmaker[Session], out_dir: Pa
         for tr in sec.select("table")[0].select("tbody tr")
         if tr.td is not None
     }
-    assert "미해결(분류 판정 미해결)" in rows[by[4].name]
+    assert "재판정 필요 — 현재 사실로는 미해결(분류 판정 미해결)" in rows[by[4].name]
     assert "참고 후보(순위만)" in rows[by[13].name]
     assert "판정 대상" in rows[by[2].name]
 
