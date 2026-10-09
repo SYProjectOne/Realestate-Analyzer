@@ -13,6 +13,10 @@
 | liquidity | clamp(10 − 2×Y_resale − 3×[거주의무>0] − D/5, 0, 10) | Y_resale |
 | move_in | clamp(10 − 2×입주까지 연수, 0, 10) (A·D) | 입주까지 연수 |
 
+라벨: liquidity·move_in 은 입력 라벨(resale·residency·down_payment[·move_in]_label) 중 가장 약한 것(R3 M2).
+라벨 null 은 계약 설명대로 '값이 있으면 확인됨'. rerank delta = 이전 run 대비 rerank 점수 차(§6-5, R3 minor 25).
+점수 대상 = ``analysis.scope.is_scored``(제외·미해결 빼고, DECISIONS D9-1).
+
 연수 = 일수/365(4자리). 성분 점수는 4자리 반올림 후 가중 합(10진, 반올림 없음 = ScoreTotal.total 원값).
 """
 
@@ -24,7 +28,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Final
+from typing import Final, cast, get_args
 
 from app.analysis._common import (
     TEN,
@@ -45,9 +49,10 @@ from app.analysis._common import (
     ym_of,
 )
 from app.analysis._ranking import rank_totals, weighted_total
-from app.analysis.gap import compute_gap
+from app.analysis.gap import compute_gap, unadjusted_tags
 from app.analysis.ladder import ladder_targets, pick_ladder
 from app.analysis.scenarios import is_excluded
+from app.analysis.scope import is_scored
 from app.analysis.sensitivity import compute_sensitivity, weights_map
 from app.analysis.types import (
     ComponentKey,
@@ -90,6 +95,10 @@ __all__ = [
 ]
 
 DECIDE_TIE_CONFIDENCE: Final = 0.6
+SCORE_DECIMALS: Final = 4
+"""성분 점수·종합 점수의 계산·저장 정밀도(소수 4자리, ROUND_HALF_UP). 표시는 2자리(API ``round2``) — R3 W12b.
+score_component.score_0_10 도 이 정밀도로 저장해야 저장 성분의 가중 합 = 저장 종합 점수가 된다."""
+_LABELS: Final = frozenset(get_args(Label))
 BENCHMARK_SCALE: Final = Decimal("0.5")
 RECENT_SALE_YEARS: Final = 3
 SUPPLY_WINDOW_MONTHS: Final = 12
@@ -150,15 +159,25 @@ def _find_item(items: Iterable[RerankItem], cid: int) -> RerankItem | None:
     return None
 
 
+def _rank_score(rank: int, n: int) -> Decimal:
+    """s_rerank = 10 × (N − rank)/(N − 1) (N ≤ 1 이면 10)."""
+    return TEN if n <= 1 else q4(clamp(TEN * (n - rank) / (n - 1)))
+
+
 def _rerank_delta(anchor: RerankAnchor, item: RerankItem | None, cid: int) -> Decimal | None:
+    """§6-5 '이전 run 과의 점수 차이' = s_rerank(이번 호출) − s_rerank(이전 호출). 이전 후보가 아니면 None."""
     if item is None or anchor.prev is None:
         return None
     prev = _find_item(anchor.prev.items, cid)
-    return None if prev is None else q4(dec(item.relevance) - dec(prev.relevance))
+    if prev is None:
+        return None
+    now = _rank_score(item.rank, len(anchor.items))
+    before = _rank_score(prev.rank, len(anchor.prev.items))
+    return q4(now - before)
 
 
 def rerank_component(complex_: ComplexScoreInput, anchor: RerankAnchor) -> ComponentResult:
-    """§6-5 고정 앵커: anchor(judgment_seq 한 호출)의 items만 쓴다. delta = relevance − 이전 호출 relevance."""
+    """§6-5 고정 앵커: anchor(judgment_seq 한 호출)의 items만 쓴다. delta = rerank 점수 − 이전 호출 rerank 점수."""
     cid = complex_.complex_id
     if anchor.status != "ok":
         return _unscored(
@@ -173,7 +192,7 @@ def rerank_component(complex_: ComplexScoreInput, anchor: RerankAnchor) -> Compo
             cid, "rerank", f"미판정: rerank 후보 아님 ({_seq(anchor.judgment_seq)})", reason="후보 아님"
         )
     n = len(anchor.items)
-    s = TEN if n <= 1 else q4(clamp(TEN * (n - item.rank) / (n - 1)))
+    s = _rank_score(item.rank, n)
     rel = dec(item.relevance)
     return ComponentResult(
         complex_id=cid,
@@ -402,11 +421,13 @@ def liquidity_component(complex_: ComplexScoreInput, *, asof_date: str) -> Compo
     end = add_months_date(parse_date(complex_.winner_date), complex_.resale_months)
     end_note = f"전매 종료 {ym_of(end)}"
     mv = _move_in_date(complex_, asof_date)
+    used_move_in = False
     if complex_.resale_release_on_registration and mv is not None:
         mv_label, mv_day = mv
         if mv_day < end:
             end = mv_day
             end_note += f"(등기 시 해제 → 입주 {mv_label} 기준)"
+            used_move_in = not complex_.immediate_move_in
     y = years_until(end, asof)
     d = dec(complex_.down_payment_pct)
     res_term = 3 if complex_.residency_months > 0 else 0
@@ -415,9 +436,39 @@ def liquidity_component(complex_: ComplexScoreInput, *, asof_date: str) -> Compo
         f"clamp(10 − 2×{num(y, 4)} − 3×[거주의무>0]={res_term} − D/5({num(d)}/5={num(d / 5)}), 0, 10) = {num(s)} "
         f"({end_note}, Y_resale {num(y, 4)}년, 거주의무 {complex_.residency_months}개월, 계약금 {num(d)}%)"
     )
+    inputs: list[tuple[str, Label | None]] = [
+        ("전매", complex_.resale_label),
+        ("거주의무", complex_.residency_label),
+        ("계약금", complex_.down_payment_label),
+    ]
+    if used_move_in:
+        inputs.append(("입주월", _move_in_label(complex_)))
+    label, reason = _input_label(inputs)
     return ComponentResult(
-        complex_id=cid, component="liquidity", raw_value=y, score=s, formula_text=text, label="확인됨"
+        complex_id=cid,
+        component="liquidity",
+        raw_value=y,
+        score=s,
+        formula_text=text,
+        label=label,
+        reason=reason,
     )
+
+
+def _move_in_label(complex_: ComplexScoreInput) -> Label | None:
+    """입주월 라벨 — 계약(2026-10-09.3)에 필드가 없어 None(=확인됨). 계약 .4 에 move_in_label 이 생기면 그 값."""
+    value = getattr(complex_, "move_in_label", None)
+    return cast(Label, value) if value in _LABELS else None
+
+
+def _input_label(inputs: Sequence[tuple[str, Label | None]]) -> tuple[Label, str | None]:
+    """입력 라벨 중 가장 약한 것(R3 M2). null 은 '값이 있으면 확인됨'(계약 설명). reason = 약한 입력 이름."""
+    resolved = [(name, lab or "확인됨") for name, lab in inputs]
+    label = weakest_label(*(lab for _, lab in resolved))
+    if label == "확인됨":
+        return label, None
+    weak = ", ".join(f"{name} {lab}" for name, lab in resolved if lab == label)
+    return label, f"라벨: 가장 약한 입력({weak})"
 
 
 def move_in_component(complex_: ComplexScoreInput, *, asof_date: str) -> ComponentResult:
@@ -428,13 +479,15 @@ def move_in_component(complex_: ComplexScoreInput, *, asof_date: str) -> Compone
     mv_label, mv_day = mv
     y = years_until(mv_day, parse_date(asof_date))
     s = q4(clamp(TEN - 2 * y))
+    label, reason = _input_label([] if complex_.immediate_move_in else [("입주월", _move_in_label(complex_))])
     return ComponentResult(
         complex_id=cid,
         component="move_in",
         raw_value=y,
         score=s,
         formula_text=f"clamp(10 − 2×{num(y, 4)}, 0, 10) = {num(s)} (입주 {mv_label}, 입주까지 {num(y, 4)}년)",
-        label="확인됨",
+        label=label,
+        reason=reason,
     )
 
 
@@ -512,7 +565,7 @@ def _component(
             formula_text=g.formula_text,
             label=g.label,
             reason=g.reason,
-            flags=g.flags,
+            flags=(*g.flags, *unadjusted_tags(g)),
         )
     if key == "benchmark":
         return benchmark_component(cx, inputs.benchmarks, asof_date=inputs.asof_date)
@@ -538,7 +591,7 @@ def run_detailed(
         raise ValueError(f"snapshot 불일치: {snapshot.id} != inputs.snapshot_id {inputs.snapshot_id}")
     weights = weights_map(scenario.weights)
     households = {la.id: la.households for la in inputs.living_areas}
-    complexes = sorted((c for c in inputs.complexes if c.judge_scope != "제외"), key=lambda c: c.complex_id)
+    complexes = sorted((c for c in inputs.complexes if is_scored(c.judge_scope)), key=lambda c: c.complex_id)
 
     comps: dict[int, dict[ComponentKey, ComponentResult]] = {}
     gaps: dict[int, GapResult] = {}

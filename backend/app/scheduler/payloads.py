@@ -10,9 +10,10 @@
 캐시에 없으면 decide payload 는 정할 수 없다(``payload=None`` = 미스로 센다 — 새 판정 결과가 들어가면 decide 입력도
 바뀐다). 앞 단계가 전부 캐시면 decide payload 는 실행 때와 같다.
 
-판정 범위(JudgeScope): 호출 대상은 ``inputs._scope``(제외/보류/판정 대상) — 판정 대상만 noul, 제외 아닌 단지 전부
-rerank, 판정 대상만 decide 후보. 저장·표시 범위(score_total.judge_scope)는 ``stored_scope`` = 여기에 사다리 ok 행이
-없는 판정 대상을 '참고'(순위만, meta §1-3-4)로 바꾼 것.
+판정 범위(JudgeScope): ``analysis.scope.judge_scope``(DECISIONS D9-1, API·보고서와 같은 함수) 하나로 정한다 —
+사다리(noul) = 판정 대상만(``runs_ladder``), rerank 후보 = 판정 대상·참고·보류(``in_rerank``; 미해결·제외 빼고),
+decide 후보 = 판정 대상만. 저장 범위(score_total.judge_scope)도 같은 값(``stored_scope``) — 사다리 결과로 범위를
+바꾸지 않는다(사다리가 review 면 p10 null → 종합 '미판정', RA §6-4).
 """
 
 # ruff: noqa: E501
@@ -27,13 +28,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
+from app.analysis.scope import in_rerank, is_decide_candidate, is_scored, runs_ladder
 from app.analysis.score import ScoreRunDetail, run_detailed
 from app.core.contracts_gen import RerankAnchor, RerankItem, ScoreInputs
 from app.core.contracts_gen import Scenario as ScenarioDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.protocols import JudgePayload, JudgeTool, input_hash
 from app.judge import payloads as P
-from app.models import JudgmentLog, Ladder, Region, Snapshot
+from app.models import JudgmentLog, Region, Snapshot
 from app.scheduler.inputs import (
     ComplexFacts,
     JudgeScope,
@@ -62,16 +64,12 @@ EMPTY_ANCHOR = RerankAnchor(judgment_seq=None, status="review", items=[])
 
 
 def stored_scope(session: Session, snapshot_id: int, facts: Sequence[ComplexFacts]) -> dict[int, JudgeScope]:
-    """저장·표시 판정 범위: 사다리 ok 행이 없는 '판정 대상' → '참고'(순위만, meta §1-3-4). facts 는 그대로."""
-    ok = set(
-        session.scalars(
-            select(Ladder.complex_id).where(Ladder.snapshot_id == snapshot_id, Ladder.status == "ok")
-        )
-    )
-    return {
-        f.complex_id: ("참고" if f.scope == "판정 대상" and f.complex_id not in ok else f.scope)
-        for f in facts
-    }
+    """저장 판정 범위(score_total.judge_scope) = ``analysis.scope.judge_scope`` 결과 그대로(D9-1).
+
+    (이전 규칙 '사다리 ok 없는 판정 대상 → 참고'는 D9-1 에 없는 두 번째 규칙이라 없앴다 — R3 C2.)
+    """
+    del session, snapshot_id
+    return {f.complex_id: f.scope for f in facts}
 
 
 def score_base(
@@ -83,7 +81,7 @@ def score_base(
     gaps = {
         f.complex_id: gap_of(f, base.trades, asof_date=snap.asof_date, coef=coef)
         for f in facts
-        if f.scope != "제외"
+        if is_scored(f.scope)
     }
     cards = {f.complex_id: evidence_card(f, gap=gaps.get(f.complex_id)) for f in facts}
     return base, cards
@@ -92,15 +90,15 @@ def score_base(
 def rerank_pool(
     facts: Sequence[ComplexFacts], cards: Mapping[int, P.EvidenceCard], scope: Mapping[int, str]
 ) -> list[P.EvidenceCard]:
-    """P7 후보군 = 제외가 아닌 단지 전부(complex_id 순)."""
-    return [cards[f.complex_id] for f in facts if scope.get(f.complex_id) != "제외"]
+    """P7 후보군 = 판정 대상·참고·보류(``analysis.scope.in_rerank``; 미해결·제외 빼고), complex_id 순."""
+    return [cards[f.complex_id] for f in facts if in_rerank(scope.get(f.complex_id, "제외"))]
 
 
 def decide_candidates(
     ranked: Mapping[int, int | None], excluded: frozenset[int], scope: Mapping[int, str]
 ) -> list[int]:
     """판정 대상 중 시나리오 제외(D: 접수 가능 아님)를 뺀 상위 ≤6 — 순위(점수 없으면 complex_id) 순."""
-    ids = [cid for cid, s in scope.items() if s == "판정 대상" and cid not in excluded]
+    ids = [cid for cid, s in scope.items() if is_decide_candidate(s) and cid not in excluded]
     ids.sort(key=lambda cid: (ranked.get(cid) is None, ranked.get(cid) or 0, cid))
     return ids[: P.DECIDE_MAX]
 
@@ -236,9 +234,9 @@ def scenario_payloads(
     version = adapter_version or latest_adapter_version(session)
     plan = ScenarioPlan(snapshot_id, scenario.id, version)
     facts = load_facts(session, snap, region)
-    # P6 noul — 판정 대상(정제 전 범위: 파이프라인도 사다리를 만든 뒤 참고를 가린다)
+    # P6 noul — 판정 대상만(analysis.scope.runs_ladder, 파이프라인과 같은 규칙)
     for f in facts:
-        if f.scope != "판정 대상":
+        if not runs_ladder(f.scope):
             continue
         card = evidence_card(f)
         text = P.evidence_card_text(card)
