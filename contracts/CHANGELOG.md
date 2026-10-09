@@ -18,6 +18,7 @@ R3 독립 리뷰(`docs/design/wp/R3_REVIEW.md`) 후속 — CEO 결정 D9(`docs/d
 | 4 | M9 · RA §10 보안 5 | `GET·POST /share-links`, `DELETE /share-links/{id}`, `schemas/share_link.json`, 테이블 `share_link`, bearerAuth 설명 | 읽기 전용 공유 토큰 발급(쓰기 토큰만) — 만료 = 발급 + `SHARE_TOKEN_TTL_DAYS`(기본 30), sha256 만 저장, 만료·회수 401, GET 이외 403, 공유 토큰으로 목록 403. 링크 = `<origin>/share#<token>` | F3 |
 | 5 | M11 | bearerAuth 설명 | 두 환경 토큰이 모두 비면 루프백 접속만(그 밖 401) + 127.0.0.1 바인드(`python -m app.serve`) | F3, infra |
 | 6 | minor 15 | `schemas/human_check.json#/$defs/EnteredByRole`, `enums.ENTERED_BY_ROLE` | HumanCheckCreate.entered_by = 역할 enum(`운영자`·`검토자`) — 자유 입력 금지(RA §10 보안 2). DB CHECK 는 두지 않는다(옛 행 보존) | F3(API·G7 폼) |
+| 8 | M8 | `schemas/snapshot.json` contradicted_claims, `POST /reports` 409 | 의미 명시: **남은** contradicted 수(분할 재검증 자식이 있는 주장은 빼고 센다 — `judge.claims.remaining_contradicted`). 보고서 생성 거부(409 publish_blocked)도 같은 함수 — 문장 수정·재검증 후 막히지 않는다 | F3(API), F4·F2(같은 함수) |
 | 7 | minor 29 | 응답 스키마의 맨 숫자 | 응답에 나가는 숫자 필드는 Fact 이거나 `x-nonfact: "<근거>"` 주석(비수치 메타 — 식별자·개수·가중치 가정·설정값·판정기 봉투 원값)을 단다. 이름 규칙 `id`·`*_id(s)`·`*_seq`·`page`·`size` 는 메타. 테스트 `tests/contracts/test_r3_contract.py` 가 강제 | F3, 프론트(표시 규칙) |
 
 ### 마이그레이션·검증

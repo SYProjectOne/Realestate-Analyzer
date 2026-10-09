@@ -103,6 +103,25 @@ def test_m8_revise_claim_enqueues_reverify_job(client: TestClient) -> None:
     assert next(c for c in listed if c["id"] == cid)["pending_job_id"] == job["id"]
 
 
+def test_m8_split_claim_no_longer_blocks_report(client: TestClient) -> None:
+    """남은 contradicted = 분할 자식 없는 것 — 문장 수정·재검증(자식 행) 뒤에는 보고서·스냅샷 수가 풀린다."""
+    req = {"snapshot_id": SNAP, "format": "html"}
+
+    def blocked_count() -> int:
+        snaps = client.get("/api/regions/1/snapshots", headers=WRITE).json()
+        return int(next(s for s in snaps if s["id"] == SNAP)["contradicted_claims"] or 0)
+
+    base = blocked_count()
+    cid = _claim()
+    assert blocked_count() == base + 1
+    r = client.post("/api/reports", json=req, headers=WRITE)
+    assert r.status_code == 409 and r.json()["code"] == "publish_blocked"
+    _claim(text="고친 원자 주장", verify_status="verified", parent_claim_id=cid)
+    assert blocked_count() == base
+    if base == 0:
+        assert client.post("/api/reports", json=req, headers=WRITE).status_code == 202
+
+
 def test_m8_revise_claim_rejects(client: TestClient) -> None:
     verified = _claim(verify_status="verified")
     r = client.patch(f"/api/claims/{verified}", json={"text": "x"}, headers=WRITE)

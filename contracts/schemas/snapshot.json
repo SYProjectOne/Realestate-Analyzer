@@ -14,7 +14,7 @@
     "degraded": { "type": "boolean" },
     "created_at": { "type": "string", "format": "date-time" },
     "published_at": { "type": ["string", "null"], "format": "date-time" },
-    "contradicted_claims": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "description": "verify_status=contradicted claim 수", "type": ["integer", "null"], "minimum": 0 },
+    "contradicted_claims": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "description": "남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시)", "type": ["integer", "null"], "minimum": 0 },
     "complex_count": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": ["integer", "null"], "minimum": 0 }
   },
   "examples": [

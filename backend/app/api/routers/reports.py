@@ -8,13 +8,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import FileResponse, JSONResponse
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.api.contract import check_body
 from app.api.deps import DB, get_snapshot, in_db_range, settings_of
 from app.api.errors import conflict, not_found
 from app.api.jobs import enqueue, job_view
-from app.models import Claim, JobRun
+from app.models import JobRun
 
 router = APIRouter(tags=["reports"])
 
@@ -56,12 +56,10 @@ def list_reports(session: DB, snapshot_id: int | None = None) -> JSONResponse:
 
 
 def contradicted(session: Any, snapshot_id: int) -> int:
-    n = session.scalar(
-        select(func.count())
-        .select_from(Claim)
-        .where(Claim.snapshot_id == snapshot_id, Claim.verify_status == "contradicted")
-    )
-    return int(n or 0)
+    """남은 contradicted 수 — 분할 재검증 자식이 있는 주장은 막지 않는다(R3 M8, publish 검사와 같은 함수)."""
+    from app.judge.claims import remaining_contradicted
+
+    return len(remaining_contradicted(session, snapshot_id))
 
 
 @router.post("/reports", status_code=202)

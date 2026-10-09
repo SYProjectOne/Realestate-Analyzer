@@ -3316,7 +3316,7 @@ class Snapshot(BaseModel):
     published_at: str | None = None
     contradicted_claims: Annotated[int | None, Field(ge=0)] = None
     """
-    verify_status=contradicted claim 수
+    남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시)
     """
     complex_count: Annotated[int | None, Field(ge=0)] = None
 
