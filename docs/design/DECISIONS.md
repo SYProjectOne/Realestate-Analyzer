@@ -133,3 +133,14 @@
 - D10-6 뉴스 → P1 screen(호재 관련성) 통과분만 catalyst 후보가 된다. P4 호재 분류 클래스에 "호재 아님"을 두고, 종류(kind)도 classify로 정한다.
 - D10-7 공유(읽기 전용 공유 링크) 토큰은 화면 조회 GET만: `/ops/*`·`/jobs*` 제외. 읽기 전용 API 토큰(READONLY_TOKEN)은 모든 GET.
 - D10-8 T16 화면 기준: 가상 스크롤 p50 프레임 간격 ≤ 17ms(60fps) + p95 ≤ 34ms. RA "60fps"를 p50으로 해석해 기록.
+
+## D11. R3 3차 리뷰 후속 결정 (2026-10-10, CEO) — 원문 `docs/design/wp/R3_REVIEW3.md`, 배정 `R3C_FIX.md`
+- D11-1 **발행 스냅샷은 불변**. 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행)은 같은 기준일의 **새 스냅샷 리비전**(`snapshot.revision`, 유일 (region_id, asof_date, revision))에 쓴다. 화면 기본 = 최신 published 리비전. 리비전 간 diff가 RA §10 "판정기 버전 변경 → 이전 run과 delta 표"와 "지역 추가 장"을 겸한다. 파생 행은 리비전이 완성된 뒤 한 번에 published.
+- D11-2 '호재 아님' 판정은 catalyst를 지우지 않고 `stage='호재 아님'`(제외)로 남긴다. 사람이 넣은 호재는 판정과 무관하게 보존(판정 결과는 병기).
+- D11-3 **강등(검증 모순)은 읽기 시점 오버레이**: 사실 값을 읽는 단일 함수(`app/facts_view.py`)가 API·파이프라인·보고서·CSV 모두에서 강등을 적용한다(창(window) 없음). 강등은 (entity, entity_id, field, 모순 값의 value_norm)로 기록되고, chosen 값이 그 모순 값과 같은 동안 유지된다. 해제: (a) 사람 확인 — `human_check`는 resolver 우선순위 **0순위 후보**로 들어가 재정규화에도 유지되고, (b) 새 출처가 **다른 값**을 낼 때만. 같은 값 재수집·값 없는 행은 해제하지 않는다. 가격 강등은 점수·화면이 실제로 쓰는 필드(`payment_terms.price_by_type` 현재 공고)에 걸고, P9 주장도 그 필드를 대상으로 만든다.
+- D11-4 잔여·임의·무순위 공고를 원 단지에 묶을 때 그 공고의 단지 단위 필드(이름·당첨일·세대수·일정 등)는 원 단지 값을 덮어쓰지 않는다 — `remaining_event`·`payment_terms`·`competition`에만 기록. 차수 표기는 어떤 괄호 안에 있어도 이름 키에서 지우지 않는다.
+- D11-5 `catalyst_link`는 사람이 위치를 확인할 때 만든다(`PATCH /catalysts/{id}`: location_confirmed, lat/lon 또는 영향 생활권·단지). 단지 좌표가 없으면 distance_m=null, weight=1(같은 생활권), 라벨 추정. location_confirmed=false면 링크 없음(RA).
+- D11-6 할인: 공고문·청약홈에 명시된 할인만 `payment_terms.discount_won`(타입별)으로 저장, 라벨 확인됨일 때만 §6-1 차감.
+- D11-7 지역 선택 확장(`PATCH /regions/{id}` selections 추가·제거) = RA "지역 추가": 새 리비전에서 후보 전체 rerank 1회 + 보고서 §12 "지역 추가" 장(이전 리비전과 비교).
+- D11-8 백업: worker가 매일 03:00 `backup` 잡(Postgres면 pg_dump, rawdata는 증분 복사)을 실행하고 결과를 job_run에 남긴다. SQLite 개발 모드에서는 파일 복사.
+- D11-9 prod에서 SQLite DATABASE_URL 거부. 차트 스크린샷 linux 기준 이미지는 Docker/WSL 설치 후 생성(현재 둘 다 없음 — 사람 할 일과 함께 기록).
