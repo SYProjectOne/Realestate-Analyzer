@@ -1,0 +1,190 @@
+# CI (RA §2 공통 도구, §8-4 규칙 9·17)
+# - 백엔드: WP 디렉터리별 테스트 잡(tests/<모듈>) + ruff + mypy --strict
+# - 프론트: lint / typecheck / test
+# - contracts/** 또는 공통(core·models·pyproject·CI) 이 바뀌면 전체를 돌린다. main push 도 전체.
+name: ci
+
+on:
+  push:
+    branches: [main, "wp/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+      shared: ${{ steps.filter.outputs.shared }}
+      core: ${{ steps.filter.outputs.core }}
+      models: ${{ steps.filter.outputs.models }}
+      collectors: ${{ steps.filter.outputs.collectors }}
+      normalize: ${{ steps.filter.outputs.normalize }}
+      judge: ${{ steps.filter.outputs.judge }}
+      analysis: ${{ steps.filter.outputs.analysis }}
+      api: ${{ steps.filter.outputs.api }}
+      scheduler: ${{ steps.filter.outputs.scheduler }}
+      reports: ${{ steps.filter.outputs.reports }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - 'contracts/**'
+            shared:
+              - 'backend/app/core/**'
+              - 'backend/app/models/**'
+              - 'backend/app/main.py'
+              - 'backend/app/worker.py'
+              - 'backend/pyproject.toml'
+              - 'backend/uv.lock'
+              - 'backend/tests/conftest.py'
+              - '.github/workflows/**'
+            core:
+              - 'backend/tests/core/**'
+              - 'infra/**'
+              - 'scripts/**'
+              - 'Makefile'
+              - 'docs/**'
+              - '.pre-commit-config.yaml'
+            models:
+              - 'backend/tests/models/**'
+            collectors:
+              - 'backend/app/collectors/**'
+              - 'backend/tests/collectors/**'
+            normalize:
+              - 'backend/app/normalize/**'
+              - 'backend/tests/normalize/**'
+            judge:
+              - 'backend/app/judge/**'
+              - 'backend/tests/judge/**'
+            analysis:
+              - 'backend/app/analysis/**'
+              - 'backend/tests/analysis/**'
+            api:
+              - 'backend/app/api/**'
+              - 'backend/tests/api/**'
+            scheduler:
+              - 'backend/app/scheduler/**'
+              - 'backend/tests/scheduler/**'
+            reports:
+              - 'backend/app/reports/**'
+              - 'backend/tests/reports/**'
+            frontend:
+              - 'frontend/**'
+            infra:
+              - 'infra/**'
+
+  backend-lint:
+    needs: changes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-extras --frozen
+      - name: ruff
+        run: uv run ruff check app tests
+      - name: mypy (strict)
+        run: uv run mypy app
+
+  backend-tests:
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [core, models, collectors, normalize, judge, analysis, api, scheduler, reports]
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MODULE: ${{ matrix.module }}
+      JUDGE_ADAPTER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - name: decide
+        id: decide
+        working-directory: .
+        env:
+          # 수동 실행·main push·contracts/공통 변경 → 전체, 아니면 바뀐 모듈만
+          RUN: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || needs.changes.outputs.contracts == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs[matrix.module] == 'true' }}
+        run: echo "run=$RUN" >> "$GITHUB_OUTPUT"
+      - if: steps.decide.outputs.run == 'true'
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - if: steps.decide.outputs.run == 'true'
+        run: uv sync --all-extras --frozen
+      - name: pytest tests/${{ matrix.module }}
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          if [ ! -d "tests/$MODULE" ]; then
+            echo "tests/$MODULE 없음 — 아직 구현 전"; exit 0
+          fi
+          set +e
+          uv run pytest "tests/$MODULE"
+          code=$?
+          # 5 = 수집된 테스트 0개(뼈대만 있는 WP)
+          if [ "$code" -eq 5 ]; then echo "tests/$MODULE: 테스트 0개"; exit 0; fi
+          exit $code
+
+  infra:
+    needs: changes
+    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.contracts == 'true' || github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose config
+        run: |
+          cp infra/.env.example infra/.env
+          docker compose -f infra/docker-compose.yml config -q
+
+  frontend:
+    needs: changes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: decide
+        id: decide
+        working-directory: .
+        env:
+          RUN: ${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true' }}
+        run: |
+          if [ ! -f frontend/package.json ]; then echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+      - if: steps.decide.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - if: steps.decide.outputs.run == 'true'
+        run: npm ci
+      - if: steps.decide.outputs.run == 'true'
+        name: lint
+        run: npm run lint
+      - if: steps.decide.outputs.run == 'true'
+        name: typecheck
+        run: npm run typecheck
+      - if: steps.decide.outputs.run == 'true'
+        name: test
+        run: npm test

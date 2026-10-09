@@ -54,11 +54,12 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-q"
+addopts = "-q --import-mode=importlib"
 markers = [
   "live: hits real external sites (skipped by default; run with -m live)",
   "slow: slow tests",
   "postgres: needs a Postgres DATABASE_URL",
+  "regress: regression suite on fixtures (python scripts/tasks.py regress)",
 ]
 
 [tool.ruff]
@@ -78,3 +79,11 @@ exclude = ["migrations/"]
 [[tool.mypy.overrides]]
 module = ["pdfplumber.*", "respx.*", "apscheduler.*", "openpyxl.*", "schemathesis.*"]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
