@@ -136,7 +136,11 @@ def a_stage_inputs() -> ScoreInputs:
             )
         )
         rel = c["raw"]["rerank_relevance"]
-        items.append(RerankItem(candidate_id=f"complex:{c['complex_id']}", complex_id=c["complex_id"], relevance=rel, rank=1))
+        items.append(
+            RerankItem(
+                candidate_id=f"complex:{c['complex_id']}", complex_id=c["complex_id"], relevance=rel, rank=1
+            )
+        )
     # rank는 relevance 내림차순 경쟁 순위(같은 값 같은 순위)
     ordered = sorted(items, key=lambda i: -i.relevance)
     ranked: list[RerankItem] = []

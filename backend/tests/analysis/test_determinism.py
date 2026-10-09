@@ -38,21 +38,39 @@ def score_inputs(draw: st.DrawFn) -> ScoreInputs:
                 fixed_components=fixed,
             )
         )
-        items.append(RerankItem(candidate_id=f"complex:{cid}", complex_id=cid,
-                                relevance=draw(st.floats(min_value=0, max_value=1, allow_nan=False)), rank=cid))
+        items.append(
+            RerankItem(
+                candidate_id=f"complex:{cid}",
+                complex_id=cid,
+                relevance=draw(st.floats(min_value=0, max_value=1, allow_nan=False)),
+                rank=cid,
+            )
+        )
     trades = [
-        TradeInput(living_area="la_1", apt_name=f"T{i % 4}", completed_year=draw(st.sampled_from([2016, 2018, 2021, 2024])),
-                   area_m2=84.9, price_won=draw(st.integers(min_value=400_000_000, max_value=1_100_000_000)),
-                   deal_date="2026-08-01", cancelled=False, source="openapi")
+        TradeInput(
+            living_area="la_1",
+            apt_name=f"T{i % 4}",
+            completed_year=draw(st.sampled_from([2016, 2018, 2021, 2024])),
+            area_m2=84.9,
+            price_won=draw(st.integers(min_value=400_000_000, max_value=1_100_000_000)),
+            deal_date="2026-08-01",
+            cancelled=False,
+            source="openapi",
+        )
         for i in range(draw(st.integers(min_value=0, max_value=12)))
     ]
-    return make_inputs(rerank=RerankAnchor(judgment_seq=1, status="ok", items=items, prev=None),
-                       complexes=complexes, trades=trades)
+    return make_inputs(
+        rerank=RerankAnchor(judgment_seq=1, status="ok", items=items, prev=None),
+        complexes=complexes,
+        trades=trades,
+    )
 
 
 @settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(inputs=score_inputs(), scenario_idx=st.integers(min_value=0, max_value=4), seed=st.integers(0, 10_000))
-def test_same_input_same_result_and_order_independent(inputs: ScoreInputs, scenario_idx: int, seed: int) -> None:
+def test_same_input_same_result_and_order_independent(
+    inputs: ScoreInputs, scenario_idx: int, seed: int
+) -> None:
     scenario = BUILTIN_SCENARIOS[scenario_idx]
     first = run_detailed(snapshot(), scenario, inputs)
     second = run_detailed(snapshot(), scenario, inputs.model_copy(deep=True))

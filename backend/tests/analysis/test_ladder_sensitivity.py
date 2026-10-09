@@ -1,6 +1,5 @@
 """T10 사다리 시점·연율 (RA §6-3) · 민감도 변형 가중치 (RA §6-6)."""
 
-# ruff: noqa: E501
 from __future__ import annotations
 
 from decimal import Decimal
@@ -8,8 +7,8 @@ from decimal import Decimal
 import pytest
 
 from app.analysis.ladder import annualize, annualized, ladder_targets, proposition_texts, target_label
-from app.analysis.sensitivity import variant_weights
 from app.analysis.scenarios import builtin
+from app.analysis.sensitivity import variant_weights
 
 from ._support import ASOF
 
@@ -21,7 +20,9 @@ def test_t10_three_horizons_and_common_3y_target() -> None:
     gochon = ladder_targets(ASOF, move_in_ym=None, immediate=True)
     river = ladder_targets(ASOF, move_in_ym="2031-01", immediate=False)
     assert set(gochon) == set(river) == {"move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"}
-    assert gochon["move_in_plus_1y"].target_ym == "2027-10" and gochon["move_in_plus_1y"].months_from_asof == 12
+    assert (
+        gochon["move_in_plus_1y"].target_ym == "2027-10" and gochon["move_in_plus_1y"].months_from_asof == 12
+    )
     assert river["move_in_plus_1y"].target_ym == "2032-01" and river["move_in_plus_1y"].months_from_asof == 63
     assert gochon["asof_plus_3y"].target_ym == river["asof_plus_3y"].target_ym == "2029-10"
     assert gochon["asof_plus_3y"].months_from_asof == 36
@@ -45,8 +46,13 @@ def test_t10_annualized_rate() -> None:
 
 def test_proposition_texts_template() -> None:
     texts = proposition_texts(
-        name="엘리프 검단 포레듀", type_code="84A", asof_date=ASOF, price_text="5.78~6.08억, 공급가+발코니",
-        horizon="move_in_plus_1y", move_in_ym="2028-03", target_ym="2029-03",
+        name="엘리프 검단 포레듀",
+        type_code="84A",
+        asof_date=ASOF,
+        price_text="5.78~6.08억, 공급가+발코니",
+        horizon="move_in_plus_1y",
+        move_in_ym="2028-03",
+        target_ym="2029-03",
     )
     assert set(texts) == {"p5", "p10", "p20", "p_flat"}
     assert texts["p10"] == (

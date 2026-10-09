@@ -4,6 +4,8 @@
 (a)단계와의 차이는 파일의 diff_vs_a에 설명이 있어야 한다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·식 문자열은 화면 폭 기준으로 길다)
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -38,7 +40,9 @@ def test_v2_recomputes_from_embedded_inputs() -> None:
         cid = row["complex_id"]
         t = totals[cid]
         assert t.total == row["total"], row["key"]
-        assert t.rank == row["rank"] and t.tie_group == row["tie_group"] and t.unstable == row["unstable"], row["key"]
+        assert t.rank == row["rank"] and t.tie_group == row["tie_group"] and t.unstable == row["unstable"], (
+            row["key"]
+        )
         for key, comp in row["components"].items():
             got = comps[(cid, key)]
             assert got.score_0_10 == comp["score"], (row["key"], key)

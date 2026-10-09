@@ -1,6 +1,5 @@
 """T2 decide 동률 · 요건 사전 계산(RA §6-7) · 내장 시나리오 시드 일치."""
 
-# ruff: noqa: E501
 from __future__ import annotations
 
 import importlib.util
@@ -75,7 +74,9 @@ def test_resale_requirement_not_met_when_holding_short() -> None:
     rules = sc.requirements.model_copy(
         update={"access": sc.requirements.access.model_copy(update={"params": {"holding_years": 1}})}
     )
-    res = RequirementPrecalculator().evaluate(_elif(), sc.model_copy(update={"requirements": rules}), asof_date=ASOF)
+    res = RequirementPrecalculator().evaluate(
+        _elif(), sc.model_copy(update={"requirements": rules}), asof_date=ASOF
+    )
     assert res.access.status == "미충족"
     assert "2027-10" in res.access.evidence and res.access.evidence.endswith("미충족")
 
@@ -89,7 +90,9 @@ def test_funds_requirement_numbers_and_interim_note() -> None:
 
 def test_funds_not_met_and_not_entered() -> None:
     # 그란테르 12.45~13.18억, 자기자본 2억, 한도 6억 → 잔금 부족 4.815억
-    granter = make_complex(1, price_low_won=1_245_000_000, price_high_won=1_318_000_000, interim_terms_text=None)
+    granter = make_complex(
+        1, price_low_won=1_245_000_000, price_high_won=1_318_000_000, interim_terms_text=None
+    )
     res = RequirementPrecalculator().evaluate(granter, builtin("B"), asof_date=ASOF)
     assert res.funds.status == "미충족"
     assert "잔금 부족 4.815억" in res.funds.evidence and res.funds.evidence.endswith("미충족")
@@ -101,7 +104,9 @@ def test_access_intake_rules() -> None:
     calc = RequirementPrecalculator()
     ok = calc.evaluate(_elif(), builtin("base"), asof_date=ASOF).access
     assert ok.status == "충족" and "접수 가능" in ok.evidence and "공식 팝업" in ok.evidence
-    unk = calc.evaluate(_elif(intake_status="확인 불가", intake_path=None), builtin("base"), asof_date=ASOF).access
+    unk = calc.evaluate(
+        _elif(intake_status="확인 불가", intake_path=None), builtin("base"), asof_date=ASOF
+    ).access
     assert unk.status == "확인 불가"
     unofficial = calc.evaluate(_elif(intake_path="unofficial_ref"), builtin("D"), asof_date=ASOF).access
     assert unofficial.status == "미충족" and "비공식" in unofficial.evidence
@@ -117,7 +122,11 @@ def test_regulation_rules() -> None:
     bad = calc.evaluate(thesharp, builtin("B"), asof_date=ASOF).regulation
     assert bad.status == "미충족" and "거주의무 36개월" in bad.evidence
     conflict = calc.evaluate(_elif(), builtin("base"), asof_date=ASOF).regulation
-    assert conflict.status == "충족" and "재당첨 제한 10년" in conflict.evidence and "비규제" in conflict.evidence
+    assert (
+        conflict.status == "충족"
+        and "재당첨 제한 10년" in conflict.evidence
+        and "비규제" in conflict.evidence
+    )
     # A는 거주의무 수용 → 거주의무 있어도 충돌 없음
     assert calc.evaluate(thesharp, builtin("A"), asof_date=ASOF).regulation.status == "충족"
 
@@ -125,8 +134,20 @@ def test_regulation_rules() -> None:
 def test_every_evidence_non_empty_for_all_scenarios() -> None:
     calc = RequirementPrecalculator()
     for sc in BUILTIN_SCENARIOS:
-        for cx in (_elif(), make_complex(9, price_low_won=None, price_high_won=None, intake_status=None, intake_path=None,
-                                          residency_months=None, resale_months=None, winner_date=None, down_payment_pct=None)):
+        for cx in (
+            _elif(),
+            make_complex(
+                9,
+                price_low_won=None,
+                price_high_won=None,
+                intake_status=None,
+                intake_path=None,
+                residency_months=None,
+                resale_months=None,
+                winner_date=None,
+                down_payment_pct=None,
+            ),
+        ):
             res = calc.evaluate(cx, sc, asof_date=ASOF)
             for req in (res.access, res.regulation, res.funds):
                 assert req.evidence.strip(), (sc.code, cx.complex_id)
@@ -139,8 +160,15 @@ def test_precalc_rows_mark_excluded_for_d() -> None:
 
 @pytest.mark.parametrize(
     ("pre", "judge", "mismatch"),
-    [("충족", "contradicted", True), ("미충족", "supported", True), ("충족", "supported", False),
-     ("미입력", "contradicted", False), ("확인 불가", "supported", False), ("충족", "unknown", False), ("충족", None, False)],
+    [
+        ("충족", "contradicted", True),
+        ("미충족", "supported", True),
+        ("충족", "supported", False),
+        ("미입력", "contradicted", False),
+        ("확인 불가", "supported", False),
+        ("충족", "unknown", False),
+        ("충족", None, False),
+    ],
 )
 def test_requirement_mismatch(pre: str, judge: str | None, mismatch: bool) -> None:
     assert requirement_mismatch(pre, judge) is mismatch  # type: ignore[arg-type]

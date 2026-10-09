@@ -1,6 +1,5 @@
 """T1 회귀 (a)단계 · 동점 규칙 · formula_text · T12 민감도 (RA §6-4·§6-6·§9)."""
 
-# ruff: noqa: E501
 from __future__ import annotations
 
 from decimal import Decimal
@@ -43,7 +42,9 @@ def test_t1_totals_ranks_and_ties_reproduce_expected() -> None:
 
 def test_t1_order_matches_ra_text() -> None:
     result = AnalysisScoreEngine().run(snapshot(), builtin("base"), a_stage_inputs())
-    top = sorted((t for t in result.totals if t.rank is not None and t.rank <= 5), key=lambda t: (t.rank, t.complex_id))
+    top = sorted(
+        (t for t in result.totals if t.rank is not None and t.rank <= 5), key=lambda t: (t.rank, t.complex_id)
+    )
     got = [(ID_TO_KEY[t.complex_id], round(Decimal(str(t.total)), 2), t.rank) for t in top]
     want = [(o["key"], round(Decimal(str(o["total"])), 2), o["rank"]) for o in EXPECTED["t1"]["order"]]
     for (gk, gt, gr), (wk, wt, wr) in zip(got, want, strict=True):
@@ -83,7 +84,9 @@ def test_null_component_means_total_not_computed() -> None:
     result = _run().result
     harrington = next(t for t in result.totals if t.complex_id == KEY_TO_ID["harrington_1bl"])
     assert harrington.total is None and harrington.rank is None and harrington.tie_group is None
-    p10 = next(c for c in result.components if c.complex_id == KEY_TO_ID["harrington_1bl"] and c.component == "p10")
+    p10 = next(
+        c for c in result.components if c.complex_id == KEY_TO_ID["harrington_1bl"] and c.component == "p10"
+    )
     assert p10.score_0_10 is None and "미판정" in p10.formula_text
 
 
@@ -136,12 +139,20 @@ def test_rerank_delta_against_prev_anchor() -> None:
     inputs = a_stage_inputs()
     t7 = EXPECTED["t7_incheon_only"]
     prev_items = [
-        it.model_copy(update={"relevance": next(r["relevance_prev"] for r in t7["rows"] if r["key"] == ID_TO_KEY[it.complex_id or 0])})
+        it.model_copy(
+            update={
+                "relevance": next(
+                    r["relevance_prev"] for r in t7["rows"] if r["key"] == ID_TO_KEY[it.complex_id or 0]
+                )
+            }
+        )
         for it in inputs.rerank.items
         if ID_TO_KEY[it.complex_id or 0] in {r["key"] for r in t7["rows"]}
     ]
     inputs = inputs.model_copy(
-        update={"rerank": inputs.rerank.model_copy(update={"prev": RerankPrev(judgment_seq=71, items=prev_items)})}
+        update={
+            "rerank": inputs.rerank.model_copy(update={"prev": RerankPrev(judgment_seq=71, items=prev_items)})
+        }
     )
     result = run_detailed(snapshot(), builtin("base"), inputs).result
     deltas = {ID_TO_KEY[c.complex_id]: c.delta for c in result.components if c.component == "rerank"}
