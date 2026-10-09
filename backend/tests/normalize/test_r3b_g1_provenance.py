@@ -35,6 +35,7 @@ def test_m16_fact_tables_come_from_metadata_and_cover_every_table() -> None:
     assert set(FACT_TABLES) | set(NON_FACT_TABLES) == tables  # 새 테이블은 둘 중 하나로 분류해야 한다
     assert not set(FACT_TABLES) & set(NON_FACT_TABLES)
     assert all(reason.strip() for reason in NON_FACT_TABLES.values())
+    assert "fact_demotion" in NON_FACT_TABLES  # 계약 .6 강등 기록은 사실 테이블 아님
 
 
 def test_m16_catalyst_columns_and_pointer() -> None:

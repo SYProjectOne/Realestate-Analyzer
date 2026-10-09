@@ -50,7 +50,7 @@ from app.analysis.price import judge_type
 from app.analysis.types import Label, weakest_label
 from app.core.contracts_gen import ProvenanceRow
 from app.core.paths import resolve_raw_path
-from app.models import Benchmark, FieldProvenance, LegalDong, RawDocument, Region, RtmsTrade
+from app.models import Benchmark, FieldProvenance, LegalDong, RawDocument, Region, RtmsTrade, Snapshot
 from app.normalize._text import area_from_long_code, strip_supply_round
 from app.normalize.fields import norm_value
 from app.normalize.living_area import assign_legal_dong, living_area_of
@@ -804,11 +804,30 @@ _COLUMNS: Final = (
 )
 
 
-def build_benchmarks(session: Session, region_id: int, *, asof_date: str) -> BenchmarkBuild:
-    """지역의 벤치마크 행을 다시 조립한다(멱등). commit 은 호출자."""
+def _snapshot_for(session: Session, region_id: int, asof_date: str) -> int | None:
+    """호출자가 스냅샷을 주지 않으면: 이 지역·기준일의 가장 새 스냅샷(없으면 None)."""
+    return session.scalars(
+        select(Snapshot.id)
+        .where(Snapshot.region_id == region_id, Snapshot.asof_date == asof_date)
+        .order_by(Snapshot.id.desc())
+        .limit(1)
+    ).first()
+
+
+def build_benchmarks(
+    session: Session, region_id: int, *, asof_date: str, snapshot_id: int | None = None
+) -> BenchmarkBuild:
+    """지역의 벤치마크 행을 다시 조립한다(멱등). commit 은 호출자.
+
+    행은 스냅샷에 묶인다(계약 .6 ``benchmark.snapshot_id``): 다시 돌리면 **같은 스냅샷**의 자기 행만 갱신·삭제하고,
+    다른 스냅샷(발행본이 인용한 행)은 건드리지 않는다. ``snapshot_id`` 를 안 주면 이 지역·기준일의 가장 새 스냅샷.
+    스냅샷 없이 만든 옛 자동 행(머리표 있음, snapshot_id NULL)은 처음 조립하는 스냅샷이 넘겨받는다.
+    snapshot_id NULL 이고 머리표 없는 행은 수동·시드 행이라 건드리지 않는다.
+    """
     region = session.get(Region, region_id)
     if region is None:
         raise LookupError(f"region {region_id} 없음")
+    sid = snapshot_id if snapshot_id is not None else _snapshot_for(session, region_id, asof_date)
     res = BenchmarkBuild()
     asof_year = int(asof_date[:4])
     cases = _cases(session, region, asof_date, res)
@@ -836,18 +855,29 @@ def build_benchmarks(session: Session, region_id: int, *, asof_date: str) -> Ben
                 wanted.append((tag, c, vals, la))
 
     existing: dict[str, Benchmark] = {}
+    legacy: dict[str, Benchmark] = {}
     for b in session.scalars(
         select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)
     ):
-        if b.note and b.note.startswith(BENCHMARK_TAG):
-            existing.setdefault(b.note.split("]", 1)[0] + "]", b)
+        if not (b.note and b.note.startswith(BENCHMARK_TAG)):
+            continue
+        tag_of = b.note.split("]", 1)[0] + "]"
+        if b.snapshot_id == sid:
+            existing.setdefault(tag_of, b)
+        elif b.snapshot_id is None:
+            legacy.setdefault(tag_of, b)  # 스냅샷 없이 만든 옛 자동 행
+    if sid is not None:
+        for tag_of, b in legacy.items():
+            if tag_of not in existing:
+                b.snapshot_id = sid
+                existing[tag_of] = b
     seen: set[str] = set()
     for tag, case, vals, sub in wanted:
         seen.add(tag)
         row = existing.get(tag)
         cols = {k: vals[k] for k in _COLUMNS}
         if row is None:
-            row = Benchmark(region_id=region.id, **cols)
+            row = Benchmark(region_id=region.id, snapshot_id=sid, **cols)
             session.add(row)
             session.flush()
             res.inserted += 1

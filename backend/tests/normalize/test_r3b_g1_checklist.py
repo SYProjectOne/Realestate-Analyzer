@@ -115,3 +115,16 @@ def test_f2_unresolved_exclusion_keeps_items_open(db_session: Session, region: R
     db_session.flush()
     res = sync_checklist(db_session, region.id, asof_date=ASOF)
     assert {i.status for i in _items(db_session, cx.id)} == {"na"} and res.closed > 0
+
+
+def test_fact_recheck_items_are_never_touched(db_session: Session, region: Region) -> None:
+    """계약 .6 D10-3: '사실 재확인' 항목(강등 — API 가 만들고 닫는다)은 체크리스트 동기화가 고치거나 닫지 않는다."""
+    cx = _cx(db_session, region)
+    item = ChecklistItem(complex_id=cx.id, kind="사실 재확인", title="사실 재확인: 전매제한 기간(검증 모순)", status="open")
+    db_session.add(item)
+    db_session.flush()
+    sync_checklist(db_session, region.id, asof_date=ASOF)
+    cx.inclusion_class, cx.inclusion_decision = "public_rental", "auto"
+    db_session.flush()
+    sync_checklist(db_session, region.id, asof_date=ASOF)
+    assert (item.kind, item.title, item.status) == ("사실 재확인", "사실 재확인: 전매제한 기간(검증 모순)", "open")
