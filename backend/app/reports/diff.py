@@ -177,9 +177,11 @@ def diff_snapshots(
         )
 
     def claim_counts(sid: int) -> Counter[str]:
+        """분할 재검증된 복합 주장(자식이 있는 contradicted)은 따로 센다(§8과 같은 규칙)."""
+        rows = list(session.scalars(select(Claim).where(Claim.snapshot_id == sid)))
+        parents = {c.parent_claim_id for c in rows if c.parent_claim_id is not None}
         return Counter(
-            c.verify_status or "미검증"
-            for c in session.scalars(select(Claim).where(Claim.snapshot_id == sid))
+            "contradicted→분할 재검증" if c.id in parents else (c.verify_status or "미검증") for c in rows
         )
 
     ca, cb = claim_counts(base_id), claim_counts(snapshot_id)
