@@ -54,7 +54,7 @@
     <thead><tr><th>순위</th><th>단지</th><th>종합</th><th>비고</th></tr></thead>
     <tbody>
     {% for s in data.scores %}
-      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}</td><td>{{ fact(s.total) }}</td><td>{{ "TOP 5" if s.rank and s.rank <= 5 else s.note }}</td></tr>
+      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}</td><td>{{ fact(s.total) }}</td><td>{% if s.rank and s.rank <= 5 %}TOP 5{% if s.note %} · {{ s.note }}{% endif %}{% else %}{{ s.note }}{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>
