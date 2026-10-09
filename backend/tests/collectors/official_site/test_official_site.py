@@ -193,7 +193,11 @@ def test_meta_follows_latest_render_on_same_html(
 ) -> None:
     """같은 HTML(같은 행)이라도 렌더 결과(팝업)가 바뀌면 meta 는 최신 관찰로 갱신된다. 새 스크린샷은 새 행."""
     region, snapshot = region_ctx
-    body = "<html><body><div class='popup'>잔여 세대 안내</div>" + "<p>단지 안내 문단</p>" * 40 + "</body></html>"
+    body = (
+        "<html><body><div class='popup'>잔여 세대 안내</div>"
+        + "<p>단지 안내 문단</p>" * 40
+        + "</body></html>"
+    )
     other = RenderResult(
         url=SITE,
         final_url=SITE,
