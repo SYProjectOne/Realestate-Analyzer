@@ -211,6 +211,16 @@ def test_c4_same_value_or_valueless_source_keeps_demotion_other_value_releases(
     assert _fact_move_in(factory, res.snapshot_id) == (None, None)
     with factory() as s:
         assert s.get(FactDemotion, did).restored_at is None  # type: ignore[union-attr]
+        # minor 20: 강등 중 재정규화가 '없음 → 값' 가짜 변경 이벤트를 만들지 않는다(값을 지우지 않는 오버레이)
+        from app.models import ChangeEvent
+
+        fake = s.scalars(
+            select(ChangeEvent).where(
+                ChangeEvent.complex_id == _cx(s).id, ChangeEvent.field == "move_in_ym",
+                ChangeEvent.old_text.is_(None),
+            )
+        ).all()  # fmt: skip
+        assert fake == [], [(e.old_text, e.new_text) for e in fake]
     # 다른 값의 새 원문(최신 공고) → 해제
     feed.docs = [_save(factory, _detail_body(HM, move_in="202903", stamp="2026-10-08T09"))]
     collect(ctx, 1, ["applyhome_list"], asof_date="2026-10-08")
