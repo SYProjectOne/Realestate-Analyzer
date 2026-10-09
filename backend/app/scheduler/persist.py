@@ -371,21 +371,26 @@ def copy_claims(
         )
     }
     n = 0
+    # 분할 재검증 연결(parent_claim_id)도 새 id 로 옮긴다 — 끊기면 해결된 contradicted 가 다시 '남은' 것이 되어
+    # publish 가 막힌다(R3 M8). 부모가 자식보다 먼저 만들어지므로 id 순서로 대응표를 채운다.
+    new_ids: dict[int, int] = {}
     for src in session.scalars(stmt.order_by(Claim.id)):
         if src.complex_id in have:
             continue
-        session.add(
-            Claim(
-                snapshot_id=dst_snapshot_id,
-                section=src.section,
-                complex_id=src.complex_id,
-                text=src.text,
-                evidence_text=src.evidence_text,
-                verify_status=src.verify_status,
-                judgment_seq=src.judgment_seq,
-                ordinal=src.ordinal,
-            )
+        row = Claim(
+            snapshot_id=dst_snapshot_id,
+            section=src.section,
+            complex_id=src.complex_id,
+            text=src.text,
+            evidence_text=src.evidence_text,
+            verify_status=src.verify_status,
+            judgment_seq=src.judgment_seq,
+            parent_claim_id=new_ids.get(src.parent_claim_id) if src.parent_claim_id is not None else None,
+            ordinal=src.ordinal,
         )
+        session.add(row)
+        session.flush()
+        new_ids[src.id] = row.id
         n += 1
     session.flush()
     return n

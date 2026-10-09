@@ -115,6 +115,31 @@ def test_reverify_judge_down_fails_without_children(
         assert job is not None and (job.error_text or "").startswith("judge_unavailable")
 
 
+def test_copy_claims_keeps_split_links(factory: sessionmaker[Session], seeded: int) -> None:
+    """이전 스냅샷 주장 복사(carry_forward·P9 미대상)에서 분할 연결이 끊기면 contradicted 가 다시 남는다."""
+    from app.models import Snapshot
+    from app.scheduler.persist import copy_claims
+
+    with factory() as s:
+        snap = s.get(Snapshot, seeded)
+        assert snap is not None
+        dst = Snapshot(
+            region_id=snap.region_id, asof_date="2026-10-09", status="building", created_at="2026-10-09"
+        )
+        s.add(dst)
+        parent = Claim(snapshot_id=seeded, section="x", text="복합", verify_status="contradicted", ordinal=0)
+        s.add(parent)
+        s.flush()
+        child = Claim(
+            snapshot_id=seeded, section="x", text="원자", verify_status="verified", parent_claim_id=parent.id
+        )
+        s.add(child)
+        s.flush()
+        assert copy_claims(s, seeded, dst.id, None) >= 2
+        assert remaining_contradicted(s, dst.id) == []
+        s.rollback()
+
+
 def test_parse_evidence() -> None:
     assert parse_evidence("fp_1: 가; fp_2: 나") == [("fp_1", "가"), ("fp_2", "나")]
     assert parse_evidence("근거 문장") == [("claim", "근거 문장")]
