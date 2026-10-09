@@ -12,6 +12,7 @@
 | `runner.py` | `main(argv)`(`python -m app.worker [--once] [--interval 초] [--no-schedule]`), job_run polling, 잠금(`UPDATE … WHERE status='queued'` 1행일 때만 실행), done/failed + stats·error_text, 하트비트(`stats.heartbeat_at`)·멈춘 running 회수(`recover_stale`: 1회 재큐 후 failed), stats 오류 문구 마스킹 |
 | `handlers.py` | 잡 이름 → 처리 함수(collect.daily·weekly, rejudge, snapshot.publish, reference.refresh, region.bootstrap, report) |
 | `collect.py` | 수집기(WP1) → `normalize.store`(WP2) → intake_status 행(분류 없이 '확인 불가(사유)', 파서의 접수 문구 후보는 note) → 변경 감지 |
+| `intake.py` | 접수 상태 classify 입력 문구(`intake_text`)·**분류 복사**(`carry_classification`: 문구 sha256 이 직전 판정기 분류 행과 같으면 status·reason·note 복사, 판정 호출 없음 — D10-2)·복사 뒤에도 미분류인 단지(`pending_complexes` → collect 가 재판정 대상에 넣는다) |
 | `detect.py` | 팝업 이미지 해시(기준일 전 마지막 해시와 비교) · 청약홈 목록 diff → change_event |
 | `pipeline.py` | P1 screen → P2 extract → P3 audit(→ `normalize.judged.apply_extracted`) → 접수 상태 classify('접수 문구 미분류' 행) → P4 classify(포함/제외 배치) → P5 compare(contradicts → `apply_compare`) → 접수 상태 변경 감지(D9-3 critical·알림) → P6 noul(판정 대상만) → P7 rerank(판정 대상·참고·보류, 이전 앵커는 캐시 행만) → 점수(`analysis`, score_total.judge_scope = `analysis.scope.judge_scope`) → P8 decide → P9 verify → 저장 |
 | `payloads.py` | 시나리오 → 판정 payload 목록 빌더 `scenario_payloads` + `cache_status`(미리보기 cache_hits, WP5) · 파이프라인과 공용 입력 조립(`score_base`·`rerank_pool`·`decide_plan`·`stored_scope`) |
@@ -20,10 +21,18 @@
 | `rejudge.py` | rejudge 잡 등록(같은 스냅샷 queued 잡에 단지 합침)·실행 |
 | `degraded.py` | `JudgeUnavailable` → `snapshot.degraded=true`, 복구 감지 시 degraded 스냅샷마다 rejudge 1개 |
 | `judge_version.py` | adapter_version(서버 버전·모델) 변경 → `change_event(judge, version, critical)` + 전체 재판정 1회 |
-| `notify.py` | `WEBHOOK_URL` 있으면 critical change_event 만 전송(이벤트마다 guard, 같은 이벤트 1회), 없으면 no-op. 경로: collect.daily·rejudge(payload change_event_ids)·접수 상태 변경·판정기 버전 |
+| `notify.py` | `WEBHOOK_URL` 있으면 critical change_event 만 전송(이벤트마다 guard, 같은 이벤트 1회 — 보낸 id 는 잡 stats `notified_event_ids` 로 영속, 재시작 후에도 다시 안 보냄), 없으면 no-op. 경로: collect.daily·rejudge(payload change_event_ids)·접수 상태 변경·판정기 버전 + **서버 쪽 알림**(`runner.sweep_api_events`: API 가 만든 사람 확인·생활권 편집 critical 이벤트가 어떤 잡에도 실리지 않았으면 rejudge 등록 — 토스트 클릭 불필요, R3 m13) |
 | `context.py` | `SchedulerContext`(세션·어댑터·수집기·알림·시계) — 테스트는 전부 바꿔 끼운다. 네트워크 모드 `WORKER_NET_MODE=live\|offline\|replay` + `WORKER_REPLAY_ARCHIVE`·`WORKER_TODAY`(W10, worker CLI 오프라인·녹화 재생) |
 
 ## 다른 WP 가 알아야 할 것
+
+- **저장 판정 범위(D10-1, R3b)**: `score_total` 은 점수 밖 단지(미해결·제외)도 그 실행의 `judge_scope` 행을 남긴다(total·rank
+  null). 화면·KPI·TOP 5·보고서는 이 저장값을 보이고, 현재 사실로 계산한 범위(`analysis.scope.judge_scope`)가 다르면
+  '재판정 필요'(`api.views.rejudge_needed` — 계약 `rejudge_needed` 필드가 생기면 응답에 자동으로 싣는다)만 표시한다.
+- **OCR 값(R3 C3)**: chosen 출처가 OCR 판독(`추정`+`OCR`)인 필드는 점수·범위 입력에서 null(`inputs.ocr_pending_fields` →
+  `analysis.complex_input.masked`). 화면 표시 값은 그대로.
+- **호재 후보(D10-6)**: 뉴스 후보(raw_document_id 있음)는 P1 screen(skip·block → 후보 행 삭제) → 단계 classify(`호재 아님`
+  → 삭제) → 종류 classify(`judge.pipeline.p4_classify_catalyst_kind` 가 있으면). 폐기 기록 = 잡 stats `catalysts_discarded`.
 
 - **degraded 플래그** = `snapshot.degraded`(계약 컬럼). 판정기 장애 중 만든 스냅샷은 `degraded=true`·`status=building`
   (점수 없음). 복구 후 rejudge 가 끝나면 `false`. 전역 판정기 상태가 필요하면 지역 최신 스냅샷의 값을 읽는다.

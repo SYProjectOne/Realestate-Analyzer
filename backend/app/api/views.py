@@ -5,6 +5,8 @@
 목록 화면(G2)은 1,000단지에서도 1초 안에 돌도록 관련 행을 한 번에 읽고 페이지 안의 단지만 Fact 로 만든다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -18,10 +20,12 @@ from sqlalchemy.orm import Session
 
 from app.analysis import price_view as pv
 from app.analysis import scope as scope_rules
-from app.analysis.complex_input import build_complex_input
+from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.ladder import target_label
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown
+from app.core.contracts_gen import ComplexRow as ComplexRowDTO
 from app.core.contracts_gen import ComplexScoreInput
+from app.core.contracts_gen import ScoreRow as ScoreRowDTO
 from app.models import (
     Competition,
     Complex,
@@ -56,10 +60,13 @@ __all__ = [
     "pick_intake",
     "price_range",
     "region_view",
+    "rejudge_needed",
     "scenario_view",
     "scope_result",
     "score_ctx",
+    "score_price",
     "score_row",
+    "shown_scope",
     "snapshot_view",
 ]
 
@@ -71,6 +78,10 @@ HATCH_LABELS = {
     "none": "해당 없음",
 }
 _RAW_UNITS = {"p10": "prob", "rerank": "prob", "gap": "pct"}
+# D10-1 '재판정 필요'(저장 범위 ≠ 현재 범위): 계약에 필드가 생기면(.6, G3) 응답에 싣고, 그 전에는 내부 플래그
+# (``rejudge_needed``·``RowData.rejudge_needed``)만 — additionalProperties false 라 계약 밖 키를 내지 않는다.
+_EMIT_REJUDGE_SCORE = "rejudge_needed" in ScoreRowDTO.model_fields
+_EMIT_REJUDGE_ROW = "rejudge_needed" in ComplexRowDTO.model_fields
 
 
 # ====================================================================== 지역·스냅샷·시나리오
@@ -258,6 +269,9 @@ class ComplexBundle:
     ladders: list[Ladder] = field(default_factory=list)
     stored_scope: str | None = None  # score_total.judge_scope(이 스냅샷 마지막 점수 실행, 계약 2026-10-09.3)
     asof_date: str | None = None  # 스냅샷 기준일(요건 사전 계산의 즉시 입주 판단, R3 minor 20)
+    scored_run: bool = False  # 이 스냅샷에 점수 실행이 있다(행이 없으면 그 실행에서 점수 대상 아님)
+    ocr_pending: dict[tuple[str, int], frozenset[str]] = field(default_factory=dict)
+    """판정기 추출 전 OCR 값 필드((entity, id) → 필드들) — 점수 입력에서 null(R3 C3, 파이프라인과 같은 규칙)."""
 
 
 def _chunks(ids: Sequence[int], n: int = 500) -> Iterable[Sequence[int]]:
@@ -292,24 +306,39 @@ def load_bundles(
                 select(Ladder).where(Ladder.complex_id.in_(chunk), Ladder.snapshot_id == snapshot_id)
             ):
                 out[lad.complex_id].ladders.append(lad)
-        scopes = session.execute(
-            select(ScoreTotal.complex_id, ScoreTotal.judge_scope)
-            .join(ScoreRun, ScoreRun.id == ScoreTotal.score_run_id)
-            .where(
-                ScoreRun.snapshot_id == snapshot_id,
-                ScoreTotal.complex_id.in_(chunk),
-                ScoreTotal.judge_scope.is_not(None),
-            )
-            .order_by(ScoreRun.id)
-        )
-        for cid, scope in scopes:  # 마지막 실행이 이긴다
-            out[cid].stored_scope = scope
-    if with_ladders:
-        # D9-1: 사다리는 '판정 대상'만 — '참고'·'보류'·'미해결'·'제외' 단지는 같은 스냅샷에
-        # 남은 사다리 행(이전 범위의 판정·이월·devseed)이 있어도 p10·C1·비교 화면에 쓰지 않는다
-        # (점수 입력 ``analysis.complex_input`` 과 같은 규칙).
+    last_run = session.scalars(
+        select(ScoreRun.id).where(ScoreRun.snapshot_id == snapshot_id).order_by(ScoreRun.id.desc()).limit(1)
+    ).first()
+    if last_run is not None:
         for b in out.values():
-            if b.ladders and not scope_rules.runs_ladder(scope_result(b).scope):
+            b.scored_run = True
+        for chunk in _chunks(ids):
+            # 저장 범위 = 이 스냅샷 마지막 점수 실행의 score_total.judge_scope(D10-1 — 한 실행의 시나리오는 같은 범위)
+            for cid, scope in session.execute(
+                select(ScoreTotal.complex_id, ScoreTotal.judge_scope).where(
+                    ScoreTotal.score_run_id == last_run,
+                    ScoreTotal.complex_id.in_(chunk),
+                    ScoreTotal.judge_scope.is_not(None),
+                )
+            ):
+                out[cid].stored_scope = scope
+    from app.scheduler.inputs import ocr_pending_fields
+
+    targets: list[tuple[str, list[tuple[int, int]]]] = [
+        ("complex", [(b.cx.id, b.cx.id) for b in out.values()]),
+        ("complex_type", [(t.complex_id, t.id) for b in out.values() for t in b.types]),
+        ("payment_terms", [(p.complex_id, p.id) for b in out.values() for p in b.payments]),
+    ]
+    for entity, rows in targets:
+        pending = ocr_pending_fields(session, entity, [eid for _, eid in rows])
+        for cid, eid in rows:
+            if eid in pending:
+                out[cid].ocr_pending[(entity, eid)] = pending[eid]
+    if with_ladders:
+        # D9-1·D10-1: 사다리는 '판정 대상'만 — 표시 범위(저장값 우선)가 '참고'·'보류'·'미해결'·'제외'인 단지는 같은
+        # 스냅샷에 남은 사다리 행(이전 범위의 판정·이월·devseed)이 있어도 p10·C1·비교 화면에 쓰지 않는다.
+        for b in out.values():
+            if b.ladders and not scope_rules.runs_ladder(shown_scope(b)):
                 b.ladders = []
     return out
 
@@ -341,26 +370,73 @@ def bundle_price(b: ComplexBundle) -> pv.PriceView:
     return pv.current_price(b.types, b.payments)
 
 
+def _masked_types(b: ComplexBundle) -> list[Any]:
+    return [masked(t, b.ocr_pending.get(("complex_type", t.id), frozenset())) for t in b.types]
+
+
+def _masked_payments(b: ComplexBundle) -> list[Any]:
+    return [masked(p, b.ocr_pending.get(("payment_terms", p.id), frozenset())) for p in b.payments]
+
+
+def score_price(b: ComplexBundle) -> pv.PriceView:
+    """점수 입력 구매가 = ``bundle_price`` 에서 판정기 추출 전 OCR 값을 뺀 것(R3 C3 — 파이프라인 ``load_facts`` 와 같은
+    규칙). 화면 표시 가격은 ``bundle_price``(OCR 값은 '추정(OCR)' 라벨로 보인다)."""
+    if not b.ocr_pending:
+        return bundle_price(b)
+    return pv.current_price(_masked_types(b), _masked_payments(b))
+
+
 def scope_result(b: ComplexBundle) -> scope_rules.ScopeResult:
-    """판정 범위 = ``analysis.scope.judge_scope``(D9-1) — 파이프라인·보고서와 같은 함수, 현재 사실로 계산."""
+    """**현재 사실**로 계산한 판정 범위 = ``analysis.scope.judge_scope``(D9-1) — 파이프라인·보고서와 같은 함수.
+
+    화면·KPI·TOP 5 에 보이는 범위는 저장값(``shown_scope``, D10-1)이다. 이 값은 미리보기(요건 사전 계산)와
+    '재판정 필요' 비교(``rejudge_needed``)에만 쓴다."""
     cur = scope_rules.pick_intake(b.intake)
     return scope_rules.judge_scope(
         inclusion_class=b.cx.inclusion_class,
         inclusion_decision=b.cx.inclusion_decision,
-        has_price=bundle_price(b).known,
+        has_price=score_price(b).known,
         intake_status=cur.status if cur is not None else None,
     )
 
 
-def judge_scope(b: ComplexBundle) -> str:
-    """판정 범위(meta §1-3-4, D9-1): 판정 대상 / 참고 / 보류 / 미해결 / 제외.
+def _stored(b: ComplexBundle, ctx: ScoreCtx | None) -> str | None:
+    """저장 판정 범위: 그 점수 실행(ctx)의 score_total.judge_scope, 없으면 스냅샷 마지막 실행의 값."""
+    if ctx is not None and ctx.run is not None:
+        t = ctx.totals.get(b.cx.id)
+        if t is not None and t.judge_scope:
+            return str(t.judge_scope)
+    return b.stored_scope
 
-    저장 값(score_total.judge_scope)이 아니라 공용 함수로 계산한다(R3 C2) — 점수 실행도 같은 함수로 저장하므로
-    사실이 바뀌지 않았으면 같은 값이다. '미해결'은 계약 .4(F3)가 응답 enum 에 추가할 때까지 계약 값 '제외'로
-    낸다(``analysis.scope.contract_scope`` — 계약에 값이 생기면 자동으로 '미해결').
-    전체 결과(미해결 포함·사유)는 ``scope_result``.
-    """
+
+def shown_scope(b: ComplexBundle, ctx: ScoreCtx | None = None) -> str:
+    """화면 판정 범위(D10-1): 스냅샷 점수 실행의 **저장값**(score_total.judge_scope) — 순위·총점·성분과 같은 실행.
+
+    저장값이 없을 때만(점수 실행 전 스냅샷, 계약 .3 이전 행) 현재 사실로 계산한 값을 낸다. 저장값과 현재값을 한 행에
+    섞지 않는다 — 달라졌으면 ``rejudge_needed`` 가 True(재판정 필요 배지 + rejudge 제안).
+    '미해결'은 계약 값 그대로(``analysis.scope.contract_scope``)."""
+    stored = _stored(b, ctx)
+    if stored:
+        return stored
     return scope_rules.contract_scope(scope_result(b).scope)
+
+
+def rejudge_needed(b: ComplexBundle, ctx: ScoreCtx | None = None) -> bool:
+    """D10-1 '재판정 필요': 저장 판정 범위가 있고 현재 사실로 계산한 범위와 다르다(사람 확인·새 공고 등 이후 변경).
+
+    점수 실행이 있는 스냅샷에서 그 단지 행이 없는데(그 실행에서 점수 밖) 지금은 점수 대상이면 역시 True."""
+    current = scope_rules.contract_scope(scope_result(b).scope)
+    stored = _stored(b, ctx)
+    if stored:
+        return stored != current
+    has_run = (ctx is not None and ctx.run is not None) or b.scored_run
+    return has_run and scope_rules.is_scored(current)
+
+
+def judge_scope(b: ComplexBundle) -> str:
+    """판정 범위(meta §1-3-4, D9-1·D10-1): 판정 대상 / 참고 / 보류 / 미해결 / 제외 — 화면 값 = ``shown_scope``
+    (저장값 우선). 현재 사실로 계산한 값(미해결 포함·사유)은 ``scope_result``."""
+    return shown_scope(b)
 
 
 # ====================================================================== Fact 묶음
@@ -968,7 +1044,8 @@ def score_row(
         "delta_rerank": delta,
         "intake": intake_view(cur) if cur is not None else None,
         "decision": decision_badge(ctx, cid),
-        "judge_scope": judge_scope(b),
+        "judge_scope": shown_scope(b, ctx),
+        **({"rejudge_needed": rejudge_needed(b, ctx)} if _EMIT_REJUDGE_SCORE else {}),
     }
 
 
@@ -994,6 +1071,7 @@ class RowData:
     resale_end: str | None
     gap_pct: Decimal | None
     p10: Decimal | None
+    rejudge_needed: bool = False  # D10-1: 저장 범위 ≠ 현재 범위(계약 .6 전까지 내부 플래그)
 
 
 def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> list[RowData]:
@@ -1012,7 +1090,7 @@ def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> li
         out.append(
             RowData(
                 b=b,
-                scope=judge_scope(b),
+                scope=shown_scope(b, ctx),
                 intake=pick_intake(b.intake),
                 price_low=low,
                 price_high=high,
@@ -1022,6 +1100,7 @@ def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> li
                 resale_end=resale_end,
                 gap_pct=gap.raw_value if gap is not None else None,
                 p10=lad.p10 if lad is not None and lad.status == "ok" else None,
+                rejudge_needed=rejudge_needed(b, ctx),
             )
         )
     return out
@@ -1098,6 +1177,7 @@ def complex_row(
         "down_payment_pct": down,
         "units_total": fm.field("complex", cx.id, "units_total", cx.units_total, unit="units"),
         "last_change": last_change,
+        **({"rejudge_needed": rd.rejudge_needed} if _EMIT_REJUDGE_ROW else {}),
     }
 
 
@@ -1125,13 +1205,14 @@ def score_input(
     ``asof_date`` 가 없으면 묶음의 스냅샷 기준일(``load_bundles`` 가 채움)로 즉시 입주를 판단한다.
     """
     labels = {k: v for k, v in (fm_labels or {}).items() if v in _LABEL_VALUES}
+    pays = _masked_payments(b)
     return build_complex_input(
-        b.cx,
+        masked(b.cx, b.ocr_pending.get(("complex", b.cx.id), frozenset())),
         scope=scope_result(b).scope,
-        price=bundle_price(b),
+        price=score_price(b),
         asof_date=asof_date or b.asof_date or "",
-        terms=current_payment(b.payments),
-        payments=b.payments,
+        terms=pv.current_terms(pays),
+        payments=pays,
         intake=pick_intake(b.intake),
         labels=labels,  # type: ignore[arg-type]
         ladders=b.ladders,

@@ -21,7 +21,8 @@ import respx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.analysis.score import SUBSTITUTE_TEXT, benchmark_component
+from app.analysis.complex_input import resale_input_label
+from app.analysis.score import SUBSTITUTE_TEXT, benchmark_component, liquidity_component
 from app.api.views import load_bundles, rejudge_needed, scope_result, score_input, shown_scope
 from app.collectors.official_site import OfficialSiteCollector, SiteTarget
 from app.core.contracts_gen import BenchmarkInput
@@ -68,13 +69,19 @@ def _count(s: Session, model: Any, *where: Any) -> int:
     return int(s.scalar(select(func.count()).select_from(model).where(*where)) or 0)
 
 
-def _ctx(make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], jev: SynthJev, **kw: Any) -> SchedulerContext:
-    return make_ctx(adapter_factory=lambda: JevMcpAdapter(transport=jev, session_factory=factory, secrets=[]), **kw)
+def _ctx(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], jev: SynthJev, **kw: Any
+) -> SchedulerContext:
+    return make_ctx(
+        adapter_factory=lambda: JevMcpAdapter(transport=jev, session_factory=factory, secrets=[]), **kw
+    )
 
 
 def _base_totals(s: Session, sid: int) -> dict[int, tuple[str | None, int | None, Decimal | None]]:
     run = s.scalars(
-        select(ScoreRun).where(ScoreRun.snapshot_id == sid, ScoreRun.scenario_id == 1).order_by(ScoreRun.id.desc())
+        select(ScoreRun)
+        .where(ScoreRun.snapshot_id == sid, ScoreRun.scenario_id == 1)
+        .order_by(ScoreRun.id.desc())
     ).first()
     assert run is not None, sid
     return {
@@ -87,12 +94,16 @@ def _base_totals(s: Session, sid: int) -> dict[int, tuple[str | None, int | None
 
 
 @pytest.fixture
-def site_ctx(make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session]) -> Iterator[SchedulerContext]:
+def site_ctx(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session]
+) -> Iterator[SchedulerContext]:
     """공식 홈페이지 수집기 = WP1b OfficialSiteCollector + 녹화 HTML(respx), 렌더 없음 → 접수 경로 official_popup."""
     http = HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0)
 
     def official(_ctx: SchedulerContext) -> OfficialSiteCollector:
-        return OfficialSiteCollector(http=http, render="never", targets=[SiteTarget(SITE, CX)], session_factory=factory)
+        return OfficialSiteCollector(
+            http=http, render="never", targets=[SiteTarget(SITE, CX)], session_factory=factory
+        )
 
     with respx.mock(assert_all_called=False) as router:
         router.get(ROBOTS).respond(200, content=(WP1B_FIXTURES / "hndapt_robots.txt").read_bytes())
@@ -131,7 +142,9 @@ def test_n_c2_no_change_day_keeps_scope_rank_and_no_event_flood(
     with factory() as s:
         row = s.scalars(
             select(IntakeStatus).where(
-                IntakeStatus.snapshot_id == day1, IntakeStatus.complex_id == CX, IntakeStatus.path == "official_popup"
+                IntakeStatus.snapshot_id == day1,
+                IntakeStatus.complex_id == CX,
+                IntakeStatus.path == "official_popup",
             )
         ).one()
         assert row.status == "가능" and "판정기 classify" in (row.note or "")
@@ -144,7 +157,9 @@ def test_n_c2_no_change_day_keeps_scope_rank_and_no_event_flood(
     with factory() as s:
         row2 = s.scalars(
             select(IntakeStatus).where(
-                IntakeStatus.snapshot_id == day2, IntakeStatus.complex_id == CX, IntakeStatus.path == "official_popup"
+                IntakeStatus.snapshot_id == day2,
+                IntakeStatus.complex_id == CX,
+                IntakeStatus.path == "official_popup",
             )
         ).one()
         assert row2.status == "가능" and COPIED_MARK in (row2.note or "")  # D10-2 분류 복사
@@ -161,7 +176,10 @@ def test_n_c2_no_change_day_keeps_scope_rank_and_no_event_flood(
     res = run_pipeline(site_ctx, day3, complex_ids=[2], reason="다른 단지 변경")
     assert not res.degraded and res.intake_events == []
     with factory() as s:
-        assert _count(s, ChangeEvent, ChangeEvent.snapshot_id == day3, ChangeEvent.entity == "intake_status") == 0
+        assert (
+            _count(s, ChangeEvent, ChangeEvent.snapshot_id == day3, ChangeEvent.entity == "intake_status")
+            == 0
+        )
         # 재판정(기준일이 바뀌어 점수 값은 다를 수 있다)에서도 판정 범위는 전날과 같다
         assert {c: v[0] for c, v in _base_totals(s, day3).items()} == {c: v[0] for c, v in totals1.items()}
 
@@ -175,7 +193,13 @@ def test_f2_copy_intake_uses_pick_intake_rule(factory: sessionmaker[Session], se
                 IntakeStatus(complex_id=9, snapshot_id=seeded, status="불가", path="official_popup", checked_at="2026-10-01T09:00:00+09:00"),
             ]
         )  # fmt: skip
-        dst = Snapshot(region_id=1, asof_date="2026-10-09", status="building", degraded=False, created_at="2026-10-09T06:00:00+09:00")
+        dst = Snapshot(
+            region_id=1,
+            asof_date="2026-10-09",
+            status="building",
+            degraded=False,
+            created_at="2026-10-09T06:00:00+09:00",
+        )
         s.add(dst)
         s.flush()
         copy_intake(s, seeded, dst.id)
@@ -217,7 +241,10 @@ class NewsJev(SynthJev):
     def _screen(self, a: dict[str, Any]) -> dict[str, Any]:
         self.screened.append(a["text"])
         if "분양" in a["text"]:
-            return {"probabilities": {"injection": 0.0, "substance": 0.9, "relevance": 0.05}, "recommendation": {"action": "skip"}}
+            return {
+                "probabilities": {"injection": 0.0, "substance": 0.9, "relevance": 0.05},
+                "recommendation": {"action": "skip"},
+            }
         return super()._screen(a)
 
     def _classify(self, a: dict[str, Any]) -> dict[str, Any]:
@@ -265,9 +292,14 @@ def test_n_m2_news_candidates_screen_then_classify_discard_not_catalyst(
     with factory() as s:
         kept = {c.name: c for c in s.scalars(select(Catalyst))}
         assert set(kept) == {"트램 기본계획 고시", "사람 입력 호재"}
-        assert kept["트램 기본계획 고시"].stage == "확정" and kept["트램 기본계획 고시"].judgment_seq is not None
+        assert (
+            kept["트램 기본계획 고시"].stage == "확정" and kept["트램 기본계획 고시"].judgment_seq is not None
+        )
     reasons = {d["name"]: d["reason"] for d in res.catalysts_discarded}
-    assert reasons == {"검단 신도시 아파트 분양 일정": "screen skip", "송도 모델하우스 견본주택 개관": "호재 아님(판정기 classify)"}
+    assert reasons == {
+        "검단 신도시 아파트 분양 일정": "screen skip",
+        "송도 모델하우스 견본주택 개관": "호재 아님(판정기 classify)",
+    }
     assert all(d["judgment_seq"] is not None for d in res.catalysts_discarded)  # 기록(judgment_log 근거)
     assert len(jev.screened) == 3  # 뉴스 후보만 screen
     # 다음 주 같은 기사가 다시 후보로 들어와도(새 id) 판정 재호출 없음(purpose = 출처·이름 해시)
@@ -316,14 +348,21 @@ def test_n_m4_pipeline_passes_substitute_label_to_stored_component(
         area = la.living_area
     run_pipeline(_ctx(make_ctx, factory, jev), seeded)
     with factory() as s:
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 1)).one()
+        run = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 1)
+        ).one()
         comp = s.scalars(
             select(ScoreComponent).where(
-                ScoreComponent.score_run_id == run.id, ScoreComponent.complex_id == 2, ScoreComponent.component == "benchmark"
+                ScoreComponent.score_run_id == run.id,
+                ScoreComponent.complex_id == 2,
+                ScoreComponent.component == "benchmark",
             )
         ).one()
         if comp.score_0_10 is not None:
-            assert SUBSTITUTE_TEXT in (comp.formula_text or "") and comp.label == "추정", (area, comp.formula_text)
+            assert SUBSTITUTE_TEXT in (comp.formula_text or "") and comp.label == "추정", (
+                area,
+                comp.formula_text,
+            )
             assert comp.reason and SUBSTITUTE_TEXT in comp.reason
 
 
@@ -345,12 +384,17 @@ def _ocr(s: Session, entity: str, eid: int, name: str, value: str) -> None:
     )  # fmt: skip
 
 
-def test_c3_ocr_values_are_null_in_score_inputs_until_extracted(factory: sessionmaker[Session], seeded: int) -> None:
+def test_c3_ocr_values_are_null_in_score_inputs_until_extracted(
+    factory: sessionmaker[Session], seeded: int
+) -> None:
     """screen 거부·extract 실패로 chosen 출처가 OCR 판독('추정(OCR)')으로 남은 값은 점수·범위 입력에서 null.
     화면 가격은 그대로(라벨 '추정(OCR)'). API 미리보기 입력도 같은 규칙(minor 20 동일성)."""
     with factory() as s:
         _ocr(s, "complex", 2, "resale_months", "6")
-        basis7 = min(s.scalars(select(ComplexType).where(ComplexType.complex_id == 7)), key=lambda t: abs(float(t.area_m2 or 0) - 84))
+        basis7 = min(
+            s.scalars(select(ComplexType).where(ComplexType.complex_id == 7)),
+            key=lambda t: abs(float(t.area_m2 or 0) - 84),
+        )
         for t in s.scalars(select(ComplexType).where(ComplexType.complex_id == 7)):
             _ocr(s, "complex_type", t.id, "max_price_won", str(t.max_price_won))
         s.commit()
@@ -363,10 +407,15 @@ def test_c3_ocr_values_are_null_in_score_inputs_until_extracted(factory: session
         assert facts[7].price_high is None and complex_input(facts[7], snap.asof_date).price_high_won is None
         bundles = load_bundles(s, list(s.scalars(select(Complex).where(Complex.id.in_([2, 7])))), seeded)
         assert score_input(bundles[2]).resale_months is None
-        assert score_input(bundles[7]).price_high_won is None and scope_result(bundles[7]).scope == facts[7].scope
+        assert (
+            score_input(bundles[7]).price_high_won is None
+            and scope_result(bundles[7]).scope == facts[7].scope
+        )
         from app.api.views import bundle_price
 
-        assert bundle_price(bundles[7]).high_won is not None and basis7.max_price_won  # 화면 표시 가격은 남는다
+        assert (
+            bundle_price(bundles[7]).high_won is not None and basis7.max_price_won
+        )  # 화면 표시 가격은 남는다
 
 
 @dataclass
@@ -387,7 +436,14 @@ def test_c3_extract_over_32_fields_is_split_not_truncated(
     from app.normalize.extract_request import ExtractRequest
 
     names = [f"type_{i}.max_price_won" for i in range(40)]
-    req = ExtractRequest(raw_document_id=None, source_url=None, entity="complex_type", entity_key=None, fields=names, text="공고문 발췌 " * 20)
+    req = ExtractRequest(
+        raw_document_id=None,
+        source_url=None,
+        entity="complex_type",
+        entity_key=None,
+        fields=names,
+        text="공고문 발췌 " * 20,
+    )
 
     class _Parser:
         def parse(self, raw: Any) -> list[Any]:
@@ -395,7 +451,9 @@ def test_c3_extract_over_32_fields_is_split_not_truncated(
 
     monkeypatch.setattr(pl, "parser_for", lambda kind: _Parser())
     monkeypatch.setattr(pl, "build_extract_requests", lambda cands: [req])
-    monkeypatch.setattr(pl, "apply_extracted", lambda *a, **k: type("A", (), {"applied": [], "flagged": []})())
+    monkeypatch.setattr(
+        pl, "apply_extracted", lambda *a, **k: type("A", (), {"applied": [], "flagged": []})()
+    )
     with factory() as s:
         s.add(
             RawDocument(
@@ -429,13 +487,25 @@ def test_m2_winner_date_label_folds_into_resale_label(factory: sessionmaker[Sess
         f2 = next(f for f in load_facts(s, snap, region) if f.complex_id == 2)
         assert f2.labels["winner"] == "추정" and f2.labels["resale"] == "확인됨"
         ci = complex_input(f2, snap.asof_date)
-        assert ci.winner_date is not None and ci.resale_label == "추정"  # 전매 종료 = 당첨일 + 기간 → 약한 쪽
+        assert ci.winner_date is not None and ci.resale_label == "확인됨"
+    # 전매 종료 = 당첨일 + 기간 → 라벨은 약한 쪽. 계약 .6 winner_label 이 생기면 빌더가 싣는다(그 전에는 payload 불변)
+    assert resale_input_label("확인됨", "추정") == "추정" and resale_input_label(None, None) is None
+    with_winner = ci.model_copy(update={"winner_label": "추정"})
+    liq = liquidity_component(with_winner, asof_date="2026-10-07")
+    if liq.score is not None:
+        assert liq.label == "추정" and liq.reason and "전매 추정" in liq.reason
+    assert (
+        liquidity_component(ci, asof_date="2026-10-07").label
+        == liquidity_component(ci.model_copy(update={"winner_label": None}), asof_date="2026-10-07").label
+    )
 
 
 # ====================================================================== F2 가격 출처 라벨 · wait_new 12개월
 
 
-def test_f2_terms_price_without_provenance_is_not_type_label(factory: sessionmaker[Session], seeded: int) -> None:
+def test_f2_terms_price_without_provenance_is_not_type_label(
+    factory: sessionmaker[Session], seeded: int
+) -> None:
     with factory() as s:
         snap = s.get(Snapshot, seeded)
         region = s.get(Region, 1)
@@ -479,10 +549,19 @@ def test_m13_api_critical_event_notified_server_side_once_across_restart(
     sent: list[dict[str, Any]] = []
 
     def notifier() -> Notifier:
-        return Notifier(webhook_url="https://hooks.example.test/x", post=lambda u, b: sent.append(b) or 200, secrets=[])
+        return Notifier(
+            webhook_url="https://hooks.example.test/x", post=lambda u, b: sent.append(b) or 200, secrets=[]
+        )
 
     with factory() as s:  # API(사람 확인 입력)가 만드는 행 — 토스트 '재판정' 클릭 없음
-        row = IntakeStatus(complex_id=4, snapshot_id=seeded, status="가능", path="human_check", checked_at="2026-10-08", entered_by="운영자")
+        row = IntakeStatus(
+            complex_id=4,
+            snapshot_id=seeded,
+            status="가능",
+            path="human_check",
+            checked_at="2026-10-08",
+            entered_by="운영자",
+        )
         s.add(row)
         s.flush()
         ev = ChangeEvent(
@@ -516,7 +595,13 @@ def test_m23_cached_by_tool_in_job_stats_and_ops_counts(
     ctx = _ctx(make_ctx, factory, jev)
     for _ in range(2):
         with factory() as s:
-            enqueue(s, "rejudge", {"snapshot_id": seeded, "scenario_id": None, "complex_ids": None, "reason": "m23"}, kind="rejudge", dedupe=False)
+            enqueue(
+                s,
+                "rejudge",
+                {"snapshot_id": seeded, "scenario_id": None, "complex_ids": None, "reason": "m23"},
+                kind="rejudge",
+                dedupe=False,
+            )
             s.commit()
         runner.run_until_idle(ctx)
     with factory() as s:

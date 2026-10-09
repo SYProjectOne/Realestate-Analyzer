@@ -73,7 +73,12 @@ class HistoryApplyhome:
             "HSSPLY_ADRES": "인천광역시 연수구 송도동 319-1", "RCRIT_PBLANC_DE": "2016-03-10", "MVN_PREARNGE_YM": "201812",
             "HOUSE_DTL_SECD_NM": "민영", "SUBSCRPT_AREA_CODE_NM": "인천",
         }  # fmt: skip
-        model = {"HOUSE_MANAGE_NO": "2016000301", "PBLANC_NO": "2016000301", "HOUSE_TY": "084.9800A", "LTTOT_TOP_AMOUNT": "41000"}
+        model = {
+            "HOUSE_MANAGE_NO": "2016000301",
+            "PBLANC_NO": "2016000301",
+            "HOUSE_TY": "084.9800A",
+            "LTTOT_TOP_AMOUNT": "41000",
+        }
         page = {"matchCount": 1, "page": 1, "perPage": 100}
         with self.factory() as s:
             lst = _save(
@@ -119,7 +124,10 @@ def test_benchmark_generation_to_total_score_from_recordings(
         )  # fmt: skip
         s.commit()
     ctx = make_ctx(
-        collectors={"applyhome": lambda c: HistoryApplyhome(factory), "rtms": lambda c: RecordedRtms(factory)},
+        collectors={
+            "applyhome": lambda c: HistoryApplyhome(factory),
+            "rtms": lambda c: RecordedRtms(factory),
+        },
         adapter_factory=lambda: JevMcpAdapter(transport=jev, session_factory=factory, secrets=[]),
     )
     res = collect(ctx, 1, ["rtms"], asof_date=ASOF)
@@ -128,30 +136,48 @@ def test_benchmark_generation_to_total_score_from_recordings(
         own = list(s.scalars(select(Benchmark).where(Benchmark.living_area == "la_1")))
         assert [b.name for b in own] == [NAME], [(b.name, b.note) for b in own]
         b = own[0]
-        assert b.sale_price_84_won == 410_000_000 and b.trade_median_won and b.trade_median_won > b.sale_price_84_won
+        assert (
+            b.sale_price_84_won == 410_000_000
+            and b.trade_median_won
+            and b.trade_median_won > b.sale_price_84_won
+        )
         assert not (b.note and SUBSTITUTE_NOTE in b.note)
         subs = list(s.scalars(select(Benchmark).where(Benchmark.living_area != "la_1")))
-        assert subs and all(x.note and SUBSTITUTE_NOTE in x.note for x in subs)  # 표본 0 생활권 = 지역 전체 대체
+        assert subs and all(
+            x.note and SUBSTITUTE_NOTE in x.note for x in subs
+        )  # 표본 0 생활권 = 지역 전체 대체
 
     out = run_pipeline(ctx, seeded)
     assert not out.degraded, out.error
     with factory() as s:
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 1)).one()
+        run = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == 1)
+        ).one()
         comps = {
             (c.complex_id, c.component): c
             for c in s.scalars(select(ScoreComponent).where(ScoreComponent.score_run_id == run.id))
         }
-        totals = {t.complex_id: t for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run.id))}
+        totals = {
+            t.complex_id: t for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run.id))
+        }
         la = {c.id: c.living_area for c in s.scalars(select(Complex).where(Complex.region_id == 1))}
         own_cx = [cid for cid, a in la.items() if a == "la_1" and (cid, "benchmark") in comps]
         other_cx = [cid for cid, a in la.items() if a != "la_1" and (cid, "benchmark") in comps]
         assert own_cx and other_cx
         for cid in own_cx:
             c = comps[(cid, "benchmark")]
-            assert c.score_0_10 is not None and NAME in (c.formula_text or "") and SUBSTITUTE_TEXT not in (c.formula_text or "")
+            assert (
+                c.score_0_10 is not None
+                and NAME in (c.formula_text or "")
+                and SUBSTITUTE_TEXT not in (c.formula_text or "")
+            )
         for cid in other_cx:
             c = comps[(cid, "benchmark")]
-            assert c.score_0_10 is not None and SUBSTITUTE_TEXT in (c.formula_text or "") and c.label == "추정"
+            assert (
+                c.score_0_10 is not None and SUBSTITUTE_TEXT in (c.formula_text or "") and c.label == "추정"
+            )
         # 생성 벤치마크로 종합 점수: 판정 대상(사다리 ok)인 자기 생활권 단지의 총점이 계산되고 순위가 있다
         judged = [cid for cid in own_cx if totals[cid].judge_scope == "판정 대상"]
-        assert judged and all(totals[cid].total is not None and totals[cid].rank is not None for cid in judged)
+        assert judged and all(
+            totals[cid].total is not None and totals[cid].rank is not None for cid in judged
+        )

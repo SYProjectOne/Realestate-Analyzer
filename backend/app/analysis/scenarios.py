@@ -14,6 +14,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Final, Literal
 
 from app.analysis._common import add_months_date, dec, fmt_won, num, parse_date, ym_of
+from app.analysis.complex_input import resale_input_label
 from app.analysis.price import price_of
 from app.core.contracts_gen import (
     ComplexScoreInput,
@@ -288,7 +289,9 @@ def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPr
         months = int((dec(holding) * 12).quantize(Decimal(1), rounding=ROUND_HALF_UP))
         exit_ = add_months_date(parse_date(asof_date), months)
         reg = " (등기 시 해제)" if c.resale_release_on_registration else ""
-        head = f"전매 종료 {ym_of(end)}{reg}{_label_note(c.resale_label)}"
+        # 전매 종료 = 당첨일 + 기간 → 라벨은 두 입력 중 약한 것(R3 M2; winner_label 은 계약 .6)
+        end_label = resale_input_label(c.resale_label, getattr(c, "winner_label", None))
+        head = f"전매 종료 {ym_of(end)}{reg}{_label_note(end_label)}"
         tail = f"매도 시작 {ym_of(exit_)}(기준일 + 보유 {num(dec(holding), 1)}년)"
         if end <= exit_:
             return _pre("충족", f"{head} ≤ {tail}")

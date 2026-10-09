@@ -24,7 +24,9 @@ SNAP = 12
 
 def _stored(run_id: int) -> dict[int, ScoreTotal]:
     with get_session() as s:
-        return {t.complex_id: t for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run_id))}
+        return {
+            t.complex_id: t for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run_id))
+        }
 
 
 def _dashboard(client: TestClient) -> dict[str, Any]:
@@ -59,7 +61,10 @@ def _flags(cids: list[int]) -> dict[int, tuple[str, str, bool]]:
         sc = s.scalars(select(Scenario).where(Scenario.code == "base")).one()
         ctx = score_ctx(s, SNAP, sc)
         bundles = load_bundles(s, list(s.scalars(select(Complex).where(Complex.id.in_(cids)))), SNAP)
-        return {c: (scope_result(b).scope, shown_scope(b, ctx), rejudge_needed(b, ctx)) for c, b in bundles.items()}
+        return {
+            c: (scope_result(b).scope, shown_scope(b, ctx), rejudge_needed(b, ctx))
+            for c, b in bundles.items()
+        }
 
 
 def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClient) -> None:
@@ -129,7 +134,9 @@ def test_n_c1_unscored_complex_without_row_falls_back_and_flags(client: TestClie
     with get_session() as s:
         sc = s.scalars(select(Scenario).where(Scenario.code == "base")).one()
         ctx = score_ctx(s, SNAP, sc)
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP).order_by(ScoreRun.id.desc())).first()
+        run = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == SNAP).order_by(ScoreRun.id.desc())
+        ).first()
         assert run is not None and ctx.run is not None
         cxs = list(s.scalars(select(Complex)))
         bundles = load_bundles(s, cxs, SNAP)

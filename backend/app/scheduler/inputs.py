@@ -7,6 +7,9 @@
 - ``build_score_inputs``: ScoreInputs(생활권 세대수·unsold_scope_codes, 거래·벤치마크·공급·미분양 원자료,
   단지별 사다리). 비교군 선택·필터는 WP4 규칙이라 거래는 거르지 않고 넣는다(기준일 전 24개월만).
 - ``evidence_card``: 판정기 증거 카드(표시 문자열). 수치는 출처 라벨과 함께 문자열로만 넣는다.
+- OCR 값(R3 C3, D5-4): chosen 출처 행이 아직 OCR 판독(label '추정' + reason 'OCR' — 판정기 extract 전·screen 거부·extract
+  실패)인 필드는 점수·범위 입력에서 null 이다(``ocr_pending_fields`` → ``analysis.complex_input.masked``). 사실 행은
+  그대로라 화면에는 '추정(OCR)'으로 보인다. API 미리보기(``api.views.score_input``)도 같은 함수를 쓴다.
 
 여기서는 판단하지 않는다: 포함 여부는 complex.inclusion_class(판정기 classify 결과), 접수 상태는 intake_status 행.
 """
@@ -25,7 +28,7 @@ from typing import Final, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.analysis.complex_input import build_complex_input
+from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.gap import compute_gap
 from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms
 from app.analysis.scope import EXCLUDED_CLASSES, INTAKE_PRIORITY, JudgeScope, judge_scope, pick_intake
@@ -58,6 +61,7 @@ from app.models import (
     Supply,
     Unsold,
 )
+from app.normalize.fields import is_ocr
 from app.normalize.living_area import living_area_of, region_household_facts
 
 __all__ = [
@@ -73,6 +77,8 @@ __all__ = [
     "fmt_eok",
     "gap_of",
     "load_facts",
+    "ocr_pending_fields",
+    "substitute_benchmark_ids",
 ]
 
 LABELS: Final = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
@@ -119,10 +125,18 @@ class ComplexFacts:
     scope: JudgeScope = "판정 대상"
     scope_reason: str = ""
     evidence: list[tuple[str, str]] = field(default_factory=list)  # (fp_<id>, 발췌) — verify 근거
+    ocr_fields: frozenset[str] = (
+        frozenset()
+    )  # complex 행에서 판정기 추출 전 OCR 값 필드(점수 입력 null, R3 C3)
 
     @property
     def complex_id(self) -> int:
         return self.row.id
+
+    @property
+    def score_row(self) -> Complex:
+        """점수 입력용 complex 행(OCR 값 필드 = None). 쓰기는 ``row`` 에."""
+        return masked(self.row, self.ocr_fields)
 
 
 def display_intake(rows: Iterable[IntakeStatus]) -> IntakeStatus | None:
@@ -145,6 +159,27 @@ def _chosen_provenance(
         if fp.entity_id is not None:
             out[(fp.entity_id, fp.field)] = fp
     return out
+
+
+def ocr_pending_fields(session: Session, entity: str, ids: Sequence[int]) -> dict[int, frozenset[str]]:
+    """entity_id → 판정기 추출 전 OCR 값 필드들(chosen 출처 행이 OCR 판독, ``normalize.fields.is_ocr``).
+
+    extract 가 반영되면 chosen 이 추출 행으로 바뀌므로 여기서 빠진다. screen 거부·extract 실패·review 면 남는다."""
+    want = sorted(set(ids))
+    out: dict[int, set[str]] = defaultdict(set)
+    for i in range(0, len(want), 500):
+        stmt = select(
+            FieldProvenance.entity_id, FieldProvenance.field, FieldProvenance.label, FieldProvenance.reason
+        ).where(
+            FieldProvenance.entity == entity,
+            FieldProvenance.entity_id.in_(want[i : i + 500]),
+            FieldProvenance.chosen.is_(True),
+            FieldProvenance.label == "추정",
+        )
+        for eid, name, label, reason in session.execute(stmt):
+            if eid is not None and is_ocr(label, reason):
+                out[eid].add(name)
+    return {k: frozenset(v) for k, v in out.items()}
 
 
 def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[ComplexFacts]:
@@ -171,13 +206,17 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
     cx_prov = _chosen_provenance(session, "complex", ids)
     type_prov = _chosen_provenance(session, "complex_type", [t.id for ts in types.values() for t in ts])
     terms_prov = _chosen_provenance(session, "payment_terms", [p.id for ps in terms.values() for p in ps])
+    ocr_cx = _ocr_of(cx_prov)
+    ocr_type = _ocr_of(type_prov)
+    ocr_terms = _ocr_of(terms_prov)
     area_names = {str(a.get("id")): str(a.get("name") or "") for a in region.living_areas or []}
 
     out: list[ComplexFacts] = []
     for cx in complexes:
         f = ComplexFacts(row=cx, living_area_name=area_names.get(cx.living_area or "") or None)
-        cx_types = types.get(cx.id, [])
-        f.payments = terms.get(cx.id, [])
+        f.ocr_fields = ocr_cx.get(cx.id, frozenset())
+        cx_types = [masked(t, ocr_type.get(t.id, frozenset())) for t in types.get(cx.id, [])]
+        f.payments = [masked(p, ocr_terms.get(p.id, frozenset())) for p in terms.get(cx.id, [])]
         cur = current_terms(f.payments)
         f.terms = cur
         _price(f, cx_types, type_prov, terms_prov)
@@ -186,11 +225,14 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
         residency = cx_prov.get((cx.id, "residency_months"))
         down = terms_prov.get((cur.id, "down_payment_pct")) if cur is not None else None
         move_in = cx_prov.get((cx.id, "move_in_ym"))
+        winner = cx_prov.get((cx.id, "winner_date"))
         f.labels = {
             "resale": _label(resale.label) if resale else None,
             "residency": _label(residency.label) if residency else None,
             "down_payment": _label(down.label) if down else None,
             "move_in": _label(move_in.label) if move_in else None,  # 계약 .4 move_in_label(M2)
+            # 당첨일 라벨(R3 M2): 계약에 winner_label 이 없어 점수 입력에서 resale_label 에 합친다(complex_input)
+            "winner": _label(winner.label) if winner else None,
         }
         for fp in (
             resale,
@@ -237,16 +279,25 @@ def _price(
         return
     f.price_low, f.price_high = view.low_won, view.high_won
     fp = _prov_of(view.max_ref, type_prov, terms_prov)
-    if fp is None and view.from_terms and f.basis is not None:  # 공고별 가격 출처 행이 없으면 타입 행 출처
-        fp = type_prov.get((f.basis.id, "max_price_won"))
-    f.price_label = _label(fp.label) if fp is not None else None  # null → gap '확인 불가(가격 출처 누락)'
+    # 최신 공고 가격(price_by_type)을 썼는데 그 출처 행이 없으면 타입 행 라벨로 대신하지 않는다(R3 재리뷰 F2) —
+    # API(FactMaker.field)처럼 '확인 불가(가격 출처 누락)'(null → gap 성분 사유)
+    f.price_label = _label(fp.label) if fp is not None else None
     f.price_composition = "+".join(view.composition)
 
 
+def _ocr_of(prov: Mapping[tuple[int, str], FieldProvenance]) -> dict[int, frozenset[str]]:
+    """chosen 출처 행 → entity_id 별 OCR 판독(추출 전) 필드."""
+    out: dict[int, set[str]] = defaultdict(set)
+    for (eid, name), fp in prov.items():
+        if is_ocr(fp.label, fp.reason):
+            out[eid].add(name)
+    return {k: frozenset(v) for k, v in out.items()}
+
+
 def complex_input(f: ComplexFacts, asof_date: str, ladders: Iterable[Ladder] = ()) -> ComplexScoreInput:
-    """``analysis.complex_input.build_complex_input`` (G5 미리보기와 같은 함수, R3 minor 20)."""
+    """``analysis.complex_input.build_complex_input`` (G5 미리보기와 같은 함수, R3 minor 20). OCR 값 필드는 null."""
     return build_complex_input(
-        f.row,
+        f.score_row,
         scope=f.scope,
         price=f.price if f.price is not None else current_price([], []),
         asof_date=asof_date,
@@ -385,6 +436,22 @@ def build_score_inputs(
         supply=supply,
         unsold=unsold,
         complexes=[complex_input(f, snapshot.asof_date, ladders.get(f.complex_id, [])) for f in facts],
+    )
+
+
+def substitute_benchmark_ids(session: Session, region: Region) -> frozenset[int]:
+    """지역 전체 대체 벤치마크 행(D9-2: 생활권 자체 표본 0 → 지역 전체 복사, note '추정(대체: 지역 전체)') id.
+
+    점수 엔진(``analysis.score.run_detailed(substitute_benchmarks=…)``)이 식·라벨에 '대체(지역 전체)'를 적는다(N-M4).
+    계약 BenchmarkInput 에 표식이 생기면(.6 요청) 그 필드로 바꾼다."""
+    from app.normalize.benchmark import SUBSTITUTE_NOTE
+
+    return frozenset(
+        bid
+        for bid, note in session.execute(
+            select(Benchmark.id, Benchmark.note).where(Benchmark.region_id == region.id)
+        )
+        if note and SUBSTITUTE_NOTE in note
     )
 
 

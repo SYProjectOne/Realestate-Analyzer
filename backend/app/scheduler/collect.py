@@ -8,7 +8,8 @@
    실거래·미분양은 수집기가 직접 적재하고(load=True), 입주물량은 공고문 입주월 합산(추정 집계)을 적재한다.
 3. 접수 상태 행(intake_status): 공식 홈페이지 원문 → 실패면 '확인 불가(<상태>)', 성공이면 문구 분류 전이라
    '확인 불가(접수 문구 미분류)' — 가능/불가 판단은 판정기·사람 몫(AGENTS 규칙 3). 이전 스냅샷의 (단지, 경로)
-   행 중 오늘 없는 것은 복사(사람 확인 행 포함, 확인 시각 유지).
+   행 중 오늘 없는 것은 복사(사람 확인 행 포함, 확인 시각 유지). 미분류 행의 문구 해시가 직전 판정기 분류 행과
+   같으면 그 분류를 복사한다(``intake.carry_classification``, D10-2 — 판정 호출 없음).
 4. 데이터 조립(assemble.py, R3 F1a): 이번에 돈 단계에 따라 잔여 공고 이력·체크리스트(청약홈·공고문),
    벤치마크(실거래 = collect.weekly: 청약홈 과거 공고 + rtms 과거 월 → benchmark), 호재 후보(뉴스).
    조립 예외는 ``errors['assemble.<단계>']``.
@@ -36,6 +37,7 @@ from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
 from app.normalize.store import store_raw_document
 from app.scheduler import assemble, detect, snapshots
+from app.scheduler.intake import UNCLASSIFIED, carry_classification, pending_complexes
 from app.scheduler.persist import copy_intake
 
 if TYPE_CHECKING:
@@ -56,7 +58,6 @@ _SOURCE_TO_STEP: Final = {
     "news": "news",
 }
 STORE_KINDS: Final = frozenset({"applyhome_list", "applyhome_detail", "notice_pdf", "official_site"})
-UNCLASSIFIED: Final = "접수 문구 미분류"
 
 
 @dataclass
@@ -75,6 +76,8 @@ class CollectResult:
     list_complex_ids: list[int] | None = None
     intake_rows: int = 0
     intake_copied: int = 0
+    intake_carried: list[int] = field(default_factory=list)
+    intake_pending: list[int] = field(default_factory=list)
     assembled: dict[str, Any] = field(default_factory=dict)
     official_docs: list[RawDTO] = field(default_factory=list, repr=False)
 
@@ -93,6 +96,8 @@ class CollectResult:
             "rejudge_complex_ids": self.rejudge_complex_ids,
             "intake_rows": self.intake_rows,
             "intake_copied": self.intake_copied,
+            "intake_classification_carried": len(self.intake_carried),
+            "intake_pending_classify": self.intake_pending,
             "assembled": self.assembled,
         }
         if self.list_complex_ids is not None:
@@ -333,6 +338,8 @@ def collect(
         prev = snapshots.previous(session, snap_row)
         if prev is not None:
             res.intake_copied = copy_intake(session, prev.id, snap_dto.id)
+        # D10-2: 문구 해시가 직전 분류 행과 같으면 분류 복사(판정 호출 없음) — 변경 없는 날 범위·순위 불변
+        res.intake_carried = carry_classification(session, snap_dto.id)
         events.extend(
             detect.popup_changes(
                 session, res.official_docs, asof_date=asof, snapshot_id=snap_dto.id, detected_at=detected_at
@@ -356,7 +363,10 @@ def collect(
         rows = (
             list(session.scalars(select(ChangeEvent).where(ChangeEvent.id.in_(sorted(ids))))) if ids else []
         )
-        res.rejudge_complex_ids = detect.rejudge_targets(rows)
+        # 분류 복사 뒤에도 미분류인 접수 행(문구 변경·처음 본 문구)의 단지는 재판정(P4 접수 classify) 대상 — 미분류인 채
+        # 이전 판정 복사·publish 를 하지 않는다(N-C2)
+        res.intake_pending = pending_complexes(session, snap_dto.id)
+        res.rejudge_complex_ids = sorted(set(detect.rejudge_targets(rows)) | set(res.intake_pending))
     log.info(
         "worker.collect.done",
         extra={"region_id": region_id, "snapshot_id": res.snapshot_id, "events": len(res.change_event_ids)},

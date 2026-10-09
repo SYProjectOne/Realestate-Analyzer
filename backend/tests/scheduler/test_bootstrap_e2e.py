@@ -138,6 +138,10 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
         assert stats["weekly"]["skipped"]["rtms"] == "비활성(키 없음)"  # 키 없음 → 비활성(호출 0)
         assert "news" in stats["weekly"]["skipped"]
         assert stats["pipeline"]["statuses"].get("review", 0) > 0  # 녹화 없는 판정 = review(조용한 통과 없음)
+        # R3b m23: 캐시 집계를 잡 stats 최상위에도(/ops/judgments cached_hits 가 최상위를 읽는다) — 도구별 포함
+        assert stats["cached"] == stats["pipeline"]["cached"]
+        assert stats["cached_by_tool"] == stats["pipeline"]["cached_by_tool"]
+        assert sum(stats["cached_by_tool"].values()) == stats["cached"]
         snap = s.scalars(select(Snapshot).where(Snapshot.region_id == 1)).one()
         assert snap.asof_date == TODAY.isoformat() and snap.status == "published" and not snap.degraded
         in_region = _count(s, Complex, Complex.region_id == 1, Complex.living_area.is_not(None))

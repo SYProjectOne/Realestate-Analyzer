@@ -320,6 +320,19 @@ class SchedulerContext:
     worker_id: str = field(default_factory=lambda: f"{socket.gethostname()}:{os.getpid()}")
     _adapter: JudgeCaller | None = field(default=None, repr=False)
 
+    def __post_init__(self) -> None:
+        # 보낸 알림 영속 기록(job_run stats 의 notified_event_ids) — 재시작해도 같은 이벤트를 다시 보내지 않는다(R3 m13)
+        if self.notifier.load_sent is None:
+            factory = self.session_factory
+
+            def _load() -> set[int]:
+                from app.scheduler.notify import sent_ids_from_jobs
+
+                with factory() as session:
+                    return sent_ids_from_jobs(session)
+
+            self.notifier.load_sent = _load
+
     def adapter(self) -> JudgeCaller:
         if self._adapter is None:
             self._adapter = self.adapter_factory()

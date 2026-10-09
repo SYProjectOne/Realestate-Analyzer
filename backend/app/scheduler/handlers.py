@@ -65,8 +65,7 @@ def _notify(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any]:
     with ctx.session_factory() as session:
         events = list(session.scalars(select(ChangeEvent).where(ChangeEvent.id.in_(event_ids))))
         names = _names(session, sorted({e.complex_id for e in events if e.complex_id is not None}))
-    r = ctx.notifier.notify(events, names)
-    return {"sent": r.sent, "skipped": r.skipped, "status": r.status}
+    return ctx.notifier.notify(events, names).stats()
 
 
 def _after_daily(
@@ -76,23 +75,25 @@ def _after_daily(
     with ctx.session_factory() as session:
         snap = session.get(Snapshot, snapshot_id)
         assert snap is not None
-        if rejudge_ids:
+        has_runs = session.scalar(
+            select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == snapshot_id)
+        )
+        first = not has_runs and snapshots.previous(session, snap, published_only=True) is None
+        if rejudge_ids and not first:
             job = enqueue_rejudge(
                 session, snapshot_id, rejudge_ids, f"변경 감지 {len(rejudge_ids)}단지",
                 change_event_ids=event_ids, now=ctx.now(),
             )  # fmt: skip
             session.commit()
             return {"rejudge_job_id": job.id}
-        has_runs = session.scalar(
-            select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == snapshot_id)
-        )
         if snap.status == "published" or has_runs:
             return {"carry_forward": "이미 판정됨"}
         prev = snapshots.previous(session, snap, published_only=True)
-        if prev is None:
+        if prev is None:  # 첫 판정: 변경·미분류 접수 단지만이 아니라 전부(복사할 이전 판정이 없다)
             job = enqueue_rejudge(
-                session, snapshot_id, None, "이전 publish 스냅샷 없음 — 전체 판정", now=ctx.now()
-            )
+                session, snapshot_id, None, "이전 publish 스냅샷 없음 — 전체 판정",
+                change_event_ids=event_ids or None, now=ctx.now(),
+            )  # fmt: skip
             session.commit()
             return {"rejudge_job_id": job.id}
         copied = carry_forward(session, prev.id, snapshot_id, created_at=ctx.iso_now())
@@ -186,6 +187,10 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
             "weekly": weekly.stats(),
             "pipeline": result.stats(),
             "degraded": result.degraded,
+            # 판정 호출·캐시 집계를 최상위에도(/ops/judgments cached_hits 가 잡 stats 최상위를 읽는다, R3 m23)
+            "judge_calls": result.judge_calls,
+            "cached": result.cached,
+            "cached_by_tool": dict(result.cached_by_tool),
         }
         if daily.list_complex_ids is not None:
             stats["list_complex_ids"] = daily.list_complex_ids

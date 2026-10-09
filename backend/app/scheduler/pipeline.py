@@ -5,12 +5,14 @@
 2. P1 screen → P2 extract → P3 audit: 대상 단지 공고문에서 파서가 못 읽은 필드(normalize ``needs_extract``)만.
    결과는 ``normalize.judged.apply_extracted`` 로 사실 테이블·출처 행에 반영(auto+감사 통과 = 확인됨, 감사 전 = 추정,
    review·감사 flagged = 미반영)
-3. 접수 상태 classify: 이 스냅샷의 '접수 문구 미분류' 행(공식 홈페이지 official_popup·headless_shot)을 원문 DOM 텍스트의
+3. 접수 상태 classify: 이 스냅샷의 '접수 문구 미분류' 행(공식 홈페이지 official_popup·headless_shot) 중 문구 해시가 직전
+   분류 행과 같은 것은 분류 복사(``intake.carry_classification``, D10-2 — 호출 없음), 나머지를 원문 DOM 텍스트의
    접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/불가/확인 불가. 미해결 = 확인 불가(판정 미해결).
    그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
    triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
    (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
-4. P4 classify: 포함/제외 7클래스(지역 단지 전부·범위 경계 제외, 64개씩 배치 1회) · 호재 단계 5클래스(지역 호재)
+4. P4 classify: 포함/제외 7클래스(지역 단지 전부·범위 경계 제외, 64개씩 배치 1회) · 호재: 뉴스 후보 → P1 screen(호재 관련성)
+   → 단계 classify('호재 아님'이면 후보 폐기·기록) → 종류(kind) classify(D10-6, ``_p4_catalysts``)
 5. P5 compare: 대상 단지 출처 상충 중 같은 순위 1차·1차(needs_compare)만 → field_provenance.compare_judgment_seq.
    contradicts 면 ``normalize.judged.apply_compare``(1차 공고 자료 채택·병기)
 6. P6 noul: 대상 단지 중 ``analysis.scope.runs_ladder``(판정 대상만 — 참고·보류·미해결·제외는 사다리 미실행, D9-1)의
@@ -26,6 +28,8 @@
 
 판정 호출은 전부 ``ctx.adapter()``(= ``judge.get_adapter()``) + ``judge.pipeline`` 단계 함수로만 한다.
 ``JudgeUnavailable`` → 그때까지 쓴 판정 행은 두고 degraded(점수 미계산, T18).
+판정기가 죽어 있어도 판정이 전부 캐시면 끝까지 돈다 — 버전 비교는 이번 실행에서 판정기에 **실제로 간** 호출의 봉투 버전만
+쓰고(서버 재호출 없음), 실제 호출이 없으면 하지 않는다(R3 재리뷰 N-M8).
 """
 
 # ruff: noqa: E501
@@ -35,7 +39,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Final
 
 from sqlalchemy import select
@@ -77,14 +81,21 @@ from app.models import (
     ScoreRun,
     Snapshot,
 )
-from app.models.enums import CATALYST_STAGE, INCLUSION_CLASS
-from app.normalize._text import read_raw_text
-from app.normalize.extract_request import FIELD_DESCRIPTIONS, build_extract_requests
+from app.models.enums import CATALYST_KIND, CATALYST_STAGE, INCLUSION_CLASS
+from app.normalize.extract_request import FIELD_DESCRIPTIONS, ExtractRequest, build_extract_requests
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
 from app.scheduler.degraded import clear_degraded, mark_degraded
-from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
+from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts, substitute_benchmark_ids
+from app.scheduler.intake import (
+    CLASSIFIED_MARK,
+    INTAKE_PATHS,
+    NO_TEXT,
+    UNCLASSIFIED,
+    carry_classification,
+    intake_text,
+)
 from app.scheduler.judge_version import last_logged, record_version_change
 from app.scheduler.payloads import (
     _anchor_from,
@@ -126,9 +137,11 @@ _FIELD_PATTERNS: Final = {
     "units_total": r"[0-9][0-9,]*\s*세대",
 }
 _TEXT_SOURCES: Final = ("notice_pdf",)
-UNCLASSIFIED: Final = "접수 문구 미분류"  # collect.intake_rows 가 남기는 사유(분류 대기)
-_INTAKE_PATHS: Final = ("official_popup", "headless_shot")
-_INTAKE_TEXT_MAX: Final = 2000
+_INTAKE_PATHS: Final = INTAKE_PATHS
+EXTRACT_FIELDS_MAX: Final = 32
+"""판정기 extract 한 호출의 필드 상한 — 넘으면 나눠 보낸다(잘라 버리지 않는다, R3 C3)."""
+NOT_CATALYST_LABELS: Final = frozenset({"호재 아님", "not_catalyst", "none"})
+"""호재 단계 classify 의 '호재 아님' 클래스 id(D10-6, G1 judge.payloads — 이름이 정해지면 ``P.CATALYST_NOT`` 이 이긴다)."""
 
 
 # ---------------------------------------------------------------- 호출 계수
@@ -148,11 +161,24 @@ class CountingCaller:
         self.cached = 0
         self.blocked = 0
         self.by_tool: Counter[str] = Counter()
+        self.cached_by_tool: Counter[str] = Counter()  # 도구별 캐시 재생(R3 m23 — /ops/judgments cached_hits)
         self.statuses: Counter[str] = Counter()
+        self.seen_version: str | None = None  # 마지막 봉투의 adapter_version(캐시 재생 포함)
+        self.live_version: str | None = None  # 판정기에 실제로 간 호출의 봉투 버전(버전 변경 감지용)
 
     @property
     def adapter_version(self) -> str:
         return self.inner.adapter_version
+
+    def known_version(self) -> str | None:
+        """서버에 묻지 않고 아는 버전: 이번 실행에서 본 봉투 버전, 없으면 어댑터에 물어 보되 판정기가 죽어 있으면 None
+        (판정기 다운 + 전부 캐시에서 예외를 내지 않는다, N-M8)."""
+        if self.seen_version:
+            return self.seen_version
+        try:
+            return self.inner.adapter_version
+        except JudgeUnavailable:
+            return None
 
     def call(
         self,
@@ -167,13 +193,18 @@ class CountingCaller:
             self._before()
         env = self.inner.call(tool, payload, purpose, snapshot_id=snapshot_id, complex_id=complex_id)
         self.statuses[env.status] += 1
+        if env.adapter_version:
+            self.seen_version = env.adapter_version
         if env.cached:
             self.cached += 1
+            self.cached_by_tool[tool] += 1
         elif env.status == "blocked":
             self.blocked += 1
         else:
             self.calls += 1
             self.by_tool[tool] += 1
+            if env.adapter_version and env.status != "error":
+                self.live_version = env.adapter_version
         return env
 
 
@@ -187,6 +218,7 @@ class PipelineResult:
     cached: int = 0
     blocked: int = 0
     by_tool: dict[str, int] = field(default_factory=dict)
+    cached_by_tool: dict[str, int] = field(default_factory=dict)
     statuses: dict[str, int] = field(default_factory=dict)
     ladders: int = 0
     score_run_ids: list[int] = field(default_factory=list)
@@ -198,6 +230,9 @@ class PipelineResult:
     intake_classified: int = 0
     compare_adopted: int = 0
     intake_events: list[int] = field(default_factory=list)
+    intake_carried: int = 0
+    catalysts_discarded: list[dict[str, Any]] = field(default_factory=list)
+    notified_event_ids: list[int] = field(default_factory=list)
     carried: dict[str, int] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
     version_event_id: int | None = None
@@ -205,6 +240,7 @@ class PipelineResult:
     def absorb(self, c: CountingCaller) -> None:
         self.judge_calls, self.cached, self.blocked = c.calls, c.cached, c.blocked
         self.by_tool = dict(c.by_tool)
+        self.cached_by_tool = dict(c.cached_by_tool)
         self.statuses = dict(c.statuses)
 
     def stats(self) -> dict[str, Any]:
@@ -216,6 +252,7 @@ class PipelineResult:
             "cached": self.cached,
             "blocked": self.blocked,
             "by_tool": self.by_tool,
+            "cached_by_tool": self.cached_by_tool,
             "statuses": self.statuses,
             "ladders": self.ladders,
             "score_runs": len(self.score_run_ids),
@@ -227,6 +264,9 @@ class PipelineResult:
             "intake_classified": self.intake_classified,
             "compare_adopted": self.compare_adopted,
             "intake_events": self.intake_events,
+            "intake_classification_carried": self.intake_carried,
+            "catalysts_discarded": self.catalysts_discarded,
+            "notified_event_ids": self.notified_event_ids,
             "carried": self.carried,
             "skipped": self.skipped,
             "version_event_id": self.version_event_id,
@@ -301,79 +341,102 @@ def _p1_p3(
         except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록
             res.skipped[f"parse:rd{doc.id}"] = type(exc).__name__
             continue
-        for i, req in enumerate(build_extract_requests([c for c in cands if c.needs_extract])):
-            if not req.text.strip() or not req.fields:
+        for i, whole in enumerate(build_extract_requests([c for c in cands if c.needs_extract])):
+            if not whole.text.strip() or not whole.fields:
                 continue
-            n_req += 1
-            cid = doc.complex_id
-            tag = f"rd{doc.id}:{i}"
-            screen = jp.p1_screen(
-                caller, req.text, task="청약 공고문 수치 추출 전 입력 검사", purpose=f"screen:extract:{tag}",
-                snapshot_id=snap.id, complex_id=cid,
-            )  # fmt: skip
-            if not screen.usable:
-                continue
-            fields = [
-                ExtractField(
-                    id=_slug(f),
-                    pattern=_FIELD_PATTERNS.get(f, r"[0-9][0-9,.]*"),
-                    description=FIELD_DESCRIPTIONS.get(f, f),
-                )
-                for f in req.fields[:32]
-            ]
-            env = jp.p2_extract(
-                caller, req.text, fields, purpose=f"extract:{tag}", snapshot_id=snap.id, complex_id=cid
-            )
-            by_slug = {_slug(f): f for f in req.fields}
-            values = [
-                ExtractedValue(by_slug[str(f.get("name"))], f.get("value_text"), f.get("decision"))
-                for f in (env.result or {}).get("fields", [])
-                if str(f.get("name")) in by_slug
-            ]
-            got = [
-                f
-                for f in (env.result or {}).get("fields", [])
-                if f.get("decision") == "auto" and f.get("value_text") and str(f.get("name")) in by_slug
-            ]
-            if env.status != "ok" or not got:
-                if env.status == "ok" and values:  # review 필드만 — 반영 없이 기록(skipped)
-                    apply_extracted(
-                        session, req, values, judgment_seq=seq(env.judgment_seq), snapshot_id=snap.id
-                    )
-                continue
-            desc = {_slug(f): FIELD_DESCRIPTIONS.get(f, f) for f in req.fields}
-            records = [
-                AuditRecord(
-                    id=str(f["name"]),
-                    request=desc.get(str(f["name"]), str(f["name"])),
-                    value=str(f["value_text"]),
-                )
-                for f in got[:32]
-            ]
-            audit_env = jp.p3_audit(
-                caller, req.text, records, purpose=f"audit:{tag}", snapshot_id=snap.id, complex_id=cid
-            )
-            marks: dict[str, AuditMark] | None = None
-            if audit_env.status == "ok":  # review(미해결 감사)는 감사 없음으로 본다 → 추정
-                marks = {
-                    by_slug[str(it.get("field"))]: AuditMark(bool(it.get("flagged")), it.get("p_wrong"))
-                    for it in (audit_env.result or {}).get("items", [])
-                    if str(it.get("field")) in by_slug
-                }
-            applied = apply_extracted(
-                session,
-                req,
-                values,
-                judgment_seq=seq(env.judgment_seq),
-                audit=marks,
-                audit_seq=seq(audit_env.judgment_seq),
-                snapshot_id=snap.id,
-            )
-            res.extract_applied += len(applied.applied)
-            res.extract_flagged += len(applied.flagged)
-            session.commit()
+            # 필드가 32개를 넘으면 나눠 보낸다(잘라 버리면 넘친 OCR 값이 판정 없이 남는다, R3 C3). 첫 조각은 예전 tag 그대로
+            for k in range(0, len(whole.fields), EXTRACT_FIELDS_MAX):
+                req = whole if len(whole.fields) <= EXTRACT_FIELDS_MAX else _part(whole, k)
+                tag = f"rd{doc.id}:{i}" + (f":{k // EXTRACT_FIELDS_MAX}" if k else "")
+                n_req += 1
+                _extract_one(session, caller, snap, doc.complex_id, req, tag, res, seq)
     if n_req:
         res.carried["extract_requests"] = n_req
+
+
+def _part(req: ExtractRequest, start: int) -> ExtractRequest:
+    """ExtractRequest 의 필드 조각(같은 원문·같은 후보)."""
+    return replace(req, fields=list(req.fields[start : start + EXTRACT_FIELDS_MAX]))
+
+
+def _extract_one(
+    session: Session,
+    caller: CountingCaller,
+    snap: Snapshot,
+    cid: int | None,
+    req: ExtractRequest,
+    tag: str,
+    res: PipelineResult,
+    seq: persist.SeqResolver,
+) -> None:
+    """요청 1개(필드 ≤32): screen → extract → audit → 반영. screen 거부·extract 실패면 반영 없음 — OCR 값은 chosen 출처가
+    OCR 판독으로 남아 점수 입력에서 null(``inputs.ocr_pending_fields``, R3 C3)."""
+    screen = jp.p1_screen(
+        caller, req.text, task="청약 공고문 수치 추출 전 입력 검사", purpose=f"screen:extract:{tag}",
+        snapshot_id=snap.id, complex_id=cid,
+    )  # fmt: skip
+    if not screen.usable:
+        res.skipped[f"screen:{tag}"] = (
+            f"screen {screen.verdict or screen.envelope.status} — OCR 값 점수 입력 제외"
+        )
+        return
+    fields = [
+        ExtractField(
+            id=_slug(f),
+            pattern=_FIELD_PATTERNS.get(f, r"[0-9][0-9,.]*"),
+            description=FIELD_DESCRIPTIONS.get(f, f),
+        )
+        for f in req.fields[:EXTRACT_FIELDS_MAX]
+    ]
+    env = jp.p2_extract(
+        caller, req.text, fields, purpose=f"extract:{tag}", snapshot_id=snap.id, complex_id=cid
+    )
+    by_slug = {_slug(f): f for f in req.fields}
+    values = [
+        ExtractedValue(by_slug[str(f.get("name"))], f.get("value_text"), f.get("decision"))
+        for f in (env.result or {}).get("fields", [])
+        if str(f.get("name")) in by_slug
+    ]
+    got = [
+        f
+        for f in (env.result or {}).get("fields", [])
+        if f.get("decision") == "auto" and f.get("value_text") and str(f.get("name")) in by_slug
+    ]
+    if env.status != "ok" or not got:
+        if env.status == "ok" and values:  # review 필드만 — 반영 없이 기록(skipped)
+            apply_extracted(session, req, values, judgment_seq=seq(env.judgment_seq), snapshot_id=snap.id)
+        return
+    desc = {_slug(f): FIELD_DESCRIPTIONS.get(f, f) for f in req.fields}
+    records = [
+        AuditRecord(
+            id=str(f["name"]),
+            request=desc.get(str(f["name"]), str(f["name"])),
+            value=str(f["value_text"]),
+        )
+        for f in got[:EXTRACT_FIELDS_MAX]
+    ]
+    audit_env = jp.p3_audit(
+        caller, req.text, records, purpose=f"audit:{tag}", snapshot_id=snap.id, complex_id=cid
+    )
+    marks: dict[str, AuditMark] | None = None
+    if audit_env.status == "ok":  # review(미해결 감사)는 감사 없음으로 본다 → 추정
+        marks = {
+            by_slug[str(it.get("field"))]: AuditMark(bool(it.get("flagged")), it.get("p_wrong"))
+            for it in (audit_env.result or {}).get("items", [])
+            if str(it.get("field")) in by_slug
+        }
+    applied = apply_extracted(
+        session,
+        req,
+        values,
+        judgment_seq=seq(env.judgment_seq),
+        audit=marks,
+        audit_seq=seq(audit_env.judgment_seq),
+        snapshot_id=snap.id,
+    )
+    res.extract_applied += len(applied.applied)
+    res.extract_flagged += len(applied.flagged)
+    session.commit()
 
 
 # ---------------------------------------------------------------- P4
@@ -395,32 +458,16 @@ def _inclusion_text(f: ComplexFacts) -> str:
 
 
 def _intake_text(session: Session, row: IntakeStatus) -> str:
-    """접수 상태 행의 원문(공식 홈페이지 HTML·렌더 DOM 텍스트) → classify 항목 텍스트.
-
-    접수 문구 후보 줄(normalize official_site 파서 — 분류하지 않음)이 있으면 그 줄들, 없으면 DOM 텍스트 앞부분.
-    """
-    doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
-    if doc is None:
-        return ""
-    dto = raw_dto(doc)
-    parser = parser_for("official_site")
-    lines: list[str] = []
-    if parser is not None:
-        try:
-            lines = [str(c.value_text) for c in parser.parse(dto) if c.value_text]
-        except Exception:  # 원문 파일 없음 등 — 아래 DOM 텍스트로
-            lines = []
-    text = "\n".join(dict.fromkeys(lines))
-    if not text:
-        src = dto.model_copy(update={"path": None}) if row.path == "headless_shot" else dto
-        text = (read_raw_text(src) or "").strip()
-    return text[:_INTAKE_TEXT_MAX]
+    """접수 상태 행 → classify 항목 텍스트(``intake.intake_text`` — 분류 복사의 문구 해시와 같은 함수)."""
+    return intake_text(session, row)
 
 
 def _p4_intake(
     session: Session, caller: CountingCaller, snap: Snapshot, seq: persist.SeqResolver, res: PipelineResult
 ) -> None:
-    """'접수 문구 미분류' 행 → 판정기 classify(배치) → 가능/미정/불가/확인 불가. 문구가 없으면 판정기 호출 없이 사유만."""
+    """'접수 문구 미분류' 행 → (문구 해시가 직전 분류와 같으면 복사, D10-2) → 판정기 classify(배치) → 가능/미정/불가/확인 불가.
+    문구가 없으면 판정기 호출 없이 사유만."""
+    res.intake_carried += len(carry_classification(session, snap.id))
     rows = list(
         session.scalars(
             select(IntakeStatus)
@@ -436,7 +483,7 @@ def _p4_intake(
     for r in rows:
         text = _intake_text(session, r)
         if not text.strip():
-            r.reason = "접수 문구 없음"
+            r.reason = NO_TEXT
             continue
         item = jp.IntakeItem(r.complex_id, r.path, text)
         items.setdefault(item.key, (r, item))
@@ -451,7 +498,7 @@ def _p4_intake(
             row.status = o.status
             row.reason = o.reason
             s = seq(o.judgment_seq)
-            mark = f"판정기 classify jl_{s}" if s is not None else "판정기 classify"
+            mark = f"{CLASSIFIED_MARK} jl_{s}" if s is not None else CLASSIFIED_MARK
             row.note = f"{row.note} · {mark}" if row.note else mark
             res.intake_classified += 1
     session.flush()
@@ -494,15 +541,117 @@ def _p4(
                 )
             cx.inclusion_prob = persist.to_dec(out.prob) if out.prob is not None else None
             cx.inclusion_judgment_seq = seq(out.envelope.judgment_seq)
-    for cat in session.scalars(select(Catalyst).where(Catalyst.region_id == region.id).order_by(Catalyst.id)):
-        text = "\n".join(
-            p for p in (f"호재: {cat.name}", f"구분: {cat.kind}", cat.note or "", cat.source_url or "") if p
+    session.flush()
+
+
+# ---------------------------------------------------------------- P4 호재 (D10-6)
+
+
+def _is_news(cat: Catalyst) -> bool:
+    """뉴스 수집 후보(``normalize.catalyst.catalysts_from_news`` — raw_document_id = 뉴스 원문). 사람 URL 입력·시드 호재는 아님."""
+    return cat.raw_document_id is not None
+
+
+def _catalyst_text(cat: Catalyst) -> str:
+    """호재 판정 입력(screen·classify 공용). 뉴스 후보는 G1 ``normalize.catalyst`` 의 screen 입력 빌더가 있으면 그것
+    (D10-6), 없거나 뉴스가 아니면 예전 텍스트 그대로(같은 입력 = 캐시)."""
+    if _is_news(cat):
+        from app.normalize import catalyst as ncat
+
+        build = getattr(ncat, "screen_text", None) or getattr(ncat, "catalyst_screen_text", None)
+        if callable(build):
+            text = build(cat)
+            if isinstance(text, str) and text.strip():
+                return text
+    return "\n".join(
+        p for p in (f"호재: {cat.name}", f"구분: {cat.kind}", cat.note or "", cat.source_url or "") if p
+    )
+
+
+def _catalyst_key(cat: Catalyst) -> str:
+    """판정 purpose 키. 뉴스 후보는 행 id 가 아니라 출처 URL·이름 해시 — 폐기 후 다음 수집에 다시 들어온 같은 기사는
+    새 id 여도 같은 purpose 라 캐시(호출 0). 나머지는 예전처럼 행 id."""
+    if not _is_news(cat):
+        return str(cat.id)
+    import hashlib
+
+    basis = f"{cat.source_url or ''}|{cat.name}"
+    return "n" + hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
+
+
+def _not_catalyst_labels() -> frozenset[str]:
+    from app.judge import payloads as judge_payloads
+
+    extra = getattr(judge_payloads, "CATALYST_NOT", None)
+    return NOT_CATALYST_LABELS | ({str(extra)} if extra else set())
+
+
+def _discard_catalyst(
+    session: Session, cat: Catalyst, why: str, res: PipelineResult, seq_id: int | None
+) -> None:
+    from app.models import CatalystLink
+
+    res.catalysts_discarded.append(
+        {"name": cat.name[:80], "source_url": cat.source_url, "reason": why, "judgment_seq": seq_id}
+    )
+    for link in session.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat.id)):
+        session.delete(link)
+    for fp in session.scalars(
+        select(FieldProvenance).where(
+            FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == cat.id
         )
-        out = jp.p4_classify_catalyst(caller, catalyst_key=str(cat.id), text=text, snapshot_id=snap.id)
+    ):
+        session.delete(fp)
+    session.delete(cat)
+
+
+def _p4_catalysts(
+    session: Session,
+    caller: CountingCaller,
+    snap: Snapshot,
+    region: Region,
+    seq: persist.SeqResolver,
+    res: PipelineResult,
+) -> None:
+    """D10-6: 뉴스 호재 후보 → P1 screen(호재 관련성) 통과분만 → 단계 classify('호재 아님'이면 후보 폐기·기록) →
+    종류(kind) classify. 판단은 판정기만 — 여기서는 봉투 결과를 행에 옮기고, 판정이 쓸 수 없으면(review) 후보를 남겨 둔다.
+
+    screen 거부(skip·block)·'호재 아님'은 catalyst 행을 지우고 ``PipelineResult.catalysts_discarded`` 에 기록한다
+    (judgment_log 행이 근거). purpose 키는 출처 URL·이름 해시라 같은 기사가 다시 들어와도 판정 재호출이 없다.
+    """
+    kind_fn = getattr(jp, "p4_classify_catalyst_kind", None)
+    not_labels = _not_catalyst_labels()
+    for cat in list(
+        session.scalars(select(Catalyst).where(Catalyst.region_id == region.id).order_by(Catalyst.id))
+    ):
+        key = _catalyst_key(cat)
+        text = _catalyst_text(cat)
+        if _is_news(cat):
+            screen = jp.p1_screen(
+                caller, text, task="지역 부동산 호재(교통·개발·학교·상업·생활 기반) 관련성 검사",
+                purpose=f"screen:catalyst:{key}", snapshot_id=snap.id,
+            )  # fmt: skip
+            if screen.verdict in ("skip", "block"):  # 판정기가 호재 관련 없음(skip)·사용 금지(block)로 판정
+                _discard_catalyst(
+                    session, cat, f"screen {screen.verdict}", res, seq(screen.envelope.judgment_seq)
+                )
+                continue
+            if not screen.usable:  # review·blocked(guard) — 판정 미해결: 후보는 남기고 분류하지 않는다
+                cat.stage, cat.decision = "미확정", "review"
+                continue
+        out = jp.p4_classify_catalyst(caller, catalyst_key=key, text=text, snapshot_id=snap.id)
+        s = seq(out.envelope.judgment_seq)
+        if out.resolved and out.label in not_labels:
+            _discard_catalyst(session, cat, "호재 아님(판정기 classify)", res, s)
+            continue
         cat.stage = out.label if out.resolved and out.label in CATALYST_STAGE else "미확정"
         cat.decision = out.decision
         cat.stage_prob = persist.to_dec(out.prob) if out.prob is not None else None
-        cat.judgment_seq = seq(out.envelope.judgment_seq)
+        cat.judgment_seq = s
+        if callable(kind_fn):  # G1(R3b) 종류 classify — 없으면 수집기가 정한 kind 유지
+            kout = kind_fn(caller, catalyst_key=key, text=text, snapshot_id=snap.id)
+            if getattr(kout, "resolved", False) and getattr(kout, "label", None) in CATALYST_KIND:
+                cat.kind = str(kout.label)
     session.flush()
 
 
@@ -587,7 +736,7 @@ def _prev_anchor(session: Session, caller: CountingCaller, run_seq: int | None) 
     row = session.get(JudgmentLog, run_seq)
     if row is None or row.status != "ok" or row.tool != "rerank":
         return None
-    if row.adapter_version != caller.adapter_version:
+    if row.adapter_version != caller.known_version():  # 서버에 다시 묻지 않는다(판정기 다운 + 캐시, N-M8)
         return None
     items: list[RerankItem] = list(_anchor_from(row).items)
     if not items:
@@ -668,13 +817,13 @@ def _intake_changes(
     return events
 
 
-def _notify(ctx: SchedulerContext, session: Session, events: Sequence[ChangeEvent]) -> None:
-    """critical 이벤트 웹훅(건별 guard, 이미 보낸 이벤트는 다시 보내지 않음 — notify.Notifier)."""
+def _notify(ctx: SchedulerContext, session: Session, events: Sequence[ChangeEvent]) -> list[int]:
+    """critical 이벤트 웹훅(건별 guard, 이미 보낸 이벤트는 다시 보내지 않음 — notify.Notifier). 보낸 이벤트 id."""
     if not events:
-        return
+        return []
     ids = sorted({e.complex_id for e in events if e.complex_id is not None})
     names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.id.in_(ids)))} if ids else {}
-    ctx.notifier.notify(events, names)
+    return list(ctx.notifier.notify(events, names).event_ids)
 
 
 # ---------------------------------------------------------------- P9
@@ -738,8 +887,9 @@ def run_pipeline(
                 tset |= {e.complex_id for e in changed if e.complex_id is not None}
                 res.targets = sorted(tset)
                 session.commit()
-                _notify(ctx, session, changed)
+                res.notified_event_ids += _notify(ctx, session, changed)
             _p4(session, caller, snap, region, facts, tset, seq)
+            _p4_catalysts(session, caller, snap, region, seq, res)
             res.carried["compare"] = _p5(session, caller, snap, tset, seq, res)
             session.commit()
             facts = load_facts(session, snap, region)  # 포함 분류가 바뀌었을 수 있다
@@ -781,10 +931,12 @@ def run_pipeline(
                 res.skipped["score"] = "시나리오 행 없음(scenario 시드 필요)"
             saved_gaps = False
             upcoming = wait_new_evidence(facts, snap.asof_date)  # 가상 후보 '모집공고 대기' 근거(계약 .5)
+            subs = substitute_benchmark_ids(session, region)  # 지역 전체 대체 벤치마크(N-M4 식 표기)
             for sc in scenarios:
                 plan = decide_plan(
-                    snap_dto, sc, inputs, cards, scope, precalc=precalc, wait_new_text=upcoming
-                )
+                    snap_dto, sc, inputs, cards, scope, precalc=precalc, wait_new_text=upcoming,
+                    substitute_benchmarks=subs,
+                )  # fmt: skip
                 detail = plan.detail
                 run = persist.save_score_run(
                     session,
@@ -858,9 +1010,10 @@ def run_pipeline(
             log.warning("worker.pipeline.degraded", extra={"snapshot_id": snapshot_id})
         if caller is not None:
             res.absorb(caller)
-            if not res.degraded:
+            # 버전 변경 감지는 판정기에 실제로 간 호출의 봉투 버전만(N-M8: 다운 + 전부 캐시면 서버 재호출·예외 없음)
+            if not res.degraded and caller.live_version:
                 ev = record_version_change(
-                    ctx, session, before_version, caller.adapter_version, snapshot_id=snapshot_id
+                    ctx, session, before_version, caller.live_version, snapshot_id=snapshot_id
                 )
                 if ev is not None:
                     res.version_event_id = ev.id
