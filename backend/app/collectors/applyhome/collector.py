@@ -1,6 +1,16 @@
 """청약홈 수집기 (RA §5 WP1, Collector 프로토콜, DECISIONS D2-6).
 
-흐름 (지역 1개)
+경로 선택 (시도마다)
+- **공식 API 1순위** (``DATA_GO_KR_KEY`` 가 있으면, ``api.py``): 시도 약칭 + 모집공고일 범위로 APT·잔여세대·
+  임의공급 상세 목록을 받는다(목록에 공급위치가 있어 지역 밖 단지는 상세를 더 받지 않는다). 목록 페이지 =
+  ``applyhome_list``(JSON). 지역 안 공고마다 상세(1건 조회)·주택형별·경쟁률 = ``applyhome_detail``(JSON).
+  - 목록이 하나라도 실패(401·5xx·네트워크·JSON 아님)하면 **그 시도는 웹 경로**로 전부 다시 받는다.
+  - 공고 단위 폴백: API 상세·주택형 실패 → 웹 상세, API 경쟁률 실패(예: 경쟁률 서비스 미신청 401) → 웹 경쟁률.
+  - 웹 상세는 API 가 성공해도 받는다(``web_detail=True`` 기본): 모집공고문 PDF 링크는 웹 상세에만 있어
+    notice_pdf 수집기가 그것을 읽는다(API 에 첨부 링크 필드 없음).
+- **웹 경로** (키 없음·API 목록 실패): 아래 1~3.
+
+웹 흐름 (지역 1개)
 1. ``region.sido_codes`` 마다 시도 약칭으로 **APT 분양정보 목록**과 **APT 잔여세대(무순위·임의) 목록**을
    조회한다.
    기간은 ``region.applyhome_query['from_ym']``(없으면 기준월 −10개월) ~ 기준월 +1개월을 12개월 창으로 나눠
@@ -18,6 +28,7 @@ HTTP 는 ``app.core.http.HttpClient`` 만 쓴다(속도 제한·robots·재시�
 
 from __future__ import annotations
 
+import calendar
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -26,6 +37,7 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.collectors.applyhome import api as ah_api
 from app.collectors.applyhome import parse, site
 from app.collectors.applyhome.area import AreaFilter, build_region_areas
 from app.collectors.applyhome.raw import RawStore, Stored, to_contract
@@ -33,12 +45,14 @@ from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_sessionmaker
 from app.core.http import FetchResult, HttpClient
 from app.core.paths import resolve_raw_path
+from app.core.settings import get_settings
 from app.core.time import today_kst
 from app.models import Complex
 
 __all__ = ["ApplyhomeCollector", "month_windows"]
 
 MAX_PAGES = 200  # 창 하나에 2,000행 — 형식이 바뀌어 total 을 못 읽을 때의 안전장치
+_UNSET = object()
 
 
 def _ym(d: date) -> tuple[int, int]:
@@ -108,11 +122,28 @@ class ApplyhomeCollector:
         session: Session | None = None,
         today: Callable[[], date] = today_kst,
         max_pages: int = MAX_PAGES,
+        service_key: str | object | None = _UNSET,
+        web_detail: bool = True,
     ) -> None:
+        """``service_key``: 공공데이터포털 키(기본 = 설정 ``DATA_GO_KR_KEY``). None/빈 값이면 웹 경로만.
+        ``web_detail``: API 경로에서도 지역 안 공고의 웹 상세를 받는다(공고문 PDF 링크용)."""
         self._http = http
         self._session = session
         self._today = today
         self._max_pages = max_pages
+        if service_key is _UNSET:
+            secret = get_settings().data_go_kr_key
+            key = secret.get_secret_value() if secret is not None else None
+        else:
+            key = service_key if isinstance(service_key, str) else None
+        self._key = key or None
+        self._web_detail = web_detail
+        # 마지막 fetch 의 시도별 경로: {sido_code: 'api' | 'web' | 'web(api 실패: <사유>)'}
+        self.paths: dict[str, str] = {}
+
+    @property
+    def api_enabled(self) -> bool:
+        return self._key is not None
 
     # --- 자원
     @contextmanager
@@ -151,12 +182,114 @@ class ApplyhomeCollector:
             areas = build_region_areas(region, session)
             windows = self._windows(region)
             since_day = _since_date(since)
+            self.paths = {}
+            api = ah_api.ApplyhomeApi(http, self._key) if self._key else None
             for flt in areas.filters.values():
+                if api is not None:
+                    failed = self._collect_api(api, http, run, session, flt, windows, since_day, checkpoint)
+                    if failed is None:
+                        self.paths[flt.sido_code] = "api"
+                        continue
+                    self.paths[flt.sido_code] = f"web(api 실패: {failed})"
+                else:
+                    self.paths[flt.sido_code] = "web"
                 for kind in site.LIST_KINDS:
                     rows = self._collect_list(http, run, flt, kind, windows, checkpoint)
                     for row in rows:
                         self._collect_row(http, run, session, flt, row, since_day, checkpoint)
             return run.out
+
+    # --- 공식 API
+    def _collect_api(
+        self,
+        api: ah_api.ApplyhomeApi,
+        http: HttpClient,
+        run: _Run,
+        session: Session,
+        flt: AreaFilter,
+        windows: list[tuple[str, str]],
+        since_day: date | None,
+        checkpoint: Callable[[], None],
+    ) -> str | None:
+        """시도 하나를 API 로. 목록이 실패하면 사유 문자열(호출자가 웹 경로로), 성공이면 None."""
+        begin = date(int(windows[0][0][:4]), int(windows[0][0][4:]), 1)
+        end_y, end_m = int(windows[-1][1][:4]), int(windows[-1][1][4:])
+        end = date(end_y, end_m, calendar.monthrange(end_y, end_m)[1])
+        rows: dict[tuple[str, str], ah_api.ApiRow] = {}
+        for kind in ah_api.API_KINDS:
+            path = ah_api.ENDPOINTS[kind].detail
+            got = 0
+            for page_no in range(1, self._max_pages + 1):
+                result = api.get(path, ah_api.list_params(kind, flt.area, begin, end, page_no))
+                stored = run.store.save(
+                    result, source_kind="applyhome_list", ext="json", region_id=run.region.id
+                )
+                run.emit(stored)
+                checkpoint()
+                page = ah_api.parse_page(result)
+                if not page.ok:
+                    return f"{kind} 목록 {page.error}"
+                for d in page.rows:
+                    row = ah_api.to_row(kind, d)
+                    if row is not None:
+                        rows.setdefault((row.house_manage_no, row.pblanc_no), row)
+                got += len(page.rows)
+                if not page.rows or page.match_count is None or got >= page.match_count:
+                    break
+        for row in rows.values():
+            if row.area_name not in (None, flt.area) or not flt.matches(row.address):
+                continue  # 목록에 공급위치가 있으므로 지역 밖은 더 받지 않는다(원문은 목록 페이지에 있다)
+            self._collect_api_row(api, http, run, session, row, since_day, checkpoint)
+        return None
+
+    def _collect_api_row(
+        self,
+        api: ah_api.ApplyhomeApi,
+        http: HttpClient,
+        run: _Run,
+        session: Session,
+        row: ah_api.ApiRow,
+        since_day: date | None,
+        checkpoint: Callable[[], None],
+    ) -> None:
+        hm, pb = row.house_manage_no, row.pblanc_no
+        ep = ah_api.ENDPOINTS[row.kind]
+        params = ah_api.item_params(hm, pb)
+        api_urls = [ah_api.doc_url(p, params) for p in (ep.detail, ep.model, ep.competition)]
+        web_urls = [site.detail_url(ep.web_kind, hm, pb), site.competition_url(ep.web_kind, hm, pb)]
+        if since_day is not None and row.last_date is not None and row.last_date < since_day.isoformat():
+            known = [run.store.latest_ok("applyhome_detail", u) for u in api_urls + web_urls]
+            if known[0] is not None:  # 일정이 끝난 공고 — 받아 둔 원문을 그대로 돌려준다
+                for k in known:
+                    if k is not None:
+                        run.emit(Stored(k, created=False))
+                return
+
+        complex_id = _complex_id(session, run.region.id, hm)
+
+        def save(result: FetchResult, ext: str) -> Stored:
+            stored = run.store.save(
+                result,
+                source_kind="applyhome_detail",
+                ext=ext,
+                region_id=run.region.id,
+                complex_id=complex_id,
+            )
+            run.emit(stored)
+            checkpoint()
+            return stored
+
+        ok: list[bool] = []
+        for path in (ep.detail, ep.model, ep.competition):
+            result = api.get(path, params)
+            save(result, "json")
+            page = ah_api.parse_page(result)
+            ok.append(page.ok and (bool(page.rows) or path == ep.competition))
+        detail_ok, model_ok, comp_ok = ok
+        if self._web_detail or not (detail_ok and model_ok):
+            save(http.get(web_urls[0]), "html")  # 공고문 링크(notice_pdf) + API 상세 실패 폴백
+        if not comp_ok:
+            save(http.get(web_urls[1]), "html")  # 경쟁률 API 실패(401 등) → 웹 경쟁률
 
     # --- 목록
     def _windows(self, region: Region) -> list[tuple[str, str]]:
