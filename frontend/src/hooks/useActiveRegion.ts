@@ -19,7 +19,7 @@ export interface ActiveRegionState {
 export function useActiveRegion(): ActiveRegionState {
   const [regionParam, set] = useUrlParam(REGION_PARAM);
   const { data: regions = [], isLoading, isSuccess } = useRegions();
-  const region = regions.find((r) => r.id === regionParam) ?? regions[0] ?? null;
+  const region = regions.find((r) => String(r.id) === regionParam) ?? regions[0] ?? null;
   return {
     region,
     regions,

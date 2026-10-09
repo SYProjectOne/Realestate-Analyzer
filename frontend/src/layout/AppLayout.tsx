@@ -1,4 +1,7 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router';
+import { DegradedBanner } from '@/app/DegradedBanner';
+import { ToastProvider } from '@/app/toast';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { t } from '@/i18n';
 import { Header } from './Header';
@@ -18,29 +21,34 @@ export function Disclaimer() {
 export function AppLayout() {
   const { readOnly, unsupported } = useMobileLayout();
   return (
-    <div className="min-h-screen bg-bg text-fg">
-      <a href="#main" className="sr-only focus:not-sr-only">
-        {t('app.skipToContent')}
-      </a>
-      <Header />
-      {readOnly ? (
-        <p role="note" className="bg-surface px-4 py-1 text-xs text-muted">
-          {t('app.mobileReadOnly')}
-        </p>
-      ) : null}
-      {unsupported ? (
-        <p role="note" className="bg-surface px-4 py-1 text-xs text-muted">
-          {t('app.mobileUnsupported')}
-        </p>
-      ) : null}
-      <main
-        id="main"
-        className="mx-auto max-w-screen-2xl px-4 pb-16 pt-4"
-        data-readonly={readOnly || undefined}
-      >
-        <Outlet />
-      </main>
-      <Disclaimer />
-    </div>
+    <ToastProvider>
+      <div className="min-h-screen bg-bg text-fg">
+        <a href="#main" className="sr-only focus:not-sr-only">
+          {t('app.skipToContent')}
+        </a>
+        <Header />
+        <DegradedBanner />
+        {readOnly ? (
+          <p role="note" className="bg-surface px-4 py-1 text-xs text-muted">
+            {t('app.mobileReadOnly')}
+          </p>
+        ) : null}
+        {unsupported ? (
+          <p role="note" className="bg-surface px-4 py-1 text-xs text-muted">
+            {t('app.mobileUnsupported')}
+          </p>
+        ) : null}
+        <main
+          id="main"
+          className="mx-auto max-w-screen-2xl px-4 pb-16 pt-4"
+          data-readonly={readOnly || undefined}
+        >
+          <Suspense fallback={<p className="text-sm text-muted">{t('app.loading')}</p>}>
+            <Outlet />
+          </Suspense>
+        </main>
+        <Disclaimer />
+      </div>
+    </ToastProvider>
   );
 }

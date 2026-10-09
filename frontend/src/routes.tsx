@@ -1,19 +1,29 @@
-import type { ReactElement } from 'react';
+import { lazy, type ComponentType, type ReactElement } from 'react';
 import type { RouteObject } from 'react-router';
+import { ChartGalleryPage } from '@/app/ChartGalleryPage';
 import type { MobilePolicy, RouteHandle } from '@/hooks/useMobileLayout';
 import type { TKey } from '@/i18n';
 import { AppLayout } from '@/layout/AppLayout';
-import { ComparePage } from '@/pages/compare';
-import { ComplexPage } from '@/pages/complex';
-import { ComplexesPage } from '@/pages/complexes';
-import { DashboardPage } from '@/pages/dashboard';
-import { LivingAreasPage } from '@/pages/living-areas';
-import { MarketPage } from '@/pages/market';
 import { NotFoundPage } from '@/pages/not-found';
-import { OpsPage } from '@/pages/ops';
-import { RegionNewPage } from '@/pages/region-new';
-import { ReportsPage } from '@/pages/reports';
-import { ScenarioPage } from '@/pages/scenario';
+
+/** 화면마다 별도 청크(첫 화면 번들을 줄인다 — Lighthouse 성능). AppLayout의 Suspense가 받는다. */
+function page<K extends string>(
+  load: () => Promise<Record<K, ComponentType>>,
+  name: K,
+): ComponentType {
+  return lazy(async (): Promise<{ default: ComponentType }> => ({ default: (await load())[name] }));
+}
+
+const RegionNewPage = page(() => import('@/pages/region-new'), 'RegionNewPage');
+const LivingAreasPage = page(() => import('@/pages/living-areas'), 'LivingAreasPage');
+const DashboardPage = page(() => import('@/pages/dashboard'), 'DashboardPage');
+const ComplexesPage = page(() => import('@/pages/complexes'), 'ComplexesPage');
+const ComplexPage = page(() => import('@/pages/complex'), 'ComplexPage');
+const ComparePage = page(() => import('@/pages/compare'), 'ComparePage');
+const ScenarioPage = page(() => import('@/pages/scenario'), 'ScenarioPage');
+const MarketPage = page(() => import('@/pages/market'), 'MarketPage');
+const OpsPage = page(() => import('@/pages/ops'), 'OpsPage');
+const ReportsPage = page(() => import('@/pages/reports'), 'ReportsPage');
 
 export interface RouteDef {
   /** 화면 id (RA §7-1, D2-5) */
@@ -99,6 +109,18 @@ export const routeDefs: RouteDef[] = [
   },
 ];
 
+/** dev(또는 MSW 모드)에서만 여는 차트 갤러리 — 프로덕션 번들에는 라우트가 없다 */
+const DEV_ROUTES: RouteObject[] =
+  import.meta.env.DEV || import.meta.env.MODE === 'msw'
+    ? [
+        {
+          path: '/__charts',
+          element: <ChartGalleryPage />,
+          handle: { screen: 'charts', mobile: 'unsupported' } satisfies RouteHandle,
+        },
+      ]
+    : [];
+
 export const appRoutes: RouteObject[] = [
   {
     element: <AppLayout />,
@@ -108,6 +130,7 @@ export const appRoutes: RouteObject[] = [
         element: def.element,
         handle: { screen: def.id, mobile: def.mobile } satisfies RouteHandle,
       })),
+      ...DEV_ROUTES,
       {
         path: '*',
         element: <NotFoundPage />,

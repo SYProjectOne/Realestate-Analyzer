@@ -1,11 +1,294 @@
-import { t } from '@/i18n';
+import { useQueryClient } from '@tanstack/react-query';
+import { useId, useState } from 'react';
+import { reportDownloadUrl, useChanges, useCreateReport, useReports } from '@/api/hooks';
+import { ApiError } from '@/api/client';
+import type { ChangeEvent, Report, ReportFormat, Snapshot } from '@/api/types';
+import { Badge, EmptyState, JobProgress, SnapshotPicker } from '@/components';
+import { useSnapshot } from '@/hooks/useSnapshot';
+import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
+import { formatCount, formatDate, formatNumber } from '@/lib/format';
+import { enumText, QueryState, Section, tdClass, thClass, usePageContext } from '../_shared';
+
+const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
+
+/** 생성 가능 여부: contradicted claim이 남은 스냅샷은 보고서를 만들지 않는다(RA WP8·D4) */
+export function blockReason(snapshot: Snapshot | null): string | null {
+  if (!snapshot) return null;
+  const n = snapshot.contradicted_claims ?? 0;
+  if (n > 0) return t('page.G8.blocked', { n: formatCount(n) });
+  return null;
+}
 
 /**
- * G8 보고서 `/reports` (RA §7-1 + D4) — WP6a 구현.
- * SnapshotPairPicker, FormatSelect(html|pdf), GenerateButton → JobProgress, ReportList, SnapshotDiffTable.
- * useCreateReport, reportDownloadUrl, useChanges. contradicted claim 있으면 버튼 비활성 + 사유.
+ * G8 보고서 `/reports` (RA §7-1, D4 = HTML|PDF)
+ * SnapshotPairPicker · FormatSelect · GenerateButton(→ JobProgress) · ReportList(다운로드) · SnapshotDiffTable
+ * contradicted claim이 있으면 버튼 비활성 + 사유.
  */
 export function ReportsPage() {
-  return <PageShell title={t('page.G8.title')} />;
+  const { snapshots, snapshotId } = useSnapshot();
+  const { asof } = usePageContext();
+  const [baseId, setBaseId] = useState<string | null>(null);
+  const [compareId, setCompareId] = useState<string>('');
+  const [format, setFormat] = useState<ReportFormat>('html');
+  const [jobId, setJobId] = useState<number | null>(null);
+  const create = useCreateReport();
+  const qc = useQueryClient();
+  const formatId = useId();
+  const compareSelectId = useId();
+
+  const selectedId = baseId ?? snapshotId;
+  const base = snapshots.find((s) => String(s.id) === selectedId) ?? null;
+  const blocked = blockReason(base);
+  const conflict =
+    create.error instanceof ApiError && create.error.code === 'publish_blocked'
+      ? create.error.detail
+      : null;
+
+  const generate = () => {
+    if (!selectedId || blocked) return;
+    create.mutate(
+      {
+        snapshot_id: Number(selectedId),
+        format,
+        compare_snapshot_id: compareId ? Number(compareId) : null,
+      },
+      { onSuccess: (job) => setJobId(job.id) },
+    );
+  };
+
+  return (
+    <PageShell title={t('page.G8.title')}>
+      <Section title={t('page.G8.generate')}>
+        <div className="flex flex-wrap items-end gap-4">
+          <SnapshotPicker
+            snapshots={snapshots}
+            value={selectedId}
+            onChange={setBaseId}
+            label={t('page.G8.snapshot')}
+          />
+          <span className="inline-flex items-center gap-1.5 text-sm">
+            <label htmlFor={compareSelectId} className="text-muted">
+              {t('page.G8.compareSnapshot')}
+            </label>
+            <select
+              id={compareSelectId}
+              value={compareId}
+              onChange={(e) => setCompareId(e.target.value)}
+              className="rounded border border-border bg-surface px-2 py-1"
+            >
+              <option value="">{t('page.G8.noCompare')}</option>
+              {snapshots
+                .filter((s) => String(s.id) !== selectedId)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {formatDate(s.asof_date)}
+                  </option>
+                ))}
+            </select>
+          </span>
+          <fieldset className="flex items-center gap-2 text-sm">
+            <legend id={formatId} className="sr-only">
+              {t('page.G8.format')}
+            </legend>
+            <span className="text-muted" aria-hidden>
+              {t('page.G8.format')}
+            </span>
+            {FORMATS.map((f) => (
+              <label key={f} className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="report-format"
+                  value={f}
+                  checked={format === f}
+                  onChange={() => setFormat(f)}
+                />
+                {t(`page.G8.formats.${f}` as TKey)}
+              </label>
+            ))}
+          </fieldset>
+          <button
+            type="button"
+            onClick={generate}
+            disabled={!selectedId || !!blocked || create.isPending}
+            aria-describedby={blocked ? 'g8-blocked' : undefined}
+            className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          >
+            {t('page.G8.generate')}
+          </button>
+        </div>
+        {blocked || conflict ? (
+          <p id="g8-blocked" role="alert" className="text-sm font-medium text-danger">
+            {blocked ?? conflict}
+          </p>
+        ) : null}
+        {base && base.status !== 'published' && !blocked ? (
+          <p className="text-xs text-muted">{t('page.G8.notPublished', { status: base.status })}</p>
+        ) : null}
+        {jobId !== null ? (
+          <JobProgress
+            jobId={String(jobId)}
+            onDone={() => void qc.invalidateQueries({ queryKey: ['reports'] })}
+          />
+        ) : null}
+      </Section>
+      <ReportList asof={asof} snapshots={snapshots} />
+      <SnapshotDiff baseId={selectedId} compareId={compareId || null} asof={asof} />
+    </PageShell>
+  );
+}
+
+const LIST_COLS = ['created', 'snapshot', 'compare', 'format', 'status', 'size', 'file'] as const;
+
+function ReportList({ asof, snapshots }: { asof: string | null; snapshots: Snapshot[] }) {
+  const query = useReports();
+  const dateOf = (id: number | null) => {
+    if (id === null) return '';
+    const s = snapshots.find((x) => x.id === id);
+    return s ? formatDate(s.asof_date) : `#${id}`;
+  };
+  return (
+    <Section title={t('page.G8.list')}>
+      <QueryState query={query}>
+        {(reports) =>
+          reports.length === 0 ? (
+            <EmptyState message={t('page.G8.none')} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table aria-label={t('page.G8.list')} className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    {LIST_COLS.map((k) => (
+                      <th key={k} scope="col" className={thClass}>
+                        {t(`page.G8.col.${k}` as TKey)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((r) => (
+                    <ReportRow key={r.id} report={r} asof={asof} dateOf={dateOf} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </QueryState>
+    </Section>
+  );
+}
+
+function ReportRow({
+  report,
+  asof,
+  dateOf,
+}: {
+  report: Report;
+  asof: string | null;
+  dateOf: (id: number | null) => string;
+}) {
+  return (
+    <tr>
+      <td className={tdClass}>{formatDate(report.created_at, asof)}</td>
+      <td className={tdClass}>{dateOf(report.snapshot_id)}</td>
+      <td className={tdClass}>{dateOf(report.compare_snapshot_id)}</td>
+      <td className={tdClass}>{t(`page.G8.formats.${report.format}` as TKey)}</td>
+      <td className={tdClass}>
+        <Badge
+          tone={
+            report.status === 'done' ? 'neutral' : report.status === 'failed' ? 'strong' : 'muted'
+          }
+        >
+          {enumText('job.status', report.status)}
+        </Badge>
+        {report.blocked_reason ? (
+          <span className="block text-xs text-danger">{report.blocked_reason}</span>
+        ) : null}
+      </td>
+      <td className={tdClass}>
+        {report.size_bytes === null
+          ? ''
+          : t('page.G8.sizeKb', { kb: formatNumber(report.size_bytes / 1024) })}
+      </td>
+      <td className={tdClass}>
+        {report.status === 'done' ? (
+          <a
+            href={reportDownloadUrl(report.id)}
+            download={report.filename ?? undefined}
+            className="underline"
+          >
+            {report.filename ?? t('page.common.download')}
+          </a>
+        ) : null}
+      </td>
+    </tr>
+  );
+}
+
+const DIFF_COLS = ['complex', 'entity', 'field', 'change', 'severity', 'detected'] as const;
+
+function SnapshotDiff({
+  baseId,
+  compareId,
+  asof,
+}: {
+  baseId: string | null;
+  compareId: string | null;
+  asof: string | null;
+}) {
+  const query = useChanges(baseId, { compare_snapshot: compareId }, compareId !== null);
+  return (
+    <Section title={t('page.G8.diff')}>
+      {compareId === null ? (
+        <p className="text-sm text-muted">{t('page.G8.diffHint')}</p>
+      ) : (
+        <QueryState
+          query={query}
+          empty={(rows) => (rows.length === 0 ? t('page.G8.noDiff') : null)}
+        >
+          {(rows) => <DiffTable rows={rows} asof={asof} />}
+        </QueryState>
+      )}
+    </Section>
+  );
+}
+
+function DiffTable({ rows, asof }: { rows: ChangeEvent[]; asof: string | null }) {
+  return (
+    <div className="overflow-x-auto">
+      <table aria-label={t('page.G8.diff')} className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {DIFF_COLS.map((k) => (
+              <th key={k} scope="col" className={thClass}>
+                {t(`page.G8.diffCol.${k}` as TKey)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr key={c.id}>
+              <td className={tdClass}>{c.complex_name ?? ''}</td>
+              <td className={tdClass}>{c.entity}</td>
+              <td className={tdClass}>{c.field}</td>
+              <td className={tdClass}>
+                {t('page.common.arrow', {
+                  old: c.old_text ?? t('page.common.none'),
+                  new: c.new_text ?? t('page.common.none'),
+                })}
+              </td>
+              <td className={tdClass}>
+                <Badge tone={c.severity === 'critical' ? 'strong' : 'muted'}>
+                  {enumText('page.common.severity', c.severity)}
+                </Badge>
+              </td>
+              <td className={tdClass}>{formatDate(c.detected_at, asof)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }

@@ -1,0 +1,120 @@
+import { useChecklist, usePatchChecklistItem } from '@/api/hooks';
+import type { ChecklistItem } from '@/api/types';
+import { Badge, EmptyState } from '@/components';
+import { t, type TKey } from '@/i18n';
+import { formatDate } from '@/lib/format';
+import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
+
+const STATUSES = ['open', 'done', 'na'] as const;
+const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
+
+/** G7 Checklist + Calendar — 법적 확인·중도금일·만료·공고 예상. 상태는 PATCH /ops/checklist/{id} */
+export function ChecklistPanel({ asof }: { asof: string | null }) {
+  const query = useChecklist();
+  return (
+    <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
+      <Section title={t('page.G7.checklist')}>
+        <QueryState
+          query={query}
+          empty={(rows) => (rows.length === 0 ? t('page.G7.check.none') : null)}
+        >
+          {(items) => <ChecklistTable items={items} asof={asof} />}
+        </QueryState>
+      </Section>
+      <Section title={t('page.G7.calendar')}>
+        <QueryState query={query}>{(items) => <Calendar items={items} asof={asof} />}</QueryState>
+      </Section>
+    </div>
+  );
+}
+
+function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string | null }) {
+  const patch = usePatchChecklistItem();
+  return (
+    <div className="overflow-x-auto">
+      <table aria-label={t('page.G7.checklist')} className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {COLS.map((k) => (
+              <th key={k} scope="col" className={thClass}>
+                {t(`page.G7.check.${k}` as TKey)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id} className={item.status === 'open' ? '' : 'text-grayed'}>
+              <td className={tdClass}>
+                <Badge tone="neutral">{item.kind}</Badge>
+              </td>
+              <th scope="row" className={`${tdClass} text-left font-normal`}>
+                {item.title}
+              </th>
+              <td className={tdClass}>{item.complex_name ?? ''}</td>
+              <td className={tdClass}>
+                {item.due_date ? formatDate(item.due_date, asof) : t('page.G7.check.noDue')}
+              </td>
+              <td className={tdClass}>
+                <select
+                  aria-label={`${t('page.G7.check.status')} · ${item.title}`}
+                  value={item.status}
+                  data-write
+                  disabled={patch.isPending}
+                  onChange={(e) =>
+                    patch.mutate({
+                      id: item.id,
+                      patch: { status: e.target.value as ChecklistItem['status'] },
+                    })
+                  }
+                  className="rounded border border-border bg-surface px-1 py-0.5 text-xs"
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {enumText('page.G7.checkStatus', s)}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td className={`${tdClass} text-xs text-muted`}>{item.note ?? ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 기한 있는 항목을 월별로(중도금일·만료·공고 예상) */
+function Calendar({ items, asof }: { items: ChecklistItem[]; asof: string | null }) {
+  const dated = items
+    .filter((i): i is ChecklistItem & { due_date: string } => !!i.due_date)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+  if (dated.length === 0) return <EmptyState message={t('page.G7.check.noDue')} />;
+  const months = new Map<string, typeof dated>();
+  for (const item of dated) {
+    const ym = item.due_date.slice(0, 7);
+    months.set(ym, [...(months.get(ym) ?? []), item]);
+  }
+  return (
+    <ol aria-label={t('page.G7.calendar')} className="flex flex-col gap-3 text-sm">
+      {[...months.entries()].map(([ym, list]) => (
+        <li key={ym}>
+          <h3 className="text-xs font-semibold text-muted">{ym}</h3>
+          <ul className="flex flex-col gap-1">
+            {list.map((item) => (
+              <li key={item.id} className="flex flex-wrap items-center gap-1">
+                <span className="tabular-nums">{formatDate(item.due_date, asof)}</span>
+                <Badge tone="neutral">{item.kind}</Badge>
+                <span>
+                  {item.complex_name ? `${item.complex_name} · ` : ''}
+                  {item.title}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
+  );
+}

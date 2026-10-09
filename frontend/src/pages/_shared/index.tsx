@@ -1,0 +1,183 @@
+/**
+ * 화면 공용 조각(WP6a 소유). 여러 화면이 같은 모양을 쓰는 것만 둔다.
+ * 공통 컴포넌트(@/components)로 올릴 만한 것은 보고서 "공통화 제안"에 적는다.
+ */
+import { useEffect, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router';
+import type { Fact } from '@/api/types';
+import { EmptyState } from '@/components';
+import { useActiveRegion } from '@/hooks/useActiveRegion';
+import { useMobileLayout } from '@/hooks/useMobileLayout';
+import { useScenario } from '@/hooks/useScenario';
+import { useSnapshot } from '@/hooks/useSnapshot';
+import { t, tDynamic } from '@/i18n';
+import type { FactUnit } from '@/lib/format';
+
+export interface PageContext {
+  regionId: number | null;
+  /** URL 문자열 id(훅에 그대로 넘긴다) */
+  snapshotId: string | null;
+  /** D± 기준일 */
+  asof: string | null;
+  /** URL ?scenario= (null = 서버 기본 base) */
+  scenarioKey: string | null;
+  readOnly: boolean;
+  isLoading: boolean;
+}
+
+/** 지역·기준일·상황·모바일 읽기 전용 — 모든 화면이 같은 전역 상태를 읽는다(RA §7 공통 규칙). */
+export function usePageContext(): PageContext {
+  const { region, isLoading: regionLoading } = useActiveRegion();
+  const { snapshotId, snapshot, isLoading } = useSnapshot();
+  const { scenarioId } = useScenario();
+  const { readOnly } = useMobileLayout();
+  const asof =
+    snapshot?.asof_date ??
+    (region?.latest_snapshot && String(region.latest_snapshot.id) === snapshotId
+      ? region.latest_snapshot.asof_date
+      : null);
+  return {
+    regionId: region?.id ?? null,
+    snapshotId,
+    asof,
+    scenarioKey: scenarioId,
+    readOnly,
+    isLoading: regionLoading || isLoading,
+  };
+}
+
+/** 카드형 구역: h2 + 본문 */
+export function Section({
+  title,
+  actions,
+  children,
+  className = '',
+  id,
+}: {
+  title: string;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <section
+      id={id}
+      aria-label={title}
+      className={`flex flex-col gap-3 rounded border border-border bg-surface p-3 ${className}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {actions}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** 쿼리 상태(로딩·오류·데이터) 공통 표시 */
+export function QueryState<T>({
+  query,
+  children,
+  empty,
+}: {
+  query: { data: T | undefined; error: Error | null; isLoading: boolean };
+  children: (data: T) => ReactNode;
+  /** 데이터가 비었을 때 보일 문구(판단은 호출 측: data → boolean) */
+  empty?: (data: T) => string | null;
+}) {
+  if (query.data !== undefined) {
+    const emptyText = empty?.(query.data) ?? null;
+    if (emptyText) return <EmptyState message={emptyText} />;
+    return <>{children(query.data)}</>;
+  }
+  if (query.error) {
+    return <EmptyState message={t('page.common.loadError', { detail: query.error.message })} />;
+  }
+  return (
+    <p role="status" className="text-sm text-muted">
+      {t('app.loading')}
+    </p>
+  );
+}
+
+/** 스냅샷이 없을 때(지역 분석 전) 안내 */
+export function NoSnapshot() {
+  return <EmptyState message={t('app.noSnapshot')} />;
+}
+
+/** 값 디바운스(G0 자동완성) */
+export function useDebounced<T>(value: T, ms = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), ms);
+    return () => window.clearTimeout(id);
+  }, [value, ms]);
+  return debounced;
+}
+
+/** 다른 화면으로 갈 때 전역 쿼리(region·snapshot·scenario)를 유지한 search 문자열 */
+export function useGlobalSearch(): string {
+  const [params] = useSearchParams();
+  const keep = new URLSearchParams();
+  for (const key of ['region', 'snapshot', 'scenario']) {
+    const v = params.get(key);
+    if (v) keep.set(key, v);
+  }
+  const s = keep.toString();
+  return s ? `?${s}` : '';
+}
+
+/** 서버 enum 값 → ko.json 표시 문자열(없으면 값 그대로) */
+export function enumText(prefix: string, value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return t('page.common.none');
+  return tDynamic(`${prefix}.${value}`, value);
+}
+
+/** 행 번호 표기 "#127" (판정 seq·잡 id — 수치가 아니라 식별자) */
+export function idText(id: number | string | null | undefined): string {
+  return id === null || id === undefined ? '' : `#${String(id)}`;
+}
+
+/** 봉투 상태가 점수·추천에 쓰이지 않는(회색 "미해결") 상태인가 */
+export function isUnresolved(status: string | null | undefined): boolean {
+  return status === 'review' || status === 'escaped' || status === 'blocked' || status === 'error';
+}
+
+export const thClass = 'border-b border-border px-2 py-1 text-left text-xs font-medium text-muted';
+export const tdClass = 'border-b border-border px-2 py-1 align-top';
+
+/** 계약 Fact.unit 힌트 → FactCell 단위. 힌트가 없으면 fallback */
+export function unitOf(fact: Fact | null | undefined, fallback: FactUnit): FactUnit {
+  switch (fact?.unit) {
+    case 'won':
+      return 'won';
+    case 'm2':
+      return 'm2';
+    case 'pct':
+      return 'pct';
+    case 'ratio':
+      return 'ratio';
+    case 'prob':
+      return 'prob';
+    case 'score':
+      return 'score';
+    case 'units':
+      return 'households';
+    case 'count':
+      return 'count';
+    case 'date':
+      return 'date';
+    case 'ym':
+      return 'ym';
+    case 'year':
+    case 'text':
+      return 'text';
+    case 'months':
+    case 'years':
+    case 'm':
+      return 'number';
+    default:
+      return fallback;
+  }
+}
