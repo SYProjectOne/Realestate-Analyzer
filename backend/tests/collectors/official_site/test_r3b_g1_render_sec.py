@@ -159,7 +159,13 @@ def test_f1b_render_dns_to_private_blocked_before_goto(no_browser: list[str]) ->
 
 def test_f1b_render_prod_refuses_allow_private() -> None:
     set_settings(
-        Settings(_env_file=None, env="prod", api_token=SecretStr("tok-123456"), http_allow_private_hosts=True)  # type: ignore[call-arg]
+        Settings(  # type: ignore[call-arg]
+            _env_file=None,
+            env="prod",
+            api_token=SecretStr("tok-123456"),
+            database_url="postgresql+psycopg://sa:pw@db:5432/subscription",
+            http_allow_private_hosts=True,
+        )
     )
     try:
         with pytest.raises(PrivateHostsInProdError):

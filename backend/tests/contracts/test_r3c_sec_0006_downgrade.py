@@ -140,6 +140,8 @@ def test_minor33_0006_downgrade_loses_only_documented_rows_and_keeps_restore_bas
                 ),
                 {"o": ids["original"], "d": ids["demotion"], "now": NOW, "c": ids["claim"]},
             )
-            assert conn.execute(sa.text("SELECT original_value_text FROM fact_demotion")).scalar_one() == "1573"
+            assert (
+                conn.execute(sa.text("SELECT original_value_text FROM fact_demotion")).scalar_one() == "1573"
+            )
     finally:
         engine.dispose()

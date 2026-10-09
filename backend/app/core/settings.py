@@ -133,6 +133,9 @@ class Settings(BaseSettings):
         if self.env == "prod" and "*" in self.forwarded_allow_ips:
             # 아무나 X-Forwarded-For 로 루프백·다른 주소인 척할 수 있다
             raise ValueError("ENV=prod 에서는 FORWARDED_ALLOW_IPS='*' 를 쓸 수 없다(web 프록시 대역만)")
+        if self.env == "prod" and self.database_url.strip().lower().startswith("sqlite"):
+            # 운영 DB 는 Postgres(백업 pg_dump·동시 쓰기). SQLite 는 개발 전용(D11-9)
+            raise ValueError("ENV=prod 에서는 SQLite DATABASE_URL 을 쓸 수 없다(Postgres 만, D11-9)")
         return self
 
     @property

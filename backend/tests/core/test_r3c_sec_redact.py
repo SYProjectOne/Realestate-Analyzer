@@ -42,6 +42,8 @@ def test_minor22_header_and_bearer_tokens_masked(text: str, secret: str) -> None
     [
         "the bearer of this letter",
         "bearer bonds are rare",
+        "Bearer Instruments Act",
+        "the bearer certificates",
         "무기명(bearer) 채권",
         "Content-Type: text/html",
         "X-Frame-Options: DENY",
@@ -52,7 +54,9 @@ def test_minor22_prose_and_plain_headers_untouched(text: str) -> None:
 
 
 def test_minor22_dict_keys_with_hyphen_masked() -> None:
-    out = redact_obj({"X-NCP-APIGW-API-KEY": "v1", "x-api-key": "v2", "X-Naver-Client-Secret": "v3", "Accept": "a"})
+    out = redact_obj(
+        {"X-NCP-APIGW-API-KEY": "v1", "x-api-key": "v2", "X-Naver-Client-Secret": "v3", "Accept": "a"}
+    )
     assert out == {
         "X-NCP-APIGW-API-KEY": "[REDACTED:key]",
         "x-api-key": "[REDACTED:key]",

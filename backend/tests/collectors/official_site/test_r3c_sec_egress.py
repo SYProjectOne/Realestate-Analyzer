@@ -139,7 +139,9 @@ def test_proxy_blocks_non_web_ports_before_connecting(port: int) -> None:
 
     with EgressProxy(connect) as proxy:
         auth = _auth(proxy)
-        tunnel = _raw(proxy, f"CONNECT named.lab:{port} HTTP/1.1\r\nProxy-Authorization: {auth}\r\n\r\n".encode())
+        tunnel = _raw(
+            proxy, f"CONNECT named.lab:{port} HTTP/1.1\r\nProxy-Authorization: {auth}\r\n\r\n".encode()
+        )
         plain = _raw(
             proxy,
             f"GET http://named.lab:{port}/x HTTP/1.1\r\nHost: named.lab\r\nProxy-Authorization: {auth}\r\n\r\n".encode(),
@@ -182,12 +184,18 @@ def test_guard_url_reason_blocks_non_web_port_and_bad_port() -> None:
     guard = BrowserGuard(allow_private=False, resolver=lambda h: ["93.184.216.34"])
     assert guard.url_reason("https://www.public-site.kr/") is None
     assert guard.url_reason("http://www.public-site.kr:80/") is None
-    for bad in ("http://www.public-site.kr:8080/", "https://www.public-site.kr:6379/x", "http://www.public-site.kr:99999/"):
+    for bad in (
+        "http://www.public-site.kr:8080/",
+        "https://www.public-site.kr:6379/x",
+        "http://www.public-site.kr:99999/",
+    ):
         reason = guard.url_reason(bad)
         assert reason is not None and reason.startswith("blocked_host"), bad
     assert "포트 8080" in (guard.url_reason("http://www.public-site.kr:8080/") or "")
     # 로컬 시험 서버(allow_private)는 포트 제한 없음 — prod 는 allow_private 자체가 거부된다
-    assert BrowserGuard(allow_private=True, resolver=lambda h: []).url_reason("http://127.0.0.1:5173/") is None
+    assert (
+        BrowserGuard(allow_private=True, resolver=lambda h: []).url_reason("http://127.0.0.1:5173/") is None
+    )
 
 
 def test_render_refuses_main_url_on_non_web_port_before_launch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,7 +215,9 @@ def test_render_refuses_main_url_on_non_web_port_before_launch(monkeypatch: pyte
     assert launched == []
 
 
-def test_real_chromium_blocks_subresource_on_disallowed_port(lab_rules: None, two_sites: tuple[_Site, _Site]) -> None:
+def test_real_chromium_blocks_subresource_on_disallowed_port(
+    lab_rules: None, two_sites: tuple[_Site, _Site]
+) -> None:
     _need_chromium()
     main, other = two_sites
     main.page = lambda: (
@@ -374,8 +384,12 @@ def test_guard_resolves_outside_global_lock() -> None:
 
     guard = BrowserGuard(allow_private=False, resolver=resolver)
     slow_results: list[list[str]] = []
-    t1 = threading.Thread(target=lambda: slow_results.append(guard.connect_address("slow.public-site.kr", 443)))
-    t2 = threading.Thread(target=lambda: slow_results.append(guard.connect_address("slow.public-site.kr", 443)))
+    t1 = threading.Thread(
+        target=lambda: slow_results.append(guard.connect_address("slow.public-site.kr", 443))
+    )
+    t2 = threading.Thread(
+        target=lambda: slow_results.append(guard.connect_address("slow.public-site.kr", 443))
+    )
     t1.start()
     time.sleep(0.1)
     t2.start()

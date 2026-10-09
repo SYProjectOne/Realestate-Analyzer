@@ -30,9 +30,9 @@ class Seeded:
 
 
 def make_settings(db: Path, raw_dir: Path, report_dir: Path, *, env: str = "dev") -> Settings:
-    return Settings(
+    settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        env=env,  # type: ignore[arg-type]
+        env="dev",
         database_url=f"sqlite:///{db.as_posix()}",
         raw_dir=raw_dir,
         reference_dir=db.parent / "reference",
@@ -43,6 +43,8 @@ def make_settings(db: Path, raw_dir: Path, report_dir: Path, *, env: str = "dev"
         readonly_token=READ_TOKEN,  # type: ignore[arg-type]
         log_json=False,
     )
+    # ENV=prod + SQLite 는 설정 검증이 거부한다(D11-9). prod 화면 동작(라벨·경고) 시험만 검증을 건너뛰어 바꾼다
+    return settings.model_copy(update={"env": env}) if env != "dev" else settings
 
 
 @pytest.fixture(scope="session")
