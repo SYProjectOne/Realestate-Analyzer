@@ -55,7 +55,7 @@ describe('G7 데이터·운영', () => {
     const complexId = (complex.querySelectorAll('option')[1] as HTMLOptionElement).value;
     await userEvent.selectOptions(complex, complexId);
     await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.value')), '가능');
-    await userEvent.type(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
     await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
 
     const result = await within(form).findByTestId('human-check-result');
@@ -68,12 +68,14 @@ describe('G7 데이터·운영', () => {
       field: string;
       value_text: string;
       kind: string;
+      entered_by: string;
     };
     expect(posted).toMatchObject({
       complex_id: Number(complexId),
       field: 'intake_status',
       value_text: '가능',
       kind: 'phone',
+      entered_by: '운영자',
     });
 
     const toasts = screen.getByRole('region', { name: t('app.notifications') });
@@ -86,6 +88,20 @@ describe('G7 데이터·운영', () => {
     expect(job.job_name).toBe('rejudge');
     expect(job.payload.complex_ids).toEqual([Number(complexId)]);
     rec.stop();
+  });
+
+  it('minor 15: 입력자는 역할 select(운영자·검토자)뿐 — 자유 입력 칸 없음', async () => {
+    renderRoute('/ops');
+    const form = await screen.findByRole('form', { name: t('page.G7.human') });
+    const enteredBy = within(form).getByLabelText(t('page.G7.hc.enteredBy'));
+    expect(enteredBy.tagName).toBe('SELECT');
+    const values = Array.from(enteredBy.querySelectorAll('option'))
+      .map((o) => (o as HTMLOptionElement).value)
+      .filter(Boolean);
+    expect(values).toEqual(['운영자', '검토자']);
+    expect(
+      within(enteredBy).getByRole('option', { name: t('page.G7.hcRole.검토자') }),
+    ).toBeTruthy();
   });
 
   it('필수값 없이 저장하면 막는다', async () => {

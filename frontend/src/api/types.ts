@@ -247,6 +247,9 @@ export type ChecklistItem = S['ChecklistItem'];
 export type ChecklistPatch = S['ChecklistPatch'];
 export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];
+/** 사람 확인 입력자 = 역할만(계약 2026-10-09.4 EnteredByRole, RA §10 보안 2 — 사람 이름 자유 입력 금지) */
+export type EnteredByRole = S['EnteredByRole'];
+export const ENTERED_BY_ROLES = ['운영자', '검토자'] as const satisfies readonly EnteredByRole[];
 
 export type ReportFormat = S['ReportRequest']['format'];
 export type ReportRequest = S['ReportRequest'];
