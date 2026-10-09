@@ -1,36 +1,14 @@
-import os from 'node:os';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
+import { API_PORT, BACKEND, backendEnv, FRONTEND, WEB_PORT, WRITE_TOKEN } from './env';
 
 /**
- * WP5 프론트 연결 스모크 — MSW 없이 실제 API(FastAPI + devseed 픽스처 DB)로 G1·G2·G3를 1개씩 확인한다.
- * 실행(frontend/에서): `npx playwright test -c e2e/api`
- *  - backend: `python -m app.api.devseed`(인천·김포 픽스처 → 임시 SQLite) 후 uvicorn 기동(쓰기 토큰 필요)
- *  - web: vite dev(MSW 끔). `/api` 프록시 → API_PROXY_TARGET(= backend/api, vite 가 /api 를 떼므로 대상에 다시 붙인다)
- * 저장소 루트 e2e/(WP9 통합)와 별개다.
+ * 실 API e2e — MSW 없이 FastAPI + devseed 픽스처 DB(임시 SQLite)로 화면 G0~G8 과 다운로드·토큰을 확인한다.
+ * 실행(frontend/에서): `npm run e2e:api` (= `npx playwright test -c e2e/api`)
+ *  - backend: `python -m app.api.devseed`(인천·김포 픽스처 → 임시 SQLite) 후 uvicorn(쓰기·읽기 전용 토큰 둘 다 켬)
+ *  - web: vite dev(MSW 끔). `/api` 프록시 → API_PROXY_TARGET(= backend origin, 경로는 /api 그대로)
+ *  - 잡(보고서 등)은 상주 worker 없이 테스트가 `runWorkerOnce()`로 한 번 돌린다(env.ts)
+ * 각 테스트는 화면이 부른 API 응답이 전부 2xx 인지 본다(4xx/5xx 0건).
  */
-const FRONTEND = fileURLToPath(new URL('../..', import.meta.url));
-const BACKEND = path.resolve(FRONTEND, '..', 'backend');
-const API_PORT = Number(process.env.E2E_API_PORT ?? 18765);
-const WEB_PORT = Number(process.env.E2E_API_WEB_PORT ?? 15392);
-const TOKEN = process.env.E2E_API_TOKEN ?? 'e2e-write-token-0123456789abcdef';
-const DATA = (process.env.E2E_API_DATA ?? path.join(os.tmpdir(), 'sa-e2e-api')).replaceAll(
-  '\\',
-  '/',
-);
-
-const backendEnv: Record<string, string> = {
-  ENV: 'dev',
-  DATABASE_URL: `sqlite:///${DATA}/e2e.db`,
-  RAW_DIR: `${DATA}/raw`,
-  REPORT_DIR: `${DATA}/reports`,
-  REFERENCE_DIR: `${DATA}/reference`,
-  API_TOKEN: TOKEN,
-  JUDGE_ADAPTER: 'mock',
-  LOG_JSON: 'false',
-};
-
 export default defineConfig({
   testDir: '.',
   fullyParallel: false,
@@ -44,6 +22,7 @@ export default defineConfig({
     baseURL: `http://localhost:${WEB_PORT}`,
     trace: 'retain-on-failure',
     locale: 'ko-KR',
+    acceptDownloads: true,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
@@ -59,8 +38,8 @@ export default defineConfig({
       command: `npx vite --port ${WEB_PORT} --strictPort`,
       cwd: FRONTEND,
       env: {
-        API_PROXY_TARGET: `http://127.0.0.1:${API_PORT}/api`,
-        VITE_API_TOKEN: TOKEN,
+        API_PROXY_TARGET: `http://127.0.0.1:${API_PORT}`,
+        VITE_API_TOKEN: WRITE_TOKEN,
         VITE_MSW: 'false',
       },
       url: `http://localhost:${WEB_PORT}`,
