@@ -348,7 +348,9 @@ def supply_component(
         f"clamp(10 − 10 × {_units(units)}/{num(u_ref, 0)}, 0, 10) − pen={pen} = {num(s)} "
         f"(U_window {start}~{end} 입주 {_units(units)}세대, U_ref = 세대수 {hh:,} × {num(dec(ref_pct), 4)}; {'; '.join(notes)})"
     )
-    reason = "U_ref 추정(세대수 × 기준치)" + (", 연 단위 입주 물량은 12개월 균등 분배로 가정" if year_only else "")
+    reason = "U_ref 추정(세대수 × 기준치)" + (
+        ", 연 단위 입주 물량은 12개월 균등 분배로 가정" if year_only else ""
+    )
     return ComponentResult(
         complex_id=cid,
         component="supply",
