@@ -69,9 +69,7 @@ def _catalyst_double(mp: pytest.MonkeyPatch) -> None:
     except catalysts.CandidateUnavailable:
         pass
 
-    def fake(
-        session: Any, *, region_id: int, url: str, title: str, excerpt: str | None, checked_at: str
-    ) -> Any:
+    def fake(session: Any, region_id: int, *, url: str, title: str, excerpt: str | None = None) -> Any:
         row = Catalyst(
             region_id=region_id, name=title, kind="기타", stage="미확정", location_confirmed=False,
             source_url=url, note=excerpt,
@@ -89,7 +87,8 @@ MAX_EXAMPLES = int(os.environ.get("ST_MAX_EXAMPLES", "30"))  # 깊게 돌릴 때
 # 계약 설명이 '스키마는 맞지만 의미가 틀린 본문 → 422'를 명시한 operation
 # (가중치 합≠1, 생활권 누락·중복, 참조에 없는
 # 지역 코드). schemathesis positive_data_acceptance 는 스키마만 보므로 이 operation 에서는 뺀다.
-SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion"}
+# createCatalyst: guard(개인정보·비밀값)·호재 후보 조건(CatalystInputError) → 422 (계약 2026-10-09.4)
+SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion", "createCatalyst"}
 
 
 # /health 는 servers 가 루트('/')라 이 테스트(base_url /api)에서 빼고 test_health_contract 로 본다.

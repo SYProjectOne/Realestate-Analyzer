@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "resolved_fields.json",
   "title": "ResolvedFields",
-  "description": "Resolver.resolve(candidates)의 결과 (RA §4-3). §3 우선순위로 (entity, entity_id|entity_key, field)마다 후보 하나를 chosen으로 정하고, 모든 후보를 field_provenance 행(provenance)으로 돌려준다(chosen 하나, 나머지 chosen=false 보관).\n값이 다른 후보가 둘 이상이면 conflict_group으로 묶는다(T5: 해링턴 1,573 vs 1,769 → conflict_group 1건, chosen=청약홈 상세).\nneeds_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같아 §3 우선순위로 가를 수 없을 때만 true. 이 경우에도 일단 하나를 chosen으로 두고 WP3 compare 결과가 contradicts면 공고문 채택·병기한다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.",
+  "description": "Resolver.resolve(candidates)의 결과 (RA §4-3). §3 우선순위로 (entity, entity_id|entity_key, field)마다 후보 하나를 chosen으로 정하고, 모든 후보를 field_provenance 행(provenance)으로 돌려준다(chosen 하나, 나머지 chosen=false 보관).\n값이 다른 후보가 둘 이상이면 conflict_group으로 묶는다(T5: 해링턴 1,573 vs 1,769 → conflict_group 1건, chosen=청약홈 상세).\nneeds_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같으며 출처 종류가 달라 §3 우선순위로 가를 수 없을 때만 true(같은 출처 종류는 최신 규칙). 이 경우 **채택 보류**(R3 M1, 계약 2026-10-09.4): 우선순위 대표 후보(최신)의 출처 행은 chosen=true(compare 상대를 찾는 기준)이고 reason 앞에 '출처 상충 — compare 대기'를 붙이며, ResolvedFields.chosen 에는 값 없는 '확인 불가' 후보를 내 사실 테이블 값을 비운다(점수 미사용, 화면 '확인 불가(출처 상충 …)'). compare 결과로만 채택한다 — contradicts면 공고문 채택·병기, same_fact·different_facts 도 apply_compare 가 표식을 남긴다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.",
   "type": "object",
   "additionalProperties": false,
   "required": ["chosen", "provenance", "conflicts", "needs_compare"],

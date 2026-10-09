@@ -117,7 +117,7 @@ UNIQUE_REQUIRED = {
     ("judgment_log", ("input_hash",)),
     ("raw_document", ("sha256",)),
     ("snapshot", ("region_id", "asof_date")),
-    ("complex", ("applyhome_id",)),
+    ("complex", ("region_id", "applyhome_id")),  # 0004 (W4)
     ("complex_type", ("complex_id", "type_code")),
     ("payment_terms", ("complex_id", "notice_no")),
     ("admin_legal_map", ("admin_code", "legal_code")),
@@ -340,14 +340,12 @@ def check_0003_0004_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
             )  # fmt: skip
         with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
             conn.execute(jobs.insert(), _job_row("claim.verify"))
-        assert "raw_value_unadjusted" in {
-            c["name"] for c in sa.inspect(engine).get_columns("score_component")
-        }
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("score_component")}
+        assert {"unadjusted_gap_pct", "unadjusted_median_won"} <= cols
         command.downgrade(cfg, "0003")
         assert "share_link" not in sa.inspect(engine).get_table_names()
-        assert "raw_value_unadjusted" not in {
-            c["name"] for c in sa.inspect(engine).get_columns("score_component")
-        }
+        cols = {c["name"] for c in sa.inspect(engine).get_columns("score_component")}
+        assert not {"unadjusted_gap_pct", "unadjusted_median_won"} & cols
         with engine.connect() as conn:
             names = [r[0] for r in conn.execute(sa.text("SELECT job_name FROM job_run"))]
         assert names == ["rejudge"]

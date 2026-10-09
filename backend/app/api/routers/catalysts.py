@@ -7,8 +7,9 @@
   → 500 internal(사유).
   기대 시그니처::
 
-      catalyst_from_url(session, *, region_id: int, url: str, title: str, excerpt: str | None,
-                        checked_at: str) -> Catalyst   # flush 된 행(stage '미확정', location_confirmed=False)
+      catalyst_candidate(session, region_id, *, url: str, title: str, excerpt: str | None = None)
+          -> CatalystCandidate(catalyst, created)   # flush 만, 같은 URL 이면 그 행(created=False)
+      CatalystInputError(ValueError)              # URL·제목이 후보 조건에 안 맞음 → 422
 
 - 분류(kind·stage)는 판정기 classify 가 한다(규칙 3): 지역 최신 스냅샷에 rejudge(complex_ids=[] → P4 호재
   classify·점수 재계산)를 등록한다 — 같은 스냅샷에 대기 중인 rejudge 가 있으면 그 잡에 합친다
@@ -41,7 +42,7 @@ __all__ = ["CANDIDATE_FUNCTION", "CANDIDATE_MODULE", "CandidateUnavailable", "ca
 router = APIRouter(tags=["market"])
 
 CANDIDATE_MODULE = "app.normalize.catalyst"
-CANDIDATE_FUNCTION = "catalyst_from_url"
+CANDIDATE_FUNCTION = "catalyst_candidate"
 
 
 class CandidateUnavailable(RuntimeError):
@@ -49,7 +50,7 @@ class CandidateUnavailable(RuntimeError):
 
 
 def candidate_factory() -> Callable[..., Any]:
-    """``app.normalize.catalyst.catalyst_from_url`` 을 지연 import 한다(테스트는 대역으로 바꾼다)."""
+    """``app.normalize.catalyst.catalyst_candidate`` 를 지연 import 한다(테스트는 대역으로 바꾼다)."""
     try:
         module = importlib.import_module(CANDIDATE_MODULE)
     except ModuleNotFoundError as exc:
@@ -89,18 +90,17 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
             f"공개할 수 없는 정보가 있다({', '.join(guard.kinds())}) — 판정기로 보내지 않는다",
             ("body",),
         )
-    row = session.scalars(
-        select(Catalyst).where(Catalyst.region_id == region.id, Catalyst.source_url == url).limit(1)
-    ).first()
-    if row is None:
-        try:
-            make = candidate_factory()
-        except CandidateUnavailable as exc:
-            raise ApiError(500, "internal", str(exc)) from exc
-        made = make(session, region_id=region.id, url=url, title=title, excerpt=excerpt, checked_at=now_iso())
-        row = made if isinstance(made, Catalyst) else session.get(Catalyst, int(made))
-        if row is None:
-            raise ApiError(500, "internal", f"{CANDIDATE_MODULE}.{CANDIDATE_FUNCTION}: 행 없음")
+    try:
+        make = candidate_factory()
+    except CandidateUnavailable as exc:
+        raise ApiError(500, "internal", str(exc)) from exc
+    try:
+        made = make(session, region.id, url=url, title=title, excerpt=excerpt)
+    except ValueError as exc:  # normalize.catalyst.CatalystInputError(ValueError) — 후보 조건 위반
+        raise validation_error(f"호재 후보로 받을 수 없다: {exc}", ("body",)) from exc
+    row = getattr(made, "catalyst", made)
+    if not isinstance(row, Catalyst):
+        raise ApiError(500, "internal", f"{CANDIDATE_MODULE}.{CANDIDATE_FUNCTION}: 행 없음")
     session.flush()
     snap = _snapshot_for(session, region.id)
     job_out: dict[str, Any] | None = None

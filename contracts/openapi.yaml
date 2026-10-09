@@ -895,6 +895,7 @@ paths:
         단지 연결 없음, 출처 = 이 URL). 분류(kind·stage)는 판정기 classify 가 한다: 지역 최신 스냅샷에 rejudge 잡
         (complex_ids=[] → P4 호재 classify·점수 재계산)을 등록해 함께 돌려준다(스냅샷이 없으면 job=null). 같은 지역에 같은 URL 이 이미
         있으면 그 행을 돌려준다(새 행 없음). 제목·발췌는 guard(전화번호·주민번호·이메일·비밀값) 통과 — 걸리면 422.
+        URL·제목이 호재 후보 조건(normalize.catalyst.catalyst_candidate — 공개 http(s) 호스트 등)에 맞지 않아도 422.
       requestBody:
         required: true
         content:

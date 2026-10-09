@@ -943,7 +943,7 @@ def score_row(
             f"sc_{ctx.run.id}_{cid}_rerank",
             ctx.checked,
             reason="이전 run 대비",
-            unit="ratio",
+            unit="score",  # rerank 점수(0~10) 차 — 계약 2026-10-09.4(F2 요청, minor 25)
         )
     cur = pick_intake(b.intake)
     return {

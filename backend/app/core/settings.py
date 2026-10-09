@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     http_robots_exempt_hosts: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: list(DEFAULT_ROBOTS_EXEMPT_HOSTS)
     )
+    # 사설 IP·localhost·링크 로컬 목적지 허용(기본 차단 — SSRF 방지, R3 minor 17).
+    # 로컬 녹화 서버 테스트만 True
+    http_allow_private_hosts: bool = False
 
     # --- worker
     worker_heartbeat_s: float = Field(default=60.0, gt=0)

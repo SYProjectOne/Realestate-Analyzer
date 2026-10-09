@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     ForeignKey,
@@ -87,10 +88,11 @@ class ScoreComponent(Base):
     complex_id: Mapped[int] = mapped_column(ForeignKey("complex.id"))
     component: Mapped[str] = mapped_column(String(16))
     raw_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
-    # gap 성분만: 미보정 중앙값 기준 gap%(raw_value 는 보정 기준).
-    # 0004 — R3 W7(쓰기 = 점수 실행, 읽기 = API C2)
-    raw_value_unadjusted: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
-    score_0_10: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
+    # gap 성분만: 미보정 중앙값 기준 gap%·미보정 중앙값(raw_value 는 보정 기준).
+    # 0004 — R3 W7(쓰기 = 점수 실행 persist, 읽기 = API C2)
+    unadjusted_gap_pct: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    unadjusted_median_won: Mapped[int | None] = mapped_column(BigInteger)
+    score_0_10: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))  # 0004: (6,3)→(7,4) W12b
     formula_text: Mapped[str] = mapped_column(Text)
     label: Mapped[str] = mapped_column(String(8))
     reason: Mapped[str | None] = mapped_column(String(120))

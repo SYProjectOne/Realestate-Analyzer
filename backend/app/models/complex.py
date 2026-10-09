@@ -39,7 +39,9 @@ __all__ = ["Competition", "Complex", "ComplexType", "IntakeStatus", "PaymentTerm
 
 
 class Complex(Base):
-    """한 행 = 한 공고 단지. applyhome_id 유일(공고 전이면 NULL). 개명은 former_names에 추가하고 행은 유지."""
+    """한 행 = 한 공고 단지. (region_id, applyhome_id) 유일(공고 전이면 NULL).
+
+    개명은 former_names에 추가하고 행은 유지."""
 
     __tablename__ = "complex"
     __table_args__ = (
@@ -50,11 +52,13 @@ class Complex(Base):
         CheckConstraint(in_check("inclusion_class", INCLUSION_CLASS), name="inclusion_class"),
         CheckConstraint(in_check("inclusion_decision", JUDGE_DECISION), name="inclusion_decision"),
         CheckConstraint(in_check("track", TRACK), name="track"),
+        # 0004(W4): 같은 공고 단지가 지역마다 따로 있을 수 있다 — 유일은 (지역, 공고 id)
+        UniqueConstraint("region_id", "applyhome_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     region_id: Mapped[int] = mapped_column(ForeignKey("region.id"), index=True)
-    applyhome_id: Mapped[str | None] = mapped_column(String(32), unique=True)
+    applyhome_id: Mapped[str | None] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(String(200))
     former_names: Mapped[list[str]] = mapped_column(JSON)
     address: Mapped[str | None] = mapped_column(Text)

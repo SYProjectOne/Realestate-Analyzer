@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.gap import unadjusted_from_flags
 from app.api.deps import DB, default_snapshot, get_complex, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, day, fact, unknown
@@ -142,7 +143,11 @@ def gap_view(
     else:
         gap_pct = unknown((gap_row.reason if gap_row else None) or "미판정", checked, unit="pct")
     gap_unadj = None
-    raw_unadj = getattr(gap_row, "raw_value_unadjusted", None) if gap_row is not None else None
+    raw_unadj = None
+    if gap_row is not None:
+        raw_unadj = gap_row.unadjusted_gap_pct
+        if raw_unadj is None:  # 컬럼 이전(0004 전) 실행은 flags 태그(analysis.gap.unadjusted_tags)
+            raw_unadj = unadjusted_from_flags(gap_row.flags)[0]
     if raw_unadj is not None and run_id is not None and gap_pct["label"] != LABEL_UNKNOWN:
         # 미보정 중앙값 기준 gap%(R3 W7) — 점수 실행이 score_component 에 저장한 값. 없으면 null(옛 실행)
         gap_unadj = fact(

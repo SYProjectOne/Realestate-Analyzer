@@ -253,7 +253,7 @@ class ChecklistItem(BaseModel):
     id: int
     complex_id: int | None
     complex_name: str | None = None
-    kind: Literal["법적 확인", "중도금", "만료", "공고 예상"]
+    kind: Literal["법적 확인", "중도금", "만료", "공고 예상", "계약"]
     title: Annotated[str, Field(min_length=1)]
     due_date: str | None
     status: Literal["open", "done", "na"]
@@ -514,6 +514,9 @@ class Complex(BaseModel):
     id: int
     region_id: int
     applyhome_id: Annotated[str | None, Field(max_length=32)]
+    """
+    청약홈 공고 단지 id. (region_id, applyhome_id) 유일(계약 2026-10-09.4 — 같은 공고 단지가 지역마다 따로 있을 수 있다, W4). 공고 전이면 null
+    """
     name: Annotated[str, Field(max_length=200, min_length=1)]
     former_names: list[str]
     address: str | None
@@ -766,6 +769,10 @@ class ComplexScoreInput(BaseModel):
     거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2
     """
     down_payment_pct: float | None
+    move_in_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+    """
+    입주 예정월(move_in_ym) 값의 Fact 라벨(계약 2026-10-09.4, F2 요청 — 입주 성분 라벨 합성 R3 M2). null이면 라벨 미상(값이 있으면 '확인됨'으로 본다)
+    """
     down_payment_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
     """
     계약금 비율(down_payment_pct, 현재 payment_terms) 값의 Fact 라벨 — 2026-10-09.2
@@ -2439,7 +2446,7 @@ class RawDocument(BaseModel):
     image_hash: Annotated[str | None, Field(max_length=64)] = None
     meta: dict[str, Any] | None = None
     """
-    수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, popups[]}, intake_candidates[]}, notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2
+    수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, signature, popups[{selector, sha256, width, height, images, text_sha256, dhash, signature}]}, intake_candidates[]} — render.signature·popups[].signature 는 시각·애니메이션을 무시한 안정 해시(DOM 텍스트 정규화 sha256 + perceptual dhash, 변경 감지는 이것으로 — R3 M13, 계약 2026-10-09.4 문서화), notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2
     """
 
 
@@ -2843,7 +2850,7 @@ class ResolvedFields(BaseModel):
     """
     Resolver.resolve(candidates)의 결과 (RA §4-3). §3 우선순위로 (entity, entity_id|entity_key, field)마다 후보 하나를 chosen으로 정하고, 모든 후보를 field_provenance 행(provenance)으로 돌려준다(chosen 하나, 나머지 chosen=false 보관).
     값이 다른 후보가 둘 이상이면 conflict_group으로 묶는다(T5: 해링턴 1,573 vs 1,769 → conflict_group 1건, chosen=청약홈 상세).
-    needs_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같아 §3 우선순위로 가를 수 없을 때만 true. 이 경우에도 일단 하나를 chosen으로 두고 WP3 compare 결과가 contradicts면 공고문 채택·병기한다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.
+    needs_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같으며 출처 종류가 달라 §3 우선순위로 가를 수 없을 때만 true(같은 출처 종류는 최신 규칙). 이 경우 **채택 보류**(R3 M1, 계약 2026-10-09.4): 우선순위 대표 후보(최신)의 출처 행은 chosen=true(compare 상대를 찾는 기준)이고 reason 앞에 '출처 상충 — compare 대기'를 붙이며, ResolvedFields.chosen 에는 값 없는 '확인 불가' 후보를 내 사실 테이블 값을 비운다(점수 미사용, 화면 '확인 불가(출처 상충 …)'). compare 결과로만 채택한다 — contradicts면 공고문 채택·병기, same_fact·different_facts 도 apply_compare 가 표식을 남긴다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.
     """
 
     model_config = ConfigDict(
@@ -3095,7 +3102,7 @@ class ScoreRow(BaseModel):
     - total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.
     - components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').
     - p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).
-    - delta_rerank: 이전 run 대비 rerank relevance 변화(§6-5).
+    - delta_rerank: 이전 run 대비 rerank **점수(0~10) 차**(§6-5 — 고정 앵커의 이번 rerank 성분 점수 − 이전 호출 점수, unit 'score', R3 minor 25·계약 2026-10-09.4).
     - decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).
     - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).
     """

@@ -483,7 +483,12 @@ def test_w4_other_region_complex_is_never_overwritten(
     res = _store_fields(db_session, add_raw, other, "2026000164", 2, name="더샵 송도그란테르 G5-1블록",
                         builder="㈜포스코이앤씨")  # fmt: skip
     assert (cx.region_id, cx.name, cx.builder) == (region.id, "더샵 송도그란테르", "포스코이앤씨")
-    assert res.foreign_keys == ["2026000164"] and len(res.skipped) == 2 and not res.change_events
+    # 계약 2026-10-09.4(0004): (region_id, applyhome_id) 유일 — 다른 지역은 자기 행을 만든다(W4 완결)
+    assert res.foreign_keys == [] and not [e for e in res.change_events if e.complex_id == cx.id]
+    rows = list(db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026000164")))
+    assert sorted((r.region_id, r.name) for r in rows) == sorted(
+        [(region.id, "더샵 송도그란테르"), (other.id, "더샵 송도그란테르 G5-1블록")]
+    )
 
 
 def test_w12c_remainder_detail_binds_to_same_block_complex(

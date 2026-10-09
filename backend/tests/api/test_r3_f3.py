@@ -145,8 +145,14 @@ def test_m8_revise_claim_rejects(client: TestClient) -> None:
 
 
 def _fake_candidate(
-    session: Any, *, region_id: int, url: str, title: str, excerpt: str | None, checked_at: str
+    session: Any, region_id: int, *, url: str, title: str, excerpt: str | None = None
 ) -> Catalyst:
+    """F1a ``catalyst_candidate`` 대역(같은 URL 이면 그 행)."""
+    have = session.scalars(
+        select(Catalyst).where(Catalyst.region_id == region_id, Catalyst.source_url == url)
+    ).first()
+    if have is not None:
+        return have  # type: ignore[no-any-return]
     row = Catalyst(
         region_id=region_id,
         name=title,
@@ -168,9 +174,9 @@ def fake_catalyst(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, An
     calls: list[dict[str, Any]] = []
 
     def factory() -> Any:
-        def fn(session: Any, **kw: Any) -> Catalyst:
-            calls.append(kw)
-            return _fake_candidate(session, **kw)
+        def fn(session: Any, region_id: int, **kw: Any) -> Catalyst:
+            calls.append({"region_id": region_id, **kw})
+            return _fake_candidate(session, region_id, **kw)
 
         return fn
 
@@ -202,7 +208,7 @@ def test_m6_post_catalyst_creates_candidate_and_classify_job(
     # 같은 URL 다시 → 같은 행(새 후보 없음)
     again = client.post("/api/catalysts", json=body, headers=WRITE)
     assert again.status_code == 201
-    assert again.json()["catalyst"]["id"] == cat["id"] and len(fake_catalyst) == 1
+    assert again.json()["catalyst"]["id"] == cat["id"]
 
 
 @pytest.mark.parametrize(
@@ -246,6 +252,35 @@ def test_m6_candidate_function_missing_is_reported(
     r = client.post("/api/catalysts", json=body, headers=WRITE)
     assert r.status_code == 500 and r.json()["code"] == "internal"
     assert "normalize.catalyst" in r.json()["detail"]
+
+
+def test_m6_uses_f1a_catalyst_candidate(client: TestClient) -> None:
+    """대역 없이 F1a ``app.normalize.catalyst.catalyst_candidate`` 로(머지 후 실제 경로)."""
+    from app.api.routers import catalysts
+
+    assert catalysts.CANDIDATE_FUNCTION == "catalyst_candidate"
+    body = {"region_id": 1, "url": "https://news.example.org/real/1", "title": "광역철도 기본계획 고시"}
+    r = client.post("/api/catalysts", json=body, headers=WRITE)
+    assert r.status_code == 201, r.text
+    validate("createCatalyst", 201, r.json())
+    cat = r.json()["catalyst"]
+    assert cat["source_url"] == body["url"] and cat["stage"] == "미확정"
+    assert cat["location_confirmed"] is False
+    again = client.post("/api/catalysts", json=body, headers=WRITE)
+    assert again.json()["catalyst"]["id"] == cat["id"]
+
+
+def test_m6_candidate_input_error_is_422(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.routers import catalysts
+    from app.normalize.catalyst import CatalystInputError
+
+    def bad(*_a: Any, **_k: Any) -> Any:
+        raise CatalystInputError("제목이 비어 있다")
+
+    monkeypatch.setattr(catalysts, "candidate_factory", lambda: bad)
+    body = {"region_id": 1, "url": "https://news.example.org/x", "title": "t"}
+    r = client.post("/api/catalysts", json=body, headers=WRITE)
+    assert r.status_code == 422 and "제목" in r.json()["detail"]
 
 
 # ====================================================================== M9 공유 링크
@@ -623,7 +658,7 @@ def test_w7_gap_pct_unadjusted_reads_stored_value(client: TestClient) -> None:
             )
         ).first()
         assert row is not None
-        row.raw_value_unadjusted = Decimal("-7.25")
+        row.unadjusted_gap_pct = Decimal("-7.25")
         cid, run_id = row.complex_id, run.id
     gap = client.get(f"/api/complexes/{cid}", headers=WRITE).json()["gap"]
     un = gap["gap_pct_unadjusted"]
