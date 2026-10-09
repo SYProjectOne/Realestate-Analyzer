@@ -10,6 +10,8 @@ source_rank는 RA §3 표(app.normalize.fields): 세대수·면적·일정·경�
 청약홈 상세 화면에는 층별 가격이 없으므로 가격은 '최고가 기준' 하나만 낸다(max_price_won).
 complex_type.notice_type_code = 청약홈 주택형 원문('084.9582').
 observed_on = 그 단지의 모집공고일(계약 2026-10-09.2).
+
+같은 source_kind 의 청약홈 공식 API JSON(호스트 api.odcloud.kr)은 ``applyhome_api_parser`` 로 넘긴다.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from app.normalize._text import (
     read_raw_text,
     stamp_observed_on,
 )
+from app.normalize.applyhome_api_parser import is_api_document, parse_applyhome_api_json
 
 __all__ = ["ApplyhomeParser", "parse_applyhome_html"]
 
@@ -52,6 +55,8 @@ class ApplyhomeParser:
         html = read_raw_text(raw, raw_dir=self._raw_dir)
         if html is None:
             return []
+        if is_api_document(raw):
+            return parse_applyhome_api_json(html, raw)
         return parse_applyhome_html(html, raw)
 
 

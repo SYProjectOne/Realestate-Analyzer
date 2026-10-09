@@ -15,6 +15,18 @@
 - 기준일은 `app.core.time.today_kst()`.
 - 테스트는 녹화 픽스처 + respx 로 오프라인. 실제 접속 테스트는 `@pytest.mark.live`(기본 건너뜀).
 
+## 키 인증 공식 API (R2X, 2026-10-09)
+
+| 수집기 | 엔드포인트 | 키 | 실패 시 |
+| --- | --- | --- | --- |
+| applyhome | `api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/get{APT,Remndr,OPT}LttotPblanc{Detail,Mdl}` (data.go.kr 15098547) | `DATA_GO_KR_KEY` | 시도 목록 실패 → 웹 경로, 공고 상세 실패 → 웹 상세 |
+| applyhome | `…/ApplyhomeInfoCmpetRtSvc/v1/get{APT,Remndr,OPT}LttotPblancCmpet` (data.go.kr 15098905, 별도 활용신청) | `DATA_GO_KR_KEY` | 401 → 웹 경쟁률 팝업 |
+| rtms | `apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade` | `DATA_GO_KR_KEY` | 실패 행 |
+| news | `naverapihub.apigw.ntruss.com/search/v1/news` (NAVER Cloud API HUB, 기본) / `openapi.naver.com/v1/search/news.json` (레거시) | `NEWS_API_PROVIDER`·`NEWS_API_KEY` | 실패 행 |
+
+키는 쿼리·헤더로만 가고 `raw_document.url`·녹화 픽스처에 남지 않는다. 실제 호출 테스트:
+`ENV_FILE=<메인 체크아웃>/.env uv run pytest -m live tests/collectors` (worktree 에는 .env 가 없다).
+
 ## 규칙
 
 - 이 디렉터리와 `backend/tests/collectors/` 만 주인이 쓴다. 다른 WP는 읽기만 하고, 고칠 것은 요청으로 남긴다(AGENTS 규칙 1).

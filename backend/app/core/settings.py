@@ -1,12 +1,15 @@
 """환경 설정 (RA §10, DECISIONS D1·D6).
 
-모든 값은 환경변수(또는 작업 디렉터리의 ``.env``)에서 온다. 비밀값은 ``SecretStr``.
+모든 값은 환경변수(또는 ``.env`` 파일)에서 온다. 비밀값은 ``SecretStr``.
+``.env`` 경로는 기본 작업 디렉터리의 ``.env`` 이고, 환경변수 ``ENV_FILE`` 로 다른 파일을 가리킬 수 있다
+(worktree 처럼 ``.env`` 가 없는 체크아웃에서 메인 체크아웃의 ``.env`` 를 읽을 때).
 테스트는 ``set_settings()`` 로 덮어쓴다(``tests/conftest.py`` 의 ``test_settings`` fixture).
 """
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 
@@ -15,8 +18,17 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 DEFAULT_JEV_MCP_CMD = "npx -y @jkudish/jev-mcp@latest"  # DECISIONS D6
 DEFAULT_USER_AGENT = "subscription-analyzer/0.1 (public housing-subscription info collector)"
-# 키 인증 공식 API(공공데이터포털 Open API, 네이버 검색 API) — robots.txt 예외 (계약 2026-10-09.2)
-DEFAULT_ROBOTS_EXEMPT_HOSTS = ("apis.data.go.kr", "openapi.naver.com")
+# 키 인증 공식 API — robots.txt 예외 (계약 2026-10-09.2): 공공데이터포털 Open API(apis.data.go.kr),
+# 공공데이터포털 odcloud API(api.odcloud.kr — 청약홈 분양정보·경쟁률), 네이버 검색 API(developers 레거시
+# openapi.naver.com / NAVER Cloud API HUB naverapihub.apigw.ntruss.com)
+DEFAULT_ROBOTS_EXEMPT_HOSTS = (
+    "apis.data.go.kr",
+    "api.odcloud.kr",
+    "openapi.naver.com",
+    "naverapihub.apigw.ntruss.com",
+)
+DEFAULT_ENV_FILE = ".env"
+NewsApiProvider = Literal["ncp", "naver_developers"]
 
 
 class Settings(BaseSettings):
@@ -57,6 +69,9 @@ class Settings(BaseSettings):
     # --- 외부 키 (없으면 해당 기능 비활성: D1 #5·#6·#7)
     data_go_kr_key: SecretStr | None = None
     news_api_key: SecretStr | None = None
+    # ncp = NAVER Cloud API HUB(헤더 X-NCP-APIGW-API-KEY-ID/-KEY), naver_developers = 레거시 개발자센터
+    # (openapi.naver.com, X-Naver-Client-Id/-Secret). 키 형식은 둘 다 ``<ID>:<Secret>``.
+    news_api_provider: NewsApiProvider = "ncp"
     webhook_url: SecretStr | None = None
 
     # --- 수집 HTTP (core.http)
@@ -117,13 +132,24 @@ def env_var_names() -> list[str]:
     return [name.upper() for name in Settings.model_fields]
 
 
+def env_file_path() -> Path:
+    """읽을 ``.env`` 경로: 환경변수 ``ENV_FILE`` 이 있으면 그것, 없으면 작업 디렉터리의 ``.env``."""
+    return Path(os.environ.get("ENV_FILE") or DEFAULT_ENV_FILE)
+
+
+def load_settings(env_file: Path | str | None = None) -> Settings:
+    """``env_file``(없으면 ``env_file_path()``)을 읽은 새 Settings. 환경변수가 파일보다 우선한다."""
+    path = Path(env_file) if env_file is not None else env_file_path()
+    return Settings(_env_file=path)
+
+
 _settings: Settings | None = None
 
 
 def get_settings() -> Settings:
     global _settings
     if _settings is None:
-        _settings = Settings()
+        _settings = load_settings()
     return _settings
 
 
