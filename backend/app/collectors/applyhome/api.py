@@ -25,24 +25,29 @@
 
 응답(JSON): ``{"page","perPage","totalCount","currentCount","matchCount","data":[…]}``. 오류는 4xx +
 ``{"code":-401,"msg":…}``. 인증: 쿼리 ``serviceKey``(디코딩 키) — **raw_document.url 에는 남기지 않는다**.
+``totalCount`` 는 조건 없는 전체 건수, ``matchCount`` 가 조건에 맞는 건수 → 페이지 순회 기준은 matchCount.
+키 마스킹(R3b F1a): 오류 문구(httpx 메시지에 인코딩된 serviceKey 가 든 URL)·응답 본문(서버가 키를 되돌려 준
+경우)에서 원문·디코딩·``quote``·``quote_plus`` 형태를 모두 가린다(``reference.rawstore.scrub_result``).
 robots.txt: api.odcloud.kr 는 404(키 인증 API 라 core.http 예외 호스트에도 넣었다).
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date
 from typing import Any, Final, Literal
 from urllib.parse import unquote, urlencode
 
 from app.collectors.applyhome.site import ListKind
+from app.collectors.reference.rawstore import scrub_result
 from app.core.http import FetchResult, HttpClient
 
 __all__ = [
     "API_KINDS",
     "BASE",
     "ENDPOINTS",
+    "MAX_ITEM_PAGES",
     "PER_PAGE",
     "ApiKind",
     "ApiPage",
@@ -112,10 +117,11 @@ def list_params(kind: ApiKind, area: str, begin: date, end: date, page: int) -> 
     }
 
 
-def item_params(house_manage_no: str, pblanc_no: str) -> dict[str, str]:
-    """공고 1건(주택관리번호 + 공고번호)의 상세·주택형·경쟁률."""
+def item_params(house_manage_no: str, pblanc_no: str, page: int = 1) -> dict[str, str]:
+    """공고 1건(주택관리번호 + 공고번호)의 상세·주택형·경쟁률. 경쟁률은 주택형×순위×거주지역 행이라 100행을
+    넘을 수 있다 → ``ApplyhomeApi.get_pages`` 로 page 를 올려 가며 받는다(페이지마다 원문 1행)."""
     return {
-        "page": "1",
+        "page": str(page),
         "perPage": str(PER_PAGE),
         "cond[HOUSE_MANAGE_NO::EQ]": house_manage_no,
         "cond[PBLANC_NO::EQ]": pblanc_no,
@@ -210,6 +216,9 @@ def to_row(kind: ApiKind, d: dict[str, Any]) -> ApiRow | None:
     )
 
 
+MAX_ITEM_PAGES = 50  # 공고 1건 경쟁률 5,000행 — matchCount 를 못 읽을 때의 안전장치
+
+
 class ApplyhomeApi:
     """odcloud 호출. 키는 쿼리로만 보내고 돌려주는 ``FetchResult.url`` 은 키 없는 조회 주소다."""
 
@@ -217,9 +226,33 @@ class ApplyhomeApi:
         self._http = http
         # 포털은 인코딩 키(%2B…)와 디코딩 키를 준다 — httpx 가 다시 인코딩하므로 디코딩 형태로
         self._key = unquote(service_key)
+        self._secrets = (service_key, self._key)
 
     def get(self, path: str, params: dict[str, str]) -> FetchResult:
         result = self._http.get(BASE + path, params={**params, "serviceKey": self._key})
-        # final_url 에는 serviceKey 가 들어 있다 — 저장·로그로 새지 않게 지운다(오류 문구도 혹시 몰라 가린다)
-        error = result.error.replace(self._key, "***") if result.error else None
-        return replace(result, url=doc_url(path, params), final_url=None, error=error)
+        # url·final_url 에는 serviceKey 가 들어 있다 — 키 없는 조회 주소로 바꾸고, 오류 문구(httpx 메시지의
+        # 인코딩된 URL)·본문에서 키를 모든 표기로 가린다
+        return scrub_result(result, self._secrets, url=doc_url(path, params))
+
+    def get_pages(
+        self, path: str, params: dict[str, str], *, max_pages: int = MAX_ITEM_PAGES
+    ) -> list[FetchResult]:
+        """``params['page']`` 부터 matchCount 를 채울 때까지 페이지를 받는다(실패·빈 페이지에서 멈춤).
+        matchCount 가 없으면 꽉 찬 페이지(perPage 행)일 때만 다음 페이지를 본다."""
+        first = int(params.get("page", "1"))
+        per_page = int(params.get("perPage", str(PER_PAGE)))
+        out: list[FetchResult] = []
+        got = 0
+        for page_no in range(first, first + max_pages):
+            result = self.get(path, {**params, "page": str(page_no)})
+            out.append(result)
+            page = parse_page(result)
+            if not page.ok or not page.rows:
+                break
+            got += len(page.rows)
+            if page.match_count is None:
+                if len(page.rows) < per_page:
+                    break
+            elif got >= page.match_count:
+                break
+        return out

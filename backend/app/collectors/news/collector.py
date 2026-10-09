@@ -14,6 +14,8 @@
 - ``NEWS_API_KEY`` 가 없으면 비활성: ``enabled=False``, ``disabled_reason='비활성(키 없음)'``, fetch 는
   네트워크 없이 []. 호재는 사람이 URL 로 입력할 수 있다(D1 #6).
 - 키 형식: ``<ID>:<Secret>`` (두 값을 위 헤더로 보낸다). 키는 헤더로만 가고 URL·원문 행에 남지 않는다.
+  응답 본문·오류 문구가 키를 되돌려 줘도 원문·퍼센트 인코딩 형태 모두 가린 뒤 저장한다(R3b F1a,
+  ``reference.rawstore.scrub_result``).
 - 남기는 것: 응답 JSON 원문(raw_document) + ``items`` = URL·제목·발췌(+게시일)만. 본문 기사는 받지 않는다.
 - 두 호스트 모두 키 인증 API 라 core.http 의 robots 예외(``HTTP_ROBOTS_EXEMPT_HOSTS``)다.
   openapi.naver.com/robots.txt 는 ``Disallow: /`` — 예외 목록에서 빼면 실패 행(error_text='robots')만 남는다.
@@ -36,7 +38,7 @@ from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
-from app.collectors.reference.rawstore import Failure, RawStore, fetch_failure
+from app.collectors.reference.rawstore import Failure, RawStore, fetch_failure, scrub_result
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
 from app.core.http import HttpClient
@@ -204,7 +206,9 @@ class NewsCollector:
                         continue
                     params = {"query": q, "display": str(self._display), "start": "1", "sort": "date"}
                     shown = f"{prov.url}?{urlencode(params)}"
-                    r = http.get(prov.url, params=params, headers=headers)
+                    r = scrub_result(
+                        http.get(prov.url, params=params, headers=headers), (cid, secret), url=shown
+                    )
                     if not r.ok:
                         docs.append(
                             store.save_result(
