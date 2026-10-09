@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compare_view.json",
+  "title": "CompareView",
+  "description": "GET /snapshots/{sid}/compare?ids=&scenario= — G4 비교, 2~6개 단지 (RA §4-2). rows = 선택 단지의 ScoreRow(C6 가로), components = 가중치·성분 순서(C6 제목), ladders = 단지별 사다리 3 horizon(C1 overlay), gaps = 단지별 가격 갭(C2 나란히), terms = TermsTable(전매·거주·계약금·자기자본), decisions = 시나리오 code(또는 id 문자열)별 decide 결과(C7, DecisionPanel). ladders·gaps의 키는 complex_id 문자열.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id", "asof_date", "scenario_id", "ids", "rows", "components", "ladders", "gaps", "terms", "decisions"],
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "asof_date": { "type": "string", "format": "date" },
+    "scenario_id": { "type": "integer" },
+    "ids": { "type": "array", "minItems": 2, "maxItems": 6, "items": { "type": "integer" } },
+    "rows": { "type": "array", "items": { "$ref": "score_row.json" } },
+    "components": {
+      "title": "ComponentMatrix",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["weights", "keys"],
+      "properties": {
+        "weights": { "$ref": "scenario.json#/$defs/Weights" },
+        "keys": { "type": "array", "items": { "$ref": "scenario.json#/$defs/ComponentKey" } }
+      }
+    },
+    "ladders": { "type": "object", "additionalProperties": { "type": "array", "items": { "$ref": "ladder.json" } } },
+    "gaps": { "type": "object", "additionalProperties": { "$ref": "complex_detail.json#/$defs/Gap" } },
+    "terms": { "type": "array", "items": { "$ref": "#/$defs/TermsRow" } },
+    "decisions": { "type": "object", "additionalProperties": { "$ref": "decision.json#/$defs/DecisionSet" } }
+  },
+  "$defs": {
+    "TermsRow": {
+      "title": "TermsRow",
+      "description": "TermsTable 1행. required_equity_won = 이 시나리오 대출한도 기준 필요 자기자본 max(P_mid × 계약금%, P_mid − 대출한도) (추정, 산술). 대출한도가 미입력이면 확인 불가(미입력).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complex_id", "name", "resale_end", "residency_months", "down_payment_pct", "down_payment_won", "required_equity_won"],
+      "properties": {
+        "complex_id": { "type": "integer" },
+        "name": { "type": "string" },
+        "resale_end": { "$ref": "fact.json" },
+        "residency_months": { "$ref": "fact.json" },
+        "down_payment_pct": { "$ref": "fact.json" },
+        "down_payment_won": { "$ref": "fact.json" },
+        "required_equity_won": { "$ref": "fact.json" },
+        "interim_terms_text": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "examples": [
+    {
+      "snapshot_id": 12, "asof_date": "2026-10-08", "scenario_id": 3, "ids": [2, 7],
+      "rows": [],
+      "components": { "weights": { "p10": 0.30, "rerank": 0.15, "gap": 0.20, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.15 }, "keys": ["p10", "rerank", "gap", "benchmark", "supply", "liquidity"] },
+      "ladders": {}, "gaps": {}, "terms": [], "decisions": {}
+    }
+  ]
+}

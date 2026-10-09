@@ -1,0 +1,2553 @@
+{
+  "summary": "G6 지역 시장(C3·C4·C5·C9)",
+  "description": "C5 김포시 24개월 중 보고서에 수치가 있는 8개월만 값이 있고 나머지는 v=null(확인 불가) — connectNulls=false 상태 예시.",
+  "value": {
+    "snapshot_id": 12,
+    "asof_date": "2026-10-08",
+    "region_id": 1,
+    "living_areas": [
+      {
+        "id": "la_1",
+        "name": "연수구"
+      },
+      {
+        "id": "la_2",
+        "name": "서구(검단)"
+      },
+      {
+        "id": "la_3",
+        "name": "계양구"
+      },
+      {
+        "id": "la_4",
+        "name": "김포시"
+      }
+    ],
+    "benchmarks": [
+      {
+        "id": 1,
+        "living_area": "la_1",
+        "name": "힐스테이트 송도 더스카이",
+        "completed_year": 2024,
+        "sale_year": 2020,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 748500000,
+          "label": "확인됨",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 1120000000,
+          "label": "재가공",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 1240000000,
+          "label": "추정",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 1360000000,
+          "label": "재가공",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 9,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 49.6,
+          "label": "추정",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 81.7,
+          "label": "추정",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 8.8,
+          "label": "추정",
+          "prov": "fp_7001",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 6년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 2,
+        "living_area": "la_1",
+        "name": "더샵 송도 프라임뷰 F20",
+        "completed_year": 2022,
+        "sale_year": 2019,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 560000000,
+          "label": "비공식",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 890000000,
+          "label": "재가공",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 965000000,
+          "label": "추정",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 1040000000,
+          "label": "재가공",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 10,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 58.9,
+          "label": "추정",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 85.7,
+          "label": "추정",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 8.1,
+          "label": "추정",
+          "prov": "fp_7002",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 7년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 3,
+        "living_area": "la_1",
+        "name": "송도자이 크리스탈오션",
+        "completed_year": 2024,
+        "sale_year": 2021,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 767200000,
+          "label": "확인됨",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 1070000000,
+          "label": "재가공",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 1095000000,
+          "label": "추정",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 1120000000,
+          "label": "재가공",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 4,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 39.5,
+          "label": "추정",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 46.0,
+          "label": "추정",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 7.4,
+          "label": "추정",
+          "prov": "fp_7003",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 5년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 4,
+        "living_area": "la_1",
+        "name": "송도자이 더 스타",
+        "completed_year": 2024,
+        "sale_year": 2021,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 955400000,
+          "label": "확인됨",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 920000000,
+          "label": "재가공",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 980000000,
+          "label": "추정",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 1040000000,
+          "label": "재가공",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 10,
+        "peak_won": {
+          "v": 1040000000,
+          "label": "재가공",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "peak_ym": {
+          "v": "2026-09",
+          "label": "재가공",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": -3.7,
+          "label": "추정",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 8.9,
+          "label": "추정",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 0.5,
+          "label": "추정",
+          "prov": "fp_7004",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 5년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 5,
+        "living_area": "la_1",
+        "name": "힐스테이트 레이크 송도 4차",
+        "completed_year": 2025,
+        "sale_year": 2022,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 899000000,
+          "label": "확인됨",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 820000000,
+          "label": "재가공",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 885000000,
+          "label": "추정",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 950000000,
+          "label": "재가공",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 10,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": -8.8,
+          "label": "추정",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 5.7,
+          "label": "추정",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": -0.4,
+          "label": "추정",
+          "prov": "fp_7005",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 4년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 6,
+        "living_area": "la_1",
+        "name": "송도 럭스오션 SK뷰",
+        "completed_year": 2025,
+        "sale_year": 2022,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 910000000,
+          "label": "확인됨",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 750000000,
+          "label": "재가공",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 810000000,
+          "label": "추정",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 870000000,
+          "label": "재가공",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 3,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": -17.6,
+          "label": "추정",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": -4.4,
+          "label": "추정",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": -2.9,
+          "label": "추정",
+          "prov": "fp_7006",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 4년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 7,
+        "living_area": "la_1",
+        "name": "송도자이풍경채 그라노블(분양권)",
+        "completed_year": null,
+        "sale_year": 2024,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 864000000,
+          "label": "확인됨",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 790000000,
+          "label": "재가공",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 860000000,
+          "label": "추정",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 930000000,
+          "label": "재가공",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 25,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": true,
+        "gain_low_pct": {
+          "v": -8.6,
+          "label": "추정",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 7.6,
+          "label": "추정",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": -0.2,
+          "label": "추정",
+          "prov": "fp_7007",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 2년 연율",
+          "unit": "pct"
+        },
+        "note": "분양권 — 벤치마크 점수 제외, '현재 프리미엄 추정'에만"
+      },
+      {
+        "id": 8,
+        "living_area": "la_2",
+        "name": "검단 금호어울림 센트럴(원당)",
+        "completed_year": 2021,
+        "sale_year": 2019,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 390000000,
+          "label": "비공식",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 750000000,
+          "label": "재가공",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 770000000,
+          "label": "추정",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 790000000,
+          "label": "재가공",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-01~2026-06",
+        "n_trades": null,
+        "peak_won": {
+          "v": 794000000,
+          "label": "재가공",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "peak_ym": {
+          "v": "2026-06",
+          "label": "재가공",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 92.3,
+          "label": "추정",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 102.6,
+          "label": "추정",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 10.2,
+          "label": "추정",
+          "prov": "fp_7008",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 7년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 9,
+        "living_area": "la_2",
+        "name": "힐스테이트 신검단 센트럴(불로)",
+        "completed_year": 2025,
+        "sale_year": 2022,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 452000000,
+          "label": "확인됨",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 830000000,
+          "label": "재가공",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 860000000,
+          "label": "추정",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 890000000,
+          "label": "재가공",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-05~2026-06",
+        "n_trades": null,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 83.6,
+          "label": "추정",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 96.9,
+          "label": "추정",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 17.4,
+          "label": "추정",
+          "prov": "fp_7009",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 4년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 10,
+        "living_area": "la_2",
+        "name": "롯데캐슬 넥스티엘 RC1(원당)",
+        "completed_year": 2026,
+        "sale_year": 2023,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 587700000,
+          "label": "확인됨",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 580000000,
+          "label": "재가공",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 580000000,
+          "label": "추정",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 580000000,
+          "label": "재가공",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-02",
+        "n_trades": 1,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": -1.3,
+          "label": "추정",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": -1.3,
+          "label": "추정",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": -0.4,
+          "label": "추정",
+          "prov": "fp_7010",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 3년 연율",
+          "unit": "pct"
+        },
+        "note": "직거래 1건"
+      },
+      {
+        "id": 11,
+        "living_area": "la_4",
+        "name": "한강메트로자이 2단지(걸포)",
+        "completed_year": 2020,
+        "sale_year": 2017,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 425000000,
+          "label": "추정",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "reason": "3.3㎡당 약 1,250만원 역산",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 590000000,
+          "label": "재가공",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 635000000,
+          "label": "추정",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 680000000,
+          "label": "재가공",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 10,
+        "peak_won": {
+          "v": 1100000000,
+          "label": "재가공",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "peak_ym": {
+          "v": "2021-09",
+          "label": "재가공",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 38.8,
+          "label": "추정",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 60.0,
+          "label": "추정",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 4.6,
+          "label": "추정",
+          "prov": "fp_7011",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 9년 연율",
+          "unit": "pct"
+        },
+        "note": "역대 최고 11억은 타입 오류 가능성 — 주의(재가공)"
+      },
+      {
+        "id": 12,
+        "living_area": "la_4",
+        "name": "힐스테이트 리버시티 1단지(고촌)",
+        "completed_year": 2020,
+        "sale_year": 2018,
+        "sale_period": "저가 분양기",
+        "sale_price_84_won": {
+          "v": 385000000,
+          "label": "추정",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "reason": "3.3㎡당 1,139만원 역산",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 580000000,
+          "label": "재가공",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 595000000,
+          "label": "추정",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 610000000,
+          "label": "재가공",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 8,
+        "peak_won": {
+          "v": 750000000,
+          "label": "재가공",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "peak_ym": {
+          "v": "2021-05",
+          "label": "재가공",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": 50.6,
+          "label": "추정",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 58.4,
+          "label": "추정",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 5.6,
+          "label": "추정",
+          "prov": "fp_7012",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 8년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 13,
+        "living_area": "la_4",
+        "name": "고촌 센트럴자이(후분양)",
+        "completed_year": 2024,
+        "sale_year": 2023,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 758400000,
+          "label": "확인됨",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 740000000,
+          "label": "재가공",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 760000000,
+          "label": "추정",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 780000000,
+          "label": "재가공",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 6,
+        "peak_won": {
+          "v": 783000000,
+          "label": "재가공",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "peak_ym": {
+          "v": "2025-06",
+          "label": "재가공",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "is_presale": false,
+        "gain_low_pct": {
+          "v": -2.4,
+          "label": "추정",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": 2.8,
+          "label": "추정",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": 0.1,
+          "label": "추정",
+          "prov": "fp_7013",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 3년 연율",
+          "unit": "pct"
+        },
+        "note": null
+      },
+      {
+        "id": 14,
+        "living_area": "la_4",
+        "name": "김포 북변 우미린 파크리브(분양권)",
+        "completed_year": null,
+        "sale_year": 2024,
+        "sale_period": "고가 분양기",
+        "sale_price_84_won": {
+          "v": 650000000,
+          "label": "확인됨",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_low_won": {
+          "v": 480000000,
+          "label": "재가공",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_median_won": {
+          "v": 525000000,
+          "label": "추정",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "trade_high_won": {
+          "v": 570000000,
+          "label": "재가공",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "trade_window": "2026-04~2026-09",
+        "n_trades": 4,
+        "peak_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "peak_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미표기",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "is_presale": true,
+        "gain_low_pct": {
+          "v": -26.2,
+          "label": "추정",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "gain_high_pct": {
+          "v": -12.3,
+          "label": "추정",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "pct"
+        },
+        "annualized_pct": {
+          "v": -10.1,
+          "label": "추정",
+          "prov": "fp_7014",
+          "checked_at": "2026-10-07",
+          "reason": "중앙값 기준 2년 연율",
+          "unit": "pct"
+        },
+        "note": "마이너스 프리미엄 추정 — 옵션·계약조건 미반영 가능"
+      }
+    ],
+    "benchmark_flags": [
+      {
+        "living_area": "la_1",
+        "sample_n": 6,
+        "no_recent_sale_case": true
+      },
+      {
+        "living_area": "la_2",
+        "sample_n": 3,
+        "no_recent_sale_case": true
+      },
+      {
+        "living_area": "la_3",
+        "sample_n": 0,
+        "no_recent_sale_case": true
+      },
+      {
+        "living_area": "la_4",
+        "sample_n": 3,
+        "no_recent_sale_case": false
+      }
+    ],
+    "supply": [
+      {
+        "living_area": "la_4",
+        "year": 2027,
+        "units": {
+          "v": 1200,
+          "label": "추정",
+          "prov": "fp_6227",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": [
+          "우미 린 파크리브"
+        ]
+      },
+      {
+        "living_area": "la_4",
+        "year": 2028,
+        "units": {
+          "v": 8860,
+          "label": "추정",
+          "prov": "fp_6228",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": [
+          "오브센트",
+          "롯데캐슬",
+          "해링턴 1~3BL",
+          "스위첸",
+          "B5 호반써밋",
+          "더 마크"
+        ]
+      },
+      {
+        "living_area": "la_4",
+        "year": 2029,
+        "units": {
+          "v": 3367,
+          "label": "추정",
+          "prov": "fp_6229",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": [
+          "그라센트 1·2차",
+          "지엔하임",
+          "호반써밋Ⅲ",
+          "칸타빌"
+        ]
+      },
+      {
+        "living_area": "la_4",
+        "year": 2030,
+        "units": {
+          "v": 961,
+          "label": "추정",
+          "prov": "fp_6230",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": [
+          "호반써밋Ⅱ"
+        ]
+      },
+      {
+        "living_area": "la_4",
+        "year": 2031,
+        "units": {
+          "v": 2432,
+          "label": "추정",
+          "prov": "fp_6231",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": [
+          "리버프론트"
+        ]
+      },
+      {
+        "living_area": "la_1",
+        "year": 2028,
+        "units": {
+          "v": 2433,
+          "label": "추정",
+          "prov": "fp_6228",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": null
+      },
+      {
+        "living_area": "la_2",
+        "year": 2028,
+        "units": {
+          "v": 3800,
+          "label": "추정",
+          "prov": "fp_6228",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": null
+      },
+      {
+        "living_area": "la_2",
+        "year": 2029,
+        "units": {
+          "v": 2857,
+          "label": "추정",
+          "prov": "fp_6229",
+          "checked_at": "2026-10-07",
+          "reason": "추정 집계",
+          "unit": "units"
+        },
+        "complexes": [
+          "더샵 검단레이크파크"
+        ]
+      }
+    ],
+    "move_in_markers": [
+      {
+        "complex_id": 1,
+        "name": "더샵 송도그란테르",
+        "living_area": "la_1",
+        "move_in_ym": {
+          "v": "2029-08",
+          "label": "확인됨",
+          "prov": "fp_104",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 2,
+        "name": "엘리프 검단 포레듀",
+        "living_area": "la_2",
+        "move_in_ym": {
+          "v": "2028-03",
+          "label": "확인됨",
+          "prov": "fp_204",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 3,
+        "name": "송도 한내들 센트럴리버",
+        "living_area": "la_1",
+        "move_in_ym": {
+          "v": "2029-03",
+          "label": "확인됨",
+          "prov": "fp_304",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 4,
+        "name": "오퍼스 한강 스위첸",
+        "living_area": "la_4",
+        "move_in_ym": {
+          "v": "2028-08",
+          "label": "확인됨",
+          "prov": "fp_404",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 5,
+        "name": "검단 센트레빌 에듀시티",
+        "living_area": "la_2",
+        "move_in_ym": {
+          "v": "2028-08",
+          "label": "확인됨",
+          "prov": "fp_504",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 6,
+        "name": "더샵 검단레이크파크 AB23",
+        "living_area": "la_2",
+        "move_in_ym": {
+          "v": "2029-12",
+          "label": "확인됨",
+          "prov": "fp_604",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 7,
+        "name": "김포 칸타빌 에디션",
+        "living_area": "la_4",
+        "move_in_ym": {
+          "v": "2029-12",
+          "label": "확인됨",
+          "prov": "fp_704",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 8,
+        "name": "풍무역세권 수자인 그라센트 2차",
+        "living_area": "la_4",
+        "move_in_ym": {
+          "v": "2029-01",
+          "label": "확인됨",
+          "prov": "fp_804",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 9,
+        "name": "한강 푸르지오 리버프론트",
+        "living_area": "la_4",
+        "move_in_ym": {
+          "v": "2031-01",
+          "label": "확인됨",
+          "prov": "fp_904",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      },
+      {
+        "complex_id": 10,
+        "name": "풍무역 롯데캐슬 시그니처",
+        "living_area": "la_4",
+        "move_in_ym": {
+          "v": "2028-07",
+          "label": "확인됨",
+          "prov": "fp_1004",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        }
+      }
+    ],
+    "unsold": [
+      {
+        "ym": "2024-09",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2024-10",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2024-11",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2024-12",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-01",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-02",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-03",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-04",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-05",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-06",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 571,
+          "label": "재가공",
+          "prov": "fp_6109",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-07",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 492,
+          "label": "재가공",
+          "prov": "fp_6110",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-08",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 2141,
+          "label": "재가공",
+          "prov": "fp_6111",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-09",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-10",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-11",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2025-12",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 1536,
+          "label": "재가공",
+          "prov": "fp_6115",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-01",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-02",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-03",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 1162,
+          "label": "재가공",
+          "prov": "fp_6118",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-04",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-05",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-06",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 879,
+          "label": "재가공",
+          "prov": "fp_6121",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-07",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 830,
+          "label": "재가공",
+          "prov": "fp_6122",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "월별 준공 후 미분양 미수집",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        }
+      },
+      {
+        "ym": "2026-08",
+        "scope_code": "41570",
+        "scope_name": "김포시",
+        "total": {
+          "v": 787,
+          "label": "재가공",
+          "prov": "fp_6123",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 52,
+          "label": "재가공",
+          "prov": "fp_6123",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        }
+      },
+      {
+        "ym": "2026-08",
+        "scope_code": "28185",
+        "scope_name": "연수구",
+        "total": {
+          "v": 505,
+          "label": "재가공",
+          "prov": "fp_6301",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 203,
+          "label": "재가공",
+          "prov": "fp_6301",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        }
+      },
+      {
+        "ym": "2026-08",
+        "scope_code": "28260",
+        "scope_name": "검단구(서구 코드)",
+        "total": {
+          "v": 737,
+          "label": "재가공",
+          "prov": "fp_6302",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 737,
+          "label": "재가공",
+          "prov": "fp_6302",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        }
+      },
+      {
+        "ym": "2026-08",
+        "scope_code": "28245",
+        "scope_name": "계양구",
+        "total": {
+          "v": 0,
+          "label": "재가공",
+          "prov": "fp_6303",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 0,
+          "label": "재가공",
+          "prov": "fp_6303",
+          "checked_at": "2026-10-07",
+          "unit": "units"
+        }
+      }
+    ],
+    "catalysts": [
+      {
+        "id": 41,
+        "name": "인천1호선 검단연장(아라·신검단중앙·검단호수공원역)",
+        "kind": "교통",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 1.0,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2025-06",
+          "label": "확인됨",
+          "prov": "fp_5141",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          2,
+          5,
+          6
+        ],
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": "2025-06-28 개통"
+      },
+      {
+        "id": 42,
+        "name": "검단구 신설",
+        "kind": "개발",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 0.99,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2026-07",
+          "label": "확인됨",
+          "prov": "fp_5142",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          2,
+          5,
+          6
+        ],
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": "2026-07-01 완료"
+      },
+      {
+        "id": 46,
+        "name": "송도 워터프런트 1-2단계 준공",
+        "kind": "개발",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 0.99,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2027-01",
+          "label": "확인됨",
+          "prov": "fp_5146",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          1,
+          3
+        ],
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": null
+      },
+      {
+        "id": 47,
+        "name": "롯데바이오로직스 송도 1공장 준공",
+        "kind": "개발",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 0.95,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2026-11",
+          "label": "확인됨",
+          "prov": "fp_5147",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          1,
+          3
+        ],
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": null
+      },
+      {
+        "id": 48,
+        "name": "계양신도시 첫 입주(LH 인천계양 A2)",
+        "kind": "개발",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 0.96,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2026-12",
+          "label": "확인됨",
+          "prov": "fp_5148",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          15
+        ],
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": null
+      },
+      {
+        "id": 49,
+        "name": "송도아라1초 개교(교육부 승인)",
+        "kind": "학교",
+        "stage": "계획",
+        "stage_prob": {
+          "v": 0.98,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2030-03",
+          "label": "비공식",
+          "prov": "fp_5149",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          3
+        ],
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": null
+      },
+      {
+        "id": 44,
+        "name": "GTX-D 1단계(장기~검단~계양~부천)",
+        "kind": "교통",
+        "stage": "계획",
+        "stage_prob": {
+          "v": 0.93,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "2035 목표(언론)",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "location_confirmed": false,
+        "linked": null,
+        "distance_m": null,
+        "weight": 0.0,
+        "linked_complex_ids": null,
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": "기본계획 중"
+      },
+      {
+        "id": 50,
+        "name": "GTX-B",
+        "kind": "교통",
+        "stage": "미확정",
+        "stage_prob": {
+          "v": 0.55,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "manual_review",
+        "expected_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "시점 미정",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "location_confirmed": false,
+        "linked": null,
+        "distance_m": null,
+        "weight": 0.0,
+        "linked_complex_ids": null,
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": "공사 중이나 개통 2030 vs 2031 상충(#77)"
+      },
+      {
+        "id": 43,
+        "name": "서울5호선 김포·검단 연장",
+        "kind": "교통",
+        "stage": "미확정",
+        "stage_prob": {
+          "v": 0.56,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "review",
+        "expected_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "시점 미정",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "location_confirmed": false,
+        "linked": null,
+        "distance_m": null,
+        "weight": 0.0,
+        "linked_complex_ids": null,
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": "계획 0.56·추진 0.26(review) — 역 위치 미확정, 단지 연결 없음"
+      },
+      {
+        "id": 51,
+        "name": "수도권 제2순환 김포~파주 한강하저터널",
+        "kind": "교통",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 0.99,
+          "label": "추정",
+          "prov": "jl_111",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2027-12",
+          "label": "확인됨",
+          "prov": "fp_5151",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          4,
+          9,
+          11
+        ],
+        "judgment_seq": 111,
+        "source_url": null,
+        "note": "2027 말 개통 예정"
+      },
+      {
+        "id": 52,
+        "name": "김포골드라인 증차(5편성 추가)",
+        "kind": "교통",
+        "stage": "확정",
+        "stage_prob": {
+          "v": 0.93,
+          "label": "추정",
+          "prov": "jl_111",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": "2027-06",
+          "label": "확인됨",
+          "prov": "fp_5152",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "location_confirmed": true,
+        "linked": null,
+        "distance_m": null,
+        "weight": null,
+        "linked_complex_ids": [
+          7,
+          8,
+          10
+        ],
+        "judgment_seq": 111,
+        "source_url": null,
+        "note": "2027 상반기 목표"
+      },
+      {
+        "id": 53,
+        "name": "인천2호선 고양 연장(시네폴리스역 가칭)",
+        "kind": "교통",
+        "stage": "추진",
+        "stage_prob": {
+          "v": 0.98,
+          "label": "추정",
+          "prov": "jl_111",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "시점 미정",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "location_confirmed": false,
+        "linked": null,
+        "distance_m": null,
+        "weight": 0.0,
+        "linked_complex_ids": null,
+        "judgment_seq": 111,
+        "source_url": null,
+        "note": "예타 진행 중"
+      },
+      {
+        "id": 45,
+        "name": "검단 스타필드·대학병원",
+        "kind": "상업",
+        "stage": "언론",
+        "stage_prob": {
+          "v": 1.0,
+          "label": "추정",
+          "prov": "jl_64",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 classify",
+          "unit": "prob"
+        },
+        "decision": "auto",
+        "expected_ym": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "시점 미정",
+          "prov": null,
+          "checked_at": "2026-10-07"
+        },
+        "location_confirmed": false,
+        "linked": null,
+        "distance_m": null,
+        "weight": 0.0,
+        "linked_complex_ids": null,
+        "judgment_seq": 64,
+        "source_url": null,
+        "note": null
+      }
+    ],
+    "regulation": {
+      "items": [
+        {
+          "key": "regulated_area",
+          "title": "규제지역",
+          "scope": null,
+          "value": {
+            "v": "비규제",
+            "label": "확인됨",
+            "prov": "fp_8001",
+            "checked_at": "2026-10-07",
+            "unit": "text"
+          },
+          "note": "인천 3구·김포 모두 조정대상·투기과열 미지정(김포 2022-11-14 해제)"
+        },
+        {
+          "key": "resale",
+          "title": "전매제한(민간택지)",
+          "scope": "연수구·김포시",
+          "value": {
+            "v": 6,
+            "label": "확인됨",
+            "prov": "fp_8002",
+            "checked_at": "2026-10-07",
+            "unit": "months"
+          },
+          "note": "성장관리권역, 당첨자 발표일 기산"
+        },
+        {
+          "key": "resale",
+          "title": "전매제한(공공택지·상한제)",
+          "scope": "검단·계양·김포 공공택지",
+          "value": {
+            "v": 36,
+            "label": "확인됨",
+            "prov": "fp_8003",
+            "checked_at": "2026-10-07",
+            "unit": "months"
+          },
+          "note": "기간 내 소유권이전등기 시 해제"
+        },
+        {
+          "key": "residency",
+          "title": "거주의무",
+          "scope": "검단 상한제",
+          "value": {
+            "v": "0~3년",
+            "label": "확인됨",
+            "prov": "fp_8004",
+            "checked_at": "2026-10-07",
+            "unit": "text"
+          },
+          "note": "더샵 검단레이크파크만 3년"
+        },
+        {
+          "key": "loan",
+          "title": "잔금대출",
+          "scope": null,
+          "value": {
+            "v": 600000000,
+            "label": "확인됨",
+            "prov": "fp_8005",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "note": "수도권 6억 한도·비규제 LTV 70%·스트레스 DSR 3.0%"
+        },
+        {
+          "key": "tax",
+          "title": "1주택 비과세",
+          "scope": null,
+          "value": {
+            "v": "보유 2년",
+            "label": "확인됨",
+            "prov": "fp_8006",
+            "checked_at": "2026-10-07",
+            "unit": "text"
+          },
+          "note": "비규제 취득분 거주요건 없음"
+        },
+        {
+          "key": "land_permit",
+          "title": "토지거래허가구역",
+          "scope": "김포 사우·풍무·고촌·한강2",
+          "value": {
+            "v": "2026-12-31",
+            "label": "비공식",
+            "prov": "fp_8007",
+            "checked_at": "2026-10-07",
+            "unit": "date"
+          },
+          "note": "토지 면적 기준 — 아파트 분양권 원칙 비대상(추정), 고시 원문 미확인"
+        }
+      ]
+    },
+    "living_area_prices": [
+      {
+        "living_area": "la_1",
+        "name": "연수구",
+        "median_won": {
+          "v": 885000000,
+          "label": "추정",
+          "prov": "fp_9001",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "low_won": {
+          "v": 820000000,
+          "label": "재가공",
+          "prov": "fp_9001",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "high_won": {
+          "v": 950000000,
+          "label": "재가공",
+          "prov": "fp_9001",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "n_trades": 10,
+        "trade_window": "2026-04~2026-09",
+        "basis": "11공구 인접 신축(레이크 4차) — IBD는 11.2~14.1억으로 별도"
+      },
+      {
+        "living_area": "la_2",
+        "name": "서구(검단)",
+        "median_won": {
+          "v": 860000000,
+          "label": "추정",
+          "prov": "fp_9002",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "low_won": {
+          "v": 830000000,
+          "label": "재가공",
+          "prov": "fp_9002",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "high_won": {
+          "v": 890000000,
+          "label": "재가공",
+          "prov": "fp_9002",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "n_trades": 0,
+        "trade_window": "2026-05~2026-06",
+        "basis": "신검단 신축(힐스테이트 신검단 센트럴), 건수 미상 — 저가 거래 4.8~5.3억 혼재"
+      },
+      {
+        "living_area": "la_3",
+        "name": "계양구",
+        "median_won": {
+          "v": 820000000,
+          "label": "비공식",
+          "prov": "fp_9003",
+          "checked_at": "2026-10-07",
+          "reason": "언론 8.1~8.3억",
+          "unit": "won"
+        },
+        "low_won": {
+          "v": 810000000,
+          "label": "비공식",
+          "prov": "fp_9003",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "high_won": {
+          "v": 830000000,
+          "label": "비공식",
+          "prov": "fp_9003",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "n_trades": 0,
+        "trade_window": null,
+        "basis": "힐스테이트자이 계양(데일리안 2026-09-07) — 실거래 원자료 미확보"
+      },
+      {
+        "living_area": "la_4",
+        "name": "김포시",
+        "median_won": {
+          "v": 760000000,
+          "label": "추정",
+          "prov": "fp_9004",
+          "checked_at": "2026-10-07",
+          "reason": "범위 중앙(산술)",
+          "unit": "won"
+        },
+        "low_won": {
+          "v": 740000000,
+          "label": "재가공",
+          "prov": "fp_9004",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "high_won": {
+          "v": 780000000,
+          "label": "재가공",
+          "prov": "fp_9004",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "n_trades": 6,
+        "trade_window": "2026-04~2026-09",
+        "basis": "고촌 센트럴자이(2024) — 풍무·사우·북변은 2020 이후 신축 없음(대체)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist_item.json",
+  "title": "ChecklistItem",
+  "description": "체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "complex_id", "kind", "title", "due_date", "status", "note"],
+  "properties": {
+    "id": { "type": "integer" },
+    "complex_id": { "type": ["integer", "null"] },
+    "complex_name": { "type": ["string", "null"] },
+    "kind": { "type": "string", "enum": ["법적 확인", "중도금", "만료", "공고 예상"] },
+    "title": { "type": "string", "minLength": 1 },
+    "due_date": { "type": ["string", "null"], "format": "date" },
+    "status": { "type": "string", "enum": ["open", "done", "na"] },
+    "note": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "ChecklistPatch": {
+      "title": "ChecklistPatch",
+      "description": "PATCH /ops/checklist/{id} 본문(바꿀 필드만)",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "status": { "type": "string", "enum": ["open", "done", "na"] },
+        "note": { "type": ["string", "null"] },
+        "due_date": { "type": ["string", "null"], "format": "date" }
+      }
+    }
+  },
+  "examples": [
+    { "id": 51, "complex_id": 7, "complex_name": "김포 칸타빌 에디션", "kind": "법적 확인", "title": "선착순 잔여 동·호·층과 계약 조건(계약금 5%·중도금 이자후불)을 견본주택에서 문서로 확인", "due_date": null, "status": "open", "note": "K1" }
+  ]
+}

@@ -3,6 +3,7 @@
 보고서 구성 점수 6개를 입력으로 고정하고 가중 합·순위·동점만 검증한다(T1, T2, T7, T12 기대값의 원천).
 """
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -18,6 +19,7 @@ D = Decimal
 COMPONENTS = ["p10", "rerank", "gap", "benchmark", "supply", "liquidity"]
 EXPECTED = load_json(FIXTURE / "expected_scores.json")
 TOL = D("0.01")
+EPS = D("0.05")
 
 # RA §9 T1 원문: 그란테르 5.87 > 엘리프 5.70 > 한내들 5.33 > 스위첸(김포) 5.00 > 센트레빌 = 더샵 AB23 4.61 (±0.01, 공동 5위)
 T1 = [("granter", "5.87", 1), ("elif", "5.70", 2), ("hannaedeul", "5.33", 3), ("switzen", "5.00", 4),
@@ -30,7 +32,9 @@ def weighted(components: dict[str, Any], weights: dict[str, Any]) -> D | None:
     return sum((D(str(components[k])) * D(str(weights[k])) for k in COMPONENTS), D(0))
 
 
-def ranks_with_ties(totals: dict[str, D], ids: dict[str, int], eps: D = D("0.05")) -> dict[str, tuple[int, int | None]]:
+def ranks_with_ties(
+    totals: dict[str, D], ids: dict[str, int], eps: D = EPS
+) -> dict[str, tuple[int, int | None]]:
     order = sorted(totals, key=lambda k: (-totals[k], ids[k]))
     out: dict[str, tuple[int, int | None]] = {}
     i, group = 0, 0
@@ -46,6 +50,11 @@ def ranks_with_ties(totals: dict[str, D], ids: dict[str, int], eps: D = D("0.05"
             out[m] = (i + 1, group if len(members) > 1 else None)
         i = j
     return out
+
+
+def must(total: D | None) -> D:
+    assert total is not None
+    return total
 
 
 def scored() -> dict[str, dict[str, Any]]:
@@ -72,7 +81,14 @@ def test_sixteen_complexes_with_unique_keys() -> None:
 
 def test_weights_are_base_scenario_and_sum_to_one() -> None:
     w = EXPECTED["weights"]
-    assert w == {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10}
+    assert w == {
+        "p10": 0.35,
+        "rerank": 0.20,
+        "gap": 0.15,
+        "benchmark": 0.10,
+        "supply": 0.10,
+        "liquidity": 0.10,
+    }
     assert sum(D(str(v)) for v in w.values()) == D(1)
 
 
@@ -127,7 +143,9 @@ def test_t7_rerank_delta() -> None:
     t7 = EXPECTED["t7_incheon_only"]
     assert t7["rerank_judgment_seq"] == 124
     for row in t7["rows"]:
-        assert D(str(row["delta_rerank"])) == D(str(row["relevance"])) - D(str(row["relevance_prev"])), row["key"]
+        assert D(str(row["delta_rerank"])) == D(str(row["relevance"])) - D(str(row["relevance_prev"])), row[
+            "key"
+        ]
     deltas = [D(str(r["delta_rerank"])) for r in t7["rows"]]
     assert min(deltas) == D("-0.06") and max(deltas) == D("0"), "보고서: 0~0.06 하락"
 
@@ -137,8 +155,10 @@ def test_t12_sensitivity_is_consistent_with_inputs() -> None:
     ids = {k: c["complex_id"] for k, c in cs.items()}
     base = {k: D(str(v)) for k, v in EXPECTED["weights"].items()}
     t12 = EXPECTED["t12_sensitivity"]
-    base_tot = {k: weighted(c["components"], base) for k, c in cs.items()}
-    base5 = sorted((k for k, (r, _) in ranks_with_ties(base_tot, ids).items() if r <= 5), key=lambda k: ids[k])  # type: ignore[arg-type]
+    base_tot = {k: must(weighted(c["components"], base)) for k, c in cs.items()}
+    base5 = sorted(
+        (k for k, (r, _) in ranks_with_ties(base_tot, ids).items() if r <= 5), key=lambda k: ids[k]
+    )
     assert t12["base_top5"] == base5
     changed_any = set()
     assert len(t12["cells"]) == 12
@@ -147,8 +167,8 @@ def test_t12_sensitivity_is_consistent_with_inputs() -> None:
         delta = D("0.10") if sign == "+" else D("-0.10")
         wi = min(max(base[comp] + delta, D(0)), D(1))
         weights = {k: (wi if k == comp else v * (D(1) - wi) / (D(1) - base[comp])) for k, v in base.items()}
-        tot = {k: weighted(c["components"], weights) for k, c in cs.items()}
-        top5 = sorted((k for k, (r, _) in ranks_with_ties(tot, ids).items() if r <= 5), key=lambda k: ids[k])  # type: ignore[arg-type]
+        tot = {k: must(weighted(c["components"], weights)) for k, c in cs.items()}
+        top5 = sorted((k for k, (r, _) in ranks_with_ties(tot, ids).items() if r <= 5), key=lambda k: ids[k])
         assert cell["top5"] == top5, cell["variant"]
         assert cell["changed"] is (set(top5) != set(base5)), cell["variant"]
         if cell["changed"]:

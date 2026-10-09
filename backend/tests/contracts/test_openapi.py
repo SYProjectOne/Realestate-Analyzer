@@ -1,5 +1,6 @@
 """contracts/openapi.yaml (원본) + openapi.bundled.yaml (자립 번들) — OAS 3.1 검증, 엔드포인트, 예시, Fact 규칙."""
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 import json
@@ -144,7 +145,9 @@ def test_operations_declare_error_responses(bundled: dict[str, Any]) -> None:
         if not any(c.startswith("2") for c in codes):
             problems.append(f"{method} {path}: 2xx")
         for code in codes - {"200", "201", "202"}:
-            media = (_resolve_response(bundled, op["responses"][code]).get("content") or {}).get("application/json")
+            media = (_resolve_response(bundled, op["responses"][code]).get("content") or {}).get(
+                "application/json"
+            )
             if media is None or media["schema"] != {"$ref": "#/components/schemas/Error"}:
                 problems.append(f"{method} {path} {code}: Error 스키마")
     assert problems == []
@@ -224,7 +227,9 @@ def test_examples_cover_all_screens() -> None:
     assert len([u for u in market["unsold"] if u["scope_code"] == "41570"]) == 24, "C5는 24개월"
 
 
-FACT_NAME = re.compile(r"(_won|_m2|_pct)$|^(total|p10|p5|p20|p_flat|households|stage_prob|inclusion_prob|move_in_ym|resale_end)$")
+FACT_NAME = re.compile(
+    r"(_won|_m2|_pct)$|^(total|p10|p5|p20|p_flat|households|stage_prob|inclusion_prob|move_in_ym|resale_end)$"
+)
 # Fact가 아닌 숫자를 의도적으로 허용하는 곳: 설정값·가중치 가정·연율 표시 계산
 FACT_EXEMPT = {
     ("Region", "supply_ref_pct"),
@@ -232,7 +237,13 @@ FACT_EXEMPT = {
     ("LadderAnnualized", "p5"),
     ("LadderAnnualized", "p10"),
     ("LadderAnnualized", "p20"),
-    ("SensitivityRank", "total"),
+    ("SensitivityRank", "total"),  # 민감도 변형 점수: 가중치 가정의 산출물(C10 표·선 전용)
+    ("ComplexRowPage", "total"),  # 목록 건수
+    ("JudgmentOps", "total"),  # 목록 건수
+    ("Components", "p10"),  # ComponentView(score: Fact …)를 감싼 객체
+    ("ScenarioParams", "equity_won"),  # 사용자가 입력한 조건값(출처 데이터가 아님)
+    ("ScenarioParams", "loan_limit_won"),
+    ("ScenarioParams", "preferred_area_m2"),
 }
 
 
@@ -256,8 +267,10 @@ def _reachable_components(doc: dict[str, Any]) -> set[str]:
 
 def _is_fact(prop: dict[str, Any]) -> bool:
     fact = {"$ref": "#/components/schemas/Fact"}
-    return prop == fact or (prop.get("description") is not None and prop.get("$ref") == fact["$ref"]) or any(
-        alt == fact for alt in prop.get("anyOf", [])
+    return (
+        prop == fact
+        or (prop.get("description") is not None and prop.get("$ref") == fact["$ref"])
+        or any(alt == fact for alt in prop.get("anyOf", []))
     )
 
 

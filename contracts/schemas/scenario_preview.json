@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scenario_preview.json",
+  "title": "ScenarioPreview",
+  "description": "GET /scenarios/{id}/preview?snapshot= — G5 WeightPreview·RequirementPreview·RunButton (RA §4-2). 판정기를 부르지 않는다: 가중치와 단지별 요건 3개 사전 계산(RequirementPrecalc), 그리고 '재판정 실행' 시 캐시 히트 예상(같은 input_hash가 judgment_log에 있는 호출 수). cache_hits + cache_misses = 예상 호출 수; cache_misses가 실제 판정기 호출 수.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenario_id", "snapshot_id", "weights", "requirements", "requirements_pre", "cache_hits", "cache_misses"],
+  "properties": {
+    "scenario_id": { "type": "integer" },
+    "snapshot_id": { "type": "integer" },
+    "weights": { "$ref": "scenario.json#/$defs/Weights" },
+    "requirements": { "$ref": "scenario.json#/$defs/Requirements" },
+    "requirements_pre": {
+      "type": "array",
+      "items": {
+        "title": "RequirementPreRow", "type": "object", "additionalProperties": false,
+        "required": ["complex_id", "name", "access", "regulation", "funds"],
+        "properties": {
+          "complex_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "excluded": { "description": "policy.exclude_intake_not_open 등으로 후보에서 빠짐", "type": "boolean", "default": false },
+          "access": { "$ref": "decision.json#/$defs/RequirementPre" },
+          "regulation": { "$ref": "decision.json#/$defs/RequirementPre" },
+          "funds": { "$ref": "decision.json#/$defs/RequirementPre" }
+        }
+      }
+    },
+    "cache_hits": { "type": "integer", "minimum": 0 },
+    "cache_misses": { "type": "integer", "minimum": 0 },
+    "calls_by_tool": { "description": "도구별 예상 실제 호출 수(0 이상 정수)", "type": "object", "additionalProperties": { "type": "integer" } }
+  },
+  "examples": [
+    {
+      "scenario_id": 3, "snapshot_id": 12,
+      "weights": { "p10": 0.30, "rerank": 0.15, "gap": 0.20, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.15 },
+      "requirements": {
+        "access": { "code": "official_path_no_account", "text": "통장 없이 공식 접수 경로(무순위·임의·선착순)로 접근 가능" },
+        "regulation": { "code": "no_residency_obligation", "text": "거주의무 없음" },
+        "funds": { "code": "equity_and_loan", "text": "자기자본 2억 이하로 계약금·잔금 충당" }
+      },
+      "requirements_pre": [
+        {
+          "complex_id": 3, "name": "송도 한내들 센트럴리버", "excluded": false,
+          "access": { "status": "충족", "evidence": "접수 가능(공식 팝업 2026-10-07, 선착순 동·호지정) → 충족" },
+          "regulation": { "status": "충족", "evidence": "거주의무 0개월 → 충족" },
+          "funds": { "status": "미충족", "evidence": "잔금 부족 = 8.56억 − 6억 − 2억 = 0.56억 > 0 → 미충족" }
+        }
+      ],
+      "cache_hits": 18, "cache_misses": 1, "calls_by_tool": { "decide": 1 }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "remaining_event.json",
+  "title": "RemainingEvent",
+  "description": "잔여 경로 이력 1건 (RA §3 remaining_event) = 타임라인 C8의 원천. kind 4종이 마커 모양을 정한다. units = units_by_type 합(해당 공고의 공급·잔여 세대), ratio_text는 대표 경쟁률·미달 원문.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "notice_no", "notice_date", "apply_dates", "units", "units_by_type", "result_text"],
+  "properties": {
+    "id": { "type": ["integer", "null"] },
+    "complex_id": { "type": ["integer", "null"] },
+    "kind": { "type": "string", "enum": ["본청약", "무순위", "임의", "선착순"] },
+    "notice_no": { "description": "공고번호. 선착순처럼 공고가 없으면 null", "type": ["string", "null"], "maxLength": 32 },
+    "notice_date": { "$ref": "fact.json" },
+    "apply_dates": { "type": "array", "items": { "$ref": "fact.json" } },
+    "units": { "$ref": "fact.json" },
+    "units_by_type": { "description": "타입 코드 → 세대 수(0 이상 정수)", "type": "object", "additionalProperties": { "type": "integer" } },
+    "ratio_text": { "type": ["string", "null"] },
+    "result_text": { "type": ["string", "null"] },
+    "raw_document_id": { "type": ["integer", "null"] }
+  },
+  "examples": [
+    {
+      "id": 801, "complex_id": 2, "kind": "임의", "notice_no": "2026940173",
+      "notice_date": { "v": "2026-08-13", "label": "확인됨", "prov": "fp_2301", "checked_at": "2026-10-07", "unit": "date" },
+      "apply_dates": [{ "v": "2026-08-19", "label": "확인됨", "prov": "fp_2302", "checked_at": "2026-10-07", "unit": "date" }],
+      "units": { "v": 25, "label": "확인됨", "prov": "fp_2303", "checked_at": "2026-10-07", "unit": "units" },
+      "units_by_type": { "64A": 4, "84A": 2, "84B": 8, "84F": 6, "98A·B·C": 5 },
+      "ratio_text": "64A 14.50 · 84A 7.50 · 84B 4.63 · 98C 미달 1",
+      "result_text": "98C만 미달", "raw_document_id": 9006
+    }
+  ]
+}

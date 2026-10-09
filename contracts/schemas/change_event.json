@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "change_event.json",
+  "title": "ChangeEvent",
+  "description": "변경 감지 1건 (RA §3 change_event). 사실 테이블(complex·complex_type·payment_terms 등)은 현재값만 두고 바뀐 내역은 여기에 남긴다.\nseverity=critical: 새 공고, 공식 홈페이지 팝업 변경(이미지 해시), 중도금 납부일, 가격·계약 조건 변경, 생활권 편집, 판정기 버전 변경(entity=judge, field=version). critical은 triggers_rejudge=true가 기본이고 웹훅 대상이다.\ntab: 피드 항목 클릭 시 열 G3 탭 힌트.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "snapshot_id", "entity", "entity_id", "field", "old_text", "new_text", "detected_at", "severity", "triggers_rejudge"],
+  "properties": {
+    "id": { "type": "integer" },
+    "snapshot_id": { "type": ["integer", "null"] },
+    "entity": {
+      "type": "string",
+      "enum": ["complex", "complex_type", "payment_terms", "competition", "remaining_event", "intake_status", "region", "judge", "catalyst", "benchmark", "supply", "unsold", "rtms_trade", "checklist_item", "notice"]
+    },
+    "entity_id": { "description": "엔티티 행 id. entity=judge·notice처럼 행이 없으면 null", "type": ["integer", "null"] },
+    "field": { "type": "string", "maxLength": 64 },
+    "old_text": { "type": ["string", "null"] },
+    "new_text": { "type": ["string", "null"] },
+    "detected_at": { "type": "string", "format": "date-time" },
+    "severity": { "type": "string", "enum": ["info", "notice", "critical"] },
+    "triggers_rejudge": { "type": "boolean" },
+    "complex_id": { "type": ["integer", "null"] },
+    "complex_name": { "type": ["string", "null"] },
+    "tab": { "type": ["string", "null"], "enum": ["price", "payment", "events", "ladder", "gap", "catalysts", "provenance", "judgments", null] }
+  },
+  "examples": [
+    {
+      "id": 3301, "snapshot_id": 12, "entity": "payment_terms", "entity_id": 77, "field": "down_payment_pct",
+      "old_text": "10", "new_text": "5", "detected_at": "2026-10-08T06:21:40+09:00", "severity": "critical",
+      "triggers_rejudge": true, "complex_id": 7, "complex_name": "김포 칸타빌 에디션", "tab": "payment"
+    }
+  ]
+}

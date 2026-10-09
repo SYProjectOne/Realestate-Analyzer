@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reference_refresh.json",
+  "title": "ReferenceRefreshPayload",
+  "description": "job_name='reference.refresh' 페이로드 (DECISIONS D2-4). 최초 기동 시 1회 + 매월 1일 05:00. 법정동·행정동·매핑·세대 현황 파일을 받아 legal_dong·admin_dong·admin_legal_map·household_stat에 적재한다. 다운로드가 실패하면 contracts/fixtures/reference/ 사본으로 동작한다. 페이로드는 빈 객체.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {},
+  "examples": [{}]
+}

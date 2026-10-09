@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "competition.json",
+  "title": "Competition",
+  "description": "청약홈 경쟁률 페이지 원문 그대로 1행 (RA §3 competition). ratio_or_shortfall_text는 표기 그대로(예 '4.61', '△451', '1.52(2순위 포함)').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["round", "kind", "type_code", "supply", "applied", "ratio_or_shortfall_text"],
+  "properties": {
+    "id": { "type": ["integer", "null"] },
+    "complex_id": { "type": ["integer", "null"] },
+    "round": { "description": "회차·순위 원문(예 '1순위 해당', '2순위', '임의 3차')", "type": "string", "maxLength": 32 },
+    "kind": { "type": "string", "enum": ["본청약", "무순위", "임의", "선착순"] },
+    "type_code": { "type": "string", "maxLength": 16 },
+    "supply": { "$ref": "fact.json" },
+    "applied": { "$ref": "fact.json" },
+    "ratio_or_shortfall_text": { "type": ["string", "null"], "maxLength": 64 },
+    "raw_document_id": { "type": ["integer", "null"] }
+  },
+  "examples": [
+    {
+      "id": 610, "complex_id": 2, "round": "임의 3차", "kind": "임의", "type_code": "84A",
+      "supply": { "v": 2, "label": "확인됨", "prov": "fp_2210", "checked_at": "2026-10-07", "unit": "units" },
+      "applied": { "v": 15, "label": "확인됨", "prov": "fp_2211", "checked_at": "2026-10-07", "unit": "count" },
+      "ratio_or_shortfall_text": "7.50", "raw_document_id": 9007
+    }
+  ]
+}

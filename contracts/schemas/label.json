@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "label.json",
+  "title": "Label",
+  "description": "수치·날짜의 신뢰 라벨 5종 (meta §2-2, RA §3). 빈칸 금지.\n- 확인됨: 공고문·청약홈·Open API 원문에서 그대로 읽은 값\n- 추정: 산술·가정으로 만든 값 (점수, 연식 보정, 합산 집계 등)\n- 비공식: 언론·블로그·홍보 자료\n- 재가공: 원본이 아닌 가공 데이터 (실거래 재가공 사이트 등)\n- 확인 불가: 찾지 못했거나 읽지 못한 값. 사유는 Fact.reason / Intake.reason 에 따로 둔다 (예: label=\"확인 불가\", reason=\"403\").\n\"사람 확인\"은 라벨이 아니다: intake_status.path=human_check 또는 Fact.human=true 로 표현하고 화면은 확인됨 배지에 \"사람\" 접두어를 붙인다.",
+  "type": "string",
+  "enum": ["확인됨", "추정", "비공식", "재가공", "확인 불가"],
+  "examples": ["확인됨", "추정", "확인 불가"]
+}

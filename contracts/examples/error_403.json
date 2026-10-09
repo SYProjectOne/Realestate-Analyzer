@@ -1,0 +1,7 @@
+{
+  "summary": "읽기 전용 토큰으로 쓰기",
+  "value": {
+    "code": "forbidden",
+    "detail": "read-only token may only call GET"
+  }
+}

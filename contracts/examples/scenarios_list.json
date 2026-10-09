@@ -1,0 +1,265 @@
+{
+  "summary": "내장 시나리오 5개(마이그레이션 시드와 같음)",
+  "value": [
+    {
+      "id": 1,
+      "code": "base",
+      "name": "기본",
+      "is_builtin": true,
+      "params": {
+        "residence": null,
+        "homeless": true,
+        "household_size": null,
+        "subscription": null,
+        "equity_won": null,
+        "loan_limit_won": null,
+        "purpose": "병행",
+        "holding_years": null,
+        "preferred_area_m2": 84,
+        "move_in_by": null,
+        "rewin_restricted": null,
+        "accepts_residency_obligation": null
+      },
+      "weights": {
+        "p10": 0.35,
+        "rerank": 0.2,
+        "gap": 0.15,
+        "benchmark": 0.1,
+        "supply": 0.1,
+        "liquidity": 0.1
+      },
+      "requirements": {
+        "access": {
+          "code": "intake_open",
+          "text": "공식 경로로 지금 접수 가능"
+        },
+        "regulation": {
+          "code": "no_conflict",
+          "text": "거주의무·재당첨 제한·규제지역 요건과 충돌 없음(입주 후 2년 내 매도 가능)"
+        },
+        "funds": {
+          "code": "equity_and_loan",
+          "text": "자기자본·대출한도로 계약금·잔금 충당(미입력이면 '미입력')"
+        }
+      },
+      "policy": {
+        "p10_horizon": "move_in_plus_1y",
+        "exclude_intake_not_open": false
+      },
+      "created_at": "2026-10-09T00:00:00+09:00"
+    },
+    {
+      "id": 2,
+      "code": "A",
+      "name": "A 가점 높음(실거주)",
+      "is_builtin": true,
+      "params": {
+        "residence": null,
+        "homeless": true,
+        "household_size": null,
+        "subscription": {
+          "has_account": true,
+          "score": 60
+        },
+        "equity_won": 300000000,
+        "loan_limit_won": 600000000,
+        "purpose": "실거주",
+        "holding_years": null,
+        "preferred_area_m2": 84,
+        "move_in_by": null,
+        "rewin_restricted": false,
+        "accepts_residency_obligation": true
+      },
+      "weights": {
+        "p10": 0.35,
+        "rerank": 0.2,
+        "gap": 0.15,
+        "benchmark": 0.1,
+        "supply": 0.1,
+        "move_in": 0.1
+      },
+      "requirements": {
+        "access": {
+          "code": "priority_supply",
+          "text": "가점제 1순위 공급(본청약·예정 공고)으로 접근 가능"
+        },
+        "regulation": {
+          "code": "no_conflict",
+          "text": "거주의무·전매제한이 실거주 계획과 충돌 없음"
+        },
+        "funds": {
+          "code": "equity_and_loan",
+          "text": "자기자본 3억 이하로 계약금·잔금 충당",
+          "params": {
+            "equity_won": 300000000,
+            "loan_limit_won": 600000000
+          }
+        }
+      },
+      "policy": {
+        "p10_horizon": "move_in_plus_1y",
+        "exclude_intake_not_open": false
+      },
+      "created_at": "2026-10-09T00:00:00+09:00"
+    },
+    {
+      "id": 3,
+      "code": "B",
+      "name": "B 가점 낮음·소액 자기자본",
+      "is_builtin": true,
+      "params": {
+        "residence": null,
+        "homeless": true,
+        "household_size": null,
+        "subscription": {
+          "has_account": null,
+          "score": 20
+        },
+        "equity_won": 200000000,
+        "loan_limit_won": 600000000,
+        "purpose": "병행",
+        "holding_years": 2,
+        "preferred_area_m2": 84,
+        "move_in_by": null,
+        "rewin_restricted": null,
+        "accepts_residency_obligation": false
+      },
+      "weights": {
+        "p10": 0.3,
+        "rerank": 0.15,
+        "gap": 0.2,
+        "benchmark": 0.1,
+        "supply": 0.1,
+        "liquidity": 0.15
+      },
+      "requirements": {
+        "access": {
+          "code": "official_path_no_account",
+          "text": "통장 없이 공식 접수 경로(무순위·임의·선착순)로 접근 가능"
+        },
+        "regulation": {
+          "code": "no_residency_obligation",
+          "text": "거주의무 없음"
+        },
+        "funds": {
+          "code": "equity_and_loan",
+          "text": "자기자본 2억 이하로 계약금·잔금 충당",
+          "params": {
+            "equity_won": 200000000,
+            "loan_limit_won": 600000000
+          }
+        }
+      },
+      "policy": {
+        "p10_horizon": "move_in_plus_1y",
+        "exclude_intake_not_open": false
+      },
+      "created_at": "2026-10-09T00:00:00+09:00"
+    },
+    {
+      "id": 4,
+      "code": "C",
+      "name": "C 시세차익 우선",
+      "is_builtin": true,
+      "params": {
+        "residence": null,
+        "homeless": true,
+        "household_size": null,
+        "subscription": null,
+        "equity_won": 400000000,
+        "loan_limit_won": 600000000,
+        "purpose": "시세차익",
+        "holding_years": 5,
+        "preferred_area_m2": 84,
+        "move_in_by": null,
+        "rewin_restricted": null,
+        "accepts_residency_obligation": false
+      },
+      "weights": {
+        "p10": 0.45,
+        "rerank": 0.15,
+        "gap": 0.15,
+        "benchmark": 0.05,
+        "supply": 0.05,
+        "liquidity": 0.15
+      },
+      "requirements": {
+        "access": {
+          "code": "resale_before_exit",
+          "text": "전매 종료 ≤ 목표 매도 시점(기준일 + 보유 5년)",
+          "params": {
+            "holding_years": 5
+          }
+        },
+        "regulation": {
+          "code": "no_residency_obligation",
+          "text": "거주의무 없음"
+        },
+        "funds": {
+          "code": "equity_and_loan",
+          "text": "자기자본 4억 이하로 계약금·잔금 충당",
+          "params": {
+            "equity_won": 400000000,
+            "loan_limit_won": 600000000
+          }
+        }
+      },
+      "policy": {
+        "p10_horizon": "asof_plus_5y",
+        "exclude_intake_not_open": false
+      },
+      "created_at": "2026-10-09T00:00:00+09:00"
+    },
+    {
+      "id": 5,
+      "code": "D",
+      "name": "D 즉시 구매",
+      "is_builtin": true,
+      "params": {
+        "residence": null,
+        "homeless": true,
+        "household_size": null,
+        "subscription": null,
+        "equity_won": 300000000,
+        "loan_limit_won": 600000000,
+        "purpose": "병행",
+        "holding_years": null,
+        "preferred_area_m2": 84,
+        "move_in_by": null,
+        "rewin_restricted": null,
+        "accepts_residency_obligation": false
+      },
+      "weights": {
+        "p10": 0.35,
+        "rerank": 0.2,
+        "gap": 0.15,
+        "benchmark": 0.1,
+        "supply": 0.1,
+        "move_in": 0.1
+      },
+      "requirements": {
+        "access": {
+          "code": "official_path",
+          "text": "공식 접수 경로로 지금 계약 가능"
+        },
+        "regulation": {
+          "code": "no_residency_obligation",
+          "text": "거주의무 없음"
+        },
+        "funds": {
+          "code": "equity_and_loan",
+          "text": "자기자본 3억 이하로 계약금·잔금 충당",
+          "params": {
+            "equity_won": 300000000,
+            "loan_limit_won": 600000000
+          }
+        }
+      },
+      "policy": {
+        "p10_horizon": "move_in_plus_1y",
+        "exclude_intake_not_open": true
+      },
+      "created_at": "2026-10-09T00:00:00+09:00"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """계약 테스트 픽스처 (WP0-A): 스키마 레지스트리·번들 문서·Postgres(pgserver 임베디드 또는 TEST_POSTGRES_URL)."""
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 import os

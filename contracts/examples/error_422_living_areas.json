@@ -1,0 +1,16 @@
+{
+  "summary": "생활권 편집 검증 실패",
+  "value": {
+    "code": "validation_error",
+    "detail": "legal_dong 2826011600 is not assigned to any living area",
+    "field_errors": [
+      {
+        "loc": [
+          "body",
+          "living_areas"
+        ],
+        "msg": "every legal_dong must belong to exactly one living area"
+      }
+    ]
+  }
+}

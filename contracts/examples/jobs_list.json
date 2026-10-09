@@ -1,0 +1,137 @@
+{
+  "summary": "G7 RejudgeQueue",
+  "value": [
+    {
+      "id": 905,
+      "job_name": "rejudge",
+      "kind": "rejudge",
+      "payload": {
+        "snapshot_id": 12,
+        "scenario_id": 3,
+        "complex_ids": null,
+        "reason": "G5 재판정 실행"
+      },
+      "scheduled_at": "2026-10-08T10:02:00+09:00",
+      "started_at": "2026-10-08T10:02:01+09:00",
+      "finished_at": null,
+      "status": "running",
+      "stats": {
+        "judge_calls": 0,
+        "cached": 18
+      },
+      "error_text": null,
+      "progress": {
+        "done": 18,
+        "total": 19,
+        "step": "decide"
+      }
+    },
+    {
+      "id": 904,
+      "job_name": "collect.daily",
+      "kind": "scheduled",
+      "payload": {
+        "region_id": 1,
+        "sources": [
+          "applyhome_list",
+          "official_site"
+        ]
+      },
+      "scheduled_at": "2026-10-08T06:00:00+09:00",
+      "started_at": "2026-10-08T06:00:01+09:00",
+      "finished_at": "2026-10-08T06:09:40+09:00",
+      "status": "done",
+      "stats": {
+        "raw_documents_new": 14,
+        "raw_documents_same": 205,
+        "failures": 3,
+        "change_events": 5,
+        "rejudge_jobs": 1
+      },
+      "error_text": null,
+      "progress": null
+    },
+    {
+      "id": 903,
+      "job_name": "report",
+      "kind": "manual",
+      "payload": {
+        "snapshot_id": 11,
+        "format": "pdf",
+        "compare_snapshot_id": null
+      },
+      "scheduled_at": "2026-10-07T22:00:00+09:00",
+      "started_at": "2026-10-07T22:00:01+09:00",
+      "finished_at": "2026-10-07T22:01:12+09:00",
+      "status": "done",
+      "stats": {
+        "path": "reports/2026-10-07/report_2026-10-07.pdf",
+        "filename": "report_2026-10-07.pdf",
+        "size_bytes": 1802240,
+        "sha256": "5c2d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
+        "content_type": "application/pdf"
+      },
+      "error_text": null,
+      "progress": null
+    },
+    {
+      "id": 902,
+      "job_name": "collect.weekly",
+      "kind": "scheduled",
+      "payload": {
+        "region_id": 1,
+        "sources": [
+          "rtms",
+          "stats",
+          "news"
+        ]
+      },
+      "scheduled_at": "2026-10-05T06:30:00+09:00",
+      "started_at": "2026-10-05T06:30:02+09:00",
+      "finished_at": "2026-10-05T06:51:10+09:00",
+      "status": "done",
+      "stats": {
+        "skipped": [
+          "news"
+        ],
+        "rtms_source": "reprocessed"
+      },
+      "error_text": null,
+      "progress": null
+    },
+    {
+      "id": 901,
+      "job_name": "snapshot.publish",
+      "kind": "scheduled",
+      "payload": {
+        "snapshot_id": 12
+      },
+      "scheduled_at": "2026-10-08T07:40:00+09:00",
+      "started_at": "2026-10-08T07:42:00+09:00",
+      "finished_at": "2026-10-08T07:42:10+09:00",
+      "status": "done",
+      "stats": {
+        "contradicted": 0
+      },
+      "error_text": null,
+      "progress": null
+    },
+    {
+      "id": 900,
+      "job_name": "region.bootstrap",
+      "kind": "manual",
+      "payload": {
+        "region_id": 1
+      },
+      "scheduled_at": "2026-10-07T08:00:01+09:00",
+      "started_at": "2026-10-07T08:00:02+09:00",
+      "finished_at": "2026-10-07T21:10:44+09:00",
+      "status": "done",
+      "stats": {
+        "judge_calls": 132
+      },
+      "error_text": null,
+      "progress": null
+    }
+  ]
+}

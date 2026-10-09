@@ -1,5 +1,6 @@
 """backend/app/core/protocols.py — RA §4-3 Protocol 전부, 시그니처, docstring 규칙, input_hash, mypy·ruff."""
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 import inspect
@@ -70,7 +71,7 @@ def test_method_signatures_follow_ra() -> None:
 
 
 def test_judge_adapter_has_nine_methods() -> None:
-    assert p.JUDGE_TOOLS == tuple(JUDGE_METHODS)
+    assert tuple(JUDGE_METHODS) == p.JUDGE_TOOLS
     assert typing.get_args(p.JudgeTool) == tuple(JUDGE_METHODS)
     for method in JUDGE_METHODS:
         sig = _signature(p.JudgeAdapter, method)
@@ -110,9 +111,10 @@ def test_input_hash_is_canonical() -> None:
     assert a != p.input_hash("decide", "decide:scenario_B", {"a": [1, "가"], "b": 1}, "0.1.0+jev-mcp@1.14.0")
     # 고정값 회귀: 정의(키 정렬, 구분자 ',' ':', ensure_ascii=False)가 바뀌면 전체 캐시가 무효가 된다
     assert p.input_hash("screen", "x", {}, "v") == (
-        "sha256:" + __import__("hashlib").sha256(
-            '{"adapter_version":"v","payload":{},"purpose":"x","tool":"screen"}'.encode()
-        ).hexdigest()
+        "sha256:"
+        + __import__("hashlib")
+        .sha256(b'{"adapter_version":"v","payload":{},"purpose":"x","tool":"screen"}')
+        .hexdigest()
     )
 
 
@@ -124,7 +126,12 @@ def test_contract_version_matches_changelog() -> None:
 
 def _run(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", *args], cwd=BACKEND, capture_output=True, text=True, encoding="utf-8", check=False
+        [sys.executable, "-m", *args],
+        cwd=BACKEND,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
 
 

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "snapshot_publish.json",
+  "title": "SnapshotPublishPayload",
+  "description": "job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot_id"],
+  "properties": { "snapshot_id": { "type": "integer" } },
+  "examples": [{ "snapshot_id": 12 }]
+}

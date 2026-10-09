@@ -1,0 +1,7 @@
+{
+  "summary": "판정기 장애",
+  "value": {
+    "code": "judge_unavailable",
+    "detail": "judge adapter unavailable (degraded mode); collection and reads continue"
+  }
+}

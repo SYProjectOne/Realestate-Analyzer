@@ -1,5 +1,6 @@
 """생성물: openapi.bundled.yaml·contracts_gen.py 재생성 diff 0, 번들 = 스키마 파일, 생성 모델이 예시를 받아들인다."""
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 import subprocess
@@ -56,7 +57,9 @@ def _model_examples() -> list[ScenarioExample]:
                 schema = media["schema"]
                 for name, ex in (media.get("examples") or {}).items():
                     if "$ref" in schema:
-                        out.append((f"{method} {path} {where} {name}", schema["$ref"].rsplit("/", 1)[1], ex["value"]))
+                        out.append(
+                            (f"{method} {path} {where} {name}", schema["$ref"].rsplit("/", 1)[1], ex["value"])
+                        )
                     elif schema.get("type") == "array" and "$ref" in schema.get("items", {}):
                         model = schema["items"]["$ref"].rsplit("/", 1)[1]
                         for i, item_value in enumerate(ex["value"]):

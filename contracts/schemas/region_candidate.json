@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "region_candidate.json",
+  "title": "RegionCandidate",
+  "description": "GET /regions/resolve?q= 의 후보 1건 (DECISIONS D2-3). 자유 지명을 legal_dong·admin_dong 참조 테이블과 문자열 매칭한 결과다(판정기 호출 없음 — 문자열 매칭은 판단이 아님).\n매칭 규칙: 공백과 접미사 '시/군/구/동/읍/면'을 무시하고 이름 부분 일치. 정렬은 match(exact > prefix > partial) → kind(sido > sigungu > admin_dong > legal_dong) → full_name.\nlegal_dong_codes는 이 후보를 고르면 region에 들어갈 법정동(10자리) 전체다. sido·sigungu 후보는 하위 법정동 전부, admin_dong 후보는 admin_legal_map으로 펼친 법정동이다. 폐지 코드(active=false)는 포함하지 않는다.\n분구·개편으로 옛 코드와 새 코드가 함께 있으면 둘 다 후보로 나온다(DECISIONS D3: 서구/검단구).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "code", "full_name", "legal_dong_codes", "match"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["sido", "sigungu", "admin_dong", "legal_dong"] },
+    "code": { "description": "sido 2자리, sigungu 5자리, admin_dong·legal_dong 10자리", "type": "string", "pattern": "^[0-9]{2}([0-9]{3}([0-9]{5})?)?$" },
+    "full_name": { "type": "string" },
+    "legal_dong_codes": { "type": "array", "description": "법정동 코드 10자리 문자열", "items": { "type": "string" } },
+    "match": { "type": "string", "enum": ["exact", "prefix", "partial"] },
+    "sigungu_code": { "type": ["string", "null"], "pattern": "^[0-9]{5}$" },
+    "sido_code": { "type": ["string", "null"], "pattern": "^[0-9]{2}$" }
+  },
+  "examples": [
+    {
+      "kind": "legal_dong", "code": "2818510600", "full_name": "인천광역시 연수구 송도동",
+      "legal_dong_codes": ["2818510600"], "match": "exact", "sigungu_code": "28185", "sido_code": "28"
+    },
+    {
+      "kind": "sigungu", "code": "41570", "full_name": "경기도 김포시",
+      "legal_dong_codes": ["4157010100", "4157010200", "4157010300", "4157010400", "4157010500", "4157025021"],
+      "match": "exact", "sigungu_code": "41570", "sido_code": "41"
+    }
+  ]
+}

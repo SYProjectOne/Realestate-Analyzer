@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scenario.json",
+  "title": "Scenario",
+  "description": "상황 시나리오 (RA §3 scenario, §6-4, §6-7). 내장 5개(code base·A·B·C·D, is_builtin=true)는 마이그레이션 0001이 시드한다. 사용자 시나리오는 POST /scenarios로 추가(code=null).\n- params: G5 폼 10필드(+ 규제 사전 계산용 선택 2필드). 비어 있는 값은 사전 계산에서 '미입력'.\n- weights: 6개 가중치, 합 = 1. A·D는 liquidity 대신 move_in(s_movein = clamp(10 − 2×입주까지 연수, 0, 10)).\n- requirements: decide 요건 3개(접근 가능성·규제 제약·자금)의 규칙 코드. 사전 계산(RequirementPrecalc)이 이 코드로 충족/미충족 + 근거 문자열을 만든다.\n- policy: p10_horizon(종합 점수 p10 성분에 쓸 사다리 시점; C는 asof_plus_5y), exclude_intake_not_open(D: 접수 불가 단지는 후보 제외).\n?scenario= 쿼리는 code(base|A|B|C|D) 또는 숫자 id를 받는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "code", "name", "is_builtin", "params", "weights", "requirements", "policy"],
+  "properties": {
+    "id": { "type": "integer" },
+    "code": { "type": ["string", "null"], "enum": ["base", "A", "B", "C", "D", null] },
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "is_builtin": { "type": "boolean" },
+    "params": { "$ref": "#/$defs/ScenarioParams" },
+    "weights": { "$ref": "#/$defs/Weights" },
+    "requirements": { "$ref": "#/$defs/Requirements" },
+    "policy": { "$ref": "#/$defs/ScenarioPolicy" },
+    "created_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "$defs": {
+    "ComponentKey": {
+      "title": "ComponentKey",
+      "description": "종합 점수 구성 성분 키 (RA §6-4). 한 시나리오는 p10·rerank·gap·benchmark·supply 와 liquidity|move_in 중 하나, 모두 6개를 쓴다.",
+      "type": "string",
+      "enum": ["p10", "rerank", "gap", "benchmark", "supply", "liquidity", "move_in"]
+    },
+    "Weights": {
+      "title": "Weights",
+      "description": "가중치 6개(각 0~1, 합 = 1). 저장되는 시나리오 가중치는 10진 합이 정확히 1(검증 허용 오차 1e-9), 민감도 변형 가중치는 표시 반올림 때문에 1e-6까지 허용. liquidity와 move_in 중 정확히 하나만 있다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p10", "rerank", "gap", "benchmark", "supply"],
+      "properties": {
+        "p10": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rerank": { "type": "number", "minimum": 0, "maximum": 1 },
+        "gap": { "type": "number", "minimum": 0, "maximum": 1 },
+        "benchmark": { "type": "number", "minimum": 0, "maximum": 1 },
+        "supply": { "type": "number", "minimum": 0, "maximum": 1 },
+        "liquidity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "move_in": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "if": { "required": ["liquidity"] },
+      "then": { "not": { "required": ["move_in"] } },
+      "else": { "required": ["move_in"] }
+    },
+    "ScenarioParams": {
+      "title": "ScenarioParams",
+      "description": "내 조건 (G5 ScenarioForm 10필드: 거주지·무주택·세대원·통장/가점·자기자본·총한도·목적·보유기간·평형·입주시기) + 규제 사전 계산용 선택 필드(rewin_restricted, accepts_residency_obligation). 개인정보가 아니라 조건값이며 판정기 payload에는 사전 계산 결과 문자열만 들어간다.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "residence": { "description": "거주 시도(예 '인천', '경기', '서울') 또는 null", "type": ["string", "null"], "maxLength": 32 },
+        "homeless": { "description": "무주택세대구성원 여부", "type": ["boolean", "null"] },
+        "household_size": { "description": "세대원 수", "type": ["integer", "null"], "minimum": 1, "maximum": 20 },
+        "subscription": {
+          "description": "청약통장·가점",
+          "anyOf": [
+            {
+              "title": "SubscriptionInfo", "type": "object", "additionalProperties": false,
+              "properties": {
+                "has_account": { "type": ["boolean", "null"] },
+                "score": { "description": "청약 가점 0~84", "type": ["integer", "null"], "minimum": 0, "maximum": 84 }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "equity_won": { "description": "자기자본(원). null=미입력 → 자금 요건 '미입력'", "type": ["integer", "null"], "minimum": 0 },
+        "loan_limit_won": { "description": "총 대출 한도(원)", "type": ["integer", "null"], "minimum": 0 },
+        "purpose": { "type": ["string", "null"], "enum": ["실거주", "시세차익", "병행", null] },
+        "holding_years": { "type": ["number", "null"], "minimum": 0, "maximum": 30 },
+        "preferred_area_m2": { "type": ["number", "null"], "minimum": 10, "maximum": 300 },
+        "move_in_by": { "description": "입주 희망: 'YYYY-MM' 이전, '즉시', 또는 null", "type": ["string", "null"], "pattern": "^([0-9]{4}-[0-9]{2}|즉시)$" },
+        "rewin_restricted": { "description": "재당첨 제한 이력 있음", "type": ["boolean", "null"] },
+        "accepts_residency_obligation": { "description": "거주의무 수용(실거주 계획)", "type": ["boolean", "null"] }
+      }
+    },
+    "RequirementRule": {
+      "title": "RequirementRule",
+      "description": "요건 1개의 규칙. code별 의미(RA §6-7):\naccess — intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).\nregulation — no_conflict: 거주의무·재당첨 제한·규제지역 요건이 params와 충돌 없음 | no_residency_obligation: 거주의무 0개월.\nfunds — equity_and_loan: P_mid × 계약금% ≤ 자기자본 and P_mid − 대출한도 − 자기자본 ≤ 0 (중도금 무이자·이자후불제 문구는 근거에 표기); 자기자본·한도가 null이면 '미입력'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "text"],
+      "properties": {
+        "code": { "type": "string", "enum": ["intake_open", "priority_supply", "official_path_no_account", "official_path", "resale_before_exit", "no_conflict", "no_residency_obligation", "equity_and_loan"] },
+        "text": { "description": "decide 요건 문장(판정기 payload·화면 표 머리)", "type": "string", "minLength": 1 },
+        "params": { "type": "object" }
+      }
+    },
+    "Requirements": {
+      "title": "Requirements",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["access", "regulation", "funds"],
+      "properties": {
+        "access": { "$ref": "#/$defs/RequirementRule" },
+        "regulation": { "$ref": "#/$defs/RequirementRule" },
+        "funds": { "$ref": "#/$defs/RequirementRule" }
+      }
+    },
+    "ScenarioPolicy": {
+      "title": "ScenarioPolicy",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p10_horizon", "exclude_intake_not_open"],
+      "properties": {
+        "p10_horizon": { "type": "string", "enum": ["move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"] },
+        "exclude_intake_not_open": { "type": "boolean" }
+      }
+    },
+    "ScenarioCreate": {
+      "title": "ScenarioCreate",
+      "description": "POST /scenarios 본문(사용자 시나리오). requirements·policy를 생략하면 기본 시나리오의 것을 쓴다. 가중치 합 ≠ 1 이면 422.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "params", "weights"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "params": { "$ref": "#/$defs/ScenarioParams" },
+        "weights": { "$ref": "#/$defs/Weights" },
+        "requirements": { "anyOf": [{ "$ref": "#/$defs/Requirements" }, { "type": "null" }] },
+        "policy": { "anyOf": [{ "$ref": "#/$defs/ScenarioPolicy" }, { "type": "null" }] }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": 3, "code": "B", "name": "B 가점 낮음·소액 자기자본", "is_builtin": true,
+      "params": {
+        "residence": null, "homeless": true, "household_size": null, "subscription": { "has_account": null, "score": 20 },
+        "equity_won": 200000000, "loan_limit_won": 600000000, "purpose": "병행", "holding_years": 2,
+        "preferred_area_m2": 84, "move_in_by": null, "rewin_restricted": null, "accepts_residency_obligation": false
+      },
+      "weights": { "p10": 0.30, "rerank": 0.15, "gap": 0.20, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.15 },
+      "requirements": {
+        "access": { "code": "official_path_no_account", "text": "통장 없이 공식 접수 경로(무순위·임의·선착순)로 접근 가능" },
+        "regulation": { "code": "no_residency_obligation", "text": "거주의무 없음" },
+        "funds": { "code": "equity_and_loan", "text": "자기자본 2억 이하로 계약금·잔금 충당", "params": { "equity_won": 200000000, "loan_limit_won": 600000000 } }
+      },
+      "policy": { "p10_horizon": "move_in_plus_1y", "exclude_intake_not_open": false },
+      "created_at": "2026-10-09T00:00:00+09:00"
+    }
+  ]
+}

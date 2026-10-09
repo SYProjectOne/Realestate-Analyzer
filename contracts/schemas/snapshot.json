@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "snapshot.json",
+  "title": "Snapshot",
+  "description": "기준일 스냅샷 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8). (region_id, asof_date) 유일, 하루 1개.\nstatus: building(수집·판정 중) → ready(점수까지 계산됨) → published(claim contradicted 0 검사 통과). contradicted_claims > 0 이면 published가 될 수 없고 보고서 생성 버튼은 비활성(G8).\ndegraded=true: 이 스냅샷을 만드는 동안 판정기가 없었다(JudgeUnavailable) — 수집·정규화만 있고 점수는 미계산(T18). 화면 G1·G7 배너.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "region_id", "asof_date", "status", "degraded", "created_at"],
+  "properties": {
+    "id": { "type": "integer" },
+    "region_id": { "type": "integer" },
+    "asof_date": { "type": "string", "format": "date" },
+    "status": { "type": "string", "enum": ["building", "ready", "published"] },
+    "degraded": { "type": "boolean" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "published_at": { "type": ["string", "null"], "format": "date-time" },
+    "contradicted_claims": { "description": "verify_status=contradicted claim 수", "type": ["integer", "null"], "minimum": 0 },
+    "complex_count": { "type": ["integer", "null"], "minimum": 0 }
+  },
+  "examples": [
+    {
+      "id": 12, "region_id": 1, "asof_date": "2026-10-08", "status": "published", "degraded": false,
+      "created_at": "2026-10-08T06:00:03+09:00", "published_at": "2026-10-08T07:42:10+09:00",
+      "contradicted_claims": 0, "complex_count": 16
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """contracts/migrations — upgrade/downgrade/upgrade(SQLite·Postgres 16), models ↔ migration diff 0, 시드, 유일 제약."""
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 import importlib.util
@@ -98,7 +99,9 @@ def check_tables(engine: Engine) -> None:
 
 def check_seeds(engine: Engine) -> None:
     with engine.connect() as conn:
-        rows = conn.execute(sa.text("SELECT id, code, name, is_builtin, weights FROM scenario ORDER BY id")).all()
+        rows = conn.execute(
+            sa.text("SELECT id, code, name, is_builtin, weights FROM scenario ORDER BY id")
+        ).all()
     assert [r.code for r in rows] == ["base", "A", "B", "C", "D"]
     assert [r.id for r in rows] == [1, 2, 3, 4, 5]
     for r in rows:
@@ -153,7 +156,13 @@ def check_input_hash_rejects_duplicates(engine: Engine) -> None:
 
 def check_enum_check_rejects(engine: Engine) -> None:
     table = Base.metadata.tables["job_run"]
-    bad = {"job_name": "report.md", "kind": "manual", "payload": {}, "scheduled_at": "2026-10-08", "stats": {}}
+    bad = {
+        "job_name": "report.md",
+        "kind": "manual",
+        "payload": {},
+        "scheduled_at": "2026-10-08",
+        "stats": {},
+    }
     with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:
         conn.execute(table.insert(), bad)
 
@@ -188,7 +197,10 @@ def test_sqlite_check_constraints_match_models(sqlite_engine: Engine) -> None:
             for c in table.constraints
             if isinstance(c, sa.CheckConstraint)
         }
-        db = {str(c["name"]): " ".join(str(c["sqltext"]).split()) for c in insp.get_check_constraints(table.name)}
+        db = {
+            str(c["name"]): " ".join(str(c["sqltext"]).split())
+            for c in insp.get_check_constraints(table.name)
+        }
         assert db == model, table.name
 
 
@@ -213,7 +225,9 @@ def test_column_type_policy() -> None:
             name, typ = col.name, col.type
             if name.endswith("_won") and not isinstance(typ, sa.BigInteger):
                 problems.append(f"{table.name}.{name} {typ}")
-            if name.endswith("_m2") and not (isinstance(typ, sa.Numeric) and (typ.precision, typ.scale) == (8, 2)):
+            if name.endswith("_m2") and not (
+                isinstance(typ, sa.Numeric) and (typ.precision, typ.scale) == (8, 2)
+            ):
                 problems.append(f"{table.name}.{name} {typ}")
             if name.endswith(("_date", "_from")) and not (isinstance(typ, sa.String) and typ.length == 10):
                 problems.append(f"{table.name}.{name} {typ}")

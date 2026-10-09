@@ -1,0 +1,8 @@
+{
+  "summary": "PDF + 전일 비교",
+  "value": {
+    "snapshot_id": 12,
+    "format": "pdf",
+    "compare_snapshot_id": 11
+  }
+}

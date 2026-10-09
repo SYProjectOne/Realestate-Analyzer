@@ -1,0 +1,28 @@
+{
+  "summary": "출처 패널 — 점수 성분 식",
+  "value": {
+    "id": "sc_88_4_gap",
+    "kind": "score_component",
+    "entity": "score_component",
+    "entity_id": null,
+    "field": "gap",
+    "value_text": "5.0",
+    "label": "추정",
+    "reason": "대체·보정 c=0.015",
+    "url": null,
+    "checked_at": "2026-10-08",
+    "excerpt": null,
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": null,
+    "source_kind": null,
+    "http_status": null,
+    "source_rank": null,
+    "chosen": null,
+    "conflict_group": null,
+    "conflicts": [],
+    "formula_text": "보고서 (a)단계 고정 입력: 리버시티 +0~+20 / 센트럴자이 −10~−20 → 혼재 중앙 0 → 5.0",
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  }
+}

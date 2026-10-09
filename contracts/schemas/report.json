@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report.json",
+  "title": "Report",
+  "description": "보고서 1건 — G8 ReportList (DECISIONS D4). 보고서는 report 잡의 산출물이고 id = job_run.id. status=done이면 GET /reports/{id}가 파일(text/html 또는 application/pdf)을 준다. blocked_reason은 contradicted claim으로 생성이 거부된 경우.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "snapshot_id", "compare_snapshot_id", "format", "status", "created_at", "finished_at", "filename", "size_bytes", "sha256"],
+  "properties": {
+    "id": { "type": "integer" },
+    "snapshot_id": { "type": "integer" },
+    "compare_snapshot_id": { "type": ["integer", "null"] },
+    "format": { "type": "string", "enum": ["html", "pdf"] },
+    "status": { "type": "string", "enum": ["queued", "running", "done", "failed"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": ["string", "null"], "format": "date-time" },
+    "filename": { "type": ["string", "null"] },
+    "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+    "blocked_reason": { "type": ["string", "null"] }
+  },
+  "examples": [
+    {
+      "id": 910, "snapshot_id": 12, "compare_snapshot_id": 11, "format": "pdf", "status": "done",
+      "created_at": "2026-10-08T08:00:00+09:00", "finished_at": "2026-10-08T08:01:12+09:00",
+      "filename": "report_2026-10-08_vs_2026-10-07.pdf", "size_bytes": 1843200,
+      "sha256": "0d5e8f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6", "blocked_reason": null
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "field_candidate.json",
+  "title": "FieldCandidate",
+  "description": "필드 값 후보 1개 (RA §4-3 Parser 출력). 원문 발췌(excerpt) 필수 — 출처 없는 숫자는 하나도 남기지 않는다.\n- entity/field: 저장 대상 테이블·컬럼(예 entity='complex_type', field='max_price_won'). 아직 행이 없으면 entity_id=null이고 entity_key로 식별(예 applyhome_id, 'applyhome_id:type_code').\n- value: 정규화 값(원 단위 정수, ㎡ 소수 2자리, ISO 날짜), value_text: 원문 표기 그대로.\n- source_rank: §3 출처 우선순위(1이 가장 높음). 세대수·면적·일정·경쟁률은 청약홈 상세(1) > 공고문(2) > 언론(3); 가격·발코니·옵션·납부·전매·거주의무는 공고문 최신(1) > 청약홈(2) > 언론(3).\n- primary: 1차 자료(청약홈·공고문·Open API·공식 홈페이지) 여부. 같은 source_rank의 1차 vs 1차 상충만 compare 대상(ResolvedFields 설명).\n- needs_extract: 정규식·표 파서가 실패해 판정기 extract로 넘길 필드.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entity", "entity_id", "field", "value_text", "value", "source_rank", "label", "excerpt", "raw_document_id"],
+  "properties": {
+    "entity": { "type": "string", "enum": ["complex", "complex_type", "payment_terms", "competition", "remaining_event", "benchmark", "rtms_trade", "catalyst", "supply", "unsold", "household_stat"] },
+    "entity_id": { "type": ["integer", "null"] },
+    "entity_key": { "type": ["string", "null"] },
+    "field": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "value_text": { "type": ["string", "null"] },
+    "value": { "type": ["number", "string", "boolean", "null"] },
+    "source_rank": { "type": "integer", "minimum": 1, "maximum": 9 },
+    "source_kind": { "anyOf": [{ "$ref": "raw_document.json#/$defs/SourceKind" }, { "type": "null" }] },
+    "primary": { "type": "boolean", "default": true },
+    "label": { "$ref": "label.json" },
+    "reason": { "type": ["string", "null"] },
+    "excerpt": { "type": "string", "minLength": 1 },
+    "excerpt_start": { "description": "raw text_path 안 발췌 시작 오프셋(문자)", "type": ["integer", "null"], "minimum": 0 },
+    "excerpt_end": { "type": ["integer", "null"], "minimum": 0 },
+    "raw_document_id": { "type": ["integer", "null"] },
+    "url": { "type": ["string", "null"] },
+    "checked_at": { "type": ["string", "null"], "format": "date" },
+    "needs_extract": { "type": "boolean", "default": false }
+  },
+  "examples": [
+    {
+      "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,573",
+      "value": 1573, "source_rank": 1, "source_kind": "applyhome_detail", "primary": true, "label": "확인됨", "reason": null,
+      "excerpt": "공급세대수 1,573세대", "excerpt_start": 1180, "excerpt_end": 1193, "raw_document_id": 9101,
+      "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "needs_extract": false
+    }
+  ]
+}

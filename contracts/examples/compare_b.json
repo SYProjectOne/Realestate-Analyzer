@@ -1,0 +1,2196 @@
+{
+  "summary": "G4 엘리프·칸타빌·스위첸, 상황 B(동률)",
+  "description": "decisions.B는 jev_decide #127: confidence 0.48 < 0.6 → 칸타빌 0.54·엘리프 0.42 둘 다 tie=true·chosen=true(T2). 스위첸은 자금 요건 사전 계산 '충족'인데 판정기 contradicted → mismatch=true('증거와 상이'). decisions.base는 #125(경고 1건 포함).",
+  "value": {
+    "snapshot_id": 12,
+    "asof_date": "2026-10-08",
+    "scenario_id": 3,
+    "ids": [
+      2,
+      7,
+      4
+    ],
+    "rows": [
+      {
+        "complex_id": 2,
+        "name": "엘리프 검단 포레듀",
+        "living_area": "la_2",
+        "living_area_name": "서구(검단)",
+        "score_run_id": 90,
+        "total": {
+          "v": 5.65,
+          "label": "추정",
+          "prov": "st_90_2",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 2,
+        "tie_group": null,
+        "unstable": false,
+        "p10": {
+          "v": 0.45,
+          "label": "추정",
+          "prov": "jl_68",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 4.5,
+              "label": "추정",
+              "prov": "sc_90_2_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.45,
+              "label": "추정",
+              "prov": "jl_68",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.45 = 4.5 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 1.35
+          },
+          "rerank": {
+            "score": {
+              "v": 8.9,
+              "label": "추정",
+              "prov": "sc_90_2_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.89,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.89 × 10 = 8.9 (#124)",
+            "weight": 0.15,
+            "contribution": 1.335
+          },
+          "gap": {
+            "score": {
+              "v": 6.3,
+              "label": "추정",
+              "prov": "sc_90_2_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 혼재(−30~+20) → 6.3",
+            "weight": 0.2,
+            "contribution": 1.26
+          },
+          "benchmark": {
+            "score": {
+              "v": 5.0,
+              "label": "추정",
+              "prov": "sc_90_2_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 검단 저가분 +54~103% / 2023~24 −1~+10% → 5",
+            "weight": 0.1,
+            "contribution": 0.5
+          },
+          "supply": {
+            "score": {
+              "v": 3.0,
+              "label": "추정",
+              "prov": "sc_90_2_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 동시 입주 → 3",
+            "weight": 0.1,
+            "contribution": 0.3
+          },
+          "liquidity": {
+            "score": {
+              "v": 6.0,
+              "label": "추정",
+              "prov": "sc_90_2_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 3년(2028-09)·거주의무 없음 → 6",
+            "weight": 0.15,
+            "contribution": 0.9
+          }
+        },
+        "delta_rerank": {
+          "v": -0.02,
+          "label": "추정",
+          "prov": "sc_90_2_rerank",
+          "checked_at": "2026-10-08",
+          "reason": "0.91 → 0.89 (#71 → #124)",
+          "unit": "ratio"
+        },
+        "intake": {
+          "id": 502,
+          "complex_id": 2,
+          "snapshot_id": 12,
+          "status": "가능",
+          "path": "official_popup",
+          "evidence_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
+          "screenshot_path": "official_site/2026-10-07/02a7f3.png",
+          "raw_document_id": 9202,
+          "checked_at": "2026-10-07T09:12:00+09:00",
+          "http_status": 200,
+          "reason": null,
+          "note": "팝업 '선착순 동·호지정 계약 중'",
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.42,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": true,
+          "tie": true,
+          "mismatch": false,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 7,
+        "name": "김포 칸타빌 에디션",
+        "living_area": "la_4",
+        "living_area_name": "김포시",
+        "score_run_id": 90,
+        "total": {
+          "v": 4.59,
+          "label": "추정",
+          "prov": "st_90_7",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 5,
+        "tie_group": 1,
+        "unstable": true,
+        "p10": {
+          "v": 0.29,
+          "label": "추정",
+          "prov": "jl_118",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 2.9,
+              "label": "추정",
+              "prov": "sc_90_7_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.29,
+              "label": "추정",
+              "prov": "jl_118",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.29 = 2.9 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 0.87
+          },
+          "rerank": {
+            "score": {
+              "v": 7.3,
+              "label": "추정",
+              "prov": "sc_90_7_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.73,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.73 × 10 = 7.3 (#124)",
+            "weight": 0.15,
+            "contribution": 1.095
+          },
+          "gap": {
+            "score": {
+              "v": 3.1,
+              "label": "추정",
+              "prov": "sc_90_7_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 걸포 메트로자이(2020) +0~+15 → 중앙 +7.5 → 3.1",
+            "weight": 0.2,
+            "contribution": 0.62
+          },
+          "benchmark": {
+            "score": {
+              "v": 4.0,
+              "label": "추정",
+              "prov": "sc_90_7_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 메트로자이 +31~70 / 우미린 분양권 −12~−26 → 4",
+            "weight": 0.1,
+            "contribution": 0.4
+          },
+          "supply": {
+            "score": {
+              "v": 2.5,
+              "label": "추정",
+              "prov": "sc_90_7_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 8,860(북변 오브센트 3,058 포함)+북변5 대기 → 2.5",
+            "weight": 0.1,
+            "contribution": 0.25
+          },
+          "liquidity": {
+            "score": {
+              "v": 9.0,
+              "label": "추정",
+              "prov": "sc_90_7_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 도과·거주의무·재당첨 없음·계약금 5% → 9",
+            "weight": 0.15,
+            "contribution": 1.35
+          }
+        },
+        "delta_rerank": null,
+        "intake": {
+          "id": 507,
+          "complex_id": 7,
+          "snapshot_id": 12,
+          "status": "가능",
+          "path": "official_popup",
+          "evidence_url": "https://cantaviltheedition.com/",
+          "screenshot_path": "official_site/2026-10-07/07a7f3.png",
+          "raw_document_id": 9207,
+          "checked_at": "2026-10-07T09:17:00+09:00",
+          "http_status": 200,
+          "reason": null,
+          "note": "팝업 '선착순 동·호지정 계약 중 / 전매제한 FREE / 거주의무 FREE'",
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.54,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": true,
+          "tie": true,
+          "mismatch": false,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      },
+      {
+        "complex_id": 4,
+        "name": "오퍼스 한강 스위첸",
+        "living_area": "la_4",
+        "living_area_name": "김포시",
+        "score_run_id": 90,
+        "total": {
+          "v": 4.95,
+          "label": "추정",
+          "prov": "st_90_4",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "rank": 4,
+        "tie_group": null,
+        "unstable": false,
+        "p10": {
+          "v": 0.33,
+          "label": "추정",
+          "prov": "jl_123",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 noul",
+          "unit": "prob"
+        },
+        "components": {
+          "p10": {
+            "score": {
+              "v": 3.3,
+              "label": "추정",
+              "prov": "sc_90_4_p10",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.33,
+              "label": "추정",
+              "prov": "jl_123",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 noul",
+              "unit": "prob"
+            },
+            "formula_text": "10 × 0.33 = 3.3 (판정기 noul, 입주 후 1년 +10%)",
+            "weight": 0.3,
+            "contribution": 0.99
+          },
+          "rerank": {
+            "score": {
+              "v": 8.7,
+              "label": "추정",
+              "prov": "sc_90_4_rerank",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": {
+              "v": 0.87,
+              "label": "추정",
+              "prov": "jl_124",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 rerank",
+              "unit": "prob"
+            },
+            "formula_text": "보고서 (a)단계: relevance 0.87 × 10 = 8.7 (#124)",
+            "weight": 0.15,
+            "contribution": 1.305
+          },
+          "gap": {
+            "score": {
+              "v": 5.0,
+              "label": "추정",
+              "prov": "sc_90_4_gap",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 리버시티 +0~+20 / 센트럴자이 −10~−20 → 혼재 중앙 0 → 5.0",
+            "weight": 0.2,
+            "contribution": 1.0
+          },
+          "benchmark": {
+            "score": {
+              "v": 4.5,
+              "label": "추정",
+              "prov": "sc_90_4_benchmark",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 리버시티 +45~63 / 고촌센트럴자이 −2~+3 → 4.5",
+            "weight": 0.1,
+            "contribution": 0.45
+          },
+          "supply": {
+            "score": {
+              "v": 3.0,
+              "label": "추정",
+              "prov": "sc_90_4_supply",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 2028 김포 8,860 동시 입주(본 단지 포함) → 3",
+            "weight": 0.1,
+            "contribution": 0.3
+          },
+          "liquidity": {
+            "score": {
+              "v": 6.0,
+              "label": "추정",
+              "prov": "sc_90_4_liquidity",
+              "checked_at": "2026-10-08",
+              "unit": "score"
+            },
+            "raw": null,
+            "formula_text": "보고서 (a)단계 고정 입력: 전매 3년(2028-07, 등기 시 해제)·거주의무 없음 → 6",
+            "weight": 0.15,
+            "contribution": 0.9
+          }
+        },
+        "delta_rerank": null,
+        "intake": {
+          "id": 504,
+          "complex_id": 4,
+          "snapshot_id": 12,
+          "status": "확인 불가",
+          "path": "official_popup",
+          "evidence_url": "https://opus-switzen.com/",
+          "screenshot_path": null,
+          "raw_document_id": 9204,
+          "checked_at": "2026-10-07T09:14:00+09:00",
+          "http_status": 403,
+          "reason": "403",
+          "note": null,
+          "entered_by": null
+        },
+        "decision": {
+          "prob": {
+            "v": 0.01,
+            "label": "추정",
+            "prov": "jl_127",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 decide",
+            "unit": "prob"
+          },
+          "chosen": false,
+          "tie": false,
+          "mismatch": true,
+          "confidence": 0.48
+        },
+        "judge_scope": "판정 대상"
+      }
+    ],
+    "components": {
+      "weights": {
+        "p10": 0.3,
+        "rerank": 0.15,
+        "gap": 0.2,
+        "benchmark": 0.1,
+        "supply": 0.1,
+        "liquidity": 0.15
+      },
+      "keys": [
+        "p10",
+        "rerank",
+        "gap",
+        "benchmark",
+        "supply",
+        "liquidity"
+      ]
+    },
+    "ladders": {
+      "2": [
+        {
+          "complex_id": 2,
+          "snapshot_id": 12,
+          "horizon": "move_in_plus_1y",
+          "target_ym": "2029-03",
+          "target_label": "2029 상반기",
+          "months_from_asof": 29,
+          "p5": {
+            "v": 0.48,
+            "label": "추정",
+            "prov": "jl_68",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p10": {
+            "v": 0.45,
+            "label": "추정",
+            "prov": "jl_68",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p20": {
+            "v": 0.36,
+            "label": "추정",
+            "prov": "jl_68",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p_flat": {
+            "v": 0.48,
+            "label": "추정",
+            "prov": "jl_68",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "verdicts": {
+            "p5": "uncertain",
+            "p10": "uncertain",
+            "p20": "uncertain",
+            "p_flat": "uncertain"
+          },
+          "annualized": {
+            "p5": 0.0204,
+            "p10": 0.0402,
+            "p20": 0.0784
+          },
+          "status": "ok",
+          "judgment_seq": 68,
+          "proposition_text": "엘리프 검단 포레듀 전용 84㎡를 2026-10-08 현재 구매가로 매수할 경우, 입주(2028-03) 후 1년 시점인 2029 상반기 실거래가가 현재 구매가 대비 +10% 이상이다"
+        },
+        {
+          "complex_id": 2,
+          "snapshot_id": 12,
+          "horizon": "asof_plus_3y",
+          "target_ym": "2029-10",
+          "target_label": "2029 하반기",
+          "months_from_asof": 36,
+          "p5": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p10": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p20": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p_flat": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "verdicts": {
+            "p5": null,
+            "p10": null,
+            "p20": null,
+            "p_flat": null
+          },
+          "annualized": {
+            "p5": 0.0164,
+            "p10": 0.0323,
+            "p20": 0.0627
+          },
+          "status": "review",
+          "judgment_seq": null,
+          "proposition_text": null
+        },
+        {
+          "complex_id": 2,
+          "snapshot_id": 12,
+          "horizon": "asof_plus_5y",
+          "target_ym": "2031-10",
+          "target_label": "2031 하반기",
+          "months_from_asof": 60,
+          "p5": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p10": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p20": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p_flat": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "verdicts": {
+            "p5": null,
+            "p10": null,
+            "p20": null,
+            "p_flat": null
+          },
+          "annualized": {
+            "p5": 0.0098,
+            "p10": 0.0192,
+            "p20": 0.0371
+          },
+          "status": "review",
+          "judgment_seq": null,
+          "proposition_text": null
+        }
+      ],
+      "7": [
+        {
+          "complex_id": 7,
+          "snapshot_id": 12,
+          "horizon": "move_in_plus_1y",
+          "target_ym": "2030-12",
+          "target_label": "2030 하반기",
+          "months_from_asof": 50,
+          "p5": {
+            "v": 0.36,
+            "label": "추정",
+            "prov": "jl_118",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p10": {
+            "v": 0.29,
+            "label": "추정",
+            "prov": "jl_118",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p20": {
+            "v": 0.19,
+            "label": "추정",
+            "prov": "jl_118",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p_flat": {
+            "v": 0.64,
+            "label": "추정",
+            "prov": "jl_118",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "verdicts": {
+            "p5": "uncertain",
+            "p10": "uncertain",
+            "p20": "uncertain",
+            "p_flat": "uncertain"
+          },
+          "annualized": {
+            "p5": 0.0118,
+            "p10": 0.0231,
+            "p20": 0.0447
+          },
+          "status": "ok",
+          "judgment_seq": 118,
+          "proposition_text": "김포 칸타빌 에디션 전용 84㎡를 2026-10-08 현재 구매가로 매수할 경우, 입주(2029-12) 후 1년 시점인 2030 하반기 실거래가가 현재 구매가 대비 +10% 이상이다"
+        },
+        {
+          "complex_id": 7,
+          "snapshot_id": 12,
+          "horizon": "asof_plus_3y",
+          "target_ym": "2029-10",
+          "target_label": "2029 하반기",
+          "months_from_asof": 36,
+          "p5": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p10": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p20": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p_flat": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "verdicts": {
+            "p5": null,
+            "p10": null,
+            "p20": null,
+            "p_flat": null
+          },
+          "annualized": {
+            "p5": 0.0164,
+            "p10": 0.0323,
+            "p20": 0.0627
+          },
+          "status": "review",
+          "judgment_seq": null,
+          "proposition_text": null
+        },
+        {
+          "complex_id": 7,
+          "snapshot_id": 12,
+          "horizon": "asof_plus_5y",
+          "target_ym": "2031-10",
+          "target_label": "2031 하반기",
+          "months_from_asof": 60,
+          "p5": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p10": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p20": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p_flat": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "verdicts": {
+            "p5": null,
+            "p10": null,
+            "p20": null,
+            "p_flat": null
+          },
+          "annualized": {
+            "p5": 0.0098,
+            "p10": 0.0192,
+            "p20": 0.0371
+          },
+          "status": "review",
+          "judgment_seq": null,
+          "proposition_text": null
+        }
+      ],
+      "4": [
+        {
+          "complex_id": 4,
+          "snapshot_id": 12,
+          "horizon": "move_in_plus_1y",
+          "target_ym": "2029-08",
+          "target_label": "2029 하반기",
+          "months_from_asof": 34,
+          "p5": {
+            "v": 0.4,
+            "label": "추정",
+            "prov": "jl_123",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p10": {
+            "v": 0.33,
+            "label": "추정",
+            "prov": "jl_123",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p20": {
+            "v": 0.19,
+            "label": "추정",
+            "prov": "jl_123",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "p_flat": {
+            "v": 0.63,
+            "label": "추정",
+            "prov": "jl_123",
+            "checked_at": "2026-10-07",
+            "reason": "판정기 noul",
+            "unit": "prob"
+          },
+          "verdicts": {
+            "p5": "uncertain",
+            "p10": "uncertain",
+            "p20": "uncertain",
+            "p_flat": "uncertain"
+          },
+          "annualized": {
+            "p5": 0.0174,
+            "p10": 0.0342,
+            "p20": 0.0665
+          },
+          "status": "ok",
+          "judgment_seq": 123,
+          "proposition_text": "오퍼스 한강 스위첸 전용 84㎡를 2026-10-08 현재 구매가로 매수할 경우, 입주(2028-08) 후 1년 시점인 2029 하반기 실거래가가 현재 구매가 대비 +10% 이상이다"
+        },
+        {
+          "complex_id": 4,
+          "snapshot_id": 12,
+          "horizon": "asof_plus_3y",
+          "target_ym": "2029-10",
+          "target_label": "2029 하반기",
+          "months_from_asof": 36,
+          "p5": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p10": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p20": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p_flat": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "verdicts": {
+            "p5": null,
+            "p10": null,
+            "p20": null,
+            "p_flat": null
+          },
+          "annualized": {
+            "p5": 0.0164,
+            "p10": 0.0323,
+            "p20": 0.0627
+          },
+          "status": "review",
+          "judgment_seq": null,
+          "proposition_text": null
+        },
+        {
+          "complex_id": 4,
+          "snapshot_id": 12,
+          "horizon": "asof_plus_5y",
+          "target_ym": "2031-10",
+          "target_label": "2031 하반기",
+          "months_from_asof": 60,
+          "p5": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p10": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p20": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "p_flat": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "미판정(보고서에 없는 시점)",
+            "prov": null,
+            "checked_at": "2026-10-08"
+          },
+          "verdicts": {
+            "p5": null,
+            "p10": null,
+            "p20": null,
+            "p_flat": null
+          },
+          "annualized": {
+            "p5": 0.0098,
+            "p10": 0.0192,
+            "p20": 0.0371
+          },
+          "status": "review",
+          "judgment_seq": null,
+          "proposition_text": null
+        }
+      ]
+    },
+    "gaps": {
+      "2": {
+        "price_low": {
+          "v": 578000000,
+          "label": "확인됨",
+          "prov": "fp_201",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 608000000,
+          "label": "확인됨",
+          "prov": "fp_202",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_mid": {
+          "v": 593000000,
+          "label": "추정",
+          "prov": "fp_202",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "won"
+        },
+        "comps": [
+          {
+            "name": "힐스테이트 신검단 센트럴(불로)",
+            "completed_year": 2025,
+            "low": {
+              "v": 830000000,
+              "label": "재가공",
+              "prov": "cs_2_1",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 860000000,
+              "label": "추정",
+              "prov": "cs_2_1",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 890000000,
+              "label": "재가공",
+              "prov": "cs_2_1",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": null,
+            "substitute": false,
+            "adjusted": false,
+            "coef_used": null,
+            "n_trades": null,
+            "outliers_excluded": 0,
+            "trade_window": "2026-05~2026-06"
+          },
+          {
+            "name": "우미린 클래스원(불로)",
+            "completed_year": 2025,
+            "low": {
+              "v": 480000000,
+              "label": "재가공",
+              "prov": "cs_2_2",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 650000000,
+              "label": "추정",
+              "prov": "cs_2_2",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 820000000,
+              "label": "재가공",
+              "prov": "cs_2_2",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": null,
+            "substitute": false,
+            "adjusted": false,
+            "coef_used": null,
+            "n_trades": null,
+            "outliers_excluded": 0,
+            "trade_window": "2025-11~2026-03"
+          },
+          {
+            "name": "검단 금호어울림 센트럴(원당)",
+            "completed_year": 2021,
+            "low": {
+              "v": 750000000,
+              "label": "재가공",
+              "prov": "cs_2_3",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 770000000,
+              "label": "추정",
+              "prov": "cs_2_3",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 790000000,
+              "label": "재가공",
+              "prov": "cs_2_3",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": null,
+            "substitute": false,
+            "adjusted": false,
+            "coef_used": null,
+            "n_trades": null,
+            "outliers_excluded": 0,
+            "trade_window": "2026-01~2026-06"
+          }
+        ],
+        "gap_pct": {
+          "v": -5.2,
+          "label": "추정",
+          "prov": "sc_88_2_gap",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 (a)단계 등급 역산",
+          "unit": "pct"
+        },
+        "gap_pct_unadjusted": null,
+        "score": {
+          "v": 6.3,
+          "label": "추정",
+          "prov": "sc_88_2_gap",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "empty_reason": null
+      },
+      "7": {
+        "price_low": {
+          "v": 664000000,
+          "label": "확인됨",
+          "prov": "fp_701",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 697000000,
+          "label": "확인됨",
+          "prov": "fp_702",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_mid": {
+          "v": 680500000,
+          "label": "추정",
+          "prov": "fp_702",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "won"
+        },
+        "comps": [
+          {
+            "name": "한강메트로자이 1단지(걸포)",
+            "completed_year": 2020,
+            "low": {
+              "v": 600000000,
+              "label": "재가공",
+              "prov": "cs_7_1",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 635000000,
+              "label": "추정",
+              "prov": "cs_7_1",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 670000000,
+              "label": "재가공",
+              "prov": "cs_7_1",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": null,
+            "substitute": false,
+            "adjusted": false,
+            "coef_used": null,
+            "n_trades": 9,
+            "outliers_excluded": 0,
+            "trade_window": "2026-04~2026-09"
+          },
+          {
+            "name": "한강메트로자이 2단지(걸포)",
+            "completed_year": 2020,
+            "low": {
+              "v": 590000000,
+              "label": "재가공",
+              "prov": "cs_7_2",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 635000000,
+              "label": "추정",
+              "prov": "cs_7_2",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 680000000,
+              "label": "재가공",
+              "prov": "cs_7_2",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": null,
+            "substitute": false,
+            "adjusted": false,
+            "coef_used": null,
+            "n_trades": 10,
+            "outliers_excluded": 0,
+            "trade_window": "2026-04~2026-09"
+          },
+          {
+            "name": "한강메트로자이 3단지(걸포)",
+            "completed_year": 2020,
+            "low": {
+              "v": 590000000,
+              "label": "재가공",
+              "prov": "cs_7_3",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 610000000,
+              "label": "추정",
+              "prov": "cs_7_3",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 630000000,
+              "label": "재가공",
+              "prov": "cs_7_3",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": null,
+            "substitute": false,
+            "adjusted": false,
+            "coef_used": null,
+            "n_trades": 10,
+            "outliers_excluded": 0,
+            "trade_window": "2026-04~2026-09"
+          }
+        ],
+        "gap_pct": {
+          "v": 7.6,
+          "label": "추정",
+          "prov": "sc_88_7_gap",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 (a)단계 등급 역산",
+          "unit": "pct"
+        },
+        "gap_pct_unadjusted": null,
+        "score": {
+          "v": 3.1,
+          "label": "추정",
+          "prov": "sc_88_7_gap",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        },
+        "empty_reason": null
+      },
+      "4": {
+        "price_low": {
+          "v": 626000000,
+          "label": "확인됨",
+          "prov": "fp_401",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 699000000,
+          "label": "확인됨",
+          "prov": "fp_402",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_mid": {
+          "v": 662500000,
+          "label": "추정",
+          "prov": "fp_402",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "won"
+        },
+        "comps": [
+          {
+            "name": "힐스테이트 리버시티 1단지(향산리)",
+            "completed_year": 2020,
+            "low": {
+              "v": 580000000,
+              "label": "재가공",
+              "prov": "cs_4_1",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 595000000,
+              "label": "추정",
+              "prov": "cs_4_1",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 610000000,
+              "label": "재가공",
+              "prov": "cs_4_1",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": {
+              "v": 666400000,
+              "label": "추정",
+              "prov": "cs_4_1",
+              "checked_at": "2026-10-07",
+              "reason": "대체·보정 c=0.015",
+              "unit": "won"
+            },
+            "substitute": true,
+            "adjusted": true,
+            "coef_used": 0.015,
+            "n_trades": 8,
+            "outliers_excluded": 0,
+            "trade_window": "2026-04~2026-09"
+          },
+          {
+            "name": "힐스테이트 리버시티 2단지(향산리)",
+            "completed_year": 2020,
+            "low": {
+              "v": 560000000,
+              "label": "재가공",
+              "prov": "cs_4_2",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 595000000,
+              "label": "추정",
+              "prov": "cs_4_2",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 630000000,
+              "label": "재가공",
+              "prov": "cs_4_2",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": {
+              "v": 666400000,
+              "label": "추정",
+              "prov": "cs_4_2",
+              "checked_at": "2026-10-07",
+              "reason": "대체·보정 c=0.015",
+              "unit": "won"
+            },
+            "substitute": true,
+            "adjusted": true,
+            "coef_used": 0.015,
+            "n_trades": 10,
+            "outliers_excluded": 0,
+            "trade_window": "2026-04~2026-09"
+          },
+          {
+            "name": "고촌 센트럴자이(신곡리)",
+            "completed_year": 2024,
+            "low": {
+              "v": 740000000,
+              "label": "재가공",
+              "prov": "cs_4_3",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "median": {
+              "v": 760000000,
+              "label": "추정",
+              "prov": "cs_4_3",
+              "checked_at": "2026-10-07",
+              "reason": "범위 중앙(산술)",
+              "unit": "won"
+            },
+            "high": {
+              "v": 780000000,
+              "label": "재가공",
+              "prov": "cs_4_3",
+              "checked_at": "2026-10-07",
+              "unit": "won"
+            },
+            "adjusted_median": {
+              "v": 805600000,
+              "label": "추정",
+              "prov": "cs_4_3",
+              "checked_at": "2026-10-07",
+              "reason": "대체·보정 c=0.015",
+              "unit": "won"
+            },
+            "substitute": true,
+            "adjusted": true,
+            "coef_used": 0.015,
+            "n_trades": 6,
+            "outliers_excluded": 0,
+            "trade_window": "2026-04~2026-09"
+          }
+        ],
+        "gap_pct": {
+          "v": 0.0,
+          "label": "추정",
+          "prov": "sc_88_4_gap",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 (a)단계 등급 역산",
+          "unit": "pct"
+        },
+        "gap_pct_unadjusted": {
+          "v": 11.3,
+          "label": "추정",
+          "prov": "sc_88_4_gap",
+          "checked_at": "2026-10-08",
+          "reason": "미보정 중앙값 기준, 산술",
+          "unit": "pct"
+        },
+        "score": {
+          "v": 5.0,
+          "label": "추정",
+          "prov": "sc_88_4_gap",
+          "checked_at": "2026-10-08",
+          "reason": "대체·보정 c=0.015",
+          "unit": "score"
+        },
+        "empty_reason": null
+      }
+    },
+    "terms": [
+      {
+        "complex_id": 2,
+        "name": "엘리프 검단 포레듀",
+        "resale_end": {
+          "v": "2028-09-10",
+          "label": "추정",
+          "prov": "fp_203",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "residency_months": {
+          "v": 0,
+          "label": "확인됨",
+          "prov": "fp_208",
+          "checked_at": "2026-10-07",
+          "unit": "months"
+        },
+        "down_payment_pct": {
+          "v": 5,
+          "label": "확인됨",
+          "prov": "fp_210",
+          "checked_at": "2026-10-07",
+          "unit": "pct"
+        },
+        "down_payment_won": {
+          "v": 29650000,
+          "label": "추정",
+          "prov": "fp_210",
+          "checked_at": "2026-10-08",
+          "reason": "P_mid × 계약금%, 산술",
+          "unit": "won"
+        },
+        "required_equity_won": {
+          "v": 29650000,
+          "label": "추정",
+          "prov": "fp_210",
+          "checked_at": "2026-10-08",
+          "reason": "max(계약금, P_mid − 대출한도 6억), 산술",
+          "unit": "won"
+        },
+        "interim_terms_text": "중도금 60% 이자후불제"
+      },
+      {
+        "complex_id": 7,
+        "name": "김포 칸타빌 에디션",
+        "resale_end": {
+          "v": "2026-06-10",
+          "label": "추정",
+          "prov": "fp_703",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "residency_months": {
+          "v": 0,
+          "label": "확인됨",
+          "prov": "fp_708",
+          "checked_at": "2026-10-07",
+          "unit": "months"
+        },
+        "down_payment_pct": {
+          "v": 5,
+          "label": "확인됨",
+          "prov": "fp_710",
+          "checked_at": "2026-10-07",
+          "unit": "pct"
+        },
+        "down_payment_won": {
+          "v": 34025000,
+          "label": "추정",
+          "prov": "fp_710",
+          "checked_at": "2026-10-08",
+          "reason": "P_mid × 계약금%, 산술",
+          "unit": "won"
+        },
+        "required_equity_won": {
+          "v": 80500000,
+          "label": "추정",
+          "prov": "fp_710",
+          "checked_at": "2026-10-08",
+          "reason": "max(계약금, P_mid − 대출한도 6억), 산술",
+          "unit": "won"
+        },
+        "interim_terms_text": "중도금 60% 이자후불제"
+      },
+      {
+        "complex_id": 4,
+        "name": "오퍼스 한강 스위첸",
+        "resale_end": {
+          "v": "2028-07-18",
+          "label": "추정",
+          "prov": "fp_403",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "residency_months": {
+          "v": 0,
+          "label": "확인됨",
+          "prov": "fp_408",
+          "checked_at": "2026-10-07",
+          "unit": "months"
+        },
+        "down_payment_pct": {
+          "v": 10,
+          "label": "확인됨",
+          "prov": "fp_410",
+          "checked_at": "2026-10-07",
+          "unit": "pct"
+        },
+        "down_payment_won": {
+          "v": 66250000,
+          "label": "추정",
+          "prov": "fp_410",
+          "checked_at": "2026-10-08",
+          "reason": "P_mid × 계약금%, 산술",
+          "unit": "won"
+        },
+        "required_equity_won": {
+          "v": 66250000,
+          "label": "추정",
+          "prov": "fp_410",
+          "checked_at": "2026-10-08",
+          "reason": "max(계약금, P_mid − 대출한도 6억), 산술",
+          "unit": "won"
+        },
+        "interim_terms_text": "중도금 60% 이자후불제"
+      }
+    ],
+    "decisions": {
+      "B": {
+        "scenario_id": 3,
+        "scenario_code": "B",
+        "score_run_id": 90,
+        "judgment_seq": 127,
+        "status": "ok",
+        "confidence": {
+          "v": 0.48,
+          "label": "추정",
+          "prov": "jl_127",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 decide",
+          "unit": "prob"
+        },
+        "tie": true,
+        "escaped": false,
+        "question": null,
+        "warnings": [],
+        "cached": true,
+        "items": [
+          {
+            "id": null,
+            "score_run_id": 90,
+            "scenario_id": 3,
+            "option_key": "complex",
+            "complex_id": 7,
+            "label": "김포 칸타빌 에디션",
+            "prob": {
+              "v": 0.54,
+              "label": "추정",
+              "prov": "jl_127",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": true,
+            "tie": true,
+            "mismatch": false,
+            "confidence": 0.48,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "계약금 3,402만(5%) ≤ 자기자본 2.00억; 잔금 부족 0 → 충족 (중도금 이자후불제)"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 127
+          },
+          {
+            "id": null,
+            "score_run_id": 90,
+            "scenario_id": 3,
+            "option_key": "complex",
+            "complex_id": 2,
+            "label": "엘리프 검단 포레듀",
+            "prob": {
+              "v": 0.42,
+              "label": "추정",
+              "prov": "jl_127",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": true,
+            "tie": true,
+            "mismatch": false,
+            "confidence": 0.48,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "계약금 2,965만(5%) ≤ 자기자본 2.00억; 잔금 부족 0 → 충족 (중도금 이자후불제)"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 127
+          },
+          {
+            "id": null,
+            "score_run_id": 90,
+            "scenario_id": 3,
+            "option_key": "complex",
+            "complex_id": 3,
+            "label": "송도 한내들 센트럴리버",
+            "prob": {
+              "v": 0.01,
+              "label": "추정",
+              "prov": "jl_127",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.48,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "미충족",
+                  "evidence": "잔금 부족 = 8.56억 − 대출한도 6.00억 − 자기자본 2.00억 = 0.56억 > 0 → 미충족"
+                },
+                "judge": "contradicted",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 127
+          },
+          {
+            "id": null,
+            "score_run_id": 90,
+            "scenario_id": 3,
+            "option_key": "complex",
+            "complex_id": 4,
+            "label": "오퍼스 한강 스위첸",
+            "prob": {
+              "v": 0.01,
+              "label": "추정",
+              "prov": "jl_127",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": true,
+            "confidence": 0.48,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "확인 불가",
+                  "evidence": "접수 상태 확인 불가(403, 2026-10-07) → 확인 불가"
+                },
+                "judge": "unknown",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "계약금 6,625만(10%) ≤ 자기자본 2.00억; 잔금 부족 0 → 충족 (중도금 이자후불제)"
+                },
+                "judge": "contradicted",
+                "mismatch": true
+              }
+            },
+            "judgment_seq": 127
+          },
+          {
+            "id": null,
+            "score_run_id": 90,
+            "scenario_id": 3,
+            "option_key": "complex",
+            "complex_id": 1,
+            "label": "더샵 송도그란테르",
+            "prob": {
+              "v": 0.0,
+              "label": "추정",
+              "prov": "jl_127",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.48,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "미충족",
+                  "evidence": "접수 불가(마감, 추가 공고 미정) → 미충족"
+                },
+                "judge": "contradicted",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "미충족",
+                  "evidence": "잔금 부족 = 12.81억 − 대출한도 6.00억 − 자기자본 2.00억 = 4.82억 > 0 → 미충족"
+                },
+                "judge": "contradicted",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 127
+          },
+          {
+            "id": null,
+            "score_run_id": 90,
+            "scenario_id": 3,
+            "option_key": "wait_new",
+            "complex_id": null,
+            "label": "모집공고 대기 후 1순위 청약",
+            "prob": {
+              "v": 0.0,
+              "label": "추정",
+              "prov": "jl_127",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.48,
+            "requirements": {
+              "access": {
+                "pre": null,
+                "judge": "contradicted",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": null,
+                "judge": "unknown",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": null,
+                "judge": "unknown",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 127
+          }
+        ]
+      },
+      "base": {
+        "scenario_id": 1,
+        "scenario_code": "base",
+        "score_run_id": 88,
+        "judgment_seq": 125,
+        "status": "ok",
+        "confidence": {
+          "v": 0.67,
+          "label": "추정",
+          "prov": "jl_125",
+          "checked_at": "2026-10-07",
+          "reason": "판정기 decide",
+          "unit": "prob"
+        },
+        "tie": false,
+        "escaped": false,
+        "question": null,
+        "warnings": [
+          "요건 2(입주 후 2년 내 매도 가능)가 선택 후보에서 contradicted — 엘리프 전매 3년 종료 2028-09 < 입주 2028-03 + 2년 = 2030-03이므로 증거와 상이, 그대로 보고"
+        ],
+        "cached": true,
+        "items": [
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "complex",
+            "complex_id": 2,
+            "label": "엘리프 검단 포레듀",
+            "prob": {
+              "v": 0.71,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": true,
+            "tie": false,
+            "mismatch": true,
+            "confidence": 0.67,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월, 재당첨 제한 비적용(비규제), 전매 종료 2028-09-10 → 충족"
+                },
+                "judge": "contradicted",
+                "mismatch": true
+              },
+              "funds": {
+                "pre": {
+                  "status": "미입력",
+                  "evidence": "자기자본·대출한도 미입력 → 미입력"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "complex",
+            "complex_id": 3,
+            "label": "송도 한내들 센트럴리버",
+            "prob": {
+              "v": 0.15,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.67,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월, 재당첨 제한 비적용(비규제), 전매 종료 2026-06-23 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "미입력",
+                  "evidence": "자기자본·대출한도 미입력 → 미입력"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "complex",
+            "complex_id": 7,
+            "label": "김포 칸타빌 에디션",
+            "prob": {
+              "v": 0.09,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.67,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "접수 가능(공식 팝업 2026-10-07) → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월, 재당첨 제한 비적용(비규제), 전매 종료 2026-06-10 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "미입력",
+                  "evidence": "자기자본·대출한도 미입력 → 미입력"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "ask_user",
+            "complex_id": null,
+            "label": "사용자에게 질문",
+            "prob": {
+              "v": 0.02,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.67,
+            "requirements": null,
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "investigate",
+            "complex_id": null,
+            "label": "추가 조사",
+            "prob": {
+              "v": 0.02,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.67,
+            "requirements": null,
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "complex",
+            "complex_id": 4,
+            "label": "오퍼스 한강 스위첸",
+            "prob": {
+              "v": 0.0,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.67,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "확인 불가",
+                  "evidence": "접수 상태 확인 불가(403, 2026-10-07) → 확인 불가"
+                },
+                "judge": "unknown",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월, 재당첨 제한 비적용(비규제), 전매 종료 2028-07-18 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "미입력",
+                  "evidence": "자기자본·대출한도 미입력 → 미입력"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "complex",
+            "complex_id": 5,
+            "label": "검단 센트레빌 에듀시티",
+            "prob": {
+              "v": 0.0,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": true,
+            "confidence": 0.67,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "미충족",
+                  "evidence": "접수 미정(공식 선착순 공지 없음) → 미충족"
+                },
+                "judge": "unknown",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월, 재당첨 제한 비적용(비규제), 전매 종료 2028-10-14 → 충족"
+                },
+                "judge": "contradicted",
+                "mismatch": true
+              },
+              "funds": {
+                "pre": {
+                  "status": "미입력",
+                  "evidence": "자기자본·대출한도 미입력 → 미입력"
+                },
+                "judge": "supported",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 125
+          },
+          {
+            "id": null,
+            "score_run_id": 88,
+            "scenario_id": 1,
+            "option_key": "complex",
+            "complex_id": 1,
+            "label": "더샵 송도그란테르",
+            "prob": {
+              "v": 0.0,
+              "label": "추정",
+              "prov": "jl_125",
+              "checked_at": "2026-10-07",
+              "reason": "판정기 decide",
+              "unit": "prob"
+            },
+            "chosen": false,
+            "tie": false,
+            "mismatch": false,
+            "confidence": 0.67,
+            "requirements": {
+              "access": {
+                "pre": {
+                  "status": "미충족",
+                  "evidence": "접수 불가(마감, 추가 공고 미정) → 미충족"
+                },
+                "judge": "contradicted",
+                "mismatch": false
+              },
+              "regulation": {
+                "pre": {
+                  "status": "충족",
+                  "evidence": "거주의무 0개월, 재당첨 제한 비적용(비규제), 전매 종료 2026-11-28 → 충족"
+                },
+                "judge": "supported",
+                "mismatch": false
+              },
+              "funds": {
+                "pre": {
+                  "status": "미입력",
+                  "evidence": "자기자본·대출한도 미입력 → 미입력"
+                },
+                "judge": "contradicted",
+                "mismatch": false
+              }
+            },
+            "judgment_seq": 125
+          }
+        ]
+      }
+    }
+  }
+}

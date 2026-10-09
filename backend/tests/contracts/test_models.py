@@ -68,7 +68,15 @@ def test_every_table_has_a_model_and_primary_key() -> None:
 def test_derived_tables_have_snapshot_id() -> None:
     """RA §3: 파생 테이블은 snapshot_id(또는 score_run → snapshot)를 가진다."""
     tables = Base.metadata.tables
-    for name in ("intake_status", "judgment_log", "claim", "score_run", "ladder", "comparable_set", "change_event"):
+    for name in (
+        "intake_status",
+        "judgment_log",
+        "claim",
+        "score_run",
+        "ladder",
+        "comparable_set",
+        "change_event",
+    ):
         assert "snapshot_id" in tables[name].columns, name
     for name in ("score_component", "score_total", "decision"):
         assert "score_run_id" in tables[name].columns, name

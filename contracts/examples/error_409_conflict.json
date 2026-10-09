@@ -1,0 +1,7 @@
+{
+  "summary": "완료되지 않은 보고서",
+  "value": {
+    "code": "conflict",
+    "detail": "report 911 is not done (status=running)"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "summary": "출처 없는 수치(dev)",
+  "value": {
+    "code": "contract_violation",
+    "detail": "complex 4 field max_price_won has no field_provenance row"
+  }
+}

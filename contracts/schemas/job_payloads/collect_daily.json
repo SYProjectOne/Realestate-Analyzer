@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "collect_daily.json",
+  "title": "CollectDailyPayload",
+  "description": "job_name='collect.daily' 페이로드 (RA §4-4). 스케줄러가 매일 06:00 지역마다 넣는다. applyhome_list는 청약홈 APT 분양정보·무순위/잔여세대 목록 2개를 sido_codes로 조회하고, 새·바뀐 공고는 같은 잡 안에서 상세(applyhome_detail)·공고문(notice_pdf)까지 받는다. official_site는 단지 공식 홈페이지 팝업을 렌더·스크린샷하고 이미지 해시로 변경을 감지한다. 수집 후 변경 감지 → 변경 단지만 rejudge 잡 등록.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["region_id", "sources"],
+  "properties": {
+    "region_id": { "type": "integer" },
+    "sources": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "type": "string", "enum": ["applyhome_list", "applyhome_detail", "notice_pdf", "official_site"] },
+      "default": ["applyhome_list", "official_site"]
+    },
+    "asof_date": { "description": "스냅샷 기준일. 생략 시 실행일(Asia/Seoul)", "type": ["string", "null"], "format": "date" }
+  },
+  "examples": [{ "region_id": 1, "sources": ["applyhome_list", "official_site"] }]
+}

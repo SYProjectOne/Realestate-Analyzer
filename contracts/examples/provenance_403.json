@@ -1,0 +1,28 @@
+{
+  "summary": "출처 패널 — 접속 실패 원문",
+  "value": {
+    "id": "rd_9204",
+    "kind": "raw_document",
+    "entity": "raw_document",
+    "entity_id": 9204,
+    "field": null,
+    "value_text": null,
+    "label": "확인 불가",
+    "reason": "403",
+    "url": "https://opus-switzen.com/",
+    "checked_at": "2026-10-07",
+    "excerpt": null,
+    "excerpt_start": null,
+    "excerpt_end": null,
+    "raw_document_id": 9204,
+    "source_kind": "official_site",
+    "http_status": 403,
+    "source_rank": null,
+    "chosen": null,
+    "conflict_group": null,
+    "conflicts": [],
+    "formula_text": null,
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  }
+}

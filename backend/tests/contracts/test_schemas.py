@@ -1,5 +1,6 @@
 """contracts/schemas/**/*.json — 메타스키마 검증, $id·description·examples, 예시 검증, 조건 규칙(음성 테스트)."""
 
+# ruff: noqa: E501  (한국어 assertion 메시지·표)
 from __future__ import annotations
 
 from pathlib import Path
@@ -107,7 +108,10 @@ FACT_OK = {"v": 1, "label": "확인됨", "prov": "fp_1", "checked_at": "2026-10-
         ({"v": 3, "label": "추정", "prov": "xx_1", "checked_at": "2026-10-07"}, False),  # prov 접두어
         ({"v": 3, "label": "추정", "prov": "fp_1", "checked_at": "2026/10/07"}, False),  # 날짜 형식
         ({"v": 3, "label": "추정", "prov": "fp_1"}, False),  # checked_at 필수
-        ({"v": True, "label": "확인됨", "prov": "fp_1", "checked_at": "2026-10-07"}, False),  # v는 number|string|null
+        (
+            {"v": True, "label": "확인됨", "prov": "fp_1", "checked_at": "2026-10-07"},
+            False,
+        ),  # v는 number|string|null
     ],
 )
 def test_fact_rules(fact: dict[str, Any], ok: bool, schema_registry: Registry[Any]) -> None:
@@ -117,8 +121,15 @@ def test_fact_rules(fact: dict[str, Any], ok: bool, schema_registry: Registry[An
 def test_intake_rules(schema_registry: Registry[Any]) -> None:
     base = {"status": "가능", "path": "official_popup", "checked_at": "2026-10-07"}
     assert errors("intake.json", schema_registry, base) == []
-    assert errors("intake.json", schema_registry, {**base, "path": "unofficial_ref"}), "비공식은 '가능'이 될 수 없다"
-    unknown = {"status": "확인 불가", "path": "official_popup", "checked_at": "2026-10-07", "http_status": 403}
+    assert errors("intake.json", schema_registry, {**base, "path": "unofficial_ref"}), (
+        "비공식은 '가능'이 될 수 없다"
+    )
+    unknown = {
+        "status": "확인 불가",
+        "path": "official_popup",
+        "checked_at": "2026-10-07",
+        "http_status": 403,
+    }
     assert errors("intake.json", schema_registry, unknown), "확인 불가는 reason 필수"
     assert errors("intake.json", schema_registry, {**unknown, "reason": "403"}) == []
 
@@ -139,7 +150,9 @@ def test_job_payloads_cover_every_job_name(schema_registry: Registry[Any]) -> No
     ok = {"job_name": "rejudge", "payload": {"snapshot_id": 1, "scenario_id": None, "reason": "x"}}
     assert errors("job_run.json", schema_registry, ok, "/$defs/JobCreate") == []
     bad = {"job_name": "rejudge", "payload": {"scenario_id": None, "reason": "x"}}
-    assert errors("job_run.json", schema_registry, bad, "/$defs/JobCreate"), "payload는 job_name별 스키마로 검증"
+    assert errors("job_run.json", schema_registry, bad, "/$defs/JobCreate"), (
+        "payload는 job_name별 스키마로 검증"
+    )
     bad_fmt = {"job_name": "report", "payload": {"snapshot_id": 1, "format": "docx"}}
     assert errors("job_run.json", schema_registry, bad_fmt, "/$defs/JobCreate"), "보고서 형식은 html|pdf"
 
@@ -159,7 +172,9 @@ def test_judgment_envelope_result_shape_is_checked_per_tool(schema_registry: Reg
     broken = {**env, "result": {"probs": {}}}  # decide ok인데 selected·escaped 없음
     assert errors("judgment_envelope.json", schema_registry, broken)
     review = {**env, "status": "review", "result": {}}
-    assert errors("judgment_envelope.json", schema_registry, review) == [], "review 봉투는 result 모양을 강제하지 않는다"
+    assert errors("judgment_envelope.json", schema_registry, review) == [], (
+        "review 봉투는 result 모양을 강제하지 않는다"
+    )
 
 
 def test_report_format_is_html_or_pdf() -> None:

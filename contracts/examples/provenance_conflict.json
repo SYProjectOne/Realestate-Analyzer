@@ -1,0 +1,42 @@
+{
+  "summary": "출처 패널 — 상충 그룹(T5)",
+  "value": {
+    "id": "fp_13001",
+    "kind": "field",
+    "entity": "complex",
+    "entity_id": 13,
+    "field": "units_total",
+    "value_text": "1,573",
+    "label": "확인됨",
+    "reason": null,
+    "url": "https://www.applyhome.co.kr/",
+    "checked_at": "2026-10-07",
+    "excerpt": "공급세대수 1,573세대",
+    "excerpt_start": 1180,
+    "excerpt_end": 1193,
+    "raw_document_id": 9101,
+    "source_kind": "applyhome_detail",
+    "http_status": 200,
+    "source_rank": 1,
+    "chosen": true,
+    "conflict_group": "complex:13:units_total",
+    "conflicts": [
+      {
+        "id": "fp_13002",
+        "value_text": "1,769",
+        "label": "확인됨",
+        "reason": null,
+        "url": "https://www.applyhome.co.kr/",
+        "checked_at": "2026-10-07",
+        "source_kind": "notice_pdf",
+        "source_rank": 2,
+        "chosen": false,
+        "excerpt": "총 1,769세대",
+        "raw_document_id": 9102
+      }
+    ],
+    "formula_text": null,
+    "judgment_seq": null,
+    "compare_judgment_seq": null
+  }
+}

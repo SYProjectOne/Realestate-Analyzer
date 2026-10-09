@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "catalyst.json",
+  "title": "CatalystView",
+  "description": "호재 1건의 화면 표현 (RA §3 catalyst + catalyst_link) — C9 보드·타임라인, G3 CatalystList. stage는 판정기 classify 결과(review면 '미확정'). location_confirmed=false면 단지 연결 없음(catalyst_link 행 없음, 점수 가중치 0, '연결 없음' 표시). 미확정·언론은 회색. 타임라인에는 stage='확정'인 것만 expected_ym으로 그린다.\nComplexDetail.catalysts에서는 그 단지와의 연결(linked, distance_m, weight)이 채워지고, Market.catalysts에서는 linked_complex_ids가 채워진다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "kind", "stage", "stage_prob", "expected_ym", "location_confirmed", "decision", "judgment_seq"],
+  "properties": {
+    "id": { "type": "integer" },
+    "name": { "type": "string" },
+    "kind": { "type": "string", "enum": ["교통", "개발", "학교", "상업", "생활인프라", "기타"] },
+    "stage": { "type": "string", "enum": ["확정", "계획", "추진", "언론", "미확정"] },
+    "stage_prob": { "$ref": "fact.json" },
+    "decision": { "type": ["string", "null"], "enum": ["auto", "review", "manual_review", null] },
+    "expected_ym": { "$ref": "fact.json" },
+    "location_confirmed": { "type": "boolean" },
+    "linked": { "type": ["boolean", "null"] },
+    "distance_m": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "weight": { "type": ["number", "null"] },
+    "linked_complex_ids": { "type": ["array", "null"], "items": { "type": "integer" } },
+    "judgment_seq": { "type": ["integer", "null"] },
+    "source_url": { "type": ["string", "null"] },
+    "note": { "type": ["string", "null"] }
+  },
+  "examples": [
+    {
+      "id": 41, "name": "인천1호선 검단연장 개통", "kind": "교통", "stage": "확정",
+      "stage_prob": { "v": 1.0, "label": "추정", "reason": "판정기 classify", "prov": "jl_64", "checked_at": "2026-10-07", "unit": "prob" },
+      "decision": "auto",
+      "expected_ym": { "v": "2025-06", "label": "확인됨", "prov": "fp_5101", "checked_at": "2026-10-07", "unit": "ym" },
+      "location_confirmed": true, "linked": true,
+      "distance_m": { "v": null, "label": "확인 불가", "reason": "역 거리 미측정", "prov": null, "checked_at": "2026-10-07" },
+      "weight": null, "linked_complex_ids": null, "judgment_seq": 64, "source_url": null, "note": "2025-06-28 개통"
+    }
+  ]
+}

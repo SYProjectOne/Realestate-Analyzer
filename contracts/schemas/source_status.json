@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source_status.json",
+  "title": "SourceStatus",
+  "description": "GET /ops/sources 의 원소 — G7 SourceStatusTable (RA §4-2). raw_document를 source_kind별로 집계한다. 403·DNS·동적 팝업 실패는 failing_targets에 대상별로 남고 화면은 '확인 불가(403, 날짜)'로 보여준다. retry는 '재시도' 버튼이 POST /jobs로 보낼 본문.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_kind", "last_attempt_at", "last_success_at", "attempts_7d", "successes_7d", "failures_7d", "last_http_status", "last_error_text", "failing_targets", "retry"],
+  "properties": {
+    "source_kind": { "$ref": "raw_document.json#/$defs/SourceKind" },
+    "enabled": { "description": "false면 비활성(예: NEWS_API_KEY 없음)", "type": "boolean", "default": true },
+    "disabled_reason": { "type": ["string", "null"] },
+    "last_attempt_at": { "type": ["string", "null"], "format": "date-time" },
+    "last_success_at": { "type": ["string", "null"], "format": "date-time" },
+    "attempts_7d": { "type": "integer", "minimum": 0 },
+    "successes_7d": { "type": "integer", "minimum": 0 },
+    "failures_7d": { "type": "integer", "minimum": 0 },
+    "last_http_status": { "type": ["integer", "null"] },
+    "last_error_text": { "type": ["string", "null"] },
+    "failing_targets": {
+      "type": "array",
+      "items": {
+        "title": "FailingTarget", "type": "object", "additionalProperties": false,
+        "required": ["url", "complex_id", "http_status", "reason", "fetched_at", "raw_document_id"],
+        "properties": {
+          "url": { "type": "string" },
+          "complex_id": { "type": ["integer", "null"] },
+          "complex_name": { "type": ["string", "null"] },
+          "http_status": { "type": ["integer", "null"] },
+          "reason": { "description": "'403', 'DNS', '타임아웃', '동적 팝업', '스캔'", "type": "string" },
+          "fetched_at": { "type": "string", "format": "date-time" },
+          "raw_document_id": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "retry": {
+      "anyOf": [
+        {
+          "title": "RetryHint", "type": "object", "additionalProperties": false, "required": ["job_name", "payload"],
+          "properties": { "job_name": { "$ref": "job_run.json#/$defs/JobName" }, "payload": { "type": "object" } }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "source_kind": "official_site", "enabled": true, "disabled_reason": null,
+      "last_attempt_at": "2026-10-08T06:09:30+09:00", "last_success_at": "2026-10-08T06:09:12+09:00",
+      "attempts_7d": 98, "successes_7d": 70, "failures_7d": 28, "last_http_status": 403, "last_error_text": null,
+      "failing_targets": [
+        { "url": "https://opus-switzen.com/", "complex_id": 4, "complex_name": "오퍼스 한강 스위첸", "http_status": 403, "reason": "403", "fetched_at": "2026-10-08T06:09:30+09:00", "raw_document_id": 9231 }
+      ],
+      "retry": { "job_name": "collect.daily", "payload": { "region_id": 1, "sources": ["official_site"] } }
+    }
+  ]
+}

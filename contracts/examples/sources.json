@@ -1,0 +1,165 @@
+{
+  "summary": "G7 소스 상태",
+  "description": "공식 홈페이지 URL 중 .invalid 도메인은 예시용 자리표시자다.",
+  "value": [
+    {
+      "source_kind": "applyhome_list",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-08T06:00:40+09:00",
+      "last_success_at": "2026-10-08T06:00:40+09:00",
+      "attempts_7d": 14,
+      "successes_7d": 14,
+      "failures_7d": 0,
+      "last_http_status": 200,
+      "last_error_text": null,
+      "failing_targets": [],
+      "retry": {
+        "job_name": "collect.daily",
+        "payload": {
+          "region_id": 1,
+          "sources": [
+            "applyhome_list"
+          ]
+        }
+      }
+    },
+    {
+      "source_kind": "applyhome_detail",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-08T06:03:10+09:00",
+      "last_success_at": "2026-10-08T06:03:10+09:00",
+      "attempts_7d": 31,
+      "successes_7d": 31,
+      "failures_7d": 0,
+      "last_http_status": 200,
+      "last_error_text": null,
+      "failing_targets": [],
+      "retry": null
+    },
+    {
+      "source_kind": "notice_pdf",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-08T06:04:12+09:00",
+      "last_success_at": "2026-10-08T06:04:12+09:00",
+      "attempts_7d": 6,
+      "successes_7d": 6,
+      "failures_7d": 0,
+      "last_http_status": 200,
+      "last_error_text": null,
+      "failing_targets": [],
+      "retry": null
+    },
+    {
+      "source_kind": "official_site",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-08T06:09:30+09:00",
+      "last_success_at": "2026-10-08T06:09:12+09:00",
+      "attempts_7d": 98,
+      "successes_7d": 77,
+      "failures_7d": 21,
+      "last_http_status": 403,
+      "last_error_text": null,
+      "failing_targets": [
+        {
+          "url": "https://opus-switzen.com/",
+          "complex_id": 4,
+          "complex_name": "오퍼스 한강 스위첸",
+          "http_status": 403,
+          "reason": "403",
+          "fetched_at": "2026-10-08T06:09:30+09:00",
+          "raw_document_id": 9231
+        },
+        {
+          "url": "https://harringtonplace-pungmu.invalid/",
+          "complex_id": 13,
+          "complex_name": "해링턴플레이스 풍무 1BL",
+          "http_status": null,
+          "reason": "DNS",
+          "fetched_at": "2026-10-08T06:09:20+09:00",
+          "raw_document_id": 9233
+        },
+        {
+          "url": "https://saewoo-gnheim.invalid/",
+          "complex_id": 14,
+          "complex_name": "사우역 지엔하임",
+          "http_status": null,
+          "reason": "DNS",
+          "fetched_at": "2026-10-08T06:09:22+09:00",
+          "raw_document_id": 9234
+        }
+      ],
+      "retry": {
+        "job_name": "collect.daily",
+        "payload": {
+          "region_id": 1,
+          "sources": [
+            "official_site"
+          ]
+        }
+      }
+    },
+    {
+      "source_kind": "rtms",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-05T06:31:00+09:00",
+      "last_success_at": "2026-10-05T06:31:00+09:00",
+      "attempts_7d": 1,
+      "successes_7d": 1,
+      "failures_7d": 0,
+      "last_http_status": 200,
+      "last_error_text": "DATA_GO_KR_KEY 없음 — 재가공 폴백(라벨 재가공)",
+      "failing_targets": [],
+      "retry": null
+    },
+    {
+      "source_kind": "stats",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-05T06:40:00+09:00",
+      "last_success_at": "2026-10-05T06:40:00+09:00",
+      "attempts_7d": 1,
+      "successes_7d": 1,
+      "failures_7d": 0,
+      "last_http_status": 200,
+      "last_error_text": null,
+      "failing_targets": [],
+      "retry": null
+    },
+    {
+      "source_kind": "news",
+      "enabled": false,
+      "disabled_reason": "NEWS_API_KEY 없음 — 비활성(호재는 사람이 URL 입력)",
+      "last_attempt_at": null,
+      "last_success_at": null,
+      "attempts_7d": 0,
+      "successes_7d": 0,
+      "failures_7d": 0,
+      "last_http_status": null,
+      "last_error_text": null,
+      "failing_targets": [],
+      "retry": null
+    },
+    {
+      "source_kind": "reference",
+      "enabled": true,
+      "disabled_reason": null,
+      "last_attempt_at": "2026-10-01T05:00:00+09:00",
+      "last_success_at": "2026-10-01T05:00:20+09:00",
+      "attempts_7d": 1,
+      "successes_7d": 1,
+      "failures_7d": 0,
+      "last_http_status": 200,
+      "last_error_text": null,
+      "failing_targets": [],
+      "retry": {
+        "job_name": "reference.refresh",
+        "payload": {}
+      }
+    }
+  ]
+}

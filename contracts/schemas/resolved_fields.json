@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "resolved_fields.json",
+  "title": "ResolvedFields",
+  "description": "Resolver.resolve(candidates)의 결과 (RA §4-3). §3 우선순위로 (entity, entity_id|entity_key, field)마다 후보 하나를 chosen으로 정하고, 모든 후보를 field_provenance 행(provenance)으로 돌려준다(chosen 하나, 나머지 chosen=false 보관).\n값이 다른 후보가 둘 이상이면 conflict_group으로 묶는다(T5: 해링턴 1,573 vs 1,769 → conflict_group 1건, chosen=청약홈 상세).\nneeds_compare 규칙(RA §3 표를 하나로 정리): 값이 다른 최상위 후보 둘이 모두 1차(primary=true)이고 source_rank가 같아 §3 우선순위로 가를 수 없을 때만 true. 이 경우에도 일단 하나를 chosen으로 두고 WP3 compare 결과가 contradicts면 공고문 채택·병기한다. 우선순위가 있는 경우(청약홈 상세 rank 1 vs 공고문 rank 2 등)와 1차 vs 2차는 compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["chosen", "provenance", "conflicts", "needs_compare"],
+  "properties": {
+    "chosen": { "type": "array", "items": { "$ref": "field_candidate.json" } },
+    "provenance": { "type": "array", "items": { "$ref": "#/$defs/ProvenanceRow" } },
+    "conflicts": { "type": "array", "items": { "$ref": "#/$defs/ConflictGroup" } },
+    "needs_compare": { "description": "conflicts 중 needs_compare=true가 하나라도 있으면 true", "type": "boolean" }
+  },
+  "$defs": {
+    "ProvenanceRow": {
+      "title": "ProvenanceRow",
+      "description": "field_provenance 1행 (RA §3)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity", "entity_id", "field", "value_text", "raw_document_id", "url", "checked_at", "label", "source_rank", "chosen", "conflict_group"],
+      "properties": {
+        "id": { "type": ["integer", "null"] },
+        "entity": { "type": "string" },
+        "entity_id": { "type": ["integer", "null"] },
+        "entity_key": { "type": ["string", "null"] },
+        "field": { "type": "string" },
+        "value_text": { "type": ["string", "null"] },
+        "raw_document_id": { "type": ["integer", "null"] },
+        "url": { "type": ["string", "null"] },
+        "checked_at": { "type": ["string", "null"] },
+        "label": { "$ref": "label.json" },
+        "reason": { "type": ["string", "null"] },
+        "source_rank": { "type": "integer" },
+        "chosen": { "type": "boolean" },
+        "conflict_group": { "type": ["string", "null"] },
+        "excerpt": { "type": ["string", "null"] },
+        "excerpt_start": { "type": ["integer", "null"] },
+        "excerpt_end": { "type": ["integer", "null"] }
+      }
+    },
+    "ConflictGroup": {
+      "title": "ConflictGroup",
+      "description": "같은 필드에 값이 다른 후보들. conflict_group id 형식: '<entity>:<entity_id 또는 key>:<field>'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conflict_group", "entity", "field", "candidates", "chosen_index", "needs_compare", "rule"],
+      "properties": {
+        "conflict_group": { "type": "string" },
+        "entity": { "type": "string" },
+        "entity_id": { "type": ["integer", "null"] },
+        "entity_key": { "type": ["string", "null"] },
+        "field": { "type": "string" },
+        "candidates": { "type": "array", "minItems": 2, "items": { "$ref": "field_candidate.json" } },
+        "chosen_index": { "type": "integer", "minimum": 0 },
+        "needs_compare": { "type": "boolean" },
+        "rule": { "description": "적용 규칙(예 'rank1: 청약홈 상세 > 공고문 > 언론')", "type": "string" }
+      }
+    }
+  },
+  "examples": [
+    {
+      "chosen": [
+        {
+          "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,573", "value": 1573,
+          "source_rank": 1, "source_kind": "applyhome_detail", "primary": true, "label": "확인됨", "reason": null,
+          "excerpt": "공급세대수 1,573세대", "excerpt_start": null, "excerpt_end": null, "raw_document_id": 9101,
+          "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "needs_extract": false
+        }
+      ],
+      "provenance": [
+        {
+          "id": null, "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,573",
+          "raw_document_id": 9101, "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "label": "확인됨", "reason": null,
+          "source_rank": 1, "chosen": true, "conflict_group": "complex:13:units_total", "excerpt": "공급세대수 1,573세대", "excerpt_start": null, "excerpt_end": null
+        },
+        {
+          "id": null, "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,769",
+          "raw_document_id": 9102, "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "label": "확인됨", "reason": null,
+          "source_rank": 2, "chosen": false, "conflict_group": "complex:13:units_total", "excerpt": "총 1,769세대", "excerpt_start": null, "excerpt_end": null
+        }
+      ],
+      "conflicts": [
+        {
+          "conflict_group": "complex:13:units_total", "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total",
+          "candidates": [
+            {
+              "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,573", "value": 1573,
+              "source_rank": 1, "source_kind": "applyhome_detail", "primary": true, "label": "확인됨", "reason": null,
+              "excerpt": "공급세대수 1,573세대", "excerpt_start": null, "excerpt_end": null, "raw_document_id": 9101,
+              "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "needs_extract": false
+            },
+            {
+              "entity": "complex", "entity_id": 13, "entity_key": "2025000271", "field": "units_total", "value_text": "1,769", "value": 1769,
+              "source_rank": 2, "source_kind": "notice_pdf", "primary": true, "label": "확인됨", "reason": null,
+              "excerpt": "총 1,769세대", "excerpt_start": null, "excerpt_end": null, "raw_document_id": 9102,
+              "url": "https://www.applyhome.co.kr/", "checked_at": "2026-10-07", "needs_extract": false
+            }
+          ],
+          "chosen_index": 0, "needs_compare": false, "rule": "세대수: 청약홈 상세(1) > 공고문(2) > 언론(3) — rank 1 채택, compare 미호출"
+        }
+      ],
+      "needs_compare": false
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision.json",
+  "title": "Decision",
+  "description": "상황별 decide의 후보 1개 (RA §3 decision, §6-4, §6-7). 한 decide 호출(=DecisionSet)에 후보 ≤6 + escape hatch(ask_user, investigate) 행이 있다.\n- option_key: complex(단지 후보) | wait_new(모집공고 대기) | ask_user | investigate | none.\n- requirements: 요건 3개 각각 사전 계산(pre: 충족/미충족/미입력/확인 불가 + 근거 숫자 문자열)과 판정기 판정(judge: supported/contradicted/unknown). 둘이 다르면(충족↔contradicted, 미충족↔supported) 그 요건 mismatch=true이고 행 mismatch=true → '증거와 상이' 배지. 미입력·확인 불가·unknown은 불일치로 치지 않는다. 숨기지 않고 둘 다 보여준다.\n- tie: decide confidence < 0.6이면 확률 상위 2개 후보 모두 tie=true·chosen=true(1순위를 하나로 말하지 않음, T2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["option_key", "complex_id", "label", "prob", "chosen", "tie", "mismatch", "requirements"],
+  "properties": {
+    "id": { "type": ["integer", "null"] },
+    "score_run_id": { "type": ["integer", "null"] },
+    "scenario_id": { "type": ["integer", "null"] },
+    "option_key": { "type": "string", "enum": ["complex", "wait_new", "ask_user", "investigate", "none"] },
+    "complex_id": { "type": ["integer", "null"] },
+    "label": { "description": "표시 이름(단지명 또는 '모집공고 대기' 등)", "type": "string" },
+    "prob": { "$ref": "fact.json" },
+    "chosen": { "type": "boolean" },
+    "tie": { "type": "boolean" },
+    "mismatch": { "type": "boolean" },
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "requirements": { "anyOf": [{ "$ref": "#/$defs/RequirementChecks" }, { "type": "null" }] },
+    "judgment_seq": { "type": ["integer", "null"] }
+  },
+  "$defs": {
+    "RequirementPre": {
+      "title": "RequirementPre",
+      "description": "요건 사전 계산 1개 (RA §6-7). evidence는 decide 증거에 그대로 삽입되는 근거 문자열(예 '계약금 2,965만 ≤ 자기자본 2억; 잔금 부족 0 → 충족 (중도금 이자후불제)').",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence"],
+      "properties": {
+        "status": { "type": "string", "enum": ["충족", "미충족", "미입력", "확인 불가"] },
+        "evidence": { "type": "string", "minLength": 1 }
+      }
+    },
+    "RequirementPreSet": {
+      "title": "RequirementPreSet",
+      "description": "RequirementPrecalc.evaluate(complex, scenario)의 결과 = 요건 3개 사전 계산.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["access", "regulation", "funds"],
+      "properties": {
+        "access": { "$ref": "#/$defs/RequirementPre" },
+        "regulation": { "$ref": "#/$defs/RequirementPre" },
+        "funds": { "$ref": "#/$defs/RequirementPre" }
+      }
+    },
+    "RequirementCheck": {
+      "title": "RequirementCheck",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pre", "judge", "mismatch"],
+      "properties": {
+        "pre": { "anyOf": [{ "$ref": "#/$defs/RequirementPre" }, { "type": "null" }] },
+        "judge": { "type": ["string", "null"], "enum": ["supported", "contradicted", "unknown", null] },
+        "mismatch": { "type": "boolean" }
+      }
+    },
+    "RequirementChecks": {
+      "title": "RequirementChecks",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["access", "regulation", "funds"],
+      "properties": {
+        "access": { "$ref": "#/$defs/RequirementCheck" },
+        "regulation": { "$ref": "#/$defs/RequirementCheck" },
+        "funds": { "$ref": "#/$defs/RequirementCheck" }
+      }
+    },
+    "DecisionSet": {
+      "title": "DecisionSet",
+      "description": "한 시나리오의 decide 호출 1회 결과 = C7 데이터(CompareView.decisions[scenario code]). status=escaped면 막대 대신 question 텍스트(G5 상단 배너 '판정기가 질문을 남겼습니다'). warnings는 그대로 보고.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "scenario_code", "status", "confidence", "tie", "escaped", "question", "warnings", "cached", "items"],
+      "properties": {
+        "scenario_id": { "type": "integer" },
+        "scenario_code": { "type": ["string", "null"] },
+        "score_run_id": { "type": ["integer", "null"] },
+        "judgment_seq": { "type": ["integer", "null"] },
+        "status": { "type": "string", "enum": ["ok", "review", "escaped", "blocked", "error"] },
+        "confidence": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "tie": { "type": "boolean" },
+        "escaped": { "type": "boolean" },
+        "question": { "type": ["string", "null"] },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "cached": { "type": "boolean" },
+        "items": { "type": "array", "items": { "$ref": "#" } }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": 4402, "score_run_id": 90, "scenario_id": 3, "option_key": "complex", "complex_id": 7, "label": "김포 칸타빌 에디션",
+      "prob": { "v": 0.54, "label": "추정", "reason": "판정기 decide", "prov": "jl_127", "checked_at": "2026-10-07", "unit": "prob" },
+      "chosen": true, "tie": true, "mismatch": false, "confidence": 0.48,
+      "requirements": {
+        "access": { "pre": { "status": "충족", "evidence": "접수 가능(공식 팝업 2026-10-07, 선착순 동·호지정) → 충족" }, "judge": "supported", "mismatch": false },
+        "regulation": { "pre": { "status": "충족", "evidence": "거주의무 0개월, 재당첨 제한 없음 → 충족" }, "judge": "supported", "mismatch": false },
+        "funds": { "pre": { "status": "충족", "evidence": "계약금 3,403만(5%) ≤ 자기자본 2억; 잔금 부족 0 → 충족 (중도금 이자후불제)" }, "judge": "supported", "mismatch": false }
+      },
+      "judgment_seq": 127
+    }
+  ]
+}
