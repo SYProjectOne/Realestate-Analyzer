@@ -196,7 +196,7 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
             stats["list_complex_ids"] = daily.list_complex_ids
         with ctx.session_factory() as session:
             if not result.degraded:
-                ok, n = snapshots.publish(session, daily.snapshot_id, now=ctx.iso_now())
+                ok, n = snapshots.publish(session, result.snapshot_id, now=ctx.iso_now())
                 stats.update({"published": ok, "contradicted": n})
             region = session.get(Region, region_id)
             assert region is not None

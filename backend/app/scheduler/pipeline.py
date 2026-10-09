@@ -106,7 +106,7 @@ from app.scheduler.payloads import (
     stored_scope,
     wait_new_evidence,
 )
-from app.scheduler.snapshots import contradicted_count, previous, snapshot_dto
+from app.scheduler.snapshots import contradicted_count, previous, snapshot_dto, writable
 
 if TYPE_CHECKING:
     from app.scheduler.context import SchedulerContext
@@ -442,7 +442,7 @@ def _extract_one(
 
 
 def _inclusion_text(f: ComplexFacts) -> str:
-    cx = f.row
+    cx = f.fact_row
     parts = [
         f"단지명: {cx.name}",
         f"사업주체(시행): {cx.developer}" if cx.developer else "",
@@ -567,23 +567,40 @@ def _catalyst_key(cat: Catalyst) -> str:
     return news_key(cat.source_url, cat.name)
 
 
-def _discard_catalyst(
-    session: Session, cat: Catalyst, why: str, res: PipelineResult, seq_id: int | None
-) -> None:
-    from app.models import CatalystLink
+NOT_CATALYST: Final = "호재 아님"
+"""catalyst.stage '호재 아님'(계약 .8, D11-2) — 판정기가 호재가 아니라고 본 뉴스 후보. 지우지 않고 제외로 남긴다."""
 
+
+def _not_catalyst(
+    session: Session,
+    cat: Catalyst,
+    out: jp.ClassifyOutcome,
+    why: str,
+    res: PipelineResult,
+    seq_id: int | None,
+) -> None:
+    """'호재 아님'(D11-2·M-10): 행·출처·연결을 지우지 않는다(발행 스냅샷이 인용한 호재가 사라지지 않게). 뉴스 후보는
+    stage '호재 아님'(제외), 사람이 넣은 호재(뉴스 원문 없음)는 단계를 그대로 두고 판정 결과만 병기(decision·judgment_seq·
+    note). 기록 = 행 자체 + 잡 stats ``catalysts_discarded``(이름 유지 — 대시보드 호환)."""
     res.catalysts_discarded.append(
-        {"name": cat.name[:80], "source_url": cat.source_url, "reason": why, "judgment_seq": seq_id}
+        {
+            "catalyst_id": cat.id,
+            "name": cat.name[:80],
+            "source_url": cat.source_url,
+            "reason": why,
+            "judgment_seq": seq_id,
+            "kept": True,
+        }
     )
-    for link in session.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat.id)):
-        session.delete(link)
-    for fp in session.scalars(
-        select(FieldProvenance).where(
-            FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == cat.id
-        )
-    ):
-        session.delete(fp)
-    session.delete(cat)
+    cat.decision = out.decision
+    cat.stage_prob = persist.to_dec(out.prob) if out.prob is not None else None
+    cat.judgment_seq = seq_id
+    if _is_news(cat):
+        cat.stage = NOT_CATALYST
+        return
+    mark = f"판정기: 호재 아님(jl_{seq_id})" if seq_id is not None else "판정기: 호재 아님"
+    if mark not in (cat.note or ""):
+        cat.note = f"{cat.note} · {mark}" if cat.note else mark
 
 
 def _p4_catalysts(
@@ -597,8 +614,8 @@ def _p4_catalysts(
     """D10-6: 호재 후보(뉴스는 수집 때 P1 screen 통과분만 — ``assemble``) → 단계 classify(5단계 + '호재 아님') →
     '호재 아님'(``judge.pipeline.catalyst_stage`` = None)이면 후보 폐기·기록, 아니면 단계·종류 classify(``catalyst_kind``).
 
-    판단은 판정기만 — 봉투 결과를 행에 옮긴다(미해결이면 단계 '미확정'·종류 '기타'). 폐기 = catalyst 행(+ 연결·출처) 삭제,
-    기록 = ``PipelineResult.catalysts_discarded``(잡 stats, judgment_log 행이 근거).
+    판단은 판정기만 — 봉투 결과를 행에 옮긴다(미해결이면 단계 '미확정'·종류 '기타'). '호재 아님'은 지우지 않는다(D11-2):
+    뉴스 후보는 stage '호재 아님'(제외), 사람이 넣은 호재는 단계 유지 + 판정 결과 병기(``_not_catalyst``).
     """
     for cat in list(
         session.scalars(select(Catalyst).where(Catalyst.region_id == region.id).order_by(Catalyst.id))
@@ -609,7 +626,7 @@ def _p4_catalysts(
         s = seq(out.envelope.judgment_seq)
         stage = jp.catalyst_stage(out)
         if stage is None:  # '호재 아님'(auto)
-            _discard_catalyst(session, cat, "호재 아님(판정기 classify)", res, s)
+            _not_catalyst(session, cat, out, "호재 아님(판정기 classify)", res, s)
             continue
         cat.stage = stage
         cat.decision = out.decision
@@ -794,16 +811,20 @@ def _notify(ctx: SchedulerContext, session: Session, events: Sequence[ChangeEven
 # ---------------------------------------------------------------- P9
 
 
-def _claim_targets(f: ComplexFacts) -> dict[str, tuple[str, int]]:
-    """P9 사실 문장의 필드 → 주장이 생성된 DB 사실(entity, entity_id) — 계약 2026-10-09.6 claim.entity·entity_id·field."""
-    out: dict[str, tuple[str, int]] = {}
+def _claim_targets(f: ComplexFacts) -> dict[str, tuple[str, int, str]]:
+    """P9 사실 문장의 필드(논리) → 주장이 생성된 DB 사실(entity, entity_id, 출처 필드 경로) — 계약 claim.entity·entity_id·field.
+
+    가격은 점수·화면이 실제로 쓰는 필드(현재 구매가 max_ref — 최신 공고 ``payment_terms.price_by_type.<타입>.max_price_won``,
+    없으면 ``complex_type.max_price_won``)다(M-4: 강등도 그 필드에 걸린다)."""
+    out: dict[str, tuple[str, int, str]] = {}
     cx = f.row
-    if f.basis is not None:
-        out["max_price_won"] = ("complex_type", f.basis.id)
+    ref = f.price.max_ref if f.price is not None else None
+    if ref is not None:
+        out["max_price_won"] = (ref.entity, ref.entity_id, ref.field)
     for name in ("move_in_ym", "resale_months", "residency_months"):
-        out[name] = ("complex", cx.id)
+        out[name] = ("complex", cx.id, name)
     if f.terms is not None:
-        out["down_payment_pct"] = ("payment_terms", f.terms.id)
+        out["down_payment_pct"] = ("payment_terms", f.terms.id, "down_payment_pct")
     return out
 
 
@@ -817,20 +838,22 @@ def _with_targets(claims: Sequence[ClaimDTO], f: ComplexFacts) -> list[ClaimDTO]
     for c in claims:
         found = fields_in(c.text or "") & set(targets)
         if len(found) == 1:
-            name = next(iter(found))
-            entity, eid = targets[name]
-            c = c.model_copy(update={"entity": entity, "entity_id": eid, "field": name})
+            entity, eid, path = targets[next(iter(found))]
+            c = c.model_copy(update={"entity": entity, "entity_id": eid, "field": path})
         out.append(c)
     return out
 
 
 def _claim_text(f: ComplexFacts) -> str:
-    cx = f.row
+    """P9 사실 문장 — 강등 중인 사실(D11-3)은 문장에 넣지 않는다(``fact_row``·가격 view 가 이미 값을 뺐다)."""
+    cx = f.fact_row
     name = cx.name
     lines: list[str] = []
     evid = {eid for eid, _ in f.evidence}
-    if f.basis is not None and f.basis.max_price_won and evid:
-        lines.append(f"{name} 기준 타입 최고 공급금액은 {f.basis.max_price_won:,}원이다")
+    ref = f.price.max_ref if f.price is not None else None
+    price = ref.value if ref is not None else None
+    if isinstance(price, int | float) and price and evid:
+        lines.append(f"{name} 기준 타입 최고 공급금액은 {int(price):,}원이다")
     if cx.move_in_ym:
         lines.append(f"{name} 입주 예정 시기는 {cx.move_in_ym}이다")
     if cx.resale_months is not None:
@@ -862,9 +885,13 @@ def run_pipeline(
     reason: str = "",
 ) -> PipelineResult:
     with ctx.session_factory() as session:
-        snap = session.get(Snapshot, snapshot_id)
-        if snap is None:
-            raise LookupError(f"snapshot {snapshot_id} 없음")
+        # D11-1·M-2: 발행 스냅샷은 불변 — 그 기준일의 가장 큰 리비전이 발행됐으면 새 리비전(building)에 판정하고, 발행 전
+        # 리비전이면 그 자리에서. 판정 중에는 building(파생 행이 반쯤 바뀐 상태로 publish 되지 않게), 끝나면 ready
+        snap = writable(session, snapshot_id, reason=reason or "재판정", created_at=ctx.iso_now())
+        if snap.status != "building":
+            snap.status = "building"
+        session.commit()
+        snapshot_id = snap.id
         region = session.get(Region, snap.region_id)
         if region is None:
             raise LookupError(f"region {snap.region_id} 없음")
@@ -970,6 +997,11 @@ def run_pipeline(
                     wait_new_evidence=plan.wait_new_evidence,
                 )
                 res.decisions += len(persist.save_decisions(session, run, dset, seq))
+            if scenario_id is not None and prev is not None:
+                # 시나리오 지정 재판정: 다른 시나리오의 저장 결과도 이 리비전에 있어야 한다(새 리비전이면 비어 있다 — D11-1)
+                runs, _ = persist.copy_runs(session, prev.id, snap.id, created_at=ctx.iso_now())
+                if runs:
+                    res.carried["score_run"] = runs
             session.commit()
 
             # P9 verify — 대상 단지의 사실 문장

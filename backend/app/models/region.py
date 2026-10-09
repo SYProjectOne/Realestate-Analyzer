@@ -1,5 +1,7 @@
 """기준: region (RA §3 + DECISIONS D2-2), snapshot."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -53,8 +55,10 @@ class Region(Base):
 class Snapshot(Base):
     """기준일 스냅샷 리비전. (region_id, asof_date, revision) 유일 — 0008(계약 .8, D11-1).
 
-    발행(published) 리비전은 불변이다. 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장)은
-    같은 기준일의 새 리비전(revision+1, ``revision_of`` = 바탕 리비전, ``revision_reason``)에 쓰고, 완성된 뒤 한 번에
+    발행(published) 리비전은 불변이다. 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역
+    확장)은
+    같은 기준일의 새 리비전(revision+1, ``revision_of`` = 바탕 리비전, ``revision_reason``)에 쓰고, 완성된 뒤 한
+    번에
     published 가 된다(``scheduler.snapshots.writable``)."""
 
     __tablename__ = "snapshot"

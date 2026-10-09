@@ -205,6 +205,9 @@ def snapshot_view(session: Session, snap: Snapshot) -> dict[str, Any]:
         "id": snap.id,
         "region_id": snap.region_id,
         "asof_date": snap.asof_date,
+        "revision": int(snap.revision or 1),
+        "revision_of": snap.revision_of,
+        "revision_reason": snap.revision_reason,
         "status": snap.status,
         "degraded": bool(snap.degraded),
         "created_at": snap.created_at,
@@ -280,8 +283,17 @@ def _chunks(ids: Sequence[int], n: int = 500) -> Iterable[Sequence[int]]:
 
 
 def load_bundles(
-    session: Session, complexes: Sequence[Complex], snapshot_id: int, *, with_ladders: bool = True
+    session: Session,
+    complexes: Sequence[Complex],
+    snapshot_id: int,
+    *,
+    with_ladders: bool = True,
+    scenario_id: int | None = None,
 ) -> dict[int, ComplexBundle]:
+    """단지 묶음(사실 행·접수·사다리·저장 범위)을 한 번에 읽는다.
+
+    저장 범위·사다리 숨김(M-1)은 **그 시나리오**(``scenario_id``)의 마지막 점수 실행 기준 — 시나리오 지정 rejudge 뒤 다른
+    시나리오 화면이 그 rejudge 의 범위로 사다리를 숨기지 않게. ``scenario_id`` 가 없으면 스냅샷의 마지막 실행(시나리오 무관)."""
     snap = session.get(Snapshot, snapshot_id)
     asof = snap.asof_date if snap is not None else None
     out = {c.id: ComplexBundle(c, asof_date=asof) for c in complexes}
@@ -306,9 +318,10 @@ def load_bundles(
                 select(Ladder).where(Ladder.complex_id.in_(chunk), Ladder.snapshot_id == snapshot_id)
             ):
                 out[lad.complex_id].ladders.append(lad)
-    last_run = session.scalars(
-        select(ScoreRun.id).where(ScoreRun.snapshot_id == snapshot_id).order_by(ScoreRun.id.desc()).limit(1)
-    ).first()
+    run_stmt = select(ScoreRun.id).where(ScoreRun.snapshot_id == snapshot_id)
+    if scenario_id is not None:
+        run_stmt = run_stmt.where(ScoreRun.scenario_id == scenario_id)
+    last_run = session.scalars(run_stmt.order_by(ScoreRun.id.desc()).limit(1)).first()
     if last_run is not None:
         for b in out.values():
             b.scored_run = True
@@ -322,6 +335,16 @@ def load_bundles(
                 )
             ):
                 out[cid].stored_scope = scope
+    # D11-3 강등 오버레이: 강등 중인 사실 필드는 묶음 행에서 None 으로 보인다(점수 입력·범위·CSV·정렬 공통). Fact 의
+    # '확인 불가(검증 모순)' 표시는 ``ProvIndex``(같은 오버레이)가 한다. 읽기 전용 감싸개 — DB 쓰기 없음
+    from app.facts_view import load_overlay
+
+    overlay = load_overlay(session, complex_ids=ids) if ids else None
+    if overlay:
+        for b in out.values():
+            b.cx = masked(b.cx, overlay.fields("complex", b.cx.id))
+            b.types = [masked(t, overlay.fields("complex_type", t.id)) for t in b.types]
+            b.payments = [masked(p, overlay.fields("payment_terms", p.id)) for p in b.payments]
     from app.scheduler.inputs import ocr_pending_fields
 
     targets: list[tuple[str, list[tuple[int, int]]]] = [

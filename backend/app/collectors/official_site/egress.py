@@ -155,7 +155,9 @@ class EgressProxy:
             else:
                 url = urlsplit(target)
                 if url.scheme.lower() != "http" or not url.hostname:
-                    self._block(client, target, f"blocked_host: 허용하지 않는 프록시 요청 {url.scheme or target}")
+                    self._block(
+                        client, target, f"blocked_host: 허용하지 않는 프록시 요청 {url.scheme or target}"
+                    )
                     return
                 headers = [h for h in lines[1:] if h]
                 if any(h.split(":", 1)[0].strip().lower() == "upgrade" for h in headers):

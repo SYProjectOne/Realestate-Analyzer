@@ -40,6 +40,7 @@ log = get_logger("app.api.facts")
 
 LABEL_UNKNOWN = "확인 불가"
 MISSING_REASON = "출처 누락"
+DEMOTION_REASON = "검증 모순"  # app.facts_view.DEMOTION_REASON (D10-3·D11-3)
 # 라벨 강도(약한 쪽이 이긴다): 산술로 묶을 때 결과 라벨
 _ORDER = {"확인됨": 0, "재가공": 1, "비공식": 2, "추정": 3, LABEL_UNKNOWN: 4}
 
@@ -142,16 +143,26 @@ class ProvRef:
 
 
 class ProvIndex:
-    """field_provenance chosen 행 색인 (entity, entity_id, field) → 행. 목록 화면은 한 번에 읽는다."""
+    """field_provenance chosen 행 색인 (entity, entity_id, field) → 행. 목록 화면은 한 번에 읽는다.
+
+    읽은 행의 강등(검증 모순) 오버레이도 같이 계산한다(``app.facts_view``, D11-3) — ``demoted`` 인
+    필드는 Fact 가 '확인 불가(검증 모순)'이다. 읽기 전용(DB 쓰기 없음)."""
 
     def __init__(self) -> None:
         self._rows: dict[tuple[str, int, str], ProvRef] = {}
         self._loaded: set[tuple[str, int]] = set()
+        self._demoted: set[tuple[str, int, str]] = set()
 
     def load(self, session: Session, entity: str, ids: Iterable[int]) -> ProvIndex:
+        from app.facts_view import ChosenRef, load_overlay
+
         want = sorted({i for i in ids if (entity, i) not in self._loaded})
         fp = FieldProvenance
-        cols = (fp.entity_id, fp.field, fp.id, fp.label, fp.checked_at, fp.reason, fp.url, fp.raw_document_id)
+        cols = (
+            fp.entity_id, fp.field, fp.id, fp.label, fp.checked_at, fp.reason, fp.url, fp.raw_document_id,
+            fp.value_norm,
+        )  # fmt: skip
+        refs: dict[tuple[str, int, str], ChosenRef] = {}
         for start in range(0, len(want), 500):
             chunk = want[start : start + 500]
             stmt = (
@@ -159,19 +170,32 @@ class ProvIndex:
                 .where(fp.entity == entity, fp.entity_id.in_(chunk), fp.chosen.is_(True))
                 .order_by(fp.id)
             )
-            for entity_id, field, fid, label, checked, reason, url, raw_id in session.execute(stmt):
+            for entity_id, field, fid, label, checked, reason, url, raw_id, vn in session.execute(stmt):
                 if entity_id is None:
                     continue
-                self._rows.setdefault(
-                    (entity, entity_id, field), ProvRef(fid, label, checked, reason, url, raw_id)
-                )
+                key = (entity, entity_id, field)
+                if key not in self._rows:
+                    self._rows[key] = ProvRef(fid, label, checked, reason, url, raw_id)
+                    refs[key] = ChosenRef(fid, vn, reason, raw_id)
             self._loaded.update((entity, i) for i in chunk)
+        if want:
+            overlay = load_overlay(session, entity=entity, ids=want, chosen=refs)
+            self._demoted.update(overlay.active)
         return self
 
     def get(self, entity: str, entity_id: int | None, field: str) -> ProvRef | None:
         if entity_id is None:
             return None
         return self._rows.get((entity, entity_id, field))
+
+    def demoted(self, entity: str, entity_id: int | None, field: str) -> bool:
+        """강등(검증 모순) 오버레이가 적용 중인 사실 필드인가(D11-3)."""
+        return entity_id is not None and (entity, entity_id, field) in self._demoted
+
+    def demoted_fields(self, entity: str, entity_id: int | None) -> frozenset[str]:
+        if entity_id is None:
+            return frozenset()
+        return frozenset(f for (e, i, f) in self._demoted if e == entity and i == entity_id)
 
 
 class FactMaker:
@@ -200,8 +224,12 @@ class FactMaker:
         unit: str | None = None,
         prov_field: str | None = None,
     ) -> Fact:
-        """DB 값 + chosen 출처 행 → Fact. ``prov_field`` 는 출처 행 이름이 컬럼과 다를 때."""
+        """DB 값 + chosen 출처 행 → Fact. ``prov_field`` 는 출처 행 이름이 컬럼과 다를 때.
+        강등 중(D11-3)이면 값과 무관하게 '확인 불가(검증 모순)'."""
         fp = self.prov.get(entity, entity_id, prov_field or field)
+        if self.prov.demoted(entity, entity_id, prov_field or field):
+            keep = f"fp_{fp.id}" if fp is not None and (fp.url or fp.raw_document_id) else None
+            return unknown(DEMOTION_REASON, fp.checked_at if fp is not None else None, unit=unit, prov=keep)
         value = num(value)
         if value is None:
             if fp is None:

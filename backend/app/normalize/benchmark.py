@@ -339,7 +339,9 @@ def latest_ok_docs(session: Session, region_id: int, source_kind: str, path_part
         )
         .group_by(RawDocument.url)
     )
-    return list(session.scalars(select(RawDocument).where(RawDocument.id.in_(latest)).order_by(RawDocument.id)))
+    return list(
+        session.scalars(select(RawDocument).where(RawDocument.id.in_(latest)).order_by(RawDocument.id))
+    )
 
 
 def latest_by_urls(session: Session, urls: Iterable[str]) -> dict[str, RawDocument]:
@@ -513,7 +515,9 @@ class _Case:
     post: list[RtmsTrade]  # 입주 후(분양권이면 분양권) 전체 — 고점
     window: str
     presale: bool
-    trade_label: Label  # 창 안 실거래 라벨(Open API 만 = 확인됨, 재가공 섞임 = 재가공) — 분양가 라벨과 섞지 않는다
+    trade_label: (
+        Label  # 창 안 실거래 라벨(Open API 만 = 확인됨, 재가공 섞임 = 재가공) — 분양가 라벨과 섞지 않는다
+    )
 
 
 @dataclass
@@ -578,7 +582,9 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
     sgg_names = region_sigungu_names(session, scope)
     codes = sorted({c for n in notices if (c := index.code(n.address, scope)) is not None and c in scope})
     legal_by_code = (
-        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))} if codes else {}
+        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))}
+        if codes
+        else {}
     )
     out: list[_Case] = []
     taken: dict[tuple[str, str], _Case] = {}  # 실거래 묶음 → 첫(가장 이른) 공고: 분양가 = 최초 공고
@@ -823,8 +829,8 @@ def build_benchmarks(
 
     행은 스냅샷에 묶인다(계약 .6 ``benchmark.snapshot_id``): 다시 돌리면 **같은 스냅샷**의 자기 행만 갱신·삭제하고,
     다른 스냅샷(발행본이 인용한 행)은 건드리지 않는다. ``snapshot_id`` 를 안 주면 이 지역·기준일의 가장 새 스냅샷.
-    스냅샷 없이 만든 옛 자동 행(머리표 있음, snapshot_id NULL)은 처음 조립하는 스냅샷이 넘겨받는다.
-    snapshot_id NULL 이고 머리표 없는 행은 수동·시드 행이라 건드리지 않는다.
+    스냅샷 없이 만든 옛 자동 행(머리표 있음, snapshot_id NULL — 0006 이전)은 건드리지 않는다(minor 25: 넘겨받으면 0006
+    이전 발행 스냅샷이 인용한 벤치마크가 사라진다). snapshot_id NULL 이고 머리표 없는 행은 수동·시드 행이라 건드리지 않는다.
     """
     region = session.get(Region, region_id)
     if region is None:
@@ -857,7 +863,6 @@ def build_benchmarks(
                 wanted.append((tag, c, vals, la))
 
     existing: dict[str, Benchmark] = {}
-    legacy: dict[str, Benchmark] = {}
     for b in session.scalars(
         select(Benchmark).where(Benchmark.region_id == region.id).order_by(Benchmark.id)
     ):
@@ -866,13 +871,8 @@ def build_benchmarks(
         tag_of = b.note.split("]", 1)[0] + "]"
         if b.snapshot_id == sid:
             existing.setdefault(tag_of, b)
-        elif b.snapshot_id is None:
-            legacy.setdefault(tag_of, b)  # 스냅샷 없이 만든 옛 자동 행
-    if sid is not None:
-        for tag_of, b in legacy.items():
-            if tag_of not in existing:
-                b.snapshot_id = sid
-                existing[tag_of] = b
+        # 스냅샷 없이 만든 옛 자동 행(snapshot_id NULL, 0006 이전)은 넘겨받지 않는다(minor 25) — 0006 이전 발행 스냅샷이
+        # 인용하던 행이라 그대로 두고(``api.benchmarks.benchmarks_for`` 가 조립분이 없는 스냅샷에만 보인다) 새 행을 만든다
     seen: set[str] = set()
     for tag, case, vals, sub in wanted:
         seen.add(tag)

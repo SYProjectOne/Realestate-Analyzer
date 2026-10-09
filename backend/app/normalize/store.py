@@ -33,6 +33,8 @@
 commit은 호출자(잡 러너)가 한다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
@@ -50,6 +52,7 @@ from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import FieldCandidate, ResolvedFields
 from app.core.contracts_gen import RawDocument as RawDocumentDTO
+from app.facts_view import is_human
 from app.models import (
     ChangeEvent,
     Competition,
@@ -91,6 +94,7 @@ __all__ = [
     "is_zone_address",
     "parser_for",
     "raw_dto",
+    "resolve_field_group",
     "store_raw_document",
     "write_chosen",
 ]
@@ -204,6 +208,10 @@ class _Binder:
         self.new_terms: list[PaymentTerms] = []
         self._complex: dict[str, Complex] = {}
         self.foreign: set[str] = set()
+        # D11-4: 잔여·임의·무순위 공고를 다른 번호의 원 단지에 묶은 키 — 그 공고의 단지 단위
+        # 후보(complex·complex_type)는
+        # 원 단지 값을 덮어쓰지 않는다(payment_terms·competition·remaining_event 에만 기록)
+        self.merged: set[str] = set()
         # (단지, 공급 구분, 회차) → '타입 모호'로 묶은 원 주택형
         self._ambiguous: dict[tuple[int, str, str], str] = {}
 
@@ -237,6 +245,8 @@ class _Binder:
                     cx.applyhome_id = key
         if cx is None and create and region_id is not None and _is_remainder_notice(raw, batch, key):
             cx = self._same_block(key, region_id, batch)
+            if cx is not None:
+                self.merged.add(key)
         if cx is None and create:
             region_id = raw.region_id
             if region_id is None:
@@ -510,11 +520,21 @@ class _Binder:
             if k not in ids:
                 ids[k] = self._id_for(c.entity, c.entity_key or "", by_key[k], cands, raw, create=create)
             eid = ids[k]
-            if eid is None:
+            if eid is None or self._merged_unit(c):
                 skipped.append(c)
                 continue
             bound.append(c.model_copy(update={"entity_id": eid}))
         return bound, skipped
+
+    def complex_for_key(self, key: str) -> int | None:
+        cx = self._complex.get(key)
+        return cx.id if cx is not None else None
+
+    def _merged_unit(self, c: FieldCandidate) -> bool:
+        """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다)."""
+        if c.entity not in MERGED_UNIT_ENTITIES:
+            return False
+        return (c.entity_key or "").split(":")[0] in self.merged
 
     def _id_for(
         self,
@@ -557,6 +577,9 @@ class _Binder:
             return un.id if un else None
         return None
 
+
+MERGED_UNIT_ENTITIES = frozenset({"complex", "complex_type"})
+"""D11-4: 원 단지에 묶인 잔여·임의·무순위 공고에서 원 단지에 쓰지 않는 단지 단위 엔티티."""
 
 TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
 """면적 코드 경쟁률 행이 같은 면적의 단지 주택형 여럿에 맞을 때의 type_code(매칭하지 않음)."""
@@ -797,6 +820,71 @@ def candidate_from_row(fp: FieldProvenance, source_kind: str | None) -> FieldCan
     )
 
 
+def _own_key(session: Session, entity: str, entity_id: int | None) -> str | None:
+    """단지 단위 엔티티 행(complex·complex_type)이 속한 단지의 주택관리번호. 그 밖은 None."""
+    if entity_id is None or entity not in MERGED_UNIT_ENTITIES:
+        return None
+    if entity == "complex":
+        cx = session.get(Complex, entity_id)
+    else:
+        t = session.get(ComplexType, entity_id)
+        cx = session.get(Complex, t.complex_id) if t is not None else None
+    return cx.applyhome_id if cx is not None else None
+
+
+def _foreign_unit_row(fp: FieldProvenance, own_key: str | None) -> bool:
+    """단지 단위 출처 행의 entity_key(파서가 단 주택관리번호)가 이 단지 번호와 다르다 = 원 단지에 묶인 잔여 공고가 쓴 행."""
+    if own_key is None or not fp.entity_key:
+        return False
+    return fp.entity_key.split(":")[0] != own_key
+
+
+def resolve_field_group(
+    session: Session,
+    entity: str,
+    entity_id: int,
+    field_name: str,
+    extra: list[FieldCandidate],
+    *,
+    snapshot_id: int | None = None,
+    now: datetime | None = None,
+) -> list[ChangeEvent]:
+    """한 사실 필드 그룹(entity, entity_id, field)을 저장된 출처 행(원문·사람 확인) + ``extra`` 후보로 다시 resolve 한다
+    (사람 확인 입력 — ``api.demotion.apply_human_check``). 원문을 다시 읽지 않는다. 사실 테이블·출처
+    행·change_event."""
+    detected_at = changes.detected_now(now)
+    with session.begin_nested():
+        own_key = _own_key(session, entity, entity_id)
+        cands: list[FieldCandidate] = []
+        kinds: dict[int, str | None] = {}
+        for fp in session.scalars(
+            select(FieldProvenance)
+            .where(
+                FieldProvenance.entity == entity,
+                FieldProvenance.entity_id == entity_id,
+                FieldProvenance.field == field_name,
+            )
+            .order_by(FieldProvenance.id)
+        ):
+            rid = fp.raw_document_id
+            if rid is None:
+                if is_human(fp.reason):
+                    cands.append(candidate_from_row(fp, None))
+                continue
+            if _is_legacy(fp) or _foreign_unit_row(fp, own_key):
+                continue
+            if rid not in kinds:
+                raw_row = session.get(RawDocument, rid)
+                kinds[rid] = raw_row.source_kind if raw_row is not None else None
+            cands.append(candidate_from_row(fp, kinds[rid]))
+        resolved = resolve([*extra, *cands])
+        upsert_provenance(session, resolved.provenance)
+        events, _ = write_chosen(session, resolved.chosen, snapshot_id=snapshot_id, detected_at=detected_at)
+        session.add_all(events)
+        session.flush()
+    return events
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -821,23 +909,30 @@ def _reparse_existing(
     pairs = {(e, i) for e, i, _ in groups}
     rows: list[FieldProvenance] = []
     for e, i in sorted(pairs, key=lambda p: (p[0], p[1] or 0)):
+        own_key = _own_key(session, e, i)
         for fp in session.scalars(
             select(FieldProvenance)
             .where(FieldProvenance.entity == e, FieldProvenance.entity_id == i)
             .order_by(FieldProvenance.id)
         ):
-            if (
-                fp.raw_document_id is not None
-                and fp.raw_document_id != exclude_raw_id
-                and (fp.entity, fp.entity_id, fp.field) in groups
-            ):
-                rows.append(fp)
+            if (fp.entity, fp.entity_id, fp.field) not in groups:
+                continue
+            if fp.raw_document_id is None:
+                if is_human(fp.reason):
+                    rows.append(fp)  # 사람 확인 = resolver 0순위 후보(D11-3) — 재정규화에도 남는다(C-3)
+                continue
+            if fp.raw_document_id == exclude_raw_id or _foreign_unit_row(fp, own_key):
+                continue  # 이번 원문 / 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행(후보 아님)
+            rows.append(fp)
     legacy_raw = {fp.raw_document_id for fp in rows if _is_legacy(fp) and fp.raw_document_id is not None}
     kinds: dict[int, str | None] = {}
     out: list[FieldCandidate] = []
     for fp in sorted(rows, key=lambda r: (r.raw_document_id or 0, r.id)):
         rid = fp.raw_document_id
-        if rid is None or rid in legacy_raw:
+        if rid is None:
+            out.append(candidate_from_row(fp, None))  # 사람 확인
+            continue
+        if rid in legacy_raw:
             continue
         if rid not in kinds:
             raw_row = session.get(RawDocument, rid)
@@ -917,6 +1012,8 @@ def store_raw_document(
                 parent = session.get(_MODELS[c.entity], c.entity_id)
                 if parent is not None:
                     cids.add(parent.complex_id)
+        # 원 단지에 묶인 잔여 공고(D11-4): 단지 단위 후보는 건너뛰었어도 그 단지는 이 원문과 관련된 단지다(재판정 대상)
+        cids |= {binder.complex_for_key(k) for k in binder.merged} - {None}  # type: ignore[arg-type]
         complex_ids = sorted(cids)
     return StoreResult(
         raw_document_id=row.id,

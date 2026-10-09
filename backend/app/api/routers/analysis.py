@@ -155,7 +155,7 @@ def get_compare(
         raise not_found(f"complex {missing[0]} in snapshot {sid}")
     region = session.get(Region, snap.region_id)
     names = area_names(region)
-    bundles = load_bundles(session, list(complexes.values()), snap.id)
+    bundles = load_bundles(session, list(complexes.values()), snap.id, scenario_id=sc.id)
     ctx = score_ctx(session, snap.id, sc)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
     days = ladder_days(session, bundles.values())
@@ -344,7 +344,7 @@ def preview_scenario(
         raise not_found(f"scenario {id}")
     snap = get_snapshot(session, snapshot)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
     inputs = []
     for b in bundles.values():

@@ -137,7 +137,9 @@ def catalyst_candidate(
 def _write_provenance(session: Session, row: Catalyst, raw_document_id: int | None) -> None:
     """후보 행의 출처 행(name·source_url) — 라벨 '비공식', URL = 원문 링크(M6)."""
     doc = session.get(RawDocument, raw_document_id) if raw_document_id is not None else None
-    checked = (doc.fetched_at[:10] if doc is not None and doc.fetched_at else None) or now_kst().date().isoformat()
+    checked = (
+        doc.fetched_at[:10] if doc is not None and doc.fetched_at else None
+    ) or now_kst().date().isoformat()
     reason = "뉴스 검색 결과(언론 기사)" if doc is not None else "사람 입력 URL"
     excerpt = (f"{row.name} — {row.note}" if row.note else row.name)[:_NOTE_MAX]
     key = f"catalyst:{row.id}"
@@ -146,10 +148,24 @@ def _write_provenance(session: Session, row: Catalyst, raw_document_id: int | No
         session,
         [
             ProvenanceRow(
-                entity="catalyst", entity_id=row.id, entity_key=key, field=field_name, value_text=text,
-                value_norm=text, raw_document_id=doc.id if doc is not None else None, url=url, checked_at=checked,
-                observed_on=None, label=SOURCE_LABEL, reason=reason, source_rank=2, chosen=True,
-                conflict_group=None, excerpt=excerpt, excerpt_start=None, excerpt_end=None,
+                entity="catalyst",
+                entity_id=row.id,
+                entity_key=key,
+                field=field_name,
+                value_text=text,
+                value_norm=text,
+                raw_document_id=doc.id if doc is not None else None,
+                url=url,
+                checked_at=checked,
+                observed_on=None,
+                label=SOURCE_LABEL,
+                reason=reason,
+                source_rank=2,
+                chosen=True,
+                conflict_group=None,
+                excerpt=excerpt,
+                excerpt_start=None,
+                excerpt_end=None,
             )
             for field_name, text in (("name", row.name), ("source_url", url))
         ],

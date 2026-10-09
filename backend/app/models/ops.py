@@ -3,6 +3,8 @@
 share_link — 계약 2026-10-09.4 (RA §10 보안 5).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from typing import Any
@@ -42,7 +44,8 @@ class HumanCheck(Base):
     entered_by: Mapped[str] = mapped_column(String(32))
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str | None] = mapped_column(String(32))
-    # 0008 (계약 2026-10-09.8, D11-3): 확인한 사실 행(field_provenance 의 entity·entity_id). 사람 확인 값은 resolver
+    # 0008 (계약 2026-10-09.8, D11-3): 확인한 사실 행(field_provenance 의 entity·entity_id). 사람 확인 값은
+    # resolver
     # 0순위 후보(source_rank 0)로 들어가 재정규화에도 유지된다. NULL = 접수 상태·옛 행
     entity: Mapped[str | None] = mapped_column(String(32))
     entity_id: Mapped[int | None] = mapped_column(Integer)
@@ -65,7 +68,8 @@ class ChecklistItem(Base):
     due_date: Mapped[str | None] = mapped_column(String(10))
     status: Mapped[str] = mapped_column(String(8), server_default="open")
     note: Mapped[str | None] = mapped_column(Text)
-    # 0008 (계약 2026-10-09.8, M-9): 'auto' = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 연다),
+    # 0008 (계약 2026-10-09.8, M-9): 'auto' = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시
+    # 연다),
     # 'human' = 사람이 PATCH 로 처리, NULL = 열림·옛 행
     closed_by: Mapped[str | None] = mapped_column(String(8))
 

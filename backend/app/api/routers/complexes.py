@@ -286,7 +286,7 @@ def get_complex_detail(
     sc = resolve_scenario(session, scenario)
     region = session.get(Region, cx.region_id)
     names = area_names(region)
-    b = load_bundles(session, [cx], snap.id)[cx.id]
+    b = load_bundles(session, [cx], snap.id, scenario_id=sc.id)[cx.id]
     comps = list(
         session.scalars(select(Competition).where(Competition.complex_id == cx.id).order_by(Competition.id))
     )

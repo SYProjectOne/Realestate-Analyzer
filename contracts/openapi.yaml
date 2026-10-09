@@ -709,8 +709,8 @@ paths:
     post:
       tags: [ops]
       operationId: createHumanCheck
-      summary: 사람 확인 입력 → intake_status 행 + change_event (G7, T3)
-      description: field='intake_status'이면 같은 스냅샷에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행').
+      summary: 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
+      description: field='intake_status'이면 그 기준일의 쓰기 가능 리비전(최신 리비전이 발행됐으면 새 리비전 — D11-1)에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행'). field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등(검증 모순)을 복원하며 change_event + suggested_job 을 돌려준다(계약 2026-10-09.8). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
       requestBody:
         required: true
         content:
@@ -1173,6 +1173,7 @@ components:
     ChecklistPatch: { $ref: './schemas/checklist_item.json#/$defs/ChecklistPatch' }
     HumanCheck: { $ref: './schemas/human_check.json' }
     HumanCheckCreate: { $ref: './schemas/human_check.json#/$defs/HumanCheckCreate' }
+    HumanCheckField: { $ref: './schemas/human_check.json#/$defs/HumanCheckField' }
     EnteredByRole: { $ref: './schemas/human_check.json#/$defs/EnteredByRole' }
     ReportRequest: { $ref: './schemas/job_payloads/report.json' }
     Report: { $ref: './schemas/report.json' }

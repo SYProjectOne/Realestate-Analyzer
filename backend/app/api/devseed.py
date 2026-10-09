@@ -53,7 +53,6 @@ from app.core.contracts_gen import (
     ScoreInputs,
 )
 from app.core.contracts_gen import Scenario as ScenarioDTO
-from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.db import get_engine, get_session, reset_engine
 from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings, set_settings
@@ -1073,16 +1072,9 @@ def _load_scores(
     have = select(ScoreRun.id).where(ScoreRun.snapshot_id == snap.id).limit(1)
     if session.scalars(have).first() is not None:
         return 0
-    snap_dto = SnapshotDTO.model_validate(
-        {
-            "id": snap.id,
-            "region_id": snap.region_id,
-            "asof_date": snap.asof_date,
-            "status": snap.status,
-            "degraded": snap.degraded,
-            "created_at": snap.created_at,
-        }
-    )
+    from app.scheduler.snapshots import snapshot_dto
+
+    snap_dto = snapshot_dto(snap)
     created = snap.published_at or snap.created_at
     decide_by_code: dict[str, tuple[int, dict[str, Any]]] = {}
     for seq, env in envs.items():

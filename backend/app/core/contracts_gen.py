@@ -1505,7 +1505,10 @@ class FieldCandidate(BaseModel):
     field: Annotated[str, Field(max_length=64, min_length=1)]
     value_text: str | None
     value: float | str | bool | None
-    source_rank: Annotated[int, Field(ge=1, le=9)]
+    source_rank: Annotated[int, Field(ge=0, le=9)]
+    """
+    §3 출처 우선순위(1이 가장 높음). 0 = 사람 확인(human_check — resolver 0순위 후보, D11-3·계약 2026-10-09.8): 재정규화에도 원문 후보를 이긴다
+    """
     source_kind: (
         Literal[
             "applyhome_list",
@@ -1637,7 +1640,7 @@ class Health(BaseModel):
 
 class HumanCheck(BaseModel):
     """
-    사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만.
+    사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 그 기준일의 쓰기 가능 리비전(발행됐으면 새 리비전 — D11-1)에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). field 가 강등 가능한 사실 필드(HumanCheckField — max_price_won·move_in_ym·resale_months·residency_months·down_payment_pct)면 그 값이 resolver 0순위 후보(source_rank 0, 라벨 확인됨, reason '사람 확인(kind)')로 사실을 바꾸고 재정규화에도 유지되며, 같은 사실의 강등(검증 모순)을 복원한다(D11-3, 계약 2026-10-09.8). entity·entity_id = 바뀐 사실 행(가격은 현재 공고의 payment_terms 또는 기준 타입 complex_type). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만(note ≤ 500자, guard: 전화·주민번호·이메일·비밀값 금지 → 422).
     """
 
     model_config = ConfigDict(
@@ -1646,6 +1649,17 @@ class HumanCheck(BaseModel):
     id: int
     complex_id: int
     field: Annotated[str, Field(max_length=64, min_length=1)]
+    """
+    HumanCheckField 값(옛 행은 자유 문자열일 수 있다)
+    """
+    entity: Annotated[str | None, Field(max_length=32)] = None
+    """
+    바뀐 사실 행의 테이블(complex·complex_type·payment_terms). 접수 상태·기타·옛 행은 null (계약 .8)
+    """
+    entity_id: int | None = None
+    """
+    바뀐 사실 행 id. 접수 상태·기타·옛 행은 null (계약 .8)
+    """
     value_text: str
     kind: Literal["phone", "visit", "email"]
     checked_at: str
@@ -1665,15 +1679,33 @@ class HumanCheckCreate(BaseModel):
         extra="forbid",
     )
     complex_id: int
-    field: Annotated[str, Field(max_length=64, min_length=1)]
-    value_text: Annotated[str, Field(min_length=1)]
+    field: Annotated[
+        Literal[
+            "intake_status",
+            "max_price_won",
+            "move_in_ym",
+            "resale_months",
+            "residency_months",
+            "down_payment_pct",
+            "other",
+        ],
+        Field(title="HumanCheckField"),
+    ]
+    """
+    사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 '6.02' → 422).
+    """
+    entity_id: int | None = None
+    """
+    사실 행 지정(선택): 가격은 그 단지의 payment_terms 또는 complex_type id, 계약금은 payment_terms id. 없으면 현재 공고·기준 타입·현재 납부 조건
+    """
+    value_text: Annotated[str, Field(max_length=200, min_length=1)]
     kind: Literal["phone", "visit", "email"]
     checked_at: Annotated[str, Field(min_length=10)]
     entered_by: Annotated[Literal["운영자", "검토자"], Field(title="EnteredByRole")]
     """
     사람 확인 입력자 = 역할 문자열만(RA §10 보안 2 — 사람 이름 금지, 계약 2026-10-09.4). 자유 입력을 받지 않는다. 옛 행(자유 문자열)은 응답 HumanCheck.entered_by 에 그대로 나갈 수 있다.
     """
-    note: str | None = None
+    note: Annotated[str | None, Field(max_length=500)] = None
 
 
 class Intake(BaseModel):
@@ -3411,7 +3443,7 @@ class ShareLinkCreated(BaseModel):
 
 class Snapshot(BaseModel):
     """
-    기준일 스냅샷 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8). (region_id, asof_date) 유일, 하루 1개.
+    기준일 스냅샷 리비전 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8, DECISIONS D11-1). (region_id, asof_date, revision) 유일(계약 2026-10-09.8). 발행(published) 리비전은 불변 — 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집)은 같은 기준일의 새 리비전(revision+1, revision_of = 바탕 리비전)에 쓰고 완성된 뒤 한 번에 published 가 된다. 화면 기본 = 최신 published 리비전, ?snapshot= 은 리비전 스냅샷 id. 리비전 사이 diff(보고서 diff 표)가 RA §10 '판정기 버전 변경 → 이전 run 과 delta 표'와 '지역 추가 장'을 겸한다.
     status: building(수집·판정 중) → ready(점수까지 계산됨) → published(claim contradicted 0 검사 통과). contradicted_claims > 0 이면 published가 될 수 없고 보고서 생성 버튼은 비활성(G8).
     degraded=true: 이 스냅샷을 만드는 동안 판정기가 없었다(JudgeUnavailable) — 수집·정규화만 있고 점수는 미계산(T18). 화면 G1·G7 배너.
     """
@@ -3422,6 +3454,18 @@ class Snapshot(BaseModel):
     id: int
     region_id: int
     asof_date: str
+    revision: Annotated[int, Field(ge=1)]
+    """
+    같은 기준일 리비전 번호(1부터, 계약 2026-10-09.8 — D11-1)
+    """
+    revision_of: int | None = None
+    """
+    바탕 리비전(이 리비전을 만든 발행 스냅샷 id). 리비전 1 은 null
+    """
+    revision_reason: Annotated[str | None, Field(max_length=200)] = None
+    """
+    리비전을 만든 사유(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집 등). 리비전 1 은 null
+    """
     status: Literal["building", "ready", "published"]
     degraded: bool
     created_at: str

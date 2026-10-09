@@ -45,6 +45,7 @@ __all__ = [
     "copy_claims",
     "copy_intake",
     "copy_ladders",
+    "copy_runs",
     "save_claims",
     "save_comparables",
     "save_decisions",
@@ -471,28 +472,29 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
 # ---------------------------------------------------------------- 변경 없는 날
 
 
-def carry_forward(
-    session: Session, src_snapshot_id: int, dst_snapshot_id: int, *, created_at: str
-) -> dict[str, int]:
-    """이전 스냅샷의 판정·점수 파생 행을 그대로 복사한다(같은 사실 = 같은 판정, 판정기 호출 0 — T8).
+def copy_runs(
+    session: Session,
+    src_snapshot_id: int,
+    dst_snapshot_id: int,
+    *,
+    created_at: str,
+    scenario_ids: Iterable[int] | None = None,
+) -> tuple[int, int]:
+    """src 의 시나리오별 마지막 score_run(+component·total·decision)을 dst 로 복사(prev_score_run_id = 원본). dst 에 그
+    시나리오 run 이 이미 있으면 건너뛴다. ``scenario_ids`` = 복사할 시나리오(없으면 전부). 반환 (run 수, decision 수).
 
-    score_run 은 시나리오마다 src 의 마지막 run 을 복사하고 prev_score_run_id 로 원본을 가리킨다.
-    """
-    stats = {"ladder": 0, "score_run": 0, "decision": 0, "claim": 0, "comparable_set": 0}
-    cids = [
-        c
-        for (c,) in session.execute(
-            select(Ladder.complex_id).where(Ladder.snapshot_id == src_snapshot_id).distinct()
-        )
-    ]
-    stats["ladder"] = copy_ladders(session, src_snapshot_id, dst_snapshot_id, cids)
-    stats["claim"] = copy_claims(session, src_snapshot_id, dst_snapshot_id, None)
+    변경 없는 날(T8)·시나리오 지정 재판정의 새 리비전(D11-1 — 다른 시나리오의 저장 결과가 새 리비전에도 있어야 한다)."""
+    stats = {"score_run": 0, "decision": 0}
+    want = set(scenario_ids) if scenario_ids is not None else None
+    have = set(session.scalars(select(ScoreRun.scenario_id).where(ScoreRun.snapshot_id == dst_snapshot_id)))
     latest: dict[int, ScoreRun] = {}
     for run in session.scalars(
         select(ScoreRun).where(ScoreRun.snapshot_id == src_snapshot_id).order_by(ScoreRun.id)
     ):
         latest[run.scenario_id] = run
     for scenario_id, src in sorted(latest.items()):
+        if scenario_id in have or (want is not None and scenario_id not in want):
+            continue
         dst = ScoreRun(
             snapshot_id=dst_snapshot_id,
             scenario_id=scenario_id,
@@ -556,6 +558,29 @@ def carry_forward(
                 )
             )
             stats["decision"] += 1
+    session.flush()
+    return stats["score_run"], stats["decision"]
+
+
+def carry_forward(
+    session: Session, src_snapshot_id: int, dst_snapshot_id: int, *, created_at: str
+) -> dict[str, int]:
+    """이전 스냅샷의 판정·점수 파생 행을 그대로 복사한다(같은 사실 = 같은 판정, 판정기 호출 0 — T8).
+
+    score_run 은 시나리오마다 src 의 마지막 run 을 복사하고 prev_score_run_id 로 원본을 가리킨다.
+    """
+    stats = {"ladder": 0, "score_run": 0, "decision": 0, "claim": 0, "comparable_set": 0}
+    cids = [
+        c
+        for (c,) in session.execute(
+            select(Ladder.complex_id).where(Ladder.snapshot_id == src_snapshot_id).distinct()
+        )
+    ]
+    stats["ladder"] = copy_ladders(session, src_snapshot_id, dst_snapshot_id, cids)
+    stats["claim"] = copy_claims(session, src_snapshot_id, dst_snapshot_id, None)
+    runs, decisions = copy_runs(session, src_snapshot_id, dst_snapshot_id, created_at=created_at)
+    stats["score_run"] += runs
+    stats["decision"] += decisions
     for cs in session.scalars(select(ComparableSet).where(ComparableSet.snapshot_id == src_snapshot_id)):
         session.add(
             ComparableSet(

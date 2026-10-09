@@ -30,6 +30,7 @@ from sqlalchemy import JSON, BigInteger, Float, Integer, Numeric, String, select
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import ProvenanceRow
+from app.facts_view import is_human
 from app.models import Base, FieldProvenance, RawDocument
 from app.normalize.fields import JSON_FIELDS, PRICE_BY_TYPE_ITEMS, is_numeric_field, price_by_type_field
 
@@ -283,6 +284,8 @@ def _problem(hit: FieldProvenance | None) -> str | None:
         return "no_row"
     if not (hit.label or "").strip():
         return "empty_label"
+    if is_human(hit.reason) and hit.raw_document_id is None and (hit.checked_at or "").strip():
+        return None  # 사람 확인 출처 행(D11-3): 입력 시각·종류가 출처(human_check — URL 없음)
     if hit.label != "확인 불가" and not (hit.url or "").strip():
         return "no_url"
     if hit.label != "확인 불가" and not (hit.checked_at or "").strip():

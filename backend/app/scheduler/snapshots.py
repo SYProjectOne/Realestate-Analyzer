@@ -3,6 +3,8 @@
 publish 는 남은 contradicted 0 검사 — 보고서 생성 거부와 같은 정의(``judge.claims.remaining_contradicted``).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from typing import Any
@@ -27,38 +29,108 @@ __all__ = [
 ]
 
 
+def latest_revision(session: Session, region_id: int, asof_date: str) -> Snapshot | None:
+    """(지역, 기준일)의 가장 큰 리비전."""
+    return session.scalars(
+        select(Snapshot)
+        .where(Snapshot.region_id == region_id, Snapshot.asof_date == asof_date)
+        .order_by(Snapshot.revision.desc(), Snapshot.id.desc())
+        .limit(1)
+    ).first()
+
+
 def get_or_create(session: Session, region_id: int, asof_date: str, *, created_at: str) -> Snapshot:
-    """(region_id, asof_date) 하루 1개. 없으면 building 으로 만든다."""
-    stmt = select(Snapshot).where(Snapshot.region_id == region_id, Snapshot.asof_date == asof_date)
-    row = session.scalars(stmt).first()
+    """수집이 쓸 (지역, 기준일) 스냅샷: 가장 큰 리비전, 없으면 리비전 1(building). 가장 큰 리비전이 발행됐으면
+    새 리비전(D11-1 — 발행 스냅샷의 접수 행·벤치마크·변경 이벤트를 고치지 않는다)."""
+    row = latest_revision(session, region_id, asof_date)
     if row is not None:
+        if row.status == "published":
+            return new_revision(session, row, reason="같은 기준일 재수집", created_at=created_at)
         return row
     row = Snapshot(
-        region_id=region_id, asof_date=asof_date, status="building", degraded=False, created_at=created_at
-    )
+        region_id=region_id, asof_date=asof_date, status="building", degraded=False, created_at=created_at,
+        revision=1,
+    )  # fmt: skip
     try:
         with session.begin_nested():
             session.add(row)
             session.flush()
     except IntegrityError:  # 다른 worker 가 먼저 만들었다
-        found = session.scalars(stmt).first()
+        found = latest_revision(session, region_id, asof_date)
         if found is None:
             raise
         return found
     return row
 
 
+def new_revision(session: Session, base: Snapshot, *, reason: str, created_at: str) -> Snapshot:
+    """발행 스냅샷 ``base`` 와 같은 기준일의 새 리비전(building)을 만든다(D11-1). 이미 그 기준일에 미발행 리비전이 있으면 그것.
+
+    입력 행만 옮긴다: 접수 상태 행(``persist.copy_intake`` — 같은 확인 시각). 파생 행(사다리·주장·점수·비교군)은
+    파이프라인이
+    바탕 리비전(``previous``)에서 재판정 대상이 아닌 단지만 복사하고 대상은 새로 판정한다 — 발행 리비전은 건드리지
+    않는다.
+    벤치마크는 ``api.benchmarks.benchmarks_for`` 가 리비전 자기 행이 없으면 앞선 조립분을 쓴다."""
+    latest = latest_revision(session, base.region_id, base.asof_date) or base
+    if latest.status != "published":
+        return latest
+    row = Snapshot(
+        region_id=base.region_id,
+        asof_date=base.asof_date,
+        status="building",
+        degraded=False,
+        created_at=created_at,
+        revision=int(latest.revision or 1) + 1,
+        revision_of=latest.id,
+        revision_reason=(reason or "재판정")[:200],
+    )
+    try:
+        with session.begin_nested():
+            session.add(row)
+            session.flush()
+    except IntegrityError:  # 다른 worker 가 먼저 만들었다
+        found = latest_revision(session, base.region_id, base.asof_date)
+        if found is None or found.status == "published":
+            raise
+        return found
+    from app.scheduler.persist import copy_intake
+
+    copy_intake(session, latest.id, row.id)
+    session.flush()
+    return row
+
+
+def writable(session: Session, snapshot_id: int, *, reason: str, created_at: str) -> Snapshot:
+    """재판정이 쓸 스냅샷: 그 기준일의 가장 큰 리비전이 발행 전이면 그것, 발행됐으면 새 리비전(D11-1·M-2)."""
+    snap = session.get(Snapshot, snapshot_id)
+    if snap is None:
+        raise LookupError(f"snapshot {snapshot_id} 없음")
+    latest = latest_revision(session, snap.region_id, snap.asof_date) or snap
+    if latest.status != "published":
+        return latest
+    return new_revision(session, latest, reason=reason, created_at=created_at)
+
+
+def _order_key(s: Snapshot) -> tuple[str, int, int]:
+    return (s.asof_date, int(s.revision or 1), s.id)
+
+
 def previous(session: Session, snap: Snapshot, *, published_only: bool = False) -> Snapshot | None:
-    """같은 지역에서 기준일이 더 이른 스냅샷 중 가장 최근."""
-    stmt = select(Snapshot).where(Snapshot.region_id == snap.region_id, Snapshot.asof_date < snap.asof_date)
+    """같은 지역에서 (기준일, 리비전)이 더 앞선 스냅샷 중 가장 최근 — 같은 기준일의 앞 리비전도 포함(D11-1)."""
+    stmt = select(Snapshot).where(Snapshot.region_id == snap.region_id, Snapshot.asof_date <= snap.asof_date)
     if published_only:
         stmt = stmt.where(Snapshot.status == "published")
-    return session.scalars(stmt.order_by(Snapshot.asof_date.desc()).limit(1)).first()
+    me = _order_key(snap)
+    cands = [s for s in session.scalars(stmt) if s.id != snap.id and _order_key(s) < me]
+    return max(cands, key=_order_key, default=None)
 
 
 def latest_for_region(session: Session, region_id: int) -> Snapshot | None:
     stmt = (
-        select(Snapshot).where(Snapshot.region_id == region_id).order_by(Snapshot.asof_date.desc()).limit(1)
+        select(Snapshot)
+        .where(Snapshot.region_id == region_id)
+        .order_by(Snapshot.asof_date.desc(), Snapshot.revision.desc(), Snapshot.id.desc())
+        .limit(1)
     )
     return session.scalars(stmt).first()
 
@@ -129,6 +201,9 @@ def snapshot_dto(row: Snapshot) -> SnapshotDTO:
         id=row.id,
         region_id=row.region_id,
         asof_date=row.asof_date,
+        revision=int(row.revision or 1),
+        revision_of=row.revision_of,
+        revision_reason=row.revision_reason,
         status=row.status,
         degraded=bool(row.degraded),
         created_at=row.created_at,

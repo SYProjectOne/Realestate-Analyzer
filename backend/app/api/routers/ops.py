@@ -1,9 +1,12 @@
 """데이터·운영 (G7): 소스 상태, 판정기 호출 집계, 체크리스트, 사람 확인(T3).
 
-사람 확인이 강등된 사실(D10-3 '확인 불가(검증 모순)', 같은 단지·같은 field)을 가리키면 그 값으로 복원한다
-(``app.api.demotion.restore_by_human`` — 체크리스트 '사실 재확인' done, change_event + rejudge 잡 제안).
-체크리스트 목록은 읽기 전에 ``sync_demotions`` 로 새 원문 복원을 반영한다(계약 2026-10-09.6).
+사람 확인(사실 필드)은 resolver 0순위 후보로 그 사실을 바꾸고 같은 사실의 강등(D11-3
+'확인 불가(검증 모순)')을 복원 기록한다(``app.api.demotion.apply_human_check`` — 체크리스트 '사실 재확인'
+done, change_event + rejudge 잡 제안). GET(체크리스트 목록)은 DB 를 쓰지 않는다(minor 13) — 강등
+오버레이는 ``app.facts_view`` 로 읽는 순간 적용된다.
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api.contract import check_body
-from app.api.demotion import ValueParseError, restore_by_human, sync_demotions
+from app.api.demotion import FIELD_TERMS, ValueParseError, apply_human_check, human_target, parse_human_value
 from app.api.deps import DB, default_snapshot, get_complex, in_db_range, settings_of
 from app.api.errors import not_found, validation_error
 from app.api.jobs import now_iso
@@ -35,6 +38,7 @@ from app.models import (
     Snapshot,
 )
 from app.models.enums import JUDGE_TOOL, SOURCE_KIND
+from app.scheduler.snapshots import latest_for_region, writable
 
 router = APIRouter(tags=["ops"])
 
@@ -243,9 +247,7 @@ def list_checklist(
 ) -> JSONResponse:
     if not in_db_range(complex_id):
         return JSONResponse([])
-    if sync_demotions(session):
-        session.commit()
-    stmt = select(ChecklistItem)
+    stmt = select(ChecklistItem)  # GET 은 DB 를 쓰지 않는다(minor 13 — 강등 복원 기록은 쓰기 경로)
     if status:
         stmt = stmt.where(ChecklistItem.status == status)
     if complex_id is not None:
@@ -264,125 +266,146 @@ def update_checklist_item(session: DB, id: int, body: Annotated[Any, Body()] = N
     for key in ("status", "note", "due_date"):
         if key in body:
             setattr(item, key, body[key])
+    if "status" in body:  # 사람 처리(done·na) = closed_by human — 동기화가 다시 열지 않는다(M-9)
+        item.closed_by = None if item.status == "open" else "human"
     session.commit()
     return JSONResponse(checklist_view(item, _complex_names(session)))
 
 
 @router.post("/ops/human-checks", status_code=201)
 def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSONResponse:
+    """사람 확인 입력(T3, D11-3). 사실 필드면 resolver 0순위 후보로 그 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등을
+    복원 기록한다. 접수 상태면 그 기준일의 쓰기 가능 리비전(발행됐으면 새 리비전 — D11-1)에 human_check 접수 행을
+    넣는다.
+    값은 필드 형·범위(minor 11), note·value_text 는 길이(계약)·guard(전화·주민번호·이메일·비밀값 → 422)를 통과해야
+    한다."""
+    from app.judge.guard import check_payload
+
     check_body("createHumanCheck", body)
     cx = get_complex(session, body["complex_id"])
+    guard = check_payload({"value_text": body["value_text"], "note": body.get("note") or ""})
+    if not guard.ok:
+        raise validation_error(
+            f"공개할 수 없는 정보가 있다({', '.join(guard.kinds())}) — 통화 내용은 요약만 적는다",
+            ("body", "note" if any("note" in f.path for f in guard.findings) else "value_text"),
+        )
+    field = str(body["field"])
+    target = None
+    if field in FIELD_TERMS:
+        try:
+            target = human_target(session, cx.id, field, body.get("entity_id"))
+            if target is not None:
+                parse_human_value(target, str(body["value_text"]))
+        except ValueParseError as exc:
+            loc = "entity_id" if "entity_id" in str(exc) else "value_text"
+            raise validation_error(str(exc), ("body", loc)) from exc
     hc = HumanCheck(
         complex_id=cx.id,
-        field=body["field"],
+        field=field,
         value_text=body["value_text"],
         kind=body["kind"],
         checked_at=body["checked_at"],
         entered_by=body["entered_by"],
         note=body.get("note"),
         created_at=now_iso(),
+        entity=target.entity if target is not None else None,
+        entity_id=target.entity_id if target is not None else None,
     )
     session.add(hc)
     session.flush()
     created: dict[str, Any] | None = None
     change_id: int | None = None
     suggested: dict[str, Any] | None = None
-    if hc.field != "intake_status":
-        try:
-            restored = restore_by_human(session, hc)
-        except ValueParseError as exc:
-            session.rollback()
-            raise validation_error(str(exc), ("body", "value_text")) from exc
-        if restored:
-            d = restored[0]
-            ce = ChangeEvent(
-                snapshot_id=d.snapshot_id,
-                entity=d.entity,
-                entity_id=d.entity_id,
-                field=d.field,
-                old_text="확인 불가(검증 모순)",
-                new_text=f"{hc.value_text} (사람 확인)",
-                detected_at=now_iso(),
-                severity="critical",
-                triggers_rejudge=True,
-                complex_id=cx.id,
-            )
-            session.add(ce)
-            session.flush()
-            change_id = ce.id
+    base = default_snapshot(session, cx.region_id) or latest_for_region(session, cx.region_id)
+    if target is not None:
+        restored = apply_human_check(session, hc, snapshot_id=base.id if base is not None else None)
+        ce = ChangeEvent(
+            snapshot_id=base.id if base is not None else None,
+            entity=target.entity,
+            entity_id=target.entity_id,
+            field=target.field[:64],
+            old_text="확인 불가(검증 모순)" if restored else None,
+            new_text=f"{hc.value_text} (사람 확인)"[:200],
+            detected_at=now_iso(),
+            severity="critical",
+            triggers_rejudge=True,
+            complex_id=cx.id,
+        )
+        session.add(ce)
+        session.flush()
+        change_id = ce.id
+        if base is not None:
             suggested = {
                 "job_name": "rejudge",
                 "payload": {
-                    "snapshot_id": d.snapshot_id,
+                    "snapshot_id": base.id,
                     "scenario_id": None,
                     "complex_ids": [cx.id],
-                    "reason": f"사람 확인 입력: {cx.name} {hc.field} 복원"[:200],
+                    "reason": f"사람 확인 입력: {cx.name} {field}" + (" 복원" if restored else ""),
                     "change_event_ids": [ce.id],
                 },
             }
-    if hc.field == "intake_status":
-        snap = default_snapshot(session, cx.region_id)
-        if snap is None:
-            snap = session.scalars(
-                select(Snapshot).where(Snapshot.region_id == cx.region_id).order_by(Snapshot.asof_date.desc())
-            ).first()
-        if snap is not None:
-            before = pick_intake(
-                list(
-                    session.scalars(
-                        select(IntakeStatus).where(
-                            IntakeStatus.complex_id == cx.id, IntakeStatus.snapshot_id == snap.id
-                        )
+            suggested["payload"]["reason"] = suggested["payload"]["reason"][:200]
+    if field == "intake_status" and base is not None:
+        snap = writable(session, base.id, reason=f"사람 확인: {cx.name} 접수"[:200], created_at=now_iso())
+        before = pick_intake(
+            list(
+                session.scalars(
+                    select(IntakeStatus).where(
+                        IntakeStatus.complex_id == cx.id, IntakeStatus.snapshot_id == snap.id
                     )
                 )
             )
-            row = IntakeStatus(
-                complex_id=cx.id,
-                snapshot_id=snap.id,
-                status=hc.value_text,
-                path="human_check",
-                checked_at=hc.checked_at,
-                reason="사람 확인" if hc.value_text in ("확인 불가", "불가") else None,
-                note=hc.note,
-                entered_by=hc.entered_by,
-            )
-            session.add(row)
-            session.flush()
-            old = None
-            if before is not None:
-                old = before.status + (f"({before.reason})" if before.reason else "") + f" [{before.path}]"
-            ce = ChangeEvent(
-                snapshot_id=snap.id,
-                entity="intake_status",
-                entity_id=row.id,
-                field="status",
-                old_text=old,
-                new_text=hc.value_text,
-                detected_at=now_iso(),
-                severity="critical",
-                triggers_rejudge=True,
-                complex_id=cx.id,
-            )
-            session.add(ce)
-            session.flush()
-            created = intake_view(row)
-            change_id = ce.id
-            suggested = {
-                "job_name": "rejudge",
-                "payload": {
-                    "snapshot_id": snap.id,
-                    "scenario_id": None,
-                    "complex_ids": [cx.id],
-                    "reason": f"사람 확인 입력: {cx.name} 접수 {hc.value_text}"[:200],
-                    "change_event_ids": [ce.id],
-                },
-            }
+        )
+        row = IntakeStatus(
+            complex_id=cx.id,
+            snapshot_id=snap.id,
+            status=hc.value_text,
+            path="human_check",
+            checked_at=hc.checked_at,
+            reason="사람 확인" if hc.value_text in ("확인 불가", "불가") else None,
+            note=hc.note,
+            entered_by=hc.entered_by,
+        )
+        session.add(row)
+        session.flush()
+        old = None
+        if before is not None:
+            old = before.status + (f"({before.reason})" if before.reason else "") + f" [{before.path}]"
+        ce = ChangeEvent(
+            snapshot_id=snap.id,
+            entity="intake_status",
+            entity_id=row.id,
+            field="status",
+            old_text=old,
+            new_text=hc.value_text,
+            detected_at=now_iso(),
+            severity="critical",
+            triggers_rejudge=True,
+            complex_id=cx.id,
+        )
+        session.add(ce)
+        session.flush()
+        created = intake_view(row)
+        change_id = ce.id
+        suggested = {
+            "job_name": "rejudge",
+            "payload": {
+                "snapshot_id": snap.id,
+                "scenario_id": None,
+                "complex_ids": [cx.id],
+                "reason": f"사람 확인 입력: {cx.name} 접수 {hc.value_text}"[:200],
+                "change_event_ids": [ce.id],
+            },
+        }
     session.commit()
     return JSONResponse(
         {
             "id": hc.id,
             "complex_id": hc.complex_id,
             "field": hc.field,
+            "entity": hc.entity,
+            "entity_id": hc.entity_id,
             "value_text": hc.value_text,
             "kind": hc.kind,
             "checked_at": hc.checked_at,

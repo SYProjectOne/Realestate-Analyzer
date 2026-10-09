@@ -159,7 +159,9 @@ class CatalystLink(Base):
     distance_m: Mapped[int | None] = mapped_column(Integer)
     weight: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     label: Mapped[str | None] = mapped_column(String(8))  # 0008
-    reason: Mapped[str | None] = mapped_column(String(120))  # 0008: 연결 근거(같은 생활권·단지 지정·좌표 거리)
+    reason: Mapped[str | None] = mapped_column(
+        String(120)
+    )  # 0008: 연결 근거(같은 생활권·단지 지정·좌표 거리)
 
 
 class Supply(Base):

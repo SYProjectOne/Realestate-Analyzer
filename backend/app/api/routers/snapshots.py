@@ -274,7 +274,7 @@ def list_rows(
     scenario = resolve_scenario(session, scenario_value)
     region = session.get(Region, snap.region_id)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=scenario.id)
     ctx = score_ctx(session, snap.id, scenario)
     rows = [r for r in complex_rows_data(bundles, ctx) if _match(r, filters)]
     last = last_changes(session, [r.b.cx.id for r in rows])
@@ -613,7 +613,7 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         raise not_found(f"region {snap.region_id}")
     names = area_names(region)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     ctx = score_ctx(session, snap.id, sc)
     rows = complex_rows_data(bundles, ctx)
     fm = FactMaker(settings_of(request), ProvIndex())

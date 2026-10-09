@@ -328,7 +328,9 @@ def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[t
         strict, name, code = keyed[(n.hm, n.pb)]
         here = [c for c in originals if c.legal_dong_code == code] if code and name else []
         hits = [c for c in here if normalize_apt_name(c.name) == strict]
-        if not hits:  # 잔여 공고 이름 끝 회차 '(23차)' 를 뗀 키로 한 번 더(원래 단지가 정확히 1개일 때만 묶는다)
+        if (
+            not hits
+        ):  # 잔여 공고 이름 끝 회차 '(23차)' 를 뗀 키로 한 번 더(원래 단지가 정확히 1개일 때만 묶는다)
             hits = [c for c in here if remainder_name_key(c.name) == name]
         if len(hits) == 1:
             out[(n.hm, n.pb)] = _Anchor(hits[0].id, None)

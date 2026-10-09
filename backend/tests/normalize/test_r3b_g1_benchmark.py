@@ -228,13 +228,28 @@ def test_snapshot_rows_of_published_snapshot_are_preserved(db_session: Session, 
     assert not [b for b in _rows(db_session) if b.snapshot_id == s2]
 
 
-def test_legacy_auto_rows_are_adopted_and_rebuild_is_idempotent(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_legacy_auto_rows_are_kept_for_old_snapshots_not_adopted(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+    """minor 25(R3 3차): 스냅샷 없이 만든 옛 자동 행(0006 이전)을 새 스냅샷이 넘겨받으면 0006 이전 발행 스냅샷이 인용하던
+    벤치마크가 사라진다 → 넘겨받지 않고 새 행을 만든다. 각 스냅샷은 ``benchmarks_for`` 로 자기 시점 행만 본다(이중 집계 없음)."""
+    from app.api.benchmarks import benchmarks_for
+    from app.models import Snapshot
+
     _notice(add_raw, region, "2021000101", "송도 센트럴")
     _trades(db_session, add_raw, region, "송도센트럴")
+    old_sid = _snap(db_session, region, "2026-10-01")  # 0006 이전 발행 스냅샷(조립분 없음)
     build_benchmarks(db_session, region.id, asof_date=ASOF)  # 스냅샷 없음 → snapshot_id NULL(옛 동작)
-    n = len(_rows(db_session))
+    legacy = {b.id for b in _rows(db_session)}
+    n = len(legacy)
     assert {b.snapshot_id for b in _rows(db_session)} == {None}
     sid = _snap(db_session, region, ASOF)
     res = build_benchmarks(db_session, region.id, asof_date=ASOF, snapshot_id=sid)
-    assert res.inserted == 0 and len(_rows(db_session)) == n
-    assert {b.snapshot_id for b in _rows(db_session)} == {sid}
+    assert res.inserted == n and len(_rows(db_session)) == 2 * n
+    assert {b.id for b in _rows(db_session) if b.snapshot_id is None} == legacy  # 옛 행은 그대로
+    old = db_session.get(Snapshot, old_sid)
+    new = db_session.get(Snapshot, sid)
+    assert old is not None and new is not None
+    assert {b.id for b in benchmarks_for(db_session, old)} == legacy
+    mine = benchmarks_for(db_session, new)
+    assert len(mine) == n and {b.snapshot_id for b in mine} == {sid}  # 옛 행과 겹치지 않는다
+    again = build_benchmarks(db_session, region.id, asof_date=ASOF, snapshot_id=sid)
+    assert again.inserted == 0 and again.removed == 0 and len(_rows(db_session)) == 2 * n

@@ -20,6 +20,10 @@
   고치지 않는다. 옛 버전이 남긴 같은 키의 열린 항목이 둘 이상이면 하나(제목이 같은 것, 없으면 가장 새 것)만 남기고
   나머지는 'na' 로 닫는다. note 는 처음 만들 때만 쓴다(사람이 PATCH 로 고치는 칸).
 - 단지 제외가 확정되면 그 단지의 열린 항목을 'na' 로 닫는다(미해결이면 닫지 않는다).
+- M-9(계약 .8 ``closed_by``): 자동 항목의 근거 사실이 사라지거나 강등(검증 모순 — ``app.facts_view`` 오버레이로 읽는다)되면
+  열린 항목을 'na'(closed_by 'auto')로 닫는다(모순 날짜를 계속 보이지 않게). 근거가 돌아오거나 제외됐던 단지가 다시
+  포함되면 동기화가 닫은 항목(closed_by 'auto')만 다시 연다. 사람이 처리한 항목(closed_by 'human', 또는 0008 이전 done·na)은
+  건드리지 않는다.
 판단 없음 — 날짜 산술과 표 조회뿐이다.
 """
 
@@ -48,6 +52,7 @@ __all__ = [
     "excluded_for_checklist",
     "item_key",
     "sync_checklist",
+    "sync_checklist_for",
 ]
 
 EXCLUDED_CLASSES: Final = frozenset(
@@ -116,6 +121,7 @@ class ChecklistSync:
     updated: int = 0
     unchanged: int = 0
     closed: int = 0
+    reopened: int = 0
     by_kind: dict[str, int] = field(default_factory=dict)
 
     def stats(self) -> dict[str, Any]:
@@ -124,6 +130,7 @@ class ChecklistSync:
             "updated": self.updated,
             "unchanged": self.unchanged,
             "closed": self.closed,
+            "reopened": self.reopened,
             "by_kind": dict(self.by_kind),
         }
 
@@ -247,17 +254,35 @@ def _estimated(session: Session, complex_ids: list[int]) -> dict[int, dict[str, 
     return out
 
 
+def _is_auto_key(key: str) -> bool:
+    """동기화가 만드는 자동 항목의 키인가(사람이 만든 항목·'사실 재확인'은 'title:' 키)."""
+    return not key.startswith("title:")
+
+
+def _close_auto(it: ChecklistItem, res: ChecklistSync) -> None:
+    it.status, it.closed_by = "na", "auto"
+    res.closed += 1
+
+
 def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> ChecklistSync:
-    """지역 단지들의 체크리스트 항목을 사실 테이블과 맞춘다. flush 만 한다(commit 은 호출자)."""
+    """지역 단지들의 체크리스트 항목을 사실 테이블과 맞춘다(강등 오버레이 적용). flush 만 한다(commit 은 호출자)."""
+    from app.analysis.complex_input import masked
+    from app.api.demotion import sync_demotions
+    from app.facts_view import load_overlay
+
     res = ChecklistSync()
     complexes = list(
         session.scalars(select(Complex).where(Complex.region_id == region_id).order_by(Complex.id))
     )
     ids = [c.id for c in complexes]
+    if ids:
+        sync_demotions(session, set(ids))  # 강등 복원 기록·'사실 재확인' 재오픈(쓰기 경로)
+    overlay = load_overlay(session, complex_ids=ids) if ids else None
     terms: dict[int, list[PaymentTerms]] = defaultdict(list)
     if ids:
         for t in session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id.in_(ids))):
-            terms[t.complex_id].append(t)
+            fields = overlay.fields("payment_terms", t.id) if overlay is not None else frozenset()
+            terms[t.complex_id].append(masked(t, fields))
     estimated = _estimated(session, ids)
     existing: dict[tuple[int | None, str], list[ChecklistItem]] = defaultdict(list)
     if ids:
@@ -265,15 +290,21 @@ def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> Check
             select(ChecklistItem).where(ChecklistItem.complex_id.in_(ids)).order_by(ChecklistItem.id)
         ):
             existing[(it.complex_id, item_key(it.kind, it.title))].append(it)
+    by_complex: dict[int | None, list[tuple[str, list[ChecklistItem]]]] = defaultdict(list)
+    for (cid, key), group in existing.items():
+        by_complex[cid].append((key, group))
     for cx in complexes:
         if excluded_for_checklist(cx):
-            for (cid, _k), group in existing.items():
+            for _key, group in by_complex.get(cx.id, []):
                 for it in group:
-                    if cid == cx.id and it.status == "open" and it.kind not in PROTECTED_KINDS:
-                        it.status = "na"
-                        res.closed += 1
+                    if it.status == "open" and it.kind not in PROTECTED_KINDS:
+                        _close_auto(it, res)
             continue
-        for w in _wants(cx, terms.get(cx.id, []), estimated.get(cx.id, {}), asof_date):
+        demoted = overlay.fields("complex", cx.id) if overlay is not None else frozenset()
+        est = {k: v for k, v in estimated.get(cx.id, {}).items() if k not in demoted}
+        wants = _wants(masked(cx, demoted), terms.get(cx.id, []), est, asof_date)
+        wanted_keys = {w.key for w in wants}
+        for w in wants:
             res.by_kind[w.kind] = res.by_kind.get(w.kind, 0) + 1
             group = existing[(w.complex_id, w.key)]
             if not group:
@@ -291,17 +322,50 @@ def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> Check
                 continue
             opens = [i for i in group if i.status == "open"]
             if not opens:
-                res.unchanged += 1  # done·na — 사람 처리 결과는 고치지 않는다
+                auto = [i for i in group if i.status == "na" and i.closed_by == "auto"]
+                if not auto:
+                    res.unchanged += 1  # 사람이 처리한 done·na 는 고치지 않는다
+                    continue
+                keep = auto[-1]  # 동기화가 닫은 항목 — 근거가 돌아왔다(재포함·강등 해제·값 복구) → 다시 연다
+                keep.status, keep.closed_by = "open", None
+                keep.kind, keep.title, keep.due_date = w.kind, w.title, w.due_date
+                res.reopened += 1
                 continue
             keep = next((i for i in opens if i.title == w.title), opens[-1])
             for extra in opens:
                 if extra is not keep:  # 옛 버전이 남긴 같은 키의 열린 항목
-                    extra.status = "na"
-                    res.closed += 1
+                    _close_auto(extra, res)
             if (keep.kind, keep.title, keep.due_date) != (w.kind, w.title, w.due_date):
                 keep.kind, keep.title, keep.due_date = w.kind, w.title, w.due_date
                 res.updated += 1
             else:
                 res.unchanged += 1
+        # 근거 사실이 사라졌거나 강등된 자동 항목(열린 것) → 동기화가 닫는다(M-9). 지난 날짜 항목은 그대로 둔다
+        for key, group in by_complex.get(cx.id, []):
+            if key in wanted_keys or not _is_auto_key(key):
+                continue
+            for it in group:
+                if it.status == "open" and it.kind not in PROTECTED_KINDS and not _past(it, asof_date):
+                    _close_auto(it, res)
     session.flush()
     return res
+
+
+def _past(it: ChecklistItem, asof_date: str) -> bool:
+    """기준일 전에 끝난 날짜 항목 — 근거가 '지난 일정'이라 원하지 않게 된 것이지 사라진 것이 아니다."""
+    return it.due_date is not None and it.due_date < asof_date
+
+
+def sync_checklist_for(session: Session, complex_ids: list[int], *, asof_date: str | None = None) -> None:
+    """단지들이 속한 지역마다 ``sync_checklist``(강등·복원·사람 확인 직후 — 쓰기 경로). 기준일 = 오늘(KST)."""
+    from app.core.time import today_kst
+
+    ids = sorted({i for i in complex_ids if i is not None})
+    if not ids:
+        return
+    day = asof_date or today_kst().isoformat()
+    regions = sorted(
+        {r for (r,) in session.execute(select(Complex.region_id).where(Complex.id.in_(ids)).distinct())}
+    )
+    for rid in regions:
+        sync_checklist(session, rid, asof_date=day)
