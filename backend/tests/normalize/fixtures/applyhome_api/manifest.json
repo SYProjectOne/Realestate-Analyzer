@@ -1,0 +1,38 @@
+[
+ {
+  "file": "getAPTLttotPblancDetail_2026000367.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026000367&cond%5BPBLANC_NO%3A%3AEQ%5D=2026000367"
+ },
+ {
+  "file": "getAPTLttotPblancMdl_2026000367.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancMdl?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026000367&cond%5BPBLANC_NO%3A%3AEQ%5D=2026000367"
+ },
+ {
+  "file": "web_detail_2026000367.html",
+  "url": "https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000367&pblancNo=2026000367"
+ },
+ {
+  "file": "getRemndrLttotPblancDetail_2026910242.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getRemndrLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026910242&cond%5BPBLANC_NO%3A%3AEQ%5D=2026910242"
+ },
+ {
+  "file": "getRemndrLttotPblancMdl_2026910242.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getRemndrLttotPblancMdl?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026910242&cond%5BPBLANC_NO%3A%3AEQ%5D=2026910242"
+ },
+ {
+  "file": "web_detail_2026910242.html",
+  "url": "https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do?houseManageNo=2026910242&pblancNo=2026910242"
+ },
+ {
+  "file": "getOPTLttotPblancDetail_2026940173.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getOPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940173&cond%5BPBLANC_NO%3A%3AEQ%5D=2026940173"
+ },
+ {
+  "file": "getOPTLttotPblancMdl_2026940173.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getOPTLttotPblancMdl?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940173&cond%5BPBLANC_NO%3A%3AEQ%5D=2026940173"
+ },
+ {
+  "file": "web_detail_2026940173.html",
+  "url": "https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do?houseManageNo=2026940173&pblancNo=2026940173"
+ }
+]
