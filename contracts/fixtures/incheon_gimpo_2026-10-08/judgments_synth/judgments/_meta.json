@@ -9,7 +9,7 @@
     "t3": "사람 확인(스위첸 가능) → suggested_job rejudge [4]"
   },
   "counts": {
-    "classify": 44,
+    "classify": 87,
     "decide": 5,
     "extract": 78,
     "noul": 33,

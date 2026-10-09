@@ -90,8 +90,10 @@ def test_judge_scope_is_the_stored_value(client: TestClient) -> None:
     # (analysis.scope.judge_scope)로 현재 사실에서 계산한다. 예전에는 첫 '판정 대상' 저장 행이
     # 그란테르(1)였고 픽스처 접수 '불가'라 계산 값도 우연히 '참고'였다 — W1(접수 '미정') 뒤로는
     # 계산 값 = '판정 대상'. 저장 값을 바꿔도 화면 범위는 바뀌지 않는다(사다리로도 추정하지 않음).
+    # 기대값 갱신(R3b G2, D10-1): 화면 범위 = 그 스냅샷 점수 실행의 저장값 — 저장 값을 바꾸면 화면도 그 값이다
+    # (현재 사실로 계산한 '판정 대상'과 다르면 rejudge_needed 만 선다, 한 행에 섞지 않는다).
     assert target == 1
-    assert scope[target] == "판정 대상"
+    assert scope[target] == "참고"
 
 
 def test_envelope_result_reads_result_json(client: TestClient) -> None:

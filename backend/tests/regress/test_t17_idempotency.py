@@ -137,6 +137,10 @@ def test_t17_collect_twice_raw_document_increase_zero(env: RegressEnv) -> None:
         n1 = _count(s, RawDocument)
     # 첫 수집: 새 HTML 1(DOM 텍스트는 같은 행 text_path) + 403 실패 행 1, 목록·팝업은 픽스처 행 재사용
     assert n1 - n0 == 2, (n0, n1)
+    # 기대값 갱신(R3b G2, D10-2): 처음 보는 공식 홈페이지 문구(단지 3 새 HTML)는 판정기 접수 classify 가 필요하다 —
+    # 예전에는 '확인 불가(접수 문구 미분류)'인 채 이전 판정을 복사·publish 해 범위와 순위가 갈렸다(N-C2). 그 단지
+    # 재판정은 첫 수집에서만 돌고, 같은 원문을 다시 받는 두 번째 수집은 분류를 복사해 판정 호출 0 이다.
+    calls_after_first = len(env.jev.calls)
     second = _post(env, "collect.daily", payload)
     env.worker(env.ctx("fake", collectors=collectors))
     j2 = api_get(env, f"/jobs/{second}")
@@ -148,7 +152,7 @@ def test_t17_collect_twice_raw_document_increase_zero(env: RegressEnv) -> None:
             select(RawDocument.sha256, func.count()).group_by(RawDocument.sha256).having(func.count() > 1)
         ).all()
         assert dup == []
-    assert env.jev.calls == []
+    assert env.jev.calls[calls_after_first:] == []
 
 
 def test_t17_same_payload_twice_one_real_call_second_cached(env: RegressEnv) -> None:

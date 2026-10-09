@@ -51,6 +51,7 @@ __all__ = [
     "redact_stats",
     "run_once",
     "run_until_idle",
+    "sweep_api_events",
 ]
 
 log = get_logger("app.worker")
@@ -243,8 +244,34 @@ def run_once(ctx: SchedulerContext) -> int | None:
     return None
 
 
+def sweep_api_events(ctx: SchedulerContext) -> list[int]:
+    """서버 쪽 알림(R3 m13): API 가 만든 critical 이벤트(사람 확인 접수·생활권 편집) 중 아직 재판정 잡에 실리지 않은 것 →
+    rejudge 등록(그 잡이 웹훅을 보내고 stats 에 ``notified_event_ids`` 로 남긴다). 화면 토스트 클릭을 기다리지 않는다.
+    등록한 잡 id(같은 스냅샷 queued 잡이 있으면 합쳐진다)."""
+    from app.scheduler.notify import pending_api_events
+    from app.scheduler.rejudge import enqueue_rejudge
+
+    out: list[int] = []
+    try:
+        with ctx.session_factory() as session:
+            for ev in pending_api_events(session, now=ctx.now(), sent=ctx.notifier.sent_ids):
+                if ev.snapshot_id is None:
+                    continue
+                job = enqueue_rejudge(
+                    session, ev.snapshot_id, [ev.complex_id] if ev.complex_id is not None else None,
+                    f"서버 알림·재판정: {ev.entity}.{ev.field} 변경", change_event_ids=[ev.id], now=ctx.now(),
+                )  # fmt: skip
+                if job.id not in out:
+                    out.append(job.id)
+            session.commit()
+    except (OperationalError, ProgrammingError):  # 스키마 전 — 다음 주기에
+        log.warning("worker.sweep.no_schema")
+    return out
+
+
 def run_until_idle(ctx: SchedulerContext, max_jobs: int = 200) -> list[int]:
     recover_stale(ctx)
+    sweep_api_events(ctx)
     done: list[int] = []
     while len(done) < max_jobs:
         job_id = run_once(ctx)

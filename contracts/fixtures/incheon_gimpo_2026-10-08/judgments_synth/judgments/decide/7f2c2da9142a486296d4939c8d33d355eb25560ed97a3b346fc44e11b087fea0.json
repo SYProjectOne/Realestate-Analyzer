@@ -1,0 +1,178 @@
+{
+  "tool": "decide",
+  "purpose": "decide:scenario_A",
+  "input_hash": "sha256:7f2c2da9142a486296d4939c8d33d355eb25560ed97a3b346fc44e11b087fea0",
+  "input_len": 3212,
+  "status": "ok",
+  "confidence": 0.93,
+  "cached": false,
+  "result": {
+    "selected": "wait_new",
+    "probs": {
+      "complex:1": 0.0,
+      "complex:2": 0.01,
+      "complex:3": 0.0,
+      "complex:5": 0.0,
+      "complex:6": 0.0,
+      "wait_new": 0.94,
+      "investigate": 0.03
+    },
+    "checks": {
+      "complex:1": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "contradicted"
+      },
+      "complex:2": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "supported"
+      },
+      "complex:3": {
+        "access": "contradicted",
+        "regulation": "supported",
+        "funds": "contradicted"
+      },
+      "complex:5": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      },
+      "complex:6": {
+        "access": "unknown",
+        "regulation": "unknown",
+        "funds": "unknown"
+      },
+      "wait_new": {
+        "access": "supported",
+        "regulation": "unknown",
+        "funds": "unknown"
+      }
+    },
+    "warnings": [],
+    "escaped": false,
+    "question": null
+  },
+  "raw": {
+    "tool": "jev_decide",
+    "model": "jev-1.13.0",
+    "recommendation": {
+      "selected": "wait_new",
+      "escaped": false,
+      "confidence": 0.93,
+      "probabilities": {
+        "complex_1": 0.0,
+        "complex_2": 0.01,
+        "complex_3": 0.0,
+        "complex_5": 0.0,
+        "complex_6": 0.0,
+        "wait_new": 0.94,
+        "investigate": 0.03
+      }
+    },
+    "checks": [
+      {
+        "candidate": "complex_1",
+        "requirement": 0,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_1",
+        "requirement": 1,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_1",
+        "requirement": 2,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_2",
+        "requirement": 0,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_2",
+        "requirement": 1,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_2",
+        "requirement": 2,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_3",
+        "requirement": 0,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_3",
+        "requirement": 1,
+        "answer": "supported"
+      },
+      {
+        "candidate": "complex_3",
+        "requirement": 2,
+        "answer": "contradicted"
+      },
+      {
+        "candidate": "complex_5",
+        "requirement": 0,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_5",
+        "requirement": 1,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_5",
+        "requirement": 2,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_6",
+        "requirement": 0,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_6",
+        "requirement": 1,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "complex_6",
+        "requirement": 2,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "wait_new",
+        "requirement": 0,
+        "answer": "supported"
+      },
+      {
+        "candidate": "wait_new",
+        "requirement": 1,
+        "answer": "unknown"
+      },
+      {
+        "candidate": "wait_new",
+        "requirement": 2,
+        "answer": "unknown"
+      }
+    ],
+    "warnings": [],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 #126 decide(선택·확률·확신도 그대로)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

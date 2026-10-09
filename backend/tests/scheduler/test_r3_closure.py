@@ -103,6 +103,11 @@ def test_wait_new_evidence_lists_only_upcoming_track_a(factory: sessionmaker[Ses
         assert snap is not None
         region = s.get(Region, snap.region_id)
         assert region is not None
+        # R3b F2: 포함 분류 전(미해결)은 넣지 않는다 — 시드 직후는 전부 '미분류'
+        assert wait_new_evidence(load_facts(s, snap, region), snap.asof_date).startswith("지역 (A) 트랙 공고 예정 0곳")
+        for cx in s.scalars(select(Complex).where(Complex.region_id == region.id)):
+            cx.inclusion_class, cx.inclusion_decision = "private_sale_apt", "auto"
+        s.flush()
         facts = load_facts(s, snap, region)
         text = wait_new_evidence(facts, snap.asof_date)
         assert text.startswith("지역 (A) 트랙 공고 예정 2곳")

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.analysis.gap import is_unadjusted_tag, unadjusted_from_flags
 from app.analysis.scenarios import requirement_mismatch
+from app.analysis.scope import INTAKE_PRIORITY, pick_intake
 from app.analysis.score import ScoreRunDetail, decide_outcome, weighted_total
 from app.analysis.sensitivity import weights_map
 from app.analysis.types import GapResult
@@ -234,6 +235,16 @@ def save_score_run(
                 judge_scope=(scopes or {}).get(t.complex_id),
             )
         )
+    # 점수 밖 단지(미해결·제외)도 이 실행의 판정 범위를 남긴다(총점·순위 없음) — 화면·KPI 는 저장값만 보인다(D10-1)
+    scored = {t.complex_id for t in res.totals}
+    for cid, scope in sorted((scopes or {}).items()):
+        if cid not in scored:
+            session.add(
+                ScoreTotal(
+                    score_run_id=run.id, complex_id=cid, total=None, rank=None, tie_group=None,
+                    unstable=False, judge_scope=scope,
+                )
+            )  # fmt: skip
     session.flush()
     return run
 
@@ -354,6 +365,8 @@ def save_claims(session: Session, claims: Iterable[ClaimDTO], seq: SeqResolver) 
         row.verify_status = c.verify_status
         row.judgment_seq = seq(c.judgment_seq)
         row.ordinal = c.ordinal
+        # 주장이 생성된 DB 사실(계약 2026-10-09.6, D10-3) — P9 사실 문장 주장만
+        row.entity, row.entity_id, row.field = c.entity, c.entity_id, c.field
         out.append(row)
     session.flush()
     return out
@@ -392,6 +405,9 @@ def copy_claims(
             judgment_seq=src.judgment_seq,
             parent_claim_id=new_ids.get(src.parent_claim_id) if src.parent_claim_id is not None else None,
             ordinal=src.ordinal,
+            entity=src.entity,
+            entity_id=src.entity_id,
+            field=src.field,
         )
         session.add(row)
         session.flush()
@@ -405,7 +421,10 @@ def copy_claims(
 
 
 def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) -> int:
-    """dst 에 (단지, 경로) 행이 없으면 src 의 그 경로 최신 행을 복사(확인 시각 유지 — D±로 낡음이 보인다)."""
+    """dst 에 (단지, 경로) 행이 없으면 src 의 그 경로 표시 행을 복사(확인 시각 유지 — D±로 낡음이 보인다).
+
+    경로 안에서 고르는 기준은 ``analysis.scope.pick_intake``(확인 날짜 → id)와 같다 — id 만 보면 src 에서 표시되던 행과
+    다른 행을 복사해 가짜 D9-3 접수 변경 이벤트가 생긴다(R3 재리뷰 F2)."""
     have = {
         (c, p)
         for c, p in session.execute(
@@ -414,11 +433,16 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
             )
         )
     }
-    latest: dict[tuple[int, str], IntakeStatus] = {}
+    grouped: dict[tuple[int, str], list[IntakeStatus]] = {}
     for r in session.scalars(
         select(IntakeStatus).where(IntakeStatus.snapshot_id == src_snapshot_id).order_by(IntakeStatus.id)
     ):
-        latest[(r.complex_id, r.path)] = r
+        grouped.setdefault((r.complex_id, r.path), []).append(r)
+    latest: dict[tuple[int, str], IntakeStatus] = {}
+    for key, rows in grouped.items():
+        picked = pick_intake(rows) if key[1] in INTAKE_PRIORITY else max(rows, key=lambda x: x.id)
+        if picked is not None:
+            latest[key] = picked
     n = 0
     for (cid, path), r in sorted(latest.items()):
         if (cid, path) in have:

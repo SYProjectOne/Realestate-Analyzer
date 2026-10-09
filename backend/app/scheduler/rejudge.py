@@ -110,5 +110,4 @@ def _notify_events(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any
             if cids
             else {}
         )
-    r = ctx.notifier.notify(events, names)
-    return {"sent": r.sent, "skipped": r.skipped, "status": r.status, "blocked": r.blocked}
+    return ctx.notifier.notify(events, names).stats()

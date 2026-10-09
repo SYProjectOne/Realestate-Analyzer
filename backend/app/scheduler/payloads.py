@@ -23,12 +23,13 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Final
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
-from app.analysis.scope import SCOPE_TEXT, in_rerank, is_decide_candidate, is_scored, runs_ladder
+from app.analysis.scope import SCOPE_TEXT, UNRESOLVED, in_rerank, is_decide_candidate, is_scored, runs_ladder
 from app.analysis.score import ScoreRunDetail, run_detailed
 from app.core.contracts_gen import RerankAnchor, RerankItem, ScoreInputs
 from app.core.contracts_gen import Scenario as ScenarioDTO
@@ -44,6 +45,7 @@ from app.scheduler.inputs import (
     evidence_card,
     gap_of,
     load_facts,
+    substitute_benchmark_ids,
 )
 
 __all__ = [
@@ -115,19 +117,35 @@ def wants_wait_new(sc: ScenarioDTO) -> bool:
     return bool(sc.policy.include_wait_new)
 
 
-def wait_new_evidence(facts: Sequence[ComplexFacts], asof_date: str) -> str:
-    """가상 후보 '모집공고 대기'의 근거 = 지역 (A) 트랙(청약 진행·예정) 중 **공고 전**(공고일 없음 또는 기준일 뒤) 단지 목록 요약.
+WAIT_NEW_MONTHS: Final = 12
+"""'모집공고 대기' 근거의 공고 예정 창(meta §1-3: 조사 기간 = 기준일~+12개월)."""
 
-    판단 없음 — complex.track·notice_date·판정 범위(``analysis.scope``) 그대로 옮긴다. 제외 단지는 넣지 않는다.
+
+def _plus_months(day: str, months: int) -> str:
+    y, m = int(day[:4]), int(day[5:7])
+    t = y * 12 + (m - 1) + months
+    return f"{t // 12:04d}-{t % 12 + 1:02d}{day[7:10]}"
+
+
+def wait_new_evidence(facts: Sequence[ComplexFacts], asof_date: str) -> str:
+    """가상 후보 '모집공고 대기'의 근거 = 지역 (A) 트랙(청약 진행·예정) 중 **12개월 내 공고 예정**(공고일 없음 = 공고 전,
+    또는 기준일 뒤 ~ 기준일+12개월) 단지 목록 요약(R3 재리뷰 F2).
+
+    판단 없음 — complex.track·notice_date·판정 범위(``analysis.scope``) 그대로 옮긴다. 넣지 않는 것: 제외·미해결(포함
+    분류가 확정되지 않음), 이미 공고된 단지, 공고일이 12개월 창 밖인 단지. '보류'(포함 확정 + 분양가 미공개)는 공고 전
+    단지 그 자체라 넣는다(보고서 §1·§8-2 상황 A 근거 = 공고 전 보류 단지).
     """
+    until = _plus_months(asof_date[:10], WAIT_NEW_MONTHS)
     rows: list[str] = []
     for f in facts:
         cx = f.row
-        if cx.track != "A" or f.scope == "제외":
+        if cx.track != "A" or f.scope in ("제외", UNRESOLVED):
             continue
         nd = (cx.notice_date or "")[:10]
         if nd and nd <= asof_date:
             continue  # 이미 공고된 단지는 '공고 예정'이 아니다
+        if nd and nd > until:
+            continue  # 12개월 창 밖
         when = f"모집공고 {nd} 예정" if nd else "모집공고일 미정(공고 전)"
         area = f", {f.living_area_name}" if f.living_area_name else ""
         price = "분양가 미공개" if f.price_high is None else "분양가 공개"
@@ -179,12 +197,13 @@ def decide_plan(
     *,
     precalc: RequirementPrecalculator | None = None,
     wait_new_text: str | None = None,
+    substitute_benchmarks: frozenset[int] = frozenset(),
 ) -> DecidePlan:
     """점수(시나리오 1개) → P8 decide 후보 ≤6 + 요건 사전 계산.
 
     시나리오 policy.include_wait_new(계약 .5)면 가상 후보 '모집공고 대기'를 넣고 단지 후보는 상위 ≤5(합 ≤6, 보고서
     §8-2 'TOP 5 + 모집공고 대기'). ``wait_new_text`` = 그 근거(``wait_new_evidence``)."""
-    detail = run_detailed(snap_dto, sc, inputs)
+    detail = run_detailed(snap_dto, sc, inputs, substitute_benchmarks=substitute_benchmarks)
     ranked = {t.complex_id: t.rank for t in detail.result.totals}
     wait = wants_wait_new(sc)
     ids = decide_candidates(ranked, detail.excluded, scope, limit=P.DECIDE_MAX - (1 if wait else 0))
@@ -318,6 +337,7 @@ def scenario_payloads(
         cards,
         scope,
         wait_new_text=wait_new_evidence(facts, snap.asof_date),
+        substitute_benchmarks=substitute_benchmark_ids(session, region),
     )  # fmt: skip
     if dp.runnable:
         payload = P.decide_payload(

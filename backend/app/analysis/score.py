@@ -24,7 +24,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -49,6 +49,7 @@ from app.analysis._common import (
     ym_of,
 )
 from app.analysis._ranking import rank_totals, weighted_total
+from app.analysis.complex_input import resale_input_label
 from app.analysis.gap import compute_gap, unadjusted_tags
 from app.analysis.ladder import ladder_targets, pick_ladder
 from app.analysis.scenarios import is_excluded
@@ -80,6 +81,7 @@ from app.core.contracts_gen import (
 )
 
 __all__ = [
+    "SUBSTITUTE_TEXT",
     "AnalysisScoreEngine",
     "ScoreRunDetail",
     "benchmark_component",
@@ -212,9 +214,20 @@ def rerank_component(complex_: ComplexScoreInput, anchor: RerankAnchor) -> Compo
 # ------------------------------------------------------------------ benchmark
 
 
+SUBSTITUTE_TEXT: Final = "대체(지역 전체)"
+"""생활권 자체 표본 0 → 지역 전체 표본으로 대체한 벤치마크 행(D9-2)의 성분 식·사유 표기(R3 재리뷰 N-M4)."""
+
+
 def benchmark_component(
-    complex_: ComplexScoreInput, benchmarks: Iterable[BenchmarkInput], *, asof_date: str
+    complex_: ComplexScoreInput,
+    benchmarks: Iterable[BenchmarkInput],
+    *,
+    asof_date: str,
+    substitute_ids: Collection[int] = frozenset(),
 ) -> ComponentResult:
+    """``substitute_ids`` = 지역 전체 대체 행(benchmark.id). 쓴 행이 대체면 식에 '대체(지역 전체)', 라벨 '추정'(D9-2).
+
+    계약 BenchmarkInput 에 대체 표식이 없어(.6 요청) 호출자(파이프라인 ``build_score_inputs`` 의 benchmark.note)가 넘긴다."""
     cid = complex_.complex_id
     la = complex_.living_area
     rows = sorted(
@@ -249,15 +262,21 @@ def benchmark_component(
     flags: tuple[str, ...] = ()
     if not any(b.sale_year is not None and b.sale_year >= asof_year - RECENT_SALE_YEARS for b in rows):
         flags = ("no_recent_sale_case",)
+    substituted = any(b.id in substitute_ids for b in rows)
     if n < 3:
         label: Label = "추정"
         reason: str | None = f"표본 {n}"
     else:
         label = weakest_label(*(b.label for b in rows))
         reason = None
+    if substituted:  # 지역 전체 대체(추정) — 라벨·사유·식에 표기(N-M4)
+        label = weakest_label(label, "추정")
+        reason = f"{SUBSTITUTE_TEXT}" + (f", {reason}" if reason else "")
+        flags = (*flags, "substitute_region")
     cases = ", ".join(f"{b.name} {'+' if x >= 0 else ''}{num(x * 100, 1)}%" for b, x in gains)
-    text = f"clamp(10 × {paren(g, 4)}/0.5, 0, 10) = {num(s)} (분양가 대비 입주 후 실거래 중앙 gain, {n}건: {cases}"
-    text += "; 최근 3년 분양 사례 0건)" if flags else ")"
+    sample = f"{SUBSTITUTE_TEXT} " if substituted else ""
+    text = f"clamp(10 × {paren(g, 4)}/0.5, 0, 10) = {num(s)} (분양가 대비 입주 후 실거래 중앙 gain, {sample}{n}건: {cases}"
+    text += "; 최근 3년 분양 사례 0건)" if "no_recent_sale_case" in flags else ")"
     return ComponentResult(
         complex_id=cid,
         component="benchmark",
@@ -437,7 +456,8 @@ def liquidity_component(complex_: ComplexScoreInput, *, asof_date: str) -> Compo
         f"({end_note}, Y_resale {num(y, 4)}년, 거주의무 {complex_.residency_months}개월, 계약금 {num(d)}%)"
     )
     inputs: list[tuple[str, Label | None]] = [
-        ("전매", complex_.resale_label),
+        # 전매 종료 = 당첨일 + 기간(R3 M2) — 당첨일 라벨은 계약 .6 winner_label(없으면 None = 영향 없음)
+        ("전매", resale_input_label(complex_.resale_label, getattr(complex_, "winner_label", None))),
         ("거주의무", complex_.residency_label),
         ("계약금", complex_.down_payment_label),
     ]
@@ -543,6 +563,7 @@ def _component(
     inputs: ScoreInputs,
     households: Mapping[str, int | None],
     gaps: dict[int, GapResult],
+    substitute_ids: Collection[int] = frozenset(),
 ) -> ComponentResult:
     fixed = _fixed(cx, key, inputs.rerank)
     if key == "gap":
@@ -568,7 +589,9 @@ def _component(
             flags=(*g.flags, *unadjusted_tags(g)),
         )
     if key == "benchmark":
-        return benchmark_component(cx, inputs.benchmarks, asof_date=inputs.asof_date)
+        return benchmark_component(
+            cx, inputs.benchmarks, asof_date=inputs.asof_date, substitute_ids=substitute_ids
+        )
     if key == "supply":
         return supply_component(
             cx,
@@ -585,8 +608,14 @@ def _component(
 
 
 def run_detailed(
-    snapshot: Snapshot, scenario: Scenario, inputs: ScoreInputs, *, with_sensitivity: bool = True
+    snapshot: Snapshot,
+    scenario: Scenario,
+    inputs: ScoreInputs,
+    *,
+    with_sensitivity: bool = True,
+    substitute_benchmarks: Collection[int] = frozenset(),
 ) -> ScoreRunDetail:
+    """``substitute_benchmarks``: 지역 전체 대체 벤치마크 행 id(``benchmark_component``) — 식·라벨에 '대체' 표기."""
     if snapshot.id != inputs.snapshot_id:
         raise ValueError(f"snapshot 불일치: {snapshot.id} != inputs.snapshot_id {inputs.snapshot_id}")
     weights = weights_map(scenario.weights)
@@ -600,7 +629,15 @@ def run_detailed(
     excluded: set[int] = set()
     for cx in complexes:
         row = {
-            key: _component(key, cx, scenario=scenario, inputs=inputs, households=households, gaps=gaps)
+            key: _component(
+                key,
+                cx,
+                scenario=scenario,
+                inputs=inputs,
+                households=households,
+                gaps=gaps,
+                substitute_ids=substitute_benchmarks,
+            )
             for key in weights
         }
         comps[cx.complex_id] = row
