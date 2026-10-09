@@ -88,6 +88,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     router = _load_api_router()
     if router is not None:
         app.include_router(router, prefix=prefix)
+        # WP5: 오류 본문을 계약 Error 로 맞추는 처리기(app.api.install) — 라우터 연결에 필요한 최소 수정
+        install = getattr(importlib.import_module("app.api"), "install", None)
+        if callable(install):
+            install(app)
     return app
 
 
