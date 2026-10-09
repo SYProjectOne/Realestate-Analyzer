@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.benchmarks import benchmark_absence, benchmarks_for
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import ApiError, not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, fact, unknown, weakest
@@ -647,6 +648,8 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         "scenario_code": sc.code,
         "scenario_name": sc.name,
         "degraded": bool(snap.degraded),
+        # 벤치마크 없음 사유(계약 2026-10-09.6, N-M3 — G3; 점수 부분 아님)
+        "benchmark_absence": benchmark_absence(session, region.id, benchmarks_for(session, snap)),
         "score_run_id": ctx.run.id if ctx.run is not None else None,
         "weights": ctx.weights,
         "kpis": {
