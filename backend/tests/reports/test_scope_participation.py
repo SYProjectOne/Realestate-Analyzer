@@ -1,4 +1,6 @@
-"""WP8 판정 범위 정합(계약 2026-10-09.5) — 공용 함수 위임 · 사다리 참여 규칙 · 상황 A '모집공고 대기' · 시드 중복.
+"""WP8 판정 범위 정합(계약 2026-10-09.5).
+
+공용 함수 위임 · 사다리 참여 규칙 · 상황 A '모집공고 대기' · 시드 중복.
 
 DB 를 바꾸는 테스트는 같은 세션에서 flush 후 ``load_report`` 를 부르고 rollback 한다(세션 공용 DB 보존).
 """
@@ -19,6 +21,7 @@ from app.models import Claim, ComplexType, IntakeStatus, Ladder, PaymentTerms
 from app.reports import policy
 from app.reports.charts import build_charts, c01_ladder
 from app.reports.data import ReportData, load_report
+from app.reports.diff import diff_snapshots
 from app.reports.render import render_html
 
 NOT_TARGET_P10 = Decimal("0.7700")  # 픽스처 어디에도 없는 값 — 표시되면 바로 보인다
@@ -66,7 +69,12 @@ def _row_text(sec: Tag, table_idx: int, name: str) -> str:
 def test_policy_judge_scope_is_shared_function(
     cls: str, decision: str | None, has_price: bool, intake: str | None
 ) -> None:
-    kw = {"inclusion_class": cls, "inclusion_decision": decision, "has_price": has_price, "intake_status": intake}
+    kw = {
+        "inclusion_class": cls,
+        "inclusion_decision": decision,
+        "has_price": has_price,
+        "intake_status": intake,
+    }
     assert policy.judge_scope(**kw) == scope.judge_scope(**kw)  # type: ignore[arg-type]
 
 
@@ -79,8 +87,12 @@ def test_policy_current_price_is_shared_function(factory: sessionmaker[Session])
 
 
 def test_current_terms_order_matches_shared_function(scratch: Session) -> None:
-    """같은 effective_from 이면 notice_no → id(공용 ``current_terms``). 옛 보고서 순서(effective_from → id)와 다른 경우."""
-    pays = list(scratch.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == 7).order_by(PaymentTerms.id)))
+    """같은 effective_from 이면 notice_no → id(공용 ``current_terms``).
+
+    옛 보고서 순서(effective_from → id)와 다른 경우."""
+    pays = list(
+        scratch.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == 7).order_by(PaymentTerms.id))
+    )
     if len(pays) < 2:
         first = pays[0]
         scratch.add(
@@ -93,7 +105,9 @@ def test_current_terms_order_matches_shared_function(scratch: Session) -> None:
         )
         scratch.flush()
         pays = list(
-            scratch.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == 7).order_by(PaymentTerms.id))
+            scratch.scalars(
+                select(PaymentTerms).where(PaymentTerms.complex_id == 7).order_by(PaymentTerms.id)
+            )
         )
     day = "2026-09-01"
     for n, p in enumerate(pays):
@@ -110,11 +124,17 @@ def test_current_terms_order_matches_shared_function(scratch: Session) -> None:
 def test_intake_shown_uses_shared_pick_intake(scratch: Session) -> None:
     """같은 날 '날짜만'(사람 입력)과 '시각 포함' 값 — 날짜만 비교하고 id 큰 행(공용 ``pick_intake``)."""
     rows = list(
-        scratch.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == 12, IntakeStatus.complex_id == 2))
+        scratch.scalars(
+            select(IntakeStatus).where(IntakeStatus.snapshot_id == 12, IntakeStatus.complex_id == 2)
+        )
     )
     base = rows[0]
     a = IntakeStatus(
-        complex_id=2, snapshot_id=12, status="불가", path="human_check", checked_at="2026-10-08T23:59:00+09:00"
+        complex_id=2,
+        snapshot_id=12,
+        status="불가",
+        path="human_check",
+        checked_at="2026-10-08T23:59:00+09:00",
     )
     b = IntakeStatus(complex_id=2, snapshot_id=12, status="미정", path="human_check", checked_at="2026-10-08")
     for r in (a, b):
@@ -122,7 +142,9 @@ def test_intake_shown_uses_shared_pick_intake(scratch: Session) -> None:
         scratch.add(r)
         scratch.flush()
     want = scope.pick_intake(
-        scratch.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == 12, IntakeStatus.complex_id == 2))
+        scratch.scalars(
+            select(IntakeStatus).where(IntakeStatus.snapshot_id == 12, IntakeStatus.complex_id == 2)
+        )
     )
     assert want is not None and want.id == b.id
     cx = load_report(scratch, 12).complex_by_id[2]
@@ -234,7 +256,7 @@ def test_section7_and_8_show_scope_not_probability(leftover: tuple[ReportData, s
     assert "0.33" not in text, text
     s7 = _section(html, "s7")
     assert "판정 범위: 미해결(분류 판정 미해결)" in s7.get_text(" ", strip=True)
-    assert "0.77" not in html
+    assert "남은 사다리 명제" not in html  # 남은 행의 명제 문장(§7)도 쓰지 않는다
 
 
 def test_target_complexes_still_show_ladder(factory: sessionmaker[Session]) -> None:
@@ -292,6 +314,15 @@ def test_wait_new_in_section8_summary_and_table(factory: sessionmaker[Session]) 
     assert any("모집공고 대기" in t.get_text() and "가상 후보" in t.get_text() for t in tables[2:])
 
 
+def test_diff_ladder_uses_scope_for_non_target(factory: sessionmaker[Session]) -> None:
+    """§12 diff 표도 같은 참여 규칙 — 미해결 단지 4의 남은 사다리 행은 확률 대신 판정 범위."""
+    with factory() as s:
+        d = diff_snapshots(s, 11, 12)
+    rows = [r for r in d.rows if r.table == "ladder" and r.complex_id == 4]
+    assert rows and all("0.33" not in r.new for r in rows), rows
+    assert rows[0].new == "판정 범위: 미해결(분류 판정 미해결)"
+
+
 # ---------------------------------------------------------------------------- 4. 시드 중복 정리
 
 
@@ -299,10 +330,12 @@ def test_seed_has_no_duplicate_rows(factory: sessionmaker[Session]) -> None:
     """devseed 가 스냅샷 11 점수·접수·claim 을 이미 넣는다 — 보고서 시드가 같은 행을 또 넣지 않는다."""
     with factory() as s:
         intake = Counter(
-            (r.snapshot_id, r.complex_id, r.path, r.checked_at, r.status) for r in s.scalars(select(IntakeStatus))
+            (r.snapshot_id, r.complex_id, r.path, r.checked_at, r.status)
+            for r in s.scalars(select(IntakeStatus))
         )
         assert max(intake.values()) == 1, [k for k, n in intake.items() if n > 1][:3]
         claims = Counter(
-            (c.snapshot_id, c.judgment_seq, c.ordinal, c.text, c.parent_claim_id) for c in s.scalars(select(Claim))
+            (c.snapshot_id, c.judgment_seq, c.ordinal, c.text, c.parent_claim_id)
+            for c in s.scalars(select(Claim))
         )
         assert max(claims.values()) == 1, [k for k, n in claims.items() if n > 1][:3]

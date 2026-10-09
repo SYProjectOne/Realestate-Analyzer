@@ -57,6 +57,9 @@
     {% for l in data.ladder_other.get(s.complex_id, []) %}
       <tr><td>{{ l.horizon_label }}</td><td>{{ l.target_ym }}</td><td>{{ fact(l.p5) }}</td><td>{{ fact(l.p10) }}</td><td>{{ fact(l.p20) }}</td><td>{{ fact(l.p_flat) }}</td><td>{{ l.status }}{% if l.status != "ok" %} — 미해결{% endif %}</td></tr>
     {% endfor %}
+    {% if c and c.judge_scope != "판정 대상" %}
+      <tr class="scoped-out"><td colspan="7">{{ c.scope_note }} — 사다리 미실행</td></tr>
+    {% endif %}
     </tbody>
   </table>
   {% if data.ladders | selectattr("complex_id", "equalto", s.complex_id) | map(attribute="proposition") | select | list %}

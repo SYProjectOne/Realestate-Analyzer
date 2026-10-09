@@ -1,121 +1,101 @@
-"""보고서의 판정 범위·현재 구매가 계산 지점 — 각각 함수 하나(R3 수정 F4, D9-1·M3).
+"""보고서의 판정 범위·현재 구매가 계산 지점 — 공용 함수(``app.analysis``) 호출만 둔다(D9-1·§6-1, R3 M3).
 
-F2 가 같은 라운드에 공용 함수 ``app.analysis.scope.judge_scope``·``app.analysis.price_view`` 를 만든다.
-그것이 main 에 머지되면 아래 두 함수의 **본문 한 줄**을 공용 함수 호출로 바꾼다(호출부 ``data.py`` 는 그대로).
-그때까지는 같은 규칙(meta §1-3-4 = D9-1, §6-1)을 여기서 계산한다
-— 규칙은 판단이 아니다(판정기 결과·사실만 읽음).
+규칙은 ``app.analysis.scope``·``app.analysis.price_view`` 한 곳에 있다(파이프라인·API·보고서 공용).
+여기는 보고서가 그 함수를 부르는 이름과 참여 규칙(API ``views.load_bundles`` 와 같음)만 둔다
+— 규칙을 다시 쓰지 않는다.
 
-- ``judge_scope(...)`` → ``"제외" | "보류" | "미해결" | "참고" | "판정 대상"`` (계약 .4 값 집합)
-- ``current_price_source(basis, payments)`` → 현재 구매가 원천(최신 공고 ``payment_terms.price_by_type`` 우선,
-  없으면 ``complex_type``)과 그 출처 행 키
+- ``judge_scope(...)`` → ``ScopeResult``(범위 5종 + 사유)
+- ``complex_scope(cx, types, payments, intakes)`` → 단지 사실·표시 접수 행으로 계산한 ``ScopeResult``
+- ``current_price(types, payments)`` → ``PriceView``(최신 공고 ``payment_terms.price_by_type`` 우선)
+- ``current_terms(payments)`` → 현재 공고 조건(effective_from → notice_no → id)
+- ``pick_intake(rows)`` → 표시 접수 행
+- ``shows_ladder(scope)`` → 사다리 행·p10 을 표시·집계에 쓰는가('판정 대상'만)
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Final, Literal
+from collections.abc import Iterable, Sequence
+from typing import Final
 
-from app.models import ComplexType, PaymentTerms
+from app.analysis import price_view, scope
+from app.analysis.price_view import PaymentTermsLike, PriceView, TypeRowLike
+from app.analysis.scope import IntakeRowLike, JudgeScope, ScopeResult
+from app.models import Complex
 
 __all__ = [
-    "EXCLUDED_CLASSES",
     "JUDGE_SCOPE_TEXT",
     "JudgeScope",
-    "PriceSource",
-    "current_price_source",
+    "PriceView",
+    "ScopeResult",
+    "complex_scope",
+    "current_price",
     "current_terms",
     "judge_scope",
+    "pick_intake",
+    "scope_note",
+    "shows_ladder",
 ]
 
-JudgeScope = Literal["제외", "보류", "미해결", "참고", "판정 대상"]
-
-# meta §1-3-4 · D9-1 표시 문구
-JUDGE_SCOPE_TEXT: Final[dict[str, str]] = {
-    "판정 대상": "판정 대상",
-    "보류": "보류 — 공고 후 재판정",
-    "미해결": "미해결(분류 판정 미해결)",
-    "참고": "참고 후보(순위만)",
-    "제외": "제외",
-}
-EXCLUDED_CLASSES: Final = frozenset(
-    {"public_sale", "public_rental", "private_rental", "non_apartment", "out_of_scope"}
-)
-INCLUDED_CLASS: Final = "private_sale_apt"
-BOUNDARY: Final = "범위 경계"
+JUDGE_SCOPE_TEXT: Final = scope.SCOPE_TEXT
+"""meta §1-3-4 표시 문구(공용 ``analysis.scope.SCOPE_TEXT``)."""
 
 
 def judge_scope(
     *,
-    inclusion_class: str,
+    inclusion_class: str | None,
     inclusion_decision: str | None,
     has_price: bool,
     intake_status: str | None,
-) -> JudgeScope:
-    """판정 범위(D9-1). F2 머지 후 본문 = ``return analysis.scope.judge_scope(...)``.
-
-    - 제외: classify(auto)가 제외 클래스, 또는 '범위 경계'(주소 매칭 실패 — classify 결과가 아님)
-    - 미해결: classify 가 auto 가 아님(review·manual_review·미분류) — 판정 대상 아님, 사다리·점수 없음
-    - 보류: 포함 확정이나 분양가 미공개(공고 전)
-    - 참고: 포함 확정 + 가격 + 표시 접수 상태 '확인 불가'·'불가'·기록 없음 — 순위만, 사다리 미실행
-    - 판정 대상: 포함 확정 + 가격 + 접수 '가능'·'미정'
-    """
-    if inclusion_class == BOUNDARY:
-        return "제외"
-    if inclusion_decision != "auto":
-        return "미해결"
-    if inclusion_class in EXCLUDED_CLASSES:
-        return "제외"
-    if inclusion_class != INCLUDED_CLASS:  # 'manual_review'·'미분류' 가 auto 로 온 경우
-        return "미해결"
-    if not has_price:
-        return "보류"
-    if intake_status in ("가능", "미정"):
-        return "판정 대상"
-    return "참고"
-
-
-def current_terms(payments: Sequence[PaymentTerms]) -> PaymentTerms | None:
-    """현재 공고 조건 = effective_from 최신(같으면 id 큰 것) — API ``views.current_payment`` 와 같은 순서."""
-    return max(payments, key=lambda p: (p.effective_from or "", p.id)) if payments else None
-
-
-@dataclass(frozen=True, slots=True)
-class PriceSource:
-    """§6-1 현재 구매가 원천: 공급금액(최고가·대표층) + 그 출처 행 키 (entity, entity_id, field)."""
-
-    max_won: int | None
-    floor_won: int | None
-    max_key: tuple[str, int, str]
-    floor_key: tuple[str, int, str]
-    notice_no: str | None  # price_by_type 를 쓴 공고 번호(None = complex_type 값)
-
-
-def current_price_source(basis: ComplexType | None, payments: Sequence[PaymentTerms]) -> PriceSource | None:
-    """현재 구매가 원천(§6-1). F2 머지 후 본문 = ``analysis.price_view`` 호출 한 줄.
-
-    최신 공고(``current_terms``)의 ``price_by_type[판정 타입]`` 에 최고가가 있으면 그 값(임의공급 가격 변경),
-    없으면 ``complex_type`` 값. 발코니·필수 옵션은 늘 ``complex_type``(호출부가 더한다).
-    """
-    if basis is None:
-        return None
-    cur = current_terms(payments)
-    by_type = (cur.price_by_type or {}) if cur is not None else {}
-    item = by_type.get(basis.type_code) if isinstance(by_type, dict) else None
-    if cur is not None and isinstance(item, dict) and item.get("max_price_won") is not None:
-        key = f"price_by_type.{basis.type_code}"
-        floor = item.get("floor_sample_price_won")
-        return PriceSource(
-            max_won=int(item["max_price_won"]),
-            floor_won=int(floor) if floor is not None else None,
-            max_key=("payment_terms", cur.id, f"{key}.max_price_won"),
-            floor_key=("payment_terms", cur.id, f"{key}.floor_sample_price_won"),
-            notice_no=cur.notice_no,
-        )
-    return PriceSource(
-        max_won=basis.max_price_won,
-        floor_won=basis.floor_sample_price_won,
-        max_key=("complex_type", basis.id, "max_price_won"),
-        floor_key=("complex_type", basis.id, "floor_sample_price_won"),
-        notice_no=None,
+) -> ScopeResult:
+    """판정 범위(D9-1) = ``analysis.scope.judge_scope``."""
+    return scope.judge_scope(
+        inclusion_class=inclusion_class,
+        inclusion_decision=inclusion_decision,
+        has_price=has_price,
+        intake_status=intake_status,
     )
+
+
+def current_price(types: Sequence[TypeRowLike], payments: Sequence[PaymentTermsLike]) -> PriceView:
+    """현재 구매가(§6-1) = ``analysis.price_view.current_price``."""
+    return price_view.current_price(types, payments)
+
+
+def current_terms[P: PaymentTermsLike](payments: Iterable[P]) -> P | None:
+    """현재 공고 조건 = ``analysis.price_view.current_terms``(effective_from → notice_no → id)."""
+    return price_view.current_terms(payments)
+
+
+def pick_intake[R: IntakeRowLike](rows: Iterable[R]) -> R | None:
+    """표시 접수 행 = ``analysis.scope.pick_intake``."""
+    return scope.pick_intake(rows)
+
+
+def complex_scope(
+    cx: Complex,
+    types: Sequence[TypeRowLike],
+    payments: Sequence[PaymentTermsLike],
+    intakes: Iterable[IntakeRowLike],
+) -> ScopeResult:
+    """단지 하나의 판정 범위 — README 사용 예 그대로(현재 사실 + 그 스냅샷의 표시 접수 행)."""
+    shown = pick_intake(intakes)
+    return judge_scope(
+        inclusion_class=cx.inclusion_class,
+        inclusion_decision=cx.inclusion_decision,
+        has_price=current_price(types, payments).known,
+        intake_status=shown.status if shown is not None else None,
+    )
+
+
+def shows_ladder(value: str) -> bool:
+    """사다리 행·p10 을 보고서 표시·집계에 쓰는가 — '판정 대상'만(D9-1, API ``load_bundles`` 참여 규칙).
+
+    '참고'·'보류'·'미해결'·'제외' 단지는 같은 스냅샷에 남은 사다리 행(이전 범위의 판정·이월)이 있어도
+    쓰지 않는다.
+    """
+    return scope.runs_ladder(value)
+
+
+def scope_note(result: ScopeResult) -> str:
+    """사다리·확률 자리에 쓰는 문구: '판정 범위: <표시 문구> — <사유>'."""
+    return f"판정 범위: {result.text} — {result.reason}"

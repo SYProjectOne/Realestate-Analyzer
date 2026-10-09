@@ -15,7 +15,7 @@
       {% set c = data.complex_by_id.get(s.complex_id) %}
       {% set lad = data.ladders | selectattr("complex_id", "equalto", s.complex_id) | first | default(none) %}
       <tr><td>{{ s.rank }}위</td><td>{{ s.name }}</td><td>{{ fact(s.total) }}</td>
-        <td>{% if lad %}{{ fact(lad.p10) }}{% else %}확인 불가(사다리 없음){% endif %}</td>
+        <td>{% if c and c.judge_scope != "판정 대상" %}{{ c.scope_note }}{% elif lad %}{{ fact(lad.p10) }}{% else %}확인 불가(사다리 없음){% endif %}</td>
         <td>{% if "gap" in s.components %}{{ fact(s.components.gap.score) }}{% else %}—{% endif %}</td>
         <td>{% if c %}{{ fact(c.price_low) }} ~ {{ fact(c.price_high) }}{% endif %}</td>
         <td>{% if c and c.current_payment %}{{ fact(c.current_payment.down_payment_pct) }}{% else %}—{% endif %}</td>
@@ -25,6 +25,21 @@
     </tbody>
   </table>
   <h3>8-2. 상황별 추천(판정기 decide) — 요건 3개(접근 가능성 / 규제 제약 / 자금)</h3>
+  <table class="scenario-summary">
+    <thead><tr><th>상황</th><th>판정기 선택</th><th>확률</th><th>confidence</th><th>차순위</th><th>decide</th></tr></thead>
+    <tbody>
+    {% for b in data.scenarios %}
+      {% set chosen = b.decisions | selectattr("chosen") | list %}
+      <tr><td>{{ b.code }} — {{ b.name }}</td>
+        <td>{% for d in chosen %}{{ d.option }}{% if d.virtual %} <span class="badge">가상 후보</span>{% endif %}{% if not loop.last %} · {% endif %}{% else %}없음(미판정){% endfor %}{% if b.tie %} <span class="badge warn">동률</span>{% endif %}</td>
+        <td>{% for d in chosen %}{{ fact(d.prob) }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</td>
+        <td>{% if b.decisions %}{{ fact(b.confidence) }}{% else %}—{% endif %}</td>
+        <td>{% for d in b.runner_up %}{{ d.option }}{% if d.virtual %}(가상 후보){% endif %} {{ fact(d.prob) }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</td>
+        <td>{% if b.judgment_seq %}#{{ b.judgment_seq }} {{ b.status or "" }}{% else %}기록 없음{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small">'모집공고 대기'는 가상 후보다(계약 2026-10-09.5) — 12개월 안 공고 예정 단지를 기다리는 선택지로, 시나리오 정책이 켠 상황(내장 A)에서만 decide 후보에 들어간다. 단지가 아니므로 점수·사다리가 없고 요건은 판정기 판정만 있다(사전 계산 없음).</p>
   {{ chart(charts.get("c07"), has_echarts) }}
   {% for b in data.scenarios %}
   <h4>상황 {{ b.code }} — {{ b.name }} · 가중치 {% for k, w in b.weights.items() %}{{ COMPONENT_LABELS.get(k, k) }} {{ "%.2f" | format(w) }}{% if not loop.last %} · {% endif %}{% endfor %}</h4>
@@ -35,6 +50,7 @@
     {% else %}<tr><td colspan="3">점수 없음</td></tr>{% endfor %}
     </tbody>
   </table>
+  {% if b.code != data.scenario_code %}{{ chart(charts.get("c07_" ~ b.code), has_echarts) }}{% endif %}
   {% if b.decisions %}
   <p class="small">decide #{{ b.judgment_seq }} · 상태 {{ b.status or "—" }} · confidence {{ fact(b.confidence) }}{% if b.tie %} · <span class="badge warn">동률</span>{% endif %}</p>
   <table>
@@ -43,7 +59,7 @@
     {% for d in b.decisions %}
       <tr class="{{ 'chosen' if d.chosen else '' }}"><td>{{ d.option }}</td><td>{{ fact(d.prob) }}</td><td>{{ "선택" if d.chosen else "" }}</td>
         {% for req in ("access", "regulation", "funds") %}<td>{{ pre(d.pre[req]) }}<br>판정기: {{ d.judge[req] or "—" }}</td>{% endfor %}
-        <td>{% if d.tie %}<span class="badge warn">동률</span>{% endif %}{% if d.mismatch %}<span class="badge warn">증거와 상이</span>{% endif %}</td></tr>
+        <td>{% if d.virtual %}<span class="badge">가상 후보</span>{% endif %}{% if d.tie %}<span class="badge warn">동률</span>{% endif %}{% if d.mismatch %}<span class="badge warn">증거와 상이</span>{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>

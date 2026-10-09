@@ -349,12 +349,10 @@ def test_minor39_fixture_report_has_no_missing_provenance(factory: sessionmaker[
 def test_c2_judge_scope_rule(
     cls: str, decision: str | None, has_price: bool, intake: str | None, want: str
 ) -> None:
-    assert (
-        judge_scope(
-            inclusion_class=cls, inclusion_decision=decision, has_price=has_price, intake_status=intake
-        )
-        == want
+    got = judge_scope(
+        inclusion_class=cls, inclusion_decision=decision, has_price=has_price, intake_status=intake
     )
+    assert got.scope == want
 
 
 def test_c2_scope_texts_follow_d9_1() -> None:
