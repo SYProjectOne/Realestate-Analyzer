@@ -3,25 +3,26 @@ import { t } from '@/i18n';
 import { formatNumber, formatProb } from '@/lib/format';
 import { baseOption, DEFAULT_PALETTE } from '../palette';
 import type { BuildOptionContext, EChartsOption } from '../types';
+import { num } from '../util';
 import { C07_TIE_CONFIDENCE, type C07Data } from './types';
 
 /** escaped → 막대 대신 질문 텍스트. 판정 없음 → "판정 없음" */
 export function emptyReason(data: C07Data): string | null {
   const d = data.decision;
-  if (!d || d.rows.length === 0) return t('chart.C07.empty');
-  if (d.status === 'escaped')
-    return `${t('chart.C07.escape')}: ${d.escape?.question ?? t('empty.unknown')}`;
+  if (!d || d.items.length === 0) return t('chart.C07.empty');
+  if (d.status === 'escaped' || d.escaped)
+    return `${t('chart.C07.escape')}: ${d.question ?? t('empty.unknown')}`;
   return null;
 }
 
 export function isTie(data: C07Data): boolean {
-  const c = data.decision?.confidence;
-  return c !== null && c !== undefined && c < C07_TIE_CONFIDENCE;
+  const c = num(data.decision?.confidence);
+  return data.decision?.tie === true || (c !== null && c < C07_TIE_CONFIDENCE);
 }
 
 export function confidenceText(data: C07Data): string | null {
-  const c = data.decision?.confidence;
-  return c === null || c === undefined
+  const c = num(data.decision?.confidence);
+  return c === null
     ? null
     : t('chart.C07.confidence', { confidence: formatNumber(c, 2) });
 }
@@ -32,17 +33,19 @@ export function buildOption(
 ): EChartsOption {
   const { palette } = ctx;
   const d = data.decision;
-  const rows = d?.rows ?? [];
-  const names = [...rows.map((r) => r.name), ...(d?.escape ? [t('chart.C07.escape')] : [])];
-  const values = [
-    ...rows.map((r) => ({
-      value: r.prob,
-      itemStyle: {
-        color: r.status === 'ok' ? (r.chosen ? palette.strong : palette.fg) : palette.grayed,
-      },
-    })),
-    ...(d?.escape ? [{ value: d.escape.prob, itemStyle: { color: palette.grayed } }] : []),
-  ];
+  const rows = d?.items ?? [];
+  const names = rows.map((r) => r.label);
+  const values = rows.map((r) => ({
+    value: num(r.prob),
+    itemStyle: {
+      color:
+        d?.status === 'ok' && r.option_key === 'complex'
+          ? r.chosen
+            ? palette.strong
+            : palette.fg
+          : palette.grayed,
+    },
+  }));
   return {
     ...baseOption(palette),
     grid: { left: 120, right: 48, top: 16, bottom: 32 },
@@ -79,8 +82,8 @@ export function toTable(data: C07Data): DataTable {
       { key: 'prob', header: t('chart.col.prob'), unit: 'prob' },
       { key: 'flags', header: t('chart.col.flags') },
     ],
-    rows: (d?.rows ?? []).map((r) => ({
-      name: r.name,
+    rows: (d?.items ?? []).map((r) => ({
+      name: r.label,
       prob: r.prob,
       flags:
         [

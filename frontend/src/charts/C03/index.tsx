@@ -20,7 +20,7 @@ export function C03Benchmark({ data, height = 320 }: C03BenchmarkProps) {
   return (
     <ChartFrame
       title={title}
-      labels={collectLabels(data.benchmarks.flatMap((b) => [b.sale_price_84, b.trade_median]))}
+      labels={collectLabels(data.benchmarks.flatMap((b) => [b.sale_price_84_won, b.trade_median_won]))}
       badges={sample ? <Badge tone="muted">{sample}</Badge> : null}
       table={toTable(data)}
       emptyReason={emptyReason(data)}

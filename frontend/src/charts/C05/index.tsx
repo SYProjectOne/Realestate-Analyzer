@@ -18,7 +18,7 @@ export function C05Unsold({ data, height = 240 }: C05UnsoldProps) {
     <ChartFrame
       title={title}
       subtitle={t('chart.C05.basis')}
-      labels={data.unsold.map((r) => r.source_label)}
+      labels={data.unsold.map((r) => r.total.label)}
       table={toTable(data)}
       emptyReason={emptyReason(data)}
     >

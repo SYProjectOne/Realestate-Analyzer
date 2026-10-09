@@ -49,7 +49,7 @@ export function buildOption(
     },
     series: areas.map((area, index) => ({
       type: 'bar' as const,
-      name: area,
+      name: area ?? t('chart.C04.label'),
       stack: 'supply',
       itemStyle: { color: palette.categorical[index % palette.categorical.length] },
       data: years.map((year) => {

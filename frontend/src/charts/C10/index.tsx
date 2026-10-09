@@ -5,7 +5,7 @@ import { ChartFrame } from '../ChartFrame';
 import { EChart } from '../EChart';
 import { useChartPalette } from '../palette';
 import { buildOption, emptyReason, toTable } from './buildOption';
-import type { C10Data } from './types';
+import { c10Name, type C10Data } from './types';
 
 export interface C10SensitivityProps {
   data: C10Data;
@@ -31,13 +31,9 @@ export function C10Sensitivity({ data, height = 200 }: C10SensitivityProps) {
               <th scope="col" className="border-b border-border px-2 py-1 text-muted">
                 {t('chart.col.variant')}
               </th>
-              {(s?.baseline_top5 ?? []).map((b) => (
-                <th
-                  key={b.complex_id}
-                  scope="col"
-                  className="border-b border-border px-2 py-1 text-muted"
-                >
-                  {formatRank(b.rank)}
+              {(s?.base_top5 ?? []).map((id, i) => (
+                <th key={id} scope="col" className="border-b border-border px-2 py-1 text-muted">
+                  {formatRank(i + 1)}
                 </th>
               ))}
             </tr>
@@ -48,13 +44,11 @@ export function C10Sensitivity({ data, height = 200 }: C10SensitivityProps) {
                 <th scope="row" className="px-2 py-1 font-normal">
                   {cell.variant}
                 </th>
-                {[...cell.top5]
-                  .sort((a, b) => a.rank - b.rank)
-                  .map((x) => (
-                    <td key={x.complex_id} className="px-2 py-1">
-                      {x.name}
-                    </td>
-                  ))}
+                {cell.top5.map((id) => (
+                  <td key={id} className="px-2 py-1">
+                    {c10Name(data, id)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

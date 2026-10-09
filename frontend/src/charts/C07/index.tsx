@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import { ChartFrame } from '../ChartFrame';
 import { EChart } from '../EChart';
 import { useChartPalette } from '../palette';
+import { num } from '../util';
 import { buildOption, confidenceText, emptyReason, isTie, toTable } from './buildOption';
 import type { C07Data } from './types';
 
@@ -16,14 +17,14 @@ export interface C07DecisionProps {
 export function C07Decision({ data, height = 220 }: C07DecisionProps) {
   const palette = useChartPalette();
   const title = t('chart.C07.title');
-  const mismatch = data.decision?.rows.some((r) => r.mismatch) ?? false;
+  const mismatch = data.decision?.items.some((r) => r.mismatch) ?? false;
   return (
     <ChartFrame
       title={title}
       subtitle={confidenceText(data) ?? undefined}
       badges={
         <>
-          <TieBadge tie={isTie(data)} confidence={data.decision?.confidence} />
+          <TieBadge tie={isTie(data)} confidence={num(data.decision?.confidence)} />
           <MismatchBadge mismatch={mismatch} />
         </>
       }

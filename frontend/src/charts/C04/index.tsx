@@ -18,7 +18,7 @@ export function C04Supply({ data, height = 280 }: C04SupplyProps) {
     <ChartFrame
       title={title}
       subtitle={t('chart.C04.label')}
-      labels={data.supply.map((s) => s.label)}
+      labels={data.supply.map((s) => s.units.label)}
       table={toTable(data)}
       emptyReason={emptyReason(data)}
     >

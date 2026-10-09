@@ -83,10 +83,10 @@ export function buildOption(
         data: rows
           .map((b, i) => [
             i,
-            num(b.sale_price_84),
-            num(b.trade_low),
-            num(b.trade_median),
-            num(b.trade_high),
+            num(b.sale_price_84_won),
+            num(b.trade_low_won),
+            num(b.trade_median_won),
+            num(b.trade_high_won),
           ])
           .filter((d) => d.slice(1).every((v) => v !== null)),
       },
@@ -96,7 +96,7 @@ export function buildOption(
         symbolSize: 9,
         itemStyle: { color: palette.fg },
         data: rows.map((b, i) => ({
-          value: [num(b.sale_price_84), i],
+          value: [num(b.sale_price_84_won), i],
           // 분양권은 별도 마커 모양
           symbol: b.is_presale ? 'diamond' : 'circle',
         })),
@@ -109,8 +109,8 @@ export function buildOption(
               data.asofYear === null
                 ? null
                 : annualizedPct(
-                    num(b.sale_price_84),
-                    num(b.trade_median),
+                    num(b.sale_price_84_won),
+                    num(b.trade_median_won),
                     b.sale_year,
                     data.asofYear,
                   );
@@ -128,7 +128,7 @@ export function buildOption(
         symbol: 'triangle',
         symbolSize: 9,
         itemStyle: { color: palette.grayed },
-        data: rows.map((b, i) => [num(b.peak), i]).filter((d) => d[0] !== null),
+        data: rows.map((b, i) => [num(b.peak_won), i]).filter((d) => d[0] !== null),
       },
     ],
   };
@@ -150,11 +150,11 @@ export function toTable(data: C03Data): DataTable {
       name: b.is_presale ? `${b.name} · ${t('chart.C03.presale')}` : b.name,
       living_area: b.living_area,
       sale_year: b.sale_year === null ? null : String(b.sale_year),
-      sale_price: b.sale_price_84,
-      low: b.trade_low,
-      median: b.trade_median,
-      high: b.trade_high,
-      peak: b.peak,
+      sale_price: b.sale_price_84_won,
+      low: b.trade_low_won,
+      median: b.trade_median_won,
+      high: b.trade_high_won,
+      peak: b.peak_won,
     })),
   };
 }

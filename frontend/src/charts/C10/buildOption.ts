@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import { formatRank } from '@/lib/format';
 import { baseOption, DEFAULT_PALETTE } from '../palette';
 import type { BuildOptionContext, EChartsOption } from '../types';
-import type { C10Data } from './types';
+import { c10Name, type C10Data } from './types';
 
 export function emptyReason(data: C10Data): string | null {
   const s = data.sensitivity;
@@ -17,7 +17,7 @@ export function buildOption(
 ): EChartsOption {
   const { palette } = ctx;
   const s = data.sensitivity;
-  const baseline = s?.baseline_top5 ?? [];
+  const baseline = s?.base_top5 ?? [];
   const cells = s?.cells ?? [];
   const variants = [t('chart.C10.baseline'), ...cells.map((c) => c.variant)];
   return {
@@ -35,14 +35,17 @@ export function buildOption(
       axisLabel: { formatter: (v: number) => formatRank(v) },
       splitLine: { lineStyle: { color: palette.border } },
     },
-    series: baseline.map((b, index) => ({
+    series: baseline.map((id, index) => ({
       type: 'line' as const,
-      name: b.name,
+      name: c10Name(data, id),
       connectNulls: false,
       itemStyle: { color: palette.categorical[index % palette.categorical.length] },
       data: [
-        b.rank,
-        ...cells.map((c) => c.top5.find((x) => x.complex_id === b.complex_id)?.rank ?? null),
+        index + 1,
+        ...cells.map((c) => {
+          const pos = c.top5.indexOf(id);
+          return pos < 0 ? null : pos + 1;
+        }),
       ],
     })),
   };
@@ -59,10 +62,7 @@ export function toTable(data: C10Data): DataTable {
     rows: cells.map((c) => ({
       variant: c.variant,
       changed: c.changed ? t('chart.yes') : t('chart.no'),
-      top5: [...c.top5]
-        .sort((a, b) => a.rank - b.rank)
-        .map((x) => `${formatRank(x.rank)} ${x.name}`)
-        .join(' · '),
+      top5: c.top5.map((id, i) => `${formatRank(i + 1)} ${c10Name(data, id)}`).join(' · '),
     })),
   };
 }

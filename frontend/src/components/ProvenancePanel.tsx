@@ -84,7 +84,7 @@ export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
             ) : (
               <ul className="list-disc pl-4">
                 {data.conflicts.map((conflict) => (
-                  <li key={conflict.prov}>
+                  <li key={conflict.id}>
                     <span>{conflict.value_text}</span> <LabelBadge label={conflict.label} />
                   </li>
                 ))}
