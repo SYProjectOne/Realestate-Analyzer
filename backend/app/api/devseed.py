@@ -500,7 +500,13 @@ def load_bundles(
 # ====================================================================== 참조·지역·원문·스냅샷
 
 
-def _load_reference(session: Session, mode: ReferenceMode, sidos: set[str], report: SeedReport) -> None:
+def _load_reference(
+    session: Session,
+    mode: ReferenceMode,
+    sidos: set[str],
+    report: SeedReport,
+    raw_dir: Path | None = None,
+) -> None:
     if mode == "none":
         return
     from app.collectors.reference.jscode import parse_jscode_zip
@@ -523,12 +529,25 @@ def _load_reference(session: Session, mode: ReferenceMode, sidos: set[str], repo
         upsert_legal_dongs(session, records, source_date=src)
         report.legal_dongs = len(records)
     households = sorted(REFERENCE_FIXTURE.glob("jumin_households_*.csv"))
-    if households:  # 주민등록 세대 현황(D2-1) — 생활권 세대수(R3 W11)
+    if households and raw_dir is not None:  # 주민등록 세대 현황(D2-1) — 생활권 세대수(R3 W11)
+        from app.collectors.reference.rawstore import RawStore
         from app.collectors.stats.households import load_household_stats, parse_household_csv
 
-        _, recs = parse_household_csv(households[-1].read_bytes())
-        load_household_stats(session, [r for r in recs if keep(r.scope_code)], raw_document_id=None)
-        report.households = sum(1 for r in recs if keep(r.scope_code))
+        content = households[-1].read_bytes()
+        # 원문 행(source_kind=stats) = 세대수 Fact 의 출처(rd_<id>).
+        # reference.refresh 사본 경로와 같은 모양(sha 같으면 재사용)
+        doc = RawStore(session, raw_dir=raw_dir).save_content(
+            source_kind="stats",
+            url=f"fixture://reference/{households[-1].name}",
+            content=content,
+            http_status=None,
+            ext="csv",
+            content_type="text/csv",
+        )
+        _, recs = parse_household_csv(content)
+        kept = [r for r in recs if keep(r.scope_code)]
+        load_household_stats(session, kept, raw_document_id=doc.id)
+        report.households = len(kept)
     js = sorted(REFERENCE_FIXTURE.glob("jscode*.zip"))
     if js:
         data = parse_jscode_zip(js[-1].read_bytes())
@@ -1291,7 +1310,7 @@ def seed(
     with get_session(s) as session:
         if session.get(Region, region_data["id"]) is not None:
             raise RuntimeError(f"region {region_data['id']} 이 이미 있다 — --reset 으로 다시 만든다")
-        _load_reference(session, reference, set(region_data.get("sido_codes") or []), report)
+        _load_reference(session, reference, set(region_data.get("sido_codes") or []), report, s.raw_dir)
         _ensure_scenarios(session)
         region = _load_region(session, region_data)
         report.raw_documents = _load_raw(session, fixture_dir, s.raw_dir)
