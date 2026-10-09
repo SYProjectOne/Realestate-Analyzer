@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import pytest
 
 from app.analysis.scope import (

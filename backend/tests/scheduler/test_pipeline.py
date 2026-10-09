@@ -71,7 +71,8 @@ def test_full_rejudge_writes_derived_rows_and_publishes(
             )
             == 16
         )
-        # P6: 사다리 3시점 — D9-1 판정 대상(포함 auto + 가격 + 접수 가능·미정)만: 2,3,5~11. 1·12(불가)·4·13·14(확인 불가)=참고, 15·16=보류
+        # P6: 사다리 3시점 — D9-1 판정 대상(포함 auto + 가격 + 접수 가능·미정)만: 2,3,5~11.
+        # 1·12(불가)·4·13·14(확인 불가)=참고, 15·16=보류
         assert _count(s, Ladder, Ladder.snapshot_id == seeded) == 27  # D9-1: 판정 대상 9단지 × 3시점
         assert _count(s, Ladder, Ladder.snapshot_id == seeded, Ladder.judgment_seq.is_(None)) == 0
         horizons = set(s.scalars(select(Ladder.horizon).where(Ladder.snapshot_id == seeded)))

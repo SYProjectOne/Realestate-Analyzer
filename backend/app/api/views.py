@@ -352,7 +352,8 @@ def judge_scope(b: ComplexBundle) -> str:
 
     저장 값(score_total.judge_scope)이 아니라 공용 함수로 계산한다(R3 C2) — 점수 실행도 같은 함수로 저장하므로
     사실이 바뀌지 않았으면 같은 값이다. '미해결'은 계약 .4(F3)가 응답 enum 에 추가할 때까지 계약 값 '제외'로
-    낸다(``analysis.scope.contract_scope`` — 계약에 값이 생기면 자동으로 '미해결'). 전체 결과는 ``scope_result``.
+    낸다(``analysis.scope.contract_scope`` — 계약에 값이 생기면 자동으로 '미해결').
+    전체 결과(미해결 포함·사유)는 ``scope_result``.
     """
     return scope_rules.contract_scope(scope_result(b).scope)
 

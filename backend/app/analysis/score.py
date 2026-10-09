@@ -49,7 +49,7 @@ from app.analysis._common import (
     ym_of,
 )
 from app.analysis._ranking import rank_totals, weighted_total
-from app.analysis.gap import compute_gap
+from app.analysis.gap import compute_gap, unadjusted_tags
 from app.analysis.ladder import ladder_targets, pick_ladder
 from app.analysis.scenarios import is_excluded
 from app.analysis.scope import is_scored
@@ -95,6 +95,9 @@ __all__ = [
 ]
 
 DECIDE_TIE_CONFIDENCE: Final = 0.6
+SCORE_DECIMALS: Final = 4
+"""성분 점수·종합 점수의 계산·저장 정밀도(소수 4자리, ROUND_HALF_UP). 표시는 2자리(API ``round2``) — R3 W12b.
+score_component.score_0_10 도 이 정밀도로 저장해야 저장 성분의 가중 합 = 저장 종합 점수가 된다."""
 _LABELS: Final = frozenset(get_args(Label))
 BENCHMARK_SCALE: Final = Decimal("0.5")
 RECENT_SALE_YEARS: Final = 3
@@ -562,7 +565,7 @@ def _component(
             formula_text=g.formula_text,
             label=g.label,
             reason=g.reason,
-            flags=g.flags,
+            flags=(*g.flags, *unadjusted_tags(g)),
         )
     if key == "benchmark":
         return benchmark_component(cx, inputs.benchmarks, asof_date=inputs.asof_date)
