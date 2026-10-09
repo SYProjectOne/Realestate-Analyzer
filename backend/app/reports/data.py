@@ -1,6 +1,8 @@
 """DB → 보고서 데이터 모델 (DECISIONS D4).
 
-모든 수치는 ``Fact``(라벨·출처) — 출처 없는 수치는 '확인 불가(출처 누락)'.
+모든 수치는 ``Fact``(라벨·출처). 값이 있는데 출처 행이 없으면(T13, API ``FactMaker.missing`` 과 같은 규칙):
+ENV=dev → ``ReportProvenanceMissing``, ENV=prod → 경고 로그 + '확인 불가(출처 누락)'.
+판정 범위·현재 구매가는 ``app.reports.policy`` 의 함수 하나씩으로만 계산한다(F2 공용 함수로 한 줄 교체 지점).
 
 읽기만 한다(판정기·점수 계산 없음, ADR-11). 사실 테이블(complex 등)은 현재값, 파생 테이블(intake_status,
 judgment_log, claim, score_*, ladder, decision)은 스냅샷별이다(RA §3). Fact.prov 접두어:
@@ -24,7 +26,9 @@ from sqlalchemy.orm import Session
 
 from app.analysis.price import judge_type, purchase_price
 from app.core.contracts_gen import Fact
+from app.core.logging import get_logger
 from app.core.protocols import CONTRACT_VERSION
+from app.core.settings import get_settings
 from app.core.time import now_kst
 from app.models import (
     Benchmark,
@@ -53,8 +57,15 @@ from app.models import (
     Supply,
     Unsold,
 )
-from app.reports.errors import ReportBlocked, ReportNotFound
+from app.reports.errors import ReportBlocked, ReportNotFound, ReportProvenanceMissing
 from app.reports.fmt import make_fact, round_half_up, unknown_fact
+from app.reports.policy import (
+    JUDGE_SCOPE_TEXT,
+    PriceSource,
+    current_price_source,
+    current_terms,
+    judge_scope,
+)
 
 __all__ = [
     "COMPONENT_LABELS",
@@ -121,6 +132,9 @@ JUDGMENT_SECTIONS: Final[dict[str, str]] = {
     "verify": "§7·§8 검증",
 }
 URL_RE: Final = re.compile(r"^https?://[^\s<>\"']+$")
+MISSING_REASON: Final = "출처 누락"
+
+log = get_logger("app.reports.data")
 
 
 def is_valid_url(url: str | None) -> bool:
@@ -269,6 +283,8 @@ class ComplexView:
     intake: list[IntakeView]
     intake_shown: IntakeView | None
     date_facts: list[tuple[str, Fact]]  # 접수·계약·중도금 일정(캘린더)
+    judge_scope: str  # policy.judge_scope (D9-1)
+    judge_scope_text: str
 
     @property
     def current_payment(self) -> PaymentView | None:
@@ -307,7 +323,8 @@ class ClassifyRow:
     inclusion_class: str
     decision: str | None
     prob: Fact
-    unresolved: bool
+    unresolved: bool  # 판정 범위 '미해결'(classify review·manual_review·미분류)
+    scope_text: str
 
 
 @dataclass(slots=True)
@@ -529,9 +546,10 @@ def count_remaining_contradicted(session: Session, snapshot_id: int) -> list[Cla
 
 
 class _ProvIndex:
-    """(entity, entity_id, field) → 채택(chosen) 출처 행."""
+    """(entity, entity_id, field) → 채택(chosen) 출처 행. ``env`` = Settings.env(출처 누락 처리)."""
 
-    def __init__(self, session: Session, keys: Mapping[str, Iterable[int]]) -> None:
+    def __init__(self, session: Session, keys: Mapping[str, Iterable[int]], env: str = "dev") -> None:
+        self.env = env
         self._rows: dict[tuple[str, int, str], FieldProvenance] = {}
         self.all_rows: list[FieldProvenance] = []
         for entity, ids in keys.items():
@@ -549,13 +567,34 @@ class _ProvIndex:
                     if key not in self._rows or row.id < self._rows[key].id:
                         self._rows[key] = row
 
-    def fact(self, entity: str, entity_id: int, fld: str, value: Any, unit: str | None = None) -> Fact:
-        row = self._rows.get((entity, entity_id, fld))
+    def fact(
+        self,
+        entity: str,
+        entity_id: int,
+        fld: str,
+        value: Any,
+        unit: str | None = None,
+        *,
+        prov_field: str | None = None,
+    ) -> Fact:
+        """DB 값 + 채택 출처 행 → Fact. ``prov_field`` = 출처 행 이름이 컬럼과 다를 때."""
+        name = prov_field or fld
+        row = self._rows.get((entity, entity_id, name))
         if row is None:
             if value is None:
-                return unknown_fact("출처 누락", unit=unit)
-            return unknown_fact("출처 누락", unit=unit)
+                return unknown_fact("값 없음", unit=unit)
+            return self.missing(entity, entity_id, name, unit)
         return make_fact(value, row.label, f"fp_{row.id}", row.checked_at, unit=unit, reason=row.reason)
+
+    def missing(self, entity: str, entity_id: int, fld: str, unit: str | None = None) -> Fact:
+        """값은 있는데 출처 행이 없음(T13): dev = 예외, prod = 경고 로그 + '확인 불가(출처 누락)'."""
+        detail = f"{entity} {entity_id} field {fld} has no field_provenance row ({MISSING_REASON})"
+        if self.env == "dev":
+            raise ReportProvenanceMissing(detail)
+        log.warning(
+            "%s: %s", MISSING_REASON, detail, extra={"entity": entity, "entity_id": entity_id, "field": fld}
+        )
+        return unknown_fact(MISSING_REASON, unit=unit)
 
     def row(self, entity: str, entity_id: int, fld: str) -> FieldProvenance | None:
         return self._rows.get((entity, entity_id, fld))
@@ -589,6 +628,12 @@ def _ymd(s: str | None) -> date | None:
         return None
     m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
     return date(int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+def _date_text(raw: Any) -> str | None:
+    """날짜 값(문자열 또는 Fact 모양)의 'YYYY-MM-DD' 부분."""
+    v = raw.get("v") if isinstance(raw, dict) else raw
+    return str(v)[:10] if v else None
 
 
 def _short(text: str, n: int = 60) -> str:
@@ -625,15 +670,17 @@ class _Loader:
         region: Region,
         scenario: Scenario,
         compare: Snapshot | None,
+        env: str = "dev",
     ) -> None:
         self.s = session
+        self.env = env
         self.snap = snapshot
         self.region = region
         self.scenario = scenario
         self.compare = compare
         self.asof = snapshot.asof_date
         self.la_names = {str(la.get("id")): str(la.get("name")) for la in region.living_areas or []}
-        self.prov = _ProvIndex(session, {})
+        self.prov = _ProvIndex(session, {}, env)
 
     # -- 범위
     def scope_ids(self) -> list[int]:
@@ -688,6 +735,7 @@ class _Loader:
                 "competition": [c.id for c in comps],
                 "remaining_event": [e.id for e in events],
             },
+            self.env,
         )
         P = self.prov
         out: list[ComplexView] = []
@@ -723,9 +771,10 @@ class _Loader:
             basis = next((tv for tv in tviews if tv.type_code == basis_code), None)
             if basis is not None:
                 basis.is_basis = True
-            low, high = self._price(basis)
             my_pays = [p for p in pays if p.complex_id == c.id]
-            latest = max((p.effective_from or "" for p in my_pays), default="")
+            basis_row = next((t for t in my_types if t.type_code == basis_code), None)
+            low, high = self._price(basis, current_price_source(basis_row, my_pays))
+            cur_terms = current_terms(my_pays)
             pviews = [
                 PaymentView(
                     notice_no=p.notice_no,
@@ -740,7 +789,7 @@ class _Loader:
                     interim_pct=P.fact("payment_terms", p.id, "interim_pct", _num(p.interim_pct), "pct"),
                     balance_pct=P.fact("payment_terms", p.id, "balance_pct", _num(p.balance_pct), "pct"),
                     interim_terms_text=p.interim_terms_text,
-                    is_current=(p.effective_from or "") == latest,
+                    is_current=cur_terms is not None and p.id == cur_terms.id,
                 )
                 for p in my_pays
             ]
@@ -802,6 +851,13 @@ class _Loader:
                 if c.inclusion_judgment_seq is not None
                 else unknown_fact("미판정", unit="prob")
             )
+            scope = judge_scope(
+                inclusion_class=c.inclusion_class,
+                inclusion_decision=c.inclusion_decision,
+                has_price=high.v is not None,
+                intake_status=shown.status if shown is not None else None,
+            )
+            my_events = [e for e in events if e.complex_id == c.id]
             out.append(
                 ComplexView(
                     id=c.id,
@@ -827,59 +883,90 @@ class _Loader:
                     events=eviews,
                     intake=iviews,
                     intake_shown=shown,
-                    date_facts=self._dates(c, my_pays),
+                    date_facts=self._dates(c, my_pays, my_events),
+                    judge_scope=scope,
+                    judge_scope_text=JUDGE_SCOPE_TEXT[scope],
                 )
             )
         return out
 
-    def _price(self, basis: TypeView | None) -> tuple[Fact, Fact]:
-        """§6-1 현재 구매가(84㎡ 판정 타입): (대표층 ~ 최고가) + 발코니 + 필수 옵션. 더하면 '추정(산술)'."""
-        if basis is None or basis.max_price.v is None:
-            why = "판정 타입 없음" if basis is None else "최고가 확인 불가"
+    def _price(self, basis: TypeView | None, src: PriceSource | None) -> tuple[Fact, Fact]:
+        """§6-1 현재 구매가(84㎡ 판정 타입): (대표층 ~ 최고가) + 발코니 + 필수 옵션. 더하면 '추정(산술)'.
+
+        공급금액 원천은 ``policy.current_price_source`` 하나(최신 공고 price_by_type 우선,
+        없으면 complex_type).
+        """
+        if basis is None or src is None:
+            why = "판정 타입 없음"
             return unknown_fact(why, unit="won"), unknown_fact(why, unit="won")
+        P = self.prov
+        max_f = P.fact(*src.max_key, src.max_won, "won")
+        if max_f.v is None:
+            why = "최고가 확인 불가"
+            return unknown_fact(why, unit="won"), unknown_fact(why, unit="won")
+        floor_f = P.fact(*src.floor_key, src.floor_won, "won") if src.floor_won is not None else None
+        if floor_f is not None and floor_f.v is None:
+            floor_f = None
         b = int(basis.balcony.v or 0) if isinstance(basis.balcony.v, (int, float)) else 0
         o = int(basis.options.v or 0) if isinstance(basis.options.v, (int, float)) else 0
-        floor = int(basis.floor_price.v) if isinstance(basis.floor_price.v, (int, float)) else None
-        top = int(basis.max_price.v) if isinstance(basis.max_price.v, (int, float)) else 0
+        floor = int(floor_f.v) if floor_f is not None and isinstance(floor_f.v, (int, float)) else None
+        top = int(max_f.v) if isinstance(max_f.v, (int, float)) else 0
         pp = purchase_price(floor_won=floor, max_won=top, balcony_won=b, options_won=o)
+        low_src = floor_f if floor_f is not None else max_f
         if b == 0 and o == 0:
-            low_src = basis.floor_price if floor is not None else basis.max_price
-            return low_src, basis.max_price
-        reason = "산술: 공급금액 + 발코니 + 필수 옵션"
-        lo_prov = (basis.floor_price if floor is not None else basis.max_price).prov
+            return low_src, max_f
+        supply = f"공급금액(공고 {src.notice_no})" if src.notice_no else "공급금액"
+        reason = f"산술: {supply} + 발코니 + 필수 옵션"
         return (
-            make_fact(pp.low_won, "추정", lo_prov, basis.max_price.checked_at, unit="won", reason=reason),
-            make_fact(
-                pp.high_won,
-                "추정",
-                basis.max_price.prov,
-                basis.max_price.checked_at,
-                unit="won",
-                reason=reason,
-            ),
+            make_fact(pp.low_won, "추정", low_src.prov, max_f.checked_at, unit="won", reason=reason),
+            make_fact(pp.high_won, "추정", max_f.prov, max_f.checked_at, unit="won", reason=reason),
         )
 
-    def _dates(self, c: Complex, pays: Sequence[PaymentTerms]) -> list[tuple[str, Fact]]:
+    def _dates(
+        self, c: Complex, pays: Sequence[PaymentTerms], events: Sequence[RemainingEvent] = ()
+    ) -> list[tuple[str, Fact]]:
+        """캘린더 날짜. 저장 형태 전부를 읽는다(M14):
+
+        - 정규화기: apply_dates ``[{kind, date}]``, contract_dates ``[{from, to}]``,
+          interim_schedule ``[{seq, due_date: 'YYYY-MM-DD', pct}]`` — 값은 문자열, 출처는 필드 단위 행 하나
+        - devseed: ``[{kind, start, end}]`` 문자열 / 녹화 픽스처: start·end·due_date 가 Fact 모양
+        - remaining_event.apply_dates ``['YYYY-MM-DD', …]``
+        """
         out: list[tuple[str, Fact]] = []
+
+        def add(what: str, raw: Any, entity: str, eid: int, fld: str) -> None:
+            f = _embedded_fact(raw, "date")
+            if f is None:
+                if not isinstance(raw, str) or _ymd(raw) is None:
+                    return
+                f = self.prov.fact(entity, eid, fld, raw[:10], "date")
+            if f.v is not None:
+                out.append((what, f))
+
+        def span(item: Mapping[str, Any], name: str, entity: str, eid: int, fld: str) -> None:
+            start = item.get("start") or item.get("date") or item.get("from")
+            end = item.get("end") or item.get("to")
+            if end is None or _date_text(end) == _date_text(start):
+                add(name, start, entity, eid, fld)
+            else:
+                add(f"{name} 시작", start, entity, eid, fld)
+                add(f"{name} 종료", end, entity, eid, fld)
+
         for item in c.apply_dates or []:
             if isinstance(item, dict):
                 kind = str(item.get("kind") or "접수")
-                for k in ("start", "end"):
-                    f = _embedded_fact(item.get(k), "date")
-                    if f is not None and f.v is not None:
-                        out.append((f"{kind} {'시작' if k == 'start' else '종료'}", f))
+                span(item, kind if "청약" in kind else f"청약 {kind}", "complex", c.id, "apply_dates")
         for item in c.contract_dates or []:
             if isinstance(item, dict):
-                for k in ("start", "end"):
-                    f = _embedded_fact(item.get(k), "date")
-                    if f is not None and f.v is not None:
-                        out.append((f"계약 {'시작' if k == 'start' else '종료'}", f))
+                span(item, str(item.get("kind") or "계약"), "complex", c.id, "contract_dates")
         for p in pays:
-            for item in p.interim_schedule or []:
+            for n, item in enumerate(p.interim_schedule or [], start=1):
                 if isinstance(item, dict):
-                    f = _embedded_fact(item.get("due_date"), "date")
-                    if f is not None and f.v is not None:
-                        out.append((f"중도금 {item.get('seq', '')}회차".replace("  ", " "), f))
+                    seq = item.get("seq") or n
+                    add(f"중도금 {seq}회차", item.get("due_date"), "payment_terms", p.id, "interim_schedule")
+        for e in events:
+            for d in e.apply_dates or []:
+                add(f"{e.kind} 접수", d, "remaining_event", e.id, "apply_dates")
         return out
 
     # -- 판정 로그
@@ -965,6 +1052,15 @@ def _score_views(
         )
     views.sort(key=lambda v: (v.rank is None, v.rank or 0, -(v.total_raw or 0), v.complex_id))
     return views
+
+
+def _scope_notes(views: Sequence[ScoreView], by_id: Mapping[int, ComplexView]) -> None:
+    """판정 대상이 아닌 단지의 점수 행에 판정 범위를 적는다(D9-1: 참고 = 순위만, 사다리 미실행)."""
+    for v in views:
+        cx = by_id.get(v.complex_id)
+        if cx is None or cx.judge_scope == "판정 대상":
+            continue
+        v.note = _short(" · ".join(x for x in (cx.judge_scope_text, v.note) if x), 90)
 
 
 def _latest_run(session: Session, snapshot_id: int, scenario_id: int) -> ScoreRun | None:
@@ -1057,13 +1153,14 @@ def _calls(
 ) -> tuple[list[CallRow], list[JudgeToolRow], list[str]]:
     calls: list[CallRow] = []
     tool_counts: dict[str, Counter[str]] = defaultdict(Counter)
-    tool_th: dict[str, dict[str, Any]] = {}
+    tool_th: dict[str, dict[str, list[Any]]] = {}
     versions: list[str] = []
     for j in logs:
         tool_counts[j.tool][j.status] += 1
-        th = _thresholds(j.output_json)
-        if th:
-            tool_th.setdefault(j.tool, {}).update(th)
+        for k, v in _thresholds(j.output_json).items():
+            seen = tool_th.setdefault(j.tool, {}).setdefault(str(k), [])
+            if v not in seen:  # JEV 업데이트로 값이 바뀌면(D6) 누계 부록에 모두 적는다(호출 순)
+                seen.append(v)
         if j.adapter_version not in versions:
             versions.append(j.adapter_version)
         inp, res = _summaries(j)
@@ -1087,7 +1184,9 @@ def _calls(
             tool=t,
             calls=sum(tool_counts[t].values()),
             by_status=dict(tool_counts[t]),
-            thresholds=", ".join(f"{k} {v}" for k, v in sorted(tool_th.get(t, {}).items()))
+            thresholds=", ".join(
+                f"{k} {' / '.join(str(v) for v in vals)}" for k, vals in sorted(tool_th.get(t, {}).items())
+            )
             or "응답에 임계값 없음",
             section=JUDGMENT_SECTIONS.get(t, ""),
         )
@@ -1095,6 +1194,12 @@ def _calls(
         if t in tool_counts
     ]
     return calls, tools, versions
+
+
+def _year_fact(mp: _ProvIndex, bid: int, fld: str, value: int | None) -> Fact:
+    """벤치마크 준공·분양 연도: 자기 출처 행, 없으면 같은 기록의 분양가 출처 행(한 출처의 한 단지 기록)."""
+    own = mp.row("benchmark", bid, fld)
+    return mp.fact("benchmark", bid, fld, value, "year", prov_field=None if own else "sale_price_84_won")
 
 
 def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[SupplyView], list[UnsoldView]]:
@@ -1113,6 +1218,7 @@ def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[Suppl
             "supply": [x.id for x in supplies],
             "unsold": [u.id for u in unsolds],
         },
+        ctx.loader.env,
     )
     asof_year = int(ctx.asof[:4])
     views: list[BenchmarkView] = []
@@ -1137,8 +1243,8 @@ def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[Suppl
             BenchmarkView(
                 living_area_name=la,
                 name=b.name,
-                completed_year=mp.fact("benchmark", b.id, "completed_year", b.completed_year, "year"),
-                sale_year=mp.fact("benchmark", b.id, "sale_year", b.sale_year, "year"),
+                completed_year=_year_fact(mp, b.id, "completed_year", b.completed_year),
+                sale_year=_year_fact(mp, b.id, "sale_year", b.sale_year),
                 sale_price=sale,
                 trade_median=med,
                 change_pct=change,
@@ -1486,7 +1592,7 @@ def load_report(
 ) -> ReportData:
     """보고서 데이터 모델. contradicted 주장이 남아 있으면 ``ReportBlocked``(파일을 만들기 전)."""
     snap, region, scenario, compare = _resolve(session, snapshot_id, scenario_id, compare_snapshot_id)
-    loader = _Loader(session, snap, region, scenario, compare)
+    loader = _Loader(session, snap, region, scenario, compare, get_settings().env)
     ids = loader.scope_ids()
     complexes = loader.complexes(ids)
     names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.region_id == region.id))}
@@ -1524,6 +1630,7 @@ def load_report(
     cat_views, stage_counts, links = _catalysts(ctx, catalysts)
     ladder_views, ladder_other = _ladder_views(ctx, ladders)
     scores = _score_views(session, run, names, la_of)
+    _scope_notes(scores, ctx.by_id)
     rerank_rows = sorted(
         (
             (s.name, s.components["rerank"].raw, s.components["rerank"].score)
@@ -1567,11 +1674,12 @@ def load_report(
                 inclusion_class=cx.inclusion_class,
                 decision=cx.inclusion_decision,
                 prob=cx.inclusion_prob,
-                unresolved=cx.inclusion_decision not in (None, "auto"),
+                unresolved=cx.judge_scope == "미해결",
+                scope_text=cx.judge_scope_text,
             )
             for cx in complexes
         ],
-        excluded=[cx for cx in complexes if cx.inclusion_class != "private_sale_apt"],
+        excluded=[cx for cx in complexes if cx.judge_scope == "제외"],
         stage_counts=stage_counts,
         benchmarks=benchmarks,
         recent_sale_cases=recent,
