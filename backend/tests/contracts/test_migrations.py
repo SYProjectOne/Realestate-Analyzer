@@ -208,6 +208,16 @@ def test_sqlite_check_constraints_match_models(sqlite_engine: Engine) -> None:
 def test_seed_matches_openapi_scenarios_example() -> None:
     example = load_json(EXAMPLES / "scenarios_list.json")["value"]
     seeds = migration_module().BUILTIN_SCENARIOS
+    spec = importlib.util.spec_from_file_location(
+        "contract_migration_0005", MIGRATION_0001.with_name("0005_wait_new.py")
+    )
+    assert spec is not None and spec.loader is not None
+    m5 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m5)
+    # 0005(계약 2026-10-09.5): policy.include_wait_new 명시(A 만 true) — 0001 시드 + 0005 = 예시
+    seeds = [
+        {**s, "policy": {**s["policy"], "include_wait_new": m5.BUILTIN_WAIT_NEW[s["code"]]}} for s in seeds
+    ]
     assert [{k: v for k, v in s.items() if k != "id"} for s in example] == seeds
 
 
@@ -260,11 +270,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0004() -> None:
+def test_migration_head_is_0005() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0004"]
+    assert script.get_heads() == ["0005"]
+    assert script.get_revision("0005").down_revision == "0004"
     assert script.get_revision("0004").down_revision == "0003"
     assert script.get_revision("0003").down_revision == "0002"
     assert script.get_revision("0002").down_revision == "0001"
@@ -362,6 +373,44 @@ def check_0003_0004_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_sqlite_0003_0004_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     check_0003_0004_roundtrip(sqlite_url(tmp_path), monkeypatch)
+
+
+def _policies(engine: Engine) -> dict[str, dict[str, object]]:
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text("SELECT code, policy FROM scenario ORDER BY id")).all()
+    return {str(r.code): r.policy if isinstance(r.policy, dict) else json.loads(r.policy) for r in rows}
+
+
+def check_0004_0005_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0005(계약 2026-10-09.5): 내장 시나리오 policy.include_wait_new(A 만 true) — head → 0004(키 제거) → head."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    engine = sa.create_engine(url)
+    try:
+        pol = _policies(engine)
+        assert {c: p.get("include_wait_new") for c, p in pol.items()} == {
+            "base": False, "A": True, "B": False, "C": False, "D": False,
+        }  # fmt: skip
+        command.downgrade(cfg, "0004")
+        assert all("include_wait_new" not in p for p in _policies(engine).values())
+        command.upgrade(cfg, "head")
+        assert _policies(engine)["A"]["include_wait_new"] is True
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0004_0005_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0004_0005_roundtrip(sqlite_url(tmp_path), monkeypatch)
+
+
+@pytest.mark.postgres
+def test_postgres_0004_0005_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0004_0005_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
 
 
 @pytest.mark.postgres

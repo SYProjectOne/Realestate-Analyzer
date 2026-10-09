@@ -1306,11 +1306,13 @@ COMPLEXES_B: list[dict[str, Any]] = [
         ],
         "intake": [
             {
-                "status": "불가",
+                # R3 마무리(CEO 2026-10-09): 보고서 '마감(4회차 미정)' = 공고 이력 있음(무순위 1~3회차) + 추가 공급 미정
+                # → meta §1-3-4 '미정'(그란테르 W1 과 같은 논리, 골든 v2 judge_scope '판정 대상'과 일치)
+                "status": "미정",
                 "path": "official_popup",
                 "evidence_url": None,
                 "http_status": None,
-                "reason": "마감(4회차 미정)",
+                "reason": "추가 공급 미정(무순위 3회차 마감·4회차 미정, 공고 이력 있음)",
                 "note": "1세대 무순위 마감, 공식 홈페이지 보고서 미기재",
                 "doc": None,
             },

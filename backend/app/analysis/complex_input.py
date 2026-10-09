@@ -14,7 +14,7 @@ from decimal import Decimal
 from typing import Any, Final, Protocol
 
 from app.analysis.price_view import PriceView
-from app.analysis.scope import JudgeScope, contract_scope
+from app.analysis.scope import JudgeScope, contract_scope, runs_ladder
 from app.analysis.types import Label
 from app.core.contracts_gen import ComplexScoreInput, LadderInput
 
@@ -153,8 +153,14 @@ def build_complex_input(
     labels: Mapping[str, Label | None] | None = None,
     ladders: Iterable[LadderRowLike] = (),
 ) -> ComplexScoreInput:
-    """``labels`` 키: price·resale·residency·down_payment·move_in(없으면 null = 계약 설명대로 값이 있으면 확인됨)."""
+    """``labels`` 키: price·resale·residency·down_payment·move_in(없으면 null = 계약 설명대로 값이 있으면 확인됨).
+
+    ``ladders`` 는 사다리를 돌리는 범위(``analysis.scope.runs_ladder`` = 판정 대상)일 때만 싣는다 — '참고'·'보류'·'미해결'·
+    '제외' 단지는 같은 스냅샷에 남은 사다리 행(이전 범위의 판정·이월·devseed)이 있어도 p10 에 쓰지 않는다(D9-1: 사다리 미실행
+    → p10 null → 종합 '미판정'). 파이프라인·G5 미리보기가 이 함수 하나를 쓴다.
+    """
     lab = labels or {}
+    ladders = ladders if runs_ladder(scope) else ()
     return ComplexScoreInput(
         complex_id=cx.id,
         name=cx.name,

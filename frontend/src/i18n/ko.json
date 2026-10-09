@@ -884,6 +884,7 @@
     "C07": {
       "title": "판정기 확률",
       "escape": "질문 남김",
+      "virtual": "가상 후보",
       "confidence": "신뢰도 {confidence}",
       "unresolved": "판정 미해결",
       "empty": "판정 없음"

@@ -304,6 +304,13 @@ def load_bundles(
         )
         for cid, scope in scopes:  # 마지막 실행이 이긴다
             out[cid].stored_scope = scope
+    if with_ladders:
+        # D9-1: 사다리는 '판정 대상'만 — '참고'·'보류'·'미해결'·'제외' 단지는 같은 스냅샷에
+        # 남은 사다리 행(이전 범위의 판정·이월·devseed)이 있어도 p10·C1·비교 화면에 쓰지 않는다
+        # (점수 입력 ``analysis.complex_input`` 과 같은 규칙).
+        for b in out.values():
+            if b.ladders and not scope_rules.runs_ladder(scope_result(b).scope):
+                b.ladders = []
     return out
 
 

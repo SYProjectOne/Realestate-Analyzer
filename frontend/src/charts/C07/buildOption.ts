@@ -55,6 +55,10 @@ export function confidenceText(data: C07Data): string | null {
 }
 
 const isCandidate = (item: Decision) => item.option_key === 'complex';
+/** 가상 후보 '모집공고 대기'(계약 2026-10-09.5) — 단지처럼 선택·확률을 보이되 complex_id 는 null */
+const isVirtual = (item: Decision) => item.option_key === 'wait_new';
+/** 막대 색·선택 강조를 받는 판정기 후보(단지 + 가상 후보). escape hatch(질문·추가 조사·해당 없음)는 회색 */
+const isOption = (item: Decision) => isCandidate(item) || isVirtual(item);
 
 /** 항목 표시 글자 — 선택·동률은 서버 값 그대로(동률은 확정 봉투일 때만) */
 function flagsOf(item: Decision, showTie: boolean): string[] {
@@ -62,11 +66,11 @@ function flagsOf(item: Decision, showTie: boolean): string[] {
     item.chosen ? t('chart.chosen') : null,
     showTie && item.tie ? t('badge.tie') : null,
     item.mismatch ? t('badge.mismatch') : null,
-    isCandidate(item) ? null : t('chart.C07.escape'),
+    isVirtual(item) ? t('chart.C07.virtual') : isOption(item) ? null : t('chart.C07.escape'),
   ].filter((x): x is string => x !== null);
 }
 
-/** 가로 막대: 후보(단지)별 prob + escape 선택지(대기·질문·추가 조사, 회색). 선택 = 강조색 + "선택" 글자 */
+/** 가로 막대: 후보(단지 + 가상 후보 '모집공고 대기')별 prob + escape 선택지(질문·추가 조사, 회색). 선택 = 강조색 + "선택" 글자 */
 export function buildOption(
   data: C07Data,
   ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
@@ -132,7 +136,7 @@ export function buildOption(
           value: num(item.prob),
           itemStyle: {
             color:
-              gray || !isCandidate(item)
+              gray || !isOption(item)
                 ? palette.grayed
                 : item.chosen
                   ? palette.strong

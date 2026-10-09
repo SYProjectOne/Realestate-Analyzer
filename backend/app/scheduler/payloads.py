@@ -12,7 +12,7 @@
 
 판정 범위(JudgeScope): ``analysis.scope.judge_scope``(DECISIONS D9-1, API·보고서와 같은 함수) 하나로 정한다 —
 사다리(noul) = 판정 대상만(``runs_ladder``), rerank 후보 = 판정 대상·참고·보류(``in_rerank``; 미해결·제외 빼고),
-decide 후보 = 판정 대상만. 저장 범위(score_total.judge_scope)도 같은 값(``stored_scope``) — 사다리 결과로 범위를
+decide 후보 = 판정 대상만(+ 시나리오 policy.include_wait_new 면 가상 후보 '모집공고 대기', 계약 .5). 저장 범위(score_total.judge_scope)도 같은 값(``stored_scope``) — 사다리 결과로 범위를
 바꾸지 않는다(사다리가 review 면 p10 null → 종합 '미판정', RA §6-4).
 """
 
@@ -28,7 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
-from app.analysis.scope import in_rerank, is_decide_candidate, is_scored, runs_ladder
+from app.analysis.scope import SCOPE_TEXT, in_rerank, is_decide_candidate, is_scored, runs_ladder
 from app.analysis.score import ScoreRunDetail, run_detailed
 from app.core.contracts_gen import RerankAnchor, RerankItem, ScoreInputs
 from app.core.contracts_gen import Scenario as ScenarioDTO
@@ -55,6 +55,8 @@ __all__ = [
     "scenario_payloads",
     "score_base",
     "stored_scope",
+    "wait_new_evidence",
+    "wants_wait_new",
 ]
 
 EMPTY_ANCHOR = RerankAnchor(judgment_seq=None, status="review", items=[])
@@ -95,12 +97,43 @@ def rerank_pool(
 
 
 def decide_candidates(
-    ranked: Mapping[int, int | None], excluded: frozenset[int], scope: Mapping[int, str]
+    ranked: Mapping[int, int | None],
+    excluded: frozenset[int],
+    scope: Mapping[int, str],
+    *,
+    limit: int = P.DECIDE_MAX,
 ) -> list[int]:
-    """판정 대상 중 시나리오 제외(D: 접수 가능 아님)를 뺀 상위 ≤6 — 순위(점수 없으면 complex_id) 순."""
+    """판정 대상 중 시나리오 제외(D: 접수 가능 아님)를 뺀 상위 ≤limit(기본 6, 가상 후보가 있으면 5) — 순위(점수 없으면
+    complex_id) 순."""
     ids = [cid for cid, s in scope.items() if is_decide_candidate(s) and cid not in excluded]
     ids.sort(key=lambda cid: (ranked.get(cid) is None, ranked.get(cid) or 0, cid))
-    return ids[: P.DECIDE_MAX]
+    return ids[:limit]
+
+
+def wants_wait_new(sc: ScenarioDTO) -> bool:
+    """시나리오 policy.include_wait_new(계약 2026-10-09.5) — 내장 A 만 true(보고서 §8-2·§12-5-2 #126)."""
+    return bool(sc.policy.include_wait_new)
+
+
+def wait_new_evidence(facts: Sequence[ComplexFacts], asof_date: str) -> str:
+    """가상 후보 '모집공고 대기'의 근거 = 지역 (A) 트랙(청약 진행·예정) 중 **공고 전**(공고일 없음 또는 기준일 뒤) 단지 목록 요약.
+
+    판단 없음 — complex.track·notice_date·판정 범위(``analysis.scope``) 그대로 옮긴다. 제외 단지는 넣지 않는다.
+    """
+    rows: list[str] = []
+    for f in facts:
+        cx = f.row
+        if cx.track != "A" or f.scope == "제외":
+            continue
+        nd = (cx.notice_date or "")[:10]
+        if nd and nd <= asof_date:
+            continue  # 이미 공고된 단지는 '공고 예정'이 아니다
+        when = f"모집공고 {nd} 예정" if nd else "모집공고일 미정(공고 전)"
+        area = f", {f.living_area_name}" if f.living_area_name else ""
+        price = "분양가 미공개" if f.price_high is None else "분양가 공개"
+        rows.append(f"- {cx.name}({when}{area}; {price}; 판정 범위 {SCOPE_TEXT[f.scope]})")
+    head = f"지역 (A) 트랙 공고 예정 {len(rows)}곳(기준일 {asof_date}, 12개월 내 공고 예정 단지)"
+    return "\n".join([head + (":" if rows else " — 기다릴 공고 예정 단지가 확인되지 않음"), *rows])
 
 
 def priorities_text(sc: ScenarioDTO) -> str:
@@ -124,10 +157,17 @@ class DecidePlan:
     candidates: list[P.DecideCandidate]
     requirements: tuple[str, str, str]
     priorities: str
+    include_wait_new: bool = False
+    wait_new_evidence: str | None = None
+
+    @property
+    def n_options(self) -> int:
+        """판정기 후보 수 = 단지 + 가상 후보(모집공고 대기)."""
+        return len(self.candidate_ids) + (1 if self.include_wait_new else 0)
 
     @property
     def runnable(self) -> bool:
-        return len(self.candidates) >= 2
+        return self.n_options >= 2
 
 
 def decide_plan(
@@ -138,11 +178,16 @@ def decide_plan(
     scope: Mapping[int, str],
     *,
     precalc: RequirementPrecalculator | None = None,
+    wait_new_text: str | None = None,
 ) -> DecidePlan:
-    """점수(시나리오 1개) → P8 decide 후보 ≤6 + 요건 사전 계산."""
+    """점수(시나리오 1개) → P8 decide 후보 ≤6 + 요건 사전 계산.
+
+    시나리오 policy.include_wait_new(계약 .5)면 가상 후보 '모집공고 대기'를 넣고 단지 후보는 상위 ≤5(합 ≤6, 보고서
+    §8-2 'TOP 5 + 모집공고 대기'). ``wait_new_text`` = 그 근거(``wait_new_evidence``)."""
     detail = run_detailed(snap_dto, sc, inputs)
     ranked = {t.complex_id: t.rank for t in detail.result.totals}
-    ids = decide_candidates(ranked, detail.excluded, scope)
+    wait = wants_wait_new(sc)
+    ids = decide_candidates(ranked, detail.excluded, scope, limit=P.DECIDE_MAX - (1 if wait else 0))
     by_input = {c.complex_id: c for c in inputs.complexes}
     pre = precalc or RequirementPrecalculator()
     cands = (
@@ -152,7 +197,7 @@ def decide_plan(
             )
             for cid in ids
         ]
-        if len(ids) >= 2
+        if len(ids) + (1 if wait else 0) >= 2
         else []
     )
     req = sc.requirements
@@ -162,6 +207,8 @@ def decide_plan(
         candidates=cands,
         requirements=(req.access.text, req.regulation.text, req.funds.text),
         priorities=priorities_text(sc),
+        include_wait_new=wait,
+        wait_new_evidence=wait_new_text if wait else None,
     )
 
 
@@ -270,6 +317,7 @@ def scenario_payloads(
         inputs,
         cards,
         scope,
+        wait_new_text=wait_new_evidence(facts, snap.asof_date),
     )  # fmt: skip
     if dp.runnable:
         payload = P.decide_payload(
@@ -277,6 +325,8 @@ def scenario_payloads(
             requirements=dp.requirements,
             candidates=dp.candidates,
             priorities=dp.priorities,
+            include_wait_new=dp.include_wait_new,
+            wait_new_evidence=dp.wait_new_evidence,
         )
         plan.calls.append(PlannedCall("decide", purpose, payload))
     return plan

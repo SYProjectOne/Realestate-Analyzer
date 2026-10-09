@@ -127,5 +127,6 @@ def test_popup_change_one_critical_event_one_rejudge(
     with factory() as s:
         day2 = s.scalars(select(Snapshot).where(Snapshot.asof_date == "2026-10-08")).one()
         assert day2.status == "published"
-        assert _count(s, Ladder, Ladder.snapshot_id == day2.id) == 27  # 판정 대상 9 × 3(D9-1)
+        # 기대값 갱신(R3 마무리) 27 → 33: 그란테르(W1)·마리나베이(CEO 결정) 접수 '불가' → '미정'으로 판정 대상 9 → 11
+        assert _count(s, Ladder, Ladder.snapshot_id == day2.id) == 33  # 판정 대상 11 × 3(D9-1)
     assert jev.calls[calls:].count("jev_noul") <= 3

@@ -7992,14 +7992,14 @@
         "id": null,
         "complex_id": 12,
         "snapshot_id": 12,
-        "status": "불가",
+        "status": "미정",
         "path": "official_popup",
         "evidence_url": null,
         "screenshot_path": null,
         "raw_document_id": null,
         "checked_at": "2026-10-07",
         "http_status": null,
-        "reason": "마감(4회차 미정)",
+        "reason": "추가 공급 미정(무순위 3회차 마감·4회차 미정, 공고 이력 있음)",
         "note": "1세대 무순위 마감, 공식 홈페이지 보고서 미기재",
         "entered_by": null
       }

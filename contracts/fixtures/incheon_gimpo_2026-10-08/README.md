@@ -1,7 +1,8 @@
 # 인천·김포 회귀 픽스처 (기준일 2026-10-08) — WP9
 
-원천: `docs/source/incheon_gimpo_report.md`(보고서 기준일·확인일 2026-10-07, 같은 데이터). 계약: 2026-10-09.4
-(WP9-후속 2026-10-09: W1 골든 v2 정렬·W2 합성 판정 녹화·W5 T11 변형 — `contracts/CHANGELOG.md` 'fixtures' 소절).
+원천: `docs/source/incheon_gimpo_report.md`(보고서 기준일·확인일 2026-10-07, 같은 데이터). 계약: 2026-10-09.5
+(WP9-후속 2026-10-09: W1 골든 v2 정렬·W2 합성 판정 녹화·W5 T11 변형, R3 마무리: 마리나베이 접수 '미정'·상황 A 가상 후보 wait_new —
+`contracts/CHANGELOG.md` 'fixtures' 소절).
 상위 규칙은 [`../README.md`](../README.md)(디렉터리·MockAdapter·지역 정의)이고, 여기에는 이 픽스처의 내용과 T1~T18 매핑만 적는다.
 
 ## 만드는 법
@@ -65,6 +66,9 @@ uv run pytest tests/fixtures_contract                                      # 스
    2.92%(정액 2,500만 ÷ P_mid 8.56억, 추정), 그란테르 접수 '미정'(추가 공급 미정·공고 이력 있음)·당첨 발표 2026-06-02(블록별 마지막,
    추정), 마리나베이 당첨일 = 무순위 접수일 2026-09-15(추정)·전매 0개월(도과). 골든 v2 가격은 보고서 표기(억 소수 2~3자리)라 원 단위
    공고 값과 50만원 이하 차이는 같은 값으로 본다(가격 반올림 규칙).
+11. **R3 마무리(CEO 2026-10-09)**: 마리나베이(12) 접수 '미정' — 보고서 '마감(4회차 미정)'은 공고 이력(무순위 1~3회차)이 있고 추가 공급이
+   미정이라 meta §1-3-4상 '미정'(그란테르와 같은 논리, 골든 v2 judge_scope '판정 대상'과 일치). 골든 v2 inputs 의 intake_status '불가'는
+   보고서 표기 그대로라 T1(b) DB 경로는 이 필드를 규칙 차이로 둔다.
 
 ## T1~T18 → 픽스처 매핑 (RA §9)
 
@@ -118,7 +122,7 @@ uv run pytest tests/fixtures_contract                                      # 스
 | R3·T17 | test_t17_idempotency.py — 수집 2회 raw 증가 0, 같은 payload 실제 호출 1, 재판정 2회차 호출 0 | worker · adapter | — |
 | R3·T18 | test_t18_judge_down.py — degraded·점수 미계산·/health·대시보드 배너 데이터, 복구 후 rejudge 1 | worker · API | — |
 | (D2) | test_flow_g0_bootstrap.py — '송도' → POST /regions → bootstrap(청약홈 녹화 재생) → G1·G2, 기존 지역 불변 | API · worker | flows/3-g0-region-bootstrap |
-| (D9-1) | test_d91_scope.py — mock 전체 재판정 → API judge_scope = 아래 'D9-1로 인한 차이' 표, 참고 단지 종합 미판정(xfail: 남은 사다리 행이 점수에 쓰임 — F2 보고) | worker · API | — |
+| (D9-1) | test_d91_scope.py — mock 전체 재판정 → API judge_scope = 아래 'D9-1로 인한 차이' 표, 참고 단지는 같은 스냅샷에 남은 사다리 행이 있어도 종합 미판정·순위 없음(해링턴 13 에 사다리 행을 남겨 재현 — R3 마무리) | worker · API | — |
 
 판정기: `fake` = 실제 어댑터(JevMcpAdapter: guard·캐시·judgment_log)에 결정적 가짜 전송, `mock` = JUDGE_ADAPTER=mock 녹화 재생 —
 **재생 녹화는 `judgments_synth/`(합성, W2)**: `judgments/`(보고서 재구성)는 payload 가 보고서 요약이라 파이프라인 hash 와 달라
@@ -133,11 +137,10 @@ mock 재판정이 전부 review 가 되던 문제(R3 T3 mock·e2e 흐름 2)를 �
 | 단지 | 보고서·골든 v2 | D9-1 | 근거(녹화) | 영향 |
 | --- | --- | --- | --- | --- |
 | 4 오퍼스 한강 스위첸 | 판정 대상(통합 4위 5.00 / v2 5위 4.97) | 미해결(분류 판정 미해결) | #110 review .72 | T1(b) DB 경로 종합 없음, T3 mock·e2e (b) 사람 확인 '가능' 뒤에도 후보 아님 |
-| 12 더샵 송도마리나베이 | 판정 대상(v2 9위 4.14) | 참고(접수 '불가' — 마감, 4회차 미정) | #62 auto .99 · 접수 불가 | 사다리 미실행 → 종합 미판정이어야 함(현재 남은 사다리 행으로 점수가 나옴 — test_d91_scope xfail) |
 | 14 사우역 지엔하임 | 참고 | 미해결 | #110 review .70 | rerank 후보에서도 빠짐 |
 | 16 검단 센트레빌 그랑포레 | 보류(공고 전) | 미해결 | #62 review .84 | rerank 후보에서도 빠짐 |
 
-그란테르(1)는 W1(접수 '미정')로 보고서·골든 v2 와 같은 '판정 대상'이다. 해링턴(13) '참고'·카이브 유보라(15) '보류'는 같다.
+그란테르(1)는 W1, 마리나베이(12)는 R3 마무리 CEO 결정(둘 다 접수 '미정')으로 보고서·골든 v2 와 같은 '판정 대상'이다. 해링턴(13) '참고'·카이브 유보라(15) '보류'는 같다.
 
 ## 판정 녹화 쓰는 법 (WP3 MockAdapter)
 

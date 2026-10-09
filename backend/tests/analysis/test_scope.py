@@ -162,7 +162,7 @@ def test_d9_scope_on_fixture_facts_vs_golden_inputs_documented_diff() -> None:
     """골든 v2·T1 입력의 judge_scope(보고서 당시 규칙)와 D9-1을 픽스처 사실에 적용한 값의 차이 — 보고용 표.
 
     골든 파일은 입력에 judge_scope 를 내장하므로 회귀 재현(test_golden_v2·test_score_regression)은 그대로다.
-    실데이터 파이프라인에서는 아래 단지가 다른 범위가 된다(사유: 픽스처 접수 '불가' / classify review).
+    실데이터 파이프라인에서는 아래 단지가 다른 범위가 된다(사유: classify review).
     """
     d9 = _fixture_scopes()
     v2 = {
@@ -172,10 +172,10 @@ def test_d9_scope_on_fixture_facts_vs_golden_inputs_documented_diff() -> None:
     a = {c["complex_id"]: c["judge_scope"] for c in EXPECTED["complexes"]}
     assert v2 == a
     diff = {cid: (v2[cid], d9[cid]) for cid in sorted(d9) if d9[cid] != v2[cid]}
+    # 그란테르(1)·마리나베이(12)는 빠졌다: 픽스처 접수가 골든 v2 에 맞춰 '미정'(공고 이력 있음 + 추가 공급 미정,
+    # meta §1-3-4)이 되어 D9-1 도 '판정 대상' — 그란테르 = WP9-후속 W1, 마리나베이 = R3 마무리 CEO 결정.
     assert diff == {
-        1: ("판정 대상", "참고"),  # 더샵 송도그란테르: 픽스처 공식 팝업 '불가'
         4: ("판정 대상", "미해결"),  # 오퍼스 한강 스위첸: classify review
-        12: ("판정 대상", "참고"),  # 더샵 송도마리나베이: 공식 팝업 '불가'
         14: ("참고", "미해결"),  # 사우역 지엔하임: classify review
         16: ("보류", "미해결"),  # 검단 센트레빌 그랑포레: classify review
     }

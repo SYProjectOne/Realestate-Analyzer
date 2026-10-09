@@ -1,6 +1,6 @@
 """내장 시나리오 5개 + 요건 사전 계산 (RA §6-4 상황 표, §6-7, contracts/schemas/scenario.json RequirementRule).
 
-``BUILTIN_SCENARIOS``는 마이그레이션 0001 시드(id 1~5)와 같다(테스트가 비교한다). 사전 계산은 판정기 호출 없는
+``BUILTIN_SCENARIOS``는 마이그레이션 0001 시드(id 1~5) + 0005(policy.include_wait_new, A만 true)와 같다(테스트가 비교한다). 사전 계산은 판정기 호출 없는
 산술 규칙이고, 결과 문자열(evidence)은 decide payload 증거에 그대로 들어가며 decision.req_*_pre에 저장된다.
 판정기 판정(supported/contradicted)과 다르면 ``requirement_mismatch`` → '증거와 상이' 배지.
 """
@@ -77,7 +77,11 @@ _SEED: Final[list[dict[str, Any]]] = [
                 "text": "자기자본·대출한도로 계약금·잔금 충당(미입력이면 '미입력')",
             },
         },
-        "policy": {"p10_horizon": "move_in_plus_1y", "exclude_intake_not_open": False},
+        "policy": {
+            "p10_horizon": "move_in_plus_1y",
+            "exclude_intake_not_open": False,
+            "include_wait_new": False,
+        },
     },
     {
         "code": "A",
@@ -100,7 +104,11 @@ _SEED: Final[list[dict[str, Any]]] = [
             "regulation": {"code": "no_conflict", "text": "거주의무·전매제한이 실거주 계획과 충돌 없음"},
             "funds": _funds("자기자본 3억 이하로 계약금·잔금 충당", 300_000_000, 600_000_000),
         },
-        "policy": {"p10_horizon": "move_in_plus_1y", "exclude_intake_not_open": False},
+        "policy": {
+            "p10_horizon": "move_in_plus_1y",
+            "exclude_intake_not_open": False,
+            "include_wait_new": True,
+        },
     },
     {
         "code": "B",
@@ -129,7 +137,11 @@ _SEED: Final[list[dict[str, Any]]] = [
             "regulation": {"code": "no_residency_obligation", "text": "거주의무 없음"},
             "funds": _funds("자기자본 2억 이하로 계약금·잔금 충당", 200_000_000, 600_000_000),
         },
-        "policy": {"p10_horizon": "move_in_plus_1y", "exclude_intake_not_open": False},
+        "policy": {
+            "p10_horizon": "move_in_plus_1y",
+            "exclude_intake_not_open": False,
+            "include_wait_new": False,
+        },
     },
     {
         "code": "C",
@@ -159,7 +171,11 @@ _SEED: Final[list[dict[str, Any]]] = [
             "regulation": {"code": "no_residency_obligation", "text": "거주의무 없음"},
             "funds": _funds("자기자본 4억 이하로 계약금·잔금 충당", 400_000_000, 600_000_000),
         },
-        "policy": {"p10_horizon": "asof_plus_5y", "exclude_intake_not_open": False},
+        "policy": {
+            "p10_horizon": "asof_plus_5y",
+            "exclude_intake_not_open": False,
+            "include_wait_new": False,
+        },
     },
     {
         "code": "D",
@@ -172,7 +188,11 @@ _SEED: Final[list[dict[str, Any]]] = [
             "regulation": {"code": "no_residency_obligation", "text": "거주의무 없음"},
             "funds": _funds("자기자본 3억 이하로 계약금·잔금 충당", 300_000_000, 600_000_000),
         },
-        "policy": {"p10_horizon": "move_in_plus_1y", "exclude_intake_not_open": True},
+        "policy": {
+            "p10_horizon": "move_in_plus_1y",
+            "exclude_intake_not_open": True,
+            "include_wait_new": False,
+        },
     },
 ]
 

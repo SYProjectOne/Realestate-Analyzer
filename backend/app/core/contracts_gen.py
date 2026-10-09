@@ -2894,7 +2894,7 @@ class Scenario(BaseModel):
     - params: G5 폼 10필드(+ 규제 사전 계산용 선택 2필드). 비어 있는 값은 사전 계산에서 '미입력'.
     - weights: 6개 가중치, 합 = 1. A·D는 liquidity 대신 move_in(s_movein = clamp(10 − 2×입주까지 연수, 0, 10)).
     - requirements: decide 요건 3개(접근 가능성·규제 제약·자금)의 규칙 코드. 사전 계산(RequirementPrecalc)이 이 코드로 충족/미충족 + 근거 문자열을 만든다.
-    - policy: p10_horizon(종합 점수 p10 성분에 쓸 사다리 시점; C는 asof_plus_5y), exclude_intake_not_open(D: 접수 불가 단지는 후보 제외).
+    - policy: p10_horizon(종합 점수 p10 성분에 쓸 사다리 시점; C는 asof_plus_5y), exclude_intake_not_open(D: 접수 불가 단지는 후보 제외), include_wait_new(A: decide 가상 후보 '모집공고 대기', 계약 .5).
     ?scenario= 쿼리는 code(base|A|B|C|D) 또는 숫자 id를 받는다.
     """
 
@@ -2982,6 +2982,10 @@ class ScenarioPolicy(BaseModel):
     )
     p10_horizon: Literal["move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"]
     exclude_intake_not_open: bool
+    include_wait_new: bool | None = False
+    """
+    계약 2026-10-09.5: P8 decide 후보에 가상 후보 '모집공고 대기'(option wait_new — 12개월 내 공고 예정 단지를 기다림)를 넣는다. 단지 후보는 순위 상위 ≤5 + wait_new(합 ≤6). 근거 = 지역 (A) 트랙 공고 예정 목록 요약(decide evidence). decision 행은 option_key 'wait_new'·complex_id null·label '모집공고 대기'. 생략 = false. 내장 A(가점 높음·실거주)만 true(마이그레이션 0005, 보고서 §8-2·§12-5-2 #126).
+    """
 
 
 class ScenarioPreview(BaseModel):

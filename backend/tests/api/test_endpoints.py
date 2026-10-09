@@ -28,9 +28,10 @@ def test_dashboard_base_t1_order(client: TestClient) -> None:
     for row in body["top5"]:
         contrib = sum(c["contribution"] or 0 for c in row["components"].values())
         assert abs(contrib - row["total"]["v"]) <= 0.01
-    # D9-1(R3 C2): 픽스처 사실로 판정 대상 = 12 − 그란테르·마리나베이(접수 불가 → 참고)
-    #   − 스위첸(classify review → 미해결)
-    assert body["kpis"]["judged_count"]["v"] == 9
+    # D9-1(R3 C2): 픽스처 사실로 판정 대상 = 12 − 스위첸(classify review → 미해결) = 11.
+    # 기대값 갱신(R3 마무리): 9 → 11 — 그란테르(W1 골든 v2 정렬)·마리나베이(CEO 결정)의 접수가 '불가'에서
+    # '미정'(공고 이력 있음 + 추가 공급 미정, meta §1-3-4)이 되어 '참고' → '판정 대상'.
+    assert body["kpis"]["judged_count"]["v"] == 11
 
 
 def test_dashboard_scenario_b_tie(client: TestClient) -> None:

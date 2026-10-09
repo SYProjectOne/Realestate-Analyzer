@@ -2,6 +2,44 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.5
+
+R3 마무리(CEO 위임, 브랜치 `wp/r3-closure`) — 상황 A decide 의 가상 후보 '모집공고 대기'(보고서 §8-2·§12-5-2: decide 후보 =
+TOP 5 + "모집공고 대기" + escape hatch). 소규모 변경: 필드 1개 추가(선택, 기본 false) + 데이터 마이그레이션 `0005_wait_new`
+(DDL 없음). 필드 삭제·의미 변경 없음. decision 의 `option_key` 'wait_new'·`complex_id` null·`label` 은 계약 .1 부터 있던 자리다.
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 |
+| --- | --- | --- | --- | --- |
+| 1 | R3 마무리 3c · 보고서 §8-2·§12-5-2(#84·#126) | `schemas/scenario.json#/$defs/ScenarioPolicy` | `include_wait_new`(boolean, 선택, 기본 false) — P8 decide 에 가상 후보 `wait_new`("12개월 내 공고 예정 단지를 기다림")를 넣는다. 단지 후보는 순위 상위 ≤5 + wait_new(합 ≤6, `judge/payloads.DECIDE_MAX`). 근거 = 지역 (A) 트랙 공고 예정 목록 요약(decide evidence `[wait_new]` 블록, `scheduler.payloads.wait_new_evidence`). decision 행 = option_key 'wait_new'·complex_id null·요건 판정(판정기 판정만, 사전 계산 없음) | scheduler(P8·미리보기), judge(payload·DecisionSet), API(compare 요건 표시), 프론트 C7('가상 후보' 표시) |
+| 2 | 같음 | 마이그레이션 `0005_wait_new`, `analysis.scenarios.BUILTIN_SCENARIOS`, `examples/scenarios_list.json`·`scenario_created.json` | 내장 시나리오 policy 에 `include_wait_new` 명시 — **A(가점 높음·실거주)만 true**(보고서 #126 상황 A 재판정 '후보 6(+wait_new)'). 사용자 시나리오는 건드리지 않는다(키 없음 = false) | 위와 같음 |
+
+### 마이그레이션·검증
+
+- `0005_wait_new`: scenario.policy(JSON) 데이터만 — 내장 5개에 `include_wait_new` 기록(base·B·C·D false, A true).
+  downgrade 는 모든 행에서 키를 지운다(옛 ScenarioPolicy 는 additionalProperties=false). head → 0004 → head 왕복 테스트
+  (`tests/contracts/test_migrations.py::test_sqlite_0004_0005_roundtrip`, Postgres 같은 함수).
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.5`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
+
+### fixtures (R3 마무리 2026-10-09 — CEO 결정·계약 .5)
+
+매니페스트(`contracts/fixtures.sha256.json`) 사유: R3 마무리: 마리나베이 접수 '미정'(CEO 결정) + 상황 A 가상 후보 wait_new(계약 .5)·mock 재생 judgment_log 기록으로 합성 판정 녹화 재생성
+모두 생성기(`tools/build_incheon_gimpo.py`·`tools/record_synth_judgments.py`)로 다시 만들었고 `--check` 바이트 일치.
+
+- **`incheon_gimpo_2026-10-08/complexes.json` — 12 더샵 송도마리나베이 접수 '불가' → '미정'** (원천 `tools/incheon_gimpo_complexes_b.py`).
+  사유(CEO 결정): 보고서 표기 '마감(4회차 미정)'은 공고 이력(무순위 1~3회차)이 있고 추가 공급이 미정이다 → meta §1-3-4 상
+  '미정'(그란테르 W1 과 같은 논리). 골든 v2 inputs 의 judge_scope '판정 대상'과 일치한다(v2 intake_status '불가'는 보고서 표기 그대로라
+  T1(b) DB 경로는 이 필드를 점수 무관 차이로 둔다 — 둘 다 '가능'이 아니다). 연쇄: D9-1 판정 대상 10 → 11, 사다리 30 → 33(파이프라인 테스트),
+  README 'D9-1로 인한 차이' 표에서 마리나베이 행 삭제.
+- **`incheon_gimpo_2026-10-08/judgments_synth/` 재생성** — (1) 마리나베이 판정 대상화로 noul·rerank·decide payload 변경, (2) 상황 A
+  decide 에 가상 후보 wait_new(계약 .5) → 보고서 #126 선택 wait_new .94(conf .93) **그대로** 녹화(합성 녹화의 '보고서 선택이 후보에
+  없으면 확률 최대 후보로 대체 + 경고' 경로 삭제 — 이제 그런 경우 녹화 실패), (3) 녹화 흐름이 재생(MockAdapter)과 같게 judgment_log 에
+  남겨 judgment_seq 를 단다(아래 앱 변경) — 녹화 흐름의 점수·순위가 재생과 같아져 decide 후보가 회귀·e2e 재생과 일치. 봉투 파일 형식은 같다.
+- 앱 변경(같은 브랜치): `app.judge.mock.MockAdapter(session_factory=)` — 재생한 녹화 봉투를 judgment_log 에 남기고 judgment_seq 를
+  단다(`get_adapter` 가 설정 DB 를 넘긴다). 전에는 mock 재판정의 판정 확률이 전부 '확인 불가(출처 누락)'(prov 없음)라 종합 점수가
+  미계산이었다(W2 의 목적이 반만 이뤄짐 — test_d91_scope 첫 테스트는 마리나베이의 남은 사다리 행 덕분에만 통과하고 있었다).
+
 ## 2026-10-09.4
 
 R3 독립 리뷰(`docs/design/wp/R3_REVIEW.md`) 후속 — CEO 결정 D9(`docs/design/DECISIONS.md`)와 R3 수정 라운드 F3 카드

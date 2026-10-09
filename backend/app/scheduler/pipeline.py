@@ -19,7 +19,7 @@
    이전 run 앵커(delta_rerank)는 judgment_log 캐시 행에서만 읽는다(판정기 호출 없음, R3 minor 32)
 8. 점수: 시나리오마다 ``analysis.score.run_detailed`` (ScoreInputs 는 DB 에서 조립, 2026-10-09.2 필드 채움).
    score_total.judge_scope = 이 실행의 판정 범위(계약 2026-10-09.3)
-9. P8 decide: 시나리오마다 상위 후보 ≤6 + 요건 사전 계산(``analysis.scenarios``) → decision.
+9. P8 decide: 시나리오마다 상위 후보 ≤6(policy.include_wait_new 면 ≤5 + 가상 후보 '모집공고 대기', 계약 .5) + 요건 사전 계산(``analysis.scenarios``) → decision.
    chosen·tie 는 ``analysis.score.decide_outcome`` 이 원본. 입력 조립은 ``payloads.decide_plan``(미리보기 빌더와 공용)
 10. P9 verify: 대상 단지의 사실 문장을 원자 주장으로 나눠 검증 → claim. 대상이 아닌 단지는 이전 주장을 복사
 11. score_run/component/total/decision/claim 저장 → snapshot.status='ready' (publish 는 snapshot.publish 잡)
@@ -86,7 +86,14 @@ from app.scheduler import persist
 from app.scheduler.degraded import clear_degraded, mark_degraded
 from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
 from app.scheduler.judge_version import last_logged, record_version_change
-from app.scheduler.payloads import _anchor_from, decide_plan, rerank_pool, score_base, stored_scope
+from app.scheduler.payloads import (
+    _anchor_from,
+    decide_plan,
+    rerank_pool,
+    score_base,
+    stored_scope,
+    wait_new_evidence,
+)
 from app.scheduler.snapshots import contradicted_count, previous, snapshot_dto
 
 if TYPE_CHECKING:
@@ -773,8 +780,11 @@ def run_pipeline(
             if not scenarios:
                 res.skipped["score"] = "시나리오 행 없음(scenario 시드 필요)"
             saved_gaps = False
+            upcoming = wait_new_evidence(facts, snap.asof_date)  # 가상 후보 '모집공고 대기' 근거(계약 .5)
             for sc in scenarios:
-                plan = decide_plan(snap_dto, sc, inputs, cards, scope, precalc=precalc)
+                plan = decide_plan(
+                    snap_dto, sc, inputs, cards, scope, precalc=precalc, wait_new_text=upcoming
+                )
                 detail = plan.detail
                 run = persist.save_score_run(
                     session,
@@ -789,7 +799,7 @@ def run_pipeline(
                     persist.save_comparables(session, snap.id, detail.gaps)
                     saved_gaps = True
                 if not plan.runnable:
-                    n_cand = len(plan.candidate_ids)
+                    n_cand = plan.n_options
                     res.skipped[f"decide:{sc.code or sc.id}"] = f"후보 {n_cand}개(2개 이상 필요)"
                     continue
                 dset = jp.p8_decide(
@@ -801,6 +811,8 @@ def run_pipeline(
                     priorities=plan.priorities,
                     candidates=plan.candidates,
                     snapshot_id=snap.id,
+                    include_wait_new=plan.include_wait_new,
+                    wait_new_evidence=plan.wait_new_evidence,
                 )
                 res.decisions += len(persist.save_decisions(session, run, dset, seq))
             session.commit()

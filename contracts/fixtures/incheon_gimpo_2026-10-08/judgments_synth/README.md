@@ -35,7 +35,7 @@ uv run python ../contracts/fixtures/tools/record_synth_judgments.py --check  # �
 | classify 접수 상태 | `complexes.json` 공식 경로 접수 행(가능→open, 미정→pending, 불가→closed, 확인 불가→unknown) |
 | noul | 입주 후 1년 = 보고서 #65~70·#118~123 단지별 p5·p10·p20·보합(라벨·auto 그대로). 3년·5년 = 보고서에 없음 → `review`(지어내지 않음) — 상황 C(기준일+5년)는 종합 미계산 |
 | rerank | #124 relevance. 후보 안에서 relevance 내림차순, 같은 값 = 같은 순위 |
-| decide | 상황별 #125~#129. 선택 = 보고서 선택(후보에 없으면 보고서 확률이 가장 큰 후보, confidence 없음 + 경고). 확률·요건 판정은 후보에 있는 것만. 상황 A 의 보고서 선택은 'wait_new'(모집공고 대기)인데 파이프라인 decide 후보에 wait_new 가 없다(보고서 참고) |
+| decide | 상황별 #125~#129. 선택·확률·확신도 = 보고서 그대로(대체 선택·경고 경로 없음 — 보고서 선택이 후보에 없으면 녹화 실패). 요건 판정은 후보에 있는 것만. 상황 A 는 가상 후보 `wait_new`(모집공고 대기, 계약 2026-10-09.5 policy.include_wait_new)가 decide 후보에 있어 보고서 선택 wait_new .94(conf .93) 그대로 |
 | verify | 보고서 §8-5·§12-5-5 최종 검증 = verified(auto). 파이프라인 주장 문장과 1:1 대응은 없음 |
 | screen·extract·audit·compare | WP7 SynthJev 기본(pass·not_found·ok·same_fact) — 보고서에 필드별 값 없음 |
 

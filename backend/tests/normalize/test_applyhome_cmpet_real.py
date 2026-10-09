@@ -131,8 +131,6 @@ def _zip_entry(z: zipfile.ZipFile, needle: str) -> tuple[str, str]:
     return e["url"], z.read(e["file"]).decode("utf-8")
 
 
-@pytest.mark.xfail(strict=True, reason="WP9-후속 발견(파서·저장 — 읽기만): 문자 접미사 없는 HOUSE_TY('084.7529 ')의 경쟁률 "
-                   "type_code 가 단지 주택형(공고문 84A·84B)과 맞지 않는다 — store.competition_for 는 면적 매칭이 없다")  # fmt: skip
 def test_letterless_house_ty_competition_matches_complex_types(
     db_session: Session, region: Region, add_raw: AddRaw
 ) -> None:
@@ -156,7 +154,29 @@ def test_letterless_house_ty_competition_matches_complex_types(
     comps = db_session.scalars(select(Competition).where(Competition.complex_id == cx.id)).all()
     assert comps
     eighty_four = {c.type_code for c in comps if c.type_code.startswith("84")}
-    assert eighty_four <= {"84A", "84B"}, (eighty_four, sorted(types))  # 실제: {'84.7529', '84.9582'}
+    assert eighty_four <= {"84A", "84B"}, (eighty_four, sorted(types))  # R3 마무리 전: {'84.7529', '84.9582'}
+
+
+def test_letterless_house_ty_ambiguous_area_is_not_matched(
+    db_session: Session, region: Region, add_raw: AddRaw
+) -> None:
+    """같은 전용면적(소수 4자리)의 단지 주택형이 둘이면(84A·84B 모두 84.7529) 면적 코드 경쟁률은 어느 쪽에도 붙이지 않고
+    type_code '확인 불가(타입 모호)'로 남긴다 — 다른 면적(84.9582 → 하나)은 그대로 맞춘다."""
+    from app.normalize.store import TYPE_AMBIGUOUS
+
+    with zipfile.ZipFile(API_ZIP) as z:
+        detail = _zip_entry(z, "getOPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116")
+    cmpet = next(e for e in ENTRIES if e["house_manage_no"] == "2026940116")
+    store_raw_document(db_session, add_raw(detail[1], source_kind="applyhome_detail", url=detail[0], region_id=region.id, ext="json"))
+    cx = db_session.scalars(select(Complex).where(Complex.applyhome_id == "2026940116")).one()
+    db_session.add_all([ComplexType(complex_id=cx.id, type_code="84A", area_m2=84.75, notice_type_code="084.7529A"),
+                        ComplexType(complex_id=cx.id, type_code="84B", area_m2=84.75, notice_type_code="084.7529B"),
+                        ComplexType(complex_id=cx.id, type_code="84C", area_m2=84.96, notice_type_code="084.9582C")])  # fmt: skip
+    db_session.flush()
+    store_raw_document(db_session, add_raw(_text(cmpet), source_kind="applyhome_detail", url=cmpet["url"], region_id=region.id, ext="json"))
+    codes = {c.type_code for c in db_session.scalars(select(Competition).where(Competition.complex_id == cx.id))}
+    assert TYPE_AMBIGUOUS in codes and "84C" in codes, codes
+    assert not codes & {"84A", "84B"}, codes
 
 
 @pytest.mark.live
