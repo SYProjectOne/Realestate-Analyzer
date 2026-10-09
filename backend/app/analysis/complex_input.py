@@ -31,8 +31,6 @@ __all__ = [
 ]
 
 _REGULATED: Final = {"규제": True, "비규제": False}
-_HAS_WINNER_LABEL: Final = "winner_label" in ComplexScoreInput.model_fields
-"""계약 .6 에 ComplexScoreInput.winner_label 이 생기면 자동으로 싣는다(R3 M2)."""
 _NON_PRIORITY_KINDS: Final = frozenset({"무순위", "임의", "선착순"})
 
 
@@ -180,8 +178,7 @@ def resale_input_label(resale: Label | None, winner: Label | None) -> Label | No
     """전매 종료(= 당첨일 + 전매 기간 — 유동성 성분·요건 사전 계산 입력)의 라벨 = 두 입력 중 약한 것(R3 M2).
 
     둘 다 null(미상)이면 null(= 값이 있으면 확인됨). 점수 엔진(``score.liquidity_component``)·요건 사전 계산이 쓴다 —
-    당첨일 라벨은 계약 ``ComplexScoreInput.winner_label``(.6 요청)로 싣고, 필드가 없는 동안은 싣지 않는다
-    (resale_label 에 미리 합치면 판정 payload(요건 근거 문구)가 바뀌어 합성 녹화를 다시 만들어야 한다 — .6 과 함께)."""
+    당첨일 라벨은 계약 ``ComplexScoreInput.winner_label``(계약 2026-10-09.7)."""
     if resale is None and winner is None:
         return None
     return weakest_label(resale or "확인됨", winner or "확인됨")
@@ -205,7 +202,7 @@ def build_complex_input(
     ladders: Iterable[LadderRowLike] = (),
 ) -> ComplexScoreInput:
     """``labels`` 키: price·resale·winner·residency·down_payment·move_in(없으면 null = 계약 설명대로 값이 있으면 확인됨).
-    winner(당첨일 라벨)는 계약에 ``winner_label`` 이 있으면 거기에 싣는다(R3 M2, 계약 .6 요청 — 없으면 무시).
+    winner(당첨일 라벨)는 ``winner_label``(계약 2026-10-09.7, R3 M2 — 유동성 성분·전매 종료 라벨 합성).
 
     ``ladders`` 는 사다리를 돌리는 범위(``analysis.scope.runs_ladder`` = 판정 대상)일 때만 싣는다 — '참고'·'보류'·'미해결'·
     '제외' 단지는 같은 스냅샷에 남은 사다리 행(이전 범위의 판정·이월·devseed)이 있어도 p10 에 쓰지 않는다(D9-1: 사다리 미실행
@@ -229,6 +226,7 @@ def build_complex_input(
         winner_date=cx.winner_date,
         resale_months=cx.resale_months,
         resale_label=lab.get("resale"),
+        winner_label=lab.get("winner"),  # 계약 2026-10-09.7 (R3 M2)
         resale_release_on_registration=cx.resale_release_on_registration,
         residency_months=cx.residency_months,
         residency_label=lab.get("residency"),
@@ -244,5 +242,4 @@ def build_complex_input(
         rewin_restriction_years=cx.rewin_restriction_years,
         has_priority_supply=priority_supply(payments),
         fixed_components=None,
-        **({"winner_label": lab.get("winner")} if _HAS_WINNER_LABEL else {}),
     )

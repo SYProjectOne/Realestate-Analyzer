@@ -2,6 +2,33 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.7
+
+R3b 마무리(CEO 위임, 브랜치 `wp/r3b-closing`) — R3b 가 '계약 .6 요청'으로 남긴 두 자리. 계약 소유자 = R3b 마무리.
+마이그레이션 `0007`(`0007_r3b_closing.py`: 컬럼 1개 추가 + 데이터 채움 — 0006 DB 는 `alembic upgrade head` 한 번). 필드 삭제 없음.
+의미 변경 = 대체 벤치마크 판별 근거가 note 문자열 → 컬럼(아래 #2). 둘 다 선택 필드(기본 null/false)라 옛 입력도 그대로 검증된다.
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 |
+| --- | --- | --- | --- | --- |
+| 1 | R3 M2(재리뷰 부분) · G2 요청 | `score_inputs.json` ComplexScoreInput `winner_label` | 당첨자 발표일(winner_date) 값의 Fact 라벨(label 또는 null). 전매 종료 = 당첨일 + 전매 기간이므로 **유동성 성분 라벨·요건 사전 계산(전매 종료) 라벨 = resale_label 과 winner_label 중 약한 것**(`analysis.complex_input.resale_input_label`). 입력 조립: 파이프라인 `scheduler.inputs.load_facts`(chosen 출처 행 라벨 → labels['winner']) → `analysis.complex_input.build_complex_input`, API 시나리오 미리보기(`routers/analysis.py`)도 같은 키. 이 때문에 요건 근거 문구('전매 종료 … (추정)')가 바뀌어 상황 decide payload 1건이 달라졌다 → 합성 판정 녹화 재생성(아래 fixtures) | analysis(라벨 합성), scheduler(입력 조립), API(미리보기) |
+| 2 | R3b G1·G2 요청(N-M4 후속) | `score_inputs.json` BenchmarkInput `substitute`(boolean, 기본 false), 테이블 `benchmark.substitute`(Boolean NOT NULL, 기본 false), `market.json` BenchmarkView.substitute 설명 | 지역 전체 대체 행(D9-2: 생활권 자체 표본 0 → 지역 전체 표본 복사, 라벨 추정) 표식을 **컬럼**으로. 판별부 전부 교체: 정규화(`normalize.benchmark` 가 대체 행에 true 를 쓴다), 점수(`analysis.score.benchmark_component` 가 `BenchmarkInput.substitute` 로 '대체(지역 전체)' 표기 — `run_detailed(substitute_benchmarks=…)`·`scheduler.inputs.substitute_benchmark_ids` 삭제), API(`api.benchmarks.is_substitute`), 보고서(`reports.data`). note 의 '추정(대체: 지역 전체)' 문구는 사람이 읽는 설명으로만 남는다(문구만 있고 컬럼 false 인 행은 대체가 아니다) | normalize, analysis, scheduler, API, reports |
+| 3 | R3b 마무리 지시 2 | `complex.official_site_url`(기존 컬럼 — 스키마 변경 없음) | 정규화가 채운다: 청약홈 API 상세 `HMPG_ADRES`·웹 상세 '당첨자 발표일' 칸의 홈페이지 링크 → `normalize._text.normalize_site_url`(http/https 만, 스킴 없으면 http://, 빈 경로 '/', 청약홈 자신·'없음' 제외) → 후보(rank 1, 확인됨, 발췌 = 원문 조각) → 출처 행 + complex.official_site_url. official_site 수집기는 targets 가 없으면 이 컬럼을 대상으로 쓴다(수집 단계 순서 applyhome → official_site 라 같은 수집 잡에서 이어진다) | normalize, collectors(official_site) |
+
+### 마이그레이션·검증
+
+- `0007`: `benchmark.substitute`(Boolean, server_default false, NOT NULL). upgrade 는 기존 행 중 note 에 '추정(대체: 지역 전체)' 가 있는 행을 true 로
+  채운다(파이썬에서 부분 문자열 판별 — DB 별 LIKE·인코딩 차이 없이). downgrade 는 컬럼 삭제(note 는 남는다). 0006 → head → 0006 → head
+  왕복을 SQLite·Postgres 16(pgserver) 둘 다 테스트(`tests/contracts/test_migrations.py::test_sqlite_0006_0007_roundtrip`, Postgres 같은 함수),
+  autogenerate diff 0.
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.7`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`) 재생성(MSW 예시 변경 없음).
+
+### fixtures (R3b 마무리 — 계약 .7)
+
+매니페스트(`contracts/fixtures.sha256.json`) 사유: R3b 마무리: 계약 .7 winner_label(당첨일 라벨이 전매 종료 요건 근거에 합쳐짐)로 상황 decide payload 1건 변경 — 합성 판정 녹화 재생성
+생성기(`tools/record_synth_judgments.py`)로만 다시 만들었고 `--check` 일치(봉투 293개, decide 1건 hash 교체). 계약 스키마 외 데이터 변경 없음.
+
 ## 2026-10-09.6
 
 R3 재리뷰(`docs/design/wp/R3_REVIEW2.md`) 후속 — CEO 결정 D10(`docs/design/DECISIONS.md`)과 R3b 수정 라운드 배정

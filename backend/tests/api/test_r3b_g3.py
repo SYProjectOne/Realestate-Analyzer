@@ -305,18 +305,21 @@ def test_nm4_sample_n_counts_own_rows_only_and_flags_substitute(client: TestClie
                 **base,
                 living_area="la_2",
                 name="대체",
+                substitute=True,  # 계약 2026-10-09.7 — 판별은 컬럼
                 note="[bm:1:1:la_2] · 추정(대체: 지역 전체) — 생활권 la_2 자체 표본 0, 원 생활권 la_1",
             )
         )
+        # note 에 표식 문구만 있고 컬럼이 false 인 행은 대체가 아니다(문자열 판별 금지)
+        s.add(Benchmark(**base, living_area="la_1", name="문구만", note="사람 메모: 추정(대체: 지역 전체) 아님"))
     body = client.get(f"/api/snapshots/{SNAP}/market", headers=READ).json()
     validate("getMarket", 200, body)
     flags = {f["living_area"]: f for f in body["benchmark_flags"]}
-    assert flags["la_1"]["sample_n"] == 1 and flags["la_1"]["substituted"] is False
+    assert flags["la_1"]["sample_n"] == 2 and flags["la_1"]["substituted"] is False
     assert flags["la_2"]["sample_n"] == 0 and flags["la_2"]["substituted"] is True, (
         "대체 행은 자기 표본이 아니다"
     )
     subs = {b["name"]: b["substitute"] for b in body["benchmarks"]}
-    assert subs == {"자기 표본": False, "대체": True}
+    assert subs == {"자기 표본": False, "대체": True, "문구만": False}
     assert body["benchmark_absence"] is None
 
 

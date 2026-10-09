@@ -1,6 +1,6 @@
-"""SQLAlchemy 모델 (WP0 소유, 계약 2026-10-09.6).
+"""SQLAlchemy 모델 (WP0 소유, 계약 2026-10-09.7).
 
-contracts/migrations/versions/(0001_init … 0006_r3b) head 와 1:1.
+contracts/migrations/versions/(0001_init … 0007_r3b_closing) head 와 1:1.
 
 다른 WP는 읽기만 한다. 컬럼이 더 필요하면 계약 변경 요청(AGENTS.md)으로.
 """

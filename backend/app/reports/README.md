@@ -69,7 +69,7 @@ stats = run_report_job(job.payload, session=session)
   `c07_<코드>`). 가상 후보 '모집공고 대기'(wait_new, 계약 .5 — 내장 A)는 '가상 후보' 배지·막대 라벨, 근거 =
   그 decide 입력(judgment_log.input_json.evidence)의 `[wait_new]` 블록 그대로(없으면 '근거 블록 기록 없음').
 - 벤치마크(§5-1, N-M3·N-M4): 지역 생활권마다 묶음(`benchmark_areas`). 행이 없으면 '벤치마크 없음(사유)' — 사유 =
-  그 생활권 단지의 저장된 벤치마크 성분 산출식, 없으면 기본 문구. 지역 전체 대체 행(note `추정(대체: 지역 전체)`)은
+  그 생활권 단지의 저장된 벤치마크 성분 산출식, 없으면 기본 문구. 지역 전체 대체 행(`benchmark.substitute`, 계약 .7)은
   '대체' 배지를 달고 지역 건수·최근 3년 사례 집계에 다시 세지 않는다.
 - 캘린더(§8-4, 기준일~+3개월): apply_dates `[{kind,date}]`·`[{kind,start,end}]`, contract_dates `[{from,to}]`,
   interim_schedule `[{seq,due_date}]`(문자열 또는 Fact 모양), remaining_event.apply_dates + 체크리스트 기한.

@@ -141,11 +141,11 @@ def test_benchmark_generation_to_total_score_from_recordings(
             and b.trade_median_won
             and b.trade_median_won > b.sale_price_84_won
         )
-        assert not (b.note and SUBSTITUTE_NOTE in b.note)
+        assert not (b.note and SUBSTITUTE_NOTE in b.note) and b.substitute is False
         subs = list(s.scalars(select(Benchmark).where(Benchmark.living_area != "la_1")))
         assert subs and all(
-            x.note and SUBSTITUTE_NOTE in x.note for x in subs
-        )  # 표본 0 생활권 = 지역 전체 대체
+            x.substitute and x.note and SUBSTITUTE_NOTE in x.note for x in subs
+        )  # 표본 0 생활권 = 지역 전체 대체(계약 .7 컬럼 + 설명 note)
 
     out = run_pipeline(ctx, seeded)
     assert not out.degraded, out.error

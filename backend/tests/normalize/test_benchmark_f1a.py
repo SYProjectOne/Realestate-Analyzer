@@ -284,6 +284,7 @@ def test_living_area_without_sample_uses_region_wide_substitute(
     for b in subs:
         assert b.sale_price_label == "추정"
         assert b.note is not None and "추정(대체: 지역 전체)" in b.note
+        assert b.substitute is True  # 계약 2026-10-09.7: 판별 컬럼
         fp = db_session.scalars(
             select(FieldProvenance).where(
                 FieldProvenance.entity == "benchmark",
@@ -293,6 +294,7 @@ def test_living_area_without_sample_uses_region_wide_substitute(
         ).one()
         assert fp.label == "추정" and "대체" in (fp.reason or "")
     assert set(res.substituted) == {gyeyang, _la(region, "28260")}
+    assert all(not b.substitute for b in _rows(db_session) if b.living_area not in set(res.substituted))
 
 
 def test_no_sample_anywhere_creates_no_rows(db_session: Session, add_raw: AddRaw, region: Region) -> None:

@@ -242,6 +242,9 @@ class FakeContext:
         self.log.append(f"route {pattern}")
         self.handler = handler
 
+    def route_web_socket(self, pattern: str, handler: Callable[[Any], None]) -> None:
+        self.log.append(f"route_web_socket {pattern}")
+
     def on(self, event: str, cb: Callable[[Any], None]) -> None:
         if event == "request":
             self.listeners.append(cb)
@@ -324,7 +327,8 @@ def test_f1b_render_route_installed_before_goto_and_private_subrequests_aborted(
 
     result, fake = _run(monkeypatch, url, script, _resolver({"intranet.corp-internal.kr": ["192.168.0.9"]}))
     assert result.ok and result.error is None
-    assert fake.log[:2] == ["route **/*", f"goto {url}"]  # 검사 훅이 이동보다 먼저
+    assert fake.log[:3] == ["route **/*", "route_web_socket **/*", f"goto {url}"]  # 검사 훅이 이동보다 먼저
+    assert str(fake.chromium.launch_kwargs["proxy"]["server"]).startswith("http://127.0.0.1:")  # 출구 프록시
     outcomes = {r.request.url: r.outcome for r in fake.context.routes}
     assert outcomes[url] == "continue"
     assert outcomes["https://cdn.public-site.kr/pop.jpg"] == "continue"
@@ -346,14 +350,18 @@ def test_f1b_render_pins_main_host_to_validated_ip(monkeypatch: pytest.MonkeyPat
     url = "https://www.public-site.kr/index.html"
     result, fake = _run(monkeypatch, url, lambda u: [FakeRequest(u, navigation=True)], resolver)
     args = fake.chromium.launch_kwargs.get("args") or []
-    assert f"--host-resolver-rules=MAP www.public-site.kr {PUBLIC_IP}" in args
+    rules = f"MAP www.public-site.kr {PUBLIC_IP}, MAP * ~NOTFOUND, EXCLUDE 127.0.0.1"
+    assert f"--host-resolver-rules={rules}" in args
     assert result.ok
 
 
 def test_f1b_render_pin_ipv6_bracketed() -> None:
     guard = PlaywrightRenderer(allow_private=False, resolver=lambda h: ["2606:4700:4700::1111"]).guard()
     assert guard.prepare("https://v6.public-site.kr/") is None
-    assert guard.launch_args() == ["--host-resolver-rules=MAP v6.public-site.kr [2606:4700:4700::1111]"]
+    assert guard.launch_args()[0] == (
+        "--host-resolver-rules=MAP v6.public-site.kr [2606:4700:4700::1111], "
+        "MAP * ~NOTFOUND, EXCLUDE 127.0.0.1"
+    )
 
 
 def test_f1b_render_redirect_hop_to_private_discards_result(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -383,7 +391,8 @@ def test_f1b_render_main_navigation_blocked_by_route_is_error(monkeypatch: pytes
 def test_f1b_browser_guard_allow_private_passes_everything() -> None:
     guard = PlaywrightRenderer(allow_private=True).guard()
     assert guard.prepare("http://127.0.0.1:8000/") is None
-    assert guard.url_reason("http://10.0.0.1/") is None and guard.launch_args() == []
+    assert guard.url_reason("http://10.0.0.1/") is None
+    assert not any(a.startswith("--host-resolver-rules") for a in guard.launch_args())
     assert guard.url_reason("file:///etc/passwd") is not None  # 스킴 제한은 그대로
 
 

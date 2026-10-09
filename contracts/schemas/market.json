@@ -89,7 +89,7 @@
       "properties": {
         "id": { "type": "integer" },
         "snapshot_id": { "description": "이 행을 조립한 스냅샷(계약 2026-10-09.6, G1 요청 — 재조립이 발행 스냅샷이 인용한 행을 지우지 않게). null = 0006 이전 행·사람 입력(모든 스냅샷에 보인다).", "type": ["integer", "null"] },
-        "substitute": { "description": "지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다.", "type": "boolean" },
+        "substitute": { "description": "지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. 값 = DB benchmark.substitute 컬럼(계약 2026-10-09.7 — note 문자열 판별 대신).", "type": "boolean" },
         "living_area": { "type": ["string", "null"] },
         "name": { "type": "string" },
         "completed_year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": ["integer", "null"] },

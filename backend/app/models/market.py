@@ -63,6 +63,8 @@ class Benchmark(Base):
     # 0006 (계약 2026-10-09.6, G1 요청): 이 행을 조립한 스냅샷 — 재조립이 발행 스냅샷이 인용한 행을
     # 지우지 않게. NULL = 이전 행·사람 입력
     snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("snapshot.id"), index=True)
+    # 0007 (계약 2026-10-09.7): 지역 전체 대체 행(D9-2, 라벨 추정) — note 문자열 대신 이 컬럼으로 판별한다
+    substitute: Mapped[bool] = mapped_column(Boolean, server_default=false())
 
 
 class RtmsTrade(Base):

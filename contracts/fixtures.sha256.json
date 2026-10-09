@@ -1,6 +1,6 @@
 {
  "description": "contracts/fixtures/** sha256. 픽스처를 바꾸면 backend/scripts/fixture_manifest.py --reason 으로 다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6).",
- "reason": "R3b G2: 호재 종류 classify·단계 입력(종류 제외)·wait_new 근거(미해결 제외) — 합성 판정 녹화 재생성",
+ "reason": "R3b 마무리: 계약 .7 winner_label(당첨일 라벨이 전매 종료 요건 근거에 합쳐짐)로 상황 decide payload 1건 변경 — 합성 판정 녹화 재생성",
  "files": {
   "incheon_gimpo_2026-10-08/complexes.json": "68b9562848557427e55bf4d36e73de570e818405d3a4b52a3b10a63ff8c9086a",
   "incheon_gimpo_2026-10-08/expected_scores.json": "eb2bbbcc483d495036df658a01639bf59d6cef48c45d1840104bdec3a5987a87",
@@ -139,7 +139,7 @@
   "incheon_gimpo_2026-10-08/judgments/verify/ad247f77164025ef3d3187ff868c343821f3bac1cfb808857446c9f0cd1b1e90.json": "8772b41ee3d6a1cd04ca54cb1c16cd72da8952894d5e36d17b482596958091ff",
   "incheon_gimpo_2026-10-08/judgments/verify/b822f948875f8f42865451bbe8de6314b709923c36898dc5c06c31fd666fca8b.json": "3f098ad3798374754a55d99d09cb72c9e76e93b9c327bd65180cf9465c7d8105",
   "incheon_gimpo_2026-10-08/judgments/verify/e9b240750fb14c8b516f806a92e7e00864c9301a0543935b83f4446c1b228747.json": "1f1abce0eefe4263068cbe5acb8b32f8b3b6481660f68a3af2a17208ceef90ea",
-  "incheon_gimpo_2026-10-08/judgments_synth/judgments/_index.json": "4508d98a5f2c11bbc4bc3788f04f44ec3ba37c1962f1abef6260ac1bd6658a6d",
+  "incheon_gimpo_2026-10-08/judgments_synth/judgments/_index.json": "67e08615f55c37d59b32660cfc37452bd4f608a53023ce9b33b964bbc23cd2b5",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/_meta.json": "370fbd6ed7541b45fde48800134dc7c7c5d7e71b0e2d2c3d956d45d18d47ae5d",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/01a1bdb0ee5dce9f4099ff0ad7f994320d81daeeeaf7ccd638add08f73023d9e.json": "a43e20cf9f907d81904ca2544032bd4718564ed56d6305fb1e5d490296794a69",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/03f8acfd0ad4fcc277ec43efc2a56923ac6e423709c86ea0d7b03229604bf63e.json": "26764c4656d51e634bc30832f95271f687485a7e4cd69f71ee43e52ad24463f3",
@@ -229,10 +229,10 @@
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/fde1f4c3c14e33f63c47e2b987505947f8f59a44c5e37d67860671cb3eec6dcc.json": "1d772b7374cc21f579c5d00790df33aa6eb22e77697e3ba1eec5b8fa68ea196e",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/ffd573d00ebb4dc04595f1be73d186769fc21afcb8203225a8f7de4d17765ed5.json": "56e0fe5937c24638152e463687fdef523759945bf62889254e61120e0ec8acbf",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/1d59491bd9c2e5d0d595b756ad4789ad2a363b88ea472c3726bcc5becf0e8ac4.json": "584d88e1d852cdab7e2c4043781d3f4a3e103257b2693fe453b3fa5f8e21fa62",
+  "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/40959ada211588d1136e1e407e6eb3afaeba7c7cd9e7cf86296950b36b977a02.json": "5ec5551ebb04fc4b753eb2f20f473a642123fb4c500a72c66d030de4c86da62e",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/7d719aa84843b1c6cc2d72503348806af4ce8a0e73190319fafde496aecfc0c2.json": "d0fb323d4f9aae05d13810e129434ebf92332105a5317e125d3123aae6fd9d2f",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/7f2c2da9142a486296d4939c8d33d355eb25560ed97a3b346fc44e11b087fea0.json": "7f8e1ba4ec4cb36a51b70650744e6400036a07541daaa90611507819a848406f",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/8e97196af303d44a2b55bd78db6a5186522b76fb5e01a79587cfeb899f40596d.json": "1dc7434cf6f5406013557ad46a0137befa00ee8ea006583dec8fdd73821035fe",
-  "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/b8b2655f3a0a736bfc6e4c73733f847715542fc3a8d43b1b5166f663c00a03f3.json": "3a8e0607a9472dbcbec46fbd79979e96dd35dab4116bb90c905e5f696cff7ac0",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/extract/106ee6ae85b716719cd024e69bf84a4d419268efef1c769bb1a9e646ef6bf004.json": "56a6515f45edad9a641c5183761a1bd9f2db3f43b0b016d41c6307d24dfe49d7",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/extract/118e0d73ebd1f51d253fc6c02976c0dd0b7057699e6063b659305b7d1b5b67d3.json": "3f96a38adf2c6082d8bc854b72bfd2cc1d1a251b2c932edb73d6c8e2638db44c",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/extract/12a884be7f558ea6e8895432932fe5f476688bcdc2aa421d63e5f1272a1364ae.json": "21c0923e3e6e167bf079fdb66bf0ab3d8f7e07ac362a68bd4203d859330067f4",

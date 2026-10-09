@@ -270,11 +270,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0006() -> None:
+def test_migration_head_is_0007() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0006"]
+    assert script.get_heads() == ["0007"]
+    assert script.get_revision("0007").down_revision == "0006"
     assert script.get_revision("0006").down_revision == "0005"
     assert script.get_revision("0005").down_revision == "0004"
     assert script.get_revision("0004").down_revision == "0003"
@@ -471,6 +472,72 @@ def test_postgres_0005_0006_roundtrip(pg_engine: Engine, postgres_url: str) -> N
     mp = pytest.MonkeyPatch()
     try:
         check_0005_0006_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
+
+
+def check_0006_0007_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0007(계약 2026-10-09.7): benchmark.substitute — 0006 에서 note 표식 행·일반 행을 넣고 head(note → 컬럼 채움)
+    → 0006(컬럼 제거, note 그대로) → head."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")  # 공유 DB(Postgres)는 이미 head — 0006 으로 내려 시작한다
+    command.downgrade(cfg, "0006")
+    engine = sa.create_engine(url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO region (id, name, query_text, selections, sido_codes, sigungu_codes, "
+                    "legal_dong_codes, living_areas, age_premium_coef, applyhome_query, status, created_at) "
+                    "VALUES (901, 't', 't', '[]', '[]', '[]', '[]', '[]', '{}', '{}', 'ready', "
+                    "'2026-10-10T00:00:00+09:00')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO benchmark (id, region_id, name, note) VALUES "
+                    "(1, 901, '대체', '[bm:1:1:la_2] · 추정(대체: 지역 전체) — 생활권 la_2 자체 표본 0'), "
+                    "(2, 901, '자기', '[bm:1:1] · 분양가 = 청약홈'), (3, 901, '수동', NULL)"
+                )
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:
+            rows = dict(conn.execute(sa.text("SELECT id, substitute FROM benchmark ORDER BY id")).all())
+        assert {k: bool(v) for k, v in rows.items()} == {1: True, 2: False, 3: False}
+        with engine.begin() as conn:  # 새 행 기본값 false
+            conn.execute(sa.text("INSERT INTO benchmark (id, region_id, name) VALUES (4, 901, '새 행')"))
+            assert not conn.execute(sa.text("SELECT substitute FROM benchmark WHERE id = 4")).scalar_one()
+        command.downgrade(cfg, "0006")
+        insp = sa.inspect(engine)
+        assert "substitute" not in {c["name"] for c in insp.get_columns("benchmark")}
+        with engine.connect() as conn:
+            notes = conn.execute(sa.text("SELECT note FROM benchmark WHERE id = 1")).scalar_one()
+        assert "추정(대체: 지역 전체)" in notes  # 대체 표식(note)은 남는다
+        command.upgrade(cfg, "head")
+        with engine.begin() as conn:
+            assert conn.execute(sa.text("SELECT substitute FROM benchmark WHERE id = 1")).scalar_one()
+            conn.execute(sa.text("DELETE FROM benchmark"))
+            conn.execute(sa.text("DELETE FROM region WHERE id = 901"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0006_0007_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0006_0007_roundtrip(sqlite_url(tmp_path), monkeypatch)
+    engine = sa.create_engine(sqlite_url(tmp_path))
+    try:
+        assert autogen_diff(engine) == []
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.postgres
+def test_postgres_0006_0007_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0006_0007_roundtrip(postgres_url, mp)
     finally:
         mp.undo()
     assert autogen_diff(pg_engine) == []

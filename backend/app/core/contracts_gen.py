@@ -101,6 +101,10 @@ class BenchmarkInput(BaseModel):
     sale_price_84_won: int | None
     trade_median_won: int | None
     is_presale: bool
+    substitute: bool | None = False
+    """
+    지역 전체 대체 행(D9-2: 생활권 자체 표본 0 → 지역 전체 표본 복사, 라벨 추정) — DB benchmark.substitute(계약 2026-10-09.7, 0007). 점수 엔진은 쓴 행이 대체면 식에 '대체(지역 전체)'·라벨 '추정'(N-M4). note 문자열로 판별하지 않는다
+    """
     label: Annotated[
         Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"],
         Field(examples=["확인됨", "추정", "확인 불가"], title="Label"),
@@ -131,7 +135,7 @@ class BenchmarkView(BaseModel):
     """
     substitute: bool
     """
-    지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다.
+    지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. 값 = DB benchmark.substitute 컬럼(계약 2026-10-09.7 — note 문자열 판별 대신).
     """
     living_area: str | None
     name: str
@@ -819,6 +823,10 @@ class ComplexScoreInput(BaseModel):
     resale_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
     """
     전매제한(resale_months·등기 시 해제) 값의 Fact 라벨. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다) — 2026-10-09.2
+    """
+    winner_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+    """
+    당첨자 발표일(winner_date) 값의 Fact 라벨(계약 2026-10-09.7, R3 M2). 전매 종료 = 당첨일 + 전매 기간이므로 유동성 성분·요건 사전 계산(전매 종료) 라벨은 resale_label 과 이 값 중 약한 것. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다)
     """
     resale_release_on_registration: bool | None
     residency_months: int | None

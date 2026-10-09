@@ -359,14 +359,18 @@ def test_n_m4_benchmark_substitute_marked_in_formula_and_label() -> None:
          "move_in_ym": None, "ladders": [], "winner_date": None, "resale_months": None, "resale_release_on_registration": None,
          "residency_months": None, "down_payment_pct": None, "intake_status": None, "intake_path": None}
     )  # fmt: skip
-    rows = [
-        BenchmarkInput(id=i, living_area="la_9", name=f"b{i}", completed_year=2022, sale_year=2024,
-                       sale_price_84_won=500_000_000, trade_median_won=600_000_000, is_presale=False, label="확인됨")
-        for i in (1, 2, 3)
-    ]  # fmt: skip
-    own = benchmark_component(cx, rows, asof_date="2026-10-07")
+    def rows_(substitute: bool) -> list[BenchmarkInput]:
+        return [
+            BenchmarkInput(id=i, living_area="la_9", name=f"b{i}", completed_year=2022, sale_year=2024,
+                           sale_price_84_won=500_000_000, trade_median_won=600_000_000, is_presale=False,
+                           substitute=substitute, label="확인됨")
+            for i in (1, 2, 3)
+        ]  # fmt: skip
+
+    own = benchmark_component(cx, rows_(False), asof_date="2026-10-07")
     assert SUBSTITUTE_TEXT not in own.formula_text and own.label == "확인됨"
-    sub = benchmark_component(cx, rows, asof_date="2026-10-07", substitute_ids={1, 2, 3})
+    # 계약 2026-10-09.7: 대체 표식 = BenchmarkInput.substitute(호출자가 id 목록을 넘기지 않는다)
+    sub = benchmark_component(cx, rows_(True), asof_date="2026-10-07")
     assert SUBSTITUTE_TEXT in sub.formula_text and sub.label == "추정"
     assert sub.reason and SUBSTITUTE_TEXT in sub.reason and "substitute_region" in sub.flags
     assert sub.score == own.score  # 표기만 — 값은 같은 식
@@ -380,6 +384,7 @@ def test_n_m4_pipeline_passes_substitute_label_to_stored_component(
         assert la is not None
         for b in s.scalars(select(Benchmark).where(Benchmark.living_area == la.living_area)):
             b.note = f"{SUBSTITUTE_NOTE} — 생활권 {la.living_area} 자체 표본 0"
+            b.substitute = True  # 계약 2026-10-09.7: 판별은 컬럼(note 는 설명)
         s.commit()
         area = la.living_area
     run_pipeline(_ctx(make_ctx, factory, jev), seeded)
@@ -507,7 +512,7 @@ def test_c3_extract_over_32_fields_is_split_not_truncated(
 # ====================================================================== M2 당첨일 라벨
 
 
-def test_m2_winner_date_label_folds_into_resale_label(factory: sessionmaker[Session], seeded: int) -> None:
+def test_m2_winner_date_label_in_liquidity_label(factory: sessionmaker[Session], seeded: int) -> None:
     with factory() as s:
         for fp in s.scalars(
             select(FieldProvenance).where(
@@ -524,16 +529,15 @@ def test_m2_winner_date_label_folds_into_resale_label(factory: sessionmaker[Sess
         assert f2.labels["winner"] == "추정" and f2.labels["resale"] == "확인됨"
         ci = complex_input(f2, snap.asof_date)
         assert ci.winner_date is not None and ci.resale_label == "확인됨"
-    # 전매 종료 = 당첨일 + 기간 → 라벨은 약한 쪽. 계약 .6 winner_label 이 생기면 빌더가 싣는다(그 전에는 payload 불변)
+    # 계약 2026-10-09.7: 빌더(파이프라인 입력 조립)가 당첨일 라벨을 winner_label 로 싣는다
+    assert ci.winner_label == "추정"
+    # 전매 종료 = 당첨일 + 기간 → 라벨은 약한 쪽(유동성 성분 라벨 합성에 포함)
     assert resale_input_label("확인됨", "추정") == "추정" and resale_input_label(None, None) is None
-    with_winner = ci.model_copy(update={"winner_label": "추정"})
-    liq = liquidity_component(with_winner, asof_date="2026-10-07")
-    if liq.score is not None:
-        assert liq.label == "추정" and liq.reason and "전매 추정" in liq.reason
-    assert (
-        liquidity_component(ci, asof_date="2026-10-07").label
-        == liquidity_component(ci.model_copy(update={"winner_label": None}), asof_date="2026-10-07").label
-    )
+    liq = liquidity_component(ci, asof_date="2026-10-07")
+    assert liq.score is not None, liq
+    assert liq.label == "추정" and liq.reason and "전매 추정" in liq.reason
+    plain = liquidity_component(ci.model_copy(update={"winner_label": None}), asof_date="2026-10-07")
+    assert plain.label != "추정" or "전매 추정" not in (plain.reason or "")
 
 
 # ====================================================================== F2 가격 출처 라벨 · wait_new 12개월

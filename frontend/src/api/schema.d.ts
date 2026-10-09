@@ -686,6 +686,11 @@ export interface components {
             sale_price_84_won: number | null;
             trade_median_won: number | null;
             is_presale: boolean;
+            /**
+             * @description 지역 전체 대체 행(D9-2: 생활권 자체 표본 0 → 지역 전체 표본 복사, 라벨 추정) — DB benchmark.substitute(계약 2026-10-09.7, 0007). 점수 엔진은 쓴 행이 대체면 식에 '대체(지역 전체)'·라벨 '추정'(N-M4). note 문자열로 판별하지 않는다
+             * @default false
+             */
+            substitute?: boolean;
             label: components["schemas"]["Label"];
         };
         /**
@@ -696,7 +701,7 @@ export interface components {
             id: number;
             /** @description 이 행을 조립한 스냅샷(계약 2026-10-09.6, G1 요청 — 재조립이 발행 스냅샷이 인용한 행을 지우지 않게). null = 0006 이전 행·사람 입력(모든 스냅샷에 보인다). */
             snapshot_id: number | null;
-            /** @description 지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. */
+            /** @description 지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. 값 = DB benchmark.substitute 컬럼(계약 2026-10-09.7 — note 문자열 판별 대신). */
             substitute: boolean;
             living_area: string | null;
             name: string;
@@ -1843,6 +1848,8 @@ export interface components {
             resale_months: number | null;
             /** @description 전매제한(resale_months·등기 시 해제) 값의 Fact 라벨. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다) — 2026-10-09.2 */
             resale_label?: components["schemas"]["Label"] | null;
+            /** @description 당첨자 발표일(winner_date) 값의 Fact 라벨(계약 2026-10-09.7, R3 M2). 전매 종료 = 당첨일 + 전매 기간이므로 유동성 성분·요건 사전 계산(전매 종료) 라벨은 resale_label 과 이 값 중 약한 것. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다) */
+            winner_label?: components["schemas"]["Label"] | null;
             resale_release_on_registration: boolean | null;
             residency_months: number | null;
             /** @description 거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2 */

@@ -78,7 +78,6 @@ __all__ = [
     "gap_of",
     "load_facts",
     "ocr_pending_fields",
-    "substitute_benchmark_ids",
 ]
 
 LABELS: Final = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
@@ -231,7 +230,7 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
             "residency": _label(residency.label) if residency else None,
             "down_payment": _label(down.label) if down else None,
             "move_in": _label(move_in.label) if move_in else None,  # 계약 .4 move_in_label(M2)
-            # 당첨일 라벨(R3 M2): 계약에 winner_label 이 없어 점수 입력에서 resale_label 에 합친다(complex_input)
+            # 당첨일 라벨(R3 M2) → ComplexScoreInput.winner_label(계약 .7) — 유동성·전매 종료 라벨 합성
             "winner": _label(winner.label) if winner else None,
         }
         for fp in (
@@ -395,6 +394,7 @@ def build_score_inputs(
             sale_price_84_won=b.sale_price_84_won,
             trade_median_won=b.trade_median_won,
             is_presale=bool(b.is_presale),
+            substitute=bool(b.substitute),  # 계약 2026-10-09.7: 지역 전체 대체 행(N-M4 식·라벨 '대체')
             label=_label(b.sale_price_label) or "추정",
         )
         for b in session.scalars(
@@ -436,22 +436,6 @@ def build_score_inputs(
         supply=supply,
         unsold=unsold,
         complexes=[complex_input(f, snapshot.asof_date, ladders.get(f.complex_id, [])) for f in facts],
-    )
-
-
-def substitute_benchmark_ids(session: Session, region: Region) -> frozenset[int]:
-    """지역 전체 대체 벤치마크 행(D9-2: 생활권 자체 표본 0 → 지역 전체 복사, note '추정(대체: 지역 전체)') id.
-
-    점수 엔진(``analysis.score.run_detailed(substitute_benchmarks=…)``)이 식·라벨에 '대체(지역 전체)'를 적는다(N-M4).
-    계약 BenchmarkInput 에 표식이 생기면(.6 요청) 그 필드로 바꾼다."""
-    from app.normalize.benchmark import SUBSTITUTE_NOTE
-
-    return frozenset(
-        bid
-        for bid, note in session.execute(
-            select(Benchmark.id, Benchmark.note).where(Benchmark.region_id == region.id)
-        )
-        if note and SUBSTITUTE_NOTE in note
     )
 
 
