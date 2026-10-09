@@ -9,10 +9,15 @@
     기준월까지 최근 12개월 창(입주월이 더 늦으면 입주월부터), 고점(peak)은 입주월 이후 받은 전체 거래.
     같은 단지에 Open API 행이 있으면 재가공 행은 쓰지 않는다(rtms_trade 규칙).
 
-단지 매칭 = 정규화한 단지명 + 법정동(문자열 처리 — 판단 아님). 공고 주소 → 법정동(``living_area.assign_legal_dong``),
-실거래 → 법정동 코드(있으면) 또는 원문 조회 주소의 LAWD_CD + 동 이름(umdNm). 이름은 같거나(정확) 한쪽이 다른
-쪽을 포함(4자 이상)해야 하고, 포함 매칭은 사용승인 연도(buildYear)가 입주예정 연도 ±1 이어야 한다. 후보가 둘 이상이면
-매칭하지 않고 '확인 불가(매칭 모호)'로 기록한다(``BenchmarkBuild.unmatched`` → 잡 stats).
+단지 매칭(D10-5) = 정규화한 단지명 **완전 일치** + 법정동 일치(문자열 처리 — 판단 아님). 정규화는 공백·대소문자·
+문장부호와 잔여 공고 회차 괄호만 지우고 차수·단지·블록 번호는 남긴다. 포함(contains)·준공연도 근사 매칭은 하지 않는다.
+공고 주소 → 법정동(``living_area.assign_legal_dong``), 실거래 → 법정동 코드(있으면) 또는 원문 조회 주소의 LAWD_CD +
+동 이름(umdNm). 후보가 둘 이상이면 매칭하지 않고 '확인 불가(매칭 모호)'로 기록한다(``BenchmarkBuild.unmatched``).
+지역 시군구 안 주소인데 법정동으로 못 바꾸면 '확인 불가(법정동 변환 실패)'로 기록한다.
+84㎡ 최근접 주택형이 전용 80~85㎡ 밖(예: 74㎡만 있는 단지)이면 80~85㎡ 실거래와 비교하지 않고 기록한다.
+분양가 라벨(sale_price_label)은 분양가 원천의 라벨이다(청약홈 공식 API = 확인됨, 대체 행 = 추정) — 실거래 라벨은
+실거래 출처 행·note 에 따로 둔다.
+원문은 같은 URL 의 최신 원문만 읽는다(매일 다시 받은 옛 원문을 다시 읽지 않는다). 법정동·원문 행은 한 번에 읽는다.
 
 sale_period = 분양(모집공고) 연도 ≥ 기준연도 − 3 → '고가 분양기', 그 전 → '저가 분양기' (라벨 추정, 식은 note).
 분양권 거래(입주 전, ``rtms_trade.is_presale``)만 있는 단지는 ``is_presale=true`` 행(점수 제외).
@@ -38,7 +43,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Final
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.analysis.price import judge_type
@@ -46,7 +51,7 @@ from app.analysis.types import Label, weakest_label
 from app.core.contracts_gen import ProvenanceRow
 from app.core.paths import resolve_raw_path
 from app.models import Benchmark, FieldProvenance, LegalDong, RawDocument, Region, RtmsTrade
-from app.normalize._text import area_from_long_code
+from app.normalize._text import area_from_long_code, strip_supply_round
 from app.normalize.fields import norm_value
 from app.normalize.living_area import assign_legal_dong, living_area_of
 from app.normalize.provenance import upsert_provenance
@@ -82,9 +87,11 @@ TRADE_AREA_MIN: Final = Decimal(80)
 TRADE_AREA_MAX: Final = Decimal(85)
 TRADE_WINDOW_MONTHS: Final = 12
 RECENT_SALE_YEARS: Final = 3  # sale_period 경계(D9-2) = analysis.score 의 '최근 3년 분양 사례' 와 같은 수
-MIN_CONTAIN_LEN: Final = 4
+_IN_CHUNK: Final = 500  # IN (...) 한 번에 넣는 값 수
 SUBSTITUTE_NOTE: Final = "추정(대체: 지역 전체)"
 AMBIGUOUS: Final = "확인 불가(매칭 모호)"
+LEGAL_FAIL: Final = "확인 불가(법정동 변환 실패)"
+SALE_LABEL: Final[Label] = "확인됨"  # 분양가 원천 = 청약홈 공식 API 공고(대체 행은 추정)
 PRESUBSCRIPTION_SECD: Final = "09"  # 민간사전청약 — 본청약 공고가 다시 나온다(supply.py 와 같은 규칙)
 _API_LIST_PATH: Final = "getAPTLttotPblancDetail"
 _API_MODEL_PATH: Final = "getAPTLttotPblancMdl"
@@ -96,11 +103,10 @@ _TOKEN_SPLIT: Final = re.compile(r"[\s(),\[\]/·]+")
 
 
 def normalize_apt_name(name: str) -> str:
-    """단지명 정규화(문자열 처리만): NFKC·소문자, 괄호 안(회차·블록 설명) 제거, '<영문><숫자>블록'·'<숫자>BL' 제거,
-    한글·영문·숫자 밖 문자 제거. '힐스테이트 레이크 송도 2차' == '힐스테이트레이크송도2차'."""
-    s = unicodedata.normalize("NFKC", name).lower()
-    s = re.sub(r"\([^)]*\)|\[[^\]]*\]", "", s)
-    s = re.sub(r"[a-z]{0,3}\d+(?:-\d+)?\s*(?:블록|bl)", "", s)
+    """단지명 정규화(문자열 처리만, D10-5): NFKC·소문자, 잔여 공고 회차·공급 구분 괄호 제거, 한글·영문·숫자 밖 문자
+    제거. 차수·단지·블록 번호는 남긴다. '힐스테이트 레이크 송도(2차)' == '힐스테이트레이크송도2차',
+    'AA13-1블록' != 'AA13-2블록'."""
+    s = strip_supply_round(unicodedata.normalize("NFKC", name)).lower()
     return re.sub(r"[^0-9a-z가-힣]", "", s)
 
 
@@ -174,23 +180,53 @@ def iso_ym(value: object) -> str | None:
     return f"{d[:4]}-{d[4:]}"
 
 
+def _tokens(address: str) -> set[str]:
+    return {t for t in _TOKEN_SPLIT.split(address) if t}
+
+
+def _legal_row(r: LegalDong) -> LegalRow:
+    return LegalRow(
+        code=r.code,
+        sido_name=r.sido_name,
+        sigungu_name=r.sigungu_name,
+        eupmyeondong_name=r.eupmyeondong_name,
+        ri_name=r.ri_name,
+        full_name=r.full_name,
+        sigungu_code=r.sigungu_code,
+        active=bool(r.active),
+    )
+
+
 def legal_rows_for(session: Session, address: str) -> list[LegalRow]:
-    names = sorted({t for t in _TOKEN_SPLIT.split(address) if t})
+    names = sorted(_tokens(address))
     return [
-        LegalRow(
-            code=r.code,
-            sido_name=r.sido_name,
-            sigungu_name=r.sigungu_name,
-            eupmyeondong_name=r.eupmyeondong_name,
-            ri_name=r.ri_name,
-            full_name=r.full_name,
-            sigungu_code=r.sigungu_code,
-            active=bool(r.active),
-        )
+        _legal_row(r)
         for r in session.scalars(
             select(LegalDong).where(LegalDong.active.is_(True), LegalDong.eupmyeondong_name.in_(names))
         )
     ]
+
+
+class LegalIndex:
+    """주소 여럿의 법정동 후보를 한 번에 읽어 두는 색인(주소마다 조회하지 않는다 — N+1 없음)."""
+
+    def __init__(self, session: Session, addresses: Iterable[str | None]) -> None:
+        names = sorted({t for a in addresses if a for t in _tokens(a)})
+        self._by_name: dict[str, list[LegalRow]] = {}
+        for i in range(0, len(names), _IN_CHUNK):
+            for r in session.scalars(
+                select(LegalDong).where(
+                    LegalDong.active.is_(True), LegalDong.eupmyeondong_name.in_(names[i : i + _IN_CHUNK])
+                )
+            ):
+                self._by_name.setdefault(r.eupmyeondong_name or "", []).append(_legal_row(r))
+
+    def code(self, address: str | None, scope: set[str]) -> str | None:
+        """``address_legal_code`` 와 같은 규칙(미리 읽은 행으로)."""
+        if not address:
+            return None
+        rows = [r for t in sorted(_tokens(address)) for r in self._by_name.get(t, [])]
+        return assign_legal_dong(address, rows, scope=scope)
 
 
 def address_legal_code(session: Session, address: str | None, scope: set[str]) -> str | None:
@@ -198,6 +234,15 @@ def address_legal_code(session: Session, address: str | None, scope: set[str]) -
     if not address:
         return None
     return assign_legal_dong(address, legal_rows_for(session, address), scope=scope)
+
+
+def region_sigungu_names(session: Session, scope: set[str]) -> set[str]:
+    """지역 법정동의 시군구 이름 토큰('연수구', '김포시') — 법정동 변환 실패를 지역 밖 공고와 가르는 문자열 대조용."""
+    sggs = sorted({c[:5] for c in scope})
+    if not sggs:
+        return set()
+    names = session.scalars(select(LegalDong.sigungu_name).where(LegalDong.sigungu_code.in_(sggs)).distinct())
+    return {p for n in names if n for p in n.split()}
 
 
 def prov_row(
@@ -281,20 +326,41 @@ class _SalePrice:
     span: tuple[int, int] | None
 
 
-def _ok_docs(session: Session, region_id: int, source_kind: str, path_part: str) -> list[RawDocument]:
-    return list(
-        session.scalars(
+def latest_ok_docs(session: Session, region_id: int, source_kind: str, path_part: str) -> list[RawDocument]:
+    """성공 원문 중 URL 마다 최신 1건(id 순). 같은 URL 을 매일 다시 받은 옛 원문은 다시 읽지 않는다."""
+    latest = (
+        select(func.max(RawDocument.id))
+        .where(
+            RawDocument.source_kind == source_kind,
+            RawDocument.region_id == region_id,
+            RawDocument.path.is_not(None),
+            RawDocument.http_status == 200,
+            RawDocument.url.contains(path_part),
+        )
+        .group_by(RawDocument.url)
+    )
+    return list(session.scalars(select(RawDocument).where(RawDocument.id.in_(latest)).order_by(RawDocument.id)))
+
+
+def latest_by_urls(session: Session, urls: Iterable[str]) -> dict[str, RawDocument]:
+    """URL → 성공 원문 최신 1건. 여러 URL 을 한 번에 읽는다(URL 마다 조회하지 않는다 — N+1 없음)."""
+    wanted = sorted(set(urls))
+    out: dict[str, RawDocument] = {}
+    for i in range(0, len(wanted), _IN_CHUNK):
+        for row in session.scalars(
             select(RawDocument)
             .where(
-                RawDocument.source_kind == source_kind,
-                RawDocument.region_id == region_id,
+                RawDocument.url.in_(wanted[i : i + _IN_CHUNK]),
                 RawDocument.path.is_not(None),
                 RawDocument.http_status == 200,
-                RawDocument.url.contains(path_part),
             )
             .order_by(RawDocument.id)
-        )
-    )
+        ):
+            out[row.url] = row
+    return out
+
+
+_ok_docs = latest_ok_docs
 
 
 def _notices(session: Session, region_id: int) -> list[_Notice]:
@@ -373,11 +439,6 @@ class _Group:
     sggs: set[str | None] = field(default_factory=set)
     trades: list[RtmsTrade] = field(default_factory=list)
 
-    @property
-    def build_year(self) -> int | None:
-        years = Counter(t.completed_year for t in self.trades if t.completed_year)
-        return years.most_common(1)[0][0] if years else None
-
 
 def _dong_name(row: LegalDong | LegalRow) -> str:
     return " ".join(p for p in (row.eupmyeondong_name, row.ri_name) if p)
@@ -430,24 +491,13 @@ def _trade_groups(session: Session, region_id: int) -> list[_Group]:
     return list(groups.values())
 
 
-def _match(
-    name: str, dong: str, sgg: str | None, move_in_year: int | None, groups: Sequence[_Group]
-) -> list[_Group]:
-    """정규화 이름 + 법정동 → 후보 묶음(0·1·여럿)."""
-    here = [g for g in groups if g.dong == dong and (sgg is None or sgg in g.sggs or g.sggs <= {None})]
-    exact = [g for g in here if g.name == name]
-    if len(exact) == 1:
-        return exact
-    pool = exact or [
+def _match(name: str, dong: str, sgg: str | None, groups: Sequence[_Group]) -> list[_Group]:
+    """정규화 이름 완전 일치 + 법정동 → 후보 묶음(0·1·여럿). 포함·준공연도 근사 매칭 없음(D10-5)."""
+    return [
         g
-        for g in here
-        if len(name) >= MIN_CONTAIN_LEN
-        and len(g.name) >= MIN_CONTAIN_LEN
-        and (g.name in name or name in g.name)
+        for g in groups
+        if g.name == name and g.dong == dong and (sgg is None or sgg in g.sggs or g.sggs <= {None})
     ]
-    if move_in_year is not None:
-        pool = [g for g in pool if g.build_year is None or abs(g.build_year - move_in_year) <= 1]
-    return pool
 
 
 # ---------------------------------------------------------------- 조립
@@ -463,7 +513,7 @@ class _Case:
     post: list[RtmsTrade]  # 입주 후(분양권이면 분양권) 전체 — 고점
     window: str
     presale: bool
-    label: Label
+    trade_label: Label  # 창 안 실거래 라벨(Open API 만 = 확인됨, 재가공 섞임 = 재가공) — 분양가 라벨과 섞지 않는다
 
 
 @dataclass
@@ -519,19 +569,31 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
     win_start = add_months_ym(asof_ym, -(TRADE_WINDOW_MONTHS - 1))
     models = _model_docs(session, region.id)
     groups = _trade_groups(session, region.id)
-    legal_cache: dict[str, LegalDong | None] = {}
+    notices = [
+        n
+        for n in sorted(_notices(session, region.id), key=lambda x: (x.notice_date or "9999", x.hm, x.pb))
+        if n.housing == "민영" and n.secd != PRESUBSCRIPTION_SECD
+    ]
+    index = LegalIndex(session, (n.address for n in notices))
+    sgg_names = region_sigungu_names(session, scope)
+    codes = sorted({c for n in notices if (c := index.code(n.address, scope)) is not None and c in scope})
+    legal_by_code = (
+        {r.code: r for r in session.scalars(select(LegalDong).where(LegalDong.code.in_(codes)))} if codes else {}
+    )
     out: list[_Case] = []
     taken: dict[tuple[str, str], _Case] = {}  # 실거래 묶음 → 첫(가장 이른) 공고: 분양가 = 최초 공고
 
     def skip(n: _Notice, reason: str) -> None:
         res.unmatched.append({"notice_no": n.pb, "name": n.name, "reason": reason})
 
-    for n in sorted(_notices(session, region.id), key=lambda x: (x.notice_date or "9999", x.hm, x.pb)):
-        if n.housing != "민영" or n.secd == PRESUBSCRIPTION_SECD:
+    for n in notices:
+        code = index.code(n.address, scope)
+        if code is None:
+            if n.address and _tokens(n.address) & sgg_names:
+                skip(n, LEGAL_FAIL)  # 지역 시군구 주소인데 법정동을 못 정함 — 소실 없이 기록
+            continue  # 그 밖은 지역 밖 공고(시도 단위 목록) — 이 지역 벤치마크가 아니다
+        if code not in scope:
             continue
-        code = address_legal_code(session, n.address, scope)
-        if code is None or code not in scope:
-            continue  # 지역 밖(또는 주소로 법정동을 못 정함) — 이 지역 벤치마크가 아니다
         la = living_area_of(code, region.living_areas or [])
         if la is None:
             continue
@@ -548,16 +610,15 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
                 else "확인 불가(분양가 원문 없음)",
             )
             continue
-        if code not in legal_cache:
-            legal_cache[code] = session.get(LegalDong, code)
-        lrow = legal_cache[code]
+        area = area_from_long_code(sale.type_code)
+        if area is None or not TRADE_AREA_MIN <= Decimal(str(area)) <= TRADE_AREA_MAX:
+            skip(n, f"확인 불가(84㎡대 주택형 없음 — 최근접 {sale.type_code}, 실거래 비교 구간 전용 80~85㎡)")
+            continue
+        lrow = legal_by_code.get(code)
         if lrow is None:
             skip(n, "확인 불가(법정동 표 없음)")
             continue
-        move_year = int(n.move_in_ym[:4])
-        if n.move_in_ym is None:
-            continue
-        cands = _match(normalize_apt_name(n.name), _dong_name(lrow), lrow.sigungu_code, move_year, groups)
+        cands = _match(normalize_apt_name(n.name), _dong_name(lrow), lrow.sigungu_code, groups)
         presale = n.move_in_ym > asof_ym
         if not cands:
             skip(n, "입주 전(분양권 거래 없음)" if presale else "실거래 없음(매칭 단지 없음)")
@@ -596,7 +657,7 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
                 post=post,
                 window=f"{start}~{asof_ym}",
                 presale=presale,
-                label=weakest_label("확인됨", trade_label),
+                trade_label=trade_label,
             )
         )
         taken[group_key] = out[-1]
@@ -615,7 +676,7 @@ def _values(case: _Case, asof_year: int) -> dict[str, Any]:
         "sale_year": sale_year,
         "sale_period": period[0] if period else None,
         "sale_price_84_won": case.sale.won,
-        "sale_price_label": case.label,
+        "sale_price_label": SALE_LABEL,
         "trade_low_won": min(prices),
         "trade_median_won": _median_won(prices),
         "trade_high_won": max(prices),
@@ -635,18 +696,36 @@ def _note(case: _Case, vals: dict[str, Any], tag: str, substitute_for: str | Non
         f"{SUBSTITUTE_NOTE} — 생활권 {substitute_for} 자체 표본 0, 원 생활권 {case.living_area}"
         if substitute_for
         else "",
-        f"분양가 = 청약홈 공식 API 공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가(84㎡ 최근접, 확인됨)",
-        f"{kind} = rtms 전용 80~85㎡·해제 제외 {case.window} {vals['n_trades']}건(고점 = 입주 후 받은 전체)",
+        f"분양가 = 청약홈 공식 API 공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가"
+        f"(84㎡ 최근접, 라벨 {vals['sale_price_label']})",
+        f"{kind} = rtms 전용 80~85㎡·해제 제외 {case.window} {vals['n_trades']}건(고점 = 입주 후 받은 전체, "
+        f"라벨 {'추정' if substitute_for else case.trade_label})",
         f"sale_period: {vals['_period_formula']}(라벨 추정)",
     ]
     return " · ".join(p for p in parts if p)
 
 
+def _trade_docs(session: Session, cases: Iterable[_Case]) -> dict[int, RawDocument]:
+    """출처 행에 쓸 실거래 원문 행 — 모든 사례를 한 번에 읽는다(사례마다 조회하지 않는다)."""
+    ids = sorted({t.raw_document_id for c in cases for t in c.post if t.raw_document_id is not None})
+    out: dict[int, RawDocument] = {}
+    for i in range(0, len(ids), _IN_CHUNK):
+        for d in session.scalars(select(RawDocument).where(RawDocument.id.in_(ids[i : i + _IN_CHUNK]))):
+            out[d.id] = d
+    return out
+
+
 def _write_prov(
-    session: Session, row: Benchmark, case: _Case, vals: dict[str, Any], tag: str, sub: bool
+    session: Session,
+    row: Benchmark,
+    case: _Case,
+    vals: dict[str, Any],
+    tag: str,
+    sub: bool,
+    by_id: dict[int, RawDocument],
 ) -> None:
     n, sale = case.notice, case.sale
-    label: Label = "추정" if sub else case.label
+    label: Label = "추정" if sub else SALE_LABEL
     trade_labels: list[Label] = ["확인됨" if t.source == "openapi" else "재가공" for t in case.trades]
     trade_label: Label = "추정" if sub else weakest_label(*trade_labels)
     sub_reason = "대체: 지역 전체" if sub else None
@@ -655,12 +734,6 @@ def _write_prov(
     median_src = sorted(case.trades, key=lambda t: (t.price_won, t.deal_date))[len(case.trades) // 2]
     low = min(case.trades, key=lambda t: (t.price_won, t.deal_date))
     high = max(case.trades, key=lambda t: (t.price_won, t.deal_date))
-    docs = {t.raw_document_id for t in (median_src, low, high, peak) if t.raw_document_id is not None}
-    by_id = (
-        {d.id: d for d in session.scalars(select(RawDocument).where(RawDocument.id.in_(docs)))}
-        if docs
-        else {}
-    )
     span = json_object_at(n.text, "HOUSE_MANAGE_NO", n.hm)
     notice_ex = n.text[span[0] : span[1]] if span else n.name
     rows = [
@@ -739,6 +812,7 @@ def build_benchmarks(session: Session, region_id: int, *, asof_date: str) -> Ben
     res = BenchmarkBuild()
     asof_year = int(asof_date[:4])
     cases = _cases(session, region, asof_date, res)
+    docs = _trade_docs(session, cases)
     area_ids = [str(a["id"]) for a in region.living_areas or []]
     own = [c for c in cases if not c.presale]
     res.samples = {la: sum(1 for c in own if c.living_area == la) for la in area_ids}
@@ -784,7 +858,7 @@ def build_benchmarks(session: Session, region_id: int, *, asof_date: str) -> Ben
             res.updated += 1
         else:
             res.unchanged += 1
-        _write_prov(session, row, case, vals, tag, sub is not None)
+        _write_prov(session, row, case, vals, tag, sub is not None, docs)
     for tag, row in existing.items():
         if tag not in seen:
             unchoose_provenance(session, "benchmark", row.id)
