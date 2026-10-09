@@ -19,6 +19,9 @@ const COLS = [
   'retry',
 ] as const;
 
+/** 소스 표 자리(소스 8종 표 높이) — 늦게 채워져도 아래 패널이 밀리지 않게(CLS) */
+export const SOURCES_MIN_HEIGHT = 'min-h-[24rem]';
+
 /** G7 SourceStatusTable — 소스·최종 수집·성공/실패·http_status·재시도 버튼(POST /jobs retry) */
 export function SourceStatusTable({
   regionId,
@@ -29,7 +32,7 @@ export function SourceStatusTable({
 }) {
   const query = useOpsSources(regionId);
   return (
-    <Section title={t('page.G7.sources')}>
+    <Section title={t('page.G7.sources')} className={SOURCES_MIN_HEIGHT}>
       <QueryState
         query={query}
         empty={(rows) => (rows.length === 0 ? t('page.common.none') : null)}

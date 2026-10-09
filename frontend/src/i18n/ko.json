@@ -649,7 +649,8 @@
         "partial": "부분 일치"
       },
       "loadError": "불러오지 못했습니다: {detail}",
-      "backToList": "단지 리스트로"
+      "backToList": "단지 리스트로",
+      "charts": "차트"
     },
     "share": {
       "title": "공유 링크",

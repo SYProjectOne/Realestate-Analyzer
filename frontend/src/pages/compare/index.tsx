@@ -80,6 +80,8 @@ function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: st
   return (
     <div className="flex flex-col gap-4">
       <CompareGrid view={view} rows={rows} scenarioKey={scenarioKey} />
+      {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
+      <h2 className="sr-only">{t('page.common.charts')}</h2>
       <C06ScoreBreakdown
         data={{ rows, weights: view.components.weights, orientation: 'horizontal' }}
         height={Math.max(180, rows.length * 48)}

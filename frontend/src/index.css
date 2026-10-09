@@ -33,6 +33,11 @@
   color-scheme: dark;
 }
 
+/* 세로 스크롤바가 생길 때 본문이 옆으로 밀리지 않게(데이터가 늦게 채워지는 화면의 레이아웃 이동 CLS) */
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   background-color: rgb(var(--color-bg));

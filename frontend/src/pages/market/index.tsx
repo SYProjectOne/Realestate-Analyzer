@@ -72,6 +72,8 @@ function MarketBody({ market }: { market: Market }) {
   const areaName = (id: string) => market.living_areas.find((la) => la.id === id)?.name ?? id;
   return (
     <div className="flex flex-col gap-4">
+      {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
+      <h2 className="sr-only">{t('page.common.charts')}</h2>
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-2">
           <C03Benchmark data={{ benchmarks: market.benchmarks, asofYear }} />
