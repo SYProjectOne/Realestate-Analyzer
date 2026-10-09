@@ -1,8 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { useClaims, useReviseClaim } from '@/api/hooks';
+import { invalidateFactViews, useClaims, useReviseClaim } from '@/api/hooks';
 import type { ClaimView } from '@/api/types';
 import { Badge, JobProgress, MetaText, useOpenProvenance } from '@/components';
 import { t } from '@/i18n';
@@ -44,6 +45,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
   const openProvenance = useOpenProvenance();
   const search = useGlobalSearch();
   const revise = useReviseClaim();
+  const qc = useQueryClient();
   const textId = useId();
   const [text, setText] = useState(claim.text);
   const [jobId, setJobId] = useState<number | null>(null);
@@ -159,7 +161,8 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
       </form>
       {jobId !== null ? (
         <div data-testid="claim-job">
-          <JobProgress jobId={jobId} />
+          {/* 재검증이 끝나면 강등·복원이 반영된 사실을 다시 읽는다(R3 3차 minor 15) */}
+          <JobProgress jobId={jobId} onDone={() => invalidateFactViews(qc)} />
         </div>
       ) : null}
     </li>

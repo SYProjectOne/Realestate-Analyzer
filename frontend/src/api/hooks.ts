@@ -12,6 +12,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
@@ -592,11 +593,7 @@ export function useCreateHumanCheck(): M<HumanCheckCreate, HumanCheck> {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body) => apiFetch<HumanCheck>('/ops/human-checks', { method: 'POST', body }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['complexes'] });
-      void qc.invalidateQueries({ queryKey: ['snapshots'] });
-      void qc.invalidateQueries({ queryKey: ['ops'] });
-    },
+    onSuccess: () => invalidateFactViews(qc),
   });
 }
 
@@ -627,6 +624,17 @@ export function reportRequest(id: IdLike, filename?: string | null): FileRequest
 
 // ─── 주장 수정 (G7, 계약 2026-10-09.4 · M8) ────────────────
 
+/**
+ * 사실 값이 바뀌었을 수 있을 때(주장 수정·강등·재검증 완료·사람 확인) 그 값을 보이는 캐시를 무효화한다.
+ * 스냅샷 하위 전부(대시보드·리스트·비교·민감도·시장·변경·주장), 단지 상세, 출처 패널, 운영(체크리스트·소스),
+ * 보고서 목록(contradicted 남음 → 생성 차단).
+ */
+export function invalidateFactViews(qc: QueryClient): void {
+  for (const root of ['snapshots', 'complexes', 'provenance', 'ops', 'reports'] as const) {
+    void qc.invalidateQueries({ queryKey: [root] });
+  }
+}
+
 /** GET /snapshots/{sid}/claims?status= (listClaims) — G7 contradicted 목록 */
 export function useClaims(
   sid: IdLike | null | undefined,
@@ -647,7 +655,9 @@ export function useClaims(
  * PATCH /claims/{id} (reviseClaim, 202 → JobRun claim.reverify) — 사람이 고친 문장으로 원자 분할 재검증.
  * 409 conflict = contradicted 아님·이미 분할됨·재검증 대기 중, 422 = 같은 대상(단지·필드)이 아님(D10-3) —
  * ApiError.detail 을 화면이 보인다. 409 는 목록이 낡았다는 뜻이므로 claims 목록을 다시 불러온다(R3 재리뷰 F3).
- * 접수되면 사실 주장의 사실이 강등되므로(D10-3) 체크리스트도 무효화한다.
+ * 접수되면 사실 주장의 사실이 강등되므로(D10-3·D11-3 읽기 오버레이) 그 사실을 보이는 화면 캐시를 전부
+ * 무효화한다(R3 3차 minor 15): 스냅샷 하위(대시보드·리스트·비교·시장·주장)·단지 상세·출처·운영(체크리스트)·
+ * 잡 목록·보고서(생성 차단 여부). 재검증 잡이 끝나면 `invalidateFactViews` 를 한 번 더 부른다(ClaimsPanel).
  */
 export function useReviseClaim(): M<{ id: IdLike; patch: ClaimPatch }, JobRun> {
   const qc = useQueryClient();
@@ -659,9 +669,8 @@ export function useReviseClaim(): M<{ id: IdLike; patch: ClaimPatch }, JobRun> {
     mutationFn: ({ id, patch }) =>
       apiFetch<JobRun>(`/claims/${enc(id)}`, { method: 'PATCH', body: patch }),
     onSuccess: () => {
-      void invalidateClaims();
+      invalidateFactViews(qc);
       void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
-      void qc.invalidateQueries({ queryKey: ['ops', 'checklist'] });
     },
     onError: (err) => {
       if (err instanceof ApiError && err.status === 409) void invalidateClaims();

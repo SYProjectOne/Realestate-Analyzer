@@ -183,6 +183,19 @@ describe('N-M7 탭 범위 토큰(sessionStorage) · 다른 탭 저장소 변경'
     expect(hasStoredWriteToken()).toBe(false);
   });
 
+  it('minor 16: 저장 토큰이 없고 VITE_API_TOKEN(권한 모름 = 쓰기)을 쓰는 중이면 공유 링크가 묻는다', () => {
+    vi.stubEnv('VITE_API_TOKEN', 'env-tok');
+    try {
+      expect(getAuthSnapshot()).toMatchObject({ token: 'env-tok', source: 'env' });
+      expect(hasStoredWriteToken()).toBe(true);
+      // 저장된 읽기 전용 토큰이 이미 env 를 가리고 있으면 공유 토큰으로 바꿔도 잃는 것이 없다
+      setAuth('tok-r', 'read');
+      expect(hasStoredWriteToken()).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('다른 탭이 저장 토큰을 읽기 전용 토큰으로 바꾸면 이 탭은 기존 쓰기 토큰을 탭에 고정 + externalChange', () => {
     const unsubscribe = subscribeAuth(() => {});
     setAuth('tok-w', 'write');
