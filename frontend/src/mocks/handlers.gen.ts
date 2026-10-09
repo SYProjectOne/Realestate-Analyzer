@@ -1532,7 +1532,7 @@ export const generatedHandlers = [
   http.get(mswPath("/health"), () =>
     HttpResponse.json({
       "status": "ok",
-      "contract_version": "2026-10-09.1",
+      "contract_version": "2026-10-09.3",
       "app_version": "0.1.0",
       "db": "ok",
       "judge": "ok",

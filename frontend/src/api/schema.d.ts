@@ -2517,10 +2517,10 @@ export interface components {
         };
         /**
          * Health
-         * @description GET /health — 인증 없음. docker compose 헬스체크와 화면 전역 배너용. status=degraded면 db 또는 judge 중 하나가 정상이 아니다(판정기 장애 시 수집·조회는 계속된다). contract_version은 이 서버가 구현한 계약 버전(contracts/CHANGELOG.md 최신 항목).
+         * @description GET /health — 인증 없음. docker compose 헬스체크와 화면 전역 배너용. status=degraded면 db 또는 judge 중 하나가 정상이 아니다(판정기 장애 시 수집·조회는 계속된다). db=error면 HTTP 503(같은 본문), 그 밖은 200. judge = 지역마다 최신 스냅샷의 degraded 플래그: 하나라도 degraded면 degraded, 스냅샷이 있고 모두 정상이면 ok, 스냅샷이 없거나 DB 장애면 unknown. contract_version은 이 서버가 구현한 계약 버전(contracts/CHANGELOG.md 최신 항목), app_version은 패키지 버전, time은 응답 시각(+09:00).
          * @example {
          *       "status": "ok",
-         *       "contract_version": "2026-10-09.1",
+         *       "contract_version": "2026-10-09.3",
          *       "app_version": "0.1.0",
          *       "db": "ok",
          *       "judge": "unknown",
@@ -6041,6 +6041,15 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+            /** @description DB 장애 — 같은 Health 본문(status=degraded, db=error). docker compose 헬스체크가 실패로 본다. 판정기 장애만이면 200 + judge=degraded */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
         };
     };
     listRegions: {
@@ -6562,6 +6571,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -6697,6 +6707,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -6725,6 +6736,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -6750,6 +6762,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -6834,6 +6847,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };
     };
