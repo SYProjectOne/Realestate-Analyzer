@@ -1,4 +1,4 @@
-"""expected_scores_v2.json (RA §9 (b)단계 draft): §6-4 식으로 다시 계산한 값 — 사람 확인 대기.
+"""expected_scores_v2.json (RA §9 (b)단계): §6-4 식으로 다시 계산한 값 — 사람 확인 완료(세대수 실측 교체 후 고정).
 
 파일에 들어 있는 입력(inputs, 보고서 수치 + 표시된 가정)을 엔진에 넣으면 파일에 적힌 결과가 그대로 나와야 한다.
 (a)단계와의 차이는 파일의 diff_vs_a에 설명이 있어야 한다.
@@ -21,10 +21,10 @@ def _v2() -> dict:  # type: ignore[type-arg]
     return load_json(EXPECTED_V2_PATH)
 
 
-def test_v2_is_draft_waiting_for_human_check() -> None:
+def test_v2_is_human_checked_golden() -> None:
     v2 = _v2()
     assert v2["stage"] == "b"
-    assert v2["status"] == "사람 확인 대기"
+    assert v2["status"] == "사람 확인 완료(2026-10-09, 세대수 실측 교체)"
     assert v2["inputs_source"].startswith("docs/source/incheon_gimpo_report.md")
     assert v2["assumptions"], "보고서에 없는 값은 가정으로 적어야 한다"
 
