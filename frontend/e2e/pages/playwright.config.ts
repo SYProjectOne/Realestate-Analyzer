@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  * 실행: `npx playwright test -c e2e/pages` (frontend/에서). 최초 1회 `npx playwright install chromium`.
  * 저장소 루트 e2e/(WP9, 실제 API)와 별개다.
  */
-const PORT = Number(process.env.E2E_PAGES_PORT ?? 5175);
+const PORT = Number(process.env.E2E_PAGES_PORT ?? 5391);
 const FRONTEND = fileURLToPath(new URL('../..', import.meta.url));
 
 export default defineConfig({
@@ -27,7 +27,8 @@ export default defineConfig({
     command: `npm run dev:msw -- --port ${PORT} --strictPort`,
     cwd: FRONTEND,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // 다른 앱이 같은 포트를 쓰고 있을 수 있다 — 항상 새로 띄운다(포트가 차 있으면 strictPort로 실패)
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });

@@ -37,13 +37,18 @@ export function Header() {
           onAddRegion={() => navigate('/regions/new')}
         />
         <SnapshotPicker snapshots={snapshots} value={snapshotId} onChange={setSnapshot} />
-        {scenarios.length > 0 ? (
-          <ScenarioToggle
-            options={scenarios.map((s) => ({ id: scenarioKey(s), name: s.name }))}
-            value={scenarioId}
-            onChange={setScenario}
-          />
-        ) : null}
+        {/* 자리를 미리 잡아 둔다: 시나리오가 늦게 와도 본문이 밀리지 않게(CLS) */}
+        <span className="inline-flex h-[30px] max-w-full overflow-x-auto mobile:w-full">
+          {scenarios.length > 0 ? (
+            <ScenarioToggle
+              options={scenarios.map((s) => ({ id: scenarioKey(s), name: s.name }))}
+              value={scenarioId}
+              onChange={setScenario}
+            />
+          ) : (
+            <span aria-hidden className="inline-block w-[36rem] max-w-full" />
+          )}
+        </span>
         <span className="ml-auto">
           <ThemeToggle />
         </span>

@@ -47,7 +47,10 @@ test.describe('화면 10개 핵심 요소', () => {
     await ready(page, '/complexes', P.G2.title);
     const table = page.getByRole('table', { name: P.G2.table });
     await expect(table.locator('tbody tr').first()).toBeVisible();
-    await page.getByLabel(P.G2.filter.intake_status).selectOption('가능');
+    await page
+      .getByRole('search', { name: P.G2.filters })
+      .getByLabel(P.G2.filter.intake_status)
+      .selectOption('가능');
     await expect(page).toHaveURL(/intake_status=/);
     await expect(page.getByRole('link', { name: P.G2.csv })).toHaveAttribute(
       'href',
