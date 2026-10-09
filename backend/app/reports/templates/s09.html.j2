@@ -1,0 +1,42 @@
+{% from "macros.html.j2" import fact, sec_head %}
+<section id="s9">
+  {{ sec_head(9) }}
+  <p class="lead">접속 불가 {{ data.failed_sources | length }}건, 미해결 판정 {{ data.unresolved_calls | length }}건, 검증 미확정 주장 {{ data.claims | rejectattr("status", "equalto", "verified") | list | length }}건{% if data.degraded %}, 판정기 장애로 미판정 모드{% endif %}.</p>
+  {% if data.degraded %}<p class="disclaimer">미판정 모드: 판정기를 쓸 수 없어 점수를 계산하지 않았다 — 복구 후 재판정 잡이 자동 등록된다.</p>{% endif %}
+  <h3>9-1. 접속 불가·수집 실패(실패도 데이터)</h3>
+  <table>
+    <thead><tr><th>출처</th><th>종류</th><th>단지</th><th>결과</th><th>확인일</th></tr></thead>
+    <tbody>
+    {% for f in data.failed_sources %}<tr><td class="url">{{ f.url }}</td><td>{{ f.source_kind }}</td><td>{{ f.complex_name }}</td><td>{{ f.status }}</td><td>{{ f.fetched_at }}</td></tr>
+    {% else %}<tr><td colspan="5">실패 없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <h3>9-2. 라벨 분포(채택된 출처 행)</h3>
+  <table>
+    <thead><tr>{% for k in ("확인됨", "추정", "비공식", "재가공", "확인 불가") %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+    <tbody><tr>{% for k in ("확인됨", "추정", "비공식", "재가공", "확인 불가") %}<td class="num">{{ data.label_counts.get(k, 0) }}건</td>{% endfor %}</tr></tbody>
+  </table>
+  <p class="note">추정 = 산술·가정, 비공식 = 언론·홍보, 재가공 = 원본이 아닌 가공 데이터(실거래 재가공 사이트 등). 재가공·비공식 값은 점수 근거로 쓸 때 라벨을 그대로 표기했다.</p>
+  <h3>9-3. 미해결 판정(review·escaped·blocked·error — 점수·추천 미사용)</h3>
+  <table>
+    <thead><tr><th>#</th><th>도구</th><th>목적</th><th>단지</th><th>상태</th></tr></thead>
+    <tbody>
+    {% for c in data.unresolved_calls %}<tr><td>{{ c.seq }}</td><td>{{ c.tool }}</td><td>{{ c.purpose }}</td><td>{{ c.complex_name }}</td><td>{{ c.status }}</td></tr>
+    {% else %}<tr><td colspan="5">미해결 없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <h3>9-4. 검증 미확정 주장(unsupported·review·분할 재검증)</h3>
+  <table>
+    <thead><tr><th>섹션</th><th>주장</th><th>상태</th></tr></thead>
+    <tbody>
+    {% for c in data.claims if c.status != "verified" %}<tr><td>{{ c.section }}</td><td>{{ c.text }}</td><td>{{ c.status or "미검증" }}{% if c.split %} → 원자 주장으로 분할·재검증{% endif %}</td></tr>
+    {% else %}<tr><td colspan="3">없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <h3>9-5. 그 밖의 한계</h3>
+  <ul>
+    <li>법령 원문 미열람 — 규제·전매·거주의무 값은 공고문·청약홈 기재 기준이다.</li>
+    <li>사이트 접속 제한·robots·속도 제한은 우회하지 않는다. 못 읽은 값은 "확인 불가(사유)"다.</li>
+    {% if data.invalid_urls %}<li>형식이 잘못된 출처 URL {{ data.invalid_urls | length }}건(참고자료에서 제외): {% for r in data.invalid_urls %}{{ r.url }}{% if not loop.last %}, {% endif %}{% endfor %}</li>{% endif %}
+  </ul>
+</section>

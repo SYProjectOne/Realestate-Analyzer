@@ -1,0 +1,65 @@
+{% from "macros.html.j2" import fact, sec_head, intake %}
+{% macro complex_rows(rows) %}
+<table>
+  <thead><tr><th>단지</th><th>생활권</th><th>접수 상태</th><th>판정 타입</th><th>현재 구매가 하단</th><th>상단</th><th>계약금(현재)</th><th>전매제한</th><th>거주의무</th><th>입주</th><th>세대수</th></tr></thead>
+  <tbody>
+  {% for c in rows %}
+    {% set pay = c.current_payment %}
+    <tr>
+      <td>{{ c.name }}{% if c.former_names %}<br><span class="small">(구 {{ c.former_names | join(", ") }})</span>{% endif %}</td>
+      <td>{{ c.living_area_name }}</td>
+      <td>{{ intake(c.intake_shown) }}</td>
+      <td>{{ c.basis.type_code if c.basis else "확인 불가(타입 없음)" }}</td>
+      <td>{{ fact(c.price_low) }}</td><td>{{ fact(c.price_high) }}</td>
+      <td>{% if pay %}{{ fact(pay.down_payment_pct) }}{% else %}확인 불가(납부 조건 없음){% endif %}</td>
+      <td>{{ fact(c.facts.resale_months) }}</td><td>{{ fact(c.facts.residency_months) }}</td>
+      <td>{{ fact(c.facts.move_in_ym) }}</td><td>{{ fact(c.facts.units_total) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="11">해당 단지 없음</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+<section id="s4">
+  {{ sec_head(4) }}
+  {% set track_a = data.complexes | selectattr("track", "equalto", "A") | list %}
+  {% set track_b = data.complexes | rejectattr("track", "equalto", "A") | list %}
+  <p class="lead">(A) 청약 진행·예정 {{ track_a | length }}개, (B) 잔여물건 {{ track_b | length }}개. 현재 구매가 = 84㎡ 판정 타입의 (대표층 공급금액 ~ 최고가) + 발코니 + 필수 옵션.</p>
+  <h3>(A) 청약 진행·예정</h3>
+  {{ complex_rows(track_a) }}
+  <h3>(B) 잔여물건 전수</h3>
+  {{ complex_rows(track_b) }}
+  <h3>잔여 이력 · 경쟁률</h3>
+  <table>
+    <thead><tr><th>단지</th><th>구분</th><th>공고번호</th><th>공고일</th><th>타입별 세대</th><th>경쟁률</th><th>결과</th></tr></thead>
+    <tbody>
+    {% for c in data.complexes %}
+      {% for e in c.events %}
+      <tr><td>{{ c.name }}</td><td>{{ e.kind }}</td><td>{{ e.notice_no or "—" }}</td><td>{{ fact(e.notice_date) }}</td><td>{{ e.units_text or "—" }}</td><td>{{ e.ratio_text or "—" }}</td><td>{{ e.result_text or "—" }}</td></tr>
+      {% endfor %}
+      {% for k in c.competition %}
+      <tr><td>{{ c.name }}</td><td>{{ k.kind }} {{ k.round }} 경쟁률</td><td>—</td><td>—</td><td>{{ k.type_code }} 공급 {{ fact(k.supply) }} · 접수 {{ fact(k.applied) }}</td><td>{{ k.ratio_text or "—" }}</td><td>청약홈 경쟁률 원문</td></tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+  <h3>접수 상태(경로별 전부 — 표시값 = 사람 확인 &gt; 공식 팝업 &gt; 렌더 캡처, 비공식 참고는 판정 미사용)</h3>
+  <table>
+    <thead><tr><th>단지</th><th>경로</th><th>상태</th><th>확인일</th><th>근거</th><th>표시값</th></tr></thead>
+    <tbody>
+    {% for c in data.complexes %}{% for i in c.intake %}
+      <tr><td>{{ c.name }}</td><td>{{ i.path_label }}</td><td>{{ i.text }}</td><td>{{ i.checked_at[:10] }}</td><td>{{ i.note or "—" }}</td><td>{{ "채택" if i.used else "참고" }}</td></tr>
+    {% endfor %}{% endfor %}
+    </tbody>
+  </table>
+  <h3>수치 추출·감사(extract / audit) 결과</h3>
+  <table>
+    <thead><tr><th>단지</th><th>입력 검사(screen)</th><th>추출(extract)</th><th>감사(audit)</th></tr></thead>
+    <tbody>
+    {% for r in ea_rows %}<tr><td>{{ r.name }}</td><td>{{ r.screen }}</td><td>{{ r.extract }}</td><td>{{ r.audit }}</td></tr>
+    {% else %}<tr><td colspan="4">호출 기록 없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <p class="note">review 필드는 공고문 원문값을 쓰고 미해결로 남긴다. 제외·경계 단지는 §3 표를 본다.</p>
+</section>

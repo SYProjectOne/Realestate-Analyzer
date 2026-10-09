@@ -1,0 +1,24 @@
+{% from "macros.html.j2" import fact, sec_head %}
+<section id="s10">
+  {{ sec_head(10) }}
+  <p class="lead">판정기 호출 {{ data.total_calls }}회 전부(일련번호 순). 입력은 길이와 요약만 적는다(공개 분양 정보).</p>
+  <h3>도구별 집계 · 사용 임계값</h3>
+  <table>
+    <thead><tr><th>도구</th><th>호출</th><th>상태별</th><th>임계값</th></tr></thead>
+    <tbody>
+    {% for t in data.judge_tools %}<tr><td>jev_{{ t.tool }}</td><td class="num">{{ t.calls }}회</td><td>{% for k, v in t.by_status | dictsort %}{{ k }} {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</td><td>{{ t.thresholds }}</td></tr>
+    {% else %}<tr><td colspan="4">호출 없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <h3>호출 로그</h3>
+  <table>
+    <thead><tr><th>#</th><th>스냅샷</th><th>도구</th><th>목적</th><th>단지</th><th>입력 요약</th><th>결과</th><th>confidence</th><th>반영 위치</th></tr></thead>
+    <tbody>
+    {% for c in data.calls %}
+      <tr><td>{{ c.seq }}</td><td>{{ c.snapshot_id or "—" }}</td><td>{{ c.tool }}</td><td>{{ c.purpose }}</td><td>{{ c.complex_name }}</td><td>{{ c.input_summary }}</td><td>{{ c.result_summary }}</td><td>{{ fact(c.confidence) }}</td><td>{{ c.used_in }}</td></tr>
+    {% else %}
+      <tr><td colspan="9">호출 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>

@@ -17,7 +17,9 @@ from app.reports.job import run_report_job
 from ._seed import add_contradicted_claim
 
 
-def test_cli_writes_html(report_settings: Settings, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_writes_html(
+    report_settings: Settings, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     code = cli.main(["--snapshot", "12", "--format", "html", "--compare", "11", "--out", str(tmp_path)])
     assert code == 0
     files = list(tmp_path.glob("*.html"))

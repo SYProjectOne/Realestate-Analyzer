@@ -54,7 +54,9 @@ def report_settings(report_env: tuple[Settings, Engine, SeedInfo]) -> Settings:
 
 
 @pytest.fixture
-def factory(report_env: tuple[Settings, Engine, SeedInfo], report_settings: Settings) -> sessionmaker[Session]:
+def factory(
+    report_env: tuple[Settings, Engine, SeedInfo], report_settings: Settings
+) -> sessionmaker[Session]:
     return sessionmaker(bind=report_env[1], expire_on_commit=False)
 
 

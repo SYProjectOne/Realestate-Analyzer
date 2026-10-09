@@ -64,11 +64,15 @@ def test_html_for_both_fixture_snapshots_has_eleven_anchored_sections(
 
 
 @pytest.mark.parametrize("sid", [11, 12])
-def test_html_has_zero_external_url_resources(factory: sessionmaker[Session], out_dir: Path, sid: int) -> None:
+def test_html_has_zero_external_url_resources(
+    factory: sessionmaker[Session], out_dir: Path, sid: int
+) -> None:
     html = _html(factory, out_dir, sid, 11 if sid == 12 else None)
     soup = _soup(html)
     ext = re.compile(r"^\s*(https?:)?//", re.I)
-    for tag in soup.find_all(["script", "img", "iframe", "source", "video", "audio", "embed", "track", "input"]):
+    for tag in soup.find_all(
+        ["script", "img", "iframe", "source", "video", "audio", "embed", "track", "input"]
+    ):
         assert not ext.match(str(tag.get("src") or "")), tag
     for tag in soup.find_all("link"):
         assert not ext.match(str(tag.get("href") or "")), tag
@@ -168,7 +172,9 @@ def test_diff_table_between_snapshots(factory: sessionmaker[Session], out_dir: P
     assert {"added", "changed"} <= kinds
     added = {r.complex_id for r in diff.rows if r.kind == "added" and r.table == "score_total"}
     assert added == {4, 7, 8, 9, 10, 11, 13, 14}
-    elif_total = [r for r in diff.rows if r.complex_id == 2 and r.table == "score_total" and r.field == "total"]
+    elif_total = [
+        r for r in diff.rows if r.complex_id == 2 and r.table == "score_total" and r.field == "total"
+    ]
     assert elif_total and elif_total[0].old == "5.74" and elif_total[0].new == "5.70"
     soup = _soup(_html(factory, out_dir, 12, 11))
     table = soup.find("table", id="diff-table")
@@ -185,8 +191,12 @@ def test_exporter_protocol(factory: sessionmaker[Session], out_dir: Path) -> Non
     exp = ReportExporter(factory, out_dir=out_dir / "exp")
     assert isinstance(exp, Exporter)
     snap = SnapshotDTO(
-        id=12, region_id=1, asof_date="2026-10-08", status="published", degraded=False,
+        id=12,
+        region_id=1,
+        asof_date="2026-10-08",
+        status="published",
+        degraded=False,
         created_at="2026-10-08T00:00:00+09:00",
-    )  # fmt: skip
+    )
     path = exp.render(snap, "html")
     assert path.is_file() and path.parent == out_dir / "exp"

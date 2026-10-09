@@ -7,8 +7,10 @@ WP5 ``api/devseed.py`` 가 아직 없어서 WP8 테스트가 직접 적재한다
 - 점수: 회귀 (a)단계 — 보고서 구성 점수(expected_scores.json)를 fixed_components 로, 내장 시나리오 5개 전부.
   스냅샷 12 = 통합 16(rerank #124), 스냅샷 11 = 인천 8(rerank #71, t7 relevance_prev × 10).
 - 사다리: noul 봉투(move_in_plus_1y), 판정 안 된 asof_plus_3y·5y는 status=review 행.
-- decide: 봉투 → decision 행(동률은 ``analysis.score.decide_outcome``), 사전 계산은 ``RequirementPrecalculator``.
-- verify: 봉투 claims → claim 행. #131 contradicted 복합 주장은 분할 자식 2개(verified)를 둔다(T6 — 분할 재검증).
+- decide: 봉투 → decision 행(동률은 ``analysis.score.decide_outcome``),
+  사전 계산은 ``RequirementPrecalculator``.
+- verify: 봉투 claims → claim 행. #131 contradicted 복합 주장은 분할 자식 2개(verified)를 둔다
+  (T6 — 분할 재검증).
 - 호재: classify:catalyst 봉투 items → catalyst 행(review 면 stage 미확정).
 - 벤치마크·공급·미분양: expected_scores_v2.json inputs(재가공·비공식 라벨 그대로) + field_provenance 행.
 지역명은 픽스처에만 있다(코드에는 없음).
@@ -164,12 +166,39 @@ def _region(session: Session) -> None:
     session.flush()
 
 
-_COMPLEX_COLS = (
-    "id region_id applyhome_id name former_names address legal_dong_code living_area official_site_url developer "
-    "trustee builder housing_type land_type price_cap regulated units_total units_general units_special "
-    "officetel_units notice_date apply_dates winner_date contract_dates move_in_ym resale_months "
-    "residency_months rewin_restriction_years inclusion_class inclusion_decision track"
-).split()
+_COMPLEX_COLS = [
+    "id",
+    "region_id",
+    "applyhome_id",
+    "name",
+    "former_names",
+    "address",
+    "legal_dong_code",
+    "living_area",
+    "official_site_url",
+    "developer",
+    "trustee",
+    "builder",
+    "housing_type",
+    "land_type",
+    "price_cap",
+    "regulated",
+    "units_total",
+    "units_general",
+    "units_special",
+    "officetel_units",
+    "notice_date",
+    "apply_dates",
+    "winner_date",
+    "contract_dates",
+    "move_in_ym",
+    "resale_months",
+    "residency_months",
+    "rewin_restriction_years",
+    "inclusion_class",
+    "inclusion_decision",
+    "track",
+]
 
 
 def _complexes(session: Session, prov: _Prov) -> list[dict[str, Any]]:
@@ -192,10 +221,28 @@ def _complexes(session: Session, prov: _Prov) -> list[dict[str, Any]]:
         prov.walk("complex", row.id, c)
     session.flush()
     for d in _load("raw/documents.json"):
-        session.add(RawDocument(**{k: d.get(k) for k in (
-            "id source_kind url fetched_at http_status sha256 path content_type text_path complex_id region_id "
-            "error_text image_hash"
-        ).split()}))  # fmt: skip
+        session.add(
+            RawDocument(
+                **{
+                    k: d.get(k)
+                    for k in [
+                        "id",
+                        "source_kind",
+                        "url",
+                        "fetched_at",
+                        "http_status",
+                        "sha256",
+                        "path",
+                        "content_type",
+                        "text_path",
+                        "complex_id",
+                        "region_id",
+                        "error_text",
+                        "image_hash",
+                    ]
+                }
+            )
+        )
     session.flush()
     for b in bundles:
         cid = b["complex"]["id"]
@@ -382,10 +429,14 @@ def _score_inputs(snapshot_id: int) -> tuple[ScoreInputs, list[int]]:
         rows = {key_to_id[r["key"]]: r for r in t7["rows"]}
         ids = sorted(rows)
         items = sorted(
-            (RerankItem(candidate_id=f"complex:{cid}", complex_id=cid, relevance=r["relevance_prev"], rank=1)
-             for cid, r in rows.items()),
+            (
+                RerankItem(
+                    candidate_id=f"complex:{cid}", complex_id=cid, relevance=r["relevance_prev"], rank=1
+                )
+                for cid, r in rows.items()
+            ),
             key=lambda i: -i.relevance,
-        )  # fmt: skip
+        )
         anchor = RerankAnchor(
             judgment_seq=t7["rerank_judgment_seq_prev"],
             status="ok",
@@ -421,9 +472,13 @@ def _scores(session: Session, info: SeedInfo) -> dict[int, ScoreInputs]:
         snap = session.get(Snapshot, sid)
         assert snap is not None
         dto = SnapshotDTO(
-            id=sid, region_id=1, asof_date=snap.asof_date, status="ready", degraded=False,
+            id=sid,
+            region_id=1,
+            asof_date=snap.asof_date,
+            status="ready",
+            degraded=False,
             created_at=snap.created_at,
-        )  # fmt: skip
+        )
         for sc in BUILTIN_SCENARIOS:
             detail = run_detailed(dto, sc, inputs)
             res = detail.result
@@ -432,7 +487,9 @@ def _scores(session: Session, info: SeedInfo) -> dict[int, ScoreInputs]:
                 scenario_id=sc.id,
                 weights=sc.weights.model_dump(mode="json", exclude_none=True),
                 rerank_judgment_seq=res.rerank_judgment_seq,
-                prev_score_run_id=info.score_runs.get((SNAP_PREV, sc.code or "")) if sid == SNAP_CUR else None,
+                prev_score_run_id=info.score_runs.get((SNAP_PREV, sc.code or ""))
+                if sid == SNAP_CUR
+                else None,
                 created_at=f"{snap.asof_date}T07:00:00+09:00",
             )
             session.add(run)
@@ -505,10 +562,16 @@ def _ladders(session: Session, envs: list[tuple[dict[str, Any], dict[str, Any]]]
             for horizon, years in (("asof_plus_3y", 3), ("asof_plus_5y", 5)):
                 session.add(
                     Ladder(
-                        snapshot_id=sid, complex_id=cid, horizon=horizon, target_ym=f"{asof_year + years}-10",
-                        months_from_asof=years * 12, verdicts={}, annualized={}, status="review",
+                        snapshot_id=sid,
+                        complex_id=cid,
+                        horizon=horizon,
+                        target_ym=f"{asof_year + years}-10",
+                        months_from_asof=years * 12,
+                        verdicts={},
+                        annualized={},
+                        status="review",
                     )
-                )  # fmt: skip
+                )
     session.flush()
 
 
@@ -532,10 +595,12 @@ def _decisions(
         outcome = {
             o.key: o
             for o in decide_outcome(
-                status=e["status"], confidence=e.get("confidence"), probs=res.get("probs", {}),
+                status=e["status"],
+                confidence=e.get("confidence"),
+                probs=res.get("probs", {}),
                 selected=res.get("selected"),
             )
-        }  # fmt: skip
+        }
         cx_inputs = {c.complex_id: c for c in inputs_by_snap[sid].complexes}
         for opt in options:
             o = outcome.get(opt)
@@ -594,14 +659,21 @@ def _claims(session: Session, envs: list[tuple[dict[str, Any], dict[str, Any]]])
             session.flush()
             if c["verdict"] == "contradicted":
                 for k, child in enumerate(
-                    ("고촌센트럴자이 +10%·+20%와 롯데캐슬 +20% 명제는 unlikely이다", "나머지 명제는 uncertain이다")
+                    (
+                        "고촌센트럴자이 +10%·+20%와 롯데캐슬 +20% 명제는 unlikely이다",
+                        "나머지 명제는 uncertain이다",
+                    )
                 ):
                     session.add(
                         Claim(
-                            snapshot_id=e["snapshot_id"], section=section, text=child, verify_status="verified",
-                            parent_claim_id=row.id, ordinal=k,
+                            snapshot_id=e["snapshot_id"],
+                            section=section,
+                            text=child,
+                            verify_status="verified",
+                            parent_claim_id=row.id,
+                            ordinal=k,
                         )
-                    )  # fmt: skip
+                    )
     session.flush()
 
 
@@ -615,10 +687,17 @@ def _market(session: Session, envs: list[tuple[dict[str, Any], dict[str, Any]]])
     def prov(entity: str, eid: int, field_: str, label: str, reason: str | None = None) -> None:
         session.add(
             FieldProvenance(
-                entity=entity, entity_id=eid, field=field_, label=label, reason=reason, source_rank=2,
-                chosen=True, checked_at=checked, value_text=None,
+                entity=entity,
+                entity_id=eid,
+                field=field_,
+                label=label,
+                reason=reason,
+                source_rank=2,
+                chosen=True,
+                checked_at=checked,
+                value_text=None,
             )
-        )  # fmt: skip
+        )
 
     for b in v2["benchmarks"]:
         row_b = Benchmark(
@@ -654,7 +733,7 @@ def _market(session: Session, envs: list[tuple[dict[str, Any], dict[str, Any]]])
         row_u = Unsold(
             region_id=1,
             scope_code=u.get("scope_code"),
-            scope_name=la_names.get(u.get("scope_code") or "", None),
+            scope_name=la_names.get(u.get("scope_code") or ""),
             ym=u["ym"],
             total=u.get("total"),
             post_completion=u.get("post_completion"),
@@ -678,7 +757,9 @@ def _market(session: Session, envs: list[tuple[dict[str, Any], dict[str, Any]]])
                     stage_prob=_dec(item.get("prob")),
                     decision=item.get("decision"),
                     judgment_seq=e["judgment_seq"],
-                    note=None if stage == item["label"] else f"판정기 label {item['label']} · {item.get('decision')}",
+                    note=None
+                    if stage == item["label"]
+                    else f"판정기 label {item['label']} · {item.get('decision')}",
                 )
             )
     session.flush()
@@ -709,9 +790,12 @@ def seed(session: Session) -> SeedInfo:
 def add_contradicted_claim(session: Session, snapshot_id: int) -> int:
     """T15: 분할되지 않은 contradicted 주장 1건(생성 거부 시험용)."""
     row = Claim(
-        snapshot_id=snapshot_id, section="8-F1", text="시험용 contradicted 주장", verify_status="contradicted",
+        snapshot_id=snapshot_id,
+        section="8-F1",
+        text="시험용 contradicted 주장",
+        verify_status="contradicted",
         ordinal=99,
-    )  # fmt: skip
+    )
     session.add(row)
     session.flush()
     return row.id

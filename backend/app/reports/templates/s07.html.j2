@@ -1,0 +1,93 @@
+{% from "macros.html.j2" import fact, sec_head, intake, disclaimer %}
+<section id="s7">
+  {{ sec_head(7) }}
+  <p class="lead">TOP 5 {{ data.top5 | length }}개 단지의 개요·가격·조건·사다리·구성 점수 근거·확인할 것을 단지별로 적는다.</p>
+  {% for s in data.top5 %}
+  {% set c = data.complex_by_id.get(s.complex_id) %}
+  <h3 id="s7-{{ loop.index }}">7-{{ loop.index }}. {{ s.name }} — 종합 {{ s.rank }}위({{ fact(s.total) }}){% if s.tie_group %} · 공동 그룹 {{ s.tie_group }}{% endif %}</h3>
+  {% if c %}
+  <table>
+    <tbody>
+      <tr><th>주소</th><td colspan="3">{{ c.address or "확인 불가(주소 없음)" }}</td></tr>
+      <tr><th>사업주체·시공</th><td colspan="3">{{ c.developer or "—" }} / {{ c.builder or "—" }}</td></tr>
+      <tr><th>생활권</th><td>{{ c.living_area_name }}</td><th>접수 상태</th><td>{{ intake(c.intake_shown) }}</td></tr>
+      <tr><th>세대수</th><td>{{ fact(c.facts.units_total) }}</td><th>공고일</th><td>{{ fact(c.facts.notice_date) }}</td></tr>
+      <tr><th>당첨자 발표</th><td>{{ fact(c.facts.winner_date) }}</td><th>입주</th><td>{{ fact(c.facts.move_in_ym) }}</td></tr>
+      <tr><th>전매제한</th><td>{{ fact(c.facts.resale_months) }} · {{ fact(c.facts.resale_release_on_registration) }}</td><th>거주의무·재당첨</th><td>{{ fact(c.facts.residency_months) }} · {{ fact(c.facts.rewin_restriction_years) }}</td></tr>
+      <tr><th>현재 구매가</th><td colspan="3">{{ fact(c.price_low) }} ~ {{ fact(c.price_high) }}</td></tr>
+    </tbody>
+  </table>
+  <h4>가격표(타입)</h4>
+  <table>
+    <thead><tr><th>타입</th><th>전용</th><th>대표층 공급금액</th><th>최고가</th><th>발코니</th><th>필수 옵션</th><th>비고</th></tr></thead>
+    <tbody>
+    {% for t in c.types %}
+      <tr><td>{{ t.type_code }}{% if t.is_basis %} <span class="badge">판정 타입</span>{% endif %}</td><td>{{ fact(t.area) }}</td><td>{{ fact(t.floor_price) }}</td><td>{{ fact(t.max_price) }}</td><td>{{ fact(t.balcony) }}</td><td>{{ fact(t.options) }}</td><td>{{ t.floor_text or "" }} {{ t.options_text or "" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h4>납부 조건(공고별 — 최신이 현재)</h4>
+  <table>
+    <thead><tr><th>공고</th><th>시행일</th><th>계약금</th><th>1차 계약금</th><th>중도금</th><th>잔금</th><th>조건</th></tr></thead>
+    <tbody>
+    {% for p in c.payments %}
+      <tr><td>{{ p.notice_kind or "" }} {{ p.notice_no }}{% if p.is_current %} <span class="badge">현재</span>{% endif %}</td><td>{{ fact(p.effective_from) }}</td><td>{{ fact(p.down_payment_pct) }}</td><td>{{ fact(p.down_payment_first) }}</td><td>{{ fact(p.interim_pct) }}</td><td>{{ fact(p.balance_pct) }}</td><td>{{ p.interim_terms_text or "—" }}</td></tr>
+    {% else %}
+      <tr><td colspan="7">확인 불가(납부 조건 없음)</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <h4>상승 근거·막을 요인 — 구성 점수와 산출식</h4>
+  <table>
+    <thead><tr><th>성분</th><th>점수</th><th>가중치</th><th>원값</th><th>산출식</th></tr></thead>
+    <tbody>
+    {% for k, comp in s.components.items() %}
+      <tr><td>{{ comp.label }}</td><td>{{ fact(comp.score) }}</td><td class="num">{{ "%.2f" | format(comp.weight) }}</td><td>{{ fact(comp.raw) }}</td><td class="formula">{{ comp.formula_text }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h4>사다리(3개 시점)</h4>
+  <table>
+    <thead><tr><th>시점</th><th>목표</th><th>+5%</th><th>+10%</th><th>+20%</th><th>보합·하락</th><th>상태</th></tr></thead>
+    <tbody>
+    {% for l in data.ladders if l.complex_id == s.complex_id %}
+      <tr><td>{{ l.horizon_label }}</td><td>{{ l.target_ym }}</td><td>{{ fact(l.p5) }}</td><td>{{ fact(l.p10) }}</td><td>{{ fact(l.p20) }}</td><td>{{ fact(l.p_flat) }}</td><td>{{ l.status }}</td></tr>
+    {% endfor %}
+    {% for l in data.ladder_other.get(s.complex_id, []) %}
+      <tr><td>{{ l.horizon_label }}</td><td>{{ l.target_ym }}</td><td>{{ fact(l.p5) }}</td><td>{{ fact(l.p10) }}</td><td>{{ fact(l.p20) }}</td><td>{{ fact(l.p_flat) }}</td><td>{{ l.status }}{% if l.status != "ok" %} — 미해결{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if data.ladders | selectattr("complex_id", "equalto", s.complex_id) | map(attribute="proposition") | select | list %}
+  <p class="small">명제: {{ (data.ladders | selectattr("complex_id", "equalto", s.complex_id) | first).proposition }}</p>
+  {% endif %}
+  <h4>호재</h4>
+  {% set links = data.catalyst_links.get(s.complex_id, []) %}
+  {% if links %}
+  <ul>{% for cat in links %}<li>{{ cat.name }} — {{ cat.stage }} {{ fact(cat.prob) }}</li>{% endfor %}</ul>
+  {% else %}
+  <p class="small">연결된 호재 없음(위치가 확정된 호재만 단지에 연결한다 — 지역 호재는 §5-2).</p>
+  {% endif %}
+  <h4>확인할 것</h4>
+  <ul>
+    {% if c %}
+    {% for k, f in c.facts.items() if f.label == "확인 불가" %}<li>{{ k }}: {{ f | fl }}</li>{% endfor %}
+    {% if c.intake_shown is none or c.intake_shown.status != "가능" %}<li>접수 가능 여부: {{ c.intake_shown.text if c.intake_shown else "기록 없음" }} — 분양사무소 확인(사람 확인 입력)</li>{% endif %}
+    {% endif %}
+    {% for item in data.checklist if c and item.complex_name == c.name %}<li>[{{ item.kind }}] {{ item.title }} ({{ item.status }})</li>{% endfor %}
+  </ul>
+  {% endfor %}
+  <h3>섹션 검증(판정기 verify)</h3>
+  <table>
+    <thead><tr><th>섹션</th><th>결과</th><th>호출</th></tr></thead>
+    <tbody>
+    {% for v in data.verify if v.section.startswith("7") %}
+      <tr><td>{{ v.section }}</td><td>{% for k, n in v.counts | dictsort %}{{ k }} {{ n }}건{% if not loop.last %} · {% endif %}{% endfor %}</td><td>{% for q in v.judgment_seqs %}#{{ q }} {% endfor %}</td></tr>
+    {% else %}
+      <tr><td colspan="3">§7 검증 기록 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ disclaimer() }}
+</section>
