@@ -49,9 +49,10 @@ from app.core.settings import get_settings
 from app.core.time import today_kst
 from app.models import Complex
 
-__all__ = ["ApplyhomeCollector", "month_windows"]
+__all__ = ["HISTORY_YEARS", "ApplyhomeCollector", "month_windows"]
 
 MAX_PAGES = 200  # 창 하나에 2,000행 — 형식이 바뀌어 total 을 못 읽을 때의 안전장치
+HISTORY_YEARS = 10  # 벤치마크용 과거 공고 조회 창(R3 C1, D9-2) — API 자료는 2020년부터 있다(2026-10-09 확인)
 _UNSET = object()
 
 
@@ -140,6 +141,8 @@ class ApplyhomeCollector:
         self._web_detail = web_detail
         # 마지막 fetch 의 시도별 경로: {sido_code: 'api' | 'web' | 'web(api 실패: <사유>)'}
         self.paths: dict[str, str] = {}
+        # 마지막 fetch_history 의 건수(잡 stats 용)
+        self.history_stats: dict[str, int] = {}
 
     @property
     def api_enabled(self) -> bool:
@@ -197,6 +200,86 @@ class ApplyhomeCollector:
                     rows = self._collect_list(http, run, flt, kind, windows, checkpoint)
                     for row in rows:
                         self._collect_row(http, run, session, flt, row, since_day, checkpoint)
+            return run.out
+
+    # --- 벤치마크용 과거 공고 (R3 C1, DECISIONS D9-2)
+    def fetch_history(
+        self, region: Region, snapshot: Snapshot, *, years: int = HISTORY_YEARS
+    ) -> list[RawDocument]:
+        """과거 N년 APT 분양정보(공식 API만) — 벤치마크 분양가의 원천.
+
+        - 시도마다 APT 상세 목록을 [기준월 1일 − N년, 기준일] 한 창으로 받는다(API 는 웹 목록과 달리 12개월 창
+          제한이 없다). 잔여세대·임의공급은 받지 않는다(분양가 = 최초 공고).
+        - 목록 행 중 지역 안(사전 필터)이고 입주예정월 ≤ 기준월인 공고만 주택형별(Mdl)을 받는다. 같은 URL 의
+          성공 원문이 이미 있으면 다시 받지 않는다(지난 공고는 바뀌지 않는다).
+        - 원문은 단지 행에 묶지 않는다(complex_id 없음). 수집 단계 정규화(store)로 넘기지 않으므로 과거 공고가
+          단지 목록에 들어가지 않는다 — 조립(``normalize/benchmark.py``)만 읽는다.
+        - 키가 없으면 [] (웹 목록은 조회 기간 제한이 있어 과거 N년을 받을 수 없다). 실패 응답은 행으로 돌려준다.
+        """
+        self.history_stats = {"lists": 0, "notices_in_region": 0, "models_fetched": 0, "models_reused": 0}
+        if self._key is None:
+            return []
+        asof = date.fromisoformat(snapshot.asof_date[:10])
+        begin = date(asof.year - years, asof.month, 1)
+        asof_ym = f"{asof.year:04d}{asof.month:02d}"
+        stats = self.history_stats
+        with self._resources() as (http, session, own):
+            run = _Run(region=region, store=RawStore(session), out=[], seen=set())
+
+            def checkpoint() -> None:
+                if own:
+                    session.commit()
+                else:
+                    session.flush()
+
+            api = ah_api.ApplyhomeApi(http, self._key)
+            ep = ah_api.ENDPOINTS["apt"]
+            for flt in build_region_areas(region, session).filters.values():
+                rows: dict[tuple[str, str], dict[str, object]] = {}
+                got = 0
+                for page_no in range(1, self._max_pages + 1):
+                    result = api.get(ep.detail, ah_api.list_params("apt", flt.area, begin, asof, page_no))
+                    run.emit(
+                        run.store.save(result, source_kind="applyhome_list", ext="json", region_id=region.id)
+                    )
+                    checkpoint()
+                    stats["lists"] += 1
+                    page = ah_api.parse_page(result)
+                    if not page.ok:
+                        break
+                    for d in page.rows:
+                        hm = str(d.get("HOUSE_MANAGE_NO") or "").strip()
+                        pb = str(d.get("PBLANC_NO") or "").strip()
+                        if hm and pb:
+                            rows.setdefault((hm, pb), d)
+                    got += len(page.rows)
+                    if not page.rows or page.match_count is None or got >= page.match_count:
+                        break
+                for (hm, pb), d in sorted(rows.items()):
+                    area = d.get("SUBSCRPT_AREA_CODE_NM")
+                    address = d.get("HSSPLY_ADRES")
+                    if area not in (None, flt.area) or not flt.matches(str(address) if address else None):
+                        continue
+                    move_in = _parse_ym(d.get("MVN_PREARNGE_YM"))
+                    if move_in is None or f"{move_in[0]:04d}{move_in[1]:02d}" > asof_ym:
+                        continue  # 입주 전 — 입주 후 실거래가 없다(분양권 거래는 rtms 행으로만 판단)
+                    stats["notices_in_region"] += 1
+                    params = ah_api.item_params(hm, pb)
+                    known = run.store.latest_ok("applyhome_detail", ah_api.doc_url(ep.model, params))
+                    if known is not None:
+                        run.emit(Stored(known, created=False))
+                        stats["models_reused"] += 1
+                        continue
+                    run.emit(
+                        run.store.save(
+                            api.get(ep.model, params),
+                            source_kind="applyhome_detail",
+                            ext="json",
+                            region_id=region.id,
+                        )
+                    )
+                    checkpoint()
+                    stats["models_fetched"] += 1
             return run.out
 
     # --- 공식 API

@@ -79,9 +79,12 @@ def _seed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
     add_model(add_raw, rid, "2023000202", [("074.9000A", 50000, 100), ("084.9900A", 60000, 200)])
 
     # A 실거래(법정동 코드 있음)
+    a_doc = add_raw("<response>a</response>", source_kind="rtms", url=rtms_url("28185", "202609"), region_id=rid, ext="xml")
     for price, day in ((80000, "2025-12-15"), (90000, "2026-03-02"), (100000, "2026-09-20")):
-        add_trade(db_session, rid, "힐스테이트레이크송도2차", price, day, legal=SONGDO, built=2024)
-    add_trade(db_session, rid, "힐스테이트레이크송도2차", 105000, "2025-03-10", legal=SONGDO, built=2024)  # 창 밖 고점
+        add_trade(db_session, rid, "힐스테이트레이크송도2차", price, day, legal=SONGDO, built=2024, raw_document_id=a_doc.id)
+    add_trade(  # 창 밖 고점
+        db_session, rid, "힐스테이트레이크송도2차", 105000, "2025-03-10", legal=SONGDO, built=2024, raw_document_id=a_doc.id
+    )
     add_trade(db_session, rid, "힐스테이트레이크송도2차", 200000, "2026-05-01", legal=SONGDO, cancelled=True)
     add_trade(db_session, rid, "힐스테이트레이크송도2차", 60000, "2026-04-01", legal=SONGDO, area="59.98")
     add_trade(db_session, rid, "힐스테이트레이크송도2차", 70000, "2026-04-01", legal="2818510500")  # 다른 동
@@ -90,8 +93,9 @@ def _seed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
     for price, day in ((50000, "2025-12-20"), (65000, "2026-02-10"), (70000, "2026-06-10")):
         add_trade(db_session, rid, "e편한세상김포장기리버", price, day, dong="장기동", built=2026, raw_document_id=doc.id)
     # C 실거래: 이름이 둘 다 '푸르지오작전'을 포함
-    add_trade(db_session, rid, "푸르지오작전1단지", 60000, "2026-01-10", legal=JAKJEON, built=2025)
-    add_trade(db_session, rid, "푸르지오작전2단지", 61000, "2026-01-11", legal=JAKJEON, built=2025)
+    c_doc = add_raw("<response>c</response>", source_kind="rtms", url=rtms_url("28245", "202601"), region_id=rid, ext="xml")
+    add_trade(db_session, rid, "푸르지오작전1단지", 60000, "2026-01-10", legal=JAKJEON, built=2025, raw_document_id=c_doc.id)
+    add_trade(db_session, rid, "푸르지오작전2단지", 61000, "2026-01-11", legal=JAKJEON, built=2025, raw_document_id=c_doc.id)
     db_session.flush()
 
 
