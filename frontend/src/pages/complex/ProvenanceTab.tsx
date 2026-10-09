@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { rawDocumentUrl, useProvenance, useRawText } from '@/api/hooks';
+import { useProvenance, useRawText } from '@/api/hooks';
 import type { ComplexDetail, Fact } from '@/api/types';
-import { EmptyState, FactCell, LabelBadge } from '@/components';
+import { EmptyState, FactCell, LabelBadge, RawDocumentPreview } from '@/components';
 import { t, tDynamic } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { unitOf } from '../_shared';
@@ -147,20 +147,11 @@ export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
                 {prov.data.url}
               </a>
             ) : null}
-            {rawId !== null ? (
-              <a
-                href={rawDocumentUrl(rawId)}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
-                {t('page.G3.provenance.openFile')}
-              </a>
-            ) : null}
           </div>
         ) : prov.isLoading ? (
           <p className="text-sm text-muted">{t('app.loading')}</p>
         ) : null}
+        {rawId !== null ? <RawDocumentPreview key={rawId} rawId={rawId} /> : null}
         {prov.data && rawId === null ? (
           <EmptyState message={t('page.G3.provenance.noRaw')}>
             {prov.data.excerpt ? (

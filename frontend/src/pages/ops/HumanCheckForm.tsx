@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
+import { useCanWrite } from '@/api/auth';
 import { useComplexes, useCreateHumanCheck, useCreateJob } from '@/api/hooks';
 import type { HumanCheck, HumanCheckCreate } from '@/api/types';
 import { useToast } from '@/app/toast';
@@ -31,6 +32,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const complexes = useComplexes(snapshotId, { page: 1, size: 1000, sort: 'name' });
   const create = useCreateHumanCheck();
   const createJob = useCreateJob();
+  const canWrite = useCanWrite();
   const toast = useToast();
   const [complexId, setComplexId] = useState('');
   const [field, setField] = useState<(typeof FIELDS)[number]>('intake_status');
@@ -204,7 +206,8 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
           <button
             type="submit"
-            disabled={create.isPending}
+            disabled={!canWrite || create.isPending}
+            title={canWrite ? undefined : t('auth.readOnlyHint')}
             className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
           >
             {t('page.G7.hc.submit')}

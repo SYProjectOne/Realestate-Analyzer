@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useCanWrite } from '@/api/auth';
 import {
   useCompare,
   useCreateJob,
@@ -137,6 +138,7 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
   const toast = useToast();
   const { setScenario } = useScenario();
   const create = useCreateScenario();
+  const canWrite = useCanWrite();
   const [values, setValues] = useState<ScenarioFormValues>(() =>
     fromScenario(current, current?.is_builtin ? '' : (current?.name ?? '')),
   );
@@ -224,7 +226,8 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
       ) : null}
       <button
         type="submit"
-        disabled={create.isPending}
+        disabled={!canWrite || create.isPending}
+        title={canWrite ? undefined : t('auth.readOnlyHint')}
         className="self-start rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
       >
         {t('page.G5.save')}
@@ -462,6 +465,7 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
   const { snapshotId } = usePageContext();
   const qc = useQueryClient();
   const createJob = useCreateJob();
+  const canWrite = useCanWrite();
   const preview = useScenarioPreview(current?.id ?? null, snapshotId);
   const [jobId, setJobId] = useState<number | null>(null);
   const [baseline, setBaseline] = useState<ScoreRow[] | null>(null);
@@ -498,7 +502,8 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
         <button
           type="button"
           onClick={run}
-          disabled={!current || !snapshotId || createJob.isPending}
+          disabled={!canWrite || !current || !snapshotId || createJob.isPending}
+          title={canWrite ? undefined : t('auth.readOnlyHint')}
           className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G5.run')}

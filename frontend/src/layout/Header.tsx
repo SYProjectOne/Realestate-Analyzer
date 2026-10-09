@@ -1,5 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router';
 import { useScenarios } from '@/api/hooks';
+import { TokenButton } from '@/app/TokenDialog';
 import { RegionPicker, ScenarioToggle, SnapshotPicker } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { scenarioKey, useScenario } from '@/hooks/useScenario';
@@ -49,7 +50,8 @@ export function Header() {
             <span aria-hidden className="inline-block w-[36rem] max-w-full" />
           )}
         </span>
-        <span className="ml-auto">
+        <span className="ml-auto flex items-center gap-2">
+          <TokenButton />
           <ThemeToggle />
         </span>
       </div>

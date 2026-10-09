@@ -4,7 +4,8 @@ import { t } from '@/i18n';
 import { MOBILE_QUERY } from '@/lib/useMediaQuery';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { renderRoute } from '@/test/render';
-import { matching, recordRequests } from '../_shared/testing';
+import { TOKEN_STORAGE_KEY } from '@/api/auth';
+import { captureDownloads, matching, recordRequests } from '../_shared/testing';
 import { COLUMN_STORAGE_KEY } from './ComplexTable';
 import { nextSort, readFilters, toApiFilter, toListParams } from './params';
 
@@ -35,7 +36,9 @@ describe('G2 params', () => {
 });
 
 describe('G2 단지 리스트', () => {
-  it('필터는 URL 쿼리 → API filter[...] 로 전달, CSV 링크도 같은 쿼리', async () => {
+  it('필터는 URL 쿼리 → API filter[...] 로 전달, CSV 도 같은 쿼리(Bearer fetch → 저장)', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const saved = captureDownloads();
     const rec = recordRequests();
     const { router } = renderRoute('/complexes');
     await screen.findByRole('table', { name: t('page.G2.table') });
@@ -51,9 +54,15 @@ describe('G2 단지 리스트', () => {
         true,
       );
     });
-    expect(screen.getByRole('link', { name: t('page.G2.csv') }).getAttribute('href')).toContain(
-      encodeURIComponent('filter[intake_status]'),
-    );
+    await userEvent.click(screen.getByRole('button', { name: t('page.G2.csv') }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const csv = matching(rec.requests, 'GET', /\/complexes\.csv$/);
+    expect(csv).toHaveLength(1);
+    expect(csv[0]?.url.searchParams.get('filter[intake_status]')).toBe('가능');
+    expect(csv[0]?.url.searchParams.has('page')).toBe(false);
+    expect(csv[0]?.headers.get('authorization')).toBe('Bearer tok-write');
+    expect(saved[0]?.filename).toMatch(/\.csv$/);
+    expect(saved[0]?.href).toMatch(/^blob:/);
     rec.stop();
   });
 

@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
+import { resetAuthForTests } from '@/api/auth';
 import { server } from '@/mocks/server';
 
 // 계약 밖 요청은 조용히 통과시키지 않는다 — 핸들러가 없으면 테스트가 실패한다.
@@ -31,6 +32,7 @@ afterEach(() => {
     }
     document.documentElement.classList.remove('dark');
   }
+  resetAuthForTests();
 });
 afterAll(() => server.close());
 
@@ -48,4 +50,14 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
       dispatchEvent: () => false,
     }),
   });
+}
+
+// jsdom 에는 object URL 이 없다 — 다운로드(saveBlob)·원문 이미지 미리보기가 쓴다. 테스트는 spyOn 으로 본다.
+if (typeof URL.createObjectURL !== 'function') {
+  let n = 0;
+  Object.defineProperty(URL, 'createObjectURL', {
+    writable: true,
+    value: (_blob: Blob) => `blob:mock/${++n}`,
+  });
+  Object.defineProperty(URL, 'revokeObjectURL', { writable: true, value: (_url: string) => {} });
 }

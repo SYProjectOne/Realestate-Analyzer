@@ -1,3 +1,4 @@
+import { useCanWrite } from '@/api/auth';
 import { useChecklist, usePatchChecklistItem } from '@/api/hooks';
 import type { ChecklistItem } from '@/api/types';
 import { Badge, EmptyState } from '@/components';
@@ -30,6 +31,7 @@ export function ChecklistPanel({ asof }: { asof: string | null }) {
 
 function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string | null }) {
   const patch = usePatchChecklistItem();
+  const canWrite = useCanWrite();
   return (
     <div className="overflow-x-auto">
       <table aria-label={t('page.G7.checklist')} className="w-full border-collapse text-sm">
@@ -60,7 +62,8 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
                   aria-label={`${t('page.G7.check.status')} · ${item.title}`}
                   value={item.status}
                   data-write
-                  disabled={patch.isPending}
+                  disabled={!canWrite || patch.isPending}
+                  title={canWrite ? undefined : t('auth.readOnlyHint')}
                   onChange={(e) =>
                     patch.mutate({
                       id: item.id,
