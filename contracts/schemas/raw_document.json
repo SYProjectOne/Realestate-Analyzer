@@ -16,10 +16,12 @@
     "path": { "description": "RAW_DIR 기준 상대 경로. 실패 행은 null", "type": ["string", "null"] },
     "content_type": { "type": ["string", "null"] },
     "text_path": { "description": "추출 텍스트(pdfplumber txt, DOM 텍스트) 상대 경로", "type": ["string", "null"] },
+    "table_path": { "description": "추출 표 JSON 상대 경로(공고문 PDF: pdfplumber extract_tables → [{page, tables: [[[셀…]…]…]}], 표가 있는 페이지만). 표가 없거나 실패 행이면 null — 2026-10-09.2", "type": ["string", "null"] },
     "complex_id": { "type": ["integer", "null"] },
     "region_id": { "type": ["integer", "null"] },
-    "error_text": { "description": "DNS·타임아웃·파싱 실패 사유. 'scan'이면 스캔 PDF(확인 불가(스캔))", "type": ["string", "null"] },
-    "image_hash": { "type": ["string", "null"], "maxLength": 64 }
+    "error_text": { "description": "실패·부분 실패 사유 한 단어(+세부). 값 목록(2026-10-09.2):\n- 응답 없음: 'DNS' · 'timeout' · 'connect' · 'TLS' · 'network' · 'robots'(robots.txt 규칙상 불허) · 'robots.txt <코드>'(robots.txt 5xx로 전부 불허) · 'invalid_url' · 'render'(헤드리스 렌더 실패)\n- 성공 응답이지만 내용 문제(공고문 PDF): 'scan'(텍스트 레이어 없음 → 확인 불가(스캔)) · 'ocr'(전 페이지 OCR → 값 라벨 '추정(OCR)') · 'scan_partial:<p,…>' · 'ocr_partial:<p,…>'(1부터 센 페이지) · 'pdf_parse: <사유>'(파서 모두 실패) · 'not_pdf'(200이지만 PDF 아님)\n- 그 밖의 파싱 실패는 '<단계>: <사유>' 형식. 4xx·5xx 응답은 error_text 대신 http_status", "type": ["string", "null"] },
+    "image_hash": { "type": ["string", "null"], "maxLength": 64 },
+    "meta": { "description": "수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, popups[]}, intake_candidates[]}, notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2", "type": ["object", "null"], "additionalProperties": true }
   },
   "$defs": {
     "SourceKind": {
@@ -43,7 +45,8 @@
       "path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.pdf",
       "content_type": "application/pdf",
       "text_path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.txt",
-      "complex_id": 2, "region_id": 1, "error_text": null, "image_hash": null
+      "table_path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.json",
+      "complex_id": 2, "region_id": 1, "error_text": null, "image_hash": null, "meta": null
     }
   ]
 }

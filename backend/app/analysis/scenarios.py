@@ -23,6 +23,7 @@ from app.core.contracts_gen import (
     RequirementRule,
     Scenario,
 )
+from app.core.time import format_d_day
 
 PreStatus = Literal["충족", "미충족", "미입력", "확인 불가"]
 JudgeCheck = Literal["supported", "contradicted", "unknown"]
@@ -208,6 +209,24 @@ _PATH_LABEL: Final[dict[str, str]] = {
 }
 
 
+def _known[T](value: T | None, label: str | None) -> T | None:
+    """공고 필드 라벨이 '확인 불가'면 값이 있어도 쓰지 않는다(계약 2026-10-09.2 *_label)."""
+    return None if label == "확인 불가" else value
+
+
+def _label_note(label: str | None) -> str:
+    """확인됨이 아닌 라벨(추정·비공식·재가공)은 근거 문구에 붙인다."""
+    return f"({label})" if label not in (None, "확인됨", "확인 불가") else ""
+
+
+def _checked_note(c: ComplexScoreInput, asof_date: str) -> str:
+    """접수 상태 확인 시각(intake_checked_at) → ', 확인 YYYY-MM-DD(D±n)'. 없으면 ''."""
+    if not c.intake_checked_at:
+        return ""
+    checked = parse_date(c.intake_checked_at[:10])
+    return f", 확인 {checked.isoformat()}({format_d_day(checked, parse_date(asof_date))})"
+
+
 def _pre(status: PreStatus, evidence: str) -> RequirementPre:
     return RequirementPre(status=status, evidence=f"{evidence} → {status}")
 
@@ -220,7 +239,7 @@ def _param(rule: RequirementRule, scenario: Scenario, key: str) -> Any:
 
 def _access_intake(c: ComplexScoreInput, asof_date: str, prefix: str) -> RequirementPre:
     status, path = c.intake_status, c.intake_path
-    where = _PATH_LABEL.get(path or "", "경로 미상")
+    where = _PATH_LABEL.get(path or "", "경로 미상") + _checked_note(c, asof_date)
     if status is None or status == "확인 불가":
         return _pre("확인 불가", f"{prefix}접수 상태 확인 불가({where})")
     if path == "unofficial_ref":
@@ -242,13 +261,14 @@ def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPr
         holding = _param(rule, sc, "holding_years")
         if holding is None:
             return _pre("미입력", "보유기간 미입력")
-        if c.winner_date is None or c.resale_months is None:
+        resale_months = _known(c.resale_months, c.resale_label)
+        if c.winner_date is None or resale_months is None:
             return _pre("확인 불가", "전매제한 기간 확인 불가")
-        end = add_months_date(parse_date(c.winner_date), c.resale_months)
+        end = add_months_date(parse_date(c.winner_date), resale_months)
         months = int((dec(holding) * 12).quantize(Decimal(1), rounding=ROUND_HALF_UP))
         exit_ = add_months_date(parse_date(asof_date), months)
         reg = " (등기 시 해제)" if c.resale_release_on_registration else ""
-        head = f"전매 종료 {ym_of(end)}{reg}"
+        head = f"전매 종료 {ym_of(end)}{reg}{_label_note(c.resale_label)}"
         tail = f"매도 시작 {ym_of(exit_)}(기준일 + 보유 {num(dec(holding), 1)}년)"
         if end <= exit_:
             return _pre("충족", f"{head} ≤ {tail}")
@@ -259,11 +279,12 @@ def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPr
 
 def _regulation(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
     rule = sc.requirements.regulation
-    res = c.residency_months
+    res = _known(c.residency_months, c.residency_label)
+    res_note = _label_note(c.residency_label)
     if rule.code == "no_residency_obligation":
         if res is None:
             return _pre("확인 불가", "거주의무 확인 불가")
-        return _pre("충족" if res == 0 else "미충족", f"거주의무 {res}개월")
+        return _pre("충족" if res == 0 else "미충족", f"거주의무 {res}개월{res_note}")
     params = sc.params
     parts: list[str] = []
     conflict = False
@@ -271,7 +292,7 @@ def _regulation(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
         parts.append("거주의무 확인 불가")
     elif res > 0:
         accepted = params.accepts_residency_obligation is True
-        parts.append(f"거주의무 {res}개월({'수용' if accepted else '실거주 계획과 충돌'})")
+        parts.append(f"거주의무 {res}개월{res_note}({'수용' if accepted else '실거주 계획과 충돌'})")
         conflict = conflict or not accepted
     else:
         parts.append("거주의무 0개월")
@@ -321,16 +342,18 @@ def _funds_pre(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
     price = price_of(c)
     if price is None:
         return _pre("확인 불가", "현재 구매가 확인 불가(분양가 미공개)")
-    if c.down_payment_pct is None:
+    down_pct = _known(c.down_payment_pct, c.down_payment_label)
+    if down_pct is None:
         return _pre("확인 불가", f"계약금 비율 확인 불가(P_mid {fmt_won(price.mid_won)})")
-    d = dec(c.down_payment_pct)
+    d = dec(down_pct)
     down = (price.mid_won * d / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)
     shortfall = price.mid_won - Decimal(loan) - Decimal(equity)
     ok = down <= equity and shortfall <= 0
     status: PreStatus = "충족" if ok else "미충족"
     lack = "0" if shortfall <= 0 else fmt_won(shortfall)
     evidence = (
-        f"계약금 {fmt_won(down)}({num(d)}%) {'≤' if down <= equity else '>'} 자기자본 {fmt_won(equity)}; "
+        f"계약금 {fmt_won(down)}({num(d)}%{_label_note(c.down_payment_label)}) "
+        f"{'≤' if down <= equity else '>'} 자기자본 {fmt_won(equity)}; "
         f"잔금 부족 {lack} → {status}{_interim_note(c.interim_terms_text)}"
     )
     return RequirementPre(status=status, evidence=evidence)

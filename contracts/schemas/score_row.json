@@ -80,7 +80,7 @@
   },
   "examples": [
     {
-      "complex_id": 2, "name": "엘리프 검단 포레듀", "living_area": "la_2", "living_area_name": "서구(검단)", "score_run_id": 88,
+      "complex_id": 2, "name": "엘리프 검단 포레듀", "living_area": "la_2", "living_area_name": "검단구", "score_run_id": 88,
       "total": { "v": 5.7, "label": "추정", "prov": "st_88_2", "checked_at": "2026-10-08", "unit": "score" },
       "rank": 2, "tie_group": null, "unstable": false,
       "p10": { "v": 0.45, "label": "추정", "reason": "판정기 noul", "prov": "jl_68", "checked_at": "2026-10-07", "unit": "prob" },

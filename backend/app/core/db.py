@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import MetaData, create_engine, event, text
-from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.engine import Connection, Engine, make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -48,6 +48,10 @@ def make_engine(url: str | None = None, *, settings: Settings | None = None, ech
 
         @event.listens_for(engine, "connect")
         def _sqlite_pragmas(dbapi_conn: Any, _record: Any) -> None:
+            # pysqlite 의 자체 BEGIN 을 끈다(SQLAlchemy 문서 'Serializable isolation / Savepoints /
+            # Transactional DDL'). 끄지 않으면 pysqlite 가 BEGIN 을 늦게 내거나 SAVEPOINT 앞에서
+            # COMMIT 해 begin_nested() 롤백이 바깥 트랜잭션까지 깨진다. BEGIN 은 아래 'begin' 이벤트가 낸다.
+            dbapi_conn.isolation_level = None
             cur = dbapi_conn.cursor()
             try:
                 if not in_memory:
@@ -57,6 +61,10 @@ def make_engine(url: str | None = None, *, settings: Settings | None = None, ech
                 cur.execute("PRAGMA synchronous=NORMAL")
             finally:
                 cur.close()
+
+        @event.listens_for(engine, "begin")
+        def _sqlite_begin(conn: Connection) -> None:
+            conn.exec_driver_sql("BEGIN")
 
         return engine
 

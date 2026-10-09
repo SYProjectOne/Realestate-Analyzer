@@ -316,6 +316,29 @@ def test_supply_window_ref_and_penalty() -> None:
     assert nohh.score is None and "세대수" in nohh.formula_text
 
 
+def test_supply_unsold_scoped_by_living_area_scope_codes() -> None:
+    """계약 2026-10-09.2 LivingAreaScoreInput.unsold_scope_codes: 생활권 ↔ 미분양 시군구 매핑."""
+    supply = [SupplyInput(living_area="la_1", year=2028, ym="2028-03", units=4_000, label="추정")]
+    la = {"la_1": 100_000}
+    rising_mine = [
+        UnsoldInput(ym=f"2026-{m:02d}", scope_code="11111", total=100 + m * 10, post_completion=None)
+        for m in (3, 6, 9)
+    ]
+    falling_other = [
+        UnsoldInput(ym=f"2026-{m:02d}", scope_code="22222", total=900 - m * 50, post_completion=None)
+        for m in (3, 6, 9)
+    ]
+    unsold = rising_mine + falling_other
+    mine = supply_component(
+        make_complex(), supply, unsold, households=la, ref_pct=0.08, asof_date=ASOF,
+        unsold_scopes={"la_1": ["11111"]},
+    )  # fmt: skip
+    assert "pen=2" in mine.formula_text and "(생활권)" in mine.formula_text
+    # 매핑이 없으면 지역 합계(기울기 음수 → 감점 없음)
+    total = supply_component(make_complex(), supply, unsold, households=la, ref_pct=0.08, asof_date=ASOF)
+    assert "pen=0" in total.formula_text and "지역 합계" in total.formula_text
+
+
 def test_supply_year_only_rows_spread_over_months() -> None:
     """월 미상 연 단위 물량은 12개월 균등 분배 — 창(2028-03~2030-03)에 걸친 2028년 10개월분만 센다."""
     rows = [SupplyInput(living_area="la_1", year=2028, ym=None, units=12_000, label="추정")]

@@ -30,7 +30,13 @@
         "properties": {
           "id": { "type": "string" },
           "name": { "type": ["string", "null"] },
-          "households": { "type": ["integer", "null"], "minimum": 0 }
+          "households": { "type": ["integer", "null"], "minimum": 0 },
+          "unsold_scope_codes": {
+            "description": "이 생활권에 해당하는 미분양 통계 범위 코드(UnsoldInput.scope_code, 시군구 5자리) 목록 — 생활권 법정동의 sigungu_code 집합(2026-10-09.2, WP4). 비어 있으면 미분양은 '지역 합계'로 본다",
+            "type": "array",
+            "items": { "type": "string" },
+            "default": []
+          }
         }
       }
     },
@@ -187,12 +193,16 @@
         "ladders": { "type": "array", "items": { "$ref": "#/$defs/LadderInput" } },
         "winner_date": { "type": ["string", "null"] },
         "resale_months": { "type": ["integer", "null"] },
+        "resale_label": { "description": "전매제한(resale_months·등기 시 해제) 값의 Fact 라벨. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다) — 2026-10-09.2", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
         "resale_release_on_registration": { "type": ["boolean", "null"] },
         "residency_months": { "type": ["integer", "null"] },
+        "residency_label": { "description": "거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
         "down_payment_pct": { "type": ["number", "null"] },
+        "down_payment_label": { "description": "계약금 비율(down_payment_pct, 현재 payment_terms) 값의 Fact 라벨 — 2026-10-09.2", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
         "interim_terms_text": { "type": ["string", "null"] },
         "intake_status": { "type": ["string", "null"], "enum": ["가능", "미정", "확인 불가", "불가", null] },
         "intake_path": { "type": ["string", "null"], "enum": ["human_check", "official_popup", "headless_shot", "unofficial_ref", null] },
+        "intake_checked_at": { "description": "표시 접수 상태(intake_status 행)의 확인 시각 ISO 8601(날짜만도 허용). 요건 사전 계산 근거에 '확인 D±'로 쓴다 — 2026-10-09.2", "type": ["string", "null"] },
         "regulated": { "type": ["boolean", "null"] },
         "rewin_restriction_years": { "type": ["integer", "null"] },
         "has_priority_supply": { "description": "가점제 1순위 공급(본청약·예정 공고) 경로가 있음", "type": ["boolean", "null"] },
@@ -205,19 +215,21 @@
       "snapshot_id": 12, "asof_date": "2026-10-08",
       "region": { "age_premium_coef": { "c_per_year": 0.015, "cap_years": 8, "label": "추정" }, "supply_ref_pct": 0.08 },
       "rerank": { "judgment_seq": 124, "status": "ok", "items": [{ "candidate_id": "complex:2", "complex_id": 2, "relevance": 0.89, "rank": 1 }], "prev": null },
-      "living_areas": [{ "id": "la_2", "name": "서구(검단)", "households": null }],
+      "living_areas": [{ "id": "la_2", "name": "검단구", "households": null, "unsold_scope_codes": ["28290"] }],
       "trades": [],
       "benchmarks": [],
       "supply": [],
-      "unsold": [{ "ym": "2026-08", "scope_code": "28260", "total": 737, "post_completion": 737, "label": "재가공" }],
+      "unsold": [{ "ym": "2026-08", "scope_code": "28290", "total": 737, "post_completion": 737, "label": "재가공" }],
       "complexes": [
         {
           "complex_id": 2, "name": "엘리프 검단 포레듀", "living_area": "la_2", "judge_scope": "판정 대상",
           "price_low_won": 578000000, "price_high_won": 608000000, "price_label": "확인됨", "move_in_ym": "2028-03",
           "immediate_move_in": false, "completed_year": null,
           "ladders": [{ "horizon": "move_in_plus_1y", "target_ym": "2029-03", "months_from_asof": 29, "p5": 0.48, "p10": 0.45, "p20": 0.36, "p_flat": 0.48, "status": "ok", "judgment_seq": 68 }],
-          "winner_date": "2025-09-10", "resale_months": 36, "resale_release_on_registration": true, "residency_months": 0,
-          "down_payment_pct": 5, "interim_terms_text": "중도금 60% 이자후불", "intake_status": "가능", "intake_path": "official_popup",
+          "winner_date": "2025-09-10", "resale_months": 36, "resale_label": "확인됨", "resale_release_on_registration": true,
+          "residency_months": 0, "residency_label": "확인됨", "down_payment_pct": 5, "down_payment_label": "확인됨",
+          "interim_terms_text": "중도금 60% 이자후불", "intake_status": "가능", "intake_path": "official_popup",
+          "intake_checked_at": "2026-10-07T09:20:00+09:00",
           "regulated": false, "rewin_restriction_years": 10, "has_priority_supply": false,
           "fixed_components": { "source": "보고서 §12-4-3", "p10": 4.5, "rerank": 8.9, "gap": 6.3, "benchmark": 5.0, "supply": 3.0, "liquidity": 6.0 }
         }

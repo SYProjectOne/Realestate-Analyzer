@@ -246,7 +246,7 @@
         "complex_id": 2,
         "name": "엘리프 검단 포레듀",
         "living_area": "la_2",
-        "living_area_name": "서구(검단)",
+        "living_area_name": "검단구",
         "score_run_id": 90,
         "total": {
           "v": 5.65,
@@ -710,7 +710,7 @@
         "complex_id": 5,
         "name": "검단 센트레빌 에듀시티",
         "living_area": "la_2",
-        "living_area_name": "서구(검단)",
+        "living_area_name": "검단구",
         "score_run_id": 90,
         "total": {
           "v": 4.6,

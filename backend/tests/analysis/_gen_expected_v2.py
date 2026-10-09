@@ -32,10 +32,10 @@ FIXTURE = REPO / "contracts" / "fixtures" / "incheon_gimpo_2026-10-08"
 ASOF = "2026-10-08"
 EOK = 100_000_000
 
-LA_SONGDO, LA_GEOMDAN, LA_GYEYANG, LA_GIMPO = "28185", "28260", "28245", "41570"
+LA_SONGDO, LA_GEOMDAN, LA_GYEYANG, LA_GIMPO = "28185", "28290", "28245", "41570"
 
 ASSUMPTIONS = [
-    "생활권 = DECISIONS D1 #1 기본값(시군구 1개당 1개): 연수구(송도)·서구/검단구(검단)·계양구·김포시. 보고서의 하위 생활권(고촌·풍무·사우·북변·당하 등) 구분은 쓰지 않는다. 생활권 id는 미분양 scope_code(시군구 코드)와 맞추려고 시군구 코드를 그대로 썼다(계약 변경 요청 참조).",
+    "생활권 = DECISIONS D1 #1 기본값(시군구 1개당 1개): 연수구(송도)·검단구(검단, 2026-07 분구 후 현행 코드 28290)·계양구·김포시. 보고서의 하위 생활권(고촌·풍무·사우·북변·당하 등) 구분은 쓰지 않는다. 생활권 id는 미분양 scope_code(시군구 코드)와 맞추려고 시군구 코드를 그대로 썼다(계약 변경 요청 참조).",
     "생활권 세대수(U_ref = 세대수 × 8%)는 보고서에 없다 — 연수구 160,000 · 검단 90,000 · 김포시 212,500(보고서 '김포시 인구 약 51만' ÷ 가구원 2.4명)은 가정값이다. household_stat(WP1 reference) 값으로 바꿔야 한다. 계양구는 판정 대상이 없어 null.",
     "실거래는 보고서의 '범위(건수)'만 있으므로 범위 안에서 건수만큼 등간격 가격을 만들어 넣었다(건수 '10+'는 10, 미기재는 5 또는 3). 거래일은 2026-05~09로 고르게 배치(검단 §5-2의 '2026-01~06' 거래도 창 안으로 가정). 출처는 dapt 재가공 → source=reprocessed.",
     "캐슬앤파밀리에시티 2단지의 '3층 4.0억 1건(특이 저가)'은 그대로 넣었다 — 1.5×IQR 이상치 규칙(T4)이 실제로 빼는지 확인용.",
@@ -745,7 +745,7 @@ def build_inputs() -> ScoreInputs:
             },
             "living_areas": [
                 {"id": LA_SONGDO, "name": "연수구(송도)", "households": 160_000},
-                {"id": LA_GEOMDAN, "name": "서구·검단구(검단)", "households": 90_000},
+                {"id": LA_GEOMDAN, "name": "검단구(검단)", "households": 90_000},
                 {"id": LA_GYEYANG, "name": "계양구", "households": None},
                 {"id": LA_GIMPO, "name": "김포시", "households": 212_500},
             ],

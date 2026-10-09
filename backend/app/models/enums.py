@@ -1,4 +1,4 @@
-"""열거 값 (계약 2026-10-09.1). DB는 문자열 + CheckConstraint로 강제한다(RA §3).
+"""열거 값 (계약 2026-10-09.2). DB는 문자열 + CheckConstraint로 강제한다(RA §3).
 
 값은 contracts/schemas/*.json 의 enum과 같다. contracts/migrations/versions/0001_init.py 는 자립해야 하므로
 같은 값을 리터럴로 다시 적는다 — 둘이 다르면 tests/contracts/test_models.py 가 실패한다.

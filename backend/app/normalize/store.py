@@ -100,10 +100,12 @@ def raw_dto(row: RawDocument) -> RawDocumentDTO:
         path=row.path,
         content_type=row.content_type,
         text_path=row.text_path,
+        table_path=row.table_path,
         complex_id=row.complex_id,
         region_id=row.region_id,
         error_text=row.error_text,
         image_hash=row.image_hash,
+        meta=row.meta,
     )
 
 
@@ -126,10 +128,12 @@ def _ensure_raw_row(session: Session, raw: RawDocumentDTO | RawDocument) -> RawD
         path=raw.path,
         content_type=raw.content_type,
         text_path=raw.text_path,
+        table_path=raw.table_path,
         complex_id=raw.complex_id,
         region_id=raw.region_id,
         error_text=raw.error_text,
         image_hash=raw.image_hash,
+        meta=raw.meta,
     )
     session.add(row)
     session.flush()

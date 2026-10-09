@@ -16,6 +16,7 @@ import argparse
 import copy
 import json
 import sys
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -38,13 +39,16 @@ COMPLEX_FIELDS = ["housing_type", "land_type", "price_cap", "regulated", "units_
 TAIL_FIELDS = ["move_in_ym", "resale_months", "resale_end", "resale_release_on_registration", "residency_months",
                "rewin_restriction_years"]  # fmt: skip
 
-# 법정동 코드: 행정표준코드관리시스템 '법정동코드 전체자료' 사본(FinanceData gist, 2026-10-09 확인). 검단구(2026-07 분구)는
-# 사본에 아직 없어 서구 코드를 쓴다(DECISIONS D3: 둘 다 후보). 2826011600(불노동)은 폐지 코드라 넣지 않는다.
-LEGAL_DONG_SOURCE = "https://gist.github.com/FinanceData/4b0a6e1818cea9e77496e57b84bb4565"
+# 법정동 코드: 행정표준코드관리시스템 '법정동코드 전체자료' 공식 사본(contracts/fixtures/reference/legal_dong_full.zip,
+# WP1b reference 수집기가 2026-10-09 받은 파일 — manifest.json). 2026-07 분구로 서구(28260)와 그 법정동은 폐지,
+# 검단 법정동은 검단구(28290) 현행 코드다(계약 2026-10-09.2). 발췌는 legal_dong_excerpt()가 공식 사본에서 그대로 뽑는다.
+LEGAL_DONG_SOURCE = "https://www.code.go.kr/etc/codeFullDown.do?codeseId=법정동코드"
+LEGAL_DONG_COPY = REPO / "contracts" / "fixtures" / "reference" / "legal_dong_full.zip"
 SONGDO = [("2818510600", "인천광역시 연수구 송도동")]
-GEOMDAN = [("2826010100", "백석동"), ("2826010200", "시천동"), ("2826011300", "마전동"), ("2826011400", "당하동"),
-           ("2826011500", "원당동"), ("2826011700", "대곡동"), ("2826011800", "금곡동"), ("2826011900", "오류동"),
-           ("2826012000", "왕길동"), ("2826012100", "불로동")]  # fmt: skip
+GEOMDAN = [("2829010100", "백석동"), ("2829010200", "시천동"), ("2829010300", "마전동"), ("2829010400", "당하동"),
+           ("2829010500", "원당동"), ("2829010600", "대곡동"), ("2829010700", "금곡동"), ("2829010800", "오류동"),
+           ("2829010900", "왕길동"), ("2829011000", "불로동")]  # fmt: skip
+GEOMDAN_OLD_PREFIX = "28260"  # 폐지된 서구 코드(발췌에 폐지 행으로 함께 남긴다)
 GYEYANG_CODES = [
     ("2824510100", "효성동"),
     ("2824510200", "계산동"),
@@ -153,7 +157,7 @@ HOUSEHOLDS_UNKNOWN = "주민등록 세대 현황 파일 미수집(contracts/fixt
 def build_region() -> dict[str, Any]:
     la = [
         ("la_1", "연수구", [c for c, _ in SONGDO]),
-        ("la_2", "서구(검단)", [c for c, _ in GEOMDAN]),
+        ("la_2", "검단구", [c for c, _ in GEOMDAN]),
         ("la_3", "계양구", [c for c, _ in GYEYANG_CODES]),
         ("la_4", "김포시", [c for c, _ in GIMPO_CODES]),
     ]
@@ -164,7 +168,7 @@ def build_region() -> dict[str, Any]:
         for i, n, codes in la
     ]  # fmt: skip
     selections = [{"kind": "legal_dong", "code": SONGDO[0][0], "full_name": SONGDO[0][1]}]
-    selections += [{"kind": "legal_dong", "code": c, "full_name": f"인천광역시 서구 {n}"} for c, n in GEOMDAN]
+    selections += [{"kind": "legal_dong", "code": c, "full_name": f"인천광역시 검단구 {n}"} for c, n in GEOMDAN]
     selections += [{"kind": "sigungu", "code": "28245", "full_name": "인천광역시 계양구"},
                    {"kind": "sigungu", "code": "41570", "full_name": "경기도 김포시"}]  # fmt: skip
     return {
@@ -173,7 +177,7 @@ def build_region() -> dict[str, Any]:
         "query_text": "송도, 검단, 계양구, 김포시",
         "selections": selections,
         "sido_codes": ["28", "41"],
-        "sigungu_codes": ["28185", "28245", "28260", "41570"],
+        "sigungu_codes": ["28185", "28245", "28290", "41570"],
         "legal_dong_codes": [c for _, _, codes in la for c in codes],
         "living_areas": living_areas,
         "age_premium_coef": {"c_per_year": 0.015, "cap_years": 8, "label": "추정"},
@@ -425,14 +429,43 @@ def applyhome_list_bytes() -> bytes:
     return dumps(doc).encode("utf-8")
 
 
+def official_legal_dong_rows() -> dict[str, tuple[str, str]]:
+    """공식 사본(cp949 탭 구분 txt) → {코드: (법정동명, 폐지여부)}."""
+    with zipfile.ZipFile(LEGAL_DONG_COPY) as z:
+        text = z.read(z.namelist()[0]).decode("cp949")
+    rows: dict[str, tuple[str, str]] = {}
+    for line in text.splitlines()[1:]:
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            rows[parts[0].strip()] = (parts[1].strip(), parts[2].strip())
+    return rows
+
+
 def legal_dong_excerpt() -> bytes:
-    lines = ["# 법정동코드 전체자료 발췌(행정표준코드관리시스템 사본, 공공누리 1유형). 원천: " + LEGAL_DONG_SOURCE,
-             "# 검단구(2026-07 분구) 코드는 사본에 없어 서구 코드를 쓴다. 확인일 2026-10-09.", "법정동코드\t법정동명\t폐지여부",
-             "2818510600\t인천광역시 연수구 송도동\t존재"]  # fmt: skip
-    lines += [f"{c}\t인천광역시 서구 {n}\t존재" for c, n in GEOMDAN]
-    lines += ["2826011600\t인천광역시 서구 불노동\t폐지"]
-    lines += [f"{c}\t인천광역시 계양구 {n}\t존재" for c, n in GYEYANG_CODES]
-    lines += [f"{c}\t경기도 김포시 {n}\t존재" for c, n in GIMPO_CODES]
+    """픽스처 지역의 법정동 행을 공식 사본에서 그대로 발췌한다(+ 검단의 폐지 서구 코드 행). 이름·존재 여부가
+    생성기 표와 다르면 실패한다 — 손으로 적은 코드가 공식 표와 어긋나지 않게."""
+    rows = official_legal_dong_rows()
+    wanted = [(c, n) for c, n in SONGDO]
+    wanted += [(c, f"인천광역시 검단구 {n}") for c, n in GEOMDAN]
+    wanted += [(c, f"인천광역시 계양구 {n}") for c, n in GYEYANG_CODES]
+    wanted += [(c, f"경기도 김포시 {n}") for c, n in GIMPO_CODES]
+    lines = ["# 법정동코드 전체자료 발췌(행정표준코드관리시스템 공식 사본 contracts/fixtures/reference/legal_dong_full.zip, "
+             "공공누리 1유형). 원천: " + LEGAL_DONG_SOURCE,
+             "# 2026-07 분구: 서구(28260) 폐지 → 검단구(28290)·서해구 신설. 검단 법정동은 검단구 현행 코드, 옛 서구 코드는 폐지 행으로 함께 둔다. "
+             "확인일 2026-10-09.",
+             "법정동코드\t법정동명\t폐지여부"]  # fmt: skip
+    for code, name in wanted:
+        got = rows.get(code)
+        if got != (name, "존재"):
+            raise SystemExit(f"공식 사본과 다름: {code} {name} → {got}")
+        lines.append(f"{code}\t{name}\t존재")
+    old_names = {f"인천광역시 서구 {n}" for _, n in GEOMDAN} | {"인천광역시 서구 불노동"}
+    old = sorted(c for c, (n, _) in rows.items() if c.startswith(GEOMDAN_OLD_PREFIX) and n in old_names)
+    for code in old:
+        name, status = rows[code]
+        if status != "폐지":
+            raise SystemExit(f"서구 코드가 폐지가 아님: {code} {name} {status}")
+        lines.append(f"{code}\t{name}\t{status}")
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
@@ -617,8 +650,13 @@ def build_judgments(expected: dict[str, Any]) -> tuple[list[dict[str, Any]], dic
                       "file": rel, "report_ref": call["ref"], "payload": call["payload"]})  # fmt: skip
     meta = {"adapter_version": ADAPTER_VERSION, "recorded_at": "2026-10-07",
             "source": "docs/source/incheon_gimpo_report.md",
-            "note": "보고서 부록 A #1~#132 재구성 녹화. 실제 JEV 서버 버전은 jev-1.13.0(보고서 §2)이나 payload가 원문 전체가 아닌 재구성이라 "
-                    "실제 어댑터 버전 문자열을 쓰지 않는다(MockAdapter 전용). contracts/fixtures/README.md 보강 요청 대상."}  # fmt: skip
+            "note": "보고서 부록 A #1~#132 재구성 녹화. adapter_version은 MockAdapter 전용 고정값 'mock-fixture-2026-10-08'이다 — "
+                    "실제 JEV 모델은 jev-1.13.0(보고서 §2)이나 payload가 원문 전체가 아닌 재구성이라 실제 어댑터 버전 문자열"
+                    "('<코드>+jev-mcp@<서버>+<model>', DECISIONS D6)을 쓰지 않는다. 이 값을 바꾸면 모든 input_hash·파일 이름이 바뀐다"
+                    "(contracts/fixtures/README.md 'MockAdapter 규칙').",
+            "index": "_index.json = 녹화 132개 목록 [{judgment_seq, tool, purpose, input_hash, file, report_ref, payload}] (judgment_seq 순). "
+                     "payload·purpose·adapter_version으로 app.core.protocols.input_hash를 다시 계산하면 input_hash·file 이름과 같다 "
+                     "(tests/fixtures_contract/test_judgments.py). prov='jl_<seq>'의 출처표."}  # fmt: skip
     files["_meta.json"] = dumps(meta).encode("utf-8")
     files["_index.json"] = dumps(index).encode("utf-8")
     return index, files

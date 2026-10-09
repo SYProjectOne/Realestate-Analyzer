@@ -210,6 +210,63 @@ def test_seed_matches_openapi_scenarios_example() -> None:
     assert [{k: v for k, v in s.items() if k != "id"} for s in example] == seeds
 
 
+R1_COLUMNS = {
+    ("field_provenance", "value_norm"),
+    ("field_provenance", "observed_on"),
+    ("complex_type", "notice_type_code"),
+    ("payment_terms", "price_by_type"),
+    ("raw_document", "table_path"),
+    ("raw_document", "meta"),
+}
+
+
+def _columns(engine: Engine) -> set[tuple[str, str]]:
+    insp = sa.inspect(engine)
+    return {(t, c["name"]) for t, _ in R1_COLUMNS for c in insp.get_columns(t)}
+
+
+def check_0001_0002_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0002(계약 2026-10-09.2): head → 0001(컬럼 제거, 행 유지) → head(컬럼 복구)."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    engine = sa.create_engine(url)
+    try:
+        assert _columns(engine) >= R1_COLUMNS
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO raw_document (source_kind, url, fetched_at, sha256, table_path, meta) "
+                    "VALUES ('notice_pdf', 'u', '2026-10-09T00:00:00+09:00', :sha, 't.json', :meta)"
+                ),
+                {"sha": "b" * 64, "meta": json.dumps({"pages": 3})},
+            )
+        command.downgrade(cfg, "0001")
+        assert _columns(engine) & R1_COLUMNS == set()
+        with engine.connect() as conn:
+            assert conn.execute(sa.text("SELECT count(*) FROM raw_document")).scalar_one() == 1
+        command.upgrade(cfg, "head")
+        assert _columns(engine) >= R1_COLUMNS
+        with engine.begin() as conn:
+            row = conn.execute(sa.text("SELECT table_path, meta FROM raw_document")).one()
+            assert tuple(row) == (None, None)
+            conn.execute(sa.text("DELETE FROM raw_document"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
+
+
+def test_migration_head_is_0002() -> None:
+    from alembic.script import ScriptDirectory
+
+    script = ScriptDirectory.from_config(alembic_config("sqlite://"))
+    assert script.get_heads() == ["0002"]
+    assert script.get_revision("0002").down_revision == "0001"
+
+
 def test_region_has_d2_2_columns() -> None:
     cols = {c.name for c in Base.metadata.tables["region"].columns}
     need = {"query_text", "selections", "sigungu_codes", "sido_codes", "legal_dong_codes", "supply_ref_pct", "status",
@@ -251,6 +308,16 @@ def test_postgres_upgrade_downgrade_upgrade(pg_engine: Engine) -> None:
 
 @pytest.mark.postgres
 def test_postgres_models_match_migration(pg_engine: Engine) -> None:
+    assert autogen_diff(pg_engine) == []
+
+
+@pytest.mark.postgres
+def test_postgres_0001_0002_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0001_0002_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
     assert autogen_diff(pg_engine) == []
 
 

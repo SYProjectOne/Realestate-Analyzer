@@ -84,7 +84,7 @@
       "properties": {
         "code": { "type": "string", "enum": ["intake_open", "priority_supply", "official_path_no_account", "official_path", "resale_before_exit", "no_conflict", "no_residency_obligation", "equity_and_loan"] },
         "text": { "description": "decide 요건 문장(판정기 payload·화면 표 머리)", "type": "string", "minLength": 1 },
-        "params": { "type": "object" }
+        "params": { "type": "object", "additionalProperties": true }
       }
     },
     "Requirements": {

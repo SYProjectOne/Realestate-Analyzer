@@ -16,7 +16,7 @@ dependencies = [
   "pdfplumber>=0.11",
   "pypdf>=5.0",
   "apscheduler>=3.10,<4",
-  "mcp>=1.2",
+  "mcp>=2,<3",  # 2.x API(server_info 등) 고정 — ADR-05 smoke
   "jinja2>=3.1",
   "openpyxl>=3.1",
   "python-dateutil>=2.9",
@@ -26,6 +26,10 @@ dependencies = [
   "jsonschema>=4.23",
   "python-multipart>=0.0.9",
 ]
+
+[project.optional-dependencies]
+# 스캔 공고문 OCR (DECISIONS D5 · ADR-12: RapidOCR PP-OCRv5 korean). 없으면 '확인 불가(스캔)' + 사람 입력.
+ocr = ["rapidocr>=3.10,<4", "onnxruntime>=1.18"]
 
 [dependency-groups]
 dev = [

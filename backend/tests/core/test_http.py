@@ -338,6 +338,60 @@ def test_robots_5xx_means_disallow() -> None:
         r = c.get("https://a.test/p")
     assert r.blocked_by_robots
     assert page.call_count == 0
+    # 원인 보존: robots.txt 자체가 5xx 였다(규칙상 불허와 구분)
+    assert (r.robots_status, r.robots_reason) == (500, "robots.txt 500")
+
+
+@respx.mock
+def test_robots_block_keeps_cause_disallow_vs_network() -> None:
+    respx.get("https://a.test/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
+    respx.get("https://b.test/robots.txt").mock(side_effect=httpx.ConnectError("Name or service not known"))
+    clock = FakeClock()
+    with client(clock, max_retries=0) as c:
+        rule = c.get("https://a.test/p")
+        net = c.get("https://b.test/p")
+    assert rule.blocked_by_robots and rule.robots_reason == "disallow" and rule.robots_status == 200
+    assert rule.robots_error is None
+    assert net.blocked_by_robots and net.robots_status is None
+    assert net.robots_error_kind == "connect" and net.robots_reason == "connect"
+    assert net.robots_error is not None and "Name or service not known" in net.robots_error
+    ok = FetchResult(url="u", status=200, headers={}, content=b"", error=None, elapsed_ms=0, attempts=1)
+    assert ok.robots_reason is None
+
+
+@respx.mock
+def test_robots_exempt_hosts_skip_robots_txt() -> None:
+    """키 인증 공식 API 호스트는 robots.txt 를 받지도 보지도 않는다(속도 제한은 그대로)."""
+    robots = respx.get("https://api.test/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
+    api = respx.get(url__regex=r"https://api\.test/v1/.*").respond(200, json={"items": []})
+    clock = FakeClock()
+    with client(clock, robots_exempt_hosts=["API.test"]) as c:
+        r1 = c.get("https://api.test/v1/a")
+        r2 = c.get("https://api.test/v1/b")
+    assert r1.ok and r2.ok and not r1.blocked_by_robots
+    assert robots.call_count == 0 and api.call_count == 2
+    assert clock.sleeps == [1.0]
+
+
+def test_robots_exempt_hosts_default_from_settings(test_settings: Any) -> None:
+    c = HttpClient()
+    try:
+        assert c.robots_exempt_hosts == frozenset({"apis.data.go.kr", "openapi.naver.com"})
+    finally:
+        c.close()
+
+
+@respx.mock
+async def test_async_robots_exempt_and_cause() -> None:
+    respx.get("https://a.test/robots.txt").respond(503)
+    page = respx.get("https://a.test/p").respond(200)
+    api = respx.get("https://api.test/p").respond(200)
+    clock = FakeClock()
+    async with aclient(clock, max_retries=0, robots_exempt_hosts=("api.test",)) as c:
+        blocked = await c.get("https://a.test/p")
+        ok = await c.get("https://api.test/p")
+    assert blocked.robots_reason == "robots.txt 503" and page.call_count == 0
+    assert ok.ok and api.call_count == 1
 
 
 # ---------------------------------------------------------------- 비동기

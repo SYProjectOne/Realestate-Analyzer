@@ -120,8 +120,9 @@ def test_input_hash_is_canonical() -> None:
 
 def test_contract_version_matches_changelog() -> None:
     changelog = (BACKEND.parent / "contracts" / "CHANGELOG.md").read_text(encoding="utf-8")
-    assert re.search(r"^## 2026-10-09\.1\b", changelog, re.M), "CHANGELOG에 버전 항목"
-    assert p.CONTRACT_VERSION == "2026-10-09.1"
+    top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)\b", changelog, re.M)
+    assert top is not None, "CHANGELOG에 버전 항목"
+    assert p.CONTRACT_VERSION == top.group(1) == "2026-10-09.2", "맨 위 항목 = 현재 계약"
 
 
 def _run(*args: str) -> subprocess.CompletedProcess[str]:

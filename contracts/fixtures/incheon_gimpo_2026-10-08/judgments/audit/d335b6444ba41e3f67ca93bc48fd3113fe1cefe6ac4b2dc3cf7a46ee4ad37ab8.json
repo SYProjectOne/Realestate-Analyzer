@@ -11,7 +11,7 @@
     "items": [
       {
         "field": "hoban_price_84b_15f_jev",
-        "p_wrong": 0.0,
+        "p_wrong": null,
         "flagged": true,
         "note": "건축비 328,524,948 오선택 → 565,900,000 정정"
       }
@@ -26,7 +26,7 @@
       "wrong_at": 0.7
     },
     "decision": "escalate",
-    "note": "p_wrong 미기재 항목은 0.0이 아니라 '보고서 미기재' — note 참조"
+    "note": "p_wrong 미기재 항목은 null(계약 2026-10-09.2: 지어내지 않음) — note 참조"
   },
   "duration_ms": null,
   "judgment_seq": 57,

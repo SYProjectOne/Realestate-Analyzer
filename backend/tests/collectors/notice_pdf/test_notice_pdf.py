@@ -183,7 +183,8 @@ def test_collect_pdfs_text_scan_403_idempotent(
         assert d.path and d.path.endswith(".pdf") and d.text_path and d.text_path.endswith(".txt")
         text = resolve_raw_path(d.text_path).read_text(encoding="utf-8")
         assert "입주자모집공고" in text.replace(" ", "") and "\f" in text
-        tables = json.loads(resolve_raw_path(d.text_path[:-4] + ".json").read_text(encoding="utf-8"))
+        assert d.table_path == d.text_path[:-4] + ".json"  # 계약 2026-10-09.2 raw_document.table_path
+        tables = json.loads(resolve_raw_path(d.table_path).read_text(encoding="utf-8"))
         assert tables and all({"page", "tables"} <= set(t) for t in tables)
 
     scan = by_url[links[SCAN_HM]]

@@ -23,6 +23,9 @@ SCHEMA_OF: dict[str, tuple[str, str]] = {
     "provenance.json": ("provenance.json", "list"),
     "snapshots.json": ("snapshot.json", "list"),
     "expected_scores.json": ("expected_scores.json", "one"),
+    # (b)단계 draft(WP4 tests/analysis/_gen_expected_v2.py 생성): 내장 입력이 ScoreInputs 계약을 지키는지만 본다.
+    # 결과 재계산은 tests/analysis/test_expected_v2.py.
+    "expected_scores_v2.json": ("score_inputs.json", "key:inputs"),
     "raw/documents.json": ("raw_document.json", "list"),
     "raw/official_site/t8_popup_pairs.json": ("raw_document.json", "values"),
     "raw/rtms/t4_metroxi2_84.json": ("score_inputs.json#/$defs/TradeInput", "key:trades"),

@@ -2,5 +2,6 @@
   "adapter_version": "mock-fixture-2026-10-08",
   "recorded_at": "2026-10-07",
   "source": "docs/source/incheon_gimpo_report.md",
-  "note": "보고서 부록 A #1~#132 재구성 녹화. 실제 JEV 서버 버전은 jev-1.13.0(보고서 §2)이나 payload가 원문 전체가 아닌 재구성이라 실제 어댑터 버전 문자열을 쓰지 않는다(MockAdapter 전용). contracts/fixtures/README.md 보강 요청 대상."
+  "note": "보고서 부록 A #1~#132 재구성 녹화. adapter_version은 MockAdapter 전용 고정값 'mock-fixture-2026-10-08'이다 — 실제 JEV 모델은 jev-1.13.0(보고서 §2)이나 payload가 원문 전체가 아닌 재구성이라 실제 어댑터 버전 문자열('<코드>+jev-mcp@<서버>+<model>', DECISIONS D6)을 쓰지 않는다. 이 값을 바꾸면 모든 input_hash·파일 이름이 바뀐다(contracts/fixtures/README.md 'MockAdapter 규칙').",
+  "index": "_index.json = 녹화 132개 목록 [{judgment_seq, tool, purpose, input_hash, file, report_ref, payload}] (judgment_seq 순). payload·purpose·adapter_version으로 app.core.protocols.input_hash를 다시 계산하면 input_hash·file 이름과 같다 (tests/fixtures_contract/test_judgments.py). prov='jl_<seq>'의 출처표."
 }

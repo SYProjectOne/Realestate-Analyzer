@@ -962,10 +962,10 @@
   {
     "id": 9065,
     "source_kind": "reference",
-    "url": "https://gist.github.com/FinanceData/4b0a6e1818cea9e77496e57b84bb4565",
+    "url": "https://www.code.go.kr/etc/codeFullDown.do?codeseId=법정동코드",
     "fetched_at": "2026-10-07T00:00:00+09:00",
     "http_status": 200,
-    "sha256": "9ba10ddb04aebf80e7ccb71c84a3dee57f2ee1fcf364eee20d32adb3e8bf9eed",
+    "sha256": "fe836ee29f6a28aa8e7a9b88d46cc4d308d408bbb2fe458249e51ee1149591f9",
     "path": "reference/legal_dong_excerpt.tsv",
     "content_type": "text/tab-separated-values; charset=utf-8",
     "text_path": "reference/legal_dong_excerpt.tsv",

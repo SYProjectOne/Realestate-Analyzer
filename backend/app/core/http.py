@@ -3,7 +3,12 @@
 - 호스트별 속도 제한(기본 ``HTTP_RATE_PER_HOST`` = 1 req/s; robots.txt 요청과 재시도도 포함)
 - 지수 백오프 재시도: 5xx·타임아웃·연결 오류만. 4xx 는 재시도하지 않는다(429 포함).
 - robots.txt 확인·캐시(RFC 9309): 2xx → 규칙 적용, 4xx → 제한 없음, 5xx·네트워크 실패 → 전부 불허.
-  불허면 요청하지 않고 ``FetchResult(error="blocked_by_robots")`` 를 돌려준다.
+  불허면 요청하지 않고 ``FetchResult(error="blocked_by_robots")`` 를 돌려준다. 원인은 ``robots_status``
+  (robots.txt 응답 코드)·``robots_error_kind``·``robots_error`` 에 남는다 — 규칙상 불허(2xx + Disallow)와
+  robots.txt 자체의 실패(5xx·DNS·timeout)를 수집기가 다시 요청하지 않고 구분한다(``robots_reason``).
+- 키 인증 공식 API 호스트(``HTTP_ROBOTS_EXEMPT_HOSTS``, 기본 apis.data.go.kr·openapi.naver.com)는
+  robots.txt 를 보지 않는다 — 크롤링이 아니라 발급 키로 쓰는 API 이고 이용약관이 규율한다.
+  속도 제한·재시도는 그대로.
 - **예외를 삼키지도 던지지도 않는다**: 성공·실패 모두 ``FetchResult`` 로 반환한다.
 
 동기 ``HttpClient`` 와 비동기 ``AsyncHttpClient`` 는 같은 규칙을 공유한다. 테스트는 ``sleep``·``clock`` 을
@@ -18,7 +23,7 @@ import random
 import threading
 import time
 import urllib.robotparser
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import TracebackType
@@ -50,6 +55,10 @@ class FetchResult:
     final_url: str | None = None  # 리다이렉트 후 URL
     blocked_by_robots: bool = False
     fetched_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # robots 차단일 때 robots.txt 요청 결과(원인 보존). 차단이 아니면 모두 None.
+    robots_status: int | None = None
+    robots_error_kind: ErrorKind | None = None
+    robots_error: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -62,6 +71,16 @@ class FetchResult:
     def text(self, encoding: str | None = None) -> str:
         enc = encoding or _charset(self.headers.get("content-type", "")) or "utf-8"
         return self.content.decode(enc, errors="replace")
+
+    @property
+    def robots_reason(self) -> str | None:
+        """robots 차단 원인 한 단어: 'disallow'(robots.txt 2xx 의 규칙) / 'robots.txt <코드>'(5xx) /
+        robots.txt 요청 실패 종류('timeout'·'connect'·'network' …). 차단이 아니면 None."""
+        if not self.blocked_by_robots:
+            return None
+        if self.robots_status is not None:
+            return "disallow" if 200 <= self.robots_status < 300 else f"robots.txt {self.robots_status}"
+        return self.robots_error_kind or "network"
 
 
 def _charset(content_type: str) -> str | None:
@@ -77,6 +96,9 @@ class _RobotsEntry:
     parser: urllib.robotparser.RobotFileParser | None  # None = allow_all/disallow_all 로 결정
     allow_all: bool
     expires_at: float
+    status: int | None = None  # robots.txt 응답 코드(없으면 None)
+    error_kind: ErrorKind | None = None
+    error: str | None = None
 
     def allows(self, user_agent: str, url: str) -> bool:
         if self.parser is None:
@@ -108,6 +130,7 @@ class _Core:
         jitter: float,
         respect_robots: bool,
         robots_ttl_s: float,
+        robots_exempt_hosts: Iterable[str] | None,
         clock: Callable[[], float],
     ) -> None:
         s = get_settings()
@@ -122,6 +145,8 @@ class _Core:
         self.jitter = jitter
         self.respect_robots = respect_robots
         self.robots_ttl_s = robots_ttl_s
+        hosts = s.http_robots_exempt_hosts if robots_exempt_hosts is None else robots_exempt_hosts
+        self.robots_exempt_hosts = frozenset(h.strip().lower() for h in hosts if h.strip())
         self._clock = clock
         self._next_slot: dict[str, float] = {}
         self._slot_lock = threading.Lock()
@@ -177,6 +202,10 @@ class _Core:
         port = f":{u.port}" if u.port else ""
         return f"{u.scheme}://{u.host}{port}"
 
+    def _checks_robots(self, u: httpx.URL) -> bool:
+        """robots.txt 를 볼 요청인가(설정이 켜져 있고 키 인증 공식 API 호스트가 아님)."""
+        return self.respect_robots and u.host.lower() not in self.robots_exempt_hosts
+
     def _robots_cached(self, origin: str) -> _RobotsEntry | None:
         entry = self._robots.get(origin)
         if entry is not None and entry.expires_at > self._clock():
@@ -188,12 +217,19 @@ class _Core:
         if r.status is not None and 200 <= r.status < 300:
             parser = urllib.robotparser.RobotFileParser()
             parser.parse(r.text().splitlines())
-            return _RobotsEntry(parser, allow_all=True, expires_at=now + self.robots_ttl_s)
+            return _RobotsEntry(parser, allow_all=True, expires_at=now + self.robots_ttl_s, status=r.status)
         if r.status is not None and 400 <= r.status < 500:
-            return _RobotsEntry(None, allow_all=True, expires_at=now + self.robots_ttl_s)
-        # 5xx·네트워크 실패 = unreachable → 전부 불허(짧게 캐시)
+            return _RobotsEntry(None, allow_all=True, expires_at=now + self.robots_ttl_s, status=r.status)
+        # 5xx·네트워크 실패 = unreachable → 전부 불허(짧게 캐시). 원인은 차단 결과에 그대로 싣는다.
         ttl = min(self.robots_ttl_s, ROBOTS_UNREACHABLE_TTL_S)
-        return _RobotsEntry(None, allow_all=False, expires_at=now + ttl)
+        return _RobotsEntry(
+            None,
+            allow_all=False,
+            expires_at=now + ttl,
+            status=r.status,
+            error_kind=r.error_kind,
+            error=r.error,
+        )
 
     def _result(self, url: str, method: str, a: _Attempt, attempts: int, started: float) -> FetchResult:
         elapsed_ms = max(0, round((self._clock() - started) * 1000))
@@ -240,7 +276,7 @@ class _Core:
         )
 
     @staticmethod
-    def _blocked(url: str, method: str) -> FetchResult:
+    def _blocked(url: str, method: str, entry: _RobotsEntry) -> FetchResult:
         return FetchResult(
             url=url,
             status=None,
@@ -252,6 +288,9 @@ class _Core:
             method=method,
             error_kind="robots",
             blocked_by_robots=True,
+            robots_status=entry.status,
+            robots_error_kind=entry.error_kind,
+            robots_error=entry.error,
         )
 
 
@@ -270,6 +309,7 @@ class HttpClient(_Core):
         jitter: float = 0.1,
         respect_robots: bool = True,
         robots_ttl_s: float = ROBOTS_TTL_S,
+        robots_exempt_hosts: Iterable[str] | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
         transport: httpx.BaseTransport | None = None,
@@ -284,6 +324,7 @@ class HttpClient(_Core):
             jitter=jitter,
             respect_robots=respect_robots,
             robots_ttl_s=robots_ttl_s,
+            robots_exempt_hosts=robots_exempt_hosts,
             clock=clock,
         )
         self._sleep = sleep
@@ -326,11 +367,13 @@ class HttpClient(_Core):
         u = self._parse(url)
         if u is None:
             return self._invalid(url, method)
-        if self.respect_robots and not self._robots_allows(u):
-            return self._blocked(url, method)
+        if self._checks_robots(u):
+            entry = self._robots_for(u)
+            if not entry.allows(self.user_agent, str(u)):
+                return self._blocked(url, method, entry)
         return self._send(url, u, method, params=params, data=data, json=json, headers=headers)
 
-    def _robots_allows(self, u: httpx.URL) -> bool:
+    def _robots_for(self, u: httpx.URL) -> _RobotsEntry:
         origin = self._origin(u)
         with self._robots_lock:
             entry = self._robots_cached(origin)
@@ -339,7 +382,7 @@ class HttpClient(_Core):
                 r = self._send(robots_url, httpx.URL(robots_url), "GET")
                 entry = self._robots_entry(r)
                 self._robots[origin] = entry
-        return entry.allows(self.user_agent, str(u))
+        return entry
 
     def _send(
         self,
@@ -388,6 +431,7 @@ class AsyncHttpClient(_Core):
         jitter: float = 0.1,
         respect_robots: bool = True,
         robots_ttl_s: float = ROBOTS_TTL_S,
+        robots_exempt_hosts: Iterable[str] | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         clock: Callable[[], float] = time.monotonic,
         transport: httpx.AsyncBaseTransport | None = None,
@@ -402,6 +446,7 @@ class AsyncHttpClient(_Core):
             jitter=jitter,
             respect_robots=respect_robots,
             robots_ttl_s=robots_ttl_s,
+            robots_exempt_hosts=robots_exempt_hosts,
             clock=clock,
         )
         self._sleep = sleep
@@ -444,11 +489,13 @@ class AsyncHttpClient(_Core):
         u = self._parse(url)
         if u is None:
             return self._invalid(url, method)
-        if self.respect_robots and not await self._robots_allows(u):
-            return self._blocked(url, method)
+        if self._checks_robots(u):
+            entry = await self._robots_for(u)
+            if not entry.allows(self.user_agent, str(u)):
+                return self._blocked(url, method, entry)
         return await self._send(url, u, method, params=params, data=data, json=json, headers=headers)
 
-    async def _robots_allows(self, u: httpx.URL) -> bool:
+    async def _robots_for(self, u: httpx.URL) -> _RobotsEntry:
         origin = self._origin(u)
         lock = self._robots_locks.setdefault(origin, asyncio.Lock())
         async with lock:
@@ -458,7 +505,7 @@ class AsyncHttpClient(_Core):
                 r = await self._send(robots_url, httpx.URL(robots_url), "GET")
                 entry = self._robots_entry(r)
                 self._robots[origin] = entry
-        return entry.allows(self.user_agent, str(u))
+        return entry
 
     async def _send(
         self,
