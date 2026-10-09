@@ -27,7 +27,7 @@ from typing import Any
 import pytest
 from sqlalchemy import delete, select
 
-from .conftest import WRITE, RegressEnv, api_get
+from .conftest import WRITE, RegressEnv, api_get, cur
 
 pytestmark = pytest.mark.regress
 
@@ -156,6 +156,7 @@ def _rejudge(env: RegressEnv, sid: int) -> None:
 
 
 def _liquidity(env: RegressEnv, sid: int) -> tuple[float, str]:
+    sid = cur(env, sid)  # 발행 뒤 재판정 = 같은 기준일 새 리비전(D11-1)
     body = api_get(env, f"/complexes/{CANTAVIL}", snapshot=sid, scenario="base")
     assert body["score"] is not None, f"snapshot {sid}: 칸타빌 점수 없음"
     comp = body["score"]["components"]["liquidity"]

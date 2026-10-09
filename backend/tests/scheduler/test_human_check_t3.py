@@ -18,6 +18,7 @@ from app.models import ChangeEvent, Decision, HumanCheck, IntakeStatus, ScoreRun
 from app.scheduler import runner
 from app.scheduler.context import SchedulerContext
 from app.scheduler.rejudge import enqueue_rejudge
+from app.scheduler.snapshots import writable
 
 from .conftest import FIXTURE
 
@@ -59,7 +60,10 @@ def test_human_check_then_rejudge_includes_complex(
         t = _d_total(s, seeded, cid)
         assert t.rank is None  # D: 접수 확인 불가 → 후보 제외
 
-        # --- API(WP5)가 하는 일: human_check + intake(human_check) + change_event + rejudge
+        # --- API(WP5)가 하는 일: human_check + intake(human_check) + change_event + rejudge.
+        # 발행 스냅샷은 바꾸지 않는다 — 사람 확인은 같은 기준일 새 리비전에 쓴다(D11-1)
+        target = writable(s, seeded, reason="사람 확인", created_at=hc["checked_at"]).id
+        assert target != seeded
         h = HumanCheck(
             complex_id=cid,
             field="intake_status",
@@ -73,7 +77,7 @@ def test_human_check_then_rejudge_includes_complex(
         s.add(
             IntakeStatus(
                 complex_id=cid,
-                snapshot_id=seeded,
+                snapshot_id=target,
                 status="가능",
                 path="human_check",
                 checked_at=hc["checked_at"],
@@ -82,26 +86,27 @@ def test_human_check_then_rejudge_includes_complex(
             )
         )
         ev = ChangeEvent(
-            snapshot_id=seeded, entity="intake_status", entity_id=None, field="status", old_text="확인 불가",
+            snapshot_id=target, entity="intake_status", entity_id=None, field="status", old_text="확인 불가",
             new_text="가능", detected_at="2026-10-09T10:00:00+09:00", severity="critical", triggers_rejudge=True,
             complex_id=cid,
         )  # fmt: skip
         s.add(ev)
         s.flush()
-        job = enqueue_rejudge(s, seeded, [cid], "사람 확인 입력", change_event_ids=[ev.id])
+        job = enqueue_rejudge(s, target, [cid], "사람 확인 입력", change_event_ids=[ev.id])
         s.commit()
         assert job.payload["complex_ids"] == [cid]
     runner.run_until_idle(ctx)
     with factory() as s:
-        t = _d_total(s, seeded, cid)
+        assert _d_total(s, seeded, cid).rank is None  # 발행 리비전은 그대로
+        t = _d_total(s, target, cid)
         assert t.rank is not None and t.total is not None  # 후보 포함
         run = s.scalars(
-            select(ScoreRun).where(ScoreRun.snapshot_id == seeded, ScoreRun.scenario_id == SCENARIO_D)
+            select(ScoreRun).where(ScoreRun.snapshot_id == target, ScoreRun.scenario_id == SCENARIO_D)
             .order_by(ScoreRun.id.desc())
         ).first()  # fmt: skip
         assert run is not None
         mine = s.scalars(
             select(Decision).where(Decision.score_run_id == run.id, Decision.complex_id == cid)
         ).first()
-        if mine is not None:  # 상위 6 후보 안이면 요건 사전 계산이 '접수 가능(사람 확인)'을 쓴다
-            assert mine.req_access_pre and "사람 확인" in mine.req_access_pre["evidence"]
+        if mine is not None:  # D 의 접근 요건은 공급 경로(무순위·임의·선착순)로 본다(RA §6-7 — R3 3차 RA 부분)
+            assert mine.req_access_pre and "공고" in mine.req_access_pre["evidence"]

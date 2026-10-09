@@ -323,7 +323,9 @@ def test_n_m2_news_screen_at_collect_then_classify_discards_not_catalyst(
     assert not out.degraded, out.error
     with factory() as s:
         kept = {c.name: c for c in s.scalars(select(Catalyst))}
-        assert set(kept) == {"트램 기본계획 고시", "사람 입력 호재"}
+        # '호재 아님'은 지우지 않고 단계로 남긴다(R3 3차 M-10 · D11-2)
+        assert kept["송도 모델하우스 견본주택 개관"].stage == "호재 아님"
+        assert {n for n, c in kept.items() if c.stage != "호재 아님"} == {"트램 기본계획 고시", "사람 입력 호재"}
         tram = kept["트램 기본계획 고시"]
         assert (
             tram.stage == "확정" and tram.judgment_seq is not None and tram.kind == "교통"

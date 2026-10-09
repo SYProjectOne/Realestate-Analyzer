@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import SNAP, WRITE, RegressEnv, api_get
+from .conftest import SNAP, WRITE, RegressEnv, api_get, cur
 
 pytestmark = pytest.mark.regress
 
@@ -45,7 +45,7 @@ def _annual(months: int) -> dict[str, float]:
 
 
 def _ladders_api(env: RegressEnv, cid: int) -> dict[str, dict[str, Any]]:
-    body = api_get(env, f"/complexes/{cid}", snapshot=SNAP)
+    body = api_get(env, f"/complexes/{cid}", snapshot=cur(env))
     return {lad["horizon"]: lad for lad in body["ladder"]}
 
 
@@ -89,7 +89,7 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
         rows = {
             (lad.complex_id, lad.horizon): lad
             for lad in s.scalars(
-                select(Ladder).where(Ladder.snapshot_id == SNAP, Ladder.complex_id.in_([RIVERFRONT, GOCHON]))
+                select(Ladder).where(Ladder.snapshot_id == cur(env), Ladder.complex_id.in_([RIVERFRONT, GOCHON]))
             )
         }
         for row in rows.values():
@@ -160,7 +160,7 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
                 view["p10"]
             )
             assert view["target_label"], view
-    cmp = api_get(env, f"/snapshots/{SNAP}/compare", ids=f"{RIVERFRONT},{GOCHON}")
+    cmp = api_get(env, f"/snapshots/{cur(env)}/compare", ids=f"{RIVERFRONT},{GOCHON}")
     by_h = {cid: {lad["horizon"]: lad for lad in cmp["ladders"][str(cid)]} for cid in (RIVERFRONT, GOCHON)}
     assert (
         by_h[RIVERFRONT]["asof_plus_3y"]["target_ym"]

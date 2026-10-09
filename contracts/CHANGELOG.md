@@ -2,6 +2,65 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.8
+
+R3 3차 리뷰(`docs/design/wp/R3_REVIEW3.md`) 후속 — CEO 결정 D11(`docs/design/DECISIONS.md`)과 R3c 배정(`docs/design/wp/R3C_FIX.md`).
+계약 소유자 = R3c CORE(브랜치 `wp/r3c-core`). 마이그레이션 `0008`(`0008_r3c.py`: 컬럼 9개 추가 + 유일 제약 1개 교체 + CHECK 값 3개 추가 —
+0007 DB 는 `alembic upgrade head` 한 번). 필드 삭제 없음.
+
+**프론트가 초안(`R3C_FIX.md` '계약 .8 초안')과 다르게 받을 것** — 아래 #6·#2·#4·#5 굵은 글씨:
+초안 `payment_terms.discount_won` → **`discount_by_type`**(컬럼 형 정책: `*_won` = BigInteger), `PATCH /catalysts` 응답은 Catalyst 가 아니라
+**`CatalystUpdated {catalyst, links, job}`**, `PATCH /regions` 응답은 **`RegionPatched {region, change_event, job_id, added, removed}`**(잡 = `region.expand`,
+rejudge 아님), HumanCheck 대상은 (entity, field) 쌍 목록이 아니라 **`field` enum(`HumanCheckField`) + 선택 `entity_id`**(entity 는 서버가 정해 응답에 싣는다).
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전 | 이후 | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | 발행 스냅샷 | 재판정·사람 확인·같은 기준일 재수집이 발행 스냅샷 행을 고쳐 썼다 | **발행 스냅샷은 불변.** 그 기준일 최신 리비전이 발행됐으면 새 리비전(`revision`+1, `revision_of` = 바탕, `revision_reason`)을 만들어 거기에 쓴다(접수 상태 행은 복사, 파생 행은 비대상만 복사·대상은 새로 판정). `?snapshot=` 은 리비전의 snapshot id. 화면은 `GET /regions/{id}/snapshots` 의 가장 큰 리비전을 기본으로 | D11-1 · C-1 · M-2 |
+| S2 | 사실 강등(`fact_demotion`) | 강등 때 사실 테이블 값을 비우고 출처 행을 바꿨다(재수집이 값을 되살림, GET 이 행을 고침) | **읽기 시점 오버레이**: 강등은 (entity, entity_id, field, `value_norm`) 기록만. chosen 값이 강등 값과 같은 동안 API·점수 입력·보고서·CSV 가 '확인 불가(검증 모순)'로 본다. 풀림 = 사람 확인(0순위 후보) 또는 **다른 값**의 새 원문뿐 — 같은 원문 재수집은 풀지 않는다. GET 은 쓰지 않는다 | D11-3 · C-3 · C-4 · M-3 · M-4 |
+| S3 | 사람 확인 | `field` 자유 문자열, `intake_status` 만 반영 | `field` = `HumanCheckField` enum. 사실 필드면 resolver **0순위 후보**(`FieldCandidate.source_rank` 0, 라벨 확인됨, reason '사람 확인(…)')로 들어가 재정규화에도 원문을 이긴다 + 강등 해제 + change_event + 쓰기 가능 리비전에 rejudge 제안. `entity_id` 로 행 지정(가격 = payment_terms 또는 complex_type, 계약금 = payment_terms), 없으면 현재 공고·기준 타입. 강등 대상이 아닌 field·값 형식 오류는 422 | D11-3 · M-5 · minor 10 |
+| S4 | 벤치마크 범위 | 화면·보고서·점수가 지역의 최신 벤치마크 행을 섞어 읽었다 | 모두 `api.benchmarks.benchmarks_for(snapshot)` 한 함수: 그 스냅샷 조립분 → 없으면 그 이전 가장 최근 조립분 → 없으면 snapshot_id NULL 행. 같은 기준일 두 번째 주간 수집이 표본 수를 바꾸지 않는다. 0006 이전 NULL 자동 행을 새 조립이 넘겨받지 않는다(minor 25) | C-1 · M-6 · minor 25 |
+| S5 | 잔여(무순위·임의·잔여세대) 공고 병합 | 병합된 잔여 공고가 원 단지의 단지 단위 필드(입주월·세대수 등)를 덮었다, 이름 키가 '(2차 잔여세대)'의 차수까지 지웠다 | 병합 공고는 **자기 공고 단위**(payment_terms·remaining_event)만 쓴다. 이름 키는 공급 구분 괄호(회차·무순위·임의·잔여…)만 지우고 차수·단지·블록은 남긴다 — '(22차)'·'(2차)'는 다른 단지 | D11-4 · C-2 · M-7 · M-8 · minor 18 |
+| S6 | 체크리스트 닫힘 | 근거가 사라져도 열린 채, 사람 'na' 와 자동 닫힘 구별 없음 | `closed_by`: auto = 동기화가 닫음(근거 사실 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 연다), human = 사람이 PATCH 로 닫음(동기화가 다시 열지 않는다). 강등 중 사람이 done 해도 '사실 재확인'은 다시 열린다 | M-9 · minor 12 |
+| S7 | '호재 아님' | 판정기 '호재 아님'이면 catalyst 행을 지웠다(연결·출처까지) | 지우지 않는다. 뉴스 후보 → `stage` '호재 아님'(목록·보드·점수에서 제외), 사람이 넣은 호재 → 단계 유지 + note 에 '판정기: 호재 아님' 병기. `catalysts_discarded` 항목에 `kept: true` | D11-2 · M-10 |
+| S8 | `rejudge_needed` | 저장 범위 ≠ 현재 범위면 어느 스냅샷이든 true | 그 지역 **최신 리비전**에서, score_run 실행 **뒤** 바뀐 사실로 범위가 달라질 때만 true(발행된 옛 리비전은 늘 false). 목록 CSV 에 `rejudge_needed` 열(0/1) | minor 2 · minor 5 |
+| S9 | 상황 B·D 접근성 | 접수 상태만 봤다 | §6-7: A·C = 비공식 경로 포함 접수 가능 AND 통장 조건, B·D = **현재 조건 공고의 공급 경로**(`ComplexScoreInput.current_supply_kind` 무순위·임의·선착순)이고 접수 가능일 때만 충족. 규제 = 재당첨제한·규제지역도 본다 | RA 부분(§6-7) |
+| S10 | 계약 외 메서드 | 매개변수 경로와 모양이 같은 글자 경로(`/regions/resolve` PATCH)가 422 | 계약에 없는 메서드면 405 + `Allow`(글자 그대로 경로 우선 매칭) | D11-7 후속 |
+
+### 스키마 추가(선택 필드 — 옛 입력도 그대로 검증)
+
+| # | 대상 | 변경 | 결정·리뷰 |
+| --- | --- | --- | --- |
+| 1 | `snapshot.json` Snapshot | `revision`(integer ≥1, **선택·기본 1** — 서버 응답엔 늘 실림), `revision_of`(integer\|null), `revision_reason`(string\|null). 유일 (region_id, asof_date) → (region_id, asof_date, revision). 예시 `snapshots_list.json` 등 갱신 | D11-1 |
+| 2 | `human_check.json` | `$defs/HumanCheckField` enum(`intake_status`·`max_price_won`·`move_in_ym`·`resale_months`·`residency_months`·`down_payment_pct`·`other`), HumanCheckCreate `field` → enum·`entity_id`(선택)·`value_text` maxLength 200·`note` maxLength 500, HumanCheck `entity`·`entity_id`(바뀐 사실 행, 접수 상태·기타·옛 행 null). 마이그레이션 `human_check.entity·entity_id` | D11-3 · M-5 |
+| 3 | `field_candidate.json` | `source_rank` minimum 1 → **0**(0 = 사람 확인) | D11-3 |
+| 4 | `catalyst.json` + `PATCH /catalysts/{id}`(operationId `updateCatalyst`) | `stage` enum 에 '호재 아님', Catalyst `lat`·`lon`(사람 확인 좌표, null), `$defs/CatalystPatch {location_confirmed, lat?, lon?, living_area_ids?, complex_ids?, expected_ym?}`, `$defs/CatalystLinkView {complex_id, distance_m, weight, label, reason}`, `$defs/CatalystUpdated {catalyst, links, job}`. location_confirmed=true 면 생활권·단지로 catalyst_link 생성(좌표 거리 없으면 distance_m null, weight 1, 라벨 추정), false 면 연결 삭제, 영향 범위 없이 true 는 422. 연결이 바뀌면 rejudge 잡. `ComplexDetail.catalysts` 가 연결된 호재로 채워진다. 마이그레이션 `catalyst_link.label·reason`, `catalyst.stage` CHECK | D11-5 · D11-2 |
+| 5 | `region.json` + `PATCH /regions/{id}`(operationId `updateRegion`) | `$defs/RegionPatch {selections, name?}`(바뀐 뒤 전체), `$defs/RegionPatched`. 법정동·시군구·생활권 재계산(기존 생활권 그대로, 추가 시군구는 새 생활권), change_event critical, `region.expand` 잡. 그대로면 409 | D11-7 |
+| 6 | `payment_terms.json` `discount_by_type` · `complex_detail.json` PriceView `discount` | 공고에 적힌 할인(타입별 Fact, 원). 라벨 확인됨일 때만 low·high·mid 에서 빼고 composition 에 '− 할인' 표기, 아니면 표시만. 마이그레이션 `payment_terms.discount_by_type`(JSON) | D11-6 |
+| 7 | `checklist_item.json` | `closed_by`('auto'·'human'·null). 마이그레이션 `checklist_item.closed_by` | M-9 |
+| 8 | `job_run.json` JobName · JobCreateName, `job_payloads/backup.json`·`region_expand.json` | 잡 이름 `backup`(매일 03:00 worker — DB 백업 + 원문 증분 복사, `keep_days` 선택, POST /jobs 가능), `region.expand`(PATCH /regions 만 — JobCreateName 에서 제외). 마이그레이션 `job_run.job_name` CHECK | D11-8 · D11-7 |
+| 9 | `score_inputs.json` ComplexScoreInput `current_supply_kind` | 현재 조건 공고의 공급 경로(본청약·무순위·임의·선착순 등, null = 미상) — S9 | RA §6-7 |
+| 10 | `fact_demotion.value_norm`(DB 만 — API FactDemotion 모양 그대로) | 강등한 모순 값의 정준 문자열(S2 오버레이 비교) | D11-3 |
+
+### 마이그레이션·검증
+
+- `0008`: 위 컬럼 + 유일 제약 교체 + CHECK 3개. SQLite 는 batch(재생성 정의 고정, 제약 이름 `op.f`), Postgres 는 ALTER.
+  downgrade 는 리비전 2 이상 스냅샷이 있으면 **실패**(유일 제약을 되돌리면 리비전 행이 지워져야 해서 — 데이터 손실 방지), '호재 아님'
+  catalyst → '미확정', 새 잡 이름 행 삭제, 나머지 컬럼 삭제. head → 0007 → head 왕복 SQLite·Postgres 16(pgserver) 테스트, autogenerate diff 0.
+- `0006` docstring 에 downgrade 손실 표(fact_demotion·claim 대상 컬럼·'사실 재확인' 항목 — 재upgrade 뒤 재강등 가능) 추가(CEO 요청).
+- `infra/.env.example`: `ENV=prod` + Postgres `DATABASE_URL` 기본, 로컬 dev(SQLite) 안내는 주석으로(D11-9 prod+SQLite 거부와 맞춤).
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.8`. 백엔드 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성.
+  MSW 예시: `catalyst_patch_req.json`·`catalyst_updated.json`·`region_patch_req.json`·`region_patched.json` 추가, 스냅샷·지역 예시에 revision.
+- **프론트 생성물(`src/api/schema.d.ts`·`src/mocks/handlers.gen.ts`)은 이 브랜치에서 커밋하지 않았다** — 프론트 소유(R3c FE)가 머지 뒤
+  `npm run gen:api`·`gen:msw` 로 다시 만든다. 이 계약으로 생성하면 `tsc` 오류 2건이 난다(프론트가 고칠 곳): `charts/C09/buildOption.ts`
+  i18n 키 `chart.C09.stage.호재 아님` 없음, `pages/ops/HumanCheckForm.tsx` field 선택지('units'·'price')가 `HumanCheckField` enum 밖.
+
+### fixtures (R3c CORE — 계약 .8)
+
+매니페스트(`contracts/fixtures.sha256.json`) 사유: R3c CORE: 계약 .8 스냅샷 리비전(발행 스냅샷 재판정은 새 리비전 — 봉투 snapshot_id 12→13)과 §6-7 상황 B·D 접근성(현재 공고 공급 경로)으로 상황 decide payload 3건 변경 — 합성 판정 녹화 재생성
+생성기(`tools/record_synth_judgments.py`)로만 다시 만들었고 `--check` 일치(봉투 293개, decide 3건 hash 교체, 나머지는 snapshot_id 표기만). 계약 스키마 외 데이터 변경 없음.
+
 ## 2026-10-09.7
 
 R3b 마무리(CEO 위임, 브랜치 `wp/r3b-closing`) — R3b 가 '계약 .6 요청'으로 남긴 두 자리. 계약 소유자 = R3b 마무리.

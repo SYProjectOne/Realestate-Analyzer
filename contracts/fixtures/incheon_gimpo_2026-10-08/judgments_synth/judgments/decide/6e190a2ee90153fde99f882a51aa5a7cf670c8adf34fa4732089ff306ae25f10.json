@@ -1,8 +1,8 @@
 {
   "tool": "decide",
   "purpose": "decide:scenario_B",
-  "input_hash": "sha256:1d59491bd9c2e5d0d595b756ad4789ad2a363b88ea472c3726bcc5becf0e8ac4",
-  "input_len": 3535,
+  "input_hash": "sha256:6e190a2ee90153fde99f882a51aa5a7cf670c8adf34fa4732089ff306ae25f10",
+  "input_len": 3652,
   "status": "ok",
   "confidence": 0.48,
   "cached": false,
@@ -170,7 +170,7 @@
   "judgment_seq": null,
   "created_at": "2026-10-09T06:00:00+09:00",
   "adapter_version": "mock-fixture-2026-10-08",
-  "snapshot_id": 12,
+  "snapshot_id": 13,
   "complex_id": null,
   "error_text": null
 }

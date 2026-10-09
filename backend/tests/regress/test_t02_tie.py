@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import FIXTURE, SNAP, WRITE, FakeJev, RegressEnv, api_get, by_key, load_json
+from .conftest import FIXTURE, SNAP, WRITE, FakeJev, RegressEnv, api_get, by_key, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -53,7 +53,10 @@ def test_t02_compare_api_decisions_b_tie_both_chosen(env: RegressEnv) -> None:
     ids = by_key()
     chosen_ids = [ids[k] for k in t2["expected"]["chosen"]]
     body = api_get(
-        env, f"/snapshots/{SNAP}/compare", ids=",".join(str(i) for i in chosen_ids), scenario=t2["scenario"]
+        env,
+        f"/snapshots/{cur(env)}/compare",
+        ids=",".join(str(i) for i in chosen_ids),
+        scenario=t2["scenario"],
     )
     ds = body["decisions"][t2["scenario"]]
     assert ds["judgment_seq"] == t2["judgment_seq"], ds
@@ -89,7 +92,7 @@ def test_t02_dashboard_decision_badges(env: RegressEnv) -> None:
     t2 = _t2()
     ids = by_key()
     chosen_ids = {ids[k] for k in t2["expected"]["chosen"]}
-    dash = api_get(env, f"/snapshots/{SNAP}/dashboard", scenario=t2["scenario"])
+    dash = api_get(env, f"/snapshots/{cur(env)}/dashboard", scenario=t2["scenario"])
     assert dash["scenario_code"] == t2["scenario"]
     seen: set[int] = set()
     for r in dash["top5"]:
@@ -162,7 +165,7 @@ def test_t02_pipeline_low_confidence_decide_marks_top2_tie(env: RegressEnv) -> N
     with env.session() as s:
         run = s.scalars(
             select(ScoreRun)
-            .where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == sc_b)
+            .where(ScoreRun.snapshot_id == cur(env), ScoreRun.scenario_id == sc_b)
             .order_by(ScoreRun.id.desc())
         ).first()
         assert run is not None and run.id > 5, "새 score_run 이 없다"
@@ -181,7 +184,9 @@ def test_t02_pipeline_low_confidence_decide_marks_top2_tie(env: RegressEnv) -> N
         ]
         assert not any(d.tie or d.chosen for d in rows if d.option_key != "complex")
 
-    body = api_get(env, f"/snapshots/{SNAP}/compare", ids=",".join(str(i) for i in top2_ids), scenario="B")
+    body = api_get(
+        env, f"/snapshots/{cur(env)}/compare", ids=",".join(str(i) for i in top2_ids), scenario="B"
+    )
     ds = body["decisions"]["B"]
     assert ds["score_run_id"] == run.id and ds["tie"] is True
     assert ds["confidence"]["v"] == pytest.approx(0.48)
@@ -209,7 +214,7 @@ def test_t02_pipeline_confident_decide_no_tie(env: RegressEnv) -> None:
     with env.session() as s:
         run = s.scalars(
             select(ScoreRun)
-            .where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == sc_b)
+            .where(ScoreRun.snapshot_id == cur(env), ScoreRun.scenario_id == sc_b)
             .order_by(ScoreRun.id.desc())
         ).first()
         assert run is not None and run.id > 5

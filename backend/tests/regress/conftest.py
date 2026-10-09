@@ -440,3 +440,16 @@ def api_get(env: RegressEnv, path: str, **params: Any) -> Any:
 def by_key() -> dict[str, int]:
     """expected_scores.json key → complex_id."""
     return {c["key"]: c["complex_id"] for c in load_json(FIXTURE / "expected_scores.json")["complexes"]}
+
+
+def cur(env: RegressEnv, snap: int = SNAP) -> int:
+    """``snap`` 기준일의 가장 큰 리비전 id. 발행 스냅샷 재판정·사람 확인은 같은 기준일 새 리비전에 쓴다(D11-1) —
+    재판정 뒤 화면 값은 이 리비전에서 읽는다(발행 리비전은 그대로)."""
+    from app.models import Snapshot
+    from app.scheduler.snapshots import latest_revision
+
+    with env.session() as s:
+        base = s.get(Snapshot, snap)
+        assert base is not None
+        row = latest_revision(s, base.region_id, base.asof_date)
+        return int(row.id if row is not None else snap)

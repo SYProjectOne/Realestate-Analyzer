@@ -193,7 +193,7 @@ def _daily_docs(s: Session) -> list[RawDTO]:
         "PRZWNER_PRESNATN_DE": "2025-12-20", "TOT_SUPLY_HSHLDCO": 500, "HOUSE_DTL_SECD_NM": "민영",
     }  # fmt: skip
     rem = {
-        "HOUSE_MANAGE_NO": "2026910500", "PBLANC_NO": "2026910500", "HOUSE_NM": "송도 바다 아파트(2차)",
+        "HOUSE_MANAGE_NO": "2026910500", "PBLANC_NO": "2026910500", "HOUSE_NM": "송도 바다 아파트(무순위 2차)",
         "HOUSE_SECD": "04", "HSSPLY_ADRES": ADDR, "RCRIT_PBLANC_DE": "2026-09-30",
         "SUBSCRPT_RCEPT_BGNDE": "2026-10-12", "SUBSCRPT_RCEPT_ENDDE": "2026-10-12", "TOT_SUPLY_HSHLDCO": 2,
     }  # fmt: skip

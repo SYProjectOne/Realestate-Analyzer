@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 import json
+import re
 import zipfile
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -27,10 +29,12 @@ __all__ = [
     "ArchiveManifest",
     "archive_kind",
     "archived_notices",
+    "archived_notices_many",
     "build_month_manifest",
     "write_month_archive",
 ]
 
+_HM_RE = re.compile(r"houseManageNo=(\d+)")
 ARCHIVE_SOURCES = ("applyhome_list", "applyhome_detail", "notice_pdf")
 _ZIP_TIME = (2000, 1, 1, 0, 0, 0)
 
@@ -172,3 +176,38 @@ def archived_notices(
     ]
     rows.sort(key=lambda r: (r.fetched_at, r.id))
     return rows
+
+
+def archived_notices_many(
+    session: Session, applyhome_ids: Iterable[str], *, region_id: int
+) -> dict[str, list[RawDocument]]:
+    """``archived_notices`` 를 여러 주택관리번호에 한 번에(쿼리 2개 — 단지 수와 무관, 벤치마크 N+1 방지).
+
+    같은 규칙: URL 의 ``houseManageNo=`` 또는 그 지역 단지 행의 complex_id. 번호마다 오래된 것부터."""
+    ids = sorted(set(applyhome_ids))
+    out: dict[str, list[RawDocument]] = {hm: [] for hm in ids}
+    if not ids:
+        return out
+    cx_hm: dict[int, str] = {}
+    for cx in session.scalars(
+        select(Complex)
+        .where(Complex.applyhome_id.in_(ids), Complex.region_id == region_id)
+        .order_by(Complex.id)
+    ):
+        cx_hm.setdefault(cx.id, str(cx.applyhome_id))
+    by_cx: dict[int, str] = {}
+    for cid, hm in cx_hm.items():
+        if hm not in by_cx.values():
+            by_cx[cid] = hm  # archived_notices 와 같이 번호마다 첫 단지 행
+    stmt = select(RawDocument).where(RawDocument.source_kind == "notice_pdf", RawDocument.path.is_not(None))
+    for r in session.scalars(stmt):
+        if r.region_id not in (None, region_id):
+            continue
+        hits = {m for m in _HM_RE.findall(r.url or "") if m in out}
+        if r.complex_id is not None and r.complex_id in by_cx:
+            hits.add(by_cx[r.complex_id])
+        for hm in hits:
+            out[hm].append(r)
+    for rows in out.values():
+        rows.sort(key=lambda r: (r.fetched_at, r.id))
+    return out

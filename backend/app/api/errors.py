@@ -144,7 +144,16 @@ def install_handlers(app: FastAPI) -> None:
         """요청 검증 실패. 계약이 그 operation 에 422 를 문서화하지 않았고 404 는 있으면(경로·조회 파라미터가
         가리키는 대상이 없음) 404 not_found 로 답한다 — 문서화된 상태 코드만 낸다."""
         assert isinstance(exc, RequestValidationError)
-        from app.api.contract import documented_statuses
+        from app.api.contract import allowed_methods, documented_statuses
+
+        allowed = allowed_methods(contract_path(req))
+        if allowed and req.method.upper() not in allowed:
+            # 같은 모양의 다른 경로('/regions/{id}' PATCH)에 잡힌 글자 그대로 경로('/regions/resolve') — 405
+            return _json(
+                405,
+                {"code": _STATUS_CODE[405], "detail": "Method Not Allowed"},
+                {"Allow": ", ".join(allowed)},
+            )
 
         errors = [{"loc": _loc(e.get("loc", ())), "msg": str(e.get("msg", ""))} for e in exc.errors()]
         detail = (

@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
-from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, load_json
+from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -157,13 +157,15 @@ def test_t06_rejudge_job_verify_inputs_are_atomic(env: RegressEnv) -> None:
                 for r in s.scalars(
                     select(JudgmentLog).where(
                         JudgmentLog.tool == "verify",
-                        JudgmentLog.snapshot_id == SNAP,
+                        JudgmentLog.snapshot_id == cur(env),
                         JudgmentLog.complex_id.in_([1, 2]),
                     )
                 )
             }
         )
-        rows = list(s.scalars(select(Claim).where(Claim.snapshot_id == SNAP, Claim.judgment_seq.in_(seqs))))
+        rows = list(
+            s.scalars(select(Claim).where(Claim.snapshot_id == cur(env), Claim.judgment_seq.in_(seqs)))
+        )
         assert rows and len(rows) == len(sent), (len(rows), len(sent))
         for row in rows:
             jl = s.get(JudgmentLog, row.judgment_seq)

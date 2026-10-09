@@ -445,6 +445,13 @@ def test_d11_7_patch_region_expands_selection_and_enqueues_expand_job(client: Te
     assert jobs.status_code == 422, "region.expand 는 PATCH /regions 로만"
 
 
+def test_d11_7_patch_on_literal_resolve_path_is_405(client: TestClient) -> None:
+    """PATCH /regions/{id} 가 생긴 뒤에도 '/regions/resolve' PATCH 는 id 검증 422 가 아니라 405 + Allow(계약 메서드)."""
+    r = client.patch("/api/regions/resolve", params={"q": "x"}, json={}, headers=WRITE)
+    assert r.status_code == 405, r.text
+    assert r.headers.get("allow") == "GET"
+
+
 def _walk(obj: Any) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if isinstance(obj, dict):

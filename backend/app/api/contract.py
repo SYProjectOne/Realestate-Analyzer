@@ -107,6 +107,8 @@ def _templates() -> tuple[tuple[re.Pattern[str], str, dict[str, frozenset[str]]]
             if m in _METHODS
         }
         out.append((rx, path, ops))
+    # 글자 그대로인 경로가 먼저: '/regions/resolve' 가 '/regions/{id}' 로 잡히지 않게(PATCH → 405, 422 아님)
+    out.sort(key=lambda t: t[1].count("{"))
     return tuple(out)
 
 

@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, by_key, load_json
+from .conftest import FIXTURE, SNAP, WRITE, RegressEnv, api_get, by_key, cur, load_json
 
 pytestmark = pytest.mark.regress
 
@@ -68,7 +68,9 @@ def _score_rows(env: RegressEnv, ids: list[int], scenario: str = "base") -> dict
     if len(chunks[-1]) == 1:  # 비교는 2~6개
         chunks[-1] = [chunks[-2].pop(), *chunks[-1]]
     for chunk in chunks:
-        body = api_get(env, f"/snapshots/{SNAP}/compare", ids=",".join(map(str, chunk)), scenario=scenario)
+        body = api_get(
+            env, f"/snapshots/{cur(env)}/compare", ids=",".join(map(str, chunk)), scenario=scenario
+        )
         out.update({r["complex_id"]: r for r in body["rows"]})
     return out
 
@@ -126,7 +128,7 @@ def test_t07_devseed_scores_use_only_call_124(env: RegressEnv) -> None:
     from app.models import ScoreRun
 
     with env.session() as s:
-        runs = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP)))
+        runs = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == cur(env))))
     assert runs and {r.rerank_judgment_seq for r in runs} == {SEQ_NEW}
     new = _items(_rerank_envelopes(env)[SEQ_NEW])
     rows = _score_rows(env, list(range(1, 17)))
@@ -177,7 +179,7 @@ def _latest_base_run(env: RegressEnv) -> Any:
     with env.session() as s:
         run = s.scalars(
             select(ScoreRun)
-            .where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == 1)
+            .where(ScoreRun.snapshot_id == cur(env), ScoreRun.scenario_id == 1)
             .order_by(ScoreRun.id.desc())
         ).first()
         assert run is not None
