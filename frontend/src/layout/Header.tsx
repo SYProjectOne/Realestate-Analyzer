@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router';
 import { useScenarios } from '@/api/hooks';
 import { RegionPicker, ScenarioToggle, SnapshotPicker } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
-import { useScenario } from '@/hooks/useScenario';
+import { scenarioKey, useScenario } from '@/hooks/useScenario';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
 import { ThemeToggle } from './ThemeToggle';
@@ -32,14 +32,14 @@ export function Header() {
         <span className="font-semibold">{t('app.name')}</span>
         <RegionPicker
           regions={regions}
-          value={region?.id ?? null}
+          value={region ? String(region.id) : null}
           onChange={setRegion}
           onAddRegion={() => navigate('/regions/new')}
         />
         <SnapshotPicker snapshots={snapshots} value={snapshotId} onChange={setSnapshot} />
         {scenarios.length > 0 ? (
           <ScenarioToggle
-            options={scenarios.map((s) => ({ id: s.id, name: s.name }))}
+            options={scenarios.map((s) => ({ id: scenarioKey(s), name: s.name }))}
             value={scenarioId}
             onChange={setScenario}
           />

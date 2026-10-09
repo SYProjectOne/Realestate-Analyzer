@@ -1,4 +1,10 @@
+import type { Scenario } from '@/api/types';
 import { useUrlParam } from './useUrlParam';
+
+/** URL·API 쿼리용 시나리오 키: 내장은 code(base|A|B|C|D), 사용자 시나리오는 id 문자열(계약 Scenario 파라미터) */
+export function scenarioKey(s: Pick<Scenario, 'id' | 'code'>): string {
+  return s.code ?? String(s.id);
+}
 
 export const SCENARIO_PARAM = 'scenario';
 
