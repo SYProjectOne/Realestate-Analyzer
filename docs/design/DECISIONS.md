@@ -16,7 +16,7 @@
 | 5a | 공식 API 확장 | 사람이 2026-10-09 추가 발급: 같은 `DATA_GO_KR_KEY`로 청약홈 분양정보·청약 신청/당첨자 API, NAVER Cloud API HUB 검색 키(`NEWS_API_PROVIDER=ncp`). 청약홈은 **공식 API 1순위, 웹 수집은 폴백**(RA ADR-4 확장). 입주물량 추정 집계 원천에 API 입주예정월 추가. 뉴스 collector 활성 | 사람 답 |
 | 5b | 골든 파일 v2 | 세대수 가정값만 행안부 주민등록 세대수 실측으로 교체한 뒤 회귀 기준으로 고정(2026-10-09 결정) | 사람 답 |
 | 6 | 뉴스 API | 2026-10-09 NAVER Cloud API HUB 검색 키 발급(5a) → news collector 활성(`naverapihub.apigw.ntruss.com/search/v1/news`). 키가 없으면 비활성, 호재는 사람이 URL 입력 가능 | 사람 답 |
-| 6a | 청약홈 경쟁률 API | data.go.kr 15098905 활용신청 필요(2026-10-09 기준 미신청 → 401) — 승인 전까지 경쟁률은 웹 수집 폴백 | 사람 할 일 |
+| 6a | 청약홈 경쟁률 API | 사람이 2026-10-09 data.go.kr 15098905 활용신청 승인 — APT·무순위·임의공급 경쟁률 3종 200 확인. 경쟁률은 공식 API 1순위, 웹 수집은 폴백. 합성 픽스처는 실녹화로 교체(WP9-후속) | 사람 답 |
 | 7 | 웹훅 | 없음. `notify.py`는 구현·테스트하고 `WEBHOOK_URL`이 비면 보내지 않는다 | 사람 답 |
 | 8 | 보고서 형식 | **HTML + PDF** 두 가지(D4). md·docx 없음 | 사람 답 |
 | 9 | 실행 수단·병렬 | Claude Code 서브에이전트, worktree 격리, R1 병렬 8명 | 사람 답 |
