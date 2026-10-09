@@ -61,7 +61,6 @@ from app.models import (
     Supply,
     Unsold,
 )
-from app.normalize.benchmark import SUBSTITUTE_NOTE
 from app.reports.errors import ReportBlocked, ReportNotFound, ReportProvenanceMissing
 from app.reports.fmt import make_fact, round_half_up, unknown_fact
 from app.reports.policy import (
@@ -1350,7 +1349,7 @@ def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[Suppl
                 trade_median=med,
                 change_pct=change,
                 is_presale=b.is_presale,
-                substitute=SUBSTITUTE_NOTE in (b.note or ""),
+                substitute=bool(b.substitute),  # 계약 2026-10-09.7 benchmark.substitute(0007)
             )
         )
         has_case = not b.is_presale and b.sale_year is not None and bool(b.trade_median_won)

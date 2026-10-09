@@ -2,7 +2,7 @@
 
 - applyhome_list: APT 분양정보 목록 표의 ``tr[data-hmno]`` → 단지 이름·시공사·공고일·당첨자발표일
 - applyhome_detail(상세 팝업 ``selectAPTLttotPblancDetail``): 주요정보·청약일정·공급대상·
-  공급금액(최고가, 만원)·입주예정월·시행사/시공사
+  공급금액(최고가, 만원)·입주예정월·시행사/시공사·홈페이지(당첨자 발표 칸 링크 → official_site_url)
 - applyhome_detail(경쟁률 팝업 ``selectAPTCompetitionPopup``): 주택형·공급세대수·순위·지역·
   접수건수·경쟁률(미달)
 
@@ -27,6 +27,7 @@ from app.normalize._text import (
     CandidateBuilder,
     area_from_long_code,
     canonical_json,
+    normalize_site_url,
     normalize_type_code,
     parse_date,
     parse_won,
@@ -260,6 +261,14 @@ def _schedule(tbl: Tag, b: CandidateBuilder, pos: _Pos, key: str) -> None:
                 b.add(
                     "complex", key, "winner_date", d, _txt(cells[1]).split("(")[0].strip(), span, excerpt=ex
                 )
+            # 당첨자 발표 칸의 '( 홈페이지 링크 )' = 단지 공식 홈페이지(R3b 마무리) → official_site_url
+            link = cells[1].find("a", href=True)
+            site = normalize_site_url(str(link.get("href"))) if isinstance(link, Tag) else None
+            if site and isinstance(link, Tag):
+                b.add(
+                    "complex", key, "official_site_url", site, str(link.get("href")), pos.span(link),
+                    excerpt=f"{head} 홈페이지 {link.get('href')}",
+                )  # fmt: skip
         elif head == "계약일" and len(cells) > 1:
             dates = _DATE_ISO_RE.findall(_txt(cells[1]))
             if dates:

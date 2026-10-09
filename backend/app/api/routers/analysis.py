@@ -352,6 +352,7 @@ def preview_scenario(
             "resale": _label(fm.field("complex", b.cx.id, "resale_months", b.cx.resale_months)),
             "residency": _label(fm.field("complex", b.cx.id, "residency_months", b.cx.residency_months)),
             "move_in": _label(fm.field("complex", b.cx.id, "move_in_ym", b.cx.move_in_ym)),
+            "winner": _label(fm.field("complex", b.cx.id, "winner_date", b.cx.winner_date)),  # 계약 .7
         }
         pay = current_payment(b.payments)
         if pay is not None:

@@ -496,6 +496,7 @@ def test_benchmark_substitute_rows_marked_and_not_double_counted(scratch: Sessio
         sale_price_84_won=src.sale_price_84_won,
         trade_median_won=src.trade_median_won,
         is_presale=False,
+        substitute=True,  # 계약 2026-10-09.7 — 판별은 컬럼
         note=f"[bm:test:{target_la}] {SUBSTITUTE_NOTE} — 생활권 {target_la} 자체 표본 0, 원 생활권 {la_src}",
     )
     scratch.add(copy)

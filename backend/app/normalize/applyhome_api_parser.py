@@ -6,7 +6,8 @@ source_kind 는 HTML 과 같다(``applyhome_list``·``applyhome_detail``) — �
 - ``applyhome_list``(시도 단위 목록 페이지): 후보를 내지 않는다. 지역 밖 단지까지 들어 있고, 지역 안 단지는
   수집기가 공고 1건 조회(상세)로 다시 받아 그 원문이 후보를 낸다(목록에서 단지 행을 만들지 않기 위해).
 - ``…LttotPblancDetail``(APT·잔여세대·임의공급 상세): complex — name·address·units_total·housing_type·
-  builder·developer·notice_date·winner_date·move_in_ym·contract_dates·apply_dates.
+  builder·developer·notice_date·winner_date·move_in_ym·contract_dates·apply_dates·official_site_url(HMPG_ADRES,
+  ``_text.normalize_site_url``).
 - ``…LttotPblancMdl``(주택형별): complex_type — area_m2·notice_type_code·units(일반+특별)·max_price_won(만원),
   complex — units_general·units_special(페이지에 모든 주택형이 있을 때만 합계).
 - ``…LttotPblancCmpet``(경쟁률): competition — supply·applied·ratio_or_shortfall_text.
@@ -32,6 +33,7 @@ from app.normalize._text import (
     CandidateBuilder,
     area_from_long_code,
     canonical_json,
+    normalize_site_url,
     normalize_type_code,
     parse_won,
     read_raw_text,
@@ -244,6 +246,9 @@ def _detail_row(text: str, b: CandidateBuilder, row: dict[str, Any], span: tuple
     if htype in ("민영", "국민"):
         add("housing_type", "HOUSE_DTL_SECD_NM", htype)
     add("builder", "CNSTRCT_ENTRPS_NM", _str(row.get("CNSTRCT_ENTRPS_NM")))
+    # 단지 공식 홈페이지(R3b 마무리) → complex.official_site_url — official_site 수집기의 대상
+    site = normalize_site_url(_str(row.get("HMPG_ADRES")))
+    add("official_site_url", "HMPG_ADRES", site, _str(row.get("HMPG_ADRES")))
     add("developer", "BSNS_MBY_NM", _str(row.get("BSNS_MBY_NM")))
     add(
         "notice_date",

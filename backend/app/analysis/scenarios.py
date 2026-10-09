@@ -289,8 +289,8 @@ def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPr
         months = int((dec(holding) * 12).quantize(Decimal(1), rounding=ROUND_HALF_UP))
         exit_ = add_months_date(parse_date(asof_date), months)
         reg = " (등기 시 해제)" if c.resale_release_on_registration else ""
-        # 전매 종료 = 당첨일 + 기간 → 라벨은 두 입력 중 약한 것(R3 M2; winner_label 은 계약 .6)
-        end_label = resale_input_label(c.resale_label, getattr(c, "winner_label", None))
+        # 전매 종료 = 당첨일 + 기간 → 라벨은 두 입력 중 약한 것(R3 M2; winner_label 은 계약 .7)
+        end_label = resale_input_label(c.resale_label, c.winner_label)
         head = f"전매 종료 {ym_of(end)}{reg}{_label_note(end_label)}"
         tail = f"매도 시작 {ym_of(exit_)}(기준일 + 보유 {num(dec(holding), 1)}년)"
         if end <= exit_:

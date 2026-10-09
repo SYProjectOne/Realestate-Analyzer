@@ -88,7 +88,7 @@ from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, ap
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
 from app.scheduler.degraded import clear_degraded, mark_degraded
-from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts, substitute_benchmark_ids
+from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
 from app.scheduler.intake import (
     CLASSIFIED_MARK,
     INTAKE_PATHS,
@@ -936,11 +936,9 @@ def run_pipeline(
                 res.skipped["score"] = "시나리오 행 없음(scenario 시드 필요)"
             saved_gaps = False
             upcoming = wait_new_evidence(facts, snap.asof_date)  # 가상 후보 '모집공고 대기' 근거(계약 .5)
-            subs = substitute_benchmark_ids(session, region)  # 지역 전체 대체 벤치마크(N-M4 식 표기)
             for sc in scenarios:
                 plan = decide_plan(
                     snap_dto, sc, inputs, cards, scope, precalc=precalc, wait_new_text=upcoming,
-                    substitute_benchmarks=subs,
                 )  # fmt: skip
                 detail = plan.detail
                 run = persist.save_score_run(

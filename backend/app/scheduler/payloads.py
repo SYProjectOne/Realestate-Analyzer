@@ -45,7 +45,6 @@ from app.scheduler.inputs import (
     evidence_card,
     gap_of,
     load_facts,
-    substitute_benchmark_ids,
 )
 
 __all__ = [
@@ -197,13 +196,12 @@ def decide_plan(
     *,
     precalc: RequirementPrecalculator | None = None,
     wait_new_text: str | None = None,
-    substitute_benchmarks: frozenset[int] = frozenset(),
 ) -> DecidePlan:
     """점수(시나리오 1개) → P8 decide 후보 ≤6 + 요건 사전 계산.
 
     시나리오 policy.include_wait_new(계약 .5)면 가상 후보 '모집공고 대기'를 넣고 단지 후보는 상위 ≤5(합 ≤6, 보고서
     §8-2 'TOP 5 + 모집공고 대기'). ``wait_new_text`` = 그 근거(``wait_new_evidence``)."""
-    detail = run_detailed(snap_dto, sc, inputs, substitute_benchmarks=substitute_benchmarks)
+    detail = run_detailed(snap_dto, sc, inputs)
     ranked = {t.complex_id: t.rank for t in detail.result.totals}
     wait = wants_wait_new(sc)
     ids = decide_candidates(ranked, detail.excluded, scope, limit=P.DECIDE_MAX - (1 if wait else 0))
@@ -337,7 +335,6 @@ def scenario_payloads(
         cards,
         scope,
         wait_new_text=wait_new_evidence(facts, snap.asof_date),
-        substitute_benchmarks=substitute_benchmark_ids(session, region),
     )  # fmt: skip
     if dp.runnable:
         payload = P.decide_payload(

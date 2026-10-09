@@ -4,7 +4,8 @@
   (G1 이 쓴다). snapshot_id NULL 행(사람·devseed 입력, 0006 이전 행)은 늘 포함하고, 조립분은 그 스냅샷 것
   (snapshot_id = sid)이 있으면 그것, 없으면 sid 이전(기준일) 가장 최근 조립분만 — 미래 스냅샷 조립분은 보이지
   않는다. 재조립이 발행 스냅샷이 인용한 행을 지우지 않으면 과거 스냅샷 화면이 그 시점 벤치마크를 그대로 보인다.
-- ``is_substitute(b)``: 지역 전체 표본을 생활권 대체로 복사한 행(D9-2 — note 표식 ``SUBSTITUTE_NOTE``).
+- ``is_substitute(b)``: 지역 전체 표본을 생활권 대체로 복사한 행(D9-2) = ``benchmark.substitute`` 컬럼(계약 2026-10-09.7,
+  0007 — note 문자열로 판별하지 않는다).
 - ``own_sample_n``: 생활권 **자기** 표본 수 = 대체 행·분양권 제외(N-M4: 대체까지 세면 '표본 3 미만' 배지가 빠졌다).
 - ``benchmark_absence(session, region_id, rows)``: 점수에 쓸 행(분양권 제외)이 0이면 사유 ``{code, reason}``, 아니면 None.
   not_collected(지역 실거래 없음 = 수집 전) · presale_only(분양권 사례만) · no_sample(생활권·지역 전체 표본 0).
@@ -22,11 +23,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Benchmark, RtmsTrade, Snapshot
-from app.normalize.benchmark import SUBSTITUTE_NOTE  # 정규화(G1)의 대체 행 표식 — 한 곳을 따른다
 
 __all__ = [
     "ABSENCE_REASONS",
-    "SUBSTITUTE_NOTE",
     "benchmark_absence",
     "benchmarks_for",
     "is_substitute",
@@ -42,7 +41,7 @@ ABSENCE_REASONS: Final[dict[str, str]] = {
 
 
 def is_substitute(b: Benchmark) -> bool:
-    return SUBSTITUTE_NOTE in (b.note or "")
+    return bool(b.substitute)
 
 
 def benchmarks_for(session: Session, snapshot: Snapshot) -> list[Benchmark]:

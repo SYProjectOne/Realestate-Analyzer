@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
 from app.core.paths import resolve_raw_path
@@ -27,6 +28,7 @@ __all__ = [
     "checked_on",
     "line_span",
     "month_end",
+    "normalize_site_url",
     "normalize_type_code",
     "parse_date",
     "parse_won",
@@ -42,6 +44,44 @@ AMOUNT_RE = re.compile(r"\d{1,3}(?:,\d{3})+")
 _SUPPLY_ROUND_PAREN_RE = re.compile(
     r"[(\[（][^)\]）]*(?:회차|임의|무순위|잔여|선착순|조합원|취소|재공급|자격상실|사후)[^)\]）]*[)\]）]"
 )
+
+
+_BARE_HOST_RE = re.compile(
+    r"^[0-9A-Za-z가-힣][0-9A-Za-z가-힣.-]*\.[0-9A-Za-z가-힣-]{2,}(?::\d+)?(?:[/?#].*)?$"
+)
+_NOT_SITE_HOSTS = ("applyhome.co.kr",)  # 청약홈 자신(공고·첨부 링크)은 단지 홈페이지가 아니다
+
+
+def normalize_site_url(text: str | None) -> str | None:
+    """청약홈 상세의 홈페이지 주소(API ``HMPG_ADRES``·웹 상세 링크) → ``complex.official_site_url``.
+
+    문자열 처리: 공백 제거 → 스킴이 없고 점 있는 호스트 모양이면 ``http://`` 를 붙인다 → http/https 만,
+    호스트에 점이 있어야 한다(``없음``·``-``·전화번호 등은 None). 스킴·호스트 소문자(국문 도메인은 그대로 —
+    브라우저·httpx 가 punycode 로 바꾼다), fragment 제거, 빈 경로는 ``/``(API·웹 표기 차이로 값이 흔들리지
+    않게). 청약홈 자신(``applyhome.co.kr``)은 None."""
+    if text is None:
+        return None
+    s = "".join(str(text).split())
+    if not s:
+        return None
+    if "://" not in s:
+        if not _BARE_HOST_RE.match(s):
+            return None
+        s = "http://" + s
+    try:
+        parts = urlsplit(s)
+        host = parts.hostname
+        port = parts.port
+    except ValueError:
+        return None
+    scheme = parts.scheme.lower()
+    if scheme not in ("http", "https") or not host or "." not in host.strip("."):
+        return None
+    host = host.lower().rstrip(".")
+    if any(host == h or host.endswith("." + h) for h in _NOT_SITE_HOSTS):
+        return None
+    netloc = f"{host}:{port}" if port else host
+    return urlunsplit((scheme, netloc, parts.path or "/", parts.query, ""))
 
 
 def strip_supply_round(name: str) -> str:

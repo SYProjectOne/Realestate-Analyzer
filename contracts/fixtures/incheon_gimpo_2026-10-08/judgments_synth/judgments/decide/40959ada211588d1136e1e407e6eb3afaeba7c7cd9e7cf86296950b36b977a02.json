@@ -1,8 +1,8 @@
 {
   "tool": "decide",
   "purpose": "decide:scenario_C",
-  "input_hash": "sha256:b8b2655f3a0a736bfc6e4c73733f847715542fc3a8d43b1b5166f663c00a03f3",
-  "input_len": 3408,
+  "input_hash": "sha256:40959ada211588d1136e1e407e6eb3afaeba7c7cd9e7cf86296950b36b977a02",
+  "input_len": 3412,
   "status": "ok",
   "confidence": 0.91,
   "cached": false,

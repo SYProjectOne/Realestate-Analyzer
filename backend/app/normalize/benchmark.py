@@ -21,8 +21,8 @@
 
 sale_period = 분양(모집공고) 연도 ≥ 기준연도 − 3 → '고가 분양기', 그 전 → '저가 분양기' (라벨 추정, 식은 note).
 분양권 거래(입주 전, ``rtms_trade.is_presale``)만 있는 단지는 ``is_presale=true`` 행(점수 제외).
-생활권 자체 표본(분양권 제외)이 0이면 지역 전체 표본을 그 생활권 행으로 복사한다(라벨 추정, note
-'추정(대체: 지역 전체)'). 지역 전체도 0이면 행이 없다 → RA §6-4대로 benchmark 성분 미계산(종합 미계산).
+생활권 자체 표본(분양권 제외)이 0이면 지역 전체 표본을 그 생활권 행으로 복사한다(라벨 추정,
+``benchmark.substitute=true`` — 계약 2026-10-09.7; note '추정(대체: 지역 전체)'는 사람이 읽는 설명일 뿐 판별에 쓰지 않는다). 지역 전체도 0이면 행이 없다 → RA §6-4대로 benchmark 성분 미계산(종합 미계산).
 
 이 모듈이 만든 행은 note 머리표 ``[bm:<주택관리번호>:<공고번호>(:<생활권>)]`` 로 알아본다. 다시 돌리면 같은 행을
 갱신하고(멱등), 더 이상 나오지 않는 자기 행만 지운다(그 출처 행은 chosen=false — 출처 행은 지우지 않는다).
@@ -685,6 +685,7 @@ def _values(case: _Case, asof_year: int) -> dict[str, Any]:
         "peak_won": peak.price_won,
         "peak_ym": peak.deal_date[:7],
         "is_presale": case.presale,
+        "substitute": False,
         "_period_formula": period[1] if period else "분양 연도 확인 불가",
     }
 
@@ -800,6 +801,7 @@ _COLUMNS: Final = (
     "peak_won",
     "peak_ym",
     "is_presale",
+    "substitute",
     "note",
 )
 
@@ -850,7 +852,7 @@ def build_benchmarks(
             for c in own:
                 tag = f"{BENCHMARK_TAG}{c.notice.hm}:{c.notice.pb}:{la}]"
                 vals = _values(c, asof_year)
-                vals.update(living_area=la, sale_price_label="추정")
+                vals.update(living_area=la, sale_price_label="추정", substitute=True)
                 vals["note"] = _note(c, vals, tag, la)
                 wanted.append((tag, c, vals, la))
 

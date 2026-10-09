@@ -268,7 +268,7 @@ def test_m3_minor20_minor21_api_and_pipeline_share_price_inputs_and_intake(
             cid: list(s.scalars(select(Ladder).where(Ladder.snapshot_id == seeded, Ladder.complex_id == cid)))
             for cid in bundles
         }
-        skip = {"price_label", "resale_label", "residency_label", "down_payment_label", "move_in_label"}
+        skip = {"price_label", "resale_label", "residency_label", "down_payment_label", "move_in_label", "winner_label"}
         for cid, b in bundles.items():
             api = score_input(b).model_dump(exclude=skip)
             pipe = complex_input(region_facts[cid], snap.asof_date, ladders[cid]).model_dump(exclude=skip)
