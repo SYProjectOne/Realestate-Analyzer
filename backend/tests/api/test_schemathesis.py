@@ -7,6 +7,7 @@ Content-Type·응답 스키마 등)를 돌린다. 쓰기 토큰을 쓰고, DB �
 
 from __future__ import annotations
 
+import os
 import shutil
 from collections.abc import Iterator
 from typing import Any
@@ -18,10 +19,21 @@ from hypothesis import HealthCheck, settings
 from app.core.db import reset_engine
 from app.core.settings import set_settings
 
-from ._support import OPENAPI_BUNDLED, WRITE
+from ._support import OPENAPI_BUNDLED, WRITE, WRITE_TOKEN
 from .conftest import Seeded, make_settings
 
 schema = schemathesis.openapi.from_path(OPENAPI_BUNDLED)
+
+
+@schemathesis.auth()
+class _WriteToken:
+    """bearerAuth = 쓰기 토큰. 인증 자체를 빼는 음성 사례(401 기대)는 schemathesis 가 알아서 만든다."""
+
+    def get(self, case: Any, ctx: Any) -> str:
+        return WRITE_TOKEN
+
+    def set(self, case: Any, data: str, ctx: Any) -> None:
+        case.headers = {**(case.headers or {}), "Authorization": f"Bearer {data}"}
 
 
 @pytest.fixture(scope="module")
@@ -40,14 +52,65 @@ def st_app(seeded_db: Seeded, tmp_path_factory: pytest.TempPathFactory) -> Itera
         reset_engine()
 
 
-def _base_url(path: str) -> str:
-    return "http://testserver" if path == "/health" else "http://testserver/api"
+BASE_URL = "http://testserver/api"
+MAX_EXAMPLES = int(os.environ.get("ST_MAX_EXAMPLES", "30"))  # 깊게 돌릴 때 ST_MAX_EXAMPLES=300
+
+# 계약 공백(보고서 '계약 변경 요청'): 아래 GET 목록 operation 은 조회 파라미터가 있지만 422·404 를 문서화하지
+# 않았다. 잘못된 파라미터에 API 는 422 validation_error 로 답하고(올바른 동작),
+# 이 경우에만 상태 코드 문서 검사를 뺀다.
+UNDOCUMENTED_422 = {"listJobs", "getJudgmentOps", "listChecklist", "listSourceStatus", "listReports"}
+# 계약 설명이 '스키마는 맞지만 의미가 틀린 본문 → 422'를 명시한 operation
+# (가중치 합≠1, 생활권 누락·중복, 참조에 없는
+# 지역 코드). schemathesis positive_data_acceptance 는 스키마만 보므로 이 operation 에서는 뺀다.
+SEMANTIC_422 = {"createScenario", "updateLivingAreas", "createRegion"}
 
 
-@schema.parametrize()
-@settings(max_examples=30, deadline=None, suppress_health_check=list(HealthCheck))
+# /health 는 WP0(app.main) 소관이고 응답이 계약 Health 와 다르다 → test_health_contract(xfail)로 따로 둔다.
+# POST /jobs 의 JobCreate(job_name 별 if/then payload)는 schemathesis 가 생성하지 못한다(UnsupportedSchema)
+# → test_contract_create_job 이 계약 예시 + job_name 7종 본문으로 같은 검사를 돌린다.
+@schema.exclude(path="/health").exclude(operation_id="createJob").parametrize()
+@settings(max_examples=MAX_EXAMPLES, deadline=None, suppress_health_check=list(HealthCheck))
 def test_contract(case: Any, st_app: Any) -> None:
-    case.call_and_validate(app=st_app, headers=dict(WRITE), base_url=_base_url(case.path))
+    from schemathesis.checks import positive_data_acceptance, status_code_conformance
+
+    case.operation.app = st_app
+    case.operation.schema.app = st_app  # 재전송 검사(ignored_auth 등)도 같은 ASGI 앱으로
+    response = case.call(base_url=BASE_URL)
+    op_id = case.operation.definition.raw.get("operationId")
+    excluded = []
+    if response.status_code == 422 and op_id in UNDOCUMENTED_422:
+        excluded.append(status_code_conformance)
+    if op_id in SEMANTIC_422 and response.status_code == 422:
+        excluded.append(positive_data_acceptance)
+    case.validate_response(response, excluded_checks=excluded, transport_kwargs={"base_url": BASE_URL})
+
+
+CREATE_JOB_BODIES: list[dict[str, Any]] = [
+    {
+        "job_name": "rejudge",
+        "payload": {"snapshot_id": 12, "scenario_id": 3, "complex_ids": None, "reason": "G5"},
+    },
+    {"job_name": "collect.daily", "payload": {"region_id": 1, "sources": ["official_site"]}},
+    {"job_name": "collect.weekly", "payload": {"region_id": 1, "sources": ["rtms", "stats", "news"]}},
+    {"job_name": "report", "payload": {"snapshot_id": 12, "format": "pdf", "compare_snapshot_id": 11}},
+    {"job_name": "snapshot.publish", "payload": {"snapshot_id": 12}},
+    {"job_name": "reference.refresh", "payload": {}},
+    {"job_name": "region.bootstrap", "payload": {"region_id": 1}},
+    {"job_name": "rejudge", "payload": {"snapshot_id": 12}},  # 필수 누락 → 422
+    {"job_name": "report", "payload": {"snapshot_id": 12, "format": "md"}},  # enum 밖 → 422
+    {"job_name": "nope", "payload": {}},  # 잡 이름 밖 → 422
+]
+
+
+@pytest.mark.parametrize("body", CREATE_JOB_BODIES, ids=lambda b: f"{b['job_name']}")
+def test_contract_create_job(body: dict[str, Any], st_app: Any) -> None:
+    op = schema["/jobs"]["POST"]
+    op.app = st_app
+    op.schema.app = st_app
+    case = op.Case(body=body, media_type="application/json", headers=dict(WRITE))
+    response = case.call(headers=dict(WRITE), base_url=BASE_URL)
+    case.validate_response(response, headers=dict(WRITE), transport_kwargs={"base_url": BASE_URL})
+    assert response.status_code in (202, 422)
 
 
 def test_all_operations_covered() -> None:
@@ -57,13 +120,22 @@ def test_all_operations_covered() -> None:
     ops = {(op.method.upper(), op.path) for op in (r.ok() for r in schema.get_all_operations())}
     assert len(ops) == 31
     app = create_app()
-    routes = set()
-    for route in app.routes:
-        methods = getattr(route, "methods", None) or set()
-        path = getattr(route, "path", "")
-        for m in methods:
-            if m in {"HEAD", "OPTIONS"}:
-                continue
-            routes.add((m, path.removeprefix("/api") if path != "/health" else path))
+    routes = {
+        (method.upper(), path.removeprefix("/api") if path != "/health" else path)
+        for path, item in app.openapi()["paths"].items()
+        for method in item
+    }
     missing = sorted(o for o in ops if o not in routes)
     assert not missing, missing
+
+
+@pytest.mark.xfail(
+    strict=True, reason="WP0 app.main /health 응답 {status, version, env, db} ≠ 계약 Health — 계약 변경 요청"
+)
+def test_health_contract(st_app: Any) -> None:
+    from fastapi.testclient import TestClient
+
+    from ._support import validate
+
+    with TestClient(st_app) as client:
+        validate("getHealth", 200, client.get("/health").json())

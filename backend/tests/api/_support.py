@@ -60,8 +60,10 @@ def response_schema(op_id: str, status: int, content_type: str = "application/js
 
 def _rewrite(obj: Any) -> Any:
     if isinstance(obj, dict):
-        return {k: (_URN + v if k == "$ref" and isinstance(v, str) and v.startswith("#") else _rewrite(v))
-                for k, v in obj.items()}  # fmt: skip
+        return {
+            k: (_URN + v if k == "$ref" and isinstance(v, str) and v.startswith("#") else _rewrite(v))
+            for k, v in obj.items()
+        }
     if isinstance(obj, list):
         return [_rewrite(v) for v in obj]
     return obj

@@ -33,15 +33,23 @@ def test_readonly_token_can_read(client: TestClient) -> None:
 
 
 WRITES: list[tuple[str, str, str, dict[str, Any]]] = [
-    ("post", "/api/regions", "createRegion", {"name": "x", "query_text": "x", "selections": [
-        {"kind": "sigungu", "code": "28245", "full_name": "인천광역시 계양구"}]}),
+    (
+        "post",
+        "/api/regions",
+        "createRegion",
+        {
+            "name": "x",
+            "query_text": "x",
+            "selections": [{"kind": "sigungu", "code": "28245", "full_name": "인천광역시 계양구"}],
+        },
+    ),
     ("put", "/api/regions/1/living-areas", "updateLivingAreas", {"living_areas": []}),
     ("post", "/api/scenarios", "createScenario", {}),
     ("post", "/api/jobs", "createJob", {"job_name": "reference.refresh", "payload": {}}),
     ("patch", "/api/ops/checklist/1", "updateChecklistItem", {"status": "done"}),
     ("post", "/api/ops/human-checks", "createHumanCheck", {}),
     ("post", "/api/reports", "createReport", {"snapshot_id": 12, "format": "html"}),
-]  # fmt: skip
+]
 
 
 @pytest.mark.parametrize(("method", "url", "op", "body"), WRITES)
