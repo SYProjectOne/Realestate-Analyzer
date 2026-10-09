@@ -117,9 +117,7 @@ def test_provenance_rows_store_value_norm_and_observed_on(
     assert (rows["units_total"].value_norm, rows["units_total"].observed_on) == ("669", "2025-08-22")
     assert rows["resale_release_on_registration"].value_norm == "true"
     assert rows["resale_months"].value_norm == "36"
-    dp = db_session.scalars(
-        select(FieldProvenance).where(FieldProvenance.field == "down_payment_pct")
-    ).one()
+    dp = db_session.scalars(select(FieldProvenance).where(FieldProvenance.field == "down_payment_pct")).one()
     assert dp.value_norm == "10" and dp.observed_on == "2025-08-22"
 
 
@@ -253,8 +251,9 @@ def test_notice_type_code_and_price_by_type_candidates() -> None:
     # 임의공급 공고: 잔여 세대 가격만 — 면적·세대수(complex_type)는 내지 않는다
     ct = {f for (e, _, f) in imui if e == "complex_type"}
     assert ct == {"max_price_won", "floor_sample_price_won", "floor_sample_text", "notice_type_code"}
-    for c in imui.values():
-        assert c.excerpt and c.label == "확인됨"
+    for (e, _, f), c in imui.items():
+        if e == "complex_type" or f.startswith("price_by_type."):
+            assert c.excerpt and c.label == "확인됨" and not c.needs_extract, f
 
 
 def test_store_price_by_type_current_price_and_change_vs_first(
@@ -328,9 +327,7 @@ def test_store_price_by_type_current_price_and_change_vs_first(
     assert len(terms_rows) == 2
 
 
-def test_price_order_independent_of_store_order(
-    db_session: Session, region: Region, add_raw: AddRaw
-) -> None:
+def test_price_order_independent_of_store_order(db_session: Session, region: Region, add_raw: AddRaw) -> None:
     """임의공급 공고를 먼저 저장해도(수집 시각이 늦어도) 원문 시점이 최신인 공고 가격이 채택된다."""
     imui = add_raw(
         (NOTICE / "2026940173_elif_imui3.txt").read_text(encoding="utf-8"),

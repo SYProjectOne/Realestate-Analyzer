@@ -3,7 +3,7 @@
 국토교통 통계누리 '미분양주택현황보고'를 내려받은 CSV(UTF-8 또는 CP949)를 읽는다. 열 이름으로 열을 찾는다:
 지역(시군구·구분·지역) · 지역코드(선택) · 연월(시점·기간·연월) · 미분양(합계·미분양 호수) · 준공후 미분양.
 연월 표기 '2026.08' · '2026-08' · '202608' · '2026년 8월'을 'YYYY-MM'으로 바꾼다.
-entity_key = '<지역코드 또는 지역명>:<YYYY-MM>'. 라벨은 '확인됨'(공식 통계 원문).
+entity_key = '<지역코드 또는 지역명>:<YYYY-MM>'. 라벨은 '확인됨'(공식 통계 원문). observed_on = 기준월 말일.
 입주물량(supply) 집계는 공고문 입주예정월 합산(추정)이라 여기서 하지 않는다.
 """
 
@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
-from app.normalize._text import CandidateBuilder, read_raw_text
+from app.normalize._text import CandidateBuilder, month_end, read_raw_text, stamp_observed_on
 
 __all__ = ["StatsParser", "parse_unsold_csv"]
 
@@ -104,4 +104,6 @@ def parse_unsold_csv(text: str, raw: RawDocument) -> list[FieldCandidate]:
             post = _int(row[cols["post"]])
             if post is not None:
                 b.add("unsold", key, "post_completion", post, row[cols["post"]], span, excerpt=ex)
-    return b.out
+    # 원문 시점 = 기준월의 말일(계약 2026-10-09.2 observed_on)
+    yms = {str(c.entity_key): c.value for c in b.out if c.field == "ym" and isinstance(c.value, str)}
+    return stamp_observed_on(b.out, lambda c: month_end(str(yms.get(str(c.entity_key), ""))))

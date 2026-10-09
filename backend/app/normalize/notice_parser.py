@@ -15,8 +15,15 @@
   ``app.normalize.extract_request``가 만든다 — 여기서는 판정기를 부르지 않는다).
 - 행 → 타입 배정은 공급대상 표의 타입별 공급세대수 합계로 검증한다(행 세대수 합 = 타입 세대수).
   합이 맞지 않으면 추측하지 않고 해당 타입 가격을 needs_extract로 넘긴다.
-- 임의공급·무순위·선착순 공고는 잔여 세대 일부만 싣기 때문에 타입 최고가·세대수(complex_type)를 내지 않고
-  납부 조건(payment_terms)과 단지 공통 항목만 낸다(가정 — 보고서에 기록).
+- 임의공급·무순위·선착순 공고는 잔여 세대 일부만 싣기 때문에 complex_type 의 면적·세대수는 내지 않는다.
+  가격(최고가·최저층 공급금액)은 낸다 — 현재 구매가(complex_type 가격) = 현재 조건(최신 공고)의 값
+  (계약 2026-10-09.2 payment_terms.price_by_type). 같은 rank 의 공고문끼리는 observed_on(공고일) 최신이
+  채택된다.
+- 공고별 타입 가격(계약 2026-10-09.2): payment_terms 후보 field='price_by_type.<type_code>.<항목>'
+  (max_price_won·floor_sample_price_won·floor_sample_text·units·notice_type_code).
+  행 배정이 검증된 타입만 낸다.
+  complex_type.notice_type_code = 공고상 주택형 원문('084.7800A').
+- observed_on = 이 공고의 공고일(임의공급이면 임의공급 공고일) — 모든 후보에 같다.
 """
 
 from __future__ import annotations
@@ -36,7 +43,9 @@ from app.normalize._text import (
     parse_won,
     read_raw_text,
     round_area,
+    stamp_observed_on,
 )
+from app.normalize.fields import price_by_type_field
 
 __all__ = ["NoticeParser", "PriceRow", "TypeSpec", "parse_notice_text"]
 
@@ -216,13 +225,24 @@ def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
         b.add("complex", complex_key, "name", name, name, title.span("name"))
     _header(ctx)
     _section3(ctx)
-    if notice_kind == "본청약":
-        ctx.types = _type_table(ctx)
+    ctx.types = _type_table(ctx)
     _price_table(ctx)
     if notice_kind == "본청약":
         _balcony(ctx)
         _options(ctx)
-    return b.out
+    return stamp_observed_on(b.out, _notice_day(b.out, notice_kind))
+
+
+def _notice_day(cands: list[FieldCandidate], notice_kind: str) -> str | None:
+    """이 공고의 공고일(원문 시점) = payment_terms.effective_from. 없으면 본청약만 단지 공고일."""
+    for c in cands:
+        if c.entity == "payment_terms" and c.field == "effective_from" and isinstance(c.value, str):
+            return c.value
+    if notice_kind == "본청약":
+        for c in cands:
+            if c.entity == "complex" and c.field == "notice_date" and isinstance(c.value, str):
+                return c.value
+    return None
 
 
 # ---------------------------------------------------------------- 머리 표
@@ -519,19 +539,21 @@ def _price_table(ctx: _Ctx) -> None:
     rows = _price_rows(text, p.end(), end)
     head_end = rows[0].span[0] if rows else min(len(text), p.end() + 800)
     _payment_terms(ctx, (p.start(), head_end), rows, pay_key)
-    if ctx.notice_kind != "본청약":
-        return
+    main = ctx.notice_kind == "본청약"
     groups = _assign(rows, ctx.types)
     for t in ctx.types:
         tkey = f"{ctx.complex_key}:{t.short}"
-        b.add("complex_type", tkey, "area_m2", round_area(t.area_text), t.long or t.area_text, t.span)
-        b.add("complex_type", tkey, "units", t.units, str(t.units), t.span)
+        if main:
+            b.add("complex_type", tkey, "area_m2", round_area(t.area_text), t.long or t.area_text, t.span)
+            b.add("complex_type", tkey, "units", t.units, str(t.units), t.span)
+        if t.long:
+            b.add("complex_type", tkey, "notice_type_code", t.long, t.long, t.span)
         g = groups.get(t.short)
         if not g:
-            b.missing("complex_type", tkey, "max_price_won", p.span(), reason="공급금액 표 행 배정 실패")
-            b.missing(
-                "complex_type", tkey, "floor_sample_price_won", p.span(), reason="공급금액 표 행 배정 실패"
-            )
+            if main:
+                why = "공급금액 표 행 배정 실패"
+                b.missing("complex_type", tkey, "max_price_won", p.span(), reason=why)
+                b.missing("complex_type", tkey, "floor_sample_price_won", p.span(), reason=why)
             continue
         top = max(g, key=lambda r: r.total)
         low = min(g, key=lambda r: r.total)
@@ -545,10 +567,33 @@ def _price_table(ctx: _Ctx) -> None:
             low.floor_text or None,
             low.span,
         )
-    if not ctx.types:
+        _price_by_type(ctx, pay_key, t, top, low)
+    if main and not ctx.types:
         b.missing(
             "complex_type", f"{ctx.complex_key}:?", "max_price_won", p.span(), reason="공급대상 표 없음"
         )
+
+
+def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: PriceRow) -> None:
+    """이 공고의 타입 1개 공급가 → payment_terms 후보 'price_by_type.<type>.<항목>' (계약 2026-10-09.2)."""
+    b = ctx.b
+
+    def f(item: str) -> str:
+        return price_by_type_field(t.short, item)
+
+    b.add("payment_terms", pay_key, f("max_price_won"), top.total, f"{top.total:,}", top.span)
+    b.add("payment_terms", pay_key, f("floor_sample_price_won"), low.total, f"{low.total:,}", low.span)
+    b.add(
+        "payment_terms",
+        pay_key,
+        f("floor_sample_text"),
+        low.floor_text or None,
+        low.floor_text or None,
+        low.span,
+    )
+    b.add("payment_terms", pay_key, f("units"), t.units, str(t.units), t.span)
+    if t.long:
+        b.add("payment_terms", pay_key, f("notice_type_code"), t.long, t.long, t.span)
 
 
 def _price_section_end(text: str, start: int) -> int:
