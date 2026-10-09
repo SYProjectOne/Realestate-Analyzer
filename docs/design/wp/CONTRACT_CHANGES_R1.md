@@ -51,3 +51,6 @@
 - WP7: WP3 접수 상태(가능/미정/불가) classify 입력 함수 + 파이프라인에서 호출 (현재 접수 상태는 판정 수단 없음 — 중요)
 - WP7 제안: inclusion classify 배치화
 - WP8: Dockerfile.worker echarts 번들 + REPORT_ECHARTS_JS Settings
+
+## R2.5-B 처리 (계약 2026-10-09.3, 브랜치 wp/r25-backend)
+- 위 "R2 (WP0 처리 대기)" 1·3번(echarts·contradicted 통일), "R2 WP5·WP7 요청" WP5-1~5·WP7 4건 반영 — `contracts/CHANGELOG.md` 2026-10-09.3 표. devseed 교체(R3)·vite 프록시·다운로드 Bearer(WP5 제안)는 미처리.

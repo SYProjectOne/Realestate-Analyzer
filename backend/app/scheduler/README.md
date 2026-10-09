@@ -13,7 +13,8 @@
 | `handlers.py` | 잡 이름 → 처리 함수(collect.daily·weekly, rejudge, snapshot.publish, reference.refresh, region.bootstrap, report) |
 | `collect.py` | 수집기(WP1) → `normalize.store`(WP2) → intake_status 행(분류 없이 '확인 불가(사유)', 파서의 접수 문구 후보는 note) → 변경 감지 |
 | `detect.py` | 팝업 이미지 해시(기준일 전 마지막 해시와 비교) · 청약홈 목록 diff → change_event |
-| `pipeline.py` | P1 screen → P2 extract → P3 audit → P4 classify → P5 compare → P6 noul → P7 rerank → 점수(`analysis`) → P8 decide → P9 verify → 저장 |
+| `pipeline.py` | P1 screen → P2 extract → P3 audit(→ `normalize.judged.apply_extracted`) → 접수 상태 classify('접수 문구 미분류' 행) → P4 classify(포함/제외 배치) → P5 compare(contradicts → `apply_compare`) → P6 noul → P7 rerank → 점수(`analysis`, score_total.judge_scope 저장) → P8 decide → P9 verify → 저장 |
+| `payloads.py` | 시나리오 → 판정 payload 목록 빌더 `scenario_payloads` + `cache_status`(미리보기 cache_hits, WP5) · 파이프라인과 공용 입력 조립(`score_base`·`rerank_pool`·`decide_plan`·`stored_scope`) |
 | `inputs.py` | DB → `ScoreInputs`(2026-10-09.2 필드: unsold_scope_codes·intake_checked_at·*_label) · 증거 카드 |
 | `persist.py` | ladder·score_run/component/total·decision·claim·comparable_set 쓰기, 변경 없는 날 파생 행 복사 |
 | `rejudge.py` | rejudge 잡 등록(같은 스냅샷 queued 잡에 단지 합침)·실행 |
