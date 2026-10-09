@@ -13,7 +13,6 @@ from __future__ import annotations
 import importlib.util
 import sys
 from datetime import date
-from pathlib import Path
 from types import ModuleType
 from typing import Any
 
@@ -54,7 +53,7 @@ def boot(env: RegressEnv) -> dict[str, Any]:
 
     off = _offline()
     with env.session() as s:
-        before = {c.id: (c.region_id, c.name, c.builder if hasattr(c, "builder") else None) for c in s.scalars(select(Complex).where(Complex.region_id == 1))}
+        before = {c.id: (c.region_id, c.name, c.builder) for c in s.scalars(select(Complex).where(Complex.region_id == 1))}
     cands = env.client.get("/api/regions/resolve", headers=WRITE, params={"q": "송도"}).json()
     pick = next(c for c in cands if c["kind"] == "legal_dong" and c["full_name"] == PICK)
     r = env.client.post(
@@ -65,7 +64,6 @@ def boot(env: RegressEnv) -> dict[str, Any]:
     body = r.json()
     rid, job_id = body["region"]["id"], body["job_id"]
     web = HttpClient(max_retries=0, jitter=0.0, rate_per_host=1000.0, sleep=lambda _s: None, transport=off.replay_transport(RECORDING))
-    dead = HttpClient(max_retries=0, jitter=0.0, sleep=lambda _s: None, transport=off.offline_transport())
     base = default_collectors()
     env.clock.day = TODAY
     ctx = env.ctx(
@@ -83,13 +81,12 @@ def boot(env: RegressEnv) -> dict[str, Any]:
         assert env.worker(ctx) == 0
     finally:
         web.close()
-        dead.close()
     with env.session() as s:
         job = s.get(JobRun, job_id)
         region = s.get(Region, rid)
         assert job is not None and job.status == "done", (job.status if job else None, job.error_text if job else None)
         assert region is not None and region.status == "ready"
-        after = {c.id: (c.region_id, c.name, c.builder if hasattr(c, "builder") else None) for c in s.scalars(select(Complex).where(Complex.id.in_(list(before))))}
+        after = {c.id: (c.region_id, c.name, c.builder) for c in s.scalars(select(Complex).where(Complex.id.in_(list(before))))}
         stats = dict(job.stats or {})
     return {"region_id": rid, "snapshot_id": stats["snapshot_id"], "before": before, "after": after, "stats": stats}
 

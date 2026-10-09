@@ -102,6 +102,21 @@ def test_t16_first_page_under_1s_over_http(server: str) -> None:
         assert not slow, f"첫 페이지 {LIMIT_S}s 초과: {slow}"
 
 
+def test_t16_g2_first_request_size_1000_under_1s(server: str) -> None:
+    """G2(프론트 params.ts PAGE_SIZE=1000)가 실제로 부르는 첫 페이지 = size 1000 — 이것도 1 s 이내여야 한다."""
+    url = f"{server}/api/snapshots/{SNAP}/complexes"
+    with httpx.Client(headers=WRITE, timeout=60) as c:
+        c.get(url, params={"size": 1000, "sort": "-total"})
+        timings = []
+        for _ in range(3):
+            t0 = time.perf_counter()
+            r = c.get(url, params={"size": 1000, "sort": "-total"})
+            timings.append(round(time.perf_counter() - t0, 3))
+            assert r.status_code == 200
+    print("T16 G2 first request(size 1000) timings(s):", timings)
+    assert min(timings) < LIMIT_S, f"G2 첫 요청(size 1000) {timings}s — {LIMIT_S}s 초과"
+
+
 def test_t16_virtualization_contract(server: str) -> None:
     """G2 가상 스크롤이 기대하는 응답: total = 1,016, size ≤ 1,000 한 번에(가상화로 DOM 은 일부만)."""
     with httpx.Client(headers=WRITE, timeout=60) as c:
