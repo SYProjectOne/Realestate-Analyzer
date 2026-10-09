@@ -39,3 +39,15 @@
 - WP8: Dockerfile.worker에 echarts.min.js 복사 + REPORT_ECHARTS_JS → Settings로 → 승인
 - WP8: tests/reports/_seed.py → WP5 devseed로 교체 (R3)
 - "남은 contradicted" 정의 = 분할 자식 없는 contradicted. WP7 publish 검사와 통일 확인 (R3)
+
+## R2 WP5·WP7 요청 (R3 전 계약 .3에서 처리)
+- WP5-1 /health 응답을 계약 Health(contract_version, app_version, judge, time)에 맞춤 (WP0 main.py)
+- WP5-2 openapi: listJobs·getJudgmentOps·listChecklist·listSourceStatus·listReports에 422 추가
+- WP5-3 judgment_log.result_json(정규화 결과) 컬럼 → output_json._result 관례 대체
+- WP5-4 judge_scope 저장(score_total.judge_scope)
+- WP5-5 WP7: 시나리오 → 판정 payload 빌더 공개(미리보기 cache_hits 정확화)
+- WP5 제안: vite 프록시 /api rewrite 제거; CSV·원문·보고서 다운로드 Bearer → fetch+blob
+- WP7: WP2 needs_extract 추출값 반영 공개 함수, compare contradicts 채택 변경 함수
+- WP7: WP3 접수 상태(가능/미정/불가) classify 입력 함수 + 파이프라인에서 호출 (현재 접수 상태는 판정 수단 없음 — 중요)
+- WP7 제안: inclusion classify 배치화
+- WP8: Dockerfile.worker echarts 번들 + REPORT_ECHARTS_JS Settings
