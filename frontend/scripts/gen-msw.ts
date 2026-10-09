@@ -1,25 +1,18 @@
 /**
  * npm run gen:msw — openapi의 response example(s) → src/mocks/handlers.gen.ts
  * 입력 선택은 scripts/lib/openapi-source.ts (openapi.config.json 한 줄).
+ * 생성 코드는 scripts/lib/generate.ts — 최신성 테스트(scripts/generated.fresh.test.ts)도 같은 함수를 쓴다.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parse } from 'yaml';
-import { generateMswHandlers } from './lib/msw-codegen';
+import { generateMswSource } from './lib/generate';
 import { FRONTEND_ROOT, resolveOpenapiSource } from './lib/openapi-source';
 
 const OUTPUT = resolve(FRONTEND_ROOT, 'src/mocks/handlers.gen.ts');
 
 function main(): void {
   const source = resolveOpenapiSource();
-  const doc = parse(readFileSync(source.path, 'utf8'), { maxAliasCount: -1 }) as Record<
-    string,
-    unknown
-  >;
-  const { code, operations, skipped } = generateMswHandlers(
-    doc,
-    `${source.display} (${source.mode})`,
-  );
+  const { code, operations, skipped } = generateMswSource(source);
   writeFileSync(OUTPUT, code, 'utf8');
   console.log(
     `gen:msw  ${source.display} → src/mocks/handlers.gen.ts  (핸들러 ${operations.length}, 건너뜀 ${skipped.length})`,

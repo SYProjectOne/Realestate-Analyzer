@@ -5981,7 +5981,7 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             published_at?: string | null;
-            /** @description verify_status=contradicted claim 수 */
+            /** @description 남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시) */
             contradicted_claims?: number | null;
             complex_count?: number | null;
         };
