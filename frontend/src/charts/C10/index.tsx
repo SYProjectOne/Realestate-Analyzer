@@ -69,7 +69,10 @@ export function C10Sensitivity({ data, height = 240 }: C10SensitivityProps) {
                   const x = row.top5[p - 1];
                   const entered = x ? row.entered.includes(x.name) : false;
                   return (
-                    <td key={p} className={`px-2 py-1 ${entered ? 'font-semibold' : ''}`}>
+                    <td
+                      key={p}
+                      className={`whitespace-nowrap px-2 py-1 ${entered ? 'font-semibold' : ''}`}
+                    >
                       {x ? x.name : ''}
                       {x && x.rank !== null && x.rank !== p ? (
                         <span className="text-muted">{` (${formatRank(x.rank)})`}</span>
@@ -77,7 +80,7 @@ export function C10Sensitivity({ data, height = 240 }: C10SensitivityProps) {
                     </td>
                   );
                 })}
-                <td className="whitespace-nowrap px-2 py-1">
+                <td className="min-w-[14rem] px-2 py-1">
                   {row.changed
                     ? [
                         row.entered.length > 0

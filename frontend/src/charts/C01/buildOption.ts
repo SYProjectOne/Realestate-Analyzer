@@ -78,7 +78,8 @@ export function buildOption(
     symbol: 'none',
     silent: true,
     lineStyle: { type: 'dashed' as const, color: palette.muted },
-    label: { color: palette.muted, position: 'end' as const },
+    // y축이 뒤집혀(inverse) 있어 'start'가 위쪽 — 축 눈금 라벨과 겹치지 않게 차트 위에 단다
+    label: { color: palette.muted, position: 'start' as const, fontSize: 10 },
     data: [
       { xAxis: C01_THRESHOLDS.unlikely, label: { formatter: t('chart.C01.threshold.unlikely') } },
       { xAxis: C01_THRESHOLDS.likely, label: { formatter: t('chart.C01.threshold.likely') } },

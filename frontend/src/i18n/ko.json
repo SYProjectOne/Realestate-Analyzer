@@ -218,6 +218,7 @@
       "title": "입주 물량",
       "label": "추정 집계",
       "marker": "판정 단지 입주",
+      "markerMore": "{name} 외 {n}",
       "empty": "입주 물량 없음"
     },
     "C05": {

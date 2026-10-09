@@ -124,7 +124,14 @@ export function buildOption(
     ...axis,
     axisLabel: horizontal
       ? { ...axis.axisLabel, fontSize: 10, width: 120, overflow: 'truncate' as const }
-      : { ...axis.axisLabel, fontSize: 10, interval: 0, width: 88, overflow: 'break' as const },
+      : {
+          ...axis.axisLabel,
+          fontSize: 10,
+          interval: 0,
+          width: 72,
+          overflow: 'break' as const,
+          lineHeight: 12,
+        },
     ...(horizontal ? { inverse: true } : {}),
   };
   const valueAxis = {

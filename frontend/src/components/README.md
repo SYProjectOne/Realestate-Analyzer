@@ -26,6 +26,17 @@
 | `EmptyState`                                 | `reason?`, `message?`, `inline?`, `children?`, `className?`                                                                                         | "확인 불가" / "확인 불가(사유)" / message 그대로. 블록 모드 = role=status                                                                                                                                                                                                                                 | 완성                                                  |
 | `Badge`                                      | `children`, `tone?`, `title?`, `className?`                                                                                                         | 모든 배지의 바탕(내부용이지만 차트 배지에 재사용 가능)                                                                                                                                                                                                                                                    | 완성                                                  |
 
+## WP6b 완성 — 하위 호환 확장 (R1)
+
+props 이름·의미는 그대로, 타입만 넓혔다(임시 `@/api/types`와 계약 생성 타입 둘 다 대입되는 구조 타입 `src/lib/contract.ts`의 `*Like`).
+
+- 표시 문자열 = 계약 `fact.json`·`intake.json` 규칙: `확인 불가(<사유>, <확인일>)`, `<라벨>(<한정어>)`(예 `추정(대체·보정 c=0.015)`), `사람 확인됨`. `LabelBadge`에 `checkedAt?`, `EmptyState`에 `checkedAt?` 추가.
+- `FactCell.unit`은 optional — 생략하면 계약 `fact.unit` 힌트(won·units·prob·ym …)로 포맷. FactUnit에 `units`·`year`·`months`·`years`·`m` 추가.
+- `IntakeBadge`: 확인 불가·불가면 `접수 확인 불가(403, 2026-10-07) · 공식 팝업`.
+- `ProvenancePanel`: 값·라벨(사유)·확인일·원문 주소·출처 종류/순위·HTTP 상태·산출식(sc_/st_)·판정 로그 번호, 발췌 안 값 `<mark>`, **"원문에서 보기"** = `GET /raw/{id}?as=text`의 `excerpt_start~end` 하이라이트, **상충 그룹**(본 출처 + conflicts, 채택/미채택 배지, "이 출처 열기"로 패널 안 이동). Esc·닫기 버튼, 열릴 때 닫기 버튼에 포커스.
+- `RegionPicker`·`SnapshotPicker`·`ScenarioToggle`: `id`·`value`에 숫자(계약 id)도 받는다. `onChange`는 항상 문자열. SnapshotPicker 옵션에 `degraded`("일부 수집 실패")·`building` 표시.
+- `JobProgress.jobId`는 `string | number`, `JobProgressView`는 계약 `progress{done,total,step}`를 결정 진행 막대로.
+
 ## FactUnit (src/lib/format.ts)
 
 `won`(7억 4,900만원) · `eok`(7.49억) · `pct`(이미 % → 12.3%) · `prob`(0~1 → 48%) · `m2`(84.97㎡) · `date`(2026-10-11 (D-3)) · `ym` · `score`(7.26) · `households`(1,234세대) · `count` · `ratio`(12.3:1) · `rank`(1위) · `number` · `text`

@@ -27,12 +27,14 @@ async function openGallery(page: Page, theme: 'light' | 'dark' = 'light') {
 /** 카드를 화면에 넣어 lazy 차트를 마운트시키고, 차트가 SVG로 그려질 때까지 기다린다. */
 async function settle(card: Locator) {
   await card.scrollIntoViewIfNeeded();
-  await expect(card.getByText(ko.chart.notRendered)).toHaveCount(0);
   const charts = card.getByTestId('echart');
   const n = await charts.count();
   for (let i = 0; i < n; i += 1) {
+    // 차트마다 뷰포트에 넣어야 IntersectionObserver가 lazy 마운트한다
+    await charts.nth(i).scrollIntoViewIfNeeded();
     await expect(charts.nth(i).locator('svg').first()).toBeVisible();
   }
+  await expect(card.getByText(ko.chart.notRendered)).toHaveCount(0);
 }
 
 for (const id of CHARTS) {

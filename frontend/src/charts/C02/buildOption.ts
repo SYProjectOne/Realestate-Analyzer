@@ -81,14 +81,22 @@ export function buildOption(
 
   return {
     ...baseOption(palette),
-    grid: { left: 64, right: 16, top: 16, bottom: 72 },
+    grid: { left: 64, right: 16, top: 16, bottom: 88 },
     legend: { ...legendStyle(palette), data: [t('chart.C02.range'), t('chart.C02.adjusted')] },
     tooltip: { trigger: 'item', ...tooltipStyle(palette) },
     xAxis: {
       type: 'category',
       data: items.map((w) => w.name),
       ...axis,
-      axisLabel: { ...axis.axisLabel, interval: 0, fontSize: 10 },
+      // 긴 단지명은 칸 폭에서 줄바꿈(최대 3줄) — 이웃 라벨과 겹치지 않게
+      axisLabel: {
+        ...axis.axisLabel,
+        interval: 0,
+        fontSize: 10,
+        width: 84,
+        overflow: 'break',
+        lineHeight: 12,
+      },
     },
     yAxis: {
       type: 'value',

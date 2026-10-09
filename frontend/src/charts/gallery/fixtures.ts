@@ -37,8 +37,10 @@ export const provenanceScore = (): Provenance => as<Provenance>(provenanceScoreE
 /** 스냅샷 기준일(예시 공통) */
 export const ASOF = '2026-10-08';
 
-/** complex_id → 단지명 (C10 이름 표시용) */
-export function complexNames(rows: ScoreRow[] = dashboard().top5): Record<string, string> {
+/** complex_id → 단지명 (C10 이름 표시용) — 대시보드 TOP 5 + 비교 행 */
+export function complexNames(
+  rows: ScoreRow[] = [...dashboard().top5, ...compare().rows],
+): Record<string, string> {
   return Object.fromEntries(rows.map((row) => [String(row.complex_id), row.name]));
 }
 

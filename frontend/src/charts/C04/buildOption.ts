@@ -42,19 +42,27 @@ export function buildOption(
   const totalOf = (year: number) =>
     data.supply.filter((s) => s.year === year).reduce((sum, s) => sum + (num(s.units) ?? 0), 0);
 
-  const markPointData = data.markers
-    .map((m) => {
-      const ym = markerYm(m);
-      const year = ym ? Number(ym.slice(0, 4)) : null;
-      if (year === null || !years.includes(year)) return null;
-      return {
-        name: m.name,
-        coord: [String(year), totalOf(year)],
-        value: ym ?? undefined,
-        label: { formatter: `${m.name}\n${ym}` },
-      };
-    })
-    .filter((m) => m !== null);
+  // 같은 연도의 판정 단지는 핀 하나로 묶는다(라벨 겹침 방지). 이름 전부는 툴팁·표에
+  const byYear = new Map<number, { name: string; ym: string }[]>();
+  for (const m of data.markers) {
+    const ym = markerYm(m);
+    const year = ym ? Number(ym.slice(0, 4)) : null;
+    if (ym === null || year === null || !years.includes(year)) continue;
+    byYear.set(year, [...(byYear.get(year) ?? []), { name: m.name, ym }]);
+  }
+  const markPointData = [...byYear.entries()].map(([year, list]) => {
+    const first = list[0]!;
+    const text =
+      list.length === 1
+        ? `${first.name}\n${first.ym}`
+        : t('chart.C04.markerMore', { name: first.name, n: list.length - 1 });
+    return {
+      name: list.map((x) => x.name).join(', '),
+      coord: [String(year), totalOf(year)],
+      value: first.ym,
+      label: { formatter: text },
+    };
+  });
 
   return {
     ...baseOption(palette),

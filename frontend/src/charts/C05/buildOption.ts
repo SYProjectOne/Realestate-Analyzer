@@ -96,6 +96,9 @@ export function buildOption(
         id: 'total',
         name: t('chart.C05.total'),
         connectNulls: false,
+        // 앞뒤가 결측인 외톨이 달도 점으로 보이게
+        showSymbol: true,
+        showAllSymbol: true,
         symbol: 'circle',
         itemStyle: { color: palette.strong },
         lineStyle: { color: palette.strong, width: 2 },
@@ -106,6 +109,8 @@ export function buildOption(
         id: 'post',
         name: t('chart.C05.postCompletion'),
         connectNulls: false,
+        showSymbol: true,
+        showAllSymbol: true,
         // 색이 아니라 선 모양(점선)·마커로도 구분
         symbol: 'rect',
         lineStyle: { type: 'dashed', color: palette.fg },

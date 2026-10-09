@@ -166,7 +166,10 @@ describe('C04 입주 물량', () => {
     expect(s.map((x) => x.name)).toContain('김포시');
     const points = s.flatMap((x) => x.markPoint?.data ?? []);
     expect(points.length).toBeGreaterThan(0);
-    expect(points.map((p: any) => p.name)).toContain('엘리프 검단 포레듀');
+    // 같은 연도 단지는 핀 하나로 묶인다(이름은 쉼표로)
+    expect(points.some((p: any) => String(p.name).includes('엘리프 검단 포레듀'))).toBe(true);
+    const pinYears = points.map((p: any) => p.coord[0]);
+    expect(new Set(pinYears).size).toBe(pinYears.length);
     // 연도는 끊김 없이
     const years = opt(o).xAxis.data as string[];
     expect(Number(years[years.length - 1]) - Number(years[0]) + 1).toBe(years.length);

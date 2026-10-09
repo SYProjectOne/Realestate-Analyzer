@@ -5,6 +5,26 @@
 - **입력 타입(`CxxData`)과 export 이름이 계약**이다. 내부 option·모양은 WP6b가 RA §7-2 / meta §2-7대로 완성한다. 입력에 필드를 *추가*하는 건 optional로만.
 - 화면은 `@/charts`(index.ts)에서만 import 한다.
 
+## WP6b 완성 메모 (R1)
+
+- **입력 원소 타입 = 계약 응답 그대로**(`src/lib/contract.ts` → 생성 `schema.d.ts`). 임시 `@/api/types` 모양(Benchmark·SupplyRow·UnsoldRow·Catalyst·DecisionSet.rows 등)은 계약과 달라 교체했다. `CxxData` 필드 이름은 유지, 추가 필드는 전부 optional:
+
+  | 차트 | 넘기는 값 (계약)                                                         | 추가 optional                                                         |
+  | ---- | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+  | C01  | `ComplexDetail.ladder` / `CompareView.ladders[id]`                       | —                                                                     |
+  | C02  | `ComplexDetail.gap` / `CompareView.gaps[id]`                             | —                                                                     |
+  | C03  | `Market.benchmarks` (BenchmarkView)                                      | `flags = Market.benchmark_flags`, `livingAreas = Market.living_areas` |
+  | C04  | `Market.supply` (SupplyPoint), `markers = Market.move_in_markers` 그대로 | `livingAreas`                                                         |
+  | C05  | `Market.unsold` / `Dashboard.unsold_series` (UnsoldPoint)                | `scope`(scope_code; 생략 시 자료 최다 범위)                           |
+  | C06  | `rows = ScoreRow[]`(components = ComponentView), `weights`               | `keys = CompareView.components.keys` (A·D의 move_in)                  |
+  | C07  | `CompareView.decisions[scenario_code]` (DecisionSet.items)               | —                                                                     |
+  | C08  | `ComplexDetail.events`                                                   | —                                                                     |
+  | C09  | `Market.catalysts` / `ComplexDetail.catalysts` (CatalystView)            | —                                                                     |
+  | C10  | `GET /sensitivity` (Sensitivity — id만 있음)                             | `names = {complex_id: 이름}` (Dashboard.top5·CompareView.rows)        |
+
+- 갤러리: `src/charts/gallery` (`ChartGallery`, `GALLERY_CASES`) — `@/charts`에서는 내보내지 않는다(예시 JSON 번들). dev 라우트 `/__charts`에 lazy 등록. 테스트 전용 엔트리 `/src/charts/gallery/gallery.html`(dev 서버).
+- 스크린샷: `npm run e2e -- charts-gallery` (`tests/e2e/charts-gallery.spec.ts`, 기준 이미지는 win32). 갱신은 `--update-snapshots`.
+
 ## 모듈 계약 (`types.ts` `ChartModule<D>`)
 
 | export (buildOption.ts)                                    | 규칙                                                                                                                                     |

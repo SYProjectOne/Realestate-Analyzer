@@ -22,13 +22,13 @@ export function groupByStage(catalysts: CatalystView[]): Record<CatalystStage, C
   return out;
 }
 
-/** 타임라인 항목: **확정 + 예정 연월 있는 것만**, 날짜순. 이름 겹침을 피하려고 3단으로 엇갈린다 */
+/** 타임라인 항목: **확정 + 예정 연월 있는 것만**, 날짜순. 이름 겹침을 피하려고 4단으로 엇갈린다 */
 export function timelineItems(catalysts: CatalystView[]) {
   return catalysts
     .map((c) => ({ c, date: toIsoDay(str(c.expected_ym)) }))
     .filter((x): x is { c: CatalystView; date: string } => x.c.stage === '확정' && x.date !== null)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((x, index) => ({ ...x, level: index % 3 }));
+    .map((x, index) => ({ ...x, level: index % 4 }));
 }
 
 /** 타임라인 option — 확정 호재만 time scatter. 보드는 index.tsx의 HTML. */
@@ -58,7 +58,7 @@ export function buildOption(
       },
     },
     xAxis: { type: 'time', ...axis, axisLabel: { ...axis.axisLabel, fontSize: 10 } },
-    yAxis: { type: 'value', show: false, min: -0.6, max: 2.8 },
+    yAxis: { type: 'value', show: false, min: -0.6, max: 3.8 },
     series: [
       {
         type: 'scatter',
@@ -66,12 +66,16 @@ export function buildOption(
         name: t('chart.C09.timeline'),
         symbolSize: 10,
         itemStyle: { color: palette.strong },
+        // 겹치는 이름은 숨긴다(전부는 툴팁·보드·표에)
+        labelLayout: { hideOverlap: true },
         data: items.map((x) => ({
           name: x.c.name,
           value: [x.date, x.level],
           label: {
             show: true,
             position: 'right' as const,
+            width: 150,
+            overflow: 'truncate' as const,
             color: palette.fg,
             fontSize: 10,
             formatter: `${x.c.name} (${str(x.c.expected_ym) ?? ''})`,

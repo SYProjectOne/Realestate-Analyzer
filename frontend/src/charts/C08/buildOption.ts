@@ -8,6 +8,8 @@ import { escapeHtml, num, str, toIsoDay } from '../util';
 import { C08_SYMBOLS, type C08Data } from './types';
 
 const KINDS = Object.keys(C08_SYMBOLS) as RemainingKind[];
+/** 시간축 양 끝 여유(약 한 달) */
+const PAD_MS = 31 * 24 * 60 * 60 * 1000;
 const kindLabel = (k: RemainingKind) => t(`chart.C08.kind.${k}`);
 
 /** 이벤트 0 → "본청약만" */
@@ -59,7 +61,14 @@ export function buildOption(
           .join('<br/>');
       },
     },
-    xAxis: { type: 'time', ...axis, axisLabel: { ...axis.axisLabel, fontSize: 10 } },
+    xAxis: {
+      type: 'time',
+      ...axis,
+      axisLabel: { ...axis.axisLabel, fontSize: 10 },
+      // 양 끝 마커가 축선에 붙지 않게 한 달씩 여유
+      min: (v: { min: number }) => v.min - PAD_MS,
+      max: (v: { max: number }) => v.max + PAD_MS,
+    },
     yAxis: {
       type: 'category',
       data: KINDS.map(kindLabel),
@@ -83,6 +92,8 @@ export function buildOption(
             color: palette.fg,
             fontSize: 10,
             formatter: eventLabel(x.event),
+            width: 180,
+            overflow: 'truncate' as const,
           },
         })),
     })),
