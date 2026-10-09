@@ -1,7 +1,7 @@
 """R3 M7: checklist_item — 사실 테이블에서 결정론적으로(멱등).
 
 - 중도금: 현재 납부 조건(최신 effective_from)의 interim_schedule 회차별 납부일
-- 만료: 전매제한 종료(당첨자 발표일 + 전매 개월), 거주의무 만료(입주예정월 + 거주 개월), 계약 체결 마감
+- 만료: 전매제한 종료(당첨자 발표일 + 전매 개월), 거주의무 만료(입주예정월 + 거주 개월) · 계약: 계약 체결 마감
 - 공고 예상: 모집공고일이 기준일 뒤인 단지, 공고 전 단지(applyhome_id 없음)
 - 법적 확인: 토지거래허가·대지지분, 비과세 거주요건(항상 확인 권고), 라벨 '추정'인 법적 사실 필드
 기준일 이전 날짜는 새로 만들지 않는다. 제외 클래스 단지의 열린 항목은 na.
@@ -73,7 +73,7 @@ def test_items_from_fact_tables(db_session: Session, region: Region) -> None:
     assert not any(k == "중도금" and d == "2027-01-15" for k, _, d in got)  # 옛 조건 회차는 안 씀
     assert ("만료", "전매제한 종료(당첨자 발표일 + 12개월, 산술)", "2027-09-20") in got
     assert ("만료", "거주의무 만료(입주예정월 + 24개월, 추정)", "2030-03-01") in got
-    assert ("만료", "계약 체결 마감", "2026-10-22") in got
+    assert ("계약", "계약 체결 마감", "2026-10-22") in got  # kind 계약(0004)
     legal = {t for k, t, _ in got if k == "법적 확인"}
     assert "토지거래허가구역 여부·대지지분 기준 확인(확인 권고)" in legal
     assert "비과세 거주요건 적용 여부 확인(확인 권고)" in legal
@@ -123,7 +123,7 @@ def test_sync_is_idempotent_and_updates_open_due_date(db_session: Session, regio
 
     pt = db_session.scalars(select(PaymentTerms).where(PaymentTerms.notice_no == "2026940999")).one()
     pt.interim_schedule = [{"seq": 1, "due_date": "2026-12-10", "pct": 10}]
-    done = next(i for i in _items(db_session, cid) if i.kind == "만료" and i.title.startswith("계약"))
+    done = next(i for i in _items(db_session, cid) if i.kind == "계약" and i.title.startswith("계약"))
     done.status = "done"
     db_session.flush()
     res = sync_checklist(db_session, region.id, asof_date=ASOF)
@@ -141,6 +141,7 @@ def test_excluded_complex_gets_no_items_and_open_items_become_na(db_session: Ses
         "2026000333",
         "임대 단지",
         inclusion_class="public_rental",
+        inclusion_decision="auto",  # 제외 확정(미해결이면 항목 유지 — test_r3b_g1_checklist)
         notice_date="2026-11-01",
     )
     sync_checklist(db_session, region.id, asof_date=ASOF)
