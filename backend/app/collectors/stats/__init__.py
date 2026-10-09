@@ -14,6 +14,7 @@ from app.collectors.stats.supply import (
     aggregate_supply,
     estimate_supply,
     load_supply,
+    supply_inputs_from_applyhome_api,
 )
 from app.collectors.stats.unsold import (
     SigunguResolver,
@@ -44,4 +45,5 @@ __all__ = [
     "parse_household_csv",
     "parse_unsold_post_completion",
     "parse_unsold_total",
+    "supply_inputs_from_applyhome_api",
 ]
