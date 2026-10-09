@@ -1,0 +1,26 @@
+{
+  "legal_dong_full.zip": {
+    "source_url": "https://www.code.go.kr/etc/codeFullDown.do?codeseId=법정동코드",
+    "downloaded_at": "2026-10-09T11:48:56+09:00",
+    "sha256": "44a3fe4cacf88ce98e35fb883807d2725b589f427ff4d73ee40b914d1286bacd",
+    "bytes": 413481,
+    "content_type": "application/octet-stream;;charset=utf-8",
+    "note": "행정표준코드관리시스템 법정동코드 전체자료(존재+폐지, cp949 탭 구분 txt). 공공누리 제1유형"
+  },
+  "jscode20260930.zip": {
+    "source_url": "https://www.mois.go.kr/cmm/fms/FileDown.do?atchFileId=FILE_00149355_BR8t5D&fileSn=1",
+    "downloaded_at": "2026-10-09T11:49:00+09:00",
+    "sha256": "c9c2583919adfff992edc098fe7ea522e625fedabbfefedbd85564942c059d43",
+    "bytes": 2116063,
+    "content_type": "application/x-msdownload; charset=UTF-8",
+    "note": "행안부 행정기관(행정동) 및 관할구역(법정동) 변경내역 2026.9.30. 시행 — KIKcd_H(행정동)·KIKmix(행정동↔법정동)·KIKcd_B. 공공누리 제1유형"
+  },
+  "jumin_households_202609.csv": {
+    "source_url": "https://jumin.mois.go.kr/downloadCsv.do?searchYearMonth=month&xlsStats=3 (POST 2026-09 전국 읍면동)",
+    "downloaded_at": "2026-10-09T11:49:03+09:00",
+    "sha256": "ce292fa79d58a401006e5cd571f571bc2638a4129946e3be58fdc08422084c57",
+    "bytes": 420701,
+    "content_type": "application/octet-stream;charset=utf-8",
+    "note": "행안부 주민등록 인구 및 세대현황 2026-09 전체 읍면동(행정동). cp949 CSV. 공공누리 제1유형"
+  }
+}

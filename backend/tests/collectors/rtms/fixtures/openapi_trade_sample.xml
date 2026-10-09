@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- 합성 픽스처(녹화 아님): DATA_GO_KR_KEY 가 없어 실제 성공 응답을 녹화할 수 없다. 공공데이터포털
+     "국토교통부_아파트 매매 실거래가 자료" 2024 개편 사양의 응답 모양을 따르고, 값은 형식 예시용 가상값이다. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptDong>101</aptDong>
+        <aptNm>테스트아파트A</aptNm>
+        <aptSeq>28185-0001</aptSeq>
+        <bonbun>0030</bonbun>
+        <bubun>0005</bubun>
+        <buildYear>2025</buildYear>
+        <buyerGbn>개인</buyerGbn>
+        <cdealDay> </cdealDay>
+        <cdealType> </cdealType>
+        <dealAmount>   105,000</dealAmount>
+        <dealDay>30</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <estateAgentSggNm>인천 연수구</estateAgentSggNm>
+        <excluUseAr>84.81</excluUseAr>
+        <floor>45</floor>
+        <jibun>30-5</jibun>
+        <landLeaseholdGbn>N</landLeaseholdGbn>
+        <rgstDate> </rgstDate>
+        <roadNm>테스트로</roadNm>
+        <sggCd>28185</sggCd>
+        <slerGbn>개인</slerGbn>
+        <umdCd>10600</umdCd>
+        <umdNm>송도동</umdNm>
+      </item>
+      <item>
+        <aptDong> </aptDong>
+        <aptNm>테스트아파트B</aptNm>
+        <buildYear>2014</buildYear>
+        <cdealDay>26.10.02</cdealDay>
+        <cdealType>O</cdealType>
+        <dealAmount>80,500</dealAmount>
+        <dealDay>12</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <excluUseAr>84.3408</excluUseAr>
+        <floor>5</floor>
+        <jibun>18-6</jibun>
+        <sggCd>28185</sggCd>
+        <umdCd>10600</umdCd>
+        <umdNm>송도동</umdNm>
+      </item>
+      <item>
+        <aptNm>테스트아파트C</aptNm>
+        <buildYear>1993</buildYear>
+        <cdealDay></cdealDay>
+        <cdealType></cdealType>
+        <dealAmount>37,000</dealAmount>
+        <dealDay>3</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>직거래</dealingGbn>
+        <excluUseAr>99.91</excluUseAr>
+        <floor>5</floor>
+        <jibun>917</jibun>
+        <sggCd>28185</sggCd>
+        <umdCd>10300</umdCd>
+        <umdNm>동춘동</umdNm>
+      </item>
+    </items>
+    <numOfRows>1000</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>3</totalCount>
+  </body>
+</response>
