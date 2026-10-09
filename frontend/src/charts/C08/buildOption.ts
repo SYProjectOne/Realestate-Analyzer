@@ -22,6 +22,43 @@ export function eventDate(event: RemainingEvent): string | null {
   return toIsoDay(str(event.notice_date));
 }
 
+/** 같은 줄(kind)에서 이 간격보다 가까운 이웃 라벨은 위·아래로 엇갈린다 */
+const STAGGER_MS = 120 * 24 * 60 * 60 * 1000;
+
+export interface C08LabelItem {
+  date: string;
+  kind: RemainingKind;
+  text: string;
+  /** 마커 위(top)·아래(bottom) */
+  place: 'top' | 'bottom';
+}
+
+/**
+ * custom 라벨 계열(RA §7 C8 "scatter + custom 라벨")의 항목: 잔여 세대·경쟁률. 같은 kind 줄에서 가까운
+ * 이웃과 겹치지 않게 위·아래를 번갈아 둔다. 라벨 문구가 없는 이벤트는 빠진다.
+ */
+export function labelItems(data: C08Data): C08LabelItem[] {
+  const out: C08LabelItem[] = [];
+  for (const kind of KINDS) {
+    const row = data.events
+      .filter((e) => e.kind === kind)
+      .map((event) => ({ event, date: eventDate(event) }))
+      .filter((x): x is { event: RemainingEvent; date: string } => x.date !== null)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let prev: C08LabelItem | null = null;
+    for (const { event, date } of row) {
+      const text = eventLabel(event);
+      if (!text) continue;
+      const close = prev !== null && Date.parse(date) - Date.parse(prev.date) < STAGGER_MS;
+      const place: C08LabelItem['place'] = close && prev?.place === 'top' ? 'bottom' : 'top';
+      const item: C08LabelItem = { date, kind, text, place };
+      out.push(item);
+      prev = item;
+    }
+  }
+  return out;
+}
+
 /** 마커 라벨 = 잔여 세대 · 경쟁률 */
 export function eventLabel(event: RemainingEvent): string {
   const units = num(event.units);
@@ -39,10 +76,12 @@ export function buildOption(
   const dated = data.events
     .map((event) => ({ event, date: eventDate(event) }))
     .filter((x): x is { event: RemainingEvent; date: string } => x.date !== null);
+  const labels = labelItems(data);
   return {
     ...baseOption(palette),
     grid: { left: 72, right: 40, top: 28, bottom: 48 },
-    legend: legendStyle(palette),
+    // 범례는 kind 4종만(라벨 계열은 범례에 넣지 않는다)
+    legend: { ...legendStyle(palette), data: KINDS.map(kindLabel) },
     tooltip: {
       trigger: 'item',
       ...tooltipStyle(palette),
@@ -75,28 +114,53 @@ export function buildOption(
       inverse: true,
       ...axis,
     },
-    series: KINDS.map((kind) => ({
-      type: 'scatter' as const,
-      id: kind,
-      name: kindLabel(kind),
-      symbol: C08_SYMBOLS[kind],
-      symbolSize: 13,
-      itemStyle: { color: kind === '본청약' ? palette.strong : palette.fg },
-      data: dated
-        .filter((x) => x.event.kind === kind)
-        .map((x) => ({
-          value: [x.date, kindLabel(kind)],
-          label: {
-            show: true,
-            position: 'top' as const,
-            color: palette.fg,
-            fontSize: 10,
-            formatter: eventLabel(x.event),
-            width: 180,
-            overflow: 'truncate' as const,
-          },
+    series: [
+      ...KINDS.map((kind) => ({
+        type: 'scatter' as const,
+        id: kind,
+        name: kindLabel(kind),
+        symbol: C08_SYMBOLS[kind],
+        symbolSize: 13,
+        itemStyle: { color: kind === '본청약' ? palette.strong : palette.fg },
+        data: dated
+          .filter((x) => x.event.kind === kind)
+          .map((x) => ({ value: [x.date, kindLabel(kind)] })),
+      })),
+      {
+        // 라벨 = custom 계열(잔여 세대·경쟁률). 가까운 이웃은 위·아래로 엇갈려 겹치지 않는다
+        type: 'custom' as const,
+        id: 'labels',
+        name: t('chart.C08.labels'),
+        silent: true,
+        z: 3,
+        encode: { x: 0, y: 1 },
+        data: labels.map((item) => ({
+          value: [item.date, kindLabel(item.kind)],
+          text: item.text,
+          place: item.place,
         })),
-    })),
+        renderItem: (params, api) => {
+          const item = labels[params.dataIndex];
+          if (!item) return null;
+          const pt = api.coord([api.value(0), api.value(1)]) as number[];
+          const above = item.place === 'top';
+          return {
+            type: 'text',
+            x: pt[0] ?? 0,
+            y: (pt[1] ?? 0) + (above ? -10 : 10),
+            style: {
+              text: item.text,
+              fill: palette.fg,
+              fontSize: 10,
+              align: 'center',
+              verticalAlign: above ? 'bottom' : 'top',
+              width: 180,
+              overflow: 'truncate',
+            },
+          };
+        },
+      },
+    ],
   };
 }
 
