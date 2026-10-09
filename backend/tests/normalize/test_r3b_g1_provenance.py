@@ -49,7 +49,7 @@ def test_m16_household_stat_row_level_source(db_session: Session, add_raw: AddRa
     ])  # fmt: skip
     db_session.flush()
     probs = [(p.entity, p.field, p.problem) for p in missing_provenance(db_session, ("household_stat",))]
-    assert probs == [("household_stat", "households", "no_row"), ("household_stat", "ym", "no_row")]
+    assert sorted(probs) == [("household_stat", "households", "no_row"), ("household_stat", "ym", "no_row")]
 
 
 def test_m6_catalyst_candidate_writes_provenance(db_session: Session, region: Region, add_raw: AddRaw) -> None:

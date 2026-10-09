@@ -7,6 +7,11 @@ source_url = 원문 링크. 종류·단계는 판정기 P4 classify(``scheduler/
 
 멱등: 같은 지역·같은 source_url 이면 기존 행을 돌려준다(제목이 바뀌어도 새 행을 만들지 않는다).
 
+출처(R3b M6): 후보 행을 만들 때 ``field_provenance``(entity='catalyst') 출처 행을 남긴다 — 필드 ``name``(제목·발췌)과
+``source_url``. 라벨 '비공식'(언론 기사·사람이 넣은 링크 — 공식 근거는 판정기 단계 분류가 따로 본다), URL = 원문
+링크, 확인일 = 뉴스 원문 수집일(사람 입력이면 입력일), raw_document_id = 뉴스 원문 행(사람 입력이면 없음).
+판정 확률(stage_prob)의 출처는 judgment_seq 포인터다(``provenance.POINTER_PROVENANCE``).
+
 - ``catalyst_candidate(session, region_id, url=, title=, excerpt=)`` — 공개 함수. 사람 URL 입력 엔드포인트
   (``POST /catalysts``, F3)가 부른다. URL 은 http(s) 만, 제목은 비어 있으면 안 된다(``CatalystInputError`` → 422).
 - ``catalysts_from_news(session, region_id, docs)`` — 뉴스 원문(source_kind='news', 성공 행) → 후보들.
@@ -26,9 +31,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.collectors.news.collector import parse_news_json
+from app.core.contracts_gen import ProvenanceRow
 from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.paths import resolve_raw_path
-from app.models import Catalyst
+from app.core.time import now_kst
+from app.models import Catalyst, RawDocument
+from app.normalize.provenance import upsert_provenance
 
 __all__ = [
     "CANDIDATE_KIND",
@@ -42,6 +50,7 @@ __all__ = [
 
 CANDIDATE_KIND: Final = "기타"
 CANDIDATE_STAGE: Final = "미확정"
+SOURCE_LABEL: Final = "비공식"
 _NOTE_MAX: Final = 1_000
 
 
@@ -116,7 +125,30 @@ def catalyst_candidate(
     )
     session.add(row)
     session.flush()
+    _write_provenance(session, row, raw_document_id)
     return CatalystCandidate(row, created=True)
+
+
+def _write_provenance(session: Session, row: Catalyst, raw_document_id: int | None) -> None:
+    """후보 행의 출처 행(name·source_url) — 라벨 '비공식', URL = 원문 링크(M6)."""
+    doc = session.get(RawDocument, raw_document_id) if raw_document_id is not None else None
+    checked = (doc.fetched_at[:10] if doc is not None and doc.fetched_at else None) or now_kst().date().isoformat()
+    reason = "뉴스 검색 결과(언론 기사)" if doc is not None else "사람 입력 URL"
+    excerpt = (f"{row.name} — {row.note}" if row.note else row.name)[:_NOTE_MAX]
+    key = f"catalyst:{row.id}"
+    url = row.source_url or ""
+    upsert_provenance(
+        session,
+        [
+            ProvenanceRow(
+                entity="catalyst", entity_id=row.id, entity_key=key, field=field_name, value_text=text,
+                value_norm=text, raw_document_id=doc.id if doc is not None else None, url=url, checked_at=checked,
+                observed_on=None, label=SOURCE_LABEL, reason=reason, source_rank=2, chosen=True,
+                conflict_group=None, excerpt=excerpt, excerpt_start=None, excerpt_end=None,
+            )  # fmt: skip
+            for field_name, text in (("name", row.name), ("source_url", url))
+        ],
+    )
 
 
 def _read(doc: RawDTO) -> bytes | None:
