@@ -372,8 +372,9 @@ def test_c2_report_scope_per_complex(factory: sessionmaker[Session], out_dir: Pa
     assert by[6].judge_scope == "판정 대상"  # auto · 미정
     assert by[4].judge_scope == "미해결"  # classify review
     assert by[14].judge_scope == "미해결"
-    # 기대값 갱신(R3 마무리): 마리나베이(12) '참고' → '판정 대상' — CEO 결정으로 공식 팝업 '불가' → '미정'(마감·4회차 미정 =
-    # 공고 이력 + 추가 공급 미정, meta §1-3-4). '참고' 표시 확인은 해링턴(13)으로.
+    # 기대값 갱신(R3 마무리): 마리나베이(12) '참고' → '판정 대상' — CEO 결정으로 공식 팝업
+    # '불가' → '미정'(마감·4회차 미정 = 공고 이력 + 추가 공급 미정, meta §1-3-4).
+    # '참고' 표시 확인은 해링턴(13)으로.
     assert by[12].judge_scope == "판정 대상"
     assert by[13].judge_scope == "참고"  # 공식 팝업 '확인 불가'(비공식 미정은 표시에 안 씀)
     assert by[15].judge_scope == "보류"  # 분양가 미공개(공고 전) — 접수보다 먼저 본다

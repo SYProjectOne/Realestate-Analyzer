@@ -73,7 +73,8 @@ def test_full_rejudge_writes_derived_rows_and_publishes(
         )
         # P6: 사다리 3시점 — D9-1 판정 대상(포함 auto + 가격 + 접수 가능·미정)만: 1~3, 5~12.
         # 4·13·14(확인 불가)=참고, 15·16=보류
-        # 기대값 갱신(R3 마무리) 27 → 33: 그란테르(1, W1)·마리나베이(12, CEO 결정) 접수 '불가' → '미정'(판정 대상)
+        # 기대값 갱신(R3 마무리) 27 → 33: 그란테르(1, W1)·마리나베이(12, CEO 결정)
+        # 접수 '불가' → '미정'(판정 대상)
         assert _count(s, Ladder, Ladder.snapshot_id == seeded) == 33  # D9-1: 판정 대상 11단지 × 3시점
         assert _count(s, Ladder, Ladder.snapshot_id == seeded, Ladder.judgment_seq.is_(None)) == 0
         horizons = set(s.scalars(select(Ladder.horizon).where(Ladder.snapshot_id == seeded)))

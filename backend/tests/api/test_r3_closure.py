@@ -8,7 +8,9 @@ from ._support import WRITE, assert_facts_labelled, validate
 
 
 def test_compare_shows_wait_new_virtual_candidate(client: TestClient) -> None:
-    """상황 A decide(devseed = 보고서 #126 wait_new .94) → C7 데이터에 가상 후보: complex_id null · 이름 키 · 요건 판정."""
+    """상황 A decide(devseed = 보고서 #126 wait_new .94) → C7 데이터에 가상 후보.
+
+    complex_id null · 이름 키 · 요건 판정."""
     r = client.get("/api/snapshots/12/compare", params={"ids": "2,7", "scenario": "A"}, headers=WRITE)
     assert r.status_code == 200, r.text
     body = r.json()
