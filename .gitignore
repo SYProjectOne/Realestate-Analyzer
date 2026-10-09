@@ -1,0 +1,34 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+# env / secrets
+.env
+.env.*
+!.env.example
+# data
+*.db
+*.db-journal
+data/raw/
+data/reports/
+backend/data/
+# node
+node_modules/
+dist/
+frontend/test-results/
+frontend/playwright-report/
+e2e/test-results/
+e2e/playwright-report/
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# claude worktrees
+.claude/worktrees/
