@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from app.judge.claims import CompoundClaimError, RuleClaimSplitter, is_atomic
-from app.judge.payloads import verify_payload
 
 from app.core.protocols import ClaimSplitter
+from app.judge.claims import CompoundClaimError, RuleClaimSplitter, is_atomic
+from app.judge.payloads import verify_payload
 
 T6 = "3개는 unlikely이고 나머지는 uncertain"
 

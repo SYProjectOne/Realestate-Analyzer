@@ -1,4 +1,5 @@
-"""jev_mcp.py — 실제 JEV 응답(녹화) → 봉투 status·result 매핑, stdio MCP 전송(가짜 서버 프로세스), JudgeUnavailable(T18)."""
+"""jev_mcp.py — 실제 JEV 응답(녹화) → 봉투 status·result 매핑,
+stdio MCP 전송(가짜 서버 프로세스), JudgeUnavailable(T18)."""
 
 from __future__ import annotations
 
@@ -7,7 +8,6 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-from app.judge.jev_mcp import JevMcpAdapter, McpStdioTransport, normalize, subprocess_env
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -23,6 +23,7 @@ from app.core.contracts_gen import (
     VerifyResult,
 )
 from app.core.protocols import JUDGE_TOOLS, JudgeAdapter, JudgeUnavailable
+from app.judge.jev_mcp import JevMcpAdapter, McpStdioTransport, normalize, subprocess_env
 from app.models import JudgmentLog
 
 from .conftest import FakeServer, FakeTransport
@@ -51,7 +52,11 @@ def test_protocol(fake_transport: FakeTransport, session_factory: sessionmaker[S
 
 @pytest.mark.parametrize("tool", JUDGE_TOOLS)
 def test_real_samples_normalize_to_contract_result(tool: str, samples: dict[str, Any]) -> None:
-    s = samples[f"jev_{tool}"]
+    s = copy.deepcopy(samples[f"jev_{tool}"])
+    if tool == "noul":  # 녹화는 명제 2개 — 계약 NoulResult 는 사다리 명제 4개
+        s["response"]["results"] = [
+            s["response"]["results"][i % 2] | {"id": f"proposition{i}"} for i in range(4)
+        ]
     n = norm(tool, s["response"], s["arguments"])
     assert n.status == "ok"
     RESULT_MODELS[tool].model_validate(n.result)

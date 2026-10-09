@@ -6,12 +6,12 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-from app.judge.base import ADAPTER_CODE_VERSION, make_adapter_version
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.protocols import JudgeUnavailable, input_hash
 from app.judge import cache
+from app.judge.base import ADAPTER_CODE_VERSION, make_adapter_version
 from app.models import JudgmentLog
 
 from .conftest import FakeTransport

@@ -16,11 +16,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.judge.base import ToolResponse
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.protocols import JudgeUnavailable
+from app.judge.base import ToolResponse
 
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / "fixtures"
@@ -73,7 +73,27 @@ def fake_transport() -> FakeTransport:
 
 @pytest.fixture
 def session_factory(db_engine: Engine) -> sessionmaker[Session]:
-    return sessionmaker(bind=db_engine, expire_on_commit=False)
+    """임시 DB + 지역 1개·단지 1~20(judgment_log.complex_id FK 용 최소 행)."""
+    from app.models import Complex, Region
+
+    factory = sessionmaker(bind=db_engine, expire_on_commit=False)
+    with factory() as s:
+        s.add(
+            Region(
+                id=1, name="테스트 지역", query_text="테스트", selections=[], sido_codes=[], sigungu_codes=[],
+                legal_dong_codes=[], living_areas=[], age_premium_coef={}, applyhome_query={}, status="ready",
+                created_at="2026-10-08T00:00:00+09:00",
+            )
+        )  # fmt: skip
+        s.flush()
+        for i in range(1, 21):
+            s.add(
+                Complex(
+                    id=i, region_id=1, name=f"단지{i}", former_names=[], apply_dates=[], contract_dates=[]
+                )
+            )
+        s.commit()
+    return factory
 
 
 @pytest.fixture

@@ -1,7 +1,10 @@
-"""JEV 실제 연결 smoke (``pytest -m live tests/judge/test_live.py -s``). 결과는 docs/adr/ADR-05-judge-smoke.md.
+"""JEV 실제 연결 smoke (``pytest -m live tests/judge/test_live.py -s``).
+
+결과는 docs/adr/ADR-05-judge-smoke.md.
 
 실제 ``JEV_MCP_CMD``(기본 ``npx -y @jkudish/jev-mcp@latest``)를 띄워 initialize·tools/list를 확인하고,
-합성 공개 텍스트 1건을 어댑터 전체 경로(guard → hash → 호출 → judgment_log)로 보낸 뒤 같은 입력이 캐시되는지 본다.
+합성 공개 텍스트 1건을 어댑터 전체 경로(guard → hash → 호출 → judgment_log)로 보낸 뒤
+같은 입력이 캐시되는지 본다.
 """
 
 from __future__ import annotations
@@ -10,10 +13,10 @@ import json
 import time
 
 import pytest
-from app.judge.jev_mcp import JevMcpAdapter, McpStdioTransport
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.settings import Settings
+from app.judge.jev_mcp import JevMcpAdapter, McpStdioTransport
 
 REQUIRED = {
     f"jev_{t}"

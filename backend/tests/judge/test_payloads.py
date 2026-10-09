@@ -1,4 +1,5 @@
-"""payloads.py — 증거 카드 ≤2,000자, 사다리 명제 3 horizon × 4(T10), rerank 전체 1회(T7), decide ≤6 + 요건 문자열.
+"""payloads.py — 증거 카드 ≤2,000자, 사다리 명제 3 horizon × 4(T10), rerank 전체 1회(T7),
+decide ≤6 + 요건 문자열.
 
 payload 모양은 실제 JEV 0.14.1 입력 스키마(fixtures/jev_tools.json)로 검증한다.
 """

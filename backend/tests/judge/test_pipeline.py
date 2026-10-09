@@ -174,7 +174,8 @@ def test_p9_verify_splits_then_verifies(make_adapter: Callable[..., Any]) -> Non
         "tool": "jev_verify",
         "auto_accept": 0.8,
         "results": [
-            {"id": "claim0", "claim": "3개는 unlikely", "verdict": "verified", "confidence": 0.95, "action": "auto"},
+            {"id": "claim0", "claim": "3개는 unlikely", "verdict": "verified", "confidence": 0.95,
+             "action": "auto"},
             {"id": "claim1", "claim": "나머지는 uncertain", "verdict": "contradicted", "confidence": 0.9,
              "action": "auto"},
         ],

@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.judge.mock import MockAdapter, recording_path, write_recording
 
 from app.core.contracts_gen import JudgmentEnvelope
 from app.core.protocols import JudgeAdapter, JudgeUnavailable, input_hash
+from app.judge.mock import MockAdapter, recording_path, write_recording
 
 VERSION = "0.1.0+jev-mcp@0.14.1"
 PAYLOAD: dict[str, Any] = {"query": "q", "candidates": [{"id": "complex:1", "text": "단지 1"}]}
