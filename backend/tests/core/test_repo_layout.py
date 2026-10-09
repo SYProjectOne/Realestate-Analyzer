@@ -111,6 +111,9 @@ def test_dockerfiles() -> None:
     assert "playwright install" in worker and "chromium" in worker
     assert "npx" in worker and "node" in worker
     assert "app.worker" in worker
+    # 보고서 ECharts 번들(WP8): 이미지에 echarts.min.js 를 넣고 Settings 경로(REPORT_ECHARTS_JS)로 알린다
+    assert "echarts.min.js" in worker and "REPORT_ECHARTS_JS=/opt/echarts/echarts.min.js" in worker
+    assert "COPY --from=echarts" in worker
     web = (INFRA / "Dockerfile.web").read_text(encoding="utf-8")
     assert re.search(r"FROM node:\S+ AS build", web)
     assert "npm run build" in web

@@ -79,6 +79,17 @@ def test_robots_exempt_hosts_empty(clean_env: pytest.MonkeyPatch) -> None:
     assert make().http_robots_exempt_hosts == []
 
 
+def test_report_echarts_js_setting(clean_env: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """WP8 ECharts 번들 경로는 Settings(REPORT_ECHARTS_JS, 계약 2026-10-09.3). 빈 값 = None."""
+    assert make().report_echarts_js is None
+    clean_env.setenv("REPORT_ECHARTS_JS", "")
+    assert make().report_echarts_js is None
+    bundle = tmp_path / "echarts.min.js"
+    clean_env.setenv("REPORT_ECHARTS_JS", str(bundle))
+    assert make().report_echarts_js == bundle
+    assert "REPORT_ECHARTS_JS" in env_var_names()
+
+
 def test_env_override_and_secret_types(clean_env: pytest.MonkeyPatch) -> None:
     clean_env.setenv("API_TOKEN", "tok-AAAA1111BBBB2222")
     clean_env.setenv("DATA_GO_KR_KEY", "key+with/slash==")
