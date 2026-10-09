@@ -447,6 +447,7 @@ class _Binder:
         if raw.region_id is None:
             return None
         floor = vals.get("floor")
+        presale = bool(vals.get("is_presale", False))  # 분양권 거래는 같은 값의 매매와 다른 행(R3b F1a)
         row = self.s.scalars(
             select(RtmsTrade).where(
                 RtmsTrade.region_id == raw.region_id,
@@ -456,6 +457,7 @@ class _Binder:
                 RtmsTrade.floor.is_(None) if floor is None else RtmsTrade.floor == int(floor),
                 RtmsTrade.area_m2 == Decimal(str(vals.get("area_m2"))),
                 RtmsTrade.source == vals.get("source"),
+                RtmsTrade.is_presale.is_(presale),
             )
         ).first()
         if row is not None or not create:
@@ -467,6 +469,7 @@ class _Binder:
             price_won=int(vals["price_won"]),
             deal_date=str(vals["deal_date"]),
             source=str(vals["source"]),
+            is_presale=presale,
             raw_document_id=raw.id,
         )
         self.s.add(row)
