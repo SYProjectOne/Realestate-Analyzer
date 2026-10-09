@@ -189,11 +189,13 @@ def test_minor17_dns_resolving_to_private_is_blocked_and_public_passes() -> None
         return httpx.Response(200, text="ok")
 
     def resolver(host: str) -> list[str]:
-        return {"intranet.example.test": ["10.1.2.3"], "www.example.test": ["93.184.216.34"]}.get(host, [])
+        return {"intranet.corp-internal.kr": ["10.1.2.3"], "www.public-site.kr": ["93.184.216.34"]}.get(
+            host, []
+        )
 
     with _client(handler, resolver=resolver) as c:
-        assert c.get("http://intranet.example.test/").error_kind == "blocked_host"
-        assert c.get("http://www.example.test/").ok
+        assert c.get("http://intranet.corp-internal.kr/").error_kind == "blocked_host"
+        assert c.get("http://www.public-site.kr/").ok
 
 
 def test_minor17_allow_private_for_tests() -> None:
