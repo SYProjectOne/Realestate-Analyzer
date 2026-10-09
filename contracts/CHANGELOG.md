@@ -28,6 +28,9 @@ R3 독립 리뷰(`docs/design/wp/R3_REVIEW.md`) 후속 — CEO 결정 D9(`docs/d
   + `score_component.raw_value_unadjusted`.
   SQLite 는 batch(재생성 정의 고정), Postgres 는 ALTER. head → 0003 → head 왕복을 SQLite·Postgres 16(pgserver) 둘 다 테스트
   (downgrade 는 `claim.reverify` 잡 행을 먼저 지운다 — 옛 CHECK 를 통과할 수 없는 큐의 일시 행). autogenerate diff 0, CHECK 리터럴 일치.
+- 픽스처 변경 사유 강제(minor 6): `contracts/fixtures.sha256.json`(픽스처 sha256 + 사유) — 픽스처를 바꾸면
+  `uv run python scripts/fixture_manifest.py --reason '<사유>'` 로 다시 만들고 같은 사유를 여기 적는다(`tests/contracts/test_fixture_manifest.py`).
+  사유: R3 F3: 픽스처 매니페스트 도입(minor 6) — 데이터 변경 없음
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.4`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
 
 ## 2026-10-09.3
