@@ -312,6 +312,7 @@ def _prod(**kw: Any) -> Settings:
         env="prod",
         api_token=SecretStr("tok-prod-123456"),
         judge_adapter="jev",
+        database_url="postgresql+psycopg://sa:pw@db:5432/subscription",  # prod 는 SQLite 거부(D11-9)
         **kw,
     )
 

@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import base64
 import socket
 import threading
 from collections.abc import Callable, Iterator
@@ -147,7 +148,9 @@ def test_real_chromium_blocks_redirect_hop_rebinding_and_websocket_before_reques
             "rebind.r3b-lab.kr": [[PUBLIC], [INTERNAL]],
         }
     )
-    renderer = PlaywrightRenderer(allow_private=False, resolver=resolver, settle_ms=300, timeout_ms=20_000)
+    renderer = PlaywrightRenderer(
+        allow_private=False, resolver=resolver, settle_ms=300, timeout_ms=20_000, allowed_ports={pp, ip}
+    )  # 시험 서버 포트만 허용(R3c: 기본은 80·443)
     holder: dict[str, BrowserGuard] = {}
     original = renderer.guard
 
@@ -168,12 +171,20 @@ def test_real_chromium_blocks_redirect_hop_rebinding_and_websocket_before_reques
     assert "intra.r3b-lab.kr" in blocked and "WebSocket" in blocked
 
 
-def test_real_chromium_main_redirect_to_internal_discarded(lab_rules: None, sites: tuple[_Site, _Site]) -> None:
+def test_real_chromium_main_redirect_to_internal_discarded(
+    lab_rules: None, sites: tuple[_Site, _Site]
+) -> None:
     _need_chromium()
     public, internal = sites
     public.redirect = lambda path: f"http://{INTERNAL}:{internal.port}/secret"
     resolver = _resolver({"site.r3b-lab.kr": [[PUBLIC]]})
-    renderer = PlaywrightRenderer(allow_private=False, resolver=resolver, settle_ms=0, timeout_ms=20_000)
+    renderer = PlaywrightRenderer(
+        allow_private=False,
+        resolver=resolver,
+        settle_ms=0,
+        timeout_ms=20_000,
+        allowed_ports={public.port, internal.port},
+    )
     result = renderer.render(f"http://site.r3b-lab.kr:{public.port}/go-main")
     assert not result.ok and (result.error or "").startswith("blocked_host"), result
     assert internal.seen == []
@@ -183,13 +194,18 @@ def test_real_chromium_main_redirect_to_internal_discarded(lab_rules: None, site
 # ====================================================================== 프록시(브라우저 없이)
 
 
-def _connect_rule(host: str, port: int) -> str:
+def _connect_rule(host: str, port: int) -> list[str]:
     if host in ("intra.lab", INTERNAL):
         raise BlockedHostError(f"blocked_host: 내부망 주소 {host}")
-    return PUBLIC
+    return [PUBLIC]
 
 
 def _raw(proxy: EgressProxy, request: bytes) -> bytes:
+    """요청 머리 첫 줄 뒤에 이 프록시의 인증 헤더를 붙여 보낸다(R3c: 렌더마다 무작위 토큰)."""
+    c = proxy.credentials
+    auth = base64.b64encode(f"{c['username']}:{c['password']}".encode())
+    first, _, tail = request.partition(b"\r\n")
+    request = first + b"\r\nProxy-Authorization: Basic " + auth + b"\r\n" + tail
     host, port = proxy.server.removeprefix("http://").split(":")
     with socket.create_connection((host, int(port)), timeout=10) as s:
         s.sendall(request)
@@ -206,7 +222,7 @@ def _raw(proxy: EgressProxy, request: bytes) -> bytes:
 
 def test_proxy_connect_to_blocked_host_refused_before_connecting(sites: tuple[_Site, _Site]) -> None:
     _, internal = sites
-    with EgressProxy(_connect_rule) as proxy:
+    with EgressProxy(_connect_rule, allowed_ports=None) as proxy:
         out = _raw(proxy, f"CONNECT {INTERNAL}:{internal.port} HTTP/1.1\r\nHost: x\r\n\r\n".encode())
     assert out.startswith(b"HTTP/1.1 403")
     assert internal.seen == [] and proxy.blocked and INTERNAL in proxy.blocked[0]
@@ -214,7 +230,7 @@ def test_proxy_connect_to_blocked_host_refused_before_connecting(sites: tuple[_S
 
 def test_proxy_absolute_get_rewritten_and_pinned(sites: tuple[_Site, _Site]) -> None:
     public, _ = sites
-    with EgressProxy(_connect_rule) as proxy:
+    with EgressProxy(_connect_rule, allowed_ports=None) as proxy:
         out = _raw(
             proxy,
             f"GET http://named.lab:{public.port}/a.png?x=1 HTTP/1.1\r\nHost: named.lab:{public.port}\r\n"
@@ -227,7 +243,7 @@ def test_proxy_absolute_get_rewritten_and_pinned(sites: tuple[_Site, _Site]) -> 
 
 def test_proxy_blocks_plain_websocket_upgrade_and_non_http(sites: tuple[_Site, _Site]) -> None:
     public, _ = sites
-    with EgressProxy(_connect_rule) as proxy:
+    with EgressProxy(_connect_rule, allowed_ports=None) as proxy:
         ws = _raw(
             proxy,
             f"GET http://named.lab:{public.port}/ws HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\n"
@@ -235,7 +251,9 @@ def test_proxy_blocks_plain_websocket_upgrade_and_non_http(sites: tuple[_Site, _
         )
         ftp = _raw(proxy, b"GET ftp://named.lab/x HTTP/1.1\r\nHost: x\r\n\r\n")
         dns = _raw(proxy, b"GET http://intra.lab/x HTTP/1.1\r\nHost: intra.lab\r\n\r\n")
-    assert ws.startswith(b"HTTP/1.1 403") and ftp.startswith(b"HTTP/1.1 403") and dns.startswith(b"HTTP/1.1 403")
+    assert (
+        ws.startswith(b"HTTP/1.1 403") and ftp.startswith(b"HTTP/1.1 403") and dns.startswith(b"HTTP/1.1 403")
+    )
     assert public.seen == []
     assert len(proxy.blocked) == 3
 
@@ -249,11 +267,13 @@ def test_guard_connect_address_resolves_once_per_render(lab_rules: None) -> None
         return [PUBLIC] if len(calls) == 1 else [INTERNAL]
 
     guard = BrowserGuard(allow_private=False, resolver=resolver)
-    assert guard.connect_address("cdn.r3b-lab.kr", 443) == PUBLIC
-    assert guard.connect_address("cdn.r3b-lab.kr", 443) == PUBLIC
+    assert guard.connect_address("cdn.r3b-lab.kr", 443) == [PUBLIC]
+    assert guard.connect_address("cdn.r3b-lab.kr", 443) == [PUBLIC]
     assert calls == ["cdn.r3b-lab.kr"]
     with pytest.raises(BlockedHostError):
-        BrowserGuard(allow_private=False, resolver=lambda h: [PUBLIC, "10.0.0.7"]).connect_address("mix.kr", 80)
+        BrowserGuard(allow_private=False, resolver=lambda h: [PUBLIC, "10.0.0.7"]).connect_address(
+            "mix.kr", 80
+        )
     with pytest.raises(BlockedHostError):
         guard.connect_address("169.254.169.254", 80)
 
@@ -269,6 +289,6 @@ def test_guard_pins_idn_main_host_in_punycode_too() -> None:
     guard = BrowserGuard(allow_private=False, resolver=resolver)
     assert guard.prepare("https://www.엘리프검단포레듀.com/") is None
     puny = "www.엘리프검단포레듀.com".encode("idna").decode("ascii")
-    assert guard.connect_address(puny, 443) == "93.184.216.34"
+    assert guard.connect_address(puny, 443) == ["93.184.216.34"]
     assert calls == ["www.엘리프검단포레듀.com"]
     assert f"MAP {puny} 93.184.216.34" in guard.launch_args()[0]

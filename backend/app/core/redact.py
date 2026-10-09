@@ -11,6 +11,14 @@ URL 안의 접속 비밀번호(``scheme://user:password@host``·사용자 없는
 Authorization 헤더 값·``Bearer <토큰>``, 비밀스러운 dict 키(token·password·authorization …).
 정수 값(``redact_obj``·guard): 13자리 주민번호 모양, +82 국제 전화(82…), 그리고 키 이름이 전화를 뜻하면
 (phone·tel·mobile·전화·연락처) 앞자리 0 이 빠진 전화번호(1012345678)도 잡는다(R3 minor 12).
+
+R3c SEC(3차 리뷰 minor 22·31):
+- 이름으로 비밀임을 아는 헤더·키(``X-NCP-APIGW-API-KEY``·``x-api-key``·``X-Naver-Client-Secret``·
+  ``X-Auth-Token`` …) 뒤의 값, 숫자 없는 ``Bearer`` 토큰(16자 이상, 대소문자 섞임, 또는 ``-._~+/`` 가 든
+  8자 이상 — 'the bearer of …' 같은 글은 그대로). dict 키도 하이픈 표기(``api-key``·``client-secret``)를
+  비밀 키로 본다.
+- 전화·주민번호 변형: 전각 숫자·전각 하이픈, en/em dash 등 대시류, 공백 낀 하이픈(``010 - 1234``), ``8210-…``·
+  ``(82)10-…``·``(+82) 10-…``. 글자 단위 1:1 치환(``_FOLD``)한 사본에서 찾으므로 위치는 원문 그대로다.
 """
 
 from __future__ import annotations
@@ -28,38 +36,89 @@ MIN_SECRET_LEN = 4
 MIN_SECRET_PART_LEN = 8  # 'ID:Secret' 의 부분 — 짧은 조각은 흔한 낱말과 겹칠 수 있다
 
 _KR_CODE = r"(?:1[016789]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70)"
+_SEP = r"(?:\s?[-.]\s?|\s)"  # 구분자 1개: 하이픈·점(앞뒤 공백 하나씩 허용) 또는 공백
 PHONE_RE = re.compile(
     r"(?<![\d-])(?:"
-    r"(?:\+|00\d{0,3})82[-.\s]?(?:\(0\)\s?)?"
+    r"(?:\+|00\d{0,3})82"
+    + _SEP
+    + r"?(?:\(0\)\s?)?"
     + _KR_CODE  # 국제 +82 · 0082 · 00782 …
-    + r"[-.\s)]?\s?\d{3,4}[-.\s]?\d{4}"
-    r"|82[-.\s](?:\(0\)\s?)?"
-    + _KR_CODE  # '+' 없는 82-10-1234-5678 (구분자 필수)
-    + r"[-.\s]\d{3,4}[-.\s]\d{4}"
-    r"|01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}"  # 휴대전화
-    r"|0(?:2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|50\d?)[-.\s)]\s?\d{3,4}[-.\s]?\d{4}"  # 지역·인터넷 (구분자 필수)
+    + r"(?:"
+    + _SEP
+    + r"|\)\s?)?\d{3,4}"
+    + _SEP
+    + r"?\d{4}"
+    r"|\(\+?82\)\s?(?:\(0\)\s?)?"
+    + _KR_CODE  # (82)10-… · (+82) 10-…
+    + _SEP
+    + r"?\d{3,4}"
+    + _SEP
+    + r"?\d{4}"
+    r"|82"
+    + _SEP
+    + r"?(?:\(0\)\s?)?"
+    + _KR_CODE  # '+' 없는 82-10-1234-5678 · 8210-1234-5678 (뒤 구분자 필수)
+    + _SEP
+    + r"\d{3,4}"
+    + _SEP
+    + r"\d{4}"
+    r"|01[016789]" + _SEP + r"?\d{3,4}" + _SEP + r"?\d{4}"  # 휴대전화
+    r"|0(?:2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|50\d?)(?:"
+    + _SEP
+    + r"|\)\s?)\d{3,4}"
+    + _SEP
+    + r"?\d{4}"  # 지역·인터넷 (구분자 필수)
     r"|0(?:2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70)\d{7,8}"  # 지역번호 붙여 쓴 형태
-    r"|1[5-9]\d{2}-\d{4}"  # 대표번호 15xx·16xx·18xx
+    r"|1[5-9]\d{2}\s?-\s?\d{4}"  # 대표번호 15xx·16xx·18xx
     r")(?![\d-])"
 )
 RRN_RE = re.compile(r"(?<!\d)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?:\s?[-–]\s?|\s)?[1-8]\d{6}(?!\d)")
+_DASHES = "\u2010\u2011\u2012\u2013\u2014\u2015\u2212\ufe58\ufe63\uff0d"
+_FOLD = str.maketrans(
+    {
+        **{chr(0xFF10 + i): str(i) for i in range(10)},  # 전각 숫자
+        **dict.fromkeys(_DASHES, "-"),  # 대시류(하이픈·en/em dash·마이너스·전각 하이픈)
+        "\uff08": "(",
+        "\uff09": ")",
+        "\uff0b": "+",
+        "\uff0e": ".",
+        "\u3000": " ",
+        "\u00a0": " ",
+    }
+)
+"""개인정보 패턴을 찾기 전 글자 단위 1:1 치환(길이·위치가 바뀌지 않는다)."""
 DSN_PASSWORD_RE = re.compile(r"(?i)\b[a-z][a-z0-9+.\-]*://[^/\s:@]*:([^\s/?#]+)@")
 """URL 안의 접속 비밀번호(DATABASE_URL 'postgresql+psycopg://user:pw@host/db', 사용자 없는
 'redis://:pw@host:6379/0', '@' 가 든 비밀번호는 authority 의 마지막 '@' 까지) — 비밀번호만 가린다."""
 _TOKEN = r"[A-Za-z0-9\-._~+/]+=*"
+_TOKEN_CH = r"[A-Za-z0-9\-._~+/]"
 AUTH_HEADER_RE = re.compile(
     r"(?i:authorization)[\"']?\s*[:=]\s*[\"']?\s*(?:(?i:bearer|basic|token|digest)\s+)?(" + _TOKEN + ")"
-    r"|\b(?i:bearer)\s+((?=[A-Za-z\-._~+/]*\d)[A-Za-z0-9\-._~+/]{8,}=*)"
+    r"|\b(?i:bearer)\s+("
+    r"(?=" + _TOKEN_CH + r"*\d)" + _TOKEN_CH + r"{8,}=*"  # 숫자 포함 8자 이상
+    r"|(?=[A-Za-z]*[a-z][A-Za-z]*[A-Z])[A-Za-z]{8,}(?!"
+    + _TOKEN_CH
+    + r")"  # 소문자 뒤 대문자(첫 글자만 대문자인 낱말 제외) 8자 이상
+    r"|(?=[A-Za-z0-9]*[\-._~+/])" + _TOKEN_CH + r"{8,}=*"  # 토큰 기호가 든 8자 이상
+    r"|" + _TOKEN_CH + r"{16,}=*"  # 16자 이상
+    r")"
 )
 """Authorization 헤더 값(``Authorization: Bearer …``·``Basic …``·``Token …``)과 홀로 나온 ``Bearer <토큰>``
-(토큰은 8자 이상·숫자 포함 — 'the bearer of …' 같은 글은 그대로)."""
+(토큰 모양만 — 'the bearer of …'·'bearer bonds' 같은 글은 그대로)."""
+HEADER_KEY_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9_-])((?:x-)?[a-z0-9-]*?"
+    r"(?:api-?key(?:-id)?|apikey|client-?secret|client-?id|access-?token|auth-?token|secret-?key|"
+    r"secret|token|password|passwd)"
+    r")[\"']?\s*[:=]\s*[\"']?\s*(" + _TOKEN + ")"
+)
+"""이름으로 비밀임을 아는 헤더·키 뒤의 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``·``"X-Api-Key": "…"``)."""
 _PHONE_KEY_RE = re.compile(r"(?i)(phone|tel|mobile|fax|전화|연락처|휴대)")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 QUERY_KEY_RE = re.compile(
     r"(?i)([?&](?:servicekey|service_key|api_?key|apikey|access_token|token|secret|password|key)=)[^&\s#\"']+"
 )
 SENSITIVE_KEY_RE = re.compile(
-    r"(?i)(token|secret|password|passwd|authorization|cookie|api_?key|service_?key|credential)"
+    r"(?i)(token|secret|password|passwd|authorization|cookie|api[-_]?key|service[-_]?key|credential|client[-_]?id)"
 )
 
 _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
@@ -155,6 +214,10 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
         a, b = m.start(group), m.end(group)
         if not overlaps(a, b):
             taken.append(Finding("secret", a, b))
+    for m in HEADER_KEY_RE.finditer(text):
+        a, b = m.start(2), m.end(2)
+        if not overlaps(a, b):
+            taken.append(Finding("secret", a, b))
     for m in QUERY_KEY_RE.finditer(text):
         a, b = m.start() + len(m.group(1)), m.end()
         if not overlaps(a, b):
@@ -163,8 +226,9 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
         a, b = m.start(1), m.end(1)
         if not overlaps(a, b):
             taken.append(Finding("secret", a, b))
+    folded = text.translate(_FOLD)  # 1:1 치환 — 위치는 원문과 같다
     for kind, pattern in _PATTERNS:
-        for m in pattern.finditer(text):
+        for m in pattern.finditer(folded):
             if not overlaps(m.start(), m.end()):
                 taken.append(Finding(kind, m.start(), m.end()))
     return sorted(taken, key=lambda f: f.start)
