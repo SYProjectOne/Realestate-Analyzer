@@ -346,6 +346,9 @@ class BrowserGuard:
             return None  # DNS 실패 — 브라우저도 실패해 render 오류로 남는다(고정할 IP 없음)
         self._cache[host] = None
         self.pins[host] = ips[0]
+        ascii_host = _ascii_host(host)  # 국문 도메인: 브라우저는 punycode 로 묻는다(프록시 CONNECT·MAP 규칙)
+        if ascii_host != host:
+            self.pins[ascii_host] = ips[0]
         return None
 
     def connect_address(self, host: str, port: int) -> str:
@@ -409,6 +412,13 @@ class BrowserGuard:
             self.violation = self.violation or f"{reason} (리다이렉트 {request.url})"
         else:
             self.blocked.append(f"{reason} (리다이렉트 {request.url})")
+
+
+def _ascii_host(host: str) -> str:
+    try:
+        return host.encode("idna").decode("ascii").lower()
+    except UnicodeError:
+        return host
 
 
 def _is_ip(host: str) -> bool:

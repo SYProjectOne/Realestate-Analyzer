@@ -256,3 +256,19 @@ def test_guard_connect_address_resolves_once_per_render(lab_rules: None) -> None
         BrowserGuard(allow_private=False, resolver=lambda h: [PUBLIC, "10.0.0.7"]).connect_address("mix.kr", 80)
     with pytest.raises(BlockedHostError):
         guard.connect_address("169.254.169.254", 80)
+
+
+def test_guard_pins_idn_main_host_in_punycode_too() -> None:
+    """국문 도메인 본 호스트: 브라우저는 punycode 로 프록시에 묻는다 → 같은 고정 IP(다시 풀지 않는다)."""
+    calls: list[str] = []
+
+    def resolver(host: str) -> list[str]:
+        calls.append(host)
+        return ["93.184.216.34"]
+
+    guard = BrowserGuard(allow_private=False, resolver=resolver)
+    assert guard.prepare("https://www.엘리프검단포레듀.com/") is None
+    puny = "www.엘리프검단포레듀.com".encode("idna").decode("ascii")
+    assert guard.connect_address(puny, 443) == "93.184.216.34"
+    assert calls == ["www.엘리프검단포레듀.com"]
+    assert f"MAP {puny} 93.184.216.34" in guard.launch_args()[0]
