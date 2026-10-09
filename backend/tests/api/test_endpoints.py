@@ -249,7 +249,9 @@ def test_market(client: TestClient) -> None:
     validate("getMarket", 200, body)
     assert_facts_labelled(body)
     assert {a["id"] for a in body["living_areas"]} == {"la_1", "la_2", "la_3", "la_4"}
-    assert body["unsold"] and body["benchmarks"] and body["supply"]
+    assert body["unsold"] and body["benchmarks"] and body["supply"] and body["move_in_markers"]
+    assert {p["living_area"] for p in body["living_area_prices"]} >= {"la_1", "la_2", "la_4"}
+    assert body["regulation"]["items"] and body["catalysts"]
     one = client.get("/api/snapshots/12/market", params={"living_area": "la_4"}, headers=WRITE).json()
     validate("getMarket", 200, one)
     assert all(b["living_area"] == "la_4" for b in one["benchmarks"])
