@@ -129,7 +129,12 @@ def test_c2_pipeline_scope_ladder_rerank_score_and_api(
             t.complex_id: t.judge_scope
             for t in s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == base.id))
         }
-        assert 3 not in stored
+        # R3b N-C1(D10-1): 미해결도 저장 범위 행(총점·순위 없음) — 화면은 저장값만 보인다
+        assert stored[3] == "미해결"
+        t3 = s.scalars(
+            select(ScoreTotal).where(ScoreTotal.score_run_id == base.id, ScoreTotal.complex_id == 3)
+        ).one()
+        assert t3.total is None and t3.rank is None
         assert {c for c, v in stored.items() if v == "판정 대상"} == JUDGED
         assert {c for c, v in stored.items() if v == "참고"} == REFERENCE
         assert {c for c, v in stored.items() if v == "보류"} == HOLD

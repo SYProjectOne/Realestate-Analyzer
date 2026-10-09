@@ -155,5 +155,8 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
         assert _count(s, Ladder, Ladder.snapshot_id == snap.id) == 0
         runs = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == snap.id)))
         assert len(runs) == 5
-        assert _count(s, ScoreTotal, ScoreTotal.score_run_id.in_([r.id for r in runs])) == 0
+        # R3b N-C1(D10-1): 점수 밖 단지도 이 실행의 판정 범위를 남긴다 — 총점·순위 없음
+        totals = list(s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id.in_([r.id for r in runs]))))
+        assert all(t.total is None and t.rank is None for t in totals)
+        assert {t.judge_scope for t in totals} <= {"미해결", "제외"}
         assert _count(s, Decision, Decision.chosen.is_(True)) == 0  # review 는 추천하지 않는다
