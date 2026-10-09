@@ -246,5 +246,15 @@ def build_complex_input(
         regulated=regulated_flag(cx.regulated),
         rewin_restriction_years=cx.rewin_restriction_years,
         has_priority_supply=priority_supply(payments),
+        current_supply_kind=_supply_kind(terms),
         fixed_components=None,
     )
+
+
+_SUPPLY_KINDS: Final = frozenset({"본청약", "무순위", "임의", "선착순"})
+
+
+def _supply_kind(terms: Any) -> Any:
+    """현재 조건(최신 공고)의 공급 경로(계약 .8 ``current_supply_kind`` — §6-7 B·D 접근성). 모르면 None."""
+    kind = getattr(terms, "notice_kind", None) if terms is not None else None
+    return kind if kind in _SUPPLY_KINDS else None

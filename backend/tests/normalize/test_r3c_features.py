@@ -139,3 +139,56 @@ def test_minor24_invalid_news_items_are_recorded(db_session: Session, add_raw: A
     assert out.inserted == 0
     st = out.stats()
     assert st.get("invalid") == 1 and st["invalid_items"][0]["reason"], st
+
+
+def test_ra_trustee_officetel_options_text_parsers() -> None:
+    """RA 부분: complex.trustee·officetel_units·complex_type.options_text 파서 — 이름표 붙은 값만(추측 금지)."""
+    from pathlib import Path
+
+    from app.normalize.notice_parser import parse_notice_text
+
+    def raw(url: str) -> RawDocumentDTO:
+        return RawDocumentDTO(
+            id=1, source_kind="notice_pdf", url=url, fetched_at="2026-10-08T00:00:00+09:00", http_status=200,
+            sha256="a" * 64, path=None, content_type=None, text_path=None, table_path=None, complex_id=None,
+            region_id=1, error_text=None, image_hash=None, meta=None,
+        )  # fmt: skip
+
+    url = "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025000302&pblancNo=2025000302"
+    text = (Path(__file__).parent / "fixtures" / "notice" / "2025000302_elif.txt").read_text(encoding="utf-8")
+    extra = "\n■ 사업주체 및 시공회사 현황\n수탁자(사업주체) 한국자산신탁(주)\n■ 공급규모: 아파트 1,200세대 및 오피스텔 250실\n"
+    cands = parse_notice_text(text + extra, raw(url))
+    got = {(c.entity, c.field): c.value for c in cands if c.entity == "complex"}
+    assert got[("complex", "trustee")] == "한국자산신탁(주)"
+    assert got[("complex", "officetel_units")] == 250
+    opts = [c for c in cands if c.entity == "complex_type" and c.field == "options_text"]
+    assert opts and all("선택" in str(c.value) for c in opts)
+    plain = parse_notice_text(text + "\n발코니 확장 공사비 우리은행 1005 우리자산신탁 주식회사\n", raw(url))
+    assert not [c for c in plain if c.field == "trustee"], "이름표 없는 계좌 예금주는 신탁 관계로 단정하지 않는다"
+
+
+def test_ra_benchmark_sale_price_prefers_archived_notice(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+    """RA §3 '분양가는 자체 아카이브 공고 우선': 보관 공고문(``archive.archived_notices``)의 84㎡ 최근접 최고가가 청약홈 API
+    주택형 값보다 우선한다. 공고문이 없으면 API 값(기존 동작)."""
+    from pathlib import Path
+
+    from app.models import Benchmark
+    from app.normalize.benchmark import build_benchmarks
+
+    from .test_r3b_g1_benchmark import ASOF, _notice, _trades
+
+    _notice(add_raw, region, "2021000101", "송도 센트럴")  # API 주택형 084.9500A 7억
+    _trades(db_session, add_raw, region, "송도센트럴")
+    build_benchmarks(db_session, region.id, asof_date=ASOF)
+    api_only = {b.sale_price_84_won for b in db_session.scalars(select(Benchmark)) if not b.substitute}
+    assert api_only == {700_000_000}
+    text = (Path(__file__).parent / "fixtures" / "notice" / "2025000302_elif.txt").read_text(encoding="utf-8")
+    add_raw(
+        text, source_kind="notice_pdf", region_id=region.id,
+        url="https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2021000101&pblancNo=2021000101",
+        fetched_at="2021-03-10T06:00:00+09:00",
+    )  # fmt: skip
+    build_benchmarks(db_session, region.id, asof_date=ASOF)
+    own = [b for b in db_session.scalars(select(Benchmark)) if not b.substitute]
+    assert {b.sale_price_84_won for b in own} == {609_000_000}, "보관 공고문 값(084.7800A 최고가)이 우선"
+    assert all("자체 아카이브 공고문" in (b.note or "") for b in own)

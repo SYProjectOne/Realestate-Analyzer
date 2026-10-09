@@ -941,6 +941,10 @@ class ComplexScoreInput(BaseModel):
     """
     가점제 1순위 공급(본청약·예정 공고) 경로가 있음
     """
+    current_supply_kind: Literal["본청약", "무순위", "임의", "선착순"] | None = None
+    """
+    현재 조건(최신 공고 payment_terms.notice_kind)의 공급 경로 — 계약 2026-10-09.8. 상황 B·D 접근성(§6-7: 통장 없이 무순위·임의·선착순으로 지금 계약)은 이 값이 무순위·임의·선착순이고 접수 가능일 때만 충족. null = 공고 없음·미상
+    """
     fixed_components: FixedComponents | None = None
 
 

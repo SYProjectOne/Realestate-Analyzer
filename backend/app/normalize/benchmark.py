@@ -431,6 +431,42 @@ def _sale_price(notice: _Notice, models: dict[tuple[str, str], tuple[RawDocument
     return _SalePrice(best, priced[best], doc, excerpt, span)
 
 
+def _archive_price(session: Session, region_id: int, notice: _Notice) -> _SalePrice | None:
+    """분양가 = 자체 아카이브 공고문 우선(RA §3 benchmark, R3 3차 RA 부분 — ``normalize.archive.archived_notices``).
+
+    그 공고(주택관리번호)의 보관 공고문 중 가장 이른 것(최초 공고 = 분양가)의 공급금액 표에서 84㎡ 최근접 주택형 최고가
+    (공고문 파서 ``NoticeParser`` — 라벨 확인됨 후보만). 공고문이 없거나 표를 못 읽으면 None → 청약홈 API 주택형 목록."""
+    from app.normalize.archive import archived_notices
+    from app.normalize.notice_parser import NoticeParser
+    from app.normalize.store import raw_dto
+
+    for doc in archived_notices(session, notice.hm, region_id=region_id):
+        try:
+            cands = NoticeParser().parse(raw_dto(doc))
+        except Exception:  # 원문 파일 없음 등 — 다음 공고문 또는 API
+            continue
+        by_type: dict[str, dict[str, Any]] = {}
+        for c in cands:
+            key = c.entity_key or ""
+            if c.entity != "complex_type" or not key.startswith(f"{notice.hm}:") or c.value is None:
+                continue
+            if c.label != "확인됨":
+                continue
+            by_type.setdefault(key.split(":", 1)[1], {})[c.field] = c
+        priced = {
+            str(d["notice_type_code"].value): d["max_price_won"]
+            for d in by_type.values()
+            if "max_price_won" in d and "notice_type_code" in d
+        }
+        best = judge_type((ty, area_from_long_code(ty)) for ty in priced)
+        if best is None:
+            continue
+        c = priced[best]
+        span = (c.excerpt_start, c.excerpt_end) if c.excerpt_start is not None and c.excerpt_end is not None else None
+        return _SalePrice(best, int(c.value), doc, c.excerpt, span)
+    return None
+
+
 # ---------------------------------------------------------------- 실거래 묶음
 
 
@@ -607,7 +643,7 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
         if n.move_in_ym is None:
             skip(n, "확인 불가(입주예정월 없음)")
             continue
-        sale = _sale_price(n, models)
+        sale = _archive_price(session, region.id, n) or _sale_price(n, models)
         if sale is None:
             skip(
                 n,
@@ -703,7 +739,8 @@ def _note(case: _Case, vals: dict[str, Any], tag: str, substitute_for: str | Non
         f"{SUBSTITUTE_NOTE} — 생활권 {substitute_for} 자체 표본 0, 원 생활권 {case.living_area}"
         if substitute_for
         else "",
-        f"분양가 = 청약홈 공식 API 공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가"
+        f"분양가 = {'자체 아카이브 공고문' if case.sale.doc.source_kind == 'notice_pdf' else '청약홈 공식 API'} "
+        f"공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가"
         f"(84㎡ 최근접, 라벨 {vals['sale_price_label']})",
         f"{kind} = rtms 전용 80~85㎡·해제 제외 {case.window} {vals['n_trades']}건(고점 = 입주 후 받은 전체, "
         f"라벨 {'추정' if substitute_for else case.trade_label})",

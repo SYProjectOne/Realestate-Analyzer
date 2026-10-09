@@ -19,6 +19,7 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import Decimal
 from typing import Any, Final, Literal
 
 from app.core.contracts_gen import RequirementPre, RequirementPreSet
@@ -281,19 +282,14 @@ def target_for(
     move_in_plus_1y = 입주월 + 12개월(입주월이 기준월 이전이거나 즉시 입주면 기준일 + 12개월),
     asof_plus_3y = 기준일 + 36개월, asof_plus_5y = 기준일 + 60개월 — 뒤 둘은 단지와 무관하다(T10).
     """
+    from app.analysis.ladder import ladder_target  # 한 구현(R3 3차 RA 부분: 사다리 목표 계산 중복 제거)
+
+    t = ladder_target(horizon, asof_date, move_in_ym=move_in_ym, immediate=immediate)
+    if t is None:
+        return None
     ay, am = _ym(date.fromisoformat(asof_date))
-    if horizon == "asof_plus_3y":
-        ty, tm, imm = *_add_months(ay, am, 36), False
-    elif horizon == "asof_plus_5y":
-        ty, tm, imm = *_add_months(ay, am, 60), False
-    else:
-        if move_in_ym is None and not immediate:
-            return None
-        mi = _parse_ym(move_in_ym) if move_in_ym else (ay, am)
-        imm = immediate or mi <= (ay, am)
-        ty, tm = _add_months(*((ay, am) if imm else mi), 12)
-    months = (ty - ay) * 12 + (tm - am)
-    return f"{ty:04d}-{tm:02d}", months, imm
+    imm = horizon == "move_in_plus_1y" and (immediate or not move_in_ym or _parse_ym(move_in_ym) <= (ay, am))
+    return t.target_ym, t.months_from_asof, imm
 
 
 def _half_label(target_ym: str) -> str:
@@ -353,10 +349,12 @@ def noul_payload(
 
 
 def annualized(months_from_asof: int) -> dict[str, float | None]:
-    """임계 상승률 g 의 연율 r = (1+g)^(12/m) − 1 (RA §6-3), 소수 4자리."""
+    """임계 상승률 g 의 연율 r = (1+g)^(12/m) − 1 (RA §6-3), 소수 4자리(``analysis.ladder.annualize``)."""
     if months_from_asof < 1:
         return {k: None for k in _GAINS}
-    return {k: round((1 + g) ** (12 / months_from_asof) - 1, 4) for k, g in _GAINS.items()}
+    from app.analysis.ladder import annualize
+
+    return {k: float(annualize(Decimal(str(g)), months_from_asof)) for k, g in _GAINS.items()}
 
 
 # ====================================================================== rerank (P7)

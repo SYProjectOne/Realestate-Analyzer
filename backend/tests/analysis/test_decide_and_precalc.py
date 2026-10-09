@@ -112,12 +112,29 @@ def test_access_intake_rules() -> None:
     assert unofficial.status == "미충족" and "비공식" in unofficial.evidence
     a = calc.evaluate(_elif(has_priority_supply=False), builtin("A"), asof_date=ASOF).access
     assert a.status == "미충족"
+    # R3 3차 RA 부분(§6-7): 공통 조건 path≠unofficial_ref 를 A·C 에도 AND
+    for code in ("A", "C"):
+        un = calc.evaluate(_elif(intake_path="unofficial_ref", has_priority_supply=True), builtin(code), asof_date=ASOF)
+        assert un.access.status == "미충족" and "비공식" in un.access.evidence, code
+    # B·D: 공급 경로(현재 공고)가 무순위·임의·선착순이어야 — 본청약 접수는 통장·가점 경로
+    for code in ("B", "D"):
+        main = calc.evaluate(_elif(current_supply_kind="본청약"), builtin(code), asof_date=ASOF).access
+        assert main.status == "미충족" and "본청약" in main.evidence, code
+        rem = calc.evaluate(_elif(current_supply_kind="선착순"), builtin(code), asof_date=ASOF).access
+        assert rem.status == "충족" and "선착순" in rem.evidence, code
+        unk = calc.evaluate(_elif(current_supply_kind=None), builtin(code), asof_date=ASOF).access
+        assert unk.status == "확인 불가", code
 
 
 def test_regulation_rules() -> None:
     calc = RequirementPrecalculator()
     ok = calc.evaluate(_elif(), builtin("B"), asof_date=ASOF).regulation
-    assert ok.status == "충족" and ok.evidence == "거주의무 0개월 → 충족"
+    # R3 3차 RA 부분: B·C·D 규제 요건도 재당첨 제한·규제지역을 본다(기본 상황과 같은 규칙)
+    assert ok.status == "충족" and ok.evidence == "거주의무 0개월, 재당첨 제한 10년(이력 미입력), 비규제 → 충족"
+    rewin = calc.evaluate(_elif(), builtin("B").model_copy(
+        update={"params": builtin("B").params.model_copy(update={"rewin_restricted": True})}
+    ), asof_date=ASOF).regulation  # fmt: skip
+    assert rewin.status == "미충족" and "재당첨 제한 10년(이력 있음)" in rewin.evidence
     thesharp = make_complex(6, residency_months=36)
     bad = calc.evaluate(thesharp, builtin("B"), asof_date=ASOF).regulation
     assert bad.status == "미충족" and "거주의무 36개월" in bad.evidence
@@ -140,7 +157,7 @@ def test_notice_field_labels_and_intake_checked_at() -> None:
     unknown_res = _elif(residency_label="확인 불가")
     assert calc.evaluate(unknown_res, builtin("B"), asof_date=ASOF).regulation.status == "확인 불가"
     est = calc.evaluate(_elif(residency_label="추정"), builtin("B"), asof_date=ASOF).regulation
-    assert est.evidence == "거주의무 0개월(추정) → 충족"
+    assert est.evidence == "거주의무 0개월(추정), 재당첨 제한 10년(이력 미입력), 비규제 → 충족"
     resale = calc.evaluate(_elif(resale_label="확인 불가"), builtin("C"), asof_date=ASOF).access
     assert resale.status == "확인 불가"
     funds = calc.evaluate(_elif(down_payment_label="확인 불가"), builtin("A"), asof_date=ASOF).funds

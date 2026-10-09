@@ -357,6 +357,7 @@ def _header(ctx: _Ctx) -> None:
         if ok_cols:
             break
 
+    _trustee_officetel(ctx)
     if "전매제한" not in found:
         rm = re.search(r"전매제한은[^\n]*?(\d+\s*(?:개월|년))[^\n]*", text)
         if rm:
@@ -366,6 +367,28 @@ def _header(ctx: _Ctx) -> None:
     if "거주의무기간" not in found and ctx.notice_kind == "본청약":
         b.missing("complex", key, "residency_months", ctx.head_span)
     _schedule(ctx)
+
+
+# 신탁(수탁자)·오피스텔 실 수(RA complex.trustee·officetel_units — R3 3차 RA 부분). 표에 이름표가 붙은 값만 읽는다:
+# '수탁자(사업주체) 한국자산신탁(주)'·'신탁사: 우리자산신탁 주식회사', '오피스텔 250실'. 납부 계좌 예금주처럼 이름표 없는
+# 신탁사 이름은 신탁 관계를 단정할 수 없어 읽지 않는다(추측 금지).
+_TRUSTEE_RE = re.compile(
+    r"(?:수탁자|신탁사|신탁회사)(?:\s*\([^)\r\n]{0,20}\))?\s*[:：]?\s*"
+    r"((?:주식회사\s*)?[가-힣A-Za-z]{2,20}신탁(?:\s*주식회사|\s*\(주\)|\s*㈜)?)"
+)
+_OFFICETEL_RE = re.compile(r"오피스텔\s*(?:총\s*)?(\d{1,3}(?:,\d{3})*|\d+)\s*실")
+
+
+def _trustee_officetel(ctx: _Ctx) -> None:
+    text, b, key = ctx.text, ctx.b, ctx.complex_key
+    m = _TRUSTEE_RE.search(text)
+    if m:
+        name = " ".join(m.group(1).split())
+        b.add("complex", key, "trustee", name, name, m.span(1))
+    o = _OFFICETEL_RE.search(text)
+    if o:
+        units = int(o.group(1).replace(",", ""))
+        b.add("complex", key, "officetel_units", units, o.group(0), o.span())
 
 
 def _header_value(ctx: _Ctx, col: str, val: str, span: tuple[int, int]) -> None:
@@ -898,6 +921,8 @@ def _options(ctx: _Ctx) -> None:
         if m:
             line = _BULLET_RE.sub("", m.group(0)).strip()
             b.add("complex_type", tkey, "options_required_won", 0, line, m.span())
+            # 옵션 설명 원문(RA complex_type.options_text — R3 3차 RA 부분): 선택품목 안내 문장 그대로
+            b.add("complex_type", tkey, "options_text", line[:500], line[:500], m.span())
         else:
             b.missing(
                 "complex_type", tkey, "options_required_won", ctx.head_span, reason="선택품목 문장 없음"
