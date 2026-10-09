@@ -7,7 +7,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.contract import check_body
@@ -15,7 +15,7 @@ from app.api.deps import DB, default_snapshot, get_region
 from app.api.errors import ApiError
 from app.api.jobs import enqueue, now_iso
 from app.api.views import region_view, snapshot_view
-from app.models import AdminLegalMap, ChangeEvent, Complex, LegalDong, Region, Snapshot
+from app.models import AdminDong, AdminLegalMap, ChangeEvent, Complex, LegalDong, Region, Snapshot
 
 router = APIRouter(tags=["regions"])
 
@@ -29,13 +29,37 @@ def list_regions(session: DB) -> JSONResponse:
     return JSONResponse(out)
 
 
+_REFERENCE_CACHE: dict[str, tuple[tuple[Any, ...], Any]] = {}
+
+
+def _reference(session: Session) -> Any:
+    """참조 데이터(법정동·행정동·매핑) — 전국 5만 행을 요청마다 읽지 않도록 프로세스에 캐시한다.
+    키 = DB + 행 수·최신 기준일(reference.refresh 가 바꾸면 다시 읽는다)."""
+    from app.normalize.region_resolve import load_reference_db
+
+    fingerprint = (
+        session.scalar(select(func.count()).select_from(LegalDong)),
+        session.scalar(select(func.max(LegalDong.source_date))),
+        session.scalar(select(func.count()).select_from(AdminDong)),
+        session.scalar(select(func.max(AdminDong.source_date))),
+        session.scalar(select(func.count()).select_from(AdminLegalMap)),
+    )
+    url = str(session.get_bind().engine.url)
+    hit = _REFERENCE_CACHE.get(url)
+    if hit is not None and hit[0] == fingerprint:
+        return hit[1]
+    ref = load_reference_db(session)
+    _REFERENCE_CACHE[url] = (fingerprint, ref)
+    return ref
+
+
 @router.get("/regions/resolve")
 def resolve_region(session: DB, q: Annotated[str, Query(min_length=1, max_length=50)]) -> JSONResponse:
-    from app.normalize.region_resolve import resolve_region_db
+    from app.normalize.region_resolve import resolve_region as resolve_names
 
     if not q.strip():
         return JSONResponse([])
-    cands = resolve_region_db(session, q, limit=50)
+    cands = resolve_names(q, _reference(session), limit=50)
     return JSONResponse([c.model_dump(mode="json") for c in cands])
 
 
