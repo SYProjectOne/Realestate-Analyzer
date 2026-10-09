@@ -22,7 +22,7 @@ import type { C06Data } from './types';
 
 export const componentLabel = (c: ComponentKey) => t(`chart.C06.component.${c}`);
 
-/** 성분 최댓값(0~10) — 미판정 빗금 막대 길이 = w × 10 (판정되면 낼 수 있는 최대 기여) */
+/** 성분 최댓값(0~10) — 미판정 툴팁의 "최대 기여 w × 10" (막대 길이는 0) */
 const SCORE_MAX = 10;
 
 export function emptyReason(data: C06Data): string | null {
@@ -170,13 +170,14 @@ export function buildOption(
         const view = viewOf(row, key);
         const value = contribution(view);
         if (value !== null) return value;
-        // null 성분 → 회색 빗금 + "미판정". 길이 = 판정되면 낼 수 있는 최대 기여(w × 10)
-        const weight = view?.weight ?? data.weights[key] ?? 0;
+        // null 성분 → 스택 길이 0(종합 점수를 부풀리지 않는다, R3 minor 26) + 회색 빗금 + "미판정" 라벨.
+        // 판정되면 낼 수 있는 최대 기여(w × 10)는 툴팁에만 쓴다.
         return {
-          value: weight * SCORE_MAX,
+          value: 0,
           itemStyle: { color: palette.grayed, opacity: 0.6, decal: hatchDecal(palette) },
           label: {
             show: true,
+            position: horizontal ? ('right' as const) : ('top' as const),
             formatter: t('badge.unjudged'),
             color: palette.fg,
             fontSize: 10,

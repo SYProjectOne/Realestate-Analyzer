@@ -245,6 +245,31 @@ describe('C06 종합 점수 분해', () => {
     expect(hatched.label.formatter).toBe('미판정');
   });
 
+  it('minor 26: 미판정 막대는 스택 길이 0 — w×10 으로 부풀리지 않는다(빗금·라벨로만 표시)', () => {
+    const rows = rowsWithUnjudged();
+    const o = C06.buildOption({ rows, weights: d.weights });
+    const s = series(o);
+    const valueOf = (x: any) => (typeof x === 'object' && x !== null ? x.value : x) as number;
+    // 미판정 항목은 값 0 + 빗금 + 라벨
+    const hatchedAll = s.flatMap((x) =>
+      x.data.filter((v: any) => typeof v === 'object' && v?.itemStyle?.decal),
+    );
+    expect(hatchedAll.length).toBeGreaterThan(0);
+    for (const h of hatchedAll) {
+      expect(h.value).toBe(0);
+      expect(h.label.show).toBe(true);
+    }
+    // 행마다 스택 합 = 서버 기여 합(미판정 = 0)
+    const sorted = C06.sortedRows(rows);
+    sorted.forEach((row, i) => {
+      const stack = s.reduce((acc, x) => acc + (valueOf(x.data[i]) ?? 0), 0);
+      const expected = Object.values(
+        C06.contributions(row, C06.componentKeys({ rows, weights: d.weights })),
+      ).reduce<number>((acc, v) => acc + (v ?? 0), 0);
+      expect(stack).toBeCloseTo(expected, 6);
+    });
+  });
+
   it('상황 A·D의 move_in 성분도 키로 받는다', () => {
     const row = structuredCloneRow(d.top5[0]!);
     row.components.move_in = row.components.liquidity;
