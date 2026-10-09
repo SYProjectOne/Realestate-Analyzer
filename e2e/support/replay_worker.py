@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """``python -m app.worker --once`` 의 오프라인 대역 — 수집기를 녹화 재생으로 바꿔 끼운 같은 진입점(runner.main).
 
     cd backend && uv run python ../e2e/support/replay_worker.py      # DATABASE_URL 등은 환경변수(e2e/env.ts)

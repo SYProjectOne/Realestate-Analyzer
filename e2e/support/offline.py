@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """e2e 오프라인 도구(WP9) — 네트워크 없이 백엔드를 돌리기 위한 HTTP 전송 2개.
 
 - ``replay_transport(zip)``: 청약홈 웹 녹화(WP1a ``backend/tests/collectors/applyhome/fixtures/applyhome_2026-10-09.zip``,

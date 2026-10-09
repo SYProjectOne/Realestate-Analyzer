@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """devseed 다음 단계: ``reference.refresh`` 잡을 네트워크 없이 1회(공식 사본 contracts/fixtures/reference).
 
     cd backend && uv run python ../e2e/support/reference_offline.py      # DATABASE_URL·RAW_DIR 은 환경변수
