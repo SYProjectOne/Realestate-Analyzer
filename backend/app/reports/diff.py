@@ -1,14 +1,16 @@
 """두 스냅샷의 파생 테이블 비교 표 (RA §3 스냅샷 규칙, meta §2-4 '이전 → 현재').
 
-비교 대상(같은 시나리오): score_total(종합 점수·순위·동점·unstable), ladder(입주 후 1년 p10·상태),
-intake_status(표시값), decision(선택 결과), claim(검증 상태별 건수), judgment_log(도구별 호출 수).
+비교 대상(같은 시나리오): score_total(종합 점수·순위·동점·unstable), ladder(입주 후 1년 p10·상태 — '판정 대상'
+단지만, 그 밖 범위의 남은 사다리 행은 '판정 범위: …'), intake_status(표시값 = 공용 ``pick_intake``),
+decision(선택 결과), claim(검증 상태별 건수), judgment_log(도구별 호출 수).
+판정 범위 = 그 스냅샷 점수 실행 저장값(D10-1), 저장값이 없는 단지만 현재 사실로 계산.
 값은 표시 문자열(점수는 소수 2자리 ROUND_HALF_UP)이고 라벨을 같이 둔다(규칙 5).
 """
 
 from __future__ import annotations
 
-from collections import Counter
-from collections.abc import Mapping
+from collections import Counter, defaultdict
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
@@ -19,21 +21,23 @@ from sqlalchemy.orm import Session
 from app.models import (
     Claim,
     Complex,
+    ComplexType,
     Decision,
     IntakeStatus,
     JudgmentLog,
     Ladder,
+    PaymentTerms,
     Scenario,
     ScoreRun,
     ScoreTotal,
 )
 from app.reports.errors import ReportNotFound
 from app.reports.fmt import round_half_up
+from app.reports.policy import JUDGE_SCOPE_TEXT, complex_scope, pick_intake, shows_ladder
 
 __all__ = ["DiffRow", "SnapshotDiff", "diff_snapshots"]
 
 Kind = Literal["added", "removed", "changed"]
-INTAKE_PRIORITY = ("human_check", "official_popup", "headless_shot")
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,19 +86,68 @@ def _totals(session: Session, run: ScoreRun | None) -> dict[int, ScoreTotal]:
     }
 
 
-def _intake(session: Session, snapshot_id: int) -> dict[int, str]:
-    rows = list(session.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == snapshot_id)))
-    out: dict[int, str] = {}
-    for path in reversed(INTAKE_PRIORITY):
-        for r in sorted((r for r in rows if r.path == path), key=lambda r: r.checked_at):
-            reason = f"({r.reason or r.http_status})" if r.status == "확인 불가" else ""
-            out[r.complex_id] = f"{r.status}{reason} · {path}"
+def _intake_rows(session: Session, snapshot_id: int) -> dict[int, list[IntakeStatus]]:
+    out: dict[int, list[IntakeStatus]] = defaultdict(list)
+    for r in session.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == snapshot_id)):
+        out[r.complex_id].append(r)
     return out
 
 
-def _ladders(session: Session, snapshot_id: int) -> dict[int, Ladder]:
+def _intake(session: Session, snapshot_id: int) -> dict[int, str]:
+    out: dict[int, str] = {}
+    for cid, rows in _intake_rows(session, snapshot_id).items():
+        r = pick_intake(rows)
+        if r is not None:
+            reason = f"({r.reason or r.http_status})" if r.status == "확인 불가" else ""
+            out[cid] = f"{r.status}{reason} · {r.path}"
+    return out
+
+
+def _scopes(session: Session, snapshot_id: int, ids: Iterable[int], run: ScoreRun | None) -> dict[int, str]:
+    """그 스냅샷의 판정 범위 — 점수 실행 저장값(score_total.judge_scope, D10-1) 우선, 저장값이 없는 단지만
+    현재 사실 + 그 스냅샷 접수 행으로 공용 함수 계산(보고서 본문과 같은 규칙)."""
+    id_list = sorted(set(ids))
+    if not id_list:
+        return {}
+    out: dict[int, str] = {}
+    if run is not None:
+        for cid, sc in session.execute(
+            select(ScoreTotal.complex_id, ScoreTotal.judge_scope).where(
+                ScoreTotal.score_run_id == run.id,
+                ScoreTotal.complex_id.in_(id_list),
+                ScoreTotal.judge_scope.is_not(None),
+            )
+        ):
+            out[cid] = str(sc)
+    id_list = [i for i in id_list if i not in out]
+    if not id_list:
+        return out
+    types: dict[int, list[ComplexType]] = defaultdict(list)
+    pays: dict[int, list[PaymentTerms]] = defaultdict(list)
+    for t in session.scalars(select(ComplexType).where(ComplexType.complex_id.in_(id_list))):
+        types[t.complex_id].append(t)
+    for p in session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id.in_(id_list))):
+        pays[p.complex_id].append(p)
+    intakes = _intake_rows(session, snapshot_id)
+    for cx in session.scalars(select(Complex).where(Complex.id.in_(id_list))):
+        out[cx.id] = complex_scope(cx, types[cx.id], pays[cx.id], intakes.get(cx.id, [])).scope
+    return out
+
+
+def _ladders(session: Session, snapshot_id: int, run: ScoreRun | None) -> dict[int, tuple[str, str]]:
+    """입주 후 1년 사다리 (p10, 상태). '판정 대상'이 아닌 단지의 남은 행은 확률 대신 판정 범위(D9-1)."""
     stmt = select(Ladder).where(Ladder.snapshot_id == snapshot_id, Ladder.horizon == "move_in_plus_1y")
-    return {lad.complex_id: lad for lad in session.scalars(stmt)}
+    rows = list(session.scalars(stmt))
+    scopes = _scopes(session, snapshot_id, (lad.complex_id for lad in rows), run)
+    out: dict[int, tuple[str, str]] = {}
+    for lad in rows:
+        sc = scopes.get(lad.complex_id)
+        if sc is None or shows_ladder(sc):
+            out[lad.complex_id] = (_prob(lad.p10), lad.status)
+        else:
+            text = next((t for k, t in JUDGE_SCOPE_TEXT.items() if k == sc), sc)
+            out[lad.complex_id] = (f"판정 범위: {text}", "사다리 미실행")
+    return out
 
 
 def _decisions(session: Session, snapshot_id: int, names: Mapping[int, str]) -> dict[str, str]:
@@ -130,8 +183,8 @@ def diff_snapshots(
         kind: Kind = "added" if old == "—" else "removed" if new == "—" else "changed"
         rows.append(DiffRow(table, cid, name(cid), fld, old, new, kind, label))
 
-    a = _totals(session, _run(session, base_id, scenario.id))
-    b = _totals(session, _run(session, snapshot_id, scenario.id))
+    run_a, run_b = _run(session, base_id, scenario.id), _run(session, snapshot_id, scenario.id)
+    a, b = _totals(session, run_a), _totals(session, run_b)
     for cid in sorted(set(a) | set(b)):
         ta, tb = a.get(cid), b.get(cid)
         if ta is None or tb is None:
@@ -152,19 +205,19 @@ def diff_snapshots(
             "추정",
         )
 
-    la, lb = _ladders(session, base_id), _ladders(session, snapshot_id)
+    la, lb = _ladders(session, base_id, run_a), _ladders(session, snapshot_id, run_b)
     for cid in sorted(set(la) | set(lb)):
         xa, xb = la.get(cid), lb.get(cid)
         add(
             "ladder",
             cid,
             "p10(입주 후 1년)",
-            "—" if xa is None else _prob(xa.p10),
-            "—" if xb is None else _prob(xb.p10),
+            "—" if xa is None else xa[0],
+            "—" if xb is None else xb[0],
             "추정",
         )
         if xa is not None and xb is not None:
-            add("ladder", cid, "status", xa.status, xb.status, "추정")
+            add("ladder", cid, "status", xa[1], xb[1], "추정")
 
     ia, ib = _intake(session, base_id), _intake(session, snapshot_id)
     for cid in sorted(set(ia) | set(ib)):

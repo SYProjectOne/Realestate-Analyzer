@@ -11,11 +11,16 @@
       <tr><td>{{ l.name }}</td><td>{{ l.target_ym }}</td><td>{{ fact(l.p5) }}</td><td>{{ fact(l.p10) }}</td><td>{{ fact(l.p20) }}</td><td>{{ fact(l.p_flat) }}</td>
         <td>{{ l.verdict_p10 or "—" }}</td><td>{{ l.status }}{% if l.judgment_seq %} #{{ l.judgment_seq }}{% endif %}</td>
         <td>{% for o in data.ladder_other.get(l.complex_id, []) %}{{ o.horizon_label }} {{ o.status }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</td></tr>
-    {% else %}
-      <tr><td colspan="9">사다리 판정 없음</td></tr>
     {% endfor %}
+    {% for c in data.ladder_scoped_out %}
+      <tr class="scoped-out"><td>{{ c.name }}</td><td colspan="8">{{ c.scope_note }} — 사다리 미실행(확률 표시 안 함)</td></tr>
+    {% endfor %}
+    {% if not data.ladders and not data.ladder_scoped_out %}
+      <tr><td colspan="9">사다리 판정 없음</td></tr>
+    {% endif %}
     </tbody>
   </table>
+  <p class="small">사다리(판정기 noul)는 판정 범위 '판정 대상'만 실행·표시한다(meta §1-3-4). 참고 후보·보류·미해결·제외 단지는 순위만 보이고 확률을 쓰지 않는다.</p>
   {{ chart(charts.get("c01"), has_echarts) }}
   <h3>6-2. rerank(판정기 순위) — 호출 #{{ data.rerank_seq or "없음" }}, 후보군 전체 1회</h3>
   <table>
@@ -54,7 +59,8 @@
     <thead><tr><th>순위</th><th>단지</th><th>종합</th><th>비고</th></tr></thead>
     <tbody>
     {% for s in data.scores %}
-      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}</td><td>{{ fact(s.total) }}</td><td>{% if s.rank and s.rank <= 5 %}TOP 5{% if s.note %} · {{ s.note }}{% endif %}{% else %}{{ s.note }}{% endif %}</td></tr>
+      {% set c = data.complex_by_id.get(s.complex_id) %}
+      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}{% if c and c.rejudge_needed %} <span class="badge warn rejudge" title="{{ c.rejudge_text }}">재판정 필요</span>{% endif %}</td><td>{{ fact(s.total) }}</td><td>{% if s.rank and s.rank <= 5 %}TOP 5{% if s.note %} · {{ s.note }}{% endif %}{% else %}{{ s.note }}{% endif %}</td></tr>
     {% endfor %}
     </tbody>
   </table>

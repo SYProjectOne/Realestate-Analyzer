@@ -5,6 +5,7 @@
   {% for s in data.top5 %}
   {% set c = data.complex_by_id.get(s.complex_id) %}
   <h3 id="s7-{{ loop.index }}">7-{{ loop.index }}. {{ s.name }} — 종합 {{ s.rank }}위({{ fact(s.total) }}){% if s.tie_group %} · 공동 그룹 {{ s.tie_group }}{% endif %}</h3>
+  {% if c and c.rejudge_needed %}<p class="note"><span class="badge warn rejudge">재판정 필요</span> 이 절의 순위·점수·사다리는 스냅샷 저장값이다. {{ c.rejudge_text }}.</p>{% endif %}
   {% if c %}
   <table>
     <tbody>
@@ -57,6 +58,9 @@
     {% for l in data.ladder_other.get(s.complex_id, []) %}
       <tr><td>{{ l.horizon_label }}</td><td>{{ l.target_ym }}</td><td>{{ fact(l.p5) }}</td><td>{{ fact(l.p10) }}</td><td>{{ fact(l.p20) }}</td><td>{{ fact(l.p_flat) }}</td><td>{{ l.status }}{% if l.status != "ok" %} — 미해결{% endif %}</td></tr>
     {% endfor %}
+    {% if c and c.judge_scope != "판정 대상" %}
+      <tr class="scoped-out"><td colspan="7">{{ c.scope_note }} — 사다리 미실행</td></tr>
+    {% endif %}
     </tbody>
   </table>
   {% if data.ladders | selectattr("complex_id", "equalto", s.complex_id) | map(attribute="proposition") | select | list %}
