@@ -1,0 +1,332 @@
+import { useId, useState } from 'react';
+import { useCanWrite } from '@/api/auth';
+import { ApiError } from '@/api/client';
+import type { CatalystLink, CatalystPatch, CatalystPatched } from '@/api/contract8';
+import { useComplexes, useUpdateCatalystLocation } from '@/api/hooks';
+import type { CatalystView, Fact, Market } from '@/api/types';
+import { Badge, FactCell, MetaValue } from '@/components';
+import { t } from '@/i18n';
+import { enumText, Section, tdClass, thClass } from '../_shared';
+
+/** 위도·경도 문자열 검사(빈 값 허용). 범위 밖·숫자 아님이면 오류 문구 */
+export function parseCoord(raw: string, kind: 'lat' | 'lon'): number | null | 'invalid' {
+  const v = raw.trim();
+  if (!v) return null;
+  if (!/^-?\d+(\.\d+)?$/.test(v)) return 'invalid';
+  const n = Number(v);
+  const limit = kind === 'lat' ? 90 : 180;
+  return Math.abs(n) <= limit ? n : 'invalid';
+}
+
+/** 링크 거리 → Fact(라벨은 서버가 준 link.label). 좌표 없는 단지는 distance_m=null → '확인 불가(단지 좌표 없음)' */
+export function distanceFact(link: CatalystLink): Fact {
+  return {
+    v: link.distance_m,
+    label: link.distance_m === null ? '확인 불가' : link.label,
+    reason: link.distance_m === null ? t('page.G6.loc.noCoord') : null,
+    prov: null,
+    checked_at: null,
+    unit: 'm',
+  };
+}
+
+/**
+ * G6 호재 위치 확인 (D11-5, 계약 .8 초안 PATCH /catalysts/{id}) — catalyst_link 는 사람이 위치를 확인할 때만 생긴다
+ * (location_confirmed=false 면 링크 없음, RA). 좌표(lat·lon) 또는 영향 생활권·단지를 고르면 서버가 링크를 만들고,
+ * 단지 좌표가 없으면 distance_m=null·weight=1(같은 생활권)·라벨 추정. 판단(호재 단계)은 판정기 몫 — 여기서는 위치만.
+ * '호재 아님'(D11-2) 은 목록에서 회색 배지로만 보인다(링크 대상 아님).
+ */
+export function CatalystLocationPanel({
+  market,
+  snapshotId,
+}: {
+  market: Market;
+  snapshotId: string | null;
+}) {
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [result, setResult] = useState<CatalystPatched | null>(null);
+  const complexes = useComplexes(snapshotId, { page: 1, size: 1000, sort: 'name' });
+  const names = new Map((complexes.data?.items ?? []).map((c) => [c.complex_id, c.name]));
+  const catalysts = market.catalysts;
+  return (
+    <Section title={t('page.G6.loc.title')}>
+      <p className="text-xs text-muted">{t('page.G6.loc.intro')}</p>
+      {catalysts.length === 0 ? (
+        <p className="text-sm text-muted">{t('page.G6.loc.none')}</p>
+      ) : (
+        <ul aria-label={t('page.G6.loc.title')} className="flex flex-col gap-2">
+          {catalysts.map((c) => (
+            <CatalystRow
+              key={c.id}
+              catalyst={c}
+              open={openId === c.id}
+              onToggle={() => setOpenId(openId === c.id ? null : c.id)}
+              market={market}
+              complexes={complexes.data?.items ?? []}
+              onSaved={(patched) => {
+                setResult(patched);
+                setOpenId(null);
+              }}
+            />
+          ))}
+        </ul>
+      )}
+      {result ? <LinksTable result={result} names={names} /> : null}
+    </Section>
+  );
+}
+
+function CatalystRow({
+  catalyst,
+  open,
+  onToggle,
+  market,
+  complexes,
+  onSaved,
+}: {
+  catalyst: CatalystView;
+  open: boolean;
+  onToggle: () => void;
+  market: Market;
+  complexes: { complex_id: number; name: string }[];
+  onSaved: (patched: CatalystPatched) => void;
+}) {
+  const canWrite = useCanWrite();
+  const update = useUpdateCatalystLocation();
+  const notCatalyst = (catalyst.stage as string) === '호재 아님';
+  const unconfirm = () =>
+    update.mutate(
+      { id: catalyst.id, patch: { location_confirmed: false } },
+      { onSuccess: onSaved },
+    );
+  return (
+    <li className="flex flex-col gap-1 border-b border-border pb-2" data-catalyst-id={catalyst.id}>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">{catalyst.name}</span>
+        <Badge tone={notCatalyst ? 'muted' : 'neutral'}>
+          {enumText('chart.C09.stage', catalyst.stage)}
+        </Badge>
+        <Badge tone={catalyst.location_confirmed ? 'strong' : 'muted'} data-testid="loc-status">
+          {catalyst.location_confirmed ? t('page.G6.loc.confirmed') : t('page.G6.loc.unconfirmed')}
+        </Badge>
+        {!notCatalyst ? (
+          <span className="ml-auto flex gap-2" data-write>
+            <button
+              type="button"
+              onClick={onToggle}
+              disabled={!canWrite}
+              title={canWrite ? undefined : t('auth.readOnlyHint')}
+              aria-expanded={open}
+              className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+            >
+              {t('page.G6.loc.open')}
+            </button>
+            {catalyst.location_confirmed ? (
+              <button
+                type="button"
+                onClick={unconfirm}
+                disabled={!canWrite || update.isPending}
+                className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+              >
+                {t('page.G6.loc.unconfirm')}
+              </button>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+      {open ? (
+        <LocationForm
+          catalyst={catalyst}
+          market={market}
+          complexes={complexes}
+          pending={update.isPending}
+          serverError={
+            update.error instanceof ApiError ? update.error.detail : (update.error?.message ?? null)
+          }
+          onSubmit={(patch) => update.mutate({ id: catalyst.id, patch }, { onSuccess: onSaved })}
+        />
+      ) : null}
+    </li>
+  );
+}
+
+function LocationForm({
+  catalyst,
+  market,
+  complexes,
+  pending,
+  serverError,
+  onSubmit,
+}: {
+  catalyst: CatalystView;
+  market: Market;
+  complexes: { complex_id: number; name: string }[];
+  pending: boolean;
+  serverError: string | null;
+  onSubmit: (patch: CatalystPatch) => void;
+}) {
+  const baseId = useId();
+  const [lat, setLat] = useState('');
+  const [lon, setLon] = useState('');
+  const [areas, setAreas] = useState<string[]>([]);
+  const [complexIds, setComplexIds] = useState<number[]>(catalyst.linked_complex_ids ?? []);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    const la = parseCoord(lat, 'lat');
+    const lo = parseCoord(lon, 'lon');
+    if (la === 'invalid' || lo === 'invalid') {
+      setError(t('page.G6.loc.badCoord'));
+      return;
+    }
+    if ((la === null) !== (lo === null)) {
+      setError(t('page.G6.loc.bothCoord'));
+      return;
+    }
+    if (la === null && areas.length === 0 && complexIds.length === 0) {
+      setError(t('page.G6.loc.needTarget'));
+      return;
+    }
+    setError(null);
+    onSubmit({
+      location_confirmed: true,
+      ...(la !== null && lo !== null ? { lat: la, lon: lo } : {}),
+      living_area_ids: areas,
+      complex_ids: complexIds,
+    });
+  };
+
+  return (
+    <form
+      aria-label={t('page.G6.loc.formFor', { name: catalyst.name })}
+      noValidate
+      data-write
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+      className="grid gap-2 rounded-sm border border-border p-2 text-sm sm:grid-cols-2"
+    >
+      <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-lat`}>
+        <span className="text-xs text-muted">{t('page.G6.loc.lat')}</span>
+        <input
+          id={`${baseId}-lat`}
+          inputMode="decimal"
+          value={lat}
+          onChange={(e) => setLat(e.target.value)}
+          className={inputClass}
+        />
+      </label>
+      <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-lon`}>
+        <span className="text-xs text-muted">{t('page.G6.loc.lon')}</span>
+        <input
+          id={`${baseId}-lon`}
+          inputMode="decimal"
+          value={lon}
+          onChange={(e) => setLon(e.target.value)}
+          className={inputClass}
+        />
+      </label>
+      <fieldset className="flex flex-col gap-0.5">
+        <legend className="text-xs text-muted">{t('page.G6.loc.areas')}</legend>
+        <div className="flex flex-wrap gap-2">
+          {market.living_areas.map((la) => (
+            <label key={la.id} className="inline-flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={areas.includes(la.id)}
+                onChange={(e) =>
+                  setAreas(e.target.checked ? [...areas, la.id] : areas.filter((x) => x !== la.id))
+                }
+              />
+              {la.name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-cx`}>
+        <span className="text-xs text-muted">{t('page.G6.loc.complexes')}</span>
+        <select
+          id={`${baseId}-cx`}
+          multiple
+          size={4}
+          value={complexIds.map(String)}
+          onChange={(e) => setComplexIds([...e.target.selectedOptions].map((o) => Number(o.value)))}
+          className={inputClass}
+        >
+          {complexes.map((c) => (
+            <option key={c.complex_id} value={c.complex_id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
+        >
+          {t('page.G6.loc.submit')}
+        </button>
+        {(error ?? serverError) ? (
+          <p role="alert" className="text-sm text-danger">
+            {error ?? t('page.common.loadError', { detail: serverError ?? '' })}
+          </p>
+        ) : null}
+      </div>
+    </form>
+  );
+}
+
+/** 저장 결과: 만들어진 catalyst_link(단지·거리·가중치) */
+function LinksTable({ result, names }: { result: CatalystPatched; names: Map<number, string> }) {
+  const caption = t('page.G6.loc.links', { name: result.catalyst.name });
+  if (result.links.length === 0) {
+    return (
+      <p role="status" className="text-sm text-muted" data-testid="catalyst-links">
+        {result.catalyst.location_confirmed ? t('page.G6.loc.noLinks') : t('page.G6.loc.cleared')}
+      </p>
+    );
+  }
+  return (
+    <table
+      aria-label={caption}
+      className="w-full border-collapse text-sm"
+      data-testid="catalyst-links"
+    >
+      <caption className="text-left text-xs text-muted">{caption}</caption>
+      <thead>
+        <tr>
+          <th scope="col" className={thClass}>
+            {t('page.G6.loc.col.complex')}
+          </th>
+          <th scope="col" className={thClass}>
+            {t('page.G6.loc.col.distance')}
+          </th>
+          <th scope="col" className={thClass}>
+            {t('page.G6.loc.col.weight')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {result.links.map((link) => (
+          <tr key={link.complex_id}>
+            <th scope="row" className={`${tdClass} text-left font-normal`}>
+              {names.get(link.complex_id) ?? t('page.G6.loc.unknownComplex')}
+            </th>
+            <td className={tdClass}>
+              <FactCell fact={distanceFact(link)} unit="m" />
+            </td>
+            <td className={tdClass}>
+              {/* 가중치 = 거리·생활권에서 정한 계산 계수(사실 아님) */}
+              <MetaValue kind="derived" value={link.weight} as="number" digits={2} />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+const inputClass = 'w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm';

@@ -16,6 +16,7 @@ import {
   unitOf,
   usePageContext,
 } from '../_shared';
+import { CatalystLocationPanel } from './CatalystLocationPanel';
 import { CatalystUrlForm } from './CatalystUrlForm';
 
 export const LIVING_AREA_PARAM = 'living_area';
@@ -59,7 +60,14 @@ export function MarketPage() {
       {!snapshotId && !isLoading ? (
         <NoSnapshot />
       ) : (
-        <QueryState query={query}>{(market) => <MarketBody market={market} />}</QueryState>
+        <QueryState query={query}>
+          {(market) => (
+            <>
+              <MarketBody market={market} />
+              <CatalystLocationPanel market={market} snapshotId={snapshotId} />
+            </>
+          )}
+        </QueryState>
       )}
       {isLoading ? null : <CatalystUrlForm regionId={regionId} />}
     </PageShell>

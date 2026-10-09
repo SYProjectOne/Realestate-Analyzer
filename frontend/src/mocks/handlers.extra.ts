@@ -10,6 +10,7 @@
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
  *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
  *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
+ *  - 호재 위치 PATCH /catalysts/{id}(계약 .8 초안): 위치 확인 → 링크, GET market 에 반영
  *  - 계약 .8 초안(src/api/contract8.ts): 사람 확인 field enum·값 형·길이 검사(422), 사실 필드 사람 확인 → 같은 단지·필드의
  *    강등(GET claims demotion)을 복원(restored_by human_check). CORE 머지 후 생성 핸들러로 바뀌는 부분은 여기서만 흉내 낸다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -30,6 +31,7 @@ import type {
   JobCreate,
   JobName,
   JobRun,
+  Market,
   Provenance,
   RegionCreated,
   Snapshot,
@@ -38,6 +40,8 @@ import type {
   ShareLinkCreated,
 } from '@/api/types';
 import {
+  type CatalystLink,
+  type CatalystPatch,
   HUMAN_CHECK_FIELDS,
   HUMAN_CHECK_NOTE_MAX,
   HUMAN_CHECK_RULES,
@@ -88,6 +92,8 @@ const state = {
   intakeOverrides: new Map<number, Intake>(),
   /** 사람 확인으로 복원된 사실: `<complex_id>:<field>` (계약 .8 초안) */
   restoredFacts: new Set<string>(),
+  /** 사람이 확인한 호재 위치(계약 .8 초안 PATCH /catalysts/{id}) */
+  catalystLocations: new Map<number, { confirmed: boolean; complexIds: number[] }>(),
 };
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
@@ -96,6 +102,7 @@ export function resetMockState(): void {
   state.jobs.clear();
   state.intakeOverrides.clear();
   state.restoredFacts.clear();
+  state.catalystLocations.clear();
 }
 
 /** 계약 .8 초안 사람 확인 검사 — 서버(422)와 같은 규칙. 통과하면 null */
@@ -428,6 +435,73 @@ export const extraHandlers = [
       },
     };
     return HttpResponse.json(created, { status: 201 });
+  }),
+
+  // PATCH /catalysts/{id} (계약 .8 초안, D11-5) — 위치 확인 → catalyst_link(목: 단지 좌표 없음 → 거리 null·가중치 1·추정)
+  http.patch(mswPath('/catalysts/:id'), async ({ request, params }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<CatalystPatch>;
+    const id = Number(params.id);
+    const market = await base<Market>(
+      new Request(new URL('/api/snapshots/0/market', request.url).toString()),
+    );
+    const catalyst = market.catalysts.find((c) => c.id === id);
+    if (!catalyst) return HttpResponse.json({ detail: 'catalyst 없음' }, { status: 404 });
+    const confirmed = body.location_confirmed === true;
+    const hasCoord = typeof body.lat === 'number' && typeof body.lon === 'number';
+    const areas = body.living_area_ids ?? [];
+    const picked = body.complex_ids ?? [];
+    if (confirmed && !hasCoord && areas.length === 0 && picked.length === 0) {
+      return HttpResponse.json(
+        { detail: '좌표 또는 영향 생활권·단지가 필요합니다' },
+        { status: 422 },
+      );
+    }
+    let ids: number[] = [];
+    if (confirmed) {
+      const page = await base<ComplexRowPage>(
+        new Request(new URL('/api/snapshots/0/complexes', request.url).toString()),
+      );
+      const inAreas = page.items
+        .filter((r) => r.living_area !== null && areas.includes(r.living_area ?? ''))
+        .map((r) => r.complex_id);
+      ids = [...new Set([...picked, ...inAreas])];
+    }
+    state.catalystLocations.set(id, { confirmed, complexIds: ids });
+    const links: CatalystLink[] = ids.map((cid) => ({
+      complex_id: cid,
+      distance_m: null,
+      weight: 1,
+      label: '추정',
+    }));
+    return HttpResponse.json({
+      catalyst: {
+        ...catalyst,
+        location_confirmed: confirmed,
+        linked: ids.length > 0,
+        linked_complex_ids: ids,
+      },
+      links,
+    });
+  }),
+
+  // GET /snapshots/{sid}/market — 사람이 확인한 호재 위치 반영(계약 .8 초안)
+  http.get(mswPath('/snapshots/:sid/market'), async ({ request }) => {
+    const market = await base<Market>(request);
+    if (state.catalystLocations.size === 0) return HttpResponse.json(market);
+    return HttpResponse.json({
+      ...market,
+      catalysts: market.catalysts.map((c) => {
+        const loc = state.catalystLocations.get(c.id);
+        return loc
+          ? {
+              ...c,
+              location_confirmed: loc.confirmed,
+              linked: loc.complexIds.length > 0,
+              linked_complex_ids: loc.complexIds,
+            }
+          : c;
+      }),
+    } satisfies Market);
   }),
 
   // GET /snapshots/{sid}/claims — 사람 확인으로 복원된 사실의 강등 상태(계약 .8 초안)
