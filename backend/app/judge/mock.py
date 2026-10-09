@@ -13,13 +13,18 @@
   재판정의 사다리 확률이 전부 '확인 불가(출처 누락)' → 종합 미계산). 녹화가 없는 review 봉투·
   blocked 봉투는 기록하지 않는다. session_factory 가 없으면 DB 에 쓰지 않는다.
 - ``write_recording`` 은 녹화 파일을 만든다(WP9 픽스처·R4 녹화용).
+- '합성' 표식(R3b F1b): MockAdapter 가 judgment_log 에 남기는 행(녹화 재생)은 실제 판정기 호출이
+  아니다. 그 행의 ``output_json`` 과 그 행에서 만든 봉투 ``raw`` 에 ``"_synthetic": "합성(…)"`` 키를 단다
+  (``is_synthetic``) — 화면·보고서·운영 API 가 실제 판정과 구별해 표시할 수 있게. DB 에 쓰지 않는 재생
+  봉투는 녹화와 동일(픽스처 규칙 '봉투 동일')이고, 녹화 파일·hash 는 바꾸지 않는다.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import Any, Final
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -29,7 +34,32 @@ from app.core.protocols import JudgePayload, JudgeTool, JudgeUnavailable
 from app.core.time import now_kst
 from app.judge import cache, guard, log
 
-__all__ = ["MockAdapter", "load_meta_version", "log_replay", "recording_path", "write_recording"]
+__all__ = [
+    "SYNTHETIC_KEY",
+    "SYNTHETIC_LABEL",
+    "MockAdapter",
+    "is_synthetic",
+    "load_meta_version",
+    "log_replay",
+    "mark_synthetic",
+    "recording_path",
+    "write_recording",
+]
+
+SYNTHETIC_KEY: Final = "_synthetic"
+SYNTHETIC_LABEL: Final = "합성(MockAdapter 녹화 재생 — 실제 판정기 호출 아님)"
+
+
+def mark_synthetic(raw: Mapping[str, Any] | None, label: str = SYNTHETIC_LABEL) -> dict[str, Any]:
+    """판정기 응답(dict)에 '합성' 표식을 단 사본."""
+    out = dict(raw or {})
+    out[SYNTHETIC_KEY] = label
+    return out
+
+
+def is_synthetic(raw: Mapping[str, Any] | None) -> bool:
+    """봉투 raw·judgment_log.output_json 이 합성(Mock·녹화 재생) 행인가."""
+    return bool(raw) and bool((raw or {}).get(SYNTHETIC_KEY))
 
 
 def load_meta_version(fixture_dir: Path) -> str:
@@ -78,7 +108,7 @@ def log_replay(
                 input_hash=envelope.input_hash,
                 input_len=envelope.input_len or cache.payload_length(payload),
                 input_json=dict(payload),
-                output_json=dict(envelope.raw or {}),
+                output_json=mark_synthetic(envelope.raw),
                 status=envelope.status,
                 confidence=envelope.confidence,
                 duration_ms=envelope.duration_ms,
@@ -97,7 +127,8 @@ def log_replay(
                 if row is None:
                     raise
         result = dict(row.result_json or {}) or dict(envelope.result or {})
-        return cache.envelope_from_row(row, cached=envelope.cached, result=result)
+        out = cache.envelope_from_row(row, cached=envelope.cached, result=result)
+        return out.model_copy(update={"raw": mark_synthetic(out.raw)})
 
 
 class MockAdapter:

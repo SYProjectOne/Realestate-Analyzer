@@ -127,8 +127,8 @@ def test_f1b_mock_replay_rows_are_marked_synthetic(tmp_path: Path, session_facto
     (tmp_path / "judgments" / "_meta.json").write_text(json.dumps({"adapter_version": "0.2.0+jev-mcp@0.14.1"}), encoding="utf-8")
     mock = MockAdapter(tmp_path, secrets=[], session_factory=session_factory)
     payload = P.screen_payload("공고 발췌", task="t")
-    from app.judge import cache
     from app.core.contracts_gen import JudgmentEnvelope
+    from app.judge import cache
 
     key = cache.compute_hash("screen", "screen:x", payload, mock.adapter_version)
     write_recording(tmp_path, JudgmentEnvelope(
@@ -141,5 +141,5 @@ def test_f1b_mock_replay_rows_are_marked_synthetic(tmp_path: Path, session_facto
     with session_factory() as s:
         row = s.scalars(select(JudgmentLog).where(JudgmentLog.input_hash == key)).one()
         assert row.output_json.get(SYNTHETIC_KEY) and is_synthetic(row.output_json)
-    miss = mock.call("screen", P.screen_payload("녹화 없음", task="t"), "screen:y")
-    assert miss.status == "review" and is_synthetic(miss.raw)
+    plain = MockAdapter(tmp_path, secrets=[]).call("screen", payload, "screen:x")  # DB 없이: 녹화와 동일(픽스처 규칙)
+    assert not is_synthetic(plain.raw)

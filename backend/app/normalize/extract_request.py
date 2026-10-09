@@ -5,6 +5,8 @@
 판정기를 부르지 않는다 — 실제 호출·guard·캐시는 WP3(judge/)가 한다(AGENTS 규칙 4·6).
 텍스트는 공개 공고문 발췌뿐이고, 전화번호·이메일 같은 민감 패턴은 ``app.core.redact``로 가린 뒤
 2,000자로 자른다(RA WP3 카드 '증거 카드 ≤2,000자').
+한 묶음의 필드가 JEV extract 상한(32개, ``EXTRACT_FIELDS_MAX``)을 넘으면 32개씩 나눈 요청 여러 건을 만든다 —
+OCR 공고문처럼 필드가 많아도 잘려 나가는 필드가 없다(R3b C3). 요청마다 텍스트는 그 필드들의 발췌만 담는다.
 """
 
 from __future__ import annotations
@@ -17,9 +19,11 @@ from app.core.contracts_gen import FieldCandidate
 from app.core.redact import redact_text
 from app.core.settings import get_settings
 
-__all__ = ["FIELD_DESCRIPTIONS", "MAX_TEXT", "ExtractRequest", "build_extract_requests"]
+__all__ = ["EXTRACT_FIELDS_MAX", "FIELD_DESCRIPTIONS", "MAX_TEXT", "ExtractRequest", "build_extract_requests"]
 
 MAX_TEXT = 2000
+EXTRACT_FIELDS_MAX = 32
+"""JEV extract fields 상한(``judge.payloads.extract_payload`` 와 같은 수)."""
 
 FIELD_DESCRIPTIONS: dict[str, str] = {
     "max_price_won": "주택형별 공급금액 최고가(원, 정수)",
@@ -62,29 +66,32 @@ class ExtractRequest:
 
 
 def build_extract_requests(
-    candidates: list[FieldCandidate], *, max_text: int = MAX_TEXT
+    candidates: list[FieldCandidate], *, max_text: int = MAX_TEXT, max_fields: int = EXTRACT_FIELDS_MAX
 ) -> list[ExtractRequest]:
     groups: OrderedDict[tuple[int | None, str, str | None], list[FieldCandidate]] = OrderedDict()
     for c in candidates:
         if c.needs_extract:
             groups.setdefault((c.raw_document_id, c.entity, c.entity_key), []).append(c)
+    secrets = get_settings().secret_values()
     out: list[ExtractRequest] = []
     for (rid, entity, key), cs in groups.items():
-        excerpts: list[str] = []
-        for c in cs:
-            if c.excerpt not in excerpts:
-                excerpts.append(c.excerpt)
-        text = redact_text("\n…\n".join(excerpts), get_settings().secret_values())[:max_text]
         fields = list(OrderedDict.fromkeys(c.field for c in cs))
-        out.append(
-            ExtractRequest(
-                raw_document_id=rid,
-                source_url=cs[0].url,
-                entity=entity,
-                entity_key=key,
-                fields=fields,
-                text=text,
-                reasons={c.field: (c.reason or "파싱 실패") for c in cs},
+        for start in range(0, len(fields), max_fields):
+            chunk = fields[start : start + max_fields]
+            members = [c for c in cs if c.field in set(chunk)]
+            excerpts: list[str] = []
+            for c in members:
+                if c.excerpt not in excerpts:
+                    excerpts.append(c.excerpt)
+            out.append(
+                ExtractRequest(
+                    raw_document_id=rid,
+                    source_url=cs[0].url,
+                    entity=entity,
+                    entity_key=key,
+                    fields=chunk,
+                    text=redact_text("\n…\n".join(excerpts), secrets)[:max_text],
+                    reasons={c.field: (c.reason or "파싱 실패") for c in members},
+                )
             )
-        )
     return out
