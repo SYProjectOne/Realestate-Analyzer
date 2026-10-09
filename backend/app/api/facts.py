@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -26,6 +27,7 @@ __all__ = [
     "LABEL_UNKNOWN",
     "FactMaker",
     "ProvIndex",
+    "ProvRef",
     "day",
     "fact",
     "num",
@@ -125,34 +127,48 @@ def unknown(
     return out
 
 
+@dataclass(frozen=True, slots=True)
+class ProvRef:
+    """field_provenance chosen 행에서 Fact 에 쓰는 열만.
+
+    목록 화면 성능 — ORM 객체를 만들지 않는다(R3 W8·T16)."""
+
+    id: int
+    label: str
+    checked_at: str | None
+    reason: str | None
+    url: str | None
+    raw_document_id: int | None
+
+
 class ProvIndex:
     """field_provenance chosen 행 색인 (entity, entity_id, field) → 행. 목록 화면은 한 번에 읽는다."""
 
     def __init__(self) -> None:
-        self._rows: dict[tuple[str, int, str], FieldProvenance] = {}
+        self._rows: dict[tuple[str, int, str], ProvRef] = {}
         self._loaded: set[tuple[str, int]] = set()
 
     def load(self, session: Session, entity: str, ids: Iterable[int]) -> ProvIndex:
         want = sorted({i for i in ids if (entity, i) not in self._loaded})
+        fp = FieldProvenance
+        cols = (fp.entity_id, fp.field, fp.id, fp.label, fp.checked_at, fp.reason, fp.url, fp.raw_document_id)
         for start in range(0, len(want), 500):
             chunk = want[start : start + 500]
             stmt = (
-                select(FieldProvenance)
-                .where(
-                    FieldProvenance.entity == entity,
-                    FieldProvenance.entity_id.in_(chunk),
-                    FieldProvenance.chosen.is_(True),
-                )
-                .order_by(FieldProvenance.id)
+                select(*cols)
+                .where(fp.entity == entity, fp.entity_id.in_(chunk), fp.chosen.is_(True))
+                .order_by(fp.id)
             )
-            for fp in session.scalars(stmt):
-                if fp.entity_id is None:
+            for entity_id, field, fid, label, checked, reason, url, raw_id in session.execute(stmt):
+                if entity_id is None:
                     continue
-                self._rows.setdefault((entity, fp.entity_id, fp.field), fp)
+                self._rows.setdefault(
+                    (entity, entity_id, field), ProvRef(fid, label, checked, reason, url, raw_id)
+                )
             self._loaded.update((entity, i) for i in chunk)
         return self
 
-    def get(self, entity: str, entity_id: int | None, field: str) -> FieldProvenance | None:
+    def get(self, entity: str, entity_id: int | None, field: str) -> ProvRef | None:
         if entity_id is None:
             return None
         return self._rows.get((entity, entity_id, field))
