@@ -423,9 +423,9 @@ def build_score_inputs(
             substitute=bool(b.substitute),  # 계약 2026-10-09.7: 지역 전체 대체 행(N-M4 식·라벨 '대체')
             label=_label(b.sale_price_label) or "추정",
         )
-        # C-1: 그 스냅샷(리비전)이 인용하는 벤치마크 행만(``api.benchmarks.benchmarks_for`` — API·보고서와 같은 함수).
-        # 지역 전체 행을 읽으면 주간 수집마다 새로 조립된 행이 이전 행과 겹쳐 사례가 이중 집계되고, 과거 스냅샷 재채점에
-        # 미래 행이 섞인다
+        # C-1: 그 스냅샷(리비전)이 인용하는 벤치마크 행만(``api.benchmarks.benchmarks_for`` — API·보고서와
+        # 같은 함수). 지역 전체 행을 읽으면 주간 수집마다 새로 조립된 행이 이전 행과 겹쳐 사례가 이중
+        # 집계되고, 과거 스냅샷 재채점에 미래 행이 섞인다
         for b in benchmarks_for(session, snapshot)
     ]
     supply = [

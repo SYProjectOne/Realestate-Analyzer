@@ -89,7 +89,9 @@ def test_t10_pipeline_three_horizons_same_asof3y_target_annualized(env: RegressE
         rows = {
             (lad.complex_id, lad.horizon): lad
             for lad in s.scalars(
-                select(Ladder).where(Ladder.snapshot_id == cur(env), Ladder.complex_id.in_([RIVERFRONT, GOCHON]))
+                select(Ladder).where(
+                    Ladder.snapshot_id == cur(env), Ladder.complex_id.in_([RIVERFRONT, GOCHON])
+                )
             )
         }
         for row in rows.values():

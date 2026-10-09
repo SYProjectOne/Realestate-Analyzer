@@ -108,5 +108,7 @@ def test_human_check_then_rejudge_includes_complex(
         mine = s.scalars(
             select(Decision).where(Decision.score_run_id == run.id, Decision.complex_id == cid)
         ).first()
-        if mine is not None:  # D 의 접근 요건은 공급 경로(무순위·임의·선착순)로 본다(RA §6-7 — R3 3차 RA 부분)
+        if (
+            mine is not None
+        ):  # D 의 접근 요건은 공급 경로(무순위·임의·선착순)로 본다(RA §6-7 — R3 3차 RA 부분)
             assert mine.req_access_pre and "공고" in mine.req_access_pre["evidence"]

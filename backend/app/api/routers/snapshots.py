@@ -1,7 +1,5 @@
 """스냅샷 화면: 대시보드(G1), 단지 표(G2)·CSV, 변경 피드(G1·G8)."""
 
-# ruff: noqa: E501  (한국어 docstring)
-
 from __future__ import annotations
 
 import csv
@@ -672,10 +670,9 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
         "weights": ctx.weights,
         "kpis": {
             "judged_count": _kpi_count(ctx, len(judged), first),
-            # 접수 가능 수 = 이 스냅샷(리비전)의 표시 접수 행. 발행 리비전은 불변이라 점수 실행이 본 접수 행과
-            # 같다
-            # (D11-1 — 사람 확인 접수는 새 리비전에 들어간다). 발행 전이면 실행 뒤 바뀐 행일 수 있다(R3 3차 minor
-            # 1)
+            # 접수 가능 수 = 이 스냅샷(리비전)의 표시 접수 행. 발행 리비전은 불변이라 점수 실행이 본
+            # 접수 행과 같다(D11-1 — 사람 확인 접수는 새 리비전에 들어간다). 발행 전이면 실행 뒤 바뀐
+            # 행일 수 있다(R3 3차 minor 1).
             "intake_open_count": _kpi_count(
                 ctx,
                 sum(1 for r in rows if r.intake and r.intake.status == "가능"),

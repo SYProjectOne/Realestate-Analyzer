@@ -1328,8 +1328,7 @@ def _year_fact(mp: _ProvIndex, bid: int, fld: str, value: int | None) -> Fact:
 def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[SupplyView], list[UnsoldView]]:
     s, rid = ctx.session, ctx.region.id
     # M-6: 그 스냅샷(리비전)이 인용하는 벤치마크만(``api.benchmarks.benchmarks_for`` — 파이프라인·API 와 같은
-    # 함수).
-    # 지역 전체 행을 읽으면 다른 스냅샷·미래 조립분이 섞여 사례가 중복된다
+    # 함수). 지역 전체 행을 읽으면 다른 스냅샷·미래 조립분이 섞여 사례가 중복된다
     from app.api.benchmarks import benchmarks_for
 
     benches = benchmarks_for(s, ctx.snap)
