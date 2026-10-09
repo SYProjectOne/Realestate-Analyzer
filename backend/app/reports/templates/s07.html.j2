@@ -5,6 +5,7 @@
   {% for s in data.top5 %}
   {% set c = data.complex_by_id.get(s.complex_id) %}
   <h3 id="s7-{{ loop.index }}">7-{{ loop.index }}. {{ s.name }} — 종합 {{ s.rank }}위({{ fact(s.total) }}){% if s.tie_group %} · 공동 그룹 {{ s.tie_group }}{% endif %}</h3>
+  {% if c and c.rejudge_needed %}<p class="note"><span class="badge warn rejudge">재판정 필요</span> 이 절의 순위·점수·사다리는 스냅샷 저장값이다. {{ c.rejudge_text }}.</p>{% endif %}
   {% if c %}
   <table>
     <tbody>

@@ -96,6 +96,6 @@ def shows_ladder(value: str) -> bool:
     return scope.runs_ladder(value)
 
 
-def scope_note(result: ScopeResult) -> str:
+def scope_note(text: str, reason: str) -> str:
     """사다리·확률 자리에 쓰는 문구: '판정 범위: <표시 문구> — <사유>'."""
-    return f"판정 범위: {result.text} — {result.reason}"
+    return f"판정 범위: {text} — {reason}"
