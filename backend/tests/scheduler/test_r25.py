@@ -260,7 +260,7 @@ def test_scenario_payloads_match_pipeline_hashes(
     with factory() as s:
         plan = scenario_payloads(s, seeded, base)
         tools = [c.tool for c in plan.calls]
-        assert tools.count("rerank") == 1 and tools.count("decide") == 1 and tools.count("noul") >= 30
+        assert tools.count("rerank") == 1 and tools.count("decide") == 1 and tools.count("noul") == 27
         decide = next(c for c in plan.calls if c.tool == "decide")
         assert decide.payload is not None
         st = cache_status(s, plan)

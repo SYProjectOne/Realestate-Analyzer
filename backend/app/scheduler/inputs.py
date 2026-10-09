@@ -1,9 +1,9 @@
 """DB → 판정·점수 입력 조립 (RA §6, contracts/schemas/score_inputs.json, 계약 2026-10-09.2 필드).
 
-- ``load_facts``: 단지마다 판정 기준 타입(84㎡에 가장 가까운 것, ``analysis.price.judge_type``)·현재 구매가
-  (§6-1 ``analysis.price.purchase_price``; 임의공급 공고별 가격 ``payment_terms.price_by_type`` 이 있으면 최신 공고 값)·
-  현재 납부 조건(최신 effective_from)·표시 접수 상태(human_check > official_popup > headless_shot,
-  unofficial_ref 미사용)·공고 필드 라벨(field_provenance chosen 행)·판정 범위(JudgeScope).
+- ``load_facts``: 단지마다 현재 구매가(``analysis.price_view.current_price`` — §6-1 최신 공고 price_by_type 우선,
+  API·보고서와 같은 함수)·현재 납부 조건·표시 접수 행(``analysis.scope.pick_intake``)·공고 필드 라벨
+  (field_provenance chosen 행; 가격 출처 행이 없으면 null = '확인 불가(출처 누락)')·판정 범위
+  (``analysis.scope.judge_scope`` — DECISIONS D9-1, 파이프라인·API·보고서 공용).
 - ``build_score_inputs``: ScoreInputs(생활권 세대수·unsold_scope_codes, 거래·벤치마크·공급·미분양 원자료,
   단지별 사다리). 비교군 선택·필터는 WP4 규칙이라 거래는 거르지 않고 넣는다(기준일 전 24개월만).
 - ``evidence_card``: 판정기 증거 카드(표시 문자열). 수치는 출처 라벨과 함께 문자열로만 넣는다.
@@ -20,19 +20,20 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Final, Literal, cast
+from typing import Final, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.complex_input import build_complex_input
 from app.analysis.gap import compute_gap
-from app.analysis.price import judge_type, purchase_price
+from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms
+from app.analysis.scope import EXCLUDED_CLASSES, INTAKE_PRIORITY, JudgeScope, judge_scope, pick_intake
 from app.analysis.types import GapResult, Label
 from app.core.contracts_gen import (
     AgePremiumCoef,
     BenchmarkInput,
     ComplexScoreInput,
-    LadderInput,
     LivingAreaScoreInput,
     RegionScoreParams,
     RerankAnchor,
@@ -63,6 +64,7 @@ __all__ = [
     "EXCLUDED_CLASSES",
     "INTAKE_PRIORITY",
     "ComplexFacts",
+    "JudgeScope",
     "age_coef",
     "build_score_inputs",
     "complex_input",
@@ -73,13 +75,7 @@ __all__ = [
     "load_facts",
 ]
 
-JudgeScope = Literal["판정 대상", "보류", "참고", "제외"]
 LABELS: Final = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
-EXCLUDED_CLASSES: Final = frozenset(
-    {"public_sale", "public_rental", "private_rental", "non_apartment", "out_of_scope", "범위 경계"}
-)
-"""포함/제외 분류(판정기 classify auto 결과·D2-6 범위 경계)에서 제외된 단지 → judge_scope '제외'."""
-INTAKE_PRIORITY: Final = {"human_check": 0, "official_popup": 1, "headless_shot": 2}
 _PATH_TEXT: Final = {
     "human_check": "사람 확인",
     "official_popup": "공식 팝업",
@@ -114,11 +110,14 @@ class ComplexFacts:
     price_high: int | None = None
     price_label: Label | None = None
     price_composition: str | None = None
+    price: PriceView | None = None
     terms: PaymentTerms | None = None
+    payments: list[PaymentTerms] = field(default_factory=list)
     intake: IntakeStatus | None = None
     labels: dict[str, Label | None] = field(default_factory=dict)
     living_area_name: str | None = None
     scope: JudgeScope = "판정 대상"
+    scope_reason: str = ""
     evidence: list[tuple[str, str]] = field(default_factory=list)  # (fp_<id>, 발췌) — verify 근거
 
     @property
@@ -127,12 +126,8 @@ class ComplexFacts:
 
 
 def display_intake(rows: Iterable[IntakeStatus]) -> IntakeStatus | None:
-    """표시 접수 상태: human_check > official_popup > headless_shot, 같은 경로는 최근 확인. unofficial_ref 미사용."""
-    usable = [r for r in rows if r.path in INTAKE_PRIORITY]
-    if not usable:
-        return None
-    latest_first = sorted(usable, key=lambda r: (r.checked_at or "", r.id), reverse=True)
-    return min(latest_first, key=lambda r: INTAKE_PRIORITY[r.path])  # min 은 같은 값이면 앞(최근) 것
+    """표시 접수 행 = ``analysis.scope.pick_intake``(API·보고서와 같은 규칙, R3 minor 21)."""
+    return pick_intake(rows)
 
 
 def _chosen_provenance(
@@ -150,14 +145,6 @@ def _chosen_provenance(
         if fp.entity_id is not None:
             out[(fp.entity_id, fp.field)] = fp
     return out
-
-
-def _scope(cx: Complex, price_high: int | None) -> JudgeScope:
-    if cx.inclusion_class in EXCLUDED_CLASSES:
-        return "제외"
-    if price_high is None:
-        return "보류"
-    return "판정 대상"
 
 
 def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[ComplexFacts]:
@@ -189,12 +176,12 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
     out: list[ComplexFacts] = []
     for cx in complexes:
         f = ComplexFacts(row=cx, living_area_name=area_names.get(cx.living_area or "") or None)
-        code = judge_type((t.type_code, t.area_m2) for t in types.get(cx.id, []))
-        f.basis = next((t for t in types.get(cx.id, []) if t.type_code == code), None)
-        cur = max(terms.get(cx.id, []), key=lambda r: (r.effective_from, r.notice_no), default=None)
+        cx_types = types.get(cx.id, [])
+        f.payments = terms.get(cx.id, [])
+        cur = current_terms(f.payments)
         f.terms = cur
-        _price(f, cur, type_prov, terms_prov)
-        f.intake = display_intake(intakes.get(cx.id, []))
+        _price(f, cx_types, type_prov, terms_prov)
+        f.intake = pick_intake(intakes.get(cx.id, []))
         resale = cx_prov.get((cx.id, "resale_months"))
         residency = cx_prov.get((cx.id, "residency_months"))
         down = terms_prov.get((cur.id, "down_payment_pct")) if cur is not None else None
@@ -212,107 +199,60 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
         ):
             if fp is not None and fp.excerpt and fp.label != "확인 불가":
                 f.evidence.append((f"fp_{fp.id}", fp.excerpt))
-        f.scope = _scope(cx, f.price_high)
+        sr = judge_scope(
+            inclusion_class=cx.inclusion_class,
+            inclusion_decision=cx.inclusion_decision,
+            has_price=f.price_high is not None,
+            intake_status=f.intake.status if f.intake is not None else None,
+        )
+        f.scope, f.scope_reason = sr.scope, sr.reason
         out.append(f)
     return out
 
 
+def _prov_of(
+    ref: FieldRef | None,
+    type_prov: Mapping[tuple[int, str], FieldProvenance],
+    terms_prov: Mapping[tuple[int, str], FieldProvenance],
+) -> FieldProvenance | None:
+    if ref is None:
+        return None
+    src = type_prov if ref.entity == "complex_type" else terms_prov
+    return src.get((ref.entity_id, ref.field))
+
+
 def _price(
     f: ComplexFacts,
-    cur: PaymentTerms | None,
+    cx_types: Sequence[ComplexType],
     type_prov: Mapping[tuple[int, str], FieldProvenance],
     terms_prov: Mapping[tuple[int, str], FieldProvenance],
 ) -> None:
-    t = f.basis
-    if t is None:
+    """§6-1 현재 구매가 = ``analysis.price_view.current_price``(API·보고서와 같은 값, R3 M3)."""
+    view = current_price(cx_types, f.payments)
+    f.price = view
+    f.basis = next((t for t in cx_types if t.type_code == view.basis_type_code), None)
+    if not view.known:
         return
-    max_won, floor_won = t.max_price_won, t.floor_sample_price_won
-    label_fp = type_prov.get((t.id, "max_price_won"))
-    by_type = (cur.price_by_type or {}) if cur is not None else {}
-    latest = by_type.get(t.type_code) if isinstance(by_type, dict) else None
-    if isinstance(latest, dict) and latest.get("max_price_won") is not None and cur is not None:
-        # 임의공급 공고별 가격: 최신 공고 값(§6-1)
-        max_won = int(latest["max_price_won"])
-        floor_won = int(latest["floor_sample_price_won"]) if latest.get("floor_sample_price_won") else None
-        label_fp = terms_prov.get((cur.id, f"price_by_type.{t.type_code}.max_price_won")) or label_fp
-    if max_won is None:
-        return
-    p = purchase_price(
-        floor_won=floor_won,
-        max_won=int(max_won),
-        balcony_won=t.balcony_won,
-        options_won=t.options_required_won,
-    )
-    f.price_low, f.price_high = p.low_won, p.high_won
-    f.price_label = _label(label_fp.label) if label_fp is not None else None
-    parts = ["공급가"]
-    if t.balcony_won:
-        parts.append("발코니")
-    if t.options_required_won:
-        parts.append("옵션")
-    f.price_composition = "+".join(parts)
-
-
-def _ladder_inputs(rows: Iterable[Ladder]) -> list[LadderInput]:
-    def num(v: Decimal | None) -> float | None:
-        return float(v) if v is not None else None
-
-    out: list[LadderInput] = []
-    for r in sorted(rows, key=lambda x: x.horizon):
-        out.append(
-            LadderInput(
-                horizon=r.horizon,
-                target_ym=r.target_ym,
-                months_from_asof=r.months_from_asof or 0,
-                p5=num(r.p5),
-                p10=num(r.p10),
-                p20=num(r.p20),
-                p_flat=num(r.p_flat),
-                status=r.status,
-                judgment_seq=r.judgment_seq,
-            )
-        )
-    return out
-
-
-def _immediate(move_in_ym: str | None, asof_date: str) -> bool:
-    return bool(move_in_ym) and str(move_in_ym)[:7] <= asof_date[:7]
+    f.price_low, f.price_high = view.low_won, view.high_won
+    fp = _prov_of(view.max_ref, type_prov, terms_prov)
+    if fp is None and view.from_terms and f.basis is not None:  # 공고별 가격 출처 행이 없으면 타입 행 출처
+        fp = type_prov.get((f.basis.id, "max_price_won"))
+    f.price_label = _label(fp.label) if fp is not None else None  # null → gap '확인 불가(가격 출처 누락)'
+    f.price_composition = "+".join(view.composition)
 
 
 def complex_input(f: ComplexFacts, asof_date: str, ladders: Iterable[Ladder] = ()) -> ComplexScoreInput:
-    cx = f.row
-    regulated = {"규제": True, "비규제": False}.get(cx.regulated or "")
-    terms = f.terms
-    return ComplexScoreInput(
-        complex_id=cx.id,
-        name=cx.name,
-        living_area=cx.living_area,
-        judge_scope=f.scope,
-        price_low_won=f.price_low,
-        price_high_won=f.price_high,
-        price_label=f.price_label,
-        move_in_ym=cx.move_in_ym,
-        immediate_move_in=_immediate(cx.move_in_ym, asof_date),
-        completed_year=None,
-        ladders=_ladder_inputs(ladders),
-        winner_date=cx.winner_date,
-        resale_months=cx.resale_months,
-        resale_label=f.labels.get("resale"),
-        resale_release_on_registration=cx.resale_release_on_registration,
-        residency_months=cx.residency_months,
-        residency_label=f.labels.get("residency"),
-        down_payment_pct=float(terms.down_payment_pct)
-        if terms and terms.down_payment_pct is not None
-        else None,
-        down_payment_label=f.labels.get("down_payment"),
-        interim_terms_text=terms.interim_terms_text if terms else None,
-        intake_status=f.intake.status if f.intake else None,
-        intake_path=f.intake.path if f.intake else None,
-        intake_checked_at=f.intake.checked_at if f.intake else None,
-        regulated=regulated,
-        rewin_restriction_years=cx.rewin_restriction_years,
-        has_priority_supply=None,
-        fixed_components=None,
+    """``analysis.complex_input.build_complex_input`` (G5 미리보기와 같은 함수, R3 minor 20)."""
+    return build_complex_input(
+        f.row,
+        scope=f.scope,
+        price=f.price if f.price is not None else current_price([], []),
+        asof_date=asof_date,
+        terms=f.terms,
+        payments=f.payments,
+        intake=f.intake,
+        labels={"price": f.price_label, **f.labels},
+        ladders=ladders,
     )
 
 

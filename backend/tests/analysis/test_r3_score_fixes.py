@@ -50,10 +50,14 @@ def test_move_in_label_without_input_label_is_confirmed() -> None:
 
 def test_gap_price_without_source_label_is_unknown_minor24() -> None:
     trades = [trade("A", 6.0), trade("A", 6.2), trade("B", 6.4)]
-    g = compute_gap(make_complex(price_label=None), trades, asof_date=ASOF, coef=region_params().age_premium_coef)
+    g = compute_gap(
+        make_complex(price_label=None), trades, asof_date=ASOF, coef=region_params().age_premium_coef
+    )
     assert g.score is not None
     assert g.label == "확인 불가" and g.reason is not None and "출처 누락" in g.reason
-    ok = compute_gap(make_complex(price_label="확인됨"), trades, asof_date=ASOF, coef=region_params().age_premium_coef)
+    ok = compute_gap(
+        make_complex(price_label="확인됨"), trades, asof_date=ASOF, coef=region_params().age_premium_coef
+    )
     assert ok.label == "확인됨" and ok.reason is None
 
 
@@ -80,7 +84,10 @@ def test_delta_rerank_on_fixed_components_uses_same_score_rule() -> None:
     fixed = {"source": "t", "p10": 4, "rerank": 8, "gap": 5, "benchmark": 5, "supply": 3, "liquidity": 5}
     prev = RerankPrev(judgment_seq=71, items=_items([(1, 0.9, 2), (2, 0.95, 1)]))
     anchor = RerankAnchor(judgment_seq=124, status="ok", prev=prev, items=_items([(1, 0.9, 1), (2, 0.8, 2)]))
-    inputs = make_inputs(rerank=anchor, complexes=[make_complex(1, fixed_components=fixed), make_complex(2, fixed_components=fixed)])
+    inputs = make_inputs(
+        rerank=anchor,
+        complexes=[make_complex(1, fixed_components=fixed), make_complex(2, fixed_components=fixed)],
+    )
     res = run_detailed(snapshot(), builtin("base"), inputs).result
     deltas = {c.complex_id: c.delta for c in res.components if c.component == "rerank"}
     assert deltas == {1: 10.0, 2: -10.0}

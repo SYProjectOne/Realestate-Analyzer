@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Final, Protocol, TypeVar
+from typing import Any, Final, Protocol
 
 from app.analysis.price import judge_type, price_change_vs_first, purchase_price
 
@@ -30,6 +30,7 @@ __all__ = [
     "basis_type",
     "current_price",
     "current_terms",
+    "mid_rounded",
 ]
 
 MISSING_PRICE_REASON: Final = "분양가 미공개"
@@ -61,10 +62,6 @@ class PaymentTermsLike(Protocol):
     def notice_no(self) -> str | None: ...
     @property
     def price_by_type(self) -> Mapping[str, Any] | None: ...
-
-
-T = TypeVar("T", bound=TypeRowLike)
-P = TypeVar("P", bound=PaymentTermsLike)
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,14 +106,14 @@ class PriceView:
         return ((self.max_ref,) if self.max_ref is not None else ()) + self.extra_refs
 
 
-def basis_type(types: Iterable[T]) -> T | None:
+def basis_type[T: TypeRowLike](types: Iterable[T]) -> T | None:
     """판정 기준 타입(84㎡에 가장 가까운 것)."""
     rows = list(types)
     code = judge_type((t.type_code, t.area_m2) for t in rows)
     return next((t for t in rows if t.type_code == code), None)
 
 
-def current_terms(terms: Iterable[P]) -> P | None:
+def current_terms[P: PaymentTermsLike](terms: Iterable[P]) -> P | None:
     """현재 납부 조건 = effective_from 최신 → notice_no → id."""
     return max(terms, key=lambda p: (p.effective_from or "", p.notice_no or "", p.id), default=None)
 
@@ -163,7 +160,10 @@ def current_price(types: Sequence[TypeRowLike], terms: Sequence[PaymentTermsLike
         if getattr(t, name) is not None
     )
     p = purchase_price(
-        floor_won=floor_won, max_won=int(max_won), balcony_won=t.balcony_won, options_won=t.options_required_won
+        floor_won=floor_won,
+        max_won=int(max_won),
+        balcony_won=t.balcony_won,
+        options_won=t.options_required_won,
     )
     parts = ["공급가"]
     if t.balcony_won:

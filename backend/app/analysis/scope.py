@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Final, Literal, Protocol, TypeVar, cast, get_args
+from typing import Final, Literal, Protocol, cast, get_args
 
 from app.core.contracts_gen import ComplexScoreInput
 
@@ -182,10 +182,7 @@ class IntakeRowLike(Protocol):
     def status(self) -> str: ...
 
 
-R = TypeVar("R", bound=IntakeRowLike)
-
-
-def pick_intake(rows: Iterable[R]) -> R | None:
+def pick_intake[R: IntakeRowLike](rows: Iterable[R]) -> R | None:
     """표시 접수 행: 경로 human_check > official_popup > headless_shot, 같은 경로면 확인 **날짜**가 최근, 같은 날이면 id 가 큰 것.
 
     같은 날 '날짜만'(사람 입력)과 '시각 포함'(수집) 값은 문자열로 비교할 수 없으므로 날짜(앞 10자)만 비교하고
@@ -199,4 +196,4 @@ def pick_intake(rows: Iterable[R]) -> R | None:
 
 def _neg_day(checked_at: str | None) -> tuple[int, ...]:
     day = (checked_at or "")[:10]
-    return tuple(-ord(ch) for ch in day) + (1,)  # 빈 값('')은 가장 오래된 것으로
+    return (*tuple(-ord(ch) for ch in day), 1)  # 빈 값('')은 가장 오래된 것으로

@@ -4,7 +4,7 @@
 - 청약홈은 WP1a 녹화(tests/collectors/applyhome/fixtures/applyhome_2026-10-09.zip)를 respx 로 재생한다.
 - 참조 파일 서버는 전부 DNS 실패 → contracts/fixtures/reference 공식 사본으로 적재(collectors.reference 폴백).
 - 녹화 판정 payload 는 보고서 재구성이라 파이프라인 payload 와 hash 가 다르다 → MockAdapter 는 전부 status=review
-  (조용히 통과하지 않음). 그래서 사다리·decide·verify 는 '미해결' 행으로 남고 종합 점수는 미판정(None)이다.
+  (조용히 통과하지 않음). 포함/제외 classify 도 review 라 D9-1 판정 범위 '미해결' — 사다리·점수 행이 없다(R3 C2).
   행이 만들어지고 publish 까지 가는 흐름을 본다(점수 값 재현은 test_pipeline.py 의 SynthJev 쪽).
 """
 
@@ -25,6 +25,7 @@ import respx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.analysis.scope import judge_scope
 from app.collectors.applyhome import ApplyhomeCollector
 from app.collectors.reference import ReferenceCollector
 from app.core.contracts_gen import RawDocument as RawDTO
@@ -141,10 +142,18 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
         assert snap.asof_date == TODAY.isoformat() and snap.status == "published" and not snap.degraded
         in_region = _count(s, Complex, Complex.region_id == 1, Complex.living_area.is_not(None))
         assert in_region > 0
-        assert _count(s, Ladder, Ladder.snapshot_id == snap.id) > 0
-        assert _count(s, Ladder, Ladder.snapshot_id == snap.id, Ladder.status != "review") == 0
+        # 포함/제외 classify 가 전부 review → D9-1 '미해결': 판정 대상 아님 — 사다리·점수·decide 후보 없음(R3 C2)
+        cxs = list(s.scalars(select(Complex).where(Complex.region_id == 1)))
+        scopes = {
+            judge_scope(
+                inclusion_class=c.inclusion_class, inclusion_decision=c.inclusion_decision,
+                has_price=True, intake_status="가능",
+            ).scope
+            for c in cxs
+        }  # fmt: skip
+        assert scopes <= {"미해결", "제외"}, scopes
+        assert _count(s, Ladder, Ladder.snapshot_id == snap.id) == 0
         runs = list(s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == snap.id)))
         assert len(runs) == 5
-        assert _count(s, ScoreTotal, ScoreTotal.score_run_id.in_([r.id for r in runs])) >= in_region
-        assert _count(s, Decision, Decision.score_run_id.in_([r.id for r in runs])) > 0
+        assert _count(s, ScoreTotal, ScoreTotal.score_run_id.in_([r.id for r in runs])) == 0
         assert _count(s, Decision, Decision.chosen.is_(True)) == 0  # review 는 추천하지 않는다

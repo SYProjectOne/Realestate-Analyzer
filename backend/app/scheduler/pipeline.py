@@ -6,13 +6,17 @@
    결과는 ``normalize.judged.apply_extracted`` 로 사실 테이블·출처 행에 반영(auto+감사 통과 = 확인됨, 감사 전 = 추정,
    review·감사 flagged = 미반영)
 3. 접수 상태 classify: 이 스냅샷의 '접수 문구 미분류' 행(공식 홈페이지 official_popup·headless_shot)을 원문 DOM 텍스트의
-   접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/불가/확인 불가. 미해결 = 확인 불가(판정 미해결)
+   접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/불가/확인 불가. 미해결 = 확인 불가(판정 미해결).
+   그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
+   triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
+   (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
 4. P4 classify: 포함/제외 7클래스(지역 단지 전부·범위 경계 제외, 64개씩 배치 1회) · 호재 단계 5클래스(지역 호재)
 5. P5 compare: 대상 단지 출처 상충 중 같은 순위 1차·1차(needs_compare)만 → field_provenance.compare_judgment_seq.
    contradicts 면 ``normalize.judged.apply_compare``(1차 공고 자료 채택·병기)
-6. P6 noul: 대상 단지(판정 대상)의 사다리 3시점 → ladder. 대상이 아닌 단지는 이전 스냅샷 사다리를 복사.
-   저장 판정 범위(score_total.judge_scope)는 사다리 ok 행이 없는 판정 대상을 '참고'로(``payloads.stored_scope``)
-7. P7 rerank: 후보군 전체(제외 빼고) 1회(§6-5 고정 앵커) — 같은 후보·같은 카드면 캐시
+6. P6 noul: 대상 단지 중 ``analysis.scope.runs_ladder``(판정 대상만 — 참고·보류·미해결·제외는 사다리 미실행, D9-1)의
+   사다리 3시점 → ladder. 대상이 아닌 단지는 이전 스냅샷 사다리를 복사. 저장 판정 범위 = 같은 판정 범위(``stored_scope``)
+7. P7 rerank: 후보군(판정 대상·참고·보류, ``analysis.scope.in_rerank``) 1회(§6-5 고정 앵커) — 같은 후보·같은 카드면 캐시.
+   이전 run 앵커(delta_rerank)는 judgment_log 캐시 행에서만 읽는다(판정기 호출 없음, R3 minor 32)
 8. 점수: 시나리오마다 ``analysis.score.run_detailed`` (ScoreInputs 는 DB 에서 조립, 2026-10-09.2 필드 채움).
    score_total.judge_scope = 이 실행의 판정 범위(계약 2026-10-09.3)
 9. P8 decide: 시나리오마다 상위 후보 ≤6 + 요건 사전 계산(``analysis.scenarios``) → decision.
@@ -38,6 +42,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
+from app.analysis.scope import pick_intake, runs_ladder
 from app.core.contracts_gen import (
     JudgmentEnvelope,
     RerankAnchor,
@@ -47,6 +52,8 @@ from app.core.contracts_gen import (
 from app.core.contracts_gen import Scenario as ScenarioDTO
 from app.core.logging import get_logger
 from app.core.protocols import JudgePayload, JudgeTool, JudgeUnavailable
+from app.core.redact import redact_text
+from app.core.settings import get_settings
 from app.judge import pipeline as jp
 from app.judge.base import JudgeCaller
 from app.judge.claims import with_josa
@@ -57,6 +64,8 @@ from app.judge.payloads import (
 )
 from app.models import (
     Catalyst,
+    ChangeEvent,
+    Complex,
     ComplexType,
     FieldProvenance,
     IntakeStatus,
@@ -77,7 +86,7 @@ from app.scheduler import persist
 from app.scheduler.degraded import clear_degraded, mark_degraded
 from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
 from app.scheduler.judge_version import last_logged, record_version_change
-from app.scheduler.payloads import decide_plan, rerank_pool, score_base, stored_scope
+from app.scheduler.payloads import _anchor_from, decide_plan, rerank_pool, score_base, stored_scope
 from app.scheduler.snapshots import contradicted_count, previous, snapshot_dto
 
 if TYPE_CHECKING:
@@ -181,6 +190,7 @@ class PipelineResult:
     extract_flagged: int = 0
     intake_classified: int = 0
     compare_adopted: int = 0
+    intake_events: list[int] = field(default_factory=list)
     carried: dict[str, int] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
     version_event_id: int | None = None
@@ -209,6 +219,7 @@ class PipelineResult:
             "extract_flagged": self.extract_flagged,
             "intake_classified": self.intake_classified,
             "compare_adopted": self.compare_adopted,
+            "intake_events": self.intake_events,
             "carried": self.carried,
             "skipped": self.skipped,
             "version_event_id": self.version_event_id,
@@ -560,17 +571,19 @@ def _p5(
 
 
 def _prev_anchor(session: Session, caller: CountingCaller, run_seq: int | None) -> RerankPrev | None:
-    """이전 run 의 rerank 호출(같은 판정기 버전일 때만 — 캐시로 다시 읽는다, 실제 호출 없음)."""
+    """이전 run 의 rerank 결과(같은 판정기 버전일 때만). judgment_log 캐시 행을 **읽기만** 한다 — 판정기에 다시
+    보내지 않는다(이전에는 hash 미스면 실제 rerank 호출 후 결과를 버렸다, R3 minor 32)."""
     if run_seq is None:
         return None
     row = session.get(JudgmentLog, run_seq)
-    if row is None or row.status != "ok" or row.adapter_version != caller.adapter_version:
+    if row is None or row.status != "ok" or row.tool != "rerank":
         return None
-    env = caller.call("rerank", row.input_json, row.purpose, snapshot_id=row.snapshot_id)
-    if env.status != "ok" or not env.cached:
+    if row.adapter_version != caller.adapter_version:
         return None
-    items = [RerankItem.model_validate(i) for i in (env.result or {}).get("items", [])]
-    return RerankPrev(judgment_seq=env.judgment_seq, items=items)
+    items: list[RerankItem] = list(_anchor_from(row).items)
+    if not items:
+        return None
+    return RerankPrev(judgment_seq=row.seq, items=items)
 
 
 def _last_rerank_seq(session: Session, snapshot_ids: Sequence[int]) -> int | None:
@@ -583,6 +596,76 @@ def _last_rerank_seq(session: Session, snapshot_ids: Sequence[int]) -> int | Non
         if seq is not None:
             return seq
     return None
+
+
+# ---------------------------------------------------------------- D9-3 접수 상태 변경
+
+
+def _intake_changes(
+    ctx: SchedulerContext,
+    session: Session,
+    snap: Snapshot,
+    prev: Snapshot | None,
+    complex_ids: Sequence[int],
+) -> list[ChangeEvent]:
+    """표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical).
+
+    판단하지 않는다 — 두 스냅샷의 접수 행 status 문자열 비교(산술)만. 이전 스냅샷에 표시 행이 없으면 기준선(이벤트 없음).
+    같은 스냅샷·단지·새 상태의 intake_status 이벤트가 이미 있으면(사람 확인 입력 API·이전 실행) 만들지 않는다.
+    """
+    if prev is None or not complex_ids:
+        return []
+    ids = list(complex_ids)
+    rows: dict[tuple[int, int], list[IntakeStatus]] = {}
+    for r in session.scalars(
+        select(IntakeStatus).where(
+            IntakeStatus.snapshot_id.in_([snap.id, prev.id]), IntakeStatus.complex_id.in_(ids)
+        )
+    ):
+        rows.setdefault((r.snapshot_id, r.complex_id), []).append(r)
+    existing = {
+        (e.complex_id, e.new_text)
+        for e in session.scalars(
+            select(ChangeEvent).where(
+                ChangeEvent.snapshot_id == snap.id,
+                ChangeEvent.entity == "intake_status",
+                ChangeEvent.field == "status",
+            )
+        )
+    }
+    events: list[ChangeEvent] = []
+    for cid in sorted(ids):
+        now = pick_intake(rows.get((snap.id, cid), []))
+        before = pick_intake(rows.get((prev.id, cid), []))
+        if now is None or before is None or now.status == before.status:
+            continue
+        if (cid, now.status) in existing:
+            continue
+        ev = ChangeEvent(
+            snapshot_id=snap.id,
+            entity="intake_status",
+            entity_id=now.id,
+            field="status",
+            old_text=before.status,
+            new_text=now.status,
+            detected_at=ctx.iso_now(),
+            severity="critical",
+            triggers_rejudge=True,
+            complex_id=cid,
+        )
+        session.add(ev)
+        events.append(ev)
+    session.flush()
+    return events
+
+
+def _notify(ctx: SchedulerContext, session: Session, events: Sequence[ChangeEvent]) -> None:
+    """critical 이벤트 웹훅(건별 guard, 이미 보낸 이벤트는 다시 보내지 않음 — notify.Notifier)."""
+    if not events:
+        return
+    ids = sorted({e.complex_id for e in events if e.complex_id is not None})
+    names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.id.in_(ids)))} if ids else {}
+    ctx.notifier.notify(events, names)
 
 
 # ---------------------------------------------------------------- P9
@@ -640,6 +723,13 @@ def run_pipeline(
             # P1~P5 (+ 접수 상태 classify)
             _p1_p3(session, caller, snap, targets, res, seq)
             _p4_intake(session, caller, snap, seq, res)
+            changed = _intake_changes(ctx, session, snap, prev, all_ids)
+            if changed:
+                res.intake_events = [e.id for e in changed]
+                tset |= {e.complex_id for e in changed if e.complex_id is not None}
+                res.targets = sorted(tset)
+                session.commit()
+                _notify(ctx, session, changed)
             _p4(session, caller, snap, region, facts, tset, seq)
             res.carried["compare"] = _p5(session, caller, snap, tset, seq, res)
             session.commit()
@@ -649,7 +739,7 @@ def run_pipeline(
             # P6 사다리
             rows = []
             for f in facts:
-                if f.complex_id in tset and f.scope == "판정 대상":
+                if f.complex_id in tset and runs_ladder(f.scope):
                     rows.extend(
                         jp.p6_ladder(caller, evidence_card(f), asof_date=snap.asof_date, snapshot_id=snap.id)
                     )
@@ -659,7 +749,7 @@ def run_pipeline(
                     session, prev.id, snap.id, [i for i in all_ids if i not in tset]
                 )
             session.commit()
-            shown = stored_scope(session, snap.id, facts)  # 저장용: 사다리 ok 없는 판정 대상 → 참고
+            shown = stored_scope(session, snap.id, facts)  # 저장 판정 범위 = D9-1 판정 범위 그대로
 
             # P7 rerank — 후보군 전체 1회
             empty = RerankAnchor(judgment_seq=None, status="review", items=[])
@@ -716,7 +806,7 @@ def run_pipeline(
             # P9 verify — 대상 단지의 사실 문장
             claims = []
             for f in facts:
-                if f.complex_id not in tset or f.scope != "판정 대상" or not f.evidence:
+                if f.complex_id not in tset or not runs_ladder(f.scope) or not f.evidence:
                     continue
                 text = _claim_text(f)
                 if not text:
@@ -750,7 +840,7 @@ def run_pipeline(
             session.commit()
             ctx.reset_adapter()
             res.degraded = True
-            res.error = f"judge_unavailable: {str(exc)[:200]}"
+            res.error = "judge_unavailable: " + redact_text(str(exc), get_settings().secret_values())[:200]
             log.warning("worker.pipeline.degraded", extra={"snapshot_id": snapshot_id})
         if caller is not None:
             res.absorb(caller)

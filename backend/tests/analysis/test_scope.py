@@ -22,8 +22,15 @@ from app.analysis.scope import (
 from ._support import EXPECTED, FIXTURE, load_json
 
 
-def _scope(cls: str | None = "private_sale_apt", decision: str | None = "auto", price: bool = True, intake: str | None = "가능") -> str:
-    return judge_scope(inclusion_class=cls, inclusion_decision=decision, has_price=price, intake_status=intake).scope
+def _scope(
+    cls: str | None = "private_sale_apt",
+    decision: str | None = "auto",
+    price: bool = True,
+    intake: str | None = "가능",
+) -> str:
+    return judge_scope(
+        inclusion_class=cls, inclusion_decision=decision, has_price=price, intake_status=intake
+    ).scope
 
 
 @pytest.mark.parametrize(
@@ -56,7 +63,9 @@ def _scope(cls: str | None = "private_sale_apt", decision: str | None = "auto", 
         ("private_sale_apt", "auto", True, "미정", "판정 대상"),
     ],
 )
-def test_judge_scope_table(cls: str | None, decision: str | None, price: bool, intake: str | None, want: str) -> None:
+def test_judge_scope_table(
+    cls: str | None, decision: str | None, price: bool, intake: str | None, want: str
+) -> None:
     assert _scope(cls, decision, price, intake) == want
 
 
@@ -64,7 +73,9 @@ def test_scope_text_and_reason_are_never_empty() -> None:
     assert SCOPE_TEXT["보류"] == "보류 — 공고 후 재판정"
     assert SCOPE_TEXT["참고"] == "참고 후보(순위만)"
     assert SCOPE_TEXT["미해결"] == "미해결(분류 판정 미해결)"
-    r = judge_scope(inclusion_class="private_sale_apt", inclusion_decision="review", has_price=True, intake_status="가능")
+    r = judge_scope(
+        inclusion_class="private_sale_apt", inclusion_decision="review", has_price=True, intake_status="가능"
+    )
     assert r.text == "미해결(분류 판정 미해결)" and "review" in r.reason
     for s in JUDGE_SCOPES:
         assert SCOPE_TEXT[s].strip()
@@ -80,7 +91,9 @@ def test_scope_text_and_reason_are_never_empty() -> None:
         ("제외", False, False, False, False),
     ],
 )
-def test_scope_participation_rules(scope: str, ladder: bool, rerank: bool, scored: bool, decide: bool) -> None:
+def test_scope_participation_rules(
+    scope: str, ladder: bool, rerank: bool, scored: bool, decide: bool
+) -> None:
     assert (runs_ladder(scope), in_rerank(scope), is_scored(scope), is_decide_candidate(scope)) == (
         ladder, rerank, scored, decide,
     )  # fmt: skip
@@ -118,7 +131,10 @@ def test_pick_intake_priority_then_day_then_id_minor21() -> None:
     assert pick_intake(same_day) is same_day[1]
     assert pick_intake(list(reversed(same_day))) is same_day[1]
     # 다른 날이면 최근 날짜
-    days = [_Row(21, "official_popup", "2026-10-09", "미정"), _Row(20, "official_popup", "2026-10-08T10:00", "가능")]
+    days = [
+        _Row(21, "official_popup", "2026-10-09", "미정"),
+        _Row(20, "official_popup", "2026-10-08T10:00", "가능"),
+    ]
     assert pick_intake(days) is days[0]
     assert pick_intake([_Row(5, "unofficial_ref", "2026-10-09", "가능")]) is None
 
@@ -127,12 +143,17 @@ def _fixture_scopes() -> dict[int, str]:
     out: dict[int, str] = {}
     for b in load_json(FIXTURE / "complexes.json"):
         c = b["complex"]
-        intake = pick_intake([_Row(i, r["path"], r.get("checked_at"), r["status"]) for i, r in enumerate(b["intake"], 1)])
+        intake = pick_intake(
+            [_Row(i, r["path"], r.get("checked_at"), r["status"]) for i, r in enumerate(b["intake"], 1)]
+        )
         has_price = any(
-            (t["max_price_won"].get("v") if isinstance(t["max_price_won"], dict) else t["max_price_won"]) is not None
+            (t["max_price_won"].get("v") if isinstance(t["max_price_won"], dict) else t["max_price_won"])
+            is not None
             for t in b["types"]
         )
-        out[c["id"]] = _scope(c["inclusion_class"], c["inclusion_decision"], has_price, intake.status if intake else None)
+        out[c["id"]] = _scope(
+            c["inclusion_class"], c["inclusion_decision"], has_price, intake.status if intake else None
+        )
     return out
 
 
@@ -143,7 +164,10 @@ def test_d9_scope_on_fixture_facts_vs_golden_inputs_documented_diff() -> None:
     실데이터 파이프라인에서는 아래 단지가 다른 범위가 된다(사유: 픽스처 접수 '불가' / classify review).
     """
     d9 = _fixture_scopes()
-    v2 = {c["complex_id"]: c["judge_scope"] for c in load_json(FIXTURE / "expected_scores_v2.json")["inputs"]["complexes"]}
+    v2 = {
+        c["complex_id"]: c["judge_scope"]
+        for c in load_json(FIXTURE / "expected_scores_v2.json")["inputs"]["complexes"]
+    }
     a = {c["complex_id"]: c["judge_scope"] for c in EXPECTED["complexes"]}
     assert v2 == a
     diff = {cid: (v2[cid], d9[cid]) for cid in sorted(d9) if d9[cid] != v2[cid]}

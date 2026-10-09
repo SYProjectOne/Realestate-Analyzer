@@ -16,10 +16,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.analysis import price_view as pv
+from app.analysis import scope as scope_rules
+from app.analysis.complex_input import build_complex_input
 from app.analysis.ladder import target_label
-from app.analysis.price import judge_type
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown
-from app.core.contracts_gen import ComplexScoreInput, LadderInput
+from app.core.contracts_gen import ComplexScoreInput
 from app.models import (
     Claim,
     Competition,
@@ -45,6 +47,7 @@ __all__ = [
     "HATCH_LABELS",
     "ComplexBundle",
     "ScoreCtx",
+    "bundle_price",
     "complex_header",
     "complex_rows_data",
     "envelope_view",
@@ -55,6 +58,7 @@ __all__ = [
     "price_range",
     "region_view",
     "scenario_view",
+    "scope_result",
     "score_ctx",
     "score_row",
     "snapshot_view",
@@ -67,10 +71,6 @@ HATCH_LABELS = {
     "investigate": "추가 조사",
     "none": "해당 없음",
 }
-_INTAKE_PRIORITY = {"human_check": 0, "official_popup": 1, "headless_shot": 2}
-_EXCLUDED_CLASSES = frozenset(
-    {"public_sale", "public_rental", "private_rental", "non_apartment", "out_of_scope", "범위 경계"}
-)
 _RAW_UNITS = {"p10": "prob", "rerank": "prob", "gap": "pct"}
 
 
@@ -244,15 +244,8 @@ def intake_view(row: IntakeStatus) -> dict[str, Any]:
 
 
 def pick_intake(rows: Sequence[IntakeStatus]) -> IntakeStatus | None:
-    """표시값: human_check > official_popup > headless_shot(같은 경로면 최신). unofficial_ref 는 참고만."""
-    usable = [r for r in rows if r.path in _INTAKE_PRIORITY]
-    if not usable:
-        return None
-    return min(usable, key=lambda r: (_INTAKE_PRIORITY[r.path], _neg(r.checked_at), -r.id))
-
-
-def _neg(text: str | None) -> tuple[int, ...]:
-    return tuple(-ord(ch) for ch in (text or ""))
+    """표시 접수 행 = ``analysis.scope.pick_intake``(파이프라인·보고서와 같은 규칙, R3 minor 21)."""
+    return scope_rules.pick_intake(rows)
 
 
 # ====================================================================== 단지 묶음 (한 번에 읽기)
@@ -266,6 +259,7 @@ class ComplexBundle:
     intake: list[IntakeStatus] = field(default_factory=list)
     ladders: list[Ladder] = field(default_factory=list)
     stored_scope: str | None = None  # score_total.judge_scope(이 스냅샷 마지막 점수 실행, 계약 2026-10-09.3)
+    asof_date: str | None = None  # 스냅샷 기준일(요건 사전 계산의 즉시 입주 판단, R3 minor 20)
 
 
 def _chunks(ids: Sequence[int], n: int = 500) -> Iterable[Sequence[int]]:
@@ -276,7 +270,9 @@ def _chunks(ids: Sequence[int], n: int = 500) -> Iterable[Sequence[int]]:
 def load_bundles(
     session: Session, complexes: Sequence[Complex], snapshot_id: int, *, with_ladders: bool = True
 ) -> dict[int, ComplexBundle]:
-    out = {c.id: ComplexBundle(c) for c in complexes}
+    snap = session.get(Snapshot, snapshot_id)
+    asof = snap.asof_date if snap is not None else None
+    out = {c.id: ComplexBundle(c, asof_date=asof) for c in complexes}
     ids = list(out)
     for chunk in _chunks(ids):
         for t in session.scalars(
@@ -314,38 +310,51 @@ def load_bundles(
 
 
 def basis_type(types: Sequence[ComplexType]) -> ComplexType | None:
-    code = judge_type((t.type_code, t.area_m2) for t in types)
-    return next((t for t in types if t.type_code == code), None)
+    """판정 기준 타입 = ``analysis.price_view.basis_type``."""
+    return pv.basis_type(types)
 
 
 def current_payment(payments: Sequence[PaymentTerms]) -> PaymentTerms | None:
-    return max(payments, key=lambda p: (p.effective_from, p.id)) if payments else None
+    """현재 납부 조건 = ``analysis.price_view.current_terms``(파이프라인과 같은 순서)."""
+    return pv.current_terms(payments)
 
 
 def price_numbers(t: ComplexType | None) -> tuple[int | None, int | None]:
-    """§6-1 (low, high) 원 — 대표층 가격이 없으면 아래도 최고가."""
-    if t is None or t.max_price_won is None:
+    """공고문 타입 행만으로 만든 (low, high) — **현재 구매가가 아니다**(최신 공고 가격 미반영).
+
+    화면·CSV·미리보기의 현재 구매가는 ``bundle_price(b)``
+    (= ``analysis.price_view.current_price``, R3 M3)를 쓴다.
+    """
+    if t is None:
         return None, None
-    extra = (t.balcony_won or 0) + (t.options_required_won or 0)
-    high = t.max_price_won + extra
-    low = (t.floor_sample_price_won if t.floor_sample_price_won is not None else t.max_price_won) + extra
-    return min(low, high), max(low, high)
+    view = pv.current_price([t], [])
+    return view.low_won, view.high_won
+
+
+def bundle_price(b: ComplexBundle) -> pv.PriceView:
+    """§6-1 현재 구매가(최신 payment_terms.price_by_type 우선) — 파이프라인·보고서와 같은 함수(R3 M3)."""
+    return pv.current_price(b.types, b.payments)
+
+
+def scope_result(b: ComplexBundle) -> scope_rules.ScopeResult:
+    """판정 범위 = ``analysis.scope.judge_scope``(D9-1) — 파이프라인·보고서와 같은 함수, 현재 사실로 계산."""
+    cur = scope_rules.pick_intake(b.intake)
+    return scope_rules.judge_scope(
+        inclusion_class=b.cx.inclusion_class,
+        inclusion_decision=b.cx.inclusion_decision,
+        has_price=bundle_price(b).known,
+        intake_status=cur.status if cur is not None else None,
+    )
 
 
 def judge_scope(b: ComplexBundle) -> str:
-    """판정 범위(meta §1-3-4) = 점수 실행이 저장한 score_total.judge_scope(계약 2026-10-09.3, WP7).
+    """판정 범위(meta §1-3-4, D9-1): 판정 대상 / 참고 / 보류 / 미해결 / 제외.
 
-    저장 값이 없을 때(점수 실행 밖 — 제외 단지·점수 전 스냅샷·0003 이전 행)만 사실 규칙:
-    제외(분류 제외·범위 경계) / 보류(분양가 미공개) / 판정 대상. 사다리로 '참고'를 추정하지 않는다.
+    저장 값(score_total.judge_scope)이 아니라 공용 함수로 계산한다(R3 C2) — 점수 실행도 같은 함수로 저장하므로
+    사실이 바뀌지 않았으면 같은 값이다. '미해결'은 계약 .4(F3)가 응답 enum 에 추가할 때까지 계약 값 '제외'로
+    낸다(``analysis.scope.contract_scope`` — 계약에 값이 생기면 자동으로 '미해결'). 전체 결과는 ``scope_result``.
     """
-    if b.cx.inclusion_class in _EXCLUDED_CLASSES:
-        return "제외"
-    if b.stored_scope:
-        return b.stored_scope
-    low, _ = price_numbers(basis_type(b.types))
-    if low is None:
-        return "보류"
-    return "판정 대상"
+    return scope_rules.contract_scope(scope_result(b).scope)
 
 
 # ====================================================================== Fact 묶음
@@ -496,33 +505,30 @@ def _man(won: int) -> str:
 
 
 def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None = None) -> dict[str, Any]:
-    """§6-1 현재 구매가 범위(판정 기준 타입)."""
+    """§6-1 현재 구매가 범위 = ``bundle_price``(최신 공고 가격 우선, R3 M3). 출처는 쓴 필드 그대로."""
+    view = bundle_price(b)
     t = basis_type(b.types)
-    if t is None or t.max_price_won is None:
-        reason = "분양가 미공개"
+    if t is None or not view.known:
+        reason = view.empty_reason or "분양가 미공개"
         if notice is not None and notice["label"] == LABEL_UNKNOWN and notice.get("reason"):
             reason = str(notice["reason"])
         u = unknown(reason, None, unit="won")
         return {
-            "basis_type_code": t.type_code if t else None,
+            "basis_type_code": view.basis_type_code,
             "price_low": u,
             "price_high": dict(u),
             "price_mid": dict(u),
             "composition": None,
             "change_vs_first_pct": None,
         }
-    tv = {
-        name: fm.field("complex_type", t.id, name, getattr(t, name), unit="won")
-        for name in ("max_price_won", "floor_sample_price_won", "balcony_won", "options_required_won")
-    }
-    extras = [tv[n] for n in ("balcony_won", "options_required_won") if getattr(t, n) is not None]
-    low_won, high_won = price_numbers(t)
-    floor_src = tv["floor_sample_price_won"] if t.floor_sample_price_won is not None else tv["max_price_won"]
-    low = fm.combine(low_won, [floor_src, *extras], unit="won")
-    high = fm.combine(high_won, [tv["max_price_won"], *extras], unit="won")
-    mid_val = None
-    if low_won is not None and high_won is not None:
-        mid_val = int((Decimal(low_won + high_won) / 2).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+    def ref_fact(ref: pv.FieldRef) -> dict[str, Any]:
+        return fm.field(ref.entity, ref.entity_id, ref.field, ref.value, unit="won")
+
+    low_won, high_won = view.low_won, view.high_won
+    low = fm.combine(low_won, [ref_fact(r) for r in view.low_refs], unit="won")
+    high = fm.combine(high_won, [ref_fact(r) for r in view.high_refs], unit="won")
+    mid_val = pv.mid_rounded(view)
     mid = fm.derived(mid_val, [low, high], unit="won")
     parts = ["공급가"]
     if t.balcony_won:
@@ -988,7 +994,8 @@ def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> li
     horizon = str((ctx.scenario.policy or {}).get("p10_horizon") or "move_in_plus_1y")
     out: list[RowData] = []
     for cid, b in bundles.items():
-        low, high = price_numbers(basis_type(b.types))
+        view = bundle_price(b)
+        low, high = view.low_won, view.high_won
         mid = (Decimal(low) + Decimal(high)) / 2 if low is not None and high is not None else None
         t = ctx.totals.get(cid)
         gap = (ctx.components.get(cid) or {}).get("gap")
@@ -1101,54 +1108,31 @@ def provenance_for(session: Session, bundles: Iterable[ComplexBundle]) -> ProvIn
 # ====================================================================== 점수 입력(요건 사전 계산용)
 
 
-def score_input(b: ComplexBundle, fm_labels: Mapping[str, str | None] | None = None) -> ComplexScoreInput:
-    """DB 행 → ComplexScoreInput(요건 사전 계산·미리보기). 판정 값은 사다리 행 그대로(봉투 status 포함)."""
-    cx = b.cx
-    low, high = price_numbers(basis_type(b.types))
-    cur = pick_intake(b.intake)
-    pay = current_payment(b.payments)
-    ladders = [
-        LadderInput(
-            horizon=lad.horizon,
-            target_ym=lad.target_ym,
-            months_from_asof=lad.months_from_asof
-            if lad.months_from_asof and lad.months_from_asof >= 1
-            else 1,
-            p5=float(lad.p5) if lad.p5 is not None else None,
-            p10=float(lad.p10) if lad.p10 is not None else None,
-            p20=float(lad.p20) if lad.p20 is not None else None,
-            p_flat=float(lad.p_flat) if lad.p_flat is not None else None,
-            status=lad.status,
-            judgment_seq=lad.judgment_seq,
-        )
-        for lad in b.ladders
-    ]
-    labels = fm_labels or {}
-    return ComplexScoreInput(
-        complex_id=cx.id,
-        name=cx.name,
-        living_area=cx.living_area,
-        judge_scope=judge_scope(b),
-        price_low_won=low,
-        price_high_won=high,
-        move_in_ym=cx.move_in_ym,
-        ladders=ladders,
-        winner_date=cx.winner_date,
-        resale_months=cx.resale_months,
-        resale_label=labels.get("resale"),
-        resale_release_on_registration=cx.resale_release_on_registration,
-        residency_months=cx.residency_months,
-        residency_label=labels.get("residency"),
-        down_payment_pct=float(pay.down_payment_pct) if pay and pay.down_payment_pct is not None else None,
-        down_payment_label=labels.get("down_payment"),
-        interim_terms_text=pay.interim_terms_text if pay else None,
-        intake_status=cur.status if cur is not None else None,
-        intake_path=cur.path if cur is not None else None,
-        intake_checked_at=day(cur.checked_at) if cur is not None else None,
-        regulated=None if cx.regulated is None else cx.regulated == "규제",
-        rewin_restriction_years=cx.rewin_restriction_years,
-        has_priority_supply=any(p.notice_kind == "본청약" for p in b.payments) or None,
+def score_input(
+    b: ComplexBundle, fm_labels: Mapping[str, str | None] | None = None, *, asof_date: str | None = None
+) -> ComplexScoreInput:
+    """DB 행 → ComplexScoreInput(요건 사전 계산·미리보기) — 파이프라인과 같은 빌더
+    ``analysis.complex_input.build_complex_input``(R3 minor 20). 판정 값은 사다리 행 그대로(봉투 status 포함).
+
+    '미해결' 단지는 계약 .3 Literal 에 값이 없어 judge_scope='제외'로 실린다
+    (``analysis.scope.contract_scope``).
+    ``asof_date`` 가 없으면 묶음의 스냅샷 기준일(``load_bundles`` 가 채움)로 즉시 입주를 판단한다.
+    """
+    labels = {k: v for k, v in (fm_labels or {}).items() if v in _LABEL_VALUES}
+    return build_complex_input(
+        b.cx,
+        scope=scope_result(b).scope,
+        price=bundle_price(b),
+        asof_date=asof_date or b.asof_date or "",
+        terms=current_payment(b.payments),
+        payments=b.payments,
+        intake=pick_intake(b.intake),
+        labels=labels,  # type: ignore[arg-type]
+        ladders=b.ladders,
     )
+
+
+_LABEL_VALUES = frozenset({"확인됨", "추정", "비공식", "재가공", "확인 불가"})
 
 
 def group_by(rows: Iterable[Any], key: str) -> dict[Any, list[Any]]:

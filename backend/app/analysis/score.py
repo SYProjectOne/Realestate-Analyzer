@@ -442,7 +442,13 @@ def liquidity_component(complex_: ComplexScoreInput, *, asof_date: str) -> Compo
         inputs.append(("입주월", _move_in_label(complex_)))
     label, reason = _input_label(inputs)
     return ComponentResult(
-        complex_id=cid, component="liquidity", raw_value=y, score=s, formula_text=text, label=label, reason=reason
+        complex_id=cid,
+        component="liquidity",
+        raw_value=y,
+        score=s,
+        formula_text=text,
+        label=label,
+        reason=reason,
     )
 
 
@@ -470,9 +476,7 @@ def move_in_component(complex_: ComplexScoreInput, *, asof_date: str) -> Compone
     mv_label, mv_day = mv
     y = years_until(mv_day, parse_date(asof_date))
     s = q4(clamp(TEN - 2 * y))
-    label, reason = _input_label(
-        [] if complex_.immediate_move_in else [("입주월", _move_in_label(complex_))]
-    )
+    label, reason = _input_label([] if complex_.immediate_move_in else [("입주월", _move_in_label(complex_))])
     return ComponentResult(
         complex_id=cid,
         component="move_in",

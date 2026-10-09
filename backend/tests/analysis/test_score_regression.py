@@ -148,7 +148,9 @@ def test_rerank_delta_against_prev_anchor() -> None:
     for idx, (cid, rel) in enumerate(order):
         prev_rank[cid] = prev_rank[order[idx - 1][0]] if idx and order[idx - 1][1] == rel else idx + 1
     prev_items = [
-        it.model_copy(update={"relevance": prev_rel[it.complex_id or 0], "rank": prev_rank[it.complex_id or 0]})
+        it.model_copy(
+            update={"relevance": prev_rel[it.complex_id or 0], "rank": prev_rank[it.complex_id or 0]}
+        )
         for it in inputs.rerank.items
         if (it.complex_id or 0) in prev_rel
     ]

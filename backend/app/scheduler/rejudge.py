@@ -6,7 +6,11 @@
   (judge/cache.py 의 input_hash — 두 번째 실행의 실제 호출 0, T17). 끝나면 snapshot.publish 잡을 등록한다.
 - 판정기 장애면 잡은 failed(error_text='judge_unavailable …')이고 스냅샷은 degraded — 복구 시 degraded.py 가
   다시 등록한다(T18).
+- 알림: payload ``change_event_ids`` 의 critical 이벤트를 웹훅으로 보낸다(사람 확인·생활권 편집처럼 API 가 만든
+  이벤트도 알림이 가도록 — R3 minor 13). 수집 잡이 이미 보낸 이벤트는 Notifier 가 다시 보내지 않는다.
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import JobRun
+from app.models import ChangeEvent, Complex, JobRun
 from app.scheduler.jobs import JobError, enqueue
 
 if TYPE_CHECKING:
@@ -76,6 +80,7 @@ def handle_rejudge(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     p = job.payload or {}
     snapshot_id = int(p["snapshot_id"])
     ids = p.get("complex_ids")
+    notified = _notify_events(ctx, [int(i) for i in p.get("change_event_ids") or []])
     result = run_pipeline(
         ctx,
         snapshot_id,
@@ -84,9 +89,26 @@ def handle_rejudge(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
         reason=str(p.get("reason") or "재판정"),
     )
     stats = result.stats()
+    stats["notify"] = notified
     if result.degraded:
         raise JobError("judge_unavailable: 판정기 연결 실패 — degraded 모드(복구 후 재판정 자동 등록)", stats)
     with ctx.session_factory() as session:
         enqueue(session, "snapshot.publish", {"snapshot_id": snapshot_id}, kind="scheduled", now=ctx.now())
         session.commit()
     return stats
+
+
+def _notify_events(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any]:
+    """payload 의 change_event 중 critical 을 웹훅으로(건별 guard·중복 방지는 Notifier)."""
+    if not event_ids:
+        return {"sent": 0, "skipped": "no_events"}
+    with ctx.session_factory() as session:
+        events = list(session.scalars(select(ChangeEvent).where(ChangeEvent.id.in_(event_ids))))
+        cids = sorted({e.complex_id for e in events if e.complex_id is not None})
+        names = (
+            {c.id: c.name for c in session.scalars(select(Complex).where(Complex.id.in_(cids)))}
+            if cids
+            else {}
+        )
+    r = ctx.notifier.notify(events, names)
+    return {"sent": r.sent, "skipped": r.skipped, "status": r.status, "blocked": r.blocked}

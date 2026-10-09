@@ -32,7 +32,15 @@ class _Terms:
 
 TYPES = [
     _Type(1, "59A", Decimal("59.9"), 450_000_000),
-    _Type(2, "84A", Decimal("84.97"), 784_000_000, 760_000_000, balcony_won=12_000_000, options_required_won=3_000_000),
+    _Type(
+        2,
+        "84A",
+        Decimal("84.97"),
+        784_000_000,
+        760_000_000,
+        balcony_won=12_000_000,
+        options_required_won=3_000_000,
+    ),
     _Type(3, "84B", Decimal("84.99"), 770_000_000),
 ]
 
@@ -56,13 +64,20 @@ def test_latest_terms_price_by_type_wins_m3() -> None:
     """임의공급 공고 가격이 바뀌면 최신 공고 값(§6-1) — 화면·CSV·보고서·점수가 같은 값을 쓴다."""
     terms = [
         _Terms(10, "2025-08-01", "2025000100", {"84A": {"max_price_won": 784_000_000}}),
-        _Terms(11, "2026-09-01", "2026000200", {"84A": {"max_price_won": 759_000_000, "floor_sample_price_won": 740_000_000}}),
+        _Terms(
+            11,
+            "2026-09-01",
+            "2026000200",
+            {"84A": {"max_price_won": 759_000_000, "floor_sample_price_won": 740_000_000}},
+        ),
     ]
     v = current_price(TYPES, terms)
     assert v.from_terms and v.terms_id == 11
     assert (v.low_won, v.high_won) == (755_000_000, 774_000_000)  # + 발코니·옵션 1,500만
     assert v.max_ref == FieldRef("payment_terms", 11, "price_by_type.84A.max_price_won", 759_000_000)
-    assert v.floor_ref == FieldRef("payment_terms", 11, "price_by_type.84A.floor_sample_price_won", 740_000_000)
+    assert v.floor_ref == FieldRef(
+        "payment_terms", 11, "price_by_type.84A.floor_sample_price_won", 740_000_000
+    )
     assert v.change_vs_first_pct == Decimal("-3.19")
     # 최신 공고에 기준 타입 가격이 없으면 complex_type
     v2 = current_price(TYPES, [_Terms(12, "2026-10-01", "x", {"59A": {"max_price_won": 1}})])
