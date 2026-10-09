@@ -1,4 +1,4 @@
-"""백엔드 모듈 사이 계약 — 내부 프로토콜 (RA §4-3, 계약 2026-10-09.2, WP0 소유).
+"""백엔드 모듈 사이 계약 — 내부 프로토콜 (RA §4-3, 계약 2026-10-09.3, WP0 소유).
 
 구현 에이전트는 이 파일의 docstring만 보고 구현한다. 각 Protocol의 docstring은 RA §4-3 표의 "규칙" 열과
 그 규칙을 지키는 데 필요한 계약 세부를 옮긴 것이다.
@@ -74,7 +74,7 @@ __all__ = [
     "input_hash",
 ]
 
-CONTRACT_VERSION: Final = "2026-10-09.2"
+CONTRACT_VERSION: Final = "2026-10-09.3"
 
 JudgeTool = Literal["screen", "extract", "audit", "classify", "compare", "noul", "rerank", "decide", "verify"]
 JUDGE_TOOLS: Final[tuple[JudgeTool, ...]] = (

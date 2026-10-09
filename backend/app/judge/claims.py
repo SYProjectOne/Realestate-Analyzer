@@ -10,16 +10,32 @@
    (``2028-09``)는 숫자 1개다. 나눌 자리가 없으면 그대로 둔다(비교식 ``a ≤ b`` 는 사실 1개).
 
 ``is_atomic(text)`` = 분할 결과가 1개. ``payloads.verify_payload`` 는 원자 주장만 받는다(복합 문장 → 예외).
+
+``remaining_contradicted(session, snapshot_id)`` = "남은 contradicted" 의 단 하나의 정의(계약 2026-10-09.3):
+분할 재검증 자식(``parent_claim_id`` 로 그 행을 가리키는 주장)이 없는 contradicted 행. 보고서 생성 거부(WP8)와
+스냅샷 publish 검사(WP7)가 이 함수를 쓴다.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from app.core.contracts_gen import Claim
 
-__all__ = ["CompoundClaimError", "RuleClaimSplitter", "is_atomic", "split_texts", "with_josa"]
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.models import Claim as ClaimRow
+
+__all__ = [
+    "CompoundClaimError",
+    "RuleClaimSplitter",
+    "is_atomic",
+    "remaining_contradicted",
+    "split_texts",
+    "with_josa",
+]
 
 
 class CompoundClaimError(ValueError):
@@ -165,3 +181,18 @@ class RuleClaimSplitter:
             )
             for i, t in enumerate(split_texts(text))
         ]
+
+
+def remaining_contradicted(session: Session, snapshot_id: int) -> list[ClaimRow]:
+    """남은 contradicted 주장 = 분할 재검증(자식 주장)이 없는 contradicted 행(id 순).
+
+    T6: 복합 주장이 contradicted 면 원자 주장으로 나눠 다시 검증한다 — 자식이 있으면 그 결과(자식 행)를 본다.
+    """
+    from sqlalchemy import select
+
+    from app.models import Claim as ClaimRow
+
+    stmt = select(ClaimRow).where(ClaimRow.snapshot_id == snapshot_id).order_by(ClaimRow.id)
+    rows = list(session.scalars(stmt))
+    parents = {r.parent_claim_id for r in rows if r.parent_claim_id is not None}
+    return [r for r in rows if r.verify_status == "contradicted" and r.id not in parents]

@@ -20,6 +20,7 @@
 | `provenance.py` | field_provenance upsert(삭제 없음), 수치 필드 전수 검사(`missing_provenance`), `fact_for` |
 | `changes.py` | 이전값 diff → change_event (새 공고·가격·계약금·중도금일 = critical), 현재 납부 조건 |
 | `extract_request.py` | `needs_extract` 후보 → 판정기 extract 요청 데이터(≤2,000자, 호출은 WP3) |
+| `judged.py` | 판정 결과 반영(계약 2026-10-09.3): `apply_extracted`(extract auto + 감사 통과 = 확인됨, 감사 전 = 추정, review·감사 flagged = 미반영) · `apply_compare`(contradicts → 1차 공고 자료 채택·병기, conflict_group 유지) |
 | `store.py` | `store_raw_document(session, raw)` — 후보 → 키 묶기 → (같은 필드 옛 출처 재파싱) → resolve → upsert + provenance + change_event, SAVEPOINT 한 트랜잭션 |
 | `archive.py` | 월별 목록·상세·경쟁률·공고 원문 색인(manifest.json)과 결정적 zip, 아카이브 공고 찾기 |
 | `region_resolve.py` | 자유 지명 → `RegionCandidate[]`(순수 함수 + DB 래퍼), 선택 → 시도·시군구·법정동 코드 |

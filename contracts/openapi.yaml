@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.2
+  version: 2026-10-09.3
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -62,6 +62,13 @@ paths:
               schema: { $ref: '#/components/schemas/Health' }
               examples:
                 ok: { $ref: './examples/health.json' }
+        '503':
+          description: DB 장애 — 같은 Health 본문(status=degraded, db=error). docker compose 헬스체크가 실패로 본다. 판정기 장애만이면 200 + judge=degraded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              examples:
+                dbDown: { $ref: './examples/health_db_down.json' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /regions:
@@ -491,6 +498,7 @@ paths:
               examples:
                 queue: { $ref: './examples/jobs_list.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
     post:
       tags: [jobs]
@@ -612,6 +620,7 @@ paths:
               examples:
                 fixture: { $ref: './examples/sources.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /ops/judgments:
@@ -636,6 +645,7 @@ paths:
               examples:
                 last30d: { $ref: './examples/judgments_ops.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /ops/checklist:
@@ -661,6 +671,7 @@ paths:
               examples:
                 fixture: { $ref: './examples/checklist.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /ops/checklist/{id}:
@@ -740,6 +751,7 @@ paths:
               examples:
                 fixture: { $ref: './examples/reports_list.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
     post:
       tags: [reports]

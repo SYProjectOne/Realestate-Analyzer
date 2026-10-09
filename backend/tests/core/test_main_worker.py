@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
+from sqlalchemy.engine import Engine
 
 from app import worker
 from app.core.settings import Settings
@@ -22,26 +23,62 @@ BACKEND = Path(__file__).resolve().parents[2]
 
 
 def test_health_ok(test_settings: Settings) -> None:
+    """계약 Health(2026-10-09.3): contract_version·app_version·judge·time."""
+    from app.core.contracts_gen import Health
+    from app.core.protocols import CONTRACT_VERSION
+
     with TestClient(create_app(test_settings)) as client:
         r = client.get("/health")
         assert r.status_code == 200
         body = r.json()
-        assert set(body) >= {"status", "version", "env", "db"}
+        Health.model_validate(body)  # extra 금지 — 계약 키만
         assert body["status"] == "ok"
-        assert body["env"] == "dev"
         assert body["db"] == "ok"
-        assert body["version"]
-        # 프록시 경로(/api/health)도 같은 응답
-        assert client.get(f"{test_settings.api_prefix}/health").json() == body
+        assert body["contract_version"] == CONTRACT_VERSION
+        assert body["app_version"]
+        assert body["judge"] == "unknown"  # 스냅샷 없음
+        assert body["time"].endswith("+09:00")
+        # 프록시 경로(/api/health)도 같은 모양
+        assert set(client.get(f"{test_settings.api_prefix}/health").json()) == set(body)
+
+
+def test_health_judge_follows_latest_snapshot_degraded(test_settings: Settings, db_engine: Engine) -> None:
+    from sqlalchemy.orm import Session
+
+    from app.models import Region, Snapshot
+
+    engine = db_engine
+    with Session(engine) as s:
+        s.add(Region(id=1, name="r", query_text="r", selections=[], sido_codes=[], sigungu_codes=[],
+                     legal_dong_codes=[], living_areas=[], applyhome_query={}, status="ready",
+                     age_premium_coef={}, created_at="2026-10-09T00:00:00+09:00"))  # fmt: skip
+        s.flush()
+        s.add(Snapshot(region_id=1, asof_date="2026-10-07", status="ready", degraded=True,
+                       created_at="2026-10-07T06:00:00+09:00"))  # fmt: skip
+        s.add(Snapshot(region_id=1, asof_date="2026-10-08", status="ready", degraded=False,
+                       created_at="2026-10-08T06:00:00+09:00"))  # fmt: skip
+        s.commit()
+    with TestClient(create_app(test_settings)) as client:
+        assert client.get("/health").json()["judge"] == "ok"  # 최신 스냅샷 기준
+        with Session(engine) as s:
+            snap = s.query(Snapshot).filter_by(asof_date="2026-10-08").one()
+            snap.degraded = True
+            s.commit()
+        r = client.get("/health")
+        assert r.status_code == 200  # 판정기 장애만이면 200
+        assert r.json()["judge"] == "degraded" and r.json()["status"] == "degraded"
 
 
 def test_health_db_down(tmp_path: Path, test_settings: Settings) -> None:
+    from app.core.contracts_gen import Health
+
     broken = test_settings.model_copy(update={"database_url": f"sqlite:///{tmp_path.as_posix()}"})
     with TestClient(create_app(broken)) as client:
         r = client.get("/health")
         assert r.status_code == 503
-        assert r.json()["db"] == "error"
-        assert r.json()["status"] == "degraded"
+        body = r.json()
+        Health.model_validate(body)
+        assert body["db"] == "error" and body["status"] == "degraded" and body["judge"] == "unknown"
 
 
 def test_api_router_included_when_present(test_settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:

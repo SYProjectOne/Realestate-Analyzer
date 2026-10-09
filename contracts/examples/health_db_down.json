@@ -1,0 +1,11 @@
+{
+  "summary": "DB 장애(503)",
+  "value": {
+    "status": "degraded",
+    "contract_version": "2026-10-09.3",
+    "app_version": "0.1.0",
+    "db": "error",
+    "judge": "unknown",
+    "time": "2026-10-09T09:00:00+09:00"
+  }
+}

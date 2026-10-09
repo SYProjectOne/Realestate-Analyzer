@@ -2,6 +2,7 @@
 
 - 모든 호출은 성공·실패·blocked 불문 judgment_log 1행(``record``).
   status='error' 행은 같은 hash 재시도 때 UPDATE.
+- 정규화 결과(봉투 result)는 ``result_json`` 에 저장한다(계약 2026-10-09.3). blocked·error 행은 ``{}``.
 - 파이썬 로그(``log_call``)에는 input_hash·길이·도구·상태·cached·소요만.
   payload 원문·purpose 는 남기지 않는다.
 """
@@ -40,6 +41,7 @@ def record(
     complex_id: int | None,
     error_text: str | None,
     created_at: str,
+    result_json: dict[str, Any] | None = None,
 ) -> JudgmentLog:
     """행을 넣거나(새 hash) error 행을 갱신한다(같은 hash 재시도). commit 은 호출자가 한다."""
     if existing is not None and existing.status != "error":
@@ -51,6 +53,7 @@ def record(
     row.input_len = input_len
     row.input_json = input_json
     row.output_json = output_json
+    row.result_json = result_json if result_json is not None else {}
     row.status = status
     row.confidence = Decimal(str(round(confidence, 4))) if confidence is not None else None
     row.duration_ms = duration_ms

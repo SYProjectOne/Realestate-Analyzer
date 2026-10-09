@@ -1,6 +1,10 @@
 """FastAPI app factory (api 프로세스).
 
-- ``/health`` (와 ``{API_PREFIX}/health``): ``{status, version, env, db}``. DB 가 안 되면 503 + ``degraded``.
+- ``/health`` (와 ``{API_PREFIX}/health``): 계약 ``Health``
+  ``{status, contract_version, app_version, db, judge, time}`` (계약 2026-10-09.3).
+  DB 가 안 되면 503 + 같은 본문(``status=degraded, db=error, judge=unknown``).
+  judge = 지역마다 최신 스냅샷의 ``degraded`` 플래그(하나라도 true 면 degraded,
+  스냅샷이 있고 모두 정상이면 ok, 없으면 unknown) — 판정기 장애만이면 200(수집·조회는 계속된다).
 - ``app.api`` 패키지에 ``router`` 가 있으면 ``API_PREFIX``(기본 ``/api``) 아래에 붙인다(WP5).
   없으면 건너뛴다. 인증 의존성은 WP5 가 router 쪽에 단다.
 - nginx(web)는 ``/api/*`` 를 경로 그대로 api:8000 으로 넘긴다 → 개발·운영 경로가 같다.
@@ -15,11 +19,17 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import Literal
 
 from fastapi import APIRouter, FastAPI, Response
-from pydantic import BaseModel
+from sqlalchemy import func, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from app.core.contracts_gen import Health
 from app.core.db import get_engine, ping, reset_engine
 from app.core.logging import configure_logging, get_logger
+from app.core.protocols import CONTRACT_VERSION
 from app.core.settings import Settings, get_settings
+from app.core.time import now_kst
 
 log = get_logger("app.main")
 
@@ -31,11 +41,29 @@ def app_version() -> str:
         return "0.0.0+unknown"
 
 
-class Health(BaseModel):
-    status: Literal["ok", "degraded"]
-    version: str
-    env: str
-    db: Literal["ok", "error"]
+JudgeHealth = Literal["ok", "degraded", "unknown"]
+
+
+def judge_health(engine: Engine) -> JudgeHealth:
+    """지역마다 최신 스냅샷(asof_date 최대)의 degraded 플래그. 읽을 수 없으면 unknown."""
+    from app.models import Snapshot
+
+    latest = (
+        select(Snapshot.region_id, func.max(Snapshot.asof_date).label("asof"))
+        .group_by(Snapshot.region_id)
+        .subquery()
+    )
+    stmt = select(Snapshot.degraded).join(
+        latest, (Snapshot.region_id == latest.c.region_id) & (Snapshot.asof_date == latest.c.asof)
+    )
+    try:
+        with Session(engine) as session:
+            flags = [bool(v) for v in session.scalars(stmt)]
+    except SQLAlchemyError:
+        return "unknown"
+    if not flags:
+        return "unknown"
+    return "degraded" if any(flags) else "ok"
 
 
 def _load_api_router() -> APIRouter | None:
@@ -63,14 +91,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = s
 
     def health(response: Response) -> Health:
-        db_ok = ping(get_engine(s))
+        engine = get_engine(s)
+        db_ok = ping(engine)
+        judge: JudgeHealth = judge_health(engine) if db_ok else "unknown"
         if not db_ok:
             response.status_code = 503
         return Health(
-            status="ok" if db_ok else "degraded",
-            version=app_version(),
-            env=s.env,
+            status="ok" if db_ok and judge != "degraded" else "degraded",
+            contract_version=CONTRACT_VERSION,
+            app_version=app_version(),
             db="ok" if db_ok else "error",
+            judge=judge,
+            time=now_kst().isoformat(timespec="seconds"),
         )
 
     app.add_api_route("/health", health, methods=["GET"], response_model=Health, tags=["ops"])

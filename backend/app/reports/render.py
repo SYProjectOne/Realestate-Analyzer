@@ -1,6 +1,6 @@
 """Jinja2 → 단일 자립 HTML (DECISIONS D4). CSS·ECharts 번들·차트 option 을 모두 인라인 — 외부 URL 리소스 0.
 
-ECharts 번들(`echarts.min.js`) 찾는 순서: 인자 → 환경변수 ``REPORT_ECHARTS_JS`` → 저장소
+ECharts 번들(`echarts.min.js`) 찾는 순서: 인자 → Settings ``report_echarts_js`` → 저장소
 ``frontend/node_modules/echarts/dist/echarts.min.js``. 없으면 차트 자리에 '차트 번들 없음' 문구와
 같은 데이터의 표만 남긴다(보고서는 계속 생성, ``RenderResult.charts_inlined=False``).
 """
@@ -41,10 +41,16 @@ class RenderResult:
 
 
 def find_echarts_bundle(explicit: Path | None = None) -> Path | None:
+    """인자 → Settings ``report_echarts_js``(환경변수 REPORT_ECHARTS_JS) → 저장소 frontend 번들."""
+    from app.core.settings import get_settings
+
     candidates: list[Path] = []
     if explicit is not None:
         candidates.append(explicit)
-    env = os.environ.get(ECHARTS_ENV)
+    configured = get_settings().report_echarts_js
+    if configured is not None:
+        candidates.append(configured)
+    env = os.environ.get(ECHARTS_ENV)  # Settings 를 읽은 뒤 바뀐 환경(테스트·CLI)도 본다
     if env:
         candidates.append(Path(env))
     candidates.append(_REPO / "frontend" / "node_modules" / "echarts" / "dist" / "echarts.min.js")

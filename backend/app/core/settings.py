@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     raw_dir: Path = Path("./data/raw")
     reference_dir: Path = Path("./data/reference")
     report_dir: Path = Path("./data/reports")
+    # 보고서 HTML 에 인라인할 echarts.min.js(WP8). None 이면 저장소 frontend/node_modules 에서 찾는다
+    report_echarts_js: Path | None = None
 
     # --- API (ADR-9)
     api_prefix: str = "/api"
@@ -89,6 +91,11 @@ class Settings(BaseSettings):
 
     # --- worker
     worker_heartbeat_s: float = Field(default=60.0, gt=0)
+
+    @field_validator("report_echarts_js", mode="before")
+    @classmethod
+    def _empty_path_is_none(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("http_robots_exempt_hosts", mode="before")
     @classmethod

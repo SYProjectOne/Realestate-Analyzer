@@ -44,6 +44,8 @@ class JudgmentLog(Base):
     created_at: Mapped[str] = mapped_column(String(32))
     adapter_version: Mapped[str] = mapped_column(String(64))
     error_text: Mapped[str | None] = mapped_column(Text)
+    # 0003 (계약 2026-10-09.3): 정규화 결과(봉투 result). 옛 행은 NULL — 읽는 쪽이 output_json 을 다시 정규화
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
 class Claim(Base):

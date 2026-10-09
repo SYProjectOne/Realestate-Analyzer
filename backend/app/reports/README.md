@@ -56,7 +56,7 @@ stats = run_report_job(job.payload, session=session)
   `thresholds` 를 도구별로 모은다(D6).
 - §8 숫자(종합 점수)는 `score_total.total` 원값의 소수 2자리 ROUND_HALF_UP, `data-prov="st_<id>"`.
 - §12 지역 추가·변경 장은 `--compare` 가 있을 때만(후보 변화·rerank 재실행·순위 변화 + diff 표).
-- ECharts 번들: 인자 → 환경변수 `REPORT_ECHARTS_JS` → `frontend/node_modules/echarts/dist/echarts.min.js`.
+- ECharts 번들: 인자 → Settings `report_echarts_js`(환경변수 `REPORT_ECHARTS_JS`, worker 이미지는 `/opt/echarts/echarts.min.js`) → `frontend/node_modules/echarts/dist/echarts.min.js`.
   없으면 차트 자리에 문구 + 같은 데이터 표(`charts_inlined=False`, CLI 경고).
 
 ## 테스트

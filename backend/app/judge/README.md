@@ -19,6 +19,10 @@ RerankAnchor·DecisionSet·Claim). 판정기를 직접 부르는 코드는 이 �
   (전화·주민번호·이메일·환경변수 값).
 - 로그는 `app.core.logging.log_payload_meta(input_hash, length, tool=…, cached=…)` 만 쓴다(규칙 13).
 - 정규 JSON 은 `app.core.snapshot.canonical_json`.
+- 계약 2026-10-09.3: 정규화 결과는 `judgment_log.result_json`(캐시 봉투도 그것을 쓴다, NULL 옛 행만 재정규화).
+  접수 상태 분류 `pipeline.p4_classify_intake`(4클래스 open/pending/closed/unknown → 가능/미정/불가/확인 불가,
+  미해결 = '확인 불가(판정 미해결)'), 포함/제외 배치 `p4_classify_inclusion_batch`(≤64개 1회),
+  "남은 contradicted" 단일 정의 `claims.remaining_contradicted`(WP7 publish·WP8 보고서 공용).
 
 ## 규칙
 

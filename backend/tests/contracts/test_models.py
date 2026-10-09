@@ -50,6 +50,7 @@ PAIRS = [
     (enums.JOB_KIND, ("job_run.json", "properties", "kind")),
     (enums.JOB_STATUS, ("job_run.json", "properties", "status")),
     (enums.SCENARIO_CODE, ("scenario.json", "properties", "code")),
+    (enums.JUDGE_SCOPE, ("score_row.json", "$defs", "JudgeScope")),
 ]
 
 

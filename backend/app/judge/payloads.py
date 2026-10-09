@@ -10,7 +10,7 @@ payload 는 JEV 도구 인자 그대로다(JEV 입력은 strict — 모르는 �
 길이 한도(JEV 0.14.1): 증거 카드 ≤2,000자(우리 규칙), noul 명제 ≤2,000자·64개,
 rerank 후보 ≤2,000자·250개·합 100,000자,
 decide 후보 2~6·evidence ≤12,000·priorities ≤2,000·requirements ≤3(각 ≤500), verify 주장 ≤16(우리 규칙),
-extract document ≤50,000·fields ≤32, audit records ≤32, classify item ≤2,000.
+extract document ≤50,000·fields ≤32, audit records ≤32, classify item ≤2,000·items ≤64(배치).
 """
 
 from __future__ import annotations
@@ -29,10 +29,13 @@ from app.judge.guard import default_secrets
 
 __all__ = [
     "CATALYST_CLASSES",
+    "CLASSIFY_BATCH_MAX",
     "EVIDENCE_CARD_MAX",
     "EVIDENCE_CARD_ORDER",
     "HORIZONS",
     "INCLUSION_CLASSES",
+    "INTAKE_CLASSES",
+    "INTAKE_STATUS_BY_CLASS",
     "RERANK_QUERY",
     "VERIFY_MAX_CLAIMS",
     "AuditRecord",
@@ -44,7 +47,9 @@ __all__ = [
     "annualized",
     "audit_payload",
     "classify_catalyst_payload",
+    "classify_inclusion_batch_payload",
     "classify_inclusion_payload",
+    "classify_intake_payload",
     "compare_payload",
     "decide_option_id",
     "decide_payload",
@@ -115,6 +120,21 @@ _CATALYST: Final = (
     ("언론", "언론·홍보 자료에만 나오고 공식 근거가 없는 호재"),
     ("미확정", "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"),
 )
+_INTAKE: Final = (
+    ("open", "지금 청약·계약 접수를 받고 있다(선착순·동호지정 계약 중, 잔여 세대 분양 중, "
+     "무순위·임의공급 접수 중 등). 문구가 현재 진행 중인 접수를 말해야 한다"),
+    ("pending", "접수 일정이 공지됐거나 예정이지만 아직 시작 전이다"
+     "(오픈 예정, 공고 예정, 견본주택 오픈 예정 등)"),
+    ("closed", "접수가 끝났다(분양 완료, 완판, 계약 마감, 접수 종료)"),
+    ("unknown", "문구만으로 지금 접수 가능 여부를 정할 수 없다"
+     "(메뉴 이름·일반 안내·광고 문구뿐이거나 서로 맞지 않음)"),
+)  # fmt: skip
+CLASSIFY_BATCH_MAX: Final = 64
+"""JEV classify items 상한(배치 1회)."""
+INTAKE_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _INTAKE)
+"""접수 상태 4클래스(공식 홈페이지 DOM 텍스트·팝업 문구 → 가능/미정/불가/확인 불가)."""
+INTAKE_STATUS_BY_CLASS: Final = {"open": "가능", "pending": "미정", "closed": "불가", "unknown": "확인 불가"}
+"""classify 클래스 id → intake_status.status. 미해결(review)은 매핑하지 않는다(→ '확인 불가(판정 미해결)')."""
 INCLUSION_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _INCLUSION)
 """P4(a) 포함/제외 7클래스(사업주체 명의 기준, contracts ClassifyResult 설명과 같은 id)."""
 CATALYST_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _CATALYST)
@@ -502,12 +522,38 @@ def audit_payload(source: str, records: Sequence[AuditRecord]) -> JudgePayload:
     }
 
 
+def _classify_items(items: Sequence[tuple[str, str]]) -> list[dict[str, str]]:
+    if not 1 <= len(items) <= CLASSIFY_BATCH_MAX:
+        raise ValueError(f"classify 항목은 1~{CLASSIFY_BATCH_MAX}개 (지금 {len(items)})")
+    ids = [i for i, _ in items]
+    if len(set(ids)) != len(ids):
+        raise ValueError("classify 항목 id 중복")
+    return [{"id": i, "text": _cut(public_text(t), 2000)} for i, t in items]
+
+
 def classify_inclusion_payload(*, item_id: str, text: str) -> JudgePayload:
-    """P4(a) 포함/제외 — 사업주체 명의 기준 7클래스."""
+    """P4(a) 포함/제외 — 사업주체 명의 기준 7클래스(단지 1개)."""
+    return classify_inclusion_batch_payload([(item_id, text)])
+
+
+def classify_inclusion_batch_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:
+    """P4(a) 배치: 단지 N개(≤64)를 1회에. 항목 순서는 호출자가 정한다(같은 집합이면 같은 순서 — 캐시 적중)."""
     return {
-        "items": [{"id": item_id, "text": _cut(public_text(text), 2000)}],
+        "items": _classify_items(items),
         "classes": [dict(c) for c in INCLUSION_CLASSES],
         "purpose": "청약 공고 단지의 포함/제외 분류(사업주체 명의·상품 유형 기준)",
+    }
+
+
+def classify_intake_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:
+    """접수 상태 분류(배치 ≤64): 항목 = (id, 공식 홈페이지 DOM 텍스트·팝업 문구). 4클래스, 임계값 없음.
+
+    가능/미정/불가는 판정기 auto 일 때만 쓴다(AGENTS 규칙 3) — 프로그램은 문구를 해석하지 않는다.
+    """
+    return {
+        "items": _classify_items(items),
+        "classes": [dict(c) for c in INTAKE_CLASSES],
+        "purpose": "분양 단지 공식 홈페이지·팝업 문구로 본 현재 청약·계약 접수 상태 분류",
     }
 
 

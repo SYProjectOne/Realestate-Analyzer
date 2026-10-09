@@ -1402,7 +1402,7 @@ class GapComp(BaseModel):
 
 class Health(BaseModel):
     """
-    GET /health — 인증 없음. docker compose 헬스체크와 화면 전역 배너용. status=degraded면 db 또는 judge 중 하나가 정상이 아니다(판정기 장애 시 수집·조회는 계속된다). contract_version은 이 서버가 구현한 계약 버전(contracts/CHANGELOG.md 최신 항목).
+    GET /health — 인증 없음. docker compose 헬스체크와 화면 전역 배너용. status=degraded면 db 또는 judge 중 하나가 정상이 아니다(판정기 장애 시 수집·조회는 계속된다). db=error면 HTTP 503(같은 본문), 그 밖은 200. judge = 지역마다 최신 스냅샷의 degraded 플래그: 하나라도 degraded면 degraded, 스냅샷이 있고 모두 정상이면 ok, 스냅샷이 없거나 DB 장애면 unknown. contract_version은 이 서버가 구현한 계약 버전(contracts/CHANGELOG.md 최신 항목), app_version은 패키지 버전, time은 응답 시각(+09:00).
     """
 
     model_config = ConfigDict(

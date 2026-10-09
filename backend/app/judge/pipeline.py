@@ -34,9 +34,12 @@ from app.judge.base import JudgeCaller
 from app.judge.claims import RuleClaimSplitter
 
 __all__ = [
+    "INTAKE_UNRESOLVED",
     "TIE_CONFIDENCE",
     "ClassifyOutcome",
     "CompareOutcome",
+    "IntakeItem",
+    "IntakeOutcome",
     "ScreenOutcome",
     "has_contradiction",
     "p1_screen",
@@ -44,6 +47,8 @@ __all__ = [
     "p3_audit",
     "p4_classify_catalyst",
     "p4_classify_inclusion",
+    "p4_classify_inclusion_batch",
+    "p4_classify_intake",
     "p5_compare",
     "p6_ladder",
     "p7_rerank",
@@ -60,6 +65,8 @@ _HATCH_LABELS: Final = {
     "wait_new": "모집공고 대기",
 }
 _EVIDENCE_TEXT_MAX: Final = 1000
+INTAKE_UNRESOLVED: Final = "판정 미해결"
+"""접수 상태 classify 가 review·manual_review(미해결)이면 '확인 불가(판정 미해결)' — '미정'이 아니다."""
 
 
 def _day(env: JudgmentEnvelope) -> str:
@@ -164,6 +171,112 @@ def p4_classify_inclusion(
         complex_id=complex_id,
     )
     return _classify_outcome(env)
+
+
+def _batch_items(env: JudgmentEnvelope, ids: Sequence[str]) -> dict[str, ClassifyOutcome]:
+    """배치 classify 봉투 → 항목별 결과. 항목 1개면 최상위가 그 항목(계약 ClassifyResult).
+
+    항목은 decision=auto 이고 봉투가 판정기 응답(ok·review)일 때만 해결(resolved)이다.
+    """
+    r = env.result or {}
+    usable = env.status in {"ok", "review"}
+    if len(ids) == 1:
+        rows = {ids[0]: r}
+    else:
+        rows = {str(it.get("id")): it for it in r.get("items") or [] if isinstance(it, dict)}
+    out: dict[str, ClassifyOutcome] = {}
+    for item_id in ids:
+        it = rows.get(item_id) or {}
+        decision = it.get("decision")
+        out[item_id] = ClassifyOutcome(
+            env, it.get("label") or None, it.get("prob"), decision, usable and decision == "auto"
+        )
+    return out
+
+
+def p4_classify_inclusion_batch(
+    adapter: JudgeCaller,
+    items: Sequence[tuple[int, str]],
+    *,
+    snapshot_id: int | None = None,
+    batch_no: int = 0,
+) -> dict[int, ClassifyOutcome]:
+    """P4(a) 배치: (complex_id, 텍스트) ≤64개 → 1회 호출(계약 2026-10-09.2 ClassifyResult.items[]).
+
+    항목은 complex_id 순으로 정렬한다(같은 집합 = 같은 payload = 캐시).
+    1개면 단건 호출과 같은 payload·purpose.
+    """
+    ordered = sorted(items, key=lambda x: x[0])
+    if len(ordered) == 1:
+        cid, text = ordered[0]
+        return {cid: p4_classify_inclusion(adapter, complex_id=cid, text=text, snapshot_id=snapshot_id)}
+    ids = [f"complex:{cid}" for cid, _ in ordered]
+    payload = P.classify_inclusion_batch_payload([(f"complex:{cid}", t) for cid, t in ordered])
+    env = adapter.call("classify", payload, f"classify:inclusion:batch{batch_no}", snapshot_id=snapshot_id)
+    by_id = _batch_items(env, ids)
+    return {cid: by_id[f"complex:{cid}"] for cid, _ in ordered}
+
+
+@dataclass(frozen=True, slots=True)
+class IntakeItem:
+    """접수 상태 분류 항목: key = 'c<complex_id>:<path>', text = 공식 홈페이지 DOM 텍스트·팝업 문구."""
+
+    complex_id: int
+    path: str  # official_popup | headless_shot
+    text: str
+
+    @property
+    def key(self) -> str:
+        return f"intake:c{self.complex_id}:{self.path}"
+
+
+@dataclass(frozen=True, slots=True)
+class IntakeOutcome:
+    item: IntakeItem
+    outcome: ClassifyOutcome
+    status: str  # 가능 | 미정 | 불가 | 확인 불가
+    reason: str | None  # 확인 불가 사유(판정 미해결 · 문구로 판단 불가 · 입력 차단)
+
+    @property
+    def judgment_seq(self) -> int | None:
+        return self.outcome.envelope.judgment_seq
+
+
+def _intake_status(out: ClassifyOutcome) -> tuple[str, str | None]:
+    if out.envelope.status == "blocked":
+        return "확인 불가", "입력 차단(guard)"
+    if not out.resolved or out.label not in P.INTAKE_STATUS_BY_CLASS:
+        return "확인 불가", INTAKE_UNRESOLVED
+    status = P.INTAKE_STATUS_BY_CLASS[out.label]
+    return status, ("문구로 판단 불가" if status == "확인 불가" else None)
+
+
+def p4_classify_intake(
+    adapter: JudgeCaller,
+    items: Sequence[IntakeItem],
+    *,
+    snapshot_id: int | None = None,
+    batch_no: int = 0,
+) -> dict[str, IntakeOutcome]:
+    """접수 상태 classify(배치 ≤64, 1회) → key 별 상태.
+
+    판단은 판정기만(auto). 미해결(review·manual_review)은 '확인 불가(판정 미해결)'.
+    """
+    if not items:
+        return {}
+    ordered = sorted(items, key=lambda i: (i.complex_id, i.path))
+    ids = [i.key for i in ordered]
+    payload = P.classify_intake_payload([(i.key, i.text) for i in ordered])
+    cid = ordered[0].complex_id if len({i.complex_id for i in ordered}) == 1 else None
+    env = adapter.call(
+        "classify", payload, f"classify:intake:batch{batch_no}", snapshot_id=snapshot_id, complex_id=cid
+    )
+    by_id = _batch_items(env, ids)
+    out: dict[str, IntakeOutcome] = {}
+    for i in ordered:
+        status, reason = _intake_status(by_id[i.key])
+        out[i.key] = IntakeOutcome(i, by_id[i.key], status, reason)
+    return out
 
 
 def p4_classify_catalyst(

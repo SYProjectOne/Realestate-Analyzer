@@ -259,12 +259,55 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0002() -> None:
+def test_migration_head_is_0003() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0002"]
+    assert script.get_heads() == ["0003"]
+    assert script.get_revision("0003").down_revision == "0002"
     assert script.get_revision("0002").down_revision == "0001"
+
+
+R2_COLUMNS = {("judgment_log", "result_json"), ("score_total", "judge_scope")}
+
+
+def _r2_columns(engine: Engine) -> set[tuple[str, str]]:
+    insp = sa.inspect(engine)
+    have = {(t, c["name"]) for t in {t for t, _ in R2_COLUMNS} for c in insp.get_columns(t)}
+    return have & R2_COLUMNS
+
+
+def check_0002_0003_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0003(계약 2026-10-09.3): head → 0002(컬럼 제거, 행 유지) → head(컬럼 복구, 값 NULL)."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    engine = sa.create_engine(url)
+    table = Base.metadata.tables["judgment_log"]
+    row = {
+        "tool": "classify", "purpose": "classify:intake", "input_hash": "sha256:" + "c" * 64, "input_json": {},
+        "output_json": {}, "status": "ok", "created_at": "2026-10-09T00:00:00+09:00", "adapter_version": "t",
+        "result_json": {"label": "batch", "items": []},
+    }  # fmt: skip
+    try:
+        assert _r2_columns(engine) == R2_COLUMNS
+        with engine.begin() as conn:
+            conn.execute(table.insert(), row)
+        command.downgrade(cfg, "0002")
+        assert _r2_columns(engine) == set()
+        with engine.connect() as conn:
+            assert conn.execute(sa.text("SELECT count(*) FROM judgment_log")).scalar_one() == 1
+        command.upgrade(cfg, "head")
+        assert _r2_columns(engine) == R2_COLUMNS
+        with engine.begin() as conn:
+            assert conn.execute(sa.text("SELECT result_json FROM judgment_log")).scalar_one() is None
+            conn.execute(sa.text("DELETE FROM judgment_log"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0002_0003_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0002_0003_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
 def test_region_has_d2_2_columns() -> None:
@@ -316,6 +359,16 @@ def test_postgres_0001_0002_roundtrip(pg_engine: Engine, postgres_url: str) -> N
     mp = pytest.MonkeyPatch()
     try:
         check_0001_0002_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
+
+
+@pytest.mark.postgres
+def test_postgres_0002_0003_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0002_0003_roundtrip(postgres_url, mp)
     finally:
         mp.undo()
     assert autogen_diff(pg_engine) == []
