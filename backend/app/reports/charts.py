@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Final
 
 from app.core.contracts_gen import Fact
-from app.reports.data import COMPONENT_LABELS, ChartSpec, ReportData
+from app.reports.data import COMPONENT_LABELS, ChartSpec, ReportData, ScenarioBlock
 from app.reports.fmt import fact_label_text, fact_value_text, fmt_score, round_half_up
 
 __all__ = ["build_charts"]
@@ -23,6 +23,7 @@ MUTED: Final = "rgb(75 85 99)"
 BORDER: Final = "rgb(209 213 219)"
 STRONG: Final = "rgb(29 78 216)"
 GRAYED: Final = "rgb(156 163 175)"
+VIRTUAL: Final = "가상 후보"
 
 
 def _base() -> dict[str, Any]:
@@ -48,8 +49,11 @@ def _num(f: Fact) -> float | None:
     return float(f.v) if isinstance(f.v, (int, float)) else None
 
 
-def _prob_item(f: Fact, *, unresolved: bool = False, suffix: str | None = None) -> dict[str, Any]:
-    """확률 막대 한 칸: 값은 소수 2자리 반올림(ROUND_HALF_UP), 라벨 = '0.35 추정[ · 덧말]'(표와 같은 문자열).
+def _prob_item(
+    f: Fact, *, unresolved: bool = False, suffix: str | None = None, extra: str | None = None
+) -> dict[str, Any]:
+    """확률 막대 한 칸: 값은 소수 2자리 반올림(ROUND_HALF_UP),
+    라벨 = '0.35 추정[ · 덧말][ · 가상 후보]'(표와 같은 문자열).
 
     option 은 JSON 이라 formatter 함수를 못 쓴다 — 칸마다 문자열 formatter 를 둔다. 미해결이면 '미해결'."""
     v = _num(f)
@@ -59,8 +63,13 @@ def _prob_item(f: Fact, *, unresolved: bool = False, suffix: str | None = None) 
     elif value is None:
         text = fact_label_text(f)
     else:
-        text = f"{fact_value_text(f)} {f.label}" + (f" · {suffix}" if suffix else "")
+        text = " · ".join(x for x in (f"{fact_value_text(f)} {f.label}", suffix, extra) if x)
     return {"value": value, "label": {"show": True, "formatter": text}}
+
+
+def _scope_item(text: str) -> dict[str, Any]:
+    """판정 대상이 아닌 단지의 칸: 길이 없음 + '판정 범위: …' 라벨(확률을 그리지 않는다, D9-1)."""
+    return {"value": None, "label": {"show": True, "formatter": text, "fontSize": 9}}
 
 
 def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
@@ -128,13 +137,17 @@ def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
 
 
 def c01_ladder(data: ReportData) -> ChartSpec | None:
-    """C1 상승 확률 사다리(입주 후 1년): TOP 5 단지 막대 4개(+5/+10/+20/보합·하락), 임계선 0.15·0.85."""
+    """C1 상승 확률 사다리(입주 후 1년): TOP 5 단지 막대 4개(+5/+10/+20/보합·하락), 임계선 0.15·0.85.
+
+    '판정 대상'이 아닌 TOP 5 단지(참고·보류·미해결·제외)는 확률 없이 '판정 범위: <표시 문구>' 칸만(D9-1)."""
     top_ids = [s.complex_id for s in data.top5]
     ladders = [lad for cid in top_ids for lad in data.ladders if lad.complex_id == cid]
-    if not ladders:
+    out_ids = {c.id for c in data.ladder_scoped_out}
+    scoped = [data.complex_by_id[cid] for cid in top_ids if cid in out_ids and cid in data.complex_by_id]
+    if not ladders and not scoped:
         return None
     cats = ["+5%", "+10%", "+20%", "보합·하락"]
-    series = []
+    series: list[dict[str, Any]] = []
     for i, lad in enumerate(ladders):
         unresolved = lad.status != "ok"
         vals = [
@@ -168,6 +181,17 @@ def c01_ladder(data: ReportData) -> ChartSpec | None:
                 ),
             }
         )
+    for cx in scoped:
+        label = f"판정 범위: {cx.judge_scope_text}"
+        series.append(
+            {
+                "type": "bar",
+                "name": f"{cx.name} ({label})",
+                "itemStyle": {"color": GRAYED},
+                "label": {"show": True, "position": "right", "fontSize": 9},
+                "data": [_scope_item(label) for _ in cats],
+            }
+        )
     option = _base() | {
         "grid": {"left": 80, "right": 40, "top": 56, "bottom": 24},
         "xAxis": {"type": "value", "min": 0, "max": 1, **_axis()},
@@ -175,7 +199,10 @@ def c01_ladder(data: ReportData) -> ChartSpec | None:
         "series": series,
     }
     cols = ["단지", "목표 시점", "+5%", "+10%", "+20%", "보합·하락", "판정"]
-    table = [[lad.name, lad.target_ym, lad.p5, lad.p10, lad.p20, lad.p_flat, lad.status] for lad in ladders]
+    table: list[list[Any]] = [
+        [lad.name, lad.target_ym, lad.p5, lad.p10, lad.p20, lad.p_flat, lad.status] for lad in ladders
+    ]
+    table += [[cx.name, "—", cx.scope_note, "—", "—", "—", "사다리 미실행"] for cx in scoped]
     return ChartSpec(
         id="c01",
         title="상승 확률 사다리(C1) — 입주 후 1년",
@@ -187,9 +214,15 @@ def c01_ladder(data: ReportData) -> ChartSpec | None:
     )
 
 
-def c07_decision(data: ReportData) -> ChartSpec | None:
-    """C7 판정기 확률(기본 시나리오 decide): 선택지별 확률 막대, confidence < 0.6 이면 동률 표시."""
-    block = next((b for b in data.scenarios if b.code == data.scenario_code), None)
+def c07_decision(data: ReportData, block: ScenarioBlock | None = None) -> ChartSpec | None:
+    """C7 판정기 확률(시나리오 decide): 선택지별 확률 막대, confidence < 0.6 이면 동률 표시.
+
+    ``block`` 생략 = 보고서 시나리오(id ``c07``), 그 밖 시나리오는 id ``c07_<코드>``.
+    가상 후보 '모집공고 대기'(wait_new, 계약 .5)는 단지 후보처럼 선택·확률을 보이고
+    '가상 후보' 표시를 단다(프론트 C07 과 같음)."""
+    main = block is None
+    if block is None:
+        block = next((b for b in data.scenarios if b.code == data.scenario_code), None)
     if block is None or not block.decisions:
         return None
     items = [d for d in block.decisions if _num(d.prob) is not None]
@@ -205,7 +238,7 @@ def c07_decision(data: ReportData) -> ChartSpec | None:
                 "name": "decide 확률",
                 "label": {"show": True, "position": "right", "fontSize": 9},
                 "data": [
-                    _prob_item(d.prob, suffix="동률" if d.tie else None)
+                    _prob_item(d.prob, suffix="동률" if d.tie else None, extra=VIRTUAL if d.virtual else None)
                     | {"itemStyle": {"color": STRONG if d.chosen else GRAYED}}
                     for d in items
                 ],
@@ -214,10 +247,13 @@ def c07_decision(data: ReportData) -> ChartSpec | None:
     }
     conf = fmt_score(block.confidence.v) if isinstance(block.confidence.v, (int, float)) else "미제공"
     sub = f"confidence {conf}" + (" · 동률(confidence < 0.6 → 상위 2개 함께 선택)" if block.tie else "")
-    cols = ["선택지", "확률", "선택", "동률"]
-    table = [[d.option, d.prob, "선택" if d.chosen else "", "동률" if d.tie else ""] for d in items]
+    cols = ["선택지", "확률", "선택", "동률", "구분"]
+    table: list[list[Any]] = [
+        [d.option, d.prob, "선택" if d.chosen else "", "동률" if d.tie else "", VIRTUAL if d.virtual else ""]
+        for d in items
+    ]
     return ChartSpec(
-        id="c07",
+        id="c07" if main else f"c07_{block.code}",
         title=f"판정기 확률(C7) — {block.name}",
         subtitle=sub,
         option=option,
@@ -225,6 +261,12 @@ def c07_decision(data: ReportData) -> ChartSpec | None:
         rows=table,
         height=320,
     )
+
+
+def c07_by_scenario(data: ReportData) -> list[ChartSpec]:
+    """보고서 시나리오 밖 상황별 C7(§8-2 상황마다 하나)."""
+    out = [c07_decision(data, b) for b in data.scenarios if b.code != data.scenario_code]
+    return [c for c in out if c is not None]
 
 
 def c04_supply(data: ReportData) -> ChartSpec | None:
@@ -270,4 +312,4 @@ def c04_supply(data: ReportData) -> ChartSpec | None:
 
 def build_charts(data: ReportData) -> list[ChartSpec]:
     out = [c(data) for c in (c04_supply, c01_ladder, c06_score_breakdown, c07_decision)]
-    return [c for c in out if c is not None]
+    return [c for c in out if c is not None] + c07_by_scenario(data)

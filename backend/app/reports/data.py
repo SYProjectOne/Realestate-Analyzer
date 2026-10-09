@@ -2,7 +2,12 @@
 
 모든 수치는 ``Fact``(라벨·출처). 값이 있는데 출처 행이 없으면(T13, API ``FactMaker.missing`` 과 같은 규칙):
 ENV=dev → ``ReportProvenanceMissing``, ENV=prod → 경고 로그 + '확인 불가(출처 누락)'.
-판정 범위·현재 구매가는 ``app.reports.policy`` 의 함수 하나씩으로만 계산한다(F2 공용 함수로 한 줄 교체 지점).
+판정 범위·현재 구매가·표시 접수 행은 ``app.reports.policy``
+(= 공용 ``app.analysis.scope``·``price_view``)로만 계산한다.
+사다리 행·p10 은 '판정 대상' 단지만 표시·집계한다(D9-1 참여 규칙 — API ``load_bundles`` 와 같음).
+판정 범위·순위·총점·성분은 그 스냅샷 score_run 의 **저장값**(D10-1, ADR-8). 현재 사실로 계산한 범위가 저장값과
+다르면 '재판정 필요' 배지만 단다(한 행에 섞지 않는다). 저장값이 없는 단지(점수 행 없음)만
+현재 사실로 계산한다.
 
 읽기만 한다(판정기·점수 계산 없음, ADR-11). 사실 테이블(complex 등)은 현재값, 파생 테이블(intake_status,
 judgment_log, claim, score_*, ladder, decision)은 스냅샷별이다(RA §3). Fact.prov 접두어:
@@ -24,7 +29,6 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.analysis.price import judge_type, purchase_price
 from app.core.contracts_gen import Fact
 from app.core.logging import get_logger
 from app.core.protocols import CONTRACT_VERSION
@@ -57,14 +61,18 @@ from app.models import (
     Supply,
     Unsold,
 )
+from app.normalize.benchmark import SUBSTITUTE_NOTE
 from app.reports.errors import ReportBlocked, ReportNotFound, ReportProvenanceMissing
 from app.reports.fmt import make_fact, round_half_up, unknown_fact
 from app.reports.policy import (
     JUDGE_SCOPE_TEXT,
-    PriceSource,
-    current_price_source,
+    PriceView,
+    current_price,
     current_terms,
     judge_scope,
+    pick_intake,
+    scope_note,
+    shows_ladder,
 )
 
 __all__ = [
@@ -90,7 +98,6 @@ HORIZON_LABELS: Final[dict[str, str]] = {
     "asof_plus_3y": "기준일 + 3년",
     "asof_plus_5y": "기준일 + 5년",
 }
-INTAKE_PRIORITY: Final = ("human_check", "official_popup", "headless_shot")
 PATH_LABELS: Final[dict[str, str]] = {
     "human_check": "사람 확인",
     "official_popup": "공식 팝업",
@@ -149,6 +156,7 @@ def is_valid_url(url: str | None) -> bool:
 
 @dataclass(slots=True)
 class IntakeView:
+    id: int
     status: str
     path: str
     path_label: str
@@ -283,8 +291,23 @@ class ComplexView:
     intake: list[IntakeView]
     intake_shown: IntakeView | None
     date_facts: list[tuple[str, Fact]]  # 접수·계약·중도금 일정(캘린더)
-    judge_scope: str  # policy.judge_scope (D9-1)
+    judge_scope: str  # 표시 범위 = 스냅샷 저장값(score_total.judge_scope), 없으면 현재 사실로 계산(D10-1)
     judge_scope_text: str
+    scope_reason: str = ""  # 범위 사유
+    scope_note: str = ""  # '판정 범위: <표시 문구> — <사유>'(사다리·확률 자리 표시)
+    scope_source: str = "현재 사실"  # '스냅샷 저장값' | '현재 사실'(저장값 없음)
+    current_scope: str = ""  # 현재 사실로 계산한 범위(policy.judge_scope, D9-1)
+    current_scope_text: str = ""
+    current_reason: str = ""
+
+    @property
+    def rejudge_needed(self) -> bool:
+        """저장값과 현재 사실의 범위가 다르다(D10-1 '재판정 필요' 배지)."""
+        return self.scope_source == "스냅샷 저장값" and self.current_scope != self.judge_scope
+
+    @property
+    def rejudge_text(self) -> str:
+        return f"재판정 필요 — 현재 사실로는 {self.current_scope_text}({self.current_reason})"
 
     @property
     def current_payment(self) -> PaymentView | None:
@@ -337,6 +360,19 @@ class BenchmarkView:
     trade_median: Fact
     change_pct: Fact
     is_presale: bool
+    substitute: bool = False  # 생활권 자체 표본 0 → 지역 전체 표본 복사 행(D9-2, 추정)
+
+
+@dataclass(slots=True)
+class BenchmarkArea:
+    """생활권 하나의 벤치마크(N-M3·N-M4): 자체 행·대체 행을 나눠 세고, 행이 없으면 사유."""
+
+    living_area_name: str
+    rows: list[BenchmarkView]
+    own_n: int  # 자체 표본 행(대체 아님)
+    substitute_n: int  # 지역 전체 대체 행(다른 생활권 표본의 복사 — 지역 집계에 다시 세지 않는다)
+    recent: bool  # 최근 3년 분양분 사례(자체 행 기준, 자체 0 이면 대체 행 기준)
+    empty_reason: str | None  # 행이 하나도 없을 때 '벤치마크 없음(사유)'
 
 
 @dataclass(slots=True)
@@ -381,6 +417,7 @@ class DecisionView:
     option: str
     complex_id: int | None
     prob: Fact
+    virtual: bool  # 가상 후보 '모집공고 대기'(wait_new, 계약 .5)
     chosen: bool
     tie: bool
     mismatch: bool
@@ -400,6 +437,21 @@ class ScenarioBlock:
     warnings: list[str]
     judgment_seq: int | None
     tie: bool
+    wait_new_evidence: str | None = None  # decide 입력의 [wait_new] 근거 블록(공고 예정 목록 요약)
+
+    @property
+    def has_wait_new(self) -> bool:
+        return any(d.virtual for d in self.decisions)
+
+    @property
+    def picked(self) -> list[str]:
+        """판정기 선택(동률이면 여럿)."""
+        return [d.option for d in self.decisions if d.chosen]
+
+    @property
+    def runner_up(self) -> list[DecisionView]:
+        """차순위: 선택되지 않은 후보 중 확률이 있는 것(확률 순, 최대 3)."""
+        return [d for d in self.decisions if not d.chosen and isinstance(d.prob.v, (int, float))][:3]
 
 
 @dataclass(slots=True)
@@ -504,12 +556,14 @@ class ReportData:
     stage_counts: list[dict[str, Any]]
     benchmarks: list[BenchmarkView]
     recent_sale_cases: dict[str, bool]
+    benchmark_areas: list[BenchmarkArea]
     catalysts: list[CatalystView]
     conflicts: list[ConflictView]
     supply: list[SupplyView]
     unsold: list[UnsoldView]
     ladders: list[LadderView]
     ladder_other: dict[int, list[LadderView]]
+    ladder_scoped_out: list[ComplexView]  # 사다리 자리에 '판정 범위: …'를 쓰는 단지(점수 행·남은 사다리 행)
     rerank_seq: int | None
     rerank_rows: list[tuple[str, Fact, Fact]]
     scores: list[ScoreView]
@@ -767,13 +821,12 @@ class _Loader:
                 if t.complex_id == c.id
             ]
             my_types = [t for t in types if t.complex_id == c.id]
-            basis_code = judge_type((t.type_code, t.area_m2) for t in my_types)
-            basis = next((tv for tv in tviews if tv.type_code == basis_code), None)
+            my_pays = [p for p in pays if p.complex_id == c.id]
+            view = current_price(my_types, my_pays)
+            basis = next((tv for tv in tviews if tv.type_code == view.basis_type_code), None)
             if basis is not None:
                 basis.is_basis = True
-            my_pays = [p for p in pays if p.complex_id == c.id]
-            basis_row = next((t for t in my_types if t.type_code == basis_code), None)
-            low, high = self._price(basis, current_price_source(basis_row, my_pays))
+            low, high = self._price(view, my_pays)
             cur_terms = current_terms(my_pays)
             pviews = [
                 PaymentView(
@@ -817,8 +870,11 @@ class _Loader:
                 for e in events
                 if e.complex_id == c.id
             ]
+            my_intakes = [i for i in intakes if i.complex_id == c.id]
+            shown_row = pick_intake(my_intakes)
             iviews = [
                 IntakeView(
+                    id=i.id,
                     status=i.status,
                     path=i.path,
                     path_label=PATH_LABELS.get(i.path, i.path),
@@ -827,18 +883,11 @@ class _Loader:
                     reason=i.reason,
                     evidence_url=i.evidence_url,
                     note=i.note,
-                    used=False,
+                    used=shown_row is not None and i.id == shown_row.id,
                 )
-                for i in intakes
-                if i.complex_id == c.id
+                for i in my_intakes
             ]
-            shown = None
-            for path in INTAKE_PRIORITY:
-                cand = [i for i in iviews if i.path == path]
-                if cand:
-                    shown = max(cand, key=lambda i: i.checked_at)
-                    shown.used = True
-                    break
+            shown = next((i for i in iviews if i.used), None)
             incl_prob = (
                 make_fact(
                     _num(c.inclusion_prob),
@@ -854,8 +903,8 @@ class _Loader:
             scope = judge_scope(
                 inclusion_class=c.inclusion_class,
                 inclusion_decision=c.inclusion_decision,
-                has_price=high.v is not None,
-                intake_status=shown.status if shown is not None else None,
+                has_price=view.known,
+                intake_status=shown_row.status if shown_row is not None else None,
             )
             my_events = [e for e in events if e.complex_id == c.id]
             out.append(
@@ -884,42 +933,50 @@ class _Loader:
                     intake=iviews,
                     intake_shown=shown,
                     date_facts=self._dates(c, my_pays, my_events),
-                    judge_scope=scope,
-                    judge_scope_text=JUDGE_SCOPE_TEXT[scope],
+                    judge_scope=scope.scope,
+                    judge_scope_text=scope.text,
+                    scope_reason=scope.reason,
+                    scope_note=scope_note(scope.text, scope.reason),
+                    current_scope=scope.scope,
+                    current_scope_text=scope.text,
+                    current_reason=scope.reason,
                 )
             )
         return out
 
-    def _price(self, basis: TypeView | None, src: PriceSource | None) -> tuple[Fact, Fact]:
+    def _price(self, view: PriceView, pays: Sequence[PaymentTerms]) -> tuple[Fact, Fact]:
         """§6-1 현재 구매가(84㎡ 판정 타입): (대표층 ~ 최고가) + 발코니 + 필수 옵션. 더하면 '추정(산술)'.
 
-        공급금액 원천은 ``policy.current_price_source`` 하나(최신 공고 price_by_type 우선,
-        없으면 complex_type).
+        값은 ``policy.current_price``(= ``analysis.price_view.current_price``) 하나 — 최신 공고
+        price_by_type 우선, 없으면 complex_type. 라벨·출처는 그 값을 만든 필드(``FieldRef``)의 채택 출처 행.
         """
-        if basis is None or src is None:
+        if view.basis_type_code is None:
             why = "판정 타입 없음"
             return unknown_fact(why, unit="won"), unknown_fact(why, unit="won")
-        P = self.prov
-        max_f = P.fact(*src.max_key, src.max_won, "won")
-        if max_f.v is None:
-            why = "최고가 확인 불가"
+        if not view.known or view.max_ref is None:
+            why = view.empty_reason or "최고가 확인 불가"
             return unknown_fact(why, unit="won"), unknown_fact(why, unit="won")
-        floor_f = P.fact(*src.floor_key, src.floor_won, "won") if src.floor_won is not None else None
-        if floor_f is not None and floor_f.v is None:
-            floor_f = None
-        b = int(basis.balcony.v or 0) if isinstance(basis.balcony.v, (int, float)) else 0
-        o = int(basis.options.v or 0) if isinstance(basis.options.v, (int, float)) else 0
-        floor = int(floor_f.v) if floor_f is not None and isinstance(floor_f.v, (int, float)) else None
-        top = int(max_f.v) if isinstance(max_f.v, (int, float)) else 0
-        pp = purchase_price(floor_won=floor, max_won=top, balcony_won=b, options_won=o)
+        P = self.prov
+        ref = view.max_ref
+        max_f = P.fact(ref.entity, ref.entity_id, ref.field, ref.value, "won")
+        if max_f.v is None:  # prod: 출처 누락 → '확인 불가(출처 누락)'
+            return max_f, max_f
+        floor_f = None
+        if view.floor_ref is not None:
+            fr = view.floor_ref
+            floor_f = P.fact(fr.entity, fr.entity_id, fr.field, fr.value, "won")
+            if floor_f.v is None:
+                floor_f = None
         low_src = floor_f if floor_f is not None else max_f
-        if b == 0 and o == 0:
+        if len(view.composition) <= 1:  # 공급가만(발코니·옵션 없음)
             return low_src, max_f
-        supply = f"공급금액(공고 {src.notice_no})" if src.notice_no else "공급금액"
+        notice = next((p.notice_no for p in pays if p.id == view.terms_id), None) if view.from_terms else None
+        supply = f"공급금액(공고 {notice})" if notice else "공급금액"
         reason = f"산술: {supply} + 발코니 + 필수 옵션"
+        low_won = view.low_won if floor_f is not None else view.high_won
         return (
-            make_fact(pp.low_won, "추정", low_src.prov, max_f.checked_at, unit="won", reason=reason),
-            make_fact(pp.high_won, "추정", max_f.prov, max_f.checked_at, unit="won", reason=reason),
+            make_fact(low_won, "추정", low_src.prov, max_f.checked_at, unit="won", reason=reason),
+            make_fact(view.high_won, "추정", max_f.prov, max_f.checked_at, unit="won", reason=reason),
         )
 
     def _dates(
@@ -1061,6 +1118,50 @@ def _scope_notes(views: Sequence[ScoreView], by_id: Mapping[int, ComplexView]) -
         if cx is None or cx.judge_scope == "판정 대상":
             continue
         v.note = _short(" · ".join(x for x in (cx.judge_scope_text, v.note) if x), 90)
+
+
+def _stored_scopes(session: Session, run: ScoreRun | None) -> dict[int, str]:
+    """그 스냅샷 점수 실행의 저장 범위(score_total.judge_scope, D10-1)."""
+    if run is None:
+        return {}
+    stmt = select(ScoreTotal.complex_id, ScoreTotal.judge_scope).where(
+        ScoreTotal.score_run_id == run.id, ScoreTotal.judge_scope.is_not(None)
+    )
+    return {cid: str(sc) for cid, sc in session.execute(stmt)}
+
+
+def _apply_stored_scopes(
+    complexes: Sequence[ComplexView], stored: Mapping[int, str], snapshot_id: int
+) -> None:
+    """표시 범위를 스냅샷 저장값으로(D10-1). 현재 사실 범위(current_*)는 '재판정 필요' 배지용으로만 남긴다."""
+    for cx in complexes:
+        value = stored.get(cx.id)
+        if value is None:
+            continue
+        cx.judge_scope = value
+        cx.judge_scope_text = next((t for k, t in JUDGE_SCOPE_TEXT.items() if k == value), value)
+        cx.scope_source = "스냅샷 저장값"
+        cx.scope_reason = (
+            cx.current_reason if value == cx.current_scope else f"스냅샷 {snapshot_id} 점수 실행 저장값"
+        )
+        cx.scope_note = scope_note(cx.judge_scope_text, cx.scope_reason)
+
+
+def _ladder_scoped_out(
+    ctx: _Ctx, scores: Sequence[ScoreView], all_ladders: Sequence[Ladder]
+) -> list[ComplexView]:
+    """사다리 자리에 '판정 범위: <사유>'를 쓰는 단지.
+
+    점수 행이 있거나 남은 사다리 행이 있는데 '판정 대상'이 아닌 것.
+
+    순서 = 종합 점수 순, 그다음 단지 id."""
+    order = [s.complex_id for s in scores] + sorted({lad.complex_id for lad in all_ladders})
+    out: list[ComplexView] = []
+    for cid in dict.fromkeys(order):
+        cx = ctx.by_id.get(cid)
+        if cx is not None and not shows_ladder(cx.judge_scope):
+            out.append(cx)
+    return out
 
 
 def _latest_run(session: Session, snapshot_id: int, scenario_id: int) -> ScoreRun | None:
@@ -1249,10 +1350,12 @@ def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[Suppl
                 trade_median=med,
                 change_pct=change,
                 is_presale=b.is_presale,
+                substitute=SUBSTITUTE_NOTE in (b.note or ""),
             )
         )
         has_case = not b.is_presale and b.sale_year is not None and bool(b.trade_median_won)
-        recent[la] = recent.get(la, False) or (has_case and (b.sale_year or 0) >= asof_year - 3)
+        if not views[-1].substitute:  # 대체 행은 원 생활권 사례 — 이 생활권 사례로 다시 세지 않는다(N-M4)
+            recent[la] = recent.get(la, False) or (has_case and (b.sale_year or 0) >= asof_year - 3)
     sviews = [
         SupplyView(
             living_area_name=ctx.loader.la_name(x.living_area),
@@ -1271,6 +1374,59 @@ def _market(ctx: _Ctx) -> tuple[list[BenchmarkView], dict[str, bool], list[Suppl
         for u in unsolds
     ]
     return views, recent, sviews, uviews
+
+
+BENCHMARK_EMPTY_DEFAULT: Final = "생활권·지역 전체 분양 사례 0 — 벤치마크 성분 미계산(D9-2)"
+
+
+def _benchmark_areas(
+    ctx: _Ctx, views: Sequence[BenchmarkView], scores: Sequence[ScoreView], asof: str
+) -> list[BenchmarkArea]:
+    """생활권별 벤치마크 묶음 — 지역 생활권 전부(행 없는 생활권 포함, '벤치마크 없음(사유)' N-M3).
+
+    사유 = 그 생활권 단지의 저장된 벤치마크 성분(score_component)이 미계산이면 그 산출식 문구,
+    없으면 기본 문구.
+    """
+    names = [ctx.loader.la_name(str(la.get("id"))) for la in ctx.region.living_areas or []]
+    names += [v.living_area_name for v in views if v.living_area_name not in names]
+    asof_year = int(asof[:4])
+    out: list[BenchmarkArea] = []
+    for la in dict.fromkeys(names):
+        rows = [v for v in views if v.living_area_name == la]
+        own = [v for v in rows if not v.substitute]
+        basis = own or rows
+        recent = any(
+            not v.is_presale
+            and isinstance(v.sale_year.v, (int, float))
+            and isinstance(v.trade_median.v, (int, float))
+            and int(v.sale_year.v) >= asof_year - 3
+            for v in basis
+        )
+        reason = None
+        if not rows:
+            comp = next(
+                (
+                    sv.components["benchmark"]
+                    for sv in scores
+                    if sv.living_area_name == la
+                    and "benchmark" in sv.components
+                    and sv.components["benchmark"].score.v is None
+                ),
+                None,
+            )
+            why = (comp.formula_text or comp.reason) if comp is not None else None
+            reason = f"벤치마크 없음({why or BENCHMARK_EMPTY_DEFAULT})"
+        out.append(
+            BenchmarkArea(
+                living_area_name=la,
+                rows=rows,
+                own_n=len(own),
+                substitute_n=len(rows) - len(own),
+                recent=recent,
+                empty_reason=reason,
+            )
+        )
+    return out
 
 
 def _catalysts(
@@ -1365,6 +1521,7 @@ def _decision_view(d: Decision, names: Mapping[int, str], asof: str) -> Decision
         else OPTION_LABELS.get(d.option_key, d.option_key),
         complex_id=d.complex_id,
         prob=_prob(d.prob, d.judgment_seq, asof, missing="판정기 확률 미기재"),
+        virtual=d.option_key == "wait_new",
         chosen=d.chosen,
         tie=d.tie,
         mismatch=d.mismatch,
@@ -1375,6 +1532,23 @@ def _decision_view(d: Decision, names: Mapping[int, str], asof: str) -> Decision
             "funds": d.req_funds_judge,
         },
     )
+
+
+WAIT_NEW_BLOCK: Final = re.compile(r"\[wait_new\][^\n]*\n?(.*?)(?=\n\n\[|\Z)", re.S)
+
+
+def wait_new_evidence(input_json: Mapping[str, Any] | None) -> str | None:
+    """decide 입력 evidence 의 ``[wait_new]`` 블록 본문(지역 (A) 트랙 공고 예정 목록 요약, 계약 .5).
+
+    없으면 None.
+
+    판정기에 보낸 입력 그대로(공개 정보) — 보고서가 다시 계산하지 않는다(스냅샷 저장값, D10-1)."""
+    ev = (input_json or {}).get("evidence")
+    if not isinstance(ev, str):
+        return None
+    m = WAIT_NEW_BLOCK.search(ev)
+    body = m.group(1).strip() if m else ""
+    return body or None
 
 
 def _scenario_blocks(
@@ -1399,6 +1573,12 @@ def _scenario_blocks(
         dviews = sorted((_decision_view(d, ctx.names, ctx.asof) for d in mine), key=order)
         seq = mine[0].judgment_seq if mine else None
         conf = mine[0].confidence if mine else None
+        log = ctx.session.get(JudgmentLog, seq) if seq is not None else None
+        evidence = (
+            wait_new_evidence(log.input_json)
+            if log is not None and any(d.option_key == "wait_new" for d in mine)
+            else None
+        )
         blocks.append(
             ScenarioBlock(
                 code=sc.code or str(sc.id),
@@ -1411,6 +1591,7 @@ def _scenario_blocks(
                 warnings=list(mine[0].warnings or []) if mine else [],
                 judgment_seq=seq,
                 tie=any(d.tie for d in mine),
+                wait_new_evidence=evidence,
             )
         )
     return blocks
@@ -1595,6 +1776,10 @@ def load_report(
     loader = _Loader(session, snap, region, scenario, compare, get_settings().env)
     ids = loader.scope_ids()
     complexes = loader.complexes(ids)
+    scenarios = list(session.scalars(select(Scenario).order_by(Scenario.id)))
+    runs = {sc.id: r for sc in scenarios if (r := _latest_run(session, snap.id, sc.id)) is not None}
+    run = runs.get(scenario.id)
+    _apply_stored_scopes(complexes, _stored_scopes(session, run), snap.id)
     names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.region_id == region.id))}
     ctx = _Ctx(
         session, snap, region, loader, ids, complexes, {c.id: c for c in complexes}, names, snap.asof_date
@@ -1607,10 +1792,14 @@ def load_report(
 
     logs = loader.calls()
     seq_status = {j.seq: j.status for j in logs}
-    scenarios = list(session.scalars(select(Scenario).order_by(Scenario.id)))
-    runs = {sc.id: r for sc in scenarios if (r := _latest_run(session, snap.id, sc.id)) is not None}
-    run = runs.get(scenario.id)
-    ladders = list(session.scalars(select(Ladder).where(Ladder.snapshot_id == snap.id)))
+    # D9-1 참여 규칙: 사다리는 '판정 대상'만. 다른 범위 단지의 남은 사다리 행(이전 범위의 판정·이월)은
+    # 표(§6·§7·§8)·C1·부록 A 반영 위치 어디에도 쓰지 않는다(API ``views.load_bundles`` 와 같은 규칙).
+    all_ladders = list(session.scalars(select(Ladder).where(Ladder.snapshot_id == snap.id)))
+    ladders = [
+        lad
+        for lad in all_ladders
+        if lad.complex_id in ctx.by_id and shows_ladder(ctx.by_id[lad.complex_id].judge_scope)
+    ]
     decisions = [
         d
         for r in runs.values()
@@ -1631,6 +1820,7 @@ def load_report(
     ladder_views, ladder_other = _ladder_views(ctx, ladders)
     scores = _score_views(session, run, names, la_of)
     _scope_notes(scores, ctx.by_id)
+    scoped_out = _ladder_scoped_out(ctx, scores, all_ladders)
     rerank_rows = sorted(
         (
             (s.name, s.components["rerank"].raw, s.components["rerank"].score)
@@ -1674,7 +1864,7 @@ def load_report(
                 inclusion_class=cx.inclusion_class,
                 decision=cx.inclusion_decision,
                 prob=cx.inclusion_prob,
-                unresolved=cx.judge_scope == "미해결",
+                unresolved=cx.current_scope == "미해결",
                 scope_text=cx.judge_scope_text,
             )
             for cx in complexes
@@ -1683,12 +1873,14 @@ def load_report(
         stage_counts=stage_counts,
         benchmarks=benchmarks,
         recent_sale_cases=recent,
+        benchmark_areas=_benchmark_areas(ctx, benchmarks, scores, snap.asof_date),
         catalysts=cat_views,
         conflicts=_conflicts(ctx, seq_status),
         supply=supply,
         unsold=unsold,
         ladders=ladder_views,
         ladder_other=ladder_other,
+        ladder_scoped_out=scoped_out,
         rerank_seq=run.rerank_judgment_seq if run else None,
         rerank_rows=rerank_rows,
         scores=scores,
