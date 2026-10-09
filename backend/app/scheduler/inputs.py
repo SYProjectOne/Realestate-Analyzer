@@ -23,7 +23,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Final, cast
+from typing import Any, Final, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -61,7 +61,7 @@ from app.models import (
     Supply,
     Unsold,
 )
-from app.normalize.fields import is_ocr
+from app.normalize.fields import OCR_LABEL, OCR_REASON, is_ocr
 from app.normalize.living_area import living_area_of, region_household_facts
 
 __all__ = [
@@ -167,20 +167,30 @@ def _chosen_provenance(
     return out
 
 
-def ocr_pending_fields(session: Session, entity: str, ids: Sequence[int]) -> dict[int, frozenset[str]]:
+def ocr_pending_fields(
+    session: Session, entity: str, ids: Sequence[int], *, id_query: Any | None = None
+) -> dict[int, frozenset[str]]:
     """entity_id → 판정기 추출 전 OCR 값 필드들(chosen 출처 행이 OCR 판독, ``normalize.fields.is_ocr``).
 
-    extract 가 반영되면 chosen 이 추출 행으로 바뀌므로 여기서 빠진다. screen 거부·extract 실패·review 면 남는다."""
+    extract 가 반영되면 chosen 이 추출 행으로 바뀌므로 여기서 빠진다. screen 거부·extract 실패·review 면 남는다.
+    ``id_query``: ids 대신 쓸 id 하위 질의(지역 단지 전부 — IN 목록 펼침 없음)."""
     want = sorted(set(ids))
     out: dict[int, set[str]] = defaultdict(set)
-    for i in range(0, len(want), 500):
+    conds = (
+        [FieldProvenance.entity_id.in_(id_query)]
+        if id_query is not None
+        else [FieldProvenance.entity_id.in_(want[i : i + 500]) for i in range(0, len(want), 500)]
+    )
+    for cond in conds:
         stmt = select(
             FieldProvenance.entity_id, FieldProvenance.field, FieldProvenance.label, FieldProvenance.reason
         ).where(
             FieldProvenance.entity == entity,
-            FieldProvenance.entity_id.in_(want[i : i + 500]),
+            cond,
             FieldProvenance.chosen.is_(True),
-            FieldProvenance.label == "추정",
+            FieldProvenance.label == OCR_LABEL,
+            # reason 이 'OCR'(앞 표식 뒤)로 끝나는 행만 — 아래 is_ocr 가 정확히 가린다(SQL 은 줄이기만, 목록 성능)
+            FieldProvenance.reason.like(f"%{OCR_REASON}"),
         )
         for eid, name, label, reason in session.execute(stmt):
             if eid is not None and is_ocr(label, reason):

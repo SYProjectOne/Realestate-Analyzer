@@ -275,7 +275,7 @@ def list_rows(
     region = session.get(Region, snap.region_id)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
     bundles = load_bundles(session, complexes, snap.id, scenario_id=scenario.id)
-    ctx = score_ctx(session, snap.id, scenario)
+    ctx = score_ctx(session, snap.id, scenario, with_flags=False)
     rows = [r for r in complex_rows_data(bundles, ctx) if _match(r, filters)]
     last = last_changes(session, [r.b.cx.id for r in rows])
     rows = sort_rows(rows, sort, {k: v.detected_at for k, v in last.items()})
@@ -291,7 +291,7 @@ def build_rows(
     last: Mapping[int, ChangeEvent],
 ) -> list[dict[str, Any]]:
     bundles: list[ComplexBundle] = [r.b for r in rows]
-    fm = FactMaker(settings_of(request), provenance_for(session, bundles))
+    fm = FactMaker(settings_of(request), provenance_for(session, bundles, list_rows=True))
     days = ladder_days(session, bundles)
     days.update(ctx.jl_days)
     from app.api.views import judgment_days

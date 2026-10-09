@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, null, select
 from sqlalchemy.orm import Session
 
 from app.analysis import price_view as pv
@@ -280,11 +280,27 @@ class ComplexBundle:
     """이 스냅샷이 지역의 최신(기준일·리비전)인가 — 과거 스냅샷은 오늘 사실과 비교하지 않는다(minor 5)."""
     ocr_pending: dict[tuple[str, int], frozenset[str]] = field(default_factory=dict)
     """판정기 추출 전 OCR 값 필드((entity, id) → 필드들) — 점수 입력에서 null(R3 C3, 파이프라인과 같은 규칙)."""
+    price_memo: tuple[tuple[int, int, int, int], Any] | None = field(default=None, repr=False, compare=False)
+    """``bundle_price`` 계산 결과(같은 types·payments 목록이면 다시 계산하지 않는다 — 목록 화면 성능)."""
 
 
 def _chunks(ids: Sequence[int], n: int = 500) -> Iterable[Sequence[int]]:
     for i in range(0, len(ids), n):
         yield ids[i : i + n]
+
+
+def _region_scope(session: Session, snap: Snapshot | None, out: Mapping[int, ComplexBundle]) -> Any | None:
+    """묶음이 그 스냅샷 지역의 단지 **전부**면 지역 단지 id 하위 질의, 아니면 None."""
+    if snap is None or len(out) < 500:  # 작은 묶음은 IN 목록이 싸다
+        return None
+    if any(b.cx.region_id != snap.region_id for b in out.values()):
+        return None
+    total = session.scalar(
+        select(func.count()).select_from(Complex).where(Complex.region_id == snap.region_id)
+    )
+    if total != len(out):
+        return None
+    return select(Complex.id).where(Complex.region_id == snap.region_id)
 
 
 def load_bundles(
@@ -303,26 +319,35 @@ def load_bundles(
     asof = snap.asof_date if snap is not None else None
     out = {c.id: ComplexBundle(c, asof_date=asof) for c in complexes}
     ids = list(out)
-    for chunk in _chunks(ids):
-        for t in session.scalars(
-            select(ComplexType).where(ComplexType.complex_id.in_(chunk)).order_by(ComplexType.id)
-        ):
-            out[t.complex_id].types.append(t)
-        for p in session.scalars(
-            select(PaymentTerms).where(PaymentTerms.complex_id.in_(chunk)).order_by(PaymentTerms.id)
-        ):
-            out[p.complex_id].payments.append(p)
+    region_ids = _region_scope(session, snap, out)
+
+    def where_in(col: Any) -> list[Any]:
+        """단지 id 조건: 지역 단지 전부면 하위 질의 하나(IN 목록 펼침 없음 — 목록 화면 성능), 아니면 500개씩."""
+        if region_ids is not None:
+            return [col.in_(region_ids)]
+        return [col.in_(chunk) for chunk in _chunks(ids)]
+
+    for cond in where_in(ComplexType.complex_id):
+        for t in session.scalars(select(ComplexType).where(cond).order_by(ComplexType.id)):
+            if t.complex_id in out:
+                out[t.complex_id].types.append(t)
+    for cond in where_in(PaymentTerms.complex_id):
+        for p in session.scalars(select(PaymentTerms).where(cond).order_by(PaymentTerms.id)):
+            if p.complex_id in out:
+                out[p.complex_id].payments.append(p)
+    for cond in where_in(IntakeStatus.complex_id):
         for i in session.scalars(
             select(IntakeStatus)
-            .where(IntakeStatus.complex_id.in_(chunk), IntakeStatus.snapshot_id == snapshot_id)
+            .where(cond, IntakeStatus.snapshot_id == snapshot_id)
             .order_by(IntakeStatus.id)
         ):
-            out[i.complex_id].intake.append(i)
-        if with_ladders:
-            for lad in session.scalars(
-                select(Ladder).where(Ladder.complex_id.in_(chunk), Ladder.snapshot_id == snapshot_id)
-            ):
-                out[lad.complex_id].ladders.append(lad)
+            if i.complex_id in out:
+                out[i.complex_id].intake.append(i)
+    if with_ladders:
+        for cond in where_in(Ladder.complex_id):
+            for lad in session.scalars(select(Ladder).where(cond, Ladder.snapshot_id == snapshot_id)):
+                if lad.complex_id in out:
+                    out[lad.complex_id].ladders.append(lad)
     run_stmt = select(ScoreRun.id).where(ScoreRun.snapshot_id == snapshot_id)
     if scenario_id is not None:
         run_stmt = run_stmt.where(ScoreRun.scenario_id == scenario_id)
@@ -341,11 +366,11 @@ def load_bundles(
             b.scored_run = True
         run_at = session.scalar(select(ScoreRun.created_at).where(ScoreRun.id == last_run))
         if run_at:
-            for chunk in _chunks(ids):
+            for cond in where_in(ChangeEvent.complex_id):
                 for (cid,) in session.execute(
                     select(ChangeEvent.complex_id)
                     .where(
-                        ChangeEvent.complex_id.in_(chunk),
+                        cond,
                         ChangeEvent.triggers_rejudge.is_(True),
                         ChangeEvent.detected_at > run_at,
                     )
@@ -353,16 +378,17 @@ def load_bundles(
                 ):
                     if cid in out:
                         out[cid].changed_after_run = True
-        for chunk in _chunks(ids):
+        for cond in where_in(ScoreTotal.complex_id):
             # 저장 범위 = 이 스냅샷 마지막 점수 실행의 score_total.judge_scope(D10-1 — 한 실행의 시나리오는 같은 범위)
             for cid, scope in session.execute(
                 select(ScoreTotal.complex_id, ScoreTotal.judge_scope).where(
                     ScoreTotal.score_run_id == last_run,
-                    ScoreTotal.complex_id.in_(chunk),
+                    cond,
                     ScoreTotal.judge_scope.is_not(None),
                 )
             ):
-                out[cid].stored_scope = scope
+                if cid in out:
+                    out[cid].stored_scope = scope
     # D11-3 강등 오버레이: 강등 중인 사실 필드는 묶음 행에서 None 으로 보인다(점수 입력·범위·CSV·정렬 공통). Fact 의
     # '확인 불가(검증 모순)' 표시는 ``ProvIndex``(같은 오버레이)가 한다. 읽기 전용 감싸개 — DB 쓰기 없음
     from app.facts_view import load_overlay
@@ -380,8 +406,15 @@ def load_bundles(
         ("complex_type", [(t.complex_id, t.id) for b in out.values() for t in b.types]),
         ("payment_terms", [(p.complex_id, p.id) for b in out.values() for p in b.payments]),
     ]
+    scopes: dict[str, Any] = {}
+    if region_ids is not None:
+        scopes = {
+            "complex": region_ids,
+            "complex_type": select(ComplexType.id).where(ComplexType.complex_id.in_(region_ids)),
+            "payment_terms": select(PaymentTerms.id).where(PaymentTerms.complex_id.in_(region_ids)),
+        }
     for entity, rows in targets:
-        pending = ocr_pending_fields(session, entity, [eid for _, eid in rows])
+        pending = ocr_pending_fields(session, entity, [eid for _, eid in rows], id_query=scopes.get(entity))
         for cid, eid in rows:
             if eid in pending:
                 out[cid].ocr_pending[(entity, eid)] = pending[eid]
@@ -417,8 +450,15 @@ def price_numbers(t: ComplexType | None) -> tuple[int | None, int | None]:
 
 
 def bundle_price(b: ComplexBundle) -> pv.PriceView:
-    """§6-1 현재 구매가(최신 payment_terms.price_by_type 우선) — 파이프라인·보고서와 같은 함수(R3 M3)."""
-    return pv.current_price(b.types, b.payments)
+    """§6-1 현재 구매가(최신 payment_terms.price_by_type 우선) — 파이프라인·보고서와 같은 함수(R3 M3).
+    같은 묶음(같은 types·payments 목록)이면 한 번만 계산한다."""
+    key = (id(b.types), len(b.types), id(b.payments), len(b.payments))
+    if b.price_memo is not None and b.price_memo[0] == key:
+        view: pv.PriceView = b.price_memo[1]
+        return view
+    view = pv.current_price(b.types, b.payments)
+    b.price_memo = (key, view)
+    return view
 
 
 def _masked_types(b: ComplexBundle) -> list[Any]:
@@ -654,8 +694,14 @@ def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None =
             fp.label if fp is not None and not fm.prov.demoted(ref.entity, ref.entity_id, ref.field) else None
         )
 
-    view = pv.current_price(b.types, b.payments, discount_label=disc_label)
-    t = basis_type(b.types)
+    view = bundle_price(b)
+    if view.discount_ref is not None:  # 할인이 있을 때만 출처 라벨로 다시 계산(없으면 같은 값 — 목록 성능)
+        view = pv.current_price(b.types, b.payments, discount_label=disc_label)
+    t = (
+        next((x for x in b.types if x.type_code == view.basis_type_code), None)
+        if view.basis_type_code
+        else None
+    )
     if t is None or not view.known:
         reason = view.empty_reason or "분양가 미공개"
         if notice is not None and notice["label"] == LABEL_UNKNOWN and notice.get("reason"):
@@ -964,9 +1010,22 @@ def latest_run(session: Session, snapshot_id: int, scenario_id: int) -> ScoreRun
     ).first()
 
 
+def _light_rows(session: Session, stmt: Any, model: Any, skip: frozenset[str] = frozenset()) -> list[Any]:
+    """``select(Model)`` 문장 → 같은 열 이름으로 읽는 읽기 전용 행(SQLAlchemy Row — 속성 접근). ORM 객체를 만들지
+    않는다. ``skip`` 열은 읽지 않고 null 로 둔다."""
+    cols = [null().label(c.key) if c.key in skip else c for c in model.__table__.columns]
+    return list(session.execute(stmt.with_only_columns(*cols)))
+
+
 def score_ctx(
-    session: Session, snapshot_id: int, scenario: Scenario, *, complex_ids: Sequence[int] | None = None
+    session: Session,
+    snapshot_id: int,
+    scenario: Scenario,
+    *,
+    complex_ids: Sequence[int] | None = None,
+    with_flags: bool = True,
 ) -> ScoreCtx:
+    """``with_flags=False``: 성분 flags(JSON — 상세 화면 gap 보정 표식)를 읽지 않는다(목록 화면 성능)."""
     run = latest_run(session, snapshot_id, scenario.id)
     ctx = ScoreCtx(run=run, scenario=scenario)
     if run is None:
@@ -979,9 +1038,11 @@ def score_ctx(
         comp_stmt = comp_stmt.where(ScoreComponent.complex_id.in_(ids))
         tot_stmt = tot_stmt.where(ScoreTotal.complex_id.in_(ids))
         dec_stmt = dec_stmt.where(Decision.complex_id.in_(ids))
-    for c in session.scalars(comp_stmt):
+    # 점수 행은 읽기만 한다 — ORM 객체 대신 열 값 묶음(목록 화면 1,000단지 × 성분 7개, T16 성능)
+    skip = frozenset() if with_flags else frozenset({"flags"})
+    for c in _light_rows(session, comp_stmt, ScoreComponent, skip):
         ctx.components.setdefault(c.complex_id, {})[c.component] = c
-    for t in session.scalars(tot_stmt):
+    for t in _light_rows(session, tot_stmt, ScoreTotal):
         ctx.totals[t.complex_id] = t
     for d in session.scalars(dec_stmt):
         if d.complex_id is not None:
@@ -1265,12 +1326,31 @@ def complex_row(
     }
 
 
-def provenance_for(session: Session, bundles: Iterable[ComplexBundle]) -> ProvIndex:
-    """단지 묶음의 사실 행 출처를 한 번에 읽는다."""
+LIST_COMPLEX_FIELDS: frozenset[str] = frozenset(
+    {
+        "notice_date", "winner_date", "resale_months", "resale_release_on_registration", "move_in_ym",
+        "land_type", "price_cap", "regulated", "residency_months", "units_total",
+    }
+)  # fmt: skip
+"""목록 행(``complex_row``)이 Fact 로 쓰는 단지 필드 — 목록 화면은 이 필드 출처만 읽는다(T16 성능)."""
+
+
+def provenance_for(
+    session: Session, bundles: Iterable[ComplexBundle], *, list_rows: bool = False
+) -> ProvIndex:
+    """단지 묶음의 사실 행 출처를 한 번에 읽는다.
+
+    ``list_rows``: 목록 행(``complex_row``)에 필요한 것만 — 단지 필드 ``LIST_COMPLEX_FIELDS``, 타입은 판정 기준 타입만
+    (가격 범위), 납부 조건은 전부(현재·최초 공고 비교). 빠진 출처를 쓰면 dev 는 예외(출처 누락)라 테스트가 잡는다."""
     items = list(bundles)
     idx = ProvIndex()
-    idx.load(session, "complex", (b.cx.id for b in items))
-    idx.load(session, "complex_type", (t.id for b in items for t in b.types))
+    if list_rows:
+        idx.load(session, "complex", (b.cx.id for b in items), fields=LIST_COMPLEX_FIELDS)
+        basis = (basis_type(b.types) for b in items)
+        idx.load(session, "complex_type", (t.id for t in basis if t is not None))
+    else:
+        idx.load(session, "complex", (b.cx.id for b in items))
+        idx.load(session, "complex_type", (t.id for b in items for t in b.types))
     idx.load(session, "payment_terms", (p.id for b in items for p in b.payments))
     return idx
 

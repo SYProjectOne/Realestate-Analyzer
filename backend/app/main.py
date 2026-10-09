@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import gc
 import importlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -103,11 +104,25 @@ def _install_docs(app: FastAPI) -> None:
         app.add_api_route(path, endpoint, methods=["GET"], dependencies=auth, include_in_schema=False)
 
 
+GC_GEN0_THRESHOLD = 50_000
+"""순환 GC 1세대 문턱(기본 700). 목록 화면 1,000단지 응답은 객체 수십만 개를 만들고 버린다 — 기본
+문턱이면 요청 한 번에 GC 가 여러 번 돌아 응답이 0.1초가량 늦다(T16, R3 3차 성능). 짧게 사는 객체가
+대부분이라 문턱만 올린다."""
+
+
+def tune_gc() -> None:
+    """순환 GC 문턱을 올린다(이미 더 높으면 그대로). 프로세스 전역 — api·worker 시작 때 한 번."""
+    g0, g1, g2 = gc.get_threshold()
+    if g0 < GC_GEN0_THRESHOLD:
+        gc.set_threshold(GC_GEN0_THRESHOLD, max(g1, 50), max(g2, 100))
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     s = settings or get_settings()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        tune_gc()
         configure_logging(s)
         log.info("api.start", extra={"env": s.env, "version": app_version()})
         yield

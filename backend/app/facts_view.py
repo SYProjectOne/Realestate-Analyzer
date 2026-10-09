@@ -197,7 +197,8 @@ def load_overlay(
         latest[(d.entity, d.entity_id, d.field)] = d
     refs: Mapping[tuple[str, int, str], ChosenRef]
     missing = [k for k in latest if chosen is None or k not in chosen]
-    refs = dict(chosen or {})
+    # 강등된 키만 꺼낸다(chosen 전체 복사 없음 — 목록 화면은 chosen 이 수만 행)
+    refs = {k: chosen[k] for k in latest if chosen is not None and k in chosen}
     if missing:
         refs = {**refs, **_chosen_refs(session, missing)}
     for key, d in latest.items():

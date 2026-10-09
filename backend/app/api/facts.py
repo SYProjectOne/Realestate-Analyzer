@@ -10,10 +10,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import Collection, Iterable, Iterator, Mapping
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -128,9 +127,8 @@ def unknown(
     return out
 
 
-@dataclass(frozen=True, slots=True)
-class ProvRef:
-    """field_provenance chosen 행에서 Fact 에 쓰는 열만.
+class ProvRef(NamedTuple):
+    """field_provenance chosen 행에서 Fact 에 쓰는 열만(불변 튜플 — 만들기가 frozen dataclass 보다 싸다).
 
     목록 화면 성능 — ORM 객체를 만들지 않는다(R3 W8·T16)."""
 
@@ -140,6 +138,29 @@ class ProvRef:
     reason: str | None
     url: str | None
     raw_document_id: int | None
+    value_norm: str | None = None
+
+
+class _ChosenView(Mapping[tuple[str, int, str], Any]):
+    """ProvIndex 행 → ``facts_view.ChosenRef`` 를 꺼낼 때만 만드는 보기(강등 오버레이 판단용)."""
+
+    def __init__(self, rows: dict[tuple[str, int, str], ProvRef]) -> None:
+        self._rows = rows
+
+    def __getitem__(self, key: tuple[str, int, str]) -> Any:
+        from app.facts_view import ChosenRef
+
+        r = self._rows[key]
+        return ChosenRef(r.id, r.value_norm, r.reason, r.raw_document_id)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._rows
+
+    def __iter__(self) -> Iterator[tuple[str, int, str]]:
+        return iter(self._rows)
+
+    def __len__(self) -> int:
+        return len(self._rows)
 
 
 class ProvIndex:
@@ -153,8 +174,12 @@ class ProvIndex:
         self._loaded: set[tuple[str, int]] = set()
         self._demoted: set[tuple[str, int, str]] = set()
 
-    def load(self, session: Session, entity: str, ids: Iterable[int]) -> ProvIndex:
-        from app.facts_view import ChosenRef, load_overlay
+    def load(
+        self, session: Session, entity: str, ids: Iterable[int], *, fields: Collection[str] | None = None
+    ) -> ProvIndex:
+        """``fields`` 를 주면 그 필드 출처만 읽는다(목록 화면). 그때는 읽음 표시를 하지 않아 나중 전체
+        읽기가 다시 읽는다."""
+        from app.facts_view import load_overlay
 
         want = sorted({i for i in ids if (entity, i) not in self._loaded})
         fp = FieldProvenance
@@ -162,7 +187,6 @@ class ProvIndex:
             fp.entity_id, fp.field, fp.id, fp.label, fp.checked_at, fp.reason, fp.url, fp.raw_document_id,
             fp.value_norm,
         )  # fmt: skip
-        refs: dict[tuple[str, int, str], ChosenRef] = {}
         for start in range(0, len(want), 500):
             chunk = want[start : start + 500]
             stmt = (
@@ -170,16 +194,18 @@ class ProvIndex:
                 .where(fp.entity == entity, fp.entity_id.in_(chunk), fp.chosen.is_(True))
                 .order_by(fp.id)
             )
+            if fields is not None:
+                stmt = stmt.where(fp.field.in_(sorted(fields)))
             for entity_id, field, fid, label, checked, reason, url, raw_id, vn in session.execute(stmt):
                 if entity_id is None:
                     continue
                 key = (entity, entity_id, field)
                 if key not in self._rows:
-                    self._rows[key] = ProvRef(fid, label, checked, reason, url, raw_id)
-                    refs[key] = ChosenRef(fid, vn, reason, raw_id)
-            self._loaded.update((entity, i) for i in chunk)
+                    self._rows[key] = ProvRef(fid, label, checked, reason, url, raw_id, vn)
+            if fields is None:
+                self._loaded.update((entity, i) for i in chunk)
         if want:
-            overlay = load_overlay(session, entity=entity, ids=want, chosen=refs)
+            overlay = load_overlay(session, entity=entity, ids=want, chosen=_ChosenView(self._rows))
             self._demoted.update(overlay.active)
         return self
 
