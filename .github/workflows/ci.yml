@@ -213,8 +213,11 @@ jobs:
         name: build
         run: npm run build
 
-  # R3 minor 2: 프론트 e2e(MSW 스모크 + 화면 e2e). 차트 스크린샷 기준 이미지는 win32 에서 만든 것이라
-  # linux CI 에서는 비교를 끈다(--ignore-snapshots) — 스냅샷 비교는 개발 기기(win32)에서 npm run e2e 로.
+  # R3 minor 2 · 재리뷰 m2: 프론트 e2e(MSW 스모크 + 화면 e2e). 차트 스크린샷 기준 이미지는 OS별
+  # (Playwright 파일 이름 접미사 -chromium-<platform>.png): win32 는 개발 기기, linux 는 이 잡이 비교한다.
+  # linux 기준 이미지가 저장소에 없으면 이 잡이 만들어 아티팩트(chart-snapshots-linux)로 올리고 경고한다 —
+  # 내려받아 tests/e2e/charts-gallery.spec.ts-snapshots/ 에 커밋하면 다음부터 비교한다. 화면 e2e(e2e/pages)는
+  # 스크린샷이 없어 --ignore-snapshots 그대로.
   frontend-e2e:
     needs: changes
     if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
@@ -233,8 +236,21 @@ jobs:
       - run: npm ci
       - name: playwright install chromium
         run: npx playwright install --with-deps chromium
-      - name: e2e smoke (tests/e2e)
-        run: npx playwright test --ignore-snapshots
+      - name: e2e smoke (tests/e2e) + 차트 스냅샷 비교(linux 기준 이미지)
+        shell: bash
+        run: |
+          if compgen -G "tests/e2e/charts-gallery.spec.ts-snapshots/*-chromium-linux.png" > /dev/null; then
+            npx playwright test
+          else
+            echo "::warning::linux 차트 기준 이미지가 없다 — 이번 실행에서 만들어 아티팩트 chart-snapshots-linux 로 올린다(커밋 필요)"
+            npx playwright test --update-snapshots
+          fi
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chart-snapshots-linux
+          path: frontend/tests/e2e/charts-gallery.spec.ts-snapshots/*-chromium-linux.png
+          if-no-files-found: ignore
       - name: e2e pages (e2e/pages, T16 프레임 측정 포함)
         run: npx playwright test -c e2e/pages --ignore-snapshots
       - if: always()

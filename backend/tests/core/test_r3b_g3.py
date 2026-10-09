@@ -4,7 +4,6 @@
 - m34: worker 이미지에 raw_archive.sh(실행 권한), runbook 경로, 스크립트가 상대 RAW_DIR 로도 동작.
 """
 
-# ruff: noqa: E501  (한국어 assertion 메시지)
 from __future__ import annotations
 
 import os
