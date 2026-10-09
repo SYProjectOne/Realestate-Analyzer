@@ -89,20 +89,40 @@ def test_with_key_collects_and_is_idempotent(
     assert doc.source_kind == "news" and "secret" not in doc.url and "test-client" not in doc.url
 
 
-def test_with_key_but_robots_disallow_leaves_failure_row(
+def test_with_key_robots_exempt_api_is_called(
     db_engine: Engine,
     region_ctx: tuple[Region, Snapshot],
     fixtures_dir: Path,
     http: HttpClient,
 ) -> None:
-    """openapi.naver.com/robots.txt 실제 녹화(Disallow: /) — core.http 가 막고, 실패 행이 남는다."""
+    """openapi.naver.com/robots.txt 실제 녹화(Disallow: /)여도 키 인증 API 는 robots 예외
+    (HTTP_ROBOTS_EXEMPT_HOSTS, 계약 2026-10-09.2) — robots.txt 를 받지 않고 API 를 부른다."""
     region, snapshot = region_ctx
     robots = (fixtures_dir / "naver_openapi_robots.txt").read_bytes()
     assert b"Disallow: /" in robots
     with respx.mock(assert_all_called=False) as router:
-        router.get("https://openapi.naver.com/robots.txt").respond(200, content=robots)
+        robots_route = router.get("https://openapi.naver.com/robots.txt").respond(200, content=robots)
         api = router.get(NAVER_NEWS_URL).respond(200, json={"items": []})
         docs = NewsCollector(api_key=KEY, http=http).fetch(region, snapshot, None)
+        assert api.call_count == 1 and robots_route.call_count == 0
+    assert [(d.http_status, d.error_text) for d in docs] == [(200, None)]
+
+
+def test_with_key_but_robots_disallow_leaves_failure_row(
+    db_engine: Engine,
+    region_ctx: tuple[Region, Snapshot],
+    fixtures_dir: Path,
+) -> None:
+    """robots 예외를 끄면(빈 목록) core.http 가 막고, 실패 행이 남는다."""
+    region, snapshot = region_ctx
+    robots = (fixtures_dir / "naver_openapi_robots.txt").read_bytes()
+    with (
+        respx.mock(assert_all_called=False) as router,
+        HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0, robots_exempt_hosts=()) as strict,
+    ):
+        router.get("https://openapi.naver.com/robots.txt").respond(200, content=robots)
+        api = router.get(NAVER_NEWS_URL).respond(200, json={"items": []})
+        docs = NewsCollector(api_key=KEY, http=strict).fetch(region, snapshot, None)
         assert api.call_count == 0
     assert [(d.http_status, d.error_text, d.path) for d in docs] == [(None, "robots", None)]
 

@@ -55,6 +55,30 @@ def test_defaults(clean_env: pytest.MonkeyPatch) -> None:
     assert s.webhook_url is None
 
 
+def test_judge_timeouts_and_robots_exempt_defaults(clean_env: pytest.MonkeyPatch) -> None:
+    s = make()
+    assert s.judge_call_timeout_s == 120
+    assert s.judge_start_timeout_s == 300
+    assert s.http_robots_exempt_hosts == ["apis.data.go.kr", "openapi.naver.com"]
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["apis.data.go.kr, OpenAPI.naver.com", '["apis.data.go.kr", "openapi.naver.com"]'],
+)
+def test_robots_exempt_hosts_from_env(clean_env: pytest.MonkeyPatch, raw: str) -> None:
+    clean_env.setenv("HTTP_ROBOTS_EXEMPT_HOSTS", raw)
+    clean_env.setenv("JUDGE_CALL_TIMEOUT_S", "30")
+    s = make()
+    assert s.http_robots_exempt_hosts == ["apis.data.go.kr", "openapi.naver.com"]
+    assert s.judge_call_timeout_s == 30
+
+
+def test_robots_exempt_hosts_empty(clean_env: pytest.MonkeyPatch) -> None:
+    clean_env.setenv("HTTP_ROBOTS_EXEMPT_HOSTS", "")
+    assert make().http_robots_exempt_hosts == []
+
+
 def test_env_override_and_secret_types(clean_env: pytest.MonkeyPatch) -> None:
     clean_env.setenv("API_TOKEN", "tok-AAAA1111BBBB2222")
     clean_env.setenv("DATA_GO_KR_KEY", "key+with/slash==")

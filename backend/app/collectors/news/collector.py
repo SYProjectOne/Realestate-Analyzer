@@ -7,8 +7,9 @@
   로 받는다).
 - 요청: ``GET https://openapi.naver.com/v1/search/news.json?query=…&display=…&start=1&sort=date``.
 - 남기는 것: 응답 JSON 원문(raw_document) + ``items`` = URL·제목·발췌(+게시일)만. 본문 기사는 받지 않는다.
-- 주의: openapi.naver.com/robots.txt 는 ``Disallow: /`` 이다. core.http 가 robots 를 강제하므로 키가 있어도
-  지금은 실패 행(error_text='robots')만 남는다 — 보고서 '제안' 참조(인증 API 의 robots 예외는 WP0 결정).
+- openapi.naver.com/robots.txt 는 ``Disallow: /`` 이지만 키 인증 API 라 core.http 의 robots 예외
+  (``HTTP_ROBOTS_EXEMPT_HOSTS``, 계약 2026-10-09.2)다. 예외 목록에서 빼면 실패 행
+  (error_text='robots')만 남는다.
 - 질의어: ``queries`` 를 주면 그것, 아니면 ``"<region.name> 분양"`` 1개(지역명은 region 행에서 온다).
 """
 

@@ -302,7 +302,12 @@ class RawStore:
 
 
 def fetch_failure(result: FetchResult) -> Failure:
-    """실패한 FetchResult 의 원인. robots 차단이면 ``diagnose_blocked`` 로 진짜 원인을 가린다."""
+    """실패한 FetchResult 의 원인. robots 차단이면 core.http 가 보존한 robots.txt 결과로 진짜 원인을 가린다
+    (계약 2026-10-09.2: FetchResult.robots_status·robots_error_kind — 다시 요청하지 않는다)."""
     if result.blocked_by_robots:
-        return diagnose_blocked(result.url)
+        if result.robots_status is not None and result.robots_status < 500:
+            return Failure(None, "robots")
+        if result.robots_status is not None:
+            return Failure(result.robots_status, f"robots.txt {result.robots_status}")
+        return Failure(None, _network_reason(result.robots_error_kind, result.robots_error or ""))
     return classify_failure(result)

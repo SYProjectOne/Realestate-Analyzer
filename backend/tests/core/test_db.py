@@ -78,3 +78,36 @@ def test_ping_false_when_unreachable(tmp_path: Path, test_settings: Settings) ->
     bad = make_engine(f"sqlite:///{tmp_path.as_posix()}", settings=test_settings)
     assert ping(bad) is False
     bad.dispose()
+
+
+def test_sqlite_savepoint_rollback_keeps_outer_transaction(test_settings: Settings) -> None:
+    """begin_nested() 롤백은 SAVEPOINT 안만 되돌리고 바깥 트랜잭션은 살아 있다
+    (pysqlite BEGIN 끔 + begin 이벤트)."""
+    engine = get_engine(test_settings)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE sp (id INTEGER PRIMARY KEY, v TEXT NOT NULL)"))
+
+    with get_session() as s:
+        s.execute(text("INSERT INTO sp (v) VALUES ('outer')"))
+        with pytest.raises(RuntimeError), s.begin_nested():
+            s.execute(text("INSERT INTO sp (v) VALUES ('inner')"))
+            raise RuntimeError("inner fails")
+        with s.begin_nested():
+            s.execute(text("INSERT INTO sp (v) VALUES ('inner-ok')"))
+
+    with get_session() as s:
+        assert s.execute(text("SELECT v FROM sp ORDER BY id")).scalars().all() == ["outer", "inner-ok"]
+
+
+def test_sqlite_outer_rollback_discards_released_savepoint(test_settings: Settings) -> None:
+    engine = get_engine(test_settings)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE sp2 (id INTEGER PRIMARY KEY, v TEXT NOT NULL)"))
+
+    with pytest.raises(RuntimeError), get_session() as s:
+        with s.begin_nested():
+            s.execute(text("INSERT INTO sp2 (v) VALUES ('nested')"))
+        raise RuntimeError("outer fails")
+
+    with get_session() as s:
+        assert s.execute(text("SELECT count(*) FROM sp2")).scalar() == 0

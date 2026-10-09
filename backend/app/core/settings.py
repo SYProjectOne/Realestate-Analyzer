@@ -6,14 +6,17 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Literal, Self
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import Field, SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 DEFAULT_JEV_MCP_CMD = "npx -y @jkudish/jev-mcp@latest"  # DECISIONS D6
 DEFAULT_USER_AGENT = "subscription-analyzer/0.1 (public housing-subscription info collector)"
+# 키 인증 공식 API(공공데이터포털 Open API, 네이버 검색 API) — robots.txt 예외 (계약 2026-10-09.2)
+DEFAULT_ROBOTS_EXEMPT_HOSTS = ("apis.data.go.kr", "openapi.naver.com")
 
 
 class Settings(BaseSettings):
@@ -48,6 +51,8 @@ class Settings(BaseSettings):
     # --- 판정기 (ADR-5, D6)
     judge_adapter: Literal["jev", "mock"] = "jev"
     jev_mcp_cmd: str = DEFAULT_JEV_MCP_CMD
+    judge_call_timeout_s: float = Field(default=120.0, gt=0)  # 도구 호출 1건
+    judge_start_timeout_s: float = Field(default=300.0, gt=0)  # 기동(initialize, 첫 npx 다운로드 포함)
 
     # --- 외부 키 (없으면 해당 기능 비활성: D1 #5·#6·#7)
     data_go_kr_key: SecretStr | None = None
@@ -61,9 +66,29 @@ class Settings(BaseSettings):
     http_backoff_base_s: float = Field(default=1.0, ge=0)
     http_backoff_max_s: float = Field(default=60.0, ge=0)
     http_user_agent: str = DEFAULT_USER_AGENT
+    # 키 인증 공식 API 호스트: 크롤링이 아니라 이용약관이 규율하므로 robots.txt 검사를 하지 않는다.
+    # 환경변수는 쉼표 구분(``HTTP_ROBOTS_EXEMPT_HOSTS=apis.data.go.kr,openapi.naver.com``) 또는 JSON 배열.
+    http_robots_exempt_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEFAULT_ROBOTS_EXEMPT_HOSTS)
+    )
 
     # --- worker
     worker_heartbeat_s: float = Field(default=60.0, gt=0)
+
+    @field_validator("http_robots_exempt_hosts", mode="before")
+    @classmethod
+    def _split_hosts(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("["):
+                return json.loads(text)
+            return [h.strip() for h in text.split(",") if h.strip()]
+        return value
+
+    @field_validator("http_robots_exempt_hosts")
+    @classmethod
+    def _lower_hosts(cls, value: list[str]) -> list[str]:
+        return [h.strip().lower() for h in value if h.strip()]
 
     @model_validator(mode="after")
     def _prod_guards(self) -> Self:

@@ -32,6 +32,7 @@ jobs:
       api: ${{ steps.filter.outputs.api }}
       scheduler: ${{ steps.filter.outputs.scheduler }}
       reports: ${{ steps.filter.outputs.reports }}
+      fixtures_contract: ${{ steps.filter.outputs.fixtures_contract }}
       frontend: ${{ steps.filter.outputs.frontend }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
@@ -81,6 +82,9 @@ jobs:
             reports:
               - 'backend/app/reports/**'
               - 'backend/tests/reports/**'
+            fixtures_contract:
+              - 'contracts/fixtures/**'
+              - 'backend/tests/fixtures_contract/**'
             frontend:
               - 'frontend/**'
             infra:
@@ -109,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [core, models, collectors, normalize, judge, analysis, api, scheduler, reports]
+        module: [core, contracts, models, collectors, normalize, judge, analysis, api, scheduler, reports, fixtures_contract]
     defaults:
       run:
         working-directory: backend
