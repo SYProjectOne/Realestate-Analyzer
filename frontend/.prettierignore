@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+public/mockServiceWorker.js
+src/api/schema.d.ts
+src/mocks/handlers.gen.ts
+package-lock.json

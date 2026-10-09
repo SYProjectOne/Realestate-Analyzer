@@ -1,0 +1,68 @@
+import type { DataTable } from '@/components/DataTableToggle';
+import { t } from '@/i18n';
+import { formatRank } from '@/lib/format';
+import { baseOption, DEFAULT_PALETTE } from '../palette';
+import type { BuildOptionContext, EChartsOption } from '../types';
+import type { C10Data } from './types';
+
+export function emptyReason(data: C10Data): string | null {
+  const s = data.sensitivity;
+  return s && s.cells.length > 0 ? null : t('chart.C10.empty');
+}
+
+/** 작은 선: x = 변형(기준 + 12), y = 순위(위가 1위), 시리즈 = 기준 TOP 5 단지. TOP 5 밖이면 끊김(null). */
+export function buildOption(
+  data: C10Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): EChartsOption {
+  const { palette } = ctx;
+  const s = data.sensitivity;
+  const baseline = s?.baseline_top5 ?? [];
+  const cells = s?.cells ?? [];
+  const variants = [t('chart.C10.baseline'), ...cells.map((c) => c.variant)];
+  return {
+    ...baseOption(palette),
+    grid: { left: 40, right: 16, top: 16, bottom: 56 },
+    legend: { bottom: 0, textStyle: { color: palette.fg } },
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: variants, axisLabel: { rotate: 30 } },
+    yAxis: {
+      type: 'value',
+      inverse: true,
+      min: 1,
+      max: 5,
+      interval: 1,
+      axisLabel: { formatter: (v: number) => formatRank(v) },
+      splitLine: { lineStyle: { color: palette.border } },
+    },
+    series: baseline.map((b, index) => ({
+      type: 'line' as const,
+      name: b.name,
+      connectNulls: false,
+      itemStyle: { color: palette.categorical[index % palette.categorical.length] },
+      data: [
+        b.rank,
+        ...cells.map((c) => c.top5.find((x) => x.complex_id === b.complex_id)?.rank ?? null),
+      ],
+    })),
+  };
+}
+
+export function toTable(data: C10Data): DataTable {
+  const cells = data.sensitivity?.cells ?? [];
+  return {
+    columns: [
+      { key: 'variant', header: t('chart.col.variant') },
+      { key: 'changed', header: t('chart.col.changed') },
+      { key: 'top5', header: t('chart.col.top5') },
+    ],
+    rows: cells.map((c) => ({
+      variant: c.variant,
+      changed: c.changed ? t('chart.yes') : t('chart.no'),
+      top5: [...c.top5]
+        .sort((a, b) => a.rank - b.rank)
+        .map((x) => `${formatRank(x.rank)} ${x.name}`)
+        .join(' · '),
+    })),
+  };
+}

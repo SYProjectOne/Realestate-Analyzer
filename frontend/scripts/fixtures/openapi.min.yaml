@@ -1,0 +1,573 @@
+# 임시 최소 계약 — WP0-C 파이프라인 검증 전용 (계약 원본 아님).
+# 원본은 contracts/openapi.yaml(WP0-A). 계약이 머지되면 openapi.config.json의 source를 "contract"로 바꾼다.
+# 모양은 RA §4-1·§4-2 + DECISIONS D2-3을 따른다. 예시 데이터의 지역명은 회귀 픽스처(인천·김포)에서 왔다.
+openapi: 3.1.0
+info:
+  title: subscription-analyzer (WP0-C fixture)
+  version: 2026-10-09.1-fixture
+servers:
+  - url: /api
+security:
+  - bearer: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { status: ok, version: 2026-10-09.1 }
+  /regions:
+    get:
+      operationId: listRegions
+      responses:
+        '200':
+          description: 지역 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Region' }
+              examples:
+                default:
+                  $ref: '#/components/examples/RegionList'
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createRegion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegionCreateRequest' }
+      responses:
+        '201':
+          description: 생성 + region.bootstrap 잡 등록
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionCreateResponse' }
+              example:
+                region:
+                  id: rg_2
+                  name: 김포
+                  query_text: 김포시
+                  selections: [{ kind: sigungu, code: '41570', full_name: 경기도 김포시 }]
+                  living_areas: []
+                  status: bootstrapping
+                  latest_snapshot_id: null
+                  created_at: '2026-10-09T09:00:00+09:00'
+                job_id: job_101
+        '422': { $ref: '#/components/responses/Error' }
+  /regions/resolve:
+    get:
+      operationId: resolveRegion
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 자유 지명 → 후보
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RegionCandidate' }
+              example:
+                - kind: legal_dong
+                  code: '2818510600'
+                  full_name: 인천광역시 연수구 송도동
+                  legal_dong_codes: ['2818510600']
+                  match: exact
+                - kind: sigungu
+                  code: '28185'
+                  full_name: 인천광역시 연수구
+                  legal_dong_codes: ['2818510100', '2818510600']
+                  match: partial
+  /regions/{id}:
+    get:
+      operationId: getRegion
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 지역 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Region' }
+              examples:
+                default:
+                  $ref: '#/components/examples/RegionOne'
+        '404': { $ref: '#/components/responses/Error' }
+  /regions/{id}/snapshots:
+    get:
+      operationId: listSnapshots
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 기준일 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Snapshot' }
+              example:
+                - {
+                    id: ss_20261008,
+                    region_id: rg_1,
+                    asof_date: '2026-10-08',
+                    status: published,
+                    created_at: '2026-10-08T07:10:00+09:00',
+                  }
+                - {
+                    id: ss_20261007,
+                    region_id: rg_1,
+                    asof_date: '2026-10-07',
+                    status: published,
+                    created_at: '2026-10-07T07:05:00+09:00',
+                  }
+  /snapshots/{sid}/dashboard:
+    get:
+      operationId: getDashboard
+      parameters:
+        - { name: sid, in: path, required: true, schema: { type: string } }
+        - { name: scenario, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: KPI 타일, TOP 5, 최근 변경
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+              example:
+                snapshot_id: ss_20261008
+                asof_date: '2026-10-08'
+                scenario_id: sc_default
+                weights:
+                  { p10: 0.3, rerank: 0.2, gap: 0.2, benchmark: 0.1, supply: 0.1, liquidity: 0.1 }
+                kpis:
+                  judged_count: { v: 16, label: 확인됨, prov: fp_kpi_1, checked_at: '2026-10-08' }
+                  intake_open_count:
+                    { v: 5, label: 확인됨, prov: fp_kpi_2, checked_at: '2026-10-08' }
+                  unsold_total: { v: 1873, label: 재가공, prov: fp_kpi_3, checked_at: '2026-09-30' }
+                  move_in_peak_year:
+                    { v: 2028, label: 추정, prov: fp_kpi_4, checked_at: '2026-10-08' }
+                  data_freshness:
+                    { v: '2026-10-08', label: 확인됨, prov: fp_kpi_5, checked_at: '2026-10-08' }
+                top5:
+                  - complex_id: cx_1
+                    name: 송도 예시 단지
+                    total: { v: 7.25, label: 추정, prov: fp_s1, checked_at: '2026-10-08' }
+                    rank: 1
+                    tie_group: null
+                    unstable: false
+                    p10: { v: 0.48, label: 추정, prov: fp_p1, checked_at: '2026-10-08' }
+                    components:
+                      p10: { v: 4.8, label: 추정, prov: fp_c1, checked_at: '2026-10-08' }
+                      rerank: { v: 9.0, label: 추정, prov: fp_c2, checked_at: '2026-10-08' }
+                      gap: { v: 8.1, label: 추정, prov: fp_c3, checked_at: '2026-10-08' }
+                      benchmark: { v: 7.0, label: 추정, prov: fp_c4, checked_at: '2026-10-08' }
+                      supply: { v: 6.5, label: 추정, prov: fp_c5, checked_at: '2026-10-08' }
+                      liquidity: { v: 8.0, label: 추정, prov: fp_c6, checked_at: '2026-10-08' }
+                    intake:
+                      {
+                        status: 가능,
+                        path: official_popup,
+                        evidence_url: 'https://example.invalid/popup',
+                        checked_at: '2026-10-08T06:10:00+09:00',
+                        http_status: 200,
+                      }
+                    decision: { prob: 0.41, chosen: true, tie: false, mismatch: false }
+                changes:
+                  - id: ce_1
+                    snapshot_id: ss_20261008
+                    entity: complex
+                    entity_id: cx_1
+                    field: down_payment_pct
+                    old_text: '10%'
+                    new_text: '5%'
+                    detected_at: '2026-10-08T06:20:00+09:00'
+                    severity: critical
+                    triggers_rejudge: true
+  /snapshots/{sid}/changes:
+    get:
+      operationId: listChanges
+      parameters:
+        - { name: sid, in: path, required: true, schema: { type: string } }
+        - { name: since, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: 변경 피드
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ChangeEvent' }
+              example: []
+  /provenance/{prov_id}:
+    get:
+      operationId: getProvenance
+      parameters:
+        - { name: prov_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 출처 행 + 원문 발췌 + 상충 그룹
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Provenance' }
+              example:
+                id: fp_s1
+                url: 'https://example.invalid/notice.pdf'
+                checked_at: '2026-10-08'
+                label: 확인됨
+                excerpt: 공급금액 749,000,000원 (84A 10층)
+                raw_document_id: rd_1
+                conflicts: []
+        '404': { $ref: '#/components/responses/Error' }
+  /scenarios:
+    get:
+      operationId: listScenarios
+      responses:
+        '200':
+          description: 내장 5 + 사용자 시나리오
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Scenario' }
+              example:
+                - {
+                    id: sc_default,
+                    name: 기본,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_A,
+                    name: A,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_B,
+                    name: B,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_C,
+                    name: C,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+                - {
+                    id: sc_D,
+                    name: D,
+                    is_builtin: true,
+                    params: {},
+                    weights:
+                      {
+                        p10: 0.3,
+                        rerank: 0.2,
+                        gap: 0.2,
+                        benchmark: 0.1,
+                        supply: 0.1,
+                        liquidity: 0.1,
+                      },
+                    requirements: {},
+                  }
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 진행 상태
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobRun' }
+              example:
+                id: job_101
+                job_name: region.bootstrap
+                kind: manual
+                payload: { region_id: rg_2 }
+                scheduled_at: '2026-10-09T09:00:00+09:00'
+                started_at: '2026-10-09T09:00:01+09:00'
+                finished_at: null
+                status: running
+                stats: { step: collect.daily }
+                error_text: null
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  responses:
+    Error:
+      description: 오류
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: not_found, detail: not found }
+  examples:
+    RegionOne:
+      value:
+        id: rg_1
+        name: 인천·김포 회귀
+        query_text: 송도
+        selections:
+          - { kind: legal_dong, code: '2818510600', full_name: 인천광역시 연수구 송도동 }
+        living_areas:
+          - id: la_1
+            name: 연수구
+            legal_dong_codes: ['2818510600']
+            households: { v: 82000, label: 추정, prov: fp_hh_1, checked_at: '2026-09-30' }
+        status: ready
+        latest_snapshot_id: ss_20261008
+        created_at: '2026-10-01T09:00:00+09:00'
+    RegionList:
+      value:
+        - id: rg_1
+          name: 인천·김포 회귀
+          query_text: 송도
+          selections:
+            - { kind: legal_dong, code: '2818510600', full_name: 인천광역시 연수구 송도동 }
+          living_areas:
+            - id: la_1
+              name: 연수구
+              legal_dong_codes: ['2818510600']
+              households: { v: 82000, label: 추정, prov: fp_hh_1, checked_at: '2026-09-30' }
+          status: ready
+          latest_snapshot_id: ss_20261008
+          created_at: '2026-10-01T09:00:00+09:00'
+  schemas:
+    Label:
+      type: string
+      enum: [확인됨, 추정, 비공식, 재가공, 확인 불가]
+    Fact:
+      type: object
+      required: [v, label, prov, checked_at]
+      properties:
+        v: { oneOf: [{ type: number }, { type: string }, { type: 'null' }] }
+        label: { $ref: '#/components/schemas/Label' }
+        prov: { type: [string, 'null'] }
+        checked_at: { type: [string, 'null'], format: date }
+        reason: { type: [string, 'null'] }
+        human: { type: boolean }
+    Intake:
+      type: object
+      required: [status, path, evidence_url, checked_at, http_status]
+      properties:
+        status: { type: string, enum: [가능, 미정, 확인 불가, 불가] }
+        path: { type: string, enum: [human_check, official_popup, headless_shot, unofficial_ref] }
+        evidence_url: { type: [string, 'null'] }
+        checked_at: { type: [string, 'null'] }
+        http_status: { type: [integer, 'null'] }
+    Error:
+      type: object
+      required: [code, detail]
+      properties:
+        code:
+          { type: string, enum: [intake_unknown, judge_unavailable, contract_violation, not_found] }
+        detail: { type: string }
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        version: { type: string }
+    RegionCandidate:
+      type: object
+      required: [kind, code, full_name, legal_dong_codes, match]
+      properties:
+        kind: { type: string, enum: [sido, sigungu, admin_dong, legal_dong] }
+        code: { type: string }
+        full_name: { type: string }
+        legal_dong_codes: { type: array, items: { type: string } }
+        match: { type: string, enum: [exact, prefix, partial] }
+    RegionSelection:
+      type: object
+      required: [kind, code, full_name]
+      properties:
+        kind: { type: string, enum: [sido, sigungu, admin_dong, legal_dong] }
+        code: { type: string }
+        full_name: { type: string }
+    LivingArea:
+      type: object
+      required: [id, name, legal_dong_codes, households]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        legal_dong_codes: { type: array, items: { type: string } }
+        households:
+          oneOf: [{ $ref: '#/components/schemas/Fact' }, { type: 'null' }]
+    Region:
+      type: object
+      required:
+        [id, name, query_text, selections, living_areas, status, latest_snapshot_id, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        query_text: { type: string }
+        selections: { type: array, items: { $ref: '#/components/schemas/RegionSelection' } }
+        living_areas: { type: array, items: { $ref: '#/components/schemas/LivingArea' } }
+        status: { type: string, enum: [resolving, bootstrapping, ready, failed] }
+        latest_snapshot_id: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+    RegionCreateRequest:
+      type: object
+      required: [name, query_text, selections]
+      properties:
+        name: { type: string }
+        query_text: { type: string }
+        selections: { type: array, items: { $ref: '#/components/schemas/RegionSelection' } }
+    RegionCreateResponse:
+      type: object
+      required: [region, job_id]
+      properties:
+        region: { $ref: '#/components/schemas/Region' }
+        job_id: { type: string }
+    Snapshot:
+      type: object
+      required: [id, region_id, asof_date, status, created_at]
+      properties:
+        id: { type: string }
+        region_id: { type: string }
+        asof_date: { type: string, format: date }
+        status: { type: string, enum: [building, ready, published] }
+        created_at: { type: string, format: date-time }
+    ScoreRow:
+      type: object
+      required: [complex_id, name, total, rank, tie_group, unstable, p10, components, intake]
+      properties:
+        complex_id: { type: string }
+        name: { type: string }
+        total: { $ref: '#/components/schemas/Fact' }
+        rank: { type: integer }
+        tie_group: { type: [string, 'null'] }
+        unstable: { type: boolean }
+        p10: { $ref: '#/components/schemas/Fact' }
+        components:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/Fact' }
+        intake:
+          oneOf: [{ $ref: '#/components/schemas/Intake' }, { type: 'null' }]
+        decision:
+          type: [object, 'null']
+          properties:
+            prob: { type: [number, 'null'] }
+            chosen: { type: boolean }
+            tie: { type: boolean }
+            mismatch: { type: boolean }
+    ChangeEvent:
+      type: object
+      required:
+        [
+          id,
+          snapshot_id,
+          entity,
+          entity_id,
+          field,
+          old_text,
+          new_text,
+          detected_at,
+          severity,
+          triggers_rejudge,
+        ]
+      properties:
+        id: { type: string }
+        snapshot_id: { type: string }
+        entity: { type: string }
+        entity_id: { type: string }
+        field: { type: string }
+        old_text: { type: [string, 'null'] }
+        new_text: { type: [string, 'null'] }
+        detected_at: { type: string, format: date-time }
+        severity: { type: string, enum: [info, notice, critical] }
+        triggers_rejudge: { type: boolean }
+    Dashboard:
+      type: object
+      required: [snapshot_id, asof_date, scenario_id, weights, kpis, top5, changes]
+      properties:
+        snapshot_id: { type: string }
+        asof_date: { type: string, format: date }
+        scenario_id: { type: string }
+        weights: { type: object, additionalProperties: { type: number } }
+        kpis: { type: object, additionalProperties: { $ref: '#/components/schemas/Fact' } }
+        top5: { type: array, items: { $ref: '#/components/schemas/ScoreRow' } }
+        changes: { type: array, items: { $ref: '#/components/schemas/ChangeEvent' } }
+    Provenance:
+      type: object
+      required: [id, url, checked_at, label, excerpt, raw_document_id, conflicts]
+      properties:
+        id: { type: string }
+        url: { type: [string, 'null'] }
+        checked_at: { type: [string, 'null'] }
+        label: { $ref: '#/components/schemas/Label' }
+        excerpt: { type: [string, 'null'] }
+        raw_document_id: { type: [string, 'null'] }
+        conflicts: { type: array, items: { type: object } }
+    Scenario:
+      type: object
+      required: [id, name, is_builtin, params, weights, requirements]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        is_builtin: { type: boolean }
+        params: { type: object }
+        weights: { type: object, additionalProperties: { type: number } }
+        requirements: { type: object }
+    JobRun:
+      type: object
+      required: [id, job_name, kind, payload, status]
+      properties:
+        id: { type: string }
+        job_name: { type: string }
+        kind: { type: string, enum: [scheduled, manual, rejudge] }
+        payload: { type: object }
+        scheduled_at: { type: [string, 'null'] }
+        started_at: { type: [string, 'null'] }
+        finished_at: { type: [string, 'null'] }
+        status: { type: string, enum: [queued, running, done, failed] }
+        stats: { type: [object, 'null'] }
+        error_text: { type: [string, 'null'] }

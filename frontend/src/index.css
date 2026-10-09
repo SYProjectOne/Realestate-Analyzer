@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 디자인 토큰 — 색은 여기서만 정의하고 tailwind.config.ts가 rgb(var(--color-*))로 참조한다.
+ * 색은 의미만 싣는다(meta §2-7): accent = 확정·강조 1색, grayed = 비공식·미확정·미해결.
+ * 차트도 같은 토큰을 읽는다(src/charts/theme.ts).
+ */
+:root {
+  --color-bg: 248 249 251;
+  --color-surface: 255 255 255;
+  --color-fg: 17 24 39;
+  --color-muted: 75 85 99;
+  --color-border: 209 213 219;
+  --color-accent: 29 78 216;
+  --color-accent-fg: 255 255 255;
+  --color-danger: 185 28 28;
+  --color-grayed: 107 114 128;
+  color-scheme: light;
+}
+
+:root.dark {
+  --color-bg: 13 17 23;
+  --color-surface: 22 27 34;
+  --color-fg: 230 237 243;
+  --color-muted: 156 163 175;
+  --color-border: 55 65 81;
+  --color-accent: 96 165 250;
+  --color-accent-fg: 13 17 23;
+  --color-danger: 248 113 113;
+  --color-grayed: 139 148 158;
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: rgb(var(--color-bg));
+  color: rgb(var(--color-fg));
+  font-family:
+    'Pretendard',
+    'Apple SD Gothic Neo',
+    'Malgun Gothic',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+/* 모바일 읽기 전용(D7): 화면이 data-write 표시한 쓰기 UI를 숨긴다 */
+main[data-readonly] [data-write] {
+  display: none !important;
+}
