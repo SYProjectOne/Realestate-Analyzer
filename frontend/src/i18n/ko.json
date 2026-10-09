@@ -6,7 +6,15 @@
     "error": "불러오지 못했습니다: {detail}",
     "mobileReadOnly": "모바일에서는 읽기 전용입니다",
     "mobileUnsupported": "이 화면은 데스크톱에서 이용하세요",
-    "skipToContent": "본문으로 건너뛰기"
+    "skipToContent": "본문으로 건너뛰기",
+    "degraded": "판정기 장애 — 미판정 모드: 새 판정 없이 캐시·이전 결과만 표시합니다",
+    "degradedSnapshot": "이 기준일 스냅샷은 미판정 모드(degraded)로 만들어졌습니다",
+    "toastClose": "알림 닫기",
+    "notifications": "알림",
+    "retry": "다시 시도",
+    "noSnapshot": "기준일 스냅샷이 없습니다. 지역 분석이 끝나면 나타납니다",
+    "chartGallery": "차트 갤러리(개발용)",
+    "chartGalleryMissing": "차트 갤러리 컴포넌트(src/charts/gallery/ChartGallery.tsx)가 아직 없습니다"
   },
   "nav": {
     "G1": "홈",
@@ -18,17 +26,552 @@
     "G8": "보고서"
   },
   "page": {
-    "G0": { "title": "지역 입력" },
-    "G0_2": { "title": "생활권 편집" },
-    "G1": { "title": "홈 대시보드" },
-    "G2": { "title": "단지 리스트" },
-    "G3": { "title": "단지 상세" },
-    "G4": { "title": "비교" },
-    "G5": { "title": "시나리오(내 조건)" },
-    "G6": { "title": "지역 시장" },
-    "G7": { "title": "데이터·운영" },
-    "G8": { "title": "보고서" },
-    "notFound": { "title": "페이지를 찾을 수 없습니다" }
+    "G0": {
+      "title": "지역 입력",
+      "intro": "분석할 지역을 자유 지명으로 입력하세요(예: 동·구·시 이름). 후보에서 여러 개를 골라 하나의 지역으로 묶습니다.",
+      "search": "지역 검색",
+      "searchPlaceholder": "지명 2자 이상",
+      "searchHint": "2자 이상 입력하면 후보를 보여 줍니다",
+      "candidates": "후보",
+      "noCandidates": "일치하는 후보가 없습니다",
+      "searching": "찾는 중…",
+      "dongCount": "법정동 {n}개",
+      "selected": "선택한 후보",
+      "noneSelected": "선택한 후보가 없습니다",
+      "name": "지역 이름",
+      "namePlaceholder": "화면에 보일 이름",
+      "start": "분석 시작",
+      "startDisabled": "후보를 1개 이상 고르고 이름을 입력하세요",
+      "started": "지역을 만들고 분석을 시작했습니다",
+      "done": "분석이 끝났습니다",
+      "goDashboard": "홈 대시보드로",
+      "goLivingAreas": "생활권 편집"
+    },
+    "G0_2": {
+      "title": "생활권 편집",
+      "intro": "법정동을 옮겨 생활권을 나누거나 묶습니다. 모든 법정동은 정확히 한 생활권에 속해야 합니다.",
+      "households": "세대수",
+      "supplyRef": "공급 기준치",
+      "areaName": "생활권 이름",
+      "add": "생활권 추가",
+      "newName": "새 생활권 {n}",
+      "delete": "생활권 삭제",
+      "deleteDisabled": "법정동이 남아 있으면 삭제할 수 없습니다",
+      "dongs": "법정동",
+      "dongCount": "법정동 {n}개",
+      "selectDong": "{name} 선택",
+      "moveTo": "선택한 법정동 옮길 생활권",
+      "move": "옮기기",
+      "dropHint": "법정동을 끌어다 놓거나, 선택 후 옮기세요",
+      "unassigned": "어느 생활권에도 없는 법정동 {n}개",
+      "duplicated": "두 생활권 이상에 있는 법정동 {n}개",
+      "emptyName": "이름이 빈 생활권이 있습니다",
+      "save": "저장",
+      "saved": "생활권을 저장했습니다 — 재판정 잡이 등록됐습니다",
+      "saveError": "저장하지 못했습니다: {detail}",
+      "dirty": "저장하지 않은 변경이 있습니다"
+    },
+    "G1": {
+      "title": "홈 대시보드",
+      "kpis": "핵심 지표",
+      "kpi": {
+        "judged": "판정 대상",
+        "intakeOpen": "접수 가능",
+        "unsold": "미분양",
+        "unsoldSub": "{ym} 기준 · 준공 후",
+        "movePeak": "입주 피크",
+        "movePeakSub": "세대",
+        "freshness": "데이터 신선도",
+        "freshnessSub": "실패 소스 {failing} · 지연 소스 {stale}"
+      },
+      "top5": "통합 TOP 5",
+      "top5Scenario": "상황: {name}",
+      "total": "종합",
+      "p10": "+10% 확률",
+      "open": "{name} 상세 보기",
+      "changes": "최근 변경",
+      "noChanges": "최근 변경 없음",
+      "rejudge": "재판정 대상",
+      "unsoldSmall": "미분양 추이"
+    },
+    "G2": {
+      "title": "단지 리스트",
+      "filters": "필터",
+      "filter": {
+        "living_area": "생활권",
+        "intake_status": "접수",
+        "land_type": "택지유형",
+        "resale_end_before": "전매 종료일(이전)",
+        "price_min": "가격 하한(억)",
+        "price_max": "가격 상한(억)",
+        "move_in_year": "입주연도",
+        "inclusion_class": "포함 분류",
+        "judge_scope": "판정 범위",
+        "q": "단지명"
+      },
+      "landType": {
+        "공공택지": "공공택지",
+        "민간택지": "민간택지"
+      },
+      "clearFilters": "필터 초기화",
+      "count": "{shown} / {total}개",
+      "csv": "CSV 내려받기",
+      "columns": "열 선택",
+      "col": {
+        "select": "비교 선택",
+        "name": "단지",
+        "living_area": "생활권",
+        "intake": "접수",
+        "price": "현재 구매가 범위",
+        "resale_end": "전매 종료",
+        "move_in": "입주",
+        "gap": "가격 갭",
+        "total": "종합 점수",
+        "p10": "+10% 확률",
+        "inclusion": "포함 분류",
+        "land_type": "택지유형",
+        "units_total": "총 세대",
+        "down_payment": "계약금",
+        "last_change": "마지막 변경"
+      },
+      "sortAsc": "{col} 오름차순 정렬",
+      "sortDesc": "{col} 내림차순 정렬",
+      "select": "{name} 비교에 담기",
+      "tray": "비교 트레이",
+      "trayCount": "{n}개 선택",
+      "trayHint": "2~6개를 고르면 비교할 수 있습니다",
+      "trayMax": "최대 6개까지 비교합니다",
+      "compare": "비교",
+      "clearSelection": "선택 해제",
+      "empty": "조건에 맞는 단지가 없습니다",
+      "table": "단지 표"
+    },
+    "G3": {
+      "title": "단지 상세",
+      "header": {
+        "address": "주소",
+        "livingArea": "생활권",
+        "price": "현재 구매가",
+        "priceBasis": "기준 타입 {type}",
+        "resaleEnd": "전매 종료",
+        "moveIn": "입주",
+        "inclusion": "포함 분류",
+        "total": "종합 점수",
+        "officialSite": "공식 홈페이지"
+      },
+      "tabs": "단지 상세 탭",
+      "tab": {
+        "price": "가격표",
+        "payment": "납부 조건",
+        "events": "잔여 이력",
+        "ladder": "사다리",
+        "gap": "시세 비교",
+        "catalysts": "호재",
+        "provenance": "출처 원문",
+        "judgments": "판정기 로그"
+      },
+      "price": {
+        "type": "타입",
+        "area": "전용면적",
+        "units": "세대",
+        "max": "최고가",
+        "floorSample": "대표 층 가격",
+        "floorText": "대표 층",
+        "balcony": "발코니",
+        "options": "필수 옵션",
+        "basis": "판정 기준",
+        "composition": "구성",
+        "change": "최초 대비"
+      },
+      "payment": {
+        "notice": "공고",
+        "kind": "구분",
+        "effective": "적용일",
+        "down": "계약금",
+        "downFirst": "1차 계약금",
+        "interim": "중도금",
+        "interimTerms": "중도금 조건",
+        "balance": "잔금",
+        "schedule": "중도금 일정",
+        "seq": "{n}회차",
+        "current": "현재 적용",
+        "changeVsFirst": "최초 공고 대비 계약금 변화"
+      },
+      "competition": {
+        "title": "경쟁률",
+        "round": "회차",
+        "kind": "구분",
+        "type": "타입",
+        "supply": "공급",
+        "applied": "접수",
+        "ratio": "경쟁률·미달"
+      },
+      "ladder": {
+        "horizons": "목표 시점",
+        "proposition": "명제"
+      },
+      "catalyst": {
+        "list": "호재 목록",
+        "kind": "종류",
+        "stage": "단계",
+        "expected": "예정",
+        "distance": "거리",
+        "noLink": "단지 연결 없음",
+        "source": "출처"
+      },
+      "provenance": {
+        "fields": "출처가 있는 값",
+        "field": "{field}",
+        "pick": "값을 고르면 원문에서 해당 부분을 강조합니다",
+        "raw": "원문",
+        "noRaw": "원문 파일 없음",
+        "highlight": "발췌 위치",
+        "excerptNotFound": "원문에서 발췌 위치를 찾지 못했습니다(발췌만 표시)",
+        "openFile": "원문 파일 열기"
+      },
+      "judgment": {
+        "tool": "도구",
+        "purpose": "목적",
+        "status": "상태",
+        "confidence": "신뢰도",
+        "duration": "소요",
+        "seq": "번호",
+        "createdAt": "시각",
+        "cached": "캐시",
+        "none": "판정 기록 없음",
+        "ms": "{ms}ms"
+      },
+      "headerFields": {
+        "units_total": "총 세대",
+        "notice_date": "공고일",
+        "winner_date": "당첨자 발표",
+        "move_in_ym": "입주",
+        "resale_months": "전매 제한(개월)",
+        "resale_end": "전매 종료",
+        "residency_months": "거주의무(개월)",
+        "rewin_restriction_years": "재당첨 제한(년)",
+        "land_type": "택지유형",
+        "price_cap": "분양가 상한제",
+        "regulated": "규제지역",
+        "housing_type": "주택 구분"
+      }
+    },
+    "G4": {
+      "title": "비교",
+      "invalidIds": "비교할 단지를 2~6개 고르세요(지금 {n}개)",
+      "grid": "비교 표",
+      "row": {
+        "total": "종합 점수",
+        "rank": "순위",
+        "p10": "+10% 확률",
+        "intake": "접수",
+        "decision": "판정기 decide",
+        "prob": "선택 확률"
+      },
+      "ladder": "사다리 겹쳐 보기",
+      "gaps": "가격 갭 나란히",
+      "terms": "조건 표",
+      "term": {
+        "resale_end": "전매 종료",
+        "residency_months": "거주의무(개월)",
+        "down_payment_pct": "계약금 비율",
+        "down_payment_won": "계약금",
+        "required_equity_won": "필요 자기자본",
+        "interim_terms_text": "중도금 조건"
+      },
+      "decision": "상황별 판정",
+      "decisionScenario": "상황 {name}",
+      "noDecision": "이 상황의 판정이 없습니다",
+      "warnings": "경고",
+      "requirements": "요건",
+      "sensitivity": "민감도"
+    },
+    "G5": {
+      "title": "시나리오(내 조건)",
+      "base": "출발 시나리오",
+      "form": "내 조건",
+      "field": {
+        "name": "시나리오 이름",
+        "residence": "거주지",
+        "homeless": "무주택",
+        "household_size": "세대원 수",
+        "has_account": "청약통장 있음",
+        "score": "청약 가점",
+        "equity_won": "자기자본(억)",
+        "loan_limit_won": "총 대출한도(억)",
+        "purpose": "목적",
+        "holding_years": "보유 기간(년)",
+        "preferred_area_m2": "희망 평형(㎡)",
+        "move_in_by": "입주 희망 시기(YYYY-MM)"
+      },
+      "purpose": {
+        "": "선택 안 함",
+        "실거주": "실거주",
+        "시세차익": "시세차익",
+        "병행": "병행"
+      },
+      "error": {
+        "required": "필수 항목입니다",
+        "number": "숫자를 입력하세요",
+        "min": "{min} 이상이어야 합니다",
+        "max": "{max} 이하여야 합니다",
+        "ym": "YYYY-MM 형식으로 입력하세요",
+        "weightsSum": "가중치 합이 1이어야 합니다(지금 {sum})"
+      },
+      "weights": "가중치 미리보기",
+      "weightsSum": "합 {sum}",
+      "weightsHint": "하나를 움직이면 나머지가 비례해서 맞춰져 합이 항상 1입니다",
+      "liquidityOrMoveIn": "6번째 성분",
+      "save": "저장",
+      "saved": "시나리오를 저장했습니다",
+      "requirements": "요건 사전 계산(판정기 호출 없음)",
+      "req": {
+        "complex": "단지",
+        "access": "접근",
+        "regulation": "규제",
+        "funds": "자금",
+        "excluded": "제외"
+      },
+      "reqStatus": {
+        "충족": "충족",
+        "미충족": "미충족",
+        "미입력": "미입력",
+        "확인 불가": "확인 불가"
+      },
+      "run": "재판정 실행",
+      "cache": "캐시 히트 {hits} · 새 호출 {misses}",
+      "running": "재판정 중 — 2초마다 상태를 확인합니다",
+      "diff": "이전 결과 대비",
+      "diffCol": {
+        "name": "단지",
+        "rankBefore": "이전 순위",
+        "rankAfter": "새 순위",
+        "totalBefore": "이전 종합",
+        "totalAfter": "새 종합"
+      },
+      "noDiff": "순위 변동 없음",
+      "escaped": "판정기가 질문을 남겼습니다",
+      "readOnlyBuiltin": "내장 시나리오는 이름을 바꿔 새로 저장합니다"
+    },
+    "G6": {
+      "title": "지역 시장",
+      "livingArea": "생활권",
+      "allAreas": "전체 생활권",
+      "regulation": "규제 요약",
+      "regulationScope": "범위: {scope}",
+      "prices": "생활권별 실거래 시세",
+      "priceCol": {
+        "name": "생활권",
+        "low": "하단",
+        "median": "중앙값",
+        "high": "상단",
+        "n": "거래 수",
+        "window": "기간",
+        "basis": "기준"
+      },
+      "flags": "벤치마크 표본",
+      "flag": "{name}: 표본 {n}",
+      "noRecentSale": "최근 분양 사례 없음"
+    },
+    "G7": {
+      "title": "데이터·운영",
+      "sources": "소스 상태",
+      "src": {
+        "kind": "소스",
+        "enabled": "사용",
+        "lastSuccess": "최종 수집",
+        "lastAttempt": "최종 시도",
+        "success": "성공(7일)",
+        "failure": "실패(7일)",
+        "http": "HTTP",
+        "error": "마지막 오류",
+        "retry": "재시도",
+        "retried": "재시도 잡을 등록했습니다",
+        "disabled": "꺼짐({reason})",
+        "failing": "실패 대상"
+      },
+      "sourceKind": {
+        "applyhome_list": "청약홈 목록",
+        "applyhome_detail": "청약홈 상세",
+        "notice_pdf": "공고문 PDF",
+        "official_site": "공식 홈페이지",
+        "rtms": "실거래가",
+        "stats": "통계(미분양·입주)",
+        "news": "뉴스",
+        "reference": "참조 코드"
+      },
+      "queue": "재조사·재판정 큐",
+      "job": {
+        "name": "잡",
+        "status": "상태",
+        "scheduled": "예약",
+        "started": "시작",
+        "finished": "종료",
+        "progress": "진행",
+        "progressValue": "{done}/{total}",
+        "error": "오류",
+        "none": "잡 없음"
+      },
+      "checklist": "체크리스트",
+      "calendar": "캘린더",
+      "check": {
+        "kind": "종류",
+        "title": "항목",
+        "complex": "단지",
+        "due": "기한",
+        "status": "상태",
+        "note": "메모",
+        "none": "항목 없음",
+        "noDue": "기한 없음"
+      },
+      "checkStatus": {
+        "open": "열림",
+        "done": "완료",
+        "na": "해당 없음"
+      },
+      "stats": "판정기 호출(30일)",
+      "stat": {
+        "total": "호출",
+        "real": "실제 호출",
+        "cached": "캐시",
+        "failures": "실패",
+        "review": "검토",
+        "escaped": "질문",
+        "avg": "평균 소요",
+        "byTool": "도구별 호출",
+        "adapter": "어댑터 {version}",
+        "bar": "{tool}: {calls}회(실패 {failures})"
+      },
+      "human": "사람 확인 입력",
+      "humanIntro": "분양사무소 전화·방문 결과를 '사람 확인'으로 기록합니다",
+      "hc": {
+        "complex": "단지",
+        "field": "필드",
+        "value": "값",
+        "kind": "종류",
+        "checkedAt": "확인 시각",
+        "enteredBy": "입력자",
+        "note": "메모",
+        "submit": "사람 확인 저장",
+        "saved": "저장했습니다 — 접수 배지를 갱신했습니다",
+        "required": "단지·필드·값은 필수입니다",
+        "latest": "방금 저장한 접수 상태"
+      },
+      "hcField": {
+        "intake_status": "접수 상태",
+        "price": "가격",
+        "units": "잔여 세대",
+        "other": "기타"
+      },
+      "hcKind": {
+        "phone": "전화",
+        "visit": "방문",
+        "email": "이메일"
+      },
+      "suggestRejudge": "이 단지를 재판정할까요?",
+      "rejudge": "재판정 잡 등록",
+      "rejudgeQueued": "재판정 잡을 등록했습니다"
+    },
+    "G8": {
+      "title": "보고서",
+      "snapshot": "기준 스냅샷",
+      "compareSnapshot": "비교 스냅샷(diff)",
+      "noCompare": "비교 안 함",
+      "format": "형식",
+      "formats": {
+        "html": "HTML",
+        "pdf": "PDF"
+      },
+      "generate": "보고서 생성",
+      "blocked": "모순(contradicted) 주장 {n}건이 남아 생성할 수 없습니다",
+      "notPublished": "게시되지 않은 스냅샷입니다(상태: {status})",
+      "list": "보고서 목록",
+      "col": {
+        "created": "생성",
+        "snapshot": "기준",
+        "compare": "비교",
+        "format": "형식",
+        "status": "상태",
+        "size": "크기",
+        "file": "파일"
+      },
+      "sizeKb": "{kb}KB",
+      "none": "보고서 없음",
+      "diff": "스냅샷 diff",
+      "diffHint": "비교 스냅샷을 고르면 바뀐 항목을 보여 줍니다",
+      "diffCol": {
+        "complex": "단지",
+        "entity": "대상",
+        "field": "필드",
+        "change": "변경",
+        "severity": "중요도",
+        "detected": "감지"
+      },
+      "noDiff": "바뀐 항목 없음"
+    },
+    "notFound": {
+      "title": "페이지를 찾을 수 없습니다"
+    },
+    "common": {
+      "yes": "예",
+      "no": "아니오",
+      "none": "없음",
+      "all": "전체",
+      "save": "저장",
+      "cancel": "취소",
+      "apply": "적용",
+      "reset": "초기화",
+      "remove": "{name} 빼기",
+      "close": "닫기",
+      "open": "열기",
+      "download": "다운로드",
+      "range": "{low} ~ {high}",
+      "arrow": "{old} → {new}",
+      "rank": "{rank}위",
+      "severity": {
+        "info": "정보",
+        "notice": "알림",
+        "critical": "중요"
+      },
+      "status": {
+        "ok": "정상",
+        "review": "검토",
+        "escaped": "질문 남김",
+        "blocked": "차단",
+        "error": "오류"
+      },
+      "unresolved": "미해결",
+      "inclusion": {
+        "private_sale_apt": "민간분양 아파트",
+        "public_sale": "공공분양",
+        "public_rental": "공공임대",
+        "private_rental": "민간임대",
+        "non_apartment": "비아파트",
+        "out_of_scope": "범위 밖",
+        "manual_review": "사람 검토",
+        "범위 경계": "범위 경계",
+        "미분류": "미분류"
+      },
+      "judgeScope": {
+        "판정 대상": "판정 대상",
+        "보류": "보류",
+        "참고": "참고",
+        "제외": "제외"
+      },
+      "candidateKind": {
+        "sido": "시도",
+        "sigungu": "시군구",
+        "admin_dong": "행정동",
+        "legal_dong": "법정동"
+      },
+      "match": {
+        "exact": "정확 일치",
+        "prefix": "앞부분 일치",
+        "partial": "부분 일치"
+      },
+      "loadError": "불러오지 못했습니다: {detail}",
+      "backToList": "단지 리스트로"
+    }
   },
   "header": {
     "region": "지역",
@@ -192,7 +735,8 @@
         "gap": "가격 갭",
         "benchmark": "벤치마크",
         "supply": "공급",
-        "liquidity": "유동성"
+        "liquidity": "유동성",
+        "move_in": "입주 시기"
       },
       "empty": "점수 없음"
     },
