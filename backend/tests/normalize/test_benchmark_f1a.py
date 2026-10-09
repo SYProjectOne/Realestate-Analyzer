@@ -2,7 +2,7 @@
 
 - 분양가 = 같은 공고의 84㎡에 가장 가까운 주택형 최고가(청약홈 공식 API, 라벨 확인됨)
 - 실거래 = 입주월 이후 · 기준일 전 12개월 · 전용 80~85㎡ · 해제 제외 (low/median/high·건수), 고점 = 입주 후 전체
-- 단지 매칭 = 정규화 단지명 + 법정동(모호하면 매칭 안 함 → '확인 불가(매칭 모호)')
+- 단지 매칭 = 정규화 단지명 완전 일치 + 법정동(D10-5: 포함·준공연도 근사 없음, 차수·단지·블록 유지)
 - sale_period = 분양 연도 ≥ 기준연도−3 → 고가 분양기, 그 전 → 저가 분양기
 - 생활권 표본 0 → 지역 전체로 대체(라벨 추정, '추정(대체: 지역 전체)'), 그래도 0 → 행 없음
 """
@@ -60,7 +60,7 @@ def _seed(db_session: Session, add_raw: AddRaw, region: Region) -> None:
                 "2021-03-10",
                 "202406",
             ),
-            # C: 계양 — 같은 동에 이름이 겹치는 실거래 단지 둘 → 매칭 모호
+            # C: 계양 — 같은 동에 이름을 포함하는 실거래 단지 둘('1단지'·'2단지') → 완전 일치 아님 → 매칭 없음
             notice_row("2022000303", "푸르지오 작전", "인천광역시 계양구 작전동 5", "2022-01-05", "202503"),
             # D: 입주 전(2027-12) — 분양권 거래 없음 → 표본 아님
             notice_row(
@@ -195,7 +195,8 @@ def test_normalize_apt_name_is_string_only() -> None:
         "더샵송도마리나베이"
     )
     assert normalize_apt_name("e편한세상 김포") == normalize_apt_name("E편한세상김포")
-    assert normalize_apt_name("검단신도시 AB12블록 우미린") == normalize_apt_name("검단신도시 우미린")
+    # D10-5: 블록 번호는 지우지 않는다
+    assert normalize_apt_name("검단신도시 AB12블록 우미린") != normalize_apt_name("검단신도시 우미린")
 
 
 def test_sale_period_formula() -> None:
@@ -244,7 +245,7 @@ def test_build_benchmarks_from_history_and_trades(
         _la(region, "41570"): 1,
     }
     reasons = {u["name"]: u["reason"] for u in res.unmatched}
-    assert reasons["푸르지오 작전"] == "확인 불가(매칭 모호)"
+    assert reasons["푸르지오 작전"] == "실거래 없음(매칭 단지 없음)"  # D10-5: 포함 매칭 금지
 
 
 def test_every_numeric_field_has_provenance(db_session: Session, add_raw: AddRaw, region: Region) -> None:
@@ -326,8 +327,9 @@ def test_new_own_sample_replaces_substitute(db_session: Session, add_raw: AddRaw
     _seed(db_session, add_raw, region)
     build_benchmarks(db_session, region.id, asof_date=ASOF)
     gyeyang = _la(region, "28245")
-    # 모호했던 실거래 하나를 지우면(이름 정리) 계양구 자체 표본이 생긴다
-    db_session.execute(RtmsTrade.__table__.delete().where(RtmsTrade.apt_name == "푸르지오작전2단지"))
+    # 이름이 완전히 같은 실거래 단지가 생기면 계양구 자체 표본이 생긴다
+    c_doc = db_session.scalars(select(RtmsTrade.raw_document_id).where(RtmsTrade.apt_name == "푸르지오작전1단지")).first()
+    add_trade(db_session, region.id, "푸르지오작전", 62000, "2026-02-01", legal=JAKJEON, raw_document_id=c_doc)
     res = build_benchmarks(db_session, region.id, asof_date=ASOF)
     rows = [b for b in _rows(db_session) if b.living_area == gyeyang]
     assert [b.name for b in rows] == ["푸르지오 작전"]

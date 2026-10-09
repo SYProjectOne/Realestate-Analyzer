@@ -41,11 +41,16 @@ __all__ = [
     "IntakeItem",
     "IntakeOutcome",
     "ScreenOutcome",
+    "catalyst_kind",
+    "catalyst_stage",
     "has_contradiction",
+    "is_not_catalyst",
     "p1_screen",
+    "p1_screen_catalyst",
     "p2_extract",
     "p3_audit",
     "p4_classify_catalyst",
+    "p4_classify_catalyst_kind",
     "p4_classify_inclusion",
     "p4_classify_inclusion_batch",
     "p4_classify_intake",
@@ -279,6 +284,23 @@ def p4_classify_intake(
     return out
 
 
+def p1_screen_catalyst(
+    adapter: JudgeCaller,
+    *,
+    catalyst_key: str,
+    title: str,
+    excerpt: str | None = None,
+    url: str | None = None,
+    snapshot_id: int | None = None,
+) -> ScreenOutcome:
+    """P1 호재 관련성 screen(뉴스 항목 → 호재 후보 전, D10-6). ``usable``(pass·ok)인 항목만 후보로 둔다 —
+    skip(관련 없음)·block·review 는 후보가 아니다(호출자가 사유를 기록)."""
+    payload = P.catalyst_screen_payload(title=title, excerpt=excerpt, url=url)
+    env = adapter.call("screen", payload, f"screen:catalyst:{catalyst_key}"[:128], snapshot_id=snapshot_id)
+    verdict = env.result.get("verdict") if env.result else None
+    return ScreenOutcome(env, verdict, env.status == "ok" and verdict == "pass")
+
+
 def p4_classify_catalyst(
     adapter: JudgeCaller,
     *,
@@ -287,7 +309,10 @@ def p4_classify_catalyst(
     complex_id: int | None = None,
     snapshot_id: int | None = None,
 ) -> ClassifyOutcome:
-    """P4(b) 호재 단계 5클래스 → catalyst.decision·judgment_seq."""
+    """P4(b) 호재 단계 5클래스 + '호재 아님' → catalyst.stage·decision·judgment_seq.
+
+    '호재 아님'(``is_not_catalyst``)이면 호출자가 후보를 폐기하고 기록한다(D10-6). 단계는 ``catalyst_stage``.
+    """
     payload = P.classify_catalyst_payload(item_id=f"catalyst:{catalyst_key}", text=text)
     env = adapter.call(
         "classify",
@@ -297,6 +322,47 @@ def p4_classify_catalyst(
         complex_id=complex_id,
     )
     return _classify_outcome(env)
+
+
+def p4_classify_catalyst_kind(
+    adapter: JudgeCaller,
+    *,
+    catalyst_key: str,
+    text: str,
+    complex_id: int | None = None,
+    snapshot_id: int | None = None,
+) -> ClassifyOutcome:
+    """P4(b) 호재 종류 6클래스(D10-6) → catalyst.kind (``catalyst_kind``: 미해결이면 '기타')."""
+    payload = P.classify_catalyst_kind_payload(item_id=f"catalyst:{catalyst_key}", text=text)
+    env = adapter.call(
+        "classify",
+        payload,
+        f"classify:catalyst_kind:{catalyst_key}"[:128],
+        snapshot_id=snapshot_id,
+        complex_id=complex_id,
+    )
+    return _classify_outcome(env)
+
+
+def is_not_catalyst(out: ClassifyOutcome) -> bool:
+    """판정기가 auto 로 '호재 아님'이라고 했는가(후보 폐기 조건). 미해결은 폐기하지 않는다(단계 '미확정')."""
+    return out.resolved and out.label == P.NOT_CATALYST
+
+
+def catalyst_stage(out: ClassifyOutcome) -> str | None:
+    """호재 단계: auto 로 정해진 5단계면 그 값, 미해결이면 '미확정',
+    '호재 아님'이면 None(단계 아님 — 폐기)."""
+    if is_not_catalyst(out):
+        return None
+    return out.label if out.resolved and out.label in P.CATALYST_STAGE_CLASSES else "미확정"
+
+
+_KIND_IDS: Final = frozenset(c["id"] for c in P.CATALYST_KIND_CLASSES)
+
+
+def catalyst_kind(out: ClassifyOutcome) -> str:
+    """호재 종류: auto 로 정해진 값, 미해결·모르는 값이면 '기타'(키워드로 대신 정하지 않는다)."""
+    return out.label if out.resolved and out.label in _KIND_IDS and out.label else "기타"
 
 
 @dataclass(frozen=True, slots=True)

@@ -11,9 +11,12 @@
    단지는 **원문의 지역 안에서만** 찾는다(R3 W4): 같은 주택관리번호의 단지가 다른 지역에 있으면 그 행을
    건드리지 않는다. applyhome_id 가 전역 유일(현 스키마)이면 이 원문의 그 단지 후보는 건너뛴다(skipped,
    ``StoreResult.foreign_keys``) — (region_id, applyhome_id) 유일로 바뀌면 지역마다 자기 행을 만든다.
-   같은 블록 중복(R3 W12c): 잔여 세대(무순위·임의) 상세 화면은 최초 주택관리번호를 싣지 않아 다른 번호로
-   들어온다. 새 번호의 단지를 만들기 전에 같은 지역에서 **정규화한 단지명 + 정규화한 공급위치가 모두 같은
-   단지가 정확히 1개**면 그 행에 묶는다(문자열 정규화는 판단이 아니다; 둘 이상이거나 주소가 없으면 묶지 않음).
+   같은 블록 중복(R3 W12c, D10-4): 잔여 세대(무순위·임의공급·잔여세대) 공고는 최초 주택관리번호를 싣지 않아
+   다른 번호로 들어온다. **잔여 공고 원문(URL 경로 Remndr·OPT, 또는 공고 종류 무순위·임의공급·선착순·재공급)
+   으로 들어온 새 번호에만**, 같은 지역에서 정규화한 단지명 + 정규화한 공급위치가 모두 같은 단지가 정확히
+   1개면 그 행에 묶는다(문자열 정규화는 판단이 아니다). 이름 키는 잔여 공고의 회차·공급 구분 괄호만 떼고
+   차수·단지·블록 번호('(2차)', '1단지', 'AA13-1블록')는 남긴다. 주소가 구역 표현('…일원'·'일대'·'외 n필지')
+   이면 묶지 않는다. 일반 APT 공고끼리는 묶지 않는다. 둘 이상이거나 주소가 없으면 묶지 않는다.
 4. 같은 행·필드에 이미 다른 원문 출처가 있으면 그 출처 행(field_provenance: value_norm·observed_on·rank·라벨)
    으로 후보를 되살려 합친다 — 옛 원문을 다시 읽거나 파싱하지 않는다(계약 2026-10-09.2).
    우선순위 판정(resolve)은 항상 그 필드의 모든 출처를 함께 본다
@@ -40,6 +43,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -58,6 +62,7 @@ from app.models import (
     Unsold,
 )
 from app.normalize import changes
+from app.normalize._text import strip_supply_round
 from app.normalize.applyhome_parser import ApplyhomeParser
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
 from app.normalize.fields import (
@@ -83,6 +88,7 @@ __all__ = [
     "address_key",
     "block_name_key",
     "candidate_from_row",
+    "is_zone_address",
     "parser_for",
     "raw_dto",
     "store_raw_document",
@@ -229,7 +235,7 @@ class _Binder:
                 cx = cand
                 if create and cx.applyhome_id is None:
                     cx.applyhome_id = key
-        if cx is None and create and region_id is not None:
+        if cx is None and create and region_id is not None and _is_remainder_notice(raw, batch, key):
             cx = self._same_block(key, region_id, batch)
         if cx is None and create:
             region_id = raw.region_id
@@ -276,7 +282,7 @@ class _Binder:
         if not isinstance(name, str) or not isinstance(address, str):
             return None
         nk, ak = block_name_key(name), address_key(address)
-        if not nk or not ak:
+        if not nk or not ak or is_zone_address(address):
             return None
         hits = [
             cx
@@ -284,6 +290,7 @@ class _Binder:
                 select(Complex).where(Complex.region_id == region_id, Complex.address.is_not(None))
             )
             if cx.applyhome_id != key
+            and not is_zone_address(cx.address or "")
             and address_key(cx.address or "") == ak
             and nk in {block_name_key(n) for n in (cx.name, *(cx.former_names or []))}
         ]
@@ -440,6 +447,7 @@ class _Binder:
         if raw.region_id is None:
             return None
         floor = vals.get("floor")
+        presale = bool(vals.get("is_presale", False))  # 분양권 거래는 같은 값의 매매와 다른 행(R3b F1a)
         row = self.s.scalars(
             select(RtmsTrade).where(
                 RtmsTrade.region_id == raw.region_id,
@@ -449,6 +457,7 @@ class _Binder:
                 RtmsTrade.floor.is_(None) if floor is None else RtmsTrade.floor == int(floor),
                 RtmsTrade.area_m2 == Decimal(str(vals.get("area_m2"))),
                 RtmsTrade.source == vals.get("source"),
+                RtmsTrade.is_presale.is_(presale),
             )
         ).first()
         if row is not None or not create:
@@ -460,6 +469,7 @@ class _Binder:
             price_won=int(vals["price_won"]),
             deal_date=str(vals["deal_date"]),
             source=str(vals["source"]),
+            is_presale=presale,
             raw_document_id=raw.id,
         )
         self.s.add(row)
@@ -564,18 +574,41 @@ def _notice_area(code: str | None) -> Decimal | None:
 _APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)
 """complex.applyhome_id 가 전역 유일(현 스키마)인가. (region_id, applyhome_id) 유일로 바뀌면 False."""
 
-# 잔여 세대 공고가 단지명 뒤에 붙이는 회차·공급 구분 괄호: '(조합원 자격상실세대 3회차)', '(임의공급 4차)'
-_ROUND_PAREN_RE = re.compile(r"\([^)]*(?:차|회차|임의|무순위|잔여|선착순|조합원|취소|재공급)[^)]*\)")
-_KEY_DROP_RE = re.compile(r"[\s·,.\-()（）\[\]]+|번지|일원")
+_KEY_DROP_RE = re.compile(r"[\s·,.\-()（）\[\]]+|번지")
+_ZONE_RE = re.compile(r"일원|일대|(?:^|\s)외(?:\s|\d|$)|필지")
+_REMAINDER_PATHS = ("Remndr", "getOPT", "OPTLttot")
+_REMAINDER_KINDS = ("무순위", "임의", "잔여", "선착순", "재공급", "계약취소")
 
 
 def block_name_key(name: str) -> str:
-    """단지명 비교 키: 회차·공급 구분 괄호를 떼고 공백·문장부호를 뺀다(대소문자 무시)."""
-    return _KEY_DROP_RE.sub("", _ROUND_PAREN_RE.sub("", name)).lower()
+    """단지명 비교 키: 잔여 공고의 회차·공급 구분 괄호만 떼고 공백·문장부호를 뺀다(대소문자 무시).
+    차수·단지·블록 번호는 남긴다(D10-4)."""
+    return _KEY_DROP_RE.sub("", strip_supply_round(name)).lower()
+
+
+def is_zone_address(address: str) -> bool:
+    """공급위치가 구역 표현('…일원'·'일대'·'외 n필지')인가 — 같은 블록 병합 금지(D10-4)."""
+    return bool(_ZONE_RE.search(address))
+
+
+def _is_remainder_notice(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) -> bool:
+    """이 원문이 잔여 공고(무순위·임의공급·잔여세대·재공급)인가: URL 경로(청약홈 잔여세대·임의공급 화면·API)
+    또는 같은 번호의 공고 종류 후보(공고문 제목). 문자열 대조뿐이다(판단 아님)."""
+    path = urlsplit(raw.url).path
+    if any(p in path for p in _REMAINDER_PATHS):
+        return True
+    return any(
+        c.entity == "payment_terms"
+        and (c.entity_key or "").split(":")[0] == key
+        and c.field == "notice_kind"
+        and isinstance(c.value, str)
+        and any(k in c.value for k in _REMAINDER_KINDS)
+        for c in batch
+    )
 
 
 def address_key(address: str) -> str:
-    """공급위치 비교 키: 공백·문장부호·'번지'·'일원'을 뺀다."""
+    """공급위치 비교 키: 공백·문장부호·'번지'를 뺀다(구역 표현 주소는 ``is_zone_address`` 로 따로 거른다)."""
     return _KEY_DROP_RE.sub("", address).lower()
 
 

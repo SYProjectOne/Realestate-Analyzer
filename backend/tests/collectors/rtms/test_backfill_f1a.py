@@ -17,7 +17,7 @@ from app.core.contracts_gen import Region, Snapshot
 from app.core.http import HttpClient
 from app.models import RawDocument, RtmsTrade
 
-FAKE_KEY = "TEST%2BKEY%3D%3D"
+FAKE_KEY = "TEST%2BKEY%3D%3D"  # 분양권 전매 API 는 test_presale_r3b.py — 여기서는 매매만(presale=False)
 
 
 def _handler(fixtures_dir: Path) -> Callable[[httpx.Request], httpx.Response]:
@@ -45,9 +45,9 @@ def test_backfill_fetches_only_missing_months(
         router.get("https://apis.data.go.kr/robots.txt").respond(400)
         route = router.get(RTMS_API_URL).mock(side_effect=_handler(fixtures_dir))
         # 평소 수집(최근 1개월)이 먼저 돌았다
-        RtmsCollector(service_key=FAKE_KEY, http=http, months=1).fetch(region, snapshot, None)
+        RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False).fetch(region, snapshot, None)
         assert route.call_count == 2
-        col = RtmsCollector(service_key=FAKE_KEY, http=http, months=1)
+        col = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False)
         docs = col.backfill(region, snapshot, months=3)
         months = sorted(
             {(c.request.url.params["LAWD_CD"], c.request.url.params["DEAL_YMD"]) for c in route.calls[2:]}
@@ -57,7 +57,9 @@ def test_backfill_fetches_only_missing_months(
         assert col.load_stats is not None and col.load_stats.inserted > 0
         n_raw, n_trade = count(RawDocument), count(RtmsTrade)
 
-        again = RtmsCollector(service_key=FAKE_KEY, http=http, months=1).backfill(region, snapshot, months=3)
+        again = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False).backfill(
+            region, snapshot, months=3
+        )
         assert again == [] and route.call_count == 6  # 채울 달 없음
         assert (count(RawDocument), count(RtmsTrade)) == (n_raw, n_trade)
 

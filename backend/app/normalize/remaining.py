@@ -12,12 +12,16 @@ kind: 04·06 → '무순위', 11(임의공급 엔드포인트 포함) → '임�
 없음)'로 기록한다(추측하지 않는다).
 
 단지: 잔여 공고는 자기 주택관리번호를 가져 수집 정규화(store)가 따로 단지 행을 만든다. 원래 단지 = 같은 지역에서
-정규화한 단지명(괄호 회차 제거, ``benchmark.normalize_apt_name``)과 법정동이 같은 단지 중 잔여 공고가 아닌 것 —
-하나일 때만. 없거나 여럿이면 같은 이름·법정동 잔여 공고들의 단지 행 중 가장 먼저 생긴 것에 묶고(회차가 한 타임라인에
+정규화한 단지명(``benchmark.normalize_apt_name`` — 잔여 공고 회차 괄호만 제거, 차수·블록 유지)과 법정동이 같은
+단지 중 잔여 공고가 아닌 것 — 하나일 때만. 없으면 이름 끝 공급 회차 괄호('(23차)')까지 뗀 키(``remainder_name_key``)로
+한 번 더 찾는다(역시 하나일 때만). 없거나 여럿이면 같은 이름·법정동 잔여 공고들의 단지 행 중 가장 먼저 생긴 것에 묶고(회차가 한 타임라인에
 모이게) ``unmatched`` 에 사유를 남긴다. 문자열 처리뿐이다(판단 아님).
 
 멱등: (공고번호, kind) 하나에 행 하나 — 다시 돌리면 갱신. 새 행 = change_event(remaining_event, critical, 재판정),
-값 변경 = notice(결과 문구만 바뀌면 info). 수치·날짜(notice_date·apply_dates·units)는 field_provenance(확인됨).
+단 지역 최초 적재(region.status ≠ ready = bootstrap — 전체 판정이 어차피 돈다)이거나 접수가 이미 끝난 과거 공고
+(청약접수 마지막 날 < 기준일, 접수일이 없으면 모집공고일 < 기준일 − 30일)의 새 행은 info(재판정 없음 — 배포 후 첫
+수집 때 과거 잔여 공고 이벤트 폭주 방지). 값 변경 = notice(결과 문구만 바뀌면 info).
+원문은 URL 마다 최신 1건만 읽고, 주택형·경쟁률 원문은 URL 일괄 조회로 한 번에 찾는다(N+1 없음). 수치·날짜(notice_date·apply_dates·units)는 field_provenance(확인됨).
 """
 
 # ruff: noqa: E501  (한국어 docstring·발췌 문구)
@@ -27,6 +31,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from typing import Any, Final
 from urllib.parse import parse_qs, urlsplit
 
@@ -41,10 +46,12 @@ from app.core.contracts_gen import ProvenanceRow
 from app.models import ChangeEvent, Complex, RawDocument, Region, RemainingEvent
 from app.normalize._text import normalize_type_code
 from app.normalize.benchmark import (
-    address_legal_code,
+    LegalIndex,
     api_rows,
     iso_day,
     json_object_at,
+    latest_by_urls,
+    latest_ok_docs,
     normalize_apt_name,
     prov_row,
     read_raw_row,
@@ -108,29 +115,7 @@ class RemainingSync:
 # ---------------------------------------------------------------- 원문 읽기
 
 
-def _docs(session: Session, region_id: int, source_kind: str, part: str) -> list[RawDocument]:
-    return list(
-        session.scalars(
-            select(RawDocument)
-            .where(
-                RawDocument.source_kind == source_kind,
-                RawDocument.region_id == region_id,
-                RawDocument.path.is_not(None),
-                RawDocument.http_status == 200,
-                RawDocument.url.contains(part),
-            )
-            .order_by(RawDocument.id)
-        )
-    )
-
-
-def _latest_by_url(session: Session, url: str) -> RawDocument | None:
-    return session.scalars(
-        select(RawDocument)
-        .where(RawDocument.url == url, RawDocument.path.is_not(None), RawDocument.http_status == 200)
-        .order_by(RawDocument.id.desc())
-        .limit(1)
-    ).first()
+_docs = latest_ok_docs  # URL 마다 최신 원문만(같은 URL 을 다시 받은 옛 원문은 읽지 않는다)
 
 
 def _dates(*values: object) -> list[str]:
@@ -144,6 +129,7 @@ def _dates(*values: object) -> list[str]:
 
 def _api_notices(session: Session, region_id: int) -> dict[tuple[str, str], _Notice]:
     out: dict[tuple[str, str], _Notice] = {}
+    kinds: dict[tuple[str, str], ah_api.ApiKind] = {}
     for path, kind in _API_DETAIL.items():
         for doc in _docs(session, region_id, "applyhome_detail", path):
             text = read_raw_row(doc)
@@ -167,15 +153,23 @@ def _api_notices(session: Session, region_id: int) -> dict[tuple[str, str], _Not
                     text=text,
                     api=True,
                 )
-                _api_units(session, out[(hm, pb)], kind)
-                _api_result(session, out[(hm, pb)], kind)
+                kinds[(hm, pb)] = kind
+    urls = latest_by_urls(
+        session,
+        [
+            ah_api.doc_url(getattr(ah_api.ENDPOINTS[k], part), ah_api.item_params(hm, pb))
+            for (hm, pb), k in kinds.items()
+            for part in ("model", "competition")
+        ],
+    )
+    for key, k in kinds.items():
+        _api_units(urls, out[key], k)
+        _api_result(urls, out[key], k)
     return out
 
 
-def _api_units(session: Session, n: _Notice, kind: ah_api.ApiKind) -> None:
-    doc = _latest_by_url(
-        session, ah_api.doc_url(ah_api.ENDPOINTS[kind].model, ah_api.item_params(n.hm, n.pb))
-    )
+def _api_units(urls: dict[str, RawDocument], n: _Notice, kind: ah_api.ApiKind) -> None:
+    doc = urls.get(ah_api.doc_url(ah_api.ENDPOINTS[kind].model, ah_api.item_params(n.hm, n.pb)))
     text = read_raw_row(doc) if doc is not None else None
     if doc is None or text is None:
         return
@@ -193,10 +187,8 @@ def _api_units(session: Session, n: _Notice, kind: ah_api.ApiKind) -> None:
         n.units_excerpt = "; ".join(f"{k} {v}세대" for k, v in units.items())
 
 
-def _api_result(session: Session, n: _Notice, kind: ah_api.ApiKind) -> None:
-    doc = _latest_by_url(
-        session, ah_api.doc_url(ah_api.ENDPOINTS[kind].competition, ah_api.item_params(n.hm, n.pb))
-    )
+def _api_result(urls: dict[str, RawDocument], n: _Notice, kind: ah_api.ApiKind) -> None:
+    doc = urls.get(ah_api.doc_url(ah_api.ENDPOINTS[kind].competition, ah_api.item_params(n.hm, n.pb)))
     text = read_raw_row(doc) if doc is not None else None
     rows = api_rows(text) if text else []
     parts, ratios = [], []
@@ -277,8 +269,8 @@ def _web_notices(session: Session, region_id: int) -> dict[tuple[str, str], _Not
     return out
 
 
-def _web_result(session: Session, n: _Notice) -> None:
-    doc = _latest_by_url(session, ah_site.competition_url("remndr", n.hm, n.pb))
+def _web_result(urls: dict[str, RawDocument], n: _Notice) -> None:
+    doc = urls.get(ah_site.competition_url("remndr", n.hm, n.pb))
     html = read_raw_row(doc) if doc is not None else None
     if html is None:
         return
@@ -296,6 +288,15 @@ def _web_result(session: Session, n: _Notice) -> None:
 
 # ---------------------------------------------------------------- 단지 묶기
 
+_TRAILING_ROUND_RE: Final = re.compile(r"\(\s*\d+\s*(?:차|회차)\s*\)\s*$")
+
+
+def remainder_name_key(name: str) -> str:
+    """잔여 공고 이름 키: 이름 끝의 공급 회차 괄호('리아츠 송도(23차)')까지 뗀 정규화 이름. 잔여 공고(공식 API·웹
+    잔여세대 화면으로 들어온 것)끼리 묶거나, 정확한 이름으로 원래 단지를 못 찾았을 때만 쓴다(문자열 처리).
+    단지 행 병합(store, D10-4)·벤치마크 매칭(D10-5)은 이 키를 쓰지 않는다."""
+    return normalize_apt_name(_TRAILING_ROUND_RE.sub("", name))
+
 
 @dataclass
 class _Anchor:
@@ -311,24 +312,24 @@ def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[t
     )
     self_rows = {c.applyhome_id: c for c in complexes if c.applyhome_id in remaining_hms}
     originals = [c for c in complexes if c.applyhome_id not in remaining_hms]
-    keyed: dict[tuple[str, str], tuple[str, str | None]] = {}
+    index = LegalIndex(session, (n.address for n in notices))
+    keyed: dict[tuple[str, str], tuple[str, str, str | None]] = {}
     groups: dict[tuple[str, str | None], list[int]] = {}
     for n in notices:
         own = self_rows.get(n.hm)
         code = own.legal_dong_code if own is not None and own.legal_dong_code else None
-        code = code or address_legal_code(session, n.address, scope)
-        gk = (normalize_apt_name(n.name), code)
-        keyed[(n.hm, n.pb)] = gk
+        code = code or index.code(n.address, scope)
+        strict, loose = normalize_apt_name(n.name), remainder_name_key(n.name)
+        keyed[(n.hm, n.pb)] = (strict, loose, code)
         if own is not None:
-            groups.setdefault(gk, []).append(own.id)
+            groups.setdefault((loose, code), []).append(own.id)
     out: dict[tuple[str, str], _Anchor] = {}
     for n in notices:
-        name, code = keyed[(n.hm, n.pb)]
-        hits = (
-            [c for c in originals if c.legal_dong_code == code and normalize_apt_name(c.name) == name]
-            if code and name
-            else []
-        )
+        strict, name, code = keyed[(n.hm, n.pb)]
+        here = [c for c in originals if c.legal_dong_code == code] if code and name else []
+        hits = [c for c in here if normalize_apt_name(c.name) == strict]
+        if not hits:  # 잔여 공고 이름 끝 회차 '(23차)' 를 뗀 키로 한 번 더(원래 단지가 정확히 1개일 때만 묶는다)
+            hits = [c for c in here if remainder_name_key(c.name) == name]
         if len(hits) == 1:
             out[(n.hm, n.pb)] = _Anchor(hits[0].id, None)
             continue
@@ -377,6 +378,20 @@ def _prov(session: Session, ev: RemainingEvent, n: _Notice) -> None:
         upsert_provenance(session, rows)
 
 
+PAST_NOTICE_DAYS: Final = 30
+"""청약접수 일자가 없는 공고는 모집공고일이 기준일보다 이만큼 이전이면 과거 공고로 본다(날짜 산술)."""
+
+
+def _is_past(n: _Notice, day: str) -> bool:
+    """접수가 이미 끝난 과거 공고인가(날짜 비교 — 판단 아님): 청약접수 마지막 날 < 기준일. 접수일이 없으면
+    모집공고일 < 기준일 − 30일. 날짜를 모르면 과거로 보지 않는다(critical 유지 — 놓치지 않는다)."""
+    if n.apply_dates:
+        return max(n.apply_dates) < day
+    if n.notice_date:
+        return n.notice_date < (date.fromisoformat(day) - timedelta(days=PAST_NOTICE_DAYS)).isoformat()
+    return False
+
+
 def sync_remaining_events(
     session: Session, region_id: int, *, snapshot_id: int | None, detected_at: str
 ) -> RemainingSync:
@@ -394,9 +409,12 @@ def sync_remaining_events(
             n.kind = web.kind
         found[k] = n
     notices = [found[k] for k in sorted(found)]
-    for n in notices:
-        if n.result_text is None:
-            _web_result(session, n)
+    pending = [n for n in notices if n.result_text is None]
+    web_urls = latest_by_urls(session, [ah_site.competition_url("remndr", n.hm, n.pb) for n in pending])
+    for n in pending:
+        _web_result(web_urls, n)
+    quiet_all = region.status != "ready"  # 지역 최초 적재(bootstrap) — 전체 판정이 어차피 돈다
+    day = detected_at[:10]
     anchors = _anchors(session, region, notices)
 
     existing: dict[tuple[str | None, str], RemainingEvent] = {
@@ -432,11 +450,12 @@ def sync_remaining_events(
             session.add(row)
             session.flush()
             res.inserted += 1
+            quiet = quiet_all or _is_past(n, day)
             res.events.append(
                 make_event(
                     entity="remaining_event", entity_id=row.id, field="notice_no", old=None,
                     new=f"{n.kind} {n.pb} {n.name}", snapshot_id=snapshot_id, complex_id=anchor.complex_id,
-                    detected_at=detected_at, severity="critical",
+                    detected_at=detected_at, severity="info" if quiet else "critical",
                 )
             )  # fmt: skip
         else:

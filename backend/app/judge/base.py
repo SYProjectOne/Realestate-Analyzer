@@ -47,6 +47,8 @@ from app.judge import cache, guard, log
 
 __all__ = [
     "ADAPTER_CODE_VERSION",
+    "CANONICAL_FINGERPRINT",
+    "CANONICAL_SAMPLE",
     "TOOL_NAMES",
     "CachedJudgeAdapter",
     "JudgeCaller",
@@ -59,8 +61,20 @@ __all__ = [
     "model_of",
 ]
 
-ADAPTER_CODE_VERSION: Final = "0.1.0"
-"""어댑터 코드 버전. 정규화·payload 규칙이 바뀌면 올린다 → 모든 input_hash가 바뀌어 전체 재판정 1회."""
+ADAPTER_CODE_VERSION: Final = "0.2.0"
+"""어댑터 코드 버전. 정규화·payload 규칙이 바뀌면 올린다 → 모든 input_hash가 바뀌어 전체 재판정 1회.
+
+0.2.0 (R3b): R3 의 hash 정준화 변경(``protocols.canonical_value`` — 1 = 1.0 = Decimal('1') 등)과
+호재 분류 클래스 추가('호재 아님', D10-6). 정준화 정의가 바뀌면 ``CANONICAL_FINGERPRINT`` 테스트가 깨진다 —
+버전을 올리고 지문을 갱신한다."""
+
+CANONICAL_SAMPLE: Final[dict[str, Any]] = {
+    "b": [1, 1.0, 2.5, "가", None, True],
+    "a": {"z": -0.0, "y": 1e-7, "x": 10**12},
+}
+"""정준화 지문 표본(정수와 같은 실수·작은 실수·큰 정수·한글·null·bool·키 순서)."""
+CANONICAL_FINGERPRINT: Final = "c7cb948ddeaa750287cb53a6c92509b66dd12eed6fb470d1e8a617727d7f0aa3"
+"""``sha256(canonical_hash_json(CANONICAL_SAMPLE))`` — ADAPTER_CODE_VERSION 0.2.0 시점의 정준화 정의."""
 
 SERVER_TAG: Final = "jev-mcp"
 TOOL_NAMES: Final[dict[JudgeTool, str]] = {t: f"jev_{t}" for t in JUDGE_TOOLS}

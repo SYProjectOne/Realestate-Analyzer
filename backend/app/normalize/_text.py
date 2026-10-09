@@ -33,9 +33,22 @@ __all__ = [
     "read_raw_text",
     "round_area",
     "stamp_observed_on",
+    "strip_supply_round",
 ]
 
 AMOUNT_RE = re.compile(r"\d{1,3}(?:,\d{3})+")
+# 잔여 공고가 단지명 뒤에 붙이는 회차·공급 구분 괄호: '(조합원 자격상실세대 3회차)', '(임의공급 4차)',
+# '(자격상실 재공급)'. 단지 차수 '(2차)'·'(1단지)'·블록 '(G5-11BL)' 은 이 괄호가 아니다(D10-4·D10-5).
+_SUPPLY_ROUND_PAREN_RE = re.compile(
+    r"[(\[（][^)\]）]*(?:회차|임의|무순위|잔여|선착순|조합원|취소|재공급|자격상실|사후)[^)\]）]*[)\]）]"
+)
+
+
+def strip_supply_round(name: str) -> str:
+    """단지명에서 잔여 공고의 회차·공급 구분 괄호만 뗀다(문자열 처리 — 판단 아님)."""
+    return _SUPPLY_ROUND_PAREN_RE.sub("", name)
+
+
 _DATE_RE = re.compile(r"(?<!\d)(\d{2}|\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})(?!\d)")
 
 

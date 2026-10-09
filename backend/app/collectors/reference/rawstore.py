@@ -9,16 +9,20 @@ reference)가 이 모듈을 같이 쓴다.
   'TLS'·'robots' …). sha256 = sha256('fail:' + url + ':' + (http_status 또는 error_text) + ':' + 날짜(KST)) —
   같은 날 재시도는 행이 늘지 않고 날마다 한 행.
 - DB·로그에 남는 URL 에서는 키 파라미터(serviceKey 등)를 뺀다(AGENTS 규칙 6).
+- 키 자체는 원문·퍼센트 인코딩(``quote``·``quote_plus``)·인코딩 키를 푼 형태 어느 것으로도
+  FetchResult 오류 문구·응답 본문·raw_document 에 남기지 않는다(``secret_forms``·``mask_secrets``·
+  ``scrub_result``, R3b F1a). httpx 오류 메시지에는 요청 URL(인코딩된 serviceKey)이 들어갈 수 있다.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from collections.abc import Iterable
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, quote_plus, unquote, unquote_plus, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -38,7 +42,10 @@ __all__ = [
     "failure_sha256",
     "fetch_failure",
     "iso_kst",
+    "mask_secrets",
     "safe_url",
+    "scrub_result",
+    "secret_forms",
 ]
 
 SourceKind = Literal[
@@ -65,6 +72,56 @@ _DNS_MARKERS = (
     "name resolution",
 )
 _TLS_MARKERS = ("ssl", "certificate", "tls")
+MASK = "[REDACTED:secret]"
+_MIN_SECRET_LEN = 4
+
+
+def secret_forms(secrets: Iterable[str | None]) -> list[str]:
+    """비밀값의 모든 표기: 원문·디코딩(인코딩 키를 받은 경우)·``quote``(safe='' 와 기본 '/')·``quote_plus``.
+    긴 것부터(짧은 형태가 긴 형태의 일부를 먼저 지우지 않게)."""
+    forms: set[str] = set()
+    for s in secrets:
+        if not s or len(s) < _MIN_SECRET_LEN:
+            continue
+        for base in {s, unquote(s), unquote_plus(s)}:
+            forms.update({base, quote(base, safe=""), quote(base), quote_plus(base)})
+    return sorted((f for f in forms if len(f) >= _MIN_SECRET_LEN), key=len, reverse=True)
+
+
+def mask_secrets(text: str | None, secrets: Iterable[str | None]) -> str | None:
+    """``secret_forms`` 를 ``[REDACTED:secret]`` 로. URL 인코딩 대소문자(%2b)도 가린다."""
+    if not text:
+        return text
+    out = text
+    for form in secret_forms(secrets):
+        if form in out:
+            out = out.replace(form, MASK)
+        elif "%" in form and form.lower() in out.lower():
+            out = re.sub(re.escape(form), MASK, out, flags=re.IGNORECASE)
+    return out
+
+
+def scrub_result(
+    result: FetchResult, secrets: Iterable[str | None], *, url: str | None = None
+) -> FetchResult:
+    """FetchResult 에서 비밀값을 지운다: url(주면 그것, 아니면 키 파라미터를 뺀 URL)·final_url(None)·
+    오류 문구·robots 오류·응답 본문(서버가 키를 되돌려 준 경우). 비밀값이 없으면 본문은 그대로
+    (sha256 불변)."""
+    keys = list(secrets)
+    content = result.content
+    if content:
+        text = content.decode("utf-8", errors="surrogateescape")
+        masked = mask_secrets(text, keys)
+        if masked is not None and masked != text:
+            content = masked.encode("utf-8", errors="surrogateescape")
+    return replace(
+        result,
+        url=url if url is not None else (mask_secrets(safe_url(result.url), keys) or ""),
+        final_url=None,
+        error=mask_secrets(result.error, keys),
+        robots_error=mask_secrets(result.robots_error, keys),
+        content=content,
+    )
 
 
 def iso_kst(dt: datetime) -> str:
