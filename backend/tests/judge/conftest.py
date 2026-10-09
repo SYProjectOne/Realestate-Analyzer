@@ -3,7 +3,8 @@
 - ``samples``: 실제 JEV 0.14.1 응답 녹화(fixtures/jev_samples.json, 도구당 1회 · 합성 공개 텍스트).
 - ``FakeTransport``: 녹화 응답을 돌려주는 메모리 전송. 호출 수를 센다(T17).
 - ``session_factory``: 임시 sqlite(모델 create_all)에 붙는 sessionmaker.
-- ``fake_server``: 가짜 stdio MCP 서버(fake_jev_server.py) 실행 명령 + 설정 파일 — 실제 프로세스 경로 테스트용.
+- ``fake_server``: 가짜 stdio MCP 서버(fake_jev_server.py) 실행 명령 + 설정 파일
+  (실제 프로세스 경로 테스트용).
 """
 
 from __future__ import annotations
