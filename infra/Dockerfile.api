@@ -32,5 +32,11 @@ USER app
 
 EXPOSE 8000
 
-# alembic.ini 가 있으면 마이그레이션 후 기동(마이그레이션은 api 만 수행 — worker 는 api healthy 뒤에 뜬다)
-CMD ["sh", "-c", "if [ -f alembic.ini ]; then alembic upgrade head; fi; exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+# 컨테이너 안에서는 모든 인터페이스(compose 네트워크)에 바인드한다. 단 토큰(API_TOKEN·READONLY_TOKEN)이
+# 모두 비면 app.serve 가 127.0.0.1 로 바꾸고 경고한다(R3 M11) — compose 는 API_TOKEN 없이 기동하지 않는다.
+ENV API_HOST=0.0.0.0 \
+    API_PORT=8000
+
+# alembic.ini 가 있으면 마이그레이션 후 기동(마이그레이션은 api 만 수행 — worker 는 api healthy 뒤에 뜬다).
+# app.serve = uvicorn app.main:app (proxy headers 포함)
+CMD ["sh", "-c", "if [ -f alembic.ini ]; then alembic upgrade head; fi; exec python -m app.serve"]

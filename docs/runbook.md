@@ -8,14 +8,17 @@ RA §10 대응표를 절차로 풀어 쓴 문서. 설계 원본은 `docs/source/
 ### 0-1 Docker 로 (운영)
 
 ```bash
-cp infra/.env.example infra/.env        # POSTGRES_PASSWORD, API_TOKEN, READONLY_TOKEN, (있으면) DATA_GO_KR_KEY …
-docker compose -f infra/docker-compose.yml up -d --build
+cp infra/.env.example infra/.env        # POSTGRES_PASSWORD, API_TOKEN(필수), READONLY_TOKEN, (있으면) DATA_GO_KR_KEY …
+docker compose -f infra/docker-compose.yml up -d --build   # API_TOKEN 이 비면 compose 가 기동을 거부한다(R3 M11)
 docker compose -f infra/docker-compose.yml ps
 curl -s http://localhost:8080/health    # {"status":"ok","version":…,"env":"prod","db":"ok"}
 docker compose -f infra/docker-compose.yml logs -f worker   # JSON 한 줄 로그
 ```
 
 - `/health` 가 503(`db: error`)이면 `db` 컨테이너 상태와 `DATABASE_URL` 을 본다.
+- api 포트(8000)는 호스트 루프백(`API_BIND=127.0.0.1`)에만 열린다. 외부 접속은 web(8080)의 `/api` 프록시로만.
+- `ENV=prod` 는 `API_TOKEN` 필수, `JUDGE_ADAPTER=mock` 금지(설정 검증이 기동을 막는다). `/docs`·`/openapi.json` 은 prod 에서 꺼진다
+  — 계약 원본은 `contracts/openapi.yaml`.
 - 로그에는 비밀값·전화번호·주민번호·이메일이 `[REDACTED:…]` 로 가려진다. 판정기 payload 는 input_hash·길이만 남는다.
 
 ### 0-2 Docker 없이 (개발·Docker 미설치)
@@ -23,9 +26,9 @@ docker compose -f infra/docker-compose.yml logs -f worker   # JSON 한 줄 로�
 ```bash
 cd backend
 uv sync --all-extras
-cp ../infra/.env.example .env           # DATABASE_URL=sqlite:///./dev.db, RAW_DIR=./data/raw 그대로
+cp ../infra/.env.example .env           # ENV=dev 로 바꾼다(예시 기본은 prod). DATABASE_URL·RAW_DIR 은 그대로
 uv run alembic upgrade head
-uv run uvicorn app.main:app --port 8000          # 터미널 1
+uv run python -m app.serve                       # 터미널 1 (API_HOST·API_PORT; 토큰이 모두 비면 127.0.0.1 만 + 경고)
 uv run python -m app.worker                      # 터미널 2 (점검: --once)
 uv run playwright install chromium               # 동적 페이지·PDF 용, 한 번
 curl -s http://127.0.0.1:8000/health
@@ -96,29 +99,39 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
 삭제 금지(D1 #14 보존 기간 무기한).
 
 1. `du -sh /data/raw/*` (Docker: `docker compose exec worker du -sh /data/raw/*`) 로 소스별 용량을 본다.
-2. 지난달 이전 날짜 디렉터리를 월별로 압축한다: `tar -czf /data/raw/<source>/<yyyy-mm>.tar.gz /data/raw/<source>/<yyyy-mm>-*`
-   → 압축 검증(`tar -tzf`) 후 원본 디렉터리 제거. 경로 규칙(`{source}/{yyyy-mm-dd}/{sha256}.{ext}`)은 압축 안에서도 유지된다.
+2. 지난달 이전 날짜 디렉터리를 월별로 압축한다: `infra/raw_archive.sh /data/raw <source> <yyyy-mm>`
+   (Docker: `docker compose exec worker …`). 결과 `<source>/<yyyy-mm>.tar.gz` 는 RAW_DIR 기준 상대 경로(`tar -C`)로 넣어
+   구성원 이름이 DB `raw_document.path` 와 같다 — 스크립트가 `tar -tzf` 목록과 디스크 파일을 대조한 뒤에만 원본을 지운다.
+   API `GET /raw/{id}` 는 원본이 없으면 이 압축에서 읽는다(R3 minor 34). 손으로 `tar -czf … /data/raw/…`(절대 경로)로 묶으면
+   구성원 이름이 달라져 읽지 못한다 — 스크립트만 쓴다.
 3. DB 는 파생 테이블을 지우지 않는다. Postgres 는 `VACUUM (ANALYZE)` 만.
 
 ## 7. 스냅샷이 published 되지 않음
 
-원인: `claim.verify_status = contradicted` 가 1건 이상 → `snapshot.publish` 가 거부한다.
+원인: 남은 contradicted 주장(분할 재검증 자식이 없는 `claim.verify_status = contradicted`)이 1건 이상 →
+`snapshot.publish`·보고서 생성이 거부한다(`judge.claims.remaining_contradicted`).
 
-1. G7 에서 contradicted 주장 목록을 본다(문장·근거 URL).
-2. 사람이 문장을 고친다(보고서·설명 문구).
-3. 원자 분할 재검증(`claims.py` → `jev_verify`)이 돌고 contradicted 0 이면 publish 된다.
+1. G7 '주장 검증' 패널에서 contradicted 주장 목록을 본다(`GET /snapshots/{sid}/claims?status=contradicted` — 문장·근거·판정 로그).
+2. 사람이 문장을 고쳐 저장한다(`PATCH /claims/{id}` → `claim.reverify` 잡 202). 원 주장 행은 그대로 남는다.
+3. worker 가 고친 문장을 원자 주장으로 나눠(T6) 원 주장 근거로 `jev_verify` 하고 `parent_claim_id` 자식 행을 만든다.
+   자식이 모두 contradicted 가 아니고 남은 contradicted 가 0 이면 `snapshot.publish` 를 등록한다.
+   자식이 다시 contradicted 면 그 자식이 목록에 남는다 — 같은 절차를 반복한다.
 
 ## 8. 백업·복구
 
-- DB: 매일 `docker compose exec -T db pg_dump -U $POSTGRES_USER -Fc $POSTGRES_DB > backup/db-$(date +%F).dump`
-- 원문: `rawdata` 볼륨을 rsync (`docker run --rm -v subscription-analyzer_rawdata:/data -v $PWD/backup:/b alpine tar -czf /b/raw-$(date +%F).tgz /data`)
+- 자동화: `infra/backup.sh /srv/backup` 을 cron 으로 매일(예 `0 3 * * * cd <repo> && infra/backup.sh /srv/backup`).
+  - DB: `pg_dump -Fc` → `db-<날짜>.dump`, 곧바로 `pg_restore --list` 로 검증(실패하면 종료 코드 ≠ 0).
+  - 원문: `rawdata` 볼륨을 `rsync -a`(증분, 삭제 전파 없음)로 `raw/` 에. rsync 가 없으면 `raw-<날짜>.tgz` + `tar -tzf` 검증.
 - 복구: 새 `db` 를 띄운 뒤 `pg_restore -U $POSTGRES_USER -d $POSTGRES_DB --clean backup/db-<날짜>.dump`, 원문은 볼륨에 풀기.
   복구 후 `/health` 와 G7 신선도를 확인한다.
 
 ## 9. 비밀값
 
 - 비밀은 `infra/.env`(Docker) 또는 `backend/.env`(로컬)에만. 커밋 금지(pre-commit `no-dotenv`·`gitleaks`).
-- 공유 링크는 `READONLY_TOKEN` 으로만, 만료 30일(`SHARE_TOKEN_TTL_DAYS`).
+- 남에게 주는 링크는 G7 '공유 링크'로 발급한다(`POST /share-links`, 쓰기 토큰만): 읽기 전용(GET 만), 만료
+  `SHARE_TOKEN_TTL_DAYS`(기본 30일), 서버에는 sha256 만 남는다. 링크 `<origin>/share#<token>` 은 발급 때 한 번만 보인다.
+  잃어버리거나 노출되면 같은 패널에서 회수(`DELETE /share-links/{id}`) — 그 토큰은 바로 401.
+- `READONLY_TOKEN` 은 운영자 열람용 고정 토큰이다(만료 없음 — 남에게 주지 않는다).
 - 키가 노출되면: 발급처에서 폐기·재발급 → `.env` 교체 → `docker compose up -d` (로그는 이미 마스킹되지만 확인).
 
 ## 10. R4 운영 시험 — 인천·김포 실데이터 1회 실행 (준비 문서, WP9 R3)
