@@ -1,7 +1,7 @@
 import type { JudgmentEnvelope } from '@/api/types';
 import { Badge, CachedBadge, EmptyState } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatConfidence, formatDate, formatNumber } from '@/lib/format';
 import { enumText, idText, isUnresolved, tdClass, thClass } from '../_shared';
 
 const COLS = ['seq', 'tool', 'purpose', 'status', 'confidence', 'duration', 'createdAt'] as const;
@@ -56,7 +56,7 @@ export function JudgmentTable({
                   {env.error_text ? <span className="block text-xs">{env.error_text}</span> : null}
                 </td>
                 <td className={tdClass}>
-                  {env.confidence === null ? t('empty.unknown') : formatNumber(env.confidence, 2)}
+                  {env.confidence === null ? t('empty.unknown') : formatConfidence(env.confidence)}
                 </td>
                 <td className={tdClass}>
                   {env.duration_ms === null

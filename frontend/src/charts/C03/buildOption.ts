@@ -1,7 +1,7 @@
 import type { DataTable } from '@/components/DataTableToggle';
 import { t } from '@/i18n';
 import type { BenchmarkView } from '@/lib/contract';
-import { formatEok, formatPercent, formatWon } from '@/lib/format';
+import { formatCount, formatEok, formatPercent, formatWon } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, legendStyle, tooltipStyle } from '../palette';
 import type { BuildOptionContext, EChartsOption } from '../types';
 import { escapeHtml, livingAreaName, num, str } from '../util';
@@ -32,8 +32,8 @@ export function sampleBadges(data: C03Data): string[] {
     const name = livingAreaName(area, data.livingAreas);
     out.push(
       single || !name
-        ? t('badge.sampleEstimated', { n })
-        : t('badge.sampleEstimatedArea', { area: name, n }),
+        ? t('badge.sampleEstimated', { n: formatCount(n) })
+        : t('badge.sampleEstimatedArea', { area: name, n: formatCount(n) }),
     );
   }
   return out;

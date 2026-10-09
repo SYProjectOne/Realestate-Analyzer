@@ -56,7 +56,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
         <div className="flex flex-col">
           <dt className="text-xs text-muted">{t('page.G3.header.price')}</dt>
           <dd className="flex flex-wrap items-center gap-1">
-            <FactCell fact={price.price_low} unit="won" showLabel={false} />
+            <FactCell fact={price.price_low} unit="won" />
             <span aria-hidden>~</span>
             <FactCell fact={price.price_high} unit="won" />
           </dd>

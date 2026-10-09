@@ -106,6 +106,15 @@ export function formatArea(m2: number, digits = 2): string {
   return `${m2.toFixed(digits)}${t('unit.m2')}`;
 }
 
+/**
+ * 판정기 신뢰도(decide confidence·봉투 confidence, 0~1 원값) → "0.48". 확률(%)이 아니라 판정기 자기 평가라
+ * 소수 둘째 자리 그대로 보인다(meta §2-7 표기). 범위 밖·NaN 이면 "확인 불가".
+ */
+export function formatConfidence(confidence: number): string {
+  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) return unknown();
+  return nf(2).format(confidence);
+}
+
 export function formatScore(score: number, digits = 2): string {
   if (!Number.isFinite(score)) return unknown();
   return score.toFixed(digits);

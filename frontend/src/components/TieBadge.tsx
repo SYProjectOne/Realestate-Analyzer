@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { formatNumber } from '@/lib/format';
+import { formatConfidence } from '@/lib/format';
 import { Badge } from './Badge';
 
 export interface TieBadgeProps {
@@ -15,7 +15,7 @@ export function TieBadge({ tie, confidence }: TieBadgeProps) {
   const text =
     confidence === null || confidence === undefined
       ? t('badge.tie')
-      : t('badge.tieWithConfidence', { confidence: formatNumber(confidence, 2) });
+      : t('badge.tieWithConfidence', { confidence: formatConfidence(confidence) });
   return (
     <Badge tone="strong" data-testid="tie-badge">
       {text}

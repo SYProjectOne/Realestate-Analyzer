@@ -4,7 +4,7 @@ import type { ComplexDetail, LadderHorizon } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, ExternalLink, FactCell } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatHalfYear } from '@/lib/format';
+import { formatCount, formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
 
 export function PriceTab({ detail }: { detail: ComplexDetail }) {
@@ -14,7 +14,7 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <dt className="text-muted">{t('page.G3.header.price')}</dt>
         <dd className="flex flex-wrap items-center gap-1">
-          <FactCell fact={price.price_low} unit="won" showLabel={false} />
+          <FactCell fact={price.price_low} unit="won" />
           <span aria-hidden>~</span>
           <FactCell fact={price.price_high} unit="won" />
         </dd>
@@ -151,7 +151,7 @@ export function PaymentTab({ detail }: { detail: ComplexDetail }) {
                 {term.interim_schedule.map((item) => (
                   <tr key={item.seq}>
                     <th scope="row" className={`${tdClass} text-left font-normal`}>
-                      {t('page.G3.payment.seq', { n: String(item.seq) })}
+                      {t('page.G3.payment.seq', { n: formatCount(item.seq) })}
                     </th>
                     <td className={tdClass}>
                       <FactCell fact={item.due_date} unit="date" asof={asof} />

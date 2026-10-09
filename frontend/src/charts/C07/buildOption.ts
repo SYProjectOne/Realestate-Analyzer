@@ -1,7 +1,7 @@
 import type { DataTable } from '@/components/DataTableToggle';
 import { t } from '@/i18n';
 import type { Decision } from '@/lib/contract';
-import { formatNumber, formatProb } from '@/lib/format';
+import { formatConfidence, formatProb } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, tooltipStyle } from '../palette';
 import type { BuildOptionContext, EChartsOption } from '../types';
 import { escapeHtml, num } from '../util';
@@ -51,7 +51,7 @@ export function hasMismatch(data: C07Data): boolean {
 
 export function confidenceText(data: C07Data): string | null {
   const c = confidenceValue(data);
-  return c === null ? null : t('chart.C07.confidence', { confidence: formatNumber(c, 2) });
+  return c === null ? null : t('chart.C07.confidence', { confidence: formatConfidence(c) });
 }
 
 const isCandidate = (item: Decision) => item.option_key === 'complex';

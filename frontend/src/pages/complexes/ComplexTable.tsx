@@ -158,7 +158,7 @@ export function ComplexTable({
         header: () => colTitle('price'),
         cell: ({ row }) => (
           <span className="inline-flex flex-wrap items-center gap-1">
-            <FactCell fact={row.original.price_low} unit="eok" showLabel={false} />
+            <FactCell fact={row.original.price_low} unit="eok" />
             <span aria-hidden>~</span>
             <FactCell fact={row.original.price_high} unit="eok" />
           </span>
