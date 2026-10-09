@@ -46,6 +46,7 @@ MIN_TRADES = 3
 OUTLIER_MIN_N = 4
 OUTLIER_K = Decimal("1.5")
 OUTLIER_REASON = "이상치 제외"
+PRICE_SOURCE_MISSING = "가격 출처 누락"
 
 
 def _as_trades(trades: Iterable[TradeInput | Trade]) -> list[Trade]:
@@ -170,7 +171,9 @@ def compute_gap(
     """§6-2 가격 갭과 비교군 기록(comparable_set). 순수 함수."""
     asof = parse_date(asof_date)
     price = price_of(complex_)
-    price_label: Label = complex_.price_label or "확인됨"
+    # 가격 출처 행이 없으면(price_label null) '확인 불가(출처 누락)' — 확인됨으로 올리지 않는다(R3 minor 24, AGENTS 규칙 5)
+    price_label: Label = complex_.price_label or "확인 불가"
+    price_reason = PRICE_SOURCE_MISSING if complex_.price_label is None else None
     if price is None:
         return _empty(complex_, price_label, "현재 구매가 없음(분양가 미공개)")
 
@@ -242,6 +245,9 @@ def compute_gap(
     else:
         label = weakest_label(price_label, *(t.label for t in pool if t.apt_name in primary))
         reason = None
+    if price_reason is not None:
+        label = weakest_label(label, price_label)
+        reason = f"{reason}; {price_reason}" if reason else price_reason
 
     detail = (
         f"P_mid {fmt_won(price.mid_won)}, 비교군 중앙 {fmt_won(med_adj)}"
