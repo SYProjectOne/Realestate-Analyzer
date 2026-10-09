@@ -59,6 +59,44 @@ export function setSnapshotDegraded(snapshotId: number, degraded: boolean): void
 }
 
 /**
+ * devseed DB 의 한 단지에 공고 명시 할인(D11-6, 계약 .8 `payment_terms.discount_by_type`)을 넣거나 지운다.
+ * devseed 픽스처에는 할인이 없어(contracts/fixtures 읽기 전용) 테스트 DB 에만 쓴다: 그 단지의 모든 납부 조건 행 ×
+ * 모든 주택형에 `won` 원 + 출처 행(field_provenance 'discount_by_type.<type_code>', chosen, 라벨 `label`).
+ * `label` 이 null 이면 할인·출처 행을 지워 원래대로(할인 없음) 되돌린다.
+ */
+export function setDiscount(complexId: number, label: string | null, won = 10_000_000): void {
+  const db = backendEnv.DATABASE_URL!.replace(/^sqlite:\/\/\//, '');
+  execFileSync(
+    'uv',
+    [
+      'run',
+      'python',
+      '-c',
+      [
+        'import json, sqlite3, sys',
+        'db, cid, label, won = sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4])',
+        'c = sqlite3.connect(db)',
+        'types = [r[0] for r in c.execute("select type_code from complex_type where complex_id = ?", (cid,))]',
+        'pts = [r[0] for r in c.execute("select id from payment_terms where complex_id = ?", (cid,))]',
+        'if not types or not pts: sys.exit(3)',
+        'for pt in pts:',
+        "    c.execute(\"delete from field_provenance where entity = 'payment_terms' and entity_id = ? and field like 'discount_by_type.%'\", (pt,))",
+        '    disc = {t: won for t in types} if label else {}',
+        '    c.execute("update payment_terms set discount_by_type = ? where id = ?", (json.dumps(disc), pt))',
+        '    for t in types if label else []:',
+        '        c.execute("insert into field_provenance (entity, entity_id, field, value_text, url, checked_at, label, reason, source_rank, chosen, value_norm) values (\'payment_terms\', ?, ?, ?, ?, ?, ?, ?, 1, 1, ?)", (pt, "discount_by_type." + t, str(won), "https://www.applyhome.co.kr/e2e/discount", "2026-10-08", label, None if label == "확인됨" else "공고문 할인 문구 해석", str(won)))',
+        'c.commit()',
+      ].join('\n'),
+      db,
+      String(complexId),
+      label ?? '',
+      String(won),
+    ],
+    { cwd: BACKEND, env: { ...process.env, ...backendEnv }, stdio: 'pipe', timeout: 60_000 },
+  );
+}
+
+/**
  * 큐에 쌓인 잡을 비울 때까지 1회 실행(`python -m app.worker --once`) — 보고서 생성 같은 잡을 테스트 안에서 끝낸다.
  * 상주 worker 를 띄우지 않으므로 다른 테스트가 넣은 잡이 몰래 돌지 않는다.
  */

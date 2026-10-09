@@ -15,7 +15,7 @@ import { useToast } from '@/app/toast';
 import { IntakeBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
-import { enumText, Section } from '../_shared';
+import { enumText, idText, Section } from '../_shared';
 import { HUMAN_CHECK_NOTE_MAX, HUMAN_CHECK_RULES, HUMAN_CHECK_VALUE_MAX } from './humanCheckRules';
 
 const KINDS = ['phone', 'visit', 'email'] as const;
@@ -374,6 +374,15 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
                 field: enumText('page.G7.hcField', saved.field),
                 value: saved.value_text,
               })}
+              {saved.entity ? (
+                // 서버가 정한 사실 행(계약 .8 HumanCheck.entity·entity_id) — 번호는 행 id(비수치 메타)
+                <span className="ml-1 text-xs text-muted" data-testid="human-check-target">
+                  {t('page.G7.hc.target', {
+                    entity: enumText('page.G7.hcEntity', saved.entity),
+                    id: idText(saved.entity_id),
+                  })}
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>

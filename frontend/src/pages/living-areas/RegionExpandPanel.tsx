@@ -153,6 +153,7 @@ export function RegionExpandPanel({ region }: { region: Region }) {
               return (
                 <li key={key(c)} className="flex flex-wrap items-center gap-2 text-sm">
                   <span>{c.full_name}</span>
+                  <Badge tone="neutral">{enumText('page.common.candidateKind', c.kind)}</Badge>
                   <MetaText
                     kind="count"
                     className="text-xs text-muted"

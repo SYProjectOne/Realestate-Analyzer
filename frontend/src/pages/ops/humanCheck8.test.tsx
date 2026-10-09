@@ -128,6 +128,42 @@ describe('M-5 사람 확인 필드(계약 .8)', () => {
   });
 });
 
+describe('M-5 서버가 정한 사실 행(HumanCheck.entity·entity_id)', () => {
+  it('응답 entity·entity_id → "대상 행: 납부 조건 #31"', async () => {
+    server.use(
+      http.post(mswPath('/ops/human-checks'), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            ...body,
+            id: 77,
+            entity: 'payment_terms',
+            entity_id: 31,
+            note: null,
+            created_intake: null,
+            change_event_id: 9,
+            suggested_job: null,
+          },
+          { status: 201 },
+        );
+      }),
+    );
+    renderRoute('/ops');
+    const form = await humanForm();
+    await pickComplex(form, '2');
+    await userEvent.selectOptions(
+      within(form).getByLabelText(t('page.G7.hc.field')),
+      'down_payment_pct',
+    );
+    await userEvent.type(within(form).getByLabelText(t('page.G7.hc.value')), '10');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
+    expect(await within(form).findByTestId('human-check-target')).toHaveTextContent(
+      t('page.G7.hc.target', { entity: t('page.G7.hcEntity.payment_terms'), id: '#31' }),
+    );
+  });
+});
+
 describe('M-5 강등 사실 → 사람 확인으로 복원(D11-3)', () => {
   const demoted: ClaimView = {
     id: 6991,

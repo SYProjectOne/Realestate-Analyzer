@@ -559,7 +559,8 @@
         "noteHint": "통화·방문 내용 요약만 — 전화번호·주민번호·이메일·비밀값은 서버가 거부합니다",
         "savedFact": "저장했습니다 — 사실을 사람 확인 값으로 바꿨습니다(같은 사실의 검증 모순 강등 복원)",
         "factSaved": "{field} = {value} (사람 확인 — 출처 우선순위 0)",
-        "entityPinned": "강등된 사실 행(주장의 대상)을 지정했습니다"
+        "entityPinned": "강등된 사실 행(주장의 대상)을 지정했습니다",
+        "target": "대상 행: {entity} {id}"
       },
       "hcField": {
         "intake_status": "접수 상태",
@@ -571,6 +572,11 @@
         "price": "가격",
         "units": "잔여 세대",
         "other": "기타(기록만)"
+      },
+      "hcEntity": {
+        "complex": "단지",
+        "complex_type": "주택형",
+        "payment_terms": "납부 조건"
       },
       "hcHint": {
         "max_price_won": "원 단위 정수, 1,000만~1,000억(예: 605000000)",
