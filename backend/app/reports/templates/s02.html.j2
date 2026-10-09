@@ -1,0 +1,28 @@
+{% from "macros.html.j2" import sec_head %}
+<section id="s2">
+  {{ sec_head(2) }}
+  <p class="lead">판정기 호출 {{ data.total_calls }}회(이 스냅샷까지 누계), 어댑터 버전 {{ data.adapter_versions | length }}종. 임계값은 판정기 기본값을 그대로 쓰고 응답에 담긴 값을 아래에 적는다.</p>
+  <table>
+    <thead><tr><th>어댑터 버전</th></tr></thead>
+    <tbody>{% for v in data.adapter_versions %}<tr><td>{{ v }}</td></tr>{% else %}<tr><td>호출 기록 없음</td></tr>{% endfor %}</tbody>
+  </table>
+  <table>
+    <thead><tr><th>도구</th><th>단계</th><th>호출</th><th>상태별</th><th>사용된 임계값(응답 기록)</th></tr></thead>
+    <tbody>
+    {% for t in data.judge_tools %}
+      <tr><td>jev_{{ t.tool }}</td><td>{{ t.section }}</td><td class="num">{{ t.calls }}회</td>
+        <td>{% for k, v in t.by_status | dictsort %}{{ k }} {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</td>
+        <td>{{ t.thresholds }}</td></tr>
+    {% else %}
+      <tr><td colspan="5">판정기 호출 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h3>적용 원칙</h3>
+  <ul>
+    <li>판단(포함 여부·호재 단계·상승 확률·출처 상충·상황별 선택·주장 검증)은 판정기만 한다. 이 보고서는 결과를 기록·점수화·표시한다.</li>
+    <li>같은 입력은 다시 부르지 않는다(입력 해시 캐시). 입력이 바뀌었을 때만 재판정한다.</li>
+    <li>review·escaped·blocked·error 결과는 미해결로 남기고 점수·추천에 쓰지 않는다(§9 미해결 목록).</li>
+    <li>판정기에는 공개 분양 정보만 보낸다(개인정보·인증키 차단).</li>
+  </ul>
+</section>

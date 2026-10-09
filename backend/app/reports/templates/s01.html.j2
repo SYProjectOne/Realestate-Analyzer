@@ -1,0 +1,38 @@
+{% from "macros.html.j2" import fact, sec_head %}
+<section id="s1">
+  {{ sec_head(1) }}
+  <p class="lead">기준일은 {{ data.asof_date }}이고, 대상은 사용자가 고른 지역 "{{ data.region_name }}"의 생활권 {{ data.living_areas | length }}개 · 단지 {{ data.complexes | length }}개다.</p>
+  <table>
+    <tbody>
+      <tr><th>기준일</th><td>{{ data.asof_date }}</td><th>스냅샷</th><td>#{{ data.snapshot_id }} · {{ data.snapshot_status }}{% if data.published_at %} · 공개 {{ data.published_at[:10] }}{% endif %}</td></tr>
+      <tr><th>미판정 모드</th><td>{{ "예 — 판정기 장애로 점수 미계산(§9)" if data.degraded else "아니오" }}</td><th>시나리오(본문 점수표)</th><td>{{ data.scenario_name }}</td></tr>
+      <tr><th>입력 지명</th><td>{{ data.region_query }}</td><th>계약 버전</th><td>{{ data.contract_version }}</td></tr>
+    </tbody>
+  </table>
+  <h3>1-1. 생활권</h3>
+  <table>
+    <thead><tr><th>생활권</th><th>법정동 수</th><th>세대수</th></tr></thead>
+    <tbody>
+    {% for la in data.living_areas %}
+      <tr><td>{{ la.get("name") or la.get("id") }}</td><td>{{ (la.get("legal_dong_codes") or []) | length }}개</td><td>{{ fact(la.get("households") | as_fact("units")) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h3>1-2. 제도 요약 — 규제지역·분양가상한제·전매·거주의무·재당첨(단지 공고 기준)</h3>
+  <table>
+    <thead><tr><th>생활권</th><th>단지</th><th>규제지역</th><th>분양가상한제</th><th>택지</th><th>전매제한</th><th>전매 해제</th><th>거주의무</th><th>재당첨 제한</th></tr></thead>
+    <tbody>
+    {% for grp in data.regulation_rows %}
+      {% for c in grp.complexes %}
+      <tr>
+        <td>{{ grp.living_area }}</td><td>{{ c.name }}</td>
+        <td>{{ fact(c.facts.regulated) }}</td><td>{{ fact(c.facts.price_cap) }}</td><td>{{ fact(c.facts.land_type) }}</td>
+        <td>{{ fact(c.facts.resale_months) }}</td><td>{{ fact(c.facts.resale_release_on_registration) }}</td>
+        <td>{{ fact(c.facts.residency_months) }}</td><td>{{ fact(c.facts.rewin_restriction_years) }}</td>
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">출처·확인일은 각 값의 라벨 배지와 출처 id로 추적한다. 법령 원문은 이 프로그램이 열람하지 않는다 — 제도 값은 입주자모집공고·청약홈 기재 기준이다(§9). 대출 한도·세제는 시나리오 입력값(§8)이다.</p>
+</section>

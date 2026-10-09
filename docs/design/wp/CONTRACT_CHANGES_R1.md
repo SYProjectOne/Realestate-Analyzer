@@ -34,3 +34,8 @@
 3. region.applyhome_query 키 정의: from_ym, areas{sido_code: 약칭} → 승인
 - pyproject optional ocr = rapidocr>=3.10,<4 + onnxruntime>=1.18 → WP0 승인(D5 채택: RapidOCR PP-OCRv5 korean)
 - region.bootstrap 최초 실행 ~15분 예상(일일은 10분 내)
+
+## R2 (WP0 처리 대기)
+- WP8: Dockerfile.worker에 echarts.min.js 복사 + REPORT_ECHARTS_JS → Settings로 → 승인
+- WP8: tests/reports/_seed.py → WP5 devseed로 교체 (R3)
+- "남은 contradicted" 정의 = 분할 자식 없는 contradicted. WP7 publish 검사와 통일 확인 (R3)

@@ -1,0 +1,26 @@
+{% from "macros.html.j2" import fact, sec_head, disclaimer %}
+<section id="s3">
+  {{ sec_head(3) }}
+  <p class="lead">사업주체 명의 기준 7클래스 중 민간분양 아파트(private_sale_apt)만 포함한다 — 포함 {{ data.classify_rows | selectattr("inclusion_class", "equalto", "private_sale_apt") | list | length }}개, 그 밖 {{ data.excluded | length }}개, 미해결(review) {{ data.classify_rows | selectattr("unresolved") | list | length }}개.</p>
+  <table>
+    <thead><tr><th>단지</th><th>분류</th><th>확률</th><th>판정</th><th>비고</th></tr></thead>
+    <tbody>
+    {% for r in data.classify_rows %}
+      <tr><td>{{ r.name }}</td><td>{{ r.inclusion_class }}</td><td>{{ fact(r.prob) }}</td><td>{{ r.decision or "미판정" }}</td>
+        <td>{% if r.unresolved %}<span class="badge warn">미해결 — 사람 검수</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h3>제외·경계 목록</h3>
+  <table>
+    <thead><tr><th>단지</th><th>분류</th><th>사유</th></tr></thead>
+    <tbody>
+    {% for c in data.excluded %}
+      <tr><td>{{ c.name }}</td><td>{{ c.inclusion_class }}</td><td>{{ "범위 경계: 주소의 법정동이 지역 밖이거나 매칭 실패" if c.inclusion_class == "범위 경계" else "판정기 분류 결과" }}</td></tr>
+    {% else %}
+      <tr><td colspan="3">제외·경계 단지 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ disclaimer() }}
+</section>

@@ -103,6 +103,8 @@ def upsert_provenance(session: Session, rows: list[ProvenanceRow]) -> list[Field
         fp.excerpt = row.excerpt
         fp.excerpt_start = row.excerpt_start
         fp.excerpt_end = row.excerpt_end
+        fp.value_norm = row.value_norm
+        fp.observed_on = row.observed_on
         if existing is None:
             session.add(fp)
             groups[gk].append(fp)

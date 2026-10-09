@@ -8,8 +8,15 @@
    payment_terms = 단지 + 공고번호, competition = 단지 + 공급형태·순위·타입,
    rtms_trade·unsold = 같은 거래·같은 달.
    없는 행은 만든다(단지 행은 raw.region_id가 있어야 한다).
-4. 같은 행·필드에 이미 다른 원문 출처가 있으면 그 원문을 다시 파싱해 후보를 합친다 — 우선순위 판정(resolve)은
-   항상 그 필드의 모든 출처를 함께 본다(T5: 청약홈 1,573 vs 공고문 1,769는 저장 순서와 무관하게 청약홈 채택).
+4. 같은 행·필드에 이미 다른 원문 출처가 있으면 그 출처 행(field_provenance: value_norm·observed_on·rank·라벨)
+   으로 후보를 되살려 합친다 — 옛 원문을 다시 읽거나 파싱하지 않는다(계약 2026-10-09.2).
+   우선순위 판정(resolve)은 항상 그 필드의 모든 출처를 함께 본다
+   (T5: 청약홈 1,573 vs 공고문 1,769는 저장 순서와 무관하게 청약홈 채택).
+   value_norm 이 없는 옛 행(0001 시절)만 그 원문을 다시 파싱한다(호환 읽기).
+   다시 쓰면서 value_norm 이 채워진다.
+   payment_terms 의 'price_by_type.<type>.<항목>' 후보는 payment_terms.price_by_type json 에 쓴다.
+   공식 홈페이지(official_site)의 intake_status 문구 후보는 분류 전이라 사실 테이블·출처 행에 쓰지 않고
+   ``StoreResult.candidates``·``skipped`` 로 넘긴다(분류는 판정기·사람).
 5. chosen 값을 행에 쓰고, 바뀐 값은 change_event로 남긴다(새 공고 = critical, 계약금 10%→5% = critical, T9).
 6. 단지 주소가 정해지면 법정동·생활권을 배정한다(지역 밖이면 '범위 경계', D2-6).
 
@@ -46,9 +53,17 @@ from app.models import (
 from app.normalize import changes
 from app.normalize.applyhome_parser import ApplyhomeParser
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
-from app.normalize.fields import INT_FIELDS, JSON_FIELDS
+from app.normalize.fields import (
+    DECIMAL_FIELDS,
+    INT_FIELDS,
+    JSON_FIELDS,
+    PRIMARY_SOURCES,
+    split_price_by_type,
+    value_from_norm,
+)
 from app.normalize.living_area import assign_complex_area
 from app.normalize.notice_parser import NoticeParser
+from app.normalize.official_site_parser import ComplexKey, OfficialSiteParser
 from app.normalize.provenance import upsert_provenance
 from app.normalize.resolver import resolve
 from app.normalize.rtms_parser import RtmsParser
@@ -77,7 +92,15 @@ class StoreResult:
     skipped: list[FieldCandidate] = field(default_factory=list)
 
 
-def parser_for(source_kind: str, *, raw_dir: Path | None = None) -> _Parser | None:
+def parser_for(
+    source_kind: str, *, raw_dir: Path | None = None, complex_key: ComplexKey | None = None
+) -> _Parser | None:
+    """source_kind → 파서.
+
+    ``complex_key``(complex_id → 주택관리번호)는 공식 홈페이지 후보의 단지 키에 쓴다.
+    """
+    if source_kind == "official_site":
+        return OfficialSiteParser(raw_dir=raw_dir, complex_key=complex_key)
     if source_kind == "notice_pdf":
         return NoticeParser(raw_dir=raw_dir)
     if source_kind in ("applyhome_list", "applyhome_detail"):
@@ -272,7 +295,12 @@ class _Binder:
             is not None
         )
         row = PaymentTerms(
-            complex_id=cx.id, notice_no=notice_no, effective_from=eff, interim_schedule=[], notice_kind=kind
+            complex_id=cx.id,
+            notice_no=notice_no,
+            effective_from=eff,
+            interim_schedule=[],
+            notice_kind=kind,
+            price_by_type={},
         )
         self.s.add(row)
         self.s.flush()
@@ -432,12 +460,15 @@ _MODELS: dict[str, Any] = {
     "rtms_trade": RtmsTrade,
     "unsold": Unsold,
 }
-_DECIMAL_FIELDS = frozenset({"area_m2", "down_payment_pct", "interim_pct", "balance_pct", "inclusion_prob"})
+_DECIMAL_FIELDS = DECIMAL_FIELDS
 
 
 def _coerce(field_name: str, v: Any) -> Any:
     if v is None:
         return None
+    pbt = split_price_by_type(field_name)
+    if pbt is not None:
+        return int(v) if pbt[1] in ("max_price_won", "floor_sample_price_won", "units") else str(v)
     if field_name in JSON_FIELDS:
         return json.loads(v) if isinstance(v, str) else v
     if isinstance(v, bool):
@@ -455,6 +486,77 @@ def _coerce(field_name: str, v: Any) -> Any:
     return v
 
 
+def _set_price_by_type(
+    obj: PaymentTerms,
+    c: FieldCandidate,
+    pbt: tuple[str, str],
+    *,
+    initial: bool,
+    snapshot_id: int | None,
+    detected_at: str,
+) -> ChangeEvent | None:
+    """payment_terms.price_by_type[type][항목] = 값. json 은 새 dict 로 바꿔 넣어야 변경이 잡힌다.
+    값이 바뀌면 change_event(가격 항목은 critical — changes.severity_for)."""
+    type_code, item = pbt
+    new = _coerce(c.field, c.value)
+    cur = dict(obj.price_by_type or {})
+    entry = dict(cur.get(type_code) or {})
+    had = item in entry
+    old_v = entry.get(item)
+    if had and changes.fmt_value(old_v) == changes.fmt_value(new):
+        return None
+    entry[item] = new
+    cur[type_code] = entry
+    obj.price_by_type = cur
+    return changes.value_change_event(
+        entity="payment_terms",
+        entity_id=obj.id,
+        field=c.field,
+        old=old_v,
+        new=new,
+        snapshot_id=snapshot_id,
+        complex_id=obj.complex_id,
+        detected_at=detected_at,
+        initial=initial or not had,
+    )
+
+
+def _candidate_from_row(fp: FieldProvenance, source_kind: str | None) -> FieldCandidate:
+    """저장된 출처 행 → 후보(옛 원문을 다시 파싱하지 않는다). primary 는 출처 종류로 되살린다
+    (실거래는 rank 1 = Open API 1차, 그 밖 rank = 재가공 2차 — rtms_parser 와 같은 규칙)."""
+    primary = (source_kind in PRIMARY_SOURCES) if source_kind is not None else True
+    if source_kind == "rtms":
+        primary = fp.source_rank == 1
+    return FieldCandidate.model_validate(
+        {
+            "entity": fp.entity,
+            "entity_id": fp.entity_id,
+            "entity_key": fp.entity_key,
+            "field": fp.field,
+            "value_text": fp.value_text,
+            "value": value_from_norm(fp.field, fp.value_norm),
+            "source_rank": fp.source_rank,
+            "source_kind": source_kind,
+            "primary": primary,
+            "label": fp.label,
+            "reason": fp.reason,
+            "excerpt": fp.excerpt or fp.value_text or fp.field,
+            "excerpt_start": fp.excerpt_start,
+            "excerpt_end": fp.excerpt_end,
+            "raw_document_id": fp.raw_document_id,
+            "url": fp.url,
+            "checked_at": fp.checked_at,
+            "observed_on": fp.observed_on,
+            "needs_extract": False,
+        }
+    )
+
+
+def _is_legacy(fp: FieldProvenance) -> bool:
+    """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
+    return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
+
+
 def _reparse_existing(
     session: Session,
     binder: _Binder,
@@ -463,19 +565,40 @@ def _reparse_existing(
     raw_dir: Path | None,
     parser_factory: Callable[[str], _Parser | None],
 ) -> list[FieldCandidate]:
+    """같은 (entity, entity_id, field)의 다른 원문 출처 → 후보.
+
+    출처 행(value_norm)에서 되살리고, value_norm 이
+    없는 옛 행의 원문만 다시 파싱한다(호환)."""
+    del raw_dir
     groups = {(c.entity, c.entity_id, c.field) for c in bound}
     if not groups:
         return []
     pairs = {(e, i) for e, i, _ in groups}
-    raw_ids: set[int] = set()
-    for e, i in pairs:
+    rows: list[FieldProvenance] = []
+    for e, i in sorted(pairs, key=lambda p: (p[0], p[1] or 0)):
         for fp in session.scalars(
-            select(FieldProvenance).where(FieldProvenance.entity == e, FieldProvenance.entity_id == i)
+            select(FieldProvenance)
+            .where(FieldProvenance.entity == e, FieldProvenance.entity_id == i)
+            .order_by(FieldProvenance.id)
         ):
-            if fp.raw_document_id is not None and fp.raw_document_id != exclude_raw_id:
-                raw_ids.add(fp.raw_document_id)
+            if (
+                fp.raw_document_id is not None
+                and fp.raw_document_id != exclude_raw_id
+                and (fp.entity, fp.entity_id, fp.field) in groups
+            ):
+                rows.append(fp)
+    legacy_raw = {fp.raw_document_id for fp in rows if _is_legacy(fp) and fp.raw_document_id is not None}
+    kinds: dict[int, str | None] = {}
     out: list[FieldCandidate] = []
-    for rid in sorted(raw_ids):
+    for fp in sorted(rows, key=lambda r: (r.raw_document_id or 0, r.id)):
+        rid = fp.raw_document_id
+        if rid is None or rid in legacy_raw:
+            continue
+        if rid not in kinds:
+            raw_row = session.get(RawDocument, rid)
+            kinds[rid] = raw_row.source_kind if raw_row is not None else None
+        out.append(_candidate_from_row(fp, kinds[rid]))
+    for rid in sorted(legacy_raw):
         row = session.get(RawDocument, rid)
         if row is None:
             continue
@@ -500,8 +623,12 @@ def store_raw_document(
     """원문 1건을 정규화해 저장한다(한 트랜잭션 — SAVEPOINT). commit은 호출자."""
     detected_at = changes.detected_now(now)
 
+    def complex_key(complex_id: int) -> str | None:
+        cx = session.get(Complex, complex_id)
+        return cx.applyhome_id if cx is not None else None
+
     def factory(kind: str) -> _Parser | None:
-        return parser_for(kind, raw_dir=raw_dir)
+        return parser_for(kind, raw_dir=raw_dir, complex_key=complex_key)
 
     with session.begin_nested():
         row = _ensure_raw_row(session, raw)
@@ -520,7 +647,22 @@ def store_raw_document(
             if model is None or c.entity_id is None or c.value is None or c.label == "확인 불가":
                 continue
             obj = session.get(model, c.entity_id)
-            if obj is None or not hasattr(model, c.field) or c.field == "id":
+            if obj is None:
+                continue
+            pbt = split_price_by_type(c.field) if c.entity == "payment_terms" else None
+            if pbt is not None:
+                ev_pbt = _set_price_by_type(
+                    obj,
+                    c,
+                    pbt,
+                    initial=(c.entity, c.entity_id) in binder.created,
+                    snapshot_id=snapshot_id,
+                    detected_at=detected_at,
+                )
+                if ev_pbt is not None:
+                    events.append(ev_pbt)
+                continue
+            if not hasattr(model, c.field) or c.field == "id":
                 continue
             new = _coerce(c.field, c.value)
             old_v = getattr(obj, c.field)

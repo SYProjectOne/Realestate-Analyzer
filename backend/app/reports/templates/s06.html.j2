@@ -1,0 +1,62 @@
+{% from "macros.html.j2" import fact, sec_head, chart, disclaimer %}
+<section id="s6">
+  {{ sec_head(6) }}
+  {% set keys = COMPONENT_LABELS.keys() | select("in", data.weights) | list %}
+  <p class="lead">종합 점수 1위는 {% if data.top5 %}{{ data.top5[0].name }}({{ fact(data.top5[0].total) }}){% else %}없음(점수 미계산){% endif %}이고, TOP 5는 {{ data.top5 | length }}개 단지{% if data.top5 | selectattr("tie_group") | list %}(동점 포함){% endif %}다.</p>
+  <h3>6-1. 상승 확률 사다리 — 입주 후 1년(판정기 noul)</h3>
+  <table>
+    <thead><tr><th>단지</th><th>목표 시점</th><th>+5%</th><th>+10%</th><th>+20%</th><th>보합·하락</th><th>+10% 판정</th><th>상태</th><th>기준일+3년·5년</th></tr></thead>
+    <tbody>
+    {% for l in data.ladders %}
+      <tr><td>{{ l.name }}</td><td>{{ l.target_ym }}</td><td>{{ fact(l.p5) }}</td><td>{{ fact(l.p10) }}</td><td>{{ fact(l.p20) }}</td><td>{{ fact(l.p_flat) }}</td>
+        <td>{{ l.verdict_p10 or "—" }}</td><td>{{ l.status }}{% if l.judgment_seq %} #{{ l.judgment_seq }}{% endif %}</td>
+        <td>{% for o in data.ladder_other.get(l.complex_id, []) %}{{ o.horizon_label }} {{ o.status }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</td></tr>
+    {% else %}
+      <tr><td colspan="9">사다리 판정 없음</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ chart(charts.get("c01"), has_echarts) }}
+  <h3>6-2. rerank(판정기 순위) — 호출 #{{ data.rerank_seq or "없음" }}, 후보군 전체 1회</h3>
+  <table>
+    <thead><tr><th>단지</th><th>relevance</th><th>성분 점수</th></tr></thead>
+    <tbody>
+    {% for name, raw, score in data.rerank_rows %}<tr><td>{{ name }}</td><td>{{ fact(raw) }}</td><td>{{ fact(score) }}</td></tr>
+    {% else %}<tr><td colspan="3">rerank 없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <h3>6-3. 종합 점수표 — 가중치 {% for k in keys %}{{ COMPONENT_LABELS[k] }} {{ "%.2f" | format(data.weights[k]) }}{% if not loop.last %} · {% endif %}{% endfor %}</h3>
+  <table>
+    <thead><tr><th>순위</th><th>단지</th><th>생활권</th>{% for k in keys %}<th>{{ COMPONENT_LABELS[k] }}</th>{% endfor %}<th>종합</th><th>동점</th><th>민감도</th></tr></thead>
+    <tbody>
+    {% for s in data.scores %}
+      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}</td><td>{{ s.living_area_name }}</td>
+        {% for k in keys %}<td>{% if k in s.components %}{{ fact(s.components[k].score) }}{% else %}—{% endif %}</td>{% endfor %}
+        <td>{{ fact(s.total) }}</td><td>{{ "공동 그룹 %d" | format(s.tie_group) if s.tie_group else "" }}</td>
+        <td>{% if s.unstable %}<span class="badge warn">가중치 ±10%p에 TOP 5 변동</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ chart(charts.get("c06"), has_echarts) }}
+  <details>
+    <summary>구성 점수 산출식(formula_text)</summary>
+    <table>
+      <thead><tr><th>단지</th><th>성분</th><th>산출식</th></tr></thead>
+      <tbody>
+      {% for s in data.scores %}{% for k, c in s.components.items() %}
+        <tr><td>{{ s.name }}</td><td>{{ c.label }}</td><td class="formula">{{ c.formula_text }}</td></tr>
+      {% endfor %}{% endfor %}
+      </tbody>
+    </table>
+  </details>
+  <h3>6-4. TOP 5와 탈락 사유</h3>
+  <table>
+    <thead><tr><th>순위</th><th>단지</th><th>종합</th><th>비고</th></tr></thead>
+    <tbody>
+    {% for s in data.scores %}
+      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}</td><td>{{ fact(s.total) }}</td><td>{{ "TOP 5" if s.rank and s.rank <= 5 else s.note }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ disclaimer() }}
+</section>
