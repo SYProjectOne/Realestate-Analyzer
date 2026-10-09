@@ -323,10 +323,7 @@ def _regulation(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
     res_note = _label_note(c.residency_label)
     if rule.code == "no_residency_obligation":
         # B·C·D(R3 3차 RA 부분): 거주의무에 더해 재당첨 제한·규제지역도 본다(기본 상황과 같은 규칙)
-        if res is None:
-            head = "거주의무 확인 불가"
-        else:
-            head = f"거주의무 {res}개월{res_note}"
+        head = "거주의무 확인 불가" if res is None else f"거주의무 {res}개월{res_note}"
         tail, conflict = _rewin_regulated(c, sc)
         text = ", ".join([head, *tail])
         if (res is not None and res > 0) or conflict:

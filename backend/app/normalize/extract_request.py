@@ -77,8 +77,9 @@ def build_extract_requests(
     sep = "\n…\n"
     for (rid, entity, key), cs in groups.items():
         fields = list(OrderedDict.fromkeys(c.field for c in cs))
-        # 필드 상한(max_fields)과 발췌 합본 상한(max_text)을 둘 다 지키게 나눈다 — 합본을 잘라 뒤 필드의 발췌가
-        # 판정기에 가지 않던 문제(R3 3차 minor 23). 발췌 하나가 상한보다 길면 그 하나만 자른다
+        # 필드 상한(max_fields)과 발췌 합본 상한(max_text)을 둘 다 지키게 나눈다 — 합본을 잘라
+        # 뒤 필드의 발췌가 판정기에 가지 않던 문제(R3 3차 minor 23). 발췌 하나가 상한보다 길면
+        # 그 하나만 자른다.
         chunks: list[list[str]] = []
         cur: list[str] = []
         cur_ex: list[str] = []

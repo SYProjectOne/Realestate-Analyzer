@@ -83,7 +83,9 @@ def test_m3_demotion_applies_to_list_csv_and_report_immediately(client: TestClie
         data = load_report(s, SNAP, scenario_id=None, compare_snapshot_id=None)
     view = next(c for c in data.complexes if c.id == CX)
     fact = view.facts["resale_months"]
-    assert fact.v is None and fact.label == "확인 불가" and fact.reason == "검증 모순", "보고서도 같은 오버레이"
+    assert fact.v is None and fact.label == "확인 불가" and fact.reason == "검증 모순", (
+        "보고서도 같은 오버레이"
+    )
 
 
 # ====================================================================== M-4
@@ -97,9 +99,13 @@ def _price_by_type(cx_id: int, won: int) -> tuple[int, str]:
         types = list(s.scalars(select(ComplexType).where(ComplexType.complex_id == cx_id)))
         basis = basis_type(types)
         assert basis is not None
-        pt = s.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == cx_id).order_by(PaymentTerms.id)).first()
+        pt = s.scalars(
+            select(PaymentTerms).where(PaymentTerms.complex_id == cx_id).order_by(PaymentTerms.id)
+        ).first()
         assert pt is not None
-        pt.price_by_type = {basis.type_code: {"max_price_won": won, "floor_sample_price_won": won - 10_000_000}}
+        pt.price_by_type = {
+            basis.type_code: {"max_price_won": won, "floor_sample_price_won": won - 10_000_000}
+        }
         raw_url = "https://www.applyhome.co.kr/notice"
         for item, v in (("max_price_won", won), ("floor_sample_price_won", won - 10_000_000)):
             s.add(
@@ -118,14 +124,18 @@ def test_m4_price_demotion_targets_current_notice_price(client: TestClient) -> N
         name = s.get(Complex, CX).name  # type: ignore[union-attr]
     cid = _fact_claim(field_text="기준 타입 최고 공급금액은 655,000,000원이다")
     r = client.patch(
-        f"/api/claims/{cid}", json={"text": f"{name} 기준 타입 최고 공급금액은 650,000,000원이다"}, headers=WRITE
+        f"/api/claims/{cid}",
+        json={"text": f"{name} 기준 타입 최고 공급금액은 650,000,000원이다"},
+        headers=WRITE,
     )
     assert r.status_code == 202, r.text
     with get_session() as s:
         d = s.scalars(select(FactDemotion).where(FactDemotion.claim_id == cid)).one()
-        assert (d.entity, d.entity_id, d.field) == ("payment_terms", pt_id, f"price_by_type.{code}.max_price_won"), (
-            "가격 강등은 점수·화면이 실제로 쓰는 현재 공고 가격에 건다(M-4)"
-        )
+        assert (d.entity, d.entity_id, d.field) == (
+            "payment_terms",
+            pt_id,
+            f"price_by_type.{code}.max_price_won",
+        ), "가격 강등은 점수·화면이 실제로 쓰는 현재 공고 가격에 건다(M-4)"
         assert d.value_norm == "655000000"
     detail = client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ).json()
     high = detail["price"]["price_high"]
@@ -163,7 +173,9 @@ def test_minor12_manual_done_reopens_while_demoted(client: TestClient) -> None:
 
 def test_minor14_incomplete_target_is_422_not_reverify(client: TestClient) -> None:
     with get_session() as s:
-        cx = s.scalars(select(Complex).where(Complex.name == "계양신도시 카이브 유보라")).one()  # 타입·납부 조건 없음
+        cx = s.scalars(
+            select(Complex).where(Complex.name == "계양신도시 카이브 유보라")
+        ).one()  # 타입·납부 조건 없음
         claim = Claim(
             snapshot_id=SNAP, section=f"complex:{cx.id}", complex_id=cx.id,
             text=f"{cx.name} 기준 타입 최고 공급금액은 500,000,000원이다", evidence_text="",
@@ -173,7 +185,9 @@ def test_minor14_incomplete_target_is_422_not_reverify(client: TestClient) -> No
         s.flush()
         cid, name = claim.id, cx.name
     r = client.patch(
-        f"/api/claims/{cid}", json={"text": f"{name} 기준 타입 최고 공급금액은 510,000,000원이다"}, headers=WRITE
+        f"/api/claims/{cid}",
+        json={"text": f"{name} 기준 타입 최고 공급금액은 510,000,000원이다"},
+        headers=WRITE,
     )
     assert r.status_code == 422, r.text
     with get_session() as s:
@@ -201,14 +215,18 @@ def test_m9_checklist_closes_on_demotion_and_reopens_on_restore(client: TestClie
     with get_session() as s:
         sync_checklist(s, 1, asof_date="2026-10-08")
         item = s.scalars(
-            select(ChecklistItem).where(ChecklistItem.complex_id == CX, ChecklistItem.title.startswith("전매제한 종료"))
+            select(ChecklistItem).where(
+                ChecklistItem.complex_id == CX, ChecklistItem.title.startswith("전매제한 종료")
+            )
         ).one()
         assert item.status == "open"
         item_id = item.id
     _demote_resale(client)  # 강등 → demote 가 체크리스트를 다시 맞춘다(쓰기 경로)
     with get_session() as s:
         item = s.get(ChecklistItem, item_id)
-        assert item is not None and (item.status, item.closed_by) == ("na", "auto"), "모순 날짜 항목은 동기화가 닫는다"
+        assert item is not None and (item.status, item.closed_by) == ("na", "auto"), (
+            "모순 날짜 항목은 동기화가 닫는다"
+        )
     hc = client.post(
         "/api/ops/human-checks", headers=WRITE,
         json={"complex_id": CX, "field": "resale_months", "value_text": "24", "kind": "phone",
@@ -217,10 +235,14 @@ def test_m9_checklist_closes_on_demotion_and_reopens_on_restore(client: TestClie
     assert hc.status_code == 201, hc.text
     with get_session() as s:
         item = s.get(ChecklistItem, item_id)
-        assert item is not None and item.status == "open" and item.closed_by is None, "근거가 돌아오면 다시 연다"
+        assert item is not None and item.status == "open" and item.closed_by is None, (
+            "근거가 돌아오면 다시 연다"
+        )
         assert "24개월" in item.title
     # 사람이 닫은 항목은 동기화가 다시 열지 않는다
-    assert client.patch(f"/api/ops/checklist/{item_id}", json={"status": "na"}, headers=WRITE).status_code == 200
+    assert (
+        client.patch(f"/api/ops/checklist/{item_id}", json={"status": "na"}, headers=WRITE).status_code == 200
+    )
     with get_session() as s:
         sync_checklist(s, 1, asof_date="2026-10-08")
         item = s.get(ChecklistItem, item_id)
@@ -237,11 +259,15 @@ def test_m1_ladder_hiding_follows_the_requested_scenario_run(client: TestClient)
         cid = s.scalars(select(Ladder.complex_id).where(Ladder.snapshot_id == SNAP)).first()
         assert cid is not None
         base_run = s.scalars(
-            select(ScoreRun).where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == 1).order_by(ScoreRun.id.desc())
+            select(ScoreRun)
+            .where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == 1)
+            .order_by(ScoreRun.id.desc())
         ).first()
         assert base_run is not None
         base_scope = s.scalars(
-            select(ScoreTotal.judge_scope).where(ScoreTotal.score_run_id == base_run.id, ScoreTotal.complex_id == cid)
+            select(ScoreTotal.judge_scope).where(
+                ScoreTotal.score_run_id == base_run.id, ScoreTotal.complex_id == cid
+            )
         ).first()
         assert base_scope == "판정 대상"
         # 시나리오 B 만 다시 판정해 그 단지 범위가 '참고'가 됐다(시나리오 지정 rejudge)
@@ -249,8 +275,12 @@ def test_m1_ladder_hiding_follows_the_requested_scenario_run(client: TestClient)
         s.add(run)
         s.flush()
         s.add(ScoreTotal(score_run_id=run.id, complex_id=cid, total=None, rank=None, judge_scope="참고"))
-    base = client.get(f"/api/complexes/{cid}", params={"snapshot": SNAP, "scenario": "base"}, headers=READ).json()
-    other = client.get(f"/api/complexes/{cid}", params={"snapshot": SNAP, "scenario": "B"}, headers=READ).json()
+    base = client.get(
+        f"/api/complexes/{cid}", params={"snapshot": SNAP, "scenario": "base"}, headers=READ
+    ).json()
+    other = client.get(
+        f"/api/complexes/{cid}", params={"snapshot": SNAP, "scenario": "B"}, headers=READ
+    ).json()
     assert base["ladder"], "기본 시나리오 화면은 기본 run 범위(판정 대상) — 사다리 유지(M-1)"
     assert not other["ladder"], "B 시나리오 화면은 B run 범위(참고) — 사다리 숨김"
 
@@ -262,10 +292,16 @@ def test_m6_report_benchmarks_are_snapshot_scoped(client: TestClient) -> None:
     from app.reports.data import load_report
 
     with get_session() as s:
-        future = Snapshot(region_id=1, asof_date="2099-01-01", status="ready", created_at="2099-01-01T00:00:00+09:00")
+        future = Snapshot(
+            region_id=1, asof_date="2099-01-01", status="ready", created_at="2099-01-01T00:00:00+09:00"
+        )
         s.add(future)
         s.flush()
-        s.add(Benchmark(region_id=1, living_area="la_1", name="미래 조립 행", snapshot_id=future.id, note="[bm:9:9]"))
+        s.add(
+            Benchmark(
+                region_id=1, living_area="la_1", name="미래 조립 행", snapshot_id=future.id, note="[bm:9:9]"
+            )
+        )
     with get_session() as s:
         data = load_report(s, SNAP, scenario_id=None, compare_snapshot_id=None)
     assert "미래 조립 행" not in {b.name for b in data.benchmarks}
@@ -276,7 +312,9 @@ def test_m6_report_benchmarks_are_snapshot_scoped(client: TestClient) -> None:
 
 def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClient) -> None:
     with get_session() as s:
-        run = s.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == SNAP).order_by(ScoreRun.id.desc())).first()
+        run = s.scalars(
+            select(ScoreRun).where(ScoreRun.snapshot_id == SNAP).order_by(ScoreRun.id.desc())
+        ).first()
         assert run is not None
         s.add(
             ChangeEvent(
@@ -286,14 +324,24 @@ def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClien
             )
         )  # fmt: skip
     items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=READ).json()["items"]
-    assert next(i for i in items if i["complex_id"] == CX)["rejudge_needed"] is True, "범위가 같아도 실행 뒤 변경"
+    assert next(i for i in items if i["complex_id"] == CX)["rejudge_needed"] is True, (
+        "범위가 같아도 실행 뒤 변경"
+    )
     rows = list(
-        csv.DictReader(io.StringIO(client.get(f"/api/snapshots/{SNAP}/complexes.csv", headers=READ).content.decode("utf-8-sig")))
+        csv.DictReader(
+            io.StringIO(
+                client.get(f"/api/snapshots/{SNAP}/complexes.csv", headers=READ).content.decode("utf-8-sig")
+            )
+        )
     )
     assert next(x for x in rows if int(x["complex_id"]) == CX)["rejudge_needed"] == "1"
     # 지역에 더 새 스냅샷이 생기면 이 스냅샷은 과거 기록 — 오늘 사실과 비교하지 않는다
     with get_session() as s:
-        s.add(Snapshot(region_id=1, asof_date="2099-12-31", status="ready", created_at="2099-12-31T00:00:00+09:00"))
+        s.add(
+            Snapshot(
+                region_id=1, asof_date="2099-12-31", status="ready", created_at="2099-12-31T00:00:00+09:00"
+            )
+        )
     items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=READ).json()["items"]
     assert not any(i["rejudge_needed"] for i in items)
 
@@ -303,7 +351,9 @@ def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClien
 
 def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestClient) -> None:
     with get_session() as s:
-        cat = Catalyst(region_id=1, name="테스트 역 신설", kind="교통", stage="계획", location_confirmed=False)
+        cat = Catalyst(
+            region_id=1, name="테스트 역 신설", kind="교통", stage="계획", location_confirmed=False
+        )
         s.add(cat)
         s.flush()
         cat_id = cat.id
@@ -316,19 +366,30 @@ def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestCl
     validate("updateCatalyst", 200, out)
     linked = sorted(lk["complex_id"] for lk in out["links"])
     assert linked == sorted({1, *la2})
-    assert all(lk["distance_m"] is None and lk["weight"] == 1 and lk["label"] == "추정" for lk in out["links"])
+    assert all(
+        lk["distance_m"] is None and lk["weight"] == 1 and lk["label"] == "추정" for lk in out["links"]
+    )
     assert out["catalyst"]["location_confirmed"] is True and out["catalyst"]["lat"] == 37.59
-    assert out["catalyst"]["expected_ym"]["v"] == "2028-06" and out["catalyst"]["expected_ym"]["label"] == "확인됨"
+    assert (
+        out["catalyst"]["expected_ym"]["v"] == "2028-06"
+        and out["catalyst"]["expected_ym"]["label"] == "확인됨"
+    )
     assert out["job"] is not None and out["job"]["job_name"] == "rejudge", "연결이 바뀌면 점수 재계산"
     got = client.get(f"/api/complexes/{la2[0]}", params={"snapshot": SNAP}, headers=READ)
     assert got.status_code == 200, got.text
     detail = got.json()
-    assert any(c["id"] == cat_id and c["linked"] for c in detail["catalysts"]), "ComplexDetail.catalysts 가 채워진다"
+    assert any(c["id"] == cat_id and c["linked"] for c in detail["catalysts"]), (
+        "ComplexDetail.catalysts 가 채워진다"
+    )
     r = client.patch(f"/api/catalysts/{cat_id}", json={"location_confirmed": False}, headers=WRITE)
     assert r.status_code == 200 and r.json()["links"] == []
     with get_session() as s:
         assert not list(s.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat_id)))
-    bad = client.patch(f"/api/catalysts/{cat_id}", json={"location_confirmed": True, "living_area_ids": ["la_99"]}, headers=WRITE)
+    bad = client.patch(
+        f"/api/catalysts/{cat_id}",
+        json={"location_confirmed": True, "living_area_ids": ["la_99"]},
+        headers=WRITE,
+    )
     assert bad.status_code == 422
     none = client.patch(f"/api/catalysts/{cat_id}", json={"location_confirmed": True}, headers=WRITE)
     assert none.status_code == 422, "위치 확인에는 영향 범위가 있어야 한다"
@@ -348,7 +409,9 @@ def test_d11_7_patch_region_expands_selection_and_enqueues_expand_job(client: Te
         have = set(region.sigungu_codes or [])
         new_sgg = s.scalars(
             select(LegalDong.sigungu_code).where(
-                LegalDong.active.is_(True), LegalDong.eupmyeondong_name.is_not(None), LegalDong.sigungu_code.not_in(have)
+                LegalDong.active.is_(True),
+                LegalDong.eupmyeondong_name.is_not(None),
+                LegalDong.sigungu_code.not_in(have),
             )
         ).first()
         assert new_sgg is not None, "참조 데이터에 지역 밖 시군구가 있어야 한다"
@@ -371,10 +434,14 @@ def test_d11_7_patch_region_expands_selection_and_enqueues_expand_job(client: Te
         job = s.get(JobRun, out["job_id"])
         assert job is not None and job.job_name == "region.expand" and job.payload["added"] == [add]
     unknown = client.patch(
-        "/api/regions/1", json={"selections": [{"kind": "sigungu", "code": "99999", "full_name": "없음"}]}, headers=WRITE
+        "/api/regions/1",
+        json={"selections": [{"kind": "sigungu", "code": "99999", "full_name": "없음"}]},
+        headers=WRITE,
     )
     assert unknown.status_code == 422
-    jobs = client.post("/api/jobs", json={"job_name": "region.expand", "payload": {"region_id": 1}}, headers=WRITE)
+    jobs = client.post(
+        "/api/jobs", json={"job_name": "region.expand", "payload": {"region_id": 1}}, headers=WRITE
+    )
     assert jobs.status_code == 422, "region.expand 는 PATCH /regions 로만"
 
 

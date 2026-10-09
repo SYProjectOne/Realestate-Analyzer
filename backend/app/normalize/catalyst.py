@@ -225,7 +225,9 @@ def catalysts_from_news(
                     raw_document_id=doc.id,
                 )
             except CatalystInputError as exc:
-                invalid.append({"url": item.url[:300], "title": (item.title or "")[:80], "reason": str(exc)[:120]})
+                invalid.append(
+                    {"url": item.url[:300], "title": (item.title or "")[:80], "reason": str(exc)[:120]}
+                )
                 continue
             if out.created:
                 inserted += 1

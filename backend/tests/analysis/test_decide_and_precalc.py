@@ -114,7 +114,9 @@ def test_access_intake_rules() -> None:
     assert a.status == "미충족"
     # R3 3차 RA 부분(§6-7): 공통 조건 path≠unofficial_ref 를 A·C 에도 AND
     for code in ("A", "C"):
-        un = calc.evaluate(_elif(intake_path="unofficial_ref", has_priority_supply=True), builtin(code), asof_date=ASOF)
+        un = calc.evaluate(
+            _elif(intake_path="unofficial_ref", has_priority_supply=True), builtin(code), asof_date=ASOF
+        )
         assert un.access.status == "미충족" and "비공식" in un.access.evidence, code
     # B·D: 공급 경로(현재 공고)가 무순위·임의·선착순이어야 — 본청약 접수는 통장·가점 경로
     for code in ("B", "D"):
@@ -130,7 +132,9 @@ def test_regulation_rules() -> None:
     calc = RequirementPrecalculator()
     ok = calc.evaluate(_elif(), builtin("B"), asof_date=ASOF).regulation
     # R3 3차 RA 부분: B·C·D 규제 요건도 재당첨 제한·규제지역을 본다(기본 상황과 같은 규칙)
-    assert ok.status == "충족" and ok.evidence == "거주의무 0개월, 재당첨 제한 10년(이력 미입력), 비규제 → 충족"
+    assert (
+        ok.status == "충족" and ok.evidence == "거주의무 0개월, 재당첨 제한 10년(이력 미입력), 비규제 → 충족"
+    )
     rewin = calc.evaluate(_elif(), builtin("B").model_copy(
         update={"params": builtin("B").params.model_copy(update={"rewin_restricted": True})}
     ), asof_date=ASOF).regulation  # fmt: skip

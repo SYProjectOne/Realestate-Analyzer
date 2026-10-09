@@ -5,6 +5,8 @@
     uv run --with "rapidocr==3.10.0" --with onnxruntime pytest tests/collectors/notice_pdf/test_ocr.py
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import builtins
@@ -74,6 +76,22 @@ def test_adopted_engine_samples_numbers_100pct() -> None:
         text = ocr.ocr_image(str(SAMPLES / item["image"]))
         s = score(item["numbers"], numbers(text))
         assert s["exact"] == s["tokens"], (item["image"], s["missing"])
+
+
+def test_d5_adopted_engine_page_under_30_seconds() -> None:
+    """D5 기준 '페이지당 30초 이내(CPU)'(R3 3차 RA 부분 — 테스트 없음). 엔진이 없으면 건너뛴다. 모델 내려받기·첫 로드는
+    시간에서 뺀다(엔진을 한 번 깨운 뒤 시료 쪽마다 잰다)."""
+    import time
+
+    pytest.importorskip("rapidocr")
+    pytest.importorskip("onnxruntime")
+    items = _manifest()
+    ocr.ocr_image(str(SAMPLES / items[0]["image"]))  # 워밍업(모델 로드)
+    for item in items:
+        start = time.perf_counter()
+        ocr.ocr_image(str(SAMPLES / item["image"]))
+        took = time.perf_counter() - start
+        assert took <= 30.0, f"{item['image']}: {took:.1f}s > 30s(D5)"
 
 
 def test_adopted_engine_reads_scan_pdf() -> None:

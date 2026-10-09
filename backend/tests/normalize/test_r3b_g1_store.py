@@ -6,7 +6,6 @@
 리뷰 재현: '(1차)/(2차)' 괄호 제거로 이름 키가 같아지고 주소('…일원')도 같으면 2차가 1차 행을 덮어씀.
 """
 
-# ruff: noqa: E501
 
 from __future__ import annotations
 

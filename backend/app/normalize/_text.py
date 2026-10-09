@@ -67,7 +67,9 @@ def normalize_site_url(text: str | None) -> str | None:
     if not s:
         return None
     if "\\" in s or "@" in s:
-        return None  # 사용자 정보·역슬래시 속임('http://공개.kr\@10.0.0.1') — 화면 링크로 쓰지 않는다(minor 19)
+        return (
+            None  # 사용자 정보·역슬래시 속임('http://공개.kr\@10.0.0.1') — 화면 링크로 쓰지 않는다(minor 19)
+        )
     if "://" not in s:
         if not _BARE_HOST_RE.match(s):
             return None

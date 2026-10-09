@@ -462,7 +462,11 @@ def _archive_price(session: Session, region_id: int, notice: _Notice) -> _SalePr
         if best is None:
             continue
         c = priced[best]
-        span = (c.excerpt_start, c.excerpt_end) if c.excerpt_start is not None and c.excerpt_end is not None else None
+        span = (
+            (c.excerpt_start, c.excerpt_end)
+            if c.excerpt_start is not None and c.excerpt_end is not None
+            else None
+        )
         return _SalePrice(best, int(c.value), doc, c.excerpt, span)
     return None
 

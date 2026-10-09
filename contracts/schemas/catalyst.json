@@ -19,8 +19,8 @@
     "distance_m": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
     "weight": { "x-nonfact": "§6 수식의 호재 가중치 상수(가정 — 출처 데이터 아님)", "type": ["number", "null"] },
     "linked_complex_ids": { "type": ["array", "null"], "items": { "type": "integer" } },
-    "lat": { "description": "위치 위도(사람 확인, 계약 .8 — PATCH /catalysts/{id}). 없으면 null", "type": ["number", "null"] },
-    "lon": { "description": "위치 경도(사람 확인, 계약 .8). 없으면 null", "type": ["number", "null"] },
+    "lat": { "x-nonfact": "사람이 확인한 위치 좌표(지도 메타 — 점수 수치 아님)", "description": "위치 위도(사람 확인, 계약 .8 — PATCH /catalysts/{id}). 없으면 null", "type": ["number", "null"] },
+    "lon": { "x-nonfact": "사람이 확인한 위치 좌표(지도 메타 — 점수 수치 아님)", "description": "위치 경도(사람 확인, 계약 .8). 없으면 null", "type": ["number", "null"] },
     "judgment_seq": { "type": ["integer", "null"] },
     "source_url": { "type": ["string", "null"] },
     "note": { "type": ["string", "null"] }
@@ -62,7 +62,7 @@
       "required": ["complex_id", "distance_m", "weight", "label", "reason"],
       "properties": {
         "complex_id": { "type": "integer" },
-        "distance_m": { "type": ["integer", "null"] },
+        "distance_m": { "x-nonfact": "연결 계산값(단지 좌표가 없으면 null — 출처 = 사람 위치 확인)", "type": ["integer", "null"] },
         "weight": { "x-nonfact": "§6 수식의 호재 가중치 상수(가정 — 출처 데이터 아님)", "type": ["number", "null"] },
         "label": { "$ref": "label.json" },
         "reason": { "type": ["string", "null"] }

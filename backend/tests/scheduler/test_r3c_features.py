@@ -78,8 +78,14 @@ def test_m10_not_catalyst_keeps_rows_links_and_human_entries(
     with factory() as s:
         n = s.get(Catalyst, news_id)
         h = s.get(Catalyst, human_id)
-        assert n is not None and n.stage == "호재 아님" and n.decision == "auto", "뉴스 후보는 지우지 않고 '호재 아님'(D11-2)"
-        assert s.scalars(select(FieldProvenance).where(FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == news_id)).first()
+        assert n is not None and n.stage == "호재 아님" and n.decision == "auto", (
+            "뉴스 후보는 지우지 않고 '호재 아님'(D11-2)"
+        )
+        assert s.scalars(
+            select(FieldProvenance).where(
+                FieldProvenance.entity == "catalyst", FieldProvenance.entity_id == news_id
+            )
+        ).first()
         assert h is not None and h.stage == "계획", "사람이 넣은 호재는 단계를 바꾸지 않는다"
         assert "판정기: 호재 아님" in (h.note or ""), "판정 결과는 병기"
         assert s.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == human_id)).first() is not None
@@ -115,8 +121,46 @@ def test_d11_7_region_expand_job_runs_new_snapshot_and_report_compares_base(
     from app.reports.export import default_compare
 
     with factory() as s:
-        assert default_compare(s, stats["snapshot_id"]) == seeded, "보고서 비교 기준 = 바탕(§12 지역 추가 장·리비전 diff)"
+        assert default_compare(s, stats["snapshot_id"]) == seeded, (
+            "보고서 비교 기준 = 바탕(§12 지역 추가 장·리비전 diff)"
+        )
         assert default_compare(s, seeded) is None
+
+
+def test_d6_server_version_change_event_and_full_rejudge_in_new_revision(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int, jev: SynthJev
+) -> None:
+    """D6: 판정기 서버 버전이 바뀌면 change_event(judge·version·critical) + 전체 재판정 잡. 그 재판정은 발행 스냅샷이 아니라
+    같은 기준일 새 리비전에 쓰인다(D11-1) — 리비전 diff 가 RA §10 '판정기 버전 변경 → 이전 run 과 delta 표'."""
+    from app.models import ChangeEvent
+    from app.scheduler import snapshots
+    from app.scheduler.rejudge import handle_rejudge
+
+    assert not run_pipeline(make_ctx(), seeded).degraded
+    with factory() as s:
+        assert snapshots.publish(s, seeded, now="2026-10-07T08:00:00+09:00")[0]
+        s.commit()
+    jev.version = "0.15.0"  # 서버 업데이트(npx …@latest) — 같은 입력도 input_hash 가 바뀐다
+    jev.calls.clear()
+    ctx = make_ctx()
+    out = run_pipeline(ctx, seeded)
+    assert not out.degraded and out.version_event_id is not None
+    assert jev.calls, "새 버전은 캐시가 없다 — 판정기에 실제로 간다"
+    with factory() as s:
+        ev = s.get(ChangeEvent, out.version_event_id)
+        assert ev is not None and (ev.entity, ev.field, ev.severity, ev.triggers_rejudge) == (
+            "judge",
+            "version",
+            "critical",
+            True,
+        )
+        assert "0.14.1" in (ev.old_text or "") and "0.15.0" in (ev.new_text or "")
+        job = s.scalars(select(JobRun).where(JobRun.job_name == "rejudge").order_by(JobRun.id.desc())).first()
+        assert job is not None and job.payload["complex_ids"] is None, "전체 재판정 1회"
+        first_rev = s.get(Snapshot, out.snapshot_id)
+        assert first_rev is not None and first_rev.revision_of == seeded, "발행 스냅샷 재판정은 새 리비전"
+    stats = handle_rejudge(ctx, job)
+    assert stats["snapshot_id"] == out.snapshot_id, "아직 발행 전인 리비전은 그 자리에서 이어서"
 
 
 def test_d11_8_backup_job_copies_db_and_raw_incrementally(
@@ -140,11 +184,15 @@ def test_d11_8_backup_job_copies_db_and_raw_incrementally(
         s.commit()
         s.refresh(job)
     first = HANDLERS["backup"](ctx, job)
-    assert first["db"]["kind"] == "sqlite" and first["db"]["size_bytes"] > 0 and len(first["db"]["sha256"]) == 64
+    assert (
+        first["db"]["kind"] == "sqlite" and first["db"]["size_bytes"] > 0 and len(first["db"]["sha256"]) == 64
+    )
     assert (dest / "2026-10-08" / "db.sqlite3").is_file()
     assert first["raw"]["copied"] >= 1 and (dest / "raw" / "news" / "2026-10-08" / "a.json").is_file()
     second = HANDLERS["backup"](ctx, job)
-    assert second["raw"]["copied"] == 0 and second["raw"]["skipped"] == first["raw"]["files"], "증분 — 같은 파일은 건너뛴다"
+    assert second["raw"]["copied"] == 0 and second["raw"]["skipped"] == first["raw"]["files"], (
+        "증분 — 같은 파일은 건너뛴다"
+    )
 
 
 def test_d11_8_backup_is_scheduled_daily_at_03(make_ctx: Callable[..., SchedulerContext]) -> None:
@@ -157,7 +205,10 @@ def test_d11_8_backup_is_scheduled_daily_at_03(make_ctx: Callable[..., Scheduler
 
 
 def test_d11_8_backup_failure_is_a_failed_job_with_stats(
-    make_ctx: Callable[..., SchedulerContext], test_settings: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    make_ctx: Callable[..., SchedulerContext],
+    test_settings: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.scheduler.backup import run_backup
     from app.scheduler.jobs import JobError

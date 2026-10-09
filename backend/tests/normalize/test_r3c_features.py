@@ -40,11 +40,24 @@ class _Terms:
         tk = f"{self.key}:{self.key}"
         out = [
             FieldCandidate(
-                entity="payment_terms", entity_id=None, entity_key=tk, field=f, value_text=str(v), value=v,  # type: ignore[arg-type]
-                source_rank=1, source_kind="notice_pdf", primary=True, label="확인됨", excerpt=f"{f} {v}",
-                excerpt_start=0, excerpt_end=1, raw_document_id=raw.id, url=raw.url, checked_at="2026-10-09",
+                entity="payment_terms",
+                entity_id=None,
+                entity_key=tk,
+                field=f,
+                value_text=str(v),
+                value=v,  # type: ignore[arg-type]
+                source_rank=1,
+                source_kind="notice_pdf",
+                primary=True,
+                label="확인됨",
+                excerpt=f"{f} {v}",
+                excerpt_start=0,
+                excerpt_end=1,
+                raw_document_id=raw.id,
+                url=raw.url,
+                checked_at="2026-10-09",
                 observed_on="2026-09-01",
-            )  # fmt: skip
+            )
             for f, v in self.values.items()
         ]
         out.append(
@@ -68,7 +81,9 @@ def test_d11_6_discount_regex_only_explicit_amounts() -> None:
 def test_d11_6_discount_is_stored_with_provenance_and_subtracted_only_when_confirmed(
     db_session: Session, add_raw: AddRaw, region: Region
 ) -> None:
-    raw = add_raw("할인 공고", source_kind="notice_pdf", url=APT.format(key="2026990101", n=1), region_id=region.id)
+    raw = add_raw(
+        "할인 공고", source_kind="notice_pdf", url=APT.format(key="2026990101", n=1), region_id=region.id
+    )
     values = {
         "effective_from": "2026-09-01", "notice_kind": "본청약",
         "price_by_type.84A.max_price_won": 600_000_000, "price_by_type.84A.floor_sample_price_won": 580_000_000,
@@ -79,14 +94,21 @@ def test_d11_6_discount_is_stored_with_provenance_and_subtracted_only_when_confi
     pt = db_session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == cx.id)).one()
     assert pt.discount_by_type == {"84A": 10_000_000}
     fp = db_session.scalars(
-        select(FieldProvenance).where(FieldProvenance.entity_id == pt.id, FieldProvenance.field == "discount_by_type.84A")
+        select(FieldProvenance).where(
+            FieldProvenance.entity_id == pt.id, FieldProvenance.field == "discount_by_type.84A"
+        )
     ).one()
     assert fp.chosen and fp.label == "확인됨" and fp.value_norm == "10000000"
     assert not [m for m in missing_provenance(db_session, ("payment_terms",)) if m.entity_id == pt.id]
 
     class T:  # 기준 타입 1개(84A)
         id, type_code, area_m2 = 1, "84A", 84.9
-        max_price_won, floor_sample_price_won, balcony_won, options_required_won = 610_000_000, None, None, None
+        max_price_won, floor_sample_price_won, balcony_won, options_required_won = (
+            610_000_000,
+            None,
+            None,
+            None,
+        )
 
     view = current_price([T()], [pt])  # type: ignore[list-item]
     assert view.discount_applied and view.high_won == 590_000_000 and view.low_won == 570_000_000
@@ -128,13 +150,29 @@ def test_minor23_extract_requests_split_by_text_limit() -> None:
     assert all(len(r.text) <= 2000 for r in reqs)
 
 
-def test_minor24_invalid_news_items_are_recorded(db_session: Session, add_raw: AddRaw, region: Region, monkeypatch: Any) -> None:
+def test_minor24_invalid_news_items_are_recorded(
+    db_session: Session, add_raw: AddRaw, region: Region, monkeypatch: Any
+) -> None:
     import json
 
     from app.normalize import catalyst as cat_mod
 
-    body = {"items": [{"title": "역 신설 확정", "link": "ftp://bad.example/1", "description": "x", "pubDate": "Wed, 08 Oct 2026 09:00:00 +0900"}]}
-    raw = add_raw(json.dumps(body, ensure_ascii=False), source_kind="news", url="https://naverapihub/news?q=x", region_id=region.id)
+    body = {
+        "items": [
+            {
+                "title": "역 신설 확정",
+                "link": "ftp://bad.example/1",
+                "description": "x",
+                "pubDate": "Wed, 08 Oct 2026 09:00:00 +0900",
+            }
+        ]
+    }
+    raw = add_raw(
+        json.dumps(body, ensure_ascii=False),
+        source_kind="news",
+        url="https://naverapihub/news?q=x",
+        region_id=region.id,
+    )
     out = cat_mod.catalysts_from_news(db_session, region.id, [raw])
     assert out.inserted == 0
     st = out.stats()
@@ -164,10 +202,14 @@ def test_ra_trustee_officetel_options_text_parsers() -> None:
     opts = [c for c in cands if c.entity == "complex_type" and c.field == "options_text"]
     assert opts and all("선택" in str(c.value) for c in opts)
     plain = parse_notice_text(text + "\n발코니 확장 공사비 우리은행 1005 우리자산신탁 주식회사\n", raw(url))
-    assert not [c for c in plain if c.field == "trustee"], "이름표 없는 계좌 예금주는 신탁 관계로 단정하지 않는다"
+    assert not [c for c in plain if c.field == "trustee"], (
+        "이름표 없는 계좌 예금주는 신탁 관계로 단정하지 않는다"
+    )
 
 
-def test_ra_benchmark_sale_price_prefers_archived_notice(db_session: Session, add_raw: AddRaw, region: Region) -> None:
+def test_ra_benchmark_sale_price_prefers_archived_notice(
+    db_session: Session, add_raw: AddRaw, region: Region
+) -> None:
     """RA §3 '분양가는 자체 아카이브 공고 우선': 보관 공고문(``archive.archived_notices``)의 84㎡ 최근접 최고가가 청약홈 API
     주택형 값보다 우선한다. 공고문이 없으면 API 값(기존 동작)."""
     from pathlib import Path

@@ -14783,6 +14783,7 @@ components:
       additionalProperties: false
       properties:
         keep_days:
+          x-nonfact: 운영 설정값(보존 일수)
           description: 이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)
           type:
           - integer
@@ -15011,6 +15012,7 @@ components:
         complex_id:
           type: integer
         distance_m:
+          x-nonfact: 연결 계산값(단지 좌표가 없으면 null — 출처 = 사람 위치 확인)
           type:
           - integer
           - 'null'
@@ -15163,11 +15165,13 @@ components:
           items:
             type: integer
         lat:
+          x-nonfact: 사람이 확인한 위치 좌표(지도 메타 — 점수 수치 아님)
           description: 위치 위도(사람 확인, 계약 .8 — PATCH /catalysts/{id}). 없으면 null
           type:
           - number
           - 'null'
         lon:
+          x-nonfact: 사람이 확인한 위치 좌표(지도 메타 — 점수 수치 아님)
           description: 위치 경도(사람 확인, 계약 .8). 없으면 null
           type:
           - number
@@ -24069,6 +24073,7 @@ components:
           minimum: 1
           default: 1
         revision_of:
+          x-nonfact: 스냅샷 식별자(바탕 리비전 id)
           description: 바탕 리비전(이 리비전을 만든 발행 스냅샷 id). 리비전 1 은 null
           type:
           - integer

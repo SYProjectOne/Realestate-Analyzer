@@ -6,7 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "keep_days": { "description": "이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)", "type": ["integer", "null"], "minimum": 1 }
+    "keep_days": { "x-nonfact": "운영 설정값(보존 일수)", "description": "이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)", "type": ["integer", "null"], "minimum": 1 }
   },
   "examples": [{}]
 }

@@ -145,6 +145,8 @@ def test_job_payloads_cover_every_job_name(schema_registry: Registry[Any]) -> No
         "reference.refresh",
         "region.bootstrap",
         "claim.reverify",
+        "backup",  # 계약 2026-10-09.8 (D11-8)
+        "region.expand",  # 계약 2026-10-09.8 (D11-7)
     ]
     files = {p.stem for p in (SCHEMAS / "job_payloads").glob("*.json")}
     assert files == {n.replace(".", "_") for n in job_names}
