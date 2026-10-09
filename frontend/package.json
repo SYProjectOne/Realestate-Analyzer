@@ -19,7 +19,9 @@
     "format:check": "prettier --check .",
     "gen:api": "tsx scripts/gen-api.ts",
     "gen:msw": "tsx scripts/gen-msw.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test && playwright test -c e2e/pages",
+    "e2e:smoke": "playwright test",
+    "e2e:pages": "playwright test -c e2e/pages"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
@@ -48,6 +50,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^17.13.0",
     "jsdom": "^26.1.0",
+    "lighthouse": "^12.8.2",
     "msw": "^2.15.0",
     "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.29",

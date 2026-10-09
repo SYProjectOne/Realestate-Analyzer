@@ -1,5 +1,5 @@
 /**
- * API 도메인 타입 — 계약 2026-10-09.1 생성 타입(`./schema.d.ts`)의 별칭.
+ * API 도메인 타입 — 계약 2026-10-09.2 생성 타입(`./schema.d.ts`)의 별칭.
  *
  * `schema.d.ts`는 `npm run gen:api`가 `contracts/openapi.bundled.yaml`에서 만든다(손으로 고치지 않음).
  * 화면·차트·훅은 반드시 이 파일(`@/api/types`)에서만 타입을 가져온다.
@@ -11,14 +11,11 @@ import type { components, operations } from './schema';
 
 type S = components['schemas'];
 
-/**
- * openapi-typescript는 속성 없는 `{type: object}`를 `Record<string, never>`로 만든다(읽을 수 없는 타입).
- * 계약 의미는 "임의 객체"이므로 그 필드만 `Record<string, unknown>`으로 되돌린다.
+/*
+ * 계약 2026-10-09.2부터 보정 코드가 없다: 임의 객체 필드(payload·result·raw·applyhome_query …)는 스키마가
+ * `additionalProperties: true`라 `Record<string, unknown>`으로, `default`가 있는 선택 필드(Fact.human 등)는
+ * gen:api의 `defaultNonNullable: false`로 선택 필드 그대로 생성된다.
  */
-type Obj = Record<string, unknown>;
-type Loosen<T, K extends keyof T, Nullable extends boolean = false> = Omit<T, K> & {
-  [P in K]: Nullable extends true ? Obj | null : Obj;
-};
 
 /** 계약의 행 id는 정수다(스냅샷·단지·잡·보고서…). 생활권 id(`la_1`)·출처 id(`fp_…`)는 문자열. */
 export type Id = number;
@@ -40,12 +37,8 @@ export const LABELS = [
   '확인 불가',
 ] as const satisfies readonly Label[];
 
-/**
- * 수치·날짜는 맨값으로 나가지 않는다. 화면은 `prov`로 출처 패널을 연다.
- * `human`은 스키마상 선택(기본 false)인데 openapi-typescript가 default 때문에 필수로 만든다 →
- * 실제 응답(계약 예시)에는 없으므로 선택으로 되돌린다. 생성 Fact는 이 타입에 그대로 대입된다.
- */
-export type Fact = Omit<S['Fact'], 'human'> & { human?: boolean };
+/** 수치·날짜는 맨값으로 나가지 않는다. 화면은 `prov`로 출처 패널을 연다. */
+export type Fact = S['Fact'];
 export type FactUnitHint = NonNullable<Fact['unit']>;
 /** 호환 별칭 — v의 타입은 계약상 number | string | null 하나다 */
 export type NumFact = Fact;
@@ -68,7 +61,7 @@ export const INTAKE_PATHS = [
 ] as const satisfies readonly IntakePath[];
 
 export type JudgeTool = S['JudgeTool'];
-export type JudgmentEnvelope = Loosen<S['JudgmentEnvelope'], 'result' | 'raw'>;
+export type JudgmentEnvelope = S['JudgmentEnvelope'];
 export type EnvelopeStatus = JudgmentEnvelope['status'];
 /** 점수·추천에 쓰지 않는(회색 "미해결") 봉투 상태 */
 export const UNRESOLVED_STATUSES = [
@@ -106,13 +99,13 @@ export type RegionCandidateKind = RegionCandidate['kind'];
 export type RegionSelection = S['RegionSelection'];
 export type LivingArea = S['LivingArea'];
 export type LivingAreaInput = S['LivingAreaInput'];
-export type Region = Loosen<S['Region'], 'applyhome_query'>;
+export type Region = S['Region'];
 export type RegionStatus = Region['status'];
 export type AgePremiumCoef = S['AgePremiumCoef'];
 export type RegionCreate = S['RegionCreate'];
-export type RegionCreated = Omit<S['RegionCreated'], 'region'> & { region: Region };
+export type RegionCreated = S['RegionCreated'];
 export type LivingAreasUpdate = S['LivingAreasUpdate'];
-export type LivingAreasUpdated = Omit<S['LivingAreasUpdated'], 'region'> & { region: Region };
+export type LivingAreasUpdated = S['LivingAreasUpdated'];
 /** 호환 별칭 */
 export type RegionCreateRequest = RegionCreate;
 export type RegionCreateResponse = RegionCreated;
@@ -192,9 +185,7 @@ export type ScheduleItem = S['ScheduleItem'];
 export type Complex = S['Complex'];
 /** 호환 별칭 — ComplexDetail.header는 Complex 전체다 */
 export type ComplexHeader = Complex;
-export type ComplexDetail = Omit<S['ComplexDetail'], 'judgments'> & {
-  judgments: JudgmentEnvelope[];
-};
+export type ComplexDetail = S['ComplexDetail'];
 
 export type Provenance = S['Provenance'];
 export type ProvenanceConflict = S['ProvenanceConflict'];
@@ -230,9 +221,9 @@ export type ScenarioPreviewRow = ScenarioPreview['requirements_pre'][number];
 // ─── 잡·시장·운영·보고서 ──────────────────────────────────────
 
 export type JobName = S['JobName'];
-export type JobRun = Loosen<S['JobRun'], 'payload' | 'stats'>;
+export type JobRun = S['JobRun'];
 export type JobStatus = JobRun['status'];
-export type JobCreate = Loosen<S['JobCreate'], 'payload'>;
+export type JobCreate = S['JobCreate'];
 /** 호환 별칭 */
 export type JobCreateRequest = JobCreate;
 export type JobListParams = NonNullable<operations['listJobs']['parameters']['query']>;
@@ -248,17 +239,13 @@ export type UnsoldRow = UnsoldPoint;
 export type RegulationSummary = S['RegulationSummary'];
 export type Market = S['Market'];
 
-export type SourceStatus = Omit<S['SourceStatus'], 'retry'> & {
-  retry: { job_name: JobName; payload: Obj } | null;
-};
+export type SourceStatus = S['SourceStatus'];
 export type JudgmentStats = S['JudgmentStats'];
-export type JudgmentOps = Omit<S['JudgmentOps'], 'items'> & { items: JudgmentEnvelope[] };
+export type JudgmentOps = S['JudgmentOps'];
 export type JudgmentOpsParams = NonNullable<operations['getJudgmentOps']['parameters']['query']>;
 export type ChecklistItem = S['ChecklistItem'];
 export type ChecklistPatch = S['ChecklistPatch'];
-export type HumanCheck = Omit<S['HumanCheck'], 'suggested_job'> & {
-  suggested_job?: JobCreate | null;
-};
+export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];
 
 export type ReportFormat = S['ReportRequest']['format'];

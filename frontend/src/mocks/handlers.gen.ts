@@ -20,9 +20,9 @@ export const generatedHandlers = [
         "name": "엘리프 검단 포레듀",
         "former_names": [],
         "address": "인천광역시 검단구 마전동 AA32블록",
-        "legal_dong_code": "2826011600",
+        "legal_dong_code": "2829010300",
         "living_area": "la_2",
-        "living_area_name": "서구(검단)",
+        "living_area_name": "검단구",
         "official_site_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
         "developer": null,
         "trustee": null,
@@ -1374,7 +1374,7 @@ export const generatedHandlers = [
         "complex_id": 2,
         "name": "엘리프 검단 포레듀",
         "living_area": "la_2",
-        "living_area_name": "서구(검단)",
+        "living_area_name": "검단구",
         "score_run_id": 88,
         "total": {
           "v": 5.7,
@@ -2501,8 +2501,8 @@ export const generatedHandlers = [
           },
           {
             "kind": "sigungu",
-            "code": "28260",
-            "full_name": "인천광역시 서구"
+            "code": "28290",
+            "full_name": "인천광역시 검단구"
           },
           {
             "kind": "sigungu",
@@ -2522,16 +2522,16 @@ export const generatedHandlers = [
         "sigungu_codes": [
           "28185",
           "28245",
-          "28260",
+          "28290",
           "41570"
         ],
         "legal_dong_codes": [
           "2818510600",
-          "2826011400",
-          "2826011500",
-          "2826011600",
-          "2826011700",
-          "2826011800",
+          "2829010400",
+          "2829010500",
+          "2829010300",
+          "2829010600",
+          "2829010700",
           "2824510900",
           "2824511000",
           "4157010100",
@@ -2549,6 +2549,13 @@ export const generatedHandlers = [
             "legal_dong_codes": [
               "2818510600"
             ],
+            "legal_dongs": [
+              {
+                "code": "2818510600",
+                "name": "송도동",
+                "full_name": "인천광역시 연수구 송도동"
+              }
+            ],
             "households": {
               "v": null,
               "label": "확인 불가",
@@ -2560,13 +2567,40 @@ export const generatedHandlers = [
           },
           {
             "id": "la_2",
-            "name": "서구(검단)",
+            "name": "검단구",
             "legal_dong_codes": [
-              "2826011400",
-              "2826011500",
-              "2826011600",
-              "2826011700",
-              "2826011800"
+              "2829010400",
+              "2829010500",
+              "2829010300",
+              "2829010600",
+              "2829010700"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2829010400",
+                "name": "당하동",
+                "full_name": "인천광역시 검단구 당하동"
+              },
+              {
+                "code": "2829010500",
+                "name": "원당동",
+                "full_name": "인천광역시 검단구 원당동"
+              },
+              {
+                "code": "2829010300",
+                "name": "마전동",
+                "full_name": "인천광역시 검단구 마전동"
+              },
+              {
+                "code": "2829010600",
+                "name": "대곡동",
+                "full_name": "인천광역시 검단구 대곡동"
+              },
+              {
+                "code": "2829010700",
+                "name": "금곡동",
+                "full_name": "인천광역시 검단구 금곡동"
+              }
             ],
             "households": {
               "v": null,
@@ -2583,6 +2617,18 @@ export const generatedHandlers = [
             "legal_dong_codes": [
               "2824510900",
               "2824511000"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2824510900",
+                "name": "박촌동",
+                "full_name": "인천광역시 계양구 박촌동"
+              },
+              {
+                "code": "2824511000",
+                "name": "동양동",
+                "full_name": "인천광역시 계양구 동양동"
+              }
             ],
             "households": {
               "v": null,
@@ -2604,6 +2650,43 @@ export const generatedHandlers = [
               "4157010600",
               "4157025021",
               "4157025022"
+            ],
+            "legal_dongs": [
+              {
+                "code": "4157010100",
+                "name": "북변동",
+                "full_name": "경기도 김포시 북변동"
+              },
+              {
+                "code": "4157010300",
+                "name": "운양동",
+                "full_name": "경기도 김포시 운양동"
+              },
+              {
+                "code": "4157010400",
+                "name": "장기동",
+                "full_name": "경기도 김포시 장기동"
+              },
+              {
+                "code": "4157010500",
+                "name": "감정동",
+                "full_name": "경기도 김포시 감정동"
+              },
+              {
+                "code": "4157010600",
+                "name": "사우동",
+                "full_name": "경기도 김포시 사우동"
+              },
+              {
+                "code": "4157025021",
+                "name": "통진읍 도사리",
+                "full_name": "경기도 김포시 통진읍 도사리"
+              },
+              {
+                "code": "4157025022",
+                "name": "통진읍 마송리",
+                "full_name": "경기도 김포시 통진읍 마송리"
+              }
             ],
             "households": {
               "v": null,
@@ -2658,8 +2741,8 @@ export const generatedHandlers = [
           },
           {
             "kind": "sigungu",
-            "code": "28260",
-            "full_name": "인천광역시 서구"
+            "code": "28290",
+            "full_name": "인천광역시 검단구"
           },
           {
             "kind": "sigungu",
@@ -2679,16 +2762,16 @@ export const generatedHandlers = [
         "sigungu_codes": [
           "28185",
           "28245",
-          "28260",
+          "28290",
           "41570"
         ],
         "legal_dong_codes": [
           "2818510600",
-          "2826011400",
-          "2826011500",
-          "2826011600",
-          "2826011700",
-          "2826011800",
+          "2829010400",
+          "2829010500",
+          "2829010300",
+          "2829010600",
+          "2829010700",
           "2824510900",
           "2824511000",
           "4157010100",
@@ -2706,18 +2789,52 @@ export const generatedHandlers = [
             "legal_dong_codes": [
               "2818510600"
             ],
+            "legal_dongs": [
+              {
+                "code": "2818510600",
+                "name": "송도동",
+                "full_name": "인천광역시 연수구 송도동"
+              }
+            ],
             "households": null,
             "supply_ref_units": null
           },
           {
             "id": "la_2",
-            "name": "서구(검단)",
+            "name": "검단구",
             "legal_dong_codes": [
-              "2826011400",
-              "2826011500",
-              "2826011600",
-              "2826011700",
-              "2826011800"
+              "2829010400",
+              "2829010500",
+              "2829010300",
+              "2829010600",
+              "2829010700"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2829010400",
+                "name": "당하동",
+                "full_name": "인천광역시 검단구 당하동"
+              },
+              {
+                "code": "2829010500",
+                "name": "원당동",
+                "full_name": "인천광역시 검단구 원당동"
+              },
+              {
+                "code": "2829010300",
+                "name": "마전동",
+                "full_name": "인천광역시 검단구 마전동"
+              },
+              {
+                "code": "2829010600",
+                "name": "대곡동",
+                "full_name": "인천광역시 검단구 대곡동"
+              },
+              {
+                "code": "2829010700",
+                "name": "금곡동",
+                "full_name": "인천광역시 검단구 금곡동"
+              }
             ],
             "households": null,
             "supply_ref_units": null
@@ -2728,6 +2845,18 @@ export const generatedHandlers = [
             "legal_dong_codes": [
               "2824510900",
               "2824511000"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2824510900",
+                "name": "박촌동",
+                "full_name": "인천광역시 계양구 박촌동"
+              },
+              {
+                "code": "2824511000",
+                "name": "동양동",
+                "full_name": "인천광역시 계양구 동양동"
+              }
             ],
             "households": null,
             "supply_ref_units": null
@@ -2743,6 +2872,43 @@ export const generatedHandlers = [
               "4157010600",
               "4157025021",
               "4157025022"
+            ],
+            "legal_dongs": [
+              {
+                "code": "4157010100",
+                "name": "북변동",
+                "full_name": "경기도 김포시 북변동"
+              },
+              {
+                "code": "4157010300",
+                "name": "운양동",
+                "full_name": "경기도 김포시 운양동"
+              },
+              {
+                "code": "4157010400",
+                "name": "장기동",
+                "full_name": "경기도 김포시 장기동"
+              },
+              {
+                "code": "4157010500",
+                "name": "감정동",
+                "full_name": "경기도 김포시 감정동"
+              },
+              {
+                "code": "4157010600",
+                "name": "사우동",
+                "full_name": "경기도 김포시 사우동"
+              },
+              {
+                "code": "4157025021",
+                "name": "통진읍 도사리",
+                "full_name": "경기도 김포시 통진읍 도사리"
+              },
+              {
+                "code": "4157025022",
+                "name": "통진읍 마송리",
+                "full_name": "경기도 김포시 통진읍 마송리"
+              }
             ],
             "households": null,
             "supply_ref_units": null
@@ -2772,40 +2938,40 @@ export const generatedHandlers = [
     HttpResponse.json([
       {
         "kind": "sigungu",
-        "code": "28260",
-        "full_name": "인천광역시 서구",
+        "code": "28290",
+        "full_name": "인천광역시 검단구",
         "legal_dong_codes": [
-          "2826011400",
-          "2826011500",
-          "2826011600",
-          "2826011700",
-          "2826011800"
+          "2829010400",
+          "2829010500",
+          "2829010300",
+          "2829010600",
+          "2829010700"
         ],
         "match": "partial",
-        "sigungu_code": "28260",
+        "sigungu_code": "28290",
         "sido_code": "28"
       },
       {
         "kind": "admin_dong",
-        "code": "2826058500",
-        "full_name": "인천광역시 서구 검단동",
+        "code": "2829051000",
+        "full_name": "인천광역시 검단구 검단동",
         "legal_dong_codes": [
-          "2826011600",
-          "2826011700"
+          "2829010300",
+          "2829010700"
         ],
         "match": "exact",
-        "sigungu_code": "28260",
+        "sigungu_code": "28290",
         "sido_code": "28"
       },
       {
         "kind": "legal_dong",
-        "code": "2826011600",
-        "full_name": "인천광역시 서구 마전동",
+        "code": "2829010300",
+        "full_name": "인천광역시 검단구 마전동",
         "legal_dong_codes": [
-          "2826011600"
+          "2829010300"
         ],
         "match": "partial",
-        "sigungu_code": "28260",
+        "sigungu_code": "28290",
         "sido_code": "28"
       }
     ], { status: 200 }),
@@ -2823,8 +2989,8 @@ export const generatedHandlers = [
         },
         {
           "kind": "sigungu",
-          "code": "28260",
-          "full_name": "인천광역시 서구"
+          "code": "28290",
+          "full_name": "인천광역시 검단구"
         },
         {
           "kind": "sigungu",
@@ -2844,16 +3010,16 @@ export const generatedHandlers = [
       "sigungu_codes": [
         "28185",
         "28245",
-        "28260",
+        "28290",
         "41570"
       ],
       "legal_dong_codes": [
         "2818510600",
-        "2826011400",
-        "2826011500",
-        "2826011600",
-        "2826011700",
-        "2826011800",
+        "2829010400",
+        "2829010500",
+        "2829010300",
+        "2829010600",
+        "2829010700",
         "2824510900",
         "2824511000",
         "4157010100",
@@ -2871,6 +3037,13 @@ export const generatedHandlers = [
           "legal_dong_codes": [
             "2818510600"
           ],
+          "legal_dongs": [
+            {
+              "code": "2818510600",
+              "name": "송도동",
+              "full_name": "인천광역시 연수구 송도동"
+            }
+          ],
           "households": {
             "v": null,
             "label": "확인 불가",
@@ -2882,13 +3055,40 @@ export const generatedHandlers = [
         },
         {
           "id": "la_2",
-          "name": "서구(검단)",
+          "name": "검단구",
           "legal_dong_codes": [
-            "2826011400",
-            "2826011500",
-            "2826011600",
-            "2826011700",
-            "2826011800"
+            "2829010400",
+            "2829010500",
+            "2829010300",
+            "2829010600",
+            "2829010700"
+          ],
+          "legal_dongs": [
+            {
+              "code": "2829010400",
+              "name": "당하동",
+              "full_name": "인천광역시 검단구 당하동"
+            },
+            {
+              "code": "2829010500",
+              "name": "원당동",
+              "full_name": "인천광역시 검단구 원당동"
+            },
+            {
+              "code": "2829010300",
+              "name": "마전동",
+              "full_name": "인천광역시 검단구 마전동"
+            },
+            {
+              "code": "2829010600",
+              "name": "대곡동",
+              "full_name": "인천광역시 검단구 대곡동"
+            },
+            {
+              "code": "2829010700",
+              "name": "금곡동",
+              "full_name": "인천광역시 검단구 금곡동"
+            }
           ],
           "households": {
             "v": null,
@@ -2905,6 +3105,18 @@ export const generatedHandlers = [
           "legal_dong_codes": [
             "2824510900",
             "2824511000"
+          ],
+          "legal_dongs": [
+            {
+              "code": "2824510900",
+              "name": "박촌동",
+              "full_name": "인천광역시 계양구 박촌동"
+            },
+            {
+              "code": "2824511000",
+              "name": "동양동",
+              "full_name": "인천광역시 계양구 동양동"
+            }
           ],
           "households": {
             "v": null,
@@ -2926,6 +3138,43 @@ export const generatedHandlers = [
             "4157010600",
             "4157025021",
             "4157025022"
+          ],
+          "legal_dongs": [
+            {
+              "code": "4157010100",
+              "name": "북변동",
+              "full_name": "경기도 김포시 북변동"
+            },
+            {
+              "code": "4157010300",
+              "name": "운양동",
+              "full_name": "경기도 김포시 운양동"
+            },
+            {
+              "code": "4157010400",
+              "name": "장기동",
+              "full_name": "경기도 김포시 장기동"
+            },
+            {
+              "code": "4157010500",
+              "name": "감정동",
+              "full_name": "경기도 김포시 감정동"
+            },
+            {
+              "code": "4157010600",
+              "name": "사우동",
+              "full_name": "경기도 김포시 사우동"
+            },
+            {
+              "code": "4157025021",
+              "name": "통진읍 도사리",
+              "full_name": "경기도 김포시 통진읍 도사리"
+            },
+            {
+              "code": "4157025022",
+              "name": "통진읍 마송리",
+              "full_name": "경기도 김포시 통진읍 마송리"
+            }
           ],
           "households": {
             "v": null,
@@ -2979,8 +3228,8 @@ export const generatedHandlers = [
           },
           {
             "kind": "sigungu",
-            "code": "28260",
-            "full_name": "인천광역시 서구"
+            "code": "28290",
+            "full_name": "인천광역시 검단구"
           },
           {
             "kind": "sigungu",
@@ -3000,16 +3249,16 @@ export const generatedHandlers = [
         "sigungu_codes": [
           "28185",
           "28245",
-          "28260",
+          "28290",
           "41570"
         ],
         "legal_dong_codes": [
           "2818510600",
-          "2826011400",
-          "2826011500",
-          "2826011600",
-          "2826011700",
-          "2826011800",
+          "2829010400",
+          "2829010500",
+          "2829010300",
+          "2829010600",
+          "2829010700",
           "2824510900",
           "2824511000",
           "4157010100",
@@ -3027,6 +3276,13 @@ export const generatedHandlers = [
             "legal_dong_codes": [
               "2818510600"
             ],
+            "legal_dongs": [
+              {
+                "code": "2818510600",
+                "name": "송도동",
+                "full_name": "인천광역시 연수구 송도동"
+              }
+            ],
             "households": {
               "v": null,
               "label": "확인 불가",
@@ -3040,8 +3296,20 @@ export const generatedHandlers = [
             "id": "la_2",
             "name": "검단 원당·당하",
             "legal_dong_codes": [
-              "2826011400",
-              "2826011500"
+              "2829010400",
+              "2829010500"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2829010400",
+                "name": "당하동",
+                "full_name": "인천광역시 검단구 당하동"
+              },
+              {
+                "code": "2829010500",
+                "name": "원당동",
+                "full_name": "인천광역시 검단구 원당동"
+              }
             ],
             "households": {
               "v": null,
@@ -3056,9 +3324,26 @@ export const generatedHandlers = [
             "id": "la_5",
             "name": "검단 마전·불로",
             "legal_dong_codes": [
-              "2826011600",
-              "2826011700",
-              "2826011800"
+              "2829010300",
+              "2829010600",
+              "2829010700"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2829010300",
+                "name": "마전동",
+                "full_name": "인천광역시 검단구 마전동"
+              },
+              {
+                "code": "2829010600",
+                "name": "대곡동",
+                "full_name": "인천광역시 검단구 대곡동"
+              },
+              {
+                "code": "2829010700",
+                "name": "금곡동",
+                "full_name": "인천광역시 검단구 금곡동"
+              }
             ],
             "households": {
               "v": null,
@@ -3075,6 +3360,18 @@ export const generatedHandlers = [
             "legal_dong_codes": [
               "2824510900",
               "2824511000"
+            ],
+            "legal_dongs": [
+              {
+                "code": "2824510900",
+                "name": "박촌동",
+                "full_name": "인천광역시 계양구 박촌동"
+              },
+              {
+                "code": "2824511000",
+                "name": "동양동",
+                "full_name": "인천광역시 계양구 동양동"
+              }
             ],
             "households": {
               "v": null,
@@ -3096,6 +3393,43 @@ export const generatedHandlers = [
               "4157010600",
               "4157025021",
               "4157025022"
+            ],
+            "legal_dongs": [
+              {
+                "code": "4157010100",
+                "name": "북변동",
+                "full_name": "경기도 김포시 북변동"
+              },
+              {
+                "code": "4157010300",
+                "name": "운양동",
+                "full_name": "경기도 김포시 운양동"
+              },
+              {
+                "code": "4157010400",
+                "name": "장기동",
+                "full_name": "경기도 김포시 장기동"
+              },
+              {
+                "code": "4157010500",
+                "name": "감정동",
+                "full_name": "경기도 김포시 감정동"
+              },
+              {
+                "code": "4157010600",
+                "name": "사우동",
+                "full_name": "경기도 김포시 사우동"
+              },
+              {
+                "code": "4157025021",
+                "name": "통진읍 도사리",
+                "full_name": "경기도 김포시 통진읍 도사리"
+              },
+              {
+                "code": "4157025022",
+                "name": "통진읍 마송리",
+                "full_name": "경기도 김포시 통진읍 마송리"
+              }
             ],
             "households": {
               "v": null,
@@ -3800,7 +4134,7 @@ export const generatedHandlers = [
           "complex_id": 2,
           "name": "엘리프 검단 포레듀",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "score_run_id": 90,
           "total": {
             "v": 5.65,
@@ -6125,7 +6459,7 @@ export const generatedHandlers = [
           "complex_id": 2,
           "name": "엘리프 검단 포레듀",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "track": "B",
           "judge_scope": "판정 대상",
           "intake": {
@@ -6557,7 +6891,7 @@ export const generatedHandlers = [
           "complex_id": 5,
           "name": "검단 센트레빌 에듀시티",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "track": "B",
           "judge_scope": "판정 대상",
           "intake": {
@@ -6696,7 +7030,7 @@ export const generatedHandlers = [
           "complex_id": 6,
           "name": "더샵 검단레이크파크 AB23",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "track": "B",
           "judge_scope": "판정 대상",
           "intake": {
@@ -8074,7 +8408,7 @@ export const generatedHandlers = [
           "complex_id": 16,
           "name": "검단 센트레빌 그랑포레",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "track": "A",
           "judge_scope": "보류",
           "intake": null,
@@ -8450,7 +8784,7 @@ export const generatedHandlers = [
           "complex_id": 2,
           "name": "엘리프 검단 포레듀",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "score_run_id": 88,
           "total": {
             "v": 5.7,
@@ -8914,7 +9248,7 @@ export const generatedHandlers = [
           "complex_id": 5,
           "name": "검단 센트레빌 에듀시티",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "score_run_id": 88,
           "total": {
             "v": 4.61,
@@ -9071,7 +9405,7 @@ export const generatedHandlers = [
           "complex_id": 6,
           "name": "더샵 검단레이크파크 AB23",
           "living_area": "la_2",
-          "living_area_name": "서구(검단)",
+          "living_area_name": "검단구",
           "score_run_id": 88,
           "total": {
             "v": 4.61,
@@ -9761,7 +10095,7 @@ export const generatedHandlers = [
         },
         {
           "id": "la_2",
-          "name": "서구(검단)"
+          "name": "검단구"
         },
         {
           "id": "la_3",
@@ -11630,8 +11964,8 @@ export const generatedHandlers = [
         },
         {
           "ym": "2026-08",
-          "scope_code": "28260",
-          "scope_name": "검단구(서구 코드)",
+          "scope_code": "28290",
+          "scope_name": "검단구",
           "total": {
             "v": 737,
             "label": "재가공",
@@ -12212,7 +12546,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_2",
-          "name": "서구(검단)",
+          "name": "검단구",
           "median_won": {
             "v": 860000000,
             "label": "추정",
@@ -12345,31 +12679,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.5669
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.5154
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 4.9827
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 4.7342
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 4.3008
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 5,
               "total": 4.3427
             }
@@ -12400,31 +12740,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 6.1731
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.8846
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.6673
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 5.2558
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 4.9192
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 6,
               "total": 4.8673
             }
@@ -12457,31 +12803,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 6.2488
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 6.1
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.7719
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 5.4581
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 5.0712
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 6,
               "total": 4.9919
             }
@@ -12514,31 +12866,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.4912
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.3
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 4.8781
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 4.5319
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 6,
               "total": 4.1488
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 5,
               "total": 4.2181
             }
@@ -12571,31 +12929,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.8265
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.7706
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.2162
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 4.9956
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 6,
               "total": 4.6088
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 5,
               "total": 4.8868
             }
@@ -12629,36 +12993,43 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.9135
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.6294
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.4338
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 4.9944
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 4.6112
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 8,
               "total": 4.3232
             },
             {
               "complex_id": 7,
+              "name": "김포 칸타빌 에디션",
               "rank": 5,
               "total": 4.6535
             }
@@ -12693,31 +13064,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.7733
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.6222
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.1778
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 4.94
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 6,
               "total": 4.5978
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 5,
               "total": 4.6489
             }
@@ -12750,31 +13127,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.9667
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.7778
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.4722
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 5.05
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 4.6222
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 6,
               "total": 4.5611
             }
@@ -12808,31 +13191,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.9956
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.4
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.2889
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 4.7733
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 4.4311
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 5,
               "total": 4.4267
             }
@@ -12864,31 +13253,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 2,
               "total": 5.7444
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 1,
               "total": 6
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 5.3611
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 5.2167
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 5,
               "total": 4.7889
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 5,
               "total": 4.7833
             }
@@ -12919,36 +13314,43 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.9956
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.7333
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 2,
               "total": 5.7333
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 4,
               "total": 5.1067
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 6,
               "total": 4.7644
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 10,
               "total": 4.3156
             },
             {
               "complex_id": 7,
+              "name": "김포 칸타빌 에디션",
               "rank": 5,
               "total": 4.9911
             }
@@ -12984,31 +13386,37 @@ export const generatedHandlers = [
           "ranks": [
             {
               "complex_id": 1,
+              "name": "더샵 송도그란테르",
               "rank": 1,
               "total": 5.7444
             },
             {
               "complex_id": 2,
+              "name": "엘리프 검단 포레듀",
               "rank": 2,
               "total": 5.6667
             },
             {
               "complex_id": 3,
+              "name": "송도 한내들 센트럴리버",
               "rank": 3,
               "total": 4.9167
             },
             {
               "complex_id": 4,
+              "name": "오퍼스 한강 스위첸",
               "rank": 3,
               "total": 4.8833
             },
             {
               "complex_id": 5,
+              "name": "검단 센트레빌 에듀시티",
               "rank": 6,
               "total": 4.4556
             },
             {
               "complex_id": 6,
+              "name": "더샵 검단레이크파크 AB23",
               "rank": 3,
               "total": 4.8944
             }
@@ -13028,7 +13436,16 @@ export const generatedHandlers = [
       ],
       "stable_components": [
         "supply"
-      ]
+      ],
+      "complex_names": {
+        "1": "더샵 송도그란테르",
+        "2": "엘리프 검단 포레듀",
+        "3": "송도 한내들 센트럴리버",
+        "4": "오퍼스 한강 스위첸",
+        "5": "검단 센트레빌 에듀시티",
+        "6": "더샵 검단레이크파크 AB23",
+        "7": "김포 칸타빌 에디션"
+      }
     }, { status: 200 }),
   ),
 ];

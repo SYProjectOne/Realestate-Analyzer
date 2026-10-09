@@ -516,6 +516,21 @@ export interface components {
             label: "추정";
         };
         /**
+         * ApplyhomeQuery
+         * @description 청약홈 조회 파라미터(collectors/applyhome 이 읽는다, 2026-10-09.2에 키 정의). 모든 키 선택:
+         *     - from_ym: 목록 조회 시작월 'YYYY-MM'(없으면 기준월 −10개월). 끝은 기준월 +1개월, 12개월 창으로 나눠 조회.
+         *     - areas: {시도 코드 2자리: 청약홈 지역 약칭('서울'·'경기'·'인천' …)} — 없으면 legal_dong.sido_name(또는 selections 첫 토큰)에서 행정구역 접미사를 떼어 만든다.
+         *     그 밖의 키는 수집기가 무시한다(이전 예시의 sido_codes 등 — 조회 시도는 region.sido_codes).
+         */
+        ApplyhomeQuery: {
+            from_ym?: string | null;
+            areas?: {
+                [key: string]: string;
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * AuditResult
          * @description P3 감사. flagged 항목은 원문 대조 후 수정.
          */
@@ -524,7 +539,8 @@ export interface components {
             verdict: "pass" | "flagged";
             items: {
                 field: string;
-                p_wrong: number;
+                /** @description 틀렸을 확률 0~1. 판정기가 주지 않았으면 null(0·1로 지어내지 않는다) — 2026-10-09.2 */
+                p_wrong: number | null;
                 flagged: boolean;
                 note?: string | null;
             }[];
@@ -743,8 +759,25 @@ export interface components {
             ordinal?: number | null;
         };
         /**
+         * ClassifyItem
+         * @description 배치 분류의 후보 1개. id = 판정기 입력 항목 id(어댑터가 보낸 값), candidate = 사람이 읽는 후보 이름, complex_id = 단지 행이 있으면 그 id.
+         */
+        ClassifyItem: {
+            id?: string | null;
+            candidate?: string | null;
+            complex_id?: number | null;
+            label: string;
+            prob: number;
+            /** @enum {string} */
+            decision: "auto" | "review" | "manual_review";
+            distribution?: {
+                [key: string]: number;
+            };
+        };
+        /**
          * ClassifyResult
          * @description P4 분류. 포함/제외 7클래스(private_sale_apt, public_sale, public_rental, private_rental, non_apartment, out_of_scope, manual_review) 또는 호재 단계 5클래스(확정, 계획, 추진, 언론, 미확정). decision=review면 미해결.
+         *     배치 분류(2026-10-09.2): 한 호출에 후보 여럿을 보내면 items[]에 후보별 결과를 입력 순서대로 담는다. 이때 최상위는 요약이다 — label='batch', prob = decision=auto 인 항목 비율(소수 4자리), decision = 모든 항목이 auto면 auto 아니면 review. 봉투 status는 모든 항목이 유효한 응답(invalid_response 아님)이면 ok — 항목별 미해결은 status가 아니라 items[].decision으로 거른다(auto만 사용, WP4·WP7).
          */
         ClassifyResult: {
             label: string;
@@ -754,6 +787,8 @@ export interface components {
             distribution?: {
                 [key: string]: number;
             };
+            /** @description 배치 분류의 후보별 결과(입력 순서). 단건 분류면 없음 */
+            items?: components["schemas"]["ClassifyItem"][];
         };
         /**
          * CollectDailyPayload
@@ -936,9 +971,9 @@ export interface components {
          *       "name": "엘리프 검단 포레듀",
          *       "former_names": [],
          *       "address": "인천광역시 검단구 마전동 AA32블록",
-         *       "legal_dong_code": "2826011600",
+         *       "legal_dong_code": "2829010300",
          *       "living_area": "la_2",
-         *       "living_area_name": "서구(검단)",
+         *       "living_area_name": "검단구",
          *       "official_site_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/",
          *       "developer": null,
          *       "trustee": null,
@@ -1577,19 +1612,27 @@ export interface components {
             price_label?: components["schemas"]["Label"] | null;
             move_in_ym: string | null;
             /** @default false */
-            immediate_move_in: boolean;
+            immediate_move_in?: boolean;
             completed_year?: number | null;
             ladders: components["schemas"]["LadderInput"][];
             winner_date: string | null;
             resale_months: number | null;
+            /** @description 전매제한(resale_months·등기 시 해제) 값의 Fact 라벨. null이면 라벨 미상(값이 있으면 '확인됨'으로 본다) — 2026-10-09.2 */
+            resale_label?: components["schemas"]["Label"] | null;
             resale_release_on_registration: boolean | null;
             residency_months: number | null;
+            /** @description 거주의무(residency_months) 값의 Fact 라벨 — 2026-10-09.2 */
+            residency_label?: components["schemas"]["Label"] | null;
             down_payment_pct: number | null;
+            /** @description 계약금 비율(down_payment_pct, 현재 payment_terms) 값의 Fact 라벨 — 2026-10-09.2 */
+            down_payment_label?: components["schemas"]["Label"] | null;
             interim_terms_text?: string | null;
             /** @enum {string|null} */
             intake_status: "가능" | "미정" | "확인 불가" | "불가" | null;
             /** @enum {string|null} */
             intake_path: "human_check" | "official_popup" | "headless_shot" | "unofficial_ref" | null;
+            /** @description 표시 접수 상태(intake_status 행)의 확인 시각 ISO 8601(날짜만도 허용). 요건 사전 계산 근거에 '확인 D±'로 쓴다 — 2026-10-09.2 */
+            intake_checked_at?: string | null;
             regulated?: boolean | null;
             rewin_restriction_years?: number | null;
             /** @description 가점제 1순위 공급(본청약·예정 공고) 경로가 있음 */
@@ -1604,6 +1647,7 @@ export interface components {
          *       "id": 31,
          *       "complex_id": 2,
          *       "type_code": "84A",
+         *       "notice_type_code": "084.9800A",
          *       "area_m2": {
          *         "v": 84.98,
          *         "label": "확인됨",
@@ -1657,6 +1701,8 @@ export interface components {
             complex_id?: number | null;
             /** @description 공고문 표기 그대로(예 '84A', '84.9582A'를 정규화한 '84A') */
             type_code: string;
+            /** @description 공고·청약홈의 주택형 원문 표기(예 '084.9582A', '084.9582'). 같은 단지의 약식 타입(type_code)과 공고 표를 잇는 키 — 2026-10-09.2(complex_type.notice_type_code) */
+            notice_type_code?: string | null;
             /** @description 전용면적 ㎡ 소수 2자리 */
             area_m2: components["schemas"]["Fact"];
             units: components["schemas"]["Fact"];
@@ -1975,7 +2021,7 @@ export interface components {
          *     }
          * @example {
          *       "code": "validation_error",
-         *       "detail": "legal_dong 2826011600 is not assigned to any living area",
+         *       "detail": "legal_dong 2829010300 is not assigned to any living area",
          *       "field_errors": [
          *         {
          *           "loc": [
@@ -2336,7 +2382,7 @@ export interface components {
              * @description 사람 확인(전화·방문) 값이면 true. label은 '확인됨'이어야 한다.
              * @default false
              */
-            human: boolean;
+            human?: boolean;
         } & (unknown & unknown);
         /**
          * FieldCandidate
@@ -2346,6 +2392,8 @@ export interface components {
          *     - source_rank: §3 출처 우선순위(1이 가장 높음). 세대수·면적·일정·경쟁률은 청약홈 상세(1) > 공고문(2) > 언론(3); 가격·발코니·옵션·납부·전매·거주의무는 공고문 최신(1) > 청약홈(2) > 언론(3).
          *     - primary: 1차 자료(청약홈·공고문·Open API·공식 홈페이지) 여부. 같은 source_rank의 1차 vs 1차 상충만 compare 대상(ResolvedFields 설명).
          *     - needs_extract: 정규식·표 파서가 실패해 판정기 extract로 넘길 필드.
+         *     - entity='intake_status'(2026-10-09.2): 공식 홈페이지·팝업의 접수 상태 **문구 후보**. field='status_text', value=원문 문구(예 '선착순 동·호지정 계약 중'), entity_key='<단지 키>:<path>'(path = official_popup|headless_shot). 상태(가능/미정/불가) 분류는 판정기 classify 또는 사람 확인이 한다 — 파서는 정하지 않는다.
+         *     - observed_on(2026-10-09.2): 원문이 말하는 시점(공고문의 입주자모집공고일, 통계 기준월의 말일 등) YYYY-MM-DD. checked_at(수집·확인일)과 다르다. 같은 source_rank에서 '공고문 최신'을 가르는 기준.
          * @example {
          *       "entity": "complex",
          *       "entity_id": 13,
@@ -2364,12 +2412,34 @@ export interface components {
          *       "raw_document_id": 9101,
          *       "url": "https://www.applyhome.co.kr/",
          *       "checked_at": "2026-10-07",
+         *       "observed_on": "2025-07-04",
+         *       "needs_extract": false
+         *     }
+         * @example {
+         *       "entity": "intake_status",
+         *       "entity_id": null,
+         *       "entity_key": "2025000302:official_popup",
+         *       "field": "status_text",
+         *       "value_text": "선착순 동·호지정 계약 중",
+         *       "value": "선착순 동·호지정 계약 중",
+         *       "source_rank": 1,
+         *       "source_kind": "official_site",
+         *       "primary": true,
+         *       "label": "확인됨",
+         *       "reason": null,
+         *       "excerpt": "엘리프 검단 포레듀 선착순 동·호지정 계약 중",
+         *       "excerpt_start": 212,
+         *       "excerpt_end": 236,
+         *       "raw_document_id": 9031,
+         *       "url": "https://example-official-site.test/",
+         *       "checked_at": "2026-10-07",
+         *       "observed_on": null,
          *       "needs_extract": false
          *     }
          */
         FieldCandidate: {
             /** @enum {string} */
-            entity: "complex" | "complex_type" | "payment_terms" | "competition" | "remaining_event" | "benchmark" | "rtms_trade" | "catalyst" | "supply" | "unsold" | "household_stat";
+            entity: "complex" | "complex_type" | "payment_terms" | "competition" | "remaining_event" | "intake_status" | "benchmark" | "rtms_trade" | "catalyst" | "supply" | "unsold" | "household_stat";
             entity_id: number | null;
             entity_key?: string | null;
             field: string;
@@ -2378,7 +2448,7 @@ export interface components {
             source_rank: number;
             source_kind?: components["schemas"]["SourceKind"] | null;
             /** @default true */
-            primary: boolean;
+            primary?: boolean;
             label: components["schemas"]["Label"];
             reason?: string | null;
             excerpt: string;
@@ -2389,8 +2459,13 @@ export interface components {
             url?: string | null;
             /** Format: date */
             checked_at?: string | null;
+            /**
+             * Format: date
+             * @description 원문이 말하는 시점(공고일 등) YYYY-MM-DD. 모르면 null
+             */
+            observed_on?: string | null;
             /** @default false */
-            needs_extract: boolean;
+            needs_extract?: boolean;
         };
         /**
          * FixedComponents
@@ -2437,7 +2512,7 @@ export interface components {
             /** @description 거래 건수. 재가공 사이트처럼 건수를 모르면 null */
             n_trades: number | null;
             /** @default 0 */
-            outliers_excluded: number;
+            outliers_excluded?: number;
             trade_window?: string | null;
         };
         /**
@@ -2610,7 +2685,9 @@ export interface components {
          */
         JobCreate: {
             job_name: components["schemas"]["JobName"];
-            payload: Record<string, never>;
+            payload: {
+                [key: string]: unknown;
+            };
         } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown);
         /**
          * JobName
@@ -2657,7 +2734,9 @@ export interface components {
             job_name: components["schemas"]["JobName"];
             /** @enum {string} */
             kind: "scheduled" | "manual" | "rejudge";
-            payload: Record<string, never>;
+            payload: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             scheduled_at: string;
             /** Format: date-time */
@@ -2666,7 +2745,9 @@ export interface components {
             finished_at: string | null;
             /** @enum {string} */
             status: "queued" | "running" | "done" | "failed";
-            stats: Record<string, never>;
+            stats: {
+                [key: string]: unknown;
+            };
             error_text: string | null;
             /** @description 진행률(선택). 화면 JobProgress가 2초 폴링 */
             progress?: {
@@ -2694,7 +2775,7 @@ export interface components {
          *     - status가 review·escaped·blocked·error이면 result는 표시만 하고 점수·추천에 쓰지 않는다 — 거르는 곳은 프론트가 아니라 WP4(analysis).
          *     - cached=true는 같은 input_hash의 이전 행을 돌려준 것. 화면은 '캐시' 배지.
          *     - input_hash = 'sha256:' + hex(sha256(canonical JSON {tool, purpose, payload, adapter_version})). canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=false, UTF-8.
-         *     - adapter_version = '<어댑터 코드 버전>+jev-mcp@<서버 버전>' (DECISIONS D6).
+         *     - adapter_version = '<어댑터 코드 버전>+jev-mcp@<서버 버전>+<모델>' (DECISIONS D6, 2026-10-09.2: 모델 = JEV 응답의 model, 예 jev-1.13.0 — 모델이 바뀌면 재판정). 모델을 아직 모르면 '+<모델>' 없이. MockAdapter는 녹화의 _meta.json 값.
          *     - result는 도구별 정규화 결과($defs의 <Tool>Result), raw는 판정기 원응답 그대로(임계값·decision 포함, DECISIONS D6).
          *     - 로그에는 payload 원문을 남기지 않는다(input_hash·길이만, AGENTS 13).
          * @example {
@@ -2768,9 +2849,13 @@ export interface components {
             confidence: number | null;
             cached: boolean;
             /** @description 도구별 정규화 결과 ($defs의 ScreenResult … VerifyResult). error·blocked면 {}. */
-            result: Record<string, never>;
+            result: {
+                [key: string]: unknown;
+            };
             /** @description 판정기 원응답(JSON). 임계값·decision을 포함해 그대로 저장. blocked면 {"reason": …}. */
-            raw: Record<string, never>;
+            raw: {
+                [key: string]: unknown;
+            };
             duration_ms: number | null;
             /** @description judgment_log.seq. 성공·실패 불문 모든 호출이 행을 가진다 */
             judgment_seq: number | null;
@@ -3015,6 +3100,15 @@ export interface components {
             proposition_text?: string | null;
         };
         /**
+         * LegalDongRef
+         * @description 법정동 1개의 코드와 표시 이름. name = 시군구 아래 이름(읍면동 + 리, 예 '송도동', '통진읍 도사리'), full_name = legal_dong.full_name.
+         */
+        LegalDongRef: {
+            code: string;
+            name: string;
+            full_name?: string | null;
+        };
+        /**
          * LivingArea
          * @description 생활권 1개 (DECISIONS D2-2, region.living_areas json의 원소). 기본값은 시군구 1개당 생활권 1개이고, 사용자가 G0-2 화면에서 법정동을 옮겨 나누거나 묶는다. 한 region 안에서 모든 법정동은 정확히 한 생활권에 속한다. complex.living_area 는 단지 주소의 법정동 코드로 자동 배정된다.
          *     households = 소속 법정동에 걸친 행정동 세대수 합(행정동 1:N 법정동 매핑은 균등 분할) — 라벨 '추정', reason '주민등록 세대'.
@@ -3023,6 +3117,13 @@ export interface components {
          *       "name": "연수구",
          *       "legal_dong_codes": [
          *         "2818510600"
+         *       ],
+         *       "legal_dongs": [
+         *         {
+         *           "code": "2818510600",
+         *           "name": "송도동",
+         *           "full_name": "인천광역시 연수구 송도동"
+         *         }
          *       ],
          *       "households": {
          *         "v": 61480,
@@ -3048,6 +3149,8 @@ export interface components {
             name: string;
             /** @description 법정동 코드 10자리 문자열 */
             legal_dong_codes: string[];
+            /** @description legal_dong_codes 와 같은 순서의 법정동 코드·이름(G0-2 생활권 편집 화면 표시용, 2026-10-09.2). 응답에서 서버가 legal_dong 표로 채운다 — 저장 json(region.living_areas)에는 없어도 된다 */
+            legal_dongs?: components["schemas"]["LegalDongRef"][];
             /** @description 생활권 세대수 Fact. 아직 집계 전이면 null */
             households: components["schemas"]["Fact"] | null;
             /** @description 공급 기준치 U_ref = households × region.supply_ref_pct (라벨 추정). households가 없으면 null */
@@ -3168,6 +3271,19 @@ export interface components {
             }[];
         };
         /**
+         * NoticeTypePrice
+         * @description 공고 1건의 타입 1개 공급가. 값 정의는 complex_type 의 같은 이름 필드와 같다(원 단위). DB(payment_terms.price_by_type json)에는 맨값 {max_price_won, floor_sample_price_won, floor_sample_text, units}으로 저장하고 API는 Fact로 낸다.
+         */
+        NoticeTypePrice: {
+            /** @description 공고 표기 주택형(예 '084.9582A') */
+            notice_type_code?: string | null;
+            /** @description 이 공고의 공급 세대수 */
+            units?: components["schemas"]["Fact"] | null;
+            max_price_won: components["schemas"]["Fact"];
+            floor_sample_price_won: components["schemas"]["Fact"];
+            floor_sample_text?: string | null;
+        };
+        /**
          * NoulResult
          * @description P6 상승 확률 사다리. 명제 4개(p5, p10, p20, p_flat) 고정 템플릿(meta §2-2), horizon 1개당 호출 1회.
          */
@@ -3249,6 +3365,33 @@ export interface components {
          *         }
          *       ],
          *       "is_current": true,
+         *       "price_by_type": {
+         *         "84B": {
+         *           "notice_type_code": "084.7529B",
+         *           "units": {
+         *             "v": 2,
+         *             "label": "확인됨",
+         *             "prov": "fp_4416",
+         *             "checked_at": "2026-10-07",
+         *             "unit": "units"
+         *           },
+         *           "max_price_won": {
+         *             "v": 642000000,
+         *             "label": "확인됨",
+         *             "prov": "fp_4417",
+         *             "checked_at": "2026-10-07",
+         *             "unit": "won"
+         *           },
+         *           "floor_sample_price_won": {
+         *             "v": 618000000,
+         *             "label": "확인됨",
+         *             "prov": "fp_4418",
+         *             "checked_at": "2026-10-07",
+         *             "unit": "won"
+         *           },
+         *           "floor_sample_text": "3층"
+         *         }
+         *       },
          *       "change_vs_first": {
          *         "down_payment_pct_delta": {
          *           "v": -5,
@@ -3291,6 +3434,10 @@ export interface components {
                 pct: components["schemas"]["Fact"];
             }[];
             is_current: boolean;
+            /** @description 이 공고의 타입별 공급가(임의공급·무순위는 공고마다 가격이 바뀐다, 2026-10-09.2). 키 = complex_type.type_code. 현재 구매가(complex_type 가격)는 is_current 행의 값이고, change_vs_first.price_change_pct 는 판정 기준 타입(84㎡에 가장 가까움)의 max_price_won 으로 계산한다. 출처 행은 field_provenance(entity='payment_terms', field='price_by_type.<type_code>.<항목>'). 공고에 가격 표가 없으면 {} */
+            price_by_type?: {
+                [key: string]: components["schemas"]["NoticeTypePrice"];
+            };
             /** @description 최초 공고 대비 증감(최초 행이면 null). down_payment_pct_delta는 %p, price_change_pct는 기준 타입 최고가 증감률 % */
             change_vs_first?: {
                 down_payment_pct_delta?: components["schemas"]["Fact"] | null;
@@ -3405,9 +3552,13 @@ export interface components {
             entity_key?: string | null;
             field: string;
             value_text: string | null;
+            /** @description 정규화 값(FieldCandidate.value)의 정준 문자열 — 정수·소수는 10진 표기('1573', '84.98'), 날짜 ISO, 불리언 'true'/'false', 없으면 null. field_provenance.value_norm(0002). 옛 출처를 다시 파싱하지 않고 값 비교에 쓴다 — 2026-10-09.2 */
+            value_norm?: string | null;
             raw_document_id: number | null;
             url: string | null;
             checked_at: string | null;
+            /** @description FieldCandidate.observed_on(원문 시점, 공고일 등). field_provenance.observed_on(0002) — 2026-10-09.2 */
+            observed_on?: string | null;
             label: components["schemas"]["Label"];
             reason?: string | null;
             source_rank: number;
@@ -3448,10 +3599,12 @@ export interface components {
          *       "path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.pdf",
          *       "content_type": "application/pdf",
          *       "text_path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.txt",
+         *       "table_path": "notice_pdf/2026-10-07/a8c1e2f3041526374859a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091.json",
          *       "complex_id": 2,
          *       "region_id": 1,
          *       "error_text": null,
-         *       "image_hash": null
+         *       "image_hash": null,
+         *       "meta": null
          *     }
          */
         RawDocument: {
@@ -3467,11 +3620,22 @@ export interface components {
             content_type: string | null;
             /** @description 추출 텍스트(pdfplumber txt, DOM 텍스트) 상대 경로 */
             text_path: string | null;
+            /** @description 추출 표 JSON 상대 경로(공고문 PDF: pdfplumber extract_tables → [{page, tables: [[[셀…]…]…]}], 표가 있는 페이지만). 표가 없거나 실패 행이면 null — 2026-10-09.2 */
+            table_path?: string | null;
             complex_id: number | null;
             region_id?: number | null;
-            /** @description DNS·타임아웃·파싱 실패 사유. 'scan'이면 스캔 PDF(확인 불가(스캔)) */
+            /**
+             * @description 실패·부분 실패 사유 한 단어(+세부). 값 목록(2026-10-09.2):
+             *     - 응답 없음: 'DNS' · 'timeout' · 'connect' · 'TLS' · 'network' · 'robots'(robots.txt 규칙상 불허) · 'robots.txt <코드>'(robots.txt 5xx로 전부 불허) · 'invalid_url' · 'render'(헤드리스 렌더 실패)
+             *     - 성공 응답이지만 내용 문제(공고문 PDF): 'scan'(텍스트 레이어 없음 → 확인 불가(스캔)) · 'ocr'(전 페이지 OCR → 값 라벨 '추정(OCR)') · 'scan_partial:<p,…>' · 'ocr_partial:<p,…>'(1부터 센 페이지) · 'pdf_parse: <사유>'(파서 모두 실패) · 'not_pdf'(200이지만 PDF 아님)
+             *     - 그 밖의 파싱 실패는 '<단계>: <사유>' 형식. 4xx·5xx 응답은 error_text 대신 http_status
+             */
             error_text?: string | null;
             image_hash?: string | null;
+            /** @description 수집기 부가 정보 JSON(원문 파일과 별도) — 예 official_site: {final_url, render: {reason, rendered, error, screenshot_sha256, popups[]}, intake_candidates[]}, notice_pdf: {pages, ocr_pages[]}. 키는 source_kind별로 수집기가 정하고 README에 적는다. 판단 값을 넣지 않는다 — 2026-10-09.2 */
+            meta?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * ReferenceRefreshPayload
@@ -3501,8 +3665,8 @@ export interface components {
          *         },
          *         {
          *           "kind": "sigungu",
-         *           "code": "28260",
-         *           "full_name": "인천광역시 서구"
+         *           "code": "28290",
+         *           "full_name": "인천광역시 검단구"
          *         },
          *         {
          *           "kind": "sigungu",
@@ -3522,13 +3686,13 @@ export interface components {
          *       "sigungu_codes": [
          *         "28185",
          *         "28245",
-         *         "28260",
+         *         "28290",
          *         "41570"
          *       ],
          *       "legal_dong_codes": [
          *         "2818510600",
-         *         "2826011500",
-         *         "2826011600",
+         *         "2829010300",
+         *         "2829010500",
          *         "2824510900",
          *         "4157010100",
          *         "4157025021"
@@ -3540,15 +3704,31 @@ export interface components {
          *           "legal_dong_codes": [
          *             "2818510600"
          *           ],
+         *           "legal_dongs": [
+         *             {
+         *               "code": "2818510600",
+         *               "name": "송도동"
+         *             }
+         *           ],
          *           "households": null,
          *           "supply_ref_units": null
          *         },
          *         {
          *           "id": "la_2",
-         *           "name": "서구(검단)",
+         *           "name": "검단구",
          *           "legal_dong_codes": [
-         *             "2826011500",
-         *             "2826011600"
+         *             "2829010300",
+         *             "2829010500"
+         *           ],
+         *           "legal_dongs": [
+         *             {
+         *               "code": "2829010300",
+         *               "name": "마전동"
+         *             },
+         *             {
+         *               "code": "2829010500",
+         *               "name": "원당동"
+         *             }
          *           ],
          *           "households": null,
          *           "supply_ref_units": null
@@ -3559,6 +3739,12 @@ export interface components {
          *           "legal_dong_codes": [
          *             "2824510900"
          *           ],
+         *           "legal_dongs": [
+         *             {
+         *               "code": "2824510900",
+         *               "name": "박촌동"
+         *             }
+         *           ],
          *           "households": null,
          *           "supply_ref_units": null
          *         },
@@ -3568,6 +3754,16 @@ export interface components {
          *           "legal_dong_codes": [
          *             "4157010100",
          *             "4157025021"
+         *           ],
+         *           "legal_dongs": [
+         *             {
+         *               "code": "4157010100",
+         *               "name": "북변동"
+         *             },
+         *             {
+         *               "code": "4157025021",
+         *               "name": "통진읍 도사리"
+         *             }
          *           ],
          *           "households": null,
          *           "supply_ref_units": null
@@ -3580,11 +3776,11 @@ export interface components {
          *       },
          *       "supply_ref_pct": 0.08,
          *       "applyhome_query": {
-         *         "sido_codes": [
-         *           "28",
-         *           "41"
-         *         ],
-         *         "from_ym": "2024-10"
+         *         "from_ym": "2024-10",
+         *         "areas": {
+         *           "28": "인천",
+         *           "41": "경기"
+         *         }
          *       },
          *       "status": "ready",
          *       "created_at": "2026-10-07T08:00:00+09:00",
@@ -3607,8 +3803,10 @@ export interface components {
             age_premium_coef: components["schemas"]["AgePremiumCoef"];
             /** @default 0.08 */
             supply_ref_pct: number;
-            /** @description 청약홈 조회 파라미터(시도 코드·조회 시작월 등). collectors/applyhome 이 쓰고 읽는다 */
-            applyhome_query: Record<string, never>;
+            /** @description 청약홈 조회 파라미터 — 키 정의는 $defs/ApplyhomeQuery(from_ym, areas). 저장·전달은 자유 json 객체(수집기는 ApplyhomeQuery.model_validate 로 읽을 수 있다) */
+            applyhome_query: {
+                [key: string]: unknown;
+            };
             /** @enum {string} */
             status: "resolving" | "bootstrapping" | "ready" | "failed";
             /** Format: date-time */
@@ -3631,7 +3829,7 @@ export interface components {
          * @description GET /regions/resolve?q= 의 후보 1건 (DECISIONS D2-3). 자유 지명을 legal_dong·admin_dong 참조 테이블과 문자열 매칭한 결과다(판정기 호출 없음 — 문자열 매칭은 판단이 아님).
          *     매칭 규칙: 공백과 접미사 '시/군/구/동/읍/면'을 무시하고 이름 부분 일치. 정렬은 match(exact > prefix > partial) → kind(sido > sigungu > admin_dong > legal_dong) → full_name.
          *     legal_dong_codes는 이 후보를 고르면 region에 들어갈 법정동(10자리) 전체다. sido·sigungu 후보는 하위 법정동 전부, admin_dong 후보는 admin_legal_map으로 펼친 법정동이다. 폐지 코드(active=false)는 포함하지 않는다.
-         *     분구·개편으로 옛 코드와 새 코드가 함께 있으면 둘 다 후보로 나온다(DECISIONS D3: 서구/검단구).
+         *     분구·개편으로 옛 코드와 새 코드가 함께 active면 둘 다 후보로 나온다(DECISIONS D3). 공식 표에서 옛 코드가 폐지되면(예 2026-07 분구 후 서구 28260 폐지·검단구 28290 신설) 새 코드만 나온다.
          * @example {
          *       "kind": "legal_dong",
          *       "code": "2818510600",
@@ -3893,7 +4091,9 @@ export interface components {
             code: "intake_open" | "priority_supply" | "official_path_no_account" | "official_path" | "resale_before_exit" | "no_conflict" | "no_residency_obligation" | "equity_and_loan";
             /** @description decide 요건 문장(판정기 payload·화면 표 머리) */
             text: string;
-            params?: Record<string, never>;
+            params?: {
+                [key: string]: unknown;
+            };
         };
         /** Requirements */
         Requirements: {
@@ -4256,7 +4456,7 @@ export interface components {
                  * @description policy.exclude_intake_not_open 등으로 후보에서 빠짐
                  * @default false
                  */
-                excluded: boolean;
+                excluded?: boolean;
                 access: components["schemas"]["RequirementPre"];
                 regulation: components["schemas"]["RequirementPre"];
                 funds: components["schemas"]["RequirementPre"];
@@ -4363,8 +4563,11 @@ export interface components {
          *       "living_areas": [
          *         {
          *           "id": "la_2",
-         *           "name": "서구(검단)",
-         *           "households": null
+         *           "name": "검단구",
+         *           "households": null,
+         *           "unsold_scope_codes": [
+         *             "28290"
+         *           ]
          *         }
          *       ],
          *       "trades": [],
@@ -4373,7 +4576,7 @@ export interface components {
          *       "unsold": [
          *         {
          *           "ym": "2026-08",
-         *           "scope_code": "28260",
+         *           "scope_code": "28290",
          *           "total": 737,
          *           "post_completion": 737,
          *           "label": "재가공"
@@ -4406,12 +4609,16 @@ export interface components {
          *           ],
          *           "winner_date": "2025-09-10",
          *           "resale_months": 36,
+         *           "resale_label": "확인됨",
          *           "resale_release_on_registration": true,
          *           "residency_months": 0,
+         *           "residency_label": "확인됨",
          *           "down_payment_pct": 5,
+         *           "down_payment_label": "확인됨",
          *           "interim_terms_text": "중도금 60% 이자후불",
          *           "intake_status": "가능",
          *           "intake_path": "official_popup",
+         *           "intake_checked_at": "2026-10-07T09:20:00+09:00",
          *           "regulated": false,
          *           "rewin_restriction_years": 10,
          *           "has_priority_supply": false,
@@ -4442,6 +4649,11 @@ export interface components {
                 id: string;
                 name?: string | null;
                 households: number | null;
+                /**
+                 * @description 이 생활권에 해당하는 미분양 통계 범위 코드(UnsoldInput.scope_code, 시군구 5자리) 목록 — 생활권 법정동의 sigungu_code 집합(2026-10-09.2, WP4). 비어 있으면 미분양은 '지역 합계'로 본다
+                 * @default []
+                 */
+                unsold_scope_codes?: string[];
             }[];
             trades: components["schemas"]["TradeInput"][];
             benchmarks: components["schemas"]["BenchmarkInput"][];
@@ -4476,7 +4688,7 @@ export interface components {
          *       "complex_id": 2,
          *       "name": "엘리프 검단 포레듀",
          *       "living_area": "la_2",
-         *       "living_area_name": "서구(검단)",
+         *       "living_area_name": "검단구",
          *       "score_run_id": 88,
          *       "total": {
          *         "v": 5.7,
@@ -5479,6 +5691,10 @@ export interface components {
             unstable: boolean;
             unstable_complex_ids: number[];
             stable_components: components["schemas"]["ComponentKey"][];
+            /** @description base_top5·cells[].top5·entered·exited·ranks 에 나오는 단지 id(문자열 키) → 단지 이름(표시용, 2026-10-09.2) */
+            complex_names?: {
+                [key: string]: string;
+            };
         };
         /** SensitivityCell */
         SensitivityCell: {
@@ -5492,6 +5708,8 @@ export interface components {
             /** @description 기준 TOP 5 ∪ 변형 TOP 5 단지의 변형 순위·점수(C10 작은 선) */
             ranks: {
                 complex_id: number;
+                /** @description 단지 이름(표시용, 2026-10-09.2). 없으면 화면이 complex_names 또는 id로 찾는다 */
+                name?: string | null;
                 rank: number | null;
                 total: number | null;
             }[];
@@ -5590,7 +5808,7 @@ export interface components {
              * @description false면 비활성(예: NEWS_API_KEY 없음)
              * @default true
              */
-            enabled: boolean;
+            enabled?: boolean;
             disabled_reason?: string | null;
             /** Format: date-time */
             last_attempt_at: string | null;
@@ -5614,7 +5832,9 @@ export interface components {
             }[];
             retry: {
                 job_name: components["schemas"]["JobName"];
-                payload: Record<string, never>;
+                payload: {
+                    [key: string]: unknown;
+                };
             } | null;
         };
         /**
@@ -5662,7 +5882,7 @@ export interface components {
              * @description 분양권 거래(벤치마크·비교군 아님, '현재 프리미엄 추정'에만)
              * @default false
              */
-            is_presale: boolean;
+            is_presale?: boolean;
         };
         /**
          * UnsoldPoint
