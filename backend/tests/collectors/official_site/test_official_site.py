@@ -311,7 +311,7 @@ def local_site(tmp_path: Path) -> Iterator[str]:
 
 
 def _renderer() -> PlaywrightRenderer:
-    r = PlaywrightRenderer(settle_ms=100, timeout_ms=20_000)
+    r = PlaywrightRenderer(settle_ms=100, timeout_ms=20_000, allow_private=True)  # 로컬 서버(127.0.0.1)
     probe = r.render("about:blank")
     if probe.error and ("Executable doesn't exist" in probe.error or "playwright install" in probe.error):
         pytest.skip(f"Playwright chromium 미설치: {probe.error}")

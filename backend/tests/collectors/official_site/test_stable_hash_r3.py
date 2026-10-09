@@ -202,7 +202,7 @@ def clock_site(tmp_path: Path) -> Iterator[str]:
 
 
 def test_m13_real_playwright_three_renders_of_clock_and_animation_page_same_hash(clock_site: str) -> None:
-    renderer = PlaywrightRenderer(settle_ms=150, timeout_ms=20_000)
+    renderer = PlaywrightRenderer(settle_ms=150, timeout_ms=20_000, allow_private=True)  # 로컬 서버
     probe = renderer.render("about:blank")
     if probe.error and ("Executable doesn't exist" in probe.error or "playwright install" in probe.error):
         pytest.skip(f"Playwright chromium 미설치: {probe.error}")
