@@ -1,0 +1,148 @@
+"""Jinja2 → 단일 자립 HTML (DECISIONS D4). CSS·ECharts 번들·차트 option 을 모두 인라인 — 외부 URL 리소스 0.
+
+ECharts 번들(`echarts.min.js`) 찾는 순서: 인자 → 환경변수 ``REPORT_ECHARTS_JS`` → 저장소
+``frontend/node_modules/echarts/dist/echarts.min.js``. 없으면 차트 자리에 '차트 번들 없음' 문구와
+같은 데이터의 표만 남긴다(보고서는 계속 생성, ``RenderResult.charts_inlined=False``).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from functools import cache
+from pathlib import Path
+from typing import Any, Final
+
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from markupsafe import Markup
+
+from app.core.contracts_gen import Fact
+from app.reports.charts import build_charts
+from app.reports.data import COMPONENT_LABELS, ReportData
+from app.reports.diff import SnapshotDiff
+from app.reports.fmt import fact_label_text, fact_value_text, fmt_score, unknown_fact
+from app.reports.sections import DISCLAIMER, EXTRA_TITLE, SECTION_TITLES
+
+__all__ = ["RenderResult", "find_echarts_bundle", "render_html"]
+
+HERE: Final = Path(__file__).resolve().parent
+TEMPLATES: Final = HERE / "templates"
+ECHARTS_ENV: Final = "REPORT_ECHARTS_JS"
+_REPO: Final = HERE.parents[2]
+
+
+@dataclass(frozen=True, slots=True)
+class RenderResult:
+    html: str
+    charts: int
+    charts_inlined: bool
+
+
+def find_echarts_bundle(explicit: Path | None = None) -> Path | None:
+    candidates: list[Path] = []
+    if explicit is not None:
+        candidates.append(explicit)
+    env = os.environ.get(ECHARTS_ENV)
+    if env:
+        candidates.append(Path(env))
+    candidates.append(_REPO / "frontend" / "node_modules" / "echarts" / "dist" / "echarts.min.js")
+    for c in candidates:
+        if c.is_file():
+            return c
+    return None
+
+
+@cache
+def _read_bundle(path: Path, mtime: float) -> str:
+    text = path.read_text(encoding="utf-8")
+    return text.replace("</script", "<\\/script")
+
+
+def _json_script(obj: Any) -> Markup:
+    text = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+    return Markup(text.replace("</", "<\\/"))
+
+
+def _as_fact(obj: Any, unit: str | None = None) -> Fact:
+    """json 컬럼 안의 Fact 모양(region.living_areas[].households 등) → Fact. 아니면 '확인 불가(출처 누락)'."""
+    if isinstance(obj, Fact):
+        return obj
+    if isinstance(obj, dict) and "label" in obj and "v" in obj:
+        try:
+            f = Fact.model_validate(
+                {k: obj.get(k) for k in ("v", "label", "reason", "prov", "checked_at", "unit")}
+            )
+        except ValueError:
+            return unknown_fact("형식 오류", unit=unit)
+        return f if f.unit or unit is None else f.model_copy(update={"unit": unit})
+    return unknown_fact("출처 누락", unit=unit)
+
+
+def _extract_audit_rows(data: ReportData) -> list[dict[str, Any]]:
+    """§4 extract/audit 결과: 단지별 screen·extract·audit 상태 집계."""
+    agg: dict[str, dict[str, Counter[str]]] = defaultdict(lambda: defaultdict(Counter))
+    for c in data.calls:
+        if c.tool in ("screen", "extract", "audit") and c.complex_name != "—":
+            agg[c.complex_name][c.tool][c.status] += 1
+    out = []
+    for name in sorted(agg):
+        row: dict[str, Any] = {"name": name}
+        for tool in ("screen", "extract", "audit"):
+            cnt = agg[name].get(tool, Counter())
+            row[tool] = " · ".join(f"{k} {v}" for k, v in sorted(cnt.items())) or "호출 없음"
+        out.append(row)
+    return out
+
+
+@cache
+def _env() -> Environment:
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATES)),
+        autoescape=select_autoescape(["html", "j2"], default=True),
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        keep_trailing_newline=True,
+    )
+    env.filters["fv"] = fact_value_text
+    env.filters["fl"] = fact_label_text
+    env.filters["as_fact"] = _as_fact
+    env.filters["score"] = fmt_score
+    env.filters["json_script"] = _json_script
+    env.globals.update(
+        COMPONENT_LABELS=COMPONENT_LABELS,
+        DISCLAIMER=DISCLAIMER,
+        SECTION_TITLES=SECTION_TITLES,
+        EXTRA_TITLE=EXTRA_TITLE,
+    )
+    return env
+
+
+def render_html(
+    data: ReportData,
+    *,
+    diff: SnapshotDiff | None = None,
+    echarts_js: Path | None = None,
+) -> RenderResult:
+    bundle_path = find_echarts_bundle(echarts_js)
+    bundle = _read_bundle(bundle_path, bundle_path.stat().st_mtime) if bundle_path else ""
+    data.charts = build_charts(data)
+    css = (TEMPLATES / "report.css").read_text(encoding="utf-8")
+    init_js = (TEMPLATES / "charts_init.js").read_text(encoding="utf-8")
+    html = (
+        _env()
+        .get_template("report.html.j2")
+        .render(
+            data=data,
+            diff=diff,
+            css=Markup(css),
+            echarts_js=Markup(bundle),
+            init_js=Markup(init_js),
+            has_echarts=bool(bundle),
+            charts={c.id: c for c in data.charts},
+            ea_rows=_extract_audit_rows(data),
+        )
+    )
+    return RenderResult(html=html, charts=len(data.charts), charts_inlined=bool(bundle))
