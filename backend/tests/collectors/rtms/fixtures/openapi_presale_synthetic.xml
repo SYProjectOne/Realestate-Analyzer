@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- 합성 픽스처(녹화 아님, R3b-G1 2026-10-09): "국토교통부_아파트 분양권전매 실거래가 자료"
+     (apis.data.go.kr/1613000/RTMSDataSvcSilvTrade/getRTMSDataSvcSilvTrade, LAWD_CD·DEAL_YMD·pageNo·numOfRows).
+     실제 호출(2026-10-09, 메인 .env 의 DATA_GO_KR_KEY)은 403 SERVICE_KEY_IS_NOT_REGISTERED_ERROR
+     (returnReasonCode 30) — 키가 이 서비스에 활용신청되지 않아 성공 응답을 녹화할 수 없었다. 엔드포인트 경로는
+     존재(404 아님)를 확인했다. 응답 모양은 2024 개편 사양(매매 API 와 같은 header/body/items 구조)과 공개 문서의
+     항목(aptNm·sggCd·umdNm·jibun·excluUseAr·dealYear/Month/Day·dealAmount(만원)·floor·ownershipGbn(분/입)·
+     dealingGbn·cdealType·cdealDay·buyerGbn·slerGbn·estateAgentSggNm)을 따랐고 값은 형식 예시용 가상값이다.
+     매매 API 와 달리 buildYear·umdCd·aptDong 이 없다고 보고 넣지 않았다(파서는 없으면 None).
+     활용신청 승인 후 실녹화로 교체한다. -->
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <aptNm>테스트분양권아파트P</aptNm>
+        <buyerGbn>개인</buyerGbn>
+        <cdealDay> </cdealDay>
+        <cdealType> </cdealType>
+        <dealAmount>    62,450</dealAmount>
+        <dealDay>21</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>중개거래</dealingGbn>
+        <estateAgentSggNm>인천 연수구</estateAgentSggNm>
+        <excluUseAr>84.9512</excluUseAr>
+        <floor>17</floor>
+        <jibun>200-1</jibun>
+        <ownershipGbn>분</ownershipGbn>
+        <sggCd>28185</sggCd>
+        <slerGbn>개인</slerGbn>
+        <umdNm>송도동</umdNm>
+      </item>
+      <item>
+        <aptNm>테스트분양권아파트Q</aptNm>
+        <buyerGbn>개인</buyerGbn>
+        <cdealDay>26.10.01</cdealDay>
+        <cdealType>O</cdealType>
+        <dealAmount>48,900</dealAmount>
+        <dealDay>4</dealDay>
+        <dealMonth>9</dealMonth>
+        <dealYear>2026</dealYear>
+        <dealingGbn>직거래</dealingGbn>
+        <excluUseAr>59.98</excluUseAr>
+        <floor>8</floor>
+        <jibun>201</jibun>
+        <ownershipGbn>입</ownershipGbn>
+        <sggCd>28185</sggCd>
+        <slerGbn>개인</slerGbn>
+        <umdNm>송도동</umdNm>
+      </item>
+    </items>
+    <numOfRows>1000</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>2</totalCount>
+  </body>
+</response>

@@ -2,6 +2,9 @@
 
 엔드포인트: ``https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade``
 (serviceKey, LAWD_CD 5자리, DEAL_YMD YYYYMM, pageNo, numOfRows).
+분양권 전매(``…/RTMSDataSvcSilvTrade/getRTMSDataSvcSilvTrade``, 같은 요청 형식)도 같은 header/body/items
+구조다 — ``parse_trade_xml(content, is_presale=True)`` 로 읽으면 거래마다 ``is_presale=True``. 분양권 응답은
+buildYear·umdCd·aptDong 이 없다고 본다(없으면 None) — ownershipGbn(분/입)은 읽지 않는다(둘 다 입주 전 권리).
 
 응답(2024 개편 사양): ``<response><header><resultCode>000</resultCode>…<body><items><item>`` — 항목
 aptNm·aptDong·buildYear·dealYear·dealMonth·dealDay·dealAmount("82,500"
@@ -100,7 +103,7 @@ def api_error_message(content: bytes) -> str | None:
     return msg.strip() if msg else None
 
 
-def parse_trade_xml(content: bytes) -> TradePage:
+def parse_trade_xml(content: bytes, *, is_presale: bool = False) -> TradePage:
     if b"<!DOCTYPE" in content[:512] or b"<!ENTITY" in content:
         return TradePage(result_code=None, result_msg="XML 오류: DTD·엔티티는 받지 않는다")
     try:
@@ -147,6 +150,7 @@ def parse_trade_xml(content: bytes) -> TradePage:
                 apt_dong=_text(item, "aptDong"),
                 jibun=_text(item, "jibun"),
                 dealing_type=_text(item, "dealingGbn"),
+                is_presale=is_presale,
             )
         )
     return page

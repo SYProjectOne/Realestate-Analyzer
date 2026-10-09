@@ -9,6 +9,9 @@ dealYear/Month/Day, buildYear, cdealType)와 한글 태그(구 API: 아파트, �
   label '재가공'·source 'reprocessed'·rank 2(2차 자료). 둘 중 무엇을 점수에 쓸지는 WP4(RA §3).
 - entity_key = '<시군구코드>:<아파트>:<거래일>:<층>:<면적>:<금액>:<동>'
   (같은 거래 = 같은 키 → 재수집해도 행이 늘지 않는다).
+- 분양권 전매 Open API(``…/RTMSDataSvcSilvTrade``, R3b F1a)면 거래마다 ``is_presale=True`` 후보(값 원문 =
+  ownershipGbn '분'/'입', 없으면 '분양권')를 더하고 entity_key 끝에 ``:presale`` 을 붙인다(같은 값의 매매
+  거래와 섞이지 않게). 분양권 응답의 구분 태그(ownershipGbn)는 분양권·입주권 모두 입주 전 권리라 둘 다 True.
 """
 
 from __future__ import annotations
@@ -20,7 +23,10 @@ from xml.etree import ElementTree as ET
 from app.core.contracts_gen import FieldCandidate, RawDocument
 from app.normalize._text import CandidateBuilder, parse_won, read_raw_text, round_area, stamp_observed_on
 
-__all__ = ["RtmsParser", "is_openapi_url", "parse_rtms_xml"]
+__all__ = ["PRESALE_PATH", "RtmsParser", "is_openapi_url", "is_presale_url", "parse_rtms_xml"]
+
+PRESALE_PATH = "/RTMSDataSvcSilvTrade/"
+"""분양권 전매 실거래 Open API 경로 조각(``collectors.rtms.PRESALE_API_URL``)."""
 
 _TAGS: dict[str, tuple[str, ...]] = {
     "apt": ("aptNm", "아파트"),
@@ -36,11 +42,17 @@ _TAGS: dict[str, tuple[str, ...]] = {
     "built": ("buildYear", "건축년도"),
     "cancel": ("cdealType", "해제여부"),
     "apt_dong": ("aptDong", "동"),
+    "ownership": ("ownershipGbn", "구분"),
 }
 
 
 def is_openapi_url(url: str) -> bool:
     return bool(re.search(r"apis\.data\.go\.kr|openapi\.molit\.go\.kr", url))
+
+
+def is_presale_url(url: str) -> bool:
+    """분양권 전매 Open API 원문인가(URL 경로로 구별 — 같은 source_kind 'rtms')."""
+    return is_openapi_url(url) and PRESALE_PATH in url
 
 
 class RtmsParser:
@@ -71,6 +83,7 @@ def parse_rtms_xml(text: str, raw: RawDocument) -> list[FieldCandidate]:
     except ET.ParseError:
         return []
     openapi = is_openapi_url(raw.url)
+    presale = is_presale_url(raw.url)
     label = "확인됨" if openapi else "재가공"
     source = "openapi" if openapi else "reprocessed"
     search_from = 0
@@ -86,6 +99,8 @@ def parse_rtms_xml(text: str, raw: RawDocument) -> list[FieldCandidate]:
         sgg, umd_cd = _get(item, "sgg"), _get(item, "umd_cd")
         apt_dong = _get(item, "apt_dong")
         key = f"{sgg}:{apt}:{deal_date}:{floor_t}:{area}:{price}:{apt_dong}"
+        if presale:
+            key += ":presale"
         # 원문 위치: 이 item의 아파트 이름이 처음 나오는 곳부터 다음 </item>까지
         start = text.find(apt, search_from)
         if start < 0:
@@ -115,6 +130,8 @@ def parse_rtms_xml(text: str, raw: RawDocument) -> list[FieldCandidate]:
             ("cancelled", cancelled, _get(item, "cancel") or ""),
             ("source", source, source),
         ]
+        if presale:
+            fields.append(("is_presale", True, _get(item, "ownership") or "분양권"))
         for fname, value, vt in fields:
             # RA §3 실거래: Open API(1) > 재가공 사이트(2, 2차 자료)
             b.add(

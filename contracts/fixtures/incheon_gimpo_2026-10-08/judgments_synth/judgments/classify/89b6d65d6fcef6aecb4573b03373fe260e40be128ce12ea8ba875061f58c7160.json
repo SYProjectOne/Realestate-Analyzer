@@ -1,0 +1,44 @@
+{
+  "tool": "classify",
+  "purpose": "classify:catalyst:15",
+  "input_hash": "sha256:89b6d65d6fcef6aecb4573b03373fe260e40be128ce12ea8ba875061f58c7160",
+  "input_len": 635,
+  "status": "ok",
+  "confidence": 1.0,
+  "cached": false,
+  "result": {
+    "label": "언론",
+    "prob": 1.0,
+    "decision": "auto",
+    "distribution": {
+      "언론": 1.0
+    }
+  },
+  "raw": {
+    "tool": "jev_classify",
+    "model": "jev-1.13.0",
+    "results": [
+      {
+        "id": "catalyst:15",
+        "classification": "언론",
+        "probabilities": {
+          "언론": 1.0
+        },
+        "top_probability": 1.0,
+        "confidence": 1.0,
+        "decision": "auto"
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 #64·#111 같은 이름 항목"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

@@ -10,7 +10,12 @@
   컬럼(``*_date``·``*_ym``·``ym``·``effective_from``), 일정 JSON(``fields.JSON_FIELDS``, 비어 있지 않을 때),
   payment_terms.price_by_type 의 숫자 항목. 새 컬럼이 생기면 자동으로 검사 대상이 된다.
   출처가 field_provenance 가 아니라 판정기 행인 컬럼(``POINTER_PROVENANCE``: complex.inclusion_prob →
-  inclusion_judgment_seq = prov 'jl_<seq>')은 그 포인터가 있으면 통과한다.
+  inclusion_judgment_seq, catalyst.stage_prob → judgment_seq = prov 'jl_<seq>')은 그 포인터가 있으면 통과한다.
+  **검사할 테이블도 손으로 적지 않는다**(R3b M16): 모델 레지스트리의 모든 테이블 중 출처가 필요한 수치 컬럼이
+  있는 것이 사실 테이블(``FACT_TABLES``)이고, 사실이 아닌 테이블은 ``NON_FACT_TABLES`` 에 사유와 함께 적는다
+  (둘 중 어디에도 없는 새 테이블은 사실 테이블로 검사된다 — 테스트가 분류를 강제한다).
+  행 자체가 출처를 가진 테이블(``raw_document_id`` + ``label`` 컬럼: household_stat·supply)은 field_provenance
+  행이 없어도 그 행의 원문(URL·확인일)과 라벨이 있으면 통과한다(행 단위 출처).
 - ``fact_for``: 저장된 chosen 출처 행으로 계약의 Fact dict
   ({v, label, prov='fp_<id>', checked_at, reason, unit})를 만든다.
 """
@@ -25,20 +30,12 @@ from sqlalchemy import JSON, BigInteger, Float, Integer, Numeric, String, select
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import ProvenanceRow
-from app.models import (
-    Benchmark,
-    Competition,
-    Complex,
-    ComplexType,
-    FieldProvenance,
-    PaymentTerms,
-    RtmsTrade,
-    Unsold,
-)
+from app.models import Base, FieldProvenance, RawDocument
 from app.normalize.fields import JSON_FIELDS, PRICE_BY_TYPE_ITEMS, is_numeric_field, price_by_type_field
 
 __all__ = [
     "FACT_TABLES",
+    "NON_FACT_TABLES",
     "POINTER_PROVENANCE",
     "MissingProvenance",
     "fact_for",
@@ -47,25 +44,43 @@ __all__ = [
     "upsert_provenance",
 ]
 
-FACT_TABLES: dict[str, Any] = {
-    "complex": Complex,
-    "complex_type": ComplexType,
-    "payment_terms": PaymentTerms,
-    "competition": Competition,
-    "rtms_trade": RtmsTrade,
-    "unsold": Unsold,
-    "benchmark": Benchmark,
+NON_FACT_TABLES: dict[str, str] = {
+    "raw_document": "원문 자체(출처)",
+    "field_provenance": "출처 행 자체",
+    "region": "사용자 입력 지역 설정",
+    "snapshot": "버전·기준일 기록",
+    "legal_dong": "참조 코드표(행정표준코드) — 수치 사실 아님",
+    "admin_dong": "참조 코드표(행정동) — 수치 사실 아님",
+    "admin_legal_map": "참조 코드 매핑",
+    "judgment_log": "판정기 호출 기록(출처 jl_ 자체)",
+    "claim": "판정기 verify 기록",
+    "fact_demotion": "사실 강등 기록(D10-3, 계약 .6) — 출처 아님(강등 출처 행은 field_provenance)",
+    "scenario": "상황 설정",
+    "score_run": "점수 계산 실행 기록(입력 지문·버전)",
+    "score_component": "§6 수식 계산값(출처 = score_run·사실 Fact)",
+    "score_total": "§6 수식 계산값",
+    "ladder": "판정기 noul 결과(출처 = judgment_seq)",
+    "decision": "판정기 decide 결과(출처 = judgment_seq)",
+    "comparable_set": "비교군 계산 기록(출처 cs_)",
+    "catalyst_link": "호재-단지 거리 계산값",
+    "intake_status": "접수 상태 판정 행(출처 = evidence_url·raw_document_id·판정)",
+    "change_event": "운영 기록(변경 이벤트)",
+    "checklist_item": "운영 기록(체크리스트)",
+    "human_check": "사람 확인 기록(입력자·시각이 출처)",
+    "job_run": "운영 기록(잡 실행)",
+    "share_link": "운영 기록(공유 링크)",
 }
-"""field_provenance(entity=키) 로 출처를 남기는 사실 테이블 — 전수 검사 대상."""
-_ENTITY_MODELS = FACT_TABLES
+"""사실 테이블이 아닌 테이블과 사유 — 여기 없는 테이블은 모두 출처 전수 검사 대상이다(``FACT_TABLES``)."""
 
 POINTER_PROVENANCE: dict[tuple[str, str], str] = {
     ("complex", "inclusion_prob"): "inclusion_judgment_seq",
+    ("catalyst", "stage_prob"): "judgment_seq",
 }
 """(엔티티, 컬럼) → 출처 포인터 컬럼. 값의 출처가 판정기 행(jl_)인 컬럼은 포인터가 있으면 통과."""
 
 _DATE_SUFFIXES = ("_date", "_ym")
 _DATE_NAMES = frozenset({"ym", "effective_from"})
+_POINTER_NAMES = frozenset({"judgment_seq"})
 
 
 def numeric_columns(model: Any) -> tuple[str, ...]:
@@ -73,7 +88,7 @@ def numeric_columns(model: Any) -> tuple[str, ...]:
     out: list[str] = []
     for col in model.__table__.columns:
         name = str(col.name)
-        if col.primary_key or col.foreign_keys or name.endswith("_judgment_seq"):
+        if col.primary_key or col.foreign_keys or name.endswith("_judgment_seq") or name in _POINTER_NAMES:
             continue
         t = col.type
         numeric = isinstance(t, Integer | BigInteger | Numeric | Float)
@@ -82,6 +97,29 @@ def numeric_columns(model: Any) -> tuple[str, ...]:
         if numeric or date_like or schedule:
             out.append(name)
     return tuple(out)
+
+
+def _fact_tables() -> dict[str, Any]:
+    """모델 레지스트리 → 사실 테이블(``NON_FACT_TABLES`` 밖이고 출처가 필요한 컬럼이 있는 것), 이름 순."""
+    out: dict[str, Any] = {}
+    for mapper in sorted(Base.registry.mappers, key=lambda m: str(m.class_.__tablename__)):
+        cls = mapper.class_
+        name = str(cls.__tablename__)
+        if name in NON_FACT_TABLES or not numeric_columns(cls):
+            continue
+        out[name] = cls
+    return out
+
+
+FACT_TABLES: dict[str, Any] = _fact_tables()
+"""출처 전수 검사 대상 사실 테이블(모델 메타데이터에서 — R3b M16). field_provenance.entity = 테이블 이름."""
+_ENTITY_MODELS = FACT_TABLES
+
+
+def _row_level(model: Any) -> bool:
+    """행 자체가 출처를 가진 테이블인가(raw_document_id + label 컬럼)."""
+    cols = model.__table__.columns
+    return "raw_document_id" in cols and "label" in cols
 
 
 _UNITS: dict[str, str] = {
@@ -194,7 +232,10 @@ def missing_provenance(session: Session, entities: tuple[str, ...] | None = None
         ):
             if fp.entity_id is not None:
                 prov[(fp.entity_id, fp.field)] = fp
-        for obj in session.scalars(select(model)):
+        objs = list(session.scalars(select(model)))
+        row_docs = _row_docs(session, objs) if _row_level(model) else {}
+        for obj in objs:
+            row_ok = _row_source_ok(obj, row_docs)
             for f in fields:
                 value = getattr(obj, f, None)
                 if value is None or (f in JSON_FIELDS and not value):
@@ -202,6 +243,8 @@ def missing_provenance(session: Session, entities: tuple[str, ...] | None = None
                 pointer = POINTER_PROVENANCE.get((entity, f))
                 if pointer is not None and getattr(obj, pointer, None) is not None:
                     continue
+                if row_ok and (obj.id, f) not in prov:
+                    continue  # 행 단위 출처(원문 + 라벨)
                 problem = _problem(prov.get((obj.id, f)))
                 if problem is not None:
                     out.append(MissingProvenance(entity, obj.id, f, problem))
@@ -215,6 +258,24 @@ def missing_provenance(session: Session, entities: tuple[str, ...] | None = None
                         if problem is not None:
                             out.append(MissingProvenance(entity, obj.id, field, problem))
     return out
+
+
+def _row_docs(session: Session, objs: list[Any]) -> dict[int, RawDocument]:
+    ids = sorted({o.raw_document_id for o in objs if getattr(o, "raw_document_id", None) is not None})
+    out: dict[int, RawDocument] = {}
+    for i in range(0, len(ids), 500):
+        for d in session.scalars(select(RawDocument).where(RawDocument.id.in_(ids[i : i + 500]))):
+            out[d.id] = d
+    return out
+
+
+def _row_source_ok(obj: Any, docs: dict[int, RawDocument]) -> bool:
+    """행 단위 출처: 원문 행(URL·확인일)과 비어 있지 않은 라벨."""
+    rid = getattr(obj, "raw_document_id", None)
+    doc = docs.get(rid) if rid is not None else None
+    label = getattr(obj, "label", None)
+    has_doc = doc is not None and bool((doc.url or "").strip() and doc.fetched_at)
+    return has_doc and bool((label or "").strip())
 
 
 def _problem(hit: FieldProvenance | None) -> str | None:

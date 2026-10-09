@@ -32,6 +32,7 @@ from app.core.http import FetchResult, HttpClient
 from app.models import RawDocument, RtmsTrade
 
 FAKE_KEY = "TEST%2BKEY%3D%3D"  # 인코딩 키 형태(가짜)
+# 분양권 전매 API 는 test_presale_r3b.py — 여기서는 매매 API 만(presale=False)
 
 
 def test_parse_openapi_xml_keeps_cancelled_flag(fixtures_dir: Path) -> None:
@@ -108,7 +109,7 @@ def test_openapi_collects_loads_and_is_idempotent(
     with respx.mock(assert_all_called=False) as router:
         router.get("https://apis.data.go.kr/robots.txt").respond(400)  # 실제 응답도 400 → 제한 없음
         route = router.get(RTMS_API_URL).mock(side_effect=_xml_by_lawd(fixtures_dir))
-        collector = RtmsCollector(service_key=FAKE_KEY, http=http, months=1)
+        collector = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False)
         docs = collector.fetch(region, snapshot, None)
         assert route.call_count == 2  # 시군구 2 × 1개월
         sent = route.calls[0].request.url.params
@@ -117,7 +118,7 @@ def test_openapi_collects_loads_and_is_idempotent(
         assert collector.load_stats is not None and collector.load_stats.inserted == 3
         n_raw, n_trade = count(RawDocument), count(RtmsTrade)
 
-        again = RtmsCollector(service_key=FAKE_KEY, http=http, months=1)
+        again = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False)
         again.fetch(region, snapshot, None)
         assert (count(RawDocument), count(RtmsTrade)) == (n_raw, n_trade)  # T17
 
@@ -147,7 +148,9 @@ def test_invalid_key_leaves_403_row(
             content=(fixtures_dir / "openapi_403_not_registered.xml").read_bytes(),
             headers={"content-type": "application/xml"},
         )
-        docs = RtmsCollector(service_key="INVALID", http=http, months=1).fetch(region, snapshot, None)
+        docs = RtmsCollector(service_key="INVALID", http=http, months=1, presale=False).fetch(
+            region, snapshot, None
+        )
     assert [d.http_status for d in docs] == [403, 403]
     assert all(d.path is None and d.error_text == "SERVICE_KEY_IS_NOT_REGISTERED_ERROR" for d in docs)
     assert count(RtmsTrade) == 0
@@ -267,12 +270,12 @@ def test_openapi_path_with_real_recording(
 
     with respx.mock(assert_all_called=False) as router:
         route = router.get(RTMS_API_URL).mock(side_effect=handler)
-        collector = RtmsCollector(service_key=FAKE_KEY, http=http, months=1)
+        collector = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False)
         assert collector.mode == "openapi"
         docs = collector.fetch(region, snap, None)
         assert route.call_count == 2 and len(docs) == 2
         assert collector.load_stats is not None and collector.load_stats.inserted == 333
-        RtmsCollector(service_key=FAKE_KEY, http=http, months=1).fetch(region, snap, None)
+        RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False).fetch(region, snap, None)
     assert count(RtmsTrade) == 333
     with Session(db_engine) as s:
         rows = s.scalars(select(RtmsTrade)).all()
@@ -302,7 +305,7 @@ def test_live_openapi_with_real_key(region_ctx: tuple[Region, Snapshot]) -> None
     region, snapshot = region_ctx
     yeonsu = region.model_copy(update={"sigungu_codes": ["28185"]})
     snap = snapshot.model_copy(update={"asof_date": "2026-09-30"})
-    c = RtmsCollector(service_key=key, months=1)
+    c = RtmsCollector(service_key=key, months=1, presale=False)
     docs = c.fetch(yeonsu, snap, None)
     assert docs and all(d.http_status == 200 for d in docs), [(d.http_status, d.error_text) for d in docs]
     assert c.pages and all(p.result_code in {"00", "000"} for p in c.pages)

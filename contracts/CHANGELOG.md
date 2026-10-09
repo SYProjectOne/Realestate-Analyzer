@@ -29,6 +29,11 @@ claim.reverify 거부)·#4(BenchmarkFlag.sample_n = 자기 생활권 표본만) 
   (`tests/contracts/test_migrations.py::test_sqlite_0005_0006_roundtrip`, Postgres 같은 함수), autogenerate diff 0.
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.6`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
 
+### fixtures (R3b G1 — 계약 .6)
+
+매니페스트(`contracts/fixtures.sha256.json`) 사유: R3b G1: 호재 분류 payload 에 '호재 아님' 클래스(D10-6) — 합성 판정 녹화 재생성
+생성기(`tools/record_synth_judgments.py`)로만 다시 만들었다(classify 호재 단계 녹화의 hash 가 바뀜). 계약 스키마 변경 없음.
+
 ## 2026-10-09.5
 
 R3 마무리(CEO 위임, 브랜치 `wp/r3-closure`) — 상황 A decide 의 가상 후보 '모집공고 대기'(보고서 §8-2·§12-5-2: decide 후보 =

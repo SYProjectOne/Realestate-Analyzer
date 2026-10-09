@@ -29,6 +29,9 @@ from app.judge.guard import default_secrets
 
 __all__ = [
     "CATALYST_CLASSES",
+    "CATALYST_KIND_CLASSES",
+    "CATALYST_SCREEN_TASK",
+    "CATALYST_STAGE_CLASSES",
     "CLASSIFY_BATCH_MAX",
     "EVIDENCE_CARD_MAX",
     "EVIDENCE_CARD_ORDER",
@@ -36,6 +39,7 @@ __all__ = [
     "INCLUSION_CLASSES",
     "INTAKE_CLASSES",
     "INTAKE_STATUS_BY_CLASS",
+    "NOT_CATALYST",
     "RERANK_QUERY",
     "VERIFY_MAX_CLAIMS",
     "WAIT_NEW_DESCRIPTION",
@@ -48,6 +52,8 @@ __all__ = [
     "LadderSpec",
     "annualized",
     "audit_payload",
+    "catalyst_screen_payload",
+    "classify_catalyst_kind_payload",
     "classify_catalyst_payload",
     "classify_inclusion_batch_payload",
     "classify_inclusion_payload",
@@ -115,13 +121,32 @@ _INCLUSION: Final = (
     ("out_of_scope", "청약·분양 공고가 아니거나 대상 지역·기간 밖의 자료"),
     ("manual_review", "사업주체 명의나 상품 유형을 자료만으로 정할 수 없을 때(사람 확인 필요)"),
 )  # fmt: skip
+NOT_CATALYST: Final = "호재 아님"
+"""P4(b) 호재 분류의 '호재 아님' 클래스(D10-6) — 이 결과면 후보를 폐기하고 기록한다(G2 파이프라인)."""
 _CATALYST: Final = (
     ("확정", "고시·승인·착공 등 공식 절차로 확정된 호재(관보·지자체 고시·국토부 발표 근거)"),
     ("계획", "공식 계획(기본계획·종합계획)에 반영됐으나 승인·착공 전인 호재"),
     ("추진", "예비타당성·용역·협의 등 추진 단계로 공식 계획 반영 전인 호재"),
     ("언론", "언론·홍보 자료에만 나오고 공식 근거가 없는 호재"),
     ("미확정", "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"),
+    (NOT_CATALYST, "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·"
+     "모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). "
+     "예: '○○ 다음 주 1순위 청약'"),
+)  # fmt: skip
+_CATALYST_KIND: Final = (
+    ("교통", "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"),
+    ("개발", "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"),
+    ("학교", "초·중·고 신설·이전·학군 관련 사업"),
+    ("상업", "대형 상업시설·쇼핑몰·백화점·상권 개발"),
+    ("생활인프라", "공원·병원·도서관·체육·문화시설 등 생활 편의시설"),
+    ("기타", "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"),
+)  # fmt: skip
+CATALYST_SCREEN_TASK: Final = (
+    "부동산 호재(교통·개발·학교·상업·생활인프라 사업) 관련성 검사 — "
+    "이 기사가 지역의 호재 사업 자체를 다루는가. "
+    "아파트 분양 광고·청약 일정·분양가·경쟁률·시세 기사는 호재가 아니다"
 )
+"""P1 screen 의 purpose(뉴스 → 호재 후보 전, D10-6). 관련 없으면 JEV 가 skip 을 준다."""
 _INTAKE: Final = (
     ("open", "지금 청약·계약 접수를 받고 있다(선착순·동호지정 계약 중, 잔여 세대 분양 중, "
      "무순위·임의공급 접수 중 등). 문구가 현재 진행 중인 접수를 말해야 한다"),
@@ -140,7 +165,11 @@ INTAKE_STATUS_BY_CLASS: Final = {"open": "가능", "pending": "미정", "closed"
 INCLUSION_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _INCLUSION)
 """P4(a) 포함/제외 7클래스(사업주체 명의 기준, contracts ClassifyResult 설명과 같은 id)."""
 CATALYST_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _CATALYST)
-"""P4(b) 호재 단계 5클래스."""
+"""P4(b) 호재 단계 5클래스 + '호재 아님'(D10-6)."""
+CATALYST_STAGE_CLASSES: Final = tuple(i for i, _ in _CATALYST if i != NOT_CATALYST)
+"""호재 단계 5종(catalyst.stage 값) — '호재 아님'은 단계가 아니다."""
+CATALYST_KIND_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _CATALYST_KIND)
+"""P4(b) 호재 종류 6클래스(catalyst.kind 값 = 계약 CATALYST_KIND, D10-6)."""
 
 
 def public_text(text: str | None) -> str:
@@ -576,12 +605,31 @@ def classify_intake_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:
 
 
 def classify_catalyst_payload(*, item_id: str, text: str) -> JudgePayload:
-    """P4(b) 호재 단계 5클래스."""
+    """P4(b) 호재 단계 5클래스 + '호재 아님'(D10-6: 분양 기사는 호재 아님)."""
     return {
         "items": [{"id": item_id, "text": _cut(public_text(text), 2000)}],
         "classes": [dict(c) for c in CATALYST_CLASSES],
-        "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류",
+        "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'",
     }
+
+
+def classify_catalyst_kind_payload(*, item_id: str, text: str) -> JudgePayload:
+    """P4(b) 호재 종류 6클래스(교통·개발·학교·상업·생활인프라·기타, D10-6) — 종류를 키워드로 정하지 않는다."""
+    return {
+        "items": [{"id": item_id, "text": _cut(public_text(text), 2000)}],
+        "classes": [dict(c) for c in CATALYST_KIND_CLASSES],
+        "purpose": "부동산 호재 사업의 종류 분류",
+    }
+
+
+def catalyst_screen_payload(
+    *, title: str, excerpt: str | None = None, url: str | None = None
+) -> JudgePayload:
+    """P1 screen(뉴스 → 호재 후보 전, D10-6): 제목·발췌·링크 + 호재 관련성 목적.
+    통과(pass)분만 후보가 된다."""
+    parts = (f"제목: {title}", f"발췌: {excerpt}" if excerpt else "", f"링크: {url}" if url else "")
+    text = "\n".join(p for p in parts if p)
+    return screen_payload(_cut(text, 4000), task=CATALYST_SCREEN_TASK)
 
 
 def compare_payload(

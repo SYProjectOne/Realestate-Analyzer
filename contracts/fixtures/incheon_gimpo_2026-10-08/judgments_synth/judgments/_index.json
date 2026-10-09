@@ -2,8 +2,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:1",
-  "input_hash": "sha256:35d824b5d34754f0cc727c74d029dd5970b750ede8b4a1a4fc19f0ec1412bbe7",
-  "file": "classify/35d824b5d34754f0cc727c74d029dd5970b750ede8b4a1a4fc19f0ec1412bbe7.json",
+  "input_hash": "sha256:2d1a7c51dfd200d7e064086f07bde9cd4bc2a19923fd7cdda516553f6a58f882",
+  "file": "classify/2d1a7c51dfd200d7e064086f07bde9cd4bc2a19923fd7cdda516553f6a58f882.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -38,16 +38,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:10",
-  "input_hash": "sha256:7c6a4bfff2018ca3d67094aec4be2d7355e40f07edc49a4147f9880440a2e593",
-  "file": "classify/7c6a4bfff2018ca3d67094aec4be2d7355e40f07edc49a4147f9880440a2e593.json",
+  "input_hash": "sha256:e76ea2fc8c0afcb738076db536cf140b0f8522326b6488f3b5f319d81acb29ba",
+  "file": "classify/e76ea2fc8c0afcb738076db536cf140b0f8522326b6488f3b5f319d81acb29ba.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -82,16 +86,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:11",
-  "input_hash": "sha256:07fd4cd3991035bb724bd37c23139a803eac6e42805b3a443044f9aecb307136",
-  "file": "classify/07fd4cd3991035bb724bd37c23139a803eac6e42805b3a443044f9aecb307136.json",
+  "input_hash": "sha256:d845ee9cbc4735c52e4c7e9d16ea21ca92d8baee3bb4f3f6551d5fbb53ac75bf",
+  "file": "classify/d845ee9cbc4735c52e4c7e9d16ea21ca92d8baee3bb4f3f6551d5fbb53ac75bf.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -126,16 +134,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:12",
-  "input_hash": "sha256:2e2a9d7f2a4ff7be3520ac44f99625b5f8431598ccd60849221694b94f916e8b",
-  "file": "classify/2e2a9d7f2a4ff7be3520ac44f99625b5f8431598ccd60849221694b94f916e8b.json",
+  "input_hash": "sha256:9c34eb14678749ef7768b07a96e07bc9f9c24c4bc2495aad602f5f674bb51c4b",
+  "file": "classify/9c34eb14678749ef7768b07a96e07bc9f9c24c4bc2495aad602f5f674bb51c4b.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -170,16 +182,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:13",
-  "input_hash": "sha256:8af369b5a294e554be55263c13ed9ab2685eacd96132221007029c88c4113e79",
-  "file": "classify/8af369b5a294e554be55263c13ed9ab2685eacd96132221007029c88c4113e79.json",
+  "input_hash": "sha256:7191d5dbc56201dd1b13faff216cc9de0f914bbee20ffd4784a4937aeab27fd5",
+  "file": "classify/7191d5dbc56201dd1b13faff216cc9de0f914bbee20ffd4784a4937aeab27fd5.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -214,16 +230,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:14",
-  "input_hash": "sha256:d1a2a3cbbba697c56adc75a0b219247c6d40523ecac4e72e39c6be6bd3580e1c",
-  "file": "classify/d1a2a3cbbba697c56adc75a0b219247c6d40523ecac4e72e39c6be6bd3580e1c.json",
+  "input_hash": "sha256:bdccaf49a699029408cec07db720a7117ec329961b82f7d44433c5e0afb334db",
+  "file": "classify/bdccaf49a699029408cec07db720a7117ec329961b82f7d44433c5e0afb334db.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -258,16 +278,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:15",
-  "input_hash": "sha256:7e35cb9464438ccf7b65f8a1a3d01905400e0ad21cc663603b97b31cd8211a07",
-  "file": "classify/7e35cb9464438ccf7b65f8a1a3d01905400e0ad21cc663603b97b31cd8211a07.json",
+  "input_hash": "sha256:89b6d65d6fcef6aecb4573b03373fe260e40be128ce12ea8ba875061f58c7160",
+  "file": "classify/89b6d65d6fcef6aecb4573b03373fe260e40be128ce12ea8ba875061f58c7160.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -302,16 +326,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:16",
-  "input_hash": "sha256:951b7ef8bb010bcb92807a1b31de3f411f16cc695a4daa5f2b9f117a899f7fb4",
-  "file": "classify/951b7ef8bb010bcb92807a1b31de3f411f16cc695a4daa5f2b9f117a899f7fb4.json",
+  "input_hash": "sha256:76fc231636d202b095416dcb40cd96ea5d41c851b8f2342f4383f50161e66481",
+  "file": "classify/76fc231636d202b095416dcb40cd96ea5d41c851b8f2342f4383f50161e66481.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -346,16 +374,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:17",
-  "input_hash": "sha256:de643f88f7fc268e0e0d1304a8880db7461a254d6d07db71ff0472aa85b77563",
-  "file": "classify/de643f88f7fc268e0e0d1304a8880db7461a254d6d07db71ff0472aa85b77563.json",
+  "input_hash": "sha256:8932f9ba0040da3b6880e7bf25f690dbe4ba6f02e2a8d0e656b17051b24c2b41",
+  "file": "classify/8932f9ba0040da3b6880e7bf25f690dbe4ba6f02e2a8d0e656b17051b24c2b41.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -390,16 +422,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:18",
-  "input_hash": "sha256:8216dca0a435b902bf5a5c60190dece867228b84b6402b112669da583f308df0",
-  "file": "classify/8216dca0a435b902bf5a5c60190dece867228b84b6402b112669da583f308df0.json",
+  "input_hash": "sha256:84d48175150130bc111ccb0ea0bd57a9f521da8e0a9e17f812909336fffbad46",
+  "file": "classify/84d48175150130bc111ccb0ea0bd57a9f521da8e0a9e17f812909336fffbad46.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -434,16 +470,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:19",
-  "input_hash": "sha256:c3171f0c915c4a1821d55bd79c778f53a1b93538158450bcf4d486f68c3780e2",
-  "file": "classify/c3171f0c915c4a1821d55bd79c778f53a1b93538158450bcf4d486f68c3780e2.json",
+  "input_hash": "sha256:afbfe862bcdda2653dcbdcf356725ae24f8cccf5cdae221965560672fc08ee7d",
+  "file": "classify/afbfe862bcdda2653dcbdcf356725ae24f8cccf5cdae221965560672fc08ee7d.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -478,16 +518,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:2",
-  "input_hash": "sha256:fe35ff543db2094bdac8889f9fbe2e95b4e17b3ff8c48e630d79182e6572810f",
-  "file": "classify/fe35ff543db2094bdac8889f9fbe2e95b4e17b3ff8c48e630d79182e6572810f.json",
+  "input_hash": "sha256:d1883e826d61d3c99b61131b21957fe6f2da128de1d1b046281251e8a77d47f2",
+  "file": "classify/d1883e826d61d3c99b61131b21957fe6f2da128de1d1b046281251e8a77d47f2.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -522,16 +566,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:20",
-  "input_hash": "sha256:e355519c085fd5807581b0a0e39b6e319b4b8ec1f924f69192f111b2a1ce495a",
-  "file": "classify/e355519c085fd5807581b0a0e39b6e319b4b8ec1f924f69192f111b2a1ce495a.json",
+  "input_hash": "sha256:c1dfbf9ac17542f935ee556bb23520e821e0a91540b1a196738b09d67ed34b0b",
+  "file": "classify/c1dfbf9ac17542f935ee556bb23520e821e0a91540b1a196738b09d67ed34b0b.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -566,16 +614,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:21",
-  "input_hash": "sha256:31e286ccb1789da16417588b8ee9115132360fd83c98f211fd21e046d7526b17",
-  "file": "classify/31e286ccb1789da16417588b8ee9115132360fd83c98f211fd21e046d7526b17.json",
+  "input_hash": "sha256:b642611df6e615958cde1953eacc3402b35e568566ebb082c3caee76aa72b02e",
+  "file": "classify/b642611df6e615958cde1953eacc3402b35e568566ebb082c3caee76aa72b02e.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -610,16 +662,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:22",
-  "input_hash": "sha256:a72c33c70fc6dab31339c09a7c22716a3ea6c5a0a7c8bab65ff74e65d8dafd10",
-  "file": "classify/a72c33c70fc6dab31339c09a7c22716a3ea6c5a0a7c8bab65ff74e65d8dafd10.json",
+  "input_hash": "sha256:38448d13b05eff0541434875a87da7b25e734f0225273244b69d51f6d35aef84",
+  "file": "classify/38448d13b05eff0541434875a87da7b25e734f0225273244b69d51f6d35aef84.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -654,16 +710,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:23",
-  "input_hash": "sha256:4ac635f36cfd125917b849c0fccc07a9446814104977a13758c95ccb7e731b28",
-  "file": "classify/4ac635f36cfd125917b849c0fccc07a9446814104977a13758c95ccb7e731b28.json",
+  "input_hash": "sha256:cccded04c93942519294d0d1b9bf6b2ccdce0ceae02650cd1f7106596102bab8",
+  "file": "classify/cccded04c93942519294d0d1b9bf6b2ccdce0ceae02650cd1f7106596102bab8.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -698,16 +758,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:24",
-  "input_hash": "sha256:20d007fa89c6e7d59667e6e91afbf171b2f2083d4f8f237d46c5d6944399d0e0",
-  "file": "classify/20d007fa89c6e7d59667e6e91afbf171b2f2083d4f8f237d46c5d6944399d0e0.json",
+  "input_hash": "sha256:3b1ea4f3dab5088a21cd322281b5c9370a667402c59eedbbac0e7a71aa5c8167",
+  "file": "classify/3b1ea4f3dab5088a21cd322281b5c9370a667402c59eedbbac0e7a71aa5c8167.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -742,16 +806,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:25",
-  "input_hash": "sha256:621657dc54b6a6e1d68ce5fc8f6a2d3c79fe85049250a5cd5481d461fd93d74b",
-  "file": "classify/621657dc54b6a6e1d68ce5fc8f6a2d3c79fe85049250a5cd5481d461fd93d74b.json",
+  "input_hash": "sha256:daf9502e3fc1a8c0d42abab0982956671f7b07d0dedf949b02662fe7d4ac097c",
+  "file": "classify/daf9502e3fc1a8c0d42abab0982956671f7b07d0dedf949b02662fe7d4ac097c.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -786,16 +854,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:26",
-  "input_hash": "sha256:1a104223aeafaa1ee89dc2e237f03b9f269c7e78e4dfee8a80c1494ccc71cd77",
-  "file": "classify/1a104223aeafaa1ee89dc2e237f03b9f269c7e78e4dfee8a80c1494ccc71cd77.json",
+  "input_hash": "sha256:92cbf63600e7f4e19efa8c1999f6d1716a5d06aec827ec1e784760c4dc982260",
+  "file": "classify/92cbf63600e7f4e19efa8c1999f6d1716a5d06aec827ec1e784760c4dc982260.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -830,16 +902,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:27",
-  "input_hash": "sha256:4b340cb6fd87c677cb9bb2c15bc5aa1808e8991910597fbea267d66f9a56438d",
-  "file": "classify/4b340cb6fd87c677cb9bb2c15bc5aa1808e8991910597fbea267d66f9a56438d.json",
+  "input_hash": "sha256:26be68c9e3c1e62e20f1cb3a9490c95af28f29316f8786224ebd78807f6630cc",
+  "file": "classify/26be68c9e3c1e62e20f1cb3a9490c95af28f29316f8786224ebd78807f6630cc.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -874,16 +950,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:28",
-  "input_hash": "sha256:35a407c2b787101b98b1d9a1ad97b856421887a57e1ba7876d624c697ed9322e",
-  "file": "classify/35a407c2b787101b98b1d9a1ad97b856421887a57e1ba7876d624c697ed9322e.json",
+  "input_hash": "sha256:928c9c78511823c9b7efe28e83b07a9ad45f2b19a6578e502a5ce0d678137651",
+  "file": "classify/928c9c78511823c9b7efe28e83b07a9ad45f2b19a6578e502a5ce0d678137651.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -918,16 +998,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:29",
-  "input_hash": "sha256:eb9c5b57a33d2b53d87a990f8a2ef49d87d9f6fb5f9591b085584e33cda2a67d",
-  "file": "classify/eb9c5b57a33d2b53d87a990f8a2ef49d87d9f6fb5f9591b085584e33cda2a67d.json",
+  "input_hash": "sha256:a2599f8b9cf738eb16afed2e37f1826b7a0fe2736e1aaa82b4f04fe9999236a3",
+  "file": "classify/a2599f8b9cf738eb16afed2e37f1826b7a0fe2736e1aaa82b4f04fe9999236a3.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -962,16 +1046,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:3",
-  "input_hash": "sha256:80600a2eb3a167feb52bc9bfa5f565ece8e6ddb213bfce61644ba1f82e77fa59",
-  "file": "classify/80600a2eb3a167feb52bc9bfa5f565ece8e6ddb213bfce61644ba1f82e77fa59.json",
+  "input_hash": "sha256:72538ca906753152421c6b237194694e2c886936da2e1bb3e4ad60c2578e39f9",
+  "file": "classify/72538ca906753152421c6b237194694e2c886936da2e1bb3e4ad60c2578e39f9.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1006,16 +1094,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:30",
-  "input_hash": "sha256:32141ee8809f0ff026662b096a400c3f3bae0e759fa7443c756bb12f8d622411",
-  "file": "classify/32141ee8809f0ff026662b096a400c3f3bae0e759fa7443c756bb12f8d622411.json",
+  "input_hash": "sha256:48c79a72688b44ee1ea2e7f9995f636fd1fe7b0b81be7ba787208ea78087f844",
+  "file": "classify/48c79a72688b44ee1ea2e7f9995f636fd1fe7b0b81be7ba787208ea78087f844.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1050,16 +1142,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:31",
-  "input_hash": "sha256:ccd3ecdb39ca83b3481ce838373b2a3c592715bc2d2bea26c478d9bda09bc4d9",
-  "file": "classify/ccd3ecdb39ca83b3481ce838373b2a3c592715bc2d2bea26c478d9bda09bc4d9.json",
+  "input_hash": "sha256:f48672084eb804211589bfcfb9ba4c7731e4909c8189e57036b87100329ce855",
+  "file": "classify/f48672084eb804211589bfcfb9ba4c7731e4909c8189e57036b87100329ce855.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1094,16 +1190,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:32",
-  "input_hash": "sha256:ebe2a3a7ec8cbb26dbcfa59c3046b3d0c2e1f83fe7b1e96064f28f24ed76fd69",
-  "file": "classify/ebe2a3a7ec8cbb26dbcfa59c3046b3d0c2e1f83fe7b1e96064f28f24ed76fd69.json",
+  "input_hash": "sha256:eea1ef76b4b44b53da2d217342e4f983886082e064793ebfed6794773f0e7086",
+  "file": "classify/eea1ef76b4b44b53da2d217342e4f983886082e064793ebfed6794773f0e7086.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1138,16 +1238,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:33",
-  "input_hash": "sha256:395b9897f4e4cb6d0db0e4238eaebb0043ca9f20c106f3cdeb9b1f1b50a2a058",
-  "file": "classify/395b9897f4e4cb6d0db0e4238eaebb0043ca9f20c106f3cdeb9b1f1b50a2a058.json",
+  "input_hash": "sha256:deb08508d6335252d1a6d7c2f39d27d7aec38417d29eafa8b7db1558b100177e",
+  "file": "classify/deb08508d6335252d1a6d7c2f39d27d7aec38417d29eafa8b7db1558b100177e.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1182,16 +1286,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:34",
-  "input_hash": "sha256:ddd8c53623a14aad6000a2c4838e1d5ecfacab1a89bfb548cbefb2e91490b117",
-  "file": "classify/ddd8c53623a14aad6000a2c4838e1d5ecfacab1a89bfb548cbefb2e91490b117.json",
+  "input_hash": "sha256:2bdcd95025150c5aa3dc72f7955c074fe5b0029e43001e79bac3d4a9200b8f3f",
+  "file": "classify/2bdcd95025150c5aa3dc72f7955c074fe5b0029e43001e79bac3d4a9200b8f3f.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1226,16 +1334,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:35",
-  "input_hash": "sha256:7cf095dc194f4a17fb62de0a18f110720343f25ddbb1b64258d85e68cc36e255",
-  "file": "classify/7cf095dc194f4a17fb62de0a18f110720343f25ddbb1b64258d85e68cc36e255.json",
+  "input_hash": "sha256:15eed063b8fc1e53d311e1bb1b46b7381261a6f975738e08b3af28dfbc1fd89b",
+  "file": "classify/15eed063b8fc1e53d311e1bb1b46b7381261a6f975738e08b3af28dfbc1fd89b.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1270,16 +1382,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:36",
-  "input_hash": "sha256:418b46e5e801bda0c7a5442e9ee8b7460cdc6acdfea8055bc0b1b8fb8d2960f2",
-  "file": "classify/418b46e5e801bda0c7a5442e9ee8b7460cdc6acdfea8055bc0b1b8fb8d2960f2.json",
+  "input_hash": "sha256:c08b7d771cf47f1b7573f9a4e2aa5f2e0352d0c0605b8ac82291ee1097d76129",
+  "file": "classify/c08b7d771cf47f1b7573f9a4e2aa5f2e0352d0c0605b8ac82291ee1097d76129.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1314,16 +1430,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:37",
-  "input_hash": "sha256:2c055e0b3c1825e3c06bebf2aedbed32904b4cb2ba5e916802911ded537bf2c2",
-  "file": "classify/2c055e0b3c1825e3c06bebf2aedbed32904b4cb2ba5e916802911ded537bf2c2.json",
+  "input_hash": "sha256:fd3b3b6eb98ba2bdc648a01cfa804da8ba2309c6a8aa4fd9de02a3cf4e4ce974",
+  "file": "classify/fd3b3b6eb98ba2bdc648a01cfa804da8ba2309c6a8aa4fd9de02a3cf4e4ce974.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1358,16 +1478,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:38",
-  "input_hash": "sha256:b7db1990605152a5411b7a578e25795e7584898308015b5424d36f899edabfea",
-  "file": "classify/b7db1990605152a5411b7a578e25795e7584898308015b5424d36f899edabfea.json",
+  "input_hash": "sha256:fc4ca4a7a3f95b6864e2456d74186933d4965c337fdcca06517ea89a8bb65aae",
+  "file": "classify/fc4ca4a7a3f95b6864e2456d74186933d4965c337fdcca06517ea89a8bb65aae.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1402,16 +1526,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:39",
-  "input_hash": "sha256:189576c7d3f270e324c2ca81304dcafe1589d0dc94e5b4e941b4260936ca85bc",
-  "file": "classify/189576c7d3f270e324c2ca81304dcafe1589d0dc94e5b4e941b4260936ca85bc.json",
+  "input_hash": "sha256:5a3be6d354e351fa3657b9c099bfb44dcd33fa2f5f6147db25e41237c69c90f5",
+  "file": "classify/5a3be6d354e351fa3657b9c099bfb44dcd33fa2f5f6147db25e41237c69c90f5.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1446,16 +1574,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:4",
-  "input_hash": "sha256:41b1e7997b296a39d165ce7d501a17b5e5e3600efe1a79f93e0540aa7b301de3",
-  "file": "classify/41b1e7997b296a39d165ce7d501a17b5e5e3600efe1a79f93e0540aa7b301de3.json",
+  "input_hash": "sha256:b5478a7da2b423dffe7a6e1a84eb9ec1da047d1f72c7c14081775882c6c9fcfb",
+  "file": "classify/b5478a7da2b423dffe7a6e1a84eb9ec1da047d1f72c7c14081775882c6c9fcfb.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1490,16 +1622,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:40",
-  "input_hash": "sha256:bcfc0645fe89a544e28ecd999e5b430e7537639c99b0b0e5957c31d74719f6c4",
-  "file": "classify/bcfc0645fe89a544e28ecd999e5b430e7537639c99b0b0e5957c31d74719f6c4.json",
+  "input_hash": "sha256:162c464fca1d59fa55fa65517705c353bfb8f2dd1461dc8e29b3f4d9ae57c6aa",
+  "file": "classify/162c464fca1d59fa55fa65517705c353bfb8f2dd1461dc8e29b3f4d9ae57c6aa.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1534,16 +1670,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:41",
-  "input_hash": "sha256:58146ce9f1978b6d4b20307afa311363c0ea087d0611602d95ec058feb03f96a",
-  "file": "classify/58146ce9f1978b6d4b20307afa311363c0ea087d0611602d95ec058feb03f96a.json",
+  "input_hash": "sha256:0d179eb276ee3d79c677d9ea88f496bbb18027551623ad6e2ee4eeea5b9a5d15",
+  "file": "classify/0d179eb276ee3d79c677d9ea88f496bbb18027551623ad6e2ee4eeea5b9a5d15.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1578,16 +1718,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:42",
-  "input_hash": "sha256:b75e6ad3bc703572ba44eef987916e31c531c063c0db95c2257442a49d5c8ca9",
-  "file": "classify/b75e6ad3bc703572ba44eef987916e31c531c063c0db95c2257442a49d5c8ca9.json",
+  "input_hash": "sha256:7ead3ef7d49549756fd59f91d5c2996a4587e54d031a9ee4d02a146decea8931",
+  "file": "classify/7ead3ef7d49549756fd59f91d5c2996a4587e54d031a9ee4d02a146decea8931.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1622,16 +1766,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:43",
-  "input_hash": "sha256:5d74f1f732e24e1598998ba4afb700dd1326de690cd4d728be4b914b5742f28d",
-  "file": "classify/5d74f1f732e24e1598998ba4afb700dd1326de690cd4d728be4b914b5742f28d.json",
+  "input_hash": "sha256:1c06ce03bf51ca63f10c0c3c3f0fcd70ff9ef9fae62cfdd0148fc5b21b5f4cf3",
+  "file": "classify/1c06ce03bf51ca63f10c0c3c3f0fcd70ff9ef9fae62cfdd0148fc5b21b5f4cf3.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1666,16 +1814,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:5",
-  "input_hash": "sha256:66dd360aba7b7d878201445754dbb1f31c2741fd06fd0b2eb11e7ca249766502",
-  "file": "classify/66dd360aba7b7d878201445754dbb1f31c2741fd06fd0b2eb11e7ca249766502.json",
+  "input_hash": "sha256:364e1548598bdafcf386c9ed90749d571f224ccd69a220d58a59b1c41249345b",
+  "file": "classify/364e1548598bdafcf386c9ed90749d571f224ccd69a220d58a59b1c41249345b.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1710,16 +1862,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:6",
-  "input_hash": "sha256:79bcfedd25957af44fd4f871df282223860634b408ffca46a61f4c6333ead157",
-  "file": "classify/79bcfedd25957af44fd4f871df282223860634b408ffca46a61f4c6333ead157.json",
+  "input_hash": "sha256:3363908f11efe2adcec90154427527918e1412299a9e0d96d928eaa28dd11f62",
+  "file": "classify/3363908f11efe2adcec90154427527918e1412299a9e0d96d928eaa28dd11f62.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1754,16 +1910,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:7",
-  "input_hash": "sha256:6a01ffe436d6813dc2727b7f6e59debe70943f596f129ad7505079f2625ca7ab",
-  "file": "classify/6a01ffe436d6813dc2727b7f6e59debe70943f596f129ad7505079f2625ca7ab.json",
+  "input_hash": "sha256:355db22f7f11f10c0fb5402081f83b2cda0966295332e7cf80c25ada080d860e",
+  "file": "classify/355db22f7f11f10c0fb5402081f83b2cda0966295332e7cf80c25ada080d860e.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1798,16 +1958,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:8",
-  "input_hash": "sha256:aa8f70cd45f9b331361f49e82e6b884c5c6e2038bf192ba124a5b1aa05dc6676",
-  "file": "classify/aa8f70cd45f9b331361f49e82e6b884c5c6e2038bf192ba124a5b1aa05dc6676.json",
+  "input_hash": "sha256:4ec8e9df1393bab7ed01c4fdd4b23f75708dfb8229e6752362704b88574f8230",
+  "file": "classify/4ec8e9df1393bab7ed01c4fdd4b23f75708dfb8229e6752362704b88574f8230.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1842,16 +2006,20 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {
   "tool": "classify",
   "purpose": "classify:catalyst:9",
-  "input_hash": "sha256:82898e502d46fb98219f3fda257ccd22671102288440deaa30be6f051db354a5",
-  "file": "classify/82898e502d46fb98219f3fda257ccd22671102288440deaa30be6f051db354a5.json",
+  "input_hash": "sha256:05772513bed21d2fcd6b84de6b98b5d35b1cec23cb8c63e1c1c1e37bde97a7b9",
+  "file": "classify/05772513bed21d2fcd6b84de6b98b5d35b1cec23cb8c63e1c1c1e37bde97a7b9.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1886,9 +2054,13 @@
     {
      "id": "미확정",
      "description": "근거가 불분명하거나 상충해 단계를 정할 수 없는 호재"
+    },
+    {
+     "id": "호재 아님",
+     "description": "교통·개발·학교·상업·생활인프라 호재가 아닌 자료. 아파트 분양 광고·청약 일정·모델하우스·분양가·경쟁률·시세·대출·세금 기사, 단지 홍보문은 여기(호재 단계보다 우선). 예: '○○ 다음 주 1순위 청약'"
     }
    ],
-   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류"
+   "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
   }
  },
  {

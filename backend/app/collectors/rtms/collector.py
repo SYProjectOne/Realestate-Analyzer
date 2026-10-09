@@ -16,6 +16,16 @@ CSV 를
 
 저장: 페이지 응답 XML 1개 = raw_document 1행(URL 에 serviceKey 없음). 파싱한 거래는 ``trades`` 에 모으고
 ``load=True`` 면 ``rtms_trade`` 에 적재한다(같은 raw_document 는 한 번만 — 멱등).
+
+분양권 전매(R3b F1a): Open API 경로에서는 같은 키·같은 LAWD_CD/DEAL_YMD 로 ``PRESALE_API_URL``
+(국토교통부_아파트 분양권전매 실거래가 자료, ``RTMSDataSvcSilvTrade``)도 받는다(``presale=True`` 기본). 같은
+raw_document 흐름(source_kind 'rtms')이고 URL 경로로 구별한다. 그 거래는 ``is_presale=True`` 로 적재한다
+(분양권·입주권 모두 — 입주 전 권리 거래, 매매 갭·벤치마크 점수에서 빠진다). 키가 이 서비스에 활용신청되지
+않았으면(401·403·포털 오류 코드) 실패 행 1개만 남기고 그 실행의 나머지 분양권 호출은 하지 않는다
+(``presale_disabled_reason``). 매매 수집은 영향 없다.
+
+키 마스킹(R3b F1a): 응답은 ``reference.rawstore.scrub_result`` 로 오류 문구·본문에서 키(원문·인코딩 형태)를
+가린 뒤 저장·파싱한다(포털 오류 문구가 키를 되돌려 주면 error_text 상세로 DB 에 남던 경로).
 """
 
 from __future__ import annotations
@@ -32,7 +42,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.collectors.reference.load import LoadStats
-from app.collectors.reference.rawstore import RawStore, fetch_failure
+from app.collectors.reference.rawstore import RawStore, fetch_failure, scrub_result
 from app.collectors.rtms.parse import TradeRecord, api_error_message, parse_trade_xml
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
@@ -43,6 +53,7 @@ from app.models import RtmsTrade
 
 __all__ = [
     "DISABLED_NO_KEY",
+    "PRESALE_API_URL",
     "RTMS_API_URL",
     "ReprocessedTradeSource",
     "RtmsCollector",
@@ -51,6 +62,10 @@ __all__ = [
 ]
 
 RTMS_API_URL = "https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade"
+PRESALE_API_URL = "https://apis.data.go.kr/1613000/RTMSDataSvcSilvTrade/getRTMSDataSvcSilvTrade"
+_AUTH_STATUSES = frozenset({401, 403})
+# 포털 공통 오류 returnReasonCode: 20 접근 거부·22 한도 초과·30 미등록 키·31 기한 만료·32 미등록 IP
+_AUTH_CODES = frozenset({"20", "22", "30", "31", "32"})
 DISABLED_NO_KEY = "비활성(키 없음)"
 SessionFactory = Callable[[], AbstractContextManager[Session]]
 _UNSET = object()
@@ -96,6 +111,7 @@ class PageOutcome:
     result_code: str | None
     result_msg: str | None
     n_items: int
+    is_presale: bool = False
 
 
 class RtmsCollector:
@@ -113,7 +129,9 @@ class RtmsCollector:
         load: bool = True,
         session_factory: SessionFactory = get_session,
         raw_dir: Path | None = None,
+        presale: bool = True,
     ) -> None:
+        """``presale``: Open API 경로에서 분양권 전매 API 도 받는다(모듈 설명)."""
         if service_key is _UNSET:
             secret = get_settings().data_go_kr_key
             key = secret.get_secret_value() if secret is not None else None
@@ -122,6 +140,8 @@ class RtmsCollector:
         # 공공데이터포털은 '인코딩 키'(%2B 등)와 '디코딩 키'를 준다. httpx 가 다시 인코딩하므로 디코딩
         # 형태로 맞춘다.
         self._key = unquote(key) if key else None
+        self._secrets = (key, self._key)
+        self._presale = presale
         self._http = http
         self._fallback = fallback
         self._months = max(1, months)
@@ -134,6 +154,8 @@ class RtmsCollector:
         self.pages: list[PageOutcome] = []
         self.load_stats: LoadStats | None = None
         self._seen_docs: set[int | None] = set()
+        # 이번 실행에서 분양권 API 를 멈춘 사유('403: SERVICE_KEY_IS_NOT_REGISTERED_ERROR' 등) — 없으면 None
+        self.presale_disabled_reason: str | None = None
 
     @property
     def mode(self) -> str:
@@ -159,8 +181,25 @@ class RtmsCollector:
             start = max(start, since_ym) if since_ym <= end else end
         return month_range(start, end)
 
+    def _apis(self) -> list[tuple[str, bool]]:
+        """(엔드포인트, is_presale) — 매매 먼저, 분양권은 켜져 있고 이번 실행에서 멈추지 않았을 때."""
+        apis = [(RTMS_API_URL, False)]
+        if self._presale and self.presale_disabled_reason is None:
+            apis.append((PRESALE_API_URL, True))
+        return apis
+
+    def get(self, url: str, params: dict[str, str], *, http: HttpClient | None = None) -> FetchResult:
+        """키를 붙여 요청하고, 키를 모든 표기로 지운 결과를 돌려준다(url = 키 없는 조회 주소)."""
+        client = http or self._http
+        if client is None:
+            with HttpClient() as own:
+                return self.get(url, params, http=own)
+        r = client.get(url, params={"serviceKey": self._key or "", **params})
+        return scrub_result(r, self._secrets, url=f"{url}?{urlencode(params)}")
+
     def fetch(self, region: Region, snapshot: Snapshot, since: str | None) -> list[RawDocument]:
         self.trades, self.pages, self.load_stats = [], [], None
+        self.presale_disabled_reason = None
         self._seen_docs = set()  # 같은 원문(같은 sha256)이 두 번 오면 거래를 한 번만
         if not self.enabled:
             return []
@@ -173,7 +212,10 @@ class RtmsCollector:
                 for lawd in region.sigungu_codes:
                     for ym in months:
                         if self.mode == "openapi":
-                            docs.extend(self._openapi_month(http, store, region.id, lawd, ym))
+                            for api_url, presale in self._apis():
+                                docs.extend(
+                                    self._openapi_month(http, store, region.id, lawd, ym, api_url, presale)
+                                )
                         else:
                             docs.extend(self._fallback_month(store, region.id, lawd, ym))
                 if self._load:
@@ -192,6 +234,7 @@ class RtmsCollector:
         키가 없으면(재가공 폴백 포함) 하지 않는다 — 재가공 원천은 인터페이스만 있다.
         """
         self.trades, self.pages, self.load_stats = [], [], None
+        self.presale_disabled_reason = None
         self._seen_docs = set()
         if self.mode != "openapi":
             return []
@@ -215,9 +258,12 @@ class RtmsCollector:
                 store = RawStore(session, raw_dir=self._raw_dir)
                 for lawd in region.sigungu_codes:
                     for ym in wanted:
-                        if self._shown_url(lawd, ym, 1) in have:
-                            continue
-                        docs.extend(self._openapi_month(http, store, region.id, lawd, ym))
+                        for api_url, presale in self._apis():
+                            if self._shown_url(lawd, ym, 1, api_url) in have:
+                                continue
+                            docs.extend(
+                                self._openapi_month(http, store, region.id, lawd, ym, api_url, presale)
+                            )
                 if self._load and self.trades:
                     self.load_stats = load_trades(session, region.id, self.trades)
         finally:
@@ -225,25 +271,27 @@ class RtmsCollector:
                 http.close()
         return docs
 
-    def _shown_url(self, lawd: str, ym: str, page: int) -> str:
-        query = urlencode({"LAWD_CD": lawd, "DEAL_YMD": ym, "numOfRows": self._num_rows, "pageNo": page})
-        return f"{RTMS_API_URL}?{query}"
+    def _params(self, lawd: str, ym: str, page: int) -> dict[str, str]:
+        return {"LAWD_CD": lawd, "DEAL_YMD": ym, "numOfRows": str(self._num_rows), "pageNo": str(page)}
+
+    def _shown_url(self, lawd: str, ym: str, page: int, api_url: str = RTMS_API_URL) -> str:
+        return f"{api_url}?{urlencode(self._params(lawd, ym, page))}"
 
     def _openapi_month(
-        self, http: HttpClient, store: RawStore, region_id: int, lawd: str, ym: str
+        self,
+        http: HttpClient,
+        store: RawStore,
+        region_id: int,
+        lawd: str,
+        ym: str,
+        api_url: str = RTMS_API_URL,
+        presale: bool = False,
     ) -> list[RawDocument]:
         docs: list[RawDocument] = []
         page_no = 1
         while page_no <= self._max_pages:
-            params = {
-                "serviceKey": self._key or "",
-                "LAWD_CD": lawd,
-                "DEAL_YMD": ym,
-                "numOfRows": str(self._num_rows),
-                "pageNo": str(page_no),
-            }
-            r = http.get(RTMS_API_URL, params=params)
-            shown = self._shown_url(lawd, ym, page_no)
+            r = self.get(api_url, self._params(lawd, ym, page_no), http=http)
+            shown = r.url
             if not r.ok:
                 failure = fetch_failure(r)
                 doc = store.save_result(
@@ -256,7 +304,9 @@ class RtmsCollector:
                     detail=api_error_message(r.content),
                 )
                 docs.append(doc)
-                self.pages.append(PageOutcome(lawd, ym, page_no, doc, None, doc.error_text, 0))
+                self.pages.append(PageOutcome(lawd, ym, page_no, doc, None, doc.error_text, 0, presale))
+                if presale and r.status in _AUTH_STATUSES:
+                    self.presale_disabled_reason = f"{r.status}: {doc.error_text or ''}".rstrip(": ")
                 break
             doc = store.save_result(
                 r,
@@ -267,11 +317,15 @@ class RtmsCollector:
                 region_id=region_id,
             )
             docs.append(doc)
-            page = parse_trade_xml(r.content)
+            page = parse_trade_xml(r.content, is_presale=presale)
             self.pages.append(
-                PageOutcome(lawd, ym, page_no, doc, page.result_code, page.result_msg, len(page.items))
+                PageOutcome(
+                    lawd, ym, page_no, doc, page.result_code, page.result_msg, len(page.items), presale
+                )
             )
             if not page.ok:
+                if presale and page.result_code in _AUTH_CODES:  # 200 + 포털 인증 오류(미신청 등)
+                    self.presale_disabled_reason = f"{page.result_code}: {page.result_msg or ''}".rstrip(": ")
                 break
             if doc.id not in self._seen_docs:
                 self._seen_docs.add(doc.id)
@@ -301,13 +355,20 @@ class RtmsCollector:
         return [doc]
 
 
-TradeKey = tuple[str, str | None, Decimal, int | None, int, str, str]
+TradeKey = tuple[str, str | None, Decimal, int | None, int, str, str, bool]
 
 
 def _key(
-    apt_name: str, place: str | None, area: Decimal, floor: int | None, price: int, day: str, src: str
+    apt_name: str,
+    place: str | None,
+    area: Decimal,
+    floor: int | None,
+    price: int,
+    day: str,
+    src: str,
+    presale: bool,
 ) -> TradeKey:
-    return (apt_name, place, Decimal(area).quantize(Decimal("0.01")), floor, price, day, src)
+    return (apt_name, place, Decimal(area).quantize(Decimal("0.01")), floor, price, day, src, bool(presale))
 
 
 def load_trades(
@@ -316,9 +377,8 @@ def load_trades(
     """rtms_trade 적재(멱등).
 
     같은 거래가 날마다 받은 다른 원문(같은 월 재조회)에 또 나오므로 원문 단위가 아니라 거래 키
-    (단지명, 법정동 코드|동, 면적, 층, 금액, 계약일, source)로 맞춘다. 키가 같은 기존 행은 해제 여부만
-    갱신하고,
-    같은 키가 여러 건이면 건수만큼 둔다.
+    (단지명, 법정동 코드|동, 면적, 층, 금액, 계약일, source, 분양권 여부)로 맞춘다. 키가 같은 기존 행은
+    해제 여부만 갱신하고, 같은 키가 여러 건이면 건수만큼 둔다.
     """
     stats = LoadStats()
     items = list(trades)
@@ -342,11 +402,19 @@ def load_trades(
             row.price_won,
             row.deal_date,
             row.source,
+            row.is_presale,
         )
         existing.setdefault(k, []).append(row)
     for doc_id, t in items:
         k = _key(
-            t.apt_name, t.legal_dong_code or t.dong, t.area_m2, t.floor, t.price_won, t.deal_date, t.source
+            t.apt_name,
+            t.legal_dong_code or t.dong,
+            t.area_m2,
+            t.floor,
+            t.price_won,
+            t.deal_date,
+            t.source,
+            t.is_presale,
         )
         pool = existing.get(k)
         if pool:
