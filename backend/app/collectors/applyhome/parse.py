@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
@@ -101,11 +102,26 @@ def detail_house_name(html: str) -> str | None:
 
 
 def notice_pdf_links(html: str) -> list[str]:
-    """상세 팝업의 모집공고문 첨부 링크(static.applyhome.co.kr ``getAtchmnfl.do``), 문서 순서·중복 제거."""
+    """상세 팝업의 모집공고문 첨부 링크(static.applyhome.co.kr ``getAtchmnfl.do``), 문서 순서·중복 제거.
+
+    호스트는 **정확히** ``STATIC_HOST`` 여야 한다(R3 minor 17: 부분 문자열 비교는
+    ``static.applyhome.co.kr.evil.example``·``evil.example/?static.applyhome.co.kr`` 를 통과시킨다).
+    scheme 은 http·https 만.
+    """
     soup = BeautifulSoup(html, "lxml")
     out: list[str] = []
     for a in soup.find_all("a", href=True):
-        href = str(a["href"]).strip()
-        if "getAtchmnfl.do" in href and STATIC_HOST in href and href not in out:
-            out.append(href.replace("&amp;", "&"))
+        href = str(a["href"]).strip().replace("&amp;", "&")
+        try:
+            parts = urlsplit(href)
+            host = (parts.hostname or "").lower()
+        except ValueError:
+            continue
+        if (
+            parts.scheme in ("http", "https")
+            and host == STATIC_HOST
+            and parts.path.endswith("getAtchmnfl.do")
+            and href not in out
+        ):
+            out.append(href)
     return out

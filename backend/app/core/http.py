@@ -120,6 +120,8 @@ class BlockedHostError(httpx.RequestError):
 
 Resolver = Callable[[str], list[str]]
 """호스트 이름 → IP 문자열 목록(DNS). 실패하면 빈 목록."""
+_UNRESOLVABLE_TLDS = (".test", ".example", ".invalid")
+"""RFC 2606 예약 TLD — 공개 DNS 에 없으므로 묻지 않는다(테스트 호스트)."""
 
 
 def _system_resolve(host: str) -> list[str]:
@@ -263,7 +265,7 @@ class _Core:
             return f"{BLOCKED_HOST}: localhost"
         if _ip_blocked(h):
             return f"{BLOCKED_HOST}: 내부망 주소 {h}"
-        if self._resolver is None:
+        if self._resolver is None or h.endswith(_UNRESOLVABLE_TLDS):
             return None
         if h not in self._resolved:
             self._resolved[h] = any(_ip_blocked(a) for a in self._resolver(h))
