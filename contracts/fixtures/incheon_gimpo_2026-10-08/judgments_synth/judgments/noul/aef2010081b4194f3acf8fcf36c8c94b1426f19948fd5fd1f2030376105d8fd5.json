@@ -1,0 +1,31 @@
+{
+  "tool": "noul",
+  "purpose": "noul:ladder:asof_plus_3y:2029-10:c1",
+  "input_hash": "sha256:aef2010081b4194f3acf8fcf36c8c94b1426f19948fd5fd1f2030376105d8fd5",
+  "input_len": 729,
+  "status": "review",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "horizon": "asof_plus_3y",
+    "target_ym": "2029-10",
+    "propositions": []
+  },
+  "raw": {
+    "tool": "jev_noul",
+    "model": "jev-1.13.0",
+    "status": "review",
+    "results": [],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서에 이 시점 사다리 없음(입주 후 1년만 판정)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 1,
+  "error_text": null
+}

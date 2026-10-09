@@ -44,6 +44,38 @@ R3 독립 리뷰(`docs/design/wp/R3_REVIEW.md`) 후속 — CEO 결정 D9(`docs/d
   사유: R3 F3: 픽스처 매니페스트 도입(minor 6) — 데이터 변경 없음
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.4`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
 
+### fixtures (WP9-후속 2026-10-09 — 계약 버전 변경 없음, CEO 결정 W1·W2·W5 / D9-1)
+
+사유: R3 WP9 통합 회귀 실패(T1 b·T3 mock·T11·T7, e2e 흐름 2)의 CEO 결정(`docs/design/wp/R3_FIX.md` 'WP9 통합 발견 배정').
+매니페스트(`contracts/fixtures.sha256.json`) 사유: WP9-후속: 픽스처 갱신(W1 complexes.json 골든 v2 정렬, W2 judgments_synth 합성 판정 녹화, W5 T11 하위 생활권 변형)
+모두 생성기(`tools/build_incheon_gimpo.py`·`tools/record_synth_judgments.py`)로 다시 만들었고 `--check` 바이트 일치.
+
+- **W1 `incheon_gimpo_2026-10-08/complexes.json` ← 골든 v2 inputs(사람 승인)** — 원천 `tools/incheon_gimpo_complexes*.py` 수정. 차이 목록(DB 입력 빌더 기준):
+
+  | 단지 | 필드 | 이전 | 이후(= v2) | 라벨·근거 |
+  | --- | --- | --- | --- | --- |
+  | 1 더샵 송도그란테르 | 접수 상태(official_popup) | 불가 '마감(추가 공고 미정)' | 미정 '추가 공급 미정(…공고 이력 있음)' | meta §1-3-4(공고 이력 있음 = 미정) |
+  | 1 더샵 송도그란테르 | winner_date / resale_end | 2026-05-28 / 2026-11-28 | 2026-06-02 / 2026-12-02 | 추정 — 보고서 '2026-05-28~06-02 기준' 블록별 마지막 |
+  | 3 송도 한내들 센트럴리버 | 현재 조건 계약금 | 5% | 2.92% | 추정 — (1차 500만 + 입주 때까지 2,000만) ÷ P_mid 8.56억 |
+  | 3 송도 한내들 센트럴리버 | 84A floor(현재 구매가 하단) | 842,100,000(본청약 2층) | 813,400,000 → 8.13~8.99억 | 추정 — 보고서 현재 구매가(84㎡ 묶음: 임의공급 84D 최저) |
+  | 4 오퍼스 한강 스위첸 | 84A floor | 없음(→ 6.99억 단일) | 620,000,000(84C 1층) → 6.26~6.99억 | 추정 — 보고서 '6.26~6.99억' |
+  | 6 더샵 검단레이크파크 AB23 | 84A floor | 없음(→ 6.68억 단일) | 645,900,000(84C 최고가) → 6.51~6.68억 | 추정 — 보고서 '84C 6.51억' |
+  | 12 더샵 송도마리나베이 | winner_date / resale_months | 확인 불가 / 확인 불가 | 2026-09-15 / 0 | 추정 — 이번 무순위 접수일 대체, 전매제한 도과 |
+  | 2·5·8·9·12 | 현재 구매가(원 단위) | 공고 값(예 578,140,000) | 그대로 | **가격 반올림 규칙**: v2 는 보고서 표기(억 소수 2~3자리) — 원 단위와 50만원 이하 차이는 같은 값(T1 b 테스트) |
+
+  맞추지 않은 것(앱 규칙 — 픽스처로 맞추면 사실을 바꾼다): 칸타빌(7) 기준 타입 84B(84㎡ 최근접) 6.70~7.04억 vs v2 84A 6.64~6.97억;
+  즉시 입주 단지(11·12) move_in_ym(준공월)·completed_year=None(입력 빌더) vs v2 move_in None·completed_year; 공고 전(15·16) 표시 접수 행 없음 vs v2 '미정'
+  (비공식 접수 행만 — 점수 무관); has_priority_supply·재당첨·중도금 문구·라벨(입력 빌더가 사실 행에서 만든다, 점수 무관).
+  T1(b) DB 경로 기대 = v2 inputs + D9-1 범위 + 칸타빌 기준 타입 가격(`backend/tests/regress/test_t01_top5.py`).
+  파생 파일: `provenance.json`·`raw/documents.json`·`raw/notice/01_n.txt`·`03_n.txt`·`raw/official_site/03_site.txt`(발췌 줄 변경).
+- **W2 `incheon_gimpo_2026-10-08/judgments_synth/`(신규, 라벨 '합성')** — 생성기 `tools/record_synth_judgments.py`: devseed DB 에서 실제
+  파이프라인(rejudge 전체 + T3 사람 확인 흐름)을 결정적 가짜 판정기(WP7 SynthJev + 보고서 값: classify #62·#110, noul #65~70·#118~123, rerank #124,
+  decide #125~129)로 돌려 payload hash 그대로 봉투 247개를 저장. adapter_version 은 `judgments/_meta.json` 과 같다. 회귀·e2e mock 재판정용
+  (`JUDGE_FIXTURE_DIR`). `judgments/`(보고서 재구성)는 그대로 — devseed·T2·T6·T7 보고서 대조용.
+- **W5 `raw/rtms/t11_switzen_subarea.json`(신규)** — T11 하위 생활권(장기·운양) 변형: 생활권 편집 + 한강센트럴자이 1·2단지(2017) 거래 6건(보고서
+  범위 4.5~5.2억, 날짜·층 합성) + 생활권 밖 리버시티·고촌 센트럴자이 거래. `raw/rtms/t11_switzen_comparables.json` 설명만 수정(그대로 = 신축, 대체 아님).
+- `README.md`: 파일 표(judgments_synth·T11 변형), 데이터 주의 10(W1), T7(delta_rerank = 점수 차)·T11 행, R3 매핑 표, 'D9-1로 인한 차이' 표.
+
 ## 2026-10-09.3
 
 R2 WP5·WP7 요청(`docs/design/wp/CONTRACT_CHANGES_R1.md` "R2 WP5·WP7 요청"·"R2 (WP0 처리 대기)") 반영. 마이그레이션 `0003_r2`

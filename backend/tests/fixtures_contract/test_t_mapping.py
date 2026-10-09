@@ -137,6 +137,32 @@ def test_t11_substitute_comparables() -> None:
     assert all((t["completed_year"] or 0) < 2026 for t in doc["trades"]), "신축(같은 산단 입주 단지) 0건"
 
 
+def test_t11_subarea_variant_w5() -> None:
+    """W5: 하위 생활권(장기·운양) 변형 — 그 생활권 거래는 2020년 이전 준공만(대체 = 한강센트럴자이 2017).
+
+    리버시티(2020)는 신축이고 생활권 밖(향산리).
+    """
+    from app.core.contracts_gen import TradeInput
+
+    doc = load_json(RAW / "rtms/t11_switzen_subarea.json")
+    edit, exp = doc["living_area_edit"], doc["expected"]
+    region = load_json(FIXTURE / "region.json")
+    split = next(a for a in region["living_areas"] if a["id"] == edit["split_from"])
+    assert set(edit["new_area"]["legal_dong_codes"]) < set(split["legal_dong_codes"])
+    inside = [t for t in doc["trades"] if t["legal_dong_code"] in edit["new_area"]["legal_dong_codes"]]
+    assert inside == doc["trades"], "trades = 하위 생활권 안 거래만"
+    assert all(t["completed_year"] < 2020 for t in inside) and exp["new_build_trades_in_area"] == 0
+    assert {t["apt_name"] for t in inside} == set(exp["substitute_members"])
+    assert max(t["completed_year"] for t in inside) == exp["substitute_completed_year"] == 2017
+    outside = doc["outside_trades"]
+    assert all(t["legal_dong_code"] not in edit["new_area"]["legal_dong_codes"] for t in outside)
+    assert any("리버시티" in t["apt_name"] and t["completed_year"] == 2020 for t in outside)
+    for t in [*inside, *outside]:
+        row = {k: v for k, v in t.items() if k != "legal_dong_code"}
+        TradeInput.model_validate(row | {"living_area": "la_x"})
+    assert exp["coef_used"] == round(0.015 * min(exp["y_ref"] - 2017, 8), 4)
+
+
 def test_t13_removed_provenance() -> None:
     exp = load_json(RAW / "t13_missing_provenance/expected.json")
     removed = set(exp["removed_prov_ids"])

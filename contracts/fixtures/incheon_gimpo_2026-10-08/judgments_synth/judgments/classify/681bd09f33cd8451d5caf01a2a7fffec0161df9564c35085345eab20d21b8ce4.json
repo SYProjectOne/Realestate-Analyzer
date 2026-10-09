@@ -1,0 +1,337 @@
+{
+  "tool": "classify",
+  "purpose": "classify:inclusion:batch0",
+  "input_hash": "sha256:681bd09f33cd8451d5caf01a2a7fffec0161df9564c35085345eab20d21b8ce4",
+  "input_len": 3042,
+  "status": "ok",
+  "confidence": 0.7,
+  "cached": false,
+  "result": {
+    "label": "batch",
+    "prob": 0.8125,
+    "decision": "review",
+    "items": [
+      {
+        "id": "complex:1",
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 1.0
+        }
+      },
+      {
+        "id": "complex:2",
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 1.0
+        }
+      },
+      {
+        "id": "complex:3",
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 1.0
+        }
+      },
+      {
+        "id": "complex:4",
+        "label": "private_sale_apt",
+        "prob": 0.72,
+        "decision": "review",
+        "distribution": {
+          "private_sale_apt": 0.72
+        }
+      },
+      {
+        "id": "complex:5",
+        "label": "private_sale_apt",
+        "prob": 0.85,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.85
+        }
+      },
+      {
+        "id": "complex:6",
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 1.0
+        }
+      },
+      {
+        "id": "complex:7",
+        "label": "private_sale_apt",
+        "prob": 0.97,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.97
+        }
+      },
+      {
+        "id": "complex:8",
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.99
+        }
+      },
+      {
+        "id": "complex:9",
+        "label": "private_sale_apt",
+        "prob": 1.0,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 1.0
+        }
+      },
+      {
+        "id": "complex:10",
+        "label": "private_sale_apt",
+        "prob": 0.95,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.95
+        }
+      },
+      {
+        "id": "complex:11",
+        "label": "private_sale_apt",
+        "prob": 0.95,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.95
+        }
+      },
+      {
+        "id": "complex:12",
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.99
+        }
+      },
+      {
+        "id": "complex:13",
+        "label": "private_sale_apt",
+        "prob": 0.85,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.85
+        }
+      },
+      {
+        "id": "complex:14",
+        "label": "private_sale_apt",
+        "prob": 0.7,
+        "decision": "review",
+        "distribution": {
+          "private_sale_apt": 0.7
+        }
+      },
+      {
+        "id": "complex:15",
+        "label": "private_sale_apt",
+        "prob": 0.99,
+        "decision": "auto",
+        "distribution": {
+          "private_sale_apt": 0.99
+        }
+      },
+      {
+        "id": "complex:16",
+        "label": "private_sale_apt",
+        "prob": 0.84,
+        "decision": "review",
+        "distribution": {
+          "private_sale_apt": 0.84
+        }
+      }
+    ]
+  },
+  "raw": {
+    "tool": "jev_classify",
+    "model": "jev-1.13.0",
+    "results": [
+      {
+        "id": "complex:1",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 1.0
+        },
+        "top_probability": 1.0,
+        "confidence": 1.0,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:2",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 1.0
+        },
+        "top_probability": 1.0,
+        "confidence": 1.0,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:3",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 1.0
+        },
+        "top_probability": 1.0,
+        "confidence": 1.0,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:4",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.72
+        },
+        "top_probability": 0.72,
+        "confidence": 0.72,
+        "decision": "review"
+      },
+      {
+        "id": "complex:5",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.85
+        },
+        "top_probability": 0.85,
+        "confidence": 0.85,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:6",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 1.0
+        },
+        "top_probability": 1.0,
+        "confidence": 1.0,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:7",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.97
+        },
+        "top_probability": 0.97,
+        "confidence": 0.97,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:8",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.99
+        },
+        "top_probability": 0.99,
+        "confidence": 0.99,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:9",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 1.0
+        },
+        "top_probability": 1.0,
+        "confidence": 1.0,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:10",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.95
+        },
+        "top_probability": 0.95,
+        "confidence": 0.95,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:11",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.95
+        },
+        "top_probability": 0.95,
+        "confidence": 0.95,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:12",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.99
+        },
+        "top_probability": 0.99,
+        "confidence": 0.99,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:13",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.85
+        },
+        "top_probability": 0.85,
+        "confidence": 0.85,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:14",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.7
+        },
+        "top_probability": 0.7,
+        "confidence": 0.7,
+        "decision": "review"
+      },
+      {
+        "id": "complex:15",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.99
+        },
+        "top_probability": 0.99,
+        "confidence": 0.99,
+        "decision": "auto"
+      },
+      {
+        "id": "complex:16",
+        "classification": "private_sale_apt",
+        "probabilities": {
+          "private_sale_apt": 0.84
+        },
+        "top_probability": 0.84,
+        "confidence": 0.84,
+        "decision": "review"
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "complexes.json inclusion(보고서 #62·#110)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": null,
+  "error_text": null
+}

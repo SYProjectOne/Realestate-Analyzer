@@ -92,8 +92,9 @@
         }
       ],
       "winner_date": {
-        "v": "2026-05-28",
-        "label": "확인됨",
+        "v": "2026-06-02",
+        "label": "추정",
+        "reason": "블록별 발표일 중 마지막",
         "prov": "fp_1_008",
         "checked_at": "2026-10-07",
         "unit": "date"
@@ -132,7 +133,7 @@
         "unit": "months"
       },
       "resale_end": {
-        "v": "2026-11-28",
+        "v": "2026-12-02",
         "label": "추정",
         "reason": "산술",
         "prov": "fp_1_013",
@@ -511,14 +512,14 @@
         "id": null,
         "complex_id": 1,
         "snapshot_id": 12,
-        "status": "불가",
+        "status": "미정",
         "path": "official_popup",
         "evidence_url": "https://xn--2i0bq5hvjp1kpzchxro8a528e.kr/",
         "screenshot_path": null,
         "raw_document_id": null,
         "checked_at": "2026-10-07",
         "http_status": null,
-        "reason": "마감(추가 공고 미정)",
+        "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)",
         "note": "08-26 팝업 '세대 관람 종료', 무순위 2차 이후 공고 없음",
         "entered_by": null
       }
@@ -1354,13 +1355,14 @@
           "unit": "won"
         },
         "floor_sample_price_won": {
-          "v": 842100000,
-          "label": "확인됨",
+          "v": 813400000,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 범위(타입 묶음)",
           "prov": "fp_3_015",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
-        "floor_sample_text": "2층",
+        "floor_sample_text": "84㎡ 묶음 최저(임의공급 84D; 본청약 84A 2층 842,100,000원)",
         "balcony_won": {
           "v": 0,
           "label": "확인됨",
@@ -1498,8 +1500,9 @@
           "unit": "date"
         },
         "down_payment_pct": {
-          "v": 5,
-          "label": "확인됨",
+          "v": 2.92,
+          "label": "추정",
+          "reason": "정액 계약금 환산",
           "prov": "fp_3_028",
           "checked_at": "2026-10-07",
           "unit": "pct"
@@ -1896,17 +1899,18 @@
           "unit": "won"
         },
         "floor_sample_price_won": {
-          "v": null,
-          "label": "확인 불가",
-          "reason": "대표 층 공급금액 보고서 미기재",
-          "prov": null,
-          "checked_at": "2026-10-07"
+          "v": 620000000,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 범위(타입 묶음)",
+          "prov": "fp_4_018",
+          "checked_at": "2026-10-07",
+          "unit": "won"
         },
-        "floor_sample_text": null,
+        "floor_sample_text": "84㎡ 묶음 최저(84C 1층)",
         "balcony_won": {
           "v": 5981000,
           "label": "확인됨",
-          "prov": "fp_4_018",
+          "prov": "fp_4_019",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -1914,7 +1918,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_4_019",
+          "prov": "fp_4_020",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -1929,7 +1933,7 @@
           "v": 84.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_4_020",
+          "prov": "fp_4_021",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -1943,14 +1947,14 @@
         "max_price_won": {
           "v": 689000000,
           "label": "확인됨",
-          "prov": "fp_4_021",
+          "prov": "fp_4_022",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
         "floor_sample_price_won": {
           "v": 668000000,
           "label": "확인됨",
-          "prov": "fp_4_022",
+          "prov": "fp_4_023",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -1958,7 +1962,7 @@
         "balcony_won": {
           "v": 6994000,
           "label": "확인됨",
-          "prov": "fp_4_023",
+          "prov": "fp_4_024",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -1966,7 +1970,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_4_024",
+          "prov": "fp_4_025",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -1981,7 +1985,7 @@
           "v": 84.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_4_025",
+          "prov": "fp_4_026",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -1995,14 +1999,14 @@
         "max_price_won": {
           "v": 683000000,
           "label": "확인됨",
-          "prov": "fp_4_026",
+          "prov": "fp_4_027",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
         "floor_sample_price_won": {
           "v": 620000000,
           "label": "확인됨",
-          "prov": "fp_4_027",
+          "prov": "fp_4_028",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2010,7 +2014,7 @@
         "balcony_won": {
           "v": 6080000,
           "label": "확인됨",
-          "prov": "fp_4_028",
+          "prov": "fp_4_029",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2018,7 +2022,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_4_029",
+          "prov": "fp_4_030",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2033,7 +2037,7 @@
           "v": 99.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_4_030",
+          "prov": "fp_4_031",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -2047,7 +2051,7 @@
         "max_price_won": {
           "v": 837000000,
           "label": "확인됨",
-          "prov": "fp_4_031",
+          "prov": "fp_4_032",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2070,7 +2074,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_4_032",
+          "prov": "fp_4_033",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2085,7 +2089,7 @@
           "v": 99.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_4_033",
+          "prov": "fp_4_034",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -2099,7 +2103,7 @@
         "max_price_won": {
           "v": 833000000,
           "label": "확인됨",
-          "prov": "fp_4_034",
+          "prov": "fp_4_035",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2122,7 +2126,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_4_035",
+          "prov": "fp_4_036",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -2139,28 +2143,28 @@
         "effective_from": {
           "v": "2025-06-27",
           "label": "확인됨",
-          "prov": "fp_4_036",
+          "prov": "fp_4_037",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
         "down_payment_pct": {
           "v": 10,
           "label": "확인됨",
-          "prov": "fp_4_037",
+          "prov": "fp_4_038",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
         "down_payment_first_won": {
           "v": 10000000,
           "label": "확인됨",
-          "prov": "fp_4_038",
+          "prov": "fp_4_039",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
         "interim_pct": {
           "v": 60,
           "label": "확인됨",
-          "prov": "fp_4_039",
+          "prov": "fp_4_040",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -2168,7 +2172,7 @@
         "balance_pct": {
           "v": 30,
           "label": "확인됨",
-          "prov": "fp_4_040",
+          "prov": "fp_4_041",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -2256,14 +2260,14 @@
         "supply": {
           "v": 329,
           "label": "확인됨",
-          "prov": "fp_4_041",
+          "prov": "fp_4_042",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 105,
           "label": "확인됨",
-          "prov": "fp_4_042",
+          "prov": "fp_4_043",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -2279,14 +2283,14 @@
         "supply": {
           "v": 27,
           "label": "확인됨",
-          "prov": "fp_4_043",
+          "prov": "fp_4_044",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 41,
           "label": "확인됨",
-          "prov": "fp_4_044",
+          "prov": "fp_4_045",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -2302,14 +2306,14 @@
         "supply": {
           "v": 133,
           "label": "확인됨",
-          "prov": "fp_4_045",
+          "prov": "fp_4_046",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 10,
           "label": "확인됨",
-          "prov": "fp_4_046",
+          "prov": "fp_4_047",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -2325,14 +2329,14 @@
         "supply": {
           "v": 10,
           "label": "확인됨",
-          "prov": "fp_4_047",
+          "prov": "fp_4_048",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 17,
           "label": "확인됨",
-          "prov": "fp_4_048",
+          "prov": "fp_4_049",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -2348,14 +2352,14 @@
         "supply": {
           "v": 11,
           "label": "확인됨",
-          "prov": "fp_4_049",
+          "prov": "fp_4_050",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 8,
           "label": "확인됨",
-          "prov": "fp_4_050",
+          "prov": "fp_4_051",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -2372,7 +2376,7 @@
         "notice_date": {
           "v": "2025-06-27",
           "label": "확인됨",
-          "prov": "fp_4_051",
+          "prov": "fp_4_052",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
@@ -2380,7 +2384,7 @@
         "units": {
           "v": 1029,
           "label": "확인됨",
-          "prov": "fp_4_052",
+          "prov": "fp_4_053",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
@@ -2405,7 +2409,7 @@
           {
             "v": "2025-08-11",
             "label": "확인됨",
-            "prov": "fp_4_053",
+            "prov": "fp_4_054",
             "checked_at": "2026-10-07",
             "unit": "date"
           }
@@ -2413,7 +2417,7 @@
         "units": {
           "v": 510,
           "label": "확인됨",
-          "prov": "fp_4_054",
+          "prov": "fp_4_055",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
@@ -3406,17 +3410,18 @@
           "unit": "won"
         },
         "floor_sample_price_won": {
-          "v": null,
-          "label": "확인 불가",
-          "reason": "저층은 공고 층별가 적용(보고서 미기재)",
-          "prov": null,
-          "checked_at": "2026-10-07"
+          "v": 645900000,
+          "label": "추정",
+          "reason": "보고서 현재 구매가 범위(타입 묶음)",
+          "prov": "fp_6_018",
+          "checked_at": "2026-10-07",
+          "unit": "won"
         },
-        "floor_sample_text": null,
+        "floor_sample_text": "84㎡ 묶음 최저(84C 최고가)",
         "balcony_won": {
           "v": 5458000,
           "label": "확인됨",
-          "prov": "fp_6_018",
+          "prov": "fp_6_019",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3424,7 +3429,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_6_019",
+          "prov": "fp_6_020",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3439,7 +3444,7 @@
           "v": 84.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_6_020",
+          "prov": "fp_6_021",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -3453,7 +3458,7 @@
         "max_price_won": {
           "v": 655800000,
           "label": "확인됨",
-          "prov": "fp_6_021",
+          "prov": "fp_6_022",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3468,7 +3473,7 @@
         "balcony_won": {
           "v": 3670000,
           "label": "확인됨",
-          "prov": "fp_6_022",
+          "prov": "fp_6_023",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3476,7 +3481,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_6_023",
+          "prov": "fp_6_024",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3491,7 +3496,7 @@
           "v": 84.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_6_024",
+          "prov": "fp_6_025",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -3505,7 +3510,7 @@
         "max_price_won": {
           "v": 645900000,
           "label": "확인됨",
-          "prov": "fp_6_025",
+          "prov": "fp_6_026",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3520,7 +3525,7 @@
         "balcony_won": {
           "v": 4920000,
           "label": "확인됨",
-          "prov": "fp_6_026",
+          "prov": "fp_6_027",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3528,7 +3533,7 @@
           "v": 0,
           "label": "추정",
           "reason": "보고서 현재 구매가 기준",
-          "prov": "fp_6_027",
+          "prov": "fp_6_028",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -3545,28 +3550,28 @@
         "effective_from": {
           "v": "2026-08-07",
           "label": "확인됨",
-          "prov": "fp_6_028",
+          "prov": "fp_6_029",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
         "down_payment_pct": {
           "v": 5,
           "label": "확인됨",
-          "prov": "fp_6_029",
+          "prov": "fp_6_030",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
         "down_payment_first_won": {
           "v": 10000000,
           "label": "확인됨",
-          "prov": "fp_6_030",
+          "prov": "fp_6_031",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
         "interim_pct": {
           "v": 60,
           "label": "확인됨",
-          "prov": "fp_6_031",
+          "prov": "fp_6_032",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -3575,7 +3580,7 @@
           "v": 35,
           "label": "추정",
           "reason": "산술",
-          "prov": "fp_6_032",
+          "prov": "fp_6_033",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -3595,14 +3600,14 @@
           "v": 29,
           "label": "추정",
           "reason": "산술",
-          "prov": "fp_6_033",
+          "prov": "fp_6_034",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 548,
           "label": "확인됨",
-          "prov": "fp_6_034",
+          "prov": "fp_6_035",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -3619,14 +3624,14 @@
           "v": 148,
           "label": "추정",
           "reason": "산술",
-          "prov": "fp_6_035",
+          "prov": "fp_6_036",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 281,
           "label": "확인됨",
-          "prov": "fp_6_036",
+          "prov": "fp_6_037",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -3643,14 +3648,14 @@
           "v": 87,
           "label": "추정",
           "reason": "산술",
-          "prov": "fp_6_037",
+          "prov": "fp_6_038",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 26,
           "label": "확인됨",
-          "prov": "fp_6_038",
+          "prov": "fp_6_039",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -3667,14 +3672,14 @@
           "v": 72,
           "label": "추정",
           "reason": "산술",
-          "prov": "fp_6_039",
+          "prov": "fp_6_040",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "applied": {
           "v": 36,
           "label": "확인됨",
-          "prov": "fp_6_040",
+          "prov": "fp_6_041",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -3691,7 +3696,7 @@
         "notice_date": {
           "v": "2026-06-12",
           "label": "확인됨",
-          "prov": "fp_6_041",
+          "prov": "fp_6_042",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
@@ -3699,7 +3704,7 @@
           {
             "v": "2026-06-25",
             "label": "확인됨",
-            "prov": "fp_6_042",
+            "prov": "fp_6_043",
             "checked_at": "2026-10-07",
             "unit": "date"
           }
@@ -3707,7 +3712,7 @@
         "units": {
           "v": 1403,
           "label": "확인됨",
-          "prov": "fp_6_043",
+          "prov": "fp_6_044",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
@@ -3724,7 +3729,7 @@
         "notice_date": {
           "v": "2026-08-07",
           "label": "확인됨",
-          "prov": "fp_6_044",
+          "prov": "fp_6_045",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
@@ -3732,7 +3737,7 @@
           {
             "v": "2026-08-12",
             "label": "확인됨",
-            "prov": "fp_6_045",
+            "prov": "fp_6_046",
             "checked_at": "2026-10-07",
             "unit": "date"
           }
@@ -3740,7 +3745,7 @@
         "units": {
           "v": 336,
           "label": "확인됨",
-          "prov": "fp_6_046",
+          "prov": "fp_6_047",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
@@ -7758,27 +7763,29 @@
       },
       "apply_dates": [],
       "winner_date": {
-        "v": null,
-        "label": "확인 불가",
-        "reason": "최초 당첨자 발표일 보고서 미기재",
-        "prov": null,
-        "checked_at": "2026-10-07"
+        "v": "2026-09-15",
+        "label": "추정",
+        "reason": "접수일로 대체",
+        "prov": "fp_12_006",
+        "checked_at": "2026-10-07",
+        "unit": "date"
       },
       "contract_dates": [],
       "move_in_ym": {
         "v": "2020-07",
         "label": "확인됨",
         "reason": "즉시 입주",
-        "prov": "fp_12_006",
+        "prov": "fp_12_007",
         "checked_at": "2026-10-07",
         "unit": "ym"
       },
       "resale_months": {
-        "v": null,
-        "label": "확인 불가",
-        "reason": "전매제한 도과(개월 수 보고서 미기재)",
-        "prov": null,
-        "checked_at": "2026-10-07"
+        "v": 0,
+        "label": "추정",
+        "reason": "전매제한 도과",
+        "prov": "fp_12_008",
+        "checked_at": "2026-10-07",
+        "unit": "months"
       },
       "resale_end": null,
       "resale_release_on_registration": {
@@ -7791,7 +7798,7 @@
       "residency_months": {
         "v": 0,
         "label": "확인됨",
-        "prov": "fp_12_007",
+        "prov": "fp_12_009",
         "checked_at": "2026-10-07",
         "unit": "months"
       },
@@ -7823,7 +7830,7 @@
           "v": 84.0,
           "label": "추정",
           "reason": "타입명 기준",
-          "prov": "fp_12_008",
+          "prov": "fp_12_010",
           "checked_at": "2026-10-07",
           "unit": "m2"
         },
@@ -7831,21 +7838,21 @@
           "v": 1,
           "label": "확인됨",
           "reason": "무순위 3회차",
-          "prov": "fp_12_009",
+          "prov": "fp_12_011",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
         "max_price_won": {
           "v": 784000000,
           "label": "확인됨",
-          "prov": "fp_12_010",
+          "prov": "fp_12_012",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
         "floor_sample_price_won": {
           "v": 784000000,
           "label": "확인됨",
-          "prov": "fp_12_011",
+          "prov": "fp_12_013",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -7853,14 +7860,14 @@
         "balcony_won": {
           "v": 13730000,
           "label": "확인됨",
-          "prov": "fp_12_012",
+          "prov": "fp_12_014",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
         "options_required_won": {
           "v": 10960000,
           "label": "확인됨",
-          "prov": "fp_12_013",
+          "prov": "fp_12_015",
           "checked_at": "2026-10-07",
           "unit": "won"
         },
@@ -7877,14 +7884,14 @@
         "effective_from": {
           "v": "2026-09-10",
           "label": "확인됨",
-          "prov": "fp_12_014",
+          "prov": "fp_12_016",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
         "down_payment_pct": {
           "v": 10,
           "label": "확인됨",
-          "prov": "fp_12_015",
+          "prov": "fp_12_017",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -7898,7 +7905,7 @@
         "interim_pct": {
           "v": 0,
           "label": "확인됨",
-          "prov": "fp_12_016",
+          "prov": "fp_12_018",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -7906,7 +7913,7 @@
         "balance_pct": {
           "v": 90,
           "label": "확인됨",
-          "prov": "fp_12_017",
+          "prov": "fp_12_019",
           "checked_at": "2026-10-07",
           "unit": "pct"
         },
@@ -7926,7 +7933,7 @@
           "v": 1,
           "label": "확인됨",
           "reason": "무순위 3회차",
-          "prov": "fp_12_018",
+          "prov": "fp_12_020",
           "checked_at": "2026-10-07",
           "unit": "units"
         },
@@ -7934,7 +7941,7 @@
           "v": 173,
           "label": "추정",
           "reason": "산술",
-          "prov": "fp_12_019",
+          "prov": "fp_12_021",
           "checked_at": "2026-10-07",
           "unit": "count"
         },
@@ -7951,7 +7958,7 @@
         "notice_date": {
           "v": "2026-09-10",
           "label": "확인됨",
-          "prov": "fp_12_020",
+          "prov": "fp_12_022",
           "checked_at": "2026-10-07",
           "unit": "date"
         },
@@ -7959,7 +7966,7 @@
           {
             "v": "2026-09-15",
             "label": "확인됨",
-            "prov": "fp_12_021",
+            "prov": "fp_12_023",
             "checked_at": "2026-10-07",
             "unit": "date"
           }
@@ -7968,7 +7975,7 @@
           "v": 1,
           "label": "확인됨",
           "reason": "무순위 3회차",
-          "prov": "fp_12_022",
+          "prov": "fp_12_024",
           "checked_at": "2026-10-07",
           "unit": "units"
         },

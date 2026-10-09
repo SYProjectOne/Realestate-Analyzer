@@ -16,6 +16,7 @@ contracts/fixtures/
 │  │  ├─ _meta.json                 # {"adapter_version": "mock-fixture-2026-10-08", "recorded_at", "source", "note", "index"}
 │  │  ├─ _index.json                # 녹화 목록 [{judgment_seq, tool, purpose, input_hash, file, report_ref, payload}]
 │  │  └─ <tool>/<hex>.json          # JudgmentEnvelope 1개. <hex> = input_hash에서 'sha256:'를 뺀 64자
+│  ├─ judgments_synth/             # 합성 판정 녹화(라벨 '합성', WP9-후속 W2) — MockAdapter fixture_dir(그 아래 judgments/ 같은 구조)
 │  ├─ raw/                          # 공고문 txt 발췌, 공식 홈페이지 응답(403 포함) 녹화, 청약홈 HTML
 │  └─ http/                         # respx 녹화(수집기 테스트용, WP1)
 ├─ reference/                       # DECISIONS D2-1 참조 파일 사본(법정동·행정동·매핑·세대 현황, 공공누리 1유형)
@@ -35,6 +36,9 @@ contracts/fixtures/
 3. **없으면 `status="review"`** 봉투(`result={}`, `raw={"reason": "no recording"}`, `confidence=None`)를 돌려준다 —
    테스트가 조용히 통과하는 일은 없다. 예외를 던지지 않는다(`JudgeUnavailable`은 다운 시뮬레이션 전용, T18).
 4. 녹화 파일은 `contracts/schemas/judgment_envelope.json`으로 검증된다.
+5. 녹화 디렉터리는 `JUDGE_FIXTURE_DIR`(없으면 `incheon_gimpo_2026-10-08`). 회귀·e2e 의 mock 재판정은
+   `incheon_gimpo_2026-10-08/judgments_synth`(실제 파이프라인 payload hash 그대로 만든 합성 녹화, adapter_version 같음)를 쓴다 —
+   보고서 재구성 녹화(`judgments/`)는 payload 가 보고서 요약이라 파이프라인 재판정에서는 전부 3번(review)이 된다.
 
 ## 지역 정의 (DECISIONS D3)
 

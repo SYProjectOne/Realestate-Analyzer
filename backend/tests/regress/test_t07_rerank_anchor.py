@@ -6,6 +6,10 @@ RA §9 T7 기대 결과(그대로): "후보 변경 시 호출 1회(16개 전부)
 §6-5: 한 score_run 의 rerank 값은 같은 judgment_seq 한 호출에서 나온 것만 쓴다. 후보군이 바뀌면 과거 후보를 전부 포함해
 1회 재호출하고, 이전 run 과의 차이를 delta_rerank 로 낸다.
 
+delta_rerank 정의(R3 minor 25, F2 — §6-5 "이전 run 과의 점수 차이"): **rerank 점수(0~10) 차** =
+s_rerank(이번 호출) − s_rerank(이전 호출), s_rerank = 10 × (N − rank)/(N − 1)(각 호출의 N). 이전 후보가 아니면 null.
+``expected_scores.json`` t7 의 ``delta_rerank`` 열은 보고서 정의(relevance 차)라 보고서 대조(녹화 #71·#124)에만 쓴다.
+
 파이프라인 검사의 '인천 8 단계'는 김포·계양 단지 8개를 inclusion_class='범위 경계'(D2-6, 후보군 제외)로 두어 만든다
 (단지 추가 대신 후보군 제외 → 복원 — 같은 '후보 변경'). 그 외 입력은 devseed 그대로.
 """
@@ -45,6 +49,18 @@ def _q4(v: float) -> float:
     return float(Decimal(str(v)).quantize(Decimal("0.0001"), ROUND_HALF_UP))
 
 
+def _s(rank: int, n: int) -> Decimal:
+    """s_rerank = 10 × (N − rank)/(N − 1), 소수 4자리(app.analysis.score 와 같은 반올림)."""
+    if n <= 1:
+        return Decimal(10)
+    return (Decimal(10) * (n - rank) / (n - 1)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
+
+
+def _score_delta(new: dict[str, Any], prev: dict[str, Any], n_new: int, n_prev: int) -> float:
+    """delta_rerank = 점수 차(§6-5, F2) — 각 호출의 순위·후보 수로 낸 s_rerank 의 차."""
+    return float(_s(int(new["rank"]), n_new) - _s(int(prev["rank"]), n_prev))
+
+
 def _score_rows(env: RegressEnv, ids: list[int], scenario: str = "base") -> dict[int, dict[str, Any]]:
     """G4 비교 API(2~6개씩)로 score_row(성분·delta_rerank 포함)를 모은다."""
     out: dict[int, dict[str, Any]] = {}
@@ -61,7 +77,7 @@ def _score_rows(env: RegressEnv, ids: list[int], scenario: str = "base") -> dict
 
 
 def test_t07_recorded_anchors_8_then_16_superset(env: RegressEnv) -> None:
-    """녹화 #71(인천 8) → #124(16): 16 후보가 이전 8 후보를 전부 포함하고, relevance 차 = t7 delta_rerank."""
+    """녹화 #71(인천 8) → #124(16): 16 후보가 이전 8 후보를 전부 포함하고, relevance 차 = t7 delta_rerank(보고서 대조)."""
     t7 = _t7()
     assert (t7["rerank_judgment_seq_prev"], t7["rerank_judgment_seq"]) == (SEQ_PREV, SEQ_NEW)
     ids = by_key()
@@ -75,6 +91,30 @@ def test_t07_recorded_anchors_8_then_16_superset(env: RegressEnv) -> None:
         assert prev[cid]["relevance"] == pytest.approx(r["relevance_prev"]), r["key"]
         assert new[cid]["relevance"] == pytest.approx(r["relevance"]), r["key"]
         assert _q4(new[cid]["relevance"] - prev[cid]["relevance"]) == pytest.approx(r["delta_rerank"]), r["key"]
+
+
+def test_t07_recorded_anchors_score_delta(env: RegressEnv) -> None:
+    """같은 녹화(#71 → #124)의 delta_rerank(점수 차 정의, §6-5·F2) = s_rerank(#124 순위, N=16) − s_rerank(#71 순위, N=8).
+
+    예: 한내들 #71 1위/8 = 10 → #124 1위/16 = 10 → 0; 마리나베이 #71 8위/8 = 0 → #124 15위/16 ≈ 0.6667.
+    """
+    from app.analysis.score import rerank_component
+    from app.core.contracts_gen import ComplexScoreInput, RerankAnchor, RerankItem, RerankPrev
+
+    envs = _rerank_envelopes(env)
+    prev, new = _items(envs[SEQ_PREV]), _items(envs[SEQ_NEW])
+    anchor = RerankAnchor(
+        judgment_seq=SEQ_NEW, status="ok", items=[RerankItem.model_validate(i) for i in new.values()],
+        prev=RerankPrev(judgment_seq=SEQ_PREV, items=[RerankItem.model_validate(i) for i in prev.values()]),
+    )  # fmt: skip
+    base = ComplexScoreInput.model_validate(
+        load_json(FIXTURE / "expected_scores_v2.json")["inputs"]["complexes"][0]
+    )
+    for cid in new:
+        comp = rerank_component(base.model_copy(update={"complex_id": cid}), anchor)
+        want = _score_delta(new[cid], prev[cid], len(new), len(prev)) if cid in prev else None
+        got = None if comp.delta is None else float(comp.delta)
+        assert got == (None if want is None else pytest.approx(want, abs=1e-4)), (cid, got, want)
 
 
 def test_t07_devseed_scores_use_only_call_124(env: RegressEnv) -> None:
@@ -199,9 +239,9 @@ def test_t07_pipeline_candidates_8_to_16_one_call_delta_and_new_call_only(env: R
             bad.append(f"{cid}: rerank raw {c.raw_value} != {item['relevance']}")
         if f"jl_{s2}" not in (c.formula_text or "") or f"jl_{s1}" in (c.formula_text or ""):
             bad.append(f"{cid}: formula_text 앵커 {c.formula_text!r}")
-        # delta_rerank: 이전 후보(인천 8)는 relevance 차, 새 후보는 없음
+        # delta_rerank: 이전 후보(인천 8)는 rerank 점수 차(§6-5, F2), 새 후보는 없음
         if cid in it1:
-            want_d = _q4(item["relevance"] - it1[cid]["relevance"])
+            want_d = _score_delta(item, it1[cid], n, len(it1))
             if c.delta is None or abs(float(c.delta) - want_d) > 1e-4:
                 bad.append(f"{cid}: delta {c.delta} != {want_d}")
         elif c.delta is not None:
@@ -229,7 +269,7 @@ def test_t07_pipeline_candidates_8_to_16_one_call_delta_and_new_call_only(env: R
         raw = rows[cid]["components"]["rerank"]["raw"]
         assert raw is not None and raw["prov"] == f"jl_{s2}", (cid, raw)
         if cid in it1:
-            assert d is not None and d["v"] == pytest.approx(_q4(it2[cid]["relevance"] - it1[cid]["relevance"]), abs=1e-4), (cid, d)
+            assert d is not None and d["v"] == pytest.approx(_score_delta(it2[cid], it1[cid], n, len(it1)), abs=1e-4), (cid, d)
         else:
             assert d is None, (cid, d)
 

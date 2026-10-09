@@ -4,7 +4,8 @@
 - 모듈 테스트(``tests/<모듈>/``)의 helper 를 import 하지 않는다. 적재는 공개 진입점(``app.api.devseed``),
   확인은 API(``app.main.create_app`` + TestClient)·worker(``app.scheduler.runner.main``)·DB 행으로 한다.
 - 네트워크 없음: SchedulerContext 의 수집기는 기본 ``{}`` (테스트가 필요한 것만 넣는다).
-- 판정기: ``mock`` = ``app.judge.get_adapter``(JUDGE_ADAPTER=mock, 녹화 재생) /
+- 판정기: ``mock`` = ``app.judge.get_adapter``(JUDGE_ADAPTER=mock, **합성 판정 녹화** ``judgments_synth/`` 재생 — e2e 와 같은
+  ``JUDGE_FIXTURE_DIR``; 보고서 재구성 녹화 ``judgments/`` 는 devseed judgment_log·T7 등 보고서 대조용) /
   ``fake`` = 실제 어댑터 경로(``JevMcpAdapter``: guard·캐시·judgment_log)에 결정적 가짜 전송 ``FakeJev`` /
   ``down`` = 모든 호출 JudgeUnavailable.
 
@@ -38,6 +39,7 @@ from app.core.time import KST
 BACKEND = Path(__file__).resolve().parents[2]
 REPO = BACKEND.parent
 FIXTURE = REPO / "contracts" / "fixtures" / "incheon_gimpo_2026-10-08"
+SYNTH = FIXTURE / "judgments_synth"  # 합성 판정 녹화(W2) — mock 재판정이 재생하는 녹화(MockAdapter fixture_dir)
 REFERENCE = REPO / "contracts" / "fixtures" / "reference"
 
 WRITE_TOKEN = "w" * 32
@@ -61,7 +63,8 @@ def make_settings(db: Path, raw_dir: Path, report_dir: Path, *, env: str = "dev"
         raw_dir=raw_dir,
         reference_dir=db.parent / "reference",
         report_dir=report_dir,
-        judge_adapter="mock",
+        # prod + mock 는 설정 단계에서 거부된다(R3 minor 31) — prod 설정은 jev 로 두고 판정기는 호출하지 않는다(T13 은 API 만)
+        judge_adapter="jev" if env == "prod" else "mock",
         api_token=WRITE_TOKEN,  # type: ignore[arg-type]
         readonly_token=READ_TOKEN,  # type: ignore[arg-type]
         log_json=False,
@@ -160,6 +163,27 @@ class FakeJev:
 # ---------------------------------------------------------------- 환경
 
 
+class MissSpy:
+    """MockAdapter 감싸기 — 녹화가 없어 review('no recording')가 된 호출을 모은다(합성 녹화가 payload 를 다 덮는지)."""
+
+    def __init__(self, inner: Any, misses: list[tuple[str, str]]) -> None:
+        self._inner = inner
+        self._misses = misses
+
+    @property
+    def adapter_version(self) -> str:
+        return str(self._inner.adapter_version)
+
+    def call(self, tool: Any, payload: Any, purpose: str, **kw: Any) -> Any:
+        env = self._inner.call(tool, payload, purpose, **kw)
+        if (env.raw or {}).get("reason") == "no recording":
+            self._misses.append((str(tool), purpose))
+        return env
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
 @dataclass(frozen=True)
 class Seeded:
     db: Path
@@ -247,6 +271,7 @@ class RegressEnv:
     tmp: Path
     jev: FakeJev = field(default_factory=FakeJev)
     clock: Clock = field(default_factory=Clock)
+    mock_misses: list[tuple[str, str]] = field(default_factory=list)  # mock 재판정에서 녹화가 없던 (도구, purpose)
     _ctxs: list[Any] = field(default_factory=list)
 
     @property
@@ -277,7 +302,10 @@ class RegressEnv:
             def adapter() -> Any:
                 return JevMcpAdapter(transport=self.jev, session_factory=factory, secrets=[])
         elif judge == "mock":
-            adapter = base.adapter_factory  # JUDGE_ADAPTER=mock → get_adapter(settings, fixture_dir=…)
+            inner = base.adapter_factory  # JUDGE_ADAPTER=mock → get_adapter(settings, fixture_dir=JUDGE_FIXTURE_DIR=SYNTH)
+
+            def adapter() -> Any:
+                return MissSpy(inner(), self.mock_misses)
         elif judge == "down":
             def adapter() -> Any:
                 return MockAdapter(FIXTURE, unavailable=True)
@@ -311,7 +339,7 @@ class RegressEnv:
 def env(seed_db: Seeded, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[RegressEnv]:
     for name in env_var_names():
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.delenv("JUDGE_FIXTURE_DIR", raising=False)
+    monkeypatch.setenv("JUDGE_FIXTURE_DIR", str(SYNTH))  # mock 재판정 = 합성 판정 녹화(e2e/env.ts 와 같은 구성)
     db = tmp_path / "regress.db"
     shutil.copyfile(seed_db.db, db)
     settings = make_settings(db, seed_db.raw_dir, tmp_path / "reports")

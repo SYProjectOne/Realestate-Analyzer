@@ -1,0 +1,128 @@
+{
+ "recorded_at": "2026-10-09",
+ "service": "data.go.kr 15098905 ApplyhomeInfoCmpetRtSvc/v1 (APT·Remndr·OPT 경쟁률) — 사람 활용신청 승인 2026-10-09",
+ "recorder": "contracts/fixtures/tools/record_applyhome_cmpet.py",
+ "note": "실응답 그대로(serviceKey 는 url 에서 빠져 있고 본문에 없음을 확인). synthetic_ 경쟁률 픽스처를 대체한다.",
+ "entries": [
+  {
+   "kind": "apt",
+   "house_manage_no": "2026000367",
+   "pblanc_no": "2026000367",
+   "complex": "9 한강 푸르지오 리버프론트(김포, 본청약 2026-07)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getAPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026000367&cond%5BPBLANC_NO%3A%3AEQ%5D=2026000367",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 48,
+   "error": null,
+   "file": "getAPTLttotPblancCmpet_2026000367.json"
+  },
+  {
+   "kind": "apt",
+   "house_manage_no": "2025000582",
+   "pblanc_no": "2025000582",
+   "complex": "3 송도 한내들 센트럴리버(인천, 본청약 2025-12)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getAPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2025000582&cond%5BPBLANC_NO%3A%3AEQ%5D=2025000582",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 20,
+   "error": null,
+   "file": "getAPTLttotPblancCmpet_2025000582.json"
+  },
+  {
+   "kind": "apt",
+   "house_manage_no": "2026000164",
+   "pblanc_no": "2026000164",
+   "complex": "1 더샵 송도그란테르 G5-1(인천, 본청약 2026-05)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getAPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026000164&cond%5BPBLANC_NO%3A%3AEQ%5D=2026000164",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 68,
+   "error": null,
+   "file": "getAPTLttotPblancCmpet_2026000164.json"
+  },
+  {
+   "kind": "apt",
+   "house_manage_no": "2025000222",
+   "pblanc_no": "2025000222",
+   "complex": "4 오퍼스 한강 스위첸(김포, 본청약 2025-06)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getAPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2025000222&cond%5BPBLANC_NO%3A%3AEQ%5D=2025000222",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 20,
+   "error": null,
+   "file": "getAPTLttotPblancCmpet_2025000222.json"
+  },
+  {
+   "kind": "remndr",
+   "house_manage_no": "2026910203",
+   "pblanc_no": "2026910203",
+   "complex": "1 더샵 송도그란테르 무순위 1차(2026-07-30)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getRemndrLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026910203&cond%5BPBLANC_NO%3A%3AEQ%5D=2026910203",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 3,
+   "error": null,
+   "file": "getRemndrLttotPblancCmpet_2026910203.json"
+  },
+  {
+   "kind": "remndr",
+   "house_manage_no": "2026910216",
+   "pblanc_no": "2026910216",
+   "complex": "6 더샵 검단레이크파크 AB23 무순위(2026-08)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getRemndrLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026910216&cond%5BPBLANC_NO%3A%3AEQ%5D=2026910216",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 4,
+   "error": null,
+   "file": "getRemndrLttotPblancCmpet_2026910216.json"
+  },
+  {
+   "kind": "remndr",
+   "house_manage_no": "2026910242",
+   "pblanc_no": "2026910242",
+   "complex": "12 더샵 송도마리나베이 무순위 3회차(2026-09-10)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getRemndrLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026910242&cond%5BPBLANC_NO%3A%3AEQ%5D=2026910242",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 1,
+   "error": null,
+   "file": "getRemndrLttotPblancCmpet_2026910242.json"
+  },
+  {
+   "kind": "opt",
+   "house_manage_no": "2026940088",
+   "pblanc_no": "2026940088",
+   "complex": "3 송도 한내들 센트럴리버 임의공급(2026-05-06)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getOPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940088&cond%5BPBLANC_NO%3A%3AEQ%5D=2026940088",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 4,
+   "error": null,
+   "file": "getOPTLttotPblancCmpet_2026940088.json"
+  },
+  {
+   "kind": "opt",
+   "house_manage_no": "2026940116",
+   "pblanc_no": "2026940116",
+   "complex": "7 김포 칸타빌 에디션 임의공급 2차(2026-06)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getOPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940116&cond%5BPBLANC_NO%3A%3AEQ%5D=2026940116",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 8,
+   "error": null,
+   "file": "getOPTLttotPblancCmpet_2026940116.json"
+  },
+  {
+   "kind": "opt",
+   "house_manage_no": "2026940173",
+   "pblanc_no": "2026940173",
+   "complex": "2 엘리프 검단 포레듀 임의공급 3차(2026-08)",
+   "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getOPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940173&cond%5BPBLANC_NO%3A%3AEQ%5D=2026940173",
+   "status": 200,
+   "content_type": "application/json; charset=UTF-8",
+   "rows": 7,
+   "error": null,
+   "file": "getOPTLttotPblancCmpet_2026940173.json"
+  }
+ ]
+}

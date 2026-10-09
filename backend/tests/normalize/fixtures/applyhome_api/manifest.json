@@ -34,5 +34,17 @@
  {
   "file": "web_detail_2026940173.html",
   "url": "https://www.applyhome.co.kr/ai/aia/selectAPTRemndrLttotPblancDetailView.do?houseManageNo=2026940173&pblancNo=2026940173"
+ },
+ {
+  "file": "getAPTLttotPblancCmpet_2026000367.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getAPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026000367&cond%5BPBLANC_NO%3A%3AEQ%5D=2026000367"
+ },
+ {
+  "file": "getOPTLttotPblancCmpet_2026940173.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getOPTLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026940173&cond%5BPBLANC_NO%3A%3AEQ%5D=2026940173"
+ },
+ {
+  "file": "getRemndrLttotPblancCmpet_2026910242.json",
+  "url": "https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/getRemndrLttotPblancCmpet?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026910242&cond%5BPBLANC_NO%3A%3AEQ%5D=2026910242"
  }
 ]

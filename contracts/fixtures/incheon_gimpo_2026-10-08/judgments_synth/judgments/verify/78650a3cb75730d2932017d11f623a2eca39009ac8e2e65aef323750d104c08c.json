@@ -1,0 +1,95 @@
+{
+  "tool": "verify",
+  "purpose": "verify:section_complex:2",
+  "input_hash": "sha256:78650a3cb75730d2932017d11f623a2eca39009ac8e2e65aef323750d104c08c",
+  "input_len": 381,
+  "status": "ok",
+  "confidence": 0.95,
+  "cached": false,
+  "result": {
+    "claims": [
+      {
+        "claim_id": "0",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "claim_id": "1",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "claim_id": "2",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "claim_id": "3",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "claim_id": "4",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      }
+    ]
+  },
+  "raw": {
+    "tool": "jev_verify",
+    "model": "jev-1.13.0",
+    "results": [
+      {
+        "id": "claim0",
+        "claim": "엘리프 검단 포레듀 기준 타입 최고 공급금액은 605,000,000원이다",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "id": "claim1",
+        "claim": "엘리프 검단 포레듀 입주 예정 시기는 2028-03이다",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "id": "claim2",
+        "claim": "엘리프 검단 포레듀 전매제한 기간은 36개월이다",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "id": "claim3",
+        "claim": "엘리프 검단 포레듀 거주의무 기간은 0개월이다",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      },
+      {
+        "id": "claim4",
+        "claim": "엘리프 검단 포레듀는 계약금 비율 5%를 적용한다",
+        "verdict": "verified",
+        "confidence": 0.95,
+        "action": "auto"
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 §8-5·§12-5-5 최종 verify = verified(문장 1:1 대응 없음)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 12,
+  "complex_id": 2,
+  "error_text": null
+}
