@@ -6,7 +6,7 @@
 | applyhome · notice_pdf | ``normalize.checklist.sync_checklist`` | checklist_item |
 | rtms (= collect.weekly) | 청약홈 과거 공고(``fetch_history``, 기본 10년) + rtms 과거 월(``backfill``, 36개월) 수집 →
   ``normalize.benchmark.build_benchmarks`` | benchmark + 출처(+ 바뀌면 notice change_event → 주간 rejudge) |
-| news | ``normalize.catalyst.catalysts_from_news`` | catalyst 후보(분류는 판정기 P4) |
+| news | 판정기 P1 screen(호재 관련성, ``judge.pipeline.p1_screen_catalyst``) 통과 항목만 → ``normalize.catalyst.catalysts_from_news`` | catalyst 후보(단계·종류는 판정기 P4, D10-6) — 거른 수는 stats ``rejected`` |
 
 과거 공고·과거 월 수집은 ``ctx.collectors`` 의 ``applyhome``·``rtms`` 수집기에 그 메서드가 있을 때만 한다(가짜 수집기·
 키 없음이면 건너뛰고, 이미 받아 둔 원문으로 조립한다). 조립 단계마다 예외를 ``errors['assemble.<단계>']`` 에 남기고
@@ -23,12 +23,15 @@ from typing import TYPE_CHECKING, Any, Final
 
 from sqlalchemy.orm import Session
 
+from app.collectors.news.collector import NewsItem
 from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.contracts_gen import Region as RegionDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.logging import get_logger
+from app.core.protocols import JudgeUnavailable
 from app.core.redact import redact_text
 from app.core.settings import get_settings
+from app.judge import pipeline as jp
 from app.models import ChangeEvent
 from app.normalize.benchmark import build_benchmarks
 from app.normalize.catalyst import catalysts_from_news
@@ -38,7 +41,14 @@ from app.normalize.remaining import sync_remaining_events
 if TYPE_CHECKING:
     from app.scheduler.context import SchedulerContext
 
-__all__ = ["BENCHMARK_HISTORY_YEARS", "RTMS_BACKFILL_MONTHS", "AssembleResult", "assemble", "safe_error"]
+__all__ = [
+    "BENCHMARK_HISTORY_YEARS",
+    "RTMS_BACKFILL_MONTHS",
+    "AssembleResult",
+    "assemble",
+    "news_key",
+    "safe_error",
+]
 
 log = get_logger("app.scheduler.assemble")
 
@@ -51,6 +61,14 @@ class AssembleResult:
     stats: dict[str, Any] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
     events: list[ChangeEvent] = field(default_factory=list)  # 저장됨(id 있음)
+
+
+def news_key(url: str | None, title: str) -> str:
+    """뉴스 호재 후보의 판정 purpose 키(출처 URL·제목 해시) — screen(수집)·classify(파이프라인)가 같은 키를 쓴다.
+    행 id 가 아니라서 같은 기사가 다시 들어와도 같은 purpose = 캐시(판정 재호출 없음)."""
+    import hashlib
+
+    return "n" + hashlib.sha256(f"{url or ''}|{title}".encode()).hexdigest()[:16]
 
 
 def safe_error(exc: BaseException) -> str:
@@ -124,17 +142,36 @@ def assemble(
 
     def benchmark() -> None:
         with ctx.session_factory() as s:
-            out = build_benchmarks(s, region.id, asof_date=snapshot.asof_date)
+            # 조립한 스냅샷을 남긴다(계약 .6 benchmark.snapshot_id — 발행 스냅샷이 인용한 행 보존, G1)
+            out = build_benchmarks(s, region.id, asof_date=snapshot.asof_date, snapshot_id=snapshot.id)
             if out.changed:
                 res.events.append(_event(s, snapshot.id, out.inserted, out.updated, out.removed, detected_at))
             s.commit()
             res.stats["benchmark"] = out.stats()
 
     def catalyst() -> None:
-        with ctx.session_factory() as s:
-            out = catalysts_from_news(s, region.id, docs.get("news", []))
-            s.commit()
-            res.stats["catalyst"] = out.stats()
+        screened: dict[str, str] = {}
+        session: Session
+
+        def accept(item: NewsItem) -> bool:
+            """D10-6: 뉴스 항목 → P1 screen(호재 관련성) usable 만 후보. 판정기가 죽어 있으면 이번에는 만들지 않는다
+            (후보가 아니므로 다음 수집에 다시 검사 — 같은 입력이면 캐시)."""
+            # 어댑터는 자기 세션으로 judgment_log 를 쓴다 — 후보 세션의 쓰기 잠금(SQLite)을 먼저 푼다(pipeline 과 같은 규칙)
+            session.commit()
+            try:
+                out = jp.p1_screen_catalyst(
+                    ctx.adapter(), catalyst_key=news_key(item.url, item.title), title=item.title,
+                    excerpt=item.excerpt, url=item.url, snapshot_id=snapshot.id,
+                )  # fmt: skip
+            except JudgeUnavailable:
+                screened["unavailable"] = "판정기 연결 실패 — 이번 수집은 후보를 만들지 않음"
+                return False
+            return out.usable
+
+        with ctx.session_factory() as session:
+            out = catalysts_from_news(session, region.id, docs.get("news", []), accept=accept)
+            session.commit()
+            res.stats["catalyst"] = {**out.stats(), **({"screen": screened} if screened else {})}
 
     if "applyhome" in steps:
         run("remaining", remaining)

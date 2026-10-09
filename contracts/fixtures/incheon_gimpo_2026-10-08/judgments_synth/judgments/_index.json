@@ -2,8 +2,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:1",
-  "input_hash": "sha256:2d1a7c51dfd200d7e064086f07bde9cd4bc2a19923fd7cdda516553f6a58f882",
-  "file": "classify/2d1a7c51dfd200d7e064086f07bde9cd4bc2a19923fd7cdda516553f6a58f882.json",
+  "input_hash": "sha256:c3c81acfaf1a4fe2aa95a21c0d27672c660291095defc8f1d6f3cbb2713e9d83",
+  "file": "classify/c3c81acfaf1a4fe2aa95a21c0d27672c660291095defc8f1d6f3cbb2713e9d83.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -15,7 +15,7 @@
    "items": [
     {
      "id": "catalyst:1",
-     "text": "호재: 인천1호선 검단연장 개통 2025-06\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 인천1호선 검단연장 개통 2025-06\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -50,8 +50,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:10",
-  "input_hash": "sha256:e76ea2fc8c0afcb738076db536cf140b0f8522326b6488f3b5f319d81acb29ba",
-  "file": "classify/e76ea2fc8c0afcb738076db536cf140b0f8522326b6488f3b5f319d81acb29ba.json",
+  "input_hash": "sha256:9a3665b6b966525017ee1be3e15643873f4bf5541c247081c26e1b172796b5a6",
+  "file": "classify/9a3665b6b966525017ee1be3e15643873f4bf5541c247081c26e1b172796b5a6.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -63,7 +63,7 @@
    "items": [
     {
      "id": "catalyst:10",
-     "text": "호재: GTX-D Y자·2호선 청라연장 5차 철도망 건의\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: GTX-D Y자·2호선 청라연장 5차 철도망 건의\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -98,8 +98,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:11",
-  "input_hash": "sha256:d845ee9cbc4735c52e4c7e9d16ea21ca92d8baee3bb4f3f6551d5fbb53ac75bf",
-  "file": "classify/d845ee9cbc4735c52e4c7e9d16ea21ca92d8baee3bb4f3f6551d5fbb53ac75bf.json",
+  "input_hash": "sha256:fc2c6ca402dc5abda073c627f16d035b87be764f1e8f76ebe812401ec625125a",
+  "file": "classify/fc2c6ca402dc5abda073c627f16d035b87be764f1e8f76ebe812401ec625125a.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -111,7 +111,7 @@
    "items": [
     {
      "id": "catalyst:11",
-     "text": "호재: 인천2호선 고양연장 예타 중\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 인천2호선 고양연장 예타 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -146,8 +146,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:12",
-  "input_hash": "sha256:9c34eb14678749ef7768b07a96e07bc9f9c24c4bc2495aad602f5f674bb51c4b",
-  "file": "classify/9c34eb14678749ef7768b07a96e07bc9f9c24c4bc2495aad602f5f674bb51c4b.json",
+  "input_hash": "sha256:ae15ea864b8874a0e458d4339aeb249149b3c2ea21723ab3ff7b9eefd6e48aff",
+  "file": "classify/ae15ea864b8874a0e458d4339aeb249149b3c2ea21723ab3ff7b9eefd6e48aff.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -159,7 +159,7 @@
    "items": [
     {
      "id": "catalyst:12",
-     "text": "호재: 6·8공구 랜드마크 타워 높이 조정 검토\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 6·8공구 랜드마크 타워 높이 조정 검토\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -194,8 +194,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:13",
-  "input_hash": "sha256:7191d5dbc56201dd1b13faff216cc9de0f914bbee20ffd4784a4937aeab27fd5",
-  "file": "classify/7191d5dbc56201dd1b13faff216cc9de0f914bbee20ffd4784a4937aeab27fd5.json",
+  "input_hash": "sha256:903889aa72930c35bb847ca0b4a9d18f739c250ecd8d1b88d25274762609c5a7",
+  "file": "classify/903889aa72930c35bb847ca0b4a9d18f739c250ecd8d1b88d25274762609c5a7.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -207,7 +207,7 @@
    "items": [
     {
      "id": "catalyst:13",
-     "text": "호재: 인천1호선 송도 8공구 연장 예타 미통과\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 인천1호선 송도 8공구 연장 예타 미통과\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -242,8 +242,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:14",
-  "input_hash": "sha256:bdccaf49a699029408cec07db720a7117ec329961b82f7d44433c5e0afb334db",
-  "file": "classify/bdccaf49a699029408cec07db720a7117ec329961b82f7d44433c5e0afb334db.json",
+  "input_hash": "sha256:162e94711afa6a2236f445c618857bc0634a61a04bf9a95877e08363f0032df9",
+  "file": "classify/162e94711afa6a2236f445c618857bc0634a61a04bf9a95877e08363f0032df9.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -255,7 +255,7 @@
    "items": [
     {
      "id": "catalyst:14",
-     "text": "호재: 인천대입구역 복합개발\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 인천대입구역 복합개발\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -290,8 +290,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:15",
-  "input_hash": "sha256:89b6d65d6fcef6aecb4573b03373fe260e40be128ce12ea8ba875061f58c7160",
-  "file": "classify/89b6d65d6fcef6aecb4573b03373fe260e40be128ce12ea8ba875061f58c7160.json",
+  "input_hash": "sha256:ffd573d00ebb4dc04595f1be73d186769fc21afcb8203225a8f7de4d17765ed5",
+  "file": "classify/ffd573d00ebb4dc04595f1be73d186769fc21afcb8203225a8f7de4d17765ed5.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -303,7 +303,7 @@
    "items": [
     {
      "id": "catalyst:15",
-     "text": "호재: 계양 S-BRT\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 계양 S-BRT\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -338,8 +338,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:16",
-  "input_hash": "sha256:76fc231636d202b095416dcb40cd96ea5d41c851b8f2342f4383f50161e66481",
-  "file": "classify/76fc231636d202b095416dcb40cd96ea5d41c851b8f2342f4383f50161e66481.json",
+  "input_hash": "sha256:501ea607b73b87a59d6a279b38670c4934f7fc3e9273348ecdda76c3769f361d",
+  "file": "classify/501ea607b73b87a59d6a279b38670c4934f7fc3e9273348ecdda76c3769f361d.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -351,7 +351,7 @@
    "items": [
     {
      "id": "catalyst:16",
-     "text": "호재: 검단 스타필드·대학병원\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 검단 스타필드·대학병원\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -386,8 +386,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:17",
-  "input_hash": "sha256:8932f9ba0040da3b6880e7bf25f690dbe4ba6f02e2a8d0e656b17051b24c2b41",
-  "file": "classify/8932f9ba0040da3b6880e7bf25f690dbe4ba6f02e2a8d0e656b17051b24c2b41.json",
+  "input_hash": "sha256:777d1c9f57c8b350f37cd046b7ade6413825cb1aef2d64adbc1a47b1e9b36f39",
+  "file": "classify/777d1c9f57c8b350f37cd046b7ade6413825cb1aef2d64adbc1a47b1e9b36f39.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -399,7 +399,7 @@
    "items": [
     {
      "id": "catalyst:17",
-     "text": "호재: 송도세브란스병원(지상부 미착공)\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 송도세브란스병원(지상부 미착공)\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -434,8 +434,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:18",
-  "input_hash": "sha256:84d48175150130bc111ccb0ea0bd57a9f521da8e0a9e17f812909336fffbad46",
-  "file": "classify/84d48175150130bc111ccb0ea0bd57a9f521da8e0a9e17f812909336fffbad46.json",
+  "input_hash": "sha256:33600d5c6886bc91384844c3ab46c9ab0a75c4a58b485ae5a4ef64b1ca4ff6bc",
+  "file": "classify/33600d5c6886bc91384844c3ab46c9ab0a75c4a58b485ae5a4ef64b1ca4ff6bc.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -447,7 +447,7 @@
    "items": [
     {
      "id": "catalyst:18",
-     "text": "호재: GTX-B 개통 2030 vs 2031\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: GTX-B 개통 2030 vs 2031\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -482,8 +482,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:19",
-  "input_hash": "sha256:afbfe862bcdda2653dcbdcf356725ae24f8cccf5cdae221965560672fc08ee7d",
-  "file": "classify/afbfe862bcdda2653dcbdcf356725ae24f8cccf5cdae221965560672fc08ee7d.json",
+  "input_hash": "sha256:fde1f4c3c14e33f63c47e2b987505947f8f59a44c5e37d67860671cb3eec6dcc",
+  "file": "classify/fde1f4c3c14e33f63c47e2b987505947f8f59a44c5e37d67860671cb3eec6dcc.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -495,7 +495,7 @@
    "items": [
     {
      "id": "catalyst:19",
-     "text": "호재: 삼성바이오 제3캠퍼스\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 삼성바이오 제3캠퍼스\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -530,8 +530,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:2",
-  "input_hash": "sha256:d1883e826d61d3c99b61131b21957fe6f2da128de1d1b046281251e8a77d47f2",
-  "file": "classify/d1883e826d61d3c99b61131b21957fe6f2da128de1d1b046281251e8a77d47f2.json",
+  "input_hash": "sha256:07730d0aff94f0e05fd82e3c32a0b5f9a1a72090521f7583decd835e6e25b339",
+  "file": "classify/07730d0aff94f0e05fd82e3c32a0b5f9a1a72090521f7583decd835e6e25b339.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -543,7 +543,7 @@
    "items": [
     {
      "id": "catalyst:2",
-     "text": "호재: 검단구 신설 2026-07\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 검단구 신설 2026-07\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -578,8 +578,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:20",
-  "input_hash": "sha256:c1dfbf9ac17542f935ee556bb23520e821e0a91540b1a196738b09d67ed34b0b",
-  "file": "classify/c1dfbf9ac17542f935ee556bb23520e821e0a91540b1a196738b09d67ed34b0b.json",
+  "input_hash": "sha256:f96c73fabace1b10e1438ac394352195871d74ad968711795f7f2c1a2e67a270",
+  "file": "classify/f96c73fabace1b10e1438ac394352195871d74ad968711795f7f2c1a2e67a270.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -591,7 +591,7 @@
    "items": [
     {
      "id": "catalyst:20",
-     "text": "호재: 송도트램\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 송도트램\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -626,8 +626,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:21",
-  "input_hash": "sha256:b642611df6e615958cde1953eacc3402b35e568566ebb082c3caee76aa72b02e",
-  "file": "classify/b642611df6e615958cde1953eacc3402b35e568566ebb082c3caee76aa72b02e.json",
+  "input_hash": "sha256:55e14c026831e36a65313d77e842e8ad95129a93cdabdf626b52f43f024d3611",
+  "file": "classify/55e14c026831e36a65313d77e842e8ad95129a93cdabdf626b52f43f024d3611.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -639,7 +639,7 @@
    "items": [
     {
      "id": "catalyst:21",
-     "text": "호재: 11-1공구 기반시설\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 11-1공구 기반시설\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -674,8 +674,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:22",
-  "input_hash": "sha256:38448d13b05eff0541434875a87da7b25e734f0225273244b69d51f6d35aef84",
-  "file": "classify/38448d13b05eff0541434875a87da7b25e734f0225273244b69d51f6d35aef84.json",
+  "input_hash": "sha256:01a1bdb0ee5dce9f4099ff0ad7f994320d81daeeeaf7ccd638add08f73023d9e",
+  "file": "classify/01a1bdb0ee5dce9f4099ff0ad7f994320d81daeeeaf7ccd638add08f73023d9e.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -687,7 +687,7 @@
    "items": [
     {
      "id": "catalyst:22",
-     "text": "호재: IBD 업무용지\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: IBD 업무용지\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -722,8 +722,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:23",
-  "input_hash": "sha256:cccded04c93942519294d0d1b9bf6b2ccdce0ceae02650cd1f7106596102bab8",
-  "file": "classify/cccded04c93942519294d0d1b9bf6b2ccdce0ceae02650cd1f7106596102bab8.json",
+  "input_hash": "sha256:a7fb98a743409008ffd13d1e93bac866f47d9dac955912d286f10e07a999f1ef",
+  "file": "classify/a7fb98a743409008ffd13d1e93bac866f47d9dac955912d286f10e07a999f1ef.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -735,7 +735,7 @@
    "items": [
     {
      "id": "catalyst:23",
-     "text": "호재: 대장홍대선\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 대장홍대선\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -770,8 +770,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:24",
-  "input_hash": "sha256:3b1ea4f3dab5088a21cd322281b5c9370a667402c59eedbbac0e7a71aa5c8167",
-  "file": "classify/3b1ea4f3dab5088a21cd322281b5c9370a667402c59eedbbac0e7a71aa5c8167.json",
+  "input_hash": "sha256:da5c0c4758f4ffeb00885628349ac607394058dc395bfb199e55a06acb82e00e",
+  "file": "classify/da5c0c4758f4ffeb00885628349ac607394058dc395bfb199e55a06acb82e00e.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -783,7 +783,7 @@
    "items": [
     {
      "id": "catalyst:24",
-     "text": "호재: 계양AX파크\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 계양AX파크\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -818,8 +818,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:25",
-  "input_hash": "sha256:daf9502e3fc1a8c0d42abab0982956671f7b07d0dedf949b02662fe7d4ac097c",
-  "file": "classify/daf9502e3fc1a8c0d42abab0982956671f7b07d0dedf949b02662fe7d4ac097c.json",
+  "input_hash": "sha256:7e8b4014a27a4a742de781f04936088d663a4f9568134f8cff0fad57ddbfcbe1",
+  "file": "classify/7e8b4014a27a4a742de781f04936088d663a4f9568134f8cff0fad57ddbfcbe1.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -831,7 +831,7 @@
    "items": [
     {
      "id": "catalyst:25",
-     "text": "호재: 서울5호선 김포·검단 연장\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 서울5호선 김포·검단 연장\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -866,8 +866,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:26",
-  "input_hash": "sha256:92cbf63600e7f4e19efa8c1999f6d1716a5d06aec827ec1e784760c4dc982260",
-  "file": "classify/92cbf63600e7f4e19efa8c1999f6d1716a5d06aec827ec1e784760c4dc982260.json",
+  "input_hash": "sha256:cea478c0abac0289f1e677a200546358182dd34b7b91373f7fb3026960d19cfe",
+  "file": "classify/cea478c0abac0289f1e677a200546358182dd34b7b91373f7fb3026960d19cfe.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -879,7 +879,7 @@
    "items": [
     {
      "id": "catalyst:26",
-     "text": "호재: 검단 법조타운\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 검단 법조타운\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -914,8 +914,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:27",
-  "input_hash": "sha256:26be68c9e3c1e62e20f1cb3a9490c95af28f29316f8786224ebd78807f6630cc",
-  "file": "classify/26be68c9e3c1e62e20f1cb3a9490c95af28f29316f8786224ebd78807f6630cc.json",
+  "input_hash": "sha256:78b52b08ffb131f4920582b42afa43fac2ecf6b28bb3266e3d39bb3716177f7b",
+  "file": "classify/78b52b08ffb131f4920582b42afa43fac2ecf6b28bb3266e3d39bb3716177f7b.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -927,7 +927,7 @@
    "items": [
     {
      "id": "catalyst:27",
-     "text": "호재: iH 특화구역\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: iH 특화구역\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -962,8 +962,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:28",
-  "input_hash": "sha256:928c9c78511823c9b7efe28e83b07a9ad45f2b19a6578e502a5ce0d678137651",
-  "file": "classify/928c9c78511823c9b7efe28e83b07a9ad45f2b19a6578e502a5ce0d678137651.json",
+  "input_hash": "sha256:41976b1849f000b2759fda5358668b6269210d6a46ef583dd8605044c02ed0d7",
+  "file": "classify/41976b1849f000b2759fda5358668b6269210d6a46ef583dd8605044c02ed0d7.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -975,7 +975,7 @@
    "items": [
     {
      "id": "catalyst:28",
-     "text": "호재: 검단지구 5단계 준공\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 검단지구 5단계 준공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1010,8 +1010,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:29",
-  "input_hash": "sha256:a2599f8b9cf738eb16afed2e37f1826b7a0fe2736e1aaa82b4f04fe9999236a3",
-  "file": "classify/a2599f8b9cf738eb16afed2e37f1826b7a0fe2736e1aaa82b4f04fe9999236a3.json",
+  "input_hash": "sha256:eb1343b4b977d00d51bd38439941a5598af45fb07faec71d8f558787edc0e920",
+  "file": "classify/eb1343b4b977d00d51bd38439941a5598af45fb07faec71d8f558787edc0e920.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1023,7 +1023,7 @@
    "items": [
     {
      "id": "catalyst:29",
-     "text": "호재: 풍무역세권 도시개발 6,599세대 분양·공사 중\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 풍무역세권 도시개발 6,599세대 분양·공사 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1058,8 +1058,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:3",
-  "input_hash": "sha256:72538ca906753152421c6b237194694e2c886936da2e1bb3e4ad60c2578e39f9",
-  "file": "classify/72538ca906753152421c6b237194694e2c886936da2e1bb3e4ad60c2578e39f9.json",
+  "input_hash": "sha256:3676b508ad3ecd74bac2ee8fcdf70fa5e06d6f841464b2a58413f89b969b66d3",
+  "file": "classify/3676b508ad3ecd74bac2ee8fcdf70fa5e06d6f841464b2a58413f89b969b66d3.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1071,7 +1071,7 @@
    "items": [
     {
      "id": "catalyst:3",
-     "text": "호재: 셀트리온 3공장 가동\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 셀트리온 3공장 가동\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1106,8 +1106,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:30",
-  "input_hash": "sha256:48c79a72688b44ee1ea2e7f9995f636fd1fe7b0b81be7ba787208ea78087f844",
-  "file": "classify/48c79a72688b44ee1ea2e7f9995f636fd1fe7b0b81be7ba787208ea78087f844.json",
+  "input_hash": "sha256:25354f77649a33eb4839d9395e9fcdec6ff297e1da686739dad541dcb7f56150",
+  "file": "classify/25354f77649a33eb4839d9395e9fcdec6ff297e1da686739dad541dcb7f56150.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1119,7 +1119,7 @@
    "items": [
     {
      "id": "catalyst:30",
-     "text": "호재: 한강시네폴리스 산단·주거 3,461세대 분양·착공\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 한강시네폴리스 산단·주거 3,461세대 분양·착공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1154,8 +1154,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:31",
-  "input_hash": "sha256:f48672084eb804211589bfcfb9ba4c7731e4909c8189e57036b87100329ce855",
-  "file": "classify/f48672084eb804211589bfcfb9ba4c7731e4909c8189e57036b87100329ce855.json",
+  "input_hash": "sha256:e1c666763e911f802277fa7c89a13fe6f23e66b9cc2a9c95d84037acd5153f43",
+  "file": "classify/e1c666763e911f802277fa7c89a13fe6f23e66b9cc2a9c95d84037acd5153f43.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1167,7 +1167,7 @@
    "items": [
     {
      "id": "catalyst:31",
-     "text": "호재: 수도권 제2순환 김포~파주 한강하저터널\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 수도권 제2순환 김포~파주 한강하저터널\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1202,8 +1202,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:32",
-  "input_hash": "sha256:eea1ef76b4b44b53da2d217342e4f983886082e064793ebfed6794773f0e7086",
-  "file": "classify/eea1ef76b4b44b53da2d217342e4f983886082e064793ebfed6794773f0e7086.json",
+  "input_hash": "sha256:ee085de4500192e2193547869c1bb8fbcd7c8ac16fd7ac6cb24d784420941064",
+  "file": "classify/ee085de4500192e2193547869c1bb8fbcd7c8ac16fd7ac6cb24d784420941064.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1215,7 +1215,7 @@
    "items": [
     {
      "id": "catalyst:32",
-     "text": "호재: 김포골드라인 증차\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 김포골드라인 증차\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1250,8 +1250,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:33",
-  "input_hash": "sha256:deb08508d6335252d1a6d7c2f39d27d7aec38417d29eafa8b7db1558b100177e",
-  "file": "classify/deb08508d6335252d1a6d7c2f39d27d7aec38417d29eafa8b7db1558b100177e.json",
+  "input_hash": "sha256:4d1de584e8c989c09f6e852490e395644aac7ec18b7c6ce93ef8c64e6c6145a7",
+  "file": "classify/4d1de584e8c989c09f6e852490e395644aac7ec18b7c6ce93ef8c64e6c6145a7.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1263,7 +1263,7 @@
    "items": [
     {
      "id": "catalyst:33",
-     "text": "호재: GTX-D 서부권 광역급행철도 예타 통과\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: GTX-D 서부권 광역급행철도 예타 통과\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1298,8 +1298,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:34",
-  "input_hash": "sha256:2bdcd95025150c5aa3dc72f7955c074fe5b0029e43001e79bac3d4a9200b8f3f",
-  "file": "classify/2bdcd95025150c5aa3dc72f7955c074fe5b0029e43001e79bac3d4a9200b8f3f.json",
+  "input_hash": "sha256:bd5d4999e402fa981808b3bcb9292365fa2cc12724069532209830b11032fa04",
+  "file": "classify/bd5d4999e402fa981808b3bcb9292365fa2cc12724069532209830b11032fa04.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1311,7 +1311,7 @@
    "items": [
     {
      "id": "catalyst:34",
-     "text": "호재: 인천2호선 고양 연장 예타 진행 중\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 인천2호선 고양 연장 예타 진행 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1346,8 +1346,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:35",
-  "input_hash": "sha256:15eed063b8fc1e53d311e1bb1b46b7381261a6f975738e08b3af28dfbc1fd89b",
-  "file": "classify/15eed063b8fc1e53d311e1bb1b46b7381261a6f975738e08b3af28dfbc1fd89b.json",
+  "input_hash": "sha256:09407b41c76c691e930dde522ad8358f7aad126a8a571b5b791c96be7502f4ff",
+  "file": "classify/09407b41c76c691e930dde522ad8358f7aad126a8a571b5b791c96be7502f4ff.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1359,7 +1359,7 @@
    "items": [
     {
      "id": "catalyst:35",
-     "text": "호재: 인하대병원 김포 부지제공 협약\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 인하대병원 김포 부지제공 협약\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1394,8 +1394,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:36",
-  "input_hash": "sha256:c08b7d771cf47f1b7573f9a4e2aa5f2e0352d0c0605b8ac82291ee1097d76129",
-  "file": "classify/c08b7d771cf47f1b7573f9a4e2aa5f2e0352d0c0605b8ac82291ee1097d76129.json",
+  "input_hash": "sha256:b8d57409375b9b7173f1f6c906c89cec7f17afde947ee1c5ec90c09eefa48110",
+  "file": "classify/b8d57409375b9b7173f1f6c906c89cec7f17afde947ee1c5ec90c09eefa48110.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1407,7 +1407,7 @@
    "items": [
     {
      "id": "catalyst:36",
-     "text": "호재: 김포한강선(가칭)\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 김포한강선(가칭)\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1442,8 +1442,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:37",
-  "input_hash": "sha256:fd3b3b6eb98ba2bdc648a01cfa804da8ba2309c6a8aa4fd9de02a3cf4e4ce974",
-  "file": "classify/fd3b3b6eb98ba2bdc648a01cfa804da8ba2309c6a8aa4fd9de02a3cf4e4ce974.json",
+  "input_hash": "sha256:4a1df8a7f26ebed3142caa67a700dd740b1637be5443f2831dff93cb69298d35",
+  "file": "classify/4a1df8a7f26ebed3142caa67a700dd740b1637be5443f2831dff93cb69298d35.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1455,7 +1455,7 @@
    "items": [
     {
      "id": "catalyst:37",
-     "text": "호재: 김포한강2 콤팩트시티\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 김포한강2 콤팩트시티\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1490,8 +1490,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:38",
-  "input_hash": "sha256:fc4ca4a7a3f95b6864e2456d74186933d4965c337fdcca06517ea89a8bb65aae",
-  "file": "classify/fc4ca4a7a3f95b6864e2456d74186933d4965c337fdcca06517ea89a8bb65aae.json",
+  "input_hash": "sha256:7ce6d8d6115679b04f8d12314da9a6cc01172786ab0d34e126357f0ddd90b349",
+  "file": "classify/7ce6d8d6115679b04f8d12314da9a6cc01172786ab0d34e126357f0ddd90b349.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1503,7 +1503,7 @@
    "items": [
     {
      "id": "catalyst:38",
-     "text": "호재: 김포 서울 편입\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 김포 서울 편입\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1538,8 +1538,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:39",
-  "input_hash": "sha256:5a3be6d354e351fa3657b9c099bfb44dcd33fa2f5f6147db25e41237c69c90f5",
-  "file": "classify/5a3be6d354e351fa3657b9c099bfb44dcd33fa2f5f6147db25e41237c69c90f5.json",
+  "input_hash": "sha256:8e6e463284e87c73f9e2eba7ccde6f9d3da4e99c8faa61226e053973ee611046",
+  "file": "classify/8e6e463284e87c73f9e2eba7ccde6f9d3da4e99c8faa61226e053973ee611046.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1551,7 +1551,7 @@
    "items": [
     {
      "id": "catalyst:39",
-     "text": "호재: 김포 사이언스파크\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 김포 사이언스파크\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1586,8 +1586,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:4",
-  "input_hash": "sha256:b5478a7da2b423dffe7a6e1a84eb9ec1da047d1f72c7c14081775882c6c9fcfb",
-  "file": "classify/b5478a7da2b423dffe7a6e1a84eb9ec1da047d1f72c7c14081775882c6c9fcfb.json",
+  "input_hash": "sha256:089d2728e311081c17827bd0569fc6c0ce34be2459d7382e46c336822cb50e07",
+  "file": "classify/089d2728e311081c17827bd0569fc6c0ce34be2459d7382e46c336822cb50e07.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1599,7 +1599,7 @@
    "items": [
     {
      "id": "catalyst:4",
-     "text": "호재: 송도 워터프런트 1-2단계 2027 초 준공\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 송도 워터프런트 1-2단계 2027 초 준공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1634,8 +1634,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:40",
-  "input_hash": "sha256:162c464fca1d59fa55fa65517705c353bfb8f2dd1461dc8e29b3f4d9ae57c6aa",
-  "file": "classify/162c464fca1d59fa55fa65517705c353bfb8f2dd1461dc8e29b3f4d9ae57c6aa.json",
+  "input_hash": "sha256:6607d06ddf25cc9535fdc49e72ee17363bfc9dfeeae2e9a854db8f1e54c09ec1",
+  "file": "classify/6607d06ddf25cc9535fdc49e72ee17363bfc9dfeeae2e9a854db8f1e54c09ec1.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1647,7 +1647,7 @@
    "items": [
     {
      "id": "catalyst:40",
-     "text": "호재: 서울 5호선 김포·검단 연장\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 서울 5호선 김포·검단 연장\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1682,8 +1682,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:41",
-  "input_hash": "sha256:0d179eb276ee3d79c677d9ea88f496bbb18027551623ad6e2ee4eeea5b9a5d15",
-  "file": "classify/0d179eb276ee3d79c677d9ea88f496bbb18027551623ad6e2ee4eeea5b9a5d15.json",
+  "input_hash": "sha256:119b5cff0693a0d0ef041115bd0e9aab7348f64c343015665712fc1ff6096cd8",
+  "file": "classify/119b5cff0693a0d0ef041115bd0e9aab7348f64c343015665712fc1ff6096cd8.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1695,7 +1695,7 @@
    "items": [
     {
      "id": "catalyst:41",
-     "text": "호재: 걸포4·감정4지구\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 걸포4·감정4지구\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1730,8 +1730,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:42",
-  "input_hash": "sha256:7ead3ef7d49549756fd59f91d5c2996a4587e54d031a9ee4d02a146decea8931",
-  "file": "classify/7ead3ef7d49549756fd59f91d5c2996a4587e54d031a9ee4d02a146decea8931.json",
+  "input_hash": "sha256:4ad0a1c44cd2d85e1e00c0a572cf69343fe4517b738ae2648c442e956b472d2e",
+  "file": "classify/4ad0a1c44cd2d85e1e00c0a572cf69343fe4517b738ae2648c442e956b472d2e.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1743,7 +1743,7 @@
    "items": [
     {
      "id": "catalyst:42",
-     "text": "호재: 계양~강화 고속도로\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 계양~강화 고속도로\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1778,8 +1778,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:43",
-  "input_hash": "sha256:1c06ce03bf51ca63f10c0c3c3f0fcd70ff9ef9fae62cfdd0148fc5b21b5f4cf3",
-  "file": "classify/1c06ce03bf51ca63f10c0c3c3f0fcd70ff9ef9fae62cfdd0148fc5b21b5f4cf3.json",
+  "input_hash": "sha256:0bfcbd06170bfd8879c6af24aea7e678d2bfc512323e5786f6665d4baa5e0b0c",
+  "file": "classify/0bfcbd06170bfd8879c6af24aea7e678d2bfc512323e5786f6665d4baa5e0b0c.json",
   "status": "review",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1791,7 +1791,7 @@
    "items": [
     {
      "id": "catalyst:43",
-     "text": "호재: 북변5구역 재개발\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 북변5구역 재개발\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1826,8 +1826,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:5",
-  "input_hash": "sha256:364e1548598bdafcf386c9ed90749d571f224ccd69a220d58a59b1c41249345b",
-  "file": "classify/364e1548598bdafcf386c9ed90749d571f224ccd69a220d58a59b1c41249345b.json",
+  "input_hash": "sha256:412e319073269eae0c9b8c8c26ea152f8e63b9240919e6d7690872410e85e2ae",
+  "file": "classify/412e319073269eae0c9b8c8c26ea152f8e63b9240919e6d7690872410e85e2ae.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1839,7 +1839,7 @@
    "items": [
     {
      "id": "catalyst:5",
-     "text": "호재: 계양신도시 조성·2026-12 첫 입주\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 계양신도시 조성·2026-12 첫 입주\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1874,8 +1874,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:6",
-  "input_hash": "sha256:3363908f11efe2adcec90154427527918e1412299a9e0d96d928eaa28dd11f62",
-  "file": "classify/3363908f11efe2adcec90154427527918e1412299a9e0d96d928eaa28dd11f62.json",
+  "input_hash": "sha256:081f205508b1d29f4dd56f609d6c4e82ed3450cda056d8fa969d4b1c950c93bd",
+  "file": "classify/081f205508b1d29f4dd56f609d6c4e82ed3450cda056d8fa969d4b1c950c93bd.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1887,7 +1887,7 @@
    "items": [
     {
      "id": "catalyst:6",
-     "text": "호재: 롯데바이오 송도 1공장 2026-11 준공\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 롯데바이오 송도 1공장 2026-11 준공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1922,8 +1922,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:7",
-  "input_hash": "sha256:355db22f7f11f10c0fb5402081f83b2cda0966295332e7cf80c25ada080d860e",
-  "file": "classify/355db22f7f11f10c0fb5402081f83b2cda0966295332e7cf80c25ada080d860e.json",
+  "input_hash": "sha256:d8cd6cb2245e412053093383839189c2c1da5753bc9a8c397d9bea872717c4a1",
+  "file": "classify/d8cd6cb2245e412053093383839189c2c1da5753bc9a8c397d9bea872717c4a1.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1935,7 +1935,7 @@
    "items": [
     {
      "id": "catalyst:7",
-     "text": "호재: 검단~드림로 개통\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 검단~드림로 개통\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -1970,8 +1970,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:8",
-  "input_hash": "sha256:4ec8e9df1393bab7ed01c4fdd4b23f75708dfb8229e6752362704b88574f8230",
-  "file": "classify/4ec8e9df1393bab7ed01c4fdd4b23f75708dfb8229e6752362704b88574f8230.json",
+  "input_hash": "sha256:1afdb547df02f8d4e9898529b10d99a3194f6230901e8b63e82b25a4be796ae6",
+  "file": "classify/1afdb547df02f8d4e9898529b10d99a3194f6230901e8b63e82b25a4be796ae6.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -1983,7 +1983,7 @@
    "items": [
     {
      "id": "catalyst:8",
-     "text": "호재: GTX-D 1단계 예타 통과·기본계획 중\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: GTX-D 1단계 예타 통과·기본계획 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -2018,8 +2018,8 @@
  {
   "tool": "classify",
   "purpose": "classify:catalyst:9",
-  "input_hash": "sha256:05772513bed21d2fcd6b84de6b98b5d35b1cec23cb8c63e1c1c1e37bde97a7b9",
-  "file": "classify/05772513bed21d2fcd6b84de6b98b5d35b1cec23cb8c63e1c1c1e37bde97a7b9.json",
+  "input_hash": "sha256:57112a3b4b6641b21849c6e4a133dadd7a588b31577488de80a34ef151363df1",
+  "file": "classify/57112a3b4b6641b21849c6e4a133dadd7a588b31577488de80a34ef151363df1.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #64·#111 같은 이름 항목",
@@ -2031,7 +2031,7 @@
    "items": [
     {
      "id": "catalyst:9",
-     "text": "호재: 송도아라1초 2030-03 개교\n구분: 기타\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+     "text": "호재: 송도아라1초 2030-03 개교\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
     }
    ],
    "classes": [
@@ -2061,6 +2061,2070 @@
     }
    ],
    "purpose": "부동산 호재(교통·개발·생활인프라)의 진행 단계 분류 — 호재가 아니면 '호재 아님'"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:1",
+  "input_hash": "sha256:d38098f6371c36619d787d8169f1d9ff7152098418f7b519af6ad98b74391d15",
+  "file": "classify/d38098f6371c36619d787d8169f1d9ff7152098418f7b519af6ad98b74391d15.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:1",
+     "text": "호재: 인천1호선 검단연장 개통 2025-06\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:10",
+  "input_hash": "sha256:03f8acfd0ad4fcc277ec43efc2a56923ac6e423709c86ea0d7b03229604bf63e",
+  "file": "classify/03f8acfd0ad4fcc277ec43efc2a56923ac6e423709c86ea0d7b03229604bf63e.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:10",
+     "text": "호재: GTX-D Y자·2호선 청라연장 5차 철도망 건의\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:11",
+  "input_hash": "sha256:a6c7929d4867df033baa4fd4baf06635b3c76318c7a28c6a3bd7478b96629ff3",
+  "file": "classify/a6c7929d4867df033baa4fd4baf06635b3c76318c7a28c6a3bd7478b96629ff3.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:11",
+     "text": "호재: 인천2호선 고양연장 예타 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:12",
+  "input_hash": "sha256:34b4cf6d7dc38ddf8147d556babc3018ea61c8dfe98b93f56f77e926dddf1eb5",
+  "file": "classify/34b4cf6d7dc38ddf8147d556babc3018ea61c8dfe98b93f56f77e926dddf1eb5.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:12",
+     "text": "호재: 6·8공구 랜드마크 타워 높이 조정 검토\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:13",
+  "input_hash": "sha256:7be883e9cc17d2f9397f7cc6f13bb61d8ac180b4c94b90788516ede3da1e541c",
+  "file": "classify/7be883e9cc17d2f9397f7cc6f13bb61d8ac180b4c94b90788516ede3da1e541c.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:13",
+     "text": "호재: 인천1호선 송도 8공구 연장 예타 미통과\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:14",
+  "input_hash": "sha256:c158d6895c1678d278bedf6e50d3cea56b8336cb8e6ea5d6c325934b13af6dd4",
+  "file": "classify/c158d6895c1678d278bedf6e50d3cea56b8336cb8e6ea5d6c325934b13af6dd4.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:14",
+     "text": "호재: 인천대입구역 복합개발\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:15",
+  "input_hash": "sha256:ac1103cf3a9abdf67f9fe5d372d1b1df38cab4a9f78280bfe6e4120d1d9f1b05",
+  "file": "classify/ac1103cf3a9abdf67f9fe5d372d1b1df38cab4a9f78280bfe6e4120d1d9f1b05.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:15",
+     "text": "호재: 계양 S-BRT\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:16",
+  "input_hash": "sha256:b505ff5afc4f385a7fb6dedfb4cd6b3e096f2a932a4924c62d5dbee7e58d9119",
+  "file": "classify/b505ff5afc4f385a7fb6dedfb4cd6b3e096f2a932a4924c62d5dbee7e58d9119.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:16",
+     "text": "호재: 검단 스타필드·대학병원\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:17",
+  "input_hash": "sha256:91df37e5cab8e09ca23c92ee7727763f6634d5d3245e05ceef0ba15bcca26043",
+  "file": "classify/91df37e5cab8e09ca23c92ee7727763f6634d5d3245e05ceef0ba15bcca26043.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:17",
+     "text": "호재: 송도세브란스병원(지상부 미착공)\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:18",
+  "input_hash": "sha256:9c05441e0f3741eb038b0f9605b2612cebcf815ff983847f7d8dd4ec2f5e4ce7",
+  "file": "classify/9c05441e0f3741eb038b0f9605b2612cebcf815ff983847f7d8dd4ec2f5e4ce7.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:18",
+     "text": "호재: GTX-B 개통 2030 vs 2031\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:19",
+  "input_hash": "sha256:362d750120b5c7d8f9b43dd101626d79caaf51849e0b3448d91df26496082eab",
+  "file": "classify/362d750120b5c7d8f9b43dd101626d79caaf51849e0b3448d91df26496082eab.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:19",
+     "text": "호재: 삼성바이오 제3캠퍼스\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:2",
+  "input_hash": "sha256:28c006fd768f39fed1c987cbaaeaa128b599e6eadcb349cd544d7d90de2566d6",
+  "file": "classify/28c006fd768f39fed1c987cbaaeaa128b599e6eadcb349cd544d7d90de2566d6.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:2",
+     "text": "호재: 검단구 신설 2026-07\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:20",
+  "input_hash": "sha256:16b0abdbb1c0530c6727b077c5c80b7e75f20492451bce9d8fd63c75305f8133",
+  "file": "classify/16b0abdbb1c0530c6727b077c5c80b7e75f20492451bce9d8fd63c75305f8133.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:20",
+     "text": "호재: 송도트램\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:21",
+  "input_hash": "sha256:805c8532df5676fc6059dcac138c99ead1ae821eb771e7c27ca234de1d808405",
+  "file": "classify/805c8532df5676fc6059dcac138c99ead1ae821eb771e7c27ca234de1d808405.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:21",
+     "text": "호재: 11-1공구 기반시설\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:22",
+  "input_hash": "sha256:f78a4deccbff9f99e27410e21bb783e681c04cd7e4d0eaca9c06263cd74967f9",
+  "file": "classify/f78a4deccbff9f99e27410e21bb783e681c04cd7e4d0eaca9c06263cd74967f9.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:22",
+     "text": "호재: IBD 업무용지\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:23",
+  "input_hash": "sha256:4e4bd82af7f5abfcdd1bef93623846ec7ba0d0c619b1d29924841234e9012e55",
+  "file": "classify/4e4bd82af7f5abfcdd1bef93623846ec7ba0d0c619b1d29924841234e9012e55.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:23",
+     "text": "호재: 대장홍대선\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:24",
+  "input_hash": "sha256:16a4b2204d090d623e93bfa75ccd26f31cc50658b5f2641460f4b437bc21f9e4",
+  "file": "classify/16a4b2204d090d623e93bfa75ccd26f31cc50658b5f2641460f4b437bc21f9e4.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:24",
+     "text": "호재: 계양AX파크\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:25",
+  "input_hash": "sha256:a19a434d3cd3c211c3eeff2ae1352ae3df4a1eb528b9b64cdaf217169e245a95",
+  "file": "classify/a19a434d3cd3c211c3eeff2ae1352ae3df4a1eb528b9b64cdaf217169e245a95.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:25",
+     "text": "호재: 서울5호선 김포·검단 연장\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:26",
+  "input_hash": "sha256:94ce7a7b0b844ca48b94c8050360d935de8a7359936a424b430f1f8a48a25329",
+  "file": "classify/94ce7a7b0b844ca48b94c8050360d935de8a7359936a424b430f1f8a48a25329.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:26",
+     "text": "호재: 검단 법조타운\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:27",
+  "input_hash": "sha256:9373085ce584d6d2e80ea6cb5e17497dfbeb46745eb2ee6bbab9d00a2c03f85d",
+  "file": "classify/9373085ce584d6d2e80ea6cb5e17497dfbeb46745eb2ee6bbab9d00a2c03f85d.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:27",
+     "text": "호재: iH 특화구역\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:28",
+  "input_hash": "sha256:2a41e3cb03bda511e85b31ae6b106c6cc823cc0c1457aaadb20bc19c4ff582b6",
+  "file": "classify/2a41e3cb03bda511e85b31ae6b106c6cc823cc0c1457aaadb20bc19c4ff582b6.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:28",
+     "text": "호재: 검단지구 5단계 준공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:29",
+  "input_hash": "sha256:cc6b13c276899d157c0edb64f925a1721e8a017e238b09304069bc3d4823d155",
+  "file": "classify/cc6b13c276899d157c0edb64f925a1721e8a017e238b09304069bc3d4823d155.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:29",
+     "text": "호재: 풍무역세권 도시개발 6,599세대 분양·공사 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:3",
+  "input_hash": "sha256:06bca28e86ae98d8c8abfc57959d76459067bf623dc61c65209117780e9b969e",
+  "file": "classify/06bca28e86ae98d8c8abfc57959d76459067bf623dc61c65209117780e9b969e.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:3",
+     "text": "호재: 셀트리온 3공장 가동\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:30",
+  "input_hash": "sha256:1273bce47be8641865a2809358fb12cd99fd014a0d8ee3a7fa158a59cbc19a89",
+  "file": "classify/1273bce47be8641865a2809358fb12cd99fd014a0d8ee3a7fa158a59cbc19a89.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:30",
+     "text": "호재: 한강시네폴리스 산단·주거 3,461세대 분양·착공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:31",
+  "input_hash": "sha256:711cef61a80cdc97094e6e868cb52ccae64b1d6629d626d34932145e3b18186c",
+  "file": "classify/711cef61a80cdc97094e6e868cb52ccae64b1d6629d626d34932145e3b18186c.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:31",
+     "text": "호재: 수도권 제2순환 김포~파주 한강하저터널\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:32",
+  "input_hash": "sha256:ce8c8d64c3b3fe1640dbc3035a436f1b5300169b70920034e6cc2a0cddf2cace",
+  "file": "classify/ce8c8d64c3b3fe1640dbc3035a436f1b5300169b70920034e6cc2a0cddf2cace.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:32",
+     "text": "호재: 김포골드라인 증차\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:33",
+  "input_hash": "sha256:9a4b2cf4305a4ffa98f82dd36d72165ad19f93f21c7eca039212ec820d65761f",
+  "file": "classify/9a4b2cf4305a4ffa98f82dd36d72165ad19f93f21c7eca039212ec820d65761f.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:33",
+     "text": "호재: GTX-D 서부권 광역급행철도 예타 통과\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:34",
+  "input_hash": "sha256:88f22de948da799e90e30690af672beb7b43b07787ae3fa5cbd604ff8f1af98d",
+  "file": "classify/88f22de948da799e90e30690af672beb7b43b07787ae3fa5cbd604ff8f1af98d.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:34",
+     "text": "호재: 인천2호선 고양 연장 예타 진행 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:35",
+  "input_hash": "sha256:e11dd84db84d36ca4c597ab688d87f97087d698f4c9f5d1a5828f0cb62edcad4",
+  "file": "classify/e11dd84db84d36ca4c597ab688d87f97087d698f4c9f5d1a5828f0cb62edcad4.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:35",
+     "text": "호재: 인하대병원 김포 부지제공 협약\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:36",
+  "input_hash": "sha256:bc73552da9a5c83b7d11585e9817a86e36eb8d523764f2ae13098f2bba175291",
+  "file": "classify/bc73552da9a5c83b7d11585e9817a86e36eb8d523764f2ae13098f2bba175291.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:36",
+     "text": "호재: 김포한강선(가칭)\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:37",
+  "input_hash": "sha256:d764705024ec5202bacba582edeb57d7b4399a1a0424e69db302800eacec9f3c",
+  "file": "classify/d764705024ec5202bacba582edeb57d7b4399a1a0424e69db302800eacec9f3c.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:37",
+     "text": "호재: 김포한강2 콤팩트시티\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:38",
+  "input_hash": "sha256:773a5e0626ab32dee16a443bf5777802036d4692035d4f1d5f453bb85a294a57",
+  "file": "classify/773a5e0626ab32dee16a443bf5777802036d4692035d4f1d5f453bb85a294a57.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:38",
+     "text": "호재: 김포 서울 편입\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:39",
+  "input_hash": "sha256:8a4b71dd8f021e6cbc62bbec41b58d534adf9894dbe4a4ff6bca3b67086dda42",
+  "file": "classify/8a4b71dd8f021e6cbc62bbec41b58d534adf9894dbe4a4ff6bca3b67086dda42.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:39",
+     "text": "호재: 김포 사이언스파크\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:4",
+  "input_hash": "sha256:3ffe1d7071b8e9460ae1eb960d89057a91754aa9d55c64ef00bcafee628d8b39",
+  "file": "classify/3ffe1d7071b8e9460ae1eb960d89057a91754aa9d55c64ef00bcafee628d8b39.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:4",
+     "text": "호재: 송도 워터프런트 1-2단계 2027 초 준공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:40",
+  "input_hash": "sha256:3c6735c6bd676db2a6588ba6d8d48f7fefaf2083be64366264d3b07ab94ed396",
+  "file": "classify/3c6735c6bd676db2a6588ba6d8d48f7fefaf2083be64366264d3b07ab94ed396.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:40",
+     "text": "호재: 서울 5호선 김포·검단 연장\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:41",
+  "input_hash": "sha256:56c8ef73c0e33480612b643d94adb7d9eaf159bfa2412536019bc30154e540f8",
+  "file": "classify/56c8ef73c0e33480612b643d94adb7d9eaf159bfa2412536019bc30154e540f8.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:41",
+     "text": "호재: 걸포4·감정4지구\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:42",
+  "input_hash": "sha256:ee862d57310aa0748fa47d1f9ee25537e5b922962a878541862f53b3d5d64fee",
+  "file": "classify/ee862d57310aa0748fa47d1f9ee25537e5b922962a878541862f53b3d5d64fee.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:42",
+     "text": "호재: 계양~강화 고속도로\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:43",
+  "input_hash": "sha256:e372b1ad16c7f0415eb30b08a7d8c80ee64e20b2fa55ef75974dca7e9317dc8e",
+  "file": "classify/e372b1ad16c7f0415eb30b08a7d8c80ee64e20b2fa55ef75974dca7e9317dc8e.json",
+  "status": "review",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:43",
+     "text": "호재: 북변5구역 재개발\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:5",
+  "input_hash": "sha256:9d185c18eeaab35d8ee088b6c4c3d89237d3c67bf754c38fb0adbc8cc2ba8784",
+  "file": "classify/9d185c18eeaab35d8ee088b6c4c3d89237d3c67bf754c38fb0adbc8cc2ba8784.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:5",
+     "text": "호재: 계양신도시 조성·2026-12 첫 입주\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:6",
+  "input_hash": "sha256:3ef89218697d469200c28970b2cc2ff00fed377f42541203bfa858d68988a35f",
+  "file": "classify/3ef89218697d469200c28970b2cc2ff00fed377f42541203bfa858d68988a35f.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:6",
+     "text": "호재: 롯데바이오 송도 1공장 2026-11 준공\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:7",
+  "input_hash": "sha256:99d8b209dc49131afd5fea7254becf4b14d6fc5c189e3052a908de9b0edbaed0",
+  "file": "classify/99d8b209dc49131afd5fea7254becf4b14d6fc5c189e3052a908de9b0edbaed0.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:7",
+     "text": "호재: 검단~드림로 개통\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:8",
+  "input_hash": "sha256:57213a0a7d92eb3505fa89c67aa7b5209e07ec9069513251765de75dde98adae",
+  "file": "classify/57213a0a7d92eb3505fa89c67aa7b5209e07ec9069513251765de75dde98adae.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:8",
+     "text": "호재: GTX-D 1단계 예타 통과·기본계획 중\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
+  }
+ },
+ {
+  "tool": "classify",
+  "purpose": "classify:catalyst_kind:9",
+  "input_hash": "sha256:2c76caaf8be5e9f67c2986dce8aa3593cbdeb0347d71e84b5cfd3c2bcc0a4d48",
+  "file": "classify/2c76caaf8be5e9f67c2986dce8aa3593cbdeb0347d71e84b5cfd3c2bcc0a4d48.json",
+  "status": "ok",
+  "complex_id": null,
+  "basis": "보고서 #64·#111 같은 이름 항목",
+  "runs": [
+   "full",
+   "t3"
+  ],
+  "payload": {
+   "items": [
+    {
+     "id": "catalyst:9",
+     "text": "호재: 송도아라1초 2030-03 개교\n종류(kind)는 보고서에 분류가 없어 '기타'(devseed)"
+    }
+   ],
+   "classes": [
+    {
+     "id": "교통",
+     "description": "철도·지하철·GTX·도로·IC·버스 노선 등 교통망 신설·연장·개선"
+    },
+    {
+     "id": "개발",
+     "description": "도시개발·택지·재개발·산업단지·업무지구·대규모 복합개발 사업"
+    },
+    {
+     "id": "학교",
+     "description": "초·중·고 신설·이전·학군 관련 사업"
+    },
+    {
+     "id": "상업",
+     "description": "대형 상업시설·쇼핑몰·백화점·상권 개발"
+    },
+    {
+     "id": "생활인프라",
+     "description": "공원·병원·도서관·체육·문화시설 등 생활 편의시설"
+    },
+    {
+     "id": "기타",
+     "description": "위 다섯 가지에 들지 않거나 종류를 자료만으로 정할 수 없을 때"
+    }
+   ],
+   "purpose": "부동산 호재 사업의 종류 분류"
   }
  },
  {
@@ -2178,8 +4242,8 @@
  {
   "tool": "decide",
   "purpose": "decide:scenario_A",
-  "input_hash": "sha256:7f5d65feffcdb4bf5696c92da35ca7d94991f3078564191083f4db89bb4d393b",
-  "file": "decide/7f5d65feffcdb4bf5696c92da35ca7d94991f3078564191083f4db89bb4d393b.json",
+  "input_hash": "sha256:7f2c2da9142a486296d4939c8d33d355eb25560ed97a3b346fc44e11b087fea0",
+  "file": "decide/7f2c2da9142a486296d4939c8d33d355eb25560ed97a3b346fc44e11b087fea0.json",
   "status": "ok",
   "complex_id": null,
   "basis": "보고서 #126 decide(선택·확률·확신도 그대로)",
@@ -2189,7 +4253,7 @@
   ],
   "payload": {
    "decision": "상황 'A 가점 높음(실거주)'에서 후보 단지 중 어느 것을 우선 검토할 것인가 (투자 권유가 아닌 상대 비교, 증거의 수치와 요건 사전 계산만 근거로)",
-   "evidence": "[complex_1] 더샵 송도그란테르\n단지: 더샵 송도그란테르\n생활권: 연수구\n기준 타입: 전용 84C(84㎡)\n현재 구매가: 12.45~13.18억 (공급가)\n입주: 2029-08\n전매: 당첨 후 6개월\n거주의무: 0개월\n계약금: 5%\n중도금: 중도금 60% 이자후불, 중도금 대출보증 세대당 2건\n접수: 미정(공식 팝업, 추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음))\n비교군 실거래: 비교군 10단지 64건, 중앙 9.34억\n가격 갭: +37.1% (재가공)\n요건 사전 계산: 접근 가능성=충족 — 가점제 1순위 공급(본청약·예정 공고) 있음 → 충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 없음, 비규제 → 충족; 자금=미충족 — 계약금 6,408만(5%) ≤ 자기자본 3억; 잔금 부족 3.815억 → 미충족 (중도금 이자후불제)\n\n[complex_2] 엘리프 검단 포레듀\n단지: 엘리프 검단 포레듀\n생활권: 검단구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 5.78~6.08억 (공급가+발코니)\n입주: 2028-03\n전매: 당첨 후 36개월 (등기 시 해제)\n거주의무: 0개월\n계약금: 5%\n중도금: 중도금 60% 이자후불\n접수: 가능(공식 팝업)\n비교군 실거래: 비교군 11단지 45건, 중앙 6.7억\n가격 갭: -11.5% (재가공)\n요건 사전 계산: 접근 가능성=미충족 — 가점제 1순위 공급 없음(무순위·임의·선착순 경로만) → 미충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제 → 충족; 자금=충족 — 계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[complex_3] 송도 한내들 센트럴리버\n단지: 송도 한내들 센트럴리버\n생활권: 연수구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 8.13~8.99억 (공급가)\n입주: 2029-03\n전매: 당첨 후 6개월\n거주의무: 0개월\n계약금: 2.92% (추정)\n중도금: 중도금 60% 이자후불(연 4.80%, 2026-09-22 기준, 2026-10-06자 안내문)\n접수: 가능(공식 팝업)\n비교군 실거래: 비교군 10단지 64건, 중앙 9.34억\n가격 갭: -8.4% (재가공)\n요건 사전 계산: 접근 가능성=미충족 — 가점제 1순위 공급 없음(무순위·임의·선착순 경로만) → 미충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 확인 불가, 비규제 → 충족; 자금=충족 — 계약금 2,500만(2.92%(추정)) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[complex_5] 검단 센트레빌 에듀시티\n단지: 검단 센트레빌 에듀시티\n생활권: 검단구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 5.91~6.22억 (공급가+발코니)\n입주: 2028-08\n전매: 당첨 후 36개월 (등기 시 해제)\n거주의무: 0개월\n계약금: 10%\n중도금: 중도금 60% 이자후불 융자알선\n접수: 미정(공식 팝업)\n비교군 실거래: 비교군 11단지 45건, 중앙 6.7억\n가격 갭: -9.5% (재가공)\n요건 사전 계산: 접근 가능성=충족 — 가점제 1순위 공급(본청약·예정 공고) 있음 → 충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제 → 충족; 자금=충족 — 계약금 6,066만(10%) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[complex_6] 더샵 검단레이크파크 AB23\n단지: 더샵 검단레이크파크 AB23\n생활권: 검단구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 6.51~6.68억 (공급가+발코니)\n입주: 2029-12\n전매: 당첨 후 36개월\n거주의무: 36개월\n계약금: 5%\n중도금: 중도금 60% 이자후불\n접수: 미정(공식 팝업)\n비교군 실거래: 비교군 11단지 45건, 중앙 6.7억\n가격 갭: -1.5% (재가공)\n요건 사전 계산: 접근 가능성=미충족 — 가점제 1순위 공급 없음(무순위·임의·선착순 경로만) → 미충족; 규제 제약=충족 — 거주의무 36개월(수용), 재당첨 제한 10년(이력 없음), 비규제 → 충족; 자금=충족 — 계약금 3,299만(5%) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[wait_new] 모집공고 대기 — 12개월 내 공고 예정 단지를 기다림(지금 후보 대신 가점제 1순위 청약)\n지역 (A) 트랙 공고 예정 2곳(기준일 2026-10-08, 12개월 내 공고 예정 단지):\n- 계양신도시 카이브 유보라(모집공고일 미정(공고 전), 계양구; 분양가 미공개; 판정 범위 보류 — 공고 후 재판정)\n- 검단 센트레빌 그랑포레(모집공고일 미정(공고 전), 검단구; 분양가 미공개; 판정 범위 미해결(분류 판정 미해결))",
+   "evidence": "[complex_1] 더샵 송도그란테르\n단지: 더샵 송도그란테르\n생활권: 연수구\n기준 타입: 전용 84C(84㎡)\n현재 구매가: 12.45~13.18억 (공급가)\n입주: 2029-08\n전매: 당첨 후 6개월\n거주의무: 0개월\n계약금: 5%\n중도금: 중도금 60% 이자후불, 중도금 대출보증 세대당 2건\n접수: 미정(공식 팝업, 추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음))\n비교군 실거래: 비교군 10단지 64건, 중앙 9.34억\n가격 갭: +37.1% (재가공)\n요건 사전 계산: 접근 가능성=충족 — 가점제 1순위 공급(본청약·예정 공고) 있음 → 충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 없음, 비규제 → 충족; 자금=미충족 — 계약금 6,408만(5%) ≤ 자기자본 3억; 잔금 부족 3.815억 → 미충족 (중도금 이자후불제)\n\n[complex_2] 엘리프 검단 포레듀\n단지: 엘리프 검단 포레듀\n생활권: 검단구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 5.78~6.08억 (공급가+발코니)\n입주: 2028-03\n전매: 당첨 후 36개월 (등기 시 해제)\n거주의무: 0개월\n계약금: 5%\n중도금: 중도금 60% 이자후불\n접수: 가능(공식 팝업)\n비교군 실거래: 비교군 11단지 45건, 중앙 6.7억\n가격 갭: -11.5% (재가공)\n요건 사전 계산: 접근 가능성=미충족 — 가점제 1순위 공급 없음(무순위·임의·선착순 경로만) → 미충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제 → 충족; 자금=충족 — 계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[complex_3] 송도 한내들 센트럴리버\n단지: 송도 한내들 센트럴리버\n생활권: 연수구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 8.13~8.99억 (공급가)\n입주: 2029-03\n전매: 당첨 후 6개월\n거주의무: 0개월\n계약금: 2.92% (추정)\n중도금: 중도금 60% 이자후불(연 4.80%, 2026-09-22 기준, 2026-10-06자 안내문)\n접수: 가능(공식 팝업)\n비교군 실거래: 비교군 10단지 64건, 중앙 9.34억\n가격 갭: -8.4% (재가공)\n요건 사전 계산: 접근 가능성=미충족 — 가점제 1순위 공급 없음(무순위·임의·선착순 경로만) → 미충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 확인 불가, 비규제 → 충족; 자금=충족 — 계약금 2,500만(2.92%(추정)) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[complex_5] 검단 센트레빌 에듀시티\n단지: 검단 센트레빌 에듀시티\n생활권: 검단구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 5.91~6.22억 (공급가+발코니)\n입주: 2028-08\n전매: 당첨 후 36개월 (등기 시 해제)\n거주의무: 0개월\n계약금: 10%\n중도금: 중도금 60% 이자후불 융자알선\n접수: 미정(공식 팝업)\n비교군 실거래: 비교군 11단지 45건, 중앙 6.7억\n가격 갭: -9.5% (재가공)\n요건 사전 계산: 접근 가능성=충족 — 가점제 1순위 공급(본청약·예정 공고) 있음 → 충족; 규제 제약=충족 — 거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제 → 충족; 자금=충족 — 계약금 6,066만(10%) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[complex_6] 더샵 검단레이크파크 AB23\n단지: 더샵 검단레이크파크 AB23\n생활권: 검단구\n기준 타입: 전용 84A(84㎡)\n현재 구매가: 6.51~6.68억 (공급가+발코니)\n입주: 2029-12\n전매: 당첨 후 36개월\n거주의무: 36개월\n계약금: 5%\n중도금: 중도금 60% 이자후불\n접수: 미정(공식 팝업)\n비교군 실거래: 비교군 11단지 45건, 중앙 6.7억\n가격 갭: -1.5% (재가공)\n요건 사전 계산: 접근 가능성=미충족 — 가점제 1순위 공급 없음(무순위·임의·선착순 경로만) → 미충족; 규제 제약=충족 — 거주의무 36개월(수용), 재당첨 제한 10년(이력 없음), 비규제 → 충족; 자금=충족 — 계약금 3,299만(5%) ≤ 자기자본 3억; 잔금 부족 0 → 충족 (중도금 이자후불제)\n\n[wait_new] 모집공고 대기 — 12개월 내 공고 예정 단지를 기다림(지금 후보 대신 가점제 1순위 청약)\n지역 (A) 트랙 공고 예정 1곳(기준일 2026-10-08, 12개월 내 공고 예정 단지):\n- 계양신도시 카이브 유보라(모집공고일 미정(공고 전), 계양구; 분양가 미공개; 판정 범위 보류 — 공고 후 재판정)",
    "priorities": "상황 'A 가점 높음(실거주)' 가중치: p10 0.35, rerank 0.20, gap 0.15, benchmark 0.10, supply 0.10, move_in 0.10; 목적 실거주; 요건 사전 계산(충족/미충족) 근거를 우선한다",
    "candidates": [
     {

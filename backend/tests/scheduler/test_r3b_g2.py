@@ -28,6 +28,7 @@ from app.collectors.official_site import OfficialSiteCollector, SiteTarget
 from app.core.contracts_gen import BenchmarkInput
 from app.core.http import HttpClient
 from app.judge.jev_mcp import JevMcpAdapter
+from app.judge.payloads import NOT_CATALYST
 from app.models import (
     Benchmark,
     Catalyst,
@@ -249,22 +250,93 @@ class NewsJev(SynthJev):
 
     def _classify(self, a: dict[str, Any]) -> dict[str, Any]:
         out = super()._classify(a)
-        if a["classes"][0]["id"] not in ("open", "private_sale_apt"):
+        if a["classes"][0]["id"] == "확정":  # 호재 단계(5단계 + '호재 아님')
             for r, it in zip(out["results"], a["items"], strict=True):
                 if "견본주택" in it["text"]:
-                    r["classification"] = "호재 아님"
+                    r["classification"] = NOT_CATALYST
         return out
 
 
-def _news_doc(s: Session) -> int:
-    doc = RawDocument(
-        source_kind="news", url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=q",
-        fetched_at="2026-10-07T06:00:00+09:00", http_status=200, sha256="b" * 64, path=None,
-        content_type="application/json", region_id=1,
-    )  # fmt: skip
-    s.add(doc)
-    s.flush()
-    return doc.id
+@dataclass
+class NewsCollector:
+    factory: sessionmaker[Session]
+    items: list[dict[str, str]]
+
+    def fetch(self, region: Any, snapshot: Any, since: str | None) -> list[Any]:
+        import hashlib as _h
+        import json as _json
+
+        from app.core.snapshot import store_raw
+        from app.normalize.store import raw_dto
+
+        data = _json.dumps({"items": self.items}, ensure_ascii=False).encode("utf-8")
+        with self.factory() as s:
+            row = s.scalars(
+                select(RawDocument).where(RawDocument.sha256 == _h.sha256(data).hexdigest())
+            ).first()
+            if row is None:
+                stored = store_raw(data, source="news", day=date(2026, 10, 7), ext="json")
+                row = RawDocument(
+                    source_kind="news", url="https://naverapihub.apigw.ntruss.com/search/v1/news?query=q",
+                    fetched_at="2026-10-07T06:00:00+09:00", http_status=200, sha256=stored.sha256,
+                    path=stored.relpath, content_type="application/json", region_id=1,
+                )  # fmt: skip
+                s.add(row)
+                s.flush()
+            dto = raw_dto(row)
+            s.commit()
+        return [dto]
+
+
+def test_n_m2_news_screen_at_collect_then_classify_discards_not_catalyst(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int
+) -> None:
+    """D10-6: 뉴스 항목 → P1 screen(수집, skip 은 후보 아님) → 후보 → P4 단계 classify('호재 아님'은 폐기·기록) → 종류 classify."""
+    from app.scheduler.collect import collect
+
+    jev = NewsJev()
+    items = [
+        {
+            "title": "검단 신도시 아파트 분양 일정",
+            "originallink": "https://news.example.com/a",
+            "description": "발췌",
+        },
+        {
+            "title": "송도 모델하우스 견본주택 개관",
+            "originallink": "https://news.example.com/b",
+            "description": "발췌",
+        },
+        {"title": "트램 기본계획 고시", "originallink": "https://news.example.com/c", "description": "발췌"},
+    ]
+    ctx = _ctx(make_ctx, factory, jev, collectors={"news": lambda c: NewsCollector(factory, items)})
+    res = collect(ctx, 1, ["news"], asof_date="2026-10-07")
+    assert res.errors == {}, res.errors
+    assert res.stats()["assembled"]["catalyst"]["rejected"] == 1  # screen skip → 후보를 만들지 않는다
+    assert len(jev.screened) == 3
+    with factory() as s:
+        _cand(s, None, "사람 입력 호재", "https://gov.example.go.kr/d")  # 사람 URL 입력 — screen 없이 분류
+        s.commit()
+        assert {c.name for c in s.scalars(select(Catalyst))} == {
+            "송도 모델하우스 견본주택 개관", "트램 기본계획 고시", "사람 입력 호재",
+        }  # fmt: skip
+    out = run_pipeline(ctx, seeded)
+    assert not out.degraded, out.error
+    with factory() as s:
+        kept = {c.name: c for c in s.scalars(select(Catalyst))}
+        assert set(kept) == {"트램 기본계획 고시", "사람 입력 호재"}
+        tram = kept["트램 기본계획 고시"]
+        assert (
+            tram.stage == "확정" and tram.judgment_seq is not None and tram.kind == "교통"
+        )  # 종류도 classify
+    assert [(d["name"], d["reason"]) for d in out.catalysts_discarded] == [
+        ("송도 모델하우스 견본주택 개관", "호재 아님(판정기 classify)")
+    ]
+    assert out.catalysts_discarded[0]["judgment_seq"] is not None  # 기록(judgment_log 근거)
+    # 다음 주 같은 기사가 다시 들어와도(screen·classify 키 = 출처·제목 해시) 판정 재호출 없음
+    n = len(jev.calls)
+    collect(ctx, 1, ["news"], asof_date="2026-10-07")
+    run_pipeline(ctx, seeded)
+    assert len(jev.calls) == n
 
 
 def _cand(s: Session, doc_id: int | None, name: str, url: str) -> None:
@@ -274,42 +346,6 @@ def _cand(s: Session, doc_id: int | None, name: str, url: str) -> None:
             raw_document_id=doc_id, source_url=url, note="발췌",
         )
     )  # fmt: skip
-
-
-def test_n_m2_news_candidates_screen_then_classify_discard_not_catalyst(
-    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int
-) -> None:
-    jev = NewsJev()
-    with factory() as s:
-        doc = _news_doc(s)
-        _cand(s, doc, "검단 신도시 아파트 분양 일정", "https://news.example.com/a")  # screen skip → 폐기
-        _cand(s, doc, "송도 모델하우스 견본주택 개관", "https://news.example.com/b")  # '호재 아님' → 폐기
-        _cand(s, doc, "트램 기본계획 고시", "https://news.example.com/c")  # 호재
-        _cand(s, None, "사람 입력 호재", "https://gov.example.go.kr/d")  # 사람 URL 입력 — screen 없이 분류
-        s.commit()
-    res = run_pipeline(_ctx(make_ctx, factory, jev), seeded)
-    assert not res.degraded, res.error
-    with factory() as s:
-        kept = {c.name: c for c in s.scalars(select(Catalyst))}
-        assert set(kept) == {"트램 기본계획 고시", "사람 입력 호재"}
-        assert (
-            kept["트램 기본계획 고시"].stage == "확정" and kept["트램 기본계획 고시"].judgment_seq is not None
-        )
-    reasons = {d["name"]: d["reason"] for d in res.catalysts_discarded}
-    assert reasons == {
-        "검단 신도시 아파트 분양 일정": "screen skip",
-        "송도 모델하우스 견본주택 개관": "호재 아님(판정기 classify)",
-    }
-    assert all(d["judgment_seq"] is not None for d in res.catalysts_discarded)  # 기록(judgment_log 근거)
-    assert len(jev.screened) == 3  # 뉴스 후보만 screen
-    # 다음 주 같은 기사가 다시 후보로 들어와도(새 id) 판정 재호출 없음(purpose = 출처·이름 해시)
-    n = len(jev.calls)
-    with factory() as s:
-        doc2 = s.scalars(select(RawDocument.id).where(RawDocument.source_kind == "news")).one()
-        _cand(s, doc2, "검단 신도시 아파트 분양 일정", "https://news.example.com/a")
-        s.commit()
-    run_pipeline(_ctx(make_ctx, factory, jev), seeded)
-    assert len(jev.calls) == n
 
 
 # ====================================================================== N-M4 대체 표기

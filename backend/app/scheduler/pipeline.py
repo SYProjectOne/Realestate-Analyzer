@@ -11,8 +11,8 @@
    그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
    triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
    (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
-4. P4 classify: 포함/제외 7클래스(지역 단지 전부·범위 경계 제외, 64개씩 배치 1회) · 호재: 뉴스 후보 → P1 screen(호재 관련성)
-   → 단계 classify('호재 아님'이면 후보 폐기·기록) → 종류(kind) classify(D10-6, ``_p4_catalysts``)
+4. P4 classify: 포함/제외 7클래스(지역 단지 전부·범위 경계 제외, 64개씩 배치 1회) · 호재: 후보(뉴스는 수집 때 P1 screen
+   통과분만, ``assemble``) → 단계 classify('호재 아님'이면 후보 폐기·기록) → 종류(kind) classify(D10-6, ``_p4_catalysts``)
 5. P5 compare: 대상 단지 출처 상충 중 같은 순위 1차·1차(needs_compare)만 → field_provenance.compare_judgment_seq.
    contradicts 면 ``normalize.judged.apply_compare``(1차 공고 자료 채택·병기)
 6. P6 noul: 대상 단지 중 ``analysis.scope.runs_ladder``(판정 대상만 — 참고·보류·미해결·제외는 사다리 미실행, D9-1)의
@@ -82,7 +82,7 @@ from app.models import (
     ScoreRun,
     Snapshot,
 )
-from app.models.enums import CATALYST_KIND, CATALYST_STAGE, INCLUSION_CLASS
+from app.models.enums import INCLUSION_CLASS
 from app.normalize.extract_request import FIELD_DESCRIPTIONS, ExtractRequest, build_extract_requests
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
@@ -141,8 +141,6 @@ _TEXT_SOURCES: Final = ("notice_pdf",)
 _INTAKE_PATHS: Final = INTAKE_PATHS
 EXTRACT_FIELDS_MAX: Final = 32
 """판정기 extract 한 호출의 필드 상한 — 넘으면 나눠 보낸다(잘라 버리지 않는다, R3 C3)."""
-NOT_CATALYST_LABELS: Final = frozenset({"호재 아님", "not_catalyst", "none"})
-"""호재 단계 classify 의 '호재 아님' 클래스 id(D10-6, G1 judge.payloads — 이름이 정해지면 ``P.CATALYST_NOT`` 이 이긴다)."""
 
 
 # ---------------------------------------------------------------- 호출 계수
@@ -554,37 +552,19 @@ def _is_news(cat: Catalyst) -> bool:
 
 
 def _catalyst_text(cat: Catalyst) -> str:
-    """호재 판정 입력(screen·classify 공용). 뉴스 후보는 G1 ``normalize.catalyst`` 의 screen 입력 빌더가 있으면 그것
-    (D10-6), 없거나 뉴스가 아니면 예전 텍스트 그대로(같은 입력 = 캐시)."""
-    if _is_news(cat):
-        from app.normalize import catalyst as ncat
-
-        build = getattr(ncat, "screen_text", None) or getattr(ncat, "catalyst_screen_text", None)
-        if callable(build):
-            text = build(cat)
-            if isinstance(text, str) and text.strip():
-                return text
-    return "\n".join(
-        p for p in (f"호재: {cat.name}", f"구분: {cat.kind}", cat.note or "", cat.source_url or "") if p
-    )
+    """호재 판정 입력(단계·종류 classify 공용) = 이름·발췌·출처. 종류(kind)는 넣지 않는다 — 종류 classify 결과가 다음
+    실행의 입력을 바꿔 같은 호재를 매번 다시 판정하지 않게(같은 사실 = 같은 payload = 캐시)."""
+    return "\n".join(p for p in (f"호재: {cat.name}", cat.note or "", cat.source_url or "") if p)
 
 
 def _catalyst_key(cat: Catalyst) -> str:
-    """판정 purpose 키. 뉴스 후보는 행 id 가 아니라 출처 URL·이름 해시 — 폐기 후 다음 수집에 다시 들어온 같은 기사는
-    새 id 여도 같은 purpose 라 캐시(호출 0). 나머지는 예전처럼 행 id."""
+    """판정 purpose 키. 뉴스 후보는 행 id 가 아니라 출처 URL·제목 해시(``assemble.news_key`` — 수집 screen 과 같은 키):
+    폐기 후 다음 수집에 다시 들어온 같은 기사는 새 id 여도 같은 purpose 라 캐시(호출 0). 나머지는 예전처럼 행 id."""
     if not _is_news(cat):
         return str(cat.id)
-    import hashlib
+    from app.scheduler.assemble import news_key
 
-    basis = f"{cat.source_url or ''}|{cat.name}"
-    return "n" + hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
-
-
-def _not_catalyst_labels() -> frozenset[str]:
-    from app.judge import payloads as judge_payloads
-
-    extra = getattr(judge_payloads, "CATALYST_NOT", None)
-    return NOT_CATALYST_LABELS | ({str(extra)} if extra else set())
+    return news_key(cat.source_url, cat.name)
 
 
 def _discard_catalyst(
@@ -614,45 +594,29 @@ def _p4_catalysts(
     seq: persist.SeqResolver,
     res: PipelineResult,
 ) -> None:
-    """D10-6: 뉴스 호재 후보 → P1 screen(호재 관련성) 통과분만 → 단계 classify('호재 아님'이면 후보 폐기·기록) →
-    종류(kind) classify. 판단은 판정기만 — 여기서는 봉투 결과를 행에 옮기고, 판정이 쓸 수 없으면(review) 후보를 남겨 둔다.
+    """D10-6: 호재 후보(뉴스는 수집 때 P1 screen 통과분만 — ``assemble``) → 단계 classify(5단계 + '호재 아님') →
+    '호재 아님'(``judge.pipeline.catalyst_stage`` = None)이면 후보 폐기·기록, 아니면 단계·종류 classify(``catalyst_kind``).
 
-    screen 거부(skip·block)·'호재 아님'은 catalyst 행을 지우고 ``PipelineResult.catalysts_discarded`` 에 기록한다
-    (judgment_log 행이 근거). purpose 키는 출처 URL·이름 해시라 같은 기사가 다시 들어와도 판정 재호출이 없다.
+    판단은 판정기만 — 봉투 결과를 행에 옮긴다(미해결이면 단계 '미확정'·종류 '기타'). 폐기 = catalyst 행(+ 연결·출처) 삭제,
+    기록 = ``PipelineResult.catalysts_discarded``(잡 stats, judgment_log 행이 근거).
     """
-    kind_fn = getattr(jp, "p4_classify_catalyst_kind", None)
-    not_labels = _not_catalyst_labels()
     for cat in list(
         session.scalars(select(Catalyst).where(Catalyst.region_id == region.id).order_by(Catalyst.id))
     ):
         key = _catalyst_key(cat)
         text = _catalyst_text(cat)
-        if _is_news(cat):
-            screen = jp.p1_screen(
-                caller, text, task="지역 부동산 호재(교통·개발·학교·상업·생활 기반) 관련성 검사",
-                purpose=f"screen:catalyst:{key}", snapshot_id=snap.id,
-            )  # fmt: skip
-            if screen.verdict in ("skip", "block"):  # 판정기가 호재 관련 없음(skip)·사용 금지(block)로 판정
-                _discard_catalyst(
-                    session, cat, f"screen {screen.verdict}", res, seq(screen.envelope.judgment_seq)
-                )
-                continue
-            if not screen.usable:  # review·blocked(guard) — 판정 미해결: 후보는 남기고 분류하지 않는다
-                cat.stage, cat.decision = "미확정", "review"
-                continue
         out = jp.p4_classify_catalyst(caller, catalyst_key=key, text=text, snapshot_id=snap.id)
         s = seq(out.envelope.judgment_seq)
-        if out.resolved and out.label in not_labels:
+        stage = jp.catalyst_stage(out)
+        if stage is None:  # '호재 아님'(auto)
             _discard_catalyst(session, cat, "호재 아님(판정기 classify)", res, s)
             continue
-        cat.stage = out.label if out.resolved and out.label in CATALYST_STAGE else "미확정"
+        cat.stage = stage
         cat.decision = out.decision
         cat.stage_prob = persist.to_dec(out.prob) if out.prob is not None else None
         cat.judgment_seq = s
-        if callable(kind_fn):  # G1(R3b) 종류 classify — 없으면 수집기가 정한 kind 유지
-            kout = kind_fn(caller, catalyst_key=key, text=text, snapshot_id=snap.id)
-            if getattr(kout, "resolved", False) and getattr(kout, "label", None) in CATALYST_KIND:
-                cat.kind = str(kout.label)
+        kout = jp.p4_classify_catalyst_kind(caller, catalyst_key=key, text=text, snapshot_id=snap.id)
+        cat.kind = jp.catalyst_kind(kout)
     session.flush()
 
 
