@@ -333,7 +333,7 @@ def test_collector_end_to_end_with_local_server(
 ) -> None:
     region, snapshot = region_ctx
     renderer = _renderer()
-    with HttpClient(rate_per_host=1000, max_retries=0, jitter=0) as client:
+    with HttpClient(rate_per_host=1000, max_retries=0, jitter=0, allow_private=True) as client:
         c = OfficialSiteCollector(http=client, renderer=renderer, targets=[SiteTarget(local_site, 4)])
         docs = c.fetch(region, snapshot, None)
     assert [d.content_type for d in docs][1:] == ["image/png"]
