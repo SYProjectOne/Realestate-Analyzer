@@ -78,6 +78,8 @@ class _Want:
     key: str  # 항목 키(제목의 값이 바뀌어도 같은 항목) — ``item_key``
 
 
+PROTECTED_KINDS: Final = frozenset({"사실 재확인"})
+"""동기화가 고치거나 닫지 않는 kind — '사실 재확인'(D10-3 강등, 계약 .6)은 API(강등·복원)가 만들고 닫는다."""
 _INTERIM_RE: Final = re.compile(r"^중도금 (\d+)회차 납부일$")
 _PREFIX_KEYS: Final = (("전매제한 종료", "resale_end"), ("거주의무 만료", "residency_end"))
 _EXACT_KEYS: Final = {"계약 체결 마감": "contract_end", "모집공고 예정": "notice"}
@@ -267,7 +269,7 @@ def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> Check
         if excluded_for_checklist(cx):
             for (cid, _k), group in existing.items():
                 for it in group:
-                    if cid == cx.id and it.status == "open":
+                    if cid == cx.id and it.status == "open" and it.kind not in PROTECTED_KINDS:
                         it.status = "na"
                         res.closed += 1
             continue

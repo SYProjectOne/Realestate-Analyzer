@@ -54,6 +54,7 @@ NON_FACT_TABLES: dict[str, str] = {
     "admin_legal_map": "참조 코드 매핑",
     "judgment_log": "판정기 호출 기록(출처 jl_ 자체)",
     "claim": "판정기 verify 기록",
+    "fact_demotion": "사실 강등 기록(D10-3, 계약 .6) — 출처 아님(강등 출처 행은 field_provenance)",
     "scenario": "상황 설정",
     "score_run": "점수 계산 실행 기록(입력 지문·버전)",
     "score_component": "§6 수식 계산값(출처 = score_run·사실 Fact)",
