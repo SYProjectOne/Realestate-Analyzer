@@ -1,9 +1,11 @@
 """R3b F1a (청약홈 API): 경쟁률 페이지 순회 + 인코딩된 키 마스킹.
 
-1. 경쟁률(``…Cmpet``) 1건 조회는 ``perPage=100`` 한 페이지만 받아 주택형×순위×거주지역 행이 100을 넘으면 잘렸다
-   (``api.py:115-122``). ``matchCount`` 를 채울 때까지 페이지를 돌고, 페이지마다 원문 1행(URL 의 page 로 구별).
-2. 오류 문구에서 키를 디코딩 형태만 가렸다(``api.py:224``). httpx 오류 메시지의 URL 에는 퍼센트 인코딩된 키가
-   있다 → 원문·``quote``·``quote_plus``·인코딩 키 어느 형태로도 FetchResult·raw_document·경로 사유에 남지 않는다.
+1. 경쟁률(``…Cmpet``) 1건 조회는 ``perPage=100`` 한 페이지만 받아 주택형×순위×거주지역 행이
+   100을 넘으면 잘렸다(``api.py:115-122``). ``matchCount`` 를 채울 때까지 페이지를 돌고, 페이지마다
+   원문 1행(URL 의 page 로 구별).
+2. 오류 문구에서 키를 디코딩 형태만 가렸다(``api.py:224``). httpx 오류 메시지의 URL 에는 퍼센트
+   인코딩된 키가 있다 → 원문·``quote``·``quote_plus``·인코딩 키 어느 형태로도 FetchResult·
+   raw_document·경로 사유에 남지 않는다.
 """
 
 from __future__ import annotations
@@ -84,9 +86,11 @@ def _handler(calls: list[httpx.URL]) -> Callable[[httpx.Request], httpx.Response
         path = request.url.path
         page = int(p.get("page", "1"))
         if "cond[SUBSCRPT_AREA_CODE_NM::EQ]" in p:  # 시도 목록
-            rows = [ROW] if path.endswith("getAPTLttotPblancDetail") and p[
-                "cond[SUBSCRPT_AREA_CODE_NM::EQ]"
-            ] == "인천" else []
+            rows = (
+                [ROW]
+                if path.endswith("getAPTLttotPblancDetail") and p["cond[SUBSCRPT_AREA_CODE_NM::EQ]"] == "인천"
+                else []
+            )
             return httpx.Response(200, json=_page(rows, match=len(rows)))
         if path.endswith("Detail"):  # 1건 조회(목록 페이지와 본문이 같으면 sha 가 같아 한 행이 된다)
             return httpx.Response(200, json=_page([ROW], match=1, total=2_900))
@@ -184,7 +188,8 @@ def test_error_text_masks_encoded_key(http: HttpClient) -> None:
 def test_api_echoing_key_in_body_is_masked(
     http: HttpClient, db_session: Session, seeded_region: Region, snapshot: Snapshot, raw_dir: object
 ) -> None:
-    """목록 API 가 오류 문구에 키를 되돌려 주면(형식 오류 등) 원문 행·경로 사유·FetchResult 어디에도 남지 않는다."""
+    """목록 API 가 오류 문구에 키를 되돌려 주면(형식 오류 등) 원문 행·경로 사유·FetchResult 어디에도
+    남지 않는다."""
 
     def handler(request: httpx.Request) -> httpx.Response:
         echoed = f"invalid serviceKey={quote(DECODED_KEY, safe='')} ({DECODED_KEY})"

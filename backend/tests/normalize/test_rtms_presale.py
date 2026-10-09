@@ -1,7 +1,7 @@
 """R3b F1a: 분양권 전매 실거래 원문(``RTMSDataSvcSilvTrade``) → rtms_trade 후보 is_presale=True.
 
-픽스처는 수집기 테스트의 합성 응답(``tests/collectors/rtms/fixtures/openapi_presale_synthetic.xml`` — 키가 서비스에
-활용신청되지 않아 실녹화 불가, 파일 주석)을 같이 쓴다.
+픽스처는 수집기 테스트의 합성 응답(``tests/collectors/rtms/fixtures/openapi_presale_synthetic.xml``
+— 키가 서비스에 활용신청되지 않아 실녹화 불가, 파일 주석)을 같이 쓴다.
 """
 
 from __future__ import annotations

@@ -2,6 +2,7 @@
 
 from app.collectors.rtms.collector import (
     DISABLED_NO_KEY,
+    PRESALE_API_URL,
     RTMS_API_URL,
     ReprocessedTradeSource,
     RtmsCollector,
@@ -12,6 +13,7 @@ from app.collectors.rtms.parse import TradePage, TradeRecord, api_error_message,
 
 __all__ = [
     "DISABLED_NO_KEY",
+    "PRESALE_API_URL",
     "RTMS_API_URL",
     "ReprocessedTradeSource",
     "RtmsCollector",

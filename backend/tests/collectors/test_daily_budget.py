@@ -1,28 +1,34 @@
-"""R3b m4: 지역 1개 일일 수집 10분 이내 — **모든 수집기**를 하나의 가짜 시계로 합산(RA §5 WP1 완료 기준).
+"""R3b m4: 지역 1개 일일 수집 10분 이내 — **모든 수집기**를 가짜 시계 1개로 합산(RA §5 WP1 완료 기준).
 
-이전에는 청약홈만 FakeClock 으로 쟀다(``applyhome/test_applyhome_collector.py``). 여기서는 운영 수집 순서
-(``app.scheduler.collect.STEP_ORDER``: 청약홈 → 공고문 → 공식 홈페이지 → 실거래 → 통계 → 뉴스)대로 6개 수집기를
-같은 시계·녹화/오프라인 픽스처로 돌리고 걸린 시간을 더한다.
+이전에는 청약홈만 FakeClock 으로 쟀다(``applyhome/test_applyhome_collector.py``). 여기서는 운영 수집
+순서(``app.scheduler.collect.STEP_ORDER``: 청약홈 → 공고문 → 공식 홈페이지 → 실거래 → 통계 → 뉴스)대로
+6개 수집기를 같은 시계·녹화/오프라인 픽스처로 돌리고 걸린 시간을 더한다.
 
 시계 모델(전부 가짜 시계 위에서 계산 — 실제로 기다리지 않는다)
-- 속도 제한: ``core.http.HttpClient`` 호스트당 1 req/s(운영 기본값), 재시도 0, jitter 0. robots.txt 요청도 센다.
-- 응답 지연: 요청마다 ``LATENCY_S``(녹화 재생은 지연이 없으므로 일부러 더한다). 근거: 2026-10-09 실측 — 공식
-  홈페이지 5곳 robots.txt + 첫 화면 2요청이 1.0~1.1 s.
-- 렌더: 공식 홈페이지는 ``render='always'``(운영 기본 'auto' 보다 보수적) + 렌더 1회 ``RENDER_S``. 근거:
-  2026-10-09 ``PlaywrightRenderer`` 실측 5곳 5.2~8.4 s(브라우저 기동·load·networkidle·settle·스크린샷) → 10 s.
+- 속도 제한: ``core.http.HttpClient`` 호스트당 1 req/s(운영 기본값), 재시도 0, jitter 0.
+  robots.txt 요청도 센다.
+- 응답 지연: 요청마다 ``LATENCY_S``(녹화 재생은 지연이 없으므로 일부러 더한다). 근거: 2026-10-09
+  실측 — 공식 홈페이지 5곳 robots.txt + 첫 화면 2요청이 1.0~1.1 s.
+- 렌더: 공식 홈페이지는 ``render='always'``(운영 기본 'auto' 보다 보수적) + 렌더 1회 ``RENDER_S``.
+  근거: 2026-10-09 ``PlaywrightRenderer`` 실측 5곳 5.2~8.4 s(브라우저 기동·load·networkidle·settle·
+  스크린샷) → 10 s.
 - 처리 시간: 수집기 코드가 실제로 쓴 시간(perf_counter)도 더한다(PDF 추출·DB 저장 등).
 
 시나리오(운영 잡과 같은 ``since``)
 - 1회차 = 부트스트랩(region.bootstrap, since 없음): 상태를 만든다. 시간은 출력만 한다.
-- 2회차 = 일일 수집: collect.daily(청약홈·공고문·공식 홈페이지, since = 어제 수집) + collect.weekly(실거래·통계·
-  뉴스, since = 지난주 수집)가 **같은 날 겹친 최악의 날**을 한 번에 잰다 → 합계 ≤ 600 s.
+- 2회차 = 일일 수집: collect.daily(청약홈·공고문·공식 홈페이지, since = 어제 수집) +
+  collect.weekly(실거래·통계·뉴스, since = 지난주 수집)가 **같은 날 겹친 최악의 날**을 한 번에 잰다
+  → 합계 ≤ 600 s.
 
 픽스처
-- 청약홈: 2026-10-09 실녹화(웹 + 공식 API, ``applyhome/fixtures``). 녹화에 없는 요청은 실패로 세고 0이어야 한다.
-- 공고문: 실제 공고문 PDF(``notice_pdf/fixtures`` 스캔 PDF — 추출이 빠르다) — 링크마다 내용이 다르게 꼬리표를 붙인다.
-- 공식 홈페이지: 실녹화 HTML(``official_site/fixtures/hndapt_index.html``) — 대상 = 녹화의 지역 안 공고(12개월
-  창)의 홈페이지(HMPG_ADRES) 주소마다 단지 행 1개(같은 단지의 무순위·임의공급 재공고는 같은 주소 → 한 단지).
-- 실거래: 매매 합성 응답 + 분양권 합성 응답(``rtms/fixtures``, 파일 주석), 통계: 실녹화 JSON, 뉴스: 실녹화 JSON.
+- 청약홈: 2026-10-09 실녹화(웹 + 공식 API, ``applyhome/fixtures``). 녹화에 없는 요청은 실패로 세고
+  0이어야 한다.
+- 공고문: 실제 공고문 PDF(``notice_pdf/fixtures`` 스캔 PDF — 추출이 빠르다) — 링크마다 내용이 다르게
+  꼬리표를 붙인다.
+- 공식 홈페이지: 실녹화 HTML(``official_site/fixtures/hndapt_index.html``) — 대상 = 녹화의 지역 안
+  공고(12개월 창)의 홈페이지(HMPG_ADRES) 주소마다 단지 행 1개(같은 단지의 무순위·임의공급 재공고는 같은
+  주소 → 한 단지).
+- 실거래: 매매 합성 응답 + 분양권 합성 응답(``rtms/fixtures``, 파일 주석), 통계·뉴스: 실녹화 JSON.
 """
 
 from __future__ import annotations
@@ -169,7 +175,9 @@ class Replay:
             z, e = found
             body = z.read(e["file"]) if e.get("file") else b""
             return httpx.Response(e["status"], content=body, headers={"content-type": e["content_type"]})
-        if host == "static.applyhome.co.kr":  # 공고문마다 다른 원문(같은 sha 면 한 행이 되어 매일 다시 받는다)
+        if (
+            host == "static.applyhome.co.kr"
+        ):  # 공고문마다 다른 원문(같은 sha 면 한 행이 되어 매일 다시 받는다)
             return httpx.Response(
                 200,
                 content=self._pdf + f"\n%{url}\n".encode(),
@@ -181,12 +189,20 @@ class Replay:
             body = (RTMS_FX / name).read_bytes().replace(b"<resultMsg>OK</resultMsg>", tag.encode())
             return httpx.Response(200, content=body, headers={"content-type": "application/xml"})
         if f"{url.scheme}://{host}{path}" == MOLIT_DATA_URL:
-            name = "molit_unsold_2082_202609.json" if url.params["formId"] == "2082" else "molit_unsold_5328_202608.json"
-            return httpx.Response(200, content=(STATS_FX / name).read_bytes(), headers={"content-type": "application/json"})
+            name = (
+                "molit_unsold_2082_202609.json"
+                if url.params["formId"] == "2082"
+                else "molit_unsold_5328_202608.json"
+            )
+            return httpx.Response(
+                200, content=(STATS_FX / name).read_bytes(), headers={"content-type": "application/json"}
+            )
         if f"{url.scheme}://{host}{path}" == NCP_NEWS_URL:
             return httpx.Response(200, content=self._news, headers={"content-type": "text/plain"})
         if host in self.site_hosts:
-            return httpx.Response(200, content=self._site, headers={"content-type": "text/html; charset=utf-8"})
+            return httpx.Response(
+                200, content=self._site, headers={"content-type": "text/html; charset=utf-8"}
+            )
         return self._miss(request)
 
     def _miss(self, request: httpx.Request) -> httpx.Response:
@@ -231,7 +247,12 @@ class Step:
 def world(db_engine: Engine, raw_dir: Path) -> Iterator[tuple[Region, Snapshot]]:
     region = Region.model_validate(REGION)
     snapshot = Snapshot(
-        id=1, region_id=1, asof_date=ASOF, status="building", degraded=False, created_at=ASOF + "T06:00:00+09:00"
+        id=1,
+        region_id=1,
+        asof_date=ASOF,
+        status="building",
+        degraded=False,
+        created_at=ASOF + "T06:00:00+09:00",
     )
     with Session(db_engine) as s:
         s.add(
@@ -252,7 +273,9 @@ def world(db_engine: Engine, raw_dir: Path) -> Iterator[tuple[Region, Snapshot]]
             )
         )
         s.flush()
-        s.add(SnapshotRow(id=1, region_id=1, asof_date=ASOF, status="building", created_at=snapshot.created_at))
+        s.add(
+            SnapshotRow(id=1, region_id=1, asof_date=ASOF, status="building", created_at=snapshot.created_at)
+        )
         s.commit()
     yield region, snapshot
 
@@ -356,9 +379,12 @@ def _table(title: str, steps: list[Step]) -> str:
     lines = [f"[timing] {title}"]
     for s in steps:
         lines.append(
-            f"  {s.name:<14} 요청 {s.requests:>4}  원문 {s.docs:>4}  가짜 {s.fake_s:7.1f}s  처리 {s.real_s:6.2f}s"
+            f"  {s.name:<14} 요청 {s.requests:>4}  원문 {s.docs:>4}"
+            f"  가짜 {s.fake_s:7.1f}s  처리 {s.real_s:6.2f}s"
         )
-    lines.append(f"  {'합계':<14} {'':>24}  {sum(s.total_s for s in steps):7.1f}s (한도 {DAILY_LIMIT_S:.0f}s)")
+    lines.append(
+        f"  {'합계':<14} {'':>24}  {sum(s.total_s for s in steps):7.1f}s (한도 {DAILY_LIMIT_S:.0f}s)"
+    )
     return "\n".join(lines)
 
 

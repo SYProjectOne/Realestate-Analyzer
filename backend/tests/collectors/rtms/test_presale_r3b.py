@@ -43,9 +43,7 @@ def _xml(fixtures_dir: Path, name: str) -> Callable[[httpx.Request], httpx.Respo
 
 
 def test_presale_endpoint_shape() -> None:
-    assert PRESALE_API_URL == (
-        "https://apis.data.go.kr/1613000/RTMSDataSvcSilvTrade/getRTMSDataSvcSilvTrade"
-    )
+    assert PRESALE_API_URL == ("https://apis.data.go.kr/1613000/RTMSDataSvcSilvTrade/getRTMSDataSvcSilvTrade")
     assert PRESALE_API_URL != RTMS_API_URL
 
 
@@ -89,9 +87,7 @@ def test_collects_presale_and_marks_is_presale(
     with Session(db_engine) as s:
         rows = {t.apt_name: t for t in s.scalars(select(RtmsTrade))}
         urls = [d.url for d in s.scalars(select(RawDocument))]
-        presale_doc_ids = {
-            d.id for d in s.scalars(select(RawDocument)) if "RTMSDataSvcSilvTrade" in d.url
-        }
+        presale_doc_ids = {d.id for d in s.scalars(select(RawDocument)) if "RTMSDataSvcSilvTrade" in d.url}
     assert {n for n, t in rows.items() if t.is_presale} == {"테스트분양권아파트P", "테스트분양권아파트Q"}
     assert not any(rows[n].is_presale for n in ("테스트아파트A", "테스트아파트B", "테스트아파트C"))
     assert rows["테스트분양권아파트P"].raw_document_id in presale_doc_ids

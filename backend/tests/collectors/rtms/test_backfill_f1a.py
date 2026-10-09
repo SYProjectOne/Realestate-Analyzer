@@ -57,7 +57,9 @@ def test_backfill_fetches_only_missing_months(
         assert col.load_stats is not None and col.load_stats.inserted > 0
         n_raw, n_trade = count(RawDocument), count(RtmsTrade)
 
-        again = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False).backfill(region, snapshot, months=3)
+        again = RtmsCollector(service_key=FAKE_KEY, http=http, months=1, presale=False).backfill(
+            region, snapshot, months=3
+        )
         assert again == [] and route.call_count == 6  # 채울 달 없음
         assert (count(RawDocument), count(RtmsTrade)) == (n_raw, n_trade)
 

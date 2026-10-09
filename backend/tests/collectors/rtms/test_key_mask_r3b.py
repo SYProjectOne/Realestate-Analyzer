@@ -1,7 +1,8 @@
 """R3b F1a (rtms): 키(DATA_GO_KR_KEY)가 원문·퍼센트 인코딩(quote·quote_plus) 어느 형태로도 raw_document
 (url·error_text·저장 본문)·PageOutcome·FetchResult 오류 문구에 남지 않는다.
 
-이전에는 403 본문의 errMsg 를 그대로 error_text 상세로 붙였다 — 포털이 오류 문구에 키를 되돌려 주면 DB 에 남는다.
+이전에는 403 본문의 errMsg 를 그대로 error_text 상세로 붙였다 — 포털이 오류 문구에 키를 되돌려
+주면 DB 에 남는다.
 """
 
 from __future__ import annotations
@@ -70,7 +71,9 @@ def test_key_never_stored_in_any_form(
         docs = col.fetch(region, snapshot, None)
     assert {d.http_status for d in docs} == {403, 200, None}
     failed = next(d for d in docs if d.http_status == 403)
-    assert failed.error_text is not None and failed.error_text.startswith("SERVICE_KEY_IS_NOT_REGISTERED_ERROR")
+    assert failed.error_text is not None and failed.error_text.startswith(
+        "SERVICE_KEY_IS_NOT_REGISTERED_ERROR"
+    )
     for p in col.pages:
         assert _leaks(p.result_msg) == [], p
     with Session(db_engine) as s:
@@ -87,7 +90,9 @@ def test_scrubbed_fetch_result(http: HttpClient) -> None:
         router.get("https://apis.data.go.kr/robots.txt").respond(400)
         router.get(RTMS_API_URL).mock(side_effect=_boom)
         col = RtmsCollector(service_key=ENCODED_KEY, http=http, months=1)
-        r = col.get(RTMS_API_URL, {"LAWD_CD": "28185", "DEAL_YMD": "202609", "numOfRows": "10", "pageNo": "1"})
+        r = col.get(
+            RTMS_API_URL, {"LAWD_CD": "28185", "DEAL_YMD": "202609", "numOfRows": "10", "pageNo": "1"}
+        )
     assert not r.ok and r.error is not None and r.error.startswith("connect: refused")
     for text in (r.error, r.url, r.final_url):
         assert _leaks(text) == [], text

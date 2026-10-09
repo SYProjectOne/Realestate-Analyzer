@@ -4,6 +4,7 @@
 - **공식 API 1순위** (``DATA_GO_KR_KEY`` 가 있으면, ``api.py``): 시도 약칭 + 모집공고일 범위로 APT·잔여세대·
   임의공급 상세 목록을 받는다(목록에 공급위치가 있어 지역 밖 단지는 상세를 더 받지 않는다). 목록 페이지 =
   ``applyhome_list``(JSON). 지역 안 공고마다 상세(1건 조회)·주택형별·경쟁률 = ``applyhome_detail``(JSON).
+  경쟁률은 matchCount 까지 페이지를 돈다(페이지마다 원문 1행, URL 의 page 로 구별).
   - 목록이 하나라도 실패(401·5xx·네트워크·JSON 아님)하면 **그 시도는 웹 경로**로 전부 다시 받는다.
   - 공고 단위 폴백: API 상세·주택형 실패 → 웹 상세, API 경쟁률 실패(예: 경쟁률 서비스 미신청 401) → 웹 경쟁률.
   - 웹 상세는 API 가 성공해도 받는다(``web_detail=True`` 기본): 모집공고문 PDF 링크는 웹 상세에만 있어
@@ -344,6 +345,15 @@ class ApplyhomeCollector:
         if since_day is not None and row.last_date is not None and row.last_date < since_day.isoformat():
             known = [run.store.latest_ok("applyhome_detail", u) for u in api_urls + web_urls]
             if known[0] is not None:  # 일정이 끝난 공고 — 받아 둔 원문을 그대로 돌려준다
+                # 경쟁률 2쪽 이후(있으면)도 — 1쪽 다음에 이어지는 page 의 성공 원문만
+                for page_no in range(2, ah_api.MAX_ITEM_PAGES + 1):
+                    nxt = run.store.latest_ok(
+                        "applyhome_detail",
+                        ah_api.doc_url(ep.competition, ah_api.item_params(hm, pb, page_no)),
+                    )
+                    if nxt is None:
+                        break
+                    known.insert(3 + page_no - 2, nxt)
                 for k in known:
                     if k is not None:
                         run.emit(Stored(k, created=False))
@@ -364,12 +374,18 @@ class ApplyhomeCollector:
             return stored
 
         ok: list[bool] = []
-        for path in (ep.detail, ep.model, ep.competition):
+        for path in (ep.detail, ep.model):
             result = api.get(path, params)
             save(result, "json")
             page = ah_api.parse_page(result)
-            ok.append(page.ok and (bool(page.rows) or path == ep.competition))
-        detail_ok, model_ok, comp_ok = ok
+            ok.append(page.ok and bool(page.rows))
+        detail_ok, model_ok = ok
+        # 경쟁률: 주택형×순위×거주지역 행이 perPage 를 넘으면 matchCount 까지 페이지를 돈다
+        # (R3b F1a, 페이지마다 원문 1행)
+        comp_pages = api.get_pages(ep.competition, params)
+        for result in comp_pages:
+            save(result, "json")
+        comp_ok = ah_api.parse_page(comp_pages[0]).ok
         if self._web_detail or not (detail_ok and model_ok):
             save(http.get(web_urls[0]), "html")  # 공고문 링크(notice_pdf) + API 상세 실패 폴백
         if not comp_ok:

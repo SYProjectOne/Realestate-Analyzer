@@ -148,7 +148,9 @@ def test_invalid_key_leaves_403_row(
             content=(fixtures_dir / "openapi_403_not_registered.xml").read_bytes(),
             headers={"content-type": "application/xml"},
         )
-        docs = RtmsCollector(service_key="INVALID", http=http, months=1, presale=False).fetch(region, snapshot, None)
+        docs = RtmsCollector(service_key="INVALID", http=http, months=1, presale=False).fetch(
+            region, snapshot, None
+        )
     assert [d.http_status for d in docs] == [403, 403]
     assert all(d.path is None and d.error_text == "SERVICE_KEY_IS_NOT_REGISTERED_ERROR" for d in docs)
     assert count(RtmsTrade) == 0
