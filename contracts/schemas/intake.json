@@ -24,7 +24,7 @@
     "screenshot_path": { "description": "RAW_DIR 기준 상대 경로", "type": ["string", "null"] },
     "raw_document_id": { "type": ["integer", "null"] },
     "checked_at": { "description": "확인 시각 ISO 8601 (날짜만도 허용)", "type": "string", "minLength": 10, "maxLength": 32 },
-    "http_status": { "description": "공식 홈페이지 응답 코드. DNS 실패·타임아웃은 null + reason", "type": ["integer", "null"] },
+    "http_status": { "x-nonfact": "HTTP 상태 코드(수집 결과 메타)", "description": "공식 홈페이지 응답 코드. DNS 실패·타임아웃은 null + reason", "type": ["integer", "null"] },
     "reason": { "description": "확인 불가·불가 사유 (\"403\", \"DNS\", \"동적 팝업\", \"마감\", \"공고 전\")", "type": ["string", "null"], "maxLength": 120 },
     "note": { "type": ["string", "null"] },
     "entered_by": { "description": "human_check일 때 역할 문자열(\"운영자\"). 사람 이름 금지(RA §10)", "type": ["string", "null"], "maxLength": 32 }

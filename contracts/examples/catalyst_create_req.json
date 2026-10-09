@@ -1,0 +1,9 @@
+{
+  "summary": "기사 URL 사람 입력",
+  "value": {
+    "region_id": 1,
+    "url": "https://www.example-news.kr/article/2026/10/08/12345",
+    "title": "김포 골드라인 연장 기본계획 승인",
+    "excerpt": "국토교통부는 8일 김포도시철도 연장 기본계획을 승인했다고 밝혔다."
+  }
+}

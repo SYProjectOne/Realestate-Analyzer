@@ -17,11 +17,37 @@
     "location_confirmed": { "type": "boolean" },
     "linked": { "type": ["boolean", "null"] },
     "distance_m": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
-    "weight": { "type": ["number", "null"] },
+    "weight": { "x-nonfact": "§6 수식의 호재 가중치 상수(가정 — 출처 데이터 아님)", "type": ["number", "null"] },
     "linked_complex_ids": { "type": ["array", "null"], "items": { "type": "integer" } },
     "judgment_seq": { "type": ["integer", "null"] },
     "source_url": { "type": ["string", "null"] },
     "note": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "CatalystCreate": {
+      "title": "CatalystCreate",
+      "description": "POST /catalysts 본문 — 사람이 넣는 호재 URL(DECISIONS D1-6, 계약 2026-10-09.4). 서버는 normalize.catalyst 의 공개 함수로 catalyst 후보 행(stage '미확정', location_confirmed=false, catalyst_link 없음, 출처 행 = 이 URL)을 만들고, 분류(kind·stage)는 판정기 classify 가 한다 — 지역 최신 스냅샷에 rejudge 잡(complex_ids=[] → P4 호재 classify + 점수 재계산)을 등록한다. url 은 http(s)만(공개 페이지). 판정은 하지 않는다(규칙 3).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region_id", "url", "title"],
+      "properties": {
+        "region_id": { "type": "integer" },
+        "url": { "type": "string", "minLength": 10, "maxLength": 2000, "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "excerpt": { "description": "기사·공고 발췌(사람이 붙여 넣은 공개 문장, 개인정보 금지 — guard 통과)", "type": ["string", "null"], "maxLength": 2000 }
+      }
+    },
+    "CatalystCreated": {
+      "title": "CatalystCreated",
+      "description": "POST /catalysts 201 — 만든 호재 후보(CatalystView, stage '미확정')와 등록한 분류 잡(지역에 스냅샷이 없으면 null — 다음 파이프라인 P4 가 분류한다).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalyst", "job"],
+      "properties": {
+        "catalyst": { "$ref": "#" },
+        "job": { "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
+      }
+    }
   },
   "examples": [
     {

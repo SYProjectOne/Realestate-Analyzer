@@ -1,0 +1,20 @@
+{
+  "summary": "claim.reverify 등록됨(202)",
+  "value": {
+    "id": 931,
+    "job_name": "claim.reverify",
+    "kind": "manual",
+    "payload": {
+      "snapshot_id": 12,
+      "claim_id": 6990,
+      "text": "고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었고 +20% 이상 명제도 unlikely로 판정되었다."
+    },
+    "scheduled_at": "2026-10-09T11:00:00+09:00",
+    "started_at": null,
+    "finished_at": null,
+    "status": "queued",
+    "stats": {},
+    "error_text": null,
+    "progress": null
+  }
+}

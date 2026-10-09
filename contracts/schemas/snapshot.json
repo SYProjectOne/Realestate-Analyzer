@@ -14,8 +14,8 @@
     "degraded": { "type": "boolean" },
     "created_at": { "type": "string", "format": "date-time" },
     "published_at": { "type": ["string", "null"], "format": "date-time" },
-    "contradicted_claims": { "description": "verify_status=contradicted claim 수", "type": ["integer", "null"], "minimum": 0 },
-    "complex_count": { "type": ["integer", "null"], "minimum": 0 }
+    "contradicted_claims": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "description": "verify_status=contradicted claim 수", "type": ["integer", "null"], "minimum": 0 },
+    "complex_count": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": ["integer", "null"], "minimum": 0 }
   },
   "examples": [
     {

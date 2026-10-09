@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "score_row.json",
   "title": "ScoreRow",
-  "description": "종합 점수 1행 (RA §4-2 ScoreRow) — G1 Top5Cards, G4 CompareGrid, C6 점수 분해의 데이터. 한 score_run(시나리오 1개) 기준.\n- total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.\n- components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').\n- p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).\n- delta_rerank: 이전 run 대비 rerank relevance 변화(§6-5).\n- decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).\n- judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 제외 (meta §1-3-4).",
+  "description": "종합 점수 1행 (RA §4-2 ScoreRow) — G1 Top5Cards, G4 CompareGrid, C6 점수 분해의 데이터. 한 score_run(시나리오 1개) 기준.\n- total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.\n- components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').\n- p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).\n- delta_rerank: 이전 run 대비 rerank relevance 변화(§6-5).\n- decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).\n- judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).",
   "type": "object",
   "additionalProperties": false,
   "required": ["complex_id", "name", "total", "rank", "tie_group", "unstable", "p10", "components", "intake", "judge_scope"],
@@ -13,8 +13,8 @@
     "living_area_name": { "type": ["string", "null"] },
     "score_run_id": { "type": ["integer", "null"] },
     "total": { "$ref": "fact.json" },
-    "rank": { "type": ["integer", "null"], "minimum": 1 },
-    "tie_group": { "type": ["integer", "null"], "minimum": 1 },
+    "rank": { "x-nonfact": "§6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov", "type": ["integer", "null"], "minimum": 1 },
+    "tie_group": { "x-nonfact": "§6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov", "type": ["integer", "null"], "minimum": 1 },
     "unstable": { "type": "boolean" },
     "p10": { "$ref": "fact.json" },
     "components": { "$ref": "#/$defs/Components" },
@@ -26,9 +26,9 @@
   "$defs": {
     "JudgeScope": {
       "title": "JudgeScope",
-      "description": "판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.",
+      "description": "판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).\n- 제외: 포함/제외 classify(auto)가 제외 클래스(공공·임대·비아파트·범위 밖) 또는 '범위 경계'.\n- 보류: 포함 확정이나 분양가 미공개(공고 전) — 표시 '보류 — 공고 후 재판정'. 사다리·가격 갭 없음, rerank만.\n- 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).\n- 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.\n- 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.",
       "type": "string",
-      "enum": ["판정 대상", "보류", "참고", "제외"]
+      "enum": ["판정 대상", "보류", "참고", "미해결", "제외"]
     },
     "ComponentView": {
       "title": "ComponentView",
@@ -40,8 +40,8 @@
         "score": { "$ref": "fact.json" },
         "raw": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
         "formula_text": { "type": "string", "minLength": 1 },
-        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
-        "contribution": { "type": ["number", "null"] }
+        "weight": { "x-nonfact": "시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)", "type": "number", "minimum": 0, "maximum": 1 },
+        "contribution": { "x-nonfact": "가중치 가정 × score.v 의 곱(근거 Fact 는 같은 행 score)", "type": ["number", "null"] }
       }
     },
     "Components": {
@@ -74,7 +74,7 @@
         "chosen": { "type": "boolean" },
         "tie": { "type": "boolean" },
         "mismatch": { "type": "boolean" },
-        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+        "confidence": { "x-nonfact": "판정기 decide confidence 원값(배지 보조 표시) — 근거는 DecisionSet.judgment_seq(jl_)", "type": ["number", "null"], "minimum": 0, "maximum": 1 }
       }
     }
   },

@@ -2,6 +2,31 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.4
+
+R3 독립 리뷰(`docs/design/wp/R3_REVIEW.md`) 후속 — CEO 결정 D9(`docs/design/DECISIONS.md`)와 R3 수정 라운드 F3 카드
+(`docs/design/wp/R3_FIX.md`). 계약 소유자 = R3 F3. 마이그레이션 `0004_r3`(테이블 1개 추가 + job_run CHECK 값 1개 추가 —
+0003 DB 는 `alembic upgrade head` 한 번). 필드 삭제 없음. 의미 변경 = JudgeScope 값 하나 추가(아래 #1)뿐.
+
+### 요청별 반영
+
+| # | 출처 | 대상 | 변경 | 영향 |
+| --- | --- | --- | --- | --- |
+| 1 | C2 · D9-1 · F2 요청 | `schemas/score_row.json#/$defs/JudgeScope`, `enums.JUDGE_SCOPE` | 값 `미해결` 추가(판정 대상·보류·참고·**미해결**·제외). 포함/제외 classify 가 review·escaped·미분류면 미해결 — 판정 대상 아님, 사다리·점수 없음. 설명에 D9-1 규칙 5개(공용 함수 `analysis/scope.py judge_scope()`) | F2(씀), F3·F4(읽음·표시) |
+| 2 | M8 · RA §10 | `GET /snapshots/{sid}/claims?status=`, `PATCH /claims/{id}`, `schemas/claim.json#/$defs/ClaimView·ClaimPatch`, `job_payloads/claim_reverify.json`, JobName `claim.reverify` | contradicted 목록(remaining = 분할 자식 없는 contradicted = publish 막는 것, pending_job_id) + 사람 문장 수정 → `claim.reverify` 잡(202). worker 가 원자 분할(ClaimSplitter) → 원 주장 근거로 verify → parent_claim_id 자식 행. 원 주장이 contradicted 아님·이미 분할·잡 대기 중이면 409 | F3(API·G7·worker 핸들러), WP3(splitter·verify 재사용) |
+| 3 | M6 · D1-6 | `POST /catalysts`, `schemas/catalyst.json#/$defs/CatalystCreate·CatalystCreated` | 사람이 넣는 호재 URL(http(s)만)+제목+발췌 → `normalize.catalyst` 공개 함수(F1a)로 후보 행(stage 미확정, location_confirmed=false) → 지역 최신 스냅샷에 rejudge(complex_ids=[] → P4 classify) 등록 | F1a(후보 함수), F3(API·G6), F2(P4) |
+| 4 | M9 · RA §10 보안 5 | `GET·POST /share-links`, `DELETE /share-links/{id}`, `schemas/share_link.json`, 테이블 `share_link`, bearerAuth 설명 | 읽기 전용 공유 토큰 발급(쓰기 토큰만) — 만료 = 발급 + `SHARE_TOKEN_TTL_DAYS`(기본 30), sha256 만 저장, 만료·회수 401, GET 이외 403, 공유 토큰으로 목록 403. 링크 = `<origin>/share#<token>` | F3 |
+| 5 | M11 | bearerAuth 설명 | 두 환경 토큰이 모두 비면 루프백 접속만(그 밖 401) + 127.0.0.1 바인드(`python -m app.serve`) | F3, infra |
+| 6 | minor 15 | `schemas/human_check.json#/$defs/EnteredByRole`, `enums.ENTERED_BY_ROLE` | HumanCheckCreate.entered_by = 역할 enum(`운영자`·`검토자`) — 자유 입력 금지(RA §10 보안 2). DB CHECK 는 두지 않는다(옛 행 보존) | F3(API·G7 폼) |
+| 7 | minor 29 | 응답 스키마의 맨 숫자 | 응답에 나가는 숫자 필드는 Fact 이거나 `x-nonfact: "<근거>"` 주석(비수치 메타 — 식별자·개수·가중치 가정·설정값·판정기 봉투 원값)을 단다. 이름 규칙 `id`·`*_id(s)`·`*_seq`·`page`·`size` 는 메타. 테스트 `tests/contracts/test_r3_contract.py` 가 강제 | F3, 프론트(표시 규칙) |
+
+### 마이그레이션·검증
+
+- `0004_r3`: `share_link(id, token_sha256 UNIQUE, label, created_at, expires_at, revoked_at)` + `job_run.job_name` CHECK 에 `claim.reverify`.
+  SQLite 는 batch(재생성 정의 고정), Postgres 는 ALTER. head → 0003 → head 왕복을 SQLite·Postgres 16(pgserver) 둘 다 테스트
+  (downgrade 는 `claim.reverify` 잡 행을 먼저 지운다 — 옛 CHECK 를 통과할 수 없는 큐의 일시 행). autogenerate diff 0, CHECK 리터럴 일치.
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.4`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`, 프론트 `schema.d.ts`·MSW) 재생성.
+
 ## 2026-10-09.3
 
 R2 WP5·WP7 요청(`docs/design/wp/CONTRACT_CHANGES_R1.md` "R2 WP5·WP7 요청"·"R2 (WP0 처리 대기)") 반영. 마이그레이션 `0003_r2`

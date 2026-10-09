@@ -1,0 +1,14 @@
+{
+  "summary": "발급됨 — 토큰은 이 응답에서 한 번만",
+  "value": {
+    "link": {
+      "id": 3,
+      "label": "가족 공유",
+      "created_at": "2026-10-09T10:00:00+09:00",
+      "expires_at": "2026-11-08T10:00:00+09:00",
+      "revoked_at": null,
+      "status": "active"
+    },
+    "token": "q3Zt0w9mK1xR7bY2cV8nH4sL6dF5gJ0aP3eU1iO9tQw"
+  }
+}

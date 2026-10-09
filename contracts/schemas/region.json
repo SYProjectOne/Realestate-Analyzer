@@ -16,7 +16,7 @@
     "legal_dong_codes": { "type": "array", "description": "법정동 코드 10자리 문자열", "items": { "type": "string" } },
     "living_areas": { "type": "array", "items": { "$ref": "living_area.json" } },
     "age_premium_coef": { "$ref": "#/$defs/AgePremiumCoef" },
-    "supply_ref_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "default": 0.08 },
+    "supply_ref_pct": { "x-nonfact": "사용자 설정 기준값(공급 과잉 판단 기준 %, 출처 데이터 아님)", "type": "number", "exclusiveMinimum": 0, "maximum": 1, "default": 0.08 },
     "applyhome_query": { "description": "청약홈 조회 파라미터 — 키 정의는 $defs/ApplyhomeQuery(from_ym, areas). 저장·전달은 자유 json 객체(수집기는 ApplyhomeQuery.model_validate 로 읽을 수 있다)", "type": "object", "additionalProperties": true },
     "status": { "type": "string", "enum": ["resolving", "bootstrapping", "ready", "failed"] },
     "created_at": { "type": "string", "format": "date-time" },
@@ -52,8 +52,8 @@
       "additionalProperties": false,
       "required": ["c_per_year", "cap_years", "label"],
       "properties": {
-        "c_per_year": { "type": "number", "minimum": 0, "maximum": 0.1, "default": 0.015 },
-        "cap_years": { "type": "integer", "minimum": 0, "maximum": 30, "default": 8 },
+        "c_per_year": { "x-nonfact": "지역 설정값(연식 보정 계수 가정 — region.age_premium_coef, 출처 데이터 아님)", "type": "number", "minimum": 0, "maximum": 0.1, "default": 0.015 },
+        "cap_years": { "x-nonfact": "지역 설정값(연식 보정 상한 연수 가정)", "type": "integer", "minimum": 0, "maximum": 30, "default": 8 },
         "label": { "const": "추정" }
       }
     },

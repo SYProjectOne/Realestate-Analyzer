@@ -4,7 +4,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.3
+  version: 2026-10-09.4
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -13648,13 +13648,355 @@ paths:
                     detail: report 911 is not done (status=running)
         '500':
           $ref: '#/components/responses/InternalError'
+  /snapshots/{sid}/claims:
+    get:
+      tags:
+      - ops
+      operationId: listClaims
+      summary: 원자 주장 목록 — contradicted 대응 (G7 ClaimsPanel, RA §10)
+      description: |
+        스냅샷의 주장(claim) 행. `?status=contradicted` 면 contradicted 만(G7 '스냅샷 published 안 됨' 대응 목록). remaining=true 인 행이
+        publish·보고서 생성을 막는다(분할 재검증 자식이 없는 contradicted — judge.claims.remaining_contradicted). 정렬 = id 오름차순.
+      parameters:
+      - $ref: '#/components/parameters/SnapshotId'
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - verified
+          - contradicted
+          - unsupported
+          - review
+      responses:
+        '200':
+          description: 주장 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClaimView'
+              examples:
+                contradicted:
+                  summary: contradicted 주장 1건(남음 — publish 막힘)
+                  value:
+                  - id: 6990
+                    snapshot_id: 12
+                    section: complex:11
+                    complex_id: 11
+                    complex_name: 고촌센트럴자이
+                    text: 고촌센트럴자이의 +10% 이상 명제는 likely로 판정되었고 +20% 이상은 uncertain이다.
+                    evidence_text: 'jl_120: +10% 0.11 unlikely(auto); +20% 0.04 unlikely(auto)'
+                    verify_status: contradicted
+                    judgment_seq: 131
+                    prov: jl_131
+                    parent_claim_id: null
+                    ordinal: 0
+                    child_count: 0
+                    remaining: true
+                    pending_job_id: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /claims/{id}:
+    patch:
+      tags:
+      - ops
+      operationId: reviseClaim
+      summary: contradicted 주장 문장 수정 → 원자 분할 재검증 잡 등록 (G7)
+      description: |
+        사람이 고친 문장으로 claim.reverify 잡을 등록한다(202 JobRun). api 는 판정기를 부르지 않는다 — worker 가 문장을 원자 주장으로 나눠
+        원 주장의 근거로 verify 하고 parent_claim_id 로 연결된 새 주장 행을 만든다. 원 주장이 contradicted 가 아니거나, 이미 분할 재검증
+        자식이 있거나, 같은 주장의 claim.reverify 잡이 queued·running 이면 409 conflict.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimPatch'
+            examples:
+              revise:
+                summary: 사람이 고친 문장
+                value:
+                  text: 고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었고 +20% 이상 명제도 unlikely로 판정되었다.
+      responses:
+        '202':
+          description: claim.reverify 잡 등록됨(queued)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRun'
+              examples:
+                queued:
+                  summary: claim.reverify 등록됨(202)
+                  value:
+                    id: 931
+                    job_name: claim.reverify
+                    kind: manual
+                    payload:
+                      snapshot_id: 12
+                      claim_id: 6990
+                      text: 고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었고 +20% 이상 명제도 unlikely로 판정되었다.
+                    scheduled_at: '2026-10-09T11:00:00+09:00'
+                    started_at: null
+                    finished_at: null
+                    status: queued
+                    stats: {}
+                    error_text: null
+                    progress: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: contradicted 가 아님·이미 분할됨·재검증 대기 중
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notContradicted:
+                  summary: contradicted 가 아닌 주장
+                  value:
+                    code: conflict
+                    detail: claim 7001 is not contradicted (verify_status=verified)
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /catalysts:
+    post:
+      tags:
+      - market
+      operationId: createCatalyst
+      summary: 호재 URL 사람 입력 → 호재 후보 + 분류 잡 (G6·G3, DECISIONS D1-6)
+      description: |
+        공개 기사·공고 URL 과 제목(·발췌)으로 호재 후보 행을 만든다(normalize.catalyst 공개 함수 — stage '미확정', location_confirmed=false,
+        단지 연결 없음, 출처 = 이 URL). 분류(kind·stage)는 판정기 classify 가 한다: 지역 최신 스냅샷에 rejudge 잡
+        (complex_ids=[] → P4 호재 classify·점수 재계산)을 등록해 함께 돌려준다(스냅샷이 없으면 job=null). 같은 지역에 같은 URL 이 이미
+        있으면 그 행을 돌려준다(새 행 없음). 제목·발췌는 guard(전화번호·주민번호·이메일·비밀값) 통과 — 걸리면 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CatalystCreate'
+            examples:
+              news:
+                summary: 기사 URL 사람 입력
+                value:
+                  region_id: 1
+                  url: https://www.example-news.kr/article/2026/10/08/12345
+                  title: 김포 골드라인 연장 기본계획 승인
+                  excerpt: 국토교통부는 8일 김포도시철도 연장 기본계획을 승인했다고 밝혔다.
+      responses:
+        '201':
+          description: 호재 후보 + 분류 잡
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalystCreated'
+              examples:
+                created:
+                  summary: 호재 후보(미확정) + 분류 잡
+                  value:
+                    catalyst:
+                      id: 57
+                      name: 김포 골드라인 연장 기본계획 승인
+                      kind: 기타
+                      stage: 미확정
+                      stage_prob:
+                        v: null
+                        label: 확인 불가
+                        reason: 분류 전
+                        prov: null
+                        checked_at: '2026-10-09'
+                      decision: null
+                      expected_ym:
+                        v: null
+                        label: 확인 불가
+                        reason: 분류 전
+                        prov: null
+                        checked_at: '2026-10-09'
+                      location_confirmed: false
+                      linked: null
+                      distance_m: null
+                      weight: null
+                      linked_complex_ids: []
+                      judgment_seq: null
+                      source_url: https://www.example-news.kr/article/2026/10/08/12345
+                      note: 사람 입력 URL — 판정기 classify 대기
+                    job:
+                      id: 932
+                      job_name: rejudge
+                      kind: rejudge
+                      payload:
+                        snapshot_id: 12
+                        scenario_id: null
+                        complex_ids: []
+                        reason: '호재 URL 입력: 김포 골드라인 연장 기본계획 승인'
+                      scheduled_at: '2026-10-09T11:05:00+09:00'
+                      started_at: null
+                      finished_at: null
+                      status: queued
+                      stats: {}
+                      error_text: null
+                      progress: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /share-links:
+    get:
+      tags:
+      - ops
+      operationId: listShareLinks
+      summary: 공유 링크 목록 (G7 SharePanel, 쓰기 토큰만)
+      description: 발급한 공유 링크(토큰 없이 메타만, 최신순). 읽기 전용 토큰·공유 링크 토큰으로 부르면 403 forbidden(공유받은 사람이 다른 링크를 보지 못한다).
+      responses:
+        '200':
+          description: 최신순
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShareLink'
+              examples:
+                list:
+                  summary: 발급한 링크(최신순, 토큰 없음)
+                  value:
+                  - id: 3
+                    label: 가족 공유
+                    created_at: '2026-10-09T10:00:00+09:00'
+                    expires_at: '2026-11-08T10:00:00+09:00'
+                    revoked_at: null
+                    status: active
+                  - id: 1
+                    label: 검토 요청
+                    created_at: '2026-09-01T09:00:00+09:00'
+                    expires_at: '2026-10-01T09:00:00+09:00'
+                    revoked_at: null
+                    status: expired
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+      - ops
+      operationId: createShareLink
+      summary: 읽기 전용 공유 링크 발급 (만료 30일, RA §10 보안 5)
+      description: |
+        읽기 전용(GET 만) 공유 토큰을 발급한다. 만료 = 발급 시각 + SHARE_TOKEN_TTL_DAYS(기본 30일) — 요청으로 바꿀 수 없다. 토큰은 이 응답에서
+        한 번만 나가고 서버에는 sha256 만 남는다. 프론트는 `<origin>/share#<token>` 링크를 보여 준다. 쓰기 토큰만(읽기 전용·공유 토큰 403).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareLinkCreate'
+            examples:
+              family:
+                summary: 공유 링크 발급
+                value:
+                  label: 가족 공유
+      responses:
+        '201':
+          description: 발급됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkCreated'
+              examples:
+                created:
+                  summary: 발급됨 — 토큰은 이 응답에서 한 번만
+                  value:
+                    link:
+                      id: 3
+                      label: 가족 공유
+                      created_at: '2026-10-09T10:00:00+09:00'
+                      expires_at: '2026-11-08T10:00:00+09:00'
+                      revoked_at: null
+                      status: active
+                    token: q3Zt0w9mK1xR7bY2cV8nH4sL6dF5gJ0aP3eU1iO9tQw
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /share-links/{id}:
+    delete:
+      tags:
+      - ops
+      operationId: revokeShareLink
+      summary: 공유 링크 회수 (즉시 401)
+      description: revoked_at 을 채운다(멱등 — 이미 회수됐으면 그대로). 그 토큰으로 오는 요청은 바로 401.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 회수됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLink'
+              examples:
+                revoked:
+                  summary: 회수됨
+                  value:
+                    id: 3
+                    label: 가족 공유
+                    created_at: '2026-10-09T10:00:00+09:00'
+                    expires_at: '2026-11-08T10:00:00+09:00'
+                    revoked_at: '2026-10-10T08:00:00+09:00'
+                    status: revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       description: |
-        API_TOKEN(쓰기 포함 전부) 또는 READONLY_TOKEN(GET만, 공유 링크용·만료 30일). 읽기 전용 토큰으로 GET 이외 메서드를 부르면 403 forbidden.
+        API_TOKEN(쓰기 포함 전부), READONLY_TOKEN(GET만, 운영자 열람용 고정 토큰) 또는 공유 링크 토큰(POST /share-links 가 발급, GET만, 만료 30일 = SHARE_TOKEN_TTL_DAYS — 만료·회수되면 401). 읽기 전용 토큰·공유 링크 토큰으로 GET 이외 메서드를 부르면 403 forbidden.
+        두 환경 토큰(API_TOKEN·READONLY_TOKEN)이 모두 비면(개발 기본값) 인증 없이 열지만 루프백(127.0.0.1·::1) 접속만 받는다(그 밖 401) — 서버도 127.0.0.1 에만 바인드한다(app.serve). ENV=prod 는 API_TOKEN 필수.
   parameters:
     RegionId:
       name: id
@@ -13854,11 +14196,13 @@ components:
       - label
       properties:
         c_per_year:
+          x-nonfact: 지역 설정값(연식 보정 계수 가정 — region.age_premium_coef, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 0.1
           default: 0.015
         cap_years:
+          x-nonfact: 지역 설정값(연식 보정 상한 연수 가정)
           type: integer
           minimum: 0
           maximum: 30
@@ -13993,10 +14337,12 @@ components:
         name:
           type: string
         completed_year:
+          x-nonfact: 연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)
           type:
           - integer
           - 'null'
         sale_year:
+          x-nonfact: 연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)
           type:
           - integer
           - 'null'
@@ -14021,6 +14367,7 @@ components:
           - string
           - 'null'
         n_trades:
+          x-nonfact: 벤치마크 근거 실거래 표본 수(집계 메타)
           type:
           - integer
           - 'null'
@@ -14046,6 +14393,48 @@ components:
           type:
           - string
           - 'null'
+    CatalystCreate:
+      title: CatalystCreate
+      description: POST /catalysts 본문 — 사람이 넣는 호재 URL(DECISIONS D1-6, 계약 2026-10-09.4). 서버는 normalize.catalyst 의 공개 함수로 catalyst 후보 행(stage '미확정', location_confirmed=false, catalyst_link 없음, 출처 행 = 이 URL)을 만들고, 분류(kind·stage)는 판정기 classify 가 한다 — 지역 최신 스냅샷에 rejudge 잡(complex_ids=[] → P4 호재 classify + 점수 재계산)을 등록한다. url 은 http(s)만(공개 페이지). 판정은 하지 않는다(규칙 3).
+      type: object
+      additionalProperties: false
+      required:
+      - region_id
+      - url
+      - title
+      properties:
+        region_id:
+          type: integer
+        url:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          pattern: ^https?://[^\s/]+(/[^\s]*)?$
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        excerpt:
+          description: 기사·공고 발췌(사람이 붙여 넣은 공개 문장, 개인정보 금지 — guard 통과)
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+    CatalystCreated:
+      title: CatalystCreated
+      description: POST /catalysts 201 — 만든 호재 후보(CatalystView, stage '미확정')와 등록한 분류 잡(지역에 스냅샷이 없으면 null — 다음 파이프라인 P4 가 분류한다).
+      type: object
+      additionalProperties: false
+      required:
+      - catalyst
+      - job
+      properties:
+        catalyst:
+          $ref: '#/components/schemas/CatalystView'
+        job:
+          anyOf:
+          - $ref: '#/components/schemas/JobRun'
+          - type: 'null'
     CatalystView:
       title: CatalystView
       description: |-
@@ -14109,6 +14498,7 @@ components:
           - $ref: '#/components/schemas/Fact'
           - type: 'null'
         weight:
+          x-nonfact: §6 수식의 호재 가중치 상수(가정 — 출처 데이터 아님)
           type:
           - number
           - 'null'
@@ -14424,6 +14814,129 @@ components:
         judgment_seq: 132
         parent_claim_id: 6990
         ordinal: 0
+    ClaimPatch:
+      title: ClaimPatch
+      description: 'PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict.'
+      type: object
+      additionalProperties: false
+      required:
+      - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ClaimReverifyPayload:
+      title: ClaimReverifyPayload
+      description: job_name='claim.reverify' 페이로드 (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' 대응). PATCH /claims/{id} 가 등록한다. worker 는 text 를 원자 주장으로 나눠(ClaimSplitter, T6) 원 주장의 근거로 verify 하고, 결과를 parent_claim_id=claim_id 인 새 주장 행으로 저장한다(같은 입력 재호출 아님 — 문장이 다르므로 input_hash 가 다르다). 원 주장 행은 고치지 않는다. 자식 주장이 생기면 원 주장은 '남은 contradicted' 가 아니다(judge.claims.remaining_contradicted) — 자식 중 contradicted 가 있으면 그것이 publish 를 막는다.
+      type: object
+      additionalProperties: false
+      required:
+      - snapshot_id
+      - claim_id
+      - text
+      properties:
+        snapshot_id:
+          type: integer
+        claim_id:
+          description: 고칠 contradicted 주장 id(부모)
+          type: integer
+        text:
+          description: 사람이 고친 문장(원자 분할 전)
+          type: string
+          minLength: 1
+          maxLength: 2000
+      examples:
+      - snapshot_id: 12
+        claim_id: 6990
+        text: 고촌센트럴자이의 +10% 이상 명제는 unlikely로 판정되었다.
+    ClaimView:
+      title: ClaimView
+      description: |-
+        G7 주장 목록 1행 — GET /snapshots/{sid}/claims (계약 2026-10-09.4, RA §10 '스냅샷 published 안 됨' → contradicted 목록 표시 → 문장 수정 → 원자 분할 재검증).
+        - remaining=true: 분할 재검증(자식 주장)이 없는 contradicted — 스냅샷 publish·보고서 생성을 막는 주장(judge.claims.remaining_contradicted 와 같은 규칙).
+        - child_count: parent_claim_id 로 이 주장을 가리키는 자식 주장 수. pending_job_id: 이 주장의 claim.reverify 잡 중 queued·running 인 것(없으면 null) — 있으면 수정 버튼을 끈다.
+        - prov: 판정 로그 출처(jl_<judgment_seq>, verify 전이면 null) — 출처 패널로 연다.
+        - id·snapshot_id·complex_id·parent_claim_id·judgment_seq·ordinal·child_count·pending_job_id 는 비수치 메타(식별자·개수)다.
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - snapshot_id
+      - section
+      - complex_id
+      - complex_name
+      - text
+      - evidence_text
+      - verify_status
+      - judgment_seq
+      - prov
+      - parent_claim_id
+      - ordinal
+      - child_count
+      - remaining
+      - pending_job_id
+      properties:
+        id:
+          type: integer
+        snapshot_id:
+          type: integer
+        section:
+          type: string
+          maxLength: 32
+        complex_id:
+          type:
+          - integer
+          - 'null'
+        complex_name:
+          type:
+          - string
+          - 'null'
+        text:
+          type: string
+        evidence_text:
+          type:
+          - string
+          - 'null'
+        verify_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - verified
+          - contradicted
+          - unsupported
+          - review
+          - null
+        judgment_seq:
+          type:
+          - integer
+          - 'null'
+        prov:
+          type:
+          - string
+          - 'null'
+          pattern: ^jl_[0-9]+$
+        parent_claim_id:
+          type:
+          - integer
+          - 'null'
+        ordinal:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          x-nonfact: 같은 원문에서 나온 순서(정렬 키)
+        child_count:
+          type: integer
+          minimum: 0
+          x-nonfact: 자식 주장 개수(표시용 메타, 출처 데이터 아님)
+        remaining:
+          type: boolean
+        pending_job_id:
+          type:
+          - integer
+          - 'null'
     ClassifyItem:
       title: ClassifyItem
       description: 배치 분류의 후보 1개. id = 판정기 입력 항목 id(어댑터가 보낸 값), candidate = 사람이 읽는 후보 이름, complex_id = 단지 행이 있으면 그 id.
@@ -14448,6 +14961,7 @@ components:
         label:
           type: string
         prob:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type: number
         decision:
           type: string
@@ -14473,6 +14987,7 @@ components:
         label:
           type: string
         prob:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type: number
         decision:
           type: string
@@ -14576,6 +15091,7 @@ components:
           - different_facts
           - review
         prob:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type:
           - number
           - 'null'
@@ -14626,6 +15142,7 @@ components:
         scenario_id:
           type: integer
         ids:
+          x-nonfact: 식별자 목록(complex_id)
           type: array
           minItems: 2
           maxItems: 6
@@ -15436,11 +15953,13 @@ components:
         total:
           $ref: '#/components/schemas/Fact'
         rank:
+          x-nonfact: §6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov
           type:
           - integer
           - 'null'
           minimum: 1
         tie_group:
+          x-nonfact: §6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov
           type:
           - integer
           - 'null'
@@ -15633,6 +16152,7 @@ components:
           items:
             $ref: '#/components/schemas/ComplexRow'
         total:
+          x-nonfact: 목록 건수(페이지 메타)
           type: integer
           minimum: 0
         snapshot_id:
@@ -15939,10 +16459,12 @@ components:
           type: string
           minLength: 1
         weight:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         contribution:
+          x-nonfact: 가중치 가정 × score.v 의 곱(근거 Fact 는 같은 행 score)
           type:
           - number
           - 'null'
@@ -16259,6 +16781,7 @@ components:
         mismatch:
           type: boolean
         confidence:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type:
           - number
           - 'null'
@@ -16330,6 +16853,7 @@ components:
         mismatch:
           type: boolean
         confidence:
+          x-nonfact: 판정기 decide confidence 원값(배지 보조 표시) — 근거는 DecisionSet.judgment_seq(jl_)
           type:
           - number
           - 'null'
@@ -16396,6 +16920,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Decision'
+    EnteredByRole:
+      title: EnteredByRole
+      description: 사람 확인 입력자 = 역할 문자열만(RA §10 보안 2 — 사람 이름 금지, 계약 2026-10-09.4). 자유 입력을 받지 않는다. 옛 행(자유 문자열)은 응답 HumanCheck.entered_by 에 그대로 나갈 수 있다.
+      type: string
+      enum:
+      - 운영자
+      - 검토자
     Error:
       title: Error
       description: |-
@@ -17423,6 +17954,7 @@ components:
         name:
           type: string
         completed_year:
+          x-nonfact: 연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)
           type:
           - integer
           - 'null'
@@ -17441,16 +17973,19 @@ components:
         adjusted:
           type: boolean
         coef_used:
+          x-nonfact: 적용한 연식 보정 계수(지역 설정 가정값)
           type:
           - number
           - 'null'
         n_trades:
+          x-nonfact: 비교 단지 실거래 표본 수(집계 메타)
           description: 거래 건수. 재가공 사이트처럼 건수를 모르면 null
           type:
           - integer
           - 'null'
           minimum: 0
         outliers_excluded:
+          x-nonfact: 제외한 이상치 거래 수(집계 메타)
           type: integer
           minimum: 0
           default: 0
@@ -17504,7 +18039,7 @@ components:
         time: '2026-10-09T09:00:00+09:00'
     HumanCheck:
       title: HumanCheck
-      description: 사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field='intake_status'이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만("운영자"), 사람 이름 금지. 통화 내용은 요약만.
+      description: '사람 확인 1건 (RA §3 human_check) — G7 HumanCheckForm. field=''intake_status''이면 value_text는 접수 상태(가능/미정/확인 불가/불가)이고, 서버가 같은 스냅샷에 intake_status 행(path=human_check)과 change_event(critical, triggers_rejudge)를 만들고 rejudge 잡을 제안한다(T3). entered_by는 역할 문자열만(EnteredByRole: 운영자·검토자), 사람 이름 금지. 통화 내용은 요약만.'
       type: object
       additionalProperties: false
       required:
@@ -17618,9 +18153,7 @@ components:
           type: string
           minLength: 10
         entered_by:
-          type: string
-          minLength: 1
-          maxLength: 32
+          $ref: '#/components/schemas/EnteredByRole'
         note:
           type:
           - string
@@ -17713,6 +18246,7 @@ components:
           minLength: 10
           maxLength: 32
         http_status:
+          x-nonfact: HTTP 상태 코드(수집 결과 메타)
           description: 공식 홈페이지 응답 코드. DNS 실패·타임아웃은 null + reason
           type:
           - integer
@@ -17856,9 +18390,17 @@ components:
           properties:
             payload:
               $ref: '#/components/schemas/RegionBootstrapPayload'
+      - if:
+          properties:
+            job_name:
+              const: claim.reverify
+        then:
+          properties:
+            payload:
+              $ref: '#/components/schemas/ClaimReverifyPayload'
     JobName:
       title: JobName
-      description: 잡 이름 7종 (RA §4-4 + DECISIONS D2-4)
+      description: 잡 이름 8종 (RA §4-4 + DECISIONS D2-4 + 계약 2026-10-09.4 claim.reverify — contradicted 주장의 문장 수정 → 원자 분할 재검증, PATCH /claims/{id} 가 등록)
       type: string
       enum:
       - collect.daily
@@ -17868,6 +18410,7 @@ components:
       - snapshot.publish
       - reference.refresh
       - region.bootstrap
+      - claim.reverify
     JobRun:
       title: JobRun
       description: |-
@@ -18006,6 +18549,14 @@ components:
           properties:
             payload:
               $ref: '#/components/schemas/RegionBootstrapPayload'
+      - if:
+          properties:
+            job_name:
+              const: claim.reverify
+        then:
+          properties:
+            payload:
+              $ref: '#/components/schemas/ClaimReverifyPayload'
       examples:
       - id: 905
         job_name: rejudge
@@ -18031,12 +18582,19 @@ components:
           step: decide
     JudgeScope:
       title: JudgeScope
-      description: 판정 범위(meta §1-3-4). 판정 대상 = 포함 단지 중 접수 가능 또는 공고 이력이 있어 미정. 보류 = 분양가 미공개(공고 전) — 사다리·가격 갭 없음, rerank만. 참고 = 접수 가능 여부 자체가 확인 불가 — 순위만, 사다리 없음. 제외 = 포함/제외 분류에서 제외·범위 경계.
+      description: |-
+        판정 범위(meta §1-3-4, DECISIONS D9-1 — 공용 함수 analysis/scope.py judge_scope() 하나로만 계산; API·파이프라인·보고서가 같은 함수를 부른다).
+        - 제외: 포함/제외 classify(auto)가 제외 클래스(공공·임대·비아파트·범위 밖) 또는 '범위 경계'.
+        - 보류: 포함 확정이나 분양가 미공개(공고 전) — 표시 '보류 — 공고 후 재판정'. 사다리·가격 갭 없음, rerank만.
+        - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
+        - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
+        - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
       type: string
       enum:
       - 판정 대상
       - 보류
       - 참고
+      - 미해결
       - 제외
     JudgeTool:
       title: JudgeTool
@@ -18089,6 +18647,7 @@ components:
           type: string
           pattern: ^sha256:[0-9a-f]{64}$
         input_len:
+          x-nonfact: 판정기 입력 길이(호출 메타 — 로그 규칙 13)
           description: canonical payload 길이(문자 수). 로그용
           type:
           - integer
@@ -18102,6 +18661,7 @@ components:
           - blocked
           - error
         confidence:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           description: 판정기가 준 신뢰도 0~1. 없으면 null
           type:
           - number
@@ -18119,6 +18679,7 @@ components:
           type: object
           additionalProperties: true
         duration_ms:
+          x-nonfact: 호출 소요 ms(운영 메타)
           type:
           - integer
           - 'null'
@@ -18337,6 +18898,7 @@ components:
           items:
             $ref: '#/components/schemas/JudgmentEnvelope'
         total:
+          x-nonfact: 목록 건수(페이지 메타)
           type: integer
           minimum: 0
         page:
@@ -18371,27 +18933,35 @@ components:
         until:
           type: string
         total_calls:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         real_calls:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         cached_hits:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         failures:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         blocked:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         review:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         escaped:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         avg_duration_ms:
+          x-nonfact: 평균 소요 ms(운영 메타)
           type:
           - number
           - 'null'
@@ -18673,6 +19243,7 @@ components:
           - string
           - 'null'
         months_from_asof:
+          x-nonfact: 기준일에서 horizon 까지 개월 수(사다리 정의 메타)
           type: integer
           minimum: 1
         p5:
@@ -19458,10 +20029,12 @@ components:
           - string
           - 'null'
         excerpt_start:
+          x-nonfact: 원문 발췌 시작 문자 위치(오프셋 메타)
           type:
           - integer
           - 'null'
         excerpt_end:
+          x-nonfact: 원문 발췌 끝 문자 위치(오프셋 메타)
           type:
           - integer
           - 'null'
@@ -19474,10 +20047,12 @@ components:
           - $ref: '#/components/schemas/SourceKind'
           - type: 'null'
         http_status:
+          x-nonfact: HTTP 상태 코드(수집 결과 메타)
           type:
           - integer
           - 'null'
         source_rank:
+          x-nonfact: 출처 순위(RA §3 1차·2차 규칙 상수)
           type:
           - integer
           - 'null'
@@ -19579,6 +20154,7 @@ components:
           - $ref: '#/components/schemas/SourceKind'
           - type: 'null'
         source_rank:
+          x-nonfact: 출처 순위(RA §3 1차·2차 규칙 상수)
           type: integer
         chosen:
           type: boolean
@@ -19863,6 +20439,7 @@ components:
         age_premium_coef:
           $ref: '#/components/schemas/AgePremiumCoef'
         supply_ref_pct:
+          x-nonfact: 사용자 설정 기준값(공급 과잉 판단 기준 %, 출처 데이터 아님)
           type: number
           exclusiveMinimum: 0
           maximum: 1
@@ -20341,6 +20918,7 @@ components:
           - string
           - 'null'
         size_bytes:
+          x-nonfact: 파일 크기(파일 메타)
           type:
           - integer
           - 'null'
@@ -20575,8 +21153,10 @@ components:
           - integer
           - 'null'
         relevance:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type: number
         rank:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type: integer
           minimum: 1
     RerankResult:
@@ -20865,6 +21445,7 @@ components:
           - boolean
           - 'null'
         household_size:
+          x-nonfact: 사용자가 입력한 조건값(출처 데이터 아님)
           description: 세대원 수
           type:
           - integer
@@ -20891,12 +21472,14 @@ components:
                 maximum: 84
           - type: 'null'
         equity_won:
+          x-nonfact: 사용자가 입력한 조건값(출처 데이터 아님)
           description: 자기자본(원). null=미입력 → 자금 요건 '미입력'
           type:
           - integer
           - 'null'
           minimum: 0
         loan_limit_won:
+          x-nonfact: 사용자가 입력한 조건값(출처 데이터 아님)
           description: 총 대출 한도(원)
           type:
           - integer
@@ -20912,12 +21495,14 @@ components:
           - 병행
           - null
         holding_years:
+          x-nonfact: 사용자가 입력한 조건값(출처 데이터 아님)
           type:
           - number
           - 'null'
           minimum: 0
           maximum: 30
         preferred_area_m2:
+          x-nonfact: 사용자가 입력한 조건값(출처 데이터 아님)
           type:
           - number
           - 'null'
@@ -21005,9 +21590,11 @@ components:
               funds:
                 $ref: '#/components/schemas/RequirementPre'
         cache_hits:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         cache_misses:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         calls_by_tool:
@@ -21380,7 +21967,7 @@ components:
         - p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).
         - delta_rerank: 이전 run 대비 rerank relevance 변화(§6-5).
         - decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).
-        - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 제외 (meta §1-3-4).
+        - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).
       type: object
       additionalProperties: false
       required:
@@ -21414,11 +22001,13 @@ components:
         total:
           $ref: '#/components/schemas/Fact'
         rank:
+          x-nonfact: §6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov
           type:
           - integer
           - 'null'
           minimum: 1
         tie_group:
+          x-nonfact: §6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov
           type:
           - integer
           - 'null'
@@ -21706,14 +22295,17 @@ components:
           - skip
           - block
         injection:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type:
           - number
           - 'null'
         substance:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type:
           - number
           - 'null'
         relevance:
+          x-nonfact: 판정기 봉투 원값(G7 판정 로그 표시 전용) — 화면의 확률·순위는 Fact(jl_<seq>)로 따로 낸다
           type:
           - number
           - 'null'
@@ -21747,6 +22339,7 @@ components:
         base_weights:
           $ref: '#/components/schemas/Weights'
         base_top5:
+          x-nonfact: 식별자 목록(complex_id)
           type: array
           items:
             type: integer
@@ -22296,6 +22889,7 @@ components:
         component:
           $ref: '#/components/schemas/ComponentKey'
         delta:
+          x-nonfact: 가중치 변형 크기(±0.10 가정, §6-6)
           type: number
           enum:
           - 0.1
@@ -22303,6 +22897,7 @@ components:
         weights:
           $ref: '#/components/schemas/Weights'
         top5:
+          x-nonfact: 식별자 목록(complex_id)
           type: array
           items:
             type: integer
@@ -22336,13 +22931,92 @@ components:
         changed:
           type: boolean
         entered:
+          x-nonfact: 식별자 목록(complex_id)
           type: array
           items:
             type: integer
         exited:
+          x-nonfact: 식별자 목록(complex_id)
           type: array
           items:
             type: integer
+    ShareLink:
+      title: ShareLink
+      description: |-
+        읽기 전용 공유 링크 1건 (RA §10 보안 5 '공유 링크는 읽기 전용 토큰으로만, 만료 30일', ADR-9, 계약 2026-10-09.4).
+        - 발급: POST /share-links(쓰기 토큰만). 서버가 무작위 토큰(32바이트 urlsafe)을 만들어 발급 응답(ShareLinkCreated.token)에서 한 번만 보여 준다 — DB 에는 sha256 만 저장(share_link.token_sha256), 목록·조회 응답에는 토큰이 없다.
+        - 만료: expires_at = created_at + SHARE_TOKEN_TTL_DAYS(기본 30일). 만료·회수(revoked_at)된 토큰은 401 unauthorized.
+        - 권한: 공유 토큰은 읽기 전용(GET 만, 그 밖 403 forbidden — READONLY_TOKEN 과 같은 규칙). 공유 토큰으로 /share-links 는 볼 수 없다(403).
+        - 프론트 링크 모양: `<origin>/share#<token>` — 토큰은 URL 조각(#)에만 둬 서버 로그·Referer 로 새지 않는다.
+        - status: active(유효) / expired(만료) / revoked(회수) — 조회 시각 기준 서버 계산.
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - created_at
+      - expires_at
+      - revoked_at
+      - status
+      properties:
+        id:
+          type: integer
+        label:
+          description: 누구에게 줬는지 메모(역할·용도만, 사람 이름 금지)
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        status:
+          type: string
+          enum:
+          - active
+          - expired
+          - revoked
+      examples:
+      - id: 3
+        label: 가족 공유
+        created_at: '2026-10-09T10:00:00+09:00'
+        expires_at: '2026-11-08T10:00:00+09:00'
+        revoked_at: null
+        status: active
+    ShareLinkCreate:
+      title: ShareLinkCreate
+      description: POST /share-links 본문. 만료 기간은 서버 설정(SHARE_TOKEN_TTL_DAYS, 기본 30일)으로만 정한다 — 요청으로 늘릴 수 없다.
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+    ShareLinkCreated:
+      title: ShareLinkCreated
+      description: POST /share-links 201 — 발급한 링크와 토큰(이 응답에서 한 번만). 프론트는 `<origin>/share#<token>` 을 보여 준다.
+      type: object
+      additionalProperties: false
+      required:
+      - link
+      - token
+      properties:
+        link:
+          $ref: '#/components/schemas/ShareLink'
+        token:
+          type: string
+          minLength: 32
+          maxLength: 128
     Snapshot:
       title: Snapshot
       description: |-
@@ -22383,12 +23057,14 @@ components:
           - 'null'
           format: date-time
         contradicted_claims:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           description: verify_status=contradicted claim 수
           type:
           - integer
           - 'null'
           minimum: 0
         complex_count:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type:
           - integer
           - 'null'
@@ -22466,15 +23142,19 @@ components:
           - 'null'
           format: date-time
         attempts_7d:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         successes_7d:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         failures_7d:
+          x-nonfact: 집계 개수(행 수 메타 — 출처 데이터 아님)
           type: integer
           minimum: 0
         last_http_status:
+          x-nonfact: HTTP 상태 코드(수집 결과 메타)
           type:
           - integer
           - 'null'
@@ -22575,6 +23255,7 @@ components:
           - string
           - 'null'
         year:
+          x-nonfact: 연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)
           type: integer
         units:
           $ref: '#/components/schemas/Fact'
@@ -22747,30 +23428,37 @@ components:
       - supply
       properties:
         p10:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         rerank:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         gap:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         benchmark:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         supply:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         liquidity:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1
         move_in:
+          x-nonfact: 시나리오 가중치 가정(내장·사용자 설정, 출처 데이터 아님)
           type: number
           minimum: 0
           maximum: 1

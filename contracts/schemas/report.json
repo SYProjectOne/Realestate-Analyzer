@@ -15,7 +15,7 @@
     "created_at": { "type": "string", "format": "date-time" },
     "finished_at": { "type": ["string", "null"], "format": "date-time" },
     "filename": { "type": ["string", "null"] },
-    "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "size_bytes": { "x-nonfact": "파일 크기(파일 메타)", "type": ["integer", "null"], "minimum": 0 },
     "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
     "blocked_reason": { "type": ["string", "null"] }
   },
