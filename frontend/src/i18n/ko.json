@@ -482,6 +482,25 @@
       "hcRole": {
         "운영자": "운영자",
         "검토자": "검토자"
+      },
+      "claims": {
+        "title": "모순(contradicted) 주장",
+        "intro": "남은 contradicted 주장이 있으면 스냅샷이 published 되지 않고 보고서를 만들 수 없습니다. 문장을 고치면 원자 주장으로 나눠 원 근거로 다시 검증합니다(claim.reverify 잡).",
+        "none": "남은 contradicted 주장이 없습니다",
+        "remaining": "남음(publish 막힘)",
+        "pending": "재검증 대기 중 {job}",
+        "split": "분할 재검증됨(자식 {n}건)",
+        "prov": "판정 출처",
+        "evidence": "근거",
+        "revise": "고친 문장",
+        "submit": "고쳐서 재검증",
+        "error": "수정하지 못했습니다: {detail}",
+        "status": {
+          "verified": "검증됨",
+          "contradicted": "모순(contradicted)",
+          "unsupported": "근거 부족",
+          "review": "검토 필요"
+        }
       }
     },
     "G8": {

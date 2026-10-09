@@ -251,6 +251,22 @@ export type HumanCheckCreate = S['HumanCheckCreate'];
 export type EnteredByRole = S['EnteredByRole'];
 export const ENTERED_BY_ROLES = ['운영자', '검토자'] as const satisfies readonly EnteredByRole[];
 
+// ─── 계약 2026-10-09.4: 주장 수정·호재 URL·공유 링크 ─────────────
+
+/** G7 주장 목록 행(GET /snapshots/{sid}/claims) — remaining = publish 를 막는 contradicted */
+export type ClaimView = S['ClaimView'];
+export type ClaimVerifyStatus = NonNullable<ClaimView['verify_status']>;
+export type ClaimPatch = S['ClaimPatch'];
+export type ClaimListParams = NonNullable<operations['listClaims']['parameters']['query']>;
+/** 사람이 넣는 호재 URL(POST /catalysts) */
+export type CatalystCreate = S['CatalystCreate'];
+export type CatalystCreated = S['CatalystCreated'];
+/** 읽기 전용 공유 링크(GET·POST /share-links, DELETE /share-links/{id}) */
+export type ShareLink = S['ShareLink'];
+export type ShareLinkStatus = ShareLink['status'];
+export type ShareLinkCreate = S['ShareLinkCreate'];
+export type ShareLinkCreated = S['ShareLinkCreated'];
+
 export type ReportFormat = S['ReportRequest']['format'];
 export type ReportRequest = S['ReportRequest'];
 /** 호환 별칭 */

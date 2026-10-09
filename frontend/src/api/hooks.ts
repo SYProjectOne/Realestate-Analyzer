@@ -1,5 +1,5 @@
 /**
- * TanStack Query 훅 — RA §4-2 + D2-3 엔드포인트마다 하나 (계약 2026-10-09.1, operationId 주석).
+ * TanStack Query 훅 — RA §4-2 + D2-3 엔드포인트마다 하나 (계약 2026-10-09.4, operationId 주석).
  *
  * 화면은 이 훅만 부른다. 반환 타입은 `./types`(생성 타입 별칭).
  * 쿼리 키는 `queryKeys`로만 만든다(무효화 일관성).
@@ -16,10 +16,15 @@ import {
 import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
 import type {
+  CatalystCreate,
+  CatalystCreated,
   ChangeEvent,
   ChangeSeverity,
   ChecklistItem,
   ChecklistPatch,
+  ClaimListParams,
+  ClaimPatch,
+  ClaimView,
   CompareView,
   ComplexDetail,
   ComplexListParams,
@@ -48,6 +53,9 @@ import type {
   ScenarioPreview,
   Sensitivity,
   Snapshot,
+  ShareLink,
+  ShareLinkCreate,
+  ShareLinkCreated,
   SourceStatus,
 } from './types';
 
@@ -107,6 +115,9 @@ export const queryKeys = {
   opsJudgments: (params: JudgmentOpsParams) => ['ops', 'judgments', params] as const,
   checklist: (params: ChecklistParams) => ['ops', 'checklist', params] as const,
   reports: (snapshotId: IdLike | null) => ['reports', key(snapshotId)] as const,
+  claims: (sid: IdLike, params: ClaimListParams) =>
+    ['snapshots', key(sid), 'claims', params] as const,
+  shareLinks: () => ['share-links'] as const,
 };
 
 // ─── 공통 ───────────────────────────────────────────────────
@@ -548,4 +559,85 @@ export function useCreateReport(): M<ReportRequest, JobRun> {
 /** GET /reports/{id} (downloadReport) — 보고서 파일(Bearer → `useDownload`) */
 export function reportRequest(id: IdLike, filename?: string | null): FileRequest {
   return { path: `/reports/${enc(id)}`, fallbackName: filename ?? `report_${key(id)}` };
+}
+
+// ─── 주장 수정 (G7, 계약 2026-10-09.4 · M8) ────────────────
+
+/** GET /snapshots/{sid}/claims?status= (listClaims) — G7 contradicted 목록 */
+export function useClaims(
+  sid: IdLike | null | undefined,
+  params: ClaimListParams = {},
+): Q<ClaimView[]> {
+  return useQuery({
+    queryKey: queryKeys.claims(key(sid), params),
+    queryFn: ({ signal }) =>
+      apiFetch<ClaimView[]>(`/snapshots/${enc(key(sid))}/claims`, {
+        query: { status: params.status },
+        signal,
+      }),
+    enabled: has(sid),
+  });
+}
+
+/**
+ * PATCH /claims/{id} (reviseClaim, 202 → JobRun claim.reverify) — 사람이 고친 문장으로 원자 분할 재검증.
+ * 409 conflict = contradicted 아님·이미 분할됨·재검증 대기 중(ApiError.detail 을 화면이 보인다).
+ */
+export function useReviseClaim(): M<{ id: IdLike; patch: ClaimPatch }, JobRun> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }) =>
+      apiFetch<JobRun>(`/claims/${enc(id)}`, { method: 'PATCH', body: patch }),
+    onSuccess: () => {
+      void qc.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === 'snapshots' && q.queryKey[2] === 'claims',
+      });
+      void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
+  });
+}
+
+// ─── 호재 URL (G6, 계약 2026-10-09.4 · M6) ─────────────────
+
+/** POST /catalysts (createCatalyst, 201) — 사람이 넣는 호재 URL. job 이 null 이면 다음 파이프라인이 분류 */
+export function useCreateCatalyst(): M<CatalystCreate, CatalystCreated> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => apiFetch<CatalystCreated>('/catalysts', { method: 'POST', body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({
+        predicate: (q) => q.queryKey[0] === 'snapshots' && q.queryKey[2] === 'market',
+      });
+      void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
+  });
+}
+
+// ─── 공유 링크 (G7, 계약 2026-10-09.4 · M9) ────────────────
+
+/** GET /share-links (listShareLinks) — 쓰기 토큰만(읽기·공유 토큰은 403). enabled 로 쓰기 권한일 때만 부른다 */
+export function useShareLinks(enabled = true): Q<ShareLink[]> {
+  return useQuery({
+    queryKey: queryKeys.shareLinks(),
+    queryFn: ({ signal }) => apiFetch<ShareLink[]>('/share-links', { signal }),
+    enabled,
+  });
+}
+
+/** POST /share-links (createShareLink, 201) — 토큰은 이 응답에서 한 번만 온다 */
+export function useCreateShareLink(): M<ShareLinkCreate, ShareLinkCreated> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => apiFetch<ShareLinkCreated>('/share-links', { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shareLinks() }),
+  });
+}
+
+/** DELETE /share-links/{id} (revokeShareLink) → ShareLink(status=revoked) */
+export function useRevokeShareLink(): M<IdLike, ShareLink> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => apiFetch<ShareLink>(`/share-links/${enc(id)}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shareLinks() }),
+  });
 }
