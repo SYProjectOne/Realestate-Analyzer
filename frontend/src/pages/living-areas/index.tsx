@@ -10,6 +10,7 @@ import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { metaText } from '@/lib/meta';
 import { QueryState } from '../_shared';
+import { RegionExpandPanel } from './RegionExpandPanel';
 
 export interface DraftArea {
   /** 화면 안 키(기존 생활권은 서버 id) */
@@ -77,7 +78,12 @@ export function LivingAreasPage() {
     <PageShell title={t('page.G0_2.title')}>
       <p className="text-sm text-muted">{t('page.G0_2.intro')}</p>
       <QueryState query={query}>
-        {(region) => <Editor key={region.id} region={region} />}
+        {(region) => (
+          <>
+            <Editor key={region.id} region={region} />
+            <RegionExpandPanel key={`expand-${region.id}`} region={region} />
+          </>
+        )}
       </QueryState>
     </PageShell>
   );

@@ -11,6 +11,7 @@
  *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
  *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
  *  - 호재 위치 PATCH /catalysts/{id}(계약 .8 초안): 위치 확인 → 링크, GET market 에 반영
+ *  - 지역 확장 PATCH /regions/{id}(계약 .8 초안): selections 교체 + region.expand 잡
  *  - 계약 .8 초안(src/api/contract8.ts): 사람 확인 field enum·값 형·길이 검사(422), 사실 필드 사람 확인 → 같은 단지·필드의
  *    강등(GET claims demotion)을 복원(restored_by human_check). CORE 머지 후 생성 핸들러로 바뀌는 부분은 여기서만 흉내 낸다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -33,6 +34,7 @@ import type {
   JobRun,
   Market,
   Provenance,
+  Region,
   RegionCreated,
   Snapshot,
   ReportRequest,
@@ -42,6 +44,7 @@ import type {
 import {
   type CatalystLink,
   type CatalystPatch,
+  type RegionPatch,
   HUMAN_CHECK_FIELDS,
   HUMAN_CHECK_NOTE_MAX,
   HUMAN_CHECK_RULES,
@@ -435,6 +438,18 @@ export const extraHandlers = [
       },
     };
     return HttpResponse.json(created, { status: 201 });
+  }),
+
+  // PATCH /regions/{id} (계약 .8 초안, D11-7) — 지역 선택 확장 → Region + region.expand 잡(새 리비전 rerank)
+  http.patch(mswPath('/regions/:id'), async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<RegionPatch>;
+    const selections = body.selections ?? [];
+    if (selections.length === 0) {
+      return HttpResponse.json({ detail: '선택이 하나 이상 필요합니다' }, { status: 422 });
+    }
+    const region = await base<Region>(new Request(request.url));
+    const job = registerJob('region.expand' as JobName, { region_id: region.id });
+    return HttpResponse.json({ region: { ...region, selections }, job });
   }),
 
   // PATCH /catalysts/{id} (계약 .8 초안, D11-5) — 위치 확인 → catalyst_link(목: 단지 좌표 없음 → 거리 null·가중치 1·추정)
