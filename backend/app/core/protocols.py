@@ -216,6 +216,8 @@ class Parser(Protocol):
     - 정규식·표 파서가 실패한 필드는 needs_extract=True로 표시해 판정기 extract payload로 넘긴다
       (파서가 판단하지 않는다).
     - 실패한 원문(http_status≠200, 스캔 PDF)은 빈 목록 또는 label='확인 불가'(reason='스캔' 등) 후보를 낸다.
+    - OCR 원문(error_text 'ocr'·'ocr_partial:<p>')에서 읽은 값은 label='추정', reason='OCR'(표시 '추정(OCR)')
+      이고 수치·날짜 필드는 needs_extract=True — 판정기 extract/audit 를 반드시 거친다(D5-4, R3 C3).
     - observed_on = 원문이 말하는 시점(공고일 등). 공식 홈페이지 접수 문구는 entity='intake_status',
       field='status_text' 후보로 낸다(분류하지 않는다, 2026-10-09.2).
     """
@@ -234,6 +236,11 @@ class Resolver(Protocol):
     - needs_compare=True는 '1차·1차 상충'만: 값이 다른 최상위 후보 둘이 모두 primary이고 source_rank가 같아
       우선순위로 가를 수 없을 때. 1차 vs 2차, 또는 rank가 다른 1차끼리(청약홈 상세 vs 공고문 세대수, T5)는
       compare 없이 rank 1 채택. 둘 다 2차면 병기하고 판정 미사용.
+    - needs_compare 그룹은 **채택 보류**(R3 M1): provenance 의 대표 행(최신)만 chosen=true(reason 머리
+      '출처 상충 — compare 대기')이고, ``ResolvedFields.chosen`` 에는 값 없는 label='확인 불가' 후보(같은
+      reason)를 낸다 → 사실 테이블 값 없음(점수 미사용). compare 결과로만 채택한다(contradicts → 공고문,
+      same_fact·different_facts → 우선순위 대표; review·degraded → 보류 유지
+      — ``normalize.judged.apply_compare``).
     - 판정기를 직접 부르지 않는다. compare는 WP3가 needs_compare 그룹에 대해 부른다.
     """
 
