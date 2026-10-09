@@ -338,6 +338,9 @@ def apply_extracted(
             if v.decision != "auto":
                 out.skipped[v.field] = "review(미반영)"
                 continue
+            if not (v.value_text or "").strip():
+                out.skipped[v.field] = "값 없음(판정기 not_found)"
+                continue
             mark = (audit or {}).get(v.field)
             if mark is not None and mark.flagged:
                 label, value, reason = (

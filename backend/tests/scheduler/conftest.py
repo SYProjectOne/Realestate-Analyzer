@@ -75,6 +75,9 @@ class SynthJev:
     model: str = "jev-1.13.0"
     down: bool = False
     verdict: str = "verified"
+    intake_decision: str = "auto"  # 접수 상태 classify(클래스 open… 카탈로그)의 decision
+    extract_values: dict[str, str] = field(default_factory=dict)  # extract 필드 id → 값(없으면 not_found)
+    audit_flags: set[str] = field(default_factory=set)  # audit 에서 flagged 로 낼 레코드 id
     calls: list[str] = field(default_factory=list)
 
     def server_version(self) -> str:
@@ -101,20 +104,28 @@ class SynthJev:
         }
 
     def _extract(self, a: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "results": [
-                {"id": f["id"], "value": None, "status": "not_found", "confidence": 0.9} for f in a["fields"]
-            ]
-        }
+        out = []
+        for f in a["fields"]:
+            v = self.extract_values.get(f["id"])
+            out.append({"id": f["id"], "value": v, "status": "auto" if v else "not_found", "confidence": 0.9})
+        return {"results": out}
 
     def _audit(self, a: dict[str, Any]) -> dict[str, Any]:
+        recs = [
+            {"id": r["id"], "action": "flag" if r["id"] in self.audit_flags else "ok",
+             "p_wrong": 0.9 if r["id"] in self.audit_flags else 0.05}
+            for r in a["records"]
+        ]  # fmt: skip
         return {
-            "action": "pass",
-            "records": [{"id": r["id"], "action": "ok", "p_wrong": 0.05} for r in a["records"]],
+            "action": "escalate" if self.audit_flags & {r["id"] for r in recs} else "pass",
+            "records": recs,
         }
 
     def _classify(self, a: dict[str, Any]) -> dict[str, Any]:
         first = a["classes"][0]["id"]
+        decision = (
+            self.intake_decision if first == "open" else "auto"
+        )  # 접수 상태 카탈로그는 open 이 첫 클래스
         return {
             "results": [
                 {
@@ -123,7 +134,7 @@ class SynthJev:
                     "probabilities": {first: 0.96},
                     "top_probability": 0.96,
                     "confidence": 0.95,
-                    "decision": "auto",
+                    "decision": decision,
                 }
                 for it in a["items"]
             ]

@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -185,7 +185,9 @@ def save_score_run(
     created_at: str,
     seq: SeqResolver,
     previous_snapshot_ids: Sequence[int] = (),
+    scopes: Mapping[int, str] | None = None,
 ) -> ScoreRun:
+    """score_run + component + total. ``scopes`` = 이 실행의 판정 범위 → score_total.judge_scope(계약 2026-10-09.3)."""
     res = detail.result
     run = ScoreRun(
         snapshot_id=res.snapshot_id,
@@ -224,6 +226,7 @@ def save_score_run(
                 rank=t.rank,
                 tie_group=t.tie_group,
                 unstable=bool(t.unstable),
+                judge_scope=(scopes or {}).get(t.complex_id),
             )
         )
     session.flush()
@@ -491,6 +494,7 @@ def carry_forward(
                     rank=t.rank,
                     tie_group=t.tie_group,
                     unstable=t.unstable,
+                    judge_scope=t.judge_scope,
                 )
             )
         for d in session.scalars(select(Decision).where(Decision.score_run_id == src.id)):
