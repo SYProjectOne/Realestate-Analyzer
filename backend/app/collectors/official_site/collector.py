@@ -4,10 +4,16 @@
 1. httpx(core.http) 응답: 성공이면 HTML(text_path = DOM 텍스트), 실패면 실패 행 — 403 은 http_status=403,
    DNS·TLS·timeout 은 http_status=None + error_text. 실패하면 렌더하지 않는다(접근 거부를 우회하지 않음).
 2. 렌더(동적·팝업 표식이 있거나 render='always'): 전체 화면 PNG(text_path = 렌더 후 DOM 텍스트,
-   image_hash = 팝업 해시). 렌더 실패는 실패 행(error_text='render: …').
+   image_hash = 팝업 안정 해시 ``render.popup_hash``). 렌더 실패는 실패 행(error_text='render: …').
+   **같은 화면이면 행을 늘리지 않는다(R3 M13)**: 같은 URL·단지의 직전 렌더 메타(HTML 행 meta.render:
+   ``signature``·``popups[]``·``screenshot_sha256``)와 비교해 서명(시각을 가린 DOM 텍스트 + 팝업 서명)이 같고
+   팝업 그림의 dHash 거리도 임계값 안이면 직전 스크린샷 행을 그대로 쓴다(image_hash 도 같다 → 가짜 팝업
+   변경·재판정 없음). 서명은 같은데 그림이 임계값 넘게 바뀌었으면 image_hash 를 바꿔(팝업 해시 + dHash)
+   새 행으로 남긴다.
 메타(계약 2026-10-09.2 ``raw_document.meta``): 1번 HTML 행의 meta 컬럼에 둔다(별도 행 없음).
    키 = {kind, url, final_url, complex_id, html_sha256, render{reason, rendered, error, screenshot_sha256,
-   popups[]}, image_hash, intake_candidates[{text, keywords, source}]}. 시각을 넣지 않는다.
+   signature, popups[{selector, sha256, width, height, images, text_sha256, dhash, signature}]}, image_hash,
+   intake_candidates[{text, keywords, source}]}. 시각을 넣지 않는다.
    같은 HTML(같은 행)을 다시 수집하면 meta 는 최신 관찰(렌더 결과)로 바뀐다 — 렌더 이력은 스크린샷 행
    (image_hash)마다 남는다.
    상태 판단은 하지 않는다(WP2·판정기).
@@ -31,7 +37,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.collectors.official_site.extract import html_to_text, intake_candidates, needs_render
-from app.collectors.official_site.render import PlaywrightRenderer, Renderer, RenderResult, popup_hash
+from app.collectors.official_site.render import (
+    PlaywrightRenderer,
+    Renderer,
+    RenderResult,
+    popup_hash,
+    render_signature,
+    visual_change,
+)
 from app.collectors.reference.rawstore import Failure, RawStore, fetch_failure
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
@@ -174,21 +187,8 @@ class OfficialSiteCollector:
             rendered = self._renderer_or_default().render(r.final_url or target.url)
             if rendered.ok:
                 out.rendered = True
-                out.image_hash = popup_hash(rendered.popups)
-                out.documents.append(
-                    store.save_content(
-                        source_kind="official_site",
-                        url=target.url,
-                        content=rendered.screenshot_png,
-                        ext="png",
-                        content_type="image/png",
-                        http_status=rendered.status,
-                        text=rendered.dom_text,
-                        region_id=region_id,
-                        complex_id=target.complex_id,
-                        image_hash=out.image_hash,
-                    )
-                )
+                doc, out.image_hash = self._screenshot(store, region_id, target, rendered)
+                out.documents.append(doc)
             else:
                 out.documents.append(
                     store.save_failure(
@@ -200,9 +200,46 @@ class OfficialSiteCollector:
                         detail=(rendered.error or "").removeprefix("render: ")[:200] or None,
                     )
                 )
-        out.meta = self._meta(target, r.final_url, html_doc, dom_text, reason, rendered, out.image_hash)
+        shot = out.documents[1] if rendered is not None and rendered.ok and len(out.documents) > 1 else None
+        out.meta = self._meta(
+            target, r.final_url, html_doc, dom_text, reason, rendered, out.image_hash,
+            shot.sha256 if shot is not None else None,
+        )  # fmt: skip
         out.documents[0] = self._attach_meta(store, html_doc, out.meta)
         return out
+
+    @staticmethod
+    def _screenshot(
+        store: RawStore, region_id: int, target: SiteTarget, rendered: RenderResult
+    ) -> tuple[RawDocument, str | None]:
+        """렌더 PNG 행과 image_hash(모듈 설명 2): 같은 화면이면 직전 스크린샷 행 재사용."""
+        signature = render_signature(rendered.dom_text, rendered.popups)
+        prev = _previous_render(store.session, target)
+        same = prev is not None and prev.get("signature") == signature
+        changed_pixels = same and visual_change(prev.get("popups") or [] if prev else [], rendered.popups)
+        if prev is not None and same and not changed_pixels:
+            row = store.session.scalars(
+                select(RawDocumentRow).where(RawDocumentRow.sha256 == prev.get("screenshot_sha256"))
+            ).first()
+            if row is not None:
+                return _dto(row), row.image_hash
+        image_hash = popup_hash(rendered.popups)
+        if changed_pixels:
+            dh = ",".join(sorted(p.dhash or p.sha256 for p in rendered.popups))
+            image_hash = hashlib.sha256(f"{image_hash or ''}|{dh}".encode()).hexdigest()
+        doc = store.save_content(
+            source_kind="official_site",
+            url=target.url,
+            content=rendered.screenshot_png,
+            ext="png",
+            content_type="image/png",
+            http_status=rendered.status,
+            text=rendered.dom_text,
+            region_id=region_id,
+            complex_id=target.complex_id,
+            image_hash=image_hash,
+        )
+        return doc, doc.image_hash
 
     @staticmethod
     def _attach_meta(store: RawStore, doc: RawDocument, meta: dict[str, Any]) -> RawDocument:
@@ -224,6 +261,7 @@ class OfficialSiteCollector:
         reason: str,
         rendered: RenderResult | None,
         image_hash: str | None,
+        screenshot_sha256: str | None = None,
     ) -> dict[str, Any]:
         candidates = intake_candidates(dom_text, source="html")
         if rendered is not None and rendered.ok:
@@ -244,7 +282,12 @@ class OfficialSiteCollector:
                 "rendered": bool(rendered is not None and rendered.ok),
                 "error": rendered.error if rendered is not None else None,
                 "screenshot_sha256": (
-                    hashlib.sha256(rendered.screenshot_png).hexdigest()
+                    (screenshot_sha256 or hashlib.sha256(rendered.screenshot_png).hexdigest())
+                    if rendered is not None and rendered.ok
+                    else None
+                ),
+                "signature": (
+                    render_signature(rendered.dom_text, rendered.popups)
                     if rendered is not None and rendered.ok
                     else None
                 ),
@@ -253,3 +296,28 @@ class OfficialSiteCollector:
             "image_hash": image_hash,
             "intake_candidates": candidates,
         }
+
+
+def _dto(row: RawDocumentRow) -> RawDocument:
+    return RawDocument.model_validate({name: getattr(row, name) for name in RawDocument.model_fields})
+
+
+def _previous_render(session: Session, target: SiteTarget) -> dict[str, Any] | None:
+    """같은 URL·단지의 가장 최근 성공 렌더 메타(HTML 행 meta.render). 없으면 None."""
+    stmt = (
+        select(RawDocumentRow)
+        .where(
+            RawDocumentRow.source_kind == "official_site",
+            RawDocumentRow.url == target.url,
+            RawDocumentRow.meta.is_not(None),
+        )
+        .order_by(RawDocumentRow.id.desc())
+        .limit(20)
+    )
+    if target.complex_id is not None:
+        stmt = stmt.where(RawDocumentRow.complex_id == target.complex_id)
+    for row in session.scalars(stmt):
+        render = (row.meta or {}).get("render") if isinstance(row.meta, dict) else None
+        if isinstance(render, dict) and render.get("rendered") and render.get("signature"):
+            return render
+    return None

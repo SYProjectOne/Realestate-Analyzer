@@ -18,6 +18,9 @@
 - 두 호스트 모두 키 인증 API 라 core.http 의 robots 예외(``HTTP_ROBOTS_EXEMPT_HOSTS``)다.
   openapi.naver.com/robots.txt 는 ``Disallow: /`` — 예외 목록에서 빼면 실패 행(error_text='robots')만 남는다.
 - 질의어: ``queries`` 를 주면 그것, 아니면 ``"<region.name> 분양"`` 1개(지역명은 region 행에서 온다).
+- 질의어도 외부로 나가는 값이다(RA §10 보안 1, R3 M10): 보내기 전에 판정기 payload 와 같은 공용 필터
+  ``app.judge.guard.check_payload``(전화·주민번호·이메일·설정 비밀값·URL 키)를 통과해야 한다. 걸리면 요청하지
+  않고 실패 행(error_text ``guard: <종류>``, URL 의 질의는 ``[REDACTED]``)만 남긴다 — 실패도 데이터.
 """
 
 from __future__ import annotations
@@ -33,14 +36,16 @@ from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
-from app.collectors.reference.rawstore import RawStore, fetch_failure
+from app.collectors.reference.rawstore import Failure, RawStore, fetch_failure
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
 from app.core.http import HttpClient
 from app.core.settings import NewsApiProvider, get_settings
+from app.judge.guard import check_payload, default_secrets
 
 __all__ = [
     "DISABLED_NO_KEY",
+    "GUARD_FAILURE",
     "NAVER_NEWS_URL",
     "NCP_NEWS_URL",
     "PROVIDERS",
@@ -70,6 +75,8 @@ PROVIDERS: dict[str, Provider] = {
     ),
 }
 DISABLED_NO_KEY = "비활성(키 없음)"
+GUARD_FAILURE = "guard"
+"""질의어가 guard 에 걸려 보내지 않은 실패 행의 error_text 머리."""
 SessionFactory = Callable[[], AbstractContextManager[Session]]
 _TAG_RE = re.compile(r"<[^>]+>")
 _UNSET = object()
@@ -135,6 +142,7 @@ class NewsCollector:
         display: int = 20,
         session_factory: SessionFactory = get_session,
         raw_dir: Path | None = None,
+        secrets: Sequence[str] | None = None,
     ) -> None:
         if api_key is _UNSET:
             secret = get_settings().news_api_key
@@ -149,7 +157,9 @@ class NewsCollector:
         self._display = max(1, min(100, display))
         self._session_factory = session_factory
         self._raw_dir = raw_dir
+        self._secrets = list(secrets) if secrets is not None else None
         self.items: list[NewsItem] = []
+        self.blocked_queries = 0
 
     @property
     def enabled(self) -> bool:
@@ -166,8 +176,10 @@ class NewsCollector:
 
     def fetch(self, region: Region, snapshot: Snapshot, since: str | None) -> list[RawDocument]:
         self.items = []
+        self.blocked_queries = 0
         if self._credentials is None:
             return []
+        secrets = self._secrets if self._secrets is not None else default_secrets()
         cid, secret = self._credentials
         prov = self.provider
         headers = {prov.id_header: cid, prov.secret_header: secret}
@@ -176,7 +188,20 @@ class NewsCollector:
         try:
             with self._session_factory() as session:
                 store = RawStore(session, raw_dir=self._raw_dir)
-                for q in self.queries_for(region):
+                for i, q in enumerate(self.queries_for(region)):
+                    checked = check_payload({"query": q}, secrets=secrets)
+                    if not checked.ok:
+                        self.blocked_queries += 1
+                        docs.append(
+                            store.save_failure(
+                                source_kind="news",
+                                url=f"{prov.url}?query=[REDACTED]&q={i}",
+                                failure=Failure(None, GUARD_FAILURE),
+                                region_id=region.id,
+                                detail=",".join(checked.kinds()),
+                            )
+                        )
+                        continue
                     params = {"query": q, "display": str(self._display), "start": "1", "sort": "date"}
                     shown = f"{prov.url}?{urlencode(params)}"
                     r = http.get(prov.url, params=params, headers=headers)

@@ -10,25 +10,37 @@ from decimal import Decimal, InvalidOperation
 from typing import Final, Literal
 
 __all__ = [
+    "AUDIT_FLAG_REASON",
     "BOOL_FIELDS",
+    "COMPARE_ADOPTED",
+    "COMPARE_SIDE",
+    "CONFLICT_HOLD",
     "CRITICAL_FIELDS",
     "DECIMAL_FIELDS",
+    "EXTRACT_REASON",
     "FIELD_GROUP",
     "INT_FIELDS",
     "JSON_FIELDS",
     "LABEL_BY_SOURCE",
     "NUMERIC_FIELDS",
+    "OCR_LABEL",
+    "OCR_REASON",
     "PRICE_BY_TYPE_ITEMS",
     "PRIMARY_SOURCES",
     "RULE_TEXT",
     "SourceKind",
     "field_group",
+    "has_tag",
+    "is_numeric_field",
+    "is_ocr",
     "norm_value",
     "price_by_type_field",
     "rule_text",
     "source_rank",
     "split_price_by_type",
+    "strip_tags",
     "value_from_norm",
+    "with_tag",
 ]
 
 SourceKind = Literal[
@@ -292,3 +304,72 @@ def value_from_norm(field: str, norm: str | None) -> float | int | str | bool | 
         except ValueError:
             return norm
     return norm
+
+
+# ---------------------------------------------------------------- 출처 행 reason 표식 (R3 C3·M1)
+#
+# 라벨은 계약 5종(label.json) 그대로다. OCR·판정기 결과·상충 보류는 reason(라벨 한정어)으로 표시한다
+# — 화면 표시 문자열은 '<label>(<reason>)'(fact.json 규칙): OCR 판독값 = '추정(OCR)'.
+
+OCR_LABEL: Final = "추정"
+OCR_REASON: Final = "OCR"
+"""OCR 로 읽은 공고문(raw.error_text 'ocr'·'ocr_partial:<p>') 값: label '추정', reason 'OCR'
+= 표시 '추정(OCR)'
+(DECISIONS D5-4). 수치 필드는 needs_extract=True — 판정기 extract/audit 를 반드시 거친다."""
+EXTRACT_REASON: Final = "판정기 추출"
+AUDIT_FLAG_REASON: Final = "판정기 감사 flagged"
+COMPARE_ADOPTED: Final = "판정기 compare 채택"
+"""P5 compare 결과로 채택된 출처 행의 reason 머리(같은 rank 1차·1차 상충은 이 표식이 있어야 채택된다)."""
+COMPARE_SIDE: Final = "판정기 compare 병기"
+"""P5 compare 결과 병기(채택 안 됨) 출처 행의 reason 머리."""
+CONFLICT_HOLD: Final = "출처 상충 — compare 대기"
+"""같은 rank 1차·1차 상충이 compare 로 풀리기 전: 채택 보류(사실 테이블 값 없음 = 점수 미사용).
+표시 '확인 불가(출처 상충 — compare 대기)'."""
+_TAGS: Final = (COMPARE_ADOPTED, COMPARE_SIDE, CONFLICT_HOLD)
+_TAG_SEP: Final = "; "
+_REASON_MAX: Final = 120
+
+
+def has_tag(reason: str | None, tag: str) -> bool:
+    return (reason or "").startswith(tag)
+
+
+def strip_tags(reason: str | None) -> str | None:
+    """reason 앞의 compare·상충 보류 표식을 뗀다(원래 reason 만 남김)."""
+    text = reason or ""
+    changed = True
+    while changed:
+        changed = False
+        for tag in _TAGS:
+            if text.startswith(tag):
+                _, sep, rest = text.partition(_TAG_SEP)
+                text = rest if sep else ""
+                changed = True
+    return text or None
+
+
+def with_tag(reason: str | None, tag: str, detail: str = "") -> str:
+    """'<tag>[ <detail>]; <원래 reason>' (120자). 이미 붙은 compare·보류 표식은 바꾼다."""
+    head = f"{tag} {detail}".strip()
+    rest = strip_tags(reason)
+    return (f"{head}{_TAG_SEP}{rest}" if rest else head)[:_REASON_MAX]
+
+
+def is_ocr(label: str | None, reason: str | None) -> bool:
+    """OCR 판독 후보(판정기 추출 전): label '추정' + reason 'OCR'(앞 표식 제외)."""
+    return label == OCR_LABEL and strip_tags(reason) == OCR_REASON
+
+
+def is_numeric_field(entity: str, field: str, value: object = None) -> bool:
+    """수치·날짜 필드인가(OCR 값의 needs_extract 대상, provenance 전수 검사와 같은 기준).
+
+    NUMERIC_FIELDS·INT_FIELDS·DECIMAL_FIELDS·JSON 일정 필드·price_by_type 숫자 항목, 또는 값이 숫자.
+    """
+    pbt = split_price_by_type(field)
+    if pbt is not None:
+        return pbt[1] in ("max_price_won", "floor_sample_price_won", "units")
+    if field in NUMERIC_FIELDS.get(entity, ()) or field in JSON_FIELDS:
+        return True
+    if field in INT_FIELDS or field in DECIMAL_FIELDS or field in _EXTRA_INT_FIELDS:
+        return True
+    return isinstance(value, int | float) and not isinstance(value, bool)

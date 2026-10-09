@@ -8,6 +8,12 @@
    payment_terms = 단지 + 공고번호, competition = 단지 + 공급형태·순위·타입,
    rtms_trade·unsold = 같은 거래·같은 달.
    없는 행은 만든다(단지 행은 raw.region_id가 있어야 한다).
+   단지는 **원문의 지역 안에서만** 찾는다(R3 W4): 같은 주택관리번호의 단지가 다른 지역에 있으면 그 행을
+   건드리지 않는다. applyhome_id 가 전역 유일(현 스키마)이면 이 원문의 그 단지 후보는 건너뛴다(skipped,
+   ``StoreResult.foreign_keys``) — (region_id, applyhome_id) 유일로 바뀌면 지역마다 자기 행을 만든다.
+   같은 블록 중복(R3 W12c): 잔여 세대(무순위·임의) 상세 화면은 최초 주택관리번호를 싣지 않아 다른 번호로
+   들어온다. 새 번호의 단지를 만들기 전에 같은 지역에서 **정규화한 단지명 + 정규화한 공급위치가 모두 같은
+   단지가 정확히 1개**면 그 행에 묶는다(문자열 정규화는 판단이 아니다; 둘 이상이거나 주소가 없으면 묶지 않음).
 4. 같은 행·필드에 이미 다른 원문 출처가 있으면 그 출처 행(field_provenance: value_norm·observed_on·rank·라벨)
    으로 후보를 되살려 합친다 — 옛 원문을 다시 읽거나 파싱하지 않는다(계약 2026-10-09.2).
    우선순위 판정(resolve)은 항상 그 필드의 모든 출처를 함께 본다
@@ -27,6 +33,7 @@ commit은 호출자(잡 러너)가 한다.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -54,6 +61,7 @@ from app.normalize import changes
 from app.normalize.applyhome_parser import ApplyhomeParser
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
 from app.normalize.fields import (
+    CONFLICT_HOLD,
     DECIMAL_FIELDS,
     INT_FIELDS,
     JSON_FIELDS,
@@ -72,6 +80,8 @@ from app.normalize.stats_parser import StatsParser
 __all__ = [
     "StoreError",
     "StoreResult",
+    "address_key",
+    "block_name_key",
     "candidate_from_row",
     "parser_for",
     "raw_dto",
@@ -98,6 +108,7 @@ class StoreResult:
     complex_ids: list[int]
     extract_requests: list[ExtractRequest]
     skipped: list[FieldCandidate] = field(default_factory=list)
+    foreign_keys: list[str] = field(default_factory=list)  # 다른 지역 단지라 건너뛴 주택관리번호(W4)
 
 
 def parser_for(
@@ -186,6 +197,7 @@ class _Binder:
         self.created: set[tuple[str, int]] = set()
         self.new_terms: list[PaymentTerms] = []
         self._complex: dict[str, Complex] = {}
+        self.foreign: set[str] = set()
 
     # -- complex
     def complex_for(
@@ -193,13 +205,30 @@ class _Binder:
     ) -> Complex | None:
         if key in self._complex:
             return self._complex[key]
-        cx = self.s.scalars(select(Complex).where(Complex.applyhome_id == key)).first()
+        if key in self.foreign:
+            return None
+        region_id = raw.region_id
+        stmt = select(Complex).where(Complex.applyhome_id == key)
+        if region_id is not None:
+            stmt = stmt.where(Complex.region_id == region_id)
+        cx = self.s.scalars(stmt).first()
+        if cx is None and region_id is not None and _APPLYHOME_ID_GLOBAL:
+            other = self.s.scalars(select(Complex.id).where(Complex.applyhome_id == key)).first()
+            if other is not None:  # 다른 지역의 단지 — 덮어쓰지 않는다(W4)
+                self.foreign.add(key)
+                return None
         if cx is None and raw.complex_id is not None:
             cand = self.s.get(Complex, raw.complex_id)
-            if cand is not None and cand.applyhome_id in (None, key):
+            if (
+                cand is not None
+                and cand.applyhome_id in (None, key)
+                and (region_id is None or cand.region_id == region_id)
+            ):
                 cx = cand
                 if create and cx.applyhome_id is None:
                     cx.applyhome_id = key
+        if cx is None and create and region_id is not None:
+            cx = self._same_block(key, region_id, batch)
         if cx is None and create:
             region_id = raw.region_id
             if region_id is None:
@@ -237,6 +266,26 @@ class _Binder:
         if cx is not None:
             self._complex[key] = cx
         return cx
+
+    def _same_block(self, key: str, region_id: int, batch: list[FieldCandidate]) -> Complex | None:
+        """W12c: 같은 지역에서 정규화 단지명·공급위치가 모두 같은 단지가 정확히 1개면 그 행."""
+        vals = {c.field: c.value for c in batch if c.entity == "complex" and c.entity_key == key}
+        name, address = vals.get("name"), vals.get("address")
+        if not isinstance(name, str) or not isinstance(address, str):
+            return None
+        nk, ak = block_name_key(name), address_key(address)
+        if not nk or not ak:
+            return None
+        hits = [
+            cx
+            for cx in self.s.scalars(
+                select(Complex).where(Complex.region_id == region_id, Complex.address.is_not(None))
+            )
+            if cx.applyhome_id != key
+            and address_key(cx.address or "") == ak
+            and nk in {block_name_key(n) for n in (cx.name, *(cx.former_names or []))}
+        ]
+        return hits[0] if len(hits) == 1 else None
 
     # -- complex_type
     def type_for(self, cx: Complex, tcode: str, area: float | None, *, create: bool) -> ComplexType | None:
@@ -460,6 +509,24 @@ class _Binder:
         return None
 
 
+_APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)
+"""complex.applyhome_id 가 전역 유일(현 스키마)인가. (region_id, applyhome_id) 유일로 바뀌면 False."""
+
+# 잔여 세대 공고가 단지명 뒤에 붙이는 회차·공급 구분 괄호: '(조합원 자격상실세대 3회차)', '(임의공급 4차)'
+_ROUND_PAREN_RE = re.compile(r"\([^)]*(?:차|회차|임의|무순위|잔여|선착순|조합원|취소|재공급)[^)]*\)")
+_KEY_DROP_RE = re.compile(r"[\s·,.\-()（）\[\]]+|번지|일원")
+
+
+def block_name_key(name: str) -> str:
+    """단지명 비교 키: 회차·공급 구분 괄호를 떼고 공백·문장부호를 뺀다(대소문자 무시)."""
+    return _KEY_DROP_RE.sub("", _ROUND_PAREN_RE.sub("", name)).lower()
+
+
+def address_key(address: str) -> str:
+    """공급위치 비교 키: 공백·문장부호·'번지'·'일원'을 뺀다."""
+    return _KEY_DROP_RE.sub("", address).lower()
+
+
 _MODELS: dict[str, Any] = {
     "complex": Complex,
     "complex_type": ComplexType,
@@ -529,6 +596,18 @@ def _set_price_by_type(
     )
 
 
+_KEEP: Any = object()
+
+
+def _held_value(model: Any, field_name: str) -> Any:
+    """채택 보류 시 비운 값: NULL 가능 컬럼은 None, NOT NULL JSON 목록(일정)은 [] (값 없음).
+    그 밖의 NOT NULL 컬럼(실거래 가격 등 행의 키 성격)은 비울 수 없다 → ``_KEEP``(그대로 둠)."""
+    column = model.__table__.columns.get(field_name)
+    if column is None or column.nullable:
+        return None
+    return [] if field_name in JSON_FIELDS else _KEEP
+
+
 def write_chosen(
     session: Session,
     chosen: list[FieldCandidate],
@@ -539,14 +618,19 @@ def write_chosen(
 ) -> tuple[list[ChangeEvent], set[int]]:
     """채택(chosen) 후보 값을 사실 테이블에 쓴다. 바뀐 값은 change_event(새 행이면 initial).
 
-    값 없는 후보('확인 불가')는 건너뛴다. 반환 = (이벤트, 주소가 바뀐 단지 id — 생활권 재배정 대상).
+    값 없는 후보('확인 불가')는 건너뛴다 — 단, 같은 rank 1차·1차 상충의 채택 보류 후보(reason
+    ``CONFLICT_HOLD``, R3 M1)는 사실 테이블 값을 비운다(compare 로 풀릴 때까지 점수 미사용).
+    반환 = (이벤트, 주소가 바뀐 단지 id — 생활권 재배정 대상).
     ``store_raw_document`` 와 판정 결과 반영(``normalize.judged``)이 같이 쓴다.
     """
     events: list[ChangeEvent] = []
     touched_complex: set[int] = set()
     for c in chosen:
         model = _MODELS.get(c.entity)
-        if model is None or c.entity_id is None or c.value is None or c.label == "확인 불가":
+        held = c.value is None and c.reason == CONFLICT_HOLD
+        if model is None or c.entity_id is None:
+            continue
+        if (c.value is None or c.label == "확인 불가") and not held:
             continue
         obj = session.get(model, c.entity_id)
         if obj is None:
@@ -566,7 +650,9 @@ def write_chosen(
             continue
         if not hasattr(model, c.field) or c.field == "id":
             continue
-        new = _coerce(c.field, c.value)
+        new = _held_value(model, c.field) if held else _coerce(c.field, c.value)
+        if new is _KEEP:
+            continue
         old_v = getattr(obj, c.field)
         if changes.fmt_value(old_v) == changes.fmt_value(new):
             continue
@@ -756,4 +842,5 @@ def store_raw_document(
         complex_ids=complex_ids,
         extract_requests=build_extract_requests(bound),
         skipped=skipped,
+        foreign_keys=sorted(binder.foreign),
     )

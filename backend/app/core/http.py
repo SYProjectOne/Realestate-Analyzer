@@ -10,6 +10,11 @@
   robots.txt 를 보지 않는다 — 크롤링이 아니라 발급 키로 쓰는 API 이고 이용약관이 규율한다.
   속도 제한·재시도는 그대로.
 - **예외를 삼키지도 던지지도 않는다**: 성공·실패 모두 ``FetchResult`` 로 반환한다.
+- 내부망 차단(R3 minor 17, SSRF): localhost·사설·루프백·링크로컬·예약·멀티캐스트 주소(IP 문자열이거나 DNS 가
+  그 주소로 풀리는 호스트)는 요청하지 않고 ``error_kind='blocked_host'`` 로 돌려준다. **리다이렉트 대상도 매번
+  다시 검사한다**(httpx request 훅). 테스트의 로컬 서버는 ``allow_private=True``(또는 설정
+  ``HTTP_ALLOW_PRIVATE_HOSTS`` — Settings 에 그 필드가 있으면) 로 허용한다. DNS 확인은 실제 네트워크(주입한
+  transport 가 없을 때)에서만 한다 — 주입 transport 테스트는 오프라인으로 돈다.
 
 동기 ``HttpClient`` 와 비동기 ``AsyncHttpClient`` 는 같은 규칙을 공유한다. 테스트는 ``sleep``·``clock`` 을
 주입해 실제로 기다리지 않는다.
@@ -19,7 +24,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import ipaddress
 import random
+import socket
 import threading
 import time
 import urllib.robotparser
@@ -33,8 +40,9 @@ import httpx
 
 from app.core.settings import get_settings
 
-ErrorKind = Literal["http_status", "timeout", "connect", "network", "robots", "invalid_url"]
+ErrorKind = Literal["http_status", "timeout", "connect", "network", "robots", "invalid_url", "blocked_host"]
 BLOCKED_BY_ROBOTS = "blocked_by_robots"
+BLOCKED_HOST = "blocked_host"
 ROBOTS_TTL_S = 24 * 3600.0  # RFC 9309: 캐시는 24시간을 넘기지 않는다
 ROBOTS_UNREACHABLE_TTL_S = 600.0
 
@@ -106,6 +114,41 @@ class _RobotsEntry:
         return self.parser.can_fetch(user_agent, url)
 
 
+class BlockedHostError(httpx.RequestError):
+    """내부망 주소로 가는 요청(리다이렉트 포함) — 보내지 않는다."""
+
+
+Resolver = Callable[[str], list[str]]
+"""호스트 이름 → IP 문자열 목록(DNS). 실패하면 빈 목록."""
+_UNRESOLVABLE_TLDS = (".test", ".example", ".invalid")
+"""RFC 2606 예약 TLD — 공개 DNS 에 없으므로 묻지 않는다(테스트 호스트)."""
+
+
+def _system_resolve(host: str) -> list[str]:
+    try:
+        infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
+    except (OSError, UnicodeError):
+        return []
+    return sorted({str(info[4][0]) for info in infos})
+
+
+def _ip_blocked(text: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(text.split("%", 1)[0])
+    except ValueError:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return bool(
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
 @dataclass(slots=True)
 class _Attempt:
     """한 번 보낸 결과(응답 또는 오류)."""
@@ -132,8 +175,17 @@ class _Core:
         robots_ttl_s: float,
         robots_exempt_hosts: Iterable[str] | None,
         clock: Callable[[], float],
+        allow_private: bool | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         s = get_settings()
+        self.allow_private = (
+            allow_private
+            if allow_private is not None
+            else bool(getattr(s, "http_allow_private_hosts", False))
+        )
+        self._resolver = resolver
+        self._resolved: dict[str, bool] = {}
         self.user_agent = user_agent or s.http_user_agent
         self.rate_per_host = rate_per_host if rate_per_host is not None else s.http_rate_per_host
         if self.rate_per_host <= 0:
@@ -175,6 +227,8 @@ class _Core:
 
     @staticmethod
     def _classify(exc: httpx.HTTPError) -> _Attempt:
+        if isinstance(exc, BlockedHostError):
+            return _Attempt(error_kind="blocked_host", error=str(exc))
         if isinstance(exc, httpx.TimeoutException):
             return _Attempt(error_kind="timeout", error=f"timeout: {type(exc).__name__}: {exc}")
         if isinstance(exc, httpx.ConnectError):
@@ -201,6 +255,42 @@ class _Core:
     def _origin(u: httpx.URL) -> str:
         port = f":{u.port}" if u.port else ""
         return f"{u.scheme}://{u.host}{port}"
+
+    def blocked_reason(self, host: str) -> str | None:
+        """내부망 호스트면 사유, 아니면 None(모듈 설명). ``allow_private`` 면 항상 None."""
+        if self.allow_private:
+            return None
+        h = host.strip("[]").rstrip(".").lower()
+        if not h:
+            return None
+        if h == "localhost" or h.endswith(".localhost"):
+            return f"{BLOCKED_HOST}: localhost"
+        if _ip_blocked(h):
+            return f"{BLOCKED_HOST}: 내부망 주소 {h}"
+        if self._resolver is None or h.endswith(_UNRESOLVABLE_TLDS):
+            return None
+        if h not in self._resolved:
+            self._resolved[h] = any(_ip_blocked(a) for a in self._resolver(h))
+        return f"{BLOCKED_HOST}: {h} → 내부망 주소" if self._resolved[h] else None
+
+    def _request_hook_check(self, request: httpx.Request) -> None:
+        """모든 요청(리다이렉트 포함) 직전 검사."""
+        reason = self.blocked_reason(request.url.host)
+        if reason is not None:
+            raise BlockedHostError(reason, request=request)
+
+    def _blocked_host(self, url: str, method: str, reason: str) -> FetchResult:
+        return FetchResult(
+            url=url,
+            status=None,
+            headers={},
+            content=b"",
+            error=reason,
+            elapsed_ms=0,
+            attempts=0,
+            method=method,
+            error_kind="blocked_host",
+        )
 
     def _checks_robots(self, u: httpx.URL) -> bool:
         """robots.txt 를 볼 요청인가(설정이 켜져 있고 키 인증 공식 API 호스트가 아님)."""
@@ -313,6 +403,8 @@ class HttpClient(_Core):
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
         transport: httpx.BaseTransport | None = None,
+        allow_private: bool | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         super().__init__(
             user_agent=user_agent,
@@ -326,6 +418,8 @@ class HttpClient(_Core):
             robots_ttl_s=robots_ttl_s,
             robots_exempt_hosts=robots_exempt_hosts,
             clock=clock,
+            allow_private=allow_private,
+            resolver=resolver if resolver is not None else (_system_resolve if transport is None else None),
         )
         self._sleep = sleep
         self._robots_lock = threading.Lock()
@@ -334,6 +428,7 @@ class HttpClient(_Core):
             follow_redirects=True,
             headers={"User-Agent": self.user_agent},
             transport=transport,
+            event_hooks={"request": [self._request_hook_check]},
         )
 
     def __enter__(self) -> Self:
@@ -367,6 +462,9 @@ class HttpClient(_Core):
         u = self._parse(url)
         if u is None:
             return self._invalid(url, method)
+        reason = self.blocked_reason(u.host)
+        if reason is not None:
+            return self._blocked_host(url, method, reason)
         if self._checks_robots(u):
             entry = self._robots_for(u)
             if not entry.allows(self.user_agent, str(u)):
@@ -435,6 +533,8 @@ class AsyncHttpClient(_Core):
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         clock: Callable[[], float] = time.monotonic,
         transport: httpx.AsyncBaseTransport | None = None,
+        allow_private: bool | None = None,
+        resolver: Resolver | None = None,
     ) -> None:
         super().__init__(
             user_agent=user_agent,
@@ -448,14 +548,21 @@ class AsyncHttpClient(_Core):
             robots_ttl_s=robots_ttl_s,
             robots_exempt_hosts=robots_exempt_hosts,
             clock=clock,
+            allow_private=allow_private,
+            resolver=resolver if resolver is not None else (_system_resolve if transport is None else None),
         )
         self._sleep = sleep
         self._robots_locks: dict[str, asyncio.Lock] = {}
+
+        async def hook(request: httpx.Request) -> None:
+            self._request_hook_check(request)
+
         self._client = httpx.AsyncClient(
             timeout=self.timeout_s,
             follow_redirects=True,
             headers={"User-Agent": self.user_agent},
             transport=transport,
+            event_hooks={"request": [hook]},
         )
 
     async def __aenter__(self) -> Self:
@@ -489,6 +596,9 @@ class AsyncHttpClient(_Core):
         u = self._parse(url)
         if u is None:
             return self._invalid(url, method)
+        reason = self.blocked_reason(u.host)
+        if reason is not None:
+            return self._blocked_host(url, method, reason)
         if self._checks_robots(u):
             entry = await self._robots_for(u)
             if not entry.allows(self.user_agent, str(u)):

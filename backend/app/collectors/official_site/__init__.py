@@ -8,14 +8,18 @@ from app.collectors.official_site.collector import (
     read_site_meta,
 )
 from app.collectors.official_site.render import (
+    DHASH_THRESHOLD,
     PlaywrightRenderer,
     PopupShot,
     Renderer,
     RenderResult,
     popup_hash,
+    render_signature,
+    visual_change,
 )
 
 __all__ = [
+    "DHASH_THRESHOLD",
     "META_CONTENT_TYPE",
     "OfficialSiteCollector",
     "PlaywrightRenderer",
@@ -26,4 +30,6 @@ __all__ = [
     "SiteTarget",
     "popup_hash",
     "read_site_meta",
+    "render_signature",
+    "visual_change",
 ]
