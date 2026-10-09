@@ -206,7 +206,7 @@ def save_score_run(
                 complex_id=c.complex_id,
                 component=c.component,
                 raw_value=to_dec(c.raw_value, Decimal("0.000001")),
-                score_0_10=to_dec(c.score_0_10, Decimal("0.001")),
+                score_0_10=to_dec(c.score_0_10),  # 엔진 정밀도 4자리(analysis.score.SCORE_DECIMALS, R3 W12b)
                 formula_text=c.formula_text,
                 label=c.label,
                 reason=(c.reason or None) and str(c.reason)[:120],

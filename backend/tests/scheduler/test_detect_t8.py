@@ -127,5 +127,5 @@ def test_popup_change_one_critical_event_one_rejudge(
     with factory() as s:
         day2 = s.scalars(select(Snapshot).where(Snapshot.asof_date == "2026-10-08")).one()
         assert day2.status == "published"
-        assert _count(s, Ladder, Ladder.snapshot_id == day2.id) >= 30
+        assert _count(s, Ladder, Ladder.snapshot_id == day2.id) == 27  # 판정 대상 9 × 3(D9-1)
     assert jev.calls[calls:].count("jev_noul") <= 3

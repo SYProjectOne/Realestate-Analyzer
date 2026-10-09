@@ -7,7 +7,8 @@
 - 기동 시 참조 표(legal_dong)가 비어 있으면 ``reference.refresh`` 1회(``ensure_reference``)
 
 APScheduler 는 잡을 **실행하지 않고 job_run 행만 넣는다**(ADR-3: DB job_run 이 큐, 상태가 G7에 보인다).
-실행은 runner.py 가 polling 으로 한다. 같은 잡(이름·payload 같음)이 이미 queued 면 새로 넣지 않는다.
+실행은 runner.py 가 polling 으로 한다. 같은 잡(이름·payload 같음)이 이미 queued 또는 running 이면 새로 넣지 않는다
+(R3 minor 33 — 실행 중인 수집과 같은 수집을 또 쌓지 않는다. 멈춘 running 은 runner.recover_stale 이 회수).
 """
 
 # ruff: noqa: E501  (한국어 docstring·로그 필드)
@@ -88,10 +89,12 @@ def _iso(now: datetime | None) -> str:
 
 
 def find_pending(session: Session, job_name: str, payload: Mapping[str, Any]) -> JobRun | None:
-    """같은 이름·같은 payload(정규 JSON 비교)로 queued 인 잡."""
+    """같은 이름·같은 payload(정규 JSON 비교)로 queued·running 인 잡."""
     key = canonical_json(dict(payload))
     for row in session.scalars(
-        select(JobRun).where(JobRun.job_name == job_name, JobRun.status == "queued").order_by(JobRun.id)
+        select(JobRun)
+        .where(JobRun.job_name == job_name, JobRun.status.in_(("queued", "running")))
+        .order_by(JobRun.id)
     ):
         if canonical_json(row.payload or {}) == key:
             return row

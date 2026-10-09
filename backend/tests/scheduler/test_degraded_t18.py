@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.judge.base import JudgeCaller
 from app.judge.mock import MockAdapter
-from app.models import JobRun, RawDocument, ScoreRun, Snapshot
+from app.models import IntakeStatus, JobRun, RawDocument, ScoreRun, Snapshot
 from app.scheduler import runner
 from app.scheduler.context import SchedulerContext
 from app.scheduler.degraded import RECOVERY_REASON, check_recovery
@@ -57,6 +57,22 @@ def test_judge_down_degraded_then_recovery_enqueues_one_rejudge(
         jobs = {j.job_name: j for j in (s.get(JobRun, i) for i in done) if j is not None}
         assert jobs["collect.daily"].id == collect_id and jobs["collect.daily"].status == "done"  # 수집 성공
         assert _count(s, RawDocument) >= 1  # 원문 행(정규화 입력)은 남았다
+        # 정규화 성공(R3 minor 37): 팝업 원문 → 단지 2의 접수 상태 행(분류 대기), 원문 id 연결
+        doc = s.scalars(
+            select(RawDocument).where(RawDocument.sha256 == popup_row("yesterday")["sha256"])
+        ).one()
+        assert doc.complex_id == 2 and doc.http_status == 200
+        rows = list(
+            s.scalars(
+                select(IntakeStatus).where(
+                    IntakeStatus.snapshot_id == seeded, IntakeStatus.raw_document_id == doc.id
+                )
+            )
+        )
+        assert len(rows) == 1 and rows[0].complex_id == 2
+        assert rows[0].path in ("official_popup", "headless_shot")
+        # 정규화는 끝났고 판정(접수 문구 분류)만 남았다: 미분류 또는 문구 없음(이미지 팝업) — 상태는 확인 불가
+        assert rows[0].status == "확인 불가" and rows[0].reason in ("접수 문구 미분류", "접수 문구 없음")
         rejudge = jobs["rejudge"]
         assert rejudge.status == "failed" and "judge_unavailable" in (rejudge.error_text or "")
         assert rejudge.stats["degraded"] is True

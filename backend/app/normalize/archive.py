@@ -151,17 +151,24 @@ def write_month_archive(
     return man
 
 
-def archived_notices(session: Session, applyhome_id: str) -> list[RawDocument]:
+def archived_notices(
+    session: Session, applyhome_id: str, *, region_id: int | None = None
+) -> list[RawDocument]:
     """그 단지(주택관리번호)의 보관 공고문 원문 — 오래된 것부터.
 
-    무순위·임의공급 공고(다른 번호)는 complex_id로 찾는다.
+    무순위·임의공급 공고(다른 번호)는 complex_id로 찾는다. ``region_id`` 를 주면 그 지역의 단지 행만 본다
+    (R3 W4: 다른 지역 단지의 원문이 섞이지 않게).
     """
-    cx = session.scalars(select(Complex).where(Complex.applyhome_id == applyhome_id)).first()
+    stmt_cx = select(Complex).where(Complex.applyhome_id == applyhome_id)
+    if region_id is not None:
+        stmt_cx = stmt_cx.where(Complex.region_id == region_id)
+    cx = session.scalars(stmt_cx).first()
     stmt = select(RawDocument).where(RawDocument.source_kind == "notice_pdf", RawDocument.path.is_not(None))
     rows = [
         r
         for r in session.scalars(stmt)
-        if f"houseManageNo={applyhome_id}" in r.url or (cx is not None and r.complex_id == cx.id)
+        if (region_id is None or r.region_id in (None, region_id))
+        and (f"houseManageNo={applyhome_id}" in r.url or (cx is not None and r.complex_id == cx.id))
     ]
     rows.sort(key=lambda r: (r.fetched_at, r.id))
     return rows

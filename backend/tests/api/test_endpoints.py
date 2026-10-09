@@ -28,7 +28,9 @@ def test_dashboard_base_t1_order(client: TestClient) -> None:
     for row in body["top5"]:
         contrib = sum(c["contribution"] or 0 for c in row["components"].values())
         assert abs(contrib - row["total"]["v"]) <= 0.01
-    assert body["kpis"]["judged_count"]["v"] == 12
+    # D9-1(R3 C2): 픽스처 사실로 판정 대상 = 12 − 그란테르·마리나베이(접수 불가 → 참고)
+    #   − 스위첸(classify review → 미해결)
+    assert body["kpis"]["judged_count"]["v"] == 9
 
 
 def test_dashboard_scenario_b_tie(client: TestClient) -> None:

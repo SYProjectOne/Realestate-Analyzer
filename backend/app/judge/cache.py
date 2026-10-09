@@ -16,11 +16,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import JudgmentEnvelope
-from app.core.protocols import JudgePayload, JudgeTool, input_hash
-from app.core.snapshot import canonical_json
+from app.core.protocols import JudgePayload, JudgeTool, canonical_hash_json, input_hash
 from app.models import JudgmentLog
 
-__all__ = ["compute_hash", "envelope_from_row", "find", "is_final", "last_adapter_version", "payload_length"]
+__all__ = [
+    "NOT_VERSION_EVIDENCE",
+    "compute_hash",
+    "envelope_from_row",
+    "find",
+    "is_final",
+    "last_adapter_version",
+    "payload_length",
+]
 
 
 def compute_hash(tool: JudgeTool, purpose: str, payload: JudgePayload, adapter_version: str) -> str:
@@ -29,22 +36,28 @@ def compute_hash(tool: JudgeTool, purpose: str, payload: JudgePayload, adapter_v
 
 def payload_length(payload: JudgePayload) -> int:
     """canonical payload 길이(문자 수) = judgment_log.input_len, 로그용."""
-    return len(canonical_json(payload))
+    return len(canonical_hash_json(payload))
 
 
 def find(session: Session, key: str) -> JudgmentLog | None:
     return session.scalars(select(JudgmentLog).where(JudgmentLog.input_hash == key)).one_or_none()
 
 
-def last_adapter_version(session: Session, prefix: str) -> str | None:
-    """prefix 로 시작하는 adapter_version 중 가장 최근 행(seq 최대)의 값. 없으면 None."""
-    stmt = (
-        select(JudgmentLog.adapter_version)
-        .where(JudgmentLog.adapter_version.startswith(prefix, autoescape=True))
-        .order_by(JudgmentLog.seq.desc())
-        .limit(1)
+NOT_VERSION_EVIDENCE = ("error", "blocked")
+"""버전 근거로 쓰지 않는 행 상태(R3 M12): 판정기 응답 없이(모델을 모른 채·연결 없이) 쓰인 버전일 수 있다."""
+
+
+def last_adapter_version(session: Session, prefix: str, *, final_only: bool = False) -> str | None:
+    """prefix 로 시작하는 adapter_version 중 가장 최근 행(seq 최대)의 값. 없으면 None.
+
+    ``final_only`` 면 판정기 응답이 있는 행(ok·review·escaped)만 본다 — error·blocked 행 제외.
+    """
+    stmt = select(JudgmentLog.adapter_version).where(
+        JudgmentLog.adapter_version.startswith(prefix, autoescape=True)
     )
-    return session.scalars(stmt).first()
+    if final_only:
+        stmt = stmt.where(JudgmentLog.status.not_in(NOT_VERSION_EVIDENCE))
+    return session.scalars(stmt.order_by(JudgmentLog.seq.desc()).limit(1)).first()
 
 
 def is_final(row: JudgmentLog) -> bool:

@@ -16,8 +16,9 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlsplit
 
-from app.core.redact import find_sensitive
+from app.core.redact import find_sensitive, sensitive_int_kind
 from app.core.settings import Settings, get_settings
 
 __all__ = [
@@ -64,9 +65,15 @@ class GuardResult:
 
 
 def default_secrets(settings: Settings | None = None) -> list[str]:
-    """설정 비밀값 전부 + 판정기 자격 증명 환경변수 값."""
+    """설정 비밀값 전부 + DATABASE_URL 의 비밀번호 + 판정기 자격 증명 환경변수 값."""
     s = settings or get_settings()
     out = list(s.secret_values())
+    try:
+        db_password = urlsplit(s.database_url).password
+    except ValueError:
+        db_password = None
+    if db_password:
+        out.append(db_password)
     for name, value in os.environ.items():
         upper = name.upper()
         if value and upper.startswith(CREDENTIAL_ENV_PREFIXES) and any(h in upper for h in _CREDENTIAL_HINTS):
@@ -80,7 +87,27 @@ def check_payload(payload: Any, *, secrets: Sequence[str] | None = None) -> Guar
     for path, text in _walk(payload, "$"):
         for f in find_sensitive(text, secret_list):
             findings.append(GuardFinding(kind=f.kind, path=path))
+    for path, key, number in _walk_ints(payload, "$", None):
+        kind = sensitive_int_kind(number, key)
+        if kind is not None:
+            findings.append(GuardFinding(kind=kind, path=path))
     return GuardResult(findings)
+
+
+def _walk_ints(obj: Any, path: str, key: str | None) -> Iterable[tuple[str, str | None, int]]:
+    """정수 값(bool 제외)과 그 dict 키 — 정수로 들어온 주민번호·전화번호 검사용."""
+    if isinstance(obj, bool):
+        return
+    if isinstance(obj, int):
+        yield path, key, obj
+    elif isinstance(obj, dict):
+        for i, (k, v) in enumerate(obj.items()):
+            name = str(k)
+            seg = f".{name}" if _SAFE_KEY.fullmatch(name) else f".<key{i}>"
+            yield from _walk_ints(v, f"{path}{seg}", name)
+    elif isinstance(obj, list | tuple):
+        for i, v in enumerate(obj):
+            yield from _walk_ints(v, f"{path}[{i}]", key)
 
 
 def blocked_input_json(result: GuardResult) -> dict[str, Any]:

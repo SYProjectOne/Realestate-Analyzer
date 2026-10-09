@@ -15,6 +15,18 @@ needs_compare: chosen과 값이 다르면서 같은 source_rank인 1차 후보�
 (같은 rank의 1차·1차 상충 — 우선순위로 가를 수 없음). 같은 출처 종류는 최신 규칙으로 가르고, rank가 다르면
 rank 1 채택(T5: 청약홈 상세 1,573 vs 공고문 1,769 → compare 없음), 둘 다 2차면 병기하고 판정 미사용.
 판정기는 부르지 않는다 — needs_compare 그룹의 compare는 WP3가 부른다.
+
+같은 rank 1차·1차 상충 = **채택 보류**(R3 M1, RA §3 "우선순위 없음 → compare"):
+- 우선순위로 고른 대표 후보(최신)를 출처 행 chosen=true 로 두되(P5 가 compare 할 상대를 찾는 기준),
+  ``ResolvedFields.chosen`` 에는 값 없는 '확인 불가' 후보(reason ``CONFLICT_HOLD``)를 낸다 → 사실 테이블 값을
+  비운다(점수 미사용). 대표 출처 행 reason 앞에도 ``CONFLICT_HOLD`` 를 붙인다(화면 '확인 불가(출처 상충 …)').
+- compare 결과로만 채택한다: ``normalize.judged.apply_compare`` 가 출처 행 reason 에 ``COMPARE_ADOPTED``·
+  ``COMPARE_SIDE`` 표식을 남기고, 여기서는 그 표식이 있는 후보를 채택한다. 표식 없는 새 1차 상대가 생기면
+  다시 보류한다(새 상충 = compare 필요).
+
+OCR 판독 후보(label '추정' + reason 'OCR', R3 C3)는 같은 원문의 판정기 추출 행(reason '판정기 추출 …'·
+'판정기 감사 flagged …')이 생기면 값 없는 후보로 본다 — 판정기 결과(채택·감사 flagged·review)가
+OCR 값을 대신한다.
 """
 
 from __future__ import annotations
@@ -24,7 +36,19 @@ from collections.abc import Hashable, Iterable
 from decimal import Decimal, InvalidOperation
 
 from app.core.contracts_gen import ConflictGroup, FieldCandidate, ProvenanceRow, ResolvedFields
-from app.normalize.fields import norm_value, rule_text
+from app.normalize.fields import (
+    AUDIT_FLAG_REASON,
+    COMPARE_ADOPTED,
+    COMPARE_SIDE,
+    CONFLICT_HOLD,
+    EXTRACT_REASON,
+    has_tag,
+    is_ocr,
+    norm_value,
+    rule_text,
+    strip_tags,
+    with_tag,
+)
 
 __all__ = ["PriorityResolver", "group_key", "resolve", "same_value", "to_provenance_row"]
 
@@ -60,8 +84,29 @@ def _has_value(c: FieldCandidate) -> bool:
     return c.value is not None and c.label != "확인 불가"
 
 
+def _is_primary(c: FieldCandidate) -> bool:
+    return c.primary is None or c.primary
+
+
 def _priority(c: FieldCandidate) -> tuple[int, int, int]:
-    return (0 if _has_value(c) else 1, c.source_rank, 0 if (c.primary is None or c.primary) else 1)
+    return (0 if _has_value(c) else 1, c.source_rank, 0 if _is_primary(c) else 1)
+
+
+def _is_judged(c: FieldCandidate) -> bool:
+    return (strip_tags(c.reason) or "").startswith((EXTRACT_REASON, AUDIT_FLAG_REASON))
+
+
+def _demote_superseded_ocr(cands: list[tuple[int, FieldCandidate]]) -> list[tuple[int, FieldCandidate]]:
+    """같은 원문에 판정기 추출 행이 있으면 그 원문의 OCR 판독 후보는 값 없는 후보로(채택 안 됨)."""
+    judged_raw = {c.raw_document_id for _, c in cands if _is_judged(c)}
+    if not judged_raw:
+        return cands
+    out: list[tuple[int, FieldCandidate]] = []
+    for i, c in cands:
+        if c.raw_document_id in judged_raw and is_ocr(c.label, c.reason) and not _is_judged(c):
+            c = c.model_copy(update={"value": None, "label": "확인 불가"})
+        out.append((i, c))
+    return out
 
 
 def _ordered(cands: list[tuple[int, FieldCandidate]]) -> list[tuple[int, FieldCandidate]]:
@@ -107,8 +152,10 @@ def to_provenance_row(c: FieldCandidate, *, chosen: bool, conflict_group: str | 
 def _resolve_group(
     gk: GroupKey, items: list[tuple[int, FieldCandidate]]
 ) -> tuple[FieldCandidate, list[ProvenanceRow], ConflictGroup | None]:
-    ordered = _ordered(items)
-    chosen = ordered[0][1]
+    view = _demote_superseded_ocr(items)
+    original = {id(v): c for (_, v), (_, c) in zip(view, items, strict=True)}
+    ordered = _ordered(view)
+    lead = ordered[0][1]
     valued = [c for _, c in ordered if _has_value(c)]
     distinct: list[FieldCandidate] = []
     for c in valued:
@@ -117,35 +164,56 @@ def _resolve_group(
     entity, ident, field = gk
     conflict: ConflictGroup | None = None
     group_id: str | None = None
+    held = False
     if len(distinct) > 1:
         group_id = f"{entity}:{ident.split(':', 1)[1]}:{field}"
-        rivals = [c for c in valued if not same_value(c, chosen) and c.source_rank == chosen.source_rank]
-        chosen_primary = chosen.primary is None or chosen.primary
-        needs_compare = bool(
-            chosen_primary
-            and any((r.primary is None or r.primary) and r.source_kind != chosen.source_kind for r in rivals)
-        )
-        all_secondary = all(not (c.primary is None or c.primary) for c in valued)
+        adopted = [c for c in valued if has_tag(c.reason, COMPARE_ADOPTED)]
+        if adopted:
+            lead = adopted[0]
+        rivals = [c for c in valued if not same_value(c, lead) and c.source_rank == lead.source_rank]
+        compare_rivals = [r for r in rivals if _is_primary(r) and r.source_kind != lead.source_kind]
+        pending = [
+            r
+            for r in compare_rivals
+            if not adopted or not (has_tag(r.reason, COMPARE_SIDE) or has_tag(r.reason, COMPARE_ADOPTED))
+        ]
+        held = _is_primary(lead) and bool(pending)
+        all_secondary = all(not _is_primary(c) for c in valued)
         rule = rule_text(entity, field)
-        if needs_compare:
-            rule = f"{rule} / 같은 rank 1차·1차 상충 → compare 필요(임시 채택: 최신)"
+        if held:
+            rule = f"{rule} / 같은 rank 1차·1차 상충 → 채택 보류(점수 미사용), compare 결과로만 채택"
+        elif adopted:
+            rule = f"{rule} / 같은 rank 1차·1차 상충 → compare 결과 채택·병기"
         elif all_secondary:
             rule = f"{rule} / 둘 다 2차 → 병기, 판정 미사용"
         elif rivals:
             rule = f"{rule} / 같은 출처 종류 → 최신 채택"
-        cands = [c for _, c in ordered if _has_value(c)]
+        cands = [lead, *(c for c in valued if c is not lead)]
         conflict = ConflictGroup(
             conflict_group=group_id,
             entity=entity,
-            entity_id=chosen.entity_id,
-            entity_key=chosen.entity_key,
+            entity_id=lead.entity_id,
+            entity_key=lead.entity_key,
             field=field,
-            candidates=cands,
+            candidates=[original[id(c)] for c in cands],
             chosen_index=0,
-            needs_compare=needs_compare,
+            needs_compare=held,
             rule=rule,
         )
-    rows = [to_provenance_row(c, chosen=(c is chosen), conflict_group=group_id) for _, c in items]
+    rows: list[ProvenanceRow] = []
+    for (_, v), (_, c) in zip(view, items, strict=True):
+        reason = strip_tags(c.reason) if has_tag(c.reason, CONFLICT_HOLD) else c.reason
+        if held and v is lead:
+            reason = with_tag(c.reason, CONFLICT_HOLD)
+        row = to_provenance_row(c, chosen=(v is lead), conflict_group=group_id)
+        rows.append(row if row.reason == reason else row.model_copy(update={"reason": reason}))
+    chosen = original[id(lead)]
+    if held:
+        chosen = chosen.model_copy(
+            update={"value": None, "label": "확인 불가", "reason": CONFLICT_HOLD, "needs_extract": False}
+        )
+    elif lead is not chosen:  # 판정기 결과로 값을 잃은 OCR 후보가 대표 → 값 없음
+        chosen = lead
     return chosen, rows, conflict
 
 

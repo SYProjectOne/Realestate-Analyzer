@@ -133,21 +133,26 @@ def test_t12_unstable_flag_on_score_totals() -> None:
 
 
 def test_rerank_delta_against_prev_anchor() -> None:
-    """T7: 후보 변경 → delta_rerank 열(현재 relevance − 이전 relevance)."""
+    """T7: 후보 변경(인천 8 → 16) → delta_rerank = 이전 run 대비 rerank **점수** 차(§6-5, R3 minor 25).
+
+    픽스처 t7 의 ``delta_rerank`` 는 보고서 표기(relevance 차)라서 그대로 비교하지 않는다 — relevance 차는
+    픽스처 값과 같은지만 확인하고(픽스처 의미 기록), 엔진 값은 s = 10 × (N − rank)/(N − 1) 의 차로 검증한다.
+    """
     from app.core.contracts_gen import RerankPrev
 
     inputs = a_stage_inputs()
     t7 = EXPECTED["t7_incheon_only"]
+    prev_rel = {KEY_TO_ID[r["key"]]: r["relevance_prev"] for r in t7["rows"]}
+    order = sorted(prev_rel.items(), key=lambda kv: -kv[1])
+    prev_rank: dict[int, int] = {}
+    for idx, (cid, rel) in enumerate(order):
+        prev_rank[cid] = prev_rank[order[idx - 1][0]] if idx and order[idx - 1][1] == rel else idx + 1
     prev_items = [
         it.model_copy(
-            update={
-                "relevance": next(
-                    r["relevance_prev"] for r in t7["rows"] if r["key"] == ID_TO_KEY[it.complex_id or 0]
-                )
-            }
+            update={"relevance": prev_rel[it.complex_id or 0], "rank": prev_rank[it.complex_id or 0]}
         )
         for it in inputs.rerank.items
-        if ID_TO_KEY[it.complex_id or 0] in {r["key"] for r in t7["rows"]}
+        if (it.complex_id or 0) in prev_rel
     ]
     inputs = inputs.model_copy(
         update={
@@ -156,6 +161,13 @@ def test_rerank_delta_against_prev_anchor() -> None:
     )
     result = run_detailed(snapshot(), builtin("base"), inputs).result
     deltas = {ID_TO_KEY[c.complex_id]: c.delta for c in result.components if c.component == "rerank"}
+    now_rank = {ID_TO_KEY[it.complex_id or 0]: it.rank for it in inputs.rerank.items}
+    n_now, n_prev = len(inputs.rerank.items), len(prev_items)
     for row in t7["rows"]:
-        assert deltas[row["key"]] == pytest.approx(row["delta_rerank"], abs=1e-9), row["key"]
+        assert row["relevance"] - row["relevance_prev"] == pytest.approx(row["delta_rerank"], abs=1e-9)
+        cid = KEY_TO_ID[row["key"]]
+        s_now = Decimal(10) * (n_now - now_rank[row["key"]]) / (n_now - 1)
+        s_prev = Decimal(10) * (n_prev - prev_rank[cid]) / (n_prev - 1)
+        want = float((s_now - s_prev).quantize(Decimal("0.0001")))
+        assert deltas[row["key"]] == pytest.approx(want, abs=1e-4), row["key"]
     assert deltas["switzen"] is None  # 이전 호출에 없던 후보

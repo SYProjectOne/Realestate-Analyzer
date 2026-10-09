@@ -71,8 +71,9 @@ def test_full_rejudge_writes_derived_rows_and_publishes(
             )
             == 16
         )
-        # P6: 사다리 3시점(입주월 있는 판정 대상), 판정기 seq 기록
-        assert _count(s, Ladder, Ladder.snapshot_id == seeded) >= 30
+        # P6: 사다리 3시점 — D9-1 판정 대상(포함 auto + 가격 + 접수 가능·미정)만: 2,3,5~11.
+        # 1·12(불가)·4·13·14(확인 불가)=참고, 15·16=보류
+        assert _count(s, Ladder, Ladder.snapshot_id == seeded) == 27  # D9-1: 판정 대상 9단지 × 3시점
         assert _count(s, Ladder, Ladder.snapshot_id == seeded, Ladder.judgment_seq.is_(None)) == 0
         horizons = set(s.scalars(select(Ladder.horizon).where(Ladder.snapshot_id == seeded)))
         assert horizons == {"move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"}
@@ -117,7 +118,7 @@ def test_second_rejudge_makes_no_real_calls_t17(
     assert rejudge.stats["judge_calls"] == 0 and rejudge.stats["cached"] > 0
     with factory() as s:
         assert _count(s, JudgmentLog) == n_log
-        assert _count(s, Ladder, Ladder.snapshot_id == seeded) >= 30  # 갱신(중복 행 없음)
+        assert _count(s, Ladder, Ladder.snapshot_id == seeded) == 27  # 갱신(중복 행 없음), 판정 대상 9 × 3
         assert _count(s, ScoreRun, ScoreRun.snapshot_id == seeded) == 10
         assert _count(s, ScoreRun, ScoreRun.prev_score_run_id.is_not(None)) == 5
 
