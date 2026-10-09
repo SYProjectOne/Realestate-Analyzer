@@ -11,7 +11,7 @@ import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 /** 예시 행 2개를 '범위 경계'로 바꾸고 서버처럼 filter[inclusion_class] 로 거른다 */

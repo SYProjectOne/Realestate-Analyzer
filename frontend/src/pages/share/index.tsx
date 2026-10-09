@@ -34,7 +34,8 @@ function stripHash(): void {
  * 토큰은 hash 에만 있다(서버 로그·Referer 에 남지 않는다). 주소창에서 hash 를 지운 뒤(history.replaceState) 홈으로 간다.
  * 토큰이 없거나 인코딩이 깨졌으면 안내만 한다.
  *
- * N-M7(R3b): 이 브라우저에 쓰기(또는 권한 모름) 토큰이 저장돼 있으면 조용히 덮어쓰지 않고 묻는다 —
+ * N-M7(R3b): 이 브라우저에 쓰기(또는 권한 모름) 토큰이 저장돼 있거나 빌드 환경변수 토큰(VITE_API_TOKEN)을
+ * 쓰는 중이면(R3 3차 minor 16) 조용히 덮어쓰지 않고 묻는다 —
  * "이 탭에서만 읽기 전용으로 보기"(기본, sessionStorage — 저장된 쓰기 토큰·다른 탭은 그대로) ·
  * "저장된 토큰을 공유 토큰으로 바꾸기"(localStorage, 지금까지 동작) · "취소"(적용하지 않고 홈).
  * 저장된 토큰이 없거나 읽기 전용이면 묻지 않고 localStorage 에 읽기 전용으로 저장한다.
@@ -115,7 +116,7 @@ function ConfirmDialog({
       onKeyDown={(e) => {
         if (e.key === 'Escape') onCancel();
       }}
-      className="flex flex-col gap-3 rounded border border-border bg-surface p-4 shadow-xl"
+      className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-4 shadow-xl"
     >
       <h2 id={titleId} className="text-base font-semibold">
         {t('page.share.confirmTitle')}
@@ -128,21 +129,21 @@ function ConfirmDialog({
           ref={defaultRef}
           type="button"
           onClick={onTabOnly}
-          className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg"
+          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg"
         >
           {t('page.share.tabOnly')}
         </button>
         <button
           type="button"
           onClick={onReplace}
-          className="rounded border border-border px-3 py-1.5 text-sm"
+          className="rounded-sm border border-border px-3 py-1.5 text-sm"
         >
           {t('page.share.replace')}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded border border-border px-3 py-1.5 text-sm"
+          className="rounded-sm border border-border px-3 py-1.5 text-sm"
         >
           {t('page.share.cancel')}
         </button>

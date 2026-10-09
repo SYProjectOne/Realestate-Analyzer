@@ -3,7 +3,7 @@
 - **주인**: WP6b (구현·개선). **사용자**: WP6a (화면 G0~G8).
 - 아래 **props 타입이 계약**이다. WP6b는 내부 구현(모양·접근성·세부 동작)을 자유롭게 바꾸되 props를 깨지 않는다. 필요한 변경은 _추가(optional prop)_ 로만 하고, 이름 변경·삭제는 CEO 승인 후.
 - 화면은 `@/components`(index.ts)에서만 import 한다.
-- 문자열은 전부 `src/i18n/ko.json` → `t()`. 숫자는 `FactCell` 또는 `src/lib/format.ts`로만(ESLint `local/no-raw-number-render`).
+- 문자열은 전부 `src/i18n/ko.json` → `t()`. 숫자는 사실이면 `FactCell`(라벨·출처), 사실이 아닌 숫자(개수·순위·소요 시간·HTTP 상태·번호·입력 값)는 `MetaValue`/`MetaText`(`data-meta`) 또는 `src/lib/meta.ts`의 `metaText`(속성·문구)로만. `src/lib/format.ts` 숫자 포맷 함수를 화면에서 직접 부르면 ESLint `local/no-raw-number-render`(R3c 규칙 9~11)가 막는다.
 - 라벨·상태는 **색이 아니라 텍스트 배지**(D7). 배지 바탕은 `Badge`(tone: neutral | muted(회색) | strong).
 - 데이터 타입은 `@/api/types`(임시 → 계약 머지 후 생성 타입 별칭)에서 온다.
 

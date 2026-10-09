@@ -16,7 +16,7 @@ import { renderRoute } from '@/test/render';
 import { enumText } from './_shared';
 import { matching, recordRequests } from './_shared/testing';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 async function example<T>(request: Request): Promise<T> {

@@ -9,9 +9,9 @@ import { observeElementRect, useVirtualizer, type Virtualizer } from '@tanstack/
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
-import { Badge, FactCell, IntakeBadge, TieBadge, UnstableBadge } from '@/components';
+import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatDate, formatRank } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
 import { nextSort, type SortKey } from './params';
 
@@ -186,7 +186,9 @@ export function ComplexTable({
           <span className="inline-flex flex-wrap items-center gap-1">
             <FactCell fact={row.original.total} unit="score" />
             {row.original.rank !== null ? (
-              <Badge tone="neutral">{formatRank(row.original.rank)}</Badge>
+              <Badge tone="neutral">
+                <MetaValue kind="rank" value={row.original.rank} as="rank" />
+              </Badge>
             ) : null}
             <TieBadge tie={row.original.tie_group !== null} />
             <UnstableBadge unstable={row.original.unstable} />
@@ -281,7 +283,7 @@ export function ComplexTable({
       <div
         ref={scrollRef}
         data-testid="complex-table-scroll"
-        className="max-h-[70vh] overflow-auto rounded border border-border bg-surface"
+        className="max-h-[70vh] overflow-auto rounded-sm border border-border bg-surface"
       >
         <table
           aria-label={t('page.G2.table')}
@@ -393,10 +395,10 @@ function SortButton({
 function ColumnChooser({ table }: { table: ReturnType<typeof useReactTable<ComplexRow>> }) {
   return (
     <details className="self-end text-sm" data-write>
-      <summary className="cursor-pointer rounded border border-border px-2 py-1">
+      <summary className="cursor-pointer rounded-sm border border-border px-2 py-1">
         {t('page.G2.columns')}
       </summary>
-      <fieldset className="mt-1 flex flex-wrap gap-3 rounded border border-border bg-surface p-2">
+      <fieldset className="mt-1 flex flex-wrap gap-3 rounded-sm border border-border bg-surface p-2">
         <legend className="sr-only">{t('page.G2.columns')}</legend>
         {table
           .getAllLeafColumns()

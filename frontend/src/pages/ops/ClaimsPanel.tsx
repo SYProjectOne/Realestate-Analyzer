@@ -1,13 +1,15 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { useClaims, useReviseClaim } from '@/api/hooks';
+import { humanCheckFieldOf } from '@/api/contract8';
+import { invalidateFactViews, useClaims, useReviseClaim } from '@/api/hooks';
 import type { ClaimView } from '@/api/types';
-import { Badge, JobProgress, useOpenProvenance } from '@/components';
+import { Badge, JobProgress, MetaText, useOpenProvenance } from '@/components';
 import { t } from '@/i18n';
-import { formatCount } from '@/lib/format';
 import { enumText, idText, QueryState, Section, useGlobalSearch } from '../_shared';
+import { HUMAN_CHECK_ANCHOR, humanCheckSearch } from './HumanCheckForm';
 
 /**
  * G7 ClaimsPanel (M8, 계약 2026-10-09.4) — 지금 스냅샷의 contradicted 주장 목록.
@@ -45,6 +47,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
   const openProvenance = useOpenProvenance();
   const search = useGlobalSearch();
   const revise = useReviseClaim();
+  const qc = useQueryClient();
   const textId = useId();
   const [text, setText] = useState(claim.text);
   const [jobId, setJobId] = useState<number | null>(null);
@@ -65,7 +68,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
   return (
     <li
       data-testid={`claim-${claim.id}`}
-      className="flex flex-col gap-2 rounded border border-border p-2 text-sm"
+      className="flex flex-col gap-2 rounded-sm border border-border p-2 text-sm"
     >
       <div className="flex flex-wrap items-center gap-2">
         {claim.complex_id !== null ? (
@@ -88,7 +91,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
         ) : null}
         {split ? (
           <Badge tone="muted">
-            {t('page.G7.claims.split', { n: formatCount(claim.child_count) })}
+            <MetaText kind="count" k="page.G7.claims.split" params={{ n: claim.child_count }} />
           </Badge>
         ) : null}
         {claim.field_name ? (
@@ -97,6 +100,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
           </span>
         ) : null}
         <DemotionBadge demotion={claim.demotion} />
+        {canWrite ? <RestoreByHumanLink claim={claim} /> : null}
         {claim.prov && openProvenance ? (
           <button
             type="button"
@@ -140,14 +144,14 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
           rows={2}
           disabled={locked}
           onChange={(e) => setText(e.target.value)}
-          className="w-full rounded border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60"
+          className="w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60"
         />
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             disabled={!canSubmit}
             title={canWrite ? undefined : t('auth.readOnlyHint')}
-            className="rounded bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
+            className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
           >
             {t('page.G7.claims.submit')}
           </button>
@@ -160,7 +164,8 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
       </form>
       {jobId !== null ? (
         <div data-testid="claim-job">
-          <JobProgress jobId={jobId} />
+          {/* 재검증이 끝나면 강등·복원이 반영된 사실을 다시 읽는다(R3 3차 minor 15) */}
+          <JobProgress jobId={jobId} onDone={() => invalidateFactViews(qc)} />
         </div>
       ) : null}
     </li>
@@ -185,5 +190,40 @@ function DemotionBadge({ demotion }: { demotion: ClaimView['demotion'] }) {
     <span data-testid="claim-demotion" data-status={demotion.status}>
       <Badge tone={demotion.status === 'demoted' ? 'muted' : 'neutral'}>{text}</Badge>
     </span>
+  );
+}
+
+/**
+ * 강등된(검증 모순) 사실을 사람 확인으로 복원하는 바로가기(M-5, D11-3): 같은 화면의 사람 확인 폼을
+ * 단지·필드·사실 행(entity_id)으로 미리 채우고 폼으로 스크롤한다. 사람 확인 필드로 옮길 수 없는 강등이면 그리지 않는다.
+ */
+function RestoreByHumanLink({ claim }: { claim: ClaimView }) {
+  const [params] = useSearchParams();
+  const demotion = claim.demotion;
+  if (!demotion || demotion.status !== 'demoted') return null;
+  const field = humanCheckFieldOf(demotion.field) ?? humanCheckFieldOf(claim.field);
+  if (!field) return null;
+  const search = humanCheckSearch(params, {
+    complexId: claim.complex_id,
+    field,
+    entityId: demotion.entity_id,
+  });
+  return (
+    <Link
+      to={{ search, hash: HUMAN_CHECK_ANCHOR }}
+      data-testid="claim-restore-human"
+      className="text-xs underline"
+      onClick={() => {
+        // 라우터는 해시로 스크롤하지 않는다 — 폼으로 직접 옮긴다
+        requestAnimationFrame(() => {
+          const form = document.getElementById(HUMAN_CHECK_ANCHOR);
+          if (form && typeof form.scrollIntoView === 'function') {
+            form.scrollIntoView({ block: 'start' });
+          }
+        });
+      }}
+    >
+      {t('page.G7.claims.restoreByHuman')}
+    </Link>
   );
 }

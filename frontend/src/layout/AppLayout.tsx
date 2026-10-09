@@ -43,7 +43,7 @@ export function AppLayout() {
         ) : null}
         <main
           id="main"
-          className="mx-auto max-w-screen-2xl px-4 pb-16 pt-4"
+          className="mx-auto max-w-(--breakpoint-2xl) px-4 pb-16 pt-4"
           data-readonly={readOnly || undefined}
         >
           <Suspense fallback={<p className="text-sm text-muted">{t('app.loading')}</p>}>

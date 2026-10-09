@@ -4,10 +4,9 @@ import { useCanWrite } from '@/api/auth';
 import { useCreateRegion, useResolveRegion } from '@/api/hooks';
 import type { RegionCandidate, RegionCreated, RegionSelection } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState, JobProgress } from '@/components';
+import { Badge, EmptyState, JobProgress, MetaText } from '@/components';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount } from '@/lib/format';
 import { enumText, Section, useDebounced } from '../_shared';
 
 const DEBOUNCE_MS = 300;
@@ -77,7 +76,7 @@ export function RegionNewPage() {
               autoComplete="off"
               placeholder={t('page.G0.searchPlaceholder')}
               onChange={(e) => setQuery(e.target.value)}
-              className="rounded border border-border bg-surface px-2 py-1.5"
+              className="rounded-sm border border-border bg-surface px-2 py-1.5"
             />
             <span className="text-xs text-muted">
               {resolve.isFetching ? t('page.G0.searching') : t('page.G0.searchHint')}
@@ -105,9 +104,12 @@ export function RegionNewPage() {
                       <Badge tone={c.match === 'exact' ? 'strong' : 'muted'}>
                         {enumText('page.common.match', c.match)}
                       </Badge>
-                      <span className="text-xs text-muted">
-                        {t('page.G0.dongCount', { n: formatCount(c.legal_dong_codes.length) })}
-                      </span>
+                      <MetaText
+                        kind="count"
+                        className="text-xs text-muted"
+                        k="page.G0.dongCount"
+                        params={{ n: c.legal_dong_codes.length }}
+                      />
                     </label>
                   </li>
                 );
@@ -144,7 +146,7 @@ export function RegionNewPage() {
               value={name}
               placeholder={t('page.G0.namePlaceholder')}
               onChange={(e) => setName(e.target.value)}
-              className="rounded border border-border bg-surface px-2 py-1.5"
+              className="rounded-sm border border-border bg-surface px-2 py-1.5"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -153,7 +155,7 @@ export function RegionNewPage() {
               onClick={start}
               disabled={!canStart}
               title={canWrite ? undefined : t('auth.readOnlyHint')}
-              className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+              className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
             >
               {t('page.G0.start')}
             </button>

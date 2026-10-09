@@ -72,7 +72,7 @@ export function FactCell({
     return (
       <button
         type="button"
-        className={`${base} rounded text-left underline decoration-dotted underline-offset-4 hover:decoration-solid focus:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
+        className={`${base} rounded-sm text-left underline decoration-dotted underline-offset-4 hover:decoration-solid focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent`}
         onClick={() => open(prov)}
         data-prov={prov}
       >

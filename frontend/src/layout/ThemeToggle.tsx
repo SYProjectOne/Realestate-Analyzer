@@ -10,7 +10,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-pressed={theme === 'dark'}
-      className="rounded border border-border px-2 py-1 text-sm"
+      className="rounded-sm border border-border px-2 py-1 text-sm"
     >
       {`${t('header.theme')}: ${current}`}
     </button>

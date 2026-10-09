@@ -64,7 +64,7 @@ export function Section({
     <section
       id={id}
       aria-label={title}
-      className={`flex flex-col gap-3 rounded border border-border bg-surface p-3 ${className}`}
+      className={`flex flex-col gap-3 rounded-sm border border-border bg-surface p-3 ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{title}</h2>
@@ -171,6 +171,22 @@ export function RejudgeNeededBadge({ needed }: { needed: boolean | null | undefi
 /** 행 번호 표기 "#127" (판정 seq·잡 id — 수치가 아니라 식별자) */
 export function idText(id: number | string | null | undefined): string {
   return id === null || id === undefined ? '' : `#${String(id)}`;
+}
+
+/**
+ * 표본 건수 Fact — 집계 사실(중앙값 등)의 건수 n 을 **그 사실과 같은 출처·라벨·확인일**로 보인다
+ * (R3c: 실거래 건수가 FactCell 밖이던 것). 집계 사실이 '확인 불가'면 건수도 그 사유로 '확인 불가'.
+ */
+export function sampleCountFact(base: Fact, n: number | null | undefined): Fact {
+  const unknown = base.label === '확인 불가' || n === null || n === undefined;
+  return {
+    v: unknown ? null : n,
+    label: base.label,
+    prov: base.prov,
+    checked_at: base.checked_at,
+    reason: unknown ? (base.reason ?? null) : null,
+    unit: 'count',
+  };
 }
 
 /** 봉투 상태가 점수·추천에 쓰이지 않는(회색 "미해결") 상태인가 */

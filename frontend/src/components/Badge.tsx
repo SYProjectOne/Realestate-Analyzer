@@ -21,7 +21,7 @@ export function Badge({ children, tone = 'neutral', title, className = '', ...re
     <span
       title={title}
       data-testid={rest['data-testid']}
-      className={`inline-flex items-center whitespace-nowrap rounded border px-1.5 py-px text-[11px] leading-4 ${TONES[tone]} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-sm border px-1.5 py-px text-[11px] leading-4 ${TONES[tone]} ${className}`}
     >
       {children}
     </span>

@@ -13,11 +13,11 @@ import {
 import type { ComponentKey, Scenario, ScenarioPreview, ScoreRow, Weights } from '@/api/types';
 import { useToast } from '@/app/toast';
 import { C07Decision, C10Sensitivity } from '@/charts';
-import { Badge, EmptyState, FactCell, JobProgress } from '@/components';
+import { Badge, EmptyState, FactCell, JobProgress, MetaText, MetaValue } from '@/components';
 import { scenarioKey as keyOf, useScenario } from '@/hooks/useScenario';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount, formatNumber, formatRank } from '@/lib/format';
+import { metaNumber } from '@/lib/meta';
 import { enumText, Section, tdClass, thClass, usePageContext } from '../_shared';
 import {
   fromScenario,
@@ -68,7 +68,7 @@ function ScenarioBody({ scenarios, current }: { scenarios: Scenario[]; current: 
   return (
     <div className="flex flex-col gap-4">
       {decision && (decision.escaped || decision.status === 'escaped') ? (
-        <div role="alert" className="rounded border border-danger bg-surface p-3 text-sm">
+        <div role="alert" className="rounded-sm border border-danger bg-surface p-3 text-sm">
           <p className="font-semibold text-danger">{t('page.G5.escaped')}</p>
           {decision.question ? <p className="mt-1">{decision.question}</p> : null}
         </div>
@@ -105,7 +105,7 @@ function BaseScenarioPicker({
         id={id}
         value={current ? keyOf(current) : ''}
         onChange={(e) => setScenario(e.target.value || null)}
-        className="rounded border border-border bg-surface px-2 py-1"
+        className="rounded-sm border border-border bg-surface px-2 py-1"
       >
         {scenarios.map((s) => (
           <option key={s.id} value={keyOf(s)}>
@@ -181,7 +181,7 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
         e.preventDefault();
         submit();
       }}
-      className="flex flex-col gap-3 rounded border border-border bg-surface p-3"
+      className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-3"
     >
       <h2 className="text-base font-semibold">{t('page.G5.form')}</h2>
       <TextField
@@ -228,7 +228,7 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
         type="submit"
         disabled={!canWrite || create.isPending}
         title={canWrite ? undefined : t('auth.readOnlyHint')}
-        className="self-start rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+        className="self-start rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
       >
         {t('page.G5.save')}
       </button>
@@ -286,7 +286,7 @@ function TextField({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border bg-surface px-2 py-1"
+        className="rounded-sm border border-border bg-surface px-2 py-1"
       />
     </FieldShell>
   );
@@ -333,7 +333,7 @@ function SelectField({
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border bg-surface px-2 py-1"
+        className="rounded-sm border border-border bg-surface px-2 py-1"
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -359,7 +359,7 @@ function WeightPreview({
   return (
     <fieldset
       aria-label={t('page.G5.weights')}
-      className="flex flex-col gap-2 rounded border border-border p-2"
+      className="flex flex-col gap-2 rounded-sm border border-border p-2"
     >
       <legend className="px-1 text-sm font-medium">{t('page.G5.weights')}</legend>
       <p className="text-xs text-muted">{t('page.G5.weightsHint')}</p>
@@ -376,10 +376,10 @@ function WeightPreview({
               step={0.01}
               value={v}
               aria-label={label}
-              aria-valuetext={formatNumber(v, 2)}
+              aria-valuetext={metaNumber({ n: v, as: 'number', digits: 2 })}
               onChange={(e) => onChange(rebalance(weights, k, Number(e.target.value)))}
             />
-            <span className="text-right tabular-nums">{formatNumber(v, 2)}</span>
+            <MetaValue kind="input" value={v} as="number" digits={2} className="text-right" />
           </label>
         );
       })}
@@ -387,7 +387,11 @@ function WeightPreview({
         className={`text-sm ${Math.abs(sum - 1) > 0.001 ? 'text-danger' : 'text-muted'}`}
         data-testid="weights-sum"
       >
-        {t('page.G5.weightsSum', { sum: formatNumber(sum, 2) })}
+        <MetaText
+          kind="input"
+          k="page.G5.weightsSum"
+          params={{ sum: { n: sum, as: 'number', digits: 2 } }}
+        />
       </p>
       {error ? (
         <p role="alert" className="text-xs text-danger">
@@ -452,10 +456,11 @@ function RequirementTable({ preview }: { preview: ScenarioPreview }) {
         </tbody>
       </table>
       <p className="mt-2 text-xs text-muted" data-testid="cache-hits">
-        {t('page.G5.cache', {
-          hits: formatCount(preview.cache_hits),
-          misses: formatCount(preview.cache_misses),
-        })}
+        <MetaText
+          kind="count"
+          k="page.G5.cache"
+          params={{ hits: preview.cache_hits, misses: preview.cache_misses }}
+        />
       </p>
     </div>
   );
@@ -504,17 +509,17 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           onClick={run}
           disabled={!canWrite || !current || !snapshotId || createJob.isPending}
           title={canWrite ? undefined : t('auth.readOnlyHint')}
-          className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G5.run')}
         </button>
         {preview.data ? (
-          <span className="text-xs text-muted">
-            {t('page.G5.cache', {
-              hits: formatCount(preview.data.cache_hits),
-              misses: formatCount(preview.data.cache_misses),
-            })}
-          </span>
+          <MetaText
+            kind="count"
+            className="text-xs text-muted"
+            k="page.G5.cache"
+            params={{ hits: preview.data.cache_hits, misses: preview.data.cache_misses }}
+          />
         ) : null}
       </div>
       {jobId !== null ? (
@@ -554,13 +559,20 @@ export function DiffTable({ before, after }: { before: ScoreRow[]; after: ScoreR
       <table aria-label={t('page.G5.diff')} className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            {(['name', 'rankBefore', 'rankAfter', 'totalBefore', 'totalAfter'] as const).map(
-              (k) => (
-                <th key={k} scope="col" className={thClass}>
-                  {t(`page.G5.diffCol.${k}` as TKey)}
-                </th>
-              ),
-            )}
+            {(
+              [
+                'name',
+                'rankBefore',
+                'rankAfter',
+                'totalBefore',
+                'totalAfter',
+                'deltaRerank',
+              ] as const
+            ).map((k) => (
+              <th key={k} scope="col" className={thClass}>
+                {t(`page.G5.diffCol.${k}` as TKey)}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -570,16 +582,31 @@ export function DiffTable({ before, after }: { before: ScoreRow[]; after: ScoreR
                 {r.name}
               </th>
               <td className={tdClass}>
-                {r.before?.rank != null ? formatRank(r.before.rank) : t('page.common.none')}
+                {r.before?.rank != null ? (
+                  <MetaValue kind="rank" value={r.before.rank} as="rank" />
+                ) : (
+                  t('page.common.none')
+                )}
               </td>
               <td className={tdClass}>
-                {r.after?.rank != null ? formatRank(r.after.rank) : t('page.common.none')}
+                {r.after?.rank != null ? (
+                  <MetaValue kind="rank" value={r.after.rank} as="rank" />
+                ) : (
+                  t('page.common.none')
+                )}
               </td>
               <td className={tdClass}>
                 <FactCell fact={r.before?.total ?? null} unit="score" />
               </td>
               <td className={tdClass}>
                 <FactCell fact={r.after?.total ?? null} unit="score" />
+              </td>
+              <td className={tdClass} data-testid="diff-delta-rerank">
+                <FactCell
+                  fact={r.after?.delta_rerank ?? null}
+                  unit="score"
+                  emptyReason={t('page.common.deltaRerankNone')}
+                />
               </td>
             </tr>
           ))}

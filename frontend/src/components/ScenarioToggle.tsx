@@ -46,7 +46,7 @@ export function ScenarioToggle({
     <div
       role="radiogroup"
       aria-label={label ?? t('header.scenario')}
-      className="inline-flex overflow-hidden rounded border border-border"
+      className="inline-flex overflow-hidden rounded-sm border border-border"
     >
       {options.map((option, index) => {
         const checked = String(option.id) === selected;

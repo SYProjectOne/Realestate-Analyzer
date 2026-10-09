@@ -1,4 +1,5 @@
 import { useSnapshots } from '@/api/hooks';
+import { defaultSnapshot } from '@/components/SnapshotPicker';
 import type { Snapshot } from '@/api/types';
 import { SNAPSHOT_PARAM } from './snapshotParam';
 import { useActiveRegion } from './useActiveRegion';
@@ -22,7 +23,8 @@ export function useSnapshot(): SnapshotState {
   const [explicitSnapshotId, set] = useUrlParam(SNAPSHOT_PARAM);
   const { region, isLoading: regionLoading } = useActiveRegion();
   const { data: snapshots = [], isLoading: snapshotsLoading } = useSnapshots(region?.id);
-  const fallback = region?.latest_snapshot?.id ?? snapshots[0]?.id ?? null;
+  // D11-1: 지역 latest_snapshot(서버가 정한 최신 published 리비전) → 목록의 최신 published 리비전 → 첫 항목
+  const fallback = region?.latest_snapshot?.id ?? defaultSnapshot(snapshots)?.id ?? null;
   const snapshotId = explicitSnapshotId ?? (fallback === null ? null : String(fallback));
   const snapshot =
     snapshots.find((s) => String(s.id) === snapshotId) ??

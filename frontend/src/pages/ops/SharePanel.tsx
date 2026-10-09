@@ -64,13 +64,13 @@ function SharePanelBody() {
             maxLength={SHARE_LABEL_MAX}
             onChange={(e) => setLabel(e.target.value)}
             placeholder={t('page.G7.share.labelHint')}
-            className="w-64 rounded border border-border bg-surface px-2 py-1 text-sm"
+            className="w-64 rounded-sm border border-border bg-surface px-2 py-1 text-sm"
           />
         </div>
         <button
           type="submit"
           disabled={create.isPending}
-          className="rounded bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
         >
           {t('page.G7.share.create')}
         </button>
@@ -130,7 +130,7 @@ function SharePanelBody() {
                           type="button"
                           disabled={revoke.isPending}
                           onClick={() => revoke.mutate(link.id)}
-                          className="rounded border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+                          className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
                         >
                           {t('page.G7.share.revoke')}
                         </button>
@@ -159,7 +159,7 @@ function CreatedLink({ created, onDone }: { created: ShareLinkCreated; onDone: (
   return (
     <div
       data-testid="share-created"
-      className="flex flex-col gap-2 rounded border border-accent p-2 text-sm"
+      className="flex flex-col gap-2 rounded-sm border border-accent p-2 text-sm"
     >
       <label htmlFor={inputId} className="font-medium">
         {t('page.G7.share.createdTitle')}
@@ -170,7 +170,7 @@ function CreatedLink({ created, onDone }: { created: ShareLinkCreated; onDone: (
           readOnly
           value={url}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs"
+          className="min-w-0 flex-1 rounded-sm border border-border bg-bg px-2 py-1 font-mono text-xs"
         />
         <button
           type="button"
@@ -185,14 +185,14 @@ function CreatedLink({ created, onDone }: { created: ShareLinkCreated; onDone: (
               done(false);
             }
           }}
-          className="rounded border border-border px-2 py-1 text-xs"
+          className="rounded-sm border border-border px-2 py-1 text-xs"
         >
           {t('page.G7.share.copy')}
         </button>
         <button
           type="button"
           onClick={onDone}
-          className="rounded border border-border px-2 py-1 text-xs"
+          className="rounded-sm border border-border px-2 py-1 text-xs"
         >
           {t('page.G7.share.done')}
         </button>

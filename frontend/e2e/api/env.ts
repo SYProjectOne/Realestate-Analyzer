@@ -33,6 +33,32 @@ export const backendEnv: Record<string, string> = {
 };
 
 /**
+ * devseed DB 의 스냅샷 degraded 플래그를 바꾼다(T18 — 판정기 다운 스냅샷). API 는 이 행을 그대로 읽는다:
+ * `/health` judge = 지역 최신 스냅샷 degraded, `/regions/{id}/snapshots`·스냅샷 화면 = 그 스냅샷 degraded.
+ * 테스트가 끝나면 원래 값(false)으로 되돌린다.
+ */
+export function setSnapshotDegraded(snapshotId: number, degraded: boolean): void {
+  const db = backendEnv.DATABASE_URL!.replace(/^sqlite:\/\/\//, '');
+  execFileSync(
+    'uv',
+    [
+      'run',
+      'python',
+      '-c',
+      'import sqlite3, sys\n' +
+        'c = sqlite3.connect(sys.argv[1])\n' +
+        'n = c.execute("update snapshot set degraded = ? where id = ?", (int(sys.argv[2]), int(sys.argv[3]))).rowcount\n' +
+        'c.commit()\n' +
+        'sys.exit(0 if n == 1 else 3)',
+      db,
+      degraded ? '1' : '0',
+      String(snapshotId),
+    ],
+    { cwd: BACKEND, env: { ...process.env, ...backendEnv }, stdio: 'pipe', timeout: 60_000 },
+  );
+}
+
+/**
  * 큐에 쌓인 잡을 비울 때까지 1회 실행(`python -m app.worker --once`) — 보고서 생성 같은 잡을 테스트 안에서 끝낸다.
  * 상주 worker 를 띄우지 않으므로 다른 테스트가 넣은 잡이 몰래 돌지 않는다.
  */

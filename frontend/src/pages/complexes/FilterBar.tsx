@@ -23,7 +23,7 @@ interface Option {
   label: string;
 }
 
-const inputClass = 'rounded border border-border bg-surface px-2 py-1 text-sm text-fg';
+const inputClass = 'rounded-sm border border-border bg-surface px-2 py-1 text-sm text-fg';
 
 function Field({
   name,
@@ -93,7 +93,7 @@ export function FilterBar({ values, livingAreas, onChange, onReset }: FilterBarP
     <form
       role="search"
       aria-label={t('page.G2.filters')}
-      className="flex flex-wrap items-end gap-3 rounded border border-border bg-surface p-3"
+      className="flex flex-wrap items-end gap-3 rounded-sm border border-border bg-surface p-3"
       onSubmit={(e) => e.preventDefault()}
     >
       <Field name="q" value={v('q')} onChange={onChange} />
@@ -157,7 +157,7 @@ export function FilterBar({ values, livingAreas, onChange, onReset }: FilterBarP
       <button
         type="button"
         onClick={onReset}
-        className="rounded border border-border px-2 py-1 text-sm"
+        className="rounded-sm border border-border px-2 py-1 text-sm"
       >
         {t('page.G2.clearFilters')}
       </button>

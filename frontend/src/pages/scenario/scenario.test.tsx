@@ -12,7 +12,7 @@ import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 import { fromScenario, rebalance, toScenarioCreate, weightsSum } from './schema';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 const W: Weights = {

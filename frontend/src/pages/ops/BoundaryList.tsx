@@ -34,7 +34,7 @@ export function BoundaryList({ snapshotId }: { snapshotId: string | null }) {
                 <li key={row.complex_id}>
                   <Link
                     to={`/complexes/${row.complex_id}${search}`}
-                    className="rounded border border-border px-2 py-0.5 hover:underline"
+                    className="rounded-sm border border-border px-2 py-0.5 hover:underline"
                   >
                     {row.name}
                   </Link>

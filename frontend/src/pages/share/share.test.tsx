@@ -16,7 +16,7 @@ import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 import { shareTokenFromHash } from './index';
 
-vi.mock('echarts-for-react', () => ({ default: () => null }));
+vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
 const SHARE_TOKEN = 'q3Zt0w9mK1xR7bY2cV8nH4sL6dF5gJ0aP3eU1iO9tQw';

@@ -247,13 +247,16 @@ export function getAuthToken(): string | null {
 }
 
 /**
- * 이 브라우저에 저장된 토큰(localStorage 또는 저장 실패 메모리)이 쓰기·권한 모름인가 —
- * 공유 링크가 덮어쓰기 전에 확인을 받아야 하는 경우. 환경변수 토큰·탭 범위 토큰은 세지 않는다.
+ * 공유 링크가 토큰을 저장하기 전에 확인을 받아야 하는가 — 이 브라우저에 저장된 토큰(localStorage 또는 저장 실패
+ * 메모리)이 쓰기·권한 모름이거나, 저장 토큰이 없고 빌드 환경변수 토큰(VITE_API_TOKEN, 권한 모름 = 쓰기 가정)을
+ * 쓰는 중일 때. 공유 토큰을 localStorage 에 두면 우선순위(탭 → 저장소 → 메모리 → 환경변수)에서 환경변수 토큰을
+ * 조용히 가린다(R3 3차 minor 16). 탭 범위 토큰은 세지 않는다.
  */
 export function hasStoredWriteToken(): boolean {
   const stored = readStorage(TOKEN_STORAGE_KEY);
   if (stored) return asRole(readStorage(ROLE_STORAGE_KEY)) !== 'read';
-  return memory !== null && memory.role !== 'read';
+  if (memory !== null) return memory.role !== 'read';
+  return envToken() !== null;
 }
 
 /**

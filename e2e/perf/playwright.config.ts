@@ -36,7 +36,8 @@ export default defineConfig({
       timeout: 300_000,
     },
     {
-      command: `npx vite --port ${WEB_PORT} --strictPort`,
+      // 운영 빌드로 잰다(개발 서버의 React 개발 모드·HMR 비용은 사용자 화면에 없다) — vite preview 도 /api 프록시(server.proxy)를 쓴다
+      command: `npx vite build --outDir ${DATA}/web-dist --emptyOutDir && npx vite preview --outDir ${DATA}/web-dist --port ${WEB_PORT} --strictPort`,
       cwd: FRONTEND,
       env: {
         API_PROXY_TARGET: `http://127.0.0.1:${API_PORT}`,

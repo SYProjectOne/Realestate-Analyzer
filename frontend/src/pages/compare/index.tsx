@@ -8,6 +8,7 @@ import {
   EmptyState,
   FactCell,
   IntakeBadge,
+  MetaValue,
   MismatchBadge,
   TieBadge,
   UnstableBadge,
@@ -15,7 +16,7 @@ import {
 import { scenarioKey as keyOf } from '@/hooks/useScenario';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
-import { formatCount, formatRank } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import {
   enumText,
   NoSnapshot,
@@ -58,7 +59,7 @@ export function ComparePage() {
   return (
     <PageShell title={t('page.G4.title')}>
       {!valid ? (
-        <EmptyState message={t('page.G4.invalidIds', { n: formatCount(ids.length) })}>
+        <EmptyState message={metaText('page.G4.invalidIds', { n: ids.length })}>
           <Link to={`/complexes${search}`} className="underline">
             {t('page.common.backToList')}
           </Link>
@@ -137,7 +138,7 @@ function CompareGrid({
   const decisionOf = (id: number) => decision?.items.find((i) => i.complex_id === id) ?? null;
   const search = useGlobalSearch();
   return (
-    <div className="overflow-x-auto rounded border border-border bg-surface">
+    <div className="overflow-x-auto rounded-sm border border-border bg-surface">
       <table aria-label={t('page.G4.grid')} className="w-full border-collapse text-sm">
         <thead>
           <tr>
@@ -171,7 +172,11 @@ function CompareGrid({
             {rows.map((row) => (
               <td key={row.complex_id} className={tdClass}>
                 <span className="inline-flex flex-wrap gap-1">
-                  {row.rank !== null ? formatRank(row.rank) : t('empty.unknown')}
+                  {row.rank !== null ? (
+                    <MetaValue kind="rank" value={row.rank} as="rank" />
+                  ) : (
+                    t('empty.unknown')
+                  )}
                   <TieBadge tie={row.tie_group !== null} />
                   <UnstableBadge unstable={row.unstable} />
                   <RejudgeNeededBadge needed={row.rejudge_needed} />
@@ -186,6 +191,20 @@ function CompareGrid({
             {rows.map((row) => (
               <td key={row.complex_id} className={tdClass}>
                 <FactCell fact={row.p10} unit="prob" />
+              </td>
+            ))}
+          </tr>
+          <tr data-testid="compare-delta-rerank">
+            <th scope="row" className={thClass}>
+              {t('page.common.deltaRerank')}
+            </th>
+            {rows.map((row) => (
+              <td key={row.complex_id} className={tdClass}>
+                <FactCell
+                  fact={row.delta_rerank}
+                  unit="score"
+                  emptyReason={t('page.common.deltaRerankNone')}
+                />
               </td>
             ))}
           </tr>
@@ -398,7 +417,7 @@ function VirtualCandidates({ decision }: { decision: DecisionSet }) {
         <li
           key={item.option_key}
           data-option={item.option_key}
-          className="flex flex-wrap items-center gap-2 rounded border border-dashed border-border px-2 py-1"
+          className="flex flex-wrap items-center gap-2 rounded-sm border border-dashed border-border px-2 py-1"
         >
           <span className="font-medium">
             {t('page.G4.virtualCandidate', { label: item.label })}
