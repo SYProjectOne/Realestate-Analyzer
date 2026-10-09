@@ -5,7 +5,7 @@ import { formatNumber, formatProb } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, tooltipStyle } from '../palette';
 import type { BuildOptionContext, EChartsOption } from '../types';
 import { escapeHtml, num } from '../util';
-import { C07_TIE_CONFIDENCE, type C07Data } from './types';
+import type { C07Data } from './types';
 
 /** escaped면 막대 대신 판정기 질문. 텍스트는 React가 이스케이프해 렌더한다(HTML로 해석하지 않음) */
 export function isEscaped(data: C07Data): boolean {
@@ -32,10 +32,17 @@ export function confidenceValue(data: C07Data): number | null {
   return num(data.decision?.confidence ?? null);
 }
 
-/** 동률: 서버 tie 또는 confidence < 0.6 */
+/** 봉투가 확정(ok)이 아니면(review·blocked·error·escaped) 동률을 보이지 않는다 */
+function tieShown(data: C07Data): boolean {
+  return data.decision?.status === 'ok' && !isEscaped(data);
+}
+
+/**
+ * 동률 = 서버가 준 DecisionSet.tie 만(R3 minor 28). 브라우저는 confidence 로 다시 계산하지 않는다
+ * (서버가 meta §2-7 confidence < 0.6 규칙을 이미 적용). 미해결 봉투는 동률 표시에서 뺀다.
+ */
 export function isTie(data: C07Data): boolean {
-  const c = confidenceValue(data);
-  return (data.decision?.tie ?? false) || (c !== null && c < C07_TIE_CONFIDENCE);
+  return tieShown(data) && (data.decision?.tie ?? false);
 }
 
 export function hasMismatch(data: C07Data): boolean {
@@ -49,10 +56,11 @@ export function confidenceText(data: C07Data): string | null {
 
 const isCandidate = (item: Decision) => item.option_key === 'complex';
 
-function flagsOf(item: Decision): string[] {
+/** 항목 표시 글자 — 선택·동률은 서버 값 그대로(동률은 확정 봉투일 때만) */
+function flagsOf(item: Decision, showTie: boolean): string[] {
   return [
     item.chosen ? t('chart.chosen') : null,
-    item.tie ? t('badge.tie') : null,
+    showTie && item.tie ? t('badge.tie') : null,
     item.mismatch ? t('badge.mismatch') : null,
     isCandidate(item) ? null : t('chart.C07.escape'),
   ].filter((x): x is string => x !== null);
@@ -67,6 +75,7 @@ export function buildOption(
   const axis = axisStyle(palette);
   const items = data.decision?.items ?? [];
   const gray = isUnresolved(data);
+  const showTie = tieShown(data);
   return {
     ...baseOption(palette),
     grid: { left: 148, right: 96, top: 16, bottom: 28 },
@@ -80,7 +89,7 @@ export function buildOption(
         const lines = [
           escapeHtml(item.label),
           prob === null ? t('empty.unknown') : formatProb(prob),
-          ...flagsOf(item).map(escapeHtml),
+          ...flagsOf(item, showTie).map(escapeHtml),
         ];
         return lines.join('<br/>');
       },
@@ -113,7 +122,9 @@ export function buildOption(
             const item = items[p.dataIndex];
             const v = typeof p.value === 'number' ? formatProb(p.value) : t('empty.unknown');
             if (gray) return `${v} · ${t('badge.unresolved')}`;
-            const flags = item ? flagsOf(item).filter((f) => f !== t('chart.C07.escape')) : [];
+            const flags = item
+              ? flagsOf(item, showTie).filter((f) => f !== t('chart.C07.escape'))
+              : [];
             return [v, ...flags].join(' · ');
           },
         },
@@ -135,6 +146,7 @@ export function buildOption(
 
 export function toTable(data: C07Data): DataTable {
   const items = data.decision?.items ?? [];
+  const showTie = tieShown(data);
   return {
     columns: [
       { key: 'name', header: t('chart.col.name') },
@@ -144,7 +156,7 @@ export function toTable(data: C07Data): DataTable {
     rows: items.map((item) => ({
       name: item.label,
       prob: item.prob,
-      flags: flagsOf(item).join(' · '),
+      flags: flagsOf(item, showTie).join(' · '),
     })),
   };
 }

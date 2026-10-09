@@ -303,6 +303,43 @@ describe('C07 판정기 확률', () => {
     expect(C07.confidenceText(data)).toBe('신뢰도 0.48');
   });
 
+  it('minor 28: 동률은 서버 tie 만 — confidence 로 브라우저가 다시 계산하지 않는다', () => {
+    const decision = structuredCloneRow(c.decisions.base!);
+    decision.tie = false;
+    decision.confidence = { ...(decision.confidence as any), v: 0.3 };
+    expect(C07.isTie({ decision })).toBe(false);
+    decision.tie = true;
+    decision.confidence = { ...(decision.confidence as any), v: 0.9 };
+    expect(C07.isTie({ decision })).toBe(true);
+  });
+
+  it('minor 28: 봉투 review·blocked·error·escaped 면 동률 표시 없음(전체·항목 모두)', () => {
+    for (const status of ['review', 'blocked', 'error', 'escaped'] as const) {
+      const decision = structuredCloneRow(c.decisions.B!);
+      decision.status = status;
+      expect(decision.tie).toBe(true);
+      expect(C07.isTie({ decision })).toBe(false);
+      const o = C07.buildOption({ decision });
+      const labels = decision.items.map((_, i) =>
+        series(o)[0].label.formatter({ dataIndex: i, value: 0.5 }),
+      );
+      expect(labels.some((l: string) => l.includes('동률'))).toBe(false);
+      expect(C07.toTable({ decision }).rows.some((r) => String(r.flags).includes('동률'))).toBe(
+        false,
+      );
+    }
+  });
+
+  it('minor 28: ok 봉투의 항목 동률·선택은 서버 값 그대로', () => {
+    const decision = c.decisions.B!;
+    const o = C07.buildOption({ decision });
+    decision.items.forEach((item, i) => {
+      const label = series(o)[0].label.formatter({ dataIndex: i, value: 0.5 }) as string;
+      expect(label.includes('동률')).toBe(item.tie);
+      expect(label.includes('선택')).toBe(item.chosen);
+    });
+  });
+
   it('escaped → 막대 대신 질문 텍스트', () => {
     const reason = C07.emptyReason({ decision: escapedDecision() });
     expect(reason).toContain('질문 남김');
