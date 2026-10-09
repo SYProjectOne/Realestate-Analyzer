@@ -2,7 +2,7 @@ import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useOpsSources } from '@/api/hooks';
 import type { JobName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState } from '@/components';
+import { Badge, EmptyState, ExternalLink } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatCount, formatDate, formatNumber } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
@@ -75,14 +75,7 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                           <li key={`${target.url}-${target.fetched_at}`} className="break-all">
                             {target.complex_name ? `${target.complex_name} · ` : ''}
                             {formatUnknownTarget(target.http_status, target.reason)} ·{' '}
-                            <a
-                              href={target.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="underline"
-                            >
-                              {target.url}
-                            </a>
+                            <ExternalLink href={target.url} />
                           </li>
                         ))}
                       </ul>

@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import type { ComplexDetail, LadderHorizon } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
-import { Badge, EmptyState, FactCell } from '@/components';
+import { Badge, EmptyState, ExternalLink, FactCell } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
@@ -327,14 +327,9 @@ export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
                     <Badge tone="muted">{t('page.common.unresolved')}</Badge>
                   ) : null}
                   {c.source_url ? (
-                    <a
-                      href={c.source_url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="underline"
-                    >
+                    <ExternalLink href={c.source_url} fallback={c.source_url}>
                       {t('page.G3.catalyst.source')}
-                    </a>
+                    </ExternalLink>
                   ) : null}
                   {c.note ? <span className="w-full text-xs text-muted">{c.note}</span> : null}
                 </li>

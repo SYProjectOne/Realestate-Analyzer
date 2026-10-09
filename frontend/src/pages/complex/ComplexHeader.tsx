@@ -1,6 +1,7 @@
 import type { ComplexDetail } from '@/api/types';
 import {
   Badge,
+  ExternalLink,
   FactCell,
   IntakeBadge,
   TieBadge,
@@ -42,14 +43,13 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
           </>
         ) : null}
         {header.official_site_url ? (
-          <a
+          <ExternalLink
             href={header.official_site_url}
-            target="_blank"
-            rel="noreferrer noopener"
             className="ml-auto text-sm underline"
+            fallback={header.official_site_url}
           >
             {t('page.G3.header.officialSite')}
-          </a>
+          </ExternalLink>
         ) : null}
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-4">

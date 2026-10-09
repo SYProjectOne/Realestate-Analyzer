@@ -9,6 +9,7 @@ export {
   type DataTableToggleProps,
 } from './DataTableToggle';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
+export { ExternalLink, type ExternalLinkProps } from './ExternalLink';
 export { FactCell, type FactCellProps } from './FactCell';
 export { IntakeBadge, type IntakeBadgeProps } from './IntakeBadge';
 export {

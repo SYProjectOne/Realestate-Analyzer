@@ -7,6 +7,7 @@ import type { Provenance, ProvenanceConflict } from '@/lib/contract';
 import { formatDate, formatNumber } from '@/lib/format';
 import { Badge } from './Badge';
 import { EmptyState } from './EmptyState';
+import { ExternalLink } from './ExternalLink';
 import { LabelBadge } from './LabelBadge';
 import { RawDocumentPreview } from './RawDocumentPreview';
 import { ProvenanceContext } from './provenanceContext';
@@ -95,11 +96,7 @@ function ConflictItem({
         </blockquote>
       ) : null}
       <div className="flex flex-wrap gap-2 text-xs">
-        {item.url ? (
-          <a href={item.url} target="_blank" rel="noreferrer noopener" className="underline">
-            {item.url}
-          </a>
-        ) : null}
+        {item.url ? <ExternalLink href={item.url} /> : null}
         {!current && onOpen ? (
           <button type="button" className="underline" onClick={() => onOpen(item.id)}>
             {t('provenance.openConflict')}
@@ -169,13 +166,7 @@ function ProvenanceBody({
       <dd>{data.checked_at ? formatDate(data.checked_at) : <EmptyState inline />}</dd>
       <dt className="text-muted">{t('provenance.url')}</dt>
       <dd className="break-all">
-        {data.url ? (
-          <a href={data.url} target="_blank" rel="noreferrer noopener" className="underline">
-            {data.url}
-          </a>
-        ) : (
-          <EmptyState inline />
-        )}
+        {data.url ? <ExternalLink href={data.url} /> : <EmptyState inline />}
       </dd>
       {data.source_kind ? (
         <>
