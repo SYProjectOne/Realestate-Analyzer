@@ -19,7 +19,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api.contract import check_body
-from app.api.demotion import FIELD_TERMS, ValueParseError, apply_human_check, human_target, parse_human_value
+from app.api.demotion import (
+    FIELD_TERMS,
+    ValueParseError,
+    apply_human_check,
+    human_target,
+    later_official,
+    parse_human_value,
+)
 from app.api.deps import DB, get_complex, in_db_range, settings_of
 from app.api.errors import not_found, validation_error
 from app.api.jobs import now_iso
@@ -308,6 +315,15 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
         except ValueParseError as exc:
             loc = "entity_id" if "entity_id" in str(exc) else "value_text"
             raise validation_error(str(exc), ("body", loc)) from exc
+        if target is not None:
+            # D13-2: 이미 수집된 공식 공고보다 이른 확인일 = 입력 즉시 지는 사람 확인(D12-1) — 조용히 받지 않는다
+            later = later_official(session, target, str(body["checked_at"]))
+            if later is not None:
+                raise validation_error(
+                    f"확인일 {str(body['checked_at'])[:10]} 은 이미 수집된 공식 공고(관측 {later})보다 이르다 — "
+                    "그 공고 뒤에 다시 확인한 날짜를 적는다(사람 확인 이후 공고만 사람 확인을 이긴다, D12-1)",
+                    ("body", "checked_at"),
+                )
     hc = HumanCheck(
         complex_id=cx.id,
         field=field,
