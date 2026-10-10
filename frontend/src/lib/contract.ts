@@ -101,4 +101,17 @@ export interface JobLike {
   status: 'queued' | 'running' | 'done' | 'failed';
   error_text: string | null;
   progress?: { done: number; total: number; step?: string | null } | null;
+  /** 잡 집계(rejudge·region.* 은 결과 리비전 `snapshot_id`) */
+  stats?: Record<string, unknown>;
+}
+
+/**
+ * 잡이 쓴 스냅샷 리비전 id(stats.snapshot_id — rejudge·region.bootstrap·region.expand·snapshot.publish).
+ * 발행 뒤 재판정은 같은 기준일의 **새 리비전**에 쓰므로(D11-1) 결과는 요청한 스냅샷이 아니라 여기서 읽는다.
+ */
+export function resultSnapshotId(job: Pick<JobLike, 'stats'> | null | undefined): string | null {
+  const v = job?.stats?.snapshot_id;
+  if (typeof v === 'number' && Number.isInteger(v)) return String(v);
+  if (typeof v === 'string' && /^\d+$/.test(v)) return v;
+  return null;
 }

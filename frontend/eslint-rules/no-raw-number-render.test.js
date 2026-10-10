@@ -186,6 +186,14 @@ ruleTester.run('no-raw-number-render (R3c 숫자 포맷·비수치 메타)', rul
     valid('const s = formatFactValue(fact, unit);', 'src/components/FactCell.tsx'),
     valid('const s = formatEok(v);', 'src/charts/C03/buildOption.ts'),
     valid('expect(x).toBe(formatCount(3));', 'src/pages/ops/ops.test.tsx'),
+    // 별칭 검사: 날짜 함수·타입 import·네임스페이스의 날짜 함수는 허용
+    valid("import { formatDate as fd } from '@/lib/format'; const el = <b>{fd(d)}</b>;"),
+    valid("import type { FactUnit } from '@/lib/format'; const u: FactUnit = 'won';"),
+    valid("import * as fmt from '@/lib/format'; const el = <b>{fmt.formatDate(d)}</b>;"),
+    valid(
+      "import { formatCount as fc } from './format'; export const s = fc(1);",
+      'src/lib/meta.ts',
+    ),
   ],
   invalid: [
     // 9: JSX 자식·속성·t() 파라미터·변수 — 어디서든 라벨 없는 숫자 문자열
@@ -202,6 +210,34 @@ ruleTester.run('no-raw-number-render (R3c 숫자 포맷·비수치 메타)', rul
       'formatOutsideFact',
       'src/components/DataTableToggle.tsx',
     ),
+    // 9 (R3d 4차 minor): 별칭·네임스페이스·함수 값·재내보내기 우회
+    invalid(
+      "import { formatCount as fc } from '@/lib/format'; const el = <b>{fc(n)}</b>;",
+      'formatOutsideFact',
+    ),
+    invalid(
+      "import { formatWon as w } from '../../lib/format'; const s = w(price);",
+      'formatOutsideFact',
+    ),
+    invalid(
+      "import * as fmt from '@/lib/format'; const el = <b>{fmt.formatCount(n)}</b>;",
+      'formatOutsideFact',
+    ),
+    invalid(
+      "import * as fmt from '@/lib/format'; const s = fmt['formatRank'](r);",
+      'formatOutsideFact',
+    ),
+    invalid("import * as fmt from '@/lib/format'; const g = fmt.formatCount;", 'formatOutsideFact'),
+    invalid(
+      "import { formatCount } from '@/lib/format'; const xs = ns.map(formatCount);",
+      'formatOutsideFact',
+    ),
+    invalid(
+      "import { formatScore as s } from '@/lib/format'; const g = s; const out = g(1);",
+      'formatOutsideFact',
+    ),
+    invalid("export { formatCount as fc } from '@/lib/format';", 'formatOutsideFact'),
+    invalid("export * from '@/lib/format';", 'formatOutsideFact'),
     // 10: 사실 값을 메타로
     invalid('<MetaValue kind="count" value={row.total.v} />', 'factAsMeta'),
     invalid('<MetaText kind="count" k="x" params={{ n: fact.v }} />', 'factAsMeta'),

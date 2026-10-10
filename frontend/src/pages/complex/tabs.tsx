@@ -18,6 +18,14 @@ export function discountNote(discount: Fact | null | undefined): string | null {
     : t('page.G3.price.discountNotApplied');
 }
 
+/** 헤더용 짧은 문구(툴팁 없이 화면에 보인다 — 모바일, 4차 리뷰 minor) */
+export function discountShortNote(discount: Fact | null | undefined): string | null {
+  if (!discount || discount.v === null) return null;
+  return discount.label === '확인됨'
+    ? t('page.G3.price.discountAppliedShort')
+    : t('page.G3.price.discountNotAppliedShort');
+}
+
 /** 현재 공고(is_current)의 타입별 할인(payment_terms.discount_by_type, 키 = type_code) */
 function currentDiscounts(detail: ComplexDetail): Record<string, Fact> {
   const current = detail.payment.find((p) => p.is_current) ?? null;

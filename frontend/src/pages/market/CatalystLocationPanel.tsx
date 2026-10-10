@@ -31,15 +31,38 @@ export function parseYm(raw: string): string | null | 'invalid' {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(v) ? v : 'invalid';
 }
 
+type LivingAreaRef = Pick<Market['living_areas'][number], 'id' | 'name'>;
+
+/**
+ * 서버 연결 근거 문구의 생활권 id(`la_1` 같은 내부 식별자)를 생활권 이름으로 바꾼다(4차 리뷰 minor) —
+ * 화면에 내부 id 를 보이지 않는다. 앞뒤가 영문·숫자·밑줄이 아닌 온전한 토큰만 바꾼다(`la_1` ≠ `la_10`).
+ */
+export function livingAreaReason(
+  reason: string | null | undefined,
+  areas: readonly LivingAreaRef[],
+): string | null {
+  if (!reason) return reason ?? null;
+  const byId = new Map(areas.map((a) => [a.id, a.name]));
+  if (byId.size === 0) return reason;
+  const ids = [...byId.keys()]
+    .sort((a, b) => b.length - a.length)
+    .map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(?<![A-Za-z0-9_])(${ids.join('|')})(?![A-Za-z0-9_])`, 'g');
+  return reason.replace(re, (id) => byId.get(id) ?? id);
+}
+
 /**
  * 링크 거리 → Fact(라벨은 서버가 준 link.label). 좌표 없는 단지는 distance_m=null → '확인 불가(<서버 reason>)'
- * — reason 은 서버가 정한 연결 근거('같은 생활권(…, 단지 좌표 없음)'·'사람 지정(단지 좌표 없음)').
+ * — reason 은 서버가 정한 연결 근거('같은 생활권(…, 단지 좌표 없음)'·'사람 지정(단지 좌표 없음)'), 생활권 id 는 이름으로.
  */
-export function distanceFact(link: CatalystLinkView): Fact {
+export function distanceFact(link: CatalystLinkView, areas: readonly LivingAreaRef[] = []): Fact {
   return {
     v: link.distance_m,
     label: link.distance_m === null ? '확인 불가' : link.label,
-    reason: link.distance_m === null ? (link.reason ?? t('page.G6.loc.noCoord')) : null,
+    reason:
+      link.distance_m === null
+        ? (livingAreaReason(link.reason, areas) ?? t('page.G6.loc.noCoord'))
+        : null,
     prov: null,
     checked_at: null,
     unit: 'm',
@@ -89,7 +112,7 @@ export function CatalystLocationPanel({
           ))}
         </ul>
       )}
-      {result ? <LinksTable result={result} names={names} /> : null}
+      {result ? <LinksTable result={result} names={names} areas={market.living_areas} /> : null}
     </Section>
   );
 }
@@ -316,10 +339,18 @@ function LocationForm({
 }
 
 /** 저장 결과: 만들어진 catalyst_link(단지·거리·가중치·근거) + 연결이 바뀌었으면 rejudge 잡 진행 */
-function LinksTable({ result, names }: { result: CatalystUpdated; names: Map<number, string> }) {
+function LinksTable({
+  result,
+  names,
+  areas,
+}: {
+  result: CatalystUpdated;
+  names: Map<number, string>;
+  areas: readonly LivingAreaRef[];
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <LinksBody result={result} names={names} />
+      <LinksBody result={result} names={names} areas={areas} />
       {result.job ? (
         <div data-testid="catalyst-job">
           <p className="text-xs text-muted">{t('page.G6.loc.jobHint')}</p>
@@ -334,7 +365,15 @@ function LinksTable({ result, names }: { result: CatalystUpdated; names: Map<num
   );
 }
 
-function LinksBody({ result, names }: { result: CatalystUpdated; names: Map<number, string> }) {
+function LinksBody({
+  result,
+  names,
+  areas,
+}: {
+  result: CatalystUpdated;
+  names: Map<number, string>;
+  areas: readonly LivingAreaRef[];
+}) {
   const caption = t('page.G6.loc.links', { name: result.catalyst.name });
   if (result.links.length === 0) {
     return (
@@ -373,7 +412,7 @@ function LinksBody({ result, names }: { result: CatalystUpdated; names: Map<numb
               {names.get(link.complex_id) ?? t('page.G6.loc.unknownComplex')}
             </th>
             <td className={tdClass}>
-              <FactCell fact={distanceFact(link)} unit="m" />
+              <FactCell fact={distanceFact(link, areas)} unit="m" />
             </td>
             <td className={tdClass}>
               {/* 가중치 = 거리·생활권에서 정한 계산 계수(사실 아님). null = 서버가 정하지 않음 */}
@@ -383,7 +422,9 @@ function LinksBody({ result, names }: { result: CatalystUpdated; names: Map<numb
                 <MetaValue kind="derived" value={link.weight} as="number" digits={2} />
               )}
             </td>
-            <td className={`${tdClass} text-xs`}>{link.reason ?? t('page.common.none')}</td>
+            <td className={`${tdClass} text-xs`}>
+              {livingAreaReason(link.reason, areas) ?? t('page.common.none')}
+            </td>
           </tr>
         ))}
       </tbody>

@@ -9,7 +9,10 @@ import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
 const STATUSES = ['open', 'done', 'na'] as const;
 const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
 
-/** G7 Checklist + Calendar — 법적 확인·중도금일·만료·공고 예상·계약·사실 재확인(D10-3). 종류 문구 = ko.json page.G7.checkKind. 상태는 PATCH /ops/checklist/{id} */
+/**
+ * G7 Checklist + Calendar — 법적 확인·중도금일·만료·공고 예상·계약·사실 재확인(D10-3). 종류 문구 = ko.json page.G7.checkKind.
+ * 상태는 PATCH /ops/checklist/{id}. 닫힌 항목은 누가 닫았는지(closed_by auto·human, 계약 .8 S6) 배지로 보인다.
+ */
 export function ChecklistPanel({ asof }: { asof: string | null }) {
   const query = useChecklist();
   return (
@@ -78,6 +81,19 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
                     </option>
                   ))}
                 </select>
+                {item.status !== 'open' && item.closed_by ? (
+                  <span
+                    className="ml-1"
+                    data-testid="closed-by"
+                    title={enumText('page.G7.check.closedByHint', item.closed_by)}
+                  >
+                    <Badge tone="muted">{enumText('page.G7.check.closedBy', item.closed_by)}</Badge>
+                    {/* 모바일(툴팁 없음)에서도 읽히게 사유를 화면 낭독용으로 함께 둔다 */}
+                    <span className="sr-only">
+                      {enumText('page.G7.check.closedByHint', item.closed_by)}
+                    </span>
+                  </span>
+                ) : null}
               </td>
               <td className={`${tdClass} text-xs text-muted`}>{item.note ?? ''}</td>
             </tr>

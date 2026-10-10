@@ -15,7 +15,7 @@ import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
-import { parseCoord, parseYm } from './CatalystLocationPanel';
+import { livingAreaReason, parseCoord, parseYm } from './CatalystLocationPanel';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -71,6 +71,20 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     expect(parseYm('2031-13')).toBe('invalid');
   });
 
+  it('livingAreaReason: 생활권 id 토큰만 이름으로(la_1 ≠ la_10), 모르는 id·빈 값은 그대로', () => {
+    const areas = [
+      { id: 'la_1', name: '가생활권' },
+      { id: 'la_10', name: '나생활권' },
+    ];
+    expect(livingAreaReason('같은 생활권(la_1, 단지 좌표 없음)', areas)).toBe(
+      '같은 생활권(가생활권, 단지 좌표 없음)',
+    );
+    expect(livingAreaReason('같은 생활권(la_10)', areas)).toBe('같은 생활권(나생활권)');
+    expect(livingAreaReason('같은 생활권(la_3)', areas)).toBe('같은 생활권(la_3)');
+    expect(livingAreaReason('xla_1', areas)).toBe('xla_1');
+    expect(livingAreaReason(null, areas)).toBeNull();
+  });
+
   it('단지 선택 → PATCH → 응답 links 표(거리 확인 불가 + 서버 reason · 가중치 · 연결 근거), job=null 안내', async () => {
     const rec = recordRequests();
     renderRoute('/market');
@@ -90,11 +104,15 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     const links = await within(await panel()).findByTestId('catalyst-links');
     const rows = within(links).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(expected.links.length);
+    // 4차 minor: 연결 근거의 생활권 id(la_2)는 생활권 이름으로 보인다 — 내부 id 를 화면에 내지 않는다
+    const market = await example<Market>('/snapshots/12/market');
     expected.links.forEach((link, i) => {
       const r = rows[i] as HTMLElement;
-      expect(r).toHaveTextContent(link.reason ?? '');
+      const reason = livingAreaReason(link.reason, market.living_areas) ?? '';
+      expect(r).toHaveTextContent(reason);
       expect(r.querySelector('[data-meta="derived"]')).toHaveTextContent('1.00');
-      expect(within(r).getAllByText(link.reason ?? '').length).toBeGreaterThan(0);
+      expect(within(r).getAllByText(reason).length).toBeGreaterThan(0);
+      expect(r.textContent).not.toMatch(/\bla_\d+\b/);
     });
     expect(rows[0]).toHaveTextContent('엘리프 검단 포레듀');
     expect(within(await panel()).getByTestId('catalyst-job-none')).toHaveTextContent(
