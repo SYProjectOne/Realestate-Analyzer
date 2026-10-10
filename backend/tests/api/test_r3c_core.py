@@ -492,6 +492,7 @@ def test_minor17_missing_raw_does_not_rescan_archives_per_request(tmp_path: Any)
     import tarfile
 
     from app.api.routers import complexes as cx_router
+    from app.core import raw_archive  # R3 4차: 압축 읽기는 core 로 옮겼다(정규화도 같이 쓴다)
 
     src = tmp_path / "notice_pdf"
     src.mkdir()
@@ -500,10 +501,10 @@ def test_minor17_missing_raw_does_not_rescan_archives_per_request(tmp_path: Any)
     archive = src / "2026-10.tar.gz"
     with tarfile.open(archive, "w:gz") as tar:
         tar.add(payload, arcname="notice_pdf/2026-10-08/present.pdf")
-    cx_router._members.cache_clear()
+    raw_archive._members.cache_clear()
     for _ in range(5):
         assert cx_router.archived_stream("notice_pdf/2026-10-08/missing.pdf", tmp_path) is None
-    info = cx_router._members.cache_info()
+    info = raw_archive._members.cache_info()
     assert (info.misses, info.hits) == (1, 4), info
     assert cx_router.archived_member("notice_pdf/2026-10-08/present.pdf", tmp_path) == b"x" * 1000
     with tarfile.open(archive, "w:gz") as tar:  # 압축 교체 → 새 목록
