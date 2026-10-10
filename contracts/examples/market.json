@@ -2527,11 +2527,11 @@
           "unit": "won"
         },
         "n_trades": {
-          "v": 0,
-          "label": "재가공",
+          "v": null,
+          "label": "확인 불가",
           "prov": "fp_9002",
           "checked_at": "2026-10-07",
-          "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+          "reason": "건수 미상(보고서 원문에 거래 건수 없음)",
           "unit": "count"
         },
         "trade_window": "2026-05~2026-06",
@@ -2563,11 +2563,11 @@
           "unit": "won"
         },
         "n_trades": {
-          "v": 0,
-          "label": "비공식",
+          "v": null,
+          "label": "확인 불가",
           "prov": "fp_9003",
           "checked_at": "2026-10-07",
-          "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+          "reason": "실거래 원자료 미확보(언론 시세만)",
           "unit": "count"
         },
         "trade_window": null,

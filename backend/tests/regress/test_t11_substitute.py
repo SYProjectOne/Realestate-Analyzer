@@ -115,7 +115,7 @@ def _subarea(env: RegressEnv) -> tuple[str, dict[str, Any]]:
         body.append({"id": a["id"], "name": a["name"], "legal_dong_codes": codes})
     body.append({"name": edit["new_area"]["name"], "legal_dong_codes": edit["new_area"]["legal_dong_codes"]})
     r = env.client.put("/api/regions/1/living-areas", headers=WRITE, json={"living_areas": body})
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text  # 계약 .11(D14-5): 202 + job_id
     body_out = r.json()
     region_out = body_out.get("region", body_out)  # Region(+ change_event·rejudge 잡)
     new_id = next(a["id"] for a in region_out["living_areas"] if a["name"] == edit["new_area"]["name"])

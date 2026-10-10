@@ -92,7 +92,7 @@ def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClie
         headers=WRITE,
         json={
             "complex_id": cid, "field": "intake_status", "value_text": "불가", "kind": "phone",
-            "checked_at": "2026-10-09", "entered_by": "운영자", "note": "R3b N-C1 재현",
+            "checked_at": "2026-10-09T10:00:00+09:00", "entered_by": "운영자", "note": "R3b N-C1 재현",
         },
     )  # fmt: skip
     assert r.status_code == 201, r.text

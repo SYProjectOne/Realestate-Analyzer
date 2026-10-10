@@ -17,6 +17,10 @@
 | J | 같은 기준일 새 리비전 발행(republish) | D11-1 |
 
 그리고 발행 리비전 GET 이 실시간 계산(묶음 적재·점수 문맥·보고서 적재)을 **타지 않음**을 그 함수들을 막아 놓고 보인다.
+
+R3f CORE4(계약 .11, R3 6차 m27): URL 목록에 시장 ``?scenario=``·출처 서랍(``/provenance/{id}?snapshot_id=`` — D14-1, 발행 뒤
+supply 재수집이 출처 행을 지워도 같은 바이트)·주장 목록(D14-1·m1)·사용자 시나리오 보고서(N-M1)·다른 단지 묶음 비교를 더했다.
+발행은 worker 잡(``snapshot.publish`` — D14-5)으로 한다.
 """
 
 # ruff: noqa: E501
@@ -35,7 +39,7 @@ from sqlalchemy import select
 from app.core.db import get_session
 from app.models import Catalyst, Complex, Snapshot
 
-from ._support import READ, WRITE
+from ._support import READ, WRITE, publish_revision
 from .test_r3b_g3 import CX, SNAP, _ensure_resale
 from .test_r3d_core2 import _demote_price, human_check, store_cx_field, store_notice
 
@@ -43,16 +47,38 @@ SCENARIOS = ("base", "A", "B", "C", "D")
 
 
 def _publish_revision() -> int:
-    """SNAP 위 새 리비전을 실제 발행 경로로 발행(파생 행 복사 → publish → materialize)."""
-    from app.scheduler.snapshots import republish
-
-    with get_session() as s:
-        rev = republish(s, 1, reason="불변 테스트 리비전", created_at="2026-10-09T08:00:00+09:00")
-        assert rev is not None and rev.status == "published"
-        return int(rev.id)
+    """SNAP 위 새 리비전을 실제 발행 경로로 발행(새 리비전 + snapshot.publish 잡 → worker: 파생 행 복사 → 저장본 → 전환)."""
+    return publish_revision(1, "불변 테스트 리비전")
 
 
-def _urls(rev: int, complex_ids: list[int]) -> list[str]:
+def _prov_ids(client: TestClient, rev: int) -> list[str]:
+    """그 리비전 저장본이 가리키는 출처 id 일부(단지 CX 상세·대시보드·시장·주장) — 출처 서랍 URL(D14-1)."""
+    acc: set[str] = set()
+
+    def walk(o: Any) -> None:
+        if isinstance(o, dict):
+            p = o.get("prov")
+            if isinstance(p, str):
+                acc.add(p)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    for u in (
+        f"/api/complexes/{CX}?snapshot={rev}",
+        f"/api/snapshots/{rev}/dashboard",
+        f"/api/snapshots/{rev}/market",
+        f"/api/snapshots/{rev}/claims",
+    ):
+        r = client.get(u, headers=READ)
+        assert r.status_code == 200, (u, r.text[:200])
+        walk(r.json())
+    return sorted(acc)
+
+
+def _urls(rev: int, complex_ids: list[int], prov_ids: list[str] = ()) -> list[str]:  # type: ignore[assignment]
     urls: list[str] = []
     for cid in complex_ids:
         urls.append(f"/api/complexes/{cid}?snapshot={rev}")
@@ -80,33 +106,51 @@ def _urls(rev: int, complex_ids: list[int]) -> list[str]:
         f"/api/snapshots/{rev}/changes?since=2026-01-01",
         f"/api/snapshots/{rev}/changes?compare_snapshot=11",
         f"/api/snapshots/{rev}/changes?severity=critical",
+        # R3 6차 m27: 시장 시나리오·출처 서랍·주장 목록·다른 묶음 비교
+        f"/api/snapshots/{rev}/market?scenario=A",
+        f"/api/snapshots/{rev}/market?scenario=D",
+        f"/api/snapshots/{rev}/market?living_area=la_2&scenario=D",
+        f"/api/snapshots/{rev}/claims",
+        f"/api/snapshots/{rev}/claims?status=verified",
+        f"/api/snapshots/{rev}/compare?ids={','.join(str(i) for i in complex_ids[:4])}&scenario=D",
     ]
+    urls += [f"/api/provenance/{p}?snapshot_id={rev}" for p in prov_ids]
     return urls
 
 
-def _report_bytes(rev: int, out: Path) -> dict[str, str]:
+def _report_bytes(rev: int, out: Path, user_sc: int | None = None) -> dict[str, str]:
     from app.models import Scenario
     from app.reports.export import generate
 
     got: dict[str, str] = {}
     with get_session() as s:
         d_id = s.scalars(select(Scenario.id).where(Scenario.code == "D")).one()
-        for tag, kw in (
+        runs: list[tuple[str, dict[str, Any]]] = [
             ("base", {}),
             ("D", {"scenario_id": d_id}),
             ("vs11", {"compare_snapshot_id": 11}),
-        ):
-            rep = generate(s, rev, "html", out_dir=out / tag, **kw)  # type: ignore[arg-type]
-            got[tag] = hashlib.sha256(rep.path.read_bytes()).hexdigest()
+        ]
+        if user_sc is not None:  # N-M1: 사용자 시나리오 보고서(그 리비전에 저장본이 있는 시나리오)
+            runs.append(("user", {"scenario_id": user_sc}))
+        for tag, kw in runs:
+            rep = generate(s, rev, "html", out_dir=out / tag, **kw)
+            got[tag] = hashlib.sha256(_strip_generated(rep.path.read_bytes())).hexdigest()
     return got
 
 
+def _strip_generated(html: bytes) -> bytes:
+    """보고서 '생성 시각'은 렌더할 때마다 지금(R3 6차 m4 — 저장본에 고정하지 않는다) — 바이트 비교에서 그 줄만 뺀다."""
+    import re
+
+    return re.sub(rb'<time class="generated-at"[^<]*</time>', b"", html)
+
+
 class _Grab:
-    def __init__(self, client: TestClient, rev: int, tmp: Path) -> None:
-        self.client, self.rev, self.tmp, self.n = client, rev, tmp, 0
+    def __init__(self, client: TestClient, rev: int, tmp: Path, user_sc: int | None = None) -> None:
+        self.client, self.rev, self.tmp, self.n, self.user_sc = client, rev, tmp, 0, user_sc
         with get_session() as s:
             ids = sorted(s.scalars(select(Complex.id).where(Complex.region_id == 1)))
-        self.urls = _urls(rev, ids)
+        self.urls = _urls(rev, ids, _prov_ids(client, rev))
         self.base = self.grab()
 
     def grab(self) -> dict[str, Any]:
@@ -116,7 +160,7 @@ class _Grab:
             assert r.status_code == 200, (u, r.status_code, r.text[:300])
             out[u] = r.content
         self.n += 1
-        out["report"] = _report_bytes(self.rev, self.tmp / f"g{self.n}")
+        out["report"] = _report_bytes(self.rev, self.tmp / f"g{self.n}", self.user_sc)
         return out
 
     def same(self, step: str) -> None:
@@ -168,25 +212,15 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
             s.flush()
             cid = cat.id
         body = {"location_confirmed": True, "complex_ids": [CX], "expected_ym": "2029-01"}
-        assert client.patch(f"/api/catalysts/{cid}", json=body, headers=WRITE).status_code == 200
-        assert (
-            client.patch(
-                f"/api/catalysts/{cid}", json={**body, "expected_ym": "2030-06"}, headers=WRITE
-            ).status_code
-            == 200
-        )
-        assert (
-            client.patch(
-                f"/api/catalysts/{cid}", json={**body, "expected_ym": None}, headers=WRITE
-            ).status_code
-            == 200
-        )
-        assert (
-            client.patch(
-                f"/api/catalysts/{cid}", json={**body, "complex_ids": [CX, 1]}, headers=WRITE
-            ).status_code
-            == 200
-        )
+        # 계약 .11(D14-5): 발행을 부르는 쓰기 = 202 + job_id(발행은 worker 잡 — 여기서는 돌리지 않는다)
+        for b in (
+            body,
+            {**body, "expected_ym": "2030-06"},
+            {**body, "expected_ym": None},
+            {**body, "complex_ids": [CX, 1]},
+        ):
+            r = client.patch(f"/api/catalysts/{cid}", json=b, headers=WRITE)
+            assert r.status_code == 202, r.text
 
     def f_living_areas() -> None:
         region = client.get("/api/regions/1", headers=READ).json()
@@ -196,7 +230,7 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
         moved, la2["legal_dong_codes"] = la2["legal_dong_codes"][:3], la2["legal_dong_codes"][3:]
         areas.append({"id": None, "name": "새 생활권", "legal_dong_codes": moved})
         r = client.put("/api/regions/1/living-areas", json={"living_areas": areas}, headers=WRITE)
-        assert r.status_code == 200, r.text
+        assert r.status_code == 202, r.text
 
     def g_region_name() -> None:
         sels = client.get("/api/regions/1", headers=READ).json()["selections"]
@@ -238,7 +272,7 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
                     if c.verify_status == "contradicted":  # B 의 고친 문장 재검증 통과(claim.reverify) 가정
                         c.verify_status = "verified"
                 newest.status = "ready"
-                ok, n = publish(s, newest.id, now="2026-10-09T13:05:00+09:00")
+                ok, n = publish(s, newest.id, now="2026-10-09T13:05:00+09:00")  # worker 발행 함수(D14-5)
                 assert ok, n
         _publish_revision()
 
@@ -258,8 +292,18 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
 
 @pytest.mark.parametrize("which", ["devseed", "republished"])
 def test_d13_1_published_revision_bytes_never_change(client: TestClient, tmp_path: Path, which: str) -> None:
+    user_sc = None
+    if which == "republished":  # 발행 전에 만든 사용자 시나리오 — 그 리비전에 저장본이 있다(N-M1)
+        req = {
+            "name": "불변 사용자",
+            "params": {"equity_won": 250000000, "holding_years": 4},
+            "weights": _weights(),
+        }
+        r = client.post("/api/scenarios", json=req, headers=WRITE)
+        assert r.status_code == 201, r.text
+        user_sc = int(r.json()["id"])
     rev = SNAP if which == "devseed" else _publish_revision()
-    grab = _Grab(client, rev, tmp_path)
+    grab = _Grab(client, rev, tmp_path, user_sc)
     for step, change in _mutations(client):
         change()
         grab.same(step)
@@ -276,6 +320,12 @@ def test_d13_1_published_get_does_not_run_live_computation(
     rev = _publish_revision()
     with get_session() as s:
         ids = sorted(s.scalars(select(Complex.id).where(Complex.region_id == 1)))
+    provs = _prov_ids(client, rev)
+    import app.api.routers.complexes as cxr
+
+    monkeypatch.setattr(
+        cxr, "provenance_body", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("실시간 출처"))
+    )
 
     def boom(*_a: Any, **_k: Any) -> Any:
         raise AssertionError("발행 리비전 GET 이 실시간 계산을 탔다")
@@ -284,7 +334,7 @@ def test_d13_1_published_get_does_not_run_live_computation(
         monkeypatch.setattr(mod, name, boom)
     for name in sv.LIVE_BUILDERS:
         monkeypatch.setattr(sv, name, boom)
-    for u in _urls(rev, ids):
+    for u in _urls(rev, ids, provs):
         r = client.get(u, headers=READ)
         assert r.status_code == 200, (u, r.text[:300])
     _report_bytes(rev, tmp_path)
@@ -301,3 +351,7 @@ def test_d13_1_building_revision_is_live(client: TestClient) -> None:
     assert before != after == "2031-03"
     with get_session() as s:
         assert s.get(Snapshot, live).status == "building"  # type: ignore[union-attr]
+
+
+def _weights() -> dict[str, float]:
+    return {"p10": 0.3, "rerank": 0.15, "gap": 0.2, "benchmark": 0.1, "supply": 0.1, "move_in": 0.15}

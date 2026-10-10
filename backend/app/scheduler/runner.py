@@ -300,6 +300,23 @@ def _parse(argv: Sequence[str]) -> argparse.Namespace:
     return args
 
 
+def backfill_views(ctx: SchedulerContext) -> dict[str, Any] | None:
+    """worker 시작 때 저장본 backfill(D14-9 — 0010 이전 발행분·계약 .11 새 종류·행 단위 사람 확인 이전, 멱등). 실패해도
+    worker 는 계속 돈다(그 리비전 GET 은 503 materialize_pending — ``python -m app.snapshot_view backfill`` 로 다시)."""
+    from app.snapshot_view import backfill
+
+    try:
+        with ctx.session_factory() as session:
+            engine = session.get_bind().engine
+        res = backfill(engine)
+    except Exception as exc:
+        log.error("worker.backfill_failed", extra={"error": type(exc).__name__})
+        return None
+    if res.get("snapshots") or res.get("human_checks_migrated"):
+        log.info("worker.backfill", extra={"snapshots": len(res["snapshots"]), "rows": res["rows"]})
+    return res
+
+
 def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) -> int:
     from app.scheduler.degraded import check_recovery
     from app.scheduler.jobs import build_scheduler, ensure_reference
@@ -314,6 +331,7 @@ def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) 
         if args.once:
             return 0
     if args.once:
+        backfill_views(ctx)
         check_recovery(ctx)
         done = run_until_idle(ctx, max_jobs=args.max_jobs)
         log.info("worker.once.done", extra={"jobs": len(done)})
@@ -336,6 +354,7 @@ def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) 
         while not stop.is_set() and not _has_schema(ctx):
             if stop.wait(interval):
                 return 0
+        backfill_views(ctx)
         ensure_reference(ctx)
         if not args.no_schedule:
             sched = build_scheduler(ctx)

@@ -24,7 +24,7 @@ from app.core.contracts_gen import (
     RequirementRule,
     Scenario,
 )
-from app.core.time import format_d_day
+from app.core.time import format_d_day, kst_day
 
 PreStatus = Literal["충족", "미충족", "미입력", "확인 불가"]
 JudgeCheck = Literal["supported", "contradicted", "unknown"]
@@ -244,7 +244,7 @@ def _checked_note(c: ComplexScoreInput, asof_date: str) -> str:
     """접수 상태 확인 시각(intake_checked_at) → ', 확인 YYYY-MM-DD(D±n)'. 없으면 ''."""
     if not c.intake_checked_at:
         return ""
-    checked = parse_date(c.intake_checked_at[:10])
+    checked = parse_date(kst_day(c.intake_checked_at))  # KST 날짜(D14-6 공용 함수 — '…Z' 저녁은 다음 날)
     return f", 확인 {checked.isoformat()}({format_d_day(checked, parse_date(asof_date))})"
 
 

@@ -545,12 +545,13 @@ class _Binder:
 
         R3 5차 M10: 원 번호를 인용한 잔여 공고의 **입주 예정월**(``CITED_COMPLEX_FIELDS``)은 원 단지 후보로 받는다 — 이름·
         세대수·당첨일·청약 일정 같은 그 잔여 공고 자신의 값은 버리지만, 같은 단지의 입주 지연(2028-03 → 2028-09)은 정당한
-        갱신이다(공고문 최신 규칙으로 resolver 가 가른다)."""
+        갱신이다(공고문 최신 규칙으로 resolver 가 가른다). R3 6차 minor 16: 같은 블록으로 묶인(W12c, 자기 번호) 잔여 공고도
+        같다 — 타입 행은 계속 버린다."""
         if c.entity not in MERGED_UNIT_ENTITIES:
             return False
         key = (c.entity_key or "").split(":")[0]
         if key in self.merged:
-            return True
+            return c.entity != "complex" or c.field not in CITED_COMPLEX_FIELDS
         return c.entity == "complex" and key in self.cited and c.field not in CITED_COMPLEX_FIELDS
 
     def _id_for(
@@ -598,9 +599,11 @@ class _Binder:
 
 
 MERGED_UNIT_ENTITIES = frozenset({"complex", "complex_type"})
-CITED_COMPLEX_FIELDS = frozenset({"move_in_ym"})
-"""R3 5차 M10: 원 번호를 인용한 잔여 공고에서도 원 단지 후보로 받는 단지 필드(입주 예정월 — 같은 단지의 입주 일정 변경)."""
 """D11-4: 원 단지에 묶인 잔여·임의·무순위 공고에서 원 단지에 쓰지 않는 단지 단위 엔티티."""
+CITED_COMPLEX_FIELDS = frozenset({"move_in_ym"})
+"""R3 5차 M10·6차 minor 16: 원 단지에 묶인 잔여 공고(원 번호 인용·같은 블록 병합)에서도 원 단지 후보로 받는 단지 필드 —
+그 단지 전체의 일정인 입주 예정월(입주 일정 변경)뿐. 공고일·청약 일정·당첨일·계약일은 그 잔여 공급 자신의 일정이라
+원 단지 값을 덮지 않는다(D11-4 — ``remaining_event``·``payment_terms`` 에 기록)."""
 
 TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
 """면적 코드 경쟁률 행이 같은 면적의 단지 주택형 여럿에 맞을 때의 type_code(매칭하지 않음)."""

@@ -10,6 +10,7 @@ D11-1(계약 .8): 발행 스냅샷(12)은 불변 — 사람 확인 접수 행·�
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
@@ -20,6 +21,14 @@ from app.models import ChangeEvent, HumanCheck, IntakeStatus, JobRun
 from ._support import FIXTURE, WRITE, validate
 
 T3 = FIXTURE / "raw" / "human_check" / "t3_switzen_possible.json"
+
+
+def _t3_req() -> dict[str, Any]:
+    """T3 픽스처 본문. 픽스처(WP9)의 checked_at 은 날짜만 — 계약 .11(D14-6)부터 시간대 붙은 RFC3339 만 받으므로 그 날 KST 시각으로."""
+    req: dict[str, Any] = json.loads(T3.read_text(encoding="utf-8"))
+    if len(str(req["checked_at"])) == 10:
+        req["checked_at"] = f"{req['checked_at']}T10:00:00+09:00"
+    return req
 
 
 def _intake_count(complex_id: int) -> int:
@@ -43,7 +52,7 @@ def test_t3_before_is_unknown_403(client: TestClient) -> None:
 def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> None:
     from app.models import Snapshot
 
-    req = json.loads(T3.read_text(encoding="utf-8"))
+    req = _t3_req()
     before = _intake_count(4)
     with get_session() as s:
         jobs_before = int(s.scalar(select(func.count()).select_from(JobRun)) or 0)
@@ -111,7 +120,7 @@ def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> Non
 
 
 def test_human_check_validation(client: TestClient) -> None:
-    req = json.loads(T3.read_text(encoding="utf-8"))
+    req = _t3_req()
     r = client.post("/api/ops/human-checks", headers=WRITE, json={**req, "value_text": "아마도"})
     assert r.status_code == 422
     r = client.post("/api/ops/human-checks", headers=WRITE, json={**req, "complex_id": 99999})

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -1106,10 +1106,35 @@ class _Loader:
 
 
 def _score_views(
-    session: Session, run: ScoreRun | None, names: Mapping[int, str], la_names: Mapping[int, str]
+    session: Session,
+    run: ScoreRun | None,
+    names: Mapping[int, str],
+    la_names: Mapping[int, str],
+    *,
+    copy: bool = True,
 ) -> list[ScoreView]:
+    """점수 실행의 점수 행. 저장본 계산(``app.api.memo``) 안에서는 같은 실행·같은 이름이면 한 번만 만들고 얕은 사본을 돌려준다
+    (시나리오 보고서마다 §8 상황별 블록이 실행 5개를 다시 만들었다 — D14-5 성능. 사본이라 ``_scope_notes`` 가 고쳐도 안전)."""
     if run is None:
         return []
+    from app.api import memo
+
+    if memo.store() is None:
+        return _score_views_live(session, run, names, la_names)
+    key = ("report_score_views", run.id, hash(frozenset(names.items())), hash(frozenset(la_names.items())))
+    got = memo.cached(key, lambda: _score_views_live(session, run, names, la_names))
+    if (
+        not copy
+    ):  # 읽기만 하는 곳(§8 상황별 TOP 5) — 같은 객체를 그대로(보고서 직렬화 메모도 같은 객체로 맞는다)
+        return list(got)
+    import dataclasses
+
+    return [dataclasses.replace(v) for v in got]
+
+
+def _score_views_live(
+    session: Session, run: ScoreRun, names: Mapping[int, str], la_names: Mapping[int, str]
+) -> list[ScoreView]:
     totals = list(session.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == run.id)))
     comps = list(session.scalars(select(ScoreComponent).where(ScoreComponent.score_run_id == run.id)))
     weights = {k: float(v) for k, v in (run.weights or {}).items() if v is not None}
@@ -1642,7 +1667,7 @@ def _scenario_blocks(
         run = runs.get(sc.id)
         if run is None:
             continue
-        views = _score_views(ctx.session, run, ctx.names, la_of)
+        views = _score_views(ctx.session, run, ctx.names, la_of, copy=False)
         mine = [d for d in decisions if d.score_run_id == run.id]
 
         def order(v: DecisionView) -> tuple[bool, float]:
@@ -1861,21 +1886,31 @@ def load_report_live(
     loader = _Loader(session, snap, region, scenario, None, env or get_settings().env)
     ids = loader.scope_ids()
     key = ("complexes", snap.id, tuple(ids))
-    if cache is not None and key in cache:
-        loader.prov = cache[("prov", snap.id)]
-        complexes = [dataclasses.replace(cv) for cv in cache[key]]
-    else:
-        complexes = loader.complexes(ids)
-        if cache is not None:
-            cache[key] = [dataclasses.replace(cv) for cv in complexes]
-            cache[("prov", snap.id)] = loader.prov
     scenarios = list(session.scalars(select(Scenario).order_by(Scenario.id)))
     runs = {sc.id: r for sc in scenarios if (r := _latest_run(session, snap.id, sc.id)) is not None}
     run = runs.get(scenario.id)
-    _apply_stored_scopes(complexes, _stored_scopes(session, run), snap.id)
-    changed = _changed_after_run(session, snap, run, [c.id for c in complexes])
-    for cv in complexes:
-        cv.changed_after_run = cv.id in changed
+    stored_scopes = _stored_scopes(session, run)
+    changed = _changed_after_run(session, snap, run, ids)
+    # 같은 계산(cache) 안에서 저장 범위·'재판정 필요'가 앞 시나리오와 같으면 그 시나리오의 단지 뷰를 그대로 쓴다(사본·범위
+    # 적용·직렬화를 다시 하지 않는다 — D14-5 성능). 다르면 얕은 사본에 이 시나리오 범위를 적용한다
+    view_key = (key, tuple(sorted(stored_scopes.items())), tuple(sorted(changed)))
+    if cache is not None and ("cx_views", view_key) in cache:
+        loader.prov = cache[("prov", snap.id)]
+        complexes = cache[("cx_views", view_key)]
+    else:
+        if cache is not None and key in cache:
+            loader.prov = cache[("prov", snap.id)]
+            complexes = [dataclasses.replace(cv) for cv in cache[key]]
+        else:
+            complexes = loader.complexes(ids)
+            if cache is not None:
+                cache[key] = [dataclasses.replace(cv) for cv in complexes]
+                cache[("prov", snap.id)] = loader.prov
+        _apply_stored_scopes(complexes, stored_scopes, snap.id)
+        for cv in complexes:
+            cv.changed_after_run = cv.id in changed
+        if cache is not None:
+            cache[("cx_views", view_key)] = complexes
     names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.region_id == region.id))}
     ctx = _Ctx(
         session, snap, region, loader, ids, complexes, {c.id: c for c in complexes}, names, snap.asof_date
@@ -1886,11 +1921,25 @@ def load_report_live(
     for cx in complexes:
         by_la[cx.living_area_name].append(cx)
 
-    logs = loader.calls()
+    # 저장본 계산(cache — 시나리오만 다른 적재 여러 번): 시나리오와 무관한 부분은 한 번만 만든다(D14-5 성능). 범위에 따라
+    # 달라질 수 있는 부분은 단지 범위 지문(sfp)이 같을 때만 다시 쓴다(시나리오 실행끼리 범위가 다르면 다시 계산)
+    sfp = (tuple(ids), tuple((cv.id, cv.judge_scope) for cv in complexes))
+
+    def part(name: str, scoped: bool, make: Callable[[], Any]) -> Any:
+        if cache is None:
+            return make()
+        k = ("report_part", snap.id, name, sfp if scoped else None)
+        if k not in cache:
+            cache[k] = make()
+        return cache[k]
+
+    logs = part("logs", False, loader.calls)
     seq_status = {j.seq: j.status for j in logs}
     # D9-1 참여 규칙: 사다리는 '판정 대상'만. 다른 범위 단지의 남은 사다리 행(이전 범위의 판정·이월)은
     # 표(§6·§7·§8)·C1·부록 A 반영 위치 어디에도 쓰지 않는다(API ``views.load_bundles`` 와 같은 규칙).
-    all_ladders = list(session.scalars(select(Ladder).where(Ladder.snapshot_id == snap.id)))
+    all_ladders = part(
+        "ladders", False, lambda: list(session.scalars(select(Ladder).where(Ladder.snapshot_id == snap.id)))
+    )
     ladders = [
         lad
         for lad in all_ladders
@@ -1901,23 +1950,31 @@ def load_report_live(
         for r in runs.values()
         for d in session.scalars(select(Decision).where(Decision.score_run_id == r.id))
     ]
-    claims = list(session.scalars(select(Claim).where(Claim.snapshot_id == snap.id).order_by(Claim.id)))
+    claims = part(
+        "claims",
+        False,
+        lambda: list(session.scalars(select(Claim).where(Claim.snapshot_id == snap.id).order_by(Claim.id))),
+    )
     from app.facts_view import region_catalysts
 
     # '호재 아님'은 §5 에 넣지 않는다(D11-2). 발행 리비전은 이 데이터가 저장된다(D13-1)
-    cat_pairs = region_catalysts(session, region.id)
+    cat_pairs = part("cat_pairs", False, lambda: region_catalysts(session, region.id))
     catalysts = [c for c, _ in cat_pairs]
-    docs = list(
-        session.scalars(
-            select(RawDocument).where(RawDocument.region_id == region.id).order_by(RawDocument.id)
-        )
+    docs = part(
+        "docs",
+        False,
+        lambda: list(
+            session.scalars(
+                select(RawDocument).where(RawDocument.region_id == region.id).order_by(RawDocument.id)
+            )
+        ),
     )
 
-    used = _used_in(ctx, ladders, decisions, runs.values(), claims, catalysts)
-    calls, judge_tools, versions = _calls(ctx, logs, used)
-    benchmarks, recent, supply, unsold = _market(ctx)
-    cat_views, stage_counts, links = _catalysts(ctx, cat_pairs)
-    ladder_views, ladder_other = _ladder_views(ctx, ladders)
+    used = part("used", True, lambda: _used_in(ctx, ladders, decisions, runs.values(), claims, catalysts))
+    calls, judge_tools, versions = part("calls", True, lambda: _calls(ctx, logs, used))
+    benchmarks, recent, supply, unsold = part("market", True, lambda: _market(ctx))
+    cat_views, stage_counts, links = part("catalysts", True, lambda: _catalysts(ctx, cat_pairs))
+    ladder_views, ladder_other = part("ladder_views", True, lambda: _ladder_views(ctx, ladders))
     scores = _score_views(session, run, names, la_of)
     _scope_notes(scores, ctx.by_id)
     scoped_out = _ladder_scoped_out(ctx, scores, all_ladders)
@@ -1929,10 +1986,13 @@ def load_report_live(
         ),
         key=lambda r: -(float(r[1].v) if isinstance(r[1].v, (int, float)) else -1.0),
     )
-    checklist, calendar = _checklist_calendar(ctx)
-    claim_rows, verify = _claims(claims)
-    references, invalid = _references(ctx, docs, catalysts)
-    label_counts = Counter(p.label for p in loader.prov.all_rows if p.chosen)
+    checklist, calendar = part("checklist", True, lambda: _checklist_calendar(ctx))
+    claim_rows, verify = part("claim_rows", False, lambda: _claims(claims))
+    references, invalid = part("references", True, lambda: _references(ctx, docs, catalysts))
+    label_counts = part("labels", False, lambda: Counter(p.label for p in loader.prov.all_rows if p.chosen))
+    conflicts = part("conflicts", True, lambda: _conflicts(ctx, seq_status))
+    failed_sources = part("failed_sources", True, lambda: _failed_sources(ctx, docs))
+    changes = part("changes", True, lambda: _changes(ctx))
 
     data = ReportData(
         snapshot_id=snap.id,
@@ -1975,7 +2035,7 @@ def load_report_live(
         recent_sale_cases=recent,
         benchmark_areas=_benchmark_areas(ctx, benchmarks, scores, snap.asof_date),
         catalysts=cat_views,
-        conflicts=_conflicts(ctx, seq_status),
+        conflicts=conflicts,
         supply=supply,
         unsold=unsold,
         ladders=ladder_views,
@@ -1990,13 +2050,13 @@ def load_report_live(
         calendar=calendar,
         claims=claim_rows,
         verify=verify,
-        failed_sources=_failed_sources(ctx, docs),
+        failed_sources=failed_sources,
         label_counts=dict(label_counts),
         unresolved_calls=[c for c in calls if c.status != "ok"],
         calls=calls,
         references=references,
         invalid_urls=invalid,
-        changes=_changes(ctx),
+        changes=changes,
         complex_by_id=ctx.by_id,
         catalyst_links=links,
     )
@@ -2015,6 +2075,8 @@ def report_payload_live(
     from app.reports.codec import encode_data
 
     data = load_report_live(session, snapshot_id, scenario_id=scenario_id, cache=cache, env=env)
+    # 저장본의 생성 시각 = 발행 시각(같은 리비전을 다시 계산해도 같은 바이트). 보고서를 만들 때는 그때 시각으로 바꾼다(m4)
+    data.generated_at = str(data.published_at or "")
     run = _latest_run(session, snapshot_id, scenario_id)
     memo = cache.setdefault("codec", {}) if cache is not None else None
     return {
@@ -2056,9 +2118,36 @@ def load_report(
     snap, _region, scenario, compare = _resolve(session, snapshot_id, scenario_id, compare_snapshot_id)
     payload = _payload(session, snap, scenario)
     data: ReportData = decode_data(payload["data"])
+    # R3 6차 m4: '생성 시각'은 보고서를 만드는 지금이다(저장본의 계산 시각을 그대로 쓰지 않는다)
+    data.generated_at = now_kst().isoformat(timespec="seconds")
     if compare is not None:
-        data.extra = _extra(data, payload, _payload(session, compare, scenario), compare)
+        data.extra = _extra(data, payload, compare_payload(session, compare, scenario), compare)
     return data
+
+
+def compare_payload(session: Session, compare: Snapshot, scenario: Scenario) -> dict[str, Any]:
+    """§12 비교 기준 입력(D14-3): 같은 시나리오 저장본, 그 리비전에 그 시나리오가 없으면(발행 뒤 만든 사용자 시나리오)
+    기본 시나리오 — §12 후보 건수 비교는 시나리오와 무관하게 낸다(delta 표는 ``export.generate`` 가 생략)."""
+    from app import snapshot_view as sv
+
+    try:
+        return _payload(session, compare, scenario)
+    except sv.NotInRevision:
+        base = session.scalars(select(Scenario).where(Scenario.code == "base")).first()
+        if base is None or base.id == scenario.id:
+            raise
+        return _payload(session, compare, base)
+
+
+def scenario_in_revision(session: Session, snap: Snapshot, scenario_id: int) -> bool:
+    """그 리비전에 그 시나리오 보고서 입력이 있는가(D14-3 — 발행 리비전은 저장본, 발행 전은 늘 True)."""
+    from app import snapshot_view as sv
+
+    if not sv.is_published(snap):
+        return True
+    if not sv.kind_ready(session, snap.id, "report"):
+        raise sv.MaterializePending(f"발행 리비전 {snap.id} 의 report 저장본을 아직 만들지 않았다")
+    return sv.stored(session, snap.id, "report", scenario=str(scenario_id)) is not None
 
 
 def _changed_after_run(session: Session, snap: Snapshot, run: ScoreRun | None, ids: list[int]) -> set[int]:

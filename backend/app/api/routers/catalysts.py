@@ -185,7 +185,7 @@ def _link_view(link: CatalystLink) -> dict[str, Any]:
     }
 
 
-@router.patch("/catalysts/{id}")
+@router.patch("/catalysts/{id}", status_code=202)
 def update_catalyst(
     session: DB, request: Request, id: int, body: Annotated[Any, Body()] = None
 ) -> JSONResponse:
@@ -268,16 +268,24 @@ def update_catalyst(
     job_out: dict[str, Any] | None = None
     snap = _snapshot_for(session, region.id)
     if before != target:
-        # 연결은 점수·판정에 쓰지 않는다 — rejudge 대신 새 리비전을 바로 발행해 그 시점 연결을 얼린다(D12-4, R3 4차 minor)
+        # 연결은 점수·판정에 쓰지 않는다 — rejudge 대신 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행). 발행은
+        # worker 가 한다(D14-5 — 요청 안에서 저장본을 만들지 않는다, 계약 .11 202 + job_id)
         from app.scheduler.snapshots import republish
 
-        republish(session, region.id, reason=f"호재 위치 확인: {cat.name}"[:200], created_at=now_iso())
+        job = republish(session, region.id, reason=f"호재 위치 확인: {cat.name}"[:200], created_at=now_iso())
+        job_out = job_view(job) if job is not None else None
     session.commit()
     checked = (snap.asof_date if snap is not None else now_iso())[:10]
     fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [cat.id]))
     view = catalyst_view(cat, checked, fm=fm, linked_ids=sorted(target))
     return JSONResponse(
-        {"catalyst": view, "links": [_link_view(links[c]) for c in sorted(target)], "job": job_out}
+        {
+            "catalyst": view,
+            "links": [_link_view(links[c]) for c in sorted(target)],
+            "job": job_out,
+            "job_id": job_out["id"] if job_out is not None else None,
+        },
+        status_code=202,
     )
 
 

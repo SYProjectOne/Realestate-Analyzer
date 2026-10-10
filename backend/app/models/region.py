@@ -91,7 +91,9 @@ class SnapshotView(Base):
     - ``kind`` = ``SNAPSHOT_VIEW_KIND``, ``key`` = 단지 id 문자열(단지 상세)·생활권 id(시장) 또는 '',
       ``scenario`` = 시나리오 id 문자열(시나리오 무관 종류는 '').
     - ``body`` = UTF-8 JSON 의 zlib 압축(용량 — 단지 상세 수백 개 × 시나리오), ``sha256`` = 압축 전 JSON 의 sha256.
-    - (snapshot_id, kind, key, scenario) 유일. 발행 리비전은 불변이라 고치지 않는다(devseed·합성 도구만 다시 만든다)."""
+    - (snapshot_id, kind, key, scenario) 유일. 발행 리비전은 불변이라 고치지 않는다(devseed·합성 도구만 다시 만든다).
+    - 0011(계약 .11, D14-5): 행은 worker 발행 잡이 나눠 쓰고 published 전환은 마지막 짧은 트랜잭션 — 발행 전 리비전에 남은
+      행은 실패한 시도의 찌꺼기(다음 시도가 지운다). kind 에 provenance·claims(D14-1) 추가."""
 
     __tablename__ = "snapshot_view"
     __table_args__ = (
@@ -106,3 +108,6 @@ class SnapshotView(Base):
     scenario: Mapped[str] = mapped_column(String(16), server_default="")
     body: Mapped[bytes] = mapped_column(LargeBinary)
     sha256: Mapped[str] = mapped_column(String(64))
+    contract_version: Mapped[str] = mapped_column(String(32), server_default="")
+    """0011(D14-4): 이 행을 만든 계약 버전 — 읽을 때 현재 ``CONTRACT_VERSION`` 과 sha256 을 검증한다(다르면 500
+    ``stored_view_mismatch``). 모양을 바꾸는 계약 변경은 저장본 변환 마이그레이션이 이 값을 올린다."""

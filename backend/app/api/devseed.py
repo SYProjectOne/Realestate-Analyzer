@@ -1308,11 +1308,46 @@ def _guard(settings: Settings) -> None:
 
 
 def _reset_schema(settings: Settings) -> None:
+    """SQLite 개발 DB 를 비우고 지금 모델로 다시 만든 뒤 alembic 을 head 로 찍는다(D14-9·R3 6차 m3).
+
+    예전 ``Base.metadata.drop_all`` 은 지금 모델에 없는 테이블(0009 ``snapshot_state`` 등)을 몰라
+    FK 오류가 났고
+    ``alembic_version`` 이 옛 값(0009)으로 남았다 — DB 에 실제로 있는 테이블을 반사(reflect)해 모두 지운다."""
+    import sqlalchemy as sa
+
     engine = get_engine(settings)
     if not settings.is_sqlite:
         raise RuntimeError("devseed --reset 은 SQLite 개발 DB 에서만 쓴다(운영 DB 보호)")
-    Base.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        meta = sa.MetaData()
+        meta.reflect(bind=conn)
+        for table in reversed(meta.sorted_tables):
+            conn.exec_driver_sql(f'DROP TABLE IF EXISTS "{table.name}"')
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(engine)
+    _stamp_head(engine)
+
+
+def _stamp_head(engine: Any) -> None:
+    """``alembic_version`` = 마이그레이션 head(스키마를 모델로 만들었으므로).
+
+    마이그레이션 디렉터리가 없으면 건너뛴다."""
+    from alembic.script import ScriptDirectory
+
+    script_dir = Path(__file__).resolve().parents[3] / "contracts" / "migrations"
+    if not script_dir.is_dir():  # pragma: no cover - 계약 디렉터리 없는 배포본
+        log.warning("devseed.stamp_skipped", extra={"path": str(script_dir)})
+        return
+    heads = ScriptDirectory(str(script_dir)).get_heads()
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+        conn.exec_driver_sql(
+            "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL, "
+            "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+        )
+        for head in heads:
+            conn.exec_driver_sql("INSERT INTO alembic_version (version_num) VALUES (?)", (head,))
 
 
 def seed(
@@ -1458,17 +1493,22 @@ def _synth_generate(n: int) -> list[dict[str, Any]]:
     return out
 
 
-def load_synth(settings: Settings | None = None, *, n: int = 1000, snapshot_id: int = 12) -> int:
+def load_synth(
+    settings: Settings | None = None, *, n: int = 1000, snapshot_id: int = 12, materialize: bool = True
+) -> int:
     """T16: 합성 단지 n개(contracts/fixtures/tools/synth.py)를 지역 1·스냅샷에 넣는다.
 
-    출처 행은 Fact 에서 합성한다(성능 전용)."""
+    출처 행은 Fact 에서 합성한다(성능 전용). ``materialize=False`` 는 저장본을 다시 만들지 않는다
+    (발행 잡 성능 측정 —
+    D14-5, 측정할 리비전을 따로 발행한다)."""
     s = settings or get_settings()
     _guard(s)
     bundles = _synth_generate(n)
     with get_session(s) as session:
         count, _ = load_bundles(session, bundles, {}, snapshot_id=snapshot_id, missing="create")
-        # 합성 단지가 든 발행 스냅샷 저장본을 다시(D13-1) — 그 스냅샷만(과거 리비전은 합성 전 기록)
-        rematerialize(session, settings=s, snapshot_ids=[snapshot_id])
+        if materialize:
+            # 합성 단지가 든 발행 스냅샷 저장본을 다시(D13-1) — 그 스냅샷만(과거 리비전은 합성 전 기록)
+            rematerialize(session, settings=s, snapshot_ids=[snapshot_id])
     return count
 
 

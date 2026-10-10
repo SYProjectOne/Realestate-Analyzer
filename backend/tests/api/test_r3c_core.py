@@ -149,6 +149,9 @@ def test_m4_price_demotion_targets_current_notice_price(client: TestClient) -> N
 
 
 def test_minor9_second_claim_on_same_fact_shows_demotion(client: TestClient) -> None:
+    from ._support import as_live
+
+    as_live()  # 계약 .11(D14-1): 발행 리비전 주장 목록은 저장본 — 지금 값은 발행 전 리비전에서 본다
     first = _demote_resale(client)
     second = _fact_claim()
     rows = {c["id"]: c for c in client.get(f"/api/snapshots/{SNAP}/claims", headers=READ).json()}
@@ -379,9 +382,9 @@ def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestCl
     body = {"location_confirmed": True, "lat": 37.59, "lon": 126.67, "living_area_ids": ["la_2"], "complex_ids": [1],
             "expected_ym": "2028-06"}  # fmt: skip
     r = client.patch(f"/api/catalysts/{cat_id}", json=body, headers=WRITE)
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text  # 계약 .11(D14-5): 발행은 worker 잡
     out = r.json()
-    validate("updateCatalyst", 200, out)
+    validate("updateCatalyst", 202, out)
     linked = sorted(lk["complex_id"] for lk in out["links"])
     assert linked == sorted({1, *la2})
     assert all(
@@ -392,8 +395,12 @@ def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestCl
         out["catalyst"]["expected_ym"]["v"] == "2028-06"
         and out["catalyst"]["expected_ym"]["label"] == "확인됨"
     )
-    # 계약 .9(D12-4, R3 4차 minor): 연결은 점수에 쓰지 않는다 — rejudge 대신 새 리비전을 바로 발행(그 시점 연결을 얼린다)
-    assert out["job"] is None
+    # 계약 .9(D12-4): 연결은 점수에 쓰지 않는다 — rejudge 대신 새 리비전. 계약 .11(D14-5): 발행은 snapshot.publish 잡
+    assert out["job"]["job_name"] == "snapshot.publish" and out["job_id"] == out["job"]["id"]
+    from ._support import run_job
+
+    status, _stats = run_job(out["job_id"])
+    assert status == "done"
     with get_session() as s:
         rev = s.scalars(select(Snapshot).where(Snapshot.region_id == 1).order_by(Snapshot.id.desc())).first()
         assert (
@@ -409,7 +416,7 @@ def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestCl
         "ComplexDetail.catalysts 가 채워진다"
     )
     r = client.patch(f"/api/catalysts/{cat_id}", json={"location_confirmed": False}, headers=WRITE)
-    assert r.status_code == 200 and r.json()["links"] == []
+    assert r.status_code == 202 and r.json()["links"] == []
     with get_session() as s:
         assert not list(s.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat_id)))
     bad = client.patch(
@@ -447,9 +454,9 @@ def test_d11_7_patch_region_expands_selection_and_enqueues_expand_job(client: Te
     assert same.status_code == 409
     add = {"kind": "sigungu", "code": new_sgg, "full_name": f"추가 {sgg_name}"}
     r = client.patch("/api/regions/1", json={"selections": [*old_sel, add]}, headers=WRITE)
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text  # 계약 .11(D14-5): 발행을 부르는 쓰기 = 202 + job_id
     out = r.json()
-    validate("updateRegion", 200, out)
+    validate("updateRegion", 202, out)
     assert out["added"] == [add] and out["removed"] == []
     areas = {a["id"]: a for a in out["region"]["living_areas"]}
     for aid, codes in old_areas.items():

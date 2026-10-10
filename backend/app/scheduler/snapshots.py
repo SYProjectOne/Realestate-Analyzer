@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.contracts_gen import Region as RegionDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.judge.claims import remaining_contradicted
-from app.models import Region, Snapshot
+from app.models import JobRun, Region, Snapshot
 
 __all__ = [
     "contradicted_count",
@@ -25,6 +25,7 @@ __all__ = [
     "mark_compare_base",
     "previous",
     "publish",
+    "publish_with_stats",
     "region_dto",
     "republish",
     "snapshot_dto",
@@ -146,24 +147,26 @@ def mark_compare_base(session: Session, snap: Snapshot, reason: str) -> Snapshot
     return session.get(Snapshot, snap.revision_of) if snap.revision_of is not None else None
 
 
-def republish(session: Session, region_id: int, *, reason: str, created_at: str) -> Snapshot | None:
+def republish(session: Session, region_id: int, *, reason: str, created_at: str) -> JobRun | None:
     """판정·점수에 쓰지 않는 리비전 값(호재 연결 — D12-4)만 바뀌었을 때: 판정기 호출·점수 재계산 없이 가장 새 발행
-    리비전의 새 리비전을 만들어 파생 행을 그대로 복사하고 바로 발행한다(발행 순간 새 값이 얼려진다).
+    리비전의 새 리비전(building)을 만들고 ``snapshot.publish`` 잡(``carry_from_snapshot_id``)을 등록한다 — worker 가 파생 행을
+    복사하고 발행한다(D14-5: API 요청 안에서 발행하지 않는다, 계약 .11). 반환 = 그 잡(API 202 + job_id).
 
-    R3 4차 minor: 예전에는 연결이 바뀔 때마다 rejudge 잡(판정 파이프라인)을 등록했다. 판정 중인(미발행) 리비전이 있으면
-    그 리비전이 발행될 때 새 값으로 얼려지므로 아무것도 하지 않는다(None)."""
+    판정 중인(미발행) 리비전이 있으면 그 리비전이 발행될 때 새 값으로 저장되므로 아무것도 하지 않는다(None)."""
     newest = latest_for_region(session, region_id)
     if newest is None or newest.status != "published":
         return None
-    from app.scheduler.persist import carry_forward
+    from app.scheduler.jobs import enqueue
 
     rev = new_revision(session, newest, reason=reason, created_at=created_at)
     if rev.id == newest.id:  # pragma: no cover - new_revision 은 발행 리비전이면 늘 새 행
         return None
-    carry_forward(session, newest.id, rev.id, created_at=created_at)
-    rev.status = "ready"
-    publish(session, rev.id, now=created_at)
-    return rev
+    return enqueue(
+        session,
+        "snapshot.publish",
+        {"snapshot_id": rev.id, "carry_from_snapshot_id": newest.id},
+        kind="manual",
+    )
 
 
 def latest_for_region(session: Session, region_id: int) -> Snapshot | None:
@@ -182,26 +185,31 @@ def contradicted_count(session: Session, snapshot_id: int) -> int:
 
 
 def publish(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int]:
-    """contradicted claim 이 0개면 status=published. 반환 (published 여부, contradicted 수). commit 은 호출자.
+    """contradicted claim 이 0개면 발행. 반환 (published 여부, contradicted 수). ``publish_with_stats`` 참고."""
+    ok, n, _stats = publish_with_stats(session, snapshot_id, now=now)
+    return ok, n
 
-    degraded 스냅샷(점수 미계산)·building(판정 전)은 publish 하지 않는다.
-    """
+
+def publish_with_stats(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int, dict[str, Any]]:
+    """**worker 전용**(D14-5). degraded(점수 미계산)·building(판정 전)·contradicted 남음이면 발행하지 않는다.
+
+    발행 = ``app.snapshot_view.publish_revision``: 호출자 세션의 변경을 먼저 commit 하고(저장본 계산은 다른 연결의 읽기),
+    계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본 화면이다.
+    반환 stats = 저장본 잡 통계(행·바이트·출처 누락 건수·쓰기 잠금 최대 시간 등, D14-8)."""
     snap = session.get(Snapshot, snapshot_id)
     if snap is None:
         raise LookupError(f"snapshot {snapshot_id} 없음")
     n = contradicted_count(session, snapshot_id)
     if n > 0 or snap.degraded or snap.status == "building":
-        return False, n
-    if snap.status != "published":
-        snap.status = "published"
-        snap.published_at = now
-        session.flush()
-        from app.snapshot_view import materialize
+        return False, n, {}
+    if snap.status == "published":
+        return True, 0, {}
+    session.commit()
+    from app.snapshot_view import publish_revision
 
-        # D13-1: 같은 트랜잭션에서 그 리비전의 화면 응답 전부·보고서 입력을 저장한다(이후 GET 은 저장본만 읽는다).
-        # 실패하면 발행도 함께 되돌아간다(호출자의 rollback) — 저장본 없는 발행 리비전은 생기지 않는다
-        materialize(session, snapshot_id)
-    return True, 0
+    res = publish_revision(session.get_bind(), snapshot_id, now=now)
+    session.expire_all()
+    return res.published, res.contradicted, dict(res.stats)
 
 
 def _plain(value: Any) -> Any:

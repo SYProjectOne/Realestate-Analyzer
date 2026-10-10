@@ -65,6 +65,10 @@ def make_engine(url: str | None = None, *, settings: Settings | None = None, ech
         @event.listens_for(engine, "begin")
         def _sqlite_begin(conn: Connection) -> None:
             conn.exec_driver_sql("BEGIN")
+            # R3 6차 m15: 이 트랜잭션이 아직 쓰지 않았는지(``sqlite_wrote``) 알 수 있게
+            # 시작 시 변경 행 수를 적어 둔다
+            raw = conn.connection.dbapi_connection
+            conn.info["sqlite_changes_at_begin"] = getattr(raw, "total_changes", None)
 
         return engine
 
@@ -76,6 +80,14 @@ def make_engine(url: str | None = None, *, settings: Settings | None = None, ech
         pool_pre_ping=True,
         pool_recycle=1800,
     )
+
+
+def sqlite_wrote(session: Any) -> bool:
+    """SQLite: 지금 트랜잭션이 이미 행을 바꿨는가(모르면 True — 되돌려 다시 하는 쪽을 막는다)."""
+    conn = session.connection()
+    start = conn.info.get("sqlite_changes_at_begin")
+    now = getattr(conn.connection.dbapi_connection, "total_changes", None)
+    return start is None or now is None or int(now) != int(start)
 
 
 def get_engine(settings: Settings | None = None) -> Engine:

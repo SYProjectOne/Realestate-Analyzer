@@ -36,7 +36,7 @@ from app.api.views import (
     score_row,
 )
 from app.core.settings import Settings
-from app.core.time import now_kst
+from app.core.time import kst_day, now_kst
 from app.models import ChangeEvent, Complex, RawDocument, Region, Scenario, Snapshot, Supply, Unsold
 
 router = APIRouter(tags=["snapshots"])
@@ -515,7 +515,7 @@ def export_complexes_csv(
             _csv_text(it["judge_scope"]),
             _csv_text(intake.get("status")),
             _csv_text(intake.get("reason")),
-            (intake.get("checked_at") or "")[:10],
+            kst_day(intake.get("checked_at")),  # KST 날짜(D14-6)
         ]
         for col in _CSV_FACTS:
             f = it[col]
