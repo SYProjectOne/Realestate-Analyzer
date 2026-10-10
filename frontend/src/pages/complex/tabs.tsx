@@ -1,27 +1,43 @@
 /** G3 탭 패널: 가격표 · 납부 조건 · 잔여 이력 · 시세 비교 · 호재 */
 import { useState, type ReactNode } from 'react';
-import type { ComplexDetail, Fact, LadderHorizon } from '@/api/types';
+import type { ComplexDetail, Fact, LadderHorizon, PriceRange } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
 
+/** 할인 문구에 필요한 가격 범위 필드 */
+export type DiscountPrice = Pick<PriceRange, 'discount' | 'discount_applied'>;
+
 /**
- * 할인 표시 문구(D11-6): 라벨 확인됨이면 구매가(low·high·mid)에서 이미 뺐다, 아니면 표시만 하고 빼지 않았다.
- * 할인이 없으면(null) null.
+ * 서버가 구매가에서 할인을 뺐는가(계약 .10 `PriceRange.discount_applied`, 5차 minor). 화면은 라벨로 추측하지 않는다 —
+ * 확인됨이어도 0·음수·최고가 이상 할인은 서버가 빼지 않는다. 필드가 없으면(선택 필드) null = 모름 → 문구 없음.
  */
-export function discountNote(discount: Fact | null | undefined): string | null {
+export function discountApplied(price: DiscountPrice | null | undefined): boolean | null {
+  const v = price?.discount_applied;
+  return typeof v === 'boolean' ? v : null;
+}
+
+/**
+ * 할인 표시 문구(D11-6): 서버가 뺐으면 '구매가에서 이미 뺐다', 안 뺐으면 '표시만 하고 빼지 않았다'.
+ * 할인이 없거나(null) 서버가 차감 여부를 알려 주지 않으면 null.
+ */
+export function discountNote(price: DiscountPrice | null | undefined): string | null {
+  const discount = price?.discount;
   if (!discount || discount.v === null) return null;
-  return discount.label === '확인됨'
-    ? t('page.G3.price.discountApplied')
-    : t('page.G3.price.discountNotApplied');
+  const applied = discountApplied(price);
+  if (applied === null) return null;
+  return applied ? t('page.G3.price.discountApplied') : t('page.G3.price.discountNotApplied');
 }
 
 /** 헤더용 짧은 문구(툴팁 없이 화면에 보인다 — 모바일, 4차 리뷰 minor) */
-export function discountShortNote(discount: Fact | null | undefined): string | null {
+export function discountShortNote(price: DiscountPrice | null | undefined): string | null {
+  const discount = price?.discount;
   if (!discount || discount.v === null) return null;
-  return discount.label === '확인됨'
+  const applied = discountApplied(price);
+  if (applied === null) return null;
+  return applied
     ? t('page.G3.price.discountAppliedShort')
     : t('page.G3.price.discountNotAppliedShort');
 }
@@ -36,7 +52,7 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
   const { price, types } = detail;
   const discounts = currentDiscounts(detail);
   const hasTypeDiscount = Object.keys(discounts).length > 0;
-  const note = discountNote(price.discount);
+  const note = discountNote(price);
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">

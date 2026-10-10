@@ -44,6 +44,34 @@ describe('safeHref', () => {
   ])('거부: %j', (input) => {
     expect(safeHref(input)).toBeNull();
   });
+
+  // 5차 리뷰 minor: IDNA 가 지우는 보이지 않는 문자로 내부망·다른 호스트 우회, %00
+  it.each([
+    'http://10.0.0­.1/',
+    'http://local​host/',
+    'http://local͏host/',
+    'http://local︀host/',
+    'http://local᠋host/',
+    'http://local⁠host/',
+    'http://﻿localhost/',
+    'http://local‍host/',
+    'http://local%C2%ADhost/',
+    'http://local%E2%80%8Bhost/',
+    'http://example.com/a%00b',
+    'http://example.com/%0a',
+    'http://exa%zzmple.com/',
+    '/api/raw/1%00',
+    '/api/​raw/1',
+  ])('거부(보이지 않는 문자·%%-제어 문자): %j', (input) => {
+    expect(safeHref(input)).toBeNull();
+  });
+
+  it.each([
+    ['https://news.example.com/%EA%B8%B0%EC%82%AC', 'https://news.example.com/%EA%B8%B0%EC%82%AC'],
+    ['https://example.com/?q=100%', 'https://example.com/?q=100%'],
+  ])('허용(정상 %%-인코딩·낱 %%): %s', (input, expected) => {
+    expect(safeHref(input)).toBe(expected);
+  });
 });
 
 describe('ExternalLink', () => {

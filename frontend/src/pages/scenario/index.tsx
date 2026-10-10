@@ -1,6 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useCanWrite } from '@/api/auth';
 import {
+  queryKeys,
   useCompare,
   useCreateJob,
   useCreateScenario,
@@ -478,14 +480,25 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
   const [baseline, setBaseline] = useState<{ rows: ScoreRow[]; snapshotId: string } | null>(null);
   // C-5: 재판정은 발행 스냅샷을 고치지 않고 같은 기준일 새 리비전에 쓴다(D11-1) — '이후'는 잡이 쓴 리비전에서 읽는다
   const [afterId, setAfterId] = useState<string | null>(null);
+  // 잡이 끝난 시각 — '이후' 대시보드는 이 시각 뒤에 받은 응답만 쓴다(5차 minor: 캐시에 남은 옛 값으로 잠깐
+  // '변화 없음'이 보이던 것 — 잡이 리비전을 알려 주지 않아 기준 리비전을 다시 읽는 경우 같은 쿼리 키다)
+  const [doneAt, setDoneAt] = useState<number | null>(null);
+  const qc = useQueryClient();
   const key = current ? keyOf(current) : null;
   const after = useDashboard(afterId, key);
   const finished = afterId !== null;
+  const afterFresh =
+    finished &&
+    doneAt !== null &&
+    !!after.data &&
+    !after.isPlaceholderData &&
+    after.dataUpdatedAt >= doneAt;
 
   const run = () => {
     if (!current || !snapshotId) return;
     setBaseline(before ? { rows: before, snapshotId } : null);
     setAfterId(null);
+    setDoneAt(null);
     createJob.mutate(
       {
         job_name: 'rejudge',
@@ -502,7 +515,11 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
 
   // 잡 완료 무효화(지역·리비전 목록·사실 화면)는 api/jobWatch 가 한다
   const onDone = (job: JobLike) => {
-    setAfterId(resultSnapshotId(job) ?? baseline?.snapshotId ?? snapshotId);
+    const id = resultSnapshotId(job) ?? baseline?.snapshotId ?? snapshotId;
+    setDoneAt(Date.now());
+    setAfterId(id);
+    // 캐시가 아직 신선(staleTime)해도 잡 뒤 값을 다시 받는다
+    if (id) void qc.invalidateQueries({ queryKey: queryKeys.dashboard(id, key) });
   };
 
   const afterSnapshot = snapshots.find((s) => String(s.id) === afterId) ?? null;
@@ -549,7 +566,12 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           ) : null}
         </p>
       ) : null}
-      {finished && baseline && after.data && !after.isPlaceholderData ? (
+      {finished && baseline && !afterFresh ? (
+        <p className="text-xs text-muted" data-testid="g5-after-loading">
+          {t('page.G5.afterLoading')}
+        </p>
+      ) : null}
+      {baseline && afterFresh && after.data ? (
         <DiffTable before={baseline.rows} after={after.data.top5} />
       ) : null}
     </Section>

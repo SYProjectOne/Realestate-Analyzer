@@ -16,7 +16,6 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
-import { sampleCountFact } from './_shared';
 import './_shared/testing';
 import { DiffTable } from './scenario';
 
@@ -82,6 +81,15 @@ describe('G6 실거래 건수 = FactCell (FactCell 밖 숫자 금지)', () => {
           checked_at: '2026-10-08',
           unit: 'won' as const,
         };
+        // 계약 .10: n_trades = 서버 Fact(라벨 = 그 실거래 행들의 가장 약한 라벨) — 화면은 그대로 보인다
+        const count = (v: number, label: '확인됨' | '추정', prov: string) => ({
+          v,
+          label,
+          prov,
+          checked_at: '2026-10-08',
+          unit: 'count' as const,
+          reason: label === '확인됨' ? null : '표본에 추정 행 포함',
+        });
         market.living_area_prices = [
           {
             living_area: 'A',
@@ -89,10 +97,20 @@ describe('G6 실거래 건수 = FactCell (FactCell 밖 숫자 금지)', () => {
             median_won: base,
             low_won: base,
             high_won: base,
-            n_trades: 12,
+            n_trades: count(12, '확인됨', 'cs_1'),
             trade_window: '2026-04~2026-09',
             basis: null,
-          } as Market['living_area_prices'][number],
+          },
+          {
+            living_area: 'B',
+            name: '생활권 B',
+            median_won: { ...base, label: '확인됨' as const },
+            low_won: base,
+            high_won: base,
+            n_trades: count(5, '추정', 'cs_2'),
+            trade_window: '2026-04~2026-09',
+            basis: null,
+          },
         ];
         return HttpResponse.json(market);
       }),
@@ -104,26 +122,12 @@ describe('G6 실거래 건수 = FactCell (FactCell 밖 숫자 금지)', () => {
     expect(nCell).toHaveTextContent('12');
     expect(within(nCell).getByTestId('label-badge')).toHaveTextContent('확인됨');
     expect(nCell.querySelector('[data-prov="cs_1"]')).not.toBeNull();
-  });
-
-  it('sampleCountFact: 집계 사실이 확인 불가면 건수도 확인 불가(같은 사유), 라벨은 빌리지 않는다', () => {
-    const fact = sampleCountFact(
-      { v: null, label: '확인 불가', reason: '표본 없음', prov: null, checked_at: '2026-10-08' },
-      0,
-    );
-    expect(fact).toMatchObject({ v: null, label: '확인 불가', reason: '표본 없음', unit: 'count' });
-    const ok = sampleCountFact(
-      { v: 1, label: '추정', reason: '대체', prov: 'cs_2', checked_at: '2026-10-08' },
-      7,
-    );
-    // 4차 minor: 중앙값 라벨('추정')을 빌리지 않는다 — 출처에서 센 건수는 확인됨
-    expect(ok).toMatchObject({ v: 7, label: '확인됨', prov: 'cs_2', reason: null });
-    const noProv = sampleCountFact(
-      { v: 1, label: '추정', reason: null, prov: null, checked_at: '2026-10-08' },
-      3,
-    );
-    expect(noProv).toMatchObject({ v: null, label: '확인 불가' });
-    expect(noProv.reason).toBeTruthy();
+    // 중앙값이 확인됨이어도 건수 라벨은 서버 n_trades Fact 의 것(화면이 만들지 않는다)
+    const row2 = within(table).getAllByRole('row')[2] as HTMLElement;
+    const nCell2 = within(row2).getAllByRole('cell')[3] as HTMLElement;
+    expect(nCell2).toHaveTextContent('5');
+    expect(within(nCell2).getByTestId('label-badge')).toHaveTextContent('추정');
+    expect(nCell2.querySelector('[data-prov="cs_2"]')).not.toBeNull();
   });
 });
 

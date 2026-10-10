@@ -1,6 +1,6 @@
 /**
  * 계약 2026-10-09.8 화면 실 API e2e(MSW 끔, devseed 테스트 DB 위 uvicorn) — 쓰기 흐름은 이 임시 DB 에만 쓴다.
- *  - D11-6 할인: PriceRange.discount 를 헤더·가격 표에 FactCell 로(확인됨 → 구매가에서 뺌, 그 밖 → 표시만)
+ *  - D11-6 할인: PriceRange.discount 를 헤더·가격 표에 FactCell 로(서버 discount_applied(계약 .10) → 구매가에서 뺌, 그 밖 → 표시만)
  *  - D11-5 호재 위치 확인: PATCH /catalysts/{id} → CatalystUpdated(links·reason·job) → 위치 확인됨 → 취소
  *  - M-5 사람 확인: 서버 허용 범위(화면이 먼저 막음) · entity_id(사실 행 지정) → 응답 entity·entity_id
  *  - D11-1 리비전: 사람 확인 → 재판정 잡 → worker 1회 → 같은 기준일 새 리비전 → 헤더 SnapshotPicker 기본 선택
@@ -79,6 +79,15 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     for (const cell of await typeCells.all()) {
       await expect(cell).toContainText('1,000만');
     }
+
+    // 계약 .10: 차감 문구는 서버 discount_applied — 확인됨이어도 최고가 이상 할인은 빼지 않는다(5차 minor)
+    setDiscount(DISCOUNT_COMPLEX, '확인됨', 50_000_000_000);
+    await page.reload();
+    await expect(page.getByTestId('price-discount')).toContainText(P.G3.price.discountNotApplied);
+    await expect(page.getByTestId('header-discount')).toHaveAttribute(
+      'title',
+      P.G3.price.discountNotApplied,
+    );
 
     setDiscount(DISCOUNT_COMPLEX, '추정');
     await page.reload();

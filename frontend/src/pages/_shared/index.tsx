@@ -3,7 +3,8 @@
  * 공통 컴포넌트(@/components)로 올릴 만한 것은 보고서 "공통화 제안"에 적는다.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
+import { ApiError } from '@/api/client';
 import type { Fact, JudgeScope } from '@/api/types';
 import { Badge, EmptyState } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
@@ -91,14 +92,51 @@ export function QueryState<T>({
     if (emptyText) return <EmptyState message={emptyText} />;
     return <>{children(query.data)}</>;
   }
-  if (query.error) {
-    return <EmptyState message={t('page.common.loadError', { detail: query.error.message })} />;
-  }
+  if (query.error) return <QueryError error={query.error} />;
   return (
     <p role="status" className="text-sm text-muted">
       {t('app.loading')}
     </p>
   );
+}
+
+/** 내장 시나리오 code — 모든 발행 리비전에 결과가 있다 */
+const BUILTIN_SCENARIOS: ReadonlySet<string> = new Set(['base', 'A', 'B', 'C', 'D']);
+
+/**
+ * 계약 .10 S2(D13-1): 발행 리비전은 발행 순간 시나리오별 저장본만 돌려준다 — 발행 **뒤에** 만든 사용자 시나리오
+ * (`?scenario=<id>`)로 옛 발행 리비전을 읽으면 404. 그 결과는 시나리오 실행(G5)이 만드는 새 리비전에 있다.
+ */
+export function isScenarioMissing(
+  error: unknown,
+  scenarioKey: string | null,
+  snapshotStatus: string | null | undefined,
+): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 404 &&
+    scenarioKey !== null &&
+    !BUILTIN_SCENARIOS.has(scenarioKey) &&
+    snapshotStatus === 'published'
+  );
+}
+
+/** 쿼리 오류 표시: 발행 리비전에 없는 시나리오면 시나리오 실행 안내, 그 밖은 일반 오류 */
+function QueryError({ error }: { error: Error }) {
+  const { scenarioId } = useScenario();
+  const { snapshot } = useSnapshot();
+  const search = useGlobalSearch();
+  if (isScenarioMissing(error, scenarioId, snapshot?.status)) {
+    return (
+      <div role="status" data-testid="scenario-missing" className="flex flex-col gap-1 text-sm">
+        <p>{t('page.common.scenarioMissing', { scenario: scenarioId ?? '' })}</p>
+        <Link to={`/scenario${search}`} className="underline">
+          {t('page.common.scenarioMissingRun')}
+        </Link>
+      </div>
+    );
+  }
+  return <EmptyState message={t('page.common.loadError', { detail: error.message })} />;
 }
 
 /** 스냅샷이 없을 때(지역 분석 전) 안내 */
@@ -171,25 +209,6 @@ export function RejudgeNeededBadge({ needed }: { needed: boolean | null | undefi
 /** 행 번호 표기 "#127" (판정 seq·잡 id — 수치가 아니라 식별자) */
 export function idText(id: number | string | null | undefined): string {
   return id === null || id === undefined ? '' : `#${String(id)}`;
-}
-
-/**
- * 표본 건수 Fact — 집계 사실(중앙값 등)의 건수 n 을 **그 사실과 같은 출처·확인일**로 보인다
- * (R3c: 실거래 건수가 FactCell 밖이던 것).
- * 라벨은 집계 사실의 것을 빌리지 않는다(4차 리뷰 minor): 중앙값이 '추정'(대체 표본·추정 계산)이어도 건수는
- * 그 출처에서 실제로 센 행 수라 '확인됨'이다. 집계 사실이 '확인 불가'이거나 출처·건수가 없으면 '확인 불가'
- * (사유는 집계 사실의 사유, 없으면 '표본 출처 없음').
- */
-export function sampleCountFact(base: Fact, n: number | null | undefined): Fact {
-  const unknown = base.label === '확인 불가' || n === null || n === undefined || base.prov === null;
-  return {
-    v: unknown ? null : n,
-    label: unknown ? '확인 불가' : '확인됨',
-    prov: base.prov,
-    checked_at: base.checked_at,
-    reason: unknown ? (base.reason ?? t('page.common.sampleNoSource')) : null,
-    unit: 'count',
-  };
 }
 
 /** 봉투 상태가 점수·추천에 쓰이지 않는(회색 "미해결") 상태인가 */

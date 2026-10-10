@@ -185,8 +185,18 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   };
 
   const rule = HUMAN_CHECK_RULES[field];
-  const serverError =
-    create.error instanceof ApiError ? create.error.detail : (create.error?.message ?? null);
+  // 계약 .10 S6(D13-2): 그 의미 필드에 확인일보다 뒤에 관측된 공식 공고가 있으면 422 — loc ["body","checked_at"].
+  // 확인일 칸의 오류로 보인다(조용히 지는 사람 확인 금지)
+  const checkedAtError =
+    create.error instanceof ApiError && create.error.status === 422
+      ? (create.error.fieldErrors.find((f) => f.loc[f.loc.length - 1] === 'checked_at')?.msg ??
+        null)
+      : null;
+  const serverError = checkedAtError
+    ? null
+    : create.error instanceof ApiError
+      ? create.error.detail
+      : (create.error?.message ?? null);
 
   return (
     <Section title={t('page.G7.human')} id={HUMAN_CHECK_ANCHOR}>
@@ -288,13 +298,22 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
             </select>
           )}
         </Field>
-        <Field label="checkedAt">
-          {(id) => (
+        <Field
+          label="checkedAt"
+          error={
+            checkedAtError
+              ? t('page.G7.hc.checkedAtTooEarly', { detail: checkedAtError })
+              : undefined
+          }
+        >
+          {(id, hintId) => (
             <input
               id={id}
               type="datetime-local"
               value={checkedAt}
               onChange={(e) => setCheckedAt(e.target.value)}
+              aria-invalid={checkedAtError ? true : undefined}
+              aria-describedby={hintId}
               className={inputClass}
             />
           )}
@@ -399,24 +418,32 @@ function Field({
   label,
   wide = false,
   hint,
+  error,
   children,
 }: {
   label: string;
   wide?: boolean;
   hint?: string;
+  /** 서버 검증 오류(그 칸) — 힌트 자리에 경고로 */
+  error?: string;
   children: (id: string, hintId: string | undefined) => ReactNode;
 }) {
   const id = useId();
   const hintId = `${id}-hint`;
+  const text = error ?? hint;
   return (
     <div className={`flex flex-col gap-0.5 ${wide ? 'sm:col-span-2' : ''}`}>
       <label htmlFor={id} className="text-xs text-muted">
         {t(`page.G7.hc.${label}` as TKey)}
       </label>
-      {children(id, hint ? hintId : undefined)}
-      {hint ? (
-        <span id={hintId} className="text-xs text-muted">
-          {hint}
+      {children(id, text ? hintId : undefined)}
+      {text ? (
+        <span
+          id={hintId}
+          role={error ? 'alert' : undefined}
+          className={`text-xs ${error ? 'text-danger' : 'text-muted'}`}
+        >
+          {text}
         </span>
       ) : null}
     </div>

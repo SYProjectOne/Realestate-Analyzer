@@ -9,7 +9,6 @@ import { PageShell } from '@/layout/PageShell';
 import {
   NoSnapshot,
   QueryState,
-  sampleCountFact,
   Section,
   tdClass,
   thClass,
@@ -27,11 +26,12 @@ export const LIVING_AREA_PARAM = 'living_area';
  * 호재 URL 입력(M6, POST /catalysts) — 사람이 넣은 공개 URL → 호재 후보 + 분류 잡.
  * 계약 2026-10-09.6: benchmark_absence → '벤치마크 없음(<reason>)'(N-M3), 표본 = 자기 생활권만(sample_n) ·
  * 자기 표본 0 이면 지역 전체 대체(substituted → '대체(지역 전체)' 배지, 대체 행은 C3 에 표시)(N-M4).
+ * 계약 .10: 상황 토글(?scenario=)을 서버에 보내고, 생활권 실거래 건수(`n_trades`)는 서버 Fact 그대로(화면이 라벨을 만들지 않는다).
  */
 export function MarketPage() {
-  const { regionId, snapshotId, isLoading } = usePageContext();
+  const { regionId, snapshotId, scenarioKey, isLoading } = usePageContext();
   const [livingArea, setLivingArea] = useUrlParam(LIVING_AREA_PARAM);
-  const query = useMarket(snapshotId, livingArea);
+  const query = useMarket(snapshotId, livingArea, scenarioKey);
   const selectId = useId();
   return (
     <PageShell
@@ -205,7 +205,7 @@ function LivingAreaCompare({ market }: { market: Market }) {
                     <FactCell fact={row.high_won} unit="eok" />
                   </td>
                   <td className={tdClass}>
-                    <FactCell fact={sampleCountFact(row.median_won, row.n_trades)} unit="count" />
+                    <FactCell fact={row.n_trades} unit="count" />
                   </td>
                   <td className={tdClass}>{row.trade_window ?? t('empty.unknown')}</td>
                   <td className={`${tdClass} text-xs text-muted`}>{row.basis ?? ''}</td>

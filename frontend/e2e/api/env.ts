@@ -63,6 +63,8 @@ export function setSnapshotDegraded(snapshotId: number, degraded: boolean): void
  * devseed 픽스처에는 할인이 없어(contracts/fixtures 읽기 전용) 테스트 DB 에만 쓴다: 그 단지의 모든 납부 조건 행 ×
  * 모든 주택형에 `won` 원 + 출처 행(field_provenance 'discount_by_type.<type_code>', chosen, 라벨 `label`).
  * `label` 이 null 이면 할인·출처 행을 지워 원래대로(할인 없음) 되돌린다.
+ * 계약 .10(D13-1): 발행 리비전은 저장본만 읽으므로, 고친 뒤 그 지역 발행 저장본을 `devseed.rematerialize` 로 다시
+ * 만든다(devseed·합성 도구만 저장본을 다시 쓴다 — 운영 경로 아님).
  */
 export function setDiscount(complexId: number, label: string | null, won = 10_000_000): void {
   const db = backendEnv.DATABASE_URL!.replace(/^sqlite:\/\/\//, '');
@@ -86,6 +88,15 @@ export function setDiscount(complexId: number, label: string | null, won = 10_00
         '    for t in types if label else []:',
         '        c.execute("insert into field_provenance (entity, entity_id, field, value_text, url, checked_at, label, reason, source_rank, chosen, value_norm) values (\'payment_terms\', ?, ?, ?, ?, ?, ?, ?, 1, 1, ?)", (pt, "discount_by_type." + t, str(won), "https://www.applyhome.co.kr/e2e/discount", "2026-10-08", label, None if label == "확인됨" else "공고문 할인 문구 해석", str(won)))',
         'c.commit()',
+        'rid = c.execute("select region_id from complex where id = ?", (cid,)).fetchone()[0]',
+        'c.close()',
+        // 계약 .10 D13-1: 발행 리비전 GET 은 저장본만 — 픽스처를 고쳐 쓰는 개발 도구로 그 지역 발행 저장본을 다시 만든다
+        'from app.api.devseed import rematerialize',
+        'from app.core.db import get_session',
+        'from app.core.settings import get_settings',
+        's = get_settings()',
+        'with get_session(s) as session:',
+        '    rematerialize(session, settings=s, region_id=rid)',
       ].join('\n'),
       db,
       String(complexId),

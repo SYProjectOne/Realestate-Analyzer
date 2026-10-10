@@ -18,7 +18,7 @@ import {
 } from '@tanstack/react-query';
 import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
-import { snapshotsRefetchInterval } from './jobWatch';
+import { awaitingPublish, snapshotsRefetchInterval, type RoundJobs } from './jobWatch';
 import type {
   CatalystCreate,
   CatalystCreated,
@@ -115,8 +115,8 @@ export const queryKeys = {
     ['scenarios', key(id), 'preview', key(snapshot)] as const,
   jobs: (params: JobListParams) => ['jobs', 'list', params] as const,
   job: (id: IdLike) => ['jobs', key(id)] as const,
-  market: (sid: IdLike, livingArea: string | null) =>
-    ['snapshots', key(sid), 'market', livingArea] as const,
+  market: (sid: IdLike, livingArea: string | null, scenario: ScenarioKey | null = null) =>
+    ['snapshots', key(sid), 'market', livingArea, scenario] as const,
   changes: (sid: IdLike, params: ChangesParams) =>
     ['snapshots', key(sid), 'changes', params] as const,
   opsSources: (regionId: IdLike | null) => ['ops', 'sources', key(regionId)] as const,
@@ -209,18 +209,63 @@ export function useUpdateLivingAreas(regionId: IdLike): M<LivingAreasUpdate, Liv
   });
 }
 
+/** 리비전 목록 차례마다 본 진행 중 잡(목록 배열 → 그 차례의 잡). 목록 쿼리는 structuralSharing 을 끈다(새 배열) */
+const roundJobs = new WeakMap<readonly Snapshot[], RoundJobs>();
+/** `/jobs` 를 읽을 수 없던(401·403) QueryClient — 다시 부르지 않는다 */
+const jobsForbidden = new WeakSet<QueryClient>();
+
+/** 진행 중 잡(queued + running) — listJobs 두 번 */
+async function fetchActiveJobs(signal: AbortSignal): Promise<JobRun[]> {
+  const [queued, running] = await Promise.all(
+    (['queued', 'running'] as const).map((status) =>
+      apiFetch<JobRun[]>('/jobs', { query: { status }, signal }),
+    ),
+  );
+  return [...(queued ?? []), ...(running ?? [])];
+}
+
 /**
  * GET /regions/{id}/snapshots (listSnapshots) — 헤더 SnapshotPicker, G8.
- * 발행 대기 리비전(building·ready)이 있으면 폴링한다 — published 로 바뀌면 `jobWatch` 가 지역·사실 화면을
- * 무효화해 새로 고침 없이 새 리비전이 기본이 된다(4차 리뷰 M-15).
+ * 발행 대기 리비전(building·ready)이 있으면 그 리비전을 진행할 잡이 끝날 때까지 폴링한다 — published 로 바뀌면
+ * `jobWatch` 가 지역·사실 화면을 무효화해 새로 고침 없이 새 리비전이 기본이 된다(4차 리뷰 M-15). 잡이 실패해
+ * 리비전이 그대로 남으면 멈춘다(5차 리뷰 minor — 30분 제한 대신 잡 기준). 직전 목록에 발행 대기 리비전이 있으면
+ * 차례마다 `GET /jobs?status=queued|running` 을 **목록보다 먼저** 읽는다(그 사이 끝난 publish 는 목록에 반영).
+ * `/jobs` 가 401·403(공유 링크)이면 다시 부르지 않고 생성 후 30분 제한으로 돌아간다.
  */
 export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]> {
+  const qc = useQueryClient();
+  const queryKey = queryKeys.snapshots(key(regionId));
   return useQuery({
-    queryKey: queryKeys.snapshots(key(regionId)),
-    queryFn: ({ signal }) =>
-      apiFetch<Snapshot[]>(`/regions/${enc(key(regionId))}/snapshots`, { signal }),
+    queryKey,
+    queryFn: async ({ signal }) => {
+      const prev = qc.getQueryData<Snapshot[]>(queryKey);
+      let jobs: RoundJobs = jobsForbidden.has(qc) ? 'forbidden' : 'unread';
+      if (jobs === 'unread' && awaitingPublish(prev).length > 0) {
+        try {
+          jobs = await fetchActiveJobs(signal);
+        } catch (err) {
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            jobsForbidden.add(qc);
+            jobs = 'forbidden';
+          }
+        }
+      }
+      const list = await apiFetch<Snapshot[]>(`/regions/${enc(key(regionId))}/snapshots`, {
+        signal,
+      });
+      roundJobs.set(list, jobs);
+      return list;
+    },
     enabled: has(regionId),
-    refetchInterval: (query) => snapshotsRefetchInterval(query.state.data),
+    structuralSharing: false,
+    refetchInterval: (q) => {
+      const data = q.state.data;
+      return snapshotsRefetchInterval(
+        data,
+        Date.now(),
+        data ? (roundJobs.get(data) ?? 'forbidden') : 'forbidden',
+      );
+    },
   });
 }
 
@@ -445,16 +490,20 @@ export function useSensitivity(
   });
 }
 
-/** GET /snapshots/{sid}/market?living_area= (getMarket) — G6 */
+/**
+ * GET /snapshots/{sid}/market?living_area=&scenario= (getMarket) — G6.
+ * 상황 토글(`?scenario=`)을 그대로 보낸다(5차 minor: 시장 화면만 시나리오가 빠졌다 — 계약 .10 Scenario 파라미터).
+ */
 export function useMarket(
   sid: IdLike | null | undefined,
   livingArea: string | null = null,
+  scenario: ScenarioKey | null = null,
 ): Q<Market> {
   return useQuery({
-    queryKey: queryKeys.market(key(sid), livingArea),
+    queryKey: queryKeys.market(key(sid), livingArea, scenario),
     queryFn: ({ signal }) =>
       apiFetch<Market>(`/snapshots/${enc(key(sid))}/market`, {
-        query: { living_area: livingArea },
+        query: { living_area: livingArea, scenario },
         signal,
       }),
     enabled: has(sid),
@@ -540,16 +589,26 @@ export function useCreateJob(): M<JobCreate, JobRun> {
 
 export const JOB_POLL_MS = 2000;
 
-/** GET /jobs/{id} (getJob) — queued/running이면 pollMs(기본 2초)마다 다시 조회, done/failed면 멈춘다. */
+/** useJob 폴링 간격: done/failed 이거나 마지막 조회가 오류(404·403·서버 오류 등)면 멈춘다(5차 리뷰 minor). */
+export function jobRefetchInterval(
+  state: { status: string; data?: Pick<JobRun, 'status'> | undefined },
+  pollMs: number = JOB_POLL_MS,
+): number | false {
+  if (state.status === 'error') return false;
+  const status = state.data?.status;
+  return status === 'done' || status === 'failed' ? false : pollMs;
+}
+
+/**
+ * GET /jobs/{id} (getJob) — queued/running이면 pollMs(기본 2초)마다 다시 조회, done/failed면 멈춘다.
+ * 조회가 오류로 끝나면(잡 없음·권한 없음·서버 오류) 무한히 다시 부르지 않고 멈춘다 — JobProgress 가 오류를 보인다.
+ */
 export function useJob(id: IdLike | null | undefined, pollMs: number = JOB_POLL_MS): Q<JobRun> {
   return useQuery({
     queryKey: queryKeys.job(key(id)),
     queryFn: ({ signal }) => apiFetch<JobRun>(`/jobs/${enc(key(id))}`, { signal }),
     enabled: has(id),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'done' || status === 'failed' ? false : pollMs;
-    },
+    refetchInterval: (query) => jobRefetchInterval(query.state, pollMs),
   });
 }
 

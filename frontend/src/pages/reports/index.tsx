@@ -18,14 +18,27 @@ const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
 
 /**
  * 생성 가능 여부: contradicted claim이 남은 스냅샷은 보고서를 만들지 않는다(RA WP8·D4).
- * 생성 중(building) 리비전도 만들지 않는다 — 판정·점수가 다 쓰이지 않았다(4차 리뷰 M-16).
+ * 발행 전(building·ready) 리비전도 만들지 않는다 — 서버가 409(conflict)로 거절한다(계약 .9 S10, 4차 M-16,
+ * 5차 minor: ready 기준이면 버튼이 켜진 채 409 가 조용히 묻혔다).
  */
 export function blockReason(snapshot: Snapshot | null): string | null {
   if (!snapshot) return null;
   if (snapshot.status === 'building') return t('page.G8.building');
+  if (snapshot.status !== 'published') return t('page.G8.unpublished');
   const n = snapshot.contradicted_claims ?? 0;
   if (n > 0) return metaText('page.G8.blocked', { n });
   return null;
+}
+
+/** POST /reports 409 의 안내(어떤 code 든 — publish_blocked·conflict). 그 밖의 오류는 일반 오류 문구 */
+export function createErrorText(error: unknown): string | null {
+  if (!error) return null;
+  if (error instanceof ApiError && error.status === 409) {
+    return t('page.G8.conflict', { detail: error.detail || error.message });
+  }
+  return t('page.G8.createError', {
+    detail: error instanceof Error ? error.message : String(error),
+  });
 }
 
 /**
@@ -46,15 +59,13 @@ export function ReportsPage() {
   const formatId = useId();
   const compareSelectId = useId();
 
-  // M-16: 보고서 기준·비교는 리비전 단위(같은 기준일 리비전 구별), 생성 중 리비전은 고를 수 없다
-  const reportable = snapshots.filter((s) => s.status !== 'building');
+  // M-16: 보고서 기준·비교는 리비전 단위(같은 기준일 리비전 구별). 발행 리비전만 고를 수 있다(서버: 발행 전 409,
+  // 비교 스냅샷도 발행·같은 지역만 — 5차 M5)
+  const reportable = snapshots.filter((s) => s.status === 'published');
   const selectedId = baseId ?? snapshotId;
   const base = snapshots.find((s) => String(s.id) === selectedId) ?? null;
   const blocked = blockReason(base);
-  const conflict =
-    create.error instanceof ApiError && create.error.code === 'publish_blocked'
-      ? create.error.detail
-      : null;
+  const createError = createErrorText(create.error);
 
   const generate = () => {
     if (!selectedId || blocked) return;
@@ -73,7 +84,7 @@ export function ReportsPage() {
       <Section title={t('page.G8.generate')}>
         <div className="flex flex-wrap items-end gap-4">
           <SnapshotPicker
-            snapshots={base && base.status === 'building' ? [base, ...reportable] : reportable}
+            snapshots={base && base.status !== 'published' ? [base, ...reportable] : reportable}
             value={selectedId}
             onChange={setBaseId}
             label={t('page.G8.snapshot')}
@@ -129,13 +140,10 @@ export function ReportsPage() {
             {t('page.G8.generate')}
           </button>
         </div>
-        {blocked || conflict ? (
+        {blocked || createError ? (
           <p id="g8-blocked" role="alert" className="text-sm font-medium text-danger">
-            {blocked ?? conflict}
+            {blocked ?? createError}
           </p>
-        ) : null}
-        {base && base.status !== 'published' && !blocked ? (
-          <p className="text-xs text-muted">{t('page.G8.notPublished', { status: base.status })}</p>
         ) : null}
         {jobId !== null ? (
           <JobProgress

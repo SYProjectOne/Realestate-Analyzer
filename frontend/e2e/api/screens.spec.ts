@@ -111,6 +111,20 @@ test('G6 지역 시장: 실제 API 차트 4종 · 규제 카드', async ({ page 
   expect(failed).toEqual([]);
 });
 
+test('G6 지역 시장: 상황 토글(?scenario=B)을 GET /market 에 보낸다(계약 .10)', async ({ page }) => {
+  const failed = watchApi(page);
+  const market = page.waitForResponse((r) => {
+    const url = new URL(r.url());
+    return (
+      /\/api\/snapshots\/\d+\/market$/.test(url.pathname) &&
+      url.searchParams.get('scenario') === 'B'
+    );
+  });
+  await ready(page, '/market?scenario=B', P.G6.title);
+  expect((await market).status()).toBe(200);
+  expect(failed).toEqual([]);
+});
+
 test('G8 보고서: 생성(POST) → 워커 1회 → 목록 완료 → Bearer 다운로드', async ({ page }) => {
   const failed = watchApi(page);
   await ready(page, '/reports', P.G8.title);
