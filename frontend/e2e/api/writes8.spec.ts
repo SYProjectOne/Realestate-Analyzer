@@ -97,7 +97,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     expect(failed).toEqual([]);
   });
 
-  test('D11-5 호재 위치 확인: 생활권 지정 → links(같은 생활권·reason)·rejudge 잡 → 위치 확인됨 → 취소', async ({
+  test('D11-5 호재 위치 확인: 생활권 지정 → links(같은 생활권·reason)·job null(새 리비전 바로 발행) → 위치 확인됨 → 취소', async ({
     page,
   }) => {
     const failed = watchApi(page);
@@ -127,7 +127,8 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
       job: { job_name: string } | null;
     };
     expect(body.links.length).toBeGreaterThan(0);
-    expect(body.job?.job_name).toBe('rejudge');
+    // 계약 .9 D12-4: 연결 변경은 rejudge 없이 새 리비전으로 바로 발행 — job 은 늘 null
+    expect(body.job).toBeNull();
 
     const links = panel.getByTestId('catalyst-links');
     await expect(links.locator('tbody tr')).toHaveCount(body.links.length);
@@ -135,7 +136,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     await expect(first).toContainText('같은 생활권');
     await expect(first).toContainText(ko.label.unknown);
     await expect(first.locator('[data-meta="derived"]')).toHaveText('1.00');
-    await expect(panel.getByTestId('catalyst-job')).toContainText('rejudge');
+    await expect(panel.getByTestId('catalyst-job-none')).toHaveText(P.G6.loc.noJob);
     await expect(item.getByTestId('loc-status')).toHaveText(P.G6.loc.confirmed);
 
     await item.getByRole('button', { name: P.G6.loc.unconfirm }).click();
@@ -191,10 +192,13 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
       entity_id: Number(termsId),
       value_text: '10',
     });
-    expect(await res.json()).toMatchObject({
-      entity: 'payment_terms',
-      entity_id: Number(termsId),
-    });
+    const hc = (await res.json()) as {
+      entity: string;
+      entity_id: number;
+      rejudge_job_id: number | null;
+    };
+    expect(hc).toMatchObject({ entity: 'payment_terms', entity_id: Number(termsId) });
+    expect(hc.rejudge_job_id).not.toBeNull();
     await expect(form.getByTestId('human-check-result')).toContainText(
       P.G7.hcField.down_payment_pct,
     );
@@ -209,16 +213,8 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     await expect(form.getByRole('alert')).toContainText('이상이어야');
     expect(posts()).toBe(1);
 
-    // 재판정 제안 → 잡 등록 → worker 1회 → 같은 기준일 새 리비전(D11-1: 발행 스냅샷 불변)
-    const queued = page.waitForResponse(
-      (r) => r.url().endsWith('/api/jobs') && r.request().method() === 'POST',
-    );
-    await page
-      .getByRole('region', { name: ko.app.notifications })
-      .getByRole('button', { name: P.G7.rejudge })
-      .first()
-      .click();
-    expect((await queued).status()).toBe(202);
+    // 계약 .9: 재판정 자동 등록(rejudge_job_id) → worker 1회 → 같은 기준일 새 리비전(D11-1: 발행 스냅샷 불변)
+    await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
     runWorkerOnce();
 
     const snapshots = await api<

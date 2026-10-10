@@ -159,6 +159,12 @@ test.describe.serial('R3d 리비전 화면(실 API)', () => {
     const row = list.locator('tbody tr', { hasText: revText(latest) }).first();
     await expect(row).toBeVisible({ timeout: 60_000 });
     await expect(row.getByRole('button')).toBeVisible({ timeout: 60_000 });
+    // 계약 .9 S10: 파일 이름이 리비전을 구별한다(같은 기준일 리비전 보고서끼리 덮어쓰지 않음)
+    await expect(row.getByRole('button')).toHaveText(
+      new RegExp(
+        `^report_r1_${latest.asof_date}-r${latest.revision}_vs_${sameDayRev1.asof_date}-r1_j\\d+\\.html$`,
+      ),
+    );
     await expect(row.locator('td').nth(2)).toHaveText(sameDayRev1.asof_date);
     expect(failed).toEqual([]);
   });

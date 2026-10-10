@@ -128,7 +128,10 @@ test('G8 보고서: 생성(POST) → 워커 1회 → 목록 완료 → Bearer �
   const fileButton = list.getByRole('button', { name: /^report_.*\.html$/ }).first();
   await expect(fileButton).toBeVisible({ timeout: 30_000 });
   const [download] = await Promise.all([page.waitForEvent('download'), fileButton.click()]);
-  expect(download.suggestedFilename()).toMatch(/^report_\d{4}-\d{2}-\d{2}\.html$/);
+  // 계약 .9 S10: report_r<지역>_<기준일>-r<리비전>[_vs_…][_<시나리오>]_j<잡 id>.<형식>
+  expect(download.suggestedFilename()).toMatch(
+    /^report_r\d+_\d{4}-\d{2}-\d{2}-r\d+(_vs_\d{4}-\d{2}-\d{2}-r\d+)?(_\w+)?_j\d+\.html$/,
+  );
   const html = (await body(download)).toString('utf-8');
   expect(html).toMatch(/<html/i);
   expect(html).toContain(ko.app.disclaimer);
@@ -155,23 +158,21 @@ test('G7 사람 확인 입력 → 결과 배지 · 재판정 → 새 리비전�
   const res = await saved;
   expect(res.status()).toBe(201);
   // 계약 .8 D11-1: 발행 스냅샷은 불변 — 접수 행은 같은 기준일의 새 리비전(쓰기 가능 스냅샷)에 쓴다
-  const created = (await res.json()) as { created_intake: { snapshot_id: number | null } | null };
+  const created = (await res.json()) as {
+    created_intake: { snapshot_id: number | null } | null;
+    rejudge_job_id: number | null;
+  };
   const revisionId = created.created_intake?.snapshot_id ?? null;
   expect(revisionId).not.toBeNull();
   const result = form.getByTestId('human-check-result');
   await expect(result).toContainText(ko.intake.path.human_check);
   await expect(result).toContainText(ko.intake.status['미정']);
-  const rejudge = page
-    .getByRole('region', { name: ko.app.notifications })
-    .getByRole('button', { name: P.G7.rejudge });
-  await expect(rejudge).toBeVisible();
-  // 재판정 제안 → 잡 등록 → worker 1회 → 새 리비전 발행(화면 기본 = 최신 published 리비전)
-  const queued = page.waitForResponse(
-    (r) => r.url().endsWith('/api/jobs') && r.request().method() === 'POST',
-  );
-  await rejudge.first().click();
-  expect((await queued).status()).toBe(202);
+  // 계약 .9 D12-5: 서버가 재판정 잡을 자동 등록 — 화면은 그 잡 진행만(POST /jobs 없음)
+  expect(created.rejudge_job_id).not.toBeNull();
+  await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
+  // worker 1회 → 새 리비전 발행(화면 기본 = 최신 published 리비전)
   runWorkerOnce();
+  await expect(form.getByTestId('human-check-job')).toContainText(ko.job.status.done);
   // 단지 상세(기본 = 새 리비전)의 현재 접수 배지가 사람 확인으로 바뀐다
   await ready(page, '/complexes/3', P.G3.title);
   await expect(page.getByLabel(ko.header.snapshot)).toHaveValue(String(revisionId));

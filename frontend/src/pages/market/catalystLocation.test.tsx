@@ -7,7 +7,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
-import type { CatalystUpdated, JobRun, Market } from '@/api/types';
+import type { CatalystUpdated, Market } from '@/api/types';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { generatedHandlers } from '@/mocks/handlers.gen';
@@ -121,17 +121,16 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     rec.stop();
   });
 
-  it('연결이 바뀌면 응답 job(rejudge) 진행 표시 + 시장 다시 읽기 → "위치 확인됨"', async () => {
+  it('연결이 바뀌면(계약 .9: job 늘 null, 새 리비전 바로 발행) 지역·리비전 목록 다시 읽기 + 시장 → "위치 확인됨"', async () => {
     let confirmed = false;
     server.use(
       http.patch(mswPath('/catalysts/:id'), async () => {
         confirmed = true;
         const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
-        const job = await example<JobRun>('/jobs/9100');
         return HttpResponse.json({
           ...base,
           catalyst: { ...base.catalyst, id: 50, name: 'GTX-B', location_confirmed: true },
-          job: { ...job, id: 9100, job_name: 'rejudge', kind: 'rejudge' },
+          job: null,
         } satisfies CatalystUpdated);
       }),
       http.get(mswPath('/snapshots/:sid/market'), async () => {
@@ -144,17 +143,24 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
         } satisfies Market);
       }),
     );
+    const rec = recordRequests();
     renderRoute('/market');
     const { form } = await openForm('GTX-B');
     await pickFirstComplex(form);
+    const regionsBefore = matching(rec.requests, 'GET', '/regions').length;
     await userEvent.click(within(form).getByRole('button', { name: t('page.G6.loc.submit') }));
-    const job = await within(await panel()).findByTestId('catalyst-job');
-    expect(await within(job).findByText('rejudge')).toBeInTheDocument();
+    expect(await within(await panel()).findByTestId('catalyst-job-none')).toHaveTextContent(
+      t('page.G6.loc.noJob'),
+    );
+    await waitFor(() =>
+      expect(matching(rec.requests, 'GET', '/regions').length).toBeGreaterThan(regionsBefore),
+    );
     await waitFor(async () =>
       expect(within(await row('GTX-B')).getByTestId('loc-status')).toHaveTextContent(
         t('page.G6.loc.confirmed'),
       ),
     );
+    rec.stop();
   });
 
   it('대상 없이 저장·위도만·범위 밖·좌표만(영향 범위 없음) → 오류, PATCH 없음', async () => {

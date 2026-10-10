@@ -83,6 +83,8 @@ export interface paths {
          * @description selections(바뀐 뒤 전체)로 법정동·시군구·시도 코드와 생활권을 다시 계산하고 change_event(critical) + region.expand 잡을 등록한다.
          *     잡은 추가된 선택을 수집하고, 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장')에서 후보 전체를 판정·rerank 한 뒤
          *     publish 한다. 보고서는 그 리비전과 바탕 리비전 비교로 §12 '지역 추가' 장을 만든다(계약 2026-10-09.8). 바뀐 것이 없으면 409.
+         *     계약 .9: 이름만 바꾸면(선택 그대로) change_event·job_id 가 null(region.expand 없음). 이름은 guard(전화·이메일·비밀값 422).
+         *     선택에서 빠진 법정동의 단지는 분류와 무관하게 '범위 경계'(판정 범위 제외 — R3 4차 M-4).
          */
         patch: operations["updateRegion"];
         trace?: never;
@@ -458,7 +460,7 @@ export interface paths {
         put?: never;
         /**
          * 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
-         * @description field='intake_status'이면 그 기준일의 쓰기 가능 리비전(최신 리비전이 발행됐으면 새 리비전 — D11-1)에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만들고 suggested_job(rejudge)을 돌려준다 — 잡 등록은 화면이 POST /jobs로 한다(토스트 '재판정 실행'). field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등(검증 모순)을 복원하며 change_event + suggested_job 을 돌려준다(계약 2026-10-09.8). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
+         * @description 쓰는 스냅샷 = 그 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이 발행 전이면 거기, 발행됐으면 새 리비전(D11-1·R3 4차 M-2). field='intake_status'이면 그 리비전에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만든다. field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화·compare 채택에도 유지, 사람 확인 이후 관측된 공식 1차 출처의 다른 값만 이긴다 — D12-1) 같은 의미 필드의 강등(검증 모순)을 복원하며 change_event 를 만든다. 두 경우 모두 rejudge 잡을 **자동 등록**하고 rejudge_job_id 로 돌려준다(계약 .9, D12-5). suggested_job 은 그 잡과 같은 payload(호환 — POST /jobs 로 보내면 대기 중인 같은 rejudge 잡을 돌려준다, 중복 등록 없음). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
          */
         post: operations["createHumanCheck"];
         delete?: never;
@@ -479,7 +481,7 @@ export interface paths {
         put?: never;
         /**
          * 보고서 생성 잡 등록 — html|pdf, diff 옵션 (G8)
-         * @description 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음).
+         * @description 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음). 발행 전(building·ready) 스냅샷·리비전은 409 conflict(계약 .9 — R3 4차 M-16, 판정이 끝난 리비전만 보고서를 만든다). 파일 이름은 report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식>(계약 .9 — C-4, 같은 기준일 리비전·잡끼리 덮어쓰지 않는다).
          */
         post: operations["createReport"];
         delete?: never;
@@ -597,7 +599,7 @@ export interface paths {
          * 호재 위치 확인 → catalyst_link (D11-5)
          * @description 사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
          *     distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
-         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인). 연결이 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다(계약 2026-10-09.8).
+         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 연결이 바뀌면 rejudge 없이 새 리비전을 바로 발행해 그 시점 연결을 얼린다(계약 .9, D12-4 — job null). 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
          */
         patch: operations["updateCatalyst"];
         trace?: never;
@@ -695,7 +697,7 @@ export interface components {
         };
         /**
          * BackupPayload
-         * @description job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고, 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').
+         * @description job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고(compose 는 별도 볼륨 backups:/backups — D12-6), 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').
          * @example {}
          */
         BackupPayload: {
@@ -777,6 +779,7 @@ export interface components {
          */
         CatalystCreated: {
             catalyst: components["schemas"]["CatalystView"];
+            /** @description 계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다 */
             job: components["schemas"]["JobRun"] | null;
         };
         /**
@@ -792,7 +795,7 @@ export interface components {
         };
         /**
          * CatalystPatch
-         * @description PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인). 링크가 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다.
+         * @description PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인), null 이면 지운다. lat·lon 은 유한한 숫자(NaN·무한대 422). '호재 아님' 후보는 location_confirmed=true 422. 연결이 바뀌면 판정·점수에 쓰지 않는 값이라 rejudge 없이 새 리비전을 바로 발행해 그 시점 연결을 얼린다(계약 .9, D12-4 — 응답 job 은 null).
          */
         CatalystPatch: {
             location_confirmed: boolean;
@@ -809,6 +812,7 @@ export interface components {
         CatalystUpdated: {
             catalyst: components["schemas"]["CatalystView"];
             links: components["schemas"]["CatalystLinkView"][];
+            /** @description 계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다 */
             job: components["schemas"]["JobRun"] | null;
         };
         /**
@@ -2930,14 +2934,18 @@ export interface components {
          *       "suggested_job": {
          *         "job_name": "rejudge",
          *         "payload": {
-         *           "snapshot_id": 12,
+         *           "snapshot_id": 13,
          *           "scenario_id": null,
          *           "complex_ids": [
          *             4
          *           ],
-         *           "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능"
+         *           "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능",
+         *           "change_event_ids": [
+         *             3310
+         *           ]
          *         }
-         *       }
+         *       },
+         *       "rejudge_job_id": 912
          *     }
          * @example {
          *       "id": 4,
@@ -2955,14 +2963,18 @@ export interface components {
          *       "suggested_job": {
          *         "job_name": "rejudge",
          *         "payload": {
-         *           "snapshot_id": 12,
+         *           "snapshot_id": 13,
          *           "scenario_id": null,
          *           "complex_ids": [
          *             2
          *           ],
-         *           "reason": "사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원"
+         *           "reason": "사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원",
+         *           "change_event_ids": [
+         *             3311
+         *           ]
          *         }
-         *       }
+         *       },
+         *       "rejudge_job_id": 913
          *     }
          */
         HumanCheck: {
@@ -2982,7 +2994,10 @@ export interface components {
             note: string | null;
             created_intake?: components["schemas"]["Intake"] | null;
             change_event_id?: number | null;
+            /** @description 계약 .9(D12-5): 재판정은 자동 등록된다(rejudge_job_id). 이 값은 그 잡과 같은 payload(호환) — POST /jobs 로 보내도 대기 중인 같은 잡을 돌려준다(중복 등록 없음). 자동 등록이 없으면('기타') null */
             suggested_job?: components["schemas"]["JobCreate"] | null;
+            /** @description 자동 등록한 rejudge 잡 id(계약 .9, D12-5). 사실 필드·접수 상태면 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에 등록(M-2 — 발행됐으면 새 리비전). '기타'·스냅샷 없음이면 null */
+            rejudge_job_id?: number | null;
         };
         /**
          * HumanCheckCreate
@@ -4344,12 +4359,12 @@ export interface components {
         };
         /**
          * RegionPatched
-         * @description PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택
+         * @description PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택. 이름만 바꾸면(선택 그대로) 판정 범위가 그대로라 change_event·job_id 가 null 이고 added·removed 는 빈 배열(계약 .9 — R3 4차 minor '이름만 바꿔도 region.expand')
          */
         RegionPatched: {
             region: components["schemas"]["Region"];
-            change_event: components["schemas"]["ChangeEvent"];
-            job_id: number;
+            change_event: components["schemas"]["ChangeEvent"] | null;
+            job_id: number | null;
             added: components["schemas"]["RegionSelection"][];
             removed: components["schemas"]["RegionSelection"][];
         };
@@ -4473,7 +4488,7 @@ export interface components {
          *       "status": "done",
          *       "created_at": "2026-10-08T08:00:00+09:00",
          *       "finished_at": "2026-10-08T08:01:12+09:00",
-         *       "filename": "report_2026-10-08_vs_2026-10-07.pdf",
+         *       "filename": "report_r1_2026-10-08-r1_vs_2026-10-07-r1_j910.pdf",
          *       "size_bytes": 1843200,
          *       "sha256": "0d5e8f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
          *       "blocked_reason": null
@@ -4491,6 +4506,7 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             finished_at: string | null;
+            /** @description report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식> (계약 .9 — 같은 기준일 리비전·잡끼리 겹치지 않는다, R3 4차 C-4) */
             filename: string | null;
             size_bytes: number | null;
             sha256: string | null;
@@ -7449,7 +7465,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description contradicted claim 남음 */
+            /** @description contradicted claim 남음(publish_blocked) 또는 발행 전 스냅샷(conflict, 계약 .9) */
             409: {
                 headers: {
                     [name: string]: unknown;

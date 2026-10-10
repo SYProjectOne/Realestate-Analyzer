@@ -23,6 +23,14 @@ export interface ProvenancePanelProps {
 const RAW_CONTEXT = 160;
 
 /** text 안의 needle을 모두 <mark>로. needle이 없거나 못 찾으면 그대로. */
+/**
+ * 강등(검증 모순) 출처인가 — 계약 .9: `GET /provenance/fp_N` 은 강등 중이면 label '확인 불가'·reason '검증 모순 — …'
+ * (D11-3·D12-2 읽기 오버레이). 출처 서랍에 강등 배지·해제 조건을 보인다(4차 리뷰 minor).
+ */
+export function isDemoted(p: { label: string; reason?: string | null }): boolean {
+  return p.label === '확인 불가' && (p.reason ?? '').startsWith('검증 모순');
+}
+
 export function Highlighted({ text, needle }: { text: string; needle?: string | null }) {
   if (!needle) return <>{text}</>;
   const parts = text.split(needle);
@@ -159,6 +167,14 @@ function ProvenanceBody({
       <dd>
         <LabelBadge label={data.label} reason={data.reason} checkedAt={data.checked_at} />
       </dd>
+      {isDemoted(data) ? (
+        <dd className="col-span-2 flex flex-col gap-1 text-xs" data-testid="provenance-demoted">
+          <span>
+            <Badge tone="strong">{t('provenance.demoted')}</Badge>
+          </span>
+          <span className="text-muted">{t('provenance.demotedHint')}</span>
+        </dd>
+      ) : null}
       <dt className="text-muted">{t('provenance.checkedAt')}</dt>
       <dd>{data.checked_at ? formatDate(data.checked_at) : <EmptyState inline />}</dd>
       <dt className="text-muted">{t('provenance.url')}</dt>
