@@ -28,7 +28,8 @@ def test_runbook_covers_d11_d12_rules() -> None:
         "사람 확인 재검토",  # D12-1
         "(단지, 의미 필드, 모순 값)",  # D12-2
         "`analysis.price_view.current_price`",  # D12-3
-        "snapshot_state",  # D12-4
+        "snapshot_view",  # D13-1(0009 snapshot_state 대체)
+        "(단지, 의미 필드)",  # D13-2
         "자동 등록",  # D12-5
         "backups",  # D12-6
         "prod + SQLite 거부",  # D11-9

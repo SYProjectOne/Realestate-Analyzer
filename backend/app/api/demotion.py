@@ -72,6 +72,7 @@ __all__ = [
     "demotion_view",
     "fields_in",
     "human_target",
+    "later_official",
     "latest_demotions",
     "parse_human_value",
     "sync_demotions",
@@ -500,6 +501,35 @@ def human_target(
     return HumanTarget("payment_terms", tid, field)
 
 
+def later_official(session: Session, target: HumanTarget, checked_at: str) -> str | None:
+    """D13-2: 그 의미 필드(``facts_view.semantic_group``)에 사람 확인일보다 **뒤에** 관측된 공식 1차 출처(공고문·청약홈)가
+    이미 있으면 그 관측일(가장 늦은 것). 그런 사람 확인은 입력 즉시 지므로(D12-1) 받지 않는다(422 — 조용한 패배 금지)."""
+    from app.facts_view import semantic_group
+    from app.models import RawDocument
+    from app.normalize.resolver import OFFICIAL_SOURCES
+
+    _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
+    day = (checked_at or "")[:10]
+    latest: str | None = None
+    for e, i, f in group:
+        for observed in session.scalars(
+            select(FieldProvenance.observed_on)
+            .join(RawDocument, RawDocument.id == FieldProvenance.raw_document_id)
+            .where(
+                FieldProvenance.entity == e,
+                FieldProvenance.entity_id == i,
+                FieldProvenance.field == f,
+                FieldProvenance.value_norm.is_not(None),
+                FieldProvenance.source_rank > 0,
+                FieldProvenance.observed_on > day,
+                RawDocument.source_kind.in_(sorted(OFFICIAL_SOURCES)),
+            )
+        ):
+            if observed and (latest is None or observed > latest):
+                latest = observed
+    return latest
+
+
 def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
     """사람 확인 값 → 사실 값(형·범위 검사, minor 11). 못 바꾸면 ``ValueParseError``."""
     logical = logical_field(target.field)
@@ -590,6 +620,17 @@ def apply_human_check(
     resolve_field_group(
         session, target.entity, target.entity_id, target.field, [cand], snapshot_id=snapshot_id
     )
+    # D13-2: 사람 확인은 (단지, 의미 필드) 단위 — 의미 묶음의 값 있는 다른 행(옛 공고·공고문 타입 행)도 다시 resolve 해
+    # 사람 확인 값이 0순위 후보로 들어간다(``normalize.store.semantic_humans``). 어느 행을 읽어도 같은 값이다
+    from app.facts_view import semantic_group
+
+    session.flush()
+    _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
+    for e, i, f in group[1:]:
+        cur = _chosen(session, e, i, f)
+        if cur is None or cur.value_norm is None:
+            continue  # 그 필드를 싣지 않은 행(다른 타입만 있는 공고 등)에는 값을 만들지 않는다
+        resolve_field_group(session, e, i, f, [], snapshot_id=snapshot_id)
     # 같은 의미 필드(D12-2)의 강등 중 지금 쓰는 행이 사람 확인이 된 것만 복원 기록(옛 공고 행을 확인해도 현재 사실은 그대로)
     from app.facts_view import RESTORED_HUMAN
 
@@ -619,7 +660,14 @@ def _restored(session: Session, d: FactDemotion, by: str, *, human_check_id: int
 
 
 def _redemote(session: Session, d: FactDemotion) -> None:
-    """새 출처로 풀렸던 강등의 모순 값이 다시 지금 쓰는 값이 됐다(compare 재채택 등, R3 4차 M-17) → 다시 강등 기록."""
+    """새 출처로 풀렸던 강등의 모순 값이 다시 지금 쓰는 값이 됐다(compare 재채택 등, R3 4차 M-17) → 다시 강등 기록.
+
+    D13-5(R3 5차 M3): change_event 는 그 지역 가장 새 리비전의 **쓰기 가능** 리비전(발행됐으면 새 리비전)에 붙고 그
+    단지 rejudge 를 자동 등록한다(예전: 강등을 만든 발행 스냅샷에 붙고 재판정 없음)."""
+    from app.models import Complex
+    from app.scheduler.rejudge import enqueue_rejudge
+    from app.scheduler.snapshots import latest_for_region, writable
+
     d.restored_at = None
     d.restored_by = None
     d.human_check_id = None
@@ -627,20 +675,37 @@ def _redemote(session: Session, d: FactDemotion) -> None:
         item = session.get(ChecklistItem, d.checklist_item_id)
         if item is not None:
             item.status, item.closed_by = "open", None
-    session.add(
-        ChangeEvent(
-            snapshot_id=d.snapshot_id,
-            entity=d.entity,
-            entity_id=d.entity_id,
-            field=d.field[:64],
-            old_text=d.original_value_text,
-            new_text=f"{DEMOTION_LABEL}({DEMOTION_REASON}) — 모순 값이 다시 채택됨",
-            detected_at=now_iso(),
-            severity="critical",
-            triggers_rejudge=True,
-            complex_id=d.complex_id,
+    cx = session.get(Complex, d.complex_id) if d.complex_id is not None else None
+    base = latest_for_region(session, cx.region_id) if cx is not None else None
+    snap_w = (
+        writable(
+            session, base.id, reason=f"재강등: {cx.name if cx else ''} {d.field}"[:200], created_at=now_iso()
         )
+        if base is not None
+        else None
     )
+    ev = ChangeEvent(
+        snapshot_id=snap_w.id if snap_w is not None else None,
+        entity=d.entity,
+        entity_id=d.entity_id,
+        field=d.field[:64],
+        old_text=d.original_value_text,
+        new_text=f"{DEMOTION_LABEL}({DEMOTION_REASON}) — 모순 값이 다시 채택됨",
+        detected_at=now_iso(),
+        severity="critical",
+        triggers_rejudge=True,
+        complex_id=d.complex_id,
+    )
+    session.add(ev)
+    session.flush()
+    if snap_w is not None and d.complex_id is not None:
+        enqueue_rejudge(
+            session,
+            snap_w.id,
+            [d.complex_id],
+            f"재강등(모순 값 다시 채택) {d.field}"[:200],
+            change_event_ids=[ev.id],
+        )
 
 
 def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int:
@@ -662,6 +727,16 @@ def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int
         st = ov.status.get(d.id, STATUS_DEMOTED)
         if st == STATUS_DEMOTED:
             if d.restored_at is not None:
+                from app.normalize.fields import CONFLICT_HOLD, has_tag
+
+                cur = ov.current.get(d.id)
+                if (
+                    cur is None
+                    or cur.value_norm is None
+                    or cur.value_norm != d.value_norm
+                    or has_tag(cur.reason, CONFLICT_HOLD)
+                ):
+                    continue  # 채택 보류·값 없음 — 모순 값이 다시 채택된 것이 아니다(재강등 이벤트 없음, R3 5차 M3)
                 _redemote(session, d)
                 n += 1
                 continue

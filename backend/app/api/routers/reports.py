@@ -1,5 +1,7 @@
 """보고서 (G8, DECISIONS D4): POST → report 잡, 목록, 다운로드(html|pdf). id = job_run.id."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import re
@@ -80,15 +82,26 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
 
 
 def _report_path(base: Path, rel: str) -> Path | None:
-    if not rel or PureWindowsPath(rel).drive or PurePosixPath(rel).is_absolute():
+    """잡 stats 경로 → 파일. 저장은 ``REPORT_DIR`` 기준 상대 이름(``reports.job.stored_path``), 해석도 같은 기준(K3).
+    절대 경로는 REPORT_DIR 안일 때만. 옛 잡(상대 REPORT_DIR 를 앞에 붙여 저장한 경로 — 예 'data/reports/x.html',
+    '../r4/reports/x.html')은 그 앞부분을 떼고 읽는다. 그 밖의 '..'·'.' 는 거부."""
+    if not rel:
+        return None
+    if PureWindowsPath(rel).drive or PurePosixPath(rel).is_absolute():
         candidate = Path(rel)
         try:
             candidate.resolve().relative_to(base.resolve())
         except (ValueError, OSError):
             return None
         return candidate
-    parts = PurePosixPath(rel.replace("\\", "/")).parts
-    if any(p in ("..", ".") for p in parts):
+    norm = rel.replace("\\", "/")
+    prefix = PurePosixPath(base.as_posix().replace("\\", "/")).as_posix()
+    for head in (prefix, prefix.removeprefix("./")):
+        if head not in ("", ".") and norm.startswith(head.rstrip("/") + "/"):
+            norm = norm[len(head.rstrip("/")) + 1 :]
+            break
+    parts = PurePosixPath(norm).parts
+    if not parts or any(p in ("..", ".") for p in parts):
         return None
     return base.joinpath(*parts)
 

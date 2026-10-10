@@ -23,7 +23,7 @@ from app.core.contracts_gen import RawDocument as RawDocumentDTO
 from app.core.db import get_session
 from app.models import Complex, FactDemotion, PaymentTerms, RawDocument, Region, Snapshot
 
-from ._support import READ, WRITE
+from ._support import READ, WRITE, as_live
 from .test_r3b_g3 import CX, SNAP, _fact_claim
 from .test_r3c_core import _price_by_type
 
@@ -105,6 +105,7 @@ def _score_price(cx_id: int, snap_id: int = SNAP) -> tuple[int | None, str | Non
 
 
 def test_c1_new_notice_with_same_contradicted_price_stays_demoted(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     won = 658_140_000
     pt_id, code, _ = _demote_price(client, won)
     detail = client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ).json()
@@ -130,6 +131,7 @@ def test_c1_new_notice_with_same_contradicted_price_stays_demoted(client: TestCl
 
 
 def test_c1_new_notice_with_same_contradicted_down_payment_stays_demoted(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     from app.analysis.price_view import current_terms
     from app.models import FieldProvenance
 
@@ -213,6 +215,7 @@ def human_check(
 
 def test_c2_compare_adoption_after_human_check_does_not_win(client: TestClient) -> None:
     """같은 rank 다른 종류 상충(채택 보류) → 사람 확인 → compare 가 한쪽을 채택해도 사람 확인 값이 남는다(C-2)."""
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     from app.normalize.judged import apply_compare
     from app.scheduler.inputs import load_facts
 
@@ -295,8 +298,14 @@ def _revision_of(snap_id: int, *, publish: bool = True) -> int:
         base = s.get(Snapshot, snap_id)
         assert base is not None
         rev = new_revision(s, base, reason="테스트 리비전", created_at="2026-10-09T09:00:00+09:00")
-        if publish:
-            rev.status, rev.published_at = "published", "2026-10-09T09:05:00+09:00"
+        if publish:  # 실제 발행 경로(파생 행 이월 → publish → 저장본, D13-1)
+            from app.scheduler.persist import carry_forward
+            from app.scheduler.snapshots import publish as do_publish
+
+            carry_forward(s, base.id, rev.id, created_at="2026-10-09T09:01:00+09:00")
+            rev.status = "ready"
+            ok, n = do_publish(s, rev.id, now="2026-10-09T09:05:00+09:00")
+            assert ok, n
         return int(rev.id)
 
 
@@ -444,6 +453,7 @@ def test_c3_discount_rule_is_the_same_on_every_price_path(
     client: TestClient, label: str, applied: bool
 ) -> None:
     """할인 차감(확인됨만)이 상세·목록(값·필터·정렬)·비교(계약금·자기자본)·보고서·점수 입력에서 같은 값(D12-3)."""
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     from app.reports.data import load_report
     from app.scheduler.inputs import load_facts
 

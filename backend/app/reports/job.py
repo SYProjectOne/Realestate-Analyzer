@@ -8,6 +8,8 @@ payload = ``ReportRequest{snapshot_id, format: html|pdf, compare_snapshot_id?, s
 - ``ValueError`` — payload 형식 오류(pydantic ValidationError 포함, failed).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -26,9 +28,23 @@ __all__ = ["JOB_NAME", "handle", "run_report_job"]
 JOB_NAME: Final = "report"
 
 
+def stored_path(path: Path) -> str:
+    """잡 stats 의 보고서 경로 = ``REPORT_DIR`` 기준 상대 이름(R3 5차 K3 — 상대 REPORT_DIR 이면 다운로드가 같은 기준으로
+    다시 붙여 404 였다). REPORT_DIR 밖(테스트의 out_dir)이면 절대 경로."""
+    from app.core.paths import report_dir
+
+    base = report_dir()
+    for a, b in ((path, base), (path.resolve(), base.resolve())):
+        try:
+            return a.relative_to(b).as_posix()
+        except ValueError:
+            continue
+    return str(path.resolve())
+
+
 def _stats(rep: GeneratedReport, req: ReportRequest) -> dict[str, Any]:
     return {
-        "path": str(rep.path),
+        "path": stored_path(rep.path),
         "filename": rep.filename,
         "format": rep.format,
         "size_bytes": rep.size_bytes,
