@@ -368,7 +368,16 @@ def materialize(
             for cid, body in build_details(session, cfg, snap, sc, complexes).items():
                 put("complex", body, key=str(cid), scenario=sk)
         if "report" in want:
-            put("report", build_report(session, snap, sc, cache, env=cfg.env), scenario=sk)
+            from app.reports.errors import ReportBlocked
+
+            try:
+                put("report", build_report(session, snap, sc, cache, env=cfg.env), scenario=sk)
+            except ReportBlocked:
+                # publish 는 contradicted 0 일 때만 부른다 — 여기 오는 것은 개발 도구(devseed 재생성)가 남은 contradicted 주장이
+                # 있는 픽스처를 다시 쓸 때뿐이다. 보고서 저장본을 만들지 않는다(그 리비전 보고서 생성은 같은 검사로 거부된다)
+                log.warning(
+                    "snapshot_view.report_blocked", extra={"snapshot_id": snapshot_id, "scenario": sk}
+                )
         if "report_diff" in want:
             put("report_diff", build_report_diff(session, snap, sc), scenario=sk)
     session.add_all(rows)

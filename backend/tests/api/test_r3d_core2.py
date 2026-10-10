@@ -353,13 +353,23 @@ def _event_after_run(cx_id: int, snapshot_id: int = SNAP) -> None:
 
 
 def test_m1_building_revision_does_not_hide_rejudge_badge(client: TestClient) -> None:
+    """계약 .10(D13-1·M6): 발행 리비전 응답은 저장본(배지도 발행 순간 값) — 이후 이벤트·새 리비전이 바꾸지 않는다. '재판정
+    필요'는 실시간(발행 전) 리비전에서 늘 지금 사실과 비교하고, 더 새 판정 중 리비전이 생겨도 사라지지 않는다(M-1)."""
+    from ._support import as_live
+
+    before = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 200}, headers=READ).content
     _event_after_run(CX)
     _revision_of(SNAP, publish=False)  # 판정 중인 새 리비전(미발행)
+    assert (
+        client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 200}, headers=READ).content == before
+    )
+    as_live()  # SNAP 을 판정 끝·발행 전으로 — 실시간 비교
+    with get_session() as s:
+        s.add(Snapshot(region_id=1, asof_date="2099-12-30", status="building", degraded=False,
+                       created_at="2099-12-30T00:00:00+09:00", revision=1))  # fmt: skip
     items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 200}, headers=READ).json()["items"]
     row = next(i for i in items if i["complex_id"] == CX)
-    assert row["rejudge_needed"] is True, (
-        "최신 리비전 = 발행된 것만(D12-4) — building 리비전이 배지를 지우면 안 된다(M-1)"
-    )
+    assert row["rejudge_needed"] is True, "더 새 판정 중 리비전이 배지를 지우면 안 된다(M-1·M6)"
 
 
 def test_m2_human_check_writes_to_newest_unpublished_asof_not_old_revision(client: TestClient) -> None:

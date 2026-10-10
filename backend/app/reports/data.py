@@ -1819,8 +1819,9 @@ def _resolve(
     snap = session.get(Snapshot, snapshot_id)
     if snap is None:
         raise ReportNotFound(f"스냅샷 {snapshot_id} 없음")
-    # 발행 리비전은 발행 때 남은 contradicted 0 을 확인했다(publish) — 저장본을 그대로 렌더한다(D13-1)
-    blocked = [] if snap.status == "published" else count_remaining_contradicted(session, snapshot_id)
+    # T15 생성 거부는 발행 리비전에도 그대로 건다(발행 때 0 을 확인했지만 거부 규칙은 보고서 쪽에서도 지킨다 — 저장본을 렌더할
+    # 때도 같은 검사, 결과 바이트에는 영향 없음)
+    blocked = count_remaining_contradicted(session, snapshot_id)
     if blocked:
         ids = ", ".join(str(c.id) for c in blocked[:10])
         raise ReportBlocked(

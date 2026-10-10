@@ -140,6 +140,13 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
 
     def b_demote() -> None:
         _demote_price(client, 658_140_000)
+        from app.models import Claim
+
+        with (
+            get_session() as s
+        ):  # 시험용 contradicted 주장(발행 리비전에 붙인 픽스처)은 고친 문장 재검증 통과로 닫는다
+            for c in s.scalars(select(Claim).where(Claim.verify_status == "contradicted")):
+                c.verify_status = "verified"
 
     def c_human() -> None:
         _ensure_resale(12)
