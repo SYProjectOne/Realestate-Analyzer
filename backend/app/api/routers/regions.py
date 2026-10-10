@@ -246,8 +246,31 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
     added = [s for s in new_sel if _sel_key(s) not in old_keys]
     removed = [s for s in old_sel if _sel_key(s) not in new_keys]
     name = body.get("name")
+    if name:
+        from app.judge.guard import check_payload
+
+        name = str(name).strip()
+        guard = check_payload({"name": name})
+        if not guard.ok or not name:  # R3 4차 minor: 지역 이름도 사용자 입력 — 전화·이메일·비밀값 금지
+            raise ApiError(
+                422, "validation_error", f"지역 이름에 공개할 수 없는 정보가 있다({', '.join(guard.kinds())})",
+                field_errors=[{"loc": ["body", "name"], "msg": "guard"}],
+            )  # fmt: skip
     if not added and not removed and (not name or name == region.name):
         raise conflict("선택이 바뀌지 않았다")
+    if not added and not removed:
+        # 이름만 바뀜 — 판정 범위가 그대로라 region.expand·change_event 없음(계약 .9: change_event·job_id null)
+        region.name = str(name)
+        session.commit()
+        return JSONResponse(
+            {
+                "region": region_view(session, region, latest=default_snapshot(session, region.id)),
+                "change_event": None,
+                "job_id": None,
+                "added": [],
+                "removed": [],
+            }
+        )
     codes = _expand_all(session, new_sel)
     old_count = len(old_sel)
     region.selections = new_sel
@@ -257,7 +280,11 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
     region.living_areas = _expanded_areas(session, list(region.living_areas or []), codes)
     if name:
         region.name = str(name)
-    snap = default_snapshot(session, region.id)
+    from app.scheduler.snapshots import latest_for_region
+
+    snap = latest_for_region(
+        session, region.id
+    )  # 가장 새 (기준일, 리비전) — region.expand 가 그 뒤 새 리비전을 만든다
     names = ", ".join(s["full_name"] for s in added) or "-"
     gone = ", ".join(s["full_name"] for s in removed) or "-"
     ce = ChangeEvent(
@@ -302,6 +329,17 @@ def _issue_errors(issues: list[Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _rejudge_snapshot(session: Session, region_id: int, reason: str) -> Snapshot | None:
+    """사람 확인·생활권 편집 뒤 재판정이 쓸 스냅샷(R3 4차 M-2): 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이
+    발행 전이면 그것(옛 기준일에 리비전을 만들지 않는다), 발행됐으면 그 기준일의 새 리비전(D11-1)."""
+    from app.scheduler.snapshots import latest_for_region, writable
+
+    base = latest_for_region(session, region_id)
+    if base is None:
+        return None
+    return writable(session, base.id, reason=reason[:200], created_at=now_iso())
+
+
 @router.put("/regions/{id}/living-areas")
 def update_living_areas(session: DB, id: int, body: Annotated[Any, Body()] = None) -> JSONResponse:
     from app.normalize.living_area import LivingAreaError, apply_living_area_edit, living_area_of
@@ -322,15 +360,8 @@ def update_living_areas(session: DB, id: int, body: Annotated[Any, Body()] = Non
     for cx in session.scalars(select(Complex).where(Complex.region_id == region.id)):
         if cx.legal_dong_code:
             cx.living_area = living_area_of(cx.legal_dong_code, new_areas) or cx.living_area
-    snap = (
-        default_snapshot(session, region.id)
-        or session.scalars(
-            select(Snapshot)
-            .where(Snapshot.region_id == region.id)
-            .order_by(Snapshot.asof_date.desc())
-            .limit(1)
-        ).first()
-    )
+    # M-2·D12-5: 재판정 = 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전(발행됐으면 새 리비전) — change_event 도 거기
+    snap = _rejudge_snapshot(session, region.id, f"생활권 편집: {region.name}")
 
     def summary(areas: list[dict[str, Any]]) -> str:
         return json.dumps(
@@ -353,16 +384,10 @@ def update_living_areas(session: DB, id: int, body: Annotated[Any, Body()] = Non
     session.add(ce)
     session.flush()
     if snap is not None:
-        job = enqueue(
-            session,
-            "rejudge",
-            {
-                "snapshot_id": snap.id,
-                "scenario_id": None,
-                "complex_ids": None,
-                "reason": f"생활권 편집: {region.name}"[:200],
-                "change_event_ids": [ce.id],
-            },
+        from app.scheduler.rejudge import enqueue_rejudge
+
+        job = enqueue_rejudge(
+            session, snap.id, None, f"생활권 편집: {region.name}"[:200], change_event_ids=[ce.id]
         )
     else:
         job = enqueue(session, "region.bootstrap", {"region_id": region.id})

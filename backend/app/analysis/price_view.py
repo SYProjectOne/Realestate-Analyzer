@@ -30,7 +30,9 @@ __all__ = [
     "basis_type",
     "current_price",
     "current_terms",
+    "labels_from",
     "mid_rounded",
+    "no_discount_label",
 ]
 
 MISSING_PRICE_REASON: Final = "분양가 미공개"
@@ -138,17 +140,32 @@ def _int(v: Any) -> int | None:
 DiscountLabel = Callable[[FieldRef], str | None]
 
 
+def no_discount_label(_ref: FieldRef) -> str | None:
+    """할인 라벨을 모르는 호출자(출처 행 없음) — 할인을 빼지 않는다(표시만)."""
+    return None
+
+
+def labels_from(lookup: Callable[[str, int, str], str | None]) -> DiscountLabel:
+    """(entity, entity_id, field) → chosen 출처 행 라벨 함수 → ``current_price`` 의 ``discount_label``."""
+
+    def label(ref: FieldRef) -> str | None:
+        return lookup(ref.entity, ref.entity_id, ref.field)
+
+    return label
+
+
 def current_price(
     types: Sequence[TypeRowLike],
     terms: Sequence[PaymentTermsLike],
     *,
-    discount_label: DiscountLabel | None = None,
+    discount_label: DiscountLabel | None,
 ) -> PriceView:
     """현재 구매가(§6-1). 기준 타입이 없거나 최고가가 없으면 미공개.
 
-    할인(D11-6, 계약 .8): 현재 공고 ``discount_by_type[기준 타입]`` 이 있고 그 라벨이 '확인됨'이면 low·high 에서 뺀다
-    (``price.purchase_price``). ``discount_label`` = 할인 출처 필드 → 라벨(호출자가 chosen 출처 행으로). 없으면 값이 남아
-    있는 것 = 확인됨으로 본다 — 점수 입력은 판정기 추출 전 OCR 값을 이미 가렸다(``analysis.complex_input.masked``)."""
+    할인(D11-6·**D12-3**, 계약 .9): 현재 공고 ``discount_by_type[기준 타입]`` 이 있고 그 출처 라벨이 '확인됨'일 때만 low·high·mid
+    에서 뺀다(``price.purchase_price``). 가격을 쓰는 **모든 경로**(상세·목록 필터·정렬·비교·자금 요건·보고서·점수)가 이 함수
+    하나로 계산한다. ``discount_label`` = 할인 출처 필드 → 라벨(호출자가 chosen 출처 행으로 — ``labels_from``) — **필수**:
+    None(라벨을 모름)이면 빼지 않는다(예전 기본값은 '값이 있으면 확인됨'이라 보고서·비교·목록 정렬이 추정 할인도 뺐다 — C-3)."""
     t = basis_type(types)
     if t is None:
         return PriceView(None, None, None, None, empty_reason=MISSING_PRICE_REASON)
@@ -187,7 +204,7 @@ def current_price(
     disc = _int(disc_map.get(t.type_code)) if isinstance(disc_map, Mapping) else None
     if cur is not None and disc:
         discount_ref = FieldRef("payment_terms", cur.id, f"discount_by_type.{t.type_code}", disc)
-        discount_label_v = discount_label(discount_ref) if discount_label is not None else "확인됨"
+        discount_label_v = discount_label(discount_ref) if discount_label is not None else None
     applied = bool(disc) and discount_label_v == "확인됨"
     p = purchase_price(
         floor_won=floor_won,

@@ -51,7 +51,7 @@ def test_basis_type_is_closest_to_84() -> None:
 
 
 def test_complex_type_price_when_no_terms() -> None:
-    v = current_price(TYPES, [])
+    v = current_price(TYPES, [], discount_label=None)
     assert (v.basis_type_code, v.low_won, v.high_won) == ("84A", 775_000_000, 799_000_000)
     assert v.mid_won == Decimal(787_000_000) and not v.from_terms and v.known
     assert v.max_ref == FieldRef("complex_type", 2, "max_price_won", 784_000_000)
@@ -71,7 +71,7 @@ def test_latest_terms_price_by_type_wins_m3() -> None:
             {"84A": {"max_price_won": 759_000_000, "floor_sample_price_won": 740_000_000}},
         ),
     ]
-    v = current_price(TYPES, terms)
+    v = current_price(TYPES, terms, discount_label=None)
     assert v.from_terms and v.terms_id == 11
     assert (v.low_won, v.high_won) == (755_000_000, 774_000_000)  # + 발코니·옵션 1,500만
     assert v.max_ref == FieldRef("payment_terms", 11, "price_by_type.84A.max_price_won", 759_000_000)
@@ -80,7 +80,9 @@ def test_latest_terms_price_by_type_wins_m3() -> None:
     )
     assert v.change_vs_first_pct == Decimal("-3.19")
     # 최신 공고에 기준 타입 가격이 없으면 complex_type
-    v2 = current_price(TYPES, [_Terms(12, "2026-10-01", "x", {"59A": {"max_price_won": 1}})])
+    v2 = current_price(
+        TYPES, [_Terms(12, "2026-10-01", "x", {"59A": {"max_price_won": 1}})], discount_label=None
+    )
     assert not v2.from_terms and v2.high_won == 799_000_000
 
 
@@ -93,6 +95,6 @@ def test_current_terms_order_effective_then_notice_then_id() -> None:
 
 
 def test_missing_price_is_unpublished() -> None:
-    v = current_price([_Type(1, "59A", Decimal(59), None)], [])
+    v = current_price([_Type(1, "59A", Decimal(59), None)], [], discount_label=None)
     assert not v.known and v.empty_reason == "분양가 미공개" and v.basis_type_code == "59A"
-    assert current_price([], []).empty_reason == "분양가 미공개"
+    assert current_price([], [], discount_label=None).empty_reason == "분양가 미공개"

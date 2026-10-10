@@ -92,6 +92,7 @@ __all__ = [
     "address_key",
     "block_name_key",
     "candidate_from_row",
+    "human_superseded",
     "is_zone_address",
     "parser_for",
     "raw_dto",
@@ -931,9 +932,65 @@ def resolve_field_group(
         resolved = resolve([*extra, *cands])
         upsert_provenance(session, resolved.provenance)
         events, _ = write_chosen(session, resolved.chosen, snapshot_id=snapshot_id, detected_at=detected_at)
+        human_superseded(session, resolved, events)
         session.add_all(events)
         session.flush()
     return events
+
+
+HUMAN_REVIEW_TITLE = "사람 확인 재검토"
+"""D12-1: 사람 확인 이후 새 공식 1차 출처가 다른 값을 내 채택됐다 — 체크리스트 '사실 재확인' 항목 제목 머리."""
+
+
+def human_superseded(session: Session, resolved: ResolvedFields, events: list[ChangeEvent]) -> None:
+    """D12-1: 사람 확인 행이 있는데 원문 출처가 채택된 필드(resolver — 사람 확인 이후 새 공식 출처의 다른 값)의 값 변경은
+    critical·재판정 + 체크리스트 '사람 확인 재검토'(사실 재확인 — 동기화가 닫지 않는다). 값이 그대로면(재정규화) 아무것도
+    하지 않는다(이벤트가 없다)."""
+    from app.models import ChecklistItem
+
+    rows: dict[tuple[str, int, str], list[Any]] = {}
+    for p in resolved.provenance:
+        if p.entity_id is not None:
+            rows.setdefault((p.entity, p.entity_id, p.field[:64]), []).append(p)
+    superseded: dict[tuple[str, int, str], Any] = {}
+    for key, group in rows.items():
+        human = next((p for p in group if is_human(p.reason) and not p.chosen), None)
+        if human is not None and any(p.chosen and not is_human(p.reason) for p in group):
+            superseded[key] = human
+    if not superseded:
+        return
+    from app.api.demotion import FIELD_NAMES
+    from app.facts_view import logical_field
+
+    for ev in events:
+        if ev.entity_id is None:
+            continue
+        human = superseded.get((ev.entity, ev.entity_id, (ev.field or "")[:64]))
+        if human is None:
+            continue
+        ev.severity = "critical"
+        ev.triggers_rejudge = True
+        logical = logical_field(human.field)
+        title = f"{HUMAN_REVIEW_TITLE}: {FIELD_NAMES.get(logical, logical)}"
+        note = (
+            f"사람 확인 값 {human.value_text} 이후 새 공식 공고가 {ev.new_text} 를 냈다(D12-1) — 원문을 확인해 다시 사람 "
+            "확인하거나 닫는다"
+        )
+        item = session.scalars(
+            select(ChecklistItem).where(
+                ChecklistItem.complex_id == ev.complex_id,
+                ChecklistItem.kind == "사실 재확인",
+                ChecklistItem.title == title,
+            )
+        ).first()
+        if item is None:
+            session.add(
+                ChecklistItem(
+                    complex_id=ev.complex_id, kind="사실 재확인", title=title, status="open", note=note
+                )
+            )
+        else:
+            item.status, item.closed_by, item.note = "open", None, note
 
 
 def _is_legacy(fp: FieldProvenance) -> bool:
@@ -1040,6 +1097,7 @@ def store_raw_document(
             detected_at=detected_at,
         )
         events.extend(written)
+        human_superseded(session, resolved, written)
         session.flush()
         for terms in binder.new_terms:
             events.extend(

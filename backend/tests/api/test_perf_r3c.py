@@ -135,7 +135,7 @@ def _demote(s: Any, cx: int, entity: str, entity_id: int, field: str, *, value_n
             claim_id=claim.id, snapshot_id=SNAP, complex_id=cx, entity=entity, entity_id=entity_id, field=field,
             original_fp_id=original, demotion_fp_id=None, original_value_text=value_norm, value_norm=value_norm,
             created_at="2026-10-08T09:00:00+09:00",
-            restored_at="2026-10-08T10:00:00+09:00" if restored else None, restored_by="new_source" if restored else None,
+            restored_at="2026-10-08T10:00:00+09:00" if restored else None, restored_by="human_check" if restored else None,
         )
     )  # fmt: skip
 
@@ -225,7 +225,8 @@ def _enrich() -> None:
             value_norm=str(won5),
             original=fp5.id,
         )
-        # 단지 6: 새 출처가 다른 값 → 풀린 강등(pending) / 단지 8: 복원된 강등 — 둘 다 표시에 영향 없음
+        # 단지 6: 새 출처가 다른 값 → 풀린 강등(pending) / 단지 8: 사람 확인으로 복원된 강등 — 둘 다 표시에 영향 없음
+        # (새 출처로 풀린 강등은 모순 값이 다시 chosen 이면 다시 가린다 — R3 4차 M-17, 그래서 여기는 사람 확인 복원)
         fp6 = _chosen(s, "complex", 6, "units_total")
         _demote(s, 6, "complex", 6, "units_total", value_norm="999999", original=None)
         fp8 = _chosen(s, "complex", 8, "units_total")

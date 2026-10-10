@@ -1757,6 +1757,13 @@ class HumanCheck(BaseModel):
     created_intake: Intake | None = None
     change_event_id: int | None = None
     suggested_job: JobCreate | None = None
+    """
+    계약 .9(D12-5)부터 늘 null — 재판정은 제안이 아니라 자동 등록된다(rejudge_job_id). 옛 응답 호환으로 필드만 남는다
+    """
+    rejudge_job_id: int | None = None
+    """
+    자동 등록한 rejudge 잡 id(계약 .9, D12-5). 사실 필드·접수 상태면 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에 등록(M-2 — 발행됐으면 새 리비전). '기타'·스냅샷 없음이면 null
+    """
 
 
 class HumanCheckCreate(BaseModel):
@@ -2838,15 +2845,15 @@ class RegionPatch(BaseModel):
 
 class RegionPatched(BaseModel):
     """
-    PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택
+    PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택. 이름만 바꾸면(선택 그대로) 판정 범위가 그대로라 change_event·job_id 가 null 이고 added·removed 는 빈 배열(계약 .9 — R3 4차 minor '이름만 바꿔도 region.expand')
     """
 
     model_config = ConfigDict(
         extra="forbid",
     )
     region: Region
-    change_event: ChangeEvent
-    job_id: int
+    change_event: ChangeEvent | None
+    job_id: int | None
     added: list[RegionSelection]
     removed: list[RegionSelection]
 

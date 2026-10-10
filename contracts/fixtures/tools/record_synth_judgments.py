@@ -430,9 +430,12 @@ def _run(seed: Path, work: Path, name: str, jev: ReportSynthJev, store: dict[str
                 req = json.loads((FIXTURE / "raw" / "human_check" / "t3_switzen_possible.json").read_text(encoding="utf-8"))
                 r = client.post("/api/ops/human-checks", headers=headers, json=req)
                 assert r.status_code == 201, r.text
-                job = r.json()["suggested_job"]
-            r = client.post("/api/jobs", headers=headers, json=job)
-            assert r.status_code == 202, r.text
+                # 계약 .9(D12-5): 재판정은 사람 확인이 자동 등록한다(rejudge_job_id) — 화면이 POST /jobs 하지 않는다
+                assert r.json()["rejudge_job_id"], r.text
+                job = None
+            if job is not None:
+                r = client.post("/api/jobs", headers=headers, json=job)
+                assert r.status_code == 202, r.text
         assert runner.main(["--once"], ctx=_ctx(st, adapter)) == 0
         with get_sessionmaker(st)() as s:
             jobs = [(j.job_name, j.status, j.error_text) for j in s.scalars(select(JobRun).order_by(JobRun.id))]

@@ -37,12 +37,9 @@ from app.api.jobs import now_iso
 from app.facts_view import (
     DEMOTION_LABEL,
     DEMOTION_REASON,
-    ChosenRef,
     DemotionOverlay,
-    is_human,
     load_overlay,
     logical_field,
-    overlay_applies,
 )
 from app.models import (
     ChangeEvent,
@@ -169,7 +166,7 @@ def price_ref(session: Session, complex_id: int) -> tuple[str, int, str] | None:
 
     types = list(session.scalars(select(ComplexType).where(ComplexType.complex_id == complex_id)))
     terms = list(session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == complex_id)))
-    ref = current_price(types, terms).max_ref
+    ref = current_price(types, terms, discount_label=None).max_ref  # 최고가 출처만(할인 무관)
     return (ref.entity, ref.entity_id, ref.field) if ref is not None else None
 
 
@@ -293,10 +290,6 @@ def _chosen(session: Session, entity: str, entity_id: int, field: str) -> FieldP
         )
         .order_by(FieldProvenance.id)
     ).first()
-
-
-def _ref(fp: FieldProvenance | None) -> ChosenRef | None:
-    return ChosenRef(fp.id, fp.value_norm, fp.reason, fp.raw_document_id) if fp is not None else None
 
 
 def _current_value(obj: Any, field: str) -> Any:
@@ -569,19 +562,16 @@ def apply_human_check(
     resolve_field_group(
         session, target.entity, target.entity_id, target.field, [cand], snapshot_id=snapshot_id
     )
+    # 같은 의미 필드(D12-2)의 강등 중 지금 쓰는 행이 사람 확인이 된 것만 복원 기록(옛 공고 행을 확인해도 현재 사실은 그대로)
+    from app.facts_view import RESTORED_HUMAN
+
+    session.flush()
     out: list[FactDemotion] = []
-    for d in session.scalars(
-        select(FactDemotion)
-        .where(
-            FactDemotion.entity == target.entity,
-            FactDemotion.entity_id == target.entity_id,
-            FactDemotion.field == target.field,
-            FactDemotion.restored_at.is_(None),
-        )
-        .order_by(FactDemotion.id)
-    ):
-        _restored(session, d, "human_check", human_check_id=hc.id)
-        out.append(d)
+    ov = load_overlay(session, complex_ids=[hc.complex_id])
+    for d in ov.demotions:
+        if ov.status.get(d.id) == RESTORED_HUMAN and d.restored_by != RESTORED_HUMAN:
+            _restored(session, d, RESTORED_HUMAN, human_check_id=hc.id)
+            out.append(d)
     session.flush()
     from app.normalize.checklist import sync_checklist_for
 
@@ -600,33 +590,62 @@ def _restored(session: Session, d: FactDemotion, by: str, *, human_check_id: int
             item.closed_by = "auto"
 
 
-def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int:
-    """쓰기 경로 전용: 오버레이가 풀린 강등에 복원 기록, 강등이 남았는데 닫힌 '사실 재확인'은 다시 연다. 바뀐 수.
+def _redemote(session: Session, d: FactDemotion) -> None:
+    """새 출처로 풀렸던 강등의 모순 값이 다시 지금 쓰는 값이 됐다(compare 재채택 등, R3 4차 M-17) → 다시 강등 기록."""
+    d.restored_at = None
+    d.restored_by = None
+    d.human_check_id = None
+    if d.checklist_item_id is not None:
+        item = session.get(ChecklistItem, d.checklist_item_id)
+        if item is not None:
+            item.status, item.closed_by = "open", None
+    session.add(
+        ChangeEvent(
+            snapshot_id=d.snapshot_id,
+            entity=d.entity,
+            entity_id=d.entity_id,
+            field=d.field[:64],
+            old_text=d.original_value_text,
+            new_text=f"{DEMOTION_LABEL}({DEMOTION_REASON}) — 모순 값이 다시 채택됨",
+            detected_at=now_iso(),
+            severity="critical",
+            triggers_rejudge=True,
+            complex_id=d.complex_id,
+        )
+    )
 
-    - chosen 이 사람 확인 → 'human_check'(사람 확인 입력 API 가 이미 기록했으면 건너뜀)
-    - chosen 이 원문 출처의 **다른 값** → 'new_source'
-    - chosen 값이 모순 값과 같다(같은 값 재수집·값 없는 행 — chosen 그대로) → 강등 유지(C-4)
+
+def sync_demotions(session: Session, complex_ids: set[int] | None = None) -> int:
+    """쓰기 경로 전용: 강등 상태(``facts_view`` 오버레이 — 지금 쓰는 행 기준, D12-2)를 기록과 맞춘다. 바뀐 수.
+
+    - 지금 쓰는 행이 사람 확인 → 복원 'human_check'(사람 확인 입력 API 가 이미 기록했으면 건너뜀)
+    - 지금 쓰는 행이 원문의 **다른 값** → 복원 'new_source'
+    - 그대로 모순 값·값 없음·채택 보류(같은 값 재수집·새 공고 같은 값 — C-4·C-1·M-17) → 강등 유지, 닫힌 '사실 재확인'은
+      다시 연다(minor 12)
+    - 'new_source' 로 풀렸는데 모순 값이 다시 지금 쓰는 값 → 재강등(M-17)
     """
-    stmt = select(FactDemotion).where(FactDemotion.restored_at.is_(None))
-    if complex_ids is not None:
-        if not complex_ids:
-            return 0
-        stmt = stmt.where(FactDemotion.complex_id.in_(sorted(complex_ids)))
+    if complex_ids is not None and not complex_ids:
+        return 0
+    from app.facts_view import STATUS_DEMOTED
+
+    ov = load_overlay(session, complex_ids=complex_ids)
     n = 0
-    for d in list(session.scalars(stmt.order_by(FactDemotion.id))):
-        chosen = _chosen(session, d.entity, d.entity_id, d.field)
-        if overlay_applies(d, _ref(chosen)):
+    for d in ov.demotions:
+        st = ov.status.get(d.id, STATUS_DEMOTED)
+        if st == STATUS_DEMOTED:
+            if d.restored_at is not None:
+                _redemote(session, d)
+                n += 1
+                continue
             if d.checklist_item_id is not None:
                 item = session.get(ChecklistItem, d.checklist_item_id)
                 if item is not None and item.status != "open":
                     item.status, item.closed_by = "open", None  # minor 12: 강등이 남았으면 다시 연다
                     n += 1
             continue
-        if chosen is not None and is_human(chosen.reason):
-            _restored(session, d, "human_check")
-        else:
-            _restored(session, d, "new_source")
-        n += 1
+        if d.restored_at is None:
+            _restored(session, d, st)
+            n += 1
     session.flush()
     return n
 
@@ -672,9 +691,9 @@ def demotion_view(d: FactDemotion | None, overlay: DemotionOverlay | None = None
     """FactDemotion 계약 모양. status 는 읽는 순간의 오버레이(복원 기록 전이라도 풀렸으면 'restored')."""
     if d is None:
         return None
-    restored = d.restored_at is not None
-    if not restored and overlay is not None and not overlay.is_demoted(d.entity, d.entity_id, d.field):
-        restored = (d.entity, d.entity_id, d.field) in overlay.pending
+    from app.facts_view import STATUS_DEMOTED
+
+    restored = overlay.state(d) != STATUS_DEMOTED if overlay is not None else d.restored_at is not None
     return {
         "id": d.id,
         "claim_id": d.claim_id,

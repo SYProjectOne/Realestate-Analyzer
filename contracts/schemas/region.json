@@ -115,14 +115,14 @@
     },
     "RegionPatched": {
       "title": "RegionPatched",
-      "description": "PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택",
+      "description": "PATCH /regions/{id} 200: 갱신된 region + change_event + 등록된 region.expand 잡 id + 추가·제거된 선택. 이름만 바꾸면(선택 그대로) 판정 범위가 그대로라 change_event·job_id 가 null 이고 added·removed 는 빈 배열(계약 .9 — R3 4차 minor '이름만 바꿔도 region.expand')",
       "type": "object",
       "additionalProperties": false,
       "required": ["region", "change_event", "job_id", "added", "removed"],
       "properties": {
         "region": { "$ref": "#" },
-        "change_event": { "$ref": "change_event.json" },
-        "job_id": { "type": "integer" },
+        "change_event": { "anyOf": [{ "$ref": "change_event.json" }, { "type": "null" }] },
+        "job_id": { "type": ["integer", "null"] },
         "added": { "type": "array", "items": { "$ref": "#/$defs/RegionSelection" } },
         "removed": { "type": "array", "items": { "$ref": "#/$defs/RegionSelection" } }
       }

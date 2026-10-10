@@ -110,14 +110,17 @@ def test_d11_6_discount_is_stored_with_provenance_and_subtracted_only_when_confi
             None,
         )
 
-    view = current_price([T()], [pt])  # type: ignore[list-item]
+    view = current_price([T()], [pt], discount_label=lambda r: "확인됨")  # type: ignore[list-item]
+    assert not current_price([T()], [pt], discount_label=None).discount_applied, (
+        "라벨을 모르면 빼지 않는다(D12-3)"
+    )  # type: ignore[list-item]
     assert view.discount_applied and view.high_won == 590_000_000 and view.low_won == 570_000_000
     assert "할인" in view.composition and view.discount_ref is not None
     est = current_price([T()], [pt], discount_label=lambda r: "추정")  # type: ignore[list-item]
     assert not est.discount_applied and est.high_won == 600_000_000, "확인됨이 아니면 빼지 않는다(D11-6)"
     pt.discount_by_type = {"84A": 10_000_000, "59A": None}
     db_session.flush()
-    gone = current_price([T()], [pt])  # type: ignore[list-item]
+    gone = current_price([T()], [pt], discount_label=lambda r: "확인됨")  # type: ignore[list-item]
     assert gone.high_won == 590_000_000
 
 

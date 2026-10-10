@@ -97,7 +97,9 @@ def test_policy_current_price_is_shared_function(factory: sessionmaker[Session])
         for cid in (1, 7, 15):
             types = list(s.scalars(select(ComplexType).where(ComplexType.complex_id == cid)))
             pays = list(s.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == cid)))
-            assert policy.current_price(types, pays) == price_view.current_price(types, pays)
+            assert policy.current_price(types, pays, discount_label=None) == price_view.current_price(
+                types, pays, discount_label=None
+            )
 
 
 def test_current_terms_order_matches_shared_function(scratch: Session) -> None:

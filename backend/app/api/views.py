@@ -282,6 +282,8 @@ class ComplexBundle:
     """이 스냅샷이 지역의 최신(기준일·리비전)인가 — 과거 스냅샷은 오늘 사실과 비교하지 않는다(minor 5)."""
     ocr_pending: dict[tuple[str, int], frozenset[str]] = field(default_factory=dict)
     """판정기 추출 전 OCR 값 필드((entity, id) → 필드들) — 점수 입력에서 null(R3 C3, 파이프라인과 같은 규칙)."""
+    disc_labels: dict[tuple[str, int, str], str | None] = field(default_factory=dict)
+    """공고 할인 출처 행 라벨((payment_terms, id, 'discount_by_type.<타입>') → chosen 라벨) — 확인됨일 때만 차감(D12-3)."""
     price_memo: tuple[tuple[int, int, int, int], Any] | None = field(default=None, repr=False, compare=False)
     """``bundle_price`` 계산 결과(같은 types·payments 목록이면 다시 계산하지 않는다 — 목록 화면 성능)."""
 
@@ -303,6 +305,41 @@ def _region_scope(session: Session, snap: Snapshot | None, out: Mapping[int, Com
     if total != len(out):
         return None
     return select(Complex.id).where(Complex.region_id == snap.region_id)
+
+
+def latest_snapshot_id(session: Session, region_id: int) -> int | None:
+    """지역의 최신 리비전 = 가장 새 발행 (기준일, 리비전)(D12-4). 발행이 없으면 가장 새 스냅샷."""
+    order = (Snapshot.asof_date.desc(), Snapshot.revision.desc(), Snapshot.id.desc())
+    for cond in (Snapshot.status == "published", None):
+        stmt = select(Snapshot.id).where(Snapshot.region_id == region_id)
+        if cond is not None:
+            stmt = stmt.where(cond)
+        got = session.scalars(stmt.order_by(*order).limit(1)).first()
+        if got is not None:
+            return int(got)
+    return None
+
+
+def _load_discount_labels(session: Session, out: Mapping[int, ComplexBundle]) -> None:
+    """할인이 적힌 납부 조건 행만 그 할인 출처 행 라벨을 읽는다(할인 없는 지역은 질의 없음 — 목록 성능)."""
+    from app.models import FieldProvenance
+
+    owner: dict[int, ComplexBundle] = {
+        p.id: b for b in out.values() for p in b.payments if getattr(p, "discount_by_type", None)
+    }
+    ids = sorted(owner)
+    fp = FieldProvenance
+    for chunk in _chunks(ids):
+        for eid, name, label in session.execute(
+            select(fp.entity_id, fp.field, fp.label).where(
+                fp.entity == "payment_terms",
+                fp.entity_id.in_(chunk),
+                fp.field.like("discount_by_type.%"),
+                fp.chosen.is_(True),
+            )
+        ):
+            if eid in owner:
+                owner[eid].disc_labels.setdefault(("payment_terms", int(eid), str(name)), label)
 
 
 def load_bundles(
@@ -349,6 +386,7 @@ def load_bundles(
         for p in fetch(select(PaymentTerms).where(cond).order_by(PaymentTerms.id), PaymentTerms):
             if p.complex_id in out:
                 out[p.complex_id].payments.append(p)
+    _load_discount_labels(session, out)
     for cond in where_in(IntakeStatus.complex_id):
         for i in fetch(
             select(IntakeStatus)
@@ -368,12 +406,9 @@ def load_bundles(
         run_stmt = run_stmt.where(ScoreRun.scenario_id == scenario_id)
     last_run = session.scalars(run_stmt.order_by(ScoreRun.id.desc()).limit(1)).first()
     if snap is not None:
-        newest = session.scalars(
-            select(Snapshot.id)
-            .where(Snapshot.region_id == snap.region_id)
-            .order_by(Snapshot.asof_date.desc(), Snapshot.revision.desc(), Snapshot.id.desc())
-            .limit(1)
-        ).first()
+        # '최신 리비전' = 지역의 가장 새 **발행** (기준일, 리비전)(D12-4·R3 4차 M-1) — 판정 중(building)·미발행 리비전이
+        # 생겨도 화면 기본 스냅샷의 '재판정 필요' 배지가 사라지지 않는다. 발행 스냅샷이 하나도 없으면 가장 새 것
+        newest = latest_snapshot_id(session, snap.region_id)
         for b in out.values():
             b.latest = newest == snap.id
     if last_run is not None:
@@ -457,26 +492,19 @@ def current_payment(payments: Sequence[PaymentTerms]) -> PaymentTerms | None:
     return pv.current_terms(payments)
 
 
-def price_numbers(t: ComplexType | None) -> tuple[int | None, int | None]:
-    """공고문 타입 행만으로 만든 (low, high) — **현재 구매가가 아니다**(최신 공고 가격 미반영).
-
-    화면·CSV·미리보기의 현재 구매가는 ``bundle_price(b)``
-    (= ``analysis.price_view.current_price``, R3 M3)를 쓴다.
-    """
-    if t is None:
-        return None, None
-    view = pv.current_price([t], [])
-    return view.low_won, view.high_won
+def _disc_label(b: ComplexBundle) -> pv.DiscountLabel:
+    """할인 출처 라벨(D12-3) — ``load_bundles`` 가 읽은 chosen 출처 행 라벨(``disc_labels``)."""
+    return pv.labels_from(lambda e, i, f: b.disc_labels.get((e, i, f)))
 
 
 def bundle_price(b: ComplexBundle) -> pv.PriceView:
-    """§6-1 현재 구매가(최신 payment_terms.price_by_type 우선) — 파이프라인·보고서와 같은 함수(R3 M3).
-    같은 묶음(같은 types·payments 목록)이면 한 번만 계산한다."""
+    """§6-1 현재 구매가(최신 payment_terms.price_by_type 우선, 할인은 확인됨일 때만 — D12-3) — 파이프라인·보고서와 같은
+    함수(R3 M3). 상세·목록 필터·정렬·비교·자금 요건 모두 이 값. 같은 묶음(같은 types·payments 목록)이면 한 번만 계산한다."""
     key = (id(b.types), len(b.types), id(b.payments), len(b.payments))
     if b.price_memo is not None and b.price_memo[0] == key:
         view: pv.PriceView = b.price_memo[1]
         return view
-    view = pv.current_price(b.types, b.payments)
+    view = pv.current_price(b.types, b.payments, discount_label=_disc_label(b))
     b.price_memo = (key, view)
     return view
 
@@ -494,7 +522,7 @@ def score_price(b: ComplexBundle) -> pv.PriceView:
     규칙). 화면 표시 가격은 ``bundle_price``(OCR 값은 '추정(OCR)' 라벨로 보인다)."""
     if not b.ocr_pending:
         return bundle_price(b)
-    return pv.current_price(_masked_types(b), _masked_payments(b))
+    return pv.current_price(_masked_types(b), _masked_payments(b), discount_label=_disc_label(b))
 
 
 def scope_result(b: ComplexBundle) -> scope_rules.ScopeResult:
@@ -735,15 +763,7 @@ def price_range(
     ``full=False``(목록 행 — low·high·mid 만 쓴다): 구성 문구·최초 공고 대비 변동률·할인 Fact 를 만들지 않는다(None,
     R3c 성능). low·high·mid 는 같은 값·같은 Fact."""
 
-    def disc_label(ref: pv.FieldRef) -> str | None:
-        fp = fm.prov.get(ref.entity, ref.entity_id, ref.field)
-        return (
-            fp.label if fp is not None and not fm.prov.demoted(ref.entity, ref.entity_id, ref.field) else None
-        )
-
-    view = bundle_price(b)
-    if view.discount_ref is not None:  # 할인이 있을 때만 출처 라벨로 다시 계산(없으면 같은 값 — 목록 성능)
-        view = pv.current_price(b.types, b.payments, discount_label=disc_label)
+    view = bundle_price(b)  # 할인 차감 규칙(확인됨만)도 같은 함수 — 목록 정렬·필터·비교와 같은 값(D12-3)
     t = (
         next((x for x in b.types if x.type_code == view.basis_type_code), None)
         if view.basis_type_code

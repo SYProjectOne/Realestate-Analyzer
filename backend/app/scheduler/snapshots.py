@@ -22,6 +22,7 @@ __all__ = [
     "contradicted_count",
     "get_or_create",
     "latest_for_region",
+    "mark_compare_base",
     "previous",
     "publish",
     "region_dto",
@@ -123,6 +124,25 @@ def previous(session: Session, snap: Snapshot, *, published_only: bool = False) 
     me = _order_key(snap)
     cands = [s for s in session.scalars(stmt) if s.id != snap.id and _order_key(s) < me]
     return max(cands, key=_order_key, default=None)
+
+
+def mark_compare_base(session: Session, snap: Snapshot, reason: str) -> Snapshot | None:
+    """판정 전(미발행) 스냅샷에 비교 기준이 없으면 직전 발행 스냅샷을 ``revision_of`` 로 단다(R3 4차 M-5·M-6).
+
+    지역 확장·판정기 버전 변경이 **미발행 리비전 1**(새 리비전을 만들 필요가 없는 경우)에 걸려도 보고서 기본 비교
+    (``reports.export.default_compare`` — revision_of)가 생겨 §12 '지역 추가' 장·delta 표가 빠지지 않는다. 이미
+    비교 기준이 있거나 발행됐으면 그대로. 반환 = 비교 기준(없으면 None)."""
+    if snap.status == "published":
+        return None
+    if snap.revision_of is None:
+        prev = previous(session, snap, published_only=True)
+        if prev is None:
+            return None
+        snap.revision_of = prev.id
+    if not snap.revision_reason:
+        snap.revision_reason = reason[:200]
+    session.flush()
+    return session.get(Snapshot, snap.revision_of) if snap.revision_of is not None else None
 
 
 def latest_for_region(session: Session, region_id: int) -> Snapshot | None:

@@ -32,6 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.complex_input import masked
+from app.analysis.price_view import labels_from
 from app.core.contracts_gen import Fact
 from app.core.logging import get_logger
 from app.core.protocols import CONTRACT_VERSION
@@ -625,15 +626,22 @@ class _ProvIndex:
         # D11-3 강등 오버레이(API·파이프라인과 같은 ``app.facts_view``): 강등 중인 사실은 '확인 불가(검증
         # 모순)'
         self.overlay = DemotionOverlay()
-        if any(keys.values()):
+        cx_ids = set(keys.get("complex", ()))
+        if cx_ids:  # 강등은 단지 사실에만(시장 표·벤치마크 색인은 오버레이 없음)
             from app.facts_view import chosen_from_rows
 
-            ids_all = {i for ids in keys.values() for i in ids}
             self.overlay = load_overlay(
                 session,
-                ids=ids_all,
+                complex_ids=cx_ids,
                 chosen=chosen_from_rows(r for r in self.all_rows if r.chosen),
             )
+
+    def label(self, entity: str, entity_id: int, fld: str) -> str | None:
+        """채택 출처 행 라벨(강등 중이면 None) — 할인 차감 판정(``price_view.labels_from``, D12-3)."""
+        row = self._rows.get((entity, entity_id, fld))
+        if row is None or self.overlay.is_demoted(entity, entity_id, fld):
+            return None
+        return row.label
 
     def fact(
         self,
@@ -844,7 +852,7 @@ class _Loader:
             my_pays = [
                 masked(p, P.overlay.fields("payment_terms", p.id)) for p in pays if p.complex_id == c.id
             ]
-            view = current_price(my_types, my_pays)
+            view = current_price(my_types, my_pays, discount_label=labels_from(P.label))
             basis = next((tv for tv in tviews if tv.type_code == view.basis_type_code), None)
             if basis is not None:
                 basis.is_basis = True
@@ -994,7 +1002,14 @@ class _Loader:
             return low_src, max_f
         notice = next((p.notice_no for p in pays if p.id == view.terms_id), None) if view.from_terms else None
         supply = f"공급금액(공고 {notice})" if notice else "공급금액"
-        reason = f"산술: {supply} + 발코니 + 필수 옵션"
+        parts = [supply]
+        if "발코니" in view.composition:
+            parts.append("발코니")
+        if "옵션" in view.composition:
+            parts.append("필수 옵션")
+        reason = "산술: " + " + ".join(parts)
+        if view.discount_applied and view.discount_ref is not None:  # 확인된 공고 할인만 뺐다(D11-6·D12-3)
+            reason += f" − 할인 {int(view.discount_ref.value) // 10_000:,}만"
         low_won = view.low_won if floor_f is not None else view.high_won
         return (
             make_fact(low_won, "추정", low_src.prov, max_f.checked_at, unit="won", reason=reason),
@@ -1931,15 +1946,37 @@ def load_report(
     return data
 
 
+def _candidates(session: Session, run: ScoreRun | None, ids: set[int]) -> set[int]:
+    """점수 실행의 rerank 후보(저장 judge_scope 가 판정 대상·참고·보류). 저장값이 없는 옛 행은 후보로 본다."""
+    from app.analysis.scope import in_rerank
+
+    if run is None:
+        return set()
+    out: set[int] = set()
+    for cid, scope in session.execute(
+        select(ScoreTotal.complex_id, ScoreTotal.judge_scope).where(ScoreTotal.score_run_id == run.id)
+    ):
+        if cid in ids and (scope is None or in_rerank(str(scope))):
+            out.add(int(cid))
+    return out
+
+
 def _extra(
     session: Session, data: ReportData, base: Snapshot, scenario: Scenario, names: Mapping[int, str]
 ) -> ExtraView:
-    """§12 지역 추가·변경 장: 후보군 변화, rerank 재실행, 순위 변화 한 문단(meta §2-3)."""
+    """§12 지역 추가·변경 장: 후보군 변화, rerank 재실행, 순위 변화 한 문단(meta §2-3).
+
+    후보군 = 그 점수 실행에서 rerank 후보 범위(판정 대상·참고·보류 — ``analysis.scope.in_rerank``)인 단지(R3 4차 M-4:
+    지역 선택에서 빠져 '제외'(범위 경계)가 된 단지도 점수 행은 남아 '제외 0'으로 보였다)."""
     prev_run = _latest_run(session, base.id, scenario.id)
     prev = {v.complex_id: v for v in _score_views(session, prev_run, names, {})}
     cur = {v.complex_id: v for v in data.scores}
-    added = sorted(names.get(i, str(i)) for i in set(cur) - set(prev))
-    removed = sorted(names.get(i, str(i)) for i in set(prev) - set(cur))
+    cur_run = _latest_run(session, data.snapshot_id, scenario.id)
+    prev_c, cur_c = _candidates(session, prev_run, set(prev)), _candidates(session, cur_run, set(cur))
+    added = sorted(names.get(i, str(i)) for i in cur_c - prev_c)
+    removed = sorted(names.get(i, str(i)) for i in prev_c - cur_c)
+    prev = {k: v for k, v in prev.items() if k in prev_c}
+    cur = {k: v for k, v in cur.items() if k in cur_c}
     rank_rows: list[tuple[str, str, str, Fact | None, Fact | None]] = []
     for cid in sorted(set(cur) | set(prev), key=lambda i: (cur[i].rank or 99) if i in cur else 99):
         a, b = prev.get(cid), cur.get(cid)
@@ -1956,13 +1993,19 @@ def _extra(
     cur_top = [v.name for v in data.top5]
     entered = [n for n in cur_top if n not in prev_top]
     left = [n for n in prev_top if n not in cur_top]
+    prev_seq = prev_run.rerank_judgment_seq if prev_run else None
+    if data.rerank_seq is not None and data.rerank_seq != prev_seq:
+        rerank_text = (
+            f"rerank는 후보군 전체로 다시 실행했다(#{prev_seq or '—'} → #{data.rerank_seq}). "
+            "종합 점수는 새 rerank 호출 값만 쓴다(§6-5 고정 앵커)."
+        )
+    else:
+        # R3 4차 minor: 사람 확인·단지 재판정 리비전은 rerank 를 다시 부르지 않았다 — '다시 실행' 이라고 쓰지 않는다
+        rerank_text = f"rerank는 다시 실행하지 않았다(같은 호출 #{data.rerank_seq or prev_seq or '—'} 유지)."
     summary = (
-        f"{base.asof_date} 스냅샷 대비 후보 {len(prev)}개 → {len(cur)}개"
-        f"(추가 {len(added)}, 제외 {len(removed)}). "
-        f"rerank는 후보군 전체로 다시 실행했다(#{prev_run.rerank_judgment_seq if prev_run else '—'} → "
-        f"#{data.rerank_seq or '—'}). TOP 5 진입: {', '.join(entered) or '없음'}; "
-        f"이탈: {', '.join(left) or '없음'}. "
-        f"종합 점수는 새 rerank 호출 값만 쓴다(§6-5 고정 앵커)."
+        f"{base.asof_date} 스냅샷(리비전 {int(base.revision or 1)}) 대비 후보 {len(prev)}개 → {len(cur)}개"
+        f"(추가 {len(added)}, 제외 {len(removed)}). {rerank_text} "
+        f"TOP 5 진입: {', '.join(entered) or '없음'}; 이탈: {', '.join(left) or '없음'}."
     )
     return ExtraView(
         base_snapshot_id=base.id,

@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from app.api.contract import check_body
 from app.api.demotion import FIELD_TERMS, ValueParseError, apply_human_check, human_target, parse_human_value
-from app.api.deps import DB, default_snapshot, get_complex, in_db_range, settings_of
+from app.api.deps import DB, get_complex, in_db_range, settings_of
 from app.api.errors import not_found, validation_error
 from app.api.jobs import now_iso
 from app.api.views import envelope_view, intake_view, pick_intake
@@ -38,6 +38,7 @@ from app.models import (
     Snapshot,
 )
 from app.models.enums import JUDGE_TOOL, SOURCE_KIND
+from app.scheduler.rejudge import enqueue_rejudge
 from app.scheduler.snapshots import latest_for_region, writable
 
 router = APIRouter(tags=["ops"])
@@ -316,12 +317,19 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
     session.flush()
     created: dict[str, Any] | None = None
     change_id: int | None = None
-    suggested: dict[str, Any] | None = None
-    base = default_snapshot(session, cx.region_id) or latest_for_region(session, cx.region_id)
+    rejudge_job: JobRun | None = None
+    # M-2: 재판정은 그 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이 발행 전이면 거기(옛 기준일에 리비전을 만들지
+    # 않는다). 발행됐으면 새 리비전(D11-1). change_event 도 그 리비전에 붙는다(발행 스냅샷은 불변)
+    base = latest_for_region(session, cx.region_id)
+    snap_w = (
+        writable(session, base.id, reason=f"사람 확인: {cx.name} {field}"[:200], created_at=now_iso())
+        if base is not None and (target is not None or field == "intake_status")
+        else None  # '기타'(기록만)는 리비전·재판정 없음
+    )
     if target is not None:
-        restored = apply_human_check(session, hc, snapshot_id=base.id if base is not None else None)
+        restored = apply_human_check(session, hc, snapshot_id=snap_w.id if snap_w is not None else None)
         ce = ChangeEvent(
-            snapshot_id=base.id if base is not None else None,
+            snapshot_id=snap_w.id if snap_w is not None else None,
             entity=target.entity,
             entity_id=target.entity_id,
             field=target.field[:64],
@@ -335,20 +343,16 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
         session.add(ce)
         session.flush()
         change_id = ce.id
-        if base is not None:
-            suggested = {
-                "job_name": "rejudge",
-                "payload": {
-                    "snapshot_id": base.id,
-                    "scenario_id": None,
-                    "complex_ids": [cx.id],
-                    "reason": f"사람 확인 입력: {cx.name} {field}" + (" 복원" if restored else ""),
-                    "change_event_ids": [ce.id],
-                },
-            }
-            suggested["payload"]["reason"] = suggested["payload"]["reason"][:200]
-    if field == "intake_status" and base is not None:
-        snap = writable(session, base.id, reason=f"사람 확인: {cx.name} 접수"[:200], created_at=now_iso())
+        if snap_w is not None:  # D12-5: 재판정은 제안이 아니라 자동 등록
+            rejudge_job = enqueue_rejudge(
+                session,
+                snap_w.id,
+                [cx.id],
+                (f"사람 확인 입력: {cx.name} {field}" + (" 복원" if restored else ""))[:200],
+                change_event_ids=[ce.id],
+            )
+    if field == "intake_status" and snap_w is not None:
+        snap = snap_w
         before = pick_intake(
             list(
                 session.scalars(
@@ -389,16 +393,13 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
         session.flush()
         created = intake_view(row)
         change_id = ce.id
-        suggested = {
-            "job_name": "rejudge",
-            "payload": {
-                "snapshot_id": snap.id,
-                "scenario_id": None,
-                "complex_ids": [cx.id],
-                "reason": f"사람 확인 입력: {cx.name} 접수 {hc.value_text}"[:200],
-                "change_event_ids": [ce.id],
-            },
-        }
+        rejudge_job = enqueue_rejudge(
+            session,
+            snap.id,
+            [cx.id],
+            f"사람 확인 입력: {cx.name} 접수 {hc.value_text}"[:200],
+            change_event_ids=[ce.id],
+        )
     session.commit()
     return JSONResponse(
         {
@@ -414,7 +415,8 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
             "note": hc.note,
             "created_intake": created,
             "change_event_id": change_id,
-            "suggested_job": suggested,
+            "suggested_job": None,  # 계약 .9(D12-5): 제안 대신 자동 등록 — rejudge_job_id
+            "rejudge_job_id": rejudge_job.id if rejudge_job is not None else None,
         },
         status_code=201,
     )

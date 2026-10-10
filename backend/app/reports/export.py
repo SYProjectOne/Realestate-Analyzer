@@ -48,14 +48,30 @@ class GeneratedReport:
 
 
 def report_filename(
-    asof: str, fmt: str, *, compare_asof: str | None = None, scenario_code: str = "base"
+    asof: str,
+    fmt: str,
+    *,
+    compare_asof: str | None = None,
+    scenario_code: str = "base",
+    region_id: int | None = None,
+    revision: int = 1,
+    compare_revision: int | None = None,
+    job_id: int | None = None,
 ) -> str:
-    """``report_2026-10-08_vs_2026-10-07.pdf`` (계약 Report 예시). 기본 아닌 시나리오는 접미사."""
-    name = f"report_{asof}"
+    """``report_r1_2026-10-08-r2_vs_2026-10-08-r1_j57.pdf`` (계약 .9 Report 예시).
+
+    R3 4차 C-4: 같은 기준일의 리비전·지역·잡끼리 파일이 겹치면 ``os.replace`` 가 앞 보고서를 덮어써 다운로드 내용과
+    잡 stats 의 sha256 이 어긋났다 — 지역 id·리비전·(잡이면) 잡 id 를 이름에 넣는다. 기본 아닌 시나리오는 접미사."""
+    name = "report"
+    if region_id is not None:
+        name += f"_r{region_id}"
+    name += f"_{asof}-r{int(revision or 1)}"
     if compare_asof:
-        name += f"_vs_{compare_asof}"
+        name += f"_vs_{compare_asof}-r{int(compare_revision or 1)}"
     if scenario_code != "base":
         name += f"_{scenario_code}"
+    if job_id is not None:
+        name += f"_j{job_id}"
     return f"{name}.{fmt}"
 
 
@@ -89,8 +105,9 @@ def generate(
     scenario_id: int | None = None,
     out_dir: Path | None = None,
     echarts_js: Path | None = None,
+    job_id: int | None = None,
 ) -> GeneratedReport:
-    """보고서 파일 1개를 만든다.
+    """보고서 파일 1개를 만든다. ``job_id``(report 잡)는 파일 이름에 들어간다(C-4 — 잡끼리 덮어쓰지 않게).
 
     예외: ``ReportBlocked``(contradicted 남음) · ``ReportNotFound`` · ``ValueError``(형식).
     """
@@ -106,11 +123,19 @@ def generate(
     )
     rendered = render_html(data, diff=diff, echarts_js=echarts_js)
     target_dir = out_dir if out_dir is not None else report_dir()
+    from app.models import Snapshot
+
+    snap_row = session.get(Snapshot, snapshot_id)
+    cmp_row = session.get(Snapshot, compare_snapshot_id) if compare_snapshot_id is not None else None
     name = report_filename(
         data.asof_date,
         fmt,
-        compare_asof=data.extra.base_asof if data.extra else None,
+        compare_asof=cmp_row.asof_date if cmp_row is not None else None,
+        compare_revision=int(cmp_row.revision or 1) if cmp_row is not None else None,
         scenario_code=data.scenario_code,
+        region_id=snap_row.region_id if snap_row is not None else None,
+        revision=int(snap_row.revision or 1) if snap_row is not None else 1,
+        job_id=job_id,
     )
     path = target_dir / name
     html_bytes = rendered.html.encode("utf-8")
