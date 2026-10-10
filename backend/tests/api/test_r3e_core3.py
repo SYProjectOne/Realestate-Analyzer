@@ -583,3 +583,39 @@ def test_minor_human_check_value_parse_and_redact_stays_strict(client: TestClien
               "checked_at": "2026-10-09T10:00:00+09:00", "entered_by": "운영자"},
     )  # fmt: skip
     assert r.status_code == 422, r.text
+
+
+# ====================================================================== M6 '재판정 필요' — 지역 단위 이벤트(실시간 리비전)
+
+
+def test_m6_region_level_event_flags_every_judged_complex_on_live_revision(client: TestClient) -> None:
+    """생활권 편집(지역 단위 change_event, complex_id 없음) 뒤 판정 중 리비전 목록 — 저장 범위가 '판정 대상'인 단지 모두
+    '재판정 필요'(예전: 단지 단위 이벤트만 봐서 배지 없음). 발행 리비전은 저장본 그대로(불변 테스트)."""
+    from ._support import as_live
+
+    as_live()
+    rows0 = {
+        i["complex_id"]: i
+        for i in client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 200}, headers=READ).json()[
+            "items"
+        ]
+    }
+    judged = [c for c, r in rows0.items() if r["judge_scope"] == "판정 대상"]
+    assert judged
+    region = client.get("/api/regions/1", headers=WRITE).json()
+    areas = [
+        {"id": a["id"], "name": a["name"], "legal_dong_codes": a["legal_dong_codes"]}
+        for a in region["living_areas"]
+    ]
+    la2 = next(a for a in areas if a["id"] == "la_2")
+    moved, la2["legal_dong_codes"] = la2["legal_dong_codes"][:3], la2["legal_dong_codes"][3:]
+    areas.append({"id": None, "name": "새 생활권", "legal_dong_codes": moved})
+    r = client.put("/api/regions/1/living-areas", headers=WRITE, json={"living_areas": areas})
+    assert r.status_code == 200, r.text
+    rows = {
+        i["complex_id"]: i
+        for i in client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 200}, headers=READ).json()[
+            "items"
+        ]
+    }
+    assert all(rows[c]["rejudge_needed"] for c in judged), {c: rows[c]["rejudge_needed"] for c in judged}
