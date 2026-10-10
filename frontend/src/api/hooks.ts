@@ -18,6 +18,7 @@ import {
 } from '@tanstack/react-query';
 import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
+import { snapshotsRefetchInterval } from './jobWatch';
 import type {
   CatalystCreate,
   CatalystCreated,
@@ -208,13 +209,18 @@ export function useUpdateLivingAreas(regionId: IdLike): M<LivingAreasUpdate, Liv
   });
 }
 
-/** GET /regions/{id}/snapshots (listSnapshots) — 헤더 SnapshotPicker, G8 */
+/**
+ * GET /regions/{id}/snapshots (listSnapshots) — 헤더 SnapshotPicker, G8.
+ * 발행 대기 리비전(building·ready)이 있으면 폴링한다 — published 로 바뀌면 `jobWatch` 가 지역·사실 화면을
+ * 무효화해 새로 고침 없이 새 리비전이 기본이 된다(4차 리뷰 M-15).
+ */
 export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]> {
   return useQuery({
     queryKey: queryKeys.snapshots(key(regionId)),
     queryFn: ({ signal }) =>
       apiFetch<Snapshot[]>(`/regions/${enc(key(regionId))}/snapshots`, { signal }),
     enabled: has(regionId),
+    refetchInterval: (query) => snapshotsRefetchInterval(query.state.data),
   });
 }
 
@@ -612,12 +618,21 @@ export function useReports(snapshotId: IdLike | null = null): Q<Report[]> {
   });
 }
 
-/** POST /reports (createReport, 202 → JobRun; 409 publish_blocked = contradicted claim) */
+/**
+ * POST /reports (createReport, 202 → JobRun; 409 publish_blocked = contradicted claim·발행 전 리비전).
+ * 409 는 화면이 본 리비전 목록(contradicted 수·상태)이 낡았다는 뜻 — 리비전 목록·보고서 목록을 다시 받는다(4차 minor).
+ */
 export function useCreateReport(): M<ReportRequest, JobRun> {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body) => apiFetch<JobRun>('/reports', { method: 'POST', body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reports'] }),
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 409) {
+        void qc.invalidateQueries({ queryKey: queryKeys.regions() });
+        void qc.invalidateQueries({ queryKey: ['reports'] });
+      }
+    },
   });
 }
 
@@ -722,7 +737,7 @@ export function useUpdateCatalystLocation(): M<
 /**
  * PATCH /regions/{id} (updateRegion, 계약 .8, D11-7) — 지역 선택 확장(selections 추가·제거, 선택 name) = RA "지역 추가".
  * 응답 = {region, change_event(critical), job_id(region.expand), added, removed}. 잡이 새 리비전에서 후보 전체
- * rerank 1회 + 보고서 §12 "지역 추가" 장을 만든다. 선택이 그대로면 409.
+ * rerank 1회 + 보고서 §12 "지역 추가" 장을 만든다. 선택이 그대로면 409 → 지역을 다시 받는다.
  */
 export function useUpdateRegionSelections(regionId: IdLike): M<RegionPatch, RegionPatched> {
   const qc = useQueryClient();
@@ -733,6 +748,12 @@ export function useUpdateRegionSelections(regionId: IdLike): M<RegionPatch, Regi
       qc.setQueryData(queryKeys.region(regionId), data.region);
       void qc.invalidateQueries({ queryKey: queryKeys.regions() });
       void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
+    // 409(선택이 그대로) = 화면이 본 지역 선택이 낡았다 — 지역을 다시 받는다(4차 minor)
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 409) {
+        void qc.invalidateQueries({ queryKey: queryKeys.regions() });
+      }
     },
   });
 }

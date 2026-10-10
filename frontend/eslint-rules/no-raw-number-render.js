@@ -36,6 +36,9 @@
  *     결과 문자열은 라벨 없는 숫자다. 사실은 <FactCell>, 사실이 아닌 숫자는 "비수치 메타"
  *     <MetaValue>/<MetaText>(src/components/MetaValue.tsx) 또는 metaText()/metaNumber()(src/lib/meta.ts).
  *     변수에 담았다가 렌더하는 우회도 막도록 JSX 밖 호출도 검사한다. 날짜(formatDate·formatDday)는 숫자 포맷이 아니다.
+ *     R3d(4차 리뷰 minor): 별칭·네임스페이스 우회도 막는다 — `import { formatCount as fc }`·`import * as f`
+ *     (`f.formatCount(…)`)·함수 값으로 넘기기(`xs.map(formatCount)`, `const g = formatCount`)·재내보내기
+ *     (`export { formatCount as fc } from '@/lib/format'`). 판정은 이름이 아니라 lib/format 에서 온 바인딩이다.
  * 10. 사실 값(`….v`)을 메타로 넘기지 않는다: metaText/metaNumber 인자, <MetaValue value>, <MetaText params>.
  * 11. metaText()/metaNumber() 를 JSX 자식에 바로 쓰지 않는다 — <MetaText>/<MetaValue>(data-meta 표시)를 쓴다.
  *
@@ -86,6 +89,9 @@ const NUMERIC_FORMATTERS = new Set([
   'formatValue',
   'formatFactValue',
 ]);
+
+/** 9: lib/format 모듈 경로(`@/lib/format`·상대 경로 `../lib/format`·`./format`) */
+const FORMAT_MODULE = /(^|[/@])lib\/format(\.[jt]sx?)?$|^\.\/format(\.[jt]sx?)?$/;
 
 /** 10·11: 비수치 메타 함수·컴포넌트 */
 const META_FNS = new Set(['metaText', 'metaNumber']);
@@ -587,11 +593,95 @@ const rule = {
         checkProp(value.expression, (n) => context.report({ node: n, messageId: 'rawNumberProp' }));
       };
     }
+    /** 9: lib/format 에서 가져온 숫자 포맷 함수의 지역 이름(별칭 포함)·네임스페이스 이름 */
+    const formatterLocals = new Set();
+    const formatNamespaces = new Set();
+    const importedName = (spec) =>
+      spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value;
+    const isCallee = (node) =>
+      node.parent?.type === 'CallExpression' && unwrap(node.parent.callee) === node;
+    /** 별칭·네임스페이스·함수 값 우회 — 호출이 아닌 참조도 금지(호출은 CallExpression 이 잡는다) */
+    function reportFormatterRefs(spec, namespace) {
+      for (const variable of context.sourceCode.getDeclaredVariables(spec)) {
+        for (const ref of variable.references) {
+          const id = ref.identifier;
+          if (namespace) {
+            const member = id.parent;
+            if (member?.type === 'MemberExpression' && member.object === id) {
+              const name = member.computed
+                ? member.property.type === 'Literal'
+                  ? String(member.property.value)
+                  : null
+                : propertyName(member);
+              if (name !== null && !NUMERIC_FORMATTERS.has(name)) continue; // formatDate 등
+              if (name !== null && isCallee(member)) continue;
+              context.report({ node: member, messageId: 'formatOutsideFact' });
+              continue;
+            }
+            context.report({ node: id, messageId: 'formatOutsideFact' });
+            continue;
+          }
+          if (isCallee(id)) continue;
+          context.report({ node: id, messageId: 'formatOutsideFact' });
+        }
+      }
+    }
+    if (!skipFormat) {
+      visitors.ImportDeclaration = (node) => {
+        if (node.importKind === 'type' || !FORMAT_MODULE.test(String(node.source.value))) return;
+        for (const spec of node.specifiers) {
+          if (spec.type === 'ImportNamespaceSpecifier') {
+            formatNamespaces.add(spec.local.name);
+            reportFormatterRefs(spec, true);
+          } else if (
+            spec.type === 'ImportSpecifier' &&
+            spec.importKind !== 'type' &&
+            NUMERIC_FORMATTERS.has(importedName(spec))
+          ) {
+            formatterLocals.add(spec.local.name);
+            reportFormatterRefs(spec, false);
+          }
+        }
+      };
+      const reexport = (node) => {
+        if (!node.source || !FORMAT_MODULE.test(String(node.source.value))) return;
+        if (node.type === 'ExportAllDeclaration') {
+          context.report({ node, messageId: 'formatOutsideFact' });
+          return;
+        }
+        for (const spec of node.specifiers) {
+          const local = spec.local.type === 'Identifier' ? spec.local.name : spec.local.value;
+          if (NUMERIC_FORMATTERS.has(local))
+            context.report({ node: spec, messageId: 'formatOutsideFact' });
+        }
+      };
+      visitors.ExportNamedDeclaration = reexport;
+      visitors.ExportAllDeclaration = reexport;
+    }
+    /** 9: 호출이 숫자 포맷 함수인가 — 이름(원래 이름) · 별칭 · 네임스페이스 멤버 */
+    function isFormatterCallee(callee) {
+      if (callee?.type === 'Identifier')
+        return NUMERIC_FORMATTERS.has(callee.name) || formatterLocals.has(callee.name);
+      if (
+        callee?.type === 'MemberExpression' &&
+        callee.object.type === 'Identifier' &&
+        formatNamespaces.has(callee.object.name)
+      ) {
+        const name = callee.computed
+          ? callee.property.type === 'Literal'
+            ? String(callee.property.value)
+            : null
+          : propertyName(callee);
+        return name !== null && NUMERIC_FORMATTERS.has(name);
+      }
+      return false;
+    }
+
     if (!skipCalls || !skipFormat) {
       visitors.CallExpression = (node) => {
         const callee = unwrap(node.callee);
         const calleeName = callee?.type === 'Identifier' ? callee.name : null;
-        if (!skipFormat && calleeName && NUMERIC_FORMATTERS.has(calleeName)) {
+        if (!skipFormat && isFormatterCallee(callee)) {
           // 9: 라벨 없는 숫자 문자열 — 7(신뢰도)보다 앞선다(어차피 호출 자체가 금지)
           context.report({ node, messageId: 'formatOutsideFact' });
           return;

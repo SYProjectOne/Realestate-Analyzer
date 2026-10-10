@@ -66,6 +66,10 @@ describe('D11-6 할인 표시', () => {
     expect(header).toHaveTextContent('1,000만');
     expect(header.querySelector('[data-prov="fp_9001"]')).not.toBeNull();
     expect(header).toHaveAttribute('title', t('page.G3.price.discountApplied'));
+    // 툴팁만이 아니라 화면에 보이는 문구(모바일 — 4차 minor)
+    expect(within(header).getByTestId('header-discount-note')).toHaveTextContent(
+      t('page.G3.price.discountAppliedShort'),
+    );
 
     const row = await screen.findByTestId('price-discount');
     expect(row).toHaveTextContent('1,000만');
@@ -81,6 +85,9 @@ describe('D11-6 할인 표시', () => {
     renderRoute('/complexes/2#price');
     const row = await screen.findByTestId('price-discount');
     expect(row).toHaveTextContent(t('page.G3.price.discountNotApplied'));
+    expect(await screen.findByTestId('header-discount-note')).toHaveTextContent(
+      t('page.G3.price.discountNotAppliedShort'),
+    );
     expect(within(row).getAllByText(/추정/).length).toBeGreaterThan(0);
   });
 

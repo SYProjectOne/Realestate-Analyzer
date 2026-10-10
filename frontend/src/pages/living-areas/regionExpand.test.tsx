@@ -109,6 +109,27 @@ describe('D11-7 지역 범위 확장', () => {
     expect(await within(panel).findByRole('alert')).toHaveTextContent('선택이 바뀌지 않았다');
   });
 
+  it('서버 409 뒤 지역을 다시 받는다(화면이 본 선택이 낡았다 — 4차 minor)', async () => {
+    server.use(
+      http.patch(mswPath('/regions/:id'), () =>
+        HttpResponse.json({ code: 'conflict', detail: '선택이 바뀌지 않았다' }, { status: 409 }),
+      ),
+    );
+    const rec = recordRequests();
+    renderRoute('/regions/1/living-areas');
+    const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
+    const regionGets = () => matching(rec.requests, 'GET', /\/regions(\/1)?$/).length;
+    await waitFor(() => expect(regionGets()).toBeGreaterThan(0));
+    const before = regionGets();
+    await userEvent.type(within(panel).getByLabelText(t('page.G0_2.expand.name')), ' 2');
+    await userEvent.click(
+      within(panel).getByRole('button', { name: t('page.G0_2.expand.submit') }),
+    );
+    await within(panel).findByRole('alert');
+    await waitFor(() => expect(regionGets()).toBeGreaterThan(before));
+    rec.stop();
+  });
+
   it('선택이 하나뿐이면 뺄 수 없다', async () => {
     renderRoute('/regions/1/living-areas');
     const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });

@@ -106,7 +106,7 @@ describe('G6 실거래 건수 = FactCell (FactCell 밖 숫자 금지)', () => {
     expect(nCell.querySelector('[data-prov="cs_1"]')).not.toBeNull();
   });
 
-  it('sampleCountFact: 집계 사실이 확인 불가면 건수도 확인 불가(같은 사유)', () => {
+  it('sampleCountFact: 집계 사실이 확인 불가면 건수도 확인 불가(같은 사유), 라벨은 빌리지 않는다', () => {
     const fact = sampleCountFact(
       { v: null, label: '확인 불가', reason: '표본 없음', prov: null, checked_at: '2026-10-08' },
       0,
@@ -116,7 +116,14 @@ describe('G6 실거래 건수 = FactCell (FactCell 밖 숫자 금지)', () => {
       { v: 1, label: '추정', reason: '대체', prov: 'cs_2', checked_at: '2026-10-08' },
       7,
     );
-    expect(ok).toMatchObject({ v: 7, label: '추정', prov: 'cs_2', reason: null });
+    // 4차 minor: 중앙값 라벨('추정')을 빌리지 않는다 — 출처에서 센 건수는 확인됨
+    expect(ok).toMatchObject({ v: 7, label: '확인됨', prov: 'cs_2', reason: null });
+    const noProv = sampleCountFact(
+      { v: 1, label: '추정', reason: null, prov: null, checked_at: '2026-10-08' },
+      3,
+    );
+    expect(noProv).toMatchObject({ v: null, label: '확인 불가' });
+    expect(noProv.reason).toBeTruthy();
   });
 });
 
