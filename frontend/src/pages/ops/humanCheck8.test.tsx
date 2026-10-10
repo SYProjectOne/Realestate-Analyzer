@@ -1,22 +1,23 @@
 /**
- * M-5(3차 리뷰) · D11-3 · 계약 .8 초안: 사람 확인 폼이 강등 가능한 사실 필드를 지정해 복원할 수 있다.
+ * M-5(3차 리뷰) · D11-3 · 계약 .8(HumanCheckField·entity_id): 사람 확인 폼이 강등 가능한 사실 필드를 지정해 복원할 수 있다.
  *  - 필드 = 접수 상태 + 사실 5개(max_price_won·move_in_ym·resale_months·residency_months·down_payment_pct) + 기타
- *  - 값 형·범위·길이 검사(정수 필드 '6.02' 거부 — 절삭 금지), note ≤ 500, value ≤ 200
+ *  - 값 형·범위·길이 검사 = 서버 허용 범위(최고 공급금액 1,000만~1,000억 원 정수, 입주 2000-01~2100-12, 개월 0~240 정수,
+ *    계약금 0~100 소수 둘째 자리까지 — 정수 필드 '6.02' 거부, 절삭 금지), note ≤ 500, value ≤ 200
  *  - ClaimsPanel 강등 배지 옆 '사람 확인으로 복원' → 폼 미리 채움(단지·필드·사실 행) → 저장 → 강등 '복원됨(사람 확인)'
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { ROLE_STORAGE_KEY, TOKEN_STORAGE_KEY } from '@/api/auth';
-import { HUMAN_CHECK_FIELDS } from '@/api/contract8';
-import type { ClaimView } from '@/api/types';
+import { HUMAN_CHECK_FIELDS, type ClaimView } from '@/api/types';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
-import { validateHumanValue } from './HumanCheckForm';
+import { normalizeHumanValue, validateHumanValue } from './HumanCheckForm';
+import { humanCheckFieldOf } from './humanCheckRules';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -53,6 +54,32 @@ describe('M-5 사람 확인 필드(계약 .8)', () => {
     expect(validateHumanValue('down_payment_pct', '101')).not.toBeNull();
     expect(validateHumanValue('max_price_won', '605,000,000')).toBeNull();
     expect(validateHumanValue('other', 'x'.repeat(201))).not.toBeNull();
+  });
+
+  it('서버 허용 범위(계약 .8): 공급금액 1,000만~1,000억 정수, 입주 2000~2100년, 계약금 소수 둘째 자리', () => {
+    expect(validateHumanValue('max_price_won', '9999999')).toMatch(/이상이어야/);
+    expect(validateHumanValue('max_price_won', '10000000')).toBeNull();
+    expect(validateHumanValue('max_price_won', '100000000000')).toBeNull();
+    expect(validateHumanValue('max_price_won', '100000000001')).toMatch(/이하여야/);
+    expect(validateHumanValue('max_price_won', '605000000.5')).toBe(t('page.G7.hc.badInt'));
+    expect(validateHumanValue('move_in_ym', '1999-12')).toBe(t('page.G7.hc.badYmRange'));
+    expect(validateHumanValue('move_in_ym', '2101-01')).toBe(t('page.G7.hc.badYmRange'));
+    expect(validateHumanValue('move_in_ym', '2100-12')).toBeNull();
+    expect(validateHumanValue('down_payment_pct', '10.25')).toBeNull();
+    expect(validateHumanValue('down_payment_pct', '10.255')).toBe(
+      t('page.G7.hc.decimals', { n: '2' }),
+    );
+    expect(validateHumanValue('resale_months', '-1')).toMatch(/이상이어야/);
+    expect(normalizeHumanValue('max_price_won', ' 605,000,000 ')).toBe('605000000');
+    expect(normalizeHumanValue('other', ' a, b ')).toBe('a, b');
+  });
+
+  it('강등 필드 → 사람 확인 필드: 가격 출처 경로(price_by_type.<타입>.max_price_won)도 max_price_won', () => {
+    expect(humanCheckFieldOf('price_by_type.84A.max_price_won')).toBe('max_price_won');
+    expect(humanCheckFieldOf('price_by_type')).toBe('max_price_won');
+    expect(humanCheckFieldOf('resale_months')).toBe('resale_months');
+    expect(humanCheckFieldOf('land_type')).toBeNull();
+    expect(humanCheckFieldOf(null)).toBeNull();
   });
 
   it('정수 필드에 소수 → 오류, POST 하지 않는다', async () => {
@@ -98,6 +125,42 @@ describe('M-5 사람 확인 필드(계약 .8)', () => {
     expect(posted).toMatchObject({ complex_id: 2, field: 'move_in_ym', value_text: '2028-03' });
     expect(posted).not.toHaveProperty('entity_id');
     rec.stop();
+  });
+});
+
+describe('M-5 서버가 정한 사실 행(HumanCheck.entity·entity_id)', () => {
+  it('응답 entity·entity_id → "대상 행: 납부 조건 #31"', async () => {
+    server.use(
+      http.post(mswPath('/ops/human-checks'), async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            ...body,
+            id: 77,
+            entity: 'payment_terms',
+            entity_id: 31,
+            note: null,
+            created_intake: null,
+            change_event_id: 9,
+            suggested_job: null,
+          },
+          { status: 201 },
+        );
+      }),
+    );
+    renderRoute('/ops');
+    const form = await humanForm();
+    await pickComplex(form, '2');
+    await userEvent.selectOptions(
+      within(form).getByLabelText(t('page.G7.hc.field')),
+      'down_payment_pct',
+    );
+    await userEvent.type(within(form).getByLabelText(t('page.G7.hc.value')), '10');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
+    expect(await within(form).findByTestId('human-check-target')).toHaveTextContent(
+      t('page.G7.hc.target', { entity: t('page.G7.hcEntity.payment_terms'), id: '#31' }),
+    );
   });
 });
 

@@ -1,14 +1,34 @@
 /** G3 탭 패널: 가격표 · 납부 조건 · 잔여 이력 · 시세 비교 · 호재 */
 import { useState, type ReactNode } from 'react';
-import type { ComplexDetail, LadderHorizon } from '@/api/types';
+import type { ComplexDetail, Fact, LadderHorizon } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
 
+/**
+ * 할인 표시 문구(D11-6): 라벨 확인됨이면 구매가(low·high·mid)에서 이미 뺐다, 아니면 표시만 하고 빼지 않았다.
+ * 할인이 없으면(null) null.
+ */
+export function discountNote(discount: Fact | null | undefined): string | null {
+  if (!discount || discount.v === null) return null;
+  return discount.label === '확인됨'
+    ? t('page.G3.price.discountApplied')
+    : t('page.G3.price.discountNotApplied');
+}
+
+/** 현재 공고(is_current)의 타입별 할인(payment_terms.discount_by_type, 키 = type_code) */
+function currentDiscounts(detail: ComplexDetail): Record<string, Fact> {
+  const current = detail.payment.find((p) => p.is_current) ?? null;
+  return current?.discount_by_type ?? {};
+}
+
 export function PriceTab({ detail }: { detail: ComplexDetail }) {
   const { price, types } = detail;
+  const discounts = currentDiscounts(detail);
+  const hasTypeDiscount = Object.keys(discounts).length > 0;
+  const note = discountNote(price.discount);
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
@@ -18,6 +38,15 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
           <span aria-hidden>~</span>
           <FactCell fact={price.price_high} unit="won" />
         </dd>
+        {price.discount ? (
+          <>
+            <dt className="text-muted">{t('page.G3.price.discount')}</dt>
+            <dd className="flex flex-wrap items-center gap-1" data-testid="price-discount">
+              <FactCell fact={price.discount} unit="won" />
+              {note ? <span className="text-xs text-muted">{note}</span> : null}
+            </dd>
+          </>
+        ) : null}
         {price.composition ? (
           <>
             <dt className="text-muted">{t('page.G3.price.composition')}</dt>
@@ -50,6 +79,7 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
                     'floorText',
                     'balcony',
                     'options',
+                    ...(hasTypeDiscount ? (['discount'] as const) : []),
                   ] as const
                 ).map((k) => (
                   <th key={k} scope="col" className={thClass}>
@@ -87,6 +117,15 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
                       <span className="block text-xs text-muted">{row.options_text}</span>
                     ) : null}
                   </td>
+                  {hasTypeDiscount ? (
+                    <td className={tdClass} data-testid={`type-discount-${row.type_code}`}>
+                      {discounts[row.type_code] ? (
+                        <FactCell fact={discounts[row.type_code]} unit="won" />
+                      ) : (
+                        <span className="text-muted">{t('page.common.none')}</span>
+                      )}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

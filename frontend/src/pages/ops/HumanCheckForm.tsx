@@ -2,21 +2,21 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import {
-  HUMAN_CHECK_FIELDS,
-  HUMAN_CHECK_NOTE_MAX,
-  HUMAN_CHECK_RULES,
-  HUMAN_CHECK_VALUE_MAX,
-  type HumanCheckCreate8,
-  type HumanCheckField,
-} from '@/api/contract8';
 import { useComplexes, useCreateHumanCheck, useCreateJob } from '@/api/hooks';
-import { ENTERED_BY_ROLES, type EnteredByRole, type HumanCheck } from '@/api/types';
+import {
+  ENTERED_BY_ROLES,
+  HUMAN_CHECK_FIELDS,
+  type EnteredByRole,
+  type HumanCheck,
+  type HumanCheckCreate,
+  type HumanCheckField,
+} from '@/api/types';
 import { useToast } from '@/app/toast';
 import { IntakeBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
-import { enumText, Section } from '../_shared';
+import { enumText, idText, Section } from '../_shared';
+import { HUMAN_CHECK_NOTE_MAX, HUMAN_CHECK_RULES, HUMAN_CHECK_VALUE_MAX } from './humanCheckRules';
 
 const KINDS = ['phone', 'visit', 'email'] as const;
 const INTAKE_VALUES = ['가능', '미정', '확인 불가', '불가'] as const;
@@ -57,30 +57,47 @@ const asField = (v: string | null): HumanCheckField =>
     ? (v as HumanCheckField)
     : 'intake_status';
 
+/** 값 칸 정규화: 사실 필드는 천 단위 쉼표·공백을 뺀다(서버도 뺀다), 그 밖은 앞뒤 공백만 */
+export function normalizeHumanValue(field: HumanCheckField, raw: string): string {
+  const value = raw.trim();
+  return HUMAN_CHECK_RULES[field] ? value.replace(/[,\s]/g, '') : value;
+}
+
 /**
- * 값 형·범위 검사(계약 .8 HumanCheckField — 서버도 같은 규칙으로 422). 정수 필드에 '6.02'는 거부(절삭 금지,
- * 3차 리뷰 minor 11). 문제가 없으면 null.
+ * 값 형·범위 검사 — 서버 허용 범위(계약 .8, `app/api/demotion.py` parse_human_value)와 같다: 최고 공급금액
+ * 1,000만~1,000억 원 정수, 입주 2000-01~2100-12, 개월 0~240 정수, 계약금 0~100 소수 둘째 자리까지.
+ * 정수 필드에 '6.02'는 거부(절삭 금지, 3차 리뷰 minor 11). 문제가 없으면 null.
  */
 export function validateHumanValue(field: HumanCheckField, raw: string): string | null {
-  const value = raw.trim();
-  if (value.length > HUMAN_CHECK_VALUE_MAX) {
+  if (raw.trim().length > HUMAN_CHECK_VALUE_MAX) {
     return metaText('page.G7.hc.tooLong', { max: HUMAN_CHECK_VALUE_MAX });
   }
   const rule = HUMAN_CHECK_RULES[field];
   if (!rule) return null;
+  const value = normalizeHumanValue(field, raw);
   if (rule.kind === 'ym') {
-    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? null : t('page.G7.hc.badYm');
+    const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(value);
+    if (!m) return t('page.G7.hc.badYm');
+    const year = Number(m[1]);
+    const outside =
+      (rule.min !== undefined && year < rule.min) || (rule.max !== undefined && year > rule.max);
+    return outside ? t('page.G7.hc.badYmRange') : null;
   }
   const pattern = rule.kind === 'int' ? /^-?\d+$/ : /^-?\d+(\.\d+)?$/;
-  if (!pattern.test(value.replace(/,/g, ''))) {
+  if (!pattern.test(value)) {
     return rule.kind === 'int' ? t('page.G7.hc.badInt') : t('page.G7.hc.badNumber');
   }
-  const n = Number(value.replace(/,/g, ''));
+  const decimals = value.split('.')[1]?.length ?? 0;
+  if (rule.decimals !== undefined && decimals > rule.decimals) {
+    return metaText('page.G7.hc.decimals', { n: rule.decimals });
+  }
+  const n = Number(value);
+  const as = rule.unit;
   if (rule.min !== undefined && n < rule.min) {
-    return metaText('page.G7.hc.min', { min: rule.min });
+    return metaText('page.G7.hc.min', { min: as ? { n: rule.min, as } : rule.min });
   }
   if (rule.max !== undefined && n > rule.max) {
-    return metaText('page.G7.hc.max', { max: rule.max });
+    return metaText('page.G7.hc.max', { max: as ? { n: rule.max, as } : rule.max });
   }
   return null;
 }
@@ -141,11 +158,11 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
       return;
     }
     setError(null);
-    const body: HumanCheckCreate8 = {
+    const body: HumanCheckCreate = {
       complex_id: Number(complexId),
       field,
       ...(entityId !== null ? { entity_id: entityId } : {}),
-      value_text: HUMAN_CHECK_RULES[field] ? value.trim().replace(/,/g, '') : value.trim(),
+      value_text: normalizeHumanValue(field, value),
       kind,
       checked_at: toIso(checkedAt),
       entered_by: enteredBy,
@@ -357,6 +374,15 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
                 field: enumText('page.G7.hcField', saved.field),
                 value: saved.value_text,
               })}
+              {saved.entity ? (
+                // 서버가 정한 사실 행(계약 .8 HumanCheck.entity·entity_id) — 번호는 행 id(비수치 메타)
+                <span className="ml-1 text-xs text-muted" data-testid="human-check-target">
+                  {t('page.G7.hc.target', {
+                    entity: enumText('page.G7.hcEntity', saved.entity),
+                    id: idText(saved.entity_id),
+                  })}
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>

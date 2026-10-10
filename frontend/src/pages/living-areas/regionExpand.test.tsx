@@ -1,11 +1,15 @@
 /**
- * D11-7(계약 .8 초안): 지역 선택 확장 UI — PATCH /regions/{id} {selections} → Region + region.expand 잡.
+ * D11-7(계약 .8): 지역 선택 확장 UI — PATCH /regions/{id} {selections, name?}
+ * → RegionPatched {region, change_event, job_id(region.expand), added, removed}.
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import type { RegionSelection } from '@/api/types';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
+import { mswPath } from '@/mocks/mswPath';
+import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
 import { selectionDiff } from './RegionExpandPanel';
@@ -28,7 +32,7 @@ describe('D11-7 지역 범위 확장', () => {
     expect(diff.removed.map((s) => s.code)).toEqual(['1']);
   });
 
-  it('후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 새 리비전 잡 진행', async () => {
+  it('후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행', async () => {
     const rec = recordRequests();
     renderRoute('/regions/1/living-areas');
     const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
@@ -57,9 +61,52 @@ describe('D11-7 지역 범위 확장', () => {
       selections: RegionSelection[];
     };
     expect(body.selections).toHaveLength(before + 1);
+    expect(body).not.toHaveProperty('name');
     const job = await within(panel).findByTestId('expand-job');
+    // 계약 예시 region_patched.json: 추가 1(경기도 김포시)·제거 0, change_event critical, job_id 961
+    expect(within(job).getByTestId('expand-result')).toHaveTextContent(
+      t('page.G0_2.expand.result', { added: '1', removed: '0' }),
+    );
+    expect(within(job).getByTestId('expand-result')).toHaveTextContent('경기도 김포시');
+    expect(job).toHaveTextContent('선택 4개(추가: 경기도 김포시)');
     expect(await within(job).findByText('region.expand')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(matching(rec.requests, 'GET', /\/jobs\/961$/).length).toBeGreaterThan(0),
+    );
     rec.stop();
+  });
+
+  it('이름만 바꿔도 저장할 수 있고 본문에 name 이 실린다', async () => {
+    const rec = recordRequests();
+    renderRoute('/regions/1/living-areas');
+    const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
+    const submit = within(panel).getByRole('button', { name: t('page.G0_2.expand.submit') });
+    const name = within(panel).getByLabelText(t('page.G0_2.expand.name'));
+    await userEvent.clear(name);
+    await userEvent.type(name, '새 이름');
+    expect(submit).toBeEnabled();
+    await userEvent.click(submit);
+    await waitFor(() => expect(matching(rec.requests, 'PATCH', '/regions/1')).toHaveLength(1));
+    expect(await matching(rec.requests, 'PATCH', '/regions/1')[0]?.body).toMatchObject({
+      name: '새 이름',
+    });
+    rec.stop();
+  });
+
+  it('서버 409(선택이 그대로) → detail 을 보인다', async () => {
+    server.use(
+      http.patch(mswPath('/regions/:id'), () =>
+        HttpResponse.json({ code: 'conflict', detail: '선택이 바뀌지 않았다' }, { status: 409 }),
+      ),
+    );
+    renderRoute('/regions/1/living-areas');
+    const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
+    const name = within(panel).getByLabelText(t('page.G0_2.expand.name'));
+    await userEvent.type(name, ' 2');
+    await userEvent.click(
+      within(panel).getByRole('button', { name: t('page.G0_2.expand.submit') }),
+    );
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('선택이 바뀌지 않았다');
   });
 
   it('선택이 하나뿐이면 뺄 수 없다', async () => {

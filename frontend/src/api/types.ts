@@ -104,6 +104,10 @@ export type RegionStatus = Region['status'];
 export type AgePremiumCoef = S['AgePremiumCoef'];
 export type RegionCreate = S['RegionCreate'];
 export type RegionCreated = S['RegionCreated'];
+/** PATCH /regions/{id} 본문(계약 .8, D11-7): 바뀐 뒤 선택 전체 + 이름(선택) */
+export type RegionPatch = S['RegionPatch'];
+/** PATCH /regions/{id} 응답: 지역 + change_event(critical) + region.expand 잡 id + 추가·제거 선택 */
+export type RegionPatched = S['RegionPatched'];
 export type LivingAreasUpdate = S['LivingAreasUpdate'];
 export type LivingAreasUpdated = S['LivingAreasUpdated'];
 /** 호환 별칭 */
@@ -111,6 +115,7 @@ export type RegionCreateRequest = RegionCreate;
 export type RegionCreateResponse = RegionCreated;
 export type LivingAreasUpdateRequest = LivingAreasUpdate;
 
+/** 기준일 스냅샷 — 계약 .8 리비전(`revision`·`revision_of`·`revision_reason`, D11-1) 포함 */
 export type Snapshot = S['Snapshot'];
 export type SnapshotStatus = Snapshot['status'];
 
@@ -186,6 +191,12 @@ export type CatalystView = S['CatalystView'];
 export type Catalyst = CatalystView;
 export type CatalystKind = CatalystView['kind'];
 export type CatalystStage = CatalystView['stage'];
+/** PATCH /catalysts/{id} 본문(계약 .8, D11-5) */
+export type CatalystPatch = S['CatalystPatch'];
+/** catalyst_link 1행(좌표 없는 단지 → distance_m null·weight 1·라벨 추정, reason 필수) */
+export type CatalystLinkView = S['CatalystLinkView'];
+/** PATCH /catalysts/{id} 응답: 호재 + 연결 + rejudge 잡(연결이 그대로면 null) */
+export type CatalystUpdated = S['CatalystUpdated'];
 
 export type ComplexType = S['ComplexType'];
 export type PaymentTerms = S['PaymentTerms'];
@@ -270,6 +281,17 @@ export const CHECKLIST_KINDS = [
 export type ChecklistPatch = S['ChecklistPatch'];
 export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];
+/** 사람 확인 대상 필드(계약 .8 HumanCheckField): 강등 가능한 사실 5개 + 접수 상태 + 기타(기록만) */
+export type HumanCheckField = S['HumanCheckField'];
+export const HUMAN_CHECK_FIELDS = [
+  'intake_status',
+  'max_price_won',
+  'move_in_ym',
+  'resale_months',
+  'residency_months',
+  'down_payment_pct',
+  'other',
+] as const satisfies readonly HumanCheckField[];
 /** 사람 확인 입력자 = 역할만(계약 2026-10-09.4 EnteredByRole, RA §10 보안 2 — 사람 이름 자유 입력 금지) */
 export type EnteredByRole = S['EnteredByRole'];
 export const ENTERED_BY_ROLES = ['운영자', '검토자'] as const satisfies readonly EnteredByRole[];
