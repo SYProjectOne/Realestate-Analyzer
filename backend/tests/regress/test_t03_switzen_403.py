@@ -40,7 +40,7 @@ def _human_check_then_rejudge(env: RegressEnv, judge: str) -> dict[str, Any]:
     assert body["created_intake"]["status"] == "가능" and body["created_intake"]["path"] == "human_check"
     # 계약 .9(D12-5): 사람 확인이 rejudge 를 자동 등록한다(화면이 POST /jobs 하지 않는다)
     job_id = body["rejudge_job_id"]
-    assert job_id is not None and body["suggested_job"] is None
+    assert job_id is not None and body["suggested_job"]["payload"]["complex_ids"] == [CID]
     with env.session() as s:
         n_rejudge = s.scalar(select(func.count()).select_from(JobRun).where(JobRun.job_name == "rejudge"))
     assert n_rejudge == 1  # rejudge job 1

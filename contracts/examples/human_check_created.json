@@ -25,7 +25,20 @@
       "entered_by": "운영자"
     },
     "change_event_id": 3310,
-    "suggested_job": null,
+    "suggested_job": {
+      "job_name": "rejudge",
+      "payload": {
+        "snapshot_id": 13,
+        "scenario_id": null,
+        "complex_ids": [
+          4
+        ],
+        "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능",
+        "change_event_ids": [
+          3310
+        ]
+      }
+    },
     "rejudge_job_id": 912
   }
 }

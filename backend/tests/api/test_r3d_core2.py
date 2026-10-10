@@ -378,7 +378,9 @@ def test_m2_human_check_writes_to_newest_unpublished_asof_not_old_revision(clien
         job = s.get(JobRun, body["rejudge_job_id"])
         assert job is not None and job.job_name == "rejudge" and job.status == "queued", "자동 등록(D12-5)"
         assert job.payload["snapshot_id"] == newer_id and job.payload["complex_ids"] == [CX]
-    assert body["suggested_job"] is None
+    assert body["suggested_job"] == {"job_name": "rejudge", "payload": job.payload}, (
+        "호환: 자동 등록 잡과 같은 payload"
+    )
 
 
 def test_d12_5_human_check_on_published_latest_creates_revision_and_rejudge(client: TestClient) -> None:

@@ -19,7 +19,7 @@ R3 4차 리뷰(`docs/design/wp/R3_REVIEW4.md`) 후속 — CEO 결정 D12(`docs/d
 | S2 | 사람 확인 우선순위(resolver) | 0순위지만 compare `adopted` 가 이김, 이후 새 공식 공고도 영구히 짐 | compare 채택은 사람 확인을 **이기지 못한다**. 사람 확인 **이후에** 관측된(observed_on > 사람 확인일) 공식 1차 출처(공고문·청약홈)가 **다른 값**이면 그 값 채택 + critical change_event(triggers_rejudge) + 체크리스트 '사실 재확인' 항목(제목 `사람 확인 재검토: <필드>`) | D12-1 · C-2 · M-10 |
 | S3 | 할인 차감 | 표시 가격만 '확인됨일 때만', 보고서·`/compare` 계약금·자기자본·목록 필터·정렬은 라벨 무관 차감 | `analysis.price_view.current_price(…, discount_label=)` **필수 인자 하나**로 모든 경로(상세·목록 값·필터·정렬·비교·자금 요건·보고서·점수). 라벨 모름(None)이면 빼지 않는다. 0·음수·최고가 이상 할인은 확인됨이어도 빼지 않는다. 보고서 구매가 사유에 '− 할인 N만' | D12-3 · C-3 |
 | S4 | '최신 리비전'(`rejudge_needed`) | 지역의 가장 새 스냅샷(building·미발행 포함) | 가장 새 **발행** (기준일, 리비전) — 판정 중 리비전이 생겨도 '재판정 필요' 배지가 사라지지 않는다 | D12-4 · M-1 |
-| S5 | 사람 확인·생활권 편집·강등의 재판정 | 최신 published 기준일에 리비전, rejudge 는 제안(`suggested_job`) | 그 지역 **가장 새 (기준일, 리비전)** 의 쓰기 가능 리비전(발행됐으면 새 리비전)에 change_event + rejudge **자동 등록**(`HumanCheck.rejudge_job_id`). 일일 '변경 없는 날' 이월은 직전 발행 리비전의 점수 실행 뒤 다른 스냅샷에 붙은 사실 변경(triggers_rejudge)이 있으면 그 단지를 재판정(옛 점수를 now 로 복사하지 않는다) | D12-5 · M-2 · M-3 |
+| S5 | 사람 확인·생활권 편집·강등의 재판정 | 최신 published 기준일에 리비전, rejudge 는 제안(`suggested_job`) | 그 지역 **가장 새 (기준일, 리비전)** 의 쓰기 가능 리비전(발행됐으면 새 리비전)에 change_event + rejudge **자동 등록**(`HumanCheck.rejudge_job_id`; `suggested_job` 은 그 잡과 같은 payload — `POST /jobs` 로 보내도 대기 중인 같은 rejudge 를 돌려준다, 중복 없음). 일일 '변경 없는 날' 이월은 직전 발행 리비전의 점수 실행 뒤 다른 스냅샷에 붙은 사실 변경(triggers_rejudge)이 있으면 그 단지를 재판정(옛 점수를 now 로 복사하지 않는다) | D12-5 · M-2 · M-3 |
 | S6 | 리비전 시점 값 | 분류·생활권·호재 단계/연결이 제자리 갱신 → 옛 발행 리비전 상세·시장·보고서가 나중에 바뀜 | 발행(`snapshots.publish`) 순간 `snapshot_state` 에 얼리고(region 생활권 · complex 분류·생활권·법정동 · catalyst 단계·종류·위치·연결) 그 스냅샷을 읽는 상세·목록·시장·대시보드·비교·보고서·diff 가 얼린 값을 쓴다. 얼린 값이 없는 스냅샷(발행 전·0009 이전)은 지금 값. '호재 아님'은 상세 catalysts·시장 보드·보고서 §5 에서 뺀다 | D12-4 · M-7 |
 | S7 | 호재 연결 변경(`PATCH /catalysts`) | rejudge 잡 등록(점수에 쓰지 않는데 판정 파이프라인) | rejudge 없이 가장 새 발행 리비전의 새 리비전을 만들어 파생 행 복사 → 바로 발행(그 시점 연결을 얼림). 응답 `job` 은 늘 null. '호재 아님' 후보 연결·NaN/범위 밖 좌표는 422, `expected_ym: null` 은 지움 | D12-4 · minor · M-13 |
 | S8 | 지역 선택 축소 | 빠진 단지가 '판정 대상'으로 남음(사다리 호출), §12 '제외' 0 | 법정동이 지역 밖이 된 단지는 분류와 무관하게 '범위 경계'(판정 범위 제외). §12 후보군 = 점수 실행의 rerank 범위(판정 대상·참고·보류) | M-4 |
@@ -33,7 +33,7 @@ R3 4차 리뷰(`docs/design/wp/R3_REVIEW4.md`) 후속 — CEO 결정 D12(`docs/d
 
 | # | 대상 | 변경 |
 | --- | --- | --- |
-| 1 | `human_check.json` HumanCheck | `rejudge_job_id`(integer\|null) 추가 — 자동 등록한 rejudge 잡. `suggested_job` 은 늘 null(필드 유지). 예시 갱신 |
+| 1 | `human_check.json` HumanCheck | `rejudge_job_id`(integer\|null) 추가 — 자동 등록한 rejudge 잡. `suggested_job` 은 그 잡과 같은 payload(호환, '기타'면 null). `POST /jobs` rejudge 는 같은 스냅샷 대기 rejudge 에 합쳐진다(중복 잡 없음). 예시 갱신 |
 | 2 | `region.json` RegionPatched | `change_event` → change_event\|null, `job_id` → integer\|null(이름만 바꾼 경우) |
 | 3 | `catalyst.json` | CatalystPatch 설명(위 S7), CatalystUpdated.job 설명(늘 null). 예시 요약 |
 | 4 | `job_payloads/backup.json` | `keep_days` maximum 3650, 설명에 compose 백업 볼륨 |
@@ -44,7 +44,7 @@ R3 4차 리뷰(`docs/design/wp/R3_REVIEW4.md`) 후속 — CEO 결정 D12(`docs/d
 
 | 대상 | .8 | .9 |
 | --- | --- | --- |
-| `POST /ops/human-checks` 응답 | `suggested_job` 으로 화면이 `POST /jobs`(토스트 '재판정 실행') | `suggested_job` null, `rejudge_job_id` = 이미 등록된 잡 — 잡 진행만 보인다(POST /jobs 하지 않는다). '기타'는 null |
+| `POST /ops/human-checks` 응답 | `suggested_job` 으로 화면이 `POST /jobs`(토스트 '재판정 실행') | `rejudge_job_id` = 이미 등록된 잡 — 화면은 잡 진행만 보이면 된다. `suggested_job` 은 같은 payload 로 남아(호환) 토스트 버튼으로 다시 보내도 같은 잡이 돌아온다(새 잡 없음). '기타'는 둘 다 null |
 | `PATCH /regions/{id}` 응답 | change_event·job_id 늘 있음 | 이름만 바꾸면 둘 다 null |
 | `PATCH /catalysts/{id}` 응답 | 연결이 바뀌면 `job`(rejudge) | `job` 늘 null — 연결이 바뀌면 새 리비전이 바로 발행되므로 regions·스냅샷 목록을 무효화한다(M-15 와 같은 처리) |
 | `POST /reports` | building 리비전도 202 | 발행 전 스냅샷 409 — 비교·생성 선택에서 building 리비전 제외(M-16 화면) |

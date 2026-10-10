@@ -58,8 +58,8 @@ def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> Non
         assert snap is not None and rev != 12, "발행 12 는 불변 — 새 리비전"
         assert (snap.revision, snap.revision_of, snap.status) == (2, 12, "building")
         assert snap.asof_date == s.get(Snapshot, 12).asof_date  # type: ignore[union-attr]
-    # 계약 .9(D12-5): 재판정은 제안이 아니라 자동 등록 — rejudge_job_id, suggested_job 은 null
-    assert body["suggested_job"] is None
+    # 계약 .9(D12-5): 재판정은 자동 등록 — rejudge_job_id. suggested_job 은 그 잡과 같은 payload(호환)
+    assert body["suggested_job"]["job_name"] == "rejudge"
     with get_session() as s:
         rj = s.get(JobRun, body["rejudge_job_id"])
         assert rj is not None and (rj.job_name, rj.status) == ("rejudge", "queued")
@@ -98,9 +98,12 @@ def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> Non
     validate("listSnapshots", 200, snaps)
     assert any(x["id"] == rev and x["revision"] == 2 and x["revision_of"] == 12 for x in snaps)
 
-    # 자동 등록된 잡은 잡 목록에 보인다(rejudge 1)
-    jobs = client.get("/api/jobs", headers=WRITE).json()
-    assert any(j["id"] == body["rejudge_job_id"] and j["job_name"] == "rejudge" for j in jobs)
+    # 화면이 (옛 토스트 버튼으로) 제안을 다시 보내도 대기 중인 같은 잡 — 중복 rejudge 없음
+    r = client.post("/api/jobs", headers=WRITE, json=body["suggested_job"])
+    assert r.status_code == 202, r.text
+    assert r.json()["id"] == body["rejudge_job_id"] and r.json()["kind"] == "rejudge"
+    with get_session() as s:
+        assert int(s.scalar(select(func.count()).select_from(JobRun)) or 0) == jobs_before + 1
 
     # 변경 피드(새 리비전)에 critical 1
     feed = client.get(f"/api/snapshots/{rev}/changes", params={"severity": "critical"}, headers=WRITE).json()
@@ -133,7 +136,7 @@ def test_human_check_validation(client: TestClient) -> None:
     body = r.json()
     validate("createHumanCheck", 201, body)
     assert body["created_intake"] is None and (body["entity"], body["entity_id"]) == ("complex", 4)
-    assert body["rejudge_job_id"] is not None and body["suggested_job"] is None
+    assert body["rejudge_job_id"] is not None and body["suggested_job"]["job_name"] == "rejudge"
     detail = client.get("/api/complexes/4", headers=WRITE).json()
     assert (
         detail["header"]["move_in_ym"]["v"] == "2028-08"

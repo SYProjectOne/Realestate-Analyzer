@@ -422,7 +422,13 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
             "note": hc.note,
             "created_intake": created,
             "change_event_id": change_id,
-            "suggested_job": None,  # 계약 .9(D12-5): 제안 대신 자동 등록 — rejudge_job_id
+            # 계약 .9(D12-5): 재판정은 자동 등록(rejudge_job_id). suggested_job 은 그 잡과 같은 payload(호환 — POST /jobs 로
+            # 보내도 대기 중인 같은 잡을 돌려준다, 중복 등록 없음)
+            "suggested_job": (
+                {"job_name": "rejudge", "payload": dict(rejudge_job.payload or {})}
+                if rejudge_job is not None
+                else None
+            ),
             "rejudge_job_id": rejudge_job.id if rejudge_job is not None else None,
         },
         status_code=201,

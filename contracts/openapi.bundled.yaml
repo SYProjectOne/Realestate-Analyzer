@@ -13747,7 +13747,7 @@ paths:
       - ops
       operationId: createHumanCheck
       summary: 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
-      description: 쓰는 스냅샷 = 그 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이 발행 전이면 거기, 발행됐으면 새 리비전(D11-1·R3 4차 M-2). field='intake_status'이면 그 리비전에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만든다. field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화·compare 채택에도 유지, 사람 확인 이후 관측된 공식 1차 출처의 다른 값만 이긴다 — D12-1) 같은 의미 필드의 강등(검증 모순)을 복원하며 change_event 를 만든다. 두 경우 모두 rejudge 잡을 **자동 등록**하고 rejudge_job_id 로 돌려준다(계약 .9, D12-5 — suggested_job 은 늘 null). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
+      description: 쓰는 스냅샷 = 그 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이 발행 전이면 거기, 발행됐으면 새 리비전(D11-1·R3 4차 M-2). field='intake_status'이면 그 리비전에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만든다. field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화·compare 채택에도 유지, 사람 확인 이후 관측된 공식 1차 출처의 다른 값만 이긴다 — D12-1) 같은 의미 필드의 강등(검증 모순)을 복원하며 change_event 를 만든다. 두 경우 모두 rejudge 잡을 **자동 등록**하고 rejudge_job_id 로 돌려준다(계약 .9, D12-5). suggested_job 은 그 잡과 같은 payload(호환 — POST /jobs 로 보내면 대기 중인 같은 rejudge 잡을 돌려준다, 중복 등록 없음). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422.
       requestBody:
         required: true
         content:
@@ -13799,7 +13799,16 @@ paths:
                       note: 분양사무소 통화
                       entered_by: 운영자
                     change_event_id: 3310
-                    suggested_job: null
+                    suggested_job:
+                      job_name: rejudge
+                      payload:
+                        snapshot_id: 13
+                        scenario_id: null
+                        complex_ids:
+                        - 4
+                        reason: '사람 확인 입력: 오퍼스 한강 스위첸 접수 가능'
+                        change_event_ids:
+                        - 3310
                     rejudge_job_id: 912
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -18928,7 +18937,7 @@ components:
           - integer
           - 'null'
         suggested_job:
-          description: 계약 .9(D12-5)부터 늘 null — 재판정은 제안이 아니라 자동 등록된다(rejudge_job_id). 옛 응답 호환으로 필드만 남는다
+          description: '계약 .9(D12-5): 재판정은 자동 등록된다(rejudge_job_id). 이 값은 그 잡과 같은 payload(호환) — POST /jobs 로 보내도 대기 중인 같은 잡을 돌려준다(중복 등록 없음). 자동 등록이 없으면(''기타'') null'
           anyOf:
           - $ref: '#/components/schemas/JobCreate'
           - type: 'null'
@@ -18963,7 +18972,16 @@ components:
           note: 분양사무소 통화
           entered_by: 운영자
         change_event_id: 3310
-        suggested_job: null
+        suggested_job:
+          job_name: rejudge
+          payload:
+            snapshot_id: 13
+            scenario_id: null
+            complex_ids:
+            - 4
+            reason: '사람 확인 입력: 오퍼스 한강 스위첸 접수 가능'
+            change_event_ids:
+            - 3310
         rejudge_job_id: 912
       - id: 4
         complex_id: 2
@@ -18977,7 +18995,16 @@ components:
         note: '분양사무소 통화: 전매제한 12개월(공고문 확인)'
         created_intake: null
         change_event_id: 3311
-        suggested_job: null
+        suggested_job:
+          job_name: rejudge
+          payload:
+            snapshot_id: 13
+            scenario_id: null
+            complex_ids:
+            - 2
+            reason: '사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원'
+            change_event_ids:
+            - 3311
         rejudge_job_id: 913
     HumanCheckCreate:
       title: HumanCheckCreate

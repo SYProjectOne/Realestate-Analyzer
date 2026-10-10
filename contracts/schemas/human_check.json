@@ -20,7 +20,7 @@
     "created_intake": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
     "change_event_id": { "type": ["integer", "null"] },
     "suggested_job": {
-      "description": "계약 .9(D12-5)부터 늘 null — 재판정은 제안이 아니라 자동 등록된다(rejudge_job_id). 옛 응답 호환으로 필드만 남는다",
+      "description": "계약 .9(D12-5): 재판정은 자동 등록된다(rejudge_job_id). 이 값은 그 잡과 같은 payload(호환) — POST /jobs 로 보내도 대기 중인 같은 잡을 돌려준다(중복 등록 없음). 자동 등록이 없으면('기타') null",
       "anyOf": [
         { "$ref": "job_run.json#/$defs/JobCreate" },
         { "type": "null" }
@@ -74,7 +74,7 @@
       "entered_by": "운영자", "note": "분양사무소 통화: 선착순 동·호지정 계약 가능, 조건은 공고문과 같다고 안내",
       "created_intake": { "id": 640, "complex_id": 4, "snapshot_id": 12, "status": "가능", "path": "human_check", "evidence_url": null, "screenshot_path": null, "raw_document_id": null, "checked_at": "2026-10-09T10:20:00+09:00", "http_status": null, "reason": null, "note": "분양사무소 통화", "entered_by": "운영자" },
       "change_event_id": 3310,
-      "suggested_job": null,
+      "suggested_job": { "job_name": "rejudge", "payload": { "snapshot_id": 13, "scenario_id": null, "complex_ids": [4], "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능", "change_event_ids": [3310] } },
       "rejudge_job_id": 912
     },
     {
@@ -82,7 +82,7 @@
       "entered_by": "운영자", "note": "분양사무소 통화: 전매제한 12개월(공고문 확인)",
       "created_intake": null,
       "change_event_id": 3311,
-      "suggested_job": null,
+      "suggested_job": { "job_name": "rejudge", "payload": { "snapshot_id": 13, "scenario_id": null, "complex_ids": [2], "reason": "사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원", "change_event_ids": [3311] } },
       "rejudge_job_id": 913
     }
   ]

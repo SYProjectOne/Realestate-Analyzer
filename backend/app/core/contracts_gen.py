@@ -1764,7 +1764,7 @@ class HumanCheck(BaseModel):
     change_event_id: int | None = None
     suggested_job: JobCreate | None = None
     """
-    계약 .9(D12-5)부터 늘 null — 재판정은 제안이 아니라 자동 등록된다(rejudge_job_id). 옛 응답 호환으로 필드만 남는다
+    계약 .9(D12-5): 재판정은 자동 등록된다(rejudge_job_id). 이 값은 그 잡과 같은 payload(호환) — POST /jobs 로 보내도 대기 중인 같은 잡을 돌려준다(중복 등록 없음). 자동 등록이 없으면('기타') null
     """
     rejudge_job_id: int | None = None
     """
