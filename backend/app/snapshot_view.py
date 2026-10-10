@@ -1248,6 +1248,10 @@ def backfill(engine: Engine | None = None, *, settings: Settings | None = None) 
         finally:
             rs.rollback()
             rs.close()
+        if (
+            not computed.rows
+        ):  # 만들 것이 없다(보고서가 거부된 리비전의 report 등) — 채운 리비전으로 세지 않는다
+            continue
         write_rows(eng, sid, computed.rows)
         out["snapshots"].append(sid)
         out["rows"] += len(computed.rows)

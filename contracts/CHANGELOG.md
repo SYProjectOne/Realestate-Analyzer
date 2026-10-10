@@ -68,6 +68,12 @@ R3 6차 리뷰(`docs/design/wp/R3_REVIEW6.md`) 후속 — CEO 결정 D14(`docs/d
   (새 종류·버전 열 삭제) → head(식별 변환) → backfill 은 새 종류만, autogenerate diff 0 — **devseed 픽스처(단지·시나리오 있음)** 로 SQLite·Postgres 16
   (pgserver) 둘 다(`tests/contracts/test_r3f_migrations.py`, R3 6차 m28).
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.11`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
+- **D14-5 측정**(`tests/api/test_r3f_perf_publish.py` — devseed 16 + 합성 1,000 단지, 합성 단지마다 점수 실행 5 × 총점 + 성분 7, 발행 리비전 위
+  새 리비전을 `snapshot.publish` 잡으로 발행하는 동안 다른 스레드가 `POST /api/share-links` 를 50ms 마다 보냄, `python scripts/tasks.py regress`
+  동시 실행 = 부하): 잡 9.9s·10.0s(기준 15s), API 쓰기 응답 최대 0.21s·0.33s(기준 1s, p50 0.005s), 저장본 묶음 쓰기 잠금 최대 0.095s, 전환 0.005s,
+  저장본 5,418행·11.9MB(시나리오 사이 같은 부분 = 기본 + 바뀐 부분). 큰 리비전(단지 × 시나리오 ≥ 2,000)은 같은 한 시점(SQLite = DB 사본, Postgres
+  = 내보낸 스냅샷)을 상주 worker 의 자식 프로세스 3개 + 자신이 나눠 계산한다(보고서 / 단지 상세 + 출처 서랍 / 비교 + diff 입력 / 나머지) — 나눠
+  계산 = 한 프로세스 계산과 같은 행(`test_r3f_views::test_d14_5_parallel_compute_equals_serial`). 자식 프로세스가 깨지면 한 프로세스 계산으로 다시.
 
 ### fixtures
 
