@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 import importlib
+import math
 from collections.abc import Callable
 from decimal import Decimal
 from typing import Annotated, Any
@@ -200,6 +201,24 @@ def update_catalyst(
         raise not_found(f"catalyst {id}")
     region = get_region(session, cat.region_id)
     confirmed = bool(body["location_confirmed"])
+    for key, bound in (
+        ("lat", 90),
+        ("lon", 180),
+    ):  # R3 4차 M-13: NaN·무한대·범위 밖 좌표는 쓰기 전에 422(커밋 뒤 500 금지)
+        v = body.get(key)
+        if v is not None and (
+            isinstance(v, bool)
+            or not isinstance(v, int | float)
+            or not math.isfinite(v)
+            or not -bound <= v <= bound
+        ):
+            raise validation_error(f"{key} 는 유한한 숫자(−{bound}~{bound})여야 한다: {v!r}", ("body", key))
+    if (
+        confirmed and cat.stage == "호재 아님"
+    ):  # minor: 판정기가 호재가 아니라고 본 후보는 단지에 연결하지 않는다
+        raise validation_error(
+            "'호재 아님' 판정 후보는 위치 확인·연결을 할 수 없다", ("body", "location_confirmed")
+        )
     area_ids = [str(a) for a in body.get("living_area_ids") or []]
     known_areas = {str(a.get("id")) for a in region.living_areas or []}
     bad = [a for a in area_ids if a not in known_areas]
@@ -228,6 +247,8 @@ def update_catalyst(
         cat.lon = Decimal(str(body["lon"])) if body["lon"] is not None else None
     if body.get("expected_ym"):
         _human_expected_ym(session, cat, str(body["expected_ym"]))
+    elif "expected_ym" in body and body["expected_ym"] is None:
+        _human_expected_ym(session, cat, None)  # minor: null 로 지운다(사람이 확인한 예정월 취소)
     links = {
         lk.complex_id: lk
         for lk in session.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat.id))
@@ -260,8 +281,8 @@ def update_catalyst(
     )
 
 
-def _human_expected_ym(session: Session, cat: Catalyst, ym: str) -> None:
-    """사람이 확인한 예정월 → catalyst.expected_ym + 출처 행(사람 확인 — chosen, 이전 chosen 은 내린다)."""
+def _human_expected_ym(session: Session, cat: Catalyst, ym: str | None) -> None:
+    """사람이 확인한 예정월 → catalyst.expected_ym + 출처 행(사람 확인 — chosen, 이전 chosen 은 내린다). None 이면 지운다."""
     from app.models import FieldProvenance
 
     for fp in session.scalars(
@@ -273,6 +294,9 @@ def _human_expected_ym(session: Session, cat: Catalyst, ym: str) -> None:
         )
     ):
         fp.chosen = False
+    if ym is None:
+        cat.expected_ym = None
+        return
     session.add(
         FieldProvenance(
             entity="catalyst", entity_id=cat.id, field="expected_ym", value_text=ym, value_norm=ym,

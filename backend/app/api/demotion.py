@@ -456,9 +456,10 @@ def human_target(
     if field == "max_price_won":
         ref = price_ref(session, complex_id)
         if entity_id is not None:
-            t = session.get(ComplexType, entity_id)
-            if t is not None and t.complex_id == complex_id:
-                return HumanTarget("complex_type", t.id, "max_price_won")
+            # R3 4차 M-11: complex_type·payment_terms 가 같은 id 번호면 화면·점수가 쓰는 행(현재 구매가 max_ref)이 이긴다 —
+            # 예전에는 complex_type 을 먼저 봐서 현재 공고 가격 강등이 풀리지 않았다
+            if ref is not None and ref[1] == entity_id:
+                return HumanTarget(ref[0], ref[1], ref[2])
             pt = session.get(PaymentTerms, entity_id)
             if (
                 pt is not None
@@ -467,6 +468,9 @@ def human_target(
                 and ref[0] == "payment_terms"
             ):
                 return HumanTarget("payment_terms", pt.id, ref[2])
+            t = session.get(ComplexType, entity_id)
+            if t is not None and t.complex_id == complex_id:
+                return HumanTarget("complex_type", t.id, "max_price_won")
             raise ValueParseError(f"entity_id {entity_id} 는 단지 {complex_id} 의 가격 행이 아니다")
         if ref is None:
             raise ValueParseError("이 단지에는 기준 타입 가격 행이 없다 — 사람 확인 대상을 정할 수 없다")

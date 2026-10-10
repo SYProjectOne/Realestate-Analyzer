@@ -36,6 +36,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Final
 from urllib.parse import parse_qs, urlsplit
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
@@ -732,16 +733,41 @@ _DISCOUNT_RE = re.compile(
 )
 
 
+_OTHER_DISCOUNT: Final = ("선납", "계약금", "중도금", "발코니", "옵션", "이자", "확장", "관리비")
+"""분양가 할인이 아닌 할인(선납·계약금·중도금 이자·발코니 확장·옵션 등) — 그 줄의 금액은
+분양가 할인 후보가 아니다(R3 4차 M-12)."""
+_TYPE_TOKEN_RE: Final = re.compile(r"(?<![0-9A-Za-z.])(\d{2,3}(?:\.\d+)?[A-Z]{0,3})(?:㎡|m2)?(?![0-9A-Za-z])")
+
+
+def _mark_re(mark: str) -> re.Pattern[str]:
+    """타입 표기를 **토큰 전체**로 찾는다('84A' 가 '184A'·'84AB' 안에서 맞지 않게)."""
+    return re.compile(rf"(?<![0-9A-Za-z.]){re.escape(mark)}(?![0-9A-Za-z])")
+
+
 def _discount_line(text: str, t: TypeSpec) -> tuple[int, tuple[int, int]] | None:
-    """타입 표기(약식 '84A'·공고 주택형 '084.9582A'·면적 '84㎡')와 할인 금액이 같은 줄에 있는 첫 줄."""
-    marks = {t.short, *(x for x in (t.long, f"{t.short.rstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}㎡") if x)}
+    """타입 표기(약식 '84A'·공고 주택형 '084.9582A'·면적 '84㎡')와 분양가 할인 금액이 같은 줄에 있는 첫 줄.
+
+    R3 4차 M-12: 부분 문자열로 맞추면 다른 타입('184A')·계약금·발코니 할인이 '확인됨' 분양가 할인이
+    됐다 — 타입 표기는 토큰 전체로, 다른 종류의 할인 줄은 건너뛰고, 한 줄에 다른 타입 표기가 같이
+    있으면(어느 타입의 금액인지 모호) 쓰지 않는다(추정 금지)."""
+    short_area = t.short.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    marks = [m for m in (t.short, t.long, f"{short_area}㎡") if m]
+    pats = [_mark_re(m) for m in marks]
+    mine = {t.short, short_area, *(m for m in marks)}
     for ls, le in _line_spans(text, 0, len(text)):
         line = text[ls:le]
-        if "할인" not in line or "선납" in line:
+        if "할인" not in line or any(w in line for w in _OTHER_DISCOUNT):
             continue
         m = _DISCOUNT_RE.search(line)
-        if m is None or not any(mk and mk in line for mk in marks):
+        if m is None or not any(p.search(line) for p in pats):
             continue
+        others = {
+            tok.group(1)
+            for tok in _TYPE_TOKEN_RE.finditer(line[: m.start()])
+            if tok.group(1) not in mine and tok.group(1).lstrip("0") not in mine
+        }
+        if any(o[:1].isdigit() and len(o.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) >= 2 for o in others):
+            continue  # 다른 타입 표기도 같은 줄에 있다 — 모호
         return int(m.group(1).replace(",", "")), (ls + m.start(1), ls + m.end(1))
     return None
 

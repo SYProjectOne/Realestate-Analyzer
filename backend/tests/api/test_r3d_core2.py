@@ -492,3 +492,94 @@ def test_c3_discount_rule_is_the_same_on_every_price_path(
         assert region is not None
         f = next(x for x in load_facts(s, snap, region) if x.row.id == cx1)
         assert f.price_low == want_low, "점수 입력"
+
+
+# ====================================================================== M-11 · M-13 · 호재 minor
+
+
+def test_m11_same_id_in_complex_type_and_payment_terms_targets_current_price_row(client: TestClient) -> None:
+    from sqlalchemy import func
+
+    from app.analysis.price_view import basis_type
+    from app.models import ComplexType, FieldProvenance
+
+    with get_session() as s:
+        t = basis_type(list(s.scalars(select(ComplexType).where(ComplexType.complex_id == CX))))
+        assert t is not None
+        # 같은 번호(N)의 공고문 타입 행(소형 — 기준 타입 아님)과 납부 조건 행(현재 공고)을 같은 단지에 만든다
+        n = 1 + max(
+            s.scalar(select(func.max(ComplexType.id))) or 0, s.scalar(select(func.max(PaymentTerms.id))) or 0
+        )
+        s.add(ComplexType(id=n, complex_id=CX, type_code="39Z", area_m2=39))
+        won = 660_000_000
+        pt = PaymentTerms(id=n, complex_id=CX, notice_no="SAMEID", notice_kind="임의", effective_from="2026-10-01",
+                          interim_schedule=[], price_by_type={t.type_code: {"max_price_won": won}})  # fmt: skip
+        s.add(pt)
+        s.flush()
+        s.add(FieldProvenance(entity="payment_terms", entity_id=pt.id, field=f"price_by_type.{t.type_code}.max_price_won",
+                              value_text=f"{won:,}", value_norm=str(won), url="https://www.applyhome.co.kr/", checked_at="2026-10-07",
+                              label="확인됨", source_rank=1, chosen=True, excerpt=f"공급금액 {won:,}"))  # fmt: skip
+        tid, code = n, t.type_code
+    r = client.post(
+        "/api/ops/human-checks", headers=WRITE,
+        json={"complex_id": CX, "field": "max_price_won", "entity_id": tid, "value_text": "655000000", "kind": "phone",
+              "checked_at": "2026-10-09T10:00:00+09:00", "entered_by": "운영자"},
+    )  # fmt: skip
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert (body["entity"], body["entity_id"]) == ("payment_terms", tid), (
+        "화면·점수가 쓰는 현재 공고 가격 행(M-11)"
+    )
+    with get_session() as s:
+        pt2 = s.get(PaymentTerms, tid)
+        assert pt2 is not None and (pt2.price_by_type or {})[code]["max_price_won"] == 655_000_000, (
+            "현재 공고 가격이 바뀐다"
+        )
+        t2 = s.get(ComplexType, tid)
+        assert t2 is not None and t2.max_price_won is None, "같은 번호의 다른 타입 행은 그대로"
+
+
+def test_m13_catalyst_nan_or_out_of_range_coordinates_are_422_without_writes(client: TestClient) -> None:
+    from app.models import Catalyst
+
+    with get_session() as s:
+        cat = Catalyst(region_id=1, name="좌표 검사 역", kind="교통", stage="계획", location_confirmed=False)
+        s.add(cat)
+        s.flush()
+        cat_id = cat.id
+    for bad in ({"lat": float("nan")}, {"lon": float("inf")}, {"lat": 91.0}):
+        r = client.patch(f"/api/catalysts/{cat_id}", content=__import__("json").dumps(
+            {"location_confirmed": True, "complex_ids": [CX], **bad}), headers={**WRITE, "Content-Type": "application/json"})  # fmt: skip
+        assert r.status_code == 422, (bad, r.status_code, r.text)
+    with get_session() as s:
+        c = s.get(Catalyst, cat_id)
+        assert c is not None and c.lat is None and c.location_confirmed is False, "쓰기 전에 거부"
+    assert client.get(f"/api/complexes/{CX}", params={"snapshot": SNAP}, headers=READ).status_code == 200
+
+
+def test_minor_not_catalyst_cannot_be_linked_and_expected_ym_can_be_cleared(client: TestClient) -> None:
+    from app.models import Catalyst
+
+    with get_session() as s:
+        no = Catalyst(
+            region_id=1, name="호재 아님 후보", kind="기타", stage="호재 아님", location_confirmed=False
+        )
+        yes = Catalyst(region_id=1, name="예정월 지우기", kind="교통", stage="계획", location_confirmed=False)
+        s.add_all([no, yes])
+        s.flush()
+        no_id, yes_id = no.id, yes.id
+    r = client.patch(
+        f"/api/catalysts/{no_id}", json={"location_confirmed": True, "complex_ids": [CX]}, headers=WRITE
+    )
+    assert r.status_code == 422, r.text
+    r = client.patch(
+        f"/api/catalysts/{yes_id}",
+        json={"location_confirmed": False, "expected_ym": "2029-01"},
+        headers=WRITE,
+    )
+    assert r.status_code == 200 and r.json()["catalyst"]["expected_ym"]["v"] == "2029-01"
+    r = client.patch(
+        f"/api/catalysts/{yes_id}", json={"location_confirmed": False, "expected_ym": None}, headers=WRITE
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["catalyst"]["expected_ym"]["v"] is None, "null 로 지운다"

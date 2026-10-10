@@ -230,6 +230,10 @@ class _Binder:
         if region_id is not None:
             stmt = stmt.where(Complex.region_id == region_id)
         cx = self.s.scalars(stmt).first()
+        if cx is not None and create and _cites_original(raw, batch, key):
+            # R3 4차 M-8: 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨다 — 그 공고의 단지 단위 값(이름 '(임의공급
+            # 4차)'·남은 세대수·전매·거주·규제)은 원 단지를 덮지 않는다(D11-4, payment_terms·competition 에만 기록)
+            self.merged.add(key)
         if cx is None and region_id is not None and _APPLYHOME_ID_GLOBAL:
             other = self.s.scalars(select(Complex.id).where(Complex.applyhome_id == key)).first()
             if other is not None:  # 다른 지역의 단지 — 덮어쓰지 않는다(W4)
@@ -616,6 +620,18 @@ def block_name_key(name: str) -> str:
 def is_zone_address(address: str) -> bool:
     """공급위치가 구역 표현('…일원'·'일대'·'외 n필지')인가 — 같은 블록 병합 금지(D10-4)."""
     return bool(_ZONE_RE.search(address))
+
+
+def _cites_original(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) -> bool:
+    """잔여 공고 원문이 자기 번호가 아닌 원 단지 번호(``key`` — 공고문 '최초 주택관리번호')로 단지를 가리키는가:
+    이 원문의 납부 조건 키가 '<key>:<다른 공고번호>' 이고 공고 종류가 잔여(무순위·임의·선착순…)."""
+    own = {
+        (c.entity_key or "").split(":", 1)[1]
+        for c in batch
+        if c.entity == "payment_terms" and (c.entity_key or "").count(":") == 1
+        and (c.entity_key or "").split(":", 1)[0] == key
+    }  # fmt: skip
+    return bool(own) and key not in own and _is_remainder_notice(raw, batch, key)
 
 
 def _is_remainder_notice(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) -> bool:
