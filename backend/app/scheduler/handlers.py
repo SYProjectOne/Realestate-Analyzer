@@ -343,6 +343,12 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
     carry = p.get("carry_from_snapshot_id")
     with ctx.session_factory() as session:
         stats: dict[str, Any] = {"snapshot_id": sid}
+        if carry is not None and session.get_bind().dialect.name == "sqlite":
+            # 복사(쓰기)할 트랜잭션은 쓰기 잠금부터 잡는다 — 먼저 읽고 나중에 쓰면 그 사이 API 쓰기가 커밋됐을 때 WAL 이 읽기
+            # 스냅샷을 쓰기로 올리지 못해 즉시 'database is locked'(R3 6차 m15 와 같은 원인, D14-5 부하 측정에서 재현)
+            from app.scheduler.rejudge import _sqlite_write_lock
+
+            _sqlite_write_lock(session)
         snap = session.get(Snapshot, sid)
         if carry is not None and snap is not None and snap.status == "building":
             has_runs = session.scalar(
@@ -353,7 +359,7 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
                     session, int(carry), sid, created_at=ctx.iso_now()
                 )}  # fmt: skip
                 snap.status = "ready"
-                session.commit()
+            session.commit()
         ok, n, mstats = snapshots.publish_with_stats(session, sid, now=ctx.iso_now())
         snap = session.get(Snapshot, sid)
         session.commit()
