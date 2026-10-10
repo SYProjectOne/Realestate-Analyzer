@@ -25,6 +25,7 @@ from app.api.views import (
     complex_row,
     complex_rows_data,
     ladder_days,
+    light_rows,
     load_bundles,
     provenance_for,
     scope_result,
@@ -273,8 +274,10 @@ def list_rows(
     filters = parse_filters(request)
     scenario = resolve_scenario(session, scenario_value)
     region = session.get(Region, snap.region_id)
-    complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id, scenario_id=scenario.id)
+    # 목록 행은 단지 열을 읽기만 한다 — ORM 객체 대신 같은 열 이름의 읽기 전용 행(R3c 성능).
+    # 단지 OCR 표식은 점수 입력(미리보기)만 쓰므로 읽지 않는다(``load_bundles(complex_ocr=False)``)
+    complexes = light_rows(session, select(Complex).where(Complex.region_id == snap.region_id), Complex)
+    bundles = load_bundles(session, complexes, snap.id, scenario_id=scenario.id, complex_ocr=False)
     ctx = score_ctx(session, snap.id, scenario, with_flags=False)
     rows = [r for r in complex_rows_data(bundles, ctx) if _match(r, filters)]
     last = last_changes(session, [r.b.cx.id for r in rows])

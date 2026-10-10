@@ -9,7 +9,8 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+import functools
+from collections import defaultdict, namedtuple
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
@@ -57,6 +58,7 @@ __all__ = [
     "envelope_view",
     "intake_view",
     "judge_scope",
+    "light_rows",
     "load_bundles",
     "pick_intake",
     "price_range",
@@ -310,11 +312,16 @@ def load_bundles(
     *,
     with_ladders: bool = True,
     scenario_id: int | None = None,
+    complex_ocr: bool = True,
 ) -> dict[int, ComplexBundle]:
     """단지 묶음(사실 행·접수·사다리·저장 범위)을 한 번에 읽는다.
 
     저장 범위·사다리 숨김(M-1)은 **그 시나리오**(``scenario_id``)의 마지막 점수 실행 기준 — 시나리오 지정 rejudge 뒤 다른
-    시나리오 화면이 그 rejudge 의 범위로 사다리를 숨기지 않게. ``scenario_id`` 가 없으면 스냅샷의 마지막 실행(시나리오 무관)."""
+    시나리오 화면이 그 rejudge 의 범위로 사다리를 숨기지 않게. ``scenario_id`` 가 없으면 스냅샷의 마지막 실행(시나리오 무관).
+
+    ``complex_ocr=False``(목록·CSV): 단지 행의 판정기 추출 전 OCR 필드(``ocr_pending[("complex", id)]``)를 읽지 않는다 —
+    그 값은 점수 입력 빌더(``score_input`` — 미리보기)만 쓰고, 목록의 범위·가격(``score_price``)은 타입·납부 조건 OCR 만
+    본다(R3c 성능). 타입·납부 조건 OCR 은 그대로 읽는다."""
     snap = session.get(Snapshot, snapshot_id)
     asof = snap.asof_date if snap is not None else None
     out = {c.id: ComplexBundle(c, asof_date=asof) for c in complexes}
@@ -327,25 +334,33 @@ def load_bundles(
             return [col.in_(region_ids)]
         return [col.in_(chunk) for chunk in _chunks(ids)]
 
+    def fetch(stmt: Any, model: Any) -> Iterable[Any]:
+        """지역 단지 전부(목록·CSV·대시보드 — 수천 행)면 같은 열 이름의 읽기 전용 행(``light_rows`` — ORM 객체·상태 추적
+        없음, R3c 성능), 작은 묶음(상세 등)은 ORM 행 그대로. 묶음 행은 읽기만 한다(속성 접근 — Protocol 과 같은 모양)."""
+        if region_ids is not None:
+            return light_rows(session, stmt, model)
+        return session.scalars(stmt)
+
     for cond in where_in(ComplexType.complex_id):
-        for t in session.scalars(select(ComplexType).where(cond).order_by(ComplexType.id)):
+        for t in fetch(select(ComplexType).where(cond).order_by(ComplexType.id), ComplexType):
             if t.complex_id in out:
                 out[t.complex_id].types.append(t)
     for cond in where_in(PaymentTerms.complex_id):
-        for p in session.scalars(select(PaymentTerms).where(cond).order_by(PaymentTerms.id)):
+        for p in fetch(select(PaymentTerms).where(cond).order_by(PaymentTerms.id), PaymentTerms):
             if p.complex_id in out:
                 out[p.complex_id].payments.append(p)
     for cond in where_in(IntakeStatus.complex_id):
-        for i in session.scalars(
+        for i in fetch(
             select(IntakeStatus)
             .where(cond, IntakeStatus.snapshot_id == snapshot_id)
-            .order_by(IntakeStatus.id)
+            .order_by(IntakeStatus.id),
+            IntakeStatus,
         ):
             if i.complex_id in out:
                 out[i.complex_id].intake.append(i)
     if with_ladders:
         for cond in where_in(Ladder.complex_id):
-            for lad in session.scalars(select(Ladder).where(cond, Ladder.snapshot_id == snapshot_id)):
+            for lad in fetch(select(Ladder).where(cond, Ladder.snapshot_id == snapshot_id), Ladder):
                 if lad.complex_id in out:
                     out[lad.complex_id].ladders.append(lad)
     run_stmt = select(ScoreRun.id).where(ScoreRun.snapshot_id == snapshot_id)
@@ -395,14 +410,19 @@ def load_bundles(
 
     overlay = load_overlay(session, complex_ids=ids) if ids else None
     if overlay:
+        # 강등 행이 있는 (entity, id)만 감싼다 — 나머지는 ``masked(row, ())`` 가 행 그대로라 같은 결과(R3c 성능)
+        hit = {(e, i) for (e, i, _f) in overlay.active}
         for b in out.values():
-            b.cx = masked(b.cx, overlay.fields("complex", b.cx.id))
-            b.types = [masked(t, overlay.fields("complex_type", t.id)) for t in b.types]
-            b.payments = [masked(p, overlay.fields("payment_terms", p.id)) for p in b.payments]
+            if ("complex", b.cx.id) in hit:
+                b.cx = masked(b.cx, overlay.fields("complex", b.cx.id))
+            if any(("complex_type", t.id) in hit for t in b.types):
+                b.types = [masked(t, overlay.fields("complex_type", t.id)) for t in b.types]
+            if any(("payment_terms", p.id) in hit for p in b.payments):
+                b.payments = [masked(p, overlay.fields("payment_terms", p.id)) for p in b.payments]
     from app.scheduler.inputs import ocr_pending_fields
 
     targets: list[tuple[str, list[tuple[int, int]]]] = [
-        ("complex", [(b.cx.id, b.cx.id) for b in out.values()]),
+        *([("complex", [(b.cx.id, b.cx.id) for b in out.values()])] if complex_ocr else []),
         ("complex_type", [(t.complex_id, t.id) for b in out.values() for t in b.types]),
         ("payment_terms", [(p.complex_id, p.id) for b in out.values() for p in b.payments]),
     ]
@@ -482,7 +502,11 @@ def scope_result(b: ComplexBundle) -> scope_rules.ScopeResult:
 
     화면·KPI·TOP 5 에 보이는 범위는 저장값(``shown_scope``, D10-1)이다. 이 값은 미리보기(요건 사전 계산)와
     '재판정 필요' 비교(``rejudge_needed``)에만 쓴다."""
-    cur = scope_rules.pick_intake(b.intake)
+    return _scope_now(b, scope_rules.pick_intake(b.intake))
+
+
+def _scope_now(b: ComplexBundle, cur: IntakeStatus | None) -> scope_rules.ScopeResult:
+    """``scope_result`` 본체 — 표시 접수 행(``pick_intake``)을 이미 고른 호출자(목록 행)는 그 행을 넘긴다."""
     return scope_rules.judge_scope(
         inclusion_class=b.cx.inclusion_class,
         inclusion_decision=b.cx.inclusion_decision,
@@ -519,16 +543,25 @@ def rejudge_needed(b: ComplexBundle, ctx: ScoreCtx | None = None) -> bool:
     R3 3차 minor 5: 범위가 같아도 점수 실행 뒤 재판정을 부르는 변경(가격·입주월·강등·사람 확인 — change_event
     triggers_rejudge)이 있었으면 True. 지역 최신 스냅샷(기준일·리비전)이 아니면 오늘 사실과 비교하지 않는다(False) —
     과거 스냅샷은 그때의 기록이다."""
-    if not b.latest:
-        return False
-    current = scope_rules.contract_scope(scope_result(b).scope)
+    return _row_scopes(b, ctx, scope_rules.pick_intake(b.intake))[1]
+
+
+def _row_scopes(b: ComplexBundle, ctx: ScoreCtx | None, cur: IntakeStatus | None) -> tuple[str, bool]:
+    """(``shown_scope``, ``rejudge_needed``) 를 한 번에 — 목록 행(1,000단지)이 접수 행 고르기·저장값 읽기·현재 범위
+    계산을 단지마다 한 번만 하도록(R3c 성능). 규칙은 두 함수 설명 그대로."""
     stored = _stored(b, ctx)
+    if stored and not b.latest:
+        return stored, False
+    current: str = scope_rules.contract_scope(_scope_now(b, cur).scope)
+    shown = stored or current
+    if not b.latest:
+        return shown, False
     if stored and b.changed_after_run:
-        return True
+        return shown, True
     if stored:
-        return stored != current
+        return shown, stored != current
     has_run = (ctx is not None and ctx.run is not None) or b.scored_run
-    return has_run and scope_rules.is_scored(current)
+    return shown, has_run and scope_rules.is_scored(current)
 
 
 def judge_scope(b: ComplexBundle) -> str:
@@ -632,10 +665,19 @@ def _add_months(ymd: str, months: int) -> str | None:
     return f"{ny:04d}-{nm:02d}-{min(d, mdays[nm - 1]):02d}"
 
 
-def _resale_end(fm: FactMaker, cx: Complex, winner: dict[str, Any], months: dict[str, Any]) -> dict[str, Any]:
+def _resale_end(
+    fm: FactMaker,
+    cx: Complex,
+    winner: dict[str, Any],
+    months: dict[str, Any],
+    *,
+    end: str | None = None,
+) -> dict[str, Any]:
+    """전매 종료일 Fact. ``end``: 이미 계산한 종료일(목록 ``RowData.resale_end`` — 같은 ``_add_months``)."""
     if cx.winner_date is None or cx.resale_months is None:
         return fm.derived(None, [winner, months], unit="date")
-    end = _add_months(cx.winner_date, int(cx.resale_months))
+    if end is None:
+        end = _add_months(cx.winner_date, int(cx.resale_months))
     return fm.derived(end, [months, winner], unit="date")
 
 
@@ -684,9 +726,14 @@ def _man(won: int) -> str:
     return f"{Decimal(won) / Decimal(10000):,.0f}만"
 
 
-def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None = None) -> dict[str, Any]:
+def price_range(
+    fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None = None, *, full: bool = True
+) -> dict[str, Any]:
     """§6-1 현재 구매가 범위 = ``bundle_price``(최신 공고 가격 우선, R3 M3). 출처는 쓴 필드 그대로.
-    할인(D11-6, 계약 .8)은 그 출처 행 라벨이 '확인됨'일 때만 뺀다 — ``discount`` Fact 는 늘 보인다."""
+    할인(D11-6, 계약 .8)은 그 출처 행 라벨이 '확인됨'일 때만 뺀다 — ``discount`` Fact 는 늘 보인다.
+
+    ``full=False``(목록 행 — low·high·mid 만 쓴다): 구성 문구·최초 공고 대비 변동률·할인 Fact 를 만들지 않는다(None,
+    R3c 성능). low·high·mid 는 같은 값·같은 Fact."""
 
     def disc_label(ref: pv.FieldRef) -> str | None:
         fp = fm.prov.get(ref.entity, ref.entity_id, ref.field)
@@ -726,14 +773,31 @@ def price_range(fm: FactMaker, b: ComplexBundle, notice: dict[str, Any] | None =
             "discount": None,
         }
 
+    made: dict[tuple[str, int, str], dict[str, Any]] = {}
+
     def ref_fact(ref: pv.FieldRef) -> dict[str, Any]:
-        return fm.field(ref.entity, ref.entity_id, ref.field, ref.value, unit="won")
+        # low·high 가 같은 원천(발코니·옵션·최고가)을 공유한다 — 원천 Fact 는 읽기만 하므로 한 번만 만든다(목록 성능)
+        key = (ref.entity, ref.entity_id, ref.field)
+        got = made.get(key)
+        if got is None:
+            got = made[key] = fm.field(ref.entity, ref.entity_id, ref.field, ref.value, unit="won")
+        return got
 
     low_won, high_won = view.low_won, view.high_won
     low = fm.combine(low_won, [ref_fact(r) for r in view.low_refs], unit="won")
     high = fm.combine(high_won, [ref_fact(r) for r in view.high_refs], unit="won")
     mid_val = pv.mid_rounded(view)
     mid = fm.derived(mid_val, [low, high], unit="won")
+    if not full:
+        return {
+            "basis_type_code": t.type_code,
+            "price_low": low,
+            "price_high": high,
+            "price_mid": mid,
+            "composition": None,
+            "change_vs_first_pct": None,
+            "discount": None,
+        }
     parts = ["공급가"]
     if t.balcony_won:
         parts.append(f"발코니 {_man(t.balcony_won)}")
@@ -928,18 +992,22 @@ def envelope_view(row: JudgmentLog) -> dict[str, Any]:
     }
 
 
+def _ladder_prob(row: Ladder, v: Any, checked: str | None) -> dict[str, Any]:
+    """사다리 확률 1개(p5·p10·p20·p_flat) Fact — ``ladder_view`` 와 목록 p10(``p10_fact``)이 같이 쓴다."""
+    if v is None:
+        return unknown("값 없음" if row.status == "ok" else f"미해결({row.status})", checked, unit="prob")
+    if row.status != "ok":
+        return unknown(f"미해결({row.status})", checked, unit="prob")
+    if row.judgment_seq is None:
+        return unknown("판정 기록 없음", checked, unit="prob")
+    return fact(v, "추정", f"jl_{row.judgment_seq}", checked, reason="판정기 noul", unit="prob")
+
+
 def ladder_view(row: Ladder, checked: str | None) -> dict[str, Any]:
-    ok = row.status == "ok"
     seq = row.judgment_seq
 
     def pf(v: Any) -> dict[str, Any]:
-        if v is None:
-            return unknown("값 없음" if ok else f"미해결({row.status})", checked, unit="prob")
-        if not ok:
-            return unknown(f"미해결({row.status})", checked, unit="prob")
-        if seq is None:
-            return unknown("판정 기록 없음", checked, unit="prob")
-        return fact(v, "추정", f"jl_{seq}", checked, reason="판정기 noul", unit="prob")
+        return _ladder_prob(row, v, checked)
 
     verdicts = row.verdicts or {}
     ann = row.annualized or {}
@@ -1010,11 +1078,28 @@ def latest_run(session: Session, snapshot_id: int, scenario_id: int) -> ScoreRun
     ).first()
 
 
-def _light_rows(session: Session, stmt: Any, model: Any, skip: frozenset[str] = frozenset()) -> list[Any]:
+def light_rows(session: Session, stmt: Any, model: Any, skip: frozenset[str] = frozenset()) -> list[Any]:
     """``select(Model)`` 문장 → 같은 열 이름으로 읽는 읽기 전용 행(SQLAlchemy Row — 속성 접근). ORM 객체를 만들지
-    않는다. ``skip`` 열은 읽지 않고 null 로 둔다."""
-    cols = [null().label(c.key) if c.key in skip else c for c in model.__table__.columns]
-    return list(session.execute(stmt.with_only_columns(*cols)))
+    않는다. ``skip`` 열은 읽지 않고 null 로 둔다.
+
+    세션의 연결에서 Core 로 실행한다 — ORM 결과 처리(행마다 엔터티 적재 경로)를 건너뛴다(R3c 성능). 같은 SQL·같은 열
+    타입 처리(JSON·Numeric)라 값은 ``session.execute`` 와 같다. 세션 autoflush 는 그대로 지킨다. 행은 모델별 namedtuple
+    (같은 열 이름 속성) — SQLAlchemy Row 의 이름 접근(``__getattr__``)보다 속성 읽기가 훨씬 싸다(목록은 행마다 수십 번)."""
+    keys = tuple(c.key for c in model.__table__.columns)
+    cols = [null().label(k) if k in skip else c for k, c in zip(keys, model.__table__.columns, strict=True)]
+    if session.autoflush:
+        session.flush()
+    make = _row_type(model.__name__, keys)._make
+    return [make(r) for r in session.connection().execute(stmt.with_only_columns(*cols))]
+
+
+@functools.cache
+def _row_type(name: str, keys: tuple[str, ...]) -> Any:
+    return namedtuple(f"{name}Row", keys)  # 열 이름이 런타임(모델)에 정해진다
+
+
+LIST_COMPONENTS: tuple[str, ...] = ("gap",)
+"""목록 행(``complex_rows_data``·``complex_row``)이 읽는 점수 성분 — gap%(값·라벨·사유·정렬). 나머지는 상세·점수 화면."""
 
 
 def score_ctx(
@@ -1025,12 +1110,15 @@ def score_ctx(
     complex_ids: Sequence[int] | None = None,
     with_flags: bool = True,
 ) -> ScoreCtx:
-    """``with_flags=False``: 성분 flags(JSON — 상세 화면 gap 보정 표식)를 읽지 않는다(목록 화면 성능)."""
+    """``with_flags=False`` = 목록 화면(G2·CSV) 모드: 성분 flags(JSON — 상세 화면 gap 보정 표식)를 읽지 않고, 성분은
+    목록 행이 쓰는 것(``LIST_COMPONENTS`` — gap%·정렬)만 읽는다(R3c 성능: 1,000단지 × 성분 7개 → 1개)."""
     run = latest_run(session, snapshot_id, scenario.id)
     ctx = ScoreCtx(run=run, scenario=scenario)
     if run is None:
         return ctx
     comp_stmt = select(ScoreComponent).where(ScoreComponent.score_run_id == run.id)
+    if not with_flags:
+        comp_stmt = comp_stmt.where(ScoreComponent.component.in_(LIST_COMPONENTS))
     tot_stmt = select(ScoreTotal).where(ScoreTotal.score_run_id == run.id)
     dec_stmt = select(Decision).where(Decision.score_run_id == run.id, Decision.complex_id.is_not(None))
     if complex_ids is not None:
@@ -1040,9 +1128,9 @@ def score_ctx(
         dec_stmt = dec_stmt.where(Decision.complex_id.in_(ids))
     # 점수 행은 읽기만 한다 — ORM 객체 대신 열 값 묶음(목록 화면 1,000단지 × 성분 7개, T16 성능)
     skip = frozenset() if with_flags else frozenset({"flags"})
-    for c in _light_rows(session, comp_stmt, ScoreComponent, skip):
+    for c in light_rows(session, comp_stmt, ScoreComponent, skip):
         ctx.components.setdefault(c.complex_id, {})[c.component] = c
-    for t in _light_rows(session, tot_stmt, ScoreTotal):
+    for t in light_rows(session, tot_stmt, ScoreTotal):
         ctx.totals[t.complex_id] = t
     for d in session.scalars(dec_stmt):
         if d.complex_id is not None:
@@ -1121,8 +1209,7 @@ def p10_fact(b: ComplexBundle, horizon: str, jl_days: Mapping[int, str | None]) 
     if lad is None:
         return unknown("미판정", None, unit="prob")
     checked = jl_days.get(lad.judgment_seq) if lad.judgment_seq is not None else None
-    p10: dict[str, Any] = ladder_view(lad, checked)["p10"]
-    return p10
+    return _ladder_prob(lad, lad.p10, checked)  # = ladder_view(lad, checked)["p10"] (사다리 전체 dict 없이)
 
 
 def decision_badge(ctx: ScoreCtx, cid: int) -> dict[str, Any] | None:
@@ -1232,11 +1319,13 @@ def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> li
         resale_end = None
         if b.cx.winner_date and b.cx.resale_months is not None:
             resale_end = _add_months(b.cx.winner_date, int(b.cx.resale_months))
+        cur = pick_intake(b.intake)
+        scope, rejudge = _row_scopes(b, ctx, cur)
         out.append(
             RowData(
                 b=b,
-                scope=shown_scope(b, ctx),
-                intake=pick_intake(b.intake),
+                scope=scope,
+                intake=cur,
                 price_low=low,
                 price_high=high,
                 price_mid=mid,
@@ -1245,7 +1334,7 @@ def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> li
                 resale_end=resale_end,
                 gap_pct=gap.raw_value if gap is not None else None,
                 p10=lad.p10 if lad is not None and lad.status == "ok" else None,
-                rejudge_needed=rejudge_needed(b, ctx),
+                rejudge_needed=rejudge,
             )
         )
     return out
@@ -1262,7 +1351,7 @@ def complex_row(
 ) -> dict[str, Any]:
     b, cx = rd.b, rd.b.cx
     notice = fm.field("complex", cx.id, "notice_date", cx.notice_date, unit="date")
-    price = price_range(fm, b, notice)
+    price = price_range(fm, b, notice, full=False)
     winner = fm.field("complex", cx.id, "winner_date", cx.winner_date, unit="date")
     months = fm.field("complex", cx.id, "resale_months", cx.resale_months, unit="months")
     cur_pay = current_payment(b.payments)
@@ -1297,7 +1386,7 @@ def complex_row(
         "price_low": price["price_low"],
         "price_high": price["price_high"],
         "price_mid": price["price_mid"],
-        "resale_end": _resale_end(fm, cx, winner, months),
+        "resale_end": _resale_end(fm, cx, winner, months, end=rd.resale_end),
         "move_in_ym": fm.field("complex", cx.id, "move_in_ym", cx.move_in_ym, unit="ym"),
         "gap_pct": gap,
         "total": total_fact(ctx, cx.id),
@@ -1328,11 +1417,28 @@ def complex_row(
 
 LIST_COMPLEX_FIELDS: frozenset[str] = frozenset(
     {
-        "notice_date", "winner_date", "resale_months", "resale_release_on_registration", "move_in_ym",
+        "notice_date", "winner_date", "resale_months", "move_in_ym",
         "land_type", "price_cap", "regulated", "residency_months", "units_total",
     }
 )  # fmt: skip
 """목록 행(``complex_row``)이 Fact 로 쓰는 단지 필드 — 목록 화면은 이 필드 출처만 읽는다(T16 성능)."""
+
+LIST_TYPE_FIELDS: frozenset[str] = frozenset(
+    {"max_price_won", "floor_sample_price_won", "balcony_won", "options_required_won"}
+)
+"""목록 행 가격 범위(``price_range`` ← ``analysis.price_view.current_price``)가 쓰는 판정 기준 타입 필드(R3c 성능)."""
+
+
+_PAY_FIELDS_IN_MAX = 8
+
+
+def _basis_of(b: ComplexBundle) -> ComplexType | None:
+    """판정 기준 타입 = ``basis_type(b.types)`` — ``bundle_price`` 가 이미 고른 기준 타입 코드(같은 함수)로 찾는다(다시
+    84㎡ 비교를 하지 않는다, 목록 성능). 코드가 같은 첫 타입 = ``analysis.price_view.basis_type`` 의 선택과 같다."""
+    code = bundle_price(b).basis_type_code
+    if code is None:
+        return None
+    return next((t for t in b.types if t.type_code == code), None)
 
 
 def provenance_for(
@@ -1340,17 +1446,45 @@ def provenance_for(
 ) -> ProvIndex:
     """단지 묶음의 사실 행 출처를 한 번에 읽는다.
 
-    ``list_rows``: 목록 행(``complex_row``)에 필요한 것만 — 단지 필드 ``LIST_COMPLEX_FIELDS``, 타입은 판정 기준 타입만
-    (가격 범위), 납부 조건은 전부(현재·최초 공고 비교). 빠진 출처를 쓰면 dev 는 예외(출처 누락)라 테스트가 잡는다."""
+    ``list_rows``: 목록 행(``complex_row``)에 필요한 것만 — 단지 필드 ``LIST_COMPLEX_FIELDS``, 타입은 판정 기준 타입의
+    가격 필드(``LIST_TYPE_FIELDS``), 납부 조건은 현재 공고의 계약금 비율·기준 타입 가격·할인만(목록 행은
+    ``price_range(full=False)`` — 변동률·구성 문구 없음, R3c 성능). 강등 오버레이는 필드 범위와 무관하게 읽은 행 id
+    전체로 계산된다(``ProvIndex.load``). 빠진 출처를 쓰면 dev 는 예외(출처 누락)라 테스트가 잡는다."""
     items = list(bundles)
     idx = ProvIndex()
     if list_rows:
         idx.load(session, "complex", (b.cx.id for b in items), fields=LIST_COMPLEX_FIELDS)
-        basis = (basis_type(b.types) for b in items)
-        idx.load(session, "complex_type", (t.id for t in basis if t is not None))
-    else:
-        idx.load(session, "complex", (b.cx.id for b in items))
-        idx.load(session, "complex_type", (t.id for b in items for t in b.types))
+        basis = {id(b): _basis_of(b) for b in items}
+        idx.load(
+            session,
+            "complex_type",
+            (t.id for t in basis.values() if t is not None),
+            fields=LIST_TYPE_FIELDS,
+        )
+        pay_ids: set[int] = set()
+        pay_fields: set[str] = {"down_payment_pct"}
+        for b in items:
+            cur = current_payment(b.payments)
+            if cur is None:
+                continue
+            pay_ids.add(cur.id)
+            t = basis[id(b)]
+            if t is None:
+                continue
+            # 현재 공고에 기준 타입 칸이 있을 때만 그 가격·할인 출처를 쓴다(``analysis.price_view.current_price``)
+            if isinstance(cur.price_by_type, Mapping) and t.type_code in cur.price_by_type:
+                pay_fields.add(f"price_by_type.{t.type_code}.max_price_won")
+                pay_fields.add(f"price_by_type.{t.type_code}.floor_sample_price_won")
+            disc = getattr(cur, "discount_by_type", None)
+            if isinstance(disc, Mapping) and t.type_code in disc:
+                pay_fields.add(f"discount_by_type.{t.type_code}")
+        # 필드 IN 은 (entity, entity_id, field) 색인을 필드 수만큼 찾는다 — 필드가 많으면(기준 타입 코드가 여럿) 그 공고
+        # 출처 행 전부를 읽는 편이 싸다(결과는 같다: 필요한 필드는 다 들어 있다)
+        fields = pay_fields if len(pay_fields) <= _PAY_FIELDS_IN_MAX else None
+        idx.load(session, "payment_terms", pay_ids, fields=fields)
+        return idx
+    idx.load(session, "complex", (b.cx.id for b in items))
+    idx.load(session, "complex_type", (t.id for b in items for t in b.types))
     idx.load(session, "payment_terms", (p.id for b in items for p in b.payments))
     return idx
 
