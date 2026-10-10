@@ -12,32 +12,30 @@ export type DiscountPrice = Pick<PriceRange, 'discount' | 'discount_applied'>;
 
 /**
  * 서버가 구매가에서 할인을 뺐는가(계약 .10 `PriceRange.discount_applied`, 5차 minor). 화면은 라벨로 추측하지 않는다 —
- * 확인됨이어도 0·음수·최고가 이상 할인은 서버가 빼지 않는다. 필드가 없으면(선택 필드) null = 모름 → 문구 없음.
+ * 확인됨이어도 0·음수·최고가 이상 할인은 서버가 빼지 않는다. 필드가 없으면 계약 기본값 `false`(6차 minor 20 — 모름으로
+ * 문구를 숨기면 차감 안 된 할인이 차감된 것처럼 읽힌다).
  */
-export function discountApplied(price: DiscountPrice | null | undefined): boolean | null {
-  const v = price?.discount_applied;
-  return typeof v === 'boolean' ? v : null;
+export function discountApplied(price: DiscountPrice | null | undefined): boolean {
+  return price?.discount_applied === true;
 }
 
 /**
- * 할인 표시 문구(D11-6): 서버가 뺐으면 '구매가에서 이미 뺐다', 안 뺐으면 '표시만 하고 빼지 않았다'.
- * 할인이 없거나(null) 서버가 차감 여부를 알려 주지 않으면 null.
+ * 할인 표시 문구(D11-6): 서버가 뺐으면 '구매가에서 이미 뺐다', 안 뺐으면(필드 없음 포함) '표시만 하고 빼지 않았다'.
+ * 할인이 없으면(null) null.
  */
 export function discountNote(price: DiscountPrice | null | undefined): string | null {
   const discount = price?.discount;
   if (!discount || discount.v === null) return null;
-  const applied = discountApplied(price);
-  if (applied === null) return null;
-  return applied ? t('page.G3.price.discountApplied') : t('page.G3.price.discountNotApplied');
+  return discountApplied(price)
+    ? t('page.G3.price.discountApplied')
+    : t('page.G3.price.discountNotApplied');
 }
 
 /** 헤더용 짧은 문구(툴팁 없이 화면에 보인다 — 모바일, 4차 리뷰 minor) */
 export function discountShortNote(price: DiscountPrice | null | undefined): string | null {
   const discount = price?.discount;
   if (!discount || discount.v === null) return null;
-  const applied = discountApplied(price);
-  if (applied === null) return null;
-  return applied
+  return discountApplied(price)
     ? t('page.G3.price.discountAppliedShort')
     : t('page.G3.price.discountNotAppliedShort');
 }

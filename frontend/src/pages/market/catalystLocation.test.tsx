@@ -85,7 +85,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     expect(livingAreaReason(null, areas)).toBeNull();
   });
 
-  it('단지 선택 → PATCH → 응답 links 표(거리 확인 불가 + 서버 reason · 가중치 · 연결 근거), job=null 안내', async () => {
+  it('단지 선택 → PATCH 202 → 응답 links 표(거리 확인 불가 + 서버 reason · 가중치 · 연결 근거) + 발행 잡 감시(계약 .11 F3)', async () => {
     const rec = recordRequests();
     renderRoute('/market');
     const { item, form } = await openForm('GTX-B');
@@ -99,7 +99,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
       living_area_ids: [],
       complex_ids: [Number(first.value)],
     });
-    // 계약 예시 응답: 단지 2(사람 지정)·5(같은 생활권), 좌표 없음 → distance null·weight 1·추정, job null
+    // 계약 예시 응답: 단지 2(사람 지정)·5(같은 생활권), 좌표 없음 → distance null·weight 1·추정, job = snapshot.publish
     const expected = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
     const links = await within(await panel()).findByTestId('catalyst-links');
     const rows = within(links).getAllByRole('row').slice(1);
@@ -115,30 +115,60 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
       expect(r.textContent).not.toMatch(/\bla_\d+\b/);
     });
     expect(rows[0]).toHaveTextContent('엘리프 검단 포레듀');
-    expect(within(await panel()).getByTestId('catalyst-job-none')).toHaveTextContent(
-      t('page.G6.loc.noJob'),
-    );
+    // 계약 .11 F3: 202 + job_id(snapshot.publish) — 잡이 끝날 때까지 지금 발행 리비전이 기본이라는 안내 + 진행
+    const job = within(await panel()).getByTestId('catalyst-job');
+    expect(within(job).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
+    expect(await within(job).findByText('snapshot.publish')).toBeInTheDocument();
+    expect(within(await panel()).queryByTestId('catalyst-job-none')).toBeNull();
     rec.stop();
   });
 
-  it('연결이 바뀌면(계약 .9: job 늘 null, 새 리비전 바로 발행) 지역·리비전 목록 다시 읽기 + 시장 → "위치 확인됨"', async () => {
-    let confirmed = false;
+  it('job_id null(연결 그대로) → 잡 없음 안내', async () => {
     server.use(
       http.patch(mswPath('/catalysts/:id'), async () => {
-        confirmed = true;
         const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
-        return HttpResponse.json({
-          ...base,
-          catalyst: { ...base.catalyst, id: 50, name: 'GTX-B', location_confirmed: true },
-          job: null,
-        } satisfies CatalystUpdated);
+        return HttpResponse.json({ ...base, job: null, job_id: null } satisfies CatalystUpdated, {
+          status: 202,
+        });
+      }),
+    );
+    renderRoute('/market');
+    const { form } = await openForm('GTX-B');
+    await pickFirstComplex(form);
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G6.loc.submit') }));
+    expect(await within(await panel()).findByTestId('catalyst-job-none')).toHaveTextContent(
+      t('page.G6.loc.noJob'),
+    );
+  });
+
+  it('연결이 바뀌면 202 + job_id(snapshot.publish) → 잡이 끝날 때까지 이전 리비전, 끝나면 지역·리비전·시장 다시 읽기 → "위치 확인됨" (계약 .11 F3)', async () => {
+    // 발행 잡(88)이 done 이 되기 전까지 발행 리비전(시장)은 그대로다 — 잡이 끝나야 '위치 확인됨'
+    let published = false;
+    let polls = 0;
+    server.use(
+      http.patch(mswPath('/catalysts/:id'), async () => {
+        const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
+        return HttpResponse.json(
+          {
+            ...base,
+            catalyst: { ...base.catalyst, id: 50, name: 'GTX-B', location_confirmed: true },
+            job_id: base.job!.id,
+          } satisfies CatalystUpdated,
+          { status: 202 },
+        );
+      }),
+      http.get(mswPath('/jobs/:id'), async () => {
+        const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
+        polls += 1;
+        if (polls >= 2) published = true;
+        return HttpResponse.json({ ...base.job!, status: published ? 'done' : 'running' });
       }),
       http.get(mswPath('/snapshots/:sid/market'), async () => {
         const market = await example<Market>('/snapshots/12/market');
         return HttpResponse.json({
           ...market,
           catalysts: market.catalysts.map((c) =>
-            c.id === 50 && confirmed ? { ...c, location_confirmed: true, linked: true } : c,
+            c.id === 50 && published ? { ...c, location_confirmed: true, linked: true } : c,
           ),
         } satisfies Market);
       }),
@@ -149,17 +179,24 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     await pickFirstComplex(form);
     const regionsBefore = matching(rec.requests, 'GET', '/regions').length;
     await userEvent.click(within(form).getByRole('button', { name: t('page.G6.loc.submit') }));
-    expect(await within(await panel()).findByTestId('catalyst-job-none')).toHaveTextContent(
-      t('page.G6.loc.noJob'),
-    );
+    const job = await within(await panel()).findByTestId('catalyst-job');
+    expect(within(job).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
+    // 저장 직후: 발행 대기 리비전이 목록에 보이도록 지역·리비전 목록을 다시 읽지만, 시장은 아직 이전 발행 리비전
     await waitFor(() =>
       expect(matching(rec.requests, 'GET', '/regions').length).toBeGreaterThan(regionsBefore),
     );
-    await waitFor(async () =>
-      expect(within(await row('GTX-B')).getByTestId('loc-status')).toHaveTextContent(
-        t('page.G6.loc.confirmed'),
-      ),
+    expect(within(await row('GTX-B')).getByTestId('loc-status')).toHaveTextContent(
+      t('page.G6.loc.unconfirmed'),
     );
+    // 잡 done → api/jobWatch 가 지역·리비전·사실 화면 무효화 → 새 발행 리비전 값
+    await waitFor(
+      async () =>
+        expect(within(await row('GTX-B')).getByTestId('loc-status')).toHaveTextContent(
+          t('page.G6.loc.confirmed'),
+        ),
+      { timeout: 10_000 },
+    );
+    expect(within(job).queryByTestId('publish-pending')).toBeNull();
     rec.stop();
   });
 
@@ -195,6 +232,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
           catalyst: { ...base.catalyst, id: 42, name: '검단구 신설', location_confirmed: false },
           links: [],
           job: null,
+          job_id: null,
         } satisfies CatalystUpdated);
       }),
     );

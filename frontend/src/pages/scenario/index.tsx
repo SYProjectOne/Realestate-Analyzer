@@ -19,6 +19,7 @@ import { snapshotText } from '@/components/SnapshotPicker';
 import { scenarioKey as keyOf, useScenario } from '@/hooks/useScenario';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
+import { queryErrorText, specialErrorText } from '@/lib/errorText';
 import { PageShell } from '@/layout/PageShell';
 import { resultSnapshotId, type JobLike } from '@/lib/contract';
 import { metaNumber } from '@/lib/meta';
@@ -414,7 +415,7 @@ function RequirementPreview({ scenario }: { scenario: Scenario | null }) {
       {preview.data ? (
         <RequirementTable preview={preview.data} />
       ) : preview.error ? (
-        <EmptyState message={t('page.common.loadError', { detail: preview.error.message })} />
+        <EmptyState message={queryErrorText(preview.error)} />
       ) : (
         <p className="text-sm text-muted">{t('app.loading')}</p>
       )}
@@ -493,6 +494,11 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
     !!after.data &&
     !after.isPlaceholderData &&
     after.dataUpdatedAt >= doneAt;
+  // 6차 minor 25: '이후' 조회가 잡 뒤에 실패하면 '받는 중'에 멈추지 않고 오류 + 다시 시도
+  const afterError =
+    finished && doneAt !== null && !afterFresh && after.error && after.errorUpdatedAt >= doneAt
+      ? after.error
+      : null;
 
   const run = () => {
     if (!current || !snapshotId) return;
@@ -566,7 +572,27 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           ) : null}
         </p>
       ) : null}
-      {finished && baseline && !afterFresh ? (
+      {afterError ? (
+        <div
+          role="alert"
+          data-testid="g5-after-error"
+          className="flex flex-wrap items-center gap-2 text-xs text-danger"
+        >
+          <span>
+            {specialErrorText(afterError) ??
+              t('page.G5.afterError', { detail: afterError.message })}
+          </span>
+          <button
+            type="button"
+            onClick={() => void after.refetch()}
+            disabled={after.isFetching}
+            className="underline disabled:opacity-50"
+          >
+            {t('app.retry')}
+          </button>
+        </div>
+      ) : null}
+      {finished && baseline && !afterFresh && !afterError ? (
         <p className="text-xs text-muted" data-testid="g5-after-loading">
           {t('page.G5.afterLoading')}
         </p>

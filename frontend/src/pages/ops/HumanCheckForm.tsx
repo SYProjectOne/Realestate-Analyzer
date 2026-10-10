@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { useComplexes, useCreateHumanCheck } from '@/api/hooks';
+import { humanCheckJobId, useComplexes, useCreateHumanCheck } from '@/api/hooks';
 import {
   ENTERED_BY_ROLES,
   HUMAN_CHECK_FIELDS,
@@ -12,7 +12,7 @@ import {
   type HumanCheckField,
 } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { IntakeBadge, JobProgress } from '@/components';
+import { IntakeBadge, PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
 import { enumText, idText, Section } from '../_shared';
@@ -46,10 +46,45 @@ function nowLocal(): string {
   return d.toISOString().slice(0, 16);
 }
 
-/** datetime-local → ISO(로컬 시간대 오프셋 포함) */
-function toIso(local: string): string {
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+/** 서버가 받는 미래 여유(계약 .11 F7 — 지금보다 10분 넘게 미래면 422) */
+export const CHECKED_AT_FUTURE_SLACK_MS = 10 * 60_000;
+
+/** 분 단위 시간대 오프셋 → '+09:00' */
+export function offsetText(offsetMinutes: number): string {
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMinutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  return `${sign}${hh}:${mm}`;
+}
+
+/**
+ * datetime-local(`YYYY-MM-DDTHH:mm[:ss]`, 브라우저 시간대) → 시간대가 붙은 RFC3339(`…:ss+09:00`, 계약 .11 F7).
+ * 형식이 아니거나 없는 날짜면 null — 지금 시각으로 바꿔치지 않는다(조용한 대체 금지).
+ */
+export function toRfc3339(local: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(local);
+  if (!m) return null;
+  const [, y, mo, d, h, mi, sec = '00'] = m;
+  const date = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(sec));
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== Number(y) ||
+    date.getMonth() !== Number(mo) - 1 ||
+    date.getDate() !== Number(d)
+  ) {
+    return null;
+  }
+  return `${y}-${mo}-${d}T${h}:${mi}:${sec}${offsetText(-date.getTimezoneOffset())}`;
+}
+
+/** 확인 시각 입력 검사: 비었거나 형식 오류 → 입력 안내, 10분 넘게 미래 → 미래 안내. 문제 없으면 null */
+export function checkedAtProblem(local: string, now: number = Date.now()): string | null {
+  const iso = toRfc3339(local);
+  if (iso === null) return t('page.G7.hc.checkedAtRequired');
+  if (Date.parse(iso) - now > CHECKED_AT_FUTURE_SLACK_MS)
+    return t('page.G7.hc.checkedAtFutureLocal');
+  return null;
 }
 
 const asField = (v: string | null): HumanCheckField =>
@@ -127,6 +162,9 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const [enteredBy, setEnteredBy] = useState<EnteredByRole | ''>('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [checkedAtLocalError, setCheckedAtLocalError] = useState<string | null>(null);
+  /** 마지막으로 보낸 checked_at(서버 422 가 미래 때문인지 이른 확인일 때문인지 가른다) */
+  const [sentAt, setSentAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<HumanCheck | null>(null);
 
   // 같은 화면에서 '사람 확인으로 복원' 링크를 누르면 URL 만 바뀐다 → 폼을 그 값으로 다시 채운다
@@ -156,14 +194,22 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
       setError(metaText('page.G7.hc.noteTooLong', { max: HUMAN_CHECK_NOTE_MAX }));
       return;
     }
+    const timeProblem = checkedAtProblem(checkedAt);
+    setCheckedAtLocalError(timeProblem);
+    if (timeProblem) {
+      setError(null);
+      return;
+    }
+    const checkedAtIso = toRfc3339(checkedAt) as string;
     setError(null);
+    setSentAt(checkedAtIso);
     const body: HumanCheckCreate = {
       complex_id: Number(complexId),
       field,
       ...(entityId !== null ? { entity_id: entityId } : {}),
       value_text: normalizeHumanValue(field, value),
       kind,
-      checked_at: toIso(checkedAt),
+      checked_at: checkedAtIso,
       entered_by: enteredBy,
       note: note.trim() || null,
     };
@@ -174,10 +220,11 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         // 그 잡의 진행만 보인다. 끝나면 api/jobWatch 가 지역·리비전·사실 화면을 무효화한다.
         const savedText =
           field === 'intake_status' ? t('page.G7.hc.saved') : t('page.G7.hc.savedFact');
+        const jobId = humanCheckJobId(result);
         toast({
           message:
-            result.rejudge_job_id !== null
-              ? `${savedText} · ${t('page.G7.hc.rejudgeAuto', { id: idText(result.rejudge_job_id) })}`
+            jobId !== null
+              ? `${savedText} · ${t('page.G7.hc.rejudgeAuto', { id: idText(jobId) })}`
               : savedText,
         });
       },
@@ -185,14 +232,22 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   };
 
   const rule = HUMAN_CHECK_RULES[field];
-  // 계약 .10 S6(D13-2): 그 의미 필드에 확인일보다 뒤에 관측된 공식 공고가 있으면 422 — loc ["body","checked_at"].
-  // 확인일 칸의 오류로 보인다(조용히 지는 사람 확인 금지)
-  const checkedAtError =
+  // 계약 .10 S6·.11 F7·F8: checked_at 422 — loc ["body","checked_at"]. 이른 확인일(이미 수집된 공고가 **다른 값**)
+  // 또는 10분 넘는 미래. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 보낸 시각이 지금보다 뒤면 미래 안내
+  const serverCheckedAt =
     create.error instanceof ApiError && create.error.status === 422
       ? (create.error.fieldErrors.find((f) => f.loc[f.loc.length - 1] === 'checked_at')?.msg ??
         null)
       : null;
-  const serverError = checkedAtError
+  const serverSaysFuture = sentAt !== null && Date.parse(sentAt) > Date.now();
+  const checkedAtError =
+    checkedAtLocalError ??
+    (serverCheckedAt
+      ? serverSaysFuture
+        ? t('page.G7.hc.checkedAtFuture', { detail: serverCheckedAt })
+        : t('page.G7.hc.checkedAtTooEarly', { detail: serverCheckedAt })
+      : null);
+  const serverError = serverCheckedAt
     ? null
     : create.error instanceof ApiError
       ? create.error.detail
@@ -300,18 +355,18 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         </Field>
         <Field
           label="checkedAt"
-          error={
-            checkedAtError
-              ? t('page.G7.hc.checkedAtTooEarly', { detail: checkedAtError })
-              : undefined
-          }
+          error={checkedAtError ?? undefined}
+          hint={t('page.G7.hc.checkedAtTz', { tz: offsetText(-new Date().getTimezoneOffset()) })}
         >
           {(id, hintId) => (
             <input
               id={id}
               type="datetime-local"
               value={checkedAt}
-              onChange={(e) => setCheckedAt(e.target.value)}
+              onChange={(e) => {
+                setCheckedAt(e.target.value);
+                setCheckedAtLocalError(null);
+              }}
               aria-invalid={checkedAtError ? true : undefined}
               aria-describedby={hintId}
               className={inputClass}
@@ -399,8 +454,9 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
           ) : null}
           {saved ? (
             <div className="w-full" data-testid="human-check-job">
-              {saved.rejudge_job_id !== null ? (
-                <JobProgress jobId={saved.rejudge_job_id} />
+              {humanCheckJobId(saved) !== null ? (
+                // 계약 .11 F6: 201 + job_id(rejudge) — 새 리비전 발행까지 지금 발행 리비전이 기본
+                <PublishJobProgress jobId={humanCheckJobId(saved) as number} />
               ) : (
                 <p className="text-xs text-muted">{t('page.G7.hc.noRejudge')}</p>
               )}

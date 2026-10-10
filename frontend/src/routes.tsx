@@ -7,12 +7,24 @@ import { AppLayout } from '@/layout/AppLayout';
 import { NotFoundPage } from '@/pages/not-found';
 import { SharePage } from '@/pages/share';
 
+/** 화면 청크 불러오기 함수들(`preloadPages`) */
+const pageLoaders: (() => Promise<unknown>)[] = [];
+
 /** 화면마다 별도 청크(첫 화면 번들을 줄인다 — Lighthouse 성능). AppLayout의 Suspense가 받는다. */
 function page<K extends string>(
   load: () => Promise<Record<K, ComponentType>>,
   name: K,
 ): ComponentType {
+  pageLoaders.push(load);
   return lazy(async (): Promise<{ default: ComponentType }> => ({ default: (await load())[name] }));
+}
+
+/**
+ * 화면 청크를 모두 미리 불러온다. 테스트(`test/render.tsx`)가 파일마다 한 번 — 첫 화면 렌더의 findBy 창 안에서
+ * 청크 변환·평가를 기다리지 않게 한다(6차 리뷰: 부하에서 첫 테스트가 5초를 넘음).
+ */
+export async function preloadPages(): Promise<void> {
+  await Promise.all(pageLoaders.map((load) => load()));
 }
 
 const RegionNewPage = page(() => import('@/pages/region-new'), 'RegionNewPage');

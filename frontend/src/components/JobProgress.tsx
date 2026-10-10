@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useJob } from '@/api/hooks';
 import { t, tDynamic } from '@/i18n';
 import type { JobLike } from '@/lib/contract';
@@ -11,7 +11,8 @@ export interface JobProgressViewProps {
 
 /** 표시 전용(테스트·갤러리용). 계약 `progress{done,total,step}`가 있으면 결정 진행 막대, 없으면 미정 막대. */
 export function JobProgressView({ job, error }: JobProgressViewProps) {
-  if (error) {
+  // 잡을 한 번이라도 받았으면 일시 오류 동안(다시 조회 중 — 6차 minor 22) 마지막 상태를 두고 오류 줄만 더한다
+  if (error && !job) {
     return (
       <div role="status" className="text-sm text-danger">
         {t('job.error', { detail: error.message })}
@@ -66,6 +67,11 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
       {job.error_text ? (
         <p className="text-danger">{t('job.error', { detail: job.error_text })}</p>
       ) : null}
+      {error ? (
+        <p className="text-danger" data-testid="job-retrying">
+          {t('job.retrying', { detail: error.message })}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -105,4 +111,37 @@ export function JobProgress({ jobId, pollMs, onDone, onFailed }: JobProgressProp
   }, [job, onDone, onFailed]);
 
   return <JobProgressView job={job} error={error} />;
+}
+
+/**
+ * 발행을 부르는 쓰기(계약 .11 F3–F6 — 호재 위치 202·생활권 PUT 202·지역 선택 PATCH 202·사람 확인 201 + job_id)가
+ * 등록한 잡의 진행. 잡이 새 리비전을 판정·발행할 때까지 화면 기본은 지금 발행 리비전이라는 안내를 같이 보인다.
+ * 잡이 끝나면(done) 안내를 내리고, 리비전 목록·지역·사실 화면 무효화는 `api/jobWatch` 가 한다.
+ */
+export function PublishJobProgress({
+  jobId,
+  onDone,
+}: {
+  jobId: string | number;
+  onDone?: (job: JobLike) => void;
+}) {
+  const [doneJob, setDoneJob] = useState<string | null>(null);
+  const finished = doneJob === String(jobId);
+  return (
+    <div className="flex flex-col gap-1" data-testid="publish-job">
+      {!finished ? (
+        <p className="text-xs text-muted" data-testid="publish-pending">
+          {t('job.publishPending')}
+        </p>
+      ) : null}
+      <JobProgress
+        jobId={jobId}
+        onDone={(job) => {
+          setDoneJob(String(jobId));
+          onDone?.(job);
+        }}
+        onFailed={() => setDoneJob(String(jobId))}
+      />
+    </div>
+  );
 }

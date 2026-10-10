@@ -70,5 +70,8 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}', 'eslint-rules/**/*.test.{js,ts}', 'scripts/**/*.test.ts'],
     css: false,
     restoreMocks: true,
+    // 모든 파일 같은 값(6차 리뷰: `_shared/testing` 을 import 하지 않는 파일은 vitest 기본 5초라 findBy 5초와 겹쳐
+    // 부하에서 'Test timed out' 으로 먼저 끊겼다). 화면 하나가 쿼리·지연 로드 청크를 여럿 기다린다.
+    testTimeout: 20_000,
   },
 });

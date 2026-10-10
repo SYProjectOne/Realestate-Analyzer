@@ -1,10 +1,10 @@
 /**
  * 계약 2026-10-09.8 화면 실 API e2e(MSW 끔, devseed 테스트 DB 위 uvicorn) — 쓰기 흐름은 이 임시 DB 에만 쓴다.
  *  - D11-6 할인: PriceRange.discount 를 헤더·가격 표에 FactCell 로(서버 discount_applied(계약 .10) → 구매가에서 뺌, 그 밖 → 표시만)
- *  - D11-5 호재 위치 확인: PATCH /catalysts/{id} → CatalystUpdated(links·reason·job) → 위치 확인됨 → 취소
+ *  - D11-5 호재 위치 확인: PATCH /catalysts/{id} 202 → CatalystUpdated(links·reason·job_id = snapshot.publish) → worker → 위치 확인됨 → 취소(계약 .11 F3)
  *  - M-5 사람 확인: 서버 허용 범위(화면이 먼저 막음) · entity_id(사실 행 지정) → 응답 entity·entity_id
  *  - D11-1 리비전: 사람 확인 → 재판정 잡 → worker 1회 → 같은 기준일 새 리비전 → 헤더 SnapshotPicker 기본 선택
- *  - D11-7 지역 확장: PATCH /regions/{id} → RegionPatched(added·removed·change_event·job_id) → region.expand 잡 표시
+ *  - D11-7 지역 확장: PATCH /regions/{id} 202 → RegionPatched(added·removed·change_event·job_id) → region.expand 잡 + 발행 대기 안내(계약 .11 F5)
  * 모든 테스트: 화면이 부른 /api 응답 4xx/5xx 0건. 파일 이름이 마지막(writes8)이라 앞 spec 의 읽기 기대를 흔들지 않는다.
  * region.expand 잡은 외부 수집을 하므로 worker 로 돌리지 않는다(마지막 테스트).
  */
@@ -106,7 +106,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     expect(failed).toEqual([]);
   });
 
-  test('D11-5 호재 위치 확인: 생활권 지정 → links(같은 생활권·reason)·job null(새 리비전 바로 발행) → 위치 확인됨 → 취소', async ({
+  test('D11-5 호재 위치 확인: 생활권 지정 → 202 links(같은 생활권·reason)·job_id(snapshot.publish) → worker → 위치 확인됨 → 취소', async ({
     page,
   }) => {
     const failed = watchApi(page);
@@ -130,14 +130,16 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     );
     await form.getByRole('button', { name: P.G6.loc.submit }).click();
     const res = await saved;
-    expect(res.status()).toBe(200);
+    // 계약 .11 F3(D14-5): 202 + job_id = snapshot.publish 잡(worker 가 새 리비전 발행)
+    expect(res.status()).toBe(202);
     const body = (await res.json()) as {
       links: { complex_id: number; reason: string | null }[];
       job: { job_name: string } | null;
+      job_id: number | null;
     };
     expect(body.links.length).toBeGreaterThan(0);
-    // 계약 .9 D12-4: 연결 변경은 rejudge 없이 새 리비전으로 바로 발행 — job 은 늘 null
-    expect(body.job).toBeNull();
+    expect(body.job?.job_name).toBe('snapshot.publish');
+    expect(body.job_id).not.toBeNull();
 
     const links = panel.getByTestId('catalyst-links');
     await expect(links.locator('tbody tr')).toHaveCount(body.links.length);
@@ -145,11 +147,23 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     await expect(first).toContainText('같은 생활권');
     await expect(first).toContainText(ko.label.unknown);
     await expect(first.locator('[data-meta="derived"]')).toHaveText('1.00');
-    await expect(panel.getByTestId('catalyst-job-none')).toHaveText(P.G6.loc.noJob);
+    // 잡이 끝날 때까지 이전 발행 리비전이 기본 — 안내 + 진행, 시장의 위치 상태는 아직 그대로
+    const job = panel.getByTestId('catalyst-job');
+    await expect(job.getByTestId('publish-pending')).toHaveText(ko.job.publishPending);
+    await expect(job).toContainText('snapshot.publish');
+    await expect(item.getByTestId('loc-status')).toHaveText(P.G6.loc.unconfirmed);
+    runWorkerOnce();
+    // 잡 done → 지역·리비전·시장 무효화 → 새 발행 리비전에서 위치 확인됨
+    await expect(job).toContainText(ko.job.status.done);
     await expect(item.getByTestId('loc-status')).toHaveText(P.G6.loc.confirmed);
 
+    const unsaved = page.waitForResponse(
+      (r) => /\/api\/catalysts\/\d+$/.test(r.url()) && r.request().method() === 'PATCH',
+    );
     await item.getByRole('button', { name: P.G6.loc.unconfirm }).click();
+    expect((await unsaved).status()).toBe(202);
     await expect(panel.getByTestId('catalyst-links')).toHaveText(P.G6.loc.cleared);
+    runWorkerOnce();
     await expect(item.getByTestId('loc-status')).toHaveText(P.G6.loc.unconfirmed);
     expect(patches()).toBe(2);
     expect(failed).toEqual([]);
@@ -205,9 +219,18 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
       entity: string;
       entity_id: number;
       rejudge_job_id: number | null;
+      job_id: number | null;
     };
     expect(hc).toMatchObject({ entity: 'payment_terms', entity_id: Number(termsId) });
+    // 계약 .11 F6: 201 그대로 + job_id(= rejudge_job_id), 보낸 checked_at 은 시간대 RFC3339(F7)
     expect(hc.rejudge_job_id).not.toBeNull();
+    expect(hc.job_id).toBe(hc.rejudge_job_id);
+    expect(String(JSON.parse(res.request().postData() ?? '{}').checked_at)).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/,
+    );
+    await expect(form.getByTestId('human-check-job').getByTestId('publish-pending')).toHaveText(
+      ko.job.publishPending,
+    );
     await expect(form.getByTestId('human-check-result')).toContainText(
       P.G7.hcField.down_payment_pct,
     );
@@ -295,7 +318,8 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     );
     await panel.getByRole('button', { name: P.G0_2.expand.submit }).click();
     const res = await saved;
-    expect(res.status()).toBe(200);
+    // 계약 .11 F5: 선택이 바뀌면 202(이름만이면 200)
+    expect(res.status()).toBe(202);
     const body = (await res.json()) as {
       job_id: number;
       added: { full_name: string }[];
@@ -312,6 +336,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     const job = panel.getByTestId('expand-job');
     await expect(job).toContainText('region.expand');
     await expect(job).toContainText(ko.job.status.queued);
+    await expect(job.getByTestId('publish-pending')).toHaveText(ko.job.publishPending);
     await expect(current.getByRole('listitem')).toHaveCount(before + 1);
     expect(failed).toEqual([]);
   });

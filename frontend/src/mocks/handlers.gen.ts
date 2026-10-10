@@ -115,8 +115,24 @@ export const generatedHandlers = [
           "reason": "같은 생활권(la_2, 단지 좌표 없음)"
         }
       ],
-      "job": null
-    }, { status: 200 }),
+      "job": {
+        "id": 88,
+        "job_name": "snapshot.publish",
+        "kind": "manual",
+        "payload": {
+          "snapshot_id": 14,
+          "carry_from_snapshot_id": 12
+        },
+        "scheduled_at": "2026-10-10T09:12:00+09:00",
+        "started_at": null,
+        "finished_at": null,
+        "status": "queued",
+        "stats": {},
+        "error_text": null,
+        "progress": null
+      },
+      "job_id": 88
+    }, { status: 202 }),
   ),
   http.patch(mswPath("/claims/:id"), () =>
     HttpResponse.json({
@@ -2007,7 +2023,8 @@ export const generatedHandlers = [
           ]
         }
       },
-      "rejudge_job_id": 912
+      "rejudge_job_id": 912,
+      "job_id": 912
     }, { status: 201 }),
   ),
   http.get(mswPath("/ops/judgments"), () =>
@@ -3919,7 +3936,7 @@ export const generatedHandlers = [
         "tab": null
       },
       "job_id": 912
-    }, { status: 200 }),
+    }, { status: 202 }),
   ),
   http.get(mswPath("/regions/:id/snapshots"), () =>
     HttpResponse.json([
@@ -13167,11 +13184,11 @@ export const generatedHandlers = [
             "unit": "won"
           },
           "n_trades": {
-            "v": 0,
-            "label": "재가공",
+            "v": null,
+            "label": "확인 불가",
             "prov": "fp_9002",
             "checked_at": "2026-10-07",
-            "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+            "reason": "건수 미상(보고서 원문에 거래 건수 없음)",
             "unit": "count"
           },
           "trade_window": "2026-05~2026-06",
@@ -13203,11 +13220,11 @@ export const generatedHandlers = [
             "unit": "won"
           },
           "n_trades": {
-            "v": 0,
-            "label": "비공식",
+            "v": null,
+            "label": "확인 불가",
             "prov": "fp_9003",
             "checked_at": "2026-10-07",
-            "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+            "reason": "실거래 원자료 미확보(언론 시세만)",
             "unit": "count"
           },
           "trade_window": null,
@@ -14079,7 +14096,7 @@ export const generatedOperations = [
     "method": "patch",
     "path": "/catalysts/{id}",
     "operationId": "updateCatalyst",
-    "status": 200
+    "status": 202
   },
   {
     "method": "patch",
@@ -14187,7 +14204,7 @@ export const generatedOperations = [
     "method": "put",
     "path": "/regions/{id}/living-areas",
     "operationId": "updateLivingAreas",
-    "status": 200
+    "status": 202
   },
   {
     "method": "get",

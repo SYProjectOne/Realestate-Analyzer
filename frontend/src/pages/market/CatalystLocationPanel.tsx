@@ -10,7 +10,7 @@ import type {
   Fact,
   Market,
 } from '@/api/types';
-import { Badge, FactCell, JobProgress, MetaValue } from '@/components';
+import { Badge, FactCell, MetaValue, PublishJobProgress } from '@/components';
 import { t } from '@/i18n';
 import { enumText, Section, tdClass, thClass } from '../_shared';
 
@@ -73,7 +73,7 @@ export function distanceFact(link: CatalystLinkView, areas: readonly LivingAreaR
  * G6 호재 위치 확인 (D11-5, 계약 .8 PATCH /catalysts/{id} → CatalystUpdated {catalyst, links, job}) — catalyst_link 는
  * 사람이 위치를 확인할 때만 생긴다(location_confirmed=false 면 링크 없음, RA). 영향 생활권·단지를 하나 이상 고르면
  * (좌표 lat·lon·예상 시기 expected_ym 은 선택 — D11-11 사람 입력만) 서버가 링크를 만들고, 단지 좌표가 없으면
- * distance_m=null·weight=1·라벨 추정·reason(연결 근거). 연결이 바뀌면 응답 job(rejudge)을 진행 표시로 보인다.
+ * distance_m=null·weight=1·라벨 추정·reason(연결 근거). 연결이 바뀌면 202 + 응답 job_id(snapshot.publish)를 감시한다(계약 .11 F3).
  * 판단(호재 단계)은 판정기 몫 — 여기서는 위치만.
  * '호재 아님'(D11-2) 은 목록에서 회색 배지로만 보인다(링크 대상 아님).
  */
@@ -338,7 +338,15 @@ function LocationForm({
   );
 }
 
-/** 저장 결과: 만들어진 catalyst_link(단지·거리·가중치·근거) + 연결이 바뀌었으면 rejudge 잡 진행 */
+/** 계약 .11 F3: 감시할 잡 = `job_id`(snapshot.publish). 옛 응답(job_id 없음)이면 job.id */
+export function jobIdOf(result: Pick<CatalystUpdated, 'job' | 'job_id'>): number | null {
+  return result.job_id ?? result.job?.id ?? null;
+}
+
+/**
+ * 저장 결과: 만들어진 catalyst_link(단지·거리·가중치·근거) + 연결이 바뀌었으면 새 리비전 발행 잡(202, 계약 .11 F3) 진행.
+ * 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다.
+ */
 function LinksTable({
   result,
   names,
@@ -351,10 +359,10 @@ function LinksTable({
   return (
     <div className="flex flex-col gap-2">
       <LinksBody result={result} names={names} areas={areas} />
-      {result.job ? (
+      {jobIdOf(result) !== null ? (
         <div data-testid="catalyst-job">
           <p className="text-xs text-muted">{t('page.G6.loc.jobHint')}</p>
-          <JobProgress jobId={result.job.id} />
+          <PublishJobProgress jobId={jobIdOf(result) as number} />
         </div>
       ) : (
         <p className="text-xs text-muted" data-testid="catalyst-job-none">

@@ -40,6 +40,8 @@ export class ApiError extends Error {
   readonly fieldErrors: FieldError[];
   /** 응답 본문(JSON 이면 파싱한 값) — 오류 응답이 계약 본문을 담는 경우(GET /health 503 = Health) */
   readonly body: unknown;
+  /** `Retry-After`(초) → ms. 계약 .11 503 materialize_pending 이 싣는다. 없으면 null */
+  readonly retryAfterMs: number | null;
 
   constructor(
     code: ClientErrorCode,
@@ -47,6 +49,7 @@ export class ApiError extends Error {
     status: number | null,
     fieldErrors: FieldError[] = [],
     body: unknown = null,
+    retryAfterMs: number | null = null,
   ) {
     super(`${code}: ${detail}`);
     this.name = 'ApiError';
@@ -55,7 +58,25 @@ export class ApiError extends Error {
     this.status = status;
     this.fieldErrors = fieldErrors;
     this.body = body;
+    this.retryAfterMs = retryAfterMs;
   }
+}
+
+/** `Retry-After` 헤더(초 정수 또는 HTTP 날짜) → ms. 읽을 수 없으면 null */
+export function parseRetryAfter(value: string | null, now: number = Date.now()): number | null {
+  if (value === null || value.trim() === '') return null;
+  const v = value.trim();
+  if (/^\d+$/.test(v)) return Number(v) * 1000;
+  const at = Date.parse(v);
+  return Number.isFinite(at) ? Math.max(at - now, 0) : null;
+}
+
+/**
+ * 계약 .11 503 `materialize_pending`: 발행 리비전 저장본을 아직 만들지 않았다(worker 가 만드는 중) —
+ * 화면은 '준비 중'을 보이고 Retry-After 뒤 자동으로 다시 부른다.
+ */
+export function isMaterializePending(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.code === 'materialize_pending';
 }
 
 export type QueryValue =
@@ -117,6 +138,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
   } catch {
     // 본문 없음
   }
+  const retryAfterMs = parseRetryAfter(response.headers.get('Retry-After'));
   const parsed = ErrorSchema.safeParse(payload);
   if (parsed.success) {
     return new ApiError(
@@ -125,6 +147,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
       response.status,
       parsed.data.field_errors ?? [],
       payload,
+      retryAfterMs,
     );
   }
   return new ApiError(
@@ -133,6 +156,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
     response.status,
     [],
     payload,
+    retryAfterMs,
   );
 }
 

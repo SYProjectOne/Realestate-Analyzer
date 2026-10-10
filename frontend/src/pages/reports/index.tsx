@@ -2,9 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 import { useCanWrite } from '@/api/auth';
 import { useDownload } from '@/api/download';
-import { reportRequest, useChanges, useCreateReport, useReports } from '@/api/hooks';
-import { ApiError } from '@/api/client';
-import type { ChangeEvent, Report, ReportFormat, Snapshot } from '@/api/types';
+import { reportRequest, useChanges, useCreateReport, useReports, useScenarios } from '@/api/hooks';
+import { ApiError, isMaterializePending } from '@/api/client';
+import type { ChangeEvent, Report, ReportFormat, Scenario, Snapshot } from '@/api/types';
 import { Badge, EmptyState, JobProgress, MetaText, SnapshotPicker } from '@/components';
 import { snapshotText, snapshotTitle } from '@/components/SnapshotPicker';
 import { useSnapshot } from '@/hooks/useSnapshot';
@@ -12,7 +12,15 @@ import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import { metaText } from '@/lib/meta';
-import { enumText, QueryState, Section, tdClass, thClass, usePageContext } from '../_shared';
+import {
+  enumText,
+  QueryState,
+  scenarioMadeAfterPublish,
+  Section,
+  tdClass,
+  thClass,
+  usePageContext,
+} from '../_shared';
 
 const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
 
@@ -30,27 +38,72 @@ export function blockReason(snapshot: Snapshot | null): string | null {
   return null;
 }
 
-/** POST /reports 409 의 안내(어떤 code 든 — publish_blocked·conflict). 그 밖의 오류는 일반 오류 문구 */
+/**
+ * POST /reports 오류 안내: 409(publish_blocked·conflict) = 만들 수 없는 리비전, 422 scenario_not_in_revision(계약 .11 F10)
+ * = 그 시나리오 결과가 대상 리비전에 없다(대상 다시 고르기), 503 materialize_pending = 보고서 자료 준비 중.
+ * 그 밖은 일반 오류 문구.
+ */
 export function createErrorText(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError && error.status === 409) {
     return t('page.G8.conflict', { detail: error.detail || error.message });
   }
+  if (error instanceof ApiError && error.code === 'scenario_not_in_revision') {
+    return t('page.G8.scenarioNotInRevisionServer', { detail: error.detail });
+  }
+  if (isMaterializePending(error)) return t('page.G8.pending');
   return t('page.G8.createError', {
     detail: error instanceof Error ? error.message : String(error),
   });
 }
 
+type RevisionOrder = Pick<Snapshot, 'id' | 'asof_date' | 'revision'>;
+
+/**
+ * a 가 b 보다 **앞선** 리비전인가 — 서버(계약 .11 F10, R3 6차 m5)와 같은 순서 (기준일, 리비전, id).
+ * 비교 스냅샷은 대상보다 앞선 것만(같은 것·더 새 것은 '이전 → 현재' 표가 뒤집혀 422).
+ */
+export function isOlderRevision(a: RevisionOrder, b: RevisionOrder): boolean {
+  if (a.asof_date !== b.asof_date) return a.asof_date < b.asof_date;
+  const ra = a.revision ?? 1;
+  const rb = b.revision ?? 1;
+  if (ra !== rb) return ra < rb;
+  return a.id < b.id;
+}
+
+/** 비교 후보: 대상과 같은 지역의 발행 리비전 중 대상보다 앞선 것 */
+export function compareCandidates(
+  reportable: readonly Snapshot[],
+  base: Snapshot | null,
+): Snapshot[] {
+  if (!base) return [];
+  return reportable.filter((s) => s.region_id === base.region_id && isOlderRevision(s, base));
+}
+
+/** 사용자 시나리오 결과가 있을 법한 대상 리비전: 그 시나리오를 만든 뒤 발행된 리비전 중 가장 새 것 */
+export function revisionWithScenario(
+  reportable: readonly Snapshot[],
+  scenario: Pick<Scenario, 'id' | 'code' | 'created_at' | 'is_builtin'>,
+): Snapshot | null {
+  const fit = reportable.filter((s) => scenarioMadeAfterPublish(scenario, s) === false);
+  return [...fit].sort((a, b) => (isOlderRevision(a, b) ? 1 : -1))[0] ?? null;
+}
+
 /**
  * G8 보고서 `/reports` (RA §7-1, D4 = HTML|PDF)
- * SnapshotPairPicker · FormatSelect · GenerateButton(→ JobProgress) · ReportList(다운로드) · SnapshotDiffTable
- * contradicted claim이 있으면 버튼 비활성 + 사유.
+ * SnapshotPairPicker · ScenarioSelect · FormatSelect · GenerateButton(→ JobProgress) · ReportList(다운로드) · SnapshotDiffTable
+ * contradicted claim이 있으면 버튼 비활성 + 사유. 계약 .11 F10: 사용자 시나리오가 대상 리비전 발행 뒤에 만들어졌으면
+ * 생성 전에 막고(그 시나리오는 시나리오 실행이 만든 리비전에서) 결과가 있을 리비전으로 바꾸는 버튼을 준다 — 서버
+ * 422 scenario_not_in_revision 도 같은 안내. 비교 후보는 대상보다 앞선 발행 리비전만.
  */
 export function ReportsPage() {
   const { snapshots, snapshotId } = useSnapshot();
-  const { asof } = usePageContext();
+  const { asof, scenarioKey } = usePageContext();
+  const scenarios = useScenarios();
   const [baseId, setBaseId] = useState<string | null>(null);
   const [compareId, setCompareId] = useState<string>('');
+  /** 보고서 시나리오 id(문자열). null = 전역 ?scenario= 를 따른다, '' = 기본 */
+  const [scenarioChoice, setScenarioChoice] = useState<string | null>(null);
   const [format, setFormat] = useState<ReportFormat>('html');
   const [jobId, setJobId] = useState<number | null>(null);
   const create = useCreateReport();
@@ -58,13 +111,45 @@ export function ReportsPage() {
   const qc = useQueryClient();
   const formatId = useId();
   const compareSelectId = useId();
+  const scenarioSelectId = useId();
 
   // M-16: 보고서 기준·비교는 리비전 단위(같은 기준일 리비전 구별). 발행 리비전만 고를 수 있다(서버: 발행 전 409,
   // 비교 스냅샷도 발행·같은 지역만 — 5차 M5)
   const reportable = snapshots.filter((s) => s.status === 'published');
-  const selectedId = baseId ?? snapshotId;
+  // 6차 minor 21: 고른 값은 **지금 지역** 리비전 목록에 있을 때만 쓴다 — 지역을 바꾸면 이전 지역에서 고른 기준·비교는
+  // 버려지고 새 지역 기본 리비전으로 돌아간다.
+  const selectedId =
+    baseId !== null && snapshots.some((s) => String(s.id) === baseId) ? baseId : snapshotId;
   const base = snapshots.find((s) => String(s.id) === selectedId) ?? null;
-  const blocked = blockReason(base);
+  // 계약 .11(m5): 비교는 대상보다 앞선 발행 리비전만(자기 자신·더 새 리비전 제외)
+  const candidates = compareCandidates(reportable, base);
+  const compareValue =
+    compareId !== '' && candidates.some((s) => String(s.id) === compareId) ? compareId : '';
+
+  // 보고서 시나리오: 고른 값 → 없으면 전역 ?scenario=(code·id) → 기본
+  const scenarioList = scenarios.data ?? [];
+  const globalScenario =
+    scenarioKey === null
+      ? null
+      : (scenarioList.find((s) => (s.code ?? String(s.id)) === scenarioKey) ?? null);
+  const scenario =
+    scenarioChoice === null
+      ? globalScenario
+      : (scenarioList.find((s) => String(s.id) === scenarioChoice) ?? null);
+  const scenarioMissing =
+    scenario && base ? scenarioMadeAfterPublish(scenario, base) === true : false;
+  const serverScenarioMissing =
+    create.error instanceof ApiError && create.error.code === 'scenario_not_in_revision';
+  const suggested =
+    scenario && (scenarioMissing || serverScenarioMissing)
+      ? revisionWithScenario(reportable, scenario)
+      : null;
+
+  const blocked =
+    blockReason(base) ??
+    (scenarioMissing && scenario
+      ? t('page.G8.scenarioNotInRevision', { name: scenario.name })
+      : null);
   const createError = createErrorText(create.error);
 
   const generate = () => {
@@ -73,10 +158,18 @@ export function ReportsPage() {
       {
         snapshot_id: Number(selectedId),
         format,
-        compare_snapshot_id: compareId ? Number(compareId) : null,
+        compare_snapshot_id: compareValue ? Number(compareValue) : null,
+        ...(scenario ? { scenario_id: scenario.id } : {}),
       },
       { onSuccess: (job) => setJobId(job.id) },
     );
+  };
+
+  const pickBase = (id: string) => {
+    setBaseId(id);
+    // 비교로 고른 리비전을 기준으로 바꾸면 비교는 없음(나중에 기준을 되돌려도 되살아나지 않게)
+    if (id === compareId) setCompareId('');
+    create.reset();
   };
 
   return (
@@ -86,7 +179,7 @@ export function ReportsPage() {
           <SnapshotPicker
             snapshots={base && base.status !== 'published' ? [base, ...reportable] : reportable}
             value={selectedId}
-            onChange={setBaseId}
+            onChange={pickBase}
             label={t('page.G8.snapshot')}
           />
           <span className="inline-flex items-center gap-1.5 text-sm">
@@ -95,18 +188,38 @@ export function ReportsPage() {
             </label>
             <select
               id={compareSelectId}
-              value={compareId}
+              value={compareValue}
               onChange={(e) => setCompareId(e.target.value)}
+              title={t('page.G8.compareOlderOnly')}
               className="rounded-sm border border-border bg-surface px-2 py-1"
             >
               <option value="">{t('page.G8.noCompare')}</option>
-              {reportable
-                .filter((s) => String(s.id) !== selectedId)
-                .map((s) => (
-                  <option key={s.id} value={s.id} title={snapshotTitle(s)}>
-                    {snapshotText(s)}
-                  </option>
-                ))}
+              {candidates.map((s) => (
+                <option key={s.id} value={s.id} title={snapshotTitle(s)}>
+                  {snapshotText(s)}
+                </option>
+              ))}
+            </select>
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-sm">
+            <label htmlFor={scenarioSelectId} className="text-muted">
+              {t('page.G8.scenario')}
+            </label>
+            <select
+              id={scenarioSelectId}
+              value={scenario ? String(scenario.id) : ''}
+              onChange={(e) => {
+                setScenarioChoice(e.target.value);
+                create.reset();
+              }}
+              className="rounded-sm border border-border bg-surface px-2 py-1"
+            >
+              <option value="">{t('page.G8.scenarioDefault')}</option>
+              {scenarioList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
             </select>
           </span>
           <fieldset className="flex items-center gap-2 text-sm">
@@ -145,6 +258,16 @@ export function ReportsPage() {
             {blocked ?? createError}
           </p>
         ) : null}
+        {suggested && String(suggested.id) !== selectedId ? (
+          <button
+            type="button"
+            data-testid="g8-pick-scenario-revision"
+            onClick={() => pickBase(String(suggested.id))}
+            className="self-start text-sm underline"
+          >
+            {t('page.G8.scenarioPickRevision', { snapshot: snapshotText(suggested) })}
+          </button>
+        ) : null}
         {jobId !== null ? (
           <JobProgress
             jobId={String(jobId)}
@@ -153,7 +276,7 @@ export function ReportsPage() {
         ) : null}
       </Section>
       <ReportList asof={asof} snapshots={snapshots} />
-      <SnapshotDiff baseId={selectedId} compareId={compareId || null} asof={asof} />
+      <SnapshotDiff baseId={selectedId} compareId={compareValue || null} asof={asof} />
     </PageShell>
   );
 }

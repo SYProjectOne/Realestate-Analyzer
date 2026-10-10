@@ -16,7 +16,7 @@ import type {
   RegionSelection,
 } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState, JobProgress, MetaText } from '@/components';
+import { Badge, EmptyState, MetaText, PublishJobProgress } from '@/components';
 import { t } from '@/i18n';
 import { enumText, Section, useDebounced } from '../_shared';
 
@@ -239,7 +239,7 @@ export function RegionExpandPanel({ region }: { region: Region }) {
           {saved.job_id !== null ? (
             <>
               <p className="text-xs text-muted">{t('page.G0_2.expand.jobHint')}</p>
-              <JobProgress
+              <PublishJobProgress
                 jobId={saved.job_id}
                 onDone={() => {
                   void qc.invalidateQueries({ queryKey: queryKeys.snapshots(region.id) });

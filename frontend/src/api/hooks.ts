@@ -13,12 +13,20 @@ import {
   useQuery,
   useQueryClient,
   type QueryClient,
+  type QueryState,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
-import { awaitingPublish, snapshotsRefetchInterval, type RoundJobs } from './jobWatch';
+import {
+  awaitingPublish,
+  backoffMs,
+  failedRound,
+  POLL_ERROR_MAX_STREAK,
+  snapshotsRefetchInterval,
+  type RoundJobs,
+} from './jobWatch';
 import type {
   CatalystCreate,
   CatalystCreated,
@@ -103,7 +111,8 @@ export const queryKeys = {
     ['snapshots', key(sid), 'complexes', params] as const,
   complex: (id: IdLike, snapshot: IdLike | null, scenario: ScenarioKey | null) =>
     ['complexes', key(id), key(snapshot), scenario] as const,
-  provenance: (provId: string) => ['provenance', provId] as const,
+  provenance: (provId: string, snapshot: IdLike | null = null) =>
+    ['provenance', provId, key(snapshot)] as const,
   rawText: (rawId: IdLike) => ['raw', key(rawId), 'text'] as const,
   rawFile: (rawId: IdLike) => ['raw', key(rawId), 'file'] as const,
   compare: (sid: IdLike, ids: readonly IdLike[], scenario: ScenarioKey | null) =>
@@ -193,7 +202,10 @@ export function useCreateRegion(): M<RegionCreate, RegionCreated> {
   });
 }
 
-/** PUT /regions/{id}/living-areas (updateLivingAreas) — G0-2 저장 (422 = 법정동 배정 오류) */
+/**
+ * PUT /regions/{id}/living-areas (updateLivingAreas) — G0-2 저장 (422 = 법정동 배정 오류). 계약 .11 F4: **202** + job_id
+ * (rejudge) — 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본(화면은 `PublishJobProgress` 로 감시).
+ */
 export function useUpdateLivingAreas(regionId: IdLike): M<LivingAreasUpdate, LivingAreasUpdated> {
   const qc = useQueryClient();
   return useMutation({
@@ -214,14 +226,46 @@ const roundJobs = new WeakMap<readonly Snapshot[], RoundJobs>();
 /** `/jobs` 를 읽을 수 없던(401·403) QueryClient — 다시 부르지 않는다 */
 const jobsForbidden = new WeakSet<QueryClient>();
 
-/** 진행 중 잡(queued + running) — listJobs 두 번 */
-async function fetchActiveJobs(signal: AbortSignal): Promise<JobRun[]> {
+/** 진행 중 잡을 읽을 때 한 번에 받는 최대 건수(계약 Size 최대 — 기본 50건이면 잘린다, 6차 minor 23) */
+export const JOBS_SCAN_SIZE = 1000;
+
+/**
+ * 진행 중 잡(queued + running) — listJobs 두 번(size = JOBS_SCAN_SIZE). 어느 목록이든 size 에 꽉 차면 잘렸을 수 있어
+ * 이 지역 잡이 빠졌는지 모른다 → 'truncated'(잡으로 멈추지 않고 생성 후 30분 제한으로 폴링 — 상한 없는 폴링 금지).
+ */
+export async function fetchActiveJobs(signal: AbortSignal): Promise<RoundJobs> {
   const [queued, running] = await Promise.all(
     (['queued', 'running'] as const).map((status) =>
-      apiFetch<JobRun[]>('/jobs', { query: { status }, signal }),
+      apiFetch<JobRun[]>('/jobs', { query: { status, size: JOBS_SCAN_SIZE }, signal }),
     ),
   );
-  return [...(queued ?? []), ...(running ?? [])];
+  const lists = [queued ?? [], running ?? []];
+  if (lists.some((l) => l.length >= JOBS_SCAN_SIZE)) return 'truncated';
+  return lists.flat();
+}
+
+/** 쿼리별 마지막 성공 때의 errorUpdateCount — 연속 오류 횟수 계산용 */
+const errorBase = new WeakMap<object, number>();
+
+/**
+ * 마지막 성공(또는 첫 조회) 뒤 연속 오류 횟수. refetchInterval 콜백에서 쿼리 상태로 센다(TanStack 의
+ * fetchFailureCount 는 조회마다 0 으로 돌아가 연속 횟수가 아니다).
+ */
+export function errorStreak(query: {
+  state: Pick<QueryState, 'status' | 'errorUpdateCount'>;
+}): number {
+  const { status, errorUpdateCount } = query.state;
+  if (status !== 'error') {
+    errorBase.set(query, errorUpdateCount);
+    return 0;
+  }
+  return Math.max(errorUpdateCount - (errorBase.get(query) ?? 0), 1);
+}
+
+/** 다시 부를 가치가 있는 일시 오류: 네트워크(상태 없음)·5xx·429. 그 밖의 4xx(없음·권한·검증)는 다시 불러도 같다 */
+export function isTransientError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return true;
+  return error.status === null || error.status >= 500 || error.status === 429;
 }
 
 /**
@@ -247,6 +291,9 @@ export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]>
           if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
             jobsForbidden.add(qc);
             jobs = 'forbidden';
+          } else if (!signal.aborted) {
+            // 일시 오류(5xx·네트워크): 연속 횟수를 세어 늦춘다(6차 minor 23 — 3초 고정 무한 폴링 금지)
+            jobs = failedRound(prev ? roundJobs.get(prev) : undefined);
           }
         }
       }
@@ -264,6 +311,7 @@ export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]>
         data,
         Date.now(),
         data ? (roundJobs.get(data) ?? 'forbidden') : 'forbidden',
+        errorStreak(q),
       );
     },
   });
@@ -407,13 +455,36 @@ export function useComplexDetail(
 }
 
 /** GET /provenance/{prov_id} (getProvenance) — 공통 출처 패널 */
-export function useProvenance(provId: string | null | undefined): Q<Provenance> {
+export function useProvenance(
+  provId: string | null | undefined,
+  snapshotId: IdLike | null = null,
+): Q<Provenance> {
+  const scoped = provenanceSnapshot(provId, snapshotId);
   return useQuery({
-    queryKey: queryKeys.provenance(provId ?? ''),
-    queryFn: ({ signal }) => apiFetch<Provenance>(`/provenance/${enc(provId ?? '')}`, { signal }),
+    queryKey: queryKeys.provenance(provId ?? '', scoped),
+    queryFn: ({ signal }) =>
+      apiFetch<Provenance>(`/provenance/${enc(provId ?? '')}`, {
+        query: { snapshot_id: scoped === null ? null : key(scoped) },
+        signal,
+      }),
     enabled: !!provId,
     staleTime: Infinity,
   });
+}
+
+/**
+ * 출처 조회에 넘길 리비전. 계약 .11 F1(D14-1): 화면 응답의 `prov` 로 받은 출처는 보고 있는 리비전을 늘 넘긴다 —
+ * 발행 리비전 = 발행 순간 저장본, 발행 전 = 실시간.
+ * 예외 `rd_<id>`: 화면이 접수 행 `raw_document_id` 로 **만든** 원문 출처(G3 '접수 근거 원문')다. 서버 저장본은 응답의
+ * `"prov"` 값만 모으므로(backend `snapshot_view._collect_prov`) 그 리비전 저장본에 없어 늘 404 가 된다 — 원문은
+ * 리비전과 무관한 불변 파일이라 리비전 없이 조회한다(계약 변경 요청: 저장본에 접수 근거 rd_ 를 넣거나 Intake 에 prov).
+ */
+export function provenanceSnapshot(
+  provId: string | null | undefined,
+  snapshotId: IdLike | null,
+): IdLike | null {
+  if (!provId || provId.startsWith('rd_')) return null;
+  return snapshotId;
 }
 
 /** GET /raw/{raw_document_id} (getRawDocument) — 원문 파일(G3·G7). `as=text`면 추출 텍스트 */
@@ -589,26 +660,38 @@ export function useCreateJob(): M<JobCreate, JobRun> {
 
 export const JOB_POLL_MS = 2000;
 
-/** useJob 폴링 간격: done/failed 이거나 마지막 조회가 오류(404·403·서버 오류 등)면 멈춘다(5차 리뷰 minor). */
+/**
+ * useJob 폴링 간격: done/failed 면 멈춘다. 마지막 조회가 오류면 — 일시 오류(5xx·네트워크·429)는 늦춰 가며 다시
+ * 조회하고(6차 minor 22: 한 번 오류로 영구 중단 금지) 연속 POLL_ERROR_MAX_STREAK 회를 넘으면 멈춘다. 잡 없음·권한
+ * 없음 같은 4xx 는 다시 불러도 같으므로 바로 멈춘다(5차 minor: 무한 폴링 금지).
+ */
 export function jobRefetchInterval(
-  state: { status: string; data?: Pick<JobRun, 'status'> | undefined },
+  state: {
+    status: string;
+    data?: Pick<JobRun, 'status'> | undefined;
+    error?: unknown;
+  },
   pollMs: number = JOB_POLL_MS,
+  streak: number = state.status === 'error' ? 1 : 0,
 ): number | false {
-  if (state.status === 'error') return false;
+  if (state.status === 'error') {
+    if (!isTransientError(state.error) || streak > POLL_ERROR_MAX_STREAK) return false;
+    return backoffMs(pollMs, streak);
+  }
   const status = state.data?.status;
   return status === 'done' || status === 'failed' ? false : pollMs;
 }
 
 /**
  * GET /jobs/{id} (getJob) — queued/running이면 pollMs(기본 2초)마다 다시 조회, done/failed면 멈춘다.
- * 조회가 오류로 끝나면(잡 없음·권한 없음·서버 오류) 무한히 다시 부르지 않고 멈춘다 — JobProgress 가 오류를 보인다.
+ * 일시 오류면 늦춰 가며 다시 조회하고(그동안 JobProgress 가 오류를 보인다), 4xx·연속 오류 상한이면 멈춘다.
  */
 export function useJob(id: IdLike | null | undefined, pollMs: number = JOB_POLL_MS): Q<JobRun> {
   return useQuery({
     queryKey: queryKeys.job(key(id)),
     queryFn: ({ signal }) => apiFetch<JobRun>(`/jobs/${enc(key(id))}`, { signal }),
     enabled: has(id),
-    refetchInterval: (query) => jobRefetchInterval(query.state, pollMs),
+    refetchInterval: (query) => jobRefetchInterval(query.state, pollMs, errorStreak(query)),
   });
 }
 
@@ -665,9 +748,18 @@ export function useCreateHumanCheck(): M<HumanCheckCreate, HumanCheck> {
     mutationFn: (body) => apiFetch<HumanCheck>('/ops/human-checks', { method: 'POST', body }),
     onSuccess: () => {
       invalidateFactViews(qc);
+      // 계약 .11 F6: 201 + job_id(rejudge) — 잡이 새 리비전을 판정·발행한다. 발행 대기 리비전이 목록에 보이게
+      void qc.invalidateQueries({ queryKey: queryKeys.regions() });
       void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
     },
   });
+}
+
+/** 발행을 부르는 쓰기 응답의 감시할 잡 id(계약 .11 F6 공통 이름 `job_id`, 옛 응답은 `rejudge_job_id`) */
+export function humanCheckJobId(
+  hc: Pick<HumanCheck, 'rejudge_job_id'> & { job_id?: number | null },
+): number | null {
+  return hc.job_id ?? hc.rejudge_job_id ?? null;
 }
 
 // ─── 보고서 (G8, D4: html|pdf) ─────────────────────────────
@@ -779,9 +871,10 @@ export function useCreateCatalyst(): M<CatalystCreate, CatalystCreated> {
 /**
  * PATCH /catalysts/{id} (updateCatalyst, 계약 .8, D11-5) — 사람이 호재 위치를 확인(location_confirmed + 영향
  * 생활권·단지, 선택 lat/lon·expected_ym)하면 서버가 catalyst_link 를 만든다(좌표 없는 단지는 distance_m=null·
- * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 계약 .9(D12-4): 응답 `job` 은 늘 null —
- * 연결이 바뀌면 서버가 새 리비전을 만들어 바로 발행한다. 그래서 지역(latest_snapshot)·리비전 목록·사실 화면을
- * 무효화한다(M-15 와 같은 처리).
+ * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 계약 .11(D14-5, F3): 연결이 바뀌면 **202** +
+ * `job_id`(snapshot.publish — 새 리비전을 worker 가 발행), 그대로면 job_id null. 잡이 끝날 때까지 이전 발행 리비전이
+ * 기본이므로 화면은 job_id 를 감시하고(`PublishJobProgress`), 끝나면 `api/jobWatch` 가 지역·리비전 목록·사실 화면을
+ * 무효화한다. 여기서는 새 발행 대기 리비전이 목록에 보이도록(발행 대기 폴링) 지역·리비전 목록을 무효화한다.
  */
 export function useUpdateCatalystLocation(): M<
   { id: IdLike; patch: CatalystPatch },
@@ -794,13 +887,15 @@ export function useUpdateCatalystLocation(): M<
     onSuccess: (data) => {
       invalidateFactViews(qc);
       void qc.invalidateQueries({ queryKey: queryKeys.regions() });
-      if (data.job) void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+      if (data.job_id !== null || data.job)
+        void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
     },
   });
 }
 
 /**
  * PATCH /regions/{id} (updateRegion, 계약 .8, D11-7) — 지역 선택 확장(selections 추가·제거, 선택 name) = RA "지역 추가".
+ * 계약 .11 F5: 선택이 바뀌면 **202**(job_id = region.expand — 발행까지 이전 리비전이 기본), 이름만 바꾸면 200(job_id null).
  * 응답 = {region, change_event(critical), job_id(region.expand), added, removed}. 잡이 새 리비전에서 후보 전체
  * rerank 1회 + 보고서 §12 "지역 추가" 장을 만든다. 선택이 그대로면 409 → 지역을 다시 받는다.
  */

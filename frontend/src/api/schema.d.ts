@@ -99,7 +99,7 @@ export interface paths {
         get?: never;
         /**
          * 생활권 편집 (G0-2)
-         * @description 모든 법정동은 정확히 한 생활권에 속해야 한다(누락·중복이면 422). 저장하면 change_event(critical) + rejudge 잡이 생긴다. 법정동이 남은 생활권은 삭제할 수 없다.
+         * @description 모든 법정동은 정확히 한 생활권에 속해야 한다(누락·중복이면 422). 저장하면 change_event(critical) + rejudge 잡이 생긴다(계약 .11 D14-5 — 202 + job_id, 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 법정동이 남은 생활권은 삭제할 수 없다.
          */
         put: operations["updateLivingAreas"];
         post?: never;
@@ -204,7 +204,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 출처 행 + 원문 발췌 + 상충 그룹 (출처 패널) */
+        /**
+         * 출처 행 + 원문 발췌 + 상충 그룹 (출처 패널)
+         * @description 계약 2026-10-09.11(D14-1, R3 6차 C2): 발행 리비전의 출처 서랍은 **저장본**(발행 순간의 출처 행·chosen·충돌·강등)이다 — 발행 뒤 새 공고·
+         *     재수집(입주물량 출처 행 삭제 포함)·강등·PATCH /claims 가 그 리비전 서랍을 바꾸지 않는다.
+         *     - `snapshot_id` 를 주면 그 리비전: 발행 리비전 = 저장본(그 리비전 화면에 없던 출처 = 404 not_found, 저장본 생성 전 = 503
+         *       materialize_pending), 발행 전(building·ready) = 실시간.
+         *     - 주지 않으면 지역마다 최신 발행 리비전 저장본에서 찾고, 어디에도 없으면 실시간(발행 전 리비전에서만 보이는 출처). 화면은 보고 있는
+         *       리비전 id 를 늘 넘긴다.
+         */
         get: operations["getProvenance"];
         put?: never;
         post?: never;
@@ -481,7 +489,7 @@ export interface paths {
         put?: never;
         /**
          * 보고서 생성 잡 등록 — html|pdf, diff 옵션 (G8)
-         * @description 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음). 발행 전(building·ready) 스냅샷·리비전은 409 conflict(계약 .9 — R3 4차 M-16, 판정이 끝난 리비전만 보고서를 만든다). 파일 이름은 report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식>(계약 .9 — C-4, 같은 기준일 리비전·잡끼리 덮어쓰지 않는다).
+         * @description 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음). 발행 전(building·ready) 스냅샷·리비전은 409 conflict(계약 .9 — R3 4차 M-16, 판정이 끝난 리비전만 보고서를 만든다). 계약 .11(D14-3, R3 6차 N-M1) — scenario_id 가 대상 리비전에 저장본이 없는 시나리오(그 리비전 발행 뒤 만든 사용자 시나리오)면 422 scenario_not_in_revision(field_errors loc = body.scenario_id — 그 시나리오 결과는 시나리오 실행이 만드는 새 리비전에 있다). 비교 기준 리비전에 그 시나리오가 없으면 보고서는 만들고 diff 표만 '비교 기준에 이 시나리오 없음'으로 생략한다(§12 건수 비교는 그대로). 비교 스냅샷이 대상과 같거나 더 새 리비전이면 422(compare_snapshot_id, R3 6차 m5). 파일 이름은 report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식>(계약 .9 — C-4, 같은 기준일 리비전·잡끼리 덮어쓰지 않는다).
          */
         post: operations["createReport"];
         delete?: never;
@@ -599,7 +607,7 @@ export interface paths {
          * 호재 위치 확인 → catalyst_link (D11-5)
          * @description 사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
          *     distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
-         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 연결이 바뀌면 rejudge 없이 새 리비전을 바로 발행해 그 시점 연결을 얼린다(계약 .9, D12-4 — job null). 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
+         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 연결이 바뀌면 rejudge 없이 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행)을 등록한다(계약 .11 D14-5 — 발행은 worker 잡, 응답 202 + job·job_id; 연결이 그대로면 job null). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다. 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
          */
         patch: operations["updateCatalyst"];
         trace?: never;
@@ -807,13 +815,15 @@ export interface components {
         };
         /**
          * CatalystUpdated
-         * @description PATCH /catalysts/{id} 200 — 갱신한 호재 + 연결 목록 + 등록한 점수 재계산 잡(연결이 그대로면 null)
+         * @description PATCH /catalysts/{id} 202(계약 .11) — 갱신한 호재 + 연결 목록 + 등록한 발행 잡(연결이 그대로면 null)
          */
         CatalystUpdated: {
             catalyst: components["schemas"]["CatalystView"];
             links: components["schemas"]["CatalystLinkView"][];
-            /** @description 계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다 */
+            /** @description 계약 .11(D14-5): 연결이 바뀌면 snapshot.publish 잡(새 리비전에 파생 행 복사 → 발행 — 판정기 호출 없음), 그대로면 null. 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다 */
             job: components["schemas"]["JobRun"] | null;
+            /** @description 계약 .11: job.id(없으면 null) — 화면은 이 잡을 감시한다 */
+            job_id: number | null;
         };
         /**
          * CatalystView
@@ -2347,7 +2357,10 @@ export interface components {
          *     - publish_blocked (409): contradicted claim이 남아 publish·보고서 생성 불가 (detail에 개수)
          *     - intake_unknown (422): 접수 상태가 확인 불가라 요청한 동작(후보 포함 등)을 할 수 없음
          *     - judge_unavailable (503): 판정기 다운(degraded). 조회는 계속 가능
-         *     - contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev)
+         *     - contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev, 발행 전 리비전 실시간 GET)
+         *     - scenario_not_in_revision (422): 계약 .11(D14-3) — 보고서 대상 리비전에 그 시나리오 저장본이 없다(발행 뒤 만든 사용자 시나리오, field_errors loc body.scenario_id)
+         *     - stored_view_mismatch (500): 계약 .11(D14-4) — 발행 리비전 저장본의 sha256·계약 버전이 맞지 않는다(조용히 내보내지 않는다, 서버 로그)
+         *     - materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After)
          *     - internal (500): 그 밖의 서버 오류
          * @example {
          *       "code": "not_found",
@@ -2373,7 +2386,7 @@ export interface components {
          */
         Error: {
             /** @enum {string} */
-            code: "unauthorized" | "forbidden" | "not_found" | "validation_error" | "conflict" | "publish_blocked" | "intake_unknown" | "judge_unavailable" | "contract_violation" | "internal";
+            code: "unauthorized" | "forbidden" | "not_found" | "validation_error" | "conflict" | "publish_blocked" | "intake_unknown" | "judge_unavailable" | "contract_violation" | "internal" | "scenario_not_in_revision" | "stored_view_mismatch" | "materialize_pending";
             detail: string;
             field_errors?: {
                 loc: (string | number)[];
@@ -2945,7 +2958,8 @@ export interface components {
          *           ]
          *         }
          *       },
-         *       "rejudge_job_id": 912
+         *       "rejudge_job_id": 912,
+         *       "job_id": 912
          *     }
          * @example {
          *       "id": 4,
@@ -2974,7 +2988,8 @@ export interface components {
          *           ]
          *         }
          *       },
-         *       "rejudge_job_id": 913
+         *       "rejudge_job_id": 913,
+         *       "job_id": 913
          *     }
          */
         HumanCheck: {
@@ -2989,6 +3004,7 @@ export interface components {
             value_text: string;
             /** @enum {string} */
             kind: "phone" | "visit" | "email";
+            /** @description 입력한 확인 시각 그대로(계약 .11부터 시간대가 붙은 RFC3339 — HumanCheckCreate). .10 이전 옛 행은 날짜만('2026-10-09')일 수 있다 */
             checked_at: string;
             entered_by: string;
             note: string | null;
@@ -2998,6 +3014,8 @@ export interface components {
             suggested_job?: components["schemas"]["JobCreate"] | null;
             /** @description 자동 등록한 rejudge 잡 id(계약 .9, D12-5). 사실 필드·접수 상태면 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에 등록(M-2 — 발행됐으면 새 리비전). '기타'·스냅샷 없음이면 null */
             rejudge_job_id?: number | null;
+            /** @description 계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로 */
+            job_id?: number | null;
         };
         /**
          * HumanCheckCreate
@@ -3011,6 +3029,10 @@ export interface components {
             value_text: string;
             /** @enum {string} */
             kind: "phone" | "visit" | "email";
+            /**
+             * Format: date-time
+             * @description 확인 시각 = 시간대가 붙은 RFC3339 date-time(예 2026-10-09T10:20:00+09:00·…Z, 계약 .11 D14-6). 날짜만·시간대 없는 시각·서버 시계보다 10분 넘게 미래 → 422(loc body.checked_at). 날짜 비교(이른 확인일 422·사람 확인 이후 관측)는 KST 날짜 기준
+             */
             checked_at: string;
             entered_by: components["schemas"]["EnteredByRole"];
             note?: string | null;
@@ -6308,12 +6330,20 @@ export interface components {
         /**
          * SnapshotPublishPayload
          * @description job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.
+         *     계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
+         *     carry_from_snapshot_id(선택): 판정 없이 바뀌는 리비전 값(호재 연결 PATCH)용 — 그 발행 리비전의 파생 행(판정·점수)을 이 리비전에 복사한 뒤 발행한다.
          * @example {
          *       "snapshot_id": 12
+         *     }
+         * @example {
+         *       "snapshot_id": 14,
+         *       "carry_from_snapshot_id": 12
          *     }
          */
         SnapshotPublishPayload: {
             snapshot_id: number;
+            /** @description 계약 .11: 파생 행을 복사할 바탕 발행 리비전(호재 연결 변경 — 판정기 호출 없음) */
+            carry_from_snapshot_id?: number | null;
         };
         /**
          * SourceKind
@@ -6520,9 +6550,23 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description contract_violation(출처 없는 수치, dev) 또는 internal */
+        /** @description contract_violation(출처 없는 수치, dev — 발행 전 리비전 실시간 GET), stored_view_mismatch(발행 리비전 저장본의 sha256·계약 버전 불일치 — 계약 .11 D14-4, 조용히 내보내지 않는다) 또는 internal */
         InternalError: {
             headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /**
+         * @description 계약 2026-10-09.11(D14-9): 발행 리비전인데 그 화면의 저장본을 아직 만들지 않았다(0010 이전 발행분·.11 새 종류 — worker 시작·
+         *     `python -m app.snapshot_view backfill` 이 채운다). code = materialize_pending, Retry-After 헤더(초). 실시간 폴백 없음 — 잠시 뒤 다시.
+         */
+        MaterializePending: {
+            headers: {
+                /** @description 다시 시도할 때까지 초 */
+                "Retry-After"?: number;
                 [name: string]: unknown;
             };
             content: {
@@ -6723,8 +6767,17 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 갱신됨 + region.expand 잡 */
+            /** @description 이름만 바뀜(change_event·job_id null — 잡 없음) */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionPatched"];
+                };
+            };
+            /** @description 계약 .11(D14-5) — 선택이 바뀜 → region.expand 잡(job_id). 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6763,8 +6816,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 갱신됨 */
-            200: {
+            /** @description 갱신됨 + rejudge 잡(job_id) — 발행은 worker */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6838,6 +6891,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     listComplexes: {
@@ -6876,6 +6930,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     exportComplexesCsv: {
@@ -6917,6 +6972,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     getComplex: {
@@ -6947,11 +7003,15 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     getProvenance: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description 계약 .11 — 보고 있는 리비전(스냅샷) id. 발행 리비전이면 그 저장본에서 읽는다(D14-1) */
+                snapshot_id?: number;
+            };
             header?: never;
             path: {
                 /** @description Fact.prov 값(fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어) */
@@ -6973,6 +7033,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     getRawDocument: {
@@ -7034,6 +7095,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     getSensitivity: {
@@ -7062,6 +7124,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     listScenarios: {
@@ -7251,6 +7314,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     listChanges: {
@@ -7281,6 +7345,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     listSourceStatus: {
@@ -7484,6 +7549,7 @@ export interface operations {
             };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     downloadReport: {
@@ -7547,6 +7613,7 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["MaterializePending"];
         };
     };
     reviseClaim: {
@@ -7641,8 +7708,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 갱신된 호재 + 연결 */
-            200: {
+            /** @description 갱신된 호재 + 연결 + 발행 잡(계약 .11 — 연결이 그대로면 job·job_id null) */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

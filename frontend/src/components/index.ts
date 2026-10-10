@@ -15,6 +15,7 @@ export { IntakeBadge, type IntakeBadgeProps } from './IntakeBadge';
 export {
   JobProgress,
   JobProgressView,
+  PublishJobProgress,
   type JobProgressProps,
   type JobProgressViewProps,
 } from './JobProgress';
