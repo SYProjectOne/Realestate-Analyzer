@@ -144,19 +144,27 @@ describe('jobWatch (M-15)', () => {
     stop();
   });
 
-  it('발행 대기 리비전(building·ready·모순 0·최근)만 폴링', async () => {
+  it('발행 대기 리비전(building·ready·모순 0)만 폴링 — 잡을 모르면 생성 후 30분까지', async () => {
     const [s12] = await example<Snapshot[]>('/regions/1/snapshots');
     const now = Date.now();
     const fresh = new Date(now - 1000).toISOString();
-    const ready = snap(s12!, { status: 'ready', created_at: fresh, contradicted_claims: 0 });
-    expect(isAwaitingPublish(ready, now)).toBe(true);
-    expect(isAwaitingPublish({ ...ready, status: 'building' }, now)).toBe(true);
-    expect(isAwaitingPublish({ ...ready, contradicted_claims: 2 }, now)).toBe(false);
-    expect(isAwaitingPublish({ ...ready, degraded: true }, now)).toBe(false);
-    expect(isAwaitingPublish({ ...ready, status: 'published' }, now)).toBe(false);
-    expect(isAwaitingPublish({ ...ready, created_at: '2026-01-01T00:00:00Z' }, now)).toBe(false);
+    const ready = snap(s12!, {
+      id: 13,
+      revision: 2,
+      status: 'ready',
+      created_at: fresh,
+      contradicted_claims: 0,
+    });
+    expect(isAwaitingPublish(ready)).toBe(true);
+    expect(isAwaitingPublish({ ...ready, status: 'building' })).toBe(true);
+    expect(isAwaitingPublish({ ...ready, contradicted_claims: 2 })).toBe(false);
+    expect(isAwaitingPublish({ ...ready, degraded: true })).toBe(false);
+    expect(isAwaitingPublish({ ...ready, status: 'published' })).toBe(false);
     expect(snapshotsRefetchInterval([s12!, ready], now)).toBe(PENDING_REVISION_POLL_MS);
     expect(snapshotsRefetchInterval([s12!], now)).toBe(false);
+    // /jobs 를 못 읽으면(공유 링크) 생성 후 30분까지만
+    const old = { ...ready, created_at: '2026-01-01T00:00:00Z' };
+    expect(snapshotsRefetchInterval([s12!, old], now)).toBe(false);
   });
 
   it('resultSnapshotId: stats.snapshot_id(정수·숫자 문자열)만', () => {
@@ -347,7 +355,9 @@ describe('409 뒤 재조회 (4차 minor)', () => {
     const before = matching(rec.requests, 'GET', /\/regions\/\d+\/snapshots$/).length;
     const reportsBefore = matching(rec.requests, 'GET', '/reports').length;
     await userEvent.click(button);
-    expect(await screen.findByText('모순 주장이 남았다')).toBeInTheDocument();
+    expect(
+      await screen.findByText(t('page.G8.conflict', { detail: '모순 주장이 남았다' })),
+    ).toHaveAttribute('role', 'alert');
     await waitFor(() =>
       expect(matching(rec.requests, 'GET', /\/regions\/\d+\/snapshots$/).length).toBeGreaterThan(
         before,

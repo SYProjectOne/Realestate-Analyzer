@@ -29,9 +29,9 @@ export const LIVING_AREA_PARAM = 'living_area';
  * 자기 표본 0 이면 지역 전체 대체(substituted → '대체(지역 전체)' 배지, 대체 행은 C3 에 표시)(N-M4).
  */
 export function MarketPage() {
-  const { regionId, snapshotId, isLoading } = usePageContext();
+  const { regionId, snapshotId, scenarioKey, isLoading } = usePageContext();
   const [livingArea, setLivingArea] = useUrlParam(LIVING_AREA_PARAM);
-  const query = useMarket(snapshotId, livingArea);
+  const query = useMarket(snapshotId, livingArea, scenarioKey);
   const selectId = useId();
   return (
     <PageShell

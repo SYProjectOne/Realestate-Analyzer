@@ -75,13 +75,15 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
             <dd
               className="flex flex-wrap items-center gap-1 text-xs"
               data-testid="header-discount"
-              title={discountNote(price.discount) ?? undefined}
+              title={discountNote(price) ?? undefined}
             >
               <span className="text-muted">{t('page.G3.header.discount')}</span>
               <FactCell fact={price.discount} unit="won" />
-              <span className="text-muted" data-testid="header-discount-note">
-                {discountShortNote(price.discount)}
-              </span>
+              {discountShortNote(price) ? (
+                <span className="text-muted" data-testid="header-discount-note">
+                  {discountShortNote(price)}
+                </span>
+              ) : null}
             </dd>
           ) : null}
         </div>

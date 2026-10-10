@@ -208,8 +208,8 @@
         "composition": "구성",
         "change": "최초 대비",
         "discount": "할인(공고 명시)",
-        "discountApplied": "라벨 확인됨 — 구매가에서 뺐습니다",
-        "discountNotApplied": "확인됨이 아니라 구매가에서 빼지 않았습니다(표시만)",
+        "discountApplied": "구매가에서 뺐습니다(서버 차감)",
+        "discountNotApplied": "구매가에서 빼지 않았습니다(표시만 — 확인됨이 아니거나 차감할 수 없는 금액)",
         "discountAppliedShort": "구매가에서 뺌",
         "discountNotAppliedShort": "표시만(빼지 않음)"
       },
@@ -396,6 +396,7 @@
       "runReason": "G5 재판정 실행",
       "afterRevision": "이후 값: {snapshot}",
       "afterPending": "새 리비전(목록 갱신 중)",
+      "afterLoading": "실행 뒤 값을 받는 중",
       "openRevision": "이 리비전으로 화면 보기"
     },
     "G6": {
@@ -689,8 +690,10 @@
       },
       "generate": "보고서 생성",
       "blocked": "모순(contradicted) 주장 {n}건이 남아 생성할 수 없습니다",
-      "notPublished": "게시되지 않은 스냅샷입니다(상태: {status})",
       "building": "생성 중인 리비전은 보고서를 만들 수 없습니다",
+      "unpublished": "아직 발행되지 않은 리비전은 보고서를 만들 수 없습니다 — 발행된 뒤 다시 시도하세요",
+      "conflict": "보고서를 만들 수 없습니다: {detail}",
+      "createError": "보고서 생성 요청 실패: {detail}",
       "snapshotId": "스냅샷 #{id}",
       "list": "보고서 목록",
       "col": {
@@ -781,6 +784,7 @@
       },
       "rejudgeNeeded": "재판정 필요",
       "sampleNoSource": "표본 출처 없음",
+      "sampleCountEstimated": "표본에 확인되지 않은 행 포함",
       "rejudgeNeededHint": "이 스냅샷에 저장된 판정 범위·순위·점수입니다. 현재 사실로 계산한 범위가 저장값과 달라 재판정이 필요합니다",
       "benchmarkAbsent": "벤치마크 없음({reason})",
       "loadError": "불러오지 못했습니다: {detail}",

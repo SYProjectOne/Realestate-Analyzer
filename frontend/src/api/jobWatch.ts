@@ -10,9 +10,10 @@
  *  - `['jobs', id]`(JobProgress 폴링)·`['jobs', 'list', …]`(G7 RejudgeQueue) 응답에서 잡 상태가 done 으로 바뀌면
  *    잡 종류에 맞게 무효화한다. 상세 폴링은 첫 응답이 이미 done 이어도(빠른 잡) 완료로 본다.
  *  - 재판정 뒤 새 리비전은 `ready` → (`snapshot.publish` 잡) → `published` 다. 그 publish 잡은 화면이 등록한 잡이
- *    아니므로, 리비전 목록이 발행 대기(building·ready·contradicted 0) 리비전을 갖고 있는 동안 목록을 폴링하고
- *    (`snapshotsRefetchInterval`), 목록에서 어떤 리비전이 published 로 바뀌면 지역(latest_snapshot)·사실 화면을
- *    무효화한다.
+ *    아니므로, 리비전 목록이 발행 대기(building·ready·contradicted 0) 리비전을 갖고 있고 그 리비전을 진행할 잡
+ *    (queued·running)이 남아 있는 동안 목록을 폴링하고(`snapshotsRefetchInterval` — 차례마다 `/jobs` 먼저), 목록에서 어떤
+ *    리비전이 published 로 바뀌면 지역(latest_snapshot)·사실 화면을 무효화한다. 잡이 실패해 리비전이 building·ready
+ *    로 남으면 폴링을 멈춘다(5차 리뷰 minor — 30분 제한 대신 잡 기준).
  */
 import type { Query, QueryClient } from '@tanstack/react-query';
 import type { JobRun, Snapshot } from './types';
@@ -55,24 +56,92 @@ function invalidateAfterPublish(qc: QueryClient): void {
   }
 }
 
-/** 발행 대기 리비전 폴링 간격(ms)과 최대 대기(생성 후) */
+/** 발행 대기 리비전 폴링 간격(ms) */
 export const PENDING_REVISION_POLL_MS = 3000;
+/**
+ * 진행 중인 잡을 알 수 없을 때(공유 링크 등 `/jobs` 를 못 읽는 토큰·첫 조회 전)만 쓰는 최대 대기(생성 후).
+ * `/jobs` 를 읽을 수 있으면 시간 제한 없이 **발행을 진행할 잡이 끝날 때까지** 폴링한다(5차 리뷰 minor).
+ */
 export const PENDING_REVISION_MAX_AGE_MS = 30 * 60_000;
 
-/** 발행을 기다리는 리비전인가: building, 또는 ready 이면서 판정기 장애·남은 모순 주장이 없다(publish 잡 대기) */
-export function isAwaitingPublish(s: Snapshot, now: number = Date.now()): boolean {
-  if (s.status === 'published' || s.degraded) return false;
-  if (s.status === 'ready' && (s.contradicted_claims ?? 0) > 0) return false;
-  const created = Date.parse(s.created_at);
-  return Number.isFinite(created) && now - created <= PENDING_REVISION_MAX_AGE_MS;
+/** (기준일, 리비전) 순서 비교: a 가 b 보다 앞이면 음수 */
+function compareRevision(
+  a: Pick<Snapshot, 'asof_date' | 'revision'>,
+  b: Pick<Snapshot, 'asof_date' | 'revision'>,
+): number {
+  if (a.asof_date !== b.asof_date) return a.asof_date < b.asof_date ? -1 : 1;
+  return (a.revision ?? 1) - (b.revision ?? 1);
 }
 
-/** `useSnapshots` 의 refetchInterval: 발행 대기 리비전이 있으면 폴링 */
+/**
+ * 발행을 기다리는 리비전인가: building, 또는 ready 이면서 판정기 장애·남은 모순 주장이 없다(publish 잡 대기).
+ * 같은 목록(`list`)에 더 뒤 (기준일, 리비전)의 발행 리비전이 있으면 이미 밀려난 리비전이라 기다리지 않는다.
+ */
+export function isAwaitingPublish(s: Snapshot, list: readonly Snapshot[] = []): boolean {
+  if (s.status === 'published' || s.degraded) return false;
+  if (s.status === 'ready' && (s.contradicted_claims ?? 0) > 0) return false;
+  return !list.some(
+    (o) => o.status === 'published' && o.region_id === s.region_id && compareRevision(o, s) > 0,
+  );
+}
+
+/** 목록에서 발행 대기 리비전들 */
+export function awaitingPublish(list: readonly Snapshot[] | undefined): Snapshot[] {
+  return (list ?? []).filter((s) => isAwaitingPublish(s, list));
+}
+
+/** 리비전을 만들거나 발행하지 않는 잡(보고서·백업) — 발행 대기 판단에서 뺀다 */
+const NON_REVISION_JOBS: ReadonlySet<string> = new Set(['report', 'backup']);
+
+/**
+ * 이 지역의 리비전을 진행(판정·점수·발행)할 수 있는 잡인가: queued·running 이고, payload 가 이 지역
+ * (`region_id`) 또는 이 지역 스냅샷(`snapshot_id`)을 가리키거나 둘 다 없다(참조 갱신 등 지역 무관).
+ */
+export function advancesRevision(
+  job: Pick<JobRun, 'job_name' | 'status' | 'payload'>,
+  snapshots: readonly Pick<Snapshot, 'id' | 'region_id'>[],
+): boolean {
+  if (job.status !== 'queued' && job.status !== 'running') return false;
+  if (NON_REVISION_JOBS.has(job.job_name)) return false;
+  const p = (job.payload ?? {}) as Record<string, unknown>;
+  const regionIds = new Set(snapshots.map((s) => s.region_id));
+  const snapshotIds = new Set(snapshots.map((s) => s.id));
+  if (typeof p.region_id === 'number') return regionIds.has(p.region_id);
+  if (typeof p.snapshot_id === 'number') return snapshotIds.has(p.snapshot_id);
+  return true;
+}
+
+/**
+ * 리비전 목록을 받은 한 차례(round)에서 본 진행 중 잡:
+ *  - JobRun[]: 그 목록을 받기 **직전에** 받은 queued·running 잡(그 사이 끝난 publish 는 목록에 반영돼 있다)
+ *  - 'unread': 이번 차례엔 잡을 읽지 않았다(첫 조회·일시 오류) — 다음 차례에 읽는다
+ *  - 'forbidden': `/jobs` 를 읽을 수 없는 토큰(공유 링크 403 등)
+ */
+export type RoundJobs = readonly JobRun[] | 'unread' | 'forbidden';
+
+/**
+ * `useSnapshots` 의 refetchInterval: 발행 대기 리비전이 있으면 폴링.
+ *  - 진행 중 잡을 알면 이 지역 리비전을 진행할 잡이 남아 있는 동안 폴링한다(시간 제한 없음). 하나도 없으면(실패·
+ *    발행 거부로 끝남) 멈춘다 — 잡은 목록보다 먼저 읽으므로 마지막 publish 결과(published)는 이미 목록에 있다.
+ *  - 아직 못 읽었으면('unread') 한 번 더(다음 차례에 잡을 읽는다).
+ *  - 읽을 수 없으면('forbidden' — 공유 링크) 생성 후 PENDING_REVISION_MAX_AGE_MS 까지만.
+ */
 export function snapshotsRefetchInterval(
   data: readonly Snapshot[] | undefined,
   now: number = Date.now(),
+  jobs: RoundJobs = 'forbidden',
 ): number | false {
-  return data?.some((s) => isAwaitingPublish(s, now)) ? PENDING_REVISION_POLL_MS : false;
+  const pending = awaitingPublish(data);
+  if (pending.length === 0) return false;
+  if (jobs === 'unread') return PENDING_REVISION_POLL_MS;
+  if (jobs !== 'forbidden') {
+    return jobs.some((j) => advancesRevision(j, data ?? [])) ? PENDING_REVISION_POLL_MS : false;
+  }
+  const young = pending.some((s) => {
+    const created = Date.parse(s.created_at);
+    return Number.isFinite(created) && now - created <= PENDING_REVISION_MAX_AGE_MS;
+  });
+  return young ? PENDING_REVISION_POLL_MS : false;
 }
 
 function isJob(v: unknown): v is JobRun {
