@@ -11,7 +11,18 @@ from collections.abc import Sequence
 LABELS = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
 REGION_STATUS = ("resolving", "bootstrapping", "ready", "failed")
 SNAPSHOT_STATUS = ("building", "ready", "published")
-SNAPSHOT_STATE_ENTITY = ("region", "complex", "catalyst")  # 0009 snapshot_state.entity (D12-4)
+# 0010 snapshot_view.kind (D13-1) — 발행 리비전의 저장된 읽기 모델 종류
+SNAPSHOT_VIEW_KIND = (
+    "dashboard",
+    "complexes",
+    "complex",
+    "compare",
+    "market",
+    "changes",
+    "sensitivity",
+    "report",
+    "report_diff",
+)
 HOUSING_TYPE = ("민영", "국민")
 LAND_TYPE = ("공공택지", "민간택지")
 PRICE_CAP = ("적용", "미적용")

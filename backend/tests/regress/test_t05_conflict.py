@@ -142,8 +142,11 @@ def test_t05_no_compare_and_panel_shows_both(env: RegressEnv) -> None:
                 fp.compare_judgment_seq if fp else None,
             )
 
-    # 출처 패널: 상세 화면의 세대수 Fact → fp_<chosen> → 패널에 채택값 + 상충 그룹의 다른 값(chosen=false)
-    body = api_get(env, f"/complexes/{HARRINGTON}", snapshot=SNAP)
+    # 출처 패널: 상세 화면의 세대수 Fact → fp_<chosen> → 패널에 채택값 + 상충 그룹의 다른 값(chosen=false).
+    # 계약 .10(D13-1): 발행 SNAP 은 저장본(재판정 전 값) — 재판정이 쓴 새 리비전(발행 뒤 기본 화면)을 본다
+    newest = api_get(env, "/regions/1/snapshots")[0]
+    assert newest["id"] != SNAP and newest["status"] == "published", newest
+    body = api_get(env, f"/complexes/{HARRINGTON}", snapshot=newest["id"])
     units = body["header"]["units_total"]
     assert units["v"] == 1573 and units["prov"] == f"fp_{win.id}", units
     panel = api_get(env, f"/provenance/{units['prov']}")

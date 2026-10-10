@@ -1090,7 +1090,10 @@ def _load_scores(
     from app.scheduler.snapshots import snapshot_dto
 
     snap_dto = snapshot_dto(snap)
-    created = snap.published_at or snap.created_at
+    # 점수 실행은 그 스냅샷을 만든 수집(예시 change_event — 06:xx 감지) **뒤**다.
+    # 실행이 자기 수집 이벤트보다 앞이면 그 이벤트가 '실행 뒤 사실 변경'
+    # (재판정 필요·이월 대신 재판정, D13-4)으로 읽힌다 — 픽스처 시각을 실제 순서로 맞춘다(R3e)
+    created = max(snap.published_at or snap.created_at, _example_event_max(snap.id) or "")
     decide_by_code: dict[str, tuple[int, dict[str, Any]]] = {}
     for seq, env in envs.items():
         purpose = str(env.get("purpose") or "")
@@ -1242,6 +1245,19 @@ def _load_decisions(
 # ====================================================================== 예시(변경·체크리스트)
 
 
+def _example_event_max(snapshot_id: int) -> str | None:
+    """예시 변경 이벤트(``contracts/examples/changes.json``) 중 그 스냅샷에 붙은 것의 가장 늦은 감지 시각."""
+    path = EXAMPLES / "changes.json"
+    if not path.exists():
+        return None
+    times = [
+        str(ev["detected_at"])
+        for ev in _load(path).get("value") or []
+        if ev.get("snapshot_id") == snapshot_id
+    ]
+    return max(times) if times else None
+
+
 def _load_examples(session: Session) -> None:
     complex_ids = set(session.scalars(select(Complex.id)))
     snap_ids = set(session.scalars(select(Snapshot.id)))
@@ -1348,8 +1364,33 @@ def seed(
             report.notes.append("expected_scores_v2.json 입력 없음 — 점수·시장 미적재")
         report.claims = _load_claims(session, envs)
         _load_examples(session)
+        # D13-1: 픽스처의 발행 스냅샷도 발행 경로와 같이 저장본을 만든다(발행 리비전 GET 은 저장본만 읽는다)
+        rematerialize(session, settings=s)
     log.info("devseed.done", extra={"complexes": report.complexes, "provenance": report.provenance})
     return report
+
+
+def rematerialize(
+    session: Session,
+    *,
+    settings: Settings,
+    region_id: int | None = None,
+    snapshot_ids: Sequence[int] | None = None,
+) -> list[int]:
+    """발행 스냅샷 저장본(D13-1)을 지금 픽스처 값으로 다시 만든다 — devseed·T13·합성 도구(개발용
+    픽스처를 고쳐 쓰는 경우)만. 운영 경로(publish)는 발행 순간 한 번 만들고 고치지 않는다.
+    출처 누락은 저장본 규칙대로 '확인 불가(출처 누락)' 라벨(``snapshot_view.materialize``)."""
+    from app.snapshot_view import materialize
+
+    stmt = select(Snapshot.id).where(Snapshot.status == "published")
+    if region_id is not None:
+        stmt = stmt.where(Snapshot.region_id == region_id)
+    if snapshot_ids is not None:
+        stmt = stmt.where(Snapshot.id.in_(list(snapshot_ids)))
+    done = [int(sid) for sid in session.scalars(stmt.order_by(Snapshot.id))]
+    for sid in done:
+        materialize(session, sid, settings=settings, replace=True)
+    return done
 
 
 def replace_bundles(
@@ -1401,6 +1442,9 @@ def replace_bundles(
             snap_id = next(iter(snapshot_ids), None) or 0
             _load_bundle(session, b, writer, snapshot_id=snap_id, raw_ids=raw_ids, existing=existing)
         writer.flush(session)
+        # 바꾼 픽스처로 발행 스냅샷 저장본을 다시(D13-1).
+        # T13 픽스처는 출처를 일부러 지웠다 — 저장본은 prod 규칙 라벨
+        rematerialize(session, settings=s)
     return len(bundles)
 
 
@@ -1423,6 +1467,8 @@ def load_synth(settings: Settings | None = None, *, n: int = 1000, snapshot_id: 
     bundles = _synth_generate(n)
     with get_session(s) as session:
         count, _ = load_bundles(session, bundles, {}, snapshot_id=snapshot_id, missing="create")
+        # 합성 단지가 든 발행 스냅샷 저장본을 다시(D13-1) — 그 스냅샷만(과거 리비전은 합성 전 기록)
+        rematerialize(session, settings=s, snapshot_ids=[snapshot_id])
     return count
 
 

@@ -69,25 +69,41 @@ def _notify(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any]:
 
 
 def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
-    """그 스냅샷의 마지막 점수 실행 **뒤**에 재판정을 부르는 사실 변경(change_event triggers_rejudge)이 있었던 지역 단지
-    (D12-5). 지역 단위 변경(생활권 편집 — complex_id 없음)이면 지역 단지 전부. 그 스냅샷 자신에 붙은 이벤트(그 스냅샷을
-    만든 수집이 찾은 변경 — 그 판정이 이미 반영)는 세지 않는다."""
+    """그 스냅샷의 마지막 점수 실행 **뒤**에 재판정을 부르는 일이 있었던 지역 단지(D12-5·**D13-4**) — 이월(옛 점수 복사)
+    대신 재판정할 단지.
+
+    - 사실 변경(change_event triggers_rejudge, detected_at > 실행 시각) — 어느 스냅샷에 붙었든(그 스냅샷 **자신** 포함:
+      판정 중·ready 리비전에 붙은 사람 확인이 그대로 발행된 경우, R3 5차 M2·M-3). 지역 단위 변경(생활권 편집·지역
+      확장/축소 — complex_id 없음)이면 지역 단지 전부.
+    - 실패한 rejudge 잡(그 실행 뒤 끝난 것, payload 의 단지 — 없으면 전부): 사람 확인·강등의 자동 재판정이 판정기
+      장애로 실패했으면 다음 이월이 옛 점수를 now 로 복사하지 않는다."""
     run_at = session.scalar(select(func.max(ScoreRun.created_at)).where(ScoreRun.snapshot_id == snap.id))
     if not run_at:
         return []
+    region_ids = set(session.scalars(select(Complex.id).where(Complex.region_id == snap.region_id)))
+    region_snaps = set(session.scalars(select(Snapshot.id).where(Snapshot.region_id == snap.region_id)))
     rows = list(
         session.execute(
             select(ChangeEvent.complex_id, ChangeEvent.entity, ChangeEvent.entity_id).where(
                 ChangeEvent.triggers_rejudge.is_(True),
                 ChangeEvent.detected_at > run_at,
-                (ChangeEvent.snapshot_id.is_(None)) | (ChangeEvent.snapshot_id != snap.id),
             )
         )
     )
-    region_ids = set(session.scalars(select(Complex.id).where(Complex.region_id == snap.region_id)))
     if any(e == "region" and eid == snap.region_id for (_c, e, eid) in rows):
         return sorted(region_ids)
-    return sorted({int(c) for (c, _e, _i) in rows if c is not None and c in region_ids})
+    out = {int(c) for (c, _e, _i) in rows if c is not None and c in region_ids}
+    for job in session.scalars(select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "failed")):
+        p = job.payload or {}
+        if p.get("snapshot_id") not in region_snaps:
+            continue
+        if (job.finished_at or job.scheduled_at or "") <= run_at:
+            continue  # 그 실패 뒤에 다시 판정했다
+        ids = p.get("complex_ids")
+        if ids is None:
+            return sorted(region_ids)
+        out |= {int(i) for i in ids if int(i) in region_ids}
+    return sorted(out)
 
 
 def _after_daily(
@@ -182,9 +198,59 @@ def handle_collect_weekly(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     return stats
 
 
+def _discard_empty_revision(session: Any, snap: Snapshot) -> bool:
+    """D13-4: 변경 없는 주간 수집이 발행된 기준일에 만든 빈 리비전(수집 재시작 '같은 기준일 재수집' — 이벤트·점수·판정·잡 없음)은
+    지운다(직전 발행 리비전 유지, 같은 내용 리비전을 다시 발행하지 않는다). 복사된 접수 행·조립한 벤치마크만 같이 지운다."""
+    from sqlalchemy import delete
+
+    from app.models import (
+        Benchmark,
+        Claim,
+        ComparableSet,
+        FactDemotion,
+        IntakeStatus,
+        JudgmentLog,
+        Ladder,
+        SnapshotView,
+    )
+
+    sid = snap.id
+    if snap.revision_reason != "같은 기준일 재수집":
+        return False
+    for model in (
+        ScoreRun,
+        Ladder,
+        Claim,
+        JudgmentLog,
+        ChangeEvent,
+        FactDemotion,
+        ComparableSet,
+        SnapshotView,
+    ):
+        m: Any = model
+        if session.scalar(select(func.count()).select_from(m).where(m.snapshot_id == sid)):
+            return False
+    if session.scalars(select(Snapshot.id).where(Snapshot.revision_of == sid).limit(1)).first() is not None:
+        return False
+    for job in session.scalars(
+        select(JobRun).where(JobRun.job_name.in_(("rejudge", "snapshot.publish", "report")))
+    ):
+        if (job.payload or {}).get("snapshot_id") == sid:
+            return False
+    session.execute(delete(IntakeStatus).where(IntakeStatus.snapshot_id == sid))
+    session.execute(delete(Benchmark).where(Benchmark.snapshot_id == sid))
+    session.delete(snap)
+    session.flush()
+    return True
+
+
 def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[str, Any] | None:
-    """R3 4차 minor: 발행된 기준일에 주간 수집이 만든 새 리비전(building)이 변경 없이 남지 않게 — 재판정할 것이 없으면
-    바탕 리비전의 파생 행을 그대로 복사하고 발행한다(판정기 호출 0, 일일 수집의 '변경 없는 날'과 같은 규칙).
+    """변경 없는 주간 수집 뒤의 리비전 정리(R3 4차 minor · **D13-4**).
+
+    - 이 수집이 발행된 기준일에 만든 빈 리비전 → 지운다(새 리비전 없음 — 직전 발행 리비전 유지).
+    - 그 밖의 판정 전 리비전(사람 확인·강등이 만든 리비전 등): 바탕 발행 리비전 실행 뒤 사실 변경·실패한 rejudge·이 리비전에
+      붙은 변경이 있으면 이월하지 않고 그 단지 재판정 잡을 등록한다(옛 점수를 now 로 발행하지 않는다, R3 5차 M2). 없을 때만
+      바탕 리비전 파생 행을 복사해 발행한다(판정기 호출 0).
     대기·실행 중인 잡이 그 스냅샷을 쓰거나 이미 점수 실행이 있으면 그대로 둔다."""
     with ctx.session_factory() as session:
         snap = session.get(Snapshot, snapshot_id)
@@ -205,6 +271,17 @@ def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[
         base = session.get(Snapshot, snap.revision_of)
         if base is None or base.status != "published":
             return None
+        if _discard_empty_revision(session, snap):
+            session.commit()
+            return {"discarded_revision": snapshot_id, "kept": base.id}
+        stale = changed_after_runs(session, base)
+        if stale:
+            job = enqueue_rejudge(
+                session, snapshot_id, stale, f"이전 판정 뒤 사실 변경·실패한 재판정 {len(stale)}단지 — 이월 대신 재판정",
+                now=ctx.now(),
+            )  # fmt: skip
+            session.commit()
+            return {"rejudge_job_id": job.id, "stale": stale}
         copied = carry_forward(session, base.id, snapshot_id, created_at=ctx.iso_now())
         snap.status = "ready"
         ok, n = snapshots.publish(session, snapshot_id, now=ctx.iso_now())

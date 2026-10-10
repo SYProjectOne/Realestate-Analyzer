@@ -2,6 +2,69 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.10
+
+R3 5차 리뷰(`docs/design/wp/R3_REVIEW5.md`) 후속 — CEO 결정 D13(`docs/design/DECISIONS.md`)과 R3e 배정(`docs/design/wp/R3E_FIX.md`).
+계약 소유자 = R3e CORE3(브랜치 `wp/r3e-core3`). 마이그레이션 `0010`(`0010_r3e.py`: 테이블 1개 추가 `snapshot_view` + 기존 발행 스냅샷
+materialize + 0009 `snapshot_state` 삭제 — 0009 DB 는 `cd backend && uv run alembic upgrade head` 한 번). 필드 삭제 없음, **필드 형 변경 1**
+(`LivingAreaPrice.n_trades` integer → Fact, FE4 요청·CEO 승인).
+
+**프론트(FE4)가 생성 타입으로 옮기며 맞출 것** — 아래 'FE 차이' 표. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서
+다시 만들지 않았다(frontend/** = FE4 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.9) | 이후(.10) | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | **발행 리비전 GET**(대시보드·단지 목록·CSV·상세·비교·시장·변경·민감도)·보고서 | 지금 사실·강등 오버레이로 다시 계산(분류·생활권·호재 단계/연결만 `snapshot_state` 로 동결) → 사실·강등·사람 확인·새 단지·호재 PATCH·생활권·지역 이름·입주물량·classify 가 옛 리비전을 바꿨다 | 발행 트랜잭션이 그 리비전의 응답 전부·보고서 입력을 **시나리오별로 저장**(`snapshot_view`)하고 발행 리비전 GET·보고서는 **저장본만** 읽는다 — 이후 무엇이 바뀌어도 그 리비전 응답 바이트가 같다. 목록·CSV 의 필터·정렬·페이지·`/changes` 의 since·compare_snapshot·severity 는 저장본(발행 때 원장)에 적용. 발행 전(building·ready) 리비전만 지금 사실로 계산. 대시보드 `data_freshness` 도 발행 시점 값 | D13-1 · K2 |
+| S2 | 발행 리비전에 없는 것 | 지금 값으로 계산 | 발행 뒤 만든 시나리오(`?scenario=<id>`)·그 리비전에 없던 생활권(`market?living_area=`)·단지(상세·비교) → **404**(그 시나리오 결과는 시나리오 실행이 만드는 새 리비전에 있다). 저장본이 아예 없는 발행 리비전 → 500 internal(실시간 폴백 없음 — 0010 이 옛 발행분을 materialize) | D13-1 |
+| S3 | 출처 누락(T13) | ENV=dev GET 500 | 발행 저장본은 ENV 와 무관하게 '확인 불가(출처 누락)'(+경고 로그, 발행을 막지 않는다). dev 500 은 발행 전 리비전 실시간 GET 에서 | D13-1 |
+| S4 | '재판정 필요'(`rejudge_needed`) | 지역 가장 새 발행 리비전에서 실시간 비교, 단지 단위 이벤트만 | 발행 전 리비전에서 늘 실시간 비교(**지역 단위 이벤트** — 생활권 편집·지역 확장/축소 포함). 발행 리비전은 발행 순간 값이 저장본에 고정(사람 확인 등은 새 리비전·자동 재판정 잡으로 보인다). 보고서 '재판정 필요'도 점수 실행 뒤 사실 변경을 반영(범위가 같아도) | M6 · minor |
+| S5 | 사람 확인 단위 | 행 1개(그 공고 행·타입 행) | **(단지, 의미 필드)** — 강등과 같은 키(가격 = 그 타입 공고문 타입 행 + 모든 공고 그 타입 가격, 계약금 = 모든 공고). 사람 확인 이전 관측 출처는 어느 공고 행이든(무순위 새 공고·기준 타입 칸 없는 공고·시행일만 늦은 공고) 진다. 이후 관측된 공식 1차 출처의 다른 값은 새 공고 행이어도 채택 + critical change_event + `사람 확인 재검토: <필드>` | D13-2 · K1 |
+| S6 | `POST /ops/human-checks` 이른 확인일 | 201 + critical 이벤트 + 재판정(그런데 값은 지고 있음) | 그 의미 필드에 확인일보다 **뒤에** 관측된 공식 공고가 이미 있으면 **422**(`field_errors[0].loc = ["body","checked_at"]`, detail 에 그 관측일). 같은 날은 받는다 | D13-2 · minor |
+| S7 | rejudge 잡 합치기 | queued 잡 payload 를 읽고 고쳐 씀(worker 가 그 사이 집으면 단지 누락·running 잡 id 응답) | `UPDATE … WHERE status='queued'`(0행이면 새 잡), Postgres `FOR UPDATE`·SQLite 쓰기 잠금 먼저 — `rejudge_job_id` 는 늘 실제로 그 단지를 판정할 잡 | D13-3 · M1 |
+| S8 | 이월·주간 수집 | 직전 발행 리비전 자신에 붙은 이벤트는 빼고 이월, 주간 '변경 없는 리비전'은 바탕 복사·발행 | 변경 없는 주간 수집은 **새 리비전을 만들지 않는다**(만든 빈 리비전 삭제 — 직전 발행 유지). 이월·주간 마감은 이전 실행 뒤 모든 change_event(자기 리비전·지역 단위 포함)와 **실패한 rejudge** 를 보고 하나라도 있으면 그 단지 재판정(옛 점수를 now 로 발행하지 않는다) | D13-4 · M2 |
+| S9 | change_event 리비전 | 재강등·`PATCH /regions` 이벤트가 발행 스냅샷에 붙음, 재강등 rejudge 없음, 채택 보류만 돼도 '다시 채택됨' | 모든 change_event 는 쓰기 가능 리비전에만(재강등 = 가장 새 리비전의 쓰기 가능 리비전 + rejudge 등록, 지역 선택 변경 = 오늘 기준일 쓰기 가능 리비전 — region.expand 가 그 리비전을 판정). 채택 보류는 재강등이 아니다 | D13-5 · M3 · M4 |
+| S10 | `POST /reports` | 비교 스냅샷 발행·지역 미검사, 잡 `stats.path` = REPORT_DIR 를 붙인 경로(상대 REPORT_DIR 이면 다운로드 404) | 비교 스냅샷 발행 전 409, 다른 지역 422(`compare_snapshot_id`). `stats.path` = REPORT_DIR 기준 **상대 이름**, 다운로드도 같은 기준(옛 잡 경로 호환). 보고서 강등 가격 사유 '검증 모순'(API 와 같음) | M5 · K3 · minor |
+| S11 | 쓰기 본문 숫자 | NaN·Infinity·1e400 이 스키마를 지나 커밋 뒤 500(이후 GET /scenarios 500) | 모든 JSON 쓰기 본문(check_body 공용)에서 422 `validation_error`(field_errors = 그 위치) | M7 |
+| S12 | 정규화 | — | 입주물량: 입력에서 빠진 단지 추정 행·출처 행 삭제(M8). 할인: **허용 목록** — 분양가·공급금액 할인 명시 + 타입 정확 일치 + 층·동·호 조건 없음만 '확인됨', 그 밖의 할인 금액(가전·수수료·세금·잔금 완납·면적 표기·'84A-1')은 후보로만 '추정'(구매가에서 빼지 않음, M9). 원 번호 인용 잔여 공고의 입주 예정월은 원 단지 후보(이름·세대수는 계속 버림, M10). 이름 키: 공급 구분 괄호를 NFKC 전에 떼고 '2블럭'·'II'·'3bl'·'A-3BL'·'Ⅱ-1' 유지, 블록 표기 변형 같은 키. 공고 번호: '최초 주택관리번호' 줄 순서와 무관, '재공급' 제목 = 무순위. 같은 이름 읍면동으로 법정동 모호 → '범위 경계'. 할인이 대표층가 이상이면 빼지 않는다(low 음수 방지) | M8 · M9 · M10 · minor |
+| S13 | 보안·설정 | — | 홈페이지 URL: IDNA 무시 문자(U+00AD·200B~200D·034F·180B~180F·2060·FE00~FE0F·FEFF) 지운 뒤 내부망 검사, 제어 문자·`%00` 거부. redact: `aws_secret_access_key=`·`private_key=`·`pwd=`·대소문자 무관 `bearer <짧은 토큰>`. `BACKUP_DIR` 는 Settings(`.env` 포함) | minor |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `complex_detail.json` PriceRange | `discount_applied`(boolean, 선택·기본 false) 추가 — 서버가 low·high·mid 에서 **실제로 뺐는가**. 상세 응답은 늘 싣는다 |
+| 2 | `openapi.yaml` getMarket | `scenario` 조회 파라미터(`#/components/parameters/Scenario`) — 입주 마커 판정 범위 = 그 시나리오 점수 실행 저장값. `living_area` 설명(발행 리비전은 그 리비전 생활권만, 없으면 404) |
+| 3 | `market.json` LivingAreaPrice.`n_trades` | integer → **Fact**(v = 건수, unit `count`, label = 그 실거래 행들의 가장 약한 라벨, prov = 중앙값 실거래 출처, reason = 집계 식). FE4 요청·CEO 승인. 예시 `examples/market.json` 갱신 |
+| 4 | `snapshot.json` | 설명: 발행 리비전 = 저장된 읽기 모델(S1). `revision_of` 설명을 S9(.9) 이후 동작(미발행 리비전 1 의 비교 기준 = 직전 발행)으로 |
+| 5 | DB `snapshot_view`(0010) | (snapshot_id, kind, key, scenario, body = zlib JSON, sha256) 유일 (snapshot_id, kind, key, scenario), kind CHECK. `snapshot_state`(0009) 삭제. API 모양 변화 없음(S1·S2 동작) |
+
+### FE 차이(FE4 — 화면이 맞출 것)
+
+| 대상 | .9 | .10 |
+| --- | --- | --- |
+| 상세 `price.discount_applied` | 없음(화면이 할인 Fact 가 있으면 '구매가에서 뺌' 표시) | 서버 값 — true 일 때만 '구매가에서 뺌'(0·음수·과대·추정 할인은 false) |
+| `GET /snapshots/{sid}/market` | 시나리오 없음 | `?scenario=` 전달(화면 시나리오와 같게). `living_area_prices[].n_trades` = **Fact**(FactCell 로 표시, 건수 라벨은 이 Fact 의 label — 화면이 라벨을 만들지 않는다) |
+| 발행 리비전 화면 | 사람 확인·강등 뒤 같은 리비전 화면이 바뀜('재판정 필요' 배지 등장) | 발행 리비전은 바뀌지 않는다 — 사람 확인 등은 새 리비전(판정 중)과 `rejudge_job_id` 잡으로 나타나고, 잡이 끝나 발행되면 그 리비전이 기본 화면. '재판정 필요' 배지는 판정 중 리비전·발행 순간 값 |
+| 발행 뒤 만든 시나리오 | 옛 리비전에서 '미판정' 행으로 보임 | 옛 발행 리비전 + 그 시나리오 = 404 → 화면은 시나리오 실행(새 리비전) 안내 |
+| `POST /ops/human-checks` | 이른 확인일도 201 | 422(`checked_at`, detail 에 관측일) — 폼 오류로 보인다 |
+| `POST /reports` 비교 선택 | building 만 거름 | 발행 전 409·다른 지역 422 — 비교 선택은 같은 지역 발행 리비전만 |
+| `POST /scenarios` 등 숫자 | NaN 이 500 | 422 |
+| 보고서 다운로드 | 상대 REPORT_DIR 이면 404 | 200(경로 규칙 서버) |
+
+### 마이그레이션·검증
+
+- `0010`: `snapshot_view` 생성 → 발행 스냅샷 materialize(백엔드 앱 코드 — `app.snapshot_view.materialize_missing`; 출처 누락은 라벨) → `snapshot_state`
+  삭제. downgrade = `snapshot_view` 삭제(저장본 손실) + 빈 `snapshot_state`. head → 0009 → head 왕복·발행 스냅샷 materialize·유일·kind CHECK 를
+  SQLite·Postgres 16(pgserver) 둘 다 테스트(`tests/contracts/test_migrations.py::check_0009_0010_roundtrip`), autogenerate diff 0.
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.10`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
+- devseed 는 픽스처 발행 스냅샷(11·12)의 저장본을 만든다(`devseed.rematerialize` — devseed·T13·합성 도구만 저장본을 다시 쓴다).
+
+### fixtures
+
+`contracts/fixtures/` 변경 없음(`fixture_manifest.py --check` 일치). 예시 `contracts/examples/market.json` 의 `n_trades` 만 Fact 로.
+
 ## 2026-10-09.9
 
 R3 4차 리뷰(`docs/design/wp/R3_REVIEW4.md`) 후속 — CEO 결정 D12(`docs/design/DECISIONS.md`)와 R3d 배정(`docs/design/wp/R3D_FIX.md`).

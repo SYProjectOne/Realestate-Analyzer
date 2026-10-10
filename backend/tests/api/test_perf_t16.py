@@ -43,6 +43,8 @@ def test_t16_first_page_under_1s(seeded_db: Seeded, tmp_path: Path) -> None:
                     assert r.status_code == 200, r.text
                 body = r.json()
                 assert statistics.median(times) < 1.0, f"{params}: {[round(t, 3) for t in times]}s"
+                # 발행 리비전 = 저장본(D13-1) — 실시간 계산 없이 넉넉히(R3e)
+                assert statistics.median(times) < 0.2, f"{params}: {[round(t, 3) for t in times]}s"
                 assert body["total"] >= 250
                 assert len(body["items"]) == 50
             validate("listComplexes", 200, body)

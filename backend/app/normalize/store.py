@@ -74,6 +74,7 @@ from app.normalize.fields import (
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
+    norm_value,
     split_discount,
     split_price_by_type,
     value_from_norm,
@@ -540,11 +541,17 @@ class _Binder:
         return cx.id if cx is not None else None
 
     def _merged_unit(self, c: FieldCandidate) -> bool:
-        """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다)."""
+        """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다).
+
+        R3 5차 M10: 원 번호를 인용한 잔여 공고의 **입주 예정월**(``CITED_COMPLEX_FIELDS``)은 원 단지 후보로 받는다 — 이름·
+        세대수·당첨일·청약 일정 같은 그 잔여 공고 자신의 값은 버리지만, 같은 단지의 입주 지연(2028-03 → 2028-09)은 정당한
+        갱신이다(공고문 최신 규칙으로 resolver 가 가른다)."""
         if c.entity not in MERGED_UNIT_ENTITIES:
             return False
         key = (c.entity_key or "").split(":")[0]
-        return key in self.merged or (c.entity == "complex" and key in self.cited)
+        if key in self.merged:
+            return True
+        return c.entity == "complex" and key in self.cited and c.field not in CITED_COMPLEX_FIELDS
 
     def _id_for(
         self,
@@ -591,6 +598,8 @@ class _Binder:
 
 
 MERGED_UNIT_ENTITIES = frozenset({"complex", "complex_type"})
+CITED_COMPLEX_FIELDS = frozenset({"move_in_ym"})
+"""R3 5차 M10: 원 번호를 인용한 잔여 공고에서도 원 단지 후보로 받는 단지 필드(입주 예정월 — 같은 단지의 입주 일정 변경)."""
 """D11-4: 원 단지에 묶인 잔여·임의·무순위 공고에서 원 단지에 쓰지 않는 단지 단위 엔티티."""
 
 TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
@@ -952,23 +961,92 @@ def resolve_field_group(
                 raw_row = session.get(RawDocument, rid)
                 kinds[rid] = raw_row.source_kind if raw_row is not None else None
             cands.append(candidate_from_row(fp, kinds[rid]))
+        cands += semantic_humans(session, {(entity, entity_id, field_name)}, [*extra, *cands])  # D13-2
         resolved = resolve([*extra, *cands])
         upsert_provenance(session, resolved.provenance)
         events, _ = write_chosen(session, resolved.chosen, snapshot_id=snapshot_id, detected_at=detected_at)
-        human_superseded(session, resolved, events)
+        events += human_superseded(
+            session, resolved, events, snapshot_id=snapshot_id, detected_at=detected_at
+        )
         session.add_all(events)
         session.flush()
     return events
+
+
+HUMAN_SEMANTIC_FIELDS = frozenset({"max_price_won", "down_payment_pct"})
+"""공고 행이 여럿인 사람 확인 필드(가격 — 공고문 타입 행·모든 공고 price_by_type, 계약금 — 모든 공고). 단지 필드는 행 하나."""
+
+
+def semantic_humans(
+    session: Session, groups: set[tuple[str, int | None, str]], present: list[FieldCandidate]
+) -> list[FieldCandidate]:
+    """D13-2: 사람 확인은 (단지, 의미 필드) 단위 — 그 행의 의미 묶음(``facts_view.semantic_group``) **다른 행**에 있는
+    사람 확인을 이 행의 0순위 후보로 옮겨 온다(값이 있는 행만 — 그 필드를 싣지 않은 공고에는 값을 만들지 않는다).
+
+    그래서 새 공고 행(무순위 병합 포함)이 와도 resolver 가 행마다 같은 규칙(D12-1)을 적용한다: 사람 확인 이전 관측 출처는
+    지고, 이후 관측된 공식 1차 출처의 다른 값은 채택 + critical + '사람 확인 재검토'(``human_superseded``)."""
+    from app.facts_view import logical_field, semantic_group
+    from app.normalize.resolver import is_human_candidate
+
+    def key(c: FieldCandidate) -> tuple[Any, ...]:
+        return (c.entity, c.entity_id, c.field, norm_value(c.value), c.observed_on, c.checked_at)
+
+    have = {key(c) for c in present if is_human_candidate(c)}
+    valued = {
+        (c.entity, c.entity_id, c.field) for c in present if c.value is not None and c.label != "확인 불가"
+    }
+    out: list[FieldCandidate] = []
+    for e, i, f in sorted(groups, key=lambda g: (g[0], g[1] or 0, g[2])):
+        if (
+            i is None
+            or e not in ("complex_type", "payment_terms")
+            or logical_field(f) not in HUMAN_SEMANTIC_FIELDS
+        ):
+            continue
+        if (e, i, f) not in valued:
+            continue
+        _cid, rows = semantic_group(session, e, i, f)
+        for se, si, sf in rows[1:]:
+            for fp in session.scalars(
+                select(FieldProvenance)
+                .where(
+                    FieldProvenance.entity == se,
+                    FieldProvenance.entity_id == si,
+                    FieldProvenance.field == sf,
+                    FieldProvenance.raw_document_id.is_(None),
+                )
+                .order_by(FieldProvenance.id)
+            ):
+                if not is_human(fp.reason) or fp.value_norm is None:
+                    continue
+                cand = candidate_from_row(fp, None).model_copy(
+                    update={"entity": e, "entity_id": i, "entity_key": None, "field": f}
+                )
+                k = key(cand)
+                if k in have:
+                    continue
+                have.add(k)
+                out.append(cand)
+    return out
 
 
 HUMAN_REVIEW_TITLE = "사람 확인 재검토"
 """D12-1: 사람 확인 이후 새 공식 1차 출처가 다른 값을 내 채택됐다 — 체크리스트 '사실 재확인' 항목 제목 머리."""
 
 
-def human_superseded(session: Session, resolved: ResolvedFields, events: list[ChangeEvent]) -> None:
-    """D12-1: 사람 확인 행이 있는데 원문 출처가 채택된 필드(resolver — 사람 확인 이후 새 공식 출처의 다른 값)의 값 변경은
-    critical·재판정 + 체크리스트 '사람 확인 재검토'(사실 재확인 — 동기화가 닫지 않는다). 값이 그대로면(재정규화) 아무것도
-    하지 않는다(이벤트가 없다)."""
+def human_superseded(
+    session: Session,
+    resolved: ResolvedFields,
+    events: list[ChangeEvent],
+    *,
+    snapshot_id: int | None = None,
+    detected_at: str | None = None,
+    created: set[tuple[str, int]] | frozenset[tuple[str, int]] = frozenset(),
+) -> list[ChangeEvent]:
+    """D12-1·D13-2: 사람 확인 행이 있는데 원문 출처가 채택된 필드(resolver — 사람 확인 이후 새 공식 출처의 다른 값)는
+    critical·재판정 + 체크리스트 '사람 확인 재검토'(사실 재확인 — 동기화가 닫지 않는다). 행과 무관하다: 값 변경 이벤트가
+    없는 **새 공고 행**(값 하나하나를 이벤트로 남기지 않는 행)이면 이 함수가 critical 이벤트를 만든다(반환 — 호출자가
+    추가). 같은 내용 이벤트가 이미 있으면(재정규화) 다시 만들지 않는다."""
     from app.models import ChecklistItem
 
     rows: dict[tuple[str, int, str], list[Any]] = {}
@@ -981,16 +1059,42 @@ def human_superseded(session: Session, resolved: ResolvedFields, events: list[Ch
         if human is not None and any(p.chosen and not is_human(p.reason) for p in group):
             superseded[key] = human
     if not superseded:
-        return
+        return []
     from app.api.demotion import FIELD_NAMES
     from app.facts_view import logical_field
 
-    for ev in events:
-        if ev.entity_id is None:
-            continue
-        human = superseded.get((ev.entity, ev.entity_id, (ev.field or "")[:64]))
-        if human is None:
-            continue
+    by_key = {
+        (ev.entity, ev.entity_id, (ev.field or "")[:64]): ev for ev in events if ev.entity_id is not None
+    }
+    extra: list[ChangeEvent] = []
+    for key, human in superseded.items():
+        ev = by_key.get(key)
+        if ev is None and (key[0], key[1]) not in created:
+            continue  # 값이 그대로(재정규화) — 이미 알렸다
+        if ev is None:
+            chosen = next(p for p in rows[key] if p.chosen and not is_human(p.reason))
+            old_text = f"{human.value_text} (사람 확인)"[:200]
+            new_text = (chosen.value_text or "")[:200]
+            entity, eid, fld = key
+            if session.scalars(
+                select(ChangeEvent.id).where(
+                    ChangeEvent.entity == entity,
+                    ChangeEvent.entity_id == eid,
+                    ChangeEvent.field == fld,
+                    ChangeEvent.old_text == old_text,
+                    ChangeEvent.new_text == new_text,
+                )
+            ).first():
+                continue  # 재정규화 — 이미 알렸다
+            model = _MODELS.get(entity)
+            obj = session.get(model, eid) if model is not None else None
+            cid = eid if entity == "complex" else getattr(obj, "complex_id", None)
+            ev = ChangeEvent(
+                snapshot_id=snapshot_id, entity=entity, entity_id=eid, field=fld, old_text=old_text,
+                new_text=new_text, detected_at=detected_at or changes.detected_now(None), severity="critical",
+                triggers_rejudge=True, complex_id=cid,
+            )  # fmt: skip
+            extra.append(ev)
         ev.severity = "critical"
         ev.triggers_rejudge = True
         logical = logical_field(human.field)
@@ -1012,8 +1116,10 @@ def human_superseded(session: Session, resolved: ResolvedFields, events: list[Ch
                     complex_id=ev.complex_id, kind="사실 재확인", title=title, status="open", note=note
                 )
             )
+            session.flush()
         else:
             item.status, item.closed_by, item.note = "open", None, note
+    return extra
 
 
 def _is_legacy(fp: FieldProvenance) -> bool:
@@ -1109,6 +1215,8 @@ def store_raw_document(
         binder = _Binder(session, snapshot_id=snapshot_id, detected_at=detected_at)
         bound, skipped = binder.bind(cands, dto, create=True)
         old = _reparse_existing(session, binder, bound, row.id, raw_dir, factory)
+        # D13-2: 새 행에도 그 의미 필드의 사람 확인(다른 행에 있는)을 0순위 후보로 — 행과 무관하게 같은 규칙
+        old += semantic_humans(session, {(c.entity, c.entity_id, c.field) for c in bound}, bound + old)
         resolved = resolve(bound + old)
         fps = upsert_provenance(session, resolved.provenance)
         events = list(binder.events)
@@ -1120,7 +1228,16 @@ def store_raw_document(
             detected_at=detected_at,
         )
         events.extend(written)
-        human_superseded(session, resolved, written)
+        events.extend(
+            human_superseded(
+                session,
+                resolved,
+                written,
+                snapshot_id=snapshot_id,
+                detected_at=detected_at,
+                created=binder.created,
+            )
+        )
         session.flush()
         for terms in binder.new_terms:
             events.extend(

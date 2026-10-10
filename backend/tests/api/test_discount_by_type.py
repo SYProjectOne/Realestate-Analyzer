@@ -18,7 +18,7 @@ from sqlalchemy import delete, select
 from app.core.db import get_session
 from app.models import ComplexType, FieldProvenance, PaymentTerms
 
-from ._support import WRITE, validate
+from ._support import WRITE, as_live, validate
 
 CX = 1
 WON = 10_000_000
@@ -66,6 +66,7 @@ def test_no_discount_is_empty_object(client: TestClient) -> None:
 
 
 def test_confirmed_discount_by_type_matches_price_discount_and_is_subtracted(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     base_low = _detail(client)["price"]["price_low"]["v"]
     codes = _set_discount("확인됨")
     body = _detail(client)
@@ -82,6 +83,7 @@ def test_confirmed_discount_by_type_matches_price_discount_and_is_subtracted(cli
 
 
 def test_unconfirmed_discount_is_shown_with_label_but_not_subtracted(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     base_low = _detail(client)["price"]["price_low"]["v"]
     _set_discount("추정")
     body = _detail(client)

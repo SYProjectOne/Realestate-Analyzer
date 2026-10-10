@@ -1,8 +1,10 @@
 """단지 상세(G3)·출처 패널·원문 파일."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Sequence
 from typing import Annotated, Any
 
@@ -11,7 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import snapshot_view as sv
 from app.analysis.gap import unadjusted_from_flags
+from app.api import views
 from app.api.deps import DB, default_snapshot, get_complex, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, day, fact, unknown
@@ -28,18 +32,17 @@ from app.api.views import (
     intake_view,
     judgment_days,
     ladder_view,
-    load_bundles,
     payment_view,
     pick_intake,
     price_range,
     provenance_for,
-    score_ctx,
     score_row,
     type_view,
 )
 from app.core.paths import resolve_raw_path
 from app.core.raw_archive import archived_member, archived_stream  # noqa: F401  (재수출)
-from app.core.settings import get_settings
+from app.core.settings import Settings, get_settings
+from app.facts_view import region_catalysts
 from app.models import (
     Catalyst,
     CatalystLink,
@@ -53,12 +56,12 @@ from app.models import (
     RawDocument,
     Region,
     RemainingEvent,
+    Scenario,
     ScoreComponent,
     ScoreRun,
     ScoreTotal,
     Snapshot,
 )
-from app.snapshot_state import region_for
 
 router = APIRouter(tags=["complexes"])
 
@@ -73,18 +76,36 @@ def _coef_reason(c_per_year: Any) -> str:
     return "대체·보정" if c_per_year is None else f"대체·보정 c={float(c_per_year):g}"
 
 
+def comparables_by_complex(
+    session: Session, snapshot_id: int, complex_ids: Sequence[int]
+) -> dict[int, list[ComparableSet]]:
+    """그 스냅샷 비교군 행(단지별, id 순) — 단지 여럿을 한 번에(materialize·비교 화면)."""
+    out: dict[int, list[ComparableSet]] = defaultdict(list)
+    ids = list(complex_ids)
+    for i in range(0, len(ids), 500):
+        for m in session.scalars(
+            select(ComparableSet)
+            .where(ComparableSet.snapshot_id == snapshot_id, ComparableSet.complex_id.in_(ids[i : i + 500]))
+            .order_by(ComparableSet.id)
+        ):
+            out[m.complex_id].append(m)
+    return out
+
+
 def gap_view(
-    session: Session, fm: FactMaker, ctx: ScoreCtx, cx: Complex, snapshot_id: int, price: dict[str, Any]
+    session: Session,
+    fm: FactMaker,
+    ctx: ScoreCtx,
+    cx: Complex,
+    snapshot_id: int,
+    price: dict[str, Any],
+    *,
+    members: Sequence[ComparableSet] | None = None,
 ) -> dict[str, Any]:
     gap_row = (ctx.components.get(cx.id) or {}).get("gap")
     label = gap_row.label if gap_row is not None and gap_row.label != LABEL_UNKNOWN else "추정"
-    members = list(
-        session.scalars(
-            select(ComparableSet)
-            .where(ComparableSet.snapshot_id == snapshot_id, ComparableSet.complex_id == cx.id)
-            .order_by(ComparableSet.id)
-        )
-    )
+    if members is None:
+        members = comparables_by_complex(session, snapshot_id, [cx.id]).get(cx.id, [])
     checked = ctx.checked
     region = session.get(Region, cx.region_id)
     coef = dict((region.age_premium_coef if region is not None else None) or {})
@@ -232,6 +253,56 @@ def catalyst_view(
 # ====================================================================== 단지 상세
 
 
+def judgments_by_complex(
+    session: Session, cxs: Sequence[Complex], snapshot_id: int, ladders: dict[int, Sequence[Any]]
+) -> dict[int, list[JudgmentLog]]:
+    """``complex_judgments`` 를 단지 여럿에 한 번에(같은 규칙 — materialize 의 단지 수천 개)."""
+    ids = [c.id for c in cxs]
+    seqs: dict[int, set[int]] = {
+        c.id: {lad.judgment_seq for lad in ladders.get(c.id, ()) if lad.judgment_seq is not None} for c in cxs
+    }
+    for c in cxs:
+        if c.inclusion_judgment_seq is not None:
+            seqs[c.id].add(c.inclusion_judgment_seq)
+    run_ids = list(session.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == snapshot_id)))
+    if run_ids:
+        rerank = {
+            s
+            for s in session.scalars(select(ScoreRun.rerank_judgment_seq).where(ScoreRun.id.in_(run_ids)))
+            if s is not None
+        }
+        for cid, s in session.execute(
+            select(Decision.complex_id, Decision.judgment_seq).where(
+                Decision.score_run_id.in_(run_ids), Decision.complex_id.is_not(None)
+            )
+        ):
+            if cid in seqs and s is not None:
+                seqs[cid].add(s)
+        for cid in ids:
+            seqs[cid] |= rerank
+    all_seqs = sorted(set().union(*seqs.values())) if seqs else []
+    by_seq: dict[int, JudgmentLog] = {}
+    for i in range(0, len(all_seqs), 500):
+        for j in session.scalars(select(JudgmentLog).where(JudgmentLog.seq.in_(all_seqs[i : i + 500]))):
+            by_seq[j.seq] = j
+    own: dict[int, list[JudgmentLog]] = defaultdict(list)
+    for i in range(0, len(ids), 500):
+        for j in session.scalars(
+            select(JudgmentLog).where(
+                JudgmentLog.complex_id.in_(ids[i : i + 500]),
+                (JudgmentLog.snapshot_id == snapshot_id) | (JudgmentLog.snapshot_id.is_(None)),
+            )
+        ):
+            if j.complex_id is not None:
+                own[j.complex_id].append(j)
+    out: dict[int, list[JudgmentLog]] = {}
+    for cid in ids:
+        rows = {j.seq: j for j in own.get(cid, [])}
+        rows.update({s: by_seq[s] for s in seqs[cid] if s in by_seq})
+        out[cid] = [rows[s] for s in sorted(rows)]
+    return out
+
+
 def complex_judgments(
     session: Session, cx: Complex, snapshot_id: int, ladders: Sequence[Any]
 ) -> list[JudgmentLog]:
@@ -286,89 +357,113 @@ def get_complex_detail(
             raise not_found(f"published snapshot for region {cx.region_id}")
         snap = found
     sc = resolve_scenario(session, scenario)
-    region = session.get(Region, cx.region_id)
-    names = area_names(region_for(session, region, snap.id))
-    b = load_bundles(session, [cx], snap.id, scenario_id=sc.id)[cx.id]
-    comps = list(
-        session.scalars(select(Competition).where(Competition.complex_id == cx.id).order_by(Competition.id))
-    )
-    events = list(
-        session.scalars(
-            select(RemainingEvent).where(RemainingEvent.complex_id == cx.id).order_by(RemainingEvent.id)
-        )
-    )
-    prov = provenance_for(session, [b])
-    prov.load(session, "competition", (c.id for c in comps))
-    prov.load(session, "remaining_event", (e.id for e in events))
-    fm = FactMaker(settings_of(request), prov)
-    ctx = score_ctx(session, snap.id, sc, complex_ids=[cx.id])
-    days = judgment_days(
-        session, [*(lad.judgment_seq for lad in b.ladders), cx.inclusion_judgment_seq, *ctx.jl_days]
-    )
-    days.update(ctx.jl_days)
-    header = complex_header(fm, b, names)
-    price = price_range(fm, b, header["notice_date"])
-    basis = basis_type(b.types)
-    pays = sorted(b.payments, key=lambda p: (p.effective_from, p.id))
-    cur_pay = current_payment(b.payments)
-    judgments = complex_judgments(session, cx, snap.id, b.ladders)
-    # D12-4·M-7: 그 리비전 시점의 호재·단계·연결(발행 리비전은 얼린 값), '호재 아님'은 빼고
-    from app.snapshot_state import catalysts_for
+    # D13-1: 발행 리비전 = 저장본(그 리비전에 없던 단지는 404), 발행 전 = 실시간
+    return JSONResponse(sv.details(session, snap, sc, cx, settings=settings_of(request)))
 
-    cats: dict[int, Any] = {}
-    links: list[Any] = []
-    for cat, cat_links in catalysts_for(session, cx.region_id, snap.id):
+
+def detail_bodies(
+    session: Session, settings: Settings, snap: Snapshot, sc: Scenario, complexes: Sequence[Complex]
+) -> dict[int, dict[str, Any]]:
+    """G3 단지 상세 응답(실시간 계산) — 단지 여럿을 한 번에(발행 때 지역 단지 전부를 저장, D13-1). 단지 1개 요청도
+    같은 함수(같은 규칙·같은 바이트)."""
+    if not complexes:
+        return {}
+    region = session.get(Region, snap.region_id)
+    names = area_names(region)
+    bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id)
+    ids = [c.id for c in complexes]
+    comps: dict[int, list[Competition]] = defaultdict(list)
+    events: dict[int, list[RemainingEvent]] = defaultdict(list)
+    for i in range(0, len(ids), 500):
+        chunk = ids[i : i + 500]
+        for c in session.scalars(
+            select(Competition).where(Competition.complex_id.in_(chunk)).order_by(Competition.id)
+        ):
+            comps[c.complex_id].append(c)
+        for ev in session.scalars(
+            select(RemainingEvent).where(RemainingEvent.complex_id.in_(chunk)).order_by(RemainingEvent.id)
+        ):
+            events[ev.complex_id].append(ev)
+    prov = provenance_for(session, bundles.values())
+    prov.load(session, "competition", (c.id for cs in comps.values() for c in cs))
+    prov.load(session, "remaining_event", (e.id for es in events.values() for e in es))
+    fm = FactMaker(settings, prov)
+    ctx = views.score_ctx(session, snap.id, sc, complex_ids=ids)
+    # 그 리비전의 호재·단계·연결('호재 아님' 제외 — D11-2). 발행 리비전은 이 결과가 저장된다(D13-1)
+    pairs = region_catalysts(session, snap.region_id)
+    linked: dict[int, list[tuple[Any, Any]]] = defaultdict(list)
+    for cat, cat_links in pairs:
         for lk in cat_links:
-            if lk.complex_id == cx.id:
-                cats[cat.id] = cat
-                links.append(lk)
-    cat_days = judgment_days(session, (c.judgment_seq for c in cats.values()))
-    prov.load(session, "catalyst", cats)  # 예정월 출처(사람 위치 확인 — D11-5)
-    has_score = ctx.run is not None and cx.id in ctx.totals
-    body = {
-        "snapshot_id": snap.id,
-        "asof_date": snap.asof_date,
-        "scenario_id": sc.id,
-        "header": header,
-        "price": price,
-        "intake_current": intake_view(cur) if (cur := pick_intake(b.intake)) is not None else None,
-        "types": [type_view(fm, t, is_basis=basis is not None and t.id == basis.id) for t in b.types],
-        "payment": [
-            payment_view(
-                fm,
-                p,
-                first=pays[0],
-                is_current=cur_pay is not None and p.id == cur_pay.id,
-                basis_code=basis.type_code if basis else None,
-            )
-            for p in pays
-        ],
-        "competition": [competition_view(fm, c) for c in comps],
-        "events": [event_view(fm, e) for e in events],
-        "intake": [intake_view(i) for i in b.intake],
-        "ladder": [
-            ladder_view(lad, days.get(lad.judgment_seq) if lad.judgment_seq is not None else None)
-            for lad in sorted(
-                b.ladders,
-                key=lambda x: (
-                    ("move_in_plus_1y", "asof_plus_3y", "asof_plus_5y").index(x.horizon)
-                    if x.horizon in ("move_in_plus_1y", "asof_plus_3y", "asof_plus_5y")
-                    else 9
-                ),
-            )
-        ][:3],
-        "gap": gap_view(session, fm, ctx, cx, snap.id, price),
-        "catalysts": [
-            catalyst_view(
-                cats[lk.catalyst_id], cat_days.get(cats[lk.catalyst_id].judgment_seq or -1), link=lk, fm=fm
-            )
-            for lk in links
-            if lk.catalyst_id in cats
-        ],
-        "judgments": [envelope_view(j) for j in judgments],
-        "score": score_row(ctx, b, names, jl_days=days) if has_score else None,
-    }
-    return JSONResponse(body)
+            linked[lk.complex_id].append((cat, lk))
+    cat_days = judgment_days(session, (c.judgment_seq for c, _ in pairs))
+    prov.load(session, "catalyst", (c.id for c, _ in pairs))  # 예정월 출처(사람 위치 확인 — D11-5)
+    members = comparables_by_complex(session, snap.id, ids)
+    judged = judgments_by_complex(session, [bundles[c.id].cx for c in complexes], snap.id,
+                                  {c.id: bundles[c.id].ladders for c in complexes})  # fmt: skip
+    out: dict[int, dict[str, Any]] = {}
+    for cx0 in complexes:
+        b = bundles[cx0.id]
+        cx = b.cx
+        days = judgment_days(
+            session, [*(lad.judgment_seq for lad in b.ladders), cx.inclusion_judgment_seq, *ctx.jl_days]
+        )
+        days.update(ctx.jl_days)
+        header = complex_header(fm, b, names)
+        price = price_range(fm, b, header["notice_date"])
+        basis = basis_type(b.types)
+        pays = sorted(b.payments, key=lambda p: (p.effective_from, p.id))
+        cur_pay = current_payment(b.payments)
+        judgments = judged[cx.id]
+        cats = {cat.id: cat for cat, _lk in linked.get(cx.id, [])}
+        links = [lk for _cat, lk in linked.get(cx.id, [])]
+        has_score = ctx.run is not None and cx.id in ctx.totals
+        out[cx.id] = {
+            "snapshot_id": snap.id,
+            "asof_date": snap.asof_date,
+            "scenario_id": sc.id,
+            "header": header,
+            "price": price,
+            "intake_current": intake_view(cur) if (cur := pick_intake(b.intake)) is not None else None,
+            "types": [type_view(fm, t, is_basis=basis is not None and t.id == basis.id) for t in b.types],
+            "payment": [
+                payment_view(
+                    fm,
+                    p,
+                    first=pays[0],
+                    is_current=cur_pay is not None and p.id == cur_pay.id,
+                    basis_code=basis.type_code if basis else None,
+                )
+                for p in pays
+            ],
+            "competition": [competition_view(fm, c) for c in comps.get(cx.id, [])],
+            "events": [event_view(fm, e) for e in events.get(cx.id, [])],
+            "intake": [intake_view(i) for i in b.intake],
+            "ladder": [
+                ladder_view(lad, days.get(lad.judgment_seq) if lad.judgment_seq is not None else None)
+                for lad in sorted(
+                    b.ladders,
+                    key=lambda x: (
+                        ("move_in_plus_1y", "asof_plus_3y", "asof_plus_5y").index(x.horizon)
+                        if x.horizon in ("move_in_plus_1y", "asof_plus_3y", "asof_plus_5y")
+                        else 9
+                    ),
+                )
+            ][:3],
+            "gap": gap_view(session, fm, ctx, cx, snap.id, price, members=members.get(cx.id, [])),
+            "catalysts": [
+                catalyst_view(
+                    cats[lk.catalyst_id],
+                    cat_days.get(cats[lk.catalyst_id].judgment_seq or -1),
+                    link=lk,
+                    fm=fm,
+                )
+                for lk in links
+                if lk.catalyst_id in cats
+            ],
+            "judgments": [envelope_view(j) for j in judgments],
+            "score": score_row(ctx, b, names, jl_days=days) if has_score else None,
+        }
+    return out
 
 
 # ====================================================================== 출처 패널

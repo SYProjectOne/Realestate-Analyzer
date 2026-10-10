@@ -33,8 +33,10 @@ def test_cli_unknown_snapshot_returns_nonzero(report_settings: Settings, tmp_pat
 
 def test_job_returns_stats_into_report_dir(report_settings: Settings) -> None:
     stats = run_report_job({"snapshot_id": 11, "format": "html"})
-    path = Path(stats["path"])
-    assert path.parent == report_settings.report_dir and path.is_file()
+    # R3 5차 K3: stats.path = REPORT_DIR 기준 상대 이름(다운로드가 같은 기준으로 해석)
+    assert stats["path"] == stats["filename"]
+    path = report_settings.report_dir / stats["path"]
+    assert path.is_file()
     assert stats["filename"] == path.name and stats["size_bytes"] == path.stat().st_size
     assert len(stats["sha256"]) == 64 and stats["format"] == "html"
     assert stats["snapshot_id"] == 11 and stats["compare_snapshot_id"] is None
@@ -56,6 +58,11 @@ def test_job_blocked_by_contradicted_claim(report_settings: Settings, factory: s
             run_report_job({"snapshot_id": 11, "format": "html"})
         assert exc.value.reason and "contradicted" in exc.value.reason
     finally:
+        from app.models import Snapshot
+
         with factory() as s:
             s.execute(delete(Claim).where(Claim.id == cid))
+            snap = s.get(Snapshot, 11)
+            assert snap is not None
+            snap.status = "published"  # add_contradicted_claim 이 발행 전으로 둔 것을 되돌린다
             s.commit()

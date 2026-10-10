@@ -5,6 +5,8 @@ API 는 계약을 '그대로' 구현해야 하므로 본문은 JSON Schema 2020-
 통과한 값만 pydantic 모델로 읽는다. 실패는 422 validation_error + field_errors.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import functools
@@ -83,8 +85,32 @@ def _raise(errors: list[dict[str, Any]]) -> None:
         raise ApiError(422, "validation_error", detail, field_errors=errors)
 
 
+def non_finite(value: Any, loc: tuple[str | int, ...] = ("body",)) -> list[dict[str, Any]]:
+    """본문 안의 NaN·Infinity(JSON 표준 밖 — 파이썬 json 은 받는다, ``1e400`` 도 inf) 위치. R3 5차 M7: 커밋 뒤 500·이후 GET
+    500 이 나던 것을 모든 쓰기 엔드포인트 공통으로 422 로."""
+    import math
+
+    if isinstance(value, float) and not math.isfinite(value):
+        return [{"loc": list(loc), "msg": "유한한 숫자가 아니다(NaN·Infinity 거부)"}]
+    out: list[dict[str, Any]] = []
+    if isinstance(value, dict):
+        for k, v in value.items():
+            out.extend(non_finite(v, (*loc, str(k))))
+    elif isinstance(value, list):
+        for i, v in enumerate(value):
+            out.extend(non_finite(v, (*loc, i)))
+    return out
+
+
 def check_body(operation_id: str, body: Any) -> None:
-    """operation 의 requestBody 스키마로 검증. 실패면 422."""
+    """operation 의 requestBody 스키마로 검증. 실패면 422. NaN·Infinity 는 스키마와 무관하게 422(M7 — 공용)."""
+    bad = non_finite(body)
+    if bad:
+        from app.api.errors import ApiError
+
+        raise ApiError(
+            422, "validation_error", "숫자는 유한해야 한다(NaN·Infinity 거부)", field_errors=bad[:20]
+        )
     _raise(_errors(_validator(_request_pointer(operation_id)), body, "body"))
 
 

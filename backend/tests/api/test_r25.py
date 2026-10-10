@@ -11,7 +11,7 @@ from app.models import JudgmentLog, Scenario, ScoreRun, ScoreTotal
 from app.scheduler.payloads import cache_status, scenario_payloads
 from app.scheduler.pipeline import load_scenarios
 
-from ._support import WRITE, validate
+from ._support import WRITE, as_live, validate
 
 SNAP = 12
 
@@ -75,6 +75,7 @@ def _row(key: str | None) -> JudgmentLog | None:
 
 
 def test_judge_scope_is_the_stored_value(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         runs = [r for r in s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == SNAP))]
         totals = list(s.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id.in_(runs))))

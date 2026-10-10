@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.9
+  version: 2026-10-09.10
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -597,11 +597,12 @@ paths:
         - name: living_area
           in: query
           required: false
-          description: 생활권 필터(region.living_areas[].id)
+          description: 생활권 필터(region.living_areas[].id). 발행 리비전은 그 리비전에 있던 생활권만(없으면 404 — 계약 .10 D13-1)
           schema: { type: string }
+        - $ref: '#/components/parameters/Scenario'
       responses:
         '200':
-          description: 지역 시장
+          description: 지역 시장(입주 마커의 판정 범위 = 그 시나리오 점수 실행 저장값 — 계약 .10)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Market' }

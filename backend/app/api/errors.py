@@ -6,6 +6,8 @@
   ``{code, detail, field_errors?}`` 로.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -182,6 +184,15 @@ def install_handlers(app: FastAPI) -> None:
             },
         )
 
+    async def not_materialized(_req: Request, exc: Exception) -> JSONResponse:
+        """발행 리비전 저장본(D13-1): 그 리비전에 없는 시나리오·생활권 = 404, 저장본 자체가 없음 = 500(실시간 폴백 없음)."""
+        from app.snapshot_view import NotInRevision
+
+        if isinstance(exc, NotInRevision):
+            return _json(404, {"code": "not_found", "detail": str(exc)})
+        log.error("api.snapshot_view_missing", extra={"detail": str(exc)})
+        return _json(500, {"code": "internal", "detail": str(exc)})
+
     async def internal(_req: Request, exc: Exception) -> JSONResponse:
         log.exception("api.internal", extra={"error": type(exc).__name__})
         return _json(500, {"code": "internal", "detail": type(exc).__name__})
@@ -191,4 +202,7 @@ def install_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_error)
     app.add_exception_handler(RequestValidationError, request_invalid)
     app.add_exception_handler(OverflowError, overflow)
+    from app.snapshot_view import NotMaterialized
+
+    app.add_exception_handler(NotMaterialized, not_materialized)
     app.add_exception_handler(Exception, internal)

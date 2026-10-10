@@ -35,7 +35,11 @@ KEEP_DAYS_MAX = 3650
 
 
 def backup_dir(settings: Settings) -> Path:
-    env = os.environ.get("BACKUP_DIR")
+    """백업 위치: 설정 ``BACKUP_DIR``(환경변수·``.env`` — Settings), 비면 RAW_DIR 상위 폴더 아래 ``backup/``."""
+    configured = getattr(settings, "backup_dir", None)
+    if configured is not None and str(configured).strip() not in ("", "."):
+        return Path(configured)
+    env = os.environ.get("BACKUP_DIR")  # Settings 를 거치지 않은 호출(테스트 SimpleNamespace 등) 호환
     if env:
         return Path(env)
     return Path(settings.raw_dir).resolve().parent / "backup"

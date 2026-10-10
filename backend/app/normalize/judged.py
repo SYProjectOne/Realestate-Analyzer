@@ -267,6 +267,9 @@ def _reresolve(
     cands = [_candidate(fp, kinds.get(fp.raw_document_id or -1)) for fp in rows]
     if not cands:
         return None, []
+    from app.normalize.store import semantic_humans
+
+    cands += semantic_humans(session, {(entity, entity_id, field_name)}, cands)  # D13-2 — 저장 경로와 같다
     resolved = resolve(cands)
     fps = upsert_provenance(session, list(resolved.provenance))
     chosen_fp = next((fp for fp in fps if fp.chosen), None)
@@ -274,8 +277,11 @@ def _reresolve(
     chosen = resolved.chosen[0] if resolved.chosen else None
     if chosen is not None and chosen.value is not None and chosen.label != "확인 불가":
         written, touched = write_chosen(session, [chosen], snapshot_id=snapshot_id, detected_at=detected_at)
-        human_superseded(session, resolved, written)  # D12-1(사람 확인 이후 새 공식 출처) — 저장 경로와 같다
         events.extend(written)
+        # D12-1·D13-2(사람 확인 이후 새 공식 출처) — 저장 경로와 같다
+        events.extend(
+            human_superseded(session, resolved, written, snapshot_id=snapshot_id, detected_at=detected_at)
+        )
         for cid in sorted(touched):
             cx = session.get(Complex, cid)
             if cx is not None:
