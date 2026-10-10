@@ -267,11 +267,11 @@ def update_catalyst(
     session.flush()
     job_out: dict[str, Any] | None = None
     snap = _snapshot_for(session, region.id)
-    if snap is not None and before != target:
-        from app.scheduler.rejudge import enqueue_rejudge
+    if before != target:
+        # 연결은 점수·판정에 쓰지 않는다 — rejudge 대신 새 리비전을 바로 발행해 그 시점 연결을 얼린다(D12-4, R3 4차 minor)
+        from app.scheduler.snapshots import republish
 
-        job = enqueue_rejudge(session, snap.id, [], f"호재 위치 확인: {cat.name}"[:200])
-        job_out = job_view(job)
+        republish(session, region.id, reason=f"호재 위치 확인: {cat.name}"[:200], created_at=now_iso())
     session.commit()
     checked = (snap.asof_date if snap is not None else now_iso())[:10]
     fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [cat.id]))

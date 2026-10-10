@@ -720,7 +720,7 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
     if t.long:
         b.add("payment_terms", pay_key, f("notice_type_code"), t.long, t.long, t.span)
     disc = _discount_line(ctx.text, t)
-    if disc is not None:
+    if disc is not None and 0 < disc[0] < top.total:  # 0·음수·공급가 이상 할인은 후보가 아니다(R3 4차 minor)
         won, span = disc
         b.add("payment_terms", pay_key, discount_field(t.short), won, f"{won:,}", span)
 

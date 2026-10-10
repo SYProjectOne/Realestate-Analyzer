@@ -85,7 +85,7 @@ def test_compose_services_and_volumes() -> None:
     compose = load_yaml(INFRA / "docker-compose.yml")
     services = compose["services"]
     assert set(services) == {"db", "api", "worker", "web"}
-    assert set(compose["volumes"]) == {"pgdata", "rawdata"}
+    assert set(compose["volumes"]) == {"pgdata", "rawdata", "backups"}  # backups = D12-6(원문과 분리)
 
     db = services["db"]
     assert str(db["image"]).startswith("postgres:16")
@@ -100,6 +100,9 @@ def test_compose_services_and_volumes() -> None:
     worker = services["worker"]
     assert worker["build"]["dockerfile"].endswith("Dockerfile.worker")
     assert any(str(v).startswith("rawdata:") and not str(v).endswith(":ro") for v in worker["volumes"])
+    # D12-6(R3 4차 M-9): 백업은 별도 볼륨 — BACKUP_DIR 이 그 볼륨이고 원문 볼륨(/data) 안이 아니다
+    assert "backups:/backups" in [str(v) for v in worker["volumes"]]
+    assert worker["environment"]["BACKUP_DIR"] == "/backups"
     assert "ports" not in worker
 
     web = services["web"]
@@ -128,6 +131,9 @@ def test_dockerfiles() -> None:
     assert "playwright install" in worker and "chromium" in worker
     assert "npx" in worker and "node" in worker
     assert "app.worker" in worker
+    # D11-8·D12-6: backup 잡의 pg_dump(서버 postgres:16 과 같은 판 — PGDG postgresql-client-16)
+    assert "postgresql-client-${PG_MAJOR}" in worker and "ARG PG_MAJOR=16" in worker
+    assert "pg_dump --version" in worker
     # 보고서 ECharts 번들(WP8): 이미지에 echarts.min.js 를 넣고 Settings 경로(REPORT_ECHARTS_JS)로 알린다
     assert "echarts.min.js" in worker and "REPORT_ECHARTS_JS=/opt/echarts/echarts.min.js" in worker
     assert "COPY --from=echarts" in worker

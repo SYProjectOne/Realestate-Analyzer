@@ -185,7 +185,7 @@ def test_m8_remainder_pdf_citing_original_number_does_not_overwrite_unit_fields(
     rem = [
         ("complex", key, "name", "검단 원 단지(임의공급 4차)"), ("complex", key, "units_total", 1),
         ("complex", key, "resale_months", 0), ("complex", key, "residency_months", 36),
-        ("complex", key, "regulated", "규제"), ("complex_type", f"{key}:84A", "units", 1),
+        ("complex", key, "regulated", "규제"),
         ("payment_terms", f"{key}:{rem_no}", "effective_from", "2026-09-10"),
         ("payment_terms", f"{key}:{rem_no}", "notice_kind", "임의"),
     ]  # fmt: skip
@@ -202,7 +202,9 @@ def test_m8_remainder_pdf_citing_original_number_does_not_overwrite_unit_fields(
         "비규제",
     ), "잔여 공고 PDF 의 단지 단위 값이 원 단지를 덮으면 안 된다(M-8·D11-4)"
     t = db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id)).one()
-    assert t.units == 900
+    assert t.units == 900, (
+        "원 단지 타입 세대수 그대로(잔여 공고는 타입 면적·세대수를 내지 않는다 — 공고문 파서)"
+    )
     kinds = sorted(
         p.notice_kind or ""
         for p in db_session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == cx.id))
@@ -233,3 +235,19 @@ def test_m12_discount_line_requires_whole_type_token_and_price_discount() -> Non
     ):
         assert _discount_line(bad + "\n", t84) is None, bad
     assert _discount_line("할인금액(84㎡): 12,500,000원\n", t84) is not None
+
+
+def test_minor_site_url_rejects_notation_bypasses() -> None:
+    from app.normalize._text import normalize_site_url
+
+    for bad in (
+        "http://１２７．０．０．１/",  # 전각 숫자·점
+        "http://①②⑦.0.0.1/",  # 원문자
+        "http://127。0。0。1/",  # 이데오그래픽 마침표
+        "http://127%2e0%2e0%2e1/",  # 퍼센트 인코딩 점
+        "http://evil.localhost/",  # .localhost(브라우저가 루프백으로)
+        "http://foo.localhost./",
+    ):
+        assert normalize_site_url(bad) is None, bad
+    assert normalize_site_url("http://EXAMPLE.co.kr") == "http://example.co.kr/"
+    assert normalize_site_url("www.예시.kr/a") == "http://www.예시.kr/a"

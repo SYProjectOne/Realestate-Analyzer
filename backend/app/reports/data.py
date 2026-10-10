@@ -41,7 +41,6 @@ from app.core.time import now_kst
 from app.facts_view import DEMOTION_REASON, DemotionOverlay, load_overlay
 from app.models import (
     Catalyst,
-    CatalystLink,
     ChangeEvent,
     ChecklistItem,
     Claim,
@@ -759,6 +758,7 @@ class _Loader:
         self.asof = snapshot.asof_date
         self.la_names = {str(la.get("id")): str(la.get("name")) for la in region.living_areas or []}
         self.prov = _ProvIndex(session, {}, env)
+        self.frozen: Any = None  # app.snapshot_state.State — 발행 리비전의 얼린 값(load_report 가 채운다)
 
     # -- 범위
     def scope_ids(self) -> list[int]:
@@ -783,6 +783,8 @@ class _Loader:
     def complexes(self, ids: list[int]) -> list[ComplexView]:
         s = self.s
         cxs = list(s.scalars(select(Complex).where(Complex.id.in_(ids)).order_by(Complex.id)))
+        if self.frozen is not None:
+            cxs = [self.frozen.complex(c) for c in cxs]
         types = list(
             s.scalars(select(ComplexType).where(ComplexType.complex_id.in_(ids)).order_by(ComplexType.id))
         )
@@ -1471,8 +1473,10 @@ def _benchmark_areas(
 
 
 def _catalysts(
-    ctx: _Ctx, catalysts: Sequence[Catalyst]
+    ctx: _Ctx, pairs: Sequence[tuple[Any, Sequence[Any]]]
 ) -> tuple[list[CatalystView], list[dict[str, Any]], dict[int, list[CatalystView]]]:
+    """§5 호재(``snapshot_state.catalysts_for`` — 리비전 시점 단계·연결, '호재 아님' 제외)."""
+    catalysts = [c for c, _ in pairs]
     views = [
         CatalystView(
             name=cat.name,
@@ -1491,9 +1495,11 @@ def _catalysts(
     ]
     by_id = {cat.id: v for cat, v in zip(catalysts, views, strict=True)}
     links: dict[int, list[CatalystView]] = defaultdict(list)
-    for link in ctx.session.scalars(select(CatalystLink).where(CatalystLink.complex_id.in_(ctx.ids))):
-        if link.catalyst_id in by_id:
-            links[link.complex_id].append(by_id[link.catalyst_id])
+    wanted = set(ctx.ids)
+    for cat, cat_links in pairs:
+        for link in cat_links:
+            if link.complex_id in wanted and cat.id in by_id:
+                links[link.complex_id].append(by_id[cat.id])
     return views, stages, dict(links)
 
 
@@ -1814,7 +1820,14 @@ def load_report(
 ) -> ReportData:
     """보고서 데이터 모델. contradicted 주장이 남아 있으면 ``ReportBlocked``(파일을 만들기 전)."""
     snap, region, scenario, compare = _resolve(session, snapshot_id, scenario_id, compare_snapshot_id)
+    from app.snapshot_state import load_state
+
+    # D12-4: 발행 리비전은 그 시점의 생활권·분류·호재(옛 보고서가 바뀌지 않게)
+    frozen = load_state(session, snap.id)
+    if frozen is not None:
+        region = frozen.region_row(region)
     loader = _Loader(session, snap, region, scenario, compare, get_settings().env)
+    loader.frozen = frozen
     ids = loader.scope_ids()
     complexes = loader.complexes(ids)
     scenarios = list(session.scalars(select(Scenario).order_by(Scenario.id)))
@@ -1847,7 +1860,11 @@ def load_report(
         for d in session.scalars(select(Decision).where(Decision.score_run_id == r.id))
     ]
     claims = list(session.scalars(select(Claim).where(Claim.snapshot_id == snap.id).order_by(Claim.id)))
-    catalysts = list(session.scalars(select(Catalyst).where(Catalyst.region_id == region.id)))
+    from app.snapshot_state import catalysts_for
+
+    # D12-4·M-7: 그 리비전 시점의 호재 단계·연결, '호재 아님'은 §5 에 넣지 않는다
+    cat_pairs = catalysts_for(session, region.id, snap.id, state=frozen)
+    catalysts = [c for c, _ in cat_pairs]
     docs = list(
         session.scalars(
             select(RawDocument).where(RawDocument.region_id == region.id).order_by(RawDocument.id)
@@ -1857,7 +1874,7 @@ def load_report(
     used = _used_in(ctx, ladders, decisions, runs.values(), claims, catalysts)
     calls, judge_tools, versions = _calls(ctx, logs, used)
     benchmarks, recent, supply, unsold = _market(ctx)
-    cat_views, stage_counts, links = _catalysts(ctx, catalysts)
+    cat_views, stage_counts, links = _catalysts(ctx, cat_pairs)
     ladder_views, ladder_other = _ladder_views(ctx, ladders)
     scores = _score_views(session, run, names, la_of)
     _scope_notes(scores, ctx.by_id)

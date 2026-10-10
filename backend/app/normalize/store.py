@@ -214,6 +214,8 @@ class _Binder:
         # 후보(complex·complex_type)는
         # 원 단지 값을 덮어쓰지 않는다(payment_terms·competition·remaining_event 에만 기록)
         self.merged: set[str] = set()
+        # 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨 키(R3 4차 M-8) — 그 공고의 단지(complex) 후보만 건너뛴다
+        self.cited: set[str] = set()
         # (단지, 공급 구분, 회차) → '타입 모호'로 묶은 원 주택형
         self._ambiguous: dict[tuple[int, str, str], str] = {}
 
@@ -232,8 +234,9 @@ class _Binder:
         cx = self.s.scalars(stmt).first()
         if cx is not None and create and _cites_original(raw, batch, key):
             # R3 4차 M-8: 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨다 — 그 공고의 단지 단위 값(이름 '(임의공급
-            # 4차)'·남은 세대수·전매·거주·규제)은 원 단지를 덮지 않는다(D11-4, payment_terms·competition 에만 기록)
-            self.merged.add(key)
+            # 4차)'·남은 세대수·전매·거주·규제)은 원 단지를 덮지 않는다(D11-4, payment_terms·competition 에만 기록).
+            # 타입 가격 후보는 그대로 둔다(공고문 파서가 잔여 공고에서 면적·세대수는 내지 않고 가격만 낸다 — 현재 공고 가격)
+            self.cited.add(key)
         if cx is None and region_id is not None and _APPLYHOME_ID_GLOBAL:
             other = self.s.scalars(select(Complex.id).where(Complex.applyhome_id == key)).first()
             if other is not None:  # 다른 지역의 단지 — 덮어쓰지 않는다(W4)
@@ -540,7 +543,8 @@ class _Binder:
         """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다)."""
         if c.entity not in MERGED_UNIT_ENTITIES:
             return False
-        return (c.entity_key or "").split(":")[0] in self.merged
+        key = (c.entity_key or "").split(":")[0]
+        return key in self.merged or (c.entity == "complex" and key in self.cited)
 
     def _id_for(
         self,
@@ -561,6 +565,8 @@ class _Binder:
             if cx is None:
                 return None
             if entity == "complex_type" and len(parts) == 2:
+                if parts[0] in self.merged:
+                    return None  # 원 단지에 묶인 잔여 공고의 타입 행은 만들지 않는다(R3 4차 minor — 건너뛸 후보의 행 선생성)
                 area = vals.get("area_m2")
                 t = self.type_for(
                     cx, parts[1], float(area) if isinstance(area, (int, float)) else None, create=create
@@ -606,7 +612,8 @@ _APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)
 # 하이픈은 지우지 않는다(minor 18: 'AA1-31' 과 'AA13-1' 이 같은 키가 되던 문제) — 공백·문장부호·괄호·'번지'만
 _KEY_DROP_RE = re.compile(r"[\s·,.()（）\[\]]+|번지")
 # 구역 표현: '…일원'·'일대'·'외 n필지'·'1056-1외'·'AA13블록외 2'(minor 18 — 숫자·블록 바로 뒤 '외'도)
-_ZONE_RE = re.compile(r"일원|일대|(?:^|\s|\d|블록|BL|bl)외(?:\s|\d|$)|필지")
+_ZONE_RE = re.compile(r"일원|일대|(?:^|\s|\d|블록|BL|bl)외(?:[\s,·;/]|\d|$)|필지")
+"""구역 표현 — '1056-1외, 1056-2'(외 뒤 쉼표)도(R3 4차 minor)."""
 _REMAINDER_PATHS = ("Remndr", "getOPT", "OPTLttot")
 _REMAINDER_KINDS = ("무순위", "임의", "잔여", "선착순", "재공급", "계약취소")
 
@@ -1138,7 +1145,7 @@ def store_raw_document(
                 if parent is not None:
                     cids.add(parent.complex_id)
         # 원 단지에 묶인 잔여 공고(D11-4): 단지 단위 후보는 건너뛰었어도 그 단지는 이 원문과 관련된 단지다(재판정 대상)
-        cids |= {binder.complex_for_key(k) for k in binder.merged} - {None}  # type: ignore[arg-type]
+        cids |= {binder.complex_for_key(k) for k in binder.merged | binder.cited} - {None}  # type: ignore[arg-type]
         complex_ids = sorted(cids)
     return StoreResult(
         raw_document_id=row.id,

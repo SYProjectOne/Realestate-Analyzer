@@ -270,6 +270,13 @@ def update_checklist_item(session: DB, id: int, body: Annotated[Any, Body()] = N
             setattr(item, key, body[key])
     if "status" in body:  # 사람 처리(done·na) = closed_by human — 동기화가 다시 열지 않는다(M-9)
         item.closed_by = None if item.status == "open" else "human"
+    if item.kind == "사실 재확인" and item.status != "open" and item.complex_id is not None:
+        # R3 4차 minor(3차 minor 12 후속): 강등이 남았으면 '사실 재확인'은 그 자리에서 다시 열린다(다음 쓰기를 기다리지
+        # 않는다 — 응답이 열린 상태를 보인다). 강등과 무관한 항목(사람 확인 재검토 등)은 그대로 닫힌다
+        from app.api.demotion import sync_demotions
+
+        session.flush()
+        sync_demotions(session, {item.complex_id})
     session.commit()
     return JSONResponse(checklist_view(item, _complex_names(session)))
 

@@ -362,6 +362,13 @@ def load_bundles(
     snap = session.get(Snapshot, snapshot_id)
     asof = snap.asof_date if snap is not None else None
     out = {c.id: ComplexBundle(c, asof_date=asof) for c in complexes}
+    from app.snapshot_state import load_state
+
+    # D12-4: 발행 리비전은 그 시점의 분류·생활권·법정동(이후 편집이 옛 리비전을 바꾸지 않는다)
+    frozen = load_state(session, snapshot_id)
+    if frozen is not None:
+        for b in out.values():
+            b.cx = frozen.complex(b.cx)
     ids = list(out)
     region_ids = _region_scope(session, snap, out)
 

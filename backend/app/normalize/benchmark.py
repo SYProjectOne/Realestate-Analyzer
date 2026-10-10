@@ -49,6 +49,7 @@ from sqlalchemy.orm import Session
 from app.analysis.price import judge_type
 from app.analysis.types import Label, weakest_label
 from app.core.contracts_gen import ProvenanceRow
+from app.core.logging import get_logger
 from app.core.paths import resolve_raw_path
 from app.models import Benchmark, FieldProvenance, LegalDong, RawDocument, Region, RtmsTrade, Snapshot
 from app.normalize._text import area_from_long_code, strip_supply_round
@@ -57,6 +58,8 @@ from app.normalize.fields import norm_value
 from app.normalize.living_area import assign_legal_dong, living_area_of
 from app.normalize.provenance import upsert_provenance
 from app.normalize.region_resolve import LegalRow
+
+log = get_logger("app.normalize.benchmark")
 
 __all__ = [
     "BENCHMARK_FIELDS",
@@ -108,7 +111,9 @@ def normalize_apt_name(name: str) -> str:
     제거. 차수·단지·블록 번호는 남긴다. '힐스테이트 레이크 송도(2차)' == '힐스테이트레이크송도2차',
     'AA13-1블록' != 'AA13-2블록'."""
     s = strip_supply_round(unicodedata.normalize("NFKC", name)).lower()
-    return re.sub(r"[^0-9a-z가-힣]", "", s)
+    # 숫자 사이 하이픈은 남긴다 — 지우면 'AA1-31' 과 'AA13-1' 이 같은 키가 된다(R3 4차 minor)
+    s = re.sub(r"(?<=\d)\s*[-‐–]\s*(?=\d)", "-", s)
+    return re.sub(r"[^0-9a-z가-힣-]|(?<!\d)-|-(?!\d)", "", s)
 
 
 def sale_period(sale_year: int, asof_year: int) -> tuple[str, str]:
@@ -443,8 +448,16 @@ def _archive_price(notice: _Notice, docs: list[RawDocument]) -> _SalePrice | Non
     for doc in docs:  # ``archive.archived_notices_many`` — 오래된 것부터
         try:
             cands = NoticeParser().parse(raw_dto(doc))
-        except Exception:  # 원문 파일 없음 등 — 다음 공고문 또는 API
+        except (
+            Exception
+        ) as exc:  # 원문 파일 없음 등 — 다음 공고문 또는 API(조용히 넘기지 않는다 — R3 4차 minor)
+            log.warning(
+                "normalize.benchmark.archive_unreadable",
+                extra={"raw_document_id": doc.id, "error": type(exc).__name__},
+            )
             continue
+        if not cands:
+            log.warning("normalize.benchmark.archive_no_candidates", extra={"raw_document_id": doc.id})
         by_type: dict[str, dict[str, Any]] = {}
         for c in cands:
             key = c.entity_key or ""

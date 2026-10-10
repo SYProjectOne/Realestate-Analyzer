@@ -61,13 +61,13 @@ class AuditResult(BaseModel):
 
 class BackupPayload(BaseModel):
     """
-    job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고, 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').
+    job_name='backup' 페이로드 (DECISIONS D11-8, 계약 2026-10-09.8). worker 가 매일 03:00 넣는다(수동 POST /jobs 도 가능). DB 백업(Postgres = pg_dump custom 형식, SQLite 개발 모드 = 온라인 백업 파일 복사) + 원문(RAW_DIR) 증분 복사(이전 백업 뒤 바뀐 파일만)를 BACKUP_DIR/<날짜>/ 에 남기고(compose 는 별도 볼륨 backups:/backups — D12-6), 결과(파일·크기·sha256·복사 수·실패 사유)는 job_run.stats 에. 페이로드는 빈 객체(또는 keep_days — 보존 일수, 기본 무기한: RA 보존 정책 '삭제 없음').
     """
 
     model_config = ConfigDict(
         extra="forbid",
     )
-    keep_days: Annotated[int | None, Field(ge=1)] = None
+    keep_days: Annotated[int | None, Field(ge=1, le=3650)] = None
     """
     이 일수보다 오래된 백업 폴더를 지운다(없으면 지우지 않는다 — 보존 무기한)
     """
@@ -201,6 +201,9 @@ class CatalystCreated(BaseModel):
     )
     catalyst: CatalystView
     job: JobRun | None
+    """
+    계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다
+    """
 
 
 class CatalystLinkView(BaseModel):
@@ -232,7 +235,7 @@ class CatalystLinkView(BaseModel):
 
 class CatalystPatch(BaseModel):
     """
-    PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인). 링크가 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다.
+    PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인), null 이면 지운다. lat·lon 은 유한한 숫자(NaN·무한대 422). '호재 아님' 후보는 location_confirmed=true 422. 연결이 바뀌면 판정·점수에 쓰지 않는 값이라 rejudge 없이 새 리비전을 바로 발행해 그 시점 연결을 얼린다(계약 .9, D12-4 — 응답 job 은 null).
     """
 
     model_config = ConfigDict(
@@ -257,6 +260,9 @@ class CatalystUpdated(BaseModel):
     catalyst: CatalystView
     links: list[CatalystLinkView]
     job: JobRun | None
+    """
+    계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다
+    """
 
 
 class CatalystView(BaseModel):

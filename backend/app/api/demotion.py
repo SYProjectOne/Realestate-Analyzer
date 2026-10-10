@@ -111,6 +111,8 @@ _MODELS: Final[dict[str, Any]] = {
 _SECTION_RE: Final = re.compile(r"^complex:(\d+)$")
 _FP_RE: Final = re.compile(r"\bfp_(\d+)\b")
 _YM_RE: Final = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+_PLAIN_NUMBER_RE: Final = re.compile(r"^-?\d+(?:\.\d+)?$")
+"""사람 확인 숫자 = 십진 표기만(지수 '1E1'·'NaN'·'0x10' 거부)."""
 # 사람 확인 값 범위(minor 11) — 형만 맞고 터무니없는 값('6.02개월'·'-3'·'2999-01')은 거부
 _RANGES: Final[dict[str, tuple[Decimal, Decimal]]] = {
     "resale_months": (Decimal(0), Decimal(240)),
@@ -407,8 +409,19 @@ def demote(
         "새 원문이 다른 값을 내면 복원된다",
     )
     d.checklist_item_id = item.id
+    # 발행 스냅샷은 불변(D11-1) — 변경 이벤트·재판정은 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에(R3 4차 minor·M-2)
+    from app.models import Snapshot
+    from app.scheduler.snapshots import latest_for_region, writable
+
+    base_snap = session.get(Snapshot, claim.snapshot_id)
+    newest = latest_for_region(session, base_snap.region_id) if base_snap is not None else None
+    snap_w = (
+        writable(session, newest.id, reason=f"검증 모순 강등: {target.name}"[:200], created_at=now)
+        if newest
+        else None
+    )
     ce = ChangeEvent(
-        snapshot_id=claim.snapshot_id,
+        snapshot_id=snap_w.id if snap_w is not None else claim.snapshot_id,
         entity=target.entity,
         entity_id=target.entity_id,
         field=target.field[:64],
@@ -426,7 +439,7 @@ def demote(
 
         job = enqueue_rejudge(
             session,
-            claim.snapshot_id,
+            snap_w.id if snap_w is not None else claim.snapshot_id,
             [cid],
             f"검증 모순 강등: {target.name}"[:200],
             change_event_ids=[ce.id],
@@ -502,10 +515,21 @@ def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
     numeric = integer or (col is not None and isinstance(col.type, Numeric))
     if not numeric:
         raise ValueParseError(f"알 수 없는 필드 {target.field}")
-    for suffix in ("개월", "년", "원", "%"):
-        raw = raw.removesuffix(suffix)
+    # 단위 접미어는 그 필드의 단위만(R3 4차 minor: '3년'이 3개월로, '1E1'이 10으로 들어갔다). 개월 필드의 'N년'은 N×12
+    allowed = {"resale_months": ("개월", "년"), "residency_months": ("개월", "년"), "max_price_won": ("원",),
+               "down_payment_pct": ("%",)}.get(logical, ())  # fmt: skip
+    factor = 1
+    for suffix in allowed:
+        if raw.endswith(suffix):
+            raw = raw.removesuffix(suffix)
+            factor = 12 if suffix == "년" else 1
+            break
+    if not _PLAIN_NUMBER_RE.match(raw):
+        raise ValueParseError(
+            f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 값(숫자, 단위 {', '.join(allowed) or '없음'})이 아니다"
+        )
     try:
-        dec = Decimal(raw)
+        dec = Decimal(raw) * factor
     except (InvalidOperation, ValueError) as exc:
         raise ValueParseError(f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 값(숫자)이 아니다") from exc
     if not dec.is_finite():

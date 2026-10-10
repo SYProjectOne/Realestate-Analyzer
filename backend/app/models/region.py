@@ -22,9 +22,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-from app.models.enums import REGION_STATUS, SNAPSHOT_STATUS, in_check
+from app.models.enums import REGION_STATUS, SNAPSHOT_STATE_ENTITY, SNAPSHOT_STATUS, in_check
 
-__all__ = ["Region", "Snapshot"]
+__all__ = ["Region", "Snapshot", "SnapshotState"]
 
 
 class Region(Base):
@@ -78,3 +78,22 @@ class Snapshot(Base):
     revision: Mapped[int] = mapped_column(Integer, server_default="1")
     revision_of: Mapped[int | None] = mapped_column(ForeignKey("snapshot.id"))
     revision_reason: Mapped[str | None] = mapped_column(String(200))
+
+
+class SnapshotState(Base):
+    """발행 순간의 리비전 시점 값 1행 — 0009(계약 2026-10-09.9, D12-4·R3 4차 M-7).
+
+    entity = region(생활권) · complex(분류·생활권·법정동) · catalyst(단계·종류·위치·연결). 발행 스냅샷을 읽는 화면·보고서는
+    이 값을 쓴다(``app.snapshot_state``) — 옛 리비전이 나중 편집으로 바뀌지 않는다. (snapshot_id, entity, entity_id) 유일."""
+
+    __tablename__ = "snapshot_state"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "entity", "entity_id"),
+        CheckConstraint(in_check("entity", SNAPSHOT_STATE_ENTITY), name="entity"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("snapshot.id"), index=True)
+    entity: Mapped[str] = mapped_column(String(16))
+    entity_id: Mapped[int] = mapped_column(Integer)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON)

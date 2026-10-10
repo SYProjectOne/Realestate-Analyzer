@@ -23,12 +23,15 @@ import sqlite3
 import subprocess
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from typing import Any, NoReturn
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from app.core.settings import Settings
 
-__all__ = ["backup_dir", "run_backup"]
+__all__ = ["KEEP_DAYS_MAX", "backup_dir", "run_backup"]
+
+KEEP_DAYS_MAX = 3650
+"""보존 일수 상한(계약 .9 ``job_payloads/backup.json`` maximum) — 넘으면 잡 실패(조용히 자르지 않는다)."""
 
 
 def backup_dir(settings: Settings) -> Path:
@@ -65,7 +68,8 @@ def _dump_postgres(url: str, out: Path) -> dict[str, Any]:
     if exe is None:
         raise RuntimeError("pg_dump 없음(PATH) — Postgres 백업 불가")
     parts = urlsplit(url.replace("postgresql+psycopg://", "postgresql://"))
-    password = parts.password or ""
+    # URL 의 비밀번호는 퍼센트 인코딩(예 '%40' = '@') — PGPASSWORD 에는 원래 문자로(R3 4차 minor)
+    password = unquote(parts.password or "")
     netloc = parts.hostname or ""
     if parts.username:
         netloc = f"{parts.username}@{netloc}"
@@ -122,9 +126,14 @@ def run_backup(settings: Settings, *, now: datetime, keep_days: int | None = Non
     """백업 1회(모듈 설명). stats(dict)를 돌려준다. DB 백업이 실패하면 ``RuntimeError``(stats 는 예외의 ``stats``)."""
     root = backup_dir(settings)
     day = now.date()
-    out = root / day.isoformat()
-    out.mkdir(parents=True, exist_ok=True)
     stats: dict[str, Any] = {"backup_dir": str(root), "day": day.isoformat()}
+    if keep_days is not None and not 1 <= keep_days <= KEEP_DAYS_MAX:
+        _fail(stats, f"keep_days 는 1~{KEEP_DAYS_MAX}: {keep_days}")
+    out = root / day.isoformat()
+    try:
+        out.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:  # R3 4차 minor: 폴더를 못 만들어도 stats(사유)를 남긴다
+        _fail(stats, f"백업 폴더를 만들 수 없다: {exc}", exc)
     url = settings.database_url
     try:
         sqlite_file = _sqlite_path(url)
@@ -139,7 +148,20 @@ def run_backup(settings: Settings, *, now: datetime, keep_days: int | None = Non
         err = RuntimeError(f"DB 백업 실패: {str(exc)[:200]}")
         err.stats = stats  # type: ignore[attr-defined]
         raise err from exc
-    stats["raw"] = _copy_raw(Path(settings.raw_dir), root / "raw")
-    if keep_days:
-        stats["pruned"] = _prune(root, day, keep_days)
+    try:
+        stats["raw"] = _copy_raw(Path(settings.raw_dir), root / "raw")
+        if keep_days:
+            stats["pruned"] = _prune(root, day, keep_days)
+    except OSError as exc:  # 디스크 가득·권한 등 — DB 백업 결과와 함께 failed(stats 유지)
+        stats["raw_error"] = str(exc)[:300]
+        _fail(stats, f"원문 복사·정리 실패: {exc}", exc)
     return stats
+
+
+def _fail(stats: dict[str, Any], message: str, cause: BaseException | None = None) -> NoReturn:
+    """``RuntimeError``(+ ``.stats``) — 처리 함수(``handle_backup``)가 stats 와 함께 failed 로 남긴다."""
+    err = RuntimeError(message[:300])
+    err.stats = stats  # type: ignore[attr-defined]
+    if cause is not None:
+        raise err from cause
+    raise err

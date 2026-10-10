@@ -70,14 +70,17 @@ def _notify(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any]:
 
 def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
     """그 스냅샷의 마지막 점수 실행 **뒤**에 재판정을 부르는 사실 변경(change_event triggers_rejudge)이 있었던 지역 단지
-    (D12-5). 지역 단위 변경(생활권 편집 — complex_id 없음)이면 지역 단지 전부."""
+    (D12-5). 지역 단위 변경(생활권 편집 — complex_id 없음)이면 지역 단지 전부. 그 스냅샷 자신에 붙은 이벤트(그 스냅샷을
+    만든 수집이 찾은 변경 — 그 판정이 이미 반영)는 세지 않는다."""
     run_at = session.scalar(select(func.max(ScoreRun.created_at)).where(ScoreRun.snapshot_id == snap.id))
     if not run_at:
         return []
     rows = list(
         session.execute(
             select(ChangeEvent.complex_id, ChangeEvent.entity, ChangeEvent.entity_id).where(
-                ChangeEvent.triggers_rejudge.is_(True), ChangeEvent.detected_at > run_at
+                ChangeEvent.triggers_rejudge.is_(True),
+                ChangeEvent.detected_at > run_at,
+                (ChangeEvent.snapshot_id.is_(None)) | (ChangeEvent.snapshot_id != snap.id),
             )
         )
     )
@@ -170,9 +173,43 @@ def handle_collect_weekly(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
                 )  # fmt: skip
                 session.commit()
                 stats["rejudge_job_id"] = rj.id
+    if "rejudge_job_id" not in stats:
+        done = _finish_unchanged_revision(ctx, res.snapshot_id)
+        if done is not None:
+            stats["carry_forward"] = done
     if res.errors:
         raise JobError(f"수집 단계 오류: {', '.join(sorted(res.errors))}", stats)
     return stats
+
+
+def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[str, Any] | None:
+    """R3 4차 minor: 발행된 기준일에 주간 수집이 만든 새 리비전(building)이 변경 없이 남지 않게 — 재판정할 것이 없으면
+    바탕 리비전의 파생 행을 그대로 복사하고 발행한다(판정기 호출 0, 일일 수집의 '변경 없는 날'과 같은 규칙).
+    대기·실행 중인 잡이 그 스냅샷을 쓰거나 이미 점수 실행이 있으면 그대로 둔다."""
+    with ctx.session_factory() as session:
+        snap = session.get(Snapshot, snapshot_id)
+        if (
+            snap is None
+            or snap.status != "building"
+            or int(snap.revision or 1) <= 1
+            or snap.revision_of is None
+        ):
+            return None
+        if session.scalar(
+            select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == snapshot_id)
+        ):
+            return None
+        for job in session.scalars(select(JobRun).where(JobRun.status.in_(("queued", "running")))):
+            if (job.payload or {}).get("snapshot_id") == snapshot_id:
+                return None
+        base = session.get(Snapshot, snap.revision_of)
+        if base is None or base.status != "published":
+            return None
+        copied = carry_forward(session, base.id, snapshot_id, created_at=ctx.iso_now())
+        snap.status = "ready"
+        ok, n = snapshots.publish(session, snapshot_id, now=ctx.iso_now())
+        session.commit()
+        return {"from_snapshot_id": base.id, **copied, "published": ok, "contradicted": n}
 
 
 def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:

@@ -134,7 +134,12 @@ def test_living_areas_split_ok(client: TestClient) -> None:
     with get_session() as s:
         job = s.get(JobRun, body["job_id"])
         assert job is not None and job.job_name == "rejudge" and job.status == "queued"
-        assert job.payload["snapshot_id"] == 12
+        # M-2·D12-5: 재판정은 가장 새 기준일의 쓰기 가능 리비전(발행 12 의 새 리비전)에, change_event 도 거기
+        from app.models import Snapshot
+
+        rev = s.get(Snapshot, job.payload["snapshot_id"])
+        assert rev is not None and rev.revision_of == 12 and rev.status == "building"
+        assert body["change_event"]["snapshot_id"] == rev.id
         assert s.get(ChangeEvent, body["change_event"]["id"]) is not None
         region = s.scalars(select(Region).where(Region.id == 1)).one()
         assert any(a["name"] == "검단 북부" for a in region.living_areas)

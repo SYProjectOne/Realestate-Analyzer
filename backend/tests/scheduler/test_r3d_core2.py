@@ -14,7 +14,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -155,3 +158,58 @@ def test_m6_judge_version_change_on_unpublished_revision_1_gets_compare_base(
         assert default_compare(s, tid) == seeded
         job = s.scalars(select(JobRun).where(JobRun.job_name == "rejudge").order_by(JobRun.id.desc())).first()
         assert job is not None and job.payload["snapshot_id"] == tid and job.payload["complex_ids"] is None
+
+
+# ====================================================================== 백업 minor (D11-8·D12-6)
+
+
+def _fake_pg_dump(bin_dir: Path, seen: Path) -> None:
+    """PATH 의 가짜 pg_dump — 받은 PGPASSWORD 를 파일에 적고 덤프 파일을 만든다(실제 하위 프로세스 경로)."""
+    import os
+    import sys
+
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    script = bin_dir / "fake_pg_dump.py"
+    script.write_text(
+        "import os, sys, pathlib\n"
+        f"pathlib.Path({str(seen)!r}).write_text(os.environ.get('PGPASSWORD', ''), encoding='utf-8')\n"
+        "out = sys.argv[sys.argv.index('-f') + 1]\n"
+        "pathlib.Path(out).write_bytes(b'PGDMP')\n",
+        encoding="utf-8",
+    )
+    if os.name == "nt":
+        (bin_dir / "pg_dump.cmd").write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+    else:
+        exe = bin_dir / "pg_dump"
+        exe.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n', encoding="utf-8")
+        exe.chmod(0o755)
+
+
+def test_minor_backup_password_percent_decoded_keep_days_bound_and_oserror_stats(
+    test_settings: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import os
+    from datetime import datetime
+
+    from app.scheduler.backup import run_backup
+
+    seen = tmp_path / "seen.txt"
+    _fake_pg_dump(tmp_path / "bin", seen)
+    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setenv("BACKUP_DIR", str(tmp_path / "b"))
+    pg = test_settings.model_copy(
+        update={"database_url": "postgresql+psycopg://sa:p%40ss%3Aw%2Frd@db:5432/x"}
+    )
+    stats = run_backup(pg, now=datetime(2026, 10, 8, 3, 0))
+    assert stats["db"]["kind"] == "postgres"
+    assert seen.read_text(encoding="utf-8") == "p@ss:w/rd", "퍼센트 인코딩을 풀어 PGPASSWORD 로"
+    assert "p%40ss" not in str(stats) and "p@ss" not in str(stats), "비밀번호는 stats 에 없다"
+    with pytest.raises(RuntimeError, match="keep_days") as err:
+        run_backup(test_settings, now=datetime(2026, 10, 8, 3, 0), keep_days=100_000)
+    assert err.value.stats["day"] == "2026-10-08"  # type: ignore[attr-defined]
+    blocker = tmp_path / "file-not-dir"
+    blocker.write_text("x", encoding="utf-8")
+    monkeypatch.setenv("BACKUP_DIR", str(blocker))
+    with pytest.raises(RuntimeError, match="백업 폴더") as err2:
+        run_backup(test_settings, now=datetime(2026, 10, 8, 3, 0))
+    assert err2.value.stats["backup_dir"] == str(blocker), "OSError 도 stats 와 함께 실패"  # type: ignore[attr-defined]

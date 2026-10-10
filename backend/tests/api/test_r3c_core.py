@@ -164,7 +164,8 @@ def test_minor12_manual_done_reopens_while_demoted(client: TestClient) -> None:
         d = s.scalars(select(FactDemotion)).one()
         item_id = d.checklist_item_id
     r = client.patch(f"/api/ops/checklist/{item_id}", json={"status": "done"}, headers=WRITE)
-    assert r.status_code == 200 and r.json()["closed_by"] == "human"
+    # R3 4차 minor: 강등이 남았으면 그 자리에서 다시 열린다(다음 쓰기를 기다리지 않는다)
+    assert r.status_code == 200 and r.json()["status"] == "open" and r.json()["closed_by"] is None, r.json()
     with get_session() as s:
         sync_demotions(s)  # 쓰기 경로(파이프라인 시작·수집 끝)
         item = s.get(ChecklistItem, item_id)
@@ -335,11 +336,23 @@ def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClien
         )
     )
     assert next(x for x in rows if int(x["complex_id"]) == CX)["rejudge_needed"] == "1"
-    # 지역에 더 새 스냅샷이 생기면 이 스냅샷은 과거 기록 — 오늘 사실과 비교하지 않는다
+    # 더 새 스냅샷이 **발행 전**(ready·building)이면 이 스냅샷이 여전히 최신 — 배지 유지(D12-4·R3 4차 M-1)
     with get_session() as s:
         s.add(
             Snapshot(
-                region_id=1, asof_date="2099-12-31", status="ready", created_at="2099-12-31T00:00:00+09:00"
+                region_id=1, asof_date="2099-12-30", status="ready", created_at="2099-12-30T00:00:00+09:00"
+            )
+        )
+    items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=READ).json()["items"]
+    assert next(i for i in items if i["complex_id"] == CX)["rejudge_needed"] is True
+    # 더 새 스냅샷이 **발행**되면 이 스냅샷은 과거 기록 — 오늘 사실과 비교하지 않는다
+    with get_session() as s:
+        s.add(
+            Snapshot(
+                region_id=1,
+                asof_date="2099-12-31",
+                status="published",
+                created_at="2099-12-31T00:00:00+09:00",
             )
         )
     items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=READ).json()["items"]
@@ -374,7 +387,15 @@ def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestCl
         out["catalyst"]["expected_ym"]["v"] == "2028-06"
         and out["catalyst"]["expected_ym"]["label"] == "확인됨"
     )
-    assert out["job"] is not None and out["job"]["job_name"] == "rejudge", "연결이 바뀌면 점수 재계산"
+    # 계약 .9(D12-4, R3 4차 minor): 연결은 점수에 쓰지 않는다 — rejudge 대신 새 리비전을 바로 발행(그 시점 연결을 얼린다)
+    assert out["job"] is None
+    with get_session() as s:
+        rev = s.scalars(select(Snapshot).where(Snapshot.region_id == 1).order_by(Snapshot.id.desc())).first()
+        assert (
+            rev is not None
+            and rev.status == "published"
+            and (rev.revision_reason or "").startswith("호재 위치 확인")
+        )
     got = client.get(f"/api/complexes/{la2[0]}", params={"snapshot": SNAP}, headers=READ)
     assert got.status_code == 200, got.text
     detail = got.json()

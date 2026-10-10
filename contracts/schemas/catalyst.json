@@ -41,7 +41,7 @@
     },
     "CatalystPatch": {
       "title": "CatalystPatch",
-      "description": "PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인). 링크가 바뀌면 지역 최신 스냅샷에 rejudge(점수 재계산)를 등록한다.",
+      "description": "PATCH /catalysts/{id} 본문 — 사람이 위치를 확인하고 영향 범위를 지정한다(DECISIONS D11-5, 계약 2026-10-09.8). location_confirmed=true 면 catalyst_link 를 만든다: complex_ids(단지 직접 지정) + living_area_ids(그 생활권의 지역 단지 전부). 단지 좌표가 없으므로 distance_m=null, weight=1, 라벨 추정(reason '같은 생활권' 또는 '사람 지정'). false 면 연결을 모두 지운다(RA: 위치 미확정 = 연결 없음). expected_ym 은 사람이 확인한 완공·개통 예정월(출처 = 사람 확인), null 이면 지운다. lat·lon 은 유한한 숫자(NaN·무한대 422). '호재 아님' 후보는 location_confirmed=true 422. 연결이 바뀌면 판정·점수에 쓰지 않는 값이라 rejudge 없이 새 리비전을 바로 발행해 그 시점 연결을 얼린다(계약 .9, D12-4 — 응답 job 은 null).",
       "type": "object",
       "additionalProperties": false,
       "required": ["location_confirmed"],
@@ -77,7 +77,7 @@
       "properties": {
         "catalyst": { "$ref": "#" },
         "links": { "type": "array", "items": { "$ref": "#/$defs/CatalystLinkView" } },
-        "job": { "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
+        "job": { "description": "계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다", "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
       }
     },
     "CatalystCreated": {
@@ -88,7 +88,7 @@
       "required": ["catalyst", "job"],
       "properties": {
         "catalyst": { "$ref": "#" },
-        "job": { "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
+        "job": { "description": "계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다", "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
       }
     }
   },

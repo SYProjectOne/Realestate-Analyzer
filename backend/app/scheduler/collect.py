@@ -202,10 +202,16 @@ def _last_list_ids(session: Session, region_id: int, before_snapshot: Snapshot) 
 
 
 def _supply(session: Session, region_id: int) -> dict[str, int]:
-    rows = session.scalars(select(Complex).where(Complex.region_id == region_id).order_by(Complex.id))
+    """입주물량 추정 입력 — 강등 오버레이(D11-3·D12-2)를 적용한 입주월·세대수(R3 4차 minor: 원본 값으로 셌다)."""
+    from app.analysis.complex_input import masked
+    from app.facts_view import load_overlay
+
+    rows = list(session.scalars(select(Complex).where(Complex.region_id == region_id).order_by(Complex.id)))
+    ov = load_overlay(session, complex_ids=[c.id for c in rows])
+    views = [masked(c, ov.fields("complex", c.id)) for c in rows]
     inputs = [
         SupplyInput(complex_id=c.id, living_area=c.living_area, move_in_ym=c.move_in_ym, units=c.units_total)
-        for c in rows
+        for c in views
         if c.inclusion_class not in ("범위 경계",)
     ]
     stats = load_supply(session, region_id, estimate_supply(inputs))

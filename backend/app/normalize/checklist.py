@@ -160,7 +160,11 @@ def _day(x: Any) -> str | None:
 
 
 def _current_terms(terms: list[PaymentTerms]) -> PaymentTerms | None:
-    return max(terms, key=lambda t: (t.effective_from or "", t.id)) if terms else None
+    """현재 납부 조건 = ``analysis.price_view.current_terms``(effective_from → notice_no → id — 점수·화면과 같은 행,
+    R3 4차 minor: 예전에는 notice_no 를 건너뛰어 같은 날 공고 둘이면 다른 행을 골랐다)."""
+    from app.analysis.price_view import current_terms
+
+    return current_terms(terms)
 
 
 def _contract_end(items: list[Any]) -> str | None:
@@ -295,7 +299,9 @@ def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> Check
         by_complex[cid].append((key, group))
     for cx in complexes:
         if excluded_for_checklist(cx):
-            for _key, group in by_complex.get(cx.id, []):
+            for key, group in by_complex.get(cx.id, []):
+                if not _is_auto_key(key):
+                    continue  # 사람이 만든 항목은 사람이 닫는다(R3 4차 minor — 단지 제외로 auto 로 닫히던 것)
                 for it in group:
                     if it.status == "open" and it.kind not in PROTECTED_KINDS:
                         _close_auto(it, res)

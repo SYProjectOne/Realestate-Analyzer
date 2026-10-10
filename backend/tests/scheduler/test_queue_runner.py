@@ -138,11 +138,14 @@ def test_report_job_follows_wp8_contract(
 
     seen: list[tuple[dict[str, Any], bool]] = []
 
-    def fake_ok(payload: dict[str, Any], *, session: Session | None = None) -> dict[str, Any]:
+    def fake_ok(payload: dict[str, Any], *, session: Session | None = None, **kw: Any) -> dict[str, Any]:
+        assert isinstance(kw.get("job_id"), int), "잡 id 가 파일 이름에 들어간다(R3 4차 C-4)"
         seen.append((payload, session is not None))
         return {"path": "r.html", "filename": "r.html", "format": "html", "blocked_reason": None}
 
-    def fake_blocked(payload: dict[str, Any], *, session: Session | None = None) -> dict[str, Any]:
+    def fake_blocked(
+        payload: dict[str, Any], *, session: Session | None = None, **_kw: Any
+    ) -> dict[str, Any]:
         raise ReportBlocked("contradicted 2건")
 
     monkeypatch.setattr(report_job, "run_report_job", fake_ok)

@@ -3,7 +3,7 @@
 기대: official_site 403 응답 녹화 → ``intake_status=확인 불가``, ``http_status=403``, 화면 "확인 불가(403, 날짜)";
 상황 후보 제외; G7에서 사람 확인 "가능" 입력 → intake 행 추가 + rejudge job 1 → 후보 포함.
 
-시스템 경계: devseed DB → API(GET 단지·리스트, POST /ops/human-checks, POST /jobs) → worker(--once) → API.
+시스템 경계: devseed DB → API(GET 단지·리스트, POST /ops/human-checks — rejudge 자동 등록, 계약 .9) → worker(--once) → API.
 - 판정기 ``fake``(실제 어댑터 경로 + 결정적 전송): 흐름 자체(사람 확인 → 재판정 → D 후보 포함)를 본다.
 - 판정기 ``mock``(JUDGE_ADAPTER=mock — e2e 와 같은 구성): 같은 흐름이 후보 포함까지 가야 한다(RA §9 + e2e 흐름 b).
 """
@@ -38,15 +38,16 @@ def _human_check_then_rejudge(env: RegressEnv, judge: str) -> dict[str, Any]:
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["created_intake"]["status"] == "가능" and body["created_intake"]["path"] == "human_check"
-    job = env.client.post("/api/jobs", headers=WRITE, json=body["suggested_job"])
-    assert job.status_code == 202, job.text
+    # 계약 .9(D12-5): 사람 확인이 rejudge 를 자동 등록한다(화면이 POST /jobs 하지 않는다)
+    job_id = body["rejudge_job_id"]
+    assert job_id is not None and body["suggested_job"] is None
     with env.session() as s:
         n_rejudge = s.scalar(select(func.count()).select_from(JobRun).where(JobRun.job_name == "rejudge"))
     assert n_rejudge == 1  # rejudge job 1
     assert env.worker(env.ctx(judge)) == 0
     with env.session() as s:
         jobs = {j.id: (j.job_name, j.status, j.error_text) for j in s.scalars(select(JobRun))}
-    rj = jobs[job.json()["id"]]
+    rj = jobs[job_id]
     assert rj[1] == "done", jobs
     return jobs
 

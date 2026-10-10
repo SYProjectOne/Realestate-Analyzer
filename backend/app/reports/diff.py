@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -122,15 +122,24 @@ def _scopes(session: Session, snapshot_id: int, ids: Iterable[int], run: ScoreRu
     id_list = [i for i in id_list if i not in out]
     if not id_list:
         return out
-    types: dict[int, list[ComplexType]] = defaultdict(list)
-    pays: dict[int, list[PaymentTerms]] = defaultdict(list)
+    # 대체 계산도 보고서 본문·API 와 같은 입력: 강등 오버레이(D11-3·D12-2)로 모순 값을 가리고,
+    # 발행 리비전은 그 시점의 분류(D12-4 — 얼린 값). R3 4차 minor: 예전에는 원본 사실로 계산했다
+    from app.analysis.complex_input import masked
+    from app.facts_view import load_overlay
+    from app.snapshot_state import load_state
+
+    ov = load_overlay(session, complex_ids=id_list)
+    frozen = load_state(session, snapshot_id)
+    types: dict[int, list[Any]] = defaultdict(list)
+    pays: dict[int, list[Any]] = defaultdict(list)
     for t in session.scalars(select(ComplexType).where(ComplexType.complex_id.in_(id_list))):
-        types[t.complex_id].append(t)
+        types[t.complex_id].append(masked(t, ov.fields("complex_type", t.id)))
     for p in session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id.in_(id_list))):
-        pays[p.complex_id].append(p)
+        pays[p.complex_id].append(masked(p, ov.fields("payment_terms", p.id)))
     intakes = _intake_rows(session, snapshot_id)
     for cx in session.scalars(select(Complex).where(Complex.id.in_(id_list))):
-        out[cx.id] = complex_scope(cx, types[cx.id], pays[cx.id], intakes.get(cx.id, [])).scope
+        view = frozen.complex(cx) if frozen is not None else cx
+        out[cx.id] = complex_scope(view, types[cx.id], pays[cx.id], intakes.get(cx.id, [])).scope
     return out
 
 

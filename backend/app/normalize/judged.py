@@ -255,9 +255,18 @@ def _reresolve(
     detected_at: str,
 ) -> tuple[FieldProvenance | None, list[ChangeEvent]]:
     """그 필드의 모든 출처를 다시 resolve(RA §3) → chosen·conflict_group 갱신 + 사실 테이블 값."""
-    rows = _group_rows(session, entity, entity_id, field_name)
+    from app.normalize.store import _foreign_unit_row, _own_key
+
+    own_key = _own_key(session, entity, entity_id)
+    # 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행은 후보가 아니다
+    # (저장 경로와 같은 규칙 — R3 4차 minor)
+    rows = [
+        fp for fp in _group_rows(session, entity, entity_id, field_name) if not _foreign_unit_row(fp, own_key)
+    ]
     kinds = _kinds(session, rows)
     cands = [_candidate(fp, kinds.get(fp.raw_document_id or -1)) for fp in rows]
+    if not cands:
+        return None, []
     resolved = resolve(cands)
     fps = upsert_provenance(session, list(resolved.provenance))
     chosen_fp = next((fp for fp in fps if fp.chosen), None)

@@ -35,6 +35,7 @@ from app.api.views import (
 )
 from app.core.contracts_gen import Scenario as ScenarioDTO
 from app.models import Complex, Decision, JudgmentLog, Region, Scenario, ScoreRun, Snapshot
+from app.snapshot_state import region_for
 
 router = APIRouter(tags=["analysis"])
 
@@ -154,7 +155,7 @@ def get_compare(
     if missing:
         raise not_found(f"complex {missing[0]} in snapshot {sid}")
     region = session.get(Region, snap.region_id)
-    names = area_names(region)
+    names = area_names(region_for(session, region, snap.id))
     bundles = load_bundles(session, list(complexes.values()), snap.id, scenario_id=sc.id)
     ctx = score_ctx(session, snap.id, sc)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))

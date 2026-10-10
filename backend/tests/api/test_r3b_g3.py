@@ -190,7 +190,7 @@ def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) 
     body = hc.json()
     validate("createHumanCheck", 201, body)
     assert (body["entity"], body["entity_id"]) == ("complex", CX)
-    assert body["suggested_job"]["job_name"] == "rejudge" and body["change_event_id"] is not None
+    assert body["rejudge_job_id"] is not None and body["change_event_id"] is not None  # D12-5 자동 등록
     with get_session() as s:
         assert s.get(Complex, CX).resale_months == 24  # type: ignore[union-attr]
         chosen = _chosen(s, "complex", CX, "resale_months")

@@ -102,16 +102,20 @@ AUTH_HEADER_RE = re.compile(
     r"|(?=[A-Za-z0-9]*[\-._~+/])" + _TOKEN_CH + r"{8,}=*"  # 토큰 기호가 든 8자 이상
     r"|" + _TOKEN_CH + r"{16,}=*"  # 16자 이상
     r")"
+    r"|\bBearer\s+((?=" + _TOKEN_CH + r"*[\d\-._~+/])" + _TOKEN_CH + r"{4,7}=*)(?!" + _TOKEN_CH + r")"
+    # R3 4차 minor: 대문자 'Bearer' 뒤 숫자·토큰 기호가 든 4~7자 짧은 토큰도
+    # (소문자 낱말 'bearer of' 는 그대로)
 )
 """Authorization 헤더 값(``Authorization: Bearer …``·``Basic …``·``Token …``)과 홀로 나온 ``Bearer <토큰>``
 (토큰 모양만 — 'the bearer of …'·'bearer bonds' 같은 글은 그대로)."""
 HEADER_KEY_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9_-])((?:x-)?[a-z0-9-]*?"
-    r"(?:api-?key(?:-id)?|apikey|client-?secret|client-?id|access-?token|auth-?token|secret-?key|"
-    r"secret|token|password|passwd)"
+    r"(?i)(?<![A-Za-z0-9_-])((?:x-)?[a-z0-9_-]*?"
+    r"(?:api[-_]?key(?:[-_]id)?|apikey|client[-_]?secret|client[-_]?id|access[-_]?token|auth[-_]?token|"
+    r"refresh[-_]?token|secret[-_]?key|secret|token|password|passwd)"
     r")[\"']?\s*[:=]\s*[\"']?\s*(" + _TOKEN + ")"
 )
-"""이름으로 비밀임을 아는 헤더·키 뒤의 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``·``"X-Api-Key": "…"``)."""
+"""이름으로 비밀임을 아는 헤더·키 뒤의 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``·``"X-Api-Key": "…"``,
+snake_case ``client_secret=…``·``access_token: …`` — R3 4차 minor)."""
 _PHONE_KEY_RE = re.compile(r"(?i)(phone|tel|mobile|fax|전화|연락처|휴대)")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 QUERY_KEY_RE = re.compile(
@@ -210,7 +214,7 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
             if not overlaps(m.start(), m.end()):
                 taken.append(Finding("secret", m.start(), m.end()))
     for m in AUTH_HEADER_RE.finditer(text):
-        group = 1 if m.group(1) is not None else 2
+        group = next(g for g in (1, 2, 3) if m.group(g) is not None)
         a, b = m.start(group), m.end(group)
         if not overlaps(a, b):
             taken.append(Finding("secret", a, b))

@@ -334,11 +334,11 @@ def test_m16_building_revision_cannot_make_report(client: TestClient) -> None:
 # ====================================================================== M-1 · M-2 · M-3 · D12-5
 
 
-def _event_after_run(cx_id: int) -> None:
+def _event_after_run(cx_id: int, snapshot_id: int = SNAP) -> None:
     from app.models import ChangeEvent
 
     with get_session() as s:
-        s.add(ChangeEvent(snapshot_id=SNAP, entity="complex", entity_id=cx_id, field="move_in_ym", old_text="2028-01",
+        s.add(ChangeEvent(snapshot_id=snapshot_id, entity="complex", entity_id=cx_id, field="move_in_ym", old_text="2028-01",
                           new_text="2028-06", detected_at="2099-01-01T00:00:00+09:00", severity="notice",
                           triggers_rejudge=True, complex_id=cx_id))  # fmt: skip
 
@@ -414,7 +414,9 @@ def test_d12_5_carry_forward_rejudges_complexes_changed_after_previous_run(clien
     from app.scheduler.context import SchedulerContext
     from app.scheduler.handlers import _after_daily
 
-    _event_after_run(CX)
+    # 사람 확인이 만든 리비전(판정 중 — 재판정이 아직 안 돈)에 붙은 변경: 다음 날 이월이 옛 점수를 복사하면 안 된다
+    rev = _revision_of(SNAP, publish=False)
+    _event_after_run(CX, snapshot_id=rev)
     with get_session() as s:
         base = s.get(Snapshot, SNAP)
         assert base is not None
@@ -583,3 +585,130 @@ def test_minor_not_catalyst_cannot_be_linked_and_expected_ym_can_be_cleared(clie
     )
     assert r.status_code == 200, r.text
     assert r.json()["catalyst"]["expected_ym"]["v"] is None, "null 로 지운다"
+
+
+# ====================================================================== M-7 · D12-4 (리비전 3개, 옛 리비전 바이트 불변)
+
+
+def test_d12_4_old_revision_responses_do_not_change_after_later_edits(client: TestClient) -> None:
+    """발행 리비전 2(얼린 값) → 리비전 3 발행으로 옛 리비전이 된 뒤, 분류·생활권 이름·호재 단계·연결을 바꾸고 리비전을 더
+    만들어도 리비전 2 의 상세·목록·시장·대시보드 응답 바이트와 보고서 데이터(생활권·호재·분류)가 그대로다(M-7)."""
+    from app.models import Catalyst
+    from app.reports.data import load_report
+    from app.scheduler.snapshots import republish
+
+    with get_session() as s:
+        cat = Catalyst(region_id=1, name="리비전 테스트 역", kind="교통", stage="계획", location_confirmed=False)  # fmt: skip
+        s.add(cat)
+        s.flush()
+        cat_id = cat.id
+    r = client.patch(
+        f"/api/catalysts/{cat_id}", json={"location_confirmed": True, "complex_ids": [CX]}, headers=WRITE
+    )
+    assert r.status_code == 200, r.text  # → 리비전 2(발행·얼림)
+    with get_session() as s:
+        rev2 = s.scalars(select(Snapshot).where(Snapshot.region_id == 1).order_by(Snapshot.id.desc())).first()
+        assert rev2 is not None and rev2.status == "published" and rev2.revision == 2
+        rev2_id = rev2.id
+        rev3 = republish(s, 1, reason="테스트 리비전 3", created_at="2026-10-09T12:00:00+09:00")
+        assert rev3 is not None and rev3.revision == 3
+    urls = [
+        f"/api/complexes/{CX}?snapshot={rev2_id}",
+        f"/api/snapshots/{rev2_id}/complexes?size=200",
+        f"/api/snapshots/{rev2_id}/market",
+        f"/api/snapshots/{rev2_id}/dashboard",
+    ]
+    before = {u: client.get(u, headers=READ) for u in urls}
+    assert all(r.status_code == 200 for r in before.values()), {u: r.text[:200] for u, r in before.items()}
+    detail = before[urls[0]].json()
+    assert any(c["id"] == cat_id for c in detail["catalysts"]), "리비전 2 에 그 시점 연결"
+
+    def report_view() -> tuple[Any, ...]:
+        with get_session() as s:
+            data = load_report(s, rev2_id, scenario_id=None, compare_snapshot_id=None)
+            cx = next(c for c in data.complexes if c.id == CX)
+            return (
+                [(a.get("id"), a.get("name")) for a in data.living_areas],
+                sorted((c.name, c.stage) for c in data.catalysts),
+                (cx.living_area, cx.living_area_name, cx.inclusion_class),
+            )
+
+    rep_before = report_view()
+    # 나중 편집: 분류(classify 재판정 결과)·생활권 이름·호재 단계(호재 아님)·연결 해제 + 리비전 더
+    with get_session() as s:
+        cx = s.get(Complex, CX)
+        assert cx is not None
+        cx.inclusion_class = "범위 경계"
+        c2 = s.get(Catalyst, cat_id)
+        assert c2 is not None
+        c2.stage = "호재 아님"
+    region = client.get("/api/regions/1", headers=READ).json()
+    areas = [
+        {"id": a["id"], "name": a["name"] + " (개명)", "legal_dong_codes": a["legal_dong_codes"]}
+        for a in region["living_areas"]
+    ]
+    r = client.put("/api/regions/1/living-areas", json={"living_areas": areas}, headers=WRITE)
+    assert r.status_code == 200, r.text
+    r = client.patch(f"/api/catalysts/{cat_id}", json={"location_confirmed": False}, headers=WRITE)
+    assert r.status_code == 200, r.text
+    after = {u: client.get(u, headers=READ) for u in urls}
+    for u in urls:
+        assert after[u].content == before[u].content, f"옛 리비전 응답이 바뀌었다(D12-4): {u}"
+    assert report_view() == rep_before, "옛 리비전 보고서 데이터(생활권·호재·분류) 불변"
+    # 지금 값(판정 중인 새 리비전 — 아직 얼리지 않음)은 바뀐 값을 본다
+    with get_session() as s:
+        newest = s.scalars(
+            select(Snapshot).where(Snapshot.region_id == 1).order_by(Snapshot.id.desc())
+        ).first()
+        assert newest is not None and newest.status == "building" and newest.id != rev2_id
+    live = client.get(f"/api/snapshots/{newest.id}/market", headers=READ).json()
+    assert all(c["id"] != cat_id for c in live["catalysts"]), "새 리비전에는 '호재 아님'이 빠진다"
+
+
+# ====================================================================== 보안·사람 확인 minor
+
+
+def test_minor_complex_detail_rejects_snapshot_of_other_region(client: TestClient) -> None:
+    from app.models import Region
+
+    with get_session() as s:
+        other = Region(name="다른 지역", query_text="x", selections=[], sido_codes=[], sigungu_codes=[],
+                       legal_dong_codes=[], living_areas=[], age_premium_coef={}, applyhome_query={}, status="ready",
+                       created_at="2026-10-09")  # fmt: skip
+        s.add(other)
+        s.flush()
+        snap = Snapshot(region_id=other.id, asof_date="2026-10-08", status="published", degraded=False,
+                        created_at="2026-10-08", revision=1)  # fmt: skip
+        s.add(snap)
+        s.flush()
+        sid = snap.id
+    r = client.get(f"/api/complexes/{CX}", params={"snapshot": sid}, headers=READ)
+    assert r.status_code == 404, r.text
+
+
+@pytest.mark.parametrize(
+    ("field", "text", "ok"),
+    [
+        ("resale_months", "3년", 36),  # 개월 필드의 'N년' = N×12 (예전: 3개월)
+        ("resale_months", "1E1", None),  # 지수 표기 거부(예전: 10)
+        ("resale_months", "12%", None),  # 다른 단위
+        ("down_payment_pct", "10%", 10.0),
+        ("down_payment_pct", "10년", None),
+    ],
+)
+def test_minor_human_value_units_and_plain_numbers(
+    client: TestClient, field: str, text: str, ok: Any
+) -> None:
+    from app.api.demotion import ValueParseError, human_target, parse_human_value
+
+    from .test_r3b_g3 import _ensure_resale
+
+    _ensure_resale(12)
+    with get_session() as s:
+        target = human_target(s, CX, field)
+        assert target is not None
+        if ok is None:
+            with pytest.raises(ValueParseError):
+                parse_human_value(target, text)
+        else:
+            assert parse_human_value(target, text) == ok
