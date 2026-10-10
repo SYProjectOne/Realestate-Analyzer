@@ -1,0 +1,24 @@
+# R3 6차 리뷰 (main dd8b726, 계약 2026-10-09.10) — 새 critical 2 / major 5 / minor 28
+
+5차 항목: critical 3 = 해결 2(K1·K3)·부분 1(K2 — 출처 서랍 실시간, C2). major 10 = 해결 7(M1·M3·M4·M5·M6·M7·M8)·부분 3(M2 이월 기준 시각 리비전 단위 → N-M5, M9 조건부 할인 '확인됨' → C1, M10 원 단지 후보 입주월만 → m16). minor 15 = 해결 14·부분 1(m13 IDNA 무시 문자 목록 → m10). 4차 RA 부분 6 = 해결 4·부분 1(할인 C1)·수용 1(archive 압축).
+
+실행: pytest `-m "not live"` 3063 passed(부하, 1445s, 실패 0), 성능 테스트 별도 2회 5/5, mypy 163 files 0, ruff·format 통과, gen·fixtures --check exit 0, regress 715 passed + e2e 흐름 3/3, 프론트 typecheck·lint 0, vitest 584/584(부하 회차에 r3d "PATCH /regions 이름만 변경" 5017ms 타임아웃 1회, 단독 통과), build 성공, e2e 45+20, e2e:api 27, npm audit 0. 재현: scratchpad `a/`(저장본·마이그레이션·성능), `b/`(사람 확인·M2·M9), `c/`(보고서·redact), `d/`(safeHref).
+
+## Critical
+- **C1 조건 붙은 할인이 '확인됨'으로 구매가에서 빠짐** (M9 부분, WP2) `normalize/notice_parser.py:784` `_discount_line`이 금액 **앞**만 조건 검사, '할인' 뒤 첫 금액을 집음. `'84A 분양가 할인 10,000,000원(1~3층)'`, `'… 잔금 완납 시 분양가 할인 5,000,000원'`, `'…(특별공급 당첨자 한정)'`, `'… 최대 10,000,000원'` → 전부 '확인됨'; `'84A 분양가 할인 없음, 취득세 지원 3,000,000원'` → (3000000, '확인됨'). 계약 S12("층·동·호 조건 없음만 확인됨") 위반, `price_view.current_price` 전 경로에 차감.
+- **C2 발행 리비전의 출처 서랍(G3 ProvenanceTab)이 실시간** (K2 잔여, D13-1 위반, WP5) `api/routers/complexes.py:624-633`(`GET /provenance/{id}` 스냅샷 인자 없음), `_field_prov` `:507-580`(현재 출처 행·chosen·충돌·`load_overlay`). 발행 뒤 새 공고·재수집·강등 → 상세 바이트 불변인데 서랍 `fp_11 chosen True→False; fp_63 chosen True→False, conflicts 0→2`. 입주물량 재수집은 출처 행 삭제(`collectors/stats/supply.py:224-228`) → 서랍 404(추정).
+
+## Major
+- **N-M1 사용자 시나리오 보고서가 시나리오 실행 리비전에서 항상 실패** (WP8·WP5) `reports/data.py:2056`, `export.py:116-117` — 비교 기준(`revision_of`)이 시나리오 생성 전 발행이라 저장본 없음: `failed NotInRevision: 발행 리비전 12 에 report[-·시나리오 6] 저장본 없음`. POST는 202. CLI `--scenario` 동일. `diff.py:219` 사용자 시나리오 `code` NULL(추정).
+- **N-M2 저장본에 스키마·계약 버전 없음, 읽을 때 sha256 미검증** (WP0·WP5) `snapshot_view.py:124-133` — 본문 조작 시 200. 다음 계약 형 변경 때 옛 리비전이 옛 모양 JSON을 새 이름으로 냄(추정).
+- **N-M3 발행 비용이 단지 × 시나리오에 비례하고 요청 안에서 돎** (WP5·WP7) `snapshot_view.py:353`, `scheduler/snapshots.py:196-203`, 호재 연결 PATCH도 요청 안 publish(`snapshots.py:145-166`). 1016단지 × 시나리오 5: 28.8s, 5136행, 19.3MB. SQLite 쓰기 잠금(추정).
+- **N-M4 사람 확인 `checked_at` 형식·미래 검사 없음** (WP5·WP0) `contracts/schemas/human_check.json:59`(minLength 10만), `api/demotion.py:616`(`[:10]`) — 미래 날짜·`zzzzzzzzzz` 201; 미래 날짜 사람 확인은 이후 어떤 공식 공고에도 지지 않음(D12-1·D13-2 우회).
+- **N-M5 이월·재판정 기준 시각이 리비전 전체의 최근 점수 실행 하나** (M2 부분, WP7) `scheduler/handlers.py:80,100` — 단지 A rejudge 실패 뒤 다른 단지만 재판정한 실행이 성공하면 A의 이벤트·실패가 가려짐(`before_partial=True after_partial=False`).
+
+## Minor
+1 `claims.py:114-137` 발행 리비전 claims 목록이 현재 강등 오버레이(PATCH 뒤 50→51)(WP5). 2 `0010_r3e.py:47-61` 마이그레이션이 앱 코드·최신 ORM import → 이후 열 추가 시 0009→head 깨짐(추정)(WP0). 3 `devseed.py:1310-1315` `drop_all`이 `snapshot_state` 모름 → FK 오류, reset 뒤 `alembic_version` 0009 잔존(WP5). 4 `reports/data.py:1947` `generated_at`이 저장본에 고정(WP8). 5 `reports.py:74-84` 비교 대상 자기 자신·더 새 리비전 허용(WP5). 6 `reports.py:93-115` Windows 드라이브 상대 `x/C:outside.txt`(추정)(WP5). 7 `diff.py:179` 다른 지역 단지 이름까지 저장(WP8). 8 `contracts/examples/market.json` la_2 `n_trades` 0건 Fact 라벨 '재가공'·basis "건수 미상" 불일치(WP0). 9 `redact.py` PEM 본문·JSON `"private_key"` 첫 토큰만(WP0). 10 `_text.py:133` UTS46 무시 문자 U+2064·U+E0100~E01EF·U+1BCA0~1BCA3 통과(WP2). 11 `demotion.py:504` 나중 공고 값이 사람 확인 값과 같아도 422(WP5). 12 `resolver.py:124`, `demotion.py:512` `checked_at[:10]` 문자열 비교 → UTC/KST 경계 오류(WP2·WP5). 13 사람 확인 → 새 공고에 짐 → 재확인 뒤에도 '사람 확인 재검토' open(WP5). 14 `store.py:980` .9 행 단위 사람 확인이 의미 묶음으로 미이전(개발 DB)(WP2·WP0). 15 `rejudge.py:58-66` SQLite 같은 트랜잭션 읽기 후 합치기 `database is locked`(추정)(WP7). 16 `store.py:601` M10 원 단지 후보가 입주월뿐, 일정 변경 미수용(WP2). 17 `living_area.py:259` 모호 법정동이 기존 `legal_dong_code`까지 None(추정)(WP2). 18 `facts_view.py:233,405` 의미 키 규칙 복제(WP2). 19 `handlers.py:342` bootstrap materialize 실패 시 지역 failed(추정)(WP7). 20 FE `complex/tabs.tsx:17-21` `discount_applied` 없음 → null(계약 기본 false)(WP6). 21 FE `reports/index.tsx:51-63` 지역 변경 시 baseId·compareId 미초기화 → 이전 지역 스냅샷 POST, 같은 id 비교 허용(WP6). 22 FE `hooks.ts:593-600` useJob 오류 1회로 폴링 영구 중단, 재시도 없음(WP6). 23 FE `hooks.ts:219-226` `/jobs?status=queued` size 없음(50건), 5xx 동안 3초 폴링 무한(WP6). 24 FE `_shared/index.tsx:111-121` `isScenarioMissing`가 code 미확인 → 다른 404도 시나리오 안내(WP6). 25 FE `scenario/index.tsx` G5 '이후' 조회 실패 시 오류 문구 없음(추정)(WP6). 26 CHANGELOG S3 발행 저장본 dev '확인 불가(출처 누락)' ↔ RA T13 "dev 500" — DECISIONS 미기재(CEO). 27 `test_r3e_invariant.py:128-256` 불변 테스트 URL 목록에 market `?scenario=`·출처 서랍·claims·사용자 시나리오 보고서·compare 누락(WP5·WP9). 28 0010 Postgres 왕복 테스트 픽스처가 단지·시나리오 없는 지역뿐(`test_migrations.py:735-748`)(WP0).
+
+## RA 대비 누락·부분
+- 누락 0.
+- 부분: §7-1 G3 ProvenanceTab 발행 리비전 실시간(C2); §6-1/D11-6 조건부 할인(C1); §8 WP8·meta §2-8 사용자 시나리오 보고서(N-M1); §10 판정기 복구 뒤 미처리 rejudge(N-M5).
+- 수용(결정 대체): G7 배지 즉시 갱신(D11-1·D13-1), G8 형식 html·pdf(D4), T13 dev 500(→ D14-8 기재), §10 rawdata 월별 압축(runbook 수동), T16 발행 비용(RA 미정의 → D14-5 기준).
