@@ -110,7 +110,11 @@ def normalize_apt_name(name: str) -> str:
     """단지명 정규화(문자열 처리만, D10-5): NFKC·소문자, 잔여 공고 회차·공급 구분 괄호 제거, 한글·영문·숫자 밖 문자
     제거. 차수·단지·블록 번호는 남긴다. '힐스테이트 레이크 송도(2차)' == '힐스테이트레이크송도2차',
     'AA13-1블록' != 'AA13-2블록'."""
-    s = strip_supply_round(unicodedata.normalize("NFKC", name)).lower()
+    # 공급 구분 괄호를 **먼저** 뗀다(R3 5차 minor: NFKC 가 'Ⅱ' 를 'II' 로 바꾼 뒤 지우면 '(Ⅱ 잔여세대)'·'(Ⅲ 잔여세대)'·
+    # '(잔여세대)' 가 같은 키였다). 블록 표기 변형('블럭'·'BL')은 '블록' 하나로(같은 블록)
+    s = unicodedata.normalize("NFKC", strip_supply_round(name)).lower()
+    s = re.sub(r"블럭", "블록", s)
+    s = re.sub(r"(?<=\d)\s*bl(?![a-z])", "블록", s)
     # 숫자 사이 하이픈은 남긴다 — 지우면 'AA1-31' 과 'AA13-1' 이 같은 키가 된다(R3 4차 minor)
     s = re.sub(r"(?<=\d)\s*[-‐–]\s*(?=\d)", "-", s)
     return re.sub(r"[^0-9a-z가-힣-]|(?<!\d)-|-(?!\d)", "", s)

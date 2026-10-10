@@ -13,6 +13,8 @@
 문자열 매칭과 산술뿐이다(판단 아님). 지역명은 참조 테이블에서만 온다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import re
@@ -256,7 +258,10 @@ def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
     in_region = code is not None and code in scope
     cx.legal_dong_code = code
     cx.living_area = living_area_of(code, region.living_areas or []) if in_region else None
-    if not in_region and (code is not None or cx.inclusion_class in (None, "미분류")):
+    # 법정동을 못 정했는데 같은 이름 읍면동 후보가 있었다(여러 시군구 — 모호): 분류와 무관하게 '범위 경계'(판정 범위 제외,
+    # 법정동 확인 불가) — R3 5차 minor: 이전 분류('포함')로 판정 대상에 남았다
+    ambiguous = code is None and bool(rows)
+    if not in_region and (code is not None or ambiguous or cx.inclusion_class in (None, "미분류")):
         cx.inclusion_class = "범위 경계"
     return AssignResult(cx.id, code, cx.living_area, in_region)
 

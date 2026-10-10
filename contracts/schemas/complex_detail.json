@@ -38,7 +38,8 @@
         "price_mid": { "$ref": "fact.json" },
         "composition": { "type": ["string", "null"] },
         "change_vs_first_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
-        "discount": { "description": "공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
+        "discount": { "description": "공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+        "discount_applied": { "x-nonfact": "서버 계산 여부 플래그(값 아님)", "description": "계약 2026-10-09.10(R3 5차 minor): discount 를 low·high·mid 에서 **실제로 뺐는가**(서버 판정 — 라벨 확인됨 + 0 < 할인 < 대표층가·최고가). 화면의 '구매가에서 뺌' 문구는 이 값만 본다(0·음수·과대·추정 할인은 false). 할인이 없으면 false", "type": "boolean", "default": false }
       }
     },
     "GapComp": {

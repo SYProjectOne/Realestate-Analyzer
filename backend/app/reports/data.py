@@ -303,14 +303,21 @@ class ComplexView:
     current_scope: str = ""  # 현재 사실로 계산한 범위(policy.judge_scope, D9-1)
     current_scope_text: str = ""
     current_reason: str = ""
+    changed_after_run: bool = False
+    """점수 실행 뒤 재판정을 부르는 변경(change_event triggers_rejudge — 단지·지역 단위)이 있었다(API 와 같은 규칙,
+    R3 5차 minor: 보고서 '재판정 필요'가 범위가 같으면 바뀐 사실을 반영하지 않았다)."""
 
     @property
     def rejudge_needed(self) -> bool:
-        """저장값과 현재 사실의 범위가 다르다(D10-1 '재판정 필요' 배지)."""
-        return self.scope_source == "스냅샷 저장값" and self.current_scope != self.judge_scope
+        """저장값과 현재 사실의 범위가 다르거나 점수 실행 뒤 재판정을 부르는 변경이 있었다(D10-1 '재판정 필요' 배지)."""
+        return self.scope_source == "스냅샷 저장값" and (
+            self.current_scope != self.judge_scope or self.changed_after_run
+        )
 
     @property
     def rejudge_text(self) -> str:
+        if self.current_scope == self.judge_scope and self.changed_after_run:
+            return "재판정 필요 — 점수 실행 뒤 사실이 바뀌었다(가격·입주월·사람 확인·강등·생활권 등)"
         return f"재판정 필요 — 현재 사실로는 {self.current_scope_text}({self.current_reason})"
 
     @property
@@ -867,7 +874,7 @@ class _Loader:
             basis = next((tv for tv in tviews if tv.type_code == view.basis_type_code), None)
             if basis is not None:
                 basis.is_basis = True
-            low, high = self._price(view, my_pays)
+            low, high = self._price(view, my_pays, my_types)
             cur_terms = current_terms(my_pays)
             pviews = [
                 PaymentView(
@@ -983,7 +990,22 @@ class _Loader:
             )
         return out
 
-    def _price(self, view: PriceView, pays: Sequence[PaymentTerms]) -> tuple[Fact, Fact]:
+    def _price_demoted(self, view: PriceView, pays: Sequence[Any], types: Sequence[Any]) -> bool:
+        """기준 타입 가격이 강등(검증 모순)으로 가려졌는가 — 공고문 타입 행 또는 현재 공고의 그 타입 가격(D11-3·D12-2)."""
+        code = view.basis_type_code
+        if code is None:
+            return False
+        ov = self.prov.overlay
+        if any(ov.is_demoted("complex_type", t.id, "max_price_won") for t in types if t.type_code == code):
+            return True
+        cur = current_terms(pays)
+        return cur is not None and ov.is_demoted(
+            "payment_terms", cur.id, f"price_by_type.{code}.max_price_won"
+        )
+
+    def _price(
+        self, view: PriceView, pays: Sequence[PaymentTerms], types: Sequence[Any] = ()
+    ) -> tuple[Fact, Fact]:
         """§6-1 현재 구매가(84㎡ 판정 타입): (대표층 ~ 최고가) + 발코니 + 필수 옵션. 더하면 '추정(산술)'.
 
         값은 ``policy.current_price``(= ``analysis.price_view.current_price``) 하나 — 최신 공고
@@ -994,6 +1016,8 @@ class _Loader:
             return unknown_fact(why, unit="won"), unknown_fact(why, unit="won")
         if not view.known or view.max_ref is None:
             why = view.empty_reason or "최고가 확인 불가"
+            if self._price_demoted(view, pays, types):
+                why = DEMOTION_REASON  # R3 5차 minor: 강등된 가격은 API 와 같이 '검증 모순'(예전 '분양가 미공개')
             return unknown_fact(why, unit="won"), unknown_fact(why, unit="won")
         P = self.prov
         ref = view.max_ref
@@ -1848,6 +1872,9 @@ def load_report_live(
     runs = {sc.id: r for sc in scenarios if (r := _latest_run(session, snap.id, sc.id)) is not None}
     run = runs.get(scenario.id)
     _apply_stored_scopes(complexes, _stored_scopes(session, run), snap.id)
+    changed = _changed_after_run(session, snap, run, [c.id for c in complexes])
+    for cv in complexes:
+        cv.changed_after_run = cv.id in changed
     names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.region_id == region.id))}
     ctx = _Ctx(
         session, snap, region, loader, ids, complexes, {c.id: c for c in complexes}, names, snap.asof_date
@@ -2031,6 +2058,45 @@ def load_report(
     if compare is not None:
         data.extra = _extra(data, payload, _payload(session, compare, scenario), compare)
     return data
+
+
+def _changed_after_run(session: Session, snap: Snapshot, run: ScoreRun | None, ids: list[int]) -> set[int]:
+    """점수 실행 뒤 재판정을 부르는 변경이 있었던 단지(API ``views.load_bundles`` 와 같은 규칙 — 단지 단위 + 지역 단위
+    이벤트). 발행 리비전은 지역의 가장 새 발행 리비전일 때만 비교한다(과거 리비전은 그때의 기록, D13-1 저장 시점)."""
+    if run is None or not run.created_at or not ids:
+        return set()
+    if snap.status == "published":
+        from app.api.views import latest_snapshot_id
+
+        if latest_snapshot_id(session, snap.region_id) != snap.id:
+            return set()
+    region_level = session.scalars(
+        select(ChangeEvent.id)
+        .where(
+            ChangeEvent.complex_id.is_(None),
+            ChangeEvent.entity == "region",
+            ChangeEvent.entity_id == snap.region_id,
+            ChangeEvent.triggers_rejudge.is_(True),
+            ChangeEvent.detected_at > run.created_at,
+        )
+        .limit(1)
+    ).first()
+    if region_level is not None:
+        return set(ids)
+    out: set[int] = set()
+    for i in range(0, len(ids), 500):
+        out |= {
+            int(c)
+            for c in session.scalars(
+                select(ChangeEvent.complex_id).where(
+                    ChangeEvent.complex_id.in_(ids[i : i + 500]),
+                    ChangeEvent.triggers_rejudge.is_(True),
+                    ChangeEvent.detected_at > run.created_at,
+                )
+            )
+            if c is not None
+        }
+    return out
 
 
 def _candidates(session: Session, run: ScoreRun | None, ids: set[int]) -> set[int]:

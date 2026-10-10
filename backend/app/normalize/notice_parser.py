@@ -259,8 +259,17 @@ def _house_no(raw: RawDocument, text: str) -> str:
     qs = parse_qs(urlsplit(raw.url).query)
     if "pblancNo" in qs:
         return qs["pblancNo"][0]
-    m2 = _THIS_NO_RE.search(text)
-    return m2.group(1) if m2 else ""
+    return _this_no(text)
+
+
+def _this_no(text: str) -> str:
+    """이 공고의 주택관리번호: '…주택관리번호는 N' 중 '최초 주택관리번호는' 이 아닌 첫 것 — R3 5차 minor: 두 줄의 순서가
+    바뀌면('최초' 줄이 먼저) 원 단지 번호를 이 공고 번호로 읽었다."""
+    for m in _THIS_NO_RE.finditer(text):
+        if re.search(r"최초\s*$", text[max(0, m.start() - 8) : m.start()]):
+            continue
+        return m.group(1)
+    return ""
 
 
 def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
@@ -274,8 +283,8 @@ def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
     notice_kind = (
         "임의"
         if kind_text.startswith("임의")
-        else "무순위"
-        if kind_text.startswith(("무순위", "계약취소"))
+        else "무순위"  # '재공급'(계약취소 주택 재공급)도 무순위 공급 — R3 5차 minor: '본청약'으로 분류됐다
+        if kind_text.startswith(("무순위", "계약취소", "재공급"))
         else "선착순"
         if kind_text.startswith("선착순")
         else "본청약"

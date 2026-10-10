@@ -486,3 +486,100 @@ def test_m7_non_finite_numbers_are_422_on_every_json_body(client: TestClient, to
         f'"entered_by": "운영자", "note": "x", "extra": {token}}}'
     ).encode(), headers=h)  # fmt: skip
     assert r.status_code == 422, r.text
+
+
+# ====================================================================== 계약 .10 새 필드·파라미터(minor)
+
+
+@pytest.mark.parametrize(
+    ("label", "won_factor", "applied"), [("확인됨", 0.0, True), ("추정", 0.0, False), ("확인됨", 2.0, False)]
+)
+def test_minor_price_range_discount_applied(
+    client: TestClient, label: str, won_factor: float, applied: bool
+) -> None:
+    """PriceRange.discount_applied = 서버가 실제로 뺐는가(확인됨 + 0 < 할인 < 대표층가). 과대·추정 할인은 false — 화면 문구 근거."""
+    from ._support import as_live, validate
+    from .test_discount_by_type import CX as DCX
+    from .test_discount_by_type import WON, _set_discount
+
+    as_live()
+    _set_discount(label)
+    if won_factor:
+        from sqlalchemy import select
+
+        from app.core.db import get_session
+        from app.models import PaymentTerms
+
+        with get_session() as s:
+            for pt in s.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == DCX)):
+                pt.discount_by_type = {
+                    k: int(10_000_000_000 * won_factor) for k in (pt.discount_by_type or {})
+                }
+    body = client.get(f"/api/complexes/{DCX}", headers=READ).json()
+    validate("getComplex", 200, body)
+    price = body["price"]
+    assert price["discount"] is not None and price["discount_applied"] is applied, price
+    assert ("할인" in (price["composition"] or "")) is applied
+    del WON
+
+
+def test_minor_market_scenario_param_and_n_trades_fact(client: TestClient) -> None:
+    """market ?scenario= (입주 마커 범위 = 그 시나리오 실행) · LivingAreaPrice.n_trades = Fact(계약 .10). 발행 리비전은
+    시나리오 × 생활권 저장본 — 그 리비전에 없는 생활권은 404."""
+    from ._support import validate
+
+    for sc in ("base", "D"):
+        r = client.get(f"/api/snapshots/{SNAP}/market", params={"scenario": sc}, headers=READ)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        validate("getMarket", 200, body)
+        for row in body["living_area_prices"]:
+            n = row["n_trades"]
+            assert isinstance(n, dict) and n["unit"] == "count" and isinstance(n["v"], int) and n["prov"], n
+    assert (
+        client.get(f"/api/snapshots/{SNAP}/market", params={"living_area": "la_99"}, headers=READ).status_code
+        == 404
+    )
+    assert (
+        client.get(f"/api/snapshots/{SNAP}/market", params={"scenario": "999"}, headers=READ).status_code
+        == 404
+    )
+
+
+def test_minor_report_demoted_price_reason_and_changed_fact_badge(client: TestClient) -> None:
+    """보고서 강등 가격 사유 = '검증 모순'(API 와 같음, 예전 '분양가 미공개'), 범위가 같아도 점수 실행 뒤 사실 변경이면 '재판정 필요'."""
+    from app.core.db import get_session
+    from app.reports.data import load_report
+
+    from ._support import as_live
+    from .test_r3b_g3 import CX
+    from .test_r3d_core2 import _demote_price, human_check
+
+    as_live()
+    _demote_price(client, 658_140_000)
+    human_check(client, "move_in_ym", "2029-02", cx=1)
+    from sqlalchemy import select
+
+    from app.models import Claim
+
+    with get_session() as s:
+        for c in s.scalars(select(Claim).where(Claim.verify_status == "contradicted")):
+            c.verify_status = "verified"  # 고친 문장 재검증 통과(claim.reverify) 가정 — 보고서 차단 해제
+    with get_session() as s:
+        data = load_report(s, SNAP)
+    cx = data.complex_by_id[CX]
+    assert cx.price_high.v is None and cx.price_high.reason == "검증 모순", cx.price_high
+    one = data.complex_by_id[1]
+    assert one.changed_after_run and one.rejudge_needed, one
+    if one.current_scope == one.judge_scope:
+        assert "사실이 바뀌었다" in one.rejudge_text, one.rejudge_text
+
+
+def test_minor_human_check_value_parse_and_redact_stays_strict(client: TestClient) -> None:
+    """이른 사람 확인 422 외에 값 형식 규칙(계약 .9)은 그대로 — '1E1' 422."""
+    r = client.post(
+        "/api/ops/human-checks", headers=WRITE,
+        json={"complex_id": 2, "field": "resale_months", "value_text": "1E1", "kind": "phone",
+              "checked_at": "2026-10-09T10:00:00+09:00", "entered_by": "운영자"},
+    )  # fmt: skip
+    assert r.status_code == 422, r.text

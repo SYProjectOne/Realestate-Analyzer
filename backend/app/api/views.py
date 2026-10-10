@@ -813,6 +813,7 @@ def price_range(
             "composition": None,
             "change_vs_first_pct": None,
             "discount": None,
+            "discount_applied": False,
         }
 
     made: dict[tuple[str, int, str], dict[str, Any]] = {}
@@ -839,6 +840,7 @@ def price_range(
             "composition": None,
             "change_vs_first_pct": None,
             "discount": None,
+            "discount_applied": False,
         }
     parts = ["공급가"]
     if t.balcony_won:
@@ -860,6 +862,7 @@ def price_range(
         "composition": composition,
         "change_vs_first_pct": _price_change(fm, b, t),
         "discount": discount,
+        "discount_applied": bool(view.discount_applied),  # 계약 .10: 서버가 실제로 뺐는가(화면 문구 근거)
     }
 
 

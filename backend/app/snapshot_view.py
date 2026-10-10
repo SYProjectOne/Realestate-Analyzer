@@ -10,7 +10,7 @@
 | complexes | '' | 시나리오 id | G2 단지 행 전부(필터·정렬 키 포함) — 목록·CSV 는 이 행에 질의만 적용 |
 | complex | 단지 id | 시나리오 id | G3 단지 상세 응답 |
 | compare | '' | 시나리오 id | G4 비교 입력(단지별 행·사다리·갭·자금 조건 + 결정·가중치) |
-| market | '' · 생활권 id | '' | G6 시장 응답(전체·생활권별) |
+| market | '' · 생활권 id | 시나리오 id | G6 시장 응답(전체·생활권별 — 입주 마커 범위가 시나리오 실행 값) |
 | changes | '' | '' | 변경 피드 원장(지역 관련 change_event 전부 — 기본·since·비교·심각도 질의는 읽을 때) |
 | sensitivity | '' | 시나리오 id | C10 민감도 응답 |
 | report | '' | 시나리오 id | 보고서 입력 데이터(``reports.data.ReportData``·후보군·이름) |
@@ -201,11 +201,11 @@ def build_compare(
 
 
 def build_market(
-    session: Session, settings: Settings, snap: Snapshot, living_area: str | None
+    session: Session, settings: Settings, snap: Snapshot, living_area: str | None, sc: Scenario | None = None
 ) -> dict[str, Any]:
     from app.api.routers.market import market_body
 
-    return market_body(session, settings, snap, living_area)
+    return market_body(session, settings, snap, living_area, sc)
 
 
 def build_changes(session: Session, snap: Snapshot) -> dict[str, Any]:
@@ -247,7 +247,7 @@ def _build(
     if kind == "complexes":
         return g["build_complexes"](session, settings, snap, _need(sc))
     if kind == "market":
-        return g["build_market"](session, settings, snap, key or None)
+        return g["build_market"](session, settings, snap, key or None, sc)
     if kind == "changes":
         return g["build_changes"](session, snap)
     if kind == "sensitivity":
@@ -349,12 +349,13 @@ def materialize(
     cache: dict[Any, Any] = {}  # 시나리오와 무관한 보고서 단지 뷰(시나리오마다 다시 만들지 않는다)
     if "changes" in want:
         put("changes", build_changes(session, snap))
-    if "market" in want:
-        put("market", build_market(session, cfg, snap, None))
-        for la in _living_area_ids(session, snap):
-            put("market", build_market(session, cfg, snap, la), key=la)
+    las = _living_area_ids(session, snap)
     for sc in _scenarios(session):
         sk = scenario_key(sc)
+        if "market" in want:  # 시나리오 × (전체 + 그 리비전 생활권별)
+            put("market", build_market(session, cfg, snap, None, sc), scenario=sk)
+            for la in las:
+                put("market", build_market(session, cfg, snap, la, sc), key=la, scenario=sk)
         if "dashboard" in want:
             put("dashboard", build_dashboard(session, cfg, snap, sc), scenario=sk)
         if "complexes" in want:

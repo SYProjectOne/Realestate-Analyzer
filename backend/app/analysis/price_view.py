@@ -205,8 +205,10 @@ def current_price(
     if cur is not None and disc:
         discount_ref = FieldRef("payment_terms", cur.id, f"discount_by_type.{t.type_code}", disc)
         discount_label_v = discount_label(discount_ref) if discount_label is not None else None
-    # 확인됨 + 0 < 할인 < 최고가일 때만 뺀다(음수·과대 할인은 표시만 — R3 4차 minor)
-    applied = bool(disc) and discount_label_v == "확인됨" and 0 < int(disc or 0) < int(max_won)
+    # 확인됨 + 0 < 할인 < 대표층가·최고가일 때만 뺀다(음수·과대 할인은 표시만 — R3 4차 minor). R3 5차 minor: 할인이
+    # 대표층가보다 크고 최고가보다 작으면 low 가 음수가 됐다 — low 의 바탕(대표층가, 없으면 최고가)보다 작아야 뺀다
+    base_low = min(int(max_won), int(floor_won)) if floor_won is not None else int(max_won)
+    applied = bool(disc) and discount_label_v == "확인됨" and 0 < int(disc or 0) < base_low
     p = purchase_price(
         floor_won=floor_won,
         max_won=int(max_won),
