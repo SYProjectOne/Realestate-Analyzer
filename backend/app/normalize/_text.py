@@ -67,6 +67,8 @@ def normalize_site_url(text: str | None) -> str | None:
     s = "".join(str(text).split())
     if not s:
         return None
+    if any(ord(c) < 0x20 or ord(c) == 0x7F for c in unquote(s)):
+        return None  # 제어 문자·NUL('%00') — 저장·링크하지 않는다(R3 5차 minor)
     if "\\" in s or "@" in s:
         return (
             None  # 사용자 정보·역슬래시 속임('http://공개.kr\@10.0.0.1') — 화면 링크로 쓰지 않는다(minor 19)
@@ -98,10 +100,15 @@ def normalize_site_url(text: str | None) -> str | None:
 # 공급 구분 괄호 안의 단지 차수·단지·블록 표기(D11-4·M-7): '(2차 잔여세대)'의 '2차'. 공급 구분 낱말 바로 뒤의 'N차'
 # ('임의공급 4차'·'무순위 2차' = 그 공급의 회차)와 'N회차'는 차수가 아니다
 _PHASE_IN_PAREN_RE = re.compile(
-    r"(?<![0-9A-Za-z])(\d+\s*(?:차|단지)|[A-Za-z]{0,3}\d+(?:-\d+)?\s*(?:블록|BL)|[\u2160-\u216b]+(?:\s*단지)?)"
+    r"(?<![0-9A-Za-z])("
+    r"\d+\s*(?:차|단지)"
+    r"|[A-Za-z]{0,3}-?\d+(?:-\d+)?\s*(?:블록|블럭|[Bb][Ll])(?![A-Za-z])"
+    r"|(?:[\u2160-\u216b]+|(?:VIII|VII|III|II|IV|VI|IX)(?![A-Za-z]))(?:-\d+)?(?:\s*단지)?"
+    r")"
 )
-"""괄호 안의 단지 차수·단지·블록('2차'·'1단지'·'AA13-1블록'·'1블록'·'3BL')과 로마 숫자 단지('Ⅱ') — R3 4차 minor:
-'(1블록 잔여세대)'·'(3BL 무순위)'·'(Ⅱ 잔여세대)' 의 단지 표기가 지워졌다."""
+"""괄호 안의 단지 차수·단지·블록('2차'·'1단지'·'AA13-1블록'·'1블록'·'2블럭'·'3BL'·'3bl'·'A-3BL')과 로마 숫자 단지
+('Ⅱ'·'Ⅱ-1'·NFKC 뒤의 'II') — R3 4차 minor: '(1블록 잔여세대)'·'(3BL 무순위)'·'(Ⅱ 잔여세대)' 의 단지 표기가 지워졌다.
+R3 5차 minor: '(2블럭 …)'·'(II …)'·'(3bl …)'·'A-3BL'·'Ⅱ-1' 도(ASCII 로마 숫자는 두 글자 이상 — 'I' 단독은 낱말과 헷갈린다)."""
 _SUPPLY_WORD_BEFORE_RE = re.compile(
     r"(?:회|임의공급|임의|무순위|선착순|재공급|조합원|취소|자격상실|사후)\s*$"
 )
@@ -123,13 +130,16 @@ _INTERNAL_SUFFIXES = (
 )  # fmt: skip
 _DOT_VARIANTS = str.maketrans({"\u3002": ".", "\uff0e": ".", "\uff61": "."})
 """IDNA 가 점으로 읽는 글자(이데오그래픽 마침표 '。'·전각 '．'·반각 '｡')."""
+_IDNA_IGNORED_RE = re.compile("[\u00ad\u034f\u1806\u180b-\u180f\u200b-\u200d\u2060\ufe00-\ufe0f\ufeff]")
+"""IDNA(nameprep B.1)·브라우저가 지우고 읽는 글자(소프트 하이픈·폭 없는 공백·이음·변형 선택자 등) — R3 5차 minor:
+'127.0.0.1' 뒤에 붙은 소프트 하이픈이 내부망 검사를 지나 화면 링크가 됐다."""
 
 
 def canonical_host(host: str) -> str:
     """브라우저가 실제로 찾아갈 호스트 모양(R3 4차 minor — 표기 우회 차단): 퍼센트 인코딩('%2e')을 풀고, 점 변형('。')을
     점으로, NFKC(전각 숫자 '１'·원문자 '①' → '1'), 소문자, 끝 점 제거. 검사와 화면 링크가 같은 문자열을 쓴다."""
-    h = unquote(host).translate(_DOT_VARIANTS)
-    return unicodedata.normalize("NFKC", h).lower().rstrip(".")
+    h = _IDNA_IGNORED_RE.sub("", unquote(host).translate(_DOT_VARIANTS))
+    return _IDNA_IGNORED_RE.sub("", unicodedata.normalize("NFKC", h)).lower().rstrip(".")
 
 
 _INTERNAL_HOSTS = frozenset({"localhost", "metadata", "metadata.google.internal", "instance-data"})

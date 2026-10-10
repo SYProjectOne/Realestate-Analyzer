@@ -18,7 +18,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
+from sqlalchemy import false, select, update
 from sqlalchemy.orm import Session
 
 from app.models import ChangeEvent, Complex, JobRun
@@ -46,12 +46,31 @@ def enqueue_rejudge(
     change_event_ids: Iterable[int] | None = None,
     now: datetime | None = None,
 ) -> JobRun:
-    """rejudge 잡 1개(같은 스냅샷 queued 잡이 있으면 합친다). commit 은 호출자."""
+    """rejudge 잡 1개(같은 스냅샷 queued 잡이 있으면 합친다). commit 은 호출자.
+
+    D13-3(R3 5차 M1): 합치기는 원자적 — ``UPDATE … WHERE id=… AND status='queued'`` 로 쓰고, worker 가 그 사이 잡을
+    집었으면(0행) 합치지 않고 새 잡을 만든다(집힌 잡의 payload 를 고쳐 단지가 빠지거나 running 잡 id 를 돌려주지 않는다).
+    Postgres 는 후보 행을 ``FOR UPDATE`` 로 잠가 worker 의 claim 이 합치기 커밋을 기다린다."""
     ids = None if complex_ids is None else sorted(set(complex_ids))
     events = sorted(set(change_event_ids)) if change_event_ids is not None else None
-    for job in session.scalars(
-        select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "queued").order_by(JobRun.id)
-    ):
+    if session.get_bind().dialect.name == "sqlite":
+        # SQLite(개발): 쓰기 잠금을 먼저 잡는다 — worker 의 claim 은 이 트랜잭션 커밋을 기다린다(Postgres 의 FOR UPDATE 와
+        # 같은 효과). 아무 행도 바꾸지 않는 UPDATE
+        session.execute(
+            update(JobRun)
+            .where(false())
+            .values(status=JobRun.status)
+            .execution_options(synchronize_session=False)
+        )
+    candidates = list(
+        session.scalars(
+            select(JobRun)
+            .where(JobRun.job_name == "rejudge", JobRun.status == "queued")
+            .order_by(JobRun.id)
+            .with_for_update()
+        )
+    )
+    for job in candidates:
         p = dict(job.payload or {})
         if p.get("snapshot_id") != snapshot_id or p.get("scenario_id") != scenario_id:
             continue
@@ -60,9 +79,16 @@ def enqueue_rejudge(
             p["change_event_ids"] = sorted(set(p.get("change_event_ids") or []) | set(events))
         if reason not in str(p.get("reason", "")):
             p["reason"] = f"{p.get('reason', '')}; {reason}".strip("; ")[:200]
-        job.payload = p
-        session.flush()
-        return job
+        result = session.execute(
+            update(JobRun)
+            .where(JobRun.id == job.id, JobRun.status == "queued")
+            .values(payload=p)
+            .execution_options(synchronize_session=False)
+        )
+        if int(getattr(result, "rowcount", 0) or 0) == 1:
+            session.refresh(job)
+            return job
+        session.refresh(job)  # worker 가 먼저 집었다(running) — 이 잡에는 합치지 않는다
     payload: dict[str, Any] = {
         "snapshot_id": snapshot_id,
         "scenario_id": scenario_id,

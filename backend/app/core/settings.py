@@ -6,6 +6,8 @@
 테스트는 ``set_settings()`` 로 덮어쓴다(``tests/conftest.py`` 의 ``test_settings`` fixture).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
@@ -66,6 +68,9 @@ class Settings(BaseSettings):
     raw_dir: Path = Path("./data/raw")
     reference_dir: Path = Path("./data/reference")
     report_dir: Path = Path("./data/reports")
+    # 매일 03:00 backup 잡 출력(D11-8). None 이면 RAW_DIR 상위 폴더 아래 backup/. R3 5차 minor: .env 의 BACKUP_DIR 도 읽는다
+    # (예전에는 os.environ 만 — .env 에 적어도 무시됐다)
+    backup_dir: Path | None = None
     # 보고서 HTML 에 인라인할 echarts.min.js(WP8). None 이면 저장소 frontend/node_modules 에서 찾는다
     report_echarts_js: Path | None = None
 

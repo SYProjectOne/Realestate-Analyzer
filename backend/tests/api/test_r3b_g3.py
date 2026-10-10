@@ -29,7 +29,7 @@ from app.models import (
     Snapshot,
 )
 
-from ._support import READ, WRITE, validate
+from ._support import READ, WRITE, as_live, validate
 
 SNAP = 12
 CX = 2  # 엘리프 검단 포레듀(devseed)
@@ -124,6 +124,7 @@ def test_nc3_patch_rejects_other_field_or_other_complex(client: TestClient) -> N
 def test_nc3_patch_demotes_fact_and_restores_by_human_check(client: TestClient) -> None:
     """D10-3 + D11-3(계약 .8): 강등은 사실 값을 지우지 않는 읽기 시점 오버레이 — 화면·주장 목록은 즉시 '확인 불가(검증 모순)',
     사람 확인은 resolver 0순위 후보로 값을 바꾸고 강등을 복원한다."""
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     before = _ensure_resale(12)
     cid = _fact_claim()
     with get_session() as s:
@@ -223,6 +224,7 @@ def _walk(obj: Any) -> list[dict[str, Any]]:
 def test_nc3_same_value_new_source_keeps_demotion_other_value_releases(client: TestClient) -> None:
     """C-4(R3 3차): 같은 값의 새 원문(sha 만 다름)·값 없는 행은 강등을 풀지 않는다. 다른 값을 낸 새 출처만 푼다.
     GET 은 DB 를 쓰지 않는다(minor 13) — 복원 기록은 쓰기 경로(``sync_demotions``)."""
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     from app.api.demotion import sync_demotions
 
     _ensure_resale(12)
@@ -318,6 +320,7 @@ def test_nc3_post_jobs_cannot_enqueue_claim_reverify(client: TestClient) -> None
 
 
 def test_nm4_sample_n_counts_own_rows_only_and_flags_substitute(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         s.execute(delete(Benchmark))
         base = {"region_id": 1, "completed_year": 2022, "sale_year": 2019, "is_presale": False}
@@ -352,6 +355,7 @@ def test_nm4_sample_n_counts_own_rows_only_and_flags_substitute(client: TestClie
     [([], False, "not_collected"), ([], True, "no_sample"), (["presale"], True, "presale_only")],
 )
 def test_nm3_benchmark_absence_reason(client: TestClient, rows: list[str], trades: bool, code: str) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         s.execute(delete(Benchmark))
         if not trades:
@@ -368,6 +372,7 @@ def test_nm3_benchmark_absence_reason(client: TestClient, rows: list[str], trade
 
 def test_benchmark_rows_follow_snapshot_id(client: TestClient) -> None:
     """benchmark.snapshot_id(계약 .6): NULL 행(사람 입력·이전 행)은 늘 + 조립분은 그 스냅샷 것 → 없으면 그 전 최근 것(미래 것은 안 보임)."""
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         s.execute(delete(Benchmark))
         common = {"region_id": 1, "living_area": "la_1", "is_presale": False}

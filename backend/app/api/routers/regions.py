@@ -280,13 +280,20 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
     region.living_areas = _expanded_areas(session, list(region.living_areas or []), codes)
     if name:
         region.name = str(name)
-    from app.scheduler.snapshots import latest_for_region
-
-    snap = latest_for_region(
-        session, region.id
-    )  # 가장 새 (기준일, 리비전) — region.expand 가 그 뒤 새 리비전을 만든다
     names = ", ".join(s["full_name"] for s in added) or "-"
     gone = ", ".join(s["full_name"] for s in removed) or "-"
+    # D13-5(R3 5차 M4): change_event 는 쓰기 가능한 리비전에만 — region.expand 잡이 판정할 오늘 기준일 리비전(발행됐으면 새
+    # 리비전)을 지금 정해 거기에 붙인다(예전: 가장 새 발행 스냅샷에 붙어 발행 리비전이 바뀌고 다음 이월이 놓쳤다)
+    from app.core.time import now_kst
+    from app.scheduler.snapshots import get_or_create, latest_revision, writable
+
+    today = now_kst().date().isoformat()
+    cur = latest_revision(session, region.id, today)
+    snap = (
+        writable(session, cur.id, reason=f"지역 확장: 추가 {names}"[:200], created_at=now_iso())
+        if cur is not None
+        else get_or_create(session, region.id, today, created_at=now_iso())
+    )
     ce = ChangeEvent(
         snapshot_id=snap.id if snap else None,
         entity="region",

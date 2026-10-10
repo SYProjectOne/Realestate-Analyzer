@@ -1,5 +1,7 @@
 """보고서 (G8, DECISIONS D4): POST → report 잡, 목록, 다운로드(html|pdf). id = job_run.id."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import re
@@ -70,7 +72,16 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
         # R3 4차 M-16: 판정이 끝나지 않은(building) 리비전은 보고서를 만들지 않는다 — 파생 행이 반쯤 찬 상태
         raise conflict(f"snapshot {snap.id} 는 발행 전({snap.status})이라 보고서를 만들 수 없다")
     if body.get("compare_snapshot_id") is not None:
-        get_snapshot(session, body["compare_snapshot_id"])
+        cmp = get_snapshot(session, body["compare_snapshot_id"])
+        # R3 5차 M5: 비교 기준도 발행 리비전(저장본 — D13-1)·같은 지역만(지역끼리는 독립 분석, D11-10)
+        if cmp.region_id != snap.region_id:
+            from app.api.errors import validation_error
+
+            raise validation_error(
+                f"비교 스냅샷 {cmp.id} 은 다른 지역({cmp.region_id})이다", ("body", "compare_snapshot_id")
+            )
+        if cmp.status != "published":
+            raise conflict(f"비교 스냅샷 {cmp.id} 는 발행 전({cmp.status})이라 비교할 수 없다")
     n = contradicted(session, snap.id)
     if n:
         raise conflict(f"contradicted claim {n}건이 남아 있어 보고서를 만들 수 없다", code="publish_blocked")
@@ -80,15 +91,26 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
 
 
 def _report_path(base: Path, rel: str) -> Path | None:
-    if not rel or PureWindowsPath(rel).drive or PurePosixPath(rel).is_absolute():
+    """잡 stats 경로 → 파일. 저장은 ``REPORT_DIR`` 기준 상대 이름(``reports.job.stored_path``), 해석도 같은 기준(K3).
+    절대 경로는 REPORT_DIR 안일 때만. 옛 잡(상대 REPORT_DIR 를 앞에 붙여 저장한 경로 — 예 'data/reports/x.html',
+    '../r4/reports/x.html')은 그 앞부분을 떼고 읽는다. 그 밖의 '..'·'.' 는 거부."""
+    if not rel:
+        return None
+    if PureWindowsPath(rel).drive or PurePosixPath(rel).is_absolute():
         candidate = Path(rel)
         try:
             candidate.resolve().relative_to(base.resolve())
         except (ValueError, OSError):
             return None
         return candidate
-    parts = PurePosixPath(rel.replace("\\", "/")).parts
-    if any(p in ("..", ".") for p in parts):
+    norm = rel.replace("\\", "/")
+    prefix = PurePosixPath(base.as_posix().replace("\\", "/")).as_posix()
+    for head in (prefix, prefix.removeprefix("./")):
+        if head not in ("", ".") and norm.startswith(head.rstrip("/") + "/"):
+            norm = norm[len(head.rstrip("/")) + 1 :]
+            break
+    parts = PurePosixPath(norm).parts
+    if not parts or any(p in ("..", ".") for p in parts):
         return None
     return base.joinpath(*parts)
 

@@ -61,7 +61,7 @@
           "median_won": { "$ref": "fact.json" },
           "low_won": { "$ref": "fact.json" },
           "high_won": { "$ref": "fact.json" },
-          "n_trades": { "type": "integer", "minimum": 0 },
+          "n_trades": { "description": "계약 2026-10-09.10(FE4 요청): 표본 수 Fact — v = 그 생활권 집계에 쓴 실거래 건수(unit count), label = 그 실거래 행들의 가장 약한 라벨, prov = 중앙값 실거래 출처, reason = 집계 식", "$ref": "fact.json" },
           "trade_window": { "type": ["string", "null"] },
           "basis": { "description": "기준 단지·대체 여부 설명", "type": ["string", "null"] }
         }

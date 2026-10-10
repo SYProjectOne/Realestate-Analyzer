@@ -7,6 +7,8 @@ decision(선택 결과), claim(검증 상태별 건수), judgment_log(도구별 
 값은 표시 문자열(점수는 소수 2자리 ROUND_HALF_UP)이고 라벨을 같이 둔다(규칙 5).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -30,12 +32,13 @@ from app.models import (
     Scenario,
     ScoreRun,
     ScoreTotal,
+    Snapshot,
 )
 from app.reports.errors import ReportNotFound
 from app.reports.fmt import round_half_up
 from app.reports.policy import JUDGE_SCOPE_TEXT, complex_scope, pick_intake, shows_ladder
 
-__all__ = ["DiffRow", "SnapshotDiff", "diff_snapshots"]
+__all__ = ["DiffRow", "SnapshotDiff", "diff_digest_live", "diff_snapshots"]
 
 Kind = Literal["added", "removed", "changed"]
 
@@ -122,14 +125,12 @@ def _scopes(session: Session, snapshot_id: int, ids: Iterable[int], run: ScoreRu
     id_list = [i for i in id_list if i not in out]
     if not id_list:
         return out
-    # 대체 계산도 보고서 본문·API 와 같은 입력: 강등 오버레이(D11-3·D12-2)로 모순 값을 가리고,
-    # 발행 리비전은 그 시점의 분류(D12-4 — 얼린 값). R3 4차 minor: 예전에는 원본 사실로 계산했다
+    # 대체 계산도 보고서 본문·API 와 같은 입력: 강등 오버레이(D11-3·D12-2)로 모순 값을 가린다. 발행 리비전은 발행 때
+    # 이 결과를 저장한다(D13-1 — ``diff_digest_live``). R3 4차 minor: 예전에는 원본 사실로 계산했다
     from app.analysis.complex_input import masked
     from app.facts_view import load_overlay
-    from app.snapshot_state import load_state
 
     ov = load_overlay(session, complex_ids=id_list)
-    frozen = load_state(session, snapshot_id)
     types: dict[int, list[Any]] = defaultdict(list)
     pays: dict[int, list[Any]] = defaultdict(list)
     for t in session.scalars(select(ComplexType).where(ComplexType.complex_id.in_(id_list))):
@@ -138,8 +139,7 @@ def _scopes(session: Session, snapshot_id: int, ids: Iterable[int], run: ScoreRu
         pays[p.complex_id].append(masked(p, ov.fields("payment_terms", p.id)))
     intakes = _intake_rows(session, snapshot_id)
     for cx in session.scalars(select(Complex).where(Complex.id.in_(id_list))):
-        view = frozen.complex(cx) if frozen is not None else cx
-        out[cx.id] = complex_scope(view, types[cx.id], pays[cx.id], intakes.get(cx.id, [])).scope
+        out[cx.id] = complex_scope(cx, types[cx.id], pays[cx.id], intakes.get(cx.id, [])).scope
     return out
 
 
@@ -173,14 +173,61 @@ def _decisions(session: Session, snapshot_id: int, names: Mapping[int, str]) -> 
     return out
 
 
+def diff_digest_live(session: Session, snapshot_id: int, scenario: Scenario) -> dict[str, Any]:
+    """그 스냅샷의 diff 입력(지금 계산) — 발행 리비전은 발행 때 저장한다(D13-1 kind=report_diff). 값은 표시 문자열."""
+    run = _run(session, snapshot_id, scenario.id)
+    names = {c.id: c.name for c in session.scalars(select(Complex))}
+    totals = {
+        str(cid): {
+            "total": _score(t.total),
+            "rank": t.rank,
+            "tie_group": t.tie_group,
+            "unstable": bool(t.unstable),
+        }
+        for cid, t in _totals(session, run).items()
+    }
+    rows = list(session.scalars(select(Claim).where(Claim.snapshot_id == snapshot_id)))
+    parents = {c.parent_claim_id for c in rows if c.parent_claim_id is not None}
+    claims = Counter(
+        "contradicted→분할 재검증" if c.id in parents else (c.verify_status or "미검증") for c in rows
+    )
+    calls = Counter(session.scalars(select(JudgmentLog.tool).where(JudgmentLog.snapshot_id == snapshot_id)))
+    return {
+        "totals": totals,
+        "ladders": {str(k): list(v) for k, v in _ladders(session, snapshot_id, run).items()},
+        "intake": {str(k): v for k, v in _intake(session, snapshot_id).items()},
+        "decisions": _decisions(session, snapshot_id, names),
+        "claims": dict(claims),
+        "calls": dict(calls),
+        "names": {str(k): v for k, v in names.items()},
+    }
+
+
+def _ints(d: Mapping[str, Any]) -> dict[int, Any]:
+    return {int(k): v for k, v in d.items()}
+
+
 def diff_snapshots(
     session: Session, base_id: int, snapshot_id: int, *, scenario_code: str = "base"
 ) -> SnapshotDiff:
-    """base(이전) → snapshot(현재) 파생 테이블 diff. 같은 값은 행을 내지 않는다."""
+    """base(이전) → snapshot(현재) 파생 테이블 diff. 같은 값은 행을 내지 않는다.
+
+    두 스냅샷 모두 diff 입력(``diff_digest_live``)으로 비교한다 — 발행 리비전은 발행 때 저장한 입력(D13-1)이라 나중
+    사실·이름 변경이 옛 보고서의 delta 표를 바꾸지 않는다."""
+    from app import snapshot_view as sv
+
     scenario = session.scalars(select(Scenario).where(Scenario.code == scenario_code)).first()
     if scenario is None:
         raise ReportNotFound(f"시나리오 {scenario_code} 없음")
-    names = {c.id: c.name for c in session.scalars(select(Complex))}
+    digests = []
+    for sid in (base_id, snapshot_id):
+        snap = session.get(Snapshot, sid)
+        if snap is None:
+            raise ReportNotFound(f"스냅샷 {sid} 없음")
+        digests.append(sv.read(session, snap, "report_diff", scenario=scenario))
+    a_dig, b_dig = digests
+    names = _ints(a_dig.get("names") or {})
+    names.update(_ints(b_dig.get("names") or {}))
     rows: list[DiffRow] = []
 
     def name(cid: int | None) -> str:
@@ -192,29 +239,35 @@ def diff_snapshots(
         kind: Kind = "added" if old == "—" else "removed" if new == "—" else "changed"
         rows.append(DiffRow(table, cid, name(cid), fld, old, new, kind, label))
 
-    run_a, run_b = _run(session, base_id, scenario.id), _run(session, snapshot_id, scenario.id)
-    a, b = _totals(session, run_a), _totals(session, run_b)
+    a, b = _ints(a_dig["totals"]), _ints(b_dig["totals"])
     for cid in sorted(set(a) | set(b)):
         ta, tb = a.get(cid), b.get(cid)
         if ta is None or tb is None:
             t = tb or ta
             assert t is not None
-            v = f"{_score(t.total)} ({t.rank}위)" if t.rank else _score(t.total)
+            v = f"{t['total']} ({t['rank']}위)" if t["rank"] else t["total"]
             add("score_total", cid, "total", "—" if ta is None else v, "—" if tb is None else v, "추정")
             continue
-        add("score_total", cid, "total", _score(ta.total), _score(tb.total), "추정")
-        add("score_total", cid, "rank", f"{ta.rank or '—'}", f"{tb.rank or '—'}", "추정")
-        add("score_total", cid, "tie_group", f"{ta.tie_group or '없음'}", f"{tb.tie_group or '없음'}", "추정")
+        add("score_total", cid, "total", ta["total"], tb["total"], "추정")
+        add("score_total", cid, "rank", f"{ta['rank'] or '—'}", f"{tb['rank'] or '—'}", "추정")
+        add(
+            "score_total",
+            cid,
+            "tie_group",
+            f"{ta['tie_group'] or '없음'}",
+            f"{tb['tie_group'] or '없음'}",
+            "추정",
+        )
         add(
             "score_total",
             cid,
             "unstable",
-            "예" if ta.unstable else "아니오",
-            "예" if tb.unstable else "아니오",
+            "예" if ta["unstable"] else "아니오",
+            "예" if tb["unstable"] else "아니오",
             "추정",
         )
 
-    la, lb = _ladders(session, base_id, run_a), _ladders(session, snapshot_id, run_b)
+    la, lb = _ints(a_dig["ladders"]), _ints(b_dig["ladders"])
     for cid in sorted(set(la) | set(lb)):
         xa, xb = la.get(cid), lb.get(cid)
         add(
@@ -228,32 +281,21 @@ def diff_snapshots(
         if xa is not None and xb is not None:
             add("ladder", cid, "status", xa[1], xb[1], "추정")
 
-    ia, ib = _intake(session, base_id), _intake(session, snapshot_id)
+    ia, ib = _ints(a_dig["intake"]), _ints(b_dig["intake"])
     for cid in sorted(set(ia) | set(ib)):
         add("intake_status", cid, "표시값", ia.get(cid, "—"), ib.get(cid, "—"), "접수 상태(경로 우선순위)")
 
-    da, db = _decisions(session, base_id, names), _decisions(session, snapshot_id, names)
+    da, db = a_dig["decisions"], b_dig["decisions"]
     for code in sorted(set(da) | set(db)):
         add(
             "decision", None, f"상황 {code} 선택", da.get(code, "—"), db.get(code, "—"), "추정(판정기 decide)"
         )
 
-    def claim_counts(sid: int) -> Counter[str]:
-        """분할 재검증된 복합 주장(자식이 있는 contradicted)은 따로 센다(§8과 같은 규칙)."""
-        rows = list(session.scalars(select(Claim).where(Claim.snapshot_id == sid)))
-        parents = {c.parent_claim_id for c in rows if c.parent_claim_id is not None}
-        return Counter(
-            "contradicted→분할 재검증" if c.id in parents else (c.verify_status or "미검증") for c in rows
-        )
-
-    ca, cb = claim_counts(base_id), claim_counts(snapshot_id)
+    ca, cb = a_dig["claims"], b_dig["claims"]
     for st in sorted(set(ca) | set(cb)):
         add("claim", None, f"verify {st}", f"{ca.get(st, 0)}건", f"{cb.get(st, 0)}건", "판정기 verify 집계")
 
-    def calls(sid: int) -> Counter[str]:
-        return Counter(session.scalars(select(JudgmentLog.tool).where(JudgmentLog.snapshot_id == sid)))
-
-    ja, jb = calls(base_id), calls(snapshot_id)
+    ja, jb = a_dig["calls"], b_dig["calls"]
     for tool in sorted(set(ja) | set(jb)):
         add(
             "judgment_log",

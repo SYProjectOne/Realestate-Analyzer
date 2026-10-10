@@ -76,6 +76,7 @@ NON_FACT_TABLES: dict[str, str] = {
     "human_check": "사람 확인 기록(입력자·시각이 출처)",
     "job_run": "운영 기록(잡 실행)",
     "share_link": "운영 기록(공유 링크)",
+    "snapshot_view": "발행 리비전 저장본(D13-1) — 화면 응답·보고서 입력 사본(출처는 사본 안 Fact 의 prov)",
 }
 """사실 테이블이 아닌 테이블과 사유 — 여기 없는 테이블은 모두 출처 전수 검사 대상이다(``FACT_TABLES``)."""
 

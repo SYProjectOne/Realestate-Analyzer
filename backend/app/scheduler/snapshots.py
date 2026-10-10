@@ -196,9 +196,11 @@ def publish(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int]
         snap.status = "published"
         snap.published_at = now
         session.flush()
-        from app.snapshot_state import freeze
+        from app.snapshot_view import materialize
 
-        freeze(session, snapshot_id)  # D12-4: 리비전 시점 값(분류·생활권·호재 단계·연결)을 얼린다
+        # D13-1: 같은 트랜잭션에서 그 리비전의 화면 응답 전부·보고서 입력을 저장한다(이후 GET 은 저장본만 읽는다).
+        # 실패하면 발행도 함께 되돌아간다(호출자의 rollback) — 저장본 없는 발행 리비전은 생기지 않는다
+        materialize(session, snapshot_id)
     return True, 0
 
 

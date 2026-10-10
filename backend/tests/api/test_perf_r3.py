@@ -79,6 +79,10 @@ def test_minor9_cold_first_page_with_scores_and_csv(seeded_db: Seeded, tmp_path:
     try:
         assert devseed.load_synth(settings, n=1000, snapshot_id=SNAP) == 1000
         assert _score_synth(SNAP) >= 1000
+        from app.core.db import get_session
+
+        with get_session() as s:  # 점수 행을 넣은 발행 스냅샷 저장본을 다시(D13-1 — GET 은 저장본)
+            devseed.rematerialize(s, settings=settings, snapshot_ids=[SNAP])
         for cold in range(COLD_RUNS):
             reset_engine()  # cold: 커넥션 풀·캐시 없이 새 앱
             with TestClient(create_app(settings), raise_server_exceptions=False) as client:
@@ -98,6 +102,7 @@ def test_minor9_cold_first_page_with_scores_and_csv(seeded_db: Seeded, tmp_path:
         timings = {k: statistics.median(v) for k, v in runs.items()}
         print("T16 r3 timings(s, median):", {k: round(v, 3) for k, v in timings.items()})
         assert timings["cold_first_page"] < 1.0, runs
+        assert timings["cold_first_page"] < 0.2, runs  # 발행 리비전 = 저장본(D13-1, R3e)
         for key in ("{'sort': '-price_mid'}", "{'page': 5}", "{'size': 100}"):
             assert timings[key] < 1.0, runs
         assert timings["csv_all"] < 5.0, runs

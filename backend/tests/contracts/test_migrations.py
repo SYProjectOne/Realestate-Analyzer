@@ -30,7 +30,11 @@ RA_TABLES = {
     "score_total", "ladder", "decision", "human_check", "checklist_item", "change_event", "job_run",
 }  # fmt: skip
 D2_TABLES = {"legal_dong", "admin_dong", "admin_legal_map", "household_stat"}
-R3_TABLES = {"share_link", "fact_demotion", "snapshot_state"}  # 계약 2026-10-09.4 · .6 · .9(D12-4)
+R3_TABLES = {
+    "share_link",
+    "fact_demotion",
+    "snapshot_view",
+}  # 계약 2026-10-09.4 · .6 · .10(D13-1 — 0009 snapshot_state 대체)
 RA_WEIGHTS = {
     "base": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10},
     "A": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "move_in": 0.10},
@@ -270,11 +274,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0009() -> None:
+def test_migration_head_is_0010() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0009"]
+    assert script.get_heads() == ["0010"]
+    assert script.get_revision("0010").down_revision == "0009"
     assert script.get_revision("0009").down_revision == "0008"
     assert script.get_revision("0008").down_revision == "0007"
     assert script.get_revision("0007").down_revision == "0006"
@@ -624,6 +629,9 @@ def check_0007_0008_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
             )
         command.upgrade(cfg, "head")
         with engine.begin() as conn:
+            conn.execute(
+                sa.text("DELETE FROM snapshot_view WHERE snapshot_id >= 9000")
+            )  # 0010 materialize(D13-1)
             for t in ("fact_demotion", "field_provenance", "claim", "complex", "snapshot"):
                 conn.execute(sa.text(f"DELETE FROM {t} WHERE id >= 9000"))
             conn.execute(sa.text("DELETE FROM job_run"))
@@ -666,7 +674,7 @@ def check_0008_0009_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
                     "(9101, 903, '2026-10-08', 'published', false, '2026-10-08', 1)"
                 )
             )
-        command.upgrade(cfg, "head")
+        command.upgrade(cfg, "0009")
         with engine.begin() as conn:
             conn.execute(
                 sa.text(
@@ -701,7 +709,7 @@ def check_0008_0009_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
             )
         with pytest.raises(RuntimeError, match="잡 이력"):
             command.downgrade(cfg, "0007")
-        command.upgrade(cfg, "head")
+        command.upgrade(cfg, "0009")
         with engine.begin() as conn:
             conn.execute(sa.text("DELETE FROM job_run"))
             conn.execute(sa.text("DELETE FROM snapshot_state"))
@@ -711,8 +719,107 @@ def check_0008_0009_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
         engine.dispose()
 
 
+def check_0009_0010_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0010(계약 2026-10-09.10, D13-1): 0009 에서 발행 스냅샷을 넣고 head → 그 스냅샷 저장본(snapshot_view)이 생기고
+    snapshot_state 는 없다 → (스냅샷, kind, key, scenario) 유일·kind CHECK → downgrade 0009(저장본 삭제·빈 snapshot_state)
+    → head 다시(다시 materialize)."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "0009")
+    engine = sa.create_engine(url)
+    try:
+        insp = sa.inspect(engine)
+        assert "snapshot_view" not in insp.get_table_names() and "snapshot_state" in insp.get_table_names()
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO region (id, name, query_text, selections, sido_codes, sigungu_codes, legal_dong_codes, "
+                    "living_areas, age_premium_coef, applyhome_query, status, created_at) VALUES "
+                    "(904, 'r', 'q', '[]', '[]', '[]', '[]', '[]', '{}', '{}', 'ready', '2026-10-10')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot (id, region_id, asof_date, status, degraded, created_at, revision) VALUES "
+                    "(9201, 904, '2026-10-08', 'published', false, '2026-10-08', 1), "
+                    "(9202, 904, '2026-10-09', 'building', false, '2026-10-09', 1)"
+                )
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:
+            kinds = {
+                k
+                for (k,) in conn.execute(
+                    sa.text("SELECT DISTINCT kind FROM snapshot_view WHERE snapshot_id = 9201")
+                )
+            }
+            assert {
+                "dashboard",
+                "complexes",
+                "market",
+                "changes",
+                "sensitivity",
+                "report",
+                "report_diff",
+            } <= kinds
+            assert not conn.execute(
+                sa.text("SELECT COUNT(*) FROM snapshot_view WHERE snapshot_id = 9202")
+            ).scalar_one()
+        assert "snapshot_state" not in sa.inspect(engine).get_table_names()
+        with (
+            pytest.raises(sa.exc.IntegrityError),
+            engine.begin() as conn,
+        ):  # 같은 (스냅샷, kind, key, scenario) 중복 거부
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256) "
+                    "SELECT snapshot_id, kind, key, scenario, body, sha256 FROM snapshot_view WHERE kind = 'changes'"
+                )
+            )
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:  # kind CHECK
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256) "
+                    "SELECT snapshot_id, 'nope', key, scenario, body, sha256 FROM snapshot_view WHERE kind = 'changes'"
+                )
+            )
+        command.downgrade(cfg, "0009")
+        assert "snapshot_view" not in sa.inspect(engine).get_table_names()
+        command.upgrade(cfg, "head")
+        with engine.begin() as conn:
+            assert conn.execute(
+                sa.text("SELECT COUNT(*) FROM snapshot_view WHERE snapshot_id = 9201")
+            ).scalar_one()
+            conn.execute(sa.text("DELETE FROM snapshot_view"))
+            conn.execute(sa.text("DELETE FROM snapshot WHERE region_id = 904"))
+            conn.execute(sa.text("DELETE FROM region WHERE id = 904"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0009_0010_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0009_0010_roundtrip(sqlite_url(tmp_path), monkeypatch)
+    engine = sa.create_engine(sqlite_url(tmp_path))
+    try:
+        assert autogen_diff(engine) == []
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.postgres
+def test_postgres_0009_0010_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0009_0010_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
+
+
 def test_sqlite_0008_0009_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     check_0008_0009_roundtrip(sqlite_url(tmp_path), monkeypatch)
+    command.upgrade(alembic_config(sqlite_url(tmp_path)), "head")
     engine = sa.create_engine(sqlite_url(tmp_path))
     try:
         assert autogen_diff(engine) == []
@@ -725,6 +832,7 @@ def test_postgres_0008_0009_roundtrip(pg_engine: Engine, postgres_url: str) -> N
     mp = pytest.MonkeyPatch()
     try:
         check_0008_0009_roundtrip(postgres_url, mp)
+        command.upgrade(alembic_config(postgres_url), "head")
     finally:
         mp.undo()
     assert autogen_diff(pg_engine) == []

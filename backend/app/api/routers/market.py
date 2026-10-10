@@ -5,6 +5,8 @@
 벤치마크 없음 사유 benchmark_absence(N-M3).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -16,16 +18,20 @@ from typing import Any
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from app import snapshot_view as sv
+from app.api import views
 from app.api.benchmarks import benchmark_absence, benchmarks_for, is_substitute, own_sample_n
-from app.api.deps import DB, get_snapshot, settings_of
+from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, fact, weakest
 from app.api.routers.complexes import catalyst_view
-from app.api.routers.snapshots import partial_missing, unsold_points
-from app.api.views import area_names, judge_scope, judgment_days, load_bundles
-from app.models import Complex, Region, RtmsTrade, Supply
-from app.snapshot_state import region_for
+from app.api.routers.snapshots import ScenarioQ, partial_missing, unsold_points
+from app.api.views import area_names, judge_scope, judgment_days
+from app.core.settings import Settings
+from app.facts_view import region_catalysts
+from app.models import Complex, Region, RtmsTrade, Scenario, Snapshot, Supply
 
 router = APIRouter(tags=["market"])
 
@@ -42,15 +48,28 @@ def _months_back(d: date, n: int) -> date:
 
 
 @router.get("/snapshots/{sid}/market")
-def get_market(session: DB, request: Request, sid: int, living_area: str | None = None) -> JSONResponse:
+def get_market(
+    session: DB, request: Request, sid: int, living_area: str | None = None, scenario: ScenarioQ = "base"
+) -> JSONResponse:
     snap = get_snapshot(session, sid)
+    sc = resolve_scenario(session, scenario)
+    # D13-1: 발행 리비전 = 저장본(시나리오 × 전체·그 리비전 생활권별; 그 리비전에 없던 생활권은 404), 발행 전 = 실시간
+    body = sv.read(session, snap, "market", settings=settings_of(request), scenario=sc, key=living_area or "")
+    return JSONResponse(body)
+
+
+def market_body(
+    session: Session, settings: Settings, snap: Snapshot, living_area: str | None, sc: Scenario | None = None
+) -> dict[str, Any]:
+    """G6 시장 응답(실시간 계산 — 발행 리비전은 시나리오 × 전체·생활권별로 저장한다, D13-1). 입주 마커의 판정 범위는 그
+    시나리오 점수 실행 저장값(계약 .10 — R3 5차 minor: 시나리오를 전달하지 않았다)."""
     region = session.get(Region, snap.region_id)
     if region is None:
         raise not_found(f"region {snap.region_id}")
-    region_f = region_for(session, region, snap.id)  # D12-4: 발행 리비전은 그 시점 생활권
+    region_f = region
     names = area_names(region_f)
     want = {living_area} if living_area else None
-    fm = FactMaker(settings_of(request), ProvIndex())
+    fm = FactMaker(settings, ProvIndex())
     checked = snap.asof_date
     asof = date.fromisoformat(snap.asof_date)
 
@@ -151,7 +170,7 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
         )
 
     every = list(session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id)))
-    bundles = load_bundles(session, every, snap.id)
+    bundles = views.load_bundles(session, every, snap.id, scenario_id=sc.id if sc is not None else None)
     # 그 리비전 시점 생활권(얼린 값)·강등 오버레이가 적용된 단지 행(묶음의 cx)
     # — 원본 행이 아니다(R3 4차 minor)
     complexes = [bundles[c.id].cx for c in every if want is None or bundles[c.id].cx.living_area in want]
@@ -177,13 +196,10 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
                 scopes |= {str(code)[:5] for code in a.get("legal_dong_codes") or []}
     unsold = unsold_points(session, region.id, fm, scopes=scopes, per_scope=True)
 
-    # D12-4·M-7: 그 리비전 시점의 호재 단계·연결(발행 리비전은 얼린 값).
-    # '호재 아님'은 보드에 넣지 않는다(D11-2)
-    from app.snapshot_state import catalysts_for
-
+    # 호재 단계·연결('호재 아님'은 보드에 넣지 않는다 — D11-2). 발행 리비전은 이 결과가 저장된다(D13-1)
     cats: list[Any] = []
     links: dict[int, list[int]] = defaultdict(list)
-    for cat, cat_links in catalysts_for(session, region.id, snap.id):
+    for cat, cat_links in region_catalysts(session, region.id):
         cats.append(cat)
         links[cat.id].extend(lk.complex_id for lk in cat_links)
     days = judgment_days(session, (c.judgment_seq for c in cats))
@@ -253,13 +269,20 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
                 ),
                 "low_won": fact(ts[0].price_won, label, low_f["prov"], low_f["checked_at"], unit="won"),
                 "high_won": fact(ts[-1].price_won, label, high_f["prov"], high_f["checked_at"], unit="won"),
-                "n_trades": len(ts),
+                "n_trades": fact(
+                    len(ts),
+                    label,
+                    med_f["prov"],
+                    med_f["checked_at"],
+                    reason="집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+                    unit="count",
+                ),
                 "trade_window": f"{_months_back(asof, 6).isoformat()[:7]}~{snap.asof_date[:7]}",
                 "basis": "전용 80~85㎡, 기준일 전 6개월, 분양권·해제 제외",
             }
         )
 
-    return JSONResponse(
+    return dict(
         {
             "snapshot_id": snap.id,
             "asof_date": snap.asof_date,

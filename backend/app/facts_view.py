@@ -54,6 +54,8 @@ __all__ = [
     "load_overlay",
     "logical_field",
     "overlay_applies",
+    "region_catalysts",
+    "semantic_group",
     "semantic_rows",
 ]
 
@@ -127,6 +129,8 @@ class DemotionOverlay:
 
     active: dict[RowKey, FactDemotion] = field(default_factory=dict)
     status: dict[int, str] = field(default_factory=dict)
+    current: dict[int, ChosenRef | None] = field(default_factory=dict)
+    """강등 id → 지금 쓰는 행의 chosen 출처(없으면 None) — 재강등이 '모순 값이 다시 채택'인지 '채택 보류'인지 가른다(M3)."""
     demotions: list[FactDemotion] = field(default_factory=list)
     _by_row: dict[tuple[str, int], set[str]] = field(default_factory=lambda: defaultdict(set))
 
@@ -374,9 +378,11 @@ def load_overlay(
     for d in demos:
         original: RowKey = (d.entity, d.entity_id, d.field)
         cur = currents[d.id]
-        st = _status(d, refs.get(cur) if cur is not None else None, refs.get(original))
+        cur_ref = refs.get(cur) if cur is not None else None
+        st = _status(d, cur_ref, refs.get(original))
         out.demotions.append(d)
         out.status[d.id] = st
+        out.current[d.id] = cur_ref
         if st == RESTORED_HUMAN:
             continue  # 사람 확인이 이긴다 — 그 의미 필드의 어느 행도 가리지 않는다
         for k in groups[d.id]:
@@ -394,3 +400,74 @@ def chosen_from_rows(rows: Iterable[Any]) -> dict[RowKey, ChosenRef]:
         key = (str(r.entity), int(r.entity_id), str(r.field))
         out.setdefault(key, ChosenRef(int(r.id), r.value_norm, r.reason, r.raw_document_id))
     return out
+
+
+def semantic_group(
+    session: Session, entity: str, entity_id: int, field_name: str
+) -> tuple[int | None, list[RowKey]]:
+    """(단지, 의미 필드) 단위 행 묶음 — 강등(D12-2)과 사람 확인(D13-2)이 같은 키를 쓴다. 반환 (단지 id, 행들[자기 먼저]).
+
+    - 단지 필드 → 그 단지 행 하나
+    - 가격(``max_price_won``) → 그 타입 코드의 공고문 타입 행 + 그 단지 **모든 공고**의 ``price_by_type.<타입>.max_price_won``
+    - 납부 조건 필드 → 그 단지 모든 공고의 같은 필드
+    - 타입 행의 다른 필드 → 같은 타입 코드의 타입 행들"""
+    from app.models import ComplexType, PaymentTerms
+    from app.normalize.fields import split_price_by_type
+
+    me: RowKey = (entity, entity_id, field_name)
+    if entity == "complex":
+        return entity_id, [me]
+    code: str | None = None
+    if entity == "complex_type":
+        t = session.get(ComplexType, entity_id)
+        if t is None:
+            return None, [me]
+        cid, code = t.complex_id, t.type_code
+    elif entity == "payment_terms":
+        p = session.get(PaymentTerms, entity_id)
+        if p is None:
+            return None, [me]
+        cid = p.complex_id
+        pbt = split_price_by_type(field_name)
+        code = pbt[0] if pbt is not None else None
+    else:
+        return None, [me]
+    rows = _load_rows(session, {cid})
+    out: list[RowKey] = [me]
+    if logical_field(field_name) == "max_price_won" and code is not None:
+        out += [
+            ("complex_type", t.id, "max_price_won") for t in rows.types.get(cid, []) if t.type_code == code
+        ]
+        out += [
+            ("payment_terms", p.id, f"price_by_type.{code}.max_price_won") for p in rows.terms.get(cid, [])
+        ]
+    elif entity == "payment_terms":
+        out += [("payment_terms", p.id, field_name) for p in rows.terms.get(cid, [])]
+    else:
+        out += [("complex_type", t.id, field_name) for t in rows.types.get(cid, []) if t.type_code == code]
+    return cid, list(dict.fromkeys(out))
+
+
+NOT_CATALYST: Final = "호재 아님"
+
+
+def region_catalysts(
+    session: Session, region_id: int, *, include_not_catalyst: bool = False
+) -> list[tuple[Any, list[Any]]]:
+    """지역의 지금 호재와 연결 [(호재, 연결들)] — 발행 전 리비전·materialize 가 읽는 값(발행 리비전은 저장본, D13-1).
+
+    '호재 아님'(D11-2 — 판정기가 호재가 아니라고 본 후보)은 기본으로 뺀다(상세 catalysts·시장 보드·보고서 §5)."""
+    from app.models import Catalyst, CatalystLink
+
+    cats = list(
+        session.scalars(select(Catalyst).where(Catalyst.region_id == region_id).order_by(Catalyst.id))
+    )
+    links: dict[int, list[Any]] = defaultdict(list)
+    if cats:
+        for lk in session.scalars(
+            select(CatalystLink)
+            .where(CatalystLink.catalyst_id.in_([c.id for c in cats]))
+            .order_by(CatalystLink.complex_id)
+        ):
+            links[lk.catalyst_id].append(lk)
+    return [(c, links.get(c.id, [])) for c in cats if include_not_catalyst or c.stage != NOT_CATALYST]

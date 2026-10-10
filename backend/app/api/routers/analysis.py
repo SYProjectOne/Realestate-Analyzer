@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any
 
@@ -10,6 +11,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import snapshot_view as sv
+from app.api import views
 from app.api.contract import check_body
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found, validation_error
@@ -25,17 +28,15 @@ from app.api.views import (
     current_payment,
     ladder_days,
     ladder_view,
-    load_bundles,
     price_range,
     provenance_for,
     scenario_view,
-    score_ctx,
     score_input,
     score_row,
 )
 from app.core.contracts_gen import Scenario as ScenarioDTO
+from app.core.settings import Settings
 from app.models import Complex, Decision, JudgmentLog, Region, Scenario, ScoreRun, Snapshot
-from app.snapshot_state import region_for
 
 router = APIRouter(tags=["analysis"])
 
@@ -154,26 +155,54 @@ def get_compare(
     missing = [i for i in id_list if i not in complexes or complexes[i].region_id != snap.region_id]
     if missing:
         raise not_found(f"complex {missing[0]} in snapshot {sid}")
+    # D13-1: 발행 리비전 = 저장된 비교 입력(그 리비전 단지 전부), 발행 전 = 요청 단지만 실시간
+    parts = sv.compare_parts(
+        session, snap, sc, [complexes[i] for i in dict.fromkeys(id_list)], settings=settings_of(request)
+    )
+    items = parts["items"]
+    gone = [i for i in id_list if str(i) not in items]
+    if gone:
+        raise not_found(f"complex {gone[0]} in snapshot {sid}")
+    return JSONResponse(
+        {
+            "snapshot_id": snap.id,
+            "asof_date": snap.asof_date,
+            "scenario_id": sc.id,
+            "ids": id_list,
+            "rows": [items[str(i)]["row"] for i in id_list],
+            "components": parts["components"],
+            "ladders": {str(i): items[str(i)]["ladders"] for i in id_list},
+            "gaps": {str(i): items[str(i)]["gap"] for i in id_list},
+            "terms": [items[str(i)]["term"] for i in id_list],
+            "decisions": parts["decisions"],
+        }
+    )
+
+
+def compare_body(
+    session: Session, settings: Settings, snap: Snapshot, sc: Scenario, complexes: Sequence[Complex]
+) -> dict[str, Any]:
+    """G4 비교 입력(실시간 계산): 단지별 {점수 행, 사다리, 가격 갭, 자금 조건} + 시나리오 가중치·결정 묶음.
+    발행 리비전은 지역 단지 전부로 저장한다(D13-1). 응답 조립(요청 순서·중복)은 ``get_compare``."""
     region = session.get(Region, snap.region_id)
-    names = area_names(region_for(session, region, snap.id))
-    bundles = load_bundles(session, list(complexes.values()), snap.id, scenario_id=sc.id)
-    ctx = score_ctx(session, snap.id, sc)
-    fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
+    names = area_names(region)
+    bundles = views.load_bundles(session, list(complexes), snap.id, scenario_id=sc.id)
+    ctx = views.score_ctx(session, snap.id, sc, complex_ids=[c.id for c in complexes])
+    fm = FactMaker(settings, provenance_for(session, bundles.values()))
     days = ladder_days(session, bundles.values())
     days.update(ctx.jl_days)
-    rows = [score_row(ctx, bundles[i], names, jl_days=days) for i in id_list]
-    ladders = {
-        str(i): [ladder_view(lad, days.get(lad.judgment_seq or -1)) for lad in bundles[i].ladders]
-        for i in id_list
-    }
-    gaps = {}
-    terms = []
     loan = (sc.params or {}).get("loan_limit_won")
-    for i in id_list:
+    from app.api.routers.complexes import comparables_by_complex
+    from app.api.views import _resale_end
+
+    members = comparables_by_complex(session, snap.id, [c.id for c in complexes])
+    items: dict[str, Any] = {}
+    for c in complexes:
+        i = c.id
         b = bundles[i]
         notice = fm.field("complex", i, "notice_date", b.cx.notice_date, unit="date")
         price = price_range(fm, b, notice)
-        gaps[str(i)] = gap_view(session, fm, ctx, b.cx, snap.id, price)
+        gap = gap_view(session, fm, ctx, b.cx, snap.id, price, members=members.get(i, []))
         pay = current_payment(b.payments)
         down = (
             fm.field("payment_terms", pay.id, "down_payment_pct", pay.down_payment_pct, unit="pct")
@@ -204,10 +233,11 @@ def get_compare(
             )
         winner = fm.field("complex", i, "winner_date", b.cx.winner_date, unit="date")
         months = fm.field("complex", i, "resale_months", b.cx.resale_months, unit="months")
-        from app.api.views import _resale_end
-
-        terms.append(
-            {
+        items[str(i)] = {
+            "row": score_row(ctx, b, names, jl_days=days),
+            "ladders": [ladder_view(lad, days.get(lad.judgment_seq or -1)) for lad in b.ladders],
+            "gap": gap,
+            "term": {
                 "complex_id": i,
                 "name": b.cx.name,
                 "resale_end": _resale_end(fm, b.cx, winner, months),
@@ -218,8 +248,8 @@ def get_compare(
                 "down_payment_won": down_won,
                 "required_equity_won": equity,
                 "interim_terms_text": pay.interim_terms_text if pay is not None else None,
-            }
-        )
+            },
+        }
     cx_names = {
         c.id: c.name for c in session.scalars(select(Complex).where(Complex.region_id == snap.region_id))
     }
@@ -234,20 +264,7 @@ def get_compare(
         if ds is not None:
             decisions[scen.code or str(scen.id)] = ds
     keys = [k for k in COMPONENT_ORDER if k in ctx.weights]
-    return JSONResponse(
-        {
-            "snapshot_id": snap.id,
-            "asof_date": snap.asof_date,
-            "scenario_id": sc.id,
-            "ids": id_list,
-            "rows": rows,
-            "components": {"weights": ctx.weights, "keys": keys},
-            "ladders": ladders,
-            "gaps": gaps,
-            "terms": terms,
-            "decisions": decisions,
-        }
-    )
+    return {"items": items, "components": {"weights": ctx.weights, "keys": keys}, "decisions": decisions}
 
 
 # ====================================================================== 민감도 (C10)
@@ -255,12 +272,17 @@ def get_compare(
 
 @router.get("/snapshots/{sid}/sensitivity")
 def get_sensitivity(session: DB, sid: int, scenario: ScenarioQ = "base") -> JSONResponse:
+    snap = get_snapshot(session, sid)
+    sc = resolve_scenario(session, scenario)
+    return JSONResponse(sv.read(session, snap, "sensitivity", scenario=sc))
+
+
+def sensitivity_body(session: Session, snap: Snapshot, sc: Scenario) -> dict[str, Any]:
+    """C10 민감도 응답(실시간 계산 — 발행 리비전은 저장한다, D13-1)."""
     from app.analysis.sensitivity import compute_sensitivity
     from app.core.contracts_gen import Weights
 
-    snap = get_snapshot(session, sid)
-    sc = resolve_scenario(session, scenario)
-    ctx = score_ctx(session, snap.id, sc)
+    ctx = views.score_ctx(session, snap.id, sc)
     scores: dict[int, dict[Any, Decimal | None]] = {}
     for cid, t in ctx.totals.items():
         if t.rank is None and t.total is not None:
@@ -270,7 +292,7 @@ def get_sensitivity(session: DB, sid: int, scenario: ScenarioQ = "base") -> JSON
     sens = compute_sensitivity(
         scores, weights, snapshot_id=snap.id, scenario_id=sc.id, score_run_id=ctx.run.id if ctx.run else None
     )
-    body = sens.model_dump(mode="json")
+    body: dict[str, Any] = sens.model_dump(mode="json")
     body["base_weights"] = {k: v for k, v in body["base_weights"].items() if v is not None}
     for cell in body.get("cells") or []:
         cell["weights"] = {k: v for k, v in cell["weights"].items() if v is not None}
@@ -283,7 +305,7 @@ def get_sensitivity(session: DB, sid: int, scenario: ScenarioQ = "base") -> JSON
             r["name"] = names.get(r["complex_id"])
     body["complex_names"] = {str(k): v for k, v in sorted(names.items())}
     body["score_run_id"] = ctx.run.id if ctx.run is not None else None
-    return JSONResponse(body)
+    return body
 
 
 # ====================================================================== 시나리오 (G5)
@@ -345,7 +367,7 @@ def preview_scenario(
         raise not_found(f"scenario {id}")
     snap = get_snapshot(session, snapshot)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
+    bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
     inputs = []
     for b in bundles.values():

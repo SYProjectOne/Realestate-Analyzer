@@ -9,6 +9,8 @@
 | §12 | 사람 확인 리비전 요약은 'rerank 다시 실행' 이라고 쓰지 않는다 |
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from typing import Any
@@ -86,10 +88,11 @@ def test_unchanged_weekly_collect_does_not_leave_building_revision(client: TestC
 
     ctx = SchedulerContext(session_factory=get_sessionmaker(), adapter_factory=no_judge, collectors={})
     out = _finish_unchanged_revision(ctx, rid)
-    assert out is not None and out["published"] is True, out
+    # 계약 .10(D13-4): 변경 없는 주간 수집은 새 리비전을 만들지 않는다 — 빈 리비전을 지우고 직전 발행 리비전 유지
+    # (예전 .9: 같은 내용 리비전을 복사·발행)
+    assert out == {"discarded_revision": rid, "kept": SNAP}, out
     with get_session() as s:
-        snap = s.get(Snapshot, rid)
-        assert snap is not None and snap.status == "published"
+        assert s.get(Snapshot, rid) is None
 
 
 def test_section12_summary_does_not_claim_rerank_rerun_for_human_check_revision(client: TestClient) -> None:

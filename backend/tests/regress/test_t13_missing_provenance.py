@@ -38,6 +38,17 @@ def _replace(env: RegressEnv) -> None:
     devseed.replace_bundles(
         env.settings, bundles_path=T13 / "complexes.json", provenance_path=T13 / "provenance.json"
     )
+    # D13-1(계약 .10): 발행 리비전은 저장본(출처 누락은 발행 때 드러난다) — 출처 누락 응답 규칙은 발행 전 리비전에서 본다
+    from sqlalchemy import delete, select
+
+    from app.core.db import get_session
+    from app.models import Snapshot, SnapshotView
+
+    set_settings(env.settings)
+    with get_session() as s:
+        for snap in s.scalars(select(Snapshot).where(Snapshot.status == "published")):
+            s.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == snap.id))
+            snap.status, snap.published_at = "ready", None
     reset_engine()
 
 

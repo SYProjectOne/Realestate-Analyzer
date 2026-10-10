@@ -33,7 +33,7 @@ from app.models import (
     Unsold,
 )
 
-from ._support import READ, WRITE, validate
+from ._support import READ, WRITE, as_live, validate
 
 SNAP = 12
 
@@ -396,6 +396,7 @@ def _csv(client: TestClient) -> list[dict[str, str]]:
 
 @pytest.mark.parametrize("evil", ['=HYPERLINK("http://x")', "+1+1", "-2+3", "@SUM(A1)", "\tx", "\rx"])
 def test_minor18_csv_formula_injection_is_neutralised(client: TestClient, evil: str) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         cx = s.get(Complex, 2)
         assert cx is not None
@@ -444,6 +445,7 @@ def test_minor19_docs_off_in_prod(api_settings: Settings) -> None:
 
 
 def test_m4_unsold_partial_sum_is_unknown(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         latest = s.scalars(select(Unsold.ym).order_by(Unsold.ym.desc())).first()
         group = list(s.scalars(select(Unsold).where(Unsold.ym == latest)))
@@ -468,6 +470,7 @@ def test_m4_supply_partial_sum_is_unknown(api_settings: Settings) -> None:
     """supply.units 는 NOT NULL — 누락은 출처 행 없음(prod: '확인 불가(출처 누락)')으로만 생긴다."""
     from app.main import create_app
 
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         rows = list(s.scalars(select(Supply)))
         by_key: dict[tuple[str | None, int], list[Supply]] = {}
@@ -517,6 +520,7 @@ def test_minor22_comparables_are_not_gap_labelled(client: TestClient) -> None:
 
 
 def test_minor22_catalyst_expected_ym_prov_is_field_provenance(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         cat = s.scalars(select(Catalyst).order_by(Catalyst.id)).first()
         assert cat is not None
@@ -621,6 +625,7 @@ def test_minor34_raw_reads_from_monthly_archive(api_settings: Settings, tmp_path
 
 
 def test_w6_substitute_label_shows_annual_coef(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     from app.models import ComparableSet, Region
 
     with get_session() as s:
@@ -641,6 +646,7 @@ def test_w6_substitute_label_shows_annual_coef(client: TestClient) -> None:
 
 
 def test_w7_gap_pct_unadjusted_reads_stored_value(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     from decimal import Decimal
 
     from app.models import ScoreComponent, ScoreRun

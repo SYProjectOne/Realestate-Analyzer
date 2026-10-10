@@ -37,13 +37,16 @@ from app.reports.charts import build_charts, c01_ladder
 from app.reports.data import ReportData, load_report
 from app.reports.diff import diff_snapshots
 from app.reports.render import render_html
+from tests.reports._seed import live
 
 NOT_TARGET_P10 = Decimal("0.7700")  # 픽스처 어디에도 없는 값 — 표시되면 바로 보인다
 
 
 @pytest.fixture
 def scratch(factory: sessionmaker[Session]) -> Iterator[Session]:
+    """바꿔 보고 되돌리는 세션 — 스냅샷 11·12 는 이 세션 안에서 발행 전(실시간 적재, D13-1)."""
     with factory() as s:
+        live(s)
         try:
             yield s
         finally:

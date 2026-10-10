@@ -21,6 +21,8 @@ R3c SEC(3차 리뷰 minor 22·31):
   ``(82)10-…``·``(+82) 10-…``. 글자 단위 1:1 치환(``_FOLD``)한 사본에서 찾으므로 위치는 원문 그대로다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import re
@@ -102,8 +104,8 @@ AUTH_HEADER_RE = re.compile(
     r"|(?=[A-Za-z0-9]*[\-._~+/])" + _TOKEN_CH + r"{8,}=*"  # 토큰 기호가 든 8자 이상
     r"|" + _TOKEN_CH + r"{16,}=*"  # 16자 이상
     r")"
-    r"|\bBearer\s+((?=" + _TOKEN_CH + r"*[\d\-._~+/])" + _TOKEN_CH + r"{4,7}=*)(?!" + _TOKEN_CH + r")"
-    # R3 4차 minor: 대문자 'Bearer' 뒤 숫자·토큰 기호가 든 4~7자 짧은 토큰도
+    r"|\b(?i:bearer)\s+((?=" + _TOKEN_CH + r"*[\d\-._~+/])" + _TOKEN_CH + r"{4,7}=*)(?!" + _TOKEN_CH + r")"
+    # R3 4차 minor: 'Bearer' 뒤 숫자·토큰 기호가 든 4~7자 짧은 토큰도 — R3 5차 minor: 대소문자 무관('bearer abc123')
     # (소문자 낱말 'bearer of' 는 그대로)
 )
 """Authorization 헤더 값(``Authorization: Bearer …``·``Basic …``·``Token …``)과 홀로 나온 ``Bearer <토큰>``
@@ -111,11 +113,12 @@ AUTH_HEADER_RE = re.compile(
 HEADER_KEY_RE = re.compile(
     r"(?i)(?<![A-Za-z0-9_-])((?:x-)?[a-z0-9_-]*?"
     r"(?:api[-_]?key(?:[-_]id)?|apikey|client[-_]?secret|client[-_]?id|access[-_]?token|auth[-_]?token|"
-    r"refresh[-_]?token|secret[-_]?key|secret|token|password|passwd)"
+    r"refresh[-_]?token|secret[-_]?access[-_]?key|private[-_]?key|secret[-_]?key|secret|token|password|passwd|pwd)"
     r")[\"']?\s*[:=]\s*[\"']?\s*(" + _TOKEN + ")"
 )
 """이름으로 비밀임을 아는 헤더·키 뒤의 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``·``"X-Api-Key": "…"``,
-snake_case ``client_secret=…``·``access_token: …`` — R3 4차 minor)."""
+snake_case ``client_secret=…``·``access_token: …`` — R3 4차 minor; ``aws_secret_access_key=…``·``private_key=…``·
+``pwd=…`` — R3 5차 minor)."""
 _PHONE_KEY_RE = re.compile(r"(?i)(phone|tel|mobile|fax|전화|연락처|휴대)")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 QUERY_KEY_RE = re.compile(
