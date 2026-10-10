@@ -47,7 +47,7 @@ from app.models import (
     Snapshot,
 )
 
-from ._support import READ, WRITE, validate
+from ._support import READ, WRITE, as_live, validate
 from .test_r3b_g3 import CX, SNAP, _ensure_resale, _fact_claim
 
 
@@ -65,6 +65,7 @@ def _demote_resale(client: TestClient) -> int:
 
 
 def test_m3_demotion_applies_to_list_csv_and_report_immediately(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     cid = _demote_resale(client)
     with get_session() as s:  # 고친 문장의 재검증이 끝났다(분할 자식 verified) — 보고서 생성 가능
         s.add(Claim(snapshot_id=SNAP, section=f"complex:{CX}", complex_id=CX, text="재검증", verify_status="verified",
@@ -119,6 +120,7 @@ def _price_by_type(cx_id: int, won: int) -> tuple[int, str]:
 
 
 def test_m4_price_demotion_targets_current_notice_price(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     pt_id, code = _price_by_type(CX, 655_000_000)
     with get_session() as s:
         name = s.get(Complex, CX).name  # type: ignore[union-attr]
@@ -256,6 +258,7 @@ def test_m9_checklist_closes_on_demotion_and_reopens_on_restore(client: TestClie
 
 
 def test_m1_ladder_hiding_follows_the_requested_scenario_run(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         cid = s.scalars(select(Ladder.complex_id).where(Ladder.snapshot_id == SNAP)).first()
         assert cid is not None
@@ -312,6 +315,7 @@ def test_m6_report_benchmarks_are_snapshot_scoped(client: TestClient) -> None:
 
 
 def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClient) -> None:
+    as_live()  # D13-1: 실시간 계산 경로(발행 전 리비전)를 본다
     with get_session() as s:
         run = s.scalars(
             select(ScoreRun).where(ScoreRun.snapshot_id == SNAP).order_by(ScoreRun.id.desc())
@@ -345,7 +349,8 @@ def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClien
         )
     items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=READ).json()["items"]
     assert next(i for i in items if i["complex_id"] == CX)["rejudge_needed"] is True
-    # 더 새 스냅샷이 **발행**되면 이 스냅샷은 과거 기록 — 오늘 사실과 비교하지 않는다
+    # 계약 .10(D13-1·M6): '재판정 필요'는 실시간(발행 전) 리비전에서 늘 지금 사실과 비교한다 — 더 새 스냅샷이 발행돼도
+    # 이 리비전은 발행 전이라 배지가 남는다(발행 리비전은 발행 순간 값이 저장본에 고정된다)
     with get_session() as s:
         s.add(
             Snapshot(
@@ -356,7 +361,7 @@ def test_minor2_minor5_rejudge_needed_csv_and_change_after_run(client: TestClien
             )
         )
     items = client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 100}, headers=READ).json()["items"]
-    assert not any(i["rejudge_needed"] for i in items)
+    assert next(i for i in items if i["complex_id"] == CX)["rejudge_needed"] is True
 
 
 # ====================================================================== D11-5
@@ -396,7 +401,8 @@ def test_d11_5_patch_catalyst_creates_links_and_unconfirm_removes(client: TestCl
             and rev.status == "published"
             and (rev.revision_reason or "").startswith("호재 위치 확인")
         )
-    got = client.get(f"/api/complexes/{la2[0]}", params={"snapshot": SNAP}, headers=READ)
+    # 바로 발행된 새 리비전(저장본 — D13-1)에 그 시점 연결이 있다
+    got = client.get(f"/api/complexes/{la2[0]}", params={"snapshot": rev.id}, headers=READ)
     assert got.status_code == 200, got.text
     detail = got.json()
     assert any(c["id"] == cat_id and c["linked"] for c in detail["catalysts"]), (

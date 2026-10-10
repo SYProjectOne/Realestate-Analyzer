@@ -83,6 +83,8 @@ __all__ = [
     "count_remaining_contradicted",
     "is_valid_url",
     "load_report",
+    "load_report_live",
+    "report_payload_live",
 ]
 
 COMPONENT_LABELS: Final[dict[str, str]] = {
@@ -758,7 +760,6 @@ class _Loader:
         self.asof = snapshot.asof_date
         self.la_names = {str(la.get("id")): str(la.get("name")) for la in region.living_areas or []}
         self.prov = _ProvIndex(session, {}, env)
-        self.frozen: Any = None  # app.snapshot_state.State — 발행 리비전의 얼린 값(load_report 가 채운다)
 
     # -- 범위
     def scope_ids(self) -> list[int]:
@@ -783,8 +784,6 @@ class _Loader:
     def complexes(self, ids: list[int]) -> list[ComplexView]:
         s = self.s
         cxs = list(s.scalars(select(Complex).where(Complex.id.in_(ids)).order_by(Complex.id)))
-        if self.frozen is not None:
-            cxs = [self.frozen.complex(c) for c in cxs]
         types = list(
             s.scalars(select(ComplexType).where(ComplexType.complex_id.in_(ids)).order_by(ComplexType.id))
         )
@@ -818,6 +817,21 @@ class _Loader:
             self.env,
         )
         P = self.prov
+        types_by: dict[int, list[ComplexType]] = defaultdict(list)
+        for t in types:
+            types_by[t.complex_id].append(t)
+        pays_by: dict[int, list[PaymentTerms]] = defaultdict(list)
+        for p in pays:
+            pays_by[p.complex_id].append(p)
+        comps_by: dict[int, list[Competition]] = defaultdict(list)
+        for k in comps:
+            comps_by[k.complex_id].append(k)
+        events_by: dict[int, list[RemainingEvent]] = defaultdict(list)
+        for e in events:
+            events_by[e.complex_id].append(e)
+        intakes_by: dict[int, list[IntakeStatus]] = defaultdict(list)
+        for i in intakes:
+            intakes_by[i.complex_id].append(i)
         out: list[ComplexView] = []
         for c in cxs:
             facts: dict[str, Fact] = {}
@@ -843,17 +857,12 @@ class _Loader:
                     floor_text=t.floor_sample_text,
                     is_basis=False,
                 )
-                for t in types
-                if t.complex_id == c.id
+                for t in types_by.get(c.id, [])
             ]
             # 강등 중인 사실(D11-3)은 현재 구매가·판정 범위 계산에서도 빠진다(API ``load_bundles`` 와 같은
             # 오버레이)
-            my_types = [
-                masked(t, P.overlay.fields("complex_type", t.id)) for t in types if t.complex_id == c.id
-            ]
-            my_pays = [
-                masked(p, P.overlay.fields("payment_terms", p.id)) for p in pays if p.complex_id == c.id
-            ]
+            my_types = [masked(t, P.overlay.fields("complex_type", t.id)) for t in types_by.get(c.id, [])]
+            my_pays = [masked(p, P.overlay.fields("payment_terms", p.id)) for p in pays_by.get(c.id, [])]
             view = current_price(my_types, my_pays, discount_label=labels_from(P.label))
             basis = next((tv for tv in tviews if tv.type_code == view.basis_type_code), None)
             if basis is not None:
@@ -887,8 +896,7 @@ class _Loader:
                     applied=P.fact("competition", k.id, "applied", k.applied, "count"),
                     ratio_text=k.ratio_or_shortfall_text,
                 )
-                for k in comps
-                if k.complex_id == c.id
+                for k in comps_by.get(c.id, [])
             ]
             eviews = [
                 EventView(
@@ -899,10 +907,9 @@ class _Loader:
                     ratio_text=e.ratio_text,
                     result_text=e.result_text,
                 )
-                for e in events
-                if e.complex_id == c.id
+                for e in events_by.get(c.id, [])
             ]
-            my_intakes = [i for i in intakes if i.complex_id == c.id]
+            my_intakes = intakes_by.get(c.id, [])
             shown_row = pick_intake(my_intakes)
             iviews = [
                 IntakeView(
@@ -938,7 +945,7 @@ class _Loader:
                 has_price=view.known,
                 intake_status=shown_row.status if shown_row is not None else None,
             )
-            my_events = [e for e in events if e.complex_id == c.id]
+            my_events = events_by.get(c.id, [])
             out.append(
                 ComplexView(
                     id=c.id,
@@ -1475,7 +1482,7 @@ def _benchmark_areas(
 def _catalysts(
     ctx: _Ctx, pairs: Sequence[tuple[Any, Sequence[Any]]]
 ) -> tuple[list[CatalystView], list[dict[str, Any]], dict[int, list[CatalystView]]]:
-    """§5 호재(``snapshot_state.catalysts_for`` — 리비전 시점 단계·연결, '호재 아님' 제외)."""
+    """§5 호재(``facts_view.region_catalysts`` — 지금 단계·연결, '호재 아님' 제외; 발행 리비전은 저장본, D13-1)."""
     catalysts = [c for c, _ in pairs]
     views = [
         CatalystView(
@@ -1788,7 +1795,8 @@ def _resolve(
     snap = session.get(Snapshot, snapshot_id)
     if snap is None:
         raise ReportNotFound(f"스냅샷 {snapshot_id} 없음")
-    blocked = count_remaining_contradicted(session, snapshot_id)
+    # 발행 리비전은 발행 때 남은 contradicted 0 을 확인했다(publish) — 저장본을 그대로 렌더한다(D13-1)
+    blocked = [] if snap.status == "published" else count_remaining_contradicted(session, snapshot_id)
     if blocked:
         ids = ", ".join(str(c.id) for c in blocked[:10])
         raise ReportBlocked(
@@ -1811,25 +1819,31 @@ def _resolve(
     return snap, region, scenario, compare
 
 
-def load_report(
+def load_report_live(
     session: Session,
     snapshot_id: int,
     *,
     scenario_id: int | None = None,
-    compare_snapshot_id: int | None = None,
+    cache: dict[Any, Any] | None = None,
+    env: str | None = None,
 ) -> ReportData:
-    """보고서 데이터 모델. contradicted 주장이 남아 있으면 ``ReportBlocked``(파일을 만들기 전)."""
-    snap, region, scenario, compare = _resolve(session, snapshot_id, scenario_id, compare_snapshot_id)
-    from app.snapshot_state import load_state
+    """보고서 데이터 모델을 지금 사실로 적재한다(발행 전 리비전·발행 때 저장본 만들기 — D13-1). §12(extra)는 없다.
+    contradicted 주장이 남아 있으면 ``ReportBlocked``(파일을 만들기 전). ``cache``(materialize — 시나리오만 다른 적재
+    여러 번)는 시나리오와 무관한 단지 뷰를 한 번만 만든다(범위 표시는 시나리오마다 얕은 복사에 적용)."""
+    import dataclasses
 
-    # D12-4: 발행 리비전은 그 시점의 생활권·분류·호재(옛 보고서가 바뀌지 않게)
-    frozen = load_state(session, snap.id)
-    if frozen is not None:
-        region = frozen.region_row(region)
-    loader = _Loader(session, snap, region, scenario, compare, get_settings().env)
-    loader.frozen = frozen
+    snap, region, scenario, _compare = _resolve(session, snapshot_id, scenario_id, None)
+    loader = _Loader(session, snap, region, scenario, None, env or get_settings().env)
     ids = loader.scope_ids()
-    complexes = loader.complexes(ids)
+    key = ("complexes", snap.id, tuple(ids))
+    if cache is not None and key in cache:
+        loader.prov = cache[("prov", snap.id)]
+        complexes = [dataclasses.replace(cv) for cv in cache[key]]
+    else:
+        complexes = loader.complexes(ids)
+        if cache is not None:
+            cache[key] = [dataclasses.replace(cv) for cv in complexes]
+            cache[("prov", snap.id)] = loader.prov
     scenarios = list(session.scalars(select(Scenario).order_by(Scenario.id)))
     runs = {sc.id: r for sc in scenarios if (r := _latest_run(session, snap.id, sc.id)) is not None}
     run = runs.get(scenario.id)
@@ -1860,10 +1874,10 @@ def load_report(
         for d in session.scalars(select(Decision).where(Decision.score_run_id == r.id))
     ]
     claims = list(session.scalars(select(Claim).where(Claim.snapshot_id == snap.id).order_by(Claim.id)))
-    from app.snapshot_state import catalysts_for
+    from app.facts_view import region_catalysts
 
-    # D12-4·M-7: 그 리비전 시점의 호재 단계·연결, '호재 아님'은 §5 에 넣지 않는다
-    cat_pairs = catalysts_for(session, region.id, snap.id, state=frozen)
+    # '호재 아님'은 §5 에 넣지 않는다(D11-2). 발행 리비전은 이 데이터가 저장된다(D13-1)
+    cat_pairs = region_catalysts(session, region.id)
     catalysts = [c for c, _ in cat_pairs]
     docs = list(
         session.scalars(
@@ -1958,8 +1972,64 @@ def load_report(
         complex_by_id=ctx.by_id,
         catalyst_links=links,
     )
+    return data
+
+
+def report_payload_live(
+    session: Session,
+    snapshot_id: int,
+    scenario_id: int,
+    *,
+    cache: dict[Any, Any] | None = None,
+    env: str | None = None,
+) -> dict[str, Any]:
+    """저장본(D13-1 kind=report): 보고서 입력 데이터(태그 JSON) + §12 비교에 쓰는 후보군·rerank·단지 이름."""
+    from app.reports.codec import encode_data
+
+    data = load_report_live(session, snapshot_id, scenario_id=scenario_id, cache=cache, env=env)
+    run = _latest_run(session, snapshot_id, scenario_id)
+    memo = cache.setdefault("codec", {}) if cache is not None else None
+    return {
+        "data": encode_data(data, memo),
+        "candidates": sorted(_candidates(session, run, {s.complex_id for s in data.scores})),
+        "rerank_seq": run.rerank_judgment_seq if run is not None else None,
+        "names": {
+            str(c.id): c.name
+            for c in session.scalars(
+                select(Complex).where(
+                    Complex.region_id
+                    == select(Snapshot.region_id).where(Snapshot.id == snapshot_id).scalar_subquery()
+                )
+            )
+        },
+    }
+
+
+def _payload(session: Session, snap: Snapshot, scenario: Scenario) -> dict[str, Any]:
+    """발행 리비전 = 저장본, 그 밖 = 지금 적재(``snapshot_view.read``)."""
+    from app import snapshot_view as sv
+
+    got: dict[str, Any] = sv.read(session, snap, "report", scenario=scenario)
+    return got
+
+
+def load_report(
+    session: Session,
+    snapshot_id: int,
+    *,
+    scenario_id: int | None = None,
+    compare_snapshot_id: int | None = None,
+) -> ReportData:
+    """보고서 데이터 모델. 발행 리비전은 발행 때 저장한 입력 데이터(D13-1 — 이후 사실·강등·사람 확인·생활권·호재·
+    지역 이름 변경이 옛 보고서를 바꾸지 않는다), 발행 전이면 지금 적재. §12(``compare_snapshot_id``)는 두 리비전의
+    입력 데이터(저장본)로 계산한다. 발행 전 리비전에 contradicted 주장이 남아 있으면 ``ReportBlocked``."""
+    from app.reports.codec import decode_data
+
+    snap, _region, scenario, compare = _resolve(session, snapshot_id, scenario_id, compare_snapshot_id)
+    payload = _payload(session, snap, scenario)
+    data: ReportData = decode_data(payload["data"])
     if compare is not None:
-        data.extra = _extra(session, data, compare, scenario, names)
+        data.extra = _extra(data, payload, _payload(session, compare, scenario), compare)
     return data
 
 
@@ -1979,24 +2049,30 @@ def _candidates(session: Session, run: ScoreRun | None, ids: set[int]) -> set[in
 
 
 def _extra(
-    session: Session, data: ReportData, base: Snapshot, scenario: Scenario, names: Mapping[int, str]
+    data: ReportData, cur: Mapping[str, Any], base_payload: Mapping[str, Any], base: Snapshot
 ) -> ExtraView:
     """§12 지역 추가·변경 장: 후보군 변화, rerank 재실행, 순위 변화 한 문단(meta §2-3).
 
     후보군 = 그 점수 실행에서 rerank 후보 범위(판정 대상·참고·보류 — ``analysis.scope.in_rerank``)인 단지(R3 4차 M-4:
-    지역 선택에서 빠져 '제외'(범위 경계)가 된 단지도 점수 행은 남아 '제외 0'으로 보였다)."""
-    prev_run = _latest_run(session, base.id, scenario.id)
-    prev = {v.complex_id: v for v in _score_views(session, prev_run, names, {})}
-    cur = {v.complex_id: v for v in data.scores}
-    cur_run = _latest_run(session, data.snapshot_id, scenario.id)
-    prev_c, cur_c = _candidates(session, prev_run, set(prev)), _candidates(session, cur_run, set(cur))
+    지역 선택에서 빠져 '제외'(범위 경계)가 된 단지도 점수 행은 남아 '제외 0'으로 보였다). 두 리비전 모두 보고서 입력
+    데이터(발행 리비전 = 저장본, D13-1)로 계산한다 — 지금 사실·이름을 다시 읽지 않는다."""
+    from app.reports.codec import decode_data
+
+    base_data: ReportData = decode_data(base_payload["data"])
+    names: dict[int, str] = {int(k): v for k, v in (base_payload.get("names") or {}).items()}
+    names.update({int(k): v for k, v in (cur.get("names") or {}).items()})
+    prev = {v.complex_id: v for v in base_data.scores}
+    cur_scores = {v.complex_id: v for v in data.scores}
+    prev_c, cur_c = set(base_payload.get("candidates") or []), set(cur.get("candidates") or [])
     added = sorted(names.get(i, str(i)) for i in cur_c - prev_c)
     removed = sorted(names.get(i, str(i)) for i in prev_c - cur_c)
     prev = {k: v for k, v in prev.items() if k in prev_c}
-    cur = {k: v for k, v in cur.items() if k in cur_c}
+    cur_scores = {k: v for k, v in cur_scores.items() if k in cur_c}
     rank_rows: list[tuple[str, str, str, Fact | None, Fact | None]] = []
-    for cid in sorted(set(cur) | set(prev), key=lambda i: (cur[i].rank or 99) if i in cur else 99):
-        a, b = prev.get(cid), cur.get(cid)
+    for cid in sorted(
+        set(cur_scores) | set(prev), key=lambda i: (cur_scores[i].rank or 99) if i in cur_scores else 99
+    ):
+        a, b = prev.get(cid), cur_scores.get(cid)
         rank_rows.append(
             (
                 names.get(cid, str(cid)),
@@ -2010,7 +2086,7 @@ def _extra(
     cur_top = [v.name for v in data.top5]
     entered = [n for n in cur_top if n not in prev_top]
     left = [n for n in prev_top if n not in cur_top]
-    prev_seq = prev_run.rerank_judgment_seq if prev_run else None
+    prev_seq = base_payload.get("rerank_seq")
     if data.rerank_seq is not None and data.rerank_seq != prev_seq:
         rerank_text = (
             f"rerank는 후보군 전체로 다시 실행했다(#{prev_seq or '—'} → #{data.rerank_seq}). "
@@ -2020,7 +2096,7 @@ def _extra(
         # R3 4차 minor: 사람 확인·단지 재판정 리비전은 rerank 를 다시 부르지 않았다 — '다시 실행' 이라고 쓰지 않는다
         rerank_text = f"rerank는 다시 실행하지 않았다(같은 호출 #{data.rerank_seq or prev_seq or '—'} 유지)."
     summary = (
-        f"{base.asof_date} 스냅샷(리비전 {int(base.revision or 1)}) 대비 후보 {len(prev)}개 → {len(cur)}개"
+        f"{base.asof_date} 스냅샷(리비전 {int(base.revision or 1)}) 대비 후보 {len(prev)}개 → {len(cur_scores)}개"
         f"(추가 {len(added)}, 제외 {len(removed)}). {rerank_text} "
         f"TOP 5 진입: {', '.join(entered) or '없음'}; 이탈: {', '.join(left) or '없음'}."
     )
@@ -2030,7 +2106,7 @@ def _extra(
         added=added,
         removed=removed,
         rank_rows=rank_rows,
-        rerank_prev_seq=prev_run.rerank_judgment_seq if prev_run else None,
+        rerank_prev_seq=prev_seq,
         rerank_seq=data.rerank_seq,
         summary=summary,
     )

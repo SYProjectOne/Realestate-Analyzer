@@ -26,7 +26,7 @@ from app.reports.errors import ReportProvenanceMissing
 from app.reports.export import generate
 from app.reports.policy import JUDGE_SCOPE_TEXT, judge_scope
 
-from ._seed import SeedInfo
+from ._seed import SeedInfo, live
 
 # ---------------------------------------------------------------------------- 공용
 
@@ -50,8 +50,10 @@ def _prov(session: Session, entity: str, entity_id: int, fld: str, value: str, l
 
 @pytest.fixture
 def scratch(factory: sessionmaker[Session]) -> Iterator[Session]:
+    """바꿔 보고 되돌리는 세션 — 스냅샷 11·12 는 이 세션 안에서 발행 전(실시간 적재, D13-1)."""
     """바꿔 보고 되돌리는 세션."""
     with factory() as s:
+        live(s)
         try:
             yield s
         finally:

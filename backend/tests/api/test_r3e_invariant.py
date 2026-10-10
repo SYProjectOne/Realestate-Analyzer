@@ -85,9 +85,8 @@ def _urls(rev: int, complex_ids: list[int]) -> list[str]:
 
 
 def _report_bytes(rev: int, out: Path) -> dict[str, str]:
-    from app.reports.export import generate
-
     from app.models import Scenario
+    from app.reports.export import generate
 
     got: dict[str, str] = {}
     with get_session() as s:
@@ -150,20 +149,37 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
     def d_new_complex() -> None:
         with get_session() as s:
             s.add(Complex(region_id=1, applyhome_id="2026999301", name="나중에 수집된 단지", former_names=[],
-                          apply_dates=[], contract_dates=[], inclusion_class="판정 대상", living_area="la_2",
-                          legal_dong_code="2829010300", move_in_ym="2029-01", units_total=900))  # fmt: skip
+                          apply_dates=[], contract_dates=[], inclusion_class="private_sale_apt", living_area="la_2",
+                          legal_dong_code="2829010300"))  # fmt: skip
 
     def e_catalyst() -> None:
         with get_session() as s:
-            cat = Catalyst(region_id=1, name="불변 테스트 역", kind="교통", stage="계획", location_confirmed=False)
+            cat = Catalyst(
+                region_id=1, name="불변 테스트 역", kind="교통", stage="계획", location_confirmed=False
+            )
             s.add(cat)
             s.flush()
             cid = cat.id
         body = {"location_confirmed": True, "complex_ids": [CX], "expected_ym": "2029-01"}
         assert client.patch(f"/api/catalysts/{cid}", json=body, headers=WRITE).status_code == 200
-        assert client.patch(f"/api/catalysts/{cid}", json={**body, "expected_ym": "2030-06"}, headers=WRITE).status_code == 200
-        assert client.patch(f"/api/catalysts/{cid}", json={**body, "expected_ym": None}, headers=WRITE).status_code == 200
-        assert client.patch(f"/api/catalysts/{cid}", json={**body, "complex_ids": [CX, 1]}, headers=WRITE).status_code == 200
+        assert (
+            client.patch(
+                f"/api/catalysts/{cid}", json={**body, "expected_ym": "2030-06"}, headers=WRITE
+            ).status_code
+            == 200
+        )
+        assert (
+            client.patch(
+                f"/api/catalysts/{cid}", json={**body, "expected_ym": None}, headers=WRITE
+            ).status_code
+            == 200
+        )
+        assert (
+            client.patch(
+                f"/api/catalysts/{cid}", json={**body, "complex_ids": [CX, 1]}, headers=WRITE
+            ).status_code
+            == 200
+        )
 
     def f_living_areas() -> None:
         region = client.get("/api/regions/1", headers=READ).json()
@@ -181,10 +197,12 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
         assert r.status_code == 200, r.text
 
     def h_supply() -> None:
+        from app.collectors.stats.supply import write_supply_provenance
         from app.scheduler.collect import _supply
 
         with get_session() as s:
             _supply(s, 1)
+            write_supply_provenance(s, 1)
 
     def i_classify() -> None:
         with get_session() as s:
@@ -196,6 +214,25 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
                 c.stage, c.stage_prob, c.judgment_seq = "호재 아님", 0.91, 1  # type: ignore[assignment]
 
     def j_new_revision() -> None:
+        """판정 중인(사람 확인·강등이 만든) 가장 새 리비전을 이월·발행 → 그 위에 또 리비전 발행."""
+        from app.scheduler.persist import carry_forward
+        from app.scheduler.snapshots import latest_for_region, previous, publish
+
+        with get_session() as s:
+            newest = latest_for_region(s, 1)
+            assert newest is not None
+            if newest.status != "published":
+                base = previous(s, newest, published_only=True)
+                assert base is not None
+                carry_forward(s, base.id, newest.id, created_at="2026-10-09T13:00:00+09:00")
+                from app.models import Claim
+
+                for c in s.scalars(select(Claim).where(Claim.snapshot_id == newest.id)):
+                    if c.verify_status == "contradicted":  # B 의 고친 문장 재검증 통과(claim.reverify) 가정
+                        c.verify_status = "verified"
+                newest.status = "ready"
+                ok, n = publish(s, newest.id, now="2026-10-09T13:05:00+09:00")
+                assert ok, n
         _publish_revision()
 
     return [

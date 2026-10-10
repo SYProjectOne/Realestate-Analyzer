@@ -7,6 +7,8 @@ devseed 가 사실·출처·판정 로그·사다리·호재·시장·예시와 
 지역명은 픽스처에만 있다(코드에는 없음).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -47,8 +49,24 @@ def seed(settings: Settings, session_factory: Any) -> SeedInfo:
     return info
 
 
+def live(session: Session, *snapshot_ids: int) -> None:
+    """그 세션 안에서 발행 스냅샷(기본 11·12)을 '판정 끝·발행 전(ready)'으로 — ``load_report`` 가 지금 사실로 적재한다.
+
+    D13-1(계약 .10): 발행 리비전 보고서는 발행 때 저장한 입력 데이터만 쓴다. 사실을 바꿔 보고서 계산 규칙을 보는 테스트는
+    발행 전 리비전에서 본다(세션 rollback 으로 되돌린다)."""
+    from app.models import Snapshot
+
+    for sid in snapshot_ids or (11, 12):
+        snap = session.get(Snapshot, sid)
+        if snap is not None:
+            snap.status = "ready"
+    session.flush()
+
+
 def add_contradicted_claim(session: Session, snapshot_id: int) -> int:
-    """T15: 분할되지 않은 contradicted 주장 1건(생성 거부 시험용)."""
+    """T15: 분할되지 않은 contradicted 주장 1건(생성 거부 시험용). 주장은 판정 중 리비전에 생긴다 — 그 스냅샷을 발행 전
+    (ready)으로 둔다(발행 리비전은 발행 때 남은 contradicted 0 을 확인했고 저장본으로 렌더한다, D13-1)."""
+    live(session, snapshot_id)
     row = Claim(
         snapshot_id=snapshot_id,
         section="8-F1",

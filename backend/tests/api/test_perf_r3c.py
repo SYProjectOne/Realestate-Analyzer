@@ -7,8 +7,14 @@
    같은 ``views`` 함수를 쓰는 다른 화면(대시보드·시장·비교·상세·미리보기)도 같이 고정한다(목록 최적화가 그 응답을 바꾸지
    않는다). ``rich`` 의 size=1000 JSON·CSV 는 본문 전체도 ``snapshots/list_r3c/`` 에 둔다(차이가 나면 읽을 수 있게).
    의도한 응답 변경이면 ``UPDATE_GOLDEN=1`` 로 다시 쓴다(최적화 전 코드로 만든 값이다).
-2. 성능(``test_cold_size1000_with_scores_under_half_second``): 새 엔진·새 앱의 첫 요청(cold) size=1000 을
-   ``COLD_RUNS`` 번 재서 중앙값 < 0.5초(기존 ``test_perf_t16``·``test_perf_r3`` 의 1초 기준은 그대로).
+2. 성능: 새 엔진·새 앱의 첫 요청(cold) size=1000 을 ``COLD_RUNS`` 번 재서 중앙값.
+   - 발행 리비전(``test_cold_size1000_published_under_0_2s``, D13-1 저장본 — 압축 JSON 읽기·필터·페이지만) < 0.2초.
+   - 실시간 계산(``test_cold_size1000_live_revision``, 발행 전 리비전 — 묶음 적재·점수 문맥·Fact 1,000행) < ``LIVE_LIMIT_S``.
+     기준 근거(R3e, 이 PC·부하 측정): 무부하 중앙값 0.44~0.50초, 전체 테스트 병행(부하) 0.69초(R3 5차 리뷰 보고
+     0.498/0.692/0.438) — 경계에 붙지 않게 1.5초(최악 측정의 2배 넘는 여유). 회귀(수 초)는 여전히 잡힌다.
+
+D13-1(계약 .10): 상태 DB 를 만든 뒤 발행 스냅샷 저장본을 다시 만든다(``devseed.rematerialize``) — 골든은 저장본을 읽는
+GET 이 예전 실시간 응답과 바이트가 같음(저장본 생성 = 같은 계산, 목록 질의 = 같은 필터·정렬·페이지)을 함께 고정한다.
 """
 
 # ruff: noqa: E501
@@ -39,7 +45,8 @@ from .test_perf_r3 import _score_synth
 
 SNAP = 12
 COLD_RUNS = 5
-LIMIT_S = 0.5
+LIMIT_S = 0.2  # 발행 리비전(저장본)
+LIVE_LIMIT_S = 1.5  # 실시간 계산(발행 전 리비전) — 근거는 모듈 설명
 GOLDEN = Path(__file__).parent / "snapshots" / "list_r3c.json"
 BODIES = Path(__file__).parent / "snapshots" / "list_r3c"
 UPDATE = os.environ.get("UPDATE_GOLDEN") == "1"
@@ -267,11 +274,13 @@ def _build(src: Path, dst: Path, raw_dir: Path, reports: Path, kind: str) -> Pat
             "synth",
         ):  # synth = rich + 합성 1,000단지(지역 하위 질의 경로에서도 강등·가격 경로)
             _enrich()
-        if kind == "synth":
-            from app.api import devseed
+        from app.api import devseed
 
+        if kind == "synth":
             assert devseed.load_synth(settings, n=1000, snapshot_id=SNAP) == 1000
             assert _score_synth(SNAP) >= 1000
+        with get_session() as s:  # 바꾼 상태로 발행 스냅샷 저장본을 다시(D13-1)
+            devseed.rematerialize(s, settings=settings)
     finally:
         set_settings(None)
         reset_engine()
@@ -362,10 +371,9 @@ def test_list_responses_match_golden(states: dict[str, Path], use_db: Any) -> No
 # ====================================================================== 2. 성능
 
 
-def test_cold_size1000_with_scores_under_half_second(states: dict[str, Path], use_db: Any) -> None:
+def _cold_size1000(settings: Settings) -> list[float]:
     from app.main import create_app
 
-    settings = use_db(states["synth"])
     times: list[float] = []
     for run in range(COLD_RUNS):
         reset_engine()  # cold: 커넥션 풀·문장 캐시 없이 새 앱
@@ -380,6 +388,24 @@ def test_cold_size1000_with_scores_under_half_second(states: dict[str, Path], us
                 assert sum(it["total"]["label"] != "확인 불가" for it in body["items"]) >= 1000, (
                     "점수 행이 있다"
                 )
+    return times
+
+
+def test_cold_size1000_published_under_0_2s(states: dict[str, Path], use_db: Any) -> None:
+    """발행 리비전 목록 = 저장본(D13-1) — 실시간 계산 없이 0.2초 안(CEO R3e 지시)."""
+    times = _cold_size1000(use_db(states["synth"]))
     median = statistics.median(times)
-    print("R3c cold size=1000 (s):", [round(t, 3) for t in times], "median", round(median, 3))
+    print("R3e published cold size=1000 (s):", [round(t, 3) for t in times], "median", round(median, 3))
     assert median < LIMIT_S, times
+
+
+def test_cold_size1000_live_revision(states: dict[str, Path], use_db: Any) -> None:
+    """발행 전 리비전(실시간 계산) 목록 — 기준 ``LIVE_LIMIT_S``(근거는 모듈 설명)."""
+    from ._support import as_live
+
+    settings = use_db(states["synth"])
+    as_live()
+    times = _cold_size1000(settings)
+    median = statistics.median(times)
+    print("R3e live cold size=1000 (s):", [round(t, 3) for t in times], "median", round(median, 3))
+    assert median < LIVE_LIMIT_S, times

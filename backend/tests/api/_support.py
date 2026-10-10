@@ -1,5 +1,7 @@
 """API 테스트 공용: 경로·토큰·계약 응답 검증기 (WP5)."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import functools
@@ -95,6 +97,26 @@ def iter_facts(obj: Any, path: str = "$") -> list[tuple[str, dict[str, Any]]]:
         for i, v in enumerate(obj):
             out.extend(iter_facts(v, f"{path}[{i}]"))
     return out
+
+
+def as_live(region_id: int = 1) -> None:
+    """지역의 발행 스냅샷(devseed 11·12)을 '판정 끝·발행 전(ready)'으로 되돌리고 저장본을 지운다 — 스냅샷 GET(기본
+    스냅샷 = 가장 새 ready 포함)이 실시간 계산 경로를 탄다.
+
+    D13-1(계약 .10): 발행 리비전 GET 은 발행 때 저장한 응답만 돌려준다(``app.snapshot_view``). 사실 변경이 화면·CSV·
+    보고서 계산에 어떻게 반영되는지 보는 테스트(강등 오버레이·할인·범위·CSV 등 실시간 계산 규칙)는 발행 전 리비전에서
+    본다. 발행 리비전 불변은 ``test_r3e_invariant`` 가 본다."""
+    from sqlalchemy import delete, select
+
+    from app.core.db import get_session
+    from app.models import Snapshot, SnapshotView
+
+    with get_session() as s:
+        for snap in s.scalars(
+            select(Snapshot).where(Snapshot.region_id == region_id, Snapshot.status == "published")
+        ):
+            s.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == snap.id))
+            snap.status, snap.published_at = "ready", None
 
 
 def assert_facts_labelled(body: Any) -> int:

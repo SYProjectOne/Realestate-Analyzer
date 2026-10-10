@@ -1,11 +1,14 @@
 """스냅샷 화면: 대시보드(G1), 단지 표(G2)·CSV, 변경 피드(G1·G8)."""
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import csv
 import io
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
+from decimal import Decimal
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, Request, Response
@@ -13,6 +16,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import snapshot_view as sv
+from app.api import views
 from app.api.benchmarks import benchmark_absence, benchmarks_for
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import ApiError, not_found
@@ -26,15 +31,13 @@ from app.api.views import (
     complex_rows_data,
     ladder_days,
     light_rows,
-    load_bundles,
     provenance_for,
     scope_result,
-    score_ctx,
     score_row,
 )
+from app.core.settings import Settings
 from app.core.time import now_kst
-from app.models import ChangeEvent, Complex, RawDocument, Region, Snapshot, Supply, Unsold
-from app.snapshot_state import region_for
+from app.models import ChangeEvent, Complex, RawDocument, Region, Scenario, Snapshot, Supply, Unsold
 
 router = APIRouter(tags=["snapshots"])
 
@@ -87,6 +90,62 @@ def _names(session: Session, ids: Sequence[int | None]) -> dict[int, str]:
     }
 
 
+def changes_ledger(session: Session, snap: Snapshot) -> dict[str, Any]:
+    """변경 피드 원장: 그 지역 관련 change_event 전부(지역 스냅샷에 붙은 것 · 지역 단지 · 지역 단위), 최신 순.
+
+    발행 리비전은 이 원장을 저장한다(D13-1 — ``snapshot_view`` kind=changes). 질의(기본·since·비교·심각도)는
+    ``query_changes`` 가 원장에 적용한다 — 실시간·저장본이 같은 함수다. ``_asof`` = 이벤트가 붙은 지역 스냅샷의 기준일."""
+    region_snaps = {
+        s.id: s for s in session.scalars(select(Snapshot).where(Snapshot.region_id == snap.region_id))
+    }
+    cids = list(session.scalars(select(Complex.id).where(Complex.region_id == snap.region_id)))
+    stmt = (
+        select(ChangeEvent)
+        .where(
+            (ChangeEvent.snapshot_id.in_(list(region_snaps) or [-1]))
+            | (ChangeEvent.complex_id.in_(cids or [-1]))
+            | ((ChangeEvent.entity == "region") & (ChangeEvent.entity_id == snap.region_id))
+        )
+        .order_by(ChangeEvent.detected_at.desc(), ChangeEvent.id.desc())
+    )
+    events = list(session.scalars(stmt))
+    names = _names(session, [e.complex_id for e in events])
+    out = []
+    for e in events:
+        row = change_view(e, names)
+        sn = region_snaps.get(e.snapshot_id) if e.snapshot_id is not None else None
+        row["_asof"] = sn.asof_date if sn is not None else None
+        out.append(row)
+    return {"events": out}
+
+
+def query_changes(
+    ledger: Mapping[str, Any],
+    snap: Snapshot,
+    *,
+    since: str | None = None,
+    compare: Snapshot | None = None,
+    severity: str | None = None,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """원장 → 응답 행. 기본 = 이 스냅샷에 붙은 것, ``compare`` = 비교 기준일 초과 ~ 이 기준일 이하 지역 스냅샷에 붙은 것,
+    ``since`` = 그 시각 이후 지역 관련 전부. 최신 순(detected_at, id 내림차순)."""
+    evs: list[dict[str, Any]] = list(ledger.get("events") or [])
+    if compare is not None:
+        evs = [
+            e for e in evs if e.get("_asof") is not None and compare.asof_date < e["_asof"] <= snap.asof_date
+        ]
+    elif since is not None:
+        evs = [e for e in evs if (e.get("detected_at") or "") >= since]
+    else:
+        evs = [e for e in evs if e.get("snapshot_id") == snap.id]
+    if severity:
+        evs = [e for e in evs if e.get("severity") == severity]
+    if limit:
+        evs = evs[:limit]
+    return [{k: v for k, v in e.items() if not k.startswith("_")} for e in evs]
+
+
 def changes_for(
     session: Session,
     snap: Snapshot,
@@ -96,31 +155,9 @@ def changes_for(
     severity: str | None = None,
     limit: int | None = None,
 ) -> list[dict[str, Any]]:
-    region_snaps = {
-        s.id: s for s in session.scalars(select(Snapshot).where(Snapshot.region_id == snap.region_id))
-    }
-    stmt = select(ChangeEvent)
-    if compare is not None:
-        ids = [sid for sid, s in region_snaps.items() if compare.asof_date < s.asof_date <= snap.asof_date]
-        stmt = stmt.where(ChangeEvent.snapshot_id.in_(ids or [-1]))
-    elif since is not None:
-        cids = list(session.scalars(select(Complex.id).where(Complex.region_id == snap.region_id)))
-        stmt = stmt.where(
-            ChangeEvent.detected_at >= since,
-            (ChangeEvent.snapshot_id.in_(list(region_snaps)))
-            | (ChangeEvent.complex_id.in_(cids or [-1]))
-            | ((ChangeEvent.entity == "region") & (ChangeEvent.entity_id == snap.region_id)),
-        )
-    else:
-        stmt = stmt.where(ChangeEvent.snapshot_id == snap.id)
-    if severity:
-        stmt = stmt.where(ChangeEvent.severity == severity)
-    stmt = stmt.order_by(ChangeEvent.detected_at.desc(), ChangeEvent.id.desc())
-    if limit:
-        stmt = stmt.limit(limit)
-    events = list(session.scalars(stmt))
-    names = _names(session, [e.complex_id for e in events])
-    return [change_view(e, names) for e in events]
+    """그 스냅샷의 변경 피드 — 발행 리비전은 저장 원장, 발행 전은 지금 원장(``sv.read``)."""
+    ledger = sv.read(session, snap, "changes")
+    return query_changes(ledger, snap, since=since, compare=compare, severity=severity, limit=limit)
 
 
 @router.get("/snapshots/{sid}/changes")
@@ -193,58 +230,87 @@ def parse_filters(request: Request) -> dict[str, Any]:
     return out
 
 
-def _match(rd: RowData, f: Mapping[str, Any]) -> bool:
+def _dec_s(v: Decimal | None) -> str | None:
+    return None if v is None else str(v)
+
+
+def _dec(v: Any) -> Decimal | None:
+    return None if v is None else Decimal(str(v))
+
+
+def row_keys(rd: RowData, last: Mapping[int, ChangeEvent]) -> dict[str, Any]:
+    """목록 행의 필터·정렬 키(Fact 이전 맨값). 저장본(D13-1)은 이 키와 응답 행을 함께 저장하고, 실시간·저장본 모두
+    ``match_keys``·``sort_keyed`` 로 질의한다(같은 규칙). 숫자(Decimal)는 문자열로 — 정렬·비교 때 Decimal 로 되돌린다."""
     cx = rd.b.cx
-    if "living_area" in f and (cx.living_area or "") not in f["living_area"]:
-        return False
-    if "intake_status" in f and (rd.intake.status if rd.intake else "") not in f["intake_status"]:
-        return False
-    if "land_type" in f and (cx.land_type or "") not in f["land_type"]:
-        return False
-    if "inclusion_class" in f and (cx.inclusion_class or "") not in f["inclusion_class"]:
-        return False
-    if "judge_scope" in f and rd.scope not in f["judge_scope"]:
-        return False
-    if "resale_end_before" in f and (rd.resale_end is None or rd.resale_end > f["resale_end_before"]):
-        return False
-    if "price_min" in f and (rd.price_mid is None or rd.price_mid < f["price_min"]):
-        return False
-    if "price_max" in f and (rd.price_mid is None or rd.price_mid > f["price_max"]):
-        return False
-    if "move_in_year" in f and not (cx.move_in_ym or "").startswith(str(f["move_in_year"])):
-        return False
-    if f.get("q"):
-        hay = " ".join([cx.name, *(cx.former_names or []), cx.address or ""])
-        if f["q"] not in hay:
-            return False
-    return True
-
-
-def _sort_key(name: str, last: Mapping[int, str]) -> Callable[[RowData], Any]:
-    getters: dict[str, Callable[[RowData], Any]] = {
-        "total": lambda r: r.total,
-        "rank": lambda r: r.rank,
-        "name": lambda r: r.b.cx.name,
-        "price_mid": lambda r: r.price_mid,
-        "price_low": lambda r: r.price_low,
-        "move_in_ym": lambda r: r.b.cx.move_in_ym,
-        "resale_end": lambda r: r.resale_end,
-        "gap_pct": lambda r: r.gap_pct,
-        "p10": lambda r: r.p10,
-        "living_area": lambda r: r.b.cx.living_area,
-        "last_change": lambda r: last.get(r.b.cx.id),
+    ev = last.get(cx.id)
+    return {
+        "cid": cx.id,
+        "name": cx.name,
+        "living_area": cx.living_area,
+        "intake_status": rd.intake.status if rd.intake else None,
+        "land_type": cx.land_type,
+        "inclusion_class": cx.inclusion_class,
+        "judge_scope": rd.scope,
+        "resale_end": rd.resale_end,
+        "price_mid": _dec_s(rd.price_mid),
+        "price_low": rd.price_low,
+        "move_in_ym": cx.move_in_ym,
+        "q": " ".join([cx.name, *(cx.former_names or []), cx.address or ""]),
+        "total": _dec_s(rd.total),
+        "rank": rd.rank,
+        "gap_pct": _dec_s(rd.gap_pct),
+        "p10": _dec_s(rd.p10),
+        "last_change": ev.detected_at if ev is not None else None,
     }
-    return getters[name]
 
 
-def sort_rows(rows: list[RowData], sort: str, last: Mapping[int, str]) -> list[RowData]:
+def match_keys(k: Mapping[str, Any], f: Mapping[str, Any]) -> bool:
+    if "living_area" in f and (k["living_area"] or "") not in f["living_area"]:
+        return False
+    if "intake_status" in f and (k["intake_status"] or "") not in f["intake_status"]:
+        return False
+    if "land_type" in f and (k["land_type"] or "") not in f["land_type"]:
+        return False
+    if "inclusion_class" in f and (k["inclusion_class"] or "") not in f["inclusion_class"]:
+        return False
+    if "judge_scope" in f and k["judge_scope"] not in f["judge_scope"]:
+        return False
+    if "resale_end_before" in f and (k["resale_end"] is None or k["resale_end"] > f["resale_end_before"]):
+        return False
+    mid = _dec(k["price_mid"])
+    if "price_min" in f and (mid is None or mid < f["price_min"]):
+        return False
+    if "price_max" in f and (mid is None or mid > f["price_max"]):
+        return False
+    if "move_in_year" in f and not (k["move_in_ym"] or "").startswith(str(f["move_in_year"])):
+        return False
+    return not (f.get("q") and f["q"] not in k["q"])
+
+
+_SORT_GETTERS: dict[str, Callable[[Mapping[str, Any]], Any]] = {
+    "total": lambda k: _dec(k["total"]),
+    "rank": lambda k: k["rank"],
+    "name": lambda k: k["name"],
+    "price_mid": lambda k: _dec(k["price_mid"]),
+    "price_low": lambda k: k["price_low"],
+    "move_in_ym": lambda k: k["move_in_ym"],
+    "resale_end": lambda k: k["resale_end"],
+    "gap_pct": lambda k: _dec(k["gap_pct"]),
+    "p10": lambda k: _dec(k["p10"]),
+    "living_area": lambda k: k["living_area"],
+    "last_change": lambda k: k["last_change"],
+}
+
+
+def sort_keyed[T](rows: list[tuple[dict[str, Any], T]], sort: str) -> list[tuple[dict[str, Any], T]]:
+    """정렬: 값이 있는 행(같은 값은 complex_id 오름차순 — 안정 정렬) 다음 값 없는 행(complex_id 순)."""
     desc = sort.startswith("-")
-    get = _sort_key(sort.lstrip("-"), last)
-    present = [r for r in rows if get(r) is not None]
-    missing = [r for r in rows if get(r) is None]
-    present.sort(key=lambda r: r.b.cx.id)
-    present.sort(key=get, reverse=desc)  # 안정 정렬: 같은 값은 complex_id 오름차순
-    missing.sort(key=lambda r: r.b.cx.id)
+    get = _SORT_GETTERS[sort.lstrip("-")]
+    present = [r for r in rows if get(r[0]) is not None]
+    missing = [r for r in rows if get(r[0]) is None]
+    present.sort(key=lambda r: r[0]["cid"])
+    present.sort(key=lambda r: get(r[0]), reverse=desc)
+    missing.sort(key=lambda r: r[0]["cid"])
     return present + missing
 
 
@@ -269,33 +335,67 @@ def _last_change_view(ev: ChangeEvent | None) -> dict[str, Any] | None:
     return {"at": ev.detected_at, "field": ev.field, "severity": ev.severity, "change_event_id": ev.id}
 
 
-def list_rows(
-    session: Session, snap: Snapshot, scenario_value: str, request: Request, sort: str
-) -> tuple[ScoreCtx, list[RowData], dict[str, str], dict[int, ChangeEvent]]:
-    filters = parse_filters(request)
-    scenario = resolve_scenario(session, scenario_value)
-    region = session.get(Region, snap.region_id)
-    # 목록 행은 단지 열을 읽기만 한다 — ORM 객체 대신 같은 열 이름의 읽기 전용 행(R3c 성능).
-    # 단지 OCR 표식은 점수 입력(미리보기)만 쓰므로 읽지 않는다(``load_bundles(complex_ocr=False)``)
-    complexes = light_rows(session, select(Complex).where(Complex.region_id == snap.region_id), Complex)
-    bundles = load_bundles(session, complexes, snap.id, scenario_id=scenario.id, complex_ocr=False)
-    ctx = score_ctx(session, snap.id, scenario, with_flags=False)
-    rows = [r for r in complex_rows_data(bundles, ctx) if _match(r, filters)]
-    last = last_changes(session, [r.b.cx.id for r in rows])
-    rows = sort_rows(rows, sort, {k: v.detected_at for k, v in last.items()})
-    return ctx, rows, area_names(region_for(session, region, snap.id)), last
+class LiveRows:
+    """발행 전 리비전의 목록 행(실시간). 필터·정렬은 키로, Fact 는 요청한 행(페이지)만 만든다(목록 성능)."""
+
+    def __init__(self, session: Session, settings: Settings, snap: Snapshot, sc: Scenario) -> None:
+        region = session.get(Region, snap.region_id)
+        # 목록 행은 단지 열을 읽기만 한다 — ORM 객체 대신 같은 열 이름의 읽기 전용 행(R3c 성능).
+        # 단지 OCR 표식은 점수 입력(미리보기)만 쓰므로 읽지 않는다(``load_bundles(complex_ocr=False)``)
+        complexes = light_rows(session, select(Complex).where(Complex.region_id == snap.region_id), Complex)
+        bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id, complex_ocr=False)
+        self.session, self.settings = session, settings
+        self.ctx = views.score_ctx(session, snap.id, sc, with_flags=False)
+        self.rows = complex_rows_data(bundles, self.ctx)
+        self.last = last_changes(session, [r.b.cx.id for r in self.rows])
+        self.names = area_names(region)
+        self.keyed = [(row_keys(r, self.last), r) for r in self.rows]
+
+    def items(self, rows: Sequence[RowData]) -> list[dict[str, Any]]:
+        return build_rows(self.session, self.settings, self.ctx, rows, self.names, self.last)
+
+
+def complexes_body(session: Session, settings: Settings, snap: Snapshot, sc: Scenario) -> dict[str, Any]:
+    """저장본(D13-1 kind=complexes): 그 시나리오의 단지 행 전부 + 필터·정렬 키(질의는 읽을 때)."""
+    live = LiveRows(session, settings, snap, sc)
+    items = live.items(live.rows)
+    return {
+        "scenario_id": sc.id,
+        "rows": [{"k": k, "item": it} for (k, _r), it in zip(live.keyed, items, strict=True)],
+    }
+
+
+def _source(session: Session, settings: Settings, snap: Snapshot, sc: Scenario) -> Any:
+    """발행 리비전 = 저장 행(dict), 그 밖 = ``LiveRows``(``sv.read`` 가 고른다)."""
+    return sv.read(
+        session, snap, "complexes", scenario=sc, live=lambda: LiveRows(session, settings, snap, sc)
+    )
+
+
+def query_rows(
+    src: Any, filters: Mapping[str, Any], sort: str, start: int = 0, size: int | None = None
+) -> tuple[int, list[dict[str, Any]]]:
+    """목록 질의(필터 → 정렬 → 페이지) → (전체 수, 응답 행). 저장본·실시간이 같은 키 규칙."""
+    if isinstance(src, LiveRows):
+        live_rows = sort_keyed([kr for kr in src.keyed if match_keys(kr[0], filters)], sort)
+        page = live_rows[start : start + size] if size is not None else live_rows[start:]
+        return len(live_rows), src.items([r for _k, r in page])
+    stored_rows = [(r["k"], r["item"]) for r in src["rows"] if match_keys(r["k"], filters)]
+    stored_rows = sort_keyed(stored_rows, sort)
+    picked = stored_rows[start : start + size] if size is not None else stored_rows[start:]
+    return len(stored_rows), [it for _k, it in picked]
 
 
 def build_rows(
     session: Session,
-    request: Request,
+    settings: Settings,
     ctx: ScoreCtx,
     rows: Sequence[RowData],
     names: Mapping[str, str],
     last: Mapping[int, ChangeEvent],
 ) -> list[dict[str, Any]]:
     bundles: list[ComplexBundle] = [r.b for r in rows]
-    fm = FactMaker(settings_of(request), provenance_for(session, bundles, list_rows=True))
+    fm = FactMaker(settings, provenance_for(session, bundles, list_rows=True))
     days = ladder_days(session, bundles)
     days.update(ctx.jl_days)
     from app.api.views import judgment_days
@@ -318,19 +418,20 @@ def list_complexes(
     sort: SortQ = "-total",
 ) -> JSONResponse:
     snap = get_snapshot(session, sid)
-    ctx, rows, names, last = list_rows(session, snap, scenario, request, sort)
-    start = (page - 1) * size
-    items = build_rows(session, request, ctx, rows[start : start + size], names, last)
+    filters = parse_filters(request)
+    sc = resolve_scenario(session, scenario)
+    src = _source(session, settings_of(request), snap, sc)
+    total, items = query_rows(src, filters, sort, (page - 1) * size, size)
     return JSONResponse(
         {
             "items": items,
-            "total": len(rows),
+            "total": total,
             "snapshot_id": snap.id,
             "asof_date": snap.asof_date,
             "page": page,
             "size": size,
             "sort": sort,
-            "scenario_id": ctx.scenario.id,
+            "scenario_id": sc.id,
         }
     )
 
@@ -383,8 +484,9 @@ def export_complexes_csv(
     sort: SortQ = "-total",
 ) -> Response:
     snap = get_snapshot(session, sid)
-    ctx, rows, names, last = list_rows(session, snap, scenario, request, sort)
-    items = build_rows(session, request, ctx, rows, names, last)
+    filters = parse_filters(request)
+    sc = resolve_scenario(session, scenario)
+    _total, items = query_rows(_source(session, settings_of(request), snap, sc), filters, sort)
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
     head = [
@@ -614,15 +716,20 @@ def _move_in_peak(session: Session, region_id: int, fm: FactMaker) -> dict[str, 
 def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ = "base") -> JSONResponse:
     snap = get_snapshot(session, sid)
     sc = resolve_scenario(session, scenario)
+    return JSONResponse(sv.read(session, snap, "dashboard", settings=settings_of(request), scenario=sc))
+
+
+def dashboard_body(session: Session, settings: Settings, snap: Snapshot, sc: Scenario) -> dict[str, Any]:
+    """G1 대시보드 응답(실시간 계산 — 발행 리비전은 이 결과를 저장한다, D13-1)."""
     region = session.get(Region, snap.region_id)
     if region is None:
         raise not_found(f"region {snap.region_id}")
-    names = area_names(region_for(session, region, snap.id))
+    names = area_names(region)
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
-    bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
-    ctx = score_ctx(session, snap.id, sc)
+    bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id)
+    ctx = views.score_ctx(session, snap.id, sc)
     rows = complex_rows_data(bundles, ctx)
-    fm = FactMaker(settings_of(request), ProvIndex())
+    fm = FactMaker(settings, ProvIndex())
     top_ids = sorted(
         (cid for cid, t in ctx.totals.items() if t.rank is not None and t.rank <= 5 and cid in bundles),
         key=lambda cid: (ctx.totals[cid].rank or 0, cid),
@@ -690,8 +797,8 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
             "data_freshness": freshness(session, region.id),
         },
         "top5": top5,
-        "changes": changes_for(session, snap, limit=20),
+        "changes": query_changes(changes_ledger(session, snap), snap, limit=20),
         "unsold_series": unsold_all,
         "rejudge_needed": rejudge,
     }
-    return JSONResponse(body)
+    return body

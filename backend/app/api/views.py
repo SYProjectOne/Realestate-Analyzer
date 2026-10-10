@@ -362,13 +362,8 @@ def load_bundles(
     snap = session.get(Snapshot, snapshot_id)
     asof = snap.asof_date if snap is not None else None
     out = {c.id: ComplexBundle(c, asof_date=asof) for c in complexes}
-    from app.snapshot_state import load_state
-
-    # D12-4: 발행 리비전은 그 시점의 분류·생활권·법정동(이후 편집이 옛 리비전을 바꾸지 않는다)
-    frozen = load_state(session, snapshot_id)
-    if frozen is not None:
-        for b in out.values():
-            b.cx = frozen.complex(b.cx)
+    # D13-1: 발행 리비전은 이 함수를 타지 않는다(저장본 ``app.snapshot_view``) — 여기는 발행 전 리비전·materialize 의
+    # 지금 값 계산이다(옛 값별 동결 ``snapshot_state`` 는 저장본으로 대체·삭제)
     ids = list(out)
     region_ids = _region_scope(session, snap, out)
 
@@ -413,15 +408,35 @@ def load_bundles(
         run_stmt = run_stmt.where(ScoreRun.scenario_id == scenario_id)
     last_run = session.scalars(run_stmt.order_by(ScoreRun.id.desc()).limit(1)).first()
     if snap is not None:
-        # '최신 리비전' = 지역의 가장 새 **발행** (기준일, 리비전)(D12-4·R3 4차 M-1) — 판정 중(building)·미발행 리비전이
-        # 생겨도 화면 기본 스냅샷의 '재판정 필요' 배지가 사라지지 않는다. 발행 스냅샷이 하나도 없으면 가장 새 것
-        newest = latest_snapshot_id(session, snap.region_id)
+        # '재판정 필요'(D10-1)는 지금 사실과 비교한다 — 발행 전(building·ready) 리비전은 늘 비교하고(M6: 실시간 리비전에서
+        # 의미), 발행 리비전은 발행 순간(materialize)에 지역의 가장 새 발행 (기준일, 리비전)일 때만 비교해 그 값을 저장한다
+        # (D13-1 — 이후에는 저장본만 읽는다). 과거 리비전은 그때의 기록이다
+        if snap.status != "published":
+            latest = True
+        else:
+            latest = latest_snapshot_id(session, snap.region_id) == snap.id
         for b in out.values():
-            b.latest = newest == snap.id
+            b.latest = latest
     if last_run is not None:
         for b in out.values():
             b.scored_run = True
         run_at = session.scalar(select(ScoreRun.created_at).where(ScoreRun.id == last_run))
+        if run_at and snap is not None:
+            # M6: 지역 단위 변경(생활권 편집·지역 확장/축소 — complex_id NULL, triggers_rejudge)은 지역 단지 전부에 걸린다
+            region_changed = session.scalars(
+                select(ChangeEvent.id)
+                .where(
+                    ChangeEvent.complex_id.is_(None),
+                    ChangeEvent.entity == "region",
+                    ChangeEvent.entity_id == snap.region_id,
+                    ChangeEvent.triggers_rejudge.is_(True),
+                    ChangeEvent.detected_at > run_at,
+                )
+                .limit(1)
+            ).first()
+            if region_changed is not None:
+                for b in out.values():
+                    b.changed_after_run = True
         if run_at:
             for cond in where_in(ChangeEvent.complex_id):
                 for (cid,) in session.execute(

@@ -13,7 +13,7 @@ from app.models.market import Benchmark, Catalyst, CatalystLink, ComparableSet, 
 from app.models.ops import ChangeEvent, ChecklistItem, HumanCheck, JobRun, ShareLink
 from app.models.raw import FieldProvenance, RawDocument
 from app.models.reference import AdminDong, AdminLegalMap, HouseholdStat, LegalDong
-from app.models.region import Region, Snapshot, SnapshotState
+from app.models.region import Region, Snapshot, SnapshotView
 
 __all__ = [
     "NAMING_CONVENTION",
@@ -51,7 +51,7 @@ __all__ = [
     "ScoreTotal",
     "ShareLink",
     "Snapshot",
-    "SnapshotState",
+    "SnapshotView",
     "Supply",
     "Unsold",
 ]

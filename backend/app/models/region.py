@@ -13,6 +13,7 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -22,9 +23,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-from app.models.enums import REGION_STATUS, SNAPSHOT_STATE_ENTITY, SNAPSHOT_STATUS, in_check
+from app.models.enums import REGION_STATUS, SNAPSHOT_STATUS, SNAPSHOT_VIEW_KIND, in_check
 
-__all__ = ["Region", "Snapshot", "SnapshotState"]
+__all__ = ["Region", "Snapshot", "SnapshotView"]
 
 
 class Region(Base):
@@ -80,20 +81,28 @@ class Snapshot(Base):
     revision_reason: Mapped[str | None] = mapped_column(String(200))
 
 
-class SnapshotState(Base):
-    """발행 순간의 리비전 시점 값 1행 — 0009(계약 2026-10-09.9, D12-4·R3 4차 M-7).
+class SnapshotView(Base):
+    """발행 리비전의 저장된 읽기 모델 1행 — 0010(계약 2026-10-09.10, DECISIONS D13-1).
 
-    entity = region(생활권) · complex(분류·생활권·법정동) · catalyst(단계·종류·위치·연결). 발행 스냅샷을 읽는 화면·보고서는
-    이 값을 쓴다(``app.snapshot_state``) — 옛 리비전이 나중 편집으로 바뀌지 않는다. (snapshot_id, entity, entity_id) 유일."""
+    리비전을 published 로 바꾸는 트랜잭션(``scheduler.snapshots.publish`` → ``app.snapshot_view.materialize``)에서 그
+    리비전의 화면 응답 전부(대시보드·단지 목록·단지 상세·비교 입력·시장·변경 목록·민감도)와 보고서 입력 데이터를
+    시나리오별로 만든다. 발행 리비전의 GET 은 이 행만 읽는다(현재 사실·오버레이 재계산 없음).
 
-    __tablename__ = "snapshot_state"
+    - ``kind`` = ``SNAPSHOT_VIEW_KIND``, ``key`` = 단지 id 문자열(단지 상세)·생활권 id(시장) 또는 '',
+      ``scenario`` = 시나리오 id 문자열(시나리오 무관 종류는 '').
+    - ``body`` = UTF-8 JSON 의 zlib 압축(용량 — 단지 상세 수백 개 × 시나리오), ``sha256`` = 압축 전 JSON 의 sha256.
+    - (snapshot_id, kind, key, scenario) 유일. 발행 리비전은 불변이라 고치지 않는다(devseed·합성 도구만 다시 만든다)."""
+
+    __tablename__ = "snapshot_view"
     __table_args__ = (
-        UniqueConstraint("snapshot_id", "entity", "entity_id"),
-        CheckConstraint(in_check("entity", SNAPSHOT_STATE_ENTITY), name="entity"),
+        UniqueConstraint("snapshot_id", "kind", "key", "scenario"),
+        CheckConstraint(in_check("kind", SNAPSHOT_VIEW_KIND), name="kind"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     snapshot_id: Mapped[int] = mapped_column(ForeignKey("snapshot.id"), index=True)
-    entity: Mapped[str] = mapped_column(String(16))
-    entity_id: Mapped[int] = mapped_column(Integer)
-    data: Mapped[dict[str, Any]] = mapped_column(JSON)
+    kind: Mapped[str] = mapped_column(String(16))
+    key: Mapped[str] = mapped_column(String(64), server_default="")
+    scenario: Mapped[str] = mapped_column(String(16), server_default="")
+    body: Mapped[bytes] = mapped_column(LargeBinary)
+    sha256: Mapped[str] = mapped_column(String(64))

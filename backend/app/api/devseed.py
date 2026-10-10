@@ -1348,8 +1348,33 @@ def seed(
             report.notes.append("expected_scores_v2.json 입력 없음 — 점수·시장 미적재")
         report.claims = _load_claims(session, envs)
         _load_examples(session)
+        # D13-1: 픽스처의 발행 스냅샷도 발행 경로와 같이 저장본을 만든다(발행 리비전 GET 은 저장본만 읽는다)
+        rematerialize(session, settings=s)
     log.info("devseed.done", extra={"complexes": report.complexes, "provenance": report.provenance})
     return report
+
+
+def rematerialize(
+    session: Session,
+    *,
+    settings: Settings,
+    region_id: int | None = None,
+    snapshot_ids: Sequence[int] | None = None,
+) -> list[int]:
+    """발행 스냅샷 저장본(D13-1)을 지금 픽스처 값으로 다시 만든다 — devseed·T13·합성 도구(개발용
+    픽스처를 고쳐 쓰는 경우)만. 운영 경로(publish)는 발행 순간 한 번 만들고 고치지 않는다.
+    출처 누락은 저장본 규칙대로 '확인 불가(출처 누락)' 라벨(``snapshot_view.materialize``)."""
+    from app.snapshot_view import materialize
+
+    stmt = select(Snapshot.id).where(Snapshot.status == "published")
+    if region_id is not None:
+        stmt = stmt.where(Snapshot.region_id == region_id)
+    if snapshot_ids is not None:
+        stmt = stmt.where(Snapshot.id.in_(list(snapshot_ids)))
+    done = [int(sid) for sid in session.scalars(stmt.order_by(Snapshot.id))]
+    for sid in done:
+        materialize(session, sid, settings=settings, replace=True)
+    return done
 
 
 def replace_bundles(
@@ -1401,6 +1426,9 @@ def replace_bundles(
             snap_id = next(iter(snapshot_ids), None) or 0
             _load_bundle(session, b, writer, snapshot_id=snap_id, raw_ids=raw_ids, existing=existing)
         writer.flush(session)
+        # 바꾼 픽스처로 발행 스냅샷 저장본을 다시(D13-1).
+        # T13 픽스처는 출처를 일부러 지웠다 — 저장본은 prod 규칙 라벨
+        rematerialize(session, settings=s)
     return len(bundles)
 
 
@@ -1423,6 +1451,8 @@ def load_synth(settings: Settings | None = None, *, n: int = 1000, snapshot_id: 
     bundles = _synth_generate(n)
     with get_session(s) as session:
         count, _ = load_bundles(session, bundles, {}, snapshot_id=snapshot_id, missing="create")
+        # 합성 단지가 든 발행 스냅샷 저장본을 다시(D13-1) — 그 스냅샷만(과거 리비전은 합성 전 기록)
+        rematerialize(session, settings=s, snapshot_ids=[snapshot_id])
     return count
 
 
