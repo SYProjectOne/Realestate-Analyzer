@@ -111,7 +111,8 @@ export const queryKeys = {
     ['snapshots', key(sid), 'complexes', params] as const,
   complex: (id: IdLike, snapshot: IdLike | null, scenario: ScenarioKey | null) =>
     ['complexes', key(id), key(snapshot), scenario] as const,
-  provenance: (provId: string) => ['provenance', provId] as const,
+  provenance: (provId: string, snapshot: IdLike | null = null) =>
+    ['provenance', provId, key(snapshot)] as const,
   rawText: (rawId: IdLike) => ['raw', key(rawId), 'text'] as const,
   rawFile: (rawId: IdLike) => ['raw', key(rawId), 'file'] as const,
   compare: (sid: IdLike, ids: readonly IdLike[], scenario: ScenarioKey | null) =>
@@ -201,7 +202,10 @@ export function useCreateRegion(): M<RegionCreate, RegionCreated> {
   });
 }
 
-/** PUT /regions/{id}/living-areas (updateLivingAreas) — G0-2 저장 (422 = 법정동 배정 오류) */
+/**
+ * PUT /regions/{id}/living-areas (updateLivingAreas) — G0-2 저장 (422 = 법정동 배정 오류). 계약 .11 F4: **202** + job_id
+ * (rejudge) — 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본(화면은 `PublishJobProgress` 로 감시).
+ */
 export function useUpdateLivingAreas(regionId: IdLike): M<LivingAreasUpdate, LivingAreasUpdated> {
   const qc = useQueryClient();
   return useMutation({
@@ -227,7 +231,7 @@ export const JOBS_SCAN_SIZE = 1000;
 
 /**
  * 진행 중 잡(queued + running) — listJobs 두 번(size = JOBS_SCAN_SIZE). 어느 목록이든 size 에 꽉 차면 잘렸을 수 있어
- * 이 지역 잡이 빠졌는지 모른다 → 'unread'(다음 차례에 다시 읽고 그동안은 폴링 유지).
+ * 이 지역 잡이 빠졌는지 모른다 → 'truncated'(잡으로 멈추지 않고 생성 후 30분 제한으로 폴링 — 상한 없는 폴링 금지).
  */
 export async function fetchActiveJobs(signal: AbortSignal): Promise<RoundJobs> {
   const [queued, running] = await Promise.all(
@@ -236,7 +240,7 @@ export async function fetchActiveJobs(signal: AbortSignal): Promise<RoundJobs> {
     ),
   );
   const lists = [queued ?? [], running ?? []];
-  if (lists.some((l) => l.length >= JOBS_SCAN_SIZE)) return 'unread';
+  if (lists.some((l) => l.length >= JOBS_SCAN_SIZE)) return 'truncated';
   return lists.flat();
 }
 
@@ -451,13 +455,36 @@ export function useComplexDetail(
 }
 
 /** GET /provenance/{prov_id} (getProvenance) — 공통 출처 패널 */
-export function useProvenance(provId: string | null | undefined): Q<Provenance> {
+export function useProvenance(
+  provId: string | null | undefined,
+  snapshotId: IdLike | null = null,
+): Q<Provenance> {
+  const scoped = provenanceSnapshot(provId, snapshotId);
   return useQuery({
-    queryKey: queryKeys.provenance(provId ?? ''),
-    queryFn: ({ signal }) => apiFetch<Provenance>(`/provenance/${enc(provId ?? '')}`, { signal }),
+    queryKey: queryKeys.provenance(provId ?? '', scoped),
+    queryFn: ({ signal }) =>
+      apiFetch<Provenance>(`/provenance/${enc(provId ?? '')}`, {
+        query: { snapshot_id: scoped === null ? null : key(scoped) },
+        signal,
+      }),
     enabled: !!provId,
     staleTime: Infinity,
   });
+}
+
+/**
+ * 출처 조회에 넘길 리비전. 계약 .11 F1(D14-1): 화면 응답의 `prov` 로 받은 출처는 보고 있는 리비전을 늘 넘긴다 —
+ * 발행 리비전 = 발행 순간 저장본, 발행 전 = 실시간.
+ * 예외 `rd_<id>`: 화면이 접수 행 `raw_document_id` 로 **만든** 원문 출처(G3 '접수 근거 원문')다. 서버 저장본은 응답의
+ * `"prov"` 값만 모으므로(backend `snapshot_view._collect_prov`) 그 리비전 저장본에 없어 늘 404 가 된다 — 원문은
+ * 리비전과 무관한 불변 파일이라 리비전 없이 조회한다(계약 변경 요청: 저장본에 접수 근거 rd_ 를 넣거나 Intake 에 prov).
+ */
+export function provenanceSnapshot(
+  provId: string | null | undefined,
+  snapshotId: IdLike | null,
+): IdLike | null {
+  if (!provId || provId.startsWith('rd_')) return null;
+  return snapshotId;
 }
 
 /** GET /raw/{raw_document_id} (getRawDocument) — 원문 파일(G3·G7). `as=text`면 추출 텍스트 */
@@ -721,9 +748,18 @@ export function useCreateHumanCheck(): M<HumanCheckCreate, HumanCheck> {
     mutationFn: (body) => apiFetch<HumanCheck>('/ops/human-checks', { method: 'POST', body }),
     onSuccess: () => {
       invalidateFactViews(qc);
+      // 계약 .11 F6: 201 + job_id(rejudge) — 잡이 새 리비전을 판정·발행한다. 발행 대기 리비전이 목록에 보이게
+      void qc.invalidateQueries({ queryKey: queryKeys.regions() });
       void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
     },
   });
+}
+
+/** 발행을 부르는 쓰기 응답의 감시할 잡 id(계약 .11 F6 공통 이름 `job_id`, 옛 응답은 `rejudge_job_id`) */
+export function humanCheckJobId(
+  hc: Pick<HumanCheck, 'rejudge_job_id'> & { job_id?: number | null },
+): number | null {
+  return hc.job_id ?? hc.rejudge_job_id ?? null;
 }
 
 // ─── 보고서 (G8, D4: html|pdf) ─────────────────────────────
@@ -835,9 +871,10 @@ export function useCreateCatalyst(): M<CatalystCreate, CatalystCreated> {
 /**
  * PATCH /catalysts/{id} (updateCatalyst, 계약 .8, D11-5) — 사람이 호재 위치를 확인(location_confirmed + 영향
  * 생활권·단지, 선택 lat/lon·expected_ym)하면 서버가 catalyst_link 를 만든다(좌표 없는 단지는 distance_m=null·
- * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 계약 .9(D12-4): 응답 `job` 은 늘 null —
- * 연결이 바뀌면 서버가 새 리비전을 만들어 바로 발행한다. 그래서 지역(latest_snapshot)·리비전 목록·사실 화면을
- * 무효화한다(M-15 와 같은 처리).
+ * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 계약 .11(D14-5, F3): 연결이 바뀌면 **202** +
+ * `job_id`(snapshot.publish — 새 리비전을 worker 가 발행), 그대로면 job_id null. 잡이 끝날 때까지 이전 발행 리비전이
+ * 기본이므로 화면은 job_id 를 감시하고(`PublishJobProgress`), 끝나면 `api/jobWatch` 가 지역·리비전 목록·사실 화면을
+ * 무효화한다. 여기서는 새 발행 대기 리비전이 목록에 보이도록(발행 대기 폴링) 지역·리비전 목록을 무효화한다.
  */
 export function useUpdateCatalystLocation(): M<
   { id: IdLike; patch: CatalystPatch },
@@ -850,13 +887,15 @@ export function useUpdateCatalystLocation(): M<
     onSuccess: (data) => {
       invalidateFactViews(qc);
       void qc.invalidateQueries({ queryKey: queryKeys.regions() });
-      if (data.job) void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+      if (data.job_id !== null || data.job)
+        void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
     },
   });
 }
 
 /**
  * PATCH /regions/{id} (updateRegion, 계약 .8, D11-7) — 지역 선택 확장(selections 추가·제거, 선택 name) = RA "지역 추가".
+ * 계약 .11 F5: 선택이 바뀌면 **202**(job_id = region.expand — 발행까지 이전 리비전이 기본), 이름만 바꾸면 200(job_id null).
  * 응답 = {region, change_event(critical), job_id(region.expand), added, removed}. 잡이 새 리비전에서 후보 전체
  * rerank 1회 + 보고서 §12 "지역 추가" 장을 만든다. 선택이 그대로면 409 → 지역을 다시 받는다.
  */

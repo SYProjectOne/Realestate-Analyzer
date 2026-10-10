@@ -3,7 +3,9 @@ import { Outlet } from 'react-router';
 import { DegradedBanner } from '@/app/DegradedBanner';
 import { ReadOnlyBanner, TokenDialog, TokenPinnedBanner } from '@/app/TokenDialog';
 import { ToastProvider } from '@/app/toast';
+import { useProvenanceSnapshot } from '@/components/provenanceContext';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
+import { useSnapshot } from '@/hooks/useSnapshot';
 import { t } from '@/i18n';
 import { Header } from './Header';
 
@@ -21,6 +23,8 @@ export function Disclaimer() {
 
 export function AppLayout() {
   const { readOnly, unsupported } = useMobileLayout();
+  // 계약 .11 F1: 출처 서랍(앱 루트)은 지금 보고 있는 리비전의 출처를 본다
+  useProvenanceSnapshot(useSnapshot().snapshotId);
   return (
     <ToastProvider>
       <div className="min-h-screen bg-bg text-fg">

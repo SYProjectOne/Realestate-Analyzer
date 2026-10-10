@@ -58,11 +58,32 @@ describe('사실 화면 캐시 무효화 (minor 15)', () => {
         field: 'intake_status',
         value_text: '접수 가능',
         kind: 'phone',
-        checked_at: '2026-10-08',
+        // 계약 .11 F7: 시간대가 붙은 RFC3339(날짜만이면 422)
+        checked_at: '2026-10-08T10:00:00+09:00',
         entered_by: '운영자',
       });
     });
     await waitFor(() => expect(invalidated(qc, ['provenance', 'fp_1'])).toBe(true));
     expect(invalidated(qc, ['complexes', '5', '12', null])).toBe(true);
+  });
+
+  it('사람 확인 201 + job_id(계약 .11 F6) → 지역·리비전 목록도 무효화(발행 대기 리비전 폴링 시작)', async () => {
+    const { qc, wrapper } = setup();
+    qc.setQueryData(['regions', '1', 'snapshots'], []);
+    const { result } = renderHook(() => useCreateHumanCheck(), { wrapper });
+    let jobId: number | null = null;
+    await act(async () => {
+      const hc = await result.current.mutateAsync({
+        complex_id: 5,
+        field: 'intake_status',
+        value_text: '가능',
+        kind: 'phone',
+        checked_at: '2026-10-08T10:00:00Z',
+        entered_by: '운영자',
+      });
+      jobId = hc.job_id ?? null;
+    });
+    expect(jobId).not.toBeNull();
+    await waitFor(() => expect(invalidated(qc, ['regions', '1', 'snapshots'])).toBe(true));
   });
 });

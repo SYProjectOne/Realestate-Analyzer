@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { apiFetch } from '@/api/client';
+import { apiFetch, isMaterializePending } from '@/api/client';
 import { useProvenance } from '@/api/hooks';
 import { t, tDynamic } from '@/i18n';
 import type { Provenance, ProvenanceConflict } from '@/lib/contract';
+import { queryErrorText } from '@/lib/errorText';
 import { formatDate } from '@/lib/format';
 import { Badge } from './Badge';
 import { EmptyState } from './EmptyState';
@@ -11,12 +12,14 @@ import { ExternalLink } from './ExternalLink';
 import { LabelBadge } from './LabelBadge';
 import { MetaText, MetaValue } from './MetaValue';
 import { RawDocumentPreview } from './RawDocumentPreview';
-import { ProvenanceContext } from './provenanceContext';
+import { ProvenanceContext, ProvenanceSnapshotContext } from './provenanceContext';
 
 export interface ProvenancePanelProps {
   /** 출처 id(fp_/sc_/st_/jl_/hc_/rd_/cs_). null이면 닫힘 */
   provId: string | null;
   onClose: () => void;
+  /** 보고 있는 리비전(계약 .11 F1 `?snapshot_id=`) — 발행 리비전이면 발행 순간 저장본을 본다. null 이면 생략 */
+  snapshotId?: string | null;
 }
 
 /** 원문 하이라이트 창: excerpt 오프셋 앞뒤로 보여 줄 글자 수 */
@@ -285,11 +288,11 @@ function ProvenanceBody({
  * 산출식·원문 발췌(값 하이라이트, 원문 텍스트 오프셋 하이라이트)·상충 그룹(채택/미채택)·원문 미리보기·저장(Bearer fetch).
  * 보통 직접 쓰지 않고 앱 루트의 ProvenanceProvider가 FactCell 클릭으로 연다.
  */
-export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
-  // 상충 후보의 "이 출처 열기" → 같은 패널에서 그 출처로 이동
+export function ProvenancePanel({ provId, onClose, snapshotId = null }: ProvenancePanelProps) {
+  // 상충 후보의 "이 출처 열기" → 같은 패널에서 그 출처로 이동(같은 리비전 — F1: 충돌 출처 클릭 포함)
   const [shown, setShown] = useState<{ from: string | null; id: string } | null>(null);
   const active = shown && shown.from === provId ? shown.id : provId;
-  const query = useProvenance(active);
+  const query = useProvenance(active, snapshotId);
   const data = query.data as Provenance | undefined;
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -329,9 +332,22 @@ export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
           {t('provenance.close')}
         </button>
       </div>
-      {query.isLoading ? <p className="text-sm text-muted">{t('app.loading')}</p> : null}
+      {query.isLoading ? (
+        <p role="status" className="text-sm text-muted">
+          {isMaterializePending(query.failureReason)
+            ? t('page.common.materializePending')
+            : t('app.loading')}
+        </p>
+      ) : null}
       {query.error ? (
-        <EmptyState message={t('provenance.error', { detail: query.error.message })} />
+        <EmptyState
+          message={
+            isMaterializePending(query.error) ||
+            (query.error as { code?: string }).code === 'stored_view_mismatch'
+              ? queryErrorText(query.error)
+              : t('provenance.error', { detail: query.error.message })
+          }
+        />
       ) : null}
       {data ? (
         <ProvenanceBody
@@ -347,11 +363,14 @@ export function ProvenancePanel({ provId, onClose }: ProvenancePanelProps) {
 /** 앱 루트에 한 번. FactCell이 context로 openProvenance(prov)를 부르면 패널이 열린다. */
 export function ProvenanceProvider({ children }: { children: ReactNode }) {
   const [provId, setProvId] = useState<string | null>(null);
+  const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const close = useCallback(() => setProvId(null), []);
   return (
     <ProvenanceContext.Provider value={setProvId}>
-      {children}
-      <ProvenancePanel provId={provId} onClose={close} />
+      <ProvenanceSnapshotContext.Provider value={setSnapshotId}>
+        {children}
+        <ProvenancePanel provId={provId} onClose={close} snapshotId={snapshotId} />
+      </ProvenanceSnapshotContext.Provider>
     </ProvenanceContext.Provider>
   );
 }

@@ -315,13 +315,14 @@ describe('G8 보고서 기준·비교 = 리비전 (M-16)', () => {
         HttpResponse.json([building, rev2, ...snapshots]),
       ),
     );
-    renderRoute(`/reports?snapshot=${s12.id}`);
+    // 계약 .11(R3 6차 m5): 비교 후보 = 대상보다 앞선 발행 리비전 — 대상 = 리비전 2 면 같은 기준일 리비전 1 이 후보
+    renderRoute(`/reports?snapshot=${rev2.id}`);
     const compare = await screen.findByLabelText(t('page.G8.compareSnapshot'));
     await waitFor(() => expect(compare.querySelectorAll('option').length).toBeGreaterThan(1));
     const labels = [...compare.querySelectorAll('option')].map((o) => o.textContent);
-    expect(labels).toContain(snapshotText(rev2));
+    expect(labels).toContain(snapshotText(s12));
     expect(labels).not.toContain(snapshotText(building));
-    expect(labels.filter((l) => l === snapshotText(s12))).toHaveLength(0); // 기준 자신 제외
+    expect(labels.filter((l) => l === snapshotText(rev2))).toHaveLength(0); // 기준 자신 제외
     const base = screen.getByLabelText(t('page.G8.snapshot'));
     expect([...base.querySelectorAll('option')].map((o) => o.value)).not.toContain('14');
 

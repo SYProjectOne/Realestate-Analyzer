@@ -5,6 +5,7 @@ import { complexesCsvRequest, useComplexesProgressive } from '@/api/hooks';
 import { EmptyState, MetaText } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
+import { specialErrorText } from '@/lib/errorText';
 import { PageShell } from '@/layout/PageShell';
 import { NoSnapshot, QueryState, useGlobalSearch, usePageContext } from '../_shared';
 import { ComplexTable } from './ComplexTable';
@@ -103,7 +104,7 @@ export function ComplexesPage() {
             </button>
             {csv.error ? (
               <span role="alert" className="text-xs text-danger">
-                {t('download.error', { detail: csv.error.message })}
+                {specialErrorText(csv.error) ?? t('download.error', { detail: csv.error.message })}
               </span>
             ) : null}
           </span>

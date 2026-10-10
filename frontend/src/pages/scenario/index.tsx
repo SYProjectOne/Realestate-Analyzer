@@ -19,6 +19,7 @@ import { snapshotText } from '@/components/SnapshotPicker';
 import { scenarioKey as keyOf, useScenario } from '@/hooks/useScenario';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
+import { queryErrorText, specialErrorText } from '@/lib/errorText';
 import { PageShell } from '@/layout/PageShell';
 import { resultSnapshotId, type JobLike } from '@/lib/contract';
 import { metaNumber } from '@/lib/meta';
@@ -414,7 +415,7 @@ function RequirementPreview({ scenario }: { scenario: Scenario | null }) {
       {preview.data ? (
         <RequirementTable preview={preview.data} />
       ) : preview.error ? (
-        <EmptyState message={t('page.common.loadError', { detail: preview.error.message })} />
+        <EmptyState message={queryErrorText(preview.error)} />
       ) : (
         <p className="text-sm text-muted">{t('app.loading')}</p>
       )}
@@ -577,7 +578,10 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           data-testid="g5-after-error"
           className="flex flex-wrap items-center gap-2 text-xs text-danger"
         >
-          <span>{t('page.G5.afterError', { detail: afterError.message })}</span>
+          <span>
+            {specialErrorText(afterError) ??
+              t('page.G5.afterError', { detail: afterError.message })}
+          </span>
           <button
             type="button"
             onClick={() => void after.refetch()}

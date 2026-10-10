@@ -2,7 +2,8 @@
  * 흐름 (b) G7 사람 확인 → 재판정 → G1·G3 변화 — RA §9 T3 + DECISIONS D9-1.
  *
  * RA §9 T3: 스위첸(김포) 공식 홈페이지 403 → 접수 '확인 불가' → 상황 D(즉시 구매) 후보 제외.
- * G7 에서 사람 확인 '가능' 입력 → intake 행 + rejudge 잡 1(계약 .9 D12-5: 서버 자동 등록 rejudge_job_id — 화면은 진행만)
+ * G7 에서 사람 확인 '가능' 입력 → intake 행 + rejudge 잡 1(계약 .9 D12-5: 서버 자동 등록 rejudge_job_id — 화면은 진행만,
+ * 계약 .11 F6: 201 그대로 + 공통 이름 job_id(= rejudge_job_id) — 화면은 job_id 를 감시하고 발행까지 이전 리비전이라고 알린다)
  * → worker(Mock = 합성 판정 녹화).
  *
  * D9-1로 인한 차이(픽스처 README): 합성 녹화는 보고서 classify(#110 스위첸 review .72)를 따르므로 스위첸은
@@ -49,18 +50,23 @@ test('G7 사람 확인 가능 → 재판정 잡 → G3 접수 배지(가능·사
   await form.getByRole('button', { name: P.G7.hc.submit }).click();
   const savedRes = await saved;
   expect(savedRes.status()).toBe(201);
-  const hc = (await savedRes.json()) as { rejudge_job_id: number | null };
-  expect(hc.rejudge_job_id).not.toBeNull();
+  const hc = (await savedRes.json()) as { rejudge_job_id: number | null; job_id: number | null };
+  expect(hc.job_id).not.toBeNull();
+  expect(hc.job_id).toBe(hc.rejudge_job_id);
+  // 계약 .11 F7: checked_at 은 시간대가 붙은 RFC3339 로 보낸다
+  const sent = JSON.parse(savedRes.request().postData() ?? '{}') as { checked_at?: string };
+  expect(sent.checked_at ?? '').toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
   await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.status['가능']);
 
   // 계약 .9: 재판정 잡은 자동 등록 — 화면은 그 잡 진행만 보이고 알림에 '재판정 잡 등록' 버튼이 없다(POST /jobs 없음)
   await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
+  await expect(form.getByTestId('human-check-job').getByTestId('publish-pending')).toHaveText(ko.job.publishPending);
   await expect(
     page.getByRole('region', { name: ko.app.notifications }).getByRole('button', { name: P.G7.rejudge }),
   ).toHaveCount(0);
   const auto = await apiGet<{ job_name: string; payload: { complex_ids: number[] | null } }>(
     request,
-    `/jobs/${hc.rejudge_job_id}`,
+    `/jobs/${hc.job_id}`,
   );
   expect(auto.job_name).toBe('rejudge');
   expect(auto.payload.complex_ids).toEqual([4]);

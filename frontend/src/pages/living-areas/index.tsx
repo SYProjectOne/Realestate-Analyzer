@@ -5,7 +5,7 @@ import { ApiError } from '@/api/client';
 import { useRegion, useUpdateLivingAreas } from '@/api/hooks';
 import type { LivingAreasUpdated, Region } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { EmptyState, FactCell, JobProgress, MetaText } from '@/components';
+import { EmptyState, FactCell, MetaText, PublishJobProgress } from '@/components';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { metaText } from '@/lib/meta';
@@ -304,7 +304,7 @@ function Editor({ region }: { region: Region }) {
           </div>
         ) : null}
       </div>
-      {saved ? <JobProgress jobId={String(saved.job_id)} /> : null}
+      {saved ? <PublishJobProgress jobId={saved.job_id} /> : null}
     </div>
   );
 }

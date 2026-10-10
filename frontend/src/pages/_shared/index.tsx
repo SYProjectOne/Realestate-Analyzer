@@ -4,7 +4,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ApiError } from '@/api/client';
+import { ApiError, isMaterializePending } from '@/api/client';
 import { useScenarios } from '@/api/hooks';
 import type { Fact, JudgeScope, Scenario, Snapshot } from '@/api/types';
 import { Badge, EmptyState } from '@/components';
@@ -13,6 +13,7 @@ import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { useScenario } from '@/hooks/useScenario';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, tDynamic } from '@/i18n';
+import { queryErrorText } from '@/lib/errorText';
 import type { FactUnit } from '@/lib/format';
 
 export interface PageContext {
@@ -83,7 +84,14 @@ export function QueryState<T>({
   children,
   empty,
 }: {
-  query: { data: T | undefined; error: Error | null; isLoading: boolean };
+  query: {
+    data: T | undefined;
+    error: Error | null;
+    isLoading: boolean;
+    /** 재시도 중인 마지막 실패(TanStack) — 503 materialize_pending 이면 '준비 중'(계약 .11 F12) */
+    failureReason?: Error | null;
+    refetch?: () => unknown;
+  };
   children: (data: T) => ReactNode;
   /** 데이터가 비었을 때 보일 문구(판단은 호출 측: data → boolean) */
   empty?: (data: T) => string | null;
@@ -93,13 +101,25 @@ export function QueryState<T>({
     if (emptyText) return <EmptyState message={emptyText} />;
     return <>{children(query.data)}</>;
   }
-  if (query.error) return <QueryError error={query.error} />;
+  if (query.error) return <QueryError error={query.error} refetch={query.refetch} />;
+  if (isMaterializePending(query.failureReason)) return <MaterializePending />;
   return (
     <p role="status" className="text-sm text-muted">
       {t('app.loading')}
     </p>
   );
 }
+
+/** 503 materialize_pending 재시도 중: '준비 중 — 자동으로 다시' */
+export function MaterializePending() {
+  return (
+    <p role="status" data-testid="materialize-pending" className="text-sm text-muted">
+      {t('page.common.materializePending')}
+    </p>
+  );
+}
+
+export { queryErrorText } from '@/lib/errorText';
 
 /** 내장 시나리오 code — 모든 발행 리비전에 결과가 있다 */
 const BUILTIN_SCENARIOS: ReadonlySet<string> = new Set(['base', 'A', 'B', 'C', 'D']);
@@ -124,15 +144,30 @@ export function isScenarioMissing(
   if (snapshot?.status !== 'published' || !scenarios) return false;
   const scenario = scenarios.find((s) => (s.code ?? String(s.id)) === scenarioKey);
   if (!scenario) return false;
+  // 시각을 모르면(옛 응답) 안내를 유지한다 — 발행 전 생성이 확실할 때만 다른 404 로 본다
+  return scenarioMadeAfterPublish(scenario, snapshot) ?? true;
+}
+
+/**
+ * 사용자 시나리오가 그 발행 리비전 **뒤에** 만들어졌는가(= 그 리비전 저장본에 결과가 없다, 계약 .10 S2·.11 D14-3).
+ * 내장 시나리오·발행 전 리비전은 false(늘 결과가 있다·실시간). 시각을 모르면 null(판단은 서버 몫).
+ */
+export function scenarioMadeAfterPublish(
+  scenario: Pick<Scenario, 'id' | 'code' | 'created_at'> & { is_builtin?: boolean },
+  snapshot: Pick<Snapshot, 'status' | 'published_at'>,
+): boolean | null {
+  if (scenario.is_builtin || (scenario.code !== null && BUILTIN_SCENARIOS.has(scenario.code))) {
+    return false;
+  }
+  if (snapshot.status !== 'published') return false;
   const created = Date.parse(scenario.created_at ?? '');
   const published = Date.parse(snapshot.published_at ?? '');
-  // 시각을 모르면(옛 응답) 안내를 유지한다 — 발행 전 생성이 확실할 때만 다른 404 로 본다
-  if (!Number.isFinite(created) || !Number.isFinite(published)) return true;
+  if (!Number.isFinite(created) || !Number.isFinite(published)) return null;
   return created > published;
 }
 
-/** 쿼리 오류 표시: 발행 리비전에 없는 시나리오면 시나리오 실행 안내, 그 밖은 일반 오류 */
-function QueryError({ error }: { error: Error }) {
+/** 쿼리 오류 표시: 발행 리비전에 없는 시나리오면 시나리오 실행 안내, 준비 중이면 다시 시도, 그 밖은 오류 문구 */
+function QueryError({ error, refetch }: { error: Error; refetch?: (() => unknown) | undefined }) {
   const { scenarioId } = useScenario();
   const { snapshot } = useSnapshot();
   const scenarios = useScenarios();
@@ -147,7 +182,17 @@ function QueryError({ error }: { error: Error }) {
       </div>
     );
   }
-  return <EmptyState message={t('page.common.loadError', { detail: error.message })} />;
+  if (isMaterializePending(error) && refetch) {
+    return (
+      <div role="status" data-testid="materialize-pending" className="flex flex-col gap-1 text-sm">
+        <p>{queryErrorText(error)}</p>
+        <button type="button" onClick={() => void refetch()} className="self-start underline">
+          {t('app.retry')}
+        </button>
+      </div>
+    );
+  }
+  return <EmptyState message={queryErrorText(error)} />;
 }
 
 /** 스냅샷이 없을 때(지역 분석 전) 안내 */

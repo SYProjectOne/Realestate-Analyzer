@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { isMaterializePending } from '@/api/client';
 import { useProvenance, useRawText } from '@/api/hooks';
+import { queryErrorText } from '@/lib/errorText';
 import type { ComplexDetail, Fact } from '@/api/types';
 import { EmptyState, ExternalLink, FactCell, LabelBadge, RawDocumentPreview } from '@/components';
 import { t, tDynamic } from '@/i18n';
@@ -86,7 +88,8 @@ export function highlightExcerpt(
 export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
   const items = useMemo(() => collect(detail), [detail]);
   const [selected, setSelected] = useState<string | null>(items[0]?.fact.prov ?? null);
-  const prov = useProvenance(selected);
+  // 계약 .11 F1: 이 상세가 보이는 리비전의 출처(발행 리비전이면 저장본)
+  const prov = useProvenance(selected, detail.snapshot_id);
   const rawId = prov.data?.raw_document_id ?? null;
   const raw = useRawText(rawId, rawId !== null);
   const parts =
@@ -142,7 +145,13 @@ export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
             ) : null}
           </div>
         ) : prov.isLoading ? (
-          <p className="text-sm text-muted">{t('app.loading')}</p>
+          <p role="status" className="text-sm text-muted">
+            {isMaterializePending(prov.failureReason)
+              ? t('page.common.materializePending')
+              : t('app.loading')}
+          </p>
+        ) : prov.error ? (
+          <EmptyState message={queryErrorText(prov.error)} />
         ) : null}
         {rawId !== null ? <RawDocumentPreview key={rawId} rawId={rawId} /> : null}
         {prov.data && rawId === null ? (

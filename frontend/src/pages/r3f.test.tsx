@@ -111,10 +111,10 @@ describe('G8 기준·비교 리비전은 지금 지역의 것만, 서로 달라�
     const button = await screen.findByRole('button', { name: t('page.G8.generate') });
     await waitFor(() => expect(button).toBeEnabled());
     const base = screen.getByLabelText(t('page.G8.snapshot'));
-    await waitFor(() => expect(base.querySelector('option[value="11"]')).not.toBeNull());
-    await userEvent.selectOptions(base, '11');
+    await waitFor(() => expect(base.querySelector('option[value="12"]')).not.toBeNull());
+    await userEvent.selectOptions(base, '12');
     const compare = screen.getByLabelText(t('page.G8.compareSnapshot'));
-    await userEvent.selectOptions(compare, '12');
+    await userEvent.selectOptions(compare, '11');
 
     await userEvent.selectOptions(screen.getByLabelText(t('header.region')), '2');
     await waitFor(() =>
@@ -249,7 +249,7 @@ describe('발행 대기 폴링: /jobs 는 최대 size, 5xx 동안은 늦춘다 (
     rec.stop();
   });
 
-  it('fetchActiveJobs: 목록이 size 에 꽉 차면(잘렸을 수 있음) 잡을 모른다(unread) — 잘린 목록으로 멈추지 않는다', async () => {
+  it('fetchActiveJobs: 목록이 size 에 꽉 차면(잘렸을 수 있음) truncated — 잘린 목록으로 멈추지 않되 생성 후 30분 상한', async () => {
     const many = Array.from({ length: JOBS_SCAN_SIZE }, (_, i) =>
       job(1000 + i, 'collect.daily', 'queued', { region_id: 99 }),
     );
@@ -258,7 +258,14 @@ describe('발행 대기 폴링: /jobs 는 최대 size, 5xx 동안은 늦춘다 (
         HttpResponse.json(new URL(request.url).searchParams.get('status') === 'queued' ? many : []),
       ),
     );
-    expect(await fetchActiveJobs(new AbortController().signal)).toBe('unread');
+    expect(await fetchActiveJobs(new AbortController().signal)).toBe('truncated');
+    // 잘린 차례는 잡으로 멈추지 않지만 상한 없는 폴링도 아니다 — 생성 후 30분까지만(CEO 지시 a)
+    const { snapshots, rev2 } = await revs();
+    const now = Date.now();
+    expect(
+      snapshotsRefetchInterval([{ ...rev2, created_at: nowIso() }, ...snapshots], now, 'truncated'),
+    ).toBe(PENDING_REVISION_POLL_MS);
+    expect(snapshotsRefetchInterval([rev2, ...snapshots], now, 'truncated')).toBe(false);
   });
 
   it('snapshotsRefetchInterval: /jobs 실패 차례는 늦추고 30분 제한, 목록 자체 연속 오류도 늦추고 상한에서 멈춤', async () => {

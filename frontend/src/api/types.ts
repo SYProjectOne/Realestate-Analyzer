@@ -84,7 +84,17 @@ export const API_ERROR_CODES = [
   'judge_unavailable',
   'contract_violation',
   'internal',
+  // 계약 .11(D14-3·D14-4·D14-9)
+  'scenario_not_in_revision',
+  'stored_view_mismatch',
+  'materialize_pending',
 ] as const satisfies readonly ApiErrorCode[];
+
+/** 계약 enum 에 새 code 가 생기면 여기서 타입 오류 — 목록이 빠지면 zod 가 그 오류를 'http' 로 떨어뜨린다 */
+type MissingErrorCode = Exclude<ApiErrorCode, (typeof API_ERROR_CODES)[number]>;
+export const API_ERROR_CODES_COMPLETE: [MissingErrorCode] extends [never]
+  ? true
+  : MissingErrorCode = true;
 
 /** 목록 응답 래퍼(RA §4-2). 계약에는 G2용 `ComplexRowPage` 하나뿐이다. */
 export type ComplexRowPage = S['ComplexRowPage'];
