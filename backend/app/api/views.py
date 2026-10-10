@@ -877,6 +877,14 @@ def payment_view(
             ),
             "floor_sample_text": item.get("floor_sample_text"),
         }
+    # 공고에 명시된 할인(타입별, 계약 .8 D11-6) — 출처 행 'discount_by_type.<type_code>' 라벨 그대로(표시용).
+    # 구매가 차감은 ``price_range`` 가 그 라벨이 확인됨일 때만 한다(같은 출처 행). 없으면 {}.
+    dbt: dict[str, Any] = {}
+    disc_map = getattr(p, "discount_by_type", None)
+    for code, won in (disc_map if isinstance(disc_map, dict) else {}).items():
+        if won is None:
+            continue
+        dbt[str(code)] = fm.field("payment_terms", p.id, f"discount_by_type.{code}", won, unit="won")
     down = pf("down_payment_pct", "pct")
     change: dict[str, Any] | None = None
     if first is not None and first.id != p.id:
@@ -913,6 +921,7 @@ def payment_view(
         "interim_schedule": sched,
         "is_current": is_current,
         "price_by_type": pbt,
+        "discount_by_type": dbt,
         "change_vs_first": change,
     }
 

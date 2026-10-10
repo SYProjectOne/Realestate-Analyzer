@@ -72,19 +72,28 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     await expect(row).toContainText(P.G3.price.discountApplied);
     // 서버 composition 에 '− 할인' 표기(확인됨일 때만 low·high 에서 뺐다)
     await expect(page.getByText(/할인 1,000만/)).toBeVisible();
-    // 타입별 할인 열은 납부 조건 응답의 discount_by_type 이 있을 때만 — 현재 서버 payment_view 는 그 필드를
-    // 싣지 않는다(선택 필드, 보고의 요청 참고). 기준 타입 할인(price.discount)이 위 두 곳에 보인다.
+    // 타입별 할인 열: 현재 공고 payment_terms.discount_by_type(서버 상세 응답) → 주택형마다 FactCell
+    await expect(page.getByRole('columnheader', { name: P.G3.price.discount })).toBeVisible();
+    const typeCells = page.locator('[data-testid^="type-discount-"]');
+    await expect(typeCells.first()).toBeVisible();
+    for (const cell of await typeCells.all()) {
+      await expect(cell).toContainText('1,000만');
+    }
 
     setDiscount(DISCOUNT_COMPLEX, '추정');
     await page.reload();
     await expect(page.getByTestId('price-discount')).toContainText(P.G3.price.discountNotApplied);
     await expect(page.getByTestId('price-discount')).toContainText(ko.label.estimated);
+    await expect(page.locator('[data-testid^="type-discount-"]').first()).toContainText(
+      ko.label.estimated,
+    );
 
     setDiscount(DISCOUNT_COMPLEX, null);
     await page.reload();
     await expect(page.getByRole('tab', { name: P.G3.tab.price })).toBeVisible();
     await expect(page.getByTestId('header-discount')).toHaveCount(0);
     await expect(page.getByTestId('price-discount')).toHaveCount(0);
+    await expect(page.getByRole('columnheader', { name: P.G3.price.discount })).toHaveCount(0);
     expect(failed).toEqual([]);
   });
 
