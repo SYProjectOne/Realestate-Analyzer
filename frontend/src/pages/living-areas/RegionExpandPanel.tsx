@@ -79,7 +79,13 @@ export function RegionExpandPanel({ region }: { region: Region }) {
         setSaved(result);
         setSelections(result.region.selections);
         setName(result.region.name);
-        toast({ message: t('page.G0_2.expand.saved') });
+        // 계약 .9: 이름만 바꾸면 change_event·job_id 둘 다 null(재판정 없음)
+        toast({
+          message:
+            result.job_id === null
+              ? t('page.G0_2.expand.savedNameOnly')
+              : t('page.G0_2.expand.saved'),
+        });
       },
     });
   };
@@ -222,20 +228,30 @@ export function RegionExpandPanel({ region }: { region: Region }) {
               </span>
             ) : null}
           </p>
-          <p className="text-xs text-muted">
-            <Badge tone="strong">
-              {enumText('page.common.severity', saved.change_event.severity)}
-            </Badge>{' '}
-            {saved.change_event.new_text ?? ''}
-          </p>
-          <p className="text-xs text-muted">{t('page.G0_2.expand.jobHint')}</p>
-          <JobProgress
-            jobId={saved.job_id}
-            onDone={() => {
-              void qc.invalidateQueries({ queryKey: queryKeys.snapshots(region.id) });
-              invalidateFactViews(qc);
-            }}
-          />
+          {saved.change_event ? (
+            <p className="text-xs text-muted">
+              <Badge tone="strong">
+                {enumText('page.common.severity', saved.change_event.severity)}
+              </Badge>{' '}
+              {saved.change_event.new_text ?? ''}
+            </p>
+          ) : null}
+          {saved.job_id !== null ? (
+            <>
+              <p className="text-xs text-muted">{t('page.G0_2.expand.jobHint')}</p>
+              <JobProgress
+                jobId={saved.job_id}
+                onDone={() => {
+                  void qc.invalidateQueries({ queryKey: queryKeys.snapshots(region.id) });
+                  invalidateFactViews(qc);
+                }}
+              />
+            </>
+          ) : (
+            <p className="text-xs text-muted" data-testid="expand-name-only">
+              {t('page.G0_2.expand.nameOnly')}
+            </p>
+          )}
         </div>
       ) : null}
     </Section>

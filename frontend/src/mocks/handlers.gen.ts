@@ -1734,8 +1734,8 @@ export const generatedHandlers = [
         "finished_at": "2026-10-07T22:01:12+09:00",
         "status": "done",
         "stats": {
-          "path": "reports/2026-10-07/report_2026-10-07.pdf",
-          "filename": "report_2026-10-07.pdf",
+          "path": "reports/2026-10-07/report_r1_2026-10-07-r1_j903.pdf",
+          "filename": "report_r1_2026-10-07-r1_j903.pdf",
           "size_bytes": 1802240,
           "sha256": "5c2d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
           "content_type": "application/pdf"
@@ -1996,14 +1996,18 @@ export const generatedHandlers = [
       "suggested_job": {
         "job_name": "rejudge",
         "payload": {
-          "snapshot_id": 12,
+          "snapshot_id": 13,
           "scenario_id": null,
           "complex_ids": [
             4
           ],
-          "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능"
+          "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능",
+          "change_event_ids": [
+            3310
+          ]
         }
-      }
+      },
+      "rejudge_job_id": 912
     }, { status: 201 }),
   ),
   http.get(mswPath("/ops/judgments"), () =>
@@ -3986,7 +3990,7 @@ export const generatedHandlers = [
         "status": "done",
         "created_at": "2026-10-08T07:50:00+09:00",
         "finished_at": "2026-10-08T07:50:20+09:00",
-        "filename": "report_2026-10-08.html",
+        "filename": "report_r1_2026-10-08-r1_j910.html",
         "size_bytes": 2310144,
         "sha256": "0d5e8f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
         "blocked_reason": null
@@ -3999,7 +4003,7 @@ export const generatedHandlers = [
         "status": "done",
         "created_at": "2026-10-07T22:00:00+09:00",
         "finished_at": "2026-10-07T22:01:12+09:00",
-        "filename": "report_2026-10-07.pdf",
+        "filename": "report_r1_2026-10-07-r1_j903.pdf",
         "size_bytes": 1802240,
         "sha256": "5c2d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
         "blocked_reason": null

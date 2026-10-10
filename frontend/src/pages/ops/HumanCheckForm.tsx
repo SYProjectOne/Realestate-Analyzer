@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { useComplexes, useCreateHumanCheck, useCreateJob } from '@/api/hooks';
+import { useComplexes, useCreateHumanCheck } from '@/api/hooks';
 import {
   ENTERED_BY_ROLES,
   HUMAN_CHECK_FIELDS,
@@ -12,7 +12,7 @@ import {
   type HumanCheckField,
 } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { IntakeBadge } from '@/components';
+import { IntakeBadge, JobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
 import { enumText, idText, Section } from '../_shared';
@@ -112,7 +112,6 @@ export function validateHumanValue(field: HumanCheckField, raw: string): string 
 export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const complexes = useComplexes(snapshotId, { page: 1, size: 1000, sort: 'name' });
   const create = useCreateHumanCheck();
-  const createJob = useCreateJob();
   const canWrite = useCanWrite();
   const toast = useToast();
   const [params] = useSearchParams();
@@ -171,21 +170,15 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
     create.mutate(body, {
       onSuccess: (result) => {
         setSaved(result);
-        const suggested = result.suggested_job;
+        // 계약 .9(D12-5): 서버가 재판정 잡을 자동 등록한다(rejudge_job_id) — suggested_job 을 다시 POST 하지 않고
+        // 그 잡의 진행만 보인다. 끝나면 api/jobWatch 가 지역·리비전·사실 화면을 무효화한다.
         const savedText =
           field === 'intake_status' ? t('page.G7.hc.saved') : t('page.G7.hc.savedFact');
         toast({
-          message: `${savedText} · ${t('page.G7.suggestRejudge')}`,
-          duration: 0,
-          action: suggested
-            ? {
-                label: t('page.G7.rejudge'),
-                onClick: () =>
-                  createJob.mutate(suggested, {
-                    onSuccess: () => toast({ message: t('page.G7.rejudgeQueued') }),
-                  }),
-              }
-            : undefined,
+          message:
+            result.rejudge_job_id !== null
+              ? `${savedText} · ${t('page.G7.hc.rejudgeAuto', { id: idText(result.rejudge_job_id) })}`
+              : savedText,
         });
       },
     });
@@ -384,6 +377,15 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
                 </span>
               ) : null}
             </span>
+          ) : null}
+          {saved ? (
+            <div className="w-full" data-testid="human-check-job">
+              {saved.rejudge_job_id !== null ? (
+                <JobProgress jobId={saved.rejudge_job_id} />
+              ) : (
+                <p className="text-xs text-muted">{t('page.G7.hc.noRejudge')}</p>
+              )}
+            </div>
           ) : null}
         </div>
       </form>

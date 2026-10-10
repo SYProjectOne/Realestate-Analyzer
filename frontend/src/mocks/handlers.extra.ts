@@ -4,7 +4,8 @@
  *
  * 원칙: 응답 모양은 생성 핸들러(=계약 예시)에서 `getResponse`로 받아 그대로 쓰고, 상태만 덧붙인다.
  *  - 잡: POST /jobs·/reports·/regions·PATCH /regions 가 만든 잡은 GET /jobs/{id} 폴링마다 queued → running → done
- *  - 사람 확인: POST /ops/human-checks 후 단지 목록·상세의 intake가 그 값으로 바뀐다(배지 즉시 갱신)
+ *  - 사람 확인: POST /ops/human-checks 후 단지 목록·상세의 intake가 그 값으로 바뀐다(배지 즉시 갱신),
+ *    자동 등록 재판정(rejudge_job_id, 계약 .9)도 상태 있는 잡
  *  - G2 대량 행: localStorage `msw.complexes.rows` = N 이면 예시 행을 N개로 복제(가상 스크롤 확인용)
  *  - 판정기 장애: localStorage `msw.degraded` = 1 이면 /health status=degraded
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
@@ -263,7 +264,9 @@ export const extraHandlers = [
   http.patch(mswPath('/regions/:id'), async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const patched = await base<RegionPatched>(request, 'PATCH', body);
-    registerJob('region.expand', { region_id: patched.region.id }, patched.job_id);
+    if (patched.job_id !== null) {
+      registerJob('region.expand', { region_id: patched.region.id }, patched.job_id);
+    }
     return HttpResponse.json(patched);
   }),
 
@@ -321,6 +324,16 @@ export const extraHandlers = [
   http.post(mswPath('/ops/human-checks'), async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as HumanCheckCreate;
     const example = await base<HumanCheck>(request, 'POST', body);
+    // 계약 .9(D12-5): 서버가 rejudge 를 자동 등록 → rejudge_job_id(상태 있는 잡). '기타'는 잡 없음
+    const rejudgePayload = {
+      ...(example.suggested_job?.payload ?? {}),
+      complex_ids: [body.complex_id],
+    };
+    const auto = body.field === 'other' ? null : registerJob('rejudge', rejudgePayload);
+    const jobFields = {
+      rejudge_job_id: auto?.id ?? null,
+      suggested_job: auto ? { job_name: 'rejudge' as const, payload: rejudgePayload } : null,
+    };
     if (body.field !== 'intake_status') {
       // 사실 필드: 접수 행 없음(접수 배지는 그대로). 사실 행(entity·entity_id)은 서버가 정한다 — 목은 비운다
       return HttpResponse.json(
@@ -331,10 +344,7 @@ export const extraHandlers = [
           entity_id: null,
           note: body.note ?? null,
           created_intake: null,
-          suggested_job: {
-            job_name: 'rejudge',
-            payload: { ...(example.suggested_job?.payload ?? {}), complex_ids: [body.complex_id] },
-          },
+          ...jobFields,
         } satisfies HumanCheck,
         { status: 201 },
       );
@@ -363,13 +373,7 @@ export const extraHandlers = [
       note: body.note ?? null,
       id: example.id,
       created_intake: intake,
-      suggested_job: {
-        job_name: 'rejudge',
-        payload: {
-          ...(example.suggested_job?.payload ?? {}),
-          complex_ids: [body.complex_id],
-        },
-      },
+      ...jobFields,
     };
     return HttpResponse.json(created, { status: 201 });
   }),

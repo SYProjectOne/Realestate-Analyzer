@@ -100,7 +100,9 @@ test.describe('화면 10개 핵심 요소', () => {
     await expect(page.getByRole('heading', { name: P.G6.regulation })).toBeVisible();
   });
 
-  test('G7 데이터·운영: 소스 상태 · 사람 확인 → 배지 갱신 + 재판정 토스트', async ({ page }) => {
+  test('G7 데이터·운영: 소스 상태 · 사람 확인 → 배지 갱신 + 자동 등록 재판정 진행', async ({
+    page,
+  }) => {
     await ready(page, '/ops', P.G7.title);
     await expect(page.getByRole('table', { name: P.G7.sources })).toBeVisible();
     const form = page.getByRole('form', { name: P.G7.human });
@@ -111,11 +113,13 @@ test.describe('화면 10개 핵심 요소', () => {
     await form.getByLabel(P.G7.hc.enteredBy).selectOption('운영자');
     await form.getByRole('button', { name: P.G7.hc.submit }).click();
     await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.path.human_check);
+    // 계약 .9: 재판정은 서버가 자동 등록(rejudge_job_id) — 화면은 진행만, 토스트 버튼 없음
+    await expect(form.getByTestId('human-check-job')).toContainText(ko.job.title);
     await expect(
       page
         .getByRole('region', { name: ko.app.notifications })
         .getByRole('button', { name: P.G7.rejudge }),
-    ).toBeVisible();
+    ).toHaveCount(0);
   });
 
   test('G8 보고서: 생성 버튼 · 목록 · 다운로드', async ({ page }) => {

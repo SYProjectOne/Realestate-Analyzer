@@ -4,6 +4,7 @@
  *  - Major 15: 잡 완료 → 지역·리비전 목록 무효화, 발행 대기 리비전 폴링 → 새로 고침 없이 새 리비전이 기본.
  *  - Major 16: 보고서 기준·비교 선택이 리비전을 구별하고 생성 중(building) 리비전은 고를 수 없다.
  *  - minor: 409 뒤 재조회(PATCH /regions·POST /reports), 체크리스트 closed_by 표시.
+ *  - 계약 .9: 출처 서랍 강등 표시, 사람 확인 rejudge_job_id(기타 = 잡 없음), RegionPatched nullable(이름만 변경).
  */
 import { QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
@@ -17,14 +18,23 @@ import {
   snapshotsRefetchInterval,
   watchJobCompletion,
 } from '@/api/jobWatch';
-import type { ChecklistItem, Dashboard, JobRun, Region, Snapshot } from '@/api/types';
+import type {
+  ChecklistItem,
+  Dashboard,
+  JobRun,
+  Provenance,
+  Region,
+  RegionPatched,
+  Snapshot,
+} from '@/api/types';
+import { isDemoted, ProvenancePanel } from '@/components/ProvenancePanel';
 import { t } from '@/i18n';
 import { resultSnapshotId } from '@/lib/contract';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
-import { renderRoute } from '@/test/render';
+import { renderRoute, renderWithProviders } from '@/test/render';
 import { snapshotText } from '@/components/SnapshotPicker';
 import { matching, recordRequests } from './_shared/testing';
 
@@ -377,6 +387,83 @@ describe('체크리스트 closed_by 표시 (4차 minor)', () => {
       t('page.G7.check.closedBy.human'),
     );
     expect(within(rowOf('열린 항목')).queryByTestId('closed-by')).toBeNull();
+  });
+});
+
+// ─── 계약 .9 FE 차이 ─────────────────────────────────────────
+
+describe('계약 .9 화면 맞춤', () => {
+  it('출처 서랍: 강등 중(label 확인 불가 · reason 검증 모순 — …)이면 강등 배지·해제 조건, 아니면 없다', async () => {
+    const prov = await example<Provenance>('/provenance/fp_1');
+    let demoted = true;
+    server.use(
+      http.get(mswPath('/provenance/:id'), () =>
+        HttpResponse.json(
+          demoted ? { ...prov, label: '확인 불가', reason: '검증 모순 — 공고문 값과 다름' } : prov,
+        ),
+      ),
+    );
+    expect(isDemoted({ label: '확인 불가', reason: '검증 모순 — x' })).toBe(true);
+    expect(isDemoted({ label: '확인 불가', reason: '403' })).toBe(false);
+    expect(isDemoted({ label: '추정', reason: '검증 모순' })).toBe(false);
+    const view = renderWithProviders(<ProvenancePanel provId="fp_1" onClose={() => {}} />);
+    const badge = await screen.findByTestId('provenance-demoted');
+    expect(badge).toHaveTextContent(t('provenance.demoted'));
+    expect(badge).toHaveTextContent(t('provenance.demotedHint'));
+    view.unmount();
+    demoted = false;
+    renderWithProviders(<ProvenancePanel provId="fp_2" onClose={() => {}} />);
+    await screen.findByText(t('provenance.label'));
+    expect(screen.queryByTestId('provenance-demoted')).toBeNull();
+  });
+
+  it('사람 확인 field=기타 → rejudge_job_id null → 잡 진행 없이 "재판정 없음", POST /jobs 없음', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const rec = recordRequests();
+    renderRoute('/ops');
+    const form = await screen.findByRole('form', { name: t('page.G7.human') });
+    const complex = within(form).getByLabelText(t('page.G7.hc.complex'));
+    await waitFor(() => expect(complex.querySelectorAll('option').length).toBeGreaterThan(1));
+    await userEvent.selectOptions(
+      complex,
+      (complex.querySelectorAll('option')[1] as HTMLOptionElement).value,
+    );
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.field')), 'other');
+    await userEvent.type(within(form).getByLabelText(t('page.G7.hc.value')), '현장 메모');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
+    const box = await within(form).findByTestId('human-check-job');
+    expect(box).toHaveTextContent(t('page.G7.hc.noRejudge'));
+    expect(within(box).queryByText(t('job.title'))).toBeNull();
+    expect(matching(rec.requests, 'POST', '/jobs')).toHaveLength(0);
+    rec.stop();
+  });
+
+  it('PATCH /regions 이름만 변경 → change_event·job_id null → 잡 진행 없이 "이름만 바뀜"', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const region = await example<Region>('/regions/1');
+    server.use(
+      http.patch(mswPath('/regions/:id'), async ({ request }) => {
+        const body = (await request.json()) as { name?: string };
+        return HttpResponse.json({
+          region: { ...region, name: body.name ?? region.name },
+          change_event: null,
+          job_id: null,
+          added: [],
+          removed: [],
+        } satisfies RegionPatched);
+      }),
+    );
+    renderRoute('/regions/1/living-areas');
+    const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
+    await userEvent.type(within(panel).getByLabelText(t('page.G0_2.expand.name')), ' 2');
+    await userEvent.click(
+      within(panel).getByRole('button', { name: t('page.G0_2.expand.submit') }),
+    );
+    expect(await within(panel).findByTestId('expand-name-only')).toHaveTextContent(
+      t('page.G0_2.expand.nameOnly'),
+    );
+    expect(within(panel).queryByText(t('job.title'))).toBeNull();
   });
 });
 

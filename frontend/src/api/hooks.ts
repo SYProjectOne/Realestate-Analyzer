@@ -597,13 +597,17 @@ export function usePatchChecklistItem(): M<{ id: IdLike; patch: ChecklistPatch }
 
 /**
  * POST /ops/human-checks (createHumanCheck, 201) — 저장 후 단지·스냅샷·대시보드 무효화
- * (접수 배지 즉시 갱신). 응답의 `suggested_job`은 화면이 "재판정 잡 제안" 토스트로 쓴다.
+ * (접수 배지 즉시 갱신). 계약 .9: 서버가 재판정 잡을 자동 등록해 `rejudge_job_id` 로 돌려준다 — 화면은 그 잡
+ * 진행만 보인다(`suggested_job` 을 다시 POST 하지 않는다). 잡 목록도 무효화한다.
  */
 export function useCreateHumanCheck(): M<HumanCheckCreate, HumanCheck> {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body) => apiFetch<HumanCheck>('/ops/human-checks', { method: 'POST', body }),
-    onSuccess: () => invalidateFactViews(qc),
+    onSuccess: () => {
+      invalidateFactViews(qc);
+      void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+    },
   });
 }
 
@@ -716,8 +720,9 @@ export function useCreateCatalyst(): M<CatalystCreate, CatalystCreated> {
 /**
  * PATCH /catalysts/{id} (updateCatalyst, 계약 .8, D11-5) — 사람이 호재 위치를 확인(location_confirmed + 영향
  * 생활권·단지, 선택 lat/lon·expected_ym)하면 서버가 catalyst_link 를 만든다(좌표 없는 단지는 distance_m=null·
- * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 응답 `job` = 연결이 바뀌었을 때의 rejudge 잡
- * (그대로면 null). 단지 상세(호재 탭)·시장·점수 입력이 바뀌므로 사실 화면 캐시와 잡 목록을 무효화한다.
+ * weight=1·라벨 추정·reason). location_confirmed=false 면 링크를 지운다. 계약 .9(D12-4): 응답 `job` 은 늘 null —
+ * 연결이 바뀌면 서버가 새 리비전을 만들어 바로 발행한다. 그래서 지역(latest_snapshot)·리비전 목록·사실 화면을
+ * 무효화한다(M-15 와 같은 처리).
  */
 export function useUpdateCatalystLocation(): M<
   { id: IdLike; patch: CatalystPatch },
@@ -729,6 +734,7 @@ export function useUpdateCatalystLocation(): M<
       apiFetch<CatalystUpdated>(`/catalysts/${enc(id)}`, { method: 'PATCH', body: patch }),
     onSuccess: (data) => {
       invalidateFactViews(qc);
+      void qc.invalidateQueries({ queryKey: queryKeys.regions() });
       if (data.job) void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
     },
   });

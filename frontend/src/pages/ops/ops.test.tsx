@@ -48,7 +48,7 @@ describe('G7 데이터·운영', () => {
     rec.stop();
   });
 
-  it('사람 확인 저장 → 접수 배지 즉시 갱신 + 재판정 제안 토스트 → POST /jobs(rejudge)', async () => {
+  it('사람 확인 저장 → 접수 배지 즉시 갱신 + 자동 등록 재판정(rejudge_job_id) 진행 — POST /jobs 없음(계약 .9)', async () => {
     const rec = recordRequests();
     renderRoute('/ops');
     const form = await screen.findByRole('form', { name: t('page.G7.human') });
@@ -80,15 +80,15 @@ describe('G7 데이터·운영', () => {
       entered_by: '운영자',
     });
 
+    // 계약 .9 D12-5: 서버가 재판정 잡을 자동 등록 → 화면은 그 잡 진행만(suggested_job 을 다시 POST 하지 않는다)
+    const jobBox = await within(form).findByTestId('human-check-job');
+    expect(await within(jobBox).findByText(t('job.title'))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(matching(rec.requests, 'GET', /\/jobs\/\d+$/).length).toBeGreaterThan(0),
+    );
     const toasts = screen.getByRole('region', { name: t('app.notifications') });
-    await userEvent.click(within(toasts).getByRole('button', { name: t('page.G7.rejudge') }));
-    await waitFor(() => expect(matching(rec.requests, 'POST', '/jobs')).toHaveLength(1));
-    const job = (await matching(rec.requests, 'POST', '/jobs')[0]?.body) as {
-      job_name: string;
-      payload: { complex_ids: number[] };
-    };
-    expect(job.job_name).toBe('rejudge');
-    expect(job.payload.complex_ids).toEqual([Number(complexId)]);
+    expect(within(toasts).queryByRole('button', { name: t('page.G7.rejudge') })).toBeNull();
+    expect(matching(rec.requests, 'POST', '/jobs')).toHaveLength(0);
     rec.stop();
   });
 

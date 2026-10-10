@@ -2,7 +2,8 @@
  * 흐름 (b) G7 사람 확인 → 재판정 → G1·G3 변화 — RA §9 T3 + DECISIONS D9-1.
  *
  * RA §9 T3: 스위첸(김포) 공식 홈페이지 403 → 접수 '확인 불가' → 상황 D(즉시 구매) 후보 제외.
- * G7 에서 사람 확인 '가능' 입력 → intake 행 + rejudge 잡 1(알림의 '재판정 잡 등록') → worker(Mock = 합성 판정 녹화).
+ * G7 에서 사람 확인 '가능' 입력 → intake 행 + rejudge 잡 1(계약 .9 D12-5: 서버 자동 등록 rejudge_job_id — 화면은 진행만)
+ * → worker(Mock = 합성 판정 녹화).
  *
  * D9-1로 인한 차이(픽스처 README): 합성 녹화는 보고서 classify(#110 스위첸 review .72)를 따르므로 스위첸은
  * '미해결(분류 판정 미해결)' — 사람 확인 '가능' 뒤에도 판정 대상이 아니다(사다리·점수·상황 후보 없음).
@@ -46,23 +47,23 @@ test('G7 사람 확인 가능 → 재판정 잡 → G3 접수 배지(가능·사
     (r) => r.url().endsWith('/api/ops/human-checks') && r.request().method() === 'POST',
   );
   await form.getByRole('button', { name: P.G7.hc.submit }).click();
-  expect((await saved).status()).toBe(201);
+  const savedRes = await saved;
+  expect(savedRes.status()).toBe(201);
+  const hc = (await savedRes.json()) as { rejudge_job_id: number | null };
+  expect(hc.rejudge_job_id).not.toBeNull();
   await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.status['가능']);
 
-  // 알림의 '재판정 잡 등록' → POST /jobs(rejudge, complex_ids [4])
-  const queued = page.waitForResponse(
-    (r) => r.url().endsWith('/api/jobs') && r.request().method() === 'POST',
+  // 계약 .9: 재판정 잡은 자동 등록 — 화면은 그 잡 진행만 보이고 알림에 '재판정 잡 등록' 버튼이 없다(POST /jobs 없음)
+  await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
+  await expect(
+    page.getByRole('region', { name: ko.app.notifications }).getByRole('button', { name: P.G7.rejudge }),
+  ).toHaveCount(0);
+  const auto = await apiGet<{ job_name: string; payload: { complex_ids: number[] | null } }>(
+    request,
+    `/jobs/${hc.rejudge_job_id}`,
   );
-  await page
-    .getByRole('region', { name: ko.app.notifications })
-    .getByRole('button', { name: P.G7.rejudge })
-    .click();
-  const job = await queued;
-  expect(job.status()).toBe(202);
-  expect(job.request().postDataJSON()).toMatchObject({
-    job_name: 'rejudge',
-    payload: { complex_ids: [4] },
-  });
+  expect(auto.job_name).toBe('rejudge');
+  expect(auto.payload.complex_ids).toEqual([4]);
 
   runWorkerOnce();
   const jobs = await apiGet<{ items?: { job_name: string; status: string }[] } | { job_name: string; status: string }[]>(
