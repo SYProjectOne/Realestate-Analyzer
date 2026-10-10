@@ -109,6 +109,14 @@ def test_t13_frontend_lint_flags_raw_number_outside_factcell() -> None:
             timeout=180,
             check=False,
         )
+        # eslint 종료 코드: 0 = 위반 없음, 1 = 위반 있음(둘 다 stdout 에 JSON). 그 밖(2 = 설정·실행 오류 — 같은 frontend 에서
+        # 'npm ci' 가 node_modules 를 다시 쓰는 중이면 모듈을 못 찾는다, R3 4차 리뷰가 확정한 간헐 실패 원인)은 stdout 이
+        # 비어 있다 — JSON 해석 오류 대신 stderr 를 담아 실패시킨다. 순서: frontend 'npm ci' 를 끝낸 뒤 regress 를 돈다
+        # (runbook·scripts/tasks.py regress).
+        if p.returncode not in (0, 1) or not p.stdout.strip():
+            pytest.fail(
+                f"eslint 실행 실패(exit {p.returncode}) — frontend 'npm ci' 가 끝난 뒤 다시 돌린다. stderr: {p.stderr.strip()[:500]}"
+            )
         out[name] = [m["ruleId"] for m in json.loads(p.stdout)[0]["messages"]]
     assert "local/no-raw-number-render" in out["raw"], out
     assert "local/no-raw-number-render" not in out["factcell"], out

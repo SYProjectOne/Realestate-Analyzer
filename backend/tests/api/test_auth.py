@@ -49,7 +49,36 @@ WRITES: list[tuple[str, str, str, dict[str, Any]]] = [
     ("patch", "/api/ops/checklist/1", "updateChecklistItem", {"status": "done"}),
     ("post", "/api/ops/human-checks", "createHumanCheck", {}),
     ("post", "/api/reports", "createReport", {"snapshot_id": 12, "format": "html"}),
+    # R3 4차 minor: 계약 .6~.8 에 생긴 쓰기 연산도 읽기 전용 토큰이면 403(아래 전수 검사가 빠진 연산을 잡는다)
+    ("patch", "/api/regions/1", "updateRegion", {"selections": []}),
+    ("patch", "/api/claims/1", "reviseClaim", {"text": "x"}),
+    (
+        "post",
+        "/api/catalysts",
+        "createCatalyst",
+        {"region_id": 1, "url": "https://example.org", "title": "x"},
+    ),
+    ("patch", "/api/catalysts/1", "updateCatalyst", {"location_confirmed": False}),
+    ("post", "/api/share-links", "createShareLink", {}),
+    ("delete", "/api/share-links/1", "revokeShareLink", {}),
 ]
+
+
+def test_writes_cover_every_write_operation_in_contract() -> None:
+    """계약의 쓰기 연산(POST·PUT·PATCH·DELETE)이 전부 위 표에 있다 — 새 연산이 읽기 전용 검사에서
+    빠지지 않게."""
+    import yaml
+
+    from ._support import REPO
+
+    spec = yaml.safe_load((REPO / "contracts" / "openapi.yaml").read_text(encoding="utf-8"))
+    ops = {
+        op["operationId"]
+        for item in spec["paths"].values()
+        for m, op in item.items()
+        if m in ("post", "put", "patch", "delete")
+    }
+    assert ops == {w[2] for w in WRITES}, ops ^ {w[2] for w in WRITES}
 
 
 @pytest.mark.parametrize(("method", "url", "op", "body"), WRITES)

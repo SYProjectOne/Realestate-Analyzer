@@ -99,6 +99,11 @@ def build_extract_requests(
             for c in members:
                 if c.excerpt not in excerpts:
                     excerpts.append(c.excerpt)
+            if len(sep.join(excerpts)) > max_text and len(excerpts) > 1:
+                # 한 필드의 발췌 합이 상한보다 길면(R3 4차 minor) 뒤 발췌를 통째로 잃지 않게
+                # 발췌마다 같은 몫으로 줄인다
+                per = max(1, (max_text - len(sep) * (len(excerpts) - 1)) // len(excerpts))
+                excerpts = [e[:per] for e in excerpts]
             out.append(
                 ExtractRequest(
                     raw_document_id=rid,
