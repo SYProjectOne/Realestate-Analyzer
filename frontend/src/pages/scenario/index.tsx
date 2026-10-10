@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useCanWrite } from '@/api/auth';
 import {
@@ -14,9 +13,12 @@ import type { ComponentKey, Scenario, ScenarioPreview, ScoreRow, Weights } from 
 import { useToast } from '@/app/toast';
 import { C07Decision, C10Sensitivity } from '@/charts';
 import { Badge, EmptyState, FactCell, JobProgress, MetaText, MetaValue } from '@/components';
+import { snapshotText } from '@/components/SnapshotPicker';
 import { scenarioKey as keyOf, useScenario } from '@/hooks/useScenario';
+import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
+import { resultSnapshotId, type JobLike } from '@/lib/contract';
 import { metaNumber } from '@/lib/meta';
 import { enumText, Section, tdClass, thClass, usePageContext } from '../_shared';
 import {
@@ -468,20 +470,22 @@ function RequirementTable({ preview }: { preview: ScenarioPreview }) {
 
 function RunPanel({ current, before }: { current: Scenario | null; before: ScoreRow[] | null }) {
   const { snapshotId } = usePageContext();
-  const qc = useQueryClient();
+  const { snapshots, setSnapshot } = useSnapshot();
   const createJob = useCreateJob();
   const canWrite = useCanWrite();
   const preview = useScenarioPreview(current?.id ?? null, snapshotId);
   const [jobId, setJobId] = useState<number | null>(null);
-  const [baseline, setBaseline] = useState<ScoreRow[] | null>(null);
-  const [finished, setFinished] = useState(false);
+  const [baseline, setBaseline] = useState<{ rows: ScoreRow[]; snapshotId: string } | null>(null);
+  // C-5: 재판정은 발행 스냅샷을 고치지 않고 같은 기준일 새 리비전에 쓴다(D11-1) — '이후'는 잡이 쓴 리비전에서 읽는다
+  const [afterId, setAfterId] = useState<string | null>(null);
   const key = current ? keyOf(current) : null;
-  const after = useDashboard(finished ? snapshotId : null, key);
+  const after = useDashboard(afterId, key);
+  const finished = afterId !== null;
 
   const run = () => {
     if (!current || !snapshotId) return;
-    setBaseline(before);
-    setFinished(false);
+    setBaseline(before ? { rows: before, snapshotId } : null);
+    setAfterId(null);
     createJob.mutate(
       {
         job_name: 'rejudge',
@@ -496,10 +500,13 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
     );
   };
 
-  const onDone = () => {
-    void qc.invalidateQueries({ queryKey: ['snapshots', String(snapshotId)] });
-    setFinished(true);
+  // 잡 완료 무효화(지역·리비전 목록·사실 화면)는 api/jobWatch 가 한다
+  const onDone = (job: JobLike) => {
+    setAfterId(resultSnapshotId(job) ?? baseline?.snapshotId ?? snapshotId);
   };
+
+  const afterSnapshot = snapshots.find((s) => String(s.id) === afterId) ?? null;
+  const showsOther = afterId !== null && afterId !== snapshotId;
 
   return (
     <Section title={t('page.G5.run')}>
@@ -528,8 +535,22 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           <JobProgress jobId={String(jobId)} onDone={onDone} />
         </>
       ) : null}
-      {finished && baseline && after.data ? (
-        <DiffTable before={baseline} after={after.data.top5} />
+      {finished ? (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-muted" data-testid="g5-after">
+          <span>
+            {t('page.G5.afterRevision', {
+              snapshot: afterSnapshot ? snapshotText(afterSnapshot) : t('page.G5.afterPending'),
+            })}
+          </span>
+          {showsOther ? (
+            <button type="button" onClick={() => setSnapshot(afterId)} className="underline">
+              {t('page.G5.openRevision')}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+      {finished && baseline && after.data && !after.isPlaceholderData ? (
+        <DiffTable before={baseline.rows} after={after.data.top5} />
       ) : null}
     </Section>
   );

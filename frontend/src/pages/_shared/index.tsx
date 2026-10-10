@@ -174,17 +174,20 @@ export function idText(id: number | string | null | undefined): string {
 }
 
 /**
- * 표본 건수 Fact — 집계 사실(중앙값 등)의 건수 n 을 **그 사실과 같은 출처·라벨·확인일**로 보인다
- * (R3c: 실거래 건수가 FactCell 밖이던 것). 집계 사실이 '확인 불가'면 건수도 그 사유로 '확인 불가'.
+ * 표본 건수 Fact — 집계 사실(중앙값 등)의 건수 n 을 **그 사실과 같은 출처·확인일**로 보인다
+ * (R3c: 실거래 건수가 FactCell 밖이던 것).
+ * 라벨은 집계 사실의 것을 빌리지 않는다(4차 리뷰 minor): 중앙값이 '추정'(대체 표본·추정 계산)이어도 건수는
+ * 그 출처에서 실제로 센 행 수라 '확인됨'이다. 집계 사실이 '확인 불가'이거나 출처·건수가 없으면 '확인 불가'
+ * (사유는 집계 사실의 사유, 없으면 '표본 출처 없음').
  */
 export function sampleCountFact(base: Fact, n: number | null | undefined): Fact {
-  const unknown = base.label === '확인 불가' || n === null || n === undefined;
+  const unknown = base.label === '확인 불가' || n === null || n === undefined || base.prov === null;
   return {
     v: unknown ? null : n,
-    label: base.label,
+    label: unknown ? '확인 불가' : '확인됨',
     prov: base.prov,
     checked_at: base.checked_at,
-    reason: unknown ? (base.reason ?? null) : null,
+    reason: unknown ? (base.reason ?? t('page.common.sampleNoSource')) : null,
     unit: 'count',
   };
 }

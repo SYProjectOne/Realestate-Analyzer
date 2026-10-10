@@ -207,7 +207,9 @@
         "change": "최초 대비",
         "discount": "할인(공고 명시)",
         "discountApplied": "라벨 확인됨 — 구매가에서 뺐습니다",
-        "discountNotApplied": "확인됨이 아니라 구매가에서 빼지 않았습니다(표시만)"
+        "discountNotApplied": "확인됨이 아니라 구매가에서 빼지 않았습니다(표시만)",
+        "discountAppliedShort": "구매가에서 뺌",
+        "discountNotAppliedShort": "표시만(빼지 않음)"
       },
       "payment": {
         "notice": "공고",
@@ -389,7 +391,10 @@
       "noDiff": "순위 변동 없음",
       "escaped": "판정기가 질문을 남겼습니다",
       "readOnlyBuiltin": "내장 시나리오는 이름을 바꿔 새로 저장합니다",
-      "runReason": "G5 재판정 실행"
+      "runReason": "G5 재판정 실행",
+      "afterRevision": "이후 값: {snapshot}",
+      "afterPending": "새 리비전(목록 갱신 중)",
+      "openRevision": "이 리비전으로 화면 보기"
     },
     "G6": {
       "title": "지역 시장",
@@ -505,7 +510,15 @@
         "status": "상태",
         "note": "메모",
         "none": "항목 없음",
-        "noDue": "기한 없음"
+        "noDue": "기한 없음",
+        "closedBy": {
+          "auto": "자동 닫힘",
+          "human": "사람이 닫음"
+        },
+        "closedByHint": {
+          "auto": "근거 사실이 사라졌거나 강등·단지 제외로 동기화가 닫았습니다 — 근거가 돌아오면 다시 열립니다",
+          "human": "사람이 닫은 항목입니다 — 동기화가 다시 열지 않습니다(강등이 남은 '사실 재확인'은 예외)"
+        }
       },
       "checkStatus": {
         "open": "열림",
@@ -673,6 +686,8 @@
       "generate": "보고서 생성",
       "blocked": "모순(contradicted) 주장 {n}건이 남아 생성할 수 없습니다",
       "notPublished": "게시되지 않은 스냅샷입니다(상태: {status})",
+      "building": "생성 중인 리비전은 보고서를 만들 수 없습니다",
+      "snapshotId": "스냅샷 #{id}",
       "list": "보고서 목록",
       "col": {
         "created": "생성",
@@ -761,6 +776,7 @@
         "partial": "부분 일치"
       },
       "rejudgeNeeded": "재판정 필요",
+      "sampleNoSource": "표본 출처 없음",
       "rejudgeNeededHint": "이 스냅샷에 저장된 판정 범위·순위·점수입니다. 현재 사실로 계산한 범위가 저장값과 달라 재판정이 필요합니다",
       "benchmarkAbsent": "벤치마크 없음({reason})",
       "loadError": "불러오지 못했습니다: {detail}",

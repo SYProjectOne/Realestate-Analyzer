@@ -6,6 +6,7 @@ import { reportRequest, useChanges, useCreateReport, useReports } from '@/api/ho
 import { ApiError } from '@/api/client';
 import type { ChangeEvent, Report, ReportFormat, Snapshot } from '@/api/types';
 import { Badge, EmptyState, JobProgress, MetaText, SnapshotPicker } from '@/components';
+import { snapshotText, snapshotTitle } from '@/components/SnapshotPicker';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
@@ -15,9 +16,13 @@ import { enumText, QueryState, Section, tdClass, thClass, usePageContext } from 
 
 const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
 
-/** 생성 가능 여부: contradicted claim이 남은 스냅샷은 보고서를 만들지 않는다(RA WP8·D4) */
+/**
+ * 생성 가능 여부: contradicted claim이 남은 스냅샷은 보고서를 만들지 않는다(RA WP8·D4).
+ * 생성 중(building) 리비전도 만들지 않는다 — 판정·점수가 다 쓰이지 않았다(4차 리뷰 M-16).
+ */
 export function blockReason(snapshot: Snapshot | null): string | null {
   if (!snapshot) return null;
+  if (snapshot.status === 'building') return t('page.G8.building');
   const n = snapshot.contradicted_claims ?? 0;
   if (n > 0) return metaText('page.G8.blocked', { n });
   return null;
@@ -41,6 +46,8 @@ export function ReportsPage() {
   const formatId = useId();
   const compareSelectId = useId();
 
+  // M-16: 보고서 기준·비교는 리비전 단위(같은 기준일 리비전 구별), 생성 중 리비전은 고를 수 없다
+  const reportable = snapshots.filter((s) => s.status !== 'building');
   const selectedId = baseId ?? snapshotId;
   const base = snapshots.find((s) => String(s.id) === selectedId) ?? null;
   const blocked = blockReason(base);
@@ -66,7 +73,7 @@ export function ReportsPage() {
       <Section title={t('page.G8.generate')}>
         <div className="flex flex-wrap items-end gap-4">
           <SnapshotPicker
-            snapshots={snapshots}
+            snapshots={base && base.status === 'building' ? [base, ...reportable] : reportable}
             value={selectedId}
             onChange={setBaseId}
             label={t('page.G8.snapshot')}
@@ -82,11 +89,11 @@ export function ReportsPage() {
               className="rounded-sm border border-border bg-surface px-2 py-1"
             >
               <option value="">{t('page.G8.noCompare')}</option>
-              {snapshots
+              {reportable
                 .filter((s) => String(s.id) !== selectedId)
                 .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {formatDate(s.asof_date)}
+                  <option key={s.id} value={s.id} title={snapshotTitle(s)}>
+                    {snapshotText(s)}
                   </option>
                 ))}
             </select>
@@ -147,10 +154,11 @@ const LIST_COLS = ['created', 'snapshot', 'compare', 'format', 'status', 'size',
 
 function ReportList({ asof, snapshots }: { asof: string | null; snapshots: Snapshot[] }) {
   const query = useReports();
+  // 같은 기준일 리비전을 구별해 보인다(M-16)
   const dateOf = (id: number | null) => {
     if (id === null) return '';
     const s = snapshots.find((x) => x.id === id);
-    return s ? formatDate(s.asof_date) : `#${id}`;
+    return s ? snapshotText(s) : t('page.G8.snapshotId', { id: String(id) });
   };
   return (
     <Section title={t('page.G8.list')}>

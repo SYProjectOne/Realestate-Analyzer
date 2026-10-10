@@ -11,7 +11,7 @@ import {
 } from '@/components';
 import { t } from '@/i18n';
 import { enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
-import { discountNote } from './tabs';
+import { discountNote, discountShortNote } from './tabs';
 
 /** G3 ComplexHeader — 접수 배지 · 현재 구매가 범위 · 전매 D-day · 입주 · 포함 분류 · 종합 점수 */
 export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
@@ -79,6 +79,9 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
             >
               <span className="text-muted">{t('page.G3.header.discount')}</span>
               <FactCell fact={price.discount} unit="won" />
+              <span className="text-muted" data-testid="header-discount-note">
+                {discountShortNote(price.discount)}
+              </span>
             </dd>
           ) : null}
         </div>
