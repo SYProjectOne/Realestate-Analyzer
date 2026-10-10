@@ -36,6 +36,14 @@ def today_kst(now: datetime | None = None) -> date:
     return to_kst(now).date() if now is not None else now_kst().date()
 
 
+def kst_day(value: str | None) -> str:
+    """``kst_date`` 의 'YYYY-MM-DD' 문자열(표시·정렬 키). 못 읽으면 앞 10자(옛 값 그대로), 없으면 ''."""
+    d = kst_date(value)
+    if d is not None:
+        return d.isoformat()
+    return (value or "")[:10]
+
+
 def kst_date(value: str | None) -> date | None:
     """사람 확인 ``checked_at``·출처 ``observed_on`` 문자열 → KST 달력 날짜(D14-6 — 날짜 비교는 이 함수 하나).
 

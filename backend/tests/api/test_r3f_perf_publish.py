@@ -1,14 +1,13 @@
 """R3f CORE4 — R3 6차 N-M3 / DECISIONS D14-5 (계약 2026-10-09.11): 발행(materialize) 잡 성능·API 쓰기 잠금.
 
-기준(D14-5): 1000 단지 × 시나리오 5 에서 ``snapshot.publish`` 잡 **15초 이하**, 그동안 API 쓰기 잠금(쓰기 요청이 기다린 시간)
+기준(D14-5, CEO 2026-10-10 수정): 1000 단지 × 시나리오 5 에서 ``snapshot.publish`` 잡 **30초 이하(한 프로세스)**, 그동안 API 쓰기 잠금(쓰기 요청이 기다린 시간)
 **1초 이하**. 리뷰 측정(.10 — 요청 안 발행): 1016 단지 × 5 = 28.8s 동안 쓰기 잠금 전체.
 
 - 데이터: devseed(16 단지) + 합성 1,000 단지(``devseed.load_synth``) + 합성 단지마다 모든 점수 실행에 score_total + 성분 7개
   (``test_perf_r3._score_synth`` — 점수가 있어야 상세·비교·목록·출처 서랍(sc_·st_)이 실제 크기가 된다).
 - 측정: 발행 리비전 12 위 새 리비전(파생 행 이월 → ready)을 worker 실행 함수로 발행하는 동안 다른 스레드가 **실제 API 쓰기**
   (``POST /api/share-links`` — 짧은 쓰기 트랜잭션)를 계속 보내 응답 시간을 잰다. 잡 stats(``total_s``·``write_max_lock_s``)도 본다.
-- 발행은 상주 worker 와 같이 미리 띄운 자식 프로세스(``snapshot_view.warm_pool``)로 나눠 계산한다(1000 단지 × 5 ≥
-  ``PARALLEL_MIN_CELLS``). 결과(나눠 계산 몫별 시간 포함)는 ``PUBLISH_PERF_OUT``(환경 변수, JSON 경로)에 남긴다(완료 보고 수치).
+- 계산은 한 프로세스(읽기 전용 세션 하나). 결과는 ``PUBLISH_PERF_OUT``(환경 변수, JSON 경로)에 남긴다(완료 보고 수치).
 """
 
 # ruff: noqa: E501
@@ -37,7 +36,7 @@ from .conftest import Seeded, make_settings
 from .test_perf_r3 import _score_synth
 
 SNAP = 12
-JOB_LIMIT_S = 15.0
+JOB_LIMIT_S = 30.0  # D14-5(CEO 2026-10-10): 한 프로세스 30초
 LOCK_LIMIT_S = 1.0
 
 
@@ -71,9 +70,6 @@ def _ready_revision() -> int:
 
 
 def test_d14_5_publish_job_1000x5_under_15s_and_api_writes_wait_under_1s(synth_client: TestClient) -> None:
-    from app.snapshot_view import warm_pool
-
-    warm_pool()  # 상주 worker 는 시작 때 발행 자식 프로세스를 띄워 둔다(``runner._warm_publish_pool``)
     jid = _ready_revision()
     lat: list[float] = []
     errors: list[str] = []
@@ -125,7 +121,6 @@ def test_d14_5_publish_job_1000x5_under_15s_and_api_writes_wait_under_1s(synth_c
         "api_write_max_s": round(max(lat), 3) if lat else None,
         "api_write_p50_s": round(sorted(lat)[len(lat) // 2], 3) if lat else None,
         "timing_s": stats.get("timing_s"),
-        "parallel": stats.get("parallel"),
     }
     out = os.environ.get("PUBLISH_PERF_OUT")
     if out:

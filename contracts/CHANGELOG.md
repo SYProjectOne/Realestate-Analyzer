@@ -42,7 +42,7 @@ R3 6차 리뷰(`docs/design/wp/R3_REVIEW6.md`) 후속 — CEO 결정 D14(`docs/d
 | S5 | 0010 이전 발행분·새 종류 | 0010 마이그레이션이 앱 코드로 materialize | 마이그레이션은 테이블만. 채우기 = **멱등 backfill**(`cd backend && uv run python -m app.snapshot_view backfill` · worker 시작 때 자동 · `python scripts/tasks.py backfill`) — 빠진 종류만 계산·나눠 쓰기, 행 단위 사람 확인(.9) → 의미 묶음 이전(m14). 그 사이 GET 503 | D14-9 · m2 · m14 |
 | S6 | 사용자 시나리오 보고서 | 비교 기준(revision_of)에 그 시나리오가 없으면 잡 실패, diff 는 code 로 시나리오를 찾음(사용자 시나리오 code NULL) | F10·F11. diff·§12 는 시나리오 **id** 로. §12 후보 건수는 비교 기준에 그 시나리오가 없으면 기본 시나리오 입력으로. CLI `--scenario` 도 같은 규칙(없으면 exit 4 `scenario_not_in_revision`) | D14-3 · N-M1 |
 | S7 | 이월·재판정 판단 | 리비전 전체의 마지막 점수 실행 하나 기준 — 단지 A rejudge 실패 뒤 다른 단지만 판정한 실행이 성공하면 A 가 가려짐 | **단지 단위**: 단지마다 그 단지를 판정한 마지막 성공 잡(rejudge·region.bootstrap·region.expand) 끝 시각(기록 없으면 그 스냅샷 첫 점수 실행) 뒤 그 단지·지역 단위 change_event 또는 그 단지를 포함한 rejudge 실패가 있으면 재판정 | D14-7 · N-M5 |
-| S8 | 사람 확인 날짜 | `checked_at[:10]` 문자열 비교 | 공용 `core.time.kst_date` 하나(KST 달력 날짜 — resolver·demotion 전부). 옛 날짜만 행도 읽는다 | D14-6 · m12 |
+| S8 | 사람 확인 날짜 | `checked_at[:10]` 문자열 비교 | 공용 `core.time.kst_date`·`kst_day` 하나(KST 달력 날짜 — resolver·demotion 전부 + 접수 행 `checked_at`: 표시 접수 행 고르기·상황 요건 근거·목록 CSV 확인일·보고서 Fact 확인일). 옛 날짜만 행도 읽는다 | D14-6 · m12 |
 | S9 | 할인 줄 | 금액 앞 조건만 | F13(조건 토큰: 층·동·호·라인·타입 외·'~시'·한정·최대·조건·선착순·특별공급·잔금·완납·기간·까지·※·단·각주) | D14-2 · C1 |
 | S10 | 정규화·보안 minor | — | redact: PEM 개인키 본문 전체·JSON `"private_key": "…"` 값 전체(m9). 홈페이지 URL: UTS46 무시 문자 전부(U+2064·U+E0100~E01EF·U+1BCA0~1BCA3 등, m10). 같은 블록 병합 잔여 공고의 입주 예정월도 원 단지 후보(m16 — 일정·당첨일 등은 D11-4 대로 버림). 모호 법정동이 기존 `legal_dong_code` 를 지우지 않음(m17). 의미 키 규칙 한 함수(m18) | m9 · m10 · m16 · m17 · m18 |
 | S11 | worker·운영 | SQLite 같은 트랜잭션 읽기 뒤 rejudge 합치기 'database is locked'(BUSY_SNAPSHOT) | 읽기만 한 트랜잭션이면 새 트랜잭션에서 쓰기 잠금부터 다시(쓴 트랜잭션은 예외 그대로, m15). region.bootstrap 저장본 실패가 지역을 failed 로 만들지 않음 — 지역 ready + `snapshot.publish` 재시도 잡(stats `publish_retry_job_id`, m19). devseed `--reset` = 실제 테이블 반사 삭제 + alembic head 스탬프(m3) | m15 · m19 · m3 |
@@ -70,10 +70,9 @@ R3 6차 리뷰(`docs/design/wp/R3_REVIEW6.md`) 후속 — CEO 결정 D14(`docs/d
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.11`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
 - **D14-5 측정**(`tests/api/test_r3f_perf_publish.py` — devseed 16 + 합성 1,000 단지, 합성 단지마다 점수 실행 5 × 총점 + 성분 7, 발행 리비전 위
   새 리비전을 `snapshot.publish` 잡으로 발행하는 동안 다른 스레드가 `POST /api/share-links` 를 50ms 마다 보냄, `python scripts/tasks.py regress`
-  동시 실행 = 부하): 잡 9.9s·10.0s(기준 15s), API 쓰기 응답 최대 0.21s·0.33s(기준 1s, p50 0.005s), 저장본 묶음 쓰기 잠금 최대 0.095s, 전환 0.005s,
-  저장본 5,418행·11.9MB(시나리오 사이 같은 부분 = 기본 + 바뀐 부분). 큰 리비전(단지 × 시나리오 ≥ 2,000)은 같은 한 시점(SQLite = DB 사본, Postgres
-  = 내보낸 스냅샷)을 상주 worker 의 자식 프로세스 3개 + 자신이 나눠 계산한다(보고서 / 단지 상세 + 출처 서랍 / 비교 + diff 입력 / 나머지) — 나눠
-  계산 = 한 프로세스 계산과 같은 행(`test_r3f_views::test_d14_5_parallel_compute_equals_serial`). 자식 프로세스가 깨지면 한 프로세스 계산으로 다시.
+  동시 실행 = 부하, **한 프로세스** — CEO 2026-10-10 기준 30s): 잡 18.0s·18.1s, API 쓰기 응답 최대 0.72s·0.69s(기준 1s, p50 0.007s — 시험에서는
+  API 와 잡이 같은 프로세스라 GIL 대기가 섞인다, 운영은 api·worker 별도 프로세스), 저장본 묶음 쓰기 잠금 최대 0.20s·0.12s, 전환 0.004s, 저장본 5,418행·
+  11.9MB(시나리오 사이 같은 부분 = 기본 + 바뀐 부분). 같은 계산 안의 반복 적재는 메모(`app.api.memo`)로 한 번만.
 
 ### fixtures
 

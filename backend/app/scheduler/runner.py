@@ -317,18 +317,6 @@ def backfill_views(ctx: SchedulerContext) -> dict[str, Any] | None:
     return res
 
 
-def _warm_publish_pool() -> None:
-    """상주 worker: 발행(저장본) 자식 프로세스를 미리 띄운다(D14-5 — 큰 리비전 발행이 시작 비용을 치르지 않게). 실패해도 계속(발행은
-    한 프로세스 계산으로 대신한다)."""
-    from app.snapshot_view import warm_pool
-
-    try:
-        n = warm_pool()
-        log.info("worker.publish_pool", extra={"processes": n})
-    except Exception as exc:
-        log.error("worker.publish_pool_failed", extra={"error": type(exc).__name__})
-
-
 def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) -> int:
     from app.scheduler.degraded import check_recovery
     from app.scheduler.jobs import build_scheduler, ensure_reference
@@ -367,7 +355,6 @@ def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) 
             if stop.wait(interval):
                 return 0
         backfill_views(ctx)
-        _warm_publish_pool()
         ensure_reference(ctx)
         if not args.no_schedule:
             sched = build_scheduler(ctx)

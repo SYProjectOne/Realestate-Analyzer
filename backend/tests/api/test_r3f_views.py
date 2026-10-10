@@ -410,35 +410,3 @@ def test_m19_bootstrap_publish_failure_keeps_region_ready_and_retries(
         assert s.get(Region, 1).status == "ready"  # type: ignore[union-attr]
         retry = s.get(JobRun, stats["publish_retry_job_id"])
         assert retry is not None and retry.job_name == "snapshot.publish" and retry.status == "queued"
-
-
-def test_d14_5_parallel_compute_equals_serial(client: TestClient) -> None:
-    """나눠 계산(자식 프로세스 — 같은 한 시점의 DB 사본)은 한 프로세스 계산과 같은 저장본 행(종류·키·시나리오·sha256)."""
-    import app.snapshot_view as sv
-    from app.core.db import get_engine
-    from app.core.settings import get_settings
-    from app.scheduler.persist import carry_forward
-
-    from .test_r3d_core2 import _revision_of
-
-    rev = _revision_of(SNAP, publish=False)
-    with get_session() as s:
-        carry_forward(s, SNAP, rev, created_at="2026-10-09T09:01:00+09:00")
-        s.get(Snapshot, rev).status = "ready"  # type: ignore[union-attr]
-    now = "2026-10-09T09:05:00+09:00"
-    rs = sv._read_session(get_engine())
-    try:
-        snap = rs.get(Snapshot, rev)
-        assert snap is not None
-        with sv._as_published(rs, snap, now):
-            serial = sv.compute(rs, snap)
-    finally:
-        rs.rollback()
-        rs.close()
-    par = sv._compute_parallel(get_engine(), rev, now, get_settings(), sv.PARALLEL_GROUPS)
-    a = {(r.kind, r.key, r.scenario): r.sha256 for r in serial.rows}
-    b = {(r.kind, r.key, r.scenario): r.sha256 for r in par.rows}
-    assert a == b
-    assert par.stats["parallel"]["processes"] == 1 + len(sv.PARALLEL_GROUPS)
-    with get_session() as s:
-        assert s.get(Snapshot, rev).status == "ready"  # type: ignore[union-attr]  # 계산은 쓰지 않는다

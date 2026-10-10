@@ -51,7 +51,6 @@ from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Final
 
 from sqlalchemy import delete, event, func, insert, select, update
@@ -530,13 +529,8 @@ def compute(
     *,
     settings: Settings | None = None,
     kinds: Iterable[str] | None = None,
-    collect_prov: bool = False,
-    scenario_part: tuple[int, int] | None = None,
 ) -> Computed:
     """그 리비전의 저장본 행을 계산만 한다(DB 쓰기 없음 — 호출자가 ``write_rows``·세션에 넣는다).
-
-    ``scenario_part=(i, n)`` = 시나리오 목록의 i 번째 몫(``[i::n]``)만 행으로 낸다(나눠 계산). 기본 시나리오는 늘 계산한다(다른
-    시나리오 행이 기본 시나리오 본문 + 바뀐 부분이라) — 몫이 아니면 행만 내지 않는다.
 
     출처 누락은 ENV=prod 규칙('확인 불가(출처 누락)' + 경고 로그)으로 만들고 건수를 ``stats.missing_provenance`` 에(D14-8)."""
     from app.api import memo
@@ -551,15 +545,11 @@ def compute(
     base_sk: str | None = None
     base_bodies: dict[tuple[str, str], Any] = {}
 
-    emit_sk: set[str] | None = None
-
     def put(kind: str, body: Any, *, key: str = "", scenario: str = "") -> None:
         t = time.perf_counter()
         stored_body = body
         if kind in DEDUP_KINDS and scenario == base_sk:
             base_bodies[(kind, key)] = body
-        if scenario and emit_sk is not None and scenario not in emit_sk:
-            return  # 이 몫이 아닌 시나리오(기본 시나리오 — 바뀐 부분의 바탕으로만 계산했다)
         if kind in DEDUP_KINDS and scenario:
             if scenario == base_sk:
                 pass
@@ -568,7 +558,7 @@ def compute(
                 if "$p" in node:
                     stored_body = {BASE_MARK: base_sk, PATCH_MARK: node["$p"]}
         raw = _dumps(stored_body)
-        if kind not in _PROV_SKIP_KINDS and ("provenance" in want or collect_prov):
+        if kind not in _PROV_SKIP_KINDS and "provenance" in want:
             _collect_prov(raw, prov_ids)
         out.rows.append(
             ViewRow(kind, key, scenario, zlib.compress(raw, ZLIB_LEVEL), hashlib.sha256(raw).hexdigest())
@@ -593,15 +583,10 @@ def compute(
             put("claims", timed("claims", build_claims, session, snap))
         las = _living_area_ids(session, snap)
         all_sc = _scenarios(session)
-        if scenario_part is not None:
-            i, n = scenario_part
-            emit_sk = {scenario_key(x) for x in all_sc[i::n]}
         for sc in all_sc:
             sk = scenario_key(sc)
             if base_sk is None:
                 base_sk = sk
-            if emit_sk is not None and sk not in emit_sk and sk != base_sk:
-                continue
             if "market" in want:  # 시나리오 × (전체 + 그 리비전 생활권별)
                 put("market", timed("market", build_market, session, cfg, snap, None, sc), scenario=sk)
                 for la in las:
@@ -689,13 +674,10 @@ def compute(
     return out
 
 
-def _provenance_bodies_rows(
-    session: Session, prov_ids: set[str], *, done: dict[str, Any] | None = None
-) -> list[tuple[str, str, Any]]:
+def _provenance_bodies_rows(session: Session, prov_ids: set[str]) -> list[tuple[str, str, Any]]:
     """출처 서랍 저장본 행(kind, key, 본문): 색인 'idx' + 해시 묶음 'b<n>'. 서랍 안 '충돌 출처'(conflicts[].id)도 서랍으로
-    연다(``provenance_bodies`` 가 같은 묶음 행을 함께 만든다). ``done`` = 다른 프로세스가 같은 시점에서 이미 만든 서랍."""
-    bodies = dict(done or {})
-    bodies.update(build_provenance(session, {p for p in prov_ids if p not in bodies}))
+    연다(``provenance_bodies`` 가 같은 묶음 행을 함께 만든다)."""
+    bodies = build_provenance(session, prov_ids)
     n_buckets = max(1, -(-len(bodies) // PROV_BUCKET))
     buckets: dict[str, dict[str, Any]] = {}
     for pid in sorted(bodies):
@@ -703,255 +685,6 @@ def _provenance_bodies_rows(
     out: list[tuple[str, str, Any]] = [("provenance", "idx", {"buckets": n_buckets, "count": len(bodies)})]
     out += [("provenance", bkey, buckets[bkey]) for bkey in sorted(buckets)]
     return out
-
-
-# ---------------------------------------------------------------- 큰 리비전: 프로세스 나눠 계산(D14-5 — 1000 단지 × 시나리오 5 = 15초)
-
-PARALLEL_MIN_CELLS: int = 2000
-"""단지 수 × 시나리오 수가 이 값 이상이면 종류를 프로세스로 나눠 계산한다(작은 리비전은 한 프로세스 — 시작 비용 1~2초)."""
-PARALLEL_GROUPS: tuple[tuple[tuple[str, ...], tuple[int, int] | None], ...] = (
-    (("report",), None),
-    (("complex", "provenance"), None),
-    (("compare", "report_diff"), None),
-)
-"""다른 프로세스에서 계산할 (종류 묶음, 시나리오 몫) — 나머지 종류는 이 프로세스. 묶음에 'provenance' 가 있으면 그 자식이 자기
-응답이 가리키는 출처 서랍까지 만든다(단지 상세 = 출처 id 대부분) — 이 프로세스는 남은 출처만. 시나리오 몫(i, n)을 주면 그
-종류를 시나리오로 더 나눌 수 있다(측정: 보고서를 둘로 나누면 프로세스 경합으로 오히려 느려 지금은 쓰지 않는다). 0개면 늘 한 프로세스."""
-
-
-def _snapshot_source(engine: Engine, tmp: Path) -> tuple[str, Any]:
-    """모든 프로세스가 같은 한 시점을 읽게 한다. SQLite = DB 파일의 일관된 사본(backup API — 다른 연결의 쓰기와 무관한 한
-    시점), Postgres = 이 트랜잭션의 스냅샷을 내보내 자식이 ``SET TRANSACTION SNAPSHOT`` 으로 같은 시점을 읽는다(pg_dump -j 와
-    같은 방식). 반환 (자식이 읽을 URL, Postgres 면 부모 연결 — 자식이 끝날 때까지 열어 둔다)."""
-    import sqlite3
-
-    url = engine.url
-    if engine.dialect.name == "sqlite":
-        src_path = url.database
-        if not src_path or src_path == ":memory:":
-            raise RuntimeError("메모리 SQLite 는 나눠 계산하지 않는다")
-        copy = tmp / "snapshot.db"
-        src = sqlite3.connect(src_path)
-        dst = sqlite3.connect(str(copy))
-        try:
-            src.backup(dst)
-        finally:
-            dst.close()
-            src.close()
-        return f"sqlite:///{copy.as_posix()}", None
-    conn = engine.connect().execution_options(isolation_level="REPEATABLE READ")
-    conn.begin()
-    token = conn.exec_driver_sql("SELECT pg_export_snapshot()").scalar_one()
-    return url.render_as_string(hide_password=False), (conn, str(token))
-
-
-def _part_session(url: str, settings: Settings, pg_token: str | None) -> tuple[Session, Engine]:
-    from app.core.db import make_engine
-
-    engine = make_engine(url, settings=settings)
-    if pg_token is None:
-        return Session(bind=engine), engine
-    conn = engine.connect().execution_options(isolation_level="REPEATABLE READ")
-    conn.begin()
-    conn.exec_driver_sql(f"SET TRANSACTION SNAPSHOT '{pg_token}'")
-    return Session(bind=conn), engine
-
-
-def _compute_part(
-    url: str,
-    settings: Settings,
-    snapshot_id: int,
-    now: str,
-    kinds: tuple[str, ...],
-    pg_token: str | None,
-    scenario_part: tuple[int, int] | None = None,
-) -> tuple[list[tuple[str, str, str, bytes, str]], list[str], dict[str, Any], dict[str, Any]]:
-    """자식 프로세스: 같은 시점(``_snapshot_source``)을 읽어 ``kinds`` 저장본 행과 출처 id 를 계산한다(쓰기 없음). 'provenance' 가
-    있으면 그 출처 id 의 서랍 본문도(같은 계산 — ``build_provenance``)."""
-    from app.api import memo
-    from app.core.settings import set_settings
-
-    cfg = settings.model_copy(update={"database_url": url})
-    set_settings(cfg)
-    rs, engine = _part_session(url, cfg, pg_token)
-    bodies: dict[str, Any] = {}
-    try:
-        snap = rs.get(Snapshot, snapshot_id)
-        if snap is None:
-            raise LookupError(f"snapshot {snapshot_id} 없음(자식)")
-        with _as_published(rs, snap, now):
-            c = compute(
-                rs,
-                snap,
-                settings=cfg,
-                kinds=tuple(k for k in kinds if k != "provenance"),
-                collect_prov=True,
-                scenario_part=scenario_part,
-            )
-            if "provenance" in kinds:
-                t = time.perf_counter()
-                with memo.active():
-                    bodies = build_provenance(rs, c.prov_ids)
-                c.stats.setdefault("timing_s", {})["provenance"] = round(time.perf_counter() - t, 3)
-    finally:
-        rs.rollback()
-        rs.close()
-        engine.dispose()
-    return (
-        [(r.kind, r.key, r.scenario, r.body, r.sha256) for r in c.rows],
-        sorted(c.prov_ids),
-        c.stats,
-        bodies,
-    )
-
-
-_POOL: Any = None
-_POOL_SIZE = 0
-
-
-def _pool(size: int) -> Any:
-    """자식 프로세스 풀(spawn) — 한 번 띄워 계속 쓴다(worker 상주: 시작 비용·import 를 발행마다 치르지 않는다)."""
-    import multiprocessing
-    from concurrent.futures import ProcessPoolExecutor
-
-    global _POOL, _POOL_SIZE
-    if _POOL is None or size > _POOL_SIZE:
-        if _POOL is not None:
-            _POOL.shutdown(wait=False, cancel_futures=True)
-        _POOL = ProcessPoolExecutor(max_workers=size, mp_context=multiprocessing.get_context("spawn"))
-        _POOL_SIZE = size
-        import atexit
-
-        atexit.register(_reset_pool)  # 인터프리터 종료 전에 정리(종료 중 풀 콜백 경고 방지)
-    return _POOL
-
-
-def _reset_pool() -> None:
-    global _POOL, _POOL_SIZE
-    if _POOL is not None:
-        _POOL.shutdown(wait=True, cancel_futures=True)
-    _POOL, _POOL_SIZE = None, 0
-
-
-def _warm_child() -> int:
-    """자식 프로세스가 무거운 모듈을 미리 읽는다(첫 발행이 import 시간을 치르지 않게)."""
-    import os
-
-    import app.api.routers.analysis
-    import app.api.routers.complexes
-    import app.api.routers.market
-    import app.api.routers.snapshots
-    import app.reports.data  # noqa: F401
-
-    return os.getpid()
-
-
-def warm_pool() -> int:
-    """worker 시작 때 발행 자식 프로세스를 띄워 둔다(D14-5). 나눠 계산하지 않는 설정이면 0. 띄운 프로세스 수."""
-    if not PARALLEL_GROUPS:
-        return 0
-    ex = _pool(len(PARALLEL_GROUPS))
-    pids = {f.result(timeout=120) for f in [ex.submit(_warm_child) for _ in range(len(PARALLEL_GROUPS) * 2)]}
-    return len(pids)
-
-
-def _cells(session: Session, snap: Snapshot) -> int:
-    n_cx = session.scalar(
-        select(func.count()).select_from(Complex).where(Complex.region_id == snap.region_id)
-    )
-    n_sc = session.scalar(select(func.count()).select_from(Scenario))
-    return int(n_cx or 0) * int(n_sc or 0)
-
-
-def _compute_parallel(
-    engine: Engine,
-    snapshot_id: int,
-    now: str,
-    settings: Settings | None,
-    groups: tuple[tuple[tuple[str, ...], tuple[int, int] | None], ...],
-) -> Computed:
-    """종류 묶음을 자식 프로세스에서, 나머지 종류·출처 서랍을 이 프로세스에서 계산한다(모두 같은 한 시점)."""
-    import shutil
-    import tempfile
-
-    from app.api import memo
-
-    cfg = settings or get_settings()
-    tmp = Path(tempfile.mkdtemp(prefix="publish-"))
-    pg_conn: Any = None
-    t0 = time.perf_counter()
-    try:
-        url, pg = _snapshot_source(engine, tmp)
-        token: str | None = None
-        if pg is not None:
-            pg_conn, token = pg
-            rs = Session(bind=pg_conn)
-            read_engine = engine
-        else:
-            from app.core.db import make_engine
-
-            read_engine = make_engine(url, settings=cfg)
-            rs = Session(bind=read_engine)
-        copy_s = time.perf_counter() - t0
-        mine = tuple(k for k in KINDS if k != "provenance" and all(k not in g for g, _p in groups))
-        ex = _pool(len(groups))
-        futs = [ex.submit(_compute_part, url, cfg, snapshot_id, now, g, token, part) for g, part in groups]
-        snap = rs.get(Snapshot, snapshot_id)
-        if snap is None:
-            raise LookupError(f"snapshot {snapshot_id} 없음")
-        with _as_published(rs, snap, now):
-            own = compute(rs, snap, settings=cfg, kinds=mine, collect_prov=True)
-            parts = [f.result() for f in futs]
-            prov_ids = set(own.prov_ids)
-            done: dict[str, Any] = {}
-            for _rows, ids, _st, bodies in parts:
-                prov_ids.update(ids)
-                done.update(bodies)
-            t = time.perf_counter()
-            with memo.active():
-                prov_rows = _provenance_bodies_rows(rs, prov_ids, done=done)
-            prov_s = time.perf_counter() - t
-        out = Computed(rows=list(own.rows), prov_ids=prov_ids)
-        for rows, _ids, _st, _b in parts:
-            out.rows += [ViewRow(*r) for r in rows]
-        for kind, key, body in prov_rows:
-            data, sha = encode(body)
-            out.rows.append(ViewRow(kind, key, "", data, sha))
-        missing = int(own.stats.get("missing_provenance") or 0) + sum(
-            int(st.get("missing_provenance") or 0) for _r, _i, st, _b in parts
-        )
-        timing = dict(own.stats.get("timing_s") or {})
-        for _r, _i, st, _b in parts:
-            for k, v in (st.get("timing_s") or {}).items():
-                timing[k] = round(timing.get(k, 0.0) + float(v), 3)
-        timing["provenance"] = round(timing.get("provenance", 0.0) + prov_s, 3)
-        out.stats = {
-            "missing_provenance": missing,
-            "rows": len(out.rows),
-            "bytes": sum(len(r.body) for r in out.rows),
-            "provenance_ids": len(prov_ids),
-            "compute_s": round(time.perf_counter() - t0, 3),
-            "timing_s": dict(sorted(timing.items())),
-            "parallel": {
-                "processes": 1 + len(groups),
-                "snapshot_copy_s": round(copy_s, 3),
-                "parts": [
-                    {"kinds": list(g), "compute_s": st.get("compute_s")}
-                    for (g, _p), (_r, _i, st, _b) in zip(groups, parts, strict=True)
-                ]
-                + [{"kinds": list(mine), "compute_s": own.stats.get("compute_s")}],
-            },
-        }
-        rs.rollback()
-        rs.close()
-        if pg is None:
-            read_engine.dispose()
-        return out
-    finally:
-        if pg_conn is not None:
-            pg_conn.rollback()
-            pg_conn.close()
-        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def _forbid_flush(session: Session, _ctx: Any, _instances: Any) -> None:
@@ -1061,13 +794,6 @@ class PublishResult:
     stats: dict[str, Any] = field(default_factory=dict)
 
 
-def _can_split(engine: Engine) -> bool:
-    if engine.dialect.name == "postgresql":
-        return True
-    db = engine.url.database
-    return engine.dialect.name == "sqlite" and bool(db) and db != ":memory:"
-
-
 def publish_revision(
     bind: Engine | Connection, snapshot_id: int, *, now: str, settings: Settings | None = None
 ) -> PublishResult:
@@ -1091,32 +817,11 @@ def publish_revision(
         n = len(remaining_contradicted(rs, snapshot_id))
         if n:
             return PublishResult(False, n, f"contradicted {n}건")
-        parallel = bool(PARALLEL_GROUPS) and _cells(rs, snap) >= PARALLEL_MIN_CELLS and _can_split(engine)
-        if not parallel:
-            with _as_published(rs, snap, now):
-                computed = compute(rs, snap, settings=settings)
+        with _as_published(rs, snap, now):
+            computed = compute(rs, snap, settings=settings)
     finally:
         rs.rollback()
         rs.close()
-    if parallel:
-        try:
-            computed = _compute_parallel(engine, snapshot_id, now, settings, PARALLEL_GROUPS)
-        except Exception as exc:
-            log.error(
-                "snapshot_view.parallel_failed",
-                extra={"snapshot_id": snapshot_id, "error": type(exc).__name__},
-            )
-            _reset_pool()
-            rs = _read_session(engine)
-            try:
-                snap = rs.get(Snapshot, snapshot_id)
-                assert snap is not None
-                with _as_published(rs, snap, now):
-                    computed = compute(rs, snap, settings=settings)
-                computed.stats["parallel_failed"] = type(exc).__name__
-            finally:
-                rs.rollback()
-                rs.close()
     with engine.begin() as conn:  # 이전 실패가 남긴 행(발행 전 리비전) 정리
         conn.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == snapshot_id))
     try:
