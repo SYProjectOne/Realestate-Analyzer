@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, Query, Request
@@ -504,41 +504,31 @@ def _blank(prov_id: str, kind: str, label: str) -> dict[str, Any]:
     }
 
 
-def _field_prov(session: Session, prov_id: str, fp_id: int) -> dict[str, Any]:
-    fp = session.get(FieldProvenance, fp_id)
-    if fp is None:
-        raise not_found(f"provenance {prov_id}")
-    kind, status = _source_meta(session, fp.raw_document_id)
+def _conflict_item(o: FieldProvenance, okind: str | None) -> dict[str, Any]:
+    return {
+        "id": f"fp_{o.id}",
+        "value_text": o.value_text,
+        "label": o.label,
+        "reason": o.reason,
+        "url": o.url,
+        "checked_at": o.checked_at,
+        "source_kind": okind,
+        "source_rank": o.source_rank,
+        "chosen": bool(o.chosen),
+        "excerpt": o.excerpt,
+        "raw_document_id": o.raw_document_id,
+    }
+
+
+def _field_body(
+    prov_id: str,
+    fp: FieldProvenance,
+    meta: tuple[str | None, int | None],
+    conflicts: list[dict[str, Any]],
+    demoted: bool,
+) -> dict[str, Any]:
+    kind, status = meta
     out = _blank(prov_id, "field", fp.label)
-    if fp.conflict_group:
-        others = select(FieldProvenance).where(
-            FieldProvenance.conflict_group == fp.conflict_group, FieldProvenance.id != fp.id
-        )
-    else:
-        others = select(FieldProvenance).where(
-            FieldProvenance.entity == fp.entity,
-            FieldProvenance.entity_id == fp.entity_id,
-            FieldProvenance.field == fp.field,
-            FieldProvenance.id != fp.id,
-        )
-    conflicts = []
-    for o in session.scalars(others.order_by(FieldProvenance.source_rank, FieldProvenance.id)):
-        okind, _ = _source_meta(session, o.raw_document_id)
-        conflicts.append(
-            {
-                "id": f"fp_{o.id}",
-                "value_text": o.value_text,
-                "label": o.label,
-                "reason": o.reason,
-                "url": o.url,
-                "checked_at": o.checked_at,
-                "source_kind": okind,
-                "source_rank": o.source_rank,
-                "chosen": bool(o.chosen),
-                "excerpt": o.excerpt,
-                "raw_document_id": o.raw_document_id,
-            }
-        )
     out.update(
         entity=fp.entity,
         entity_id=fp.entity_id,
@@ -559,14 +549,127 @@ def _field_prov(session: Session, prov_id: str, fp_id: int) -> dict[str, Any]:
         conflicts=conflicts,
         compare_judgment_seq=fp.compare_judgment_seq,
     )
-    if fp.entity_id is not None:
+    if demoted:
         # R3 4차 minor: 출처 서랍에도 강등(검증 모순)을 보인다 — 화면 Fact 와 같은 '확인 불가(검증 모순)'
         # (원문 발췌·값은 근거로 그대로 둔다). 오버레이는 읽기 전용(D11-3·D12-2)
-        from app.facts_view import DEMOTION_LABEL, DEMOTION_REASON, load_overlay
+        from app.facts_view import DEMOTION_LABEL, DEMOTION_REASON
+
+        out.update(label=DEMOTION_LABEL, reason=f"{DEMOTION_REASON} — 모순 값(원문 그대로 표시)")
+    return out
+
+
+def _field_prov(session: Session, prov_id: str, fp_id: int) -> dict[str, Any]:
+    fp = session.get(FieldProvenance, fp_id)
+    if fp is None:
+        raise not_found(f"provenance {prov_id}")
+    if fp.conflict_group:
+        others = select(FieldProvenance).where(
+            FieldProvenance.conflict_group == fp.conflict_group, FieldProvenance.id != fp.id
+        )
+    else:
+        others = select(FieldProvenance).where(
+            FieldProvenance.entity == fp.entity,
+            FieldProvenance.entity_id == fp.entity_id,
+            FieldProvenance.field == fp.field,
+            FieldProvenance.id != fp.id,
+        )
+    conflicts = [
+        _conflict_item(o, _source_meta(session, o.raw_document_id)[0])
+        for o in session.scalars(others.order_by(FieldProvenance.source_rank, FieldProvenance.id))
+    ]
+    demoted = False
+    if fp.entity_id is not None and fp.chosen:
+        from app.facts_view import load_overlay
 
         ov = load_overlay(session, entity=fp.entity, ids=[fp.entity_id])
-        if fp.chosen and ov.is_demoted(fp.entity, fp.entity_id, fp.field):
-            out.update(label=DEMOTION_LABEL, reason=f"{DEMOTION_REASON} — 모순 값(원문 그대로 표시)")
+        demoted = ov.is_demoted(fp.entity, fp.entity_id, fp.field)
+    return _field_body(prov_id, fp, _source_meta(session, fp.raw_document_id), conflicts, demoted)
+
+
+def _same_field(session: Session, r: FieldProvenance) -> list[FieldProvenance]:
+    fp = FieldProvenance
+    cond = fp.entity_id.is_(None) if r.entity_id is None else fp.entity_id == r.entity_id
+    return list(session.scalars(select(fp).where(fp.entity == r.entity, cond, fp.field == r.field)))
+
+
+def _field_provs(session: Session, fp_ids: set[int]) -> dict[str, dict[str, Any]]:
+    """``_field_prov`` 를 출처 행 여럿에 한 번에(저장본 출처 서랍 — 1000 단지 ≈ 3만 6천 행, D14-1). 같은 규칙·같은 바이트
+    (테스트가 한 행씩 계산과 비교한다). 서랍 안 충돌 출처(conflicts[].id)도 함께 만든다."""
+    from app.facts_view import load_overlay
+
+    fp = FieldProvenance
+    rows: dict[int, FieldProvenance] = {}
+    ids = sorted(fp_ids)
+    for i in range(0, len(ids), 500):
+        for r in views.light_rows(session, select(fp).where(fp.id.in_(ids[i : i + 500])), fp):
+            rows[r.id] = r
+    groups = sorted({str(r.conflict_group) for r in rows.values() if r.conflict_group})
+    by_group: dict[str, list[FieldProvenance]] = defaultdict(list)
+    for i in range(0, len(groups), 500):
+        for r in views.light_rows(session, select(fp).where(fp.conflict_group.in_(groups[i : i + 500])), fp):
+            by_group[str(r.conflict_group)].append(r)
+    plain = [r for r in rows.values() if not r.conflict_group]
+    by_triple: dict[tuple[str, int | None, str], list[FieldProvenance]] = defaultdict(list)
+    ents: dict[str, set[int]] = defaultdict(set)
+    for r in plain:
+        if r.entity_id is not None:
+            ents[r.entity].add(int(r.entity_id))
+    triples = {(r.entity, r.entity_id, r.field) for r in plain}
+    for ent, eids in ents.items():
+        el = sorted(eids)
+        for i in range(0, len(el), 500):
+            for r in views.light_rows(
+                session, select(fp).where(fp.entity == ent, fp.entity_id.in_(el[i : i + 500])), fp
+            ):
+                t = (r.entity, r.entity_id, r.field)
+                if t in triples:
+                    by_triple[t].append(r)
+    for r in plain:
+        if r.entity_id is None and (r.entity, None, r.field) not in by_triple:
+            by_triple[(r.entity, None, r.field)] = _same_field(session, r)
+    # 충돌 출처도 서랍으로(같은 묶음 — 이미 읽은 행). 그 행의 충돌 목록은 같은 묶음에서 자기를 뺀 것
+    for lst in [*by_group.values(), *by_triple.values()]:
+        for o in lst:
+            rows.setdefault(o.id, o)
+    raw_ids = sorted({r.raw_document_id for r in rows.values() if r.raw_document_id is not None})
+    meta: dict[int, tuple[str | None, int | None]] = {}
+    for i in range(0, len(raw_ids), 500):
+        for rid, kind, status in session.execute(
+            select(RawDocument.id, RawDocument.source_kind, RawDocument.http_status).where(
+                RawDocument.id.in_(raw_ids[i : i + 500])
+            )
+        ):
+            meta[int(rid)] = (kind, status)
+
+    def m(rid: int | None) -> tuple[str | None, int | None]:
+        return meta.get(rid, (None, None)) if rid is not None else (None, None)
+
+    chosen_ents: dict[str, set[int]] = defaultdict(set)
+    for r in rows.values():
+        if r.entity_id is not None and r.chosen:
+            chosen_ents[r.entity].add(int(r.entity_id))
+    overlays = {ent: load_overlay(session, entity=ent, ids=sorted(eids)) for ent, eids in chosen_ents.items()}
+    out: dict[str, dict[str, Any]] = {}
+    for r in rows.values():
+        if r.conflict_group:
+            g = str(r.conflict_group)
+            if g not in by_group:  # 충돌 출처로 따라온 행의 다른 묶음
+                by_group[g] = list(session.scalars(select(fp).where(fp.conflict_group == g)))
+            same = by_group[g]
+        else:
+            key = (r.entity, r.entity_id, r.field)
+            if key not in by_triple:
+                by_triple[key] = _same_field(session, r)
+            same = by_triple[key]
+        others = sorted((o for o in same if o.id != r.id), key=lambda o: (o.source_rank, o.id))
+        conflicts = [_conflict_item(o, m(o.raw_document_id)[0]) for o in others]
+        demoted = bool(
+            r.entity_id is not None
+            and r.chosen
+            and overlays[r.entity].is_demoted(r.entity, r.entity_id, r.field)
+        )
+        pid = f"fp_{r.id}"
+        out[pid] = _field_body(pid, r, m(r.raw_document_id), conflicts, demoted)
     return out
 
 
@@ -580,9 +683,11 @@ def _ints(rest: str, n: int) -> list[int] | None:
 def _score_total_formula(session: Session, run: ScoreRun, cid: int) -> str:
     comps = list(
         session.scalars(
-            select(ScoreComponent).where(
-                ScoreComponent.score_run_id == run.id, ScoreComponent.complex_id == cid
-            )
+            select(ScoreComponent)
+            .where(ScoreComponent.score_run_id == run.id, ScoreComponent.complex_id == cid)
+            .order_by(
+                ScoreComponent.component, ScoreComponent.id
+            )  # 식의 항 순서 고정(성분 이름순 — 색인 순서와 같다)
         )
     )
     terms = []
@@ -625,13 +730,156 @@ def _score_run_prov(session: Session, prov_id: str, run_id: int) -> dict[str, An
 def get_provenance(
     session: DB,
     prov_id: Annotated[str, Path(pattern=r"^(fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+$")],
+    snapshot_id: int | None = None,
 ) -> JSONResponse:
+    """출처 서랍(G3 ProvenanceTab). D14-1(계약 .11): 발행 리비전은 **저장본**(발행 순간의 출처 행·chosen·충돌·강등)에서
+    읽는다 — ``snapshot_id`` 를 주면 그 리비전(발행 전이면 실시간, 그 발행 리비전에 없는 출처는 404), 주지 않으면 지역마다
+    최신 발행 리비전 저장본에서 찾고 어디에도 없으면 실시간(발행 전 리비전에서만 보이는 출처)."""
+    if snapshot_id is not None:
+        snap = get_snapshot(session, snapshot_id)
+        if sv.is_published(snap):
+            got = sv.provenance(session, snap, prov_id)
+            if got is None:
+                raise sv.NotInRevision(f"발행 리비전 {snap.id} 저장본에 출처 {prov_id} 없음")
+            return JSONResponse(got)
+        return JSONResponse(provenance_body(session, prov_id))
+    from app.api.views import latest_snapshot_id
+    from app.models import Region
+
+    for rid in list(session.scalars(select(Region.id).order_by(Region.id))):
+        sid = latest_snapshot_id(session, int(rid))
+        latest = session.get(Snapshot, sid) if sid is not None else None
+        if (
+            latest is None
+            or not sv.is_published(latest)
+            or not sv.kind_ready(session, latest.id, "provenance")
+        ):
+            continue
+        found = sv.provenance(session, latest, prov_id)
+        if found is not None:
+            return JSONResponse(found)
+    return JSONResponse(provenance_body(session, prov_id))
+
+
+def provenance_bodies(session: Session, prov_ids: Iterable[str]) -> dict[str, dict[str, Any]]:
+    """출처 서랍 응답 여럿(저장본 — D14-1). 출처 행(fp)은 한 번에(충돌 출처 포함), 나머지는 한 건씩(없는 id 는 뺀다)."""
+    from app.api.errors import ApiError
+
+    want = sorted(set(prov_ids))
+    fp_ids = {int(p[3:]) for p in want if p.startswith("fp_") and p[3:].isdigit()}
+    out = _field_provs(session, fp_ids) if fp_ids else {}
+    out.update(_score_provs(session, [p for p in want if p[:3] in ("sc_", "st_")]))
+    for pid in want:
+        if pid in out or (pid.startswith("fp_") and pid[3:].isdigit()):
+            continue
+        try:
+            out[pid] = provenance_body(session, pid)
+        except ApiError:
+            continue
+    return out
+
+
+def _score_provs(session: Session, prov_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """``sc_<실행>_<단지>_<성분>``·``st_<실행>_<단지>`` 서랍 여럿을 한 번에(점수 있는 1000 단지 × 시나리오 5 = 성분 3만 5천 —
+    한 건씩이면 질의 7만). ``provenance_body`` 와 같은 값(테스트가 비교한다). 모양이 다르거나 행이 없는 id 는 뺀다(한 건씩
+    경로가 404 로 같은 판단)."""
+    sc_keys: dict[str, tuple[int, int, str]] = {}
+    st_keys: dict[str, tuple[int, int]] = {}
+    for pid in prov_ids:
+        rest = pid[3:]
+        if pid.startswith("sc_"):
+            parts = rest.split("_", 2)
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+                sc_keys[pid] = (int(parts[0]), int(parts[1]), parts[2])
+        elif not rest.isdigit():
+            ids = _ints(rest, 2)
+            if ids is not None:
+                st_keys[pid] = (ids[0], ids[1])
+    if not sc_keys and not st_keys:
+        return {}
+    run_ids = sorted({k[0] for k in sc_keys.values()} | {k[0] for k in st_keys.values()})
+    runs = {r.id: r for r in session.scalars(select(ScoreRun).where(ScoreRun.id.in_(run_ids)))}
+    cx_ids = sorted({k[1] for k in sc_keys.values()} | {k[1] for k in st_keys.values()})
+    comps: dict[tuple[int, int], list[Any]] = defaultdict(list)
+    totals: dict[tuple[int, int], Any] = {}
+    for rid in run_ids:
+        for i in range(0, len(cx_ids), 500):
+            chunk = cx_ids[i : i + 500]
+            for c in views.light_rows(
+                session,
+                select(ScoreComponent)
+                .where(ScoreComponent.score_run_id == rid, ScoreComponent.complex_id.in_(chunk))
+                .order_by(ScoreComponent.id),
+                ScoreComponent,
+            ):
+                comps[(rid, c.complex_id)].append(c)
+            for t in views.light_rows(
+                session,
+                select(ScoreTotal)
+                .where(ScoreTotal.score_run_id == rid, ScoreTotal.complex_id.in_(chunk))
+                .order_by(ScoreTotal.id),
+                ScoreTotal,
+            ):
+                totals.setdefault((rid, t.complex_id), t)
+    out: dict[str, dict[str, Any]] = {}
+    for pid, (rid, cid, comp) in sc_keys.items():
+        run = runs.get(rid)
+        row = next((c for c in comps.get((rid, cid), []) if c.component == comp), None)
+        if row is None or run is None:
+            continue
+        body = _blank(pid, "score_component", row.label)
+        body.update(
+            entity="score_component",
+            entity_id=row.id,
+            field=row.component,
+            reason=row.reason,
+            value_text=None if row.score_0_10 is None else f"{float(row.score_0_10):g}",
+            checked_at=day(run.created_at),
+            formula_text=row.formula_text,
+        )
+        out[pid] = body
+    for pid, (rid, cid) in st_keys.items():
+        run = runs.get(rid)
+        tot = totals.get((rid, cid))
+        if run is None or tot is None:
+            continue
+        body = _blank(pid, "score_total", "추정")
+        body.update(
+            entity="score_total",
+            entity_id=tot.id,
+            field="total",
+            value_text=None if tot.total is None else f"{float(tot.total):g}",
+            reason=None if tot.total is not None else "미판정",
+            checked_at=day(run.created_at),
+            formula_text=_formula_of(
+                run, sorted(comps.get((rid, cid), []), key=lambda c: (c.component, c.id))
+            ),
+            judgment_seq=run.rerank_judgment_seq,
+        )
+        out[pid] = body
+    return out
+
+
+def _formula_of(run: ScoreRun, comps: Sequence[Any]) -> str:
+    """``_score_total_formula`` 와 같은 식(성분 행을 이미 읽은 경우)."""
+    terms = []
+    for c in comps:
+        w = (run.weights or {}).get(c.component)
+        if w is None:
+            continue
+        sv = "미판정" if c.score_0_10 is None else f"{float(c.score_0_10):g}"
+        terms.append(f"{float(w):g}×{sv}({c.component})")
+    return "S = Σ w·s = " + " + ".join(terms) if terms else "S = Σ w·s"
+
+
+def provenance_body(session: Session, prov_id: str) -> dict[str, Any]:
+    """출처 서랍 응답 1건(실시간). 없으면 404."""
     prefix, rest = prov_id[:2], prov_id[3:]
     if prefix == "fp":
         ids = _ints(rest, 1)
         if ids is None or len(rest.split("_")) != 1:
             raise not_found(f"provenance {prov_id}")
-        return JSONResponse(_field_prov(session, prov_id, ids[0]))
+        return _field_prov(session, prov_id, ids[0])
     if prefix == "sc":
         parts = rest.split("_", 2)
         if len(parts) != 3 or not parts[0].isdigit() or not parts[1].isdigit():
@@ -656,9 +904,9 @@ def get_provenance(
             checked_at=day(run.created_at),
             formula_text=row.formula_text,
         )
-        return JSONResponse(out)
+        return out
     if prefix == "st" and rest.isdigit():
-        return JSONResponse(_score_run_prov(session, prov_id, int(rest)))
+        return _score_run_prov(session, prov_id, int(rest))
     if prefix == "st":
         ids = _ints(rest, 2)
         if ids is None:
@@ -680,7 +928,7 @@ def get_provenance(
             formula_text=_score_total_formula(session, run, ids[1]),
             judgment_seq=run.rerank_judgment_seq,
         )
-        return JSONResponse(out)
+        return out
     if prefix == "jl":
         ids = _ints(rest, 1)
         log = session.get(JudgmentLog, ids[0]) if ids else None
@@ -698,7 +946,7 @@ def get_provenance(
             excerpt=log.purpose,
             judgment_seq=log.seq,
         )
-        return JSONResponse(out)
+        return out
     if prefix == "hc":
         ids = _ints(rest, 1)
         hc = session.get(HumanCheck, ids[0]) if ids else None
@@ -714,7 +962,7 @@ def get_provenance(
             checked_at=hc.checked_at,
             excerpt=hc.note,
         )
-        return JSONResponse(out)
+        return out
     if prefix == "rd":
         ids = _ints(rest, 1)
         raw = session.get(RawDocument, ids[0]) if ids else None
@@ -734,7 +982,7 @@ def get_provenance(
             source_kind=raw.source_kind,
             http_status=raw.http_status,
         )
-        return JSONResponse(out)
+        return out
     ids = _ints(rest, 1)
     cs = session.get(ComparableSet, ids[0]) if ids else None
     if cs is None:
@@ -749,7 +997,7 @@ def get_provenance(
         excerpt=cs.note,
         checked_at=day(_snap_day(session, cs.snapshot_id)),
     )
-    return JSONResponse(out)
+    return out
 
 
 def _snap_day(session: Session, sid: int) -> str | None:

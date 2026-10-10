@@ -1,0 +1,7 @@
+{
+  "summary": "계약 .11 — 저장본 생성 전(backfill 대기)",
+  "value": {
+    "code": "materialize_pending",
+    "detail": "발행 리비전 12 의 provenance 저장본을 아직 만들지 않았다(backfill 대기 — 잠시 뒤 다시)"
+  }
+}

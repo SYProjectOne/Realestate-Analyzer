@@ -315,6 +315,7 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
         kind="manual",
     )
     session.commit()
+    # 계약 .11(D14-5): 발행을 부르는 쓰기 = 202 + job_id(region.expand 잡이 새 리비전을 판정·발행 — 이름만 바꾸면 200)
     return JSONResponse(
         {
             "region": region_view(session, region, latest=default_snapshot(session, region.id)),
@@ -322,7 +323,8 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
             "job_id": job.id,
             "added": added,
             "removed": removed,
-        }
+        },
+        status_code=202,
     )
 
 
@@ -347,7 +349,7 @@ def _rejudge_snapshot(session: Session, region_id: int, reason: str) -> Snapshot
     return writable(session, base.id, reason=reason[:200], created_at=now_iso())
 
 
-@router.put("/regions/{id}/living-areas")
+@router.put("/regions/{id}/living-areas", status_code=202)
 def update_living_areas(session: DB, id: int, body: Annotated[Any, Body()] = None) -> JSONResponse:
     from app.normalize.living_area import LivingAreaError, apply_living_area_edit, living_area_of
 
@@ -401,12 +403,14 @@ def update_living_areas(session: DB, id: int, body: Annotated[Any, Body()] = Non
     session.commit()
     from app.api.routers.snapshots import change_view
 
+    # 계약 .11(D14-5): 발행을 부르는 쓰기 = 202 + job_id(rejudge 잡이 새 리비전을 판정·발행 — 그때까지 이전 발행 리비전)
     return JSONResponse(
         {
             "region": region_view(session, region, latest=default_snapshot(session, region.id)),
             "change_event": change_view(ce, {}),
             "job_id": job.id,
-        }
+        },
+        status_code=202,
     )
 
 

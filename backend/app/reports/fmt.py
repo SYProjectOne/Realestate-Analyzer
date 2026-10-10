@@ -10,6 +10,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from app.core.contracts_gen import Fact
+from app.core.time import kst_day
 
 __all__ = [
     "fact_label_text",
@@ -132,7 +133,7 @@ def make_fact(
     reason: str | None = None,
 ) -> Fact:
     """값·라벨·출처로 Fact. 값이 없거나 출처가 없으면 '확인 불가'로 낮춘다(빈 라벨·출처 없는 수치 금지)."""
-    day = checked_at[:10] if checked_at else None
+    day = kst_day(checked_at) or None if checked_at else None  # KST 날짜(D14-6)
     if label == UNKNOWN or v is None:
         why = reason if label == UNKNOWN and reason else ("값 없음" if v is None else "사유 미기재")
         return Fact.model_validate(

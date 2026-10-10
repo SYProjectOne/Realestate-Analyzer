@@ -42,6 +42,7 @@ from collections.abc import Hashable, Iterable
 from decimal import Decimal, InvalidOperation
 
 from app.core.contracts_gen import ConflictGroup, FieldCandidate, ProvenanceRow, ResolvedFields
+from app.core.time import kst_date
 from app.normalize.fields import (
     AUDIT_FLAG_REASON,
     COMPARE_ADOPTED,
@@ -120,8 +121,18 @@ def _is_official(c: FieldCandidate) -> bool:
 
 
 def _observed_after(c: FieldCandidate, human: FieldCandidate) -> bool:
-    """c 가 사람 확인 **이후에** 관측됐는가(observed_on > 사람 확인일, 같은 날은 이후가 아니다)."""
-    return bool(c.observed_on) and (c.observed_on or "") > (human.observed_on or human.checked_at or "")[:10]
+    """c 가 사람 확인 **이후에** 관측됐는가(observed_on > 사람 확인일, 같은 날은 이후가 아니다).
+
+    D14-6(m12): 양쪽 모두 KST 날짜(``core.time.kst_date``)로 비교한다
+    ('2026-10-09T20:00:00Z' 는 KST 10-10 이다).
+    어느 쪽이든 날짜를 못 읽는 옛 행(형식 검사 전 입력)은 예전 규칙(앞 10자 문자열 비교)으로 둔다."""
+    if not c.observed_on:
+        return False
+    mine = human.observed_on or human.checked_at or ""
+    a, b = kst_date(c.observed_on), kst_date(mine)
+    if a is None or b is None:
+        return c.observed_on > mine[:10]
+    return a > b
 
 
 def _is_judged(c: FieldCandidate) -> bool:

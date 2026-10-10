@@ -27,6 +27,9 @@ from .test_r3c_core import _demote_resale
 
 
 def test_provenance_drawer_shows_demotion(client: TestClient) -> None:
+    from ._support import as_live
+
+    as_live()  # 계약 .11(D14-1): 발행 리비전 서랍은 저장본 — 실시간 강등 표시는 발행 전 리비전에서 본다
     _demote_resale(client)
     with get_session() as s:
         d = s.scalars(select(FactDemotion)).one()
@@ -97,12 +100,10 @@ def test_unchanged_weekly_collect_does_not_leave_building_revision(client: TestC
 
 def test_section12_summary_does_not_claim_rerank_rerun_for_human_check_revision(client: TestClient) -> None:
     from app.reports.data import load_report
-    from app.scheduler.snapshots import republish
 
-    with get_session() as s:
-        rev = republish(s, 1, reason="사람 확인 리비전(테스트)", created_at="2026-10-09T12:00:00+09:00")
-        assert rev is not None
-        rid = rev.id
+    from ._support import publish_revision
+
+    rid = publish_revision(1, "사람 확인 리비전(테스트)")  # 계약 .11(D14-5): 발행은 snapshot.publish 잡
     with get_session() as s:
         data = load_report(s, rid, scenario_id=None, compare_snapshot_id=SNAP)
     assert data.extra is not None

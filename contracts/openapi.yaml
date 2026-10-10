@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.10
+  version: 2026-10-09.11
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -174,8 +174,15 @@ paths:
             examples:
               expand: { $ref: './examples/region_patch_req.json' }
       responses:
+        '202':
+          description: 계약 .11(D14-5) — 선택이 바뀜 → region.expand 잡(job_id). 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegionPatched' }
+              examples:
+                expand: { $ref: './examples/region_patched.json' }
         '200':
-          description: 갱신됨 + region.expand 잡
+          description: 이름만 바뀜(change_event·job_id null — 잡 없음)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RegionPatched' }
@@ -199,7 +206,7 @@ paths:
       tags: [regions]
       operationId: updateLivingAreas
       summary: 생활권 편집 (G0-2)
-      description: 모든 법정동은 정확히 한 생활권에 속해야 한다(누락·중복이면 422). 저장하면 change_event(critical) + rejudge 잡이 생긴다. 법정동이 남은 생활권은 삭제할 수 없다.
+      description: 모든 법정동은 정확히 한 생활권에 속해야 한다(누락·중복이면 422). 저장하면 change_event(critical) + rejudge 잡이 생긴다(계약 .11 D14-5 — 202 + job_id, 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 법정동이 남은 생활권은 삭제할 수 없다.
       parameters:
         - $ref: '#/components/parameters/RegionId'
       requestBody:
@@ -210,8 +217,8 @@ paths:
             examples:
               split: { $ref: './examples/living_areas_update_req.json' }
       responses:
-        '200':
-          description: 갱신됨
+        '202':
+          description: 갱신됨 + rejudge 잡(job_id) — 발행은 worker
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LivingAreasUpdated' }
@@ -267,6 +274,7 @@ paths:
                 scenarioB: { $ref: './examples/dashboard_b.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /snapshots/{sid}/complexes:
@@ -292,6 +300,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /snapshots/{sid}/complexes.csv:
@@ -318,6 +327,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /complexes/{id}:
@@ -340,6 +350,7 @@ paths:
                 preNotice: { $ref: './examples/complex_detail_kaive.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /provenance/{prov_id}:
@@ -347,12 +358,24 @@ paths:
       tags: [complexes]
       operationId: getProvenance
       summary: 출처 행 + 원문 발췌 + 상충 그룹 (출처 패널)
+      description: |
+        계약 2026-10-09.11(D14-1, R3 6차 C2): 발행 리비전의 출처 서랍은 **저장본**(발행 순간의 출처 행·chosen·충돌·강등)이다 — 발행 뒤 새 공고·
+        재수집(입주물량 출처 행 삭제 포함)·강등·PATCH /claims 가 그 리비전 서랍을 바꾸지 않는다.
+        - `snapshot_id` 를 주면 그 리비전: 발행 리비전 = 저장본(그 리비전 화면에 없던 출처 = 404 not_found, 저장본 생성 전 = 503
+          materialize_pending), 발행 전(building·ready) = 실시간.
+        - 주지 않으면 지역마다 최신 발행 리비전 저장본에서 찾고, 어디에도 없으면 실시간(발행 전 리비전에서만 보이는 출처). 화면은 보고 있는
+          리비전 id 를 늘 넘긴다.
       parameters:
         - name: prov_id
           in: path
           required: true
           description: Fact.prov 값(fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어)
           schema: { type: string, pattern: '^(fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+$' }
+        - name: snapshot_id
+          in: query
+          required: false
+          description: 계약 .11 — 보고 있는 리비전(스냅샷) id. 발행 리비전이면 그 저장본에서 읽는다(D14-1)
+          schema: { type: integer }
       responses:
         '200':
           description: 출처
@@ -365,6 +388,7 @@ paths:
                 fetch403: { $ref: './examples/provenance_403.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /raw/{raw_document_id}:
@@ -424,6 +448,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /snapshots/{sid}/sensitivity:
@@ -444,6 +469,7 @@ paths:
                 base: { $ref: './examples/sensitivity_base.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /scenarios:
@@ -610,6 +636,7 @@ paths:
                 fixture: { $ref: './examples/market.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /snapshots/{sid}/changes:
@@ -639,6 +666,7 @@ paths:
                 feed: { $ref: './examples/changes.json' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /ops/sources:
@@ -797,7 +825,7 @@ paths:
       tags: [reports]
       operationId: createReport
       summary: 보고서 생성 잡 등록 — html|pdf, diff 옵션 (G8)
-      description: 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음). 발행 전(building·ready) 스냅샷·리비전은 409 conflict(계약 .9 — R3 4차 M-16, 판정이 끝난 리비전만 보고서를 만든다). 파일 이름은 report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식>(계약 .9 — C-4, 같은 기준일 리비전·잡끼리 덮어쓰지 않는다).
+      description: 스냅샷에 contradicted claim이 남아 있으면 409 publish_blocked(버튼 비활성 사유와 같음). 발행 전(building·ready) 스냅샷·리비전은 409 conflict(계약 .9 — R3 4차 M-16, 판정이 끝난 리비전만 보고서를 만든다). 계약 .11(D14-3, R3 6차 N-M1) — scenario_id 가 대상 리비전에 저장본이 없는 시나리오(그 리비전 발행 뒤 만든 사용자 시나리오)면 422 scenario_not_in_revision(field_errors loc = body.scenario_id — 그 시나리오 결과는 시나리오 실행이 만드는 새 리비전에 있다). 비교 기준 리비전에 그 시나리오가 없으면 보고서는 만들고 diff 표만 '비교 기준에 이 시나리오 없음'으로 생략한다(§12 건수 비교는 그대로). 비교 스냅샷이 대상과 같거나 더 새 리비전이면 422(compare_snapshot_id, R3 6차 m5). 파일 이름은 report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식>(계약 .9 — C-4, 같은 기준일 리비전·잡끼리 덮어쓰지 않는다).
       requestBody:
         required: true
         content:
@@ -824,6 +852,7 @@ paths:
               examples:
                 blocked: { $ref: './examples/error_409_publish_blocked.json' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /reports/{id}:
@@ -881,6 +910,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/MaterializePending' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /claims/{id}:
@@ -980,7 +1010,7 @@ paths:
       description: |
         사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
         distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
-        expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 연결이 바뀌면 rejudge 없이 새 리비전을 바로 발행해 그 시점 연결을 얼린다(계약 .9, D12-4 — job null). 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
+        expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 연결이 바뀌면 rejudge 없이 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행)을 등록한다(계약 .11 D14-5 — 발행은 worker 잡, 응답 202 + job·job_id; 연결이 그대로면 job null). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다. 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
       parameters:
         - name: id
           in: path
@@ -994,8 +1024,8 @@ paths:
             examples:
               confirm: { $ref: './examples/catalyst_patch_req.json' }
       responses:
-        '200':
-          description: 갱신된 호재 + 연결
+        '202':
+          description: 갱신된 호재 + 연결 + 발행 잡(계약 .11 — 연결이 그대로면 job·job_id null)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CatalystUpdated' }
@@ -1192,12 +1222,23 @@ components:
           examples:
             invalid: { $ref: './examples/error_422.json' }
     InternalError:
-      description: contract_violation(출처 없는 수치, dev) 또는 internal
+      description: contract_violation(출처 없는 수치, dev — 발행 전 리비전 실시간 GET), stored_view_mismatch(발행 리비전 저장본의 sha256·계약 버전 불일치 — 계약 .11 D14-4, 조용히 내보내지 않는다) 또는 internal
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
           examples:
             contractViolation: { $ref: './examples/error_500.json' }
+    MaterializePending:
+      description: |
+        계약 2026-10-09.11(D14-9): 발행 리비전인데 그 화면의 저장본을 아직 만들지 않았다(0010 이전 발행분·.11 새 종류 — worker 시작·
+        `python -m app.snapshot_view backfill` 이 채운다). code = materialize_pending, Retry-After 헤더(초). 실시간 폴백 없음 — 잠시 뒤 다시.
+      headers:
+        Retry-After: { schema: { type: integer }, description: 다시 시도할 때까지 초 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            pending: { $ref: './examples/error_503_materialize_pending.json' }
     JudgeUnavailable:
       description: 판정기 장애(degraded) — 판정기가 꼭 필요한 동작만. 조회는 계속된다
       content:

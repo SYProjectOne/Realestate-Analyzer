@@ -20,7 +20,9 @@
     </tbody>
   </table>
   <h3>12-2. 파생 테이블 diff(이전 → 현재)</h3>
-  {% if diff %}
+  {% if diff and diff.note %}
+  <p class="diff-note">{{ diff.note }}</p>
+  {% elif diff %}
   <table id="diff-table">
     <thead><tr><th>테이블</th><th>단지</th><th>항목</th><th>이전</th><th>현재</th><th>구분</th><th>라벨</th></tr></thead>
     <tbody>

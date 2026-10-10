@@ -110,22 +110,36 @@ AUTH_HEADER_RE = re.compile(
 )
 """Authorization 헤더 값(``Authorization: Bearer …``·``Basic …``·``Token …``)과 홀로 나온 ``Bearer <토큰>``
 (토큰 모양만 — 'the bearer of …'·'bearer bonds' 같은 글은 그대로)."""
-HEADER_KEY_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9_-])((?:x-)?[a-z0-9_-]*?"
+_SECRET_NAME = (
+    r"(?:x-)?[a-z0-9_-]*?"
     r"(?:api[-_]?key(?:[-_]id)?|apikey|client[-_]?secret|client[-_]?id|access[-_]?token|auth[-_]?token|"
     r"refresh[-_]?token|secret[-_]?access[-_]?key|private[-_]?key|secret[-_]?key|secret|token|password|passwd|pwd)"
-    r")[\"']?\s*[:=]\s*[\"']?\s*(" + _TOKEN + ")"
+)
+HEADER_KEY_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9_-])(" + _SECRET_NAME + r")[\"']?\s*[:=]\s*[\"']?\s*(" + _TOKEN + ")"
 )
 """이름으로 비밀임을 아는 헤더·키 뒤의 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``·``"X-Api-Key": "…"``,
 snake_case ``client_secret=…``·``access_token: …`` — R3 4차 minor; ``aws_secret_access_key=…``·``private_key=…``·
 ``pwd=…`` — R3 5차 minor)."""
+QUOTED_KEY_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9_-])(" + _SECRET_NAME + r")[\"']?\s*[:=]\s*"
+    r"(?:\"((?:[^\"\\\n]|\\.)*)\"?|'((?:[^'\\\n]|\\.)*)'?)"
+)
+"""R3 6차 minor 9: 따옴표로 감싼 비밀 키 값은 **따옴표 안 전체**(공백·JSON 이스케이프 ``\\n``·``\\"`` 포함 — JSON
+``"private_key": "-----BEGIN …\\n…"``·``password = 's3cr3t pw'``). 닫는 따옴표가 없으면(잘린 로그) 그 줄 끝까지."""
+PEM_PRIVATE_RE = re.compile(
+    r"-----BEGIN ([A-Z0-9 ]*PRIVATE KEY[A-Z0-9 ]*)-----(.*?)(?:-----END \1-----|\Z)", re.DOTALL
+)
+"""R3 6차 minor 9: PEM 개인키 블록(``-----BEGIN [RSA|EC|OPENSSH|ENCRYPTED ]PRIVATE KEY-----`` … ``-----END …-----``)의
+여러 줄 본문 전체. END 줄이 없으면(잘린 로그) 글 끝까지. 공개 인증서(``CERTIFICATE``)는 그대로."""
 _PHONE_KEY_RE = re.compile(r"(?i)(phone|tel|mobile|fax|전화|연락처|휴대)")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 QUERY_KEY_RE = re.compile(
     r"(?i)([?&](?:servicekey|service_key|api_?key|apikey|access_token|token|secret|password|key)=)[^&\s#\"']+"
 )
 SENSITIVE_KEY_RE = re.compile(
-    r"(?i)(token|secret|password|passwd|authorization|cookie|api[-_]?key|service[-_]?key|credential|client[-_]?id)"
+    r"(?i)(token|secret|password|passwd|authorization|cookie|api[-_]?key|service[-_]?key|credential|client[-_]?id"
+    r"|private[-_]?key)"  # R3 6차 minor 9: dict 키 'private_key'·'privateKey'
 )
 
 _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
@@ -212,6 +226,16 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
     def overlaps(a: int, b: int) -> bool:
         return any(a < f.end and f.start < b for f in taken)
 
+    # 긴 비밀 구간(PEM 본문·따옴표 값 전체)을 먼저 — 그 안의 짧은 탐지가 먼저 잡혀 구간 전체가 겹침으로 버려지지 않게(m9)
+    for m in PEM_PRIVATE_RE.finditer(text):
+        a, b = m.start(2), m.end(2)
+        if b > a and not overlaps(a, b):
+            taken.append(Finding("secret", a, b))
+    for m in QUOTED_KEY_RE.finditer(text):
+        g = 2 if m.group(2) is not None else 3
+        a, b = m.start(g), m.end(g)
+        if b > a and not overlaps(a, b):
+            taken.append(Finding("secret", a, b))
     for pattern in _secret_patterns(tuple(secrets)):
         for m in pattern.finditer(text):
             if not overlaps(m.start(), m.end()):

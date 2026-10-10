@@ -61,6 +61,8 @@ class SnapshotDiff:
     snapshot_id: int
     scenario_code: str
     rows: list[DiffRow]
+    note: str | None = None
+    """delta 표를 낼 수 없는 사유(D14-3 '비교 기준에 이 시나리오 없음') — 있으면 rows 는 비어 있다."""
 
 
 def _score(v: Decimal | None) -> str:
@@ -176,7 +178,9 @@ def _decisions(session: Session, snapshot_id: int, names: Mapping[int, str]) -> 
 def diff_digest_live(session: Session, snapshot_id: int, scenario: Scenario) -> dict[str, Any]:
     """그 스냅샷의 diff 입력(지금 계산) — 발행 리비전은 발행 때 저장한다(D13-1 kind=report_diff). 값은 표시 문자열."""
     run = _run(session, snapshot_id, scenario.id)
-    names = {c.id: c.name for c in session.scalars(select(Complex))}
+    # R3 6차 m7: 그 리비전 지역 단지 이름만(다른 지역 단지 이름을 저장본에 넣지 않는다)
+    region_id = session.scalar(select(Snapshot.region_id).where(Snapshot.id == snapshot_id))
+    names = {c.id: c.name for c in session.scalars(select(Complex).where(Complex.region_id == region_id))}
     totals = {
         str(cid): {
             "total": _score(t.total),
@@ -207,24 +211,49 @@ def _ints(d: Mapping[str, Any]) -> dict[int, Any]:
     return {int(k): v for k, v in d.items()}
 
 
+NOT_IN_BASE = "비교 기준에 이 시나리오 없음"
+"""D14-3: 비교 기준 리비전에 그 시나리오 저장본이 없을 때(그 리비전 발행 뒤 만든 사용자 시나리오) delta 표 대신 쓰는 문구."""
+
+
 def diff_snapshots(
-    session: Session, base_id: int, snapshot_id: int, *, scenario_code: str = "base"
+    session: Session,
+    base_id: int,
+    snapshot_id: int,
+    *,
+    scenario_code: str = "base",
+    scenario_id: int | None = None,
 ) -> SnapshotDiff:
     """base(이전) → snapshot(현재) 파생 테이블 diff. 같은 값은 행을 내지 않는다.
 
     두 스냅샷 모두 diff 입력(``diff_digest_live``)으로 비교한다 — 발행 리비전은 발행 때 저장한 입력(D13-1)이라 나중
-    사실·이름 변경이 옛 보고서의 delta 표를 바꾸지 않는다."""
+    사실·이름 변경이 옛 보고서의 delta 표를 바꾸지 않는다. 시나리오는 **id** 로 찾는다(D14-3 — 사용자 시나리오는 code 가
+    NULL). 비교 기준 리비전에 그 시나리오가 없으면 rows 없이 ``note`` = '비교 기준에 이 시나리오 없음'."""
     from app import snapshot_view as sv
 
-    scenario = session.scalars(select(Scenario).where(Scenario.code == scenario_code)).first()
+    if scenario_id is not None:
+        scenario = session.get(Scenario, scenario_id)
+    else:
+        scenario = session.scalars(select(Scenario).where(Scenario.code == scenario_code)).first()
     if scenario is None:
-        raise ReportNotFound(f"시나리오 {scenario_code} 없음")
+        raise ReportNotFound(f"시나리오 {scenario_id if scenario_id is not None else scenario_code} 없음")
+    label = scenario.code or scenario_code
     digests = []
     for sid in (base_id, snapshot_id):
         snap = session.get(Snapshot, sid)
         if snap is None:
             raise ReportNotFound(f"스냅샷 {sid} 없음")
-        digests.append(sv.read(session, snap, "report_diff", scenario=scenario))
+        try:
+            digests.append(sv.read(session, snap, "report_diff", scenario=scenario))
+        except sv.NotInRevision:
+            if sid != base_id:
+                raise
+            return SnapshotDiff(
+                base_snapshot_id=base_id,
+                snapshot_id=snapshot_id,
+                scenario_code=label,
+                rows=[],
+                note=NOT_IN_BASE,
+            )
     a_dig, b_dig = digests
     names = _ints(a_dig.get("names") or {})
     names.update(_ints(b_dig.get("names") or {}))
@@ -306,6 +335,4 @@ def diff_snapshots(
             "호출 기록 집계",
         )
 
-    return SnapshotDiff(
-        base_snapshot_id=base_id, snapshot_id=snapshot_id, scenario_code=scenario_code, rows=rows
-    )
+    return SnapshotDiff(base_snapshot_id=base_id, snapshot_id=snapshot_id, scenario_code=label, rows=rows)

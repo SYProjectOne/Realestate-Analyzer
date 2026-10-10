@@ -308,15 +308,29 @@ def _region_scope(session: Session, snap: Snapshot | None, out: Mapping[int, Com
 
 
 def latest_snapshot_id(session: Session, region_id: int) -> int | None:
-    """지역의 최신 리비전 = 가장 새 발행 (기준일, 리비전)(D12-4). 발행이 없으면 가장 새 스냅샷."""
+    """지역의 최신 리비전 = 가장 새 발행 (기준일, 리비전)(D12-4). 발행이 없으면 가장 새 스냅샷.
+
+    저장본 계산 중인 리비전(``snapshot_view.PUBLISHING`` — 메모리에서만 발행됨, D14-5)도 발행 리비전으로 센다."""
+    from app.snapshot_view import PUBLISHING
+
     order = (Snapshot.asof_date.desc(), Snapshot.revision.desc(), Snapshot.id.desc())
+    pub = PUBLISHING.get()
     for cond in (Snapshot.status == "published", None):
-        stmt = select(Snapshot.id).where(Snapshot.region_id == region_id)
+        stmt = select(Snapshot.id, Snapshot.asof_date, Snapshot.revision).where(
+            Snapshot.region_id == region_id
+        )
         if cond is not None:
             stmt = stmt.where(cond)
-        got = session.scalars(stmt.order_by(*order).limit(1)).first()
+        got = session.execute(stmt.order_by(*order).limit(1)).first()
+        if cond is not None and pub is not None and pub[1] == region_id:
+            me = session.get(Snapshot, pub[0])
+            if me is not None and (
+                got is None
+                or (me.asof_date, int(me.revision or 1), me.id) > (got[1], int(got[2] or 1), int(got[0]))
+            ):
+                return int(me.id)
         if got is not None:
-            return int(got)
+            return int(got[0])
     return None
 
 
@@ -343,6 +357,37 @@ def _load_discount_labels(session: Session, out: Mapping[int, ComplexBundle]) ->
 
 
 def load_bundles(
+    session: Session,
+    complexes: Sequence[Complex],
+    snapshot_id: int,
+    *,
+    with_ladders: bool = True,
+    scenario_id: int | None = None,
+    complex_ocr: bool = True,
+) -> dict[int, ComplexBundle]:
+    """``_load_bundles`` + 저장본 계산 메모(``app.api.memo`` — 같은 계산 안의 같은 인자는 한 번만 읽는다, D14-5 성능)."""
+    from app.api import memo
+
+    if memo.store() is None:
+        return _load_bundles(
+            session, complexes, snapshot_id, with_ladders=with_ladders, scenario_id=scenario_id,
+            complex_ocr=complex_ocr,
+        )  # fmt: skip
+    key = (
+        "load_bundles", snapshot_id, tuple(c.id for c in complexes), type(complexes[0]).__name__ if complexes else "",
+        with_ladders, scenario_id, complex_ocr,
+    )  # fmt: skip
+    got = memo.cached(
+        key,
+        lambda: _load_bundles(
+            session, complexes, snapshot_id, with_ladders=with_ladders, scenario_id=scenario_id,
+            complex_ocr=complex_ocr,
+        ),
+    )  # fmt: skip
+    return dict(got)
+
+
+def _load_bundles(
     session: Session,
     complexes: Sequence[Complex],
     snapshot_id: int,
@@ -1089,14 +1134,27 @@ def ladder_view(row: Ladder, checked: str | None) -> dict[str, Any]:
 
 
 def judgment_days(session: Session, seqs: Iterable[int | None]) -> dict[int, str | None]:
+    from app.api import memo
+
     want = sorted({s for s in seqs if s is not None})
     out: dict[int, str | None] = {}
+    box = memo.store()
+    seen: dict[int, str | None] | None = box.setdefault("judgment_days", {}) if box is not None else None
+    if seen is not None:  # 저장본 계산 메모(단지 상세 수천 개가 같은 판정 기록을 다시 읽지 않게)
+        out.update({s: seen[s] for s in want if s in seen and seen[s] != _NO_ROW})
+        want = [s for s in want if s not in seen]
     for chunk in _chunks(want):
         for seq, created in session.execute(
             select(JudgmentLog.seq, JudgmentLog.created_at).where(JudgmentLog.seq.in_(chunk))
         ):
             out[seq] = day(created)
+    if seen is not None:
+        for s in want:
+            seen[s] = out.get(s, _NO_ROW)
     return out
+
+
+_NO_ROW = "<no-row>"
 
 
 # ====================================================================== 점수
@@ -1113,8 +1171,9 @@ class ScoreCtx:
     decisions: dict[int, Decision] = field(default_factory=dict)
     jl_days: dict[int, str | None] = field(default_factory=dict)
 
-    @property
+    @functools.cached_property
     def weights(self) -> dict[str, float]:
+        """실행(없으면 시나리오) 가중치 — 한 번만 계산(단지 행마다 부른다, D14-5 성능)."""
         src = self.run.weights if self.run is not None else self.scenario.weights
         return {k: float(v) for k, v in (src or {}).items() if v is not None}
 
@@ -1157,6 +1216,29 @@ LIST_COMPONENTS: tuple[str, ...] = ("gap",)
 
 
 def score_ctx(
+    session: Session,
+    snapshot_id: int,
+    scenario: Scenario,
+    *,
+    complex_ids: Sequence[int] | None = None,
+    with_flags: bool = True,
+) -> ScoreCtx:
+    """``_score_ctx`` + 저장본 계산 메모(같은 계산 안의 같은 인자는 한 번 — 대시보드·목록·상세·비교가 같은 실행을 읽는다,
+    D14-5 성능). 문맥은 읽기만 한다."""
+    from app.api import memo
+
+    if memo.store() is None:
+        return _score_ctx(session, snapshot_id, scenario, complex_ids=complex_ids, with_flags=with_flags)
+    key = (
+        "score_ctx", snapshot_id, scenario.id, None if complex_ids is None else tuple(complex_ids), with_flags,
+    )  # fmt: skip
+    return memo.cached(
+        key,
+        lambda: _score_ctx(session, snapshot_id, scenario, complex_ids=complex_ids, with_flags=with_flags),
+    )
+
+
+def _score_ctx(
     session: Session,
     snapshot_id: int,
     scenario: Scenario,
@@ -1505,6 +1587,18 @@ def provenance_for(
     ``price_range(full=False)`` — 변동률·구성 문구 없음, R3c 성능). 강등 오버레이는 필드 범위와 무관하게 읽은 행 id
     전체로 계산된다(``ProvIndex.load``). 빠진 출처를 쓰면 dev 는 예외(출처 누락)라 테스트가 잡는다."""
     items = list(bundles)
+    from app.api import memo
+
+    if memo.store() is not None:  # 저장본 계산 메모 — 시나리오만 다른 같은 단지 묶음은 같은 출처 행
+        key = (
+            "provenance_for", list_rows,
+            tuple((b.cx.id, tuple(t.id for t in b.types), tuple(p.id for p in b.payments)) for b in items),
+        )  # fmt: skip
+        return memo.cached(key, lambda: _provenance_for(session, items, list_rows=list_rows))
+    return _provenance_for(session, items, list_rows=list_rows)
+
+
+def _provenance_for(session: Session, items: list[ComplexBundle], *, list_rows: bool) -> ProvIndex:
     idx = ProvIndex()
     if list_rows:
         idx.load(session, "complex", (b.cx.id for b in items), fields=LIST_COMPLEX_FIELDS)

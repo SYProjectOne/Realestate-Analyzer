@@ -10,10 +10,10 @@ Create Date: 2026-10-10
 | --- | --- | --- |
 | snapshot_view (새 테이블) | 발행 리비전의 저장된 읽기 모델: (snapshot_id, kind, key, scenario) 유일, kind CHECK, body = zlib 압축 JSON, sha256 = 압축 전 JSON. 발행 리비전 GET·보고서는 이 행만 읽는다(app.snapshot_view) | D13-1 · K2 · M6 |
 | snapshot_state (삭제) | 0009 값별 동결(분류·생활권·호재 단계/연결)은 저장본으로 대체 | D13-1 |
-| 데이터 | 0010 이전 발행 스냅샷(저장본 없음)을 지금 값으로 한 번 materialize (``app.snapshot_view.materialize_missing``) | D13-1 |
+| 데이터 | (계약 .11 D14-9 로 옮김) 0010 이전 발행 스냅샷 저장본은 마이그레이션이 만들지 않는다 — worker 시작·``python -m app.snapshot_view backfill`` 이 멱등으로 채운다(그 사이 GET = 503 materialize_pending) | D13-1 · D14-9 |
 
-upgrade: snapshot_view 생성 → 발행 스냅샷 materialize(백엔드 앱 코드 — ``cd backend && uv run alembic upgrade head``.
-출처 누락은 실패 대신 '확인 불가(출처 누락)' 라벨로 저장 — 저장본 규칙, ENV 무관) → snapshot_state 삭제. 0009 얼린 값은 옮기지 않는다(지금 값으로 materialize — 0009 발행분은 개발 DB 뿐이었다).
+upgrade: snapshot_view 생성 → snapshot_state 삭제. **앱 코드를 import 하지 않는다**(R3 6차 m2·D14-9 — 마이그레이션이 최신 ORM 을 읽으면
+이후 열 추가 때 0009→head 가 깨진다). 0009 얼린 값은 옮기지 않는다(backfill 이 지금 값으로 materialize — 0009 발행분은 개발 DB 뿐이었다).
 downgrade: snapshot_view 삭제(저장본 손실 — 0009 코드는 발행 리비전을 지금 값으로 읽는다) + 빈 snapshot_state 재생성.
 """
 
@@ -43,21 +43,6 @@ KINDS = (
 STATE_ENTITIES = ("region", "complex", "catalyst")
 
 
-def _materialize_published() -> None:
-    """0010 이전 발행 스냅샷 저장본(D13-1). 발행 스냅샷이 없으면 앱 코드를 읽지 않는다(빈 DB·계약 테스트)."""
-    bind = op.get_bind()
-    n = bind.execute(sa.text("SELECT COUNT(*) FROM snapshot WHERE status = 'published'")).scalar_one()
-    if not n:
-        return
-    from sqlalchemy.orm import Session
-
-    from app.snapshot_view import materialize_missing
-
-    with Session(bind=bind) as session:  # 출처 누락 = '확인 불가(출처 누락)' 라벨(저장본 규칙 — 발행·마이그레이션을 막지 않는다)
-        materialize_missing(session)
-        session.flush()
-
-
 def upgrade() -> None:
     op.create_table(
         "snapshot_view",
@@ -73,7 +58,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_snapshot_view")),
     )
     op.create_index(op.f("ix_snapshot_view_snapshot_id"), "snapshot_view", ["snapshot_id"])
-    _materialize_published()
     op.drop_index(op.f("ix_snapshot_state_snapshot_id"), table_name="snapshot_state")
     op.drop_table("snapshot_state")
 

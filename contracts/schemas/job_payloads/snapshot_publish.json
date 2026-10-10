@@ -2,10 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "snapshot_publish.json",
   "title": "SnapshotPublishPayload",
-  "description": "job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.",
+  "description": "job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.\n계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.\ncarry_from_snapshot_id(선택): 판정 없이 바뀌는 리비전 값(호재 연결 PATCH)용 — 그 발행 리비전의 파생 행(판정·점수)을 이 리비전에 복사한 뒤 발행한다.",
   "type": "object",
   "additionalProperties": false,
   "required": ["snapshot_id"],
-  "properties": { "snapshot_id": { "type": "integer" } },
-  "examples": [{ "snapshot_id": 12 }]
+  "properties": {
+    "snapshot_id": { "type": "integer" },
+    "carry_from_snapshot_id": { "type": ["integer", "null"], "description": "계약 .11: 파생 행을 복사할 바탕 발행 리비전(호재 연결 변경 — 판정기 호출 없음)" }
+  },
+  "examples": [{ "snapshot_id": 12 }, { "snapshot_id": 14, "carry_from_snapshot_id": 12 }]
 }

@@ -30,6 +30,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from app.snapshot_view import MaterializePending, NotInRevision
+
     args = _parser().parse_args(argv)
     try:
         with get_session() as session:
@@ -47,6 +49,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ReportBlocked as exc:
         print(f"생성 거부: {exc.reason}", file=sys.stderr)
         return 3
+    except NotInRevision as exc:  # D14-3: 그 리비전 발행 뒤 만든 시나리오
+        print(f"scenario_not_in_revision: {exc}", file=sys.stderr)
+        return 4
+    except MaterializePending as exc:
+        print(f"materialize_pending: {exc}", file=sys.stderr)
+        return 5
     print(rep.path)
     if not rep.charts_inlined:
         print("경고: ECharts 번들을 찾지 못해 차트 없이 표만 넣었다(REPORT_ECHARTS_JS)", file=sys.stderr)

@@ -123,9 +123,9 @@ def test_living_areas_split_ok(client: TestClient) -> None:
     la2["legal_dong_codes"] = la2["legal_dong_codes"][3:]
     areas.append({"id": None, "name": "검단 북부", "legal_dong_codes": moved})
     r = client.put("/api/regions/1/living-areas", headers=WRITE, json={"living_areas": areas})
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text  # 계약 .11(D14-5): 202 + job_id
     body = r.json()
-    validate("updateLivingAreas", 200, body)
+    validate("updateLivingAreas", 202, body)
     assert body["change_event"]["severity"] == "critical"
     assert body["change_event"]["entity"] == "region" and body["change_event"]["field"] == "living_areas"
     assert body["change_event"]["triggers_rejudge"] is True

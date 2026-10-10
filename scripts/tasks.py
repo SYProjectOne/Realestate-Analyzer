@@ -113,6 +113,11 @@ def t_migrate(_args: list[str]) -> list[Step]:
     return [uv("alembic", "upgrade", "head")]
 
 
+def t_backfill(_args: list[str]) -> list[Step]:
+    """발행 리비전 저장본 backfill(D14-9, 멱등): migrate 뒤 빠진 저장본 종류·행 단위 사람 확인 이전."""
+    return [uv("python", "-m", "app.snapshot_view", "backfill")]
+
+
 def t_api(args: list[str]) -> list[Step]:
     """api 개발 서버(uvicorn --reload, :8000)."""
     return [uv("uvicorn", "app.main:app", "--reload", "--port", "8000", *args)]
@@ -382,6 +387,7 @@ TASKS: dict[str, Callable[[list[str]], list[Step]]] = {
     "fmt": t_fmt,
     "gen": t_gen,
     "migrate": t_migrate,
+    "backfill": t_backfill,
     "api": t_api,
     "worker": t_worker,
     "web": t_web,

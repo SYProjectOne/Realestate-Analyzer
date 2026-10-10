@@ -62,6 +62,9 @@ def _claim(**kw: Any) -> int:
 
 
 def test_m8_list_contradicted_claims(client: TestClient) -> None:
+    from ._support import as_live
+
+    as_live()  # 계약 .11(D14-1): 발행 리비전 주장 목록은 저장본 — 지금 값은 발행 전 리비전에서 본다
     bad = _claim()
     ok = _claim(text="엘리프 검단 포레듀 입주 예정 시기는 2028-06이다", verify_status="verified")
     split_parent = _claim(text="복합 주장이다")
@@ -84,6 +87,9 @@ def test_m8_list_contradicted_claims(client: TestClient) -> None:
 
 
 def test_m8_revise_claim_enqueues_reverify_job(client: TestClient) -> None:
+    from ._support import as_live
+
+    as_live()  # 계약 .11(D14-1): 발행 리비전 주장 목록은 저장본 — 지금 값은 발행 전 리비전에서 본다
     cid = _claim()
     text = "엘리프 검단 포레듀 기준 타입 최고 공급금액은 578,000,000원이다"
     r = client.patch(f"/api/claims/{cid}", json={"text": text}, headers=WRITE)

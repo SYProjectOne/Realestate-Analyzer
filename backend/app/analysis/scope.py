@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Final, Literal, Protocol, cast, get_args
 
 from app.core.contracts_gen import ComplexScoreInput
+from app.core.time import kst_day
 
 __all__ = [
     "BOUNDARY_CLASS",
@@ -185,7 +186,7 @@ class IntakeRowLike(Protocol):
 def pick_intake[R: IntakeRowLike](rows: Iterable[R]) -> R | None:
     """표시 접수 행: 경로 human_check > official_popup > headless_shot, 같은 경로면 확인 **날짜**가 최근, 같은 날이면 id 가 큰 것.
 
-    같은 날 '날짜만'(사람 입력)과 '시각 포함'(수집) 값은 문자열로 비교할 수 없으므로 날짜(앞 10자)만 비교하고
+    같은 날 '날짜만'(사람 입력)과 '시각 포함'(수집) 값은 문자열로 비교할 수 없으므로 KST 날짜(``kst_day``, D14-6)만 비교하고
     나중에 기록된 행(id)이 이긴다 — 파이프라인·API·보고서가 같은 행을 고른다(R3 minor 21).
     """
     usable = [r for r in rows if r.path in INTAKE_PRIORITY]
@@ -195,5 +196,5 @@ def pick_intake[R: IntakeRowLike](rows: Iterable[R]) -> R | None:
 
 
 def _neg_day(checked_at: str | None) -> tuple[int, ...]:
-    day = (checked_at or "")[:10]
+    day = kst_day(checked_at)
     return (*tuple(-ord(ch) for ch in day), 1)  # 빈 값('')은 가장 오래된 것으로

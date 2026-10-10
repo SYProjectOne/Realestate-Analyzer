@@ -251,7 +251,7 @@ class CatalystPatch(BaseModel):
 
 class CatalystUpdated(BaseModel):
     """
-    PATCH /catalysts/{id} 200 — 갱신한 호재 + 연결 목록 + 등록한 점수 재계산 잡(연결이 그대로면 null)
+    PATCH /catalysts/{id} 202(계약 .11) — 갱신한 호재 + 연결 목록 + 등록한 발행 잡(연결이 그대로면 null)
     """
 
     model_config = ConfigDict(
@@ -261,7 +261,11 @@ class CatalystUpdated(BaseModel):
     links: list[CatalystLinkView]
     job: JobRun | None
     """
-    계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다
+    계약 .11(D14-5): 연결이 바뀌면 snapshot.publish 잡(새 리비전에 파생 행 복사 → 발행 — 판정기 호출 없음), 그대로면 null. 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다
+    """
+    job_id: int | None
+    """
+    계약 .11: job.id(없으면 null) — 화면은 이 잡을 감시한다
     """
 
 
@@ -1198,7 +1202,10 @@ class Error(BaseModel):
     - publish_blocked (409): contradicted claim이 남아 publish·보고서 생성 불가 (detail에 개수)
     - intake_unknown (422): 접수 상태가 확인 불가라 요청한 동작(후보 포함 등)을 할 수 없음
     - judge_unavailable (503): 판정기 다운(degraded). 조회는 계속 가능
-    - contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev)
+    - contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev, 발행 전 리비전 실시간 GET)
+    - scenario_not_in_revision (422): 계약 .11(D14-3) — 보고서 대상 리비전에 그 시나리오 저장본이 없다(발행 뒤 만든 사용자 시나리오, field_errors loc body.scenario_id)
+    - stored_view_mismatch (500): 계약 .11(D14-4) — 발행 리비전 저장본의 sha256·계약 버전이 맞지 않는다(조용히 내보내지 않는다, 서버 로그)
+    - materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After)
     - internal (500): 그 밖의 서버 오류
     """
 
@@ -1216,6 +1223,9 @@ class Error(BaseModel):
         "judge_unavailable",
         "contract_violation",
         "internal",
+        "scenario_not_in_revision",
+        "stored_view_mismatch",
+        "materialize_pending",
     ]
     detail: str
     field_errors: list[FieldError] | None = None
@@ -1758,6 +1768,9 @@ class HumanCheck(BaseModel):
     value_text: str
     kind: Literal["phone", "visit", "email"]
     checked_at: str
+    """
+    입력한 확인 시각 그대로(계약 .11부터 시간대가 붙은 RFC3339 — HumanCheckCreate). .10 이전 옛 행은 날짜만('2026-10-09')일 수 있다
+    """
     entered_by: Annotated[str, Field(max_length=32)]
     note: str | None
     created_intake: Intake | None = None
@@ -1769,6 +1782,10 @@ class HumanCheck(BaseModel):
     rejudge_job_id: int | None = None
     """
     자동 등록한 rejudge 잡 id(계약 .9, D12-5). 사실 필드·접수 상태면 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에 등록(M-2 — 발행됐으면 새 리비전). '기타'·스냅샷 없음이면 null
+    """
+    job_id: int | None = None
+    """
+    계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로
     """
 
 
@@ -1802,7 +1819,10 @@ class HumanCheckCreate(BaseModel):
     """
     value_text: Annotated[str, Field(max_length=200, min_length=1)]
     kind: Literal["phone", "visit", "email"]
-    checked_at: Annotated[str, Field(min_length=10)]
+    checked_at: str
+    """
+    확인 시각 = 시간대가 붙은 RFC3339 date-time(예 2026-10-09T10:20:00+09:00·…Z, 계약 .11 D14-6). 날짜만·시간대 없는 시각·서버 시계보다 10분 넘게 미래 → 422(loc body.checked_at). 날짜 비교(이른 확인일 422·사람 확인 이후 관측)는 KST 날짜 기준
+    """
     entered_by: Annotated[Literal["운영자", "검토자"], Field(title="EnteredByRole")]
     """
     사람 확인 입력자 = 역할 문자열만(RA §10 보안 2 — 사람 이름 금지, 계약 2026-10-09.4). 자유 입력을 받지 않는다. 옛 행(자유 문자열)은 응답 HumanCheck.entered_by 에 그대로 나갈 수 있다.
@@ -3655,12 +3675,18 @@ class Snapshot(BaseModel):
 class SnapshotPublishPayload(BaseModel):
     """
     job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.
+    계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
+    carry_from_snapshot_id(선택): 판정 없이 바뀌는 리비전 값(호재 연결 PATCH)용 — 그 발행 리비전의 파생 행(판정·점수)을 이 리비전에 복사한 뒤 발행한다.
     """
 
     model_config = ConfigDict(
         extra="forbid",
     )
     snapshot_id: int
+    carry_from_snapshot_id: int | None = None
+    """
+    계약 .11: 파생 행을 복사할 바탕 발행 리비전(호재 연결 변경 — 판정기 호출 없음)
+    """
 
 
 class SourceStatus(BaseModel):
