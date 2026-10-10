@@ -22,7 +22,7 @@
       "status": "done",
       "created_at": "2026-10-08T07:50:00+09:00",
       "finished_at": "2026-10-08T07:50:20+09:00",
-      "filename": "report_2026-10-08.html",
+      "filename": "report_r1_2026-10-08-r1_j910.html",
       "size_bytes": 2310144,
       "sha256": "0d5e8f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
       "blocked_reason": null
@@ -35,7 +35,7 @@
       "status": "done",
       "created_at": "2026-10-07T22:00:00+09:00",
       "finished_at": "2026-10-07T22:01:12+09:00",
-      "filename": "report_2026-10-07.pdf",
+      "filename": "report_r1_2026-10-07-r1_j903.pdf",
       "size_bytes": 1802240,
       "sha256": "5c2d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
       "blocked_reason": null

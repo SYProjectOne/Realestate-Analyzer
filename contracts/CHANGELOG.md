@@ -2,6 +2,73 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.9
+
+R3 4차 리뷰(`docs/design/wp/R3_REVIEW4.md`) 후속 — CEO 결정 D12(`docs/design/DECISIONS.md`)와 R3d 배정(`docs/design/wp/R3D_FIX.md`).
+계약 소유자 = R3d CORE2(브랜치 `wp/r3d-core2`). 마이그레이션 `0009`(`0009_r3d.py`: 테이블 1개 추가 — 0008 DB 는 `alembic upgrade head`
+한 번). 필드 삭제 없음. `0008` downgrade 는 끝난 `backup`·`region.expand` 잡 이력이 있으면 거부하도록 바꿨다(이력 손실 방지 — 대기 잡만 지운다).
+
+**프론트(FE3)가 생성 타입으로 옮기며 맞출 것** — 아래 'FE 차이' 표. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서
+다시 만들지 않았다(frontend/** = FE3 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw` 로 다시 만든다.
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.8) | 이후(.9) | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | 강등 오버레이(`app.facts_view`) | (entity, 행 id, field, 모순 값) — 같은 모순 가격·계약금을 실은 **새 공고 행**(무순위 병합 포함)이 오면 '추정'으로 복귀 | **(단지, 의미 필드, 모순 값)**: 의미 필드 = 가격(그 타입의 공고문 타입 행 + 모든 공고의 `price_by_type.<타입>.max_price_won`)·납부 조건 필드(모든 공고의 같은 필드)·단지 필드. 그 묶음의 어느 행이든 chosen 값이 모순 값이면 '확인 불가(검증 모순)'. 상태는 **지금 쓰는 행**(현재 구매가 max_ref·현재 공고·단지 행)으로: 사람 확인 → 복원, 원문의 **다른 값** → 복원(옛 행의 모순 값은 계속 가림), 값 없음·**채택 보류** → 유지(M-17), 새 출처로 풀린 뒤 모순 값이 다시 채택되면 재강등(critical change_event) | D12-2 · C-1 · M-17 |
+| S2 | 사람 확인 우선순위(resolver) | 0순위지만 compare `adopted` 가 이김, 이후 새 공식 공고도 영구히 짐 | compare 채택은 사람 확인을 **이기지 못한다**. 사람 확인 **이후에** 관측된(observed_on > 사람 확인일) 공식 1차 출처(공고문·청약홈)가 **다른 값**이면 그 값 채택 + critical change_event(triggers_rejudge) + 체크리스트 '사실 재확인' 항목(제목 `사람 확인 재검토: <필드>`) | D12-1 · C-2 · M-10 |
+| S3 | 할인 차감 | 표시 가격만 '확인됨일 때만', 보고서·`/compare` 계약금·자기자본·목록 필터·정렬은 라벨 무관 차감 | `analysis.price_view.current_price(…, discount_label=)` **필수 인자 하나**로 모든 경로(상세·목록 값·필터·정렬·비교·자금 요건·보고서·점수). 라벨 모름(None)이면 빼지 않는다. 0·음수·최고가 이상 할인은 확인됨이어도 빼지 않는다. 보고서 구매가 사유에 '− 할인 N만' | D12-3 · C-3 |
+| S4 | '최신 리비전'(`rejudge_needed`) | 지역의 가장 새 스냅샷(building·미발행 포함) | 가장 새 **발행** (기준일, 리비전) — 판정 중 리비전이 생겨도 '재판정 필요' 배지가 사라지지 않는다 | D12-4 · M-1 |
+| S5 | 사람 확인·생활권 편집·강등의 재판정 | 최신 published 기준일에 리비전, rejudge 는 제안(`suggested_job`) | 그 지역 **가장 새 (기준일, 리비전)** 의 쓰기 가능 리비전(발행됐으면 새 리비전)에 change_event + rejudge **자동 등록**(`HumanCheck.rejudge_job_id`). 일일 '변경 없는 날' 이월은 직전 발행 리비전의 점수 실행 뒤 다른 스냅샷에 붙은 사실 변경(triggers_rejudge)이 있으면 그 단지를 재판정(옛 점수를 now 로 복사하지 않는다) | D12-5 · M-2 · M-3 |
+| S6 | 리비전 시점 값 | 분류·생활권·호재 단계/연결이 제자리 갱신 → 옛 발행 리비전 상세·시장·보고서가 나중에 바뀜 | 발행(`snapshots.publish`) 순간 `snapshot_state` 에 얼리고(region 생활권 · complex 분류·생활권·법정동 · catalyst 단계·종류·위치·연결) 그 스냅샷을 읽는 상세·목록·시장·대시보드·비교·보고서·diff 가 얼린 값을 쓴다. 얼린 값이 없는 스냅샷(발행 전·0009 이전)은 지금 값. '호재 아님'은 상세 catalysts·시장 보드·보고서 §5 에서 뺀다 | D12-4 · M-7 |
+| S7 | 호재 연결 변경(`PATCH /catalysts`) | rejudge 잡 등록(점수에 쓰지 않는데 판정 파이프라인) | rejudge 없이 가장 새 발행 리비전의 새 리비전을 만들어 파생 행 복사 → 바로 발행(그 시점 연결을 얼림). 응답 `job` 은 늘 null. '호재 아님' 후보 연결·NaN/범위 밖 좌표는 422, `expected_ym: null` 은 지움 | D12-4 · minor · M-13 |
+| S8 | 지역 선택 축소 | 빠진 단지가 '판정 대상'으로 남음(사다리 호출), §12 '제외' 0 | 법정동이 지역 밖이 된 단지는 분류와 무관하게 '범위 경계'(판정 범위 제외). §12 후보군 = 점수 실행의 rerank 범위(판정 대상·참고·보류) | M-4 |
+| S9 | 비교 기준(revision_of) | 미발행 리비전 1 에서 지역 확장·판정기 버전 변경이면 비교 기준 없음 → §12·delta 표 누락 | 미발행 스냅샷에 비교 기준이 없으면 직전 발행 스냅샷을 `revision_of` 로 단다 | M-5 · M-6 |
+| S10 | 보고서 | 같은 기준일 리비전 보고서 파일이 덮어써짐, building 리비전도 생성 | 파일 이름 `report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식>`. 발행 전 스냅샷은 `POST /reports` 409(conflict). §12 요약은 rerank 를 다시 부르지 않은 리비전에 '다시 실행했다'고 쓰지 않는다 | C-4 · M-16 · minor |
+| S11 | 정규화 | 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지 이름·세대수·전매·거주·규제를 덮음, 할인 줄 부분 문자열 매칭 | 그 공고의 **단지(complex) 후보는 건너뛴다**(납부 조건·타입 가격만). 할인 줄 = 타입 표기 토큰 전체 + 선납·계약금·중도금·발코니·옵션 할인 제외 + 다른 타입이 같은 줄이면 미채택 | M-8 · M-12 |
+| S12 | 사람 확인 대상 | `entity_id` 가 complex_type·payment_terms 같은 번호면 complex_type | 화면·점수가 쓰는 현재 구매가 행 우선. 값: 단위 접미는 그 필드 단위만('N년'은 개월 필드에서 ×12), 지수·16진 표기 거부 | M-11 · minor |
+| S13 | 기타 | — | `PATCH /regions` 이름만 바뀌면 change_event·job 없음(이름 guard 422). '사실 재확인' 을 강등 중 done 으로 닫으면 응답이 바로 open. `GET /provenance/fp_N` 은 강등 중이면 label '확인 불가'·reason '검증 모순 — …'. `GET /complexes/{id}?snapshot=` 다른 지역 스냅샷 404 | minor |
+
+### 스키마 변경(선택 필드 추가·nullable — 옛 입력도 그대로 검증)
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `human_check.json` HumanCheck | `rejudge_job_id`(integer\|null) 추가 — 자동 등록한 rejudge 잡. `suggested_job` 은 늘 null(필드 유지). 예시 갱신 |
+| 2 | `region.json` RegionPatched | `change_event` → change_event\|null, `job_id` → integer\|null(이름만 바꾼 경우) |
+| 3 | `catalyst.json` | CatalystPatch 설명(위 S7), CatalystUpdated.job 설명(늘 null). 예시 요약 |
+| 4 | `job_payloads/backup.json` | `keep_days` maximum 3650, 설명에 compose 백업 볼륨 |
+| 5 | `report.json`·`openapi.yaml` createReport | `filename` 형식 설명·예시(`reports_list.json`·`jobs_list.json`), 409 에 발행 전 스냅샷 |
+| 6 | DB `snapshot_state`(0009) | API 모양 변화 없음(S6 의 읽기 동작만) |
+
+### FE 차이(FE3 — 화면이 맞출 것)
+
+| 대상 | .8 | .9 |
+| --- | --- | --- |
+| `POST /ops/human-checks` 응답 | `suggested_job` 으로 화면이 `POST /jobs`(토스트 '재판정 실행') | `suggested_job` null, `rejudge_job_id` = 이미 등록된 잡 — 잡 진행만 보인다(POST /jobs 하지 않는다). '기타'는 null |
+| `PATCH /regions/{id}` 응답 | change_event·job_id 늘 있음 | 이름만 바꾸면 둘 다 null |
+| `PATCH /catalysts/{id}` 응답 | 연결이 바뀌면 `job`(rejudge) | `job` 늘 null — 연결이 바뀌면 새 리비전이 바로 발행되므로 regions·스냅샷 목록을 무효화한다(M-15 와 같은 처리) |
+| `POST /reports` | building 리비전도 202 | 발행 전 스냅샷 409 — 비교·생성 선택에서 building 리비전 제외(M-16 화면) |
+| 보고서 `filename` | `report_<기준일>[_vs_<기준일>].<형식>` | 위 S10 형식(그대로 표시) |
+| 체크리스트 | — | 새 항목 제목 `사람 확인 재검토: <필드>`(kind '사실 재확인'). '사실 재확인' PATCH done 이 강등 중이면 응답 status 가 open(화면은 응답을 그대로 반영) |
+| 단지 상세 `catalysts`·시장 보드 | '호재 아님' 포함 가능 | 빠진다. 발행 리비전은 그 시점 단계·연결 |
+| `rejudge_needed` | building 리비전이 있으면 false | 가장 새 **발행** 리비전 기준 |
+| 사람 확인 값 | '3년' = 3, '1E1' = 10 | '3년' = 36(개월), '1E1' 422 |
+| `GET /provenance/fp_N` | 원 라벨 | 강등 중이면 '확인 불가(검증 모순 — …)' |
+
+### 마이그레이션·검증
+
+- `0009`: `snapshot_state`(id, snapshot_id FK·index, entity CHECK region·complex·catalyst, entity_id, data JSON, 유일 (snapshot_id, entity, entity_id)).
+  upgrade = 테이블 생성(기존 발행 스냅샷은 행 없음 — 지금 값으로 읽는다), downgrade = 삭제(얼린 값 손실). head → 0008 → head 왕복과 0008 downgrade 의
+  잡 이력 거부를 SQLite·Postgres 16(pgserver) 둘 다 테스트(`tests/contracts/test_migrations.py::check_0008_0009_roundtrip`), autogenerate diff 0.
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.9`. 백엔드 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
+- infra(D12-6·M-9): worker 이미지에 PGDG `postgresql-client-16`(서버 postgres:16 과 같은 판 pg_dump), compose 백업 볼륨 `backups:/backups` +
+  worker `BACKUP_DIR=/backups`(원문 볼륨과 분리). 계약 스키마 변경 아님.
+
+### fixtures (R3d CORE2 — 계약 .9)
+
+매니페스트(`contracts/fixtures.sha256.json`) 사유: R3d CORE2: 계약 .9 사람 확인 재판정 자동 등록(D12-5)으로 합성 판정 녹화 도구가 suggested_job 대신 rejudge_job_id 를 쓴다 — 녹화 데이터(봉투 293개)는 그대로
+생성기(`tools/record_synth_judgments.py`) `--check` 일치(봉투 293개 — payload 변화 없음). 계약 스키마 외 데이터 변경 없음.
+
 ## 2026-10-09.8
 
 R3 3차 리뷰(`docs/design/wp/R3_REVIEW3.md`) 후속 — CEO 결정 D11(`docs/design/DECISIONS.md`)과 R3c 배정(`docs/design/wp/R3C_FIX.md`).

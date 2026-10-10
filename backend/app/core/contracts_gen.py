@@ -2980,6 +2980,9 @@ class Report(BaseModel):
     created_at: str
     finished_at: str | None
     filename: str | None
+    """
+    report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식> (계약 .9 — 같은 기준일 리비전·잡끼리 겹치지 않는다, R3 4차 C-4)
+    """
     size_bytes: Annotated[int | None, Field(ge=0)]
     sha256: Annotated[str | None, Field(pattern="^[0-9a-f]{64}$")]
     blocked_reason: str | None = None

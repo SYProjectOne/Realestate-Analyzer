@@ -48,6 +48,11 @@ curl -s http://127.0.0.1:8000/health
 | 매주 월 06:30 | `collect.weekly` | 실거래·미분양·입주·호재 |
 | 매월 1일 05:00 | `reference.refresh` | 법정동·행정동·매핑 파일 갱신 (D2-4) |
 | 지역 생성 시 | `region.bootstrap` | 즉시 수집 → 판정 → 점수 → publish (D2-4) |
+| 매일 03:00 | `backup` | DB(Postgres `pg_dump -Fc`, SQLite 개발 모드 = 파일 복사) + 원문 증분 복사 → `BACKUP_DIR/<날짜>/`(compose = `backups` 볼륨, D11-8·D12-6) |
+| 지역 선택 변경 시 | `region.expand` | `PATCH /regions/{id}`(선택 추가·제거) → 수집 → 새 리비전 전체 판정·rerank → publish(D11-7) |
+
+발행된 스냅샷은 **불변**이다(D11-1). 발행 뒤의 재판정(사람 확인·생활권 편집·강등·판정기 버전 변경·지역 확장)은 같은 기준일의
+새 **리비전**(`snapshot.revision`)에 쓰고, 끝나면 그 리비전이 발행된다. 화면 기본 = 가장 새 발행 리비전. 자세한 규칙은 §11.
 
 잡 상태는 화면 G7(운영)과 `job_run` 테이블에서 본다.
 
@@ -85,14 +90,23 @@ curl -s http://127.0.0.1:8000/health
 JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` 이 바뀌면:
 
 1. `adapter_version` 이 바뀌어 모든 `input_hash` 가 달라진다 → 전체 재판정 1회가 자동으로 돈다.
+   가장 새 스냅샷이 발행됐으면 같은 기준일 새 리비전에서, 미발행(리비전 1 판정 중)이면 그 자리에서 돌고 직전 발행 스냅샷이
+   비교 기준(`revision_of`)으로 달린다(R3 4차 M-6).
 2. `change_event(entity=judge, field=version, severity=critical)` 가 남는다(웹훅이 설정돼 있으면 알림).
-3. 이전 run 과의 delta 표를 보고서에 붙인다(`python -m app.reports.cli --snapshot <id> --format html`, 비교 스냅샷 지정).
+3. 보고서는 비교 스냅샷을 주지 않으면 `revision_of`(바탕 리비전)와 비교해 delta 표를 붙인다
+   (`python -m app.reports.cli --snapshot <리비전 id> --format html`).
 4. 비용·시간이 부담되면 `JEV_MCP_CMD` 를 특정 버전(`@jkudish/jev-mcp@0.13.0`)으로 고정하고 재시작한다.
 
 ## 5. 지역 추가
 
 절차는 [`docs/region-add.md`](region-add.md) (화면 G0). 요약: 자유 지명 입력 → 후보 선택 → `POST /regions` →
 `region.bootstrap`(수집 → 판정 → 점수 → publish) → 생활권 편집(G0-2) → rerank 전체 재호출 → 보고서 "지역 추가" 장.
+
+기존 지역에 시군구·법정동을 **더하거나 빼기**(D11-7·D11-10 — 지역끼리 합산 순위는 만들지 않는다, 함께 보려면 한 지역에 선택):
+`PATCH /regions/{id}`(selections = 바뀐 뒤 전체) → change_event(critical) + `region.expand` 잡 → 추가 선택 수집 → 기준일 새 리비전
+(오늘 리비전 1 이 판정 중이면 그 자리, 직전 발행 스냅샷이 비교 기준)에서 후보 전체 판정·rerank → publish → 보고서 §12 '지역 추가·변경'.
+빠진 법정동의 단지는 분류와 무관하게 '범위 경계'(판정 범위 제외 — §12 '제외'에 잡힌다, R3 4차 M-4). 이름만 바꾸면 잡·이벤트 없음.
+생활권 편집(`PUT /regions/{id}/living-areas`)·사람 확인 뒤 재판정은 **자동 등록**된다(D12-5 — 화면에서 따로 등록하지 않는다).
 
 ## 6. 디스크 부족
 
@@ -123,11 +137,18 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
 
 ## 8. 백업·복구
 
-- 자동화: `infra/backup.sh /srv/backup` 을 cron 으로 매일(예 `0 3 * * * cd <repo> && infra/backup.sh /srv/backup`).
-  - DB: `pg_dump -Fc` → `db-<날짜>.dump`, 곧바로 `pg_restore --list` 로 검증(실패하면 종료 코드 ≠ 0).
-  - 원문: `rawdata` 볼륨을 `rsync -a`(증분, 삭제 전파 없음)로 `raw/` 에. rsync 가 없으면 `raw-<날짜>.tgz` + `tar -tzf` 검증.
-- 복구: 새 `db` 를 띄운 뒤 `pg_restore -U $POSTGRES_USER -d $POSTGRES_DB --clean backup/db-<날짜>.dump`, 원문은 볼륨에 풀기.
-  복구 후 `/health` 와 G7 신선도를 확인한다.
+- 자동(D11-8·D12-6): worker 가 매일 03:00 `backup` 잡을 돌린다 — 결과(파일·크기·sha256·복사 수·실패 사유)는 `job_run.stats`(G7 잡 목록).
+  - 위치 = `BACKUP_DIR`(compose: worker 의 `backups:/backups` 볼륨 — 원문 볼륨 `rawdata` 와 **다른** 볼륨). `<날짜>/db.dump`(Postgres
+    `pg_dump -Fc`, worker 이미지의 `postgresql-client-16` — 서버 postgres:16 과 같은 판) 또는 `<날짜>/db.sqlite3`(개발 모드),
+    원문은 `raw/` 에 증분(지우지 않는다).
+  - 실패(pg_dump 없음·접속 실패·디스크 가득)는 잡 `failed` + stats 의 사유로 남는다 — 조용히 넘어가지 않는다.
+    비밀번호는 URL 의 퍼센트 인코딩을 풀어 `PGPASSWORD` 로만 넘긴다(로그·stats 에 없다).
+  - 보존: 기본 무기한. 수동 잡 `POST /jobs {"job_name":"backup","payload":{"keep_days":N}}`(1~3650)이면 N일보다 오래된 날짜 폴더만 지운다.
+  - 백업 볼륨 꺼내기: `docker run --rm -v subscription-analyzer_backups:/b -v "$PWD":/out alpine cp -r /b /out/backups`.
+- 대안(호스트 cron): `infra/backup.sh /srv/backup`(예 `0 3 * * * cd <repo> && infra/backup.sh /srv/backup`) — db 컨테이너에서
+  `pg_dump -Fc` 후 `pg_restore --list` 검증, 원문은 `rsync -a`(없으면 tgz).
+- 복구: 새 `db` 를 띄운 뒤 `pg_restore -U $POSTGRES_USER -d $POSTGRES_DB --clean <백업>/db.dump`, 원문은 볼륨에 풀기.
+  복구 후 `alembic upgrade head`(코드가 더 새면), `/health` 와 G7 신선도를 확인한다.
 
 ## 9. 비밀값
 
@@ -253,3 +274,30 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
 - (제안, WP9) 1회차 `judgment_log`(input_json·output_json)를 Mock 녹화로 내보내면 e2e·회귀의 Mock 판정기가 파이프라인
   payload 를 재생할 수 있다(현재 픽스처 녹화는 보고서 재구성이라 파이프라인 payload 와 hash 가 달라 Mock 재판정이 전부
   review — R3 발견). 내보낼 때 hash 는 `input_hash(tool, purpose, input_json, <픽스처 _meta adapter_version>)` 로 다시 계산한다.
+
+## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
+
+**발행 스냅샷은 불변**(D11-1). 화면 기본·'재판정 필요' 배지의 '최신 리비전' = 가장 새 **발행** (기준일, 리비전)(D12-4) — 판정 중
+(building) 리비전이 생겨도 배지는 그대로다. 리비전 목록은 `GET /regions/{id}/snapshots`.
+
+- **리비전 시점 값**(D12-4): 발행 순간 생활권·단지 분류·호재 단계/연결이 `snapshot_state` 에 얼려진다. 옛 리비전의 상세·목록·시장·
+  보고서는 나중 편집(생활권 이름·분류 재판정·호재 연결)으로 바뀌지 않는다. 호재 위치 확인으로 **연결이 바뀌면** 판정 없이 새 리비전이
+  바로 발행된다(파생 행 복사 — 점수는 그대로).
+- **강등(검증 모순)**(D11-3·D12-2): contradicted 주장을 사람이 고치면 그 사실이 '확인 불가(검증 모순)'가 된다. 강등은
+  (단지, 의미 필드, 모순 값)에 걸린다 — 같은 모순 가격·계약금을 실은 **새 공고**가 와도 계속 가려진다. 풀리는 길은 두 가지:
+  사람 확인(G7) 또는 새 원문이 **다른 값**을 낼 때(같은 값 재수집·값 없는 행·출처 상충 보류는 풀지 않는다). 풀린 뒤 모순 값이
+  다시 채택되면 다시 강등된다(critical change_event). 체크리스트 '사실 재확인'은 강등이 남아 있는 동안 닫아도 다시 열린다.
+- **사람 확인**(D11-3·D12-1·D12-5): G7 사람 확인 값은 그때까지의 출처·compare 채택을 이긴다. 사람 확인 **이후** 공고문·청약홈이
+  **다른 값**을 내면 그 값이 채택되고 critical change_event + 체크리스트 `사람 확인 재검토: <필드>` 가 생긴다 — 원문을 보고 다시
+  사람 확인하거나 항목을 닫는다. 사람 확인·생활권 편집·강등은 그 지역 가장 새 기준일의 리비전에 재판정을 **자동 등록**한다
+  (G7 잡 목록에서 진행을 본다). 다음 날 변경 없는 수집도, 이전 판정 뒤 사실이 바뀐 단지는 이월 대신 재판정한다.
+- **할인**(D11-6·D12-3): 공고문에 금액이 명시된 할인만, 출처 라벨이 '확인됨'일 때만 구매가에서 뺀다 — 상세·목록 정렬·필터·비교·
+  보고서·점수 모두 같은 규칙(`analysis.price_view.current_price`). 추정·OCR 할인은 표시만.
+- **보고서**: 발행 전(판정 중) 리비전은 만들 수 없다(409). 파일 이름에 지역·리비전·잡 id 가 들어가 같은 기준일 리비전끼리 덮어쓰지 않는다.
+- **prod + SQLite 거부**(D11-9): `ENV=prod` 는 Postgres `DATABASE_URL` 만 받는다.
+
+## 12. 회귀 실행 순서
+
+`python scripts/tasks.py regress` 는 frontend `node_modules` 가 없으면 `npm ci` 를 **먼저** 하고 pytest 회귀 → e2e 순으로 돈다.
+같은 frontend 에서 `npm ci` 가 도는 동안 회귀(T13 프론트 lint 검사)를 돌리면 eslint 가 모듈을 못 찾는다 — 설치를 끝낸 뒤 돌린다
+(R3 4차 리뷰가 확정한 간헐 실패 원인. 실패 메시지에 eslint stderr 가 나온다).

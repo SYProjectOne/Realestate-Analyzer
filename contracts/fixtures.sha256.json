@@ -1,7 +1,7 @@
 {
  "description": "contracts/fixtures/** sha256. 픽스처를 바꾸면 backend/scripts/fixture_manifest.py --reason 으로 다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6). 변경마다 새 사유(history).",
- "reason": "R3c CORE: minor 6 파이프라인 구매가 라벨 = 구성 필드(공급가·발코니·옵션) 중 가장 약한 라벨(API 와 같음)로 카드·명제의 가격 라벨이 바뀌어 decide 5·noul 30·rerank 1 payload 변경 — 합성 판정 녹화 재생성",
- "files_digest": "d7d464302d7341d732f3696e2892770bd1ba028f3575e900c9ad6ee65a6b034d",
+ "reason": "R3d CORE2: 계약 .9 사람 확인 재판정 자동 등록(D12-5)으로 합성 판정 녹화 도구가 suggested_job 대신 rejudge_job_id 를 쓴다 — 녹화 데이터(봉투 293개)는 그대로",
+ "files_digest": "fffa871f9b2be3fc913db872710301da4e72061f05a23cc56fe75c8ca8785db2",
  "history": [
   {
    "reason": "R3b 마무리: 계약 .7 winner_label(당첨일 라벨이 전매 종료 요건 근거에 합쳐짐)로 상황 decide payload 1건 변경 — 합성 판정 녹화 재생성",
@@ -10,6 +10,10 @@
   {
    "reason": "R3c CORE: 계약 .8 스냅샷 리비전(발행 스냅샷 재판정은 새 리비전 — 봉투 snapshot_id 12→13)과 §6-7 상황 B·D 접근성(현재 공고 공급 경로)으로 상황 decide payload 3건 변경 — 합성 판정 녹화 재생성",
    "files_digest": "fed24c0c1c7213763dd8d846453dad8f8d1d6760864f4aaf76be8dcd56caa74b"
+  },
+  {
+   "reason": "R3c CORE: minor 6 파이프라인 구매가 라벨 = 구성 필드(공급가·발코니·옵션) 중 가장 약한 라벨(API 와 같음)로 카드·명제의 가격 라벨이 바뀌어 decide 5·noul 30·rerank 1 payload 변경 — 합성 판정 녹화 재생성",
+   "files_digest": "d7d464302d7341d732f3696e2892770bd1ba028f3575e900c9ad6ee65a6b034d"
   }
  ],
  "files": {
@@ -552,7 +556,7 @@
   "tools/incheon_gimpo_complexes_b.py": "1a5a843ed0a2c60542c286575175f601b1e37df02a37e7f58849be4b36b8e06f",
   "tools/incheon_gimpo_judgments.py": "81a91eb09434d27c82499e20dab0f39bba7ab0faff14aae8ad0c9bc3ad8fe044",
   "tools/record_applyhome_cmpet.py": "77c26e513c5475f0e4ad61e7c525472153f6c3377c4a6710f984d17c597b0ded",
-  "tools/record_synth_judgments.py": "2edcbfa0774e3f72f1415b5063b77c68dc8266f172d57e355afa98b8fbf83abe",
+  "tools/record_synth_judgments.py": "5d27a8c8f7b50bd04213c6fad93397104ae65064739e4c3f01fbcf48be35878f",
   "tools/synth.py": "32972d664cf6350beb6c758e3fa8988e63df3a63eeecd0cab9189a2ff7ccd6df"
  }
 }
