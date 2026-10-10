@@ -541,11 +541,17 @@ class _Binder:
         return cx.id if cx is not None else None
 
     def _merged_unit(self, c: FieldCandidate) -> bool:
-        """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다)."""
+        """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다).
+
+        R3 5차 M10: 원 번호를 인용한 잔여 공고의 **입주 예정월**(``CITED_COMPLEX_FIELDS``)은 원 단지 후보로 받는다 — 이름·
+        세대수·당첨일·청약 일정 같은 그 잔여 공고 자신의 값은 버리지만, 같은 단지의 입주 지연(2028-03 → 2028-09)은 정당한
+        갱신이다(공고문 최신 규칙으로 resolver 가 가른다)."""
         if c.entity not in MERGED_UNIT_ENTITIES:
             return False
         key = (c.entity_key or "").split(":")[0]
-        return key in self.merged or (c.entity == "complex" and key in self.cited)
+        if key in self.merged:
+            return True
+        return c.entity == "complex" and key in self.cited and c.field not in CITED_COMPLEX_FIELDS
 
     def _id_for(
         self,
@@ -592,6 +598,8 @@ class _Binder:
 
 
 MERGED_UNIT_ENTITIES = frozenset({"complex", "complex_type"})
+CITED_COMPLEX_FIELDS = frozenset({"move_in_ym"})
+"""R3 5차 M10: 원 번호를 인용한 잔여 공고에서도 원 단지 후보로 받는 단지 필드(입주 예정월 — 같은 단지의 입주 일정 변경)."""
 """D11-4: 원 단지에 묶인 잔여·임의·무순위 공고에서 원 단지에 쓰지 않는 단지 단위 엔티티."""
 
 TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
@@ -1033,6 +1041,7 @@ def human_superseded(
     *,
     snapshot_id: int | None = None,
     detected_at: str | None = None,
+    created: set[tuple[str, int]] | frozenset[tuple[str, int]] = frozenset(),
 ) -> list[ChangeEvent]:
     """D12-1·D13-2: 사람 확인 행이 있는데 원문 출처가 채택된 필드(resolver — 사람 확인 이후 새 공식 출처의 다른 값)는
     critical·재판정 + 체크리스트 '사람 확인 재검토'(사실 재확인 — 동기화가 닫지 않는다). 행과 무관하다: 값 변경 이벤트가
@@ -1060,6 +1069,8 @@ def human_superseded(
     extra: list[ChangeEvent] = []
     for key, human in superseded.items():
         ev = by_key.get(key)
+        if ev is None and (key[0], key[1]) not in created:
+            continue  # 값이 그대로(재정규화) — 이미 알렸다
         if ev is None:
             chosen = next(p for p in rows[key] if p.chosen and not is_human(p.reason))
             old_text = f"{human.value_text} (사람 확인)"[:200]
@@ -1218,7 +1229,14 @@ def store_raw_document(
         )
         events.extend(written)
         events.extend(
-            human_superseded(session, resolved, written, snapshot_id=snapshot_id, detected_at=detected_at)
+            human_superseded(
+                session,
+                resolved,
+                written,
+                snapshot_id=snapshot_id,
+                detected_at=detected_at,
+                created=binder.created,
+            )
         )
         session.flush()
         for terms in binder.new_terms:

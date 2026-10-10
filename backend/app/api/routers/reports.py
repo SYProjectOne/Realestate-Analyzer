@@ -72,7 +72,16 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
         # R3 4차 M-16: 판정이 끝나지 않은(building) 리비전은 보고서를 만들지 않는다 — 파생 행이 반쯤 찬 상태
         raise conflict(f"snapshot {snap.id} 는 발행 전({snap.status})이라 보고서를 만들 수 없다")
     if body.get("compare_snapshot_id") is not None:
-        get_snapshot(session, body["compare_snapshot_id"])
+        cmp = get_snapshot(session, body["compare_snapshot_id"])
+        # R3 5차 M5: 비교 기준도 발행 리비전(저장본 — D13-1)·같은 지역만(지역끼리는 독립 분석, D11-10)
+        if cmp.region_id != snap.region_id:
+            from app.api.errors import validation_error
+
+            raise validation_error(
+                f"비교 스냅샷 {cmp.id} 은 다른 지역({cmp.region_id})이다", ("body", "compare_snapshot_id")
+            )
+        if cmp.status != "published":
+            raise conflict(f"비교 스냅샷 {cmp.id} 는 발행 전({cmp.status})이라 비교할 수 없다")
     n = contradicted(session, snap.id)
     if n:
         raise conflict(f"contradicted claim {n}건이 남아 있어 보고서를 만들 수 없다", code="publish_blocked")

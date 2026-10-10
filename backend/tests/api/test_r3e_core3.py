@@ -8,6 +8,7 @@ D13-1 불변은 ``test_r3e_invariant``, D13-2 사람 확인 의미 단위는 ``t
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -407,3 +408,81 @@ def test_d13_5_every_new_change_event_is_on_an_unpublished_revision(client: Test
         assert not bad, f"{step}: 발행 리비전에 붙은 change_event {bad}"
     with get_session() as s:
         assert int(s.scalar(select(func.max(ChangeEvent.id))) or 0) > start
+
+
+# ====================================================================== M5 보고서 비교 스냅샷
+
+
+def test_m5_report_compare_must_be_published_same_region(client: TestClient) -> None:
+    from app.core.db import get_session
+    from app.models import Region, Snapshot
+
+    from .test_r3d_core2 import _revision_of
+
+    building = _revision_of(SNAP, publish=False)
+    r = client.post(
+        "/api/reports",
+        json={"snapshot_id": SNAP, "format": "html", "compare_snapshot_id": building},
+        headers=WRITE,
+    )
+    assert r.status_code == 409 and "발행 전" in r.json()["detail"], r.text
+    with get_session() as s:
+        other = Region(name="다른 지역", query_text="x", selections=[], sido_codes=[], sigungu_codes=[], legal_dong_codes=[],
+                       living_areas=[], age_premium_coef={}, applyhome_query={}, status="ready", created_at="2026-10-09")  # fmt: skip
+        s.add(other)
+        s.flush()
+        snap = Snapshot(region_id=other.id, asof_date="2026-10-08", status="published", degraded=False,
+                        created_at="2026-10-08", revision=1)  # fmt: skip
+        s.add(snap)
+        s.flush()
+        other_sid = snap.id
+    r = client.post(
+        "/api/reports",
+        json={"snapshot_id": SNAP, "format": "html", "compare_snapshot_id": other_sid},
+        headers=WRITE,
+    )
+    assert r.status_code == 422 and r.json()["field_errors"][0]["loc"] == ["body", "compare_snapshot_id"], (
+        r.text
+    )
+    ok = client.post(
+        "/api/reports", json={"snapshot_id": SNAP, "format": "html", "compare_snapshot_id": 11}, headers=WRITE
+    )
+    assert ok.status_code == 202, ok.text
+
+
+# ====================================================================== M7 비유한 float 전 엔드포인트 422
+
+
+@pytest.mark.parametrize("token", ["NaN", "Infinity", "-Infinity", "1e400"])
+def test_m7_non_finite_numbers_are_422_on_every_json_body(client: TestClient, token: str) -> None:
+    """POST /scenarios NaN → 커밋 뒤 500·이후 GET /scenarios 500(R3 5차 M7) — 공용 검증(``check_body``)으로 모든 쓰기 본문 422."""
+    from app.core.db import get_session
+    from app.models import Catalyst
+
+    h = {**WRITE, "Content-Type": "application/json"}
+    base = client.get("/api/scenarios", headers=READ).json()[0]
+    w = {k: v for k, v in base["weights"].items() if v is not None}
+    params = json.dumps(base["params"])[:-1] + f', "holding_years": {token}}}'
+    r = client.post(
+        "/api/scenarios",
+        content=f'{{"name": "nan", "params": {params}, "weights": {json.dumps(w)}}}',
+        headers=h,
+    )
+    assert r.status_code == 422 and r.json()["code"] == "validation_error", r.text
+    assert client.get("/api/scenarios", headers=READ).status_code == 200
+    with get_session() as s:
+        cat = Catalyst(region_id=1, name="좌표 역", kind="교통", stage="계획", location_confirmed=False)
+        s.add(cat)
+        s.flush()
+        cid = cat.id
+    r = client.patch(
+        f"/api/catalysts/{cid}",
+        content=f'{{"location_confirmed": true, "complex_ids": [2], "lat": {token}}}',
+        headers=h,
+    )
+    assert r.status_code == 422, r.text
+    r = client.post("/api/ops/human-checks", content=(
+        f'{{"complex_id": 2, "field": "other", "value_text": "x", "kind": "phone", "checked_at": "2026-10-09", '
+        f'"entered_by": "운영자", "note": "x", "extra": {token}}}'
+    ).encode(), headers=h)  # fmt: skip
+    assert r.status_code == 422, r.text

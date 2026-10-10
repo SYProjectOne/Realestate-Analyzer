@@ -21,6 +21,8 @@
 contract_violation(500)으로 막는다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
@@ -176,7 +178,11 @@ def aggregate_supply(records: Iterable[SupplyRecord]) -> dict[tuple[str | None, 
 
 
 def load_supply(session: Session, region_id: int, records: Iterable[SupplyRecord]) -> LoadStats:
-    """단지별 추정 행 upsert: (region_id, complex_id, label='추정', reason='추정 집계') 하나."""
+    """단지별 추정 행 upsert: (region_id, complex_id, label='추정', reason='추정 집계') 하나.
+
+    R3 5차 M8: 이번 입력에 없는 단지(입주월이 강등·삭제됐거나 범위 경계가 된 단지)의 옛 추정 행과 그 출처 행은 지운다 —
+    예전에는 upsert 만 해서 옛 입주물량이 시장·보고서·점수에 남았다."""
+    records = list(records)
     stats = LoadStats()
     existing = {
         s.complex_id: s
@@ -208,6 +214,22 @@ def load_supply(session: Session, region_id: int, records: Iterable[SupplyRecord
             stats.updated += 1
         else:
             stats.unchanged += 1
+    keep = {r.complex_id for r in records if r.complex_id is not None}
+    gone = [row for cid, row in existing.items() if cid not in keep]
+    if gone:
+        from sqlalchemy import delete
+
+        from app.models import FieldProvenance
+
+        ids = [row.id for row in gone]
+        session.execute(
+            delete(FieldProvenance).where(
+                FieldProvenance.entity == "supply", FieldProvenance.entity_id.in_(ids)
+            )
+        )
+        for row in gone:
+            session.delete(row)
+        stats.deleted += len(gone)
     session.flush()
     return stats
 

@@ -215,7 +215,12 @@ def _supply(session: Session, region_id: int) -> dict[str, int]:
         if c.inclusion_class not in ("범위 경계",)
     ]
     stats = load_supply(session, region_id, estimate_supply(inputs))
-    return {"inserted": stats.inserted, "updated": stats.updated, "unchanged": stats.unchanged}
+    return {
+        "inserted": stats.inserted,
+        "updated": stats.updated + stats.deleted,  # 지운 행도 시장 자료 변경(change_event)
+        "unchanged": stats.unchanged,
+        "deleted": stats.deleted,
+    }
 
 
 def _market_event(

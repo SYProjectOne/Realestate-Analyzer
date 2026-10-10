@@ -221,7 +221,9 @@ def test_m12_discount_line_requires_whole_type_token_and_price_discount() -> Non
 
     t84 = TypeSpec(short="84A", long="084.9582A", area_text="84.9582", units=10, span=(0, 1))
     ok = "84A 분양가 할인 10,000,000원\n"
-    assert _discount_line(ok, t84) == (
+    got = _discount_line(ok, t84)
+    assert got is not None and got.confirmed
+    assert (got.won, got.span) == (
         10_000_000,
         (len("84A 분양가 할인 "), len("84A 분양가 할인 10,000,000")),
     )
@@ -234,7 +236,10 @@ def test_m12_discount_line_requires_whole_type_token_and_price_discount() -> Non
         "59A·84A 분양가 할인 10,000,000원",  # 어느 타입 금액인지 모호
     ):
         assert _discount_line(bad + "\n", t84) is None, bad
-    assert _discount_line("할인금액(84㎡): 12,500,000원\n", t84) is not None
+    area = _discount_line(
+        "할인금액(84㎡): 12,500,000원\n", t84
+    )  # 면적 표기 = 정확 일치 아님 → 추정(R3 5차 M9)
+    assert area is not None and area.won == 12_500_000 and not area.confirmed
 
 
 def test_minor_site_url_rejects_notation_bypasses() -> None:
