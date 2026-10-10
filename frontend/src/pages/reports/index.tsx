@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useCanWrite } from '@/api/auth';
 import { useDownload } from '@/api/download';
 import { reportRequest, useChanges, useCreateReport, useReports } from '@/api/hooks';
@@ -202,6 +202,12 @@ function ReportRow({
   dateOf: (id: number | null) => string;
 }) {
   const file = useDownload();
+  const qc = useQueryClient();
+  // 409(아직 완료되지 않음 등) = 목록이 낡았다 — 보고서 목록을 다시 받는다(4차 minor)
+  const conflict = file.error instanceof ApiError && file.error.status === 409;
+  useEffect(() => {
+    if (conflict) void qc.invalidateQueries({ queryKey: ['reports'] });
+  }, [conflict, qc]);
   return (
     <tr>
       <td className={tdClass}>{formatDate(report.created_at, asof)}</td>
