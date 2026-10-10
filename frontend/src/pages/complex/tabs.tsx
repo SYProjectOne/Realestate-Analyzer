@@ -1,6 +1,6 @@
 /** G3 탭 패널: 가격표 · 납부 조건 · 잔여 이력 · 시세 비교 · 호재 */
 import { useState, type ReactNode } from 'react';
-import type { ComplexDetail, Fact, LadderHorizon, PriceRangeWithApplied } from '@/api/types';
+import type { ComplexDetail, Fact, LadderHorizon, PriceRange } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
@@ -8,11 +8,11 @@ import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
 
 /** 할인 문구에 필요한 가격 범위 필드 */
-export type DiscountPrice = Pick<PriceRangeWithApplied, 'discount' | 'discount_applied'>;
+export type DiscountPrice = Pick<PriceRange, 'discount' | 'discount_applied'>;
 
 /**
  * 서버가 구매가에서 할인을 뺐는가(계약 .10 `PriceRange.discount_applied`, 5차 minor). 화면은 라벨로 추측하지 않는다 —
- * 확인됨이어도 0·음수·최고가 이상 할인은 서버가 빼지 않는다. 필드가 없으면(옛 서버) null = 모름.
+ * 확인됨이어도 0·음수·최고가 이상 할인은 서버가 빼지 않는다. 필드가 없으면(선택 필드) null = 모름 → 문구 없음.
  */
 export function discountApplied(price: DiscountPrice | null | undefined): boolean | null {
   const v = price?.discount_applied;

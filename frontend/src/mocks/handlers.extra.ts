@@ -11,8 +11,6 @@
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
  *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
  *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
- *  - 계약 .10 초안(R3e FE4 — CORE3 머지 뒤 gen:msw 로 맞춤): 단지 상세 `price.discount_applied`,
- *    시장 `?scenario=` 검증
  *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -32,8 +30,6 @@ import type {
   JobCreate,
   JobName,
   JobRun,
-  Market,
-  PriceRangeWithApplied,
   Provenance,
   RegionCreated,
   RegionPatched,
@@ -225,31 +221,12 @@ export const extraHandlers = [
     const row = page.items.find((r) => r.complex_id === id);
     const override = state.intakeOverrides.get(id);
     const header = row ? { ...detail.header, id, name: row.name } : detail.header;
-    // 계약 .10 초안: 서버 차감 여부. 예시에 없으면 '빼지 않음'(예시 단지는 할인 없음)
-    const draft: PriceRangeWithApplied = detail.price;
-    const price: PriceRangeWithApplied = {
-      ...draft,
-      discount_applied: draft.discount_applied ?? false,
-    };
     return HttpResponse.json({
       ...detail,
       header,
-      price,
       intake_current: override ?? (row ? row.intake : detail.intake_current),
       intake: override ? [override, ...detail.intake] : detail.intake,
     } satisfies ComplexDetail);
-  }),
-
-  // GET /snapshots/{sid}/market — 계약 .10 초안: ?scenario=(Scenario 파라미터) 검증. 응답 모양은 예시 그대로
-  http.get(mswPath('/snapshots/:sid/market'), async ({ request }) => {
-    const scenario = new URL(request.url).searchParams.get('scenario');
-    if (scenario !== null && !/^(base|A|B|C|D|[0-9]+)$/.test(scenario)) {
-      return HttpResponse.json(
-        { code: 'validation_error', detail: `scenario: ${scenario}` },
-        { status: 422 },
-      );
-    }
-    return HttpResponse.json(await base<Market>(request));
   }),
 
   // POST /jobs (202) — 상태 있는 잡

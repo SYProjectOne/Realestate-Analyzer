@@ -5,7 +5,9 @@
  *  - G5 '이후': 캐시에 남은 옛 대시보드로 잠깐 '변화 없음'이 보이지 않는다.
  *  - G6 시장: 상황 토글(?scenario=)을 서버에 보낸다(계약 .10).
  *  - G8: 발행 전(ready) 기준이면 생성 막음 + 안내, 409(conflict) 안내, 비교 선택은 발행 리비전만.
- * (할인 discount_applied 는 complex/discount.test.tsx, safeHref 는 lib/safeHref.test.tsx, 건수 라벨은 r3c.test.tsx)
+ *  - 계약 .10: 발행 뒤 만든 시나리오 404 → 시나리오 실행 안내, 사람 확인 이른 확인일 422 → 확인일 칸 오류.
+ * (할인 discount_applied 는 complex/discount.test.tsx, safeHref 는 lib/safeHref.test.tsx,
+ *  실거래 건수 n_trades Fact 는 r3c.test.tsx)
  */
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, screen, waitFor, within } from '@testing-library/react';
@@ -13,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type { ReactNode } from 'react';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
+import { ApiError } from '@/api/client';
 import { jobRefetchInterval, useJob, useSnapshots } from '@/api/hooks';
 import {
   advancesRevision,
@@ -28,6 +31,7 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { createTestQueryClient, renderRoute } from '@/test/render';
+import { isScenarioMissing } from './_shared';
 import { matching, recordRequests } from './_shared/testing';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
@@ -357,5 +361,70 @@ describe('G8 보고서: 발행 전 리비전·409 안내 (5차 minor)', () => {
       }),
     );
     expect(alert).toHaveAttribute('role', 'alert');
+  });
+});
+
+// ─── 계약 .10: 발행 뒤 만든 시나리오 404 ──────────────────────
+
+describe('발행 리비전 + 발행 뒤 만든 시나리오 = 404 → 시나리오 실행 안내 (계약 .10 S2)', () => {
+  it('isScenarioMissing: 사용자 시나리오·발행 리비전·404 일 때만', () => {
+    const e404 = new ApiError('not_found', 'scenario 9', 404);
+    expect(isScenarioMissing(e404, '9', 'published')).toBe(true);
+    expect(isScenarioMissing(e404, 'B', 'published')).toBe(false); // 내장 시나리오는 늘 저장본이 있다
+    expect(isScenarioMissing(e404, null, 'published')).toBe(false);
+    expect(isScenarioMissing(e404, '9', 'ready')).toBe(false); // 발행 전은 실시간 계산
+    expect(isScenarioMissing(new ApiError('internal', 'x', 500), '9', 'published')).toBe(false);
+  });
+
+  it('G1 ?scenario=9(발행 뒤 생성) → 404 → 안내 + 시나리오 실행 링크(전역 쿼리 유지)', async () => {
+    server.use(
+      http.get(mswPath('/snapshots/:sid/dashboard'), () =>
+        HttpResponse.json(
+          { code: 'not_found', detail: 'scenario 9 not in snapshot' },
+          { status: 404 },
+        ),
+      ),
+    );
+    renderRoute('/?scenario=9');
+    const box = await screen.findByTestId('scenario-missing');
+    expect(box).toHaveTextContent(t('page.common.scenarioMissing', { scenario: '9' }));
+    const link = within(box).getByRole('link', { name: t('page.common.scenarioMissingRun') });
+    expect(link.getAttribute('href')).toMatch(/^\/scenario\?.*scenario=9/);
+  });
+});
+
+// ─── 계약 .10: 사람 확인 이른 확인일 422 ───────────────────────
+
+describe('사람 확인 이른 확인일 → 422 checked_at → 확인일 칸 오류 (계약 .10 S6)', () => {
+  it('field_errors loc [body, checked_at] 를 확인 시각 칸 경고로 보인다', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const detail = '이 필드에 2026-10-08 관측된 공식 공고가 있다';
+    server.use(
+      http.post(mswPath('/ops/human-checks'), () =>
+        HttpResponse.json(
+          {
+            code: 'validation_error',
+            detail,
+            field_errors: [{ loc: ['body', 'checked_at'], msg: detail }],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderRoute('/ops');
+    const form = await screen.findByRole('form', { name: t('page.G7.human') });
+    const complex = within(form).getByLabelText(t('page.G7.hc.complex'));
+    await waitFor(() => expect(complex.querySelector('option[value="2"]')).not.toBeNull());
+    await userEvent.selectOptions(complex, '2');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.field')), 'move_in_ym');
+    await userEvent.type(within(form).getByLabelText(t('page.G7.hc.value')), '2028-03');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '검토자');
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
+    const checkedAt = within(form).getByLabelText(t('page.G7.hc.checkedAt'));
+    await waitFor(() => expect(checkedAt).toHaveAttribute('aria-invalid', 'true'));
+    const msg = t('page.G7.hc.checkedAtTooEarly', { detail });
+    expect(within(form).getByText(msg)).toHaveAttribute('role', 'alert');
+    expect(checkedAt).toHaveAccessibleDescription(msg);
+    expect(within(form).queryByTestId('human-check-result')).toBeNull();
   });
 });

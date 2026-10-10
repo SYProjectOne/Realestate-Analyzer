@@ -13130,7 +13130,14 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "won"
           },
-          "n_trades": 10,
+          "n_trades": {
+            "v": 10,
+            "label": "재가공",
+            "prov": "fp_9001",
+            "checked_at": "2026-10-07",
+            "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+            "unit": "count"
+          },
           "trade_window": "2026-04~2026-09",
           "basis": "11공구 인접 신축(레이크 4차) — IBD는 11.2~14.1억으로 별도"
         },
@@ -13159,7 +13166,14 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "won"
           },
-          "n_trades": 0,
+          "n_trades": {
+            "v": 0,
+            "label": "재가공",
+            "prov": "fp_9002",
+            "checked_at": "2026-10-07",
+            "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+            "unit": "count"
+          },
           "trade_window": "2026-05~2026-06",
           "basis": "신검단 신축(힐스테이트 신검단 센트럴), 건수 미상 — 저가 거래 4.8~5.3억 혼재"
         },
@@ -13188,7 +13202,14 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "won"
           },
-          "n_trades": 0,
+          "n_trades": {
+            "v": 0,
+            "label": "비공식",
+            "prov": "fp_9003",
+            "checked_at": "2026-10-07",
+            "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+            "unit": "count"
+          },
           "trade_window": null,
           "basis": "힐스테이트자이 계양(데일리안 2026-09-07) — 실거래 원자료 미확보"
         },
@@ -13217,7 +13238,14 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "won"
           },
-          "n_trades": 6,
+          "n_trades": {
+            "v": 6,
+            "label": "재가공",
+            "prov": "fp_9004",
+            "checked_at": "2026-10-07",
+            "reason": "집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수",
+            "unit": "count"
+          },
           "trade_window": "2026-04~2026-09",
           "basis": "고촌 센트럴자이(2024) — 풍무·사우·북변은 2020 이후 신축 없음(대체)"
         }

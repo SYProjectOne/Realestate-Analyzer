@@ -3695,7 +3695,8 @@ export interface components {
                 median_won: components["schemas"]["Fact"];
                 low_won: components["schemas"]["Fact"];
                 high_won: components["schemas"]["Fact"];
-                n_trades: number;
+                /** @description 계약 2026-10-09.10(FE4 요청): 표본 수 Fact — v = 그 생활권 집계에 쓴 실거래 건수(unit count), label = 그 실거래 행들의 가장 약한 라벨, prov = 중앙값 실거래 출처, reason = 집계 식 */
+                n_trades: components["schemas"]["Fact"];
                 trade_window: string | null;
                 /** @description 기준 단지·대체 여부 설명 */
                 basis: string | null;
@@ -3892,6 +3893,11 @@ export interface components {
             change_vs_first_pct?: components["schemas"]["Fact"] | null;
             /** @description 공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null */
             discount?: components["schemas"]["Fact"] | null;
+            /**
+             * @description 계약 2026-10-09.10(R3 5차 minor): discount 를 low·high·mid 에서 **실제로 뺐는가**(서버 판정 — 라벨 확인됨 + 0 < 할인 < 대표층가·최고가). 화면의 '구매가에서 뺌' 문구는 이 값만 본다(0·음수·과대·추정 할인은 false). 할인이 없으면 false
+             * @default false
+             */
+            discount_applied?: boolean;
         };
         /**
          * Provenance
@@ -6256,7 +6262,7 @@ export interface components {
         };
         /**
          * Snapshot
-         * @description 기준일 스냅샷 리비전 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8, DECISIONS D11-1). (region_id, asof_date, revision) 유일(계약 2026-10-09.8). 발행(published) 리비전은 불변 — 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집)은 같은 기준일의 새 리비전(revision+1, revision_of = 바탕 리비전)에 쓰고 완성된 뒤 한 번에 published 가 된다. 화면 기본 = 최신 published 리비전, ?snapshot= 은 리비전 스냅샷 id. 리비전 사이 diff(보고서 diff 표)가 RA §10 '판정기 버전 변경 → 이전 run 과 delta 표'와 '지역 추가 장'을 겸한다.
+         * @description 기준일 스냅샷 리비전 = 하루치 수집·판정·점수의 불변 묶음 (RA §3, ADR-8, DECISIONS D11-1). (region_id, asof_date, revision) 유일(계약 2026-10-09.8). 발행(published) 리비전은 불변 — 발행 후 재판정(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집)은 같은 기준일의 새 리비전(revision+1, revision_of = 바탕 리비전)에 쓰고 완성된 뒤 한 번에 published 가 된다. 화면 기본 = 최신 published 리비전, ?snapshot= 은 리비전 스냅샷 id. **계약 2026-10-09.10(D13-1)**: 발행 리비전의 화면 응답·CSV·보고서는 발행 순간 저장한 읽기 모델(snapshot_view)을 그대로 돌려준다 — 이후 사실·강등·사람 확인·생활권·호재·지역 이름이 바뀌어도 그 리비전 응답 바이트는 같다. 발행 전(building·ready) 리비전만 지금 사실로 계산한다. 리비전 사이 diff(보고서 diff 표)가 RA §10 '판정기 버전 변경 → 이전 run 과 delta 표'와 '지역 추가 장'을 겸한다.
          *     status: building(수집·판정 중) → ready(점수까지 계산됨) → published(claim contradicted 0 검사 통과). contradicted_claims > 0 이면 published가 될 수 없고 보고서 생성 버튼은 비활성(G8).
          *     degraded=true: 이 스냅샷을 만드는 동안 판정기가 없었다(JudgeUnavailable) — 수집·정규화만 있고 점수는 미계산(T18). 화면 G1·G7 배너.
          * @example {
@@ -6284,7 +6290,7 @@ export interface components {
              * @default 1
              */
             revision?: number;
-            /** @description 바탕 리비전(이 리비전을 만든 발행 스냅샷 id). 리비전 1 은 null */
+            /** @description 비교 기준 리비전 id — 같은 기준일 새 리비전이면 그 바탕 발행 리비전, 비교 기준이 없는 미발행 리비전 1(지역 확장·판정기 버전 변경 — 계약 .9 S9)이면 직전 발행 스냅샷. 그 밖의 리비전 1 은 null. 보고서 기본 비교(§12·delta 표)가 이 값을 쓴다 */
             revision_of?: number | null;
             /** @description 리비전을 만든 사유(사람 확인·생활권 편집·판정기 버전 변경·시나리오 실행·지역 확장·같은 기준일 재수집 등). 리비전 1 은 null */
             revision_reason?: string | null;
@@ -7220,8 +7226,10 @@ export interface operations {
     getMarket: {
         parameters: {
             query?: {
-                /** @description 생활권 필터(region.living_areas[].id) */
+                /** @description 생활권 필터(region.living_areas[].id). 발행 리비전은 그 리비전에 있던 생활권만(없으면 404 — 계약 .10 D13-1) */
                 living_area?: string;
+                /** @description 내장 code(base|A|B|C|D) 또는 사용자 시나리오 id. 생략 시 base. */
+                scenario?: components["parameters"]["Scenario"];
             };
             header?: never;
             path: {
@@ -7231,7 +7239,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 지역 시장 */
+            /** @description 지역 시장(입주 마커의 판정 범위 = 그 시나리오 점수 실행 저장값 — 계약 .10) */
             200: {
                 headers: {
                     [name: string]: unknown;

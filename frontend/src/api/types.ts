@@ -203,11 +203,6 @@ export type PaymentTerms = S['PaymentTerms'];
 /** 호환 별칭 */
 export type PaymentTerm = PaymentTerms;
 export type PriceRange = S['PriceRange'];
-/**
- * 계약 .10 초안(R3e CORE3): `PriceRange.discount_applied` — 서버가 구매가(low·high·mid)에서 할인을 실제로 뺐는가
- * (확인됨이어도 0·음수·최고가 이상이면 빼지 않는다). 생성 타입에 들어오면 이 교차는 그대로 같은 모양이다.
- */
-export type PriceRangeWithApplied = PriceRange & { discount_applied?: boolean | null };
 export type ScheduleItem = S['ScheduleItem'];
 export type Complex = S['Complex'];
 /** 호환 별칭 — ComplexDetail.header는 Complex 전체다 */
