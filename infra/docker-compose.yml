@@ -1,7 +1,7 @@
 # subscription-analyzer — 단일 호스트 배포 (RA §10, ADR-10)
 #   cp infra/.env.example infra/.env   # 값 채우기 (커밋 금지)
 #   docker compose -f infra/docker-compose.yml up -d --build
-# 서비스 4개(db·api·worker·web), 볼륨 2개(pgdata·rawdata).
+# 서비스 4개(db·api·worker·web), 볼륨 3개(pgdata·rawdata·backups — 백업은 원문과 다른 볼륨, D12-6).
 
 name: subscription-analyzer
 
@@ -68,9 +68,13 @@ services:
       dockerfile: infra/Dockerfile.worker
     restart: unless-stopped
     env_file: *env-file
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      # 매일 03:00 backup 잡(pg_dump + 원문 증분)의 위치 — 원문 볼륨과 분리(D12-6, R3 4차 M-9)
+      BACKUP_DIR: /backups
     volumes:
       - rawdata:/data
+      - backups:/backups
     depends_on:
       db:
         condition: service_healthy
@@ -96,3 +100,4 @@ networks:
 volumes:
   pgdata:
   rawdata:
+  backups:

@@ -44,14 +44,20 @@ def _stats(rep: GeneratedReport, req: ReportRequest) -> dict[str, Any]:
 
 
 def run_report_job(
-    payload: Mapping[str, Any], *, session: Session | None = None, out_dir: Path | None = None
+    payload: Mapping[str, Any],
+    *,
+    session: Session | None = None,
+    out_dir: Path | None = None,
+    job_id: int | None = None,
 ) -> dict[str, Any]:
-    """payload 를 검증하고 보고서 파일을 ``REPORT_DIR``(또는 out_dir)에 만든다. 반환 = job_run.stats."""
+    """payload 를 검증하고 보고서 파일을 ``REPORT_DIR``(또는 out_dir)에 만든다. 반환 = job_run.stats.
+    ``job_id`` 는 파일 이름에 들어간다(같은 기준일·리비전 보고서끼리 덮어쓰지 않게 — R3 4차 C-4)."""
     req = ReportRequest.model_validate(dict(payload))
     kwargs: dict[str, Any] = {
         "compare_snapshot_id": req.compare_snapshot_id,
         "scenario_id": req.scenario_id,
         "out_dir": out_dir,
+        "job_id": job_id,
     }
     if session is not None:
         rep = generate(session, req.snapshot_id, req.format, **kwargs)
@@ -65,4 +71,4 @@ def handle(job: JobRun, session: Session) -> dict[str, Any]:
     """job_run 행 하나 처리(상태 전이는 runner 몫). ``job.job_name == 'report'`` 이어야 한다."""
     if job.job_name != JOB_NAME:
         raise ValueError(f"report 잡이 아님: {job.job_name}")
-    return run_report_job(job.payload or {}, session=session)
+    return run_report_job(job.payload or {}, session=session, job_id=job.id)

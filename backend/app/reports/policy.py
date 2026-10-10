@@ -56,9 +56,14 @@ def judge_scope(
     )
 
 
-def current_price(types: Sequence[TypeRowLike], payments: Sequence[PaymentTermsLike]) -> PriceView:
-    """현재 구매가(§6-1) = ``analysis.price_view.current_price``."""
-    return price_view.current_price(types, payments)
+def current_price(
+    types: Sequence[TypeRowLike],
+    payments: Sequence[PaymentTermsLike],
+    *,
+    discount_label: price_view.DiscountLabel | None,
+) -> PriceView:
+    """현재 구매가(§6-1) = ``analysis.price_view.current_price``(할인은 출처 라벨 확인됨만, D12-3)."""
+    return price_view.current_price(types, payments, discount_label=discount_label)
 
 
 def current_terms[P: PaymentTermsLike](payments: Iterable[P]) -> P | None:
@@ -82,7 +87,7 @@ def complex_scope(
     return judge_scope(
         inclusion_class=cx.inclusion_class,
         inclusion_decision=cx.inclusion_decision,
-        has_price=current_price(types, payments).known,
+        has_price=current_price(types, payments, discount_label=None).known,  # 할인은 known 과 무관
         intake_status=shown.status if shown is not None else None,
     )
 

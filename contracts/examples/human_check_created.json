@@ -1,5 +1,5 @@
 {
-  "summary": "intake 행 + change_event + 재판정 제안(T3)",
+  "summary": "intake 행 + change_event + 재판정 자동 등록(T3, 계약 .9 D12-5)",
   "value": {
     "id": 3,
     "complex_id": 4,
@@ -28,13 +28,17 @@
     "suggested_job": {
       "job_name": "rejudge",
       "payload": {
-        "snapshot_id": 12,
+        "snapshot_id": 13,
         "scenario_id": null,
         "complex_ids": [
           4
         ],
-        "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능"
+        "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능",
+        "change_event_ids": [
+          3310
+        ]
       }
-    }
+    },
+    "rejudge_job_id": 912
   }
 }

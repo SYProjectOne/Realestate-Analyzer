@@ -10,12 +10,13 @@ from __future__ import annotations
 import calendar
 import json
 import re
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
 from app.core.paths import resolve_raw_path
@@ -81,9 +82,11 @@ def normalize_site_url(text: str | None) -> str | None:
     except ValueError:
         return None
     scheme = parts.scheme.lower()
+    if not host:
+        return None
+    host = canonical_host(host)
     if scheme not in ("http", "https") or not host or "." not in host.strip("."):
         return None
-    host = host.lower().rstrip(".")
     if any(host == h or host.endswith("." + h) for h in _NOT_SITE_HOSTS):
         return None
     if not _public_host(host):
@@ -94,9 +97,13 @@ def normalize_site_url(text: str | None) -> str | None:
 
 # 공급 구분 괄호 안의 단지 차수·단지·블록 표기(D11-4·M-7): '(2차 잔여세대)'의 '2차'. 공급 구분 낱말 바로 뒤의 'N차'
 # ('임의공급 4차'·'무순위 2차' = 그 공급의 회차)와 'N회차'는 차수가 아니다
-_PHASE_IN_PAREN_RE = re.compile(r"(?<![0-9])(\d+\s*(?:차|단지)|[A-Za-z]{1,3}\d+(?:-\d+)?\s*(?:블록|BL))")
+_PHASE_IN_PAREN_RE = re.compile(
+    r"(?<![0-9A-Za-z])(\d+\s*(?:차|단지)|[A-Za-z]{0,3}\d+(?:-\d+)?\s*(?:블록|BL)|[\u2160-\u216b]+(?:\s*단지)?)"
+)
+"""괄호 안의 단지 차수·단지·블록('2차'·'1단지'·'AA13-1블록'·'1블록'·'3BL')과 로마 숫자 단지('Ⅱ') — R3 4차 minor:
+'(1블록 잔여세대)'·'(3BL 무순위)'·'(Ⅱ 잔여세대)' 의 단지 표기가 지워졌다."""
 _SUPPLY_WORD_BEFORE_RE = re.compile(
-    r"(?:회|임의공급|임의|무순위|잔여세대|잔여|선착순|재공급|조합원|취소|자격상실|사후)\s*$"
+    r"(?:회|임의공급|임의|무순위|선착순|재공급|조합원|취소|자격상실|사후)\s*$"
 )
 
 
@@ -111,7 +118,20 @@ def _keep_phase(match: re.Match[str]) -> str:
     return f"({' '.join(kept)})" if kept else ""
 
 
-_INTERNAL_SUFFIXES = (".local", ".internal", ".localdomain", ".lan", ".home", ".corp", ".intranet")
+_INTERNAL_SUFFIXES = (
+    ".local", ".internal", ".localdomain", ".lan", ".home", ".corp", ".intranet", ".localhost",
+)  # fmt: skip
+_DOT_VARIANTS = str.maketrans({"\u3002": ".", "\uff0e": ".", "\uff61": "."})
+"""IDNA 가 점으로 읽는 글자(이데오그래픽 마침표 '。'·전각 '．'·반각 '｡')."""
+
+
+def canonical_host(host: str) -> str:
+    """브라우저가 실제로 찾아갈 호스트 모양(R3 4차 minor — 표기 우회 차단): 퍼센트 인코딩('%2e')을 풀고, 점 변형('。')을
+    점으로, NFKC(전각 숫자 '１'·원문자 '①' → '1'), 소문자, 끝 점 제거. 검사와 화면 링크가 같은 문자열을 쓴다."""
+    h = unquote(host).translate(_DOT_VARIANTS)
+    return unicodedata.normalize("NFKC", h).lower().rstrip(".")
+
+
 _INTERNAL_HOSTS = frozenset({"localhost", "metadata", "metadata.google.internal", "instance-data"})
 _NUMERIC_HOST_RE = re.compile(r"^(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+))*$")
 
@@ -145,19 +165,25 @@ _DATE_RE = re.compile(r"(?<!\d)(\d{2}|\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d
 
 
 def read_raw_text(raw: RawDocument, *, raw_dir: Path | None = None) -> str | None:
-    """raw의 추출 텍스트(text_path) 또는 원문(path)을 UTF-8로 읽는다. 실패 행·파일 없음이면 None."""
+    """raw의 추출 텍스트(text_path) 또는 원문(path)을 UTF-8로 읽는다. 원본 파일이 없으면 월별 압축
+    (``core.raw_archive`` — runbook §6)에서 읽는다(R3 4차 minor: 압축된 공고문을 못 읽어 아카이브 분양가가 조용히
+    폴백했다). 실패 행·어디에도 없으면 None."""
+    from app.core.raw_archive import archived_member
+    from app.core.settings import get_settings
+
     for rel in (raw.text_path, raw.path):
         if not rel:
             continue
         p = resolve_raw_path(rel, raw_dir=raw_dir)
-        if p.exists():
-            data = p.read_bytes()
-            for enc in ("utf-8", "cp949"):
-                try:
-                    return data.decode(enc)
-                except UnicodeDecodeError:
-                    continue
-            return data.decode("utf-8", errors="replace")
+        data = p.read_bytes() if p.exists() else archived_member(rel, raw_dir or get_settings().raw_dir)
+        if data is None:
+            continue
+        for enc in ("utf-8", "cp949"):
+            try:
+                return data.decode(enc)
+            except UnicodeDecodeError:
+                continue
+        return data.decode("utf-8", errors="replace")
     return None
 
 

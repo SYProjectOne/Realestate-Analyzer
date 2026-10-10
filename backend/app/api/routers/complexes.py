@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-import functools
-import re
-import tarfile
 from collections import Counter
-from collections.abc import Iterator, Sequence
-from pathlib import Path as FsPath
-from pathlib import PurePosixPath
-from typing import IO, Annotated, Any
+from collections.abc import Sequence
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
@@ -43,6 +38,7 @@ from app.api.views import (
     type_view,
 )
 from app.core.paths import resolve_raw_path
+from app.core.raw_archive import archived_member, archived_stream  # noqa: F401  (재수출)
 from app.core.settings import get_settings
 from app.models import (
     Catalyst,
@@ -62,6 +58,7 @@ from app.models import (
     ScoreTotal,
     Snapshot,
 )
+from app.snapshot_state import region_for
 
 router = APIRouter(tags=["complexes"])
 
@@ -281,6 +278,8 @@ def get_complex_detail(
     cx = get_complex(session, id)
     if snapshot is not None:
         snap = get_snapshot(session, snapshot)
+        if snap.region_id != cx.region_id:  # R3 4차 minor: 다른 지역 스냅샷으로 단지를 읽지 않는다
+            raise not_found(f"complex {id} in snapshot {snapshot}")
     else:
         found = default_snapshot(session, cx.region_id)
         if found is None:
@@ -288,7 +287,7 @@ def get_complex_detail(
         snap = found
     sc = resolve_scenario(session, scenario)
     region = session.get(Region, cx.region_id)
-    names = area_names(region)
+    names = area_names(region_for(session, region, snap.id))
     b = load_bundles(session, [cx], snap.id, scenario_id=sc.id)[cx.id]
     comps = list(
         session.scalars(select(Competition).where(Competition.complex_id == cx.id).order_by(Competition.id))
@@ -313,11 +312,16 @@ def get_complex_detail(
     pays = sorted(b.payments, key=lambda p: (p.effective_from, p.id))
     cur_pay = current_payment(b.payments)
     judgments = complex_judgments(session, cx, snap.id, b.ladders)
-    links = list(session.scalars(select(CatalystLink).where(CatalystLink.complex_id == cx.id)))
-    cats = {
-        c.id: c
-        for c in session.scalars(select(Catalyst).where(Catalyst.id.in_([lk.catalyst_id for lk in links])))
-    }
+    # D12-4·M-7: 그 리비전 시점의 호재·단계·연결(발행 리비전은 얼린 값), '호재 아님'은 빼고
+    from app.snapshot_state import catalysts_for
+
+    cats: dict[int, Any] = {}
+    links: list[Any] = []
+    for cat, cat_links in catalysts_for(session, cx.region_id, snap.id):
+        for lk in cat_links:
+            if lk.complex_id == cx.id:
+                cats[cat.id] = cat
+                links.append(lk)
     cat_days = judgment_days(session, (c.judgment_seq for c in cats.values()))
     prov.load(session, "catalyst", cats)  # 예정월 출처(사람 위치 확인 — D11-5)
     has_score = ctx.run is not None and cx.id in ctx.totals
@@ -460,6 +464,14 @@ def _field_prov(session: Session, prov_id: str, fp_id: int) -> dict[str, Any]:
         conflicts=conflicts,
         compare_judgment_seq=fp.compare_judgment_seq,
     )
+    if fp.entity_id is not None:
+        # R3 4차 minor: 출처 서랍에도 강등(검증 모순)을 보인다 — 화면 Fact 와 같은 '확인 불가(검증 모순)'
+        # (원문 발췌·값은 근거로 그대로 둔다). 오버레이는 읽기 전용(D11-3·D12-2)
+        from app.facts_view import DEMOTION_LABEL, DEMOTION_REASON, load_overlay
+
+        ov = load_overlay(session, entity=fp.entity, ids=[fp.entity_id])
+        if fp.chosen and ov.is_demoted(fp.entity, fp.entity_id, fp.field):
+            out.update(label=DEMOTION_LABEL, reason=f"{DEMOTION_REASON} — 모순 값(원문 그대로 표시)")
     return out
 
 
@@ -666,92 +678,6 @@ def _media_type(content_type: str | None, path: str) -> str:
         ):
             return media
     return "text/plain; charset=utf-8"
-
-
-_MONTH_ARCHIVE = re.compile(r"^\d{4}-\d{2}\.tar\.gz$")
-
-
-_CHUNK = 64 * 1024
-
-
-def _open_member(archive: FsPath, member: str) -> tuple[tarfile.TarFile, IO[bytes]] | None:
-    """압축을 스트림 모드("r|gz")로 열어 구성원을 찾는다 — 압축 전체를 풀거나 목록 전체를 먼저 읽지 않는다.
-
-    찾으면 (열린 tar, 구성원 파일)을 돌려준다 — 닫는 것은 ``_chunks`` 가 다 흘린 뒤에."""
-    tar = tarfile.open(archive, "r|gz")  # noqa: SIM115 — 응답 스트림이 끝날 때 _chunks 가 닫는다
-    try:
-        for info in tar:
-            if info.name != member or not info.isfile():
-                continue
-            fh = tar.extractfile(info)
-            if fh is not None:
-                return tar, fh
-    except BaseException:
-        tar.close()
-        raise
-    tar.close()
-    return None
-
-
-@functools.lru_cache(maxsize=64)
-def _members(archive: str, mtime_ns: int, size: int) -> frozenset[str]:
-    """압축 구성원 이름 목록 — (경로, 수정 시각, 크기)마다 한 번만 훑는다(R3 3차 minor 17: 원본이 없을 때
-    요청마다 압축 전체를 훑던 CPU 부담 — 공유 토큰으로 반복 요청 가능). 압축이 바뀌면 다시 훑는다."""
-    del mtime_ns, size  # 캐시 키
-    names: set[str] = set()
-    with tarfile.open(archive, "r|gz") as tar:
-        for info in tar:
-            if info.isfile():
-                names.add(info.name)
-    return frozenset(names)
-
-
-def _has_member(archive: FsPath, member: str) -> bool:
-    st = archive.stat()
-    return member in _members(str(archive), st.st_mtime_ns, st.st_size)
-
-
-def _chunks(tar: tarfile.TarFile, fh: IO[bytes]) -> Iterator[bytes]:
-    try:
-        while chunk := fh.read(_CHUNK):
-            yield chunk
-    finally:
-        tar.close()
-
-
-def archived_stream(rel: str, raw_dir: FsPath) -> Iterator[bytes] | None:
-    """월별 압축(runbook §6 · ``infra/raw_archive.sh``) 안의 원문을 64KiB 조각으로 흘린다(재리뷰 F3).
-
-    압축 = ``<RAW_DIR>/<source>/<yyyy-mm>.tar.gz``,
-    구성원 이름 = RAW_DIR 기준 상대 경로(DB 의 ``path`` 그대로).
-    같은 달 압축을 먼저, 없으면 그 소스의 다른 압축(*.tar.gz)을 본다. 없으면 None.
-    요청마다 구성원 전체를 메모리에 올리지 않는다(전에는 ``getmember`` 로 목록 전체 + ``read()`` 전체)."""
-    parts = PurePosixPath(rel.replace("\\", "/")).parts
-    if len(parts) < 2:
-        return None
-    src_dir = raw_dir / parts[0]
-    if not src_dir.is_dir():
-        return None
-    month = parts[1][:7] if len(parts) >= 3 else None
-    archives = sorted(src_dir.glob("*.tar.gz"))
-    archives.sort(key=lambda a: (a.name != f"{month}.tar.gz", not _MONTH_ARCHIVE.match(a.name), a.name))
-    member = PurePosixPath(*parts).as_posix()
-    for archive in archives:
-        try:
-            if not _has_member(archive, member):
-                continue  # 목록(캐시)에 없으면 압축을 풀지 않는다
-            opened = _open_member(archive, member)
-        except (OSError, tarfile.TarError, EOFError):
-            continue
-        if opened is not None:
-            return _chunks(*opened)
-    return None
-
-
-def archived_member(rel: str, raw_dir: FsPath) -> bytes | None:
-    """``archived_stream`` 을 모두 읽은 바이트(작은 원문·테스트용)."""
-    stream = archived_stream(rel, raw_dir)
-    return None if stream is None else b"".join(stream)
 
 
 @router.get("/raw/{raw_document_id}")

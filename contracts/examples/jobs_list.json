@@ -65,8 +65,8 @@
       "finished_at": "2026-10-07T22:01:12+09:00",
       "status": "done",
       "stats": {
-        "path": "reports/2026-10-07/report_2026-10-07.pdf",
-        "filename": "report_2026-10-07.pdf",
+        "path": "reports/2026-10-07/report_r1_2026-10-07-r1_j903.pdf",
+        "filename": "report_r1_2026-10-07-r1_j903.pdf",
         "size_bytes": 1802240,
         "sha256": "5c2d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
         "content_type": "application/pdf"

@@ -11,6 +11,7 @@ from collections import defaultdict
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from statistics import median
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -23,7 +24,8 @@ from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, fact, weakest
 from app.api.routers.complexes import catalyst_view
 from app.api.routers.snapshots import partial_missing, unsold_points
 from app.api.views import area_names, judge_scope, judgment_days, load_bundles
-from app.models import Catalyst, CatalystLink, Complex, Region, RtmsTrade, Supply
+from app.models import Complex, Region, RtmsTrade, Supply
+from app.snapshot_state import region_for
 
 router = APIRouter(tags=["market"])
 
@@ -45,7 +47,8 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
     region = session.get(Region, snap.region_id)
     if region is None:
         raise not_found(f"region {snap.region_id}")
-    names = area_names(region)
+    region_f = region_for(session, region, snap.id)  # D12-4: 발행 리비전은 그 시점 생활권
+    names = area_names(region_f)
     want = {living_area} if living_area else None
     fm = FactMaker(settings_of(request), ProvIndex())
     checked = snap.asof_date
@@ -147,17 +150,16 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
             }
         )
 
-    complexes = [
-        c
-        for c in session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id))
-        if want is None or c.living_area in want
-    ]
-    bundles = load_bundles(session, complexes, snap.id)
+    every = list(session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id)))
+    bundles = load_bundles(session, every, snap.id)
+    # 그 리비전 시점 생활권(얼린 값)·강등 오버레이가 적용된 단지 행(묶음의 cx)
+    # — 원본 행이 아니다(R3 4차 minor)
+    complexes = [bundles[c.id].cx for c in every if want is None or bundles[c.id].cx.living_area in want]
     fm.prov.load(session, "complex", (c.id for c in complexes))
     markers = []
     for c in complexes:
         if c.move_in_ym is None or judge_scope(bundles[c.id]) != "판정 대상":
-            continue
+            continue  # 강등된 입주월(검증 모순)은 마커를 그리지 않는다
         markers.append(
             {
                 "complex_id": c.id,
@@ -170,19 +172,20 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
     scopes: set[str] | None = None
     if want is not None:
         scopes = set()
-        for a in region.living_areas or []:
+        for a in region_f.living_areas or []:
             if a["id"] in want:
                 scopes |= {str(code)[:5] for code in a.get("legal_dong_codes") or []}
     unsold = unsold_points(session, region.id, fm, scopes=scopes, per_scope=True)
 
-    cats = list(
-        session.scalars(select(Catalyst).where(Catalyst.region_id == region.id).order_by(Catalyst.id))
-    )
+    # D12-4·M-7: 그 리비전 시점의 호재 단계·연결(발행 리비전은 얼린 값).
+    # '호재 아님'은 보드에 넣지 않는다(D11-2)
+    from app.snapshot_state import catalysts_for
+
+    cats: list[Any] = []
     links: dict[int, list[int]] = defaultdict(list)
-    for lk in session.scalars(
-        select(CatalystLink).where(CatalystLink.catalyst_id.in_([c.id for c in cats] or [-1]))
-    ):
-        links[lk.catalyst_id].append(lk.complex_id)
+    for cat, cat_links in catalysts_for(session, region.id, snap.id):
+        cats.append(cat)
+        links[cat.id].extend(lk.complex_id for lk in cat_links)
     days = judgment_days(session, (c.judgment_seq for c in cats))
     fm.prov.load(session, "catalyst", (c.id for c in cats))
     cat_views = [
@@ -227,7 +230,7 @@ def get_market(session: DB, request: Request, sid: int, living_area: str | None 
     fm.prov.load(session, "rtms_trade", (t.id for t in trades))
     by_area: dict[str, list[RtmsTrade]] = defaultdict(list)
     for t in trades:
-        la = _trade_area(t, region)
+        la = _trade_area(t, region_f)
         if la and (want is None or la in want):
             by_area[la].append(t)
     prices = []

@@ -22,9 +22,11 @@ __all__ = [
     "contradicted_count",
     "get_or_create",
     "latest_for_region",
+    "mark_compare_base",
     "previous",
     "publish",
     "region_dto",
+    "republish",
     "snapshot_dto",
 ]
 
@@ -125,6 +127,45 @@ def previous(session: Session, snap: Snapshot, *, published_only: bool = False) 
     return max(cands, key=_order_key, default=None)
 
 
+def mark_compare_base(session: Session, snap: Snapshot, reason: str) -> Snapshot | None:
+    """판정 전(미발행) 스냅샷에 비교 기준이 없으면 직전 발행 스냅샷을 ``revision_of`` 로 단다(R3 4차 M-5·M-6).
+
+    지역 확장·판정기 버전 변경이 **미발행 리비전 1**(새 리비전을 만들 필요가 없는 경우)에 걸려도 보고서 기본 비교
+    (``reports.export.default_compare`` — revision_of)가 생겨 §12 '지역 추가' 장·delta 표가 빠지지 않는다. 이미
+    비교 기준이 있거나 발행됐으면 그대로. 반환 = 비교 기준(없으면 None)."""
+    if snap.status == "published":
+        return None
+    if snap.revision_of is None:
+        prev = previous(session, snap, published_only=True)
+        if prev is None:
+            return None
+        snap.revision_of = prev.id
+    if not snap.revision_reason:
+        snap.revision_reason = reason[:200]
+    session.flush()
+    return session.get(Snapshot, snap.revision_of) if snap.revision_of is not None else None
+
+
+def republish(session: Session, region_id: int, *, reason: str, created_at: str) -> Snapshot | None:
+    """판정·점수에 쓰지 않는 리비전 값(호재 연결 — D12-4)만 바뀌었을 때: 판정기 호출·점수 재계산 없이 가장 새 발행
+    리비전의 새 리비전을 만들어 파생 행을 그대로 복사하고 바로 발행한다(발행 순간 새 값이 얼려진다).
+
+    R3 4차 minor: 예전에는 연결이 바뀔 때마다 rejudge 잡(판정 파이프라인)을 등록했다. 판정 중인(미발행) 리비전이 있으면
+    그 리비전이 발행될 때 새 값으로 얼려지므로 아무것도 하지 않는다(None)."""
+    newest = latest_for_region(session, region_id)
+    if newest is None or newest.status != "published":
+        return None
+    from app.scheduler.persist import carry_forward
+
+    rev = new_revision(session, newest, reason=reason, created_at=created_at)
+    if rev.id == newest.id:  # pragma: no cover - new_revision 은 발행 리비전이면 늘 새 행
+        return None
+    carry_forward(session, newest.id, rev.id, created_at=created_at)
+    rev.status = "ready"
+    publish(session, rev.id, now=created_at)
+    return rev
+
+
 def latest_for_region(session: Session, region_id: int) -> Snapshot | None:
     stmt = (
         select(Snapshot)
@@ -155,6 +196,9 @@ def publish(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int]
         snap.status = "published"
         snap.published_at = now
         session.flush()
+        from app.snapshot_state import freeze
+
+        freeze(session, snapshot_id)  # D12-4: 리비전 시점 값(분류·생활권·호재 단계·연결)을 얼린다
     return True, 0
 
 

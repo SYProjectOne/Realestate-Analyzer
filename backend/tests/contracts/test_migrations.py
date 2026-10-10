@@ -30,7 +30,7 @@ RA_TABLES = {
     "score_total", "ladder", "decision", "human_check", "checklist_item", "change_event", "job_run",
 }  # fmt: skip
 D2_TABLES = {"legal_dong", "admin_dong", "admin_legal_map", "household_stat"}
-R3_TABLES = {"share_link", "fact_demotion"}  # 계약 2026-10-09.4 · 2026-10-09.6
+R3_TABLES = {"share_link", "fact_demotion", "snapshot_state"}  # 계약 2026-10-09.4 · .6 · .9(D12-4)
 RA_WEIGHTS = {
     "base": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10},
     "A": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "move_in": 0.10},
@@ -270,11 +270,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0008() -> None:
+def test_migration_head_is_0009() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0008"]
+    assert script.get_heads() == ["0009"]
+    assert script.get_revision("0009").down_revision == "0008"
     assert script.get_revision("0008").down_revision == "0007"
     assert script.get_revision("0007").down_revision == "0006"
     assert script.get_revision("0006").down_revision == "0005"
@@ -638,6 +639,95 @@ def test_sqlite_0007_0008_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         assert autogen_diff(engine) == []
     finally:
         engine.dispose()
+
+
+def check_0008_0009_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """0009(계약 2026-10-09.9, D12-4): snapshot_state — 0008 에서 발행 스냅샷을 넣고 head → 얼린 값 행(유일·entity CHECK)
+    → downgrade 0008(테이블 삭제, 스냅샷 그대로) → head. 0008 downgrade 는 끝난 backup·region.expand 잡 이력이 있으면
+    거부(R3 4차 minor — 이력 손실 방지), 대기 잡만 지운다."""
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = alembic_config(url)
+    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "0008")
+    engine = sa.create_engine(url)
+    try:
+        assert "snapshot_state" not in sa.inspect(engine).get_table_names()
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO region (id, name, query_text, selections, sido_codes, sigungu_codes, legal_dong_codes, "
+                    "living_areas, age_premium_coef, applyhome_query, status, created_at) VALUES "
+                    "(903, 'r', 'q', '[]', '[]', '[]', '[]', '[]', '{}', '{}', 'ready', '2026-10-10')"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot (id, region_id, asof_date, status, degraded, created_at, revision) VALUES "
+                    "(9101, 903, '2026-10-08', 'published', false, '2026-10-08', 1)"
+                )
+            )
+        command.upgrade(cfg, "head")
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot_state (snapshot_id, entity, entity_id, data) VALUES "
+                    "(9101, 'complex', 1, '{\"inclusion_class\": \"포함\"}')"
+                )
+            )
+        with (
+            pytest.raises(sa.exc.IntegrityError),
+            engine.begin() as conn,
+        ):  # 같은 (스냅샷, entity, id) 중복 거부
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot_state (snapshot_id, entity, entity_id, data) VALUES (9101, 'complex', 1, '{}')"
+                )
+            )
+        with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:  # entity CHECK
+            conn.execute(
+                sa.text(
+                    "INSERT INTO snapshot_state (snapshot_id, entity, entity_id, data) VALUES (9101, 'nope', 1, '{}')"
+                )
+            )
+        command.downgrade(cfg, "0008")
+        with engine.connect() as conn:
+            assert conn.execute(sa.text("SELECT COUNT(*) FROM snapshot WHERE id = 9101")).scalar_one() == 1
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO job_run (job_name, kind, payload, scheduled_at, status, stats) VALUES "
+                    "('backup', 'scheduled', '{}', '2026-10-10T03:00:00+09:00', 'done', '{}')"
+                )
+            )
+        with pytest.raises(RuntimeError, match="잡 이력"):
+            command.downgrade(cfg, "0007")
+        command.upgrade(cfg, "head")
+        with engine.begin() as conn:
+            conn.execute(sa.text("DELETE FROM job_run"))
+            conn.execute(sa.text("DELETE FROM snapshot_state"))
+            conn.execute(sa.text("DELETE FROM snapshot WHERE id = 9101"))
+            conn.execute(sa.text("DELETE FROM region WHERE id = 903"))
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_0008_0009_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    check_0008_0009_roundtrip(sqlite_url(tmp_path), monkeypatch)
+    engine = sa.create_engine(sqlite_url(tmp_path))
+    try:
+        assert autogen_diff(engine) == []
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.postgres
+def test_postgres_0008_0009_roundtrip(pg_engine: Engine, postgres_url: str) -> None:
+    mp = pytest.MonkeyPatch()
+    try:
+        check_0008_0009_roundtrip(postgres_url, mp)
+    finally:
+        mp.undo()
+    assert autogen_diff(pg_engine) == []
 
 
 @pytest.mark.postgres

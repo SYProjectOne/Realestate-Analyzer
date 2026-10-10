@@ -225,12 +225,23 @@ class AssignResult:
 
 
 def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
-    """단지 주소 → legal_dong_code·living_area. 지역 밖이거나 못 맞추면 inclusion_class '범위 경계'(미분류일
-    때만)."""
+    """단지 주소 → legal_dong_code·living_area. 못 맞추면 inclusion_class '범위 경계'(미분류일 때만).
+
+    법정동이 정해졌는데 지역 법정동 밖이면(지역 선택에서 그 법정동·시군구를 뺐다 — R3 4차 M-4) 분류와 무관하게
+    '범위 경계'(판정 범위 '제외') — 이전 분류('포함')로 계속 판정 대상이 되지 않는다. 다시 지역에 들어오면
+    ``scheduler.handlers.handle_region_expand`` 가 '미분류'로 되돌려 다음 P4 classify 가 다시 분류한다."""
     region = session.get(Region, cx.region_id)
-    if region is None or not cx.address:
+    if region is None:
         return AssignResult(cx.id, cx.legal_dong_code, cx.living_area, False)
     scope = set(region.legal_dong_codes or [])
+    if not cx.address:  # 주소 없이 법정동만 아는 단지(시드·옛 행): 그 법정동이 지역 밖이 됐으면 범위 경계
+        inside = cx.legal_dong_code is not None and cx.legal_dong_code in scope
+        if cx.legal_dong_code is not None and not inside:
+            cx.living_area = None
+            cx.inclusion_class = "범위 경계"
+        elif inside:
+            cx.living_area = living_area_of(cx.legal_dong_code, region.living_areas or []) or cx.living_area
+        return AssignResult(cx.id, cx.legal_dong_code, cx.living_area, inside)
     names = sorted(_tokens(cx.address))
     rows = [
         _legal_row(r)
@@ -239,10 +250,13 @@ def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
         )
     ]
     code = assign_legal_dong(cx.address, rows, scope=scope)
+    if code is None and cx.legal_dong_code is not None and not rows:
+        # 참조표에 그 읍면동이 없다(매칭 불가) — 이미 아는 법정동으로 지역 안팎만 다시 본다
+        code = cx.legal_dong_code
     in_region = code is not None and code in scope
     cx.legal_dong_code = code
     cx.living_area = living_area_of(code, region.living_areas or []) if in_region else None
-    if not in_region and cx.inclusion_class in (None, "미분류"):
+    if not in_region and (code is not None or cx.inclusion_class in (None, "미분류")):
         cx.inclusion_class = "범위 경계"
     return AssignResult(cx.id, code, cx.living_area, in_region)
 

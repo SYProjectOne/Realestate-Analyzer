@@ -56,7 +56,7 @@ def record_version_change(
 ) -> ChangeEvent | None:
     """before ≠ after 면 이벤트 + 전체 재판정 등록. commit 은 호출자."""
     from app.scheduler.rejudge import enqueue_rejudge
-    from app.scheduler.snapshots import latest_for_region
+    from app.scheduler.snapshots import latest_for_region, mark_compare_base
 
     if not is_version_change(before, after):
         return None
@@ -88,6 +88,8 @@ def record_version_change(
     for region_id in list(session.scalars(select(Region.id).order_by(Region.id))):
         snap = latest_for_region(session, region_id)
         if snap is not None:
+            # M-6: 최신이 미발행 리비전 1 이면 새 리비전이 생기지 않는다 — 직전 발행 스냅샷을 비교 기준으로 달아 delta 표
+            mark_compare_base(session, snap, f"{REASON}: {after}")
             enqueue_rejudge(
                 session, snap.id, None, f"{REASON}: {after}", change_event_ids=[ev.id], now=ctx.now()
             )

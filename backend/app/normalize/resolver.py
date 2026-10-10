@@ -24,6 +24,12 @@ rank 1 채택(T5: 청약홈 상세 1,573 vs 공고문 1,769 → compare 없음),
   ``COMPARE_SIDE`` 표식을 남기고, 여기서는 그 표식이 있는 후보를 채택한다. 표식 없는 새 1차 상대가 생기면
   다시 보류한다(새 상충 = compare 필요).
 
+사람 확인(source_rank 0 — ``api.demotion.apply_human_check``, D11-3·**D12-1**):
+- 그 시점까지 관측된 출처를 모두 이긴다 — compare 채택(``COMPARE_ADOPTED``)도 이기지 못한다(R3 4차 C-2).
+- 사람 확인 **이후에** 관측된(observed_on > 사람 확인일) 공식 1차 출처(공고문·청약홈,
+  ``OFFICIAL_SOURCES``)가 **다른 값**을 내면 그 값이 채택된다(그 뒤 출처끼리는 위 규칙 그대로).
+  저장(``normalize.store``)이 critical change_event 와 체크리스트 '사람 확인 재검토'를 남긴다(M-10).
+
 OCR 판독 후보(label '추정' + reason 'OCR', R3 C3)는 같은 원문의 판정기 추출 행(reason '판정기 추출 …'·
 '판정기 감사 flagged …')이 생기면 값 없는 후보로 본다 — 판정기 결과(채택·감사 flagged·review)가
 OCR 값을 대신한다.
@@ -50,7 +56,15 @@ from app.normalize.fields import (
     with_tag,
 )
 
-__all__ = ["PriorityResolver", "group_key", "resolve", "same_value", "to_provenance_row"]
+__all__ = [
+    "OFFICIAL_SOURCES",
+    "PriorityResolver",
+    "group_key",
+    "is_human_candidate",
+    "resolve",
+    "same_value",
+    "to_provenance_row",
+]
 
 GroupKey = tuple[str, str, str]
 
@@ -90,6 +104,24 @@ def _is_primary(c: FieldCandidate) -> bool:
 
 def _priority(c: FieldCandidate) -> tuple[int, int, int]:
     return (0 if _has_value(c) else 1, c.source_rank, 0 if _is_primary(c) else 1)
+
+
+OFFICIAL_SOURCES = frozenset({"notice_pdf", "applyhome_detail", "applyhome_list"})
+"""D12-1 '공식 1차 출처'(공고문·청약홈) — 사람 확인 이후 이 출처가 다른 값을 내면 그 값이 채택된다."""
+
+
+def is_human_candidate(c: FieldCandidate) -> bool:
+    """사람 확인 후보(source_rank 0, D11-3)."""
+    return c.source_rank == 0
+
+
+def _is_official(c: FieldCandidate) -> bool:
+    return _is_primary(c) and c.source_kind in OFFICIAL_SOURCES and c.source_rank > 0
+
+
+def _observed_after(c: FieldCandidate, human: FieldCandidate) -> bool:
+    """c 가 사람 확인 **이후에** 관측됐는가(observed_on > 사람 확인일, 같은 날은 이후가 아니다)."""
+    return bool(c.observed_on) and (c.observed_on or "") > (human.observed_on or human.checked_at or "")[:10]
 
 
 def _is_judged(c: FieldCandidate) -> bool:
@@ -165,12 +197,31 @@ def _resolve_group(
     conflict: ConflictGroup | None = None
     group_id: str | None = None
     held = False
+    human = lead if is_human_candidate(lead) and _has_value(lead) else None
+    superseded = False
+    pool = valued
+    if human is not None:
+        # D12-1: 사람 확인은 그 시점까지 관측된 출처를 이긴다(compare 채택 포함 — C-2).
+        # 사람 확인 **이후에** 관측된 공식 1차 출처가 다른 값을 내면 그 값을 채택한다
+        # (그 뒤의 출처끼리만 우선순위·상충 규칙)
+        after = [c for c in valued if c is not human and _observed_after(c, human)]
+        newer = [c for c in after if _is_official(c) and not same_value(c, human)]
+        if newer:
+            superseded = True
+            lead = newer[0]
+            pool = after
     if len(distinct) > 1:
         group_id = f"{entity}:{ident.split(':', 1)[1]}:{field}"
-        adopted = [c for c in valued if has_tag(c.reason, COMPARE_ADOPTED)]
+        adopted = (
+            [c for c in pool if has_tag(c.reason, COMPARE_ADOPTED)] if human is None or superseded else []
+        )
         if adopted:
             lead = adopted[0]
-        rivals = [c for c in valued if not same_value(c, lead) and c.source_rank == lead.source_rank]
+        rivals = (
+            [c for c in pool if not same_value(c, lead) and c.source_rank == lead.source_rank]
+            if human is None or superseded
+            else []
+        )
         compare_rivals = [r for r in rivals if _is_primary(r) and r.source_kind != lead.source_kind]
         pending = [
             r
@@ -180,6 +231,10 @@ def _resolve_group(
         held = _is_primary(lead) and bool(pending)
         all_secondary = all(not _is_primary(c) for c in valued)
         rule = rule_text(entity, field)
+        if superseded:
+            rule = f"{rule} / 사람 확인 이후 공식 1차 출처가 다른 값 → 새 값 채택(사람 확인 재검토, D12-1)"
+        elif human is not None:
+            rule = f"{rule} / 사람 확인(0순위) 채택 — 그 이전 출처·compare 채택보다 우선(D12-1)"
         if held:
             rule = f"{rule} / 같은 rank 1차·1차 상충 → 채택 보류(점수 미사용), compare 결과로만 채택"
         elif adopted:

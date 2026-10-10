@@ -11,6 +11,7 @@ from collections.abc import Sequence
 LABELS = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
 REGION_STATUS = ("resolving", "bootstrapping", "ready", "failed")
 SNAPSHOT_STATUS = ("building", "ready", "published")
+SNAPSHOT_STATE_ENTITY = ("region", "complex", "catalyst")  # 0009 snapshot_state.entity (D12-4)
 HOUSING_TYPE = ("민영", "국민")
 LAND_TYPE = ("공공택지", "민간택지")
 PRICE_CAP = ("적용", "미적용")

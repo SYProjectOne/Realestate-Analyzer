@@ -14,7 +14,7 @@
     "status": { "type": "string", "enum": ["queued", "running", "done", "failed"] },
     "created_at": { "type": "string", "format": "date-time" },
     "finished_at": { "type": ["string", "null"], "format": "date-time" },
-    "filename": { "type": ["string", "null"] },
+    "filename": { "description": "report_r<지역>_<기준일>-r<리비전>[_vs_<기준일>-r<리비전>][_<시나리오>]_j<잡 id>.<형식> (계약 .9 — 같은 기준일 리비전·잡끼리 겹치지 않는다, R3 4차 C-4)", "type": ["string", "null"] },
     "size_bytes": { "x-nonfact": "파일 크기(파일 메타)", "type": ["integer", "null"], "minimum": 0 },
     "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
     "blocked_reason": { "type": ["string", "null"] }
@@ -23,7 +23,7 @@
     {
       "id": 910, "snapshot_id": 12, "compare_snapshot_id": 11, "format": "pdf", "status": "done",
       "created_at": "2026-10-08T08:00:00+09:00", "finished_at": "2026-10-08T08:01:12+09:00",
-      "filename": "report_2026-10-08_vs_2026-10-07.pdf", "size_bytes": 1843200,
+      "filename": "report_r1_2026-10-08-r1_vs_2026-10-07-r1_j910.pdf", "size_bytes": 1843200,
       "sha256": "0d5e8f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6", "blocked_reason": null
     }
   ]

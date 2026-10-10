@@ -92,6 +92,7 @@ __all__ = [
     "address_key",
     "block_name_key",
     "candidate_from_row",
+    "human_superseded",
     "is_zone_address",
     "parser_for",
     "raw_dto",
@@ -213,6 +214,8 @@ class _Binder:
         # 후보(complex·complex_type)는
         # 원 단지 값을 덮어쓰지 않는다(payment_terms·competition·remaining_event 에만 기록)
         self.merged: set[str] = set()
+        # 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨 키(R3 4차 M-8) — 그 공고의 단지(complex) 후보만 건너뛴다
+        self.cited: set[str] = set()
         # (단지, 공급 구분, 회차) → '타입 모호'로 묶은 원 주택형
         self._ambiguous: dict[tuple[int, str, str], str] = {}
 
@@ -229,6 +232,11 @@ class _Binder:
         if region_id is not None:
             stmt = stmt.where(Complex.region_id == region_id)
         cx = self.s.scalars(stmt).first()
+        if cx is not None and create and _cites_original(raw, batch, key):
+            # R3 4차 M-8: 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨다 — 그 공고의 단지 단위 값(이름 '(임의공급
+            # 4차)'·남은 세대수·전매·거주·규제)은 원 단지를 덮지 않는다(D11-4, payment_terms·competition 에만 기록).
+            # 타입 가격 후보는 그대로 둔다(공고문 파서가 잔여 공고에서 면적·세대수는 내지 않고 가격만 낸다 — 현재 공고 가격)
+            self.cited.add(key)
         if cx is None and region_id is not None and _APPLYHOME_ID_GLOBAL:
             other = self.s.scalars(select(Complex.id).where(Complex.applyhome_id == key)).first()
             if other is not None:  # 다른 지역의 단지 — 덮어쓰지 않는다(W4)
@@ -535,7 +543,8 @@ class _Binder:
         """원 단지에 묶인 잔여 공고의 단지 단위 후보(complex·complex_type)인가(D11-4 — 원 단지 값을 덮어쓰지 않는다)."""
         if c.entity not in MERGED_UNIT_ENTITIES:
             return False
-        return (c.entity_key or "").split(":")[0] in self.merged
+        key = (c.entity_key or "").split(":")[0]
+        return key in self.merged or (c.entity == "complex" and key in self.cited)
 
     def _id_for(
         self,
@@ -556,6 +565,8 @@ class _Binder:
             if cx is None:
                 return None
             if entity == "complex_type" and len(parts) == 2:
+                if parts[0] in self.merged:
+                    return None  # 원 단지에 묶인 잔여 공고의 타입 행은 만들지 않는다(R3 4차 minor — 건너뛸 후보의 행 선생성)
                 area = vals.get("area_m2")
                 t = self.type_for(
                     cx, parts[1], float(area) if isinstance(area, (int, float)) else None, create=create
@@ -601,7 +612,8 @@ _APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)
 # 하이픈은 지우지 않는다(minor 18: 'AA1-31' 과 'AA13-1' 이 같은 키가 되던 문제) — 공백·문장부호·괄호·'번지'만
 _KEY_DROP_RE = re.compile(r"[\s·,.()（）\[\]]+|번지")
 # 구역 표현: '…일원'·'일대'·'외 n필지'·'1056-1외'·'AA13블록외 2'(minor 18 — 숫자·블록 바로 뒤 '외'도)
-_ZONE_RE = re.compile(r"일원|일대|(?:^|\s|\d|블록|BL|bl)외(?:\s|\d|$)|필지")
+_ZONE_RE = re.compile(r"일원|일대|(?:^|\s|\d|블록|BL|bl)외(?:[\s,·;/]|\d|$)|필지")
+"""구역 표현 — '1056-1외, 1056-2'(외 뒤 쉼표)도(R3 4차 minor)."""
 _REMAINDER_PATHS = ("Remndr", "getOPT", "OPTLttot")
 _REMAINDER_KINDS = ("무순위", "임의", "잔여", "선착순", "재공급", "계약취소")
 
@@ -615,6 +627,18 @@ def block_name_key(name: str) -> str:
 def is_zone_address(address: str) -> bool:
     """공급위치가 구역 표현('…일원'·'일대'·'외 n필지')인가 — 같은 블록 병합 금지(D10-4)."""
     return bool(_ZONE_RE.search(address))
+
+
+def _cites_original(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) -> bool:
+    """잔여 공고 원문이 자기 번호가 아닌 원 단지 번호(``key`` — 공고문 '최초 주택관리번호')로 단지를 가리키는가:
+    이 원문의 납부 조건 키가 '<key>:<다른 공고번호>' 이고 공고 종류가 잔여(무순위·임의·선착순…)."""
+    own = {
+        (c.entity_key or "").split(":", 1)[1]
+        for c in batch
+        if c.entity == "payment_terms" and (c.entity_key or "").count(":") == 1
+        and (c.entity_key or "").split(":", 1)[0] == key
+    }  # fmt: skip
+    return bool(own) and key not in own and _is_remainder_notice(raw, batch, key)
 
 
 def _is_remainder_notice(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) -> bool:
@@ -931,9 +955,65 @@ def resolve_field_group(
         resolved = resolve([*extra, *cands])
         upsert_provenance(session, resolved.provenance)
         events, _ = write_chosen(session, resolved.chosen, snapshot_id=snapshot_id, detected_at=detected_at)
+        human_superseded(session, resolved, events)
         session.add_all(events)
         session.flush()
     return events
+
+
+HUMAN_REVIEW_TITLE = "사람 확인 재검토"
+"""D12-1: 사람 확인 이후 새 공식 1차 출처가 다른 값을 내 채택됐다 — 체크리스트 '사실 재확인' 항목 제목 머리."""
+
+
+def human_superseded(session: Session, resolved: ResolvedFields, events: list[ChangeEvent]) -> None:
+    """D12-1: 사람 확인 행이 있는데 원문 출처가 채택된 필드(resolver — 사람 확인 이후 새 공식 출처의 다른 값)의 값 변경은
+    critical·재판정 + 체크리스트 '사람 확인 재검토'(사실 재확인 — 동기화가 닫지 않는다). 값이 그대로면(재정규화) 아무것도
+    하지 않는다(이벤트가 없다)."""
+    from app.models import ChecklistItem
+
+    rows: dict[tuple[str, int, str], list[Any]] = {}
+    for p in resolved.provenance:
+        if p.entity_id is not None:
+            rows.setdefault((p.entity, p.entity_id, p.field[:64]), []).append(p)
+    superseded: dict[tuple[str, int, str], Any] = {}
+    for key, group in rows.items():
+        human = next((p for p in group if is_human(p.reason) and not p.chosen), None)
+        if human is not None and any(p.chosen and not is_human(p.reason) for p in group):
+            superseded[key] = human
+    if not superseded:
+        return
+    from app.api.demotion import FIELD_NAMES
+    from app.facts_view import logical_field
+
+    for ev in events:
+        if ev.entity_id is None:
+            continue
+        human = superseded.get((ev.entity, ev.entity_id, (ev.field or "")[:64]))
+        if human is None:
+            continue
+        ev.severity = "critical"
+        ev.triggers_rejudge = True
+        logical = logical_field(human.field)
+        title = f"{HUMAN_REVIEW_TITLE}: {FIELD_NAMES.get(logical, logical)}"
+        note = (
+            f"사람 확인 값 {human.value_text} 이후 새 공식 공고가 {ev.new_text} 를 냈다(D12-1) — 원문을 확인해 다시 사람 "
+            "확인하거나 닫는다"
+        )
+        item = session.scalars(
+            select(ChecklistItem).where(
+                ChecklistItem.complex_id == ev.complex_id,
+                ChecklistItem.kind == "사실 재확인",
+                ChecklistItem.title == title,
+            )
+        ).first()
+        if item is None:
+            session.add(
+                ChecklistItem(
+                    complex_id=ev.complex_id, kind="사실 재확인", title=title, status="open", note=note
+                )
+            )
+        else:
+            item.status, item.closed_by, item.note = "open", None, note
 
 
 def _is_legacy(fp: FieldProvenance) -> bool:
@@ -1040,6 +1120,7 @@ def store_raw_document(
             detected_at=detected_at,
         )
         events.extend(written)
+        human_superseded(session, resolved, written)
         session.flush()
         for terms in binder.new_terms:
             events.extend(
@@ -1064,7 +1145,7 @@ def store_raw_document(
                 if parent is not None:
                     cids.add(parent.complex_id)
         # 원 단지에 묶인 잔여 공고(D11-4): 단지 단위 후보는 건너뛰었어도 그 단지는 이 원문과 관련된 단지다(재판정 대상)
-        cids |= {binder.complex_for_key(k) for k in binder.merged} - {None}  # type: ignore[arg-type]
+        cids |= {binder.complex_for_key(k) for k in binder.merged | binder.cited} - {None}  # type: ignore[arg-type]
         complex_ids = sorted(cids)
     return StoreResult(
         raw_document_id=row.id,

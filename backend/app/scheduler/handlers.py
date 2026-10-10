@@ -68,6 +68,28 @@ def _notify(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any]:
     return ctx.notifier.notify(events, names).stats()
 
 
+def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
+    """그 스냅샷의 마지막 점수 실행 **뒤**에 재판정을 부르는 사실 변경(change_event triggers_rejudge)이 있었던 지역 단지
+    (D12-5). 지역 단위 변경(생활권 편집 — complex_id 없음)이면 지역 단지 전부. 그 스냅샷 자신에 붙은 이벤트(그 스냅샷을
+    만든 수집이 찾은 변경 — 그 판정이 이미 반영)는 세지 않는다."""
+    run_at = session.scalar(select(func.max(ScoreRun.created_at)).where(ScoreRun.snapshot_id == snap.id))
+    if not run_at:
+        return []
+    rows = list(
+        session.execute(
+            select(ChangeEvent.complex_id, ChangeEvent.entity, ChangeEvent.entity_id).where(
+                ChangeEvent.triggers_rejudge.is_(True),
+                ChangeEvent.detected_at > run_at,
+                (ChangeEvent.snapshot_id.is_(None)) | (ChangeEvent.snapshot_id != snap.id),
+            )
+        )
+    )
+    region_ids = set(session.scalars(select(Complex.id).where(Complex.region_id == snap.region_id)))
+    if any(e == "region" and eid == snap.region_id for (_c, e, eid) in rows):
+        return sorted(region_ids)
+    return sorted({int(c) for (c, _e, _i) in rows if c is not None and c in region_ids})
+
+
 def _after_daily(
     ctx: SchedulerContext, snapshot_id: int, rejudge_ids: list[int], event_ids: list[int]
 ) -> dict[str, Any]:
@@ -96,6 +118,16 @@ def _after_daily(
             )  # fmt: skip
             session.commit()
             return {"rejudge_job_id": job.id}
+        stale = changed_after_runs(session, prev)
+        if stale:
+            # D12-5(R3 4차 M-3): 이전 판정 뒤 사실이 바뀐 단지(사람 확인·강등·생활권 편집 등 — triggers_rejudge)가 있으면
+            # 옛 점수를 created_at=now 로 복사하지 않고 그 단지를 재판정한다(나머지는 rejudge 파이프라인이 복사)
+            job = enqueue_rejudge(
+                session, snapshot_id, stale, f"이전 판정 뒤 사실 변경 {len(stale)}단지 — 이월 대신 재판정",
+                change_event_ids=event_ids or None, now=ctx.now(),
+            )  # fmt: skip
+            session.commit()
+            return {"rejudge_job_id": job.id, "carry_forward": "사실 변경 — 재판정"}
         copied = carry_forward(session, prev.id, snapshot_id, created_at=ctx.iso_now())
         snap.status = "ready"
         ok, n = snapshots.publish(session, snapshot_id, now=ctx.iso_now())
@@ -141,9 +173,43 @@ def handle_collect_weekly(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
                 )  # fmt: skip
                 session.commit()
                 stats["rejudge_job_id"] = rj.id
+    if "rejudge_job_id" not in stats:
+        done = _finish_unchanged_revision(ctx, res.snapshot_id)
+        if done is not None:
+            stats["carry_forward"] = done
     if res.errors:
         raise JobError(f"수집 단계 오류: {', '.join(sorted(res.errors))}", stats)
     return stats
+
+
+def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[str, Any] | None:
+    """R3 4차 minor: 발행된 기준일에 주간 수집이 만든 새 리비전(building)이 변경 없이 남지 않게 — 재판정할 것이 없으면
+    바탕 리비전의 파생 행을 그대로 복사하고 발행한다(판정기 호출 0, 일일 수집의 '변경 없는 날'과 같은 규칙).
+    대기·실행 중인 잡이 그 스냅샷을 쓰거나 이미 점수 실행이 있으면 그대로 둔다."""
+    with ctx.session_factory() as session:
+        snap = session.get(Snapshot, snapshot_id)
+        if (
+            snap is None
+            or snap.status != "building"
+            or int(snap.revision or 1) <= 1
+            or snap.revision_of is None
+        ):
+            return None
+        if session.scalar(
+            select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == snapshot_id)
+        ):
+            return None
+        for job in session.scalars(select(JobRun).where(JobRun.status.in_(("queued", "running")))):
+            if (job.payload or {}).get("snapshot_id") == snapshot_id:
+                return None
+        base = session.get(Snapshot, snap.revision_of)
+        if base is None or base.status != "published":
+            return None
+        copied = carry_forward(session, base.id, snapshot_id, created_at=ctx.iso_now())
+        snap.status = "ready"
+        ok, n = snapshots.publish(session, snapshot_id, now=ctx.iso_now())
+        session.commit()
+        return {"from_snapshot_id": base.id, **copied, "published": ok, "contradicted": n}
 
 
 def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
@@ -226,7 +292,7 @@ def handle_report(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
 
     try:
         with ctx.session_factory() as session:
-            stats = report_job.run_report_job(dict(job.payload or {}), session=session)
+            stats = report_job.run_report_job(dict(job.payload or {}), session=session, job_id=job.id)
             session.commit()
     except ReportBlocked as exc:
         raise JobError(f"blocked: {exc.reason}", {"blocked_reason": exc.reason}) from exc
@@ -275,19 +341,14 @@ def handle_region_expand(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
                 )
             if (cx.legal_dong_code, cx.living_area, cx.inclusion_class) != before:
                 moved += 1
-        base = snapshots.latest_for_region(session, region_id)
         today = snapshots.latest_revision(session, region_id, asof)
         if today is not None and today.status == "published":
             snapshots.new_revision(session, today, reason=reason, created_at=ctx.iso_now())
-        elif today is None:
-            row = snapshots.get_or_create(session, region_id, asof, created_at=ctx.iso_now())
-            prev = base if base is not None and base.status == "published" else None
-            row.revision_of = (
-                prev.id if prev is not None else None
-            )  # 지역 추가 장의 비교 기준(이전 발행 스냅샷)
-            row.revision_reason = reason
         else:
-            today.revision_reason = today.revision_reason or reason
+            # 오늘 스냅샷이 없거나 미발행(리비전 1 building — R3 4차 M-5): 직전 발행 스냅샷을 비교 기준으로 달아 §12
+            # '지역 추가' 장이 빠지지 않게(이전에는 최신이 building 이면 비교 기준 없음)
+            row = today or snapshots.get_or_create(session, region_id, asof, created_at=ctx.iso_now())
+            snapshots.mark_compare_base(session, row, reason)
         session.commit()
     daily = collect(ctx, region_id, [*DAILY_SOURCES, "notice_pdf"], asof_date=asof, detect_list=False)
     weekly = collect(ctx, region_id, list(WEEKLY_SOURCES), asof_date=asof, detect_list=False)

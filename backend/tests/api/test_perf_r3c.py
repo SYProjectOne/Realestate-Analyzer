@@ -87,6 +87,9 @@ CASES: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("detail_3", "/api/complexes/3", {"snapshot": SNAP}),
     ("detail_5", "/api/complexes/5", {"snapshot": SNAP, "scenario": "A"}),
     ("detail_7", "/api/complexes/7", {"snapshot": SNAP}),
+    # R3 4차 minor: 미확인(추정) 할인·OCR 할인(차감 안 함)·대체 벤치마크(시장 표·gap) 경로도 골든으로
+    ("detail_9", "/api/complexes/9", {"snapshot": SNAP}),
+    ("detail_10", "/api/complexes/10", {"snapshot": SNAP}),
     ("preview", "/api/scenarios/1/preview", {"snapshot": SNAP}),
 )
 ONLY: dict[str, tuple[str, ...]] = {"preview": SMALL}
@@ -135,7 +138,7 @@ def _demote(s: Any, cx: int, entity: str, entity_id: int, field: str, *, value_n
             claim_id=claim.id, snapshot_id=SNAP, complex_id=cx, entity=entity, entity_id=entity_id, field=field,
             original_fp_id=original, demotion_fp_id=None, original_value_text=value_norm, value_norm=value_norm,
             created_at="2026-10-08T09:00:00+09:00",
-            restored_at="2026-10-08T10:00:00+09:00" if restored else None, restored_by="new_source" if restored else None,
+            restored_at="2026-10-08T10:00:00+09:00" if restored else None, restored_by="human_check" if restored else None,
         )
     )  # fmt: skip
 
@@ -225,7 +228,8 @@ def _enrich() -> None:
             value_norm=str(won5),
             original=fp5.id,
         )
-        # 단지 6: 새 출처가 다른 값 → 풀린 강등(pending) / 단지 8: 복원된 강등 — 둘 다 표시에 영향 없음
+        # 단지 6: 새 출처가 다른 값 → 풀린 강등(pending) / 단지 8: 사람 확인으로 복원된 강등 — 둘 다 표시에 영향 없음
+        # (새 출처로 풀린 강등은 모순 값이 다시 chosen 이면 다시 가린다 — R3 4차 M-17, 그래서 여기는 사람 확인 복원)
         fp6 = _chosen(s, "complex", 6, "units_total")
         _demote(s, 6, "complex", 6, "units_total", value_norm="999999", original=None)
         fp8 = _chosen(s, "complex", 8, "units_total")
@@ -235,6 +239,22 @@ def _enrich() -> None:
         t7 = _basis(s, 7)
         fp7 = _chosen(s, "complex_type", t7.id, "max_price_won")
         fp7.label, fp7.reason = "추정", "OCR"
+        # 단지 9: 미확인(추정) 할인 / 단지 10: OCR 할인 — 둘 다 표시만, 구매가에서 빼지 않는다(D11-6·D12-3)
+        for cx_id, label, reason in ((9, "추정", "공고문 할인 문구 해석"), (10, "추정", "OCR")):
+            tb = _basis(s, cx_id)
+            pt = _first_terms(s, cx_id)
+            pt.discount_by_type = {tb.type_code: 4_000_000}
+            fpd = _prov(s, "payment_terms", pt.id, f"discount_by_type.{tb.type_code}", 4_000_000, label=label)
+            fpd.reason = reason
+        # 대체 벤치마크(D9-2: 생활권 자체 표본 0 → 지역 전체 대체, 라벨 추정) — 시장 표·gap 사유
+        from app.models import Benchmark
+
+        bench = s.scalars(
+            select(Benchmark).where(Benchmark.is_presale.is_(False)).order_by(Benchmark.id)
+        ).first()
+        assert bench is not None
+        bench.substitute = True
+        bench.note = "추정(대체: 지역 전체)"
 
 
 def _build(src: Path, dst: Path, raw_dir: Path, reports: Path, kind: str) -> Path:

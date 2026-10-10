@@ -40,6 +40,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import FieldCandidate
+from app.facts_view import is_human
 from app.models import ChangeEvent, Complex, FieldProvenance, RawDocument
 from app.normalize import changes
 from app.normalize._text import parse_date
@@ -61,7 +62,7 @@ from app.normalize.fields import (
 from app.normalize.living_area import assign_complex_area
 from app.normalize.provenance import upsert_provenance
 from app.normalize.resolver import resolve
-from app.normalize.store import _MODELS, candidate_from_row, write_chosen
+from app.normalize.store import _MODELS, candidate_from_row, human_superseded, write_chosen
 
 __all__ = [
     "AUDIT_FLAG_REASON",
@@ -254,9 +255,18 @@ def _reresolve(
     detected_at: str,
 ) -> tuple[FieldProvenance | None, list[ChangeEvent]]:
     """그 필드의 모든 출처를 다시 resolve(RA §3) → chosen·conflict_group 갱신 + 사실 테이블 값."""
-    rows = _group_rows(session, entity, entity_id, field_name)
+    from app.normalize.store import _foreign_unit_row, _own_key
+
+    own_key = _own_key(session, entity, entity_id)
+    # 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행은 후보가 아니다
+    # (저장 경로와 같은 규칙 — R3 4차 minor)
+    rows = [
+        fp for fp in _group_rows(session, entity, entity_id, field_name) if not _foreign_unit_row(fp, own_key)
+    ]
     kinds = _kinds(session, rows)
     cands = [_candidate(fp, kinds.get(fp.raw_document_id or -1)) for fp in rows]
+    if not cands:
+        return None, []
     resolved = resolve(cands)
     fps = upsert_provenance(session, list(resolved.provenance))
     chosen_fp = next((fp for fp in fps if fp.chosen), None)
@@ -264,6 +274,7 @@ def _reresolve(
     chosen = resolved.chosen[0] if resolved.chosen else None
     if chosen is not None and chosen.value is not None and chosen.label != "확인 불가":
         written, touched = write_chosen(session, [chosen], snapshot_id=snapshot_id, detected_at=detected_at)
+        human_superseded(session, resolved, written)  # D12-1(사람 확인 이후 새 공식 출처) — 저장 경로와 같다
         events.extend(written)
         for cid in sorted(touched):
             cx = session.get(Complex, cid)
@@ -472,7 +483,11 @@ def apply_compare(
             .order_by(FieldProvenance.id)
         )
     )
-    valued = [r for r in rows if r.label != "확인 불가" and r.entity_id is not None]
+    # 사람 확인 행(0순위, D11-3)은 compare 대상이 아니다 — 표식을 달지 않고 채택 대상도 아니다
+    # (C-2: compare 채택은 사람 확인을 이기지 못한다, resolver 가 사람 확인을 그대로 채택)
+    valued = [
+        r for r in rows if r.label != "확인 불가" and r.entity_id is not None and not is_human(r.reason)
+    ]
     for r in rows:
         if r.compare_judgment_seq is None and judgment_seq is not None:
             r.compare_judgment_seq = judgment_seq

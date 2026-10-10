@@ -26,8 +26,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends tzdata ca-certificates fonts-noto-cjk \
+ && apt-get install -y --no-install-recommends tzdata ca-certificates fonts-noto-cjk curl gnupg \
  && rm -rf /var/lib/apt/lists/*
+
+# DB 백업(D11-8·D12-6, R3 4차 M-9): backup 잡이 pg_dump -Fc 를 부른다. pg_dump 는 서버(postgres:16)보다 낮은 판이면
+# 덤프를 거부하므로 PGDG 저장소의 postgresql-client-16 을 넣는다(데비안 bookworm 기본은 15)
+ARG PG_MAJOR=16
+RUN install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends "postgresql-client-${PG_MAJOR}" \
+ && rm -rf /var/lib/apt/lists/* \
+ && pg_dump --version
 
 # Node 런타임(npx) — 공식 node 이미지에서 복사
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
@@ -56,7 +68,7 @@ RUN chmod 755 /app/infra/raw_archive.sh
 RUN uv sync --frozen --no-dev
 
 RUN useradd --system --uid 10001 --create-home --home-dir /home/app app \
- && mkdir -p /data && chown -R app /data /home/app
+ && mkdir -p /data /backups && chown -R app /data /backups /home/app
 USER app
 
 # JEV MCP 패키지를 미리 받아 둔다(실패해도 빌드는 계속 — 실행 시 npx 가 다시 받는다)

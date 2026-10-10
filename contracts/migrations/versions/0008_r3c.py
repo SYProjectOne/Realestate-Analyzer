@@ -20,7 +20,8 @@ Create Date: 2026-10-10
 SQLite 는 CHECK·유일 제약을 ALTER 로 못 바꾸므로 batch 모드(재생성 정의 고정 — 0004·0006 과 같은 방식).
 
 downgrade: 리비전 2 이상 스냅샷이 있으면 (region_id, asof_date) 유일을 되돌릴 수 없다 → 그 리비전 행과 파생 행을 지우지 않고
-**실패**시킨다(데이터 손실 방지). '호재 아님' catalyst 는 '미확정'으로, 새 잡 이름 행은 지운다(대기 잡). 나머지는 컬럼 삭제.
+**실패**시킨다(데이터 손실 방지). '호재 아님' catalyst 는 '미확정'으로, 새 잡 이름 행은 대기(queued·running)만 지우고
+끝난 이력(done·failed)이 있으면 **실패**시킨다(R3 4차 minor — 백업·지역 확장 기록 손실 방지). 나머지는 컬럼 삭제.
 """
 
 from __future__ import annotations
@@ -226,7 +227,22 @@ def downgrade() -> None:
             f"리비전 2 이상 스냅샷 {n}개 — (region_id, asof_date) 유일로 되돌리면 발행 리비전이 사라진다. "
             "0008 downgrade 를 거부한다(데이터 손실 방지)"
         )
-    op.execute(sa.text("DELETE FROM job_run WHERE job_name IN ('backup', 'region.expand')"))
+    # R3 4차 minor: 끝난 backup·region.expand 잡 이력은 지우지 않는다(백업 기록·지역 확장 이력 손실) — 있으면 거부.
+    # 아직 돌지 않은(queued·running) 잡만 지운다(0007 에는 처리 함수가 없다)
+    done = bind.execute(
+        sa.text(
+            "SELECT COUNT(*) FROM job_run WHERE job_name IN ('backup', 'region.expand') "
+            "AND status NOT IN ('queued', 'running')"
+        )
+    ).scalar() or 0
+    if done:
+        raise RuntimeError(
+            f"끝난 backup·region.expand 잡 이력 {done}건 — 0007 CHECK 로 되돌리면 지워진다. "
+            "0008 downgrade 를 거부한다(데이터 손실 방지)"
+        )
+    op.execute(
+        sa.text("DELETE FROM job_run WHERE job_name IN ('backup', 'region.expand') AND status IN ('queued', 'running')")
+    )
     with op.batch_alter_table("job_run", copy_from=_job_run_table(JOB_NAMES_0008)) as batch:
         batch.drop_constraint(op.f("ck_job_run_job_name"), type_="check")
         batch.create_check_constraint(op.f("ck_job_run_job_name"), sa.text(_in("job_name", JOB_NAMES_0004)))

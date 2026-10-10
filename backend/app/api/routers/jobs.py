@@ -52,7 +52,25 @@ def create_job(session: DB, body: Annotated[Any, Body()] = None) -> JSONResponse
     check_body("createJob", body)
     if body["job_name"] == "claim.reverify":  # 계약 JobCreateName 이 이미 막는다 — 이중 방어(D10-3)
         raise validation_error("claim.reverify 는 PATCH /claims/{id} 로만 등록한다", ("body", "job_name"))
-    row = enqueue(session, body["job_name"], body["payload"])
+    if body["job_name"] == "rejudge":
+        # 같은 스냅샷에 대기 중인 rejudge 가 있으면 합친다(scheduler.rejudge.enqueue_rejudge — 사람 확인이 자동 등록한
+        # 잡과 같은 제안을 화면이 다시 보내도 중복 잡이 생기지 않는다, 계약 .9 D12-5)
+        from app.api.contract import check_schema
+        from app.api.jobs import PAYLOAD_SCHEMAS
+        from app.scheduler.rejudge import enqueue_rejudge
+
+        p = dict(body["payload"])
+        check_schema(PAYLOAD_SCHEMAS["rejudge"], p, root="payload")
+        row = enqueue_rejudge(
+            session,
+            int(p["snapshot_id"]),
+            p.get("complex_ids"),
+            str(p.get("reason") or "재판정"),
+            scenario_id=p.get("scenario_id"),
+            change_event_ids=p.get("change_event_ids"),
+        )
+    else:
+        row = enqueue(session, body["job_name"], body["payload"])
     session.commit()
     return JSONResponse(job_view(row), status_code=202)
 

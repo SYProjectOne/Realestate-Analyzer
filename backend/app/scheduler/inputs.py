@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 
 from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.gap import compute_gap
-from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms
+from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms, labels_from
 from app.analysis.scope import EXCLUDED_CLASSES, INTAKE_PRIORITY, JudgeScope, judge_scope, pick_intake
 from app.analysis.types import GapResult, Label, weakest_label
 from app.core.contracts_gen import (
@@ -308,8 +308,14 @@ def _price(
     type_prov: Mapping[tuple[int, str], FieldProvenance],
     terms_prov: Mapping[tuple[int, str], FieldProvenance],
 ) -> None:
-    """§6-1 현재 구매가 = ``analysis.price_view.current_price``(API·보고서와 같은 값, R3 M3)."""
-    view = current_price(cx_types, f.payments)
+    """§6-1 현재 구매가 = ``analysis.price_view.current_price``(API·보고서와 같은 값, R3 M3). 할인은 그 출처 라벨이
+    확인됨일 때만(D12-3)."""
+
+    def label(entity: str, entity_id: int, name: str) -> str | None:
+        fp = (type_prov if entity == "complex_type" else terms_prov).get((entity_id, name))
+        return fp.label if fp is not None else None
+
+    view = current_price(cx_types, f.payments, discount_label=labels_from(label))
     f.price = view
     f.basis = next((t for t in cx_types if t.type_code == view.basis_type_code), None)
     if not view.known:
@@ -341,7 +347,7 @@ def complex_input(f: ComplexFacts, asof_date: str, ladders: Iterable[Ladder] = (
     return build_complex_input(
         f.score_row,
         scope=f.scope,
-        price=f.price if f.price is not None else current_price([], []),
+        price=f.price if f.price is not None else current_price([], [], discount_label=None),
         asof_date=asof_date,
         terms=f.terms,
         payments=f.payments,

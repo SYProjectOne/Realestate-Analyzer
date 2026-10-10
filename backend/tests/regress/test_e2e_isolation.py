@@ -74,7 +74,8 @@ def test_regress_step_uses_run_junit() -> None:
     tasks = load_tasks()
     iso = tasks.E2EIsolation.create({})
     try:
-        step = tasks.t_regress(["--no-e2e"])[0]
+        # 앞에 frontend npm ci 가 올 수 있다(R3 4차 — T13 lint 전에 설치)
+        step = next(s for s in tasks.t_regress(["--no-e2e"]) if "pytest" in s.cmd)
         cmd, env = iso.apply(step)
         assert f"--junitxml={iso.junit}" in cmd
         assert env["E2E_FLOW_DATA"] == iso.env["E2E_FLOW_DATA"]

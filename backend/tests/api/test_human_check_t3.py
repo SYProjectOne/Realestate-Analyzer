@@ -58,10 +58,13 @@ def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> Non
         assert snap is not None and rev != 12, "발행 12 는 불변 — 새 리비전"
         assert (snap.revision, snap.revision_of, snap.status) == (2, 12, "building")
         assert snap.asof_date == s.get(Snapshot, 12).asof_date  # type: ignore[union-attr]
+    # 계약 .9(D12-5): 재판정은 자동 등록 — rejudge_job_id. suggested_job 은 그 잡과 같은 payload(호환)
     assert body["suggested_job"]["job_name"] == "rejudge"
-    assert body["suggested_job"]["payload"]["snapshot_id"] == rev
-    assert body["suggested_job"]["payload"]["complex_ids"] == [4]
-    assert body["suggested_job"]["payload"]["change_event_ids"] == [body["change_event_id"]]
+    with get_session() as s:
+        rj = s.get(JobRun, body["rejudge_job_id"])
+        assert rj is not None and (rj.job_name, rj.status) == ("rejudge", "queued")
+        assert rj.payload["snapshot_id"] == rev and rj.payload["complex_ids"] == [4]
+        assert rj.payload["change_event_ids"] == [body["change_event_id"]]
 
     assert _intake_count(4) == before, "발행 스냅샷의 접수 행은 바뀌지 않는다"
     with get_session() as s:
@@ -77,8 +80,8 @@ def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> Non
             rev,
         )
         assert ce.new_text == "가능"
-        # 잡 등록은 화면이 POST /jobs 로 한다(openapi createHumanCheck 설명) — 여기서는 제안만
-        assert int(s.scalar(select(func.count()).select_from(JobRun)) or 0) == jobs_before
+        # D12-5: 자동 등록 rejudge 1건(화면이 POST /jobs 하지 않는다)
+        assert int(s.scalar(select(func.count()).select_from(JobRun)) or 0) == jobs_before + 1
 
     # 기본 화면(발행 12)은 그대로, 새 리비전에서는 human_check 우선 → '가능'
     assert client.get("/api/complexes/4", headers=WRITE).json()["intake_current"]["status"] == "확인 불가"
@@ -95,10 +98,12 @@ def test_t3_human_check_creates_intake_change_and_job(client: TestClient) -> Non
     validate("listSnapshots", 200, snaps)
     assert any(x["id"] == rev and x["revision"] == 2 and x["revision_of"] == 12 for x in snaps)
 
-    # 화면이 제안 잡을 그대로 등록 → rejudge 1
+    # 화면이 (옛 토스트 버튼으로) 제안을 다시 보내도 대기 중인 같은 잡 — 중복 rejudge 없음
     r = client.post("/api/jobs", headers=WRITE, json=body["suggested_job"])
     assert r.status_code == 202, r.text
-    assert r.json()["job_name"] == "rejudge" and r.json()["kind"] == "rejudge"
+    assert r.json()["id"] == body["rejudge_job_id"] and r.json()["kind"] == "rejudge"
+    with get_session() as s:
+        assert int(s.scalar(select(func.count()).select_from(JobRun)) or 0) == jobs_before + 1
 
     # 변경 피드(새 리비전)에 critical 1
     feed = client.get(f"/api/snapshots/{rev}/changes", params={"severity": "critical"}, headers=WRITE).json()
@@ -119,6 +124,7 @@ def test_human_check_validation(client: TestClient) -> None:
     body = r.json()
     validate("createHumanCheck", 201, body)
     assert body["created_intake"] is None and body["suggested_job"] is None and body["entity"] is None
+    assert body["rejudge_job_id"] is None, "기타는 기록만 — 재판정 없음"
     # 계약 밖 field 값 → 422(계약 .8 HumanCheckField)
     r = client.post("/api/ops/human-checks", headers=WRITE, json={**req, "field": "price", "value_text": "1"})
     assert r.status_code == 422
@@ -130,7 +136,7 @@ def test_human_check_validation(client: TestClient) -> None:
     body = r.json()
     validate("createHumanCheck", 201, body)
     assert body["created_intake"] is None and (body["entity"], body["entity_id"]) == ("complex", 4)
-    assert body["suggested_job"]["job_name"] == "rejudge"
+    assert body["rejudge_job_id"] is not None and body["suggested_job"]["job_name"] == "rejudge"
     detail = client.get("/api/complexes/4", headers=WRITE).json()
     assert (
         detail["header"]["move_in_ym"]["v"] == "2028-08"

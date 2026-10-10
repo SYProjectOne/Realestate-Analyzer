@@ -160,14 +160,13 @@ def new_notice_event(
 
 
 def current_terms(session: Session, complex_id: int, *, exclude_id: int | None = None) -> PaymentTerms | None:
-    """현재 조건 = effective_from이 가장 늦은 행(같으면 notice_no 큰 것)."""
+    """현재 조건 = ``analysis.price_view.current_terms``(점수·화면과 같은 행)."""
+    from app.analysis.price_view import current_terms as shared
+
     stmt = select(PaymentTerms).where(PaymentTerms.complex_id == complex_id)
     if exclude_id is not None:
         stmt = stmt.where(PaymentTerms.id != exclude_id)
-    rows = list(session.scalars(stmt))
-    if not rows:
-        return None
-    return max(rows, key=lambda r: (r.effective_from, r.notice_no))
+    return shared(list(session.scalars(stmt)))
 
 
 def first_terms(session: Session, complex_id: int) -> PaymentTerms | None:

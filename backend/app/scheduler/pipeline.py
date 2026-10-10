@@ -556,10 +556,20 @@ def _is_news(cat: Catalyst) -> bool:
     return cat.raw_document_id is not None
 
 
+_JUDGE_MARK: Final = "판정기: 호재 아님"
+_JUDGE_MARK_RE: Final = re.compile(r"\s*(?:·\s*)?판정기: 호재 아님(?:\(jl_[0-9?]+\))?")
+
+
+def _human_note(note: str | None) -> str:
+    """note 에서 판정 결과 병기('판정기: 호재 아님(jl_N)')를 뺀 사람·출처 발췌(R3 4차 M-14)."""
+    return _JUDGE_MARK_RE.sub("", note or "").strip(" ·")
+
+
 def _catalyst_text(cat: Catalyst) -> str:
     """호재 판정 입력(단계·종류 classify 공용) = 이름·발췌·출처. 종류(kind)는 넣지 않는다 — 종류 classify 결과가 다음
-    실행의 입력을 바꿔 같은 호재를 매번 다시 판정하지 않게(같은 사실 = 같은 payload = 캐시)."""
-    return "\n".join(p for p in (f"호재: {cat.name}", cat.note or "", cat.source_url or "") if p)
+    실행의 입력을 바꿔 같은 호재를 매번 다시 판정하지 않게(같은 사실 = 같은 payload = 캐시). 같은 이유로 note 의 판정 결과
+    병기('판정기: 호재 아님')도 넣지 않는다(M-14 — 병기가 쌓이며 payload 가 바뀌어 캐시 미스·재호출)."""
+    return "\n".join(p for p in (f"호재: {cat.name}", _human_note(cat.note), cat.source_url or "") if p)
 
 
 def _catalyst_key(cat: Catalyst) -> str:
@@ -603,9 +613,11 @@ def _not_catalyst(
     if _is_news(cat):
         cat.stage = NOT_CATALYST
         return
-    mark = f"판정기: 호재 아님(jl_{seq_id})" if seq_id is not None else "판정기: 호재 아님"
-    if mark not in (cat.note or ""):
-        cat.note = f"{cat.note} · {mark}" if cat.note else mark
+    # 병기는 한 번만, 판정 번호 없이(번호는 judgment_seq) — 실행마다 note 가 바뀌지 않는다(M-14)
+    base = _human_note(cat.note)
+    note = f"{base} · {_JUDGE_MARK}" if base else _JUDGE_MARK
+    if cat.note != note:
+        cat.note = note
 
 
 def _p4_catalysts(

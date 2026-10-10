@@ -66,6 +66,9 @@ def contradicted(session: Any, snapshot_id: int) -> int:
 def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONResponse:
     check_body("createReport", body)
     snap = get_snapshot(session, body["snapshot_id"])
+    if snap.status != "published":
+        # R3 4차 M-16: 판정이 끝나지 않은(building) 리비전은 보고서를 만들지 않는다 — 파생 행이 반쯤 찬 상태
+        raise conflict(f"snapshot {snap.id} 는 발행 전({snap.status})이라 보고서를 만들 수 없다")
     if body.get("compare_snapshot_id") is not None:
         get_snapshot(session, body["compare_snapshot_id"])
     n = contradicted(session, snap.id)

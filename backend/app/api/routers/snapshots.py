@@ -34,6 +34,7 @@ from app.api.views import (
 )
 from app.core.time import now_kst
 from app.models import ChangeEvent, Complex, RawDocument, Region, Snapshot, Supply, Unsold
+from app.snapshot_state import region_for
 
 router = APIRouter(tags=["snapshots"])
 
@@ -282,7 +283,7 @@ def list_rows(
     rows = [r for r in complex_rows_data(bundles, ctx) if _match(r, filters)]
     last = last_changes(session, [r.b.cx.id for r in rows])
     rows = sort_rows(rows, sort, {k: v.detected_at for k, v in last.items()})
-    return ctx, rows, area_names(region), last
+    return ctx, rows, area_names(region_for(session, region, snap.id)), last
 
 
 def build_rows(
@@ -616,7 +617,7 @@ def get_dashboard(session: DB, request: Request, sid: int, scenario: ScenarioQ =
     region = session.get(Region, snap.region_id)
     if region is None:
         raise not_found(f"region {snap.region_id}")
-    names = area_names(region)
+    names = area_names(region_for(session, region, snap.id))
     complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
     bundles = load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     ctx = score_ctx(session, snap.id, sc)

@@ -107,8 +107,9 @@ def test_n_c1_dashboard_top5_kpi_list_detail_show_stored_values(client: TestClie
         first["judge_scope"], first["rank"], first["total"]["v"],
     )  # fmt: skip
     assert after["kpis"] == {**before["kpis"], "data_freshness": after["kpis"]["data_freshness"]}
-    # 12 는 이제 과거 리비전 — 오늘 사실과 비교하지 않는다(재판정 필요 없음, 새 리비전이 재판정 대상)
-    assert row["rejudge_needed"] is False and after["rejudge_needed"] is False
+    # 계약 .9(D12-4·R3 4차 M-1): '최신 리비전' = 발행된 것 — 새 리비전은 아직 판정 중(building)이라 12 가 여전히
+    # 최신이고, 점수 실행 뒤 재판정을 부르는 변경(사람 확인)이 있으니 '재판정 필요' 배지가 보인다(새 리비전 발행 전까지)
+    assert row["rejudge_needed"] is True and after["rejudge_needed"] is True
 
     # 새 리비전(building, 점수 실행 전): 현재 사실로 계산한 범위 '참고'(사람 확인 '불가')
     with get_session() as s:

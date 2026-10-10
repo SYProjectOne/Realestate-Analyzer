@@ -141,8 +141,15 @@ def t_regress(args: list[str]) -> list[Step]:
     """회귀(RA §9): pytest -m regress(T1~T18 통합 + 모듈 골든) + e2e 흐름(Playwright) → 케이스별 요약.
 
     인자: ``--no-e2e``(백엔드만), ``--perf``(T16 프론트 측정 e2e/perf 추가).
-    한 단계가 실패해도 나머지를 돌리고 마지막에 요약을 출력한다. 회귀 테스트가 0개면 실패로 본다."""
-    steps = [
+    한 단계가 실패해도 나머지를 돌리고 마지막에 요약을 출력한다. 회귀 테스트가 0개면 실패로 본다.
+
+    순서(R3 4차 리뷰 — T13 프론트 lint 검사의 간헐 실패 원인): frontend ``npm ci`` 는 pytest **전에** 끝낸다. 같은 frontend
+    에서 ``npm ci`` 가 node_modules 를 다시 쓰는 동안 eslint 를 부르면 모듈을 못 찾아 stdout 이 비었다. node_modules 가
+    없으면 여기서 먼저 설치한다(있으면 그대로 — 바꾸려면 미리 ``npm ci``)."""
+    steps: list[Step] = []
+    if has_frontend() and not (FRONTEND / "node_modules").is_dir():
+        steps.append(npm(FRONTEND, "ci", note="T13 프론트 lint 검사 전에(회귀 pytest 보다 먼저)"))
+    steps += [
         Step(
             ["uv", "run", "pytest", "tests", "-m", "regress", "-p", "no:cacheprovider",
              f"--junitxml={REGRESS_JUNIT}"],
