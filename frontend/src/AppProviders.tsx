@@ -4,11 +4,16 @@ import { watchJobCompletion } from '@/api/jobWatch';
 import { ProvenanceProvider } from '@/components/ProvenancePanel';
 import { ThemeProvider } from '@/lib/theme';
 
+/** 운영 쿼리 기본값 — 테스트 QueryClient(`test/render.tsx`)도 재시도만 바꿔 같은 값을 쓴다 */
+export const PRODUCTION_QUERY_DEFAULTS = {
+  staleTime: 30_000,
+  retry: 1,
+  refetchOnWindowFocus: false,
+} as const;
+
 export function createQueryClient(): QueryClient {
   return new QueryClient({
-    defaultOptions: {
-      queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
-    },
+    defaultOptions: { queries: { ...PRODUCTION_QUERY_DEFAULTS } },
   });
 }
 

@@ -1,11 +1,7 @@
 /** 화면 테스트 도우미 — MSW 요청 기록(본문 포함). 테스트 파일에서만 import 한다. */
-import { configure } from '@testing-library/react';
 import { server } from '@/mocks/server';
 
-// 화면은 라우트별 지연 로드 청크다 — 파일의 첫 테스트는 모듈 변환까지 기다린다(기본 1초는 짧다)
-configure({ asyncUtilTimeout: 5000 });
-// 화면 하나가 쿼리 여러 개를 띄운다(G7 등) — 부하가 있는 CI에서도 넘치지 않게
-vi.setConfig({ testTimeout: 20_000 });
+// findBy 5초(src/test/setup.ts)·테스트 20초(vite.config.ts test.testTimeout)는 모든 파일 공통 설정이다
 
 export interface RecordedRequest {
   method: string;

@@ -62,8 +62,17 @@ export function ReportsPage() {
   // M-16: 보고서 기준·비교는 리비전 단위(같은 기준일 리비전 구별). 발행 리비전만 고를 수 있다(서버: 발행 전 409,
   // 비교 스냅샷도 발행·같은 지역만 — 5차 M5)
   const reportable = snapshots.filter((s) => s.status === 'published');
-  const selectedId = baseId ?? snapshotId;
+  // 6차 minor 21: 고른 값은 **지금 지역** 리비전 목록에 있을 때만 쓴다 — 지역을 바꾸면 이전 지역에서 고른 기준·비교는
+  // 버려지고 새 지역 기본 리비전으로 돌아간다. 비교는 기준과 다른 발행 리비전만(같은 id 비교 금지).
+  const selectedId =
+    baseId !== null && snapshots.some((s) => String(s.id) === baseId) ? baseId : snapshotId;
   const base = snapshots.find((s) => String(s.id) === selectedId) ?? null;
+  const compareValue =
+    compareId !== '' &&
+    compareId !== selectedId &&
+    reportable.some((s) => String(s.id) === compareId)
+      ? compareId
+      : '';
   const blocked = blockReason(base);
   const createError = createErrorText(create.error);
 
@@ -73,7 +82,7 @@ export function ReportsPage() {
       {
         snapshot_id: Number(selectedId),
         format,
-        compare_snapshot_id: compareId ? Number(compareId) : null,
+        compare_snapshot_id: compareValue ? Number(compareValue) : null,
       },
       { onSuccess: (job) => setJobId(job.id) },
     );
@@ -86,7 +95,11 @@ export function ReportsPage() {
           <SnapshotPicker
             snapshots={base && base.status !== 'published' ? [base, ...reportable] : reportable}
             value={selectedId}
-            onChange={setBaseId}
+            onChange={(id) => {
+              setBaseId(id);
+              // 비교로 고른 리비전을 기준으로 바꾸면 비교는 없음(나중에 기준을 되돌려도 되살아나지 않게)
+              if (id === compareId) setCompareId('');
+            }}
             label={t('page.G8.snapshot')}
           />
           <span className="inline-flex items-center gap-1.5 text-sm">
@@ -95,7 +108,7 @@ export function ReportsPage() {
             </label>
             <select
               id={compareSelectId}
-              value={compareId}
+              value={compareValue}
               onChange={(e) => setCompareId(e.target.value)}
               className="rounded-sm border border-border bg-surface px-2 py-1"
             >
@@ -153,7 +166,7 @@ export function ReportsPage() {
         ) : null}
       </Section>
       <ReportList asof={asof} snapshots={snapshots} />
-      <SnapshotDiff baseId={selectedId} compareId={compareId || null} asof={asof} />
+      <SnapshotDiff baseId={selectedId} compareId={compareValue || null} asof={asof} />
     </PageShell>
   );
 }

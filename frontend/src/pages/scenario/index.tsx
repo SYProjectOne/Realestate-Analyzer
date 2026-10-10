@@ -493,6 +493,11 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
     !!after.data &&
     !after.isPlaceholderData &&
     after.dataUpdatedAt >= doneAt;
+  // 6차 minor 25: '이후' 조회가 잡 뒤에 실패하면 '받는 중'에 멈추지 않고 오류 + 다시 시도
+  const afterError =
+    finished && doneAt !== null && !afterFresh && after.error && after.errorUpdatedAt >= doneAt
+      ? after.error
+      : null;
 
   const run = () => {
     if (!current || !snapshotId) return;
@@ -566,7 +571,24 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
           ) : null}
         </p>
       ) : null}
-      {finished && baseline && !afterFresh ? (
+      {afterError ? (
+        <div
+          role="alert"
+          data-testid="g5-after-error"
+          className="flex flex-wrap items-center gap-2 text-xs text-danger"
+        >
+          <span>{t('page.G5.afterError', { detail: afterError.message })}</span>
+          <button
+            type="button"
+            onClick={() => void after.refetch()}
+            disabled={after.isFetching}
+            className="underline disabled:opacity-50"
+          >
+            {t('app.retry')}
+          </button>
+        </div>
+      ) : null}
+      {finished && baseline && !afterFresh && !afterError ? (
         <p className="text-xs text-muted" data-testid="g5-after-loading">
           {t('page.G5.afterLoading')}
         </p>

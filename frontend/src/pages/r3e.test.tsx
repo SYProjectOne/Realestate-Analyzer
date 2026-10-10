@@ -1,6 +1,6 @@
 /**
  * R3e(5차 리뷰) FE4 화면 minor:
- *  - useJob: 조회 오류면 폴링을 멈춘다(무한 폴링).
+ *  - useJob: 조회 오류(4xx)면 폴링을 멈춘다(무한 폴링). 6차: 일시 오류는 늦춰 가며 재조회(r3f.test.tsx).
  *  - jobWatch: 발행 대기 리비전 폴링 = 그 리비전을 진행할 잡이 끝날 때까지(30분 제한 대신), 실패 잡 리비전은 멈춤.
  *  - G5 '이후': 캐시에 남은 옛 대시보드로 잠깐 '변화 없음'이 보이지 않는다.
  *  - G6 시장: 상황 토글(?scenario=)을 서버에 보낸다(계약 .10).
@@ -23,7 +23,7 @@ import {
   PENDING_REVISION_POLL_MS,
   snapshotsRefetchInterval,
 } from '@/api/jobWatch';
-import type { Dashboard, JobRun, Snapshot } from '@/api/types';
+import type { Dashboard, JobRun, Scenario, Snapshot } from '@/api/types';
 import { snapshotText } from '@/components/SnapshotPicker';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
@@ -82,9 +82,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // ─── useJob 오류 → 폴링 멈춤 ───────────────────────────────
 
 describe('useJob 오류면 폴링을 멈춘다 (5차 minor)', () => {
-  it('jobRefetchInterval: error → false, done·failed → false, 진행 중 → 간격', () => {
-    expect(jobRefetchInterval({ status: 'error' }, 100)).toBe(false);
-    expect(jobRefetchInterval({ status: 'error', data: { status: 'running' } }, 100)).toBe(false);
+  it('jobRefetchInterval: 4xx error → false, done·failed → false, 진행 중 → 간격', () => {
+    // 6차 minor 22: 멈추는 것은 다시 불러도 같은 4xx 뿐 — 일시 오류(5xx)는 r3f.test.tsx 에서 늦춰 가며 재조회
+    const e404 = new ApiError('not_found', 'job 999', 404);
+    expect(jobRefetchInterval({ status: 'error', error: e404 }, 100)).toBe(false);
+    expect(
+      jobRefetchInterval({ status: 'error', error: e404, data: { status: 'running' } }, 100),
+    ).toBe(false);
     expect(jobRefetchInterval({ status: 'success', data: { status: 'done' } }, 100)).toBe(false);
     expect(jobRefetchInterval({ status: 'success', data: { status: 'failed' } }, 100)).toBe(false);
     expect(jobRefetchInterval({ status: 'success', data: { status: 'running' } }, 100)).toBe(100);
@@ -367,17 +371,35 @@ describe('G8 보고서: 발행 전 리비전·409 안내 (5차 minor)', () => {
 // ─── 계약 .10: 발행 뒤 만든 시나리오 404 ──────────────────────
 
 describe('발행 리비전 + 발행 뒤 만든 시나리오 = 404 → 시나리오 실행 안내 (계약 .10 S2)', () => {
+  // 6차 minor 24: 시나리오 생성 시각이 발행 뒤여야 한다(r3f.test.tsx)
+  const published = { status: 'published', published_at: '2026-10-08T07:42:10+09:00' } as const;
+  const scenario9 = {
+    id: 9,
+    code: null,
+    created_at: '2026-10-09T10:00:00+09:00',
+  } satisfies Pick<Scenario, 'id' | 'code' | 'created_at'>;
+
   it('isScenarioMissing: 사용자 시나리오·발행 리비전·404 일 때만', () => {
     const e404 = new ApiError('not_found', 'scenario 9', 404);
-    expect(isScenarioMissing(e404, '9', 'published')).toBe(true);
-    expect(isScenarioMissing(e404, 'B', 'published')).toBe(false); // 내장 시나리오는 늘 저장본이 있다
-    expect(isScenarioMissing(e404, null, 'published')).toBe(false);
-    expect(isScenarioMissing(e404, '9', 'ready')).toBe(false); // 발행 전은 실시간 계산
-    expect(isScenarioMissing(new ApiError('internal', 'x', 500), '9', 'published')).toBe(false);
+    const list = [scenario9];
+    expect(isScenarioMissing(e404, '9', published, list)).toBe(true);
+    expect(isScenarioMissing(e404, 'B', published, list)).toBe(false); // 내장 시나리오는 늘 저장본이 있다
+    expect(isScenarioMissing(e404, null, published, list)).toBe(false);
+    // 발행 전은 실시간 계산
+    expect(isScenarioMissing(e404, '9', { status: 'ready', published_at: null }, list)).toBe(false);
+    expect(isScenarioMissing(new ApiError('internal', 'x', 500), '9', published, list)).toBe(false);
   });
 
   it('G1 ?scenario=9(발행 뒤 생성) → 404 → 안내 + 시나리오 실행 링크(전역 쿼리 유지)', async () => {
+    const scenarios = await example<Scenario[]>('/scenarios');
+    const base = scenarios.find((s) => s.code === 'base')!;
     server.use(
+      http.get(mswPath('/scenarios'), () =>
+        HttpResponse.json([
+          ...scenarios,
+          { ...base, ...scenario9, is_builtin: false, name: '내 9' },
+        ]),
+      ),
       http.get(mswPath('/snapshots/:sid/dashboard'), () =>
         HttpResponse.json(
           { code: 'not_found', detail: 'scenario 9 not in snapshot' },

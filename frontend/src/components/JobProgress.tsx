@@ -11,7 +11,8 @@ export interface JobProgressViewProps {
 
 /** 표시 전용(테스트·갤러리용). 계약 `progress{done,total,step}`가 있으면 결정 진행 막대, 없으면 미정 막대. */
 export function JobProgressView({ job, error }: JobProgressViewProps) {
-  if (error) {
+  // 잡을 한 번이라도 받았으면 일시 오류 동안(다시 조회 중 — 6차 minor 22) 마지막 상태를 두고 오류 줄만 더한다
+  if (error && !job) {
     return (
       <div role="status" className="text-sm text-danger">
         {t('job.error', { detail: error.message })}
@@ -65,6 +66,11 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
       ) : null}
       {job.error_text ? (
         <p className="text-danger">{t('job.error', { detail: job.error_text })}</p>
+      ) : null}
+      {error ? (
+        <p className="text-danger" data-testid="job-retrying">
+          {t('job.retrying', { detail: error.message })}
+        </p>
       ) : null}
     </div>
   );

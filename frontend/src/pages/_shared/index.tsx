@@ -5,7 +5,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ApiError } from '@/api/client';
-import type { Fact, JudgeScope } from '@/api/types';
+import { useScenarios } from '@/api/hooks';
+import type { Fact, JudgeScope, Scenario, Snapshot } from '@/api/types';
 import { Badge, EmptyState } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
@@ -106,27 +107,37 @@ const BUILTIN_SCENARIOS: ReadonlySet<string> = new Set(['base', 'A', 'B', 'C', '
 /**
  * 계약 .10 S2(D13-1): 발행 리비전은 발행 순간 시나리오별 저장본만 돌려준다 — 발행 **뒤에** 만든 사용자 시나리오
  * (`?scenario=<id>`)로 옛 발행 리비전을 읽으면 404. 그 결과는 시나리오 실행(G5)이 만드는 새 리비전에 있다.
+ * 6차 minor 24: 404 면 다 그렇다고 보지 않는다 — 계약 오류 code 가 `not_found` 이고, 그 시나리오가 목록에 있으며
+ * 생성 시각이 리비전 발행 시각 **뒤**일 때만이다. 발행 전에 만든 시나리오(저장본 있음)·목록에 없는 시나리오(삭제·
+ * 없는 id)·본문 없는 404(code 'http')·시나리오 목록을 아직 모를 때는 일반 오류로 보인다.
  */
 export function isScenarioMissing(
   error: unknown,
   scenarioKey: string | null,
-  snapshotStatus: string | null | undefined,
+  snapshot: Pick<Snapshot, 'status' | 'published_at'> | null | undefined,
+  scenarios: readonly Pick<Scenario, 'id' | 'code' | 'created_at'>[] | undefined,
 ): boolean {
-  return (
-    error instanceof ApiError &&
-    error.status === 404 &&
-    scenarioKey !== null &&
-    !BUILTIN_SCENARIOS.has(scenarioKey) &&
-    snapshotStatus === 'published'
-  );
+  if (!(error instanceof ApiError) || error.status !== 404 || error.code !== 'not_found') {
+    return false;
+  }
+  if (scenarioKey === null || BUILTIN_SCENARIOS.has(scenarioKey)) return false;
+  if (snapshot?.status !== 'published' || !scenarios) return false;
+  const scenario = scenarios.find((s) => (s.code ?? String(s.id)) === scenarioKey);
+  if (!scenario) return false;
+  const created = Date.parse(scenario.created_at ?? '');
+  const published = Date.parse(snapshot.published_at ?? '');
+  // 시각을 모르면(옛 응답) 안내를 유지한다 — 발행 전 생성이 확실할 때만 다른 404 로 본다
+  if (!Number.isFinite(created) || !Number.isFinite(published)) return true;
+  return created > published;
 }
 
 /** 쿼리 오류 표시: 발행 리비전에 없는 시나리오면 시나리오 실행 안내, 그 밖은 일반 오류 */
 function QueryError({ error }: { error: Error }) {
   const { scenarioId } = useScenario();
   const { snapshot } = useSnapshot();
+  const scenarios = useScenarios();
   const search = useGlobalSearch();
-  if (isScenarioMissing(error, scenarioId, snapshot?.status)) {
+  if (isScenarioMissing(error, scenarioId, snapshot, scenarios.data)) {
     return (
       <div role="status" data-testid="scenario-missing" className="flex flex-col gap-1 text-sm">
         <p>{t('page.common.scenarioMissing', { scenario: scenarioId ?? '' })}</p>

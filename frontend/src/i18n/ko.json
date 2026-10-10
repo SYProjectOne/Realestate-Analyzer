@@ -397,6 +397,7 @@
       "afterRevision": "이후 값: {snapshot}",
       "afterPending": "새 리비전(목록 갱신 중)",
       "afterLoading": "실행 뒤 값을 받는 중",
+      "afterError": "실행 뒤 값을 받지 못했습니다: {detail}",
       "openRevision": "이 리비전으로 화면 보기"
     },
     "G6": {
@@ -922,6 +923,7 @@
     },
     "none": "진행 중인 작업 없음",
     "error": "오류: {detail}",
+    "retrying": "상태를 받지 못해 다시 확인하는 중: {detail}",
     "progress": "{done}/{total}",
     "step": "단계 {step}"
   },

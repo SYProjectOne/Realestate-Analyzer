@@ -36,6 +36,7 @@ import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute, renderWithProviders } from '@/test/render';
 import { snapshotText } from '@/components/SnapshotPicker';
+import { RegionExpandPanel } from './living-areas/RegionExpandPanel';
 import { matching, recordRequests } from './_shared/testing';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
@@ -464,16 +465,17 @@ describe('계약 .9 화면 맞춤', () => {
         } satisfies RegionPatched);
       }),
     );
-    renderRoute('/regions/1/living-areas');
-    const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
-    await userEvent.type(within(panel).getByLabelText(t('page.G0_2.expand.name')), ' 2');
-    await userEvent.click(
-      within(panel).getByRole('button', { name: t('page.G0_2.expand.submit') }),
-    );
-    expect(await within(panel).findByTestId('expand-name-only')).toHaveTextContent(
+    // 6차 리뷰: 부하에서 5017ms 실패 — 원인은 라우트 전체 렌더였다(지연 로드 청크 첫 변환·헤더 쿼리·생활권 편집기를
+    // 5초 findBy 안에서 기다리고, 문서 전체 접근성 트리로 region 을 찾음). 이 테스트가 보는 것은 확장 패널의 응답
+    // 처리뿐이라 패널만 렌더한다(화면 조립은 living-areas/regionExpand.test.tsx 가 본다).
+    const { container } = renderWithProviders(<RegionExpandPanel region={region} />);
+    const panel = within(container);
+    await userEvent.type(panel.getByLabelText(t('page.G0_2.expand.name')), ' 2');
+    await userEvent.click(panel.getByText(t('page.G0_2.expand.submit')));
+    expect(await panel.findByTestId('expand-name-only')).toHaveTextContent(
       t('page.G0_2.expand.nameOnly'),
     );
-    expect(within(panel).queryByText(t('job.title'))).toBeNull();
+    expect(panel.queryByText(t('job.title'))).toBeNull();
   });
 });
 

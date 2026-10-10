@@ -13,12 +13,20 @@ import {
   useQuery,
   useQueryClient,
   type QueryClient,
+  type QueryState,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
-import { awaitingPublish, snapshotsRefetchInterval, type RoundJobs } from './jobWatch';
+import {
+  awaitingPublish,
+  backoffMs,
+  failedRound,
+  POLL_ERROR_MAX_STREAK,
+  snapshotsRefetchInterval,
+  type RoundJobs,
+} from './jobWatch';
 import type {
   CatalystCreate,
   CatalystCreated,
@@ -214,14 +222,46 @@ const roundJobs = new WeakMap<readonly Snapshot[], RoundJobs>();
 /** `/jobs` 를 읽을 수 없던(401·403) QueryClient — 다시 부르지 않는다 */
 const jobsForbidden = new WeakSet<QueryClient>();
 
-/** 진행 중 잡(queued + running) — listJobs 두 번 */
-async function fetchActiveJobs(signal: AbortSignal): Promise<JobRun[]> {
+/** 진행 중 잡을 읽을 때 한 번에 받는 최대 건수(계약 Size 최대 — 기본 50건이면 잘린다, 6차 minor 23) */
+export const JOBS_SCAN_SIZE = 1000;
+
+/**
+ * 진행 중 잡(queued + running) — listJobs 두 번(size = JOBS_SCAN_SIZE). 어느 목록이든 size 에 꽉 차면 잘렸을 수 있어
+ * 이 지역 잡이 빠졌는지 모른다 → 'unread'(다음 차례에 다시 읽고 그동안은 폴링 유지).
+ */
+export async function fetchActiveJobs(signal: AbortSignal): Promise<RoundJobs> {
   const [queued, running] = await Promise.all(
     (['queued', 'running'] as const).map((status) =>
-      apiFetch<JobRun[]>('/jobs', { query: { status }, signal }),
+      apiFetch<JobRun[]>('/jobs', { query: { status, size: JOBS_SCAN_SIZE }, signal }),
     ),
   );
-  return [...(queued ?? []), ...(running ?? [])];
+  const lists = [queued ?? [], running ?? []];
+  if (lists.some((l) => l.length >= JOBS_SCAN_SIZE)) return 'unread';
+  return lists.flat();
+}
+
+/** 쿼리별 마지막 성공 때의 errorUpdateCount — 연속 오류 횟수 계산용 */
+const errorBase = new WeakMap<object, number>();
+
+/**
+ * 마지막 성공(또는 첫 조회) 뒤 연속 오류 횟수. refetchInterval 콜백에서 쿼리 상태로 센다(TanStack 의
+ * fetchFailureCount 는 조회마다 0 으로 돌아가 연속 횟수가 아니다).
+ */
+export function errorStreak(query: {
+  state: Pick<QueryState, 'status' | 'errorUpdateCount'>;
+}): number {
+  const { status, errorUpdateCount } = query.state;
+  if (status !== 'error') {
+    errorBase.set(query, errorUpdateCount);
+    return 0;
+  }
+  return Math.max(errorUpdateCount - (errorBase.get(query) ?? 0), 1);
+}
+
+/** 다시 부를 가치가 있는 일시 오류: 네트워크(상태 없음)·5xx·429. 그 밖의 4xx(없음·권한·검증)는 다시 불러도 같다 */
+export function isTransientError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return true;
+  return error.status === null || error.status >= 500 || error.status === 429;
 }
 
 /**
@@ -247,6 +287,9 @@ export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]>
           if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
             jobsForbidden.add(qc);
             jobs = 'forbidden';
+          } else if (!signal.aborted) {
+            // 일시 오류(5xx·네트워크): 연속 횟수를 세어 늦춘다(6차 minor 23 — 3초 고정 무한 폴링 금지)
+            jobs = failedRound(prev ? roundJobs.get(prev) : undefined);
           }
         }
       }
@@ -264,6 +307,7 @@ export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]>
         data,
         Date.now(),
         data ? (roundJobs.get(data) ?? 'forbidden') : 'forbidden',
+        errorStreak(q),
       );
     },
   });
@@ -589,26 +633,38 @@ export function useCreateJob(): M<JobCreate, JobRun> {
 
 export const JOB_POLL_MS = 2000;
 
-/** useJob 폴링 간격: done/failed 이거나 마지막 조회가 오류(404·403·서버 오류 등)면 멈춘다(5차 리뷰 minor). */
+/**
+ * useJob 폴링 간격: done/failed 면 멈춘다. 마지막 조회가 오류면 — 일시 오류(5xx·네트워크·429)는 늦춰 가며 다시
+ * 조회하고(6차 minor 22: 한 번 오류로 영구 중단 금지) 연속 POLL_ERROR_MAX_STREAK 회를 넘으면 멈춘다. 잡 없음·권한
+ * 없음 같은 4xx 는 다시 불러도 같으므로 바로 멈춘다(5차 minor: 무한 폴링 금지).
+ */
 export function jobRefetchInterval(
-  state: { status: string; data?: Pick<JobRun, 'status'> | undefined },
+  state: {
+    status: string;
+    data?: Pick<JobRun, 'status'> | undefined;
+    error?: unknown;
+  },
   pollMs: number = JOB_POLL_MS,
+  streak: number = state.status === 'error' ? 1 : 0,
 ): number | false {
-  if (state.status === 'error') return false;
+  if (state.status === 'error') {
+    if (!isTransientError(state.error) || streak > POLL_ERROR_MAX_STREAK) return false;
+    return backoffMs(pollMs, streak);
+  }
   const status = state.data?.status;
   return status === 'done' || status === 'failed' ? false : pollMs;
 }
 
 /**
  * GET /jobs/{id} (getJob) — queued/running이면 pollMs(기본 2초)마다 다시 조회, done/failed면 멈춘다.
- * 조회가 오류로 끝나면(잡 없음·권한 없음·서버 오류) 무한히 다시 부르지 않고 멈춘다 — JobProgress 가 오류를 보인다.
+ * 일시 오류면 늦춰 가며 다시 조회하고(그동안 JobProgress 가 오류를 보인다), 4xx·연속 오류 상한이면 멈춘다.
  */
 export function useJob(id: IdLike | null | undefined, pollMs: number = JOB_POLL_MS): Q<JobRun> {
   return useQuery({
     queryKey: queryKeys.job(key(id)),
     queryFn: ({ signal }) => apiFetch<JobRun>(`/jobs/${enc(key(id))}`, { signal }),
     enabled: has(id),
-    refetchInterval: (query) => jobRefetchInterval(query.state, pollMs),
+    refetchInterval: (query) => jobRefetchInterval(query.state, pollMs, errorStreak(query)),
   });
 }
 

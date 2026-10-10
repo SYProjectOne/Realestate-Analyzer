@@ -2,7 +2,7 @@
  * D11-6(계약 .8): 공고에 명시된 할인 — `PriceRange.discount`(기준 타입)를 헤더·가격 표에 FactCell 로,
  * 현재 공고 `payment_terms.discount_by_type`(타입별)을 가격 표 열로. 차감 문구는 서버 `discount_applied`(계약 .10 초안,
  * 5차 minor)로만: true → '구매가에서 뺐음', false → '표시만(빼지 않음)' — 확인됨이어도 0·음수·최고가 이상이면 서버가
- * 빼지 않는다. 필드가 없으면(옛 서버) 문구 없음. 할인이 없으면(null·{}) 줄·열이 없다.
+ * 빼지 않는다. 필드가 없으면 계약 기본값 false(6차 minor 20) = '표시만'. 할인이 없으면(null·{}) 줄·열이 없다.
  */
 import { screen, within } from '@testing-library/react';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
@@ -13,7 +13,7 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
-import { discountNote } from './tabs';
+import { discountApplied, discountNote, discountShortNote } from './tabs';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -58,8 +58,14 @@ describe('D11-6 할인 표시', () => {
     expect(discountNote({ discount: discount('추정'), discount_applied: false })).toBe(
       t('page.G3.price.discountNotApplied'),
     );
-    // 옛 서버(필드 없음) → 문구 없음
-    expect(discountNote({ discount: discount('확인됨') })).toBeNull();
+    // 필드 없음 = 계약 기본값 false(6차 minor 20) → '표시만(빼지 않음)'. 모름(null)으로 문구를 숨기지 않는다
+    expect(discountNote({ discount: discount('확인됨') })).toBe(
+      t('page.G3.price.discountNotApplied'),
+    );
+    expect(discountShortNote({ discount: discount('확인됨') })).toBe(
+      t('page.G3.price.discountNotAppliedShort'),
+    );
+    expect(discountApplied({ discount: discount('확인됨') })).toBe(false);
     expect(discountNote(null)).toBeNull();
     expect(
       discountNote({ discount: { ...discount('확인됨'), v: null }, discount_applied: true }),
@@ -123,6 +129,21 @@ describe('D11-6 할인 표시', () => {
     const row = await screen.findByTestId('price-discount');
     expect(row).toHaveTextContent(t('page.G3.price.discountNotApplied'));
     expect(row).not.toHaveTextContent(t('page.G3.price.discountApplied'));
+    const header = await screen.findByTestId('header-discount');
+    expect(header).toHaveAttribute('title', t('page.G3.price.discountNotApplied'));
+    expect(within(header).getByTestId('header-discount-note')).toHaveTextContent(
+      t('page.G3.price.discountNotAppliedShort'),
+    );
+  });
+
+  it('discount_applied 가 응답에 없으면 계약 기본값 false — 헤더·가격 표 모두 표시만 (6차 minor 20)', async () => {
+    serve((d) => {
+      const { discount_applied: _omit, ...price } = d.price;
+      return { ...d, price: { ...price, discount: discount('확인됨') } };
+    });
+    renderRoute('/complexes/2#price');
+    const row = await screen.findByTestId('price-discount');
+    expect(row).toHaveTextContent(t('page.G3.price.discountNotApplied'));
     const header = await screen.findByTestId('header-discount');
     expect(header).toHaveAttribute('title', t('page.G3.price.discountNotApplied'));
     expect(within(header).getByTestId('header-discount-note')).toHaveTextContent(
