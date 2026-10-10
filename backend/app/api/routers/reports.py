@@ -71,17 +71,45 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
     if snap.status != "published":
         # R3 4차 M-16: 판정이 끝나지 않은(building) 리비전은 보고서를 만들지 않는다 — 파생 행이 반쯤 찬 상태
         raise conflict(f"snapshot {snap.id} 는 발행 전({snap.status})이라 보고서를 만들 수 없다")
+    from app.api.errors import ApiError, validation_error
+
     if body.get("compare_snapshot_id") is not None:
         cmp = get_snapshot(session, body["compare_snapshot_id"])
         # R3 5차 M5: 비교 기준도 발행 리비전(저장본 — D13-1)·같은 지역만(지역끼리는 독립 분석, D11-10)
         if cmp.region_id != snap.region_id:
-            from app.api.errors import validation_error
-
             raise validation_error(
                 f"비교 스냅샷 {cmp.id} 은 다른 지역({cmp.region_id})이다", ("body", "compare_snapshot_id")
             )
         if cmp.status != "published":
             raise conflict(f"비교 스냅샷 {cmp.id} 는 발행 전({cmp.status})이라 비교할 수 없다")
+        # R3 6차 m5: 비교 기준은 대상보다 **앞선** 리비전(같은 스냅샷·더 새 리비전은 '이전 → 현재' 표가 뒤집힌다)
+        if (cmp.asof_date, int(cmp.revision or 1), cmp.id) >= (
+            snap.asof_date,
+            int(snap.revision or 1),
+            snap.id,
+        ):
+            raise validation_error(
+                f"비교 스냅샷 {cmp.id} 은 대상 {snap.id} 와 같거나 더 새 리비전이다 — 앞선 리비전을 고른다",
+                ("body", "compare_snapshot_id"),
+            )
+    if body.get("scenario_id") is not None:
+        from app.models import Scenario
+        from app.reports.data import scenario_in_revision
+
+        if session.get(Scenario, int(body["scenario_id"])) is None:
+            raise validation_error(f"시나리오 {body['scenario_id']} 없음", ("body", "scenario_id"))
+        if not scenario_in_revision(session, snap, int(body["scenario_id"])):
+            # D14-3(R3 6차 N-M1): 그 리비전 발행 뒤 만든 시나리오 — 결과는 시나리오 실행이 만드는 새 리비전에 있다
+            msg = (
+                f"시나리오 {body['scenario_id']} 는 리비전 {snap.id} 에 없다(발행 뒤 만든 시나리오) — "
+                "시나리오 실행으로 생긴 리비전을 고른다"
+            )
+            raise ApiError(
+                422,
+                "scenario_not_in_revision",
+                msg,
+                field_errors=[{"loc": ["body", "scenario_id"], "msg": msg}],
+            )
     n = contradicted(session, snap.id)
     if n:
         raise conflict(f"contradicted claim {n}건이 남아 있어 보고서를 만들 수 없다", code="publish_blocked")
@@ -112,7 +140,16 @@ def _report_path(base: Path, rel: str) -> Path | None:
     parts = PurePosixPath(norm).parts
     if not parts or any(p in ("..", ".") for p in parts):
         return None
-    return base.joinpath(*parts)
+    # R3 6차 m6: 'x/C:outside.txt' 같은 Windows 드라이브 상대 조각은 joinpath 가 base 를 버린다 — 조각에 드라이브·콜론 금지,
+    # 이어 붙인 결과도 REPORT_DIR 안이어야 한다
+    if any(":" in p or PureWindowsPath(p).drive or PureWindowsPath(p).root for p in parts):
+        return None
+    out = base.joinpath(*parts)
+    try:
+        out.resolve().relative_to(base.resolve())
+    except (ValueError, OSError):
+        return None
+    return out
 
 
 @router.get("/reports/{id}")

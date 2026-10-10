@@ -117,7 +117,13 @@ def generate(
         compare_snapshot_id = default_compare(session, snapshot_id)
     data = load_report(session, snapshot_id, scenario_id=scenario_id, compare_snapshot_id=compare_snapshot_id)
     diff = (
-        diff_snapshots(session, compare_snapshot_id, snapshot_id, scenario_code=data.scenario_code)
+        diff_snapshots(
+            session,
+            compare_snapshot_id,
+            snapshot_id,
+            scenario_code=data.scenario_code,
+            scenario_id=scenario_id,
+        )
         if compare_snapshot_id is not None
         else None
     )

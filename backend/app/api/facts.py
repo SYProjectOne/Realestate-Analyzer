@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Iterator, Mapping
+from contextvars import ContextVar
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, NamedTuple
 
@@ -44,6 +45,19 @@ DEMOTION_REASON = "검증 모순"  # app.facts_view.DEMOTION_REASON (D10-3·D11-
 _ORDER = {"확인됨": 0, "재가공": 1, "비공식": 2, "추정": 3, LABEL_UNKNOWN: 4}
 
 Fact = dict[str, Any]
+
+MISSING_COUNT: ContextVar[list[int] | None] = ContextVar("facts_missing_count", default=None)
+"""저장본 계산 중(D14-8): 출처 누락을 ENV 와 무관하게 '확인 불가(출처 누락)' 라벨로 만들고
+건수를 센다(잡 통계)."""
+
+
+def _missing_label() -> bool:
+    """출처 누락을 라벨로 낼 것인가(prod 또는 저장본 계산 중). 저장본 계산이면 건수를 하나 센다."""
+    box = MISSING_COUNT.get()
+    if box is not None:
+        box[0] += 1
+        return True
+    return get_settings().env != "dev"
 
 
 def num(value: Any) -> Any:
@@ -105,7 +119,7 @@ def fact(
     if label != LABEL_UNKNOWN and not prov:
         # 출처 없는 수치: dev 만 예외, prod 는 '확인 불가(출처 누락)' + 경고 로그(errors.py 규칙, R3 minor 38)
         detail = f"Fact without prov (label {label})"
-        if get_settings().env == "dev":
+        if not _missing_label():
             raise ContractViolation(detail)
         log.warning("출처 누락: %s", detail, extra={"label": label})
         return unknown(MISSING_REASON, checked_at, unit=unit)
@@ -235,7 +249,9 @@ class FactMaker:
 
     def missing(self, entity: str, entity_id: int | None, field: str, unit: str | None = None) -> Fact:
         detail = f"{entity} {entity_id} field {field} has no field_provenance row (출처 누락)"
-        if self.env == "dev":
+        if MISSING_COUNT.get() is not None:
+            _missing_label()
+        elif self.env == "dev":
             raise ContractViolation(detail)
         log.warning("출처 누락: %s", detail, extra={"entity": entity, "entity_id": entity_id, "field": field})
         return unknown(MISSING_REASON, None, unit=unit)

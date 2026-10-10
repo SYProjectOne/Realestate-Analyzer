@@ -11,7 +11,7 @@ from collections.abc import Sequence
 LABELS = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
 REGION_STATUS = ("resolving", "bootstrapping", "ready", "failed")
 SNAPSHOT_STATUS = ("building", "ready", "published")
-# 0010 snapshot_view.kind (D13-1) — 발행 리비전의 저장된 읽기 모델 종류
+# 0010 snapshot_view.kind (D13-1) — 발행 리비전의 저장된 읽기 모델 종류 (+0011 D14-1)
 SNAPSHOT_VIEW_KIND = (
     "dashboard",
     "complexes",
@@ -22,6 +22,8 @@ SNAPSHOT_VIEW_KIND = (
     "sensitivity",
     "report",
     "report_diff",
+    "provenance",  # 0011 (D14-1) 출처 서랍
+    "claims",  # 0011 (D14-1) 주장 목록
 )
 HOUSING_TYPE = ("민영", "국민")
 LAND_TYPE = ("공공택지", "민간택지")

@@ -12,7 +12,7 @@
 <body>
 <header>
   <h1>{{ data.region_name }} 민간분양 청약 분석 보고서</h1>
-  <p class="meta">기준일 {{ data.asof_date }} · 스냅샷 #{{ data.snapshot_id }}({{ data.snapshot_status }}{% if data.degraded %}, 미판정 모드{% endif %}) · 시나리오 {{ data.scenario_name }} · 계약 {{ data.contract_version }} · 생성 {{ data.generated_at }}</p>
+  <p class="meta">기준일 {{ data.asof_date }} · 스냅샷 #{{ data.snapshot_id }}({{ data.snapshot_status }}{% if data.degraded %}, 미판정 모드{% endif %}) · 시나리오 {{ data.scenario_name }} · 계약 {{ data.contract_version }} · 생성 <time class="generated-at" datetime="{{ data.generated_at }}">{{ data.generated_at }}</time></p>
   <p class="meta">입력 지명: {{ data.region_query }}{% if data.extra %} · 비교 스냅샷 #{{ data.extra.base_snapshot_id }}({{ data.extra.base_asof }}){% endif %}</p>
   {{ disclaimer() }}
   <p class="note">모든 수치 옆 배지는 라벨(확인됨·추정·비공식·재가공·확인 불가)이고, 마우스를 올리면 출처 id(fp_ 출처 행, sc_ 구성 점수, st_ 종합 점수, jl_ 판정기 호출 번호)가 보인다. 판단은 판정기가 했고 이 문서는 기록·점수·표시만 한다.</p>

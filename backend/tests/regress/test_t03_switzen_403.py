@@ -34,6 +34,10 @@ def _human_check_then_rejudge(env: RegressEnv, judge: str) -> dict[str, Any]:
     from app.models import JobRun
 
     req = load_json(FIXTURE / "raw" / "human_check" / "t3_switzen_possible.json")
+    if (
+        len(str(req["checked_at"])) == 10
+    ):  # 픽스처(WP9)는 날짜만 — 계약 .11(D14-6)은 시간대 붙은 RFC3339 만 받는다
+        req = {**req, "checked_at": f"{req['checked_at']}T10:00:00+09:00"}
     r = env.client.post("/api/ops/human-checks", headers=WRITE, json=req)
     assert r.status_code == 201, r.text
     body = r.json()

@@ -36,6 +36,30 @@ def today_kst(now: datetime | None = None) -> date:
     return to_kst(now).date() if now is not None else now_kst().date()
 
 
+def kst_date(value: str | None) -> date | None:
+    """사람 확인 ``checked_at``·출처 ``observed_on`` 문자열 → KST 달력 날짜(D14-6 — 날짜 비교는 이 함수 하나).
+
+    - 날짜만('2026-10-09', 옛 행·observed_on) → 그 날짜
+    - 시간대가 붙은 시각('…+09:00'·'…Z') → Asia/Seoul 로 바꾼 날짜('2026-10-09T20:00:00Z' → 2026-10-10)
+    - 시간대 없는 시각(옛 행) → KST 로 본다(그 날짜 그대로)
+    - 못 읽으면 None(문자열 앞 10자를 날짜로 믿지 않는다)"""
+    if not value:
+        return None
+    s = value.strip()
+    if len(s) == 10:
+        try:
+            return date.fromisoformat(s)
+        except ValueError:
+            return None
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None or dt.utcoffset() is None:
+        return dt.date()
+    return dt.astimezone(KST).date()
+
+
 def add_days(base: date, days: int) -> date:
     return base + timedelta(days=days)
 

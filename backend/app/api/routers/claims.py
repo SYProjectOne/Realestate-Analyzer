@@ -117,11 +117,20 @@ def list_claims(
     sid: int,
     status: Annotated[str | None, Query(pattern="^(verified|contradicted|unsupported|review)$")] = None,
 ) -> JSONResponse:
+    """D14-1(계약 .11, R3 6차 m1): 발행 리비전은 발행 순간 저장한 목록(강등 상태·대상·대기 잡 포함)을 그대로 — 이후
+    PATCH /claims·강등·사람 확인이 옛 리비전 목록을 바꾸지 않는다. 발행 전 리비전만 지금 값."""
     snap = get_snapshot(session, sid)  # GET 은 DB 를 쓰지 않는다(minor 13) — 강등 상태는 오버레이로 읽는다
-    stmt = select(Claim).where(Claim.snapshot_id == snap.id)
+    from app import snapshot_view as sv
+
+    rows = sv.claims(session, snap)
     if status:
-        stmt = stmt.where(Claim.verify_status == status)
-    rows = list(session.scalars(stmt.order_by(Claim.id)))
+        rows = [r for r in rows if r.get("verify_status") == status]
+    return JSONResponse(rows)
+
+
+def claims_body(session: Session, snap: Any) -> list[dict[str, Any]]:
+    """그 스냅샷 주장 목록 전체(실시간 — 발행 리비전은 이 결과를 저장한다, D14-1)."""
+    rows = list(session.scalars(select(Claim).where(Claim.snapshot_id == snap.id).order_by(Claim.id)))
     ids = {c.complex_id for c in rows if c.complex_id is not None}
     names: dict[int, str] = {}
     if ids:
@@ -132,9 +141,9 @@ def list_claims(
     targets = {c.id: claim_target(session, c) for c in rows}
     demotions = latest_demotions(session, rows, targets)
     overlay = load_overlay(session, complex_ids=ids) if demotions else None
-    return JSONResponse(
-        [claim_view(c, names, children, pending, targets[c.id], demotions.get(c.id), overlay) for c in rows]
-    )
+    return [
+        claim_view(c, names, children, pending, targets[c.id], demotions.get(c.id), overlay) for c in rows
+    ]
 
 
 @router.patch("/claims/{id}", status_code=202)

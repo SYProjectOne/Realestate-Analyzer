@@ -36,6 +36,34 @@ def _merge(a: list[int] | None, b: Iterable[int] | None) -> list[int] | None:
     return sorted(set(a) | set(b))
 
 
+def _sqlite_write_lock(session: Session) -> None:
+    """SQLite(개발): 쓰기 잠금을 먼저 잡는다 — worker 의 claim 은 이 트랜잭션 커밋을 기다린다(Postgres 의 FOR UPDATE 와 같은
+    효과, 아무 행도 바꾸지 않는 UPDATE).
+
+    R3 6차 m15: 같은 트랜잭션이 먼저 읽기만 했고 그 사이 다른 연결이 커밋했으면 WAL 이 읽기 스냅샷을 쓰기로 올리지 못해
+    즉시 'database is locked'(SQLITE_BUSY_SNAPSHOT — busy_timeout 무관)가 난다. 그 트랜잭션이 아직 아무것도 쓰지 않았고
+    대기 중인 ORM 변경도 없을 때만 되돌리고(읽기만 버린다) 새 트랜잭션에서 잠금부터 다시 잡는다. 이미 쓴 트랜잭션은 예외
+    그대로(조용한 쓰기 손실 금지)."""
+    from sqlalchemy.exc import OperationalError
+
+    from app.core.db import sqlite_wrote
+
+    stmt = (
+        update(JobRun)
+        .where(false())
+        .values(status=JobRun.status)
+        .execution_options(synchronize_session=False)
+    )
+    pending = bool(session.new or session.dirty or session.deleted)
+    try:
+        session.execute(stmt)
+    except OperationalError as exc:
+        if "locked" not in str(exc).lower() or pending or sqlite_wrote(session):
+            raise
+        session.rollback()
+        session.execute(stmt)
+
+
 def enqueue_rejudge(
     session: Session,
     snapshot_id: int,
@@ -54,14 +82,7 @@ def enqueue_rejudge(
     ids = None if complex_ids is None else sorted(set(complex_ids))
     events = sorted(set(change_event_ids)) if change_event_ids is not None else None
     if session.get_bind().dialect.name == "sqlite":
-        # SQLite(개발): 쓰기 잠금을 먼저 잡는다 — worker 의 claim 은 이 트랜잭션 커밋을 기다린다(Postgres 의 FOR UPDATE 와
-        # 같은 효과). 아무 행도 바꾸지 않는 UPDATE
-        session.execute(
-            update(JobRun)
-            .where(false())
-            .values(status=JobRun.status)
-            .execution_options(synchronize_session=False)
-        )
+        _sqlite_write_lock(session)
     candidates = list(
         session.scalars(
             select(JobRun)

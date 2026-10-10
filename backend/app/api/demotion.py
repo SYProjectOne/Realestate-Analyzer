@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
@@ -34,10 +35,12 @@ from sqlalchemy import Integer, Numeric, select
 from sqlalchemy.orm import Session
 
 from app.api.jobs import now_iso
+from app.core.time import kst_date, now_kst
 from app.facts_view import (
     DEMOTION_LABEL,
     DEMOTION_REASON,
     DemotionOverlay,
+    is_human,
     load_overlay,
     logical_field,
 )
@@ -66,6 +69,7 @@ __all__ = [
     "ValueParseError",
     "apply_human_check",
     "check_same_target",
+    "checked_at_error",
     "checklist_title",
     "claim_target",
     "demote",
@@ -74,6 +78,7 @@ __all__ = [
     "human_target",
     "later_official",
     "latest_demotions",
+    "migrate_row_human_checks",
     "parse_human_value",
     "sync_demotions",
 ]
@@ -501,19 +506,25 @@ def human_target(
     return HumanTarget("payment_terms", tid, field)
 
 
-def later_official(session: Session, target: HumanTarget, checked_at: str) -> str | None:
-    """D13-2: 그 의미 필드(``facts_view.semantic_group``)에 사람 확인일보다 **뒤에** 관측된 공식 1차 출처(공고문·청약홈)가
-    이미 있으면 그 관측일(가장 늦은 것). 그런 사람 확인은 입력 즉시 지므로(D12-1) 받지 않는다(422 — 조용한 패배 금지)."""
+def later_official(
+    session: Session, target: HumanTarget, checked_at: str, value: int | float | str | None = None
+) -> str | None:
+    """D13-2·D14-6: 그 의미 필드(``facts_view.semantic_group``)에 사람 확인일보다 **뒤에**(KST 날짜, ``core.time.kst_date``)
+    관측된 공식 1차 출처(공고문·청약홈)가 **다른 값**으로 이미 있으면 그 관측일(가장 늦은 것). 그런 사람 확인은 입력 즉시
+    지므로(D12-1) 받지 않는다(422 — 조용한 패배 금지). ``value``(사람 확인 값)와 **같은 값**의 나중 공고는 정상(m11 —
+    resolver 도 같은 값은 사람 확인을 이기지 않는다). ``value`` 가 없으면 값과 무관하게 본다."""
     from app.facts_view import semantic_group
     from app.models import RawDocument
+    from app.normalize.fields import norm_value
     from app.normalize.resolver import OFFICIAL_SOURCES
 
     _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
-    day = (checked_at or "")[:10]
+    day = kst_date(checked_at)
+    mine = norm_value(value) if value is not None else None
     latest: str | None = None
     for e, i, f in group:
-        for observed in session.scalars(
-            select(FieldProvenance.observed_on)
+        for observed, norm in session.execute(
+            select(FieldProvenance.observed_on, FieldProvenance.value_norm)
             .join(RawDocument, RawDocument.id == FieldProvenance.raw_document_id)
             .where(
                 FieldProvenance.entity == e,
@@ -521,13 +532,67 @@ def later_official(session: Session, target: HumanTarget, checked_at: str) -> st
                 FieldProvenance.field == f,
                 FieldProvenance.value_norm.is_not(None),
                 FieldProvenance.source_rank > 0,
-                FieldProvenance.observed_on > day,
+                FieldProvenance.observed_on.is_not(None),
                 RawDocument.source_kind.in_(sorted(OFFICIAL_SOURCES)),
             )
         ):
-            if observed and (latest is None or observed > latest):
+            if not observed:
+                continue
+            seen = kst_date(observed)
+            after = (
+                seen > day
+                if seen is not None and day is not None
+                else observed > (checked_at or "")[:10]  # 날짜를 못 읽는 옛 행 — 예전 문자열 규칙
+            )
+            if not after or (mine is not None and _same_norm(norm, mine)):
+                continue
+            if latest is None or observed > latest:
                 latest = observed
     return latest
+
+
+def _same_norm(a: str | None, b: str | None) -> bool:
+    """value_norm 두 개가 같은 값인가(숫자는 십진 비교 — '10' = '10.0', resolver ``same_value`` 와 같은 규칙)."""
+    if a is None or b is None:
+        return a is b
+    try:
+        return Decimal(a.replace(",", "")).normalize() == Decimal(b.replace(",", "")).normalize()
+    except InvalidOperation:
+        return " ".join(a.split()) == " ".join(b.split())
+
+
+CHECKED_AT_FUTURE_SLACK: Final = timedelta(minutes=10)
+"""D14-6: 사람 확인 시각이 서버 시계보다 이만큼 넘게 앞서면 422(입력기 시계 차는 허용)."""
+_RFC3339_RE: Final = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:[Zz]|[+-]\d{2}:\d{2})$"
+)
+
+
+def checked_at_error(value: Any, *, now: datetime | None = None) -> str | None:
+    """D14-6(N-M4): 사람 확인 ``checked_at`` 검사 — 시간대가 붙은 RFC3339 date-time 이고 지금(KST)보다
+    ``CHECKED_AT_FUTURE_SLACK`` 넘게 미래가 아니어야 한다. 문제 없으면 None, 있으면 422 detail 문구.
+    계약 .11 ``format: date-time`` 을 스키마 검사기(FormatChecker)와 무관하게 여기서도 강제한다(미래 검사는 스키마로 못 한다)."""
+    text = value if isinstance(value, str) else ""
+    dt: datetime | None = None
+    if _RFC3339_RE.fullmatch(text):
+        body = text[:-1] + "+00:00" if text[-1] in "Zz" else text
+        try:
+            dt = datetime.fromisoformat(body[:10] + "T" + body[11:])
+        except ValueError:
+            dt = None
+    if dt is None:
+        return (
+            f"확인 시각 '{str(value)[:40]}' 은 시간대가 붙은 RFC3339 날짜·시각이 아니다 — "
+            "예: 2026-10-09T10:20:00+09:00 (날짜만·시간대 없는 시각은 받지 않는다)"
+        )
+    current = now or now_kst()
+    if dt > current + CHECKED_AT_FUTURE_SLACK:
+        minutes = int(CHECKED_AT_FUTURE_SLACK.total_seconds() // 60)
+        return (
+            f"확인 시각 {text} 은 지금({current.isoformat(timespec='seconds')})보다 {minutes}분 넘게 미래다 — "
+            "실제로 확인한 시각을 적는다"
+        )
+    return None
 
 
 def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
@@ -613,24 +678,22 @@ def apply_human_check(
             "raw_document_id": None,
             "url": None,
             "checked_at": stamp,  # 같은 필드의 사람 확인이 여럿이면 최신이 이긴다(resolver 최신 규칙)
-            "observed_on": hc.checked_at[:10],
+            # D14-6(m12): KST 날짜 — '…T20:00:00Z' 는 다음 날(옛 날짜만 행은 그대로, 못 읽으면 예전 앞 10자)
+            "observed_on": _kst_day(hc.checked_at),
             "needs_extract": False,
         }
     )
     resolve_field_group(
         session, target.entity, target.entity_id, target.field, [cand], snapshot_id=snapshot_id
     )
-    # D13-2: 사람 확인은 (단지, 의미 필드) 단위 — 의미 묶음의 값 있는 다른 행(옛 공고·공고문 타입 행)도 다시 resolve 해
-    # 사람 확인 값이 0순위 후보로 들어간다(``normalize.store.semantic_humans``). 어느 행을 읽어도 같은 값이다
-    from app.facts_view import semantic_group
-
     session.flush()
-    _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
-    for e, i, f in group[1:]:
-        cur = _chosen(session, e, i, f)
-        if cur is None or cur.value_norm is None:
-            continue  # 그 필드를 싣지 않은 행(다른 타입만 있는 공고 등)에는 값을 만들지 않는다
-        resolve_field_group(session, e, i, f, [], snapshot_id=snapshot_id)
+    _spread_to_group(session, target, snapshot_id=snapshot_id)
+    # D14-6(m13): 같은 (단지, 의미 필드)를 다시 사람 확인했다 — 그 키의 열린 '사람 확인 재검토'를 닫는다(지금 쓰는 값이
+    # 이 사람 확인일 때만 — 같은 입력에서 다시 진 경우는 열린 채로 둔다)
+    session.flush()
+    cur = _chosen(session, target.entity, target.entity_id, target.field)
+    if cur is not None and cur.raw_document_id is None and is_human(cur.reason):
+        _close_human_review(session, hc.complex_id, target.field)
     # 같은 의미 필드(D12-2)의 강등 중 지금 쓰는 행이 사람 확인이 된 것만 복원 기록(옛 공고 행을 확인해도 현재 사실은 그대로)
     from app.facts_view import RESTORED_HUMAN
 
@@ -646,6 +709,98 @@ def apply_human_check(
 
     sync_checklist_for(session, [hc.complex_id])
     return out
+
+
+def _kst_day(checked_at: str) -> str:
+    """사람 확인 출처 행 observed_on = checked_at 의 KST 날짜(D14-6). 못 읽는 옛 값은 예전처럼 앞 10자."""
+    day = kst_date(checked_at)
+    return day.isoformat() if day is not None else (checked_at or "")[:10]
+
+
+def _spread_to_group(session: Session, target: HumanTarget, *, snapshot_id: int | None = None) -> int:
+    """D13-2: 사람 확인은 (단지, 의미 필드) 단위 — 의미 묶음의 값 있는 다른 행(옛 공고·공고문 타입 행)도 다시 resolve 해
+    사람 확인 값이 0순위 후보로 들어간다(``normalize.store.semantic_humans``). 어느 행을 읽어도 같은 값이다.
+    반환 = chosen 출처 행(id·값)이 바뀐 행 수(m14 이전 단계의 멱등 판단)."""
+    from app.facts_view import semantic_group
+    from app.normalize.store import resolve_field_group
+
+    _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
+    changed = 0
+    for e, i, f in group[1:]:
+        cur = _chosen(session, e, i, f)
+        if cur is None or cur.value_norm is None:
+            continue  # 그 필드를 싣지 않은 행(다른 타입만 있는 공고 등)에는 값을 만들지 않는다
+        before = (cur.id, cur.value_norm)
+        resolve_field_group(session, e, i, f, [], snapshot_id=snapshot_id)
+        session.flush()
+        after = _chosen(session, e, i, f)
+        if after is None or (after.id, after.value_norm) != before:
+            changed += 1
+    return changed
+
+
+def _close_human_review(session: Session, complex_id: int, field: str) -> None:
+    """D14-6(m13): 그 단지·의미 필드의 열린 '사람 확인 재검토'(``normalize.store.human_superseded``)를 닫는다(closed_by auto)."""
+    from app.normalize.store import HUMAN_REVIEW_TITLE
+
+    logical = logical_field(field)
+    title = f"{HUMAN_REVIEW_TITLE}: {FIELD_NAMES.get(logical, logical)}"
+    for item in session.scalars(
+        select(ChecklistItem).where(
+            ChecklistItem.complex_id == complex_id,
+            ChecklistItem.kind == CHECKLIST_KIND,
+            ChecklistItem.title == title,
+            ChecklistItem.status == "open",
+        )
+    ):
+        item.status, item.closed_by = "done", "auto"
+
+
+def migrate_row_human_checks(session: Session, *, snapshot_id: int | None = None) -> int:
+    """m14(D13-2 이전 단계): 계약 .9 의 행 단위 사람 확인(그 공고 행·타입 행 하나에만 사람 확인 출처)을 .10 의미 묶음
+    모델로 옮긴다 — 사실 필드 사람 확인마다 그 의미 묶음의 값 있는 다른 행을 다시 resolve 해 사람 확인 값이 0순위 후보로
+    들어가게 한다(``apply_human_check`` 와 같은 단계). 멱등: 이미 옮긴 DB 는 0(출처 행·사실·change_event 를 더 만들지 않는다).
+    반환 = chosen 이 바뀐 행 수. 커밋은 호출자(``python -m app.snapshot_view backfill`` 등)가 한다."""
+    done: set[tuple[str, int, str]] = set()
+    changed = 0
+    checks = list(
+        session.scalars(
+            select(HumanCheck)
+            .where(HumanCheck.entity.is_not(None), HumanCheck.entity_id.is_not(None))
+            .order_by(HumanCheck.id)
+        )
+    )
+    for hc in checks:
+        if hc.field not in FIELD_TERMS or hc.entity is None or hc.entity_id is None:
+            continue
+        for f in _stored_fields(session, hc):
+            key = (hc.entity, hc.entity_id, f)
+            if key in done:
+                continue
+            done.add(key)
+            changed += _spread_to_group(session, HumanTarget(*key), snapshot_id=snapshot_id)
+    session.flush()
+    return changed
+
+
+def _stored_fields(session: Session, hc: HumanCheck) -> list[str]:
+    """사람 확인이 실제로 쓴 사실 행의 필드 이름들(가격의 공고 행이면 그 행의 사람 확인 ``price_by_type.<타입>.max_price_won``)."""
+    if hc.entity == "payment_terms" and hc.field == "max_price_won" and hc.entity_id is not None:
+        return list(
+            dict.fromkeys(
+                session.scalars(
+                    select(FieldProvenance.field)
+                    .where(
+                        FieldProvenance.entity == "payment_terms",
+                        FieldProvenance.entity_id == hc.entity_id,
+                        FieldProvenance.raw_document_id.is_(None),
+                        FieldProvenance.field.like("price_by_type.%.max_price_won"),
+                    )
+                    .order_by(FieldProvenance.id)
+                )
+            )
+        )
+    return [hc.field]
 
 
 def _restored(session: Session, d: FactDemotion, by: str, *, human_check_id: int | None = None) -> None:

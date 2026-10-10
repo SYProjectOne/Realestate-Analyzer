@@ -23,6 +23,7 @@ from app.api.demotion import (
     FIELD_TERMS,
     ValueParseError,
     apply_human_check,
+    checked_at_error,
     human_target,
     later_official,
     parse_human_value,
@@ -31,7 +32,7 @@ from app.api.deps import DB, get_complex, in_db_range, settings_of
 from app.api.errors import not_found, validation_error
 from app.api.jobs import now_iso
 from app.api.views import envelope_view, intake_view, pick_intake
-from app.core.time import now_kst
+from app.core.time import kst_date, now_kst
 from app.models import (
     ChangeEvent,
     ChecklistItem,
@@ -298,6 +299,10 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
     from app.judge.guard import check_payload
 
     check_body("createHumanCheck", body)
+    # D14-6(N-M4, 계약 .11): checked_at = 시간대가 붙은 RFC3339, 지금보다 10분 넘게 미래면 422(스키마 format 검사와 무관하게)
+    bad_time = checked_at_error(body["checked_at"])
+    if bad_time is not None:
+        raise validation_error(bad_time, ("body", "checked_at"))
     cx = get_complex(session, body["complex_id"])
     guard = check_payload({"value_text": body["value_text"], "note": body.get("note") or ""})
     if not guard.ok:
@@ -310,18 +315,20 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
     if field in FIELD_TERMS:
         try:
             target = human_target(session, cx.id, field, body.get("entity_id"))
-            if target is not None:
-                parse_human_value(target, str(body["value_text"]))
+            value = parse_human_value(target, str(body["value_text"])) if target is not None else None
         except ValueParseError as exc:
             loc = "entity_id" if "entity_id" in str(exc) else "value_text"
             raise validation_error(str(exc), ("body", loc)) from exc
         if target is not None:
-            # D13-2: 이미 수집된 공식 공고보다 이른 확인일 = 입력 즉시 지는 사람 확인(D12-1) — 조용히 받지 않는다
-            later = later_official(session, target, str(body["checked_at"]))
+            # D13-2·D14-6: 이미 수집된 공식 공고(KST 날짜로 확인일보다 뒤 관측)가 **다른 값**이면 입력 즉시 지는 사람
+            # 확인(D12-1) — 조용히 받지 않는다. 같은 값의 나중 공고는 정상(m11)
+            later = later_official(session, target, str(body["checked_at"]), value)
             if later is not None:
+                day = kst_date(str(body["checked_at"]))
                 raise validation_error(
-                    f"확인일 {str(body['checked_at'])[:10]} 은 이미 수집된 공식 공고(관측 {later})보다 이르다 — "
-                    "그 공고 뒤에 다시 확인한 날짜를 적는다(사람 확인 이후 공고만 사람 확인을 이긴다, D12-1)",
+                    f"확인일 {day.isoformat() if day else str(body['checked_at'])[:10]}(KST) 은 이미 수집된 공식 공고"
+                    f"(관측 {later}, 다른 값)보다 이르다 — 그 공고 뒤에 다시 확인한 날짜를 적는다(사람 확인 이후 공고만 "
+                    "사람 확인을 이긴다, D12-1)",
                     ("body", "checked_at"),
                 )
     hc = HumanCheck(

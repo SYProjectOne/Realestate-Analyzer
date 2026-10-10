@@ -68,41 +68,87 @@ def _notify(ctx: SchedulerContext, event_ids: list[int]) -> dict[str, Any]:
     return ctx.notifier.notify(events, names).stats()
 
 
-def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
-    """그 스냅샷의 마지막 점수 실행 **뒤**에 재판정을 부르는 일이 있었던 지역 단지(D12-5·**D13-4**) — 이월(옛 점수 복사)
-    대신 재판정할 단지.
+JUDGING_JOBS: Final = ("rejudge", "region.bootstrap", "region.expand")
+"""단지를 실제로 판정하는 잡(D14-7 — 단지별 마지막 성공 판정 시각의 근거). 이월(carry_forward)은 판정이 아니다."""
 
-    - 사실 변경(change_event triggers_rejudge, detected_at > 실행 시각) — 어느 스냅샷에 붙었든(그 스냅샷 **자신** 포함:
-      판정 중·ready 리비전에 붙은 사람 확인이 그대로 발행된 경우, R3 5차 M2·M-3). 지역 단위 변경(생활권 편집·지역
-      확장/축소 — complex_id 없음)이면 지역 단지 전부.
-    - 실패한 rejudge 잡(그 실행 뒤 끝난 것, payload 의 단지 — 없으면 전부): 사람 확인·강등의 자동 재판정이 판정기
-      장애로 실패했으면 다음 이월이 옛 점수를 now 로 복사하지 않는다."""
-    run_at = session.scalar(select(func.max(ScoreRun.created_at)).where(ScoreRun.snapshot_id == snap.id))
-    if not run_at:
+
+def _job_complexes(
+    job: JobRun, region_id: int, region_ids: set[int], region_snaps: set[int]
+) -> set[int] | None:
+    """그 잡이 판정한(하려던) 지역 단지. 그 지역 잡이 아니면 None. rejudge ``complex_ids`` None = 전부, [] = 없음(점수만)."""
+    p = job.payload or {}
+    if job.job_name == "rejudge":
+        if p.get("snapshot_id") not in region_snaps:
+            return None
+        ids = p.get("complex_ids")
+        if ids is None:
+            return set(region_ids)
+        return {int(i) for i in ids if int(i) in region_ids}
+    if p.get("region_id") != region_id:
+        return None
+    return set(region_ids)
+
+
+def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
+    """이월(옛 점수 복사) 대신 재판정할 단지 — **단지 단위**(D14-7, R3 6차 N-M5).
+
+    단지마다 기준 시각 = 그 단지를 판정한 마지막 성공 잡(rejudge·region.bootstrap·region.expand — done)의 끝 시각. 그런 잡
+    기록이 없으면 그 스냅샷의 **첫** 점수 실행 시각(픽스처·옛 DB — 뒤 실행이 다른 단지만 판정했을 수 있다). 그 뒤에
+
+    - 그 단지의 사실 변경(change_event triggers_rejudge — 어느 스냅샷에 붙었든, D13-4)이나 지역 단위 변경(생활권 편집·
+      지역 확장/축소 — complex_id 없음)이 있었거나,
+    - 그 단지를 포함한 rejudge 잡이 실패했으면(판정기 장애 등)
+
+    그 단지를 재판정한다. 예전에는 리비전의 마지막 점수 실행 하나를 기준으로 삼아, 단지 A 재판정이 실패한 뒤 다른 단지만
+    판정한 실행이 성공하면 A 의 이벤트·실패가 가려졌다."""
+    first_run = session.scalar(select(func.min(ScoreRun.created_at)).where(ScoreRun.snapshot_id == snap.id))
+    if not first_run:
         return []
     region_ids = set(session.scalars(select(Complex.id).where(Complex.region_id == snap.region_id)))
     region_snaps = set(session.scalars(select(Snapshot.id).where(Snapshot.region_id == snap.region_id)))
+    judged: dict[int, str] = {}
+    failed: list[tuple[str, set[int]]] = []
+    for job in session.scalars(
+        select(JobRun).where(JobRun.job_name.in_(JUDGING_JOBS), JobRun.status.in_(("done", "failed")))
+    ):
+        ids = _job_complexes(job, snap.region_id, region_ids, region_snaps)
+        if not ids:
+            continue
+        at = str(job.finished_at or job.scheduled_at or "")
+        if job.status == "done":
+            for c in ids:
+                if at > judged.get(c, ""):
+                    judged[c] = at
+        elif job.job_name == "rejudge":
+            failed.append((at, ids))
+
+    def since(c: int) -> str:
+        return judged.get(c) or str(first_run)
+
+    floor = min((since(c) for c in region_ids), default=str(first_run))
     rows = list(
         session.execute(
-            select(ChangeEvent.complex_id, ChangeEvent.entity, ChangeEvent.entity_id).where(
+            select(
+                ChangeEvent.complex_id, ChangeEvent.entity, ChangeEvent.entity_id, ChangeEvent.detected_at
+            ).where(
                 ChangeEvent.triggers_rejudge.is_(True),
-                ChangeEvent.detected_at > run_at,
+                ChangeEvent.detected_at > floor,
             )
         )
     )
-    if any(e == "region" and eid == snap.region_id for (_c, e, eid) in rows):
-        return sorted(region_ids)
-    out = {int(c) for (c, _e, _i) in rows if c is not None and c in region_ids}
-    for job in session.scalars(select(JobRun).where(JobRun.job_name == "rejudge", JobRun.status == "failed")):
-        p = job.payload or {}
-        if p.get("snapshot_id") not in region_snaps:
-            continue
-        if (job.finished_at or job.scheduled_at or "") <= run_at:
-            continue  # 그 실패 뒤에 다시 판정했다
-        ids = p.get("complex_ids")
-        if ids is None:
-            return sorted(region_ids)
-        out |= {int(i) for i in ids if int(i) in region_ids}
+    out: set[int] = set()
+    region_level = [
+        str(at) for (c, e, eid, at) in rows if c is None and e == "region" and eid == snap.region_id
+    ]
+    for c in region_ids:
+        t = since(c)
+        if any(at > t for at in region_level):
+            out.add(c)
+    for c, _e, _i, at in rows:
+        if c is not None and c in region_ids and str(at) > since(int(c)):
+            out.add(int(c))
+    for at, ids in failed:
+        out |= {c for c in ids if at > since(c)}
     return sorted(out)
 
 
@@ -290,12 +336,28 @@ def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[
 
 
 def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
-    sid = int((job.payload or {})["snapshot_id"])
+    """발행(D14-5 — 저장본 materialize 는 이 잡에서만): 계산 → 나눠 쓰기 → 짧은 전환. ``carry_from_snapshot_id`` 면 그 발행
+    리비전의 파생 행을 먼저 복사한다(호재 연결 PATCH — 판정기 호출 없음). stats 에 저장본 통계(출처 누락 건수 등, D14-8)."""
+    p = job.payload or {}
+    sid = int(p["snapshot_id"])
+    carry = p.get("carry_from_snapshot_id")
     with ctx.session_factory() as session:
-        ok, n = snapshots.publish(session, sid, now=ctx.iso_now())
+        stats: dict[str, Any] = {"snapshot_id": sid}
+        snap = session.get(Snapshot, sid)
+        if carry is not None and snap is not None and snap.status == "building":
+            has_runs = session.scalar(
+                select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == sid)
+            )
+            if not has_runs:
+                stats["carry_forward"] = {"from_snapshot_id": int(carry), **carry_forward(
+                    session, int(carry), sid, created_at=ctx.iso_now()
+                )}  # fmt: skip
+                snap.status = "ready"
+                session.commit()
+        ok, n, mstats = snapshots.publish_with_stats(session, sid, now=ctx.iso_now())
         snap = session.get(Snapshot, sid)
         session.commit()
-        stats = {"snapshot_id": sid, "published": ok, "contradicted": n}
+        stats.update({"published": ok, "contradicted": n, **mstats})
         if not ok:
             why = f"publish_blocked: contradicted {n}건" if n else "publish_blocked: degraded(점수 미계산)"
             if snap is not None and snap.status == "building" and not snap.degraded:
@@ -339,8 +401,34 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
             stats["list_complex_ids"] = daily.list_complex_ids
         with ctx.session_factory() as session:
             if not result.degraded:
-                ok, n = snapshots.publish(session, result.snapshot_id, now=ctx.iso_now())
-                stats.update({"published": ok, "contradicted": n})
+                try:
+                    ok, n, mstats = snapshots.publish_with_stats(
+                        session, result.snapshot_id, now=ctx.iso_now()
+                    )
+                    stats.update({"published": ok, "contradicted": n, "materialize": mstats})
+                except Exception as exc:
+                    # 수집·판정은 끝났다 — 지역은 ready, 발행은 snapshot.publish 잡으로 다시(이전 발행 리비전이 기본 화면)
+                    session.rollback()
+                    from app.scheduler.jobs import enqueue
+
+                    retry = enqueue(
+                        session, "snapshot.publish", {"snapshot_id": result.snapshot_id}, now=ctx.now()
+                    )
+                    log.error(
+                        "worker.bootstrap.publish_failed",
+                        extra={
+                            "region_id": region_id,
+                            "snapshot_id": result.snapshot_id,
+                            "error": type(exc).__name__,
+                        },
+                    )
+                    stats.update(
+                        {
+                            "published": False,
+                            "publish_error": type(exc).__name__,
+                            "publish_retry_job_id": retry.id,
+                        }
+                    )
             region = session.get(Region, region_id)
             assert region is not None
             region.status = "ready"
@@ -366,6 +454,7 @@ def handle_report(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     """
     from app.reports import job as report_job
     from app.reports.errors import ReportBlocked, ReportNotFound
+    from app.snapshot_view import MaterializePending, NotInRevision
 
     try:
         with ctx.session_factory() as session:
@@ -375,6 +464,10 @@ def handle_report(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
         raise JobError(f"blocked: {exc.reason}", {"blocked_reason": exc.reason}) from exc
     except ReportNotFound as exc:
         raise JobError(f"not_found: {exc.reason}") from exc
+    except NotInRevision as exc:  # D14-3: 대상 리비전에 그 시나리오 저장본 없음(POST 는 422 로 먼저 거른다)
+        raise JobError(f"scenario_not_in_revision: {str(exc)[:300]}") from exc
+    except MaterializePending as exc:
+        raise JobError(f"materialize_pending: {str(exc)[:300]}") from exc
     except ValueError as exc:
         raise JobError(f"invalid_payload: {str(exc)[:300]}") from exc
     return dict(stats)

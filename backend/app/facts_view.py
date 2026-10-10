@@ -235,15 +235,22 @@ def _type_code_of(d: FactDemotion, rows: _Rows) -> str | None:
     return None
 
 
-def semantic_rows(d: FactDemotion, rows: _Rows) -> list[RowKey]:
-    """D12-2 같은 단지·같은 의미 필드의 행들(원래 행 포함, 모듈 설명)."""
-    original: RowKey = (d.entity, d.entity_id, d.field)
-    cid = d.complex_id
-    if cid is None or d.entity == "complex":
-        return [original]
-    out: list[RowKey] = [original]
-    if logical_field(d.field) == "max_price_won":
-        code = _type_code_of(d, rows)
+def _semantic_rows_of(
+    entity: str, entity_id: int, field_name: str, cid: int | None, code: str | None, rows: _Rows
+) -> list[RowKey]:
+    """의미 키 규칙 **하나**(R3 6차 minor 18 — 강등 ``semantic_rows``·사람 확인 ``semantic_group`` 이 같이 쓴다):
+    (단지 ``cid``, 의미 필드)의 행들 [자기 먼저].
+
+    - 단지 필드(또는 단지 모름) → 자기 행 하나
+    - 가격(``max_price_won``) → 그 타입 코드(``code``)의 공고문 타입 행 + 그 단지 **모든 공고**의
+      ``price_by_type.<타입>.max_price_won`` (타입 코드를 모르면 자기 행 하나)
+    - 납부 조건 필드 → 그 단지 모든 공고의 같은 필드
+    - 타입 행의 다른 필드 → 같은 타입 코드의 타입 행들"""
+    me: RowKey = (entity, entity_id, field_name)
+    if cid is None or entity == "complex":
+        return [me]
+    out: list[RowKey] = [me]
+    if logical_field(field_name) == "max_price_won":
         if code is None:
             return out
         out += [
@@ -252,12 +259,16 @@ def semantic_rows(d: FactDemotion, rows: _Rows) -> list[RowKey]:
         out += [
             ("payment_terms", p.id, f"price_by_type.{code}.max_price_won") for p in rows.terms.get(cid, [])
         ]
-    elif d.entity == "payment_terms":
-        out += [("payment_terms", p.id, d.field) for p in rows.terms.get(cid, [])]
-    elif d.entity == "complex_type":
-        code = _type_code_of(d, rows)
-        out += [("complex_type", t.id, d.field) for t in rows.types.get(cid, []) if t.type_code == code]
+    elif entity == "payment_terms":
+        out += [("payment_terms", p.id, field_name) for p in rows.terms.get(cid, [])]
+    elif entity == "complex_type":
+        out += [("complex_type", t.id, field_name) for t in rows.types.get(cid, []) if t.type_code == code]
     return list(dict.fromkeys(out))
+
+
+def semantic_rows(d: FactDemotion, rows: _Rows) -> list[RowKey]:
+    """D12-2 같은 단지·같은 의미 필드의 행들(원래 행 포함, 모듈 설명) — 규칙은 ``_semantic_rows_of``."""
+    return _semantic_rows_of(d.entity, d.entity_id, d.field, d.complex_id, _type_code_of(d, rows), rows)
 
 
 def current_row(d: FactDemotion, rows: _Rows) -> RowKey | None:
@@ -407,10 +418,7 @@ def semantic_group(
 ) -> tuple[int | None, list[RowKey]]:
     """(단지, 의미 필드) 단위 행 묶음 — 강등(D12-2)과 사람 확인(D13-2)이 같은 키를 쓴다. 반환 (단지 id, 행들[자기 먼저]).
 
-    - 단지 필드 → 그 단지 행 하나
-    - 가격(``max_price_won``) → 그 타입 코드의 공고문 타입 행 + 그 단지 **모든 공고**의 ``price_by_type.<타입>.max_price_won``
-    - 납부 조건 필드 → 그 단지 모든 공고의 같은 필드
-    - 타입 행의 다른 필드 → 같은 타입 코드의 타입 행들"""
+    규칙은 강등(``semantic_rows``)과 같은 ``_semantic_rows_of`` 하나다(R3 6차 minor 18)."""
     from app.models import ComplexType, PaymentTerms
     from app.normalize.fields import split_price_by_type
 
@@ -432,20 +440,7 @@ def semantic_group(
         code = pbt[0] if pbt is not None else None
     else:
         return None, [me]
-    rows = _load_rows(session, {cid})
-    out: list[RowKey] = [me]
-    if logical_field(field_name) == "max_price_won" and code is not None:
-        out += [
-            ("complex_type", t.id, "max_price_won") for t in rows.types.get(cid, []) if t.type_code == code
-        ]
-        out += [
-            ("payment_terms", p.id, f"price_by_type.{code}.max_price_won") for p in rows.terms.get(cid, [])
-        ]
-    elif entity == "payment_terms":
-        out += [("payment_terms", p.id, field_name) for p in rows.terms.get(cid, [])]
-    else:
-        out += [("complex_type", t.id, field_name) for t in rows.types.get(cid, []) if t.type_code == code]
-    return cid, list(dict.fromkeys(out))
+    return cid, _semantic_rows_of(entity, entity_id, field_name, cid, code, _load_rows(session, {cid}))
 
 
 NOT_CATALYST: Final = "호재 아님"

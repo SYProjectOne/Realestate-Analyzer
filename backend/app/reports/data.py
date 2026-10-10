@@ -2056,9 +2056,36 @@ def load_report(
     snap, _region, scenario, compare = _resolve(session, snapshot_id, scenario_id, compare_snapshot_id)
     payload = _payload(session, snap, scenario)
     data: ReportData = decode_data(payload["data"])
+    # R3 6차 m4: '생성 시각'은 보고서를 만드는 지금이다(저장본의 계산 시각을 그대로 쓰지 않는다)
+    data.generated_at = now_kst().isoformat(timespec="seconds")
     if compare is not None:
-        data.extra = _extra(data, payload, _payload(session, compare, scenario), compare)
+        data.extra = _extra(data, payload, compare_payload(session, compare, scenario), compare)
     return data
+
+
+def compare_payload(session: Session, compare: Snapshot, scenario: Scenario) -> dict[str, Any]:
+    """§12 비교 기준 입력(D14-3): 같은 시나리오 저장본, 그 리비전에 그 시나리오가 없으면(발행 뒤 만든 사용자 시나리오)
+    기본 시나리오 — §12 후보 건수 비교는 시나리오와 무관하게 낸다(delta 표는 ``export.generate`` 가 생략)."""
+    from app import snapshot_view as sv
+
+    try:
+        return _payload(session, compare, scenario)
+    except sv.NotInRevision:
+        base = session.scalars(select(Scenario).where(Scenario.code == "base")).first()
+        if base is None or base.id == scenario.id:
+            raise
+        return _payload(session, compare, base)
+
+
+def scenario_in_revision(session: Session, snap: Snapshot, scenario_id: int) -> bool:
+    """그 리비전에 그 시나리오 보고서 입력이 있는가(D14-3 — 발행 리비전은 저장본, 발행 전은 늘 True)."""
+    from app import snapshot_view as sv
+
+    if not sv.is_published(snap):
+        return True
+    if not sv.kind_ready(session, snap.id, "report"):
+        raise sv.MaterializePending(f"발행 리비전 {snap.id} 의 report 저장본을 아직 만들지 않았다")
+    return sv.stored(session, snap.id, "report", scenario=str(scenario_id)) is not None
 
 
 def _changed_after_run(session: Session, snap: Snapshot, run: ScoreRun | None, ids: list[int]) -> set[int]:

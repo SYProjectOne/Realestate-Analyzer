@@ -482,7 +482,7 @@ def test_m7_non_finite_numbers_are_422_on_every_json_body(client: TestClient, to
     )
     assert r.status_code == 422, r.text
     r = client.post("/api/ops/human-checks", content=(
-        f'{{"complex_id": 2, "field": "other", "value_text": "x", "kind": "phone", "checked_at": "2026-10-09", '
+        f'{{"complex_id": 2, "field": "other", "value_text": "x", "kind": "phone", "checked_at": "2026-10-09T10:00:00+09:00", '
         f'"entered_by": "운영자", "note": "x", "extra": {token}}}'
     ).encode(), headers=h)  # fmt: skip
     assert r.status_code == 422, r.text

@@ -130,3 +130,37 @@ def assert_facts_labelled(body: Any) -> int:
             assert f["v"] is not None, f"{path}: 값 없음 {f}"
             assert f["prov"] and _PROV_RE.match(f["prov"]), f"{path}: prov 없음 {f}"
     return len(facts)
+
+
+def run_job(job_id: int) -> tuple[str, dict[str, Any]]:
+    """worker 처럼 잡 하나를 잠가 실행한다(claim → execute) — D14-5: 발행(저장본)은 worker 잡에서만. (status, stats)."""
+    from app.core.db import get_session, get_sessionmaker
+    from app.models import JobRun
+    from app.scheduler.context import SchedulerContext
+    from app.scheduler.runner import claim, execute
+
+    ctx = SchedulerContext(session_factory=get_sessionmaker(), adapter_factory=lambda: None, collectors={})  # type: ignore[arg-type,return-value]
+    assert claim(ctx, job_id), f"job {job_id} 이 queued 가 아니다"
+    status = execute(ctx, job_id)
+    with get_session() as s:
+        row = s.get(JobRun, job_id)
+        assert row is not None
+        return status, dict(row.stats or {})
+
+
+def publish_revision(region_id: int = 1, reason: str = "테스트 리비전") -> int:
+    """가장 새 발행 리비전 위 새 리비전을 실제 발행 경로로 발행(새 리비전 + snapshot.publish 잡 → worker 실행). 새 리비전 id."""
+    from app.core.db import get_session
+    from app.models import Snapshot
+    from app.scheduler.snapshots import republish
+
+    with get_session() as s:
+        job = republish(s, region_id, reason=reason, created_at="2026-10-09T08:00:00+09:00")
+        assert job is not None
+        job_id, sid = job.id, int((job.payload or {})["snapshot_id"])
+    status, stats = run_job(job_id)
+    assert status == "done" and stats.get("published"), stats
+    with get_session() as s:
+        snap = s.get(Snapshot, sid)
+        assert snap is not None and snap.status == "published"
+    return sid

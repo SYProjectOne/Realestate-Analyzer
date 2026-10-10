@@ -70,14 +70,15 @@
     },
     "CatalystUpdated": {
       "title": "CatalystUpdated",
-      "description": "PATCH /catalysts/{id} 200 — 갱신한 호재 + 연결 목록 + 등록한 점수 재계산 잡(연결이 그대로면 null)",
+      "description": "PATCH /catalysts/{id} 202(계약 .11) — 갱신한 호재 + 연결 목록 + 등록한 발행 잡(연결이 그대로면 null)",
       "type": "object",
       "additionalProperties": false,
-      "required": ["catalyst", "links", "job"],
+      "required": ["catalyst", "links", "job", "job_id"],
       "properties": {
         "catalyst": { "$ref": "#" },
         "links": { "type": "array", "items": { "$ref": "#/$defs/CatalystLinkView" } },
-        "job": { "description": "계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다", "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
+        "job": { "description": "계약 .11(D14-5): 연결이 바뀌면 snapshot.publish 잡(새 리비전에 파생 행 복사 → 발행 — 판정기 호출 없음), 그대로면 null. 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다", "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] },
+        "job_id": { "description": "계약 .11: job.id(없으면 null) — 화면은 이 잡을 감시한다", "type": ["integer", "null"] }
       }
     },
     "CatalystCreated": {

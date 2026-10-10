@@ -130,9 +130,18 @@ _INTERNAL_SUFFIXES = (
 )  # fmt: skip
 _DOT_VARIANTS = str.maketrans({"\u3002": ".", "\uff0e": ".", "\uff61": "."})
 """IDNA 가 점으로 읽는 글자(이데오그래픽 마침표 '。'·전각 '．'·반각 '｡')."""
-_IDNA_IGNORED_RE = re.compile("[\u00ad\u034f\u1806\u180b-\u180f\u200b-\u200d\u2060\ufe00-\ufe0f\ufeff]")
-"""IDNA(nameprep B.1)·브라우저가 지우고 읽는 글자(소프트 하이픈·폭 없는 공백·이음·변형 선택자 등) — R3 5차 minor:
-'127.0.0.1' 뒤에 붙은 소프트 하이픈이 내부망 검사를 지나 화면 링크가 됐다."""
+_IDNA_IGNORED_RE = re.compile(
+    "["
+    "\u00ad\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180f\u200b\u2060-\u2064\u206a-\u206f\u3164\ufe00-\ufe0f\ufeff"
+    "\uffa0\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0100-\U000e01ef"
+    "\u1806\u200c\u200d"  # nameprep B.1·이음(ZWNJ·ZWJ) — UTS46 은 지우지 않지만 호스트에서 브라우저가 거부하는 글자
+    "]"
+)
+"""IDNA(UTS46 매핑 표에서 '아무것도 아님'으로 매핑 = 지우고 읽는 글자 **전부**)·nameprep B.1 — 소프트 하이픈·폭 없는
+공백·보이지 않는 연산자(U+2060~2064)·변형 선택자(U+FE00~FE0F·U+E0100~E01EF)·속기 서식 제어(U+1BCA0~1BCA3)·한글 채움
+문자·음악 서식 제어 등. R3 5차 minor: '127.0.0.1' 뒤 소프트 하이픈이 내부망 검사를 지나 화면 링크가 됐다. R3 6차 minor 10:
+손 목록이 U+2064·U+E0100~E01EF·U+1BCA0~1BCA3 을 빠뜨렸다 — UTS46 표(``idna`` 3.20, Unicode 16) 전체로 바꾸고, 테스트가
+설치된 ``idna`` 표와 대조한다(``tests/normalize/test_r3f_m10_idna.py`` — 표가 늘면 그 테스트가 실패한다)."""
 
 
 def canonical_host(host: str) -> str:

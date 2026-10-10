@@ -62,7 +62,41 @@ def market_body(
     session: Session, settings: Settings, snap: Snapshot, living_area: str | None, sc: Scenario | None = None
 ) -> dict[str, Any]:
     """G6 시장 응답(실시간 계산 — 발행 리비전은 시나리오 × 전체·생활권별로 저장한다, D13-1). 입주 마커의 판정 범위는 그
-    시나리오 점수 실행 저장값(계약 .10 — R3 5차 minor: 시나리오를 전달하지 않았다)."""
+    시나리오 점수 실행 저장값(계약 .10 — R3 5차 minor: 시나리오를 전달하지 않았다).
+
+    시나리오에 따라 달라지는 것은 입주 마커(그 시나리오 판정 범위)뿐이다 — 나머지(``_market_static``)는 저장본 계산 한 번
+    안에서 생활권마다 한 번만 만든다(``app.api.memo``, D14-5 성능). 실시간 GET 은 매번 계산(같은 결과)."""
+    from app.api import memo
+
+    static = memo.cached(
+        ("market_static", snap.id, living_area, settings.env),
+        lambda: _market_static(session, settings, snap, living_area),
+    )
+    body, complexes, fm = static
+    bundles = views.load_bundles(
+        session, complexes["every"], snap.id, scenario_id=sc.id if sc is not None else None
+    )
+    markers = []
+    for c in complexes["shown"]:
+        if c.move_in_ym is None or judge_scope(bundles[c.id]) != "판정 대상":
+            continue  # 강등된 입주월(검증 모순)은 마커를 그리지 않는다
+        markers.append(
+            {
+                "complex_id": c.id,
+                "name": c.name,
+                "living_area": c.living_area,
+                "move_in_ym": fm.field("complex", c.id, "move_in_ym", c.move_in_ym, unit="ym"),
+            }
+        )
+    out = dict(body)
+    out["move_in_markers"] = markers
+    return out
+
+
+def _market_static(
+    session: Session, settings: Settings, snap: Snapshot, living_area: str | None
+) -> tuple[dict[str, Any], dict[str, list[Any]], FactMaker]:
+    """시장 응답 중 시나리오와 무관한 부분(입주 마커 자리는 빈 목록) + 단지 목록 + 출처 색인."""
     region = session.get(Region, snap.region_id)
     if region is None:
         raise not_found(f"region {snap.region_id}")
@@ -170,23 +204,10 @@ def market_body(
         )
 
     every = list(session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id)))
-    bundles = views.load_bundles(session, every, snap.id, scenario_id=sc.id if sc is not None else None)
-    # 그 리비전 시점 생활권(얼린 값)·강등 오버레이가 적용된 단지 행(묶음의 cx)
-    # — 원본 행이 아니다(R3 4차 minor)
-    complexes = [bundles[c.id].cx for c in every if want is None or bundles[c.id].cx.living_area in want]
+    # 강등 오버레이가 적용된 단지 행(묶음의 cx — 원본 행이 아니다, R3 4차 minor). 단지 행은 시나리오와 무관하다
+    cx_rows = views.load_bundles(session, every, snap.id)
+    complexes = [cx_rows[c.id].cx for c in every if want is None or cx_rows[c.id].cx.living_area in want]
     fm.prov.load(session, "complex", (c.id for c in complexes))
-    markers = []
-    for c in complexes:
-        if c.move_in_ym is None or judge_scope(bundles[c.id]) != "판정 대상":
-            continue  # 강등된 입주월(검증 모순)은 마커를 그리지 않는다
-        markers.append(
-            {
-                "complex_id": c.id,
-                "name": c.name,
-                "living_area": c.living_area,
-                "move_in_ym": fm.field("complex", c.id, "move_in_ym", c.move_in_ym, unit="ym"),
-            }
-        )
 
     scopes: set[str] | None = None
     if want is not None:
@@ -282,23 +303,22 @@ def market_body(
             }
         )
 
-    return dict(
-        {
-            "snapshot_id": snap.id,
-            "asof_date": snap.asof_date,
-            "region_id": region.id,
-            "living_areas": [{"id": k, "name": v} for k, v in names.items() if want is None or k in want],
-            "benchmarks": bench_views,
-            "benchmark_flags": flags,
-            "benchmark_absence": absence,
-            "supply": supply_views,
-            "move_in_markers": markers,
-            "unsold": unsold,
-            "catalysts": cat_views,
-            "regulation": {"items": reg_items},
-            "living_area_prices": prices,
-        }
-    )
+    body = {
+        "snapshot_id": snap.id,
+        "asof_date": snap.asof_date,
+        "region_id": region.id,
+        "living_areas": [{"id": k, "name": v} for k, v in names.items() if want is None or k in want],
+        "benchmarks": bench_views,
+        "benchmark_flags": flags,
+        "benchmark_absence": absence,
+        "supply": supply_views,
+        "move_in_markers": [],  # 시나리오별(market_body)
+        "unsold": unsold,
+        "catalysts": cat_views,
+        "regulation": {"items": reg_items},
+        "living_area_prices": prices,
+    }
+    return body, {"every": every, "shown": complexes}, fm
 
 
 def _trade_area(t: RtmsTrade, region: Region) -> str | None:

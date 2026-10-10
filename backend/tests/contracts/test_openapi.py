@@ -117,7 +117,7 @@ def test_contract_version(bundled: dict[str, Any], source_openapi: dict[str, Any
     changelog = (OPENAPI_SRC.parent / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)", changelog, re.M)
     assert top is not None
-    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.10"
+    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.11"
     assert source_openapi["info"]["version"] == CONTRACT_VERSION
     assert bundled["info"]["version"] == CONTRACT_VERSION
 
@@ -207,7 +207,7 @@ def test_examples_cover_all_screens() -> None:
     names = {e[0] for e in EXAMPLES}
     must = [
         "get /regions/resolve 200",  # G0
-        "put /regions/{id}/living-areas 200",  # G0-2
+        "put /regions/{id}/living-areas 202",  # G0-2 (계약 .11 — 202 + job_id)
         "get /snapshots/{sid}/dashboard 200 base",  # G1
         "get /snapshots/{sid}/dashboard 200 scenarioB",  # G1 상황 토글(동률)
         "get /snapshots/{sid}/complexes 200",  # G2
