@@ -13130,11 +13130,11 @@ paths:
                         checked_at: '2026-10-07'
                         unit: won
                       n_trades:
-                        v: 0
-                        label: 재가공
+                        v: null
+                        label: 확인 불가
                         prov: fp_9002
                         checked_at: '2026-10-07'
-                        reason: '집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수'
+                        reason: 건수 미상(보고서 원문에 거래 건수 없음)
                         unit: count
                       trade_window: 2026-05~2026-06
                       basis: 신검단 신축(힐스테이트 신검단 센트럴), 건수 미상 — 저가 거래 4.8~5.3억 혼재
@@ -13160,11 +13160,11 @@ paths:
                         checked_at: '2026-10-07'
                         unit: won
                       n_trades:
-                        v: 0
-                        label: 비공식
+                        v: null
+                        label: 확인 불가
                         prov: fp_9003
                         checked_at: '2026-10-07'
-                        reason: '집계: 전용 80~85㎡ 기준일 전 6개월 실거래(분양권·해제 제외) 건수'
+                        reason: 실거래 원자료 미확보(언론 시세만)
                         unit: count
                       trade_window: null
                       basis: 힐스테이트자이 계양(데일리안 2026-09-07) — 실거래 원자료 미확보
@@ -14078,6 +14078,7 @@ paths:
                         change_event_ids:
                         - 3310
                     rejudge_job_id: 912
+                    job_id: 912
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -14597,7 +14598,7 @@ paths:
                 $ref: '#/components/schemas/CatalystUpdated'
               examples:
                 confirm:
-                  summary: '위치 확인 결과 — 계약 .9: 연결 변경은 새 리비전 바로 발행(job null)'
+                  summary: '위치 확인 결과 — 계약 .11: 연결이 바뀌면 새 리비전 + snapshot.publish 잡(202 + job_id, 발행은 worker)'
                   value:
                     catalyst:
                       id: 41
@@ -14644,7 +14645,21 @@ paths:
                       weight: 1
                       label: 추정
                       reason: 같은 생활권(la_2, 단지 좌표 없음)
-                    job: null
+                    job:
+                      id: 88
+                      job_name: snapshot.publish
+                      kind: manual
+                      payload:
+                        snapshot_id: 14
+                        carry_from_snapshot_id: 12
+                      scheduled_at: '2026-10-10T09:12:00+09:00'
+                      started_at: null
+                      finished_at: null
+                      status: queued
+                      stats: {}
+                      error_text: null
+                      progress: null
+                    job_id: 88
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -19250,6 +19265,11 @@ components:
           type:
           - integer
           - 'null'
+        job_id:
+          description: '계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로'
+          type:
+          - integer
+          - 'null'
       examples:
       - id: 3
         complex_id: 4
@@ -19287,6 +19307,7 @@ components:
             change_event_ids:
             - 3310
         rejudge_job_id: 912
+        job_id: 912
       - id: 4
         complex_id: 2
         field: resale_months
@@ -19310,6 +19331,7 @@ components:
             change_event_ids:
             - 3311
         rejudge_job_id: 913
+        job_id: 913
     HumanCheckCreate:
       title: HumanCheckCreate
       description: POST /ops/human-checks 본문

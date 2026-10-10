@@ -274,11 +274,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0010() -> None:
+def test_migration_head_is_0011() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0010"]
+    assert script.get_heads() == ["0011"]  # 계약 .11(R3f CORE4)
+    assert script.get_revision("0011").down_revision == "0010"
     assert script.get_revision("0010").down_revision == "0009"
     assert script.get_revision("0009").down_revision == "0008"
     assert script.get_revision("0008").down_revision == "0007"
@@ -720,9 +721,9 @@ def check_0008_0009_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def check_0009_0010_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """0010(계약 2026-10-09.10, D13-1): 0009 에서 발행 스냅샷을 넣고 head → 그 스냅샷 저장본(snapshot_view)이 생기고
-    snapshot_state 는 없다 → (스냅샷, kind, key, scenario) 유일·kind CHECK → downgrade 0009(저장본 삭제·빈 snapshot_state)
-    → head 다시(다시 materialize)."""
+    """0010(계약 2026-10-09.10, D13-1) + 0011(.11): 0009 에서 발행 스냅샷을 넣고 head → **저장본은 만들지 않는다**(D14-9 — 0010 은
+    앱 코드 없이 테이블만, 채우기는 backfill 몫: ``test_r3f_migrations``) → snapshot_state 는 없다 → (스냅샷, kind, key, scenario)
+    유일·kind CHECK(.11 종류 포함) → downgrade 0009(저장본 삭제·빈 snapshot_state) → head 다시."""
     monkeypatch.setenv("DATABASE_URL", url)
     cfg = alembic_config(url)
     command.upgrade(cfg, "head")
@@ -748,47 +749,53 @@ def check_0009_0010_roundtrip(url: str, monkeypatch: pytest.MonkeyPatch) -> None
             )
         command.upgrade(cfg, "head")
         with engine.connect() as conn:
-            kinds = {
-                k
-                for (k,) in conn.execute(
-                    sa.text("SELECT DISTINCT kind FROM snapshot_view WHERE snapshot_id = 9201")
-                )
-            }
-            assert {
-                "dashboard",
-                "complexes",
-                "market",
-                "changes",
-                "sensitivity",
-                "report",
-                "report_diff",
-            } <= kinds
-            assert not conn.execute(
-                sa.text("SELECT COUNT(*) FROM snapshot_view WHERE snapshot_id = 9202")
-            ).scalar_one()
+            # D14-9: 마이그레이션은 저장본을 만들지 않는다(그 사이 발행 리비전 GET = 503 materialize_pending)
+            assert not conn.execute(sa.text("SELECT COUNT(*) FROM snapshot_view")).scalar_one()
         assert "snapshot_state" not in sa.inspect(engine).get_table_names()
+        with engine.begin() as conn:  # backfill 이 넣을 행 모양(계약 버전 포함) — 유일·CHECK 시험용
+            for kind in ("changes", "claims", "provenance"):
+                conn.execute(
+                    sa.text(
+                        "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256, contract_version) "
+                        "VALUES (9201, :k, '', '', :b, :h, '2026-10-09.11')"
+                    ),
+                    {"k": kind, "b": b"x", "h": "0" * 64},
+                )
         with (
             pytest.raises(sa.exc.IntegrityError),
             engine.begin() as conn,
         ):  # 같은 (스냅샷, kind, key, scenario) 중복 거부
             conn.execute(
                 sa.text(
-                    "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256) "
-                    "SELECT snapshot_id, kind, key, scenario, body, sha256 FROM snapshot_view WHERE kind = 'changes'"
+                    "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256, contract_version) "
+                    "SELECT snapshot_id, kind, key, scenario, body, sha256, contract_version FROM snapshot_view WHERE kind = 'changes'"
                 )
             )
         with pytest.raises(sa.exc.IntegrityError), engine.begin() as conn:  # kind CHECK
             conn.execute(
                 sa.text(
-                    "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256) "
-                    "SELECT snapshot_id, 'nope', key, scenario, body, sha256 FROM snapshot_view WHERE kind = 'changes'"
+                    "INSERT INTO snapshot_view (snapshot_id, kind, key, scenario, body, sha256, contract_version) "
+                    "SELECT snapshot_id, 'nope', key, scenario, body, sha256, contract_version FROM snapshot_view WHERE kind = 'changes'"
                 )
             )
+        command.downgrade(cfg, "0010")  # 0011 downgrade: .11 새 종류 행 삭제·contract_version 열 삭제
+        with engine.connect() as conn:
+            assert {k for (k,) in conn.execute(sa.text("SELECT DISTINCT kind FROM snapshot_view"))} == {
+                "changes"
+            }
+            assert "contract_version" not in {
+                c["name"] for c in sa.inspect(conn).get_columns("snapshot_view")
+            }
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:  # 0011 upgrade = 식별 변환(현재 계약 버전)
+            assert set(
+                conn.execute(sa.text("SELECT DISTINCT contract_version FROM snapshot_view")).scalars()
+            ) == {"2026-10-09.11"}
         command.downgrade(cfg, "0009")
         assert "snapshot_view" not in sa.inspect(engine).get_table_names()
         command.upgrade(cfg, "head")
         with engine.begin() as conn:
-            assert conn.execute(
+            assert not conn.execute(
                 sa.text("SELECT COUNT(*) FROM snapshot_view WHERE snapshot_id = 9201")
             ).scalar_one()
             conn.execute(sa.text("DELETE FROM snapshot_view"))

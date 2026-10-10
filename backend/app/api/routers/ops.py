@@ -453,6 +453,8 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
                 else None
             ),
             "rejudge_job_id": rejudge_job.id if rejudge_job is not None else None,
+            # 계약 .11(D14-5): 발행을 부르는 쓰기 응답의 공통 이름(= rejudge_job_id) — 자원을 만드는 POST 라 201 그대로
+            "job_id": rejudge_job.id if rejudge_job is not None else None,
         },
         status_code=201,
     )

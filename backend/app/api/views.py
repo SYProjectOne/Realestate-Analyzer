@@ -1171,8 +1171,9 @@ class ScoreCtx:
     decisions: dict[int, Decision] = field(default_factory=dict)
     jl_days: dict[int, str | None] = field(default_factory=dict)
 
-    @property
+    @functools.cached_property
     def weights(self) -> dict[str, float]:
+        """실행(없으면 시나리오) 가중치 — 한 번만 계산(단지 행마다 부른다, D14-5 성능)."""
         src = self.run.weights if self.run is not None else self.scenario.weights
         return {k: float(v) for k, v in (src or {}).items() if v is not None}
 
@@ -1215,6 +1216,29 @@ LIST_COMPONENTS: tuple[str, ...] = ("gap",)
 
 
 def score_ctx(
+    session: Session,
+    snapshot_id: int,
+    scenario: Scenario,
+    *,
+    complex_ids: Sequence[int] | None = None,
+    with_flags: bool = True,
+) -> ScoreCtx:
+    """``_score_ctx`` + 저장본 계산 메모(같은 계산 안의 같은 인자는 한 번 — 대시보드·목록·상세·비교가 같은 실행을 읽는다,
+    D14-5 성능). 문맥은 읽기만 한다."""
+    from app.api import memo
+
+    if memo.store() is None:
+        return _score_ctx(session, snapshot_id, scenario, complex_ids=complex_ids, with_flags=with_flags)
+    key = (
+        "score_ctx", snapshot_id, scenario.id, None if complex_ids is None else tuple(complex_ids), with_flags,
+    )  # fmt: skip
+    return memo.cached(
+        key,
+        lambda: _score_ctx(session, snapshot_id, scenario, complex_ids=complex_ids, with_flags=with_flags),
+    )
+
+
+def _score_ctx(
     session: Session,
     snapshot_id: int,
     scenario: Scenario,

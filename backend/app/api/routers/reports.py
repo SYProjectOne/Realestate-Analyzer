@@ -97,7 +97,7 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
         from app.reports.data import scenario_in_revision
 
         if session.get(Scenario, int(body["scenario_id"])) is None:
-            raise validation_error(f"시나리오 {body['scenario_id']} 없음", ("body", "scenario_id"))
+            raise not_found(f"scenario {body['scenario_id']}")
         if not scenario_in_revision(session, snap, int(body["scenario_id"])):
             # D14-3(R3 6차 N-M1): 그 리비전 발행 뒤 만든 시나리오 — 결과는 시나리오 실행이 만드는 새 리비전에 있다
             msg = (

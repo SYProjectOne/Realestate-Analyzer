@@ -291,7 +291,7 @@ def test_d13_4_region_change_event_blocks_carry_forward(client: TestClient) -> N
     sels = [{"kind": x["kind"], "code": x["code"], "full_name": x["full_name"]} for x in region["selections"]]
     assert len(sels) >= 2
     r = client.patch("/api/regions/1", headers=WRITE, json={"selections": sels[:-1]})
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text  # 계약 .11(D14-5)
     nid = _new_day()
     out = _after_daily(_ctx(), nid, [], [])
     assert "rejudge_job_id" in out, out
@@ -310,7 +310,7 @@ def test_d13_5_region_patch_event_is_on_writable_revision(client: TestClient) ->
     region = client.get("/api/regions/1", headers=WRITE).json()
     sels = [{"kind": x["kind"], "code": x["code"], "full_name": x["full_name"]} for x in region["selections"]]
     r = client.patch("/api/regions/1", headers=WRITE, json={"selections": sels[:-1]})
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text  # 계약 .11(D14-5)
     with get_session() as s:
         ce = s.get(ChangeEvent, r.json()["change_event"]["id"])
         assert ce is not None and ce.snapshot_id is not None
@@ -611,7 +611,7 @@ def test_m6_region_level_event_flags_every_judged_complex_on_live_revision(clien
     moved, la2["legal_dong_codes"] = la2["legal_dong_codes"][:3], la2["legal_dong_codes"][3:]
     areas.append({"id": None, "name": "새 생활권", "legal_dong_codes": moved})
     r = client.put("/api/regions/1/living-areas", headers=WRITE, json={"living_areas": areas})
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     rows = {
         i["complex_id"]: i
         for i in client.get(f"/api/snapshots/{SNAP}/complexes", params={"size": 200}, headers=READ).json()[

@@ -288,6 +288,9 @@ def test_nc3_same_value_new_source_keeps_demotion_other_value_releases(client: T
 
 
 def test_nc3_report_claim_without_fact_target_only_checks_complex(client: TestClient) -> None:
+    from ._support import as_live
+
+    as_live()  # 계약 .11(D14-1): 발행 리비전 주장 목록은 저장본 — 지금 값은 발행 전 리비전에서 본다
     cid = _fact_claim(section="12-4", field_text="의 +10% 이상 명제는 likely로 판정되었다.")
     with get_session() as s:
         name = s.get(Complex, CX).name  # type: ignore[union-attr]

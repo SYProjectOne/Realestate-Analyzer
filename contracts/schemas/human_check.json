@@ -29,6 +29,10 @@
     "rejudge_job_id": {
       "description": "자동 등록한 rejudge 잡 id(계약 .9, D12-5). 사실 필드·접수 상태면 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에 등록(M-2 — 발행됐으면 새 리비전). '기타'·스냅샷 없음이면 null",
       "type": ["integer", "null"]
+    },
+    "job_id": {
+      "description": "계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로",
+      "type": ["integer", "null"]
     }
   },
   "$defs": {
@@ -75,7 +79,8 @@
       "created_intake": { "id": 640, "complex_id": 4, "snapshot_id": 12, "status": "가능", "path": "human_check", "evidence_url": null, "screenshot_path": null, "raw_document_id": null, "checked_at": "2026-10-09T10:20:00+09:00", "http_status": null, "reason": null, "note": "분양사무소 통화", "entered_by": "운영자" },
       "change_event_id": 3310,
       "suggested_job": { "job_name": "rejudge", "payload": { "snapshot_id": 13, "scenario_id": null, "complex_ids": [4], "reason": "사람 확인 입력: 오퍼스 한강 스위첸 접수 가능", "change_event_ids": [3310] } },
-      "rejudge_job_id": 912
+      "rejudge_job_id": 912,
+      "job_id": 912
     },
     {
       "id": 4, "complex_id": 2, "field": "resale_months", "entity": "complex", "entity_id": 2, "value_text": "12", "kind": "phone", "checked_at": "2026-10-09T11:00:00+09:00",
@@ -83,7 +88,8 @@
       "created_intake": null,
       "change_event_id": 3311,
       "suggested_job": { "job_name": "rejudge", "payload": { "snapshot_id": 13, "scenario_id": null, "complex_ids": [2], "reason": "사람 확인 입력: 엘리프 검단 포레듀 resale_months 복원", "change_event_ids": [3311] } },
-      "rejudge_job_id": 913
+      "rejudge_job_id": 913,
+      "job_id": 913
     }
   ]
 }

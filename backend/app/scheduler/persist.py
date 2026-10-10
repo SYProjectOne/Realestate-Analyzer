@@ -472,6 +472,17 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
 # ---------------------------------------------------------------- 변경 없는 날
 
 
+def _copy_rows_sql(session: Session, model: Any, src_run_id: int, dst_run_id: int) -> None:
+    """``model``(score_run_id 를 가진 점수 행) 의 src 실행 행을 dst 실행으로 복사(id 는 새로, 나머지 열 그대로)."""
+    from sqlalchemy import insert, literal
+
+    table = model.__table__
+    cols = [c for c in table.columns if c.key not in ("id", "score_run_id")]
+    sel = select(literal(dst_run_id).label("score_run_id"), *cols).where(table.c.score_run_id == src_run_id)
+    session.flush()
+    session.execute(insert(table).from_select(["score_run_id", *[c.key for c in cols]], sel))
+
+
 def copy_runs(
     session: Session,
     src_snapshot_id: int,
@@ -506,35 +517,10 @@ def copy_runs(
         session.add(dst)
         session.flush()
         stats["score_run"] += 1
-        for c in session.scalars(select(ScoreComponent).where(ScoreComponent.score_run_id == src.id)):
-            session.add(
-                ScoreComponent(
-                    score_run_id=dst.id,
-                    complex_id=c.complex_id,
-                    component=c.component,
-                    raw_value=c.raw_value,
-                    score_0_10=c.score_0_10,
-                    formula_text=c.formula_text,
-                    label=c.label,
-                    reason=c.reason,
-                    delta=c.delta,
-                    flags=list(c.flags or []),
-                    unadjusted_gap_pct=c.unadjusted_gap_pct,
-                    unadjusted_median_won=c.unadjusted_median_won,
-                )
-            )
-        for t in session.scalars(select(ScoreTotal).where(ScoreTotal.score_run_id == src.id)):
-            session.add(
-                ScoreTotal(
-                    score_run_id=dst.id,
-                    complex_id=t.complex_id,
-                    total=t.total,
-                    rank=t.rank,
-                    tie_group=t.tie_group,
-                    unstable=t.unstable,
-                    judge_scope=t.judge_scope,
-                )
-            )
+        # 성분·총점은 DB 안에서 한 문장으로 복사한다(INSERT … SELECT — 1000 단지 × 성분 7 을 ORM 으로 옮기면 그동안 쓰기 잠금이
+        # 수 초, D14-5 'API 쓰기 잠금 1초 이하'). 값·순서는 ORM 복사와 같다(같은 SELECT)
+        _copy_rows_sql(session, ScoreComponent, src.id, dst.id)
+        _copy_rows_sql(session, ScoreTotal, src.id, dst.id)
         for d in session.scalars(select(Decision).where(Decision.score_run_id == src.id)):
             session.add(
                 Decision(

@@ -1783,6 +1783,10 @@ class HumanCheck(BaseModel):
     """
     자동 등록한 rejudge 잡 id(계약 .9, D12-5). 사실 필드·접수 상태면 그 지역 가장 새 (기준일, 리비전)의 쓰기 가능 리비전에 등록(M-2 — 발행됐으면 새 리비전). '기타'·스냅샷 없음이면 null
     """
+    job_id: int | None = None
+    """
+    계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로
+    """
 
 
 class HumanCheckCreate(BaseModel):

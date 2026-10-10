@@ -184,6 +184,27 @@ def test_c2_batch_drawers_equal_single_drawers(client: TestClient) -> None:
                 select(FieldProvenance.id).where(FieldProvenance.conflict_group.is_not(None)).limit(100)
             )
         ]
+        from app.models import ComplexType, PaymentTerms
+
+        own = [  # 강등된 기준 타입 가격(그 단지 타입·공고 행 출처 전부)
+            *[
+                ("complex_type", i)
+                for i in s.scalars(select(ComplexType.id).where(ComplexType.complex_id == CX))
+            ],
+            *[
+                ("payment_terms", i)
+                for i in s.scalars(select(PaymentTerms.id).where(PaymentTerms.complex_id == CX))
+            ],
+        ]
+        for ent, eid in own:
+            ids += [
+                f"fp_{i}"
+                for i in s.scalars(
+                    select(FieldProvenance.id).where(
+                        FieldProvenance.entity == ent, FieldProvenance.entity_id == eid
+                    )
+                )
+            ]
         many = provenance_bodies(s, ids)
         for pid in sorted(set(ids)):
             assert many[pid] == provenance_body(s, pid), pid

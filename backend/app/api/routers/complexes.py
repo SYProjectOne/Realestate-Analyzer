@@ -683,9 +683,11 @@ def _ints(rest: str, n: int) -> list[int] | None:
 def _score_total_formula(session: Session, run: ScoreRun, cid: int) -> str:
     comps = list(
         session.scalars(
-            select(ScoreComponent).where(
-                ScoreComponent.score_run_id == run.id, ScoreComponent.complex_id == cid
-            )
+            select(ScoreComponent)
+            .where(ScoreComponent.score_run_id == run.id, ScoreComponent.complex_id == cid)
+            .order_by(
+                ScoreComponent.component, ScoreComponent.id
+            )  # 식의 항 순서 고정(성분 이름순 — 색인 순서와 같다)
         )
     )
     terms = []
@@ -766,6 +768,7 @@ def provenance_bodies(session: Session, prov_ids: Iterable[str]) -> dict[str, di
     want = sorted(set(prov_ids))
     fp_ids = {int(p[3:]) for p in want if p.startswith("fp_") and p[3:].isdigit()}
     out = _field_provs(session, fp_ids) if fp_ids else {}
+    out.update(_score_provs(session, [p for p in want if p[:3] in ("sc_", "st_")]))
     for pid in want:
         if pid in out or (pid.startswith("fp_") and pid[3:].isdigit()):
             continue
@@ -774,6 +777,99 @@ def provenance_bodies(session: Session, prov_ids: Iterable[str]) -> dict[str, di
         except ApiError:
             continue
     return out
+
+
+def _score_provs(session: Session, prov_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """``sc_<실행>_<단지>_<성분>``·``st_<실행>_<단지>`` 서랍 여럿을 한 번에(점수 있는 1000 단지 × 시나리오 5 = 성분 3만 5천 —
+    한 건씩이면 질의 7만). ``provenance_body`` 와 같은 값(테스트가 비교한다). 모양이 다르거나 행이 없는 id 는 뺀다(한 건씩
+    경로가 404 로 같은 판단)."""
+    sc_keys: dict[str, tuple[int, int, str]] = {}
+    st_keys: dict[str, tuple[int, int]] = {}
+    for pid in prov_ids:
+        rest = pid[3:]
+        if pid.startswith("sc_"):
+            parts = rest.split("_", 2)
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+                sc_keys[pid] = (int(parts[0]), int(parts[1]), parts[2])
+        elif not rest.isdigit():
+            ids = _ints(rest, 2)
+            if ids is not None:
+                st_keys[pid] = (ids[0], ids[1])
+    if not sc_keys and not st_keys:
+        return {}
+    run_ids = sorted({k[0] for k in sc_keys.values()} | {k[0] for k in st_keys.values()})
+    runs = {r.id: r for r in session.scalars(select(ScoreRun).where(ScoreRun.id.in_(run_ids)))}
+    cx_ids = sorted({k[1] for k in sc_keys.values()} | {k[1] for k in st_keys.values()})
+    comps: dict[tuple[int, int], list[Any]] = defaultdict(list)
+    totals: dict[tuple[int, int], Any] = {}
+    for rid in run_ids:
+        for i in range(0, len(cx_ids), 500):
+            chunk = cx_ids[i : i + 500]
+            for c in views.light_rows(
+                session,
+                select(ScoreComponent)
+                .where(ScoreComponent.score_run_id == rid, ScoreComponent.complex_id.in_(chunk))
+                .order_by(ScoreComponent.id),
+                ScoreComponent,
+            ):
+                comps[(rid, c.complex_id)].append(c)
+            for t in views.light_rows(
+                session,
+                select(ScoreTotal)
+                .where(ScoreTotal.score_run_id == rid, ScoreTotal.complex_id.in_(chunk))
+                .order_by(ScoreTotal.id),
+                ScoreTotal,
+            ):
+                totals.setdefault((rid, t.complex_id), t)
+    out: dict[str, dict[str, Any]] = {}
+    for pid, (rid, cid, comp) in sc_keys.items():
+        run = runs.get(rid)
+        row = next((c for c in comps.get((rid, cid), []) if c.component == comp), None)
+        if row is None or run is None:
+            continue
+        body = _blank(pid, "score_component", row.label)
+        body.update(
+            entity="score_component",
+            entity_id=row.id,
+            field=row.component,
+            reason=row.reason,
+            value_text=None if row.score_0_10 is None else f"{float(row.score_0_10):g}",
+            checked_at=day(run.created_at),
+            formula_text=row.formula_text,
+        )
+        out[pid] = body
+    for pid, (rid, cid) in st_keys.items():
+        run = runs.get(rid)
+        tot = totals.get((rid, cid))
+        if run is None or tot is None:
+            continue
+        body = _blank(pid, "score_total", "추정")
+        body.update(
+            entity="score_total",
+            entity_id=tot.id,
+            field="total",
+            value_text=None if tot.total is None else f"{float(tot.total):g}",
+            reason=None if tot.total is not None else "미판정",
+            checked_at=day(run.created_at),
+            formula_text=_formula_of(
+                run, sorted(comps.get((rid, cid), []), key=lambda c: (c.component, c.id))
+            ),
+            judgment_seq=run.rerank_judgment_seq,
+        )
+        out[pid] = body
+    return out
+
+
+def _formula_of(run: ScoreRun, comps: Sequence[Any]) -> str:
+    """``_score_total_formula`` 와 같은 식(성분 행을 이미 읽은 경우)."""
+    terms = []
+    for c in comps:
+        w = (run.weights or {}).get(c.component)
+        if w is None:
+            continue
+        sv = "미판정" if c.score_0_10 is None else f"{float(c.score_0_10):g}"
+        terms.append(f"{float(w):g}×{sv}({c.component})")
+    return "S = Σ w·s = " + " + ".join(terms) if terms else "S = Σ w·s"
 
 
 def provenance_body(session: Session, prov_id: str) -> dict[str, Any]:

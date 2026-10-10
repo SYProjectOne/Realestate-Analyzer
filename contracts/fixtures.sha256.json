@@ -1,7 +1,7 @@
 {
  "description": "contracts/fixtures/** sha256. 픽스처를 바꾸면 backend/scripts/fixture_manifest.py --reason 으로 다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6). 변경마다 새 사유(history).",
- "reason": "R3d CORE2: 계약 .9 사람 확인 재판정 자동 등록(D12-5)으로 합성 판정 녹화 도구가 suggested_job 대신 rejudge_job_id 를 쓴다 — 녹화 데이터(봉투 293개)는 그대로",
- "files_digest": "fffa871f9b2be3fc913db872710301da4e72061f05a23cc56fe75c8ca8785db2",
+ "reason": "R3f-CORE4 T3 checked_at RFC3339 (contract .11 D14-6) fixture+builder",
+ "files_digest": "d6f9f4d0af540fe9d3c037578a01a6bd5e6e01b638f815fa18eb9223de487878",
  "history": [
   {
    "reason": "R3b 마무리: 계약 .7 winner_label(당첨일 라벨이 전매 종료 요건 근거에 합쳐짐)로 상황 decide payload 1건 변경 — 합성 판정 녹화 재생성",
@@ -14,6 +14,14 @@
   {
    "reason": "R3c CORE: minor 6 파이프라인 구매가 라벨 = 구성 필드(공급가·발코니·옵션) 중 가장 약한 라벨(API 와 같음)로 카드·명제의 가격 라벨이 바뀌어 decide 5·noul 30·rerank 1 payload 변경 — 합성 판정 녹화 재생성",
    "files_digest": "d7d464302d7341d732f3696e2892770bd1ba028f3575e900c9ad6ee65a6b034d"
+  },
+  {
+   "reason": "R3d CORE2: 계약 .9 사람 확인 재판정 자동 등록(D12-5)으로 합성 판정 녹화 도구가 suggested_job 대신 rejudge_job_id 를 쓴다 — 녹화 데이터(봉투 293개)는 그대로",
+   "files_digest": "fffa871f9b2be3fc913db872710301da4e72061f05a23cc56fe75c8ca8785db2"
+  },
+  {
+   "reason": "R3f CORE4: T3 사람 확인 checked_at 을 시간대 붙은 RFC3339 로(계약 .11 D14-6)",
+   "files_digest": "5c1da901fe80a597a8a72e72019baff84b439299ebff26d08fd47491e75c86fe"
   }
  ],
  "files": {
@@ -466,7 +474,7 @@
   "incheon_gimpo_2026-10-08/raw/claims/t6_composite.json": "88e3cec133bfa89e260ae6f41d006004ea6ed4b25ba5ce9cfb9a19faafb93f15",
   "incheon_gimpo_2026-10-08/raw/documents.json": "ee5af6318fb7e91dfd425a605c27d06fc9d58cf7cebe5d2f5de462839c4bb989",
   "incheon_gimpo_2026-10-08/raw/guard/t14_payloads.json": "1e15f0c6f24188c2b9bb70e7f391514c810d8f834810caa58cb8697d6cbcf0fd",
-  "incheon_gimpo_2026-10-08/raw/human_check/t3_switzen_possible.json": "1a16a584c04b14894cbca35e9afed4f4c544027f173137d3ce84fea38bb9607b",
+  "incheon_gimpo_2026-10-08/raw/human_check/t3_switzen_possible.json": "f262ab57208224a9e41666341094130a9f02330261004d33dc619488590a74c9",
   "incheon_gimpo_2026-10-08/raw/news/01_p1.txt": "37e56175a321df922ef0ef3ae6a5d3fd707094e6c184a61dedb56e09e5476201",
   "incheon_gimpo_2026-10-08/raw/news/02_p1.txt": "72c2648e6e18a1427e46890c4a5efd226afed854b8b2bc1f8997d2ad415d7359",
   "incheon_gimpo_2026-10-08/raw/news/11_p1.txt": "3ced200042d672acff0e1804439943c73670956a1a79e284747a9de00208feac",
@@ -549,7 +557,7 @@
   "reference/jumin_households_202609.csv": "ce292fa79d58a401006e5cd571f571bc2638a4129946e3be58fdc08422084c57",
   "reference/legal_dong_full.zip": "44a3fe4cacf88ce98e35fb883807d2725b589f427ff4d73ee40b914d1286bacd",
   "reference/manifest.json": "22d9bdbfb3ed9affdef18a01e9649e852a0a39d7d8261728a6055a4091bcf6db",
-  "tools/build_incheon_gimpo.py": "28b93ef779a3ae773ce25aefa605ccddd97fc31a59b961686e6b4444462f4007",
+  "tools/build_incheon_gimpo.py": "3ada50e7b86867b575200b09b3b417085e93c844624071940c4ad85603f9d988",
   "tools/fixture_lib.py": "33d361dea698f60b05fad34fe439cb541e9697199a6663c83845b00d5256fcdd",
   "tools/hash.py": "fb2970a529a93ecd40b7469e548e1f1747ea20f976079faa74e42507999f528c",
   "tools/incheon_gimpo_complexes.py": "840dd2402a75cb8db12f8e22f6a7b960372f0d1cfc83b02f8900de75b8240ff9",

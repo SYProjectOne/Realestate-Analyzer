@@ -2,6 +2,78 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.11
+
+R3 6차 리뷰(`docs/design/wp/R3_REVIEW6.md`) 후속 — CEO 결정 D14(`docs/design/DECISIONS.md`)와 R3f 배정(`docs/design/wp/R3F_FIX.md` CORE4).
+계약 소유자 = R3f CORE4(브랜치 `wp/r3f-core4`). 마이그레이션 `0011`(`0011_r3f.py`: `snapshot_view.contract_version` 열 + kind CHECK 에
+`provenance`·`claims`) + **`0010` 수정**(앱 코드 import·materialize 제거 — D14-9). 필드 삭제 없음. 응답 상태 코드 변경 3(202), 새 오류 code 3.
+
+**프론트(FE5)가 맞출 것** — 아래 'FE 차이' 표 하나만 보면 된다. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시
+만들지 않았다(frontend/** = FE5 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### FE 차이(FE5 — 화면이 맞출 것)
+
+| # | 대상 | .10 | .11 | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| F1 | `GET /provenance/{prov_id}` **쿼리** | 없음 | `?snapshot_id=<보고 있는 리비전 id>`(integer, 선택). 발행 리비전이면 **저장본**(발행 순간의 출처 행·chosen·충돌·강등 — 이후 새 공고·재수집·강등·PATCH /claims 에도 같은 바이트), 발행 전(building·ready) 리비전이면 실시간. 그 발행 리비전 화면에 없던 출처 = **404** `not_found`, 저장본 생성 전 = **503** `materialize_pending`. 생략하면 지역마다 최신 발행 리비전 저장본에서 찾고 어디에도 없으면 실시간 — **화면은 늘 넘긴다**(G3 ProvenanceTab·충돌 출처 클릭 포함) | D14-1 · C2 |
+| F2 | `GET /snapshots/{sid}/claims` | 늘 지금 값(강등 상태·대기 잡) | 발행 리비전 = 발행 순간 저장한 목록(`demotion`·`pending_job_id` 포함 — 발행 리비전에는 남은 contradicted 가 없으므로 대기 잡도 없다). `?status=` 는 저장본에 적용. 발행 전 리비전만 지금 값. 저장본 생성 전 503 | D14-1 · m1 |
+| F3 | `PATCH /catalysts/{id}` **상태** | 200, `job` 늘 null(요청 안에서 새 리비전 발행) | **202**. `job` = `snapshot.publish` 잡(연결이 바뀐 경우 — payload `{snapshot_id: 새 리비전, carry_from_snapshot_id: 바탕}`), 그대로면 null. **새 필드 `job_id`**(= job.id 또는 null). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면 → 화면은 `job_id` 를 감시하고 끝나면 regions·스냅샷 목록을 무효화 | D14-5 · N-M3 |
+| F4 | `PUT /regions/{id}/living-areas` **상태** | 200 | **202**(본문 같음 — `job_id` = rejudge 잡). 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전 | D14-5 |
+| F5 | `PATCH /regions/{id}` **상태** | 200 | 선택이 바뀌면 **202**(본문 같음 — `job_id` = region.expand), 이름만 바꾸면 **200**(change_event·job_id null, 그대로) | D14-5 |
+| F6 | `POST /ops/human-checks` 응답 | `rejudge_job_id` | **201 그대로**(자원을 만드는 POST — e2e·화면 흐름 유지) + **새 필드 `job_id`**(= rejudge_job_id, 발행을 부르는 쓰기 응답의 공통 이름) | D14-5 |
+| F7 | `POST /ops/human-checks` **`checked_at` 형식** | 문자열 10자 이상(`zzzzzzzzzz`·미래 날짜 201) | **시간대가 붙은 RFC3339**(`format: date-time` — 예 `2026-10-09T10:20:00+09:00`, `…Z` 도 됨). 날짜만·시간대 없음·형식 오류 → 422(`field_errors[0].loc = ["body","checked_at"]`). 서버 지금보다 **10분 넘게 미래** → 422. 화면 입력은 `datetime-local` + 시간대(또는 `toISOString()`) | D14-6 · N-M4 |
+| F8 | `POST /ops/human-checks` 이른 확인일 422 | 그 의미 필드에 확인일보다 뒤에 관측된 공식 공고가 있으면 422 | 그 공고 값이 사람 확인 값과 **다를 때만** 422(detail `확인일 <KST날짜>(KST) 은 이미 수집된 공식 공고(관측 <일>, 다른 값)보다 이르다 …`). **같은 값이면 201**(재검토 항목 없음). 날짜 비교는 KST(`2026-10-09T20:00:00Z` = KST 10-10) | D14-6 · m11 · m12 |
+| F9 | 체크리스트 `사람 확인 재검토: <필드>` | 같은 필드를 다시 사람 확인해도 open | 같은 (단지, 의미 필드)를 다시 사람 확인하면 **자동 done**(closed_by auto) | D14-6 · m13 |
+| F10 | `POST /reports` | 사용자 시나리오가 대상 리비전에 없어도 202 → 잡 실패 | 대상 리비전에 그 시나리오 저장본이 없으면(그 리비전 발행 뒤 만든 시나리오) **422 `scenario_not_in_revision`**(`field_errors[0].loc = ["body","scenario_id"]` — 화면: '그 시나리오는 시나리오 실행이 만든 리비전에서 보고서를 만든다' 안내 + 대상 리비전 다시 고르기). 없는 시나리오 id = 404. 비교 스냅샷이 **대상과 같거나 더 새 리비전**이면 422(`compare_snapshot_id`). 저장본 생성 전 503 | D14-3 · N-M1 · m5 |
+| F11 | 보고서 HTML §12 | 비교 기준에 시나리오가 없으면 잡 실패 | 보고서는 만들고 12-2 delta 표 자리에 '비교 기준에 이 시나리오 없음'(§12 후보 건수 비교는 그대로). 머리말 '생성' = 보고서를 만든 지금(`<time class="generated-at">`) | D14-3 · m4 |
+| F12 | 새 오류 code | — | `scenario_not_in_revision`(422, F10) · `stored_view_mismatch`(500 — 발행 리비전 저장본 sha256·계약 버전 불일치, 화면은 일반 서버 오류 안내) · `materialize_pending`(503 + `Retry-After` 초 — 발행 리비전 저장본 생성 전, 화면은 '준비 중 — 잠시 뒤 다시' + 자동 재시도). 발행 리비전을 읽는 GET 전부(대시보드·단지 목록·CSV·단지 상세·출처 서랍·비교·민감도·시장·변경·주장)와 `POST /reports` 에 503 이 문서화됐다 | D14-3 · D14-4 · D14-9 |
+| F13 | 할인 표시(`price.discount`·`discount_applied`) | 금액 앞만 조건 검사 — '…(1~3층)'·'잔금 완납 시'·'특별공급 당첨자 한정'·'최대' 할인도 '확인됨'으로 구매가에서 뺌 | **줄 전체**에 조건이 없을 때만 '확인됨'(차감, `discount_applied` true). 조건부 할인은 '추정'(표시만, `discount_applied` false). '할인 없음/미적용' 줄·취득세·중도금 이자·발코니·옵션 **지원**은 할인 Fact 를 만들지 않는다. 화면 규칙 그대로(`discount_applied` 만 본다) — 값이 바뀔 뿐 | D14-2 · C1 |
+| F14 | 예시 `examples/market.json` | la_2·la_3 `n_trades` 0건 '재가공'/'비공식'(근거 '건수 미상'과 모순) | `v: null`, '확인 불가'(사유 '건수 미상…'·'실거래 원자료 미확보…') — MSW 예시만 | m8 |
+| F15 | `GET /snapshots/{sid}/*` 발행 리비전 | 저장본(D13-1) | 같음. 단 저장본이 아직 없으면 500 → **503 `materialize_pending`** | D14-9 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.10) | 이후(.11) | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | 출처 서랍·주장 목록 | 발행 리비전도 실시간(현재 출처 행·chosen·충돌·오버레이) — 발행 뒤 `fp_11 chosen True→False`, 입주물량 재수집이 출처 행을 지우면 404 | 발행 순간 **저장본**(kind `provenance` = 그 리비전 응답이 가리키는 출처 id 전부 + 그 서랍의 충돌 출처, 해시 묶음; kind `claims`) | D14-1 · C2 · m1 |
+| S2 | 저장본 행 | sha256 만 저장, 읽을 때 검증 없음 | `contract_version`·`sha256` 를 **읽을 때 검증** — 다르면 500 `stored_view_mismatch` + 오류 로그(조용히 내보내지 않음). 시나리오 사이 같은 부분은 기본 시나리오 행 + 바뀐 부분 행으로 저장(읽을 때 같은 바이트로 되살림 — 1000 단지 저장본 26MB → 7.6MB) | D14-4 · N-M2 |
+| S3 | 발행(materialize) | publish 트랜잭션 안에서 계산·쓰기 — 호재 PATCH 요청 안 발행, 1016 단지 × 5: 28.8s 동안 쓰기 잠금 | **worker 잡에서만**: 계산(읽기 전용 세션 — SQLite WAL 읽기 트랜잭션·Postgres REPEATABLE READ, 리비전은 메모리에서만 '발행됨', flush 금지) → 저장본 **나눠 쓰기**(묶음당 ≤2MB 짧은 트랜잭션) → 남은 contradicted 0 재확인 + `UPDATE … SET status='published' WHERE status='ready'` **짧은 전환**. 끝날 때까지 이전 발행 리비전이 기본. 잡 stats = `rows·bytes·missing_provenance·provenance_ids·compute_s·timing_s·write_chunks·write_max_lock_s·write_total_s·flip_s·total_s`. 측정 1016 단지 × 시나리오 5 = 아래 '검증' | D14-5 · N-M3 |
+| S4 | 출처 누락(T13) | 발행 저장본 '확인 불가(출처 누락)'(통계 없음) | 같음 + 잡 stats `missing_provenance` 건수. 실시간 경로(발행 전 리비전) dev 500 · prod 라벨 그대로 | D14-8 |
+| S5 | 0010 이전 발행분·새 종류 | 0010 마이그레이션이 앱 코드로 materialize | 마이그레이션은 테이블만. 채우기 = **멱등 backfill**(`cd backend && uv run python -m app.snapshot_view backfill` · worker 시작 때 자동 · `python scripts/tasks.py backfill`) — 빠진 종류만 계산·나눠 쓰기, 행 단위 사람 확인(.9) → 의미 묶음 이전(m14). 그 사이 GET 503 | D14-9 · m2 · m14 |
+| S6 | 사용자 시나리오 보고서 | 비교 기준(revision_of)에 그 시나리오가 없으면 잡 실패, diff 는 code 로 시나리오를 찾음(사용자 시나리오 code NULL) | F10·F11. diff·§12 는 시나리오 **id** 로. §12 후보 건수는 비교 기준에 그 시나리오가 없으면 기본 시나리오 입력으로. CLI `--scenario` 도 같은 규칙(없으면 exit 4 `scenario_not_in_revision`) | D14-3 · N-M1 |
+| S7 | 이월·재판정 판단 | 리비전 전체의 마지막 점수 실행 하나 기준 — 단지 A rejudge 실패 뒤 다른 단지만 판정한 실행이 성공하면 A 가 가려짐 | **단지 단위**: 단지마다 그 단지를 판정한 마지막 성공 잡(rejudge·region.bootstrap·region.expand) 끝 시각(기록 없으면 그 스냅샷 첫 점수 실행) 뒤 그 단지·지역 단위 change_event 또는 그 단지를 포함한 rejudge 실패가 있으면 재판정 | D14-7 · N-M5 |
+| S8 | 사람 확인 날짜 | `checked_at[:10]` 문자열 비교 | 공용 `core.time.kst_date` 하나(KST 달력 날짜 — resolver·demotion 전부). 옛 날짜만 행도 읽는다 | D14-6 · m12 |
+| S9 | 할인 줄 | 금액 앞 조건만 | F13(조건 토큰: 층·동·호·라인·타입 외·'~시'·한정·최대·조건·선착순·특별공급·잔금·완납·기간·까지·※·단·각주) | D14-2 · C1 |
+| S10 | 정규화·보안 minor | — | redact: PEM 개인키 본문 전체·JSON `"private_key": "…"` 값 전체(m9). 홈페이지 URL: UTS46 무시 문자 전부(U+2064·U+E0100~E01EF·U+1BCA0~1BCA3 등, m10). 같은 블록 병합 잔여 공고의 입주 예정월도 원 단지 후보(m16 — 일정·당첨일 등은 D11-4 대로 버림). 모호 법정동이 기존 `legal_dong_code` 를 지우지 않음(m17). 의미 키 규칙 한 함수(m18) | m9 · m10 · m16 · m17 · m18 |
+| S11 | worker·운영 | SQLite 같은 트랜잭션 읽기 뒤 rejudge 합치기 'database is locked'(BUSY_SNAPSHOT) | 읽기만 한 트랜잭션이면 새 트랜잭션에서 쓰기 잠금부터 다시(쓴 트랜잭션은 예외 그대로, m15). region.bootstrap 저장본 실패가 지역을 failed 로 만들지 않음 — 지역 ready + `snapshot.publish` 재시도 잡(stats `publish_retry_job_id`, m19). devseed `--reset` = 실제 테이블 반사 삭제 + alembic head 스탬프(m3) | m15 · m19 · m3 |
+| S12 | 보고서 경로 | `x/C:outside.txt` 가 REPORT_DIR 밖을 가리킬 수 있음 | 드라이브·콜론 조각 거부 + 결과가 REPORT_DIR 안인지 확인(m6). diff 입력 이름 = 그 리비전 지역 단지만(m7) | m6 · m7 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `error.json` code enum | `scenario_not_in_revision`·`stored_view_mismatch`·`materialize_pending` 추가 |
+| 2 | `human_check.json` | `HumanCheckCreate.checked_at` `format: date-time`(설명: 시간대 필수·10분 넘는 미래 422). `HumanCheck.job_id`(integer\|null, 선택) 추가 — 예시 갱신 |
+| 3 | `catalyst.json` `CatalystUpdated` | `job_id`(integer\|null, **필수**) 추가, `job` 설명(snapshot.publish 잡). 예시 `catalyst_updated.json` 갱신 |
+| 4 | `job_payloads/snapshot_publish.json` | `carry_from_snapshot_id`(integer\|null, 선택) — 판정 없는 리비전 값(호재 연결) 발행 |
+| 5 | `openapi.yaml` | getProvenance `snapshot_id` 쿼리·설명. updateCatalyst 200→**202**, updateLivingAreas 200→**202**, updateRegion **202**(선택 변경) + 200(이름만). createReport 설명(F10). 새 응답 `MaterializePending`(503, `Retry-After`) — getDashboard·listComplexes·exportComplexesCsv·getComplex·getProvenance·getCompare·getSensitivity·getMarket·listChanges·listClaims·createReport. InternalError 설명에 stored_view_mismatch. 새 예시 `error_503_materialize_pending.json` |
+| 6 | DB `0011` | `snapshot_view.contract_version`(String 32, NOT NULL, 기본 '') · kind CHECK + `provenance`·`claims`. 데이터 = .10 행 식별 변환(`contract_version='2026-10-09.11'` — 기존 kind 모양 변화 없음) |
+| 7 | DB `0010`(수정) | 앱 코드 import·materialize 제거(테이블만). 이미 0010 을 지난 DB 에는 영향 없음 |
+
+### 마이그레이션·검증
+
+- 0010 DB: `cd backend && uv run alembic upgrade head`(0011) → `uv run python -m app.snapshot_view backfill`(또는 worker 재시작). backfill 전 발행 리비전의
+  출처 서랍·주장 목록 GET = 503 materialize_pending. 0009 이하 DB 도 같은 두 단계(저장본 전부를 backfill 이 만든다).
+- 왕복: head → 0009 → head(저장본 0행) → backfill(발행 스냅샷마다 종류 전부, 시나리오 5 × 단지 16) → backfill 다시 0행(멱등) → 0011→0010 downgrade
+  (새 종류·버전 열 삭제) → head(식별 변환) → backfill 은 새 종류만, autogenerate diff 0 — **devseed 픽스처(단지·시나리오 있음)** 로 SQLite·Postgres 16
+  (pgserver) 둘 다(`tests/contracts/test_r3f_migrations.py`, R3 6차 m28).
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.11`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
+
+### fixtures
+
+`contracts/fixtures/incheon_gimpo_2026-10-08/raw/human_check/t3_switzen_possible.json` 의 `checked_at` 을 `2026-10-09T10:00:00+09:00` 로(F7 — 날짜만이면
+422), 생성기 `tools/build_incheon_gimpo.py` 도 같게. 매니페스트 사유: R3f-CORE4 T3 checked_at RFC3339 (contract .11 D14-6) fixture+builder
+
 ## 2026-10-09.10
 
 R3 5차 리뷰(`docs/design/wp/R3_REVIEW5.md`) 후속 — CEO 결정 D13(`docs/design/DECISIONS.md`)과 R3e 배정(`docs/design/wp/R3E_FIX.md`).

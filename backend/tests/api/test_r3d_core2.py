@@ -21,7 +21,7 @@ from sqlalchemy import select
 from app.core.contracts_gen import FieldCandidate
 from app.core.contracts_gen import RawDocument as RawDocumentDTO
 from app.core.db import get_session
-from app.models import Complex, FactDemotion, PaymentTerms, RawDocument, Region, Snapshot
+from app.models import Complex, FactDemotion, JobRun, PaymentTerms, RawDocument, Region, Snapshot
 
 from ._support import READ, WRITE, as_live
 from .test_r3b_g3 import CX, SNAP, _fact_claim
@@ -601,11 +601,11 @@ def test_minor_not_catalyst_cannot_be_linked_and_expected_ym_can_be_cleared(clie
         json={"location_confirmed": False, "expected_ym": "2029-01"},
         headers=WRITE,
     )
-    assert r.status_code == 200 and r.json()["catalyst"]["expected_ym"]["v"] == "2029-01"
+    assert r.status_code == 202 and r.json()["catalyst"]["expected_ym"]["v"] == "2029-01"  # 계약 .11
     r = client.patch(
         f"/api/catalysts/{yes_id}", json={"location_confirmed": False, "expected_ym": None}, headers=WRITE
     )
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     assert r.json()["catalyst"]["expected_ym"]["v"] is None, "null 로 지운다"
 
 
@@ -627,13 +627,21 @@ def test_d12_4_old_revision_responses_do_not_change_after_later_edits(client: Te
     r = client.patch(
         f"/api/catalysts/{cat_id}", json={"location_confirmed": True, "complex_ids": [CX]}, headers=WRITE
     )
-    assert r.status_code == 200, r.text  # → 리비전 2(발행·얼림)
+    assert r.status_code == 202, r.text  # → 리비전 2 + snapshot.publish 잡(계약 .11 D14-5 — 발행은 worker)
+    from ._support import run_job
+
+    assert run_job(r.json()["job_id"])[0] == "done"
     with get_session() as s:
         rev2 = s.scalars(select(Snapshot).where(Snapshot.region_id == 1).order_by(Snapshot.id.desc())).first()
         assert rev2 is not None and rev2.status == "published" and rev2.revision == 2
         rev2_id = rev2.id
-        rev3 = republish(s, 1, reason="테스트 리비전 3", created_at="2026-10-09T12:00:00+09:00")
-        assert rev3 is not None and rev3.revision == 3
+        job3 = republish(s, 1, reason="테스트 리비전 3", created_at="2026-10-09T12:00:00+09:00")
+        assert job3 is not None
+        job3_id = job3.id
+    assert run_job(job3_id)[0] == "done"
+    with get_session() as s:
+        rev3 = s.get(Snapshot, int((s.get(JobRun, job3_id).payload or {})["snapshot_id"]))  # type: ignore[union-attr]
+        assert rev3 is not None and rev3.revision == 3 and rev3.status == "published"
     urls = [
         f"/api/complexes/{CX}?snapshot={rev2_id}",
         f"/api/snapshots/{rev2_id}/complexes?size=200",
@@ -670,9 +678,9 @@ def test_d12_4_old_revision_responses_do_not_change_after_later_edits(client: Te
         for a in region["living_areas"]
     ]
     r = client.put("/api/regions/1/living-areas", json={"living_areas": areas}, headers=WRITE)
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     r = client.patch(f"/api/catalysts/{cat_id}", json={"location_confirmed": False}, headers=WRITE)
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     after = {u: client.get(u, headers=READ) for u in urls}
     for u in urls:
         assert after[u].content == before[u].content, f"옛 리비전 응답이 바뀌었다(D12-4): {u}"
