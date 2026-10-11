@@ -99,7 +99,9 @@ def test_t15_html_via_api_self_contained(env: RegressEnv, sid: int, compare: int
                 # R3h(8차 m6): prov = API 서랍 id 모양 st_<실행>_<단지>
                 run_id, cx_id = (int(x) for x in str(cell["data-prov"])[3:].split("_"))
                 st = s.scalars(
-                    select(ScoreTotal).where(ScoreTotal.score_run_id == run_id, ScoreTotal.complex_id == cx_id)
+                    select(ScoreTotal).where(
+                        ScoreTotal.score_run_id == run_id, ScoreTotal.complex_id == cx_id
+                    )
                 ).first()
                 assert st is not None and st.total is not None
                 want = Decimal(st.total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
