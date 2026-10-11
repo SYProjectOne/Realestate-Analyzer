@@ -9,6 +9,8 @@ D15-1 허용 목록('{타입} {분양가|공급금액} 할인 {금액}원' 꼴�
 | K1 리뷰 재현 문구 | ``test_k1_review_phrases_not_confirmed`` |
 | 리뷰어 퍼징 목록 전부(예전 허용 꼴 포함) — '확인됨' 0건 | ``test_k1_reviewer_fuzz_cases`` |
 | 0원·할인 아닌 금액은 후보 없음 | ``test_k1_zero_or_non_discount_amount_makes_no_fact`` |
+| R3i m19 퍼징 복원(문법 기반 hypothesis): 어떤 꼴이든 후보는 '추정'(조건 확인 필요)·금액 > 0 | ``test_k1_property_candidates_are_estimates`` |
+| R3i m19 예전 허용 꼴 + 무해한 다음 줄 → 후보(금액·위치) '추정' | ``test_k1_property_canonical_is_estimate_candidate`` |
 """
 
 # ruff: noqa: E501
@@ -18,6 +20,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from tests.normalize.test_r3h_discount import _base, _disc
 
@@ -64,9 +68,14 @@ def _labels(text: str) -> list[str]:
 )
 def test_k1_review_phrases_not_confirmed(text: str) -> None:
     """리뷰 재현: 예전엔 '확인됨'(구매가에서 차감) — 이제 후보는 '추정'뿐(D16-1)."""
-    assert "확인됨" not in _labels(text), text
+    # R3i m19: 후보를 아예 내지 않아도 통과하던 단언 → **후보가 나오고**(금액 10,000,000) 그 라벨이 '추정'(0원 줄만 후보 없음)
+    labels = _labels(text)
     if text.startswith("84A 분양가 할인 0원"):
-        assert _call(text + "\n") is None  # 0원 → 사실 없음, 경품 금액은 할인이 아니다
+        assert _call(text + "\n") is None and labels == []  # 0원 → 사실 없음, 경품 금액은 할인이 아니다
+        return
+    got = _call(text + "\n")
+    assert got is not None and got.won == 10_000_000 and "조건 확인 필요" in got.reason, (text, got)
+    assert labels == ["추정"], (text, labels)
 
 
 # ---------------------------------------------------------------- 리뷰어 퍼징 목록(r7/b/fuzz_disc.py)
@@ -227,10 +236,21 @@ _FUZZ_CASES = [
 ]
 
 
+_CANONICAL = {"84A 분양가 할인 10,000,000원", "84A 공급금액 할인 10,000,000원"}
+"""예전(D15-1) 허용 꼴 — D16-1 뒤에도 후보는 나오되 '추정'."""
+
+
 @pytest.mark.parametrize("text", _FUZZ_CASES)
 def test_k1_reviewer_fuzz_cases(text: str) -> None:
-    """D16-1: 예전 허용 꼴을 포함한 퍼징 목록 전부 — 파서 할인 후보에 '확인됨' 0건."""
-    assert "확인됨" not in _labels(text), text
+    """D16-1: 예전 허용 꼴을 포함한 퍼징 목록 전부 — 파서 할인 후보에 '확인됨' 0건. R3i m19: 후보를 내지 않아도 통과하던 단언 →
+    줄 함수(``_discount_line``)가 금액을 내면 그 후보는 '추정'(조건 확인 필요)이고, 예전 허용 꼴(정확히 그 줄)은 반드시 후보가 있다."""
+    labels = _labels(text)
+    assert set(labels) <= {"추정"}, (text, labels)
+    got = _call(text + "\n")
+    if got is not None:
+        assert got.won > 0 and "조건 확인 필요" in got.reason, (text, got)
+    if text in _CANONICAL:
+        assert got is not None and got.won == 10_000_000 and labels == ["추정"], (text, got, labels)
 
 
 @pytest.mark.parametrize(
@@ -251,3 +271,93 @@ def test_k1_reviewer_fuzz_cases(text: str) -> None:
 def test_k1_zero_or_non_discount_amount_makes_no_fact(text: str) -> None:
     """금액 0원·할인 아닌 금액(경품·사은품·지원·축하금 등)·'할인 없음' 줄은 할인 후보가 아니다."""
     assert _call(text + "\n") is None, text
+
+
+# ---------------------------------------------------------------- R3i m19: 문법 기반 퍼징 복원(R3h 가 지웠다)
+
+_TYPES = [SHORT, LONG, "84a", "84Ａ", "84A형", "84㎡", "84 A", "84B", "184A", "84A-1", "84​A", "84A·84B", "(84A)", "84A(30세대)"]
+_PREFIXES = ["", "", "", " ", "\t", "1~3층 ", "저층 ", "(특별공급) ", "| ", "주택형 ", "​", " ", "※ ", "* "]
+_SEPS = [" ", " ", "\t", "  ", "", " ", "​", "　"]
+_KINDS = ["분양가", "공급금액", "분양가", "공급금액", "분양 가격", "공급가", "계약금", "잔금 완납 시 분양가", "발코니", "분양가 최대"]
+_HALIN = ["할인", "할인", "할인", "할​인", "할인금액", "할인 :", "할인액", "할인(예정)"]
+_MIDS = ["", "", "", "최대 ", "약 ", "예정 ", "최소 ", "1차 ", "~"]
+_WONS = ["원", "원", " 원", "\t원", "원정", "만원", "원)", "원*"]
+_TAILS = [
+    "", "", "", "", " ", "\t", "(1~3층)", " 예정", " (일부 세대)", " |", ", 경품 10,000,000원", "*",
+    "​", "（１～３층）", " 내외", " ~ 30,000,000원", "~30,000,000원", " 상당", "(2026.10.31.)",
+    " (84B 제외)", ".", " 1~3층", " (단, 1층 제외)", "※",
+]  # fmt: skip
+_NEXTS = [
+    None, None, "", "■ 납부 일정", "59B 분양가 할인 5,000,000원", "(1~3층에 한함)", "※ 1~3층",
+    "단, 계약 순서에 따라 조기 종료", "* 조건 별도", "1~3층 한정", "  (일부 세대)", "\n\n(계약자에 한하여)",
+    "계약자에 한함", "（신혼부부）", "［1F~3F］", "- 저층 한정", "주) 조건", "\t(2026.10.31.)",
+    "선착순 30세대", "신혼부부", "일부 세대", "101동 한정", "1F~3F", "최대 금액 기준",
+]  # fmt: skip
+
+
+def _amount_text(draw: st.DrawFn) -> str:
+    kind = draw(st.sampled_from(["comma", "comma", "comma", "plain", "zero", "full", "man", "lead0"]))
+    n = draw(st.integers(min_value=1_000, max_value=999_999_999))
+    if kind == "comma":
+        return f"{n:,}"
+    if kind == "plain":
+        return str(n)
+    if kind == "zero":
+        return "0"
+    if kind == "full":
+        return f"{n:,}".translate(str.maketrans("0123456789", "０１２３４５６７８９"))
+    if kind == "man":
+        return f"{n // 10_000:,}만"
+    return "0" + f"{n:,}"
+
+
+@st.composite
+def _discount_text(draw: st.DrawFn) -> str:
+    line = (
+        draw(st.sampled_from(_PREFIXES))
+        + draw(st.sampled_from(_TYPES))
+        + draw(st.sampled_from(_SEPS))
+        + draw(st.sampled_from(_KINDS))
+        + draw(st.sampled_from(["", " ", "​"]))
+        + draw(st.sampled_from(_HALIN))
+        + draw(st.sampled_from(_SEPS))
+        + draw(st.sampled_from(_MIDS))
+        + _amount_text(draw)
+        + draw(st.sampled_from(_WONS))
+        + draw(st.sampled_from(_TAILS))
+        + draw(st.text(alphabet="  \t()~층동호예정단※*,.0123456789", max_size=3))
+    )
+    nxt = draw(st.sampled_from(_NEXTS))
+    before = draw(st.sampled_from(["", "", "■ 할인 안내\n", "84B 분양가 할인 5,000,000원\n"]))
+    return before + line + ("" if nxt is None else "\n" + nxt) + "\n"
+
+
+@settings(max_examples=2000, deadline=None, derandomize=True)
+@given(_discount_text())
+def test_k1_property_candidates_are_estimates(text: str) -> None:
+    """D16-1: 어떤 꼴이든 줄 함수가 낸 할인 후보는 금액 > 0 이고 '조건 확인 필요'(추정) — '확인됨' 경로 자체가 없다. 후보의 금액
+    위치는 원문 안의 숫자 조각이다."""
+    got = _call(text)
+    if got is not None:
+        assert got.won > 0, (text, got)
+        assert "조건 확인 필요" in got.reason, (text, got)
+        frag = text[got.span[0] : got.span[1]]
+        assert frag and any(ch.isdigit() for ch in frag), (text, got, frag)
+
+
+@settings(max_examples=300, deadline=None, derandomize=True)
+@given(
+    st.sampled_from([SHORT, LONG]),
+    st.sampled_from(["분양가", "공급금액"]),
+    st.integers(min_value=1_000, max_value=999_999_999),
+    st.sampled_from(["", " ", "\t"]),
+    st.sampled_from([None, "", "■ 납부 일정", "59B 분양가 할인 5,000,000원", "084.9100B 공급금액 할인 3,000,000원", "■"]),
+)
+def test_k1_property_canonical_is_estimate_candidate(typ: str, kind: str, won: int, pad: str, nxt: str | None) -> None:
+    """예전 허용 꼴 + 무해한 다음 줄 → 후보가 **나온다**(금액·위치 일치) — 라벨은 '추정'(D16-1)."""
+    head = f"{pad}{typ} {kind} 할인 "
+    amount = f"{won:,}"
+    text = head + amount + "원" + pad + ("" if nxt is None else "\n" + nxt) + "\n"
+    got = _call(text)
+    assert got is not None and got.won == won and got.span == (len(head), len(head) + len(amount)), (text, got)
+    assert "조건 확인 필요" in got.reason
