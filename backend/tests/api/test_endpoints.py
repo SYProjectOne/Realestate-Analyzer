@@ -289,9 +289,9 @@ def test_ops(client: TestClient) -> None:
     r = client.patch(
         f"/api/ops/checklist/{ck[0]['id']}", headers=WRITE, json={"status": "done", "note": "확인"}
     )
-    assert r.status_code == 200, r.text
-    validate("updateChecklistItem", 200, r.json())
-    assert r.json()["status"] == "done"
+    assert r.status_code == 202, r.text  # 계약 .14(D17-5): 보고서 본문이 바뀌므로 발행 잡
+    validate("updateChecklistItem", 202, r.json())
+    assert r.json()["status"] == "done" and isinstance(r.json()["job_id"], int)
     assert client.patch("/api/ops/checklist/99999", headers=WRITE, json={"status": "done"}).status_code == 404
     assert client.patch(f"/api/ops/checklist/{ck[0]['id']}", headers=WRITE, json={}).status_code == 422
 

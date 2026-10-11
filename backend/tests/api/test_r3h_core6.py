@@ -599,7 +599,7 @@ def test_d14_5_carry_copy_is_chunked_and_resumes(client: TestClient, monkeypatch
     monkeypatch.setattr(persist, "copy_runs", crash_after_two)
     st, _ = run_job(jid)
     monkeypatch.setattr(persist, "copy_runs", real)
-    assert st == "failed"
+    assert st == "queued"  # R3i D17-3: 예외는 실패가 아니라 재시도(지연 재큐잉)
     with get_session() as s:
         n_src = len(set(s.scalars(select(ScoreRun.scenario_id).where(ScoreRun.snapshot_id == SNAP))))
         part = len(list(s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == rev))))

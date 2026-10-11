@@ -262,7 +262,7 @@ def _mutations(client: TestClient) -> list[tuple[str, Callable[[], None]]]:
     def g_region_name() -> None:
         sels = client.get("/api/regions/1", headers=READ).json()["selections"]
         r = client.patch("/api/regions/1", json={"selections": sels, "name": "개명한 지역"}, headers=WRITE)
-        assert r.status_code == 200, r.text
+        assert r.status_code == 202, r.text  # 계약 .14(D17-5): 이름만 바꿔도 발행 잡(발행 리비전은 그대로)
 
     def h_supply() -> None:
         from app.collectors.stats.supply import write_supply_provenance
