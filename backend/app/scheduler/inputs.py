@@ -31,7 +31,14 @@ from sqlalchemy.orm import Session
 from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.gap import compute_gap
 from app.analysis.price_view import FieldRef, PriceView, current_price, current_terms, labels_from
-from app.analysis.scope import EXCLUDED_CLASSES, INTAKE_PRIORITY, JudgeScope, judge_scope, pick_intake
+from app.analysis.scope import (
+    EXCLUDED_CLASSES,
+    INTAKE_PRIORITY,
+    JudgeScope,
+    judge_scope,
+    original_missing,
+    pick_intake,
+)
 from app.analysis.types import GapResult, Label, weakest_label
 from app.core.contracts_gen import (
     AgePremiumCoef,
@@ -285,6 +292,7 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
             inclusion_decision=cx.inclusion_decision,
             has_price=f.price_high is not None,
             intake_status=f.intake.status if f.intake is not None else None,
+            original_notice_missing=original_missing(cx.applyhome_id, cx.notice_date),
         )
         f.scope, f.scope_reason = sr.scope, sr.reason
         out.append(f)

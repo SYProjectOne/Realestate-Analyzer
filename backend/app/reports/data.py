@@ -72,6 +72,7 @@ from app.reports.policy import (
     current_price,
     current_terms,
     judge_scope,
+    original_missing,
     pick_intake,
     scope_note,
     shows_ladder,
@@ -959,6 +960,7 @@ class _Loader:
                 inclusion_decision=c.inclusion_decision,
                 has_price=view.known,
                 intake_status=shown_row.status if shown_row is not None else None,
+                original_notice_missing=original_missing(c.applyhome_id, c.notice_date),
             )
             my_events = events_by.get(c.id, [])
             out.append(

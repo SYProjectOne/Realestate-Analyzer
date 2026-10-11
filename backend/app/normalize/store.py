@@ -17,6 +17,14 @@
    1개면 그 행에 묶는다(문자열 정규화는 판단이 아니다). 이름 키는 잔여 공고의 회차·공급 구분 괄호만 떼고
    차수·단지·블록 번호('(2차)', '1단지', 'AA13-1블록')는 남긴다. 주소가 구역 표현('…일원'·'일대'·'외 n필지')
    이면 묶지 않는다. 일반 APT 공고끼리는 묶지 않는다. 둘 이상이거나 주소가 없으면 묶지 않는다.
+   **D18-4(R4 C3·M1)**: 잔여·임의·무순위·재공급 공고는 원 단지(사업)의 사건이다 — 자기 번호로 단지 행을 만들기 전에
+   원 단지를 찾는다(``_remnant_target``): ① 이번 수집 실행의 연결(``links`` — 앞 원문이 이 번호를 묶은 단지, 공고문
+   '최초 주택관리번호' 인용 포함) ② 그 공고번호의 납부 조건·잔여 공고 이력 행이 있는 단지 ③ 같은 블록(위). 찾으면 원
+   단지에 묶고(단지 단위 값은 덮지 않는다 — D11-4), 못 찾으면(원 단지를 알 수 없는 잔여 공고) 그 사업의 유일한 행으로
+   자기 번호 행을 만든다. 공고문이 인용한 원 번호의 단지가 없으면 원 번호로 행을 만들되 이름은 번호(자리표시)로 두고
+   잔여 공고의 단지 단위 값은 쓰지 않는다 — 원 공고는 수집 단계가 주택관리번호로 공식 API 에서 다시 받는다
+   (``scheduler.collect``). 자리표시 이름은 묶인 잔여 공고(청약홈 이름, 공급 회차 괄호 뗌)로 채운다. 공식 홈페이지
+   주소는 원 단지에 없을 때만 잔여 공고 값으로 채운다(같은 사업의 홈페이지 — 접수 상태 행의 근거).
 4. 같은 행·필드에 이미 다른 원문 출처가 있으면 그 출처 행(field_provenance: value_norm·observed_on·rank·라벨)
    으로 후보를 되살려 합친다 — 옛 원문을 다시 읽거나 파싱하지 않는다(계약 2026-10-09.2).
    우선순위 판정(resolve)은 항상 그 필드의 모든 출처를 함께 본다
@@ -94,6 +102,7 @@ __all__ = [
     "block_name_key",
     "candidate_from_row",
     "human_superseded",
+    "is_remainder_url",
     "is_zone_address",
     "parser_for",
     "raw_dto",
@@ -122,6 +131,7 @@ class StoreResult:
     extract_requests: list[ExtractRequest]
     skipped: list[FieldCandidate] = field(default_factory=list)
     foreign_keys: list[str] = field(default_factory=list)  # 다른 지역 단지라 건너뛴 주택관리번호(W4)
+    first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 빈 값 → 값 변경 수(D18-7)
 
 
 def parser_for(
@@ -202,8 +212,18 @@ class _Binder:
     """entity_key → 행 id. create=True면 없는 행을 만든다(이번 원문의 후보), False면 찾기만(다시 파싱한 옛
     후보)."""
 
-    def __init__(self, session: Session, *, snapshot_id: int | None, detected_at: str) -> None:
+    def __init__(
+        self,
+        session: Session,
+        *,
+        snapshot_id: int | None,
+        detected_at: str,
+        links: dict[str, int] | None = None,
+    ) -> None:
         self.s = session
+        # D18-4: 잔여 공고 번호(자기 주택관리번호·공고번호) → 원 단지 id. 수집 실행 하나가 같은 dict 를 넘겨 원문 순서와
+        # 무관하게(상세 → 주택형 → 경쟁률) 같은 단지에 묶이게 한다
+        self.links: dict[str, int] = links if links is not None else {}
         self.snapshot_id = snapshot_id
         self.detected_at = detected_at
         self.events: list[ChangeEvent] = []
@@ -233,7 +253,8 @@ class _Binder:
         if region_id is not None:
             stmt = stmt.where(Complex.region_id == region_id)
         cx = self.s.scalars(stmt).first()
-        if cx is not None and create and _cites_original(raw, batch, key):
+        cites = create and _cites_original(raw, batch, key)
+        if cx is not None and cites:
             # R3 4차 M-8: 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨다 — 그 공고의 단지 단위 값(이름 '(임의공급
             # 4차)'·남은 세대수·전매·거주·규제)은 원 단지를 덮지 않는다(D11-4, payment_terms·competition 에만 기록).
             # 타입 가격 후보는 그대로 둔다(공고문 파서가 잔여 공고에서 면적·세대수는 내지 않고 가격만 낸다 — 현재 공고 가격)
@@ -253,21 +274,25 @@ class _Binder:
                 cx = cand
                 if create and cx.applyhome_id is None:
                     cx.applyhome_id = key
-        if cx is None and create and region_id is not None and _is_remainder_notice(raw, batch, key):
-            cx = self._same_block(key, region_id, batch)
+        if cx is None and region_id is not None and not cites and _is_remainder_notice(raw, batch, key):
+            cx = self._remnant_target(key, region_id, batch, create=create)
             if cx is not None:
                 self.merged.add(key)
         if cx is None and create:
             region_id = raw.region_id
             if region_id is None:
                 raise StoreError(f"새 단지({key})를 만들려면 raw.region_id가 필요하다")
-            name = next(
-                (
-                    str(c.value)
-                    for c in batch
-                    if c.entity == "complex" and c.entity_key == key and c.field == "name"
-                ),
-                key,
+            name = (
+                key  # D18-4: 인용된 원 번호 — 잔여 공고의 이름(제목)이 아니라 자리표시. 원 공고 재수집이 채운다
+                if cites
+                else next(
+                    (
+                        str(c.value)
+                        for c in batch
+                        if c.entity == "complex" and c.entity_key == key and c.field == "name"
+                    ),
+                    key,
+                )
             )
             cx = Complex(
                 region_id=region_id,
@@ -281,6 +306,8 @@ class _Binder:
             self.s.add(cx)
             self.s.flush()
             self.created.add(("complex", cx.id))
+            if cites:
+                self.cited.add(key)  # 새로 만든 원 단지에도 잔여 공고의 단지 단위 값은 쓰지 않는다(D18-4)
             self.events.append(
                 changes.new_notice_event(
                     field="applyhome_id",
@@ -293,7 +320,61 @@ class _Binder:
             )
         if cx is not None:
             self._complex[key] = cx
+            if cites:  # 이 공고문(잔여 공고)의 공고번호 → 원 단지(뒤에 오는 그 공고의 청약홈 원문이 같은 단지에 묶이게)
+                for no in _own_notice_nos(batch, key) | _url_numbers(raw.url):
+                    if no != key:
+                        self.links.setdefault(no, cx.id)
         return cx
+
+    def _remnant_target(
+        self, key: str, region_id: int, batch: list[FieldCandidate], *, create: bool
+    ) -> Complex | None:
+        """D18-4: 잔여 공고 번호 ``key`` 의 원 단지(없으면 None). 연결 → 납부 조건·잔여 이력의 공고번호 → 같은 블록."""
+        from app.models import RemainingEvent
+
+        nos = {key, *_own_notice_nos(batch, key)}
+        hit: Complex | None = None
+        for no in sorted(nos):
+            cid = self.links.get(no)
+            cand = self.s.get(Complex, cid) if cid is not None else None
+            if cand is not None and cand.region_id == region_id and cand.applyhome_id != key:
+                hit = cand
+                break
+        if hit is None:
+            for model in (PaymentTerms, RemainingEvent):
+                ids = set(
+                    self.s.scalars(
+                        select(Complex.id)
+                        .join(model, model.complex_id == Complex.id)
+                        .where(
+                            model.notice_no.in_(sorted(nos)),
+                            Complex.region_id == region_id,
+                            Complex.applyhome_id.is_distinct_from(key),
+                        )
+                    )
+                )
+                if len(ids) == 1:
+                    hit = self.s.get(Complex, ids.pop())
+                    break
+        if hit is None and create:
+            hit = self._same_block(key, region_id, batch)
+        if hit is None:
+            return None
+        for no in nos:
+            self.links.setdefault(no, hit.id)
+        if create and hit.name == hit.applyhome_id:
+            # 자리표시 이름(인용으로 만든 원 단지) → 청약홈의 그 사업 이름(공급 회차·구분 괄호를 뗀 값). 원 공고 재수집이 덮는다
+            name = next(
+                (
+                    str(c.value)
+                    for c in batch
+                    if c.entity == "complex" and c.entity_key == key and c.field == "name" and c.value
+                ),
+                None,
+            )
+            if name and strip_supply_round(name).strip():
+                hit.name = strip_supply_round(name).strip()
+        return hit
 
     def _same_block(self, key: str, region_id: int, batch: list[FieldCandidate]) -> Complex | None:
         """W12c: 같은 지역에서 정규화 단지명·공급위치가 모두 같은 단지가 정확히 1개면 그 행."""
@@ -550,9 +631,18 @@ class _Binder:
         if c.entity not in MERGED_UNIT_ENTITIES:
             return False
         key = (c.entity_key or "").split(":")[0]
-        if key in self.merged:
-            return c.entity != "complex" or c.field not in CITED_COMPLEX_FIELDS
-        return c.entity == "complex" and key in self.cited and c.field not in CITED_COMPLEX_FIELDS
+        if key not in self.merged and not (c.entity == "complex" and key in self.cited):
+            return False
+        if c.entity != "complex":
+            return True
+        if c.field in CITED_COMPLEX_FIELDS:
+            return False
+        if (
+            c.field in FILL_EMPTY_FIELDS
+        ):  # D18-4: 원 단지에 없을 때만(같은 사업의 공식 홈페이지 — 접수 상태 근거)
+            cx = self._complex.get(key)
+            return cx is None or bool(getattr(cx, c.field, None))
+        return True
 
     def _id_for(
         self,
@@ -605,6 +695,35 @@ CITED_COMPLEX_FIELDS = frozenset({"move_in_ym"})
 그 단지 전체의 일정인 입주 예정월(입주 일정 변경)뿐. 공고일·청약 일정·당첨일·계약일은 그 잔여 공급 자신의 일정이라
 원 단지 값을 덮지 않는다(D11-4 — ``remaining_event``·``payment_terms`` 에 기록)."""
 
+FILL_EMPTY_FIELDS = frozenset({"official_site_url"})
+"""D18-4: 원 단지에 묶인 잔여 공고에서 원 단지 값이 **비어 있을 때만** 받는 단지 필드 — 사업의 공식 홈페이지(잔여 공고의
+접수 상태가 같은 홈페이지에 올라온다). 원 단지 값이 있으면 덮지 않는다(D11-4)."""
+
+
+_EMPTY_TEXTS = frozenset({"", "[]", "{}"})
+"""change_event.old_text 가 '빈 값'인 표기(None·빈 목록·빈 객체) — 첫 적재 요약 대상(D18-7)."""
+
+_URL_NO_RE = re.compile(
+    r"(?:houseManageNo=|pblancNo=|HOUSE_MANAGE_NO%3A%3AEQ%5D=|PBLANC_NO%3A%3AEQ%5D=)(\d{10})"
+)
+
+
+def _url_numbers(url: str) -> set[str]:
+    """원문 주소의 주택관리번호·공고번호(청약홈 상세·공고문 첨부·API 1건 조회)."""
+    return set(_URL_NO_RE.findall(url))
+
+
+def _own_notice_nos(batch: list[FieldCandidate], key: str) -> set[str]:
+    """이 원문이 ``key`` 단지에 대해 낸 공고번호들(납부 조건 키 '<key>:<공고번호>'의 뒤)."""
+    return {
+        (c.entity_key or "").split(":", 1)[1]
+        for c in batch
+        if c.entity == "payment_terms"
+        and (c.entity_key or "").count(":") == 1
+        and (c.entity_key or "").split(":", 1)[0] == key
+    }
+
+
 TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
 """면적 코드 경쟁률 행이 같은 면적의 단지 주택형 여럿에 맞을 때의 type_code(매칭하지 않음)."""
 _Q4 = Decimal("0.0001")
@@ -650,7 +769,18 @@ def _cites_original(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) 
         if c.entity == "payment_terms" and (c.entity_key or "").count(":") == 1
         and (c.entity_key or "").split(":", 1)[0] == key
     }  # fmt: skip
+    # R4-FIX(D18-4): 공고문이 원문 주소의 자기 번호가 아닌 번호(공고문의 '최초 주택관리번호')로 단지를 가리키면 인용이다 —
+    # 납부 조건 후보(공고일 줄)나 제목의 공급 구분을 못 읽어도. 그렇지 않으면 그 공고문의 단지 단위 값이 원 단지에 쓰였다
+    url_own = _url_numbers(raw.url) if raw.source_kind == "notice_pdf" else set()
+    if url_own and key not in url_own:
+        return True
     return bool(own) and key not in own and _is_remainder_notice(raw, batch, key)
+
+
+def is_remainder_url(url: str) -> bool:
+    """청약홈 잔여세대·임의공급 화면·API 원문 주소인가(URL 경로 대조 — D18-4 저장 순서)."""
+    path = urlsplit(url).path
+    return any(p in path for p in _REMAINDER_PATHS)
 
 
 def _is_remainder_notice(raw: RawDocumentDTO, batch: list[FieldCandidate], key: str) -> bool:
@@ -920,8 +1050,11 @@ def _own_key(session: Session, entity: str, entity_id: int | None) -> str | None
 
 
 def _foreign_unit_row(fp: FieldProvenance, own_key: str | None) -> bool:
-    """단지 단위 출처 행의 entity_key(파서가 단 주택관리번호)가 이 단지 번호와 다르다 = 원 단지에 묶인 잔여 공고가 쓴 행."""
-    if own_key is None or not fp.entity_key:
+    """단지 단위 출처 행의 entity_key(파서가 단 주택관리번호)가 이 단지 번호와 다르다 = 원 단지에 묶인 잔여 공고가 쓴 행.
+
+    R4-FIX: 원 단지가 잔여 공고에서 받는 필드(``CITED_COMPLEX_FIELDS`` — 입주 예정월)는 후보로 남긴다 — 빼면 원문마다 자기
+    값만 보고 마지막에 저장한 원문이 이겨, 같은 날 다시 저장할 때 값이 오갔다(change_event 가 생김, M5)."""
+    if own_key is None or not fp.entity_key or (fp.entity == "complex" and fp.field in CITED_COMPLEX_FIELDS):
         return False
     return fp.entity_key.split(":")[0] != own_key
 
@@ -1199,8 +1332,14 @@ def store_raw_document(
     raw_dir: Path | None = None,
     parser: _Parser | None = None,
     now: datetime | None = None,
+    links: dict[str, int] | None = None,
+    first_load: bool = False,
 ) -> StoreResult:
-    """원문 1건을 정규화해 저장한다(한 트랜잭션 — SAVEPOINT). commit은 호출자."""
+    """원문 1건을 정규화해 저장한다(한 트랜잭션 — SAVEPOINT). commit은 호출자.
+
+    ``links``: 수집 실행 하나의 잔여 공고 번호 → 원 단지 연결(D18-4). 같은 dict 를 원문마다 넘긴다(없으면 원문마다 새로).
+    ``first_load``: 지역 첫 적재(bootstrap, D18-7·R4 m3) — 빈 값 → 값 변경(새 공고·새 단지 포함)은 change_event 로 남기지
+    않고 ``StoreResult.first_load_folded`` 로 센다(수집 단계가 '첫 적재' 한 줄로 요약). 값 → 다른 값 변경은 그대로 남긴다."""
     detected_at = changes.detected_now(now)
 
     def complex_key(complex_id: int) -> str | None:
@@ -1215,7 +1354,7 @@ def store_raw_document(
         dto = raw_dto(row)
         p = parser or factory(dto.source_kind)
         cands = p.parse(dto) if p is not None else []
-        binder = _Binder(session, snapshot_id=snapshot_id, detected_at=detected_at)
+        binder = _Binder(session, snapshot_id=snapshot_id, detected_at=detected_at, links=links)
         bound, skipped = binder.bind(cands, dto, create=True)
         old = _reparse_existing(session, binder, bound, row.id, raw_dir, factory)
         # D13-2: 새 행에도 그 의미 필드의 사람 확인(다른 행에 있는)을 0순위 후보로 — 행과 무관하게 같은 규칙
@@ -1252,6 +1391,11 @@ def store_raw_document(
             cx = session.get(Complex, cid)
             if cx is not None:
                 assign_complex_area(session, cx)
+        folded = 0
+        if first_load:
+            kept = [e for e in events if (e.old_text or "") not in _EMPTY_TEXTS]
+            folded = len(events) - len(kept)
+            events = kept
         session.add_all(events)
         session.flush()
         cids: set[int] = set()
@@ -1277,4 +1421,5 @@ def store_raw_document(
         extract_requests=build_extract_requests(bound),
         skipped=skipped,
         foreign_keys=sorted(binder.foreign),
+        first_load_folded=folded,
     )

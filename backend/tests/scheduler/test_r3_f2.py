@@ -591,7 +591,7 @@ def test_minor1_t8_list_diff_notice_event_no_rejudge(
 ) -> None:
     """목록 diff(detect.list_changes): 같은 목록 → 이벤트 0, 단지가 빠지면 notice 1(재판정·판정기 호출 0)."""
 
-    def stub(session: Session, doc: RawDTO, *, snapshot_id: int) -> StoreResult:
+    def stub(session: Session, doc: RawDTO, *, snapshot_id: int, **_: Any) -> StoreResult:
         ids = [int(i) for i in (doc.url or "").split("ids=")[1].split(",")]
         return StoreResult(
             raw_document_id=doc.id or 0,

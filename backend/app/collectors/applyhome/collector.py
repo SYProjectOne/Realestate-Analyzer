@@ -27,6 +27,8 @@
 HTTP 는 ``app.core.http.HttpClient`` 만 쓴다(속도 제한·robots·재시도).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import calendar
@@ -282,6 +284,47 @@ class ApplyhomeCollector:
                     )
                     checkpoint()
                     stats["models_fetched"] += 1
+            return run.out
+
+    # --- 원 공고 다시 받기 (R4 C3·M3, DECISIONS D18-4)
+    def fetch_originals(
+        self, region: Region, snapshot: Snapshot, house_manage_nos: list[str]
+    ) -> list[RawDocument]:
+        """잔여 공고 공고문이 인용한 '최초 주택관리번호'(원 공고)를 공식 API 에서 번호로 다시 받는다 — APT 상세·주택형·
+        경쟁률(``applyhome_detail``). 원 공고는 조회 창 밖(오래된 공고)이라 목록으로는 들어오지 않는다.
+
+        - 공식 API 만(키 없으면 [] — 웹 목록은 조회 창이 있어 번호로 찾을 수 없다). 웹 상세는 받지 않는다(공고문 PDF
+          링크용인데, 원 공고 PDF 는 잔여 공고 값과 섞일 수 있다 — 원 공고 사실은 API 로 충분하다).
+        - 같은 URL 의 성공 원문이 있으면 다시 받지 않고 그 원문을 돌려준다(지난 공고는 바뀌지 않는다 — 멱등).
+        - 실패(401·5xx 등)도 원문 행으로 돌려준다(규칙 7). 원 공고가 API 에 없으면(빈 data) 그대로 — 범위 사유는
+          '원 공고 미수집'(``analysis.scope``)."""
+        if self._key is None or not house_manage_nos:
+            return []
+        ep = ah_api.ENDPOINTS["apt"]
+        with self._resources() as (http, session, own):
+            run = _Run(region=region, store=RawStore(session), out=[], seen=set())
+            api = ah_api.ApplyhomeApi(http, self._key)
+            for hm in sorted(set(house_manage_nos)):
+                params = ah_api.item_params(hm, hm)
+                complex_id = _complex_id(session, region.id, hm)
+                for path in (ep.detail, ep.model, ep.competition):
+                    known = run.store.latest_ok("applyhome_detail", ah_api.doc_url(path, params))
+                    if known is not None:
+                        run.emit(Stored(known, created=False))
+                        continue
+                    run.emit(
+                        run.store.save(
+                            api.get(path, params),
+                            source_kind="applyhome_detail",
+                            ext="json",
+                            region_id=region.id,
+                            complex_id=complex_id,
+                        )
+                    )
+                    if own:
+                        session.commit()
+                    else:
+                        session.flush()
             return run.out
 
     # --- 공식 API

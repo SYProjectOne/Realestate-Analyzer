@@ -88,6 +88,8 @@ def assemble(
     steps: Collection[str],
     docs: Mapping[str, Sequence[RawDTO]],
     detected_at: str,
+    links: Mapping[str, int] | None = None,
+    first_load: bool = False,
 ) -> AssembleResult:
     res = AssembleResult()
 
@@ -100,7 +102,10 @@ def assemble(
 
     def remaining() -> None:
         with ctx.session_factory() as s:
-            out = sync_remaining_events(s, region.id, snapshot_id=snapshot.id, detected_at=detected_at)
+            out = sync_remaining_events(
+                s, region.id, snapshot_id=snapshot.id, detected_at=detected_at, links=links,
+                first_load=first_load,
+            )  # fmt: skip
             s.commit()
             res.stats["remaining"] = out.stats()
             res.events.extend(out.events)

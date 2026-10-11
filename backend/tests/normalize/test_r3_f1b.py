@@ -62,8 +62,9 @@ def test_c3_ocr_notice_values_are_estimated_ocr_and_numeric_fields_need_extract(
         assert c.needs_extract == is_numeric_field(c.entity, c.field, c.value), (c.entity, c.field)
     prices = [c for c in valued if c.field in ("max_price_won", "floor_sample_price_won", "balcony_won")]
     assert prices and all(c.needs_extract for c in prices)
-    name = next(c for c in valued if c.entity == "complex" and c.field == "name")
-    assert not name.needs_extract  # 글자 필드는 라벨만
+    # R4-FIX D18-4: 공고문 제목은 이름 후보가 아니다 — 글자 필드(주택 유형)로 확인
+    text_field = next(c for c in valued if c.entity == "complex" and c.field == "housing_type")
+    assert not text_field.needs_extract  # 글자 필드는 라벨만
     # 파서가 못 읽은 필드는 원래대로 '확인 불가'(표시를 바꾸지 않는다)
     for before, after in zip(plain, cands, strict=True):
         if before.label == "확인 불가":

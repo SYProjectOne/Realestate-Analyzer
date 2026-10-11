@@ -29,7 +29,7 @@ def _fields(fname: str) -> dict[tuple[str, str], object]:
 def test_main_notice_terms_and_header() -> None:
     f = _fields("2025000302_elif.txt")
     k, p = "2025000302", "2025000302:2025000302"
-    assert f[(k, "name")] == "엘리프 검단 포레듀(AA32블록)"
+    assert (k, "name") not in f  # R4-FIX D18-4: 제목 줄은 단지 이름 후보가 아니다(이름은 청약홈만)
     assert f[(k, "rewin_restriction_years")] == 10
     assert f[(k, "resale_months")] == 36 and f[(k, "resale_release_on_registration")] is True
     assert f[(k, "residency_months")] == 0 and f[(k, "price_cap")] == "적용"
