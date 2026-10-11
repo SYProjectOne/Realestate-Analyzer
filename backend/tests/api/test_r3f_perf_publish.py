@@ -5,8 +5,9 @@
 
 - 데이터: devseed(16 단지) + 합성 1,000 단지(``devseed.load_synth``) + 합성 단지마다 모든 점수 실행에 score_total + 성분 7개
   (``test_perf_r3._score_synth`` — 점수가 있어야 상세·비교·목록·출처 서랍(sc_·st_)이 실제 크기가 된다).
-- 측정: 발행 리비전 12 위 새 리비전(파생 행 이월 → ready)을 worker 실행 함수로 발행하는 동안 다른 스레드가 **실제 API 쓰기**
-  (``POST /api/share-links`` — 짧은 쓰기 트랜잭션)를 계속 보내 응답 시간을 잰다. 잡 stats(``total_s``·``write_max_lock_s``)도 본다.
+- 측정: 발행 리비전 12 위 새 리비전(파생 행 이월 → ready)을 worker 실행 함수로 발행하는 동안 **다른 프로세스**(R3h —
+  ``_perf_writer.py``, 운영처럼 api·worker 분리)가 **실제 API 쓰기**(``POST /api/share-links`` — 짧은 쓰기 트랜잭션)를 계속 보내
+  응답 시간을 잰다. 잡 stats(``total_s``·``write_max_lock_s``)도 본다.
 - 계산은 한 프로세스(읽기 전용 세션 하나). 결과는 ``PUBLISH_PERF_OUT``(환경 변수, JSON 경로)에 남긴다(완료 보고 수치).
 """
 
@@ -17,7 +18,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -31,7 +31,7 @@ from app.core.db import get_session, reset_engine
 from app.core.settings import set_settings
 from app.models import Snapshot, SnapshotView
 
-from ._support import READ, WRITE, run_job
+from ._support import READ, run_job
 from .conftest import Seeded, make_settings
 from .test_perf_r3 import _score_synth
 
@@ -77,23 +77,31 @@ def _ready_revision() -> int:
 
 def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_client: TestClient) -> None:
     jid = _ready_revision()
-    lat: list[float] = []
     errors: list[str] = []
-    stop = threading.Event()
-
-    def writer() -> None:
-        while not stop.is_set():
-            t = time.perf_counter()
-            r = synth_client.post("/api/share-links", json={"label": "perf"}, headers=WRITE)
-            lat.append(time.perf_counter() - t)
-            if r.status_code != 201:
-                errors.append(f"{r.status_code} {r.text[:120]}")
-            stop.wait(0.05)
-
-    # R3h: 이 시험은 잡(worker)과 API 쓰기를 한 프로세스의 두 스레드로 돌린다 — 순환 GC 전체 수집(gen 2) 한 번이 모든 스레드를
-    # 멈춘다(측정: GC 를 켜 둔 발행에서 API 쓰기 최대 지연 = GC 멈춤 1.75s). 발행은 계산·쓰기 동안 GC 를 멈춘다
-    # (``snapshot_view.publish_revision``) — 그 동안의 GC 멈춤을 따로 잰다(gc_max_pause_s)
+    # R3h: API 쓰기는 **다른 프로세스**(``_perf_writer.py``)가 보낸다 — 운영처럼 api·worker 가 다른 프로세스다. 같은 프로세스의
+    # 스레드로 재면 잡의 계산(GIL·GC)이 API 스레드를 멈춰 쓰기 잠금과 무관한 지연(0.4~2.3s, WAL 크기 변화 없이 계산 구간에서만)이
+    # 섞였다. 잡 쪽 GC 멈춤은 따로 잰다(gc_max_pause_s — 발행은 계산·쓰기 동안 GC 를 멈춘다)
     import gc
+    import subprocess
+    import sys
+    import tempfile
+
+    from app.core.settings import get_settings
+
+    s_now = get_settings()
+    work = Path(tempfile.mkdtemp(prefix="sa-perf-writer-"))
+    out_f, ready_f, stop_f = work / "lat.json", work / "ready", work / "stop"
+    backend = Path(__file__).resolve().parents[2]
+    proc = subprocess.Popen(
+        [sys.executable, str(Path(__file__).with_name("_perf_writer.py")),
+         s_now.database_url.removeprefix("sqlite:///"), str(s_now.raw_dir), str(s_now.report_dir),
+         str(out_f), str(ready_f), str(stop_f)],
+        cwd=backend, env={**os.environ, "PYTHONPATH": str(backend)},
+    )  # fmt: skip
+    deadline = time.perf_counter() + 120
+    while not ready_f.exists():
+        assert proc.poll() is None and time.perf_counter() < deadline, "API 쓰기 프로세스가 준비되지 않았다"
+        time.sleep(0.1)
 
     pauses: list[float] = []
     started: dict[str, float] = {}
@@ -105,16 +113,19 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
             pauses.append(time.perf_counter() - started.pop("t"))
 
     gc.callbacks.append(on_gc)
-    th = threading.Thread(target=writer, daemon=True)
-    th.start()
     t0 = time.perf_counter()
     try:
         status, stats = run_job(jid)
     finally:
         wall = time.perf_counter() - t0
-        stop.set()
-        th.join(timeout=30)
         gc.callbacks.remove(on_gc)
+        stop_f.write_text("stop", encoding="utf-8")
+        proc.wait(timeout=120)
+    rows = json.loads(out_f.read_text(encoding="utf-8"))
+    shutil.rmtree(work, ignore_errors=True)
+    lat = [float(r[1]) for r in rows]
+    errors = [f"status {r[2]}" for r in rows if int(r[2]) != 201]
+    slow = [[r[0], round(float(r[1]), 3)] for r in rows if float(r[1]) > 0.2]
     assert status == "done" and stats["published"] is True, stats
     with get_session() as s:
         sid = int(stats["snapshot_id"])
@@ -145,6 +156,7 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
         "api_write_p50_s": round(sorted(lat)[len(lat) // 2], 3) if lat else None,
         "gc_max_pause_s": round(max(pauses), 3) if pauses else 0.0,
         "gc_collections": len(pauses),
+        "slow_writes": slow[:20],  # [쓰기 프로세스 시작 뒤 초, 지연]
         "timing_s": stats.get("timing_s"),
     }
     out = os.environ.get("PUBLISH_PERF_OUT")
