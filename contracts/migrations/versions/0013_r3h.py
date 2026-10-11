@@ -31,16 +31,22 @@ depends_on: str | Sequence[str] | None = None
 
 DISCOUNT_REASON = "공고문 자동 추출 — 조건 확인 필요"
 """파서 할인 후보의 '추정' 사유(``app.normalize.notice_parser.DISCOUNT_REASON`` 과 같은 문자열 — 앱 import 금지라 복사)."""
+RELABEL_MARK = "(0013 확인됨→추정)"
+"""R3i m1: 이 마이그레이션이 라벨을 내린 행 표지(``app.api.demotion.RELABEL_0013_MARK`` 와 같은 문자열)."""
 
 
 def upgrade() -> None:
     conn = op.get_bind()
     conn.execute(sa.text("UPDATE snapshot_view_unit SET done = :f").bindparams(f=False))
+    # R3i m1: 사유를 통째로 덮어쓰면 compare 채택 표식('판정기 compare 채택'·'병기' — resolver 가 사유로 읽는다)이 지워졌다 →
+    # 사유가 있으면 뒤에 붙인다. 바뀐 행에는 0013 표지를 남겨 backfill 이 change_event·재판정을 한 번 등록한다(앱 코드 몫 —
+    # ``app.api.demotion.announce_relabelled_discounts``)
     conn.execute(
         sa.text(
-            "UPDATE field_provenance SET label = '추정', reason = :reason "
+            "UPDATE field_provenance SET label = '추정', "
+            "reason = CASE WHEN reason IS NULL OR reason = '' THEN :reason ELSE reason || '; ' || :reason END "
             "WHERE field LIKE 'discount_by_type.%' AND label = '확인됨' AND raw_document_id IS NOT NULL"
-        ).bindparams(reason=DISCOUNT_REASON)
+        ).bindparams(reason=f"{DISCOUNT_REASON} {RELABEL_MARK}")
     )
 
 

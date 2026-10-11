@@ -819,6 +819,60 @@ def migrate_row_human_checks(session: Session, *, snapshot_id: int | None = None
     return changed
 
 
+RELABEL_0013_MARK: Final = "(0013 확인됨→추정)"
+"""R3i m1: 마이그레이션 0013 이 공고문 할인 라벨을 '확인됨' → '추정'으로 내린 출처 행 사유 끝 표지(0013 의 ``RELABEL_MARK`` 와 같은
+문자열 — 마이그레이션은 앱 코드를 import 하지 않는다)."""
+RELABEL_0013_NEW: Final = "(추정 — 0013 전환, 구매가 차감 해제)"
+
+
+def announce_relabelled_discounts(session: Session) -> int:
+    """R3i m1(D16-1 후속): 0013 이 라벨을 내린 채택 할인(구매가에서 빠지던 값이 더는 빠지지 않는다)마다 critical·재판정
+    change_event 를 한 번 남기고 그 단지 재판정을 등록한다(``_attach_orphan_events`` — 쓰기 가능 리비전, D13-5). 예전엔 0013 이
+    값만 바꾸고 이벤트·재판정이 없어 이월이 옛 점수를 그대로 복사할 수 있었다. 멱등(같은 내용 이벤트가 있으면 건너뜀). 커밋은
+    호출자(backfill)가 한다. 반환 = 새 이벤트 수."""
+    from sqlalchemy import func
+
+    before = int(session.scalar(select(func.max(ChangeEvent.id))) or 0)
+    n = 0
+    for fp in session.scalars(
+        select(FieldProvenance)
+        .where(
+            FieldProvenance.field.like("discount_by_type.%"),
+            FieldProvenance.raw_document_id.is_not(None),
+            FieldProvenance.chosen.is_(True),
+            FieldProvenance.reason.like(f"%{RELABEL_0013_MARK}%"),
+        )
+        .order_by(FieldProvenance.id)
+    ):
+        if fp.entity != "payment_terms" or fp.entity_id is None:
+            continue
+        new_text = f"{fp.value_text} {RELABEL_0013_NEW}"[:200]
+        if session.scalars(
+            select(ChangeEvent.id).where(
+                ChangeEvent.entity == "payment_terms",
+                ChangeEvent.entity_id == fp.entity_id,
+                ChangeEvent.field == fp.field[:64],
+                ChangeEvent.new_text == new_text,
+            )
+        ).first():
+            continue
+        pt = session.get(PaymentTerms, fp.entity_id)
+        if pt is None:
+            continue
+        session.add(
+            ChangeEvent(
+                snapshot_id=None, entity="payment_terms", entity_id=fp.entity_id, field=fp.field[:64],
+                old_text=f"{fp.value_text} (확인됨)"[:200], new_text=new_text, detected_at=now_iso(),
+                severity="critical", triggers_rejudge=True, complex_id=pt.complex_id,
+            )  # fmt: skip
+        )
+        n += 1
+    session.flush()
+    if n:
+        _attach_orphan_events(session, before)
+    return n
+
+
 def _attach_orphan_events(session: Session, after_id: int) -> None:
     """R3 7차 minor 4 · D13-5: 이전 단계가 만든 change_event(스냅샷 없이 생김)를 그 단지 지역의 **쓰기 가능** 리비전에 붙이고
     critical·재판정 이벤트면 그 단지 rejudge 를 등록한다(예전: snapshot_id=None 인 critical 이벤트, 재판정 없음)."""

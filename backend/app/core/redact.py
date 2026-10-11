@@ -115,7 +115,9 @@ _SECRET_NAME = (
     r"refresh{s}token|secret{s}access{s}key|private{s}key(?:{s}id)?|secret{s}key|secret|token|passphrase|password|passwd|pwd"
     # R3 8차 minor 14: 환경변수·설정 키 꼴('DATA_GO_KR_KEY'·'SERVICE_KEY'·'AWS_ACCESS_KEY_ID'·'crtfc_key' — 앞 낱말 + 구분 + key),
     # 'credentials'·'webhook_url'·'signature'. 'monkey'·'turkey' 처럼 구분 없는 낱말은 아니다
-    r"|[a-z0-9]+(?:[-_.]|%5[fF])key(?:{s}id)?|credentials?|webhook{s}url|signature)"
+    r"|[a-z0-9]+(?:[-_.]|%5[fF])key(?:{s}id)?|credentials?|webhook{s}url|signature"
+    # R3i m17: camelCase 키('accessKey'·'sessionKey' — 소문자 뒤 대문자 K, 'monkey' 는 아니다)·홀로 쓴 'pass'('bypass'·'compass' 는 아니다)
+    r"|(?-i:[a-z0-9]Key)(?:{s}id)?|(?<![a-z0-9])pass)"
 ).replace("{s}", _NS)
 _KEY_SEP = r"(?:\\*[\"'`]|\])?\s*(?:[:=\uff1a\uff1d]|%3[dD])\s*"
 """키 이름 뒤 구분: (이스케이프된) 닫는 따옴표 또는 ``]``(``user[password]=…``), 공백·줄바꿈, ``:``·``=``·전각 ``：``·``＝``(R3 7차 minor 5)."""
@@ -174,8 +176,22 @@ QUERY_KEY_RE = re.compile(
 SENSITIVE_KEY_RE = re.compile(
     r"(?i)(token|secret|password|passwd|passphrase|authorization|cookie|api[-_ ]?key|service[-_ ]?key|credential"
     r"|client[-_ ]?id|private[-_ ]?key"  # R3 6차 minor 9: dict 키 'private_key'·'privateKey' — 7차 minor 5: 'Private Key'·'API Key'
-    r"|webhook|signature|^sig$|(?:^|[-_.])(?:key|auth)$|^auth[-_]|dsn)"  # R3 8차 minor 14: 'key'·'crtfc_key'·'auth'·'signature'·'webhook_url'
+    r"|webhook|signature|^sig$|(?:^|[-_.])(?:key|auth)$|^auth[-_]|dsn"  # R3 8차 minor 14: 'key'·'crtfc_key'·'auth'·'signature'·'webhook_url'
+    r"|(?-i:[a-z0-9]Key(?:Id)?)$|^pass$)"  # R3i m17: camelCase 'accessKey'·'sessionKeyId', 'pass'
 )
+COUNT_KEY_RE = re.compile(r"(?i)(?:count|len|length|size|tokens|total|bytes|seconds|_n|_s|_ms)$")
+"""R3i m17: 비밀 키 이름이라도 개수·길이·시간을 뜻하는 키('max_tokens'·'token_count')의 숫자 값은 그대로 둔다."""
+TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])(?:sk-ant-[A-Za-z0-9_-]{10,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}"
+    r"|github_pat_[A-Za-z0-9_]{20,}|xox[abposr]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|glpat-[A-Za-z0-9_-]{16,}"
+    r"|AIza[0-9A-Za-z_-]{30,})"
+)
+"""R3i m17: 키 이름 없이 홀로 나온 공급자 토큰(접두어로 알 수 있는 것 — Anthropic·OpenAI ``sk-``, GitHub ``ghp_``·``github_pat_``,
+Slack ``xox?-``, AWS 접근 키 ``AKIA…``, GitLab ``glpat-``, Google ``AIza…``)."""
+_PROSE_BEFORE_BEARER = frozenset(
+    {"the", "a", "an", "this", "that", "these", "those", "its", "his", "her", "their", "our", "your", "my", "any", "each", "every", "no"}
+)
+"""R3i m17: 'the bearer certificates' 같은 산문 — 'bearer' 앞이 한정사이고 뒤가 소문자 낱말뿐이면 토큰이 아니다."""
 COOKIE_RE = re.compile(r"(?im)(?<![A-Za-z0-9_-])(?:set-)?cookie[\"']?\s*[:=]\s*([^\r\n]+)")
 """R3 8차 minor 14: ``Cookie:``·``Set-Cookie:`` 헤더 값 전체(쿠키 이름·값·속성 — 세션 값이 섞인다)."""
 JWT_RE = re.compile(r"(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{8,}")
@@ -351,8 +367,14 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
         add("secret", m.start(1), m.end(1))
     for m in JWT_RE.finditer(keyed):
         add("secret", m.start(), m.end())
+    for m in TOKEN_RE.finditer(keyed):
+        add("secret", m.start(), m.end())
     for m in AUTH_HEADER_RE.finditer(keyed):
         group = next(g for g in (1, 2, 3) if m.group(g) is not None)
+        if group == 2 and m.group(2).isalpha() and m.group(2).islower():
+            before = keyed[: m.start()].split()
+            if before and before[-1].lower().strip("\"'(") in _PROSE_BEFORE_BEARER:
+                continue  # R3i m17: 'the bearer certificates' — 산문(토큰 아님)
         add("secret", m.start(group), m.end(group))
     for m in HEADER_KEY_RE.finditer(keyed):
         add("secret", m.start(2), m.end(2))
@@ -408,7 +430,14 @@ def _redact(obj: Any, secrets: list[str], key: str | None = None) -> Any:
         out: dict[str, Any] = {}
         for k, v in obj.items():
             name = str(k)
-            if SENSITIVE_KEY_RE.search(name) and v is not None and not isinstance(v, bool | int | float):
+            numeric = isinstance(v, int | float) and not isinstance(v, bool)
+            if (
+                SENSITIVE_KEY_RE.search(name)
+                and v is not None
+                and not isinstance(v, bool)
+                # R3i m17: 비밀 키의 정수·실수 값도 가린다(숫자 PIN·토큰) — 개수·길이 키('max_tokens')는 그대로
+                and not (numeric and COUNT_KEY_RE.search(name))
+            ):
                 out[name] = "[REDACTED:key]"
             else:
                 out[name] = _redact(v, secrets, name)

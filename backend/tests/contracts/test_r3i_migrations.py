@@ -132,7 +132,7 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
     with _db(url, seed_db, monkeypatch) as (engine, settings, _cfg):
         fp, pt, cx = _down_payment_fp(engine)
         drawer0 = _drawer_value(engine, fp)
-        assert drawer0 is not None and "20" != str(drawer0)
+        assert drawer0 is not None and str(drawer0) != "20"
         rd0 = _rd_ids(engine, SNAP)
         _mutate_after_publish(engine, fp, pt)
         gone = _upgrade_state(engine, cx)
@@ -252,12 +252,14 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
         scs = sorted({sc for (_k, sc) in marks if sc}, key=int)
         sc2 = scs[1]
         with engine.begin() as c:
-            row = dict(c.execute(sa.text("SELECT * FROM complex WHERE id = :i"), {"i": cx}).mappings().one())
+            from app.models import Complex
+
+            table = Complex.__table__
+            row = dict(c.execute(sa.select(table).where(table.c.id == cx)).mappings().one())
             row.pop("id")
             row["name"] = "R3i 발행 뒤 단지"
             row["applyhome_id"] = "2099000001"
-            cols = ", ".join(row)
-            c.execute(sa.text(f"INSERT INTO complex ({cols}) VALUES ({', '.join(':' + k for k in row)})"), row)
+            c.execute(table.insert(), [row])
             new_id = int(c.execute(sa.text("SELECT MAX(id) FROM complex")).scalar() or 0)
             for kind in ("complexes", "compare"):
                 c.execute(
@@ -409,10 +411,36 @@ def check_m1_0013_keeps_compare_mark(url: str, seed_db: Path, monkeypatch: pytes
             ).first()  # type: ignore[misc]
         assert label == "추정"
         assert "판정기 compare 채택" in reason and "조건 확인 필요" in reason, reason
+        # 라벨을 내린 채택 할인 → backfill 이 critical·재판정 change_event 를 한 번(멱등) + 재판정 잡
+        import app.snapshot_view as sv
+
+        command.upgrade(cfg, "head")
+        res = sv.backfill(engine, settings=_settings_obj)
+        assert res["discounts_relabelled"] == 1 and not res["failed"], res
+        with engine.connect() as c:
+            evs = c.execute(
+                sa.text(
+                    "SELECT severity, triggers_rejudge, snapshot_id FROM change_event WHERE field = 'discount_by_type.84A' "
+                    "AND new_text LIKE '%0013 전환%'"
+                )
+            ).all()
+            jobs = c.execute(sa.text("SELECT payload FROM job_run WHERE job_name = 'rejudge' AND status = 'queued'")).all()
+        assert len(evs) == 1 and evs[0][0] == "critical" and evs[0][1] and evs[0][2] is not None, evs
+        assert jobs, "재판정 잡"
+        assert sv.backfill(engine, settings=_settings_obj)["discounts_relabelled"] == 0
 
 
 def test_sqlite_m1_0013_keeps_compare_mark(seeded_sqlite: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
     check_m1_0013_keeps_compare_mark(f"sqlite:///{(tmp_path / 'r3i_m1.db').as_posix()}", seeded_sqlite, monkeypatch)
+
+
+@pytest.mark.postgres
+def test_postgres_m1_0013_keeps_compare_mark(seeded_sqlite: Path, postgres_url: str) -> None:  # noqa: F811
+    mp = pytest.MonkeyPatch()
+    try:
+        check_m1_0013_keeps_compare_mark(postgres_url, seeded_sqlite, mp)
+    finally:
+        mp.undo()
 
 
 # ====================================================================== 0014 왕복

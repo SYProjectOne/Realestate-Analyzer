@@ -55,7 +55,7 @@ import re
 import sys
 import time
 import zlib
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -75,6 +75,8 @@ __all__ = [
     "LIVE_BUILDERS",
     "PUBLISHING",
     "SHAPE_VERSION",
+    "BackfillBusy",
+    "LeaseLost",
     "MaterializePending",
     "NotInRevision",
     "NotMaterialized",
@@ -162,6 +164,14 @@ class NotInRevision(NotMaterialized):
 
 class StoredViewMismatch(RuntimeError):
     """저장본 sha256·계약 버전이 맞지 않는다 — API 500 ``stored_view_mismatch``(D14-4)."""
+
+
+class LeaseLost(RuntimeError):
+    """쓰는 도중 임대를 잃었다(멈춘 사이 TTL 이 지나 다른 발행·backfill 이 넘겨받음) — 그 묶음부터 아무것도 쓰지 않는다(R3i m13)."""
+
+
+class BackfillBusy(RuntimeError):
+    """다른 발행·backfill 이 그 리비전 임대를 들고 있다 — 이번 backfill 은 그 리비전을 건너뛴다(D17-1, 다음 실행이 다시)."""
 
 
 # ====================================================================== 직렬화
@@ -743,8 +753,12 @@ def compute(
     dedup: bool = True,
     extra_prov_ids: Iterable[str] = (),
     reuse_drawers: bool = False,
+    complex_ids: Collection[int] | None = None,
 ) -> Computed:
     """그 리비전의 저장본 행을 계산만 한다(DB 쓰기 없음 — 호출자가 ``write_rows``·세션에 넣는다).
+
+    ``complex_ids``(R3i D17-2 — backfill): 단지 상세·비교 입력·단지 목록 본문을 그 단지들로 한정한다(그 리비전 단지 목록 —
+    발행 뒤 생긴 단지가 옛 리비전 본문에 들어가지 않게, 키와 같은 범위).
 
     ``kinds``·``units`` 로 계산할 단위를 고른다(없으면 전부 — 발행). 일부만 계산하면 출처 서랍은 이미 저장된 본문의 출처 id 도
     모으고(``_stored_prov_ids``), ``reuse_drawers`` 면 이미 저장된 서랍 본문은 그대로 쓴다(backfill — 발행 순간 값 유지).
@@ -806,6 +820,9 @@ def compute(
     complexes = list(
         session.scalars(select(Complex).where(Complex.region_id == snap.region_id).order_by(Complex.id))
     )
+    only = set(complex_ids) if complex_ids is not None else None
+    if only is not None:
+        complexes = [c for c in complexes if c.id in only]
     cache: dict[Any, Any] = {}  # 시나리오와 무관한 보고서 단지 뷰(시나리오마다 다시 만들지 않는다)
     with _missing_counter() as missing, memo.active():
         if unit("changes"):
@@ -834,11 +851,17 @@ def compute(
                     scenario=sk,
                 )
             if unit("complexes", sk):
-                put(
-                    "complexes",
-                    timed("complexes", build_complexes, session, cfg, snap, sc),
-                    scenario=sk,
-                )
+                listing = timed("complexes", build_complexes, session, cfg, snap, sc)
+                if only is not None and isinstance(listing, dict):
+                    listing = {
+                        **listing,
+                        "rows": [
+                            r
+                            for r in listing.get("rows") or []
+                            if isinstance(r, dict) and (r.get("item") or {}).get("complex_id") in only
+                        ],
+                    }
+                put("complexes", listing, scenario=sk)
             if unit("sensitivity", sk):
                 put(
                     "sensitivity",
@@ -881,6 +904,8 @@ def compute(
                 # 일부 단위만 다시 만들 때(backfill): 그 리비전에 이미 저장된 본문(모든 시나리오·patch 행)의 출처 id 도 모은다
                 _stored_prov_ids(session, snap.id, prov_ids)
             keep = stored_drawers(session, snap.id) if reuse_drawers else {}
+            # 지금 사실로 새로 만든 서랍 수(D17-2 — backfill 이면 그 단위에 backfilled_at)
+            out.stats["provenance_built"] = sum(1 for p in prov_ids if p not in keep)
             for kind, key, body in timed("provenance", _provenance_bodies_rows, session, prov_ids, keep):
                 put(kind, body, key=key)
         out.stats["missing_provenance"] = missing[0]
@@ -979,9 +1004,21 @@ def _row_dicts(snapshot_id: int, rows: Sequence[ViewRow]) -> list[dict[str, Any]
     ]
 
 
-def _mark(conn: Connection | Session, snapshot_id: int, unit: Unit, rows: int, *, done: bool = True) -> None:
-    """완료 표식 쓰기(있으면 고치고 없으면 넣는다) — 호출자의 트랜잭션 안(그 단위의 마지막 쓰기와 같이, D15-3)."""
+def _mark(
+    conn: Connection | Session,
+    snapshot_id: int,
+    unit: Unit,
+    rows: int,
+    *,
+    done: bool = True,
+    backfilled_at: str | None = None,
+) -> None:
+    """완료 표식 쓰기(있으면 고치고 없으면 넣는다) — 호출자의 트랜잭션 안(그 단위의 마지막 쓰기와 같이, D15-3).
+    ``backfilled_at``(D17-2)을 주면 그 값을 남긴다(주지 않으면 있던 값 그대로)."""
     kind, scenario = unit
+    values: dict[str, Any] = {"done": done, "rows": rows, "shape_version": SHAPE_VERSION}
+    if backfilled_at is not None:
+        values["backfilled_at"] = backfilled_at
     res = conn.execute(
         update(SnapshotViewUnit)
         .where(
@@ -989,20 +1026,28 @@ def _mark(conn: Connection | Session, snapshot_id: int, unit: Unit, rows: int, *
             SnapshotViewUnit.kind == kind,
             SnapshotViewUnit.scenario == scenario,
         )
-        .values(done=done, rows=rows, shape_version=SHAPE_VERSION)
+        .values(**values)
         .execution_options(synchronize_session=False)
     )
     if not int(getattr(res, "rowcount", 0) or 0):
         conn.execute(
-            insert(SnapshotViewUnit).values(
-                snapshot_id=snapshot_id,
-                kind=kind,
-                scenario=scenario,
-                rows=rows,
-                done=done,
-                shape_version=SHAPE_VERSION,
-            )
+            insert(SnapshotViewUnit).values(snapshot_id=snapshot_id, kind=kind, scenario=scenario, **values)
         )
+
+
+def _check_lease(conn: Connection | Session, snapshot_id: int, lease: str | None) -> None:
+    """이 트랜잭션 안에서 임대를 아직 들고 있는지 확인한다(아무것도 바꾸지 않는 조건부 UPDATE — SQLite 는 이 문장으로 쓰기 잠금부터
+    잡는다). 잃었으면 ``LeaseLost``(R3i m13 — 멈췄던 이전 보유자가 넘겨받은 새 보유자의 리비전에 행을 섞지 않는다)."""
+    if lease is None:
+        return
+    res = conn.execute(
+        update(Snapshot)
+        .where(Snapshot.id == snapshot_id, Snapshot.publish_lease == lease)
+        .values(publish_lease=Snapshot.publish_lease)
+        .execution_options(synchronize_session=False)
+    )
+    if int(getattr(res, "rowcount", 0) or 0) != 1:
+        raise LeaseLost(f"snapshot {snapshot_id} 의 임대를 잃었다({lease.rpartition('|')[0]}) — 쓰기 중단")
 
 
 @contextmanager
@@ -1030,32 +1075,44 @@ def write_rows(
     rows: Sequence[ViewRow],
     *,
     finish: dict[Unit, int] | None = None,
+    lease: str | None = None,
+    backfilled: Mapping[Unit, str] | None = None,
 ) -> WriteStats:
     """짧은 트랜잭션 여러 개로 넣는다(묶음 하나 = 쓰기 잠금 한 번, ``CHUNK_BYTES``).
 
     ``finish`` = 끝낼 단위 → 그 단위의 최종 행 수: 단위마다 **그 단위의 마지막 행이 든 묶음 트랜잭션**에 완료 표식을 쓴다
     (D15-3). 이번에 쓸 행이 없는 단위는 마지막 묶음(행이 아예 없으면 따로 한 트랜잭션)에서. 행은 단위별로 이어져 있어야 한다
-    (``compute`` 의 순서). ``bind`` 가 엔진이면 ``write_connection`` 하나로 쓴다."""
+    (``compute`` 의 순서). ``bind`` 가 엔진이면 ``write_connection`` 하나로 쓴다.
+
+    ``lease``(R3i m13): 묶음 트랜잭션마다 첫 문장으로 임대를 아직 들고 있는지 확인한다(잃었으면 ``LeaseLost`` — 그 묶음부터 쓰지
+    않는다). ``backfilled``(D17-2): 단위 → backfilled_at(표식에 남긴다). SQLite 면 묶음 사이에 ``core.db.yield_write_lock``(D17-6 —
+    기다리던 API 쓰기가 끼어들 틈)."""
     if isinstance(bind, Engine):
         with write_connection(bind) as conn:
-            return write_rows(conn, snapshot_id, rows, finish=finish)
+            return write_rows(conn, snapshot_id, rows, finish=finish, lease=lease, backfilled=backfilled)
+    from app.core.db import yield_write_lock
+
     conn = bind
     st = WriteStats()
     todo = dict(finish or {})
+    stamps = dict(backfilled or {})
     last: dict[Unit, int] = {}
     for i, r in enumerate(rows):
         last[(r.kind, r.scenario)] = i
     pos = 0
     chunks = list(_chunks(rows))
     for n, chunk in enumerate(chunks):
+        if n:
+            yield_write_lock(conn)
         t = time.perf_counter()
         end = pos + len(chunk)
         with conn.begin():
+            _check_lease(conn, snapshot_id, lease)
             conn.execute(insert(SnapshotView), _row_dicts(snapshot_id, chunk))
             for u, total in list(todo.items()):
                 at = last.get(u)
                 if (at is not None and pos <= at < end) or (at is None and n == len(chunks) - 1):
-                    _mark(conn, snapshot_id, u, total)
+                    _mark(conn, snapshot_id, u, total, backfilled_at=stamps.get(u))
                     del todo[u]
         pos = end
         dt = time.perf_counter() - t
@@ -1065,8 +1122,9 @@ def write_rows(
         st.total_write_s += dt
     if todo:  # 쓸 행이 없었다(빈 단위만)
         with conn.begin():
+            _check_lease(conn, snapshot_id, lease)
             for u, total in todo.items():
-                _mark(conn, snapshot_id, u, total)
+                _mark(conn, snapshot_id, u, total, backfilled_at=stamps.get(u))
     return st
 
 
@@ -1240,7 +1298,7 @@ def _publish_locked(
     done = 0
     try:
         with write_connection(engine) as wconn:
-            ws = write_rows(wconn, snapshot_id, computed.rows, finish=_unit_totals(computed))
+            ws = write_rows(wconn, snapshot_id, computed.rows, finish=_unit_totals(computed), lease=lease)
             t = time.perf_counter()
             done, n = _flip(
                 wconn, snapshot_id, now=now, lease=lease, followups=computed.followups, remaining=remaining
@@ -1453,15 +1511,40 @@ def _revision_keys(session: Session, sid: int, present: set[tuple[str, str, str]
     return out
 
 
+PROV_UNIT: Final[Unit] = ("provenance", "")
+
+
 def _backfill_one(eng: Engine, sid: int, s: Settings) -> dict[str, Any] | None:
-    """발행 리비전 1개의 미완 단위를 채운다(D15-3). 이미 있는 행은 그대로 두고(발행 순간 바이트) 빠진 키만 넣는다.
-    만든 것이 없으면 None."""
+    """발행 리비전 1개의 미완 단위를 채운다(D15-3). 이미 있는 행은 그대로 두고(발행 순간 바이트) 빠진 키만 넣는다. 만든 것이
+    없으면 None.
+
+    **D17-1(R3i, 9차 major 1)**: 발행과 **같은 임대**를 잡는다(다른 발행·backfill 이 들고 있으면 ``BackfillBusy`` — 이 리비전은
+    건너뛰고 다음 실행이 다시). 출처 서랍은 '새 행 쓰기 → 옛 행 교체 → 표식'을 **한 트랜잭션**(``_replace_provenance``)으로 바꾼다
+    — 예전엔 표식을 내리고 서랍 행 전부를 DELETE 한 커밋 뒤 따로 썼기 때문에, 그 사이에 죽거나(중단) 다른 backfill 이 끼면(겹침)
+    발행 순간 서랍이 지워지고 다음 실행이 **지금 사실로** 다시 만들었다. 이제 어느 시점에 끊겨도 이미 저장된 본문·서랍은 그대로다.
+    새 행(빠진 키)은 지우지 않고 더하기만 한다. 묶음마다 임대를 확인한다(``write_rows(lease=…)``)."""
+    import os
+    import threading
+
+    lease = acquire_lease(eng, sid, f"backfill:{os.getpid()}:{threading.get_ident()}")
+    if lease is None:
+        raise BackfillBusy(f"리비전 {sid} 임대를 {_lease_holder(eng, sid)} 가 들고 있다")
+    try:
+        return _backfill_locked(eng, sid, s, lease)
+    finally:
+        release_lease(eng, sid, lease)
+
+
+def _backfill_locked(eng: Engine, sid: int, s: Settings, lease: str) -> dict[str, Any] | None:
+    from app.core.time import now_kst
+
     with Session(bind=eng) as ses:
         states = unit_states(ses, sid)
         if not states:  # 표식이 하나도 없다(0010 이전 발행분) — 지금 시나리오 전부로 '만들 단위' 표식부터
             expected = _expected_units(scenario_key(x) for x in _scenarios(ses))
             ses.rollback()  # 읽기 트랜잭션을 끝내고(다시 읽을 때 새 표식이 보이게) 표식은 따로 짧게 쓴다
             with eng.begin() as conn:
+                _check_lease(conn, sid, lease)
                 for u in sorted(expected):
                     _mark(conn, sid, u, 0, done=False)
             states = unit_states(ses, sid)
@@ -1476,73 +1559,87 @@ def _backfill_one(eng: Engine, sid: int, s: Settings) -> dict[str, Any] | None:
                 )
             )
         }
-        have_drawers = states.get(("provenance", ""), (False, 0, 0))[2] > 0
     rs = _read_session(eng)
     try:
         snap = rs.get(Snapshot, sid)
         assert snap is not None
-        main = compute(rs, snap, settings=s, units=todo - {("provenance", "")}, dedup=False)
+        # D17-2: 새로 넣는 키와 목록·비교 본문을 그 리비전 단지 범위로(발행 뒤 생긴 단지·생활권은 옛 리비전에 넣지 않는다)
         allowed = _revision_keys(rs, sid, present)
+        cx_keys = allowed.get("complex")
+        only = {int(k) for k in cx_keys if str(k).isdigit()} if isinstance(cx_keys, set) else None
+        main = compute(rs, snap, settings=s, units=todo - {PROV_UNIT}, dedup=False, complex_ids=only)
         new_rows = [
             r
             for r in main.rows
             if (r.kind, r.key, r.scenario) not in present and r.key in allowed.get(r.kind, _ANY_KEY)
         ]
-        new_ids: set[str] = (
-            set()
-        )  # 새로 넣는 행이 가리키는 출처(지금 계산의 다른 출처는 서랍에 넣지 않는다 — 발행 순간 범위)
+        new_ids: set[str] = set()  # 새로 넣는 행이 가리키는 출처(지금 계산의 다른 출처는 서랍에 넣지 않는다 — 발행 순간 범위)
         for r in new_rows:
             _collect_prov(zlib.decompress(r.body), new_ids)
-        rebuild_prov = ("provenance", "") in todo
-        if not rebuild_prov and new_rows:
-            known = set(stored_drawers(rs, sid)) if have_drawers else set()
-            rebuild_prov = bool(new_ids - known)
+        rebuild = PROV_UNIT in todo
+        if not rebuild:
+            # 저장된 본문 전부(예전 실행이 새 행만 넣고 서랍 전에 끊긴 경우 포함)의 출처 id 중 서랍이 없는 것이 있으면 다시
+            need = set(new_ids)
+            _stored_prov_ids(rs, sid, need)
+            rebuild = bool(need - set(stored_drawers(rs, sid)))
         prov = (
-            compute(
-                rs,
-                snap,
-                settings=s,
-                units={("provenance", "")},
-                extra_prov_ids=new_ids,
-                reuse_drawers=True,
-            )
-            if rebuild_prov
+            compute(rs, snap, settings=s, units={PROV_UNIT}, extra_prov_ids=new_ids, reuse_drawers=True)
+            if rebuild
             else None
         )
     finally:
         rs.rollback()
         rs.close()
+    stamp = now_kst().isoformat(timespec="seconds")
     finish = {u: states.get(u, (False, 0, 0))[2] for u in main.units}
-    for u in todo - set(main.units) - {("provenance", "")}:
-        finish[u] = states[u][
-            2
-        ]  # 지금은 계산할 수 없는 단위(그 뒤 지운 시나리오 등) — 있는 행 그대로 완료로 닫는다
+    for u in todo - set(main.units) - {PROV_UNIT}:
+        finish[u] = states[u][2]  # 지금은 계산할 수 없는 단위(그 뒤 지운 시나리오 등) — 있는 행 그대로 완료로 닫는다
+    filled: dict[Unit, str] = {}
     for r in new_rows:
         finish[(r.kind, r.scenario)] = finish.get((r.kind, r.scenario), 0) + 1
-    if (
-        prov is not None
-    ):  # 서랍을 다시 쓰는 동안은 미완(먼저 표식을 내린다 — 그 사이 실패해도 다음 backfill 이 다시)
+        filled[(r.kind, r.scenario)] = stamp  # D17-2: 새로 계산해 채운 단위
+    if prov is not None and states.get(PROV_UNIT, (False, 0, 0))[0]:
+        # 서랍을 다시 써야 하는데 표식은 완료 — 먼저 미완으로(행은 지우지 않는다): 새 행을 쓴 뒤 서랍 전에 끊겨도 다음 실행이 서랍을
         with eng.begin() as conn:
-            _mark(conn, sid, ("provenance", ""), 0, done=False)
-            conn.execute(
-                delete(SnapshotView).where(SnapshotView.snapshot_id == sid, SnapshotView.kind == "provenance")
-            )
-    ws = write_rows(eng, sid, new_rows, finish=finish)
-    rows = ws.rows
+            _check_lease(conn, sid, lease)
+            _mark(conn, sid, PROV_UNIT, states[PROV_UNIT][2], done=False)
+    rows = write_rows(eng, sid, new_rows, finish=finish, lease=lease, backfilled=filled).rows
     missing = int(main.stats.get("missing_provenance") or 0)
     if prov is not None:
-        rows += write_rows(eng, sid, prov.rows, finish=_unit_totals(prov)).rows
+        built = int(prov.stats.get("provenance_built") or 0)
+        rows += _replace_provenance(eng, sid, prov.rows, lease=lease, backfilled_at=stamp if built else None)
         missing += int(prov.stats.get("missing_provenance") or 0)
-    return {"rows": rows, "units": sorted(todo | ({("provenance", "")} if prov is not None else set())),
-            "missing_provenance": missing}  # fmt: skip
+        if built:
+            filled[PROV_UNIT] = stamp
+    return {
+        "rows": rows,
+        "units": sorted(todo | ({PROV_UNIT} if prov is not None else set())),
+        "missing_provenance": missing,
+        "backfilled_units": sorted(filled),
+    }
+
+
+def _replace_provenance(
+    eng: Engine, sid: int, rows: Sequence[ViewRow], *, lease: str, backfilled_at: str | None
+) -> int:
+    """출처 서랍 단위를 **한 트랜잭션**으로 바꾼다(D17-1): 임대 확인 → 옛 서랍 행 DELETE → 새 행 INSERT(이미 있던 서랍 본문은
+    ``reuse_drawers`` 로 바이트 그대로 들어 있다) → 완료 표식. 어디서 끊겨도 롤백 — 옛 서랍이 그대로 남는다."""
+    with write_connection(eng) as conn, conn.begin():
+        _check_lease(conn, sid, lease)
+        conn.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == sid, SnapshotView.kind == "provenance"))
+        if rows:
+            conn.execute(insert(SnapshotView), _row_dicts(sid, rows))
+        _mark(conn, sid, PROV_UNIT, len(rows), backfilled_at=backfilled_at)
+    return len(rows)
 
 
 def backfill(engine: Engine | None = None, *, settings: Settings | None = None) -> dict[str, Any]:
-    """멱등 backfill(D14-9·**D15-3**): 행 단위 사람 확인 → 의미 묶음(m14) + 발행 리비전의 **미완 단위**(완료 표식 없음·
-    done=false·행 수 모자람) 채우기. 리비전마다 따로 실패한다(한 리비전 예외가 나머지를 막지 않는다, m11 — ``failed``).
+    """멱등 backfill(D14-9·**D15-3**·**D17-1**): 행 단위 사람 확인 → 의미 묶음(m14) + 0013 할인 라벨 전환 알림(R3i m1) + 발행
+    리비전의 **미완 단위**(완료 표식 없음·done=false·행 수 모자람) 채우기. 단계·리비전마다 따로 실패한다(한 곳 예외가 나머지를
+    막지 않는다, m11·R3i m6 — ``failed``). 다른 발행·backfill 이 임대를 든 리비전은 건너뛴다(``busy`` — 다음 실행이 다시).
 
-    리비전마다 계산(읽기) → 짧은 트랜잭션으로 쓰기, 단위마다 마지막 쓰기 트랜잭션에 완료 표식. worker 시작과
-    ``python -m app.snapshot_view backfill`` 이 부른다."""
+    리비전마다 임대 → 계산(읽기) → 짧은 트랜잭션으로 쓰기, 단위마다 마지막 쓰기 트랜잭션에 완료 표식, 출처 서랍은 한 트랜잭션
+    교체. worker 시작(실패·busy 면 상주 루프가 주기마다 다시)과 ``python -m app.snapshot_view backfill`` 이 부른다."""
     from app.core.db import get_engine
 
     s = settings or get_settings()
@@ -1551,16 +1648,28 @@ def backfill(engine: Engine | None = None, *, settings: Settings | None = None) 
         "snapshots": [],
         "rows": 0,
         "human_checks_migrated": 0,
+        "discounts_relabelled": 0,
         "missing_provenance": 0,
         "failed": [],
+        "busy": [],
     }
-    try:
-        from app.api.demotion import migrate_row_human_checks
-    except ImportError:  # pragma: no cover - 사람 확인 이전 함수가 없는 빌드
-        migrate_row_human_checks = None  # type: ignore[assignment]
-    if migrate_row_human_checks is not None:
-        with Session(bind=eng) as ses, ses.begin():
-            out["human_checks_migrated"] = int(migrate_row_human_checks(ses) or 0)
+    from app.api import demotion
+
+    for step, key, name in (
+        ("human_checks", "human_checks_migrated", "migrate_row_human_checks"),
+        ("discount_relabel", "discounts_relabelled", "announce_relabelled_discounts"),
+    ):
+        fn = getattr(demotion, name, None)
+        if fn is None:  # pragma: no cover - 그 단계가 없는 빌드
+            continue
+        try:
+            with Session(bind=eng) as ses, ses.begin():
+                out[key] = int(fn(ses) or 0)
+        except Exception as exc:  # R3i m6: 단계 예외가 리비전 채우기를 막지 않는다
+            log.error("snapshot_view.backfill_step_failed", extra={"step": step, "error": type(exc).__name__})
+            out["failed"].append(
+                {"snapshot_id": None, "step": step, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+            )
     with Session(bind=eng) as ses:
         sids = [
             int(i)
@@ -1571,9 +1680,10 @@ def backfill(engine: Engine | None = None, *, settings: Settings | None = None) 
     for sid in sids:
         try:
             got = _backfill_one(eng, sid, s)
-        except (
-            Exception
-        ) as exc:  # 리비전마다 따로 실패(D15-3·m11) — 그 리비전은 미완 그대로(GET 503), 다음 실행이 다시
+        except BackfillBusy:
+            out["busy"].append(sid)
+            continue
+        except Exception as exc:  # 리비전마다 따로 실패(D15-3·m11) — 그 리비전은 미완 그대로(GET 503), 다음 실행이 다시
             log.error(
                 "snapshot_view.backfill_failed", extra={"snapshot_id": sid, "error": type(exc).__name__}
             )
@@ -1584,10 +1694,15 @@ def backfill(engine: Engine | None = None, *, settings: Settings | None = None) 
         out["snapshots"].append(sid)
         out["rows"] += int(got["rows"])
         out["missing_provenance"] += int(got["missing_provenance"])
-    if out["snapshots"] or out["human_checks_migrated"] or out["failed"]:
+    if out["snapshots"] or out["human_checks_migrated"] or out["failed"] or out["busy"]:
         log.info(
             "snapshot_view.backfill",
-            extra={"snapshots": len(out["snapshots"]), "rows": out["rows"], "failed": len(out["failed"])},
+            extra={
+                "snapshots": len(out["snapshots"]),
+                "rows": out["rows"],
+                "failed": len(out["failed"]),
+                "busy": len(out["busy"]),
+            },
         )
     return out
 

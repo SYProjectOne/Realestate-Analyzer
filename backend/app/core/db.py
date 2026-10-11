@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import importlib
+import logging
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -20,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.settings import Settings, get_settings
 
 _engines: dict[str, Engine] = {}
+log = logging.getLogger("app.core.db")
 _sessionmakers: dict[str, sessionmaker[Session]] = {}
 
 
@@ -99,14 +102,30 @@ class _SqliteState:
 
     def __init__(self) -> None:
         self.api_users = 0
+        self.fallback = False
 
     @property
     def api_mode(self) -> bool:
-        return self.api_users > 0
+        """요청 커밋의 자동 체크포인트를 끈다 — 체크포인터가 연달아 실패하면(``fallback``) 다시 켠다(R3i m12)."""
+        return self.api_users > 0 and not self.fallback
 
 
 _sqlite_states: dict[int, _SqliteState] = {}
 SQLITE_CHECKPOINT_INTERVAL_S = 1.0
+SQLITE_CHECKPOINT_FAIL_LIMIT = 5
+"""R3i m12: 배경 체크포인트가 연달아 이만큼 실패하면 요청 커밋의 자동 체크포인트를 되살린다(WAL 이 끝없이 자라지 않게)."""
+SQLITE_WRITE_YIELD_S = 0.12
+"""R3i D17-6: SQLite 개발 모드에서 저장본·이월 복사를 묶음으로 나눠 쓸 때 묶음 사이에 쉬는 시간. 기다리던 API 쓰기는 SQLite
+바쁨 처리기(1·2·5·10·…·100ms 간격으로 다시 시도)라 묶음이 끝나자마자 다음 묶음이 잠금을 다시 잡으면 계속 놓칠 수 있다(9차 리뷰:
+전체 스위트 부하에서 API 쓰기 2.5s — 전부 잠금 대기). 최대 재시도 간격(100ms)보다 길게 쉬어 기다리던 쓰기가 한 번은 들어오게 한다."""
+
+
+def yield_write_lock(bind: Any) -> None:
+    """SQLite 파일 DB 면 쓰기 묶음 사이에 잠깐 쉰다(``SQLITE_WRITE_YIELD_S`` — API 쓰기가 끼어들 틈). Postgres 는 아무것도 안 한다
+    (행 잠금 — 다른 표 쓰기를 막지 않는다)."""
+    engine = getattr(bind, "engine", bind)
+    if getattr(getattr(engine, "dialect", None), "name", None) == "sqlite" and SQLITE_WRITE_YIELD_S > 0:
+        time.sleep(SQLITE_WRITE_YIELD_S)
 
 
 def _passive_checkpoint(engine: Engine) -> None:
@@ -137,11 +156,26 @@ def sqlite_api_checkpointer(
     stop = threading.Event()
 
     def loop() -> None:
+        # R3i m12: 예외를 기록 없이 삼켰다(WAL 이 자라도 모름) — 첫 실패·이후 60번마다 경고, 연달아
+        # SQLITE_CHECKPOINT_FAIL_LIMIT 번이면 요청 커밋 자동 체크포인트로 되돌린다(fallback). 다시 되면 끈다
+        failures = 0
         while not stop.wait(interval_s):
             try:
                 _passive_checkpoint(engine)
-            except Exception:  # 잠김·종료 중 — 다음 주기에
+            except Exception as exc:  # 잠김·디스크 오류·종료 중
+                failures += 1
+                if failures == 1 or failures % 60 == 0:
+                    log.warning(
+                        "sqlite.checkpoint_failed", extra={"error": type(exc).__name__, "failures": failures}
+                    )
+                if failures >= SQLITE_CHECKPOINT_FAIL_LIMIT and not state.fallback:
+                    state.fallback = True
+                    log.error("sqlite.checkpoint_fallback", extra={"failures": failures})
                 continue
+            if state.fallback:
+                state.fallback = False
+                log.warning("sqlite.checkpoint_recovered", extra={"failures": failures})
+            failures = 0
 
     state.api_users += 1
     th = threading.Thread(target=loop, name="sqlite-checkpointer", daemon=True)
