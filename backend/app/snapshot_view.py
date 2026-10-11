@@ -49,7 +49,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import io
 import json
 import pickle
 import re
@@ -231,13 +230,11 @@ def _patch(base: Any, body: Any, cache: dict[int, bytes] | None = None) -> dict[
 
 
 def _strict(obj: Any) -> bytes:
-    """형까지 구분하는 구조 바이트(pickle, memo 없음 — 객체 공유와 무관). 같으면 JSON 저장 바이트도 같다(int·float·bool·키 순서
-    구분). JSON 직렬화보다 빠르다(D14-5 발행 30초)."""
-    buf = io.BytesIO()
-    p = pickle.Pickler(buf, protocol=5)
-    p.fast = True  # memo 끔 — 같은 구조면 객체 공유가 달라도 같은 바이트(순환 구조는 없다)
-    p.dump(obj)
-    return buf.getvalue()
+    """형까지 구분하는 구조 바이트(pickle). 같으면 JSON 저장 바이트도 같다(int·float·bool·키 순서 구분). JSON 직렬화보다
+    빠르다(D14-5 발행 30초)."""
+    # memo 가 켜져 있어 객체 공유가 다르면 같은 구조도 다른 바이트가 될 수 있다 — 그때는 '다르다'로 patch 에 통째로 들어갈 뿐
+    # (저장 크기만 조금 늘고 되살린 바이트는 늘 원래와 같다). Pickler 객체를 만들지 않는 편이 작은 값 수십만 개에서 빠르다
+    return pickle.dumps(obj, protocol=5)
 
 
 def _apply(base: Any, node: dict[str, Any]) -> Any:
