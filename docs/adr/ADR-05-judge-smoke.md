@@ -50,3 +50,9 @@
   adapter_version 에 모델을 넣는 계약 변경이 필요하다(완료 보고 '제안').
 - pyproject 는 `mcp>=1.2` 인데 lock 은 2.3.0(대규모 API 변경판)이다. 어댑터는 `server_info`/`serverInfo` 둘 다 읽지만
   `mcp>=2,<3` 고정을 제안한다.
+
+## R4 실데이터 실행 (2026-10-12)
+
+결과는 [`docs/design/wp/R4_RESULT.md`](../design/wp/R4_RESULT.md)·runbook §10-6. 요점: jev-mcp 0.14.1 은 `jev_extract` 가 모델을 부르지
+않는 경로(provider none)에서 `model: "jev-latest"`, 그 밖에는 `"jev-1.13.0"` 을 준다 — 응답 모델을 adapter_version 에 넣는 위 보강(D6)
+때문에 버전이 호출마다 바뀌어 2회차에 숨은 실제 호출이 생긴다(R4 결함 C1).

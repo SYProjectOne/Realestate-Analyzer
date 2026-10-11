@@ -164,7 +164,8 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
 RA §8-1 R4 게이트: "실제 JEV 연결, 인천·김포 → 실제 1회 실행 호출 수·시간 기록; 2회차 호출 0 확인; runbook 갱신".
 RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로 늘 수 있으나 이유를 기록), 2회차 실제 호출 0.
 **R3 회귀(`python scripts/tasks.py regress`)의 결과와 발견 목록을 사람이 확인한 뒤에만 실행한다(DECISIONS D8).**
-아래 명령은 준비만 해 둔 것이다 — 실행하지 않았다.
+아래 10-1~10-5 는 R3 때 준비한 절차다. **2026-10-12 처음 실제로 돌렸고**(결과 `docs/design/wp/R4_RESULT.md`), 실제로 다르게 해야
+했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다.
 
 ### 10-1 준비
 
@@ -274,6 +275,88 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
 - (제안, WP9) 1회차 `judgment_log`(input_json·output_json)를 Mock 녹화로 내보내면 e2e·회귀의 Mock 판정기가 파이프라인
   payload 를 재생할 수 있다(현재 픽스처 녹화는 보고서 재구성이라 파이프라인 payload 와 hash 가 달라 Mock 재판정이 전부
   review — R3 발견). 내보낼 때 hash 는 `input_hash(tool, purpose, input_json, <픽스처 _meta adapter_version>)` 로 다시 계산한다.
+
+### 10-6 R4 1차 실행 결과와 실제 절차 (2026-10-12, main `3a4141d`, 계약 `.13`) — 상세 `docs/design/wp/R4_RESULT.md`
+
+**결과: 게이트 미통과** (critical 3: 숨은 판정기 호출 C1 · 실거래 법정동 코드 누락으로 종합 점수 전무 C2 · 잔여 공고 제목이 단지 이름 '확인됨' C3).
+
+| 항목 | 값 |
+| --- | --- |
+| 환경 | Windows 11, Docker 없음 → 임베디드 Postgres 16.2(pgserver), `ENV=prod`, API 127.0.0.1:18431 |
+| JEV | `npx -y @jkudish/jev-mcp@0.14.1`(실행 전 `npm view @jkudish/jev-mcp version` = 0.14.1 → 고정) |
+| adapter_version | `0.2.0+jev-mcp@0.14.1+jev-1.13.0`(351행) · `…+jev-latest`(149행, extract 로컬 단락) — **2개**(C1) |
+| 1회차 시간 | bootstrap 23분 59.7초(수집 약 21분 40초 · 판정 2분 9초 · 발행 약 6초), reference.refresh 11초 |
+| 1회차 실제 호출 | **500**(screen 210 · extract 190 · audit 14 · classify 34 · compare 46 · noul 3 · rerank 1 · decide 1 · verify 1), blocked 0 · error 0 · cached 3. 모델 호출(provider typesafe) 351 · 로컬 단락 149 |
+| 132 대비 | +368 — 공고문 조각 단위 screen·extract(+316), 중복 단지 행·범위 밖 후보로 compare +34, 뉴스 호재 screen 20·classify 31. 판정 대상이 1단지라 noul·decide·verify 는 −27 |
+| 단지·범위 | 단지 행 88, 판정 대상 1 → 3, TOP 5 없음(종합 점수 전 단지 미판정) |
+| 수집 실패 | official_site TLS 2, rtms 분양권 API 403 2(활용신청 없음), 타임아웃·파싱 실패 0 |
+| 2회차 (a) 같은 스냅샷 rejudge | `judgment_log` 500 → 500, `judge_calls` 0, cached 434 — **그러나 MCP `tools/call` 298건**(프록시 측정, C1) → 실패 |
+| 2회차 (b) collect.daily(1시간 뒤) | 778.7초, change_event 29(1회차 빈 값이 채워진 것 — M5), 새 판정 16 + 숨은 호출 9 |
+| 보고서 | `--snapshot 3 --format pdf` 성공, 172쪽(ECharts 번들 없음 경고 — 표만) |
+
+실제로 다르게 해야 했던 절차(다음 실행은 이대로):
+
+1. **Postgres(Docker 없음)** — backend dev 의존성 `pgserver` 의 번들 Postgres 16 을 r4 폴더 안에 띄운다(프로세스가 끝나도 서버는 남는다):
+
+   ```python
+   # r4/pg_start.py — uv run python ../r4/pg_start.py  (backend/ 에서)
+   import pgserver; from pathlib import Path
+   srv = pgserver.get_server(Path("../r4/pgdata").resolve(), cleanup_mode=None)
+   if "1 row" not in srv.psql("SELECT 1 FROM pg_database WHERE datname='r4';"): srv.psql("CREATE DATABASE r4;")
+   print(srv.get_uri())   # postgresql://postgres:@127.0.0.1:<임의 포트>/postgres → DATABASE_URL=postgresql+psycopg://postgres:@127.0.0.1:<포트>/r4
+   ```
+
+   멈춤: `.venv/Lib/site-packages/pgserver/pginstall/bin/pg_ctl.exe -D ../r4/pgdata -w stop`. 다시 띄우면 포트가 바뀔 수 있다(`.env` 갱신).
+   SQLite 우회는 하지 않는다(D11-9).
+2. **alembic 은 `ENV_FILE` 을 읽지 않는다**(M4) — `export ENV_FILE=…; uv run alembic upgrade head` 는 `backend/dev.db`(SQLite)를
+   조용히 마이그레이션한다(출력 `Context impl SQLiteImpl`). 반드시 `DATABASE_URL=postgresql+psycopg://…/r4 uv run alembic upgrade head`
+   로 하고 `PostgresqlImpl` 과 `alembic current` = `0013 (head)` 를 확인한다. 잘못 생긴 `backend/dev.db` 는 지운다.
+3. **키 옮기기** — r4 `.env` 는 스크립트로 저장소 루트 `.env` 에서 `DATA_GO_KR_KEY`·`NEWS_API_PROVIDER`·`NEWS_API_KEY` 만 읽어 쓴다
+   (`cp ../infra/.env.example` 후 손 편집 대신). 값은 출력하지 않고 존재·길이만 찍는다. `RAW_DIR`·`REPORT_DIR`·`REFERENCE_DIR`·
+   `BACKUP_DIR` 은 절대 경로. 끝나면 r4 `.env`·토큰 파일을 지운다.
+4. **smoke 는 `JEV_MCP_CMD` 를 무시한다**(m1, `tests/judge/test_live.py` 는 기본 `@latest`) — 고정 버전과 `@latest` 가 같은지
+   `npm view @jkudish/jev-mcp version` 으로 따로 확인한다.
+5. **실제 호출 수는 `judgment_log` 로 셀 수 없다**(C1 이 고쳐지기 전까지) — 어댑터가 판정기를 부른 뒤 다른 버전 hash 의 기존 행을
+   replay 하면 행·잡 stats·로그·G7 `real_calls` 모두 '캐시'로 남는다. 2회차는 MCP `tools/call` 을 세는 stdio 프록시를 `JEV_MCP_CMD` 로
+   준다(도구 이름·시각만 기록 — payload 금지; adapter_version 은 서버 버전에서 오므로 hash 는 바뀌지 않는다):
+
+   ```python
+   # r4/jev_count_proxy.py — JEV_MCP_CMD="<backend/.venv/Scripts/python.exe> <r4/jev_count_proxy.py>"
+   import json, shutil, subprocess, sys, threading, time
+   from pathlib import Path
+   OUT = Path(__file__).resolve().parent / "logs" / "jev_calls.jsonl"
+   child = subprocess.Popen([shutil.which("npx"), "-y", "@jkudish/jev-mcp@0.14.1"],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=sys.stderr, bufsize=0)
+   def up():
+       for line in iter(sys.stdin.buffer.readline, b""):
+           try:
+               m = json.loads(line)
+               if m.get("method") == "tools/call":
+                   with OUT.open("a") as f: f.write(json.dumps({"ts": time.time(), "tool": m["params"]["name"]}) + "\n")
+           except Exception: pass
+           child.stdin.write(line); child.stdin.flush()
+       child.stdin.close()
+   def down():
+       for line in iter(child.stdout.readline, b""): sys.stdout.buffer.write(line); sys.stdout.buffer.flush()
+   threading.Thread(target=up, daemon=True).start(); threading.Thread(target=down, daemon=True).start()
+   sys.exit(child.wait())
+   ```
+
+   통과 = `jev_calls.jsonl` 줄 수 0. 1회차 adapter_version 이 2개 이상이면 2회차에 숨은 호출이 생긴다.
+6. **API** — `uv run uvicorn app.main:app --port 8000` 대신 `.env` 의 `API_PORT`(빈 포트)로 `uv run python -m app.serve`. Git Bash 에서
+   `/api/...` 를 인자로 넘기는 스크립트는 MSYS 경로 변환을 피하려고 경로 앞 `/` 없이 넘기거나 `MSYS_NO_PATHCONV=1`.
+7. **집계 SQL(Postgres)** — `sqlite3` 대신 psql/psycopg. `json_extract(stats,'$.pipeline.judge_calls')` → `stats->'pipeline'->>'judge_calls'`,
+   rejudge 잡은 `stats->>'judge_calls'`·`stats->>'cached'`. 추가로 볼 것: `SELECT output_json->>'provider', output_json->>'model', tool,
+   COUNT(*) FROM judgment_log GROUP BY 1,2,3`(모델 호출 vs 로컬 단락), bootstrap `pipeline.judge_calls` 는 수집 단계 호재 screen 을
+   빼고 센다(m2 — `judgment_log` 와 20 차이).
+8. **2회차 (a)** — 발행된 스냅샷 rejudge 는 같은 기준일 **새 리비전**(스냅샷 2)을 만들고 발행한다. (b) 뒤에는 스냅샷 3. 보고서 SID 는
+   가장 새 발행 리비전(`--snapshot 3` → 비교 기준 revision_of 2 자동).
+9. **2회차 (b)** — `worker --once` 가 official_site 재렌더로 약 12분 막힌다. 1회차 직후에는 실제 공고 변화가 없어도 빈 값 채움·접수
+   상태 변화로 재판정이 생긴다(M5) — change_event 내용을 기록한다.
+10. **보고서** — worktree·Docker 없는 실행은 `frontend/node_modules` 가 없어 차트가 빠진다(m4). 차트가 필요하면
+    `REPORT_ECHARTS_JS=<echarts.min.js 절대 경로>`.
+11. `uv run playwright install chromium` 은 공용 `%LOCALAPPDATA%\ms-playwright` 에서 쓰지 않는 다른 버전 브라우저를 지운다 — 같은 PC 의
+    다른 worktree 가 쓰는 버전이면 그쪽에서 다시 설치해야 한다.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
