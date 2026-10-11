@@ -61,7 +61,10 @@ R3 8차 리뷰(`docs/design/wp/R3_REVIEW8.md`) 후속 — CEO 결정 D16(`docs/d
 
 ### 측정
 
-(R3h CORE6 완료 보고에 적는다 — 부하 2회 값)
+- **D14-5**(`tests/api/test_r3f_perf_publish.py` — devseed 16 + 합성 1,000 단지 × 시나리오 5, 전체 pytest 안에서): 1회차(`python
+  scripts/tasks.py regress` 와 동시) 잡 21.5s·API 쓰기 응답 최대 0.543s(p50 0.009s, 165건)·저장본 묶음 쓰기 잠금 최대 0.031s·이월 복사
+  잠금 0.376s·전환 0.003s / 2회차(regress 와 일부 겹침) 21.9s·0.505s(p50 0.007s, 188건)·0.022s·0.893s·0.002s. 저장본 5,439행·12.2MB.
+  출처 서랍 76,909개(.12 의 112,380 → 줄었다: 보고서 점수 prov 가 API 서랍 id 와 같아져 겹친다 — m6). 기준 잡 ≤30s·API 쓰기 ≤1s.
 
 ## 2026-10-09.12
 
