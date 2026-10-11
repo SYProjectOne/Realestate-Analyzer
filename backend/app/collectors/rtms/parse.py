@@ -13,6 +13,9 @@ jibun·dealingGbn·cdealType("O" = 해제)·cdealDay("26.10.02")·rgstDate.
 오류(키 없음·미등록 등)는 ``<OpenAPI_ServiceResponse><cmmMsgHeader><errMsg>…`` (HTTP 401/403 또는 200).
 
 해제(cancelled) 플래그를 보존한다 — 점수에서 빼는 것은 WP4 몫이다.
+
+R4 C2(D18-3): **실제 응답에는 umdCd 가 없다**(sggCd·umdNm 만). 법정동 코드는 umdCd 가 있을 때만 여기서 만들고,
+없으면 ``sgg_code`` 를 남겨 적재(``collector.load_trades``)가 참조 표로 매칭한다(``legal.LegalDongIndex``).
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ _OK_CODES = {"00", "000"}
 class TradeRecord:
     apt_name: str
     dong: str | None  # 법정동 이름(umdNm)
-    legal_dong_code: str | None  # sggCd + umdCd (10자리)
+    legal_dong_code: str | None  # sggCd + umdCd (10자리) — umdCd 없으면 None(적재 때 참조 표 매칭)
     completed_year: int | None
     area_m2: Decimal
     floor: int | None
@@ -47,6 +50,7 @@ class TradeRecord:
     apt_dong: str | None = None  # 아파트 동(101동 등)
     jibun: str | None = None
     dealing_type: str | None = None
+    sgg_code: str | None = None  # sggCd(5자리) — 법정동 매칭용(D18-3)
 
 
 @dataclass(slots=True)
@@ -151,6 +155,7 @@ def parse_trade_xml(content: bytes, *, is_presale: bool = False) -> TradePage:
                 jibun=_text(item, "jibun"),
                 dealing_type=_text(item, "dealingGbn"),
                 is_presale=is_presale,
+                sgg_code=sgg if sgg and len(sgg) == 5 else None,
             )
         )
     return page

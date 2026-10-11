@@ -139,6 +139,9 @@ def assemble(
             "failed": sum(1 for d in got if d.http_status != 200),
             "inserted": int(getattr(load, "inserted", 0) or 0),
         }
+        legal = getattr(load, "legal_dong_stats", None)
+        if callable(legal):  # D18-3 법정동 매칭률
+            res.stats["rtms_backfill"]["legal_dong"] = legal()
 
     def benchmark() -> None:
         with ctx.session_factory() as s:

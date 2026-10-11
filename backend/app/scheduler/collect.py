@@ -70,7 +70,7 @@ class CollectResult:
     store_errors: list[str] = field(default_factory=list)
     errors: dict[str, str] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
-    loaded: dict[str, dict[str, int]] = field(default_factory=dict)
+    loaded: dict[str, dict[str, Any]] = field(default_factory=dict)
     change_event_ids: list[int] = field(default_factory=list)
     rejudge_complex_ids: list[int] = field(default_factory=list)
     list_complex_ids: list[int] | None = None
@@ -319,6 +319,10 @@ def collect(
                 loaded = _load_stats(getattr(collector, "load_stats", None))
                 if loaded is not None:
                     res.loaded["rtms"] = loaded
+                    # D18-3: 법정동 매칭률(umdCd 없는 실제 응답 → 참조 표 매칭)
+                    legal = getattr(getattr(collector, "load_stats", None), "legal_dong_stats", None)
+                    if callable(legal):
+                        res.loaded["rtms_legal_dong"] = legal()
                     ev = _market_event(session, snap_dto.id, "rtms_trade", loaded, detected_at)
                     if ev is not None:
                         events.append(ev)
