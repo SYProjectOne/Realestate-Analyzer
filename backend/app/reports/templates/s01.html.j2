@@ -4,7 +4,7 @@
   <p class="lead">기준일은 {{ data.asof_date }}이고, 대상은 사용자가 고른 지역 "{{ data.region_name }}"의 생활권 {{ data.living_areas | length }}개 · 단지 {{ data.complexes | length }}개다.</p>
   <table>
     <tbody>
-      <tr><th>기준일</th><td>{{ data.asof_date }}</td><th>스냅샷</th><td>#{{ data.snapshot_id }} · {{ data.snapshot_status }}{% if data.published_at %} · 공개 {{ data.published_at[:10] }}{% endif %}</td></tr>
+      <tr><th>기준일</th><td>{{ data.asof_date }}</td><th>스냅샷</th><td>#{{ data.snapshot_id }} · {{ data.snapshot_status }}{% if data.published_at %} · 공개 {{ data.published_at | kst_day }}{% endif %}</td></tr>
       <tr><th>미판정 모드</th><td>{{ "예 — 판정기 장애로 점수 미계산(§9)" if data.degraded else "아니오" }}</td><th>시나리오(본문 점수표)</th><td>{{ data.scenario_name }}</td></tr>
       <tr><th>입력 지명</th><td>{{ data.region_query }}</td><th>계약 버전</th><td>{{ data.contract_version }}</td></tr>
     </tbody>

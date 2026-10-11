@@ -2,7 +2,10 @@
 
     python -m app.reports.cli --snapshot 12 --format pdf [--compare 11] [--scenario 2] [--out DIR]
 
-종료 코드: 0 성공(경로를 stdout 에), 2 스냅샷·시나리오 없음, 3 contradicted 주장으로 거부, 1 그 밖의 오류.
+종료 코드: 0 성공(경로를 stdout 에), 2 스냅샷·시나리오 없음, 3 contradicted 주장으로 거부,
+4 그 리비전에 없는 시나리오(scenario_not_in_revision), 5 저장본 준비 전(materialize_pending),
+6 ``--compare`` 비교 기준 규칙 위반(compare_snapshot_id — 다른 지역·발행 전·같거나 더 새 리비전,
+API ``POST /reports`` 422 와 같은 규칙), 1 그 밖의 오류.
 """
 
 from __future__ import annotations
@@ -13,6 +16,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from app.core.db import get_session
+from app.models import Snapshot
+from app.reports.data import compare_problem
 from app.reports.errors import ReportBlocked, ReportNotFound
 from app.reports.export import generate
 
@@ -35,6 +40,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         with get_session() as session:
+            if args.compare is not None:
+                snap, cmp = session.get(Snapshot, args.snapshot), session.get(Snapshot, args.compare)
+                problem = compare_problem(snap, cmp) if snap is not None and cmp is not None else None
+                if (
+                    problem is not None
+                ):  # R3 7차 minor 15: API 와 같은 비교 기준 규칙(없는 id 는 generate 가 2)
+                    print(f"compare_snapshot_id: {problem}", file=sys.stderr)
+                    return 6
             rep = generate(
                 session,
                 args.snapshot,
