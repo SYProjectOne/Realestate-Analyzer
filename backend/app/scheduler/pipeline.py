@@ -151,6 +151,10 @@ EXTRACT_FIELDS_MAX: Final = 32
 class CountingCaller:
     """판정기 호출 계수(실제 호출 vs 캐시). 판정 자체는 그대로 넘긴다.
 
+    D18-2: 어댑터에 전송 계층 계수기(``meter`` — ``judge.base.CallMeter``)가 있으면 **실제 호출 = 그 호출 동안 보낸
+    tools/call 수**다(봉투의 cached 표시와 무관 — R4 C1 의 숨은 호출도 센다). 없으면(MockAdapter 녹화 재생) 봉투로 센다.
+    버전 변경 감지(``live_version``)는 어댑터가 알려 주는 '모델 호출 응답의 버전'(``observed_version``, D18-1)을 쓴다.
+
     ``before_call``: 호출 전에 파이프라인 세션을 commit 한다 — 어댑터는 호출마다 자기 세션으로 judgment_log 를
     쓰므로, 파이프라인 세션이 열린 트랜잭션(SQLite WAL 의 낡은 읽기 스냅샷)을 들고 있으면 쓰기가 막힌다.
     """
@@ -165,7 +169,8 @@ class CountingCaller:
         self.cached_by_tool: Counter[str] = Counter()  # 도구별 캐시 재생(R3 m23 — /ops/judgments cached_hits)
         self.statuses: Counter[str] = Counter()
         self.seen_version: str | None = None  # 마지막 봉투의 adapter_version(캐시 재생 포함)
-        self.live_version: str | None = None  # 판정기에 실제로 간 호출의 봉투 버전(버전 변경 감지용)
+        self.live_version: str | None = None  # 판정기에 실제로 간 호출이 알려 준 버전(버전 변경 감지용)
+        self.hidden = 0  # 봉투는 cached 인데 tools/call 이 나간 호출(있으면 어댑터 결함 — 로그)
 
     @property
     def adapter_version(self) -> str:
@@ -192,20 +197,31 @@ class CountingCaller:
     ) -> JudgmentEnvelope:
         if self._before is not None:
             self._before()
+        meter = getattr(self.inner, "meter", None)
+        before = meter.total() if meter is not None else 0
         env = self.inner.call(tool, payload, purpose, snapshot_id=snapshot_id, complex_id=complex_id)
+        sent = (meter.total() - before) if meter is not None else None
         self.statuses[env.status] += 1
         if env.adapter_version:
             self.seen_version = env.adapter_version
-        if env.cached:
+        live = (sent > 0) if sent is not None else (not env.cached and env.status != "blocked")
+        if live:
+            n = sent if sent is not None else 1
+            self.calls += n
+            self.by_tool[tool] += n
+            if env.cached:
+                self.hidden += n
+                log.warning("worker.pipeline.hidden_call", extra={"tool": tool, "sent": n})
+            observed = getattr(self.inner, "observed_version", None)
+            if isinstance(observed, str) and observed:
+                self.live_version = observed
+            elif env.adapter_version and env.status != "error":
+                self.live_version = env.adapter_version
+        elif env.cached:
             self.cached += 1
             self.cached_by_tool[tool] += 1
         elif env.status == "blocked":
             self.blocked += 1
-        else:
-            self.calls += 1
-            self.by_tool[tool] += 1
-            if env.adapter_version and env.status != "error":
-                self.live_version = env.adapter_version
         return env
 
 
@@ -1022,6 +1038,9 @@ def run_pipeline(
                 if ev is not None:
                     res.version_event_id = ev.id
                     session.commit()
+                if getattr(caller.inner, "model_change_pending", False):
+                    # D18-1: 이 실행은 옛 키 그대로 끝냈다 — 다음 실행(새 어댑터)이 새 모델로 고정해 전체 재판정
+                    ctx.reset_adapter()
         log.info(
             "worker.pipeline.done",
             extra={

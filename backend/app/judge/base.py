@@ -12,21 +12,32 @@
     guard 거부 → status='blocked' 행 + 봉투 (판정기에 보내지 않음)
          │ 통과
     [잠금: 같은 hash 는 한 번에 하나, 모델 확정 전에는 모든 호출을 하나씩 → 실제 호출 1회 보장]
-    transport.call(jev_<tool>, payload) ─ 실패 → status='error' 행 + JudgeUnavailable (T18)
+    meter += 1; transport.call(jev_<tool>, payload) ─ 실패 → status='error' 행 + JudgeUnavailable (T18)
          │
     normalize(tool, raw, payload, purpose) → status·result·confidence
          │
     judgment_log 행(insert, error 행이면 update; result_json = 정규화 결과) → cached=False 봉투
 
 - 어댑터는 임계값을 넘기지 않는다. payload 는 JEV 입력 그대로(``payloads.py``)이고 임계 인자를 넣지 않는다.
-- adapter_version = ``<ADAPTER_CODE_VERSION>+jev-mcp@<initialize.serverInfo.version>+<응답 model>``
-  (DECISIONS D6 보강, 계약 2026-10-09.2). 모델은 응답에만 보이므로: 시작할 때 judgment_log 에서 같은 코드·서버
-  버전의 마지막 모델을 읽고(없으면 접미 없이), 응답의 ``model`` 이 다르면 그 자리에서 버전을 바꾸고 이 호출을
-  새 버전의 input_hash 로 기록한다 — 모델이 바뀌면 그 뒤 모든 hash 가 바뀌어 재판정된다.
+- adapter_version(캐시 키) = ``<ADAPTER_CODE_VERSION>+jev-mcp@<initialize.serverInfo.version>+<고정 모델>``
+  (DECISIONS D6 보강 → **D18-1**). 고정 모델 = **모델을 실제로 부른 응답**(``provider`` ≠ ``none``)이 알려 준
+  모델. provider none(JEV 로컬 단락 — 0.14.1 extract 는 이때 ``model: "jev-latest"``) 응답의 model 은 무시한다.
+  시작할 때 judgment_log 에서 같은 코드·서버 버전으로 기록된 마지막 '모델 호출' 응답의 model 을 읽어 고정한다.
+  - 모델을 아직 모르면(빈 DB) 접미 없이 시작하고, 첫 모델 호출 응답에서 고정한다. 그때 접미 없이 쓴 이번
+    버전의 정상 행을 새 버전의 hash 로 옮긴다(``_adopt_first_model``) — 같은 입력이 다시 판정기로 가지 않는다.
+  - 고정 모델과 다른 모델이 응답에 보이면(모델 변경) **그 실행(어댑터 수명) 중에는 키를 바꾸지 않는다** —
+    replay 도 없다. ``observed_version``·``model_change_pending`` 으로 알리고, 파이프라인이
+    change_event(judge·version·critical)를 남긴 뒤 어댑터를 버린다 → 다음 실행(새 어댑터)이 새 모델로 고정해
+    전체 재판정한다.
+  - 응답의 실제 ``model``·``provider`` 는 judgment_log.output_json(원응답)에 그대로 남는다.
+- 실제 호출 수(**D18-2**) = 전송 계층으로 보낸 ``tools/call`` 수(``CallMeter``). 캐시 적중은 0 이다.
+  잡 stats·G7 이 이 수를 쓴다(``scheduler.pipeline.CountingCaller``·``scheduler.runner``).
 - 버전 근거(R3 M12): 시작 모델·캐시 선조회 버전은 error·blocked 행을 보지 않는다 — 그 행은 모델을 모르는
   채(또는 연결 없이) 쓰인 버전일 수 있다.
 - 로그에는 input_hash·길이·도구·상태만(``log.py``). payload 원문은 judgment_log.input_json 에만(guard 통과분).
 """
+
+# ruff: noqa: E501  (한국어 docstring·주석)
 
 from __future__ import annotations
 
@@ -36,6 +47,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Final, Literal, Protocol, runtime_checkable
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -44,6 +56,7 @@ from app.core.protocols import JUDGE_TOOLS, JudgePayload, JudgeTool, JudgeUnavai
 from app.core.redact import redact_text
 from app.core.time import now_kst
 from app.judge import cache, guard, log
+from app.models import JudgmentLog
 
 __all__ = [
     "ADAPTER_CODE_VERSION",
@@ -51,12 +64,14 @@ __all__ = [
     "CANONICAL_SAMPLE",
     "TOOL_NAMES",
     "CachedJudgeAdapter",
+    "CallMeter",
     "JudgeCaller",
     "Normalized",
     "SessionFactory",
     "Status",
     "ToolResponse",
     "Transport",
+    "called_model",
     "make_adapter_version",
     "model_of",
 ]
@@ -100,6 +115,45 @@ def model_of(raw: dict[str, Any]) -> str | None:
     """판정기 원응답의 모델 이름(JEV: ``"model": "jev-1.13.0"``). 없으면 None."""
     value = raw.get("model") if isinstance(raw, dict) else None
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def called_model(raw: dict[str, Any]) -> str | None:
+    """모델을 실제로 부른 응답의 모델(D18-1). ``provider`` 가 ``none``(로컬 단락)이면 None — 그 응답의 model 은
+    고정 모델 근거가 아니다. provider 가 없는 응답(옛 JEV·가짜 서버)은 모델 호출로 본다."""
+    if not isinstance(raw, dict):
+        return None
+    provider = raw.get("provider")
+    if isinstance(provider, str) and provider.strip().lower() == "none":
+        return None
+    return model_of(raw)
+
+
+class CallMeter:
+    """판정기로 보낸 ``tools/call`` 수(D18-2) — 도구별. 스레드 안전. 캐시 적중·guard 차단은 세지 않는다.
+
+    어댑터는 전송 직전에 센다(연결 실패로 끝난 시도도 1 — 보수적). 잡 집계는 잡 시작·끝의 차이로 낸다."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._by_tool: dict[str, int] = {}
+
+    def add(self, tool: str) -> None:
+        with self._lock:
+            self._by_tool[tool] = self._by_tool.get(tool, 0) + 1
+
+    def by_tool(self) -> dict[str, int]:
+        with self._lock:
+            return dict(self._by_tool)
+
+    def total(self) -> int:
+        with self._lock:
+            return sum(self._by_tool.values())
+
+    @staticmethod
+    def delta(before: dict[str, int], after: dict[str, int]) -> dict[str, int]:
+        """두 ``by_tool`` 사이의 도구별 증가분(0 은 뺀다)."""
+        out = {t: n - before.get(t, 0) for t, n in after.items()}
+        return {t: n for t, n in sorted(out.items()) if n > 0}
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,8 +238,13 @@ class CachedJudgeAdapter:
         self._secrets = list(secrets) if secrets is not None else guard.default_secrets()
         self._adapter_version: str | None = None
         self._server_version: str | None = None
-        self._model: str | None = None
-        self._model_confirmed = False  # 이 프로세스에서 판정기 응답으로 모델을 확인했나
+        self._model: str | None = (
+            None  # 고정 모델(캐시 키, D18-1) — 처음 알 때만 정하고 어댑터 수명 동안 그대로
+        )
+        self._observed_model: str | None = None  # 이 실행에서 모델 호출 응답이 마지막으로 알려 준 모델
+        self._model_confirmed = False  # 고정 모델을 안다(DB 또는 모델 호출 응답) — 모르면 호출을 하나씩
+        self.meter = CallMeter()
+        """tools/call 계수기(D18-2). 스케줄러는 잡을 넘어 쌓이는 자기 계수기로 바꿔 끼운다."""
         self._version_lock = threading.Lock()
         self._first_call_lock = threading.Lock()
         self._key_locks = [threading.Lock() for _ in range(_LOCK_STRIPES)]
@@ -194,24 +253,56 @@ class CachedJudgeAdapter:
 
     @property
     def adapter_version(self) -> str:
-        """판정기 서버 버전(처음 한 번 연결) + 마지막으로 본 모델. 연결 실패면 JudgeUnavailable."""
+        """캐시 키 버전 = 판정기 서버 버전(처음 한 번 연결) + 고정 모델. 연결 실패면 JudgeUnavailable."""
         with self._version_lock:
             if self._adapter_version is None:
                 server = self._transport.server_version()
                 self._server_version = server
                 if self._model is None:
                     self._model = self._last_model(make_adapter_version(server))
+                    self._model_confirmed = self._model is not None
                 self._adapter_version = make_adapter_version(server, self._model)
             return self._adapter_version
 
+    @property
+    def observed_version(self) -> str | None:
+        """이 실행에서 모델 호출 응답이 알려 준 모델의 버전(버전 변경 감지용, D18-1). 아직 없으면 None."""
+        with self._version_lock:
+            if self._observed_model is None or self._server_version is None:
+                return None
+            return make_adapter_version(self._server_version, self._observed_model)
+
+    @property
+    def model_change_pending(self) -> bool:
+        """응답 모델이 고정 모델과 다르다 — 다음 실행(새 어댑터)부터 새 키로 전체 재판정해야 한다."""
+        with self._version_lock:
+            return (
+                self._model is not None
+                and self._observed_model is not None
+                and self._observed_model != self._model
+            )
+
     def _last_model(self, prefix: str) -> str | None:
-        """같은 코드·서버 버전으로 기록된 마지막 정상 행의 모델(재시작해도 같은 hash 가 되도록).
-        error·blocked 행은 근거로 쓰지 않는다(R3 M12)."""
+        """같은 코드·서버 버전으로 기록된 마지막 '모델 호출' 응답(provider ≠ none)의 model(재시작해도 같은 hash).
+        error·blocked 행은 근거로 쓰지 않는다(R3 M12). 행의 버전 접미가 아니라 응답의 model 을 본다 — 모델이 바뀐
+        실행의 행은 옛 키로 기록되지만 응답에는 새 모델이 있다(D18-1: 다음 실행부터 새 키)."""
+        stmt = (
+            select(JudgmentLog.adapter_version, JudgmentLog.output_json)
+            .where(
+                JudgmentLog.adapter_version.startswith(prefix, autoescape=True),
+                JudgmentLog.status.not_in(cache.NOT_VERSION_EVIDENCE),
+            )
+            .order_by(JudgmentLog.seq.desc())
+            .execution_options(yield_per=200)
+        )
         with self._session_factory() as session:
-            last = cache.last_adapter_version(session, prefix + "+", final_only=True)
-        if not last:
-            return None
-        return last[len(prefix) + 1 :] or None
+            for version, output in session.execute(stmt):
+                if version != prefix and not version.startswith(prefix + "+"):
+                    continue  # 접두만 같은 다른 서버 버전(0.14.1 ↔ 0.14.10)
+                model = called_model(output if isinstance(output, dict) else {})
+                if model is not None:
+                    return model
+        return None
 
     def _known_version(self, session: Session) -> str | None:
         """서버에 묻지 않고 아는 버전: 확인한 버전, 없으면 judgment_log 마지막 정상 행의 버전
@@ -221,15 +312,45 @@ class CachedJudgeAdapter:
         return cache.last_adapter_version(session, f"{ADAPTER_CODE_VERSION}+{SERVER_TAG}@", final_only=True)
 
     def _observe_model(self, raw: dict[str, Any]) -> bool:
-        """응답의 모델이 지금 버전과 다르면 버전을 바꾸고 True. 응답을 봤으니 모델은 확정."""
-        model = model_of(raw)
+        """모델 호출 응답의 모델을 기록한다. 고정 모델을 **처음** 알게 됐으면 고정하고 True(키에 접미가 붙는다).
+        이미 고정돼 있으면 다른 모델이어도 키를 바꾸지 않는다(D18-1 — ``model_change_pending``).
+        provider none 응답은 아무것도 바꾸지 않는다."""
+        model = called_model(raw)
         with self._version_lock:
-            self._model_confirmed = True
-            if model is None or model == self._model or self._server_version is None:
+            if model is None or self._server_version is None:
+                return False
+            self._observed_model = model
+            if self._model is not None:
                 return False
             self._model = model
+            self._model_confirmed = True
             self._adapter_version = make_adapter_version(self._server_version, model)
             return True
+
+    def _adopt_first_model(self, session: Session, bare: str, version: str) -> int:
+        """고정 모델을 처음 알게 됐다 → 접미 없는 ``bare`` 버전으로 기록한 정상 행(ok·review·escaped)을 새 버전의
+        hash 로 옮긴다(같은 입력이 이 실행·다음 실행에서 다시 판정기로 가지 않게). 옮긴 행 수. commit 은 호출자.
+
+        blocked 행은 input_json 이 가려져 있어 옮기지 않는다(다시 와도 guard 가 판정기 없이 막는다). 옮길 hash 에
+        이미 행이 있으면 그대로 둔다."""
+        rows = list(
+            session.scalars(
+                select(JudgmentLog).where(
+                    JudgmentLog.adapter_version == bare,
+                    JudgmentLog.status.not_in(cache.NOT_VERSION_EVIDENCE),
+                )
+            )
+        )
+        moved = 0
+        for row in rows:
+            key = cache.compute_hash(row.tool, row.purpose, row.input_json, version)  # type: ignore[arg-type]
+            if cache.find(session, key) is not None:
+                continue
+            row.input_hash = key
+            row.adapter_version = version
+            moved += 1
+        session.flush()
+        return moved
 
     @contextmanager
     def _call_slot(self, key: str) -> Iterator[None]:
@@ -351,6 +472,7 @@ class CachedJudgeAdapter:
         snapshot_id: int | None,
         complex_id: int | None,
     ) -> JudgmentEnvelope:
+        self.meter.add(tool)  # D18-2: 판정기로 보내는 tools/call 1건(실패로 끝나도 센다)
         try:
             response = self._transport.call(TOOL_NAMES[tool], payload)
         except JudgeUnavailable as exc:
@@ -364,12 +486,15 @@ class CachedJudgeAdapter:
             raise JudgeUnavailable(f"{TOOL_NAMES[tool]} 오류 응답")
 
         if self._observe_model(response.raw):
-            # 모델이 바뀌었다(또는 처음 알았다) → 이 응답은 새 버전의 hash 로 기록한다
+            # 고정 모델을 처음 알았다(빈 DB) → 이 응답과 이번 버전의 앞선 행을 새 버전의 hash 로 기록한다.
+            # 앞선 행은 접미 없는 버전이었다 — 같은 입력이면 그 hash 로 이미 찾았으므로 여기서 replay 할 일이 없다.
+            bare = version
             version = self.adapter_version
             key = cache.compute_hash(tool, purpose, payload, version)
+            self._adopt_first_model(session, bare, version)
             renewed = cache.find(session, key)
-            if renewed is not None and cache.is_final(renewed):
-                return self._replay(renewed)
+            if renewed is not None and cache.is_final(renewed):  # pragma: no cover - 방어(모델 확정 전 잠금)
+                return self._commit(session, renewed, result=self._result_of(renewed), key=key)
             # 새 hash 에 행이 없으면 옛 hash 의 error 행(있으면)을 새 hash 로 옮겨 갱신한다
             existing = renewed if renewed is not None else existing
 
