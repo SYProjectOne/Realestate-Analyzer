@@ -366,12 +366,11 @@ describe('F7·F8 사람 확인 checked_at: 시간대 RFC3339 · 미래 422 · �
     expect(offsetText(0)).toBe('+00:00');
   });
 
-  it('checkedAtProblem: 비었으면 입력 안내, 10분 넘게 미래면 미래 안내, 그 안은 통과', () => {
-    const now = new Date(2026, 9, 10, 12, 0).getTime();
-    expect(checkedAtProblem('', now)).toBe(t('page.G7.hc.checkedAtRequired'));
-    expect(checkedAtProblem('2026-10-10T12:09', now)).toBeNull();
-    expect(checkedAtProblem('2026-10-10T12:11', now)).toBe(t('page.G7.hc.checkedAtFutureLocal'));
-    expect(checkedAtProblem('2026-10-09T08:00', now)).toBeNull();
+  it('checkedAtProblem: 비었으면 입력 안내, 형식이 맞으면 통과(미래 여부는 서버 — 8차 m17)', () => {
+    expect(checkedAtProblem('')).toBe(t('page.G7.hc.checkedAtRequired'));
+    expect(checkedAtProblem('2026-10-10T12:09')).toBeNull();
+    expect(checkedAtProblem('2026-10-10T12:11')).toBeNull();
+    expect(checkedAtProblem('2026-10-09T08:00')).toBeNull();
   });
 
   async function fillForm() {
@@ -383,26 +382,6 @@ describe('F7·F8 사람 확인 checked_at: 시간대 RFC3339 · 미래 422 · �
     await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
     return form;
   }
-
-  it('10분 넘게 미래인 확인 시각은 보내지 않고 확인 시각 칸에 미래 안내', async () => {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
-    const rec = recordRequests();
-    renderRoute('/ops');
-    const form = await fillForm();
-    const checkedAt = within(form).getByLabelText(t('page.G7.hc.checkedAt'));
-    const future = new Date(Date.now() + 2 * 3600_000);
-    future.setMinutes(future.getMinutes() - future.getTimezoneOffset());
-    await userEvent.clear(checkedAt);
-    await userEvent.type(checkedAt, future.toISOString().slice(0, 16));
-    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
-    await waitFor(() => expect(checkedAt).toHaveAttribute('aria-invalid', 'true'));
-    expect(within(form).getByText(t('page.G7.hc.checkedAtFutureLocal'))).toHaveAttribute(
-      'role',
-      'alert',
-    );
-    expect(matching(rec.requests, 'POST', '/ops/human-checks')).toHaveLength(0);
-    rec.stop();
-  });
 
   it('서버 422 미래(서버 시계 기준) → 확인 시각 칸에 미래 안내(이른 확인일 문구 아님)', async () => {
     window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
