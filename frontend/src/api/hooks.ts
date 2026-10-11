@@ -319,6 +319,36 @@ export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]>
 
 // ─── 스냅샷 단위 조회 ──────────────────────────────────────
 
+/** 쿼리 키에서 (리비전, 시나리오) — 화면이 보이는 값의 정체 */
+type ViewOf = (queryKey: readonly unknown[]) => readonly [unknown, unknown];
+
+/**
+ * 7차 M7(D15-8): 다음 응답을 기다리는 동안 이전 값을 두는 것(placeholder)은 **같은 리비전·같은 시나리오**의 값일 때만이다
+ * (필터·정렬·생활권만 바뀐 경우). 리비전이나 시나리오가 바뀌면 이전 값을 보이지 않는다 — 새 리비전이 503
+ * materialize_pending 으로 재시도하는 동안(Retry-After 마다, 최대 수십 분) 옛 리비전 값이 새 리비전 머리말 아래 보이던 것.
+ */
+export function keepWithinView(viewOf: ViewOf, currentKey: readonly unknown[]) {
+  const [sid, scenario] = viewOf(currentKey);
+  return <T>(
+    previousData: T | undefined,
+    previousQuery: { queryKey: readonly unknown[] } | undefined,
+  ): T | undefined => {
+    if (previousData === undefined || !previousQuery) return undefined;
+    const [prevSid, prevScenario] = viewOf(previousQuery.queryKey);
+    return prevSid === sid && (prevScenario ?? null) === (scenario ?? null)
+      ? previousData
+      : undefined;
+  };
+}
+
+/** ['snapshots', sid, 'complexes', params] → (sid, params.scenario) */
+const complexesView: ViewOf = (k) => [
+  k[1],
+  (k[3] as ComplexListParams | undefined)?.scenario ?? null,
+];
+/** ['snapshots', sid, 'market', livingArea, scenario] → (sid, scenario) */
+const marketView: ViewOf = (k) => [k[1], k[4] ?? null];
+
 /** GET /snapshots/{sid}/dashboard?scenario= (getDashboard) — G1 */
 export function useDashboard(
   sid: IdLike | null | undefined,
@@ -332,7 +362,7 @@ export function useDashboard(
         signal,
       }),
     enabled: has(sid),
-    placeholderData: keepPreviousData,
+    // M7: 키 = (리비전, 시나리오) 뿐이라 이전 값을 둘 경우가 없다(다른 리비전·시나리오 값은 보이지 않는다)
   });
 }
 
@@ -350,15 +380,17 @@ export function useComplexes(
   sid: IdLike | null | undefined,
   params: ComplexListParams = {},
 ): Q<ComplexRowPage> {
+  const queryKey = queryKeys.complexes(key(sid), params);
   return useQuery({
-    queryKey: queryKeys.complexes(key(sid), params),
+    queryKey,
     queryFn: ({ signal }) =>
       apiFetch<ComplexRowPage>(`/snapshots/${enc(key(sid))}/complexes`, {
         query: complexQuery(params),
         signal,
       }),
     enabled: has(sid),
-    placeholderData: keepPreviousData,
+    // M7: 같은 리비전·시나리오 안의 필터·정렬 변경만 이전 행을 둔다
+    placeholderData: keepWithinView(complexesView, queryKey),
   });
 }
 
@@ -369,6 +401,12 @@ export interface ComplexPagesResult {
   isLoading: boolean;
   /** 나머지 페이지를 받는 중 */
   loadingMore: boolean;
+  /** 재시도 중인 마지막 실패 — 503 materialize_pending 이면 '준비 중'(7차 minor 18) */
+  failureReason: Error | null;
+  /** 지금 보이는 값이 같은 리비전·시나리오의 이전 값(필터 변경 중) */
+  isPlaceholderData: boolean;
+  /** 다시 시도(첫 페이지부터) */
+  refetch: () => unknown;
 }
 
 /**
@@ -421,6 +459,9 @@ export function useComplexesProgressive(
     error: first.error ?? rest.error ?? null,
     isLoading: first.isLoading,
     loadingMore: needMore && (rest.isFetching || !!rest.hasNextPage),
+    failureReason: first.failureReason ?? rest.failureReason ?? null,
+    isPlaceholderData: first.isPlaceholderData,
+    refetch: first.refetch,
   };
 }
 
@@ -570,15 +611,17 @@ export function useMarket(
   livingArea: string | null = null,
   scenario: ScenarioKey | null = null,
 ): Q<Market> {
+  const queryKey = queryKeys.market(key(sid), livingArea, scenario);
   return useQuery({
-    queryKey: queryKeys.market(key(sid), livingArea, scenario),
+    queryKey,
     queryFn: ({ signal }) =>
       apiFetch<Market>(`/snapshots/${enc(key(sid))}/market`, {
         query: { living_area: livingArea, scenario },
         signal,
       }),
     enabled: has(sid),
-    placeholderData: keepPreviousData,
+    // M7: 같은 리비전·시나리오 안의 생활권 변경만 이전 값을 둔다
+    placeholderData: keepWithinView(marketView, queryKey),
   });
 }
 
