@@ -358,17 +358,33 @@ def _p1_p3(
         except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록
             res.skipped[f"parse:rd{doc.id}"] = type(exc).__name__
             continue
-        for i, whole in enumerate(build_extract_requests([c for c in cands if c.needs_extract])):
+        for whole in build_extract_requests([c for c in cands if c.needs_extract]):
             if not whole.text.strip() or not whole.fields:
                 continue
-            # 필드가 32개를 넘으면 나눠 보낸다(잘라 버리면 넘친 OCR 값이 판정 없이 남는다, R3 C3). 첫 조각은 예전 tag 그대로
+            # D18-5: 같은 조각(같은 정규화 본문)은 한 번만 판정 — 판정 입력·purpose 를 원문 id 가 아니라 정규화 본문으로 정한다
+            # (다른 원문의 같은 조각 = 같은 input_hash = 캐시). 원문 id 는 반영(apply_extracted)의 출처에만 쓴다
+            whole = replace(whole, text=chunk_text(whole.text))
+            # 필드가 32개를 넘으면 나눠 보낸다(잘라 버리면 넘친 OCR 값이 판정 없이 남는다, R3 C3)
             for k in range(0, len(whole.fields), EXTRACT_FIELDS_MAX):
                 req = whole if len(whole.fields) <= EXTRACT_FIELDS_MAX else _part(whole, k)
-                tag = f"rd{doc.id}:{i}" + (f":{k // EXTRACT_FIELDS_MAX}" if k else "")
+                tag = chunk_tag(whole.text) + (f":{k // EXTRACT_FIELDS_MAX}" if k else "")
                 n_req += 1
                 _extract_one(session, caller, snap, doc.complex_id, req, tag, res, seq)
     if n_req:
         res.carried["extract_requests"] = n_req
+
+
+def chunk_text(text: str) -> str:
+    """판정 입력 조각의 정규화 본문(D18-5): 줄마다 앞뒤 공백을 떼고 줄 안 공백을 하나로, 빈 줄은 뺀다(줄바꿈은 남긴다 — 표 행)."""
+    lines = (" ".join(line.split()) for line in text.splitlines())
+    return "\n".join(line for line in lines if line)
+
+
+def chunk_tag(text: str) -> str:
+    """정규화 본문의 짧은 해시 — screen·extract·audit purpose 의 조각 키(원문 id 대신, D18-5)."""
+    import hashlib
+
+    return "c" + hashlib.sha256(chunk_text(text).encode("utf-8")).hexdigest()[:16]
 
 
 def _part(req: ExtractRequest, start: int) -> ExtractRequest:

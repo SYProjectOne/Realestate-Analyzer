@@ -14,7 +14,7 @@
     "extract": 78,
     "noul": 33,
     "rerank": 1,
-    "screen": 78,
+    "screen": 39,
     "verify": 11
   },
   "index": "_index.json = [{tool, purpose, input_hash, file, status, complex_id, basis, runs, payload}] — payload·purpose·adapter_version 으로 app.core.protocols.input_hash 를 다시 계산하면 input_hash 와 같다."
