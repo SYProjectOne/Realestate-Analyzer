@@ -289,7 +289,7 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
   — 계약만 올라간 경우 500 이 나지 않는다(D15-3). 발행 뒤 만든 시나리오·그 리비전에 없던 생활권·단지·출처는 그 리비전에서 404 다(시나리오 결과는 시나리오
   실행이 만드는 새 리비전에 있다 — 그 시나리오 보고서도 그 리비전에서, 아니면 422 `scenario_not_in_revision`).
 - **발행 = worker 잡**(D14-5): 저장본 계산·쓰기는 `snapshot.publish` 처리 함수(`app.snapshot_view.publish_revision`)에서만 한다 — 읽기
-  전용 계산 → 묶음당 ≤2MB 짧은 트랜잭션으로 나눠 쓰기 → 마지막에 published 전환. 끝날 때까지 이전 발행 리비전이 기본 화면이다. 호재
+  전용 계산 → 묶음당 ≤0.5MB 짧은 트랜잭션(R3g — 2MB 에서 줄임)으로 나눠 쓰기 → 마지막에 published 전환. 끝날 때까지 이전 발행 리비전이 기본 화면이다. 호재
   연결 PATCH·생활권 편집·지역 확장은 202 + job_id 를 돌려준다(G7 잡 목록에서 진행). 잡 stats 의 `total_s`·`write_max_lock_s`(API 쓰기가
   기다린 최대 시간 상한)·`missing_provenance`(출처 누락 '확인 불가' 건수, D14-8)를 본다. 발행 잡이 실패하면(failed) 리비전은 ready 로
   남고 넣던 저장본 행은 지워진다 — 원인을 고친 뒤 `POST /jobs {"job_name":"snapshot.publish","payload":{"snapshot_id":N}}`.

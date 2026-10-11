@@ -140,8 +140,8 @@ LEASE_TTL_S: Final = 900.0
 
 PROV_BUCKET: Final = 256
 """출처 서랍 묶음 하나의 평균 출처 수(1000 단지 ≈ 출처 3만 6천 → 묶음 약 140 행)."""
-CHUNK_BYTES: Final = 2_000_000
-"""나눠 쓰기 한 트랜잭션의 압축 본문 합 상한(쓰기 잠금 시간 — D14-5 '그동안 API 쓰기 잠금 1초 이하')."""
+CHUNK_BYTES: Final = 500_000
+"""나눠 쓰기 한 트랜잭션의 압축 본문 합 상한(쓰기 잠금 시간 — D14-5 '그동안 API 쓰기 잠금 1초 이하'). R3g: 2MB → 0.5MB(부하 측정에서 2MB 묶음 1.36초·1MB 묶음 1.21초 — CPU 경합)."""
 ZLIB_LEVEL: Final = 1
 
 PUBLISHING: ContextVar[tuple[int, int] | None] = ContextVar("snapshot_view_publishing", default=None)

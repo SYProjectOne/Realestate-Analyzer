@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Final
 
@@ -402,6 +403,7 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
     carry = p.get("carry_from_snapshot_id")
     with ctx.session_factory() as session:
         stats: dict[str, Any] = {"snapshot_id": sid}
+        t_carry = time.perf_counter()
         if carry is not None and session.get_bind().dialect.name == "sqlite":
             # 복사(쓰기)할 트랜잭션은 쓰기 잠금부터 잡는다 — 먼저 읽고 나중에 쓰면 그 사이 API 쓰기가 커밋됐을 때 WAL 이 읽기
             # 스냅샷을 쓰기로 올리지 못해 즉시 'database is locked'(R3 6차 m15 와 같은 원인, D14-5 부하 측정에서 재현)
@@ -419,6 +421,7 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
                 )}  # fmt: skip
                 snap.status = "ready"
             session.commit()
+            stats["carry_lock_s"] = round(time.perf_counter() - t_carry, 3)  # 복사 트랜잭션(쓰기 잠금) 시간 — D14-5
         _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}")
     return stats
 

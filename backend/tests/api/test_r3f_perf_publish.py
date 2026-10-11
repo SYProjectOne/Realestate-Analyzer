@@ -120,6 +120,7 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
         "compute_s": stats["compute_s"],
         "write_max_lock_s": stats["write_max_lock_s"],
         "flip_s": stats["flip_s"],
+        "carry_lock_s": stats.get("carry_lock_s"),
         "rows": stats["rows"],
         "bytes": stats["bytes"],
         "provenance_ids": stats["provenance_ids"],
