@@ -16,8 +16,9 @@
  *  - 계약 .13(D16-4): PATCH /catalysts 는 같은 호재에 같은 본문을 다시 보내면 200 + job_id null(바뀐 것 없음), 처음·다른
  *    본문이면 202 + job_id(예시 `catalyst_updated.json` 의 snapshot.publish 를 상태 있는 잡으로). 생성 핸들러는 가장 낮은
  *    상태(200 `catalyst_unchanged.json`)를 고르므로 202 모양은 계약 예시 파일에서 읽는다.
- *  - 계약 .13(D16-1·F1): 사람 확인 `discount` 값 = 원 단위 정수 0 ~ 1천억(쉼표·끝 '원' 허용) — 아니면 422
- *    `field_errors[0].loc = ["body","value_text"]`(서버와 같은 검사)
+ *  - 사람 확인 `discount` 값은 **검사하지 않는다**(R3i m2): 목이 서버(`demotion.py`)와 다른 규칙으로 422 를 내면 화면
+ *    테스트가 서버에 없는 동작을 고정한다(9차 리뷰 m2 — '٣٠٠٠'·할인 ≥ 가격 등 판정 불일치). 판정은 서버만, 목은 201 성공
+ *    모양만 흉내. 422 화면 경로는 테스트가 서버 응답 모양을 `server.use` 로 준다. 계약 .14 오류 code 는 2단계에서 맞춘다.
  *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -92,17 +93,6 @@ const state = {
 
 /** 계약 예시 PATCH /catalysts 202(보이는 값이 바뀜 — 계약 .13 D16-4) */
 const CATALYST_UPDATED = (catalystUpdatedExample as { value: CatalystUpdated }).value;
-
-/**
- * 서버(app/api/demotion.py parse_human_value) `discount` 검사와 같은 규칙(계약 .13 F1): 쉼표·공백·끝 '원' 을 뗀 원 단위
- * 정수 0 ~ 1천억. 문제가 없으면 null, 있으면 문구.
- */
-function discountProblem(value: unknown): string | null {
-  const text = typeof value === 'string' ? value.replace(/[,\s]/g, '').replace(/원$/, '') : '';
-  if (!/^\d+$/.test(text)) return 'discount 는 원 단위 정수여야 한다';
-  const n = Number(text);
-  return n > 100_000_000_000 ? 'discount 는 0 ~ 1천억 원이어야 한다' : null;
-}
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
 export function resetMockState(): void {
@@ -426,19 +416,6 @@ export const extraHandlers = [
         { code, detail, field_errors: [{ loc: ['body', 'checked_at'], msg: detail }] },
         { status: 422 },
       );
-    }
-    if (body.field === 'discount') {
-      const problem = discountProblem(body.value_text);
-      if (problem) {
-        return HttpResponse.json(
-          {
-            code: 'validation_error',
-            detail: problem,
-            field_errors: [{ loc: ['body', 'value_text'], msg: problem }],
-          },
-          { status: 422 },
-        );
-      }
     }
     const example = await base<HumanCheck>(request, 'POST', body);
     // 계약 .9(D12-5): 서버가 rejudge 를 자동 등록 → rejudge_job_id(상태 있는 잡). '기타'는 잡 없음

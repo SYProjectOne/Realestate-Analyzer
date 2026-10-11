@@ -109,6 +109,21 @@ describe('F1(D16-1) 사람 확인 필드 discount', () => {
   });
 
   it('값 검사는 서버가 — 422 value_text 오류를 값 칸에(화면은 미리 거르지 않는다)', async () => {
+    // R3i m2: 목은 할인 값을 검사하지 않는다 — 서버 422 응답 모양(계약 .13 F1)을 테스트가 직접 준다
+    server.use(
+      http.post(mswPath('/ops/human-checks'), () =>
+        HttpResponse.json(
+          {
+            code: 'validation_error',
+            detail: 'discount 는 원 단위 정수여야 한다',
+            field_errors: [
+              { loc: ['body', 'value_text'], msg: 'discount 는 원 단위 정수여야 한다' },
+            ],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
     window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
     const rec = recordRequests();
     renderRoute('/ops');

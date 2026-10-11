@@ -9,9 +9,10 @@
  */
 import { screen, within } from '@testing-library/react';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
-import type { ComplexDetail, Fact } from '@/api/types';
+import type { ComplexDetail, Fact, HumanCheck } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
+import { handlers } from '@/mocks/handlers';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
@@ -115,4 +116,38 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     expect(nonBasis).not.toMatch(/사람 확인 시 구매가에 반영/);
     expect(nonBasis).toMatch(/기준 타입/);
   });
+});
+
+// ─── m2 목 할인 값 검사 안 함 ─────────────────────────────────
+
+describe('m2 MSW 목은 할인 값을 검사하지 않는다(판정은 서버 — 1단계)', () => {
+  async function post(valueText: string): Promise<Response | undefined> {
+    return getResponse(
+      handlers as RequestHandler[],
+      new Request('http://localhost/api/ops/human-checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          complex_id: 2,
+          field: 'discount',
+          value_text: valueText,
+          kind: 'phone',
+          entered_by: '운영자',
+          checked_at: '2026-10-08T10:00:00+09:00',
+        }),
+      }),
+    );
+  }
+
+  // 서버 규칙과 판정이 어긋났던 값들(9차 리뷰 m2) — 목은 어느 쪽으로도 판정하지 않는다
+  it.each(['삼백만', '1,0', ',,5,,', '-0', '٣٠٠٠', '９９', '999999999999', '3,000,000원'])(
+    '값 %s → 201(서버 성공 응답 모양, field=discount)',
+    async (valueText) => {
+      const res = await post(valueText);
+      expect(res?.status).toBe(201);
+      const body = (await res!.json()) as HumanCheck;
+      expect(body.field).toBe('discount');
+      expect(body.value_text).toBe(valueText);
+    },
+  );
 });
