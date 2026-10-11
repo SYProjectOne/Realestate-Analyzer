@@ -1192,10 +1192,19 @@ def publish_revision(
         return PublishResult(
             False, 0, f"publish_in_progress: 다른 발행({other})이 진행 중", {"holder": other}, busy=True
         )
+    import gc
+
+    # R3h(D14-5): 계산·나눠 쓰기·전환 동안 순환 GC 를 멈춘다 — 저장본 계산이 수십만 개 객체를 만들어 gen 2 전체 수집이 한 번에
+    # 0.4~1.7초 걸렸고(측정: API 쓰기 최대 지연 = GC 멈춤 시간), 그 멈춤이 쓰기 묶음 트랜잭션 안에 걸리면 쓰기 잠금이 그만큼
+    # 길어진다. 계산 객체는 대부분 참조 계수로 풀리고 남은 순환은 끝난 뒤 보통 GC 가 거둔다
+    was_enabled = gc.isenabled()
+    gc.disable()
     try:
         return _publish_locked(engine, snapshot_id, now=now, settings=settings, lease=lease, t0=t0,
                                remaining=remaining_contradicted)  # fmt: skip
     finally:
+        if was_enabled:
+            gc.enable()
         release_lease(engine, snapshot_id, lease)
 
 

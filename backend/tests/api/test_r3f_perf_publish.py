@@ -90,6 +90,21 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
                 errors.append(f"{r.status_code} {r.text[:120]}")
             stop.wait(0.05)
 
+    # R3h: 이 시험은 잡(worker)과 API 쓰기를 한 프로세스의 두 스레드로 돌린다 — 순환 GC 전체 수집(gen 2) 한 번이 모든 스레드를
+    # 멈춘다(측정: GC 를 켜 둔 발행에서 API 쓰기 최대 지연 = GC 멈춤 1.75s). 발행은 계산·쓰기 동안 GC 를 멈춘다
+    # (``snapshot_view.publish_revision``) — 그 동안의 GC 멈춤을 따로 잰다(gc_max_pause_s)
+    import gc
+
+    pauses: list[float] = []
+    started: dict[str, float] = {}
+
+    def on_gc(phase: str, info: dict[str, int]) -> None:
+        if phase == "start":
+            started["t"] = time.perf_counter()
+        elif "t" in started:
+            pauses.append(time.perf_counter() - started.pop("t"))
+
+    gc.callbacks.append(on_gc)
     th = threading.Thread(target=writer, daemon=True)
     th.start()
     t0 = time.perf_counter()
@@ -99,6 +114,7 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
         wall = time.perf_counter() - t0
         stop.set()
         th.join(timeout=30)
+        gc.callbacks.remove(on_gc)
     assert status == "done" and stats["published"] is True, stats
     with get_session() as s:
         sid = int(stats["snapshot_id"])
@@ -127,6 +143,8 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
         "api_writes": len(lat),
         "api_write_max_s": round(max(lat), 3) if lat else None,
         "api_write_p50_s": round(sorted(lat)[len(lat) // 2], 3) if lat else None,
+        "gc_max_pause_s": round(max(pauses), 3) if pauses else 0.0,
+        "gc_collections": len(pauses),
         "timing_s": stats.get("timing_s"),
     }
     out = os.environ.get("PUBLISH_PERF_OUT")
