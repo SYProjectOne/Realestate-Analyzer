@@ -763,6 +763,49 @@ def migrate_row_human_checks(session: Session, *, snapshot_id: int | None = None
     모델로 옮긴다 — 사실 필드 사람 확인마다 그 의미 묶음의 값 있는 다른 행을 다시 resolve 해 사람 확인 값이 0순위 후보로
     들어가게 한다(``apply_human_check`` 와 같은 단계). 멱등: 이미 옮긴 DB 는 0(출처 행·사실·change_event 를 더 만들지 않는다).
     반환 = chosen 이 바뀐 행 수. 커밋은 호출자(``python -m app.snapshot_view backfill`` 등)가 한다."""
+    from sqlalchemy import func
+
+    before = int(session.scalar(select(func.max(ChangeEvent.id))) or 0)
+    changed = _migrate_rows(session, snapshot_id=snapshot_id)
+    if snapshot_id is None:
+        _attach_orphan_events(session, before)
+    return changed
+
+
+def _attach_orphan_events(session: Session, after_id: int) -> None:
+    """R3 7차 minor 4 · D13-5: 이전 단계가 만든 change_event(스냅샷 없이 생김)를 그 단지 지역의 **쓰기 가능** 리비전에 붙이고
+    critical·재판정 이벤트면 그 단지 rejudge 를 등록한다(예전: snapshot_id=None 인 critical 이벤트, 재판정 없음)."""
+    from app.models import Complex
+    from app.scheduler.rejudge import enqueue_rejudge
+    from app.scheduler.snapshots import latest_for_region, writable
+
+    orphans = list(
+        session.scalars(
+            select(ChangeEvent)
+            .where(ChangeEvent.id > after_id, ChangeEvent.snapshot_id.is_(None))
+            .order_by(ChangeEvent.id)
+        )
+    )
+    by_snap: dict[int, tuple[set[int], list[int]]] = {}
+    for ev in orphans:
+        cx = session.get(Complex, ev.complex_id) if ev.complex_id is not None else None
+        base = latest_for_region(session, cx.region_id) if cx is not None else None
+        if cx is None or base is None:
+            continue
+        snap_w = writable(session, base.id, reason="사람 확인 의미 묶음 이전(m14)", created_at=now_iso())
+        ev.snapshot_id = snap_w.id
+        if ev.triggers_rejudge:
+            ids, evs = by_snap.setdefault(snap_w.id, (set(), []))
+            ids.add(cx.id)
+            evs.append(ev.id)
+    session.flush()
+    for sid, (ids, evs) in sorted(by_snap.items()):
+        enqueue_rejudge(
+            session, sid, sorted(ids), "사람 확인 의미 묶음 이전(m14) — 채택 값 변경", change_event_ids=evs
+        )
+
+
+def _migrate_rows(session: Session, *, snapshot_id: int | None) -> int:
     done: set[tuple[str, int, str]] = set()
     changed = 0
     checks = list(
