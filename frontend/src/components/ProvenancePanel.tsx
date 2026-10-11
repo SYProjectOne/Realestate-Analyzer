@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { apiFetch, isMaterializePending } from '@/api/client';
 import { useProvenance } from '@/api/hooks';
 import { t, tDynamic } from '@/i18n';
@@ -12,7 +12,11 @@ import { ExternalLink } from './ExternalLink';
 import { LabelBadge } from './LabelBadge';
 import { MetaText, MetaValue } from './MetaValue';
 import { RawDocumentPreview } from './RawDocumentPreview';
-import { ProvenanceContext, ProvenanceSnapshotContext } from './provenanceContext';
+import {
+  ProvenanceContext,
+  ProvenanceSnapshotContext,
+  type OpenProvenance,
+} from './provenanceContext';
 
 export interface ProvenancePanelProps {
   /** 출처 id(fp_/sc_/st_/jl_/hc_/rd_/cs_). null이면 닫힘 */
@@ -360,16 +364,37 @@ export function ProvenancePanel({ provId, onClose, snapshotId = null }: Provenan
   );
 }
 
-/** 앱 루트에 한 번. FactCell이 context로 openProvenance(prov)를 부르면 패널이 열린다. */
+/**
+ * 앱 루트에 한 번. FactCell이 context로 openProvenance(prov[, 리비전])를 부르면 패널이 열린다.
+ * 조회 리비전은 **여는 순간** 정한다(그 Fact 가 나온 리비전 — 넘기지 않으면 그때 보고 있던 리비전). 연 채로 화면 리비전이
+ * 바뀌어도(발행 뒤 새 기본 리비전·헤더 변경) 서랍은 따라가지 않는다 — 새 리비전 저장본에 그 출처가 없으면 404 였다(7차 minor 17).
+ */
 export function ProvenanceProvider({ children }: { children: ReactNode }) {
-  const [provId, setProvId] = useState<string | null>(null);
-  const [snapshotId, setSnapshotId] = useState<string | null>(null);
-  const close = useCallback(() => setProvId(null), []);
+  const [open, setOpen] = useState<{ provId: string; snapshotId: string | null } | null>(null);
+  /** 지금 보고 있는 리비전(AppLayout 이 알린다) — 렌더에 쓰지 않고 열 때만 읽는다 */
+  const viewing = useRef<string | null>(null);
+  const setViewing = useCallback((sid: string | null) => {
+    viewing.current = sid;
+  }, []);
+  const openProvenance = useCallback<OpenProvenance>((provId, snapshotId) => {
+    setOpen({ provId, snapshotId: snapshotId === undefined ? viewing.current : snapshotId });
+  }, []);
+  const close = useCallback(() => setOpen(null), []);
+  const panel = useMemo(
+    () => (
+      <ProvenancePanel
+        provId={open?.provId ?? null}
+        onClose={close}
+        snapshotId={open?.snapshotId ?? null}
+      />
+    ),
+    [open, close],
+  );
   return (
-    <ProvenanceContext.Provider value={setProvId}>
-      <ProvenanceSnapshotContext.Provider value={setSnapshotId}>
+    <ProvenanceContext.Provider value={openProvenance}>
+      <ProvenanceSnapshotContext.Provider value={setViewing}>
         {children}
-        <ProvenancePanel provId={provId} onClose={close} snapshotId={snapshotId} />
+        {panel}
       </ProvenanceSnapshotContext.Provider>
     </ProvenanceContext.Provider>
   );
