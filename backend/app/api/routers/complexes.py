@@ -884,9 +884,7 @@ def _raw_body(prov_id: str, raw: RawDocument) -> dict[str, Any]:
         entity_id=raw.id,
         url=raw.url,
         checked_at=raw.fetched_at,
-        reason=None
-        if ok
-        else (str(raw.http_status) if raw.http_status else raw.error_text or "수집 실패"),
+        reason=None if ok else (str(raw.http_status) if raw.http_status else raw.error_text or "수집 실패"),
         raw_document_id=raw.id,
         source_kind=raw.source_kind,
         http_status=raw.http_status,

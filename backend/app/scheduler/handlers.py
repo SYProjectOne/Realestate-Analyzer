@@ -421,7 +421,9 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
                 )}  # fmt: skip
                 snap.status = "ready"
             session.commit()
-            stats["carry_lock_s"] = round(time.perf_counter() - t_carry, 3)  # 복사 트랜잭션(쓰기 잠금) 시간 — D14-5
+            stats["carry_lock_s"] = round(
+                time.perf_counter() - t_carry, 3
+            )  # 복사 트랜잭션(쓰기 잠금) 시간 — D14-5
         _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}")
     return stats
 

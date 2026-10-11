@@ -68,7 +68,14 @@ F14), 잡 stats `publish_job_id`(F15). 응답 상태 코드 변경 없음(503 `m
 - 왕복: SQLite·Postgres 16(pgserver), devseed 픽스처(단지 16·시나리오 5) — `tests/contracts/test_r3g_migrations.py`(head → 0011 → head, 표식 재구성,
   backfill 중단·재개), `tests/contracts/test_r3f_migrations.py`(0009 → head → backfill → 0010 → head), autogenerate diff 0.
 - `CONTRACT_VERSION`·`info.version` = `2026-10-09.12`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
-- D14-5 측정: 아래 '측정' 절(완료 보고에 수치).
+- **D14-5 측정**(`tests/api/test_r3f_perf_publish.py::test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s` — devseed 16 + 합성
+  1,000 단지 × 시나리오 5, 측정 DB 는 pytest basetemp 밖 전용 임시 폴더): `python scripts/tasks.py regress` 동시 실행(부하) 2회 = 잡 22.2s·21.9s,
+  API 쓰기 응답 최대 0.72s·0.73s, 저장본 묶음 쓰기 잠금 최대 0.05s·0.02s, 이월 복사 잠금 0.33s·0.34s, 전환 0.002s, 저장본 5,419행·12.0MB,
+  출처 서랍 112,380개(.11 의 71,600 + 시나리오 patch 행·`rd_`·report 의 prov — D15-2). 같은 시점 main(.11) 은 부하 없이 16.8s.
+  비용 대책: patch 바이트 검증은 pickle 구조 비교(기본 시나리오 쪽 캐시), `kst_date` 캐시, `rd_` 서랍 일괄 조회, 묶음 0.5MB, 저장본 쓰기·전환
+  연결의 WAL 자동 체크포인트 끔(커밋 안 체크포인트가 부하에서 쓰기 잠금 1.2~3.0s 를 만들었다 → 끝나고 PASSIVE), 이월 비교군 INSERT…SELECT.
+  잡 stats 에 `carry_lock_s`(이월 복사 트랜잭션 시간) 추가. 동시 pytest 흔들림: 회귀 러너의 pytest 는 실행 전용 `--basetemp`(scripts/tasks.py),
+  성능 측정 DB 는 basetemp 밖 — 기본 `pytest-of-<user>` 번호 폴더를 다른 회차와 같이 쓰지 않는다.
 
 ## 2026-10-09.11
 
