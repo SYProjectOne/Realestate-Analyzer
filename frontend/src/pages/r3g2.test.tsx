@@ -156,7 +156,7 @@ describe('F15 발행 안내는 stats.publish_job_id 를 이어 감시해 닫는�
         rejudgeDone,
         job(950, 'snapshot.publish', 'failed', {}, {}, 'publish_blocked: contradicted 2건'),
       ),
-    ).toEqual({ kind: 'blocked', detail: 'publish_blocked: contradicted 2건' });
+    ).toEqual({ kind: 'blocked', contradicted: null, detail: 'contradicted 2건' });
     // F12: 겹친 발행은 먼저 돈 잡이 발행한다 — 리비전 목록이 published 를 보일 때까지 기다린다
     const inProgress = job(
       950,
@@ -258,7 +258,7 @@ describe('F15 발행 안내는 stats.publish_job_id 를 이어 감시해 닫는�
   }, 15_000);
 
   it('화면: 발행 잡이 publish_blocked 로 실패하면 막힘 안내', async () => {
-    const detail = 'publish_blocked: contradicted 2건';
+    const detail = 'publish_blocked: 남은 모순 2건';
     server.use(
       http.get(mswPath('/jobs/:id'), ({ params }) =>
         Number(params.id) === 900
@@ -273,8 +273,9 @@ describe('F15 발행 안내는 stats.publish_job_id 를 이어 감시해 닫는�
         <PublishJobProgress jobId={900} />
       </MemoryRouter>,
     );
+    // 8차 m19: 코드 접두(publish_blocked:)는 떼고 보인다
     expect(await screen.findByTestId('publish-blocked')).toHaveTextContent(
-      t('job.publishBlocked', { detail }),
+      t('job.publishBlocked', { detail: '남은 모순 2건' }),
     );
     expect(screen.queryByTestId('publish-pending')).toBeNull();
   });
@@ -324,10 +325,9 @@ describe('F14 checked_at 422 는 code 로 가른다 · F8 KST 2000-01-01 이전�
   });
 
   it('checkedAtProblem: KST 2000-01-01 이전은 범위 안내(보내지 않는다)', () => {
-    const now = Date.parse('2026-10-11T00:00:00Z');
-    expect(checkedAtProblem('1999-12-31T10:00', now)).toBe(t('page.G7.hc.checkedAtTooOld'));
-    expect(checkedAtProblem('0001-01-01T00:00', now)).toBe(t('page.G7.hc.checkedAtTooOld'));
-    expect(checkedAtProblem('2000-01-02T00:00', now)).toBeNull();
+    expect(checkedAtProblem('1999-12-31T10:00')).toBe(t('page.G7.hc.checkedAtTooOld'));
+    expect(checkedAtProblem('0001-01-01T00:00')).toBe(t('page.G7.hc.checkedAtTooOld'));
+    expect(checkedAtProblem('2000-01-02T00:00')).toBeNull();
   });
 
   async function submitWith(code: string, detail: string) {

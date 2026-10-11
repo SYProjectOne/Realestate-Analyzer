@@ -301,21 +301,44 @@ export type PublishPhase =
   /** 후속 발행 잡이 판정 중인 리비전으로 미뤄졌다 — 그 리비전이 발행될 때 들어간다(F4) */
   | { kind: 'deferred'; snapshotId: number }
   | { kind: 'published' }
-  /** 남은 모순 주장 등으로 발행이 막힘(publish_blocked) */
-  | { kind: 'blocked'; detail: string }
+  /**
+   * 남은 모순 주장 등으로 발행이 막힘(publish_blocked). `contradicted` = 남은 모순 주장 수(알면), `detail` = 서버 사유
+   * (코드 접두 `publish_blocked:` 를 뗀 것, 없으면 null). 문구는 화면이 ko.json 으로 만든다(8차 m19, 규칙 12)
+   */
+  | { kind: 'blocked'; contradicted: number | null; detail: string | null }
   | { kind: 'publishFailed'; detail: string }
   /** 상한(30분) 안에 발행을 확인하지 못해 감시를 멈췄다 */
-  | { kind: 'expired' };
+  | { kind: 'expired' }
+  /** 감시 사슬이 PUBLISH_CHAIN_MAX 에 닿았는데 마지막 잡이 또 다음 잡을 가리킨다 — 더 따라가지 않고 알린다(8차 m16) */
+  | { kind: 'capped' };
 
 /** 겹친 발행(F12 single-flight) — 먼저 돈 잡이 그 리비전을 발행한다 */
 const IN_PROGRESS = 'publish_in_progress';
 const BLOCKED = 'publish_blocked';
+
+/** 서버 사유에서 코드 접두(`publish_blocked:`)를 뗀다 — 화면에 영문 코드를 내지 않는다(8차 m19). 비면 null */
+function blockedDetail(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const rest = text.startsWith(BLOCKED) ? text.slice(BLOCKED.length).replace(/^[:\s]+/, '') : text;
+  return rest.trim() || null;
+}
+
+function blocked(contradicted: number | null, detail: string | null | undefined): PublishPhase {
+  return {
+    kind: 'blocked',
+    contradicted: contradicted !== null && contradicted > 0 ? contradicted : null,
+    detail: blockedDetail(detail),
+  };
+}
 
 /**
  * 발행 유발 쓰기의 진행 단계(7차 minor 19, D15-8 "진행 안내는 후속 snapshot.publish 잡이 끝날 때 닫는다", 계약 .12 F15).
  * `trigger` = 쓰기 응답 job_id 잡, `last` = stats.publish_job_id 를 따라 이은 사슬의 마지막 잡(아직 못 받았으면 직전 잡).
  * rejudge 의 done 은 발행이 아니다 — 사슬 끝의 발행 잡이 끝나야(또는 리비전 목록이 published 를 보여야) 닫는다.
  *  - `snapshot`: 리비전 목록에서 찾은 대상 리비전(없으면 undefined), `watchStart`·`now`: 브라우저가 잡 끝을 본 시각·지금
+ *  - `capped`: 사슬이 PUBLISH_CHAIN_MAX 에 닿아 더 잇지 않는다(8차 m16)
+ * done + `publish_in_progress`(그 자리 발행이 겹친 발행을 만나 published false)는 막힘이 아니다 — 먼저 돈 잡이
+ * 발행하므로 리비전 목록의 published 를 기다린다(8차 m16).
  */
 export function publishPhase(input: {
   trigger: JobView | undefined;
@@ -323,8 +346,9 @@ export function publishPhase(input: {
   snapshot: Pick<Snapshot, 'id' | 'status' | 'contradicted_claims'> | undefined;
   watchStart: number;
   now: number;
+  capped?: boolean;
 }): PublishPhase {
-  const { trigger, snapshot, watchStart, now } = input;
+  const { trigger, snapshot, watchStart, now, capped = false } = input;
   const last = input.last ?? trigger;
   if (!trigger || !last || !finished(trigger)) return { kind: 'trigger' };
   if (
@@ -337,25 +361,24 @@ export function publishPhase(input: {
   if (snapshot?.status === 'published') return { kind: 'published' };
   // 남은 모순 주장으로 ready 에 멈춘 리비전 — 발행 잡도 publish_blocked 로 끝난다
   if (snapshot?.status === 'ready' && (snapshot.contradicted_claims ?? 0) > 0) {
-    return {
-      kind: 'blocked',
-      detail: `${BLOCKED}: contradicted ${snapshot.contradicted_claims ?? 0}`,
-    };
+    return blocked(snapshot.contradicted_claims ?? null, null);
   }
   const pending = waitingOr(watchStart, now);
-  if (!finished(last) || nextPublishJobId(last) !== null) return pending;
+  if (!finished(last)) return pending;
+  if (nextPublishJobId(last) !== null) return capped ? { kind: 'capped' } : pending;
   const stats = last.stats ?? {};
   if (last.status === 'failed') {
     const detail = last.error_text ?? '';
-    if (detail.startsWith(BLOCKED)) return { kind: 'blocked', detail };
+    if (detail.startsWith(BLOCKED)) return blocked(intOf(stats.contradicted), detail);
     // 겹친 발행: 먼저 돈 잡이 발행한다 — 리비전 목록의 published 를 기다린다
     if (detail.startsWith(IN_PROGRESS)) return pending;
     return { kind: 'publishFailed', detail };
   }
   if (stats.published === true) return { kind: 'published' };
-  if (stats.published === false) {
-    const n = intOf(stats.contradicted) ?? 0;
-    return { kind: 'blocked', detail: last.error_text ?? `${BLOCKED}: contradicted ${n}` };
+  // 그 자리 발행이 겹친 발행을 만남(done, published false, publish_in_progress) — 막힘 아님, 먼저 돈 잡을 기다린다
+  if (stats.published === false && stats.publish_in_progress) return pending;
+  if (stats.published === false && intOf(stats.deferred_to) === null) {
+    return blocked(intOf(stats.contradicted), last.error_text);
   }
   const deferred = intOf(stats.deferred_to);
   if (deferred !== null) {
