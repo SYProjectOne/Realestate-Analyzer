@@ -28,7 +28,7 @@ from app.models import ChangeEvent, Complex, JobRun, Region, ScoreRun, Snapshot
 from app.scheduler import snapshots
 from app.scheduler.collect import collect
 from app.scheduler.jobs import DAILY_SOURCES, WEEKLY_SOURCES, JobError, JobRequeue
-from app.scheduler.persist import carry_forward
+from app.scheduler.persist import carry_forward, carry_incomplete
 from app.scheduler.rejudge import enqueue_rejudge, handle_rejudge
 from app.scheduler.reverify import handle_claim_reverify
 
@@ -430,27 +430,44 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
     carry = p.get("carry_from_snapshot_id")
     with ctx.session_factory() as session:
         stats: dict[str, Any] = {"snapshot_id": sid}
-        t_carry = time.perf_counter()
-        if carry is not None and session.get_bind().dialect.name == "sqlite":
+        sqlite = session.get_bind().dialect.name == "sqlite"
+        from app.scheduler.rejudge import _sqlite_write_lock
+
+        locks: list[float] = []
+        t_lock = [time.perf_counter()]
+
+        def lock() -> None:
             # 복사(쓰기)할 트랜잭션은 쓰기 잠금부터 잡는다 — 먼저 읽고 나중에 쓰면 그 사이 API 쓰기가 커밋됐을 때 WAL 이 읽기
             # 스냅샷을 쓰기로 올리지 못해 즉시 'database is locked'(R3 6차 m15 와 같은 원인, D14-5 부하 측정에서 재현)
-            from app.scheduler.rejudge import _sqlite_write_lock
+            t_lock[0] = time.perf_counter()
+            if sqlite:
+                _sqlite_write_lock(session)
 
-            _sqlite_write_lock(session)
+        def checkpoint() -> None:
+            # R3h(D14-5 'API 쓰기 대기 1초' — 부하 측정에서 한 트랜잭션 이월 복사가 1.06s): 단계마다 commit 해 잠금을 나눈다
+            session.commit()
+            locks.append(time.perf_counter() - t_lock[0])
+            lock()
+
+        if carry is not None:
+            lock()
         snap = session.get(Snapshot, sid)
         if carry is not None and snap is not None and snap.status == "building":
             has_runs = session.scalar(
                 select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == sid)
             )
-            if not has_runs:
+            if not has_runs or carry_incomplete(session, int(carry), sid):
                 stats["carry_forward"] = {"from_snapshot_id": int(carry), **carry_forward(
-                    session, int(carry), sid, created_at=ctx.iso_now()
+                    session, int(carry), sid, created_at=ctx.iso_now(), checkpoint=checkpoint
                 )}  # fmt: skip
+                snap = session.get(Snapshot, sid)
+                assert snap is not None
                 snap.status = "ready"
             session.commit()
-            stats["carry_lock_s"] = round(
-                time.perf_counter() - t_carry, 3
-            )  # 복사 트랜잭션(쓰기 잠금) 시간 — D14-5
+            locks.append(time.perf_counter() - t_lock[0])
+            # 이월 복사 트랜잭션 하나의 최대 쓰기 잠금 시간(D14-5), 단계 수
+            stats["carry_lock_s"] = round(max(locks), 3)
+            stats["carry_steps"] = len(locks)
         _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}", job=job)
     return stats
 

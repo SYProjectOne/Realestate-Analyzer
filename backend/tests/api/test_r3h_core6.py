@@ -566,3 +566,56 @@ def test_m13_report_html_dates_are_kst(client: TestClient) -> None:
     utc = r"\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-](?!09:00)\d{2}:\d{2})"
     assert not re.search(utc, text), re.findall(utc, text)[:5]  # KST 가 아닌 시각 원문 없음
     assert "2026-10-09T20" not in text
+
+
+# ====================================================================== D14-5 이월 복사 나눠 쓰기(R3h 부하 측정)
+
+
+def test_d14_5_carry_copy_is_chunked_and_resumes(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """이월 복사(호재 PATCH → snapshot.publish carry)를 단계마다 commit(쓰기 잠금을 짧게 — 부하 측정에서 한 트랜잭션 1.06s).
+    중간에 멈춘 복사는 다시 돌 때 이어서 채운다(시나리오 run·비교군 중복 없음)."""
+    from sqlalchemy import func
+
+    import app.scheduler.persist as persist
+    from app.models import ComparableSet, ScoreRun
+
+    out = _link(client, _cat("R3h 역9"))
+    jid, rev = out["job_id"], int(out["job"]["payload"]["snapshot_id"])
+    real = persist.copy_runs
+    calls = {"n": 0}
+
+    def crash_after_two(session: Any, src: int, dst: int, **k: Any) -> Any:
+        inner = k.pop("checkpoint")
+
+        def cp() -> None:
+            inner()
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise RuntimeError("worker 사망 흉내")
+
+        return real(session, src, dst, checkpoint=cp, **k)
+
+    monkeypatch.setattr(persist, "copy_runs", crash_after_two)
+    st, _ = run_job(jid)
+    monkeypatch.setattr(persist, "copy_runs", real)
+    assert st == "failed"
+    with get_session() as s:
+        n_src = len(set(s.scalars(select(ScoreRun.scenario_id).where(ScoreRun.snapshot_id == SNAP))))
+        part = len(list(s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == rev))))
+        assert 0 < part < n_src, (part, n_src)
+        s.execute(update(JobRun).where(JobRun.id == jid).values(status="queued"))
+    st, stats = run_job(jid)
+    assert st == "done" and stats["published"], stats
+    assert stats["carry_steps"] >= 3, stats
+    with get_session() as s:
+        runs = list(s.scalars(select(ScoreRun.scenario_id).where(ScoreRun.snapshot_id == rev)))
+        assert sorted(runs) == sorted(set(runs)) and len(runs) == n_src
+        cs = int(
+            s.scalar(select(func.count()).select_from(ComparableSet).where(ComparableSet.snapshot_id == rev))
+            or 0
+        )
+        cs_src = int(
+            s.scalar(select(func.count()).select_from(ComparableSet).where(ComparableSet.snapshot_id == SNAP))
+            or 0
+        )
+        assert cs == cs_src
