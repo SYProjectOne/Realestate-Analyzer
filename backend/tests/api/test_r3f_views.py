@@ -60,12 +60,21 @@ def test_nm2_tampered_body_is_500_stored_view_mismatch(client: TestClient) -> No
     assert r.status_code == 500 and r.json()["code"] == "stored_view_mismatch"
 
 
-def test_nm2_other_contract_version_is_500(client: TestClient) -> None:
+def test_nm2_other_shape_version_is_500(client: TestClient) -> None:
+    """D15-3(R3g, 계약 .12): 읽기 호환은 저장 모양 버전(정수) — 계약 문자열만 다른 행은 그대로 200(R3 7차 m9), 모양 버전이
+    다르면 500 ``stored_view_mismatch``."""
     with get_session() as s:
         s.execute(
             update(SnapshotView)
             .where(SnapshotView.snapshot_id == SNAP, SnapshotView.kind == "complexes")
             .values(contract_version="2026-10-09.10")
+        )
+    assert client.get(f"/api/snapshots/{SNAP}/complexes", headers=READ).status_code == 200
+    with get_session() as s:
+        s.execute(
+            update(SnapshotView)
+            .where(SnapshotView.snapshot_id == SNAP, SnapshotView.kind == "complexes")
+            .values(shape_version=99)
         )
     r = client.get(f"/api/snapshots/{SNAP}/complexes", headers=READ)
     assert r.status_code == 500 and r.json()["code"] == "stored_view_mismatch"
@@ -172,11 +181,11 @@ def test_nm3_flip_is_last_and_short(client: TestClient, monkeypatch: pytest.Monk
     seen: list[str] = []
     real = sv.write_rows
 
-    def spy(engine: Any, sid: int, rows: Any) -> Any:
+    def spy(engine: Any, sid: int, rows: Any, **kw: Any) -> Any:
         with get_session() as s:
             seen.append(s.get(Snapshot, sid).status)  # type: ignore[union-attr]
             seen.append(str(s.scalar(select(func.count()).select_from(Snapshot).where(Snapshot.id == sid))))
-        return real(engine, sid, rows)
+        return real(engine, sid, rows, **kw)
 
     monkeypatch.setattr(sv, "write_rows", spy)
     with get_session() as s:

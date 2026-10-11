@@ -86,10 +86,11 @@
       "description": "POST /catalysts 201 — 만든 호재 후보(CatalystView, stage '미확정')와 등록한 분류 잡(지역에 스냅샷이 없으면 null — 다음 파이프라인 P4 가 분류한다).",
       "type": "object",
       "additionalProperties": false,
-      "required": ["catalyst", "job"],
+      "required": ["catalyst", "job", "job_id"],
       "properties": {
         "catalyst": { "$ref": "#" },
-        "job": { "description": "계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다", "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] }
+        "job": { "description": "새 후보를 분류할 rejudge 잡(점수 재계산 — 대상 단지 0개, 판정 뒤 snapshot.publish 로 새 리비전 발행). 같은 URL 이 이미 있거나 지역에 스냅샷이 없으면 null", "anyOf": [{ "$ref": "job_run.json" }, { "type": "null" }] },
+        "job_id": { "description": "계약 .12(D15-6, R3 7차 m16): job.id(없으면 null) — 발행을 일으키는 쓰기 응답의 공통 이름. 화면은 이 잡을 감시한다", "type": ["integer", "null"] }
       }
     }
   },

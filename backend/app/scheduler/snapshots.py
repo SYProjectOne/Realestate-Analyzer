@@ -152,12 +152,23 @@ def republish(session: Session, region_id: int, *, reason: str, created_at: str)
     리비전의 새 리비전(building)을 만들고 ``snapshot.publish`` 잡(``carry_from_snapshot_id``)을 등록한다 — worker 가 파생 행을
     복사하고 발행한다(D14-5: API 요청 안에서 발행하지 않는다, 계약 .11). 반환 = 그 잡(API 202 + job_id).
 
-    판정 중인(미발행) 리비전이 있으면 그 리비전이 발행될 때 새 값으로 저장되므로 아무것도 하지 않는다(None)."""
+    D15-6(R3 7차 M5): 가장 새 리비전이 발행 전(판정 중·발행 계산 중)이면 **후속 발행 잡**(``follow_up``)을 늘 등록한다 —
+    그 리비전의 발행 계산이 이 쓰기를 읽었으면(계산이 읽은 시점에 이 잡이 보였으면) 전환 트랜잭션이 잡을 '포함됨'으로
+    닫고, 못 읽었으면 잡이 남아 새 리비전으로 이어 발행한다. 그래서 응답은 늘 job_id 를 준다. 후속 잡은 합치지 않는다
+    (합치면 계산이 이미 본 잡에 나중 쓰기가 실려 빠질 수 있다)."""
     newest = latest_for_region(session, region_id)
-    if newest is None or newest.status != "published":
+    if newest is None:
         return None
     from app.scheduler.jobs import enqueue
 
+    if newest.status != "published":
+        return enqueue(
+            session,
+            "snapshot.publish",
+            {"snapshot_id": newest.id, "follow_up": True},
+            kind="manual",
+            dedupe=False,
+        )
     rev = new_revision(session, newest, reason=reason, created_at=created_at)
     if rev.id == newest.id:  # pragma: no cover - new_revision 은 발행 리비전이면 늘 새 행
         return None
@@ -184,18 +195,21 @@ def contradicted_count(session: Session, snapshot_id: int) -> int:
     return len(remaining_contradicted(session, snapshot_id))
 
 
-def publish(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int]:
+def publish(session: Session, snapshot_id: int, *, now: str, holder: str | None = None) -> tuple[bool, int]:
     """contradicted claim 이 0개면 발행. 반환 (published 여부, contradicted 수). ``publish_with_stats`` 참고."""
-    ok, n, _stats = publish_with_stats(session, snapshot_id, now=now)
+    ok, n, _stats = publish_with_stats(session, snapshot_id, now=now, holder=holder)
     return ok, n
 
 
-def publish_with_stats(session: Session, snapshot_id: int, *, now: str) -> tuple[bool, int, dict[str, Any]]:
+def publish_with_stats(
+    session: Session, snapshot_id: int, *, now: str, holder: str | None = None
+) -> tuple[bool, int, dict[str, Any]]:
     """**worker 전용**(D14-5). degraded(점수 미계산)·building(판정 전)·contradicted 남음이면 발행하지 않는다.
 
     발행 = ``app.snapshot_view.publish_revision``: 호출자 세션의 변경을 먼저 commit 하고(저장본 계산은 다른 연결의 읽기),
     계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본 화면이다.
-    반환 stats = 저장본 잡 통계(행·바이트·출처 누락 건수·쓰기 잠금 최대 시간 등, D14-8)."""
+    반환 stats = 저장본 잡 통계(행·바이트·출처 누락 건수·쓰기 잠금 최대 시간 등, D14-8). 같은 리비전을 다른 발행이 하고
+    있으면(single-flight, D15-6) 아무것도 쓰지 않고 stats ``publish_in_progress`` = 그 보유자."""
     snap = session.get(Snapshot, snapshot_id)
     if snap is None:
         raise LookupError(f"snapshot {snapshot_id} 없음")
@@ -207,9 +221,12 @@ def publish_with_stats(session: Session, snapshot_id: int, *, now: str) -> tuple
     session.commit()
     from app.snapshot_view import publish_revision
 
-    res = publish_revision(session.get_bind(), snapshot_id, now=now)
+    res = publish_revision(session.get_bind(), snapshot_id, now=now, holder=holder)
     session.expire_all()
-    return res.published, res.contradicted, dict(res.stats)
+    stats = dict(res.stats)
+    if res.busy:
+        stats["publish_in_progress"] = stats.pop("holder", None) or "?"
+    return res.published, res.contradicted, stats
 
 
 def _plain(value: Any) -> Any:

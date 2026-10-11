@@ -4,7 +4,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.11
+  version: 2026-10-09.12
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -14545,6 +14545,7 @@ paths:
                       stats: {}
                       error_text: null
                       progress: null
+                    job_id: 932
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -15302,14 +15303,20 @@ components:
       required:
       - catalyst
       - job
+      - job_id
       properties:
         catalyst:
           $ref: '#/components/schemas/CatalystView'
         job:
-          description: '계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다'
+          description: 새 후보를 분류할 rejudge 잡(점수 재계산 — 대상 단지 0개, 판정 뒤 snapshot.publish 로 새 리비전 발행). 같은 URL 이 이미 있거나 지역에 스냅샷이 없으면 null
           anyOf:
           - $ref: '#/components/schemas/JobRun'
           - type: 'null'
+        job_id:
+          description: '계약 .12(D15-6, R3 7차 m16): job.id(없으면 null) — 발행을 일으키는 쓰기 응답의 공통 이름. 화면은 이 잡을 감시한다'
+          type:
+          - integer
+          - 'null'
     CatalystLinkView:
       title: CatalystLinkView
       description: 'catalyst_link 1행(계약 .8): 단지·거리(좌표 없으면 null)·가중치·라벨·근거'
@@ -24487,7 +24494,7 @@ components:
       title: SnapshotPublishPayload
       description: |-
         job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.
-        계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
+        계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 계약 .12(D15-6): 리비전마다 발행은 하나만 돈다(single-flight — 같은 리비전을 다른 잡이 발행 중이면 failed error_text 'publish_in_progress: …', 아무것도 지우지 않는다). 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
         carry_from_snapshot_id(선택): 판정 없이 바뀌는 리비전 값(호재 연결 PATCH)용 — 그 발행 리비전의 파생 행(판정·점수)을 이 리비전에 복사한 뒤 발행한다.
       type: object
       additionalProperties: false
@@ -24501,10 +24508,15 @@ components:
           - integer
           - 'null'
           description: '계약 .11: 파생 행을 복사할 바탕 발행 리비전(호재 연결 변경 — 판정기 호출 없음)'
+        follow_up:
+          type: boolean
+          description: '계약 .12(D15-6, R3 7차 M5): 후속 발행 잡 — 판정 중·발행 계산 중인 리비전(snapshot_id)에 판정 무관 쓰기(호재 연결)가 들어왔다. 그 리비전의 발행 계산이 이 잡을 읽었으면 전환 트랜잭션이 이 잡을 done(stats.included_in_snapshot_id)으로 닫고, 못 읽었으면 이 잡이 돌아 지역의 가장 새 발행 리비전 위 새 리비전(파생 행 복사)을 발행하거나, 발행 대기(ready) 리비전을 지금 발행하거나, 판정 중이면 미룬다(stats.deferred_to).'
       examples:
       - snapshot_id: 12
       - snapshot_id: 14
         carry_from_snapshot_id: 12
+      - snapshot_id: 14
+        follow_up: true
     SourceKind:
       title: SourceKind
       description: 원문 출처 종류 (RA §3 + DECISIONS D2-1 reference)

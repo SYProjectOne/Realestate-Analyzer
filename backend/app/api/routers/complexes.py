@@ -746,18 +746,23 @@ def get_provenance(
     from app.api.views import latest_snapshot_id
     from app.models import Region
 
+    pending: sv.MaterializePending | None = None
     for rid in list(session.scalars(select(Region.id).order_by(Region.id))):
         sid = latest_snapshot_id(session, int(rid))
         latest = session.get(Snapshot, sid) if sid is not None else None
-        if (
-            latest is None
-            or not sv.is_published(latest)
-            or not sv.kind_ready(session, latest.id, "provenance")
-        ):
+        if latest is None or not sv.is_published(latest):
             continue
-        found = sv.provenance(session, latest, prov_id)
+        try:
+            found = sv.provenance(session, latest, prov_id)
+        except (
+            sv.MaterializePending
+        ) as exc:  # 그 지역 최신 발행 리비전 저장본 미완 — 다른 지역에 없으면 503(R3 7차 m6)
+            pending = exc
+            continue
         if found is not None:
             return JSONResponse(found)
+    if pending is not None:  # 실시간 200 으로 발행 순간이 아닌 값을 내보내지 않는다
+        raise pending
     return JSONResponse(provenance_body(session, prov_id))
 
 

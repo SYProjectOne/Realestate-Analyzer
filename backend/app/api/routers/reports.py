@@ -110,12 +110,57 @@ def create_report(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
                 msg,
                 field_errors=[{"loc": ["body", "scenario_id"], "msg": msg}],
             )
+    _require_stored_inputs(session, snap, body.get("scenario_id"), body.get("compare_snapshot_id"))
     n = contradicted(session, snap.id)
     if n:
         raise conflict(f"contradicted claim {n}건이 남아 있어 보고서를 만들 수 없다", code="publish_blocked")
     row = enqueue(session, "report", dict(body))
     session.commit()
     return JSONResponse(job_view(row), status_code=202)
+
+
+def _require_stored_inputs(session: Any, snap: Any, scenario_id: int | None, compare_id: int | None) -> None:
+    """R3 7차 minor 10(D15-3): 잡이 읽을 저장본(대상 리비전의 그 시나리오 — 생략 = 기본 시나리오 — report·report_diff, 비교
+    리비전의 같은 시나리오 또는 기본 시나리오 report)이 완료 표식 전이면 202 뒤 잡 실패 대신 지금 503 ``materialize_pending``."""
+    from app import snapshot_view as sv
+    from app.models import Scenario, Snapshot, SnapshotViewUnit
+
+    base = session.scalars(select(Scenario.id).where(Scenario.code == "base")).first()
+    target = scenario_id if scenario_id is not None else base
+    if target is None:
+        return
+    sk = str(target)
+    for kind in ("report", "report_diff"):
+        if sv.is_published(snap) and not sv.unit_ready(session, snap.id, kind, sk):
+            raise sv.MaterializePending(
+                f"발행 리비전 {snap.id} 의 {kind}[시나리오 {sk}] 저장본이 미완(backfill 대기)"
+            )
+    if compare_id is None:
+        return
+    cmp = session.get(Snapshot, int(compare_id))
+    if cmp is None or not sv.is_published(cmp):
+        return
+    if sv.unit_ready(session, cmp.id, "report", sk):
+        return
+    # 비교 기준에 이 시나리오가 없을 수 있다(D14-3 — 기본 시나리오 입력으로 건수 비교). 그 시나리오 단위가 '미완'이면 기다린다
+    absent = (
+        session.scalar(
+            select(SnapshotViewUnit.id).where(
+                SnapshotViewUnit.snapshot_id == cmp.id,
+                SnapshotViewUnit.kind == "report",
+                SnapshotViewUnit.scenario == sk,
+            )
+        )
+        is None
+    )
+    if (
+        base is not None
+        and str(base) != sk
+        and absent
+        and sv.unit_ready(session, cmp.id, "report", str(base))
+    ):
+        return
+    raise sv.MaterializePending(f"비교 리비전 {cmp.id} 의 report 저장본이 미완(backfill 대기)")
 
 
 def _report_path(base: Path, rel: str) -> Path | None:
