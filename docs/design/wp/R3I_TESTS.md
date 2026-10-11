@@ -88,8 +88,8 @@ Postgres 둘 다에서 본다(위 표 major 1·2 행 — 수정 전 실패 확�
 
 | 실행 | 결과 | 비고 |
 | --- | --- | --- |
-| 전체 pytest A(`-p no:randomly -m "not live" --junitxml`) — `python scripts/tasks.py regress` 와 동시 | **3860 통과 / 0 실패**(1528s) | 같은 시간 regress 3회 연속(각 T01–T18 PASS·e2e 3/3) |
-| 전체 pytest B(같은 명령) — regress 와 동시 | **3860 통과 / 0 실패**(1597s) | 같은 시간 regress 3회 연속(각 T01–T18 PASS·e2e 3/3) |
+| 전체 pytest A(`-p no:randomly -m "not live" --junitxml`) — `python scripts/tasks.py regress` 와 동시 | **3860 통과 / 0 실패**(1528s) | 실행 내내 regress 를 연속 반복(첫 회는 Playwright 브라우저 미설치로 e2e 실패 → 설치 뒤 반복 3회 모두 T01–T18 PASS·e2e 3/3) |
+| 전체 pytest B(같은 명령) — regress 와 동시 | **3860 통과 / 0 실패**(1597s) | 실행 내내 regress 연속 반복(5회 모두 T01–T18 PASS·e2e 3/3) |
 
 ## 측정(D14-5 / D17-6 — `tests/api/test_r3f_perf_publish.py`, devseed 16 + 합성 1,000 단지 × 시나리오 5, 기준 잡 ≤30s·API 쓰기 대기 ≤1s 그대로)
 
