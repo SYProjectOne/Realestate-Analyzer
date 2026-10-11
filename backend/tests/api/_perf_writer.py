@@ -40,6 +40,8 @@ def main(argv: list[str]) -> int:
         api_token=write_token,  # type: ignore[arg-type]
         readonly_token=read_token,  # type: ignore[arg-type]
         log_json=False,
+        # 요청마다 남는 INFO 로그(stderr → 디스크 파일)는 측정 대상이 아니다 — 디스크 부하에서 그 쓰기가 요청을 늦춘다
+        log_level="WARNING",
     )
     set_settings(settings)
     cur: dict[str, float] = {"exec": 0.0, "commit": 0.0}

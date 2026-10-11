@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +62,18 @@ def make_engine(url: str | None = None, *, settings: Settings | None = None, ech
             finally:
                 cur.close()
 
+        state = _SqliteState()
+        _sqlite_states[id(engine)] = state
+
+        @event.listens_for(engine, "checkout")
+        def _sqlite_checkout(dbapi_conn: Any, record: Any, _proxy: Any) -> None:
+            # API 체크포인트 모드(``sqlite_api_checkpointer``)면 커밋이 WAL 자동 체크포인트를 하지 않는다(0),
+            # 아니면 기본 1000
+            want = 0 if state.api_mode and not in_memory else 1000
+            if record.info.get("wal_autocheckpoint") != want:
+                dbapi_conn.execute(f"PRAGMA wal_autocheckpoint={want}").fetchall()
+                record.info["wal_autocheckpoint"] = want
+
         @event.listens_for(engine, "begin")
         def _sqlite_begin(conn: Connection) -> None:
             conn.exec_driver_sql("BEGIN")
@@ -80,6 +92,68 @@ def make_engine(url: str | None = None, *, settings: Settings | None = None, ech
         pool_pre_ping=True,
         pool_recycle=1800,
     )
+
+
+class _SqliteState:
+    """엔진마다: API 체크포인트 모드가 켜진 수(중첩 — 한 프로세스에 앱이 여럿일 수 있다, 테스트)."""
+
+    def __init__(self) -> None:
+        self.api_users = 0
+
+    @property
+    def api_mode(self) -> bool:
+        return self.api_users > 0
+
+
+_sqlite_states: dict[int, _SqliteState] = {}
+SQLITE_CHECKPOINT_INTERVAL_S = 1.0
+
+
+def _passive_checkpoint(engine: Engine) -> None:
+    with engine.connect() as conn:
+        raw: Any = conn.connection.dbapi_connection
+        raw.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchall()
+
+
+@contextmanager
+def sqlite_api_checkpointer(
+    engine: Engine, interval_s: float = SQLITE_CHECKPOINT_INTERVAL_S
+) -> Iterator[None]:
+    """API 프로세스(SQLite 개발 모드): **요청의 커밋이 WAL 체크포인트를 하지 않게** 하고
+    (wal_autocheckpoint=0) 배경 스레드가 ``interval_s`` 마다 PASSIVE 체크포인트한다(쓰기 잠금을
+    잡지 않는다). Postgres·메모리 DB 는 아무것도 하지 않는다.
+
+    R3h(D14-5 'API 쓰기 대기 1초'): 발행 잡이 WAL 에 수십 MB 를 쓰는 동안 그 사이 커밋하는 API
+    쓰기가 자동 체크포인트(WAL 1000 페이지 넘음)를 떠안아 WAL→DB 복사·fsync 를 요청 안에서 했다 —
+    디스크 부하에서 COMMIT 하나가 0.8~5.3초(측정: SQL 실행·잠금 대기는 0.1초 안팎, 지연은 전부
+    COMMIT). API 커밋의 자동 체크포인트를 끄면 같은 부하에서 COMMIT 최대 0.0~0.16초."""
+    state = _sqlite_states.get(id(engine))
+    file_db = engine.dialect.name == "sqlite" and _sqlite_file(engine.url.render_as_string(False)) is not None
+    if state is None or not file_db:
+        yield
+        return
+    import threading
+
+    stop = threading.Event()
+
+    def loop() -> None:
+        while not stop.wait(interval_s):
+            try:
+                _passive_checkpoint(engine)
+            except Exception:  # 잠김·종료 중 — 다음 주기에
+                continue
+
+    state.api_users += 1
+    th = threading.Thread(target=loop, name="sqlite-checkpointer", daemon=True)
+    th.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        th.join(timeout=5)
+        state.api_users -= 1
+        with suppress(Exception):  # 종료 중 DB 없음
+            _passive_checkpoint(engine)
 
 
 def sqlite_wrote(session: Any) -> bool:
@@ -113,6 +187,7 @@ def reset_engine() -> None:
     """캐시된 엔진을 모두 닫는다(테스트 teardown·프로세스 종료)."""
     for engine in _engines.values():
         engine.dispose()
+        _sqlite_states.pop(id(engine), None)
     _engines.clear()
     _sessionmakers.clear()
 

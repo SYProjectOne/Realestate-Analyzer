@@ -199,6 +199,13 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
         api_writes=len(lat),
         api_write_max_s=round(max(lat), 3) if lat else None,
         api_write_p50_s=round(sorted(lat)[len(lat) // 2], 3) if lat else None,
+        api_exec_max_s=round(
+            max((float(r[2]) for r in rows), default=0.0), 3
+        ),  # SQL 실행(쓰기 잠금 대기 포함)
+        api_commit_max_s=round(
+            max((float(r[3]) for r in rows), default=0.0), 3
+        ),  # COMMIT(WAL 자동 체크포인트 포함)
+        api_commit_p50_s=round(sorted(float(r[3]) for r in rows)[len(rows) // 2], 4) if rows else None,
         # 느린 요청(0.2초 넘음): [쓰기 프로세스 시작 뒤 초, 전체, SQL 실행 최대(잠금 대기), COMMIT(체크포인트), 상태]
         slow_writes=[
             [r[0], round(r[1], 3), round(r[2], 3), round(r[3], 3), r[4]] for r in rows if r[1] > 0.2
