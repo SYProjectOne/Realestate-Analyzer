@@ -213,6 +213,7 @@
         "discountAppliedShort": "구매가에서 뺌",
         "discountNotAppliedShort": "표시만(빼지 않음)",
         "discountEstimated": "공고문에서 찾은 할인(조건 확인 필요) — 사람 확인 시 구매가에 반영",
+        "discountEstimatedNonBasis": "공고문에서 찾은 할인(조건 확인 필요) — 기준 타입이 아니라 구매가에 반영하지 않음(사람 확인은 기준 타입 할인만)",
         "discountHumanCheck": "할인 사람 확인하기"
       },
       "payment": {

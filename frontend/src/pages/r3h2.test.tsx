@@ -187,9 +187,9 @@ describe("F2(D16-1) 파서 할인은 '추정' — 안내 + G7 사람 확인 링�
     expect(within(form).getByLabelText(t('page.G7.hc.field'))).toHaveValue('discount');
   });
 
-  it("타입별 '추정' 할인만 있어도 가격 표에 안내 + 링크", async () => {
+  it("타입별 '추정' 할인만 있어도 가격 표(기준 타입 줄)에 안내 + 링크", async () => {
+    const basis = (await exampleDetail()).types.find((r) => r.is_basis)?.type_code ?? '84A';
     serve((d) => {
-      const basis = d.price.basis_type_code ?? d.types[0]?.type_code ?? '84A';
       return {
         ...d,
         price: { ...d.price, discount: null, discount_applied: false },
@@ -201,7 +201,8 @@ describe("F2(D16-1) 파서 할인은 '추정' — 안내 + G7 사람 확인 링�
       };
     });
     renderRoute('/complexes/2#price');
-    const note = await screen.findByTestId('discount-estimated');
+    // R3i m3: 표 아래 공통 한 줄이 아니라 기준 타입 줄에(기준 타입 아닌 줄은 r3i.test.tsx)
+    const note = await screen.findByTestId(`type-discount-note-${basis}`);
     expect(note).toHaveTextContent(t('page.G3.price.discountEstimated'));
     expect(
       within(note).getByRole('link', { name: t('page.G3.price.discountHumanCheck') }),
