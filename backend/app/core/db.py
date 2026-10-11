@@ -122,12 +122,30 @@ SQLITE_WRITE_YIELD_S = 0.12
 전체 스위트 부하에서 API 쓰기 2.5s — 전부 잠금 대기). 최대 재시도 간격(100ms)보다 길게 쉬어 기다리던 쓰기가 한 번은 들어오게 한다."""
 
 
-def yield_write_lock(bind: Any) -> None:
-    """SQLite 파일 DB 면 쓰기 묶음 사이에 잠깐 쉰다(``SQLITE_WRITE_YIELD_S`` — API 쓰기가 끼어들 틈). Postgres 는 아무것도 안 한다
-    (행 잠금 — 다른 표 쓰기를 막지 않는다)."""
-    engine = getattr(bind, "engine", bind)
-    if getattr(getattr(engine, "dialect", None), "name", None) == "sqlite" and SQLITE_WRITE_YIELD_S > 0:
-        time.sleep(SQLITE_WRITE_YIELD_S)
+SQLITE_YIELD_AFTER_S = 0.2
+"""쓰기 잠금을 (쉬지 않고) 이만큼 넘게 들었으면 다음 묶음 전에 쉰다 — 작은 리비전(묶음 몇 개, 합 0.2초 미만)은 쉬지 않는다."""
+
+
+class WriteYield:
+    """R3i D17-6: 묶음·단계로 나눠 쓰는 쪽이 쓰기 잠금을 이어서 ``SQLITE_YIELD_AFTER_S`` 넘게 들었으면 다음 묶음 전에
+    ``SQLITE_WRITE_YIELD_S`` 쉰다(SQLite 파일 DB 만 — Postgres 는 행 잠금이라 다른 표 쓰기를 막지 않는다). 기다리던 API 쓰기 대기 상한
+    ≈ 0.2초 + 묶음 하나."""
+
+    def __init__(self, bind: Any) -> None:
+        engine = getattr(bind, "engine", bind)
+        self.sqlite = getattr(getattr(engine, "dialect", None), "name", None) == "sqlite"
+        self.held = 0.0
+        self.yields = 0
+
+    def after(self, held_s: float) -> None:
+        """방금 끝난 묶음이 잠금을 든 시간 ``held_s`` 를 더하고, 넘었으면 쉰다."""
+        if not self.sqlite or SQLITE_WRITE_YIELD_S <= 0:
+            return
+        self.held += max(0.0, held_s)
+        if self.held >= SQLITE_YIELD_AFTER_S:
+            time.sleep(SQLITE_WRITE_YIELD_S)
+            self.held = 0.0
+            self.yields += 1
 
 
 def _passive_checkpoint(engine: Engine) -> None:

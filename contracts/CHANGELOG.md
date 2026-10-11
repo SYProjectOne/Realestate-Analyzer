@@ -2,6 +2,78 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.14
+
+R3 9차 리뷰(`docs/design/wp/R3_REVIEW9.md`) 후속 — CEO 결정 D17(`docs/design/DECISIONS.md`)과 R3i 배정(`docs/design/wp/R3I_FIX.md` CORE7).
+계약 소유자 = R3i CORE7(브랜치 `wp/r3i-core7`). 마이그레이션 `0014`(`0014_r3i.py`: 새 열 `snapshot_view_unit.backfilled_at` + 보고서 저장본
+점수 prov id 변환) · `0013` 수정(compare 채택 표식 보존 + 전환 표지 — 아직 0013 을 안 거친 DB 만 해당). 필드 삭제 없음, **새 응답 필드 3**
+(`Snapshot.backfilled_at` · `HumanCheck.basis_type_code` · `ChecklistItem.job_id`(PATCH 응답)), **새 오류 code 2**(`discount_format` ·
+`discount_not_below_price`), **응답 상태 추가 2**(`PATCH /ops/checklist/{id}` 202, `PATCH /regions/{id}` 이름만 → 202), 잡 상태 의미 변경
+(`snapshot.publish` 예외 → 지연 재큐잉 재시도). 저장 모양 버전(`SHAPE_VERSION`) 그대로 1(0014 변환은 값(id)만 바꾼다 — D14-4 변환 마이그레이션).
+테스트 표(리뷰 ID · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R3I_TESTS.md`.
+
+**프론트(FE8)가 맞출 것** — 아래 'FE 차이' 표 하나만 보면 된다. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시
+만들지 않았다(frontend/** = FE8 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### FE 차이(FE8 — 화면이 맞출 것)
+
+| # | 대상 | .13 | .14 | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| F1 | **`Snapshot.backfilled_at`**(`GET /regions/{id}/snapshots` 항목·`GET /regions/{id}` `latest_snapshot`) | 없음 — 업그레이드 backfill 이 발행 뒤 사실로 다시 계산해 채운 값이 섞여도 표지 없음 | **새 선택 필드**(string\|null, KST ISO): 그 발행 리비전 저장본에 backfill 이 **새로 계산해 채운** 값(빠진 단지 상세·시나리오·출처 서랍 등)이 있으면 가장 늦은 시각. 없으면 **키 자체가 없다**(발행 저장본 안 이 객체 바이트 그대로). 화면: 그 리비전을 볼 때 "업그레이드 때 다시 계산한 값 포함(발행 순간 값이 아닐 수 있음)" 안내 | D17-2 · major 2 |
+| F2 | **`POST /ops/human-checks` 응답 `basis_type_code`** | 없음 | **새 필드**(string\|null): field=discount 면 그 할인이 들어간 기준 타입 코드('84C'), 아니면 null. 폼에는 입력 전부터 단지 상세 `price.basis_type_code`(이미 있음)를 '기준 타입 84C 할인(원)'으로 표시하고, 응답의 이 값으로 '기준 타입 84C 할인으로 반영' 확인. 기준 타입이 나중에 바뀌면(84㎡에 더 가까운 타입) 그 할인은 옛 타입 칸 표시만 남고 차감 없음 | D17-4 · m3 |
+| F3 | **사람 확인 할인 값 검사**(`field=discount` 의 `value_text`) | 쉼표·공백을 지우고 유니코드 숫자로 읽음 — `'1,0'`→10, `',,5,,'`→5, `' 1 0 0 0 '`→1000, 전각·아랍 숫자 통과, `'-0'`→0, 가격 이상 할인 201(차감 없음) | 서버 규칙(FE 목·폼 검사를 이것과 같게): 앞뒤 공백을 뗀 값이 `^(?:[0-9]{1,3}(?:,[0-9]{3})+\|[0-9]+)원?$`(ASCII 숫자, 쉼표는 세 자리마다, '원'은 붙여서 하나) 이고 0 ~ 100,000,000,000 정수. 어기면 **422 `discount_format`**. 할인 ≥ 기준 타입 차감 바탕(min(대표층가, 최고가))이면 **422 `discount_not_below_price`**(0 = 할인 없음 확인은 통과). 둘 다 `field_errors = [{loc: ["body","value_text"], msg}]`(msg = detail). **다른 칸도 틀리면** `validation_error` + 모든 칸 | m2 |
+| F4 | 사람 확인 다른 숫자 필드(`max_price_won`·`resale_months`·`residency_months`·`down_payment_pct`) | 위와 같은 느슨한 읽기 | 같은 엄격한 숫자(ASCII·쉼표 세 자리마다·숫자 사이 공백 없음), 단위 앞 공백은 한 칸까지('3 년' 허용), 음수 거절. 틀리면 그대로 `validation_error` | m2 |
+| F5 | **`PATCH /ops/checklist/{id}`** 응답 | 200 + 항목(발행 없음 — 발행 리비전 보고서 체크리스트가 옛 값) | 상태·메모·기한이 실제로 바뀌면 **202** + 항목 + **`job_id`**(snapshot.publish — 단지 지역, 단지 없는 '지역 공통' 항목은 모든 지역 중 첫 잡). 바뀐 것이 없거나 발행할 리비전이 없으면 200 + `job_id` null. 화면: job_id 가 있으면 잡 감시(다른 발행 쓰기와 같은 규칙) | D17-5 · m15 |
+| F6 | **`PATCH /regions/{id}`** 이름만 | 200 + `change_event`·`job_id` null(보고서 표지 옛 이름) | 발행 리비전이 있으면 **202** + `job_id`(snapshot.publish, `change_event` null), 없으면 200 + null. 선택이 바뀌는 경우는 그대로(202 region.expand) | D17-5 · m15 |
+| F7 | `PATCH /catalysts/{id}` | 좌표 소수 7자리 이상이면 같은 본문 재전송도 202(새 잡). 스냅샷 없는 지역 202 + job null | 좌표는 소수 6자리로 반올림해 비교·저장(응답 `lat`·`lon` 도 6자리) → 같은 본문 재전송 **200** + null. 바뀌었어도 발행할 리비전이 없으면 **200** + null | m8 · m14 |
+| F8 | `snapshot.publish` 잡 예외(이월 복사 중 잠금 실패·임대 잃음·worker 재시작 뒤) | failed(재시도 없음) — 그 리비전이 building 에 멈추고 뒤 쓰기가 끝없이 미뤄짐 | **지연 재큐잉 재시도**: status `queued`, stats `error_retries`(1~5)·`publish_error`(예외 이름)·`requeue_reason`(`publish_error: …`)·`not_before`(2·4·8·16·30초). 5번 넘으면 failed(error_text `publish_error: …`, stats `redeferred_job_id` — 아래 F9). 화면(jobWatch): .13 F4 와 같다 — queued + `requeue_reason` = 진행 중 | D17-3 · major 3 |
+| F9 | 미뤄진 후속 잡(done, stats `deferred_to`) | 그 리비전이 실패로 멈추면 영영 발행 안 됨 | 그 리비전의 발행·재판정 잡이 끝내 실패하면 그 쓰기를 **새 후속 발행 잡**으로 다시 등록하고 미뤄진 잡 stats 에 **`redeferred_job_id`**. 새 잡은 멈춘 리비전을 끝까지(이월 이어 채움 → ready → 발행, stats `resumed_snapshot_id`) 가져가거나 재판정을 등록(stats `rejudge_job_id`, `deferred_to`). 화면: 감시하던 잡이 done + `deferred_to` 인데 나중에 `redeferred_job_id` 가 생기면 그 잡을 이어 감시 | D17-3 · major 3 |
+| F10 | `POST /reports`(compare 생략) | 기본 비교(revision_of) 저장본 미완을 안 봐서 202 뒤 잡 실패 | 기본 비교 리비전의 report·report_diff 가 미완이면 **503** `materialize_pending`(202 전에) — 지정 비교와 같은 규칙 | m9 |
+| F11 | `POST /ops/human-checks` 422 `field_errors` 순서 | 스키마 검사기 순서(checked_at 이 뒤일 수 있음), 스키마 오류가 있으면 값 칸 오류 빠짐 | **checked_at 오류가 늘 먼저**, 스키마 오류가 있어도 값 칸(형식·할인 상한) 오류를 함께 | m10 · m2 |
+| F12 | 할인·계약금 사람 확인 뒤 새 공고(무순위·정정) | 새 공고가 그 값을 싣지 않으면 현재 공고 할인·계약금이 비고 차감이 조용히 사라짐(change_event·재검토 없음) | **의미 단위 유지**(값 없음 ≠ 다른 값): 새 공고 행에도 사람 확인 값(라벨 확인됨, reason `사람 확인(…)`)이 들어가 `payment[].discount_by_type`·`down_payment_pct`·`price.discount` 그대로. 새 공고가 **다른 값**을 내면 .12 그대로 D12-1(채택 + critical + '사람 확인 재검토'). 옛 공고 행을 `entity_id` 로 지정한 할인 사람 확인도 현재 공고에 들어간다 | D17-4 · major 4 · m4 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.13) | 이후(.14) | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | backfill 동시성·중단 | 임대 없음. 출처 서랍을 다시 쓸 때 표식을 내리고 서랍 행 전부 DELETE 를 커밋한 뒤 따로 써서, 그 사이 중단(Ctrl+C·worker 재시작)·겹침(compose 자동 backfill + CLI)이면 발행 순간 서랍이 지워지고 다음 실행이 **지금 사실로** 다시 만들었다(리뷰 재현: `fp_591` '계약금 10%' → '20') | 리비전마다 **발행과 같은 임대**(`snapshot.publish_lease`, 보유자 `backfill:<pid>:<tid>`)를 잡는다 — 다른 발행·backfill 이 들고 있으면 그 리비전은 건너뛰고 결과 `busy` 에(다음 실행이 다시, worker 는 5분마다). 출처 서랍은 **한 트랜잭션**(임대 확인 → 옛 행 DELETE → 새 행 INSERT(있던 서랍 본문 바이트 그대로) → 표식). 새 키 행은 지우지 않고 더하기만, 묶음마다 임대 확인. 어느 시점에 끊겨도 저장된 본문·서랍 그대로 | D17-1 · major 1 |
+| S2 | backfill 새 키·목록 범위(.13 S4 정정) | .13 S4 는 "키만 그 리비전 범위"였고 **목록 본문**(단지 목록·비교 입력)은 지금 단지 전부로 다시 계산했다(발행 뒤 단지가 옛 리비전 시나리오 2 목록에 나타남, 상세 404) | 단지 상세 키 **와** 단지 목록 본문 행·비교 입력 단지 = 그 리비전 단지 목록 저장본(어느 시나리오든)의 단지 ∪ 이미 있는 단지 상세 키(근거 저장본이 없으면 제한 없음). 대시보드·시장·민감도·보고서 본문은 다시 계산하면 그때 사실 범위다 — **새로 계산해 채운 단위에는 `backfilled_at`**(F1)이 남는다. 이미 있는 행·서랍은 바이트 그대로. 발행 뒤 사실이 바뀐 상태에서 일부만 쓴 단위를 채우면 한 리비전 안에 시점이 다른 값이 섞일 수 있다 — 그 표지가 F1 | D17-2 · major 2 |
+| S3 | 보고서 저장본 점수 prov(.13 이전 저장분) | `sc_<성분 행>`·`st_<합계 행>`(서랍 없음, KPI `st_<실행>` 과 부딪힘 — 리비전 11 223개·12 461개) | 0014 가 `sc_<실행>_<단지>_<성분>`·`st_<실행>_<단지>`(API 서랍 id)로 바꾸고(본문·sha256 다시, 모양 그대로) 그 리비전 출처 서랍 단위를 미완으로 → backfill 이 새 id 서랍만 더한다 | m5 · D14-4 |
+| S4 | 0013 파서 할인 '확인됨' → '추정' | 사유를 통째로 덮어써 compare 채택 표식을 지움, change_event·재판정 없음 | 사유가 있으면 뒤에 붙임(표식 보존) + 표지 `(0013 확인됨→추정)`. backfill 이 표지 붙은 채택 할인마다 critical·재판정 change_event 를 한 번(멱등) + 재판정 잡(결과 `discounts_relabelled`). **이미 .13 0013 을 거친 DB 는 표지가 없어 해당 없음**(녹화 공고 할인 줄 0건 — 실데이터 영향 0) | m1 |
+| S5 | SQLite 개발 모드 발행 쓰기 | 저장본 묶음·이월 복사 단계가 연달아 쓰기 잠금을 잡아, 기다리던 API 쓰기(바쁨 처리기 1~100ms 간격 재시도)가 계속 놓쳐 2.5s | 묶음·단계 사이에 `core.db.SQLITE_WRITE_YIELD_S`(0.12s) 쉰다 — 기다리던 쓰기가 끼어든다. Postgres 는 해당 없음 | D17-6 · m18 |
+| S6 | SQLite API 체크포인터 | 예외를 기록 없이 삼킴(WAL 이 자라도 모름) | 첫 실패·60번마다 경고 로그(`sqlite.checkpoint_failed`), 연달아 5번이면 요청 커밋 자동 체크포인트로 되돌림(`sqlite.checkpoint_fallback`), 다시 되면 끔 | m12 |
+| S7 | 발행·backfill 나눠 쓰기 | 임대를 잃은 이전 보유자가 확인 없이 끝까지 씀 | 묶음 트랜잭션마다 첫 문장이 임대 확인(`LeaseLost` — 그 묶음부터 아무것도 쓰지 않음) | m13 |
+| S8 | redact | — | camelCase 키(`accessKey=`)·`pass:`, 키 없는 공급자 토큰(`sk-ant-…`·`sk-…`·`ghp_…`·`github_pat_…`·`xox?-…`·`AKIA…`·`glpat-…`·`AIza…`), dict 비밀 키의 정수·실수 값(개수 키 `max_tokens` 등은 그대로), 'the/a/this bearer 소문자낱말' 산문은 가리지 않음(토큰은 그대로 가림) | m17 |
+| S9 | worker backfill | 시작 때 한 번, 사람 확인 이전 예외가 리비전 채우기까지 막음 | 단계(`human_checks`·`discount_relabel`)·리비전마다 따로 실패(결과 `failed[].step`), 실패·busy 면 상주 루프가 5분마다 다시 | m6 |
+| S10 | 잡 카운터 | 지연 재큐잉이 `stale_recoveries` 를, stale 회수가 `requeue_count` 를 지움 | 서로 이어 간다(`error_retries` 포함) | m11 |
+| S11 | `python -m app.worker --once` | 재큐잉 대기 잡(`not_before`)을 남긴 채 0 으로 끝 | 그 시각까지 기다려 실행(최대 20분), 그래도 남으면 종료 코드 **3** | m16 |
+| S12 | 이월 발행 building → ready | 이월 복사를 건너뛴 재실행은 ready 로 안 가 publish_blocked | 이월이 끝났으면(`persist.carry_done` — 점수 실행이 모두 이월 복사이고 시나리오를 다 덮음) 늘 ready → 발행(멱등). 이월이 아닌 판정 결과가 있으면 그 판정이 발행 | D17-3 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `snapshot.json` | `backfilled_at`(string\|null, 선택) — F1 |
+| 2 | `human_check.json` | `basis_type_code`(string\|null, 선택) — F2 |
+| 3 | `checklist_item.json` | `job_id`(integer\|null, 선택 — PATCH 응답에만) — F5 |
+| 4 | `error.json` | code enum 에 `discount_format`·`discount_not_below_price` — F3 |
+| 5 | `openapi.yaml` | `updateChecklistItem` 202(예시 `checklist_item_patched.json`) + 설명, `updateRegion` 200/202 설명, `updateCatalyst`·`createHumanCheck` 설명. `info.version` 2026-10-09.14 |
+| 6 | DB `0014` | `snapshot_view_unit.backfilled_at` VARCHAR(32) NULL + 보고서 점수 prov id 변환(S3). downgrade = 열 삭제(id 변환은 되돌리지 않음 — 새 id 는 .13 에서도 유효) |
+| 7 | DB `0013`(수정) | 사유 보존 + 전환 표지(S4) — 아직 0013 을 거치지 않은 DB 만 |
+
+### 마이그레이션·검증
+
+- .13 DB: worker 정지 → `cd backend && uv run alembic upgrade head`(0014) → `uv run python -m app.snapshot_view backfill`(결과 `failed`·`busy`
+  가 비면 끝, `busy` 면 다시) → worker 시작. compose 의 자동 backfill 과 CLI 가 겹쳐도 임대로 한 쪽만 쓴다(S1) — `docs/runbook.md` §11.
+- 왕복·시나리오: `tests/contracts/test_r3i_migrations.py`(SQLite·임베디드 Postgres 16 — 업그레이드 직후 상태 + 발행 뒤 사실 변경에서 세 지점
+  중단·동시 backfill 2개·backfill 중 같은 리비전 발행 → 원래 행·서랍 바이트 그대로, backfilled_at, 목록 범위, 0014 보고서 id 변환 왕복,
+  0013 표식, 0014 왕복·autogenerate diff 0).
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.14`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check`).
+
+### 측정
+
+- **D14-5 / D17-6**(`tests/api/test_r3f_perf_publish.py` — devseed 16 + 합성 1,000 단지 × 시나리오 5): 측정값은 아래(R3i 최종 코드).
+
 ## 2026-10-09.13
 
 R3 8차 리뷰(`docs/design/wp/R3_REVIEW8.md`) 후속 — CEO 결정 D16(`docs/design/DECISIONS.md`)과 R3h 배정(`docs/design/wp/R3H_FIX.md` CORE6).

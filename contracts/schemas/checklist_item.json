@@ -15,7 +15,8 @@
     "due_date": { "type": ["string", "null"], "format": "date" },
     "status": { "type": "string", "enum": ["open", "done", "na"] },
     "note": { "type": ["string", "null"] },
-    "closed_by": { "description": "닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행", "type": ["string", "null"], "enum": ["auto", "human", null] }
+    "closed_by": { "description": "닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행", "type": ["string", "null"], "enum": ["auto", "human", null] },
+    "job_id": { "description": "계약 .14(D17-5): PATCH /ops/checklist/{id} 응답에만 — 상태·메모·기한이 바뀌면 발행 리비전 보고서 본문(§8-4 체크리스트·캘린더)이 바뀌므로 snapshot.publish 잡(202). 바뀐 것이 없거나 발행할 리비전이 없으면 null(200). 목록 GET 에는 없다", "type": ["integer", "null"] }
   },
   "$defs": {
     "ChecklistPatch": {

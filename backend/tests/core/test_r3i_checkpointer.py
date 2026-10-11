@@ -65,3 +65,34 @@ def test_m12_checkpoint_failures_are_logged_and_fall_back(
         assert any("sqlite.checkpoint_fallback" in m for m in msgs), msgs
     finally:
         engine.dispose()
+
+
+def test_d17_6_write_yield_after_lock_held(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """D17-6: 나눠 쓰는 쪽이 쓰기 잠금을 이어서 0.2초 넘게 들었으면 다음 묶음 전에 0.12초 쉰다(기다리던 API 쓰기에 양보) — SQLite
+    파일 DB 만. 작은 쓰기(합 0.2초 미만)는 쉬지 않는다. Postgres 는 쉬지 않는다."""
+    import app.core.db as dbm
+
+    slept: list[float] = []
+    monkeypatch.setattr(dbm.time, "sleep", lambda s: slept.append(s))
+    engine = make_engine(f"sqlite:///{(tmp_path / 'y.db').as_posix()}")
+    try:
+        pause = dbm.WriteYield(engine)
+        pause.after(0.05)
+        pause.after(0.1)
+        assert slept == []
+        pause.after(0.06)  # 합 0.21초
+        assert slept == [dbm.SQLITE_WRITE_YIELD_S] and pause.yields == 1
+        pause.after(0.1)
+        assert pause.yields == 1  # 쉰 뒤 다시 0부터
+    finally:
+        engine.dispose()
+
+    class _Dialect:
+        name = "postgresql"
+
+    class _Pg:
+        dialect = _Dialect()
+
+    pg = dbm.WriteYield(_Pg())
+    pg.after(5.0)
+    assert pg.yields == 0

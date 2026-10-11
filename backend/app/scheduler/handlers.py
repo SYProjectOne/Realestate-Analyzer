@@ -467,10 +467,11 @@ def _publish_job(ctx: SchedulerContext, job: JobRun, sid: int, carry: Any) -> di
     with ctx.session_factory() as session:
         stats: dict[str, Any] = {"snapshot_id": sid}
         sqlite = session.get_bind().dialect.name == "sqlite"
-        from app.core.db import yield_write_lock
+        from app.core.db import WriteYield
         from app.scheduler.rejudge import _sqlite_write_lock
 
         locks: list[float] = []
+        pause = WriteYield(session.get_bind())
         t_lock = [time.perf_counter()]
 
         def lock() -> None:
@@ -482,10 +483,10 @@ def _publish_job(ctx: SchedulerContext, job: JobRun, sid: int, carry: Any) -> di
 
         def checkpoint() -> None:
             # R3h(D14-5 'API 쓰기 대기 1초' — 부하 측정에서 한 트랜잭션 이월 복사가 1.06s): 단계마다 commit 해 잠금을 나눈다.
-            # R3i D17-6: 단계 사이에 잠깐 쉬어 기다리던 API 쓰기가 끼어들게 한다(SQLite 바쁨 처리기 재시도 간격)
+            # R3i D17-6: 잠금을 이어서 0.2초 넘게 들었으면 쉬어 기다리던 API 쓰기가 끼어들게 한다(``core.db.WriteYield``)
             session.commit()
             locks.append(time.perf_counter() - t_lock[0])
-            yield_write_lock(session.get_bind())
+            pause.after(locks[-1])
             lock()
 
         if carry is not None:

@@ -1,4 +1,5 @@
-"""발행 리비전 = 저장된 읽기 모델(materialized) — DECISIONS D13-1·D14-1·D14-4·D14-5·D14-8·D14-9·**D15-2·D15-3·D15-6**, 계약 2026-10-09.12.
+"""발행 리비전 = 저장된 읽기 모델(materialized) — DECISIONS D13-1·D14-1·D14-4·D14-5·D14-8·D14-9·**D15-2·D15-3·D15-6**·**D17-1·D17-2**
+(계약 2026-10-09.14 — backfill 은 발행과 같은 임대·출처 서랍 한 트랜잭션 교체·``backfilled_at``·묶음마다 임대 확인·SQLite 묶음 사이 양보).
 
 리비전 발행은 worker 잡(``snapshot.publish`` 처리 함수와 같은 ``publish_revision``)에서만 한다(D14-5 — API 요청 안에서
 발행하지 않는다). 순서:
@@ -975,6 +976,7 @@ class WriteStats:
     rows: int = 0
     max_lock_s: float = 0.0
     total_write_s: float = 0.0
+    yields: int = 0
 
 
 def _chunks(rows: Sequence[ViewRow]) -> Iterator[Sequence[ViewRow]]:
@@ -1085,14 +1087,15 @@ def write_rows(
     (``compute`` 의 순서). ``bind`` 가 엔진이면 ``write_connection`` 하나로 쓴다.
 
     ``lease``(R3i m13): 묶음 트랜잭션마다 첫 문장으로 임대를 아직 들고 있는지 확인한다(잃었으면 ``LeaseLost`` — 그 묶음부터 쓰지
-    않는다). ``backfilled``(D17-2): 단위 → backfilled_at(표식에 남긴다). SQLite 면 묶음 사이에 ``core.db.yield_write_lock``(D17-6 —
+    않는다). ``backfilled``(D17-2): 단위 → backfilled_at(표식에 남긴다). SQLite 면 묶음 사이에 ``core.db.WriteYield``(D17-6 —
     기다리던 API 쓰기가 끼어들 틈)."""
     if isinstance(bind, Engine):
         with write_connection(bind) as conn:
             return write_rows(conn, snapshot_id, rows, finish=finish, lease=lease, backfilled=backfilled)
-    from app.core.db import yield_write_lock
+    from app.core.db import WriteYield
 
     conn = bind
+    pause = WriteYield(conn)
     st = WriteStats()
     todo = dict(finish or {})
     stamps = dict(backfilled or {})
@@ -1101,9 +1104,10 @@ def write_rows(
         last[(r.kind, r.scenario)] = i
     pos = 0
     chunks = list(_chunks(rows))
+    dt = 0.0
     for n, chunk in enumerate(chunks):
         if n:
-            yield_write_lock(conn)
+            pause.after(dt)  # D17-6: 이어서 0.2초 넘게 들었으면 기다리던 API 쓰기에 양보
         t = time.perf_counter()
         end = pos + len(chunk)
         with conn.begin():
@@ -1120,6 +1124,7 @@ def write_rows(
         st.rows += len(chunk)
         st.max_lock_s = max(st.max_lock_s, dt)
         st.total_write_s += dt
+    st.yields = pause.yields
     if todo:  # 쓸 행이 없었다(빈 단위만)
         with conn.begin():
             _check_lease(conn, snapshot_id, lease)
@@ -1372,6 +1377,7 @@ def _published_result(
         "write_chunks": ws.chunks,
         "write_max_lock_s": round(ws.max_lock_s, 3),
         "write_total_s": round(ws.total_write_s, 3),
+        "write_yields": ws.yields,
         "flip_s": round(flip_s, 3),
         "total_s": round(time.perf_counter() - t0, 3),
         "followups_included": list(computed.followups) if done else [],
@@ -1736,7 +1742,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         res = backfill()
         sys.stdout.write(
             f"backfill: snapshots={res['snapshots']} rows={res['rows']} "
-            f"human_checks_migrated={res['human_checks_migrated']} missing_provenance={res.get('missing_provenance', 0)}\n"
+            f"human_checks_migrated={res['human_checks_migrated']} missing_provenance={res.get('missing_provenance', 0)} "
+            f"busy={res.get('busy', [])} failed={[f.get('snapshot_id') or f.get('step') for f in res.get('failed', [])]}\n"
         )
     return 0
 
