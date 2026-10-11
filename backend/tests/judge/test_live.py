@@ -8,6 +8,8 @@
 같은 입력이 캐시되는지 본다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json

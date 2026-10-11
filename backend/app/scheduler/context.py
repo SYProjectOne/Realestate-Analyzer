@@ -50,7 +50,7 @@ from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_sessionmaker
 from app.core.settings import Settings, get_settings
 from app.core.time import KST, now_kst, today_kst
-from app.judge.base import JudgeCaller
+from app.judge.base import CallMeter, JudgeCaller
 from app.scheduler.notify import Notifier
 
 if TYPE_CHECKING:
@@ -319,6 +319,9 @@ class SchedulerContext:
     now: Callable[[], datetime] = now_kst
     worker_id: str = field(default_factory=lambda: f"{socket.gethostname()}:{os.getpid()}")
     _adapter: JudgeCaller | None = field(default=None, repr=False)
+    judge_meter: CallMeter = field(default_factory=CallMeter, repr=False)
+    """판정기 tools/call 계수기(D18-2) — 어댑터를 버리고 새로 만들어도 이어서 센다. 잡 stats 는 잡 시작·끝 차이."""
+    _metered: bool = field(default=False, repr=False)
 
     def __post_init__(self) -> None:
         # 보낸 알림 영속 기록(job_run stats 의 notified_event_ids) — 재시작해도 같은 이벤트를 다시 보내지 않는다(R3 m13)
@@ -336,7 +339,15 @@ class SchedulerContext:
     def adapter(self) -> JudgeCaller:
         if self._adapter is None:
             self._adapter = self.adapter_factory()
+            if isinstance(getattr(self._adapter, "meter", None), CallMeter):
+                self._adapter.meter = self.judge_meter  # type: ignore[attr-defined]
+                self._metered = True
         return self._adapter
+
+    def judge_metered(self) -> bool:
+        """이 문맥이 전송 계층 계수기를 쓰는 어댑터(JevMcpAdapter)를 만든 적이 있나. MockAdapter(녹화 재생)는
+        tools/call 이 없어 계수기를 쓰지 않는다."""
+        return self._metered
 
     def reset_adapter(self) -> None:
         """연결이 끊긴 어댑터를 버린다(다음 ``adapter()`` 가 새로 만든다)."""

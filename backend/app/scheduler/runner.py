@@ -215,6 +215,7 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
     handler = HANDLERS.get(job.job_name)
     status, stats, error = "done", {}, None
     started = time.monotonic()
+    mark = ctx.judge_meter.by_tool()  # D18-2: 이 잡이 보낸 tools/call = 끝 - 시작
     log.info("worker.job.start", extra={"job_id": job_id, "job_name": job.job_name})
     try:
         if handler is None:
@@ -231,6 +232,7 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
     except Exception as exc:  # 처리 함수 버그·외부 오류: 잡만 실패, worker 는 계속
         status, error = "failed", _error_text(exc)
         log.exception("worker.job.error", extra={"job_id": job_id, "job_name": job.job_name})
+    stats = with_tools_calls(ctx, mark, stats)
     _finish(ctx, job_id, status=status, stats=redact_stats(_jsonable(stats)), error_text=error,
             finished_at=ctx.iso_now())  # fmt: skip
     log.info(
@@ -243,6 +245,24 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
         },
     )
     return status
+
+
+def with_tools_calls(ctx: SchedulerContext, mark: Mapping[str, int], stats: Any) -> dict[str, Any]:
+    """잡 stats 에 이 잡이 판정기로 보낸 ``tools/call`` 수를 단다(D18-2 — 수집 단계 판정 포함, m2).
+
+    ``tools_calls``·``tools_calls_by_tool`` 은 판정과 관련된 잡이면(보낸 것이 있거나 ``judge_calls`` 를 내는 잡). 전송 계층 계수기를 쓰는 어댑터(JevMcpAdapter)면 최상위
+    ``judge_calls`` 도 이 수다(봉투의 cached 표시가 아니라 실제 전송 — runbook §10-3 의 잡별 집계)."""
+    from app.judge.base import CallMeter
+
+    out = dict(stats or {})
+    by_tool = CallMeter.delta(dict(mark), ctx.judge_meter.by_tool())
+    if not by_tool and "judge_calls" not in out and not ctx.judge_metered():
+        return out  # 판정과 무관한 잡(참조 표·백업 등)은 그대로
+    out["tools_calls"] = sum(by_tool.values())
+    out["tools_calls_by_tool"] = by_tool
+    if ctx.judge_metered() and ("judge_calls" in out or by_tool):
+        out["judge_calls"] = out["tools_calls"]
+    return out
 
 
 def _finish(ctx: SchedulerContext, job_id: int, **values: Any) -> None:
