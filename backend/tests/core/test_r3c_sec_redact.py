@@ -42,8 +42,8 @@ def test_minor22_header_and_bearer_tokens_masked(text: str, secret: str) -> None
     [
         "the bearer of this letter",
         "bearer bonds are rare",
-        "Bearer Instruments Act",
-        "the bearer certificates",
+        # R3h(8차 minor 14): 'bearer' 뒤 8자 이상 낱말('Instruments'·'certificates')은 소문자뿐인 토큰('bearer abcdefghij')과
+        # 모양으로 구분할 수 없어 가린다(규칙 6·13 우선 — 로그 산문 오탐은 표시만 영향). 짧은 낱말 산문은 그대로
         "무기명(bearer) 채권",
         "Content-Type: text/html",
         "X-Frame-Options: DENY",
