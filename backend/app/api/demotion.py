@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
@@ -35,7 +35,16 @@ from sqlalchemy import Integer, Numeric, select
 from sqlalchemy.orm import Session
 
 from app.api.jobs import now_iso
-from app.core.time import kst_date, now_kst
+from app.core.time import (
+    CHECKED_AT_FUTURE_SLACK,
+    CHECKED_AT_MIN,
+    checked_at_range_error,
+    kst_date,
+    kst_day,
+    kst_day_after,
+    now_kst,
+    parse_datetime,
+)
 from app.facts_view import (
     DEMOTION_LABEL,
     DEMOTION_REASON,
@@ -519,7 +528,10 @@ def later_official(
     from app.normalize.resolver import OFFICIAL_SOURCES
 
     _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
-    day = kst_date(checked_at)
+    if (
+        kst_date(checked_at) is None
+    ):  # 입력은 checked_at_error 를 이미 통과했다 — 못 읽는 값은 비교하지 않는다
+        return None
     mine = norm_value(value) if value is not None else None
     latest: str | None = None
     for e, i, f in group:
@@ -538,12 +550,8 @@ def later_official(
         ):
             if not observed:
                 continue
-            seen = kst_date(observed)
-            after = (
-                seen > day
-                if seen is not None and day is not None
-                else observed > (checked_at or "")[:10]  # 날짜를 못 읽는 옛 행 — 예전 문자열 규칙
-            )
+            # KST 날짜 비교 — resolver ``_observed_after`` 와 같은 함수(못 읽는 옛 observed_on 은 kst_day 문자열 비교)
+            after = kst_day_after(observed, checked_at)
             if not after or (mine is not None and _same_norm(norm, mine)):
                 continue
             if latest is None or observed > latest:
@@ -561,32 +569,26 @@ def _same_norm(a: str | None, b: str | None) -> bool:
         return " ".join(a.split()) == " ".join(b.split())
 
 
-CHECKED_AT_FUTURE_SLACK: Final = timedelta(minutes=10)
-"""D14-6: 사람 확인 시각이 서버 시계보다 이만큼 넘게 앞서면 422(입력기 시계 차는 허용)."""
-_RFC3339_RE: Final = re.compile(
-    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:[Zz]|[+-]\d{2}:\d{2})$"
-)
-
-
 def checked_at_error(value: Any, *, now: datetime | None = None) -> str | None:
-    """D14-6(N-M4): 사람 확인 ``checked_at`` 검사 — 시간대가 붙은 RFC3339 date-time 이고 지금(KST)보다
-    ``CHECKED_AT_FUTURE_SLACK`` 넘게 미래가 아니어야 한다. 문제 없으면 None, 있으면 422 detail 문구.
+    """D14-6(N-M4)·D15-7: 사람 확인 ``checked_at`` 검사 — 시간대가 붙은 RFC3339 date-time(``core.time.parse_datetime``,
+    T·Z 대소문자 무관)이고 KST 2000-01-01 이후, 지금(KST)보다 ``CHECKED_AT_FUTURE_SLACK`` 넘게 미래가 아니어야 한다
+    (``core.time.checked_at_range_error``). overflow 는 읽을 수 없는 값이다. 문제 없으면 None, 있으면 422 detail 문구.
     계약 .11 ``format: date-time`` 을 스키마 검사기(FormatChecker)와 무관하게 여기서도 강제한다(미래 검사는 스키마로 못 한다)."""
     text = value if isinstance(value, str) else ""
-    dt: datetime | None = None
-    if _RFC3339_RE.fullmatch(text):
-        body = text[:-1] + "+00:00" if text[-1] in "Zz" else text
-        try:
-            dt = datetime.fromisoformat(body[:10] + "T" + body[11:])
-        except ValueError:
-            dt = None
+    dt = parse_datetime(text)  # D15-7: 파싱은 core.time 하나(T·Z 대소문자 무관, overflow → None)
     if dt is None:
         return (
-            f"확인 시각 '{str(value)[:40]}' 은 시간대가 붙은 RFC3339 날짜·시각이 아니다 — "
-            "예: 2026-10-09T10:20:00+09:00 (날짜만·시간대 없는 시각은 받지 않는다)"
+            f"확인 시각 '{str(value)[:40]}' 은 읽을 수 있는 시간대가 붙은 RFC3339 날짜·시각이 아니다 — "
+            "예: 2026-10-09T10:20:00+09:00 (날짜만·시간대 없는 시각·범위 밖 값은 받지 않는다)"
         )
     current = now or now_kst()
-    if dt > current + CHECKED_AT_FUTURE_SLACK:
+    problem = checked_at_range_error(dt, now=current)
+    if problem == "too_old":
+        return (
+            f"확인 시각 {text} 은 {CHECKED_AT_MIN.year}년({CHECKED_AT_MIN.date().isoformat()} KST) 이전이다 — "
+            "실제로 확인한 시각을 적는다"
+        )
+    if problem == "future":
         minutes = int(CHECKED_AT_FUTURE_SLACK.total_seconds() // 60)
         return (
             f"확인 시각 {text} 은 지금({current.isoformat(timespec='seconds')})보다 {minutes}분 넘게 미래다 — "
@@ -712,9 +714,9 @@ def apply_human_check(
 
 
 def _kst_day(checked_at: str) -> str:
-    """사람 확인 출처 행 observed_on = checked_at 의 KST 날짜(D14-6). 못 읽는 옛 값은 예전처럼 앞 10자."""
-    day = kst_date(checked_at)
-    return day.isoformat() if day is not None else (checked_at or "")[:10]
+    """사람 확인 출처 행 observed_on = checked_at 의 KST 날짜(D14-6·D15-7, ``core.time.kst_day``). 입력은 형식 검사를
+    통과하므로 언제나 읽힌다. 못 읽는 옛 값(형식 검사 이전 행)만 예전처럼 앞 10자 — 결정적이고 읽히는 시각을 자르지 않는다."""
+    return kst_day(checked_at)
 
 
 def _spread_to_group(session: Session, target: HumanTarget, *, snapshot_id: int | None = None) -> int:
