@@ -106,7 +106,9 @@ def _catalyst_table(stages: Sequence[str]) -> sa.Table:
         sa.Column("source_url", sa.Text(), nullable=True),
         sa.Column("note", sa.Text(), nullable=True),
         sa.CheckConstraint("decision IN ('auto', 'review', 'manual_review')", name="ck_catalyst_decision"),
-        sa.CheckConstraint("kind IN ('교통', '개발', '학교', '상업', '생활인프라', '기타')", name="ck_catalyst_kind"),
+        sa.CheckConstraint(
+            "kind IN ('교통', '개발', '학교', '상업', '생활인프라', '기타')", name="ck_catalyst_kind"
+        ),
         sa.CheckConstraint(_in("stage", stages), name="ck_catalyst_stage"),
         sa.ForeignKeyConstraint(
             ["raw_document_id"], ["raw_document.id"], name="fk_catalyst_raw_document_id_raw_document"
@@ -139,7 +141,9 @@ def _snapshot_table(*, revision: bool) -> sa.Table:
             sa.Column("revision", sa.Integer(), server_default="1", nullable=False),
             sa.Column("revision_of", sa.Integer(), nullable=True),
             sa.Column("revision_reason", sa.String(length=200), nullable=True),
-            sa.ForeignKeyConstraint(["revision_of"], ["snapshot.id"], name="fk_snapshot_revision_of_snapshot"),
+            sa.ForeignKeyConstraint(
+                ["revision_of"], ["snapshot.id"], name="fk_snapshot_revision_of_snapshot"
+            ),
             sa.UniqueConstraint(
                 "region_id", "asof_date", "revision", name="uq_snapshot_region_id_asof_date_revision"
             ),
@@ -184,7 +188,9 @@ def upgrade() -> None:
         batch.create_unique_constraint(
             "uq_snapshot_region_id_asof_date_revision", ["region_id", "asof_date", "revision"]
         )
-        batch.create_foreign_key(op.f("fk_snapshot_revision_of_snapshot"), "snapshot", ["revision_of"], ["id"])
+        batch.create_foreign_key(
+            op.f("fk_snapshot_revision_of_snapshot"), "snapshot", ["revision_of"], ["id"]
+        )
     # D11-3 강등 오버레이: 모순 값. 기존 행은 원래 chosen 출처 행의 value_norm 으로 채운다
     with op.batch_alter_table("fact_demotion") as batch:
         batch.add_column(sa.Column("value_norm", sa.Text(), nullable=True))
@@ -204,7 +210,9 @@ def upgrade() -> None:
         batch.add_column(sa.Column("entity_id", sa.Integer(), nullable=True))
     with op.batch_alter_table("checklist_item", copy_from=_checklist_table(closed_by=False)) as batch:
         batch.add_column(sa.Column("closed_by", sa.String(length=8), nullable=True))
-        batch.create_check_constraint(op.f("ck_checklist_item_closed_by"), sa.text(_in("closed_by", CLOSED_BY)))
+        batch.create_check_constraint(
+            op.f("ck_checklist_item_closed_by"), sa.text(_in("closed_by", CLOSED_BY))
+        )
     with op.batch_alter_table("payment_terms") as batch:
         batch.add_column(sa.Column("discount_by_type", sa.JSON(), nullable=True))
     with op.batch_alter_table("catalyst_link") as batch:
@@ -229,19 +237,24 @@ def downgrade() -> None:
         )
     # R3 4차 minor: 끝난 backup·region.expand 잡 이력은 지우지 않는다(백업 기록·지역 확장 이력 손실) — 있으면 거부.
     # 아직 돌지 않은(queued·running) 잡만 지운다(0007 에는 처리 함수가 없다)
-    done = bind.execute(
-        sa.text(
-            "SELECT COUNT(*) FROM job_run WHERE job_name IN ('backup', 'region.expand') "
-            "AND status NOT IN ('queued', 'running')"
-        )
-    ).scalar() or 0
+    done = (
+        bind.execute(
+            sa.text(
+                "SELECT COUNT(*) FROM job_run WHERE job_name IN ('backup', 'region.expand') "
+                "AND status NOT IN ('queued', 'running')"
+            )
+        ).scalar()
+        or 0
+    )
     if done:
         raise RuntimeError(
             f"끝난 backup·region.expand 잡 이력 {done}건 — 0007 CHECK 로 되돌리면 지워진다. "
             "0008 downgrade 를 거부한다(데이터 손실 방지)"
         )
     op.execute(
-        sa.text("DELETE FROM job_run WHERE job_name IN ('backup', 'region.expand') AND status IN ('queued', 'running')")
+        sa.text(
+            "DELETE FROM job_run WHERE job_name IN ('backup', 'region.expand') AND status IN ('queued', 'running')"
+        )
     )
     with op.batch_alter_table("job_run", copy_from=_job_run_table(JOB_NAMES_0008)) as batch:
         batch.drop_constraint(op.f("ck_job_run_job_name"), type_="check")

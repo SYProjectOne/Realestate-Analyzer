@@ -379,7 +379,13 @@ def _require_unit(session: Session, snap: Snapshot, kind: str, scenario: str) ->
     got = _unit_row(session, snap.id, kind, scenario)
     if got is not None and got[0]:
         return got[1]
-    if got is None and scenario and kind not in NO_SCENARIO_KINDS:
+    if (
+        got is None
+        and scenario
+        and kind not in NO_SCENARIO_KINDS
+        and not _unit_count(session, snap.id, kind, scenario)
+    ):
+        # 표식도 행도 없는 시나리오만 '발행 뒤 만든 시나리오'(404). 행이 있는데 표식이 없으면 미완(D16-2·m3 — 503)
         other = session.scalars(
             select(SnapshotViewUnit.id)
             .where(
@@ -1371,7 +1377,8 @@ def _expected_units(scenarios: Iterable[str]) -> set[Unit]:
 
 
 def unit_states(session: Session, snapshot_id: int) -> dict[Unit, tuple[bool, int, int]]:
-    """그 리비전의 단위 → (done, 표식 rows, 실제 행 수)."""
+    """그 리비전의 단위 → (done, 표식 rows, 실제 행 수). **행이 있는데 표식이 없는 단위**도 넣는다(done=False — D16-2·m3:
+    예전에는 표식 목록에만 기대 pending·backfill 둘 다 놓쳐 영구 404 였다)."""
     counts: dict[Unit, int] = {
         (str(k), str(sc)): int(n)
         for k, sc, n in session.execute(
@@ -1380,7 +1387,7 @@ def unit_states(session: Session, snapshot_id: int) -> dict[Unit, tuple[bool, in
             .group_by(SnapshotView.kind, SnapshotView.scenario)
         )
     }
-    return {
+    out: dict[Unit, tuple[bool, int, int]] = {
         (str(k), str(sc)): (bool(d), int(r or 0), counts.get((str(k), str(sc)), 0))
         for k, sc, d, r in session.execute(
             select(
@@ -1388,10 +1395,49 @@ def unit_states(session: Session, snapshot_id: int) -> dict[Unit, tuple[bool, in
             ).where(SnapshotViewUnit.snapshot_id == snapshot_id)
         )
     }
+    if out:  # 표식이 하나도 없는 리비전(0010 이전 발행분)은 그대로 비워 둔다 — backfill 이 지금 시나리오 전부로 표식부터
+        for u, n in counts.items():
+            out.setdefault(u, (False, 0, n))
+    return out
 
 
 def _incomplete(states: dict[Unit, tuple[bool, int, int]]) -> set[Unit]:
     return {u for u, (done, rows, have) in states.items() if not done or have < rows}
+
+
+class _AnyKey:
+    def __contains__(self, _key: object) -> bool:
+        return True
+
+
+_ANY_KEY: Final = _AnyKey()
+
+
+def _revision_keys(session: Session, sid: int, present: set[tuple[str, str, str]]) -> dict[str, Any]:
+    """backfill 이 그 리비전에 새로 넣어도 되는 키(불변 — 발행 뒤 생긴 단지·생활권은 옛 리비전의 키가 아니다, D11-1·D16-2).
+
+    단지 상세 = 그 리비전 단지 목록 저장본(어느 시나리오든)의 단지 id ∪ 이미 있는 키, 시장 = '' ∪ 시장 저장본의 생활권 id ∪
+    이미 있는 키. 근거 저장본이 하나도 없으면 제한 없음(0010 이전 발행분처럼 처음 만드는 경우)."""
+    out: dict[str, Any] = {}
+    for kind, list_kind in (("complex", "complexes"), ("market", "market")):
+        keys = {key for (k, key, _sc) in present if k == kind}
+        found = False
+        for k, key, sc in sorted(present):
+            if k != list_kind or key != "":
+                continue
+            try:
+                body = stored(session, sid, list_kind, key="", scenario=sc)
+            except (NotMaterialized, StoredViewMismatch):
+                continue
+            if not isinstance(body, dict):
+                continue
+            found = True
+            if kind == "complex":
+                keys |= {str(r["item"]["complex_id"]) for r in body.get("rows") or [] if isinstance(r, dict)}
+            else:
+                keys |= {""} | {str(a["id"]) for a in body.get("living_areas") or [] if isinstance(a, dict)}
+        out[kind] = keys if found else _ANY_KEY
+    return out
 
 
 def _backfill_one(eng: Engine, sid: int, s: Settings) -> dict[str, Any] | None:
@@ -1423,12 +1469,19 @@ def _backfill_one(eng: Engine, sid: int, s: Settings) -> dict[str, Any] | None:
         snap = rs.get(Snapshot, sid)
         assert snap is not None
         main = compute(rs, snap, settings=s, units=todo - {("provenance", "")}, dedup=False)
-        new_rows = [r for r in main.rows if (r.kind, r.key, r.scenario) not in present]
+        allowed = _revision_keys(rs, sid, present)
+        new_rows = [
+            r
+            for r in main.rows
+            if (r.kind, r.key, r.scenario) not in present and r.key in allowed.get(r.kind, _ANY_KEY)
+        ]
+        new_ids: set[str] = (
+            set()
+        )  # 새로 넣는 행이 가리키는 출처(지금 계산의 다른 출처는 서랍에 넣지 않는다 — 발행 순간 범위)
+        for r in new_rows:
+            _collect_prov(zlib.decompress(r.body), new_ids)
         rebuild_prov = ("provenance", "") in todo
         if not rebuild_prov and new_rows:
-            new_ids: set[str] = set()
-            for r in new_rows:
-                _collect_prov(zlib.decompress(r.body), new_ids)
             known = set(stored_drawers(rs, sid)) if have_drawers else set()
             rebuild_prov = bool(new_ids - known)
         prov = (
@@ -1437,7 +1490,7 @@ def _backfill_one(eng: Engine, sid: int, s: Settings) -> dict[str, Any] | None:
                 snap,
                 settings=s,
                 units={("provenance", "")},
-                extra_prov_ids=main.prov_ids,
+                extra_prov_ids=new_ids,
                 reuse_drawers=True,
             )
             if rebuild_prov

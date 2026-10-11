@@ -12,7 +12,7 @@ Create Date: 2026-10-11
 | snapshot_view_unit (새 테이블) | 저장본 완료 표식 = (snapshot_id, kind, scenario) 유일 + shape_version·rows·done. 표식은 그 단위의 마지막 쓰기와 같은 트랜잭션에 쓴다. 표식 없는(또는 done=false·행 수 모자란) 단위 = 미완(GET 503 + backfill 이 다시) | D15-3 · M2 |
 | snapshot_view.shape_version (새 열) | 저장 모양 버전(정수, 기본 1). 읽기 호환은 계약 문자열이 아니라 이 값으로 비교(계약 버전만 바뀐 변경에 발행 GET 500 이 나지 않는다) | D15-3 · m9 |
 | snapshot.publish_lease (새 열) | 발행 single-flight 임대 '<보유자>\\|<epoch>' — 조건부 UPDATE 로 하나만 발행 | D15-6 · m1 |
-| 데이터 | 발행 리비전마다 이미 있는 (kind, 시나리오) 행 묶음 → done 표식(rows = 행 수, shape 1). 그 리비전의 시나리오(행·점수 실행에 나온 것) × kind 중 행이 하나도 없는 단위, 그리고 행이 일부만 있는 단위(단지 상세·시장 = 시나리오 사이 최대 행 수보다 적음, 출처 서랍 = 색인 묶음 수 + 1 보다 적음) → done=false 표식(backfill 이 빠진 키를 채운다). 행이 전혀 없는 발행 리비전은 표식 없음(backfill 이 지금 시나리오 전부로 만든다) | D15-3 |
+| 데이터 | **D16-2(R3h)**: 발행 리비전마다 (이미 있는 행 묶음 ∪ 그 리비전 시나리오(행·점수 실행에 나온 것) × kind) 단위 → **전부 done=false** 표식(rows = 지금 행 수, shape 1). 행 수 추정 없음 — backfill 이 단위마다 빠진 키만 채우고 완료로 닫는다(이미 있는 행 바이트 그대로, 출처 서랍은 D15-2 범위로 빠진 id). 행이 전혀 없는 발행 리비전은 표식 없음(backfill 이 지금 시나리오 전부로 만든다) | D15-3 · D16-2 |
 
 downgrade: snapshot_view_unit 삭제, shape_version·publish_lease 열 삭제(0011 은 표식 없이 '종류 행 하나라도 있으면 완료'로 읽는다).
 """
@@ -21,8 +21,6 @@ downgrade: snapshot_view_unit 삭제, shape_version·publish_lease 열 삭제(00
 
 from __future__ import annotations
 
-import json
-import zlib
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -83,7 +81,7 @@ def upgrade() -> None:
     )
     op.add_column("snapshot", sa.Column("publish_lease", sa.String(length=80), nullable=True))
 
-    # 데이터: 발행 리비전의 기존 행 묶음 = 완료 표식, 그 리비전 시나리오 × kind 중 빈 단위 = 미완 표식(backfill 몫)
+    # 데이터: 발행 리비전의 단위(기존 행 묶음 ∪ 그 리비전 시나리오 × kind) = 전부 미완 표식(backfill 몫, D16-2)
     conn = op.get_bind()
     groups: dict[int, dict[tuple[str, str], int]] = {}
     for sid, kind, scen, n in conn.execute(
@@ -105,47 +103,29 @@ def upgrade() -> None:
     )
     rows: list[dict[str, object]] = []
     for sid, present in sorted(groups.items()):
-        # 행이 일부만 있는 단위(0012 이전 backfill 이 묶음 쓰기 중간에 멈춤)를 찾는다: 키가 여럿인 kind(단지 상세·시장)는
-        # 시나리오마다 행 수가 같아야 하고, 출처 서랍은 색인(idx)의 묶음 수 + 1 이어야 한다 — 모자라면 미완(done=false, rows = 기대)
-        expect: dict[tuple[str, str], int] = {}
-        for kind in ("complex", "market"):
-            counts = [n for (k, _s), n in present.items() if k == kind]
-            if counts:
-                for (k, s), _n in present.items():
-                    if k == kind:
-                        expect[(k, s)] = max(counts)
-        idx = conn.execute(
-            sa.text(
-                "SELECT body FROM snapshot_view WHERE snapshot_id = :sid AND kind = 'provenance' AND key = 'idx'"
-            ).bindparams(sid=sid)
-        ).scalar()
-        if idx is not None:
-            try:
-                buckets = int(json.loads(zlib.decompress(bytes(idx)).decode("utf-8")).get("buckets") or 0)
-            except (zlib.error, ValueError, AttributeError):
-                buckets = 0
-            if buckets:
-                expect[("provenance", "")] = buckets + 1
+        # D16-2(R3h, R3 8차 N-M1·N-M2): 0012 이전에 만든 단위는 **전부 미완**(done=false)으로 표시한다 — 행 수를 추정하지
+        # 않는다(예전: 시나리오 사이 최대 행 수·서랍 색인 묶음 수로 done 을 정해 일부만 쓴 기본 시나리오 단위·.11 범위 서랍이
+        # 완료로 남았다). backfill 이 단위마다 빠진 키만 채우고(이미 있는 행 바이트 그대로) 완료로 닫는다
         scenarios = {s for (_k, s) in present if s}
         scenarios |= {
             str(i)
             for i in conn.execute(
-                sa.text("SELECT DISTINCT scenario_id FROM score_run WHERE snapshot_id = :sid").bindparams(sid=sid)
+                sa.text("SELECT DISTINCT scenario_id FROM score_run WHERE snapshot_id = :sid").bindparams(
+                    sid=sid
+                )
             ).scalars()
             if i is not None
         }
         expected = {(k, "") for k in NO_SCENARIO_KINDS} | {(k, s) for k in SCENARIO_KINDS for s in scenarios}
         for kind, scen in sorted(expected | set(present)):
-            n = present.get((kind, scen))
-            want = expect.get((kind, scen), n or 0)
             rows.append(
                 {
                     "snapshot_id": sid,
                     "kind": kind,
                     "scenario": scen,
                     "shape_version": SHAPE_0012,
-                    "rows": max(want, n or 0),
-                    "done": n is not None and n >= want,
+                    "rows": present.get((kind, scen), 0),
+                    "done": False,
                 }
             )
     if rows:

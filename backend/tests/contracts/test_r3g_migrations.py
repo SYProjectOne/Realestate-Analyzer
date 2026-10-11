@@ -85,14 +85,17 @@ def check_0012_roundtrip_and_resume(url: str, seed_db: Path, monkeypatch: pytest
         assert "shape_version" not in {c["name"] for c in insp.get_columns("snapshot_view")}
         assert "publish_lease" not in {c["name"] for c in insp.get_columns("snapshot")}
         command.upgrade(cfg, "head")
-        assert _units(engine) == head_units
+        # D16-2(R3h): 0012 이전 단위는 전부 미완(행 수 추정 없음) — 단위 목록은 head 의 것과 같고 rows = 지금 행 수
+        assert {k: (False, r) for k, (_d, r) in head_units.items()} == _units(engine)
         with engine.connect() as c:
             assert set(c.execute(sa.text("SELECT DISTINCT shape_version FROM snapshot_view")).scalars()) == {
                 SHAPE_VERSION
             }
         reset_engine()
-        assert backfill(engine, settings=settings)["snapshots"] == []
+        assert sorted(backfill(engine, settings=settings)["snapshots"]) == [11, SNAP]  # 재검증 — 빠진 키 없음
+        assert _units(engine) == head_units
         assert _rows(engine, SNAP) == rows0
+        assert backfill(engine, settings=settings)["snapshots"] == []
 
         # 2. 0011 에서 행 일부 삭제(중간에 멈춘 0012 이전 backfill 모양) → head: 미완 표식 → backfill 이 빠진 키만
         command.downgrade(cfg, "0011")
@@ -115,17 +118,16 @@ def check_0012_roundtrip_and_resume(url: str, seed_db: Path, monkeypatch: pytest
                 )
         command.upgrade(cfg, "head")
         units = _units(engine)
-        assert units[(SNAP, "complex", scs[1])] == (False, head_units[(SNAP, "complex", scs[1])][1])
-        assert units[(SNAP, "dashboard", scs[2])][0] is False
-        assert units[(SNAP, "provenance", "")] == (False, head_units[(SNAP, "provenance", "")][1])
-        assert units[(SNAP, "complex", scs[0])] == head_units[(SNAP, "complex", scs[0])]
+        assert not any(d for d, _r in units.values())  # D16-2: 전부 미완(추정 없음)
+        assert units[(SNAP, "complex", scs[1])] == (False, head_units[(SNAP, "complex", scs[1])][1] - 3)
+        assert units[(SNAP, "dashboard", scs[2])] == (False, 0)
         from sqlalchemy.orm import Session
 
         with Session(bind=engine) as s:
-            assert pending_count(s) == 1
+            assert pending_count(s) == 2
         reset_engine()
         res = backfill(engine, settings=settings)
-        assert res["snapshots"] == [SNAP] and not res["failed"], res
+        assert sorted(res["snapshots"]) == [11, SNAP] and not res["failed"], res
         after = _rows(engine, SNAP)
         assert set(after) == set(rows0)
         kept = set(rows0) - gone
