@@ -11,6 +11,7 @@ done, change_event + rejudge 잡 제안). GET(체크리스트 목록)은 DB 를 
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import timedelta
 from typing import Annotated, Any
 
@@ -22,7 +23,7 @@ from app.api.contract import check_body
 from app.api.demotion import (
     CHECKED_AT_BEFORE_SOURCE,
     CHECKED_AT_FORMAT,
-    FIELD_TERMS,
+    HUMAN_FACT_FIELDS,
     ValueParseError,
     apply_human_check,
     checked_at_problem,
@@ -31,7 +32,7 @@ from app.api.demotion import (
     parse_human_value,
 )
 from app.api.deps import DB, get_complex, in_db_range, settings_of
-from app.api.errors import ApiError, not_found, validation_error
+from app.api.errors import ApiError, not_found
 from app.api.jobs import now_iso
 from app.api.views import envelope_view, intake_view, pick_intake
 from app.core.time import kst_date, now_kst
@@ -306,46 +307,61 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
     한다."""
     from app.judge.guard import check_payload
 
+    # D14-6(N-M4, 계약 .11)·D15-7: checked_at = 시간대가 붙은 RFC3339, 2000년 이후, 지금보다 10분 넘게 미래면 422.
+    # 계약 .12 F14·R3 8차 m11: checked_at **만** 틀렸으면 그 code(checked_at_*), 다른 칸도 틀렸으면 validation_error 에
+    # 모든 칸(checked_at 포함)의 field_errors — 한 칸 오류가 다른 칸 오류를 가리지 않는다
+    bad_time = checked_at_problem(body.get("checked_at")) if isinstance(body, dict) else None
+    time_err = {"loc": ["body", "checked_at"], "msg": bad_time[1]} if bad_time is not None else None
+
+    def _is_time(e: Mapping[str, Any]) -> bool:
+        return list(e.get("loc") or [])[:2] == ["body", "checked_at"]
+
     try:
         check_body("createHumanCheck", body)
     except ApiError as exc:
-        # 계약 .12: checked_at 만 틀렸으면(형식 — 스키마 format: date-time) 그 code 로(화면이 문구 대신 code 로 구분)
-        errs = exc.field_errors or []
-        if errs and all(list(e.get("loc") or [])[:2] == ["body", "checked_at"] for e in errs):
+        errs = list(exc.field_errors or [])
+        if errs and all(_is_time(e) for e in errs):
             raise _checked_at_422(CHECKED_AT_FORMAT, exc.detail) from exc
-        raise
-    # D14-6(N-M4, 계약 .11)·D15-7: checked_at = 시간대가 붙은 RFC3339, 2000년 이후, 지금보다 10분 넘게 미래면 422
-    bad_time = checked_at_problem(body["checked_at"])
-    if bad_time is not None:
-        raise _checked_at_422(*bad_time)
+        if time_err is not None and not any(_is_time(e) for e in errs):
+            errs.append(time_err)
+        raise ApiError(422, "validation_error", exc.detail, field_errors=errs) from exc
     cx = get_complex(session, body["complex_id"])
+    others: list[dict[str, Any]] = []
     guard = check_payload({"value_text": body["value_text"], "note": body.get("note") or ""})
     if not guard.ok:
-        raise validation_error(
-            f"공개할 수 없는 정보가 있다({', '.join(guard.kinds())}) — 통화 내용은 요약만 적는다",
-            ("body", "note" if any("note" in f.path for f in guard.findings) else "value_text"),
-        )
+        others.append({
+            "loc": ["body", "note" if any("note" in f.path for f in guard.findings) else "value_text"],
+            "msg": f"공개할 수 없는 정보가 있다({', '.join(guard.kinds())}) — 통화 내용은 요약만 적는다",
+        })  # fmt: skip
     field = str(body["field"])
     target = None
-    if field in FIELD_TERMS:
+    value: Any = None
+    if field in HUMAN_FACT_FIELDS:
         try:
             target = human_target(session, cx.id, field, body.get("entity_id"))
             value = parse_human_value(target, str(body["value_text"])) if target is not None else None
         except ValueParseError as exc:
-            loc = "entity_id" if "entity_id" in str(exc) else "value_text"
-            raise validation_error(str(exc), ("body", loc)) from exc
-        if target is not None:
-            # D13-2·D14-6: 이미 수집된 공식 공고(KST 날짜로 확인일보다 뒤 관측)가 **다른 값**이면 입력 즉시 지는 사람
-            # 확인(D12-1) — 조용히 받지 않는다. 같은 값의 나중 공고는 정상(m11)
-            later = later_official(session, target, str(body["checked_at"]), value)
-            if later is not None:
-                day = kst_date(str(body["checked_at"]))
-                raise _checked_at_422(
-                    CHECKED_AT_BEFORE_SOURCE,
-                    f"확인일 {day.isoformat() if day else str(body['checked_at'])[:10]}(KST) 은 이미 수집된 공식 공고"
-                    f"(관측 {later}, 다른 값)보다 이르다 — 그 공고 뒤에 다시 확인한 날짜를 적는다(사람 확인 이후 공고만 "
-                    "사람 확인을 이긴다, D12-1)",
-                )
+            target = None
+            others.append(
+                {"loc": ["body", "entity_id" if "entity_id" in str(exc) else "value_text"], "msg": str(exc)}
+            )
+    if others:
+        errs = ([time_err] if time_err is not None else []) + others
+        raise ApiError(422, "validation_error", "; ".join(str(e["msg"]) for e in errs), field_errors=errs)
+    if bad_time is not None:
+        raise _checked_at_422(*bad_time)
+    if target is not None:
+        # D13-2·D14-6: 이미 수집된 공식 공고(KST 날짜로 확인일보다 뒤 관측)가 **다른 값**이면 입력 즉시 지는 사람
+        # 확인(D12-1) — 조용히 받지 않는다. 같은 값의 나중 공고는 정상(m11)
+        later = later_official(session, target, str(body["checked_at"]), value)
+        if later is not None:
+            day = kst_date(str(body["checked_at"]))
+            raise _checked_at_422(
+                CHECKED_AT_BEFORE_SOURCE,
+                f"확인일 {day.isoformat() if day else str(body['checked_at'])[:10]}(KST) 은 이미 수집된 공식 공고"
+                f"(관측 {later}, 다른 값)보다 이르다 — 그 공고 뒤에 다시 확인한 날짜를 적는다(사람 확인 이후 공고만 "
+                "사람 확인을 이긴다, D12-1)",
+            )
     hc = HumanCheck(
         complex_id=cx.id,
         field=field,

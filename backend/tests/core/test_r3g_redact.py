@@ -161,7 +161,9 @@ def test_secret_value_never_survives(key: str, value: str) -> None:
     for text in _templates(key, value):
         out = re.sub(r"\[REDACTED:\w+\]", "\x01", redact_text(text))  # 표식 글자('secret')는 누출이 아니다
         frame = text.replace(value, "\x00")  # 틀(키 이름·JSON 기호)에 우연히 있는 낱말은 누출이 아니다
+        # R3h: 값이 키 이름 안에 있으면(키 'access-token' · 값 'access') 출력의 키 이름에 남은 글자는 누출이 아니다
+        rest = out.replace(key, "\x02")
         for word in value.split(" "):
             if len(word) >= 4 and word not in frame:
-                assert word not in out, (text, out)
-        assert value not in out, (text, out)
+                assert word not in rest, (text, out)
+        assert value not in rest, (text, out)

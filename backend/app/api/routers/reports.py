@@ -140,27 +140,32 @@ def _require_stored_inputs(session: Any, snap: Any, scenario_id: int | None, com
     cmp = session.get(Snapshot, int(compare_id))
     if cmp is None or not sv.is_published(cmp):
         return
-    if sv.unit_ready(session, cmp.id, "report", sk):
-        return
-    # 비교 기준에 이 시나리오가 없을 수 있다(D14-3 — 기본 시나리오 입력으로 건수 비교). 그 시나리오 단위가 '미완'이면 기다린다
-    absent = (
-        session.scalar(
+
+    def absent(kind: str) -> bool:
+        """비교 리비전에 그 시나리오 단위가 아예 없다(표식도 행도 — 발행 뒤 만든 시나리오, D14-3)."""
+        marker = session.scalar(
             select(SnapshotViewUnit.id).where(
                 SnapshotViewUnit.snapshot_id == cmp.id,
-                SnapshotViewUnit.kind == "report",
+                SnapshotViewUnit.kind == kind,
                 SnapshotViewUnit.scenario == sk,
             )
         )
-        is None
-    )
-    if (
+        return marker is None and not sv.unit_states(session, cmp.id).get((kind, sk))
+
+    # report: 비교 기준에 이 시나리오가 없으면 기본 시나리오 입력으로 건수 비교(D14-3) — 그 단위가 '미완'이면 기다린다
+    if not sv.unit_ready(session, cmp.id, "report", sk) and not (
         base is not None
         and str(base) != sk
-        and absent
+        and absent("report")
         and sv.unit_ready(session, cmp.id, "report", str(base))
     ):
-        return
-    raise sv.MaterializePending(f"비교 리비전 {cmp.id} 의 report 저장본이 미완(backfill 대기)")
+        raise sv.MaterializePending(f"비교 리비전 {cmp.id} 의 report 저장본이 미완(backfill 대기)")
+    # R3 8차 m12: delta 표는 비교 리비전의 같은 시나리오 report_diff 를 읽는다 — 없으면 '비교 기준에 이 시나리오 없음'(정상),
+    # 미완이면 202 뒤 잡 실패 대신 지금 503
+    if not sv.unit_ready(session, cmp.id, "report_diff", sk) and not absent("report_diff"):
+        raise sv.MaterializePending(
+            f"비교 리비전 {cmp.id} 의 report_diff[시나리오 {sk}] 저장본이 미완(backfill 대기)"
+        )
 
 
 def _report_path(base: Path, rel: str) -> Path | None:

@@ -129,8 +129,9 @@ def test_m9_discount_allowlist(
 ) -> None:
     from app.normalize.notice_parser import _discount_line
 
+    # D16-1(R3h): 후보는 언제나 '추정' — 확인됨 여부는 없다. 여기서는 후보 여부·금액만 본다(옛 기대값의 bool 은 무시)
     got = _discount_line(line + "\n", _t(*spec))  # type: ignore[arg-type]
-    assert (None if got is None else (got.won, got.confirmed)) == want, (desc, got)
+    assert (None if got is None else got.won) == (None if want is None else want[0]), (desc, got)
 
 
 def test_m9_unconfirmed_discount_candidate_is_estimate_label() -> None:
@@ -148,7 +149,7 @@ def test_m9_unconfirmed_discount_candidate_is_estimate_label() -> None:
                  content_type=None, text_path=None, complex_id=None)  # fmt: skip
     for line, label, reason in (
         ("84A 빌트인 냉장고 할인 1,200,000원", "추정", "분양가 할인 명시 아님"),
-        ("84A 분양가 할인 1,200,000원", "확인됨", None),
+        ("84A 분양가 할인 1,200,000원", "추정", "조건 확인 필요"),  # D16-1: 예전 허용 꼴도 '추정'
     ):
         disc = [
             c for c in parse_notice_text(base + "\n" + line + "\n", raw) if c.field == "discount_by_type.84A"

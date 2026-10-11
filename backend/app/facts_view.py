@@ -81,9 +81,12 @@ def is_human(reason: str | None) -> bool:
 
 
 def logical_field(name: str) -> str:
-    """출처 필드 경로 → 논리 필드: 'price_by_type.84A.max_price_won' → 'max_price_won', 그 밖은 그대로."""
+    """출처 필드 경로 → 논리 필드: 'price_by_type.84A.max_price_won' → 'max_price_won', 'discount_by_type.84A' →
+    'discount'(D16-1 사람 확인 할인 — 의미 단위), 그 밖은 그대로."""
     if name.startswith("price_by_type."):
         return name.rsplit(".", 1)[-1]
+    if name.startswith("discount_by_type."):
+        return "discount"
     return name
 
 

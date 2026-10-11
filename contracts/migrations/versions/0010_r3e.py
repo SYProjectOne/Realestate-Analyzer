@@ -47,14 +47,27 @@ def upgrade() -> None:
     op.create_table(
         "snapshot_view",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("snapshot_id", sa.Integer(), sa.ForeignKey("snapshot.id", name=op.f("fk_snapshot_view_snapshot_id_snapshot")), nullable=False),
+        sa.Column(
+            "snapshot_id",
+            sa.Integer(),
+            sa.ForeignKey("snapshot.id", name=op.f("fk_snapshot_view_snapshot_id_snapshot")),
+            nullable=False,
+        ),
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("key", sa.String(length=64), server_default="", nullable=False),
         sa.Column("scenario", sa.String(length=16), server_default="", nullable=False),
         sa.Column("body", sa.LargeBinary(), nullable=False),
         sa.Column("sha256", sa.String(length=64), nullable=False),
-        sa.CheckConstraint("kind IN (" + ", ".join(f"'{k}'" for k in KINDS) + ")", name=op.f("ck_snapshot_view_kind")),
-        sa.UniqueConstraint("snapshot_id", "kind", "key", "scenario", name=op.f("uq_snapshot_view_snapshot_id_kind_key_scenario")),
+        sa.CheckConstraint(
+            "kind IN (" + ", ".join(f"'{k}'" for k in KINDS) + ")", name=op.f("ck_snapshot_view_kind")
+        ),
+        sa.UniqueConstraint(
+            "snapshot_id",
+            "kind",
+            "key",
+            "scenario",
+            name=op.f("uq_snapshot_view_snapshot_id_kind_key_scenario"),
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_snapshot_view")),
     )
     op.create_index(op.f("ix_snapshot_view_snapshot_id"), "snapshot_view", ["snapshot_id"])
@@ -66,12 +79,22 @@ def downgrade() -> None:
     op.create_table(
         "snapshot_state",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("snapshot_id", sa.Integer(), sa.ForeignKey("snapshot.id", name=op.f("fk_snapshot_state_snapshot_id_snapshot")), nullable=False),
+        sa.Column(
+            "snapshot_id",
+            sa.Integer(),
+            sa.ForeignKey("snapshot.id", name=op.f("fk_snapshot_state_snapshot_id_snapshot")),
+            nullable=False,
+        ),
         sa.Column("entity", sa.String(length=16), nullable=False),
         sa.Column("entity_id", sa.Integer(), nullable=False),
         sa.Column("data", sa.JSON(), nullable=False),
-        sa.CheckConstraint("entity IN (" + ", ".join(f"'{e}'" for e in STATE_ENTITIES) + ")", name=op.f("ck_snapshot_state_entity")),
-        sa.UniqueConstraint("snapshot_id", "entity", "entity_id", name=op.f("uq_snapshot_state_snapshot_id_entity_entity_id")),
+        sa.CheckConstraint(
+            "entity IN (" + ", ".join(f"'{e}'" for e in STATE_ENTITIES) + ")",
+            name=op.f("ck_snapshot_state_entity"),
+        ),
+        sa.UniqueConstraint(
+            "snapshot_id", "entity", "entity_id", name=op.f("uq_snapshot_state_snapshot_id_entity_entity_id")
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_snapshot_state")),
     )
     op.create_index(op.f("ix_snapshot_state_snapshot_id"), "snapshot_state", ["snapshot_id"])

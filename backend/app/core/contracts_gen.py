@@ -1816,12 +1816,13 @@ class HumanCheckCreate(BaseModel):
             "resale_months",
             "residency_months",
             "down_payment_pct",
+            "discount",
             "other",
         ],
         Field(title="HumanCheckField"),
     ]
     """
-    사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 '6.02' → 422).
+    사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + **discount**(계약 .13, D16-1 — 기준 타입 할인 원 단위 정수 0~1천억, 단위 '원'만. 현재 공고 payment_terms.discount_by_type.<기준 타입>에 라벨 확인됨으로 들어가 구매가에서 빠진다(0 = 할인 없음 확인). 공고문 파서 할인은 언제나 '추정'이라 이 사람 확인만 차감을 만든다. 의미 단위(D13-2) — 그 단지 다른 공고의 같은 타입 할인 칸에도 퍼진다) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 '6.02' → 422).
     """
     entity_id: int | None = None
     """
@@ -3685,7 +3686,7 @@ class Snapshot(BaseModel):
 class SnapshotPublishPayload(BaseModel):
     """
     job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.
-    계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 계약 .12(D15-6): 리비전마다 발행은 하나만 돈다(single-flight — 같은 리비전을 다른 잡이 발행 중이면 failed error_text 'publish_in_progress: …', 아무것도 지우지 않는다). 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
+    계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 계약 .12(D15-6): 리비전마다 발행은 하나만 돈다(single-flight — 아무것도 지우지 않는다). 계약 .13(D16-3): 같은 리비전을 다른 발행이 들고 있으면 실패가 아니라 **지연 재큐잉** — status 가 다시 queued, stats.requeue_count(누적)·stats.not_before(이 시각 전에는 worker 가 집지 않는다, 2·4·8·16·30초…)·stats.requeue_reason('publish_in_progress: …'), error_text 없음. 40회를 넘으면 failed error_text 'publish_in_progress: …'. 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
     carry_from_snapshot_id(선택): 판정 없이 바뀌는 리비전 값(호재 연결 PATCH)용 — 그 발행 리비전의 파생 행(판정·점수)을 이 리비전에 복사한 뒤 발행한다.
     """
 

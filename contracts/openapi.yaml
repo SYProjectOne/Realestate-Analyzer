@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.12
+  version: 2026-10-09.13
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -1010,7 +1010,7 @@ paths:
       description: |
         사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
         distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
-        expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 연결이 바뀌면 rejudge 없이 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행)을 등록한다(계약 .11 D14-5 — 발행은 worker 잡, 응답 202 + job·job_id; 연결이 그대로면 job null). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다. 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
+        expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 계약 .13(D16-4): 발행 리비전 응답에 보이는 값(위치 확인·좌표·예정월·연결) 중 **하나라도 바뀌면** rejudge 없이 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행)을 등록하고 **202** + job·job_id(가장 새 리비전이 발행 전이면 후속 발행 잡 — 계약 .12 F4). **바뀐 것이 없으면 200** + job·job_id null(새 잡·리비전·출처 행 없음). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다. 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
       parameters:
         - name: id
           in: path
@@ -1024,8 +1024,15 @@ paths:
             examples:
               confirm: { $ref: './examples/catalyst_patch_req.json' }
       responses:
+        '200':
+          description: 바뀐 것 없음(계약 .13 D16-4) — 지금 호재 + 연결, job·job_id null
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalystUpdated' }
+              examples:
+                unchanged: { $ref: './examples/catalyst_unchanged.json' }
         '202':
-          description: 갱신된 호재 + 연결 + 발행 잡(계약 .11 — 연결이 그대로면 job·job_id null)
+          description: 갱신된 호재 + 연결 + 발행 잡(계약 .13 D16-4 — 보이는 값이 바뀌면 늘 job·job_id)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CatalystUpdated' }

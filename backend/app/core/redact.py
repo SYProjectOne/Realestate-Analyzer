@@ -97,12 +97,8 @@ _TOKEN_CH = r"[A-Za-z0-9\-._~+/]"
 AUTH_HEADER_RE = re.compile(
     r"(?i:authorization)[\"']?\s*[:=]\s*[\"']?\s*(?:(?i:bearer|basic|token|digest)\s+)?(" + _TOKEN + ")"
     r"|\b(?i:bearer)\s+("
-    r"(?=" + _TOKEN_CH + r"*\d)" + _TOKEN_CH + r"{8,}=*"  # 숫자 포함 8자 이상
-    r"|(?=[A-Za-z]*[a-z][A-Za-z]*[A-Z])[A-Za-z]{8,}(?!"
     + _TOKEN_CH
-    + r")"  # 소문자 뒤 대문자(첫 글자만 대문자인 낱말 제외) 8자 이상
-    r"|(?=[A-Za-z0-9]*[\-._~+/])" + _TOKEN_CH + r"{8,}=*"  # 토큰 기호가 든 8자 이상
-    r"|" + _TOKEN_CH + r"{16,}=*"  # 16자 이상
+    + r"{8,}=*"  # R3 8차 minor 14: 'bearer' 뒤 8자 이상 토큰은 모양과 무관하게(소문자뿐인 'bearer abcdefghij' 도)
     r")"
     r"|\b(?i:bearer)\s+((?=" + _TOKEN_CH + r"*[\d\-._~+/])" + _TOKEN_CH + r"{4,7}=*)(?!" + _TOKEN_CH + r")"
     # R3 4차 minor: 'Bearer' 뒤 숫자·토큰 기호가 든 4~7자 짧은 토큰도 — R3 5차 minor: 대소문자 무관('bearer abc123')
@@ -110,15 +106,18 @@ AUTH_HEADER_RE = re.compile(
 )
 """Authorization 헤더 값(``Authorization: Bearer …``·``Basic …``·``Token …``)과 홀로 나온 ``Bearer <토큰>``
 (토큰 모양만 — 'the bearer of …'·'bearer bonds' 같은 글은 그대로)."""
-_NS = r"(?:[-_ ]|\\u005[fF]|\\u002[dD])?"
+_NS = r"(?:[-_ .]|%5[fF]|\\u005[fF]|\\u002[dD])?"
 """키 이름 낱말 사이 구분: 하이픈·밑줄·공백(``Secret Key``·``API Key``, R3 7차 minor 5)·JSON 유니코드 이스케이프
 (``private\\u005fkey``)."""
 _SECRET_NAME = (
     r"(?:x-)?[a-z0-9_-]*?"
     r"(?:api{s}key(?:{s}id)?|apikey|client{s}secret|client{s}id|access{s}token|auth{s}token|"
-    r"refresh{s}token|secret{s}access{s}key|private{s}key(?:{s}id)?|secret{s}key|secret|token|passphrase|password|passwd|pwd)"
+    r"refresh{s}token|secret{s}access{s}key|private{s}key(?:{s}id)?|secret{s}key|secret|token|passphrase|password|passwd|pwd"
+    # R3 8차 minor 14: 환경변수·설정 키 꼴('DATA_GO_KR_KEY'·'SERVICE_KEY'·'AWS_ACCESS_KEY_ID'·'crtfc_key' — 앞 낱말 + 구분 + key),
+    # 'credentials'·'webhook_url'·'signature'. 'monkey'·'turkey' 처럼 구분 없는 낱말은 아니다
+    r"|[a-z0-9]+(?:[-_.]|%5[fF])key(?:{s}id)?|credentials?|webhook{s}url|signature)"
 ).replace("{s}", _NS)
-_KEY_SEP = r"(?:\\*[\"'`]|\])?\s*[:=\uff1a\uff1d]\s*"
+_KEY_SEP = r"(?:\\*[\"'`]|\])?\s*(?:[:=\uff1a\uff1d]|%3[dD])\s*"
 """키 이름 뒤 구분: (이스케이프된) 닫는 따옴표 또는 ``]``(``user[password]=…``), 공백·줄바꿈, ``:``·``=``·전각 ``：``·``＝``(R3 7차 minor 5)."""
 _UNQUOTED_WORD = r"[^\s,;&\"'`<>{}\[\]\\]+"
 HEADER_KEY_RE = re.compile(
@@ -158,13 +157,34 @@ PEM_PRIVATE_RE = re.compile(
 R3 7차 minor 5: 대소문자 무관, 대시 2개 이상·대시 안쪽 공백(``----- BEGIN … KEY -----``), END 이름이 달라도(불일치) 첫 END 줄에서 끝."""
 _PHONE_KEY_RE = re.compile(r"(?i)(phone|tel|mobile|fax|전화|연락처|휴대)")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+_U = r"(?:_|%5f)"
 QUERY_KEY_RE = re.compile(
-    r"(?i)([?&](?:servicekey|service_key|api_?key|apikey|access_token|token|secret|password|key)=)[^&\s#\"']+"
+    r"(?i)([?&;](?:[a-z0-9]*(?:_|%5f|-))?"
+    r"(?:service"
+    + _U
+    + r"?key|api"
+    + _U
+    + r"?key|apikey|access"
+    + _U
+    + r"token|token|secret|password|signature|sig"
+    r"|auth|key)(?:=|%3d))[^&;\s#\"']+"
 )
+"""URL 쿼리의 키 파라미터 값. R3 8차 minor 14: ``;`` 구분, 이름·'=' 의 퍼센트 인코딩(``api%5Fkey=``·``serviceKey%3D``),
+앞 낱말 + 구분 + key(``crtfc_key``·``x_api_key``), ``signature``·``sig``·``auth``."""
 SENSITIVE_KEY_RE = re.compile(
     r"(?i)(token|secret|password|passwd|passphrase|authorization|cookie|api[-_ ]?key|service[-_ ]?key|credential"
-    r"|client[-_ ]?id|private[-_ ]?key)"  # R3 6차 minor 9: dict 키 'private_key'·'privateKey' — 7차 minor 5: 'Private Key'·'API Key'
+    r"|client[-_ ]?id|private[-_ ]?key"  # R3 6차 minor 9: dict 키 'private_key'·'privateKey' — 7차 minor 5: 'Private Key'·'API Key'
+    r"|webhook|signature|^sig$|(?:^|[-_.])(?:key|auth)$|^auth[-_]|dsn)"  # R3 8차 minor 14: 'key'·'crtfc_key'·'auth'·'signature'·'webhook_url'
 )
+COOKIE_RE = re.compile(r"(?im)(?<![A-Za-z0-9_-])(?:set-)?cookie[\"']?\s*[:=]\s*([^\r\n]+)")
+"""R3 8차 minor 14: ``Cookie:``·``Set-Cookie:`` 헤더 값 전체(쿠키 이름·값·속성 — 세션 값이 섞인다)."""
+JWT_RE = re.compile(r"(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{8,}")
+"""R3 8차 minor 14: 키 이름 없이 홀로 나온 JWT(``eyJ…``.``…``.``…``)."""
+WEBHOOK_RE = re.compile(
+    r"(?i)https?://(?:hooks\.slack\.com/(?:services|workflows|triggers)|(?:discord|discordapp)\.com/api/webhooks)"
+    r"/([^\s\"'<>]+)"
+)
+"""R3 8차 minor 14: 웹훅 URL(Slack·Discord) — 경로가 곧 비밀이다(키 이름 없이 홀로 나와도)."""
 
 _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
     ("rrn", RRN_RE),
@@ -218,7 +238,37 @@ def _secret_forms(secrets: Iterable[str]) -> list[str]:
 def _secret_patterns(secrets: tuple[str, ...]) -> tuple[re.Pattern[str], ...]:
     """비밀값마다 정규식 1개: 글자별로 원문·퍼센트 인코딩(부분 인코딩·소문자·이중 인코딩 포함)을 모두 받는다.
     quote·quote_plus·httpx params 인코딩, '/' 만 남긴 quote() 기본 모양을 따로 나열하지 않아도 잡힌다."""
-    return tuple(re.compile("".join(_char_pattern(ch) for ch in form)) for form in _secret_forms(secrets))
+    out: list[re.Pattern[str]] = []
+    for form in _secret_forms(secrets):
+        if len(form) < MIN_SECRET_PART_LEN:
+            out.append(re.compile("".join(_char_pattern(ch) for ch in form)))
+            continue
+        # R3 8차 minor 15: 8자 이상 비밀값은 대소문자 무관 + 글자 사이 공백류(공백·줄바꿈·폭 없는 공백)도 같은 값으로 본다
+        out.append(re.compile(_GAP.join(_char_pattern(ch) for ch in form), re.IGNORECASE))
+        cores = _b64_cores(form)
+        if cores:
+            out.append(re.compile("|".join(re.escape(c) for c in sorted(cores, key=lambda c: (-len(c), c)))))
+    return tuple(out)
+
+
+_GAP = r"[\s​‌‍⁠﻿]*"
+
+
+def _b64_cores(form: str) -> set[str]:
+    """R3 8차 minor 15: 비밀값이 base64(표준·URL-safe) 안에 들어 있을 때(``Basic base64(id:secret)`` 등) 앞에 붙은 글자 수와
+    무관하게 늘 보이는 가운데 조각 — 앞 바이트 수 mod 3 마다 하나. 8자 미만 조각은 버린다(흔한 글자열과 겹침)."""
+    import base64
+
+    raw = form.encode("utf-8")
+    out: set[str] = set()
+    for lead in range(3):
+        enc = base64.b64encode(b"\0" * lead + raw).decode("ascii")
+        start = -(-8 * lead // 6)
+        end = (8 * (lead + len(raw))) // 6
+        core = enc[start:end]
+        if len(core) >= MIN_SECRET_PART_LEN:
+            out |= {core, core.replace("+", "-").replace("/", "_")}
+    return out
 
 
 def _secret_variants(secrets: Iterable[str]) -> list[str]:
@@ -243,6 +293,33 @@ def sensitive_int_kind(value: int, key: str | None = None) -> Kind | None:
     return None
 
 
+_KEY_FOLD_HINT = re.compile(r"[！-～　]|\\u00[2-7][0-9a-fA-F]")
+_JSON_ESC = re.compile(r"\\u00([2-7][0-9a-fA-F])")
+
+
+def _fold_keys(text: str) -> tuple[str, list[int]]:
+    """키 이름 기반 패턴용 사본: 전각 ASCII → ASCII, JSON 유니코드 이스케이프(인쇄 가능한 ASCII ``\\u0020``~``\\u007e``) →
+    그 글자. 반환 (사본, 위치 표) — 위치 표[i] = 사본 i 번째 글자의 원문 시작 위치(끝 = len(text)). 접을 것이 없으면 원문."""
+    if not _KEY_FOLD_HINT.search(text):
+        return text, list(range(len(text) + 1))
+    out: list[str] = []
+    pos: list[int] = []
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "\\" and (m := _JSON_ESC.match(text, i)) is not None and 0x20 <= int(m.group(1), 16) <= 0x7E:
+            out.append(chr(int(m.group(1), 16)))
+            pos.append(i)
+            i = m.end()
+            continue
+        o = ord(ch)
+        out.append(chr(o - 0xFEE0) if 0xFF01 <= o <= 0xFF5E else (" " if ch == "　" else ch))
+        pos.append(i)
+        i += 1
+    pos.append(n)
+    return "".join(out), pos
+
+
 def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
     """겹치지 않는 탐지 결과(앞에서부터). 비밀값 > 주민번호 > 전화 > 이메일 순으로 우선."""
     taken: list[Finding] = []
@@ -250,36 +327,39 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
     def overlaps(a: int, b: int) -> bool:
         return any(a < f.end and f.start < b for f in taken)
 
+    # R3 8차 minor 14: 키 이름 기반 패턴은 '키 접힘' 사본에서 찾는다 — 전각 ASCII(``ｐａｓｓｗｏｒｄ=``)·JSON 유니코드
+    # 이스케이프(``"\\u0070assword"``)를 ASCII 로 편 사본과 원문 위치 표(``pos``)로 원문 구간을 가린다
+    keyed, pos = _fold_keys(text)
+
+    def add(kind: Kind, a: int, b: int) -> None:
+        a, b = pos[a], pos[b]
+        if b > a and not overlaps(a, b):
+            taken.append(Finding(kind, a, b))
+
     # 긴 비밀 구간(PEM 본문·따옴표 값 전체)을 먼저 — 그 안의 짧은 탐지가 먼저 잡혀 구간 전체가 겹침으로 버려지지 않게(m9)
-    for m in PEM_PRIVATE_RE.finditer(text):
-        a, b = m.start(2), m.end(2)
-        if b > a and not overlaps(a, b):
-            taken.append(Finding("secret", a, b))
-    for m in QUOTED_KEY_RE.finditer(text):
-        a, b = m.start("v"), m.end("v")
-        if b > a and not overlaps(a, b):
-            taken.append(Finding("secret", a, b))
+    for m in PEM_PRIVATE_RE.finditer(keyed):
+        add("secret", m.start(2), m.end(2))
+    for m in QUOTED_KEY_RE.finditer(keyed):
+        add("secret", m.start("v"), m.end("v"))
     for pattern in _secret_patterns(tuple(secrets)):
         for m in pattern.finditer(text):
             if not overlaps(m.start(), m.end()):
                 taken.append(Finding("secret", m.start(), m.end()))
-    for m in AUTH_HEADER_RE.finditer(text):
+    for m in COOKIE_RE.finditer(keyed):
+        add("secret", m.start(1), m.end(1))
+    for m in WEBHOOK_RE.finditer(keyed):
+        add("secret", m.start(1), m.end(1))
+    for m in JWT_RE.finditer(keyed):
+        add("secret", m.start(), m.end())
+    for m in AUTH_HEADER_RE.finditer(keyed):
         group = next(g for g in (1, 2, 3) if m.group(g) is not None)
-        a, b = m.start(group), m.end(group)
-        if not overlaps(a, b):
-            taken.append(Finding("secret", a, b))
-    for m in HEADER_KEY_RE.finditer(text):
-        a, b = m.start(2), m.end(2)
-        if not overlaps(a, b):
-            taken.append(Finding("secret", a, b))
-    for m in QUERY_KEY_RE.finditer(text):
-        a, b = m.start() + len(m.group(1)), m.end()
-        if not overlaps(a, b):
-            taken.append(Finding("query_key", a, b))
-    for m in DSN_PASSWORD_RE.finditer(text):
-        a, b = m.start(1), m.end(1)
-        if not overlaps(a, b):
-            taken.append(Finding("secret", a, b))
+        add("secret", m.start(group), m.end(group))
+    for m in HEADER_KEY_RE.finditer(keyed):
+        add("secret", m.start(2), m.end(2))
+    for m in QUERY_KEY_RE.finditer(keyed):
+        add("query_key", m.start() + len(m.group(1)), m.end())
+    for m in DSN_PASSWORD_RE.finditer(keyed):
+        add("secret", m.start(1), m.end(1))
     folded = text.translate(_FOLD)  # 1:1 치환 — 위치는 원문과 같다
     for kind, pattern in _PATTERNS:
         for m in pattern.finditer(folded):
@@ -333,6 +413,15 @@ def _redact(obj: Any, secrets: list[str], key: str | None = None) -> Any:
             else:
                 out[name] = _redact(v, secrets, name)
         return out
+    # R3 8차 minor 14: (이름, 값) 쌍 리스트 — 헤더 튜플 목록·form 쌍([("Authorization", "Bearer …")], [["password", …]])
+    if (
+        isinstance(obj, list | tuple)
+        and len(obj) == 2
+        and isinstance(obj[0], str)
+        and isinstance(obj[1], str)
+        and SENSITIVE_KEY_RE.search(obj[0])
+    ):
+        return [obj[0], "[REDACTED:key]"]
     if isinstance(obj, list | tuple | set | frozenset):
         return [_redact(v, secrets, key) for v in obj]
     return redact_text(str(obj), secrets)

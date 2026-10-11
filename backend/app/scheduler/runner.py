@@ -40,7 +40,7 @@ from app.core.redact import redact_obj, redact_text
 from app.core.settings import get_settings
 from app.models import JobRun
 from app.scheduler.context import SchedulerContext, default_context
-from app.scheduler.jobs import JobError
+from app.scheduler.jobs import JobError, JobRequeue
 
 __all__ = [
     "claim",
@@ -75,10 +75,24 @@ def claim(ctx: SchedulerContext, job_id: int) -> bool:
 
 
 def queued_ids(ctx: SchedulerContext, limit: int = 20) -> list[int]:
-    """먼저 들어온 순서(id). scheduled_at 은 등록 시각이라 시간대 표기가 섞여도 순서에 쓰지 않는다."""
+    """먼저 들어온 순서(id). scheduled_at 은 등록 시각이라 시간대 표기가 섞여도 순서에 쓰지 않는다.
+
+    D16-3: 지연 재큐잉된 잡(``stats.not_before`` 가 지금보다 뒤)은 그 시각 전에는 집지 않는다."""
+    from app.core.time import now_kst, parse_datetime
+
+    now = now_kst()  # 벽시계(회귀 러너가 ctx.now 를 기준일로 고정해도 재큐잉 대기는 실제 시간으로 끝난다)
+    out: list[int] = []
     with ctx.session_factory() as session:
-        stmt = select(JobRun.id).where(JobRun.status == "queued").order_by(JobRun.id).limit(limit)
-        return list(session.scalars(stmt))
+        stmt = select(JobRun.id, JobRun.stats).where(JobRun.status == "queued").order_by(JobRun.id)
+        for jid, stats in session.execute(stmt):
+            nb = (stats or {}).get("not_before") if isinstance(stats, dict) else None
+            at = parse_datetime(nb) if isinstance(nb, str) else None
+            if at is not None and at > now:
+                continue
+            out.append(int(jid))
+            if len(out) >= limit:
+                break
+    return out
 
 
 def _error_text(exc: BaseException) -> str:
@@ -207,6 +221,8 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
             raise JobError(f"처리 함수 없음: {job.job_name}")
         with _Heartbeat(ctx, job_id, _heartbeat_s()):
             stats = handler(ctx, job)
+    except JobRequeue as exc:
+        return _requeue(ctx, job_id, exc, started, int((job.stats or {}).get("requeue_count") or 0))
     except JobError as exc:
         status, stats, error = "failed", exc.stats, _error_text(exc)
     except JudgeUnavailable as exc:
@@ -215,14 +231,8 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
     except Exception as exc:  # 처리 함수 버그·외부 오류: 잡만 실패, worker 는 계속
         status, error = "failed", _error_text(exc)
         log.exception("worker.job.error", extra={"job_id": job_id, "job_name": job.job_name})
-    with ctx.session_factory() as session:
-        row = session.get(JobRun, job_id)
-        assert row is not None
-        row.status = status
-        row.stats = redact_stats(_jsonable(stats))
-        row.error_text = error
-        row.finished_at = ctx.iso_now()
-        session.commit()
+    _finish(ctx, job_id, status=status, stats=redact_stats(_jsonable(stats)), error_text=error,
+            finished_at=ctx.iso_now())  # fmt: skip
     log.info(
         "worker.job.finish",
         extra={
@@ -233,6 +243,50 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
         },
     )
     return status
+
+
+def _finish(ctx: SchedulerContext, job_id: int, **values: Any) -> None:
+    """잡 행 끝 상태 쓰기 = **UPDATE 한 문장**(읽고 쓰지 않는다). R3h: 먼저 읽고(session.get) 나중에 쓰면 그 사이 API 쓰기가
+    커밋됐을 때 SQLite WAL 이 읽기 스냅샷을 쓰기로 올리지 못해 즉시 'database is locked'(BUSY_SNAPSHOT — busy_timeout 무관)
+    — D14-5 성능 시험에서 발행 잡 끝 기록이 이렇게 실패했다. UPDATE 한 문장은 쓰기 잠금을 busy_timeout 동안 기다린다."""
+    with ctx.session_factory() as session:
+        session.execute(update(JobRun).where(JobRun.id == job_id).values(**values))
+        session.commit()
+
+
+def _requeue(ctx: SchedulerContext, job_id: int, exc: JobRequeue, started: float, prev_count: int) -> str:
+    """D16-3 지연 재큐잉: queued 로 되돌리고(locked_by·started_at 비움) stats 에 ``requeue_count``(+1)·``not_before``
+    (벽시계 + 지연)·``requeue_reason``. error_text 없음 — 실패가 아니다. 반환 'queued'."""
+    from datetime import timedelta
+
+    from app.core.time import now_kst
+
+    n = prev_count + 1
+    _finish(
+        ctx,
+        job_id,
+        status="queued",
+        stats=redact_stats(
+            _jsonable(
+                {
+                    **exc.stats,
+                    "requeue_count": n,
+                    "requeue_reason": exc.reason[:300],
+                    "not_before": (now_kst() + timedelta(seconds=exc.delay_s)).isoformat(timespec="seconds"),
+                }
+            )
+        ),
+        error_text=None,
+        finished_at=None,
+        locked_by=None,
+        started_at=None,
+    )
+    log.info(
+        "worker.job.requeued",
+        extra={"job_id": job_id, "requeue_count": n, "delay_s": exc.delay_s,
+               "seconds": round(time.monotonic() - started, 2)},
+    )  # fmt: skip
+    return "queued"
 
 
 def run_once(ctx: SchedulerContext) -> int | None:

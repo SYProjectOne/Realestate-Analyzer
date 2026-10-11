@@ -29,7 +29,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.contracts_gen import Health
-from app.core.db import get_engine, ping, reset_engine
+from app.core.db import get_engine, ping, reset_engine, sqlite_api_checkpointer
 from app.core.logging import configure_logging, get_logger
 from app.core.protocols import CONTRACT_VERSION
 from app.core.settings import Settings, get_settings
@@ -125,7 +125,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         tune_gc()
         configure_logging(s)
         log.info("api.start", extra={"env": s.env, "version": app_version()})
-        yield
+        # R3h(D14-5): SQLite 개발 모드에서 요청 커밋이 WAL 체크포인트(fsync)를 떠안지 않게
+        with sqlite_api_checkpointer(get_engine(s)):
+            yield
         reset_engine()
 
     app = FastAPI(
