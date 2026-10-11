@@ -142,7 +142,9 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
         snap = _snapshot_for(session, region.id)
         checked = (snap.asof_date if snap is not None else now_iso())[:10]
         fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [have.id]))
-        return JSONResponse({"catalyst": catalyst_view(have, checked, fm=fm), "job": None}, status_code=201)
+        return JSONResponse(
+            {"catalyst": catalyst_view(have, checked, fm=fm), "job": None, "job_id": None}, status_code=201
+        )
     try:
         make = candidate_factory()
     except CandidateUnavailable as exc:
@@ -166,7 +168,10 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
     checked = (snap.asof_date if snap is not None else now_iso())[:10]
     fm = FactMaker(settings_of(request), ProvIndex().load(session, "catalyst", [row.id]))
     view = catalyst_view(row, checked, fm=fm)
-    return JSONResponse({"catalyst": view, "job": job_out}, status_code=201)
+    return JSONResponse(
+        {"catalyst": view, "job": job_out, "job_id": job_out["id"] if job_out is not None else None},
+        status_code=201,
+    )  # 계약 .12(D15-6·m16): 발행을 일으키는 쓰기 응답은 job_id
 
 
 # ====================================================================== D11-5 위치 확인 → catalyst_link (계약 .8)

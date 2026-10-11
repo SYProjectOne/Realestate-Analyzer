@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 from app.models.enums import REGION_STATUS, SNAPSHOT_STATUS, SNAPSHOT_VIEW_KIND, in_check
 
-__all__ = ["Region", "Snapshot", "SnapshotView"]
+__all__ = ["Region", "Snapshot", "SnapshotView", "SnapshotViewUnit"]
 
 
 class Region(Base):
@@ -79,6 +79,9 @@ class Snapshot(Base):
     revision: Mapped[int] = mapped_column(Integer, server_default="1")
     revision_of: Mapped[int | None] = mapped_column(ForeignKey("snapshot.id"))
     revision_reason: Mapped[str | None] = mapped_column(String(200))
+    # 0012 (계약 2026-10-09.12, D15-6): 발행 single-flight 임대 '<보유자>|<epoch 초>' — 발행 중인 publish_revision 하나만
+    # 값을 갖는다(조건부 UPDATE = 비교 후 교체). 보유 잡이 running 이 아니거나 오래되면 다른 발행이 넘겨받는다
+    publish_lease: Mapped[str | None] = mapped_column(String(80))
 
 
 class SnapshotView(Base):
@@ -109,5 +112,30 @@ class SnapshotView(Base):
     body: Mapped[bytes] = mapped_column(LargeBinary)
     sha256: Mapped[str] = mapped_column(String(64))
     contract_version: Mapped[str] = mapped_column(String(32), server_default="")
-    """0011(D14-4): 이 행을 만든 계약 버전 — 읽을 때 현재 ``CONTRACT_VERSION`` 과 sha256 을 검증한다(다르면 500
-    ``stored_view_mismatch``). 모양을 바꾸는 계약 변경은 저장본 변환 마이그레이션이 이 값을 올린다."""
+    """0011(D14-4): 이 행을 만든 계약 버전(기록용). 0012(D15-3)부터 읽기 호환은 ``shape_version`` 으로 판단한다."""
+    shape_version: Mapped[int] = mapped_column(Integer, server_default="1")
+    """0012(D15-3): 저장 모양 버전(정수 — 저장 kind 의 모양이 바뀔 때만 올린다, ``app.snapshot_view.SHAPE_VERSION``).
+    읽을 때 sha256 과 함께 검증한다(다르면 500 ``stored_view_mismatch``). 모양을 바꾸는 계약 변경은 저장본 변환 마이그레이션을
+    함께 낸다(D14-4)."""
+
+
+class SnapshotViewUnit(Base):
+    """저장본 완료 표식 1행 = (리비전, kind, 시나리오) 단위 — 0012(계약 2026-10-09.12, DECISIONS D15-3).
+
+    표식은 그 단위의 **마지막 쓰기와 같은 트랜잭션**에 ``done=True``·``rows``(그 단위 행 수)로 쓴다. 표식이 없거나
+    ``done=False``(backfill 이 먼저 넣은 '만들 단위' 목록)거나 실제 행 수가 ``rows`` 보다 적으면 그 단위는 미완 — 발행 리비전
+    GET 503 ``materialize_pending``·backfill 이 그 단위의 빠진 행만 다시 만든다. 시나리오 무관 kind 는 scenario ''."""
+
+    __tablename__ = "snapshot_view_unit"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "kind", "scenario"),
+        CheckConstraint(in_check("kind", SNAPSHOT_VIEW_KIND), name="kind"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("snapshot.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    scenario: Mapped[str] = mapped_column(String(16), server_default="")
+    shape_version: Mapped[int] = mapped_column(Integer, server_default="1")
+    rows: Mapped[int] = mapped_column(Integer, server_default="0")
+    done: Mapped[bool] = mapped_column(Boolean, server_default=false())

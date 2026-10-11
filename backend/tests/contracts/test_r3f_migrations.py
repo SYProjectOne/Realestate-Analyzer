@@ -176,10 +176,15 @@ def check_0010_0011_backfill_roundtrip(url: str, seed_db: Path, monkeypatch: pyt
             }
         assert kinds_0010.isdisjoint({"provenance", "claims"})
         command.upgrade(cfg, "head")
-        with engine.connect() as c:
+        with (
+            engine.connect() as c
+        ):  # 0011 = 식별 변환('.11' 기록) · 0012 = 모양 버전 1(D15-3 — 읽기 호환은 이것)
             assert set(
                 c.execute(sa.text("SELECT DISTINCT contract_version FROM snapshot_view")).scalars()
-            ) == {CONTRACT_VERSION}
+            ) == {"2026-10-09.11"}
+            assert set(c.execute(sa.text("SELECT DISTINCT shape_version FROM snapshot_view")).scalars()) == {
+                1
+            }
         refill = backfill(engine, settings=settings)
         assert sorted(refill["snapshots"]) == published
         after = _view_counts(engine)

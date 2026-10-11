@@ -34,7 +34,8 @@ R3_TABLES = {
     "share_link",
     "fact_demotion",
     "snapshot_view",
-}  # 계약 2026-10-09.4 · .6 · .10(D13-1 — 0009 snapshot_state 대체)
+    "snapshot_view_unit",
+}  # 계약 2026-10-09.4 · .6 · .10(D13-1 — 0009 snapshot_state 대체) · .12(D15-3 완료 표식)
 RA_WEIGHTS = {
     "base": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "liquidity": 0.10},
     "A": {"p10": 0.35, "rerank": 0.20, "gap": 0.15, "benchmark": 0.10, "supply": 0.10, "move_in": 0.10},
@@ -274,11 +275,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0011() -> None:
+def test_migration_head_is_0012() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0011"]  # 계약 .11(R3f CORE4)
+    assert script.get_heads() == ["0012"]  # 계약 .12(R3g CORE5)
+    assert script.get_revision("0012").down_revision == "0011"
     assert script.get_revision("0011").down_revision == "0010"
     assert script.get_revision("0010").down_revision == "0009"
     assert script.get_revision("0009").down_revision == "0008"

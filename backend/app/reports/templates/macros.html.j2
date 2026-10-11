@@ -4,7 +4,7 @@
 {%- endmacro %}
 
 {% macro intake(i) -%}
-{% if i %}<span class="intake">{{ i.text }}<span class="badge">{{ i.path_label }} {{ i.checked_at[:10] }}</span></span>{% else %}<span class="intake">확인 불가(접수 상태 기록 없음)</span>{% endif %}
+{% if i %}<span class="intake">{{ i.text }}<span class="badge">{{ i.path_label }} {{ i.checked_day }}</span></span>{% else %}<span class="intake">확인 불가(접수 상태 기록 없음)</span>{% endif %}
 {%- endmacro %}
 
 {% macro sec_head(n) -%}

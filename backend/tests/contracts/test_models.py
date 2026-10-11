@@ -64,8 +64,8 @@ def test_enum_matches_schema(values: tuple[str, ...], where: tuple[str, ...]) ->
 def test_every_table_has_a_model_and_primary_key() -> None:
     tables = Base.metadata.tables
     assert (
-        len(tables) == 36
-    )  # + share_link (0004) + fact_demotion (0006) + snapshot_view (0010, D13-1 — 0009 snapshot_state 대체)
+        len(tables) == 37
+    )  # + share_link(0004) + fact_demotion(0006) + snapshot_view(0010) + snapshot_view_unit(0012, D15-3)
     for name, table in tables.items():
         assert table.primary_key.columns, name
 

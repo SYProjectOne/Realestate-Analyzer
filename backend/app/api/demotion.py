@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
@@ -35,7 +35,16 @@ from sqlalchemy import Integer, Numeric, select
 from sqlalchemy.orm import Session
 
 from app.api.jobs import now_iso
-from app.core.time import kst_date, now_kst
+from app.core.time import (
+    CHECKED_AT_FUTURE_SLACK,
+    CHECKED_AT_MIN,
+    checked_at_range_error,
+    kst_date,
+    kst_day,
+    kst_day_after,
+    now_kst,
+    parse_datetime,
+)
 from app.facts_view import (
     DEMOTION_LABEL,
     DEMOTION_REASON,
@@ -57,6 +66,9 @@ from app.models import (
 )
 
 __all__ = [
+    "CHECKED_AT_BEFORE_SOURCE",
+    "CHECKED_AT_FORMAT",
+    "CHECKED_AT_FUTURE",
     "DEMOTION_LABEL",
     "DEMOTION_REASON",
     "FIELD_ENTITY",
@@ -70,6 +82,7 @@ __all__ = [
     "apply_human_check",
     "check_same_target",
     "checked_at_error",
+    "checked_at_problem",
     "checklist_title",
     "claim_target",
     "demote",
@@ -519,7 +532,10 @@ def later_official(
     from app.normalize.resolver import OFFICIAL_SOURCES
 
     _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
-    day = kst_date(checked_at)
+    if (
+        kst_date(checked_at) is None
+    ):  # 입력은 checked_at_error 를 이미 통과했다 — 못 읽는 값은 비교하지 않는다
+        return None
     mine = norm_value(value) if value is not None else None
     latest: str | None = None
     for e, i, f in group:
@@ -538,12 +554,8 @@ def later_official(
         ):
             if not observed:
                 continue
-            seen = kst_date(observed)
-            after = (
-                seen > day
-                if seen is not None and day is not None
-                else observed > (checked_at or "")[:10]  # 날짜를 못 읽는 옛 행 — 예전 문자열 규칙
-            )
+            # KST 날짜 비교 — resolver ``_observed_after`` 와 같은 함수(못 읽는 옛 observed_on 은 kst_day 문자열 비교)
+            after = kst_day_after(observed, checked_at)
             if not after or (mine is not None and _same_norm(norm, mine)):
                 continue
             if latest is None or observed > latest:
@@ -561,38 +573,45 @@ def _same_norm(a: str | None, b: str | None) -> bool:
         return " ".join(a.split()) == " ".join(b.split())
 
 
-CHECKED_AT_FUTURE_SLACK: Final = timedelta(minutes=10)
-"""D14-6: 사람 확인 시각이 서버 시계보다 이만큼 넘게 앞서면 422(입력기 시계 차는 허용)."""
-_RFC3339_RE: Final = re.compile(
-    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:[Zz]|[+-]\d{2}:\d{2})$"
-)
+CHECKED_AT_FORMAT: Final = "checked_at_format"
+CHECKED_AT_FUTURE: Final = "checked_at_future"
+CHECKED_AT_BEFORE_SOURCE: Final = "checked_at_before_source"
+"""계약 .12(FE6 요청·CEO 승인): 사람 확인 ``checked_at`` 422 의 오류 code — 형식·범위 밖(2000년 전)·overflow / 지금 + 10분 넘는
+미래 / 이미 수집된 다른 값의 공식 공고보다 이른 확인일(D13-2·D14-6). 화면은 문구 대신 이 code 로 구분한다."""
 
 
-def checked_at_error(value: Any, *, now: datetime | None = None) -> str | None:
-    """D14-6(N-M4): 사람 확인 ``checked_at`` 검사 — 시간대가 붙은 RFC3339 date-time 이고 지금(KST)보다
-    ``CHECKED_AT_FUTURE_SLACK`` 넘게 미래가 아니어야 한다. 문제 없으면 None, 있으면 422 detail 문구.
+def checked_at_problem(value: Any, *, now: datetime | None = None) -> tuple[str, str] | None:
+    """D14-6(N-M4)·D15-7: 사람 확인 ``checked_at`` 검사 — 시간대가 붙은 RFC3339 date-time(``core.time.parse_datetime``,
+    T·Z 대소문자 무관)이고 KST 2000-01-01 이후, 지금(KST)보다 ``CHECKED_AT_FUTURE_SLACK`` 넘게 미래가 아니어야 한다
+    (``core.time.checked_at_range_error``). overflow 는 읽을 수 없는 값이다. 문제 없으면 None, 있으면 (오류 code, 422 detail).
     계약 .11 ``format: date-time`` 을 스키마 검사기(FormatChecker)와 무관하게 여기서도 강제한다(미래 검사는 스키마로 못 한다)."""
     text = value if isinstance(value, str) else ""
-    dt: datetime | None = None
-    if _RFC3339_RE.fullmatch(text):
-        body = text[:-1] + "+00:00" if text[-1] in "Zz" else text
-        try:
-            dt = datetime.fromisoformat(body[:10] + "T" + body[11:])
-        except ValueError:
-            dt = None
+    dt = parse_datetime(text)  # D15-7: 파싱은 core.time 하나(T·Z 대소문자 무관, overflow → None)
     if dt is None:
-        return (
-            f"확인 시각 '{str(value)[:40]}' 은 시간대가 붙은 RFC3339 날짜·시각이 아니다 — "
-            "예: 2026-10-09T10:20:00+09:00 (날짜만·시간대 없는 시각은 받지 않는다)"
+        return CHECKED_AT_FORMAT, (
+            f"확인 시각 '{str(value)[:40]}' 은 읽을 수 있는 시간대가 붙은 RFC3339 날짜·시각이 아니다 — "
+            "예: 2026-10-09T10:20:00+09:00 (날짜만·시간대 없는 시각·범위 밖 값은 받지 않는다)"
         )
     current = now or now_kst()
-    if dt > current + CHECKED_AT_FUTURE_SLACK:
+    problem = checked_at_range_error(dt, now=current)
+    if problem == "too_old":
+        return CHECKED_AT_FORMAT, (
+            f"확인 시각 {text} 은 {CHECKED_AT_MIN.year}년({CHECKED_AT_MIN.date().isoformat()} KST) 이전이다 — "
+            "실제로 확인한 시각을 적는다"
+        )
+    if problem == "future":
         minutes = int(CHECKED_AT_FUTURE_SLACK.total_seconds() // 60)
-        return (
+        return CHECKED_AT_FUTURE, (
             f"확인 시각 {text} 은 지금({current.isoformat(timespec='seconds')})보다 {minutes}분 넘게 미래다 — "
             "실제로 확인한 시각을 적는다"
         )
     return None
+
+
+def checked_at_error(value: Any, *, now: datetime | None = None) -> str | None:
+    """``checked_at_problem`` 의 detail 만(옛 호출자 호환). 문제 없으면 None."""
+    got = checked_at_problem(value, now=now)
+    return None if got is None else got[1]
 
 
 def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
@@ -712,9 +731,9 @@ def apply_human_check(
 
 
 def _kst_day(checked_at: str) -> str:
-    """사람 확인 출처 행 observed_on = checked_at 의 KST 날짜(D14-6). 못 읽는 옛 값은 예전처럼 앞 10자."""
-    day = kst_date(checked_at)
-    return day.isoformat() if day is not None else (checked_at or "")[:10]
+    """사람 확인 출처 행 observed_on = checked_at 의 KST 날짜(D14-6·D15-7, ``core.time.kst_day``). 입력은 형식 검사를
+    통과하므로 언제나 읽힌다. 못 읽는 옛 값(형식 검사 이전 행)만 예전처럼 앞 10자 — 결정적이고 읽히는 시각을 자르지 않는다."""
+    return kst_day(checked_at)
 
 
 def _spread_to_group(session: Session, target: HumanTarget, *, snapshot_id: int | None = None) -> int:
@@ -761,6 +780,49 @@ def migrate_row_human_checks(session: Session, *, snapshot_id: int | None = None
     모델로 옮긴다 — 사실 필드 사람 확인마다 그 의미 묶음의 값 있는 다른 행을 다시 resolve 해 사람 확인 값이 0순위 후보로
     들어가게 한다(``apply_human_check`` 와 같은 단계). 멱등: 이미 옮긴 DB 는 0(출처 행·사실·change_event 를 더 만들지 않는다).
     반환 = chosen 이 바뀐 행 수. 커밋은 호출자(``python -m app.snapshot_view backfill`` 등)가 한다."""
+    from sqlalchemy import func
+
+    before = int(session.scalar(select(func.max(ChangeEvent.id))) or 0)
+    changed = _migrate_rows(session, snapshot_id=snapshot_id)
+    if snapshot_id is None:
+        _attach_orphan_events(session, before)
+    return changed
+
+
+def _attach_orphan_events(session: Session, after_id: int) -> None:
+    """R3 7차 minor 4 · D13-5: 이전 단계가 만든 change_event(스냅샷 없이 생김)를 그 단지 지역의 **쓰기 가능** 리비전에 붙이고
+    critical·재판정 이벤트면 그 단지 rejudge 를 등록한다(예전: snapshot_id=None 인 critical 이벤트, 재판정 없음)."""
+    from app.models import Complex
+    from app.scheduler.rejudge import enqueue_rejudge
+    from app.scheduler.snapshots import latest_for_region, writable
+
+    orphans = list(
+        session.scalars(
+            select(ChangeEvent)
+            .where(ChangeEvent.id > after_id, ChangeEvent.snapshot_id.is_(None))
+            .order_by(ChangeEvent.id)
+        )
+    )
+    by_snap: dict[int, tuple[set[int], list[int]]] = {}
+    for ev in orphans:
+        cx = session.get(Complex, ev.complex_id) if ev.complex_id is not None else None
+        base = latest_for_region(session, cx.region_id) if cx is not None else None
+        if cx is None or base is None:
+            continue
+        snap_w = writable(session, base.id, reason="사람 확인 의미 묶음 이전(m14)", created_at=now_iso())
+        ev.snapshot_id = snap_w.id
+        if ev.triggers_rejudge:
+            ids, evs = by_snap.setdefault(snap_w.id, (set(), []))
+            ids.add(cx.id)
+            evs.append(ev.id)
+    session.flush()
+    for sid, (ids, evs) in sorted(by_snap.items()):
+        enqueue_rejudge(
+            session, sid, sorted(ids), "사람 확인 의미 묶음 이전(m14) — 채택 값 변경", change_event_ids=evs
+        )
+
+
+def _migrate_rows(session: Session, *, snapshot_id: int | None) -> int:
     done: set[tuple[str, int, str]] = set()
     changed = 0
     checks = list(

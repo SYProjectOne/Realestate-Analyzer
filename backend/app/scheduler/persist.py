@@ -567,26 +567,26 @@ def carry_forward(
     runs, decisions = copy_runs(session, src_snapshot_id, dst_snapshot_id, created_at=created_at)
     stats["score_run"] += runs
     stats["decision"] += decisions
-    for cs in session.scalars(select(ComparableSet).where(ComparableSet.snapshot_id == src_snapshot_id)):
-        session.add(
-            ComparableSet(
-                complex_id=cs.complex_id,
-                snapshot_id=dst_snapshot_id,
-                member_apt_name=cs.member_apt_name,
-                completed_year=cs.completed_year,
-                substitute=cs.substitute,
-                adjusted=cs.adjusted,
-                coef_used=cs.coef_used,
-                n_trades=cs.n_trades,
-                low_won=cs.low_won,
-                median_won=cs.median_won,
-                adjusted_median_won=cs.adjusted_median_won,
-                high_won=cs.high_won,
-                outliers_excluded=cs.outliers_excluded,
-                excluded_reason=cs.excluded_reason,
-                note=cs.note,
-            )
+    # 비교군은 DB 안에서 한 문장으로(INSERT … SELECT — 1000 단지면 ORM 복사 동안 쓰기 잠금이 길다, D14-5 'API 쓰기 대기 1초')
+    from sqlalchemy import func as sa_func
+    from sqlalchemy import insert, literal
+
+    table: Any = ComparableSet.__table__
+    cols = [c for c in table.columns if c.key not in ("id", "snapshot_id")]
+    session.flush()
+    stats["comparable_set"] = int(
+        session.scalar(
+            select(sa_func.count()).select_from(table).where(table.c.snapshot_id == src_snapshot_id)
         )
-        stats["comparable_set"] += 1
+        or 0
+    )
+    session.execute(
+        insert(table).from_select(
+            ["snapshot_id", *[c.key for c in cols]],
+            select(literal(dst_snapshot_id).label("snapshot_id"), *cols)
+            .where(table.c.snapshot_id == src_snapshot_id)
+            .order_by(table.c.id),
+        )
+    )
     session.flush()
     return stats

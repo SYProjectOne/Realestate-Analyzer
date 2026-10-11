@@ -19,10 +19,18 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from markupsafe import Markup
 
 from app.core.contracts_gen import Fact
+from app.core.time import kst_day
 from app.reports.charts import build_charts
 from app.reports.data import COMPONENT_LABELS, ReportData
 from app.reports.diff import SnapshotDiff
-from app.reports.fmt import fact_label_text, fact_value_text, fmt_score, unknown_fact
+from app.reports.fmt import (
+    MISSING_REASON,
+    count_missing,
+    fact_label_text,
+    fact_value_text,
+    fmt_score,
+    unknown_fact,
+)
 from app.reports.sections import DISCLAIMER, EXTRA_TITLE, SECTION_TITLES
 
 __all__ = ["RenderResult", "find_echarts_bundle", "render_html"]
@@ -83,7 +91,8 @@ def _as_fact(obj: Any, unit: str | None = None) -> Fact:
         except ValueError:
             return unknown_fact("형식 오류", unit=unit)
         return f if f.unit or unit is None else f.model_copy(update={"unit": unit})
-    return unknown_fact("출처 누락", unit=unit)
+    count_missing()
+    return unknown_fact(MISSING_REASON, unit=unit)
 
 
 def _extract_audit_rows(data: ReportData) -> list[dict[str, Any]]:
@@ -117,6 +126,7 @@ def _env() -> Environment:
     env.filters["as_fact"] = _as_fact
     env.filters["score"] = fmt_score
     env.filters["json_script"] = _json_script
+    env.filters["kst_day"] = kst_day  # 시각 문자열 → KST 날짜(D14-6)
     env.globals.update(
         COMPONENT_LABELS=COMPONENT_LABELS,
         DISCLAIMER=DISCLAIMER,

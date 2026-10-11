@@ -42,7 +42,8 @@ def _job(s: object, status: str, ids: list[int] | None, finished: str, name: str
             payload=payload,
             scheduled_at=finished,
             finished_at=finished,
-            stats={},
+            # D15-4(R3g): 판정이 쓴 리비전 = stats.snapshot_id(파이프라인 결과) — 지역 잡도 실제 잡처럼 남긴다
+            stats={} if name == "rejudge" else {"snapshot_id": SNAP},
         )
     )  # type: ignore[attr-defined]
 

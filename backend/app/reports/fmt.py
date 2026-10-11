@@ -13,6 +13,8 @@ from app.core.contracts_gen import Fact
 from app.core.time import kst_day
 
 __all__ = [
+    "MISSING_REASON",
+    "count_missing",
     "fact_label_text",
     "fact_value_text",
     "fmt_eok",
@@ -25,6 +27,19 @@ __all__ = [
 ]
 
 UNKNOWN = "확인 불가"
+MISSING_REASON = "출처 누락"
+
+
+def count_missing() -> bool:
+    """'확인 불가(출처 누락)'을 하나 냈다. 저장본 계산 중(``app.api.facts.MISSING_COUNT`` 켜짐, D14-8)이면
+    건수를 하나 세고 True — R3 7차 minor 12: 보고서 저장본의 출처 누락도 잡 통계 ``missing_provenance`` 에."""
+    from app.api.facts import MISSING_COUNT
+
+    box = MISSING_COUNT.get()
+    if box is None:
+        return False
+    box[0] += 1
+    return True
 
 
 def round_half_up(value: Any, digits: int = 2) -> Decimal:
@@ -140,7 +155,8 @@ def make_fact(
             {"v": None, "label": UNKNOWN, "reason": why[:120], "prov": prov, "checked_at": day, "unit": unit}
         )
     if prov is None:
-        return unknown_fact("출처 누락", checked_at=day, unit=unit)
+        count_missing()
+        return unknown_fact(MISSING_REASON, checked_at=day, unit=unit)
     if isinstance(v, Decimal):
         v = float(v)
     elif isinstance(v, bool):

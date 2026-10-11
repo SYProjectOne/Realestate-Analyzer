@@ -298,8 +298,13 @@ class E2EIsolation:
         return cls(root=root, env=env, junit=root / "regress-junit.xml", results=results, output=output)
 
     def apply(self, step: Step) -> tuple[list[str], dict[str, str]]:
-        """단계의 명령(junit 경로 → 이 실행 것)과 환경변수(격리 값 우선)."""
+        """단계의 명령(junit 경로 → 이 실행 것)과 환경변수(격리 값 우선).
+
+        pytest 단계는 ``--basetemp`` 를 이 실행의 임시 폴더로 준다(R3 7차 — 동시에 도는 다른 pytest 와 기본
+        ``pytest-of-<user>/pytest-N`` 번호 폴더·종료 시 정리를 같이 쓰지 않는다. D14-5 성능 측정이 동시 회차에서 흔들렸다)."""
         cmd = [f"--junitxml={self.junit}" if a.startswith("--junitxml=") else a for a in step.cmd]
+        if "pytest" in cmd and not any(a.startswith("--basetemp") for a in cmd):
+            cmd.append(f"--basetemp={(self.root / 'pytest').as_posix()}")
         return cmd, {**os.environ, **step.env, **self.env}
 
     def publish(self) -> None:

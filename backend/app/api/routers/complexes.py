@@ -746,18 +746,23 @@ def get_provenance(
     from app.api.views import latest_snapshot_id
     from app.models import Region
 
+    pending: sv.MaterializePending | None = None
     for rid in list(session.scalars(select(Region.id).order_by(Region.id))):
         sid = latest_snapshot_id(session, int(rid))
         latest = session.get(Snapshot, sid) if sid is not None else None
-        if (
-            latest is None
-            or not sv.is_published(latest)
-            or not sv.kind_ready(session, latest.id, "provenance")
-        ):
+        if latest is None or not sv.is_published(latest):
             continue
-        found = sv.provenance(session, latest, prov_id)
+        try:
+            found = sv.provenance(session, latest, prov_id)
+        except (
+            sv.MaterializePending
+        ) as exc:  # 그 지역 최신 발행 리비전 저장본 미완 — 다른 지역에 없으면 503(R3 7차 m6)
+            pending = exc
+            continue
         if found is not None:
             return JSONResponse(found)
+    if pending is not None:  # 실시간 200 으로 발행 순간이 아닌 값을 내보내지 않는다
+        raise pending
     return JSONResponse(provenance_body(session, prov_id))
 
 
@@ -769,6 +774,7 @@ def provenance_bodies(session: Session, prov_ids: Iterable[str]) -> dict[str, di
     fp_ids = {int(p[3:]) for p in want if p.startswith("fp_") and p[3:].isdigit()}
     out = _field_provs(session, fp_ids) if fp_ids else {}
     out.update(_score_provs(session, [p for p in want if p[:3] in ("sc_", "st_")]))
+    out.update(_raw_provs(session, [p for p in want if p.startswith("rd_") and p[3:].isdigit()]))
     for pid in want:
         if pid in out or (pid.startswith("fp_") and pid[3:].isdigit()):
             continue
@@ -857,6 +863,32 @@ def _score_provs(session: Session, prov_ids: list[str]) -> dict[str, dict[str, A
             judgment_seq=run.rerank_judgment_seq,
         )
         out[pid] = body
+    return out
+
+
+def _raw_provs(session: Session, prov_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """``rd_<id>`` 서랍 여럿을 한 번에(D15-2 — 저장본이 접수 근거 원문 서랍을 모두 담는다). ``provenance_body`` 의 rd_ 와 같은 값."""
+    ids = sorted({int(p[3:]) for p in prov_ids})
+    out: dict[str, dict[str, Any]] = {}
+    for i in range(0, len(ids), 500):
+        for raw in session.scalars(select(RawDocument).where(RawDocument.id.in_(ids[i : i + 500]))):
+            out[f"rd_{raw.id}"] = _raw_body(f"rd_{raw.id}", raw)
+    return out
+
+
+def _raw_body(prov_id: str, raw: RawDocument) -> dict[str, Any]:
+    ok = raw.path is not None and (raw.http_status is None or 200 <= raw.http_status < 300)
+    out = _blank(prov_id, "raw_document", "확인됨" if ok else LABEL_UNKNOWN)
+    out.update(
+        entity="raw_document",
+        entity_id=raw.id,
+        url=raw.url,
+        checked_at=raw.fetched_at,
+        reason=None if ok else (str(raw.http_status) if raw.http_status else raw.error_text or "수집 실패"),
+        raw_document_id=raw.id,
+        source_kind=raw.source_kind,
+        http_status=raw.http_status,
+    )
     return out
 
 
@@ -968,21 +1000,7 @@ def provenance_body(session: Session, prov_id: str) -> dict[str, Any]:
         raw = session.get(RawDocument, ids[0]) if ids else None
         if raw is None:
             raise not_found(f"provenance {prov_id}")
-        ok = raw.path is not None and (raw.http_status is None or 200 <= raw.http_status < 300)
-        out = _blank(prov_id, "raw_document", "확인됨" if ok else LABEL_UNKNOWN)
-        out.update(
-            entity="raw_document",
-            entity_id=raw.id,
-            url=raw.url,
-            checked_at=raw.fetched_at,
-            reason=None
-            if ok
-            else (str(raw.http_status) if raw.http_status else raw.error_text or "수집 실패"),
-            raw_document_id=raw.id,
-            source_kind=raw.source_kind,
-            http_status=raw.http_status,
-        )
-        return out
+        return _raw_body(prov_id, raw)
     ids = _ints(rest, 1)
     cs = session.get(ComparableSet, ids[0]) if ids else None
     if cs is None:
