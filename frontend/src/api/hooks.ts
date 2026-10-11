@@ -978,10 +978,11 @@ export function useUpdateCatalystLocation(): M<
     mutationFn: ({ id, patch }) =>
       apiFetch<CatalystUpdated>(`/catalysts/${enc(id)}`, { method: 'PATCH', body: patch }),
     onSuccess: (data) => {
+      // 계약 .13 F3(D16-4): 200 + job_id null = 바뀐 것 없음(새 잡·리비전·출처 행 없음) — 다시 읽을 것이 없다
+      if (data.job_id === null && !data.job) return;
       invalidateFactViews(qc);
       void qc.invalidateQueries({ queryKey: queryKeys.regions() });
-      if (data.job_id !== null || data.job)
-        void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+      void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
     },
   });
 }

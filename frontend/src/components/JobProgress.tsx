@@ -5,6 +5,7 @@ import {
   PUBLISH_CHAIN_MAX,
   publishPhase,
   publishTarget,
+  requeueCount,
   type PublishPhase,
 } from '@/api/jobWatch';
 import { useSnapshot } from '@/hooks/useSnapshot';
@@ -37,6 +38,8 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
   const status = tDynamic(`job.status.${job.status}`, job.status);
   const active = job.status === 'queued' || job.status === 'running';
   const progress = job.progress && job.progress.total > 0 ? job.progress : null;
+  // 계약 .13 F4(D16-3): 발행 busy → 다시 queued(지연 재큐잉) — 실패가 아니라 기다리는 중이라고 보인다
+  const requeued = requeueCount(job);
   return (
     <div
       role="status"
@@ -71,6 +74,11 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
         ) : (
           <progress className="h-1 w-full" aria-label={status} />
         )
+      ) : null}
+      {requeued !== null ? (
+        <p className="text-muted" data-testid="job-requeued">
+          <MetaText kind="count" k="job.requeued" params={{ n: requeued }} />
+        </p>
       ) : null}
       {job.error_text ? (
         <p className="text-danger">{t('job.error', { detail: job.error_text })}</p>

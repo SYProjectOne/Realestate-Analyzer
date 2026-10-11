@@ -312,6 +312,20 @@ export type PublishPhase =
   /** 감시 사슬이 PUBLISH_CHAIN_MAX 에 닿았는데 마지막 잡이 또 다음 잡을 가리킨다 — 더 따라가지 않고 알린다(8차 m16) */
   | { kind: 'capped' };
 
+/**
+ * 발행 busy 지연 재큐잉(계약 .13 F4·D16-3): 같은 리비전을 다른 발행이 들고 있어 잡이 다시 queued 로 돌아갔다 — 실패·막힘이
+ * 아니라 진행 중. 재큐잉 횟수(stats.requeue_count), 아니면 null.
+ */
+export function requeueCount(job: {
+  status: string;
+  stats?: Record<string, unknown> | null;
+}): number | null {
+  if (job.status !== 'queued' && job.status !== 'running') return null;
+  const stats = job.stats ?? {};
+  if (!stats.requeue_reason && stats.requeue_count === undefined) return null;
+  return intOf(stats.requeue_count) ?? 1;
+}
+
 /** 겹친 발행(F12 single-flight) — 먼저 돈 잡이 그 리비전을 발행한다 */
 const IN_PROGRESS = 'publish_in_progress';
 const BLOCKED = 'publish_blocked';
@@ -370,8 +384,22 @@ export function publishPhase(input: {
   if (last.status === 'failed') {
     const detail = last.error_text ?? '';
     if (detail.startsWith(BLOCKED)) return blocked(intOf(stats.contradicted), detail);
-    // 겹친 발행: 먼저 돈 잡이 발행한다 — 리비전 목록의 published 를 기다린다
-    if (detail.startsWith(IN_PROGRESS)) return pending;
+    if (detail.startsWith(IN_PROGRESS)) {
+      // 계약 .13 F4(D16-3): 지연 재큐잉을 상한(40회)까지 하고도 다른 발행이 놓아 주지 않아 실패 — 이 잡의 변경은 발행되지
+      // 않았다(리비전 목록이 published 여도 위에서 이미 닫혔다). 코드 접두는 떼고 보인다
+      if ((intOf(stats.requeue_count) ?? 0) > 0) {
+        return {
+          kind: 'publishFailed',
+          detail:
+            detail
+              .slice(IN_PROGRESS.length)
+              .replace(/^[:\s]+/, '')
+              .trim() || detail,
+        };
+      }
+      // 옛 서버(.12): 겹친 발행은 먼저 돈 잡이 발행한다 — 리비전 목록의 published 를 기다린다
+      return pending;
+    }
     return { kind: 'publishFailed', detail };
   }
   if (stats.published === true) return { kind: 'published' };

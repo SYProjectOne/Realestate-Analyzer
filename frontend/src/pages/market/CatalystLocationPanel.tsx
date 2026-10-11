@@ -351,7 +351,8 @@ export function jobIdOf(result: Pick<CatalystUpdated, 'job' | 'job_id'>): number
 }
 
 /**
- * 저장 결과: 만들어진 catalyst_link(단지·거리·가중치·근거) + 연결이 바뀌었으면 새 리비전 발행 잡(202, 계약 .11 F3) 진행.
+ * 저장 결과: 만들어진 catalyst_link(단지·거리·가중치·근거) + 보이는 값(위치·좌표·예정월·연결)이 바뀌었으면 새 리비전 발행
+ * 잡(202 + job_id, 계약 .13 F3·D16-4) 진행. 바뀐 것이 없으면 200 + job_id null — "바뀐 것 없음"만 보인다.
  * 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다.
  */
 function LinksTable({
@@ -372,8 +373,9 @@ function LinksTable({
           <PublishJobProgress jobId={jobIdOf(result) as number} />
         </div>
       ) : (
+        // 계약 .13 F3(D16-4): 200 = 바뀐 것 없음 — 진행 안내·잡 감시 없이 끝
         <p className="text-xs text-muted" data-testid="catalyst-job-none">
-          {t('page.G6.loc.noJob')}
+          {t('page.G6.loc.unchanged')}
         </p>
       )}
     </div>
