@@ -1,4 +1,4 @@
-"""R3f CORE4 — R3 6차 N-M3 / DECISIONS D14-5 (계약 2026-10-09.11): 발행(materialize) 잡 성능·API 쓰기 잠금.
+"""R3f CORE4 — R3 6차 N-M3 / DECISIONS D14-5 (계약 2026-10-09.11, R3g 이름·격리 정리): 발행(materialize) 잡 성능·API 쓰기 잠금.
 
 기준(D14-5, CEO 2026-10-10 수정): 1000 단지 × 시나리오 5 에서 ``snapshot.publish`` 잡 **30초 이하(한 프로세스)**, 그동안 API 쓰기 잠금(쓰기 요청이 기다린 시간)
 **1초 이하**. 리뷰 측정(.10 — 요청 안 발행): 1016 단지 × 5 = 28.8s 동안 쓰기 잠금 전체.
@@ -41,13 +41,18 @@ LOCK_LIMIT_S = 1.0
 
 
 @pytest.fixture
-def synth_client(seeded_db: Seeded, tmp_path: Path) -> Iterator[TestClient]:
+def synth_client(seeded_db: Seeded) -> Iterator[TestClient]:
+    """측정 DB 는 pytest basetemp 밖 전용 임시 폴더(R3 7차 — 동시 pytest 회차에서 흔들림: 기본 basetemp 는 사용자마다 한
+    ``pytest-of-<user>`` 아래 번호 폴더를 같이 쓰고 다른 회차 종료 정리가 돈다). 끝나면 지운다."""
+    import tempfile
+
     from app.api import devseed
     from app.main import create_app
 
-    db = tmp_path / "publish_perf.db"
+    root = Path(tempfile.mkdtemp(prefix="sa-perf-publish-"))
+    db = root / "publish_perf.db"
     shutil.copyfile(seeded_db.db, db)
-    settings = make_settings(db, seeded_db.raw_dir, tmp_path / "reports")
+    settings = make_settings(db, seeded_db.raw_dir, root / "reports")
     set_settings(settings)
     try:
         assert devseed.load_synth(settings, n=1000, snapshot_id=SNAP, materialize=False) == 1000
@@ -57,6 +62,7 @@ def synth_client(seeded_db: Seeded, tmp_path: Path) -> Iterator[TestClient]:
     finally:
         set_settings(None)
         reset_engine()
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def _ready_revision() -> int:
@@ -69,7 +75,7 @@ def _ready_revision() -> int:
         return int(job.id)
 
 
-def test_d14_5_publish_job_1000x5_under_15s_and_api_writes_wait_under_1s(synth_client: TestClient) -> None:
+def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_client: TestClient) -> None:
     jid = _ready_revision()
     lat: list[float] = []
     errors: list[str] = []
@@ -114,6 +120,7 @@ def test_d14_5_publish_job_1000x5_under_15s_and_api_writes_wait_under_1s(synth_c
         "compute_s": stats["compute_s"],
         "write_max_lock_s": stats["write_max_lock_s"],
         "flip_s": stats["flip_s"],
+        "carry_lock_s": stats.get("carry_lock_s"),
         "rows": stats["rows"],
         "bytes": stats["bytes"],
         "provenance_ids": stats["provenance_ids"],

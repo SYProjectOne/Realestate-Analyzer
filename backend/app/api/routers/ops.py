@@ -20,16 +20,18 @@ from sqlalchemy import select
 
 from app.api.contract import check_body
 from app.api.demotion import (
+    CHECKED_AT_BEFORE_SOURCE,
+    CHECKED_AT_FORMAT,
     FIELD_TERMS,
     ValueParseError,
     apply_human_check,
-    checked_at_error,
+    checked_at_problem,
     human_target,
     later_official,
     parse_human_value,
 )
 from app.api.deps import DB, get_complex, in_db_range, settings_of
-from app.api.errors import not_found, validation_error
+from app.api.errors import ApiError, not_found, validation_error
 from app.api.jobs import now_iso
 from app.api.views import envelope_view, intake_view, pick_intake
 from app.core.time import kst_date, now_kst
@@ -289,6 +291,12 @@ def update_checklist_item(session: DB, id: int, body: Annotated[Any, Body()] = N
     return JSONResponse(checklist_view(item, _complex_names(session)))
 
 
+def _checked_at_422(code: str, detail: str) -> ApiError:
+    """계약 .12: 사람 확인 checked_at 422 — code = checked_at_format·checked_at_future·checked_at_before_source,
+    field_errors[0].loc = ["body","checked_at"](.11 과 같음)."""
+    return ApiError(422, code, detail, field_errors=[{"loc": ["body", "checked_at"], "msg": detail}])
+
+
 @router.post("/ops/human-checks", status_code=201)
 def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSONResponse:
     """사람 확인 입력(T3, D11-3). 사실 필드면 resolver 0순위 후보로 그 사실을 바꾸고(재정규화에도 유지) 같은 사실의 강등을
@@ -298,11 +306,18 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
     한다."""
     from app.judge.guard import check_payload
 
-    check_body("createHumanCheck", body)
-    # D14-6(N-M4, 계약 .11): checked_at = 시간대가 붙은 RFC3339, 지금보다 10분 넘게 미래면 422(스키마 format 검사와 무관하게)
-    bad_time = checked_at_error(body["checked_at"])
+    try:
+        check_body("createHumanCheck", body)
+    except ApiError as exc:
+        # 계약 .12: checked_at 만 틀렸으면(형식 — 스키마 format: date-time) 그 code 로(화면이 문구 대신 code 로 구분)
+        errs = exc.field_errors or []
+        if errs and all(list(e.get("loc") or [])[:2] == ["body", "checked_at"] for e in errs):
+            raise _checked_at_422(CHECKED_AT_FORMAT, exc.detail) from exc
+        raise
+    # D14-6(N-M4, 계약 .11)·D15-7: checked_at = 시간대가 붙은 RFC3339, 2000년 이후, 지금보다 10분 넘게 미래면 422
+    bad_time = checked_at_problem(body["checked_at"])
     if bad_time is not None:
-        raise validation_error(bad_time, ("body", "checked_at"))
+        raise _checked_at_422(*bad_time)
     cx = get_complex(session, body["complex_id"])
     guard = check_payload({"value_text": body["value_text"], "note": body.get("note") or ""})
     if not guard.ok:
@@ -325,11 +340,11 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
             later = later_official(session, target, str(body["checked_at"]), value)
             if later is not None:
                 day = kst_date(str(body["checked_at"]))
-                raise validation_error(
+                raise _checked_at_422(
+                    CHECKED_AT_BEFORE_SOURCE,
                     f"확인일 {day.isoformat() if day else str(body['checked_at'])[:10]}(KST) 은 이미 수집된 공식 공고"
                     f"(관측 {later}, 다른 값)보다 이르다 — 그 공고 뒤에 다시 확인한 날짜를 적는다(사람 확인 이후 공고만 "
                     "사람 확인을 이긴다, D12-1)",
-                    ("body", "checked_at"),
                 )
     hc = HumanCheck(
         complex_id=cx.id,

@@ -202,7 +202,11 @@ class CatalystCreated(BaseModel):
     catalyst: CatalystView
     job: JobRun | None
     """
-    계약 .9: 연결 변경은 rejudge 를 등록하지 않는다(새 리비전 바로 발행) — 늘 null. 옛 응답 호환으로 필드만 남는다
+    새 후보를 분류할 rejudge 잡(점수 재계산 — 대상 단지 0개, 판정 뒤 snapshot.publish 로 새 리비전 발행). 같은 URL 이 이미 있거나 지역에 스냅샷이 없으면 null
+    """
+    job_id: int | None
+    """
+    계약 .12(D15-6, R3 7차 m16): job.id(없으면 null) — 발행을 일으키는 쓰기 응답의 공통 이름. 화면은 이 잡을 감시한다
     """
 
 
@@ -1205,7 +1209,10 @@ class Error(BaseModel):
     - contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev, 발행 전 리비전 실시간 GET)
     - scenario_not_in_revision (422): 계약 .11(D14-3) — 보고서 대상 리비전에 그 시나리오 저장본이 없다(발행 뒤 만든 사용자 시나리오, field_errors loc body.scenario_id)
     - stored_view_mismatch (500): 계약 .11(D14-4) — 발행 리비전 저장본의 sha256·계약 버전이 맞지 않는다(조용히 내보내지 않는다, 서버 로그)
-    - materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After)
+    - materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After). 계약 .12(D15-3): 그 (리비전, kind, 시나리오) 완료 표식이 없거나 미완
+    - checked_at_format (422): 계약 .12 — POST /ops/human-checks checked_at 이 시간대가 붙은 RFC3339 가 아니거나(T·Z 대소문자 무관) KST 2000-01-01 이전·overflow(field_errors loc body.checked_at)
+    - checked_at_future (422): 계약 .12 — checked_at 이 서버 지금보다 10분 넘게 미래
+    - checked_at_before_source (422): 계약 .12 — 그 의미 필드에 확인일(KST 날짜)보다 뒤에 관측된 공식 공고가 다른 값으로 이미 있다(D13-2·D14-6 — 같은 값이면 201)
     - internal (500): 그 밖의 서버 오류
     """
 
@@ -1226,6 +1233,9 @@ class Error(BaseModel):
         "scenario_not_in_revision",
         "stored_view_mismatch",
         "materialize_pending",
+        "checked_at_format",
+        "checked_at_future",
+        "checked_at_before_source",
     ]
     detail: str
     field_errors: list[FieldError] | None = None
@@ -3675,7 +3685,7 @@ class Snapshot(BaseModel):
 class SnapshotPublishPayload(BaseModel):
     """
     job_name='snapshot.publish' 페이로드 (RA §4-4). 재판정 완료 후 자동 등록. worker가 claim.verify_status=contradicted 0건을 확인한 뒤에만 snapshot.status를 published로 바꾼다. 남아 있으면 잡은 failed, error_text에 개수.
-    계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
+    계약 2026-10-09.11(D14-5): 발행(저장본 materialize)은 **이 잡에서만** 한다 — 계산(쓰기 잠금 없음) → 저장본 나눠 쓰기 → 짧은 published 전환. 끝날 때까지 이전 발행 리비전이 기본이다. 계약 .12(D15-6): 리비전마다 발행은 하나만 돈다(single-flight — 같은 리비전을 다른 잡이 발행 중이면 failed error_text 'publish_in_progress: …', 아무것도 지우지 않는다). 잡 stats = {published, contradicted, rows, bytes, missing_provenance(출처 누락 '확인 불가' 건수, D14-8), write_max_lock_s, total_s, …}.
     carry_from_snapshot_id(선택): 판정 없이 바뀌는 리비전 값(호재 연결 PATCH)용 — 그 발행 리비전의 파생 행(판정·점수)을 이 리비전에 복사한 뒤 발행한다.
     """
 
@@ -3686,6 +3696,10 @@ class SnapshotPublishPayload(BaseModel):
     carry_from_snapshot_id: int | None = None
     """
     계약 .11: 파생 행을 복사할 바탕 발행 리비전(호재 연결 변경 — 판정기 호출 없음)
+    """
+    follow_up: bool | None = None
+    """
+    계약 .12(D15-6, R3 7차 M5): 후속 발행 잡 — 판정 중·발행 계산 중인 리비전(snapshot_id)에 판정 무관 쓰기(호재 연결)가 들어왔다. 그 리비전의 발행 계산이 이 잡을 읽었으면 전환 트랜잭션이 이 잡을 done(stats.included_in_snapshot_id)으로 닫고, 못 읽었으면 이 잡이 돌아 지역의 가장 새 발행 리비전 위 새 리비전(파생 행 복사)을 발행하거나, 발행 대기(ready) 리비전을 지금 발행하거나, 판정 중이면 미룬다(stats.deferred_to).
     """
 
 

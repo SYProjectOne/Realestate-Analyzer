@@ -110,36 +110,60 @@ AUTH_HEADER_RE = re.compile(
 )
 """Authorization 헤더 값(``Authorization: Bearer …``·``Basic …``·``Token …``)과 홀로 나온 ``Bearer <토큰>``
 (토큰 모양만 — 'the bearer of …'·'bearer bonds' 같은 글은 그대로)."""
+_NS = r"(?:[-_ ]|\\u005[fF]|\\u002[dD])?"
+"""키 이름 낱말 사이 구분: 하이픈·밑줄·공백(``Secret Key``·``API Key``, R3 7차 minor 5)·JSON 유니코드 이스케이프
+(``private\\u005fkey``)."""
 _SECRET_NAME = (
     r"(?:x-)?[a-z0-9_-]*?"
-    r"(?:api[-_]?key(?:[-_]id)?|apikey|client[-_]?secret|client[-_]?id|access[-_]?token|auth[-_]?token|"
-    r"refresh[-_]?token|secret[-_]?access[-_]?key|private[-_]?key|secret[-_]?key|secret|token|password|passwd|pwd)"
-)
+    r"(?:api{s}key(?:{s}id)?|apikey|client{s}secret|client{s}id|access{s}token|auth{s}token|"
+    r"refresh{s}token|secret{s}access{s}key|private{s}key(?:{s}id)?|secret{s}key|secret|token|passphrase|password|passwd|pwd)"
+).replace("{s}", _NS)
+_KEY_SEP = r"(?:\\*[\"'`]|\])?\s*[:=\uff1a\uff1d]\s*"
+"""키 이름 뒤 구분: (이스케이프된) 닫는 따옴표 또는 ``]``(``user[password]=…``), 공백·줄바꿈, ``:``·``=``·전각 ``：``·``＝``(R3 7차 minor 5)."""
+_UNQUOTED_WORD = r"[^\s,;&\"'`<>{}\[\]\\]+"
 HEADER_KEY_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9_-])(" + _SECRET_NAME + r")[\"']?\s*[:=]\s*[\"']?\s*(" + _TOKEN + ")"
+    r"(?i)(?<![A-Za-z0-9_-])("
+    + _SECRET_NAME
+    + ")"
+    + _KEY_SEP
+    + r"(?!\\*[\"'`])("
+    + _UNQUOTED_WORD
+    + r"(?:[ \t]+(?![\w.-]+\s*[:=\uff1a\uff1d])"
+    + _UNQUOTED_WORD
+    + r")*)"
 )
-"""이름으로 비밀임을 아는 헤더·키 뒤의 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``·``"X-Api-Key": "…"``,
+"""이름으로 비밀임을 아는 헤더·키 뒤의 따옴표 없는 값(``X-NCP-APIGW-API-KEY: …``·``x-api-key=…``,
 snake_case ``client_secret=…``·``access_token: …`` — R3 4차 minor; ``aws_secret_access_key=…``·``private_key=…``·
-``pwd=…`` — R3 5차 minor)."""
+``pwd=…`` — R3 5차 minor). R3 7차 minor 5: 공백으로 이어진 **여러 낱말**(``password = s3cr3t pw``)을 같은 줄에서
+다음 ``이름=``/``이름:`` 앞까지, 공백 낀 키 이름(``Secret Key: …``)·전각 콜론."""
 QUOTED_KEY_RE = re.compile(
-    r"(?i)(?<![A-Za-z0-9_-])(" + _SECRET_NAME + r")[\"']?\s*[:=]\s*"
-    r"(?:\"((?:[^\"\\\n]|\\.)*)\"?|'((?:[^'\\\n]|\\.)*)'?)"
+    r"(?i)(?<![A-Za-z0-9_-])("
+    + _SECRET_NAME
+    + ")"
+    + _KEY_SEP
+    + r"(?P<esc>\\*)(?P<q>[\"'`])(?P<v>(?:\\.|[^\\\n])*?)(?=(?P=esc)(?P=q)|\r?\n|\Z)"
 )
 """R3 6차 minor 9: 따옴표로 감싼 비밀 키 값은 **따옴표 안 전체**(공백·JSON 이스케이프 ``\\n``·``\\"`` 포함 — JSON
-``"private_key": "-----BEGIN …\\n…"``·``password = 's3cr3t pw'``). 닫는 따옴표가 없으면(잘린 로그) 그 줄 끝까지."""
+``"private_key": "-----BEGIN …\\n…"``·``password = 's3cr3t pw'``). 닫는 따옴표가 없으면(잘린 로그) 그 줄 끝까지.
+R3 7차 minor 5: 이중·삼중 인코딩 JSON(``\\"password\\": \\"…\\"`` — 여는 따옴표 앞 역슬래시 수와 같은 닫는 따옴표까지),
+백틱, 키와 값 사이 줄바꿈."""
+_DASH = r"-{2,}[ \t]*"
 PEM_PRIVATE_RE = re.compile(
-    r"-----BEGIN ([A-Z0-9 ]*PRIVATE KEY[A-Z0-9 ]*)-----(.*?)(?:-----END \1-----|\Z)", re.DOTALL
+    r"(?i)" + _DASH + r"BEGIN[ \t]+([A-Z0-9 ]*PRIVATE[ \t]+KEY[A-Z0-9 ]*?)[ \t]*-{2,}"
+    r"(.*?)(?:" + _DASH + r"END\b[A-Z0-9 \t]*-{2,}|\Z)",
+    re.DOTALL,
 )
-"""R3 6차 minor 9: PEM 개인키 블록(``-----BEGIN [RSA|EC|OPENSSH|ENCRYPTED ]PRIVATE KEY-----`` … ``-----END …-----``)의
-여러 줄 본문 전체. END 줄이 없으면(잘린 로그) 글 끝까지. 공개 인증서(``CERTIFICATE``)는 그대로."""
+"""R3 6차 minor 9: PEM 개인키 블록(``-----BEGIN [RSA|EC|OPENSSH|ENCRYPTED|PGP ]PRIVATE KEY[ BLOCK]-----`` … ``-----END …-----``)의
+여러 줄 본문 전체. END 줄이 없으면(잘린 로그) 글 끝까지. 공개 인증서(``CERTIFICATE``)는 그대로.
+R3 7차 minor 5: 대소문자 무관, 대시 2개 이상·대시 안쪽 공백(``----- BEGIN … KEY -----``), END 이름이 달라도(불일치) 첫 END 줄에서 끝."""
 _PHONE_KEY_RE = re.compile(r"(?i)(phone|tel|mobile|fax|전화|연락처|휴대)")
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 QUERY_KEY_RE = re.compile(
     r"(?i)([?&](?:servicekey|service_key|api_?key|apikey|access_token|token|secret|password|key)=)[^&\s#\"']+"
 )
 SENSITIVE_KEY_RE = re.compile(
-    r"(?i)(token|secret|password|passwd|authorization|cookie|api[-_]?key|service[-_]?key|credential|client[-_]?id"
-    r"|private[-_]?key)"  # R3 6차 minor 9: dict 키 'private_key'·'privateKey'
+    r"(?i)(token|secret|password|passwd|passphrase|authorization|cookie|api[-_ ]?key|service[-_ ]?key|credential"
+    r"|client[-_ ]?id|private[-_ ]?key)"  # R3 6차 minor 9: dict 키 'private_key'·'privateKey' — 7차 minor 5: 'Private Key'·'API Key'
 )
 
 _PATTERNS: tuple[tuple[Kind, re.Pattern[str]], ...] = (
@@ -232,8 +256,7 @@ def find_sensitive(text: str, secrets: Iterable[str] = ()) -> list[Finding]:
         if b > a and not overlaps(a, b):
             taken.append(Finding("secret", a, b))
     for m in QUOTED_KEY_RE.finditer(text):
-        g = 2 if m.group(2) is not None else 3
-        a, b = m.start(g), m.end(g)
+        a, b = m.start("v"), m.end("v")
         if b > a and not overlaps(a, b):
             taken.append(Finding("secret", a, b))
     for pattern in _secret_patterns(tuple(secrets)):

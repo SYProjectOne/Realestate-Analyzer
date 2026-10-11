@@ -11,7 +11,10 @@
     </tbody>
   </table>
   <h3>12-1. 순위 변화({{ x.base_asof }} → {{ data.asof_date }}, {{ data.scenario_name }})</h3>
-  <table>
+  {% if x.rank_note %}
+  <p class="rank-note">{{ x.rank_note }}</p>
+  {% else %}
+  <table id="rank-table">
     <thead><tr><th>단지</th><th>이전 순위</th><th>현재 순위</th><th>이전 종합</th><th>현재 종합</th></tr></thead>
     <tbody>
     {% for name, r0, r1, t0, t1 in x.rank_rows %}
@@ -19,6 +22,7 @@
     {% endfor %}
     </tbody>
   </table>
+  {% endif %}
   <h3>12-2. 파생 테이블 diff(이전 → 현재)</h3>
   {% if diff and diff.note %}
   <p class="diff-note">{{ diff.note }}</p>

@@ -2,6 +2,81 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.12
+
+R3 7차 리뷰(`docs/design/wp/R3_REVIEW7.md`) 후속 — CEO 결정 D15(`docs/design/DECISIONS.md`)와 R3g 배정(`docs/design/wp/R3G_FIX.md` CORE5).
+계약 소유자 = R3g CORE5(브랜치 `wp/r3g-core5`). 마이그레이션 `0012`(`0012_r3g.py`: 새 테이블 `snapshot_view_unit`(완료 표식) +
+`snapshot_view.shape_version` + `snapshot.publish_lease`). 필드 삭제 없음, **새 응답 필드 1**(`CatalystCreated.job_id`), 새 잡 payload 필드 1
+(`snapshot.publish` `follow_up`), **새 오류 code 3**(`checked_at_format`·`checked_at_future`·`checked_at_before_source` — FE6 요청·CEO 승인,
+F14), 잡 stats `publish_job_id`(F15). 응답 상태 코드 변경 없음(503 `materialize_pending` 이 나는 경우가 늘었다 — F5·F6·F7).
+
+**프론트(FE6)가 맞출 것** — 아래 'FE 차이' 표 하나만 보면 된다. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시
+만들지 않았다(frontend/** = FE6 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### FE 차이(FE6 — 화면이 맞출 것)
+
+| # | 대상 | .11 | .12 | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| F1 | `rd_` 출처 서랍(`GET /provenance/rd_<id>?snapshot_id=`) | 발행 리비전 저장본에 접수 근거 `rd_`(접수 행 `raw_document_id`)가 없어 404 — 화면이 `rd_` 만 snapshot_id 를 뺐다 | 저장본이 모든 본문의 `raw_document_id`(접수 행·경쟁률 행 등)를 `rd_<id>` 서랍으로 저장 → **`rd_` 도 늘 snapshot_id 를 넘긴다**(`provenanceSnapshot` 의 `rd_` 예외 제거). `data_freshness`·생활권 세대수의 `rd_` prov 도 같다 | D15-2 · m7 |
+| F2 | 시나리오 A–D 화면의 출처 서랍 | 시나리오 patch 행에만 있는 prov(점수 실행 KPI `st_<run>` 등)는 발행 리비전 서랍 404 | 모든 시나리오·모든 kind 본문의 prov 가 저장본에 있다 → 200(발행 순간 값). 화면 변경 없음(이미 snapshot_id 를 넘긴다) | D15-2 · M1 |
+| F3 | `POST /catalysts` 201 응답 | `{catalyst, job}` | **새 필드 `job_id`**(integer\|null, 필수 — `job.id`, 같은 URL·스냅샷 없음이면 null). 발행을 일으키는 쓰기 응답의 공통 이름 — 화면은 `job_id` 를 감시 | D15-6 · m16 |
+| F4 | `PATCH /catalysts/{id}` 202 `job_id` | 가장 새 리비전이 발행 전(판정 중·발행 계산 중)이면 `job`·`job_id` **null**(변경이 발행 계산에서 빠질 수 있었다) | 연결이 바뀌면 **늘 job_id**: 가장 새 리비전이 발행됨 → 지금처럼 `snapshot.publish`(`carry_from_snapshot_id`); 발행 전 → **후속 발행 잡** `snapshot.publish` payload `{snapshot_id: 그 리비전, follow_up: true}`. 후속 잡의 끝: (a) 그 리비전 발행 계산이 이 쓰기를 읽었으면 그 발행이 잡을 `done`(stats `included_in_snapshot_id`)으로 닫는다, (b) 못 읽었으면 잡이 새 리비전을 발행(stats `published` true·`snapshot_id`), (c) 판정 중이면 `done` + stats `deferred_to`(그 리비전 발행 때 들어간다). 화면: 잡이 done 이면 regions·스냅샷 목록 무효화(지금과 같은 감시) | D15-6 · M5 |
+| F5 | 발행 리비전 GET 503 `materialize_pending` | '그 kind 행이 하나라도 있으면 완료' — backfill 이 중간에 멈추면 나머지 시나리오·키가 **영구 404**, `POST /reports` 422 | (리비전, kind, 시나리오) **완료 표식**으로 판단: 표식 없음·미완·행 수 모자람 = 503 + `Retry-After`(backfill 이 그 단위의 빠진 행만 채우면 200). 그 kind 의 다른 시나리오는 완료인데 이 시나리오 표식이 없을 때만 404(발행 뒤 만든 시나리오). 대상 엔드포인트 목록은 .11 F12 그대로 | D15-3 · M2 |
+| F6 | `GET /provenance/{id}`(snapshot_id 생략) | 그 지역 최신 발행 리비전 서랍 저장본이 없으면 건너뛰고 실시간 **200** | 어느 지역에서도 못 찾고 저장본이 미완인 지역이 있으면 **503** `materialize_pending`(발행 순간이 아닌 값을 내보내지 않는다). 화면은 늘 snapshot_id 를 넘기므로 영향 적음 | m6 |
+| F7 | `POST /reports` | 기본 시나리오(생략)·비교 스냅샷의 저장본 준비를 보지 않아 202 뒤 잡 실패 | 대상 리비전의 그 시나리오(생략 = 기본) `report`·`report_diff`, 비교 리비전의 `report` 저장본이 미완이면 **503** `materialize_pending`(202 전에) | m10 |
+| F8 | `POST /ops/human-checks` `checked_at` | 소문자 `t`/`z` 는 형식 통과 뒤 날짜를 UTC 로 잘랐다. `0001-01-01T00:00:00+14:00` 은 201 → 이후 지역 목록·CSV 404/500 | `T`·`Z` 대소문자 무관(같은 KST 날짜). **2000-01-01(KST) 이전·지금+10분 넘는 미래·overflow → 422**(`field_errors[0].loc = ["body","checked_at"]`) | D15-7 · M6 · m2 |
+| F9 | 할인 표시(`price.discount`·`discount_applied`) | 줄 전체 조건 검사(금지 낱말) — '(1~3층에 한함)' 다음 줄·'(일부 세대)'·'(신혼부부)'·'예정'·범위 하한·'0원, 경품 1천만원' 등이 '확인됨'(차감) | **허용 목록**: 줄 전체가 `{타입} {분양가\|공급금액} 할인 {금액}원` 꼴이고 다음 줄이 조건 표지로 시작하지 않을 때만 '확인됨'(차감). 그 밖은 '추정'(표시만, `discount_applied` false). 0원·경품·지원 등 할인 아닌 금액은 할인 Fact 없음. 화면 규칙 그대로(값만 바뀜) | D15-1 · K1 |
+| F10 | 보고서 HTML §12(사용자 시나리오) | 비교 기준에 그 시나리오가 없으면 12-1 순위표·TOP 5 진입·이탈을 기본 시나리오 순위와 섞음('12위 → 1위') | 같은 시나리오끼리만. 없으면 12-1 자리에 사유 문단('비교 기준 리비전에 이 시나리오가 없어 12-1 순위 비교와 TOP 5 진입·이탈은 생략했다'), 후보 건수 비교는 그대로 | D15-5 · M4 |
+| F11 | 보고서 날짜 | 접수 확인일·실패 출처·참고 링크·판정 호출·변경 날짜 = 문자열 앞 10자(UTC 일 수 있음) | 모두 KST 날짜(`core.time.kst_day`) | D15-7 · m3 |
+| F12 | `snapshot.publish` 잡 실패 문구 | 같은 리비전 발행 둘이 겹치면 한쪽 정리 DELETE 가 다른 쪽 저장본을 지워 published + 0행 | 리비전마다 발행 하나(single-flight). 겹친 쪽은 아무것도 지우지 않고 failed `error_text` = `publish_in_progress: …`(화면: 일반 잡 실패 안내 — 먼저 돈 잡이 발행한다) | D15-6 · m1 |
+| F14 | `POST /ops/human-checks` checked_at **422 code** | 모두 `validation_error`(문구로만 구분) | **code 로 구분**(FE6 요청·CEO 승인): `checked_at_format` = 형식(스키마 `format: date-time` 포함)·KST 2000-01-01 이전·overflow, `checked_at_future` = 서버 지금 + 10분 넘는 미래, `checked_at_before_source` = 그 의미 필드에 확인일(KST)보다 뒤에 관측된 공식 공고가 **다른 값**으로 이미 있음(D13-2·D14-6). 셋 다 `field_errors[0].loc = ["body","checked_at"]`. checked_at 과 다른 필드가 함께 틀리거나 다른 필드만 틀리면 그대로 `validation_error` | D15-7 · FE6 요청 |
+| F15 | 발행을 일으키는 잡의 **`publish_job_id`** + 쓰기 응답 `job_id` 의미 | 잡마다 달랐다(rejudge 는 발행 잡 id 를 남기지 않음) | 잡 stats `publish_job_id` = 발행을 하는(한) 잡: `rejudge` → 판정 뒤 등록한 `snapshot.publish` 잡, `snapshot.publish`(후속 포함) → 그 잡 자신(미룸이면 null + `deferred_to`, 다른 발행에 포함돼 닫힌 후속 잡 → 그 발행 잡), `region.expand`·`region.bootstrap`·`collect.daily` 이월·`collect.weekly` 마감(그 자리 발행) → 그 잡 자신, 발행이 예외로 실패해 재시도를 남겼으면 → 재시도 잡(`publish_retry_job_id` 와 같음). 화면: 응답 `job_id` 잡이 done 이면 `stats.publish_job_id` 가 자기와 다를 때 그 잡을 이어 감시, 같거나 `published` 가 있으면 끝. 쓰기 응답 `job_id`: `PATCH /catalysts` = snapshot.publish(carry 또는 follow_up) · `POST /catalysts` = rejudge · `PUT /regions/{id}/living-areas` = rejudge · `PATCH /regions/{id}`(선택 변경) = region.expand · `POST /ops/human-checks` = rejudge(= `rejudge_job_id`) | D15-6 · FE6 요청 |
+| F13 | 500 `stored_view_mismatch` | 저장본 행의 계약 버전 문자열 ≠ 지금 계약이면 500(모양이 같은 계약 변경에도) | **저장 모양 버전**(정수) 또는 sha256 이 다를 때만 500. 계약 버전만 바뀐 경우 200 | D15-3 · m9 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.11) | 이후(.12) | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | 저장본 완결성 | kind 행 하나라도 있으면 완료(`kind_ready`), backfill 은 '빠진 kind' 만 | `snapshot_view_unit` 완료 표식 = (리비전, kind, 시나리오) 단위, **그 단위의 마지막 쓰기와 같은 트랜잭션**에 `done`·`rows`. backfill 은 미완 단위(표식 없음·done=false·실제 행 < rows)만, **이미 있는 행은 그대로 두고(발행 순간 바이트) 빠진 키만** 넣는다(본문 통째 — patch 없음). 새 행이 출처 서랍에 없는 prov 를 가리키면 서랍 단위도 다시 쓴다(이미 있던 서랍 본문은 그대로). 리비전마다 따로 실패(`backfill()` 결과 `failed`) | D15-3 · M2 · m11 |
+| S2 | 저장본 읽기 검증 | `contract_version` = 지금 계약 | `shape_version`(=`app.snapshot_view.SHAPE_VERSION`, 지금 1) + sha256. `contract_version` 은 기록만 | D15-3 · m9 |
+| S3 | 출처 서랍 수집 범위 | 기본 시나리오 행·`"prov":"…"` 모양만(report·report_diff 제외) | 출처 서랍 자신을 뺀 **모든 kind·모든 시나리오**, patch 행 `"prov":{"$v":"…"}`, `raw_document_id` → `rd_<id>` | D15-2 · M1 · m7 |
+| S4 | 시나리오 patch 행 | 같음 판정이 `!=` — `1`·`1.0`·`true` 를 같다고 보고 기본 시나리오 값으로 되살림(바이트 다름) | 저장 바이트가 같을 때만 같다(값이 같으면 직렬화 비교) | m8 |
+| S5 | 발행 single-flight·정리 | 정리 DELETE 상태 조건 없음 — 두 발행이 겹치면 published 0행 → backfill 이 지금 값으로 재계산 | `snapshot.publish_lease` 조건부 UPDATE(보유자 = 잡 id — 그 잡이 running 이 아니거나 15분 지나면 넘겨받음). 정리 DELETE 는 `status != 'published'` 조건, 전환 UPDATE 는 임대 보유 조건. 전환 트랜잭션은 쓰기 잠금부터(SQLite BUSY_SNAPSHOT 방지) | D15-6 · m1 |
+| S6 | 발행 계산 중 들어온 변경 | `republish` 가 발행 전 리비전이면 아무것도 안 함 → 계산이 이미 읽었으면 변경 유실 | 후속 발행 잡(F4). 계산 읽기 트랜잭션이 본 후속 잡 = 전환 트랜잭션에서 `done`(포함됨), 못 본 잡 = 남아 이어 발행. 잡 stats `followups_included` | D15-6 · M5 |
+| S7 | 발행 실패 재시도 | bootstrap 만 재시도 잡 | daily 이월·주간 마감·지역 확장·bootstrap 모두 발행 예외 → `snapshot.publish` 재시도 잡(stats `publish_retry_job_id`) | D15-6 · m13 |
+| S8 | 이월 판단 '판정됨' | 단지를 포함한 마지막 성공 판정 잡이면 어느 리비전이든 | 그 판정이 **복사 원본(prev) 리비전에 들어 있을 때만**(판정을 쓴 리비전 = prev 또는 prev 이전 발행 리비전 — 잡 stats `pipeline.snapshot_id`/`snapshot_id`). 시나리오 지정 rejudge 는 그 시나리오만 — 단지 기준 시각 = prev 점수 실행 시나리오 중 가장 이른 것 | D15-4 · M3 · m14 |
+| S9 | 시각 파싱 | 여러 곳에서 `fromisoformat`·앞 10자 | `core.time.parse_datetime` 하나(T·Z 대소문자 무관, 예외 없음, overflow → None) + `kst_date`·`kst_day`·`kst_day_after`. 사람 확인 범위 = `checked_at_range_error`(2000-01-01 KST ~ 지금+10분) | D15-7 · M6 · m2 |
+| S10 | redact | — | 이중 인코딩 JSON·소문자/변형 PEM(EC·OPENSSH·ENCRYPTED·PGP·CRLF·`\n` 이스케이프·END 없음)·공백 낀 키 이름('Secret Key:')·전각 콜론·여러 낱말 값·`privateKey` | m5 |
+| S11 | 보고서 출처 누락 집계 | 보고서 저장본의 '출처 누락' 은 잡 stats `missing_provenance` 에 안 셈 | 셈(저장본 계산 중이면 ENV 와 무관하게 라벨 + 건수) | m12 |
+| S12 | 보고서 CLI `--compare` | 순서·지역·발행 미검사 | API 와 같은 규칙(`reports.data.compare_problem`) — 어긋나면 exit 6 | m15 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `catalyst.json` `CatalystCreated` | `job_id`(integer\|null, **필수**) 추가, `job` 설명 바로잡음(분류 rejudge 잡). 예시 `catalyst_created.json` 갱신 |
+| 2 | `job_payloads/snapshot_publish.json` | `follow_up`(boolean, 선택) — 후속 발행 잡(F4). 설명에 single-flight(`publish_in_progress`) |
+| 3 | `openapi.yaml` | `info.version` 2026-10-09.12. 경로·응답 코드 변경 없음. createHumanCheck 설명에 checked_at 422 code(F14) |
+| 3a | `error.json` code enum | `checked_at_format`·`checked_at_future`·`checked_at_before_source` 추가(F14) |
+| 4 | DB `0012` | 새 테이블 `snapshot_view_unit`(snapshot_id FK, kind CHECK = snapshot_view 와 같음, scenario, shape_version, rows, done; 유일 (snapshot_id, kind, scenario)) · `snapshot_view.shape_version`(INTEGER NOT NULL 기본 1) · `snapshot.publish_lease`(String 80, NULL). 데이터: 발행 리비전의 기존 (kind, 시나리오) 행 묶음 = done 표식(rows = 행 수), 그 리비전 시나리오(행·점수 실행) × kind 중 행 없는 단위 = done=false 표식(backfill 이 채운다). downgrade = 표·열 삭제 |
+
+### 마이그레이션·검증
+
+- 0011 DB: `cd backend && uv run alembic upgrade head`(0012) → `uv run python -m app.snapshot_view backfill`(또는 worker 재시작) — 미완 단위만 채운다.
+  0012 이전에 backfill 이 중간에 멈춰 행이 일부만 있는 단위는 마이그레이션이 찾아 미완으로 표식한다(단지 상세·시장 = 시나리오 사이 최대 행 수,
+  출처 서랍 = 색인 묶음 수 + 1). 한 시나리오의 단일 행 kind(대시보드 등) 전체가 빠진 경우는 행·점수 실행 시나리오 × kind 로 찾는다.
+- 왕복: SQLite·Postgres 16(pgserver), devseed 픽스처(단지 16·시나리오 5) — `tests/contracts/test_r3g_migrations.py`(head → 0011 → head, 표식 재구성,
+  backfill 중단·재개), `tests/contracts/test_r3f_migrations.py`(0009 → head → backfill → 0010 → head), autogenerate diff 0.
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.12`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check` 일치).
+- **D14-5 측정**(`tests/api/test_r3f_perf_publish.py::test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s` — devseed 16 + 합성
+  1,000 단지 × 시나리오 5, 측정 DB 는 pytest basetemp 밖 전용 임시 폴더): `python scripts/tasks.py regress` 동시 실행(부하) 2회 = 잡 22.2s·21.9s,
+  API 쓰기 응답 최대 0.72s·0.73s, 저장본 묶음 쓰기 잠금 최대 0.05s·0.02s, 이월 복사 잠금 0.33s·0.34s, 전환 0.002s, 저장본 5,419행·12.0MB,
+  출처 서랍 112,380개(.11 의 71,600 + 시나리오 patch 행·`rd_`·report 의 prov — D15-2). 같은 시점 main(.11) 은 부하 없이 16.8s.
+  비용 대책: patch 바이트 검증은 pickle 구조 비교(기본 시나리오 쪽 캐시), `kst_date` 캐시, `rd_` 서랍 일괄 조회, 묶음 0.5MB, 저장본 쓰기·전환
+  연결의 WAL 자동 체크포인트 끔(커밋 안 체크포인트가 부하에서 쓰기 잠금 1.2~3.0s 를 만들었다 → 끝나고 PASSIVE), 이월 비교군 INSERT…SELECT.
+  잡 stats 에 `carry_lock_s`(이월 복사 트랜잭션 시간) 추가. 동시 pytest 흔들림: 회귀 러너의 pytest 는 실행 전용 `--basetemp`(scripts/tasks.py),
+  성능 측정 DB 는 basetemp 밖 — 기본 `pytest-of-<user>` 번호 폴더를 다른 회차와 같이 쓰지 않는다.
+
 ## 2026-10-09.11
 
 R3 6차 리뷰(`docs/design/wp/R3_REVIEW6.md`) 후속 — CEO 결정 D14(`docs/design/DECISIONS.md`)와 R3f 배정(`docs/design/wp/R3F_FIX.md` CORE4).

@@ -37,7 +37,7 @@ from app.core.contracts_gen import Fact
 from app.core.logging import get_logger
 from app.core.protocols import CONTRACT_VERSION
 from app.core.settings import get_settings
-from app.core.time import now_kst
+from app.core.time import kst_day, now_kst
 from app.facts_view import DEMOTION_REASON, DemotionOverlay, load_overlay
 from app.models import (
     Catalyst,
@@ -65,7 +65,7 @@ from app.models import (
     Unsold,
 )
 from app.reports.errors import ReportBlocked, ReportNotFound, ReportProvenanceMissing
-from app.reports.fmt import make_fact, round_half_up, unknown_fact
+from app.reports.fmt import MISSING_REASON, count_missing, make_fact, round_half_up, unknown_fact
 from app.reports.policy import (
     JUDGE_SCOPE_TEXT,
     PriceView,
@@ -80,6 +80,7 @@ from app.reports.policy import (
 __all__ = [
     "COMPONENT_LABELS",
     "ReportData",
+    "compare_problem",
     "count_remaining_contradicted",
     "is_valid_url",
     "load_report",
@@ -143,7 +144,6 @@ JUDGMENT_SECTIONS: Final[dict[str, str]] = {
     "verify": "§7·§8 검증",
 }
 URL_RE: Final = re.compile(r"^https?://[^\s<>\"']+$")
-MISSING_REASON: Final = "출처 누락"
 
 log = get_logger("app.reports.data")
 
@@ -172,10 +172,15 @@ class IntakeView:
     used: bool  # 표시값(우선순위로 채택)
 
     @property
+    def checked_day(self) -> str:
+        """확인 날짜(KST, D14-6 — 'Z'·다른 오프셋 시각도 서울 달력 날짜)."""
+        return kst_day(self.checked_at)
+
+    @property
     def text(self) -> str:
         why = self.reason or (str(self.http_status) if self.http_status else None)
         if self.status == "확인 불가":
-            return f"확인 불가({why or '사유 미기재'}, {self.checked_at[:10]})"
+            return f"확인 불가({why or '사유 미기재'}, {self.checked_day})"
         return self.status
 
 
@@ -540,6 +545,8 @@ class ExtraView:
     rerank_prev_seq: int | None
     rerank_seq: int | None
     summary: str
+    # D15-5: 12-1 순위표·TOP 5 를 생략한 사유(비교 기준 리비전에 이 시나리오 없음). None = 같은 시나리오끼리 비교함
+    rank_note: str | None = None
 
 
 @dataclass(slots=True)
@@ -675,7 +682,8 @@ class _ProvIndex:
     def missing(self, entity: str, entity_id: int, fld: str, unit: str | None = None) -> Fact:
         """값은 있는데 출처 행이 없음(T13): dev = 예외, prod = 경고 로그 + '확인 불가(출처 누락)'."""
         detail = f"{entity} {entity_id} field {fld} has no field_provenance row ({MISSING_REASON})"
-        if self.env == "dev":
+        # 저장본 계산 중(D14-8)이면 ENV 와 무관하게 라벨 + 건수(API ``FactMaker.missing`` 과 같은 규칙, R3 7차 minor 12)
+        if not count_missing() and self.env == "dev":
             raise ReportProvenanceMissing(detail)
         log.warning(
             "%s: %s", MISSING_REASON, detail, extra={"entity": entity, "entity_id": entity_id, "field": fld}
@@ -1276,7 +1284,8 @@ def _prob(
     if v is None:
         return unknown_fact(missing or reason or "미판정", unit="prob")
     if seq is None:
-        return unknown_fact("출처 누락", unit="prob")
+        count_missing()
+        return unknown_fact(MISSING_REASON, unit="prob")
     return make_fact(float(v), "추정", f"jl_{seq}", asof, unit="prob", reason=reason)
 
 
@@ -1372,7 +1381,7 @@ def _calls(
                 input_summary=inp,
                 result_summary=res,
                 used_in=", ".join(used.get(j.seq, [])) or "기록만(직접 반영 없음)",
-                created_at=j.created_at[:10],
+                created_at=kst_day(j.created_at),
             )
         )
     tools = [
@@ -1769,7 +1778,7 @@ def _failed_sources(ctx: _Ctx, docs: Sequence[RawDocument]) -> list[FailedSource
             source_kind=d.source_kind,
             status=f"HTTP {d.http_status}" if d.http_status else (d.error_text or "실패"),
             complex_name=ctx.names.get(d.complex_id, "—") if d.complex_id else "—",
-            fetched_at=d.fetched_at[:10],
+            fetched_at=kst_day(d.fetched_at),
         )
         for d in docs
         if (d.http_status is not None and d.http_status >= 400) or (d.http_status is None and d.error_text)
@@ -1783,7 +1792,7 @@ def _failed_sources(ctx: _Ctx, docs: Sequence[RawDocument]) -> list[FailedSource
                         source_kind="official_site",
                         status=i.text,
                         complex_name=cx.name,
-                        fetched_at=i.checked_at[:10],
+                        fetched_at=i.checked_day,
                     )
                 )
     return failed
@@ -1797,7 +1806,9 @@ def _references(
 
     def add(url: str | None, kind: str, cname: str, checked: str, result: str) -> None:
         if url and url not in refs:
-            refs[url] = RefRow(url=url, kind=kind, complex_name=cname, checked_at=checked[:10], result=result)
+            refs[url] = RefRow(
+                url=url, kind=kind, complex_name=cname, checked_at=kst_day(checked), result=result
+            )
 
     for d in docs:
         res = f"HTTP {d.http_status}" if d.http_status else (d.error_text or "응답 없음")
@@ -1826,7 +1837,7 @@ def _changes(ctx: _Ctx) -> list[dict[str, str]]:
     stmt = select(ChangeEvent).where(ChangeEvent.snapshot_id == ctx.snap.id).order_by(ChangeEvent.id)
     return [
         {
-            "detected_at": e.detected_at[:10],
+            "detected_at": kst_day(e.detected_at),
             "entity": e.entity,
             "field": e.field,
             "old": e.old_text or "",
@@ -2121,22 +2132,41 @@ def load_report(
     # R3 6차 m4: '생성 시각'은 보고서를 만드는 지금이다(저장본의 계산 시각을 그대로 쓰지 않는다)
     data.generated_at = now_kst().isoformat(timespec="seconds")
     if compare is not None:
-        data.extra = _extra(data, payload, compare_payload(session, compare, scenario), compare)
+        base_payload, same_scenario = compare_payload(session, compare, scenario)
+        data.extra = _extra(data, payload, base_payload, compare, same_scenario=same_scenario)
     return data
 
 
-def compare_payload(session: Session, compare: Snapshot, scenario: Scenario) -> dict[str, Any]:
-    """§12 비교 기준 입력(D14-3): 같은 시나리오 저장본, 그 리비전에 그 시나리오가 없으면(발행 뒤 만든 사용자 시나리오)
-    기본 시나리오 — §12 후보 건수 비교는 시나리오와 무관하게 낸다(delta 표는 ``export.generate`` 가 생략)."""
+def compare_payload(session: Session, compare: Snapshot, scenario: Scenario) -> tuple[dict[str, Any], bool]:
+    """§12 비교 기준 입력과 '같은 시나리오인가'(D14-3·D15-5): 같은 시나리오 저장본(True), 그 리비전에 그 시나리오가
+    없으면(발행 뒤 만든 사용자 시나리오) 기본 시나리오(False) — §12 후보 건수 비교는 시나리오와 무관하게 내지만 12-1
+    순위표·TOP 5 진입·이탈은 같은 시나리오끼리만(False 면 ``_extra`` 가 사유와 함께 생략, delta 표는
+    ``export.generate`` 가 생략)."""
     from app import snapshot_view as sv
 
     try:
-        return _payload(session, compare, scenario)
+        return _payload(session, compare, scenario), True
     except sv.NotInRevision:
         base = session.scalars(select(Scenario).where(Scenario.code == "base")).first()
         if base is None or base.id == scenario.id:
             raise
-        return _payload(session, compare, base)
+        return _payload(session, compare, base), False
+
+
+def compare_problem(snap: Snapshot, compare: Snapshot) -> str | None:
+    """비교 기준 리비전 규칙(API ``POST /reports`` 와 같음 — R3 5차 M5·6차 m5): 같은 지역, 발행 리비전(저장본, D13-1),
+    대상보다 **앞선** 리비전(같거나 더 새 리비전은 '이전 → 현재' 표가 뒤집힌다). 어긋나면 사유, 맞으면 None."""
+    if compare.region_id != snap.region_id:
+        return f"비교 스냅샷 {compare.id} 은 다른 지역({compare.region_id})이다"
+    if compare.status != "published":
+        return f"비교 스냅샷 {compare.id} 는 발행 전({compare.status})이라 비교할 수 없다"
+    if (compare.asof_date, int(compare.revision or 1), compare.id) >= (
+        snap.asof_date,
+        int(snap.revision or 1),
+        snap.id,
+    ):
+        return f"비교 스냅샷 {compare.id} 은 대상 {snap.id} 와 같거나 더 새 리비전이다 — 앞선 리비전을 고른다"
+    return None
 
 
 def scenario_in_revision(session: Session, snap: Snapshot, scenario_id: int) -> bool:
@@ -2205,13 +2235,21 @@ def _candidates(session: Session, run: ScoreRun | None, ids: set[int]) -> set[in
 
 
 def _extra(
-    data: ReportData, cur: Mapping[str, Any], base_payload: Mapping[str, Any], base: Snapshot
+    data: ReportData,
+    cur: Mapping[str, Any],
+    base_payload: Mapping[str, Any],
+    base: Snapshot,
+    *,
+    same_scenario: bool = True,
 ) -> ExtraView:
     """§12 지역 추가·변경 장: 후보군 변화, rerank 재실행, 순위 변화 한 문단(meta §2-3).
 
     후보군 = 그 점수 실행에서 rerank 후보 범위(판정 대상·참고·보류 — ``analysis.scope.in_rerank``)인 단지(R3 4차 M-4:
     지역 선택에서 빠져 '제외'(범위 경계)가 된 단지도 점수 행은 남아 '제외 0'으로 보였다). 두 리비전 모두 보고서 입력
-    데이터(발행 리비전 = 저장본, D13-1)로 계산한다 — 지금 사실·이름을 다시 읽지 않는다."""
+    데이터(발행 리비전 = 저장본, D13-1)로 계산한다 — 지금 사실·이름을 다시 읽지 않는다.
+
+    ``same_scenario=False``(비교 기준 리비전에 이 시나리오가 없어 기본 시나리오 입력을 받음, D15-5): 후보 건수·추가·제외·
+    rerank 문장만 내고 12-1 순위표·TOP 5 진입·이탈은 사유(``rank_note``)와 함께 생략한다(시나리오가 다른 순위를 섞지 않는다)."""
     from app.reports.codec import decode_data
 
     base_data: ReportData = decode_data(base_payload["data"])
@@ -2225,8 +2263,15 @@ def _extra(
     prev = {k: v for k, v in prev.items() if k in prev_c}
     cur_scores = {k: v for k, v in cur_scores.items() if k in cur_c}
     rank_rows: list[tuple[str, str, str, Fact | None, Fact | None]] = []
+    rank_note = (
+        None
+        if same_scenario
+        else "비교 기준 리비전에 이 시나리오가 없어 12-1 순위 비교와 TOP 5 진입·이탈은 생략했다"
+        "(같은 시나리오끼리만 비교, D15-5)."
+    )
     for cid in sorted(
-        set(cur_scores) | set(prev), key=lambda i: (cur_scores[i].rank or 99) if i in cur_scores else 99
+        set(cur_scores) | set(prev) if same_scenario else (),
+        key=lambda i: (cur_scores[i].rank or 99) if i in cur_scores else 99,
     ):
         a, b = prev.get(cid), cur_scores.get(cid)
         rank_rows.append(
@@ -2251,10 +2296,10 @@ def _extra(
     else:
         # R3 4차 minor: 사람 확인·단지 재판정 리비전은 rerank 를 다시 부르지 않았다 — '다시 실행' 이라고 쓰지 않는다
         rerank_text = f"rerank는 다시 실행하지 않았다(같은 호출 #{data.rerank_seq or prev_seq or '—'} 유지)."
+    top_text = rank_note or f"TOP 5 진입: {', '.join(entered) or '없음'}; 이탈: {', '.join(left) or '없음'}."
     summary = (
         f"{base.asof_date} 스냅샷(리비전 {int(base.revision or 1)}) 대비 후보 {len(prev)}개 → {len(cur_scores)}개"
-        f"(추가 {len(added)}, 제외 {len(removed)}). {rerank_text} "
-        f"TOP 5 진입: {', '.join(entered) or '없음'}; 이탈: {', '.join(left) or '없음'}."
+        f"(추가 {len(added)}, 제외 {len(removed)}). {rerank_text} {top_text}"
     )
     return ExtraView(
         base_snapshot_id=base.id,
@@ -2265,4 +2310,5 @@ def _extra(
         rerank_prev_seq=prev_seq,
         rerank_seq=data.rerank_seq,
         summary=summary,
+        rank_note=rank_note,
     )

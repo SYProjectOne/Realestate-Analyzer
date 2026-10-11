@@ -79,5 +79,7 @@ def test_regress_step_uses_run_junit() -> None:
         cmd, env = iso.apply(step)
         assert f"--junitxml={iso.junit}" in cmd
         assert env["E2E_FLOW_DATA"] == iso.env["E2E_FLOW_DATA"]
+        # R3g: 회귀 pytest 는 이 실행 전용 basetemp(동시 pytest 의 pytest-of-<user> 번호 폴더와 섞이지 않는다)
+        assert f"--basetemp={(iso.root / 'pytest').as_posix()}" in cmd
     finally:
         iso.cleanup(keep_output=False)
