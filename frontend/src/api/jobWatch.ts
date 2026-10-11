@@ -243,13 +243,16 @@ export function watchJobCompletion(qc: QueryClient): () => void {
   });
 }
 
-// ─── 발행 유발 쓰기의 진행 안내(7차 minor 19 · D15-8) ──────────────
+// ─── 발행 유발 쓰기의 진행 안내(7차 minor 19 · D15-8 · 계약 .12 F4·F12·F15) ─────────
 
 /**
- * 발행 유발 잡(rejudge·region.expand·snapshot.publish …)이 끝난 뒤 후속 `snapshot.publish` 잡을 기다리는 최대 시간.
- * 넘으면 감시를 멈추고 그렇다고 알린다(조용히 멈추지 않는다, 7차 minor 21과 같은 상한).
+ * 발행 유발 잡이 끝난 뒤 발행 완료를 기다리는 최대 시간. 넘으면 감시를 멈추고 그렇다고 알린다(조용히 멈추지 않는다,
+ * 7차 minor 21과 같은 상한).
  */
 export const PUBLISH_FOLLOW_MAX_MS = PENDING_REVISION_MAX_AGE_MS;
+
+/** 감시 사슬이 이을 수 있는 최대 잡 수(발행 유발 잡 → 발행 잡 → 포함한 발행 잡 …) — 순환 방지 */
+export const PUBLISH_CHAIN_MAX = 6;
 
 type JobView = Pick<JobRun, 'id' | 'job_name' | 'status' | 'payload' | 'stats' | 'error_text'>;
 
@@ -260,34 +263,32 @@ const intOf = (v: unknown): number | null =>
       ? Number(v)
       : null;
 
-/** 잡이 발행할(또는 발행한) 리비전: publish 잡은 payload, 그 밖은 결과 리비전(stats) → 요청 리비전(payload) */
-export function publishTarget(job: Pick<JobView, 'job_name' | 'payload' | 'stats'>): number | null {
-  const payload = (job.payload ?? {}) as Record<string, unknown>;
-  if (job.job_name === 'snapshot.publish') return intOf(payload.snapshot_id);
-  return intOf((job.stats ?? {}).snapshot_id) ?? intOf(payload.snapshot_id);
-}
+const finished = (j: Pick<JobView, 'status'>) => j.status === 'done' || j.status === 'failed';
 
-/** 서버가 잡 stats 로 알려 준 후속 발행 잡 id(있으면) */
-function toldFollowId(job: Pick<JobView, 'stats'>): number | null {
+/**
+ * 계약 .12 F15: 끝난 잡의 stats `publish_job_id`(발행 예외로 재시도를 남겼으면 `publish_retry_job_id` 와 같다) — 발행을
+ * 하는(한) 잡. 자기 자신이면(그 자리 발행·publish 잡 자신) 이을 잡이 없다(null). 끝나지 않은 잡은 아직 모른다(null).
+ */
+export function nextPublishJobId(job: Pick<JobView, 'id' | 'status' | 'stats'>): number | null {
+  if (!finished(job)) return null;
   const stats = job.stats ?? {};
-  return intOf(stats.publish_job_id) ?? intOf(stats.publish_retry_job_id);
+  const next = intOf(stats.publish_job_id) ?? intOf(stats.publish_retry_job_id);
+  return next !== null && next !== job.id ? next : null;
 }
 
 /**
- * 후속 발행 잡: 이 잡 **뒤에** 등록된 같은 리비전의 `snapshot.publish` 잡 중 가장 새 것(발행 계산 중 들어온 변경은
- * 또 다른 후속 잡으로 이어 붙는다 — D15-6), 또는 서버가 stats 로 알려 준 잡. 없으면 null.
+ * 발행을 기다리는 리비전: 미룸(`deferred_to` — F4 판정 중인 리비전에 들어간다) → 결과 리비전(stats.snapshot_id) →
+ * 요청 리비전(payload.snapshot_id).
  */
-export function followPublish(trigger: JobView, jobs: readonly JobView[]): JobView | null {
-  const target = publishTarget(trigger);
-  const told = toldFollowId(trigger);
-  let best: JobView | null = null;
-  for (const j of jobs) {
-    if (j.job_name !== 'snapshot.publish' || j.id === trigger.id) continue;
-    const matches =
-      j.id === told || (target !== null && j.id > trigger.id && publishTarget(j) === target);
-    if (matches && (best === null || j.id > best.id)) best = j;
-  }
-  return best;
+export function publishTarget(job: Pick<JobView, 'payload' | 'stats'>): number | null {
+  const stats = job.stats ?? {};
+  const payload = (job.payload ?? {}) as Record<string, unknown>;
+  return (
+    intOf(stats.deferred_to) ??
+    intOf(stats.snapshot_id) ??
+    intOf(stats.included_in_snapshot_id) ??
+    intOf(payload.snapshot_id)
+  );
 }
 
 export type PublishPhase =
@@ -295,8 +296,10 @@ export type PublishPhase =
   | { kind: 'trigger' }
   /** 발행 유발 잡이 실패 — 발행 없음(잡 진행이 실패를 보인다) */
   | { kind: 'triggerFailed' }
-  /** 후속 발행 잡을 기다리는 중 */
+  /** 발행 잡(사슬의 다음 잡)을 기다리는 중 */
   | { kind: 'waiting' }
+  /** 후속 발행 잡이 판정 중인 리비전으로 미뤄졌다 — 그 리비전이 발행될 때 들어간다(F4) */
+  | { kind: 'deferred'; snapshotId: number }
   | { kind: 'published' }
   /** 남은 모순 주장 등으로 발행이 막힘(publish_blocked) */
   | { kind: 'blocked'; detail: string }
@@ -304,64 +307,72 @@ export type PublishPhase =
   /** 상한(30분) 안에 발행을 확인하지 못해 감시를 멈췄다 */
   | { kind: 'expired' };
 
-/** 끝난 publish 잡(또는 발행을 같이 한 잡)의 결과 */
-function publishOutcome(job: JobView): PublishPhase {
-  const stats = job.stats ?? {};
-  if (job.status === 'failed') {
-    const detail = job.error_text ?? '';
-    return detail.startsWith('publish_blocked')
-      ? { kind: 'blocked', detail }
-      : { kind: 'publishFailed', detail };
-  }
-  if (stats.published === false) {
-    const n = intOf(stats.contradicted) ?? 0;
-    return { kind: 'blocked', detail: job.error_text ?? `publish_blocked: contradicted ${n}` };
-  }
-  return { kind: 'published' };
-}
-
-const finished = (j: Pick<JobView, 'status'>) => j.status === 'done' || j.status === 'failed';
+/** 겹친 발행(F12 single-flight) — 먼저 돈 잡이 그 리비전을 발행한다 */
+const IN_PROGRESS = 'publish_in_progress';
+const BLOCKED = 'publish_blocked';
 
 /**
- * 발행 유발 쓰기의 진행 단계(7차 minor 19, D15-8 "진행 안내는 후속 snapshot.publish 잡이 끝날 때 닫는다").
- * rejudge·expand 의 done 은 발행이 아니다 — 그 리비전을 발행하는 후속 publish 잡(또는 리비전 목록의 published)이
- * 끝나야 닫는다. publish_blocked(남은 모순 주장)·발행 실패·30분 상한은 따로 알린다.
- *  - `follow`: `followPublish` 결과, `listSettled`: 발행 잡 목록을 한 번이라도 받았거나 받을 수 없음(403 등)
- *  - `snapshot`: 리비전 목록에서 찾은 대상 리비전(없으면 undefined), `watchStart`·`now`: 브라우저가 잡 done 을 본 시각·지금
+ * 발행 유발 쓰기의 진행 단계(7차 minor 19, D15-8 "진행 안내는 후속 snapshot.publish 잡이 끝날 때 닫는다", 계약 .12 F15).
+ * `trigger` = 쓰기 응답 job_id 잡, `last` = stats.publish_job_id 를 따라 이은 사슬의 마지막 잡(아직 못 받았으면 직전 잡).
+ * rejudge 의 done 은 발행이 아니다 — 사슬 끝의 발행 잡이 끝나야(또는 리비전 목록이 published 를 보여야) 닫는다.
+ *  - `snapshot`: 리비전 목록에서 찾은 대상 리비전(없으면 undefined), `watchStart`·`now`: 브라우저가 잡 끝을 본 시각·지금
  */
 export function publishPhase(input: {
   trigger: JobView | undefined;
-  follow: JobView | null | undefined;
+  last: JobView | undefined;
   snapshot: Pick<Snapshot, 'id' | 'status' | 'contradicted_claims'> | undefined;
-  listSettled: boolean;
   watchStart: number;
   now: number;
 }): PublishPhase {
-  const { trigger, follow, snapshot, listSettled, watchStart, now } = input;
-  if (!trigger || !finished(trigger)) return { kind: 'trigger' };
-  const isPublish = trigger.job_name === 'snapshot.publish';
-  if (trigger.status === 'failed' && !isPublish) return { kind: 'triggerFailed' };
-  if (snapshot?.status === 'published') return { kind: 'published' };
-  if (follow) {
-    if (finished(follow)) return publishOutcome(follow);
-  } else if (isPublish && listSettled) {
-    return publishOutcome(trigger);
-  } else if (
-    !isPublish &&
-    typeof (trigger.stats ?? {}).published === 'boolean' &&
-    toldFollowId(trigger) === null
+  const { trigger, snapshot, watchStart, now } = input;
+  const last = input.last ?? trigger;
+  if (!trigger || !last || !finished(trigger)) return { kind: 'trigger' };
+  if (
+    trigger.status === 'failed' &&
+    trigger.job_name !== 'snapshot.publish' &&
+    nextPublishJobId(trigger) === null
   ) {
-    // 발행을 같이 한 잡(계약 .11 region.expand·bootstrap — stats.published)
-    return publishOutcome(trigger);
+    return { kind: 'triggerFailed' };
   }
+  if (snapshot?.status === 'published') return { kind: 'published' };
+  // 남은 모순 주장으로 ready 에 멈춘 리비전 — 발행 잡도 publish_blocked 로 끝난다
   if (snapshot?.status === 'ready' && (snapshot.contradicted_claims ?? 0) > 0) {
     return {
       kind: 'blocked',
-      detail: `publish_blocked: contradicted ${snapshot.contradicted_claims ?? 0}`,
+      detail: `${BLOCKED}: contradicted ${snapshot.contradicted_claims ?? 0}`,
     };
   }
-  if (now - watchStart > PUBLISH_FOLLOW_MAX_MS) return { kind: 'expired' };
-  return { kind: 'waiting' };
+  const pending = waitingOr(watchStart, now);
+  if (!finished(last) || nextPublishJobId(last) !== null) return pending;
+  const stats = last.stats ?? {};
+  if (last.status === 'failed') {
+    const detail = last.error_text ?? '';
+    if (detail.startsWith(BLOCKED)) return { kind: 'blocked', detail };
+    // 겹친 발행: 먼저 돈 잡이 발행한다 — 리비전 목록의 published 를 기다린다
+    if (detail.startsWith(IN_PROGRESS)) return pending;
+    return { kind: 'publishFailed', detail };
+  }
+  if (stats.published === true) return { kind: 'published' };
+  if (stats.published === false) {
+    const n = intOf(stats.contradicted) ?? 0;
+    return { kind: 'blocked', detail: last.error_text ?? `${BLOCKED}: contradicted ${n}` };
+  }
+  const deferred = intOf(stats.deferred_to);
+  if (deferred !== null) {
+    return now - watchStart > PUBLISH_FOLLOW_MAX_MS
+      ? { kind: 'expired' }
+      : { kind: 'deferred', snapshotId: deferred };
+  }
+  // 다른 발행에 포함돼 닫힌 후속 잡(publish_job_id 없음) 또는 publish 잡 자신의 done = 발행됨
+  if (stats.included_in_snapshot_id !== undefined || last.job_name === 'snapshot.publish') {
+    return { kind: 'published' };
+  }
+  // publish_job_id 를 남기지 않은 잡(옛 서버) — 리비전 목록의 published 를 기다린다
+  return pending;
+}
+
+function waitingOr(watchStart: number, now: number): PublishPhase {
+  return now - watchStart > PUBLISH_FOLLOW_MAX_MS ? { kind: 'expired' } : { kind: 'waiting' };
 }
 
 /**

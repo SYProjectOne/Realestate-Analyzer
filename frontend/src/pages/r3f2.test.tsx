@@ -203,10 +203,10 @@ describe('F1 출처 조회는 보고 있는 리비전(snapshot_id)을 늘 넘긴
     rec.stop();
   });
 
-  it('provenanceSnapshot: 응답 prov 는 리비전을 넘기고, 화면이 만든 접수 근거 rd_ 는 리비전 없이(저장본에 없음)', () => {
+  it('provenanceSnapshot: 응답 prov 는 리비전을 넘기고, 접수 근거 rd_ 도 리비전을 넘긴다(계약 .12 F1)', () => {
     expect(provenanceSnapshot('fp_11', '12')).toBe('12');
     expect(provenanceSnapshot('cs_1', 12)).toBe(12);
-    expect(provenanceSnapshot('rd_9062', '12')).toBeNull();
+    expect(provenanceSnapshot('rd_9062', '12')).toBe('12');
     expect(provenanceSnapshot('fp_11', null)).toBeNull();
     expect(provenanceSnapshot(null, '12')).toBeNull();
   });
@@ -411,7 +411,7 @@ describe('F7·F8 사람 확인 checked_at: 시간대 RFC3339 · 미래 422 · �
       http.post(mswPath('/ops/human-checks'), () =>
         HttpResponse.json(
           {
-            code: 'validation_error',
+            code: 'checked_at_future', // 계약 .12 F14
             detail,
             field_errors: [{ loc: ['body', 'checked_at'], msg: detail }],
           },

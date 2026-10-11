@@ -91,15 +91,24 @@ export function resetMockState(): void {
 
 const nowIso = () => new Date().toISOString();
 
-/** 서버(app/api/demotion.py) checked_at 검사와 같은 규칙 — 문제가 없으면 null */
-function checkedAtProblem(value: unknown): string | null {
+/**
+ * 서버(app/api/demotion.py) checked_at 검사와 같은 규칙(계약 .12 F8·F14) — 문제가 없으면 null, 있으면 [code, 문구].
+ * 형식·KST 2000-01-01 이전 = checked_at_format, 지금 + 10분 넘는 미래 = checked_at_future.
+ */
+function checkedAtProblem(
+  value: unknown,
+): ['checked_at_format' | 'checked_at_future', string] | null {
   const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d{1,9})?([Zz]|[+-]\d{2}:\d{2})$/;
   if (typeof value !== 'string' || !rfc3339.test(value)) {
-    return 'checked_at 은 시간대가 붙은 RFC3339 date-time 이어야 한다';
+    return ['checked_at_format', 'checked_at 은 시간대가 붙은 RFC3339 date-time 이어야 한다'];
   }
-  const at = Date.parse(value);
-  if (!Number.isFinite(at)) return 'checked_at 을 읽을 수 없다';
-  if (at - Date.now() > 10 * 60_000) return `checked_at ${value} 은 지금보다 10분 넘게 미래다`;
+  const at = Date.parse(value.toUpperCase());
+  if (!Number.isFinite(at) || at < Date.parse('2000-01-01T00:00:00+09:00')) {
+    return ['checked_at_format', 'checked_at 은 2000-01-01(KST) 이후여야 한다'];
+  }
+  if (at - Date.now() > 10 * 60_000) {
+    return ['checked_at_future', `checked_at ${value} 은 지금보다 10분 넘게 미래다`];
+  }
   return null;
 }
 
@@ -122,9 +131,30 @@ function registerJob(jobName: JobName, payload: Record<string, unknown>, id?: nu
   return job;
 }
 
+/**
+ * 계약 .12 F15: 끝난 잡의 stats `publish_job_id` — rejudge 는 판정 뒤 등록한 snapshot.publish 잡(목도 등록한다),
+ * snapshot.publish·region.expand·region.bootstrap 은 그 자리 발행(자기 자신 + published true). 그 밖(보고서·재검증)은 없음.
+ */
+function doneStats(job: JobRun): Record<string, unknown> {
+  const sid = typeof job.payload.snapshot_id === 'number' ? job.payload.snapshot_id : null;
+  switch (job.job_name) {
+    case 'rejudge': {
+      const publish = registerJob('snapshot.publish', { snapshot_id: sid });
+      return { ...job.stats, snapshot_id: sid, publish_job_id: publish.id };
+    }
+    case 'snapshot.publish':
+    case 'region.expand':
+    case 'region.bootstrap':
+      return { ...job.stats, snapshot_id: sid, publish_job_id: job.id, published: true };
+    default:
+      return job.stats;
+  }
+}
+
 function advanceJob(entry: MockJob): JobRun {
   entry.polls += 1;
   const { job } = entry;
+  if (job.status === 'done' || job.status === 'failed') return job;
   if (entry.polls >= MOCK_JOB_POLLS_TO_DONE) {
     entry.job = {
       ...job,
@@ -132,6 +162,7 @@ function advanceJob(entry: MockJob): JobRun {
       started_at: job.started_at ?? nowIso(),
       finished_at: nowIso(),
       progress: { done: 1, total: 1, step: null },
+      stats: doneStats(job),
     };
   } else {
     entry.job = {
@@ -325,6 +356,7 @@ export const extraHandlers = [
           source_url: body.url ?? created.catalyst.source_url,
         },
         job,
+        job_id: job?.id ?? null,
       } satisfies CatalystCreated,
       { status: 201 },
     );
@@ -356,12 +388,9 @@ export const extraHandlers = [
     // 계약 .11 F7(D14-6): 시간대가 붙은 RFC3339 만, 서버 지금보다 10분 넘게 미래면 422
     const checkedAtError = checkedAtProblem(body.checked_at);
     if (checkedAtError) {
+      const [code, detail] = checkedAtError;
       return HttpResponse.json(
-        {
-          code: 'validation_error',
-          detail: checkedAtError,
-          field_errors: [{ loc: ['body', 'checked_at'], msg: checkedAtError }],
-        },
+        { code, detail, field_errors: [{ loc: ['body', 'checked_at'], msg: detail }] },
         { status: 422 },
       );
     }

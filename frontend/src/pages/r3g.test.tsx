@@ -3,14 +3,13 @@
  *  - M7: 503 materialize_pending 동안 **다른 리비전·시나리오의 이전 값**을 보이지 않는다(placeholder 는 같은 리비전·
  *    시나리오 키일 때만) + '준비 중'.
  *  - M8: G5 '이후' 열과 열린 서랍은 그 Fact 가 나온 리비전의 snapshot_id 로 조회한다.
- *  - minor 17–23.
+ *  - minor 17·18·21·22·23. (minor 19·20 은 계약 .12 F14·F15 로 바뀌어 `r3g2.test.tsx`)
  */
 import { act, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { useComplexesProgressive } from '@/api/hooks';
@@ -21,18 +20,9 @@ import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
-import {
-  followPublish,
-  PENDING_REVISION_MAX_AGE_MS,
-  PUBLISH_FOLLOW_MAX_MS,
-  publishPhase,
-  publishTarget,
-  snapshotsWatchExpired,
-} from '@/api/jobWatch';
-import { PublishJobProgress } from '@/components';
-import { createTestQueryClient, renderRoute, renderWithProviders } from '@/test/render';
+import { PENDING_REVISION_MAX_AGE_MS, snapshotsWatchExpired } from '@/api/jobWatch';
+import { createTestQueryClient, renderRoute } from '@/test/render';
 import { matching, recordRequests } from './_shared/testing';
-import { checkedAt422Kind } from './ops/HumanCheckForm';
 import { revisionWithScenario } from './reports';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
@@ -298,153 +288,7 @@ describe('M8 G5 이후 열·열린 서랍은 그 Fact 가 나온 리비전으로
   });
 });
 
-// ─── minor 19 · 21 ──────────────────────────────────────────
-
-describe('minor 19: 발행 안내는 후속 snapshot.publish 잡이 끝날 때 닫고, publish_blocked 를 알린다', () => {
-  const rejudge = job(900, 'rejudge', 'done', { snapshot_id: 12 }, { snapshot_id: 13 });
-
-  it('publishTarget·followPublish: 그 리비전의 뒤 publish 잡 중 가장 새 것', () => {
-    expect(publishTarget(rejudge)).toBe(13);
-    expect(publishTarget(job(1, 'snapshot.publish', 'done', { snapshot_id: 14 }))).toBe(14);
-    expect(publishTarget(job(2, 'rejudge', 'done', { snapshot_id: 12 }))).toBe(12);
-    const list = [
-      job(950, 'snapshot.publish', 'done', { snapshot_id: 13 }),
-      job(951, 'snapshot.publish', 'queued', { snapshot_id: 13 }),
-      job(952, 'snapshot.publish', 'queued', { snapshot_id: 99 }),
-      job(800, 'snapshot.publish', 'done', { snapshot_id: 13 }),
-    ];
-    expect(followPublish(rejudge, list)?.id).toBe(951);
-    expect(followPublish(rejudge, list.slice(2))).toBeNull();
-    // 서버가 stats 로 알려 준 잡 id(있으면 그 잡도 후보)
-    const told = job(901, 'rejudge', 'done', {}, { snapshot_id: 13, publish_job_id: 800 });
-    expect(followPublish(told, [list[3]!])?.id).toBe(800);
-  });
-
-  it('publishPhase: 재판정 done 만으로는 닫지 않는다 → publish done 이면 발행, publish_blocked 면 막힘, 30분 넘으면 상한', () => {
-    const t0 = 1_000_000;
-    const base = {
-      trigger: rejudge,
-      follow: null,
-      snapshot: undefined,
-      listSettled: true,
-      watchStart: t0,
-      now: t0,
-    };
-    expect(publishPhase({ ...base, trigger: job(900, 'rejudge', 'running') }).kind).toBe('trigger');
-    expect(publishPhase(base).kind).toBe('waiting');
-    expect(
-      publishPhase({
-        ...base,
-        follow: job(950, 'snapshot.publish', 'running', { snapshot_id: 13 }),
-      }).kind,
-    ).toBe('waiting');
-    expect(
-      publishPhase({ ...base, follow: job(950, 'snapshot.publish', 'done', { snapshot_id: 13 }) })
-        .kind,
-    ).toBe('published');
-    const detail = 'publish_blocked: contradicted 2건';
-    expect(
-      publishPhase({
-        ...base,
-        follow: job(950, 'snapshot.publish', 'failed', { snapshot_id: 13 }, {}, detail),
-      }),
-    ).toEqual({ kind: 'blocked', detail });
-    // done 이어도 stats.published=false 면 발행되지 않았다
-    expect(
-      publishPhase({
-        ...base,
-        follow: job(
-          950,
-          'snapshot.publish',
-          'done',
-          { snapshot_id: 13 },
-          { published: false, contradicted: 2 },
-        ),
-      }).kind,
-    ).toBe('blocked');
-    expect(
-      publishPhase({
-        ...base,
-        follow: job(950, 'snapshot.publish', 'failed', { snapshot_id: 13 }, {}, 'OperationalError'),
-      }),
-    ).toEqual({ kind: 'publishFailed', detail: 'OperationalError' });
-    expect(publishPhase({ ...base, now: t0 + PUBLISH_FOLLOW_MAX_MS + 1 }).kind).toBe('expired');
-    // 리비전 목록이 먼저 published 를 보여도 닫는다(잡 목록을 못 읽는 토큰)
-    const snap = { id: 13, status: 'published' } as Snapshot;
-    expect(publishPhase({ ...base, snapshot: snap }).kind).toBe('published');
-    // 남은 모순 주장으로 ready 에 멈춘 리비전 = 막힘
-    const stuck = { id: 13, status: 'ready', contradicted_claims: 2 } as Snapshot;
-    expect(publishPhase({ ...base, snapshot: stuck }).kind).toBe('blocked');
-    // 잡 자체가 publish 이고 뒤 잡이 없으면 그 잡으로 판단(목록을 받은 뒤)
-    const pub = job(960, 'snapshot.publish', 'done', { snapshot_id: 14 }, { published: true });
-    expect(publishPhase({ ...base, trigger: pub }).kind).toBe('published');
-    expect(publishPhase({ ...base, trigger: pub, listSettled: false }).kind).toBe('waiting');
-    // 발행을 같이 한 잡(stats.published, 계약 .11 region.expand) — 그 결과로 판단
-    const expand = job(970, 'region.expand', 'done', {}, { snapshot_id: 13, published: true });
-    expect(publishPhase({ ...base, trigger: expand }).kind).toBe('published');
-    // 재판정 실패 = 발행 없음(잡 진행이 실패를 보인다)
-    expect(publishPhase({ ...base, trigger: job(900, 'rejudge', 'failed') }).kind).toBe(
-      'triggerFailed',
-    );
-  });
-
-  it('화면: rejudge done 뒤에도 안내 유지 → 후속 publish done 이면 닫고 "발행됨"', async () => {
-    let publishStatus: JobRun['status'] = 'running';
-    server.use(
-      http.get(mswPath('/jobs/:id'), ({ params }) =>
-        HttpResponse.json(
-          job(Number(params.id), 'rejudge', 'done', { snapshot_id: 12 }, { snapshot_id: 13 }),
-        ),
-      ),
-      http.get(mswPath('/jobs'), ({ request }) => {
-        const q = new URL(request.url).searchParams;
-        if (q.get('job_name') !== 'snapshot.publish') return HttpResponse.json([]);
-        return HttpResponse.json([
-          job(950, 'snapshot.publish', publishStatus, { snapshot_id: 13 }),
-        ]);
-      }),
-    );
-    renderWithProviders(
-      <MemoryRouter>
-        <PublishJobProgress jobId={900} />
-      </MemoryRouter>,
-    );
-    const box = await screen.findByTestId('publish-job');
-    await within(box).findByText(t('job.status.done'));
-    expect(within(box).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
-    expect(await within(box).findByText('snapshot.publish')).toBeInTheDocument();
-    publishStatus = 'done';
-    expect(await within(box).findByTestId('publish-done', {}, { timeout: 8000 })).toHaveTextContent(
-      t('job.publishDone'),
-    );
-    expect(within(box).queryByTestId('publish-pending')).toBeNull();
-  }, 15_000);
-
-  it('화면: 후속 publish 가 publish_blocked 로 실패하면 막힘 안내', async () => {
-    const detail = 'publish_blocked: contradicted 2건';
-    server.use(
-      http.get(mswPath('/jobs/:id'), ({ params }) =>
-        HttpResponse.json(
-          job(Number(params.id), 'rejudge', 'done', { snapshot_id: 12 }, { snapshot_id: 13 }),
-        ),
-      ),
-      http.get(mswPath('/jobs'), () =>
-        HttpResponse.json([
-          job(950, 'snapshot.publish', 'failed', { snapshot_id: 13 }, {}, detail),
-        ]),
-      ),
-    );
-    renderWithProviders(
-      <MemoryRouter>
-        <PublishJobProgress jobId={900} />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByTestId('publish-blocked')).toHaveTextContent(
-      t('job.publishBlocked', { detail }),
-    );
-    expect(screen.queryByTestId('publish-pending')).toBeNull();
-  });
-});
+// ─── minor 21 ───────────────────────────────────────────────
 
 describe('minor 21: 발행 대기 감시가 30분 상한에 닿으면 조용히 멈추지 않고 알린다', () => {
   const ready = (createdAgoMs: number, now: number): Snapshot =>
@@ -502,84 +346,6 @@ describe('minor 21: 발행 대기 감시가 30분 상한에 닿으면 조용히 
     await userEvent.click(within(notice).getByRole('button', { name: t('job.watchRecheck') }));
     await waitFor(() => expect(listCalls).toBeGreaterThan(before));
   }, 15_000);
-});
-
-// ─── minor 20 ───────────────────────────────────────────────
-
-describe('minor 20: 사람 확인 checked_at 422 는 서버 code/detail 로 가른다(클라이언트 시계 아님)', () => {
-  const futureDetail =
-    '확인 시각 2026-10-11T12:00:00+09:00 은 지금(2026-10-11T11:00:00+09:00)보다 10분 넘게 미래다 — 실제로 확인한 시각을 적는다';
-  const earlyDetail =
-    '확인일 2026-10-01(KST) 은 이미 수집된 공식 공고(관측 2026-10-05, 다른 값)보다 이르다 — 그 공고 뒤에 다시 확인한 날짜를 적는다';
-  const formatDetail = "확인 시각 'x' 은 시간대가 붙은 RFC3339 날짜·시각이 아니다";
-  const err = (detail: string, code: 'validation_error' = 'validation_error') =>
-    new ApiError(code, detail, 422, [{ loc: ['body', 'checked_at'], msg: detail }]);
-
-  it('checkedAt422Kind: 서버 문구로 미래·이른 확인일·그 밖', () => {
-    expect(checkedAt422Kind(err(futureDetail))).toBe('future');
-    expect(checkedAt422Kind(err(earlyDetail))).toBe('early');
-    expect(checkedAt422Kind(err(formatDetail))).toBe('other');
-    expect(checkedAt422Kind(new ApiError('validation_error', 'x', 422))).toBeNull();
-    expect(checkedAt422Kind(new ApiError('internal', 'x', 500))).toBeNull();
-  });
-
-  async function fillAndSubmit() {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
-    renderRoute('/ops');
-    const form = await screen.findByRole('form', { name: t('page.G7.human') });
-    const complex = within(form).getByLabelText(t('page.G7.hc.complex'));
-    await waitFor(() => expect(complex.querySelector('option[value="2"]')).not.toBeNull());
-    await userEvent.selectOptions(complex, '2');
-    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.value')), '가능');
-    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
-    // 확인 시각 = 기본값(지금) — 브라우저 시계로는 미래가 아니다
-    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
-    return form;
-  }
-
-  it('보낸 시각이 브라우저 시계로 과거여도 서버가 "미래" 422 면 미래 안내(이른 확인일 아님)', async () => {
-    server.use(
-      http.post(mswPath('/ops/human-checks'), () =>
-        HttpResponse.json(
-          {
-            code: 'validation_error',
-            detail: futureDetail,
-            field_errors: [{ loc: ['body', 'checked_at'], msg: futureDetail }],
-          },
-          { status: 422 },
-        ),
-      ),
-    );
-    const form = await fillAndSubmit();
-    expect(
-      await within(form).findByText(t('page.G7.hc.checkedAtFuture', { detail: futureDetail })),
-    ).toBeInTheDocument();
-  });
-
-  it('서버가 이른 확인일 422 면 이른 확인일 안내, 그 밖의 checked_at 422 는 서버 문구 그대로', async () => {
-    let detail = earlyDetail;
-    server.use(
-      http.post(mswPath('/ops/human-checks'), () =>
-        HttpResponse.json(
-          {
-            code: 'validation_error',
-            detail,
-            field_errors: [{ loc: ['body', 'checked_at'], msg: detail }],
-          },
-          { status: 422 },
-        ),
-      ),
-    );
-    const form = await fillAndSubmit();
-    expect(
-      await within(form).findByText(t('page.G7.hc.checkedAtTooEarly', { detail: earlyDetail })),
-    ).toBeInTheDocument();
-    detail = formatDetail;
-    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
-    expect(
-      await within(form).findByText(t('page.G7.hc.checkedAtServer', { detail: formatDetail })),
-    ).toBeInTheDocument();
-  });
 });
 
 // ─── minor 22 ───────────────────────────────────────────────

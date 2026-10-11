@@ -66,7 +66,10 @@ export function toRfc3339(local: string): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(local);
   if (!m) return null;
   const [, y, mo, d, h, mi, sec = '00'] = m;
-  const date = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(sec));
+  // new Date(y, …) 는 0~99 년을 1900 년대로 바꾼다 — 연도는 setFullYear 로(0001 년 입력이 1901 년이 되지 않게)
+  const date = new Date(2000, 0, 1, 0, 0, 0);
+  date.setFullYear(Number(y), Number(mo) - 1, Number(d));
+  date.setHours(Number(h), Number(mi), Number(sec), 0);
   if (
     Number.isNaN(date.getTime()) ||
     date.getFullYear() !== Number(y) ||
@@ -78,32 +81,42 @@ export function toRfc3339(local: string): string | null {
   return `${y}-${mo}-${d}T${h}:${mi}:${sec}${offsetText(-date.getTimezoneOffset())}`;
 }
 
-/** 확인 시각 입력 검사: 비었거나 형식 오류 → 입력 안내, 10분 넘게 미래 → 미래 안내. 문제 없으면 null */
+/** 서버가 받는 가장 이른 확인 시각(계약 .12 F8 — KST 2000-01-01) */
+export const CHECKED_AT_MIN_MS = Date.parse('2000-01-01T00:00:00+09:00');
+
+/**
+ * 확인 시각 입력 검사: 비었거나 형식 오류 → 입력 안내, KST 2000-01-01 이전 → 범위 안내(F8), 10분 넘게 미래 → 미래 안내.
+ * 문제 없으면 null
+ */
 export function checkedAtProblem(local: string, now: number = Date.now()): string | null {
   const iso = toRfc3339(local);
   if (iso === null) return t('page.G7.hc.checkedAtRequired');
+  if (Date.parse(iso) < CHECKED_AT_MIN_MS) return t('page.G7.hc.checkedAtTooOld');
   if (Date.parse(iso) - now > CHECKED_AT_FUTURE_SLACK_MS)
     return t('page.G7.hc.checkedAtFutureLocal');
   return null;
 }
 
 /**
- * 서버 422 의 checked_at 오류 문구 표지(backend `api/demotion.checked_at_error`·`routers/ops` — 계약 .11 은 셋 다
- * `validation_error` + loc body.checked_at 이라 code 로는 못 가른다). 7차 minor 20: 미래인지 이른 확인일인지는 **서버가
- * 보낸 문구**로 가른다 — 브라우저 시계로 추측하지 않는다(시계가 어긋나면 반대로 안내했다). 판단이 아니라 서버 문구 파싱이다.
+ * 사람 확인 POST 422 의 checked_at 오류 종류 — 계약 .12 F14: 서버 code 로만 가른다(문구·브라우저 시계로 추측하지 않는다,
+ * 7차 minor 20). `checked_at_format` = 형식·KST 2000-01-01 이전·overflow, `checked_at_future` = 서버 지금 + 10분 넘는 미래,
+ * `checked_at_before_source` = 그 뒤에 관측된 공식 공고가 다른 값. 그 밖의 checked_at 422(`validation_error`)는 other,
+ * checked_at 오류가 아니면 null.
  */
-const CHECKED_AT_FUTURE_MARK = /미래/;
-const CHECKED_AT_EARLY_MARK = /이르다|공식 공고/;
-
-/** 사람 확인 POST 422 의 checked_at 오류 종류. checked_at 오류가 아니면 null */
-export function checkedAt422Kind(error: unknown): 'future' | 'early' | 'other' | null {
+export function checkedAt422Kind(error: unknown): 'future' | 'early' | 'format' | 'other' | null {
   if (!(error instanceof ApiError) || error.status !== 422) return null;
-  const field = error.fieldErrors.find((f) => f.loc[f.loc.length - 1] === 'checked_at');
-  if (!field) return null;
-  const text = `${field.msg} ${error.detail}`;
-  if (CHECKED_AT_FUTURE_MARK.test(text)) return 'future';
-  if (CHECKED_AT_EARLY_MARK.test(text)) return 'early';
-  return 'other';
+  switch (error.code) {
+    case 'checked_at_future':
+      return 'future';
+    case 'checked_at_before_source':
+      return 'early';
+    case 'checked_at_format':
+      return 'format';
+    default:
+      return error.fieldErrors.some((f) => f.loc[f.loc.length - 1] === 'checked_at')
+        ? 'other'
+        : null;
+  }
 }
 
 const asField = (v: string | null): HumanCheckField =>
@@ -249,7 +262,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
 
   const rule = HUMAN_CHECK_RULES[field];
   // 계약 .10 S6·.11 F7·F8: checked_at 422 — loc ["body","checked_at"]. 이른 확인일(이미 수집된 공고가 **다른 값**)
-  // 또는 10분 넘는 미래 또는 형식. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 종류는 서버 문구로(minor 20)
+  // 또는 10분 넘는 미래 또는 형식. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 종류는 서버 code 로(.12 F14)
   const serverKind = checkedAt422Kind(create.error);
   const serverCheckedAt =
     serverKind !== null && create.error instanceof ApiError
@@ -264,7 +277,9 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         ? t('page.G7.hc.checkedAtFuture', { detail: serverCheckedAt })
         : serverKind === 'early'
           ? t('page.G7.hc.checkedAtTooEarly', { detail: serverCheckedAt })
-          : t('page.G7.hc.checkedAtServer', { detail: serverCheckedAt }));
+          : serverKind === 'format'
+            ? t('page.G7.hc.checkedAtFormat', { detail: serverCheckedAt })
+            : t('page.G7.hc.checkedAtServer', { detail: serverCheckedAt }));
   const serverError = serverCheckedAt
     ? null
     : create.error instanceof ApiError

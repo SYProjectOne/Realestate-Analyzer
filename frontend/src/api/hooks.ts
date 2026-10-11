@@ -5,11 +5,12 @@
  * 쿼리 키는 `queryKeys`로만 만든다(무효화 일관성).
  * id 인자는 `IdLike`(number | string): URL 경로·쿼리에서 온 문자열을 그대로 넘겨도 된다.
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   keepPreviousData,
   useInfiniteQuery,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type QueryClient,
@@ -23,7 +24,9 @@ import {
   awaitingPublish,
   backoffMs,
   failedRound,
+  nextPublishJobId,
   POLL_ERROR_MAX_STREAK,
+  PUBLISH_CHAIN_MAX,
   snapshotsRefetchInterval,
   snapshotsWatchExpired,
   type RoundJobs,
@@ -515,18 +518,15 @@ export function useProvenance(
 }
 
 /**
- * 출처 조회에 넘길 리비전. 계약 .11 F1(D14-1): 화면 응답의 `prov` 로 받은 출처는 보고 있는 리비전을 늘 넘긴다 —
- * 발행 리비전 = 발행 순간 저장본, 발행 전 = 실시간.
- * 예외 `rd_<id>`: 화면이 접수 행 `raw_document_id` 로 **만든** 원문 출처(G3 '접수 근거 원문')다. 서버 저장본은 응답의
- * `"prov"` 값만 모으므로(backend `snapshot_view._collect_prov`) 그 리비전 저장본에 없어 늘 404 가 된다 — 원문은
- * 리비전과 무관한 불변 파일이라 리비전 없이 조회한다(계약 변경 요청: 저장본에 접수 근거 rd_ 를 넣거나 Intake 에 prov).
+ * 출처 조회에 넘길 리비전. 계약 .11 F1(D14-1): 화면 응답의 `prov` 로 받은 출처는 보고 있는(그 Fact 가 나온) 리비전을 늘
+ * 넘긴다 — 발행 리비전 = 발행 순간 저장본, 발행 전 = 실시간. 계약 .12 F1(D15-2): 저장본이 모든 본문의 `raw_document_id` 를
+ * `rd_<id>` 서랍으로 저장하므로 화면이 만든 접수 근거 원문 출처(`rd_`)도 예외 없이 넘긴다.
  */
 export function provenanceSnapshot(
   provId: string | null | undefined,
   snapshotId: IdLike | null,
 ): IdLike | null {
-  if (!provId || provId.startsWith('rd_')) return null;
-  return snapshotId;
+  return provId ? snapshotId : null;
 }
 
 /** GET /raw/{raw_document_id} (getRawDocument) — 원문 파일(G3·G7). `as=text`면 추출 텍스트 */
@@ -739,32 +739,6 @@ export function useJob(id: IdLike | null | undefined, pollMs: number = JOB_POLL_
   });
 }
 
-/** 후속 발행 잡을 찾을 때 받는 최근 `snapshot.publish` 잡 수(최신순) */
-export const PUBLISH_SCAN_SIZE = 50;
-
-/**
- * 최근 `snapshot.publish` 잡 목록(GET /jobs?job_name=snapshot.publish) — 발행 유발 쓰기의 후속 발행 잡을 찾는다
- * (7차 minor 19). `poll()` 이 참인 동안 JOB_POLL_MS 마다, 일시 오류는 늦춰 가며 다시, 4xx(공유 링크 403 등)는 멈춘다
- * (그때는 리비전 목록으로 판단).
- */
-export function usePublishJobs(enabled: boolean, poll: () => boolean): Q<JobRun[]> {
-  const params: JobListParams = { job_name: 'snapshot.publish', size: PUBLISH_SCAN_SIZE };
-  return useQuery({
-    queryKey: queryKeys.jobs(params),
-    queryFn: ({ signal }) => apiFetch<JobRun[]>('/jobs', { query: { ...params }, signal }),
-    enabled,
-    refetchInterval: (query) => {
-      if (!poll()) return false;
-      const streak = errorStreak(query);
-      if (query.state.status === 'error') {
-        if (!isTransientError(query.state.error) || streak > POLL_ERROR_MAX_STREAK) return false;
-        return backoffMs(JOB_POLL_MS, streak);
-      }
-      return JOB_POLL_MS;
-    },
-  });
-}
-
 /**
  * 발행 대기 리비전 감시가 30분 상한에서 멈췄는가(7차 minor 21) + 다시 확인. `useSnapshots` 와 같은 쿼리를 읽는다.
  */
@@ -780,6 +754,38 @@ export function usePendingWatchExpired(regionId: IdLike | null | undefined): {
     : false;
   const { refetch } = query;
   return { expired, recheck: () => void refetch() };
+}
+
+/**
+ * 발행 유발 잡부터 stats `publish_job_id` 를 따라 이은 잡 사슬(계약 .12 F15): 쓰기 응답 job_id 잡 → (rejudge 면) 판정 뒤
+ * 등록한 snapshot.publish → (후속 잡이 다른 발행에 포함됐으면) 그 발행 잡 … 각 잡은 useJob 과 같은 쿼리(2초 폴링,
+ * done·failed 면 멈춤)다. 잡 목록(`GET /jobs`)은 뒤지지 않는다. 반환 = 사슬 순서의 잡(아직 못 받았으면 undefined).
+ * 호출 측은 jobId 가 바뀌면 key 로 다시 마운트한다.
+ */
+export function usePublishChain(
+  jobId: IdLike,
+  pollMs: number = JOB_POLL_MS,
+): (JobRun | undefined)[] {
+  const [ids, setIds] = useState<string[]>(() => [key(jobId)]);
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: queryKeys.job(id),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        apiFetch<JobRun>(`/jobs/${enc(id)}`, { signal }),
+      refetchInterval: (
+        query: Parameters<typeof errorStreak>[0] & { state: QueryState<JobRun, Error> },
+      ) => jobRefetchInterval(query.state, pollMs, errorStreak(query)),
+    })),
+  });
+  const jobs = results.map((r) => r.data);
+  const last = jobs[jobs.length - 1];
+  const next = last ? nextPublishJobId(last) : null;
+  useEffect(() => {
+    if (next === null || ids.length >= PUBLISH_CHAIN_MAX) return;
+    if (ids.includes(String(next))) return;
+    setIds((prev) => [...prev, String(next)]);
+  }, [next, ids]);
+  return jobs;
 }
 
 // ─── 운영 (G7) ─────────────────────────────────────────────

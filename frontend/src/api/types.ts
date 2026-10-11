@@ -88,6 +88,10 @@ export const API_ERROR_CODES = [
   'scenario_not_in_revision',
   'stored_view_mismatch',
   'materialize_pending',
+  // 계약 .12 F14(D15-7): 사람 확인 checked_at 422
+  'checked_at_format',
+  'checked_at_future',
+  'checked_at_before_source',
 ] as const satisfies readonly ApiErrorCode[];
 
 /** 계약 enum 에 새 code 가 생기면 여기서 타입 오류 — 목록이 빠지면 zod 가 그 오류를 'http' 로 떨어뜨린다 */

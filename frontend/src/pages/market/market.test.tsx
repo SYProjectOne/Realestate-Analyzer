@@ -198,6 +198,7 @@ describe('M6 G6 호재 URL 입력', () => {
               linked_complex_ids: [],
             },
             job: null,
+            job_id: null,
           },
           { status: 201 },
         ),
