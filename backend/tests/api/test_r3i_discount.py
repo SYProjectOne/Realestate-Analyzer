@@ -39,7 +39,15 @@ def _detail(client: TestClient) -> dict[str, Any]:
     return dict(r.json())
 
 
-def _human(client: TestClient, field: str, value: str, *, day: str = "2026-10-09", entity_id: int | None = None, **extra: Any) -> Any:
+def _human(
+    client: TestClient,
+    field: str,
+    value: str,
+    *,
+    day: str = "2026-10-09",
+    entity_id: int | None = None,
+    **extra: Any,
+) -> Any:
     body: dict[str, Any] = {"complex_id": CX, "field": field, "value_text": value, "kind": "phone",
                             "checked_at": f"{day}T10:00:00+09:00", "entered_by": "운영자", "note": "R3i", **extra}  # fmt: skip
     if entity_id is not None:
@@ -48,8 +56,16 @@ def _human(client: TestClient, field: str, value: str, *, day: str = "2026-10-09
 
 
 class _Notice:
-    def __init__(self, key: str, notice_no: str, values: dict[str, Any], labels: dict[str, str], observed_on: str) -> None:
-        self.key, self.notice_no, self.values, self.labels, self.observed_on = key, notice_no, values, labels, observed_on
+    def __init__(
+        self, key: str, notice_no: str, values: dict[str, Any], labels: dict[str, str], observed_on: str
+    ) -> None:
+        self.key, self.notice_no, self.values, self.labels, self.observed_on = (
+            key,
+            notice_no,
+            values,
+            labels,
+            observed_on,
+        )
 
     def parse(self, raw: Any) -> list[FieldCandidate]:
         tk = f"{self.key}:{self.notice_no}"
@@ -65,7 +81,12 @@ class _Notice:
         ]  # fmt: skip
 
 
-def _store_notice(notice_no: str, values: dict[str, Any], labels: dict[str, str] | None = None, observed_on: str = "2026-10-10") -> None:
+def _store_notice(
+    notice_no: str,
+    values: dict[str, Any],
+    labels: dict[str, str] | None = None,
+    observed_on: str = "2026-10-10",
+) -> None:
     """리뷰 재현 r9/a store_notice: 같은 단지의 새 공고(무순위·정정) 원문 1건을 정규화 저장."""
     from app.normalize.store import store_raw_document
 
@@ -79,7 +100,9 @@ def _store_notice(notice_no: str, values: dict[str, Any], labels: dict[str, str]
         )  # fmt: skip
         s.add(raw)
         s.flush()
-        store_raw_document(s, raw, parser=_Notice(str(cx.applyhome_id), notice_no, values, labels or {}, observed_on))
+        store_raw_document(
+            s, raw, parser=_Notice(str(cx.applyhome_id), notice_no, values, labels or {}, observed_on)
+        )
 
 
 def _basis() -> tuple[str, int, int]:
@@ -112,14 +135,27 @@ def test_major4_new_notice_without_discount_keeps_human_discount(client: TestCli
     assert r.status_code == 201, r.text
     before = _detail(client)["price"]
     assert before["discount_applied"] is True and before["discount"]["v"] == 10_000_000
-    _store_notice("2026990101", {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top, "down_payment_pct": 10.0})
+    _store_notice(
+        "2026990101",
+        {
+            "effective_from": "2026-10-10",
+            "notice_kind": "무순위",
+            f"price_by_type.{code}.max_price_won": top,
+            "down_payment_pct": 10.0,
+        },
+    )
     d = _detail(client)
     cur = _current(d)
     assert cur["notice_no"] == "2026990101"
     p = d["price"]
-    assert p["discount"] is not None and p["discount"]["v"] == 10_000_000 and p["discount"]["label"] == "확인됨", p["discount"]
+    assert (
+        p["discount"] is not None and p["discount"]["v"] == 10_000_000 and p["discount"]["label"] == "확인됨"
+    ), p["discount"]
     assert p["discount_applied"] is True and p["price_high"]["v"] == top - 10_000_000, p
-    assert cur["discount_by_type"][code]["v"] == 10_000_000 and cur["discount_by_type"][code]["label"] == "확인됨"
+    assert (
+        cur["discount_by_type"][code]["v"] == 10_000_000
+        and cur["discount_by_type"][code]["label"] == "확인됨"
+    )
 
 
 def test_d17_4_new_notice_without_down_payment_keeps_human_value(client: TestClient) -> None:
@@ -127,17 +163,31 @@ def test_d17_4_new_notice_without_down_payment_keeps_human_value(client: TestCli
     code, top, _ = _basis()
     r = _human(client, "down_payment_pct", "15")
     assert r.status_code == 201, r.text
-    _store_notice("2026990105", {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top})
+    _store_notice(
+        "2026990105",
+        {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top},
+    )
     cur = _current(_detail(client))
     assert cur["notice_no"] == "2026990105"
-    assert cur["down_payment_pct"]["v"] == 15 and cur["down_payment_pct"]["label"] == "확인됨", cur["down_payment_pct"]
+    assert cur["down_payment_pct"]["v"] == 15 and cur["down_payment_pct"]["label"] == "확인됨", cur[
+        "down_payment_pct"
+    ]
 
 
 def test_d17_4_new_notice_same_value_keeps(client: TestClient) -> None:
     as_live()
     code, top, _ = _basis()
     assert _human(client, "discount", "10,000,000").status_code == 201
-    _store_notice("2026990102", {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top, f"discount_by_type.{code}": 10_000_000}, labels={f"discount_by_type.{code}": "추정"})
+    _store_notice(
+        "2026990102",
+        {
+            "effective_from": "2026-10-10",
+            "notice_kind": "무순위",
+            f"price_by_type.{code}.max_price_won": top,
+            f"discount_by_type.{code}": 10_000_000,
+        },
+        labels={f"discount_by_type.{code}": "추정"},
+    )
     p = _detail(client)["price"]
     assert p["discount"]["label"] == "확인됨" and p["discount_applied"] is True, p["discount"]
 
@@ -147,11 +197,25 @@ def test_d17_4_new_notice_other_value_supersedes(client: TestClient) -> None:
     as_live()
     code, top, _ = _basis()
     assert _human(client, "discount", "10,000,000").status_code == 201
-    _store_notice("2026990103", {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top, f"discount_by_type.{code}": 20_000_000}, labels={f"discount_by_type.{code}": "추정"})
+    _store_notice(
+        "2026990103",
+        {
+            "effective_from": "2026-10-10",
+            "notice_kind": "무순위",
+            f"price_by_type.{code}.max_price_won": top,
+            f"discount_by_type.{code}": 20_000_000,
+        },
+        labels={f"discount_by_type.{code}": "추정"},
+    )
     p = _detail(client)["price"]
     assert p["discount"]["v"] == 20_000_000 and p["discount_applied"] is False, p["discount"]
     with get_session() as s:
-        items = [i.title for i in s.scalars(select(ChecklistItem).where(ChecklistItem.complex_id == CX, ChecklistItem.status == "open"))]
+        items = [
+            i.title
+            for i in s.scalars(
+                select(ChecklistItem).where(ChecklistItem.complex_id == CX, ChecklistItem.status == "open")
+            )
+        ]
     assert any("사람 확인 재검토" in t and "할인" in t for t in items), items
 
 
@@ -161,7 +225,10 @@ def test_m4_human_discount_on_old_notice_applies_to_current(client: TestClient) 
     code, top, _ = _basis()
     with get_session() as s:
         old = int(min(s.scalars(select(PaymentTerms.id).where(PaymentTerms.complex_id == CX))))
-    _store_notice("2026990106", {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top})
+    _store_notice(
+        "2026990106",
+        {"effective_from": "2026-10-10", "notice_kind": "무순위", f"price_by_type.{code}.max_price_won": top},
+    )
     r = _human(client, "discount", "10,000,000", day="2026-10-11", entity_id=old)
     assert r.status_code == 201, r.text
     p = _detail(client)["price"]
@@ -175,7 +242,11 @@ def test_m4_basis_type_change_does_not_carry_discount(client: TestClient) -> Non
     code, _top, _ = _basis()
     assert _human(client, "discount", "10,000,000").status_code == 201
     with get_session() as s:
-        other = next(t for t in s.scalars(select(ComplexType).where(ComplexType.complex_id == CX)) if t.type_code != code)
+        other = next(
+            t
+            for t in s.scalars(select(ComplexType).where(ComplexType.complex_id == CX))
+            if t.type_code != code
+        )
         other.area_m2 = 84  # 84㎡에 더 가까운 타입 → 기준 타입이 바뀐다
         new_code = other.type_code
     d = _detail(client)
@@ -198,7 +269,23 @@ def test_d17_4_human_check_response_has_basis_type(client: TestClient) -> None:
 
 @pytest.mark.parametrize(
     "value",
-    ["１０,０００,０００", "-0", " 1 0 0 0 ", "1,0", ",,5,,", "٣٣٣", "10,000,000원원", "+5", "1억", "5,000만원", "1e9", "1,0000", "10,00,000", "10,000,000 원", "100000000001"],
+    [
+        "１０,０００,０００",
+        "-0",
+        " 1 0 0 0 ",
+        "1,0",
+        ",,5,,",
+        "٣٣٣",
+        "10,000,000원원",
+        "+5",
+        "1억",
+        "5,000만원",
+        "1e9",
+        "1,0000",
+        "10,00,000",
+        "10,000,000 원",
+        "100000000001",
+    ],
 )
 def test_m2_discount_format_rejected(client: TestClient, value: str) -> None:
     as_live()
@@ -209,7 +296,16 @@ def test_m2_discount_format_rejected(client: TestClient, value: str) -> None:
     assert body["field_errors"] == [{"loc": ["body", "value_text"], "msg": body["detail"]}], body
 
 
-@pytest.mark.parametrize(("value", "won"), [("10,000,000", 10_000_000), ("10000000", 10_000_000), ("10,000,000원", 10_000_000), ("0", 0), (" 1,000 ", 1000)])
+@pytest.mark.parametrize(
+    ("value", "won"),
+    [
+        ("10,000,000", 10_000_000),
+        ("10000000", 10_000_000),
+        ("10,000,000원", 10_000_000),
+        ("0", 0),
+        (" 1,000 ", 1000),
+    ],
+)
 def test_m2_discount_format_accepted(client: TestClient, value: str, won: int) -> None:
     as_live()
     code, _top, _ = _basis()

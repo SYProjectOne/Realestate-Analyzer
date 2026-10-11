@@ -4,6 +4,8 @@
 메타데이터가 필요할 때만 ``load_metadata()`` 로 지연 import 한다.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import importlib
@@ -186,6 +188,8 @@ def sqlite_api_checkpointer(
         stop.set()
         th.join(timeout=5)
         state.api_users -= 1
+        if not state.api_users:
+            state.fallback = False
         with suppress(Exception):  # 종료 중 DB 없음
             _passive_checkpoint(engine)
 

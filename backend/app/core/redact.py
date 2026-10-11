@@ -189,7 +189,26 @@ TOKEN_RE = re.compile(
 """R3i m17: 키 이름 없이 홀로 나온 공급자 토큰(접두어로 알 수 있는 것 — Anthropic·OpenAI ``sk-``, GitHub ``ghp_``·``github_pat_``,
 Slack ``xox?-``, AWS 접근 키 ``AKIA…``, GitLab ``glpat-``, Google ``AIza…``)."""
 _PROSE_BEFORE_BEARER = frozenset(
-    {"the", "a", "an", "this", "that", "these", "those", "its", "his", "her", "their", "our", "your", "my", "any", "each", "every", "no"}
+    {
+        "the",
+        "a",
+        "an",
+        "this",
+        "that",
+        "these",
+        "those",
+        "its",
+        "his",
+        "her",
+        "their",
+        "our",
+        "your",
+        "my",
+        "any",
+        "each",
+        "every",
+        "no",
+    }
 )
 """R3i m17: 'the bearer certificates' 같은 산문 — 'bearer' 앞이 한정사이고 뒤가 소문자 낱말뿐이면 토큰이 아니다."""
 COOKIE_RE = re.compile(r"(?im)(?<![A-Za-z0-9_-])(?:set-)?cookie[\"']?\s*[:=]\s*([^\r\n]+)")

@@ -2,6 +2,8 @@
 요청 커밋의 자동 체크포인트를 꺼 두었다. 이제 실패는 경고 로그로 남고, 연달아 ``SQLITE_CHECKPOINT_FAIL_LIMIT`` 번 실패하면 요청 커밋의
 자동 체크포인트를 되살린다(WAL 이 끝없이 자라지 않게). 체크포인트가 다시 되면 끈다."""
 
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import logging
@@ -49,7 +51,10 @@ def test_m12_checkpoint_failures_are_logged_and_fall_back(
     try:
         with engine.begin() as c:
             c.execute(text("CREATE TABLE t (x BLOB)"))
-        with caplog.at_level(logging.WARNING, logger="app.core.db"), sqlite_api_checkpointer(engine, interval_s=0.05):
+        with (
+            caplog.at_level(logging.WARNING, logger="app.core.db"),
+            sqlite_api_checkpointer(engine, interval_s=0.05),
+        ):
             assert _autockpt(engine) == 0
             assert _wait(lambda: fail["n"] >= 3)
             assert _wait(lambda: _autockpt(engine) == 1000), "연속 실패 → 요청 커밋 자동 체크포인트 복귀"

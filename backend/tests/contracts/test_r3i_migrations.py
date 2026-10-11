@@ -80,7 +80,9 @@ def _down_payment_fp(engine: sa.Engine) -> tuple[str, int, int]:
             {"t": True},
         ):
             if f"fp_{fid}" in drawers:
-                cx = c.execute(sa.text("SELECT complex_id FROM payment_terms WHERE id = :p"), {"p": pt}).scalar()
+                cx = c.execute(
+                    sa.text("SELECT complex_id FROM payment_terms WHERE id = :p"), {"p": pt}
+                ).scalar()
                 return f"fp_{fid}", int(pt), int(cx)
     raise AssertionError("계약금 출처 서랍 없음")
 
@@ -100,12 +102,16 @@ def _upgrade_state(engine: sa.Engine, keep_cx: int) -> list[str]:
     지운 단지 상세 키."""
     rows = _rows(engine, SNAP)
     base_sc = min((sc for (_k, _key, sc) in rows if sc), key=int)
-    gone = sorted((key for (k, key, sc) in rows if k == "complex" and sc == base_sc and key != str(keep_cx)), key=int)[:3]
+    gone = sorted(
+        (key for (k, key, sc) in rows if k == "complex" and sc == base_sc and key != str(keep_cx)), key=int
+    )[:3]
     assert _narrow_drawers(engine, SNAP) > 0
     with engine.begin() as c:
         for key in gone:
             c.execute(
-                sa.text("DELETE FROM snapshot_view WHERE snapshot_id = :s AND kind = 'complex' AND scenario = :b AND key = :k"),
+                sa.text(
+                    "DELETE FROM snapshot_view WHERE snapshot_id = :s AND kind = 'complex' AND scenario = :b AND key = :k"
+                ),
                 {"s": SNAP, "b": base_sc, "k": key},
             )
         c.execute(sa.text("UPDATE snapshot_view_unit SET done = :f"), {"f": False})
@@ -117,13 +123,17 @@ def _drawer_value(engine: sa.Engine, pid: str) -> Any:
     return got.get("value_text") if isinstance(got, dict) else got
 
 
-def _assert_kept(engine: sa.Engine, before: dict[tuple[str, str, str], bytes], drawers: dict[str, Any], what: str) -> None:
+def _assert_kept(
+    engine: sa.Engine, before: dict[tuple[str, str, str], bytes], drawers: dict[str, Any], what: str
+) -> None:
     after = _rows(engine, SNAP)
     lost = [k for k in before if k[0] != "provenance" and after.get(k) != before[k]]
     assert not lost, f"{what}: 이미 있던 저장 행이 지워지거나 바뀌었다 {lost[:5]}"
     now = _drawers(engine, SNAP)
     changed = [p for p, v in drawers.items() if now.get(p) != v]
-    assert not changed, f"{what}: 발행 순간 서랍이 지워지거나 지금 사실로 바뀌었다 {changed[:5]} (서랍 {len(now)}/{len(drawers)})"
+    assert not changed, (
+        f"{what}: 발행 순간 서랍이 지워지거나 지금 사실로 바뀌었다 {changed[:5]} (서랍 {len(now)}/{len(drawers)})"
+    )
 
 
 def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -175,7 +185,9 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
             assert [f["snapshot_id"] for f in res["failed"]] == [SNAP], (name, res)
             _assert_kept(engine, before, drawers_before, name)
             with engine.connect() as c:
-                lease = c.execute(sa.text("SELECT publish_lease FROM snapshot WHERE id = :s"), {"s": SNAP}).scalar()
+                lease = c.execute(
+                    sa.text("SELECT publish_lease FROM snapshot WHERE id = :s"), {"s": SNAP}
+                ).scalar()
             assert lease is None, f"{name}: 실패한 backfill 이 임대를 남겼다 {lease}"
 
         res = sv.backfill(engine, settings=settings)
@@ -192,7 +204,9 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
             marks = {
                 (str(k), str(sc)): b
                 for k, sc, b in c.execute(
-                    sa.text("SELECT kind, scenario, backfilled_at FROM snapshot_view_unit WHERE snapshot_id = :s"),
+                    sa.text(
+                        "SELECT kind, scenario, backfilled_at FROM snapshot_view_unit WHERE snapshot_id = :s"
+                    ),
                     {"s": SNAP},
                 )
             }
@@ -214,10 +228,15 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
         victim = gone[0]
         with engine.begin() as c:
             c.execute(
-                sa.text("DELETE FROM snapshot_view WHERE snapshot_id = :s AND kind = 'complex' AND scenario = :b AND key = :k"),
+                sa.text(
+                    "DELETE FROM snapshot_view WHERE snapshot_id = :s AND kind = 'complex' AND scenario = :b AND key = :k"
+                ),
                 {"s": SNAP, "b": base_sc, "k": victim},
             )
-            c.execute(sa.text("UPDATE snapshot_view_unit SET done = :f WHERE snapshot_id = :s"), {"f": False, "s": SNAP})
+            c.execute(
+                sa.text("UPDATE snapshot_view_unit SET done = :f WHERE snapshot_id = :s"),
+                {"f": False, "s": SNAP},
+            )
         before2 = _rows(engine, SNAP)
         drawers2 = _drawers(engine, SNAP)
         a_in, b_done = threading.Event(), threading.Event()
@@ -230,7 +249,9 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
 
         monkeypatch.setattr(sv, "write_rows", hooked)
         out: dict[str, Any] = {}
-        ta = threading.Thread(target=lambda: out.__setitem__("A", sv.backfill(engine, settings=settings)), name="A")
+        ta = threading.Thread(
+            target=lambda: out.__setitem__("A", sv.backfill(engine, settings=settings)), name="A"
+        )
         ta.start()
         try:
             assert a_in.wait(120), "A 가 쓰기에 들어가지 않았다"
@@ -263,11 +284,15 @@ def check_r3i_backfill(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch)
             new_id = int(c.execute(sa.text("SELECT MAX(id) FROM complex")).scalar() or 0)
             for kind in ("complexes", "compare"):
                 c.execute(
-                    sa.text("DELETE FROM snapshot_view WHERE snapshot_id = :s AND kind = :k AND scenario = :sc"),
+                    sa.text(
+                        "DELETE FROM snapshot_view WHERE snapshot_id = :s AND kind = :k AND scenario = :sc"
+                    ),
                     {"s": SNAP, "k": kind, "sc": sc2},
                 )
                 c.execute(
-                    sa.text("UPDATE snapshot_view_unit SET done = :f WHERE snapshot_id = :s AND kind = :k AND scenario = :sc"),
+                    sa.text(
+                        "UPDATE snapshot_view_unit SET done = :f WHERE snapshot_id = :s AND kind = :k AND scenario = :sc"
+                    ),
                     {"f": False, "s": SNAP, "k": kind, "sc": sc2},
                 )
         res = sv.backfill(engine, settings=settings)
@@ -288,7 +313,10 @@ def test_sqlite_r3i_backfill(seeded_sqlite: Path, tmp_path: Path, monkeypatch: p
 
 
 @pytest.mark.postgres
-def test_postgres_r3i_backfill(seeded_sqlite: Path, postgres_url: str) -> None:  # noqa: F811
+def test_postgres_r3i_backfill(
+    seeded_sqlite: Path,  # noqa: F811
+    postgres_url: str,
+) -> None:
     mp = pytest.MonkeyPatch()
     try:
         check_r3i_backfill(postgres_url, seeded_sqlite, mp)
@@ -307,9 +335,14 @@ def _to_old_ids(engine: sa.Engine) -> int:
     with engine.connect() as c:
         comp = {
             (int(r), int(cx), str(k)): int(i)
-            for i, r, cx, k in c.execute(sa.text("SELECT id, score_run_id, complex_id, component FROM score_component"))
+            for i, r, cx, k in c.execute(
+                sa.text("SELECT id, score_run_id, complex_id, component FROM score_component")
+            )
         }
-        tot = {(int(r), int(cx)): int(i) for i, r, cx in c.execute(sa.text("SELECT id, score_run_id, complex_id FROM score_total"))}
+        tot = {
+            (int(r), int(cx)): int(i)
+            for i, r, cx in c.execute(sa.text("SELECT id, score_run_id, complex_id FROM score_total"))
+        }
         rows = c.execute(
             sa.text("SELECT id, body FROM snapshot_view WHERE kind IN ('report', 'report_diff')")
         ).all()
@@ -352,14 +385,18 @@ def check_m5_report_ids(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch
         def plain(rows: dict[tuple[str, str, str], bytes]) -> dict[tuple[str, str, str], bytes]:
             return {k: zlib.decompress(v) for k, v in rows.items() if k[0] in ("report", "report_diff")}
 
-        assert plain(rows1) == plain(rows0), "0014 변환 = 옛 행 id → API 서랍 id(sc_<실행>_<단지>_<성분>·st_<실행>_<단지>), 원래 JSON 바이트"
+        assert plain(rows1) == plain(rows0), (
+            "0014 변환 = 옛 행 id → API 서랍 id(sc_<실행>_<단지>_<성분>·st_<실행>_<단지>), 원래 JSON 바이트"
+        )
         with engine.connect() as c:
             sha_ok = all(
                 hashlib.sha256(zlib.decompress(bytes(b))).hexdigest() == h
                 for b, h in c.execute(sa.text("SELECT body, sha256 FROM snapshot_view WHERE kind = 'report'"))
             )
         assert sha_ok
-        assert not _units(engine, SNAP)[(SNAP, "provenance", "")][0], "변환한 리비전의 서랍 단위는 미완(새 id 서랍 채우기)"
+        assert not _units(engine, SNAP)[(SNAP, "provenance", "")][0], (
+            "변환한 리비전의 서랍 단위는 미완(새 id 서랍 채우기)"
+        )
         res = sv.backfill(engine, settings=settings)
         assert not res["failed"], res
         with Session(bind=engine) as s:
@@ -368,18 +405,30 @@ def check_m5_report_ids(url: str, seed_db: Path, monkeypatch: pytest.MonkeyPatch
             ids: set[str] = set()
             for (k, _key, _sc), body in _rows(engine, SNAP).items():
                 if k == "report":
-                    ids |= {m.decode() for m in re.findall(rb'"prov":(?:\{"\$v":)?"((?:sc|st)_[0-9A-Za-z_]+)"', zlib.decompress(body))}
+                    ids |= {
+                        m.decode()
+                        for m in re.findall(
+                            rb'"prov":(?:\{"\$v":)?"((?:sc|st)_[0-9A-Za-z_]+)"', zlib.decompress(body)
+                        )
+                    }
             assert ids
             missing = [p for p in sorted(ids) if sv.provenance(s, snap, p) is None]
             assert not missing, missing[:10]
 
 
-def test_sqlite_m5_report_score_ids(seeded_sqlite: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
+def test_sqlite_m5_report_score_ids(
+    seeded_sqlite: Path,  # noqa: F811
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     check_m5_report_ids(f"sqlite:///{(tmp_path / 'r3i_m5.db').as_posix()}", seeded_sqlite, monkeypatch)
 
 
 @pytest.mark.postgres
-def test_postgres_m5_report_score_ids(seeded_sqlite: Path, postgres_url: str) -> None:  # noqa: F811
+def test_postgres_m5_report_score_ids(
+    seeded_sqlite: Path,  # noqa: F811
+    postgres_url: str,
+) -> None:
     mp = pytest.MonkeyPatch()
     try:
         check_m5_report_ids(postgres_url, seeded_sqlite, mp)
@@ -394,7 +443,9 @@ def check_m1_0013_keeps_compare_mark(url: str, seed_db: Path, monkeypatch: pytes
     with _db(url, seed_db, monkeypatch) as (engine, _settings_obj, cfg):
         command.downgrade(cfg, "0012")
         with engine.begin() as c:
-            raw_id = c.execute(sa.text("SELECT MIN(id) FROM raw_document WHERE source_kind = 'notice_pdf'")).scalar()
+            raw_id = c.execute(
+                sa.text("SELECT MIN(id) FROM raw_document WHERE source_kind = 'notice_pdf'")
+            ).scalar()
             pt = c.execute(sa.text("SELECT MIN(id) FROM payment_terms")).scalar()
             c.execute(
                 sa.text(
@@ -407,7 +458,9 @@ def check_m1_0013_keeps_compare_mark(url: str, seed_db: Path, monkeypatch: pytes
         command.upgrade(cfg, "0013")
         with engine.connect() as c:
             label, reason = c.execute(
-                sa.text("SELECT label, reason FROM field_provenance WHERE field = 'discount_by_type.84A' ORDER BY id DESC")
+                sa.text(
+                    "SELECT label, reason FROM field_provenance WHERE field = 'discount_by_type.84A' ORDER BY id DESC"
+                )
             ).first()  # type: ignore[misc]
         assert label == "추정"
         assert "판정기 compare 채택" in reason and "조건 확인 필요" in reason, reason
@@ -424,18 +477,29 @@ def check_m1_0013_keeps_compare_mark(url: str, seed_db: Path, monkeypatch: pytes
                     "AND new_text LIKE '%0013 전환%'"
                 )
             ).all()
-            jobs = c.execute(sa.text("SELECT payload FROM job_run WHERE job_name = 'rejudge' AND status = 'queued'")).all()
+            jobs = c.execute(
+                sa.text("SELECT payload FROM job_run WHERE job_name = 'rejudge' AND status = 'queued'")
+            ).all()
         assert len(evs) == 1 and evs[0][0] == "critical" and evs[0][1] and evs[0][2] is not None, evs
         assert jobs, "재판정 잡"
         assert sv.backfill(engine, settings=_settings_obj)["discounts_relabelled"] == 0
 
 
-def test_sqlite_m1_0013_keeps_compare_mark(seeded_sqlite: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: F811
-    check_m1_0013_keeps_compare_mark(f"sqlite:///{(tmp_path / 'r3i_m1.db').as_posix()}", seeded_sqlite, monkeypatch)
+def test_sqlite_m1_0013_keeps_compare_mark(
+    seeded_sqlite: Path,  # noqa: F811
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    check_m1_0013_keeps_compare_mark(
+        f"sqlite:///{(tmp_path / 'r3i_m1.db').as_posix()}", seeded_sqlite, monkeypatch
+    )
 
 
 @pytest.mark.postgres
-def test_postgres_m1_0013_keeps_compare_mark(seeded_sqlite: Path, postgres_url: str) -> None:  # noqa: F811
+def test_postgres_m1_0013_keeps_compare_mark(
+    seeded_sqlite: Path,  # noqa: F811
+    postgres_url: str,
+) -> None:
     mp = pytest.MonkeyPatch()
     try:
         check_m1_0013_keeps_compare_mark(postgres_url, seeded_sqlite, mp)
@@ -465,7 +529,10 @@ def test_sqlite_0014_roundtrip(seeded_sqlite: Path, tmp_path: Path, monkeypatch:
 
 
 @pytest.mark.postgres
-def test_postgres_0014_roundtrip(seeded_sqlite: Path, postgres_url: str) -> None:  # noqa: F811
+def test_postgres_0014_roundtrip(
+    seeded_sqlite: Path,  # noqa: F811
+    postgres_url: str,
+) -> None:
     mp = pytest.MonkeyPatch()
     try:
         check_0014_roundtrip(postgres_url, seeded_sqlite, mp)

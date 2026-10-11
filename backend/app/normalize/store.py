@@ -978,6 +978,44 @@ def resolve_field_group(
 
 HUMAN_SEMANTIC_FIELDS = frozenset({"max_price_won", "down_payment_pct", "discount"})
 """공고 행이 여럿인 사람 확인 필드(가격 — 공고문 타입 행·모든 공고 price_by_type, 계약금 — 모든 공고). 단지 필드는 행 하나."""
+FILL_EMPTY_FIELDS = frozenset({"down_payment_pct", "discount"})
+"""D17-4(R3i major 4): 새 공고(무순위·정정)에 그 값이 **없으면** 사람 확인 값을 그대로 적용하는 납부 조건 필드(값 없음 ≠ 다른 값).
+가격은 공고문 타입 행이 늘 남아 있어 현재 구매가가 사라지지 않는다 — 공고가 싣지 않은 타입 가격을 공고 행에 만들지 않는다."""
+
+
+def _empty_human_groups(session: Session, bound: list[FieldCandidate]) -> set[tuple[str, int | None, str]]:
+    """D17-4: 이번 원문이 쓴 납부 조건 행마다, 같은 단지 다른 공고 행에 사람 확인이 있는 할인·계약금 필드 중 이번 원문이 값을 싣지
+    않은 것 — ``semantic_humans`` 가 그 칸에 사람 확인 후보를 넣는다(값 없음 ≠ 다른 값)."""
+    have = {(c.entity, c.entity_id, c.field) for c in bound}
+    out: set[tuple[str, int | None, str]] = set()
+    for pid in sorted(
+        {c.entity_id for c in bound if c.entity == "payment_terms" and c.entity_id is not None}
+    ):
+        pt = session.get(PaymentTerms, pid)
+        if pt is None:
+            continue
+        siblings = select(PaymentTerms.id).where(
+            PaymentTerms.complex_id == pt.complex_id, PaymentTerms.id != pid
+        )
+        for f in session.scalars(
+            select(FieldProvenance.field)
+            .where(
+                FieldProvenance.entity == "payment_terms",
+                FieldProvenance.entity_id.in_(siblings),
+                FieldProvenance.raw_document_id.is_(None),
+            )
+            .distinct()
+        ):
+            if fills_empty("payment_terms", f) and ("payment_terms", pid, f) not in have:
+                out.add(("payment_terms", pid, f))
+    return out
+
+
+def fills_empty(entity: str, field_name: str) -> bool:
+    """D17-4: 그 (테이블, 출처 필드)는 값 없는 공고 행에도 사람 확인 값을 적용하는가(납부 조건 할인·계약금)."""
+    from app.facts_view import logical_field
+
+    return entity == "payment_terms" and logical_field(field_name) in FILL_EMPTY_FIELDS
 
 
 def semantic_humans(
@@ -1006,8 +1044,8 @@ def semantic_humans(
             or logical_field(f) not in HUMAN_SEMANTIC_FIELDS
         ):
             continue
-        if (e, i, f) not in valued:
-            continue
+        if (e, i, f) not in valued and not fills_empty(e, f):
+            continue  # 가격 등: 그 필드를 싣지 않은 행에는 값을 만들지 않는다(D17-4 는 할인·계약금만 값 없는 행에도)
         _cid, rows = semantic_group(session, e, i, f)
         for se, si, sf in rows[1:]:
             for fp in session.scalars(
@@ -1218,8 +1256,10 @@ def store_raw_document(
         binder = _Binder(session, snapshot_id=snapshot_id, detected_at=detected_at)
         bound, skipped = binder.bind(cands, dto, create=True)
         old = _reparse_existing(session, binder, bound, row.id, raw_dir, factory)
-        # D13-2: 새 행에도 그 의미 필드의 사람 확인(다른 행에 있는)을 0순위 후보로 — 행과 무관하게 같은 규칙
-        old += semantic_humans(session, {(c.entity, c.entity_id, c.field) for c in bound}, bound + old)
+        # D13-2: 새 행에도 그 의미 필드의 사람 확인(다른 행에 있는)을 0순위 후보로 — 행과 무관하게 같은 규칙.
+        # D17-4(R3i major 4): 새 공고가 할인·계약금을 **싣지 않았으면**(값 없음) 그 칸에도 사람 확인 값을 그대로 적용한다
+        groups = {(c.entity, c.entity_id, c.field) for c in bound} | _empty_human_groups(session, bound)
+        old += semantic_humans(session, groups, bound + old)
         resolved = resolve(bound + old)
         fps = upsert_provenance(session, resolved.provenance)
         events = list(binder.events)

@@ -60,7 +60,9 @@ def _cat(name: str, region_id: int = 1) -> int:
 
 def _patch(client: TestClient, cid: int, **extra: Any) -> Any:
     return client.patch(
-        f"/api/catalysts/{cid}", json={"location_confirmed": True, "complex_ids": [CX], **extra}, headers=WRITE
+        f"/api/catalysts/{cid}",
+        json={"location_confirmed": True, "complex_ids": [CX], **extra},
+        headers=WRITE,
     )
 
 
@@ -115,7 +117,9 @@ def _crash_runs_after(monkeypatch: pytest.MonkeyPatch, n_checkpoints: int, msg: 
 # ====================================================================== major 3 / D17-3
 
 
-def test_major3_crash_after_last_run_retry_publishes(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_major3_crash_after_last_run_retry_publishes(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """리뷰 재현 r9/b/test_r9_carry after_last_run: 마지막 시나리오 run commit 뒤·ready commit 전에 죽으면 예전엔 재실행이
     'publish_blocked: 판정·점수 미완료'(building 고착). 이제 실패한 잡은 재시도(queued)로 남고, 다시 돌면 building→ready 를
     끝까지 가서 발행한다(멱등 전환)."""
@@ -128,12 +132,16 @@ def test_major3_crash_after_last_run_retry_publishes(client: TestClient, monkeyp
     assert r.status_code == 202, r.text
     jid, rev = r.json()["job_id"], int(r.json()["job"]["payload"]["snapshot_id"])
     real = handlers.carry_forward
-    _crash_runs_after(monkeypatch, 2 + n_src, "worker killed after last run commit, before status=ready commit")
-    st, stats = run_job(jid)
+    _crash_runs_after(
+        monkeypatch, 2 + n_src, "worker killed after last run commit, before status=ready commit"
+    )
+    st, _ = run_job(jid)
     monkeypatch.setattr(handlers, "carry_forward", real)
     with get_session() as s:
         snap = s.get(Snapshot, rev)
-        runs = int(s.scalar(select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == rev)) or 0)
+        runs = int(
+            s.scalar(select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == rev)) or 0
+        )
         job = s.get(JobRun, jid)
         assert snap is not None and job is not None
         assert snap.status == "building" and runs == n_src, (snap.status, runs)
@@ -165,7 +173,9 @@ def test_major3_failed_carry_is_retried_and_later_write_published(
     monkeypatch.setattr(handlers, "carry_forward", real)
     assert st1 == "queued", st1
     r2 = _patch(client, c2, expected_ym="2032-02")
-    assert r2.status_code == 202 and r2.json()["job"]["payload"] == {"snapshot_id": rev, "follow_up": True}, r2.text
+    assert r2.status_code == 202 and r2.json()["job"]["payload"] == {"snapshot_id": rev, "follow_up": True}, (
+        r2.text
+    )
     st2, s2 = run_job(r2.json()["job_id"])
     assert st2 == "done" and s2.get("deferred_to") == rev, s2  # 그 리비전을 끝낼 잡(j1 재시도)이 살아 있다
     _ready_now(j1)
@@ -202,12 +212,16 @@ def test_major3_terminal_failure_reregisters_deferred_writes(
     with get_session() as s:
         again = [
             j
-            for j in s.scalars(select(JobRun).where(JobRun.job_name == "snapshot.publish", JobRun.status == "queued"))
+            for j in s.scalars(
+                select(JobRun).where(JobRun.job_name == "snapshot.publish", JobRun.status == "queued")
+            )
             if (j.payload or {}).get("snapshot_id") == rev and (j.payload or {}).get("follow_up")
         ]
         assert len(again) == 1, [(j.id, j.payload) for j in again]
         j2_row = s.get(JobRun, j2)
-        assert j2_row is not None and (j2_row.stats or {}).get("redeferred_job_id") == again[0].id, j2_row.stats
+        assert j2_row is not None and (j2_row.stats or {}).get("redeferred_job_id") == again[0].id, (
+            j2_row.stats
+        )
         j3 = again[0].id
     st3, s3 = run_job(j3)
     assert st3 == "done" and s3.get("published") is True, s3
@@ -220,7 +234,9 @@ def test_major3_terminal_failure_reregisters_deferred_writes(
 def test_d17_5_checklist_patch_leaves_publish_job(client: TestClient) -> None:
     items = client.get("/api/ops/checklist", params={"status": "open"}, headers=READ).json()
     item = next(i for i in items if i["complex_id"] is not None and i["kind"] != "사실 재확인")
-    r = client.patch(f"/api/ops/checklist/{item['id']}", json={"status": "done", "note": "R3i 처리"}, headers=WRITE)
+    r = client.patch(
+        f"/api/ops/checklist/{item['id']}", json={"status": "done", "note": "R3i 처리"}, headers=WRITE
+    )
     assert r.status_code == 202, r.text
     body = r.json()
     assert body["status"] == "done" and isinstance(body.get("job_id"), int), body
@@ -232,9 +248,14 @@ def test_d17_5_checklist_patch_leaves_publish_job(client: TestClient) -> None:
 
         base = s.scalars(select(Scenario.id).where(Scenario.code == "base")).one()
         rep = sv.stored(s, sid, "report", scenario=str(base))
-    rows = [c for c in rep["checklist"] if c["title"] == item["title"]]
-    assert rows and all(c["status"] == "done" and c["note"] == "R3i 처리" for c in rows), rows
-    same = client.patch(f"/api/ops/checklist/{item['id']}", json={"status": "done", "note": "R3i 처리"}, headers=WRITE)
+    from app.reports.codec import decode_data
+
+    data = decode_data(rep["data"])
+    rows = [c for c in data.checklist if c.title == item["title"]]
+    assert rows and all(c.status == "done" and c.note == "R3i 처리" for c in rows), rows
+    same = client.patch(
+        f"/api/ops/checklist/{item['id']}", json={"status": "done", "note": "R3i 처리"}, headers=WRITE
+    )
     assert same.status_code == 200 and same.json().get("job_id") is None, same.text
 
 
@@ -256,7 +277,9 @@ def test_d17_5_region_name_patch_leaves_publish_job(client: TestClient) -> None:
 
         base = s.scalars(select(Scenario.id).where(Scenario.code == "base")).one()
         rep = sv.stored(s, int(stats["snapshot_id"]), "report", scenario=str(base))
-    assert rep["region_name"] == "R3i 새 이름"
+    from app.reports.codec import decode_data
+
+    assert decode_data(rep["data"]).region_name == "R3i 새 이름"
 
 
 # ====================================================================== m8·m9·m10·m14
@@ -314,7 +337,9 @@ def test_m14_catalyst_patch_without_snapshot_is_200(client: TestClient) -> None:
         s.flush()
         rid = int(reg.id)
     c = _cat("R3i 빈 지역 호재", region_id=rid)
-    r = client.patch(f"/api/catalysts/{c}", json={"location_confirmed": False, "expected_ym": "2030-01"}, headers=WRITE)
+    r = client.patch(
+        f"/api/catalysts/{c}", json={"location_confirmed": False, "expected_ym": "2030-01"}, headers=WRITE
+    )
     assert r.status_code == 200 and r.json()["job_id"] is None, r.text
 
 
@@ -329,7 +354,11 @@ def test_m13_lease_lost_writer_writes_nothing(client: TestClient, monkeypatch: p
     with get_session() as s:
         s.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == SNAP))
         s.execute(delete(SnapshotViewUnit).where(SnapshotViewUnit.snapshot_id == SNAP))
-        s.execute(update(Snapshot).where(Snapshot.id == SNAP).values(status="ready", published_at=None, publish_lease=None))
+        s.execute(
+            update(Snapshot)
+            .where(Snapshot.id == SNAP)
+            .values(status="ready", published_at=None, publish_lease=None)
+        )
     real = sv.compute
     thief = f"job:4242|{time.time():.0f}"
 
@@ -347,7 +376,10 @@ def test_m13_lease_lost_writer_writes_nothing(client: TestClient, monkeypatch: p
         published = False
     assert not published
     with get_session() as s:
-        n = int(s.scalar(select(func.count()).select_from(SnapshotView).where(SnapshotView.snapshot_id == SNAP)) or 0)
+        n = int(
+            s.scalar(select(func.count()).select_from(SnapshotView).where(SnapshotView.snapshot_id == SNAP))
+            or 0
+        )
         lease = s.get(Snapshot, SNAP).publish_lease  # type: ignore[union-attr]
     assert n == 0, f"임대를 잃은 보유자가 저장본 {n}행을 썼다"
     assert lease == thief
@@ -356,7 +388,9 @@ def test_m13_lease_lost_writer_writes_nothing(client: TestClient, monkeypatch: p
 # ====================================================================== m6·m11·m16 (worker)
 
 
-def test_m6_backfill_isolates_human_check_migration(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_m6_backfill_isolates_human_check_migration(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import app.api.demotion as demotion
     import app.snapshot_view as sv
 
@@ -366,7 +400,9 @@ def test_m6_backfill_isolates_human_check_migration(client: TestClient, monkeypa
     monkeypatch.setattr(demotion, "migrate_row_human_checks", boom)
     with get_session() as s:
         s.execute(
-            update(SnapshotViewUnit).where(SnapshotViewUnit.snapshot_id == SNAP, SnapshotViewUnit.kind == "claims").values(done=False)
+            update(SnapshotViewUnit)
+            .where(SnapshotViewUnit.snapshot_id == SNAP, SnapshotViewUnit.kind == "claims")
+            .values(done=False)
         )
     res = sv.backfill(get_engine())
     assert SNAP in res["snapshots"], res  # 리비전 채우기는 그대로 돈다
@@ -407,7 +443,11 @@ def test_m11_requeue_and_stale_counters_kept(client: TestClient) -> None:
                       scheduled_at="2026-10-11T00:00:00+09:00", started_at="2099-10-11T00:00:00+09:00", stats={})  # fmt: skip
         s.add(hold)
         s.flush()
-        s.execute(update(Snapshot).where(Snapshot.id == SNAP).values(publish_lease=f"job:{hold.id}|{time.time():.0f}"))
+        s.execute(
+            update(Snapshot)
+            .where(Snapshot.id == SNAP)
+            .values(publish_lease=f"job:{hold.id}|{time.time():.0f}")
+        )
         j = JobRun(job_name="snapshot.publish", kind="manual", payload={"snapshot_id": SNAP}, status="queued",
                    scheduled_at="2026-10-11T00:00:00+09:00", stats={"stale_recoveries": 1})  # fmt: skip
         s.add(j)
@@ -457,7 +497,9 @@ def test_m16_once_waits_for_requeued_job(client: TestClient, monkeypatch: pytest
         assert s.get(JobRun, jid).status == "done"  # type: ignore[union-attr]
 
 
-def test_m16_once_exits_nonzero_when_requeued_left(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_m16_once_exits_nonzero_when_requeued_left(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from app.scheduler import runner
 
     monkeypatch.setattr(runner, "backfill_views", lambda ctx: None)
@@ -466,4 +508,3 @@ def test_m16_once_exits_nonzero_when_requeued_left(client: TestClient, monkeypat
     assert runner.main(["--once"], ctx=_ctx()) != 0
     with get_session() as s:
         assert s.get(JobRun, jid).status == "queued"  # type: ignore[union-attr]
-

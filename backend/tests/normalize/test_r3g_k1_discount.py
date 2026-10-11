@@ -275,10 +275,36 @@ def test_k1_zero_or_non_discount_amount_makes_no_fact(text: str) -> None:
 
 # ---------------------------------------------------------------- R3i m19: 문법 기반 퍼징 복원(R3h 가 지웠다)
 
-_TYPES = [SHORT, LONG, "84a", "84Ａ", "84A형", "84㎡", "84 A", "84B", "184A", "84A-1", "84​A", "84A·84B", "(84A)", "84A(30세대)"]
+_TYPES = [
+    SHORT,
+    LONG,
+    "84a",
+    "84Ａ",
+    "84A형",
+    "84㎡",
+    "84 A",
+    "84B",
+    "184A",
+    "84A-1",
+    "84​A",
+    "84A·84B",
+    "(84A)",
+    "84A(30세대)",
+]
 _PREFIXES = ["", "", "", " ", "\t", "1~3층 ", "저층 ", "(특별공급) ", "| ", "주택형 ", "​", " ", "※ ", "* "]
 _SEPS = [" ", " ", "\t", "  ", "", " ", "​", "　"]
-_KINDS = ["분양가", "공급금액", "분양가", "공급금액", "분양 가격", "공급가", "계약금", "잔금 완납 시 분양가", "발코니", "분양가 최대"]
+_KINDS = [
+    "분양가",
+    "공급금액",
+    "분양가",
+    "공급금액",
+    "분양 가격",
+    "공급가",
+    "계약금",
+    "잔금 완납 시 분양가",
+    "발코니",
+    "분양가 최대",
+]
 _HALIN = ["할인", "할인", "할인", "할​인", "할인금액", "할인 :", "할인액", "할인(예정)"]
 _MIDS = ["", "", "", "최대 ", "약 ", "예정 ", "최소 ", "1차 ", "~"]
 _WONS = ["원", "원", " 원", "\t원", "원정", "만원", "원)", "원*"]
@@ -351,13 +377,20 @@ def test_k1_property_candidates_are_estimates(text: str) -> None:
     st.sampled_from(["분양가", "공급금액"]),
     st.integers(min_value=1_000, max_value=999_999_999),
     st.sampled_from(["", " ", "\t"]),
-    st.sampled_from([None, "", "■ 납부 일정", "59B 분양가 할인 5,000,000원", "084.9100B 공급금액 할인 3,000,000원", "■"]),
+    st.sampled_from(
+        [None, "", "■ 납부 일정", "59B 분양가 할인 5,000,000원", "084.9100B 공급금액 할인 3,000,000원", "■"]
+    ),
 )
-def test_k1_property_canonical_is_estimate_candidate(typ: str, kind: str, won: int, pad: str, nxt: str | None) -> None:
+def test_k1_property_canonical_is_estimate_candidate(
+    typ: str, kind: str, won: int, pad: str, nxt: str | None
+) -> None:
     """예전 허용 꼴 + 무해한 다음 줄 → 후보가 **나온다**(금액·위치 일치) — 라벨은 '추정'(D16-1)."""
     head = f"{pad}{typ} {kind} 할인 "
     amount = f"{won:,}"
     text = head + amount + "원" + pad + ("" if nxt is None else "\n" + nxt) + "\n"
     got = _call(text)
-    assert got is not None and got.won == won and got.span == (len(head), len(head) + len(amount)), (text, got)
+    assert got is not None and got.won == won and got.span == (len(head), len(head) + len(amount)), (
+        text,
+        got,
+    )
     assert "조건 확인 필요" in got.reason

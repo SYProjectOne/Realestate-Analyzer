@@ -8,6 +8,8 @@
 | 'bearer' 뒤 산문 과잉 가림('the bearer certificates') — 토큰은 그대로 가린다 | ``test_m17_bearer_prose_not_masked``·``test_m17_bearer_tokens_still_masked`` |
 """
 
+# ruff: noqa: E501
+
 from __future__ import annotations
 
 import pytest
@@ -72,7 +74,7 @@ def test_m17_keyless_tokens(token: str) -> None:
 )
 def test_m17_sensitive_key_numeric_values(obj: dict[str, object], kept: object) -> None:
     out = redact_obj(obj)
-    (key, value), = out.items()
+    ((_key, value),) = out.items()
     if kept is None:
         assert value == "[REDACTED:key]", out
     else:
@@ -81,7 +83,12 @@ def test_m17_sensitive_key_numeric_values(obj: dict[str, object], kept: object) 
 
 @pytest.mark.parametrize(
     "text",
-    ["the bearer certificates were issued", "a bearer instrument is", "this bearer documentation", "The Bearer bonds"],
+    [
+        "the bearer certificates were issued",
+        "a bearer instrument is",
+        "this bearer documentation",
+        "The Bearer bonds",
+    ],
 )
 def test_m17_bearer_prose_not_masked(text: str) -> None:
     assert redact_text(text) == text
@@ -89,7 +96,12 @@ def test_m17_bearer_prose_not_masked(text: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["auth bearer abcdefghijklmn", "Authorization: Bearer abcdefgh123", "bearer Zx9QwErTyU1234", "curl -H 'bearer abcdefghij'"],
+    [
+        "auth bearer abcdefghijklmn",
+        "Authorization: Bearer abcdefgh123",
+        "bearer Zx9QwErTyU1234",
+        "curl -H 'bearer abcdefghij'",
+    ],
 )
 def test_m17_bearer_tokens_still_masked(text: str) -> None:
     out = redact_text(text)

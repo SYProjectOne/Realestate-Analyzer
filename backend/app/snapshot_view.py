@@ -1573,7 +1573,9 @@ def _backfill_locked(eng: Engine, sid: int, s: Settings, lease: str) -> dict[str
             for r in main.rows
             if (r.kind, r.key, r.scenario) not in present and r.key in allowed.get(r.kind, _ANY_KEY)
         ]
-        new_ids: set[str] = set()  # 새로 넣는 행이 가리키는 출처(지금 계산의 다른 출처는 서랍에 넣지 않는다 — 발행 순간 범위)
+        new_ids: set[str] = (
+            set()
+        )  # 새로 넣는 행이 가리키는 출처(지금 계산의 다른 출처는 서랍에 넣지 않는다 — 발행 순간 범위)
         for r in new_rows:
             _collect_prov(zlib.decompress(r.body), new_ids)
         rebuild = PROV_UNIT in todo
@@ -1593,7 +1595,9 @@ def _backfill_locked(eng: Engine, sid: int, s: Settings, lease: str) -> dict[str
     stamp = now_kst().isoformat(timespec="seconds")
     finish = {u: states.get(u, (False, 0, 0))[2] for u in main.units}
     for u in todo - set(main.units) - {PROV_UNIT}:
-        finish[u] = states[u][2]  # 지금은 계산할 수 없는 단위(그 뒤 지운 시나리오 등) — 있는 행 그대로 완료로 닫는다
+        finish[u] = states[u][
+            2
+        ]  # 지금은 계산할 수 없는 단위(그 뒤 지운 시나리오 등) — 있는 행 그대로 완료로 닫는다
     filled: dict[Unit, str] = {}
     for r in new_rows:
         finish[(r.kind, r.scenario)] = finish.get((r.kind, r.scenario), 0) + 1
@@ -1626,7 +1630,9 @@ def _replace_provenance(
     ``reuse_drawers`` 로 바이트 그대로 들어 있다) → 완료 표식. 어디서 끊겨도 롤백 — 옛 서랍이 그대로 남는다."""
     with write_connection(eng) as conn, conn.begin():
         _check_lease(conn, sid, lease)
-        conn.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == sid, SnapshotView.kind == "provenance"))
+        conn.execute(
+            delete(SnapshotView).where(SnapshotView.snapshot_id == sid, SnapshotView.kind == "provenance")
+        )
         if rows:
             conn.execute(insert(SnapshotView), _row_dicts(sid, rows))
         _mark(conn, sid, PROV_UNIT, len(rows), backfilled_at=backfilled_at)
@@ -1683,7 +1689,9 @@ def backfill(engine: Engine | None = None, *, settings: Settings | None = None) 
         except BackfillBusy:
             out["busy"].append(sid)
             continue
-        except Exception as exc:  # 리비전마다 따로 실패(D15-3·m11) — 그 리비전은 미완 그대로(GET 503), 다음 실행이 다시
+        except (
+            Exception
+        ) as exc:  # 리비전마다 따로 실패(D15-3·m11) — 그 리비전은 미완 그대로(GET 503), 다음 실행이 다시
             log.error(
                 "snapshot_view.backfill_failed", extra={"snapshot_id": sid, "error": type(exc).__name__}
             )
