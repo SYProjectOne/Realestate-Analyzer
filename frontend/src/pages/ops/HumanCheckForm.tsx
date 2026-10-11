@@ -1,5 +1,5 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useLocation, useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { humanCheckJobId, useComplexes, useCreateHumanCheck } from '@/api/hooks';
@@ -16,14 +16,18 @@ import { IntakeBadge, PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
 import { enumText, idText, Section } from '../_shared';
-import { HUMAN_CHECK_NOTE_MAX, HUMAN_CHECK_RULES, HUMAN_CHECK_VALUE_MAX } from './humanCheckRules';
+import {
+  HC_PARAM,
+  HUMAN_CHECK_ANCHOR,
+  HUMAN_CHECK_NOTE_MAX,
+  HUMAN_CHECK_RULES,
+  HUMAN_CHECK_VALUE_MAX,
+} from './humanCheckRules';
 
 const KINDS = ['phone', 'visit', 'email'] as const;
 const INTAKE_VALUES = ['가능', '미정', '확인 불가', '불가'] as const;
 
-/** 사람 확인 폼 앵커·미리 채우기 URL 파라미터(ClaimsPanel '사람 확인으로 복원'이 쓴다) */
-export const HUMAN_CHECK_ANCHOR = 'human-check';
-export const HC_PARAM = { complex: 'hc_complex', field: 'hc_field', entity: 'hc_entity' } as const;
+export { HC_PARAM, HUMAN_CHECK_ANCHOR };
 
 /** 강등 사실을 사람 확인으로 복원하는 폼 주소(같은 /ops, 미리 채움 + 폼으로 스크롤) */
 export function humanCheckSearch(
@@ -45,9 +49,6 @@ function nowLocal(): string {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
-
-/** 서버가 받는 미래 여유(계약 .11 F7 — 지금보다 10분 넘게 미래면 422) */
-export const CHECKED_AT_FUTURE_SLACK_MS = 10 * 60_000;
 
 /** 분 단위 시간대 오프셋 → '+09:00' */
 export function offsetText(offsetMinutes: number): string {
@@ -85,15 +86,14 @@ export function toRfc3339(local: string): string | null {
 export const CHECKED_AT_MIN_MS = Date.parse('2000-01-01T00:00:00+09:00');
 
 /**
- * 확인 시각 입력 검사: 비었거나 형식 오류 → 입력 안내, KST 2000-01-01 이전 → 범위 안내(F8), 10분 넘게 미래 → 미래 안내.
+ * 확인 시각 입력 검사 — **형식만**(8차 m17): 비었거나 형식 오류 → 입력 안내, KST 2000-01-01 이전 → 범위 안내(F8, 고정
+ * 상수). 미래 여부는 브라우저 시계로 판단하지 않는다 — 서버가 자기 시계로 보고 422 `checked_at_future` 로 알린다(F14).
  * 문제 없으면 null
  */
-export function checkedAtProblem(local: string, now: number = Date.now()): string | null {
+export function checkedAtProblem(local: string): string | null {
   const iso = toRfc3339(local);
   if (iso === null) return t('page.G7.hc.checkedAtRequired');
   if (Date.parse(iso) < CHECKED_AT_MIN_MS) return t('page.G7.hc.checkedAtTooOld');
-  if (Date.parse(iso) - now > CHECKED_AT_FUTURE_SLACK_MS)
-    return t('page.G7.hc.checkedAtFutureLocal');
   return null;
 }
 
@@ -117,6 +117,67 @@ export function checkedAt422Kind(error: unknown): 'future' | 'early' | 'format' 
         ? 'other'
         : null;
   }
+}
+
+/** 폼 칸 */
+type FormField = 'complex' | 'field' | 'value' | 'kind' | 'checkedAt' | 'enteredBy' | 'note';
+type FieldErrors = Partial<Record<FormField, string>>;
+
+/** 서버 422 field_errors loc 마지막 이름 → 폼 칸(그 밖은 일반 오류 줄) */
+const SERVER_FIELD: Readonly<Record<string, FormField>> = {
+  complex_id: 'complex',
+  field: 'field',
+  value_text: 'value',
+  kind: 'kind',
+  checked_at: 'checkedAt',
+  entered_by: 'enteredBy',
+  note: 'note',
+};
+
+/**
+ * 사람 확인 POST 오류 → 칸별 오류 + 일반 오류 줄(8차 m17 — 여러 칸이 틀리면 **모든 칸**과 detail 을 보인다).
+ * checked_at 은 서버 code 로 문구를 고른다(F14). detail 이 어느 칸 문구와 똑같으면 일반 줄에 다시 쓰지 않는다.
+ */
+export function humanCheckServerErrors(error: unknown): { fields: FieldErrors; general: string[] } {
+  if (!error) return { fields: {}, general: [] };
+  if (!(error instanceof ApiError)) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return { fields: {}, general: [t('page.G7.hc.serverError', { detail })] };
+  }
+  const byField: Partial<Record<FormField, string[]>> = {};
+  const unmapped: string[] = [];
+  for (const fe of error.fieldErrors) {
+    const target = SERVER_FIELD[String(fe.loc[fe.loc.length - 1] ?? '')];
+    if (target) (byField[target] ??= []).push(fe.msg);
+    else unmapped.push(fe.msg);
+  }
+  const fields: FieldErrors = {};
+  for (const [name, msgs] of Object.entries(byField) as [FormField, string[]][]) {
+    fields[name] = msgs.join(' · ');
+  }
+  const kind = checkedAt422Kind(error);
+  if (kind !== null) {
+    const detail = fields.checkedAt ?? error.detail;
+    fields.checkedAt =
+      kind === 'future'
+        ? t('page.G7.hc.checkedAtFuture', { detail })
+        : kind === 'early'
+          ? t('page.G7.hc.checkedAtTooEarly', { detail })
+          : kind === 'format'
+            ? t('page.G7.hc.checkedAtFormat', { detail })
+            : t('page.G7.hc.checkedAtServer', { detail });
+  }
+  const raw = new Set(error.fieldErrors.map((fe) => fe.msg));
+  const general = [
+    ...(error.detail && !raw.has(error.detail)
+      ? [t('page.G7.hc.serverError', { detail: error.detail })]
+      : []),
+    ...unmapped,
+  ];
+  if (general.length === 0 && Object.keys(fields).length === 0) {
+    general.push(t('page.G7.hc.serverError', { detail: error.detail || error.code }));
+  }
+  return { fields, general };
 }
 
 const asField = (v: string | null): HumanCheckField =>
@@ -172,6 +233,7 @@ export function validateHumanValue(field: HumanCheckField, raw: string): string 
 /**
  * G7 HumanCheckForm — 단지·필드·값·종류·메모 → POST /ops/human-checks.
  * 필드(계약 .8, M-5): 접수 상태 + 강등 가능한 사실 필드 5개(최고 공급금액·입주 예정·전매·거주의무 개월·계약금 %)
+ * + 할인(계약 .13 F1·D16-1, 기준 타입 원 — 값 검사는 서버 422 value_text 를 값 칸에)
  * + 기타. 사실 필드의 사람 확인은 resolver 0순위 후보가 되어 같은 사실의 강등(검증 모순)을 복원한다(D11-3).
  * 접수 상태 저장 → 접수 배지 즉시 갱신(응답 created_intake + 쿼리 무효화) + "재판정 잡 등록" 제안 토스트.
  * ClaimsPanel 의 '사람 확인으로 복원'이 URL(hc_complex·hc_field·hc_entity)로 미리 채운다.
@@ -194,7 +256,15 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const [enteredBy, setEnteredBy] = useState<EnteredByRole | ''>('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [checkedAtLocalError, setCheckedAtLocalError] = useState<string | null>(null);
+  /** 제출 전 검사의 칸별 오류(여러 칸을 한 번에 — 8차 m17) */
+  const [localErrors, setLocalErrors] = useState<FieldErrors>({});
+  const clearLocal = (name: FormField) =>
+    setLocalErrors((prev) => {
+      if (!(name in prev)) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   const [saved, setSaved] = useState<HumanCheck | null>(null);
 
   // 같은 화면에서 '사람 확인으로 복원' 링크를 누르면 URL 만 바뀐다 → 폼을 그 값으로 다시 채운다
@@ -208,30 +278,40 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
     setEntityId(preEntity && /^\d+$/.test(preEntity) ? Number(preEntity) : null);
     setValue('');
     setError(null);
+    setLocalErrors({});
   }, [preComplex, preField, preEntity]);
 
+  // 다른 화면(G3 '추정' 할인 링크 — 계약 .13 F2)에서 `#human-check` 로 들어오면 폼으로 한 번 옮긴다(라우터는 해시로 스크롤하지 않는다)
+  const { hash } = useLocation();
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (scrolled.current || hash !== `#${HUMAN_CHECK_ANCHOR}`) return;
+    scrolled.current = true;
+    const form = document.getElementById(HUMAN_CHECK_ANCHOR);
+    if (form && typeof form.scrollIntoView === 'function') form.scrollIntoView({ block: 'start' });
+  }, [hash]);
+
   const submit = () => {
-    if (!complexId || !value.trim() || !enteredBy) {
-      setError(t('page.G7.hc.required'));
-      return;
-    }
-    const invalid = validateHumanValue(field, value);
-    if (invalid) {
-      setError(invalid);
-      return;
+    // 8차 m17: 첫 오류에서 멈추지 않고 모든 칸을 검사해 한 번에 보인다
+    const missing = !complexId || !value.trim() || !enteredBy;
+    const problems: FieldErrors = {};
+    if (value.trim()) {
+      const invalid = validateHumanValue(field, value);
+      if (invalid) problems.value = invalid;
     }
     if (note.length > HUMAN_CHECK_NOTE_MAX) {
-      setError(metaText('page.G7.hc.noteTooLong', { max: HUMAN_CHECK_NOTE_MAX }));
-      return;
+      problems.note = metaText('page.G7.hc.noteTooLong', { max: HUMAN_CHECK_NOTE_MAX });
     }
     const timeProblem = checkedAtProblem(checkedAt);
-    setCheckedAtLocalError(timeProblem);
-    if (timeProblem) {
-      setError(null);
+    if (timeProblem) problems.checkedAt = timeProblem;
+    setError(missing ? t('page.G7.hc.required') : null);
+    setLocalErrors(problems);
+    if (missing || Object.keys(problems).length > 0) {
+      // 이전 저장 시도의 서버 오류는 지금 입력과 맞지 않는다
+      create.reset();
       return;
     }
     const checkedAtIso = toRfc3339(checkedAt) as string;
-    setError(null);
     const body: HumanCheckCreate = {
       complex_id: Number(complexId),
       field,
@@ -263,28 +343,10 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const rule = HUMAN_CHECK_RULES[field];
   // 계약 .10 S6·.11 F7·F8: checked_at 422 — loc ["body","checked_at"]. 이른 확인일(이미 수집된 공고가 **다른 값**)
   // 또는 10분 넘는 미래 또는 형식. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 종류는 서버 code 로(.12 F14)
-  const serverKind = checkedAt422Kind(create.error);
-  const serverCheckedAt =
-    serverKind !== null && create.error instanceof ApiError
-      ? (create.error.fieldErrors.find((f) => f.loc[f.loc.length - 1] === 'checked_at')?.msg ??
-        create.error.detail)
-      : null;
-  const checkedAtError =
-    checkedAtLocalError ??
-    (serverCheckedAt === null
-      ? null
-      : serverKind === 'future'
-        ? t('page.G7.hc.checkedAtFuture', { detail: serverCheckedAt })
-        : serverKind === 'early'
-          ? t('page.G7.hc.checkedAtTooEarly', { detail: serverCheckedAt })
-          : serverKind === 'format'
-            ? t('page.G7.hc.checkedAtFormat', { detail: serverCheckedAt })
-            : t('page.G7.hc.checkedAtServer', { detail: serverCheckedAt }));
-  const serverError = serverCheckedAt
-    ? null
-    : create.error instanceof ApiError
-      ? create.error.detail
-      : (create.error?.message ?? null);
+  // 8차 m17: 다른 칸 오류·detail 도 함께(칸별 + 일반 줄)
+  const server = humanCheckServerErrors(create.error);
+  const errorOf = (name: FormField): string | undefined => localErrors[name] ?? server.fields[name];
+  const invalidOf = (name: FormField): true | undefined => (errorOf(name) ? true : undefined);
 
   return (
     <Section title={t('page.G7.human')} id={HUMAN_CHECK_ANCHOR}>
@@ -299,11 +361,13 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         }}
         className="grid gap-3 sm:grid-cols-2"
       >
-        <Field label="complex">
-          {(id) => (
+        <Field label="complex" error={errorOf('complex')}>
+          {(id, hintId) => (
             <select
               id={id}
               value={complexId}
+              aria-invalid={invalidOf('complex')}
+              aria-describedby={hintId}
               onChange={(e) => {
                 setComplexId(e.target.value);
                 setEntityId(null);
@@ -319,16 +383,19 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
             </select>
           )}
         </Field>
-        <Field label="field">
-          {(id) => (
+        <Field label="field" error={errorOf('field')}>
+          {(id, hintId) => (
             <select
               id={id}
               value={field}
+              aria-invalid={invalidOf('field')}
+              aria-describedby={hintId}
               onChange={(e) => {
                 setField(asField(e.target.value));
                 setEntityId(null);
                 setValue('');
                 setError(null);
+                clearLocal('value');
               }}
               className={inputClass}
             >
@@ -340,13 +407,22 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
             </select>
           )}
         </Field>
-        <Field label="value" hint={rule ? t(`page.G7.hcHint.${field}` as TKey) : undefined}>
+        <Field
+          label="value"
+          hint={rule || field === 'discount' ? t(`page.G7.hcHint.${field}` as TKey) : undefined}
+          error={errorOf('value')}
+        >
           {(id, hintId) =>
             field === 'intake_status' ? (
               <select
                 id={id}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                aria-invalid={invalidOf('value')}
+                aria-describedby={hintId}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  clearLocal('value');
+                }}
                 className={inputClass}
               >
                 <option value="">{t('page.common.none')}</option>
@@ -360,21 +436,33 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
               <input
                 id={id}
                 type={rule?.kind === 'ym' ? 'month' : 'text'}
-                inputMode={rule && rule.kind !== 'ym' ? 'decimal' : undefined}
+                inputMode={
+                  field === 'discount'
+                    ? 'numeric'
+                    : rule && rule.kind !== 'ym'
+                      ? 'decimal'
+                      : undefined
+                }
                 value={value}
                 maxLength={HUMAN_CHECK_VALUE_MAX}
+                aria-invalid={invalidOf('value')}
                 aria-describedby={hintId}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  clearLocal('value');
+                }}
                 className={inputClass}
               />
             )
           }
         </Field>
-        <Field label="kind">
-          {(id) => (
+        <Field label="kind" error={errorOf('kind')}>
+          {(id, hintId) => (
             <select
               id={id}
               value={kind}
+              aria-invalid={invalidOf('kind')}
+              aria-describedby={hintId}
               onChange={(e) => setKind(e.target.value as (typeof KINDS)[number])}
               className={inputClass}
             >
@@ -388,7 +476,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         </Field>
         <Field
           label="checkedAt"
-          error={checkedAtError ?? undefined}
+          error={errorOf('checkedAt')}
           hint={t('page.G7.hc.checkedAtTz', { tz: offsetText(-new Date().getTimezoneOffset()) })}
         >
           {(id, hintId) => (
@@ -398,19 +486,21 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
               value={checkedAt}
               onChange={(e) => {
                 setCheckedAt(e.target.value);
-                setCheckedAtLocalError(null);
+                clearLocal('checkedAt');
               }}
-              aria-invalid={checkedAtError ? true : undefined}
+              aria-invalid={invalidOf('checkedAt')}
               aria-describedby={hintId}
               className={inputClass}
             />
           )}
         </Field>
-        <Field label="enteredBy">
-          {(id) => (
+        <Field label="enteredBy" error={errorOf('enteredBy')}>
+          {(id, hintId) => (
             <select
               id={id}
               value={enteredBy}
+              aria-invalid={invalidOf('enteredBy')}
+              aria-describedby={hintId}
               onChange={(e) => setEnteredBy(e.target.value as EnteredByRole | '')}
               className={inputClass}
             >
@@ -423,13 +513,17 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
             </select>
           )}
         </Field>
-        <Field label="note" wide hint={t('page.G7.hc.noteHint')}>
+        <Field label="note" wide hint={t('page.G7.hc.noteHint')} error={errorOf('note')}>
           {(id, hintId) => (
             <textarea
               id={id}
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(e) => {
+                setNote(e.target.value);
+                clearLocal('note');
+              }}
               maxLength={HUMAN_CHECK_NOTE_MAX}
+              aria-invalid={invalidOf('note')}
               aria-describedby={hintId}
               rows={2}
               className={inputClass}
@@ -455,10 +549,12 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
               {error}
             </p>
           ) : null}
-          {serverError ? (
-            <p role="alert" className="text-sm text-danger">
-              {t('page.common.loadError', { detail: serverError })}
-            </p>
+          {server.general.length > 0 ? (
+            <div role="alert" className="text-sm text-danger" data-testid="hc-server-error">
+              {server.general.map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+            </div>
           ) : null}
           {saved?.created_intake ? (
             <span
@@ -513,7 +609,7 @@ function Field({
   label: string;
   wide?: boolean;
   hint?: string;
-  /** 서버 검증 오류(그 칸) — 힌트 자리에 경고로 */
+  /** 검증 오류(그 칸 — 제출 전 검사 또는 서버 422) — 힌트 자리에 경고로 */
   error?: string;
   children: (id: string, hintId: string | undefined) => ReactNode;
 }) {

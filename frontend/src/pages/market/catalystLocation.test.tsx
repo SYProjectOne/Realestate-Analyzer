@@ -10,6 +10,7 @@ import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type { CatalystUpdated, Market } from '@/api/types';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
+import catalystUpdatedExample from '../../../../contracts/examples/catalyst_updated.json';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
@@ -41,6 +42,10 @@ async function example<T>(path: string, method = 'GET'): Promise<T> {
   );
   return (await res!.json()) as T;
 }
+
+/** 계약 .13 F3: 생성 핸들러는 200(바뀐 것 없음) 예시를 고른다 — 202(보이는 값이 바뀜) 예시는 파일에서 */
+const updatedExample = (): CatalystUpdated =>
+  structuredClone((catalystUpdatedExample as { value: CatalystUpdated }).value);
 
 async function openForm(name: string) {
   const item = await row(name);
@@ -100,7 +105,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
       complex_ids: [Number(first.value)],
     });
     // 계약 예시 응답: 단지 2(사람 지정)·5(같은 생활권), 좌표 없음 → distance null·weight 1·추정, job = snapshot.publish
-    const expected = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
+    const expected = updatedExample();
     const links = await within(await panel()).findByTestId('catalyst-links');
     const rows = within(links).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(expected.links.length);
@@ -123,12 +128,12 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     rec.stop();
   });
 
-  it('job_id null(연결 그대로) → 잡 없음 안내', async () => {
+  it('200 + job_id null(바뀐 것 없음, 계약 .13 F3) → "바뀐 것 없음" 안내', async () => {
     server.use(
       http.patch(mswPath('/catalysts/:id'), async () => {
         const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
         return HttpResponse.json({ ...base, job: null, job_id: null } satisfies CatalystUpdated, {
-          status: 202,
+          status: 200,
         });
       }),
     );
@@ -137,7 +142,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     await pickFirstComplex(form);
     await userEvent.click(within(form).getByRole('button', { name: t('page.G6.loc.submit') }));
     expect(await within(await panel()).findByTestId('catalyst-job-none')).toHaveTextContent(
-      t('page.G6.loc.noJob'),
+      t('page.G6.loc.unchanged'),
     );
   });
 
@@ -147,7 +152,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     let polls = 0;
     server.use(
       http.patch(mswPath('/catalysts/:id'), async () => {
-        const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
+        const base = updatedExample();
         return HttpResponse.json(
           {
             ...base,
@@ -157,8 +162,8 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
           { status: 202 },
         );
       }),
-      http.get(mswPath('/jobs/:id'), async () => {
-        const base = await example<CatalystUpdated>('/catalysts/50', 'PATCH');
+      http.get(mswPath('/jobs/:id'), () => {
+        const base = updatedExample();
         polls += 1;
         if (polls >= 2) published = true;
         return HttpResponse.json({ ...base.job!, status: published ? 'done' : 'running' });

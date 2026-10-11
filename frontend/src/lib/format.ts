@@ -149,9 +149,48 @@ export function formatRatio(ratio: number, digits = 1): string {
   return t('unit.ratio', { ratio: ratio.toFixed(digits) });
 }
 
-/** ISO 날짜/일시의 날짜 부분 → UTC 기준 일수 (시간대 영향 없음) */
+/** KST = UTC+9 (일광 절약 없음) */
+const KST_OFFSET_MS = 9 * 3_600_000;
+
+/** `YYYY-MM-DD[T hh:mm[:ss[.fff]]][Z|±hh:mm]` — `T`·`Z` 는 대소문자 무관(D15-7) */
+const ISO_RE =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?\s*([Zz]|[+-]\d{2}:?\d{2})?)?/;
+
+/**
+ * ISO 날짜/일시 → **KST 날짜** `YYYY-MM-DD` (D15-7·D16-5 — 화면의 날짜 표시는 모두 KST, R3 8차 m13).
+ * 시간대가 붙은 시각(`…Z`, `…+00:00`, `…-05:00`)은 KST 로 옮긴 날짜다: `2026-10-09T20:00:00Z` → `2026-10-10`.
+ * 날짜만(`2026-10-09`)이거나 시간대가 없는 시각은 이미 그 날짜로 적힌 값이라 그대로 둔다(브라우저 시간대를 쓰지 않는다).
+ * 형식이 아니면 null.
+ */
+export function kstDay(iso: string): IsoDate | null {
+  const m = ISO_RE.exec(iso);
+  if (!m) return null;
+  const [, y, mo, d, h, mi, s, zone] = m;
+  const day = `${y}-${mo}-${d}`;
+  if (h === undefined || zone === undefined) return day;
+  let offsetMin = 0;
+  if (zone !== 'Z' && zone !== 'z') {
+    const z = /^([+-])(\d{2}):?(\d{2})$/.exec(zone);
+    if (!z) return day;
+    offsetMin = (z[1] === '-' ? -1 : 1) * (Number(z[2]) * 60 + Number(z[3]));
+  }
+  // Date.UTC 는 0~99 년을 1900 년대로 바꾼다 — setUTCFullYear 로
+  const at = new Date(0);
+  at.setUTCFullYear(Number(y), Number(mo) - 1, Number(d));
+  at.setUTCHours(Number(h), Number(mi), Number(s ?? 0), 0);
+  const kst = new Date(at.getTime() - offsetMin * 60_000 + KST_OFFSET_MS);
+  if (Number.isNaN(kst.getTime())) return day;
+  const yyyy = String(kst.getUTCFullYear()).padStart(4, '0');
+  const mm = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(kst.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** ISO 날짜/일시의 KST 날짜 → UTC 기준 일수 (브라우저 시간대 영향 없음) */
 function toDayNumber(iso: string): number | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  const kst = kstDay(iso);
+  if (kst === null) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(kst);
   if (!match) return null;
   const [, y, m, d] = match;
   return Date.UTC(Number(y), Number(m) - 1, Number(d)) / 86_400_000;
@@ -167,9 +206,9 @@ export function formatDday(date: string, asof: string): string {
   return diff > 0 ? t('unit.dminus', { n: diff }) : t('unit.dplus', { n: -diff });
 }
 
-/** "2026-10-11" 또는 기준일이 있으면 "2026-10-11 (D-3)" */
+/** "2026-10-11" 또는 기준일이 있으면 "2026-10-11 (D-3)". 시각은 KST 날짜로(`kstDay`) */
 export function formatDate(date: string, asof?: string | null): string {
-  const day = /^\d{4}-\d{2}-\d{2}/.exec(date)?.[0];
+  const day = kstDay(date);
   if (!day) return date;
   return asof ? `${day} (${formatDday(day, asof)})` : day;
 }
@@ -246,7 +285,7 @@ export function formatFactValue(
 /** "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1 */
 export function formatUnknown(reason?: string | null, checkedAt?: string | null): string {
   if (!reason) return t('empty.unknown');
-  const date = checkedAt ? /^\d{4}-\d{2}-\d{2}/.exec(checkedAt)?.[0] : undefined;
+  const date = checkedAt ? (kstDay(checkedAt) ?? undefined) : undefined;
   return date
     ? t('empty.unknownWithReasonDate', { reason, date })
     : t('empty.unknownWithReason', { reason });

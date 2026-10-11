@@ -13,6 +13,11 @@
  *  - 공유 링크 POST /share-links: 요청 label 을 응답에 반영
  *  - 계약 .11(D14-5·D14-6): PATCH /catalysts 202 + job_id(snapshot.publish, 상태 있는 잡), PATCH /regions 선택 변경 202 ·
  *    이름만 200, 사람 확인 201 + job_id. 사람 확인 checked_at 은 시간대 있는 RFC3339 · 10분 넘는 미래 422(서버와 같은 검사)
+ *  - 계약 .13(D16-4): PATCH /catalysts 는 같은 호재에 같은 본문을 다시 보내면 200 + job_id null(바뀐 것 없음), 처음·다른
+ *    본문이면 202 + job_id(예시 `catalyst_updated.json` 의 snapshot.publish 를 상태 있는 잡으로). 생성 핸들러는 가장 낮은
+ *    상태(200 `catalyst_unchanged.json`)를 고르므로 202 모양은 계약 예시 파일에서 읽는다.
+ *  - 계약 .13(D16-1·F1): 사람 확인 `discount` 값 = 원 단위 정수 0 ~ 1천억(쉼표·끝 '원' 허용) — 아니면 422
+ *    `field_errors[0].loc = ["body","value_text"]`(서버와 같은 검사)
  *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -41,6 +46,7 @@ import type {
   ShareLinkCreate,
   ShareLinkCreated,
 } from '@/api/types';
+import catalystUpdatedExample from '../../../contracts/examples/catalyst_updated.json';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
 
@@ -80,13 +86,30 @@ const state = {
   nextJobId: 5000,
   jobs: new Map<number, MockJob>(),
   intakeOverrides: new Map<number, Intake>(),
+  /** PATCH /catalysts 마지막 본문(호재 id → JSON) — 같은 본문이면 바뀐 것 없음(200) */
+  catalystPatches: new Map<number, string>(),
 };
+
+/** 계약 예시 PATCH /catalysts 202(보이는 값이 바뀜 — 계약 .13 D16-4) */
+const CATALYST_UPDATED = (catalystUpdatedExample as { value: CatalystUpdated }).value;
+
+/**
+ * 서버(app/api/demotion.py parse_human_value) `discount` 검사와 같은 규칙(계약 .13 F1): 쉼표·공백·끝 '원' 을 뗀 원 단위
+ * 정수 0 ~ 1천억. 문제가 없으면 null, 있으면 문구.
+ */
+function discountProblem(value: unknown): string | null {
+  const text = typeof value === 'string' ? value.replace(/[,\s]/g, '').replace(/원$/, '') : '';
+  if (!/^\d+$/.test(text)) return 'discount 는 원 단위 정수여야 한다';
+  const n = Number(text);
+  return n > 100_000_000_000 ? 'discount 는 0 ~ 1천억 원이어야 한다' : null;
+}
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
 export function resetMockState(): void {
   state.nextJobId = 5000;
   state.jobs.clear();
   state.intakeOverrides.clear();
+  state.catalystPatches.clear();
 }
 
 const nowIso = () => new Date().toISOString();
@@ -318,16 +341,26 @@ export const extraHandlers = [
     return HttpResponse.json(patched, { status: patched.job_id !== null ? 202 : 200 });
   }),
 
-  // PATCH /catalysts/{id} — 계약 .11 F3: 202 + job_id(snapshot.publish, 상태 있는 잡). 위치 확인 취소도 연결이 바뀐다
-  http.patch(mswPath('/catalysts/:id'), async ({ request }) => {
+  // PATCH /catalysts/{id} — 계약 .13 F3(D16-4): 보이는 값이 바뀌면 202 + job_id(snapshot.publish, 상태 있는 잡),
+  // 같은 본문을 다시 보내면 바뀐 것 없음 200 + job·job_id null(생성 핸들러 = catalyst_unchanged 예시)
+  http.patch(mswPath('/catalysts/:id'), async ({ request, params }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<CatalystPatch>;
-    const example = await base<CatalystUpdated>(request, 'PATCH', body);
-    const job = example.job ? registerJob('snapshot.publish', example.job.payload) : null;
+    const id = Number(params.id);
+    const key = JSON.stringify(body);
+    if (state.catalystPatches.get(id) === key) {
+      const unchanged = await base<CatalystUpdated>(request, 'PATCH', body);
+      return HttpResponse.json(
+        { ...unchanged, job: null, job_id: null } satisfies CatalystUpdated,
+        { status: 200 },
+      );
+    }
+    state.catalystPatches.set(id, key);
+    const job = CATALYST_UPDATED.job
+      ? registerJob('snapshot.publish', CATALYST_UPDATED.job.payload)
+      : null;
     return HttpResponse.json(
-      { ...example, job, job_id: job?.id ?? null } satisfies CatalystUpdated,
-      {
-        status: 202,
-      },
+      { ...CATALYST_UPDATED, job, job_id: job?.id ?? null } satisfies CatalystUpdated,
+      { status: 202 },
     );
   }),
 
@@ -393,6 +426,19 @@ export const extraHandlers = [
         { code, detail, field_errors: [{ loc: ['body', 'checked_at'], msg: detail }] },
         { status: 422 },
       );
+    }
+    if (body.field === 'discount') {
+      const problem = discountProblem(body.value_text);
+      if (problem) {
+        return HttpResponse.json(
+          {
+            code: 'validation_error',
+            detail: problem,
+            field_errors: [{ loc: ['body', 'value_text'], msg: problem }],
+          },
+          { status: 422 },
+        );
+      }
     }
     const example = await base<HumanCheck>(request, 'POST', body);
     // 계약 .9(D12-5): 서버가 rejudge 를 자동 등록 → rejudge_job_id(상태 있는 잡). '기타'는 잡 없음

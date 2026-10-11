@@ -5,6 +5,10 @@
 import { HUMAN_CHECK_FIELDS, type HumanCheckField } from '@/api/types';
 import type { MetaFormat } from '@/lib/meta';
 
+/** 사람 확인 폼 앵커·미리 채우기 URL 파라미터(ClaimsPanel '사람 확인으로 복원'·G3 '추정' 할인 링크가 쓴다) */
+export const HUMAN_CHECK_ANCHOR = 'human-check';
+export const HC_PARAM = { complex: 'hc_complex', field: 'hc_field', entity: 'hc_entity' } as const;
+
 /** HumanCheckCreate.value_text·note 길이 상한(계약 .8) */
 export const HUMAN_CHECK_VALUE_MAX = 200;
 export const HUMAN_CHECK_NOTE_MAX = 500;
@@ -19,7 +23,10 @@ export interface HumanCheckRule {
   unit?: MetaFormat;
 }
 
-/** 사실 필드 값 형·범위(서버 허용 범위). 접수 상태·기타는 규칙 없음(길이만) */
+/**
+ * 사실 필드 값 형·범위(서버 허용 범위). 접수 상태·기타는 규칙 없음(길이만). 할인(`discount`, 계약 .13 F1)도 화면 규칙이
+ * 없다 — 값 검사·오류는 서버 422 field_errors(`value_text`)를 값 칸에 보인다(R3h FE7 지시: 서버 code·field_errors 기준).
+ */
 export const HUMAN_CHECK_RULES: Partial<Record<HumanCheckField, HumanCheckRule>> = {
   /** 원 단위 정수, 1,000만 ~ 1,000억 */
   max_price_won: { kind: 'int', min: 10_000_000, max: 100_000_000_000, unit: 'won' },
@@ -38,6 +45,8 @@ export const HUMAN_CHECK_RULES: Partial<Record<HumanCheckField, HumanCheckRule>>
  */
 export function humanCheckFieldOf(field: string | null | undefined): HumanCheckField | null {
   if (!field) return null;
+  // 계약 .13 F1: 타입별 할인 칸(`discount_by_type.<타입>`)·가격 범위 할인은 사람 확인 `discount`
+  if (field === 'discount' || field.startsWith('discount_by_type')) return 'discount';
   const logical = field.startsWith('price_by_type.')
     ? field.slice(field.lastIndexOf('.') + 1)
     : field;

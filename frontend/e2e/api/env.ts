@@ -108,6 +108,32 @@ export function setDiscount(complexId: number, label: string | null, won = 10_00
 }
 
 /**
+ * 테스트 DB 에서 아직 queued 인 `jobName` 잡을 failed 로 닫는다(돌리지 않는다). writes8 마지막 테스트가 남긴
+ * `region.expand`(외부 수집)를 뒤 spec 의 `runWorkerOnce()` 가 집어 시간 초과가 나지 않게 — 테스트 DB 전용.
+ * 닫은 잡 수를 돌려준다.
+ */
+export function skipQueuedJobs(jobName: string): number {
+  const db = backendEnv.DATABASE_URL!.replace(/^sqlite:\/\/\//, '');
+  const out = execFileSync(
+    'uv',
+    [
+      'run',
+      'python',
+      '-c',
+      'import sqlite3, sys\n' +
+        'c = sqlite3.connect(sys.argv[1])\n' +
+        "n = c.execute(\"update job_run set status = 'failed', error_text = 'e2e: 외부 수집 잡 건너뜀' where job_name = ? and status = 'queued'\", (sys.argv[2],)).rowcount\n" +
+        'c.commit()\n' +
+        'print(n)',
+      db,
+      jobName,
+    ],
+    { cwd: BACKEND, env: { ...process.env, ...backendEnv }, stdio: 'pipe', timeout: 60_000 },
+  );
+  return Number(String(out).trim()) || 0;
+}
+
+/**
  * 큐에 쌓인 잡을 비울 때까지 1회 실행(`python -m app.worker --once`) — 보고서 생성 같은 잡을 테스트 안에서 끝낸다.
  * 상주 worker 를 띄우지 않으므로 다른 테스트가 넣은 잡이 몰래 돌지 않는다.
  */

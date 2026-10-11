@@ -1,6 +1,6 @@
 import { t, tDynamic } from '@/i18n';
 import type { IntakeLike } from '@/lib/contract';
-import { formatDate } from '@/lib/format';
+import { formatDate, kstDay } from '@/lib/format';
 import { Badge } from './Badge';
 
 export interface IntakeBadgeProps {
@@ -13,8 +13,8 @@ export interface IntakeBadgeProps {
   className?: string;
 }
 
-const dayOf = (iso: string | null | undefined) =>
-  iso ? (/^\d{4}-\d{2}-\d{2}/.exec(iso)?.[0] ?? null) : null;
+/** 확인 시각 → KST 날짜(D15-7·D16-5, 8차 m13 — 앞 10자 UTC 날짜 금지) */
+const dayOf = (iso: string | null | undefined) => (iso ? kstDay(iso) : null);
 
 /** 상태 문구. 계약 intake.json: 확인 불가 → '확인 불가(<reason>, <날짜>)' */
 export function intakeStatusText(intake: IntakeLike): string {

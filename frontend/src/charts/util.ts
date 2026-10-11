@@ -1,5 +1,6 @@
 /** buildOption 공용 도우미 — 순수 함수만. */
 import type { FactLike, Label } from '@/lib/contract';
+import { kstDay } from '@/lib/format';
 
 /** Fact → 숫자 또는 null (문자열 숫자도 허용) */
 export function num(fact: FactLike | null | undefined): number | null {
@@ -35,11 +36,11 @@ export function escapeHtml(text: string | null | undefined): string {
     .replace(/'/g, '&#39;');
 }
 
-/** 'YYYY-MM' 또는 'YYYY-MM-DD…' → 'YYYY-MM-DD' (월만 확인된 값은 1일로). 아니면 null */
+/** 'YYYY-MM' 또는 'YYYY-MM-DD…' → 'YYYY-MM-DD' (월만 확인된 값은 1일로, 시각은 KST 날짜 — 8차 m13). 아니면 null */
 export function toIsoDay(value: string | null | undefined): string | null {
   if (!value) return null;
-  const day = /^\d{4}-\d{2}-\d{2}/.exec(value);
-  if (day) return day[0];
+  const day = kstDay(value);
+  if (day) return day;
   const month = /^(\d{4})-(\d{2})$/.exec(value);
   return month ? `${month[1]}-${month[2]}-01` : null;
 }

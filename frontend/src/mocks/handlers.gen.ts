@@ -116,24 +116,9 @@ export const generatedHandlers = [
           "reason": "같은 생활권(la_2, 단지 좌표 없음)"
         }
       ],
-      "job": {
-        "id": 88,
-        "job_name": "snapshot.publish",
-        "kind": "manual",
-        "payload": {
-          "snapshot_id": 14,
-          "carry_from_snapshot_id": 12
-        },
-        "scheduled_at": "2026-10-10T09:12:00+09:00",
-        "started_at": null,
-        "finished_at": null,
-        "status": "queued",
-        "stats": {},
-        "error_text": null,
-        "progress": null
-      },
-      "job_id": 88
-    }, { status: 202 }),
+      "job": null,
+      "job_id": null
+    }, { status: 200 }),
   ),
   http.patch(mswPath("/claims/:id"), () =>
     HttpResponse.json({
@@ -14097,7 +14082,7 @@ export const generatedOperations = [
     "method": "patch",
     "path": "/catalysts/{id}",
     "operationId": "updateCatalyst",
-    "status": 202
+    "status": 200
   },
   {
     "method": "patch",

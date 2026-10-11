@@ -1,11 +1,13 @@
 /** G3 탭 패널: 가격표 · 납부 조건 · 잔여 이력 · 시세 비교 · 호재 */
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import type { ComplexDetail, Fact, LadderHorizon, PriceRange } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
-import { enumText, isUnresolved, Section, tdClass, thClass } from '../_shared';
+import { enumText, isUnresolved, Section, tdClass, thClass, useGlobalSearch } from '../_shared';
+import { HC_PARAM, HUMAN_CHECK_ANCHOR } from '../ops/humanCheckRules';
 
 /** 할인 문구에 필요한 가격 범위 필드 */
 export type DiscountPrice = Pick<PriceRange, 'discount' | 'discount_applied'>;
@@ -40,6 +42,46 @@ export function discountShortNote(price: DiscountPrice | null | undefined): stri
     : t('page.G3.price.discountNotAppliedShort');
 }
 
+/**
+ * 공고문 파서가 찾은 할인인가(계약 .13 F2·D16-1): 파서 할인은 언제나 라벨 '추정'(표시만, 차감 없음). '확인됨'(사람 확인)은
+ * 서버가 차감한다. 값이 없으면 false.
+ */
+export function isEstimatedDiscount(fact: Fact | null | undefined): boolean {
+  return !!fact && fact.v !== null && fact.label === '추정';
+}
+
+/** G7 사람 확인 폼 주소 — 단지·필드 `discount` 미리 채움, 전역 쿼리(region·snapshot·scenario) 유지 */
+export function discountHumanCheckTo(
+  globalSearch: string,
+  complexId: number,
+): { pathname: string; search: string; hash: string } {
+  const params = new URLSearchParams(globalSearch);
+  params.set(HC_PARAM.complex, String(complexId));
+  params.set(HC_PARAM.field, 'discount');
+  return { pathname: '/ops', search: `?${params.toString()}`, hash: HUMAN_CHECK_ANCHOR };
+}
+
+/**
+ * '추정' 할인 안내(D16-1): "공고문에서 찾은 할인(조건 확인 필요) — 사람 확인 시 구매가에 반영" + G7 사람 확인 링크.
+ */
+export function EstimatedDiscountNote({
+  complexId,
+  testId = 'discount-estimated',
+}: {
+  complexId: number;
+  testId?: string;
+}) {
+  const globalSearch = useGlobalSearch();
+  return (
+    <span className="text-xs text-muted" data-testid={testId}>
+      {t('page.G3.price.discountEstimated')}{' '}
+      <Link to={discountHumanCheckTo(globalSearch, complexId)} className="underline">
+        {t('page.G3.price.discountHumanCheck')}
+      </Link>
+    </span>
+  );
+}
+
 /** 현재 공고(is_current)의 타입별 할인(payment_terms.discount_by_type, 키 = type_code) */
 function currentDiscounts(detail: ComplexDetail): Record<string, Fact> {
   const current = detail.payment.find((p) => p.is_current) ?? null;
@@ -51,6 +93,10 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
   const discounts = currentDiscounts(detail);
   const hasTypeDiscount = Object.keys(discounts).length > 0;
   const note = discountNote(price);
+  const complexId = detail.header.id;
+  // 기준 타입 할인이 '추정'이면 그 줄에, 아니고 타입별 할인 중 '추정'이 있으면 표 아래에 한 번(D16-1)
+  const estimatedPrice = isEstimatedDiscount(price.discount);
+  const estimatedType = !estimatedPrice && Object.values(discounts).some(isEstimatedDiscount);
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
@@ -66,6 +112,7 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
             <dd className="flex flex-wrap items-center gap-1" data-testid="price-discount">
               <FactCell fact={price.discount} unit="won" />
               {note ? <span className="text-xs text-muted">{note}</span> : null}
+              {estimatedPrice ? <EstimatedDiscountNote complexId={complexId} /> : null}
             </dd>
           </>
         ) : null}
@@ -154,6 +201,7 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
           </table>
         </div>
       )}
+      {estimatedType ? <EstimatedDiscountNote complexId={complexId} /> : null}
     </div>
   );
 }

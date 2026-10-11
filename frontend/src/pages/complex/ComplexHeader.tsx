@@ -11,7 +11,12 @@ import {
 } from '@/components';
 import { t } from '@/i18n';
 import { enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
-import { discountNote, discountShortNote } from './tabs';
+import {
+  discountNote,
+  discountShortNote,
+  EstimatedDiscountNote,
+  isEstimatedDiscount,
+} from './tabs';
 
 /** G3 ComplexHeader — 접수 배지 · 현재 구매가 범위 · 전매 D-day · 입주 · 포함 분류 · 종합 점수 */
 export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
@@ -83,6 +88,10 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 <span className="text-muted" data-testid="header-discount-note">
                   {discountShortNote(price)}
                 </span>
+              ) : null}
+              {isEstimatedDiscount(price.discount) ? (
+                // 계약 .13 F2(D16-1): 파서 할인은 '추정' — 안내 + G7 사람 확인 링크
+                <EstimatedDiscountNote complexId={header.id} testId="header-discount-estimated" />
               ) : null}
             </dd>
           ) : null}

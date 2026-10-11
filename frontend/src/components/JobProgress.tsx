@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useJob, usePublishChain } from '@/api/hooks';
-import { publishPhase, publishTarget, type PublishPhase } from '@/api/jobWatch';
+import {
+  nextPublishJobId,
+  PUBLISH_CHAIN_MAX,
+  publishPhase,
+  publishTarget,
+  requeueCount,
+  type PublishPhase,
+} from '@/api/jobWatch';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, tDynamic } from '@/i18n';
 import type { JobLike } from '@/lib/contract';
@@ -31,6 +38,8 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
   const status = tDynamic(`job.status.${job.status}`, job.status);
   const active = job.status === 'queued' || job.status === 'running';
   const progress = job.progress && job.progress.total > 0 ? job.progress : null;
+  // 계약 .13 F4(D16-3): 발행 busy → 다시 queued(지연 재큐잉) — 실패가 아니라 기다리는 중이라고 보인다
+  const requeued = requeueCount(job);
   return (
     <div
       role="status"
@@ -65,6 +74,11 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
         ) : (
           <progress className="h-1 w-full" aria-label={status} />
         )
+      ) : null}
+      {requeued !== null ? (
+        <p className="text-muted" data-testid="job-requeued">
+          <MetaText kind="count" k="job.requeued" params={{ n: requeued }} />
+        </p>
       ) : null}
       {job.error_text ? (
         <p className="text-danger">{t('job.error', { detail: job.error_text })}</p>
@@ -154,12 +168,18 @@ function PublishChain({
   const { snapshots } = useSnapshot();
   const target = last ? publishTarget(last) : null;
   const snapshot = target === null ? undefined : snapshots.find((s) => s.id === target);
+  // 사슬이 상한에 닿았는데 마지막 잡이 또 다음 잡을 가리키면 더 잇지 않는다(usePublishChain) — 알린다(8차 m16)
+  const capped =
+    chain.length >= PUBLISH_CHAIN_MAX &&
+    chain[chain.length - 1] !== undefined &&
+    nextPublishJobId(chain[chain.length - 1] as NonNullable<(typeof chain)[number]>) !== null;
   const phase = publishPhase({
     trigger,
     last,
     snapshot,
     watchStart: watchStart ?? now,
     now,
+    capped,
   });
   const waiting = phase.kind === 'trigger' || phase.kind === 'waiting' || phase.kind === 'deferred';
   // 잡 폴링이 멈춘 뒤(미룸·겹친 발행)에도 상한을 넘기면 알린다 — 1분마다 시각만 다시 본다
@@ -196,9 +216,26 @@ function PublishOutcome({ phase }: { phase: PublishPhase }) {
         </p>
       );
     case 'blocked':
+      // 8차 m19: 사유는 ko.json 문구 + 포맷한 숫자(남은 모순 주장 수), 서버 사유는 코드 접두를 뗀 것
       return (
         <p className="text-xs text-danger" role="alert" data-testid="publish-blocked">
-          {t('job.publishBlocked', { detail: phase.detail })}
+          {phase.contradicted !== null ? (
+            <MetaText
+              kind="count"
+              k="job.publishBlockedContradicted"
+              params={{ n: phase.contradicted }}
+            />
+          ) : phase.detail !== null ? (
+            t('job.publishBlocked', { detail: phase.detail })
+          ) : (
+            t('job.publishBlockedUnknown')
+          )}
+        </p>
+      );
+    case 'capped':
+      return (
+        <p className="text-xs text-danger" role="alert" data-testid="publish-capped">
+          <MetaText kind="count" k="job.publishChainCapped" params={{ n: PUBLISH_CHAIN_MAX }} />
         </p>
       );
     case 'publishFailed':
