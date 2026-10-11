@@ -999,8 +999,27 @@ def _mark(conn: Connection | Session, snapshot_id: int, unit: Unit, rows: int, *
         )
 
 
+@contextmanager
+def write_connection(engine: Engine) -> Iterator[Connection]:
+    """저장본 쓰기·전환용 연결 하나. SQLite 면 이 연결의 WAL 자동 체크포인트를 끄고(끝나면 되돌린 뒤 쓰기 잠금 없이 PASSIVE
+    체크포인트) — 저장본 수 MB 를 쓰는 동안 커밋 안에서 체크포인트(WAL → DB 복사·fsync)가 돌면 그 커밋(쓰기 잠금)이 부하에서
+    수 초가 됐다(R3g D14-5 측정: 묶음 3.0s·전환 1.7s → 0.02~0.08s)."""
+    with engine.connect() as conn:
+        raw: Any = conn.connection.dbapi_connection if engine.dialect.name == "sqlite" else None
+        if raw is not None:  # 자동 커밋(isolation_level None) — BEGIN 없이 PRAGMA
+            raw.execute("PRAGMA wal_autocheckpoint=0")
+        try:
+            yield conn
+        finally:
+            if conn.in_transaction():
+                conn.rollback()
+            if raw is not None:
+                raw.execute("PRAGMA wal_autocheckpoint=1000")
+                raw.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchall()
+
+
 def write_rows(
-    engine: Engine,
+    bind: Engine | Connection,
     snapshot_id: int,
     rows: Sequence[ViewRow],
     *,
@@ -1010,7 +1029,11 @@ def write_rows(
 
     ``finish`` = 끝낼 단위 → 그 단위의 최종 행 수: 단위마다 **그 단위의 마지막 행이 든 묶음 트랜잭션**에 완료 표식을 쓴다
     (D15-3). 이번에 쓸 행이 없는 단위는 마지막 묶음(행이 아예 없으면 따로 한 트랜잭션)에서. 행은 단위별로 이어져 있어야 한다
-    (``compute`` 의 순서)."""
+    (``compute`` 의 순서). ``bind`` 가 엔진이면 ``write_connection`` 하나로 쓴다."""
+    if isinstance(bind, Engine):
+        with write_connection(bind) as conn:
+            return write_rows(conn, snapshot_id, rows, finish=finish)
+    conn = bind
     st = WriteStats()
     todo = dict(finish or {})
     last: dict[Unit, int] = {}
@@ -1021,7 +1044,7 @@ def write_rows(
     for n, chunk in enumerate(chunks):
         t = time.perf_counter()
         end = pos + len(chunk)
-        with engine.begin() as conn:
+        with conn.begin():
             conn.execute(insert(SnapshotView), _row_dicts(snapshot_id, chunk))
             for u, total in list(todo.items()):
                 at = last.get(u)
@@ -1035,7 +1058,7 @@ def write_rows(
         st.max_lock_s = max(st.max_lock_s, dt)
         st.total_write_s += dt
     if todo:  # 쓸 행이 없었다(빈 단위만)
-        with engine.begin() as conn:
+        with conn.begin():
             for u, total in todo.items():
                 _mark(conn, snapshot_id, u, total)
     return st
@@ -1197,52 +1220,76 @@ def _publish_locked(
         _purge_unpublished(conn, snapshot_id)
     done = 0
     try:
-        ws = write_rows(engine, snapshot_id, computed.rows, finish=_unit_totals(computed))
-        t = time.perf_counter()
-        with Session(bind=engine) as s, s.begin():
-            # 쓰기 잠금부터(아무것도 바꾸지 않는 UPDATE): SQLite 는 읽은 뒤 쓰기로 올리다 그 사이 다른 커밋이 있으면 즉시
-            # 'database is locked'(BUSY_SNAPSHOT) — 먼저 잠그면 아래 읽기·쓰기가 한 시점이다(R3 7차 재현 c/test_c_flip_busy)
-            s.execute(
-                update(Snapshot)
-                .where(Snapshot.id == snapshot_id)
-                .values(publish_lease=Snapshot.publish_lease)
-                .execution_options(synchronize_session=False)
+        with write_connection(engine) as wconn:
+            ws = write_rows(wconn, snapshot_id, computed.rows, finish=_unit_totals(computed))
+            t = time.perf_counter()
+            done, n = _flip(
+                wconn, snapshot_id, now=now, lease=lease, followups=computed.followups, remaining=remaining
             )
-            n = len(remaining(s, snapshot_id))
-            if not n:
-                res = s.execute(
-                    update(Snapshot)
-                    .where(
-                        Snapshot.id == snapshot_id,
-                        Snapshot.status == "ready",
-                        Snapshot.publish_lease == lease,
-                    )
-                    .values(status="published", published_at=now)
-                    .execution_options(synchronize_session=False)
-                )
-                done = int(getattr(res, "rowcount", 0) or 0)
-            if done and computed.followups:  # 이 계산에 들어 있는 쓰기의 후속 발행 잡 = 포함됨(D15-6)
-                s.execute(
-                    update(JobRun)
-                    .where(JobRun.id.in_(computed.followups), JobRun.status == "queued")
-                    .values(
-                        status="done",
-                        finished_at=now,
-                        stats={
-                            "published": True,
-                            "included_in_snapshot_id": snapshot_id,
-                            "publish_job_id": _lease_job_id(lease),  # 계약 .12: 이 쓰기를 발행한 잡
-                        },
-                    )
-                    .execution_options(synchronize_session=False)
-                )
-            if not done:
-                _purge_unpublished(s.connection(), snapshot_id)
-        flip_s = time.perf_counter() - t
+            flip_s = time.perf_counter() - t
     except BaseException:
         with engine.begin() as conn:
             _purge_unpublished(conn, snapshot_id)
         raise
+    return _published_result(computed, ws, flip_s=flip_s, t0=t0, done=done, n=n, snapshot_id=snapshot_id)
+
+
+def _flip(
+    conn: Connection,
+    snapshot_id: int,
+    *,
+    now: str,
+    lease: str,
+    followups: Sequence[int],
+    remaining: Callable[[Session, int], Sequence[Any]],
+) -> tuple[int, int]:
+    """짧은 전환 트랜잭션: (published 로 바뀐 행 수, 남은 contradicted 수)."""
+    done = 0
+    with Session(bind=conn) as s, s.begin():
+        # 쓰기 잠금부터(아무것도 바꾸지 않는 UPDATE): SQLite 는 읽은 뒤 쓰기로 올리다 그 사이 다른 커밋이 있으면 즉시
+        # 'database is locked'(BUSY_SNAPSHOT) — 먼저 잠그면 아래 읽기·쓰기가 한 시점이다(R3 7차 재현 c/test_c_flip_busy)
+        s.execute(
+            update(Snapshot)
+            .where(Snapshot.id == snapshot_id)
+            .values(publish_lease=Snapshot.publish_lease)
+            .execution_options(synchronize_session=False)
+        )
+        n = len(remaining(s, snapshot_id))
+        if not n:
+            res = s.execute(
+                update(Snapshot)
+                .where(
+                    Snapshot.id == snapshot_id,
+                    Snapshot.status == "ready",
+                    Snapshot.publish_lease == lease,
+                )
+                .values(status="published", published_at=now)
+                .execution_options(synchronize_session=False)
+            )
+            done = int(getattr(res, "rowcount", 0) or 0)
+        if done and followups:  # 이 계산에 들어 있는 쓰기의 후속 발행 잡 = 포함됨(D15-6)
+            s.execute(
+                update(JobRun)
+                .where(JobRun.id.in_(followups), JobRun.status == "queued")
+                .values(
+                    status="done",
+                    finished_at=now,
+                    stats={
+                        "published": True,
+                        "included_in_snapshot_id": snapshot_id,
+                        "publish_job_id": _lease_job_id(lease),  # 계약 .12: 이 쓰기를 발행한 잡
+                    },
+                )
+                .execution_options(synchronize_session=False)
+            )
+        if not done:
+            _purge_unpublished(s.connection(), snapshot_id)
+    return done, n
+
+
+def _published_result(
+    computed: Computed, ws: WriteStats, *, flip_s: float, t0: float, done: int, n: int, snapshot_id: int
+) -> PublishResult:
     stats = {
         **computed.stats,
         "write_chunks": ws.chunks,
