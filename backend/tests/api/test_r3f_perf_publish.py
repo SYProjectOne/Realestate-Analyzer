@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -75,12 +76,49 @@ def _ready_revision() -> int:
         return int(job.id)
 
 
+def _proc_state() -> dict[str, Any]:
+    """측정 프로세스 상태(실패 원인 진단용 — 전체 스위트에서만 실패할 때 앞선 테스트가 남긴 것이 보이게)."""
+    import gc
+
+    out: dict[str, Any] = {
+        "gc_enabled": gc.isenabled(),
+        "gc_threshold": gc.get_threshold(),
+        "gc_count": gc.get_count(),
+        "gc_frozen": gc.get_freeze_count(),
+        "threads": sorted(t.name for t in threading.enumerate()),
+    }
+    try:
+        import psutil
+
+        me = psutil.Process()
+        out["rss_mb"] = round(me.memory_info().rss / 1e6, 1)
+        out["children"] = [c.pid for c in me.children(recursive=True)]
+        out["cpu_count"] = psutil.cpu_count()
+        out["sys_cpu_pct"] = psutil.cpu_percent(interval=None)
+        out["sys_mem_pct"] = psutil.virtual_memory().percent
+    except Exception as exc:  # pragma: no cover - psutil 없음
+        out["psutil"] = type(exc).__name__
+    return out
+
+
+def _wal_state(db: Path) -> dict[str, Any]:
+    import sqlite3
+
+    wal = Path(str(db) + "-wal")
+    out: dict[str, Any] = {"wal_mb": round(wal.stat().st_size / 1e6, 2) if wal.exists() else None}
+    try:
+        con = sqlite3.connect(str(db), timeout=1)
+        out["journal_mode"] = con.execute("PRAGMA journal_mode").fetchone()[0]
+        out["wal_autocheckpoint"] = con.execute("PRAGMA wal_autocheckpoint").fetchone()[0]
+        con.close()
+    except sqlite3.Error as exc:
+        out["error"] = str(exc)
+    return out
+
+
 def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_client: TestClient) -> None:
-    jid = _ready_revision()
-    errors: list[str] = []
-    # R3h: API 쓰기는 **다른 프로세스**(``_perf_writer.py``)가 보낸다 — 운영처럼 api·worker 가 다른 프로세스다. 같은 프로세스의
-    # 스레드로 재면 잡의 계산(GIL·GC)이 API 스레드를 멈춰 쓰기 잠금과 무관한 지연(0.4~2.3s, WAL 크기 변화 없이 계산 구간에서만)이
-    # 섞였다. 잡 쪽 GC 멈춤은 따로 잰다(gc_max_pause_s — 발행은 계산·쓰기 동안 GC 를 멈춘다)
+    """R3h: 실패하면 assert 메시지(그리고 ``PUBLISH_PERF_OUT`` 또는 임시 폴더 ``sa-perf-last.json``)에 측정값 전부 — 잡 시간·API
+    쓰기 최대·p50·느린 요청의 잠금 대기/COMMIT(체크포인트) 나눔·잠금 최대·GC·WAL·스레드·메모리·측정 DB 경로."""
     import gc
     import subprocess
     import sys
@@ -89,91 +127,107 @@ def test_d14_5_publish_job_1000x5_under_30s_and_api_writes_wait_under_1s(synth_c
     from app.core.settings import get_settings
 
     s_now = get_settings()
+    db = Path(s_now.database_url.removeprefix("sqlite:///"))
+    diag: dict[str, Any] = {"db": str(db), "before": {**_proc_state(), **_wal_state(db)}}
+    out = Path(os.environ.get("PUBLISH_PERF_OUT") or Path(tempfile.gettempdir()) / "sa-perf-last.json")
+    diag["diag_file"] = str(out)
+
+    def dump() -> str:
+        text = json.dumps(diag, ensure_ascii=False, indent=2, default=str)
+        out.write_text(text, encoding="utf-8")
+        return text
+
+    def check(ok: bool, what: str) -> None:
+        if not ok:
+            diag["failed"] = what
+            raise AssertionError(f"D14-5 {what}\n{dump()}")
+
+    jid = _ready_revision()
+    # API 쓰기는 **다른 프로세스**(``_perf_writer.py``)가 보낸다 — 운영처럼 api·worker 가 다른 프로세스다. 같은 프로세스의
+    # 스레드로 재면 잡의 계산(GIL·GC)이 API 스레드를 멈춰 쓰기 잠금과 무관한 지연(0.4~2.3s)이 섞였다
     work = Path(tempfile.mkdtemp(prefix="sa-perf-writer-"))
-    out_f, ready_f, stop_f = work / "lat.json", work / "ready", work / "stop"
+    out_f, ready_f, stop_f, err_f = work / "lat.json", work / "ready", work / "stop", work / "stderr.txt"
     backend = Path(__file__).resolve().parents[2]
-    proc = subprocess.Popen(
-        [sys.executable, str(Path(__file__).with_name("_perf_writer.py")),
-         s_now.database_url.removeprefix("sqlite:///"), str(s_now.raw_dir), str(s_now.report_dir),
-         str(out_f), str(ready_f), str(stop_f)],
-        cwd=backend, env={**os.environ, "PYTHONPATH": str(backend)},
-    )  # fmt: skip
-    deadline = time.perf_counter() + 120
-    while not ready_f.exists():
-        assert proc.poll() is None and time.perf_counter() < deadline, "API 쓰기 프로세스가 준비되지 않았다"
-        time.sleep(0.1)
+    t_spawn = time.perf_counter()
+    with err_f.open("wb") as err:
+        proc = subprocess.Popen(
+            [sys.executable, str(Path(__file__).with_name("_perf_writer.py")), str(db), str(s_now.raw_dir),
+             str(s_now.report_dir), str(out_f), str(ready_f), str(stop_f)],
+            cwd=backend, env={**os.environ, "PYTHONPATH": str(backend)}, stdout=subprocess.DEVNULL, stderr=err,
+        )  # fmt: skip
+        try:
+            while not ready_f.exists() and proc.poll() is None and time.perf_counter() - t_spawn < 180:
+                time.sleep(0.1)
+            diag["writer_ready_s"] = round(time.perf_counter() - t_spawn, 2)
+            if not ready_f.exists():
+                diag["writer_returncode"] = proc.poll()
+                diag["writer_stderr"] = err_f.read_text(encoding="utf-8", errors="replace")[-3000:]
+                check(False, "API 쓰기 프로세스가 준비되지 않았다")
+            pauses: list[float] = []
+            started: dict[str, float] = {}
 
-    pauses: list[float] = []
-    started: dict[str, float] = {}
+            def on_gc(phase: str, info: dict[str, int]) -> None:
+                if phase == "start":
+                    started["t"] = time.perf_counter()
+                elif "t" in started:
+                    pauses.append(time.perf_counter() - started.pop("t"))
 
-    def on_gc(phase: str, info: dict[str, int]) -> None:
-        if phase == "start":
-            started["t"] = time.perf_counter()
-        elif "t" in started:
-            pauses.append(time.perf_counter() - started.pop("t"))
-
-    gc.callbacks.append(on_gc)
-    t0 = time.perf_counter()
-    try:
-        status, stats = run_job(jid)
-    finally:
-        wall = time.perf_counter() - t0
-        gc.callbacks.remove(on_gc)
-        stop_f.write_text("stop", encoding="utf-8")
-        proc.wait(timeout=120)
-    rows = json.loads(out_f.read_text(encoding="utf-8"))
+            gc.callbacks.append(on_gc)
+            t0 = time.perf_counter()
+            try:
+                status, stats = run_job(jid)
+            finally:
+                wall = time.perf_counter() - t0
+                gc.callbacks.remove(on_gc)
+                stop_f.write_text("stop", encoding="utf-8")
+                try:
+                    diag["writer_returncode"] = proc.wait(timeout=120)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    diag["writer_returncode"] = "killed"
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+    diag["writer_stderr"] = err_f.read_text(encoding="utf-8", errors="replace")[-2000:]
+    rows = json.loads(out_f.read_text(encoding="utf-8")) if out_f.exists() else []
     shutil.rmtree(work, ignore_errors=True)
     lat = [float(r[1]) for r in rows]
-    errors = [f"status {r[2]}" for r in rows if int(r[2]) != 201]
-    slow = [[r[0], round(float(r[1]), 3)] for r in rows if float(r[1]) > 0.2]
-    assert status == "done" and stats["published"] is True, stats
+    diag.update(
+        job_status=status,
+        job_wall_s=round(wall, 3),
+        job_stats={k: v for k, v in stats.items() if k not in ("carry_forward",)},
+        api_writes=len(lat),
+        api_write_max_s=round(max(lat), 3) if lat else None,
+        api_write_p50_s=round(sorted(lat)[len(lat) // 2], 3) if lat else None,
+        # 느린 요청(0.2초 넘음): [쓰기 프로세스 시작 뒤 초, 전체, SQL 실행 최대(잠금 대기), COMMIT(체크포인트), 상태]
+        slow_writes=[
+            [r[0], round(r[1], 3), round(r[2], 3), round(r[3], 3), r[4]] for r in rows if r[1] > 0.2
+        ][:30],
+        api_errors=[r for r in rows if int(r[4]) != 201][:5],
+        gc_max_pause_s=round(max(pauses), 3) if pauses else 0.0,
+        gc_collections=len(pauses),
+        after={**_proc_state(), **_wal_state(db)},
+    )
+    check(status == "done" and stats.get("published") is True, "발행 잡이 끝나지 않았다")
+    sid = int(stats["snapshot_id"])
     with get_session() as s:
-        sid = int(stats["snapshot_id"])
-        assert s.get(Snapshot, sid).status == "published"  # type: ignore[union-attr]
-        n_cx = len(
-            set(
-                s.scalars(
-                    select(SnapshotView.key).where(
-                        SnapshotView.snapshot_id == sid, SnapshotView.kind == "complex"
-                    )
-                )
-            )
-        )
-    result = {
-        "complexes": n_cx,
-        "scenarios": 5,
-        "job_wall_s": round(wall, 3),
-        "job_total_s": stats["total_s"],
-        "compute_s": stats["compute_s"],
-        "write_max_lock_s": stats["write_max_lock_s"],
-        "flip_s": stats["flip_s"],
-        "carry_lock_s": stats.get("carry_lock_s"),
-        "rows": stats["rows"],
-        "bytes": stats["bytes"],
-        "provenance_ids": stats["provenance_ids"],
-        "api_writes": len(lat),
-        "api_write_max_s": round(max(lat), 3) if lat else None,
-        "api_write_p50_s": round(sorted(lat)[len(lat) // 2], 3) if lat else None,
-        "gc_max_pause_s": round(max(pauses), 3) if pauses else 0.0,
-        "gc_collections": len(pauses),
-        "slow_writes": slow[:20],  # [쓰기 프로세스 시작 뒤 초, 지연]
-        "timing_s": stats.get("timing_s"),
-    }
-    out = os.environ.get("PUBLISH_PERF_OUT")
-    if out:
-        Path(out).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    assert n_cx >= 1016
-    assert not errors, errors[:3]
-    assert len(lat) >= 10, "잡 동안 API 쓰기를 충분히 보냈다"
-    assert wall <= JOB_LIMIT_S, result
-    assert max(lat) <= LOCK_LIMIT_S, result
-    assert stats["write_max_lock_s"] <= LOCK_LIMIT_S, result
+        n_cx = len(set(s.scalars(select(SnapshotView.key).where(SnapshotView.snapshot_id == sid,
+                                                                SnapshotView.kind == "complex"))))  # fmt: skip
+        published = s.get(Snapshot, sid).status == "published"  # type: ignore[union-attr]
+    diag["complexes"] = n_cx
+    dump()
+    check(published and n_cx >= 1016, "발행 리비전 단지 수")
+    check(not diag["api_errors"], "API 쓰기 오류")
+    check(len(lat) >= 10, "잡 동안 API 쓰기를 충분히 보내지 못했다")
+    check(wall <= JOB_LIMIT_S, f"잡 {wall:.1f}s > {JOB_LIMIT_S}s")
+    check(max(lat) <= LOCK_LIMIT_S, f"API 쓰기 최대 {max(lat):.3f}s > {LOCK_LIMIT_S}s")
+    check(float(stats["write_max_lock_s"]) <= LOCK_LIMIT_S, "저장본 묶음 쓰기 잠금")
     # 발행 목록 GET 0.2초 기준 유지(저장본 — D13-1)
     synth_client.get(f"/api/snapshots/{sid}/complexes?size=1000", headers=READ)
     t = time.perf_counter()
     r = synth_client.get(f"/api/snapshots/{sid}/complexes?size=1000", headers=READ)
-    assert r.status_code == 200 and len(r.json()["items"]) == 1000
-    assert time.perf_counter() - t < 0.5, "발행 목록 GET(저장본 + sha256 검증)"
+    check(r.status_code == 200 and len(r.json()["items"]) == 1000, "발행 목록 GET")
+    check(time.perf_counter() - t < 0.5, "발행 목록 GET(저장본 + sha256 검증) 0.5초")
 
 
 def test_d14_5_score_provenance_batch_equals_single(synth_client: TestClient) -> None:
