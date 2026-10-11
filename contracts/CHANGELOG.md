@@ -73,6 +73,15 @@ R3 8차 리뷰(`docs/design/wp/R3_REVIEW8.md`) 후속 — CEO 결정 D16(`docs/d
   `python scripts/tasks.py regress` 와 동시 2회: 잡 17.7s·17.7s, API 쓰기 응답 최대 **0.484s·0.082s**(p50 0.004s, 321·322건), 저장본
   묶음 쓰기 잠금 최대 0.033·0.022s, 이월 복사 단계 잠금 최대 0.094·0.061s, 전환 0.002·0.003s, 잡 쪽 GC 멈춤 최대 0.019·0.021s. 저장본
   5,439행·12.2MB. 출처 서랍 76,909개(.12 의 112,380 → 줄었다: 보고서 점수 prov 가 API 서랍 id 와 같아져 겹친다 — m6).
+- **CEO 검증에서 전체 스위트 1회 실패 후속**: 시험이 실패 때 측정값 전부(잡·API 최대/p50·느린 요청의 SQL 실행(잠금 대기)/COMMIT
+  나눔·잠금·GC·WAL·스레드·메모리·DB 경로)를 assert 메시지와 파일(`PUBLISH_PERF_OUT`, 없으면 임시 폴더 `sa-perf-last.json`)로 남긴다.
+  디스크 부하(fsync 큰 쓰기) + 전체 pytest + regress 연속 실행에서 재현: API 쓰기 최대 5.27·1.06·1.20s, **지연은 전부 COMMIT**(SQL 실행
+  ≤0.2s) — 발행이 WAL 에 쓴 수십 MB 를 API 커밋이 자동 체크포인트(WAL→DB 복사·fsync)로 떠안았다(API 쪽 자동 체크포인트를 끄면 같은
+  부하에서 COMMIT 최대 0.0~0.16s). 수정: SQLite 개발 모드 API 프로세스(`create_app` lifespan)는 요청 커밋이 체크포인트하지 않고
+  (`wal_autocheckpoint=0`) 배경 스레드가 1초마다 PASSIVE 체크포인트(`core.db.sqlite_api_checkpointer` — 쓰기 잠금 없음, Postgres 는
+  해당 없음). 측정 쓰기 프로세스 로그는 WARNING(요청 로그의 디스크 쓰기가 측정에 섞였다). 수정 뒤 디스크 부하 4회 API 최대 0.17~0.26s.
+  최종 코드 전체 pytest 2회(각각 regress 를 처음부터 끝까지 연속 실행하며, junit 실패 0): 3763 passed·3763 passed, D14-5 잡 17.9·18.7s,
+  API 쓰기 최대 0.205·0.257s(p50 0.004s), COMMIT 최대 0.000·0.001s, 묶음 쓰기 잠금 0.023·0.025s. 기준(30s·1s)은 그대로.
 
 ## 2026-10-09.12
 
