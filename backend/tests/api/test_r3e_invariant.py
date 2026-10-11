@@ -52,29 +52,56 @@ def _publish_revision() -> int:
 
 
 def _prov_ids(client: TestClient, rev: int) -> list[str]:
-    """그 리비전 저장본이 가리키는 출처 id 일부(단지 CX 상세·대시보드·시장·주장) — 출처 서랍 URL(D14-1)."""
+    """그 리비전이 보이는 출처 id — 출처 서랍 URL(D14-1). R3 8차 m20(D15-2): **모든 시나리오**의 단지 CX 상세·대시보드·
+    시장·비교·민감도 응답, 주장 목록, 접수 근거 ``raw_document_id`` → ``rd_``, 그리고 보고서 저장본(모든 시나리오 — 점수
+    ``sc_``·``st_`` 는 종류별 앞 20개)의 prov. 시나리오 patch 행에만 있던 prov 도 응답(되살린 본문)으로 들어온다."""
+    from sqlalchemy import select
+
+    from app.core.db import get_session
+    from app.models import Scenario
+    from app.snapshot_view import stored
+
     acc: set[str] = set()
 
-    def walk(o: Any) -> None:
+    def walk(o: Any, out: set[str]) -> None:
         if isinstance(o, dict):
             p = o.get("prov")
             if isinstance(p, str):
-                acc.add(p)
+                out.add(p)
+            rd = o.get("raw_document_id")
+            if isinstance(rd, int) and not isinstance(rd, bool):
+                out.add(f"rd_{rd}")
             for v in o.values():
-                walk(v)
+                walk(v, out)
         elif isinstance(o, list):
             for v in o:
-                walk(v)
+                walk(v, out)
 
-    for u in (
-        f"/api/complexes/{CX}?snapshot={rev}",
-        f"/api/snapshots/{rev}/dashboard",
-        f"/api/snapshots/{rev}/market",
-        f"/api/snapshots/{rev}/claims",
-    ):
+    with get_session() as s:
+        scs = list(s.scalars(select(Scenario.id).order_by(Scenario.id)))
+    urls = [f"/api/snapshots/{rev}/claims"]
+    for sc in scs:
+        urls += [
+            f"/api/complexes/{CX}?snapshot={rev}&scenario={sc}",
+            f"/api/snapshots/{rev}/dashboard?scenario={sc}",
+            f"/api/snapshots/{rev}/market?scenario={sc}",
+            f"/api/snapshots/{rev}/sensitivity?scenario={sc}",
+            f"/api/snapshots/{rev}/compare?ids=1,{CX}&scenario={sc}",
+        ]
+    for u in urls:
         r = client.get(u, headers=READ)
         assert r.status_code == 200, (u, r.text[:200])
-        walk(r.json())
+        walk(r.json(), acc)
+    report: set[str] = set()
+    with get_session() as s:
+        for sc in scs:
+            body = stored(s, rev, "report", scenario=str(sc))
+            if body is not None:
+                walk(body, report)
+    for prefix in ("sc_", "st_"):
+        acc |= set(sorted(p for p in report if p.startswith(prefix))[:20])
+    acc |= {p for p in report if not p.startswith(("sc_", "st_"))}
+    assert any(p.startswith("rd_") for p in acc) and len(scs) >= 5
     return sorted(acc)
 
 

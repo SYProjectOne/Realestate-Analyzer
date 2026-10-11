@@ -521,9 +521,13 @@ def test_m1_busy_job_fails_with_publish_in_progress(client: TestClient) -> None:
     lease = acquire_lease(eng(), rev, "pid:other")
     assert lease is not None
     st, stats = run_job(j1)
-    assert st == "failed" and stats.get("publish_in_progress") == "pid:other", stats
+    # D16-3(R3h): busy 는 실패가 아니라 지연 재큐잉 — queued + requeue_reason 'publish_in_progress: …'(error_text 없음)
+    assert st == "queued", stats
     with get_session() as s:
-        assert "publish_in_progress" in (s.get(JobRun, j1).error_text or "")  # type: ignore[union-attr]
+        row = s.get(JobRun, j1)
+        assert row is not None and row.error_text is None
+        assert "publish_in_progress" in str((row.stats or {}).get("requeue_reason")), row.stats
+        assert (row.stats or {}).get("publish_in_progress") == "pid:other", row.stats
         assert s.get(Snapshot, rev).status == "ready"  # type: ignore[union-attr]
     release_lease(eng(), rev, lease)
 
@@ -537,33 +541,8 @@ def test_m1_purge_never_touches_published_revision(client: TestClient) -> None:
     assert len(_row_bytes(SNAP)) == n
 
 
-def test_flip_transaction_takes_write_lock_first(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    """R3 7차 재현 c/test_c_flip_busy: 전환 트랜잭션의 읽기와 UPDATE 사이 다른 연결이 커밋해도 SQLite BUSY_SNAPSHOT 으로 잡이
-    실패하지 않는다(전환은 쓰기 잠금부터)."""
-    from sqlalchemy import text
-
-    import app.judge.claims as jc
-
-    out = _link(client, _cat("R3g 역7"))
-    jid = out["job_id"]
-    real = jc.remaining_contradicted
-    calls = {"n": 0}
-
-    def hooked(session: Any, sid: int) -> Any:
-        res = real(session, sid)
-        calls["n"] += 1
-        if calls["n"] == 2:  # 전환 트랜잭션 안의 재확인
-            try:
-                with get_engine().begin() as conn:
-                    conn.execute(text("UPDATE region SET name = name WHERE id = 1"))
-            except Exception:  # 전환이 쓰기 잠금을 들고 있으면 기다리다 끝난다(busy_timeout) — 실패해도 이 시험의 대상이 아니다
-                pass
-        return res
-
-    monkeypatch.setattr(jc, "remaining_contradicted", hooked)
-    st, stats = run_job(jid)
-    monkeypatch.setattr(jc, "remaining_contradicted", real)
-    assert st == "done" and stats["published"], stats
+# R3 8차 m21: 여기 있던 ``test_flip_transaction_takes_write_lock_first`` 는 수정 전 코드(쓰기 잠금 UPDATE 없음)에서도 통과해
+# 결함을 잡지 못했다 — ``tests/api/test_r3h_core6.py::test_m21_flip_takes_write_lock_before_reading`` 으로 바꿨다(잠금을 빼면 실패).
 
 
 def test_m16_post_catalyst_returns_job_id(client: TestClient, fake_catalyst: list[dict[str, Any]]) -> None:  # noqa: F811
@@ -657,6 +636,17 @@ def test_m10_post_reports_checks_default_and_compare_inputs(client: TestClient) 
         "/api/reports", json={"snapshot_id": rev, "format": "html", "compare_snapshot_id": 11}, headers=WRITE
     )
     assert r.status_code == 503 and r.json()["code"] == "materialize_pending", r.text
+    r = client.post(
+        "/api/reports",
+        json={"snapshot_id": rev, "format": "html", "compare_snapshot_id": SNAP},
+        headers=WRITE,
+    )
+    # R3h(D16-2·m3·m12): 비교 리비전(12)의 report_diff 는 행만 있고 표식이 없다 = 미완 → 503. backfill 이 표식을 쓰면 202
+    assert r.status_code == 503 and r.json()["code"] == "materialize_pending", r.text
+    from app.core.settings import get_settings
+    from app.snapshot_view import backfill
+
+    assert not backfill(get_engine(), settings=get_settings())["failed"]
     r = client.post(
         "/api/reports",
         json={"snapshot_id": rev, "format": "html", "compare_snapshot_id": SNAP},

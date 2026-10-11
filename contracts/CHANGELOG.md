@@ -2,6 +2,67 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.13
+
+R3 8차 리뷰(`docs/design/wp/R3_REVIEW8.md`) 후속 — CEO 결정 D16(`docs/design/DECISIONS.md`)과 R3h 배정(`docs/design/wp/R3H_FIX.md` CORE6).
+계약 소유자 = R3h CORE6(브랜치 `wp/r3h-core6`). 마이그레이션 `0013`(`0013_r3h.py`, **데이터만** — 스키마 변경 없음). 필드 삭제 없음,
+**enum 값 1 추가**(`HumanCheckField` `discount`), **응답 상태 1 추가**(`PATCH /catalysts/{id}` 200 — 바뀐 것 없음), 잡 상태 의미 변경
+(발행 busy → 지연 재큐잉 queued). 저장 모양 버전(`SHAPE_VERSION`) 그대로 1.
+
+**프론트(FE7)가 맞출 것** — 아래 'FE 차이' 표 하나만 보면 된다. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시
+만들지 않았다(frontend/** = FE7 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### FE 차이(FE7 — 화면이 맞출 것)
+
+| # | 대상 | .12 | .13 | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| F1 | **사람 확인 `discount`**(`POST /ops/human-checks` `field`) | 없음(할인은 공고문 파서 '확인됨'만 차감) | **새 HumanCheckField 값 `discount`** = 기준 타입 할인. `value_text` = 원 단위 정수(쉼표·끝 '원' 허용, 0 ~ 1천억, 0 = 할인 없음 확인). 응답 `entity` = `payment_terms`, `entity_id` = 현재 공고(지정 `entity_id` 는 그 단지 납부 조건 행). 그 값이 라벨 **확인됨**(reason '사람 확인(kind)')으로 현재 공고 `discount_by_type.<기준 타입>` 에 들어가고 구매가에서 빠진다(상세·목록·비교·보고서·점수). 의미 단위(D13-2) — 그 단지 다른 공고의 같은 타입 할인 칸에도. 형·범위 틀리면 422 `field_errors[0].loc = ["body","value_text"]`. 201 + `rejudge_job_id`·`job_id` 는 다른 사실 필드와 같다. 화면: G7 사람 확인 폼에 '할인(기준 타입, 원)' 칸 | D16-1 · N-C1 |
+| F2 | 할인 표시(`price.discount`·`payment[].discount_by_type`·`price.discount_applied`) | 허용 꼴('84A 분양가 할인 N원' 한 줄)만 공고문 파서 '확인됨'(차감) | 공고문 파서 할인은 **언제나 '추정'**(reason `공고문 자동 추출 — 조건 확인 필요`, 분양가 할인 명시 없는 줄이면 `…, 분양가 할인 명시 아님`) → `discount_applied` false. **'확인됨'(차감)은 사람 확인 할인뿐**(reason `사람 확인(phone)` 등). 화면: '추정' 할인 옆 "공고문에서 찾은 할인(조건 확인 필요) — 사람 확인 시 구매가에 반영" 안내 + G7 사람 확인(F1) 링크. 0013 이 기존 DB 의 파서 '확인됨' 할인을 '추정'으로 바꾼다 | D16-1 · N-C1 |
+| F3 | `PATCH /catalysts/{id}` 응답 | 연결 집합이 바뀔 때만 202 + `job_id`. 예정월·좌표만 바꾸면 202 + `job_id` **null**(발행 상세 옛 값) | 보이는 값(위치 확인·`lat`·`lon`·`expected_ym`·연결) 중 **하나라도 바뀌면 202 + `job_id`**(발행 리비전이면 snapshot.publish carry, 발행 전이면 후속 발행 잡 — .12 F4 그대로). **바뀐 것이 없으면 200** + `job`·`job_id` null(새 잡·리비전·출처 행 없음). 화면: 200 이면 잡 감시 없이 끝 | D16-4 · N-M4 |
+| F4 | `snapshot.publish` 잡이 busy(같은 리비전을 다른 발행이 들고 있음) | failed `publish_in_progress: …`(후속 잡이면 그 변경이 유실) | **지연 재큐잉**: status 가 다시 **`queued`**, `error_text` null, stats `requeue_count`(누적)·`not_before`(KST ISO — 그 전에는 worker 가 집지 않음, 2·4·8·16·30초…)·`requeue_reason`(`publish_in_progress: …`)·`publish_in_progress`(보유자). 40회(약 18분)를 넘으면 그때 failed `publish_in_progress`. 화면(jobWatch): queued + `requeue_reason` = **진행 중**(발행 막힘 아님, 30분 상한 그대로) — 잡이 done 이 될 때까지 감시 | D16-3 · N-M3 |
+| F5 | 그 자리 발행(daily 이월·주간 마감·지역 확장·bootstrap) stats `publish_job_id` | 그 자리 발행이 busy 면 `publish_in_progress` + `publish_job_id` = 자기(발행 안 됨) | busy 면 그 리비전을 발행할 `snapshot.publish` 잡(들고 있는 잡이 그 리비전의 snapshot.publish 면 그 잡, 아니면 새 잡)을 `publish_job_id`(= `publish_retry_job_id`)로. 화면: `publish_job_id` ≠ 자기면 그 잡을 이어 감시(.12 F15 규칙 그대로) | D16-3 · m5 |
+| F6 | 다른 발행에 포함돼 닫힌 후속 잡 stats `publish_job_id` | 그 자리 발행(holder 'pid:…')이 포함하면 **null** | 포함한 발행 잡 id(그 자리 발행이면 그 수집·확장·bootstrap 잡 id) — 늘 정수 | D16-3 · m5 · F15 |
+| F7 | 발행 리비전 GET 503 `materialize_pending` | 행은 있는데 완료 표식이 없는 단위 → 404 `not_found`(영구) | **503**(backfill 이 표식을 쓰면 200). 업그레이드(0012·0013) 직후 backfill 이 끝날 때까지 모든 발행 리비전이 잠깐 503 — 화면은 .12 D15-8 그대로(같은 키 placeholder·재시도) | D16-2 · m3 · N-M1·N-M2 |
+| F8 | `POST /reports`(비교 리비전 지정) | 비교 리비전 `report_diff` 미완을 안 봐서 202 뒤 잡 실패 | 비교 리비전의 그 시나리오 `report_diff`(또는 `report`)가 미완이면 **503** `materialize_pending`(202 전에). 비교 리비전에 그 시나리오가 없으면 그대로 202(delta 표 생략) | m12 |
+| F9 | `POST /ops/human-checks` 422 — checked_at 과 **다른 칸도** 틀림 | `checked_at_*` code 로 다른 칸 오류가 사라지거나, 스키마 오류(kind 등)만 남고 checked_at 이 빠짐 | checked_at **만** 틀리면 `checked_at_format`·`checked_at_future`·`checked_at_before_source`(.12 F14 그대로). 다른 칸도 틀리면 **`validation_error`** + `field_errors` 에 **모든 칸**(`["body","checked_at"]` 포함, 순서: checked_at 먼저). 화면(HumanCheckForm): field_errors 전부를 칸마다 표시 | m11 · F14 |
+| F10 | 보고서 HTML 점수 Fact 의 출처 id | `sc_<성분 행 id>`·`st_<합계 행 id>`(서랍 없음, KPI `st_<실행>` 과 충돌) | API 와 같은 `sc_<실행>_<단지>_<성분>`·`st_<실행>_<단지>` — 출처 서랍 200. 화면 영향 없음(보고서만) | m6 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.12) | 이후(.13) | 결정·리뷰 |
+| --- | --- | --- | --- | --- |
+| S1 | 공고문 파서 할인 | 허용 목록·다음 줄 조건 낱말로 '확인됨'/'추정' | 언제나 '추정'(허용 목록·금지 낱말 코드 삭제). 0원·경품·지원·'할인 없음' 줄은 후보 없음(그대로) | D16-1 |
+| S2 | 0012 데이터 단계 | 행 묶음 = done, 일부만 쓴 단위는 '시나리오 사이 최대 행 수'·'서랍 색인 묶음 수 + 1' 추정으로 판단 | **전부 done=false**(rows = 지금 행 수). 0013 은 .12 DB 의 모든 표식을 done=false 로(재검증) | D16-2 · N-M1·N-M2 |
+| S3 | 완결성 | 표식 목록에 없는 단위는 놓침 | 행이 있고 표식이 없는 단위 = 미완(`unit_states`·`pending_count`·GET 503·backfill) | D16-2 · m3 |
+| S4 | backfill 새 키 범위 | 지금 계산한 키 전부(발행 뒤 생긴 단지·생활권도) | 그 리비전 단지 목록·시장 저장본의 단지·생활권 id ∪ 이미 있는 키만(근거 저장본이 없으면 제한 없음). 출처 서랍은 저장 본문 + 새로 넣은 행의 id 만(지금 계산의 다른 id 는 넣지 않는다) | D16-2 · D11-1 |
+| S5 | 발행 busy | failed `publish_in_progress` | 지연 재큐잉(F4) — `runner.queued_ids` 가 `not_before` 를 본다(벽시계). 그 자리 발행은 holder = `job:<그 잡 id>` | D16-3 |
+| S6 | 실패 정리 DELETE | '발행 전' 상태 조건만 | '발행 전' + **임대를 아직 든 동안**(`publish_lease = 내 임대`) — 넘겨받은 새 보유자의 행을 지우지 않는다 | D16-3 · m4 |
+| S7 | 이월 판단(`changed_after_runs`) | 점수만 재계산 rejudge 실패·판정기 버전 변경 이벤트 무시, 판정 시각 = 끝 시각, 옛 리비전 판정은 키가 작으면 셈 | 점수만 재계산 실패 → 그 지역 전 단지 재판정(m7), `entity='judge'` 이벤트 = 전 단지(m8), 판정 기준 = **시작** 시각(m9), prev 가 아닌 리비전의 판정은 prev 생성 전에 끝난 것만(m10) | m7~m10 |
+| S8 | redact | — | 환경변수 꼴 키(`DATA_GO_KR_KEY=`·`AWS_ACCESS_KEY_ID=`·`crtfc_key`)·`credentials`·`webhook_url`·`signature`·점 키(`jev.api.key`), Cookie/Set-Cookie, 단독 JWT, 'bearer' 뒤 8자 이상 토큰(소문자뿐도 — 'the bearer certificates' 같은 산문도 가린다), Slack·Discord 웹훅, `;`·퍼센트 인코딩 쿼리 키(`api%5Fkey=`·`serviceKey%3D`), 전각·JSON 이스케이프 키 이름, (이름, 값) 쌍 리스트, dict 키 `key`·`auth`·`sig`, 설정 비밀값의 base64(앞 글자 무관)·대소문자·공백류 변형 | m14·m15 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `human_check.json` `HumanCheckField` | enum 에 `discount` 추가, 설명(F1) |
+| 2 | `openapi.yaml` `updateCatalyst` | 응답 `200`(CatalystUpdated, job null) 추가, 설명(F3). `info.version` 2026-10-09.13 |
+| 3 | `job_payloads/snapshot_publish.json` | 설명: busy → 지연 재큐잉(F4) |
+| 4 | DB `0013` | 데이터만(S2·D16-1 할인 라벨). downgrade = 되돌림 없음 |
+
+### 마이그레이션·검증
+
+- .11·.12 DB: worker 정지 → `cd backend && uv run alembic upgrade head`(0012·0013) → `uv run python -m app.snapshot_view backfill` → 다시
+  backfill(`snapshots=[]`) → worker 시작(`docs/runbook.md` §11 '업그레이드 뒤 backfill 절차').
+- 왕복·시나리오: `tests/contracts/test_r3h_migrations.py`(SQLite·임베디드 Postgres 16 — .11 DB 좁은 서랍 + 일부만 쓴 기본 시나리오 단위 →
+  head → backfill, 표식 없는 행 단위, .12 DB → 0013 → backfill·할인 라벨, 발행 뒤 단지 불변, autogenerate diff 0),
+  `test_r3g_migrations.py`(0012 왕복·중단 재개 — 기대값 D16-2 로).
+- `CONTRACT_VERSION`·`info.version` = `2026-10-09.13`. 생성물(`openapi.bundled.yaml`, `contracts_gen.py`) 재생성(`gen_contracts.py --check`).
+- D14-5 측정: 아래 '측정' 절.
+
+### 측정
+
+(R3h CORE6 완료 보고에 적는다 — 부하 2회 값)
+
 ## 2026-10-09.12
 
 R3 7차 리뷰(`docs/design/wp/R3_REVIEW7.md`) 후속 — CEO 결정 D15(`docs/design/DECISIONS.md`)와 R3g 배정(`docs/design/wp/R3G_FIX.md` CORE5).

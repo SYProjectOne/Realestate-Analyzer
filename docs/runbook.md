@@ -290,14 +290,20 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
   실행이 만드는 새 리비전에 있다 — 그 시나리오 보고서도 그 리비전에서, 아니면 422 `scenario_not_in_revision`).
 - **발행 = worker 잡**(D14-5): 저장본 계산·쓰기는 `snapshot.publish` 처리 함수(`app.snapshot_view.publish_revision`)에서만 한다 — 읽기
   전용 계산 → 묶음당 ≤0.5MB 짧은 트랜잭션(R3g — 2MB 에서 줄임)으로 나눠 쓰기 → 마지막에 published 전환. 끝날 때까지 이전 발행 리비전이 기본 화면이다. 호재
-  연결 PATCH·생활권 편집·지역 확장은 202 + job_id 를 돌려준다(G7 잡 목록에서 진행). 잡 stats 의 `total_s`·`write_max_lock_s`(API 쓰기가
+  PATCH(연결·위치 확인·좌표·예정월 중 하나라도 바뀌면 — D16-4)·생활권 편집·지역 확장은 202 + job_id 를 돌려준다(G7 잡 목록에서
+  진행, 호재 PATCH 가 바꾼 것이 없으면 200 + job_id null). 잡 stats 의 `total_s`·`write_max_lock_s`(API 쓰기가
   기다린 최대 시간 상한)·`missing_provenance`(출처 누락 '확인 불가' 건수, D14-8)를 본다. 발행 잡이 실패하면(failed) 리비전은 ready 로
   남고 넣던 저장본 행은 지워진다 — 원인을 고친 뒤 `POST /jobs {"job_name":"snapshot.publish","payload":{"snapshot_id":N}}`.
   daily 이월·주간 마감·지역 확장·bootstrap 의 발행이 예외로 실패하면 재시도 `snapshot.publish` 잡이 자동으로 남는다(stats
   `publish_retry_job_id`, D15-6).
-- **발행 single-flight**(D15-6): 리비전마다 발행은 하나만 돈다(`snapshot.publish_lease` = '<보유자>|<epoch>', 보유자 = `job:<id>`).
-  겹친 발행 잡은 아무것도 지우지 않고 failed `publish_in_progress: …` — 먼저 돈 잡이 발행한다. 보유 잡이 running 이 아니거나 15분이
-  지나면 다음 발행이 넘겨받는다(worker 가 죽어도 손으로 풀 필요 없음). 급할 때만: `UPDATE snapshot SET publish_lease = NULL WHERE id = N`.
+- **발행 single-flight**(D15-6·**D16-3**): 리비전마다 발행은 하나만 돈다(`snapshot.publish_lease` = '<보유자>|<epoch>', 보유자 =
+  `job:<id>` — daily 이월·지역 확장·bootstrap 의 그 자리 발행도 그 잡 id). 겹친 `snapshot.publish` 잡은 아무것도 지우지 않고 **지연
+  재큐잉**된다: 상태 queued 로 돌아가고 stats `requeue_count`·`not_before`(그 시각 전에는 worker 가 집지 않는다, 2·4·8·16·30초…)·
+  `requeue_reason`(`publish_in_progress: …`) — 먼저 돈 발행이 끝난 뒤 다시 돌아 그 발행이 못 읽은 변경을 새 리비전으로 이어 발행하거나
+  '이미 발행됨'으로 닫는다. 40번(약 18분) 넘게 바쁘면 failed `publish_in_progress`. 그 자리 발행이 바쁘면 `snapshot.publish` 잡을
+  남긴다(stats `publish_retry_job_id` = `publish_job_id`). 실패 정리 DELETE 는 '발행 전' 상태 + **임대를 아직 든 동안**만 지운다(멈췄던
+  보유자가 깨어나도 넘겨받은 새 보유자의 행을 지우지 않는다). 보유 잡이 running 이 아니거나 15분이 지나면 다음 발행이 넘겨받는다(worker 가
+  죽어도 손으로 풀 필요 없음). 급할 때만: `UPDATE snapshot SET publish_lease = NULL WHERE id = N`.
 - **후속 발행 잡**(D15-6): 판정 중·발행 계산 중인 리비전에 호재 연결 PATCH 가 들어오면 `snapshot.publish` `{snapshot_id, follow_up: true}`
   잡이 생긴다. 그 리비전 발행 계산이 그 쓰기를 읽었으면 전환이 잡을 done(`included_in_snapshot_id`)으로 닫고, 아니면 잡이 새 리비전을
   발행한다(`deferred_to` = 판정 중 리비전 발행 때 들어감).
@@ -307,9 +313,19 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
   (`snapshot_view_unit` — 그 단위의 마지막 쓰기와 같은 트랜잭션)으로 본다: 표식이 없거나 done=false 이거나 실제 행 수가 표식 rows 보다
   적으면 미완 → 그 단위 GET 503 `materialize_pending`(Retry-After 30초)·`POST /reports` 503. backfill 은 이미 있는 행을 그대로 두고 빠진
   키만 넣으며, 리비전마다 따로 실패한다(출력 `failed=[…]` — 그 리비전만 503 으로 남고 다음 실행이 이어서 채운다). worker 는 시작할 때 같은
-  backfill 을 한 번 돈다. 미완 리비전 수 = `app.snapshot_view.pending_count(session)`. 0011 → 0012 업그레이드는 기존 행 묶음을 완료 표식으로
-  옮기고, 0012 이전 backfill 이 중간에 멈춘 흔적(단지 상세·시장 행 수가 시나리오마다 다름, 출처 서랍 묶음 모자람, 한 시나리오 kind 통째
-  없음)은 미완 표식으로 둔다.
+  backfill 을 한 번 돈다. 미완 리비전 수 = `app.snapshot_view.pending_count(session)`. **행은 있는데 표식이 없는 단위도 미완**이다(D16-2 —
+  404 가 아니라 503, backfill 이 표식을 쓴다).
+- **업그레이드 뒤 backfill 절차**(**D16-2**, 계약 .13): 0012 이전에 만든 저장본 단위는 마이그레이션이 **전부 미완**으로 표시한다(행 수를
+  추정하지 않는다 — 일부만 쓴 기본 시나리오 단위·.11 범위 출처 서랍이 '완료'로 숨지 않게). .12 DB 는 `0013` 이 모든 표식을 미완으로 내려
+  다시 확인한다. 순서:
+  1. worker 를 멈춘다(발행·backfill 이 겹치지 않게).
+  2. `cd backend && uv run alembic upgrade head`(0013).
+  3. `uv run python -m app.snapshot_view backfill` — 출력 `snapshots=[…] rows=N failed=[]` 를 본다. 리비전마다 계산 1회(1000 단지면 수십 초)라
+     발행 리비전이 많으면 몇 분 걸린다. 그동안 그 리비전 GET 은 503 `materialize_pending`(화면은 기다렸다 다시 읽는다).
+  4. 다시 `backfill` → `snapshots=[]`(멱등) · `pending_count == 0` 을 확인하고 worker 를 켠다(worker 시작도 같은 backfill 을 돈다).
+  backfill 은 **이미 있는 행 바이트를 바꾸지 않고 빠진 키만** 넣는다. 출처 서랍은 D15-2 범위(모든 시나리오·kind·`rd_`)로 빠진 id 를 채우고
+  이미 있던 서랍 본문은 그대로 둔다. 발행 뒤 생긴 단지·생활권은 옛 리비전의 키가 되지 않는다(그 리비전 단지 목록·시장 저장본의 키만).
+  `failed` 가 있으면 그 리비전만 503 으로 남는다 — 로그 `snapshot_view.backfill_failed` 의 원인을 고치고 3을 다시.
 - **'재판정 필요'**(D10-1·M6): 판정 중 리비전에서 지금 사실과 비교한다(지역 단위 변경 — 생활권 편집·지역 확장 포함). 발행 리비전은
   발행 순간 값이 저장본에 고정된다 — 사람 확인 등은 새 리비전과 자동 재판정 잡으로 나타난다.
 - **강등(검증 모순)**(D11-3·D12-2): contradicted 주장을 사람이 고치면 그 사실이 '확인 불가(검증 모순)'가 된다. 강등은
@@ -324,10 +340,14 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
   (`2026-10-09T10:20:00+09:00`)이고 10분 넘게 미래면 422, 날짜 비교는 KST 달력 날짜다. 이미 수집된 공고가 **다른 값**인데 그보다
   **이른 확인일**의 사람 확인은 422 로 거절된다(같은 값이면 받는다). 사람 확인·생활권 편집·강등은 그 지역 가장 새 기준일의 리비전에 재판정을 **자동 등록**한다
   (G7 잡 목록에서 진행을 본다). 다음 날 변경 없는 수집도, 이전 판정 뒤 사실이 바뀐 단지는 이월 대신 재판정한다.
-- **할인**(D11-6·D12-3·**D14-2**): 공고문에 금액이 명시된 할인만, 출처 라벨이 '확인됨'일 때만 구매가에서 뺀다 — 상세·목록 정렬·필터·비교·
-  보고서·점수 모두 같은 규칙(`analysis.price_view.current_price`). '확인됨'은 **그 줄 전체**(금액 앞뒤·괄호·각주)에 조건(층·동·호·라인·
-  '~시'·한정·최대·조건·선착순·특별공급·잔금·완납·기간·까지·※·단)이 없을 때만이다. 추정·OCR 할인은 표시만. '할인 없음' 줄·취득세·
-  중도금 이자·발코니·옵션 지원은 할인이 아니다.
+- **할인**(D11-6·D12-3·**D16-1**, D14-2·D15-1 대체): 공고문 파서가 찾은 할인은 **언제나 '추정'**(표시만 — 사유 '공고문 자동 추출 — 조건
+  확인 필요')이다. 조건 문구는 앞뒤 줄·떨어진 각주·표 머리에 흩어져 있어 줄 단위 규칙으로 '조건 없음'을 증명할 수 없다. 구매가에서 빠지는
+  할인은 **사람 확인으로 '확인됨'이 된 할인**뿐이다: G7 사람 확인(`POST /ops/human-checks` field `discount`, 값 = 기준 타입 할인 원 단위
+  정수, 0 = 할인 없음 확인)을 넣으면 현재 공고의 그 타입 할인 칸이 라벨 확인됨이 되고 상세·목록 정렬·필터·비교·보고서·점수가 같은
+  값으로 뺀다(`analysis.price_view.current_price`). 의미 단위(D13-2)라 그 단지 다른 공고의 같은 타입 할인 칸에도 퍼진다. 할인 사람 확인
+  뒤에 관측된 공고문이 **다른** 할인 금액을 내면 그 값('추정', 차감 없음)이 채택되고 '사람 확인 재검토: 기준 타입 할인'이 생긴다 —
+  다시 확인한다. '할인 없음' 줄·0원·경품·취득세·중도금 이자·발코니·옵션 지원은 할인 후보도 아니다. 0013 마이그레이션이 예전 파서가
+  '확인됨'으로 저장한 할인 출처 행을 '추정'으로 바꾼다(녹화 공고에는 할인 줄이 없어 실데이터 영향 없음).
 - **보고서**: 발행 전(판정 중) 리비전은 만들 수 없다(409). 파일 이름에 지역·리비전·잡 id 가 들어가 같은 기준일 리비전끼리 덮어쓰지 않는다.
 - **prod + SQLite 거부**(D11-9): `ENV=prod` 는 Postgres `DATABASE_URL` 만 받는다.
 

@@ -245,15 +245,23 @@ def update_catalyst(
             "위치를 확인했으면 영향 단지(complex_ids) 또는 생활권(living_area_ids)을 하나 이상 지정한다",
             ("body",),
         )
+
+    # D16-4(R3 8차 N-M4): 발행 리비전 응답에 보이는 값(위치 확인·좌표·예정월·연결)이 하나라도 바뀌면 발행 잡, 아니면 200
+    def _num(v: Any) -> Decimal | None:
+        return Decimal(str(v)) if v is not None else None
+
+    before_state = (bool(cat.location_confirmed), _num(cat.lat), _num(cat.lon), cat.expected_ym)
     cat.location_confirmed = confirmed
     if "lat" in body:
-        cat.lat = Decimal(str(body["lat"])) if body["lat"] is not None else None
+        cat.lat = _num(body["lat"])
     if "lon" in body:
-        cat.lon = Decimal(str(body["lon"])) if body["lon"] is not None else None
+        cat.lon = _num(body["lon"])
     if body.get("expected_ym"):
-        _human_expected_ym(session, cat, str(body["expected_ym"]))
-    elif "expected_ym" in body and body["expected_ym"] is None:
+        if str(body["expected_ym"]) != cat.expected_ym:  # 같은 예정월이면 출처 행을 다시 만들지 않는다
+            _human_expected_ym(session, cat, str(body["expected_ym"]))
+    elif "expected_ym" in body and body["expected_ym"] is None and cat.expected_ym is not None:
         _human_expected_ym(session, cat, None)  # minor: null 로 지운다(사람이 확인한 예정월 취소)
+    after_state = (bool(cat.location_confirmed), _num(cat.lat), _num(cat.lon), cat.expected_ym)
     links = {
         lk.complex_id: lk
         for lk in session.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cat.id))
@@ -262,19 +270,25 @@ def update_catalyst(
     target = set(want) if confirmed else set()
     for cid in before - target:
         session.delete(links.pop(cid))
+    link_changed = False
     for cid in sorted(target):
         lk = links.get(cid)
         if lk is None:
             lk = CatalystLink(catalyst_id=cat.id, complex_id=cid)
             session.add(lk)
             links[cid] = lk
-        lk.distance_m, lk.weight, lk.label, lk.reason = None, LINK_WEIGHT, "추정", want[cid][:120]
+        new = (None, LINK_WEIGHT, "추정", want[cid][:120])
+        if (lk.distance_m, lk.weight, lk.label, lk.reason) != new:
+            link_changed = True
+            lk.distance_m, lk.weight, lk.label, lk.reason = new
     session.flush()
     job_out: dict[str, Any] | None = None
     snap = _snapshot_for(session, region.id)
-    if before != target:
-        # 연결은 점수·판정에 쓰지 않는다 — rejudge 대신 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행). 발행은
-        # worker 가 한다(D14-5 — 요청 안에서 저장본을 만들지 않는다, 계약 .11 202 + job_id)
+    changed = before != target or link_changed or before_state != after_state
+    if changed:
+        # 연결·위치·예정월은 점수·판정에 쓰지 않는다 — rejudge 대신 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행).
+        # 발행은 worker 가 한다(D14-5 — 요청 안에서 저장본을 만들지 않는다, 계약 .11 202 + job_id). D16-4: 예정월·좌표만
+        # 바뀌어도 발행 리비전 상세·시장 보드의 값이 바뀌므로 늘 발행 잡
         from app.scheduler.snapshots import republish
 
         job = republish(session, region.id, reason=f"호재 위치 확인: {cat.name}"[:200], created_at=now_iso())
@@ -290,7 +304,7 @@ def update_catalyst(
             "job": job_out,
             "job_id": job_out["id"] if job_out is not None else None,
         },
-        status_code=202,
+        status_code=202 if changed else 200,  # D16-4: 바뀐 것이 없으면 200 + job_id null
     )
 
 

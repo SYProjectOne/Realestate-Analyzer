@@ -27,7 +27,7 @@ from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, JobRun, Region, ScoreRun, Snapshot
 from app.scheduler import snapshots
 from app.scheduler.collect import collect
-from app.scheduler.jobs import DAILY_SOURCES, WEEKLY_SOURCES, JobError
+from app.scheduler.jobs import DAILY_SOURCES, WEEKLY_SOURCES, JobError, JobRequeue
 from app.scheduler.persist import carry_forward
 from app.scheduler.rejudge import enqueue_rejudge, handle_rejudge
 from app.scheduler.reverify import handle_claim_reverify
@@ -101,6 +101,16 @@ def _judged_revision(job: JobRun) -> int | None:
     return v if isinstance(v, int) else None
 
 
+def _at_or_before(a: str, b: str) -> bool:
+    """시각 문자열 a ≤ b(시간대가 달라도 — ``core.time.parse_datetime``). 못 읽으면 문자열 비교."""
+    from app.core.time import parse_datetime
+
+    da, db = parse_datetime(a), parse_datetime(b)
+    if da is not None and db is not None:
+        return da <= db
+    return a <= b
+
+
 def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
     """이월(옛 점수 복사) 대신 재판정할 단지 — **단지 단위**(D14-7, R3 6차 N-M5) · **D15-4**(R3 7차 M3·m14).
 
@@ -143,12 +153,27 @@ def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
         select(JobRun).where(JobRun.job_name.in_(JUDGING_JOBS), JobRun.status.in_(("done", "failed")))
     ):
         ids = _job_complexes(job, snap.region_id, region_ids, region_snaps)
+        if (
+            ids is not None
+            and not ids
+            and job.status == "failed"
+            and job.job_name == "rejudge"
+            and (job.payload or {}).get("complex_ids") == []
+        ):
+            ids = set(
+                region_ids
+            )  # R3 8차 m7: 점수만 재계산(complex_ids=[]) 실패 = 그 지역 모든 단지 점수가 옛 값
         if not ids:
             continue
         at = str(job.finished_at or job.scheduled_at or "")
         if job.status == "done":
-            if _judged_revision(job) not in lineage:
+            wrote = _judged_revision(job)
+            if wrote not in lineage:
                 continue  # D15-4: prev 에 들어 있지 않은 판정(다른·미발행 리비전)
+            if wrote != snap.id and not _at_or_before(at, str(snap.created_at or "")):
+                continue  # R3 8차 m10: prev 를 만든 뒤 옛 리비전에 쓴 판정은 prev 가 이어받지 않았다
+            # R3 8차 m9: 판정 기준 시각 = 잡이 사실을 읽기 시작한 시각(실행 중 들어온 변경은 판정이 못 봤다)
+            at = str(job.started_at or job.scheduled_at or at)
             sc = (job.payload or {}).get("scenario_id") if job.job_name == "rejudge" else None
             for c in ids:
                 if sc is None:
@@ -177,8 +202,10 @@ def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
     )
     out: set[int] = set()
     region_level = [
-        str(at) for (c, e, eid, at) in rows if c is None and e == "region" and eid == snap.region_id
-    ]
+        str(at)
+        for (c, e, eid, at) in rows
+        if c is None and ((e == "region" and eid == snap.region_id) or e == "judge")
+    ]  # R3 8차 m8: 판정기 버전 변경(entity 'judge', 단지·지역 없음)은 모든 지역의 모든 단지
     for c in region_ids:
         t = since(c)
         if any(at > t for at in region_level):
@@ -424,12 +451,29 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
             stats["carry_lock_s"] = round(
                 time.perf_counter() - t_carry, 3
             )  # 복사 트랜잭션(쓰기 잠금) 시간 — D14-5
-        _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}")
+        _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}", job=job)
     return stats
 
 
+PUBLISH_REQUEUE_MAX: Final = 40
+"""D16-3: 발행 임대가 바쁠 때 지연 재큐잉 상한(대기 2·4·8·16·30·30… 초 — 합 약 18분, 임대 TTL 15분보다 길다). 넘으면 failed
+``publish_in_progress``."""
+PUBLISH_REQUEUE_CAP_S: Final = 30.0
+
+
+def requeue_delay(count: int) -> float:
+    """n 번째 재큐잉(0부터)의 대기 초 — 짧은 지수 backoff, 상한 ``PUBLISH_REQUEUE_CAP_S``."""
+    return float(min(2 ** (count + 1), PUBLISH_REQUEUE_CAP_S))
+
+
 def _publish_or_raise(
-    ctx: SchedulerContext, session: Any, sid: int, stats: dict[str, Any], *, holder: str
+    ctx: SchedulerContext,
+    session: Any,
+    sid: int,
+    stats: dict[str, Any],
+    *,
+    holder: str,
+    job: JobRun | None = None,
 ) -> None:
     ok, n, mstats = snapshots.publish_with_stats(session, sid, now=ctx.iso_now(), holder=holder)
     snap = session.get(Snapshot, sid)
@@ -439,9 +483,13 @@ def _publish_or_raise(
         stats["publish_job_id"] = int(holder[4:])  # 계약 .12: 발행하는 잡 = 이 잡
     if not ok:
         if mstats.get("publish_in_progress"):
-            raise JobError(
-                f"publish_in_progress: 같은 리비전을 {mstats['publish_in_progress']} 가 발행 중", stats
-            )
+            why = f"publish_in_progress: 같은 리비전을 {mstats['publish_in_progress']} 가 발행 중"
+            # D16-3(R3 8차 N-M3): 바쁘면 실패가 아니라 지연 재큐잉 — 먼저 돈 발행이 끝난 뒤 이 잡이 다시 돌아 (후속 잡이면) 그
+            # 발행이 못 읽은 변경을 새 리비전으로 이어 발행한다. 상한을 넘으면 failed(무한 대기 없음)
+            count = int(((job.stats if job is not None else None) or {}).get("requeue_count") or 0)
+            if job is not None and count < PUBLISH_REQUEUE_MAX:
+                raise JobRequeue(why, requeue_delay(count), stats)
+            raise JobError(why, stats)
         why = f"publish_blocked: contradicted {n}건" if n else "publish_blocked: degraded(점수 미계산)"
         if snap is not None and snap.status == "building" and not snap.degraded:
             why = "publish_blocked: 판정·점수 미완료"
@@ -487,7 +535,7 @@ def _follow_up(ctx: SchedulerContext, job: JobRun, target: int) -> dict[str, Any
             stats.update({"published": False, "deferred_to": newest.id, "publish_job_id": None})
             return stats
         stats["snapshot_id"] = sid
-        _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}")
+        _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}", job=job)
     return stats
 
 
@@ -500,8 +548,9 @@ def publish_or_retry(
 
     계약 .12(FE6 요청): stats ``publish_job_id`` = 발행을 하는(한) 잡 — 이 잡이 그 자리에서 발행했으면 이 잡(``job_id``),
     실패해 재시도 잡을 남겼으면 그 재시도 잡(``publish_retry_job_id`` 와 같음). 화면은 이 id 를 따라가면 발행 완료를 안다."""
+    holder = f"job:{job_id}" if job_id is not None else None  # D16-3·m5: 그 자리 발행도 임대 보유자 = 이 잡
     try:
-        ok, n, mstats = snapshots.publish_with_stats(session, sid, now=ctx.iso_now())
+        ok, n, mstats = snapshots.publish_with_stats(session, sid, now=ctx.iso_now(), holder=holder)
         session.commit()
     except Exception as exc:
         session.rollback()
@@ -518,7 +567,17 @@ def publish_or_retry(
         }
     out: dict[str, Any] = {"published": ok, "contradicted": n, "publish_job_id": job_id}
     if mstats.get("publish_in_progress"):
-        out["publish_in_progress"] = mstats["publish_in_progress"]
+        # D16-3: 다른 발행이 같은 리비전을 들고 있다 — 그 자리에서 실패로 끝내지 않고 snapshot.publish 잡을 남긴다(그 잡이
+        # 지연 재큐잉으로 기다렸다 발행하거나, 먼저 돈 발행이 끝냈으면 '이미 발행됨'으로 닫는다). 화면은 publish_job_id 를 따라간다
+        from app.scheduler.jobs import enqueue
+
+        retry = enqueue(session, "snapshot.publish", {"snapshot_id": sid}, now=ctx.now())
+        session.commit()
+        out.update(
+            publish_in_progress=mstats["publish_in_progress"],
+            publish_retry_job_id=retry.id,
+            publish_job_id=retry.id,
+        )
     return out
 
 

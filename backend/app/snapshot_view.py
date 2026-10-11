@@ -1082,10 +1082,14 @@ def _add_rows(session: Session, snapshot_id: int, rows: Sequence[ViewRow]) -> No
         session.execute(insert(SnapshotView), _row_dicts(snapshot_id, rows))
 
 
-def _purge_unpublished(conn: Connection, snapshot_id: int) -> None:
+def _purge_unpublished(conn: Connection, snapshot_id: int, lease: str | None = None) -> None:
     """발행 전 리비전에 남은 저장본·표식(실패한 시도의 찌꺼기)만 지운다 — **상태 조건**(D15-6·m1): 그 사이 다른 발행이
-    리비전을 published 로 바꿨으면 아무것도 지우지 않는다."""
-    unpublished = exists().where(Snapshot.id == snapshot_id, Snapshot.status != "published")
+    리비전을 published 로 바꿨으면 아무것도 지우지 않는다. **임대 조건**(D16-3·R3 8차 m4): ``lease`` 를 주면 그 임대를 아직
+    들고 있을 때만 지운다(멈췄던 이전 보유자가 깨어나 넘겨받은 새 보유자의 저장본을 지우지 않는다)."""
+    cond = [Snapshot.id == snapshot_id, Snapshot.status != "published"]
+    if lease is not None:
+        cond.append(Snapshot.publish_lease == lease)
+    unpublished = exists().where(*cond)
     conn.execute(delete(SnapshotView).where(SnapshotView.snapshot_id == snapshot_id, unpublished))
     conn.execute(delete(SnapshotViewUnit).where(SnapshotViewUnit.snapshot_id == snapshot_id, unpublished))
 
@@ -1222,8 +1226,8 @@ def _publish_locked(
     finally:
         rs.rollback()
         rs.close()
-    with engine.begin() as conn:  # 이전 실패가 남긴 행·표식(발행 전 리비전만 — 상태 조건)
-        _purge_unpublished(conn, snapshot_id)
+    with engine.begin() as conn:  # 이전 실패가 남긴 행·표식(발행 전 리비전 + 이 임대를 든 동안만 — D16-3)
+        _purge_unpublished(conn, snapshot_id, lease)
     done = 0
     try:
         with write_connection(engine) as wconn:
@@ -1235,7 +1239,7 @@ def _publish_locked(
             flip_s = time.perf_counter() - t
     except BaseException:
         with engine.begin() as conn:
-            _purge_unpublished(conn, snapshot_id)
+            _purge_unpublished(conn, snapshot_id, lease)  # 임대를 넘겨받은 새 보유자의 행은 지우지 않는다(m4)
         raise
     return _published_result(computed, ws, flip_s=flip_s, t0=t0, done=done, n=n, snapshot_id=snapshot_id)
 
@@ -1289,7 +1293,7 @@ def _flip(
                 .execution_options(synchronize_session=False)
             )
         if not done:
-            _purge_unpublished(s.connection(), snapshot_id)
+            _purge_unpublished(s.connection(), snapshot_id, lease)
     return done, n
 
 
