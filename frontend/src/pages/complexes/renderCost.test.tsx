@@ -11,11 +11,12 @@ import { MemoryRouter } from 'react-router';
 import type { ComplexRow, ComplexRowPage } from '@/api/types';
 import { formatNumber, formatWon } from '@/lib/format';
 import { generatedHandlers } from '@/mocks/handlers.gen';
+import type * as Components from '@/components';
 
 const counter = vi.hoisted(() => ({ factCells: 0 }));
 
 vi.mock('@/components', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@/components')>();
+  const mod = await importOriginal<typeof Components>();
   const Real = mod.FactCell;
   return {
     ...mod,
