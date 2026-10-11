@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
+import { Link } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { useDownload } from '@/api/download';
 import { reportRequest, useChanges, useCreateReport, useReports, useScenarios } from '@/api/hooks';
@@ -7,6 +8,7 @@ import { ApiError, isMaterializePending } from '@/api/client';
 import type { ChangeEvent, Report, ReportFormat, Scenario, Snapshot } from '@/api/types';
 import { Badge, EmptyState, JobProgress, MetaText, SnapshotPicker } from '@/components';
 import { snapshotText, snapshotTitle } from '@/components/SnapshotPicker';
+import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
@@ -19,6 +21,7 @@ import {
   Section,
   tdClass,
   thClass,
+  useGlobalSearch,
   usePageContext,
 } from '../_shared';
 
@@ -80,12 +83,19 @@ export function compareCandidates(
   return reportable.filter((s) => s.region_id === base.region_id && isOlderRevision(s, base));
 }
 
-/** 사용자 시나리오 결과가 있을 법한 대상 리비전: 그 시나리오를 만든 뒤 발행된 리비전 중 가장 새 것 */
+/**
+ * 사용자 시나리오 결과가 있을 법한 대상 리비전: 그 시나리오를 만든 뒤 발행된 리비전 중 가장 새 것. `rejected` = 서버가
+ * 422 scenario_not_in_revision 으로 거절한 리비전 — 화면 계산과 달라도 서버가 맞으므로 후보에서 뺀다(7차 minor 23: 거절된
+ * 리비전이 곧 추천 리비전이라 버튼이 숨었다).
+ */
 export function revisionWithScenario(
   reportable: readonly Snapshot[],
   scenario: Pick<Scenario, 'id' | 'code' | 'created_at' | 'is_builtin'>,
+  rejected: number | null = null,
 ): Snapshot | null {
-  const fit = reportable.filter((s) => scenarioMadeAfterPublish(scenario, s) === false);
+  const fit = reportable.filter(
+    (s) => s.id !== rejected && scenarioMadeAfterPublish(scenario, s) === false,
+  );
   return [...fit].sort((a, b) => (isOlderRevision(a, b) ? 1 : -1))[0] ?? null;
 }
 
@@ -97,6 +107,17 @@ export function revisionWithScenario(
  * 422 scenario_not_in_revision 도 같은 안내. 비교 후보는 대상보다 앞선 발행 리비전만.
  */
 export function ReportsPage() {
+  // 7차 minor 22: 지역을 바꾸면 고른 값·생성 오류·잡 진행을 모두 버린다(이전 지역 것이 새 지역 화면에 남았다)
+  // 처음 지역을 알게 될 때(없음 → 지역)는 그대로 둔다 — 지역 목록보다 먼저 누른 생성이 지워지지 않게
+  const regionId = useActiveRegion().region?.id ?? null;
+  const [scope, setScope] = useState({ region: regionId, n: 0 });
+  if (regionId !== null && regionId !== scope.region) {
+    setScope({ region: regionId, n: scope.region === null ? scope.n : scope.n + 1 });
+  }
+  return <ReportsBody key={scope.n} />;
+}
+
+function ReportsBody() {
   const { snapshots, snapshotId } = useSnapshot();
   const { asof, scenarioKey } = usePageContext();
   const scenarios = useScenarios();
@@ -140,10 +161,15 @@ export function ReportsPage() {
     scenario && base ? scenarioMadeAfterPublish(scenario, base) === true : false;
   const serverScenarioMissing =
     create.error instanceof ApiError && create.error.code === 'scenario_not_in_revision';
+  /** 서버가 거절한 대상 리비전(그 요청의 snapshot_id) */
+  const [rejectedId, setRejectedId] = useState<number | null>(null);
   const suggested =
     scenario && (scenarioMissing || serverScenarioMissing)
-      ? revisionWithScenario(reportable, scenario)
+      ? revisionWithScenario(reportable, scenario, serverScenarioMissing ? rejectedId : null)
       : null;
+  // 결과가 있을 리비전이 없다 — 숨기지 않고 시나리오 실행(그 시나리오 결과 리비전을 만든다)으로 안내
+  const runInstead = !!scenario && (scenarioMissing || serverScenarioMissing) && suggested === null;
+  const globalSearch = useGlobalSearch();
 
   const blocked =
     blockReason(base) ??
@@ -154,6 +180,7 @@ export function ReportsPage() {
 
   const generate = () => {
     if (!selectedId || blocked) return;
+    setRejectedId(Number(selectedId));
     create.mutate(
       {
         snapshot_id: Number(selectedId),
@@ -267,6 +294,15 @@ export function ReportsPage() {
           >
             {t('page.G8.scenarioPickRevision', { snapshot: snapshotText(suggested) })}
           </button>
+        ) : null}
+        {runInstead ? (
+          <Link
+            to={`/scenario${globalSearch}`}
+            data-testid="g8-run-scenario"
+            className="self-start text-sm underline"
+          >
+            {t('page.common.scenarioMissingRun')}
+          </Link>
         ) : null}
         {jobId !== null ? (
           <JobProgress

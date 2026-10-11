@@ -22,6 +22,11 @@ export interface FactCellProps {
   emptyReason?: string;
   /** 클릭 시 출처 패널 열기. 생략하면 앱 전역 ProvenancePanel(context)을 연다 */
   onOpenProvenance?: (prov: string) => void;
+  /**
+   * 이 Fact 가 나온 리비전(출처 조회 `?snapshot_id=`, D15-8). 보고 있는 리비전과 다른 리비전의 값(G5 '이후' 열 등)이면
+   * 넘긴다. 생략하면 연 순간 보고 있는 리비전.
+   */
+  provSnapshotId?: string | null;
   className?: string;
 }
 
@@ -37,10 +42,16 @@ export function FactCell({
   showLabel = true,
   emptyReason,
   onOpenProvenance,
+  provSnapshotId,
   className = '',
 }: FactCellProps) {
   const contextOpen = useOpenProvenance();
-  const open = onOpenProvenance ?? contextOpen;
+  const open: ((prov: string) => void) | null =
+    onOpenProvenance ??
+    (contextOpen
+      ? (prov: string) =>
+          provSnapshotId === undefined ? contextOpen(prov) : contextOpen(prov, provSnapshotId)
+      : null);
   const resolvedUnit = unit ?? unitFromHint(fact?.unit, fact?.v);
   const text = fact ? formatFactValue(fact, resolvedUnit, { asof, digits }) : null;
 

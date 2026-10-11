@@ -90,6 +90,8 @@ export function QueryState<T>({
     isLoading: boolean;
     /** 재시도 중인 마지막 실패(TanStack) — 503 materialize_pending 이면 '준비 중'(계약 .11 F12) */
     failureReason?: Error | null;
+    /** 보이는 값이 같은 리비전·시나리오의 이전 값(필터 변경 중, M7) */
+    isPlaceholderData?: boolean;
     refetch?: () => unknown;
   };
   children: (data: T) => ReactNode;
@@ -97,9 +99,26 @@ export function QueryState<T>({
   empty?: (data: T) => string | null;
 }) {
   if (query.data !== undefined) {
+    // M7: 이전 값(같은 리비전·시나리오에서만 남는다)을 두는 동안 새 조건이 아직 준비 중이면 그 사실도 보인다
+    const pending =
+      query.isPlaceholderData && isMaterializePending(query.failureReason) ? (
+        <MaterializePending />
+      ) : null;
     const emptyText = empty?.(query.data) ?? null;
-    if (emptyText) return <EmptyState message={emptyText} />;
-    return <>{children(query.data)}</>;
+    if (emptyText) {
+      return (
+        <>
+          {pending}
+          <EmptyState message={emptyText} />
+        </>
+      );
+    }
+    return (
+      <>
+        {pending}
+        {children(query.data)}
+      </>
+    );
   }
   if (query.error) return <QueryError error={query.error} refetch={query.refetch} />;
   if (isMaterializePending(query.failureReason)) return <MaterializePending />;

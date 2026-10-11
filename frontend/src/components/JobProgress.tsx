@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useJob } from '@/api/hooks';
+import { useJob, usePublishChain } from '@/api/hooks';
+import { publishPhase, publishTarget, type PublishPhase } from '@/api/jobWatch';
+import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, tDynamic } from '@/i18n';
 import type { JobLike } from '@/lib/contract';
 import { MetaText } from './MetaValue';
@@ -114,9 +116,12 @@ export function JobProgress({ jobId, pollMs, onDone, onFailed }: JobProgressProp
 }
 
 /**
- * 발행을 부르는 쓰기(계약 .11 F3–F6 — 호재 위치 202·생활권 PUT 202·지역 선택 PATCH 202·사람 확인 201 + job_id)가
+ * 발행을 부르는 쓰기(호재 위치 PATCH 202·호재 URL POST 201·생활권 PUT 202·지역 선택 PATCH 202·사람 확인 201 — 응답 `job_id`)가
  * 등록한 잡의 진행. 잡이 새 리비전을 판정·발행할 때까지 화면 기본은 지금 발행 리비전이라는 안내를 같이 보인다.
- * 잡이 끝나면(done) 안내를 내리고, 리비전 목록·지역·사실 화면 무효화는 `api/jobWatch` 가 한다.
+ * 7차 minor 19(D15-8)·계약 .12 F15: rejudge 의 done 은 발행이 아니다 — 잡 stats `publish_job_id` 를 이어 감시하고(후속 잡이
+ * 다른 발행에 포함되면 그 발행 잡까지, F4) 사슬 끝의 발행 잡이 끝날 때(또는 리비전 목록이 published 를 보일 때) 안내를 닫는다.
+ * publish_blocked(남은 모순 주장)·발행 실패·미룸(deferred_to)·30분 상한은 알린다. 리비전 목록·지역·사실 화면 무효화는
+ * `api/jobWatch` 가 한다.
  */
 export function PublishJobProgress({
   jobId,
@@ -125,23 +130,96 @@ export function PublishJobProgress({
   jobId: string | number;
   onDone?: (job: JobLike) => void;
 }) {
-  const [doneJob, setDoneJob] = useState<string | null>(null);
-  const finished = doneJob === String(jobId);
+  return <PublishChain key={String(jobId)} jobId={jobId} onDone={onDone} />;
+}
+
+function PublishChain({
+  jobId,
+  onDone,
+}: {
+  jobId: string | number;
+  onDone?: (job: JobLike) => void;
+}) {
+  const chain = usePublishChain(jobId);
+  const trigger = chain[0];
+  const last = chain.filter((j) => j !== undefined).pop();
+  const triggerDone = !!trigger && (trigger.status === 'done' || trigger.status === 'failed');
+  /** 브라우저가 발행 유발 잡의 끝을 본 시각(상한 계산 — 서버 시각과 섞지 않는다) */
+  const [watchStart, setWatchStart] = useState<number | null>(null);
+  useEffect(() => {
+    if (triggerDone && watchStart === null) setWatchStart(Date.now());
+  }, [triggerDone, watchStart]);
+  const [now, setNow] = useState(() => Date.now());
+
+  const { snapshots } = useSnapshot();
+  const target = last ? publishTarget(last) : null;
+  const snapshot = target === null ? undefined : snapshots.find((s) => s.id === target);
+  const phase = publishPhase({
+    trigger,
+    last,
+    snapshot,
+    watchStart: watchStart ?? now,
+    now,
+  });
+  const waiting = phase.kind === 'trigger' || phase.kind === 'waiting' || phase.kind === 'deferred';
+  // 잡 폴링이 멈춘 뒤(미룸·겹친 발행)에도 상한을 넘기면 알린다 — 1분마다 시각만 다시 본다
+  useEffect(() => {
+    if (!triggerDone || !waiting) return;
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, [triggerDone, waiting]);
+
   return (
-    <div className="flex flex-col gap-1" data-testid="publish-job">
-      {!finished ? (
+    <div className="flex flex-col gap-1" data-testid="publish-job" data-phase={phase.kind}>
+      {waiting ? (
         <p className="text-xs text-muted" data-testid="publish-pending">
           {t('job.publishPending')}
         </p>
       ) : null}
-      <JobProgress
-        jobId={jobId}
-        onDone={(job) => {
-          setDoneJob(String(jobId));
-          onDone?.(job);
-        }}
-        onFailed={() => setDoneJob(String(jobId))}
-      />
+      <JobProgress jobId={jobId} onDone={onDone} />
+      {chain
+        .slice(1)
+        .map((job, i) =>
+          job ? <JobProgressView key={job.id} job={job as JobLike} /> : <span key={`p${i}`} />,
+        )}
+      <PublishOutcome phase={phase} />
     </div>
   );
+}
+
+function PublishOutcome({ phase }: { phase: PublishPhase }) {
+  switch (phase.kind) {
+    case 'published':
+      return (
+        <p className="text-xs text-muted" role="status" data-testid="publish-done">
+          {t('job.publishDone')}
+        </p>
+      );
+    case 'blocked':
+      return (
+        <p className="text-xs text-danger" role="alert" data-testid="publish-blocked">
+          {t('job.publishBlocked', { detail: phase.detail })}
+        </p>
+      );
+    case 'publishFailed':
+      return (
+        <p className="text-xs text-danger" role="alert" data-testid="publish-failed">
+          {t('job.publishFailed', { detail: phase.detail })}
+        </p>
+      );
+    case 'deferred':
+      return (
+        <p className="text-xs text-muted" role="status" data-testid="publish-deferred">
+          {t('job.publishDeferred')}
+        </p>
+      );
+    case 'expired':
+      return (
+        <p className="text-xs text-danger" role="alert" data-testid="publish-expired">
+          {t('job.publishExpired')}
+        </p>
+      );
+    default:
+      return null;
+  }
 }

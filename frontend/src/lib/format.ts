@@ -57,8 +57,19 @@ export interface FormatOptions {
   digits?: number;
 }
 
-const nf = (digits = 0) =>
-  new Intl.NumberFormat('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+/** 자릿수별 숫자 포맷터(만들기 비싸다 — 표 스크롤 프레임마다 셀 수십 개가 부른다, T16) */
+const nfCache = new Map<number, Intl.NumberFormat>();
+const nf = (digits = 0): Intl.NumberFormat => {
+  let f = nfCache.get(digits);
+  if (!f) {
+    f = new Intl.NumberFormat('ko-KR', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+    nfCache.set(digits, f);
+  }
+  return f;
+};
 
 const unknown = () => t('empty.unknown');
 

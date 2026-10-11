@@ -598,14 +598,32 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
         </p>
       ) : null}
       {baseline && afterFresh && after.data ? (
-        <DiffTable before={baseline.rows} after={after.data.top5} />
+        <DiffTable
+          before={baseline.rows}
+          after={after.data.top5}
+          beforeSnapshotId={baseline.snapshotId}
+          afterSnapshotId={afterId}
+        />
       ) : null}
     </Section>
   );
 }
 
-/** 이전 run 대비 순위·점수 */
-export function DiffTable({ before, after }: { before: ScoreRow[]; after: ScoreRow[] }) {
+/**
+ * 이전 run 대비 순위·점수. 7차 M8(D15-8): '이전' 열은 기준 리비전, '이후' 열은 잡이 쓴 새 리비전의 값이다 — 숫자 셀의 출처
+ * 서랍은 그 값이 나온 리비전으로 조회한다(헤더의 보고 있는 리비전이 아니라).
+ */
+export function DiffTable({
+  before,
+  after,
+  beforeSnapshotId,
+  afterSnapshotId,
+}: {
+  before: ScoreRow[];
+  after: ScoreRow[];
+  beforeSnapshotId?: string | null;
+  afterSnapshotId?: string | null;
+}) {
   const rows = useMemo(() => {
     const prev = new Map(before.map((r) => [r.complex_id, r]));
     const ids = [
@@ -665,16 +683,25 @@ export function DiffTable({ before, after }: { before: ScoreRow[]; after: ScoreR
                 )}
               </td>
               <td className={tdClass}>
-                <FactCell fact={r.before?.total ?? null} unit="score" />
+                <FactCell
+                  fact={r.before?.total ?? null}
+                  unit="score"
+                  provSnapshotId={beforeSnapshotId}
+                />
               </td>
               <td className={tdClass}>
-                <FactCell fact={r.after?.total ?? null} unit="score" />
+                <FactCell
+                  fact={r.after?.total ?? null}
+                  unit="score"
+                  provSnapshotId={afterSnapshotId}
+                />
               </td>
               <td className={tdClass} data-testid="diff-delta-rerank">
                 <FactCell
                   fact={r.after?.delta_rerank ?? null}
                   unit="score"
                   emptyReason={t('page.common.deltaRerankNone')}
+                  provSnapshotId={afterSnapshotId}
                 />
               </td>
             </tr>

@@ -425,7 +425,7 @@ describe('사람 확인 이른 확인일 → 422 checked_at → 확인일 칸 �
       http.post(mswPath('/ops/human-checks'), () =>
         HttpResponse.json(
           {
-            code: 'validation_error',
+            code: 'checked_at_before_source', // 계약 .12 F14
             detail,
             field_errors: [{ loc: ['body', 'checked_at'], msg: detail }],
           },

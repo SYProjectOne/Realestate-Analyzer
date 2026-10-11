@@ -3,7 +3,7 @@ import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { useCreateCatalyst } from '@/api/hooks';
 import type { CatalystCreated } from '@/api/types';
-import { JobProgress } from '@/components';
+import { PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { Section } from '../_shared';
 
@@ -151,8 +151,9 @@ export function CatalystUrlForm({ regionId }: { regionId: number | null }) {
       {created ? (
         <div data-testid="catalyst-created" className="flex flex-col gap-1 text-sm">
           <p role="status">{t('page.G6.catalyst.saved', { name: created.catalyst.name })}</p>
-          {created.job ? (
-            <JobProgress jobId={created.job.id} />
+          {/* 계약 .12 F3·F15: job_id(분류 rejudge) → 판정 뒤 발행 잡까지 감시 */}
+          {(created.job_id ?? created.job?.id ?? null) !== null ? (
+            <PublishJobProgress jobId={(created.job_id ?? created.job?.id) as number} />
           ) : (
             <p className="text-xs text-muted">{t('page.G6.catalyst.noJob')}</p>
           )}

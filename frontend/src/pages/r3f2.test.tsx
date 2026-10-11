@@ -88,7 +88,7 @@ describe('F12 새 오류 code · materialize_pending 재시도 규칙', () => {
     expect(parseRetryAfter('Sat, 10 Oct 2026 00:00:05 GMT', now)).toBe(5000);
   });
 
-  it('queryRetry: materialize_pending 만 계속 재시도(Retry-After 간격, 0.5~30초), 그 밖은 base 번', () => {
+  it('queryRetry: materialize_pending 만 계속 재시도(Retry-After 간격 그대로 — 0.5초~10분, 7차 minor 23), 그 밖은 base 번', () => {
     const pending = new ApiError('materialize_pending', 'x', 503, [], null, 2000);
     const other = new ApiError('internal', 'x', 500);
     expect(queryRetry(0)(0, pending)).toBe(true);
@@ -101,8 +101,8 @@ describe('F12 새 오류 code · materialize_pending 재시도 규칙', () => {
       500,
     );
     expect(
-      queryRetryDelay(0, new ApiError('materialize_pending', 'x', 503, [], null, 600_000)),
-    ).toBe(30_000);
+      queryRetryDelay(0, new ApiError('materialize_pending', 'x', 503, [], null, 3_600_000)),
+    ).toBe(600_000);
   });
 });
 
@@ -203,10 +203,10 @@ describe('F1 출처 조회는 보고 있는 리비전(snapshot_id)을 늘 넘긴
     rec.stop();
   });
 
-  it('provenanceSnapshot: 응답 prov 는 리비전을 넘기고, 화면이 만든 접수 근거 rd_ 는 리비전 없이(저장본에 없음)', () => {
+  it('provenanceSnapshot: 응답 prov 는 리비전을 넘기고, 접수 근거 rd_ 도 리비전을 넘긴다(계약 .12 F1)', () => {
     expect(provenanceSnapshot('fp_11', '12')).toBe('12');
     expect(provenanceSnapshot('cs_1', 12)).toBe(12);
-    expect(provenanceSnapshot('rd_9062', '12')).toBeNull();
+    expect(provenanceSnapshot('rd_9062', '12')).toBe('12');
     expect(provenanceSnapshot('fp_11', null)).toBeNull();
     expect(provenanceSnapshot(null, '12')).toBeNull();
   });
@@ -411,7 +411,7 @@ describe('F7·F8 사람 확인 checked_at: 시간대 RFC3339 · 미래 422 · �
       http.post(mswPath('/ops/human-checks'), () =>
         HttpResponse.json(
           {
-            code: 'validation_error',
+            code: 'checked_at_future', // 계약 .12 F14
             detail,
             field_errors: [{ loc: ['body', 'checked_at'], msg: detail }],
           },

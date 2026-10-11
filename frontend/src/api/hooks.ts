@@ -5,11 +5,12 @@
  * 쿼리 키는 `queryKeys`로만 만든다(무효화 일관성).
  * id 인자는 `IdLike`(number | string): URL 경로·쿼리에서 온 문자열을 그대로 넘겨도 된다.
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   keepPreviousData,
   useInfiniteQuery,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   type QueryClient,
@@ -23,8 +24,11 @@ import {
   awaitingPublish,
   backoffMs,
   failedRound,
+  nextPublishJobId,
   POLL_ERROR_MAX_STREAK,
+  PUBLISH_CHAIN_MAX,
   snapshotsRefetchInterval,
+  snapshotsWatchExpired,
   type RoundJobs,
 } from './jobWatch';
 import type {
@@ -319,6 +323,36 @@ export function useSnapshots(regionId: IdLike | null | undefined): Q<Snapshot[]>
 
 // ─── 스냅샷 단위 조회 ──────────────────────────────────────
 
+/** 쿼리 키에서 (리비전, 시나리오) — 화면이 보이는 값의 정체 */
+type ViewOf = (queryKey: readonly unknown[]) => readonly [unknown, unknown];
+
+/**
+ * 7차 M7(D15-8): 다음 응답을 기다리는 동안 이전 값을 두는 것(placeholder)은 **같은 리비전·같은 시나리오**의 값일 때만이다
+ * (필터·정렬·생활권만 바뀐 경우). 리비전이나 시나리오가 바뀌면 이전 값을 보이지 않는다 — 새 리비전이 503
+ * materialize_pending 으로 재시도하는 동안(Retry-After 마다, 최대 수십 분) 옛 리비전 값이 새 리비전 머리말 아래 보이던 것.
+ */
+export function keepWithinView(viewOf: ViewOf, currentKey: readonly unknown[]) {
+  const [sid, scenario] = viewOf(currentKey);
+  return <T>(
+    previousData: T | undefined,
+    previousQuery: { queryKey: readonly unknown[] } | undefined,
+  ): T | undefined => {
+    if (previousData === undefined || !previousQuery) return undefined;
+    const [prevSid, prevScenario] = viewOf(previousQuery.queryKey);
+    return prevSid === sid && (prevScenario ?? null) === (scenario ?? null)
+      ? previousData
+      : undefined;
+  };
+}
+
+/** ['snapshots', sid, 'complexes', params] → (sid, params.scenario) */
+const complexesView: ViewOf = (k) => [
+  k[1],
+  (k[3] as ComplexListParams | undefined)?.scenario ?? null,
+];
+/** ['snapshots', sid, 'market', livingArea, scenario] → (sid, scenario) */
+const marketView: ViewOf = (k) => [k[1], k[4] ?? null];
+
 /** GET /snapshots/{sid}/dashboard?scenario= (getDashboard) — G1 */
 export function useDashboard(
   sid: IdLike | null | undefined,
@@ -332,7 +366,7 @@ export function useDashboard(
         signal,
       }),
     enabled: has(sid),
-    placeholderData: keepPreviousData,
+    // M7: 키 = (리비전, 시나리오) 뿐이라 이전 값을 둘 경우가 없다(다른 리비전·시나리오 값은 보이지 않는다)
   });
 }
 
@@ -350,15 +384,17 @@ export function useComplexes(
   sid: IdLike | null | undefined,
   params: ComplexListParams = {},
 ): Q<ComplexRowPage> {
+  const queryKey = queryKeys.complexes(key(sid), params);
   return useQuery({
-    queryKey: queryKeys.complexes(key(sid), params),
+    queryKey,
     queryFn: ({ signal }) =>
       apiFetch<ComplexRowPage>(`/snapshots/${enc(key(sid))}/complexes`, {
         query: complexQuery(params),
         signal,
       }),
     enabled: has(sid),
-    placeholderData: keepPreviousData,
+    // M7: 같은 리비전·시나리오 안의 필터·정렬 변경만 이전 행을 둔다
+    placeholderData: keepWithinView(complexesView, queryKey),
   });
 }
 
@@ -369,6 +405,12 @@ export interface ComplexPagesResult {
   isLoading: boolean;
   /** 나머지 페이지를 받는 중 */
   loadingMore: boolean;
+  /** 재시도 중인 마지막 실패 — 503 materialize_pending 이면 '준비 중'(7차 minor 18) */
+  failureReason: Error | null;
+  /** 지금 보이는 값이 같은 리비전·시나리오의 이전 값(필터 변경 중) */
+  isPlaceholderData: boolean;
+  /** 다시 시도(첫 페이지부터) */
+  refetch: () => unknown;
 }
 
 /**
@@ -421,6 +463,9 @@ export function useComplexesProgressive(
     error: first.error ?? rest.error ?? null,
     isLoading: first.isLoading,
     loadingMore: needMore && (rest.isFetching || !!rest.hasNextPage),
+    failureReason: first.failureReason ?? rest.failureReason ?? null,
+    isPlaceholderData: first.isPlaceholderData,
+    refetch: first.refetch,
   };
 }
 
@@ -473,18 +518,15 @@ export function useProvenance(
 }
 
 /**
- * 출처 조회에 넘길 리비전. 계약 .11 F1(D14-1): 화면 응답의 `prov` 로 받은 출처는 보고 있는 리비전을 늘 넘긴다 —
- * 발행 리비전 = 발행 순간 저장본, 발행 전 = 실시간.
- * 예외 `rd_<id>`: 화면이 접수 행 `raw_document_id` 로 **만든** 원문 출처(G3 '접수 근거 원문')다. 서버 저장본은 응답의
- * `"prov"` 값만 모으므로(backend `snapshot_view._collect_prov`) 그 리비전 저장본에 없어 늘 404 가 된다 — 원문은
- * 리비전과 무관한 불변 파일이라 리비전 없이 조회한다(계약 변경 요청: 저장본에 접수 근거 rd_ 를 넣거나 Intake 에 prov).
+ * 출처 조회에 넘길 리비전. 계약 .11 F1(D14-1): 화면 응답의 `prov` 로 받은 출처는 보고 있는(그 Fact 가 나온) 리비전을 늘
+ * 넘긴다 — 발행 리비전 = 발행 순간 저장본, 발행 전 = 실시간. 계약 .12 F1(D15-2): 저장본이 모든 본문의 `raw_document_id` 를
+ * `rd_<id>` 서랍으로 저장하므로 화면이 만든 접수 근거 원문 출처(`rd_`)도 예외 없이 넘긴다.
  */
 export function provenanceSnapshot(
   provId: string | null | undefined,
   snapshotId: IdLike | null,
 ): IdLike | null {
-  if (!provId || provId.startsWith('rd_')) return null;
-  return snapshotId;
+  return provId ? snapshotId : null;
 }
 
 /** GET /raw/{raw_document_id} (getRawDocument) — 원문 파일(G3·G7). `as=text`면 추출 텍스트 */
@@ -570,15 +612,17 @@ export function useMarket(
   livingArea: string | null = null,
   scenario: ScenarioKey | null = null,
 ): Q<Market> {
+  const queryKey = queryKeys.market(key(sid), livingArea, scenario);
   return useQuery({
-    queryKey: queryKeys.market(key(sid), livingArea, scenario),
+    queryKey,
     queryFn: ({ signal }) =>
       apiFetch<Market>(`/snapshots/${enc(key(sid))}/market`, {
         query: { living_area: livingArea, scenario },
         signal,
       }),
     enabled: has(sid),
-    placeholderData: keepPreviousData,
+    // M7: 같은 리비전·시나리오 안의 생활권 변경만 이전 값을 둔다
+    placeholderData: keepWithinView(marketView, queryKey),
   });
 }
 
@@ -693,6 +737,55 @@ export function useJob(id: IdLike | null | undefined, pollMs: number = JOB_POLL_
     enabled: has(id),
     refetchInterval: (query) => jobRefetchInterval(query.state, pollMs, errorStreak(query)),
   });
+}
+
+/**
+ * 발행 대기 리비전 감시가 30분 상한에서 멈췄는가(7차 minor 21) + 다시 확인. `useSnapshots` 와 같은 쿼리를 읽는다.
+ */
+export function usePendingWatchExpired(regionId: IdLike | null | undefined): {
+  expired: boolean;
+  recheck: () => void;
+} {
+  const query = useSnapshots(regionId);
+  const data = query.data;
+  // 목록을 받을 때마다(structuralSharing 끔 — 새 배열) 다시 계산한다
+  const expired = data
+    ? snapshotsWatchExpired(data, Date.now(), roundJobs.get(data) ?? 'forbidden')
+    : false;
+  const { refetch } = query;
+  return { expired, recheck: () => void refetch() };
+}
+
+/**
+ * 발행 유발 잡부터 stats `publish_job_id` 를 따라 이은 잡 사슬(계약 .12 F15): 쓰기 응답 job_id 잡 → (rejudge 면) 판정 뒤
+ * 등록한 snapshot.publish → (후속 잡이 다른 발행에 포함됐으면) 그 발행 잡 … 각 잡은 useJob 과 같은 쿼리(2초 폴링,
+ * done·failed 면 멈춤)다. 잡 목록(`GET /jobs`)은 뒤지지 않는다. 반환 = 사슬 순서의 잡(아직 못 받았으면 undefined).
+ * 호출 측은 jobId 가 바뀌면 key 로 다시 마운트한다.
+ */
+export function usePublishChain(
+  jobId: IdLike,
+  pollMs: number = JOB_POLL_MS,
+): (JobRun | undefined)[] {
+  const [ids, setIds] = useState<string[]>(() => [key(jobId)]);
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: queryKeys.job(id),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        apiFetch<JobRun>(`/jobs/${enc(id)}`, { signal }),
+      refetchInterval: (
+        query: Parameters<typeof errorStreak>[0] & { state: QueryState<JobRun, Error> },
+      ) => jobRefetchInterval(query.state, pollMs, errorStreak(query)),
+    })),
+  });
+  const jobs = results.map((r) => r.data);
+  const last = jobs[jobs.length - 1];
+  const next = last ? nextPublishJobId(last) : null;
+  useEffect(() => {
+    if (next === null || ids.length >= PUBLISH_CHAIN_MAX) return;
+    if (ids.includes(String(next))) return;
+    setIds((prev) => [...prev, String(next)]);
+  }, [next, ids]);
+  return jobs;
 }
 
 // ─── 운영 (G7) ─────────────────────────────────────────────

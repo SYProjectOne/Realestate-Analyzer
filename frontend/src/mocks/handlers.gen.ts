@@ -56,7 +56,8 @@ export const generatedHandlers = [
         "stats": {},
         "error_text": null,
         "progress": null
-      }
+      },
+      "job_id": 932
     }, { status: 201 }),
   ),
   http.patch(mswPath("/catalysts/:id"), () =>
