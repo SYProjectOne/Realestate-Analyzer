@@ -39,6 +39,7 @@ __all__ = [
     "JOB_NAMES",
     "WEEKLY_SOURCES",
     "JobError",
+    "JobRequeue",
     "build_scheduler",
     "enqueue",
     "enqueue_for_regions",
@@ -89,6 +90,17 @@ class JobError(RuntimeError):
 
     def __init__(self, message: str, stats: Mapping[str, Any] | None = None) -> None:
         super().__init__(message)
+        self.stats = dict(stats or {})
+
+
+class JobRequeue(RuntimeError):
+    """잡을 실패가 아니라 **지연 재큐잉**한다(D16-3 — 발행 임대가 바쁠 때). runner 가 status 를 queued 로 되돌리고 stats 에
+    ``requeue_count``·``not_before``(이 시각 전에는 집지 않는다)·``requeue_reason`` 을 남긴다(error_text 없음)."""
+
+    def __init__(self, reason: str, delay_s: float, stats: Mapping[str, Any] | None = None) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.delay_s = float(delay_s)
         self.stats = dict(stats or {})
 
 

@@ -26,7 +26,9 @@ down_revision: str | None = "0006"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-SUBSTITUTE_NOTE = "추정(대체: 지역 전체)"  # 0006 까지의 대체 행 note 표식(app.normalize.benchmark.SUBSTITUTE_NOTE)
+SUBSTITUTE_NOTE = (
+    "추정(대체: 지역 전체)"  # 0006 까지의 대체 행 note 표식(app.normalize.benchmark.SUBSTITUTE_NOTE)
+)
 
 
 def upgrade() -> None:

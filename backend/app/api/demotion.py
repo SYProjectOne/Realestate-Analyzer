@@ -74,6 +74,7 @@ __all__ = [
     "FIELD_ENTITY",
     "FIELD_NAMES",
     "FIELD_TERMS",
+    "HUMAN_FACT_FIELDS",
     "HUMAN_FIELDS",
     "ClaimTarget",
     "HumanTarget",
@@ -119,9 +120,13 @@ FIELD_NAMES: Final[dict[str, str]] = {
     "resale_months": "전매제한 기간",
     "residency_months": "거주의무 기간",
     "down_payment_pct": "계약금 비율",
+    "discount": "기준 타입 할인",
 }
-HUMAN_FIELDS: Final = (*FIELD_TERMS, "intake_status", "other")
-"""POST /ops/human-checks field 값(계약 .8 HumanCheckField): 강등 가능한 사실 필드 + 접수 상태 + 기타(기록만)."""
+HUMAN_FACT_FIELDS: Final = (*FIELD_TERMS, "discount")
+"""사람 확인이 사실을 바꾸는 필드: 강등 가능한 사실 필드 + **할인**(계약 .13 D16-1 — 파서 할인은 언제나 '추정'이고 구매가에서
+빠지는 할인은 사람 확인으로 '확인됨'이 된 것뿐이다. 주장(P9) 대상이 아니라 ``FIELD_TERMS`` 에는 없다)."""
+HUMAN_FIELDS: Final = (*HUMAN_FACT_FIELDS, "intake_status", "other")
+"""POST /ops/human-checks field 값(계약 .13 HumanCheckField): 사실 필드 + 접수 상태 + 기타(기록만)."""
 _MODELS: Final[dict[str, Any]] = {
     "complex": Complex,
     "complex_type": ComplexType,
@@ -139,6 +144,7 @@ _RANGES: Final[dict[str, tuple[Decimal, Decimal]]] = {
     "rewin_restriction_years": (Decimal(0), Decimal(20)),
     "down_payment_pct": (Decimal(0), Decimal(100)),
     "max_price_won": (Decimal(10_000_000), Decimal(100_000_000_000)),
+    "discount": (Decimal(0), Decimal(100_000_000_000)),  # 0 = 할인 없음 확인(빼지 않는다)
 }
 
 
@@ -478,6 +484,8 @@ def human_target(
     session: Session, complex_id: int, field: str, entity_id: int | None = None
 ) -> HumanTarget | None:
     """사람 확인 field(논리) → 사실 행. 접수 상태·기타는 None(사실 행 없음). 찾을 수 없으면 ``ValueParseError``."""
+    if field == "discount":
+        return _discount_target(session, complex_id, entity_id)
     if field not in FIELD_TERMS:
         return None
     entity = FIELD_ENTITY[field]
@@ -517,6 +525,28 @@ def human_target(
     if tid is None:
         raise ValueParseError("이 단지에는 납부 조건 행이 없다 — 사람 확인 대상을 정할 수 없다")
     return HumanTarget("payment_terms", tid, field)
+
+
+def _discount_target(session: Session, complex_id: int, entity_id: int | None) -> HumanTarget:
+    """D16-1 사람 확인 할인 → 현재 공고(또는 지정한 그 단지 납부 조건 행)의 ``discount_by_type.<기준 타입>``(``price_view``
+    가 빼는 바로 그 칸). 의미 단위(D13-2)라 그 단지 다른 공고의 같은 타입 할인 칸에도 퍼진다(``_spread_to_group``)."""
+    from app.analysis.price_view import basis_type
+
+    t = basis_type(list(session.scalars(select(ComplexType).where(ComplexType.complex_id == complex_id))))
+    if t is None:
+        raise ValueParseError("이 단지에는 기준 타입이 없다 — 할인 사람 확인 대상을 정할 수 없다")
+    if entity_id is not None:
+        pt = session.get(PaymentTerms, entity_id)
+        if pt is None or pt.complex_id != complex_id:
+            raise ValueParseError(f"entity_id {entity_id} 는 단지 {complex_id} 의 납부 조건이 아니다")
+        tid: int | None = pt.id
+    else:
+        tid = _current_terms_id(session, complex_id)
+    if tid is None:
+        raise ValueParseError("이 단지에는 납부 조건(공고) 행이 없다 — 할인 사람 확인 대상을 정할 수 없다")
+    from app.normalize.fields import discount_field
+
+    return HumanTarget("payment_terms", tid, discount_field(t.type_code))
 
 
 def later_official(
@@ -625,13 +655,13 @@ def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
         return raw
     model = _MODELS[target.entity]
     col = model.__table__.columns.get(logical)
-    integer = logical == "max_price_won" or (col is not None and isinstance(col.type, Integer))
+    integer = logical in ("max_price_won", "discount") or (col is not None and isinstance(col.type, Integer))
     numeric = integer or (col is not None and isinstance(col.type, Numeric))
     if not numeric:
         raise ValueParseError(f"알 수 없는 필드 {target.field}")
     # 단위 접미어는 그 필드의 단위만(R3 4차 minor: '3년'이 3개월로, '1E1'이 10으로 들어갔다). 개월 필드의 'N년'은 N×12
     allowed = {"resale_months": ("개월", "년"), "residency_months": ("개월", "년"), "max_price_won": ("원",),
-               "down_payment_pct": ("%",)}.get(logical, ())  # fmt: skip
+               "discount": ("원",), "down_payment_pct": ("%",)}.get(logical, ())  # fmt: skip
     factor = 1
     for suffix in allowed:
         if raw.endswith(suffix):
@@ -668,7 +698,7 @@ def apply_human_check(
     """사람 확인 = resolver 0순위 후보로 그 필드 그룹을 다시 resolve(사실 테이블·출처 행) + 같은 사실 강등 복원 기록.
 
     ``hc.entity·entity_id``(``human_target`` 이 채움)와 ``hc.field``(논리)가 사실 행을 가리켜야 한다."""
-    if hc.entity is None or hc.entity_id is None or hc.field not in FIELD_TERMS:
+    if hc.entity is None or hc.entity_id is None or hc.field not in HUMAN_FACT_FIELDS:
         return []
     target = human_target(session, hc.complex_id, hc.field, hc.entity_id)
     if target is None:

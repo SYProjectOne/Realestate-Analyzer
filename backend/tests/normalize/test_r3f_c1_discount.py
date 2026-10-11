@@ -22,11 +22,12 @@ T84 = ("84A", "084.9582A")
 
 
 def _line(line: str, spec: tuple[str, str] = T84) -> tuple[int, bool] | None:
+    """(금액, 확인됨) — D16-1(R3h): 파서 할인 후보는 언제나 '추정'이라 확인됨은 늘 False."""
     from app.normalize.notice_parser import TypeSpec, _discount_line
 
     t = TypeSpec(short=spec[0], long=spec[1], area_text="84.9582", units=10, span=(0, 1))
     got = _discount_line(line + "\n", t)
-    return None if got is None else (got.won, got.confirmed)
+    return None if got is None else (got.won, False)
 
 
 @pytest.mark.parametrize(
@@ -109,8 +110,8 @@ def test_c1_support_amount_is_not_discount(line: str) -> None:
     ],
 )
 def test_c1_plain_line_stays_confirmed(line: str) -> None:
-    """조건 없는 분양가 할인 줄은 그대로 '확인됨'(회귀 방지)."""
-    assert _line(line) == (10_000_000, True), line
+    """D16-1(R3h, D14-2 대체): 조건 없어 보이는 분양가 할인 줄도 후보 '추정'(금액은 그대로 찾는다)."""
+    assert _line(line) == (10_000_000, False), line
 
 
 @pytest.mark.parametrize(
@@ -142,6 +143,8 @@ def test_c1_parse_notice_text_labels() -> None:
         ]
 
     got = disc("84A 분양가 할인 1,200,000원(1~3층)")
-    assert len(got) == 1 and got[0][:2] == (1_200_000, "추정") and "조건부 할인" in (got[0][2] or ""), got
+    assert len(got) == 1 and got[0][:2] == (1_200_000, "추정") and "조건 확인 필요" in (got[0][2] or ""), got
     assert disc("84A 분양가 할인 없음, 취득세 지원 1,200,000원") == []
-    assert disc("84A 분양가 할인 1,200,000원") == [(1_200_000, "확인됨", None)]
+    # D16-1(R3h): 조건 없어 보이는 줄도 '추정'(사람 확인만 '확인됨')
+    got = disc("84A 분양가 할인 1,200,000원")
+    assert len(got) == 1 and got[0][:2] == (1_200_000, "추정"), got

@@ -33,12 +33,21 @@ def upgrade() -> None:
     op.create_table(
         "snapshot_state",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("snapshot_id", sa.Integer(), sa.ForeignKey("snapshot.id", name=op.f("fk_snapshot_state_snapshot_id_snapshot")), nullable=False),
+        sa.Column(
+            "snapshot_id",
+            sa.Integer(),
+            sa.ForeignKey("snapshot.id", name=op.f("fk_snapshot_state_snapshot_id_snapshot")),
+            nullable=False,
+        ),
         sa.Column("entity", sa.String(length=16), nullable=False),
         sa.Column("entity_id", sa.Integer(), nullable=False),
         sa.Column("data", sa.JSON(), nullable=False),
-        sa.CheckConstraint("entity IN (" + ", ".join(f"'{e}'" for e in ENTITIES) + ")", name=op.f("ck_snapshot_state_entity")),
-        sa.UniqueConstraint("snapshot_id", "entity", "entity_id", name=op.f("uq_snapshot_state_snapshot_id_entity_entity_id")),
+        sa.CheckConstraint(
+            "entity IN (" + ", ".join(f"'{e}'" for e in ENTITIES) + ")", name=op.f("ck_snapshot_state_entity")
+        ),
+        sa.UniqueConstraint(
+            "snapshot_id", "entity", "entity_id", name=op.f("uq_snapshot_state_snapshot_id_entity_entity_id")
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_snapshot_state")),
     )
     op.create_index(op.f("ix_snapshot_state_snapshot_id"), "snapshot_state", ["snapshot_id"])

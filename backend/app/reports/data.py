@@ -1150,11 +1150,14 @@ def _score_views_live(
     by_cx: dict[int, dict[str, ComponentView]] = defaultdict(dict)
     for c in comps:
         sc = c.score_0_10
+        # R3 8차 minor 6: 점수 prov 는 API 출처 서랍 id 모양(sc_<실행>_<단지>_<성분>·st_<실행>_<단지>) — 행 id(sc_<성분 행>)는
+        # 서랍이 없고 KPI st_<실행> 과 부딪혔다
+        prov = f"sc_{run.id}_{c.complex_id}_{c.component}"
         score = (
             make_fact(
                 float(round_half_up(sc, 2)),
                 c.label if c.label != "확인 불가" else "추정",
-                f"sc_{c.id}",
+                prov,
                 asof,
                 unit="score",
                 reason=c.reason,
@@ -1166,7 +1169,7 @@ def _score_views_live(
             make_fact(
                 _num(c.raw_value),
                 c.label if c.label != "확인 불가" else "추정",
-                f"sc_{c.id}",
+                prov,
                 asof,
                 reason=c.reason,
             )
@@ -1193,7 +1196,12 @@ def _score_views_live(
             note = "미판정 — " + (missing[0].reason or missing[0].formula_text if missing else "성분 없음")
         else:
             total = make_fact(
-                float(round_half_up(t.total, 2)), "추정", f"st_{t.id}", asof, unit="score", reason="가중 합"
+                float(round_half_up(t.total, 2)),
+                "추정",
+                f"st_{run.id}_{t.complex_id}",
+                asof,
+                unit="score",
+                reason="가중 합",
             )
             note = "" if (t.rank or 99) <= 5 else f"{t.rank}위 — TOP 5 밖(상위 5위 경계 점수 미달)"
         views.append(

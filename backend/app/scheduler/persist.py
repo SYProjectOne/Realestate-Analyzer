@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -490,6 +490,7 @@ def copy_runs(
     *,
     created_at: str,
     scenario_ids: Iterable[int] | None = None,
+    checkpoint: Callable[[], None] | None = None,
 ) -> tuple[int, int]:
     """src 의 시나리오별 마지막 score_run(+component·total·decision)을 dst 로 복사(prev_score_run_id = 원본). dst 에 그
     시나리오 run 이 이미 있으면 건너뛴다. ``scenario_ids`` = 복사할 시나리오(없으면 전부). 반환 (run 수, decision 수).
@@ -544,16 +545,43 @@ def copy_runs(
                 )
             )
             stats["decision"] += 1
+        if (
+            checkpoint is not None
+        ):  # 시나리오 하나 = 한 트랜잭션(run·성분·총점·결정이 함께 — 다시 돌면 그 시나리오는 건너뛴다)
+            session.flush()
+            checkpoint()
     session.flush()
     return stats["score_run"], stats["decision"]
 
 
+def carry_incomplete(session: Session, src_snapshot_id: int, dst_snapshot_id: int) -> bool:
+    """dst 의 점수 실행이 모두 src 에서 복사한 것인데 src 의 시나리오 일부만 있다 = 나눠 하던 이월 복사가 중간에 멈췄다(R3h
+    D14-5 — 이월 복사를 짧은 트랜잭션 여러 개로 나눈 뒤의 재시도 판단)."""
+    src_runs = {
+        int(r.id): int(r.scenario_id)
+        for r in session.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == src_snapshot_id))
+    }
+    dst = list(session.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == dst_snapshot_id)))
+    if not dst or any(r.prev_score_run_id not in src_runs for r in dst):
+        return False
+    return {int(r.scenario_id) for r in dst} < set(src_runs.values())
+
+
 def carry_forward(
-    session: Session, src_snapshot_id: int, dst_snapshot_id: int, *, created_at: str
+    session: Session,
+    src_snapshot_id: int,
+    dst_snapshot_id: int,
+    *,
+    created_at: str,
+    checkpoint: Callable[[], None] | None = None,
 ) -> dict[str, int]:
     """이전 스냅샷의 판정·점수 파생 행을 그대로 복사한다(같은 사실 = 같은 판정, 판정기 호출 0 — T8).
 
     score_run 은 시나리오마다 src 의 마지막 run 을 복사하고 prev_score_run_id 로 원본을 가리킨다.
+
+    ``checkpoint``(R3h D14-5 'API 쓰기 대기 1초'): 주면 단계마다(사다리·주장 → 비교군 → 시나리오 하나씩) 부른다 — 호출자가
+    commit 해 쓰기 잠금을 짧게 나눈다. 단계마다 이미 있는 것은 건너뛰므로(사다리·주장·비교군·그 시나리오 run) 중간에 멈춘 복사를
+    다시 불러도 이어서 채운다(점수 실행이 마지막 — 완료 판단은 ``carry_incomplete``).
     """
     stats = {"ladder": 0, "score_run": 0, "decision": 0, "claim": 0, "comparable_set": 0}
     cids = [
@@ -564,9 +592,9 @@ def carry_forward(
     ]
     stats["ladder"] = copy_ladders(session, src_snapshot_id, dst_snapshot_id, cids)
     stats["claim"] = copy_claims(session, src_snapshot_id, dst_snapshot_id, None)
-    runs, decisions = copy_runs(session, src_snapshot_id, dst_snapshot_id, created_at=created_at)
-    stats["score_run"] += runs
-    stats["decision"] += decisions
+    if checkpoint is not None:
+        session.flush()
+        checkpoint()
     # 비교군은 DB 안에서 한 문장으로(INSERT … SELECT — 1000 단지면 ORM 복사 동안 쓰기 잠금이 길다, D14-5 'API 쓰기 대기 1초')
     from sqlalchemy import func as sa_func
     from sqlalchemy import insert, literal
@@ -580,13 +608,23 @@ def carry_forward(
         )
         or 0
     )
-    session.execute(
-        insert(table).from_select(
-            ["snapshot_id", *[c.key for c in cols]],
-            select(literal(dst_snapshot_id).label("snapshot_id"), *cols)
-            .where(table.c.snapshot_id == src_snapshot_id)
-            .order_by(table.c.id),
+    already = session.scalar(select(table.c.id).where(table.c.snapshot_id == dst_snapshot_id).limit(1))
+    if already is None:  # 다시 부른 복사(중간에 멈춘 뒤)는 비교군을 두 번 넣지 않는다
+        session.execute(
+            insert(table).from_select(
+                ["snapshot_id", *[c.key for c in cols]],
+                select(literal(dst_snapshot_id).label("snapshot_id"), *cols)
+                .where(table.c.snapshot_id == src_snapshot_id)
+                .order_by(table.c.id),
+            )
         )
+    if checkpoint is not None:
+        session.flush()
+        checkpoint()
+    runs, decisions = copy_runs(
+        session, src_snapshot_id, dst_snapshot_id, created_at=created_at, checkpoint=checkpoint
     )
+    stats["score_run"] += runs
+    stats["decision"] += decisions
     session.flush()
     return stats

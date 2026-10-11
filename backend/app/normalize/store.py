@@ -976,7 +976,7 @@ def resolve_field_group(
     return events
 
 
-HUMAN_SEMANTIC_FIELDS = frozenset({"max_price_won", "down_payment_pct"})
+HUMAN_SEMANTIC_FIELDS = frozenset({"max_price_won", "down_payment_pct", "discount"})
 """공고 행이 여럿인 사람 확인 필드(가격 — 공고문 타입 행·모든 공고 price_by_type, 계약금 — 모든 공고). 단지 필드는 행 하나."""
 
 

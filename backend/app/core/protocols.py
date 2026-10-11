@@ -79,7 +79,7 @@ __all__ = [
     "input_hash",
 ]
 
-CONTRACT_VERSION: Final = "2026-10-09.12"
+CONTRACT_VERSION: Final = "2026-10-09.13"
 
 JudgeTool = Literal["screen", "extract", "audit", "classify", "compare", "noul", "rerank", "decide", "verify"]
 JUDGE_TOOLS: Final[tuple[JudgeTool, ...]] = (
