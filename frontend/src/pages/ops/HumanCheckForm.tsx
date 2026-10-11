@@ -1,5 +1,5 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useLocation, useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { humanCheckJobId, useComplexes, useCreateHumanCheck } from '@/api/hooks';
@@ -16,14 +16,18 @@ import { IntakeBadge, PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
 import { enumText, idText, Section } from '../_shared';
-import { HUMAN_CHECK_NOTE_MAX, HUMAN_CHECK_RULES, HUMAN_CHECK_VALUE_MAX } from './humanCheckRules';
+import {
+  HC_PARAM,
+  HUMAN_CHECK_ANCHOR,
+  HUMAN_CHECK_NOTE_MAX,
+  HUMAN_CHECK_RULES,
+  HUMAN_CHECK_VALUE_MAX,
+} from './humanCheckRules';
 
 const KINDS = ['phone', 'visit', 'email'] as const;
 const INTAKE_VALUES = ['가능', '미정', '확인 불가', '불가'] as const;
 
-/** 사람 확인 폼 앵커·미리 채우기 URL 파라미터(ClaimsPanel '사람 확인으로 복원'이 쓴다) */
-export const HUMAN_CHECK_ANCHOR = 'human-check';
-export const HC_PARAM = { complex: 'hc_complex', field: 'hc_field', entity: 'hc_entity' } as const;
+export { HC_PARAM, HUMAN_CHECK_ANCHOR };
 
 /** 강등 사실을 사람 확인으로 복원하는 폼 주소(같은 /ops, 미리 채움 + 폼으로 스크롤) */
 export function humanCheckSearch(
@@ -229,6 +233,7 @@ export function validateHumanValue(field: HumanCheckField, raw: string): string 
 /**
  * G7 HumanCheckForm — 단지·필드·값·종류·메모 → POST /ops/human-checks.
  * 필드(계약 .8, M-5): 접수 상태 + 강등 가능한 사실 필드 5개(최고 공급금액·입주 예정·전매·거주의무 개월·계약금 %)
+ * + 할인(계약 .13 F1·D16-1, 기준 타입 원 — 값 검사는 서버 422 value_text 를 값 칸에)
  * + 기타. 사실 필드의 사람 확인은 resolver 0순위 후보가 되어 같은 사실의 강등(검증 모순)을 복원한다(D11-3).
  * 접수 상태 저장 → 접수 배지 즉시 갱신(응답 created_intake + 쿼리 무효화) + "재판정 잡 등록" 제안 토스트.
  * ClaimsPanel 의 '사람 확인으로 복원'이 URL(hc_complex·hc_field·hc_entity)로 미리 채운다.
@@ -275,6 +280,16 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
     setError(null);
     setLocalErrors({});
   }, [preComplex, preField, preEntity]);
+
+  // 다른 화면(G3 '추정' 할인 링크 — 계약 .13 F2)에서 `#human-check` 로 들어오면 폼으로 한 번 옮긴다(라우터는 해시로 스크롤하지 않는다)
+  const { hash } = useLocation();
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (scrolled.current || hash !== `#${HUMAN_CHECK_ANCHOR}`) return;
+    scrolled.current = true;
+    const form = document.getElementById(HUMAN_CHECK_ANCHOR);
+    if (form && typeof form.scrollIntoView === 'function') form.scrollIntoView({ block: 'start' });
+  }, [hash]);
 
   const submit = () => {
     // 8차 m17: 첫 오류에서 멈추지 않고 모든 칸을 검사해 한 번에 보인다
@@ -394,7 +409,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
         </Field>
         <Field
           label="value"
-          hint={rule ? t(`page.G7.hcHint.${field}` as TKey) : undefined}
+          hint={rule || field === 'discount' ? t(`page.G7.hcHint.${field}` as TKey) : undefined}
           error={errorOf('value')}
         >
           {(id, hintId) =>
@@ -421,7 +436,13 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
               <input
                 id={id}
                 type={rule?.kind === 'ym' ? 'month' : 'text'}
-                inputMode={rule && rule.kind !== 'ym' ? 'decimal' : undefined}
+                inputMode={
+                  field === 'discount'
+                    ? 'numeric'
+                    : rule && rule.kind !== 'ym'
+                      ? 'decimal'
+                      : undefined
+                }
                 value={value}
                 maxLength={HUMAN_CHECK_VALUE_MAX}
                 aria-invalid={invalidOf('value')}

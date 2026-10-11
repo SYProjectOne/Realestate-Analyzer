@@ -295,7 +295,10 @@ export const CHECKLIST_KINDS = [
 export type ChecklistPatch = S['ChecklistPatch'];
 export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];
-/** 사람 확인 대상 필드(계약 .8 HumanCheckField): 강등 가능한 사실 5개 + 접수 상태 + 기타(기록만) */
+/**
+ * 사람 확인 대상 필드(계약 .8 HumanCheckField): 강등 가능한 사실 5개 + 할인(계약 .13 F1·D16-1 — 기준 타입 할인 원, 사람
+ * 확인만 '확인됨' 차감을 만든다) + 접수 상태 + 기타(기록만)
+ */
 export type HumanCheckField = S['HumanCheckField'];
 export const HUMAN_CHECK_FIELDS = [
   'intake_status',
@@ -304,6 +307,7 @@ export const HUMAN_CHECK_FIELDS = [
   'resale_months',
   'residency_months',
   'down_payment_pct',
+  'discount',
   'other',
 ] as const satisfies readonly HumanCheckField[];
 /** 사람 확인 입력자 = 역할만(계약 2026-10-09.4 EnteredByRole, RA §10 보안 2 — 사람 이름 자유 입력 금지) */
