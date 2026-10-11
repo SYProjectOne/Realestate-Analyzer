@@ -62,7 +62,7 @@ def test_out_of_range_or_overflow_is_422_and_reads_stay_200(
     r = _post(client, field, text, value)
     assert r.status_code == 422, r.text
     body = r.json()
-    assert body["code"] == "validation_error", body
+    assert body["code"] == "checked_at_format", body  # 계약 .12: 형식·2000년 이전·overflow
     assert body["field_errors"][0]["loc"] == ["body", "checked_at"], body
     assert _human_checks() == before, "422 면 아무것도 저장하지 않는다"
     _reads_ok(client)
@@ -71,6 +71,7 @@ def test_out_of_range_or_overflow_is_422_and_reads_stay_200(
 def test_old_year_detail_mentions_2000(client: TestClient) -> None:
     r = _post(client, "move_in_ym", "2028-06", "1999-12-31T23:59:59+09:00")
     assert r.status_code == 422 and "2000" in r.json()["detail"], r.text
+    assert r.json()["code"] == "checked_at_format"
 
 
 @pytest.mark.parametrize("value", ["2026-10-09t20:00:00z", "2026-10-09T20:00:00Z"])
@@ -101,6 +102,7 @@ def test_lowercase_early_kst_day_is_422_like_uppercase(client: TestClient, value
     r = _post(client, "move_in_ym", "2028-06", value)
     assert r.status_code == 422, r.text
     body = r.json()
+    assert body["code"] == "checked_at_before_source", body  # 계약 .12
     assert body["field_errors"][0]["loc"] == ["body", "checked_at"], body
     assert "2026-10-09" in body["detail"], body["detail"]
 
@@ -112,3 +114,31 @@ def test_legacy_overflow_rows_do_not_break_reads(client: TestClient) -> None:
         s.add(IntakeStatus(complex_id=CX, snapshot_id=SNAP, status="가능", path="human_check",
                            checked_at="0001-01-01T00:00:00+14:00", note="옛 행", entered_by="운영자"))  # fmt: skip
     _reads_ok(client)
+
+
+@pytest.mark.parametrize(
+    ("value", "code"),
+    [
+        ("2026-10-09", "checked_at_format"),  # 스키마 format: date-time 에서 걸려도 같은 code
+        ("not a time", "checked_at_format"),
+        ("1999-12-31T23:59:59+09:00", "checked_at_format"),
+        ("0001-01-01T00:00:00+14:00", "checked_at_format"),
+        ("2999-01-01T00:00:00+09:00", "checked_at_future"),
+    ],
+)
+def test_checked_at_422_codes(client: TestClient, value: str, code: str) -> None:
+    """계약 .12(FE6 요청·CEO 승인): checked_at 422 는 화면이 문구 대신 code 로 구분한다."""
+    r = _post(client, "other", "메모", value)
+    assert r.status_code == 422 and r.json()["code"] == code, r.text
+    assert r.json()["field_errors"][0]["loc"] == ["body", "checked_at"]
+
+
+def test_other_field_errors_stay_validation_error(client: TestClient) -> None:
+    """checked_at 과 다른 필드가 같이 틀리면(또는 다른 필드만) 그대로 validation_error."""
+    r = client.post(
+        "/api/ops/human-checks",
+        headers=WRITE,
+        json={"complex_id": CX, "field": "other", "value_text": "메모", "kind": "nope",
+              "checked_at": "2026-10-09", "entered_by": "운영자"},
+    )  # fmt: skip
+    assert r.status_code == 422 and r.json()["code"] == "validation_error", r.text

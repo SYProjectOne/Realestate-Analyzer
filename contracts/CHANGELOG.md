@@ -7,7 +7,8 @@
 R3 7차 리뷰(`docs/design/wp/R3_REVIEW7.md`) 후속 — CEO 결정 D15(`docs/design/DECISIONS.md`)와 R3g 배정(`docs/design/wp/R3G_FIX.md` CORE5).
 계약 소유자 = R3g CORE5(브랜치 `wp/r3g-core5`). 마이그레이션 `0012`(`0012_r3g.py`: 새 테이블 `snapshot_view_unit`(완료 표식) +
 `snapshot_view.shape_version` + `snapshot.publish_lease`). 필드 삭제 없음, **새 응답 필드 1**(`CatalystCreated.job_id`), 새 잡 payload 필드 1
-(`snapshot.publish` `follow_up`), 응답 상태 코드·API 오류 code 추가 없음(503 `materialize_pending` 이 나는 경우가 늘었다 — F4·F5).
+(`snapshot.publish` `follow_up`), **새 오류 code 3**(`checked_at_format`·`checked_at_future`·`checked_at_before_source` — FE6 요청·CEO 승인,
+F14), 잡 stats `publish_job_id`(F15). 응답 상태 코드 변경 없음(503 `materialize_pending` 이 나는 경우가 늘었다 — F5·F6·F7).
 
 **프론트(FE6)가 맞출 것** — 아래 'FE 차이' 표 하나만 보면 된다. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시
 만들지 않았다(frontend/** = FE6 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
@@ -28,6 +29,8 @@ R3 7차 리뷰(`docs/design/wp/R3_REVIEW7.md`) 후속 — CEO 결정 D15(`docs/d
 | F10 | 보고서 HTML §12(사용자 시나리오) | 비교 기준에 그 시나리오가 없으면 12-1 순위표·TOP 5 진입·이탈을 기본 시나리오 순위와 섞음('12위 → 1위') | 같은 시나리오끼리만. 없으면 12-1 자리에 사유 문단('비교 기준 리비전에 이 시나리오가 없어 12-1 순위 비교와 TOP 5 진입·이탈은 생략했다'), 후보 건수 비교는 그대로 | D15-5 · M4 |
 | F11 | 보고서 날짜 | 접수 확인일·실패 출처·참고 링크·판정 호출·변경 날짜 = 문자열 앞 10자(UTC 일 수 있음) | 모두 KST 날짜(`core.time.kst_day`) | D15-7 · m3 |
 | F12 | `snapshot.publish` 잡 실패 문구 | 같은 리비전 발행 둘이 겹치면 한쪽 정리 DELETE 가 다른 쪽 저장본을 지워 published + 0행 | 리비전마다 발행 하나(single-flight). 겹친 쪽은 아무것도 지우지 않고 failed `error_text` = `publish_in_progress: …`(화면: 일반 잡 실패 안내 — 먼저 돈 잡이 발행한다) | D15-6 · m1 |
+| F14 | `POST /ops/human-checks` checked_at **422 code** | 모두 `validation_error`(문구로만 구분) | **code 로 구분**(FE6 요청·CEO 승인): `checked_at_format` = 형식(스키마 `format: date-time` 포함)·KST 2000-01-01 이전·overflow, `checked_at_future` = 서버 지금 + 10분 넘는 미래, `checked_at_before_source` = 그 의미 필드에 확인일(KST)보다 뒤에 관측된 공식 공고가 **다른 값**으로 이미 있음(D13-2·D14-6). 셋 다 `field_errors[0].loc = ["body","checked_at"]`. checked_at 과 다른 필드가 함께 틀리거나 다른 필드만 틀리면 그대로 `validation_error` | D15-7 · FE6 요청 |
+| F15 | 발행을 일으키는 잡의 **`publish_job_id`** + 쓰기 응답 `job_id` 의미 | 잡마다 달랐다(rejudge 는 발행 잡 id 를 남기지 않음) | 잡 stats `publish_job_id` = 발행을 하는(한) 잡: `rejudge` → 판정 뒤 등록한 `snapshot.publish` 잡, `snapshot.publish`(후속 포함) → 그 잡 자신(미룸이면 null + `deferred_to`, 다른 발행에 포함돼 닫힌 후속 잡 → 그 발행 잡), `region.expand`·`region.bootstrap`·`collect.daily` 이월·`collect.weekly` 마감(그 자리 발행) → 그 잡 자신, 발행이 예외로 실패해 재시도를 남겼으면 → 재시도 잡(`publish_retry_job_id` 와 같음). 화면: 응답 `job_id` 잡이 done 이면 `stats.publish_job_id` 가 자기와 다를 때 그 잡을 이어 감시, 같거나 `published` 가 있으면 끝. 쓰기 응답 `job_id`: `PATCH /catalysts` = snapshot.publish(carry 또는 follow_up) · `POST /catalysts` = rejudge · `PUT /regions/{id}/living-areas` = rejudge · `PATCH /regions/{id}`(선택 변경) = region.expand · `POST /ops/human-checks` = rejudge(= `rejudge_job_id`) | D15-6 · FE6 요청 |
 | F13 | 500 `stored_view_mismatch` | 저장본 행의 계약 버전 문자열 ≠ 지금 계약이면 500(모양이 같은 계약 변경에도) | **저장 모양 버전**(정수) 또는 sha256 이 다를 때만 500. 계약 버전만 바뀐 경우 200 | D15-3 · m9 |
 
 ### 의미 변경(같은 필드, 다른 동작)
@@ -53,7 +56,8 @@ R3 7차 리뷰(`docs/design/wp/R3_REVIEW7.md`) 후속 — CEO 결정 D15(`docs/d
 | --- | --- | --- |
 | 1 | `catalyst.json` `CatalystCreated` | `job_id`(integer\|null, **필수**) 추가, `job` 설명 바로잡음(분류 rejudge 잡). 예시 `catalyst_created.json` 갱신 |
 | 2 | `job_payloads/snapshot_publish.json` | `follow_up`(boolean, 선택) — 후속 발행 잡(F4). 설명에 single-flight(`publish_in_progress`) |
-| 3 | `openapi.yaml` | `info.version` 2026-10-09.12. 경로·응답 코드 변경 없음 |
+| 3 | `openapi.yaml` | `info.version` 2026-10-09.12. 경로·응답 코드 변경 없음. createHumanCheck 설명에 checked_at 422 code(F14) |
+| 3a | `error.json` code enum | `checked_at_format`·`checked_at_future`·`checked_at_before_source` 추가(F14) |
 | 4 | DB `0012` | 새 테이블 `snapshot_view_unit`(snapshot_id FK, kind CHECK = snapshot_view 와 같음, scenario, shape_version, rows, done; 유일 (snapshot_id, kind, scenario)) · `snapshot_view.shape_version`(INTEGER NOT NULL 기본 1) · `snapshot.publish_lease`(String 80, NULL). 데이터: 발행 리비전의 기존 (kind, 시나리오) 행 묶음 = done 표식(rows = 행 수), 그 리비전 시나리오(행·점수 실행) × kind 중 행 없는 단위 = done=false 표식(backfill 이 채운다). downgrade = 표·열 삭제 |
 
 ### 마이그레이션·검증

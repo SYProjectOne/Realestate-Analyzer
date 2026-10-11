@@ -1209,7 +1209,10 @@ class Error(BaseModel):
     - contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev, 발행 전 리비전 실시간 GET)
     - scenario_not_in_revision (422): 계약 .11(D14-3) — 보고서 대상 리비전에 그 시나리오 저장본이 없다(발행 뒤 만든 사용자 시나리오, field_errors loc body.scenario_id)
     - stored_view_mismatch (500): 계약 .11(D14-4) — 발행 리비전 저장본의 sha256·계약 버전이 맞지 않는다(조용히 내보내지 않는다, 서버 로그)
-    - materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After)
+    - materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After). 계약 .12(D15-3): 그 (리비전, kind, 시나리오) 완료 표식이 없거나 미완
+    - checked_at_format (422): 계약 .12 — POST /ops/human-checks checked_at 이 시간대가 붙은 RFC3339 가 아니거나(T·Z 대소문자 무관) KST 2000-01-01 이전·overflow(field_errors loc body.checked_at)
+    - checked_at_future (422): 계약 .12 — checked_at 이 서버 지금보다 10분 넘게 미래
+    - checked_at_before_source (422): 계약 .12 — 그 의미 필드에 확인일(KST 날짜)보다 뒤에 관측된 공식 공고가 다른 값으로 이미 있다(D13-2·D14-6 — 같은 값이면 201)
     - internal (500): 그 밖의 서버 오류
     """
 
@@ -1230,6 +1233,9 @@ class Error(BaseModel):
         "scenario_not_in_revision",
         "stored_view_mismatch",
         "materialize_pending",
+        "checked_at_format",
+        "checked_at_future",
+        "checked_at_before_source",
     ]
     detail: str
     field_errors: list[FieldError] | None = None

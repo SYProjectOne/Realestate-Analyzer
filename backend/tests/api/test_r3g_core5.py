@@ -274,14 +274,17 @@ def test_m11_backfill_isolates_failing_revision(client: TestClient, monkeypatch:
         ({"x": 0}, {"x": False}),
         ({"o": {"p": 1, "q": 2}}, {"o": {"q": 2, "p": 1}}),
         ({"l": [1, 2.0]}, {"l": [1.0, 2]}),
+        ({"z": 0.0}, {"z": -0.0}),
+        ({"d": {"x": [{"k": 1}]}}, {"d": {"x": [{"k": True}]}}),
     ],
 )
 def test_m8_patch_rebuilds_same_bytes(base: dict[str, Any], body: dict[str, Any]) -> None:
     import app.snapshot_view as sv
 
-    node = sv._diff(base, body, sv._PATCH_DEPTH)
-    rebuilt = sv._apply(base, node)
+    patch = sv._patch(base, body)
+    rebuilt = body if patch is None else sv._apply(base, {"$p": patch})  # None = 본문 통째 저장
     assert sv._dumps(rebuilt) == sv._dumps(body)
+    assert sv._patch({"a": 1, "b": 2}, {"a": 1, "b": 3}) == {"b": {"$v": 3}}  # 정상 patch 는 그대로
 
 
 # ====================================================================== M3 · m14 (D15-4)
@@ -720,3 +723,56 @@ def test_r3g_links_survive(client: TestClient) -> None:
     _drain()
     with get_session() as s:
         assert s.scalars(select(CatalystLink).where(CatalystLink.catalyst_id == cid)).first() is not None
+
+
+# ====================================================================== 계약 .12 추가(FE6 요청): publish_job_id
+
+
+def test_publish_job_id_on_publish_and_included_follow_up(client: TestClient) -> None:
+    """snapshot.publish 잡 stats.publish_job_id = 그 잡, 그 발행이 포함한 후속 잡의 stats.publish_job_id = 발행한 잡."""
+    j1 = _link(client, _cat("R3g 역9"))["job_id"]
+    follow = _link(client, _cat("R3g 역10"))["job_id"]
+    st, stats = run_job(j1)
+    assert st == "done" and stats["publish_job_id"] == j1, stats
+    with get_session() as s:
+        job = s.get(JobRun, follow)
+        assert job is not None and (job.stats or {}).get("publish_job_id") == j1
+
+
+def test_publish_job_id_on_rejudge_and_inline_paths(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """rejudge 잡 stats.publish_job_id = 등록한 snapshot.publish 잡, daily 이월(그 자리 발행) = 그 잡 자신."""
+    from types import SimpleNamespace
+
+    import app.scheduler.pipeline as pl
+    from app.core.db import get_sessionmaker
+    from app.scheduler.context import SchedulerContext
+    from app.scheduler.handlers import _after_daily
+
+    fake = SimpleNamespace(snapshot_id=SNAP, degraded=False, stats=lambda: {"snapshot_id": SNAP})
+    monkeypatch.setattr(pl, "run_pipeline", lambda *a, **k: fake)
+    with get_session() as s:
+        rj = JobRun(
+            job_name="rejudge", kind="rejudge", status="queued", scheduled_at="2026-10-11T10:00:00+09:00",
+            payload={"snapshot_id": SNAP, "scenario_id": None, "complex_ids": [], "reason": "r3g"}, stats={},
+        )  # fmt: skip
+        s.add(rj)
+        s.flush()
+        rid = rj.id
+    st, stats = run_job(rid)
+    assert st == "done" and stats["publish_job_id"], stats
+    with get_session() as s:
+        pub = s.get(JobRun, stats["publish_job_id"])
+        assert pub is not None and pub.job_name == "snapshot.publish" and pub.payload == {"snapshot_id": SNAP}
+    monkeypatch.undo()
+
+    with get_session() as s:
+        nxt = Snapshot(region_id=1, asof_date="2099-03-01", status="building", degraded=False,
+                       created_at="2099-03-01T06:00:00+09:00", revision=1)  # fmt: skip
+        s.add(nxt)
+        s.flush()
+        nid = nxt.id
+    ctx = SchedulerContext(session_factory=get_sessionmaker(), adapter_factory=lambda: None, collectors={})  # type: ignore[arg-type,return-value]
+    out = _after_daily(ctx, nid, [], [], job_id=4242)
+    assert out["published"] is True and out["publish_job_id"] == 4242, out

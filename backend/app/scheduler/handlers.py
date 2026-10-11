@@ -191,7 +191,12 @@ def changed_after_runs(session: Any, snap: Snapshot) -> list[int]:
 
 
 def _after_daily(
-    ctx: SchedulerContext, snapshot_id: int, rejudge_ids: list[int], event_ids: list[int]
+    ctx: SchedulerContext,
+    snapshot_id: int,
+    rejudge_ids: list[int],
+    event_ids: list[int],
+    *,
+    job_id: int | None = None,
 ) -> dict[str, Any]:
     """변경 단지만 rejudge. 변경이 없으면(T8) 이전 publish 스냅샷의 판정·점수를 복사하고 publish — 판정기 호출 0."""
     with ctx.session_factory() as session:
@@ -233,7 +238,7 @@ def _after_daily(
         session.commit()
         return {
             "carry_forward": {"from_snapshot_id": prev.id, **copied},
-            **publish_or_retry(ctx, session, snapshot_id),
+            **publish_or_retry(ctx, session, snapshot_id, job_id=job_id),
         }
 
 
@@ -246,7 +251,9 @@ def handle_collect_daily(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
         ctx, region_id, p.get("sources") or list(DAILY_SOURCES), asof_date=p.get("asof_date"), since=since
     )
     stats = res.stats()
-    stats.update(_after_daily(ctx, res.snapshot_id, res.rejudge_complex_ids, res.change_event_ids))
+    stats.update(
+        _after_daily(ctx, res.snapshot_id, res.rejudge_complex_ids, res.change_event_ids, job_id=job.id)
+    )
     stats["notify"] = _notify(ctx, res.change_event_ids)
     if res.errors:
         raise JobError(f"수집 단계 오류: {', '.join(sorted(res.errors))}", stats)
@@ -276,7 +283,7 @@ def handle_collect_weekly(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
                 session.commit()
                 stats["rejudge_job_id"] = rj.id
     if "rejudge_job_id" not in stats:
-        done = _finish_unchanged_revision(ctx, res.snapshot_id)
+        done = _finish_unchanged_revision(ctx, res.snapshot_id, job_id=job.id)
         if done is not None:
             stats["carry_forward"] = done
     if res.errors:
@@ -332,7 +339,9 @@ def _discard_empty_revision(session: Any, snap: Snapshot) -> bool:
     return True
 
 
-def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[str, Any] | None:
+def _finish_unchanged_revision(
+    ctx: SchedulerContext, snapshot_id: int, *, job_id: int | None = None
+) -> dict[str, Any] | None:
     """변경 없는 주간 수집 뒤의 리비전 정리(R3 4차 minor · **D13-4**).
 
     - 이 수집이 발행된 기준일에 만든 빈 리비전 → 지운다(새 리비전 없음 — 직전 발행 리비전 유지).
@@ -373,7 +382,11 @@ def _finish_unchanged_revision(ctx: SchedulerContext, snapshot_id: int) -> dict[
         copied = carry_forward(session, base.id, snapshot_id, created_at=ctx.iso_now())
         snap.status = "ready"
         session.commit()
-        return {"from_snapshot_id": base.id, **copied, **publish_or_retry(ctx, session, snapshot_id)}
+        return {
+            "from_snapshot_id": base.id,
+            **copied,
+            **publish_or_retry(ctx, session, snapshot_id, job_id=job_id),
+        }
 
 
 def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
@@ -417,6 +430,8 @@ def _publish_or_raise(
     snap = session.get(Snapshot, sid)
     session.commit()
     stats.update({"published": ok, "contradicted": n, **mstats})
+    if holder.startswith("job:"):
+        stats["publish_job_id"] = int(holder[4:])  # 계약 .12: 발행하는 잡 = 이 잡
     if not ok:
         if mstats.get("publish_in_progress"):
             raise JobError(
@@ -464,17 +479,22 @@ def _follow_up(ctx: SchedulerContext, job: JobRun, target: int) -> dict[str, Any
             session.commit()
         else:
             session.commit()
-            stats.update({"published": False, "deferred_to": newest.id})
+            stats.update({"published": False, "deferred_to": newest.id, "publish_job_id": None})
             return stats
         stats["snapshot_id"] = sid
         _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}")
     return stats
 
 
-def publish_or_retry(ctx: SchedulerContext, session: Any, sid: int) -> dict[str, Any]:
+def publish_or_retry(
+    ctx: SchedulerContext, session: Any, sid: int, *, job_id: int | None = None
+) -> dict[str, Any]:
     """발행 경로(daily 이월·주간 마감·지역 확장·bootstrap) 공용(D15-6·R3 7차 m13): 발행이 예외로 실패하면 수집·판정 결과는
     그대로 두고 ``snapshot.publish`` 재시도 잡을 남긴다(stats ``publish_retry_job_id``). contradicted·degraded 로 막힌 것은
-    실패가 아니다(``published`` False 그대로)."""
+    실패가 아니다(``published`` False 그대로).
+
+    계약 .12(FE6 요청): stats ``publish_job_id`` = 발행을 하는(한) 잡 — 이 잡이 그 자리에서 발행했으면 이 잡(``job_id``),
+    실패해 재시도 잡을 남겼으면 그 재시도 잡(``publish_retry_job_id`` 와 같음). 화면은 이 id 를 따라가면 발행 완료를 안다."""
     try:
         ok, n, mstats = snapshots.publish_with_stats(session, sid, now=ctx.iso_now())
         session.commit()
@@ -485,8 +505,13 @@ def publish_or_retry(ctx: SchedulerContext, session: Any, sid: int) -> dict[str,
         retry = enqueue(session, "snapshot.publish", {"snapshot_id": sid}, now=ctx.now())
         session.commit()
         log.error("worker.publish_failed", extra={"snapshot_id": sid, "error": type(exc).__name__})
-        return {"published": False, "publish_error": type(exc).__name__, "publish_retry_job_id": retry.id}
-    out: dict[str, Any] = {"published": ok, "contradicted": n}
+        return {
+            "published": False,
+            "publish_error": type(exc).__name__,
+            "publish_retry_job_id": retry.id,
+            "publish_job_id": retry.id,
+        }
+    out: dict[str, Any] = {"published": ok, "contradicted": n, "publish_job_id": job_id}
     if mstats.get("publish_in_progress"):
         out["publish_in_progress"] = mstats["publish_in_progress"]
     return out
@@ -528,7 +553,7 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
         with ctx.session_factory() as session:
             if not result.degraded:
                 # 수집·판정은 끝났다 — 발행이 실패해도 지역은 ready, 발행은 snapshot.publish 재시도 잡(m19·m13)
-                stats.update(publish_or_retry(ctx, session, result.snapshot_id))
+                stats.update(publish_or_retry(ctx, session, result.snapshot_id, job_id=job.id))
             region = session.get(Region, region_id)
             assert region is not None
             region.status = "ready"
@@ -635,7 +660,7 @@ def handle_region_expand(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     if result.degraded:
         raise JobError("judge_unavailable: 판정기 연결 실패 — degraded 모드", stats)
     with ctx.session_factory() as session:
-        stats.update(publish_or_retry(ctx, session, result.snapshot_id))
+        stats.update(publish_or_retry(ctx, session, result.snapshot_id, job_id=job.id))
     return stats
 
 

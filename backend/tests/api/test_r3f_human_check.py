@@ -52,10 +52,11 @@ def _counts() -> tuple[int, int]:
         )
 
 
-def _assert_checked_at_422(r: Any) -> dict[str, Any]:
+def _assert_checked_at_422(r: Any, code: str) -> dict[str, Any]:
+    """계약 .12: checked_at 422 는 code 로 구분(checked_at_format·checked_at_future·checked_at_before_source)."""
     assert r.status_code == 422, r.text
     body: dict[str, Any] = r.json()
-    assert body["code"] == "validation_error", body
+    assert body["code"] == code, body
     assert body["field_errors"][0]["loc"] == ["body", "checked_at"], body
     return body
 
@@ -77,7 +78,7 @@ def _assert_checked_at_422(r: Any) -> dict[str, Any]:
 def test_n_m4_checked_at_must_be_rfc3339_with_offset(client: TestClient, value: str, field: str) -> None:
     before = _counts()
     text = {"move_in_ym": "2028-06", "other": "메모", "intake_status": "가능"}[field]
-    _assert_checked_at_422(_post(client, field, text, value))
+    _assert_checked_at_422(_post(client, field, text, value), "checked_at_format")
     assert _counts() == before, "거절된 입력은 아무것도 쓰지 않는다"
 
 
@@ -85,7 +86,7 @@ def test_n_m4_future_checked_at_is_422(client: TestClient) -> None:
     before = _counts()
     for ahead in (timedelta(minutes=11), timedelta(days=1), timedelta(days=365 * 70)):
         stamp = (now_kst() + ahead).isoformat(timespec="seconds")
-        body = _assert_checked_at_422(_post(client, "move_in_ym", "2028-06", stamp))
+        body = _assert_checked_at_422(_post(client, "move_in_ym", "2028-06", stamp), "checked_at_future")
         assert "미래" in body["detail"], body
     assert _counts() == before
 
@@ -106,7 +107,9 @@ def test_m12_utc_evening_is_next_kst_day(client: TestClient) -> None:
     """공고 관측 10-05. '2026-10-04T20:00:00Z' = KST 10-05 05시(같은 날 → 받는다), '…T14:00:00Z' = KST 10-04 23시(이르다 → 422)."""
     as_live()
     store_cx_field(CX, "move_in_ym", "2028-01", "notice_pdf", "2026-10-05", "m12")
-    body = _assert_checked_at_422(_post(client, "move_in_ym", "2028-06", "2026-10-04T14:00:00Z"))
+    body = _assert_checked_at_422(
+        _post(client, "move_in_ym", "2028-06", "2026-10-04T14:00:00Z"), "checked_at_before_source"
+    )
     assert "2026-10-05" in body["detail"]
     r = _post(client, "move_in_ym", "2028-06", "2026-10-04T20:00:00Z")
     assert r.status_code == 201, r.text
@@ -149,7 +152,9 @@ def test_d14_6_backdated_different_value_still_422(client: TestClient) -> None:
     store_notice(CX, "2026990106", {"effective_from": "2026-10-05", "notice_kind": "본청약", "down_payment_pct": 20.0},
                  observed_on="2026-10-05")  # fmt: skip
     before = _counts()
-    body = _assert_checked_at_422(_post(client, "down_payment_pct", "10%", "2026-10-04T10:00:00+09:00"))
+    body = _assert_checked_at_422(
+        _post(client, "down_payment_pct", "10%", "2026-10-04T10:00:00+09:00"), "checked_at_before_source"
+    )
     assert "2026-10-05" in body["detail"]
     assert _counts() == before
 

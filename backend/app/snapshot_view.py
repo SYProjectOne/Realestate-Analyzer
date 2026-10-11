@@ -49,7 +49,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
+import pickle
 import re
 import sys
 import time
@@ -188,20 +190,54 @@ DEDUP_KINDS: Final = frozenset({"complex", "report", "compare", "complexes", "da
 _PATCH_DEPTH: Final = 4
 
 
-def _same(a: Any, b: Any) -> bool:
-    """저장 바이트까지 같은가(R3 7차 m8): ``==`` 는 ``1 == 1.0 == True``·키 순서가 다른 dict 를 같다고 본다 — 그 경우 기본
-    시나리오 값으로 되살리면 원래 바이트가 아니다. 값이 같을 때만 직렬화 바이트를 비교한다."""
-    if a is b:
-        return True
-    return bool(a == b) and _dumps(a) == _dumps(b)
-
-
-def _diff(base: Any, body: Any, depth: int) -> dict[str, Any]:
+def _diff(base: Any, body: Any, depth: int, cache: dict[int, bytes] | None = None) -> dict[str, Any]:
     """body = apply(base, diff). 같은 키 순서의 dict 만 안으로 들어간다({"$p": {키: 하위}}), 그 밖은 값 통째({"$v": 값}).
-    '같다'는 저장 바이트가 같다는 뜻이다(``_same``)."""
+
+    '같다'(patch 에서 빼도 된다)는 저장 바이트가 같다는 뜻이다(R3 7차 m8: ``==`` 는 ``1``·``1.0``·``true``·키 순서가 다른
+    dict 를 같다고 본다). 빠른 ``==`` 로 거른 뒤 문자열·None 이 아니면 형까지 구분하는 구조 바이트(``_strict``)로 확인한다 —
+    기본 시나리오 쪽 바이트는 ``cache``(id → 바이트, 기본 본문이 살아 있는 동안)로 한 번만 만든다."""
     if depth > 0 and type(base) is dict and type(body) is dict and list(base) == list(body):
-        return {"$p": {k: _diff(base[k], v, depth - 1) for k, v in body.items() if not _same(v, base[k])}}
+        out: dict[str, Any] = {}
+        for k, v in body.items():
+            b = base[k]
+            if v == b and _same_bytes(b, v, cache):
+                continue
+            out[k] = _diff(b, v, depth - 1, cache)
+        return {"$p": out}
     return {"$v": body}
+
+
+def _same_bytes(base: Any, value: Any, cache: dict[int, bytes] | None) -> bool:
+    """``base == value`` 인 두 값의 저장 바이트도 같은가(형·키 순서까지)."""
+    if type(base) is not type(value):
+        return False
+    if value is None or type(value) in (str, int, bool):
+        return True
+    if type(value) is float:
+        return repr(base) == repr(value)  # 0.0 == -0.0 이지만 바이트는 다르다
+    if cache is None:
+        return _strict(base) == _strict(value)
+    key = id(base)
+    got = cache.get(key)
+    if got is None:
+        got = cache[key] = _strict(base)
+    return got == _strict(value)
+
+
+def _patch(base: Any, body: Any, cache: dict[int, bytes] | None = None) -> dict[str, Any] | None:
+    """기본 시나리오 본문에 덮을 바뀐 부분(되살리면 원래 본문과 같은 저장 바이트). dict 가 아니면 None(본문 통째)."""
+    node = _diff(base, body, _PATCH_DEPTH, cache)
+    return dict(node["$p"]) if "$p" in node else None
+
+
+def _strict(obj: Any) -> bytes:
+    """형까지 구분하는 구조 바이트(pickle, memo 없음 — 객체 공유와 무관). 같으면 JSON 저장 바이트도 같다(int·float·bool·키 순서
+    구분). JSON 직렬화보다 빠르다(D14-5 발행 30초)."""
+    buf = io.BytesIO()
+    p = pickle.Pickler(buf, protocol=5)
+    p.fast = True  # memo 끔 — 같은 구조면 객체 공유가 달라도 같은 바이트(순환 구조는 없다)
+    p.dump(obj)
+    return buf.getvalue()
 
 
 def _apply(base: Any, node: dict[str, Any]) -> Any:
@@ -730,6 +766,7 @@ def compute(
 
     base_sk: str | None = None
     base_bodies: dict[tuple[str, str], Any] = {}
+    strict_cache: dict[int, bytes] = {}  # 기본 시나리오 하위 값의 구조 바이트(id — base_bodies 가 살려 둔다)
 
     def put(kind: str, body: Any, *, key: str = "", scenario: str = "") -> None:
         t = time.perf_counter()
@@ -738,9 +775,9 @@ def compute(
             if scenario == base_sk:
                 base_bodies[(kind, key)] = body
             elif (kind, key) in base_bodies:
-                node = _diff(base_bodies[(kind, key)], body, _PATCH_DEPTH)
-                if "$p" in node:
-                    stored_body = {BASE_MARK: base_sk, PATCH_MARK: node["$p"]}
+                patch = _patch(base_bodies[(kind, key)], body, strict_cache)
+                if patch is not None:
+                    stored_body = {BASE_MARK: base_sk, PATCH_MARK: patch}
         raw = _dumps(stored_body)
         if kind not in _PROV_SKIP_KINDS:
             _collect_prov(raw, prov_ids)
@@ -1073,6 +1110,11 @@ def release_lease(engine: Engine, snapshot_id: int, lease: str) -> None:
         )
 
 
+def _lease_job_id(lease: str) -> int | None:
+    who = lease.rpartition("|")[0]
+    return int(who[4:]) if who.startswith("job:") and who[4:].isdigit() else None
+
+
 def _lease_holder(engine: Engine, snapshot_id: int) -> str | None:
     with engine.connect() as conn:
         cur = conn.execute(select(Snapshot.publish_lease).where(Snapshot.id == snapshot_id)).scalar()
@@ -1189,7 +1231,11 @@ def _publish_locked(
                     .values(
                         status="done",
                         finished_at=now,
-                        stats={"published": True, "included_in_snapshot_id": snapshot_id},
+                        stats={
+                            "published": True,
+                            "included_in_snapshot_id": snapshot_id,
+                            "publish_job_id": _lease_job_id(lease),  # 계약 .12: 이 쓰기를 발행한 잡
+                        },
                     )
                     .execution_options(synchronize_session=False)
                 )

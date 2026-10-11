@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, date, datetime, timedelta, timezone, tzinfo
+from functools import lru_cache
 from typing import Final, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -119,6 +120,11 @@ def kst_date(value: str | None) -> date | None:
     - 못 읽거나 KST 로 바꿀 수 없으면(overflow) None(문자열 앞 10자를 날짜로 믿지 않는다)"""
     if not isinstance(value, str) or not value:
         return None
+    return _kst_date_cached(value)
+
+
+@lru_cache(maxsize=65536)  # 같은 시각 문자열을 수십만 번 읽는다(발행 계산·보고서) — 결과는 불변 date
+def _kst_date_cached(value: str) -> date | None:
     s = value.strip()
     if len(s) == 10:
         if _DATE_RE.fullmatch(s) is None:

@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "error.json",
   "title": "Error",
-  "description": "모든 4xx·5xx 응답 본문 (RA §4-1).\ncode 의미와 HTTP 상태:\n- unauthorized (401): 토큰 없음·불일치\n- forbidden (403): 읽기 전용 토큰으로 GET 이외 호출\n- not_found (404): 리소스 없음\n- validation_error (422): 요청 검증 실패 (field_errors 채움). 생활권 편집에서 법정동 누락·중복도 여기\n- conflict (409): 상태 충돌 (예: 완료되지 않은 보고서 다운로드)\n- publish_blocked (409): contradicted claim이 남아 publish·보고서 생성 불가 (detail에 개수)\n- intake_unknown (422): 접수 상태가 확인 불가라 요청한 동작(후보 포함 등)을 할 수 없음\n- judge_unavailable (503): 판정기 다운(degraded). 조회는 계속 가능\n- contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev, 발행 전 리비전 실시간 GET)\n- scenario_not_in_revision (422): 계약 .11(D14-3) — 보고서 대상 리비전에 그 시나리오 저장본이 없다(발행 뒤 만든 사용자 시나리오, field_errors loc body.scenario_id)\n- stored_view_mismatch (500): 계약 .11(D14-4) — 발행 리비전 저장본의 sha256·계약 버전이 맞지 않는다(조용히 내보내지 않는다, 서버 로그)\n- materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After)\n- internal (500): 그 밖의 서버 오류",
+  "description": "모든 4xx·5xx 응답 본문 (RA §4-1).\ncode 의미와 HTTP 상태:\n- unauthorized (401): 토큰 없음·불일치\n- forbidden (403): 읽기 전용 토큰으로 GET 이외 호출\n- not_found (404): 리소스 없음\n- validation_error (422): 요청 검증 실패 (field_errors 채움). 생활권 편집에서 법정동 누락·중복도 여기\n- conflict (409): 상태 충돌 (예: 완료되지 않은 보고서 다운로드)\n- publish_blocked (409): contradicted claim이 남아 publish·보고서 생성 불가 (detail에 개수)\n- intake_unknown (422): 접수 상태가 확인 불가라 요청한 동작(후보 포함 등)을 할 수 없음\n- judge_unavailable (503): 판정기 다운(degraded). 조회는 계속 가능\n- contract_violation (500): 출처(provenance) 없는 수치를 내보내려 함 (ENV=dev, 발행 전 리비전 실시간 GET)\n- scenario_not_in_revision (422): 계약 .11(D14-3) — 보고서 대상 리비전에 그 시나리오 저장본이 없다(발행 뒤 만든 사용자 시나리오, field_errors loc body.scenario_id)\n- stored_view_mismatch (500): 계약 .11(D14-4) — 발행 리비전 저장본의 sha256·계약 버전이 맞지 않는다(조용히 내보내지 않는다, 서버 로그)\n- materialize_pending (503): 계약 .11(D14-9) — 발행 리비전 저장본을 아직 만들지 않았다(backfill 대기, Retry-After). 계약 .12(D15-3): 그 (리비전, kind, 시나리오) 완료 표식이 없거나 미완\n- checked_at_format (422): 계약 .12 — POST /ops/human-checks checked_at 이 시간대가 붙은 RFC3339 가 아니거나(T·Z 대소문자 무관) KST 2000-01-01 이전·overflow(field_errors loc body.checked_at)\n- checked_at_future (422): 계약 .12 — checked_at 이 서버 지금보다 10분 넘게 미래\n- checked_at_before_source (422): 계약 .12 — 그 의미 필드에 확인일(KST 날짜)보다 뒤에 관측된 공식 공고가 다른 값으로 이미 있다(D13-2·D14-6 — 같은 값이면 201)\n- internal (500): 그 밖의 서버 오류",
   "type": "object",
   "additionalProperties": false,
   "required": ["code", "detail"],
   "properties": {
     "code": {
       "type": "string",
-      "enum": ["unauthorized", "forbidden", "not_found", "validation_error", "conflict", "publish_blocked", "intake_unknown", "judge_unavailable", "contract_violation", "internal", "scenario_not_in_revision", "stored_view_mismatch", "materialize_pending"]
+      "enum": ["unauthorized", "forbidden", "not_found", "validation_error", "conflict", "publish_blocked", "intake_unknown", "judge_unavailable", "contract_violation", "internal", "scenario_not_in_revision", "stored_view_mismatch", "materialize_pending", "checked_at_format", "checked_at_future", "checked_at_before_source"]
     },
     "detail": { "type": "string" },
     "field_errors": {
