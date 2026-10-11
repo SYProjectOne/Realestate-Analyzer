@@ -940,6 +940,12 @@
     "error": "오류: {detail}",
     "retrying": "상태를 받지 못해 다시 확인하는 중: {detail}",
     "publishPending": "작업이 끝나 새 리비전이 발행될 때까지 화면은 지금 발행 리비전을 보입니다",
+    "publishDone": "새 리비전이 발행됐습니다 — 화면 기본이 새 리비전으로 바뀝니다",
+    "publishBlocked": "발행이 막혔습니다(남은 모순 주장 등) — 데이터·운영 화면에서 주장을 고치면 다시 발행됩니다: {detail}",
+    "publishFailed": "발행 작업이 실패했습니다 — 화면은 지금 발행 리비전을 계속 보입니다: {detail}",
+    "publishExpired": "30분 동안 발행 완료를 확인하지 못해 확인을 멈췄습니다 — 기준일 목록에서 새 리비전을 확인하세요",
+    "watchExpired": "발행을 기다리는 리비전 확인을 30분 상한에서 멈췄습니다 — 새 리비전이 발행됐는지 다시 확인하세요",
+    "watchRecheck": "다시 확인",
     "progress": "{done}/{total}",
     "step": "단계 {step}"
   },

@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import { useComplexesProgressive } from '@/api/hooks';
 import type { Dashboard, JobRun, Snapshot } from '@/api/types';
@@ -18,7 +19,16 @@ import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
-import { createTestQueryClient, renderRoute } from '@/test/render';
+import {
+  followPublish,
+  PENDING_REVISION_MAX_AGE_MS,
+  PUBLISH_FOLLOW_MAX_MS,
+  publishPhase,
+  publishTarget,
+  snapshotsWatchExpired,
+} from '@/api/jobWatch';
+import { PublishJobProgress } from '@/components';
+import { createTestQueryClient, renderRoute, renderWithProviders } from '@/test/render';
 import { matching, recordRequests } from './_shared/testing';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
@@ -257,6 +267,212 @@ describe('M8 G5 이후 열·열린 서랍은 그 Fact 가 나온 리비전으로
     expect(within(dialog).getByText(t('provenance.url'))).toBeInTheDocument();
     rec.stop();
   });
+});
+
+// ─── minor 19 · 21 ──────────────────────────────────────────
+
+describe('minor 19: 발행 안내는 후속 snapshot.publish 잡이 끝날 때 닫고, publish_blocked 를 알린다', () => {
+  const rejudge = job(900, 'rejudge', 'done', { snapshot_id: 12 }, { snapshot_id: 13 });
+
+  it('publishTarget·followPublish: 그 리비전의 뒤 publish 잡 중 가장 새 것', () => {
+    expect(publishTarget(rejudge)).toBe(13);
+    expect(publishTarget(job(1, 'snapshot.publish', 'done', { snapshot_id: 14 }))).toBe(14);
+    expect(publishTarget(job(2, 'rejudge', 'done', { snapshot_id: 12 }))).toBe(12);
+    const list = [
+      job(950, 'snapshot.publish', 'done', { snapshot_id: 13 }),
+      job(951, 'snapshot.publish', 'queued', { snapshot_id: 13 }),
+      job(952, 'snapshot.publish', 'queued', { snapshot_id: 99 }),
+      job(800, 'snapshot.publish', 'done', { snapshot_id: 13 }),
+    ];
+    expect(followPublish(rejudge, list)?.id).toBe(951);
+    expect(followPublish(rejudge, list.slice(2))).toBeNull();
+    // 서버가 stats 로 알려 준 잡 id(있으면 그 잡도 후보)
+    const told = job(901, 'rejudge', 'done', {}, { snapshot_id: 13, publish_job_id: 800 });
+    expect(followPublish(told, [list[3]!])?.id).toBe(800);
+  });
+
+  it('publishPhase: 재판정 done 만으로는 닫지 않는다 → publish done 이면 발행, publish_blocked 면 막힘, 30분 넘으면 상한', () => {
+    const t0 = 1_000_000;
+    const base = {
+      trigger: rejudge,
+      follow: null,
+      snapshot: undefined,
+      listSettled: true,
+      watchStart: t0,
+      now: t0,
+    };
+    expect(publishPhase({ ...base, trigger: job(900, 'rejudge', 'running') }).kind).toBe('trigger');
+    expect(publishPhase(base).kind).toBe('waiting');
+    expect(
+      publishPhase({
+        ...base,
+        follow: job(950, 'snapshot.publish', 'running', { snapshot_id: 13 }),
+      }).kind,
+    ).toBe('waiting');
+    expect(
+      publishPhase({ ...base, follow: job(950, 'snapshot.publish', 'done', { snapshot_id: 13 }) })
+        .kind,
+    ).toBe('published');
+    const detail = 'publish_blocked: contradicted 2건';
+    expect(
+      publishPhase({
+        ...base,
+        follow: job(950, 'snapshot.publish', 'failed', { snapshot_id: 13 }, {}, detail),
+      }),
+    ).toEqual({ kind: 'blocked', detail });
+    // done 이어도 stats.published=false 면 발행되지 않았다
+    expect(
+      publishPhase({
+        ...base,
+        follow: job(
+          950,
+          'snapshot.publish',
+          'done',
+          { snapshot_id: 13 },
+          { published: false, contradicted: 2 },
+        ),
+      }).kind,
+    ).toBe('blocked');
+    expect(
+      publishPhase({
+        ...base,
+        follow: job(950, 'snapshot.publish', 'failed', { snapshot_id: 13 }, {}, 'OperationalError'),
+      }),
+    ).toEqual({ kind: 'publishFailed', detail: 'OperationalError' });
+    expect(publishPhase({ ...base, now: t0 + PUBLISH_FOLLOW_MAX_MS + 1 }).kind).toBe('expired');
+    // 리비전 목록이 먼저 published 를 보여도 닫는다(잡 목록을 못 읽는 토큰)
+    const snap = { id: 13, status: 'published' } as Snapshot;
+    expect(publishPhase({ ...base, snapshot: snap }).kind).toBe('published');
+    // 남은 모순 주장으로 ready 에 멈춘 리비전 = 막힘
+    const stuck = { id: 13, status: 'ready', contradicted_claims: 2 } as Snapshot;
+    expect(publishPhase({ ...base, snapshot: stuck }).kind).toBe('blocked');
+    // 잡 자체가 publish 이고 뒤 잡이 없으면 그 잡으로 판단(목록을 받은 뒤)
+    const pub = job(960, 'snapshot.publish', 'done', { snapshot_id: 14 }, { published: true });
+    expect(publishPhase({ ...base, trigger: pub }).kind).toBe('published');
+    expect(publishPhase({ ...base, trigger: pub, listSettled: false }).kind).toBe('waiting');
+    // 발행을 같이 한 잡(stats.published, 계약 .11 region.expand) — 그 결과로 판단
+    const expand = job(970, 'region.expand', 'done', {}, { snapshot_id: 13, published: true });
+    expect(publishPhase({ ...base, trigger: expand }).kind).toBe('published');
+    // 재판정 실패 = 발행 없음(잡 진행이 실패를 보인다)
+    expect(publishPhase({ ...base, trigger: job(900, 'rejudge', 'failed') }).kind).toBe(
+      'triggerFailed',
+    );
+  });
+
+  it('화면: rejudge done 뒤에도 안내 유지 → 후속 publish done 이면 닫고 "발행됨"', async () => {
+    let publishStatus: JobRun['status'] = 'running';
+    server.use(
+      http.get(mswPath('/jobs/:id'), ({ params }) =>
+        HttpResponse.json(
+          job(Number(params.id), 'rejudge', 'done', { snapshot_id: 12 }, { snapshot_id: 13 }),
+        ),
+      ),
+      http.get(mswPath('/jobs'), ({ request }) => {
+        const q = new URL(request.url).searchParams;
+        if (q.get('job_name') !== 'snapshot.publish') return HttpResponse.json([]);
+        return HttpResponse.json([
+          job(950, 'snapshot.publish', publishStatus, { snapshot_id: 13 }),
+        ]);
+      }),
+    );
+    renderWithProviders(
+      <MemoryRouter>
+        <PublishJobProgress jobId={900} />
+      </MemoryRouter>,
+    );
+    const box = await screen.findByTestId('publish-job');
+    await within(box).findByText(t('job.status.done'));
+    expect(within(box).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
+    expect(await within(box).findByText('snapshot.publish')).toBeInTheDocument();
+    publishStatus = 'done';
+    expect(await within(box).findByTestId('publish-done', {}, { timeout: 8000 })).toHaveTextContent(
+      t('job.publishDone'),
+    );
+    expect(within(box).queryByTestId('publish-pending')).toBeNull();
+  }, 15_000);
+
+  it('화면: 후속 publish 가 publish_blocked 로 실패하면 막힘 안내', async () => {
+    const detail = 'publish_blocked: contradicted 2건';
+    server.use(
+      http.get(mswPath('/jobs/:id'), ({ params }) =>
+        HttpResponse.json(
+          job(Number(params.id), 'rejudge', 'done', { snapshot_id: 12 }, { snapshot_id: 13 }),
+        ),
+      ),
+      http.get(mswPath('/jobs'), () =>
+        HttpResponse.json([
+          job(950, 'snapshot.publish', 'failed', { snapshot_id: 13 }, {}, detail),
+        ]),
+      ),
+    );
+    renderWithProviders(
+      <MemoryRouter>
+        <PublishJobProgress jobId={900} />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('publish-blocked')).toHaveTextContent(
+      t('job.publishBlocked', { detail }),
+    );
+    expect(screen.queryByTestId('publish-pending')).toBeNull();
+  });
+});
+
+describe('minor 21: 발행 대기 감시가 30분 상한에 닿으면 조용히 멈추지 않고 알린다', () => {
+  const ready = (createdAgoMs: number, now: number): Snapshot =>
+    ({
+      id: 13,
+      region_id: 1,
+      asof_date: '2026-10-08',
+      revision: 2,
+      status: 'ready',
+      degraded: false,
+      contradicted_claims: 0,
+      created_at: new Date(now - createdAgoMs).toISOString(),
+    }) as Snapshot;
+
+  it('snapshotsWatchExpired: 잡을 모르는(forbidden·truncated·failed) 채 생성 30분이 지나면 true', () => {
+    const now = Date.parse('2026-10-11T00:00:00Z');
+    const old = [ready(PENDING_REVISION_MAX_AGE_MS + 60_000, now)];
+    const young = [ready(60_000, now)];
+    expect(snapshotsWatchExpired(old, now, 'forbidden')).toBe(true);
+    expect(snapshotsWatchExpired(old, now, 'truncated')).toBe(true);
+    expect(snapshotsWatchExpired(old, now, { failed: 2 })).toBe(true);
+    expect(snapshotsWatchExpired(young, now, 'forbidden')).toBe(false);
+    // 잡을 알면 상한이 아니라 잡 기준(진행 잡 없음 = 끝남)
+    expect(snapshotsWatchExpired(old, now, [])).toBe(false);
+    expect(snapshotsWatchExpired(old, now, 'unread')).toBe(false);
+    expect(snapshotsWatchExpired([], now, 'forbidden')).toBe(false);
+  });
+
+  it('헤더: 30분 넘은 발행 대기 리비전 + /jobs 403 → 상한 안내와 다시 확인 버튼', async () => {
+    const snapshots = await example<Snapshot[]>('/regions/1/snapshots');
+    const stale: Snapshot = {
+      ...snapshots[0]!,
+      id: 13,
+      revision: 2,
+      status: 'ready',
+      published_at: null,
+      contradicted_claims: 0,
+      degraded: false,
+      created_at: new Date(Date.now() - PENDING_REVISION_MAX_AGE_MS - 60_000).toISOString(),
+    };
+    let listCalls = 0;
+    server.use(
+      http.get(mswPath('/regions/:id/snapshots'), () => {
+        listCalls += 1;
+        return HttpResponse.json([stale, ...snapshots]);
+      }),
+      http.get(mswPath('/jobs'), () =>
+        HttpResponse.json({ code: 'forbidden', detail: '공유 링크' }, { status: 403 }),
+      ),
+    );
+    renderRoute('/');
+    const notice = await screen.findByTestId('publish-watch-expired', {}, { timeout: 8000 });
+    expect(notice).toHaveTextContent(t('job.watchExpired'));
+    const before = listCalls;
+    await userEvent.click(within(notice).getByRole('button', { name: t('job.watchRecheck') }));
+    await waitFor(() => expect(listCalls).toBeGreaterThan(before));
+  }, 15_000);
 });
 
 export { within };

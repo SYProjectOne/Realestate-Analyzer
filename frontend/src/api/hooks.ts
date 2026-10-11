@@ -25,6 +25,7 @@ import {
   failedRound,
   POLL_ERROR_MAX_STREAK,
   snapshotsRefetchInterval,
+  snapshotsWatchExpired,
   type RoundJobs,
 } from './jobWatch';
 import type {
@@ -736,6 +737,49 @@ export function useJob(id: IdLike | null | undefined, pollMs: number = JOB_POLL_
     enabled: has(id),
     refetchInterval: (query) => jobRefetchInterval(query.state, pollMs, errorStreak(query)),
   });
+}
+
+/** 후속 발행 잡을 찾을 때 받는 최근 `snapshot.publish` 잡 수(최신순) */
+export const PUBLISH_SCAN_SIZE = 50;
+
+/**
+ * 최근 `snapshot.publish` 잡 목록(GET /jobs?job_name=snapshot.publish) — 발행 유발 쓰기의 후속 발행 잡을 찾는다
+ * (7차 minor 19). `poll()` 이 참인 동안 JOB_POLL_MS 마다, 일시 오류는 늦춰 가며 다시, 4xx(공유 링크 403 등)는 멈춘다
+ * (그때는 리비전 목록으로 판단).
+ */
+export function usePublishJobs(enabled: boolean, poll: () => boolean): Q<JobRun[]> {
+  const params: JobListParams = { job_name: 'snapshot.publish', size: PUBLISH_SCAN_SIZE };
+  return useQuery({
+    queryKey: queryKeys.jobs(params),
+    queryFn: ({ signal }) => apiFetch<JobRun[]>('/jobs', { query: { ...params }, signal }),
+    enabled,
+    refetchInterval: (query) => {
+      if (!poll()) return false;
+      const streak = errorStreak(query);
+      if (query.state.status === 'error') {
+        if (!isTransientError(query.state.error) || streak > POLL_ERROR_MAX_STREAK) return false;
+        return backoffMs(JOB_POLL_MS, streak);
+      }
+      return JOB_POLL_MS;
+    },
+  });
+}
+
+/**
+ * 발행 대기 리비전 감시가 30분 상한에서 멈췄는가(7차 minor 21) + 다시 확인. `useSnapshots` 와 같은 쿼리를 읽는다.
+ */
+export function usePendingWatchExpired(regionId: IdLike | null | undefined): {
+  expired: boolean;
+  recheck: () => void;
+} {
+  const query = useSnapshots(regionId);
+  const data = query.data;
+  // 목록을 받을 때마다(structuralSharing 끔 — 새 배열) 다시 계산한다
+  const expired = data
+    ? snapshotsWatchExpired(data, Date.now(), roundJobs.get(data) ?? 'forbidden')
+    : false;
+  const { refetch } = query;
+  return { expired, recheck: () => void refetch() };
 }
 
 // ─── 운영 (G7) ─────────────────────────────────────────────

@@ -242,3 +242,139 @@ export function watchJobCompletion(qc: QueryClient): () => void {
     if (event.type === 'updated' && event.action.type === 'success') handle(event.query);
   });
 }
+
+// ─── 발행 유발 쓰기의 진행 안내(7차 minor 19 · D15-8) ──────────────
+
+/**
+ * 발행 유발 잡(rejudge·region.expand·snapshot.publish …)이 끝난 뒤 후속 `snapshot.publish` 잡을 기다리는 최대 시간.
+ * 넘으면 감시를 멈추고 그렇다고 알린다(조용히 멈추지 않는다, 7차 minor 21과 같은 상한).
+ */
+export const PUBLISH_FOLLOW_MAX_MS = PENDING_REVISION_MAX_AGE_MS;
+
+type JobView = Pick<JobRun, 'id' | 'job_name' | 'status' | 'payload' | 'stats' | 'error_text'>;
+
+const intOf = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isInteger(v)
+    ? v
+    : typeof v === 'string' && /^\d+$/.test(v)
+      ? Number(v)
+      : null;
+
+/** 잡이 발행할(또는 발행한) 리비전: publish 잡은 payload, 그 밖은 결과 리비전(stats) → 요청 리비전(payload) */
+export function publishTarget(job: Pick<JobView, 'job_name' | 'payload' | 'stats'>): number | null {
+  const payload = (job.payload ?? {}) as Record<string, unknown>;
+  if (job.job_name === 'snapshot.publish') return intOf(payload.snapshot_id);
+  return intOf((job.stats ?? {}).snapshot_id) ?? intOf(payload.snapshot_id);
+}
+
+/** 서버가 잡 stats 로 알려 준 후속 발행 잡 id(있으면) */
+function toldFollowId(job: Pick<JobView, 'stats'>): number | null {
+  const stats = job.stats ?? {};
+  return intOf(stats.publish_job_id) ?? intOf(stats.publish_retry_job_id);
+}
+
+/**
+ * 후속 발행 잡: 이 잡 **뒤에** 등록된 같은 리비전의 `snapshot.publish` 잡 중 가장 새 것(발행 계산 중 들어온 변경은
+ * 또 다른 후속 잡으로 이어 붙는다 — D15-6), 또는 서버가 stats 로 알려 준 잡. 없으면 null.
+ */
+export function followPublish(trigger: JobView, jobs: readonly JobView[]): JobView | null {
+  const target = publishTarget(trigger);
+  const told = toldFollowId(trigger);
+  let best: JobView | null = null;
+  for (const j of jobs) {
+    if (j.job_name !== 'snapshot.publish' || j.id === trigger.id) continue;
+    const matches =
+      j.id === told || (target !== null && j.id > trigger.id && publishTarget(j) === target);
+    if (matches && (best === null || j.id > best.id)) best = j;
+  }
+  return best;
+}
+
+export type PublishPhase =
+  /** 발행 유발 잡이 아직 진행 중 */
+  | { kind: 'trigger' }
+  /** 발행 유발 잡이 실패 — 발행 없음(잡 진행이 실패를 보인다) */
+  | { kind: 'triggerFailed' }
+  /** 후속 발행 잡을 기다리는 중 */
+  | { kind: 'waiting' }
+  | { kind: 'published' }
+  /** 남은 모순 주장 등으로 발행이 막힘(publish_blocked) */
+  | { kind: 'blocked'; detail: string }
+  | { kind: 'publishFailed'; detail: string }
+  /** 상한(30분) 안에 발행을 확인하지 못해 감시를 멈췄다 */
+  | { kind: 'expired' };
+
+/** 끝난 publish 잡(또는 발행을 같이 한 잡)의 결과 */
+function publishOutcome(job: JobView): PublishPhase {
+  const stats = job.stats ?? {};
+  if (job.status === 'failed') {
+    const detail = job.error_text ?? '';
+    return detail.startsWith('publish_blocked')
+      ? { kind: 'blocked', detail }
+      : { kind: 'publishFailed', detail };
+  }
+  if (stats.published === false) {
+    const n = intOf(stats.contradicted) ?? 0;
+    return { kind: 'blocked', detail: job.error_text ?? `publish_blocked: contradicted ${n}` };
+  }
+  return { kind: 'published' };
+}
+
+const finished = (j: Pick<JobView, 'status'>) => j.status === 'done' || j.status === 'failed';
+
+/**
+ * 발행 유발 쓰기의 진행 단계(7차 minor 19, D15-8 "진행 안내는 후속 snapshot.publish 잡이 끝날 때 닫는다").
+ * rejudge·expand 의 done 은 발행이 아니다 — 그 리비전을 발행하는 후속 publish 잡(또는 리비전 목록의 published)이
+ * 끝나야 닫는다. publish_blocked(남은 모순 주장)·발행 실패·30분 상한은 따로 알린다.
+ *  - `follow`: `followPublish` 결과, `listSettled`: 발행 잡 목록을 한 번이라도 받았거나 받을 수 없음(403 등)
+ *  - `snapshot`: 리비전 목록에서 찾은 대상 리비전(없으면 undefined), `watchStart`·`now`: 브라우저가 잡 done 을 본 시각·지금
+ */
+export function publishPhase(input: {
+  trigger: JobView | undefined;
+  follow: JobView | null | undefined;
+  snapshot: Pick<Snapshot, 'id' | 'status' | 'contradicted_claims'> | undefined;
+  listSettled: boolean;
+  watchStart: number;
+  now: number;
+}): PublishPhase {
+  const { trigger, follow, snapshot, listSettled, watchStart, now } = input;
+  if (!trigger || !finished(trigger)) return { kind: 'trigger' };
+  const isPublish = trigger.job_name === 'snapshot.publish';
+  if (trigger.status === 'failed' && !isPublish) return { kind: 'triggerFailed' };
+  if (snapshot?.status === 'published') return { kind: 'published' };
+  if (follow) {
+    if (finished(follow)) return publishOutcome(follow);
+  } else if (isPublish && listSettled) {
+    return publishOutcome(trigger);
+  } else if (
+    !isPublish &&
+    typeof (trigger.stats ?? {}).published === 'boolean' &&
+    toldFollowId(trigger) === null
+  ) {
+    // 발행을 같이 한 잡(계약 .11 region.expand·bootstrap — stats.published)
+    return publishOutcome(trigger);
+  }
+  if (snapshot?.status === 'ready' && (snapshot.contradicted_claims ?? 0) > 0) {
+    return {
+      kind: 'blocked',
+      detail: `publish_blocked: contradicted ${snapshot.contradicted_claims ?? 0}`,
+    };
+  }
+  if (now - watchStart > PUBLISH_FOLLOW_MAX_MS) return { kind: 'expired' };
+  return { kind: 'waiting' };
+}
+
+/**
+ * 발행 대기 리비전 감시가 **30분 상한** 때문에 멈췄는가(7차 minor 21 — 조용히 멈추지 않고 알린다). 진행 중 잡을 알 수
+ * 없을 때(`/jobs` 403·잘림·연속 오류)만 상한이 있다 — 잡을 알면 잡 기준으로 멈추므로 상한이 아니다.
+ */
+export function snapshotsWatchExpired(
+  data: readonly Snapshot[] | undefined,
+  now: number,
+  jobs: RoundJobs,
+): boolean {
+  const pending = awaitingPublish(data);
+  if (pending.length === 0) return false;
+  if (jobs === 'unread' || Array.isArray(jobs)) return false;
+  return !hasYoung(pending, now);
+}

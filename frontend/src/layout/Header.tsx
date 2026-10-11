@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router';
-import { useScenarios } from '@/api/hooks';
+import { usePendingWatchExpired, useScenarios } from '@/api/hooks';
 import { TokenButton } from '@/app/TokenDialog';
 import { RegionPicker, ScenarioToggle, SnapshotPicker } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
@@ -26,6 +26,8 @@ export function Header() {
   const { snapshots, snapshotId, setSnapshot } = useSnapshot();
   const { scenarioId, setScenario } = useScenario();
   const { data: scenarios = [] } = useScenarios();
+  // 7차 minor 21: 발행 대기 리비전 감시가 30분 상한에서 멈추면 알리고 다시 확인할 수 있게 한다
+  const watch = usePendingWatchExpired(region?.id);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-sm">
@@ -55,6 +57,18 @@ export function Header() {
           <ThemeToggle />
         </span>
       </div>
+      {watch.expired ? (
+        <p
+          role="status"
+          data-testid="publish-watch-expired"
+          className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-2 px-4 pb-1 text-xs text-muted"
+        >
+          <span>{t('job.watchExpired')}</span>
+          <button type="button" onClick={watch.recheck} className="underline">
+            {t('job.watchRecheck')}
+          </button>
+        </p>
+      ) : null}
       <nav className="mx-auto flex max-w-(--breakpoint-2xl) gap-1 overflow-x-auto px-4 pb-1 text-sm">
         {NAV.map((item) => (
           <NavLink
