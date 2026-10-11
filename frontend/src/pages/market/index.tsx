@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useMarket } from '@/api/hooks';
 import type { CatalystUpdated, Market } from '@/api/types';
 import { C03Benchmark, C04Supply, C05Unsold, C09Catalyst } from '@/charts';
@@ -33,8 +33,16 @@ export function MarketPage() {
   const [livingArea, setLivingArea] = useUrlParam(LIVING_AREA_PARAM);
   const query = useMarket(snapshotId, livingArea, scenarioKey);
   const selectId = useId();
-  /** 호재 위치 저장 결과 — 시장 본문이 리비전 전환으로 다시 그려져도 남는다(CatalystLocationPanel 참고) */
-  const [locResult, setLocResult] = useState<CatalystUpdated | null>(null);
+  /**
+   * 호재 위치 저장 결과 — 시장 본문이 리비전 전환으로 다시 그려져도 남는다(CatalystLocationPanel 참고). 저장한 지역을
+   * 함께 기억해 **다른 지역으로 바꾸면 보이지 않는다**(결과 표·발행 잡 진행 — 8차 m18).
+   */
+  const [loc, setLoc] = useState<{ regionId: number | null; result: CatalystUpdated } | null>(null);
+  const locResult = loc !== null && loc.regionId === regionId ? loc.result : null;
+  // 다른 지역으로 바뀌면 지운다(돌아와도 옛 결과·잡 진행을 다시 보이지 않는다)
+  useEffect(() => {
+    setLoc((prev) => (prev !== null && prev.regionId !== regionId ? null : prev));
+  }, [regionId]);
   return (
     <PageShell
       title={t('page.G6.title')}
@@ -67,16 +75,19 @@ export function MarketPage() {
             <>
               <MarketBody market={market} />
               <CatalystLocationPanel
+                // 지역이 바뀌면 열린 폼·입력도 지운다(8차 m18)
+                key={regionId ?? 'none'}
                 market={market}
                 snapshotId={snapshotId}
                 result={locResult}
-                onResult={setLocResult}
+                onResult={(result) => setLoc({ regionId, result })}
               />
             </>
           )}
         </QueryState>
       )}
-      {isLoading ? null : <CatalystUrlForm regionId={regionId} />}
+      {/* 지역이 바뀌면 등록 결과·잡 진행을 지운다(8차 m18) */}
+      {isLoading ? null : <CatalystUrlForm key={regionId ?? 'none'} regionId={regionId} />}
     </PageShell>
   );
 }
