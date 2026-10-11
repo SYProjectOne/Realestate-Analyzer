@@ -23,7 +23,7 @@ from app.models import Complex, FieldProvenance, PaymentTerms, Region
 from app.normalize._text import normalize_site_url
 from app.normalize.extract_request import build_extract_requests
 from app.normalize.fields import discount_field
-from app.normalize.notice_parser import _DISCOUNT_RE
+from app.normalize.notice_parser import TypeSpec, _discount_line
 from app.normalize.provenance import missing_provenance
 from app.normalize.store import store_raw_document
 
@@ -71,11 +71,13 @@ class _Terms:
 
 
 def test_d11_6_discount_regex_only_explicit_amounts() -> None:
-    m = _DISCOUNT_RE.search("84A 분양가 할인 10,000,000원")
-    assert m is not None and m.group(1) == "10,000,000"
-    assert _DISCOUNT_RE.search("할인금액(84㎡): 12,500,000원") is not None
-    assert _DISCOUNT_RE.search("84㎡ 1,245,000,000원(무순위 동일가, 발코니 포함, 할인 없음)") is None
-    assert _DISCOUNT_RE.search("선납할인은 적용 되지 않습니다") is None
+    # R3g K1: 옛 ``_DISCOUNT_RE`` 는 D15-1 허용 목록(``_discount_line``)으로 대체 — 같은 뜻을 그 함수로 확인한다
+    t = TypeSpec(short="84A", long="", area_text="84.9", units=10, span=(0, 1))
+    m = _discount_line("84A 분양가 할인 10,000,000원\n", t)
+    assert m is not None and m.won == 10_000_000
+    assert _discount_line("할인금액(84㎡): 12,500,000원\n", t) is not None
+    assert _discount_line("84㎡ 1,245,000,000원(무순위 동일가, 발코니 포함, 할인 없음)\n", t) is None
+    assert _discount_line("84A 선납할인은 적용 되지 않습니다\n", t) is None
 
 
 def test_d11_6_discount_is_stored_with_provenance_and_subtracted_only_when_confirmed(

@@ -105,14 +105,21 @@ def test_c1_support_amount_is_not_discount(line: str) -> None:
     [
         "84A 분양가 할인 10,000,000원",
         "84A 공급금액 할인 10,000,000원",
-        "84A(30세대) 분양가 할인 10,000,000원",
-        "주택형 84A 분양가 할인금액 : 10,000,000원",
         "084.9582A 분양가 할인 10,000,000원",
     ],
 )
 def test_c1_plain_line_stays_confirmed(line: str) -> None:
     """조건 없는 분양가 할인 줄은 그대로 '확인됨'(회귀 방지)."""
     assert _line(line) == (10_000_000, True), line
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["84A(30세대) 분양가 할인 10,000,000원", "주택형 84A 분양가 할인금액 : 10,000,000원"],
+)
+def test_c1_non_canonical_line_is_estimate_d15_1(line: str) -> None:
+    """D15-1(D14-2 대체): 허용 꼴('{타입} {분양가|공급금액} 할인 {금액}원')이 아닌 줄은 조건 낱말이 없어도 '추정'."""
+    assert _line(line) == (10_000_000, False), line
 
 
 def test_c1_parse_notice_text_labels() -> None:

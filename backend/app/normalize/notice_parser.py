@@ -734,45 +734,79 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
     if disc is not None and 0 < disc.won < top.total:  # 0·음수·공급가 이상 할인은 후보가 아니다(R3 4차 minor)
         if disc.confirmed:
             b.add("payment_terms", pay_key, discount_field(t.short), disc.won, f"{disc.won:,}", disc.span)
-        else:  # 허용 목록 밖 할인 문구(R3 5차 M9): 후보로만 — '추정'(구매가에서 빼지 않는다, D11-6·D12-3)
+        else:  # 허용 목록 밖 할인 문구(R3 5차 M9·D15-1): 후보로만 — '추정'(구매가에서 빼지 않는다, D11-6·D12-3)
             b.add(
                 "payment_terms", pay_key, discount_field(t.short), disc.won, f"{disc.won:,}", disc.span,
                 label="추정", reason=f"할인 문구 해석({disc.why})",
             )  # fmt: skip
 
 
-# 공고문에 명시된 할인(D11-6, 계약 .8): '84A 분양가 할인 10,000,000원' · '할인금액(84㎡): 10,000,000원' 처럼
-# 할인 금액이 숫자로 적힌 줄만. '선납할인은 적용 되지 않습니다'·'할인 없음' 같은 안내 문장은 금액이 없어
-# 후보가 되지 않는다(추정 금지)
-_DISCOUNT_RE = re.compile(
-    r"(?:분양가\s*)?할인\s*(?:금액|액)?\s*(?:\([^)]*\))?\s*[:：]?\s*(\d{1,3}(?:,\d{3})+)\s*원"
+# 공고문에 명시된 할인(D11-6, 계약 .8). D15-1(R3 7차 K1, D14-2 대체): '확인됨'은 **허용 목록**만이다 —
+# 줄 전체가 ``{타입} {분양가|공급금액} 할인 {금액}원`` 꼴(``_canonical_re``)이고 다음 줄이 조건 표지로 시작하지 않을 때만.
+# 그 밖의 할인 금액 줄은 후보로만 '추정'(표시만). 금지 낱말을 늘리지 않는다 — 허용 꼴이 아니면 전부 '추정'이다.
+# 파싱 규칙이며 판단 대체가 아니다(AGENTS 규칙 3).
+
+_LINE_WS: Final = " \t\r"
+"""줄 양 끝에서 벗기는 ASCII 공백만(전각 공백·NBSP·폭 없는 공백은 벗기지 않는다 — 허용 꼴이 아니게 된다)."""
+
+_CANON_AMOUNT: Final = r"[1-9][0-9]{0,2}(?:,[0-9]{3})+"
+"""허용 꼴 금액: ASCII 숫자, 세 자리 쉼표, 0으로 시작하지 않음(0원·'010,000'·전각 숫자·'1,000만'은 허용 꼴 아님)."""
+_CANON_TAIL: Final = rf"[ \t]+(?:분양가|공급금액)[ \t]*할인[ \t]+({_CANON_AMOUNT})[ \t]*원"
+_CANON_ANY_RE: Final = re.compile(
+    rf"(?:[0-9]{{2,3}}[A-Z]{{0,3}}|[0-9]{{3}}\.[0-9]{{4}}[A-Z]{{0,3}}){_CANON_TAIL}"
 )
+"""다른 타입의 허용 꼴 줄('59B 분양가 할인 5,000,000원') — 다음 줄이 이것이면 조건 줄이 아니다."""
 
 
-_OTHER_DISCOUNT: Final = ("선납", "계약금", "중도금", "발코니", "옵션", "이자", "확장", "관리비")
-"""분양가 할인이 아닌 할인(선납·계약금·중도금 이자·발코니 확장·옵션 등) — 그 줄의 금액은
-분양가 할인 후보가 아니다(R3 4차 M-12)."""
-_PRICE_DISCOUNT_RE: Final = re.compile(r"(?:분양가|분양\s*가격|공급\s*금액|공급가(?:격)?)\s*할인")
-"""'확인됨' 분양가 할인의 허용 목록(R3 5차 M9) — 문구가 분양가·공급금액 할인을 **명시**한 줄만. 그 밖의 할인 문구(가전·
-수수료·세금·잔금 완납·조기 납부 등)는 후보로만 '추정'."""
-_CONDITIONAL_RE: Final = re.compile(
-    r"\d+\s*층|저층|고층|\d+\s*동|\d+\s*호|라인|한정|이상|이하|선착순|조건|해당\s*세대"
-    r"|최대|최고|특별\s*공급|특공|잔금|완납|일시납|기간|까지"
-    r"|※|\*|주\s*\d|각주"  # 각주 표시('10,000,000원*'·'(주1)')
-    r"|(?<![가-힣])단(?=[\s,.:)])"  # '(단, 1층 제외)'('단지'는 아니다)
-    r"|외(?![가-힣])"  # '제외'·'84B 외'·'예외'
-    r"|[가-힣]\s?시(?![가-힣A-Za-z0-9])"  # '~시': '완납 시'·'계약시'
+def _canonical_re(t: TypeSpec) -> re.Pattern[str]:
+    """이 타입의 허용 꼴(전체 일치용). 타입 표기는 약식('84A')·공고 주택형('084.9582A') 그대로만."""
+    marks = "|".join(re.escape(m) for m in (t.short, t.long) if m)
+    return re.compile(rf"(?:{marks}){_CANON_TAIL}")
+
+
+_NEXT_SECTION_MARKS: Final = "■□▣◆◇◈"
+"""다음 줄이 이 표지로 시작하면 새 단락(조건 꼬리가 아님) — 표지 뒤 본문은 다시 검사한다."""
+_NEXT_COND_START_RE: Final = re.compile(r"단|주\)|동|호|[Ff][0-9~]")
+"""다음 줄 첫머리 조건 표지('단, …'·'주) …'). 괄호·※·*·-·숫자·전각 문자 등 한글·영문자가 아닌 첫 글자는 따로 막는다."""
+_NEXT_COND_WORD_RE: Final = re.compile(
+    r"층|동\s*한|라인|세대|한정|한함|한하여|한해|조건|선착순|특별\s*공급|특공|일반\s*공급|신혼|대상|해당|당첨|계약"
+    r"|기간|까지|일부|제외|이상|이하|최대|최소|최고|잔금|완납|예정|변경|별도|추후|미정|협의|한시|선택|순위|예비|조기"
 )
-"""조건부 할인 — 타입 전체 가격이 아니다(R3 5차 M9: '84A 10층 이상 분양가 할인'). D14-2(R3 6차 C1): 층·동·호·라인·특정
-타입 외, '~시', 한정, 최대, 조건, 선착순, 특별공급, 잔금·완납, 기간·까지, ※·단, 각주 — **줄 전체**(금액 앞뒤·괄호)에서 찾는다."""
+"""다음 줄 어디에든 있으면 조건 꼬리로 본다(보수적: 애매하면 '확인됨' 아님)."""
+
+
+def _next_line_conditional(text: str, after: int) -> bool:
+    """``after``(줄 끝 위치) 다음의 첫 비어 있지 않은 줄이 앞줄 할인의 조건 꼬리일 수 있으면 True(D15-1)."""
+    for ns, ne in _line_spans(text, after + 1, len(text)):
+        n = text[ns:ne].strip(_LINE_WS)
+        if not n:
+            continue
+        if _CANON_ANY_RE.fullmatch(n):
+            return False  # 다른 타입의 허용 꼴 할인 줄
+        head = n.lstrip(_NEXT_SECTION_MARKS + _LINE_WS)
+        if not head:
+            return False
+        c = head[0]
+        if not ("가" <= c <= "힣" or (c.isascii() and c.isalpha())):
+            return True  # 괄호·※·*·-·~·숫자(1~3층·2026.10.31.)·전각 문자 등
+        return bool(_NEXT_COND_START_RE.match(head) or _NEXT_COND_WORD_RE.search(head))
+    return False
+
+
+_NON_DISCOUNT_RE: Final = re.compile(
+    r"경품|사은품|선물|상품권|캐시백|축하금|지원|무상|대납|대출|취득세|관리비|이자|옵션|발코니|확장|계약금|중도금|선납"
+)
+"""할인 아닌 금액(경품·지원·세금·관리비·옵션·발코니·계약금·중도금·선납 등)이 같은 줄에 있으면 그 줄은 분양가 할인 사실을
+만들지 않는다(D15-1·R3 4차 M-12) — '84A 분양가 할인 0원, 경품 10,000,000원' 의 금액은 할인이 아니다."""
 _NO_DISCOUNT_RE: Final = re.compile(
     r"할인\s*(?:금액|액|혜택)?\s*[:：]?\s*(?:해당\s*(?:사항\s*)?)?(?:없음|없습니다|없다|無)"
     r"|미적용|비적용|적용\s*(?:되지|하지)\s*않|적용\s*없음"
 )
-"""D14-2: '할인 없음'·'미적용'이 붙은 줄은 할인 사실을 만들지 않는다(그 줄의 다른 금액은 할인이 아니다)."""
-_SUPPORT_RE: Final = re.compile(r"지원|취득세|이자|무상|대납|대출")
-"""D14-2: 취득세·중도금 이자·발코니·옵션 **지원**은 할인이 아니다 — '할인' 낱말과 금액 사이에 이 낱말이 끼면 그 금액은
-할인 금액이 아니다('분양가 할인 혜택: 취득세 지원 3,000,000원')."""
+"""'할인 없음'·'미적용'이 붙은 줄은 할인 사실을 만들지 않는다(그 줄의 다른 금액은 할인이 아니다)."""
+_PRICE_DISCOUNT_RE: Final = re.compile(r"(?:분양가|분양\s*가격|공급\s*금액|공급가(?:격)?)\s*할인")
+"""'추정' 사유 구분용 — 분양가·공급금액 할인을 명시한 줄인가(확인됨 여부는 ``_canonical_re`` 만 정한다)."""
+_AMOUNT_AFTER_RE: Final = re.compile(r"(?<![0-9,.])([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)[ \t]*원")
+"""'할인' 뒤 첫 원 단위 금액(ASCII 숫자) — '추정' 후보의 금액. 0원이면 할인 사실이 아니다."""
 _TYPE_TOKEN_RE: Final = re.compile(r"(?<![0-9A-Za-z.])(\d{2,3}(?:\.\d+)?[A-Z]{0,3})(?:㎡|m2)?(?![0-9A-Za-z])")
 
 
@@ -791,49 +825,36 @@ class DiscountLine:
     why: str = ""
 
 
-_ANY_AMOUNT_RE: Final = re.compile(r"(\d{1,3}(?:,\d{3})+)\s*원")
 _COUNT_SUFFIX_RE: Final = re.compile(r"\s*(?:세대|층|동|호|개|명|%|년|월|일)")
 
 
 def _discount_line(text: str, t: TypeSpec) -> DiscountLine | None:
     """타입 표기(약식 '84A'·공고 주택형 '084.9582A'·면적 '84㎡')와 할인 금액이 같은 줄에 있는 첫 줄.
 
-    R3 4차 M-12: 부분 문자열로 맞추면 다른 타입('184A')·계약금·발코니 할인이 '확인됨' 분양가 할인이
-    됐다 — 타입 표기는 토큰 전체로, 다른 종류의 할인 줄은 건너뛰고, 한 줄에 다른 타입 표기가 같이
-    있으면(어느 타입의 금액인지 모호) 쓰지 않는다(추정 금지).
+    후보 줄: '할인'이 있고, 타입 표기가 토큰 전체로 있고(R3 4차 M-12: '184A' 아님), 금액 앞에 다른 타입 표기가 없고(모호),
+    '할인 없음/미적용'·할인 아닌 금액(``_NON_DISCOUNT_RE``)이 없고, '할인' 뒤 첫 금액이 0원이 아닌 줄.
 
-    R3 5차 M9 — **허용 목록**: '확인됨'은 (1) 분양가·공급금액 할인을 명시(``_PRICE_DISCOUNT_RE``)하고 (2) 타입 표기가
-    **정확히** 그 타입(약식·공고 주택형 — 면적 '84㎡' 은 84A·84B 모두에 걸려 정확 일치 아님)이고 (3) 층·동·호 한정 같은
-    조건이 없는 줄만. 그 밖의 할인 금액 줄(가전·수수료·세금·잔금 완납·조기 납부·면적 표기·조건부·'84A-1')은 후보로만
-    '추정'(``confirmed=False`` — 구매가에서 빼지 않는다).
-
-    D14-2(R3 6차 C1): 조건은 금액 **앞뒤 줄 전체**(괄호·각주 포함)에서 찾는다 — '10,000,000원(1~3층)'·'(특별공급 당첨자
-    한정)'·'최대'·'완납 시' 는 '추정'. '할인 없음'·'미적용'이 붙은 줄과, '할인'과 금액 사이에 지원(취득세·이자 등)이 낀
-    줄은 할인 후보가 아니다."""
+    D15-1(R3 7차 K1) — **허용 목록**: ``confirmed=True`` 는 줄 전체(양 끝 ASCII 공백만 벗김)가 ``_canonical_re`` 와
+    전체 일치하고 다음 비어 있지 않은 줄이 조건 꼬리가 아닐 때(``_next_line_conditional``)만이다. 그 밖의 후보는
+    ``confirmed=False``('추정', 구매가에서 빼지 않는다 — D11-6·D12-3)이고 ``why`` 에 사유를 둔다."""
     short_area = t.short.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     exact = [m for m in (t.short, t.long) if m]
     marks = [*exact, f"{short_area}㎡"]
     pats = [_mark_re(m) for m in marks]
     exact_pats = [_mark_re(m) for m in exact]
     mine = {t.short, short_area, *(m for m in marks)}
+    canon = _canonical_re(t)
     for ls, le in _line_spans(text, 0, len(text)):
         line = text[ls:le]
-        if "할인" not in line or any(w in line for w in _OTHER_DISCOUNT) or _NO_DISCOUNT_RE.search(line):
+        off = line.find("할인")
+        if off < 0 or _NON_DISCOUNT_RE.search(line) or _NO_DISCOUNT_RE.search(line):
             continue
-        m = _DISCOUNT_RE.search(line) or _ANY_AMOUNT_RE.search(line[line.find("할인") :])
-        if m is None:
-            continue
-        if m.re is _ANY_AMOUNT_RE:  # '할인' 뒤의 첫 금액(분양가 할인 문구가 아닌 줄)
-            off = line.find("할인")
-            if _SUPPORT_RE.search(line[off : off + m.start()]):
-                continue  # '할인'과 금액 사이에 지원 항목 — 그 금액은 할인이 아니다(D14-2)
-            amount_span = (off + m.start(1), off + m.end(1))
-            before = line[: off + m.start()]
-        else:
-            amount_span = (m.start(1), m.end(1))
-            before = line[: m.start()]
         if not any(p.search(line) for p in pats):
             continue
+        m = _AMOUNT_AFTER_RE.search(line, off)
+        if m is None:
+            continue
+        before = line[: m.start()]
         others = {
             tok.group(1)
             for tok in _TYPE_TOKEN_RE.finditer(before)
@@ -843,20 +864,26 @@ def _discount_line(text: str, t: TypeSpec) -> DiscountLine | None:
         }
         if any(o[:1].isdigit() and len(o.rstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) >= 2 for o in others):
             continue  # 다른 타입 표기도 같은 줄에 있다 — 모호
-        won = int(line[amount_span[0] : amount_span[1]].replace(",", ""))
-        span = (ls + amount_span[0], ls + amount_span[1])
-        why = ""
+        won = int(m.group(1).replace(",", ""))
+        if won == 0:
+            continue  # 0원은 할인 사실이 아니다(D15-1)
+        span = (ls + m.start(1), ls + m.end(1))
+        stripped = line.strip(_LINE_WS)
+        cm = canon.fullmatch(stripped)
+        if cm is not None and not _next_line_conditional(text, le):
+            lead = len(line) - len(line.lstrip(_LINE_WS))
+            return DiscountLine(won, (ls + lead + cm.start(1), ls + lead + cm.end(1)), confirmed=True)
         if not _PRICE_DISCOUNT_RE.search(line):
             why = "분양가 할인 명시 아님"
         elif not any(p.search(before) for p in exact_pats) or any(
             re.search(rf"(?<![0-9A-Za-z.]){re.escape(x)}-\d", before) for x in exact
         ):
             why = "타입 정확 일치 아님"
-        elif _CONDITIONAL_RE.search(
-            (line[: amount_span[0]] + line[amount_span[1] :]).replace(t.long or "\0", "").replace(t.short, "")
-        ):  # 줄 전체(금액 앞뒤·괄호·각주) — 금액·타입 표기는 빼고 본다(D14-2)
-            why = "조건부 할인"
-        return DiscountLine(won, span, confirmed=not why, why=why)
+        elif cm is None:
+            why = "조건부 할인(허용 꼴 아님)"
+        else:
+            why = "조건부 할인(다음 줄 조건)"
+        return DiscountLine(won, span, confirmed=False, why=why)
     return None
 
 
