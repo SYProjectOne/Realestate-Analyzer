@@ -164,6 +164,31 @@ describe('M7 503 materialize_pending 동안 다른 리비전·시나리오의 �
     expect(screen.queryByRole('region', { name: t('page.G6.regulation') })).toBeNull();
   });
 
+  it('G6: 호재 위치 저장 뒤 리비전이 바뀌어 시장을 새로 받아도 저장 결과·발행 잡 진행은 남는다', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const { router } = renderRoute('/market?snapshot=12');
+    const panel = await screen.findByRole('region', { name: t('page.G6.loc.title') });
+    const list = within(panel).getByRole('list', { name: t('page.G6.loc.title') });
+    const item = (await within(list).findByText('GTX-B')).closest('li') as HTMLElement;
+    await userEvent.click(within(item).getByRole('button', { name: t('page.G6.loc.open') }));
+    const form = within(item).getByRole('form', {
+      name: t('page.G6.loc.formFor', { name: 'GTX-B' }),
+    });
+    const select = within(form).getByLabelText(t('page.G6.loc.complexes'));
+    await waitFor(() => expect(select.querySelectorAll('option').length).toBeGreaterThan(1));
+    await userEvent.selectOptions(
+      select,
+      (select.querySelectorAll('option')[0] as HTMLOptionElement).value,
+    );
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G6.loc.submit') }));
+    await within(panel).findByTestId('catalyst-job');
+    // 발행이 끝나 기본 리비전이 바뀐 것과 같다(다른 리비전 → 이전 값 없이 새로 받는다, M7)
+    await act(() => router.navigate('/market?snapshot=11'));
+    const again = await screen.findByRole('region', { name: t('page.G6.loc.title') });
+    expect(await within(again).findByTestId('catalyst-job')).toBeInTheDocument();
+    expect(within(again).getByTestId('catalyst-links')).toBeInTheDocument();
+  });
+
   it('minor 18: G2 목록 결과가 재시도 중 실패 사유와 다시 시도(refetch)를 넘긴다', async () => {
     server.use(http.get(mswPath('/snapshots/:sid/complexes'), () => pending503()));
     const qc = createTestQueryClient();

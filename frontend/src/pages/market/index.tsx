@@ -1,6 +1,6 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useMarket } from '@/api/hooks';
-import type { Market } from '@/api/types';
+import type { CatalystUpdated, Market } from '@/api/types';
 import { C03Benchmark, C04Supply, C05Unsold, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, FactCell, MetaText } from '@/components';
 import { useUrlParam } from '@/hooks/useUrlParam';
@@ -33,6 +33,8 @@ export function MarketPage() {
   const [livingArea, setLivingArea] = useUrlParam(LIVING_AREA_PARAM);
   const query = useMarket(snapshotId, livingArea, scenarioKey);
   const selectId = useId();
+  /** 호재 위치 저장 결과 — 시장 본문이 리비전 전환으로 다시 그려져도 남는다(CatalystLocationPanel 참고) */
+  const [locResult, setLocResult] = useState<CatalystUpdated | null>(null);
   return (
     <PageShell
       title={t('page.G6.title')}
@@ -64,7 +66,12 @@ export function MarketPage() {
           {(market) => (
             <>
               <MarketBody market={market} />
-              <CatalystLocationPanel market={market} snapshotId={snapshotId} />
+              <CatalystLocationPanel
+                market={market}
+                snapshotId={snapshotId}
+                result={locResult}
+                onResult={setLocResult}
+              />
             </>
           )}
         </QueryState>

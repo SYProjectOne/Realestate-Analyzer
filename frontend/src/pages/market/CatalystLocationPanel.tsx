@@ -80,12 +80,19 @@ export function distanceFact(link: CatalystLinkView, areas: readonly LivingAreaR
 export function CatalystLocationPanel({
   market,
   snapshotId,
+  result,
+  onResult,
 }: {
   market: Market;
   snapshotId: string | null;
+  /**
+   * 마지막 저장 응답(연결 표·발행 잡). 화면(MarketPage)이 들고 있다 — 발행이 끝나 기본 리비전이 바뀌면 시장을 새로
+   * 받는 동안 이 패널이 내려갔다 다시 올라오므로(7차 M7: 다른 리비전 값은 두지 않는다) 여기 두면 잡 진행이 사라진다.
+   */
+  result: CatalystUpdated | null;
+  onResult: (result: CatalystUpdated) => void;
 }) {
   const [openId, setOpenId] = useState<number | null>(null);
-  const [result, setResult] = useState<CatalystUpdated | null>(null);
   const complexes = useComplexes(snapshotId, { page: 1, size: 1000, sort: 'name' });
   const names = new Map((complexes.data?.items ?? []).map((c) => [c.complex_id, c.name]));
   const catalysts = market.catalysts;
@@ -105,7 +112,7 @@ export function CatalystLocationPanel({
               market={market}
               complexes={complexes.data?.items ?? []}
               onSaved={(patched) => {
-                setResult(patched);
+                onResult(patched);
                 setOpenId(null);
               }}
             />
