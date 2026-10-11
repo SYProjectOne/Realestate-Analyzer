@@ -13,7 +13,14 @@
 활성 코드
 우선, 이름이 바뀐 옛 시군구(분구 전 이름 등)는 폐지 코드로 잡힌다. 지역은 region.sigungu_codes 로만 거른다.
 라벨: 국토부 공식 통계 → source_label '확인됨'. 단지별 귀속은 하지 않는다(통계 단위 = 시군구).
+
+출처 행(R4 M2, D18-7): 적재한 값마다 ``field_provenance``(entity 'unsold', 필드 total·post_completion) — 원문(합계 =
+formId 2082, 준공 후 = 5328 원문)·URL·확인일·라벨·발췌. 출처 행이 없으면 사실 뷰가 '확인 불가(출처 누락)'로 가리고 대시보드
+KPI 가 '미분양 자료 없음'이라고 틀린 사유를 보였다. 같은 값·같은 원문의 채택 행이 있으면 그대로(멱등), 바뀌면 새 행을 채택하고
+옛 행은 chosen=false(삭제 없음).
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -31,10 +38,12 @@ from app.collectors.reference.rawstore import RawStore, fetch_failure
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
 from app.core.http import HttpClient
-from app.models import LegalDong, Unsold
+from app.models import FieldProvenance, LegalDong, Unsold
+from app.models import RawDocument as RawRow
 
 __all__ = [
     "MOLIT_DATA_URL",
+    "UNSOLD_LABEL",
     "SigunguResolver",
     "UnsoldCollector",
     "UnsoldRecord",
@@ -44,6 +53,7 @@ __all__ = [
     "parse_unsold_post_completion",
     "parse_unsold_total",
     "sido_abbrev",
+    "write_unsold_provenance",
 ]
 
 MOLIT_DATA_URL = "https://stat.molit.go.kr/portal/stat/data.do"
@@ -235,6 +245,69 @@ def load_unsold(
     return stats
 
 
+def write_unsold_provenance(
+    session: Session,
+    region_id: int,
+    records: Iterable[UnsoldRecord],
+    docs: dict[str, RawDocument | None],
+) -> dict[str, int]:
+    """이번에 받은 레코드의 unsold 행 값마다 출처 행(D18-7). ``docs`` = {'total': 2082 원문, 'post': 5328 원문}.
+    원문이 없는(실패) 필드는 쓰지 않는다. 반환 {written, unchanged}."""
+    out = {"written": 0, "unchanged": 0}
+    rows = {
+        (u.scope_code, u.ym): u for u in session.scalars(select(Unsold).where(Unsold.region_id == region_id))
+    }
+    for r in records:
+        row = rows.get((r.scope_code, r.ym))
+        if row is None:
+            continue
+        for name, doc_key in (("total", "total"), ("post_completion", "post")):
+            value = getattr(row, name)
+            doc = docs.get(doc_key)
+            if value is None or doc is None or doc.id is None or not doc.path:
+                continue
+            text = str(value)
+            current = list(
+                session.scalars(
+                    select(FieldProvenance).where(
+                        FieldProvenance.entity == "unsold",
+                        FieldProvenance.entity_id == row.id,
+                        FieldProvenance.field == name,
+                        FieldProvenance.chosen.is_(True),
+                    )
+                )
+            )
+            if any(fp.value_text == text and fp.raw_document_id == doc.id for fp in current):
+                out["unchanged"] += 1
+                continue
+            for fp in current:
+                fp.chosen = False
+            kind = "합계" if name == "total" else "준공 후"
+            raw = session.get(RawRow, doc.id)
+            session.add(
+                FieldProvenance(
+                    entity="unsold",
+                    entity_id=row.id,
+                    entity_key=f"{row.scope_code}:{row.ym}",
+                    field=name,
+                    value_text=text,
+                    value_norm=text,
+                    raw_document_id=doc.id,
+                    url=raw.url if raw is not None else doc.url,
+                    checked_at=(raw.fetched_at if raw is not None else doc.fetched_at)[:10],
+                    label=UNSOLD_LABEL,
+                    reason=None,
+                    source_rank=1,
+                    chosen=True,
+                    excerpt=f"{row.scope_name} {row.ym} 미분양({kind}) {value}호",
+                    observed_on=f"{row.ym}-01",
+                )
+            )
+            out["written"] += 1
+    session.flush()
+    return out
+
+
 def _shift(ym: str, months: int) -> str:
     y, m = (int(x) for x in ym.split("-"))
     total = y * 12 + (m - 1) + months
@@ -249,6 +322,7 @@ class UnsoldResult:
     records: list[UnsoldRecord] = field(default_factory=list)
     unresolved: list[str] = field(default_factory=list)
     load: LoadStats | None = None
+    provenance: dict[str, int] = field(default_factory=dict)
 
 
 class UnsoldCollector:
@@ -284,6 +358,7 @@ class UnsoldCollector:
                 store = RawStore(session, raw_dir=self._raw_dir)
                 contents: dict[str, bytes] = {}
                 total_doc: RawDocument | None = None
+                by_name: dict[str, RawDocument | None] = {}
                 for name, form in (("total", FORM_TOTAL), ("post", FORM_POST_COMPLETION)):
                     params = {
                         **form,
@@ -313,6 +388,7 @@ class UnsoldCollector:
                             failure=fetch_failure(r),
                         )
                     result.documents.append(doc)
+                    by_name[name] = doc if r.ok else None
                     if name == "total":
                         total_doc = doc
                 if "total" in contents or "post" in contents:
@@ -333,6 +409,9 @@ class UnsoldCollector:
                             raw_document_id=total_doc.id
                             if total_doc is not None and total_doc.path
                             else None,
+                        )
+                        result.provenance = write_unsold_provenance(
+                            session, region.id, result.records, by_name
                         )
         finally:
             if self._http is None:
