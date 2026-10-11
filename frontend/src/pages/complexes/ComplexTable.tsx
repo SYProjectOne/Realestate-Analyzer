@@ -2,11 +2,14 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  type Column,
   type ColumnDef,
+  type HeaderGroup,
+  type Row,
   type VisibilityState,
 } from '@tanstack/react-table';
 import { observeElementRect, useVirtualizer, type Virtualizer } from '@tanstack/react-virtual';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
 import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
@@ -249,10 +252,15 @@ export function ComplexTable({
     [asof, linkSearch, maxSelected, onToggle, selected],
   );
 
+  // 상태 객체를 렌더마다 새로 만들지 않는다 — 표 내부 memo(보이는 열·행 셀)가 참조로 비교한다(T16 행 memo 유지)
+  const columnVisibility = useMemo(
+    () => ({ ...visibility, select: !readOnly }),
+    [visibility, readOnly],
+  );
   const table = useReactTable({
     data: rows,
     columns,
-    state: { columnVisibility: { ...visibility, select: !readOnly } },
+    state: { columnVisibility },
     onColumnVisibilityChange: (updater) =>
       setVisibility((prev) => (typeof updater === 'function' ? updater(prev) : updater)),
     getCoreRowModel: getCoreRowModel(),
@@ -279,7 +287,7 @@ export function ComplexTable({
 
   return (
     <div className="flex flex-col gap-2">
-      {!readOnly ? <ColumnChooser table={table} /> : null}
+      {!readOnly ? <ColumnChooser table={table} visibility={columnVisibility} /> : null}
       <div
         ref={scrollRef}
         data-testid="complex-table-scroll"
@@ -290,35 +298,7 @@ export function ComplexTable({
           aria-rowcount={total + 1}
           className="w-full border-collapse text-sm"
         >
-          <thead className="sticky top-0 z-10 bg-surface">
-            {table.getHeaderGroups().map((group) => (
-              <tr key={group.id} aria-rowindex={1}>
-                {group.headers.map((header) => {
-                  const sortKey = SORT_OF[header.column.id as ColumnId];
-                  const title = flexRender(header.column.columnDef.header, header.getContext());
-                  return (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className="whitespace-nowrap border-b border-border px-2 py-1.5 text-left text-xs font-medium text-muted"
-                      aria-sort={sortState(sort, sortKey)}
-                    >
-                      {sortKey ? (
-                        <SortButton
-                          title={title}
-                          label={colTitle(header.column.id as ColumnId)}
-                          state={sortState(sort, sortKey)}
-                          onClick={() => onSort(nextSort(sort, sortKey))}
-                        />
-                      ) : (
-                        title
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
+          <TableHead groups={table.getHeaderGroups()} sort={sort} onSort={onSort} />
           <tbody>
             {paddingTop > 0 ? (
               <tr aria-hidden="true">
@@ -329,20 +309,14 @@ export function ComplexTable({
               const row = tableRows[item.index];
               if (!row) return null;
               return (
-                <tr
+                <VirtualRow
                   key={row.id}
-                  data-index={item.index}
-                  aria-rowindex={item.index + 2}
-                  aria-selected={selected.has(row.original.complex_id) || undefined}
-                  style={{ height: ROW_HEIGHT }}
-                  className="hover:bg-bg"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="border-b border-border px-2 py-1 align-middle">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
+                  row={row}
+                  index={item.index}
+                  selected={selected.has(row.original.complex_id)}
+                  columns={columns}
+                  visibleColumns={visibleColumns}
+                />
               );
             })}
             {paddingBottom > 0 ? (
@@ -356,6 +330,83 @@ export function ComplexTable({
     </div>
   );
 }
+
+/** 머리줄 — 스크롤 프레임마다 다시 그리지 않는다(정렬·열 선택이 바뀔 때만, T16) */
+const TableHead = memo(function TableHead({
+  groups,
+  sort,
+  onSort,
+}: {
+  groups: HeaderGroup<ComplexRow>[];
+  sort: string;
+  onSort: (sort: string) => void;
+}) {
+  return (
+    <thead className="sticky top-0 z-10 bg-surface">
+      {groups.map((group) => (
+        <tr key={group.id} aria-rowindex={1}>
+          {group.headers.map((header) => {
+            const sortKey = SORT_OF[header.column.id as ColumnId];
+            const title = flexRender(header.column.columnDef.header, header.getContext());
+            return (
+              <th
+                key={header.id}
+                scope="col"
+                className="whitespace-nowrap border-b border-border px-2 py-1.5 text-left text-xs font-medium text-muted"
+                aria-sort={sortState(sort, sortKey)}
+              >
+                {sortKey ? (
+                  <SortButton
+                    title={title}
+                    label={colTitle(header.column.id as ColumnId)}
+                    state={sortState(sort, sortKey)}
+                    onClick={() => onSort(nextSort(sort, sortKey))}
+                  />
+                ) : (
+                  title
+                )}
+              </th>
+            );
+          })}
+        </tr>
+      ))}
+    </thead>
+  );
+});
+
+/**
+ * 가상 스크롤 한 행. T16(D10-8) 렌더 비용: 스크롤 프레임마다 표가 다시 그려져도 **창 안에 남은 행은 다시 렌더하지
+ * 않는다**(memo — 행 데이터·선택·열 정의·보이는 열이 같으면 그대로). 프레임마다 새로 들어오는 몇 행만 그린다.
+ */
+const VirtualRow = memo(function VirtualRow({
+  row,
+  index,
+  selected,
+}: {
+  row: Row<ComplexRow>;
+  index: number;
+  selected: boolean;
+  /** 셀 렌더러(선택 상태·기준일·링크를 닫아 둔다) — 바뀌면 행을 다시 그린다 */
+  columns: readonly ColumnDef<ComplexRow>[];
+  /** 열 선택 — 바뀌면 행을 다시 그린다 */
+  visibleColumns: readonly Column<ComplexRow>[];
+}) {
+  return (
+    <tr
+      data-index={index}
+      aria-rowindex={index + 2}
+      aria-selected={selected || undefined}
+      style={{ height: ROW_HEIGHT }}
+      className="hover:bg-bg"
+    >
+      {row.getVisibleCells().map((cell) => (
+        <td key={cell.id} className="border-b border-border px-2 py-1 align-middle">
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </td>
+      ))}
+    </tr>
+  );
+});
 
 function sortState(sort: string, key: SortKey | undefined): 'ascending' | 'descending' | undefined {
   if (!key) return undefined;
@@ -392,7 +443,13 @@ function SortButton({
   );
 }
 
-function ColumnChooser({ table }: { table: ReturnType<typeof useReactTable<ComplexRow>> }) {
+/** 열 선택 — 표 인스턴스는 그대로라 보이는 열(visibility)이 바뀔 때만 다시 그린다(T16) */
+const ColumnChooser = memo(function ColumnChooser({
+  table,
+}: {
+  table: ReturnType<typeof useReactTable<ComplexRow>>;
+  visibility: VisibilityState;
+}) {
   return (
     <details className="self-end text-sm" data-write>
       <summary className="cursor-pointer rounded-sm border border-border px-2 py-1">
@@ -416,4 +473,4 @@ function ColumnChooser({ table }: { table: ReturnType<typeof useReactTable<Compl
       </fieldset>
     </details>
   );
-}
+});
