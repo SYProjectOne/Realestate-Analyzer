@@ -562,6 +562,7 @@
         "checkedAtFuture": "확인 시각이 지금보다 10분 넘게 미래입니다 — 실제로 확인한 시각을 입력하세요 ({detail})",
         "checkedAtFutureLocal": "확인 시각이 지금보다 10분 넘게 미래입니다 — 실제로 확인한 시각을 입력하세요",
         "checkedAtRequired": "확인 시각(날짜와 시각)을 입력하세요",
+        "checkedAtServer": "확인 시각을 서버가 받지 않았습니다 — {detail}",
         "checkedAtTz": "이 브라우저 시간대({tz})로 보냅니다",
         "enteredBy": "입력자",
         "note": "메모",

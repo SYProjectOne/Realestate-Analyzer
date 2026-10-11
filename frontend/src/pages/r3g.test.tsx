@@ -12,8 +12,10 @@ import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
+import { ApiError } from '@/api/client';
 import { useComplexesProgressive } from '@/api/hooks';
-import type { Dashboard, JobRun, Snapshot } from '@/api/types';
+import { MATERIALIZE_RETRY_MAX_DELAY_MS, queryRetry, queryRetryDelay } from '@/api/retryPolicy';
+import type { Dashboard, JobRun, Region, Scenario, Snapshot } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
@@ -30,6 +32,8 @@ import {
 import { PublishJobProgress } from '@/components';
 import { createTestQueryClient, renderRoute, renderWithProviders } from '@/test/render';
 import { matching, recordRequests } from './_shared/testing';
+import { checkedAt422Kind } from './ops/HumanCheckForm';
+import { revisionWithScenario } from './reports';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -473,6 +477,222 @@ describe('minor 21: 발행 대기 감시가 30분 상한에 닿으면 조용히 
     await userEvent.click(within(notice).getByRole('button', { name: t('job.watchRecheck') }));
     await waitFor(() => expect(listCalls).toBeGreaterThan(before));
   }, 15_000);
+});
+
+// ─── minor 20 ───────────────────────────────────────────────
+
+describe('minor 20: 사람 확인 checked_at 422 는 서버 code/detail 로 가른다(클라이언트 시계 아님)', () => {
+  const futureDetail =
+    '확인 시각 2026-10-11T12:00:00+09:00 은 지금(2026-10-11T11:00:00+09:00)보다 10분 넘게 미래다 — 실제로 확인한 시각을 적는다';
+  const earlyDetail =
+    '확인일 2026-10-01(KST) 은 이미 수집된 공식 공고(관측 2026-10-05, 다른 값)보다 이르다 — 그 공고 뒤에 다시 확인한 날짜를 적는다';
+  const formatDetail = "확인 시각 'x' 은 시간대가 붙은 RFC3339 날짜·시각이 아니다";
+  const err = (detail: string, code: 'validation_error' = 'validation_error') =>
+    new ApiError(code, detail, 422, [{ loc: ['body', 'checked_at'], msg: detail }]);
+
+  it('checkedAt422Kind: 서버 문구로 미래·이른 확인일·그 밖', () => {
+    expect(checkedAt422Kind(err(futureDetail))).toBe('future');
+    expect(checkedAt422Kind(err(earlyDetail))).toBe('early');
+    expect(checkedAt422Kind(err(formatDetail))).toBe('other');
+    expect(checkedAt422Kind(new ApiError('validation_error', 'x', 422))).toBeNull();
+    expect(checkedAt422Kind(new ApiError('internal', 'x', 500))).toBeNull();
+  });
+
+  async function fillAndSubmit() {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    renderRoute('/ops');
+    const form = await screen.findByRole('form', { name: t('page.G7.human') });
+    const complex = within(form).getByLabelText(t('page.G7.hc.complex'));
+    await waitFor(() => expect(complex.querySelector('option[value="2"]')).not.toBeNull());
+    await userEvent.selectOptions(complex, '2');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.value')), '가능');
+    await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
+    // 확인 시각 = 기본값(지금) — 브라우저 시계로는 미래가 아니다
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
+    return form;
+  }
+
+  it('보낸 시각이 브라우저 시계로 과거여도 서버가 "미래" 422 면 미래 안내(이른 확인일 아님)', async () => {
+    server.use(
+      http.post(mswPath('/ops/human-checks'), () =>
+        HttpResponse.json(
+          {
+            code: 'validation_error',
+            detail: futureDetail,
+            field_errors: [{ loc: ['body', 'checked_at'], msg: futureDetail }],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    const form = await fillAndSubmit();
+    expect(
+      await within(form).findByText(t('page.G7.hc.checkedAtFuture', { detail: futureDetail })),
+    ).toBeInTheDocument();
+  });
+
+  it('서버가 이른 확인일 422 면 이른 확인일 안내, 그 밖의 checked_at 422 는 서버 문구 그대로', async () => {
+    let detail = earlyDetail;
+    server.use(
+      http.post(mswPath('/ops/human-checks'), () =>
+        HttpResponse.json(
+          {
+            code: 'validation_error',
+            detail,
+            field_errors: [{ loc: ['body', 'checked_at'], msg: detail }],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    const form = await fillAndSubmit();
+    expect(
+      await within(form).findByText(t('page.G7.hc.checkedAtTooEarly', { detail: earlyDetail })),
+    ).toBeInTheDocument();
+    detail = formatDetail;
+    await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
+    expect(
+      await within(form).findByText(t('page.G7.hc.checkedAtServer', { detail: formatDetail })),
+    ).toBeInTheDocument();
+  });
+});
+
+// ─── minor 22 ───────────────────────────────────────────────
+
+describe('minor 22: G8 지역을 바꾸면 이전 지역의 생성 오류·잡 진행을 지운다', () => {
+  it('409 오류가 난 뒤 지역을 바꾸면 오류 문구가 사라진다', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const regions = await example<Region[]>('/regions');
+    const other: Region = { ...regions[0]!, id: 2, name: '다른 지역', latest_snapshot: null };
+    server.use(
+      http.get(mswPath('/regions'), () => HttpResponse.json([...regions, other])),
+      http.post(mswPath('/reports'), () =>
+        HttpResponse.json(
+          { code: 'publish_blocked', detail: '남은 모순 주장 2건' },
+          { status: 409 },
+        ),
+      ),
+    );
+    const { router } = renderRoute('/reports?region=1');
+    const button = await screen.findByRole('button', { name: t('page.G8.generate') });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    const msg = t('page.G8.conflict', { detail: '남은 모순 주장 2건' });
+    expect(await screen.findByText(msg)).toBeInTheDocument();
+    await act(() => router.navigate('/reports?region=2'));
+    await waitFor(() => expect(screen.queryByText(msg)).toBeNull());
+  });
+
+  it('잡을 등록한 뒤 지역을 바꾸면 그 잡 진행을 내린다', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const regions = await example<Region[]>('/regions');
+    const other: Region = { ...regions[0]!, id: 2, name: '다른 지역', latest_snapshot: null };
+    server.use(http.get(mswPath('/regions'), () => HttpResponse.json([...regions, other])));
+    const { router } = renderRoute('/reports?region=1');
+    const button = await screen.findByRole('button', { name: t('page.G8.generate') });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    expect(await screen.findByText(t('job.title'))).toBeInTheDocument();
+    await act(() => router.navigate('/reports?region=2'));
+    await waitFor(() => expect(screen.queryByText(t('job.title'))).toBeNull());
+  });
+});
+
+// ─── minor 23 ───────────────────────────────────────────────
+
+describe('minor 23: 재시도 규칙·추천 리비전 버튼', () => {
+  it('stored_view_mismatch(500) 는 운영 기본(base 1)에서도 다시 부르지 않는다', () => {
+    const mismatch = new ApiError('stored_view_mismatch', 'sha256', 500);
+    expect(queryRetry(1)(0, mismatch)).toBe(false);
+    expect(queryRetry(1)(0, new ApiError('internal', 'x', 500))).toBe(true);
+  });
+
+  it('Retry-After 를 30초로 자르지 않는다(서버가 준 간격 그대로, 비정상 값만 상한)', () => {
+    const after = (ms: number) => new ApiError('materialize_pending', 'x', 503, [], null, ms);
+    expect(queryRetryDelay(0, after(120_000))).toBe(120_000);
+    expect(queryRetryDelay(0, after(0))).toBe(500);
+    expect(queryRetryDelay(0, after(10 * 3600_000))).toBe(MATERIALIZE_RETRY_MAX_DELAY_MS);
+  });
+
+  it('G8: 서버가 422 scenario_not_in_revision 인데 화면이 맞다고 본 리비전이 가장 새 것이면 — 같은 리비전을 추천(숨김)하지 않고 다른 리비전 또는 시나리오 실행 안내', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    const snapshots = await example<Snapshot[]>('/regions/1/snapshots');
+    const s12 = snapshots[0]!;
+    const s13: Snapshot = {
+      ...s12,
+      id: 13,
+      revision: 2,
+      revision_of: 12,
+      published_at: '2026-10-09T12:00:00+09:00',
+      created_at: '2026-10-09T11:50:00+09:00',
+    };
+    const scenarios = await example<Scenario[]>('/scenarios');
+    const base = scenarios.find((s) => s.code === 'base')!;
+    // 화면 기준으로는 리비전 13 발행 전에 만든 시나리오(13 에 있다고 본다) — 서버는 13 에 없다고 거절
+    const mine: Scenario = {
+      ...base,
+      id: 9,
+      code: null,
+      name: '내 조건 9',
+      is_builtin: false,
+      created_at: '2026-10-09T10:00:00+09:00',
+    };
+    const detail = '시나리오 9 는 리비전 13 에 없다';
+    const list: Snapshot[] = [s13, ...snapshots];
+    server.use(
+      http.get(mswPath('/regions/:id/snapshots'), () => HttpResponse.json(list)),
+      http.get(mswPath('/scenarios'), () => HttpResponse.json([...scenarios, mine])),
+      http.post(mswPath('/reports'), () =>
+        HttpResponse.json(
+          {
+            code: 'scenario_not_in_revision',
+            detail,
+            field_errors: [{ loc: ['body', 'scenario_id'], msg: detail }],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderRoute('/reports?snapshot=13&scenario=9');
+    const button = await screen.findByRole('button', { name: t('page.G8.generate') });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    expect(
+      await screen.findByText(t('page.G8.scenarioNotInRevisionServer', { detail })),
+    ).toBeInTheDocument();
+    // 거절된 13 말고 결과가 있을 리비전이 없다 → 시나리오 실행으로 안내(버튼을 숨긴 채 두지 않는다)
+    const run = await screen.findByTestId('g8-run-scenario');
+    expect(run).toHaveTextContent(t('page.common.scenarioMissingRun'));
+    expect(screen.queryByTestId('g8-pick-scenario-revision')).toBeNull();
+  });
+
+  it('revisionWithScenario: 서버가 거절한 리비전은 후보에서 뺀다', async () => {
+    const snapshots = await example<Snapshot[]>('/regions/1/snapshots');
+    const s12 = snapshots[0]!;
+    const s13: Snapshot = {
+      ...s12,
+      id: 13,
+      revision: 2,
+      published_at: '2026-10-09T12:00:00+09:00',
+    };
+    const s14: Snapshot = {
+      ...s12,
+      id: 14,
+      revision: 3,
+      published_at: '2026-10-09T13:00:00+09:00',
+    };
+    const scenarios = await example<Scenario[]>('/scenarios');
+    const mine: Scenario = {
+      ...scenarios[0]!,
+      id: 9,
+      code: null,
+      is_builtin: false,
+      created_at: '2026-10-09T10:00:00+09:00',
+    };
+    expect(revisionWithScenario([s14, s13], mine)?.id).toBe(14);
+    expect(revisionWithScenario([s14, s13], mine, 14)?.id).toBe(13);
+    expect(revisionWithScenario([s13], mine, 13)).toBeNull();
+  });
 });
 
 export { within };

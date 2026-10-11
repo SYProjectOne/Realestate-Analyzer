@@ -87,6 +87,25 @@ export function checkedAtProblem(local: string, now: number = Date.now()): strin
   return null;
 }
 
+/**
+ * 서버 422 의 checked_at 오류 문구 표지(backend `api/demotion.checked_at_error`·`routers/ops` — 계약 .11 은 셋 다
+ * `validation_error` + loc body.checked_at 이라 code 로는 못 가른다). 7차 minor 20: 미래인지 이른 확인일인지는 **서버가
+ * 보낸 문구**로 가른다 — 브라우저 시계로 추측하지 않는다(시계가 어긋나면 반대로 안내했다). 판단이 아니라 서버 문구 파싱이다.
+ */
+const CHECKED_AT_FUTURE_MARK = /미래/;
+const CHECKED_AT_EARLY_MARK = /이르다|공식 공고/;
+
+/** 사람 확인 POST 422 의 checked_at 오류 종류. checked_at 오류가 아니면 null */
+export function checkedAt422Kind(error: unknown): 'future' | 'early' | 'other' | null {
+  if (!(error instanceof ApiError) || error.status !== 422) return null;
+  const field = error.fieldErrors.find((f) => f.loc[f.loc.length - 1] === 'checked_at');
+  if (!field) return null;
+  const text = `${field.msg} ${error.detail}`;
+  if (CHECKED_AT_FUTURE_MARK.test(text)) return 'future';
+  if (CHECKED_AT_EARLY_MARK.test(text)) return 'early';
+  return 'other';
+}
+
 const asField = (v: string | null): HumanCheckField =>
   v && (HUMAN_CHECK_FIELDS as readonly string[]).includes(v)
     ? (v as HumanCheckField)
@@ -163,8 +182,6 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [checkedAtLocalError, setCheckedAtLocalError] = useState<string | null>(null);
-  /** 마지막으로 보낸 checked_at(서버 422 가 미래 때문인지 이른 확인일 때문인지 가른다) */
-  const [sentAt, setSentAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<HumanCheck | null>(null);
 
   // 같은 화면에서 '사람 확인으로 복원' 링크를 누르면 URL 만 바뀐다 → 폼을 그 값으로 다시 채운다
@@ -202,7 +219,6 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
     }
     const checkedAtIso = toRfc3339(checkedAt) as string;
     setError(null);
-    setSentAt(checkedAtIso);
     const body: HumanCheckCreate = {
       complex_id: Number(complexId),
       field,
@@ -233,20 +249,22 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
 
   const rule = HUMAN_CHECK_RULES[field];
   // 계약 .10 S6·.11 F7·F8: checked_at 422 — loc ["body","checked_at"]. 이른 확인일(이미 수집된 공고가 **다른 값**)
-  // 또는 10분 넘는 미래. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 보낸 시각이 지금보다 뒤면 미래 안내
+  // 또는 10분 넘는 미래 또는 형식. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 종류는 서버 문구로(minor 20)
+  const serverKind = checkedAt422Kind(create.error);
   const serverCheckedAt =
-    create.error instanceof ApiError && create.error.status === 422
+    serverKind !== null && create.error instanceof ApiError
       ? (create.error.fieldErrors.find((f) => f.loc[f.loc.length - 1] === 'checked_at')?.msg ??
-        null)
+        create.error.detail)
       : null;
-  const serverSaysFuture = sentAt !== null && Date.parse(sentAt) > Date.now();
   const checkedAtError =
     checkedAtLocalError ??
-    (serverCheckedAt
-      ? serverSaysFuture
+    (serverCheckedAt === null
+      ? null
+      : serverKind === 'future'
         ? t('page.G7.hc.checkedAtFuture', { detail: serverCheckedAt })
-        : t('page.G7.hc.checkedAtTooEarly', { detail: serverCheckedAt })
-      : null);
+        : serverKind === 'early'
+          ? t('page.G7.hc.checkedAtTooEarly', { detail: serverCheckedAt })
+          : t('page.G7.hc.checkedAtServer', { detail: serverCheckedAt }));
   const serverError = serverCheckedAt
     ? null
     : create.error instanceof ApiError

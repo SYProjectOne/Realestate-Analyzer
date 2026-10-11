@@ -88,7 +88,7 @@ describe('F12 새 오류 code · materialize_pending 재시도 규칙', () => {
     expect(parseRetryAfter('Sat, 10 Oct 2026 00:00:05 GMT', now)).toBe(5000);
   });
 
-  it('queryRetry: materialize_pending 만 계속 재시도(Retry-After 간격, 0.5~30초), 그 밖은 base 번', () => {
+  it('queryRetry: materialize_pending 만 계속 재시도(Retry-After 간격 그대로 — 0.5초~10분, 7차 minor 23), 그 밖은 base 번', () => {
     const pending = new ApiError('materialize_pending', 'x', 503, [], null, 2000);
     const other = new ApiError('internal', 'x', 500);
     expect(queryRetry(0)(0, pending)).toBe(true);
@@ -101,8 +101,8 @@ describe('F12 새 오류 code · materialize_pending 재시도 규칙', () => {
       500,
     );
     expect(
-      queryRetryDelay(0, new ApiError('materialize_pending', 'x', 503, [], null, 600_000)),
-    ).toBe(30_000);
+      queryRetryDelay(0, new ApiError('materialize_pending', 'x', 503, [], null, 3_600_000)),
+    ).toBe(600_000);
   });
 });
 
