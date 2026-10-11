@@ -53,6 +53,19 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     const row = page.getByTestId('price-discount');
     await expect(row).toContainText(P.G3.price.discountNotApplied);
     await expect(row.getByTestId('discount-estimated')).toContainText(P.G3.price.discountEstimated);
+    // R3i m3(D17-4): 가격 표는 타입 줄마다 안내 — 사람 확인 링크는 기준 타입 줄 하나에만, 나머지는 "반영하지 않음"
+    const typeCells = page.locator('td[data-testid^="type-discount-"]');
+    const typeNotes = page.locator('[data-testid^="type-discount-note-"]');
+    await expect(typeCells.first()).toBeVisible();
+    const typeCount = await typeCells.count();
+    expect(typeCount).toBeGreaterThan(1);
+    await expect(typeNotes).toHaveCount(typeCount);
+    await expect(typeCells.getByRole('link', { name: P.G3.price.discountHumanCheck })).toHaveCount(
+      1,
+    );
+    await expect(typeNotes.filter({ hasText: P.G3.price.discountEstimatedNonBasis })).toHaveCount(
+      typeCount - 1,
+    );
 
     await header.getByRole('link', { name: P.G3.price.discountHumanCheck }).click();
     await expect(page).toHaveURL(/\/ops\?/);
@@ -90,8 +103,17 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     await expect(applied).toContainText(ko.label.confirmed);
     await expect(applied.getByTestId('discount-estimated')).toHaveCount(0);
     await expect(page.getByTestId('header-discount-estimated')).toHaveCount(0);
-    // 기준 타입 밖 주택형 할인은 여전히 파서 '추정' — 표 아래 안내 한 번은 남는다(D16-1)
-    await expect(page.getByTestId('discount-estimated')).toHaveCount(1);
+    // 기준 타입 밖 주택형 할인은 여전히 파서 '추정'(D16-1) — R3i m3: 그 줄마다 "기준 타입이 아니라 반영하지 않음",
+    // 사람 확인 링크·"사람 확인 시 반영" 안내는 어디에도 없다(기준 타입은 이제 확인됨)
+    await expect(page.getByTestId('discount-estimated')).toHaveCount(0);
+    const afterCells = page.locator('td[data-testid^="type-discount-"]');
+    const afterNotes = page.locator('[data-testid^="type-discount-note-"]');
+    await expect(afterCells.first()).toBeVisible();
+    await expect(afterNotes).toHaveCount((await afterCells.count()) - 1);
+    await expect(afterNotes.filter({ hasText: P.G3.price.discountEstimatedNonBasis })).toHaveCount(
+      (await afterCells.count()) - 1,
+    );
+    await expect(page.getByRole('link', { name: P.G3.price.discountHumanCheck })).toHaveCount(0);
     expect(failed).toEqual([]);
   });
 
