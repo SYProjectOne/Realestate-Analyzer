@@ -3,11 +3,11 @@
  *  - F1·F2(D16-1): 공고문 파서 할인 = '추정'(표시만) → 안내 + G7 사람 확인 링크(단지·discount 미리 채움, 전역 쿼리 유지) →
  *    사람 확인 할인 201 → worker → 새 발행 리비전에서 '확인됨' 할인이 구매가에서 빠진다
  *  - F3(D16-4): 호재 위치를 같은 값으로 다시 저장 → 200 + job_id null → "바뀐 것 없음"(발행 진행 안내 없음)
- * 파일 이름이 writes8 뒤라 앞 spec 의 읽기 기대를 흔들지 않는다. 모든 테스트: 화면이 부른 /api 응답 4xx/5xx 0건.
+ * 파일 이름이 writes8 뒤라 앞 spec 의 읽기 기대를 흔들지 않는다(writes8 이 남긴 region.expand 잡은 돌리지 않고 닫는다). 모든 테스트: 화면이 부른 /api 응답 4xx/5xx 0건.
  */
 import { expect, test, type Page } from '@playwright/test';
 import ko from '../../src/i18n/ko.json' with { type: 'json' };
-import { runWorkerOnce, setDiscount } from './env';
+import { runWorkerOnce, setDiscount, skipQueuedJobs } from './env';
 
 const P = ko.page;
 /** devseed 픽스처 단지 1 = 할인 주입 대상(writes8 과 같은 단지) */
@@ -34,6 +34,10 @@ async function ready(page: Page, path: string, title: string): Promise<void> {
 }
 
 test.describe.serial('계약 .13 화면(실 API)', () => {
+  // writes8 마지막 테스트가 남긴 region.expand(외부 수집)는 돌리지 않는다 — 아래 runWorkerOnce 가 집으면 시간 초과
+  test.beforeAll(() => {
+    skipQueuedJobs('region.expand');
+  });
   test.afterAll(() => setDiscount(DISCOUNT_COMPLEX, null));
 
   test("D16-1 '추정' 할인 → 안내·사람 확인 링크 → 할인 사람 확인 → worker → '확인됨' 차감", async ({
