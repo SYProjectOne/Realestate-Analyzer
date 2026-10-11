@@ -22,7 +22,7 @@ from app.api.contract import check_body
 from app.api.demotion import (
     CHECKED_AT_BEFORE_SOURCE,
     CHECKED_AT_FORMAT,
-    FIELD_TERMS,
+    HUMAN_FACT_FIELDS,
     ValueParseError,
     apply_human_check,
     checked_at_problem,
@@ -327,7 +327,7 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
         )
     field = str(body["field"])
     target = None
-    if field in FIELD_TERMS:
+    if field in HUMAN_FACT_FIELDS:
         try:
             target = human_target(session, cx.id, field, body.get("entity_id"))
             value = parse_human_value(target, str(body["value_text"])) if target is not None else None

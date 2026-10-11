@@ -19403,7 +19403,7 @@ components:
               - 불가
     HumanCheckField:
       title: HumanCheckField
-      description: '사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 ''6.02'' → 422).'
+      description: '사람 확인 대상(계약 2026-10-09.8, D11-3·M-5): 강등 가능한 사실 필드 5개(max_price_won = 기준 타입 최고 공급금액 — 현재 공고 가격 행, move_in_ym = 입주 예정 YYYY-MM, resale_months·residency_months = 개월 0~240 정수, down_payment_pct = 현재 납부 조건 계약금 % 0~100) + **discount**(계약 .13, D16-1 — 기준 타입 할인 원 단위 정수 0~1천억, 단위 ''원''만. 현재 공고 payment_terms.discount_by_type.<기준 타입>에 라벨 확인됨으로 들어가 구매가에서 빠진다(0 = 할인 없음 확인). 공고문 파서 할인은 언제나 ''추정''이라 이 사람 확인만 차감을 만든다. 의미 단위(D13-2) — 그 단지 다른 공고의 같은 타입 할인 칸에도 퍼진다) + intake_status(접수 상태) + other(기록만, 사실 변경 없음). 값은 필드 형·범위 검사를 통과해야 한다(정수 필드에 ''6.02'' → 422).'
       type: string
       enum:
       - intake_status
@@ -19412,6 +19412,7 @@ components:
       - resale_months
       - residency_months
       - down_payment_pct
+      - discount
       - other
     InclusionClass:
       title: InclusionClass
