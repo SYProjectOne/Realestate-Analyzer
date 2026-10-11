@@ -208,3 +208,7 @@
 - D18-7 (M2·M4·M6·m1·m3·m4) 미분양 사실은 출처 행을 갖는다. alembic은 `ENV_FILE`을 존중한다. 주소 → 법정동 매칭은 신설 구(예 검단구) 주소 표기와 참조 표의 구 표기 차이를 흡수한다. 지역 첫 적재(bootstrap)의 null→값 변경은 change_event 대신 '첫 적재' 한 줄로 요약한다. 보고서 ECharts 경로는 runbook에 명시한다.
 - D18-8 (수집 범위) 회귀 픽스처에 있으나 실제 수집에 빠진 단지(오퍼스 한강 스위첸, 해링턴플레이스 풍무 1BL, 계양 카이브 유보라, 검단 센트레빌 그랑포레)의 누락 원인을 찾아 고친다(공고일 범위·지역 선택·API 페이지 등). 고칠 수 없는 원인이면 사유를 기록한다.
 - D18-9 (m5) 사람이 2026-10-12 data.go.kr '국토교통부_아파트 분양권전매 실거래가 자료' 활용신청 완료(같은 `DATA_GO_KR_KEY`). R4 재시험에서 `RTMSDataSvcSilvTrade` 200·`is_presale` 적재를 확인한다(승인 반영까지 시간이 걸릴 수 있음 — 403이면 실패 행으로 남고 재시험 기록에 적는다).
+
+## D19. 로컬 운영 DB (2026-10-12, 사람 답 + CEO)
+- D19-1 Docker는 설치하지 않는다(사람 답). 운영·R4는 이 PC에 이미 설치된 PostgreSQL을 쓴다. PG16(5432)은 다른 앱이 쓰고 관리자 비밀번호를 알 수 없어 건드리지 않고, **PostgreSQL 17.9(포트 5434, 다른 앱 DB 없음)**에 전용 역할 `sa`와 DB `subscription_analyzer`(운영)·`subscription_analyzer_r4`(R4 재시험)를 만들었다. 접속 주소는 루트 `.env`의 `DATABASE_URL`·`R4_DATABASE_URL`(비밀번호는 무작위 생성, 커밋·출력 금지). 운영 DB는 alembic head(0013)까지 올렸다.
+- D19-2 compose 기동·Docker 이미지 빌드·리눅스 차트 기준 이미지는 '미검증'으로 남긴다(사람이 Docker 설치를 원할 때 진행). 로컬 백업은 PG17 `pg_dump`(`C:\Program Files\PostgreSQL\17\bin`)를 쓴다 — compose의 `postgresql-client-16`은 16 서버 전용이다.
