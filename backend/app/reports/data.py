@@ -905,7 +905,8 @@ class _Loader:
                 )
                 for p in my_pays
             ]
-            comp_shown = display_type_codes(types_by.get(c.id, []), comps_by.get(c.id, []))  # D23-2 표시 주택형
+            # D23-2: 경쟁률 표시 주택형(저장 행은 원 면적 코드)
+            comp_shown = display_type_codes(types_by.get(c.id, []), comps_by.get(c.id, []))
             cviews = [
                 CompetitionView(
                     round=k.round,
