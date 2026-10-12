@@ -603,6 +603,10 @@ def _same_site_only(
     return keep
 
 
+_UNRESOLVED: Final = frozenset({"review", "manual_review"})
+"""포함/제외 classify 미해결 decision(``complex.inclusion_decision``) — 분류를 바꾸지 않고 표시만 한 판정."""
+
+
 def _inclusion_changed(
     session: Session, caller: CountingCaller, pool: list[tuple[int, ComplexFacts]]
 ) -> list[tuple[int, ComplexFacts]]:
@@ -629,7 +633,10 @@ def _inclusion_changed(
             log is None
             or log.adapter_version != version
             or log.status not in ("ok", "review")
-            or f.row.inclusion_class in (None, "미분류")
+            # D22-2(R4 3차 N8): 미분류라도 직전 판정이 review(미해결)였으면 입력이 같을 때 다시 보내지 않는다 — 같은 입력이면 같은
+            # 답(review)이고, 미분류 단지만 담은 새 배치는 구성이 달라 input_hash 가 새로 생겨 재판정마다 tools/call 이 나갔다.
+            # 판정 뒤 미분류로 되돌린 단지(범위 경계 → 미분류: 지역 확장·법정동 보정)는 직전 판정이 review 가 아니라 다시 보낸다
+            or (f.row.inclusion_class in (None, "미분류") and f.row.inclusion_decision not in _UNRESOLVED)
             or _logged_item_text(log, f"complex:{cid}") != _inclusion_item_text(cid, _inclusion_text(f))
         ):
             out.append((cid, f))
@@ -687,7 +694,8 @@ def _p4(
         if f.row.inclusion_class != "범위 경계"
         and not (f.row.applyhome_id is None and f.row.inclusion_judgment_seq in upcoming)
     ]
-    pool = _inclusion_changed(session, caller, pool)
+    # D22-2: 배치 입력은 단지 순서와 무관하게 결정적(단지 id 순) — 같은 집합·같은 텍스트 = 같은 input_hash(캐시)
+    pool = sorted(_inclusion_changed(session, caller, pool), key=lambda p: p[0])
     for b in range(0, len(pool), CLASSIFY_BATCH_MAX):
         chunk = pool[b : b + CLASSIFY_BATCH_MAX]
         outs = jp.p4_classify_inclusion_batch(
