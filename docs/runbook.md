@@ -165,7 +165,8 @@ RA §8-1 R4 게이트: "실제 JEV 연결, 인천·김포 → 실제 1회 실행
 RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로 늘 수 있으나 이유를 기록), 2회차 실제 호출 0.
 **R3 회귀(`python scripts/tasks.py regress`)의 결과와 발견 목록을 사람이 확인한 뒤에만 실행한다(DECISIONS D8).**
 아래 10-1~10-5 는 R3 때 준비한 절차다. **2026-10-12 처음 실제로 돌렸고**(결과 `docs/design/wp/R4_RESULT.md`), 실제로 다르게 해야
-했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다.
+했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다. R4-FIX 뒤 재시험(같은 날, D19 로컬 PG17)의 결과 표는
+**10-8**(상세 `docs/design/wp/R4_RESULT2.md`), 재시험 절차는 10-7.
 
 ### 10-1 준비
 
@@ -398,6 +399,31 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
    `.env` 에 둔다(없으면 차트 자리에 표만 — 경고). `cd frontend && npm ci` 를 한 체크아웃이면 `frontend/node_modules/echarts/dist/echarts.min.js`.
 9. **같은 날 다시 수집**(M5·D18-6): bootstrap 직후 같은 날 `collect.daily` 의 새 판정(`tools_calls`)은 0 이어야 한다(실제 공고 변화가
    없을 때). 0 이 아니면 그 잡의 `change_events`·`rejudge_complex_ids` 와 change_event 내용을 기록한다.
+
+### 10-8 R4 재시험 결과 (2026-10-12, main `3e89892`, 계약 `.15`) — 상세 `docs/design/wp/R4_RESULT2.md`
+
+**결과: 게이트 기준 통과**(2회차 (a) `tools/call` 0 엄격 · 1회차 이유 기록). 단 새 critical 1(N1 공고문 '천원' 단위 표를 원으로 — 한 단지 가격이
+1/1000 로 '확인됨')·major 5, 같은 날 daily 0(D18-6)·`missing_provenance` 감소는 실패 — 운영 전 수정 대상.
+
+| 항목 | 값 |
+| --- | --- |
+| 환경 | Windows 11, Docker 없음, **D19 로컬 PostgreSQL 17.9(5434) DB `subscription_analyzer_r4`**, `ENV=prod`, API 127.0.0.1:18533 |
+| 마이그레이션 | `ENV_FILE=… uv run alembic upgrade head` → `PostgresqlImpl`, `0015 (head)`, `dev.db` 없음 |
+| JEV | `npx -y @jkudish/jev-mcp@0.14.1`(실행 전 최신 확인 후 고정), smoke 출력 `"cmd"` 고정 버전. 워커·API 는 같은 버전을 띄우는 계수 프록시 경유 |
+| adapter_version | `0.2.0+jev-mcp@0.14.1+jev-1.13.0` **1개**(582행; provider none 136행 포함) |
+| 1회차 시간 | bootstrap **44분 43.8초**(일일 단계 34분 44초 · 주간 단계 6분 39초 · 판정 3분 8초 · 발행 11초), reference.refresh 12초. 조회 창 지난 24 + 향후 12개월로 1차(24분)보다 길다 |
+| 1회차 실제 호출 | **582** = 잡 `tools_calls` = 프록시 `tools/call` = `judgment_log` 행(screen 193 · extract 178 · compare 139 · classify 40 · noul 12 · audit 10 · decide 5 · verify 4 · rerank 1), 모델 호출 446 · 로컬 단락 136, 수집 단계 판정 64 포함, blocked·error 0 |
+| 132 대비 | +450 — 공고문 조각 screen 153·extract 162(그중 136 로컬 단락), 출처 상충 compare 139, 호재 screen·classify 50, 공고 예정(D20-2) 44 |
+| 단지·범위 | 단지 행 77, 판정 대상 4 → 5, **종합 점수 2단지 — TOP 5 = 사우역 지엔하임 4.75 · 엘리프 검단 포레듀 3.51**(나머지 2단지는 유동성 입력 없음) |
+| 수집 | 실거래 52,163건 법정동 100%(`match_rate` 1.0), **분양권 API 137건 200**(4,109건), 미분양 KPI 2,029호(확인됨), official_site 404 1·connect 6·TLS 3, 공고문 정규화 실패 2(NUL, N2), 타임아웃·파싱 실패 0 |
+| 2회차 (a) 같은 스냅샷 rejudge | **프록시 `tools/call` 0 · `tools_calls` 0 · `judgment_log` 582 → 582**, cached 467, 80.4초 → 통과 |
+| 2회차 (b) 같은 날 collect.daily | 1,070.5초, change_event **19**(잔여 공고 번호 행 74·75 — N3·N4), 새 판정 15(= 프록시 15, 숨은 호출 0) → D18-6 미충족 |
+| 보고서 | `--snapshot 3 --format pdf` 152쪽, `REPORT_ECHARTS_JS` 지정으로 차트 포함 |
+| 보안 | 키·토큰·DB 비밀번호·접속 주소 검사 파일 3,410개·DB 컬럼 243개 0건 |
+
+재시험에서 실제로 다르게 한 것: ① 워커는 `JEV_PROXY_OUT` 으로 실행마다 프록시 기록 파일을 나눴다(1회차·2a·2b 별도 — 1회차도 대조). ② r4 env 의
+`DATABASE_URL` 은 루트 `.env` 의 `R4_DATABASE_URL`, 도우미 스크립트용 psycopg 주소 파일도 끝나고 지웠다. ③ Git Bash 에서 API 경로는 앞 `/` 없이 넘겼다(10-6 ⑥).
+④ 집계 SQL 은 10-7 ④ 그대로 + `SELECT provider, model, tool, COUNT(*) FROM judgment_log GROUP BY 1,2,3`.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
