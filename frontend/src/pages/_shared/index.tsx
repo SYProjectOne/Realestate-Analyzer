@@ -248,6 +248,37 @@ export function enumText(prefix: string, value: string | null | undefined): stri
 }
 
 /**
+ * 변경 이벤트(change_event) 필드 이름 — ko.json `page.common.changeField` 에 있는 것만 바꾸고 나머지는 서버 값 그대로.
+ * 계약 .15: `first_load`(지역 첫 적재 한 줄, F7)·`track`(트랙 A 공고 예정 후보, F5)·`applyhome_id`(후보와 청약홈 공고 합침, F5).
+ */
+export function changeFieldText(field: string): string {
+  return enumText('page.common.changeField', field);
+}
+
+/** 변경 이벤트 대상(entity) — 단지 이름이 없는 행(지역·미분양 등)의 표시 이름 */
+export function changeEntityText(entity: string): string {
+  return enumText('page.common.changeEntity', entity);
+}
+
+/**
+ * 변경 내용 한 줄: 보통은 "이전 → 이후". 계약 .15 F7 `first_load`(지역 첫 적재)는 바뀐 값이 아니라 요약 문장 한 줄이라
+ * 화살표 없이 그 문장만(빈 값 → 화살표가 critical 처럼 보이지 않게).
+ */
+export function changeValueText(change: {
+  field: string;
+  old_text: string | null;
+  new_text: string | null;
+}): string {
+  if (change.field === 'first_load' && change.old_text === null && change.new_text !== null) {
+    return change.new_text;
+  }
+  return t('page.common.arrow', {
+    old: change.old_text ?? t('page.common.none'),
+    new: change.new_text ?? t('page.common.none'),
+  });
+}
+
+/**
  * 판정 범위 배지(C2, 계약 2026-10-09.4) — 표시 문구는 ko.json `page.common.judgeScope`.
  * `hideTarget`이면 '판정 대상'은 그리지 않는다(표·카드에서 예외만 드러낸다).
  */

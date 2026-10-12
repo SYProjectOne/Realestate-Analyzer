@@ -35,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * 지역 생성 + region.bootstrap 잡 등록 (G0 '분석 시작')
-         * @description selections를 펼쳐 sido/sigungu/legal_dong 코드와 기본 생활권(시군구당 1개)을 만들고 region.status='bootstrapping'으로 두며 region.bootstrap 잡을 등록한다.
+         * @description selections를 펼쳐 sido/sigungu/legal_dong 코드와 기본 생활권(시군구당 1개)을 만들고 region.status='bootstrapping'으로 두며 region.bootstrap 잡을 등록한다. 계약 .15 선택 필드 applyhome_query(from_ym·to_ym·areas)는 region.applyhome_query 에 그대로 저장한다(없으면 {} — 청약홈 기본 조회 창 지난 24개월 + 향후 12개월). 형식이 틀리면 422 validation_error.
          */
         post: operations["createRegion"];
         delete?: never;
@@ -681,12 +681,14 @@ export interface components {
         /**
          * ApplyhomeQuery
          * @description 청약홈 조회 파라미터(collectors/applyhome 이 읽는다, 2026-10-09.2에 키 정의). 모든 키 선택:
-         *     - from_ym: 목록 조회 시작월 'YYYY-MM'(없으면 기준월 −10개월). 끝은 기준월 +1개월, 12개월 창으로 나눠 조회.
+         *     - from_ym: 목록 조회 시작월 'YYYY-MM'(없으면 기준월 −24개월 — 계약 .15, meta §1-4 '지난 24~36개월', D20-1).
+         *     - to_ym: 목록 조회 끝월 'YYYY-MM'(없으면 기준월 +12개월 — 계약 .15 '향후 12개월'). 웹 목록은 12개월 창으로 나눠 조회, 공식 API 는 한 범위.
          *     - areas: {시도 코드 2자리: 청약홈 지역 약칭('서울'·'경기'·'인천' …)} — 없으면 legal_dong.sido_name(또는 selections 첫 토큰)에서 행정구역 접미사를 떼어 만든다.
          *     그 밖의 키는 수집기가 무시한다(이전 예시의 sido_codes 등 — 조회 시도는 region.sido_codes).
          */
         ApplyhomeQuery: {
             from_ym?: string | null;
+            to_ym?: string | null;
             areas?: {
                 [key: string]: string;
             };
@@ -3237,7 +3239,7 @@ export interface components {
          *     - status가 review·escaped·blocked·error이면 result는 표시만 하고 점수·추천에 쓰지 않는다 — 거르는 곳은 프론트가 아니라 WP4(analysis).
          *     - cached=true는 같은 input_hash의 이전 행을 돌려준 것. 화면은 '캐시' 배지.
          *     - input_hash = 'sha256:' + hex(sha256(canonical JSON {tool, purpose, payload, adapter_version})). canonical JSON = 키 정렬, 구분자 (',', ':'), ensure_ascii=false, UTF-8.
-         *     - adapter_version = '<어댑터 코드 버전>+jev-mcp@<서버 버전>+<모델>' (DECISIONS D6, 2026-10-09.2: 모델 = JEV 응답의 model, 예 jev-1.13.0 — 모델이 바뀌면 재판정). 모델을 아직 모르면 '+<모델>' 없이. MockAdapter는 녹화의 _meta.json 값.
+         *     - adapter_version(캐시 키) = '<어댑터 코드 버전>+jev-mcp@<서버 버전>+<고정 모델>' (DECISIONS D6 → D18-1, 계약 .15: 고정 모델 = 모델을 실제로 부른 응답(provider ≠ none)의 model, 예 jev-1.13.0. 로컬 처리 응답의 model 은 무시. 모델이 바뀌면 그 실행은 옛 키로 끝내고 change_event 후 다음 실행부터 새 키로 재판정). 모델을 아직 모르면 '+<모델>' 없이. 응답마다 실제 model·provider 는 model·provider 필드. MockAdapter는 녹화의 _meta.json 값.
          *     - result는 도구별 정규화 결과($defs의 <Tool>Result), raw는 판정기 원응답 그대로(임계값·decision 포함, DECISIONS D6).
          *     - 로그에는 payload 원문을 남기지 않는다(input_hash·길이만, AGENTS 13).
          * @example {
@@ -3328,6 +3330,10 @@ export interface components {
             complex_id?: number | null;
             /** @description status=error·blocked 사유. payload 원문 금지 */
             error_text?: string | null;
+            /** @description 계약 .15(D18-1·D20-1): 이 응답의 실제 model(JEV 원응답 그대로, judgment_log.model). 캐시 키(adapter_version)의 고정 모델과 다를 수 있다 — provider='none' 로컬 처리는 'jev-latest'. blocked·error·.15 이전 행은 null */
+            model?: string | null;
+            /** @description 계약 .15: 이 응답의 provider(judgment_log.provider) — 'none' = 판정기가 모델을 부르지 않은 로컬 처리(비용 없음), 그 밖(typesafe 등) = 모델 호출. 없으면 null */
+            provider?: string | null;
         } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown & unknown);
         /**
          * JudgmentOps
@@ -4284,7 +4290,7 @@ export interface components {
             age_premium_coef: components["schemas"]["AgePremiumCoef"];
             /** @default 0.08 */
             supply_ref_pct: number;
-            /** @description 청약홈 조회 파라미터 — 키 정의는 $defs/ApplyhomeQuery(from_ym, areas). 저장·전달은 자유 json 객체(수집기는 ApplyhomeQuery.model_validate 로 읽을 수 있다) */
+            /** @description 청약홈 조회 파라미터 — 키 정의는 $defs/ApplyhomeQuery(from_ym, to_ym, areas). 저장·전달은 자유 json 객체(수집기는 ApplyhomeQuery.model_validate 로 읽을 수 있다) */
             applyhome_query: {
                 [key: string]: unknown;
             };
@@ -4360,6 +4366,8 @@ export interface components {
             name: string;
             query_text: string;
             selections: components["schemas"]["RegionSelection"][];
+            /** @description 계약 .15(D20-1) 선택: 청약홈 조회 창(from_ym·to_ym)·지역 약칭(areas). 없으면 {} — 기본 창(지난 24개월 + 향후 12개월). region.applyhome_query 에 그대로 저장 */
+            applyhome_query?: components["schemas"]["ApplyhomeQuery"];
         };
         /**
          * RegionCreated

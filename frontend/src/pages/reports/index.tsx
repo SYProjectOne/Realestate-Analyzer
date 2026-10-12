@@ -15,6 +15,7 @@ import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import { metaText } from '@/lib/meta';
 import {
+  changeValueText,
   enumText,
   QueryState,
   scenarioMadeAfterPublish,
@@ -470,12 +471,7 @@ function DiffTable({ rows, asof }: { rows: ChangeEvent[]; asof: string | null })
               <td className={tdClass}>{c.complex_name ?? ''}</td>
               <td className={tdClass}>{c.entity}</td>
               <td className={tdClass}>{c.field}</td>
-              <td className={tdClass}>
-                {t('page.common.arrow', {
-                  old: c.old_text ?? t('page.common.none'),
-                  new: c.new_text ?? t('page.common.none'),
-                })}
-              </td>
+              <td className={tdClass}>{changeValueText(c)}</td>
               <td className={tdClass}>
                 <Badge tone={c.severity === 'critical' ? 'strong' : 'muted'}>
                   {enumText('page.common.severity', c.severity)}

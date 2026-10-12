@@ -21,6 +21,9 @@ import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import {
+  changeEntityText,
+  changeFieldText,
+  changeValueText,
   enumText,
   JudgeScopeBadge,
   NoSnapshot,
@@ -37,6 +40,8 @@ import {
  * 지역이 하나도 없으면 /regions/new 로 보낸다(D2-5).
  * D10-1: 범위·순위·총점은 스냅샷 저장값 — rejudge_needed 면 '재판정 필요' 배지·안내 + rejudge 잡 제안.
  * N-M3: benchmark_absence 면 '벤치마크 없음(<reason>)'(종합 미계산의 이유, D9-2).
+ * 계약 .15: 피드의 대상·필드 이름은 ko.json(`changeEntity`·`changeField`), 지역 첫 적재(`first_load`, F7)는 요약 문장 한 줄,
+ * 트랙 A 공고 예정 후보(`track`)·후보와 청약홈 공고 합침(`applyhome_id`, F5)은 그 이름으로.
  */
 export function DashboardPage() {
   const { isEmpty } = useActiveRegion();
@@ -307,14 +312,13 @@ function ChangeFeed({ changes, asof }: { changes: ChangeEvent[]; asof: string })
                   {change.triggers_rejudge ? (
                     <Badge tone="muted">{t('page.G1.rejudge')}</Badge>
                   ) : null}
-                  <span className="font-medium">{change.complex_name ?? change.entity}</span>
+                  <span className="font-medium">
+                    {change.complex_name ?? changeEntityText(change.entity)}
+                  </span>
                 </span>
                 <span className="text-sm">
-                  {change.field}{' '}
-                  {t('page.common.arrow', {
-                    old: change.old_text ?? t('page.common.none'),
-                    new: change.new_text ?? t('page.common.none'),
-                  })}
+                  <span>{changeFieldText(change.field)}</span>{' '}
+                  <span>{changeValueText(change)}</span>
                 </span>
                 <span className="text-xs text-muted">{formatDate(change.detected_at, asof)}</span>
               </>
