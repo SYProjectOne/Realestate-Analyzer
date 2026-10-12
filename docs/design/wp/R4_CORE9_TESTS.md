@@ -38,6 +38,7 @@
 | `tests/contracts/test_openapi.py::test_contract_version`, `tests/contracts/test_protocols.py::test_contract_version_matches_changelog` | 버전 단언 .16 → .17 | 계약 .17 |
 | `tests/api/test_core8_d21_8.py::test_contract_version_is_16` | 삭제(같은 일을 `test_core9_d22_5.py::test_contract_version_is_17` 이 한다) | 계약 .17 |
 | `tests/scheduler/test_core8_n6_site_identity.py::test_review_identity_is_also_not_evidence` | 동일성 review 의 기대 사유 '공식 홈페이지가 다른 단지' → '공식 홈페이지 동일성 미확인'(status '확인 불가'·접수 근거 아님은 그대로) | D22-4 · N11 |
+| `tests/scheduler/test_r3b_g2.py::test_c3_extract_over_32_fields_is_split_not_truncated` | 가짜 `apply_extracted` 결과(`type('A', …)`)에 `change_events: []` 추가 | 파이프라인이 추출 반영 결과의 `change_events` 를 모은다(m-b 첫 적재 접기 — 실제 `ExtractApplyResult` 에는 원래 있는 필드) |
 | `tests/api/snapshots/list_r3c.json`·`list_r3c/rich_size1000.json` | API 골든 재생성(`UPDATE_GOLDEN=1 pytest tests/api/test_perf_r3c.py -k golden`) — 목록 행·상세 머리에 `judge_scope_reason` 키만 늘었다(바이트 수·sha256) | 계약 .17 F1 |
 | 새 `tests/normalize/fixtures/r4c_core9/` + `tests/normalize/_r4c.py` | R4 3차 원문 50건(그룹 n9 30 · n10 9 · n10_orig 6 · n12 5), `docs.json` = raw_document 행(수집 순서), 공고문 `path` = 텍스트 추출본 | N9·N10·N12·m-b 재생. HTML·JSON 은 `.gitattributes` 로 LF 정규화되어 sha256 이 녹화와 다를 수 있다(내용 동일 — 재생은 행의 sha256 으로 찾는다) |
 
