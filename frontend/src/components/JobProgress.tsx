@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useJob, usePublishChain } from '@/api/hooks';
 import {
+  DEGRADED_RETRY_MAX,
+  degradedFailure,
   nextPublishJobId,
   PUBLISH_CHAIN_MAX,
   PUBLISH_ERROR_RETRY_MAX,
@@ -13,6 +15,8 @@ import {
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, tDynamic } from '@/i18n';
 import type { JobLike } from '@/lib/contract';
+import { kstDateTime } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import { MetaText } from './MetaValue';
 
 export interface JobProgressViewProps {
@@ -42,7 +46,7 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
   const progress = job.progress && job.progress.total > 0 ? job.progress : null;
   // 계약 .13 F4(D16-3): 발행 busy → 다시 queued(지연 재큐잉) — 실패가 아니라 기다리는 중이라고 보인다.
   // 계약 .14 F8(D17-3): 발행 예외 뒤 재시도(publish_error, error_retries 1~5)도 진행 중 — 다른 문구로
-  const requeued = requeueInfo(job);
+  // 계약 .18 F3(D23-4): 빈 데이터셋 수집(degraded_source)도 진행 중 — 발행하지 않고 다시 수집(JobRequeueNote)
   return (
     <div
       role="status"
@@ -78,21 +82,11 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
           <progress className="h-1 w-full" aria-label={status} />
         )
       ) : null}
-      {requeued !== null ? (
-        <p className="text-muted" data-testid="job-requeued" data-requeue={requeued.kind}>
-          {requeued.kind === 'error' ? (
-            <MetaText
-              kind="count"
-              k="job.requeuedError"
-              params={{ n: requeued.n, max: PUBLISH_ERROR_RETRY_MAX }}
-            />
-          ) : (
-            <MetaText kind="count" k="job.requeued" params={{ n: requeued.n }} />
-          )}
-        </p>
-      ) : null}
+      <JobRequeueNote job={job} className="text-muted" />
       {job.error_text ? (
-        <p className="text-danger">{t('job.error', { detail: job.error_text })}</p>
+        <p className="text-danger">
+          {degradedFailureText(job) ?? t('job.error', { detail: job.error_text })}
+        </p>
       ) : null}
       {error ? (
         <p className="text-danger" data-testid="job-retrying">
@@ -101,6 +95,64 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
       ) : null}
     </div>
   );
+}
+
+/**
+ * 지연 재큐잉 안내(진행 중 — 실패 아님). 발행 busy(.13 F4)·발행 예외 재시도(.14 F8)·빈 데이터셋 재수집(.18 F3).
+ * 재큐잉이 아니면 아무것도 그리지 않는다. G0 진행·G7 잡 목록이 같이 쓴다.
+ */
+export function JobRequeueNote({
+  job,
+  className = '',
+}: {
+  job: Pick<JobLike, 'job_name' | 'status' | 'stats'>;
+  className?: string;
+}) {
+  const requeued = requeueInfo(job);
+  if (requeued === null) return null;
+  return (
+    <p className={className} data-testid="job-requeued" data-requeue={requeued.kind}>
+      {requeued.kind === 'degraded' ? (
+        <>
+          <MetaText
+            kind="count"
+            k="job.requeuedDegraded"
+            params={{
+              detail: requeued.detail,
+              n: requeued.n,
+              max: DEGRADED_RETRY_MAX,
+              at: requeued.notBefore
+                ? t('job.requeuedAt', { at: kstDateTime(requeued.notBefore) })
+                : t('job.requeuedSoon'),
+            }}
+          />{' '}
+          {/* bootstrap 은 지역 첫 적재(발행 리비전 없음 — 지역 bootstrapping), 일일 수집은 이전 발행 리비전 유지 */}
+          {job.job_name === 'region.bootstrap'
+            ? t('job.requeuedDegradedBootstrap')
+            : t('job.requeuedDegradedDaily')}
+        </>
+      ) : requeued.kind === 'error' ? (
+        <MetaText
+          kind="count"
+          k="job.requeuedError"
+          params={{ n: requeued.n, max: PUBLISH_ERROR_RETRY_MAX }}
+        />
+      ) : (
+        <MetaText kind="count" k="job.requeued" params={{ n: requeued.n }} />
+      )}
+    </p>
+  );
+}
+
+/**
+ * 빈 데이터셋 재시도 상한 초과(.18 F3 — error_text `degraded_source: <잡>: …`)로 실패한 수집의 문구(코드 접두 없이 멈춘 이유).
+ * 그런 실패가 아니면 null(호출 측이 서버 문자열을 그대로 쓴다).
+ */
+export function degradedFailureText(job: Pick<JobLike, 'status' | 'error_text'>): string | null {
+  const degraded = degradedFailure(job);
+  return degraded === null
+    ? null
+    : metaText('job.degradedFailed', { max: DEGRADED_RETRY_MAX, detail: degraded });
 }
 
 export interface JobProgressProps {

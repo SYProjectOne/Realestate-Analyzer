@@ -369,22 +369,79 @@ export const PUBLISH_ERROR_RETRY_MAX = 5;
 const PUBLISH_ERROR = 'publish_error';
 
 /**
- * 지연 재큐잉의 종류(계약 .13 F4 + .14 F8): `busy` = 다른 발행을 기다림(requeue_count), `error` = 발행 예외 뒤 재시도
- * (requeue_reason `publish_error: …`, stats `error_retries` 1~5). 진행 중(queued·running)이 아니거나 재큐잉이 아니면 null.
+ * 빈 데이터셋(degraded 수집) 재시도 상한(서버 `handlers.EMPTY_DATASET_RETRIES`, 계약 .18 F3 — 30분 × 6회). 넘으면 잡 failed
+ * (`degraded_source: …`).
+ */
+export const DEGRADED_RETRY_MAX = 6;
+
+const DEGRADED_SOURCE = 'degraded_source';
+
+/** 지연 재큐잉 정보. `degraded` 는 다음 시도 시각(`not_before`, 없으면 null)·불완전한 원천 사유(코드 접두 없이)도 */
+export type RequeueInfo =
+  | { kind: 'busy' | 'error'; n: number }
+  | { kind: 'degraded'; n: number; notBefore: string | null; detail: string };
+
+/**
+ * 지연 재큐잉의 종류(계약 .13 F4 + .14 F8 + .18 F3): `busy` = 다른 발행을 기다림(requeue_count), `error` = 발행 예외 뒤 재시도
+ * (requeue_reason `publish_error: …`, stats `error_retries` 1~5), `degraded` = 청약홈 API 빈 데이터셋 등 불완전한 수집이라
+ * 발행하지 않고 다시 수집(`region.bootstrap`·`collect.daily`, requeue_reason `degraded_source: …`, 30분 뒤 · 최대 6회).
+ * 진행 중(queued·running)이 아니거나 재큐잉이 아니면 null.
  */
 export function requeueInfo(job: {
   status: string;
   stats?: Record<string, unknown> | null;
-}): { kind: 'busy' | 'error'; n: number } | null {
+}): RequeueInfo | null {
   if (job.status !== 'queued' && job.status !== 'running') return null;
   const stats = job.stats ?? {};
   const reason = typeof stats.requeue_reason === 'string' ? stats.requeue_reason : '';
+  if (reason.startsWith(DEGRADED_SOURCE)) {
+    return {
+      kind: 'degraded',
+      n: intOf(stats.requeue_count) ?? 1,
+      notBefore: typeof stats.not_before === 'string' ? stats.not_before : null,
+      detail: degradedSources(stats) ?? degradedDetail(reason, /\s*—\s*발행하지 않고 재시도$/),
+    };
+  }
   const retries = intOf(stats.error_retries);
   if (reason.startsWith(PUBLISH_ERROR) || (retries !== null && retries > 0 && !reason)) {
     return { kind: 'error', n: retries ?? 1 };
   }
   const n = requeueCount(job);
   return n === null ? null : { kind: 'busy', n };
+}
+
+/**
+ * 빈 데이터셋 재시도 상한을 넘어 실패한 수집(계약 .18 F3, error_text `degraded_source: <잡>: …`) — 코드·잡 이름 접두를 뗀
+ * 사유. 그런 실패가 아니면 null.
+ */
+export function degradedFailure(job: { status: string; error_text: string | null }): string | null {
+  if (job.status !== 'failed' || !job.error_text?.startsWith(DEGRADED_SOURCE)) return null;
+  return degradedDetail(job.error_text);
+}
+
+/** 수집 결과 stats `degraded_sources`(collect.daily) 또는 `daily.degraded_sources`(region.bootstrap)의 사유들 */
+function degradedSources(stats: Record<string, unknown>): string | null {
+  const daily = stats.daily;
+  const map =
+    stats.degraded_sources ??
+    (daily && typeof daily === 'object'
+      ? (daily as Record<string, unknown>).degraded_sources
+      : undefined);
+  if (!map || typeof map !== 'object') return null;
+  const reasons = Object.values(map as Record<string, unknown>).filter(
+    (v): v is string => typeof v === 'string' && v.trim() !== '',
+  );
+  return reasons.length > 0 ? reasons.join('; ') : null;
+}
+
+/** `degraded_source: <잡 이름>: <사유>[꼬리]` → `<사유>` (화면에 영문 코드를 내지 않는다 — 8차 m19) */
+function degradedDetail(text: string, tail?: RegExp): string {
+  const rest = text
+    .slice(DEGRADED_SOURCE.length)
+    .replace(/^[:\s]+/, '')
+    .replace(/^[a-z_]+(?:\.[a-z_]+)+:\s*/, '');
+  const trimmed = (tail ? rest.replace(tail, '') : rest).trim();
+  return trimmed || text;
 }
 
 /** 겹친 발행(F12 single-flight) — 먼저 돈 잡이 그 리비전을 발행한다 */

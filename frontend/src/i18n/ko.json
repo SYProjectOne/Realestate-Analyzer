@@ -13,7 +13,10 @@
     "toastClose": "알림 닫기",
     "notifications": "알림",
     "retry": "다시 시도",
-    "noSnapshot": "기준일 스냅샷이 없습니다. 지역 분석이 끝나면 나타납니다"
+    "noSnapshot": "기준일 스냅샷이 없습니다. 지역 분석이 끝나면 나타납니다",
+    "noSnapshotBootstrapping": "지역 첫 적재 중 — 첫 발행 리비전이 나오면 나타납니다",
+    "regionBootstrapping": "이 지역은 첫 적재 중입니다 — 아직 발행 리비전이 없어 화면이 비어 있습니다. 진행·재시도 시각은 데이터·운영 화면의 잡 목록에서 확인하세요",
+    "regionFailed": "이 지역의 첫 적재가 실패했습니다 — 데이터·운영 화면의 잡 목록에서 오류를 확인하세요"
   },
   "nav": {
     "G1": "홈",
@@ -516,7 +519,10 @@
         "retry": "재시도",
         "retried": "재시도 잡을 등록했습니다",
         "disabled": "꺼짐({reason})",
-        "failing": "실패 대상"
+        "failing": "실패 대상",
+        "reason": {
+          "emptyDataset": "빈 데이터셋 — 청약홈 적재 중"
+        }
       },
       "sourceKind": {
         "applyhome_list": "청약홈 목록",
@@ -1022,6 +1028,12 @@
     "retrying": "상태를 받지 못해 다시 확인하는 중: {detail}",
     "requeued": "같은 리비전의 다른 발행이 끝나길 기다리는 중(다시 대기 {n}회) — 실패가 아닙니다",
     "requeuedError": "발행 중 오류가 나 다시 시도하는 중({n}/{max}회) — 아직 실패가 아닙니다",
+    "requeuedDegraded": "수집 자료가 불완전해({detail}) 발행하지 않고 다시 수집합니다(다시 대기 {n}/{max}회, {at}) — 아직 실패가 아닙니다.",
+    "requeuedAt": "{at} 이후 다시 시도",
+    "requeuedSoon": "곧 다시 시도",
+    "requeuedDegradedBootstrap": "지역 첫 적재 중 — 발행 리비전은 아직 없습니다.",
+    "requeuedDegradedDaily": "이전 발행 리비전이 그대로 기본 화면입니다.",
+    "degradedFailed": "수집 자료가 다시 수집 {max}회 뒤에도 불완전해 멈췄습니다 — 발행하지 않았습니다: {detail}",
     "publishPending": "작업이 끝나 새 리비전이 발행될 때까지 화면은 지금 발행 리비전을 보입니다",
     "publishDone": "새 리비전이 발행됐습니다 — 화면 기본이 새 리비전으로 바뀝니다",
     "publishBlocked": "발행이 막혔습니다(남은 모순 주장 등) — 데이터·운영 화면에서 주장을 고치면 다시 발행됩니다: {detail}",

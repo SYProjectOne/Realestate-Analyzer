@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Outlet } from 'react-router';
 import { BackfilledBanner } from '@/app/BackfilledBanner';
 import { DegradedBanner } from '@/app/DegradedBanner';
+import { RegionLoadingBanner } from '@/app/RegionLoadingBanner';
 import { ReadOnlyBanner, TokenDialog, TokenPinnedBanner } from '@/app/TokenDialog';
 import { ToastProvider } from '@/app/toast';
 import { useProvenanceSnapshot } from '@/components/provenanceContext';
@@ -34,6 +35,7 @@ export function AppLayout() {
         </a>
         <Header />
         <DegradedBanner />
+        <RegionLoadingBanner />
         <BackfilledBanner />
         <TokenPinnedBanner />
         <ReadOnlyBanner />
