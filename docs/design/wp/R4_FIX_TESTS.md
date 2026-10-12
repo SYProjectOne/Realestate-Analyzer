@@ -1,6 +1,6 @@
 # R4-FIX — 실데이터 결함 수정 테스트·수정 전 실패 확인 (2026-10-12)
 
-원문: `docs/design/wp/R4_RESULT.md` §8·§9, 결정 `docs/design/DECISIONS.md` D18. 브랜치 `wp/r4-fix`(main `8b659a4` 기준), 계약 `2026-10-09.13`(버전 올리지 않음).
+원문: `docs/design/wp/R4_RESULT.md` §8·§9, 결정 `docs/design/DECISIONS.md` D18. 브랜치 `wp/r4-fix`(main `8b659a4` 기준, 뒤에 main `ec6ae0b`(CORE7, 계약 `2026-10-09.14`) 병합 — 충돌 `scheduler/runner.py` 1곳), 계약 버전은 올리지 않았다(.14 그대로, 변경 요청은 §6 = .15 초안).
 
 **방법.** 결함마다 테스트를 먼저 쓰고, `git checkout 8b659a4 -- backend/app`(수정 전 앱 코드)로 같은 테스트를 돌려 실패를 확인한 뒤 고쳤다
 (아래 "수정 전" 열은 그 실행의 실제 출력 줄). 실데이터 재현은 R4 원문(scratchpad `r4/raw`, 공개 분양 정보)을 줄여 녹화 픽스처로 넣고
@@ -83,7 +83,7 @@
 - `normalize/rtms_parser.py`(store 경로)는 umdCd 가 있을 때만 코드를 낸다 — 실데이터 실거래는 수집기 적재(`load_trades`) 경로라 영향 없다.
 - 동시 작업(CORE7) 파일 변경: `scheduler/runner.py`(잡 stats 계수 — `execute` 에 3줄 + `with_tools_calls`), `scheduler/pipeline.py`(CORE7 목록 아님), `normalize/store.py`(잔여 공고 묶기·첫 적재 — 사람 확인 퍼짐 부분은 건드리지 않음). `handlers.py`·`persist.py`·`snapshot_view.py`·`api/demotion.py` 는 바꾸지 않았다.
 
-## 6. 계약 변경 요청 (초안 — 계약 버전은 올리지 않았다)
+## 6. 계약 변경 요청 (.15 초안 — 계약 버전은 올리지 않았다)
 
 | 대상 | 변경 | 이유 | 영향 WP |
 | --- | --- | --- | --- |
