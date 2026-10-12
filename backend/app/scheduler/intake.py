@@ -39,6 +39,7 @@ __all__ = [
     "classified_version",
     "intake_change_events",
     "intake_text",
+    "page_text",
     "pending_complexes",
     "reset_stale_classification",
     "text_sha256",
@@ -72,6 +73,20 @@ def intake_text(session: Session, row: IntakeStatus) -> str:
         src = dto.model_copy(update={"path": None}) if row.path == "headless_shot" else dto
         text = (read_raw_text(src) or "").strip()
     return text[:INTAKE_TEXT_MAX]
+
+
+PAGE_TEXT_MAX: Final = 1500
+
+
+def page_text(session: Session, row: IntakeStatus) -> str:
+    """접수 행 원문의 페이지 텍스트 앞부분(렌더 DOM 텍스트·HTML 텍스트, 최대 1500자) — D21-5 공식 홈페이지 동일성 classify
+    입력(단지 이름·위치와 함께). 접수 문구 후보 줄만으로는 그 페이지가 어느 단지 것인지 알 수 없다."""
+    doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
+    if doc is None:
+        return ""
+    dto = raw_dto(doc)
+    src = dto.model_copy(update={"path": None}) if row.path == "headless_shot" else dto
+    return (read_raw_text(src) or "").strip()[:PAGE_TEXT_MAX]
 
 
 def text_sha256(text: str) -> str:
