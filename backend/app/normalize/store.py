@@ -1425,6 +1425,23 @@ def _price_groups_of_types(session: Session, bound: list[FieldCandidate]) -> set
     return out
 
 
+def _merged_addresses(binder: _Binder, skipped: list[FieldCandidate]) -> dict[int, list[str]]:
+    """원 단지에 묶여(D11-4) 원 단지 값으로 쓰지 않은 잔여 공고의 공급위치(단지 id → 주소들)."""
+    out: dict[int, list[str]] = {}
+    for c in skipped:
+        if (
+            c.entity != "complex"
+            or c.field != "address"
+            or not isinstance(c.value, str)
+            or not c.value.strip()
+        ):
+            continue
+        cid = binder.complex_for_key((c.entity_key or "").split(":")[0])
+        if cid is not None and c.value not in out.get(cid, []):
+            out.setdefault(cid, []).append(c.value)
+    return out
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -1565,6 +1582,11 @@ def store_raw_document(
             cx = session.get(Complex, cid)
             if cx is not None:
                 assign_complex_area(session, cx)
+        # D21-6(R4 재시험 N7): 원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치 — 원 단지 주소에 동이 없으면 그 주소로 법정동을 찾는다
+        for cid, addrs in sorted(_merged_addresses(binder, skipped).items()):
+            cx = session.get(Complex, cid)
+            if cx is not None and cx.legal_dong_code is None:
+                assign_complex_area(session, cx, alt_addresses=addrs)
         folded = 0
         if first_load:
             kept = [e for e in events if (e.old_text or "") not in _EMPTY_TEXTS]

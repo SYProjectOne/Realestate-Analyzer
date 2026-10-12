@@ -293,6 +293,8 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
             has_price=f.price_high is not None,
             intake_status=f.intake.status if f.intake is not None else None,
             original_notice_missing=original_missing(cx.applyhome_id, cx.notice_date),
+            address=cx.address,
+            legal_dong_code=cx.legal_dong_code,
         )
         f.scope, f.scope_reason = sr.scope, sr.reason
         out.append(f)

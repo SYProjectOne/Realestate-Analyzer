@@ -961,6 +961,8 @@ class _Loader:
                 has_price=view.known,
                 intake_status=shown_row.status if shown_row is not None else None,
                 original_notice_missing=original_missing(c.applyhome_id, c.notice_date),
+                address=c.address,
+                legal_dong_code=c.legal_dong_code,
             )
             my_events = events_by.get(c.id, [])
             out.append(

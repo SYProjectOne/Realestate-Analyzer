@@ -28,7 +28,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AdminLegalMap, Complex, HouseholdStat, LegalDong, Region
+from app.models import AdminLegalMap, Complex, FieldProvenance, HouseholdStat, LegalDong, Region
 from app.normalize.region_resolve import LegalRow, normalize_name
 
 __all__ = [
@@ -226,15 +226,56 @@ class AssignResult:
     in_region: bool
 
 
-def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
+def _dong_rows(session: Session, address: str) -> list[LegalRow]:
+    names = sorted(_tokens(address))
+    return [
+        _legal_row(r)
+        for r in session.scalars(
+            select(LegalDong).where(LegalDong.active.is_(True), LegalDong.eupmyeondong_name.in_(names))
+        )
+    ]
+
+
+def assign_complex_area(session: Session, cx: Complex, *, alt_addresses: Sequence[str] = ()) -> AssignResult:
     """단지 주소 → legal_dong_code·living_area. 못 맞추면 inclusion_class '범위 경계'(미분류일 때만).
 
     법정동이 정해졌는데 지역 법정동 밖이면(지역 선택에서 그 법정동·시군구를 뺐다 — R3 4차 M-4) 분류와 무관하게
     '범위 경계'(판정 범위 '제외') — 이전 분류('포함')로 계속 판정 대상이 되지 않는다. 다시 지역에 들어오면
-    ``scheduler.handlers.handle_region_expand`` 가 '미분류'로 되돌려 다음 P4 classify 가 다시 분류한다."""
+    ``scheduler.handlers.handle_region_expand`` 가 '미분류'로 되돌려 다음 P4 classify 가 다시 분류한다.
+
+    ``alt_addresses``(D21-6, R4 재시험 N7): 단지 주소에 동 이름이 없을 때(참조 표에 맞는 읍면동 토큰 없음 — 'RC3BL'·
+    '396-11번지(…A17BL)') 같은 단지의 다른 출처 주소(원 번호를 인용한 잔여 공고문·청약홈 잔여 공고의 공급위치)로 법정동을
+    찾는다. 단지 주소(``cx.address``)는 바꾸지 않는다(D11-4). 찾은 법정동은 이후 다시 배정해도 유지된다(아래 '이미 아는
+    법정동' 규칙)."""
     region = session.get(Region, cx.region_id)
     if region is None:
         return AssignResult(cx.id, cx.legal_dong_code, cx.living_area, False)
+    if cx.address and cx.legal_dong_code is None and not _dong_rows(session, cx.address):
+        # 같은 단지의 다른 출처 주소: 호출자가 준 것(원 단지에 묶인 잔여 공고의 공급위치) + 그 단지 주소의 다른 출처 행 값
+        others = [
+            v
+            for v in session.scalars(
+                select(FieldProvenance.value_text).where(
+                    FieldProvenance.entity == "complex",
+                    FieldProvenance.entity_id == cx.id,
+                    FieldProvenance.field == "address",
+                    FieldProvenance.value_text.is_not(None),
+                )
+            )
+            if v and v != cx.address
+        ]
+        for alt in dict.fromkeys([*alt_addresses, *others]):
+            alt_rows = _dong_rows(session, alt)
+            code = (
+                assign_legal_dong(alt, alt_rows, scope=set(region.legal_dong_codes or []))
+                if alt_rows
+                else None
+            )
+            if code is None and alt_rows:
+                code = split_successor(session, alt, alt_rows, scope=set(region.legal_dong_codes or []))
+            if code is not None:
+                cx.legal_dong_code = code
+                break
     scope = set(region.legal_dong_codes or [])
     if not cx.address:  # 주소 없이 법정동만 아는 단지(시드·옛 행): 그 법정동이 지역 밖이 됐으면 범위 경계
         inside = cx.legal_dong_code is not None and cx.legal_dong_code in scope
@@ -268,6 +309,10 @@ def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
     cx.living_area = living_area_of(code, region.living_areas or []) if in_region else None
     if not in_region and (code is not None or ambiguous or cx.inclusion_class in (None, "미분류")):
         cx.inclusion_class = "범위 경계"
+    elif in_region and cx.inclusion_class == "범위 경계":
+        # '범위 경계'는 판정기 분류가 아니라 주소 매칭 결과다(D2-6) — 이제 지역 법정동에 맞으면(다른 출처 주소로 법정동을 찾음,
+        # D21-6) 미분류로 되돌려 다음 P4 classify 가 포함/제외를 정한다(지역 확장과 같은 규칙)
+        cx.inclusion_class = "미분류"
     return AssignResult(cx.id, code, cx.living_area, in_region)
 
 

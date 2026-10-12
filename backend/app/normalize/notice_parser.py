@@ -45,7 +45,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final
+from typing import Final, TypedDict
 from urllib.parse import parse_qs, urlsplit
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
@@ -690,7 +690,12 @@ def _scaled(row: PriceRow, scale: int) -> PriceRow:
     )
 
 
-def _unit_kw(ctx: _Ctx, span: tuple[int, int]) -> dict[str, str]:
+class _UnitKw(TypedDict, total=False):
+    excerpt: str
+    reason: str
+
+
+def _unit_kw(ctx: _Ctx, span: tuple[int, int]) -> _UnitKw:
     """가격 후보의 단위 근거: 원이 아닌 단위로 환산했으면 발췌 = 금액 행 + 단위 표기 줄, 단위 표기가 없으면 reason
     ``UNIT_ASSUMED``. 원 단위 표는 그대로(발췌 = 금액 행)."""
     unit = ctx.unit

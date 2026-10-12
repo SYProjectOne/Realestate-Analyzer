@@ -28,7 +28,12 @@ N7 = "n7"
 CASES = {
     # 원 공고(청약홈 API, 주소에 동 없음) → 원 번호 인용 잔여 공고문(공급위치에 동)
     "2021000189": (719, 603, "인천광역시 서구 검단신도시 RC3BL", "2826011700"),  # 서구 당하동(테스트 참조표)
-    "2021000830": (728, 608, "인천광역시 연수구 396-11번지(송도랜드마크시티 6,8공구 A17BL)", "2818510600"),  # 연수구 송도동
+    "2021000830": (
+        728,
+        608,
+        "인천광역시 연수구 396-11번지(송도랜드마크시티 6,8공구 A17BL)",
+        "2818510600",
+    ),  # 연수구 송도동
 }
 
 
@@ -72,7 +77,9 @@ def test_other_source_address_of_same_complex_gives_legal_dong(
 
 
 def test_scope_reason_unchanged_for_addresses_with_dong() -> None:
-    sr = judge_scope(inclusion_class="범위 경계", inclusion_decision="auto", has_price=True, intake_status=None)
+    sr = judge_scope(
+        inclusion_class="범위 경계", inclusion_decision="auto", has_price=True, intake_status=None
+    )
     assert sr.reason == "범위 경계(주소가 지역 법정동에 매칭 안 됨)"
     sr2 = judge_scope(
         inclusion_class="범위 경계", inclusion_decision="auto", has_price=True, intake_status=None,

@@ -621,6 +621,8 @@ def _scope_now(b: ComplexBundle, cur: IntakeStatus | None) -> scope_rules.ScopeR
         has_price=score_price(b).known,
         intake_status=cur.status if cur is not None else None,
         original_notice_missing=scope_rules.original_missing(b.cx.applyhome_id, b.cx.notice_date),
+        address=b.cx.address,
+        legal_dong_code=b.cx.legal_dong_code,
     )
 
 
