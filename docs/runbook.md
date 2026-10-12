@@ -170,7 +170,7 @@ RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로
 아래 10-1~10-5 는 R3 때 준비한 절차다. **2026-10-12 처음 실제로 돌렸고**(결과 `docs/design/wp/R4_RESULT.md`), 실제로 다르게 해야
 했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다. R4-FIX 뒤 재시험(같은 날, D19 로컬 PG17)의 결과 표는
 **10-8**(상세 `docs/design/wp/R4_RESULT2.md`), 재시험 절차는 10-7. R4-CORE8 뒤 3차 재시험 절차는 10-9, 결과 표는 **10-10**
-(상세 `docs/design/wp/R4_RESULT3.md`).
+(상세 `docs/design/wp/R4_RESULT3.md`). R4-CORE9 뒤 4차 재시험 절차는 10-11, 결과 표는 **10-12**(상세 `docs/design/wp/R4_RESULT4.md`).
 
 ### 10-1 준비
 
@@ -514,6 +514,37 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
    '출처 상충 — compare 대기'(`SELECT … FROM field_provenance WHERE reason LIKE '출처 상충%' AND field LIKE '%max_price_won';` 의 단지).
 8. **1회차 호출 수**: 3차(571) 대비 차이를 도구별로 기록 — 포함 classify 는 첫 실행이라 전체 배치(변화 없음 예상), 법정동이 1회차에 정해져 3차
    (a2) 의 classify 1 · rerank 1 이 1회차로 옮겨 온다(46·47 포함 배치·rerank 후보).
+
+### 10-12 R4 4차 재시험 결과 (2026-10-13 KST, main `903abf0`, 계약 `.17`) — 상세 `docs/design/wp/R4_RESULT4.md`
+
+**결과: 게이트 미통과 · 운영 승인 비권고(critical 1).** 3차 N8·N9·N10·N11·N12·m-b·D22-5 는 실데이터에서 해결 — (a)·(a2)·(a3) `tools/call` 0·0·0, 같은 날
+daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 날 daily 가 같은 경쟁률 원문을 다시 정규화하며 **중복 경쟁률 행 70개**를 '확인됨'으로 조용히 발행했고
+(**critical N13**), compare 채택 표식 47 필드를 지워 (b) 뒤 재판정이 compare 4회를 불렀다(N14). 00:01 첫 시도는 청약홈 API 데이터셋이 비어(`totalCount 0`)
+단지 24개 스냅샷이 경고 없이 발행돼(N15) 무효로 하고 DB 를 비워 01:01 에 다시 시작했다.
+
+| 항목 | 값 |
+| --- | --- |
+| 환경 | Windows 11, Docker 없음, D19 로컬 PostgreSQL 17.9(5434) DB `subscription_analyzer_r4`(public 테이블만 지우고 새로 시작 — 무효 첫 시도 뒤 한 번 더), `ENV=prod`, API 127.0.0.1:18733 |
+| 마이그레이션 | `ENV_FILE=… uv run alembic upgrade head` → `PostgresqlImpl`, `0015 (head)`, `dev.db` 없음 |
+| JEV | 실행 직전 최신 `0.14.1` 확인 → `npx -y @jkudish/jev-mcp@0.14.1` 고정, smoke 출력 `"cmd"` 고정 버전, 키 줄 뺀 env 대조 smoke 실패. 워커·API 는 같은 버전 계수 프록시 경유(자식 env 에 `TYPESAFE_API_KEY` 108자, `DATA_GO_KR_KEY`·`DATABASE_URL` 없음) |
+| adapter_version | `0.2.0+jev-mcp@0.14.1+jev-1.13.0` **1개**(564행; provider none 136행 포함) |
+| 1회차 시간 | bootstrap **40분 16초**(일일 단계 31분 18초 · 주간 단계 6분 29초 · 판정 2분 22초 · 발행 7초), reference.refresh 12초 |
+| 1회차 실제 호출 | **564** = 잡 `tools_calls` = 프록시 `tools/call` = `judgment_log` 행(screen 193 · extract 178 · compare 129 · classify 41 · audit 10 · noul 6 · decide 4 · verify 2 · rerank 1), 모델 호출 428 · 로컬 단락 136, 수집 단계 판정 65 포함, blocked·error 0 |
+| 132 / 3차 대비 | +432 / −7(noul −3·verify −1·decide −1 판정 대상 3 → 2 — 엘리프 접수 classify review, compare −1, audit −1). 46·47 이 1회차 포함 배치·rerank 에 들어가 3차 (a2) 형 추가 호출 없음 |
+| 단지·범위 | 단지 행 72(잔여 공고 번호 행 4 — 2024940118 자기 행 없음), 판정 대상 2(사우역 지엔하임 가능 · 풍무역 푸르지오 더 마크 미정), **TOP 5 = 사우역 지엔하임 4.72**(1개 — 풍무역 푸르지오 더 마크 계약금% 없음 m-a) |
+| 수집 | 실거래 52,163건 법정동 100%, 분양권 4,109건, `store_errors` [], official_site 404 1·connect 7·TLS 3, 타임아웃·파싱 실패 0 |
+| 출처 | 발행 `missing_provenance` 리비전 1~6 모두 **0**, Fact 빈 라벨 0 · 값 있는데 출처 없음 0(대시보드·목록·상세 72·시장, 리비전 1~6), 시장 생활권 4블록(prov `rd_`) |
+| 2회차 (a)·(a2)·(a3) | **프록시 `tools/call` 0 · `tools_calls` 0 · `judgment_log` 564 → 564**(세 번 모두), cached 456, 약 60초씩 → 통과. 미분류 review 4단지 재전송 없음 |
+| 2회차 (b) 같은 날 collect.daily | 984초, 실제 새 임의공급 공고 1건(2026940221, 데이터셋 674 → 676) → change_event 5(그 단지만)·재판정 `tools/call` 0. 판정기 추출 '확인됨' 유지·`missing_provenance` 0. **그러나 바뀐 원문 없는 단지 10곳에 중복 경쟁률 Fact 124 생김(N13) · compare 채택 근거 47 필드 소실(N14)** |
+| (b) 뒤 재판정 | `tools/call` **4**(compare 입주 예정월 13·51·60·66 — N14) → 실패 |
+| 보고서 | `--snapshot 6 --format pdf` 152쪽, 차트 포함, §1-1 세대수 4칸, 중복 경쟁률이 보고서에도 보임 |
+| 보안 | 키·토큰·DB 비밀번호·접속 주소 검사 파일 4,684개·DB 컬럼 243개 0건, `serviceKey=` 0, guard 차단 0 |
+
+4차에서 실제로 다르게 한 것: ① bootstrap 이 자정을 넘지 않게(기준일 하나) 00:00 뒤에 시작했는데, **청약홈 API 데이터셋이 자정 직후 다시 적재되는 동안
+`totalCount 0` 을 낸다**(관측: APT 00:01~00:29, 잔여 ~00:59 KST). 다음 재시험은 이 시간대를 피하고, 시작 전 `getAPTLttotPblancDetail`·
+`getRemndrLttotPblancDetail`·`getOPTLttotPblancDetail` 을 `perPage=1` 로 한 번씩 불러 `totalCount` > 0 을 확인한다(키는 출력하지 않는다). ② 발행 불변
+확인은 `missing_provenance` 만이 아니라 리비전 간 단지 목록·상세 72개·대시보드·시장의 모든 Fact(`v`·`label`·`reason`)를 경로별로 비교했다 — 기준선은
+수집 없는 연속 재판정 리비전 쌍(Fact 차이 0, 파생 행 id 만 다름).
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
