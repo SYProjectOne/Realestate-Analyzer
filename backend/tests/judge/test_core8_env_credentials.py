@@ -84,7 +84,9 @@ def test_dotenv_credential_is_masked_in_startup_error(dotenv_only: Path, tmp_pat
     finally:
         transport.close()
     message = str(info.value)
-    assert "boot failed key=" in message, f"판정기 자식이 .env 의 키를 받았다(stderr 에 찍힘): {message}"
+    assert "KeyError" not in message and "boot failed key=" in message, (
+        f"판정기 자식이 .env 의 키를 받았다(stderr 에 찍힘): {message}"
+    )
     assert DOTENV_JUDGE_KEY not in message and "[REDACTED" in message, message
 
 

@@ -153,6 +153,9 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
 ## 9. 비밀값
 
 - 비밀은 `infra/.env`(Docker) 또는 `backend/.env`(로컬)에만. 커밋 금지(pre-commit `no-dotenv`·`gitleaks`).
+- 판정기 자격 증명(`TYPESAFE_API_KEY`·`OPENROUTER_API_KEY`·`JEV_API_KEY` … — `JUDGE_SECRET_ENV_NAMES`)도 같은 `.env`(또는 `ENV_FILE`)에
+  둔다. 판정기 자식 프로세스에는 그 이름들만 넘어가고(사용자 환경변수가 있으면 그 값이 이긴다), 기동 실패 stderr·오류에서는 값이
+  가려진다(D21-8·D19-3). 판정기와 무관한 비밀(`DATA_GO_KR_KEY` 등)은 넘기지 않는다.
 - 남에게 주는 링크는 G7 '공유 링크'로 발급한다(`POST /share-links`, 쓰기 토큰만): 읽기 전용(GET 만), 만료
   `SHARE_TOKEN_TTL_DAYS`(기본 30일), 서버에는 sha256 만 남는다. 링크 `<origin>/share#<token>` 은 발급 때 한 번만 보인다.
   잃어버리거나 노출되면 같은 패널에서 회수(`DELETE /share-links/{id}`) — 그 토큰은 바로 401.
@@ -424,6 +427,35 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
 재시험에서 실제로 다르게 한 것: ① 워커는 `JEV_PROXY_OUT` 으로 실행마다 프록시 기록 파일을 나눴다(1회차·2a·2b 별도 — 1회차도 대조). ② r4 env 의
 `DATABASE_URL` 은 루트 `.env` 의 `R4_DATABASE_URL`, 도우미 스크립트용 psycopg 주소 파일도 끝나고 지웠다. ③ Git Bash 에서 API 경로는 앞 `/` 없이 넘겼다(10-6 ⑥).
 ④ 집계 SQL 은 10-7 ④ 그대로 + `SELECT provider, model, tool, COUNT(*) FROM judgment_log GROUP BY 1,2,3`.
+
+### 10-9 R4 재시험 3차 절차 — R4-CORE8(D21, 계약 .16) 뒤 바뀐 것 (`docs/design/wp/R4_CORE8_TESTS.md`)
+
+10-7 은 그대로 따른다. 3차 재시험은 **새 DB**(비운 `subscription_analyzer_r4` 또는 새 DB)로 한다 — 2차 DB 에 이미 생긴 잔여 공고 번호
+행(74·75 등)은 병합하지 않는다(D20-3 과 같은 이유).
+
+1. **판정기 자격 증명**(D21-8·D19-3): 판정기 키는 r4 env(`ENV_FILE`)나 루트 `.env` 의 `TYPESAFE_API_KEY`(또는 `JUDGE_SECRET_ENV_NAMES`
+   의 다른 이름)에만 두면 된다 — 사용자 환경변수(`setx`)가 없어도 판정기 자식 프로세스로 넘어간다(프로세스 환경변수가 있으면 그 값이
+   이긴다). smoke 로 확인: 키를 사용자 환경변수에서 지운 셸에서 `ENV_FILE=<r4 env> JEV_MCP_CMD=… uv run pytest -m live tests/judge/test_live.py -s`.
+2. **공고문 금액 단위**(N1·D21-1): `SELECT ct.complex_id, ct.type_code, ct.max_price_won FROM complex_type ct WHERE ct.max_price_won < 30000000;`
+   → 0행이어야 한다(3천만원 미만 가격 없음). 2차의 중흥S-클래스(2025000253) 84A = 617,000,000. 단위 상충 보류(10배 이상):
+   `SELECT entity, entity_id, field, value_text, reason FROM field_provenance WHERE reason LIKE '출처 상충%' AND field LIKE '%price_won';`
+   와 그 compare 결과(G7 판정 로그 purpose `compare:complex_type:<id>:max_price_won`)를 기록한다. 단위 표기 없는 표:
+   `SELECT COUNT(*) FROM field_provenance WHERE reason LIKE '%단위 표기 없음%';`
+3. **NUL**(N2·D21-2): bootstrap·daily 잡 stats `store_errors` = [] (2차 rd613·rd616 `DataError` 없음). 원문 파일(.txt)은 그대로다.
+4. **잔여 공고**(N3·N4·D21-3): `SELECT applyhome_id, name FROM complex WHERE applyhome_id ~ '^20[0-9]{2}9[0-9]{5}$';` → 공고문이 원 번호를
+   인용하지 않은 것만(2차의 74·75·64~66·71·62·63 은 없어야 한다). 같은 날 `collect.daily`(10-7 ⑨) change_event 0 · `tools_calls` 0.
+5. **실거래 출처**(N5·D21-4): `GET /snapshots/<id>/market` 의 `living_area_prices` 가 생활권마다 있고 `prov` 가 `rd_<id>`. 발행 stats
+   `missing_provenance` 가 2차(5,938~5,973)보다 크게 준다(실거래 거래가 빠진다).
+6. **공식 홈페이지 동일성**(N6·D21-5): 판정 로그 purpose `classify:site_identity:batch<n>` 호출 수·결과, 접수 행 사유
+   `SELECT complex_id, path, reason, note FROM intake_status WHERE reason = '공식 홈페이지가 다른 단지';` — 2차의 예미지 퍼스트포레(55,
+   `yemizi-firstforet.com` = 대구 동성로 페이지)가 여기 있고 판정 대상이 아니어야 한다(판정기 응답에 달렸다 — 결과 기록).
+7. **동 없는 주소**(N7·D21-6): `SELECT id, name, address, legal_dong_code, inclusion_class FROM complex WHERE address NOT SIMILAR TO '%(동|읍|면|리)( |$)%';`
+   — 2차 46(RC3BL)·47(396-11번지)은 잔여 공고문 공급위치로 법정동(당하동·송도동)이 채워지고 범위 경계가 아니다. 남은 행의 범위 사유
+   '범위 경계(주소에 동 없음)'.
+8. **첫 적재 요약**(m-b): bootstrap 의 `change_event` 중 단지·타입·납부 조건 이벤트 0(값 → 다른 값도 `first_load` 한 줄로).
+9. **포함 classify**(m-c): 같은 날 daily(변화 있을 때)·rejudge 의 `classify:inclusion:*` 항목 수 = 입력이 바뀐 단지 수.
+10. **보고서 §1-1**(m-d): 생활권 세대수 4칸에 값(라벨 추정, 출처 rd_) — '확인 불가(출처 누락)' 없음.
+11. **공고 예정 후보**(D21-8, 계약 .16): 트랙 A 행의 공고일·가격 '확인 불가(공고 전)', 목록·상세의 `name_prov`·`name_label`('비공식').
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
