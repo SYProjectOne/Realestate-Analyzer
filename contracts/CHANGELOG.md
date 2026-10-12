@@ -2,6 +2,69 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.17
+
+R4 3차 재시험(`docs/design/wp/R4_RESULT3.md` §10) 후속 — CEO 결정 **D22**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-CORE9**(브랜치
+`wp/r4-core9`). 마이그레이션 없음(DB 모양 그대로 — head 0015). 필드 삭제 없음, **새 응답 필드 1**(`ComplexRow`·`Complex`(단지 상세
+머리)의 `judge_scope_reason`, 선택), 새 사유 문자열 2(접수 '공식 홈페이지 동일성 미확인', 판정 범위·현재 구매가 '출처 상충 — compare 대기'
+는 기존 Fact 사유 문자열을 새 자리에). 저장 모양 버전(`SHAPE_VERSION`) 그대로 1 — `judge_scope_reason` 은 선택 필드로 .17 이후 발행
+저장본에만 있다(.16 이전 발행 리비전 저장본에는 키가 없다 = null, D14-4 변환 마이그레이션 불필요). 테스트 표(결함 · 테스트 · 수정 전 실패
+확인)는 `docs/design/wp/R4_CORE9_TESTS.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시 만들지 않았다
+(frontend/** = FE 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`. FE10 e2e `frontend/e2e/api/writes12-r4fe10.spec.ts` 의
+`test.fail`(F1 이름 출처 서랍 — 발행 리비전 404)은 이 계약에서 200 이 되므로 **'예상 실패가 통과'로 알린다** — FE 가 표식을 지운다.
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .16 | .17 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | **`ComplexRow.judge_scope_reason`**, **`Complex.judge_scope_reason`**(단지 상세 `header`) | 없음 — FE 가 서버 `analysis.scope` 첫 행 규칙·`has_dong_name` 정규식을 옮겨 '범위 경계(주소에 동 없음)'를 만들었다(FE10 F5, 계약 변경 요청) | **새 선택 필드**(string\|null, ≤200): 서버 `analysis.scope.judge_scope` 의 `reason` 그대로 — '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(…)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'·'포함 확정 · 접수 가능'·'접수 확인 불가' 등. **현재 사실로 계산한** 범위의 사유 — `judge_scope`(점수 실행 저장값)와 다르면 `rejudge_needed`=true 이고 이 사유는 재판정 뒤 범위의 것. 목록 행·상세 머리 같은 값. .16 이전 발행 저장본에는 키가 없다(= null — 그때는 화면 규칙 폴백) | D22-5 |
+| F2 | 발행 리비전 이름 출처 서랍 `GET /provenance/{name_prov}?snapshot_id=<발행 리비전>` | **404**('발행 리비전 … 저장본에 출처 fp_… 없음' — 저장본 출처 수집이 `"name_prov":` 를 모으지 않음) | **200**(.17 이후 발행한 리비전). .16 이전 발행 리비전은 다시 발행하기 전까지 404 그대로(저장본 불변 — D11-1). FE10 e2e `test.fail` 표식을 지운다 | D22-5 |
+| F3 | 현재 구매가 `price_low`·`price_high`·`price_mid` Fact 사유(목록 행·상세 `price`·비교 입력) — 기준 타입 가격 **채택 보류**(출처 상충 — compare 대기) | '분양가 미공개' | **'출처 상충 — compare 대기'**(표시 '확인 불가(출처 상충 — compare 대기)'). 현재 구매가가 쓰는 필드(현재 공고 `price_by_type[기준 타입]` 칸, 없으면 타입 행)의 chosen 출처 행이 보류 표식일 때. 판정 범위 사유(F1)도 같은 문자열 | D22-5 |
+| F4 | 접수 상태 `Intake.reason` | '공식 홈페이지가 다른 단지' 하나(동일성 판정이 review·unclear 여도) | 판정기가 auto `other_complex` 일 때만 **'공식 홈페이지가 다른 단지'**, review·unclear(미해결·불명)는 새 사유 **'공식 홈페이지 동일성 미확인'**(status '확인 불가' — 접수 근거로 쓰지 않는 것은 같다). 표시 '확인 불가(공식 홈페이지 동일성 미확인)' — FE10 F4 의 원문 버튼 문구('다른 단지 페이지 — 접수 근거 아님')를 이 사유에는 쓰지 않는다 | D22-4 · N11 |
+| F5 | G1 첫 적재 요약 `change_event(region·first_load)` | 수집(일일·주간)마다 한 줄씩 생길 수 있었고, bootstrap 판정 단계 값 변경(판정기 추출 적용·compare 채택)은 change_event(critical 포함)로 남았다 | 같은 적재(지역·스냅샷)에 **한 줄** — 수집·판정 단계 값 기록·덮어쓰기를 모두 센다(문구 그대로 '첫 적재: 단지 n개, 값 k건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)') | D22-4 · m-b |
+| F6 | change_event `complex·legal_dong_code`(critical, triggers_rejudge) | 없음 — 다른 출처 주소로 법정동을 보정해도 이벤트 0(조용한 변경) | 주소에 동 없는 단지의 법정동을 같은 단지 다른 출처 주소(잔여 공고 공급위치)로 보정하면 이벤트(첫 적재면 요약 수) — G1 '최근 변경'에 '법정동' 변경 행이 나올 수 있다(old null → new 법정동 코드) | D22-3 · N10 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.16) | 이후(.17) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | 재정규화(같은 원문을 다시 저장 — 같은 날 재수집) | 같은 원문의 출처 행을 모두 후보에서 빼서 판정기 추출 행이 내려가고 파서 행('확인 불가')이 chosen — 사실 값은 그대로라 발행 저장본 '확인 불가(출처 누락)'(R4 3차 N9, `missing_provenance` 0 → 40) | 이번 파싱이 같은 자리(엔티티·필드·발췌 위치)를 여전히 판정기에 물으면 그 원문의 판정기 추출·감사 행을 후보로 유지 — '확인됨' 그대로, 이벤트 0. 파서가 이제 값을 읽으면 판정 행은 후보가 아니고 값이 바뀌면 change_event | D22-1 · N9 |
+| S2 | P4 포함/제외 classify 재전송 | 미분류(review)인 단지는 입력이 같아도 매번 새 배치로(같은 스냅샷 재판정 `tools/call` 1, R4 3차 N8) | 직전 판정(같은 판정기 버전·같은 항목 텍스트)이 review·manual_review 면 다시 보내지 않는다. 판정 뒤 미분류로 되돌린 단지(범위 경계 → 미분류)는 다시 보낸다. 배치 항목은 단지 id 순 | D22-2 · N8 |
+| S3 | 법정동 보정(다른 출처 주소, .16 S7) | 잔여 공고문이 원 단지 주소가 생기기 전에 저장되면 쓰지 못하고, 청약홈 잔여 공고 공급위치는 쓰지 않음 → 다음 날 재수집에서야 조용히 채워짐 | 첫 수집 안에서(저장 · 잔여 공고 이력 동기화 · 수집 실행 끝), 순서와 무관하게. 바뀌면 change_event(F6) | D22-3 · N10 |
+| S4 | 공고문 원 번호 인용 | '최초 주택관리번호는 …' | + '최초 입주자모집공고일은 2023.09.25(월요일)이며, 주택관리번호는 2023000463' 변형(같은 줄). '최초' 없는 자기 번호 문장은 인용 아님 | D22-4 · N12 |
+| S5 | 첫 적재 요약 | 수집 정규화 이벤트만 | + bootstrap 판정 단계(추출 적용·compare 채택) 값 변경, 같은 적재 한 줄(F5) | D22-4 · m-b |
+| S6 | 발행 저장본 출처 서랍 수집 | Fact `prov` + 접수 근거 `raw_document_id` | + 단지 이름 `name_prov`(F2) | D22-5 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `complex_row.json` | `judge_scope_reason`(string\|null, ≤200) 선택 — F1. 예시에 추가 |
+| 2 | `complex.json` | 같음(단지 상세 `header`) — F1. 예시에 추가 |
+| 3 | `openapi.yaml` | `info.version` 2026-10-09.17 |
+
+### 마이그레이션·검증
+
+- DB 마이그레이션 없음(head 0015 그대로). 저장본 변환·backfill 불필요(선택 필드, 모양 버전 그대로). .17 이후 발행하는 리비전부터 새 필드·이름
+  출처 서랍이 저장본에 들어간다(발행 리비전 불변 — D11-1).
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.17`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`).
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`).
+- 새 테스트 녹화 `backend/tests/normalize/fixtures/r4c_core9/`(R4 3차 원문 50건 — 청약홈 API·웹 상세, 공고문 추출 텍스트·표, PDF 바이너리
+  제외, 공고문 행 `path` = 텍스트 추출본, 키·토큰 검사 통과)는 `contracts/fixtures` 밖(테스트 전용)이다.
+
+### 알려진 한계
+
+- `judge_scope_reason` 은 현재 사실 범위의 사유다 — 화면 범위(저장값)와 다를 수 있다(그때 `rejudge_needed` true).
+- 이미 발행된 .16 이전 리비전의 이름 출처 서랍은 다시 발행하기 전까지 404 다(저장본 불변).
+- 같은 원문의 판정기 추출 행 보존은 '이번 파싱이 같은 발췌 위치를 여전히 판정기에 묻는' 경우만이다 — 파서·발췌 위치가 바뀌면(파서 개정)
+  그 필드는 다음 재판정에서 다시 추출한다(그 사이 '확인 불가' — 이벤트는 남는다).
+
 ## 2026-10-09.16
 
 R4 재시험(`docs/design/wp/R4_RESULT2.md` §10) 후속 — CEO 결정 **D21**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-CORE8**(브랜치

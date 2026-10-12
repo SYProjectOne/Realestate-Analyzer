@@ -60,6 +60,7 @@ from app.normalize.benchmark import (
     read_raw_row,
 )
 from app.normalize.changes import fmt_value, make_event
+from app.normalize.living_area import correct_dong
 from app.normalize.provenance import upsert_provenance
 
 __all__ = ["KIND_BY_SECD", "RemainingSync", "sync_remaining_events"]
@@ -486,6 +487,19 @@ def sync_remaining_events(
             res.unmatched.append({"notice_no": n.pb, "name": n.name, "reason": anchor.reason})
         if anchor.complex_id is None:
             continue
+        if n.address:
+            # D22-3(R4 3차 N10): 원 단지 주소에 동이 없으면 잔여 공고 공급위치(청약홈 원문)로 법정동 보정 — 원 단지가 이 공고보다
+            # 늦게 생겨도(원 공고 다시 받기) 같은 수집 안에서. 첫 적재면 이벤트 대신 요약 수
+            cx = session.get(Complex, anchor.complex_id)
+            ev = (
+                correct_dong(session, cx, [n.address], snapshot_id=snapshot_id, detected_at=detected_at)
+                if cx is not None
+                else None
+            )
+            if ev is not None and first_load:
+                res.first_load_folded += 1
+            elif ev is not None:
+                res.events.append(ev)
         vals: dict[str, Any] = {
             "complex_id": anchor.complex_id,
             "notice_date": n.notice_date,

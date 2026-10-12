@@ -552,7 +552,9 @@ def test_c3_extract_over_32_fields_is_split_not_truncated(
     monkeypatch.setattr(pl, "parser_for", lambda kind: _Parser())
     monkeypatch.setattr(pl, "build_extract_requests", lambda cands: [req])
     monkeypatch.setattr(
-        pl, "apply_extracted", lambda *a, **k: type("A", (), {"applied": [], "flagged": []})()
+        pl,
+        "apply_extracted",
+        lambda *a, **k: type("A", (), {"applied": [], "flagged": [], "change_events": []})(),
     )
     with factory() as s:
         s.add(

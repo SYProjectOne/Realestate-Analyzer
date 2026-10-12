@@ -24,6 +24,7 @@ from app.analysis import scope as scope_rules
 from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.ladder import target_label
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown
+from app.core.contracts_gen import Complex as ComplexDTO
 from app.core.contracts_gen import ComplexRow as ComplexRowDTO
 from app.core.contracts_gen import ComplexScoreInput
 from app.core.contracts_gen import ScoreRow as ScoreRowDTO
@@ -85,6 +86,9 @@ _RAW_UNITS = {"p10": "prob", "rerank": "prob", "gap": "pct"}
 # (``rejudge_needed``·``RowData.rejudge_needed``)만 — additionalProperties false 라 계약 밖 키를 내지 않는다.
 _EMIT_REJUDGE_SCORE = "rejudge_needed" in ScoreRowDTO.model_fields
 _EMIT_REJUDGE_ROW = "rejudge_needed" in ComplexRowDTO.model_fields
+_EMIT_SCOPE_REASON_ROW = "judge_scope_reason" in ComplexRowDTO.model_fields
+_EMIT_SCOPE_REASON_HEAD = "judge_scope_reason" in ComplexDTO.model_fields
+"""계약 .17(D22-5) 판정 범위 사유 — 계약 모델에 필드가 있을 때만 낸다(additionalProperties false)."""
 
 
 # ====================================================================== 지역·스냅샷·시나리오
@@ -613,8 +617,11 @@ def scope_result(b: ComplexBundle) -> scope_rules.ScopeResult:
     return _scope_now(b, scope_rules.pick_intake(b.intake))
 
 
-def _scope_now(b: ComplexBundle, cur: IntakeStatus | None) -> scope_rules.ScopeResult:
-    """``scope_result`` 본체 — 표시 접수 행(``pick_intake``)을 이미 고른 호출자(목록 행)는 그 행을 넘긴다."""
+def _scope_now(
+    b: ComplexBundle, cur: IntakeStatus | None, *, price_reason: str | None = None
+) -> scope_rules.ScopeResult:
+    """``scope_result`` 본체 — 표시 접수 행(``pick_intake``)을 이미 고른 호출자(목록 행)는 그 행을 넘긴다.
+    ``price_reason``: 가격이 없는 까닭(기준 타입 가격 채택 보류 — ``price_hold_reason``)을 아는 호출자만(사유 문자열에만 쓴다)."""
     return scope_rules.judge_scope(
         inclusion_class=b.cx.inclusion_class,
         inclusion_decision=b.cx.inclusion_decision,
@@ -623,7 +630,38 @@ def _scope_now(b: ComplexBundle, cur: IntakeStatus | None) -> scope_rules.ScopeR
         original_notice_missing=scope_rules.original_missing(b.cx.applyhome_id, b.cx.notice_date),
         address=b.cx.address,
         legal_dong_code=b.cx.legal_dong_code,
+        price_reason=price_reason,
     )
+
+
+def scope_reason(fm: FactMaker, b: ComplexBundle, cur: IntakeStatus | None) -> dict[str, Any]:
+    """계약 .17 ``judge_scope_reason``(D22-5, FE10 계약 변경 요청): **현재 사실로 계산한** 판정 범위의 사유 문자열 =
+    ``analysis.scope.judge_scope`` 의 ``reason``(파이프라인·보고서와 같은 함수 — FE 가 범위 규칙·동 이름 정규식을 옮겨 쓰지
+    않는다). 화면 범위(``judge_scope``)는 점수 실행 저장값(D10-1)이라 둘이 다르면 ``rejudge_needed`` 가 true 이고 이 사유는 재판정
+    뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값 그대로). 기준 타입 가격 채택 보류면 '출처 상충 — compare 대기'."""
+    return {"judge_scope_reason": _scope_now(b, cur, price_reason=price_hold_reason(fm, b)).reason}
+
+
+def price_hold_reason(fm: FactMaker, b: ComplexBundle) -> str | None:
+    """D22-5(FE10 보고): 현재 구매가가 없는 까닭이 **기준 타입 가격 채택 보류**(출처 상충 — compare 대기)인가. 현재 구매가가
+    쓰는 필드(``analysis.price_view.current_price`` 와 같은 규칙 — 현재 공고 ``price_by_type[기준 타입]`` 칸이 있으면 그 칸, 없으면
+    타입 행)의 chosen 출처 행 reason 머리가 보류 표식이면 ``CONFLICT_HOLD``. 가격이 있으면 None."""
+    from app.normalize.fields import CONFLICT_HOLD, has_tag
+
+    view = bundle_price(b)
+    if view.known or view.basis_type_code is None:
+        return None
+    t = next((x for x in b.types if x.type_code == view.basis_type_code), None)
+    if t is None:
+        return None
+    cur = current_payment(b.payments)
+    by_type = cur.price_by_type if cur is not None else None
+    cell = by_type.get(t.type_code) if isinstance(by_type, Mapping) else None
+    if cur is not None and isinstance(cell, Mapping) and "max_price_won" in cell:
+        ref = fm.prov.get("payment_terms", cur.id, f"price_by_type.{t.type_code}.max_price_won")
+    else:
+        ref = fm.prov.get("complex_type", t.id, "max_price_won")
+    return CONFLICT_HOLD if ref is not None and has_tag(ref.reason, CONFLICT_HOLD) else None
 
 
 def _stored(b: ComplexBundle, ctx: ScoreCtx | None) -> str | None:
@@ -741,7 +779,13 @@ def complex_header(fm: FactMaker, b: ComplexBundle, area_name: Mapping[str, str]
         "inclusion_decision": cx.inclusion_decision,
         "inclusion_prob": _judge_prob(cx.inclusion_prob, cx.inclusion_judgment_seq, "판정기 classify", None),
         "track": cx.track,
+        **(_header_scope_reason(fm, b) if _EMIT_SCOPE_REASON_HEAD else {}),
     }
+
+
+def _header_scope_reason(fm: FactMaker, b: ComplexBundle) -> dict[str, Any]:
+    """상세 머리의 ``judge_scope_reason`` — 목록 행과 같은 값(현재 사실로 계산한 범위의 사유)."""
+    return scope_reason(fm, b, scope_rules.pick_intake(b.intake))
 
 
 PRE_NOTICE: Final = "공고 전"
@@ -884,6 +928,11 @@ def price_range(
         reason = PRE_NOTICE if is_pre_notice(b.cx) else (view.empty_reason or "분양가 미공개")
         if notice is not None and notice["label"] == LABEL_UNKNOWN and notice.get("reason"):
             reason = str(notice["reason"])
+        held = price_hold_reason(fm, b)
+        if held is not None:
+            reason = (
+                held  # D22-5: 기준 타입 가격 채택 보류 — '분양가 미공개'가 아니다(가격은 있으나 출처가 상충)
+            )
         cur = current_payment(b.payments)
         if t is not None and (
             fm.prov.demoted("complex_type", t.id, "max_price_won")
@@ -1565,6 +1614,7 @@ def complex_row(
         "living_area_name": area_name.get(cx.living_area or "") if cx.living_area else None,
         "track": cx.track,
         "judge_scope": rd.scope,
+        **(scope_reason(fm, b, rd.intake) if _EMIT_SCOPE_REASON_ROW else {}),
         "intake": intake_view(rd.intake) if rd.intake is not None else None,
         "price_low": price["price_low"],
         "price_high": price["price_high"],

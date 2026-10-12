@@ -77,8 +77,10 @@ from app.normalize._text import strip_supply_round
 from app.normalize.applyhome_parser import ApplyhomeParser
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
 from app.normalize.fields import (
+    AUDIT_FLAG_REASON,
     CONFLICT_HOLD,
     DECIMAL_FIELDS,
+    EXTRACT_REASON,
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
@@ -86,9 +88,10 @@ from app.normalize.fields import (
     norm_value,
     split_discount,
     split_price_by_type,
+    strip_tags,
     value_from_norm,
 )
-from app.normalize.living_area import assign_complex_area
+from app.normalize.living_area import assign_complex_area, correct_dong
 from app.normalize.notice_parser import NoticeParser
 from app.normalize.official_site_parser import ComplexKey, OfficialSiteParser
 from app.normalize.provenance import upsert_provenance
@@ -133,6 +136,9 @@ class StoreResult:
     skipped: list[FieldCandidate] = field(default_factory=list)
     foreign_keys: list[str] = field(default_factory=list)  # 다른 지역 단지라 건너뛴 주택관리번호(W4)
     first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 값 기록·덮어쓰기 수(D18-7·D21-7)
+    alt_addresses: dict[int, list[str]] = field(default_factory=dict)
+    """원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치(단지 id → 주소들) — 원 단지 주소가 아직 없으면(원 공고 전) 수집 단계가
+    실행 끝에 다시 쓴다(D22-3, ``living_area.correct_dong``)."""
 
 
 def parser_for(
@@ -1438,6 +1444,11 @@ def _merged_addresses(binder: _Binder, skipped: list[FieldCandidate]) -> dict[in
     return out
 
 
+def _is_judged_row(fp: FieldProvenance) -> bool:
+    """판정기 추출·감사로 만든 출처 행(``judged.apply_extracted`` — reason '판정기 추출 …'·'판정기 감사 flagged …')."""
+    return (strip_tags(fp.reason) or "").startswith((EXTRACT_REASON, AUDIT_FLAG_REASON))
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -1459,6 +1470,11 @@ def _reparse_existing(
     groups = {(c.entity, c.entity_id, c.field) for c in bound}
     if not groups:
         return []
+    # D22-1(R4 3차 N9): 이번 원문을 다시 파싱해도 같은 자리(엔티티·필드·발췌 위치)를 여전히 판정기에 물어야 하면(파서가 못 읽음 —
+    # needs_extract), 그 원문에서 판정기 추출·감사로 만든 출처 행은 그대로 후보다(같은 원문·같은 입력 = 같은 판정 결과). 빼면
+    # 파서 행('확인 불가')이 다시 chosen 이 되어 사실 값은 그대로인데 출처가 '확인 불가'로 바뀐다(발행 저장본 '출처 누락').
+    # 파서가 이제 값을 읽으면(needs_extract 아님) 판정 행은 후보가 아니다 — 값이 바뀌면 resolve·write_chosen 이 이벤트를 남긴다
+    asks_judge = {(c.entity, c.entity_id, c.field, c.excerpt_start) for c in bound if c.needs_extract}
     pairs = {(e, i) for e, i, _ in groups}
     rows: list[FieldProvenance] = []
     for e, i in sorted(pairs, key=lambda p: (p[0], p[1] or 0)):
@@ -1474,8 +1490,12 @@ def _reparse_existing(
                 if is_human(fp.reason):
                     rows.append(fp)  # 사람 확인 = resolver 0순위 후보(D11-3) — 재정규화에도 남는다(C-3)
                 continue
-            if fp.raw_document_id == exclude_raw_id or _foreign_unit_row(fp, own_key):
-                continue  # 이번 원문 / 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행(후보 아님)
+            if fp.raw_document_id == exclude_raw_id:
+                if _is_judged_row(fp) and (fp.entity, fp.entity_id, fp.field, fp.excerpt_start) in asks_judge:
+                    rows.append(fp)  # D22-1: 같은 원문의 판정기 추출 행 보존
+                continue  # 이번 원문(파서 행은 이번 파싱 후보가 대신한다)
+            if _foreign_unit_row(fp, own_key):
+                continue  # 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행(후보 아님)
             rows.append(fp)
     legacy_raw = {fp.raw_document_id for fp in rows if _is_legacy(fp) and fp.raw_document_id is not None}
     kinds: dict[int, str | None] = {}
@@ -1579,11 +1599,15 @@ def store_raw_document(
             cx = session.get(Complex, cid)
             if cx is not None:
                 assign_complex_area(session, cx)
-        # D21-6(R4 재시험 N7): 원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치 — 원 단지 주소에 동이 없으면 그 주소로 법정동을 찾는다
-        for cid, addrs in sorted(_merged_addresses(binder, skipped).items()):
+        # D21-6(R4 재시험 N7)·D22-3: 원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치 — 원 단지 주소에 동이 없으면 그 주소로 법정동을
+        # 찾는다(바뀌면 change_event). 원 단지 주소가 아직 없으면(원 공고 다시 받기 전) 수집 단계가 실행 끝에 다시 쓴다
+        alt = _merged_addresses(binder, skipped)
+        for cid, addrs in sorted(alt.items()):
             cx = session.get(Complex, cid)
-            if cx is not None and cx.legal_dong_code is None:
-                assign_complex_area(session, cx, alt_addresses=addrs)
+            if cx is not None:
+                ev = correct_dong(session, cx, addrs, snapshot_id=snapshot_id, detected_at=detected_at)
+                if ev is not None:
+                    events.append(ev)
         folded = 0
         if first_load:
             # D18-7 + D21-7(R4 재시험 m-b): 지역 첫 적재 중의 값 기록은 빈 값 → 값뿐 아니라 같은 적재 안의 값 → 다른 값
@@ -1616,4 +1640,5 @@ def store_raw_document(
         skipped=skipped,
         foreign_keys=sorted(binder.foreign),
         first_load_folded=folded,
+        alt_addresses=alt,
     )

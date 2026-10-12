@@ -27,12 +27,6 @@ def _rows(client: TestClient) -> list[dict[str, Any]]:
     return items
 
 
-def test_contract_version_is_16() -> None:
-    from app.core.protocols import CONTRACT_VERSION
-
-    assert CONTRACT_VERSION == "2026-10-09.16"
-
-
 def test_pre_notice_candidate_price_and_notice_date_reason(client: TestClient) -> None:
     rows = _rows(client)
     upcoming = [r for r in rows if r["track"] == "A"]

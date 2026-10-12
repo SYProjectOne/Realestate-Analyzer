@@ -763,6 +763,10 @@ class Complex(BaseModel):
     inclusion_decision: Literal["auto", "review", "manual_review"] | None
     inclusion_prob: Fact
     track: Literal["A", "B"] | None = None
+    judge_scope_reason: Annotated[str | None, Field(max_length=200)] = None
+    """
+    판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다. 단지 상세 머리(header)도 목록 행과 같은 값
+    """
 
 
 class ComplexBundle(BaseModel):
@@ -846,6 +850,10 @@ class ComplexRow(BaseModel):
     - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
     - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
     - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
+    """
+    judge_scope_reason: Annotated[str | None, Field(max_length=200)] = None
+    """
+    판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다
     """
     rejudge_needed: bool | None = False
     """

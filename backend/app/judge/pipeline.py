@@ -344,6 +344,11 @@ def is_same_site(out: ClassifyOutcome) -> bool:
     return out.resolved and out.label == P.SITE_SAME
 
 
+def is_other_site(out: ClassifyOutcome) -> bool:
+    """동일성 classify 가 '다른 단지의 페이지'(auto)인가 — review·unclear 는 아니다(D22-4, R4 3차 N11)."""
+    return out.resolved and out.label == P.SITE_OTHER_CLASS
+
+
 def p1_screen_upcoming(
     adapter: JudgeCaller,
     *,

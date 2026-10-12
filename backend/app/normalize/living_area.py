@@ -28,7 +28,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AdminLegalMap, Complex, FieldProvenance, HouseholdStat, LegalDong, Region
+from app.models import AdminLegalMap, ChangeEvent, Complex, FieldProvenance, HouseholdStat, LegalDong, Region
 from app.normalize.region_resolve import LegalRow, normalize_name
 
 __all__ = [
@@ -42,6 +42,7 @@ __all__ = [
     "apply_living_area_edit",
     "assign_complex_area",
     "assign_legal_dong",
+    "correct_dong",
     "default_living_areas",
     "household_facts",
     "living_area_of",
@@ -314,6 +315,39 @@ def assign_complex_area(session: Session, cx: Complex, *, alt_addresses: Sequenc
         # D21-6) 미분류로 되돌려 다음 P4 classify 가 포함/제외를 정한다(지역 확장과 같은 규칙)
         cx.inclusion_class = "미분류"
     return AssignResult(cx.id, code, cx.living_area, in_region)
+
+
+def correct_dong(
+    session: Session,
+    cx: Complex,
+    alt_addresses: Sequence[str],
+    *,
+    snapshot_id: int | None,
+    detected_at: str,
+) -> ChangeEvent | None:
+    """D22-3(R4 3차 N10·N7): 단지 주소에 동이 없어 법정동을 못 정한 단지를 같은 단지의 다른 출처 주소(원 단지에 묶인 잔여
+    공고의 공급위치 — 공고문·청약홈 잔여 공고)로 보정한다(``assign_complex_area(alt_addresses=…)``). 보정해 법정동이 바뀌면
+    change_event(complex·legal_dong_code, critical — 판정 범위가 바뀐다)를 돌려준다(세션에 넣지 않는다 — 호출자가 첫 적재면
+    요약 수로 접고 아니면 넣는다). 주소가 아직 없거나(원 공고 전) 이미 법정동이 있으면 아무것도 하지 않는다."""
+    if cx.legal_dong_code is not None or not cx.address or not alt_addresses:
+        return None
+    before = cx.legal_dong_code
+    assign_complex_area(session, cx, alt_addresses=alt_addresses)
+    if cx.legal_dong_code == before:
+        return None
+    from app.normalize.changes import make_event
+
+    return make_event(
+        entity="complex",
+        entity_id=cx.id,
+        field="legal_dong_code",
+        old=before,
+        new=cx.legal_dong_code,
+        snapshot_id=snapshot_id,
+        complex_id=cx.id,
+        detected_at=detected_at,
+        severity="critical",
+    )
 
 
 def split_successor(

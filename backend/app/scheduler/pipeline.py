@@ -9,7 +9,8 @@
    분류 행과 같은 것은 분류 복사(``intake.carry_classification``, D10-2 — 호출 없음), 나머지는 먼저 **공식 홈페이지
    동일성**(D21-5 — 그 페이지가 그 단지의 페이지인가, 단지 이름·위치 + 페이지 텍스트 → ``judge.pipeline.p4_classify_site_identity``)
    을 묻고 auto '그 단지'만 원문 DOM 텍스트의 접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/
-   불가/확인 불가. 미해결 = 확인 불가(판정 미해결). 동일성이 아니거나 review 면 '확인 불가(공식 홈페이지가 다른 단지)'.
+   불가/확인 불가. 미해결 = 확인 불가(판정 미해결). 동일성이 auto '다른 단지'면 '확인 불가(공식 홈페이지가 다른 단지)',
+   review·unclear 면 '확인 불가(공식 홈페이지 동일성 미확인)'(D22-4).
    그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
    triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
    (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
@@ -91,6 +92,7 @@ from app.normalize.fields import is_price_amount, magnitude_apart
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
+from app.scheduler.collect import fold_into_first_load
 from app.scheduler.degraded import clear_degraded, mark_degraded
 from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
 from app.scheduler.intake import (
@@ -258,6 +260,9 @@ class PipelineResult:
     carried: dict[str, int] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
     version_event_id: int | None = None
+    first_load_folded: int = 0  # D22-4: 첫 적재 요약에 접은 판정 단계 값 변경 수
+    judged_events: list[ChangeEvent] = field(default_factory=list, repr=False)
+    """판정 단계(추출 적용·compare 채택)가 남긴 사실 값 변경 이벤트 — 첫 적재면 요약으로 접는다(D22-4)."""
 
     def absorb(self, c: CountingCaller) -> None:
         self.judge_calls, self.cached, self.blocked = c.calls, c.cached, c.blocked
@@ -292,6 +297,7 @@ class PipelineResult:
             "carried": self.carried,
             "skipped": self.skipped,
             "version_event_id": self.version_event_id,
+            "first_load_folded": self.first_load_folded,
             **({"error": self.error} if self.error else {}),
         }
 
@@ -442,7 +448,10 @@ def _extract_one(
     ]
     if env.status != "ok" or not got:
         if env.status == "ok" and values:  # review 필드만 — 반영 없이 기록(skipped)
-            apply_extracted(session, req, values, judgment_seq=seq(env.judgment_seq), snapshot_id=snap.id)
+            skipped = apply_extracted(
+                session, req, values, judgment_seq=seq(env.judgment_seq), snapshot_id=snap.id
+            )
+            res.judged_events.extend(skipped.change_events)
         return
     desc = {_slug(f): FIELD_DESCRIPTIONS.get(f, f) for f in req.fields}
     records = [
@@ -474,6 +483,7 @@ def _extract_one(
     )
     res.extract_applied += len(applied.applied)
     res.extract_flagged += len(applied.flagged)
+    res.judged_events.extend(applied.change_events)
     session.commit()
 
 
@@ -547,8 +557,11 @@ def _p4_intake(
 
 
 SITE_OTHER: Final = "공식 홈페이지가 다른 단지"
-"""D21-5(R4 재시험 N6): 공식 홈페이지 동일성 classify 가 '그 단지의 페이지'(auto)가 아닌 접수 행의 사유 — 표시
-'확인 불가(공식 홈페이지가 다른 단지)'. 그 문구는 접수 classify 입력이 아니다."""
+"""D21-5(R4 재시험 N6)·D22-4: 공식 홈페이지 동일성 classify 가 auto 로 '다른 단지의 페이지'(other_complex)라고 한 접수 행의
+사유 — 표시 '확인 불가(공식 홈페이지가 다른 단지)'. 그 문구는 접수 classify 입력이 아니다."""
+SITE_UNCONFIRMED: Final = "공식 홈페이지 동일성 미확인"
+"""D22-4(R4 3차 N11): 동일성 classify 가 review(미해결)·unclear(불명)·degraded 인 접수 행의 사유 — 표시 '확인 불가(공식 홈페이지
+동일성 미확인)'. '다른 단지'라고 판정기가 말하지 않았으므로 그 사유를 쓰지 않는다. 접수 근거로 쓰지 않는 것은 같다(D21-5)."""
 
 
 def _same_site_only(
@@ -583,7 +596,7 @@ def _same_site_only(
                 continue
             row = items[key][0]
             row.status = "확인 불가"
-            row.reason = SITE_OTHER
+            row.reason = SITE_OTHER if jp.is_other_site(out) else SITE_UNCONFIRMED
             s = seq(out.envelope.judgment_seq)
             what = f"{out.label or '미해결'}·{out.decision or out.envelope.status}"
             mark = (
@@ -592,6 +605,10 @@ def _same_site_only(
             row.note = f"{row.note} · {mark}" if row.note else mark
     session.flush()
     return keep
+
+
+_UNRESOLVED: Final = frozenset({"review", "manual_review"})
+"""포함/제외 classify 미해결 decision(``complex.inclusion_decision``) — 분류를 바꾸지 않고 표시만 한 판정."""
 
 
 def _inclusion_changed(
@@ -620,7 +637,10 @@ def _inclusion_changed(
             log is None
             or log.adapter_version != version
             or log.status not in ("ok", "review")
-            or f.row.inclusion_class in (None, "미분류")
+            # D22-2(R4 3차 N8): 미분류라도 직전 판정이 review(미해결)였으면 입력이 같을 때 다시 보내지 않는다 — 같은 입력이면 같은
+            # 답(review)이고, 미분류 단지만 담은 새 배치는 구성이 달라 input_hash 가 새로 생겨 재판정마다 tools/call 이 나갔다.
+            # 판정 뒤 미분류로 되돌린 단지(범위 경계 → 미분류: 지역 확장·법정동 보정)는 직전 판정이 review 가 아니라 다시 보낸다
+            or (f.row.inclusion_class in (None, "미분류") and f.row.inclusion_decision not in _UNRESOLVED)
             or _logged_item_text(log, f"complex:{cid}") != _inclusion_item_text(cid, _inclusion_text(f))
         ):
             out.append((cid, f))
@@ -678,7 +698,8 @@ def _p4(
         if f.row.inclusion_class != "범위 경계"
         and not (f.row.applyhome_id is None and f.row.inclusion_judgment_seq in upcoming)
     ]
-    pool = _inclusion_changed(session, caller, pool)
+    # D22-2: 배치 입력은 단지 순서와 무관하게 결정적(단지 id 순) — 같은 집합·같은 텍스트 = 같은 input_hash(캐시)
+    pool = sorted(_inclusion_changed(session, caller, pool), key=lambda p: p[0])
     for b in range(0, len(pool), CLASSIFY_BATCH_MAX):
         chunk = pool[b : b + CLASSIFY_BATCH_MAX]
         outs = jp.p4_classify_inclusion_batch(
@@ -876,8 +897,10 @@ def _p5(
                 adopted = apply_compare(
                     session, group, relation=out.relation, judgment_seq=s, snapshot_id=snap.id
                 )
-                if res is not None and adopted.changed:
-                    res.compare_adopted += 1
+                if res is not None:
+                    res.judged_events.extend(adopted.change_events)
+                    if adopted.changed:
+                        res.compare_adopted += 1
                 break  # 채택이 바뀌었을 수 있다 — 같은 그룹의 나머지는 다음 재판정에서
     session.flush()
     return n
@@ -1024,6 +1047,7 @@ def run_pipeline(
         region = session.get(Region, snap.region_id)
         if region is None:
             raise LookupError(f"region {snap.region_id} 없음")
+        first_load = region.status == "bootstrapping"  # 지역 첫 적재(bootstrap 이 판정까지 끝내기 전, D18-7)
         prev = previous(session, snap, published_only=True) or previous(session, snap)
         earlier = [prev.id] if prev is not None else []
         # 강등 정리(D10-3, G3 ``api.demotion``): 새 원문이 출처를 다시 골랐으면 복원, 같은 원문 재정규화면 강등 유지 —
@@ -1053,6 +1077,12 @@ def run_pipeline(
             _p4_catalysts(session, caller, snap, region, seq, res)
             res.carried["compare"] = _p5(session, caller, snap, tset, seq, res)
             session.commit()
+            if first_load and res.judged_events:
+                # D22-4(R4 3차 m-b): 첫 적재(bootstrap) 안의 판정 단계 값 변경은 이벤트 대신 첫 적재 요약 수로
+                res.first_load_folded += fold_into_first_load(
+                    session, region.id, snap.id, res.judged_events, ctx.iso_now()
+                )
+                session.commit()
             facts = load_facts(session, snap, region)  # 포함 분류가 바뀌었을 수 있다
             scope = {f.complex_id: f.scope for f in facts}
 
