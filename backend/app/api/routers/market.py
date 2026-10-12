@@ -31,7 +31,8 @@ from app.api.routers.snapshots import ScenarioQ, partial_missing, unsold_points
 from app.api.views import area_names, judge_scope, judgment_days
 from app.core.settings import Settings
 from app.facts_view import region_catalysts
-from app.models import Complex, Region, RtmsTrade, Scenario, Snapshot, Supply
+from app.models import Complex, RawDocument, Region, RtmsTrade, Scenario, Snapshot, Supply
+from app.normalize.fields import LABEL_BY_SOURCE
 
 router = APIRouter(tags=["market"])
 
@@ -265,6 +266,7 @@ def _market_static(
         and _months_back(asof, 6).isoformat() <= t.deal_date <= asof.isoformat()
     ]
     fm.prov.load(session, "rtms_trade", (t.id for t in trades))
+    trade_raws = _trade_raws(session, trades)
     by_area: dict[str, list[RtmsTrade]] = defaultdict(list)
     for t in trades:
         la = _trade_area(t, region_f)
@@ -273,7 +275,7 @@ def _market_static(
     prices = []
     for la_id, group_ts in sorted(by_area.items()):
         ts = sorted(group_ts, key=lambda t: t.price_won)
-        tfacts = {t.id: fm.field("rtms_trade", t.id, "price_won", t.price_won, unit="won") for t in ts}
+        tfacts = {t.id: trade_price_fact(fm, t, trade_raws) for t in ts}
         if any(f["label"] == LABEL_UNKNOWN for f in tfacts.values()):
             continue
         med_t = ts[len(ts) // 2]
@@ -319,6 +321,30 @@ def _market_static(
         "living_area_prices": prices,
     }
     return body, {"every": every, "shown": complexes}, fm
+
+
+def _trade_raws(session: Session, trades: list[RtmsTrade]) -> dict[int, RawDocument]:
+    ids = sorted({t.raw_document_id for t in trades if t.raw_document_id is not None})
+    out: dict[int, RawDocument] = {}
+    for i in range(0, len(ids), 500):
+        out.update(
+            {
+                r.id: r
+                for r in session.scalars(select(RawDocument).where(RawDocument.id.in_(ids[i : i + 500])))
+            }
+        )
+    return out
+
+
+def trade_price_fact(fm: FactMaker, t: RtmsTrade, raws: dict[int, RawDocument]) -> dict[str, Any]:
+    """실거래 거래가 Fact(R4 재시험 N5, D21-4). 출처 = 거래 행의 출처 행(정규화 경로)이 있으면 그것, 없으면 그 거래를 실은
+    실거래 API **원문 문서**(``rd_<raw_document_id>`` — 수집기 적재 경로는 거래 행마다 출처 행을 만들지 않는다). 원문이 성공
+    응답이면 라벨 '확인됨'(실거래 Open API 1차), 원문도 출처 행도 없으면 그대로 출처 누락."""
+    if fm.prov.get("rtms_trade", t.id, "price_won") is None and t.raw_document_id is not None:
+        raw = raws.get(t.raw_document_id)
+        if raw is not None and raw.path and (raw.http_status is None or 200 <= raw.http_status < 300):
+            return fact(t.price_won, LABEL_BY_SOURCE["rtms"], f"rd_{raw.id}", raw.fetched_at, unit="won")
+    return fm.field("rtms_trade", t.id, "price_won", t.price_won, unit="won")
 
 
 def _trade_area(t: RtmsTrade, region: Region) -> str | None:

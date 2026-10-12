@@ -23,7 +23,7 @@ from app.core.settings import Settings
 from app.models import RawDocument, RtmsTrade, Snapshot
 
 
-def _attach_raw(s: Session, *, label_rows: bool = False) -> int:
+def _attach_raw(s: Session) -> int:
     raw = RawDocument(
         source_kind="rtms",
         url="https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade?LAWD_CD=28185&DEAL_YMD=202609",
@@ -54,8 +54,11 @@ def _body(factory: sessionmaker[Session], settings: Settings, sid: int) -> tuple
 def test_living_area_prices_use_raw_document_provenance(
     factory: sessionmaker[Session], seeded: int, test_settings: Settings
 ) -> None:
+    before, missing_before = _body(factory, test_settings, seeded)
+    assert before["living_area_prices"] == [], "원문도 출처 행도 없는 거래(옛 시드)는 출처 누락 — 빈 출처를 지어내지 않는다"
     with factory() as s:
         rid = _attach_raw(s)
+        n_trades = len(list(s.scalars(select(RtmsTrade))))
     body, missing = _body(factory, test_settings, seeded)
     prices = body["living_area_prices"]
     assert prices, "실거래 출처 행이 없어도 생활권 84㎡ 시세 블록이 있다(원문 문서 단위 출처)"
@@ -64,13 +67,5 @@ def test_living_area_prices_use_raw_document_provenance(
             f = p[key]
             assert f["label"] == "확인됨" and f["prov"] == f"rd_{rid}", (key, f)
             assert f["checked_at"] == "2026-10-07"
-    assert missing == 0, f"출처 누락 {missing}건(실거래 거래는 원문 문서가 출처)"
-
-
-def test_trade_without_raw_document_is_still_missing(
-    factory: sessionmaker[Session], seeded: int, test_settings: Settings
-) -> None:
-    """원문도 출처 행도 없는 거래(옛 시드)는 그대로 '확인 불가(출처 누락)' — 빈 출처를 지어내지 않는다."""
-    body, missing = _body(factory, test_settings, seeded)
-    assert body["living_area_prices"] == []
-    assert missing > 0
+    # 시드의 다른 사실(출처 행 없는 단지 필드)은 그대로 — 줄어든 만큼이 실거래 거래(출처 누락 → rd_)
+    assert 0 < missing_before - missing <= n_trades, (missing_before, missing, n_trades)
