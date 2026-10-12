@@ -9,7 +9,8 @@
    분류 행과 같은 것은 분류 복사(``intake.carry_classification``, D10-2 — 호출 없음), 나머지는 먼저 **공식 홈페이지
    동일성**(D21-5 — 그 페이지가 그 단지의 페이지인가, 단지 이름·위치 + 페이지 텍스트 → ``judge.pipeline.p4_classify_site_identity``)
    을 묻고 auto '그 단지'만 원문 DOM 텍스트의 접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/
-   불가/확인 불가. 미해결 = 확인 불가(판정 미해결). 동일성이 아니거나 review 면 '확인 불가(공식 홈페이지가 다른 단지)'.
+   불가/확인 불가. 미해결 = 확인 불가(판정 미해결). 동일성이 auto '다른 단지'면 '확인 불가(공식 홈페이지가 다른 단지)',
+   review·unclear 면 '확인 불가(공식 홈페이지 동일성 미확인)'(D22-4).
    그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
    triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
    (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
@@ -556,8 +557,11 @@ def _p4_intake(
 
 
 SITE_OTHER: Final = "공식 홈페이지가 다른 단지"
-"""D21-5(R4 재시험 N6): 공식 홈페이지 동일성 classify 가 '그 단지의 페이지'(auto)가 아닌 접수 행의 사유 — 표시
-'확인 불가(공식 홈페이지가 다른 단지)'. 그 문구는 접수 classify 입력이 아니다."""
+"""D21-5(R4 재시험 N6)·D22-4: 공식 홈페이지 동일성 classify 가 auto 로 '다른 단지의 페이지'(other_complex)라고 한 접수 행의
+사유 — 표시 '확인 불가(공식 홈페이지가 다른 단지)'. 그 문구는 접수 classify 입력이 아니다."""
+SITE_UNCONFIRMED: Final = "공식 홈페이지 동일성 미확인"
+"""D22-4(R4 3차 N11): 동일성 classify 가 review(미해결)·unclear(불명)·degraded 인 접수 행의 사유 — 표시 '확인 불가(공식 홈페이지
+동일성 미확인)'. '다른 단지'라고 판정기가 말하지 않았으므로 그 사유를 쓰지 않는다. 접수 근거로 쓰지 않는 것은 같다(D21-5)."""
 
 
 def _same_site_only(
@@ -592,7 +596,7 @@ def _same_site_only(
                 continue
             row = items[key][0]
             row.status = "확인 불가"
-            row.reason = SITE_OTHER
+            row.reason = SITE_OTHER if jp.is_other_site(out) else SITE_UNCONFIRMED
             s = seq(out.envelope.judgment_seq)
             what = f"{out.label or '미해결'}·{out.decision or out.envelope.status}"
             mark = (

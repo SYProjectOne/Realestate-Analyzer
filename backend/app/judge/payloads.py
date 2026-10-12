@@ -45,6 +45,7 @@ __all__ = [
     "NOT_CATALYST",
     "RERANK_QUERY",
     "SITE_IDENTITY_CLASSES",
+    "SITE_OTHER_CLASS",
     "SITE_SAME",
     "UPCOMING_CLASSES",
     "UPCOMING_INCLUDED",
@@ -192,9 +193,11 @@ UPCOMING_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _UPCOMIN
 """D20-2 공고 예정 단지 classify 7클래스(지역·민간분양·공고 예정 여부)."""
 SITE_SAME: Final = "same_complex"
 """D21-5 공식 홈페이지 동일성 classify 에서 '그 단지의 페이지'인 클래스 — auto 일 때만 접수 classify 입력으로 쓴다."""
+SITE_OTHER_CLASS: Final = "other_complex"
+"""D22-4(R4 3차 N11) 동일성 classify 에서 '다른 단지의 페이지'인 클래스 — auto 일 때만 사유 '공식 홈페이지가 다른 단지'."""
 _SITE_IDENTITY: Final = (
     (SITE_SAME, "페이지 문구가 위에 적힌 그 단지(이름·위치가 같은 분양 사업)의 공식 분양·홍보 페이지다"),
-    ("other_complex", "다른 단지·다른 지역·다른 사업의 분양 페이지다(도메인을 다른 사업이 쓰고 있음 등)"),
+    (SITE_OTHER_CLASS, "다른 단지·다른 지역·다른 사업의 분양 페이지다(도메인을 다른 사업이 쓰고 있음 등)"),
     ("unclear", "페이지 문구만으로 그 단지의 페이지인지 정할 수 없다(메뉴·광고 문구뿐 등)"),
 )  # fmt: skip
 SITE_IDENTITY_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _SITE_IDENTITY)
