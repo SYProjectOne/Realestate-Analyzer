@@ -166,6 +166,29 @@ function withNameSource<T extends { name: string } & NameKeys>(id: number, row: 
   return { ...row, name_prov: src.name_prov, name_label: src.name_label };
 }
 
+/**
+ * 계약 .17 F1(D22-5) 판정 범위 사유: openapi 응답 예시는 .17 이전 모양이라 `judge_scope_reason` 이 없다. 스키마 예시
+ * (complex.json 2 · complex_row.json 4 — '포함 확정 · 접수 가능')의 값을 **같은 id·같은 이름**의 목록 행에만 붙인다. 나머지 행은
+ * 키 없음(= null — .16 이전 발행 저장본과 같은 모양). 상세 머리는 목록 행과 같은 값(서버 규칙)이라 상세 핸들러가 행에서 옮긴다.
+ */
+type ScopeKeys = Pick<ComplexRow, 'judge_scope_reason'>;
+const SCOPE_REASONS: ReadonlyMap<number, { name: string } & ScopeKeys> = new Map(
+  [
+    ...(complexSchema.examples as unknown as ({ id: number; name: string } & ScopeKeys)[]),
+    ...(
+      complexRowSchema.examples as unknown as ({ complex_id: number; name: string } & ScopeKeys)[]
+    ).map((e) => ({ ...e, id: e.complex_id })),
+  ]
+    .filter((e) => e.judge_scope_reason)
+    .map((e) => [e.id, { name: e.name, judge_scope_reason: e.judge_scope_reason }]),
+);
+
+function withScopeReason(row: ComplexRow): ComplexRow {
+  const src = SCOPE_REASONS.get(row.complex_id);
+  if (!src || src.name !== row.name || 'judge_scope_reason' in row) return row;
+  return { ...row, judge_scope_reason: src.judge_scope_reason };
+}
+
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
 export function resetMockState(): void {
   state.nextJobId = 5000;
@@ -378,7 +401,7 @@ export const extraHandlers = [
     const page = await base<ComplexRowPage>(request);
     const url = new URL(request.url);
     const n = Number(readFlag(MOCK_ROWS_KEY) ?? '0');
-    const named = page.items.map((r) => withNameSource(r.complex_id, r));
+    const named = page.items.map((r) => withScopeReason(withNameSource(r.complex_id, r)));
     const all = n > 0 ? multiplyRows(named, n) : named;
     const items = filterRows(all, url).map(applyIntake);
     const size = Number(url.searchParams.get('size') ?? page.size);
@@ -404,8 +427,19 @@ export const extraHandlers = [
     const row = page.items.find((r) => r.complex_id === id);
     const override = state.intakeOverrides.get(id);
     // 계약 .16 F1: 머리 이름 출처는 목록 행과 같은 값(행에 없으면 키 없음)
-    const { name_prov: _p, name_label: _l, ...plain } = detail.header;
-    const header = row ? withNameSource(id, { ...plain, id, name: row.name }) : detail.header;
+    // 계약 .17 F1: 머리 판정 범위 사유도 목록 행과 같은 값(행에 없으면 키 없음)
+    const { name_prov: _p, name_label: _l, judge_scope_reason: _s, ...plain } = detail.header;
+    const scoped = row ? withScopeReason(row) : null;
+    const header = scoped
+      ? withNameSource(id, {
+          ...plain,
+          id,
+          name: scoped.name,
+          ...('judge_scope_reason' in scoped
+            ? { judge_scope_reason: scoped.judge_scope_reason }
+            : {}),
+        })
+      : detail.header;
     return HttpResponse.json({
       ...detail,
       header,

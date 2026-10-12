@@ -21,6 +21,7 @@ import {
   JudgeScopeBadge,
   NameLabelBadge,
   RejudgeNeededBadge,
+  ScopeReason,
 } from '../_shared';
 import { nextSort, type SortKey } from './params';
 
@@ -219,11 +220,21 @@ export function ComplexTable({
         id: 'inclusion',
         header: () => colTitle('inclusion'),
         cell: ({ row }) => (
-          <span className="inline-flex flex-wrap items-center gap-1">
-            <span>{enumText('page.common.inclusion', row.original.inclusion_class)}</span>
-            {row.original.inclusion_decision && row.original.inclusion_decision !== 'auto' ? (
-              <Badge tone="muted">{enumText('page.common.status', 'review')}</Badge>
-            ) : null}
+          <span className="inline-flex flex-col">
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <span>{enumText('page.common.inclusion', row.original.inclusion_class)}</span>
+              {row.original.inclusion_decision && row.original.inclusion_decision !== 'auto' ? (
+                <Badge tone="muted">{enumText('page.common.status', 'review')}</Badge>
+              ) : null}
+            </span>
+            {/* 계약 .17 F1(D22-5): 판정 범위 사유 — 서버 문자열 그대로, 키 없으면 없음 */}
+            <ScopeReason
+              reason={row.original.judge_scope_reason}
+              rejudgeNeeded={row.original.rejudge_needed}
+              testId={`scope-reason-${row.original.complex_id}`}
+              compact
+              className="max-w-56 truncate text-xs text-muted"
+            />
           </span>
         ),
       },

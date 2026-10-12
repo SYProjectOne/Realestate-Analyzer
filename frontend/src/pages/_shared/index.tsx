@@ -313,6 +313,38 @@ export function RejudgeNeededBadge({ needed }: { needed: boolean | null | undefi
 }
 
 /**
+ * 계약 .17 F1(D22-5) 판정 범위 사유(`judge_scope_reason`) — 서버 `analysis.scope.judge_scope` 의 reason 문자열 그대로 보인다.
+ * 화면은 사유를 다시 계산하지 않는다(규칙 3 — FE10 이 옮겨 둔 서버 동 이름 정규식·범위 첫 행 규칙 `complex/boundary.ts` 는 지웠다). 키 없음·null
+ * (.16 이전 발행 저장본)이면 그리지 않는다. 이 사유는 **현재 사실로 계산한** 범위의 것이라 `rejudge_needed` 면 저장 범위(배지)와
+ * 다를 수 있다 — 그 안내를 붙인다(머리: 보이는 글, 좁은 칸 `compact`: title).
+ */
+export function ScopeReason({
+  reason,
+  rejudgeNeeded,
+  testId,
+  compact = false,
+  className,
+}: {
+  reason: string | null | undefined;
+  rejudgeNeeded?: boolean | null;
+  testId: string;
+  compact?: boolean;
+  className?: string;
+}) {
+  if (!reason) return null;
+  const current = rejudgeNeeded ? t('page.common.scopeReasonCurrent') : null;
+  const title = current
+    ? `${t('page.common.scopeReason')}: ${reason} — ${current}`
+    : `${t('page.common.scopeReason')}: ${reason}`;
+  return (
+    <span data-testid={testId} title={title} className={className}>
+      {reason}
+      {current && !compact ? <span className="text-muted"> ({current})</span> : null}
+    </span>
+  );
+}
+
+/**
  * 계약 .16 F1(D21-8): 단지 이름의 출처(`name_prov` = fp_<id>)·라벨(`name_label`). 둘 다 선택 필드 — 출처 행이 없는 옛 행·시드·
  * .15 이전 발행 저장본은 키가 없다(= null, 아무것도 그리지 않는다). 청약홈 공고 단지 '확인됨', 공고 예정 후보 '비공식'.
  */

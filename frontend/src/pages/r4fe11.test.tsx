@@ -177,7 +177,10 @@ describe('F1(D22-5) judge_scope_reason — 서버 analysis.scope 사유 그대�
   });
 
   it('G3 머리: rejudge_needed 가 아니면 그 안내 없음', async () => {
-    const detail = await useHeader({ judge_scope_reason: '포함 확정 · 접수 가능' }, { rejudge: false });
+    const detail = await useHeader(
+      { judge_scope_reason: '포함 확정 · 접수 가능' },
+      { rejudge: false },
+    );
     renderRoute('/complexes/2');
     const head = await screen.findByRole('region', { name: detail.header.name });
     const reason = within(head).getByTestId('scope-reason');
@@ -197,7 +200,9 @@ describe('F1(D22-5) judge_scope_reason — 서버 analysis.scope 사유 그대�
     const tr = link.closest('tr') as HTMLElement;
     expect(within(tr).getByTestId(`scope-reason-${first.complex_id}`)).toHaveTextContent(NO_DONG);
     const second = rows[1]!;
-    const tr2 = (await screen.findByRole('link', { name: second.name })).closest('tr') as HTMLElement;
+    const tr2 = (await screen.findByRole('link', { name: second.name })).closest(
+      'tr',
+    ) as HTMLElement;
     expect(within(tr2).queryByTestId(`scope-reason-${second.complex_id}`)).toBeNull();
   });
 
@@ -210,7 +215,10 @@ describe('F1(D22-5) judge_scope_reason — 서버 analysis.scope 사유 그대�
     const tr = (await screen.findByRole('link', { name: first.name })).closest('tr') as HTMLElement;
     const cell = within(tr).getByTestId(`scope-reason-${first.complex_id}`);
     expect(cell).toHaveTextContent('원 공고 미수집');
-    expect(cell).toHaveAttribute('title', expect.stringContaining(t('page.common.scopeReasonCurrent')));
+    expect(cell).toHaveAttribute(
+      'title',
+      expect.stringContaining(t('page.common.scopeReasonCurrent')),
+    );
   });
 
   it('G7 범위 경계 목록: 단지마다 서버 사유(주소에 동 없음 / 매칭 안 됨), 키 없으면 이름만', async () => {
@@ -230,7 +238,9 @@ describe('F1(D22-5) judge_scope_reason — 서버 analysis.scope 사유 그대�
     expect(within(items[1]!).getByTestId('boundary-scope-reason')).toHaveTextContent(UNMATCHED);
     expect(within(items[2]!).queryByTestId('boundary-scope-reason')).toBeNull();
     await waitFor(() =>
-      expect(matching(rec.requests, 'GET', /\/snapshots\/\d+\/complexes$/).length).toBeGreaterThan(0),
+      expect(matching(rec.requests, 'GET', /\/snapshots\/\d+\/complexes$/).length).toBeGreaterThan(
+        0,
+      ),
     );
     rec.stop();
   });
@@ -285,7 +295,9 @@ describe("F3(D22-5) 현재 구매가 사유 '출처 상충 — compare 대기' �
     renderRoute('/complexes/2');
     const head = await screen.findByRole('region', { name: detail.header.name });
     const note = within(head).getByTestId('held-price-note');
-    expect(within(note).getByRole('link', { name: t('page.G3.price.heldHumanCheck') })).toBeInTheDocument();
+    expect(
+      within(note).getByRole('link', { name: t('page.G3.price.heldHumanCheck') }),
+    ).toBeInTheDocument();
     expect(note.querySelector('[data-prov]')).toBeNull();
   });
 
@@ -320,7 +332,9 @@ describe("F3(D22-5) 현재 구매가 사유 '출처 상충 — compare 대기' �
         : row,
     );
     renderRoute('/complexes');
-    const tr = (await screen.findByRole('link', { name: rows[0]!.name })).closest('tr') as HTMLElement;
+    const tr = (await screen.findByRole('link', { name: rows[0]!.name })).closest(
+      'tr',
+    ) as HTMLElement;
     expect(
       within(tr).getAllByText(
         t('empty.unknownWithReasonDate', { reason: CONFLICT_HOLD, date: '2026-10-07' }),
@@ -383,7 +397,7 @@ describe("F4(D22-4) 접수 '확인 불가(공식 홈페이지 동일성 미확�
     rec.stop();
   });
 
-  it("다른 단지(auto other_complex)는 FE10 문구 그대로, 동일성 미확인 안내 없음", async () => {
+  it('다른 단지(auto other_complex)는 FE10 문구 그대로, 동일성 미확인 안내 없음', async () => {
     const detail = await useIntake('공식 홈페이지가 다른 단지');
     renderRoute('/complexes/2');
     const head = await screen.findByRole('region', { name: detail.header.name });

@@ -6,7 +6,7 @@
  *  - F3(D21-4): G6 생활권 시세 블록 Fact 의 `rd_` 출처 → 출처 서랍(회귀 방지)
  *  - F4(D21-5): 접수 '확인 불가(공식 홈페이지가 다른 단지)' — G3 머리 원문 버튼이 '접수 근거'가 아니라 '다른 단지 페이지'임을
  *    밝히고, 사람 확인(접수 상태) 링크
- *  - F5(D21-6): G3 포함 분류 '범위 경계' 사유 — '(주소에 동 없음)' / '(주소가 지역 법정동에 매칭 안 됨)'
+ *  - F5(D21-6): G3 포함 분류 '범위 경계' 사유 — 계약 .17 F1 서버 `judge_scope_reason` 으로 대체(r4fe11)
  *  - F6(D21-1): 출처 발췌 끝 `[단위 근거] <표 머리 줄>` → 서랍·출처 탭에 '단위 근거' 줄(발췌 하이라이트는 금액 행으로),
  *    가격 채택 보류('출처 상충 — compare 대기') 기준 타입 → G3 머리·가격표 안내 + 보류 Fact(→ 서랍) + 사람 확인 링크
  *  - F7(D21-7)·F8(D21-5): 서버 문자열 그대로(회귀 방지)
@@ -34,7 +34,6 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute, renderWithProviders } from '@/test/render';
-import { boundaryReason, hasDongName } from './complex/boundary';
 import { JudgmentTable } from './complex/JudgmentsTab';
 import { highlightExcerpt } from './complex/ProvenanceTab';
 import { splitUnitBasis } from '@/lib/unitBasis';
@@ -313,60 +312,8 @@ describe('F4(D21-5) 접수 확인 불가(공식 홈페이지가 다른 단지)',
 });
 
 // ─── F5 범위 경계 사유 ──────────────────────────────────────
-
-describe('F5(D21-6) 범위 경계 사유', () => {
-  it('hasDongName = 서버 analysis.scope.has_dong_name 과 같은 모양 검사(동·읍·면·리·N가 토큰)', () => {
-    expect(hasDongName('인천광역시 서구 검단신도시 RC3BL')).toBe(false);
-    expect(hasDongName('인천광역시 연수구 396-11번지(송도랜드마크시티 6,8공구 A17BL)')).toBe(false);
-    expect(hasDongName('인천광역시 검단구 마전동 AA32블록')).toBe(true);
-    expect(hasDongName('인천광역시 계양구 동양동(AC3·AC4)')).toBe(true);
-    expect(hasDongName('경기도 김포시 고촌읍 신곡리 일원')).toBe(true);
-    expect(hasDongName('서울특별시 중구 을지로2가 100')).toBe(true);
-  });
-
-  it("boundaryReason: 범위 경계 + 법정동 없음 + 주소에 동 없음 → '(주소에 동 없음)', 그 밖 → '(…매칭 안 됨)', 다른 분류 → null", () => {
-    expect(boundaryReason('범위 경계', '인천광역시 서구 검단신도시 RC3BL', null)).toBe(
-      t('page.G3.header.boundary.noDong'),
-    );
-    expect(boundaryReason('범위 경계', '인천광역시 검단구 마전동 AA32블록', null)).toBe(
-      t('page.G3.header.boundary.unmatched'),
-    );
-    expect(boundaryReason('범위 경계', null, null)).toBe(t('page.G3.header.boundary.unmatched'));
-    expect(boundaryReason('범위 경계', '인천광역시 서구 검단신도시 RC3BL', '2826011700')).toBe(
-      t('page.G3.header.boundary.unmatched'),
-    );
-    expect(boundaryReason('private_sale_apt', '인천광역시 서구 검단신도시 RC3BL', null)).toBeNull();
-  });
-
-  it("G3 머리 포함 분류: '범위 경계(주소에 동 없음)'", async () => {
-    const detail = await example<ComplexDetail>('/complexes/2');
-    server.use(
-      http.get(mswPath('/complexes/:id'), () =>
-        HttpResponse.json({
-          ...detail,
-          header: {
-            ...detail.header,
-            inclusion_class: '범위 경계',
-            address: '인천광역시 서구 검단신도시 RC3BL',
-            legal_dong_code: null,
-          },
-        }),
-      ),
-    );
-    renderRoute('/complexes/2');
-    const head = await screen.findByRole('region', { name: detail.header.name });
-    expect(within(head).getByTestId('boundary-reason')).toHaveTextContent(
-      t('page.G3.header.boundary.noDong'),
-    );
-  });
-
-  it('G3 머리: 포함 분류가 범위 경계가 아니면 사유 없음', async () => {
-    const detail = await example<ComplexDetail>('/complexes/2');
-    renderRoute('/complexes/2');
-    const head = await screen.findByRole('region', { name: detail.header.name });
-    expect(within(head).queryByTestId('boundary-reason')).toBeNull();
-  });
-});
+// 계약 .17 F1(D22-5)로 대체: 화면이 서버 규칙(`has_dong_name` 정규식·범위 첫 행)을 옮겨 만들던 `complex/boundary.ts` 는 지웠고
+// (규칙 3), 사유는 서버 `judge_scope_reason` 그대로 보인다 — r4fe11.test.tsx 'F1(D22-5) judge_scope_reason'.
 
 // ─── F6 단위 근거·단위 상충 보류 ───────────────────────────
 
