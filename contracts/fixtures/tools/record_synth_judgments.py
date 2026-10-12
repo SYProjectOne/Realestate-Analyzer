@@ -14,6 +14,7 @@ MockAdapter 재판정이 전부 review(종합 점수 미계산). 여기서는 **
 | classify(포함/제외) | complexes.json inclusion(보고서 #62·#110: 클래스·decision·확률) — 스위첸·지엔하임·그랑포레 = review |
 | classify(호재 단계) | 보고서 #64·#111 의 같은 이름 항목(없으면 review) |
 | classify(접수 상태) | complexes.json 공식 경로 접수 행(가능→open, 미정→pending, 불가→closed, 확인 불가→unknown) |
+| classify(공식 홈페이지 동일성, D21-5) | 픽스처 공식 경로 페이지 = 그 단지(same_complex, auto) — 보고서에 다른 단지 페이지 사례 없음 |
 | noul | 입주 후 1년(move_in_plus_1y) = 보고서 #65~70·#118~123 의 단지별 p5·p10·p20·보합(라벨·auto 그대로). 3년·5년 = 보고서에 없음 → review |
 | rerank | #124 relevance(후보 안에서 relevance 내림차순, 같은 값 = 같은 순위) |
 | decide | 상황별 #125~#129(통합). 선택·확률·확신도 = 보고서 그대로(A = 가상 후보 wait_new .94, 계약 .5) — 보고서 선택이 후보에 없으면 녹화 실패(대체 없음), 요건 판정은 후보에 있는 것만 |
@@ -152,6 +153,8 @@ class ReportSynthJev(SynthJev):  # type: ignore[misc, valid-type]
             return self._inclusion(a), "complexes.json inclusion(보고서 #62·#110)"
         if "open" in ids:
             return self._intake(a), "complexes.json 공식 경로 접수 행"
+        if "same_complex" in ids:  # D21-5 공식 홈페이지 동일성(R4-CORE8): 픽스처 공식 경로 페이지 = 그 단지
+            return self._site(a), "공식 홈페이지 동일성 — 픽스처 공식 경로(complexes.json)는 그 단지의 페이지(합성)"
         return self._catalyst(a), "보고서 #64·#111 같은 이름 항목"
 
     @staticmethod
@@ -176,6 +179,9 @@ class ReportSynthJev(SynthJev):  # type: ignore[misc, valid-type]
             status = self.intake.get(cid)
             out.append(self._cls(it["id"], INTAKE_CLASS.get(status or ""), 0.9, "auto"))
         return {"results": out}
+
+    def _site(self, a: dict[str, Any]) -> dict[str, Any]:
+        return {"results": [self._cls(it["id"], "same_complex", 0.95, "auto") for it in a["items"]]}
 
     def _catalyst(self, a: dict[str, Any]) -> dict[str, Any]:
         out = []
