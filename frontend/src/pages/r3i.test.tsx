@@ -3,16 +3,14 @@
  *  - m3(D17-4): 사람 확인 `discount` 는 **기준 타입**에만 들어간다. 그래서 G3 가격 표에서 '추정' 할인 안내·G7 링크는
  *    기준 타입 줄에만 단다. 기준 타입이 아닌 타입 줄의 '추정' 할인은 "사람 확인 시 구매가에 반영"이 아니라 사실대로
  *    "기준 타입이 아니라 구매가에 반영하지 않음" 안내만(링크 없음).
- *  - m2: MSW 목의 할인 값 검사가 서버(`demotion.py`)와 어긋났다(목은 '1,0'·할인 ≥ 가격 등 판정이 서버와 다름). 서버가
- *    계약 .14 에서 검사를 엄격하게 바꾸므로 1단계에서 목은 **검사하지 않는다**(서버 성공 응답만 흉내). 422 화면 경로는
- *    테스트가 서버 응답 모양을 `server.use` 로 직접 준다. 2단계에서 .14 오류 code 에 맞춘다.
+ *  - m2: 1단계(목 검사 안 함) 테스트는 2단계(계약 .14 F3 — 목·폼이 서버와 같은 엄격한 규칙·오류 code)에서
+ *    `r3i2.test.tsx` 로 옮겼다.
  */
 import { screen, within } from '@testing-library/react';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
-import type { ComplexDetail, Fact, HumanCheck } from '@/api/types';
+import type { ComplexDetail, Fact } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
-import { handlers } from '@/mocks/handlers';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
@@ -52,6 +50,9 @@ function serve(byType: Record<string, Fact>, basisDiscount: Fact | null) {
   );
 }
 
+/** 예시 상세(단지 2) price.basis_type_code */
+const basisOf = '84A';
+
 async function typeCodes() {
   const d = await exampleDetail();
   const basis = d.types.find((r) => r.is_basis)?.type_code;
@@ -69,10 +70,12 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     renderRoute('/complexes/2#price');
     const cell = await screen.findByTestId(`type-discount-${other}`);
     expect(within(cell).getByTestId(`type-discount-note-${other}`)).toHaveTextContent(
-      t('page.G3.price.discountEstimatedNonBasis'),
+      t('page.G3.price.discountEstimatedNonBasis', { type: basisOf }),
     );
     expect(within(cell).queryByRole('link')).toBeNull();
-    expect(screen.queryByText(t('page.G3.price.discountEstimated'))).toBeNull();
+    expect(
+      screen.queryByText(t('page.G3.price.discountEstimatedBasis', { type: basisOf })),
+    ).toBeNull();
     expect(screen.queryByRole('link', { name: t('page.G3.price.discountHumanCheck') })).toBeNull();
   });
 
@@ -82,13 +85,15 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     renderRoute('/complexes/2#price');
     const basisCell = await screen.findByTestId(`type-discount-${basis}`);
     const basisNote = within(basisCell).getByTestId(`type-discount-note-${basis}`);
-    expect(basisNote).toHaveTextContent(t('page.G3.price.discountEstimated'));
+    expect(basisNote).toHaveTextContent(
+      t('page.G3.price.discountEstimatedBasis', { type: basisOf }),
+    );
     expect(
       within(basisNote).getByRole('link', { name: t('page.G3.price.discountHumanCheck') }),
     ).toBeInTheDocument();
     const otherCell = screen.getByTestId(`type-discount-${other}`);
     expect(within(otherCell).getByTestId(`type-discount-note-${other}`)).toHaveTextContent(
-      t('page.G3.price.discountEstimatedNonBasis'),
+      t('page.G3.price.discountEstimatedNonBasis', { type: basisOf }),
     );
     expect(within(otherCell).queryByRole('link')).toBeNull();
     // 사람 확인 링크는 기준 타입 할인 자리(헤더·할인 줄·기준 타입 줄)에만 — 표 아래 공통 한 줄 없음
@@ -102,52 +107,22 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     for (const link of links) expect(allowed.some((box) => box.contains(link))).toBe(true);
   });
 
-  it("기준 타입이 아닌 타입의 '확인됨' 할인: 안내 없음(값만)", async () => {
+  it("기준 타입이 아닌 타입의 '확인됨' 할인(.14 F2 — 기준 타입이 바뀐 옛 사람 확인 등): '표시만(기준 타입 아님)', 링크 없음", async () => {
     const { other } = await typeCodes();
     serve({ [other]: won('확인됨') }, null);
     renderRoute('/complexes/2#price');
     const cell = await screen.findByTestId(`type-discount-${other}`);
-    expect(within(cell).queryByTestId(`type-discount-note-${other}`)).toBeNull();
+    expect(within(cell).getByTestId(`type-discount-note-${other}`)).toHaveTextContent(
+      t('page.G3.price.discountNonBasis', { type: basisOf }),
+    );
+    expect(within(cell).queryByRole('link')).toBeNull();
   });
 
   it('안내 문구는 ko.json 에 있고 기준 타입이 아닌 줄 문구는 "사람 확인 시 구매가에 반영"을 말하지 않는다', () => {
-    const nonBasis = t('page.G3.price.discountEstimatedNonBasis');
+    const nonBasis = t('page.G3.price.discountEstimatedNonBasis', { type: basisOf });
     expect(nonBasis).not.toBe('page.G3.price.discountEstimatedNonBasis');
+    expect(nonBasis).toContain(basisOf);
     expect(nonBasis).not.toMatch(/사람 확인 시 구매가에 반영/);
     expect(nonBasis).toMatch(/기준 타입/);
   });
-});
-
-// ─── m2 목 할인 값 검사 안 함 ─────────────────────────────────
-
-describe('m2 MSW 목은 할인 값을 검사하지 않는다(판정은 서버 — 1단계)', () => {
-  async function post(valueText: string): Promise<Response | undefined> {
-    return getResponse(
-      handlers as RequestHandler[],
-      new Request('http://localhost/api/ops/human-checks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          complex_id: 2,
-          field: 'discount',
-          value_text: valueText,
-          kind: 'phone',
-          entered_by: '운영자',
-          checked_at: '2026-10-08T10:00:00+09:00',
-        }),
-      }),
-    );
-  }
-
-  // 서버 규칙과 판정이 어긋났던 값들(9차 리뷰 m2) — 목은 어느 쪽으로도 판정하지 않는다
-  it.each(['삼백만', '1,0', ',,5,,', '-0', '٣٠٠٠', '９９', '999999999999', '3,000,000원'])(
-    '값 %s → 201(서버 성공 응답 모양, field=discount)',
-    async (valueText) => {
-      const res = await post(valueText);
-      expect(res?.status).toBe(201);
-      const body = (await res!.json()) as HumanCheck;
-      expect(body.field).toBe('discount');
-      expect(body.value_text).toBe(valueText);
-    },
-  );
 });

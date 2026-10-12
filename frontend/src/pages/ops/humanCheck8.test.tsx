@@ -70,7 +70,7 @@ describe('M-5 사람 확인 필드(계약 .8)', () => {
       t('page.G7.hc.decimals', { n: '2' }),
     );
     expect(validateHumanValue('resale_months', '-1')).toMatch(/이상이어야/);
-    expect(normalizeHumanValue('max_price_won', ' 605,000,000 ')).toBe('605000000');
+    expect(normalizeHumanValue('max_price_won', ' 605,000,000 ')).toBe('605,000,000'); // .14 F4: 고쳐 쓰지 않음
     expect(normalizeHumanValue('other', ' a, b ')).toBe('a, b');
   });
 

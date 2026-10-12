@@ -91,7 +91,10 @@ describe('F1(D16-1) 사람 확인 필드 discount', () => {
     ).toBeInTheDocument();
     await userEvent.selectOptions(field, 'discount');
     const value = within(form).getByLabelText(t('page.G7.hc.value'));
-    expect(value).toHaveAccessibleDescription(t('page.G7.hcHint.discount'));
+    // 계약 .14 F2: 단지 상세를 받으면 기준 타입까지(예시 84A)
+    await waitFor(() =>
+      expect(value).toHaveAccessibleDescription(t('page.G7.hcHint.discountBasis', { type: '84A' })),
+    );
     await userEvent.type(value, '3,000,000원');
     await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
     await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
@@ -108,22 +111,8 @@ describe('F1(D16-1) 사람 확인 필드 discount', () => {
     rec.stop();
   });
 
-  it('값 검사는 서버가 — 422 value_text 오류를 값 칸에(화면은 미리 거르지 않는다)', async () => {
-    // R3i m2: 목은 할인 값을 검사하지 않는다 — 서버 422 응답 모양(계약 .13 F1)을 테스트가 직접 준다
-    server.use(
-      http.post(mswPath('/ops/human-checks'), () =>
-        HttpResponse.json(
-          {
-            code: 'validation_error',
-            detail: 'discount 는 원 단위 정수여야 한다',
-            field_errors: [
-              { loc: ['body', 'value_text'], msg: 'discount 는 원 단위 정수여야 한다' },
-            ],
-          },
-          { status: 422 },
-        ),
-      ),
-    );
+  it('값 형식이 틀리면(계약 .14 F3 서버와 같은 규칙) 폼이 막는다 — POST 없음, 값 칸 안내', async () => {
+    // R3i 2단계: .13 의 '화면은 미리 거르지 않는다'를 .14 F3 "FE 목·폼 검사를 서버와 같게"로 바꿨다(서버 code 경로는 r3i2)
     window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
     const rec = recordRequests();
     renderRoute('/ops');
@@ -135,8 +124,7 @@ describe('F1(D16-1) 사람 확인 필드 discount', () => {
     await userEvent.selectOptions(within(form).getByLabelText(t('page.G7.hc.enteredBy')), '운영자');
     await userEvent.click(within(form).getByRole('button', { name: t('page.G7.hc.submit') }));
     await waitFor(() => expect(value).toHaveAttribute('aria-invalid', 'true'));
-    expect(matching(rec.requests, 'POST', '/ops/human-checks')).toHaveLength(1);
-    expect(value).toHaveAccessibleDescription('discount 는 원 단위 정수여야 한다');
+    expect(matching(rec.requests, 'POST', '/ops/human-checks')).toHaveLength(0);
     rec.stop();
   });
 
@@ -191,7 +179,9 @@ describe("F2(D16-1) 파서 할인은 '추정' — 안내 + G7 사람 확인 링�
     expect(href.searchParams.get('hc_field')).toBe('discount');
     expect(href.hash).toBe('#human-check');
     const row = await screen.findByTestId('price-discount');
-    expect(row).toHaveTextContent(t('page.G3.price.discountEstimated'));
+    expect(row).toHaveTextContent(
+      t('page.G3.price.discountEstimatedBasis', { type: detail.price.basis_type_code ?? '' }),
+    );
     expect(
       within(row).getByRole('link', { name: t('page.G3.price.discountHumanCheck') }),
     ).toBeInTheDocument();
@@ -218,7 +208,7 @@ describe("F2(D16-1) 파서 할인은 '추정' — 안내 + G7 사람 확인 링�
     renderRoute('/complexes/2#price');
     // R3i m3: 표 아래 공통 한 줄이 아니라 기준 타입 줄에(기준 타입 아닌 줄은 r3i.test.tsx)
     const note = await screen.findByTestId(`type-discount-note-${basis}`);
-    expect(note).toHaveTextContent(t('page.G3.price.discountEstimated'));
+    expect(note).toHaveTextContent(t('page.G3.price.discountEstimatedBasis', { type: basis }));
     expect(
       within(note).getByRole('link', { name: t('page.G3.price.discountHumanCheck') }),
     ).toBeInTheDocument();
