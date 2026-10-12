@@ -1298,6 +1298,8 @@ export interface components {
          *       "region_id": 1,
          *       "applyhome_id": "2025000302",
          *       "name": "엘리프 검단 포레듀",
+         *       "name_prov": "fp_4001",
+         *       "name_label": "확인됨",
          *       "former_names": [],
          *       "address": "인천광역시 검단구 마전동 AA32블록",
          *       "legal_dong_code": "2829010300",
@@ -1441,6 +1443,10 @@ export interface components {
             /** @description 청약홈 공고 단지 id. (region_id, applyhome_id) 유일(계약 2026-10-09.4 — 같은 공고 단지가 지역마다 따로 있을 수 있다, W4). 공고 전이면 null */
             applyhome_id: string | null;
             name: string;
+            /** @description 단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 키가 없다(= null — .15 이전 발행 리비전 저장본도 키 없음) */
+            name_prov?: string | null;
+            /** @description 단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 없으면 없다 */
+            name_label?: components["schemas"]["Label"] | null;
             former_names: string[];
             address: string | null;
             legal_dong_code?: string | null;
@@ -1513,6 +1519,8 @@ export interface components {
          *         "region_id": 1,
          *         "applyhome_id": null,
          *         "name": "계양신도시 카이브 유보라",
+         *         "name_prov": "fp_8801",
+         *         "name_label": "비공식",
          *         "former_names": [],
          *         "address": "인천광역시 계양구 동양동(AC3·AC4)",
          *         "legal_dong_code": null,
@@ -1744,6 +1752,8 @@ export interface components {
          * @example {
          *       "complex_id": 4,
          *       "name": "오퍼스 한강 스위첸",
+         *       "name_prov": "fp_4100",
+         *       "name_label": "확인됨",
          *       "living_area": "la_4",
          *       "living_area_name": "김포시",
          *       "track": "B",
@@ -1877,6 +1887,10 @@ export interface components {
         ComplexRow: {
             complex_id: number;
             name: string;
+            /** @description 단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 키가 없다(= null — .15 이전 발행 리비전 저장본도 키 없음) */
+            name_prov?: string | null;
+            /** @description 단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 없으면 없다 */
+            name_label?: components["schemas"]["Label"] | null;
             living_area: string | null;
             living_area_name: string | null;
             /** @enum {string|null} */

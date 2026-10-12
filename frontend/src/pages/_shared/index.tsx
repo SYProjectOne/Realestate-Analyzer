@@ -6,8 +6,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ApiError, isMaterializePending } from '@/api/client';
 import { useScenarios } from '@/api/hooks';
-import type { Fact, JudgeScope, Scenario, Snapshot } from '@/api/types';
-import { Badge, EmptyState } from '@/components';
+import type { Fact, JudgeScope, Label, Scenario, Snapshot } from '@/api/types';
+import { Badge, EmptyState, LabelBadge, labelText, useOpenProvenance } from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { useScenario } from '@/hooks/useScenario';
@@ -309,6 +309,83 @@ export function RejudgeNeededBadge({ needed }: { needed: boolean | null | undefi
     <span data-testid="rejudge-needed" title={t('page.common.rejudgeNeededHint')}>
       <Badge tone="strong">{t('page.common.rejudgeNeeded')}</Badge>
     </span>
+  );
+}
+
+/**
+ * 계약 .16 F1(D21-8): 단지 이름의 출처(`name_prov` = fp_<id>)·라벨(`name_label`). 둘 다 선택 필드 — 출처 행이 없는 옛 행·시드·
+ * .15 이전 발행 저장본은 키가 없다(= null, 아무것도 그리지 않는다). 청약홈 공고 단지 '확인됨', 공고 예정 후보 '비공식'.
+ */
+export interface NameSource {
+  name: string;
+  name_prov?: string | null;
+  name_label?: Label | null;
+}
+
+function nameProvTitle(source: NameSource): string {
+  return source.name_label
+    ? t('page.common.nameProv.open', { name: source.name, label: labelText(source.name_label) })
+    : t('page.common.nameProv.openNoLabel', { name: source.name });
+}
+
+/**
+ * 이름 옆 라벨 배지(G2 표처럼 이름이 다른 화면 링크인 곳) — 출처가 있으면 배지가 버튼이 되어 출처 서랍을 연다.
+ * 라벨만 있으면 배지만, 둘 다 없으면 null.
+ */
+export function NameLabelBadge({ source, testId }: { source: NameSource; testId?: string }) {
+  const open = useOpenProvenance();
+  const prov = source.name_prov ?? null;
+  const label = source.name_label ?? null;
+  if (!prov && !label) return null;
+  const badge = label ? (
+    <LabelBadge label={label} />
+  ) : (
+    <Badge tone="muted">{t('provenance.title')}</Badge>
+  );
+  if (!prov || !open) return <span data-testid={testId}>{badge}</span>;
+  const title = nameProvTitle(source);
+  return (
+    <button
+      type="button"
+      data-prov={prov}
+      data-testid={testId}
+      aria-label={title}
+      title={title}
+      onClick={() => open(prov)}
+      className="rounded-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {badge}
+    </button>
+  );
+}
+
+/** 이름 자체가 출처 서랍 버튼(G3 머리) + 라벨 배지. 출처가 없으면 맨 이름(+ 라벨이 있으면 배지) */
+export function NameWithProvenance({ source }: { source: NameSource }) {
+  const open = useOpenProvenance();
+  const prov = source.name_prov ?? null;
+  const label = source.name_label ?? null;
+  const badge = label ? <LabelBadge label={label} className="text-xs font-normal" /> : null;
+  if (!prov || !open) {
+    return (
+      <>
+        {source.name}
+        {badge ? <> {badge}</> : null}
+      </>
+    );
+  }
+  const title = nameProvTitle(source);
+  return (
+    <button
+      type="button"
+      data-prov={prov}
+      aria-label={title}
+      title={title}
+      onClick={() => open(prov)}
+      className="inline-flex items-center gap-2 rounded-sm text-left underline decoration-dotted underline-offset-4 hover:decoration-solid focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <span>{source.name}</span>
+      {badge}
+    </button>
   );
 }
 

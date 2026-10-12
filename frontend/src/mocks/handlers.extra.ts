@@ -57,6 +57,9 @@ import type {
   ShareLinkCreated,
 } from '@/api/types';
 import catalystUpdatedExample from '../../../contracts/examples/catalyst_updated.json';
+import complexSchema from '../../../contracts/schemas/complex.json';
+import complexDetailSchema from '../../../contracts/schemas/complex_detail.json';
+import complexRowSchema from '../../../contracts/schemas/complex_row.json';
 import { HUMAN_CHECK_RULES, parseStrictNumber } from '@/pages/ops/humanCheckRules';
 import { YM_PATTERN } from '@/pages/region-new/applyhomeWindow';
 import { generatedHandlers } from './handlers.gen';
@@ -137,6 +140,31 @@ const state = {
 
 /** 계약 예시 PATCH /catalysts 202(보이는 값이 바뀜 — 계약 .13 D16-4) */
 const CATALYST_UPDATED = (catalystUpdatedExample as { value: CatalystUpdated }).value;
+
+/**
+ * 계약 .16 F1(D21-8) 단지 이름 출처: openapi 응답 예시(목록·상세)는 .16 이전 모양이라 `name_prov`·`name_label` 이 없다.
+ * 스키마 예시(complex.json·complex_row.json·complex_detail.json 머리 — 청약홈 '확인됨' 2·4, 공고 예정 후보 '비공식' 15)의
+ * 값을 **같은 id·같은 이름**의 목록 행에만 붙인다. 나머지 행은 키 없음(= null — 출처 행 없는 옛 행·시드와 같은 모양).
+ */
+type NameKeys = Pick<ComplexRow, 'name_prov' | 'name_label'>;
+type NameExample = { id: number; name: string } & NameKeys;
+const NAME_SOURCES: ReadonlyMap<number, { name: string } & NameKeys> = new Map(
+  [
+    ...(complexSchema.examples as unknown as NameExample[]),
+    ...(
+      complexRowSchema.examples as unknown as ({ complex_id: number; name: string } & NameKeys)[]
+    ).map((e): NameExample => ({ ...e, id: e.complex_id })),
+    ...(complexDetailSchema.examples as unknown as { header: NameExample }[]).map((e) => e.header),
+  ]
+    .filter((e) => e.name_prov)
+    .map((e) => [e.id, { name: e.name, name_prov: e.name_prov, name_label: e.name_label }]),
+);
+
+function withNameSource<T extends { name: string } & NameKeys>(id: number, row: T): T {
+  const src = NAME_SOURCES.get(id);
+  if (!src || src.name !== row.name || 'name_prov' in row) return row;
+  return { ...row, name_prov: src.name_prov, name_label: src.name_label };
+}
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
 export function resetMockState(): void {
@@ -350,7 +378,8 @@ export const extraHandlers = [
     const page = await base<ComplexRowPage>(request);
     const url = new URL(request.url);
     const n = Number(readFlag(MOCK_ROWS_KEY) ?? '0');
-    const all = n > 0 ? multiplyRows(page.items, n) : page.items;
+    const named = page.items.map((r) => withNameSource(r.complex_id, r));
+    const all = n > 0 ? multiplyRows(named, n) : named;
     const items = filterRows(all, url).map(applyIntake);
     const size = Number(url.searchParams.get('size') ?? page.size);
     const pageNo = Number(url.searchParams.get('page') ?? '1');
@@ -374,7 +403,9 @@ export const extraHandlers = [
     );
     const row = page.items.find((r) => r.complex_id === id);
     const override = state.intakeOverrides.get(id);
-    const header = row ? { ...detail.header, id, name: row.name } : detail.header;
+    // 계약 .16 F1: 머리 이름 출처는 목록 행과 같은 값(행에 없으면 키 없음)
+    const { name_prov: _p, name_label: _l, ...plain } = detail.header;
+    const header = row ? withNameSource(id, { ...plain, id, name: row.name }) : detail.header;
     return HttpResponse.json({
       ...detail,
       header,
