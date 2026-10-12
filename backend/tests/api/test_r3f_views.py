@@ -396,7 +396,12 @@ def test_m19_bootstrap_publish_failure_keeps_region_ready_and_retries(
 
     def fake_collect(*_a: Any, **_k: Any) -> Any:
         return SimpleNamespace(
-            snapshot_id=rev, asof_date="2026-10-08", stats=lambda: {}, errors={}, list_complex_ids=None
+            snapshot_id=rev,
+            asof_date="2026-10-08",
+            stats=lambda: {},
+            errors={},
+            list_complex_ids=None,
+            degraded={},  # 계약 .18(D23-4): 수집 결과 degraded(빈 데이터셋) — 여기서는 정상 수집
         )
 
     def fake_pipeline(*_a: Any, **_k: Any) -> Any:
