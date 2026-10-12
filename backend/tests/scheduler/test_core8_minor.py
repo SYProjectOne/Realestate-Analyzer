@@ -19,7 +19,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.settings import Settings
 from app.models import ChangeEvent, Complex, Region
-from app.scheduler.collect import collect
 from app.scheduler.context import SchedulerContext
 from app.scheduler.pipeline import run_pipeline
 

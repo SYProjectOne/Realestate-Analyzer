@@ -132,7 +132,7 @@ class StoreResult:
     extract_requests: list[ExtractRequest]
     skipped: list[FieldCandidate] = field(default_factory=list)
     foreign_keys: list[str] = field(default_factory=list)  # 다른 지역 단지라 건너뛴 주택관리번호(W4)
-    first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 빈 값 → 값 변경 수(D18-7)
+    first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 값 기록·덮어쓰기 수(D18-7·D21-7)
 
 
 def parser_for(
@@ -749,10 +749,6 @@ CITED_COMPLEX_FIELDS = frozenset({"move_in_ym"})
 FILL_EMPTY_FIELDS = frozenset({"official_site_url"})
 """D18-4: 원 단지에 묶인 잔여 공고에서 원 단지 값이 **비어 있을 때만** 받는 단지 필드 — 사업의 공식 홈페이지(잔여 공고의
 접수 상태가 같은 홈페이지에 올라온다). 원 단지 값이 있으면 덮지 않는다(D11-4)."""
-
-
-_EMPTY_TEXTS = frozenset({"", "[]", "{}"})
-"""change_event.old_text 가 '빈 값'인 표기(None·빈 목록·빈 객체) — 첫 적재 요약 대상(D18-7)."""
 
 _URL_NO_RE = re.compile(
     r"(?:houseManageNo=|pblancNo=|HOUSE_MANAGE_NO%3A%3AEQ%5D=|PBLANC_NO%3A%3AEQ%5D=)(\d{10})"
@@ -1522,8 +1518,9 @@ def store_raw_document(
     """원문 1건을 정규화해 저장한다(한 트랜잭션 — SAVEPOINT). commit은 호출자.
 
     ``links``: 수집 실행 하나의 잔여 공고 번호 → 원 단지 연결(D18-4). 같은 dict 를 원문마다 넘긴다(없으면 원문마다 새로).
-    ``first_load``: 지역 첫 적재(bootstrap, D18-7·R4 m3) — 빈 값 → 값 변경(새 공고·새 단지 포함)은 change_event 로 남기지
-    않고 ``StoreResult.first_load_folded`` 로 센다(수집 단계가 '첫 적재' 한 줄로 요약). 값 → 다른 값 변경은 그대로 남긴다."""
+    ``first_load``: 지역 첫 적재(bootstrap, D18-7·R4 m3) — 값 기록(빈 값 → 값, 새 공고·새 단지 포함)과 같은 적재 안의 값 →
+    다른 값 덮어쓰기(D21-7·R4 재시험 m-b)는 change_event 로 남기지 않고 ``StoreResult.first_load_folded`` 로 센다(수집
+    단계가 '첫 적재' 한 줄로 요약)."""
     detected_at = changes.detected_now(now)
 
     def complex_key(complex_id: int) -> str | None:
@@ -1589,9 +1586,10 @@ def store_raw_document(
                 assign_complex_area(session, cx, alt_addresses=addrs)
         folded = 0
         if first_load:
-            kept = [e for e in events if (e.old_text or "") not in _EMPTY_TEXTS]
-            folded = len(events) - len(kept)
-            events = kept
+            # D18-7 + D21-7(R4 재시험 m-b): 지역 첫 적재 중의 값 기록은 빈 값 → 값뿐 아니라 같은 적재 안의 값 → 다른 값
+            # 덮어쓰기(공고문이 차례로 같은 타입 가격·입주월을 덮음)도 이벤트 대신 요약으로 센다 — 첫날 G1 이 critical 로 차지 않게
+            folded = len(events)
+            events = []
         session.add_all(events)
         session.flush()
         cids: set[int] = set()

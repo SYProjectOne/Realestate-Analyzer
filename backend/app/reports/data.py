@@ -86,6 +86,7 @@ __all__ = [
     "is_valid_url",
     "load_report",
     "load_report_live",
+    "report_living_areas",
     "report_payload_live",
 ]
 
@@ -1892,6 +1893,28 @@ def _resolve(
     return snap, region, scenario, compare
 
 
+def report_living_areas(session: Session, region: Region) -> list[dict[str, Any]]:
+    """§1-1 생활권(이름·법정동·세대수 Fact) — D21-7(R4 재시험 m-d): 세대수는 저장 json(지역 생성 때 null 일 수 있다)이
+    아니라 API(``views.region_view``)와 같은 세대 현황 집계(``living_area.region_household_facts`` — 출처 = 세대 현황 원문
+    ``rd_``)를 쓴다. 집계가 없으면 저장된 Fact 그대로."""
+    from app.normalize.living_area import region_household_facts
+
+    try:
+        computed = region_household_facts(session, region)
+    except Exception:  # 참조 표 없음 등 — 저장 json 그대로(보고서 생성을 막지 않는다)
+        computed = {}
+    out: list[dict[str, Any]] = []
+    for a in region.living_areas or []:
+        item = dict(a)
+        hit = computed.get(str(a.get("id")))
+        house = (hit or {}).get("households")
+        if isinstance(house, dict) and house.get("label") != "확인 불가":
+            item["households"] = house
+            item["supply_ref_units"] = (hit or {}).get("supply_ref_units")
+        out.append(item)
+    return out
+
+
 def load_report_live(
     session: Session,
     snapshot_id: int,
@@ -2025,7 +2048,7 @@ def load_report_live(
         published_at=snap.published_at,
         region_name=region.name,
         region_query=region.query_text,
-        living_areas=list(region.living_areas or []),
+        living_areas=report_living_areas(session, region),
         contract_version=CONTRACT_VERSION,
         generated_at=now_kst().isoformat(timespec="seconds"),
         scenario_code=scenario.code or str(scenario.id),

@@ -61,6 +61,7 @@ from app.core.logging import get_logger
 from app.core.protocols import JudgePayload, JudgeTool, JudgeUnavailable
 from app.core.redact import redact_text
 from app.core.settings import get_settings
+from app.judge import payloads as P
 from app.judge import pipeline as jp
 from app.judge.base import JudgeCaller
 from app.judge.claims import with_josa
@@ -593,6 +594,53 @@ def _same_site_only(
     return keep
 
 
+def _inclusion_changed(
+    session: Session, caller: CountingCaller, pool: list[tuple[int, ComplexFacts]]
+) -> list[tuple[int, ComplexFacts]]:
+    """D21-7(R4 재시험 m-c): 포함/제외 판정 입력이 **바뀐 단지만** 다시 보낸다. 직전 판정(``inclusion_judgment_seq`` 의
+    judgment_log 행)이 같은 판정기 버전이고 그 행의 이 단지 항목 텍스트가 지금 입력과 같으면 그 판정을 그대로 쓴다(단지 행의
+    분류·확률·seq 그대로 — 호출 없음). 한 단지 입력이 바뀌어 지역 전체 배치가 다시 판정되면서 다른 단지 분류가 흔들리던 것을
+    막는다. 판정기 버전이 바뀌면(D6) 모두 다시 판정한다. 텍스트 비교(산술)일 뿐 판단이 아니다."""
+    version = caller.known_version()
+    if version is None or not pool:
+        return pool
+    seqs = sorted({f.row.inclusion_judgment_seq for _, f in pool if f.row.inclusion_judgment_seq is not None})
+    logs: dict[int, JudgmentLog] = {}
+    for i in range(0, len(seqs), 500):
+        logs.update(
+            {
+                j.seq: j
+                for j in session.scalars(select(JudgmentLog).where(JudgmentLog.seq.in_(seqs[i : i + 500])))
+            }
+        )
+    out: list[tuple[int, ComplexFacts]] = []
+    for cid, f in pool:
+        log = logs.get(f.row.inclusion_judgment_seq or -1)
+        if (
+            log is None
+            or log.adapter_version != version
+            or log.status not in ("ok", "review")
+            or f.row.inclusion_class in (None, "미분류")
+            or _logged_item_text(log, f"complex:{cid}") != _inclusion_item_text(cid, _inclusion_text(f))
+        ):
+            out.append((cid, f))
+    return out
+
+
+def _inclusion_item_text(cid: int, text: str) -> str:
+    """판정기로 보낼 포함/제외 항목 텍스트(payload 빌더와 같은 정리 — 공개 텍스트·길이 제한)."""
+    items = P.classify_inclusion_batch_payload([(f"complex:{cid}", text)])["items"]
+    return str(items[0]["text"])
+
+
+def _logged_item_text(log: JudgmentLog, item_id: str) -> str | None:
+    items = (log.input_json or {}).get("items")
+    if not isinstance(items, list):
+        return None
+    hit = next((it for it in items if isinstance(it, dict) and it.get("id") == item_id), None)
+    return str(hit.get("text")) if hit is not None and hit.get("text") is not None else None
+
+
 def _p4(
     session: Session,
     caller: CountingCaller,
@@ -602,10 +650,10 @@ def _p4(
     targets: set[int],
     seq: persist.SeqResolver,
 ) -> None:
-    """포함/제외: 지역 단지 전부(범위 경계 제외)를 64개씩 배치 1회 — 같은 집합·같은 텍스트면 캐시(T17).
-
-    대상 단지만이 아니라 전부를 보내는 것은 배치 payload 가 집합으로 정해지기 때문이다(부분 재판정이 다른 payload 를
-    만들면 같은 사실에 판정기를 다시 부른다). 결과는 배치 안의 모든 단지에 쓴다(같은 판정).
+    """포함/제외: 지역 단지(범위 경계 제외) 중 **판정 입력이 바뀌었거나 아직 판정이 없는 단지만** 64개씩 배치 1회
+    (D21-7·R4 재시험 m-c — ``_inclusion_changed``). 입력이 그대로인 단지는 직전 판정(같은 판정기 버전)을 그대로 쓴다 — 한
+    단지 입력이 바뀌어도 다른 단지 분류가 다시 판정되어 흔들리지 않는다. 같은 집합·같은 텍스트 배치는 캐시(T17).
+    결과는 보낸 배치 안의 단지에만 쓴다.
     """
     del targets
     # D20-2: 공고 전 트랙 (A) 후보(주택관리번호 없음)는 수집 때 판정기 classify(공고 예정 — 지역·민간분양)가 포함을 정했다.
@@ -630,6 +678,7 @@ def _p4(
         if f.row.inclusion_class != "범위 경계"
         and not (f.row.applyhome_id is None and f.row.inclusion_judgment_seq in upcoming)
     ]
+    pool = _inclusion_changed(session, caller, pool)
     for b in range(0, len(pool), CLASSIFY_BATCH_MAX):
         chunk = pool[b : b + CLASSIFY_BATCH_MAX]
         outs = jp.p4_classify_inclusion_batch(
