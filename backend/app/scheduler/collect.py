@@ -44,6 +44,7 @@ from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
 from app.normalize.notice_parser import notice_numbers
+from app.normalize.living_area import correct_dong
 from app.normalize.store import is_remainder_url, store_raw_document
 from app.scheduler import assemble, detect, snapshots
 from app.scheduler.intake import UNCLASSIFIED, carry_classification, intake_change_events, pending_complexes
@@ -400,6 +401,7 @@ def collect(
     ran: list[str] = []
     step_docs: dict[str, list[RawDTO]] = {}
     links: dict[str, int] = {}  # D18-4: 잔여 공고 번호 → 원 단지(이 실행의 모든 원문이 같이 쓴다)
+    alt_addresses: dict[int, list[str]] = {}  # D22-3: 원 단지 → 묶인 잔여 공고의 공급위치(실행 끝 법정동 보정)
     deferred: list[RawDTO] = []  # D18-4: 공고문 단계 뒤로 미룬 잔여 공고 청약홈 원문
 
     def store_docs(docs: Sequence[RawDTO]) -> None:
@@ -416,6 +418,9 @@ def collect(
                     continue
                 res.stored += 1
                 res.first_load_folded += out.first_load_folded
+                for cid, addrs in out.alt_addresses.items():
+                    have = alt_addresses.setdefault(cid, [])
+                    have.extend(a for a in addrs if a not in have)
                 events.extend(out.change_events)
                 if doc.complex_id is not None:
                     phrases[doc.complex_id].extend(
@@ -516,6 +521,24 @@ def collect(
     res.assembled = asm.stats
     res.errors.update(asm.errors)
     events.extend(asm.events)
+    if alt_addresses:
+        # D22-3(R4 3차 N10): 잔여 공고문이 원 단지보다 먼저 저장돼(원 공고 다시 받기 전 — 주소 없음) 쓰지 못한 공급위치로, 원 단지
+        # 주소가 생긴 지금 법정동을 보정한다 — 저장 순서와 무관하게 첫 수집 안에서. 바뀌면 change_event(첫 적재면 요약 수)
+        with ctx.session_factory() as session:
+            for cid, addrs in sorted(alt_addresses.items()):
+                cx = session.get(Complex, cid)
+                if cx is None:
+                    continue
+                ev = correct_dong(session, cx, addrs, snapshot_id=snap_dto.id, detected_at=detected_at)
+                if ev is None:
+                    continue
+                if first_load:
+                    res.first_load_folded += 1
+                else:
+                    session.add(ev)
+                    session.flush()
+                    events.append(ev)
+            session.commit()
 
     with ctx.session_factory() as session:
         snap_row = session.get(Snapshot, snap_dto.id)

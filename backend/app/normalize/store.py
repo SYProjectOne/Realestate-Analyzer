@@ -91,7 +91,7 @@ from app.normalize.fields import (
     strip_tags,
     value_from_norm,
 )
-from app.normalize.living_area import assign_complex_area
+from app.normalize.living_area import assign_complex_area, correct_dong
 from app.normalize.notice_parser import NoticeParser
 from app.normalize.official_site_parser import ComplexKey, OfficialSiteParser
 from app.normalize.provenance import upsert_provenance
@@ -136,6 +136,9 @@ class StoreResult:
     skipped: list[FieldCandidate] = field(default_factory=list)
     foreign_keys: list[str] = field(default_factory=list)  # 다른 지역 단지라 건너뛴 주택관리번호(W4)
     first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 값 기록·덮어쓰기 수(D18-7·D21-7)
+    alt_addresses: dict[int, list[str]] = field(default_factory=dict)
+    """원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치(단지 id → 주소들) — 원 단지 주소가 아직 없으면(원 공고 전) 수집 단계가
+    실행 끝에 다시 쓴다(D22-3, ``living_area.correct_dong``)."""
 
 
 def parser_for(
@@ -1596,11 +1599,15 @@ def store_raw_document(
             cx = session.get(Complex, cid)
             if cx is not None:
                 assign_complex_area(session, cx)
-        # D21-6(R4 재시험 N7): 원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치 — 원 단지 주소에 동이 없으면 그 주소로 법정동을 찾는다
-        for cid, addrs in sorted(_merged_addresses(binder, skipped).items()):
+        # D21-6(R4 재시험 N7)·D22-3: 원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치 — 원 단지 주소에 동이 없으면 그 주소로 법정동을
+        # 찾는다(바뀌면 change_event). 원 단지 주소가 아직 없으면(원 공고 다시 받기 전) 수집 단계가 실행 끝에 다시 쓴다
+        alt = _merged_addresses(binder, skipped)
+        for cid, addrs in sorted(alt.items()):
             cx = session.get(Complex, cid)
-            if cx is not None and cx.legal_dong_code is None:
-                assign_complex_area(session, cx, alt_addresses=addrs)
+            if cx is not None:
+                ev = correct_dong(session, cx, addrs, snapshot_id=snapshot_id, detected_at=detected_at)
+                if ev is not None:
+                    events.append(ev)
         folded = 0
         if first_load:
             # D18-7 + D21-7(R4 재시험 m-b): 지역 첫 적재 중의 값 기록은 빈 값 → 값뿐 아니라 같은 적재 안의 값 → 다른 값
@@ -1633,4 +1640,5 @@ def store_raw_document(
         skipped=skipped,
         foreign_keys=sorted(binder.foreign),
         first_load_folded=folded,
+        alt_addresses=alt,
     )

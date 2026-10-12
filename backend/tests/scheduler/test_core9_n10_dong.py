@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.settings import Settings
-from app.models import ChangeEvent, Complex
+from app.models import ChangeEvent, Complex, LegalDong
 from app.scheduler.collect import collect
 from app.scheduler.context import SchedulerContext
 
@@ -35,11 +35,26 @@ ORIGINALS = {
 }  # 당하동(검단구) · 송도동(연수구) — R4 3차 (b) 뒤 값
 
 
+# 참조 표(행정표준코드) 중 이 녹화에 필요한 행 — 2026 분구: 서구 당하동(폐지) → 검단구 당하동(D18-7 M6)
+LEGAL = [
+    ("2826011700", "서구", "당하동", "28260", False),
+    ("2829010400", "검단구", "당하동", "28290", True),
+    ("2818510600", "연수구", "송도동", "28185", True),
+]
+
+
 def _setup(test_settings: Settings, factory: sessionmaker[Session], *, status: str) -> None:
     _r4c.install(test_settings.raw_dir)
     with factory() as s:
         seed_scenarios(s)
         seed_region(s, status=status)
+        for code, gu, dong, sgg, active in LEGAL:
+            s.add(
+                LegalDong(
+                    code=code, sido_name="인천광역시", sigungu_name=gu, eupmyeondong_name=dong, ri_name=None,
+                    full_name=f"인천광역시 {gu} {dong}", sigungu_code=sgg, active=active, source_date="2026-09-01",
+                )
+            )  # fmt: skip
         s.commit()
 
 
