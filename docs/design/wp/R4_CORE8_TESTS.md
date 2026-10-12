@@ -43,8 +43,9 @@ test_recorded_notice_really_has_nul`(녹화 원문에 NUL 이 그대로), `test_
 | `tests/judge/fake_jev_server.py` | 설정 `require_env`(그 환경변수가 없으면 기동 실패) | D21-8 '.env 만으로 판정기가 뜨는가' |
 | `contracts/fixtures/tools/record_synth_judgments.py`, `contracts/fixtures.sha256.json` | 생성기가 동일성 classify(`same_complex`) 합성 응답을 안다. 매니페스트 사유: R4-CORE8 D21-5 record_synth_judgments.py knows site identity classify (recordings unchanged) | 다음 녹화 대비 — `--check` 결과 녹화 254개 봉투는 그대로(회귀 흐름에 미분류 공식 홈페이지 행이 없어 동일성 호출 0, 포함 배치는 devseed 판정 입력과 달라 그대로 전부) |
 | 새 `tests/normalize/fixtures/r4b_core8/` + `tests/normalize/_r4b.py` | R4 재시험 원문 33건(그룹 elif 15 · n1 5 · n2 9 · n7 4), `docs.json` = raw_document 행(수집 순서) | N1·N2·N3·N4·N7·m-b 재생. HTML·JSON 은 `.gitattributes` 로 LF 정규화되어 sha256 이 녹화와 다를 수 있다(내용 동일 — 재생은 행의 sha256 으로 찾을 뿐 파일 해시를 검사하지 않는다). NUL 공고문 2건은 바이너리로 저장된다 |
+| `tests/api/snapshots/list_r3c.json`·`list_r3c/rich_size1000.json`(`UPDATE_GOLDEN=1`) | 목록 1개·단지 상세 18개 응답 바이트 — 행·머리마다 `"name_prov":null,"name_label":null,` 35바이트만 늘었다(시드에는 이름 출처 행이 없다) | 계약 .16 F1 |
 
-회귀 골든(`expected_scores*.json`)·API 스냅샷 골든·`judgments_synth` 녹화는 바꾸지 않았다.
+회귀 골든(`expected_scores*.json`)·`judgments_synth` 녹화는 바꾸지 않았다.
 
 ## 3. 다음 R4 재시험(3차)에서 확인할 항목
 
