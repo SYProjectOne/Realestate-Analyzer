@@ -169,7 +169,8 @@ RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로
 **R3 회귀(`python scripts/tasks.py regress`)의 결과와 발견 목록을 사람이 확인한 뒤에만 실행한다(DECISIONS D8).**
 아래 10-1~10-5 는 R3 때 준비한 절차다. **2026-10-12 처음 실제로 돌렸고**(결과 `docs/design/wp/R4_RESULT.md`), 실제로 다르게 해야
 했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다. R4-FIX 뒤 재시험(같은 날, D19 로컬 PG17)의 결과 표는
-**10-8**(상세 `docs/design/wp/R4_RESULT2.md`), 재시험 절차는 10-7.
+**10-8**(상세 `docs/design/wp/R4_RESULT2.md`), 재시험 절차는 10-7. R4-CORE8 뒤 3차 재시험 절차는 10-9, 결과 표는 **10-10**
+(상세 `docs/design/wp/R4_RESULT3.md`).
 
 ### 10-1 준비
 
@@ -456,6 +457,37 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
 9. **포함 classify**(m-c): 같은 날 daily(변화 있을 때)·rejudge 의 `classify:inclusion:*` 항목 수 = 입력이 바뀐 단지 수.
 10. **보고서 §1-1**(m-d): 생활권 세대수 4칸에 값(라벨 추정, 출처 rd_) — '확인 불가(출처 누락)' 없음.
 11. **공고 예정 후보**(D21-8, 계약 .16): 트랙 A 행의 공고일·가격 '확인 불가(공고 전)', 목록·상세의 `name_prov`·`name_label`('비공식').
+
+### 10-10 R4 3차 재시험 결과 (2026-10-12, main `cfbd483`, 계약 `.16`) — 상세 `docs/design/wp/R4_RESULT3.md`
+
+**결과: 게이트 미통과 · 운영 승인 비권고.** 2차 critical N1·major N2~N6 은 실데이터에서 해결. 그러나 2회차 (a) 같은 스냅샷 재판정 `tools/call` **1**
+(N8 — 미분류(review) 단지만 새 포함 배치로 다시 보냄, D18-5 엄격 위반), 같은 날 daily 가 판정기 추출 값 6건을 '확인 불가(출처 누락)'로 조용히 바꿈
+(**critical N9**), N7 은 두 번째 수집에서야 조용히 채워짐(N10).
+
+| 항목 | 값 |
+| --- | --- |
+| 환경 | Windows 11, Docker 없음, D19 로컬 PostgreSQL 17.9(5434) DB `subscription_analyzer_r4`(public 테이블만 지우고 새로 시작), `ENV=prod`, API 127.0.0.1:18633 |
+| 마이그레이션 | `ENV_FILE=… uv run alembic upgrade head` → `PostgresqlImpl`, `0015 (head)`, `dev.db` 없음 |
+| JEV | 실행 직전 최신 `0.14.1` 확인 → `npx -y @jkudish/jev-mcp@0.14.1` 고정, smoke 출력 `"cmd"` 고정 버전. 워커·API 는 같은 버전 계수 프록시 경유 |
+| 판정기 자격 증명(확인 항목 1) | **충족** — API·워커·alembic·보고서는 `TYPESAFE_API_KEY`·`OPENROUTER_API_KEY`·`JEV_*`·`CLOUDFLARE_*`·`AI_GATEWAY_API_KEY` 를 지운 환경 + `ENV_FILE` 만으로 실행, 프록시가 본 자식 env 에 키 존재(길이만 기록)·`DATA_GO_KR_KEY` 없음. 키 줄을 뺀 env 로는 smoke 실패(대조) |
+| adapter_version | `0.2.0+jev-mcp@0.14.1+jev-1.13.0` **1개**(571행; provider none 136행 포함) |
+| 1회차 시간 | bootstrap **53분 16.5초**(일일 단계 약 43분 · 주간 단계 약 6분 40초 · 판정 3분 22초 · 발행 10초), reference.refresh 12초 |
+| 1회차 실제 호출 | **571** = 잡 `tools_calls` = 프록시 `tools/call` = `judgment_log` 행(screen 193 · extract 178 · compare 130 · classify 41 · audit 11 · noul 9 · decide 5 · verify 3 · rerank 1), 모델 호출 435 · 로컬 단락 136, 수집 단계 판정 65 포함, blocked·error 0 |
+| 132 / 2차 대비 | +439 / −11(compare −9 잔여 공고 자기 행 소멸, noul −3·verify −1 판정 대상 4 → 3, classify +1 동일성 배치, audit +1) |
+| 단지·범위 | 단지 행 72(잔여 공고 번호 행 5), 판정 대상 3, **TOP 5 = 사우역 지엔하임 4.76 · 엘리프 검단 포레듀 3.46**(스냅샷 4~ 3.42 — N10), 풍무역 푸르지오 더 마크는 계약금% 없음(m-a) |
+| N1 금액 단위 | `max_price_won < 3천만원` 0행, 중흥S-클래스 84A 617,000,000, 단위 근거 발췌 16행, 10배 단위 상충 0, '단위 표기 없음' 13행 |
+| 수집 | 실거래 52,163건 법정동 100%, 분양권 4,109건, `store_errors` [](NUL 해결), official_site 404 1·connect 7·TLS 3, 타임아웃·파싱 실패 0 |
+| 출처 | 시장 생활권 시세 4블록(prov `rd_`), 발행 `missing_provenance` 스냅샷 1·2·4·5·6 **0**, 스냅샷 3 **40**(N9). Fact 빈 라벨 0 · 값 있는데 출처 없음 0(대시보드·목록·상세·시장, 스냅샷 1~4·6) |
+| 2회차 (a) 같은 스냅샷 rejudge | **프록시 `tools/call` 1 · `tools_calls` 1 · `judgment_log` 571 → 572**(classify 포함 배치 [52, 64]), cached 462, 106초 → **실패**. 추가 재판정: (a2) 2 · (a3) 1 · (a4) 0 |
+| 2회차 (b) 같은 날 collect.daily | 986초, change_event **0** · 판정 0(판정기 미기동) · 잔여 공고 재귀속 0 — 단 발행 스냅샷 3 에 조용한 변경(N9 · N10) |
+| 보고서 | `--snapshot 6 --format pdf` 154쪽, 차트 포함, §1-1 세대수 4칸 값(m-d 해결) |
+| 보안 | 키·토큰·DB 비밀번호·접속 주소 검사 파일 3,717개·DB 컬럼 243개 0건, `serviceKey=` 0, guard 차단 0 |
+
+3차에서 실제로 다르게 한 것: ① 프로세스마다 판정기 자격 증명·`JEV_*`·`DATABASE_URL` 을 지운 환경을 만들고(남은 이름이 있으면 실패하는 단언)
+`ENV_FILE` 만 줬다. ② 워커·API 는 r4 env 의 **사본**(`JEV_MCP_CMD` 만 `"<python> jev_count_proxy.py <기록 파일> <버전>"` 으로 바꿈 — 프록시 기록 경로를
+환경변수가 아니라 인자로 넘겨 `JEV_*` 를 프로세스에 두지 않음)을 `ENV_FILE` 로 받고 실행 뒤 사본을 지웠다. 프록시는 자식 기동 때 자격 증명 이름의 길이만
+기록했다. ③ smoke 는 `JEV_MCP_CMD` 를 프로세스 환경에서만 읽으므로(`test_live.py`) smoke 에만 고정 cmd 를 남겼다. ④ 2회차 (a) 가 0 이 아니어서
+메커니즘 확인용 재판정 (a2)~(a4) 를 더 돌렸다(스냅샷 4·5·6).
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
