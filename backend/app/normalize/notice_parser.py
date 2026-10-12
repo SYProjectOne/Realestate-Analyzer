@@ -10,7 +10,10 @@
 - 단지 유의사항: 최초 주택관리번호·최초 공고일(임의공급·무순위 공고), 전매제한 문장
 - 공급대상 표: 주택형(공고 표기·약식 표기)·전용면적·공급세대수
 - 공급금액 표: 층별 행(대지비+건축비[+부가세]=공급금액) → 타입별 최고가·최저층 공급금액,
-  계약금·중도금·잔금 비율, 1차 계약금 정액, 중도금 회차 날짜
+  계약금·중도금·잔금 비율, 1차 계약금 정액, 중도금 회차 날짜.
+  **금액 단위(R4 재시험 N1, D21-1)**: 표 머리·근처의 단위 표기('(단위: 세대, 천원)'·'만원'·'원')를 읽어 원으로 환산한다.
+  원이 아닌 단위로 환산한 가격 후보는 출처 발췌에 그 단위 줄을 덧붙인다(단위 근거). 단위가 없으면 원으로 보고 reason
+  ``UNIT_ASSUMED``('단위 표기 없음 — 원으로 봄') — 다른 1차 출처와 10배 이상 다르면 resolver 가 compare 로 보낸다
 - 발코니 확장 금액 표, 중도금 이자 조건 문장, 선택품목 문장, 입주시기, 공급위치·공급규모
 
 규칙(app.core.protocols.Parser)
@@ -51,13 +54,21 @@ from app.normalize._text import (
     CandidateBuilder,
     amounts_in,
     canonical_json,
+    line_span,
     parse_date,
     parse_won,
     read_raw_text,
     round_area,
     stamp_observed_on,
 )
-from app.normalize.fields import OCR_LABEL, OCR_REASON, discount_field, is_numeric_field, price_by_type_field
+from app.normalize.fields import (
+    OCR_LABEL,
+    OCR_REASON,
+    UNIT_ASSUMED,
+    discount_field,
+    is_numeric_field,
+    price_by_type_field,
+)
 
 __all__ = [
     "NoticeParser",
@@ -147,6 +158,18 @@ class PriceRow:
     span: tuple[int, int]
 
 
+@dataclass(frozen=True)
+class _Unit:
+    """공급금액 표의 금액 단위(D21-1). ``line`` = 단위 표기가 있는 원문 줄(없으면 None — 원으로 봄)."""
+
+    scale: int = 1
+    line: str | None = None
+
+    @property
+    def found(self) -> bool:
+        return self.line is not None
+
+
 @dataclass
 class _Ctx:
     text: str
@@ -158,6 +181,7 @@ class _Ctx:
     head_span: tuple[int, int] = (0, 1)
     types: list[TypeSpec] = field(default_factory=list)
     assigned: dict[str, list[PriceRow]] = field(default_factory=dict)
+    unit: _Unit = field(default_factory=_Unit)
 
 
 def _months(token: str) -> int | None:
@@ -630,6 +654,46 @@ def _price_row(line: str, span: tuple[int, int]) -> PriceRow | None:
     )
 
 
+_UNIT_NOTE_RE: Final = re.compile(r"단위\s*[:：]?\s*([^)\]\n]*)")
+_MONEY_UNIT_RE: Final = re.compile(r"(?<![가-힣])(백만원|천원|만원|원)(?![가-힣])")
+_UNIT_SCALE: Final = {"원": 1, "천원": 1_000, "만원": 10_000, "백만원": 1_000_000}
+
+
+def _price_unit(text: str, start: int, end: int) -> _Unit:
+    """공급금액 표 머리(표 제목 줄 ~ 첫 금액 행)의 단위 표기 → 금액 단위(D21-1). '(단위: ㎡, 세대)'처럼 금액 단위가 없는
+    표기는 건너뛴다. 없으면 원으로 본다(``_Unit()`` — 후보 reason ``UNIT_ASSUMED``). 파싱 규칙이다(판단 아님)."""
+    for m in _UNIT_NOTE_RE.finditer(text, start, end):
+        um = _MONEY_UNIT_RE.search(m.group(1))
+        if um is None:
+            continue
+        ls, le = line_span(text, m.start())
+        return _Unit(_UNIT_SCALE[um.group(1)], " ".join(text[ls:le].split()))
+    return _Unit()
+
+
+def _scaled(row: PriceRow, scale: int) -> PriceRow:
+    return PriceRow(
+        total=row.total * scale,
+        units=row.units,
+        floor_text=row.floor_text,
+        after_total=[v * scale for v in row.after_total],
+        span=row.span,
+    )
+
+
+def _unit_kw(ctx: _Ctx, span: tuple[int, int]) -> dict[str, str]:
+    """가격 후보의 단위 근거: 원이 아닌 단위로 환산했으면 발췌 = 금액 행 + 단위 표기 줄, 단위 표기가 없으면 reason
+    ``UNIT_ASSUMED``. 원 단위 표는 그대로(발췌 = 금액 행)."""
+    unit = ctx.unit
+    if not unit.found:
+        return {"reason": UNIT_ASSUMED}
+    if unit.scale == 1:
+        return {}
+    ls, le = line_span(ctx.text, span[0])
+    row_text = ctx.text[ls : max(le, min(span[1], len(ctx.text)))].strip()
+    return {"excerpt": f"{row_text}\n[단위 근거] {unit.line}"}
+
+
 def _assign(rows: list[PriceRow], types: list[TypeSpec]) -> dict[str, list[PriceRow]]:
     """행을 공급대상 표 순서대로 타입에 배정한다. 타입의 행 세대수 합 = 공급세대수일 때만 배정하고,
     처음 어긋난 타입부터는 배정하지 않는다(뒤 타입의 행 경계를 알 수 없으므로)."""
@@ -688,6 +752,9 @@ def _price_table(ctx: _Ctx) -> None:
     end = _price_section_end(text, p.end())
     rows = _price_rows(text, p.end(), end)
     head_end = rows[0].span[0] if rows else min(len(text), p.end() + 800)
+    ctx.unit = _price_unit(text, p.start(), max(head_end, p.end()))
+    if ctx.unit.scale != 1:
+        rows = [_scaled(r, ctx.unit.scale) for r in rows]
     _payment_terms(ctx, (p.start(), head_end), rows, pay_key)
     main = ctx.notice_kind == "본청약"
     groups = _assign(rows, ctx.types)
@@ -713,8 +780,11 @@ def _price_table(ctx: _Ctx) -> None:
             continue
         top = max(g, key=lambda r: r.total)
         low = min(g, key=lambda r: r.total)
-        b.add("complex_type", tkey, "max_price_won", top.total, f"{top.total:,}", top.span)
-        b.add("complex_type", tkey, "floor_sample_price_won", low.total, f"{low.total:,}", low.span)
+        b.add("complex_type", tkey, "max_price_won", top.total, f"{top.total:,}", top.span, **_unit_kw(ctx, top.span))
+        b.add(
+            "complex_type", tkey, "floor_sample_price_won", low.total, f"{low.total:,}", low.span,
+            **_unit_kw(ctx, low.span),
+        )  # fmt: skip
         b.add(
             "complex_type",
             tkey,
@@ -737,8 +807,11 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
     def f(item: str) -> str:
         return price_by_type_field(t.short, item)
 
-    b.add("payment_terms", pay_key, f("max_price_won"), top.total, f"{top.total:,}", top.span)
-    b.add("payment_terms", pay_key, f("floor_sample_price_won"), low.total, f"{low.total:,}", low.span)
+    b.add("payment_terms", pay_key, f("max_price_won"), top.total, f"{top.total:,}", top.span, **_unit_kw(ctx, top.span))
+    b.add(
+        "payment_terms", pay_key, f("floor_sample_price_won"), low.total, f"{low.total:,}", low.span,
+        **_unit_kw(ctx, low.span),
+    )  # fmt: skip
     b.add(
         "payment_terms",
         pay_key,
@@ -919,7 +992,9 @@ def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: 
             and r0.after_total[0] != r0.after_total[1]
         ):
             fixed = r0.after_total[0]
-            b.add("payment_terms", key, "down_payment_first_won", fixed, f"{fixed:,}", r0.span)
+            b.add(
+                "payment_terms", key, "down_payment_first_won", fixed, f"{fixed:,}", r0.span, **_unit_kw(ctx, r0.span)
+            )
         else:
             b.add(
                 "payment_terms",

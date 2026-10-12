@@ -84,6 +84,7 @@ from app.models import (
 )
 from app.models.enums import INCLUSION_CLASS
 from app.normalize.extract_request import FIELD_DESCRIPTIONS, ExtractRequest, build_extract_requests
+from app.normalize.fields import is_price_amount, magnitude_apart
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
@@ -747,8 +748,12 @@ def _p5(
             continue
         rivals = [
             r for r in rows
-            if r is not chosen and r.source_rank == chosen.source_rank and r.value_text != chosen.value_text
-            and r.excerpt and r.compare_judgment_seq is None
+            if r is not chosen and r.value_text != chosen.value_text and r.excerpt and r.compare_judgment_seq is None
+            and (
+                r.source_rank == chosen.source_rank
+                # D21-1(R4 재시험 N1): rank 가 달라도 1차 출처끼리 금액이 10배 이상 다르면(단위 상충) compare
+                or (is_price_amount(chosen.entity, chosen.field) and magnitude_apart(r.value_norm, chosen.value_norm))
+            )
         ]  # fmt: skip
         for r in rivals:
             cid = chosen.entity_id if chosen.entity == "complex" else None

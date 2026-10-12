@@ -22,6 +22,7 @@ __all__ = [
     "INT_FIELDS",
     "JSON_FIELDS",
     "LABEL_BY_SOURCE",
+    "MAGNITUDE_RATIO",
     "NUMERIC_FIELDS",
     "OCR_LABEL",
     "OCR_REASON",
@@ -29,11 +30,14 @@ __all__ = [
     "PRIMARY_SOURCES",
     "RULE_TEXT",
     "SourceKind",
+    "UNIT_ASSUMED",
     "discount_field",
     "field_group",
     "has_tag",
     "is_numeric_field",
     "is_ocr",
+    "is_price_amount",
+    "magnitude_apart",
     "norm_value",
     "price_by_type_field",
     "rule_text",
@@ -395,3 +399,42 @@ def is_numeric_field(entity: str, field: str, value: object = None) -> bool:
     if field in INT_FIELDS or field in DECIMAL_FIELDS or field in _EXTRA_INT_FIELDS:
         return True
     return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+# ---------------------------------------------------------------- 금액 단위 (R4 재시험 N1, DECISIONS D21-1)
+
+UNIT_ASSUMED: Final = "단위 표기 없음 — 원으로 봄"
+"""공고문 공급금액 표 머리·근처에 금액 단위('(단위: 천원)'·'만원'·'원')가 없어 원으로 읽은 가격 후보의 reason(D21-1).
+같은 단지·타입의 다른 1차 출처와 ``MAGNITUDE_RATIO`` 배 이상 다르면 순위로 채택하지 않고 compare(판정기)로 보낸다."""
+MAGNITUDE_RATIO: Final = 10
+"""D21-1: 같은 단지·타입 가격의 1차 출처끼리 이 배수 이상 다르면 단위 상충으로 본다(산술 — 판단이 아니다)."""
+_PRICE_AMOUNTS: Final = frozenset({"max_price_won", "floor_sample_price_won"})
+
+
+def is_price_amount(entity: str, field: str) -> bool:
+    """단위 상충 검사 대상 가격 필드: 타입 행 최고가·대표층가(``complex_type``)와 공고별 타입 가격 항목(``price_by_type``)."""
+    if entity == "complex_type":
+        return field in _PRICE_AMOUNTS
+    if entity == "payment_terms":
+        pbt = split_price_by_type(field)
+        return pbt is not None and pbt[1] in _PRICE_AMOUNTS
+    return False
+
+
+def _positive(value: object) -> Decimal | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        d = Decimal(str(value).replace(",", "").strip())
+    except InvalidOperation:
+        return None
+    return d if d > 0 else None
+
+
+def magnitude_apart(a: object, b: object) -> bool:
+    """두 금액(원)이 ``MAGNITUDE_RATIO`` 배 이상 다른가(둘 다 양수일 때만 — 값 없음·0 은 상충이 아니다)."""
+    x, y = _positive(a), _positive(b)
+    if x is None or y is None:
+        return False
+    big, small = (x, y) if x >= y else (y, x)
+    return big >= small * MAGNITUDE_RATIO
