@@ -53,7 +53,7 @@ def test_postgres_stores_nul_notice(postgres_url: str, test_settings: Settings, 
                 assert res.provenance_ids, f"rd{raw_id}: Postgres 에 정규화 값이 저장된다"
             s.commit()
             n = s.scalar(sa.select(sa.func.count()).select_from(FieldProvenance))
-            assert n and n > 10
+            assert n and n >= 2  # 인용한 원 단지(자리표시)에는 입주 예정월만 — 잔여 공고의 단지 단위 값은 쓰지 않는다(D11-4)
             ids = set(s.scalars(sa.select(Complex.applyhome_id)))
             assert {"2020000611", "2019000711"} <= ids and not {"2025910104", "2025930032"} & ids
     finally:
