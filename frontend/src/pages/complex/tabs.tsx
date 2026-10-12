@@ -109,7 +109,7 @@ function TypeDiscountCell({
   complexId: number;
 }) {
   if (!fact) return <span className="text-muted">{t('page.common.none')}</span>;
-  const testId = `type-discount-note-${typeCode}`;
+  const testId = `discount-note-type-${typeCode}`;
   const type = basisType ?? t('page.common.none');
   let note: ReactNode = null;
   if (isEstimatedDiscount(fact)) {

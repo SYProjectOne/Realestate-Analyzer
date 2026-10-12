@@ -69,7 +69,7 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     serve({ [other]: won('추정') }, null);
     renderRoute('/complexes/2#price');
     const cell = await screen.findByTestId(`type-discount-${other}`);
-    expect(within(cell).getByTestId(`type-discount-note-${other}`)).toHaveTextContent(
+    expect(within(cell).getByTestId(`discount-note-type-${other}`)).toHaveTextContent(
       t('page.G3.price.discountEstimatedNonBasis', { type: basisOf }),
     );
     expect(within(cell).queryByRole('link')).toBeNull();
@@ -84,7 +84,7 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     serve({ [basis]: won('추정'), [other]: won('추정', 5_000_000) }, won('추정'));
     renderRoute('/complexes/2#price');
     const basisCell = await screen.findByTestId(`type-discount-${basis}`);
-    const basisNote = within(basisCell).getByTestId(`type-discount-note-${basis}`);
+    const basisNote = within(basisCell).getByTestId(`discount-note-type-${basis}`);
     expect(basisNote).toHaveTextContent(
       t('page.G3.price.discountEstimatedBasis', { type: basisOf }),
     );
@@ -92,7 +92,7 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
       within(basisNote).getByRole('link', { name: t('page.G3.price.discountHumanCheck') }),
     ).toBeInTheDocument();
     const otherCell = screen.getByTestId(`type-discount-${other}`);
-    expect(within(otherCell).getByTestId(`type-discount-note-${other}`)).toHaveTextContent(
+    expect(within(otherCell).getByTestId(`discount-note-type-${other}`)).toHaveTextContent(
       t('page.G3.price.discountEstimatedNonBasis', { type: basisOf }),
     );
     expect(within(otherCell).queryByRole('link')).toBeNull();
@@ -112,7 +112,7 @@ describe('m3(D17-4) 추정 할인 안내 — 기준 타입 줄만 사람 확인 
     serve({ [other]: won('확인됨') }, null);
     renderRoute('/complexes/2#price');
     const cell = await screen.findByTestId(`type-discount-${other}`);
-    expect(within(cell).getByTestId(`type-discount-note-${other}`)).toHaveTextContent(
+    expect(within(cell).getByTestId(`discount-note-type-${other}`)).toHaveTextContent(
       t('page.G3.price.discountNonBasis', { type: basisOf }),
     );
     expect(within(cell).queryByRole('link')).toBeNull();

@@ -207,7 +207,7 @@ describe("F2(D16-1) 파서 할인은 '추정' — 안내 + G7 사람 확인 링�
     });
     renderRoute('/complexes/2#price');
     // R3i m3: 표 아래 공통 한 줄이 아니라 기준 타입 줄에(기준 타입 아닌 줄은 r3i.test.tsx)
-    const note = await screen.findByTestId(`type-discount-note-${basis}`);
+    const note = await screen.findByTestId(`discount-note-type-${basis}`);
     expect(note).toHaveTextContent(t('page.G3.price.discountEstimatedBasis', { type: basis }));
     expect(
       within(note).getByRole('link', { name: t('page.G3.price.discountHumanCheck') }),

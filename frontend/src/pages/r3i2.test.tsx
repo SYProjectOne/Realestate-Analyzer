@@ -220,10 +220,10 @@ describe('F2(D17-4) 사람 확인 할인 = 기준 타입 — 폼·응답·G3 안
     expect(await screen.findByTestId('price-discount')).toHaveTextContent(
       t('page.G3.price.discountEstimatedBasis', { type: '84A' }),
     );
-    expect(await screen.findByTestId('type-discount-note-84B')).toHaveTextContent(
+    expect(await screen.findByTestId('discount-note-type-84B')).toHaveTextContent(
       t('page.G3.price.discountNonBasis', { type: '84A' }),
     );
-    expect(screen.getByTestId('type-discount-note-84A')).toHaveTextContent(
+    expect(screen.getByTestId('discount-note-type-84A')).toHaveTextContent(
       t('page.G3.price.discountEstimatedBasis', { type: '84A' }),
     );
   });
