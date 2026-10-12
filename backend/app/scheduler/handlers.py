@@ -28,7 +28,7 @@ from app.models import ChangeEvent, Complex, JobRun, Region, ScoreRun, Snapshot
 from app.scheduler import snapshots
 from app.scheduler.collect import collect
 from app.scheduler.jobs import DAILY_SOURCES, WEEKLY_SOURCES, JobError, JobRequeue
-from app.scheduler.persist import carry_forward, carry_incomplete
+from app.scheduler.persist import carry_done, carry_forward, carry_incomplete
 from app.scheduler.rejudge import enqueue_rejudge, handle_rejudge
 from app.scheduler.reverify import handle_claim_reverify
 
@@ -417,23 +417,61 @@ def _finish_unchanged_revision(
         }
 
 
+PUBLISH_ERROR_RETRY_MAX: Final = 5
+"""R3i D17-3: ``snapshot.publish``(이월 carry·후속 포함)가 예외(SQLite 단계 사이 잠금 실패·임대 잃음·worker 강제 종료 뒤 재실행
+등)로 실패하면 실패로 끝내지 않고 지연 재큐잉으로 다시 돈다 — 이 횟수까지(대기 2·4·8·16·30초). 넘으면 failed 이고, 그 리비전으로
+미뤄진 쓰기(후속 잡 ``deferred_to``)를 새 발행 잡으로 다시 등록한다(``redefer_followups``)."""
+
+
 def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
     """발행(D14-5 — 저장본 materialize 는 이 잡에서만): 계산 → 나눠 쓰기 → 짧은 전환. ``carry_from_snapshot_id`` 면 그 발행
     리비전의 파생 행을 먼저 복사한다(호재 연결 PATCH — 판정기 호출 없음). stats 에 저장본 통계(출처 누락 건수 등, D14-8).
 
-    D15-6: 리비전마다 발행은 하나만(임대 보유자 = 이 잡) — 다른 발행이 하고 있으면 failed ``publish_in_progress``(아무것도
-    지우지 않는다). ``follow_up``(후속 발행 잡) = 발행 계산 중에 들어온 쓰기 — ``_follow_up`` 참고."""
+    D15-6: 리비전마다 발행은 하나만(임대 보유자 = 이 잡) — 다른 발행이 하고 있으면 지연 재큐잉(D16-3). ``follow_up``(후속 발행 잡)
+    = 발행 계산 중에 들어온 쓰기 — ``_follow_up`` 참고. **D17-3**: 예외로 실패하면 재시도(지연 재큐잉, ``PUBLISH_ERROR_RETRY_MAX``),
+    끝내 실패하면 그 리비전으로 미뤄진 쓰기를 새 발행 잡으로 다시 등록한다."""
     p = job.payload or {}
-    if p.get("follow_up"):
-        return _follow_up(ctx, job, int(p["snapshot_id"]))
     sid = int(p["snapshot_id"])
-    carry = p.get("carry_from_snapshot_id")
+    try:
+        if p.get("follow_up"):
+            return _follow_up(ctx, job, sid)
+        return _publish_job(ctx, job, sid, p.get("carry_from_snapshot_id"))
+    except (JobError, JobRequeue):
+        raise
+    except Exception as exc:
+        prev = dict(job.stats or {})
+        count = int(prev.get("error_retries") or 0)
+        why = f"publish_error: {type(exc).__name__}: {str(exc)[:200]}"
+        log.warning(
+            "worker.publish_error",
+            extra={"job_id": job.id, "snapshot_id": sid, "error": type(exc).__name__, "retries": count},
+        )
+        stats: dict[str, Any] = {
+            "snapshot_id": sid,
+            "publish_error": type(exc).__name__,
+            "error_retries": count + 1,
+        }
+        if count < PUBLISH_ERROR_RETRY_MAX:
+            raise JobRequeue(why, requeue_delay(count), stats) from exc
+        stats["error_retries"] = count
+        if not p.get("follow_up"):
+            with ctx.session_factory() as session:
+                again = redefer_followups(session, sid, now=ctx.now())
+                session.commit()
+            if again is not None:
+                stats["redeferred_job_id"] = again
+        raise JobError(why, stats) from exc
+
+
+def _publish_job(ctx: SchedulerContext, job: JobRun, sid: int, carry: Any) -> dict[str, Any]:
     with ctx.session_factory() as session:
         stats: dict[str, Any] = {"snapshot_id": sid}
         sqlite = session.get_bind().dialect.name == "sqlite"
+        from app.core.db import WriteYield
         from app.scheduler.rejudge import _sqlite_write_lock
 
         locks: list[float] = []
+        pause = WriteYield(session.get_bind())
         t_lock = [time.perf_counter()]
 
         def lock() -> None:
@@ -444,9 +482,11 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
                 _sqlite_write_lock(session)
 
         def checkpoint() -> None:
-            # R3h(D14-5 'API 쓰기 대기 1초' — 부하 측정에서 한 트랜잭션 이월 복사가 1.06s): 단계마다 commit 해 잠금을 나눈다
+            # R3h(D14-5 'API 쓰기 대기 1초' — 부하 측정에서 한 트랜잭션 이월 복사가 1.06s): 단계마다 commit 해 잠금을 나눈다.
+            # R3i D17-6: 잠금을 이어서 0.2초 넘게 들었으면 쉬어 기다리던 API 쓰기가 끼어들게 한다(``core.db.WriteYield``)
             session.commit()
             locks.append(time.perf_counter() - t_lock[0])
+            pause.after(locks[-1])
             lock()
 
         if carry is not None:
@@ -460,8 +500,11 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
                 stats["carry_forward"] = {"from_snapshot_id": int(carry), **carry_forward(
                     session, int(carry), sid, created_at=ctx.iso_now(), checkpoint=checkpoint
                 )}  # fmt: skip
-                snap = session.get(Snapshot, sid)
-                assert snap is not None
+            # D17-3: building → ready 는 이월이 끝났으면(이번 실행이 끝냈든, 앞선 실행이 마지막 시나리오까지 쓰고 ready 직전에
+            # 죽었든) 늘 끝까지 간다 — 예전엔 복사를 건너뛴 재실행이 building 에 멈춰 publish_blocked 였다
+            snap = session.get(Snapshot, sid)
+            assert snap is not None
+            if carry_done(session, int(carry), sid):
                 snap.status = "ready"
             session.commit()
             locks.append(time.perf_counter() - t_lock[0])
@@ -470,6 +513,44 @@ def handle_snapshot_publish(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
             stats["carry_steps"] = len(locks)
         _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}", job=job)
     return stats
+
+
+def redefer_followups(session: Any, sid: int, *, now: Any = None) -> int | None:
+    """D17-3: building 에 멈춘 리비전 ``sid`` 로 미뤄졌던 쓰기(후속 발행 잡 done ``deferred_to = sid``)를 새 후속 발행 잡 하나로
+    다시 등록한다(그 잡이 멈춘 리비전을 끝까지 가져가거나 실패로 드러낸다 — ``_follow_up``). 미뤄진 잡에는 ``redeferred_job_id``.
+    리비전이 이미 발행됐거나 미뤄진 쓰기가 없으면 None. commit 은 호출자."""
+    from app.scheduler.jobs import enqueue
+
+    snap = session.get(Snapshot, sid)
+    if snap is None or snap.status == "published":
+        return None
+    waiting = [
+        j
+        for j in session.scalars(
+            select(JobRun)
+            .where(JobRun.job_name == "snapshot.publish", JobRun.status == "done")
+            .order_by(JobRun.id)
+        )
+        if (j.stats or {}).get("deferred_to") == sid and not (j.stats or {}).get("redeferred_job_id")
+    ]
+    if not waiting:
+        return None
+    new = enqueue(
+        session,
+        "snapshot.publish",
+        {"snapshot_id": sid, "follow_up": True},
+        kind="manual",
+        now=now,
+        dedupe=False,
+    )
+    session.flush()
+    for j in waiting:
+        j.stats = {**(j.stats or {}), "redeferred_job_id": new.id}
+    log.warning(
+        "worker.followups_redeferred",
+        extra={"snapshot_id": sid, "jobs": [j.id for j in waiting], "job_id": new.id},
+    )
+    return int(new.id)
 
 
 PUBLISH_REQUEUE_MAX: Final = 40
@@ -548,12 +629,67 @@ def _follow_up(ctx: SchedulerContext, job: JobRun, target: int) -> dict[str, Any
             sid = newest.id
             session.commit()
         else:
+            resumed = _resume_stuck(ctx, session, newest, job, stats)
+            if resumed is None:
+                session.commit()
+                stats.update({"published": False, "deferred_to": newest.id, "publish_job_id": None})
+                return stats
+            if resumed < 0:  # 이월 대신 재판정을 등록했다 — 그 재판정의 발행이 이 쓰기를 읽는다
+                session.commit()
+                stats.update({"published": False, "deferred_to": newest.id, "publish_job_id": None})
+                return stats
+            sid = resumed
             session.commit()
-            stats.update({"published": False, "deferred_to": newest.id, "publish_job_id": None})
-            return stats
         stats["snapshot_id"] = sid
         _publish_or_raise(ctx, session, sid, stats, holder=f"job:{job.id}", job=job)
     return stats
+
+
+def _resume_stuck(
+    ctx: SchedulerContext, session: Any, newest: Snapshot, job: JobRun, stats: dict[str, Any]
+) -> int | None:
+    """D17-3: 가장 새 리비전이 building·degraded 인데 그 리비전을 끝낼 잡(같은 리비전 판정·발행 잡, 그 지역 수집·확장 잡)이 대기·
+    실행 중이 아니면 = 멈췄다(이월 발행이 끝내 실패 등). 이 후속 잡이 끝까지 가져간다:
+
+    - 이월 복사가 끝났는데 building(ready 직전 중단) → ready
+    - 바탕 발행 리비전 이월이 안 끝났으면 → 그 뒤 사실 변경·실패한 재판정이 있으면 재판정 등록(반환 -1, 미룸), 없으면 이월을 이어
+      채우고 ready
+    반환 = 발행할 리비전 id, 미룸이면 None(끝낼 잡이 살아 있음·degraded·바탕 없음), 재판정 등록이면 -1."""
+    if newest.degraded:
+        return None
+    for other in session.scalars(
+        select(JobRun).where(JobRun.status.in_(("queued", "running")), JobRun.id != job.id)
+    ):
+        p = other.payload or {}
+        if p.get("snapshot_id") == newest.id and not p.get("follow_up"):
+            return None  # 그 리비전을 끝낼 잡이 살아 있다(재시도 대기 포함)
+        if p.get("region_id") == newest.region_id and other.job_name != "snapshot.publish":
+            return None  # 그 지역 수집·확장·bootstrap 이 판정·발행할 수 있다
+    base = session.get(Snapshot, newest.revision_of) if newest.revision_of is not None else None
+    if base is None or base.status != "published":
+        return None
+    if not carry_done(session, base.id, newest.id):
+        has_runs = session.scalar(
+            select(func.count()).select_from(ScoreRun).where(ScoreRun.snapshot_id == newest.id)
+        )
+        if has_runs and not carry_incomplete(session, base.id, newest.id):
+            return None  # 이월이 아닌 판정 결과가 있다 — 판정 잡 몫
+        stale = changed_after_runs(session, base)
+        if stale:
+            rj = enqueue_rejudge(
+                session, newest.id, stale, f"멈춘 리비전 이어 가기(잡 {job.id}) — 사실 변경 {len(stale)}단지 재판정",
+                now=ctx.now(),
+            )  # fmt: skip
+            stats["rejudge_job_id"] = rj.id
+            return -1
+        stats["carry_forward"] = {"from_snapshot_id": base.id, "resumed": True, **carry_forward(
+            session, base.id, newest.id, created_at=ctx.iso_now()
+        )}  # fmt: skip
+        if not carry_done(session, base.id, newest.id):
+            return None
+    newest.status = "ready"
+    stats["resumed_snapshot_id"] = newest.id
+    return int(newest.id)
 
 
 def publish_or_retry(

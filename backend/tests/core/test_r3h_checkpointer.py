@@ -61,9 +61,18 @@ def test_api_commits_do_not_checkpoint_and_background_thread_does(tmp_path: Path
 
 
 def test_postgres_or_memory_is_noop() -> None:
+    """메모리 DB(·Postgres)는 아무것도 하지 않는다 — 체크포인트 스레드 없음, 요청 커밋 설정 그대로. R3i m19: assert 없던 시험."""
+    import threading
+
+    import app.core.db as dbm
+
     engine = make_engine("sqlite://")
     try:
+        before = {t.ident for t in threading.enumerate()}
         with sqlite_api_checkpointer(engine):
-            pass
+            started = [t.name for t in threading.enumerate() if t.ident not in before]
+            assert "sqlite-checkpointer" not in started, started
+            state = dbm._sqlite_states.get(id(engine))
+            assert state is None or not state.api_mode
     finally:
         engine.dispose()

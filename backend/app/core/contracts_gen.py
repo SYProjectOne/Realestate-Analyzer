@@ -386,6 +386,10 @@ class ChecklistItem(BaseModel):
     """
     닫은 주체(계약 2026-10-09.8, M-9): auto = 동기화가 닫음(근거 사실이 사라짐·강등·단지 제외 — 근거가 돌아오면 다시 열린다), human = 사람이 PATCH 로 처리(동기화가 고치지 않는다), null = 열림 또는 0008 이전 행
     """
+    job_id: int | None = None
+    """
+    계약 .14(D17-5): PATCH /ops/checklist/{id} 응답에만 — 상태·메모·기한이 바뀌면 발행 리비전 보고서 본문(§8-4 체크리스트·캘린더)이 바뀌므로 snapshot.publish 잡(202). 바뀐 것이 없거나 발행할 리비전이 없으면 null(200). 목록 GET 에는 없다
+    """
 
 
 class ChecklistPatch(BaseModel):
@@ -1213,6 +1217,8 @@ class Error(BaseModel):
     - checked_at_format (422): 계약 .12 — POST /ops/human-checks checked_at 이 시간대가 붙은 RFC3339 가 아니거나(T·Z 대소문자 무관) KST 2000-01-01 이전·overflow(field_errors loc body.checked_at)
     - checked_at_future (422): 계약 .12 — checked_at 이 서버 지금보다 10분 넘게 미래
     - checked_at_before_source (422): 계약 .12 — 그 의미 필드에 확인일(KST 날짜)보다 뒤에 관측된 공식 공고가 다른 값으로 이미 있다(D13-2·D14-6 — 같은 값이면 201)
+    - discount_format (422): 계약 .14(R3i m2) — POST /ops/human-checks field=discount 의 value_text 형식·범위가 틀렸다(ASCII 숫자, 쉼표는 세 자리마다, 끝에 '원' 하나 — 띄우지 않음, 0 ~ 1천억 정수. 다른 칸도 틀리면 validation_error)
+    - discount_not_below_price (422): 계약 .14(R3i m2) — 할인이 기준 타입 차감 바탕(대표층가·최고가 중 낮은 값) 이상(구매가에서 뺄 수 없다, field_errors loc body.value_text)
     - internal (500): 그 밖의 서버 오류
     """
 
@@ -1236,6 +1242,8 @@ class Error(BaseModel):
         "checked_at_format",
         "checked_at_future",
         "checked_at_before_source",
+        "discount_format",
+        "discount_not_below_price",
     ]
     detail: str
     field_errors: list[FieldError] | None = None
@@ -1796,6 +1804,10 @@ class HumanCheck(BaseModel):
     job_id: int | None = None
     """
     계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로
+    """
+    basis_type_code: str | None = None
+    """
+    계약 .14(D17-4): field=discount 면 그 사람 확인이 들어간 기준 타입 코드('84A' — payment_terms.discount_by_type.<기준 타입>, 화면 안내 '기준 타입 84A 할인으로 반영'). 할인이 아니면 null. 기준 타입이 나중에 바뀌면(84㎡에 더 가까운 타입) 이 할인은 그 타입 칸 표시만 남고 구매가에서 빠지지 않는다
     """
 
 
@@ -3681,6 +3693,10 @@ class Snapshot(BaseModel):
     남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시)
     """
     complex_count: Annotated[int | None, Field(ge=0)] = None
+    backfilled_at: str | None = None
+    """
+    계약 .14(D17-2): 업그레이드 backfill 이 이 발행 리비전 저장본에 **새로 계산해 채운** 값(발행 순간 값이 아니라 업그레이드 때 그때 사실로 계산 — 빠진 단지 상세·시나리오·출처 서랍 등)이 있으면 그 시각(가장 늦은 것, KST ISO). 화면은 '업그레이드 때 다시 계산한 값 포함' 안내를 둔다. 발행이 쓴 저장본만 있으면 키가 없다(발행 리비전 응답의 이 객체 바이트 그대로)
+    """
 
 
 class SnapshotPublishPayload(BaseModel):

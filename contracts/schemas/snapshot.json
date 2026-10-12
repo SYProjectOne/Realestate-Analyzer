@@ -18,7 +18,8 @@
     "created_at": { "type": "string", "format": "date-time" },
     "published_at": { "type": ["string", "null"], "format": "date-time" },
     "contradicted_claims": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "description": "남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시)", "type": ["integer", "null"], "minimum": 0 },
-    "complex_count": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": ["integer", "null"], "minimum": 0 }
+    "complex_count": { "x-nonfact": "집계 개수(행 수 메타 — 출처 데이터 아님)", "type": ["integer", "null"], "minimum": 0 },
+    "backfilled_at": { "x-nonfact": "저장본 메타(시각)", "description": "계약 .14(D17-2): 업그레이드 backfill 이 이 발행 리비전 저장본에 **새로 계산해 채운** 값(발행 순간 값이 아니라 업그레이드 때 그때 사실로 계산 — 빠진 단지 상세·시나리오·출처 서랍 등)이 있으면 그 시각(가장 늦은 것, KST ISO). 화면은 '업그레이드 때 다시 계산한 값 포함' 안내를 둔다. 발행이 쓴 저장본만 있으면 키가 없다(발행 리비전 응답의 이 객체 바이트 그대로)", "type": ["string", "null"] }
   },
   "examples": [
     {
