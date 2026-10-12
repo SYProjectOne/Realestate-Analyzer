@@ -6,6 +6,7 @@ import { t, tDynamic } from '@/i18n';
 import type { Provenance, ProvenanceConflict } from '@/lib/contract';
 import { queryErrorText } from '@/lib/errorText';
 import { formatDate } from '@/lib/format';
+import { splitUnitBasis } from '@/lib/unitBasis';
 import { Badge } from './Badge';
 import { EmptyState } from './EmptyState';
 import { ExternalLink } from './ExternalLink';
@@ -89,6 +90,7 @@ function ConflictItem({
   current: boolean;
   onOpen?: (prov: string) => void;
 }) {
+  const excerpt = splitUnitBasis(item.excerpt);
   return (
     <li className="flex flex-col gap-1 border-b border-border/60 pb-2" data-prov={item.id}>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -102,10 +104,15 @@ function ConflictItem({
           <MetaText kind="rank" k="provenance.sourceRank" params={{ rank: item.source_rank }} />
         </span>
       </div>
-      {item.excerpt ? (
+      {excerpt.body ? (
         <blockquote className="whitespace-pre-wrap border-l-2 border-border pl-2 text-xs">
-          <Highlighted text={item.excerpt} needle={item.value_text} />
+          <Highlighted text={excerpt.body} needle={item.value_text} />
         </blockquote>
+      ) : null}
+      {excerpt.unitBasis ? (
+        <span className="text-xs" data-testid="conflict-unit-basis">
+          <span className="text-muted">{t('provenance.unitBasis')}</span> {excerpt.unitBasis}
+        </span>
       ) : null}
       <div className="flex flex-wrap gap-2 text-xs">
         {item.url ? <ExternalLink href={item.url} /> : null}
@@ -127,6 +134,7 @@ function ProvenanceBody({
   onOpenConflict: (prov: string) => void;
 }) {
   const [showRaw, setShowRaw] = useState(false);
+  const excerpt = splitUnitBasis(data.excerpt);
   const canShowRaw =
     data.raw_document_id !== null &&
     data.excerpt_start !== null &&
@@ -231,9 +239,12 @@ function ProvenanceBody({
       ) : null}
       <dt className="text-muted">{t('provenance.excerpt')}</dt>
       <dd className="flex flex-col gap-1">
-        {data.excerpt ? (
-          <blockquote className="whitespace-pre-wrap border-l-2 border-border pl-2">
-            <Highlighted text={data.excerpt} needle={data.value_text} />
+        {excerpt.body ? (
+          <blockquote
+            className="whitespace-pre-wrap border-l-2 border-border pl-2"
+            data-testid="provenance-excerpt"
+          >
+            <Highlighted text={excerpt.body} needle={data.value_text} />
           </blockquote>
         ) : (
           <EmptyState inline />
@@ -258,6 +269,15 @@ function ProvenanceBody({
           </>
         ) : null}
       </dd>
+      {excerpt.unitBasis ? (
+        // 계약 .16 F6(D21-1): 공고문 금액 표 단위 환산 근거(표 머리 줄) — 발췌 끝 '[단위 근거]' 줄을 따로
+        <>
+          <dt className="text-muted">{t('provenance.unitBasis')}</dt>
+          <dd className="whitespace-pre-wrap" data-testid="provenance-unit-basis">
+            {excerpt.unitBasis}
+          </dd>
+        </>
+      ) : null}
       <dt className="text-muted">{t('provenance.conflicts')}</dt>
       <dd>
         {data.conflicts.length === 0 ? (

@@ -1,7 +1,7 @@
 /** G3 탭 패널: 가격표 · 납부 조건 · 잔여 이력 · 시세 비교 · 호재 */
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import type { ComplexDetail, Fact, LadderHorizon, PriceRange } from '@/api/types';
+import type { ComplexDetail, Fact, HumanCheckField, LadderHorizon, PriceRange } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
 import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
@@ -50,15 +50,71 @@ export function isEstimatedDiscount(fact: Fact | null | undefined): boolean {
   return !!fact && fact.v !== null && fact.label === '추정';
 }
 
-/** G7 사람 확인 폼 주소 — 단지·필드 `discount` 미리 채움, 전역 쿼리(region·snapshot·scenario) 유지 */
+/** G7 사람 확인 폼 주소 — 단지·필드 미리 채움, 전역 쿼리(region·snapshot·scenario) 유지 */
+export function humanCheckTo(
+  globalSearch: string,
+  complexId: number,
+  field: HumanCheckField,
+): { pathname: string; search: string; hash: string } {
+  const params = new URLSearchParams(globalSearch);
+  params.set(HC_PARAM.complex, String(complexId));
+  params.set(HC_PARAM.field, field);
+  return { pathname: '/ops', search: `?${params.toString()}`, hash: HUMAN_CHECK_ANCHOR };
+}
+
+/** G7 사람 확인 폼 주소 — 필드 `discount`(계약 .13 F2) */
 export function discountHumanCheckTo(
   globalSearch: string,
   complexId: number,
 ): { pathname: string; search: string; hash: string } {
-  const params = new URLSearchParams(globalSearch);
-  params.set(HC_PARAM.complex, String(complexId));
-  params.set(HC_PARAM.field, 'discount');
-  return { pathname: '/ops', search: `?${params.toString()}`, hash: HUMAN_CHECK_ANCHOR };
+  return humanCheckTo(globalSearch, complexId, 'discount');
+}
+
+/**
+ * 채택 보류 표식(서버 `normalize.fields.CONFLICT_HOLD`) — 출처 행 reason 머리. 계약 .16 S2(D21-1): 가격은 다른 출처 종류의
+ * 1차 출처와 10배 이상 다르면(표 단위 차이) rank 와 무관하게 보류 → compare. 계약 데이터 모양이라 여기 둔다(화면 문구 아님).
+ */
+const CONFLICT_HOLD = '출처 상충 — compare 대기';
+
+function isHeld(fact: Fact | null | undefined): fact is Fact {
+  return !!fact && fact.v === null && (fact.reason ?? '').startsWith(CONFLICT_HOLD);
+}
+
+/**
+ * 현재 구매가가 '확인 불가'인데 그 까닭이 기준 타입 최고가의 **채택 보류**인가(계약 .16 F6·S2). 서버 상세 머리 가격 사유는
+ * 이때도 '분양가 미공개'라(보류 출처가 아니라 가격 계산 결과의 사유) 화면이 기준 타입의 보류 Fact 를 찾아 함께 보인다:
+ * 현재 공고 `price_by_type[기준 타입].max_price_won`(서버 현재 구매가가 먼저 쓰는 값) → 기준 타입 `max_price_won`.
+ * 보류가 아니면 null. 판단이 아니라 서버가 붙인 reason 표식 읽기다.
+ */
+export function heldBasisPrice(detail: ComplexDetail): { type: string; fact: Fact } | null {
+  const basis = detail.price.basis_type_code;
+  if (!basis || detail.price.price_low.v !== null) return null;
+  const current = detail.payment.find((p) => p.is_current) ?? null;
+  const notice = current?.price_by_type?.[basis]?.max_price_won;
+  if (isHeld(notice)) return { type: basis, fact: notice };
+  const row = detail.types.find((r) => r.type_code === basis)?.max_price_won;
+  if (isHeld(row)) return { type: basis, fact: row };
+  return null;
+}
+
+/** 채택 보류 안내(G3 머리·가격표): 문구 + 보류된 출처 Fact(→ 서랍, 상충 출처) + G7 '최고 공급금액' 사람 확인 링크 */
+export function HeldPriceNote({ detail, testId }: { detail: ComplexDetail; testId: string }) {
+  const globalSearch = useGlobalSearch();
+  const held = heldBasisPrice(detail);
+  if (!held) return null;
+  return (
+    <span className="flex flex-wrap items-center gap-1 text-xs" data-testid={testId}>
+      <span>{t('page.G3.price.held', { type: held.type })}</span>
+      <span className="text-muted">{t('page.G3.price.heldValue')}</span>
+      <FactCell fact={held.fact} unit="won" />
+      <Link
+        to={humanCheckTo(globalSearch, detail.header.id, 'max_price_won')}
+        className="underline"
+      >
+        {t('page.G3.price.heldHumanCheck')}
+      </Link>
+    </span>
+  );
 }
 
 /**
@@ -158,6 +214,11 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
           <span aria-hidden>~</span>
           <FactCell fact={price.price_high} unit="won" />
         </dd>
+        {heldBasisPrice(detail) ? (
+          <dd className="col-span-2">
+            <HeldPriceNote detail={detail} testId="held-price-note-tab" />
+          </dd>
+        ) : null}
         {price.discount ? (
           <>
             <dt className="text-muted">{t('page.G3.price.discount')}</dt>

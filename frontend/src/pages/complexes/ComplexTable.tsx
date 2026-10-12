@@ -15,7 +15,13 @@ import type { ComplexRow } from '@/api/types';
 import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { changeFieldText, enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
+import {
+  changeFieldText,
+  enumText,
+  JudgeScopeBadge,
+  NameLabelBadge,
+  RejudgeNeededBadge,
+} from '../_shared';
 import { nextSort, type SortKey } from './params';
 
 /** 열 선택 저장(브라우저별 편의 설정) */
@@ -136,12 +142,16 @@ export function ComplexTable({
         enableHiding: false,
         header: () => colTitle('name'),
         cell: ({ row }) => (
-          <Link
-            to={`/complexes/${row.original.complex_id}${linkSearch}`}
-            className="font-medium hover:underline"
-          >
-            {row.original.name}
-          </Link>
+          <span className="inline-flex flex-wrap items-center gap-1">
+            <Link
+              to={`/complexes/${row.original.complex_id}${linkSearch}`}
+              className="font-medium hover:underline"
+            >
+              {row.original.name}
+            </Link>
+            {/* 계약 .16 F1(D21-8): 이름 출처 라벨(공고 예정 후보 '비공식') → 출처 서랍. 키가 없으면 그리지 않는다 */}
+            <NameLabelBadge source={row.original} testId={`name-prov-${row.original.complex_id}`} />
+          </span>
         ),
       },
       {
