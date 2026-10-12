@@ -31,7 +31,9 @@ FIX = Path(__file__).resolve().parent / "fixtures" / "r4b_core8"
 
 @cache
 def manifest() -> dict[str, list[dict[str, Any]]]:
-    data: dict[str, list[dict[str, Any]]] = json.loads((FIX / "docs.json").read_text(encoding="utf-8"))["docs"]
+    data: dict[str, list[dict[str, Any]]] = json.loads((FIX / "docs.json").read_text(encoding="utf-8"))[
+        "docs"
+    ]
     return data
 
 
@@ -55,7 +57,11 @@ def text_of(group: str, raw_id: int) -> str:
 
 
 def insert(
-    session: Session, items: list[dict[str, Any]], *, region_id: int | None = 1, overrides: dict[str, Any] | None = None
+    session: Session,
+    items: list[dict[str, Any]],
+    *,
+    region_id: int | None = 1,
+    overrides: dict[str, Any] | None = None,
 ) -> list[RawDTO]:
     """녹화 행 → raw_document(같은 sha256 이면 기존 행) → DTO."""
     out: list[RawDTO] = []

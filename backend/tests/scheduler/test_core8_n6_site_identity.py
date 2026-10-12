@@ -83,7 +83,9 @@ def jev() -> SynthJev:  # conftest 의 jev 를 덮는다(make_ctx 가 이 판정
 
 
 @pytest.fixture
-def other_site_ctx(make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session]) -> Iterator[SchedulerContext]:
+def other_site_ctx(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session]
+) -> Iterator[SchedulerContext]:
     http = HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0)
 
     def official(_ctx: SchedulerContext) -> OfficialSiteCollector:
@@ -94,7 +96,9 @@ def other_site_ctx(make_ctx: Callable[..., SchedulerContext], factory: sessionma
     with respx.mock(assert_all_called=False) as router:
         router.get(ROBOTS).respond(200, content=(WP1B_FIXTURES / "hndapt_robots.txt").read_bytes())
         router.get(SITE).respond(
-            200, content=OTHER_SITE_TEXT.encode("utf-8"), headers={"content-type": "text/plain; charset=utf-8"}
+            200,
+            content=OTHER_SITE_TEXT.encode("utf-8"),
+            headers={"content-type": "text/plain; charset=utf-8"},
         )
         yield make_ctx(collectors={"official_site": official})
     http.close()
@@ -104,7 +108,9 @@ def _row(factory: sessionmaker[Session], sid: int) -> IntakeStatus:
     with factory() as s:
         return s.scalars(
             select(IntakeStatus).where(
-                IntakeStatus.snapshot_id == sid, IntakeStatus.complex_id == CX, IntakeStatus.path == "headless_shot"
+                IntakeStatus.snapshot_id == sid,
+                IntakeStatus.complex_id == CX,
+                IntakeStatus.path == "headless_shot",
             )
         ).one()
 
@@ -125,12 +131,16 @@ def test_other_complex_site_is_not_intake_evidence(
     assert (row.status, row.reason) == ("확인 불가", SITE_OTHER), (row.status, row.reason)
     with factory() as s:
         name = s.get(Complex, CX).name  # type: ignore[union-attr]
-        logs = list(s.scalars(select(JudgmentLog).where(JudgmentLog.purpose.startswith("classify:site_identity"))))
+        logs = list(
+            s.scalars(select(JudgmentLog).where(JudgmentLog.purpose.startswith("classify:site_identity")))
+        )
         assert logs and logs[0].status == "ok"
         text = logs[0].input_json["items"][0]["text"]
         assert name in text and "동성로" in text, "판정기 입력 = 단지 이름·위치 + 페이지 문구"
         assert row.note and f"jl_{logs[0].seq}" in row.note
-        intake_calls = list(s.scalars(select(JudgmentLog).where(JudgmentLog.purpose.startswith("classify:intake"))))
+        intake_calls = list(
+            s.scalars(select(JudgmentLog).where(JudgmentLog.purpose.startswith("classify:intake")))
+        )
         assert intake_calls == [], "다른 단지 페이지 문구는 접수 classify 입력이 아니다"
 
 

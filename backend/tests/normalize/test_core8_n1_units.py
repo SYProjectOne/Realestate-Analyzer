@@ -63,7 +63,9 @@ def test_thousand_won_table_is_converted_to_won(raw_dir: Path) -> None:
     pbt = {
         c.field: c.value
         for c in cands
-        if c.entity == "payment_terms" and c.field.startswith("price_by_type.") and c.field.endswith(".max_price_won")
+        if c.entity == "payment_terms"
+        and c.field.startswith("price_by_type.")
+        and c.field.endswith(".max_price_won")
     }
     assert pbt["price_by_type.84A.max_price_won"] == 617_000_000
 
@@ -86,7 +88,9 @@ def test_won_tables_are_unchanged() -> None:
     cands = parse_notice_text(text, raw)
     tops = _by(cands, "complex_type", "max_price_won")
     assert tops and all(v.value is not None and int(v.value) > 100_000_000 for v in tops.values())
-    assert all(not (v.reason or "") for v in tops.values()), "원 단위 표의 가격 사유는 비어 있다(발췌·사유 그대로)"
+    assert all(not (v.reason or "") for v in tops.values()), (
+        "원 단위 표의 가격 사유는 비어 있다(발췌·사유 그대로)"
+    )
 
 
 def _unitless_text(raw_dir: Path) -> tuple[str, str]:
@@ -107,7 +111,9 @@ def test_unitless_table_reads_won_with_reason(raw_dir: Path) -> None:
     _r4b.install(raw_dir)
     sha, rel = _unitless_text(raw_dir)
     r = {**_r4b.row(N1, NOTICE_ID), "sha256": sha, "text_path": rel, "table_path": None}
-    cands = NoticeParser(raw_dir=raw_dir).parse(RawDTO.model_validate({**r, "region_id": 1, "complex_id": None}))
+    cands = NoticeParser(raw_dir=raw_dir).parse(
+        RawDTO.model_validate({**r, "region_id": 1, "complex_id": None})
+    )
     c = _by(cands, "complex_type", "max_price_won")["84A"]
     assert c.value == 617_000
     assert "단위 표기 없음" in (c.reason or ""), c.reason
@@ -142,7 +148,9 @@ def test_resolver_holds_tenfold_apart_primary_sources_for_compare() -> None:
 
 def _store(session: Session, raw_dir: Path, *, unitless: bool) -> int:
     _r4b.install(raw_dir)
-    for dto in _r4b.insert(session, _r4b.rows(N1, API_IDS), region_id=session.scalars(select(Region.id)).one()):
+    for dto in _r4b.insert(
+        session, _r4b.rows(N1, API_IDS), region_id=session.scalars(select(Region.id)).one()
+    ):
         store_raw_document(session, dto, raw_dir=raw_dir)
     notice = dict(_r4b.row(N1, NOTICE_ID))
     if unitless:
@@ -166,7 +174,9 @@ def _pbt(session: Session, cid: int) -> dict[str, Any]:
     return dict(pt.price_by_type or {})
 
 
-def test_store_thousand_won_notice_agrees_with_api(db_session: Session, raw_dir: Path, region: Region) -> None:
+def test_store_thousand_won_notice_agrees_with_api(
+    db_session: Session, raw_dir: Path, region: Region
+) -> None:
     cid = _store(db_session, raw_dir, unitless=False)
     t = _type(db_session, cid, "84A")
     assert t.max_price_won == 617_000_000
@@ -188,7 +198,9 @@ def test_store_unitless_notice_is_held_then_compare_same_fact_adopts_api(
     cid = _store(db_session, raw_dir, unitless=True)
     t = _type(db_session, cid, "84A")
     assert t.max_price_won is None, "10배 이상 다른 1차 출처 — 순위(공고문 rank 1)로 채택하지 않는다"
-    assert _pbt(db_session, cid)["84A"].get("max_price_won") is None, "그 공고의 타입 가격도 보류(현재 구매가에 쓰이지 않음)"
+    assert _pbt(db_session, cid)["84A"].get("max_price_won") is None, (
+        "그 공고의 타입 가격도 보류(현재 구매가에 쓰이지 않음)"
+    )
     group = f"complex_type:{t.id}:max_price_won"
     res = apply_compare(db_session, group, relation="same_fact", judgment_seq=None)
     assert res.changed
@@ -206,7 +218,9 @@ def test_store_unitless_notice_stays_held_unless_same_fact(
     t = _type(db_session, cid, "84A")
     apply_compare(db_session, f"complex_type:{t.id}:max_price_won", relation=relation, judgment_seq=None)
     db_session.flush()
-    assert _type(db_session, cid, "84A").max_price_won is None, "단위 상충은 same_fact 가 아니면 보류(공고문 617,000 채택 금지)"
+    assert _type(db_session, cid, "84A").max_price_won is None, (
+        "단위 상충은 same_fact 가 아니면 보류(공고문 617,000 채택 금지)"
+    )
 
 
 def test_p5_compares_tenfold_apart_rivals_across_ranks(
@@ -216,18 +230,21 @@ def test_p5_compares_tenfold_apart_rivals_across_ranks(
     from app.scheduler import persist, pipeline
 
     cid = _store(db_session, raw_dir, unitless=True)
-    snap = Snapshot(region_id=region.id, asof_date="2026-10-12", status="building", created_at="2026-10-12T06:00:00+09:00")
+    snap = Snapshot(
+        region_id=region.id, asof_date="2026-10-12", status="building", created_at="2026-10-12T06:00:00+09:00"
+    )
     db_session.add(snap)
     db_session.flush()
     seen: list[str] = []
 
     def fake_compare(_caller: Any, a: str, b: str, **kw: Any) -> Any:
         seen.append(str(kw.get("purpose")))
-        return SimpleNamespace(resolved=True, relation="same_fact", envelope=SimpleNamespace(judgment_seq=None))
+        return SimpleNamespace(
+            resolved=True, relation="same_fact", envelope=SimpleNamespace(judgment_seq=None)
+        )
 
     monkeypatch.setattr(pipeline.jp, "p5_compare", fake_compare)
     pipeline._p5(db_session, None, snap, {cid}, persist.SeqResolver(db_session))  # type: ignore[arg-type]
     t = _type(db_session, cid, "84A")
     assert f"compare:complex_type:{t.id}:max_price_won" in seen, "rank 가 달라도 10배 이상 다르면 compare"
     assert _type(db_session, cid, "84A").max_price_won == 617_000_000
-

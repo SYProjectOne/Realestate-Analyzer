@@ -167,8 +167,9 @@ def _same_source(fp: FieldProvenance, row: ProvenanceRow) -> bool:
 
 
 def _no_nul(text: str | None) -> str | None:
-    """Postgres text 열은 NUL 을 받지 않는다(R4 재시험 N2, D21-2) — 원문 읽기(``_text.read_raw_text``)가 이미 공백으로 바꾸지만
-    다른 경로(판정기 추출 값·사람 입력)로 들어와도 원문 1건 정규화가 통째로 롤백되지 않게 마지막에 한 번 더 바꾼다."""
+    """Postgres text 열은 NUL 을 받지 않는다(R4 재시험 N2, D21-2) — 원문 읽기(``_text.read_raw_text``)가
+    이미 공백으로 바꾸지만 다른 경로(판정기 추출 값·사람 입력)로 들어와도 원문 1건 정규화가 통째로 롤백되지
+    않게 마지막에 한 번 더 바꾼다."""
     return text.replace("\x00", " ") if text and "\x00" in text else text
 
 

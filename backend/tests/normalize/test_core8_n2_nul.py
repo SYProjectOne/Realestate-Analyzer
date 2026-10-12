@@ -48,7 +48,7 @@ def test_read_raw_text_replaces_control_chars_keeping_offsets(db_session: Sessio
     assert "\x00" not in text, "파서·저장으로 가는 텍스트에 NUL 없음"
     original = (raw_dir / str(_r4b.row(N2, 613)["text_path"])).read_bytes().decode("utf-8")
     assert len(text) == len(original), "공백 1자로 바꿔 발췌 오프셋이 그대로"
-    assert "\n" in text and "\f" in text or "\n" in text  # 줄바꿈·쪽 나눔은 남긴다
+    assert text.count("\n") == original.count("\n")  # 줄바꿈은 남긴다(줄 단위 파싱)
 
 
 def test_cited_original_number_is_read_through_nul(db_session: Session, raw_dir: Path) -> None:
@@ -70,7 +70,9 @@ def test_store_nul_notice_has_no_nul_in_db_and_attaches_to_original(
             )
         ).all()
         assert bad
-        for fp in db_session.scalars(select(FieldProvenance).where(FieldProvenance.raw_document_id == dto.id)):  # type: ignore[attr-defined]
+        for fp in db_session.scalars(
+            select(FieldProvenance).where(FieldProvenance.raw_document_id == dto.id)
+        ):  # type: ignore[attr-defined]
             for col in (fp.excerpt, fp.value_text, fp.reason, fp.value_norm):
                 assert "\x00" not in (col or ""), (rid, fp.field)
         ids = set(db_session.scalars(select(Complex.applyhome_id)))

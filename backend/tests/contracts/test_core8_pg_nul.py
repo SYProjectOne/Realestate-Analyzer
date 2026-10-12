@@ -26,7 +26,9 @@ FIX = Path(__file__).resolve().parents[1] / "normalize" / "fixtures" / "r4b_core
 
 
 @pytest.mark.postgres
-def test_postgres_stores_nul_notice(postgres_url: str, test_settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_postgres_stores_nul_notice(
+    postgres_url: str, test_settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import json
 
     monkeypatch.delenv("ENV_FILE", raising=False)
@@ -46,14 +48,18 @@ def test_postgres_stores_nul_notice(postgres_url: str, test_settings: Settings, 
             s.flush()
             for raw_id in (613, 616):
                 r = next(d for d in docs if d["id"] == raw_id)
-                row = RawDocument(**{k: v for k, v in r.items() if k != "id"}, region_id=region.id, complex_id=None)
+                row = RawDocument(
+                    **{k: v for k, v in r.items() if k != "id"}, region_id=region.id, complex_id=None
+                )
                 s.add(row)
                 s.flush()
                 res = store_raw_document(s, raw_dto(row), raw_dir=test_settings.raw_dir)
                 assert res.provenance_ids, f"rd{raw_id}: Postgres 에 정규화 값이 저장된다"
             s.commit()
             n = s.scalar(sa.select(sa.func.count()).select_from(FieldProvenance))
-            assert n and n >= 2  # 인용한 원 단지(자리표시)에는 입주 예정월만 — 잔여 공고의 단지 단위 값은 쓰지 않는다(D11-4)
+            assert (
+                n and n >= 2
+            )  # 인용한 원 단지(자리표시)에는 입주 예정월만 — 잔여 공고의 단지 단위 값은 쓰지 않는다(D11-4)
             ids = set(s.scalars(sa.select(Complex.applyhome_id)))
             assert {"2020000611", "2019000711"} <= ids and not {"2025910104", "2025930032"} & ids
     finally:

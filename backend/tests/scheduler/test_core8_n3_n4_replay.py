@@ -48,7 +48,9 @@ def _docs(kind: str) -> list[dict[str, Any]]:
     return out
 
 
-def _setup(test_settings: Settings, factory: sessionmaker[Session], *, bootstrapping: bool = False) -> tuple[Replay, Replay]:
+def _setup(
+    test_settings: Settings, factory: sessionmaker[Session], *, bootstrapping: bool = False
+) -> tuple[Replay, Replay]:
     _r4b.install(test_settings.raw_dir)
     with factory() as s:
         seed_scenarios(s)
@@ -99,7 +101,9 @@ def test_attribution_does_not_depend_on_storage_order(
 ) -> None:
     """1회차에 공고문만(잔여 공고 청약홈 원문 없이), 2회차에 청약홈 잔여 공고 원문 — 한 번에 받은 것과 같은 귀속(R4 N4)."""
     ah, pdf = _setup(test_settings, factory)
-    originals_only = Replay(factory, [r for r in _docs("applyhome") if "Remndr" not in r["url"] and "OPT" not in r["url"]])
+    originals_only = Replay(
+        factory, [r for r in _docs("applyhome") if "Remndr" not in r["url"] and "OPT" not in r["url"]]
+    )
     ctx1 = make_ctx(collectors={"applyhome": lambda c: originals_only, "notice_pdf": lambda c: pdf})
     collect(ctx1, 1, ["applyhome_list", "applyhome_detail"], asof_date=ASOF)
     ctx2 = make_ctx(collectors={"applyhome": lambda c: ah, "notice_pdf": lambda c: pdf})
@@ -110,7 +114,9 @@ def test_attribution_does_not_depend_on_storage_order(
     assert anchors.get("2025910193") == "2025000302" and anchors.get("2025940252") == "2025000302", anchors
     with factory() as s:
         cx = s.scalars(select(Complex).where(Complex.applyhome_id == "2025000302")).one()
-        assert cx.units_total not in (43, 185), "잔여 공고의 단지 단위 값(남은 세대수)이 원 단지를 덮지 않는다(D11-4)"
+        assert cx.units_total not in (43, 185), (
+            "잔여 공고의 단지 단위 값(남은 세대수)이 원 단지를 덮지 않는다(D11-4)"
+        )
 
 
 def _job(factory: sessionmaker[Session], name: str) -> JobRun:
@@ -148,7 +154,9 @@ def test_same_day_daily_after_bootstrap_is_noop_on_r4b_replay(
     stats = daily.stats or {}
     assert stats.get("change_events") == 0, stats.get("change_events")
     assert stats.get("rejudge_complex_ids") == []
-    assert len(jev.calls) == sent, f"같은 날 daily 의 tools/call {len(jev.calls) - sent}건: {sorted(set(jev.calls[sent:]))}"
+    assert len(jev.calls) == sent, (
+        f"같은 날 daily 의 tools/call {len(jev.calls) - sent}건: {sorted(set(jev.calls[sent:]))}"
+    )
     with factory() as s:
         assert s.scalar(select(func.count()).select_from(JudgmentLog)) == rows_before
         assert s.scalar(select(func.count()).select_from(JobRun).where(JobRun.job_name == "rejudge")) == 0

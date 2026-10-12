@@ -55,7 +55,9 @@ def test_living_area_prices_use_raw_document_provenance(
     factory: sessionmaker[Session], seeded: int, test_settings: Settings
 ) -> None:
     before, missing_before = _body(factory, test_settings, seeded)
-    assert before["living_area_prices"] == [], "원문도 출처 행도 없는 거래(옛 시드)는 출처 누락 — 빈 출처를 지어내지 않는다"
+    assert before["living_area_prices"] == [], (
+        "원문도 출처 행도 없는 거래(옛 시드)는 출처 누락 — 빈 출처를 지어내지 않는다"
+    )
     with factory() as s:
         rid = _attach_raw(s)
         n_trades = len(list(s.scalars(select(RtmsTrade))))

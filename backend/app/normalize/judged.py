@@ -23,8 +23,8 @@
     1차 공고 자료가 없으면(둘 다 2차) 채택하지 않고 병기 표시만 한다(meta §2-1 P5).
   - same_fact·different_facts → 상충이 아니다 → §3 우선순위 대표(현재 chosen 행) 채택·나머지 병기.
   - review·degraded(relation 없음) → 채택 보류 유지(점수 미사용).
-  - **단위 상충**(D21-1 — 가격 출처끼리 10배 이상 다름): same_fact 면 단위가 분명한 출처(공고문 '단위 표기 없음' 아님)를
-    채택하고, contradicts·different_facts·review 면 보류 유지(공고문을 채택하지 않는다).
+  - **단위 상충**(D21-1 — 가격 출처끼리 10배 이상 다름): same_fact 면 단위가 분명한 출처(공고문 '단위 표기
+    없음' 아님)를 채택하고, contradicts·different_facts·review 면 보류 유지(공고문을 채택하지 않는다).
   채택은 출처 행 reason 표식(``COMPARE_ADOPTED``·``COMPARE_SIDE``)으로 남기고 그 필드를 다시 resolve 한다
   — 이후 같은 필드에 새 원문이 와도 표식이 남아 compare 결과가 유지된다. conflict_group 은 그대로(상충 이력).
 """
@@ -280,9 +280,7 @@ def _reresolve(
     cands = [_candidate(fp, kinds.get(fp.raw_document_id or -1)) for fp in rows]
     if not cands:
         return None, []
-    from app.normalize.store import semantic_humans
-
-    from app.normalize.store import price_refs
+    from app.normalize.store import price_refs, semantic_humans
 
     cands += semantic_humans(session, {(entity, entity_id, field_name)}, cands)  # D13-2 — 저장 경로와 같다
     resolved = resolve(cands, price_refs(session, {(entity, entity_id, field_name)}))
@@ -522,9 +520,10 @@ def apply_compare(
     jl = _jl(judgment_seq)
     target: FieldProvenance | None
     if _unit_conflict(valued):
-        # D21-1(R4 재시험 N1): 1차 출처끼리 금액이 10배 이상 다르다(단위 상충 의심). same_fact(같은 사실의 다른 표기)면 단위가
-        # 분명한 출처(reason 에 '단위 표기 없음'이 없는 행)를 채택하고, 그 밖(contradicts·different_facts)이면 어느 금액도
-        # 채택하지 않는다(보류 유지 — 원 단위로 잘못 읽은 공고문 값이 '확인됨'으로 이기지 않게, 사람 확인 대상)
+        # D21-1(R4 재시험 N1): 1차 출처끼리 금액이 10배 이상 다르다(단위 상충 의심). same_fact(같은 사실의
+        # 다른 표기)면 단위가 분명한 출처(reason 에 '단위 표기 없음'이 없는 행)를 채택하고, 그 밖(contradicts·
+        # different_facts)이면 어느 금액도 채택하지 않는다(보류 유지 — 원 단위로 잘못 읽은 공고문 값이
+        # '확인됨'으로 이기지 않게, 사람 확인 대상)
         explicit = [r for r in valued if UNIT_ASSUMED not in (r.reason or "")]
         if relation != "same_fact" or not explicit or _unit_conflict(explicit):
             res.note = f"relation={relation} — 단위 상충(10배 이상), 채택 보류 유지(사람 확인)"
