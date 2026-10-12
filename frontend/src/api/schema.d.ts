@@ -83,7 +83,9 @@ export interface paths {
          * @description selections(바뀐 뒤 전체)로 법정동·시군구·시도 코드와 생활권을 다시 계산하고 change_event(critical) + region.expand 잡을 등록한다.
          *     잡은 추가된 선택을 수집하고, 기준일 최신 리비전이 발행됐으면 새 리비전(revision_reason '지역 확장')에서 후보 전체를 판정·rerank 한 뒤
          *     publish 한다. 보고서는 그 리비전과 바탕 리비전 비교로 §12 '지역 추가' 장을 만든다(계약 2026-10-09.8). 바뀐 것이 없으면 409.
-         *     계약 .9: 이름만 바꾸면(선택 그대로) change_event·job_id 가 null(region.expand 없음). 이름은 guard(전화·이메일·비밀값 422).
+         *     계약 .9: 이름만 바꾸면(선택 그대로) change_event 가 null(region.expand 없음). 이름은 guard(전화·이메일·비밀값 422).
+         *     계약 .14(D17-5): 이름만 바꿔도 발행 리비전 보고서 본문(표지·제목)에 들어가므로 snapshot.publish 잡(파생 행 이월 → 발행, 판정기 호출
+         *     없음)을 등록하고 **202** + job_id. 발행된 리비전이 없으면 200 + job_id null.
          *     선택에서 빠진 법정동의 단지는 분류와 무관하게 '범위 경계'(판정 범위 제외 — R3 4차 M-4).
          */
         patch: operations["updateRegion"];
@@ -453,7 +455,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 체크리스트 상태·메모 변경 (G7) */
+        /**
+         * 체크리스트 상태·메모 변경 (G7)
+         * @description 계약 .14(D17-5) — 상태·메모·기한이 실제로 바뀌면 발행 리비전 보고서 본문(§8-4 체크리스트·캘린더)이 바뀌므로 그 단지 지역(단지 없는 '지역 공통' 항목은 모든 지역)에 snapshot.publish 잡을 등록하고 **202** + 항목 + job_id. 바뀐 것이 없거나 발행할 리비전이 없으면 200 + job_id null.
+         */
         patch: operations["updateChecklistItem"];
         trace?: never;
     };
@@ -468,7 +473,7 @@ export interface paths {
         put?: never;
         /**
          * 사람 확인 입력 → 사실 0순위 후보 또는 intake_status 행 + change_event (G7, T3, D11-3)
-         * @description 쓰는 스냅샷 = 그 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이 발행 전이면 거기, 발행됐으면 새 리비전(D11-1·R3 4차 M-2). field='intake_status'이면 그 리비전에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만든다. field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화·compare 채택에도 유지, 사람 확인 이후 관측된 공식 1차 출처의 다른 값만 이긴다 — D12-1) 같은 의미 필드의 강등(검증 모순)을 복원하며 change_event 를 만든다. 두 경우 모두 rejudge 잡을 **자동 등록**하고 rejudge_job_id 로 돌려준다(계약 .9, D12-5). suggested_job 은 그 잡과 같은 payload(호환 — POST /jobs 로 보내면 대기 중인 같은 rejudge 잡을 돌려준다, 중복 등록 없음). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422. 계약 .12 — checked_at 422 는 code 로 구분한다 — checked_at_format(형식·2000년 이전·overflow), checked_at_future(지금 + 10분 넘는 미래), checked_at_before_source(이미 수집된 다른 값 공고보다 이른 확인일). 그 밖의 검증 실패는 validation_error.
+         * @description 쓰는 스냅샷 = 그 지역의 가장 새 (기준일, 리비전) — 더 새 기준일이 발행 전이면 거기, 발행됐으면 새 리비전(D11-1·R3 4차 M-2). field='intake_status'이면 그 리비전에 intake_status(path=human_check) 행과 change_event(critical, triggers_rejudge)를 만든다. field 가 사실 필드(HumanCheckField)면 그 값이 resolver 0순위 후보로 사실을 바꾸고(재정규화·compare 채택에도 유지, 사람 확인 이후 관측된 공식 1차 출처의 다른 값만 이긴다 — D12-1) 같은 의미 필드의 강등(검증 모순)을 복원하며 change_event 를 만든다. 두 경우 모두 rejudge 잡을 **자동 등록**하고 rejudge_job_id 로 돌려준다(계약 .9, D12-5). suggested_job 은 그 잡과 같은 payload(호환 — POST /jobs 로 보내면 대기 중인 같은 rejudge 잡을 돌려준다, 중복 등록 없음). 값 형·범위·note 길이·guard(전화·주민번호·이메일·비밀값) 위반은 422. 계약 .12 — checked_at 422 는 code 로 구분한다 — checked_at_format(형식·2000년 이전·overflow), checked_at_future(지금 + 10분 넘는 미래), checked_at_before_source(이미 수집된 다른 값 공고보다 이른 확인일). 그 밖의 검증 실패는 validation_error. 계약 .14(R3i m2) — field=discount 의 value_text **만** 틀리면 code 로 구분한다 — discount_format(ASCII 숫자·쉼표 세 자리마다·끝 '원' 하나(띄우지 않음)·0~1천억 정수 — 전각·아랍 숫자·공백 낀 숫자·'-0'·소수 거절), discount_not_below_price(기준 타입 차감 바탕 = min(대표층가, 최고가) 이상). 둘 다 field_errors[0].loc = [body, value_text]. 다른 칸도 틀리면 validation_error + 모든 칸(checked_at 먼저). 다른 숫자 필드도 같은 엄격한 숫자 형식(단위 앞 공백 한 칸까지). 계약 .14(D17-4) — 사람 확인 할인·계약금은 의미 단위로 유지된다 — 그 값을 싣지 않은 공고 행(나중 무순위·정정 공고 포함)에도 사람 확인 값이 들어간다(값 없음 ≠ 다른 값). 응답 basis_type_code = 할인이 들어간 기준 타입.
          */
         post: operations["createHumanCheck"];
         delete?: never;
@@ -607,7 +612,7 @@ export interface paths {
          * 호재 위치 확인 → catalyst_link (D11-5)
          * @description 사람이 위치를 확인하고 영향 범위(단지·생활권)를 지정하면 catalyst_link 를 만든다(location_confirmed=true). 단지 좌표가 없으므로
          *     distance_m=null, weight=1, 라벨 추정(reason '같은 생활권'·'사람 지정'). location_confirmed=false 면 연결을 모두 지운다.
-         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 계약 .13(D16-4): 발행 리비전 응답에 보이는 값(위치 확인·좌표·예정월·연결) 중 **하나라도 바뀌면** rejudge 없이 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행)을 등록하고 **202** + job·job_id(가장 새 리비전이 발행 전이면 후속 발행 잡 — 계약 .12 F4). **바뀐 것이 없으면 200** + job·job_id null(새 잡·리비전·출처 행 없음). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다. 좌표 NaN·범위 밖, '호재 아님' 연결은 422.
+         *     expected_ym 은 사람이 확인한 예정월(출처 = 사람 확인, null = 지움). 계약 .13(D16-4): 발행 리비전 응답에 보이는 값(위치 확인·좌표·예정월·연결) 중 **하나라도 바뀌면** rejudge 없이 새 리비전 + snapshot.publish 잡(파생 행 복사 → 발행)을 등록하고 **202** + job·job_id(가장 새 리비전이 발행 전이면 후속 발행 잡 — 계약 .12 F4). **바뀐 것이 없으면 200** + job·job_id null(새 잡·리비전·출처 행 없음). 잡이 끝날 때까지 이전 발행 리비전이 기본 화면이다. 좌표 NaN·범위 밖, '호재 아님' 연결은 422. 계약 .14: 좌표는 저장 자리(소수 6자리, 반올림)로 맞춰 비교·저장한다 — 7자리 이상 같은 본문 재전송은 바뀐 것 없음 200(R3i m8). 값이 바뀌었어도 그 지역에 스냅샷이 없어 발행할 리비전이 없으면 200 + job·job_id null(R3i m14 — 예전엔 202 + null).
          */
         patch: operations["updateCatalyst"];
         trace?: never;
@@ -967,6 +972,8 @@ export interface components {
              * @enum {string|null}
              */
             closed_by?: "auto" | "human" | null;
+            /** @description 계약 .14(D17-5): PATCH /ops/checklist/{id} 응답에만 — 상태·메모·기한이 바뀌면 발행 리비전 보고서 본문(§8-4 체크리스트·캘린더)이 바뀌므로 snapshot.publish 잡(202). 바뀐 것이 없거나 발행할 리비전이 없으면 null(200). 목록 GET 에는 없다 */
+            job_id?: number | null;
         };
         /**
          * ChecklistPatch
@@ -2366,6 +2373,8 @@ export interface components {
          *     - checked_at_format (422): 계약 .12 — POST /ops/human-checks checked_at 이 시간대가 붙은 RFC3339 가 아니거나(T·Z 대소문자 무관) KST 2000-01-01 이전·overflow(field_errors loc body.checked_at)
          *     - checked_at_future (422): 계약 .12 — checked_at 이 서버 지금보다 10분 넘게 미래
          *     - checked_at_before_source (422): 계약 .12 — 그 의미 필드에 확인일(KST 날짜)보다 뒤에 관측된 공식 공고가 다른 값으로 이미 있다(D13-2·D14-6 — 같은 값이면 201)
+         *     - discount_format (422): 계약 .14(R3i m2) — POST /ops/human-checks field=discount 의 value_text 형식·범위가 틀렸다(ASCII 숫자, 쉼표는 세 자리마다, 끝에 '원' 하나 — 띄우지 않음, 0 ~ 1천억 정수. 다른 칸도 틀리면 validation_error)
+         *     - discount_not_below_price (422): 계약 .14(R3i m2) — 할인이 기준 타입 차감 바탕(대표층가·최고가 중 낮은 값) 이상(구매가에서 뺄 수 없다, field_errors loc body.value_text)
          *     - internal (500): 그 밖의 서버 오류
          * @example {
          *       "code": "not_found",
@@ -2391,7 +2400,7 @@ export interface components {
          */
         Error: {
             /** @enum {string} */
-            code: "unauthorized" | "forbidden" | "not_found" | "validation_error" | "conflict" | "publish_blocked" | "intake_unknown" | "judge_unavailable" | "contract_violation" | "internal" | "scenario_not_in_revision" | "stored_view_mismatch" | "materialize_pending" | "checked_at_format" | "checked_at_future" | "checked_at_before_source";
+            code: "unauthorized" | "forbidden" | "not_found" | "validation_error" | "conflict" | "publish_blocked" | "intake_unknown" | "judge_unavailable" | "contract_violation" | "internal" | "scenario_not_in_revision" | "stored_view_mismatch" | "materialize_pending" | "checked_at_format" | "checked_at_future" | "checked_at_before_source" | "discount_format" | "discount_not_below_price";
             detail: string;
             field_errors?: {
                 loc: (string | number)[];
@@ -3021,6 +3030,8 @@ export interface components {
             rejudge_job_id?: number | null;
             /** @description 계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로 */
             job_id?: number | null;
+            /** @description 계약 .14(D17-4): field=discount 면 그 사람 확인이 들어간 기준 타입 코드('84A' — payment_terms.discount_by_type.<기준 타입>, 화면 안내 '기준 타입 84A 할인으로 반영'). 할인이 아니면 null. 기준 타입이 나중에 바뀌면(84㎡에 더 가까운 타입) 이 할인은 그 타입 칸 표시만 남고 구매가에서 빠지지 않는다 */
+            basis_type_code?: string | null;
         };
         /**
          * HumanCheckCreate
@@ -6331,6 +6342,8 @@ export interface components {
             /** @description 남은 contradicted 주장 수 = 분할 재검증 자식이 없는 contradicted(judge.claims.remaining_contradicted — publish·보고서 생성을 막는 수, 계약 2026-10-09.4에서 분할된 주장은 빼고 세도록 명시) */
             contradicted_claims?: number | null;
             complex_count?: number | null;
+            /** @description 계약 .14(D17-2): 업그레이드 backfill 이 이 발행 리비전 저장본에 **새로 계산해 채운** 값(발행 순간 값이 아니라 업그레이드 때 그때 사실로 계산 — 빠진 단지 상세·시나리오·출처 서랍 등)이 있으면 그 시각(가장 늦은 것, KST ISO). 화면은 '업그레이드 때 다시 계산한 값 포함' 안내를 둔다. 발행이 쓴 저장본만 있으면 키가 없다(발행 리비전 응답의 이 객체 바이트 그대로) */
+            backfilled_at?: string | null;
         };
         /**
          * SnapshotPublishPayload
@@ -6778,7 +6791,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 이름만 바뀜(change_event·job_id null — 잡 없음) */
+            /** @description 이름만 바뀌었는데 발행할 리비전이 없음(change_event·job_id null — 잡 없음). 계약 .14 — 발행 리비전이 있으면 202(D17-5) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6787,7 +6800,7 @@ export interface operations {
                     "application/json": components["schemas"]["RegionPatched"];
                 };
             };
-            /** @description 계약 .11(D14-5) — 선택이 바뀜 → region.expand 잡(job_id). 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 */
+            /** @description 계약 .11(D14-5) — 선택이 바뀜 → region.expand 잡(job_id). 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본. 계약 .14(D17-5) — 이름만 바뀜 → snapshot.publish 잡(job_id, change_event null) */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -7454,8 +7467,17 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 갱신됨 */
+            /** @description 갱신됨(바뀐 것 없음 또는 발행할 리비전 없음 — job_id null) */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistItem"];
+                };
+            };
+            /** @description 계약 .14(D17-5) — 갱신됨 + 발행 잡(job_id) */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7719,7 +7741,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 바뀐 것 없음(계약 .13 D16-4) — 지금 호재 + 연결, job·job_id null */
+            /** @description 바뀐 것 없음(계약 .13 D16-4) 또는 발행할 리비전 없음(계약 .14 m14) — 지금 호재 + 연결, job·job_id null */
             200: {
                 headers: {
                     [name: string]: unknown;

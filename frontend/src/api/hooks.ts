@@ -22,7 +22,9 @@ import { apiFetch, ApiError, type QueryParams } from './client';
 import { fetchFile, type FetchedFile, type FileRequest } from './download';
 import {
   awaitingPublish,
+  awaitsRedeferral,
   backoffMs,
+  DEFERRED_POLL_MS,
   failedRound,
   nextPublishJobId,
   POLL_ERROR_MAX_STREAK,
@@ -712,7 +714,7 @@ export const JOB_POLL_MS = 2000;
 export function jobRefetchInterval(
   state: {
     status: string;
-    data?: Pick<JobRun, 'status'> | undefined;
+    data?: (Pick<JobRun, 'status'> & Partial<Pick<JobRun, 'stats' | 'finished_at'>>) | undefined;
     error?: unknown;
   },
   pollMs: number = JOB_POLL_MS,
@@ -722,8 +724,13 @@ export function jobRefetchInterval(
     if (!isTransientError(state.error) || streak > POLL_ERROR_MAX_STREAK) return false;
     return backoffMs(pollMs, streak);
   }
-  const status = state.data?.status;
-  return status === 'done' || status === 'failed' ? false : pollMs;
+  const data = state.data;
+  const status = data?.status;
+  if (status === 'done' || status === 'failed') {
+    // 계약 .14 F9: 멈춘 리비전으로 미뤄진 쓰기 — 서버가 나중에 redeferred_job_id 를 달 수 있어 느리게 다시 읽는다(30분 상한)
+    return data && awaitsRedeferral(data) ? Math.max(pollMs, DEFERRED_POLL_MS) : false;
+  }
+  return pollMs;
 }
 
 /**

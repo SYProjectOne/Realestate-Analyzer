@@ -66,19 +66,72 @@ export function discountHumanCheckTo(
  */
 export function EstimatedDiscountNote({
   complexId,
+  basisType,
   testId = 'discount-estimated',
 }: {
   complexId: number;
+  /** 계약 .14 F2(D17-4): 사람 확인 할인이 들어갈 기준 타입(price.basis_type_code) — 모르면 null */
+  basisType: string | null;
   testId?: string;
 }) {
   const globalSearch = useGlobalSearch();
   return (
     <span className="text-xs text-muted" data-testid={testId}>
-      {t('page.G3.price.discountEstimated')}{' '}
+      {basisType
+        ? t('page.G3.price.discountEstimatedBasis', { type: basisType })
+        : t('page.G3.price.discountEstimated')}{' '}
       <Link to={discountHumanCheckTo(globalSearch, complexId)} className="underline">
         {t('page.G3.price.discountHumanCheck')}
       </Link>
     </span>
+  );
+}
+
+/**
+ * 가격 표 타입 줄의 할인 안내(9차 리뷰 minor 3·D17-4, 계약 .14 F2). 사람 확인 `discount` 는 **기준 타입**에만 들어가고
+ * 구매가에서 빠지는 것도 기준 타입 할인뿐이다:
+ *  - 기준 타입 줄 '추정' → "사람 확인 시 구매가에 반영(기준 타입 X)" + G7 링크
+ *  - 다른 타입 줄 '추정' → "기준 타입(X)이 아니라 반영하지 않음"(링크 없음)
+ *  - 다른 타입 줄 그 밖(확인됨 — 기준 타입이 바뀐 옛 사람 확인·공식 구조화 출처) → "기준 타입(X)이 아니라 빼지 않음(표시만)"
+ *  - 기준 타입 줄 확인됨 → 안내 없음(차감 문구는 가격 범위 할인 줄이 서버 discount_applied 로)
+ */
+function TypeDiscountCell({
+  fact,
+  typeCode,
+  isBasis,
+  basisType,
+  complexId,
+}: {
+  fact: Fact | undefined;
+  typeCode: string;
+  isBasis: boolean;
+  basisType: string | null;
+  complexId: number;
+}) {
+  if (!fact) return <span className="text-muted">{t('page.common.none')}</span>;
+  const testId = `discount-note-type-${typeCode}`;
+  const type = basisType ?? t('page.common.none');
+  let note: ReactNode = null;
+  if (isEstimatedDiscount(fact)) {
+    note = isBasis ? (
+      <EstimatedDiscountNote complexId={complexId} basisType={basisType} testId={testId} />
+    ) : (
+      <span className="block text-xs text-muted" data-testid={testId}>
+        {t('page.G3.price.discountEstimatedNonBasis', { type })}
+      </span>
+    );
+  } else if (!isBasis && fact.v !== null) {
+    note = (
+      <span className="block text-xs text-muted" data-testid={testId}>
+        {t('page.G3.price.discountNonBasis', { type })}
+      </span>
+    );
+  }
+  return (
+    <>
+      <FactCell fact={fact} unit="won" />
+      {note}
+    </>
   );
 }
 
@@ -94,9 +147,8 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
   const hasTypeDiscount = Object.keys(discounts).length > 0;
   const note = discountNote(price);
   const complexId = detail.header.id;
-  // 기준 타입 할인이 '추정'이면 그 줄에, 아니고 타입별 할인 중 '추정'이 있으면 표 아래에 한 번(D16-1)
+  // 기준 타입 할인(price.discount)이 '추정'이면 그 줄에 안내 + 사람 확인 링크(D16-1)
   const estimatedPrice = isEstimatedDiscount(price.discount);
-  const estimatedType = !estimatedPrice && Object.values(discounts).some(isEstimatedDiscount);
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
@@ -112,7 +164,9 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
             <dd className="flex flex-wrap items-center gap-1" data-testid="price-discount">
               <FactCell fact={price.discount} unit="won" />
               {note ? <span className="text-xs text-muted">{note}</span> : null}
-              {estimatedPrice ? <EstimatedDiscountNote complexId={complexId} /> : null}
+              {estimatedPrice ? (
+                <EstimatedDiscountNote complexId={complexId} basisType={price.basis_type_code} />
+              ) : null}
             </dd>
           </>
         ) : null}
@@ -188,11 +242,13 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
                   </td>
                   {hasTypeDiscount ? (
                     <td className={tdClass} data-testid={`type-discount-${row.type_code}`}>
-                      {discounts[row.type_code] ? (
-                        <FactCell fact={discounts[row.type_code]} unit="won" />
-                      ) : (
-                        <span className="text-muted">{t('page.common.none')}</span>
-                      )}
+                      <TypeDiscountCell
+                        fact={discounts[row.type_code]}
+                        typeCode={row.type_code}
+                        isBasis={row.is_basis}
+                        basisType={price.basis_type_code}
+                        complexId={complexId}
+                      />
                     </td>
                   ) : null}
                 </tr>
@@ -201,7 +257,6 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
           </table>
         </div>
       )}
-      {estimatedType ? <EstimatedDiscountNote complexId={complexId} /> : null}
     </div>
   );
 }

@@ -37,6 +37,11 @@ export function selectionDiff(
   };
 }
 
+/** 선택이 그대로인 저장(이름만 — 서버가 센 추가·제거가 없고 change_event 없음) */
+function nameOnly(result: RegionPatched): boolean {
+  return result.added.length === 0 && result.removed.length === 0 && result.change_event === null;
+}
+
 /**
  * G0-2 지역 범위 확장 (D11-7·D11-10, 계약 .8 PATCH /regions/{id} {selections, name?}) = RA "지역 추가".
  * 지금 선택(시도·시군구·읍면동)에 후보를 더하거나 빼고(이름도 바꿀 수 있다) 저장하면, 서버가 change_event(critical)와
@@ -79,12 +84,12 @@ export function RegionExpandPanel({ region }: { region: Region }) {
         setSaved(result);
         setSelections(result.region.selections);
         setName(result.region.name);
-        // 계약 .9: 이름만 바꾸면 change_event·job_id 둘 다 null(재판정 없음)
+        // 계약 .9: 이름만 바꾸면 change_event null(재판정 없음). 계약 .14 F6: 발행 리비전이 있으면 이름만이어도 202 +
+        // snapshot.publish 잡(보고서 표지) — 이름만인지는 선택이 바뀌었는가(added·removed)로 가른다
         toast({
-          message:
-            result.job_id === null
-              ? t('page.G0_2.expand.savedNameOnly')
-              : t('page.G0_2.expand.saved'),
+          message: nameOnly(result)
+            ? t('page.G0_2.expand.savedNameOnly')
+            : t('page.G0_2.expand.saved'),
         });
       },
     });
@@ -238,7 +243,13 @@ export function RegionExpandPanel({ region }: { region: Region }) {
           ) : null}
           {saved.job_id !== null ? (
             <>
-              <p className="text-xs text-muted">{t('page.G0_2.expand.jobHint')}</p>
+              {nameOnly(saved) ? (
+                <p className="text-xs text-muted" data-testid="expand-name-publish">
+                  {t('page.G0_2.expand.nameOnlyPublish')}
+                </p>
+              ) : (
+                <p className="text-xs text-muted">{t('page.G0_2.expand.jobHint')}</p>
+              )}
               <PublishJobProgress
                 jobId={saved.job_id}
                 onDone={() => {

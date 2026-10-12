@@ -7,7 +7,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import ko from '../../src/i18n/ko.json' with { type: 'json' };
-import { runWorkerOnce, setDiscount, skipQueuedJobs } from './env';
+import { runWorkerOnce, setDiscount, skipQueuedJobs, WRITE_TOKEN } from './env';
 
 const P = ko.page;
 /** devseed 픽스처 단지 1 = 할인 주입 대상(writes8 과 같은 단지) */
@@ -42,17 +42,40 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
 
   test("D16-1 '추정' 할인 → 안내·사람 확인 링크 → 할인 사람 확인 → worker → '확인됨' 차감", async ({
     page,
+    request,
   }) => {
     const failed = watchApi(page);
     setDiscount(DISCOUNT_COMPLEX, '추정');
+    // 계약 .14 F2: 안내에 기준 타입(상세 price.basis_type_code)
+    const detail = await request.get(`/api/complexes/${DISCOUNT_COMPLEX}`, {
+      headers: { Authorization: `Bearer ${WRITE_TOKEN}` },
+    });
+    const body = (await detail.json()) as {
+      price: { basis_type_code: string };
+      types: { type_code: string }[];
+    };
+    const basis = body.price.basis_type_code;
+    // 주택형 수는 API 에서(화면 개수를 세는 사이 다시 그려지면 0 이 읽힌다 — 첫 실행 경합)
+    const typeCount = body.types.length;
+    const estimatedBasis = fill(P.G3.price.discountEstimatedBasis, { type: basis });
+    const estimatedNonBasis = fill(P.G3.price.discountEstimatedNonBasis, { type: basis });
     await ready(page, `/complexes/${DISCOUNT_COMPLEX}?region=1#price`, P.G3.title);
     const header = page.getByTestId('header-discount');
-    await expect(header.getByTestId('header-discount-estimated')).toContainText(
-      P.G3.price.discountEstimated,
-    );
+    await expect(header.getByTestId('header-discount-estimated')).toContainText(estimatedBasis);
     const row = page.getByTestId('price-discount');
     await expect(row).toContainText(P.G3.price.discountNotApplied);
-    await expect(row.getByTestId('discount-estimated')).toContainText(P.G3.price.discountEstimated);
+    await expect(row.getByTestId('discount-estimated')).toContainText(estimatedBasis);
+    // R3i m3(D17-4): 가격 표는 타입 줄마다 안내 — 사람 확인 링크는 기준 타입 줄 하나에만, 나머지는 "반영하지 않음"
+    const typeCells = page.locator('td[data-testid^="type-discount-"]');
+    const typeNotes = page.locator('[data-testid^="discount-note-type-"]');
+    expect(typeCount).toBeGreaterThan(1);
+    await expect(typeCells).toHaveCount(typeCount);
+    await expect(typeNotes).toHaveCount(typeCount);
+    await expect(typeCells.getByRole('link', { name: P.G3.price.discountHumanCheck })).toHaveCount(
+      1,
+    );
+    await expect(typeNotes.filter({ hasText: estimatedNonBasis })).toHaveCount(typeCount - 1);
+    await expect(page.getByTestId(`discount-note-type-${basis}`)).toContainText(estimatedBasis);
 
     await header.getByRole('link', { name: P.G3.price.discountHumanCheck }).click();
     await expect(page).toHaveURL(/\/ops\?/);
@@ -63,6 +86,10 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     const form = page.getByRole('form', { name: P.G7.human });
     await expect(form.getByLabel(P.G7.hc.field)).toHaveValue('discount');
     await expect(form.getByLabel(P.G7.hc.complex)).toHaveValue(String(DISCOUNT_COMPLEX));
+    // 계약 .14 F2: 입력 전부터 기준 타입 안내
+    await expect(form.getByLabel(P.G7.hc.value)).toHaveAccessibleDescription(
+      fill(P.G7.hcHint.discountBasis, { type: basis }),
+    );
     await form.getByLabel(P.G7.hc.value).fill('1,000,000원');
     await form.getByLabel(P.G7.hc.enteredBy).selectOption('운영자');
     const saved = page.waitForResponse(
@@ -71,8 +98,18 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     await form.getByRole('button', { name: P.G7.hc.submit }).click();
     const res = await saved;
     expect(res.status()).toBe(201);
-    const hc = (await res.json()) as { field: string; entity: string; job_id: number | null };
+    const hc = (await res.json()) as {
+      field: string;
+      entity: string;
+      job_id: number | null;
+      basis_type_code?: string | null;
+    };
     expect(hc).toMatchObject({ field: 'discount', entity: 'payment_terms' });
+    // 계약 .14 F2: 응답 basis_type_code → '기준 타입 X 할인으로 반영'
+    expect(hc.basis_type_code).toBe(basis);
+    await expect(form.getByTestId('human-check-basis')).toHaveText(
+      fill(P.G7.hc.discountBasisSaved, { type: basis }),
+    );
     expect(hc.job_id).not.toBeNull();
     await expect(form.getByTestId('human-check-job').getByTestId('publish-pending')).toHaveText(
       ko.job.publishPending,
@@ -90,8 +127,15 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     await expect(applied).toContainText(ko.label.confirmed);
     await expect(applied.getByTestId('discount-estimated')).toHaveCount(0);
     await expect(page.getByTestId('header-discount-estimated')).toHaveCount(0);
-    // 기준 타입 밖 주택형 할인은 여전히 파서 '추정' — 표 아래 안내 한 번은 남는다(D16-1)
-    await expect(page.getByTestId('discount-estimated')).toHaveCount(1);
+    // 기준 타입 밖 주택형 할인은 여전히 파서 '추정'(D16-1) — R3i m3: 그 줄마다 "기준 타입이 아니라 반영하지 않음",
+    // 사람 확인 링크·"사람 확인 시 반영" 안내는 어디에도 없다(기준 타입은 이제 확인됨)
+    await expect(page.getByTestId('discount-estimated')).toHaveCount(0);
+    const afterCells = page.locator('td[data-testid^="type-discount-"]');
+    const afterNotes = page.locator('[data-testid^="discount-note-type-"]');
+    await expect(afterCells).toHaveCount(typeCount);
+    await expect(afterNotes).toHaveCount(typeCount - 1);
+    await expect(afterNotes.filter({ hasText: estimatedNonBasis })).toHaveCount(typeCount - 1);
+    await expect(page.getByRole('link', { name: P.G3.price.discountHumanCheck })).toHaveCount(0);
     expect(failed).toEqual([]);
   });
 

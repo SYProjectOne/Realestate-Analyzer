@@ -64,8 +64,24 @@ test('C07 escaped: 막대 대신 판정기 질문 텍스트(HTML 이스케이프
   await expect(card.getByRole('status')).toContainText('<b>단지 A</b>');
 });
 
+test.describe('서비스 워커(MSW)를 막아도 갤러리는 그려진다(9차 리뷰 m19 C05 부하 시간 초과)', () => {
+  // 원인: 갤러리 엔트리가 MSW 시작(목 핸들러 동적 import + 서비스 워커 등록·활성)을 기다린 뒤에야 렌더했다.
+  // 차트 스크린샷 40건은 API 를 부르지 않는데도 매 테스트(새 컨텍스트)마다 서비스 워커 설치를 기다려, 부하에서
+  // 제목 5초를 넘겼다. 렌더는 MSW 와 무관해야 한다 — 서비스 워커를 막으면 수정 전에는 제목이 영영 안 나온다.
+  test.use({ serviceWorkers: 'block' });
+
+  test('서비스 워커 차단: 제목·차트 카드가 그려진다', async ({ page }) => {
+    await openGallery(page);
+    const card = page.getByTestId('gallery-C05-normal');
+    await settle(card);
+    await expect(card.locator('[data-testid$="badge"]').first()).toBeVisible();
+  });
+});
+
 test('표로 보기: 차트 데이터를 표로 열고 Fact 셀 → 출처 패널', async ({ page }) => {
   await openGallery(page);
+  // 출처 패널은 MSW 응답이 필요하다 — 렌더와 따로 시작한 MSW 가 준비될 때까지 기다린다
+  await expect(page.locator('html')).toHaveAttribute('data-msw', 'ready');
   const card = page.getByTestId('gallery-C02-normal');
   await settle(card);
   await card.getByRole('button', { name: ko.table.show }).click();

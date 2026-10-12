@@ -16,8 +16,13 @@
  *  - 계약 .13(D16-4): PATCH /catalysts 는 같은 호재에 같은 본문을 다시 보내면 200 + job_id null(바뀐 것 없음), 처음·다른
  *    본문이면 202 + job_id(예시 `catalyst_updated.json` 의 snapshot.publish 를 상태 있는 잡으로). 생성 핸들러는 가장 낮은
  *    상태(200 `catalyst_unchanged.json`)를 고르므로 202 모양은 계약 예시 파일에서 읽는다.
- *  - 계약 .13(D16-1·F1): 사람 확인 `discount` 값 = 원 단위 정수 0 ~ 1천억(쉼표·끝 '원' 허용) — 아니면 422
- *    `field_errors[0].loc = ["body","value_text"]`(서버와 같은 검사)
+ *  - 계약 .14 F3·F4·F11(R3i m2·m10): 사람 확인 숫자 값은 서버(`demotion.py` parse_human_value)와 같은 엄격한 규칙
+ *    (`humanCheckRules.parseStrictNumber`)으로 검사한다. 할인만 틀리면 422 `discount_format`, 할인 ≥ 기준 타입 차감 바탕
+ *    (예시 상세 기준 타입 min(대표층가, 최고가))이면 `discount_not_below_price`, 다른 칸도 틀리면 `validation_error` + 모든
+ *    칸(checked_at 먼저). 할인 201 응답 `basis_type_code` = 예시 상세 기준 타입(F2)
+ *  - 계약 .14 F5: PATCH /ops/checklist 상태·메모·기한이 바뀌면 202 + job_id(snapshot.publish 상태 있는 잡), 같으면 200 + null
+ *  - 계약 .14 F6: PATCH /regions 선택 그대로 + 이름만 → 202 + snapshot.publish 잡(change_event null)
+ *  - 계약 .14 F7: PATCH /catalysts 좌표는 소수 6자리 반올림으로 비교(같으면 200)
  *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -28,6 +33,7 @@ import type {
   CatalystCreated,
   CatalystPatch,
   CatalystUpdated,
+  ChecklistItem,
   ClaimPatch,
   ComplexDetail,
   ComplexRow,
@@ -35,11 +41,13 @@ import type {
   Health,
   HumanCheck,
   HumanCheckCreate,
+  HumanCheckField,
   Intake,
   JobCreate,
   JobName,
   JobRun,
   Provenance,
+  Region,
   RegionCreated,
   RegionPatched,
   ReportRequest,
@@ -47,6 +55,7 @@ import type {
   ShareLinkCreated,
 } from '@/api/types';
 import catalystUpdatedExample from '../../../contracts/examples/catalyst_updated.json';
+import { HUMAN_CHECK_RULES, parseStrictNumber } from '@/pages/ops/humanCheckRules';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
 
@@ -88,21 +97,12 @@ const state = {
   intakeOverrides: new Map<number, Intake>(),
   /** PATCH /catalysts 마지막 본문(호재 id → JSON) — 같은 본문이면 바뀐 것 없음(200) */
   catalystPatches: new Map<number, string>(),
+  /** PATCH /ops/checklist 로 바뀐 항목(항목 id → 상태·메모·기한) — 없으면 예시 목록 값(계약 .14 F5) */
+  checklist: new Map<number, ChecklistState>(),
 };
 
 /** 계약 예시 PATCH /catalysts 202(보이는 값이 바뀜 — 계약 .13 D16-4) */
 const CATALYST_UPDATED = (catalystUpdatedExample as { value: CatalystUpdated }).value;
-
-/**
- * 서버(app/api/demotion.py parse_human_value) `discount` 검사와 같은 규칙(계약 .13 F1): 쉼표·공백·끝 '원' 을 뗀 원 단위
- * 정수 0 ~ 1천억. 문제가 없으면 null, 있으면 문구.
- */
-function discountProblem(value: unknown): string | null {
-  const text = typeof value === 'string' ? value.replace(/[,\s]/g, '').replace(/원$/, '') : '';
-  if (!/^\d+$/.test(text)) return 'discount 는 원 단위 정수여야 한다';
-  const n = Number(text);
-  return n > 100_000_000_000 ? 'discount 는 0 ~ 1천억 원이어야 한다' : null;
-}
 
 /** 테스트 사이 초기화(src/test/setup.ts가 resetHandlers 때 부를 수 있다) */
 export function resetMockState(): void {
@@ -110,6 +110,56 @@ export function resetMockState(): void {
   state.jobs.clear();
   state.intakeOverrides.clear();
   state.catalystPatches.clear();
+  state.checklist.clear();
+}
+
+type ChecklistState = Pick<ChecklistItem, 'status' | 'note' | 'due_date'>;
+type FieldError = { loc: (string | number)[]; msg: string };
+
+/**
+ * 서버 parse_human_value(계약 .14 F3·F4)와 같은 값 검사 — 숫자 필드만(연월·접수·기타는 생성 예시 그대로). 문제가 없으면
+ * null, 있으면 문구.
+ */
+function humanValueProblem(field: HumanCheckField, value: unknown): string | null {
+  const rule = HUMAN_CHECK_RULES[field];
+  if (!rule || rule.kind === 'ym') return null;
+  const text = typeof value === 'string' ? value : '';
+  const parsed = parseStrictNumber(field, text);
+  if (!parsed.ok) {
+    return parsed.reason === 'format'
+      ? `'${text}' 은 ${field} 값(ASCII 숫자 — 쉼표는 세 자리마다)이 아니다`
+      : `'${text}' 은 ${field} 범위 밖이다`;
+  }
+  if (rule.kind === 'int' && parsed.decimals > 0) return `'${text}' 은 정수가 아니다(${field})`;
+  if (
+    (rule.min !== undefined && parsed.value < rule.min) ||
+    (rule.max !== undefined && parsed.value > rule.max)
+  ) {
+    return `'${text}' 은 ${field} 범위(${rule.min ?? ''}~${rule.max ?? ''}) 밖이다`;
+  }
+  if (rule.decimals !== undefined && parsed.decimals > rule.decimals) {
+    return `'${text}' 은 소수 둘째 자리까지만 받는다`;
+  }
+  return null;
+}
+
+/** 예시 상세의 기준 타입·할인 상한(배타) = min(대표층가, 최고가)(서버 discount_ceiling) */
+async function discountBasis(
+  request: Request,
+  complexId: number,
+): Promise<{ basis: string | null; ceiling: number | null }> {
+  const detailUrl = new URL(request.url);
+  detailUrl.pathname = detailUrl.pathname.replace(
+    /\/ops\/human-checks$/,
+    `/complexes/${complexId}`,
+  );
+  const detail = await base<ComplexDetail>(new Request(detailUrl));
+  const basis = detail.price.basis_type_code ?? null;
+  const row = detail.types.find((r) => r.type_code === basis) ?? null;
+  const top = typeof row?.max_price_won.v === 'number' ? row.max_price_won.v : null;
+  const floor =
+    typeof row?.floor_sample_price_won.v === 'number' ? row.floor_sample_price_won.v : null;
+  return { basis, ceiling: top === null ? null : floor === null ? top : Math.min(top, floor) };
 }
 
 const nowIso = () => new Date().toISOString();
@@ -333,6 +383,30 @@ export const extraHandlers = [
   // PATCH /regions/{id} — 생성 핸들러 응답(계약 예시 RegionPatched) 그대로 + 그 job_id 를 상태 있는 region.expand 잡으로
   http.patch(mswPath('/regions/:id'), async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    // 계약 .14 F6(D17-5): 선택이 그대로면(이름만) 발행 리비전 보고서 표지만 바뀐다 → 202 + snapshot.publish 잡
+    const current = await base<Region>(request);
+    const keyOf = (list: unknown) =>
+      Array.isArray(list)
+        ? (list as { kind?: unknown; code?: unknown }[])
+            .map((x) => `${String(x.kind)}:${String(x.code)}`)
+            .sort()
+            .join('|')
+        : null;
+    if (keyOf(body.selections) === keyOf(current.selections) && typeof body.name === 'string') {
+      const job = registerJob('snapshot.publish', {
+        snapshot_id: current.latest_snapshot?.id ?? null,
+      });
+      return HttpResponse.json(
+        {
+          region: { ...current, name: body.name },
+          change_event: null,
+          job_id: job.id,
+          added: [],
+          removed: [],
+        } satisfies RegionPatched,
+        { status: 202 },
+      );
+    }
     const patched = await base<RegionPatched>(request, 'PATCH', body);
     if (patched.job_id !== null) {
       registerJob('region.expand', { region_id: patched.region.id }, patched.job_id);
@@ -346,7 +420,10 @@ export const extraHandlers = [
   http.patch(mswPath('/catalysts/:id'), async ({ request, params }) => {
     const body = (await request.json().catch(() => ({}))) as Partial<CatalystPatch>;
     const id = Number(params.id);
-    const key = JSON.stringify(body);
+    // 계약 .14 F7(m8): 좌표는 저장 자리(소수 6자리, 반올림)로 비교
+    const round6 = (v: number | null | undefined) =>
+      typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v;
+    const key = JSON.stringify({ ...body, lat: round6(body.lat), lon: round6(body.lon) });
     if (state.catalystPatches.get(id) === key) {
       const unchanged = await base<CatalystUpdated>(request, 'PATCH', body);
       return HttpResponse.json(
@@ -361,6 +438,39 @@ export const extraHandlers = [
     return HttpResponse.json(
       { ...CATALYST_UPDATED, job, job_id: job?.id ?? null } satisfies CatalystUpdated,
       { status: 202 },
+    );
+  }),
+
+  // PATCH /ops/checklist/{id} — 계약 .14 F5(D17-5): 상태·메모·기한이 실제로 바뀌면 202 + job_id(snapshot.publish, 상태 있는
+  // 잡), 같으면 200 + job_id null. 응답 모양은 생성 핸들러(계약 예시)에 요청 값을 얹는다
+  http.patch(mswPath('/ops/checklist/:id'), async ({ request, params }) => {
+    const body = (await request.json().catch(() => ({}))) as Partial<ChecklistState>;
+    const id = Number(params.id);
+    const example = await base<ChecklistItem>(request, 'PATCH', body);
+    let before = state.checklist.get(id);
+    if (!before) {
+      const list = await base<ChecklistItem[]>(
+        new Request(new URL(request.url.replace(/\/\d+$/, '')).toString()),
+      );
+      const row = list.find((x) => x.id === id);
+      before = row
+        ? { status: row.status, note: row.note, due_date: row.due_date }
+        : { status: example.status, note: example.note, due_date: example.due_date };
+    }
+    const after: ChecklistState = {
+      status: body.status ?? before.status,
+      note: body.note === undefined ? before.note : body.note,
+      due_date: body.due_date === undefined ? before.due_date : body.due_date,
+    };
+    state.checklist.set(id, after);
+    const changed =
+      after.status !== before.status ||
+      after.note !== before.note ||
+      after.due_date !== before.due_date;
+    const job = changed ? registerJob('snapshot.publish', { snapshot_id: 12 }) : null;
+    return HttpResponse.json(
+      { ...example, id, ...after, job_id: job?.id ?? null } satisfies ChecklistItem,
+      { status: changed ? 202 : 200 },
     );
   }),
 
@@ -420,6 +530,18 @@ export const extraHandlers = [
     const body = (await request.json().catch(() => ({}))) as HumanCheckCreate;
     // 계약 .11 F7(D14-6): 시간대가 붙은 RFC3339 만, 서버 지금보다 10분 넘게 미래면 422
     const checkedAtError = checkedAtProblem(body.checked_at);
+    // 계약 .14 F3·F4·F11: 값 칸 검사(엄격한 숫자) — checked_at 오류가 있어도 함께, checked_at 먼저
+    const valueError = humanValueProblem(body.field, body.value_text);
+    const errors: FieldError[] = [
+      ...(checkedAtError ? [{ loc: ['body', 'checked_at'], msg: checkedAtError[1] }] : []),
+      ...(valueError ? [{ loc: ['body', 'value_text'], msg: valueError }] : []),
+    ];
+    if (errors.length > 1) {
+      return HttpResponse.json(
+        { code: 'validation_error', detail: errors[0]!.msg, field_errors: errors },
+        { status: 422 },
+      );
+    }
     if (checkedAtError) {
       const [code, detail] = checkedAtError;
       return HttpResponse.json(
@@ -427,14 +549,27 @@ export const extraHandlers = [
         { status: 422 },
       );
     }
-    if (body.field === 'discount') {
-      const problem = discountProblem(body.value_text);
-      if (problem) {
+    if (valueError) {
+      return HttpResponse.json(
+        {
+          code: body.field === 'discount' ? 'discount_format' : 'validation_error',
+          detail: valueError,
+          field_errors: [{ loc: ['body', 'value_text'], msg: valueError }],
+        },
+        { status: 422 },
+      );
+    }
+    const discount =
+      body.field === 'discount' ? await discountBasis(request, body.complex_id) : null;
+    if (discount !== null && discount.ceiling !== null) {
+      const won = parseStrictNumber('discount', body.value_text);
+      if (won.ok && won.value > 0 && won.value >= discount.ceiling) {
+        const detail = `할인 ${won.value}원 은 기준 타입 차감 바탕(${discount.ceiling}원) 이상이다 — 구매가에서 뺄 수 없다`;
         return HttpResponse.json(
           {
-            code: 'validation_error',
-            detail: problem,
-            field_errors: [{ loc: ['body', 'value_text'], msg: problem }],
+            code: 'discount_not_below_price',
+            detail,
+            field_errors: [{ loc: ['body', 'value_text'], msg: detail }],
           },
           { status: 422 },
         );
@@ -462,6 +597,8 @@ export const extraHandlers = [
           entity_id: null,
           note: body.note ?? null,
           created_intake: null,
+          // 계약 .14 F2: 할인이 들어간 기준 타입(그 밖 필드는 null)
+          basis_type_code: discount?.basis ?? null,
           ...jobFields,
         } satisfies HumanCheck,
         { status: 201 },

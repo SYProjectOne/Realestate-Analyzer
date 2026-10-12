@@ -91,7 +91,11 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
               ) : null}
               {isEstimatedDiscount(price.discount) ? (
                 // 계약 .13 F2(D16-1): 파서 할인은 '추정' — 안내 + G7 사람 확인 링크
-                <EstimatedDiscountNote complexId={header.id} testId="header-discount-estimated" />
+                <EstimatedDiscountNote
+                  complexId={header.id}
+                  basisType={price.basis_type_code}
+                  testId="header-discount-estimated"
+                />
               ) : null}
             </dd>
           ) : null}

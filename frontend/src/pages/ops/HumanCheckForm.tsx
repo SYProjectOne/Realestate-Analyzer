@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { humanCheckJobId, useComplexes, useCreateHumanCheck } from '@/api/hooks';
+import { humanCheckJobId, useComplexDetail, useComplexes, useCreateHumanCheck } from '@/api/hooks';
 import {
   ENTERED_BY_ROLES,
   HUMAN_CHECK_FIELDS,
@@ -22,6 +22,8 @@ import {
   HUMAN_CHECK_NOTE_MAX,
   HUMAN_CHECK_RULES,
   HUMAN_CHECK_VALUE_MAX,
+  HUMAN_NUMBER_UNITS,
+  parseStrictNumber,
 } from './humanCheckRules';
 
 const KINDS = ['phone', 'visit', 'email'] as const;
@@ -155,6 +157,14 @@ export function humanCheckServerErrors(error: unknown): { fields: FieldErrors; g
   for (const [name, msgs] of Object.entries(byField) as [FormField, string[]][]) {
     fields[name] = msgs.join(' · ');
   }
+  // 계약 .14 F3(R3i m2): 할인 값만 틀리면 code 로 — 형식·범위 / 기준 타입 차감 바탕 이상
+  if (error.code === 'discount_format' || error.code === 'discount_not_below_price') {
+    const detail = fields.value ?? error.detail;
+    fields.value =
+      error.code === 'discount_format'
+        ? t('page.G7.hc.discountFormat', { detail })
+        : t('page.G7.hc.discountNotBelowPrice', { detail });
+  }
   const kind = checkedAt422Kind(error);
   if (kind !== null) {
     const detail = fields.checkedAt ?? error.detail;
@@ -185,16 +195,19 @@ const asField = (v: string | null): HumanCheckField =>
     ? (v as HumanCheckField)
     : 'intake_status';
 
-/** 값 칸 정규화: 사실 필드는 천 단위 쉼표·공백을 뺀다(서버도 뺀다), 그 밖은 앞뒤 공백만 */
-export function normalizeHumanValue(field: HumanCheckField, raw: string): string {
-  const value = raw.trim();
-  return HUMAN_CHECK_RULES[field] ? value.replace(/[,\s]/g, '') : value;
+/**
+ * 값 칸 정규화: 앞뒤 공백만 뗀다. 계약 .14 F3·F4: 서버가 엄격하게 읽으므로(쉼표 세 자리마다·숫자 사이 공백 없음) 화면이
+ * 쉼표·공백을 지워 고쳐 쓰지 않는다 — 그러면 '1,0' 이 10 으로 들어간다(9차 m2).
+ */
+export function normalizeHumanValue(_field: HumanCheckField, raw: string): string {
+  return raw.trim();
 }
 
 /**
- * 값 형·범위 검사 — 서버 허용 범위(계약 .8, `app/api/demotion.py` parse_human_value)와 같다: 최고 공급금액
- * 1,000만~1,000억 원 정수, 입주 2000-01~2100-12, 개월 0~240 정수, 계약금 0~100 소수 둘째 자리까지.
- * 정수 필드에 '6.02'는 거부(절삭 금지, 3차 리뷰 minor 11). 문제가 없으면 null.
+ * 값 형·범위 검사 — 서버(`app/api/demotion.py` parse_human_value, 계약 .14 F3·F4)와 같다: 엄격한 숫자 형식(ASCII 숫자,
+ * 쉼표는 세 자리마다, 숫자 사이 공백 없음, 그 필드 단위만 — 앞 공백 한 칸까지, 할인은 공백 없음), 음수 거절, 최고 공급금액
+ * 1,000만~1,000억 원 정수, 할인 0~1,000억 원 정수, 입주 2000-01~2100-12, 개월 0~240 정수('N년' = N×12), 계약금 0~100 소수
+ * 둘째 자리까지. 정수 필드에 '6.02'는 거부(절삭 금지, 3차 리뷰 minor 11). 문제가 없으면 null.
  */
 export function validateHumanValue(field: HumanCheckField, raw: string): string | null {
   if (raw.trim().length > HUMAN_CHECK_VALUE_MAX) {
@@ -204,28 +217,37 @@ export function validateHumanValue(field: HumanCheckField, raw: string): string 
   if (!rule) return null;
   const value = normalizeHumanValue(field, raw);
   if (rule.kind === 'ym') {
-    const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(value);
+    // 서버도 연월은 공백을 지우고 읽는다
+    const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(value.replace(/ /g, ''));
     if (!m) return t('page.G7.hc.badYm');
     const year = Number(m[1]);
     const outside =
       (rule.min !== undefined && year < rule.min) || (rule.max !== undefined && year > rule.max);
     return outside ? t('page.G7.hc.badYmRange') : null;
   }
-  const pattern = rule.kind === 'int' ? /^-?\d+$/ : /^-?\d+(\.\d+)?$/;
-  if (!pattern.test(value)) {
-    return rule.kind === 'int' ? t('page.G7.hc.badInt') : t('page.G7.hc.badNumber');
-  }
-  const decimals = value.split('.')[1]?.length ?? 0;
-  if (rule.decimals !== undefined && decimals > rule.decimals) {
-    return metaText('page.G7.hc.decimals', { n: rule.decimals });
-  }
-  const n = Number(value);
+  const parsed = parseStrictNumber(field, value);
   const as = rule.unit;
+  if (!parsed.ok && parsed.reason === 'format') {
+    return field === 'discount'
+      ? t('page.G7.hc.badDiscountFormat')
+      : t('page.G7.hc.badFormat', {
+          units: (HUMAN_NUMBER_UNITS[field] ?? []).join(' · ') || t('page.G7.hc.noUnit'),
+        });
+  }
+  if (!parsed.ok) {
+    // 음수('-0' 포함) — 받는 필드가 없다(서버도 범위 오류)
+    return metaText('page.G7.hc.min', { min: as ? { n: rule.min ?? 0, as } : (rule.min ?? 0) });
+  }
+  if (rule.kind === 'int' && parsed.decimals > 0) return t('page.G7.hc.badInt');
+  const n = parsed.value;
   if (rule.min !== undefined && n < rule.min) {
     return metaText('page.G7.hc.min', { min: as ? { n: rule.min, as } : rule.min });
   }
   if (rule.max !== undefined && n > rule.max) {
     return metaText('page.G7.hc.max', { max: as ? { n: rule.max, as } : rule.max });
+  }
+  if (rule.decimals !== undefined && parsed.decimals > rule.decimals) {
+    return metaText('page.G7.hc.decimals', { n: rule.decimals });
   }
   return null;
 }
@@ -341,6 +363,17 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   };
 
   const rule = HUMAN_CHECK_RULES[field];
+  // 계약 .14 F2(D17-4): 사람 확인 할인은 기준 타입에 들어간다 — 입력 전부터 단지 상세의 기준 타입을 보인다
+  const detail = useComplexDetail(field === 'discount' && complexId ? complexId : null, snapshotId);
+  const basisType = detail.data?.price.basis_type_code ?? null;
+  const valueHint =
+    field === 'discount'
+      ? basisType
+        ? t('page.G7.hcHint.discountBasis', { type: basisType })
+        : t('page.G7.hcHint.discount')
+      : rule
+        ? t(`page.G7.hcHint.${field}` as TKey)
+        : undefined;
   // 계약 .10 S6·.11 F7·F8: checked_at 422 — loc ["body","checked_at"]. 이른 확인일(이미 수집된 공고가 **다른 값**)
   // 또는 10분 넘는 미래 또는 형식. 확인 시각 칸의 오류로 보인다(조용히 지는 사람 확인 금지). 종류는 서버 code 로(.12 F14)
   // 8차 m17: 다른 칸 오류·detail 도 함께(칸별 + 일반 줄)
@@ -407,11 +440,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
             </select>
           )}
         </Field>
-        <Field
-          label="value"
-          hint={rule || field === 'discount' ? t(`page.G7.hcHint.${field}` as TKey) : undefined}
-          error={errorOf('value')}
-        >
+        <Field label="value" hint={valueHint} error={errorOf('value')}>
           {(id, hintId) =>
             field === 'intake_status' ? (
               <select
@@ -570,6 +599,12 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
                 field: enumText('page.G7.hcField', saved.field),
                 value: saved.value_text,
               })}
+              {saved.field === 'discount' && saved.basis_type_code ? (
+                // 계약 .14 F2: 응답 basis_type_code — 이 할인이 들어간 기준 타입
+                <span className="ml-1 text-xs" data-testid="human-check-basis">
+                  {t('page.G7.hc.discountBasisSaved', { type: saved.basis_type_code })}
+                </span>
+              ) : null}
               {saved.entity ? (
                 // 서버가 정한 사실 행(계약 .8 HumanCheck.entity·entity_id) — 번호는 행 id(비수치 메타)
                 <span className="ml-1 text-xs text-muted" data-testid="human-check-target">
