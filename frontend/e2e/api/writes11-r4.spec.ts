@@ -49,11 +49,15 @@ test.describe.serial('계약 .15 화면(실 API)', () => {
     page,
   }) => {
     const failed = watchApi(page);
-    const first = page.waitForResponse(
-      (r) => new URL(r.url()).pathname === '/api/ops/judgments' && r.status() === 200,
-    );
+    // 응답이 오는 즉시 본문을 읽는다 — 화면이 URL 쿼리(스냅샷)를 맞추며 다시 그리면 늦게 읽은 본문은 버려질 수 있다
+    // (R4 FE11 e2e:api 1회차: 'Response body is not available for a response that was navigated away from')
+    const first = page
+      .waitForResponse(
+        (r) => new URL(r.url()).pathname === '/api/ops/judgments' && r.status() === 200,
+      )
+      .then((r) => r.json() as Promise<{ items: { judgment_seq: number | null }[] }>);
     await ready(page, '/ops?region=1', P.G7.title);
-    const ops = (await (await first).json()) as { items: { judgment_seq: number | null }[] };
+    const ops = await first;
     const [a, b] = ops.items.map((i) => i.judgment_seq).filter((s): s is number => s !== null);
     expect(a).toBeDefined();
     expect(b).toBeDefined();
