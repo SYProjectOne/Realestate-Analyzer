@@ -56,8 +56,8 @@ stats 키 1(`collect.daily`·`region.bootstrap.daily` 의 `degraded_sources`). �
 
 - `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`).
 - 새 테스트 녹화(`contracts/fixtures` 밖, 테스트 전용): `backend/tests/normalize/fixtures/r4d_core10.zip`(R4 4차 bootstrap 일일 단계
-  원문 중 단지 18개 — 청약홈 목록 29 · 상세 184 · 원 공고 21 · 공고문 51(추출 텍스트·표, PDF 제외) · 공식 홈페이지 26(DOM 텍스트, HTML
-  제외) + 지역·법정동 565행, 1.8MB, 키·토큰·`.env` 값 검사 0건), `backend/tests/collectors/applyhome/fixtures/r4d_empty_dataset.json`(R4
+  원문 중 단지 18개 — 청약홈 목록 12(일일 단계 전부) · 상세 201 · 원 공고 21 · 공고문 51(추출 텍스트·표, PDF 제외) · 공식 홈페이지
+  26(DOM 텍스트, HTML 제외) + 지역·법정동 565행, 1.8MB, 키·토큰·`.env` 값 검사 0건), `backend/tests/collectors/applyhome/fixtures/r4d_empty_dataset.json`(R4
   4차 첫 시도의 빈 데이터셋 응답 그대로, 82바이트).
 
 ### 알려진 한계

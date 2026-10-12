@@ -56,6 +56,10 @@ curl -s http://127.0.0.1:8000/health
 
 잡 상태는 화면 G7(운영)과 `job_run` 테이블에서 본다.
 
+**청약홈 적재 시간 회피(D23-4)**: 청약홈 공식 API 데이터셋은 자정 직후 다시 적재되는 동안 조건 없는 전체 건수가 0(`totalCount 0`)이다(R4 4차 관측
+APT 00:01~00:29 · 잔여세대 ~00:59 KST). **00:00~01:00 KST 에는 지역을 만들지(`region.bootstrap`) 말고 수동 수집도 하지 않는다.** 그 시간에 걸리면
+§1-1 처럼 실패 행 + degraded 로 남고 발행하지 않은 채 30분 뒤 다시 돈다(정기 `collect.daily` 06:00 은 이 시간대 밖).
+
 ## 1. 청약홈 페이지 구조 변경
 
 증상: 파서 테스트 실패, 또는 G7 수집 성공률 급락·필드 "확인 불가" 급증.
@@ -64,6 +68,20 @@ curl -s http://127.0.0.1:8000/health
 2. 새 HTML 을 녹화 픽스처로 저장한다(`contracts/fixtures/…` 는 WP9 소유 — CHANGELOG 에 사유).
 3. 실패하는 테스트 이름 + 새 HTML 만 WP1(수집)/WP2(파서) 담당에게 준다. 다른 맥락은 주지 않는다.
 4. 수정이 머지되면 `python -m app.worker --once` 또는 G7 재수집 → 다음 스냅샷에서 diff 를 확인한다.
+
+### 1-1 청약홈 API 빈 데이터셋(`totalCount 0`) — D23-4
+
+증상: G7 출처 상태 `applyhome_list`(·`applyhome_detail`) 실패에 `last_http_status` **200** · `last_error_text` `empty_dataset: totalCount 0`, 잡
+`region.bootstrap`·`collect.daily` 가 `queued`(stats `requeue_reason` 'degraded_source: … 청약홈 API 빈 데이터셋 …', `not_before` 30분 뒤), 지역이
+`bootstrapping` 에 머무름.
+
+자동: 그 수집은 실패 행(http_status 200 · path 없음)을 남기고, 그 시도는 웹 경로로(목록)·웹 상세/경쟁률로(상세) 폴백한다. 수집 결과는 degraded
+(stats `degraded_sources`)라 **판정·발행(이월 포함)을 하지 않고** 같은 잡을 30분 뒤 다시 돌린다(최대 6회 = 3시간, 넘으면 `failed`). bootstrap 이면
+지역은 `bootstrapping` 그대로(발행 리비전 없음), 일일 수집이면 이전 발행 리비전이 그대로 기본이다. 재시도는 같은 원문을 멱등하게 다시
+정규화한다(D23-1 — 중복 행·이벤트 없음).
+
+사람: 3시간 넘게 `failed` 면 data.go.kr 공지(점검)를 확인하고, 데이터셋이 돌아온 뒤(`perPage=1` 조회의 `totalCount` > 0 — 키는 출력하지 않는다)
+G7 에서 그 잡을 다시 등록한다. 00:00~01:00 KST 에 지역을 만들지 않는다(§0-3).
 
 ## 2. 공식 홈페이지 403·DNS 실패 지속
 
@@ -545,6 +563,30 @@ daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 �
 `getRemndrLttotPblancDetail`·`getOPTLttotPblancDetail` 을 `perPage=1` 로 한 번씩 불러 `totalCount` > 0 을 확인한다(키는 출력하지 않는다). ② 발행 불변
 확인은 `missing_provenance` 만이 아니라 리비전 간 단지 목록·상세 72개·대시보드·시장의 모든 Fact(`v`·`label`·`reason`)를 경로별로 비교했다 — 기준선은
 수집 없는 연속 재판정 리비전 쌍(Fact 차이 0, 파생 행 id 만 다름).
+
+### 10-13 R4 재시험 5차 절차 — R4-CORE10(D23, 계약 .18) 뒤 바뀐 것 (`docs/design/wp/R4_CORE10_TESTS.md`)
+
+10-7·10-9·10-11 은 그대로 따른다. 5차도 **새 DB**(비운 `subscription_analyzer_r4`)로 하고 `alembic upgrade head` = **`0016 (head)`** 를 확인한다.
+**00:00~01:00 KST 를 피해 시작**하고, 시작 전 청약홈 API 3종(`getAPTLttotPblancDetail`·`getRemndrLttotPblancDetail`·`getOPTLttotPblancDetail`)을
+`perPage=1` 로 한 번씩 불러 `totalCount` > 0 을 확인한다(키 출력 금지). 2회차는 4차와 같은 순서 — (a)(a2)(a3) 같은 스냅샷 재판정 → (b) 같은 날
+`collect.daily` → (b) 뒤 재판정 1회 이상. 확인 항목:
+
+1. **중복 경쟁률 0**(N13·D23-2, critical): (b) 뒤 `SELECT n.complex_id, n.round, n.type_code, o.type_code FROM competition n JOIN competition o
+   ON o.complex_id = n.complex_id AND o.kind = n.kind AND o.round = n.round AND o.supply IS NOT DISTINCT FROM n.supply AND o.applied IS NOT DISTINCT
+   FROM n.applied AND o.type_code <> n.type_code AND o.id < n.id;` → **0행**(4차 70). `competition.type_code` 는 원 면적 코드('84.9939' 등)이고 단지
+   상세 `competition[].type_code` 는 표시 주택형('84' · '확인 불가(타입 모호)')이다. (b) 전후 `SELECT count(*) FROM competition;` 이 바뀐 공고의
+   새 행만큼만 는다(바뀐 원문 없는 단지는 0).
+2. **발행 결과 불변**(D22-1·D11-1·D23-1): 4차 §6-3 과 같이 리비전 (a3) ↔ (b) ↔ (b) 뒤 재판정의 모든 Fact(`v`·`label`·`reason`) 비교 — 차이는 실제로 바뀐
+   공고의 단지와 신선도 KPI 뿐, '경쟁률 Fact 생김'·'사유만 바뀜(compare 채택 근거 소실)' **0**.
+3. **compare 표식 보존·(b) 뒤 재판정 `tools/call` 0**(N14·D23-3, 게이트): `SELECT count(*) FROM field_provenance WHERE reason LIKE '판정기 compare 채택%';`
+   가 (b) 전후 같다(4차 (b) 뒤 7). (b) 뒤 재판정 프록시 `tools/call` = 잡 `tools_calls` = `judgment_log` 새 행 = **0**(4차 4).
+4. **빈 데이터셋**(N15·D23-4): 정상 시간대면 `SELECT count(*) FROM raw_document WHERE error_text LIKE 'empty_dataset%';` = 0 이고 잡 stats 에
+   `degraded_sources` 가 없다. (선택) 적재 시간대를 일부러 맞췄다면 bootstrap 잡이 `queued`(`requeue_reason` 'degraded_source …')·지역 `bootstrapping`·
+   발행 리비전 0·판정기 `tools/call` 0 인지, 01:00 뒤 재시도가 처음부터 다시 수집해 발행하는지 기록(기본 절차는 이 시간대를 피한다).
+5. **재정규화 멱등성(로컬, 선택)**: 5차 원문 전부로 재생 — `REPLAY_DATABASE_URL=<R4 DB — 스크립트로 .env 에서 읽고 출력 금지> uv run python
+   scripts/replay_manifest.py --raw-root <r4 RAW_DIR> --out <폴더>`(읽기 전용) → `R4_REPLAY_MANIFEST=<폴더>/docs.json uv run pytest -p no:randomly
+   "tests/scheduler/test_core10_idempotency.py::test_renormalize_is_idempotent[r4d-full]"` → 통과(DB 스냅샷 동일·사실 이벤트 0·`tools/call` 0, 약 2분).
+6. 4차 확인 항목 1~8(§10-11)은 그대로 다시 본다(회귀 방지) — 특히 (a)(a2)(a3) `tools/call` 0, 판정기 추출 납부 조건 '확인됨' 유지, 46·47 법정동.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
