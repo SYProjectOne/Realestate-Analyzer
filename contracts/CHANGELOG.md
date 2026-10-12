@@ -2,6 +2,71 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.18
+
+R4 4차 재시험(`docs/design/wp/R4_RESULT4.md` §10 — N13·N14·N15) 후속 — CEO 결정 **D23**(`docs/design/DECISIONS.md`). 계약 소유자 =
+**R4-CORE10**(브랜치 `wp/r4-core10`). **데이터 마이그레이션 `0016`**(스키마 그대로 — 경쟁률 원 면적 코드 + R4 4차 중복 경쟁률 정리, 앱
+import 없음). 필드 추가·삭제 없음, 응답 모양 그대로. 바뀐 것은 의미 3(경쟁률 `type_code` 식별·표시, 재정규화의 compare 표식 보존, 청약홈
+API 빈 데이터셋 = 실패) + 새 실패 사유 문자열 1(`raw_document.error_text` · G7 실패 대상 `reason` = `empty_dataset: totalCount 0`) + 잡
+stats 키 1(`collect.daily`·`region.bootstrap.daily` 의 `degraded_sources`). 저장 모양 버전(`SHAPE_VERSION`) 그대로 1. 테스트 표(결함 ·
+테스트 · 수정 전 실패 확인)와 재정규화 멱등성 속성 테스트(D23-1)는 `docs/design/wp/R4_CORE10_TESTS.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표(F1~F4). 응답 모양이 같아 `npm run gen:api`·`gen:msw` 결과는 설명 문구(스키마 description)만
+바뀐다 — `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시 만들지 않았다(frontend/** = FE 소유).
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .17 | .18 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | 단지 상세 `competition[].type_code`(G3 경쟁률 표·C8) | 저장 때 그 시점 단지 주택형과 대조한 코드 — 같은 날 재정규화가 같은 경쟁률을 다른 코드('84.9939' → '84' · '확인 불가(타입 모호)')로 **한 번 더** 만들어 같은 회차 행이 두 번 보였다(R4 4차 N13 — 발행 리비전 5·6 '확인됨' Fact 140개) | 행 하나 = (구분, 회차, 원 면적 코드). `type_code` 는 **읽기 시점 표시 주택형**(맞는 타입 1개 = 그 코드, 여럿 = '확인 불가(타입 모호)', 없음 = 원 코드 — 규칙은 .17 과 같다). 같은 회차에서 표시 코드가 겹치면 원 코드 순 첫 행만 그 코드, 나머지는 원 코드(예 웹 '84A' 행과 API '84.9582' 행이 같은 회차에 있으면 API 행은 '84.9582'). 이미 발행된 R4 4차 리비전 5·6 저장본의 중복 행은 그대로(D11-1 불변) — 다시 발행한 리비전부터 사라진다. 화면 변경은 필요 없다(같은 회차·같은 `type_code` 두 행이 더는 오지 않는다) | D23-2 · N13 |
+| F2 | G7 `GET /ops/sources` — `applyhome_list`·`applyhome_detail` 의 `failures_7d`·`last_http_status`·`last_error_text`·`failing_targets[].reason` | 청약홈 API 데이터셋이 비어 있던 응답(200 · `totalCount 0`)도 성공으로 셌다(실패 0) | 실패 행(`http_status` **200** · `path` null · `error_text`/`reason` **`empty_dataset: totalCount 0`**). 상태 코드가 2xx 인 실패이므로 화면은 '확인 불가(200, 날짜)'가 아니라 사유 문자열을 보여야 한다(예 '확인 불가(빈 데이터셋 — 청약홈 적재 중, 날짜)') | D23-4 · N15 |
+| F3 | G7 잡 목록 — `region.bootstrap`·`collect.daily` | 빈 데이터셋 수집도 `done`(bootstrap 은 불완전한 스냅샷을 published, 지역 `ready`) | 그 수집은 판정·발행(이월 포함)을 하지 않고 **지연 재큐잉**: 잡 `queued` + stats `requeue_count`·`not_before`(30분 뒤)·`requeue_reason`('degraded_source: … 청약홈 API 빈 데이터셋(조건 없는 totalCount 0 — 재적재 중) n건 — 발행하지 않고 재시도'), 일일 수집 stats `degraded_sources` = {`applyhome`: 사유}. 6회(3시간) 넘게 그대로면 `failed`(`degraded_source: …`). bootstrap 이 재큐잉된 동안 지역 `status` 는 `bootstrapping` 그대로(발행 리비전 없음 — 화면은 '적재 중'), `collect.daily` 면 이전 발행 리비전이 그대로 기본 리비전 | D23-4 · N15 |
+| F4 | 단지 상세 Fact `reason`(가격·입주월·세대수 등 compare 로 푼 필드) | 같은 날 재수집 뒤 '판정기 compare 채택 jl_… (병기)' 근거가 이벤트 없이 사라졌다(R4 4차 N14, 47 필드) — 같은 rank 1차·1차 상충이면 값이 '확인 불가(출처 상충 — compare 대기)'로 돌아갈 수 있었다 | 같은 원문·같은 자리·같은 값이면 compare 채택·병기 표식이 재정규화 뒤에도 그대로(사유 문자열 그대로). 값이 실제로 바뀌면 표식이 옮겨지지 않고 change_event + 채택 보류(새 compare) — 화면 변경 없음 | D23-3 · N14 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.17) | 이후(.18) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | 재정규화(같은 원문을 다시 저장 — 같은 날·다음 날 재수집) | 경쟁률 행을 그 시점 주택형 대조 코드로 찾아 새 행(N13), 같은 원문 출처 행 reason 을 파서 값으로 다시 써 compare 표식 소실(N14) | **멱등**: 같은 원문을 다시 정규화하면 모든 정규화 테이블(단지·타입·납부 조건·경쟁률·잔여 이력·출처 행과 채택 표식·체크리스트·접수 상태)이 바이트 단위로 그대로, 사실 change_event 0, 다음 재판정 `tools/call` 0 — R4 1~4차 녹화 재생 속성 테스트로 고정(순서를 섞어도·다음 날이어도) | D23-1 |
+| S2 | `competition` 행 식별 | (단지, 구분, 회차, 그 시점 대조 코드) | (단지, 구분, 회차, **원 면적 코드**) — `competition.type_code` 저장값 = 원 면적 코드. 표시 주택형은 `app.normalize.competition.display_type_codes`(API 단지 상세·보고서 같은 함수) | D23-2 |
+| S3 | 재정규화의 compare 표식 | 판정기 추출·감사 행만 보존(D22-1) | + 같은 원문이 같은 자리(엔티티·필드·발췌 위치)에 같은 값을 다시 내면 그 출처 행의 `COMPARE_ADOPTED`·`COMPARE_SIDE` 표식을 이번 후보에 다시 붙인다. 값이 바뀌면 옮기지 않는다 | D23-3 |
+| S4 | 청약홈 공식 API 응답 `totalCount` 0 | 정상 0건(목록 0 → 웹으로도 안 감, 실패 행 없음) | 실패(`ApplyhomeApi.get` → `error` = `empty_dataset: totalCount 0`): 실패 행, 목록이면 그 시도 웹 경로, 상세·경쟁률이면 웹 상세·웹 경쟁률, 수집기 `empty_datasets` → 수집 `degraded` → 목록 diff·목록 단지 집합 기록 안 함 · 발행 안 함 · 재큐잉(F3). 조건에 맞는 것만 0건(`matchCount` 0, `totalCount` > 0)은 그대로 정상 | D23-4 |
+
+### 스키마 변경(설명만 — 모양 그대로)
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `competition.json` `type_code` | description: 표시 주택형 · 원 면적 코드 식별 · 겹침 규칙(F1) |
+| 2 | `raw_document.json` `error_text` | 값 목록에 `empty_dataset: totalCount 0`(200 · path null 실패 행 · sha256 규칙) |
+| 3 | `source_status.json` `failing_targets[].reason` | 예시에 `empty_dataset: totalCount 0`(http_status 200) |
+| 4 | `openapi.yaml` | `info.version` 2026-10-09.18 |
+
+### 마이그레이션·검증
+
+- **`0016`(데이터만, 스키마 diff 0)**: 경쟁률 출처 행 `entity_key`('<주택관리번호>:<구분>:<회차>:<원 코드>')의 넷째 칸으로 원 면적 코드를
+  찾아 (단지, 구분, 회차, 원 코드)가 같은 행을 하나로(가장 앞 id 남김, 값은 가장 늦은 행, 같은 출처 행은 지우고 다른 출처 행은 남는 행으로
+  옮기고 상충 묶음 이름도, 필드마다 chosen 하나, `change_event`·`fact_demotion`·`human_check` 의 (competition, 지운 id)는 남는 id 로),
+  `type_code` = 원 코드(출처 행이 없는 행은 그대로). downgrade 는 데이터를 되돌리지 않는다. 왕복은 SQLite·임베디드 PG 테스트
+  (`tests/contracts/test_core10_migrations.py`). 운영 DB(D19)·R4 DB 는 `alembic upgrade head` 로 적용한다(R4 DB 는 5차 재시험이 새로
+  비우므로 적용 불필요 — R4 4차 리비전 5·6 의 발행 저장본은 불변).
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.18`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`).
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`).
+- 새 테스트 녹화(`contracts/fixtures` 밖, 테스트 전용): `backend/tests/normalize/fixtures/r4d_core10.zip`(R4 4차 bootstrap 일일 단계
+  원문 중 단지 18개 — 청약홈 목록 29 · 상세 184 · 원 공고 21 · 공고문 51(추출 텍스트·표, PDF 제외) · 공식 홈페이지 26(DOM 텍스트, HTML
+  제외) + 지역·법정동 565행, 1.8MB, 키·토큰·`.env` 값 검사 0건), `backend/tests/collectors/applyhome/fixtures/r4d_empty_dataset.json`(R4
+  4차 첫 시도의 빈 데이터셋 응답 그대로, 82바이트).
+
+### 알려진 한계
+
+- 속성 테스트는 일일 단계(청약홈·공고문·공식 홈페이지 → `store`·잔여 이력·체크리스트·접수 상태)다. 주간 단계(실거래·분양권·미분양·
+  입주물량·벤치마크·뉴스 호재·공고 예정 후보)는 수집기 적재(`load_trades` 등)라 이 속성 테스트에 들지 않는다(기존 단위 멱등 테스트).
+- 이미 발행된 R4 4차 리비전 5·6 저장본의 중복 경쟁률 행·사라진 compare 근거는 그대로다(발행 불변 — 다시 발행해야 바뀐다).
+- 빈 데이터셋 판정은 `totalCount` 가 0 일 때만이다(직전 대비 급감은 보지 않는다 — 적재 중 일부만 찬 데이터셋은 잡지 못한다).
+
 ## 2026-10-09.17
 
 R4 3차 재시험(`docs/design/wp/R4_RESULT3.md` §10) 후속 — CEO 결정 **D22**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-CORE9**(브랜치

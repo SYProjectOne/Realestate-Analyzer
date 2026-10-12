@@ -27,7 +27,7 @@
           "complex_id": { "type": ["integer", "null"] },
           "complex_name": { "type": ["string", "null"] },
           "http_status": { "type": ["integer", "null"] },
-          "reason": { "description": "'403', 'DNS', '타임아웃', '동적 팝업', '스캔'", "type": "string" },
+          "reason": { "description": "'403', 'DNS', '타임아웃', '동적 팝업', '스캔', 'empty_dataset: totalCount 0'(http_status 200 — 청약홈 API 데이터셋이 비어 있던 응답, 계약 2026-10-09.18·D23-4)", "type": "string" },
           "fetched_at": { "type": "string", "format": "date-time" },
           "raw_document_id": { "type": ["integer", "null"] }
         }

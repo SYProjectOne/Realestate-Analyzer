@@ -654,6 +654,9 @@ class Competition(BaseModel):
     """
     kind: Literal["본청약", "무순위", "임의", "선착순"]
     type_code: Annotated[str, Field(max_length=16)]
+    """
+    표시 주택형(계약 2026-10-09.18·D23-2). 경쟁률 행은 원문 값만으로 식별한다 — (단지, 구분, 회차, **원 면적 코드**: 원문 주택형에서 만든 코드, 예 API HOUSE_TY '084.9939 ' → '84.9939', '084.9582A' → '84A'). 응답의 type_code 는 읽기 시점에 지금 단지 주택형과 대조한 값이다: 맞는 타입 1개 = 그 타입 코드('84'), 여럿 = '확인 불가(타입 모호)', 없음 = 원 코드. 같은 단지·구분·회차에서 표시 코드가 겹치면 원 코드 순서로 첫 행만 그 코드, 나머지는 원 코드(행이 합쳐 보이지 않게). 발행 리비전은 발행 때 값(저장본)
+    """
     supply: Fact
     applied: Fact
     ratio_or_shortfall_text: Annotated[str | None, Field(max_length=64)]
@@ -1614,7 +1617,7 @@ class FailingTarget(BaseModel):
     http_status: int | None
     reason: str
     """
-    '403', 'DNS', '타임아웃', '동적 팝업', '스캔'
+    '403', 'DNS', '타임아웃', '동적 팝업', '스캔', 'empty_dataset: totalCount 0'(http_status 200 — 청약홈 API 데이터셋이 비어 있던 응답, 계약 2026-10-09.18·D23-4)
     """
     fetched_at: str
     raw_document_id: int | None
@@ -2771,6 +2774,7 @@ class RawDocument(BaseModel):
     실패·부분 실패 사유 한 단어(+세부). 값 목록(2026-10-09.2):
     - 응답 없음: 'DNS' · 'timeout' · 'connect' · 'TLS' · 'network' · 'robots'(robots.txt 규칙상 불허) · 'robots.txt <코드>'(robots.txt 5xx로 전부 불허) · 'invalid_url' · 'render'(헤드리스 렌더 실패)
     - 성공 응답이지만 내용 문제(공고문 PDF): 'scan'(텍스트 레이어 없음 → 확인 불가(스캔)) · 'ocr'(전 페이지 OCR → 값 라벨 '추정(OCR)') · 'scan_partial:<p,…>' · 'ocr_partial:<p,…>'(1부터 센 페이지) · 'pdf_parse: <사유>'(파서 모두 실패) · 'not_pdf'(200이지만 PDF 아님)
+    - 성공 응답이지만 데이터셋이 빔(청약홈 공식 API — 조건 없는 전체 건수 totalCount 0, 재적재 중. 2026-10-09.18·D23-4): 'empty_dataset: totalCount 0' — http_status 는 그대로(200), path=null(실패 행, 원문 파일 없음), sha256 = sha256('fail:' + url + ':empty_dataset:' + 날짜)
     - 그 밖의 파싱 실패는 '<단계>: <사유>' 형식. 4xx·5xx 응답은 error_text 대신 http_status
     """
     image_hash: Annotated[str | None, Field(max_length=64)] = None

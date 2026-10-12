@@ -28,12 +28,6 @@ HELD_COMPLEX = 3
 CONFLICT_HOLD = "출처 상충 — compare 대기"
 
 
-def test_contract_version_is_17() -> None:
-    from app.core.protocols import CONTRACT_VERSION
-
-    assert CONTRACT_VERSION == "2026-10-09.17"
-
-
 def _rows(client: TestClient, snap: int = SNAP) -> list[dict[str, Any]]:
     r = client.get(f"/api/snapshots/{snap}/complexes", params={"size": 200}, headers=READ)
     assert r.status_code == 200, r.text
