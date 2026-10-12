@@ -139,3 +139,6 @@ class SnapshotViewUnit(Base):
     shape_version: Mapped[int] = mapped_column(Integer, server_default="1")
     rows: Mapped[int] = mapped_column(Integer, server_default="0")
     done: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # 0014(계약 .14, D17-2): backfill 이 이 단위에 **새로 계산해 채운** 행이 있으면 그 시각(KST ISO) — 발행 순간 값이 아니라
+    # 업그레이드 때 계산한 값이 섞였다는 표지. 발행이 쓴 단위·표식만 다시 쓴 단위는 NULL
+    backfilled_at: Mapped[str | None] = mapped_column(String(32))

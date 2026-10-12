@@ -259,17 +259,25 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
     if not added and not removed and (not name or name == region.name):
         raise conflict("선택이 바뀌지 않았다")
     if not added and not removed:
-        # 이름만 바뀜 — 판정 범위가 그대로라 region.expand·change_event 없음(계약 .9: change_event·job_id null)
+        # 이름만 바뀜 — 판정 범위가 그대로라 region.expand·change_event 없음(계약 .9). D17-5(계약 .14): 지역 이름은 발행 리비전
+        # 보고서 본문(표지·제목)에 들어간다 → 발행 잡(snapshot.publish — 파생 행 이월, 판정기 호출 없음) + 202 job_id.
+        # 발행된 리비전이 없으면(잡 없음) 200 + job_id null
+        from app.scheduler.snapshots import republish
+
         region.name = str(name)
+        session.flush()
+        job = republish(session, region.id, reason=f"지역 이름 변경: {name}"[:200], created_at=now_iso())
+        job_id = int(job.id) if job is not None else None
         session.commit()
         return JSONResponse(
             {
                 "region": region_view(session, region, latest=default_snapshot(session, region.id)),
                 "change_event": None,
-                "job_id": None,
+                "job_id": job_id,
                 "added": [],
                 "removed": [],
-            }
+            },
+            status_code=202 if job_id is not None else 200,
         )
     codes = _expand_all(session, new_sel)
     old_count = len(old_sel)

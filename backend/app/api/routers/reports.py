@@ -136,7 +136,13 @@ def _require_stored_inputs(session: Any, snap: Any, scenario_id: int | None, com
                 f"발행 리비전 {snap.id} 의 {kind}[시나리오 {sk}] 저장본이 미완(backfill 대기)"
             )
     if compare_id is None:
-        return
+        # R3i m9: compare 를 생략하면 잡은 기본 비교(revision_of — ``reports.export.default_compare``)와 비교한다 — 그 저장본도
+        # 같은 규칙으로 본다(예전엔 생략 시 검사가 없어 202 뒤 잡이 materialize_pending 으로 실패했다)
+        from app.reports.export import default_compare
+
+        compare_id = default_compare(session, snap.id)
+        if compare_id is None:
+            return
     cmp = session.get(Snapshot, int(compare_id))
     if cmp is None or not sv.is_published(cmp):
         return

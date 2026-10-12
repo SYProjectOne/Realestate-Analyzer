@@ -12,10 +12,11 @@
   (R3 minor 33).
 - stats 의 오류 문구(error·errors·store_errors·skipped 키 아래 문자열)는 비밀값·개인정보를 가린 뒤 저장한다
   (읽기 전용 토큰으로 /jobs 를 봐도 노출 없음, R3 minor 14).
-- ``--once``: 큐에 있는 잡을 비울 때까지(최대 ``--max-jobs``) 실행하고 0 으로 끝난다(운영 점검·CI). 시간표·
+- ``--once``: 큐에 있는 잡을 비울 때까지(최대 ``--max-jobs``) 실행하고 0 으로 끝난다(운영 점검·CI). 지연 재큐잉 잡
+  (``not_before``)은 그 시각까지 기다려 실행한다(최대 ``ONCE_REQUEUE_WAIT_S`` — 넘어서 남으면 종료 코드 3, R3i m16). 시간표·
   참조 표 자동 등록은 하지 않는다. 스키마가 없으면(마이그레이션 전) 경고만 남기고 0.
-- 상주: 기동 시 참조 표가 비면 reference.refresh 1회(jobs.ensure_reference), APScheduler 시간표 시작,
-  매 주기 degraded 복구 감지(degraded.check_recovery) → 큐 실행.
+- 상주: 기동 시 저장본 backfill(실패·busy 면 ``BACKFILL_RETRY_S`` 마다 다시 — R3i m6), 참조 표가 비면 reference.refresh 1회
+  (jobs.ensure_reference), APScheduler 시간표 시작, 매 주기 degraded 복구 감지(degraded.check_recovery) → 큐 실행.
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -192,7 +193,11 @@ def recover_stale(ctx: SchedulerContext, *, stale_after_s: float | None = None) 
             who = row.locked_by
             if n < MAX_STALE_RECOVERIES:
                 row.status, row.locked_by, row.started_at = "queued", None, None
-                row.stats = {"stale_recoveries": n + 1, "stale_worker": who}
+                # R3i m11: 재큐잉 카운터(requeue_count·error_retries)는 이어 간다 — 지우면 상한이 다시 0 부터였다
+                carried: dict[str, Any] = {
+                    k: stats[k] for k in ("requeue_count", "error_retries") if k in stats
+                }
+                row.stats = {**carried, "stale_recoveries": n + 1, "stale_worker": who}
             else:
                 row.status, row.finished_at = "failed", ctx.iso_now()
                 row.error_text = f"stale: worker 응답 없음({int(age)}초, {who}) — 회수 {n}회 후 실패"
@@ -223,7 +228,7 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
         with _Heartbeat(ctx, job_id, _heartbeat_s()):
             stats = handler(ctx, job)
     except JobRequeue as exc:
-        return _requeue(ctx, job_id, exc, started, int((job.stats or {}).get("requeue_count") or 0))
+        return _requeue(ctx, job_id, exc, started, dict(job.stats or {}))
     except JobError as exc:
         status, stats, error = "failed", exc.stats, _error_text(exc)
     except JudgeUnavailable as exc:
@@ -235,6 +240,8 @@ def execute(ctx: SchedulerContext, job_id: int) -> str:
     stats = with_tools_calls(ctx, mark, stats)
     _finish(ctx, job_id, status=status, stats=redact_stats(_jsonable(stats)), error_text=error,
             finished_at=ctx.iso_now())  # fmt: skip
+    if status == "failed":
+        _redefer_after_failure(ctx, job)
     log.info(
         "worker.job.finish",
         extra={
@@ -265,6 +272,23 @@ def with_tools_calls(ctx: SchedulerContext, mark: Mapping[str, int], stats: Any)
     return out
 
 
+def _redefer_after_failure(ctx: SchedulerContext, job: JobRun) -> None:
+    """D17-3: 리비전을 끝낼 잡(재판정·발행 — 후속 잡 제외)이 실패로 끝나면, 그 리비전으로 미뤄졌던 쓰기를 새 발행 잡으로 다시
+    등록한다(``handlers.redefer_followups`` — 이미 했으면 아무것도 안 함). 실패해도 worker 는 계속(다음 실패 때 다시)."""
+    p = job.payload or {}
+    sid = p.get("snapshot_id")
+    if job.job_name not in ("rejudge", "snapshot.publish") or p.get("follow_up") or not isinstance(sid, int):
+        return
+    from app.scheduler.handlers import redefer_followups
+
+    try:
+        with ctx.session_factory() as session:
+            redefer_followups(session, sid, now=ctx.now())
+            session.commit()
+    except Exception:  # DB 잠김 등
+        log.warning("worker.redefer_failed", extra={"job_id": job.id, "snapshot_id": sid})
+
+
 def _finish(ctx: SchedulerContext, job_id: int, **values: Any) -> None:
     """잡 행 끝 상태 쓰기 = **UPDATE 한 문장**(읽고 쓰지 않는다). R3h: 먼저 읽고(session.get) 나중에 쓰면 그 사이 API 쓰기가
     커밋됐을 때 SQLite WAL 이 읽기 스냅샷을 쓰기로 올리지 못해 즉시 'database is locked'(BUSY_SNAPSHOT — busy_timeout 무관)
@@ -274,14 +298,22 @@ def _finish(ctx: SchedulerContext, job_id: int, **values: Any) -> None:
         session.commit()
 
 
-def _requeue(ctx: SchedulerContext, job_id: int, exc: JobRequeue, started: float, prev_count: int) -> str:
+KEEP_COUNTERS: Final = ("stale_recoveries", "error_retries")
+"""R3i m11: 재큐잉·stale 회수가 서로의 카운터를 지우지 않게 이어 가는 stats 키(상한 판단이 이 값을 본다)."""
+
+
+def _requeue(
+    ctx: SchedulerContext, job_id: int, exc: JobRequeue, started: float, prev: Mapping[str, Any]
+) -> str:
     """D16-3 지연 재큐잉: queued 로 되돌리고(locked_by·started_at 비움) stats 에 ``requeue_count``(+1)·``not_before``
-    (벽시계 + 지연)·``requeue_reason``. error_text 없음 — 실패가 아니다. 반환 'queued'."""
+    (벽시계 + 지연)·``requeue_reason``. error_text 없음 — 실패가 아니다. 반환 'queued'. R3i m11: 앞선 stats 의
+    ``stale_recoveries``·``error_retries`` 는 이어 간다(이번 예외 stats 가 주면 그 값)."""
     from datetime import timedelta
 
     from app.core.time import now_kst
 
-    n = prev_count + 1
+    n = int(prev.get("requeue_count") or 0) + 1
+    kept = {k: prev[k] for k in KEEP_COUNTERS if k in prev}
     _finish(
         ctx,
         job_id,
@@ -289,6 +321,7 @@ def _requeue(ctx: SchedulerContext, job_id: int, exc: JobRequeue, started: float
         stats=redact_stats(
             _jsonable(
                 {
+                    **kept,
                     **exc.stats,
                     "requeue_count": n,
                     "requeue_reason": exc.reason[:300],
@@ -355,6 +388,49 @@ def run_until_idle(ctx: SchedulerContext, max_jobs: int = 200) -> list[int]:
     return done
 
 
+ONCE_REQUEUE_WAIT_S: float = 1200.0
+"""R3i m16: ``--once`` 가 지연 재큐잉 잡(``not_before`` 가 남음)을 기다리는 최대 시간(발행 busy 재큐잉 합 약 18.5분 + 여유). 넘어도
+남으면 0 이 아닌 종료(``ONCE_EXIT_REQUEUED``)."""
+ONCE_EXIT_REQUEUED: Final = 3
+
+
+def _next_not_before(ctx: SchedulerContext) -> float | None:
+    """queued 잡 중 ``not_before`` 가 남은 것이 있으면 가장 이른 것까지 남은 초(없으면 None — 지금 집을 잡이 있거나 큐가 빔)."""
+    from app.core.time import now_kst, parse_datetime
+
+    now = now_kst()
+    waits: list[float] = []
+    with ctx.session_factory() as session:
+        for (stats,) in session.execute(select(JobRun.stats).where(JobRun.status == "queued")):
+            nb = (stats or {}).get("not_before") if isinstance(stats, dict) else None
+            at = parse_datetime(nb) if isinstance(nb, str) else None
+            waits.append(max(0.0, (at - now).total_seconds()) if at is not None else 0.0)
+    return min(waits) if waits else None
+
+
+def drain(
+    ctx: SchedulerContext, max_jobs: int = 200, *, wait_s: float | None = None
+) -> tuple[list[int], bool]:
+    """R3i m16(``--once``): 큐를 비운다 — 지연 재큐잉 잡도 ``not_before`` 까지 기다려(최대 ``wait_s``) 실행한다. 반환 (실행한 잡,
+    기다리다 끝나 재큐잉 잡이 남았는가). 예전 ``--once`` 는 재큐잉 대기 잡을 남긴 채 0 으로 끝났다."""
+    limit = ONCE_REQUEUE_WAIT_S if wait_s is None else wait_s
+    deadline = time.monotonic() + limit
+    done: list[int] = []
+    while len(done) < max_jobs:
+        ran = run_until_idle(ctx, max_jobs=max_jobs - len(done))
+        done += ran
+        wait = _next_not_before(ctx)
+        if wait is None:
+            return done, False
+        if wait == 0 and ran:
+            continue  # 방금 다시 집을 수 있게 된 잡
+        left = deadline - time.monotonic()
+        if left <= 0 or wait > left:
+            return done, True
+        time.sleep(wait + 0.05)
+    return done, False
+
+
 def _has_schema(ctx: SchedulerContext) -> bool:
     try:
         with ctx.session_factory() as session:
@@ -376,7 +452,8 @@ def _parse(argv: Sequence[str]) -> argparse.Namespace:
 
 def backfill_views(ctx: SchedulerContext) -> dict[str, Any] | None:
     """worker 시작 때 저장본 backfill(D14-9 — 0010 이전 발행분·계약 .11 새 종류·행 단위 사람 확인 이전, 멱등). 실패해도
-    worker 는 계속 돈다(그 리비전 GET 은 503 materialize_pending — ``python -m app.snapshot_view backfill`` 로 다시)."""
+    worker 는 계속 돈다(그 리비전 GET 은 503 materialize_pending — 상주 루프가 ``BACKFILL_RETRY_S`` 마다 다시, R3i m6).
+    반환 None = 예외로 실패."""
     from app.snapshot_view import backfill
 
     try:
@@ -386,9 +463,45 @@ def backfill_views(ctx: SchedulerContext) -> dict[str, Any] | None:
     except Exception as exc:
         log.error("worker.backfill_failed", extra={"error": type(exc).__name__})
         return None
-    if res.get("snapshots") or res.get("human_checks_migrated"):
-        log.info("worker.backfill", extra={"snapshots": len(res["snapshots"]), "rows": res["rows"]})
+    if res.get("snapshots") or res.get("human_checks_migrated") or res.get("failed") or res.get("busy"):
+        log.info(
+            "worker.backfill",
+            extra={"snapshots": len(res["snapshots"]), "rows": res["rows"], "failed": len(res.get("failed") or []),
+                   "busy": len(res.get("busy") or [])},
+        )  # fmt: skip
     return res
+
+
+BACKFILL_RETRY_S: Final = 300.0
+"""R3i m6: worker 시작 때 backfill 이 실패·일부 실패·busy(다른 backfill·발행이 임대를 듦)면 상주 루프가 이 간격마다 다시 부른다
+(예전: 시작 때 한 번 — worker 를 다시 띄워야 했다)."""
+
+
+class LoopState:
+    """상주 루프 상태: 마지막 degraded 복구 확인 시각, backfill 재시도 예정 시각(None = 다시 할 것 없음)."""
+
+    def __init__(self) -> None:
+        self.last_recovery = 0.0
+        self.backfill_due: float | None = None
+
+
+def start_backfill(ctx: SchedulerContext, state: LoopState) -> None:
+    """backfill 한 번 → 결과가 실패·일부 실패·busy 면 ``BACKFILL_RETRY_S`` 뒤 다시(R3i m6), 아니면 끝."""
+    res = backfill_views(ctx)
+    pending = res is None or bool(res.get("failed")) or bool(res.get("busy"))
+    state.backfill_due = time.monotonic() + BACKFILL_RETRY_S if pending else None
+
+
+def tick(ctx: SchedulerContext, state: LoopState, *, recover: bool = True) -> list[int]:
+    """상주 루프 한 바퀴: (주기마다) degraded 복구 확인 · backfill 재시도(예정 시각이 지났으면) · 큐 실행."""
+    if recover and time.monotonic() - state.last_recovery >= RECOVERY_EVERY_S:
+        from app.scheduler.degraded import check_recovery
+
+        check_recovery(ctx)
+        state.last_recovery = time.monotonic()
+    if state.backfill_due is not None and time.monotonic() >= state.backfill_due:
+        start_backfill(ctx, state)
+    return run_until_idle(ctx)
 
 
 def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) -> int:
@@ -407,9 +520,12 @@ def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) 
     if args.once:
         backfill_views(ctx)
         check_recovery(ctx)
-        done = run_until_idle(ctx, max_jobs=args.max_jobs)
-        log.info("worker.once.done", extra={"jobs": len(done)})
+        done, left = drain(ctx, max_jobs=args.max_jobs)
+        log.info("worker.once.done", extra={"jobs": len(done), "requeued_left": left})
         ctx.reset_adapter()
+        if left:  # R3i m16: 지연 재큐잉 잡을 기다리다 끝났다 — 남긴 채 0 으로 끝내지 않는다
+            log.warning("worker.once.requeued_left", extra={"wait_s": ONCE_REQUEUE_WAIT_S})
+            return ONCE_EXIT_REQUEUED
         return 0
 
     stop = threading.Event()
@@ -424,22 +540,19 @@ def main(argv: list[str] | None = None, *, ctx: SchedulerContext | None = None) 
             previous[sig] = signal.getsignal(sig)
             signal.signal(sig, _stop)
     sched = None
+    state = LoopState()
     try:
         while not stop.is_set() and not _has_schema(ctx):
             if stop.wait(interval):
                 return 0
-        backfill_views(ctx)
+        start_backfill(ctx, state)
         ensure_reference(ctx)
         if not args.no_schedule:
             sched = build_scheduler(ctx)
             sched.start()
         log.info("worker.start", extra={"mode": "scheduler", "worker_id": ctx.worker_id})
-        last_recovery = 0.0
         while not stop.is_set():
-            if time.monotonic() - last_recovery >= RECOVERY_EVERY_S:
-                check_recovery(ctx)
-                last_recovery = time.monotonic()
-            run_until_idle(ctx)
+            tick(ctx, state)
             stop.wait(interval)
     finally:
         if sched is not None:

@@ -247,7 +247,8 @@ def test_m9_checklist_closes_on_demotion_and_reopens_on_restore(client: TestClie
         assert "24개월" in item.title
     # 사람이 닫은 항목은 동기화가 다시 열지 않는다
     assert (
-        client.patch(f"/api/ops/checklist/{item_id}", json={"status": "na"}, headers=WRITE).status_code == 200
+        client.patch(f"/api/ops/checklist/{item_id}", json={"status": "na"}, headers=WRITE).status_code
+        == 202  # 계약 .14(D17-5): 바뀌면 발행 잡
     )
     with get_session() as s:
         sync_checklist(s, 1, asof_date="2026-10-08")

@@ -259,8 +259,9 @@ def test_m5_inline_publish_busy_leaves_publish_job(client: TestClient, holder_jo
 
 def test_m21_flip_takes_write_lock_before_reading(client: TestClient) -> None:
     """전환 트랜잭션: 첫 읽기 전에 쓰기 잠금을 잡는다. 읽기(남은 contradicted 재확인)와 published UPDATE 사이 다른 연결이
-    커밋하려 하면 그 커밋이 잠금에 막힌다(전환이 BUSY_SNAPSHOT 으로 실패하지 않는다). 수정 전 코드(잠금 UPDATE 없음)에서는
-    읽기 스냅샷 뒤 다른 커밋이 끼어들어 published UPDATE 가 'database is locked'(SQLITE_BUSY_SNAPSHOT)로 실패한다."""
+    커밋하려 하면 그 커밋이 잠금에 막힌다(전환이 BUSY_SNAPSHOT 으로 실패하지 않는다). R3i m19(docstring 바로잡음): 잠금 UPDATE 를
+    지운 변이 코드에서는 다른 연결의 커밋이 읽기와 전환 사이에 **성공**해 ``other_committed`` 단언이 실패한다(9차 리뷰 확인 —
+    전환 UPDATE 자체가 실패하는 것은 아니다)."""
     import sqlite3
 
     from app.judge.claims import remaining_contradicted
@@ -598,7 +599,7 @@ def test_d14_5_carry_copy_is_chunked_and_resumes(client: TestClient, monkeypatch
     monkeypatch.setattr(persist, "copy_runs", crash_after_two)
     st, _ = run_job(jid)
     monkeypatch.setattr(persist, "copy_runs", real)
-    assert st == "failed"
+    assert st == "queued"  # R3i D17-3: 예외는 실패가 아니라 재시도(지연 재큐잉)
     with get_session() as s:
         n_src = len(set(s.scalars(select(ScoreRun.scenario_id).where(ScoreRun.snapshot_id == SNAP))))
         part = len(list(s.scalars(select(ScoreRun.id).where(ScoreRun.snapshot_id == rev))))

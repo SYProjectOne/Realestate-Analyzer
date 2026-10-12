@@ -217,7 +217,20 @@ def snapshot_view(session: Session, snap: Snapshot) -> dict[str, Any]:
         "published_at": snap.published_at,
         "contradicted_claims": int(contradicted or 0),
         "complex_count": len(ids),
+        **_backfill_meta(session, snap.id),
     }
+
+
+def _backfill_meta(session: Session, snapshot_id: int) -> dict[str, Any]:
+    """계약 .14(D17-2): 업그레이드 backfill 이 이 리비전에 **새로 계산해 채운** 저장본이 있으면 ``backfilled_at``(가장 늦은
+    시각) — 화면 안내('업그레이드 때 다시 계산한 값 포함'). 없으면 키 자체를 넣지 않는다(발행 저장본 안의 이 객체 바이트가 그대로)."""
+
+    from app.models import SnapshotViewUnit
+
+    at = session.scalar(
+        select(func.max(SnapshotViewUnit.backfilled_at)).where(SnapshotViewUnit.snapshot_id == snapshot_id)
+    )
+    return {"backfilled_at": str(at)} if at else {}
 
 
 def scenario_view(sc: Scenario) -> dict[str, Any]:

@@ -23,10 +23,12 @@ from app.api.contract import check_body
 from app.api.demotion import (
     CHECKED_AT_BEFORE_SOURCE,
     CHECKED_AT_FORMAT,
+    DISCOUNT_NOT_BELOW_PRICE,
     HUMAN_FACT_FIELDS,
     ValueParseError,
     apply_human_check,
     checked_at_problem,
+    discount_problem,
     human_target,
     later_official,
     parse_human_value,
@@ -303,6 +305,7 @@ def update_checklist_item(session: DB, id: int, body: Annotated[Any, Body()] = N
     if item is None:
         raise not_found(f"checklist_item {id}")
     check_body("updateChecklistItem", body)
+    before = (item.status, item.note, item.due_date)
     for key in ("status", "note", "due_date"):
         if key in body:
             setattr(item, key, body[key])
@@ -315,8 +318,56 @@ def update_checklist_item(session: DB, id: int, body: Annotated[Any, Body()] = N
 
         session.flush()
         sync_demotions(session, {item.complex_id})
+    session.flush()
+    job_id: int | None = None
+    if (item.status, item.note, item.due_date) != before:
+        # D17-5(계약 .14): 체크리스트(상태·메모·기한)는 발행 리비전 보고서 본문(§8-4 체크리스트·캘린더)에 들어간다 — 바뀌면
+        # 발행 잡(지역마다 — 단지 없는 '지역 공통' 항목은 모든 지역). 바뀐 것이 없으면 200 + job_id null
+        from app.scheduler.snapshots import republish
+
+        cx = session.get(Complex, item.complex_id) if item.complex_id is not None else None
+        regions = (
+            [cx.region_id] if cx is not None else list(session.scalars(select(Region.id).order_by(Region.id)))
+        )
+        for rid in regions:
+            job = republish(session, rid, reason=f"체크리스트 변경: {item.title}"[:200], created_at=now_iso())
+            if job is not None and job_id is None:
+                job_id = int(job.id)
     session.commit()
-    return JSONResponse(checklist_view(item, _complex_names(session)))
+    return JSONResponse(
+        {**checklist_view(item, _complex_names(session)), "job_id": job_id},
+        status_code=202 if job_id is not None else 200,
+    )
+
+
+def _value_errors(session: Any, body: Any) -> list[tuple[dict[str, Any], str]]:
+    """R3i m2: 스키마 검사가 실패한 본문에서도 값 칸(형식·할인 상한)을 검사한다 — (field_error, code) 목록(문제 없거나 볼 수 없으면
+    빈 목록). 단지·필드를 모르면 보지 않는다."""
+    if not isinstance(body, dict):
+        return []
+    cid, field, text = body.get("complex_id"), body.get("field"), body.get("value_text")
+    if (
+        isinstance(cid, bool)
+        or not isinstance(cid, int)
+        or field not in HUMAN_FACT_FIELDS
+        or not isinstance(text, str)
+    ):
+        return []
+    if not in_db_range(cid) or session.get(Complex, cid) is None:
+        return []
+    eid = body.get("entity_id")
+    try:
+        target = human_target(
+            session, cid, str(field), eid if isinstance(eid, int) and not isinstance(eid, bool) else None
+        )
+        value = parse_human_value(target, text) if target is not None else None
+        problem = discount_problem(session, cid, value) if field == "discount" else None
+        if problem is not None:
+            raise ValueParseError(problem, code=DISCOUNT_NOT_BELOW_PRICE)
+    except ValueParseError as exc:
+        loc = ["body", "entity_id" if "entity_id" in str(exc) else "value_text"]
+        return [({"loc": loc, "msg": str(exc)}, exc.code)]
+    return []
 
 
 def _checked_at_422(code: str, detail: str) -> ApiError:
@@ -351,9 +402,15 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
             raise _checked_at_422(CHECKED_AT_FORMAT, exc.detail) from exc
         if time_err is not None and not any(_is_time(e) for e in errs):
             errs.append(time_err)
+        # R3i m2: 스키마 오류가 있어도 값 칸(형식·할인 상한)도 검사해 모든 칸을 한 번에(F9 — 한 칸 오류가 다른 칸을 가리지 않는다)
+        seen = {tuple(e.get("loc") or []) for e in errs}
+        errs += [e for e, _code in _value_errors(session, body) if tuple(e["loc"]) not in seen]
+        # R3i m10(F9): checked_at 오류가 늘 먼저(스키마 검사기 순서와 무관)
+        errs.sort(key=lambda e: 0 if _is_time(e) else 1)
         raise ApiError(422, "validation_error", exc.detail, field_errors=errs) from exc
     cx = get_complex(session, body["complex_id"])
     others: list[dict[str, Any]] = []
+    value_code: str | None = None
     guard = check_payload({"value_text": body["value_text"], "note": body.get("note") or ""})
     if not guard.ok:
         others.append({
@@ -367,14 +424,21 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
         try:
             target = human_target(session, cx.id, field, body.get("entity_id"))
             value = parse_human_value(target, str(body["value_text"])) if target is not None else None
+            problem = discount_problem(session, cx.id, value) if field == "discount" else None
+            if problem is not None:
+                raise ValueParseError(problem, code=DISCOUNT_NOT_BELOW_PRICE)
         except ValueParseError as exc:
             target = None
             others.append(
                 {"loc": ["body", "entity_id" if "entity_id" in str(exc) else "value_text"], "msg": str(exc)}
             )
+            value_code = exc.code
     if others:
         errs = ([time_err] if time_err is not None else []) + others
-        raise ApiError(422, "validation_error", "; ".join(str(e["msg"]) for e in errs), field_errors=errs)
+        # 계약 .14(R3i m2): 할인 값 칸**만** 틀렸으면 그 code(discount_format·discount_not_below_price), 아니면 validation_error
+        only_value = len(errs) == 1 and errs[0]["loc"] == ["body", "value_text"] and value_code is not None
+        code = value_code if only_value and value_code is not None else "validation_error"
+        raise ApiError(422, code, "; ".join(str(e["msg"]) for e in errs), field_errors=errs)
     if bad_time is not None:
         raise _checked_at_422(*bad_time)
     if target is not None:
@@ -513,6 +577,14 @@ def create_human_check(session: DB, body: Annotated[Any, Body()] = None) -> JSON
             "rejudge_job_id": rejudge_job.id if rejudge_job is not None else None,
             # 계약 .11(D14-5): 발행을 부르는 쓰기 응답의 공통 이름(= rejudge_job_id) — 자원을 만드는 POST 라 201 그대로
             "job_id": rejudge_job.id if rejudge_job is not None else None,
+            # 계약 .14(D17-4): 할인 사람 확인이 들어간 기준 타입(화면 안내 — '기준 타입 84A 할인'). 할인이 아니면 null
+            "basis_type_code": _basis_code(target),
         },
         status_code=201,
     )
+
+
+def _basis_code(target: Any) -> str | None:
+    """사람 확인 할인 대상 칸(``discount_by_type.<타입>``)의 타입 코드 — 할인이 아니면 None."""
+    f = getattr(target, "field", None)
+    return f.split(".", 1)[1] if isinstance(f, str) and f.startswith("discount_by_type.") else None

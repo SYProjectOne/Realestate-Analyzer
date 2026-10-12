@@ -28,7 +28,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Callable
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -178,6 +178,8 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
 
 LINK_WEIGHT = Decimal("1")
 """단지 좌표가 없어 거리를 잴 수 없을 때의 연결 가중치(같은 생활권·사람 지정 = 1, D11-5)."""
+COORD_STEP = Decimal("0.000001")
+"""호재 좌표 저장 자리(catalyst.lat·lon = Numeric(9, 6)) — R3i m8."""
 
 
 def _link_view(link: CatalystLink) -> dict[str, Any]:
@@ -248,7 +250,9 @@ def update_catalyst(
 
     # D16-4(R3 8차 N-M4): 발행 리비전 응답에 보이는 값(위치 확인·좌표·예정월·연결)이 하나라도 바뀌면 발행 잡, 아니면 200
     def _num(v: Any) -> Decimal | None:
-        return Decimal(str(v)) if v is not None else None
+        # R3i m8: 저장 열(Numeric(9, 6))과 같은 자리로 맞춰 비교·저장 — 소수 7자리 이상을 보내면 저장값(6자리)과 늘 달라 같은 본문
+        # 재전송도 '바뀜'(새 발행 잡)이었다
+        return Decimal(str(v)).quantize(COORD_STEP, rounding=ROUND_HALF_UP) if v is not None else None
 
     before_state = (bool(cat.location_confirmed), _num(cat.lat), _num(cat.lon), cat.expected_ym)
     cat.location_confirmed = confirmed
@@ -304,7 +308,8 @@ def update_catalyst(
             "job": job_out,
             "job_id": job_out["id"] if job_out is not None else None,
         },
-        status_code=202 if changed else 200,  # D16-4: 바뀐 것이 없으면 200 + job_id null
+        # D16-4: 바뀐 것이 없으면 200 + job_id null. R3i m14: 바뀌었어도 발행할 리비전이 없으면(스냅샷 없는 지역) 잡이 없다 — 200
+        status_code=202 if changed and job_out is not None else 200,
     )
 
 

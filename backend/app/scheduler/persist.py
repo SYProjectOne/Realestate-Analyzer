@@ -567,6 +567,21 @@ def carry_incomplete(session: Session, src_snapshot_id: int, dst_snapshot_id: in
     return {int(r.scenario_id) for r in dst} < set(src_runs.values())
 
 
+def carry_done(session: Session, src_snapshot_id: int, dst_snapshot_id: int) -> bool:
+    """R3i D17-3: dst 의 점수 실행이 **이월 복사로만** 이루어졌고 src 의 시나리오를 모두 덮었다(= 이월 복사가 끝났다). src 에 실행이
+    없으면 dst 도 없을 때 끝. dst 에 이월이 아닌 실행(재판정이 쓴 것)이 있으면 False — 그 판정이 발행한다."""
+    src_runs = {
+        int(r.id): int(r.scenario_id)
+        for r in session.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == src_snapshot_id))
+    }
+    dst = list(session.scalars(select(ScoreRun).where(ScoreRun.snapshot_id == dst_snapshot_id)))
+    if not src_runs:
+        return not dst
+    if not dst or any(r.prev_score_run_id not in src_runs for r in dst):
+        return False
+    return {int(r.scenario_id) for r in dst} >= set(src_runs.values())
+
+
 def carry_forward(
     session: Session,
     src_snapshot_id: int,
