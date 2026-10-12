@@ -659,8 +659,9 @@ def _living_area_ids(session: Session, snap: Snapshot) -> list[str]:
 
 _PROV_SKIP_KINDS: Final = frozenset({"provenance"})
 """출처 id 를 모으지 않는 kind — 출처 서랍 자신뿐(D15-2: 그 밖의 모든 kind·모든 시나리오)."""
-_PROV_RE: Final = re.compile(rb'"prov":(?:\{"\$v":)?"((?:fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+)"')
-"""Fact ``prov`` — 시나리오 patch 행의 바뀐 잎 ``"prov":{"$v":"st_2"}``(R3 7차 M1)도."""
+_PROV_RE: Final = re.compile(rb'"(?:name_)?prov":(?:\{"\$v":)?"((?:fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+)"')
+"""Fact ``prov`` — 시나리오 patch 행의 바뀐 잎 ``"prov":{"$v":"st_2"}``(R3 7차 M1)도. 단지 이름 출처 ``name_prov``(계약 .16
+F1 — 목록 행·상세 머리)도 서랍 대상이다(D22-5, FE10 보고: 발행 리비전 이름 출처 서랍 404)."""
 _RAW_RE: Final = re.compile(rb'"raw_document_id":(?:\{"\$v":)?(\d+)')
 """접수 근거 원문(G3 '접수 근거 원문' — 화면이 ``rd_<raw_document_id>`` 로 연다, D15-2·m7)."""
 
