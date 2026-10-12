@@ -585,7 +585,7 @@ daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 �
    발행 리비전 0·판정기 `tools/call` 0 인지, 01:00 뒤 재시도가 처음부터 다시 수집해 발행하는지 기록(기본 절차는 이 시간대를 피한다).
 5. **재정규화 멱등성(로컬, 선택)**: 5차 원문 전부로 재생 — `REPLAY_DATABASE_URL=<R4 DB — 스크립트로 .env 에서 읽고 출력 금지> uv run python
    scripts/replay_manifest.py --raw-root <r4 RAW_DIR> --out <폴더>`(읽기 전용) → `R4_REPLAY_MANIFEST=<폴더>/docs.json uv run pytest -p no:randomly
-   "tests/scheduler/test_core10_idempotency.py::test_renormalize_is_idempotent[r4d-full]"` → 통과(DB 스냅샷 동일·사실 이벤트 0·`tools/call` 0, 약 2분).
+   "tests/scheduler/test_core10_idempotency.py::test_renormalize_is_idempotent[r4d-full]"` → 통과(DB 스냅샷 동일·사실 이벤트 0·`tools/call` 0, 약 3분).
 6. 4차 확인 항목 1~8(§10-11)은 그대로 다시 본다(회귀 방지) — 특히 (a)(a2)(a3) `tools/call` 0, 판정기 추출 납부 조건 '확인됨' 유지, 46·47 법정동.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
