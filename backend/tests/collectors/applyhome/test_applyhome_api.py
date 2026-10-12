@@ -42,6 +42,7 @@ def merged() -> Recording:
 
 
 def _collector(http: HttpClient, session: Session, **kw: object) -> ApplyhomeCollector:
+    kw.setdefault("window", ("2025-12", "2026-11"))  # 녹화 때 조회 창(계약 .15 기본 창은 녹화에 없다)
     return ApplyhomeCollector(http=http, session=session, today=lambda: TODAY, **kw)  # type: ignore[arg-type]
 
 

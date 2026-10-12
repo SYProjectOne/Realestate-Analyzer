@@ -7,6 +7,7 @@
 | rtms (= collect.weekly) | 청약홈 과거 공고(``fetch_history``, 기본 10년) + rtms 과거 월(``backfill``, 36개월) 수집 →
   ``normalize.benchmark.build_benchmarks`` | benchmark + 출처(+ 바뀌면 notice change_event → 주간 rejudge) |
 | news | 판정기 P1 screen(호재 관련성, ``judge.pipeline.p1_screen_catalyst``) 통과 항목만 → ``normalize.catalyst.catalysts_from_news`` | catalyst 후보(단계·종류는 판정기 P4, D10-6) — 거른 수는 stats ``rejected`` |
+| news | 판정기 screen(공고 예정 신호)·extract(단지 이름)·classify(지역·민간분양)·compare(같은 단지) → ``normalize.upcoming.upcoming_from_news`` | 트랙 (A) 공고 예정 단지 후보(D20-2) — stats ``upcoming`` |
 
 과거 공고·과거 월 수집은 ``ctx.collectors`` 의 ``applyhome``·``rtms`` 수집기에 그 메서드가 있을 때만 한다(가짜 수집기·
 키 없음이면 건너뛰고, 이미 받아 둔 원문으로 조립한다). 조립 단계마다 예외를 ``errors['assemble.<단계>']`` 에 남기고
@@ -189,9 +190,87 @@ def assemble(
         run("benchmark_history", history)
         run("rtms_backfill", backfill)
         run("benchmark", benchmark)
+
+    def upcoming() -> None:
+        from app.normalize.upcoming import upcoming_from_news
+
+        judge = _UpcomingJudge(ctx, region, snapshot.id)
+        with ctx.session_factory() as s:
+            out = upcoming_from_news(
+                s, region.id, docs.get("news", []), judge=judge, key_of=lambda it: news_key(it.url, it.title),
+                snapshot_id=snapshot.id, detected_at=detected_at,
+            )  # fmt: skip
+            s.commit()
+            res.stats["upcoming"] = {**out.stats(), **({"screen": judge.errors} if judge.errors else {})}
+            res.events.extend(out.events)
+
     if "news" in steps:
         run("catalyst", catalyst)
+        run("upcoming", upcoming)
     return res
+
+
+class _UpcomingJudge:
+    """D20-2 ``normalize.upcoming.UpcomingJudge`` 구현 — 판정기 단계 함수(``judge.pipeline``)만 부른다. 판정기가 죽어 있으면
+    이번 수집은 후보를 만들지 않는다(다음 수집에 다시 — 같은 입력이면 캐시)."""
+
+    def __init__(self, ctx: SchedulerContext, region: RegionDTO, snapshot_id: int) -> None:
+        self.ctx, self.snapshot_id = ctx, snapshot_id
+        names = [s.full_name for s in region.selections]
+        self.region_text = f"분석 지역: {region.name} ({', '.join(names)})"
+        self.errors: dict[str, str] = {}
+
+    def screen(self, item: NewsItem, key: str) -> bool:
+        try:
+            return jp.p1_screen_upcoming(
+                self.ctx.adapter(), news_key=key, title=item.title, excerpt=item.excerpt, url=item.url,
+                snapshot_id=self.snapshot_id,
+            ).usable  # fmt: skip
+        except JudgeUnavailable:
+            self.errors["unavailable"] = "판정기 연결 실패 — 이번 수집은 공고 예정 후보를 만들지 않음"
+            return False
+
+    def names(self, item: NewsItem, key: str) -> list[str]:
+        doc = f"제목: {item.title}\n발췌: {item.excerpt}"
+        try:
+            return jp.p2_extract_upcoming(
+                self.ctx.adapter(), news_key=key, document=doc, snapshot_id=self.snapshot_id
+            )
+        except JudgeUnavailable:
+            self.errors["unavailable"] = "판정기 연결 실패 — 이번 수집은 공고 예정 후보를 만들지 않음"
+            return []
+
+    def classify(self, item: NewsItem, key: str, names: list[str]) -> dict[str, Any]:
+        from app.normalize.upcoming import ClassifiedName
+
+        items = [
+            (f"name{i}", f"{self.region_text}\n단지: {n}\n기사: {item.title} — {item.excerpt}")
+            for i, n in enumerate(names)
+        ]
+        try:
+            outs = jp.p4_classify_upcoming(
+                self.ctx.adapter(), news_key=key, items=items, snapshot_id=self.snapshot_id
+            )
+        except JudgeUnavailable:
+            self.errors["unavailable"] = "판정기 연결 실패 — 이번 수집은 공고 예정 후보를 만들지 않음"
+            return {}
+        return {
+            n: ClassifiedName(o.label, o.prob, o.envelope.judgment_seq, o.resolved)
+            for n, o in ((n, outs[f"name{i}"]) for i, n in enumerate(names))
+        }
+
+    def same(self, a: str, a_text: str, b: str, b_text: str) -> bool:
+        import hashlib
+
+        pair = "|".join(sorted((a, b)))
+        key = hashlib.sha256(pair.encode()).hexdigest()[:16]
+        try:
+            return jp.p5_same_complex(
+                self.ctx.adapter(), f"단지: {a}\n{a_text}", f"단지: {b}\n{b_text}", pair_key=key,
+                snapshot_id=self.snapshot_id,
+            )  # fmt: skip
+        except JudgeUnavailable:
+            return False
 
 
 def _event(s: Session, snapshot_id: int, ins: int, upd: int, rem: int, detected_at: str) -> ChangeEvent:

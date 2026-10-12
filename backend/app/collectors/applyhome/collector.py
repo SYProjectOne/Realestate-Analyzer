@@ -14,7 +14,7 @@
 웹 흐름 (지역 1개)
 1. ``region.sido_codes`` 마다 시도 약칭으로 **APT 분양정보 목록**과 **APT 잔여세대(무순위·임의) 목록**을
    조회한다.
-   기간은 ``region.applyhome_query['from_ym']``(없으면 기준월 −10개월) ~ 기준월 +1개월을 12개월 창으로 나눠
+   기간은 ``region.applyhome_query['from_ym']``(없으면 기준월 −24개월) ~ ``to_ym``(없으면 기준월 +12개월, 계약 .15)을 12개월 창으로 나눠
    모든 페이지를 받는다. 페이지마다 ``RawDocument(source_kind='applyhome_list')``.
 2. 목록에는 주소가 없으므로 행마다 상세 팝업을 받아 '공급위치'를 읽고, region 의 시군구·읍면동 이름이 있는
    행만 남긴다(사전 필터 — 정밀 법정동 배정·범위 경계는 WP2). 남은 행은 경쟁률 팝업까지 받는다.
@@ -57,6 +57,10 @@ __all__ = ["HISTORY_YEARS", "ApplyhomeCollector", "month_windows"]
 MAX_PAGES = 200  # 창 하나에 2,000행 — 형식이 바뀌어 total 을 못 읽을 때의 안전장치
 HISTORY_YEARS = 10  # 벤치마크용 과거 공고 조회 창(R3 C1, D9-2) — API 자료는 2020년부터 있다(2026-10-09 확인)
 _UNSET = object()
+PAST_MONTHS = 24
+"""기본 조회 시작 = 기준월 −24개월(계약 .15, meta §1-4 '지난 24~36개월', D20-1 — R4 D18-8: −10개월이라 2025-06·07 공고가 빠졌다)."""
+FUTURE_MONTHS = 12
+"""기본 조회 끝 = 기준월 +12개월(계약 .15 '향후 12개월')."""
 
 
 def _ym(d: date) -> tuple[int, int]:
@@ -128,6 +132,7 @@ class ApplyhomeCollector:
         max_pages: int = MAX_PAGES,
         service_key: str | object | None = _UNSET,
         web_detail: bool = True,
+        window: tuple[str, str] | None = None,
     ) -> None:
         """``service_key``: 공공데이터포털 키(기본 = 설정 ``DATA_GO_KR_KEY``). None/빈 값이면 웹 경로만.
         ``web_detail``: API 경로에서도 지역 안 공고의 웹 상세를 받는다(공고문 PDF 링크용)."""
@@ -142,6 +147,8 @@ class ApplyhomeCollector:
             key = service_key if isinstance(service_key, str) else None
         self._key = key or None
         self._web_detail = web_detail
+        # 기본 조회 창 대신 쓸 ('YYYY-MM', 'YYYY-MM') — 녹화 재생(replay)이 녹화 때 창을 그대로 쓰게. region.applyhome_query 가 우선
+        self._window = window
         # 마지막 fetch 의 시도별 경로: {sido_code: 'api' | 'web' | 'web(api 실패: <사유>)'}
         self.paths: dict[str, str] = {}
         # 마지막 fetch_history 의 건수(잡 stats 용)
@@ -437,8 +444,12 @@ class ApplyhomeCollector:
     # --- 목록
     def _windows(self, region: Region) -> list[tuple[str, str]]:
         today = self._today()
-        end = _add_months(_ym(today), 1)
-        start = _parse_ym(region.applyhome_query.get("from_ym")) or _add_months(_ym(today), -10)
+        q = region.applyhome_query or {}
+        w_from, w_to = (
+            (_parse_ym(self._window[0]), _parse_ym(self._window[1])) if self._window else (None, None)
+        )
+        end = _parse_ym(q.get("to_ym")) or w_to or _add_months(_ym(today), FUTURE_MONTHS)
+        start = _parse_ym(q.get("from_ym")) or w_from or _add_months(_ym(today), -PAST_MONTHS)
         return month_windows(min(start, end), end)
 
     def _collect_list(

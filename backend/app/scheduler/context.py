@@ -67,6 +67,7 @@ __all__ = [
     "default_fixture_dir",
     "net_config_from_env",
     "offline_transport",
+    "recorded_window",
     "replay_transport",
 ]
 
@@ -172,6 +173,31 @@ def replay_transport(archive_path: Path) -> httpx.MockTransport:
     return transport
 
 
+def recorded_window(archive_path: Path) -> tuple[str, str] | None:
+    """녹화 zip 의 청약홈 목록 조회 창(웹 beginPd·endPd 또는 API RCRIT_PBLANC_DE GTE·LTE)의 (최소 시작월, 최대 끝월) 'YYYY-MM'.
+    재생은 녹화한 요청만 응답하므로 계약 .15 의 기본 창(지난 24개월 + 향후 12개월)이 아니라 녹화 때 창으로 조회해야 한다."""
+    try:
+        manifest = json.loads(zipfile.ZipFile(archive_path).read("manifest.json").decode("utf-8"))
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+        return None
+    begins: list[str] = []
+    ends: list[str] = []
+    for e in manifest.get("entries") or []:
+        form = e.get("form") or {}
+        if form.get("beginPd") and form.get("endPd"):
+            begins.append(str(form["beginPd"])[:6])
+            ends.append(str(form["endPd"])[:6])
+        q = dict(parse_qsl(urlsplit(str(e.get("url") or "")).query))
+        gte, lte = q.get("cond[RCRIT_PBLANC_DE::GTE]"), q.get("cond[RCRIT_PBLANC_DE::LTE]")
+        if gte and lte:
+            begins.append(gte.replace("-", "")[:6])
+            ends.append(lte.replace("-", "")[:6])
+    if not begins:
+        return None
+    lo, hi = min(begins), max(ends)
+    return f"{lo[:4]}-{lo[4:6]}", f"{hi[:4]}-{hi[4:6]}"
+
+
 def _net_client(net: NetConfig, *, replay: bool) -> HttpClient:
     from app.core.http import HttpClient
 
@@ -238,7 +264,10 @@ def _offline_collectors(net: NetConfig) -> dict[str, CollectorFactory]:
     def applyhome(ctx: SchedulerContext) -> CollectorLike:
         from app.collectors.applyhome import ApplyhomeCollector
 
-        return ApplyhomeCollector(http=_net_client(net, replay=True), today=ctx.today, service_key=None)
+        window = recorded_window(net.replay_archive) if net.mode == "replay" and net.replay_archive else None
+        return ApplyhomeCollector(
+            http=_net_client(net, replay=True), today=ctx.today, service_key=None, window=window
+        )
 
     def notice_pdf(ctx: SchedulerContext) -> CollectorLike:
         from app.collectors.notice_pdf import NoticePdfCollector

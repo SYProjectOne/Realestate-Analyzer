@@ -62,10 +62,23 @@ def record(
     row.complex_id = complex_id if complex_id is not None else row.complex_id
     row.error_text = error_text
     row.created_at = created_at
+    row.model, row.provider = (
+        _response_model(output_json) if status not in ("blocked", "error") else (None, None)
+    )
     if existing is None:
         session.add(row)
     session.flush()
     return row
+
+
+def _response_model(raw: dict[str, Any]) -> tuple[str | None, str | None]:
+    """원응답의 (model, provider) — 계약 .15 judgment_log 열(D18-1: 행에 실제 응답 모델을 따로)."""
+
+    def text(v: Any, n: int) -> str | None:
+        return v.strip()[:n] if isinstance(v, str) and v.strip() else None
+
+    raw = raw if isinstance(raw, dict) else {}
+    return text(raw.get("model"), 64), text(raw.get("provider"), 32)
 
 
 def log_call(env: JudgmentEnvelope, *, cached: bool) -> None:

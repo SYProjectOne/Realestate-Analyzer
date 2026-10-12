@@ -555,7 +555,28 @@ def _p4(
     만들면 같은 사실에 판정기를 다시 부른다). 결과는 배치 안의 모든 단지에 쓴다(같은 판정).
     """
     del targets
-    pool = [(f.complex_id, f) for f in facts if f.row.inclusion_class != "범위 경계"]
+    # D20-2: 공고 전 트랙 (A) 후보(주택관리번호 없음)는 수집 때 판정기 classify(공고 예정 — 지역·민간분양)가 포함을 정했다.
+    # 단지 사실이 이름뿐이라 여기서 다시 분류하지 않는다(청약홈 공고와 합쳐지면 주택관리번호가 생겨 다시 분류된다)
+    upcoming = set(
+        session.scalars(
+            select(JudgmentLog.seq).where(
+                JudgmentLog.seq.in_(
+                    [
+                        f.row.inclusion_judgment_seq
+                        for f in facts
+                        if f.row.applyhome_id is None and f.row.inclusion_judgment_seq
+                    ]
+                ),
+                JudgmentLog.purpose.startswith("classify:upcoming:"),
+            )
+        )
+    )
+    pool = [
+        (f.complex_id, f)
+        for f in facts
+        if f.row.inclusion_class != "범위 경계"
+        and not (f.row.applyhome_id is None and f.row.inclusion_judgment_seq in upcoming)
+    ]
     for b in range(0, len(pool), CLASSIFY_BATCH_MAX):
         chunk = pool[b : b + CLASSIFY_BATCH_MAX]
         outs = jp.p4_classify_inclusion_batch(

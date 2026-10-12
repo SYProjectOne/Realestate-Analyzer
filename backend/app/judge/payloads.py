@@ -13,6 +13,8 @@ decide 후보 2~6·evidence ≤12,000·priorities ≤2,000·requirements ≤3(�
 extract document ≤50,000·fields ≤32, audit records ≤32, classify item ≤2,000·items ≤64(배치).
 """
 
+# ruff: noqa: E501  (한국어 docstring·판정기 문구)
+
 from __future__ import annotations
 
 import re
@@ -42,6 +44,10 @@ __all__ = [
     "INTAKE_STATUS_BY_CLASS",
     "NOT_CATALYST",
     "RERANK_QUERY",
+    "UPCOMING_CLASSES",
+    "UPCOMING_INCLUDED",
+    "UPCOMING_NAME_FIELDS",
+    "UPCOMING_SCREEN_TASK",
     "VERIFY_MAX_CLAIMS",
     "WAIT_NEW_DESCRIPTION",
     "WAIT_NEW_OPTION",
@@ -59,6 +65,7 @@ __all__ = [
     "classify_inclusion_batch_payload",
     "classify_inclusion_payload",
     "classify_intake_payload",
+    "classify_upcoming_payload",
     "compare_payload",
     "decide_option_id",
     "decide_payload",
@@ -73,6 +80,7 @@ __all__ = [
     "rerank_purpose",
     "screen_payload",
     "target_for",
+    "upcoming_extract_fields",
     "verify_payload",
 ]
 
@@ -157,6 +165,28 @@ _INTAKE: Final = (
     ("unknown", "문구만으로 지금 접수 가능 여부를 정할 수 없다"
      "(메뉴 이름·일반 안내·광고 문구뿐이거나 서로 맞지 않음)"),
 )  # fmt: skip
+UPCOMING_SCREEN_TASK: Final = (
+    "공고 예정 아파트 단지 신호 검사(트랙 A, meta §1-3 #1) — 이 기사 발췌가 특정 아파트 단지(이름이 있는 단지)의 "
+    "앞으로 12개월 안 분양(입주자모집공고·공급) 예정을 알리는가. 이미 분양·청약·입주를 마친 단지, 오피스텔·상가만 다룬 "
+    "기사, 시장 일반론·인구 이동 통계만 있는 기사는 해당 없음"
+)
+"""D20-2 P1 screen 의 purpose(뉴스 → 공고 예정 단지 후보 전). 관련 없으면 JEV 가 skip 을 준다."""
+UPCOMING_NAME_FIELDS: Final = ("complex_1", "complex_2", "complex_3")
+"""D20-2 P2 extract: 기사 하나가 알린 공고 예정 단지 이름(최대 3개)."""
+UPCOMING_INCLUDED: Final = "private_sale_apt"
+"""D20-2 공고 예정 classify 에서 단지 후보가 되는 클래스(포함/제외 클래스와 같은 id — 단지 inclusion_class 로 그대로 쓴다)."""
+_UPCOMING: Final = (
+    (UPCOMING_INCLUDED, "분석 지역 안에서 민간 사업주체가 앞으로 12개월 안에 분양(입주자모집공고)할 아파트 단지"
+     "(주상복합의 아파트 포함). 포함 대상"),
+    ("public_sale", "LH·SH·지방공사 등 공공 사업주체의 공공분양 아파트"),
+    ("rental", "공공·민간 임대주택(분양 아님)"),
+    ("non_apartment", "오피스텔·도시형생활주택·생활숙박시설·상가 등 아파트가 아닌 상품"),
+    ("already_supplied", "이미 분양·청약·입주를 마쳤거나 12개월 안 공고 예정이 아닌 단지"),
+    ("out_of_region", "분석 지역 밖의 단지"),
+    ("unclear", "단지·지역·사업주체를 자료만으로 정할 수 없을 때"),
+)  # fmt: skip
+UPCOMING_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _UPCOMING)
+"""D20-2 공고 예정 단지 classify 7클래스(지역·민간분양·공고 예정 여부)."""
 CLASSIFY_BATCH_MAX: Final = 64
 """JEV classify items 상한(배치 1회)."""
 INTAKE_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _INTAKE)
@@ -617,6 +647,28 @@ def classify_catalyst_kind_payload(*, item_id: str, text: str) -> JudgePayload:
         "items": [{"id": item_id, "text": _cut(public_text(text), 2000)}],
         "classes": [dict(c) for c in CATALYST_KIND_CLASSES],
         "purpose": "부동산 호재 사업의 종류 분류",
+    }
+
+
+def upcoming_extract_fields() -> list[ExtractField]:
+    """D20-2 P2 extract 필드: 기사가 알린 공고 예정 단지 이름 1~3(따옴표 안 이름이 후보 위치 — 값을 고르는 것은 판정기)."""
+    quoted = "[‘'\"“][^’'\"”]{2,40}[’'\"”]"
+    return [
+        ExtractField(
+            id=f,
+            pattern=quoted,
+            description=f"기사가 앞으로 분양(공급) 예정이라고 알린 {n}번째 아파트 단지 이름. 없으면 찾지 못함",
+        )
+        for n, f in enumerate(UPCOMING_NAME_FIELDS, start=1)
+    ]
+
+
+def classify_upcoming_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:
+    """D20-2 공고 예정 단지 후보 classify(배치 ≤64): 항목 = (id, 지역 + 단지 이름 + 기사 제목·발췌)."""
+    return {
+        "items": _classify_items(items),
+        "classes": [dict(c) for c in UPCOMING_CLASSES],
+        "purpose": "기사에 나온 공고 예정 아파트 단지가 분석 지역 안 민간분양(12개월 안 공고 예정)인지 분류",
     }
 
 

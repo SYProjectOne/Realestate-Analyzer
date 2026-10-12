@@ -278,6 +278,14 @@ class _Binder:
             cx = self._remnant_target(key, region_id, batch, create=create)
             if cx is not None:
                 self.merged.add(key)
+        if (
+            cx is None
+            and create
+            and region_id is not None
+            and not cites
+            and not _is_remainder_notice(raw, batch, key)
+        ):
+            cx = self._upcoming_row(key, region_id, batch)
         if cx is None and create:
             region_id = raw.region_id
             if region_id is None:
@@ -324,6 +332,48 @@ class _Binder:
                 for no in _own_notice_nos(batch, key) | _url_numbers(raw.url):
                     if no != key:
                         self.links.setdefault(no, cx.id)
+        return cx
+
+    def _upcoming_row(self, key: str, region_id: int, batch: list[FieldCandidate]) -> Complex | None:
+        """D20-2: 청약홈 새 공고 ``key`` 의 이름 키(``block_name_key``)가 트랙 (A) 공고 예정 후보 행(주택관리번호 없음)의 이름·옛
+        이름 키와 **같은** 행이 정확히 1개면 그 행에 주택관리번호를 붙여 같은 단지로 합친다(새 공고 이벤트는 새 단지와 같다).
+        문자열 대조(파싱)뿐이다 — 후보 행의 별칭은 판정기 compare 로 이미 모였다(``normalize.upcoming``)."""
+        name = next(
+            (
+                str(c.value)
+                for c in batch
+                if c.entity == "complex" and c.entity_key == key and c.field == "name"
+            ),
+            None,
+        )
+        nk = block_name_key(name) if name else ""
+        if not nk:
+            return None
+        hits = [
+            cx
+            for cx in self.s.scalars(
+                select(Complex).where(
+                    Complex.region_id == region_id, Complex.applyhome_id.is_(None), Complex.track == "A"
+                )
+            )
+            if nk in {block_name_key(n) for n in (cx.name, *(cx.former_names or []))}
+        ]
+        if len(hits) != 1:
+            return None
+        cx = hits[0]
+        cx.applyhome_id = key
+        self.s.flush()
+        self.created.add(("complex", cx.id))  # 공고 전 후보의 빈 값 → 청약홈 값은 새 공고 이벤트 1건이 대신
+        self.events.append(
+            changes.new_notice_event(
+                field="applyhome_id",
+                new_text=f"{key} {name}(공고 예정 후보와 합침)",
+                entity_id=cx.id,
+                snapshot_id=self.snapshot_id,
+                complex_id=cx.id,
+                detected_at=self.detected_at,
+            )
+        )
         return cx
 
     def _remnant_target(

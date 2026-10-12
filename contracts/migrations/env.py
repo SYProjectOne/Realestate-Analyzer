@@ -1,6 +1,7 @@
 """Alembic 환경 (계약 2026-10-09.1, WP0 소유).
 
-- DB URL: 환경변수 DATABASE_URL > alembic.ini 의 sqlalchemy.url (기본 sqlite:///./dev.db).
+- DB URL: 환경변수 DATABASE_URL > 환경변수 ENV_FILE 이 있으면 앱 설정(그 파일의 DATABASE_URL — 계약 .15, D20-1·R4 M4)
+  > alembic.ini 의 sqlalchemy.url (기본 sqlite:///./dev.db). ENV_FILE 을 줬는데 설정을 못 읽으면 실패한다(조용히 dev.db 금지).
   'postgresql://' 은 psycopg 3 드라이버('postgresql+psycopg://')로 바꿔 쓴다.
 - SQLite는 render_as_batch=True (ALTER 제약 회피). 0001은 CREATE/DROP만 하므로 두 DB에서 같다.
 - autogenerate의 target_metadata는 backend/app/models 의 Base.metadata (backend/ 에서 실행할 때).
@@ -38,8 +39,22 @@ except ImportError:  # 계약 디렉터리만 단독으로 쓸 때
     target_metadata = None
 
 
+def _env_file_url() -> str | None:
+    """ENV_FILE 이 있으면 그 파일을 읽은 앱 설정의 DATABASE_URL(R4 M4: 없으면 ini 의 dev.db 를 조용히 마이그레이션했다)."""
+    if not os.environ.get("ENV_FILE"):
+        return None
+    from app.core.settings import load_settings  # backend/ 에서 실행할 때만(ENV_FILE 은 앱 설정 파일)
+
+    return str(load_settings().database_url)
+
+
 def _database_url() -> str:
-    url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url") or "sqlite:///./dev.db"
+    url = (
+        os.environ.get("DATABASE_URL")
+        or _env_file_url()
+        or config.get_main_option("sqlalchemy.url")
+        or "sqlite:///./dev.db"
+    )
     if url.startswith("postgresql://"):
         url = "postgresql+psycopg://" + url[len("postgresql://") :]
     elif url.startswith("postgres://"):
