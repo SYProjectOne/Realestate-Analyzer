@@ -145,3 +145,44 @@ export function runWorkerOnce(): void {
     timeout: 120_000,
   });
 }
+
+/**
+ * 테스트 DB 에 SQL 문을 차례로 실행한다(한 트랜잭션) — 계약 .15 화면 확인용 행 준비(R4 FE9). 바뀐 행 수 합을 돌려준다.
+ * `rematerializeRegion` 을 주면 그 지역 발행 저장본을 다시 만든다(계약 .10 D13-1 — 발행 리비전 GET 은 저장본만 읽는다,
+ * `setDiscount` 와 같은 개발 도구 경로).
+ */
+export function runSql(
+  statements: [string, (string | number | null)[]][],
+  rematerializeRegion: number | null = null,
+): number {
+  const db = backendEnv.DATABASE_URL!.replace(/^sqlite:\/\/\//, '');
+  const out = execFileSync(
+    'uv',
+    [
+      'run',
+      'python',
+      '-c',
+      [
+        'import json, sqlite3, sys',
+        'db, stmts, rid = sys.argv[1], json.loads(sys.argv[2]), int(sys.argv[3])',
+        'c = sqlite3.connect(db)',
+        'n = sum(c.execute(sql, params).rowcount for sql, params in stmts)',
+        'c.commit()',
+        'c.close()',
+        'if rid > 0:',
+        '    from app.api.devseed import rematerialize',
+        '    from app.core.db import get_session',
+        '    from app.core.settings import get_settings',
+        '    s = get_settings()',
+        '    with get_session(s) as session:',
+        '        rematerialize(session, settings=s, region_id=rid)',
+        'print(n)',
+      ].join('\n'),
+      db,
+      JSON.stringify(statements),
+      String(rematerializeRegion ?? 0),
+    ],
+    { cwd: BACKEND, env: { ...process.env, ...backendEnv }, stdio: 'pipe', timeout: 120_000 },
+  );
+  return Number(String(out).trim().split(/\s+/).pop()) || 0;
+}
