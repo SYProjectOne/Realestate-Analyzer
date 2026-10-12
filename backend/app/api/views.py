@@ -1109,13 +1109,14 @@ def payment_view(
     }
 
 
-def competition_view(fm: FactMaker, c: Competition) -> dict[str, Any]:
+def competition_view(fm: FactMaker, c: Competition, type_code: str | None = None) -> dict[str, Any]:
+    """``type_code`` = 표시 주택형(``normalize.competition.display_type_codes`` — 저장 행은 원 면적 코드, D23-2)."""
     return {
         "id": c.id,
         "complex_id": c.complex_id,
         "round": c.round,
         "kind": c.kind,
-        "type_code": c.type_code,
+        "type_code": type_code if type_code is not None else c.type_code,
         "supply": fm.field("competition", c.id, "supply", c.supply, unit="units"),
         "applied": fm.field("competition", c.id, "applied", c.applied, unit="count"),
         "ratio_or_shortfall_text": c.ratio_or_shortfall_text,

@@ -5,7 +5,8 @@
 2. source_kind별 파서로 후보를 만든다(notice_pdf·applyhome_*·rtms·stats).
 3. 후보의 entity_key를 행 id로 묶는다: complex = 주택관리번호(applyhome_id; 임의공급·무순위 공고는 최초 번호),
    complex_type = 단지 + 타입(청약홈의 문자 없는 주택형 '84.9582'는 전용면적이 같은 약식 타입과 같은 행),
-   payment_terms = 단지 + 공고번호, competition = 단지 + 공급형태·순위·타입,
+   payment_terms = 단지 + 공고번호, competition = 단지 + 공급형태·순위·**원 면적 코드**(D23-2 — 단지 주택형 대조는 읽기 시점
+   표시 속성, ``normalize.competition``),
    rtms_trade·unsold = 같은 거래·같은 달.
    없는 행은 만든다(단지 행은 raw.region_id가 있어야 한다).
    단지는 **원문의 지역 안에서만** 찾는다(R3 W4): 같은 주택관리번호의 단지가 다른 지역에 있으면 그 행을
@@ -50,7 +51,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlsplit
@@ -75,6 +76,7 @@ from app.models import (
 from app.normalize import changes
 from app.normalize._text import strip_supply_round
 from app.normalize.applyhome_parser import ApplyhomeParser
+from app.normalize.competition import TYPE_AMBIGUOUS
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
 from app.normalize.fields import (
     AUDIT_FLAG_REASON,
@@ -84,12 +86,14 @@ from app.normalize.fields import (
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
+    compare_mark,
     is_price_amount,
     norm_value,
     split_discount,
     split_price_by_type,
     strip_tags,
     value_from_norm,
+    with_mark,
 )
 from app.normalize.living_area import assign_complex_area, correct_dong
 from app.normalize.notice_parser import NoticeParser
@@ -100,6 +104,7 @@ from app.normalize.rtms_parser import RtmsParser
 from app.normalize.stats_parser import StatsParser
 
 __all__ = [
+    "TYPE_AMBIGUOUS",
     "StoreError",
     "StoreResult",
     "address_key",
@@ -244,8 +249,6 @@ class _Binder:
         self.merged: set[str] = set()
         # 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨 키(R3 4차 M-8) — 그 공고의 단지(complex) 후보만 건너뛴다
         self.cited: set[str] = set()
-        # (단지, 공급 구분, 회차) → '타입 모호'로 묶은 원 주택형
-        self._ambiguous: dict[tuple[int, str, str], str] = {}
 
     # -- complex
     def complex_for(
@@ -544,46 +547,12 @@ class _Binder:
         return row
 
     # -- competition
-    def competition_type(self, cx: Complex, kind: str, rnd: str, tcode: str) -> str:
-        """경쟁률 행의 주택형 → 단지 주택형(type_code).
-
-        청약홈 임의공급·무순위 경쟁률 실응답의 ``HOUSE_TY`` 는 문자 접미사가 없다
-        ('084.7529 ' → 파서 '84.7529'). 그런 면적 코드는 단지 주택형과 **전용면적 소수 4자리**로
-        맞춘다(주택형 원문 ``notice_type_code`` 의 면적, 원문이 없는 타입은 저장 정밀도인
-        ``area_m2`` 소수 2자리). 맞는 타입이 하나면 그 type_code, 여럿이면 매칭하지 않고
-        ``TYPE_AMBIGUOUS``('확인 불가(타입 모호)'), 없으면 원 코드 그대로(공고문 타입이 아직 없음 —
-        판단이 아니라 문자열 대조).
-        """
-        if "." not in tcode:
-            return tcode
-        try:
-            area = Decimal(tcode)
-        except InvalidOperation:
-            return tcode
-        hits: list[str] = []
-        for t in self.s.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id)):
-            precise = _notice_area(t.notice_type_code)
-            if precise is not None:
-                same = precise.quantize(_Q4) == area.quantize(_Q4)
-            elif t.area_m2 is not None:
-                same = Decimal(t.area_m2).quantize(_Q2) == area.quantize(_Q2)
-            else:
-                same = False
-            if same:
-                hits.append(t.type_code)
-        if len(hits) == 1:
-            return hits[0]
-        if not hits:
-            return tcode
-        key = (cx.id, kind, rnd)
-        first = self._ambiguous.setdefault(key, tcode)
-        # 같은 회차에 모호한 면적이 둘 이상이면 행이 합쳐지지 않게 두 번째부터는 원 코드(매칭 안 함)
-        return TYPE_AMBIGUOUS if first == tcode else tcode
-
     def competition_for(
         self, cx: Complex, kind: str, rnd: str, tcode: str, *, create: bool
     ) -> Competition | None:
-        tcode = self.competition_type(cx, kind, rnd, tcode)
+        """경쟁률 행 = (단지, 공급 구분, 회차, **원 면적 코드**) — 원문이 준 값만으로 찾는다(D23-2, R4 4차 N13). 그 시점의 단지
+        주택형과 대조해 키를 바꾸면 타입 행이 생기기 전·후 재정규화가 같은 경쟁률을 다른 행으로 만든다 — 주택형 대조는 읽기
+        시점 표시 속성이다(``normalize.competition.display_type_codes``)."""
         row = self.s.scalars(
             select(Competition).where(
                 Competition.complex_id == cx.id,
@@ -775,19 +744,6 @@ def _own_notice_nos(batch: list[FieldCandidate], key: str) -> set[str]:
         and (c.entity_key or "").count(":") == 1
         and (c.entity_key or "").split(":", 1)[0] == key
     }
-
-
-TYPE_AMBIGUOUS = "확인 불가(타입 모호)"
-"""면적 코드 경쟁률 행이 같은 면적의 단지 주택형 여럿에 맞을 때의 type_code(매칭하지 않음)."""
-_Q4 = Decimal("0.0001")
-_Q2 = Decimal("0.01")
-_NOTICE_AREA_RE = re.compile(r"^0*(\d+\.\d+)")
-
-
-def _notice_area(code: str | None) -> Decimal | None:
-    """주택형 원문('084.9582A', '084.7529') → 전용면적 84.9582. 형식이 아니면 None."""
-    m = _NOTICE_AREA_RE.match((code or "").strip())
-    return Decimal(m.group(1)) if m else None
 
 
 _APPLYHOME_ID_GLOBAL: bool = bool(Complex.__table__.c.applyhome_id.unique)
@@ -1449,6 +1405,38 @@ def _is_judged_row(fp: FieldProvenance) -> bool:
     return (strip_tags(fp.reason) or "").startswith((EXTRACT_REASON, AUDIT_FLAG_REASON))
 
 
+def _carry_compare_marks(session: Session, bound: list[FieldCandidate], raw_id: int) -> list[FieldCandidate]:
+    """D23-3(R4 4차 N14): 같은 원문을 다시 정규화할 때, 그 원문이 같은 자리(엔티티·필드·발췌 위치)에 **같은 값**으로 남긴 출처 행의
+    판정기 compare 채택·병기 표식(``COMPARE_ADOPTED``·``COMPARE_SIDE``)을 이번 후보 reason 에 다시 붙인다.
+
+    빼면 출처 행 reason 이 파서 값으로 다시 쓰여 표식이 사라진다 — 같은 rank 1차·1차 상충은 다시 채택 보류('확인 불가'), 그 밖은
+    '판정기 compare 채택' 근거가 이벤트 없이 사라지고 다음 재판정이 표식 없는 상대를 새 상충으로 보고 compare 를 다시 부른다(R4 4차
+    (b) 뒤 재판정 ``tools/call`` 4). 값이 바뀌면(파서가 다른 값을 읽음) 표식을 옮기지 않는다 — compare 결과는 옛 값에 대한 것이다."""
+    groups = {(c.entity, c.entity_id, c.field) for c in bound if c.entity_id is not None}
+    if not groups:
+        return bound
+    marks: dict[tuple[str, int, str, int | None, str | None], str] = {}
+    for fp in session.scalars(
+        select(FieldProvenance).where(FieldProvenance.raw_document_id == raw_id).order_by(FieldProvenance.id)
+    ):
+        if fp.entity_id is None or (fp.entity, fp.entity_id, fp.field) not in groups or _is_judged_row(fp):
+            continue
+        head = compare_mark(fp.reason)
+        if head is not None:
+            marks.setdefault((fp.entity, fp.entity_id, fp.field, fp.excerpt_start, fp.value_norm), head)
+    if not marks:
+        return bound
+    out: list[FieldCandidate] = []
+    for c in bound:
+        head = (
+            marks.get((c.entity, c.entity_id, c.field, c.excerpt_start, norm_value(c.value)))
+            if c.entity_id is not None and compare_mark(c.reason) is None
+            else None
+        )
+        out.append(c if head is None else c.model_copy(update={"reason": with_mark(c.reason, head)}))
+    return out
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -1557,6 +1545,7 @@ def store_raw_document(
         cands = p.parse(dto) if p is not None else []
         binder = _Binder(session, snapshot_id=snapshot_id, detected_at=detected_at, links=links)
         bound, skipped = binder.bind(cands, dto, create=True)
+        bound = _carry_compare_marks(session, bound, row.id)  # D23-3: 재정규화가 compare 표식을 지우지 않게
         old = _reparse_existing(session, binder, bound, row.id, raw_dir, factory)
         # D13-2: 새 행에도 그 의미 필드의 사람 확인(다른 행에 있는)을 0순위 후보로 — 행과 무관하게 같은 규칙.
         # D17-4(R3i major 4): 새 공고가 할인·계약금을 **싣지 않았으면**(값 없음) 그 칸에도 사람 확인 값을 그대로 적용한다

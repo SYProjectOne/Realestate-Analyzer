@@ -31,6 +31,7 @@ __all__ = [
     "RULE_TEXT",
     "UNIT_ASSUMED",
     "SourceKind",
+    "compare_mark",
     "discount_field",
     "field_group",
     "has_tag",
@@ -46,6 +47,7 @@ __all__ = [
     "split_price_by_type",
     "strip_tags",
     "value_from_norm",
+    "with_mark",
     "with_tag",
 ]
 
@@ -375,6 +377,25 @@ def strip_tags(reason: str | None) -> str | None:
 def with_tag(reason: str | None, tag: str, detail: str = "") -> str:
     """'<tag>[ <detail>]; <원래 reason>' (120자). 이미 붙은 compare·보류 표식은 바꾼다."""
     head = f"{tag} {detail}".strip()
+    rest = strip_tags(reason)
+    return (f"{head}{_TAG_SEP}{rest}" if rest else head)[:_REASON_MAX]
+
+
+def compare_mark(reason: str | None) -> str | None:
+    """reason 앞의 판정기 compare 표식 머리(채택·병기 — '<표식> jl_… — …'). 없으면 None.
+
+    D23-3(R4 4차 N14): 같은 원문을 다시 정규화하면 그 원문의 출처 행 reason 이 파서 값으로
+    다시 쓰인다 — 저장 단계가 이 머리를 이번 후보에 다시 붙여(``with_mark``) compare 결과를
+    보존한다(같은 자리·같은 값만)."""
+    text = reason or ""
+    if not text.startswith((COMPARE_ADOPTED, COMPARE_SIDE)):
+        return None
+    head, _, _ = text.partition(_TAG_SEP)
+    return head
+
+
+def with_mark(reason: str | None, head: str) -> str:
+    """``compare_mark`` 머리를 reason 앞에 다시 붙인다(``with_tag`` 와 같은 모양 — 같은 입력이면 같은 값)."""
     rest = strip_tags(reason)
     return (f"{head}{_TAG_SEP}{rest}" if rest else head)[:_REASON_MAX]
 

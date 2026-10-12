@@ -3,12 +3,12 @@
 
 | job_name | 처리 |
 | --- | --- |
-| collect.daily | 수집(청약홈·공고문·공식 홈페이지) → 변경 감지 → 변경 단지만 rejudge 등록 / 변경 없으면 이전 스냅샷 파생 행 복사 + publish(T8) → critical 웹훅 |
+| collect.daily | 수집(청약홈·공고문·공식 홈페이지) → 변경 감지 → 변경 단지만 rejudge 등록 / 변경 없으면 이전 스냅샷 파생 행 복사 + publish(T8) → critical 웹훅. degraded(D23-4)면 발행·재판정 없이 지연 재큐잉(이전 발행 유지) |
 | collect.weekly | 실거래·미분양·입주물량·뉴스 → 시장 자료가 바뀌면 점수 재계산 rejudge(판정 대상 단지 0개) |
 | rejudge | pipeline P1~P9 (rejudge.py) → snapshot.publish 등록 |
 | snapshot.publish | contradicted claim 0 이면 published, 아니면 failed(publish_blocked) |
 | reference.refresh | 법정동·행정동·매핑·세대 현황 갱신(collectors.reference) |
-| region.bootstrap | region.status=bootstrapping → daily+weekly 수집 → 전체 파이프라인 → publish → ready(실패 failed) |
+| region.bootstrap | region.status=bootstrapping → daily+weekly 수집 → 전체 파이프라인 → publish → ready(실패 failed). 일일 수집이 degraded(청약홈 API 빈 데이터셋, D23-4)면 판정·발행 없이 지연 재큐잉(최대 ``EMPTY_DATASET_RETRIES`` 회, 넘으면 failed) |
 | claim.reverify | contradicted 주장의 고친 문장 → 원자 분할 → verify → parent_claim_id 자식 행(reverify.py, 계약 2026-10-09.4) |
 | report | WP8 ``app.reports.job.run_report_job(payload, session=…)`` (예외 → failed: blocked·not_found·invalid_payload) |
 """
@@ -40,6 +40,20 @@ __all__ = ["HANDLERS", "Handler"]
 log = get_logger("app.scheduler.handlers")
 
 Handler = Callable[["SchedulerContext", JobRun], dict[str, Any]]
+
+EMPTY_DATASET_RETRY_S: Final = 1800.0
+"""D23-4(R4 4차 N15): 청약홈 API 빈 데이터셋(재적재 중 — 관측 00:00~01:00 KST)으로 degraded 인 수집의 재시도 간격(초)."""
+EMPTY_DATASET_RETRIES: Final = 6
+"""그 재시도 최대 횟수(30분 × 6 = 3시간). 넘으면 잡 failed(데이터셋이 오래 비어 있다 — 사람 확인)."""
+
+
+def _retry_degraded(job: JobRun, what: str, degraded: dict[str, str], stats: dict[str, Any]) -> None:
+    """D23-4: degraded 수집으로는 발행하지 않는다 — 지연 재큐잉(``JobRequeue``), 최대 횟수를 넘으면 ``JobError``."""
+    reason = f"{what}: " + "; ".join(f"{k} {v}" for k, v in sorted(degraded.items()))
+    done = int((job.stats or {}).get("requeue_count") or 0)
+    if done >= EMPTY_DATASET_RETRIES:
+        raise JobError(f"degraded_source: {reason} — 재시도 {done}회 뒤에도 그대로", stats)
+    raise JobRequeue(f"degraded_source: {reason} — 발행하지 않고 재시도", EMPTY_DATASET_RETRY_S, stats)
 
 
 def _since(session: Any, region_id: int, job_name: str, exclude_id: int) -> str | None:
@@ -279,6 +293,10 @@ def handle_collect_daily(ctx: SchedulerContext, job: JobRun) -> dict[str, Any]:
         ctx, region_id, p.get("sources") or list(DAILY_SOURCES), asof_date=p.get("asof_date"), since=since
     )
     stats = res.stats()
+    if res.degraded:
+        # D23-4(R4 4차 N15): 목록이 불완전한 수집 — 재판정·발행(이월 포함) 없이 이전 발행 리비전을 유지하고 다시 수집한다
+        stats["notify"] = _notify(ctx, res.change_event_ids)
+        _retry_degraded(job, "collect.daily", res.degraded, stats)
     stats.update(
         _after_daily(ctx, res.snapshot_id, res.rejudge_complex_ids, res.change_event_ids, job_id=job.id)
     )
@@ -750,6 +768,13 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
         session.commit()
     try:
         daily = collect(ctx, region_id, [*DAILY_SOURCES, "notice_pdf"], detect_list=False)
+        if daily.degraded:
+            # D23-4(R4 4차 N15): 청약홈 API 데이터셋이 비어 있던 동안의 bootstrap(R4 4차 첫 시도 — 단지 24개, 정상 72개)은 판정·발행하지
+            # 않는다(지역은 bootstrapping 그대로, 같은 잡을 지연 재큐잉 — 재시도는 같은 원문을 멱등하게 다시 정규화한다)
+            _retry_degraded(
+                job, "region.bootstrap", daily.degraded,
+                {"region_id": region_id, "snapshot_id": daily.snapshot_id, "daily": daily.stats()},
+            )  # fmt: skip
         weekly = collect(ctx, region_id, list(WEEKLY_SOURCES), detect_list=False)
         result = run_pipeline(ctx, daily.snapshot_id, complex_ids=None, reason="region.bootstrap")
         stats: dict[str, Any] = {
@@ -779,6 +804,8 @@ def handle_region_bootstrap(ctx: SchedulerContext, job: JobRun) -> dict[str, Any
         if errors:
             stats["errors"] = errors
         return stats
+    except JobRequeue:
+        raise  # 실패가 아니다 — 지역은 bootstrapping 그대로(재시도)
     except Exception:
         with ctx.session_factory() as session:
             region = session.get(Region, region_id)

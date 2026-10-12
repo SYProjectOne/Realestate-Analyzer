@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from app.models import Competition, Complex, ComplexType, Region
 from app.normalize._text import normalize_type_code
 from app.normalize.applyhome_api_parser import parse_applyhome_api_json
+from app.normalize.competition import display_type_codes
 from app.normalize.store import store_raw_document
 
 from ._support import FIX, AddRaw, dto
@@ -177,7 +178,12 @@ def test_letterless_house_ty_competition_matches_complex_types(
     assert not {t for t in types if t.startswith("84.")}, sorted(types)
     comps = db_session.scalars(select(Competition).where(Competition.complex_id == cx.id)).all()
     assert comps
-    eighty_four = {c.type_code for c in comps if c.type_code.startswith("84")}
+    # D23-2(R4-CORE10): 저장 행은 원 면적 코드로 식별 — 단지 주택형 대조는 읽기 시점 표시(API·보고서 같은 함수)
+    assert {c.type_code for c in comps if c.type_code.startswith("84")} <= {"84.7529", "84.9582"}
+    shown = display_type_codes(
+        list(db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id))), comps
+    )
+    eighty_four = {shown[c.id] for c in comps if c.type_code.startswith("84")}
     assert eighty_four <= {"84A", "84B"}, (eighty_four, sorted(types))  # R3 마무리 전: {'84.7529', '84.9582'}
 
 
@@ -185,8 +191,8 @@ def test_letterless_house_ty_ambiguous_area_is_not_matched(
     db_session: Session, region: Region, add_raw: AddRaw
 ) -> None:
     """같은 전용면적(소수 4자리)의 단지 주택형이 둘이면(84A·84B 모두 84.7529) 면적 코드 경쟁률은 어느 쪽에도 붙이지 않고
-    type_code '확인 불가(타입 모호)'로 남긴다 — 다른 면적(84.9582 → 하나)은 그대로 맞춘다."""
-    from app.normalize.store import TYPE_AMBIGUOUS
+    표시 type_code '확인 불가(타입 모호)' — 다른 면적(84.9582 → 하나)은 그대로 맞춘다(D23-2: 읽기 시점 표시, 저장은 원 코드)."""
+    from app.normalize.competition import TYPE_AMBIGUOUS
 
     with zipfile.ZipFile(API_ZIP) as z:
         detail = _zip_entry(
@@ -208,9 +214,11 @@ def test_letterless_house_ty_ambiguous_area_is_not_matched(
             _text(cmpet), source_kind="applyhome_detail", url=cmpet["url"], region_id=region.id, ext="json"
         ),
     )
-    codes = {
-        c.type_code for c in db_session.scalars(select(Competition).where(Competition.complex_id == cx.id))
-    }
+    comps = list(db_session.scalars(select(Competition).where(Competition.complex_id == cx.id)))
+    shown = display_type_codes(
+        list(db_session.scalars(select(ComplexType).where(ComplexType.complex_id == cx.id))), comps
+    )
+    codes = set(shown.values())  # D23-2: 표시 주택형(저장 행은 원 면적 코드)
     assert TYPE_AMBIGUOUS in codes and "84C" in codes, codes
     assert not codes & {"84A", "84B"}, codes
 
