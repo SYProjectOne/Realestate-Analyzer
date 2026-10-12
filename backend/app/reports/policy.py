@@ -48,6 +48,8 @@ def judge_scope(
     has_price: bool,
     intake_status: str | None,
     original_notice_missing: bool = False,
+    address: str | None = None,
+    legal_dong_code: str | None = None,
 ) -> ScopeResult:
     """판정 범위(D9-1) = ``analysis.scope.judge_scope``."""
     return scope.judge_scope(
@@ -56,6 +58,8 @@ def judge_scope(
         has_price=has_price,
         intake_status=intake_status,
         original_notice_missing=original_notice_missing,
+        address=address,
+        legal_dong_code=legal_dong_code,
     )
 
 
@@ -93,6 +97,8 @@ def complex_scope(
         has_price=current_price(types, payments, discount_label=None).known,  # 할인은 known 과 무관
         intake_status=shown.status if shown is not None else None,
         original_notice_missing=scope.original_missing(cx.applyhome_id, cx.notice_date),
+        address=cx.address,
+        legal_dong_code=cx.legal_dong_code,
     )
 
 

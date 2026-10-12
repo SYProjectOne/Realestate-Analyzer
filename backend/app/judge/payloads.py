@@ -44,6 +44,8 @@ __all__ = [
     "INTAKE_STATUS_BY_CLASS",
     "NOT_CATALYST",
     "RERANK_QUERY",
+    "SITE_IDENTITY_CLASSES",
+    "SITE_SAME",
     "UPCOMING_CLASSES",
     "UPCOMING_INCLUDED",
     "UPCOMING_NAME_FIELDS",
@@ -65,6 +67,7 @@ __all__ = [
     "classify_inclusion_batch_payload",
     "classify_inclusion_payload",
     "classify_intake_payload",
+    "classify_site_identity_payload",
     "classify_upcoming_payload",
     "compare_payload",
     "decide_option_id",
@@ -187,6 +190,15 @@ _UPCOMING: Final = (
 )  # fmt: skip
 UPCOMING_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _UPCOMING)
 """D20-2 공고 예정 단지 classify 7클래스(지역·민간분양·공고 예정 여부)."""
+SITE_SAME: Final = "same_complex"
+"""D21-5 공식 홈페이지 동일성 classify 에서 '그 단지의 페이지'인 클래스 — auto 일 때만 접수 classify 입력으로 쓴다."""
+_SITE_IDENTITY: Final = (
+    (SITE_SAME, "페이지 문구가 위에 적힌 그 단지(이름·위치가 같은 분양 사업)의 공식 분양·홍보 페이지다"),
+    ("other_complex", "다른 단지·다른 지역·다른 사업의 분양 페이지다(도메인을 다른 사업이 쓰고 있음 등)"),
+    ("unclear", "페이지 문구만으로 그 단지의 페이지인지 정할 수 없다(메뉴·광고 문구뿐 등)"),
+)  # fmt: skip
+SITE_IDENTITY_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _SITE_IDENTITY)
+"""D21-5(R4 재시험 N6) 공식 홈페이지 동일성 3클래스 — 청약홈에 등록된 홈페이지 주소가 지금 다른 단지 페이지일 수 있다."""
 CLASSIFY_BATCH_MAX: Final = 64
 """JEV classify items 상한(배치 1회)."""
 INTAKE_CLASSES: Final = tuple({"id": i, "description": d} for i, d in _INTAKE)
@@ -629,6 +641,16 @@ def classify_intake_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:
         "items": _classify_items(items),
         "classes": [dict(c) for c in INTAKE_CLASSES],
         "purpose": "분양 단지 공식 홈페이지·팝업 문구로 본 현재 청약·계약 접수 상태 분류",
+    }
+
+
+def classify_site_identity_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:
+    """D21-5 공식 홈페이지 동일성(배치 ≤64): 항목 = (id, '단지: 이름 / 위치: 주소 / 페이지 문구: …'). 3클래스, 임계값 없음.
+    프로그램은 이름 문자열이 페이지에 있는지 세지 않는다(같은 단지인지 판단은 판정기만 — 규칙 3)."""
+    return {
+        "items": _classify_items(items),
+        "classes": [dict(c) for c in SITE_IDENTITY_CLASSES],
+        "purpose": "청약홈에 등록된 공식 홈페이지 주소의 지금 페이지가 그 분양 단지의 페이지인지 분류",
     }
 
 

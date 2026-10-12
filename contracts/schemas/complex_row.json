@@ -9,6 +9,8 @@
   "properties": {
     "complex_id": { "type": "integer" },
     "name": { "type": "string" },
+    "name_prov": { "description": "단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 키가 없다(= null — .15 이전 발행 리비전 저장본도 키 없음)", "type": ["string", "null"] },
+    "name_label": { "description": "단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 없으면 없다", "anyOf": [{ "$ref": "label.json" }, { "type": "null" }] },
     "living_area": { "type": ["string", "null"] },
     "living_area_name": { "type": ["string", "null"] },
     "track": { "type": ["string", "null"], "enum": ["A", "B", null] },
@@ -71,7 +73,7 @@
   },
   "examples": [
     {
-      "complex_id": 4, "name": "오퍼스 한강 스위첸", "living_area": "la_4", "living_area_name": "김포시", "track": "B", "judge_scope": "판정 대상",
+      "complex_id": 4, "name": "오퍼스 한강 스위첸", "name_prov": "fp_4100", "name_label": "확인됨", "living_area": "la_4", "living_area_name": "김포시", "track": "B", "judge_scope": "판정 대상",
       "intake": { "status": "확인 불가", "path": "official_popup", "checked_at": "2026-10-07T09:14:00+09:00", "http_status": 403, "reason": "403", "evidence_url": "https://opus-switzen.com/" },
       "price_low": { "v": 626000000, "label": "확인됨", "prov": "fp_4101", "checked_at": "2026-10-07", "unit": "won" },
       "price_high": { "v": 699000000, "label": "확인됨", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },

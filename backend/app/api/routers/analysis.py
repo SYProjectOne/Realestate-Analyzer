@@ -193,14 +193,14 @@ def compare_body(
     days.update(ctx.jl_days)
     loan = (sc.params or {}).get("loan_limit_won")
     from app.api.routers.complexes import comparables_by_complex
-    from app.api.views import _resale_end
+    from app.api.views import _resale_end, notice_fact
 
     members = comparables_by_complex(session, snap.id, [c.id for c in complexes])
     items: dict[str, Any] = {}
     for c in complexes:
         i = c.id
         b = bundles[i]
-        notice = fm.field("complex", i, "notice_date", b.cx.notice_date, unit="date")
+        notice = notice_fact(fm, b.cx)
         price = price_range(fm, b, notice)
         gap = gap_view(session, fm, ctx, b.cx, snap.id, price, members=members.get(i, []))
         pay = current_payment(b.payments)

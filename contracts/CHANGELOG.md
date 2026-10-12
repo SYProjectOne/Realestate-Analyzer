@@ -2,6 +2,78 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.16
+
+R4 재시험(`docs/design/wp/R4_RESULT2.md` §10) 후속 — CEO 결정 **D21**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-CORE8**(브랜치
+`wp/r4-core8`). 마이그레이션 없음(DB 모양 그대로 — head 0015). 필드 삭제 없음, **새 응답 필드 2**(`ComplexRow`·`Complex`(단지 상세
+머리)의 `name_prov`·`name_label`, 선택), 새 사유 문자열 4, 출처 id 종류 추가 1(시장 실거래 Fact 의 `rd_`). 저장 모양 버전
+(`SHAPE_VERSION`) 그대로 1 — 두 키는 선택 필드로 이름 출처 행이 있을 때만 나온다. .15 이전에 발행한 리비전 저장본·출처 행 없는
+단지에는 **키가 없다**(D14-4 변환 마이그레이션 불필요, FE 는 없으면 null 로 본다). 테스트 표(결함 · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R4_CORE8_TESTS.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시 만들지 않았다
+(frontend/** = FE 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .15 | .16 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | **`ComplexRow.name_prov`·`name_label`**, **`Complex.name_prov`·`name_label`**(단지 상세 `header`) | 없음 — 단지 이름은 맨 문자열(출처·라벨 없음) | **새 선택 필드**: `name_prov` = 이름의 chosen 출처 id(`fp_<id>` — `GET /provenance/{id}` 서랍), `name_label` = 그 라벨. 청약홈 공고 단지 '확인됨', 트랙 (A) 공고 예정 후보 = 언론 **'비공식'**. 출처 행이 없는 옛 행·시드(devseed 포함)·.15 이전 발행 저장본은 **두 키가 없다**(= null — 목록 1,000행 저장본 크기를 늘리지 않으려고 null 을 쓰지 않는다). 화면: 이름 옆 라벨 배지(공고 예정 후보 '비공식')·이름 클릭 → 출처 서랍 | D21-8 |
+| F2 | 트랙 (A) 공고 예정 후보(`track` 'A' · `applyhome_id` null · 공고일 없음)의 **공고일·가격 Fact** | 공고일 '확인 불가(값 없음)', 가격 low·high·mid '확인 불가(분양가 미공개)' | 모두 **'확인 불가(공고 전)'**(reason `공고 전`) — 목록 행·상세 머리·상세 가격·비교 입력 | D21-8 |
+| F3 | G3 시장 **`living_area_prices`** | 실거래 거래에 출처 행이 없어 블록 통째로 빠짐(빈 목록) | 생활권 84㎡ 6개월 시세 행이 있다. `median_won`·`low_won`·`high_won`·`n_trades` 의 `prov` = **`rd_<raw_document_id>`**(그 거래를 실은 실거래 API 원문 — 서랍은 원문 URL·확인일, D15-2 의 rd_ 서랍과 같은 모양), 라벨 '확인됨' | D21-4 |
+| F4 | 접수 상태 `Intake.reason` | — | 새 사유 **'공식 홈페이지가 다른 단지'**(status '확인 불가') — 청약홈 등록 홈페이지가 지금 다른 단지 페이지라 판정기(동일성 classify)가 그 단지 페이지로 보지 않았다(review 포함). 표시 '확인 불가(공식 홈페이지가 다른 단지)' | D21-5 |
+| F5 | 판정 범위 사유(범위 경계) | '범위 경계(주소가 지역 법정동에 매칭 안 됨)' 하나 | 단지 주소에 동 이름이 없고 다른 출처 주소로도 법정동을 못 찾으면 **'범위 경계(주소에 동 없음)'** | D21-6 |
+| F6 | 가격 출처 행(서랍) | 공고문 금액은 표 단위를 보지 않고 원으로 읽음 | 공고문 금액 표 단위 환산: '(단위: 천원)'·'만원' 표에서 읽은 가격 서랍 발췌 끝에 `[단위 근거] <표 머리 줄>` 한 줄. 단위 표기 없는 표의 가격은 reason **'단위 표기 없음 — 원으로 봄'**(라벨 확인됨). 1차 출처끼리 10배 이상 다르면 가격 Fact '확인 불가(출처 상충 — compare 대기)'(기존 보류 표시와 같다) | D21-1 |
+| F7 | G1 첫 적재 요약 `change_event(region·first_load)` 문구 | '첫 적재: 단지 n개, 값 k건(빈 값 → 값 — 변경 이벤트 대신 요약)' | '첫 적재: 단지 n개, 값 k건(**첫 적재 중 기록·덮어쓰기** — 변경 이벤트 대신 요약)' — 같은 bootstrap 안의 값 → 다른 값 덮어쓰기도 센다(첫날 G1 에 가격 critical 없음) | D21-7 |
+| F8 | G7 판정 로그 purpose | — | 새 purpose **`classify:site_identity:batch<n>`**(공식 홈페이지 동일성, classify 3클래스 `same_complex`·`other_complex`·`unclear`) | D21-5 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.15) | 이후(.16) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | 공고문 공급금액 표 금액 | 언제나 원 | 표 머리·근처의 단위 표기('(단위: 세대, 천원)'·'만원'·'원')로 환산. 단위 표기 없으면 원 + reason '단위 표기 없음 — 원으로 봄'. R4 재시험 N1(중흥S-클래스 84A 617,000원 '확인됨') | D21-1 |
+| S2 | 가격 출처 상충(resolver) | 같은 rank 1차·1차만 compare, rank 다르면 rank 1 채택 | 가격 필드는 **다른 출처 종류의 1차 출처와 10배 이상** 다르면 rank 와 무관하게 채택 보류 + compare(P5 도 cross-rank). 공고별 타입 가격(`price_by_type`)은 같은 타입 청약홈 가격과 10배 이상이면 보류. compare same_fact → 단위가 분명한 출처 채택, contradicts·different_facts·review → 보류 유지(사람 확인) | D21-1 |
+| S3 | 수집 텍스트 NUL·제어 문자 | 그대로 → Postgres `DataError`(그 공고문 정규화 전부 롤백), 인용 정규식 실패 | 원문 읽기(`read_raw_text`)가 공백 1자로 바꿈(오프셋 그대로, 원문 파일은 보존) + 출처 행 쓰기 마지막 방어 | D21-2 |
+| S4 | 공고문 원 번호 인용 | '최초 주택관리번호는 2025000302' 만 | '2025-000302'·'2025 - 000302'(하이픈·공백)도 → 잔여 공고 번호 단지 행 없음, 같은 날 재수집 change_event 0(R4 재시험 N3·N4 재생 고정) | D21-3 |
+| S5 | 시장 실거래 Fact 출처 | 거래 행 출처 행(없으면 출처 누락 → 블록 생략) | 출처 행 없으면 그 거래의 원문 문서 `rd_`(거래 행마다 출처 행을 만들지 않음) — 발행 stats `missing_provenance` 에서 실거래가 빠진다 | D21-4 |
+| S6 | 접수 classify 입력 | 공식 홈페이지 문구 그대로 | 먼저 판정기 classify(단지 이름·위치 + 페이지 텍스트)로 그 단지 페이지인지 → auto `same_complex` 만 접수 classify. 같은 문구 다음 날은 분류 복사(호출 없음, D10-2) | D21-5 |
+| S7 | 동 이름 없는 단지 주소 | 법정동 NULL → 범위 경계 | 같은 단지의 다른 출처 주소(원 단지에 묶인 잔여 공고의 공급위치·주소 출처 행)로 법정동(단지 주소는 그대로, 찾은 법정동은 재배정에도 유지), 지역 안이면 '범위 경계' → 미분류(P4 가 다시 분류) | D21-6 |
+| S8 | 첫 적재(bootstrap) 이벤트 | 빈 값 → 값만 요약 | 같은 적재 안의 값 → 다른 값 덮어쓰기도 요약(수집 정규화 이벤트 전부) | D21-7 |
+| S9 | P4 포함/제외 classify | 지역 단지 전부 배치(한 단지 입력이 바뀌면 전체 재판정) | **입력이 바뀌었거나 판정이 없는 단지만** 배치 — 나머지는 직전 판정(같은 판정기 버전) 그대로 | D21-7 |
+| S10 | 보고서 §1-1 생활권 세대수 | `region.living_areas[].households`(지역 생성 때 null 이면 '확인 불가(출처 누락)') | API 와 같은 세대 현황 집계 Fact(라벨 추정, prov `rd_`) | D21-7 |
+| S11 | 판정기 자식 프로세스 env | 프로세스 환경변수만 | + 설정 파일(`ENV_FILE`·`.env`)의 판정기 자격 증명 이름(`JUDGE_SECRET_ENV_NAMES`·`TYPESAFE_`·`OPENROUTER_`·`JEV_` …), 프로세스 환경변수가 이김, 값은 stderr·오류에서 가림 | D21-8 · D19-3 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `complex.json` | `name_prov`(string\|null)·`name_label`(Label\|null) 선택 — F1. 예시에 추가 |
+| 2 | `complex_row.json` | 같음 — F1. 예시에 추가 |
+| 3 | `complex_detail.json` | 예시 머리(트랙 A 후보)에 `name_prov`·`name_label`('비공식') |
+| 4 | `openapi.yaml` | `info.version` 2026-10-09.16 |
+
+### 마이그레이션·검증
+
+- DB 마이그레이션 없음(head 0015 그대로). 저장본 변환·backfill 불필요(선택 필드, 모양 버전 그대로).
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.16`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`).
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음 — `judgments_synth` 는 `record_synth_judgments.py --check` 일치(254개 봉투: 회귀 흐름에는
+  미분류 공식 홈페이지 접수 행이 없어 동일성 classify 호출이 없고, 포함/제외 배치는 devseed 판정 입력과 달라 그대로 전부 판정된다).
+  생성기(`tools/record_synth_judgments.py`)는 동일성 classify(`same_complex`) 합성 응답을 알도록 고쳤다(다음 녹화 대비). 매니페스트
+  사유: R4-CORE8 D21-5 record_synth_judgments.py knows site identity classify (recordings unchanged)
+- 새 테스트 녹화 `backend/tests/normalize/fixtures/r4b_core8/`(R4 재시험 원문 33건 — 청약홈 API·웹 상세, 공고문 추출 텍스트·표, PDF 바이너리
+  제외, 키·토큰 검사 통과)는 `contracts/fixtures` 밖(테스트 전용)이다.
+
+### 알려진 한계
+
+- 단위 상충(S2)에서 contradicts 면 어느 금액도 채택하지 않는다 — 사람 확인(G7)이 풀 때까지 그 타입 가격·현재 구매가는 '확인 불가'.
+- 공고별 타입 가격이 단위 상충으로 보류되면 compare 가 청약홈 값을 채택해도 그 공고의 현재 구매가는 '확인 불가'로 남는다(옛 공고
+  가격으로 돌아가지 않는다 — R3 3차 M-4 규칙).
+- 동 이름 없는 주소의 대체 주소(S7)는 원 단지에 묶인 잔여 공고·주소 출처 행에서만 찾는다(공식 홈페이지 페이지 텍스트의 주소는 읽지
+  않는다).
+
 ## 2026-10-09.15
 
 R4 실데이터 시험(`docs/design/wp/R4_RESULT.md`) 후속 — CEO 결정 D18·**D20**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-FIX**(브랜치

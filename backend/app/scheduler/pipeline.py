@@ -6,8 +6,10 @@
    결과는 ``normalize.judged.apply_extracted`` 로 사실 테이블·출처 행에 반영(auto+감사 통과 = 확인됨, 감사 전 = 추정,
    review·감사 flagged = 미반영)
 3. 접수 상태 classify: 이 스냅샷의 '접수 문구 미분류' 행(공식 홈페이지 official_popup·headless_shot) 중 문구 해시가 직전
-   분류 행과 같은 것은 분류 복사(``intake.carry_classification``, D10-2 — 호출 없음), 나머지를 원문 DOM 텍스트의
-   접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/불가/확인 불가. 미해결 = 확인 불가(판정 미해결).
+   분류 행과 같은 것은 분류 복사(``intake.carry_classification``, D10-2 — 호출 없음), 나머지는 먼저 **공식 홈페이지
+   동일성**(D21-5 — 그 페이지가 그 단지의 페이지인가, 단지 이름·위치 + 페이지 텍스트 → ``judge.pipeline.p4_classify_site_identity``)
+   을 묻고 auto '그 단지'만 원문 DOM 텍스트의 접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/
+   불가/확인 불가. 미해결 = 확인 불가(판정 미해결). 동일성이 아니거나 review 면 '확인 불가(공식 홈페이지가 다른 단지)'.
    그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
    triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
    (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
@@ -59,6 +61,7 @@ from app.core.logging import get_logger
 from app.core.protocols import JudgePayload, JudgeTool, JudgeUnavailable
 from app.core.redact import redact_text
 from app.core.settings import get_settings
+from app.judge import payloads as P
 from app.judge import pipeline as jp
 from app.judge.base import JudgeCaller
 from app.judge.claims import with_josa
@@ -84,6 +87,7 @@ from app.models import (
 )
 from app.models.enums import INCLUSION_CLASS
 from app.normalize.extract_request import FIELD_DESCRIPTIONS, ExtractRequest, build_extract_requests
+from app.normalize.fields import is_price_amount, magnitude_apart
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
@@ -97,6 +101,7 @@ from app.scheduler.intake import (
     carry_classification,
     intake_change_events,
     intake_text,
+    page_text,
     reset_stale_classification,
 )
 from app.scheduler.judge_version import last_logged, record_version_change
@@ -523,6 +528,7 @@ def _p4_intake(
             continue
         item = jp.IntakeItem(r.complex_id, r.path, text)
         items.setdefault(item.key, (r, item))
+    items = _same_site_only(session, caller, snap, seq, items)
     ordered = [v for _, v in sorted(items.items())]
     for b in range(0, len(ordered), CLASSIFY_BATCH_MAX):
         chunk = ordered[b : b + CLASSIFY_BATCH_MAX]
@@ -540,6 +546,101 @@ def _p4_intake(
     session.flush()
 
 
+SITE_OTHER: Final = "공식 홈페이지가 다른 단지"
+"""D21-5(R4 재시험 N6): 공식 홈페이지 동일성 classify 가 '그 단지의 페이지'(auto)가 아닌 접수 행의 사유 — 표시
+'확인 불가(공식 홈페이지가 다른 단지)'. 그 문구는 접수 classify 입력이 아니다."""
+
+
+def _same_site_only(
+    session: Session,
+    caller: CountingCaller,
+    snap: Snapshot,
+    seq: persist.SeqResolver,
+    items: dict[str, tuple[IntakeStatus, jp.IntakeItem]],
+) -> dict[str, tuple[IntakeStatus, jp.IntakeItem]]:
+    """D21-5: 접수 classify 전에 페이지가 그 단지의 페이지인지 판정기(classify, 단지 이름·위치 + 페이지 문구)에 묻는다.
+    auto '그 단지'만 남기고, 나머지 행은 '확인 불가(공식 홈페이지가 다른 단지)' + 판정 표식(다음 날 같은 문구면 분류 복사 —
+    D10-2, 다시 묻지 않는다). 판단은 판정기만(규칙 3)."""
+    if not items:
+        return items
+    sites: list[tuple[str, jp.SiteItem]] = []
+    for key, (row, item) in sorted(items.items()):
+        cx = session.get(Complex, row.complex_id)
+        if cx is None:
+            continue
+        text = page_text(session, row) or item.text
+        sites.append((key, jp.SiteItem(row.complex_id, row.path, cx.name, cx.address, text)))
+    keep: dict[str, tuple[IntakeStatus, jp.IntakeItem]] = {}
+    for b in range(0, len(sites), CLASSIFY_BATCH_MAX):
+        chunk = sites[b : b + CLASSIFY_BATCH_MAX]
+        outs = jp.p4_classify_site_identity(
+            caller, [s for _, s in chunk], snapshot_id=snap.id, batch_no=b // CLASSIFY_BATCH_MAX
+        )
+        for key, site in chunk:
+            out = outs[site.key]
+            if jp.is_same_site(out):
+                keep[key] = items[key]
+                continue
+            row = items[key][0]
+            row.status = "확인 불가"
+            row.reason = SITE_OTHER
+            s = seq(out.envelope.judgment_seq)
+            what = f"{out.label or '미해결'}·{out.decision or out.envelope.status}"
+            mark = (
+                f"{CLASSIFIED_MARK} jl_{s}(공식 홈페이지 동일성 {what})" if s is not None else CLASSIFIED_MARK
+            )
+            row.note = f"{row.note} · {mark}" if row.note else mark
+    session.flush()
+    return keep
+
+
+def _inclusion_changed(
+    session: Session, caller: CountingCaller, pool: list[tuple[int, ComplexFacts]]
+) -> list[tuple[int, ComplexFacts]]:
+    """D21-7(R4 재시험 m-c): 포함/제외 판정 입력이 **바뀐 단지만** 다시 보낸다. 직전 판정(``inclusion_judgment_seq`` 의
+    judgment_log 행)이 같은 판정기 버전이고 그 행의 이 단지 항목 텍스트가 지금 입력과 같으면 그 판정을 그대로 쓴다(단지 행의
+    분류·확률·seq 그대로 — 호출 없음). 한 단지 입력이 바뀌어 지역 전체 배치가 다시 판정되면서 다른 단지 분류가 흔들리던 것을
+    막는다. 판정기 버전이 바뀌면(D6) 모두 다시 판정한다. 텍스트 비교(산술)일 뿐 판단이 아니다."""
+    version = caller.known_version()
+    if version is None or not pool:
+        return pool
+    seqs = sorted({f.row.inclusion_judgment_seq for _, f in pool if f.row.inclusion_judgment_seq is not None})
+    logs: dict[int, JudgmentLog] = {}
+    for i in range(0, len(seqs), 500):
+        logs.update(
+            {
+                j.seq: j
+                for j in session.scalars(select(JudgmentLog).where(JudgmentLog.seq.in_(seqs[i : i + 500])))
+            }
+        )
+    out: list[tuple[int, ComplexFacts]] = []
+    for cid, f in pool:
+        log = logs.get(f.row.inclusion_judgment_seq or -1)
+        if (
+            log is None
+            or log.adapter_version != version
+            or log.status not in ("ok", "review")
+            or f.row.inclusion_class in (None, "미분류")
+            or _logged_item_text(log, f"complex:{cid}") != _inclusion_item_text(cid, _inclusion_text(f))
+        ):
+            out.append((cid, f))
+    return out
+
+
+def _inclusion_item_text(cid: int, text: str) -> str:
+    """판정기로 보낼 포함/제외 항목 텍스트(payload 빌더와 같은 정리 — 공개 텍스트·길이 제한)."""
+    items = P.classify_inclusion_batch_payload([(f"complex:{cid}", text)])["items"]
+    return str(items[0]["text"])
+
+
+def _logged_item_text(log: JudgmentLog, item_id: str) -> str | None:
+    items = (log.input_json or {}).get("items")
+    if not isinstance(items, list):
+        return None
+    hit = next((it for it in items if isinstance(it, dict) and it.get("id") == item_id), None)
+    return str(hit.get("text")) if hit is not None and hit.get("text") is not None else None
+
+
 def _p4(
     session: Session,
     caller: CountingCaller,
@@ -549,10 +650,10 @@ def _p4(
     targets: set[int],
     seq: persist.SeqResolver,
 ) -> None:
-    """포함/제외: 지역 단지 전부(범위 경계 제외)를 64개씩 배치 1회 — 같은 집합·같은 텍스트면 캐시(T17).
-
-    대상 단지만이 아니라 전부를 보내는 것은 배치 payload 가 집합으로 정해지기 때문이다(부분 재판정이 다른 payload 를
-    만들면 같은 사실에 판정기를 다시 부른다). 결과는 배치 안의 모든 단지에 쓴다(같은 판정).
+    """포함/제외: 지역 단지(범위 경계 제외) 중 **판정 입력이 바뀌었거나 아직 판정이 없는 단지만** 64개씩 배치 1회
+    (D21-7·R4 재시험 m-c — ``_inclusion_changed``). 입력이 그대로인 단지는 직전 판정(같은 판정기 버전)을 그대로 쓴다 — 한
+    단지 입력이 바뀌어도 다른 단지 분류가 다시 판정되어 흔들리지 않는다. 같은 집합·같은 텍스트 배치는 캐시(T17).
+    결과는 보낸 배치 안의 단지에만 쓴다.
     """
     del targets
     # D20-2: 공고 전 트랙 (A) 후보(주택관리번호 없음)는 수집 때 판정기 classify(공고 예정 — 지역·민간분양)가 포함을 정했다.
@@ -577,6 +678,7 @@ def _p4(
         if f.row.inclusion_class != "범위 경계"
         and not (f.row.applyhome_id is None and f.row.inclusion_judgment_seq in upcoming)
     ]
+    pool = _inclusion_changed(session, caller, pool)
     for b in range(0, len(pool), CLASSIFY_BATCH_MAX):
         chunk = pool[b : b + CLASSIFY_BATCH_MAX]
         outs = jp.p4_classify_inclusion_batch(
@@ -747,8 +849,12 @@ def _p5(
             continue
         rivals = [
             r for r in rows
-            if r is not chosen and r.source_rank == chosen.source_rank and r.value_text != chosen.value_text
-            and r.excerpt and r.compare_judgment_seq is None
+            if r is not chosen and r.value_text != chosen.value_text and r.excerpt and r.compare_judgment_seq is None
+            and (
+                r.source_rank == chosen.source_rank
+                # D21-1(R4 재시험 N1): rank 가 달라도 1차 출처끼리 금액이 10배 이상 다르면(단위 상충) compare
+                or (is_price_amount(chosen.entity, chosen.field) and magnitude_apart(r.value_norm, chosen.value_norm))
+            )
         ]  # fmt: skip
         for r in rivals:
             cid = chosen.entity_id if chosen.entity == "complex" else None

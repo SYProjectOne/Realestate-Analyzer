@@ -129,7 +129,8 @@ def _steps(sources: Sequence[str]) -> list[str]:
 def _first_load_event(
     session: Session, region_id: int, snapshot_id: int, folded: int, detected_at: str
 ) -> ChangeEvent:
-    """지역 첫 적재 요약 한 줄(D18-7·R4 m3: 첫날 G1 '최근 변경'이 빈 값 → 값 critical 326건으로 가득했다)."""
+    """지역 첫 적재 요약 한 줄(D18-7·R4 m3: 첫날 G1 '최근 변경'이 빈 값 → 값 critical 326건으로 가득했다. D21-7·R4 재시험
+    m-b: 같은 적재 안의 값 → 다른 값 덮어쓰기 92건도 요약에 센다)."""
     n = session.scalar(select(func.count()).select_from(Complex).where(Complex.region_id == region_id)) or 0
     ev = ChangeEvent(
         snapshot_id=snapshot_id,
@@ -137,7 +138,7 @@ def _first_load_event(
         entity_id=region_id,
         field="first_load",
         old_text=None,
-        new_text=f"첫 적재: 단지 {n}개, 값 {folded}건(빈 값 → 값 — 변경 이벤트 대신 요약)",
+        new_text=f"첫 적재: 단지 {n}개, 값 {folded}건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)",
         detected_at=detected_at,
         severity="info",
         triggers_rejudge=False,

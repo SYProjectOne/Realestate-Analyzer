@@ -8,6 +8,7 @@
 - local_tools: 이 도구들은 JEV 0.14.1 의 로컬 단락 응답처럼 ``provider: "none"``·``model: "jev-latest"`` 를 준다
   (R4 C1 — 실제 extract 가 후보를 못 찾을 때의 모양)
 - model: 모델 호출 응답의 ``model`` 을 이 값으로 바꾼다(모델 변경 시험)
+- require_env: 이 이름의 환경변수가 없으면 기동하지 않는다(판정기 자격 증명 — D21-8 '.env 만으로 판정기가 뜨는가')
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -71,6 +72,12 @@ async def call_tool(ctx: Any, params: types.CallToolRequestParams) -> types.Call
 
 
 async def main() -> None:
+    need = config().get("require_env")
+    if need and not os.environ.get(str(need)):
+        # 실제 JEV 처럼 판정기 자격 증명이 없으면 기동하지 않는다(D21-8 — .env 만으로 뜨는지 시험)
+        sys.stderr.write(f"missing credential env {need}" + chr(10))
+        sys.stderr.flush()
+        sys.exit(4)
     server: Server[Any] = Server(
         "jev-mcp", version=config().get("version", "0.14.1"), on_list_tools=list_tools, on_call_tool=call_tool
     )

@@ -14,7 +14,7 @@ from collections import defaultdict, namedtuple
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Any, Final
 
 from sqlalchemy import func, null, select
 from sqlalchemy.orm import Session
@@ -621,6 +621,8 @@ def _scope_now(b: ComplexBundle, cur: IntakeStatus | None) -> scope_rules.ScopeR
         has_price=score_price(b).known,
         intake_status=cur.status if cur is not None else None,
         original_notice_missing=scope_rules.original_missing(b.cx.applyhome_id, b.cx.notice_date),
+        address=b.cx.address,
+        legal_dong_code=b.cx.legal_dong_code,
     )
 
 
@@ -703,6 +705,7 @@ def complex_header(fm: FactMaker, b: ComplexBundle, area_name: Mapping[str, str]
         "region_id": cx.region_id,
         "applyhome_id": cx.applyhome_id,
         "name": cx.name,
+        **name_provenance(fm, cx),
         "former_names": list(cx.former_names or []),
         "address": cx.address,
         "legal_dong_code": cx.legal_dong_code
@@ -722,7 +725,7 @@ def complex_header(fm: FactMaker, b: ComplexBundle, area_name: Mapping[str, str]
         "units_general": cf("units_general", "units"),
         "units_special": cf("units_special", "units"),
         "officetel_units": cf("officetel_units", "units"),
-        "notice_date": cf("notice_date", "date"),
+        "notice_date": notice_fact(fm, cx),
         "apply_dates": _schedule(fm, cx, "apply_dates"),
         "winner_date": winner,
         "contract_dates": _schedule(fm, cx, "contract_dates"),
@@ -739,6 +742,33 @@ def complex_header(fm: FactMaker, b: ComplexBundle, area_name: Mapping[str, str]
         "inclusion_prob": _judge_prob(cx.inclusion_prob, cx.inclusion_judgment_seq, "판정기 classify", None),
         "track": cx.track,
     }
+
+
+PRE_NOTICE: Final = "공고 전"
+"""D21-8: 청약홈 공고 전 단지(트랙 A 공고 예정 후보 — 주택관리번호 없음)의 공고일·가격 사유 — 표시 '확인 불가(공고 전)'."""
+
+
+def is_pre_notice(cx: Any) -> bool:
+    """트랙 (A) 공고 예정 후보(D20-2 — 청약홈 공고 전: 주택관리번호·공고일 없음)."""
+    return cx.track == "A" and cx.applyhome_id is None and cx.notice_date is None
+
+
+def notice_fact(fm: FactMaker, cx: Any) -> dict[str, Any]:
+    """공고일 Fact. 공고 전 단지는 '확인 불가(공고 전)'(D21-8 — '값 없음'이 아니다). 가격 사유도 이 사유를 따른다
+    (``price_range``)."""
+    if is_pre_notice(cx):
+        return unknown(PRE_NOTICE, None, unit="date")
+    return fm.field("complex", cx.id, "notice_date", cx.notice_date, unit="date")
+
+
+def name_provenance(fm: FactMaker, cx: Any) -> dict[str, Any]:
+    """단지 이름의 출처·라벨(계약 2026-10-09.16 ``name_prov``·``name_label``, D21-8): chosen 출처 행(청약홈 '확인됨', 공고 예정
+    후보는 언론 '비공식'). 출처 행이 없으면(시드·옛 행) **두 키를 내지 않는다**(선택 필드 — 없음 = null, .15 이전 발행 저장본과
+    같은 모양. 목록 1,000행 저장본·응답 크기를 늘리지 않는다). 이름은 Fact 가 아니라 출처 누락 오류를 내지 않는다."""
+    fp = fm.prov.get("complex", cx.id, "name")
+    if fp is None:
+        return {}
+    return {"name_prov": f"fp_{fp.id}", "name_label": fp.label}
 
 
 def _judge_prob(value: Any, seq: int | None, reason: str, checked: str | None) -> dict[str, Any]:
@@ -851,7 +881,7 @@ def price_range(
         else None
     )
     if t is None or not view.known:
-        reason = view.empty_reason or "분양가 미공개"
+        reason = PRE_NOTICE if is_pre_notice(b.cx) else (view.empty_reason or "분양가 미공개")
         if notice is not None and notice["label"] == LABEL_UNKNOWN and notice.get("reason"):
             reason = str(notice["reason"])
         cur = current_payment(b.payments)
@@ -1502,7 +1532,7 @@ def complex_row(
     last_change: dict[str, Any] | None,
 ) -> dict[str, Any]:
     b, cx = rd.b, rd.b.cx
-    notice = fm.field("complex", cx.id, "notice_date", cx.notice_date, unit="date")
+    notice = notice_fact(fm, cx)
     price = price_range(fm, b, notice, full=False)
     winner = fm.field("complex", cx.id, "winner_date", cx.winner_date, unit="date")
     months = fm.field("complex", cx.id, "resale_months", cx.resale_months, unit="months")
@@ -1530,6 +1560,7 @@ def complex_row(
     return {
         "complex_id": cx.id,
         "name": cx.name,
+        **name_provenance(fm, cx),
         "living_area": cx.living_area,
         "living_area_name": area_name.get(cx.living_area or "") if cx.living_area else None,
         "track": cx.track,
@@ -1570,7 +1601,7 @@ def complex_row(
 LIST_COMPLEX_FIELDS: frozenset[str] = frozenset(
     {
         "notice_date", "winner_date", "resale_months", "move_in_ym",
-        "land_type", "price_cap", "regulated", "residency_months", "units_total",
+        "land_type", "price_cap", "regulated", "residency_months", "units_total", "name",
     }
 )  # fmt: skip
 """목록 행(``complex_row``)이 Fact 로 쓰는 단지 필드 — 목록 화면은 이 필드 출처만 읽는다(T16 성능)."""

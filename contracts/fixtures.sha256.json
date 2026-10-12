@@ -1,7 +1,7 @@
 {
  "description": "contracts/fixtures/** sha256. 픽스처를 바꾸면 backend/scripts/fixture_manifest.py --reason 으로 다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6). 변경마다 새 사유(history).",
- "reason": "R4-FIX contract .15 judgments_synth re-recorded (envelope model/provider)",
- "files_digest": "2c349749b1bcdb59968fc55613dd85778e3babb7e5de17bf2d865d66d17d3b76",
+ "reason": "R4-CORE8 D21-5 record_synth_judgments.py knows site identity classify (recordings unchanged)",
+ "files_digest": "7d0fed5fcadf77241fc3f19698b45acd82ac78630f9e174a6e09b4975e50673f",
  "history": [
   {
    "reason": "R3b 마무리: 계약 .7 winner_label(당첨일 라벨이 전매 종료 요건 근거에 합쳐짐)로 상황 decide payload 1건 변경 — 합성 판정 녹화 재생성",
@@ -30,6 +30,10 @@
   {
    "reason": "R4-FIX D18-5 judgments_synth re-recorded (chunk purpose = normalized text hash)",
    "files_digest": "5fd9963d50bd96d5d9cd06867e133732e091f04d486d3d916888e12a86d933b1"
+  },
+  {
+   "reason": "R4-FIX contract .15 judgments_synth re-recorded (envelope model/provider)",
+   "files_digest": "2c349749b1bcdb59968fc55613dd85778e3babb7e5de17bf2d865d66d17d3b76"
   }
  ],
  "files": {
@@ -533,7 +537,7 @@
   "tools/incheon_gimpo_complexes_b.py": "1a5a843ed0a2c60542c286575175f601b1e37df02a37e7f58849be4b36b8e06f",
   "tools/incheon_gimpo_judgments.py": "81a91eb09434d27c82499e20dab0f39bba7ab0faff14aae8ad0c9bc3ad8fe044",
   "tools/record_applyhome_cmpet.py": "77c26e513c5475f0e4ad61e7c525472153f6c3377c4a6710f984d17c597b0ded",
-  "tools/record_synth_judgments.py": "5d27a8c8f7b50bd04213c6fad93397104ae65064739e4c3f01fbcf48be35878f",
+  "tools/record_synth_judgments.py": "cc71f4facb1c0b3194588c40634326ab3af615372c1008ca011b432c26d00bc1",
   "tools/synth.py": "32972d664cf6350beb6c758e3fa8988e63df3a63eeecd0cab9189a2ff7ccd6df"
  }
 }

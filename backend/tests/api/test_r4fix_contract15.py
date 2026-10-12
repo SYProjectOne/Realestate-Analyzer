@@ -5,7 +5,7 @@
 | `POST /regions` 선택 필드 `applyhome_query`(from_ym·to_ym) | ``test_create_region_accepts_applyhome_query`` · ``test_create_region_rejects_bad_from_ym`` |
 | 기본 조회 창 = 지난 24개월 + 향후 12개월(meta §1-4) · `to_ym` | ``test_default_window_is_past_24_future_12`` · ``test_query_window_overrides`` |
 | judgment_log `model`·`provider` → 봉투(G7 판정 로그) | ``test_envelope_carries_model_and_provider`` |
-| 계약 버전 .15 | ``test_contract_version_is_15`` |
+| 계약 버전 .15 | (CORE8 계약 .16 에서 ``tests/api/test_core8_d21_8.py::test_contract_version_is_16`` 으로 옮김) |
 """
 
 # ruff: noqa: E501
@@ -22,12 +22,6 @@ from app.models import Region
 from ._support import WRITE, validate
 
 SEL = [{"kind": "sigungu", "code": "28245", "full_name": "인천광역시 계양구"}]
-
-
-def test_contract_version_is_15() -> None:
-    from app.core.protocols import CONTRACT_VERSION
-
-    assert CONTRACT_VERSION == "2026-10-09.15"
 
 
 def test_create_region_accepts_applyhome_query(client: TestClient) -> None:

@@ -85,7 +85,7 @@
     {
       "snapshot_id": 12, "asof_date": "2026-10-08", "scenario_id": 1,
       "header": {
-        "id": 15, "region_id": 1, "applyhome_id": null, "name": "계양신도시 카이브 유보라", "former_names": [],
+        "id": 15, "region_id": 1, "applyhome_id": null, "name": "계양신도시 카이브 유보라", "name_prov": "fp_8801", "name_label": "비공식", "former_names": [],
         "address": "인천광역시 계양구 동양동(AC3·AC4)", "legal_dong_code": null, "living_area": "la_3", "living_area_name": "계양구",
         "official_site_url": null, "developer": "반도건설", "trustee": null, "builder": "반도건설",
         "housing_type": { "v": null, "label": "확인 불가", "reason": "공고 전", "prov": null, "checked_at": "2026-10-07" },

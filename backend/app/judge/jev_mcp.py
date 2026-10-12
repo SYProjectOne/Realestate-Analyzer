@@ -9,7 +9,8 @@
 - 기동 실패·타임아웃·프로세스 사망·프로토콜 오류 → ``JudgeUnavailable`` (T18). 도구의 isError 응답은
   ``ToolResponse.is_error`` 로 돌려주고 어댑터가 error 행 + JudgeUnavailable 로 바꾼다.
 - 자식 프로세스 환경변수는 MCP SDK 기본(PATH 등) + 판정기 자격 증명·설정(TYPESAFE_*, OPENROUTER_*, JEV_* …)만.
-  DATA_GO_KR_KEY 같은 이 프로그램의 비밀값은 넘기지 않는다.
+  DATA_GO_KR_KEY 같은 이 프로그램의 비밀값은 넘기지 않는다. 설정 파일(``.env``·``ENV_FILE``)의 판정기 자격
+  증명 이름도 넘긴다(D21-8 — 사용자 환경변수 없이 ``.env`` 만으로 판정기가 뜬다, 프로세스 환경변수가 이긴다).
 - 기동 실패 메시지의 stderr 꼬리는 ``judge_secret_values`` (설정 비밀값 + 자식에게 넘긴 자격 증명 env 값)로
   **전체를 가린 뒤** 자른다(R3c SEC minor 32 — 판정기가 자기 키를 stderr 에 찍어도 judgment_log·로그에
   남지 않게).
@@ -42,6 +43,7 @@ import threading
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
+from pathlib import Path
 from typing import Any, Final
 
 import anyio
@@ -103,16 +105,58 @@ def split_command(cmd: str) -> list[str]:
     return parts
 
 
+def _forwardable(name: str, judge_names: frozenset[str]) -> bool:
+    upper = name.upper()
+    if upper in _NEVER_FORWARD:
+        return False
+    return upper in judge_names or upper.startswith(_FORWARD_PREFIXES) or upper in _FORWARD_NAMES
+
+
+def _dotenv_values(path: Path) -> dict[str, str]:
+    """``.env`` 의 ``KEY=VALUE`` 줄(주석·빈 줄·``export`` 접두 허용, 값의 바깥 따옴표 제거).
+    파일이 없으면 {}."""
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except OSError:
+        return {}
+    out: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.removeprefix("export ").partition("=")
+        key, value = key.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key:
+            out[key] = value
+    return out
+
+
 def subprocess_env() -> dict[str, str]:
-    """MCP SDK 기본 환경 + 판정기 자격 증명·설정만. 이 프로그램의 비밀값(DATA_GO_KR_KEY 등)은 빼고."""
+    """MCP SDK 기본 환경 + 판정기 자격 증명·설정만. 이 프로그램의 비밀값(DATA_GO_KR_KEY 등)은 빼고.
+
+    D21-8·D19-3(R4 재시험): 설정 파일(``ENV_FILE`` 또는 작업 디렉터리 ``.env``)에 있는 판정기 자격 증명
+    이름(``JUDGE_SECRET_ENV_NAMES``·판정기 접두 ``TYPESAFE_``·``OPENROUTER_``·``JEV_`` …)도 넘긴다 — 사용자
+    환경변수 없이 ``.env`` 만으로 판정기가 뜬다. 프로세스 환경변수가 있으면 그 값이 이긴다. 값은 기동 실패
+    stderr·오류에서 가린다(``judge_secret_values`` — 자식 env 의 자격 증명 이름 값)."""
     from mcp.client.stdio import get_default_environment
 
+    from app.core.settings import env_file_path, get_settings
+
+    try:
+        judge_names = frozenset(n.strip().upper() for n in get_settings().judge_secret_env_names)
+    except Exception:  # 설정 검증 실패(운영 가드 등) — 기본 이름 목록으로
+        from app.core.settings import DEFAULT_JUDGE_SECRET_ENV_NAMES
+
+        judge_names = frozenset(DEFAULT_JUDGE_SECRET_ENV_NAMES)
     env = dict(get_default_environment())
+    present = {k.upper() for k in os.environ}
+    for name, value in _dotenv_values(env_file_path()).items():
+        if value and name.upper() not in present and _forwardable(name, judge_names):
+            env[name] = value
     for name, value in os.environ.items():
-        upper = name.upper()
-        if upper in _NEVER_FORWARD:
-            continue
-        if upper.startswith(_FORWARD_PREFIXES) or upper in _FORWARD_NAMES:
+        if _forwardable(name, judge_names):
             env[name] = value
     return env
 

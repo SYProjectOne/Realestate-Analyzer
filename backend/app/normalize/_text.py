@@ -29,6 +29,7 @@ __all__ = [
     "area_from_long_code",
     "canonical_json",
     "checked_on",
+    "clean_control",
     "line_span",
     "month_end",
     "normalize_site_url",
@@ -183,10 +184,27 @@ def strip_supply_round(name: str) -> str:
 _DATE_RE = re.compile(r"(?<!\d)(\d{2}|\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})(?!\d)")
 
 
+_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f]")
+"""NUL·제어 문자(탭 \\t·줄바꿈 \\n·\\r·쪽 나눔 \\f 는 남긴다 — 줄 단위 파싱·OCR 쪽 번호가 쓴다)."""
+
+
+def clean_control(text: str) -> str:
+    """NUL·제어 문자 → 공백 1자(R4 재시험 N2, D21-2). 길이가 그대로라 발췌 오프셋이 원문 파일과 같다.
+
+    pdfplumber 추출 텍스트에 낱말 구분자로 NUL 이 들어오면 Postgres text 열이 거부하고(``DataError``) 정규식 ``\\s`` 가 맞지
+    않는다. 원문 파일(PDF·추출 텍스트)은 고치지 않는다 — 읽어서 파서·저장으로 넘기는 문자열만."""
+    return _CONTROL_RE.sub(" ", text) if _CONTROL_RE.search(text) else text
+
+
 def read_raw_text(raw: RawDocument, *, raw_dir: Path | None = None) -> str | None:
     """raw의 추출 텍스트(text_path) 또는 원문(path)을 UTF-8로 읽는다. 원본 파일이 없으면 월별 압축
     (``core.raw_archive`` — runbook §6)에서 읽는다(R3 4차 minor: 압축된 공고문을 못 읽어 아카이브 분양가가 조용히
-    폴백했다). 실패 행·어디에도 없으면 None."""
+    폴백했다). 실패 행·어디에도 없으면 None. NUL·제어 문자는 공백으로 바꿔 돌려준다(``clean_control``, D21-2)."""
+    text = _read_raw_text(raw, raw_dir=raw_dir)
+    return clean_control(text) if text is not None else None
+
+
+def _read_raw_text(raw: RawDocument, *, raw_dir: Path | None = None) -> str | None:
     from app.core.raw_archive import archived_member
     from app.core.settings import get_settings
 

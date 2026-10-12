@@ -82,6 +82,7 @@ from app.normalize.fields import (
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
+    is_price_amount,
     norm_value,
     split_discount,
     split_price_by_type,
@@ -131,7 +132,7 @@ class StoreResult:
     extract_requests: list[ExtractRequest]
     skipped: list[FieldCandidate] = field(default_factory=list)
     foreign_keys: list[str] = field(default_factory=list)  # 다른 지역 단지라 건너뛴 주택관리번호(W4)
-    first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 빈 값 → 값 변경 수(D18-7)
+    first_load_folded: int = 0  # 첫 적재라 이벤트 대신 센 값 기록·덮어쓰기 수(D18-7·D21-7)
 
 
 def parser_for(
@@ -749,10 +750,6 @@ FILL_EMPTY_FIELDS = frozenset({"official_site_url"})
 """D18-4: 원 단지에 묶인 잔여 공고에서 원 단지 값이 **비어 있을 때만** 받는 단지 필드 — 사업의 공식 홈페이지(잔여 공고의
 접수 상태가 같은 홈페이지에 올라온다). 원 단지 값이 있으면 덮지 않는다(D11-4)."""
 
-
-_EMPTY_TEXTS = frozenset({"", "[]", "{}"})
-"""change_event.old_text 가 '빈 값'인 표기(None·빈 목록·빈 객체) — 첫 적재 요약 대상(D18-7)."""
-
 _URL_NO_RE = re.compile(
     r"(?:houseManageNo=|pblancNo=|HOUSE_MANAGE_NO%3A%3AEQ%5D=|PBLANC_NO%3A%3AEQ%5D=)(\d{10})"
 )
@@ -1118,10 +1115,11 @@ def resolve_field_group(
     *,
     snapshot_id: int | None = None,
     now: datetime | None = None,
+    add_events: bool = True,
 ) -> list[ChangeEvent]:
     """한 사실 필드 그룹(entity, entity_id, field)을 저장된 출처 행(원문·사람 확인) + ``extra`` 후보로 다시 resolve 한다
     (사람 확인 입력 — ``api.demotion.apply_human_check``). 원문을 다시 읽지 않는다. 사실 테이블·출처
-    행·change_event."""
+    행·change_event. ``add_events=False`` 면 이벤트를 세션에 넣지 않고 돌려주기만 한다(호출자가 첫 적재 요약 등으로 거른다)."""
     detected_at = changes.detected_now(now)
     with session.begin_nested():
         own_key = _own_key(session, entity, entity_id)
@@ -1148,13 +1146,14 @@ def resolve_field_group(
                 kinds[rid] = raw_row.source_kind if raw_row is not None else None
             cands.append(candidate_from_row(fp, kinds[rid]))
         cands += semantic_humans(session, {(entity, entity_id, field_name)}, [*extra, *cands])  # D13-2
-        resolved = resolve([*extra, *cands])
+        resolved = resolve([*extra, *cands], price_refs(session, {(entity, entity_id, field_name)}))
         upsert_provenance(session, resolved.provenance)
         events, _ = write_chosen(session, resolved.chosen, snapshot_id=snapshot_id, detected_at=detected_at)
         events += human_superseded(
             session, resolved, events, snapshot_id=snapshot_id, detected_at=detected_at
         )
-        session.add_all(events)
+        if add_events:
+            session.add_all(events)
         session.flush()
     return events
 
@@ -1346,6 +1345,99 @@ def human_superseded(
     return extra
 
 
+def price_refs(
+    session: Session, groups: set[tuple[str, int | None, str]]
+) -> dict[tuple[str, str, str], list[FieldCandidate]]:
+    """D21-1(R4 재시험 N1): 공고별 타입 가격 그룹(``payment_terms``·``price_by_type.<타입>.<최고가|대표층가>``) → 같은 단지·같은
+    타입 행(``complex_type``)의 **공고문이 아닌** 1차 출처 최고가 후보(청약홈 API·웹 '만원'). resolver 가 10배 이상 다르면 그
+    공고 가격을 보류한다(비교만 — 출처 행·채택 후보가 아니다). 키 = ``resolver.group_key`` 모양."""
+    out: dict[tuple[str, str, str], list[FieldCandidate]] = {}
+    kinds: dict[int, str | None] = {}
+    for entity, eid, fname in sorted(groups, key=lambda g: (g[0], g[1] or 0, g[2])):
+        if entity != "payment_terms" or eid is None or not is_price_amount(entity, fname):
+            continue
+        pbt = split_price_by_type(fname)
+        pt = session.get(PaymentTerms, eid)
+        if pbt is None or pt is None:
+            continue
+        ct = session.scalars(
+            select(ComplexType).where(
+                ComplexType.complex_id == pt.complex_id, ComplexType.type_code == pbt[0]
+            )
+        ).first()
+        if ct is None:
+            continue
+        refs: list[FieldCandidate] = []
+        for fp in session.scalars(
+            select(FieldProvenance)
+            .where(
+                FieldProvenance.entity == "complex_type",
+                FieldProvenance.entity_id == ct.id,
+                FieldProvenance.field == "max_price_won",
+                FieldProvenance.raw_document_id.is_not(None),
+            )
+            .order_by(FieldProvenance.id)
+        ):
+            rid = fp.raw_document_id
+            assert rid is not None
+            if rid not in kinds:
+                raw_row = session.get(RawDocument, rid)
+                kinds[rid] = raw_row.source_kind if raw_row is not None else None
+            if kinds[rid] in (None, "notice_pdf") or fp.value_norm is None or fp.label == "확인 불가":
+                continue
+            refs.append(candidate_from_row(fp, kinds[rid]))
+        if refs:
+            out[("payment_terms", f"id:{eid}", fname)] = refs
+    return out
+
+
+def _price_groups_of_types(session: Session, bound: list[FieldCandidate]) -> set[tuple[str, int, str]]:
+    """이번 원문이 쓴 공고문 아닌 타입 행 최고가(청약홈) → 같은 단지·타입의 공고별 타입 가격 그룹(D21-1 — 청약홈 가격이 나중에
+    와도 저장 순서와 무관하게 같은 보류·해제가 되도록 다시 resolve 한다)."""
+    out: set[tuple[str, int, str]] = set()
+    for c in bound:
+        if (
+            c.entity != "complex_type"
+            or c.field != "max_price_won"
+            or c.entity_id is None
+            or c.source_kind == "notice_pdf"
+        ):
+            continue
+        ct = session.get(ComplexType, c.entity_id)
+        if ct is None:
+            continue
+        for pt in session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == ct.complex_id)):
+            for item in ("max_price_won", "floor_sample_price_won"):
+                fname = f"price_by_type.{ct.type_code}.{item}"
+                has = session.scalars(
+                    select(FieldProvenance.id).where(
+                        FieldProvenance.entity == "payment_terms",
+                        FieldProvenance.entity_id == pt.id,
+                        FieldProvenance.field == fname,
+                    )
+                ).first()
+                if has is not None:
+                    out.add(("payment_terms", pt.id, fname))
+    return out
+
+
+def _merged_addresses(binder: _Binder, skipped: list[FieldCandidate]) -> dict[int, list[str]]:
+    """원 단지에 묶여(D11-4) 원 단지 값으로 쓰지 않은 잔여 공고의 공급위치(단지 id → 주소들)."""
+    out: dict[int, list[str]] = {}
+    for c in skipped:
+        if (
+            c.entity != "complex"
+            or c.field != "address"
+            or not isinstance(c.value, str)
+            or not c.value.strip()
+        ):
+            continue
+        cid = binder.complex_for_key((c.entity_key or "").split(":")[0])
+        if cid is not None and c.value not in out.get(cid, []):
+            out.setdefault(cid, []).append(c.value)
+    return out
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -1426,8 +1518,9 @@ def store_raw_document(
     """원문 1건을 정규화해 저장한다(한 트랜잭션 — SAVEPOINT). commit은 호출자.
 
     ``links``: 수집 실행 하나의 잔여 공고 번호 → 원 단지 연결(D18-4). 같은 dict 를 원문마다 넘긴다(없으면 원문마다 새로).
-    ``first_load``: 지역 첫 적재(bootstrap, D18-7·R4 m3) — 빈 값 → 값 변경(새 공고·새 단지 포함)은 change_event 로 남기지
-    않고 ``StoreResult.first_load_folded`` 로 센다(수집 단계가 '첫 적재' 한 줄로 요약). 값 → 다른 값 변경은 그대로 남긴다."""
+    ``first_load``: 지역 첫 적재(bootstrap, D18-7·R4 m3) — 값 기록(빈 값 → 값, 새 공고·새 단지 포함)과 같은 적재 안의 값 →
+    다른 값 덮어쓰기(D21-7·R4 재시험 m-b)는 change_event 로 남기지 않고 ``StoreResult.first_load_folded`` 로 센다(수집
+    단계가 '첫 적재' 한 줄로 요약)."""
     detected_at = changes.detected_now(now)
 
     def complex_key(complex_id: int) -> str | None:
@@ -1449,7 +1542,7 @@ def store_raw_document(
         # D17-4(R3i major 4): 새 공고가 할인·계약금을 **싣지 않았으면**(값 없음) 그 칸에도 사람 확인 값을 그대로 적용한다
         groups = {(c.entity, c.entity_id, c.field) for c in bound} | _empty_human_groups(session, bound)
         old += semantic_humans(session, groups, bound + old)
-        resolved = resolve(bound + old)
+        resolved = resolve(bound + old, price_refs(session, groups))
         fps = upsert_provenance(session, resolved.provenance)
         events = list(binder.events)
         written, touched_complex = write_chosen(
@@ -1471,6 +1564,11 @@ def store_raw_document(
             )
         )
         session.flush()
+        # D21-1: 청약홈 타입 가격이 바뀌면(나중에 와도) 같은 타입의 공고별 가격 보류·해제를 다시 본다(저장 순서와 무관)
+        for e, i, f in sorted(_price_groups_of_types(session, bound) - groups):
+            events.extend(
+                resolve_field_group(session, e, i, f, [], snapshot_id=snapshot_id, now=now, add_events=False)
+            )
         for terms in binder.new_terms:
             events.extend(
                 changes.payment_change_events(
@@ -1481,11 +1579,17 @@ def store_raw_document(
             cx = session.get(Complex, cid)
             if cx is not None:
                 assign_complex_area(session, cx)
+        # D21-6(R4 재시험 N7): 원 단지에 묶여 쓰지 않은 잔여 공고의 공급위치 — 원 단지 주소에 동이 없으면 그 주소로 법정동을 찾는다
+        for cid, addrs in sorted(_merged_addresses(binder, skipped).items()):
+            cx = session.get(Complex, cid)
+            if cx is not None and cx.legal_dong_code is None:
+                assign_complex_area(session, cx, alt_addresses=addrs)
         folded = 0
         if first_load:
-            kept = [e for e in events if (e.old_text or "") not in _EMPTY_TEXTS]
-            folded = len(events) - len(kept)
-            events = kept
+            # D18-7 + D21-7(R4 재시험 m-b): 지역 첫 적재 중의 값 기록은 빈 값 → 값뿐 아니라 같은 적재 안의 값 → 다른 값
+            # 덮어쓰기(공고문이 차례로 같은 타입 가격·입주월을 덮음)도 이벤트 대신 요약으로 센다 — 첫날 G1 이 critical 로 차지 않게
+            folded = len(events)
+            events = []
         session.add_all(events)
         session.flush()
         cids: set[int] = set()

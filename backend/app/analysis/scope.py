@@ -5,7 +5,7 @@
 
 | 순서 | 조건 | 범위 | 사다리 | rerank | 점수 | decide |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | inclusion_class = '범위 경계'(D2-6) | 제외 | × | × | × | × |
+| 1 | inclusion_class = '범위 경계'(D2-6) — 법정동 없고 주소에 동 이름이 없으면 사유 '범위 경계(주소에 동 없음)'(D21-6) | 제외 | × | × | × | × |
 | 2 | classify auto + 제외 클래스(공공분양·공공/민간임대·비아파트·범위 밖) | 제외 | × | × | × | × |
 | 3 | classify 미해결(decision ≠ auto: review·manual_review·escaped·없음) 또는 클래스 미분류·manual_review | 미해결 | × | × | × | × |
 | 4 | 포함 확정 + 분양가 미공개(현재 구매가 없음) | 보류 | × | ○ | ○ | × |
@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Final, Literal, Protocol, cast, get_args
@@ -31,6 +32,7 @@ from app.core.time import kst_day
 
 __all__ = [
     "BOUNDARY_CLASS",
+    "BOUNDARY_NO_DONG",
     "EXCLUDED_CLASSES",
     "INCLUDED_CLASS",
     "INTAKE_PRIORITY",
@@ -43,6 +45,7 @@ __all__ = [
     "JudgeScope",
     "ScopeResult",
     "contract_scope",
+    "has_dong_name",
     "in_rerank",
     "is_decide_candidate",
     "is_scored",
@@ -117,6 +120,8 @@ def judge_scope(
     has_price: bool,
     intake_status: str | None,
     original_notice_missing: bool = False,
+    address: str | None = None,
+    legal_dong_code: str | None = None,
 ) -> ScopeResult:
     """D9-1 판정 범위(모듈 docstring 표 순서대로 첫 번째로 맞는 행).
 
@@ -125,9 +130,13 @@ def judge_scope(
     - ``intake_status``: 표시 접수 행(``pick_intake``)의 status. 행이 없으면 None(= 접수 확인 불가).
     - ``original_notice_missing``: 주택관리번호가 있는데 원 공고(공고일)가 없다(``original_missing``, D18-4) — 가격이
       없을 때의 사유가 '분양가 미공개(공고 전)'가 아니라 '원 공고 미수집'(이미 공고·분양된 단지, R4 M3).
+    - ``address``·``legal_dong_code``: 범위 경계 사유를 가른다(D21-6) — 법정동이 없고 주소에 동·읍·면·리 이름이 없으면
+      '범위 경계(주소에 동 없음)'(같은 단지의 다른 출처 주소로도 못 찾음), 그 밖은 '…매칭 안 됨'.
     """
     cls = inclusion_class or "미분류"
     if cls == BOUNDARY_CLASS:
+        if legal_dong_code is None and address and not has_dong_name(address):
+            return ScopeResult("제외", BOUNDARY_NO_DONG)
         return ScopeResult("제외", "범위 경계(주소가 지역 법정동에 매칭 안 됨)")
     if inclusion_decision != "auto" or cls in ("미분류", "manual_review"):
         why = inclusion_decision or "분류 전"
@@ -141,6 +150,17 @@ def judge_scope(
     if intake_status in INTAKE_JUDGED:
         return ScopeResult("판정 대상", f"포함 확정 · 접수 {intake_status}")
     return ScopeResult("참고", f"접수 {intake_status or '확인 불가(접수 행 없음)'}")
+
+
+BOUNDARY_NO_DONG: Final = "범위 경계(주소에 동 없음)"
+"""D21-6(R4 재시험 N7): 단지 주소에 동·읍·면·리 이름이 없고 같은 단지의 다른 출처 주소로도 법정동을 못 찾았다."""
+_DONG_TOKEN_RE: Final = re.compile(r"[가-힣][가-힣0-9]*(?:동|읍|면|리|[0-9]가)$")
+_ADDR_SPLIT_RE: Final = re.compile(r"[\s(),\[\]/·]+")
+
+
+def has_dong_name(address: str) -> bool:
+    """주소 토큰 중 법정동 이름 모양(…동·…읍·…면·…리·…N가)이 있는가 — 문자열 모양 검사(파싱, 판단 아님)."""
+    return any(_DONG_TOKEN_RE.search(t) for t in _ADDR_SPLIT_RE.split(address) if t)
 
 
 ORIGINAL_MISSING: Final = "원 공고 미수집"

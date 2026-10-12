@@ -10,6 +10,10 @@
 4. 같은 출처 종류끼리는 최신이 앞선다(observed_on = 원문 시점·공고일 → checked_at → raw_document_id
    내림차순) — '공고문 최신' 규칙. observed_on 이 없는 후보(옛 출처)는 가장 오래된 것으로 본다.
 
+단위 상충(R4 재시험 N1, D21-1): 가격 필드(``fields.is_price_amount``)에서 대표 후보와 **10배 이상** 다른 다른 출처 종류의
+1차 후보가 있으면 rank 가 달라도 순위로 채택하지 않고 채택 보류 + needs_compare(아래와 같은 보류·compare 경로). 공고별 타입
+가격(``payment_terms.price_by_type``)은 같은 타입 행의 청약홈 가격(``refs`` — 비교만)과 10배 이상 다르면 보류한다.
+
 상충(conflict_group): 값이 다른 후보가 둘 이상이면 '<entity>:<id 또는 key>:<field>'로 묶는다.
 needs_compare: chosen과 값이 다르면서 같은 source_rank인 1차 후보가 **다른 출처 종류**일 때만 true
 (같은 rank의 1차·1차 상충 — 우선순위로 가를 수 없음). 같은 출처 종류는 최신 규칙으로 가르고, rank가 다르면
@@ -40,7 +44,7 @@ OCR 값을 대신한다.
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Hashable, Iterable
+from collections.abc import Hashable, Iterable, Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 
 from app.core.contracts_gen import ConflictGroup, FieldCandidate, ProvenanceRow, ResolvedFields
@@ -53,6 +57,8 @@ from app.normalize.fields import (
     EXTRACT_REASON,
     has_tag,
     is_ocr,
+    is_price_amount,
+    magnitude_apart,
     norm_value,
     rule_text,
     strip_tags,
@@ -188,8 +194,29 @@ def to_provenance_row(c: FieldCandidate, *, chosen: bool, conflict_group: str | 
     )
 
 
+def _magnitude_rivals(
+    entity: str, field: str, lead: FieldCandidate, others: Iterable[FieldCandidate]
+) -> list[FieldCandidate]:
+    """D21-1(R4 재시험 N1): 가격 필드에서 대표 후보와 ``MAGNITUDE_RATIO`` 배 이상 다른 **다른 출처 종류의 1차** 후보 —
+    rank 가 달라도 순위로 채택하지 않고 compare 로 보낸다(단위 상충 의심 — 산술 비교이지 판단이 아니다)."""
+    if not is_price_amount(entity, field) or not _has_value(lead) or not _is_primary(lead):
+        return []
+    return [
+        c
+        for c in others
+        if c is not lead
+        and _has_value(c)
+        and _is_primary(c)
+        and not is_human_candidate(c)
+        and c.source_kind != lead.source_kind
+        and magnitude_apart(c.value, lead.value)
+    ]
+
+
 def _resolve_group(
-    gk: GroupKey, items: list[tuple[int, FieldCandidate]]
+    gk: GroupKey,
+    items: list[tuple[int, FieldCandidate]],
+    refs: Sequence[FieldCandidate] = (),
 ) -> tuple[FieldCandidate, list[ProvenanceRow], ConflictGroup | None]:
     view = _demote_superseded_ocr(items)
     original = {id(v): c for (_, v), (_, c) in zip(view, items, strict=True)}
@@ -230,6 +257,8 @@ def _resolve_group(
             else []
         )
         compare_rivals = [r for r in rivals if _is_primary(r) and r.source_kind != lead.source_kind]
+        magnitude = _magnitude_rivals(entity, field, lead, pool) if human is None or superseded else []
+        compare_rivals += [m for m in magnitude if not any(m is r for r in compare_rivals)]
         pending = [
             r
             for r in compare_rivals
@@ -242,7 +271,9 @@ def _resolve_group(
             rule = f"{rule} / 사람 확인 이후 공식 1차 출처가 다른 값 → 새 값 채택(사람 확인 재검토, D12-1)"
         elif human is not None:
             rule = f"{rule} / 사람 확인(0순위) 채택 — 그 이전 출처·compare 채택보다 우선(D12-1)"
-        if held:
+        if held and any(any(m is p for p in pending) for m in magnitude):
+            rule = f"{rule} / 1차 출처끼리 금액이 10배 이상 다름(단위 상충 의심) → 순위로 채택하지 않고 채택 보류, compare(D21-1)"
+        elif held:
             rule = f"{rule} / 같은 rank 1차·1차 상충 → 채택 보류(점수 미사용), compare 결과로만 채택"
         elif adopted:
             rule = f"{rule} / 같은 rank 1차·1차 상충 → compare 결과 채택·병기"
@@ -262,6 +293,10 @@ def _resolve_group(
             needs_compare=held,
             rule=rule,
         )
+    if not held and refs and (human is None or superseded) and _magnitude_rivals(entity, field, lead, refs):
+        # D21-1: 같은 단지·타입의 다른 엔티티 1차 출처(공고별 타입 가격 ↔ 청약홈 타입 행 최고가)와 10배 이상 다르다 — 채택 보류.
+        # compare 는 그 타입 행 그룹(``complex_type``)에서 돈다(같은 원문 금액이 거기서도 상충한다)
+        held = True
     rows: list[ProvenanceRow] = []
     for (_, v), (_, c) in zip(view, items, strict=True):
         reason = strip_tags(c.reason) if has_tag(c.reason, CONFLICT_HOLD) else c.reason
@@ -279,7 +314,12 @@ def _resolve_group(
     return chosen, rows, conflict
 
 
-def resolve(candidates: Iterable[FieldCandidate]) -> ResolvedFields:
+def resolve(
+    candidates: Iterable[FieldCandidate],
+    refs: Mapping[GroupKey, Sequence[FieldCandidate]] | None = None,
+) -> ResolvedFields:
+    """``refs``: 그룹 → 같은 단지·타입의 **다른 엔티티** 1차 출처 후보(비교만 — 출처 행·채택 후보가 아니다, D21-1 단위 상충
+    검사: 공고별 타입 가격 ↔ 청약홈 타입 행 최고가). ``normalize.store.price_refs`` 가 만든다."""
     groups: OrderedDict[GroupKey, list[tuple[int, FieldCandidate]]] = OrderedDict()
     for i, c in enumerate(candidates):
         groups.setdefault(group_key(c), []).append((i, c))
@@ -287,7 +327,7 @@ def resolve(candidates: Iterable[FieldCandidate]) -> ResolvedFields:
     prov: list[ProvenanceRow] = []
     conflicts: list[ConflictGroup] = []
     for gk, items in groups.items():
-        ch, rows, conflict = _resolve_group(gk, items)
+        ch, rows, conflict = _resolve_group(gk, items, (refs or {}).get(gk, ()))
         chosen.append(ch)
         prov.extend(rows)
         if conflict is not None:

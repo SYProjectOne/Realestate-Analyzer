@@ -290,6 +290,60 @@ def p4_classify_intake(
     return out
 
 
+@dataclass(frozen=True, slots=True)
+class SiteItem:
+    """D21-5 공식 홈페이지 동일성 항목: 단지 이름·위치 + 그 단지 접수 행의 페이지 문구."""
+
+    complex_id: int
+    path: str
+    name: str
+    address: str | None
+    text: str
+
+    @property
+    def key(self) -> str:
+        return f"site:c{self.complex_id}:{self.path}"
+
+    @property
+    def item_text(self) -> str:
+        parts = (
+            f"단지: {self.name}",
+            f"위치: {self.address}" if self.address else "",
+            f"페이지 문구:\n{self.text}",
+        )
+        return "\n".join(p for p in parts if p)
+
+
+def p4_classify_site_identity(
+    adapter: JudgeCaller,
+    items: Sequence[SiteItem],
+    *,
+    snapshot_id: int | None = None,
+    batch_no: int = 0,
+) -> dict[str, ClassifyOutcome]:
+    """D21-5(R4 재시험 N6): 공식 홈페이지 페이지 문구가 그 단지의 페이지인가(배치 ≤64, 1회). 접수 classify 앞에서 부른다.
+    '그 단지'로 쓰는 것은 auto + ``SITE_SAME`` 뿐 — 그 밖(다른 단지·불명·review)은 호출자가 접수 근거에서 뺀다."""
+    if not items:
+        return {}
+    ordered = sorted(items, key=lambda i: (i.complex_id, i.path))
+    ids = [i.key for i in ordered]
+    payload = P.classify_site_identity_payload([(i.key, i.item_text) for i in ordered])
+    cid = ordered[0].complex_id if len({i.complex_id for i in ordered}) == 1 else None
+    env = adapter.call(
+        "classify",
+        payload,
+        f"classify:site_identity:batch{batch_no}",
+        snapshot_id=snapshot_id,
+        complex_id=cid,
+    )
+    return _batch_items(env, ids)
+
+
+def is_same_site(out: ClassifyOutcome) -> bool:
+    """동일성 classify 가 '그 단지의 페이지'(auto)인가."""
+    return out.resolved and out.label == P.SITE_SAME
+
+
 def p1_screen_upcoming(
     adapter: JudgeCaller,
     *,

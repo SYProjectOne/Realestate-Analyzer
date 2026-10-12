@@ -166,6 +166,13 @@ def _same_source(fp: FieldProvenance, row: ProvenanceRow) -> bool:
     )
 
 
+def _no_nul(text: str | None) -> str | None:
+    """Postgres text 열은 NUL 을 받지 않는다(R4 재시험 N2, D21-2) — 원문 읽기(``_text.read_raw_text``)가
+    이미 공백으로 바꾸지만 다른 경로(판정기 추출 값·사람 입력)로 들어와도 원문 1건 정규화가 통째로 롤백되지
+    않게 마지막에 한 번 더 바꾼다."""
+    return text.replace("\x00", " ") if text and "\x00" in text else text
+
+
 def upsert_provenance(session: Session, rows: list[ProvenanceRow]) -> list[FieldProvenance]:
     """ProvenanceRow(entity_id 채워진 것) → field_provenance. 반환은 rows와 같은 순서의 ORM 행.
 
@@ -190,19 +197,19 @@ def upsert_provenance(session: Session, rows: list[ProvenanceRow]) -> list[Field
         existing = next((fp for fp in groups[gk] if _same_source(fp, row) and fp not in out), None)
         fp = existing or FieldProvenance(entity=row.entity, entity_id=row.entity_id, field=row.field)
         fp.entity_key = row.entity_key
-        fp.value_text = row.value_text
+        fp.value_text = _no_nul(row.value_text)
         fp.raw_document_id = row.raw_document_id
         fp.url = row.url
         fp.checked_at = row.checked_at
         fp.label = row.label
-        fp.reason = row.reason
+        fp.reason = _no_nul(row.reason)
         fp.source_rank = row.source_rank
         fp.chosen = row.chosen
         fp.conflict_group = row.conflict_group
-        fp.excerpt = row.excerpt
+        fp.excerpt = _no_nul(row.excerpt)
         fp.excerpt_start = row.excerpt_start
         fp.excerpt_end = row.excerpt_end
-        fp.value_norm = row.value_norm
+        fp.value_norm = _no_nul(row.value_norm)
         fp.observed_on = row.observed_on
         if existing is None:
             session.add(fp)
