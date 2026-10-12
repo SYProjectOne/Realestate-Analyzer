@@ -86,7 +86,9 @@ def test_judge_scope_reason_names_boundary_without_dong(client: TestClient) -> N
             "인천광역시 서구 검단신도시 RC3BL",
         )
     row = next(r for r in _rows(client) if r["complex_id"] == 16)
-    assert (row["judge_scope"], row["judge_scope_reason"]) == ("제외", "범위 경계(주소에 동 없음)")
+    assert row["judge_scope_reason"] == "범위 경계(주소에 동 없음)"
+    # 화면 범위는 점수 실행 저장값(D10-1) — 현재 사실 범위(제외)와 다르면 재판정 필요 표시, 사유는 현재 사실 범위의 것
+    assert row["judge_scope"] == "제외" or row.get("rejudge_needed") is True, row
     head = client.get("/api/complexes/16", headers=READ).json()["header"]
     assert head["judge_scope_reason"] == "범위 경계(주소에 동 없음)"
 
@@ -138,3 +140,6 @@ def test_held_basis_price_reason_is_conflict_hold(client: TestClient) -> None:
     row = next(r for r in _rows(client) if r["complex_id"] == HELD_COMPLEX)
     for key in ("price_low", "price_high", "price_mid"):
         assert row[key].get("reason") == CONFLICT_HOLD, (key, row[key])
+    # 판정 범위 사유도 같은 까닭(보류 — '분양가 미공개(공고 전)'이 아니다)
+    assert row.get("judge_scope_reason") == CONFLICT_HOLD, row.get("judge_scope_reason")
+    assert held.json()["header"].get("judge_scope_reason") == CONFLICT_HOLD

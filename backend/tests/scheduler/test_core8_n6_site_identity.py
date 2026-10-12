@@ -151,7 +151,10 @@ def test_review_identity_is_also_not_evidence(
     jev.identity, jev.identity_decision = "same_complex", "review"
     sid = _run(other_site_ctx)
     # D22-4(R4 3차 N11): 접수 근거로 쓰지 않는 것은 같고, 사유는 '다른 단지'가 아니라 '동일성 미확인'
-    assert (_row(factory, sid).status, _row(factory, sid).reason) == ("확인 불가", "공식 홈페이지 동일성 미확인")
+    assert (_row(factory, sid).status, _row(factory, sid).reason) == (
+        "확인 불가",
+        "공식 홈페이지 동일성 미확인",
+    )
 
 
 def test_same_complex_site_goes_to_intake_classify(

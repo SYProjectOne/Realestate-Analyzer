@@ -117,7 +117,7 @@ def test_contract_version(bundled: dict[str, Any], source_openapi: dict[str, Any
     changelog = (OPENAPI_SRC.parent / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)", changelog, re.M)
     assert top is not None
-    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.16"
+    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.17"
     assert source_openapi["info"]["version"] == CONTRACT_VERSION
     assert bundled["info"]["version"] == CONTRACT_VERSION
 

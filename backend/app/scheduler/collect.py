@@ -43,8 +43,8 @@ from app.core.contracts_gen import Region as RegionDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
-from app.normalize.notice_parser import notice_numbers
 from app.normalize.living_area import correct_dong
+from app.normalize.notice_parser import notice_numbers
 from app.normalize.store import is_remainder_url, store_raw_document
 from app.scheduler import assemble, detect, snapshots
 from app.scheduler.intake import UNCLASSIFIED, carry_classification, intake_change_events, pending_complexes
@@ -401,7 +401,9 @@ def collect(
     ran: list[str] = []
     step_docs: dict[str, list[RawDTO]] = {}
     links: dict[str, int] = {}  # D18-4: 잔여 공고 번호 → 원 단지(이 실행의 모든 원문이 같이 쓴다)
-    alt_addresses: dict[int, list[str]] = {}  # D22-3: 원 단지 → 묶인 잔여 공고의 공급위치(실행 끝 법정동 보정)
+    alt_addresses: dict[
+        int, list[str]
+    ] = {}  # D22-3: 원 단지 → 묶인 잔여 공고의 공급위치(실행 끝 법정동 보정)
     deferred: list[RawDTO] = []  # D18-4: 공고문 단계 뒤로 미룬 잔여 공고 청약홈 원문
 
     def store_docs(docs: Sequence[RawDTO]) -> None:

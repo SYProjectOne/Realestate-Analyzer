@@ -33,7 +33,6 @@ from app.normalize.region_resolve import LegalRow, normalize_name
 
 __all__ = [
     "HOUSEHOLD_LABEL",
-    "correct_dong",
     "HOUSEHOLD_REASON",
     "AssignResult",
     "HouseholdInput",
@@ -43,6 +42,7 @@ __all__ = [
     "apply_living_area_edit",
     "assign_complex_area",
     "assign_legal_dong",
+    "correct_dong",
     "default_living_areas",
     "household_facts",
     "living_area_of",

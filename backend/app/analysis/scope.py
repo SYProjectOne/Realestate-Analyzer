@@ -122,6 +122,7 @@ def judge_scope(
     original_notice_missing: bool = False,
     address: str | None = None,
     legal_dong_code: str | None = None,
+    price_reason: str | None = None,
 ) -> ScopeResult:
     """D9-1 판정 범위(모듈 docstring 표 순서대로 첫 번째로 맞는 행).
 
@@ -132,6 +133,8 @@ def judge_scope(
       없을 때의 사유가 '분양가 미공개(공고 전)'가 아니라 '원 공고 미수집'(이미 공고·분양된 단지, R4 M3).
     - ``address``·``legal_dong_code``: 범위 경계 사유를 가른다(D21-6) — 법정동이 없고 주소에 동·읍·면·리 이름이 없으면
       '범위 경계(주소에 동 없음)'(같은 단지의 다른 출처 주소로도 못 찾음), 그 밖은 '…매칭 안 됨'.
+    - ``price_reason``: 현재 구매가가 없는 까닭을 호출자가 출처 행으로 안 경우(D22-5 — 기준 타입 가격 채택 보류 '출처 상충 —
+      compare 대기'). 있으면 '보류' 사유로 쓴다(범위는 같다 — 가격이 없으면 보류).
     """
     cls = inclusion_class or "미분류"
     if cls == BOUNDARY_CLASS:
@@ -146,6 +149,8 @@ def judge_scope(
     if cls != INCLUDED_CLASS:  # 계약 밖 값 — 판정 대상으로 넘기지 않는다
         return ScopeResult("미해결", f"알 수 없는 분류({cls})")
     if not has_price:
+        if price_reason:
+            return ScopeResult("보류", price_reason)
         return ScopeResult("보류", ORIGINAL_MISSING if original_notice_missing else "분양가 미공개(공고 전)")
     if intake_status in INTAKE_JUDGED:
         return ScopeResult("판정 대상", f"포함 확정 · 접수 {intake_status}")

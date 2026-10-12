@@ -489,6 +489,32 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
 기록했다. ③ smoke 는 `JEV_MCP_CMD` 를 프로세스 환경에서만 읽으므로(`test_live.py`) smoke 에만 고정 cmd 를 남겼다. ④ 2회차 (a) 가 0 이 아니어서
 메커니즘 확인용 재판정 (a2)~(a4) 를 더 돌렸다(스냅샷 4·5·6).
 
+### 10-11 R4 재시험 4차 절차 — R4-CORE9(D22, 계약 .17) 뒤 바뀐 것 (`docs/design/wp/R4_CORE9_TESTS.md`)
+
+10-7·10-9 는 그대로 따른다. 4차 재시험도 **새 DB**(비운 `subscription_analyzer_r4`)로 한다. 2회차는 3차와 같은 순서로 돌린다 — (a) 같은 스냅샷
+재판정 → (b) 같은 날 `collect.daily` → (a2) 재판정(3차의 (a2)~(a4) 와 같은 메커니즘 확인 재판정을 1회 이상 더). 확인 항목:
+
+1. **2회차 `tools/call` 0**(N8·D22-2, 게이트): (a)·(a2)·(a3) 모두 프록시 `tools/call` = 잡 `tools_calls` = `judgment_log` 새 행 = **0**. 1회차에 포함/제외
+   classify 가 review 로 남긴 단지(`SELECT id, name FROM complex WHERE inclusion_class = '미분류' AND inclusion_decision IN ('review','manual_review');`)
+   가 있어도 다시 보내지 않는다. 새 `classify:inclusion:*` 행이 생겼으면 그 항목(input_json items)의 단지 입력이 실제로 바뀌었는지 기록.
+2. **같은 날 daily 뒤 판정기 추출 값 유지**(N9·D22-1, critical): (b) 발행 리비전의 `missing_provenance` = (a) 리비전과 같다(3차 0 → 40 이 없어야 한다).
+   `SELECT fp.entity_id, fp.field, fp.label, fp.chosen, left(fp.reason, 40) FROM field_provenance fp WHERE fp.entity = 'payment_terms' AND fp.reason LIKE '판정기 추출%';`
+   → (b) 전후 모두 chosen = true. `GET /complexes/<id>?snapshot=<(b) 리비전>` 의 `down_payment_pct`·`balance_pct` 가 '확인됨'(3차 단지 12·18·25·27·34·38).
+3. **법정동 보정이 1회차 안에서**(N10·N7·D22-3): bootstrap 직후 3차 46·47(2021000189 'RC3BL' · 2021000830 '396-11번지')의 `legal_dong_code` =
+   당하동(2829010400)·송도동(2818510600), 범위 경계 아님. (b) 뒤 `legal_dong_code` 변경 이벤트 0(이미 정해짐). 운영 중 수집에서 보정되면
+   `SELECT * FROM change_event WHERE entity = 'complex' AND field = 'legal_dong_code';` 행이 있다(critical — 그 단지 재판정).
+4. **첫 적재 요약**(m-b·D22-4): bootstrap 의 `change_event` 중 단지·타입·납부 조건 이벤트 **0**(판정 단계 추출 적용·compare 채택 포함 — 3차 13건),
+   `first_load` 는 **한 줄**, 잡 stats `pipeline.first_load_folded` > 0.
+5. **동일성 사유**(N11·D22-4): `SELECT reason, count(*) FROM intake_status GROUP BY reason;` — '공식 홈페이지가 다른 단지'는 노트가 `other_complex·auto`
+   인 행만, review·unclear 는 '공식 홈페이지 동일성 미확인'.
+6. **원 공고 인용 변형**(N12·D22-4): 월드메르디앙 송도(3차) 임의공급 2024940118 은 단지 행이 아니라 원 2023000463 단지의 잔여 공고 이력이고, 원 공고를
+   다시 받는다(`loaded.originals` wanted 에 2023000463).
+7. **FE10 보고**(D22-5, 계약 .17): `GET /snapshots/<id>/complexes` 행·`GET /complexes/<id>` 머리의 `judge_scope_reason`(예 '범위 경계(주소에 동 없음)'),
+   공고 예정 후보 이름 출처 서랍 `GET /provenance/<name_prov>?snapshot_id=<발행 리비전>` **200**, 기준 타입 가격 채택 보류 단지의 현재 구매가 사유
+   '출처 상충 — compare 대기'(`SELECT … FROM field_provenance WHERE reason LIKE '출처 상충%' AND field LIKE '%max_price_won';` 의 단지).
+8. **1회차 호출 수**: 3차(571) 대비 차이를 도구별로 기록 — 포함 classify 는 첫 실행이라 전체 배치(변화 없음 예상), 법정동이 1회차에 정해져 3차
+   (a2) 의 classify 1 · rerank 1 이 1회차로 옮겨 온다(46·47 포함 배치·rerank 후보).
+
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
 **발행 스냅샷은 불변**(D11-1) — **발행 리비전 = 저장된 읽기 모델**(D13-1, 계약 .10). 발행하는 트랜잭션이 그 리비전의 화면 응답
