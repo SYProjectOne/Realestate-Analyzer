@@ -83,7 +83,9 @@ def boot(env: RegressEnv) -> dict[str, Any]:
     ctx = env.ctx(
         "mock",
         collectors={
-            "applyhome": lambda c: ApplyhomeCollector(http=web, today=lambda: TODAY, service_key=None),
+            "applyhome": lambda c: ApplyhomeCollector(
+                http=web, today=lambda: TODAY, service_key=None, window=("2025-12", "2026-11")
+            ),
             "notice_pdf": lambda c: _Empty(),
             "official_site": lambda c: _Empty(),
             "stats": lambda c: _Empty(),

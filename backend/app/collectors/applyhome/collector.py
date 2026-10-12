@@ -14,7 +14,7 @@
 웹 흐름 (지역 1개)
 1. ``region.sido_codes`` 마다 시도 약칭으로 **APT 분양정보 목록**과 **APT 잔여세대(무순위·임의) 목록**을
    조회한다.
-   기간은 ``region.applyhome_query['from_ym']``(없으면 기준월 −10개월) ~ 기준월 +1개월을 12개월 창으로 나눠
+   기간은 ``region.applyhome_query['from_ym']``(없으면 기준월 −24개월) ~ ``to_ym``(없으면 기준월 +12개월, 계약 .15)을 12개월 창으로 나눠
    모든 페이지를 받는다. 페이지마다 ``RawDocument(source_kind='applyhome_list')``.
 2. 목록에는 주소가 없으므로 행마다 상세 팝업을 받아 '공급위치'를 읽고, region 의 시군구·읍면동 이름이 있는
    행만 남긴다(사전 필터 — 정밀 법정동 배정·범위 경계는 WP2). 남은 행은 경쟁률 팝업까지 받는다.
@@ -26,6 +26,8 @@
 멱등: 같은 원문이면 행을 만들지 않는다(``RawStore``). 실패(403·5xx·DNS·timeout·robots)도 행으로 돌려준다.
 HTTP 는 ``app.core.http.HttpClient`` 만 쓴다(속도 제한·robots·재시도).
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -55,6 +57,10 @@ __all__ = ["HISTORY_YEARS", "ApplyhomeCollector", "month_windows"]
 MAX_PAGES = 200  # 창 하나에 2,000행 — 형식이 바뀌어 total 을 못 읽을 때의 안전장치
 HISTORY_YEARS = 10  # 벤치마크용 과거 공고 조회 창(R3 C1, D9-2) — API 자료는 2020년부터 있다(2026-10-09 확인)
 _UNSET = object()
+PAST_MONTHS = 24
+"""기본 조회 시작 = 기준월 −24개월(계약 .15, meta §1-4 '지난 24~36개월', D20-1 — R4 D18-8: −10개월이라 2025-06·07 공고가 빠졌다)."""
+FUTURE_MONTHS = 12
+"""기본 조회 끝 = 기준월 +12개월(계약 .15 '향후 12개월')."""
 
 
 def _ym(d: date) -> tuple[int, int]:
@@ -126,6 +132,7 @@ class ApplyhomeCollector:
         max_pages: int = MAX_PAGES,
         service_key: str | object | None = _UNSET,
         web_detail: bool = True,
+        window: tuple[str, str] | None = None,
     ) -> None:
         """``service_key``: 공공데이터포털 키(기본 = 설정 ``DATA_GO_KR_KEY``). None/빈 값이면 웹 경로만.
         ``web_detail``: API 경로에서도 지역 안 공고의 웹 상세를 받는다(공고문 PDF 링크용)."""
@@ -140,6 +147,8 @@ class ApplyhomeCollector:
             key = service_key if isinstance(service_key, str) else None
         self._key = key or None
         self._web_detail = web_detail
+        # 기본 조회 창 대신 쓸 ('YYYY-MM', 'YYYY-MM') — 녹화 재생(replay)이 녹화 때 창을 그대로 쓰게. region.applyhome_query 가 우선
+        self._window = window
         # 마지막 fetch 의 시도별 경로: {sido_code: 'api' | 'web' | 'web(api 실패: <사유>)'}
         self.paths: dict[str, str] = {}
         # 마지막 fetch_history 의 건수(잡 stats 용)
@@ -284,6 +293,47 @@ class ApplyhomeCollector:
                     stats["models_fetched"] += 1
             return run.out
 
+    # --- 원 공고 다시 받기 (R4 C3·M3, DECISIONS D18-4)
+    def fetch_originals(
+        self, region: Region, snapshot: Snapshot, house_manage_nos: list[str]
+    ) -> list[RawDocument]:
+        """잔여 공고 공고문이 인용한 '최초 주택관리번호'(원 공고)를 공식 API 에서 번호로 다시 받는다 — APT 상세·주택형·
+        경쟁률(``applyhome_detail``). 원 공고는 조회 창 밖(오래된 공고)이라 목록으로는 들어오지 않는다.
+
+        - 공식 API 만(키 없으면 [] — 웹 목록은 조회 창이 있어 번호로 찾을 수 없다). 웹 상세는 받지 않는다(공고문 PDF
+          링크용인데, 원 공고 PDF 는 잔여 공고 값과 섞일 수 있다 — 원 공고 사실은 API 로 충분하다).
+        - 같은 URL 의 성공 원문이 있으면 다시 받지 않고 그 원문을 돌려준다(지난 공고는 바뀌지 않는다 — 멱등).
+        - 실패(401·5xx 등)도 원문 행으로 돌려준다(규칙 7). 원 공고가 API 에 없으면(빈 data) 그대로 — 범위 사유는
+          '원 공고 미수집'(``analysis.scope``)."""
+        if self._key is None or not house_manage_nos:
+            return []
+        ep = ah_api.ENDPOINTS["apt"]
+        with self._resources() as (http, session, own):
+            run = _Run(region=region, store=RawStore(session), out=[], seen=set())
+            api = ah_api.ApplyhomeApi(http, self._key)
+            for hm in sorted(set(house_manage_nos)):
+                params = ah_api.item_params(hm, hm)
+                complex_id = _complex_id(session, region.id, hm)
+                for path in (ep.detail, ep.model, ep.competition):
+                    known = run.store.latest_ok("applyhome_detail", ah_api.doc_url(path, params))
+                    if known is not None:
+                        run.emit(Stored(known, created=False))
+                        continue
+                    run.emit(
+                        run.store.save(
+                            api.get(path, params),
+                            source_kind="applyhome_detail",
+                            ext="json",
+                            region_id=region.id,
+                            complex_id=complex_id,
+                        )
+                    )
+                    if own:
+                        session.commit()
+                    else:
+                        session.flush()
+            return run.out
+
     # --- 공식 API
     def _collect_api(
         self,
@@ -394,8 +444,12 @@ class ApplyhomeCollector:
     # --- 목록
     def _windows(self, region: Region) -> list[tuple[str, str]]:
         today = self._today()
-        end = _add_months(_ym(today), 1)
-        start = _parse_ym(region.applyhome_query.get("from_ym")) or _add_months(_ym(today), -10)
+        q = region.applyhome_query or {}
+        w_from, w_to = (
+            (_parse_ym(self._window[0]), _parse_ym(self._window[1])) if self._window else (None, None)
+        )
+        end = _parse_ym(q.get("to_ym")) or w_to or _add_months(_ym(today), FUTURE_MONTHS)
+        start = _parse_ym(q.get("from_ym")) or w_from or _add_months(_ym(today), -PAST_MONTHS)
         return month_windows(min(start, end), end)
 
     def _collect_list(

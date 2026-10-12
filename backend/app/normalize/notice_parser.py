@@ -1,6 +1,10 @@
 """입주자모집공고문 텍스트(pdfplumber 추출) → 필드 후보 (WP2, RA §5 WP2 카드).
 
 읽는 것
+- 제목 줄('… 입주자모집공고'): 공고 종류(본청약·무순위·임의·선착순)만. **단지 이름 후보는 내지 않는다**
+  (R4 C3·D18-4·D11-4: 제목 줄·본문 줄이 '불법행위'·'(임의공급 4차)'·'민영 비규제지역' 같은 이름으로 채택됐다 —
+  단지 이름은 청약홈(API·상세)만). 제목 줄에 종류 낱말이 없어도 '최초 주택관리번호'가 이 공고 번호와 다르면 최초
+  공고가 아니므로 무순위로 본다(파싱 규칙).
 - 머리 표: 주택유형·규제지역·재당첨제한·전매제한·거주의무기간·분양가상한제·택지유형,
   청약 일정(공고일·당첨자발표일)
 - 단지 유의사항: 최초 주택관리번호·최초 공고일(임의공급·무순위 공고), 전매제한 문장
@@ -55,12 +59,18 @@ from app.normalize._text import (
 )
 from app.normalize.fields import OCR_LABEL, OCR_REASON, discount_field, is_numeric_field, price_by_type_field
 
-__all__ = ["NoticeParser", "PriceRow", "TypeSpec", "mark_ocr", "ocr_spans", "parse_notice_text"]
+__all__ = [
+    "NoticeParser",
+    "PriceRow",
+    "TypeSpec",
+    "mark_ocr",
+    "notice_numbers",
+    "ocr_spans",
+    "parse_notice_text",
+]
 
-_TITLE_RE = re.compile(
-    r"^(?P<name>.+?)\s*(?P<kind>임의공급|무순위(?:\s*\(사후\))?|선착순|계약취소\s*주택|재공급)?\s*(?:\(\s*\d+\s*차\s*\))?\s*입주자\s*모집\s*공고",
-    re.M,
-)
+_TITLE_LINE_RE = re.compile(r"^.*입주자\s*모집\s*공고.*$", re.M)
+_KIND_WORD_RE = re.compile(r"임의\s*공급|무순위|선착순|계약\s*취소|재공급|잔여\s*세대")
 _ORIG_NO_RE = re.compile(r"최초\s*주택관리번호는\s*(\d{10})")
 _THIS_NO_RE = re.compile(r"주택관리번호는\s*(\d{10})")
 _ORIG_DATE_RE = re.compile(r"최초\s*입주자모집공고일은\s*([0-9.\s]+)")
@@ -252,6 +262,16 @@ def _failed(raw: RawDocument) -> list[FieldCandidate]:
     return []
 
 
+def notice_numbers(raw: RawDocument, *, raw_dir: Path | None = None) -> tuple[str, str | None]:
+    """(이 공고의 주택관리번호, 인용한 최초 주택관리번호 — 같거나 없으면 None). 수집 단계가 저장 순서를 정할 때 쓴다
+    (D18-4 — 원 번호를 인용한 잔여 공고문을 그 공고의 청약홈 원문보다 먼저). 파싱 규칙(판단 아님)."""
+    text = read_raw_text(raw, raw_dir=raw_dir) or ""
+    own = _house_no(raw, text)
+    orig = _ORIG_NO_RE.search(text)
+    cited = orig.group(1) if orig and orig.group(1) != own else None
+    return own, cited
+
+
 def _house_no(raw: RawDocument, text: str) -> str:
     m = _HOUSE_NO_URL_RE.search(raw.url)
     if m:
@@ -278,15 +298,18 @@ def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
     notice_no = _house_no(raw, text)
     orig = _ORIG_NO_RE.search(text)
     complex_key = orig.group(1) if orig else notice_no
-    title = _TITLE_RE.search(text[:2000])
-    kind_text = (title.group("kind") or "") if title else ""
+    title = _TITLE_LINE_RE.search(text[:2000])
+    kind_m = _KIND_WORD_RE.search(title.group(0)) if title else None
+    kind_text = kind_m.group(0).replace(" ", "") if kind_m else ""
     notice_kind = (
         "임의"
         if kind_text.startswith("임의")
-        else "무순위"  # '재공급'(계약취소 주택 재공급)도 무순위 공급 — R3 5차 minor: '본청약'으로 분류됐다
-        if kind_text.startswith(("무순위", "계약취소", "재공급"))
+        else "무순위"  # '재공급'(계약취소 주택 재공급)·잔여세대도 무순위 공급 — R3 5차 minor: '본청약'으로 분류됐다
+        if kind_text.startswith(("무순위", "계약취소", "재공급", "잔여"))
         else "선착순"
         if kind_text.startswith("선착순")
+        else "무순위"  # 최초 주택관리번호가 따로 있으면 최초 공고가 아니다(R4: '불법행위재공급' 제목이 본청약으로)
+        if orig is not None and notice_no and orig.group(1) != notice_no
         else "본청약"
     )
     head_end = text.find("\n1 공통")
@@ -299,9 +322,7 @@ def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
         notice_kind=notice_kind,
         head_span=(0, head_end if head_end > 0 else min(len(text), 2000)),
     )
-    if title is not None:
-        name = title.group("name").strip()
-        b.add("complex", complex_key, "name", name, name, title.span("name"))
+    # D18-4·D11-4: 제목 줄은 단지 이름 후보가 아니다(공고 종류만 읽는다)
     _header(ctx)
     _section3(ctx)
     ctx.types = _type_table(ctx)

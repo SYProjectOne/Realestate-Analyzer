@@ -6,6 +6,8 @@
 - 반환 모양은 계약 DTO(LadderRow, RerankAnchor, DecisionSet, Claim)라 WP4·WP5·WP7이 그대로 쓴다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·판정기 문구)
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -47,14 +49,18 @@ __all__ = [
     "is_not_catalyst",
     "p1_screen",
     "p1_screen_catalyst",
+    "p1_screen_upcoming",
     "p2_extract",
+    "p2_extract_upcoming",
     "p3_audit",
     "p4_classify_catalyst",
     "p4_classify_catalyst_kind",
     "p4_classify_inclusion",
     "p4_classify_inclusion_batch",
     "p4_classify_intake",
+    "p4_classify_upcoming",
     "p5_compare",
+    "p5_same_complex",
     "p6_ladder",
     "p7_rerank",
     "p8_decide",
@@ -282,6 +288,57 @@ def p4_classify_intake(
         status, reason = _intake_status(by_id[i.key])
         out[i.key] = IntakeOutcome(i, by_id[i.key], status, reason)
     return out
+
+
+def p1_screen_upcoming(
+    adapter: JudgeCaller,
+    *,
+    news_key: str,
+    title: str,
+    excerpt: str | None,
+    url: str | None,
+    snapshot_id: int | None,
+) -> ScreenOutcome:
+    """D20-2 P1 공고 예정 신호 screen(뉴스 항목 → 공고 예정 단지 후보 전). usable 만 다음 단계."""
+    parts = (f"제목: {title}", f"발췌: {excerpt}" if excerpt else "", f"링크: {url}" if url else "")
+    text = "\n".join(p for p in parts if p)
+    return p1_screen(adapter, text[:4000], task=P.UPCOMING_SCREEN_TASK,
+                     purpose=f"screen:upcoming:{news_key}"[:128], snapshot_id=snapshot_id)  # fmt: skip
+
+
+def p2_extract_upcoming(
+    adapter: JudgeCaller, *, news_key: str, document: str, snapshot_id: int | None
+) -> list[str]:
+    """D20-2 P2 기사 → 공고 예정 단지 이름(판정기 auto 값만, 순서대로, 중복 없이). 봉투가 ok 가 아니면 []."""
+    env = p2_extract(adapter, document, P.upcoming_extract_fields(),
+                     purpose=f"extract:upcoming:{news_key}"[:128], snapshot_id=snapshot_id)  # fmt: skip
+    if env.status != "ok":
+        return []
+    out: list[str] = []
+    for f in (env.result or {}).get("fields") or []:
+        v = f.get("value_text") if isinstance(f, dict) else None
+        if f.get("decision") == "auto" and isinstance(v, str) and v.strip() and v.strip() not in out:
+            out.append(v.strip())
+    return out
+
+
+def p4_classify_upcoming(
+    adapter: JudgeCaller, *, news_key: str, items: Sequence[tuple[str, str]], snapshot_id: int | None
+) -> dict[str, ClassifyOutcome]:
+    """D20-2 공고 예정 단지 후보(id, 텍스트) → 지역·민간분양·공고 예정 여부(배치 1회). 해결 = auto 만."""
+    ids = [i for i, _ in items]
+    env = adapter.call("classify", P.classify_upcoming_payload(items),
+                       f"classify:upcoming:{news_key}"[:128], snapshot_id=snapshot_id)  # fmt: skip
+    return _batch_items(env, ids)
+
+
+def p5_same_complex(
+    adapter: JudgeCaller, passage_a: str, passage_b: str, *, pair_key: str, snapshot_id: int | None
+) -> bool:
+    """D20-2 두 기사 속 단지가 같은 단지인가(이름이 서로를 포함할 때만 묻는다 — 판단은 판정기). same_fact·auto 만 True."""
+    out = p5_compare(adapter, passage_a, passage_b, aspects=["같은 아파트 단지(사업)를 가리키는가"],
+                     purpose=f"compare:upcoming:{pair_key}"[:128], snapshot_id=snapshot_id)  # fmt: skip
+    return out.resolved and out.relation == "same_fact"
 
 
 def p1_screen_catalyst(

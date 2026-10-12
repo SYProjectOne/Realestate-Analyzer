@@ -252,6 +252,9 @@ def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
         )
     ]
     code = assign_legal_dong(cx.address, rows, scope=scope)
+    if code is None and rows:
+        # R4 M6(D18-7): 신설 구 — 주소는 분구 전 구 이름('서구 … 오류동'), 참조 표는 새 구(검단구 오류동)
+        code = split_successor(session, cx.address, rows, scope=scope)
     if code is None and cx.legal_dong_code is not None and not rows:
         # 참조표에 그 읍면동이 없다(매칭 불가) — 이미 아는 법정동으로 지역 안팎만 다시 본다
         code = cx.legal_dong_code
@@ -266,6 +269,65 @@ def assign_complex_area(session: Session, cx: Complex) -> AssignResult:
     if not in_region and (code is not None or ambiguous or cx.inclusion_class in (None, "미분류")):
         cx.inclusion_class = "범위 경계"
     return AssignResult(cx.id, code, cx.living_area, in_region)
+
+
+def split_successor(
+    session: Session, address: str, rows: Sequence[LegalRow], *, scope: set[str] | None = None
+) -> str | None:
+    """분구(신설 구) 흡수 — R4 M6, DECISIONS D18-7. 지명을 코드에 두지 않고 참조 표만 쓴다(파싱 규칙).
+
+    주소의 시도·구 이름 + 읍면동(리)이 **폐지된** 법정동 X 와 맞고(분구 전 표기 '인천광역시 서구 … 오류동'), 같은 시도·같은
+    읍면동(리) 이름의 활성 후보 중 '그 구의 활성 읍면동 이름이 모두 X 의 옛 구 폐지 읍면동 이름에 있는' 구(= X 의 구에서
+    갈라져 나온 구)의 것만 남긴다. 여럿이면 지역 법정동(scope)으로 좁히고, 하나일 때만 그 코드. 아니면 None."""
+    toks = _tokens(address)
+    toks_norm = {normalize_name(t, sido=True) for t in toks} | toks
+    names = sorted({r.eupmyeondong_name for r in rows if r.eupmyeondong_name})
+    if not names:
+        return None
+    olds = [
+        o
+        for o in session.scalars(
+            select(LegalDong).where(LegalDong.active.is_(False), LegalDong.eupmyeondong_name.in_(names))
+        )
+        if o.sigungu_name
+        and all(p in toks for p in o.sigungu_name.split())
+        and (o.sido_name in toks or normalize_name(o.sido_name, sido=True) in toks_norm)
+        and (not o.ri_name or o.ri_name in toks)
+    ]
+    if not olds:
+        return None
+
+    def names_of(sigungu_code: str | None, *, active: bool) -> set[str]:
+        if not sigungu_code:
+            return set()
+        return {
+            str(n)
+            for n in session.scalars(
+                select(LegalDong.eupmyeondong_name).where(
+                    LegalDong.sigungu_code == sigungu_code, LegalDong.active.is_(active)
+                )
+            )
+            if n
+        }
+
+    out: set[str] = set()
+    for r in rows:
+        if not r.active:
+            continue
+        for o in olds:
+            same_place = (r.sido_name, r.eupmyeondong_name, r.ri_name or None) == (
+                o.sido_name,
+                o.eupmyeondong_name,
+                o.ri_name or None,
+            )
+            if not same_place or r.sigungu_code == o.sigungu_code:
+                continue
+            child = names_of(r.sigungu_code, active=True)
+            if child and child <= names_of(o.sigungu_code, active=False):
+                out.add(r.code)
+    if scope and len(out) > 1:
+        out = {c for c in out if c in scope} or out
+    return out.pop() if len(out) == 1 else None
 
 
 def _legal_row(r: LegalDong) -> LegalRow:

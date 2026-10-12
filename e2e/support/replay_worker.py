@@ -35,7 +35,7 @@ from app.core.http import HttpClient
 from app.core.settings import get_settings
 from app.core.time import KST
 from app.scheduler import runner
-from app.scheduler.context import default_collectors, default_context
+from app.scheduler.context import default_collectors, default_context, recorded_window
 
 REPO = Path(__file__).resolve().parents[2]
 RECORDING = REPO / "backend" / "tests" / "collectors" / "applyhome" / "fixtures" / "applyhome_2026-10-09.zip"
@@ -58,7 +58,10 @@ def main(argv: list[str] | None = None) -> int:
     off = client(offline_transport())
     base = default_collectors()
     collectors = {
-        "applyhome": lambda c: ApplyhomeCollector(http=web, today=lambda: TODAY, service_key=None),
+        # 계약 .15 기본 조회 창(지난 24 + 향후 12개월)은 녹화에 없다 — 녹화 때 창으로 재생(R4-FIX D20-1)
+        "applyhome": lambda c: ApplyhomeCollector(
+            http=web, today=lambda: TODAY, service_key=None, window=recorded_window(RECORDING)
+        ),
         "notice_pdf": lambda c: NoticePdfCollector(http=off, ocr=None),
         "official_site": lambda c: _Empty(),
         "stats": lambda c: UnsoldCollector(http=off),

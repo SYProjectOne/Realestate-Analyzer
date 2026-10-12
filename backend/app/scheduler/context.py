@@ -50,7 +50,7 @@ from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_sessionmaker
 from app.core.settings import Settings, get_settings
 from app.core.time import KST, now_kst, today_kst
-from app.judge.base import JudgeCaller
+from app.judge.base import CallMeter, JudgeCaller
 from app.scheduler.notify import Notifier
 
 if TYPE_CHECKING:
@@ -67,6 +67,7 @@ __all__ = [
     "default_fixture_dir",
     "net_config_from_env",
     "offline_transport",
+    "recorded_window",
     "replay_transport",
 ]
 
@@ -172,6 +173,31 @@ def replay_transport(archive_path: Path) -> httpx.MockTransport:
     return transport
 
 
+def recorded_window(archive_path: Path) -> tuple[str, str] | None:
+    """녹화 zip 의 청약홈 목록 조회 창(웹 beginPd·endPd 또는 API RCRIT_PBLANC_DE GTE·LTE)의 (최소 시작월, 최대 끝월) 'YYYY-MM'.
+    재생은 녹화한 요청만 응답하므로 계약 .15 의 기본 창(지난 24개월 + 향후 12개월)이 아니라 녹화 때 창으로 조회해야 한다."""
+    try:
+        manifest = json.loads(zipfile.ZipFile(archive_path).read("manifest.json").decode("utf-8"))
+    except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+        return None
+    begins: list[str] = []
+    ends: list[str] = []
+    for e in manifest.get("entries") or []:
+        form = e.get("form") or {}
+        if form.get("beginPd") and form.get("endPd"):
+            begins.append(str(form["beginPd"])[:6])
+            ends.append(str(form["endPd"])[:6])
+        q = dict(parse_qsl(urlsplit(str(e.get("url") or "")).query))
+        gte, lte = q.get("cond[RCRIT_PBLANC_DE::GTE]"), q.get("cond[RCRIT_PBLANC_DE::LTE]")
+        if gte and lte:
+            begins.append(gte.replace("-", "")[:6])
+            ends.append(lte.replace("-", "")[:6])
+    if not begins:
+        return None
+    lo, hi = min(begins), max(ends)
+    return f"{lo[:4]}-{lo[4:6]}", f"{hi[:4]}-{hi[4:6]}"
+
+
 def _net_client(net: NetConfig, *, replay: bool) -> HttpClient:
     from app.core.http import HttpClient
 
@@ -238,7 +264,10 @@ def _offline_collectors(net: NetConfig) -> dict[str, CollectorFactory]:
     def applyhome(ctx: SchedulerContext) -> CollectorLike:
         from app.collectors.applyhome import ApplyhomeCollector
 
-        return ApplyhomeCollector(http=_net_client(net, replay=True), today=ctx.today, service_key=None)
+        window = recorded_window(net.replay_archive) if net.mode == "replay" and net.replay_archive else None
+        return ApplyhomeCollector(
+            http=_net_client(net, replay=True), today=ctx.today, service_key=None, window=window
+        )
 
     def notice_pdf(ctx: SchedulerContext) -> CollectorLike:
         from app.collectors.notice_pdf import NoticePdfCollector
@@ -319,6 +348,9 @@ class SchedulerContext:
     now: Callable[[], datetime] = now_kst
     worker_id: str = field(default_factory=lambda: f"{socket.gethostname()}:{os.getpid()}")
     _adapter: JudgeCaller | None = field(default=None, repr=False)
+    judge_meter: CallMeter = field(default_factory=CallMeter, repr=False)
+    """판정기 tools/call 계수기(D18-2) — 어댑터를 버리고 새로 만들어도 이어서 센다. 잡 stats 는 잡 시작·끝 차이."""
+    _metered: bool = field(default=False, repr=False)
 
     def __post_init__(self) -> None:
         # 보낸 알림 영속 기록(job_run stats 의 notified_event_ids) — 재시작해도 같은 이벤트를 다시 보내지 않는다(R3 m13)
@@ -336,7 +368,15 @@ class SchedulerContext:
     def adapter(self) -> JudgeCaller:
         if self._adapter is None:
             self._adapter = self.adapter_factory()
+            if isinstance(getattr(self._adapter, "meter", None), CallMeter):
+                self._adapter.meter = self.judge_meter  # type: ignore[attr-defined]
+                self._metered = True
         return self._adapter
+
+    def judge_metered(self) -> bool:
+        """이 문맥이 전송 계층 계수기를 쓰는 어댑터(JevMcpAdapter)를 만든 적이 있나. MockAdapter(녹화 재생)는
+        tools/call 이 없어 계수기를 쓰지 않는다."""
+        return self._metered
 
     def reset_adapter(self) -> None:
         """연결이 끊긴 어댑터를 버린다(다음 ``adapter()`` 가 새로 만든다)."""

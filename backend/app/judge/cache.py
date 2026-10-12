@@ -84,4 +84,6 @@ def envelope_from_row(row: JudgmentLog, *, cached: bool, result: dict[str, Any])
         snapshot_id=row.snapshot_id,
         complex_id=row.complex_id,
         error_text=row.error_text,
+        model=row.model,
+        provider=row.provider,
     )

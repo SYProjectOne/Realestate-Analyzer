@@ -1,5 +1,7 @@
 """cache.py · log.py — 같은 입력 재호출 금지(T17), adapter_version → input_hash, 실패도 행."""
 
+# ruff: noqa: E501  (한국어 docstring·주석)
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -99,17 +101,23 @@ def test_adapter_version_includes_response_model(
 def test_model_change_rejudges(
     make_adapter: Callable[..., Any], session_factory: sessionmaker[Session]
 ) -> None:
-    """모델이 바뀌면(서버 버전 그대로여도) 새 hash → 같은 입력도 재판정."""
+    """모델이 바뀌면(서버 버전 그대로여도) 새 hash → 같은 입력도 재판정. D18-1(R4-FIX): 바뀐 것을 본 **그 실행 중에는
+    키를 바꾸지 않고**(같은 입력 재호출·replay 없음) 다음 실행(새 어댑터)부터 새 키로 재판정한다."""
     t1 = FakeTransport(responses={"jev_screen": _with_model("jev-1.13.0")})
     make_adapter(t1).screen(PAYLOAD, "screen:notice:1")
     t2 = FakeTransport(responses={"jev_screen": _with_model("jev-1.14.0")})
     a2 = make_adapter(t2)
     other = {"text": "다른 공개 문장", "purpose": "공고 발췌 검사"}
     first_new = a2.screen(other, "screen:notice:2")  # 새 입력에서 새 모델을 알게 된다
-    assert first_new.adapter_version is not None and first_new.adapter_version.endswith("+jev-1.14.0")
-    redo = a2.screen(PAYLOAD, "screen:notice:1")  # 옛 모델로 판정했던 입력 → 재판정
-    assert redo.cached is False and redo.adapter_version == first_new.adapter_version
-    assert len(t2.calls) == 2
+    assert first_new.adapter_version is not None and first_new.adapter_version.endswith("+jev-1.13.0")
+    assert (a2.observed_version or "").endswith("+jev-1.14.0") and a2.model_change_pending
+    same_run = a2.screen(PAYLOAD, "screen:notice:1")  # 같은 실행: 옛 키 그대로 → 캐시
+    assert same_run.cached is True and len(t2.calls) == 1
+    t3 = FakeTransport(responses={"jev_screen": _with_model("jev-1.14.0")})
+    a3 = make_adapter(t3)  # 다음 실행: 새 모델로 고정
+    redo = a3.screen(PAYLOAD, "screen:notice:1")  # 옛 모델로 판정했던 입력 → 재판정
+    assert redo.cached is False and (redo.adapter_version or "").endswith("+jev-1.14.0")
+    assert len(t3.calls) == 1
     assert len(rows(session_factory)) == 3
 
 

@@ -1,0 +1,40 @@
+{
+  "tool": "screen",
+  "purpose": "screen:extract:c06846ac5afbcb989",
+  "input_hash": "sha256:ba5e170325cb46aa1794a761936d6f5ad024c17d73719c03743fe1ae38c132ca",
+  "input_len": 421,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "verdict": "pass",
+    "injection": 0.01,
+    "substance": 0.97,
+    "relevance": 0.97
+  },
+  "raw": {
+    "tool": "jev_screen",
+    "model": "jev-1.13.0",
+    "probabilities": {
+      "injection": 0.01,
+      "substance": 0.97,
+      "relevance": 0.97
+    },
+    "recommendation": {
+      "action": "pass"
+    },
+    "synth": {
+      "label": "합성",
+      "basis": "SynthJev 기본(보고서에 필드별 대응 값 없음)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 13,
+  "complex_id": 6,
+  "error_text": null,
+  "model": null,
+  "provider": null
+}

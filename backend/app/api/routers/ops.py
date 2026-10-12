@@ -161,6 +161,26 @@ def cache_hits(session: Any, since: str, tool: str | None = None) -> tuple[int, 
     return total, dict(by_tool)
 
 
+def sent_calls(session: Any, since: str) -> tuple[int, dict[str, int], bool]:
+    """판정기로 실제 보낸 ``tools/call`` 수(D18-2) — worker 잡 stats ``tools_calls``(전송 계층 계수)의 합.
+    (합계, 도구별, 집계가 있는 잡이 하나라도 있었나). R4-FIX 이전 잡은 이 집계가 없다."""
+    total = 0
+    by_tool: dict[str, int] = defaultdict(int)
+    seen = False
+    stmt = select(JobRun.stats).where(JobRun.started_at.is_not(None), JobRun.started_at >= since)
+    for stats in session.scalars(stmt):
+        if not isinstance(stats, dict) or not isinstance(stats.get("tools_calls"), int):
+            continue
+        seen = True
+        total += max(0, int(stats["tools_calls"]))
+        per_tool = stats.get("tools_calls_by_tool")
+        if isinstance(per_tool, dict):
+            for name, n in per_tool.items():
+                if isinstance(n, int) and n > 0:
+                    by_tool[str(name)] += n
+    return total, dict(by_tool), seen
+
+
 @router.get("/ops/judgments")
 def get_judgment_ops(
     session: DB,
@@ -192,11 +212,18 @@ def get_judgment_ops(
         select(Snapshot).order_by(Snapshot.created_at.desc(), Snapshot.id.desc())
     ).first()
     cached_total, cached_by_tool = cache_hits(session, start, tool)
+    # D18-2: 실제 호출 = 판정기로 보낸 tools/call 수(잡 stats 전송 계층 계수). guard 차단(blocked) 행은 보내지 않은 호출.
+    # 계수가 없는 기간(R4-FIX 이전 잡·MockAdapter 재생)은 judgment_log 행 수가 하한이라 둘 중 큰 값을 쓴다.
+    sent_total, sent_by_tool, _ = sent_calls(session, start)
+    logged = sum(1 for r in rows if r.status != "blocked")
+    if tool:
+        sent_total = sent_by_tool.get(tool, 0)
+    real_calls = max(logged, sent_total)
     stats = {
         "since": start,
         "until": now.date().isoformat(),
-        "total_calls": len(rows) + cached_total,
-        "real_calls": len(rows),
+        "total_calls": real_calls + cached_total,
+        "real_calls": real_calls,
         "cached_hits": cached_total,
         "failures": count(rows, "error"),
         "blocked": count(rows, "blocked"),
@@ -206,7 +233,7 @@ def get_judgment_ops(
         "by_tool": [
             {
                 "tool": t,
-                "calls": len(items),
+                "calls": max(sum(1 for r in items if r.status != "blocked"), sent_by_tool.get(t, 0)),
                 "cached": cached_by_tool.get(t, 0),
                 "failures": count(items, "error"),
                 "review": count(items, "review"),

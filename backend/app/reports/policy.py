@@ -19,7 +19,7 @@ from typing import Final
 
 from app.analysis import price_view, scope
 from app.analysis.price_view import PaymentTermsLike, PriceView, TypeRowLike
-from app.analysis.scope import IntakeRowLike, JudgeScope, ScopeResult
+from app.analysis.scope import IntakeRowLike, JudgeScope, ScopeResult, original_missing
 from app.models import Complex
 
 __all__ = [
@@ -31,6 +31,7 @@ __all__ = [
     "current_price",
     "current_terms",
     "judge_scope",
+    "original_missing",
     "pick_intake",
     "scope_note",
     "shows_ladder",
@@ -46,6 +47,7 @@ def judge_scope(
     inclusion_decision: str | None,
     has_price: bool,
     intake_status: str | None,
+    original_notice_missing: bool = False,
 ) -> ScopeResult:
     """판정 범위(D9-1) = ``analysis.scope.judge_scope``."""
     return scope.judge_scope(
@@ -53,6 +55,7 @@ def judge_scope(
         inclusion_decision=inclusion_decision,
         has_price=has_price,
         intake_status=intake_status,
+        original_notice_missing=original_notice_missing,
     )
 
 
@@ -89,6 +92,7 @@ def complex_scope(
         inclusion_decision=cx.inclusion_decision,
         has_price=current_price(types, payments, discount_label=None).known,  # 할인은 known 과 무관
         intake_status=shown.status if shown is not None else None,
+        original_notice_missing=scope.original_missing(cx.applyhome_id, cx.notice_date),
     )
 
 

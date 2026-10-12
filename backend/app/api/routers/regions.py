@@ -152,7 +152,7 @@ def create_region(session: DB, body: Annotated[Any, Body()] = None) -> JSONRespo
         legal_dong_codes=codes,
         living_areas=default_living_areas(codes, legal),
         age_premium_coef={"c_per_year": 0.015, "cap_years": 8, "label": "추정"},
-        applyhome_query={},
+        applyhome_query=dict(body.get("applyhome_query") or {}),  # 계약 .15(D20-1) — 없으면 기본 조회 창
         status="bootstrapping",
         created_at=now_iso(),
     )

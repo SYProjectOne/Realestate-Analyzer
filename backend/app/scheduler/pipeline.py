@@ -151,6 +151,10 @@ EXTRACT_FIELDS_MAX: Final = 32
 class CountingCaller:
     """판정기 호출 계수(실제 호출 vs 캐시). 판정 자체는 그대로 넘긴다.
 
+    D18-2: 어댑터에 전송 계층 계수기(``meter`` — ``judge.base.CallMeter``)가 있으면 **실제 호출 = 그 호출 동안 보낸
+    tools/call 수**다(봉투의 cached 표시와 무관 — R4 C1 의 숨은 호출도 센다). 없으면(MockAdapter 녹화 재생) 봉투로 센다.
+    버전 변경 감지(``live_version``)는 어댑터가 알려 주는 '모델 호출 응답의 버전'(``observed_version``, D18-1)을 쓴다.
+
     ``before_call``: 호출 전에 파이프라인 세션을 commit 한다 — 어댑터는 호출마다 자기 세션으로 judgment_log 를
     쓰므로, 파이프라인 세션이 열린 트랜잭션(SQLite WAL 의 낡은 읽기 스냅샷)을 들고 있으면 쓰기가 막힌다.
     """
@@ -165,7 +169,8 @@ class CountingCaller:
         self.cached_by_tool: Counter[str] = Counter()  # 도구별 캐시 재생(R3 m23 — /ops/judgments cached_hits)
         self.statuses: Counter[str] = Counter()
         self.seen_version: str | None = None  # 마지막 봉투의 adapter_version(캐시 재생 포함)
-        self.live_version: str | None = None  # 판정기에 실제로 간 호출의 봉투 버전(버전 변경 감지용)
+        self.live_version: str | None = None  # 판정기에 실제로 간 호출이 알려 준 버전(버전 변경 감지용)
+        self.hidden = 0  # 봉투는 cached 인데 tools/call 이 나간 호출(있으면 어댑터 결함 — 로그)
 
     @property
     def adapter_version(self) -> str:
@@ -192,20 +197,31 @@ class CountingCaller:
     ) -> JudgmentEnvelope:
         if self._before is not None:
             self._before()
+        meter = getattr(self.inner, "meter", None)
+        before = meter.total() if meter is not None else 0
         env = self.inner.call(tool, payload, purpose, snapshot_id=snapshot_id, complex_id=complex_id)
+        sent = (meter.total() - before) if meter is not None else None
         self.statuses[env.status] += 1
         if env.adapter_version:
             self.seen_version = env.adapter_version
-        if env.cached:
+        live = (sent > 0) if sent is not None else (not env.cached and env.status != "blocked")
+        if live:
+            n = sent if sent is not None else 1
+            self.calls += n
+            self.by_tool[tool] += n
+            if env.cached:
+                self.hidden += n
+                log.warning("worker.pipeline.hidden_call", extra={"tool": tool, "sent": n})
+            observed = getattr(self.inner, "observed_version", None)
+            if isinstance(observed, str) and observed:
+                self.live_version = observed
+            elif env.adapter_version and env.status != "error":
+                self.live_version = env.adapter_version
+        elif env.cached:
             self.cached += 1
             self.cached_by_tool[tool] += 1
         elif env.status == "blocked":
             self.blocked += 1
-        else:
-            self.calls += 1
-            self.by_tool[tool] += 1
-            if env.adapter_version and env.status != "error":
-                self.live_version = env.adapter_version
         return env
 
 
@@ -342,17 +358,33 @@ def _p1_p3(
         except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록
             res.skipped[f"parse:rd{doc.id}"] = type(exc).__name__
             continue
-        for i, whole in enumerate(build_extract_requests([c for c in cands if c.needs_extract])):
+        for whole in build_extract_requests([c for c in cands if c.needs_extract]):
             if not whole.text.strip() or not whole.fields:
                 continue
-            # 필드가 32개를 넘으면 나눠 보낸다(잘라 버리면 넘친 OCR 값이 판정 없이 남는다, R3 C3). 첫 조각은 예전 tag 그대로
+            # D18-5: 같은 조각(같은 정규화 본문)은 한 번만 판정 — 판정 입력·purpose 를 원문 id 가 아니라 정규화 본문으로 정한다
+            # (다른 원문의 같은 조각 = 같은 input_hash = 캐시). 원문 id 는 반영(apply_extracted)의 출처에만 쓴다
+            whole = replace(whole, text=chunk_text(whole.text))
+            # 필드가 32개를 넘으면 나눠 보낸다(잘라 버리면 넘친 OCR 값이 판정 없이 남는다, R3 C3)
             for k in range(0, len(whole.fields), EXTRACT_FIELDS_MAX):
                 req = whole if len(whole.fields) <= EXTRACT_FIELDS_MAX else _part(whole, k)
-                tag = f"rd{doc.id}:{i}" + (f":{k // EXTRACT_FIELDS_MAX}" if k else "")
+                tag = chunk_tag(whole.text) + (f":{k // EXTRACT_FIELDS_MAX}" if k else "")
                 n_req += 1
                 _extract_one(session, caller, snap, doc.complex_id, req, tag, res, seq)
     if n_req:
         res.carried["extract_requests"] = n_req
+
+
+def chunk_text(text: str) -> str:
+    """판정 입력 조각의 정규화 본문(D18-5): 줄마다 앞뒤 공백을 떼고 줄 안 공백을 하나로, 빈 줄은 뺀다(줄바꿈은 남긴다 — 표 행)."""
+    lines = (" ".join(line.split()) for line in text.splitlines())
+    return "\n".join(line for line in lines if line)
+
+
+def chunk_tag(text: str) -> str:
+    """정규화 본문의 짧은 해시 — screen·extract·audit purpose 의 조각 키(원문 id 대신, D18-5)."""
+    import hashlib
+
+    return "c" + hashlib.sha256(chunk_text(text).encode("utf-8")).hexdigest()[:16]
 
 
 def _part(req: ExtractRequest, start: int) -> ExtractRequest:
@@ -523,7 +555,28 @@ def _p4(
     만들면 같은 사실에 판정기를 다시 부른다). 결과는 배치 안의 모든 단지에 쓴다(같은 판정).
     """
     del targets
-    pool = [(f.complex_id, f) for f in facts if f.row.inclusion_class != "범위 경계"]
+    # D20-2: 공고 전 트랙 (A) 후보(주택관리번호 없음)는 수집 때 판정기 classify(공고 예정 — 지역·민간분양)가 포함을 정했다.
+    # 단지 사실이 이름뿐이라 여기서 다시 분류하지 않는다(청약홈 공고와 합쳐지면 주택관리번호가 생겨 다시 분류된다)
+    upcoming = set(
+        session.scalars(
+            select(JudgmentLog.seq).where(
+                JudgmentLog.seq.in_(
+                    [
+                        f.row.inclusion_judgment_seq
+                        for f in facts
+                        if f.row.applyhome_id is None and f.row.inclusion_judgment_seq
+                    ]
+                ),
+                JudgmentLog.purpose.startswith("classify:upcoming:"),
+            )
+        )
+    )
+    pool = [
+        (f.complex_id, f)
+        for f in facts
+        if f.row.inclusion_class != "범위 경계"
+        and not (f.row.applyhome_id is None and f.row.inclusion_judgment_seq in upcoming)
+    ]
     for b in range(0, len(pool), CLASSIFY_BATCH_MAX):
         chunk = pool[b : b + CLASSIFY_BATCH_MAX]
         outs = jp.p4_classify_inclusion_batch(
@@ -1022,6 +1075,9 @@ def run_pipeline(
                 if ev is not None:
                     res.version_event_id = ev.id
                     session.commit()
+                if getattr(caller.inner, "model_change_pending", False):
+                    # D18-1: 이 실행은 옛 키 그대로 끝냈다 — 다음 실행(새 어댑터)이 새 모델로 고정해 전체 재판정
+                    ctx.reset_adapter()
         log.info(
             "worker.pipeline.done",
             extra={

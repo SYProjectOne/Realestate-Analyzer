@@ -23,6 +23,8 @@
 대상: ``targets`` 를 주면 그것만, 아니면 region 의 complex.official_site_url 전부.
 """
 
+# ruff: noqa: E501  (한국어 docstring·주석)
+
 from __future__ import annotations
 
 import hashlib
@@ -141,7 +143,15 @@ class OfficialSiteCollector:
         finally:
             if self._http is None:
                 http.close()
-        return [d for o in self.outcomes for d in o.documents]
+        # R4 M5(D18-6): 같은 URL 을 쓰는 단지가 여럿이면 원문 행은 하나(sha256)다 — 돌려주는 원문에는 대상 단지를 단다
+        # (접수 행은 단지마다, ``scheduler.collect.intake_rows`` 가 complex_id 로 묶는다)
+        return [
+            d
+            if d.complex_id == o.target.complex_id
+            else d.model_copy(update={"complex_id": o.target.complex_id})
+            for o in self.outcomes
+            for d in o.documents
+        ]
 
     def _renderer_or_default(self) -> Renderer:
         if self._renderer is None:
@@ -303,7 +313,10 @@ def _dto(row: RawDocumentRow) -> RawDocument:
 
 
 def _previous_render(session: Session, target: SiteTarget) -> dict[str, Any] | None:
-    """같은 URL·단지의 가장 최근 성공 렌더 메타(HTML 행 meta.render). 없으면 None."""
+    """같은 URL 의 가장 최근 성공 렌더 메타(HTML 행 meta.render). 없으면 None.
+
+    R4 M5: 단지(complex_id)로 거르지 않는다 — 같은 URL 은 같은 화면이고, 원문 행은 sha256 로 하나라 그 행의 complex_id 는
+    첫 단지뿐이다(다른 단지는 직전 렌더를 못 찾아 매번 새 스크린샷 → 같은 날 재수집에서 팝업 해시가 바뀌었다)."""
     stmt = (
         select(RawDocumentRow)
         .where(
@@ -314,8 +327,6 @@ def _previous_render(session: Session, target: SiteTarget) -> dict[str, Any] | N
         .order_by(RawDocumentRow.id.desc())
         .limit(20)
     )
-    if target.complex_id is not None:
-        stmt = stmt.where(RawDocumentRow.complex_id == target.complex_id)
     for row in session.scalars(stmt):
         render = (row.meta or {}).get("render") if isinstance(row.meta, dict) else None
         if isinstance(render, dict) and render.get("rendered") and render.get("signature"):

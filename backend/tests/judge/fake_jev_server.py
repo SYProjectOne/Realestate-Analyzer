@@ -5,7 +5,12 @@
 - version: initialize.serverInfo.version (기본 0.14.1)
 - mode: normal | sleep(도구 호출이 멈춤 → 타임아웃) | die(도구 호출 중 프로세스 종료) | error(isError 응답)
 - counter: 경로가 있으면 실제 도구 호출마다 도구 이름 한 줄을 덧붙인다(호출 수 확인용)
+- local_tools: 이 도구들은 JEV 0.14.1 의 로컬 단락 응답처럼 ``provider: "none"``·``model: "jev-latest"`` 를 준다
+  (R4 C1 — 실제 extract 가 후보를 못 찾을 때의 모양)
+- model: 모델 호출 응답의 ``model`` 을 이 값으로 바꾼다(모델 변경 시험)
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -55,7 +60,11 @@ async def call_tool(ctx: Any, params: types.CallToolRequestParams) -> types.Call
     if mode == "error":
         body = json.dumps({"tool": params.name, "error": "provider unavailable"})
         return types.CallToolResult(content=[types.TextContent(type="text", text=body)], is_error=True)
-    response = SAMPLES[params.name]["response"]
+    response = dict(SAMPLES[params.name]["response"])
+    if cfg.get("model"):
+        response["model"] = cfg["model"]
+    if params.name in set(cfg.get("local_tools") or []):
+        response = {**response, "model": "jev-latest", "provider": "none"}
     return types.CallToolResult(
         content=[types.TextContent(type="text", text=json.dumps(response, ensure_ascii=False))]
     )

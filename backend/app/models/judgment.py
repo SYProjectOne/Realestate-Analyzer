@@ -46,6 +46,10 @@ class JudgmentLog(Base):
     error_text: Mapped[str | None] = mapped_column(Text)
     # 0003 (계약 2026-10-09.3): 정규화 결과(봉투 result). 옛 행은 NULL — 읽는 쪽이 output_json 을 다시 정규화
     result_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # 0015 (계약 .15, D18-1·D20-1): 그 응답의 실제 model·provider(원응답에서). 캐시 키의 고정 모델과
+    # 다를 수 있다 — provider 'none' = 판정기가 모델을 부르지 않은 로컬 처리. blocked·error·옛 행은 NULL
+    model: Mapped[str | None] = mapped_column(String(64))
+    provider: Mapped[str | None] = mapped_column(String(32))
 
 
 class Claim(Base):

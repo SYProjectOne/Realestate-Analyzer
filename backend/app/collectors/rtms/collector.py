@@ -28,11 +28,13 @@ raw_document 흐름(source_kind 'rtms')이고 URL 경로로 구별한다. 그 �
 가린 뒤 저장·파싱한다(포털 오류 문구가 키를 되돌려 주면 error_text 상세로 DB 에 남던 경로).
 """
 
+# ruff: noqa: E501  (한국어 docstring·주석)
+
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from contextlib import AbstractContextManager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from pathlib import Path
 from typing import Protocol
@@ -43,6 +45,13 @@ from sqlalchemy.orm import Session
 
 from app.collectors.reference.load import LoadStats
 from app.collectors.reference.rawstore import RawStore, fetch_failure, scrub_result
+from app.collectors.rtms.legal import (
+    REASON_AMBIGUOUS,
+    REASON_NO_SGG,
+    LegalDongIndex,
+    lawd_of_url,
+    repair_legal_dong_codes,
+)
 from app.collectors.rtms.parse import TradeRecord, api_error_message, parse_trade_xml
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_session
@@ -371,19 +380,90 @@ def _key(
     return (apt_name, place, Decimal(area).quantize(Decimal("0.01")), floor, price, day, src, bool(presale))
 
 
+@dataclass
+class TradeLoadStats(LoadStats):
+    """적재 통계 + 법정동 매칭(D18-3): matched(참조 표) · from_umdcd(응답의 umdCd) · unmatched · ambiguous · no_sgg ·
+    filled(기존 NULL 행을 같은 거래로 채움) · repaired(원문 URL 로 보정한 기존 행)."""
+
+    legal_dong: dict[str, int] = field(
+        default_factory=lambda: {
+            "matched": 0,
+            "from_umdcd": 0,
+            "unmatched": 0,
+            "ambiguous": 0,
+            "no_sgg": 0,
+            "filled": 0,
+            "repaired": 0,
+        }
+    )
+    legal_dong_reasons: dict[str, int] = field(
+        default_factory=dict
+    )  # 사유 → 건수(매칭 실패 동 이름 예시는 로그)
+
+    def legal_dong_match_rate(self) -> float:
+        d = self.legal_dong
+        seen = d["matched"] + d["from_umdcd"] + d["unmatched"] + d["ambiguous"] + d["no_sgg"]
+        return round((d["matched"] + d["from_umdcd"]) / seen, 4) if seen else 1.0
+
+    def legal_dong_stats(self) -> dict[str, float | int]:
+        return {**self.legal_dong, "match_rate": self.legal_dong_match_rate()}
+
+
+def _with_codes(
+    session: Session, items: list[tuple[int | None, TradeRecord]], stats: TradeLoadStats
+) -> list[tuple[int | None, TradeRecord]]:
+    """umdCd 없는 거래에 참조 표 매칭 법정동 코드를 단다(D18-3). sggCd 가 없으면 원문 URL 의 LAWD_CD."""
+    urls: dict[int, str] = {}
+    doc_ids = {d for d, t in items if d is not None and t.legal_dong_code is None and not t.sgg_code}
+    if doc_ids:
+        urls = {
+            int(i): str(u)
+            for i, u in session.execute(select(RtmsRaw.id, RtmsRaw.url).where(RtmsRaw.id.in_(doc_ids)))
+        }
+    sgg_of = {
+        (d, t.sgg_code or lawd_of_url(urls.get(d or -1))) for d, t in items if t.legal_dong_code is None
+    }
+    idx = LegalDongIndex.load(session, {s for _, s in sgg_of if s})
+    out: list[tuple[int | None, TradeRecord]] = []
+    d = stats.legal_dong
+    for doc_id, t in items:
+        if t.legal_dong_code is not None:
+            d["from_umdcd"] += 1
+            out.append((doc_id, t))
+            continue
+        sgg = t.sgg_code or lawd_of_url(urls.get(doc_id or -1))
+        code, why = idx.resolve(sgg, t.dong)
+        if code is not None:
+            d["matched"] += 1
+            t = replace(t, legal_dong_code=code)
+        else:
+            key = (
+                "ambiguous" if why == REASON_AMBIGUOUS else "no_sgg" if why == REASON_NO_SGG else "unmatched"
+            )
+            d[key] += 1
+            stats.legal_dong_reasons[why or ""] = stats.legal_dong_reasons.get(why or "", 0) + 1
+        out.append((doc_id, t))
+    return out
+
+
 def load_trades(
     session: Session, region_id: int, trades: Iterable[tuple[int | None, TradeRecord]]
-) -> LoadStats:
+) -> TradeLoadStats:
     """rtms_trade 적재(멱등).
 
     같은 거래가 날마다 받은 다른 원문(같은 월 재조회)에 또 나오므로 원문 단위가 아니라 거래 키
     (단지명, 법정동 코드|동, 면적, 층, 금액, 계약일, source, 분양권 여부)로 맞춘다. 키가 같은 기존 행은
     해제 여부만 갱신하고, 같은 키가 여러 건이면 건수만큼 둔다.
+
+    D18-3: umdCd 없는 거래는 참조 표로 법정동 코드를 찾는다(``_with_codes``). 거래 키의 장소는 **동 이름 우선**
+    (보정 전 적재분 = 코드 NULL·동 이름 키와 같은 키 → 중복 없음). 기존 행의 코드가 비어 있으면 채운다. 끝에 이 지역의
+    남은 NULL 행을 원문 URL 로 보정한다(``repair_legal_dong_codes`` — 다시 받지 않은 달 포함).
     """
-    stats = LoadStats()
+    stats = TradeLoadStats()
     items = list(trades)
     if not items:
         return stats
+    items = _with_codes(session, items, stats)
     days = [t.deal_date for _, t in items]
     existing: dict[TradeKey, list[RtmsTrade]] = {}
     rows = session.scalars(
@@ -396,7 +476,7 @@ def load_trades(
     for row in rows:
         k = _key(
             row.apt_name,
-            row.legal_dong_code or row.dong,
+            row.dong or row.legal_dong_code,
             row.area_m2,
             row.floor,
             row.price_won,
@@ -408,7 +488,7 @@ def load_trades(
     for doc_id, t in items:
         k = _key(
             t.apt_name,
-            t.legal_dong_code or t.dong,
+            t.dong or t.legal_dong_code,
             t.area_m2,
             t.floor,
             t.price_won,
@@ -419,6 +499,9 @@ def load_trades(
         pool = existing.get(k)
         if pool:
             row = pool.pop(0)
+            if row.legal_dong_code is None and t.legal_dong_code is not None:
+                row.legal_dong_code = t.legal_dong_code  # 보정 전 적재분(D18-3)
+                stats.legal_dong["filled"] += 1
             if row.cancelled != t.cancelled:
                 row.cancelled = t.cancelled
                 row.raw_document_id = doc_id
@@ -445,4 +528,5 @@ def load_trades(
         )
         stats.inserted += 1
     session.flush()
+    stats.legal_dong["repaired"] = repair_legal_dong_codes(session, region_id)["repaired"]
     return stats

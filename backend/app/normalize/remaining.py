@@ -11,7 +11,9 @@
 kind: 04·06 → '무순위', 11(임의공급 엔드포인트 포함) → '임의'. 공급 구분을 모르면 만들지 않고 '확인 불가(공급 구분
 없음)'로 기록한다(추측하지 않는다).
 
-단지: 잔여 공고는 자기 주택관리번호를 가져 수집 정규화(store)가 따로 단지 행을 만든다. 원래 단지 = 같은 지역에서
+단지(D18-4): 잔여 공고는 원 단지(사업)의 사건이다. 먼저 정규화(store)가 묶은 원 단지 — 이번 수집 실행의 연결
+(``links``: 공고문 '최초 주택관리번호' 인용·같은 블록), 그 공고번호의 납부 조건 행, 이미 있는 이력 행의 단지 — 를 쓴다.
+없으면(옛 자료) 이름으로 찾는다: 원래 단지 = 같은 지역에서
 정규화한 단지명(``benchmark.normalize_apt_name`` — 잔여 공고 회차 괄호만 제거, 차수·블록 유지)과 법정동이 같은
 단지 중 잔여 공고가 아닌 것 — 하나일 때만. 없으면 이름 끝 공급 회차 괄호('(23차)')까지 뗀 키(``remainder_name_key``)로
 한 번 더 찾는다(역시 하나일 때만). 없거나 여럿이면 같은 이름·법정동 잔여 공고들의 단지 행 중 가장 먼저 생긴 것에 묶고(회차가 한 타임라인에
@@ -30,6 +32,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Final
@@ -101,6 +104,7 @@ class RemainingSync:
     unchanged: int = 0
     unmatched: list[dict[str, str]] = field(default_factory=list)  # [{notice_no, name, reason}]
     events: list[ChangeEvent] = field(default_factory=list)
+    first_load_folded: int = 0
 
     def stats(self) -> dict[str, Any]:
         return {
@@ -108,6 +112,7 @@ class RemainingSync:
             "updated": self.updated,
             "unchanged": self.unchanged,
             "unmatched_n": len(self.unmatched),
+            "first_load_folded": self.first_load_folded,
             "unmatched": self.unmatched[:50],
         }
 
@@ -305,7 +310,9 @@ class _Anchor:
     reason: str | None
 
 
-def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[tuple[str, str], _Anchor]:
+def _anchors(
+    session: Session, region: Region, notices: list[_Notice], links: Mapping[str, int] | None = None
+) -> dict[tuple[str, str], _Anchor]:
     scope = set(region.legal_dong_codes or [])
     remaining_hms = {n.hm for n in notices}
     complexes = list(
@@ -325,7 +332,19 @@ def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[t
         if own is not None:
             groups.setdefault((loose, code), []).append(own.id)
     out: dict[tuple[str, str], _Anchor] = {}
+    linked = {
+        **_store_links(session, region.id, {n.pb for n in notices} | remaining_hms),
+        **dict(links or {}),
+    }
+    valid = {c.id for c in complexes}
+    linked = {k: v for k, v in linked.items() if v in valid}
     for n in notices:
+        # D18-4: 정규화(store)가 이 공고를 묶은 원 단지(그 공고번호의 납부 조건 행 — 공고문 '최초 주택관리번호' 인용·같은
+        # 블록·이전 연결)가 있으면 그 단지. 이름 대조는 그다음
+        hit_id = linked.get(n.pb) or linked.get(n.hm)
+        if hit_id is not None:
+            out[(n.hm, n.pb)] = _Anchor(hit_id, None)
+            continue
         strict, name, code = keyed[(n.hm, n.pb)]
         here = [c for c in originals if c.legal_dong_code == code] if code and name else []
         hits = [c for c in here if normalize_apt_name(c.name) == strict]
@@ -338,6 +357,26 @@ def _anchors(session: Session, region: Region, notices: list[_Notice]) -> dict[t
             continue
         members = groups.get((name, code)) or []
         out[(n.hm, n.pb)] = _Anchor(min(members) if members else None, AMBIGUOUS if hits else NO_ORIGINAL)
+    return out
+
+
+def _store_links(session: Session, region_id: int, numbers: set[str]) -> dict[str, int]:
+    """공고번호 → 그 번호의 납부 조건 행(없으면 이미 있는 잔여 공고 이력 행)이 있는 단지(지역 안, 하나일 때만). 잔여 공고
+    자기 번호 행은 빼지 않는다 — 원 단지를 못 찾은 잔여 공고는 자기 행이 그 사업의 유일한 행이다(D18-4)."""
+    from app.models import PaymentTerms
+
+    if not numbers:
+        return {}
+    out: dict[str, int] = {}
+    for model in (RemainingEvent, PaymentTerms):  # 뒤(납부 조건)가 앞(이전 이력)을 덮는다
+        pairs: dict[str, set[int]] = {}
+        for no, cid in session.execute(
+            select(model.notice_no, model.complex_id)
+            .join(Complex, Complex.id == model.complex_id)
+            .where(Complex.region_id == region_id, model.notice_no.in_(sorted(numbers)))
+        ):
+            pairs.setdefault(str(no), set()).add(int(cid))
+        out.update({no: next(iter(ids)) for no, ids in pairs.items() if len(ids) == 1})
     return out
 
 
@@ -396,9 +435,18 @@ def _is_past(n: _Notice, day: str) -> bool:
 
 
 def sync_remaining_events(
-    session: Session, region_id: int, *, snapshot_id: int | None, detected_at: str
+    session: Session,
+    region_id: int,
+    *,
+    snapshot_id: int | None,
+    detected_at: str,
+    links: Mapping[str, int] | None = None,
+    first_load: bool = False,
 ) -> RemainingSync:
-    """지역의 잔여 공고 원문 → remaining_event(멱등). 이벤트는 세션에 넣고 flush 한다. commit 은 호출자."""
+    """지역의 잔여 공고 원문 → remaining_event(멱등). 이벤트는 세션에 넣고 flush 한다. commit 은 호출자.
+
+    ``links``: 이번 수집 실행의 정규화가 묶은 잔여 공고 번호 → 원 단지(D18-4 — 공고문 '최초 주택관리번호' 인용 등).
+    ``first_load``: 지역 첫 적재(D18-7) — 새 이력 행의 이벤트를 만들지 않고 ``first_load_folded`` 로 센다(수집이 한 줄로 요약)."""
     region = session.get(Region, region_id)
     if region is None:
         raise LookupError(f"region {region_id} 없음")
@@ -418,7 +466,7 @@ def sync_remaining_events(
         _web_result(web_urls, n)
     quiet_all = region.status != "ready"  # 지역 최초 적재(bootstrap) — 전체 판정이 어차피 돈다
     day = detected_at[:10]
-    anchors = _anchors(session, region, notices)
+    anchors = _anchors(session, region, notices, links)
 
     existing: dict[tuple[str | None, str], RemainingEvent] = {
         (e.notice_no, e.kind): e
@@ -453,6 +501,10 @@ def sync_remaining_events(
             session.add(row)
             session.flush()
             res.inserted += 1
+            if first_load:
+                res.first_load_folded += 1
+                _prov(session, row, n)
+                continue
             quiet = quiet_all or _is_past(n, day)
             res.events.append(
                 make_event(

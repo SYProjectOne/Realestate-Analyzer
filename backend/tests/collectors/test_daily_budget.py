@@ -342,7 +342,9 @@ def _run_all(
 
     renderer = ClockRenderer(clock)
     factories: dict[str, Callable[[HttpClient], Any]] = {
-        "applyhome": lambda h: ApplyhomeCollector(http=h, today=lambda: TODAY, service_key=FAKE_KEY),
+        "applyhome": lambda h: ApplyhomeCollector(
+            http=h, today=lambda: TODAY, service_key=FAKE_KEY, window=("2025-12", "2026-11")
+        ),
         "notice_pdf": lambda h: NoticePdfCollector(http=h, ocr=None),
         "official_site": lambda h: OfficialSiteCollector(http=h, renderer=renderer, render="always"),
         "rtms": lambda h: RtmsCollector(http=h, service_key=FAKE_KEY),

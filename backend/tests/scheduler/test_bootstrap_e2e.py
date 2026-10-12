@@ -106,7 +106,9 @@ def test_region_bootstrap_end_to_end_with_mock_judge(
         adapter_factory=lambda: MockAdapter(FIXTURE),
         reference_refresh=reference,
         collectors={
-            "applyhome": lambda c: ApplyhomeCollector(http=http, today=lambda: TODAY),
+            "applyhome": lambda c: ApplyhomeCollector(
+                http=http, today=lambda: TODAY, window=("2025-12", "2026-11")
+            ),
             "notice_pdf": lambda c: _Empty(),
             "official_site": lambda c: _Empty(),
             "stats": lambda c: _Empty(),

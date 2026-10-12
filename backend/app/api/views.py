@@ -620,6 +620,7 @@ def _scope_now(b: ComplexBundle, cur: IntakeStatus | None) -> scope_rules.ScopeR
         inclusion_decision=b.cx.inclusion_decision,
         has_price=score_price(b).known,
         intake_status=cur.status if cur is not None else None,
+        original_notice_missing=scope_rules.original_missing(b.cx.applyhome_id, b.cx.notice_date),
     )
 
 
@@ -1101,6 +1102,8 @@ def envelope_view(row: JudgmentLog) -> dict[str, Any]:
         "snapshot_id": row.snapshot_id,
         "complex_id": row.complex_id,
         "error_text": row.error_text,
+        "model": row.model,
+        "provider": row.provider,
     }
 
 

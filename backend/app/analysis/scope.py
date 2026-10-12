@@ -9,6 +9,7 @@
 | 2 | classify auto + 제외 클래스(공공분양·공공/민간임대·비아파트·범위 밖) | 제외 | × | × | × | × |
 | 3 | classify 미해결(decision ≠ auto: review·manual_review·escaped·없음) 또는 클래스 미분류·manual_review | 미해결 | × | × | × | × |
 | 4 | 포함 확정 + 분양가 미공개(현재 구매가 없음) | 보류 | × | ○ | ○ | × |
+| 4' | 위와 같고 주택관리번호는 있는데 원 공고(공고일)가 없음(D18-4 — 잔여 공고문이 인용해 만든 원 단지) | 보류(사유 '원 공고 미수집') | × | ○ | ○ | × |
 | 5 | 포함 확정 + 가격 있음 + 접수 '확인 불가'·'불가'·접수 행 없음 | 참고 | × | ○ | ○ | × |
 | 6 | 포함 확정 + 가격 있음 + 접수 '가능'·'미정' | 판정 대상 | ○ | ○ | ○ | ○ |
 
@@ -34,6 +35,7 @@ __all__ = [
     "INCLUDED_CLASS",
     "INTAKE_PRIORITY",
     "JUDGE_SCOPES",
+    "ORIGINAL_MISSING",
     "SCOPE_TEXT",
     "UNRESOLVED",
     "ContractScope",
@@ -45,6 +47,7 @@ __all__ = [
     "is_decide_candidate",
     "is_scored",
     "judge_scope",
+    "original_missing",
     "pick_intake",
     "runs_ladder",
 ]
@@ -113,12 +116,15 @@ def judge_scope(
     inclusion_decision: str | None,
     has_price: bool,
     intake_status: str | None,
+    original_notice_missing: bool = False,
 ) -> ScopeResult:
     """D9-1 판정 범위(모듈 docstring 표 순서대로 첫 번째로 맞는 행).
 
     - ``inclusion_class``·``inclusion_decision``: complex 행 그대로(판정기 classify P4 결과).
     - ``has_price``: 현재 구매가(``analysis.price_view.current_price``)가 있는가.
     - ``intake_status``: 표시 접수 행(``pick_intake``)의 status. 행이 없으면 None(= 접수 확인 불가).
+    - ``original_notice_missing``: 주택관리번호가 있는데 원 공고(공고일)가 없다(``original_missing``, D18-4) — 가격이
+      없을 때의 사유가 '분양가 미공개(공고 전)'가 아니라 '원 공고 미수집'(이미 공고·분양된 단지, R4 M3).
     """
     cls = inclusion_class or "미분류"
     if cls == BOUNDARY_CLASS:
@@ -131,10 +137,19 @@ def judge_scope(
     if cls != INCLUDED_CLASS:  # 계약 밖 값 — 판정 대상으로 넘기지 않는다
         return ScopeResult("미해결", f"알 수 없는 분류({cls})")
     if not has_price:
-        return ScopeResult("보류", "분양가 미공개(공고 전)")
+        return ScopeResult("보류", ORIGINAL_MISSING if original_notice_missing else "분양가 미공개(공고 전)")
     if intake_status in INTAKE_JUDGED:
         return ScopeResult("판정 대상", f"포함 확정 · 접수 {intake_status}")
     return ScopeResult("참고", f"접수 {intake_status or '확인 불가(접수 행 없음)'}")
+
+
+ORIGINAL_MISSING: Final = "원 공고 미수집"
+"""D18-4·R4 M3: 잔여 공고만 수집된 단지(원 공고를 못 받음)의 보류 사유."""
+
+
+def original_missing(applyhome_id: str | None, notice_date: str | None) -> bool:
+    """주택관리번호가 있는데 공고일이 없다 = 원 공고를 수집하지 못했다(D18-4). 청약홈 번호가 없는 단지(공고 전)는 아니다."""
+    return bool(applyhome_id) and not notice_date
 
 
 def runs_ladder(scope: str) -> bool:

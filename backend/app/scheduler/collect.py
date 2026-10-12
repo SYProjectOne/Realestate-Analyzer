@@ -3,6 +3,11 @@
 ``collect(ctx, region_id, sources)``:
 1. 기준일 스냅샷(building)을 만든다(하루 1개).
 2. 단계 순서: 청약홈(목록·상세·경쟁률) → 공고문 PDF(청약홈을 돌면 같은 잡에서) → 공식 홈페이지 → 실거래 → 통계 → 뉴스.
+   **저장 순서(D18-4)**: 잔여·임의공급 공고의 청약홈 원문은 공고문 PDF 단계까지 미뤄 [청약홈 일반 공고] → [원 번호를
+   인용한 공고문·일반 공고문] → [잔여 공고 청약홈 원문] → [그 밖의 잔여 공고문] 순서로 저장한다(실행 하나가 같은 연결
+   ``links`` 를 넘긴다) — 원 단지를 아는 원문이 먼저 와서 잔여 공고가 자기 단지 행을 만들지 않는다. 그다음 원 공고가 없는
+   단지(주택관리번호는 있는데 공고일이 없음 — 인용으로 만든 원 단지)의 원 공고를 번호로 다시 받아 저장한다
+   (``ApplyhomeCollector.fetch_originals``).
    수집기(WP1)는 원문을 raw_document 로 남기고(실패도 행), 정규화가 필요한 원문(청약홈·공고문·공식 홈페이지)은
    ``normalize.store.store_raw_document`` (WP2)로 사실 테이블·출처·change_event 를 만든다(원문마다 SAVEPOINT).
    실거래·미분양은 수집기가 직접 적재하고(load=True), 입주물량은 공고문 입주월 합산(추정 집계)을 적재한다.
@@ -23,19 +28,23 @@
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.collectors.stats.supply import SupplyInput, estimate_supply, load_supply, write_supply_provenance
 from app.core.contracts_gen import RawDocument as RawDTO
+from app.core.contracts_gen import Region as RegionDTO
+from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
-from app.normalize.store import store_raw_document
+from app.normalize.notice_parser import notice_numbers
+from app.normalize.store import is_remainder_url, store_raw_document
 from app.scheduler import assemble, detect, snapshots
 from app.scheduler.intake import UNCLASSIFIED, carry_classification, intake_change_events, pending_complexes
 from app.scheduler.persist import copy_intake
@@ -70,7 +79,7 @@ class CollectResult:
     store_errors: list[str] = field(default_factory=list)
     errors: dict[str, str] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
-    loaded: dict[str, dict[str, int]] = field(default_factory=dict)
+    loaded: dict[str, dict[str, Any]] = field(default_factory=dict)
     change_event_ids: list[int] = field(default_factory=list)
     rejudge_complex_ids: list[int] = field(default_factory=list)
     list_complex_ids: list[int] | None = None
@@ -80,6 +89,7 @@ class CollectResult:
     intake_pending: list[int] = field(default_factory=list)
     assembled: dict[str, Any] = field(default_factory=dict)
     official_docs: list[RawDTO] = field(default_factory=list, repr=False)
+    first_load_folded: int = 0  # 첫 적재 요약(D18-7): 이벤트 대신 센 빈 값 → 값 변경 수
 
     def stats(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -93,6 +103,7 @@ class CollectResult:
             "skipped": self.skipped,
             "loaded": self.loaded,
             "change_events": len(self.change_event_ids),
+            "first_load_folded": self.first_load_folded,
             "rejudge_complex_ids": self.rejudge_complex_ids,
             "intake_rows": self.intake_rows,
             "intake_copied": self.intake_copied,
@@ -113,6 +124,68 @@ def _steps(sources: Sequence[str]) -> list[str]:
     if "applyhome" in wanted:
         wanted.add("notice_pdf")  # 새·바뀐 공고의 공고문까지 같은 잡에서(collect_daily.json)
     return [s for s in STEP_ORDER if s in wanted]
+
+
+def _first_load_event(
+    session: Session, region_id: int, snapshot_id: int, folded: int, detected_at: str
+) -> ChangeEvent:
+    """지역 첫 적재 요약 한 줄(D18-7·R4 m3: 첫날 G1 '최근 변경'이 빈 값 → 값 critical 326건으로 가득했다)."""
+    n = session.scalar(select(func.count()).select_from(Complex).where(Complex.region_id == region_id)) or 0
+    ev = ChangeEvent(
+        snapshot_id=snapshot_id,
+        entity="region",
+        entity_id=region_id,
+        field="first_load",
+        old_text=None,
+        new_text=f"첫 적재: 단지 {n}개, 값 {folded}건(빈 값 → 값 — 변경 이벤트 대신 요약)",
+        detected_at=detected_at,
+        severity="info",
+        triggers_rejudge=False,
+        complex_id=None,
+    )
+    session.add(ev)
+    session.flush()
+    return ev
+
+
+def _url_house_no(url: str) -> str | None:
+    m = re.search(r"(?:houseManageNo=|HOUSE_MANAGE_NO%3A%3AEQ%5D=)(\d{10})", url)
+    return m.group(1) if m else None
+
+
+def _fetch_originals(
+    ctx: SchedulerContext, region: RegionDTO, snapshot: SnapshotDTO, res: CollectResult
+) -> list[RawDTO]:
+    """D18-4: 주택관리번호는 있는데 공고일이 없는 단지(잔여 공고문이 인용해 만든 원 단지) → 원 공고를 번호로 다시 받는다.
+    stats ``loaded.originals`` = {wanted, documents}. 수집기에 그 메서드가 없으면(가짜·웹 전용) 건너뛴다."""
+    with ctx.session_factory() as session:
+        wanted = sorted(
+            str(h)
+            for h in session.scalars(
+                select(Complex.applyhome_id).where(
+                    Complex.region_id == region.id,
+                    Complex.applyhome_id.is_not(None),
+                    Complex.notice_date.is_(None),
+                )
+            )
+        )
+    res.loaded["originals"] = {"wanted": len(wanted), "documents": 0}
+    factory = ctx.collectors.get("applyhome")
+    if not wanted or factory is None:
+        return []
+    try:
+        collector = factory(ctx)
+        fetch = getattr(collector, "fetch_originals", None)
+        if not callable(fetch):
+            res.loaded["originals"]["skipped"] = "수집기에 원 공고 조회 없음"
+            return []
+        got = list(fetch(region, snapshot, wanted))
+    except Exception as exc:  # 수집 오류는 다른 단계를 막지 않는다
+        res.errors["applyhome_originals"] = assemble.safe_error(exc)
+        log.exception("worker.collect.error", extra={"step": "applyhome_originals", "region_id": region.id})
+        return []
+    res.loaded["originals"]["documents"] = len(got)
+    return got
 
 
 def _load_stats(obj: Any) -> dict[str, int] | None:
@@ -264,6 +337,8 @@ def collect(
         snap = snapshots.get_or_create(session, region_id, asof, created_at=ctx.iso_now())
         session.commit()
         region_dto = snapshots.region_dto(region)
+        # D18-7·R4 m3: 지역 첫 적재(bootstrap 이 status 를 'bootstrapping' 으로 둔 동안) — 빈 값 → 값 변경은 이벤트 대신 요약
+        first_load = region.status == "bootstrapping"
         snap_dto = snapshots.snapshot_dto(snap)
         res = CollectResult(region_id=region_id, snapshot_id=snap.id, asof_date=asof)
     detected_at = ctx.iso_now()
@@ -273,8 +348,51 @@ def collect(
     ran_applyhome = False
     ran: list[str] = []
     step_docs: dict[str, list[RawDTO]] = {}
+    links: dict[str, int] = {}  # D18-4: 잔여 공고 번호 → 원 단지(이 실행의 모든 원문이 같이 쓴다)
+    deferred: list[RawDTO] = []  # D18-4: 공고문 단계 뒤로 미룬 잔여 공고 청약홈 원문
+
+    def store_docs(docs: Sequence[RawDTO]) -> None:
+        with ctx.session_factory() as session:
+            for doc in docs:
+                if doc.source_kind not in STORE_KINDS:
+                    continue
+                try:
+                    out = store_raw_document(
+                        session, doc, snapshot_id=snap_dto.id, links=links, first_load=first_load
+                    )
+                except Exception as exc:  # 원문 1건 실패(SAVEPOINT 롤백) — 기록하고 다음 원문
+                    res.store_errors.append(f"rd{doc.id}:{assemble.safe_error(exc)[:160]}")
+                    continue
+                res.stored += 1
+                res.first_load_folded += out.first_load_folded
+                events.extend(out.change_events)
+                if doc.complex_id is not None:
+                    phrases[doc.complex_id].extend(
+                        str(c.value_text)
+                        for c in out.candidates
+                        if c.entity == "intake_status" and c.value_text
+                    )
+                if doc.source_kind == "applyhome_list":
+                    list_ids.update(out.complex_ids)
+            session.commit()
+
+    def flush_deferred() -> None:
+        """미룬 잔여 공고 원문 저장 + 원 공고 다시 받기(D18-4)."""
+        nonlocal deferred
+        if deferred:
+            store_docs(deferred)
+            deferred = []
+        if ran_applyhome:
+            got = _fetch_originals(ctx, region_dto, snap_dto, res)
+            if got:
+                step_docs.setdefault("applyhome", []).extend(got)
+                store_docs(got)
 
     for step in steps:
+        if (deferred or (ran_applyhome and "originals" not in res.loaded)) and STEP_ORDER.index(
+            step
+        ) > STEP_ORDER.index("notice_pdf"):
+            flush_deferred()  # 공고문 단계가 없거나 실패했다 — 다음 단계(공식 홈페이지 등) 전에
         factory = ctx.collectors.get(step)
         if factory is None:
             res.skipped[step] = "수집기 없음"
@@ -295,30 +413,30 @@ def collect(
         ran_applyhome = ran_applyhome or step == "applyhome"
         if step == "official_site":
             res.official_docs = list(docs)
+        if step == "applyhome" and "notice_pdf" in steps:
+            deferred = [d for d in docs if is_remainder_url(d.url)]
+            store_docs([d for d in docs if not is_remainder_url(d.url)])
+        elif step == "notice_pdf":
+            remnant_nos = {_url_house_no(d.url) for d in deferred} - {None}
+            pdf_first: list[RawDTO] = []
+            pdf_last: list[RawDTO] = []
+            for d in docs:
+                own, cited = notice_numbers(d) if d.http_status == 200 else (_url_house_no(d.url) or "", None)
+                (pdf_last if own in remnant_nos and cited is None else pdf_first).append(d)
+            store_docs(pdf_first)
+            flush_deferred()
+            store_docs(pdf_last)
+        else:
+            store_docs(docs)
         with ctx.session_factory() as session:
-            for doc in docs:
-                if doc.source_kind not in STORE_KINDS:
-                    continue
-                try:
-                    out = store_raw_document(session, doc, snapshot_id=snap_dto.id)
-                except Exception as exc:  # 원문 1건 실패(SAVEPOINT 롤백) — 기록하고 다음 원문
-                    res.store_errors.append(f"rd{doc.id}:{assemble.safe_error(exc)[:160]}")
-                    continue
-                res.stored += 1
-                events.extend(out.change_events)
-                if doc.complex_id is not None:
-                    phrases[doc.complex_id].extend(
-                        str(c.value_text)
-                        for c in out.candidates
-                        if c.entity == "intake_status" and c.value_text
-                    )
-                if doc.source_kind == "applyhome_list":
-                    list_ids.update(out.complex_ids)
-            session.commit()
             if step == "rtms":
                 loaded = _load_stats(getattr(collector, "load_stats", None))
                 if loaded is not None:
                     res.loaded["rtms"] = loaded
+                    # D18-3: 법정동 매칭률(umdCd 없는 실제 응답 → 참조 표 매칭)
+                    legal = getattr(getattr(collector, "load_stats", None), "legal_dong_stats", None)
+                    if callable(legal):
+                        res.loaded["rtms_legal_dong"] = legal()
                     ev = _market_event(session, snap_dto.id, "rtms_trade", loaded, detected_at)
                     if ev is not None:
                         events.append(ev)
@@ -337,7 +455,13 @@ def collect(
                     events.append(ev)
             session.commit()
 
-    asm = assemble.assemble(ctx, region_dto, snap_dto, steps=ran, docs=step_docs, detected_at=detected_at)
+    if deferred or (ran_applyhome and "originals" not in res.loaded):
+        flush_deferred()
+    asm = assemble.assemble(
+        ctx, region_dto, snap_dto, steps=ran, docs=step_docs, detected_at=detected_at, links=links,
+        first_load=first_load,
+    )  # fmt: skip
+    res.first_load_folded += int((asm.stats.get("remaining") or {}).get("first_load_folded") or 0)
     res.assembled = asm.stats
     res.errors.update(asm.errors)
     events.extend(asm.events)
@@ -345,6 +469,10 @@ def collect(
     with ctx.session_factory() as session:
         snap_row = session.get(Snapshot, snap_dto.id)
         assert snap_row is not None
+        if first_load and res.first_load_folded:
+            events.append(
+                _first_load_event(session, region_id, snap_dto.id, res.first_load_folded, detected_at)
+            )
         res.intake_rows = intake_rows(session, snap_dto.id, res.official_docs, phrases)
         prev = snapshots.previous(session, snap_row)
         if prev is not None:
