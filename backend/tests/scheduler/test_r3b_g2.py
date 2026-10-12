@@ -287,6 +287,12 @@ class NewsJev(SynthJev):
     screened: list[str] = field(default_factory=list)
 
     def _screen(self, a: dict[str, Any]) -> dict[str, Any]:
+        from app.judge.payloads import CATALYST_SCREEN_TASK
+
+        if (
+            a.get("purpose") != CATALYST_SCREEN_TASK
+        ):  # R4-FIX D20-2: 공고 예정 screen 은 이 테스트 대상이 아니다
+            return super()._screen(a)
         self.screened.append(a["text"])
         if "분양" in a["text"]:
             return {

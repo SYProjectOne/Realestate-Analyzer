@@ -358,19 +358,21 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
 11. `uv run playwright install chromium` 은 공용 `%LOCALAPPDATA%\ms-playwright` 에서 쓰지 않는 다른 버전 브라우저를 지운다 — 같은 PC 의
     다른 worktree 가 쓰는 버전이면 그쪽에서 다시 설치해야 한다.
 
-### 10-7 R4 재시험 절차 — R4-FIX(D18) 뒤 바뀐 것 (`docs/design/wp/R4_FIX_TESTS.md`)
+### 10-7 R4 재시험 절차 — R4-FIX(D18·D20, 계약 .15) 뒤 바뀐 것 (`docs/design/wp/R4_FIX_TESTS.md`)
 
 10-6 의 우회 중 아래는 코드로 고쳐졌다. 다시 돌릴 때는 이 절을 10-1~10-6 보다 먼저 따른다.
 
-1. **마이그레이션**(M4): `ENV_FILE=../r4/.env uv run python -m app.migrate` (= `upgrade head`, `current` 도 된다). 앱 설정(ENV_FILE)의
-   `DATABASE_URL` 을 alembic 에 넘기고 URL 은 출력하지 않는다(방언만). `uv run alembic upgrade head` 를 그대로 쓰면 여전히 환경변수
-   `DATABASE_URL` 만 읽는다(계약 디렉터리 env.py — 계약 변경 요청 중).
+1. **마이그레이션**(M4, 계약 .15 S6): `ENV_FILE=../r4/.env uv run alembic upgrade head` — 환경변수 `DATABASE_URL` 이 없으면 env.py 가
+   `ENV_FILE` 의 앱 설정 URL 을 쓴다(못 읽으면 실패 — 조용히 `backend/dev.db` 를 만들지 않는다). 출력 `Context impl PostgresqlImpl` 과
+   `uv run alembic current` = `0015 (head)` 를 확인한다. (10-6 ②의 `DATABASE_URL=… alembic` 우회는 더 필요 없다.)
 2. **smoke**(m1): `JEV_MCP_CMD="npx -y @jkudish/jev-mcp@<버전>" uv run pytest -m live tests/judge/test_live.py -s` — 출력 `"cmd"` 가
    고정 버전인지 확인한다.
-3. **지역 조회 창**(D18-8): `POST /regions` 는 `applyhome_query={}`(기본 조회 창 = 기준월 −10개월, 계약 region.json)라 2025-06·07 공고
-   (오퍼스 한강 스위첸·해링턴플레이스 풍무)가 빠진다. 회귀 픽스처와 같은 범위를 보려면 **worker 를 띄우기 전에**
-   `UPDATE region SET applyhome_query='{"from_ym":"2024-10"}' WHERE id=<region_id>;` (계약 키 `from_ym`, 계약 예시 값). 기본값을 바꾸는
-   것은 계약 변경 요청이다. 공고 전 단지(카이브 유보라·그랑포레)는 청약홈에 없어 수집되지 않는다(사유 R4_FIX_TESTS.md §D18-8).
+3. **지역 조회 창**(D18-8 → D20-1, 계약 .15): 기본 창이 **지난 24개월 + 향후 12개월**이라 2025-06·07 공고(오퍼스 한강 스위첸·해링턴플레이스
+   풍무)가 들어온다(첫 수집 시간·판정 호출이 늘어난다 — 기록). 다른 창이 필요하면 `POST /regions` 본문에
+   `"applyhome_query": {"from_ym": "2024-10", "to_ym": "2027-10"}`(계약 .15 F3). 공고 전 단지(카이브 유보라·그랑포레)는 청약홈에 없고,
+   주간 뉴스 수집 뒤 판정기가 고른 **트랙 (A) 공고 예정 후보**(`track='A'`, `applyhome_id` null, 라벨 비공식 — D20-2)로 나온다:
+   `SELECT id, name, former_names, inclusion_class FROM complex WHERE track='A';` · 수집 stats `assembled.upcoming`
+   (screened·rejected·names·created·existing·aliases). 공고가 나오면 같은 행에 주택관리번호가 붙는다(새 행 없음).
 4. **실제 호출 수**(C1·D18-2): 잡 stats `tools_calls`(전송 계층에서 센 MCP `tools/call` 수)·`tools_calls_by_tool` 과 최상위
    `judge_calls`(JevMcpAdapter 잡은 = `tools_calls`, 수집 단계 호재 screen 포함 — m2). G7 `real_calls` 도 같은 수를 쓴다(이전 잡은
    행 수가 하한). 프록시(10-6 ⑤)는 교차 확인용으로만:
@@ -379,7 +381,7 @@ uv run python -m app.worker --once && sqlite3 ../r4/r4.db "$SQL"      # 실제�
    SELECT id, job_name, stats->>'tools_calls' AS tools_calls, stats->'tools_calls_by_tool' AS by_tool,
           stats->>'judge_calls' AS judge_calls, stats->>'cached' AS cached FROM job_run ORDER BY id;
    SELECT adapter_version, COUNT(*) FROM judgment_log GROUP BY 1;   -- 1개여야 한다(고정 모델, D18-1)
-   SELECT output_json->>'provider', output_json->>'model', COUNT(*) FROM judgment_log GROUP BY 1,2;  -- 응답의 실제 모델(행에 그대로)
+   SELECT provider, model, COUNT(*) FROM judgment_log GROUP BY 1,2;  -- 응답의 실제 모델(계약 .15 열 — 0015 가 옛 행도 채운다)
    ```
 
    2회차 통과 = 재판정 잡 `tools_calls` 0 (엄격, D18-5). 모델이 바뀐 것을 본 실행은 `change_event(judge·version)` 1건을 남기고 그

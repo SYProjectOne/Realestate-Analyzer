@@ -2,6 +2,72 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.15
+
+R4 실데이터 시험(`docs/design/wp/R4_RESULT.md`) 후속 — CEO 결정 D18·**D20**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-FIX**(브랜치
+`wp/r4-fix`, D20-1 위임). 마이그레이션 `0015`(`0015_r4fix.py`: 새 열 `judgment_log.model`·`judgment_log.provider` + 기존 행을 원응답에서
+채움). 필드 삭제 없음, **새 응답 필드 2**(`JudgmentEnvelope.model`·`provider`), **새 요청 필드 1**(`POST /regions` `applyhome_query`),
+`ApplyhomeQuery.to_ym` 새 키, 기본값 변경 1(청약홈 조회 창). 저장 모양 버전(`SHAPE_VERSION`) 그대로 1(봉투 두 키는 선택 필드 — 옛
+저장본에는 없다). 테스트 표(결함·결정 ID · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R4_FIX_TESTS.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시 만들지 않았다
+(frontend/** = FE 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .14 | .15 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | **`JudgmentEnvelope.model`·`provider`**(`GET /ops/judgments` items, 단지 상세 `judgments[]`) | 없음 — 응답 모델은 `raw.model` 안에만 | **새 선택 필드**(string\|null): 그 응답의 실제 모델(`jev-1.13.0`·로컬 처리 `jev-latest`)·provider(`typesafe`·`none`). `provider='none'` = 판정기가 모델을 부르지 않은 로컬 처리(비용 없음) — G7 판정 로그에 '로컬' 표시 권장. 캐시 키 `adapter_version` 의 모델(고정 모델)과 다를 수 있다 | D18-1 · D20-1 |
+| F2 | **G7 `JudgmentStats.real_calls`** | judgment_log 행 수(blocked 포함) | **판정기로 실제 보낸 MCP `tools/call` 수**(잡 stats `tools_calls` 합 — 전송 계층에서 셈, 수집 단계 판정 포함), 계수가 없는 기간(이전 잡)은 blocked 제외 행 수가 하한. `total_calls = real_calls + cached_hits`. 도구별 `calls` 도 같은 규칙 | D18-2 |
+| F3 | **`POST /regions` 본문 `applyhome_query`** | 없음(본문에 넣으면 422) | **선택 필드**(`ApplyhomeQuery`: `from_ym`·`to_ym` 'YYYY-MM', `areas`) — `region.applyhome_query` 에 그대로 저장. 형식이 틀리면 422 `validation_error`. G0 에 '조회 기간(고급)' 입력을 둘 수 있다(없으면 {} = 기본 창) | D20-1 |
+| F4 | 청약홈 기본 조회 창 | 기준월 −10개월 ~ +1개월 | **지난 24개월 + 향후 12개월**(meta §1-4) — 지역 첫 수집 시간이 늘고 오래된 공고 단지가 목록에 더 나온다 | D20-1 · D18-8 |
+| F5 | **트랙 (A) 공고 예정 단지**(G1·G2 목록·G3 상세) | 픽스처에만 | 주간 뉴스 수집 뒤 판정기(screen·extract·classify·compare)가 고른 **공고 전 단지 행**: `applyhome_id` null · `track` 'A' · 이름 출처 라벨 **'비공식'**(언론 URL) · 공고일·가격 '확인 불가(공고 전)' · 판정 범위 '보류 — 공고 후 재판정'(사유 '분양가 미공개(공고 전)'). 새 후보는 `change_event(entity=complex, field=track, severity=notice)`. 청약홈 공고가 같은 이름(옛 이름 포함)으로 오면 **같은 행**에 주택관리번호가 붙고 critical 새 공고 이벤트(`notice·applyhome_id`, '공고 예정 후보와 합침') | D20-2 |
+| F6 | 판정 범위 사유 | 잔여 공고만 수집된 원 단지도 '분양가 미공개(공고 전)' | 주택관리번호가 있고 공고일이 없는 단지(잔여 공고문이 인용한 원 단지 — 원 공고를 못 받음)는 **'원 공고 미수집'** | D18-4 |
+| F7 | 첫 적재(bootstrap) 변경 목록 | 빈 값 → 값 critical 수백 건 | `change_event(entity=region, field=first_load, severity=info)` **한 줄**(`첫 적재: 단지 n개, 값 k건 …`) — G1 '최근 변경' 첫날이 critical 로 차지 않는다 | D18-7 · m3 |
+| F8 | 미분양 사실 | 출처 행 없음 → prod '확인 불가(출처 누락)', 대시보드 KPI '미분양 자료 없음'(틀린 사유) | 값마다 출처(`fp_`, 라벨 확인됨, 통계누리 원문 URL) — KPI·시장 화면에 값이 보인다 | D18-7 · M2 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.14) | 이후(.15) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | `adapter_version`(캐시 키) | `…+<응답 model>` — 응답마다 모델이 다르면(로컬 처리 `jev-latest`) 실행 중 버전이 뒤집히고 캐시가 빗나가 숨은 재호출(R4 C1) | `…+<고정 모델>` = **모델을 실제로 부른 응답(provider ≠ none)** 의 model. 로컬 처리 응답의 model 은 무시. 실행 중 키 불변(replay 없음), 모델이 바뀌면 `change_event(judge·version·critical)` 후 다음 실행부터 새 키로 전체 재판정 | D18-1 |
+| S2 | 잡 stats | `judge_calls` = 봉투 cached=false 수(파이프라인만) | `tools_calls`·`tools_calls_by_tool`(전송 계층 MCP tools/call 수, 수집 단계 판정 포함) 새 키. JevMcpAdapter 잡의 최상위 `judge_calls` = `tools_calls` | D18-2 · m2 |
+| S3 | 실거래 `legal_dong_code` | 응답 `umdCd` 가 있을 때만(실제 응답엔 없음 → 전부 NULL) | `sggCd + umdNm` 을 참조 표로 매칭(실패·모호 NULL), 수집 stats `loaded.rtms_legal_dong`(매칭률), 기존 NULL 행 보정 | D18-3 |
+| S4 | 잔여·임의·무순위·재공급 공고 | 자기 주택관리번호로 단지 행, 공고문 제목 줄이 단지 이름 후보 | 원 단지(사업)에 `remaining_event` 로 붙음(자기 행 없음), 제목 줄은 이름 후보 아님, 원 공고를 주택관리번호로 다시 받음(수집 stats `loaded.originals`) | D18-4 |
+| S5 | 공고문 조각 판정 purpose | `…:rd<원문 id>:<n>` | 정규화 본문 해시(같은 조각은 한 번만 판정) | D18-5 |
+| S6 | alembic DB URL | 환경변수 `DATABASE_URL` > ini | `DATABASE_URL` > **`ENV_FILE` 이 있으면 앱 설정의 URL**(못 읽으면 실패) > ini(dev.db) | D20-1 · M4 |
+| S7 | 공유 공식 홈페이지 URL | 원문이 첫 단지에만 묶여 다른 단지 접수 행 없음·스크린샷 매번 새로 | 대상 단지마다 원문(같은 행), 직전 렌더는 URL 로만 | D18-6 · M5 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `judgment_envelope.json` | `model`(string\|null, ≤64)·`provider`(string\|null, ≤32) 선택 — F1. `adapter_version` 설명(고정 모델, S1) |
+| 2 | `region.json` | `ApplyhomeQuery.to_ym` 새 키, `from_ym`·`to_ym` 패턴 월 01~12, 기본 창 설명(F4). `RegionCreate.applyhome_query` 선택(F3) |
+| 3 | `openapi.yaml` | `createRegion` 설명(applyhome_query), `info.version` 2026-10-09.15 |
+| 4 | DB `0015` | `judgment_log.model` VARCHAR(64) NULL · `judgment_log.provider` VARCHAR(32) NULL + 기존 행 원응답(`output_json`)에서 채움. downgrade = 열 삭제 |
+
+### 마이그레이션·검증
+
+- `cd backend && uv run alembic upgrade head`(0015 — 앱 import 없음). R4 재시험처럼 `.env` 를 따로 두면 `ENV_FILE=../r4/.env uv run alembic upgrade head`
+  (S6, 조용한 dev.db 없음). 저장본 backfill 불필요(모양 그대로).
+- 왕복·데이터: `tests/contracts/test_r4fix_migrations.py`(SQLite·임베디드 Postgres 16 — 0014 행 → 0015 열 채움, 0014 ↔ head, autogenerate
+  diff 0, ENV_FILE 폴백).
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.15`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`).
+
+### fixtures
+
+`contracts/fixtures/incheon_gimpo_2026-10-08/judgments_synth/**` 재녹화(`tools/record_synth_judgments.py`) — 공고문 조각 판정 purpose 가
+정규화 본문 해시로 바뀌어(S5) extract·screen 녹화 파일 이름이 바뀌고 `_meta.counts.screen` 78 → 39(같은 조각 중복 제거). 다른 도구 녹화는
+그대로. 매니페스트 사유: R4-FIX D18-5 judgments_synth re-recorded (chunk purpose = normalized text hash)
+
+### 알려진 한계
+
+- 트랙 (A) 후보의 신호는 뉴스뿐이다(공식 홈페이지 신호는 주소가 있는 단지 — 청약홈 공고 뒤 — 의 접수 classify 'pending' 으로만). 후보에는
+  주소·세대수가 없어 법정동·생활권이 비고, 청약홈 공고와의 합치기는 이름 키(옛 이름 포함)가 **같을 때만**이다.
+- 녹화 재생(`WORKER_NET_MODE=replay`)은 녹화의 조회 창(`recorded_window`)으로 조회한다 — 녹화 zip 이 창을 정한다.
+
 ## 2026-10-09.14
 
 R3 9차 리뷰(`docs/design/wp/R3_REVIEW9.md`) 후속 — CEO 결정 D17(`docs/design/DECISIONS.md`)과 R3i 배정(`docs/design/wp/R3I_FIX.md` CORE7).

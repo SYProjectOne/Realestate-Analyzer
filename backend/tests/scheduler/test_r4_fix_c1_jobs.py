@@ -62,9 +62,10 @@ def test_m2_collect_stage_screen_counts_in_job_stats(
         jid = job.id
     runner.run_until_idle(ctx)
     stats = _job(factory, jid).stats or {}
-    assert jev.calls == ["jev_screen"]
-    assert stats.get("tools_calls") == 1 and stats.get("tools_calls_by_tool") == {"screen": 1}
-    assert stats.get("judge_calls") == 1, "수집 단계 판정도 잡 집계에 들어간다(m2)"
+    # 호재 screen 1 + 공고 예정 screen 1(D20-2) + 단지 이름 extract 1(이름 없음 → 끝)
+    assert sorted(jev.calls) == ["jev_extract", "jev_screen", "jev_screen"]
+    assert stats.get("tools_calls") == 3 and stats.get("tools_calls_by_tool") == {"extract": 1, "screen": 2}
+    assert stats.get("judge_calls") == 3, "수집 단계 판정도 잡 집계에 들어간다(m2)"
 
 
 def _rejudge_once(factory: sessionmaker[Session], ctx: SchedulerContext, sid: int) -> dict[str, Any]:

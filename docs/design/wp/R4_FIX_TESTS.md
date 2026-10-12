@@ -22,11 +22,11 @@
 | M5 공유 URL | `collectors/official_site/collector.py`: 돌려주는 원문에 대상 단지 id(원문 행은 sha256 로 하나), 직전 렌더 메타는 URL 로만(단지 무관) | `tests/collectors/official_site/test_r4_fix_shared_url.py` | **`같은 화면이면 같은 URL 의 직전 스크린샷을 재사용(단지와 무관)`** | 통과 |
 | **D18-5** 같은 조각 1번 | `scheduler/pipeline.py`: 공고문 조각 판정 입력·purpose = 정규화 본문(줄 공백 정리)·그 해시(`chunk_text`·`chunk_tag`) — 원문 id 대신 | `tests/scheduler/test_r4_fix_d18_5.py` | **`요청 4건(원문 2개) 중 판정기 extract 는 조각마다 1번: 4`** | 통과(2요청 → extract 1 + 캐시 1) |
 | **M2** 미분양 출처 | `collectors/stats/unsold.py` `write_unsold_provenance`(합계 = 2082·준공 후 = 5328 원문, URL·확인일·라벨·발췌, 멱등) | `tests/collectors/stats/test_r4_fix_m2_unsold_provenance.py` | **`unsold 1 total 출처 행 없음`** | 통과 |
-| **M4** alembic `ENV_FILE` | `app/migrate.py`(`python -m app.migrate`: 앱 설정의 DATABASE_URL 을 alembic 에 — URL 미출력). 계약 env.py 는 그대로(계약 변경 요청) | `tests/core/test_r4_fix_m4_migrate.py` | (새 진입점 — 수정 전에는 모듈 없음. R4 출력 `Context impl SQLiteImpl` 이 근거) | 통과 |
+| **M4** alembic `ENV_FILE` | (D20-1·계약 .15) `contracts/migrations/env.py`: `DATABASE_URL` 이 없고 `ENV_FILE` 이 있으면 앱 설정 URL(못 읽으면 실패). 1차의 `app/migrate.py` 우회는 지웠다 | `tests/contracts/test_r4fix_migrations.py::test_alembic_env_file_fallback` | **`ENV_FILE 이 가리킨 DB 를 마이그레이션해야 한다`**(그리고 `backend/dev.db` 가 조용히 생김 — 확인 뒤 지움) | 통과 |
 | **M6** 신설 구 주소 | `normalize/living_area.py` `split_successor`: 주소의 구·동이 **폐지** 행과 맞고 후보 구의 활성 동 이름이 모두 옛 구 폐지 동 이름에 있으면(분구 자식) 그 후보, 여럿이면 지역 법정동으로, 하나일 때만 | `tests/normalize/test_r4_fix_m6_split.py` (3) — R4 legal_dong 실제 행 | **`(None, False, None) == ('2829010800', True, 'la_2')`**(왕길역 아테라 '범위 경계') | 통과(그 밖 2개는 회귀 방지 — 수정 전에도 통과) |
 | **m3** 첫 적재 요약 | `normalize/store.py` `first_load`(빈 값 → 값 이벤트를 세기만), `normalize/remaining.py` 같은 규칙, `scheduler/collect.py` region `status='bootstrapping'` 이면 `change_event(region·first_load·info)` 한 줄 | `tests/scheduler/test_r4_fix_m3_first_load.py` (2) | **`첫 적재 빈 값 → 값 이벤트 112건: [('complex','address'), ('complex','apply_dates'), …]`** | 통과(운영 중 새 공고 이벤트는 그대로 — 가드 테스트) |
 | **m4** 보고서 ECharts | runbook §10-7 ⑧(`REPORT_ECHARTS_JS`) | — (문서) | — | — |
-| **D18-8** 픽스처 단지 4개 | 원인 조사(§3) — 코드 변경 없음(계약 변경 요청 + runbook §10-7 ③ 절차) | — | — | — |
+| **D18-8** 픽스처 단지 4개 | 원인 조사(§3) → D20-1(기본 조회 창 지난 24 + 향후 12개월) · D20-2(공고 전 단지 = 트랙 A 후보) — §7 | §7 | §7 | §7 |
 
 수정 전 실행 기록(원문): scratchpad `r4fix/prefix_c1.txt`·`prefix_c1_jobs.txt`·`prefix_c1_ops.txt`·`prefix_c2.txt`·`prefix_rest.txt`·`prefix_d186.txt`.
 
@@ -66,8 +66,11 @@
 7. 같은 날 `collect.daily`(applyhome_list·official_site): `change_events` 0, `tools_calls` 0, rejudge 없음(실제 공고 변화가 없을 때). 변화가 있으면 그 이벤트 내용 기록.
 8. 대시보드 KPI 미분양 = 값(라벨 확인됨), 발행 stats `missing_provenance` 가 R4(560~605)보다 크게 준다(M2).
 9. 왕길역 아테라(주소 '서구 … 오류동') 법정동 = 검단구 오류동, 범위 경계 아님(M6). 계양·김포 공공 택지 '…일원' 다동 주소는 여전히 NULL(§5).
-10. `python -m app.migrate` 출력 방언 = `postgresql+psycopg`(M4). smoke 출력 `"cmd"` = 고정 버전(m1).
-11. 조회 창: `from_ym='2024-10'` 을 넣었으면 오퍼스·해링턴 단지가 수집된다(D18-8) — 호출 수·수집 시간 증가를 기록.
+10. `ENV_FILE=… uv run alembic upgrade head` 출력 `PostgresqlImpl`, `alembic current` = 0015(M4·S6). smoke 출력 `"cmd"` = 고정 버전(m1).
+11. 기본 조회 창(지난 24 + 향후 12개월)으로 오퍼스·해링턴 단지가 수집된다(D18-8·D20-1) — 호출 수·수집 시간 증가를 기록.
+13. 트랙 (A): 주간 뉴스 수집 뒤 `complex.track='A'` 후보(카이브 유보라·그랑포레가 기사에 있으면), `assembled.upcoming` 통계, 상황 A decide 근거
+    `[wait_new]` 블록·보고서 §8-2 에 그 이름(D20-2). 실제 판정기가 기사에서 이름을 못 고르거나 review 면 후보 0 — 그때 수를 기록.
+14. `judgment_log.model`·`provider` 열이 채워짐(0015), G7 판정 로그 items 의 model·provider.
 12. 판정기 모델이 실행 중 바뀌면 `change_event(judge·version)` 1건, 그 실행은 옛 키, 다음 rejudge 가 새 키(재판정 호출 > 0 이 정상).
 
 ## 5. 하지 않은 것 / 가정 / 남은 위험
@@ -83,7 +86,7 @@
 - `normalize/rtms_parser.py`(store 경로)는 umdCd 가 있을 때만 코드를 낸다 — 실데이터 실거래는 수집기 적재(`load_trades`) 경로라 영향 없다.
 - 동시 작업(CORE7) 파일 변경: `scheduler/runner.py`(잡 stats 계수 — `execute` 에 3줄 + `with_tools_calls`), `scheduler/pipeline.py`(CORE7 목록 아님), `normalize/store.py`(잔여 공고 묶기·첫 적재 — 사람 확인 퍼짐 부분은 건드리지 않음). `handlers.py`·`persist.py`·`snapshot_view.py`·`api/demotion.py` 는 바꾸지 않았다.
 
-## 6. 계약 변경 요청 (.15 초안 — 계약 버전은 올리지 않았다)
+## 6. 계약 변경 요청 (.15 초안 — D20-1 로 승인되어 계약 .15 로 냈다, §7)
 
 | 대상 | 변경 | 이유 | 영향 WP |
 | --- | --- | --- | --- |
@@ -91,3 +94,41 @@
 | `contracts/schemas/region.json` `ApplyhomeQuery.from_ym` 설명 | 기본 "기준월 −10개월" → "기준월 −24개월"(meta_prompt "지난 24~36개월") | D18-8(2025-06·07 공고 누락) — 수집 시간·판정 호출 증가 | WP0·WP1a·WP5 |
 | `contracts/openapi.yaml` `POST /regions` 요청 | 선택 필드 `applyhome_query`(ApplyhomeQuery) | 운영자가 창을 정할 수 있게(지금은 `{}` 고정) | WP0·WP5·WP6 |
 | (선택) `judgment_log` | `model`·`provider` 열 | D18-1 "행에 따로 기록" — 지금은 `output_json`(원응답)에 그대로 있다 | WP0·WP3 |
+
+## 7. D20 — 계약 .15(D20-1)·트랙 (A) 공고 예정 단지(D20-2) (main `5547f7c` 병합 뒤)
+
+수정 전 = D20 직전 커밋(`61c983e`+main 병합)의 `backend/app`·`contracts/{migrations,schemas,openapi*}` 로 되돌려 같은 테스트를 돌린 실제 출력
+(scratchpad `r4fix/prefix_d201.txt`·`prefix_d202.txt`).
+
+| 결정 | 수정 | 테스트 | 수정 전 실제 실패 | 수정 후 |
+| --- | --- | --- | --- | --- |
+| D20-1 계약 버전 | `CONTRACT_VERSION`·`openapi info.version`·`DECISIONS.md`·CHANGELOG 맨 위 = `2026-10-09.15` | `tests/api/test_r4fix_contract15.py::test_contract_version_is_15`, `tests/contracts/test_{openapi,protocols}.py` 버전 단언 .14 → .15, `test_migrations.py` head 0014 → 0015 | `assert '2026-10-09.14' == '2026-10-09.15'` | 통과 |
+| D20-1 env.py `ENV_FILE` | `contracts/migrations/env.py` 폴백(위 §1 M4 행) · `app/migrate.py`·그 테스트 삭제 · runbook §10-7 ① | `tests/contracts/test_r4fix_migrations.py::test_alembic_env_file_fallback` | **`ENV_FILE 이 가리킨 DB 를 마이그레이션해야 한다`** + `backend/dev.db` 생김 | 통과(dev.db 없음) |
+| D20-1 기본 조회 창 | `collectors/applyhome/collector.py` `PAST_MONTHS=24`·`FUTURE_MONTHS=12`, `to_ym`, 생성자 `window`(녹화 재생용), `scheduler/context.recorded_window`(replay 는 녹화 zip 의 창) | `test_r4fix_contract15.py::test_default_window_is_past_24_future_12`·`::test_query_window_overrides` | `('202512' == '202410'` · `('202506', '202611') == ('202506', '202703')` | 통과 |
+| D20-1 `POST /regions` `applyhome_query` | `region.json` `RegionCreate.applyhome_query`·`ApplyhomeQuery.to_ym`, `regions.py` 저장 | `::test_create_region_accepts_applyhome_query`·`::test_create_region_rejects_bad_from_ym` | **`Additional properties are not allowed ('applyhome_query' was unexpected)`** | 통과 |
+| D20-1 `judgment_log.model`·`provider` | 마이그레이션 `0015_r4fix.py`(열 + 원응답에서 채움, 앱 import 없음), 모델·`judge/log.py`(행마다 기록, blocked·error NULL), 봉투·`envelope_view` | `test_r4fix_migrations.py::test_{sqlite,postgres}_0015_…`, `test_r4fix_contract15.py::test_envelope_carries_model_and_provider` | `no such column: model`(SQLite) · `column "model" does not exist`(Postgres) · `'model' is an invalid keyword argument` | 통과(왕복·diff 0) |
+| D20-1 CHANGELOG 픽스처 사유 | `contracts/CHANGELOG.md` .15 `### fixtures` 에 매니페스트 사유 문장 | `tests/contracts/test_fixture_manifest.py::test_manifest_reason_is_in_changelog` | **`매니페스트 사유가 CHANGELOG 에 없다: 'R4-FIX D18-5 …'`**(1차 보고의 남은 실패 1건) | 통과 |
+| **D20-2** 트랙 (A) 후보 | `judge/payloads.py`(`UPCOMING_SCREEN_TASK`·`UPCOMING_CLASSES`·이름 extract 필드), `judge/pipeline.py`(`p1_screen_upcoming`·`p2_extract_upcoming`·`p4_classify_upcoming`·`p5_same_complex`), `normalize/upcoming.py`(후보 행·별칭·출처 '비공식'·change_event), `scheduler/assemble.py` 뉴스 단계 `upcoming`, `normalize/store.py` `_upcoming_row`(청약홈 공고 → 같은 이름 키 후보에 주택관리번호), `scheduler/pipeline._p4`(공고 전 후보 재분류 안 함) | `tests/scheduler/test_r4_fix_d20_2.py`(3) — R4 녹화 뉴스 원문 4항목(`tests/scheduler/fixtures/r4_news_2026-10-12.json`) | **`AssertionError: set()`**(후보 0) · **`assert 0 == 2`**(공고 예정 0곳 — wait_new 근거) · `KeyError: '검단 센트레빌 그랑포레'`(합칠 후보 없음) | 통과: 후보 2(그랑포레·계양신도시 카이브 유보라 + 별칭 '카이브 유보라' — 판정기 compare), 오피스텔 기사 제외, 재수집 판정 호출 0, 범위 '보류 — 공고 후 재판정', 상황 A `[wait_new]`·보고서 §8-2 근거에 두 이름, 청약홈 공고가 오면 같은 행 |
+
+**연결 확인(이미 있던 것 — 고치지 않음).** `scheduler.payloads.wait_new_evidence` 는 `track='A'`·공고 전·제외/미해결 아님 행을 쓰고(그대로),
+보고서 §8-2(`reports/data.wait_new_evidence` → `s08.html.j2`)는 decide 입력의 `[wait_new]` 블록을 다시 읽는다 — 새 후보가 두 곳에 나오는 것을
+`test_candidates_flow_to_scope_wait_new_and_report` 가 확인한다. 체크리스트 '공고 예상'(`normalize/checklist.py`, applyhome_id 없는 단지)도 그대로 생긴다.
+
+**바뀐 기존 테스트·골든(이유)**
+
+| 파일 | 바뀐 것 | 이유 |
+| --- | --- | --- |
+| `tests/collectors/applyhome/test_applyhome_{api,collector}.py`, `tests/collectors/test_daily_budget.py`, `tests/regress/test_flow_g0_bootstrap.py`, `tests/scheduler/test_bootstrap_e2e.py` | `ApplyhomeCollector(window=("2025-12","2026-11"))` | 청약홈 녹화(2026-10-09)는 옛 기본 창(−10~+1개월)으로 받았다 — 계약 .15 기본 창(−24~+12) 요청은 녹화에 없다. 녹화 때 창으로 재생(앱의 replay 모드는 `recorded_window` 로 같은 일을 자동으로 한다 — e2e G0 흐름) |
+| `tests/api/snapshots/list_r3c.json`(`UPDATE_GOLDEN=1`) | 단지 상세 18개 응답 바이트(판정 봉투에 `model`·`provider`) | 계약 .15 F1. 목록·CSV 응답은 그대로 |
+| `tests/scheduler/test_r3b_g2.py::NewsJev` | 호재 screen 만 센다 | D20-2 뉴스 항목마다 공고 예정 screen 이 하나 더 돈다(호재 판정은 그대로) |
+| `tests/scheduler/test_r4_fix_c1_jobs.py::test_m2_…` | 잡 tools_calls 1 → 3(호재 screen + 공고 예정 screen + 이름 extract) | 같음 |
+| `tests/contracts/test_{openapi,protocols,migrations}.py` | 버전 .15·head 0015 | 계약 .15 |
+
+**D20 하지 않은 것 / 남은 위험**
+
+- 트랙 (A) 신호는 **뉴스만** 쓴다. 공식 홈페이지는 주소(청약홈 HMPG)가 있는 단지에서만 수집되므로 공고 전 후보에 쓸 수 없다(공고 뒤에는 기존 접수
+  classify 'pending'). 후보의 주소·세대수·예정월은 뽑지 않았다(법정동·생활권 비어 있음) — 청약홈 공고와의 합치기는 이름 키(옛 이름 포함)가
+  **같을 때만**(D20-2 '이름 키·주소' 중 주소는 없음). 이름이 조금 다르게 공고되면 후보와 공고 단지가 둘로 남는다.
+- 실제 JEV 가 기사 발췌(300자)에서 이름을 얼마나 고를지, classify 가 auto 를 낼지는 녹화 재생으로 알 수 없다(가짜 판정기) — R4 재시험 항목 13.
+- 뉴스 항목마다 판정 호출이 늘어난다(screen 1 + 이름 extract 1 + classify 1, 이름 포함 쌍마다 compare 1 — 같은 입력은 캐시).
+- 기존 R4 DB 의 잔여 공고 행 병합 마이그레이션은 만들지 않았다(D20-3).
