@@ -34,7 +34,7 @@ from __future__ import annotations
 import calendar
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from sqlalchemy import select
@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session
 from app.collectors.applyhome import api as ah_api
 from app.collectors.applyhome import parse, site
 from app.collectors.applyhome.area import AreaFilter, build_region_areas
-from app.collectors.applyhome.raw import RawStore, Stored, to_contract
+from app.collectors.applyhome.raw import CONTENT_FAILURES, RawStore, Stored, to_contract
 from app.core.contracts_gen import RawDocument, Region, Snapshot
 from app.core.db import get_sessionmaker
 from app.core.http import FetchResult, HttpClient
@@ -111,8 +111,12 @@ class _Run:
     store: RawStore
     out: list[RawDocument]
     seen: set[int]
+    empty: list[str] = field(default_factory=list)
+    """빈 데이터셋(``api.EMPTY_DATASET``) 실패 행의 조회 주소 — D23-4(R4 4차 N15)."""
 
     def emit(self, stored: Stored) -> None:
+        if (stored.row.error_text or "").startswith(CONTENT_FAILURES) and stored.row.url not in self.empty:
+            self.empty.append(stored.row.url)
         if stored.row.id not in self.seen:
             self.seen.add(stored.row.id)
             self.out.append(to_contract(stored.row))
@@ -153,6 +157,9 @@ class ApplyhomeCollector:
         self.paths: dict[str, str] = {}
         # 마지막 fetch_history 의 건수(잡 stats 용)
         self.history_stats: dict[str, int] = {}
+        # 마지막 fetch·fetch_originals 에서 청약홈 API 가 빈 데이터셋(조건 없는 totalCount 0 — 재적재 중)을 준 조회 주소(키 없음).
+        # 비어 있지 않으면 수집 단계가 degraded 로 남기고 bootstrap 은 발행하지 않는다(D23-4, R4 4차 N15)
+        self.empty_datasets: list[str] = []
 
     @property
     def api_enabled(self) -> bool:
@@ -197,6 +204,7 @@ class ApplyhomeCollector:
             since_day = _since_date(since)
             self.paths = {}
             api = ah_api.ApplyhomeApi(http, self._key) if self._key else None
+            self.empty_datasets = run.empty
             for flt in areas.filters.values():
                 if api is not None:
                     failed = self._collect_api(api, http, run, session, flt, windows, since_day, checkpoint)
@@ -309,7 +317,7 @@ class ApplyhomeCollector:
             return []
         ep = ah_api.ENDPOINTS["apt"]
         with self._resources() as (http, session, own):
-            run = _Run(region=region, store=RawStore(session), out=[], seen=set())
+            run = _Run(region=region, store=RawStore(session), out=[], seen=set(), empty=self.empty_datasets)
             api = ah_api.ApplyhomeApi(http, self._key)
             for hm in sorted(set(house_manage_nos)):
                 params = ah_api.item_params(hm, hm)

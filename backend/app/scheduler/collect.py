@@ -19,6 +19,9 @@
    벤치마크(실거래 = collect.weekly: 청약홈 과거 공고 + rtms 과거 월 → benchmark), 호재 후보(뉴스).
    조립 예외는 ``errors['assemble.<단계>']``.
 5. 변경 감지(detect.py): 팝업 해시·목록 diff + 정규화 이벤트(새 공고·가격·계약금·중도금일 = critical).
+6. **빈 데이터셋(D23-4, R4 4차 N15)**: 청약홈 API 가 조건 없는 전체 건수 0(재적재 중)을 주면 수집기가 실패 행으로 남기고
+   (``empty_datasets``), 수집 결과 ``degraded``(stats ``degraded_sources``)에 적는다 — 목록이 불완전하므로 목록 diff 를 하지 않고
+   목록 단지 집합도 남기지 않는다. 잡(handlers)은 그 수집으로 발행하지 않고 재시도한다.
 
 수집기 예외는 다른 단계를 막지 않고 ``errors`` 에 남긴다(잡은 끝에 failed). 수집기의 실패 응답(403 등)은
 예외가 아니라 원문 행이다.
@@ -91,6 +94,8 @@ class CollectResult:
     assembled: dict[str, Any] = field(default_factory=dict)
     official_docs: list[RawDTO] = field(default_factory=list, repr=False)
     first_load_folded: int = 0  # 첫 적재 요약(D18-7): 이벤트 대신 센 빈 값 → 값 변경 수
+    degraded: dict[str, str] = field(default_factory=dict)
+    """수집 단계 → 불완전 사유(D23-4 — 청약홈 API 빈 데이터셋). 비어 있지 않으면 그 수집으로 발행하지 않는다(handlers)."""
 
     def stats(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -112,6 +117,8 @@ class CollectResult:
             "intake_pending_classify": self.intake_pending,
             "assembled": self.assembled,
         }
+        if self.degraded:
+            out["degraded_sources"] = dict(self.degraded)
         if self.list_complex_ids is not None:
             out["list_complex_ids"] = self.list_complex_ids
         return out
@@ -237,7 +244,22 @@ def _fetch_originals(
         log.exception("worker.collect.error", extra={"step": "applyhome_originals", "region_id": region.id})
         return []
     res.loaded["originals"]["documents"] = len(got)
+    _note_empty(res, collector)
     return got
+
+
+EMPTY_DATASET_REASON: Final = "청약홈 API 빈 데이터셋(조건 없는 totalCount 0 — 재적재 중)"
+"""D23-4(R4 4차 N15): 수집 결과 ``degraded['applyhome']`` 사유 머리(뒤에 ' n건')."""
+
+
+def _note_empty(res: CollectResult, collector: Any) -> None:
+    """수집기가 남긴 빈 데이터셋 조회 수 → ``res.degraded['applyhome']``(같은 실행의 원 공고 다시 받기까지 더한다)."""
+    empty = list(getattr(collector, "empty_datasets", None) or [])
+    if not empty:
+        return
+    m = re.search(r"(\d+)건$", res.degraded.get("applyhome", ""))
+    n = (int(m.group(1)) if m else 0) + len(empty)
+    res.degraded["applyhome"] = f"{EMPTY_DATASET_REASON} {n}건"
 
 
 def _load_stats(obj: Any) -> dict[str, int] | None:
@@ -466,6 +488,8 @@ def collect(
             log.exception("worker.collect.error", extra={"step": step, "region_id": region_id})
             continue
         res.documents[step] = len(docs)
+        if step == "applyhome":
+            _note_empty(res, collector)
         ran.append(step)
         step_docs[step] = list(docs)
         ran_applyhome = ran_applyhome or step == "applyhome"
@@ -569,7 +593,8 @@ def collect(
                 session, res.official_docs, asof_date=asof, snapshot_id=snap_dto.id, detected_at=detected_at
             )
         )
-        if ran_applyhome:
+        if ran_applyhome and "applyhome" not in res.degraded:
+            # 빈 데이터셋이면(D23-4) 목록이 불완전하다 — 목록 diff 도, 다음 날 비교할 목록 단지 집합도 남기지 않는다
             res.list_complex_ids = sorted(list_ids)
             if detect_list:
                 events.extend(

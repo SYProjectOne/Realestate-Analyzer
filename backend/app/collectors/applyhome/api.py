@@ -26,15 +26,22 @@
 응답(JSON): ``{"page","perPage","totalCount","currentCount","matchCount","data":[…]}``. 오류는 4xx +
 ``{"code":-401,"msg":…}``. 인증: 쿼리 ``serviceKey``(디코딩 키) — **raw_document.url 에는 남기지 않는다**.
 ``totalCount`` 는 조건 없는 전체 건수, ``matchCount`` 가 조건에 맞는 건수 → 페이지 순회 기준은 matchCount.
+**빈 데이터셋(D23-4, R4 4차 N15)**: 데이터셋 재적재 중(관측 00:00~01:00 KST)에는 200 이지만 조건 없는 전체 건수가 0
+(``{"totalCount":0,"matchCount":0,"data":[]}``)이다 — "조건에 맞는 공고 0건"이 아니라 **실패**다. ``ApplyhomeApi.get`` 이 그
+응답을 실패 결과(``error`` = ``EMPTY_DATASET``)로 바꿔 돌려준다 → 원문은 실패 행(http_status 200 · path 없음 · error_text
+``EMPTY_DATASET``), 목록이면 그 시도는 웹 경로로, 상세·경쟁률이면 웹 상세·웹 경쟁률로 폴백하고, 수집기가 ``empty_datasets`` 에 남겨
+수집 단계가 degraded 로 표시한다(bootstrap 은 발행하지 않고 재시도).
 키 마스킹(R3b F1a): 오류 문구(httpx 메시지에 인코딩된 serviceKey 가 든 URL)·응답 본문(서버가 키를 되돌려 준
 경우)에서 원문·디코딩·``quote``·``quote_plus`` 형태를 모두 가린다(``reference.rawstore.scrub_result``).
 robots.txt: api.odcloud.kr 는 404(키 인증 API 라 core.http 예외 호스트에도 넣었다).
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Final, Literal
 from urllib.parse import unquote, urlencode
@@ -46,6 +53,7 @@ from app.core.http import FetchResult, HttpClient
 __all__ = [
     "API_KINDS",
     "BASE",
+    "EMPTY_DATASET",
     "ENDPOINTS",
     "MAX_ITEM_PAGES",
     "PER_PAGE",
@@ -58,9 +66,12 @@ __all__ = [
     "list_params",
     "parse_page",
     "to_row",
+    "total_count",
 ]
 
 BASE: Final = "https://api.odcloud.kr/api"
+EMPTY_DATASET: Final = "empty_dataset: totalCount 0"
+"""조건 없는 전체 건수 0(데이터셋 비어 있음 — 재적재 중) 응답의 실패 사유 = raw_document.error_text(D23-4)."""
 HOST: Final = "api.odcloud.kr"
 DETAIL_SVC: Final = "/ApplyhomeInfoDetailSvc/v1"
 CMPET_SVC: Final = "/ApplyhomeInfoCmpetRtSvc/v1"
@@ -141,7 +152,19 @@ class ApiPage:
     error: str | None  # 실패 사유('401', 'api: <msg>', 'json' …)
 
 
+def total_count(content: bytes) -> int | None:
+    """응답 본문의 ``totalCount``(조건 없는 전체 건수). JSON 이 아니거나 없으면 None."""
+    try:
+        data = json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    value = data.get("totalCount") if isinstance(data, dict) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
 def parse_page(result: FetchResult) -> ApiPage:
+    if result.error == EMPTY_DATASET:
+        return ApiPage(False, [], None, EMPTY_DATASET)
     if not result.ok:
         msg = _error_msg(result.content)
         reason = str(result.status) if result.status is not None else (result.error_kind or "network")
@@ -232,7 +255,11 @@ class ApplyhomeApi:
         result = self._http.get(BASE + path, params={**params, "serviceKey": self._key})
         # url·final_url 에는 serviceKey 가 들어 있다 — 키 없는 조회 주소로 바꾸고, 오류 문구(httpx 메시지의
         # 인코딩된 URL)·본문에서 키를 모든 표기로 가린다
-        return scrub_result(result, self._secrets, url=doc_url(path, params))
+        scrubbed = scrub_result(result, self._secrets, url=doc_url(path, params))
+        if scrubbed.ok and total_count(scrubbed.content) == 0:
+            # D23-4(R4 4차 N15): 데이터셋이 비어 있다(재적재 중) — 정상 0건이 아니라 실패(규칙 7 '실패도 데이터')
+            return replace(scrubbed, error=EMPTY_DATASET)
+        return scrubbed
 
     def get_pages(
         self, path: str, params: dict[str, str], *, max_pages: int = MAX_ITEM_PAGES

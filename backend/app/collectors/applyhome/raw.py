@@ -9,6 +9,8 @@
 - 날짜·fetched_at 은 Asia/Seoul.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -25,7 +27,7 @@ from app.core.snapshot import sha256_text, store_raw
 from app.core.time import to_kst
 from app.models import RawDocument as RawRow
 
-__all__ = ["RawStore", "SourceKind", "Stored", "failure_kind", "to_contract"]
+__all__ = ["CONTENT_FAILURES", "RawStore", "SourceKind", "Stored", "failure_kind", "to_contract"]
 
 SourceKind = str
 
@@ -41,14 +43,23 @@ _DNS_MARKERS = (
 
 
 def failure_kind(result: FetchResult) -> str:
-    """실패 종류 문자열 — http_status 가 있으면 그 숫자, 없으면 error_text 값."""
+    """실패 종류 문자열 — http_status 가 있으면 그 숫자(내용 실패면 그 사유 머리), 없으면 error_text 값."""
     if result.status is not None:
+        if result.error and result.error.startswith(CONTENT_FAILURES):
+            return result.error.split(":", 1)[0]
         return str(result.status)
     return error_text_of(result) or "error"
 
 
+CONTENT_FAILURES = ("empty_dataset",)
+"""성공 상태(2xx)지만 내용이 실패인 응답의 ``FetchResult.error`` 머리(청약홈 API 빈 데이터셋 — D23-4). 실패 행의 error_text 로 남긴다
+(http_status 는 그 상태 그대로, path 없음)."""
+
+
 def error_text_of(result: FetchResult) -> str | None:
     if result.status is not None:
+        if result.error and result.error.startswith(CONTENT_FAILURES):
+            return result.error[:200]
         return None
     kind = result.error_kind
     message = (result.error or "").lower()
