@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { Outlet } from 'react-router';
+import { BackfilledBanner } from '@/app/BackfilledBanner';
 import { DegradedBanner } from '@/app/DegradedBanner';
 import { ReadOnlyBanner, TokenDialog, TokenPinnedBanner } from '@/app/TokenDialog';
 import { ToastProvider } from '@/app/toast';
@@ -33,6 +34,7 @@ export function AppLayout() {
         </a>
         <Header />
         <DegradedBanner />
+        <BackfilledBanner />
         <TokenPinnedBanner />
         <ReadOnlyBanner />
         {readOnly ? (

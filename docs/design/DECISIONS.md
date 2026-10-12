@@ -212,3 +212,8 @@
 ## D19. 로컬 운영 DB (2026-10-12, 사람 답 + CEO)
 - D19-1 Docker는 설치하지 않는다(사람 답). 운영·R4는 이 PC에 이미 설치된 PostgreSQL을 쓴다. PG16(5432)은 다른 앱이 쓰고 관리자 비밀번호를 알 수 없어 건드리지 않고, **PostgreSQL 17.9(포트 5434, 다른 앱 DB 없음)**에 전용 역할 `sa`와 DB `subscription_analyzer`(운영)·`subscription_analyzer_r4`(R4 재시험)를 만들었다. 접속 주소는 루트 `.env`의 `DATABASE_URL`·`R4_DATABASE_URL`(비밀번호는 무작위 생성, 커밋·출력 금지). 운영 DB는 alembic head(0013)까지 올렸다.
 - D19-2 compose 기동·Docker 이미지 빌드·리눅스 차트 기준 이미지는 '미검증'으로 남긴다(사람이 Docker 설치를 원할 때 진행). 로컬 백업은 PG17 `pg_dump`(`C:\Program Files\PostgreSQL\17\bin`)를 쓴다 — compose의 `postgresql-client-16`은 16 서버 전용이다.
+
+## D20. R4-FIX 후속 결정 (2026-10-12, CEO)
+- D20-1 계약 .15는 R4-FIX가 낸다(이번 라운드 계약 소유 위임): `contracts/migrations/env.py`는 `DATABASE_URL`이 없으면 앱 설정(`ENV_FILE`)의 URL을 쓴다; 청약홈 기본 조회 창을 **지난 24개월 + 향후 12개월**로(meta §1-4 "지난 24~36개월 + 향후 12개월"); `POST /regions`에 선택 필드 `applyhome_query`(from_ym·to_ym); `judgment_log`에 `model`·`provider` 열; 픽스처 재녹화 사유를 CHANGELOG에.
+- D20-2 **트랙 (A)의 "12개월 내 공고 예정" 단지**(meta §1-3 #1)를 수집한다: 뉴스·공식 홈페이지 신호를 판정기 screen(공고 예정 신호)·classify(지역·민간분양 여부)로 걸러 단지 후보를 만들고, 라벨 '비공식'/'추정', 범위 사유 "보류 — 공고 후 재판정"(meta §1-3 #4), 청약홈 공고가 나오면 같은 단지로 합친다(이름 키·주소). 공고 예정 목록은 P8 `wait_new` 근거와 보고서 §8-2에 쓰인다. 이미 일부 구현돼 있으면 빠진 연결만 채운다. 판단은 판정기만(규칙 3).
+- D20-3 R4 DB에 이미 생긴 잔여 공고 단지 행 병합 마이그레이션은 만들지 않는다 — 운영 DB(D19)는 비어 있고 R4 재시험은 새 DB로 한다.

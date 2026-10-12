@@ -3,9 +3,11 @@ import { useJob, usePublishChain } from '@/api/hooks';
 import {
   nextPublishJobId,
   PUBLISH_CHAIN_MAX,
+  PUBLISH_ERROR_RETRY_MAX,
   publishPhase,
   publishTarget,
-  requeueCount,
+  requeueInfo,
+  wasRedeferred,
   type PublishPhase,
 } from '@/api/jobWatch';
 import { useSnapshot } from '@/hooks/useSnapshot';
@@ -38,8 +40,9 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
   const status = tDynamic(`job.status.${job.status}`, job.status);
   const active = job.status === 'queued' || job.status === 'running';
   const progress = job.progress && job.progress.total > 0 ? job.progress : null;
-  // 계약 .13 F4(D16-3): 발행 busy → 다시 queued(지연 재큐잉) — 실패가 아니라 기다리는 중이라고 보인다
-  const requeued = requeueCount(job);
+  // 계약 .13 F4(D16-3): 발행 busy → 다시 queued(지연 재큐잉) — 실패가 아니라 기다리는 중이라고 보인다.
+  // 계약 .14 F8(D17-3): 발행 예외 뒤 재시도(publish_error, error_retries 1~5)도 진행 중 — 다른 문구로
+  const requeued = requeueInfo(job);
   return (
     <div
       role="status"
@@ -76,8 +79,16 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
         )
       ) : null}
       {requeued !== null ? (
-        <p className="text-muted" data-testid="job-requeued">
-          <MetaText kind="count" k="job.requeued" params={{ n: requeued }} />
+        <p className="text-muted" data-testid="job-requeued" data-requeue={requeued.kind}>
+          {requeued.kind === 'error' ? (
+            <MetaText
+              kind="count"
+              k="job.requeuedError"
+              params={{ n: requeued.n, max: PUBLISH_ERROR_RETRY_MAX }}
+            />
+          ) : (
+            <MetaText kind="count" k="job.requeued" params={{ n: requeued.n }} />
+          )}
         </p>
       ) : null}
       {job.error_text ? (
@@ -202,6 +213,12 @@ function PublishChain({
         .map((job, i) =>
           job ? <JobProgressView key={job.id} job={job as JobLike} /> : <span key={`p${i}`} />,
         )}
+      {chain.some((j) => wasRedeferred(j)) ? (
+        // 계약 .14 F9: 미뤄 둔 리비전이 끝내 실패해 서버가 이 변경을 새 발행 잡으로 다시 등록했다 — 그 잡을 이어 본다
+        <p className="text-xs text-muted" data-testid="publish-redeferred">
+          {t('job.publishRedeferred')}
+        </p>
+      ) : null}
       <PublishOutcome phase={phase} />
     </div>
   );

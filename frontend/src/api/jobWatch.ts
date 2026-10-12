@@ -268,12 +268,49 @@ const finished = (j: Pick<JobView, 'status'>) => j.status === 'done' || j.status
 /**
  * 계약 .12 F15: 끝난 잡의 stats `publish_job_id`(발행 예외로 재시도를 남겼으면 `publish_retry_job_id` 와 같다) — 발행을
  * 하는(한) 잡. 자기 자신이면(그 자리 발행·publish 잡 자신) 이을 잡이 없다(null). 끝나지 않은 잡은 아직 모른다(null).
+ * 계약 .14 F9(D17-3): 미뤄진 쓰기(done `deferred_to`)·끝내 실패한 발행의 `redeferred_job_id`(그 쓰기를 다시 등록한 새 발행
+ * 잡)가 먼저다. 미뤄진 후속 잡이 멈춘 리비전 대신 재판정을 등록했으면(`deferred_to` + `rejudge_job_id`) 그 재판정의 발행이
+ * 이 쓰기를 읽는다 — 그 잡을 잇는다.
  */
 export function nextPublishJobId(job: Pick<JobView, 'id' | 'status' | 'stats'>): number | null {
   if (!finished(job)) return null;
   const stats = job.stats ?? {};
-  const next = intOf(stats.publish_job_id) ?? intOf(stats.publish_retry_job_id);
-  return next !== null && next !== job.id ? next : null;
+  const deferred = intOf(stats.deferred_to) !== null;
+  const candidates = [
+    intOf(stats.redeferred_job_id),
+    intOf(stats.publish_job_id),
+    intOf(stats.publish_retry_job_id),
+    deferred ? intOf(stats.rejudge_job_id) : null,
+  ];
+  return candidates.find((id): id is number => id !== null && id !== job.id) ?? null;
+}
+
+/** 감시 사슬에 재등록(`redeferred_job_id`)이 있었는가 — 화면이 "다시 등록했다"고 알린다(계약 .14 F9) */
+export function wasRedeferred(job: Pick<JobView, 'stats'> | undefined): boolean {
+  return intOf(job?.stats?.redeferred_job_id) !== null;
+}
+
+/** 재등록을 기다리며 미뤄진 잡을 다시 읽는 간격(ms, 계약 .14 F9) */
+export const DEFERRED_POLL_MS = 5_000;
+
+/**
+ * 계약 .14 F9(D17-3): done + `deferred_to`(멈춘 리비전으로 미뤄진 쓰기)인데 아직 `redeferred_job_id`·`rejudge_job_id` 가
+ * 없으면, 그 리비전이 끝내 실패할 때 서버가 그 잡 stats 에 `redeferred_job_id` 를 단다 — done 이어도 느리게 다시 읽어야 한다.
+ * 상한: 잡이 끝난 뒤 PUBLISH_FOLLOW_MAX_MS(30분, 끝난 시각을 모르면 다시 읽지 않는다 — 상한 없는 폴링 금지).
+ */
+export function awaitsRedeferral(
+  job: Pick<JobView, 'status'> & {
+    stats?: Record<string, unknown> | null;
+    finished_at?: string | null;
+  },
+  now: number = Date.now(),
+): boolean {
+  if (job.status !== 'done') return false;
+  const stats = job.stats ?? {};
+  if (intOf(stats.deferred_to) === null) return false;
+  if (intOf(stats.redeferred_job_id) !== null || intOf(stats.rejudge_job_id) !== null) return false;
+  const finishedAt = job.finished_at ? Date.parse(job.finished_at) : Number.NaN;
+  return Number.isFinite(finishedAt) && now - finishedAt <= PUBLISH_FOLLOW_MAX_MS;
 }
 
 /**
@@ -324,6 +361,30 @@ export function requeueCount(job: {
   const stats = job.stats ?? {};
   if (!stats.requeue_reason && stats.requeue_count === undefined) return null;
   return intOf(stats.requeue_count) ?? 1;
+}
+
+/** 발행 예외 재시도 상한(서버 `PUBLISH_ERROR_RETRY_MAX`, 계약 .14 F8 — 1~5회) */
+export const PUBLISH_ERROR_RETRY_MAX = 5;
+
+const PUBLISH_ERROR = 'publish_error';
+
+/**
+ * 지연 재큐잉의 종류(계약 .13 F4 + .14 F8): `busy` = 다른 발행을 기다림(requeue_count), `error` = 발행 예외 뒤 재시도
+ * (requeue_reason `publish_error: …`, stats `error_retries` 1~5). 진행 중(queued·running)이 아니거나 재큐잉이 아니면 null.
+ */
+export function requeueInfo(job: {
+  status: string;
+  stats?: Record<string, unknown> | null;
+}): { kind: 'busy' | 'error'; n: number } | null {
+  if (job.status !== 'queued' && job.status !== 'running') return null;
+  const stats = job.stats ?? {};
+  const reason = typeof stats.requeue_reason === 'string' ? stats.requeue_reason : '';
+  const retries = intOf(stats.error_retries);
+  if (reason.startsWith(PUBLISH_ERROR) || (retries !== null && retries > 0 && !reason)) {
+    return { kind: 'error', n: retries ?? 1 };
+  }
+  const n = requeueCount(job);
+  return n === null ? null : { kind: 'busy', n };
 }
 
 /** 겹친 발행(F12 single-flight) — 먼저 돈 잡이 그 리비전을 발행한다 */
@@ -384,6 +445,17 @@ export function publishPhase(input: {
   if (last.status === 'failed') {
     const detail = last.error_text ?? '';
     if (detail.startsWith(BLOCKED)) return blocked(intOf(stats.contradicted), detail);
+    // 계약 .14 F8: 발행 예외 재시도를 다 쓰고 실패(재등록 잡이 있으면 위에서 이미 이어 감시) — 코드 접두는 떼고 보인다
+    if (detail.startsWith(PUBLISH_ERROR)) {
+      return {
+        kind: 'publishFailed',
+        detail:
+          detail
+            .slice(PUBLISH_ERROR.length)
+            .replace(/^[:\s]+/, '')
+            .trim() || detail,
+      };
+    }
     if (detail.startsWith(IN_PROGRESS)) {
       // 계약 .13 F4(D16-3): 지연 재큐잉을 상한(40회)까지 하고도 다른 발행이 놓아 주지 않아 실패 — 이 잡의 변경은 발행되지
       // 않았다(리비전 목록이 published 여도 위에서 이미 닫혔다). 코드 접두는 떼고 보인다
