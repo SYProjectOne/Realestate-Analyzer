@@ -2048,7 +2048,7 @@ def load_report_live(
         published_at=snap.published_at,
         region_name=region.name,
         region_query=region.query_text,
-        living_areas=report_living_areas(session, region),
+        living_areas=part("living_areas", False, lambda: report_living_areas(session, region)),
         contract_version=CONTRACT_VERSION,
         generated_at=now_kst().isoformat(timespec="seconds"),
         scenario_code=scenario.code or str(scenario.id),
