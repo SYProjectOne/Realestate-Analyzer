@@ -157,15 +157,20 @@ describe('F1(D21-8) 단지 이름 name_prov·name_label', () => {
     expect(within(heading).queryByTestId('label-badge')).toBeNull();
   });
 
-  it("G3 출처 탭: name_prov 가 있으면 맨 앞에 '단지 이름' 항목(라벨 배지)", async () => {
+  it("G3 출처 탭: name_prov 가 있으면 가격 다음에 '단지 이름' 항목(라벨 배지), 기본 선택은 가격 그대로", async () => {
     renderRoute(`/complexes/${CANDIDATE}#provenance`);
     const list = await screen.findByRole('list', { name: t('page.G3.provenance.fields') });
-    const first = within(list).getAllByRole('listitem')[0] as HTMLElement;
+    const items = within(list).getAllByRole('listitem');
+    const item = within(list)
+      .getByRole('button', { name: t('page.G3.provenance.name') })
+      .closest('li') as HTMLElement;
+    expect(item).toHaveTextContent(CANDIDATE_NAME);
+    expect(within(item).getByTestId('label-badge')).toHaveTextContent(t('label.unofficial'));
+    // 목 상세(예시 가격 있음): 첫 항목은 가격(선택됨), 이름은 가격 두 항목 다음
+    expect(items.indexOf(item)).toBe(2);
     expect(
-      within(first).getByRole('button', { name: t('page.G3.provenance.name') }),
-    ).toBeInTheDocument();
-    expect(first).toHaveTextContent(CANDIDATE_NAME);
-    expect(within(first).getByTestId('label-badge')).toHaveTextContent(t('label.unofficial'));
+      within(items[0] as HTMLElement).getByRole('button', { pressed: true }),
+    ).toHaveTextContent(t('page.G2.col.price'));
   });
 });
 

@@ -21,7 +21,9 @@ function collect(detail: ComplexDetail): ProvItem[] {
   const add = (key: string, title: string, fact: Fact | null | undefined) => {
     if (fact?.prov) out.push({ key, title, fact });
   };
-  // 계약 .16 F1(D21-8): 단지 이름 출처(name_prov·name_label — 키가 없으면 건너뛴다)
+  add('price_low', t('page.G2.col.price'), detail.price.price_low);
+  add('price_high', t('page.G2.col.price'), detail.price.price_high);
+  // 계약 .16 F1(D21-8): 단지 이름 출처(name_prov·name_label — 키가 없으면 건너뛴다). 가격 다음(기본 선택은 가격 그대로)
   const { name, name_prov: nameProv, name_label: nameLabel } = detail.header;
   if (nameProv && nameLabel) {
     add('name', t('page.G3.provenance.name'), {
@@ -32,8 +34,6 @@ function collect(detail: ComplexDetail): ProvItem[] {
       unit: 'text',
     });
   }
-  add('price_low', t('page.G2.col.price'), detail.price.price_low);
-  add('price_high', t('page.G2.col.price'), detail.price.price_high);
   const header = detail.header as unknown as Record<string, Fact | null | undefined>;
   for (const field of [
     'units_total',
