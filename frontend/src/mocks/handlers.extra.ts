@@ -23,6 +23,8 @@
  *  - 계약 .14 F5: PATCH /ops/checklist 상태·메모·기한이 바뀌면 202 + job_id(snapshot.publish 상태 있는 잡), 같으면 200 + null
  *  - 계약 .14 F6: PATCH /regions 선택 그대로 + 이름만 → 202 + snapshot.publish 잡(change_event null)
  *  - 계약 .14 F7: PATCH /catalysts 좌표는 소수 6자리 반올림으로 비교(같으면 200)
+ *  - 계약 .15 F3: POST /regions 선택 필드 applyhome_query — 서버와 같은 'YYYY-MM' 패턴 검사(틀리면 422 validation_error +
+ *    field_errors loc ['body','applyhome_query',<키>]), 맞으면 응답 region.applyhome_query 에 그대로
  *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -56,6 +58,7 @@ import type {
 } from '@/api/types';
 import catalystUpdatedExample from '../../../contracts/examples/catalyst_updated.json';
 import { HUMAN_CHECK_RULES, parseStrictNumber } from '@/pages/ops/humanCheckRules';
+import { YM_PATTERN } from '@/pages/region-new/applyhomeWindow';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
 
@@ -70,6 +73,37 @@ function readFlag(key: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * 계약 .15 F3: POST /regions `applyhome_query`(region.json ApplyhomeQuery) 검사 — 객체, from_ym·to_ym 은 string|null 이고
+ * 'YYYY-MM'(월 01~12) 패턴, areas 는 문자열 값 객체. 서버(jsonschema)와 같은 loc ['body','applyhome_query',<키>].
+ */
+function applyhomeQueryErrors(aq: unknown): { loc: string[]; msg: string }[] {
+  const loc = (key?: string) => ['body', 'applyhome_query', ...(key ? [key] : [])];
+  if (aq === null || typeof aq !== 'object' || Array.isArray(aq)) {
+    return [{ loc: loc(), msg: 'is not of type object' }];
+  }
+  const errors: { loc: string[]; msg: string }[] = [];
+  const q = aq as Record<string, unknown>;
+  for (const key of ['from_ym', 'to_ym'] as const) {
+    const v = q[key];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== 'string') errors.push({ loc: loc(key), msg: 'is not of type string' });
+    else if (!YM_PATTERN.test(v))
+      errors.push({ loc: loc(key), msg: `'${v}' does not match pattern` });
+  }
+  const areas = q.areas;
+  if (
+    areas !== undefined &&
+    (areas === null ||
+      typeof areas !== 'object' ||
+      Array.isArray(areas) ||
+      Object.values(areas).some((x) => typeof x !== 'string'))
+  ) {
+    errors.push({ loc: loc('areas'), msg: 'is not an object of strings' });
+  }
+  return errors;
 }
 
 /** 같은 요청을 생성 핸들러(계약 예시)에 보내 JSON을 받는다 */
@@ -363,9 +397,24 @@ export const extraHandlers = [
     return HttpResponse.json(job, { status: 202 });
   }),
 
-  // POST /regions (201) — 예시 응답 + 그 job_id를 상태 있는 잡으로
+  // POST /regions (201) — 예시 응답 + 그 job_id를 상태 있는 잡으로.
+  // 계약 .15 F3: 선택 필드 applyhome_query 는 서버와 같은 패턴 검사(틀리면 422 validation_error), 맞으면 region.applyhome_query 그대로
   http.post(mswPath('/regions'), async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const aq = body.applyhome_query;
+    if (aq !== undefined) {
+      const fieldErrors = applyhomeQueryErrors(aq);
+      if (fieldErrors.length > 0) {
+        return HttpResponse.json(
+          {
+            code: 'validation_error',
+            detail: fieldErrors.map((e) => `${e.loc.slice(1).join('.')}: ${e.msg}`).join('; '),
+            field_errors: fieldErrors,
+          },
+          { status: 422 },
+        );
+      }
+    }
     const created = await base<RegionCreated>(request, 'POST', body);
     registerJob('region.bootstrap', { region_id: created.region.id }, created.job_id);
     return HttpResponse.json(
@@ -374,6 +423,8 @@ export const extraHandlers = [
         region: {
           ...created.region,
           name: typeof body.name === 'string' ? body.name : created.region.name,
+          applyhome_query:
+            aq !== undefined ? (aq as Record<string, unknown>) : created.region.applyhome_query,
         },
       },
       { status: 201 },

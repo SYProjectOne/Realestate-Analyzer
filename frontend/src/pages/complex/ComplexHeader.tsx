@@ -30,6 +30,12 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">{header.name}</h2>
+        {header.applyhome_id === null ? (
+          // 계약 .15 F5(D20-2): 청약홈 공고 전 단지(applyhome_id null) — 트랙 A 면 공고 예정 후보. 판정 범위는 아래 배지(서버 값)
+          <Badge tone="muted" title={t('page.G3.header.upcomingHint')} data-testid="upcoming-badge">
+            {header.track === 'A' ? t('page.G3.header.upcoming') : t('page.G3.header.preNotice')}
+          </Badge>
+        ) : null}
         <IntakeBadge intake={intake} asof={asof} />
         {intakeRaw !== null && openProvenance ? (
           <button

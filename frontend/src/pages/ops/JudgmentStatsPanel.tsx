@@ -63,6 +63,10 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
           </span>
         </li>
       </ul>
+      {/* 계약 .15 F2(D18-2): real_calls = 판정기로 실제 보낸 MCP tools/call 수(전송 계층 계수), total = real + cached */}
+      <p className="text-xs text-muted" data-testid="judgment-real-hint">
+        {t('page.G7.stat.realHint')}
+      </p>
       <div className="flex flex-col gap-1">
         <h3 className="text-sm font-medium">{t('page.G7.stat.byTool')}</h3>
         <ul aria-label={t('page.G7.stat.byTool')} className="flex flex-col gap-1 text-xs">

@@ -15,7 +15,7 @@ import type { ComplexRow } from '@/api/types';
 import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
+import { changeFieldText, enumText, JudgeScopeBadge, RejudgeNeededBadge } from '../_shared';
 import { nextSort, type SortKey } from './params';
 
 /** 열 선택 저장(브라우저별 편의 설정) */
@@ -240,7 +240,7 @@ export function ComplexTable({
           if (!change) return <span className="text-grayed">{t('page.common.none')}</span>;
           return (
             <span className="inline-flex flex-col">
-              <span>{change.field}</span>
+              <span>{changeFieldText(change.field)}</span>
               <span className="text-xs text-muted">
                 {formatDate(change.at, asof)} · {enumText('page.common.severity', change.severity)}
               </span>

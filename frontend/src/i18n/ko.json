@@ -44,7 +44,17 @@
       "started": "지역을 만들고 분석을 시작했습니다",
       "done": "분석이 끝났습니다",
       "goDashboard": "홈 대시보드로",
-      "goLivingAreas": "생활권 편집"
+      "goLivingAreas": "생활권 편집",
+      "window": {
+        "title": "청약홈 조회 기간(고급)",
+        "hint": "비워 두면 서버 기본 조회 창(지난 24개월 + 향후 12개월)으로 수집합니다. 창이 넓을수록 첫 수집이 오래 걸리고 오래된 공고 단지가 목록에 더 나옵니다. 형식 YYYY-MM",
+        "from": "조회 시작월",
+        "to": "조회 끝월",
+        "placeholder": "YYYY-MM",
+        "invalid": "YYYY-MM 형식(월 01~12)으로 입력하세요",
+        "order": "조회 시작월이 끝월보다 늦습니다",
+        "server": "조회 기간을 서버가 받지 않았습니다: {detail}"
+      }
     },
     "G0_2": {
       "title": "생활권 편집",
@@ -184,7 +194,10 @@
         "inclusion": "포함 분류",
         "total": "종합 점수",
         "officialSite": "공식 홈페이지",
-        "intakeEvidence": "접수 근거 원문"
+        "intakeEvidence": "접수 근거 원문",
+        "upcoming": "공고 예정 후보(청약홈 미등록)",
+        "preNotice": "공고 전(청약홈 미등록)",
+        "upcomingHint": "청약홈 공고 전 단지입니다. 공고가 나오면 같은 단지 행에 주택관리번호가 붙고 다시 판정합니다"
       },
       "tabs": "단지 상세 탭",
       "tab": {
@@ -276,7 +289,12 @@
         "createdAt": "시각",
         "cached": "캐시",
         "none": "판정 기록 없음",
-        "ms": "{ms}ms"
+        "ms": "{ms}ms",
+        "model": "모델",
+        "local": "로컬",
+        "localHint": "판정기가 모델을 부르지 않은 로컬 처리(비용 없음)",
+        "provider": "({provider})",
+        "modelNone": "기록 없음"
       },
       "headerFields": {
         "units_total": "총 세대",
@@ -557,7 +575,8 @@
         "avg": "평균 소요",
         "byTool": "도구별 호출",
         "adapter": "어댑터 {version}",
-        "bar": "{tool}: {calls}회(실패 {failures})"
+        "bar": "{tool}: {calls}회(실패 {failures})",
+        "realHint": "실제 호출 = 판정기로 실제 보낸 호출(tools/call) 수 — 수집 단계 판정 포함, 캐시 적중은 0회. 호출 = 실제 호출 + 캐시"
       },
       "human": "사람 확인 입력",
       "humanIntro": "분양사무소 전화·방문 결과를 '사람 확인'으로 기록합니다",
@@ -827,6 +846,28 @@
       "scenarioMissing": "이 발행 리비전에는 시나리오 #{scenario} 결과가 없습니다(시나리오가 발행 뒤에 만들어졌습니다). 시나리오를 실행하면 새 리비전에 결과가 생깁니다",
       "scenarioMissingRun": "시나리오 실행 화면으로",
       "backToList": "단지 리스트로",
+      "changeEntity": {
+        "complex": "단지",
+        "complex_type": "주택형",
+        "payment_terms": "납부 조건",
+        "competition": "경쟁률",
+        "remaining_event": "잔여 공고",
+        "intake_status": "접수 상태",
+        "region": "지역",
+        "judge": "판정기",
+        "catalyst": "호재",
+        "benchmark": "벤치마크",
+        "supply": "입주 물량",
+        "unsold": "미분양",
+        "rtms_trade": "실거래",
+        "checklist_item": "체크리스트",
+        "notice": "공고"
+      },
+      "changeField": {
+        "first_load": "첫 적재",
+        "track": "공고 예정 후보",
+        "applyhome_id": "주택관리번호"
+      },
       "charts": "차트"
     },
     "share": {

@@ -120,6 +120,8 @@ export type Region = S['Region'];
 export type RegionStatus = Region['status'];
 export type AgePremiumCoef = S['AgePremiumCoef'];
 export type RegionCreate = S['RegionCreate'];
+/** 청약홈 조회 파라미터(계약 .15 F3: POST /regions 선택 필드 `applyhome_query` — from_ym·to_ym 'YYYY-MM', areas) */
+export type ApplyhomeQuery = S['ApplyhomeQuery'];
 export type RegionCreated = S['RegionCreated'];
 /** PATCH /regions/{id} 본문(계약 .8, D11-7): 바뀐 뒤 선택 전체 + 이름(선택) */
 export type RegionPatch = S['RegionPatch'];
