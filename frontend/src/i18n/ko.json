@@ -201,10 +201,9 @@
         "siteOtherEvidence": "공식 홈페이지 원문(다른 단지 페이지 — 접수 근거 아님)",
         "siteOtherHint": "청약홈에 등록된 공식 홈페이지가 지금 다른 단지의 페이지라 판정기가 이 단지 페이지로 보지 않았습니다. 그 문구는 접수 판정에 쓰지 않습니다 — 접수 상태는 사람 확인(전화·방문)으로 정하세요.",
         "siteOtherHumanCheck": "접수 상태 사람 확인하기",
-        "boundary": {
-          "noDong": "범위 경계(주소에 동 없음)",
-          "unmatched": "범위 경계(주소가 지역 법정동에 매칭 안 됨)"
-        }
+        "siteUnconfirmedEvidence": "공식 홈페이지 원문(동일성 미확인 — 접수 근거 아님)",
+        "siteUnconfirmedHint": "판정기가 청약홈에 등록된 공식 홈페이지가 이 단지의 페이지인지 확정하지 못했습니다(미해결·불명 — 다른 단지로 판정한 것은 아닙니다). 그 문구는 접수 판정에 쓰지 않습니다 — 접수 상태는 사람 확인(전화·방문)으로 정하세요.",
+        "scopeReason": "판정 범위 사유"
       },
       "tabs": "단지 상세 탭",
       "tab": {
@@ -241,6 +240,7 @@
         "discountHumanCheck": "할인 사람 확인하기",
         "held": "기준 타입 {type} 가격 채택 보류 — 출처끼리 금액이 10배 이상 달라(표 단위 차이일 수 있음) 판정기 비교(compare)를 기다립니다. 풀리지 않으면 사람 확인으로 정합니다.",
         "heldValue": "보류된 출처",
+        "heldBasis": "기준 타입 {type}",
         "heldHumanCheck": "최고 공급금액 사람 확인하기"
       },
       "payment": {
@@ -849,6 +849,8 @@
       },
       "rejudgeNeeded": "재판정 필요",
       "rejudgeNeededHint": "이 스냅샷에 저장된 판정 범위·순위·점수입니다. 현재 사실로 계산한 범위가 저장값과 달라 재판정이 필요합니다",
+      "scopeReason": "판정 범위 사유",
+      "scopeReasonCurrent": "현재 사실 기준 — 재판정 뒤 범위의 사유",
       "benchmarkAbsent": "벤치마크 없음({reason})",
       "loadError": "불러오지 못했습니다: {detail}",
       "materializePending": "이 발행 리비전의 화면 자료를 준비하는 중입니다 — 잠시 뒤 자동으로 다시 불러옵니다",
@@ -877,7 +879,8 @@
       "changeField": {
         "first_load": "첫 적재",
         "track": "공고 예정 후보",
-        "applyhome_id": "주택관리번호"
+        "applyhome_id": "주택관리번호",
+        "legal_dong_code": "법정동"
       },
       "charts": "차트",
       "nameProv": {

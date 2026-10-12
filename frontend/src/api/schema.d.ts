@@ -1434,7 +1434,8 @@ export interface components {
          *         "checked_at": "2026-10-07",
          *         "unit": "prob"
          *       },
-         *       "track": "B"
+         *       "track": "B",
+         *       "judge_scope_reason": "포함 확정 · 접수 가능"
          *     }
          */
         Complex: {
@@ -1489,6 +1490,8 @@ export interface components {
             inclusion_prob: components["schemas"]["Fact"];
             /** @enum {string|null} */
             track?: "A" | "B" | null;
+            /** @description 판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다. 단지 상세 머리(header)도 목록 행과 같은 값 */
+            judge_scope_reason?: string | null;
         };
         /**
          * ComplexBundle
@@ -1758,6 +1761,7 @@ export interface components {
          *       "living_area_name": "김포시",
          *       "track": "B",
          *       "judge_scope": "판정 대상",
+         *       "judge_scope_reason": "포함 확정 · 접수 가능",
          *       "intake": {
          *         "status": "확인 불가",
          *         "path": "official_popup",
@@ -1896,6 +1900,8 @@ export interface components {
             /** @enum {string|null} */
             track: "A" | "B" | null;
             judge_scope: components["schemas"]["JudgeScope"];
+            /** @description 판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다 */
+            judge_scope_reason?: string | null;
             /**
              * @description D10-1(계약 2026-10-09.6): judge_scope·rank·total 은 스냅샷 score_run 저장값. 현재 계산 범위가 저장값과 다르면 true('재판정 필요' 배지). 없으면 false.
              * @default false
