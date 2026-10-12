@@ -77,8 +77,10 @@ from app.normalize._text import strip_supply_round
 from app.normalize.applyhome_parser import ApplyhomeParser
 from app.normalize.extract_request import ExtractRequest, build_extract_requests
 from app.normalize.fields import (
+    AUDIT_FLAG_REASON,
     CONFLICT_HOLD,
     DECIMAL_FIELDS,
+    EXTRACT_REASON,
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
@@ -86,6 +88,7 @@ from app.normalize.fields import (
     norm_value,
     split_discount,
     split_price_by_type,
+    strip_tags,
     value_from_norm,
 )
 from app.normalize.living_area import assign_complex_area
@@ -1438,6 +1441,11 @@ def _merged_addresses(binder: _Binder, skipped: list[FieldCandidate]) -> dict[in
     return out
 
 
+def _is_judged_row(fp: FieldProvenance) -> bool:
+    """판정기 추출·감사로 만든 출처 행(``judged.apply_extracted`` — reason '판정기 추출 …'·'판정기 감사 flagged …')."""
+    return (strip_tags(fp.reason) or "").startswith((EXTRACT_REASON, AUDIT_FLAG_REASON))
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -1459,6 +1467,11 @@ def _reparse_existing(
     groups = {(c.entity, c.entity_id, c.field) for c in bound}
     if not groups:
         return []
+    # D22-1(R4 3차 N9): 이번 원문을 다시 파싱해도 같은 자리(엔티티·필드·발췌 위치)를 여전히 판정기에 물어야 하면(파서가 못 읽음 —
+    # needs_extract), 그 원문에서 판정기 추출·감사로 만든 출처 행은 그대로 후보다(같은 원문·같은 입력 = 같은 판정 결과). 빼면
+    # 파서 행('확인 불가')이 다시 chosen 이 되어 사실 값은 그대로인데 출처가 '확인 불가'로 바뀐다(발행 저장본 '출처 누락').
+    # 파서가 이제 값을 읽으면(needs_extract 아님) 판정 행은 후보가 아니다 — 값이 바뀌면 resolve·write_chosen 이 이벤트를 남긴다
+    asks_judge = {(c.entity, c.entity_id, c.field, c.excerpt_start) for c in bound if c.needs_extract}
     pairs = {(e, i) for e, i, _ in groups}
     rows: list[FieldProvenance] = []
     for e, i in sorted(pairs, key=lambda p: (p[0], p[1] or 0)):
@@ -1474,8 +1487,12 @@ def _reparse_existing(
                 if is_human(fp.reason):
                     rows.append(fp)  # 사람 확인 = resolver 0순위 후보(D11-3) — 재정규화에도 남는다(C-3)
                 continue
-            if fp.raw_document_id == exclude_raw_id or _foreign_unit_row(fp, own_key):
-                continue  # 이번 원문 / 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행(후보 아님)
+            if fp.raw_document_id == exclude_raw_id:
+                if _is_judged_row(fp) and (fp.entity, fp.entity_id, fp.field, fp.excerpt_start) in asks_judge:
+                    rows.append(fp)  # D22-1: 같은 원문의 판정기 추출 행 보존
+                continue  # 이번 원문(파서 행은 이번 파싱 후보가 대신한다)
+            if _foreign_unit_row(fp, own_key):
+                continue  # 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행(후보 아님)
             rows.append(fp)
     legacy_raw = {fp.raw_document_id for fp in rows if _is_legacy(fp) and fp.raw_document_id is not None}
     kinds: dict[int, str | None] = {}
