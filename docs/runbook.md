@@ -189,6 +189,7 @@ RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로
 했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다. R4-FIX 뒤 재시험(같은 날, D19 로컬 PG17)의 결과 표는
 **10-8**(상세 `docs/design/wp/R4_RESULT2.md`), 재시험 절차는 10-7. R4-CORE8 뒤 3차 재시험 절차는 10-9, 결과 표는 **10-10**
 (상세 `docs/design/wp/R4_RESULT3.md`). R4-CORE9 뒤 4차 재시험 절차는 10-11, 결과 표는 **10-12**(상세 `docs/design/wp/R4_RESULT4.md`).
+R4-CORE10 뒤 5차 재시험 절차는 10-13, 결과 표는 **10-14**(상세 `docs/design/wp/R4_RESULT5.md`).
 
 ### 10-1 준비
 
@@ -587,6 +588,42 @@ daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 �
    scripts/replay_manifest.py --raw-root <r4 RAW_DIR> --out <폴더>`(읽기 전용) → `R4_REPLAY_MANIFEST=<폴더>/docs.json uv run pytest -p no:randomly
    "tests/scheduler/test_core10_idempotency.py::test_renormalize_is_idempotent[r4d-full]"` → 통과(DB 스냅샷 동일·사실 이벤트 0·`tools/call` 0, 약 3분).
 6. 4차 확인 항목 1~8(§10-11)은 그대로 다시 본다(회귀 방지) — 특히 (a)(a2)(a3) `tools/call` 0, 판정기 추출 납부 조건 '확인됨' 유지, 46·47 법정동.
+
+(5차 주: ① 의 SQL 은 `o.type_code <> n.type_code` 만으로 짝을 지어 같은 회차에 공급·접수 수가 우연히 같은 **다른 주택형**(2순위 접수 0 등)도 센다 — 5차의
+깨끗한 데이터에서 87행. 판정에는 `AND n.id > <bootstrap 끝 competition id>` 를 붙이거나 (b) 전후 `competition` 행을 통째로 비교한다(새 행·바뀐 칸). 10-14 m-e.)
+
+### 10-14 R4 5차 재시험 결과 (2026-10-13 KST, main `7bb3e15`, 계약 `.18`) — 상세 `docs/design/wp/R4_RESULT5.md`
+
+**결과: R4 게이트 통과(critical 0) · 운영 승인 권고(단서: 새 major N16).** 4차 critical N13·게이트 위반 N14 는 실데이터에서 해결 — 같은 날 daily 가 경쟁률 행을
+새로 만들지 않았고(1,906 → 1,906) compare 채택 표식이 그대로였으며(59 → 59), 정규화 테이블이 (a3) → (b) → (b) 뒤 재판정 동안 바뀐 칸 0. (a)(a2)(a3)·(b) 뒤 재판정
+`tools/call` 모두 0. 남은 것: **N16**(major) — bootstrap 의 체크리스트 동기화가 일일 단계에서만 돌아 주간 단계(트랙 A 후보)·판정(포함 classify) 결과를 반영하지 않고,
+첫 같은 날 daily 가 체크리스트 8행을 이벤트 없이 바꿔 발행 리비전 5 보고서 체크리스트가 달라짐(Fact·수치·판정은 그대로). CEO 가 이를 critical('발행 결과가 조용히
+바뀜')로 보면 미통과.
+
+| 항목 | 값 |
+| --- | --- |
+| 환경 | Windows 11, Docker 없음, D19 로컬 PostgreSQL 17.9(5434) DB `subscription_analyzer_r4`(public 테이블 38개만 지우고 새로 시작), `ENV=prod`, API 127.0.0.1:18833, 실행 05:18~06:33 KST(적재 시간대 회피) |
+| 시작 전 데이터셋 | 청약홈 API 3종 `perPage=1` `totalCount` 2,900 · 1,714 · 676(> 0) |
+| 마이그레이션 | `ENV_FILE=… uv run alembic upgrade head` → `PostgresqlImpl`, **`0016 (head)`**, `dev.db` 없음 |
+| JEV | 실행 직전 최신 `0.14.1` 확인 → `npx -y @jkudish/jev-mcp@0.14.1` 고정, smoke 출력 `"cmd"` 고정 버전, 키 줄 뺀 env 대조 smoke 실패. 워커는 같은 버전 계수 프록시 경유(자식 env 에 `TYPESAFE_API_KEY` 108자, `DATA_GO_KR_KEY`·`DATABASE_URL` 없음) |
+| adapter_version | `0.2.0+jev-mcp@0.14.1+jev-1.13.0` **1개**(565행; provider none 136행 포함) |
+| 1회차 시간 | bootstrap **45분 44초**(일일 단계 35분 52초 · 주간 단계 7분 11초 · 판정 2분 32초 · 발행 9초), reference.refresh 15초 |
+| 1회차 실제 호출 | **565** = 잡 `tools_calls` = 프록시 `tools/call` = `judgment_log` 행(screen 193 · extract 178 · compare 129 · classify 41 · audit 11 · noul 6 · decide 4 · verify 2 · rerank 1), 모델 호출 429 · 로컬 단락 136, 수집 단계 판정 65 포함, blocked·error 0 |
+| 132 / 4차 대비 | +433 / +1(audit — 4차 (b) 에서야 나타난 임의공급 공고문 2026940221 이 이번엔 1회차에 있음, 추정) |
+| 단지·범위 | 단지 행 72(잔여 공고 번호 행 4 · 트랙 A 2), 판정 대상 2(사우역 지엔하임 가능 · 풍무역 푸르지오 더 마크 미정), **TOP 5 = 사우역 지엔하임 4.80**(1개 — m-a) |
+| 수집 | 실거래 52,274건 법정동 100%, 분양권 4,118건, `store_errors` [], official_site 404 1·connect 7·TLS 3, **`empty_dataset` 0 · `degraded_sources` 없음**, 타임아웃·파싱 실패 0 |
+| 출처 | 발행 `missing_provenance` 리비전 1~6 모두 **0**, Fact 빈 라벨 0 · 값 있는데 출처 없음 0(대시보드·목록·상세 72·시장, 리비전 1~6), 시장 생활권 4블록(prov `rd_`) |
+| 2회차 (a)·(a2)·(a3) | **프록시 `tools/call` 0 · `tools_calls` 0 · `judgment_log` 565 → 565**(세 번 모두), cached 457, 약 60초씩 → 통과 |
+| 2회차 (b) 같은 날 collect.daily | 956초, 실제 바뀐 공고 없음 → change_event 0 · 판정기 미기동. 경쟁률 1,906 → 1,906(중복 0), compare 채택 59 → 59, 정규화 테이블 바뀐 칸 0, Fact 차이는 신선도 KPI 뿐. **체크리스트 6행 생김 · 2행 na(N16)** |
+| (b) 뒤 재판정 | `tools/call` **0** → 통과 |
+| 재생(선택) | 5차 원문 매니페스트(청약홈 563 · 원 공고 77 · 공고문 138 · 공식 홈페이지 90) → `test_renormalize_is_idempotent[r4d-full]` **통과**(144.6초) |
+| 보고서 | `--snapshot 6 --format pdf` 149쪽, 차트 포함, 중복 경쟁률 0('타입 모호' 39 = 상세 39행) |
+| 보안 | 키·토큰·DB 비밀번호·접속 주소 검사 파일 3,930개·DB 컬럼 243개 0건, `serviceKey=` 0, guard 차단 0, 로그 `judge.payload` 는 hash·길이만 |
+
+5차에서 실제로 다르게 한 것: ① 05:18 에 시작(적재 시간대 밖)하고 (b) 직전에 데이터셋 건수를 한 번 더 확인했다(같음 → (b) 는 "변화 없는 같은 날 재수집"). ② 발행 불변을
+API Fact 비교에 더해 **정규화 테이블 전체 행 비교**(`complex`·`complex_type`·`payment_terms`·`competition`·`remaining_event`·`field_provenance`·`checklist_item`·`catalyst`·
+`fact_demotion`, SELECT 만)와 **report 저장본 최상위 키 비교**(압축 본문을 풀어서)로 했다 — N16 은 이 비교로만 보인다(Fact 아님). ③ 중복 경쟁률은 ① 의 SQL 대신 (b) 전후 행
+diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차 주).
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
