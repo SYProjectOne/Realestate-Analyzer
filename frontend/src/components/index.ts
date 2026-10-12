@@ -13,8 +13,10 @@ export { ExternalLink, type ExternalLinkProps } from './ExternalLink';
 export { FactCell, type FactCellProps } from './FactCell';
 export { IntakeBadge, type IntakeBadgeProps } from './IntakeBadge';
 export {
+  degradedFailureText,
   JobProgress,
   JobProgressView,
+  JobRequeueNote,
   PublishJobProgress,
   type JobProgressProps,
   type JobProgressViewProps,

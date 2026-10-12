@@ -214,9 +214,16 @@ function QueryError({ error, refetch }: { error: Error; refetch?: (() => unknown
   return <EmptyState message={queryErrorText(error)} />;
 }
 
-/** 스냅샷이 없을 때(지역 분석 전) 안내 */
+/** 스냅샷이 없을 때(지역 분석 전) 안내. 지역이 첫 적재 중(`bootstrapping`, 계약 .18 F3)이면 '적재 중' */
 export function NoSnapshot() {
-  return <EmptyState message={t('app.noSnapshot')} />;
+  const { region } = useActiveRegion();
+  return (
+    <EmptyState
+      message={
+        region?.status === 'bootstrapping' ? t('app.noSnapshotBootstrapping') : t('app.noSnapshot')
+      }
+    />
+  );
 }
 
 /** 값 디바운스(G0 자동완성) */

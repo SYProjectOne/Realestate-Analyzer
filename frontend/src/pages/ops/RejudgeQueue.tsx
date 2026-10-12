@@ -1,12 +1,17 @@
 import { useJobs } from '@/api/hooks';
-import { Badge, MetaText } from '@/components';
+import { Badge, degradedFailureText, JobRequeueNote, MetaText } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { enumText, idText, QueryState, Section, tdClass, thClass } from '../_shared';
 
 const COLS = ['name', 'status', 'scheduled', 'started', 'finished', 'progress', 'error'] as const;
 
-/** G7 RejudgeQueue — GET /jobs (재조사·재판정·수집·보고서 잡) */
+/**
+ * G7 RejudgeQueue — GET /jobs (재조사·재판정·수집·보고서 잡).
+ * 계약 .18 F3(D23-4): 빈 데이터셋으로 지연 재큐잉된 `region.bootstrap`·`collect.daily`(queued + requeue_reason
+ * `degraded_source: …`)는 상태 칸 아래에 '발행하지 않고 다시 수집(n/6회, 다음 시도 시각)' — 실패가 아니다. 상한을 넘겨
+ * failed 면 오류 칸에 코드 접두 없는 멈춘 이유. 발행 busy·발행 예외 재시도 재큐잉도 같은 안내 줄(JobRequeueNote).
+ */
 export function RejudgeQueue({ asof }: { asof: string | null }) {
   const query = useJobs({ size: 50 });
   return (
@@ -46,6 +51,7 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
                       >
                         {enumText('job.status', job.status)}
                       </Badge>
+                      <JobRequeueNote job={job} className="mt-1 max-w-xs text-xs text-muted" />
                     </td>
                     <td className={tdClass}>{formatDate(job.scheduled_at, asof)}</td>
                     <td className={tdClass}>
@@ -67,7 +73,7 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
                       ) : null}
                     </td>
                     <td className={`${tdClass} max-w-xs break-all text-xs text-danger`}>
-                      {job.error_text ?? ''}
+                      {degradedFailureText(job) ?? job.error_text ?? ''}
                     </td>
                   </tr>
                 ))}

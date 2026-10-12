@@ -4,7 +4,7 @@ import type { JobCreateName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
 import { Badge, EmptyState, ExternalLink, MetaValue } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatUnknown } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
 
 const COLS = [
@@ -78,8 +78,14 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                         {row.failing_targets.map((target) => (
                           <li key={`${target.url}-${target.fetched_at}`} className="break-all">
                             {target.complex_name ? `${target.complex_name} · ` : ''}
-                            {formatUnknownTarget(target.http_status, target.reason)} ·{' '}
-                            <ExternalLink href={target.url} />
+                            <span title={target.reason} data-reason={target.reason}>
+                              {formatUnknownTarget(
+                                target.http_status,
+                                target.reason,
+                                target.fetched_at,
+                              )}
+                            </span>{' '}
+                            · <ExternalLink href={target.url} />
                           </li>
                         ))}
                       </ul>
@@ -120,8 +126,11 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                     <MetaValue kind="status" value={row.last_http_status} as="plain" />
                   )}
                 </td>
-                <td className={`${tdClass} max-w-xs break-all text-xs`}>
-                  {row.last_error_text ?? ''}
+                <td
+                  className={`${tdClass} max-w-xs break-all text-xs`}
+                  title={row.last_error_text ?? undefined}
+                >
+                  {row.last_error_text === null ? '' : reasonText(row.last_error_text)}
                 </td>
                 <td className={tdClass}>
                   {row.retry ? (
@@ -146,8 +155,26 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
   );
 }
 
-/** "확인 불가(403)" 형식 — 실패도 데이터(AGENTS 규칙 7) */
-function formatUnknownTarget(status: number | null, reason: string): string {
-  const code = status === null ? reason : `${String(status)} ${reason}`;
-  return t('empty.unknownWithReason', { reason: code.trim() });
+/** 청약홈 공식 API 빈 데이터셋 실패(계약 .18 F2·D23-4 — `empty_dataset: totalCount 0`, http_status 200) */
+const EMPTY_DATASET = 'empty_dataset';
+
+/** 서버 사유 코드 → 화면 문구. 아는 코드(빈 데이터셋)만 바꾸고, 나머지는 서버 문자열 그대로(원 코드는 title 로 남긴다) */
+function reasonText(reason: string): string {
+  return reason.startsWith(EMPTY_DATASET) ? t('page.G7.src.reason.emptyDataset') : reason;
+}
+
+/**
+ * "확인 불가(403, 날짜)" 형식(계약 source_status — 실패도 데이터, AGENTS 규칙 7).
+ * 상태 코드가 2xx(또는 없음)인 실패는 상태 코드가 아니라 **사유**를 보인다 — 계약 .18 F2: 빈 데이터셋은 200 이지만 실패라
+ * '확인 불가(200, 날짜)'가 아니라 '확인 불가(빈 데이터셋 — 청약홈 적재 중, 날짜)'. 4xx·5xx 는 코드(사유가 코드와 같으면 한 번).
+ */
+function formatUnknownTarget(status: number | null, reason: string, fetchedAt: string): string {
+  const text = reasonText(reason).trim();
+  const ok = status === null || (status >= 200 && status < 300);
+  const code = ok
+    ? text || (status === null ? '' : String(status))
+    : !text || text === String(status)
+      ? String(status)
+      : `${String(status)} ${text}`;
+  return formatUnknown(code || null, fetchedAt);
 }

@@ -97,7 +97,13 @@ describe('F1(D23-2) 경쟁률 type_code = 표시 주택형(화면 변경 없음 
     const rows = [
       { ...base, id: 91, round: '1순위', kind: '본청약' as const, type_code: '84A' },
       { ...base, id: 92, round: '1순위', kind: '본청약' as const, type_code: '84.9582' },
-      { ...base, id: 93, round: '1순위', kind: '본청약' as const, type_code: '확인 불가(타입 모호)' },
+      {
+        ...base,
+        id: 93,
+        round: '1순위',
+        kind: '본청약' as const,
+        type_code: '확인 불가(타입 모호)',
+      },
     ];
     server.use(
       http.get(mswPath('/complexes/:id'), () =>
@@ -262,7 +268,7 @@ describe('F3(D23-4) bootstrap·daily 빈 데이터셋 재큐잉 = 진행 중(발
         detail: EMPTY_REASON,
         n: '2',
         max: '6',
-        at: '2026-10-13 01:30',
+        at: t('job.requeuedAt', { at: '2026-10-13 01:30' }),
       }),
     );
     expect(note).toHaveTextContent(t('job.requeuedDegradedBootstrap'));
@@ -318,7 +324,7 @@ describe('F3(D23-4) bootstrap·daily 빈 데이터셋 재큐잉 = 진행 중(발
         detail: EMPTY_REASON,
         n: '2',
         max: '6',
-        at: '2026-10-13 01:30',
+        at: t('job.requeuedAt', { at: '2026-10-13 01:30' }),
       }),
     );
     expect(within(byId(702)).getByTestId('job-requeued')).toHaveTextContent(

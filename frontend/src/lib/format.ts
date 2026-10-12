@@ -163,15 +163,45 @@ const ISO_RE =
  * 형식이 아니면 null.
  */
 export function kstDay(iso: string): IsoDate | null {
+  const parts = kstParts(iso);
+  return parts ? `${parts.yyyy}-${parts.mm}-${parts.dd}` : null;
+}
+
+/**
+ * ISO 일시 → **KST** `YYYY-MM-DD hh:mm`(계약 .18 F3 — 지연 재큐잉 다음 시도 시각 `not_before`). 규칙은 `kstDay` 와 같다
+ * (시간대 붙은 시각은 KST 로 옮기고, 시간대 없는 시각은 적힌 그대로). 시각이 없으면 날짜만, 형식이 아니면 받은 문자열 그대로.
+ */
+export function kstDateTime(iso: string): string {
+  const parts = kstParts(iso);
+  if (!parts) return iso;
+  const day = `${parts.yyyy}-${parts.mm}-${parts.dd}`;
+  return parts.hh === null ? day : `${day} ${parts.hh}:${parts.mi ?? '00'}`;
+}
+
+interface KstParts {
+  yyyy: string;
+  mm: string;
+  dd: string;
+  hh: string | null;
+  mi: string | null;
+}
+
+function kstParts(iso: string): KstParts | null {
   const m = ISO_RE.exec(iso);
   if (!m) return null;
   const [, y, mo, d, h, mi, s, zone] = m;
-  const day = `${y}-${mo}-${d}`;
-  if (h === undefined || zone === undefined) return day;
+  const asWritten: KstParts = {
+    yyyy: y ?? '',
+    mm: mo ?? '',
+    dd: d ?? '',
+    hh: h ?? null,
+    mi: mi ?? null,
+  };
+  if (h === undefined || zone === undefined) return asWritten;
   let offsetMin = 0;
   if (zone !== 'Z' && zone !== 'z') {
     const z = /^([+-])(\d{2}):?(\d{2})$/.exec(zone);
-    if (!z) return day;
+    if (!z) return asWritten;
     offsetMin = (z[1] === '-' ? -1 : 1) * (Number(z[2]) * 60 + Number(z[3]));
   }
   // Date.UTC 는 0~99 년을 1900 년대로 바꾼다 — setUTCFullYear 로
@@ -179,11 +209,14 @@ export function kstDay(iso: string): IsoDate | null {
   at.setUTCFullYear(Number(y), Number(mo) - 1, Number(d));
   at.setUTCHours(Number(h), Number(mi), Number(s ?? 0), 0);
   const kst = new Date(at.getTime() - offsetMin * 60_000 + KST_OFFSET_MS);
-  if (Number.isNaN(kst.getTime())) return day;
-  const yyyy = String(kst.getUTCFullYear()).padStart(4, '0');
-  const mm = String(kst.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(kst.getUTCDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  if (Number.isNaN(kst.getTime())) return asWritten;
+  return {
+    yyyy: String(kst.getUTCFullYear()).padStart(4, '0'),
+    mm: String(kst.getUTCMonth() + 1).padStart(2, '0'),
+    dd: String(kst.getUTCDate()).padStart(2, '0'),
+    hh: String(kst.getUTCHours()).padStart(2, '0'),
+    mi: String(kst.getUTCMinutes()).padStart(2, '0'),
+  };
 }
 
 /** ISO 날짜/일시의 KST 날짜 → UTC 기준 일수 (브라우저 시간대 영향 없음) */
