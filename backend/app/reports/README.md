@@ -76,7 +76,7 @@ stats = run_report_job(job.payload, session=session)
   문자열 날짜의 출처 = 그 필드의 출처 행(complex.apply_dates 등).
 - C1·C7 막대 라벨 = 표와 같은 문자열('0.35 추정[ · verdict/동률]', 소수 2자리 ROUND_HALF_UP), 미해결은 '미해결'.
   C6 미판정 성분 = 길이 0 + '미판정' 라벨.
-- §8 숫자(종합 점수)는 `score_total.total` 원값의 소수 2자리 ROUND_HALF_UP, `data-prov="st_<id>"`.
+- §8 숫자(종합 점수)는 `score_total.total` 원값의 소수 2자리 ROUND_HALF_UP, `data-prov="st_<실행>_<단지>"`(성분은 `sc_<실행>_<단지>_<성분>` — API 출처 서랍 id 와 같다, 계약 .13 m6. .13 이전 저장본의 `st_<행>`·`sc_<행>` 은 0014 가 바꾼다 — 계약 .14 m5).
 - §12 지역 추가·변경 장은 `--compare` 가 있을 때만(후보 변화·rerank 재실행·순위 변화 + diff 표).
 - ECharts 번들: 인자 → Settings `report_echarts_js`(환경변수 `REPORT_ECHARTS_JS`, worker 이미지는 `/opt/echarts/echarts.min.js`) → `frontend/node_modules/echarts/dist/echarts.min.js`.
   없으면 차트 자리에 문구 + 같은 데이터 표(`charts_inlined=False`, CLI 경고).

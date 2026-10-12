@@ -90,8 +90,8 @@ def test_csv_and_raw_with_valid_ids(client: TestClient) -> None:
 def test_writes_with_valid_ids(client: TestClient) -> None:
     item = _first(ChecklistItem)
     r = client.patch(f"/api/ops/checklist/{item}", json={"status": "done"}, headers=WRITE)
-    assert r.status_code == 200, r.text
-    validate("updateChecklistItem", 200, r.json())
+    assert r.status_code == 202, r.text  # 계약 .14(D17-5): 바뀌면 발행 잡
+    validate("updateChecklistItem", 202, r.json())
     with get_session() as s:
         c = Claim(snapshot_id=SNAP, section="x", complex_id=2, text="틀린 문장", verify_status="contradicted")
         s.add(c)

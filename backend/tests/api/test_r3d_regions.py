@@ -25,13 +25,19 @@ def test_name_only_patch_has_no_expand_job_or_change_event(client: TestClient) -
     r = client.patch(
         "/api/regions/1", json={"selections": _selections(client), "name": "새 이름"}, headers=WRITE
     )
-    assert r.status_code == 200, r.text
+    # 계약 .14(D17-5): 이름은 발행 리비전 보고서 본문에 들어간다 → snapshot.publish 잡(202 + job_id)
+    assert r.status_code == 202, r.text
     body = r.json()
-    validate("updateRegion", 200, body)
+    validate("updateRegion", 202, body)
     assert body["region"]["name"] == "새 이름"
-    assert body["change_event"] is None and body["job_id"] is None and body["added"] == body["removed"] == []
+    assert (
+        body["change_event"] is None
+        and isinstance(body["job_id"], int)
+        and body["added"] == body["removed"] == []
+    )
     with get_session() as s:
-        assert int(s.scalar(select(func.count()).select_from(JobRun)) or 0) == jobs, "region.expand 없음"
+        new_jobs = list(s.scalars(select(JobRun).order_by(JobRun.id).offset(jobs)))
+        assert [j.job_name for j in new_jobs] == ["snapshot.publish"], "region.expand 없음 — 발행 잡 하나"
         assert int(s.scalar(select(func.count()).select_from(ChangeEvent)) or 0) == events
 
 

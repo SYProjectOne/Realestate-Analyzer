@@ -33,6 +33,10 @@
     "job_id": {
       "description": "계약 .11(D14-5): 화면이 감시할 잡 id = rejudge_job_id(발행을 부르는 쓰기 응답의 공통 이름 — 그 잡이 새 리비전을 판정·발행할 때까지 이전 발행 리비전이 기본 화면). 사람 확인은 자원을 만드는 POST 라 201 그대로",
       "type": ["integer", "null"]
+    },
+    "basis_type_code": {
+      "description": "계약 .14(D17-4): field=discount 면 그 사람 확인이 들어간 기준 타입 코드('84A' — payment_terms.discount_by_type.<기준 타입>, 화면 안내 '기준 타입 84A 할인으로 반영'). 할인이 아니면 null. 기준 타입이 나중에 바뀌면(84㎡에 더 가까운 타입) 이 할인은 그 타입 칸 표시만 남고 구매가에서 빠지지 않는다",
+      "type": ["string", "null"]
     }
   },
   "$defs": {

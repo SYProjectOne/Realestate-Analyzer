@@ -135,8 +135,6 @@ _MODELS: Final[dict[str, Any]] = {
 _SECTION_RE: Final = re.compile(r"^complex:(\d+)$")
 _FP_RE: Final = re.compile(r"\bfp_(\d+)\b")
 _YM_RE: Final = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
-_PLAIN_NUMBER_RE: Final = re.compile(r"^-?\d+(?:\.\d+)?$")
-"""사람 확인 숫자 = 십진 표기만(지수 '1E1'·'NaN'·'0x10' 거부)."""
 # 사람 확인 값 범위(minor 11) — 형만 맞고 터무니없는 값('6.02개월'·'-3'·'2999-01')은 거부
 _RANGES: Final[dict[str, tuple[Decimal, Decimal]]] = {
     "resale_months": (Decimal(0), Decimal(240)),
@@ -153,7 +151,24 @@ class TargetMismatch(ValueError):
 
 
 class ValueParseError(ValueError):
-    """사람 확인 값을 사실 컬럼 형·범위로 바꿀 수 없다 → 422."""
+    """사람 확인 값을 사실 컬럼 형·범위로 바꿀 수 없다 → 422. ``code`` = 그 칸만 틀렸을 때의 422 code(계약 .14 — 할인은
+    ``discount_format``·``discount_not_below_price``, 그 밖은 ``validation_error``)."""
+
+    def __init__(self, message: str, *, code: str = "validation_error") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+DISCOUNT_FORMAT: Final = "discount_format"
+"""계약 .14(R3i m2): 사람 확인 할인 값 형식·범위 422 code — ASCII 숫자만, 쉼표는 세 자리마다, 끝에 '원'(띄우지 않음) 하나만,
+0 ~ 1천억 정수(음수·'-0'·소수·지수·전각·아랍 숫자·공백 낀 숫자 거절)."""
+DISCOUNT_NOT_BELOW_PRICE: Final = "discount_not_below_price"
+"""계약 .14(R3i m2): 할인이 차감 바탕(기준 타입 min(대표층가, 최고가)) 이상 — 구매가에서 뺄 수 없는 값(예전엔 201 뒤 표시만)."""
+_STRICT_NUMBER_RE: Final = re.compile(
+    r"(?P<neg>-)?(?P<num>(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)(?P<sp> ?)(?P<unit>[^\s0-9]*)"
+)
+"""R3i m2: 사람 확인 숫자 = ASCII 숫자, 쉼표는 세 자리 묶음만('1,0'·',,5,,'·'10,00,000' 거절), 숫자 사이 공백 없음('1 0 0 0' 거절),
+단위 앞 공백은 한 칸까지(할인은 공백 없음). 예전엔 쉼표·공백을 모두 지우고 ``\\d``(유니코드 숫자 — 전각·아랍)로 읽었다."""
 
 
 @dataclass(frozen=True)
@@ -647,8 +662,9 @@ def checked_at_error(value: Any, *, now: datetime | None = None) -> str | None:
 def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
     """사람 확인 값 → 사실 값(형·범위 검사, minor 11). 못 바꾸면 ``ValueParseError``."""
     logical = logical_field(target.field)
-    raw = text.strip().replace(",", "").replace(" ", "")
+    stripped = text.strip()
     if logical.endswith("_ym"):
+        raw = stripped.replace(" ", "")
         m = _YM_RE.match(raw)
         if m is None or not 2000 <= int(m.group(1)) <= 2100:
             raise ValueParseError(f"'{text}' 은 연월(YYYY-MM, 2000~2100)이 아니다")
@@ -659,37 +675,67 @@ def parse_human_value(target: HumanTarget, text: str) -> int | float | str:
     numeric = integer or (col is not None and isinstance(col.type, Numeric))
     if not numeric:
         raise ValueParseError(f"알 수 없는 필드 {target.field}")
+    name = FIELD_NAMES.get(logical, logical)
+    code = DISCOUNT_FORMAT if logical == "discount" else "validation_error"
     # 단위 접미어는 그 필드의 단위만(R3 4차 minor: '3년'이 3개월로, '1E1'이 10으로 들어갔다). 개월 필드의 'N년'은 N×12
     allowed = {"resale_months": ("개월", "년"), "residency_months": ("개월", "년"), "max_price_won": ("원",),
                "discount": ("원",), "down_payment_pct": ("%",)}.get(logical, ())  # fmt: skip
-    factor = 1
-    for suffix in allowed:
-        if raw.endswith(suffix):
-            raw = raw.removesuffix(suffix)
-            factor = 12 if suffix == "년" else 1
-            break
-    if not _PLAIN_NUMBER_RE.match(raw):
+    m = _STRICT_NUMBER_RE.fullmatch(stripped)
+    unit = m.group("unit") if m is not None else ""
+    if (
+        m is None
+        or (unit and unit not in allowed)
+        or (logical == "discount" and m.group("sp"))
+        or (m.group("sp") and not unit)
+    ):
         raise ValueParseError(
-            f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 값(숫자, 단위 {', '.join(allowed) or '없음'})이 아니다"
-        )
-    try:
-        dec = Decimal(raw) * factor
-    except (InvalidOperation, ValueError) as exc:
-        raise ValueParseError(f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 값(숫자)이 아니다") from exc
-    if not dec.is_finite():
-        raise ValueParseError(f"'{text}' 은 유한한 숫자가 아니다")
-    if integer and dec != dec.to_integral_value():
-        raise ValueParseError(
-            f"'{text}' 은 정수가 아니다({FIELD_NAMES.get(logical, logical)}) — 소수를 자르지 않는다"
+            f"'{text}' 은 {name} 값(ASCII 숫자 — 쉼표는 세 자리마다, 단위 {', '.join(allowed) or '없음'})이 아니다",
+            code=code,
         )
     lo, hi = _RANGES.get(logical, (Decimal("-1e18"), Decimal("1e18")))
+    if m.group("neg") and lo >= 0:  # '-0' 포함 — 음수를 받지 않는 필드
+        raise ValueParseError(f"'{text}' 은 {name} 범위({lo}~{hi}) 밖이다", code=code)
+    factor = 12 if unit == "년" else 1
+    try:
+        dec = Decimal(("-" if m.group("neg") else "") + m.group("num").replace(",", "")) * factor
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueParseError(f"'{text}' 은 {name} 값(숫자)이 아니다", code=code) from exc
+    if not dec.is_finite():
+        raise ValueParseError(f"'{text}' 은 유한한 숫자가 아니다", code=code)
+    if integer and dec != dec.to_integral_value():
+        raise ValueParseError(f"'{text}' 은 정수가 아니다({name}) — 소수를 자르지 않는다", code=code)
     if not lo <= dec <= hi:
-        raise ValueParseError(f"'{text}' 은 {FIELD_NAMES.get(logical, logical)} 범위({lo}~{hi}) 밖이다")
+        raise ValueParseError(f"'{text}' 은 {name} 범위({lo}~{hi}) 밖이다", code=code)
     if integer:
         return int(dec)
     if dec.as_tuple().exponent < -2:  # type: ignore[operator]
-        raise ValueParseError(f"'{text}' 은 소수 둘째 자리까지만 받는다")
+        raise ValueParseError(f"'{text}' 은 소수 둘째 자리까지만 받는다", code=code)
     return float(dec)
+
+
+def discount_ceiling(session: Session, complex_id: int) -> int | None:
+    """R3i m2: 할인을 뺄 수 있는 상한(배타) = 기준 타입 차감 바탕 min(대표층가, 최고가) — ``price_view.current_price`` 가 빼는
+    조건(0 < 할인 < 바탕)과 같은 값. 가격을 모르면 None(검사하지 않음 — 차감도 없다)."""
+    from app.analysis.price_view import current_price
+
+    types = list(session.scalars(select(ComplexType).where(ComplexType.complex_id == complex_id)))
+    terms = list(session.scalars(select(PaymentTerms).where(PaymentTerms.complex_id == complex_id)))
+    view = current_price(types, terms, discount_label=None)
+    top = view.max_ref.value if view.max_ref is not None else None
+    if top is None:
+        return None
+    floor = view.floor_ref.value if view.floor_ref is not None else None
+    return min(int(top), int(floor)) if floor is not None else int(top)
+
+
+def discount_problem(session: Session, complex_id: int, value: Any) -> str | None:
+    """R3i m2: 사람 확인 할인이 차감 바탕 이상이면 422 문구(``DISCOUNT_NOT_BELOW_PRICE``), 아니면 None. 0(할인 없음 확인)은 통과."""
+    if not isinstance(value, int) or value <= 0:
+        return None
+    ceiling = discount_ceiling(session, complex_id)
+    if ceiling is not None and value >= ceiling:
+        return f"할인 {value:,}원 은 기준 타입 차감 바탕(대표층가·최고가 중 낮은 값 {ceiling:,}원) 이상이다 — 구매가에서 뺄 수 없다"
+    return None
 
 
 def apply_human_check(
@@ -771,19 +817,21 @@ def _spread_to_group(session: Session, target: HumanTarget, *, snapshot_id: int 
     사람 확인 값이 0순위 후보로 들어간다(``normalize.store.semantic_humans``). 어느 행을 읽어도 같은 값이다.
     반환 = chosen 출처 행(id·값)이 바뀐 행 수(m14 이전 단계의 멱등 판단)."""
     from app.facts_view import semantic_group
-    from app.normalize.store import resolve_field_group
+    from app.normalize.store import fills_empty, resolve_field_group
 
     _cid, group = semantic_group(session, target.entity, target.entity_id, target.field)
     changed = 0
     for e, i, f in group[1:]:
         cur = _chosen(session, e, i, f)
-        if cur is None or cur.value_norm is None:
-            continue  # 그 필드를 싣지 않은 행(다른 타입만 있는 공고 등)에는 값을 만들지 않는다
-        before = (cur.id, cur.value_norm)
+        if (cur is None or cur.value_norm is None) and not fills_empty(e, f):
+            continue  # 그 필드를 싣지 않은 행(다른 타입만 있는 공고 등)에는 값을 만들지 않는다(가격 등)
+        # D17-4(R3i major 4·m4): 할인·계약금은 값 없는 공고 행에도 사람 확인 값을 그대로 적용한다(값 없음 ≠ 다른 값) — 옛 공고
+        # 행을 지정한 사람 확인도 현재 공고(값 없음)에 들어간다
+        before = (cur.id, cur.value_norm) if cur is not None else None
         resolve_field_group(session, e, i, f, [], snapshot_id=snapshot_id)
         session.flush()
         after = _chosen(session, e, i, f)
-        if after is None or (after.id, after.value_norm) != before:
+        if ((after.id, after.value_norm) if after is not None else None) != before:
             changed += 1
     return changed
 
@@ -817,6 +865,67 @@ def migrate_row_human_checks(session: Session, *, snapshot_id: int | None = None
     if snapshot_id is None:
         _attach_orphan_events(session, before)
     return changed
+
+
+RELABEL_0013_MARK: Final = "(0013 확인됨→추정)"
+"""R3i m1: 마이그레이션 0013 이 공고문 할인 라벨을 '확인됨' → '추정'으로 내린 출처 행 사유 끝 표지(0013 의 ``RELABEL_MARK`` 와 같은
+문자열 — 마이그레이션은 앱 코드를 import 하지 않는다)."""
+RELABEL_0013_NEW: Final = "(추정 — 0013 전환, 구매가 차감 해제)"
+
+
+def announce_relabelled_discounts(session: Session) -> int:
+    """R3i m1(D16-1 후속): 0013 이 라벨을 내린 채택 할인(구매가에서 빠지던 값이 더는 빠지지 않는다)마다 critical·재판정
+    change_event 를 한 번 남기고 그 단지 재판정을 등록한다(``_attach_orphan_events`` — 쓰기 가능 리비전, D13-5). 예전엔 0013 이
+    값만 바꾸고 이벤트·재판정이 없어 이월이 옛 점수를 그대로 복사할 수 있었다. 멱등(같은 내용 이벤트가 있으면 건너뜀). 커밋은
+    호출자(backfill)가 한다. 반환 = 새 이벤트 수."""
+    from sqlalchemy import func
+
+    before = int(session.scalar(select(func.max(ChangeEvent.id))) or 0)
+    n = 0
+    for fp in session.scalars(
+        select(FieldProvenance)
+        .where(
+            FieldProvenance.field.like("discount_by_type.%"),
+            FieldProvenance.raw_document_id.is_not(None),
+            FieldProvenance.chosen.is_(True),
+            FieldProvenance.reason.like(f"%{RELABEL_0013_MARK}%"),
+        )
+        .order_by(FieldProvenance.id)
+    ):
+        if fp.entity != "payment_terms" or fp.entity_id is None:
+            continue
+        new_text = f"{fp.value_text} {RELABEL_0013_NEW}"[:200]
+        if session.scalars(
+            select(ChangeEvent.id).where(
+                ChangeEvent.entity == "payment_terms",
+                ChangeEvent.entity_id == fp.entity_id,
+                ChangeEvent.field == fp.field[:64],
+                ChangeEvent.new_text == new_text,
+            )
+        ).first():
+            continue
+        pt = session.get(PaymentTerms, fp.entity_id)
+        if pt is None:
+            continue
+        session.add(
+            ChangeEvent(
+                snapshot_id=None,
+                entity="payment_terms",
+                entity_id=fp.entity_id,
+                field=fp.field[:64],
+                old_text=f"{fp.value_text} (확인됨)"[:200],
+                new_text=new_text,
+                detected_at=now_iso(),
+                severity="critical",
+                triggers_rejudge=True,
+                complex_id=pt.complex_id,
+            )
+        )
+        n += 1
+    session.flush()
+    if n:
+        _attach_orphan_events(session, before)
+    return n
 
 
 def _attach_orphan_events(session: Session, after_id: int) -> None:
