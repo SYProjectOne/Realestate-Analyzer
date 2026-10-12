@@ -763,10 +763,11 @@ def notice_fact(fm: FactMaker, cx: Any) -> dict[str, Any]:
 
 def name_provenance(fm: FactMaker, cx: Any) -> dict[str, Any]:
     """단지 이름의 출처·라벨(계약 2026-10-09.16 ``name_prov``·``name_label``, D21-8): chosen 출처 행(청약홈 '확인됨', 공고 예정
-    후보는 언론 '비공식'). 출처 행이 없으면(시드·옛 행) 둘 다 null — 이름은 Fact 가 아니라 출처 누락 오류를 내지 않는다."""
+    후보는 언론 '비공식'). 출처 행이 없으면(시드·옛 행) **두 키를 내지 않는다**(선택 필드 — 없음 = null, .15 이전 발행 저장본과
+    같은 모양. 목록 1,000행 저장본·응답 크기를 늘리지 않는다). 이름은 Fact 가 아니라 출처 누락 오류를 내지 않는다."""
     fp = fm.prov.get("complex", cx.id, "name")
     if fp is None:
-        return {"name_prov": None, "name_label": None}
+        return {}
     return {"name_prov": f"fp_{fp.id}", "name_label": fp.label}
 
 

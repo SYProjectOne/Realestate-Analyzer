@@ -7,8 +7,8 @@
 R4 재시험(`docs/design/wp/R4_RESULT2.md` §10) 후속 — CEO 결정 **D21**(`docs/design/DECISIONS.md`). 계약 소유자 = **R4-CORE8**(브랜치
 `wp/r4-core8`). 마이그레이션 없음(DB 모양 그대로 — head 0015). 필드 삭제 없음, **새 응답 필드 2**(`ComplexRow`·`Complex`(단지 상세
 머리)의 `name_prov`·`name_label`, 선택), 새 사유 문자열 4, 출처 id 종류 추가 1(시장 실거래 Fact 의 `rd_`). 저장 모양 버전
-(`SHAPE_VERSION`) 그대로 1 — 두 키는 선택 필드라 .15 이전에 발행한 리비전 저장본에는 **키가 없다**(D14-4 변환 마이그레이션 불필요,
-FE 는 없으면 null 로 본다). 테스트 표(결함 · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R4_CORE8_TESTS.md`.
+(`SHAPE_VERSION`) 그대로 1 — 두 키는 선택 필드로 이름 출처 행이 있을 때만 나온다. .15 이전에 발행한 리비전 저장본·출처 행 없는
+단지에는 **키가 없다**(D14-4 변환 마이그레이션 불필요, FE 는 없으면 null 로 본다). 테스트 표(결함 · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R4_CORE8_TESTS.md`.
 
 **프론트가 맞출 것** — 아래 'FE 차이' 표. `frontend/src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 는 이 브랜치에서 다시 만들지 않았다
 (frontend/** = FE 소유) — 머지 뒤 `npm ci` → `npm run gen:api`·`gen:msw`.
@@ -17,7 +17,7 @@ FE 는 없으면 null 로 본다). 테스트 표(결함 · 테스트 · 수정 �
 
 | # | 대상 | .15 | .16 | 결정 |
 | --- | --- | --- | --- | --- |
-| F1 | **`ComplexRow.name_prov`·`name_label`**, **`Complex.name_prov`·`name_label`**(단지 상세 `header`) | 없음 — 단지 이름은 맨 문자열(출처·라벨 없음) | **새 선택 필드**: `name_prov` = 이름의 chosen 출처 id(`fp_<id>` — `GET /provenance/{id}` 서랍), `name_label` = 그 라벨. 청약홈 공고 단지 '확인됨', 트랙 (A) 공고 예정 후보 = 언론 **'비공식'**. 출처 행이 없는 옛 행·시드는 둘 다 null, .15 이전 발행 저장본에는 키 없음. 화면: 이름 옆 라벨 배지(공고 예정 후보 '비공식')·이름 클릭 → 출처 서랍 | D21-8 |
+| F1 | **`ComplexRow.name_prov`·`name_label`**, **`Complex.name_prov`·`name_label`**(단지 상세 `header`) | 없음 — 단지 이름은 맨 문자열(출처·라벨 없음) | **새 선택 필드**: `name_prov` = 이름의 chosen 출처 id(`fp_<id>` — `GET /provenance/{id}` 서랍), `name_label` = 그 라벨. 청약홈 공고 단지 '확인됨', 트랙 (A) 공고 예정 후보 = 언론 **'비공식'**. 출처 행이 없는 옛 행·시드(devseed 포함)·.15 이전 발행 저장본은 **두 키가 없다**(= null — 목록 1,000행 저장본 크기를 늘리지 않으려고 null 을 쓰지 않는다). 화면: 이름 옆 라벨 배지(공고 예정 후보 '비공식')·이름 클릭 → 출처 서랍 | D21-8 |
 | F2 | 트랙 (A) 공고 예정 후보(`track` 'A' · `applyhome_id` null · 공고일 없음)의 **공고일·가격 Fact** | 공고일 '확인 불가(값 없음)', 가격 low·high·mid '확인 불가(분양가 미공개)' | 모두 **'확인 불가(공고 전)'**(reason `공고 전`) — 목록 행·상세 머리·상세 가격·비교 입력 | D21-8 |
 | F3 | G3 시장 **`living_area_prices`** | 실거래 거래에 출처 행이 없어 블록 통째로 빠짐(빈 목록) | 생활권 84㎡ 6개월 시세 행이 있다. `median_won`·`low_won`·`high_won`·`n_trades` 의 `prov` = **`rd_<raw_document_id>`**(그 거래를 실은 실거래 API 원문 — 서랍은 원문 URL·확인일, D15-2 의 rd_ 서랍과 같은 모양), 라벨 '확인됨' | D21-4 |
 | F4 | 접수 상태 `Intake.reason` | — | 새 사유 **'공식 홈페이지가 다른 단지'**(status '확인 불가') — 청약홈 등록 홈페이지가 지금 다른 단지 페이지라 판정기(동일성 classify)가 그 단지 페이지로 보지 않았다(review 포함). 표시 '확인 불가(공식 홈페이지가 다른 단지)' | D21-5 |

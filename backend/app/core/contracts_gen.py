@@ -683,11 +683,11 @@ class Complex(BaseModel):
     name: Annotated[str, Field(max_length=200, min_length=1)]
     name_prov: str | None = None
     """
-    단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 null. 발행 리비전 저장본(.15 이전)에는 키가 없을 수 있다
+    단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 키가 없다(= null — .15 이전 발행 리비전 저장본도 키 없음)
     """
     name_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
     """
-    단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 null 이면 null
+    단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 없으면 없다
     """
     former_names: list[str]
     address: str | None
@@ -826,11 +826,11 @@ class ComplexRow(BaseModel):
     name: str
     name_prov: str | None = None
     """
-    단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 null. 발행 리비전 저장본(.15 이전)에는 키가 없을 수 있다
+    단지 이름의 출처 id(chosen field_provenance → fp_<id>, 계약 2026-10-09.16·D21-8). 청약홈 공고 단지 = 청약홈 원문(라벨 확인됨), 트랙 (A) 공고 예정 후보 = 언론 기사(라벨 비공식). 출처 행이 없는 옛 행·시드는 키가 없다(= null — .15 이전 발행 리비전 저장본도 키 없음)
     """
     name_label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
     """
-    단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 null 이면 null
+    단지 이름 출처의 라벨(name_prov 행의 label). name_prov 가 없으면 없다
     """
     living_area: str | None
     living_area_name: str | None

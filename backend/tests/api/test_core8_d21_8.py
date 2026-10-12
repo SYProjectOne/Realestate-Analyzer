@@ -56,14 +56,17 @@ def test_pre_notice_candidate_price_and_notice_date_reason(client: TestClient) -
 
 
 def test_name_provenance_fields(client: TestClient) -> None:
-    """목록 행·상세 머리에 ``name_prov``·``name_label`` 키(계약 .16). 픽스처 시드는 이름 출처 행이 없어 null."""
+    """목록 행·상세 머리: 이름 출처 행이 있으면 ``name_prov``·``name_label``(계약 .16), 없으면 두 키 없음(= null). 픽스처 시드는 이름
+    출처 행이 없어 키가 없다 — 목록 1,000행 저장본 크기·응답 시간이 그대로(R3e 0.2초 기준)."""
     rows = _rows(client)
-    assert all("name_prov" in r and "name_label" in r for r in rows), "목록 행에 name_prov·name_label 키"
+    assert all(("name_prov" in r) == ("name_label" in r) for r in rows)
     d = client.get(f"/api/complexes/{rows[0]['complex_id']}", headers=READ)
     assert d.status_code == 200, d.text
     head = d.json()["header"]
-    assert "name_prov" in head and "name_label" in head
-    assert (head["name_prov"], head["name_label"]) == (rows[0]["name_prov"], rows[0]["name_label"])
+    assert (head.get("name_prov"), head.get("name_label")) == (
+        rows[0].get("name_prov"),
+        rows[0].get("name_label"),
+    )
 
 
 def test_name_provenance_from_chosen_row() -> None:
@@ -80,4 +83,4 @@ def test_name_provenance_from_chosen_row() -> None:
     )
     fm = FactMaker(Settings(_env_file=None), idx)  # type: ignore[call-arg]
     assert name_provenance(fm, SimpleNamespace(id=7)) == {"name_prov": "fp_31", "name_label": "비공식"}
-    assert name_provenance(fm, SimpleNamespace(id=8)) == {"name_prov": None, "name_label": None}
+    assert name_provenance(fm, SimpleNamespace(id=8)) == {}
