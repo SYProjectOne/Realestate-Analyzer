@@ -64,6 +64,7 @@ from app.models import (
     Supply,
     Unsold,
 )
+from app.normalize.competition import display_type_codes
 from app.reports.errors import ReportBlocked, ReportNotFound, ReportProvenanceMissing
 from app.reports.fmt import MISSING_REASON, count_missing, make_fact, round_half_up, unknown_fact
 from app.reports.policy import (
@@ -904,11 +905,12 @@ class _Loader:
                 )
                 for p in my_pays
             ]
+            comp_shown = display_type_codes(types_by.get(c.id, []), comps_by.get(c.id, []))  # D23-2 표시 주택형
             cviews = [
                 CompetitionView(
                     round=k.round,
                     kind=k.kind,
-                    type_code=k.type_code,
+                    type_code=comp_shown.get(k.id, k.type_code),
                     supply=P.fact("competition", k.id, "supply", k.supply, "units"),
                     applied=P.fact("competition", k.id, "applied", k.applied, "count"),
                     ratio_text=k.ratio_or_shortfall_text,

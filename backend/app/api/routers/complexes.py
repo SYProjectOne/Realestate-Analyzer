@@ -62,6 +62,7 @@ from app.models import (
     ScoreTotal,
     Snapshot,
 )
+from app.normalize.competition import display_type_codes
 
 router = APIRouter(tags=["complexes"])
 
@@ -435,7 +436,11 @@ def detail_bodies(
                 )
                 for p in pays
             ],
-            "competition": [competition_view(fm, c) for c in comps.get(cx.id, [])],
+            "competition": [
+                competition_view(fm, c, shown.get(c.id))
+                for shown in [display_type_codes(b.types, comps.get(cx.id, []))]
+                for c in comps.get(cx.id, [])
+            ],
             "events": [event_view(fm, e) for e in events.get(cx.id, [])],
             "intake": [intake_view(i) for i in b.intake],
             "ladder": [

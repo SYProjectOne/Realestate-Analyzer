@@ -275,11 +275,12 @@ def test_sqlite_0001_0002_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     check_0001_0002_roundtrip(sqlite_url(tmp_path), monkeypatch)
 
 
-def test_migration_head_is_0015() -> None:
+def test_migration_head_is_0016() -> None:
     from alembic.script import ScriptDirectory
 
     script = ScriptDirectory.from_config(alembic_config("sqlite://"))
-    assert script.get_heads() == ["0015"]  # 계약 .15(R4-FIX)
+    assert script.get_heads() == ["0016"]  # 계약 .18(R4-CORE10 — 데이터 마이그레이션)
+    assert script.get_revision("0016").down_revision == "0015"
     assert script.get_revision("0015").down_revision == "0014"
     assert script.get_revision("0014").down_revision == "0013"
     assert script.get_revision("0013").down_revision == "0012"
