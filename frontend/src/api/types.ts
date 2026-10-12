@@ -92,6 +92,9 @@ export const API_ERROR_CODES = [
   'checked_at_format',
   'checked_at_future',
   'checked_at_before_source',
+  // 계약 .14 F3(R3i m2): 사람 확인 할인 값
+  'discount_format',
+  'discount_not_below_price',
 ] as const satisfies readonly ApiErrorCode[];
 
 /** 계약 enum 에 새 code 가 생기면 여기서 타입 오류 — 목록이 빠지면 zod 가 그 오류를 'http' 로 떨어뜨린다 */

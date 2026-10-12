@@ -24,8 +24,8 @@ export interface HumanCheckRule {
 }
 
 /**
- * 사실 필드 값 형·범위(서버 허용 범위). 접수 상태·기타는 규칙 없음(길이만). 할인(`discount`, 계약 .13 F1)도 화면 규칙이
- * 없다 — 값 검사·오류는 서버 422 field_errors(`value_text`)를 값 칸에 보인다(R3h FE7 지시: 서버 code·field_errors 기준).
+ * 사실 필드 값 형·범위(서버 허용 범위). 접수 상태·기타는 규칙 없음(길이만). 할인(`discount`)은 계약 .14 F3 부터 서버와 같은
+ * 엄격한 규칙으로 화면도 검사한다(기준 타입 차감 바탕 이상 `discount_not_below_price` 는 서버만 안다 — 422 를 값 칸에).
  */
 export const HUMAN_CHECK_RULES: Partial<Record<HumanCheckField, HumanCheckRule>> = {
   /** 원 단위 정수, 1,000만 ~ 1,000억 */
@@ -36,7 +36,50 @@ export const HUMAN_CHECK_RULES: Partial<Record<HumanCheckField, HumanCheckRule>>
   residency_months: { kind: 'int', min: 0, max: 240 },
   /** 0 ~ 100, 소수 둘째 자리까지 */
   down_payment_pct: { kind: 'number', min: 0, max: 100, decimals: 2 },
+  /** 원 단위 정수 0 ~ 1,000억(0 = 할인 없음 확인), 기준 타입 할인(계약 .13 F1·.14 F3) */
+  discount: { kind: 'int', min: 0, max: 100_000_000_000, unit: 'won' },
 };
+
+/**
+ * 숫자 필드가 받는 단위 접미어(서버 `parse_human_value` allowed 와 같다). 개월 필드의 '년'은 ×12. 없으면 단위 없음.
+ */
+export const HUMAN_NUMBER_UNITS: Partial<Record<HumanCheckField, readonly string[]>> = {
+  resale_months: ['개월', '년'],
+  residency_months: ['개월', '년'],
+  max_price_won: ['원'],
+  discount: ['원'],
+  down_payment_pct: ['%'],
+};
+
+/**
+ * 계약 .14 F3·F4(R3i m2) 서버 `_STRICT_NUMBER_RE` 와 같은 꼴: ASCII 숫자, 쉼표는 세 자리 묶음만, 숫자 사이 공백 없음,
+ * 단위 앞 공백은 한 칸까지(할인은 공백 없음). 앞뒤 공백은 뗀 값에 쓴다.
+ */
+const STRICT_NUMBER = /^(-)?((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?)( ?)([^\s0-9]*)$/;
+
+/** 엄격한 숫자 읽기 결과 — 형식 오류 / 음수 / 값(단위 반영, '년' ×12)과 소수 자릿수 */
+export type StrictNumber =
+  { ok: false; reason: 'format' | 'negative' } | { ok: true; value: number; decimals: number };
+
+/**
+ * 사람 확인 숫자 값을 서버와 같은 규칙으로 읽는다(고쳐 쓰지 않는다 — 쉼표를 지워 '1,0'을 10으로 읽던 .13 동작 금지).
+ */
+export function parseStrictNumber(field: HumanCheckField, raw: string): StrictNumber {
+  const m = STRICT_NUMBER.exec(raw.trim());
+  if (!m) return { ok: false, reason: 'format' };
+  const [, neg, num = '', sp, unit = ''] = m;
+  const allowed = HUMAN_NUMBER_UNITS[field] ?? [];
+  if ((unit && !allowed.includes(unit)) || (field === 'discount' && sp) || (sp && !unit)) {
+    return { ok: false, reason: 'format' };
+  }
+  if (neg) return { ok: false, reason: 'negative' };
+  const digits = num.replace(/,/g, '');
+  return {
+    ok: true,
+    value: Number(digits) * (unit === '년' ? 12 : 1),
+    decimals: digits.split('.')[1]?.length ?? 0,
+  };
+}
 
 /**
  * 강등(FactDemotion.field)·주장 대상 필드 → 사람 확인 필드. 가격 강등은 점수·화면이 쓰는

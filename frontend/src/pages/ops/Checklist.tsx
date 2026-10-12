@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useCanWrite } from '@/api/auth';
 import { useChecklist, usePatchChecklistItem } from '@/api/hooks';
 import type { ChecklistItem } from '@/api/types';
-import { Badge, EmptyState } from '@/components';
+import { Badge, EmptyState, PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
@@ -12,6 +13,8 @@ const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
 /**
  * G7 Checklist + Calendar — 법적 확인·중도금일·만료·공고 예상·계약·사실 재확인(D10-3). 종류 문구 = ko.json page.G7.checkKind.
  * 상태는 PATCH /ops/checklist/{id}. 닫힌 항목은 누가 닫았는지(closed_by auto·human, 계약 .8 S6) 배지로 보인다.
+ * 계약 .14 F5(D17-5): 체크리스트는 발행 리비전 보고서 본문에 들어가므로 바뀌면 202 + job_id(snapshot.publish) — 다른 발행
+ * 쓰기와 같이 그 잡을 감시한다. 바뀐 것이 없거나 발행할 리비전이 없으면 200 + job_id null.
  */
 export function ChecklistPanel({ asof }: { asof: string | null }) {
   const query = useChecklist();
@@ -35,71 +38,92 @@ export function ChecklistPanel({ asof }: { asof: string | null }) {
 function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string | null }) {
   const patch = usePatchChecklistItem();
   const canWrite = useCanWrite();
+  /** 마지막 저장 응답(발행 잡 감시용) */
+  const [saved, setSaved] = useState<ChecklistItem | null>(null);
   return (
-    <div className="overflow-x-auto">
-      <table aria-label={t('page.G7.checklist')} className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            {COLS.map((k) => (
-              <th key={k} scope="col" className={thClass}>
-                {t(`page.G7.check.${k}` as TKey)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id} className={item.status === 'open' ? '' : 'text-grayed'}>
-              <td className={tdClass}>
-                <Badge tone="neutral">{enumText('page.G7.checkKind', item.kind)}</Badge>
-              </td>
-              <th scope="row" className={`${tdClass} text-left font-normal`}>
-                {item.title}
-              </th>
-              <td className={tdClass}>{item.complex_name ?? ''}</td>
-              <td className={tdClass}>
-                {item.due_date ? formatDate(item.due_date, asof) : t('page.G7.check.noDue')}
-              </td>
-              <td className={tdClass}>
-                <select
-                  aria-label={`${t('page.G7.check.status')} · ${item.title}`}
-                  value={item.status}
-                  data-write
-                  disabled={!canWrite || patch.isPending}
-                  title={canWrite ? undefined : t('auth.readOnlyHint')}
-                  onChange={(e) =>
-                    patch.mutate({
-                      id: item.id,
-                      patch: { status: e.target.value as ChecklistItem['status'] },
-                    })
-                  }
-                  className="rounded-sm border border-border bg-surface px-1 py-0.5 text-xs"
-                >
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {enumText('page.G7.checkStatus', s)}
-                    </option>
-                  ))}
-                </select>
-                {item.status !== 'open' && item.closed_by ? (
-                  <span
-                    className="ml-1"
-                    data-testid="closed-by"
-                    title={enumText('page.G7.check.closedByHint', item.closed_by)}
-                  >
-                    <Badge tone="muted">{enumText('page.G7.check.closedBy', item.closed_by)}</Badge>
-                    {/* 모바일(툴팁 없음)에서도 읽히게 사유를 화면 낭독용으로 함께 둔다 */}
-                    <span className="sr-only">
-                      {enumText('page.G7.check.closedByHint', item.closed_by)}
-                    </span>
-                  </span>
-                ) : null}
-              </td>
-              <td className={`${tdClass} text-xs text-muted`}>{item.note ?? ''}</td>
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto">
+        <table aria-label={t('page.G7.checklist')} className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              {COLS.map((k) => (
+                <th key={k} scope="col" className={thClass}>
+                  {t(`page.G7.check.${k}` as TKey)}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id} className={item.status === 'open' ? '' : 'text-grayed'}>
+                <td className={tdClass}>
+                  <Badge tone="neutral">{enumText('page.G7.checkKind', item.kind)}</Badge>
+                </td>
+                <th scope="row" className={`${tdClass} text-left font-normal`}>
+                  {item.title}
+                </th>
+                <td className={tdClass}>{item.complex_name ?? ''}</td>
+                <td className={tdClass}>
+                  {item.due_date ? formatDate(item.due_date, asof) : t('page.G7.check.noDue')}
+                </td>
+                <td className={tdClass}>
+                  <select
+                    aria-label={`${t('page.G7.check.status')} · ${item.title}`}
+                    value={item.status}
+                    data-write
+                    disabled={!canWrite || patch.isPending}
+                    title={canWrite ? undefined : t('auth.readOnlyHint')}
+                    onChange={(e) =>
+                      patch.mutate(
+                        {
+                          id: item.id,
+                          patch: { status: e.target.value as ChecklistItem['status'] },
+                        },
+                        { onSuccess: setSaved },
+                      )
+                    }
+                    className="rounded-sm border border-border bg-surface px-1 py-0.5 text-xs"
+                  >
+                    {STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {enumText('page.G7.checkStatus', s)}
+                      </option>
+                    ))}
+                  </select>
+                  {item.status !== 'open' && item.closed_by ? (
+                    <span
+                      className="ml-1"
+                      data-testid="closed-by"
+                      title={enumText('page.G7.check.closedByHint', item.closed_by)}
+                    >
+                      <Badge tone="muted">
+                        {enumText('page.G7.check.closedBy', item.closed_by)}
+                      </Badge>
+                      {/* 모바일(툴팁 없음)에서도 읽히게 사유를 화면 낭독용으로 함께 둔다 */}
+                      <span className="sr-only">
+                        {enumText('page.G7.check.closedByHint', item.closed_by)}
+                      </span>
+                    </span>
+                  ) : null}
+                </td>
+                <td className={`${tdClass} text-xs text-muted`}>{item.note ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {saved ? (
+        saved.job_id !== null && saved.job_id !== undefined ? (
+          <div className="flex flex-col gap-1" data-testid="checklist-job">
+            <p className="text-xs text-muted">{t('page.G7.check.jobHint')}</p>
+            <PublishJobProgress key={saved.job_id} jobId={saved.job_id} />
+          </div>
+        ) : (
+          <p className="text-xs text-muted" data-testid="checklist-job-none">
+            {t('page.G7.check.unchanged')}
+          </p>
+        )
+      ) : null}
     </div>
   );
 }
