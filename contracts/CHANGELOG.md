@@ -62,6 +62,9 @@ R4 실데이터 시험(`docs/design/wp/R4_RESULT.md`) 후속 — CEO 결정 D18�
 정규화 본문 해시로 바뀌어(S5) extract·screen 녹화 파일 이름이 바뀌고 `_meta.counts.screen` 78 → 39(같은 조각 중복 제거). 다른 도구 녹화는
 그대로. 매니페스트 사유: R4-FIX D18-5 judgments_synth re-recorded (chunk purpose = normalized text hash)
 
+이어서 같은 녹화를 한 번 더 다시 만들었다 — 봉투 모양에 계약 .15 선택 필드 `model`·`provider`(F1)가 들어가 254개 파일 모두 두 키(이 녹화의 가짜
+판정기 응답에는 provider 가 없어 null)가 붙었다. 값·hash·파일 이름은 그대로. 매니페스트 사유: R4-FIX contract .15 judgments_synth re-recorded (envelope model/provider)
+
 ### 알려진 한계
 
 - 트랙 (A) 후보의 신호는 뉴스뿐이다(공식 홈페이지 신호는 주소가 있는 단지 — 청약홈 공고 뒤 — 의 접수 classify 'pending' 으로만). 후보에는

@@ -34,5 +34,7 @@
   "adapter_version": "mock-fixture-2026-10-08",
   "snapshot_id": 13,
   "complex_id": 8,
-  "error_text": null
+  "error_text": null,
+  "model": null,
+  "provider": null
 }
