@@ -1365,7 +1365,9 @@ def price_refs(
         if pbt is None or pt is None:
             continue
         ct = session.scalars(
-            select(ComplexType).where(ComplexType.complex_id == pt.complex_id, ComplexType.type_code == pbt[0])
+            select(ComplexType).where(
+                ComplexType.complex_id == pt.complex_id, ComplexType.type_code == pbt[0]
+            )
         ).first()
         if ct is None:
             continue

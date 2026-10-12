@@ -82,8 +82,17 @@ __all__ = [
 
 _TITLE_LINE_RE = re.compile(r"^.*입주자\s*모집\s*공고.*$", re.M)
 _KIND_WORD_RE = re.compile(r"임의\s*공급|무순위|선착순|계약\s*취소|재공급|잔여\s*세대")
-_ORIG_NO_RE = re.compile(r"최초\s*주택관리번호는\s*(\d{10})")
-_THIS_NO_RE = re.compile(r"주택관리번호는\s*(\d{10})")
+# 주택관리번호 10자리. 공고문은 '2025000302'·'2025-000302'·'2025 - 000302'(하이픈·공백)으로 적는다(R4 재시험 N3, D21-3)
+_NO_PAT = r"(\d{4})\s*[-‐‑–—]?\s*(\d{6})(?!\d)"
+_ORIG_NO_RE = re.compile(r"최초\s*주택관리번호는\s*" + _NO_PAT)
+_THIS_NO_RE = re.compile(r"주택관리번호는\s*" + _NO_PAT)
+
+
+def _no(m: re.Match[str]) -> str:
+    """주택관리번호 매치 → 10자리(하이픈·공백 뗌)."""
+    return m.group(1) + m.group(2)
+
+
 _ORIG_DATE_RE = re.compile(r"최초\s*입주자모집공고일은\s*([0-9.\s]+)")
 _THIS_DATE_RE = re.compile(r"(?:임의공급|무순위[^\s]*|선착순)\s*입주자모집공고일은\s*([0-9.\s]+)")
 _HOUSE_NO_URL_RE = re.compile(r"houseManageNo=(\d{10})")
@@ -292,7 +301,7 @@ def notice_numbers(raw: RawDocument, *, raw_dir: Path | None = None) -> tuple[st
     text = read_raw_text(raw, raw_dir=raw_dir) or ""
     own = _house_no(raw, text)
     orig = _ORIG_NO_RE.search(text)
-    cited = orig.group(1) if orig and orig.group(1) != own else None
+    cited = _no(orig) if orig and _no(orig) != own else None
     return own, cited
 
 
@@ -312,7 +321,7 @@ def _this_no(text: str) -> str:
     for m in _THIS_NO_RE.finditer(text):
         if re.search(r"최초\s*$", text[max(0, m.start() - 8) : m.start()]):
             continue
-        return m.group(1)
+        return _no(m)
     return ""
 
 
@@ -321,7 +330,7 @@ def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
     b = CandidateBuilder(raw, text)
     notice_no = _house_no(raw, text)
     orig = _ORIG_NO_RE.search(text)
-    complex_key = orig.group(1) if orig else notice_no
+    complex_key = _no(orig) if orig else notice_no
     title = _TITLE_LINE_RE.search(text[:2000])
     kind_m = _KIND_WORD_RE.search(title.group(0)) if title else None
     kind_text = kind_m.group(0).replace(" ", "") if kind_m else ""
@@ -333,7 +342,7 @@ def parse_notice_text(text: str, raw: RawDocument) -> list[FieldCandidate]:
         else "선착순"
         if kind_text.startswith("선착순")
         else "무순위"  # 최초 주택관리번호가 따로 있으면 최초 공고가 아니다(R4: '불법행위재공급' 제목이 본청약으로)
-        if orig is not None and notice_no and orig.group(1) != notice_no
+        if orig is not None and notice_no and _no(orig) != notice_no
         else "본청약"
     )
     head_end = text.find("\n1 공통")
@@ -780,7 +789,15 @@ def _price_table(ctx: _Ctx) -> None:
             continue
         top = max(g, key=lambda r: r.total)
         low = min(g, key=lambda r: r.total)
-        b.add("complex_type", tkey, "max_price_won", top.total, f"{top.total:,}", top.span, **_unit_kw(ctx, top.span))
+        b.add(
+            "complex_type",
+            tkey,
+            "max_price_won",
+            top.total,
+            f"{top.total:,}",
+            top.span,
+            **_unit_kw(ctx, top.span),
+        )
         b.add(
             "complex_type", tkey, "floor_sample_price_won", low.total, f"{low.total:,}", low.span,
             **_unit_kw(ctx, low.span),
@@ -807,7 +824,15 @@ def _price_by_type(ctx: _Ctx, pay_key: str, t: TypeSpec, top: PriceRow, low: Pri
     def f(item: str) -> str:
         return price_by_type_field(t.short, item)
 
-    b.add("payment_terms", pay_key, f("max_price_won"), top.total, f"{top.total:,}", top.span, **_unit_kw(ctx, top.span))
+    b.add(
+        "payment_terms",
+        pay_key,
+        f("max_price_won"),
+        top.total,
+        f"{top.total:,}",
+        top.span,
+        **_unit_kw(ctx, top.span),
+    )
     b.add(
         "payment_terms", pay_key, f("floor_sample_price_won"), low.total, f"{low.total:,}", low.span,
         **_unit_kw(ctx, low.span),
@@ -993,7 +1018,13 @@ def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: 
         ):
             fixed = r0.after_total[0]
             b.add(
-                "payment_terms", key, "down_payment_first_won", fixed, f"{fixed:,}", r0.span, **_unit_kw(ctx, r0.span)
+                "payment_terms",
+                key,
+                "down_payment_first_won",
+                fixed,
+                f"{fixed:,}",
+                r0.span,
+                **_unit_kw(ctx, r0.span),
             )
         else:
             b.add(
