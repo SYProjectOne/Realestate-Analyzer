@@ -441,6 +441,68 @@
     "image_hash": null,
     "meta": null
    }
+  ],
+  "n7": [
+   {
+    "id": 603,
+    "source_kind": "notice_pdf",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025930055&pblancNo=2025930055&atchmnflSeqNo=1626427&atchmnflSn=9",
+    "fetched_at": "2026-10-12T13:02:51+09:00",
+    "http_status": 200,
+    "sha256": "a9d011adcd72f979faa539d8d6992b423afdba01a008f06a76943410034a51b1",
+    "path": null,
+    "content_type": "application/octet-stream;charset=UTF-8",
+    "text_path": "notice_pdf/2026-10-12/a9d011adcd72f979faa539d8d6992b423afdba01a008f06a76943410034a51b1.txt",
+    "table_path": "notice_pdf/2026-10-12/a9d011adcd72f979faa539d8d6992b423afdba01a008f06a76943410034a51b1.json",
+    "error_text": null,
+    "image_hash": null,
+    "meta": null
+   },
+   {
+    "id": 608,
+    "source_kind": "notice_pdf",
+    "url": "https://static.applyhome.co.kr/ai/aia/getAtchmnfl.do?houseManageNo=2025930047&pblancNo=2025930047&atchmnflSeqNo=1597497&atchmnflSn=4",
+    "fetched_at": "2026-10-12T13:03:32+09:00",
+    "http_status": 200,
+    "sha256": "070c3acc32cdb50101632fd30869f99b25cce976d8e6617323bca3918f2b65e6",
+    "path": null,
+    "content_type": "application/octet-stream;charset=UTF-8",
+    "text_path": "notice_pdf/2026-10-12/070c3acc32cdb50101632fd30869f99b25cce976d8e6617323bca3918f2b65e6.txt",
+    "table_path": "notice_pdf/2026-10-12/070c3acc32cdb50101632fd30869f99b25cce976d8e6617323bca3918f2b65e6.json",
+    "error_text": null,
+    "image_hash": null,
+    "meta": null
+   },
+   {
+    "id": 719,
+    "source_kind": "applyhome_detail",
+    "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2021000189&cond%5BPBLANC_NO%3A%3AEQ%5D=2021000189",
+    "fetched_at": "2026-10-12T13:13:04+09:00",
+    "http_status": 200,
+    "sha256": "05e54eba0a23fbac0d3f00a135b537a7ed2a6ae776c5fa80d6515660788cad35",
+    "path": "applyhome_detail/2026-10-12/05e54eba0a23fbac0d3f00a135b537a7ed2a6ae776c5fa80d6515660788cad35.json",
+    "content_type": "application/json; charset=UTF-8",
+    "text_path": null,
+    "table_path": null,
+    "error_text": null,
+    "image_hash": null,
+    "meta": null
+   },
+   {
+    "id": 728,
+    "source_kind": "applyhome_detail",
+    "url": "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2021000830&cond%5BPBLANC_NO%3A%3AEQ%5D=2021000830",
+    "fetched_at": "2026-10-12T13:13:21+09:00",
+    "http_status": 200,
+    "sha256": "740ac61f56e04cdace1a8fabd180280f7e47e262b75815aa9727a3270c2bbd78",
+    "path": "applyhome_detail/2026-10-12/740ac61f56e04cdace1a8fabd180280f7e47e262b75815aa9727a3270c2bbd78.json",
+    "content_type": "application/json; charset=UTF-8",
+    "text_path": null,
+    "table_path": null,
+    "error_text": null,
+    "image_hash": null,
+    "meta": null
+   }
   ]
  }
 }
