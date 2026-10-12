@@ -91,6 +91,7 @@ from app.normalize.fields import is_price_amount, magnitude_apart
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
+from app.scheduler.collect import fold_into_first_load
 from app.scheduler.degraded import clear_degraded, mark_degraded
 from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
 from app.scheduler.intake import (
@@ -258,6 +259,9 @@ class PipelineResult:
     carried: dict[str, int] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
     version_event_id: int | None = None
+    first_load_folded: int = 0  # D22-4: 첫 적재 요약에 접은 판정 단계 값 변경 수
+    judged_events: list[ChangeEvent] = field(default_factory=list, repr=False)
+    """판정 단계(추출 적용·compare 채택)가 남긴 사실 값 변경 이벤트 — 첫 적재면 요약으로 접는다(D22-4)."""
 
     def absorb(self, c: CountingCaller) -> None:
         self.judge_calls, self.cached, self.blocked = c.calls, c.cached, c.blocked
@@ -292,6 +296,7 @@ class PipelineResult:
             "carried": self.carried,
             "skipped": self.skipped,
             "version_event_id": self.version_event_id,
+            "first_load_folded": self.first_load_folded,
             **({"error": self.error} if self.error else {}),
         }
 
@@ -442,7 +447,10 @@ def _extract_one(
     ]
     if env.status != "ok" or not got:
         if env.status == "ok" and values:  # review 필드만 — 반영 없이 기록(skipped)
-            apply_extracted(session, req, values, judgment_seq=seq(env.judgment_seq), snapshot_id=snap.id)
+            skipped = apply_extracted(
+                session, req, values, judgment_seq=seq(env.judgment_seq), snapshot_id=snap.id
+            )
+            res.judged_events.extend(skipped.change_events)
         return
     desc = {_slug(f): FIELD_DESCRIPTIONS.get(f, f) for f in req.fields}
     records = [
@@ -474,6 +482,7 @@ def _extract_one(
     )
     res.extract_applied += len(applied.applied)
     res.extract_flagged += len(applied.flagged)
+    res.judged_events.extend(applied.change_events)
     session.commit()
 
 
@@ -876,8 +885,10 @@ def _p5(
                 adopted = apply_compare(
                     session, group, relation=out.relation, judgment_seq=s, snapshot_id=snap.id
                 )
-                if res is not None and adopted.changed:
-                    res.compare_adopted += 1
+                if res is not None:
+                    res.judged_events.extend(adopted.change_events)
+                    if adopted.changed:
+                        res.compare_adopted += 1
                 break  # 채택이 바뀌었을 수 있다 — 같은 그룹의 나머지는 다음 재판정에서
     session.flush()
     return n
@@ -1024,6 +1035,7 @@ def run_pipeline(
         region = session.get(Region, snap.region_id)
         if region is None:
             raise LookupError(f"region {snap.region_id} 없음")
+        first_load = region.status == "bootstrapping"  # 지역 첫 적재(bootstrap 이 판정까지 끝내기 전, D18-7)
         prev = previous(session, snap, published_only=True) or previous(session, snap)
         earlier = [prev.id] if prev is not None else []
         # 강등 정리(D10-3, G3 ``api.demotion``): 새 원문이 출처를 다시 골랐으면 복원, 같은 원문 재정규화면 강등 유지 —
@@ -1053,6 +1065,12 @@ def run_pipeline(
             _p4_catalysts(session, caller, snap, region, seq, res)
             res.carried["compare"] = _p5(session, caller, snap, tset, seq, res)
             session.commit()
+            if first_load and res.judged_events:
+                # D22-4(R4 3차 m-b): 첫 적재(bootstrap) 안의 판정 단계 값 변경은 이벤트 대신 첫 적재 요약 수로
+                res.first_load_folded += fold_into_first_load(
+                    session, region.id, snap.id, res.judged_events, ctx.iso_now()
+                )
+                session.commit()
             facts = load_facts(session, snap, region)  # 포함 분류가 바뀌었을 수 있다
             scope = {f.complex_id: f.scope for f in facts}
 

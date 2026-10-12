@@ -126,19 +126,33 @@ def _steps(sources: Sequence[str]) -> list[str]:
     return [s for s in STEP_ORDER if s in wanted]
 
 
+def _first_load_text(session: Session, region_id: int, folded: int) -> str:
+    n = session.scalar(select(func.count()).select_from(Complex).where(Complex.region_id == region_id)) or 0
+    return f"첫 적재: 단지 {n}개, 값 {folded}건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)"
+
+
+_FIRST_LOAD_N_RE = re.compile(r"값 (\d+)건")
+
+
 def _first_load_event(
     session: Session, region_id: int, snapshot_id: int, folded: int, detected_at: str
 ) -> ChangeEvent:
     """지역 첫 적재 요약 한 줄(D18-7·R4 m3: 첫날 G1 '최근 변경'이 빈 값 → 값 critical 326건으로 가득했다. D21-7·R4 재시험
-    m-b: 같은 적재 안의 값 → 다른 값 덮어쓰기 92건도 요약에 센다)."""
-    n = session.scalar(select(func.count()).select_from(Complex).where(Complex.region_id == region_id)) or 0
+    m-b: 같은 적재 안의 값 → 다른 값 덮어쓰기 92건도 요약에 센다). 같은 적재(지역·스냅샷)에 이미 요약이 있으면(bootstrap 의
+    일일·주간 수집·판정 단계) 그 줄의 수에 더한다 — 첫 적재 요약은 한 줄이다(D22-4)."""
+    ev = _first_load_summary(session, region_id, snapshot_id)
+    if ev is not None:
+        m = _FIRST_LOAD_N_RE.search(ev.new_text or "")
+        ev.new_text = _first_load_text(session, region_id, (int(m.group(1)) if m else 0) + folded)
+        session.flush()
+        return ev
     ev = ChangeEvent(
         snapshot_id=snapshot_id,
         entity="region",
         entity_id=region_id,
         field="first_load",
         old_text=None,
-        new_text=f"첫 적재: 단지 {n}개, 값 {folded}건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)",
+        new_text=_first_load_text(session, region_id, folded),
         detected_at=detected_at,
         severity="info",
         triggers_rejudge=False,
@@ -147,6 +161,42 @@ def _first_load_event(
     session.add(ev)
     session.flush()
     return ev
+
+
+def _first_load_summary(session: Session, region_id: int, snapshot_id: int) -> ChangeEvent | None:
+    """이 적재(같은 지역·같은 스냅샷 — bootstrap 의 일일·주간 수집과 판정)의 요약 줄."""
+    return session.scalars(
+        select(ChangeEvent)
+        .where(
+            ChangeEvent.entity == "region",
+            ChangeEvent.entity_id == region_id,
+            ChangeEvent.field == "first_load",
+            ChangeEvent.snapshot_id == snapshot_id,
+        )
+        .order_by(ChangeEvent.id.desc())
+    ).first()
+
+
+def fold_into_first_load(
+    session: Session, region_id: int, snapshot_id: int, events: Sequence[ChangeEvent], detected_at: str
+) -> int:
+    """D22-4(R4 3차 m-b): 첫 적재(bootstrap) 안의 **판정 단계** 값 변경(판정기 추출 적용·compare 채택 — 빈 값 → 값, 값 → 값)도
+    change_event 로 남기지 않고 첫 적재 요약 수에 더한다. 이미 쓴 이벤트 행은 지운다(첫날 G1 이 critical 로 차지 않게 —
+    수집 단계 ``store_raw_document(first_load=True)`` 와 같은 규칙). 지운 수를 돌려준다. commit 은 호출자."""
+    seen: set[int] = set()
+    rows: list[ChangeEvent] = []
+    for e in events:
+        if e.id is None or e.id in seen:
+            continue
+        seen.add(e.id)
+        rows.append(e)
+    if not rows:
+        return 0
+    for e in rows:
+        session.delete(e)
+    session.flush()
+    _first_load_event(session, region_id, snapshot_id, len(rows), detected_at)
+    return len(rows)
 
 
 def _url_house_no(url: str) -> str | None:
