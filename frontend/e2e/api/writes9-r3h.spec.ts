@@ -50,8 +50,13 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     const detail = await request.get(`/api/complexes/${DISCOUNT_COMPLEX}`, {
       headers: { Authorization: `Bearer ${WRITE_TOKEN}` },
     });
-    const basis = ((await detail.json()) as { price: { basis_type_code: string } }).price
-      .basis_type_code;
+    const body = (await detail.json()) as {
+      price: { basis_type_code: string };
+      types: { type_code: string }[];
+    };
+    const basis = body.price.basis_type_code;
+    // 주택형 수는 API 에서(화면 개수를 세는 사이 다시 그려지면 0 이 읽힌다 — 첫 실행 경합)
+    const typeCount = body.types.length;
     const estimatedBasis = fill(P.G3.price.discountEstimatedBasis, { type: basis });
     const estimatedNonBasis = fill(P.G3.price.discountEstimatedNonBasis, { type: basis });
     await ready(page, `/complexes/${DISCOUNT_COMPLEX}?region=1#price`, P.G3.title);
@@ -63,9 +68,8 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     // R3i m3(D17-4): 가격 표는 타입 줄마다 안내 — 사람 확인 링크는 기준 타입 줄 하나에만, 나머지는 "반영하지 않음"
     const typeCells = page.locator('td[data-testid^="type-discount-"]');
     const typeNotes = page.locator('[data-testid^="discount-note-type-"]');
-    await expect(typeCells.first()).toBeVisible();
-    const typeCount = await typeCells.count();
     expect(typeCount).toBeGreaterThan(1);
+    await expect(typeCells).toHaveCount(typeCount);
     await expect(typeNotes).toHaveCount(typeCount);
     await expect(typeCells.getByRole('link', { name: P.G3.price.discountHumanCheck })).toHaveCount(
       1,
@@ -128,11 +132,9 @@ test.describe.serial('계약 .13 화면(실 API)', () => {
     await expect(page.getByTestId('discount-estimated')).toHaveCount(0);
     const afterCells = page.locator('td[data-testid^="type-discount-"]');
     const afterNotes = page.locator('[data-testid^="discount-note-type-"]');
-    await expect(afterCells.first()).toBeVisible();
-    await expect(afterNotes).toHaveCount((await afterCells.count()) - 1);
-    await expect(afterNotes.filter({ hasText: estimatedNonBasis })).toHaveCount(
-      (await afterCells.count()) - 1,
-    );
+    await expect(afterCells).toHaveCount(typeCount);
+    await expect(afterNotes).toHaveCount(typeCount - 1);
+    await expect(afterNotes.filter({ hasText: estimatedNonBasis })).toHaveCount(typeCount - 1);
     await expect(page.getByRole('link', { name: P.G3.price.discountHumanCheck })).toHaveCount(0);
     expect(failed).toEqual([]);
   });
