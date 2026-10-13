@@ -10,6 +10,8 @@ cancelled=false, 분양권 거래 제외, 같은 단지에 Open API 행이 있�
   대체하고, 그래도 3건 미만이면 다음 연도 단지를 더한다. 신축 거래가 1~2건 있으면 그대로 두고 대체 단지를 더한다.
   대체 단지 거래는 연식 보정 T_adj = T × (1 + c × min(max(Y_ref − Y_built, 0), cap))을 하고 보정·미보정 중앙값을
   둘 다 계산한다. 점수는 보정값, 라벨 '추정', reason '대체·보정 c=…'. Y_ref = 판정 단지 입주 연도(즉시 입주면 기준일 연도).
+- 표본 부족(R5-NORM 3a): 신축 거래가 1~2건이고 대체할 단지(2020년 이전 준공 거래)가 없으면 그 거래로 계산하되 라벨 '추정',
+  reason '표본 n'(화면 '추정(표본 n)').
 - gap% = (P_mid − median(T_adj)) / median(T_adj) × 100 (중앙값은 비교군 전 거래를 합쳐서), s_gap = clamp(5 − gap%/4, 0, 10).
 """
 
@@ -47,6 +49,7 @@ OUTLIER_MIN_N = 4
 OUTLIER_K = Decimal("1.5")
 OUTLIER_REASON = "이상치 제외"
 PRICE_SOURCE_MISSING = "가격 출처 누락"
+SMALL_SAMPLE_REASON = "표본"
 UNADJUSTED_GAP_TAG = "unadjusted_gap_pct="
 UNADJUSTED_MEDIAN_TAG = "unadjusted_median_won="
 
@@ -273,6 +276,10 @@ def compute_gap(
     if is_sub:
         label: Label = "추정"
         reason: str | None = f"대체·보정 c={num(c, 4)}"
+    elif len(unadjusted) < MIN_TRADES:
+        # RA §6-2(R5-NORM 3a): 신축 거래 1~2건인데 대체할 2020년 이전 준공 단지가 없으면 그 표본으로 계산하되 '추정(표본 n)'
+        label = "추정"
+        reason = f"{SMALL_SAMPLE_REASON} {len(unadjusted)}"
     else:
         label = weakest_label(price_label, *(t.label for t in pool if t.apt_name in primary))
         reason = None
