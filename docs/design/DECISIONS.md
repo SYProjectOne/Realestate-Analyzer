@@ -260,3 +260,4 @@
 - D25-10 WP7 결정 테스트 일부가 `tests/api`·`tests/contracts`에 있는 것(교차 모듈 통합 테스트)은 그대로 둔다.
 - D25-11 RA §6-7 접근 가능성의 `intake_status ∈ {가능}` and path ≠ unofficial_ref는 A·B·C·D 모두의 공통 조건이다(RA 문언과 예시 "접수 가능(공식 팝업…); 전매 종료 … → 충족"). R3C의 좁은 해석(A·C는 path 조건만)을 바로잡는다. 영향: 골든 v2 점수 불변, A·C 요건 사전 계산·decide 입력이 바뀌어 합성 판정 녹화(WP9)와 `/compare` 응답 골든(WP5)을 다시 만든다(CHANGELOG fixture 사유). R5-PIPE 머지 뒤 적용(녹화 재생성 충돌 방지).
 - D25-12 RA §6-2 신축 거래 1–2건·대체 단지 없음 → 가격 갭 라벨 '추정', 사유 '표본 n'(점수·식 불변, 골든 영향 없음).
+- D25-13 R5 정리 라운드 완료(2026-10-13): OPS·PIPE·NORM·FE·FE2·ACCESS 머지, 첫 GitHub CI 전 잡 통과(run 38348618656), 이후 main 재검증. 남은 일: `contracts/schemas/scenario.json` RequirementRule `access` 설명에 A·C 접수 조건 문구 추가는 다음 계약 버전에서(모양 불변, 설명만). 운영 배포 뒤 첫 재판정 1회에서 noul·rerank·decide·벤치마크 screen이 캐시 미스로 다시 판정된다(runbook §10-16). `.env`에 `PG_DUMP_PATH`(PG17) 설정, worker 재시작 시 적용.
