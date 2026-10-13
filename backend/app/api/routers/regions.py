@@ -251,7 +251,8 @@ def update_region(session: DB, id: int, body: Annotated[Any, Body()] = None) -> 
 
         name = str(name).strip()
         guard = check_payload({"name": name})
-        if not guard.ok or not has_visible(name):  # 계약 .19: 스키마 pattern 과 같은 규칙  # R3 4차 minor: 지역 이름도 사용자 입력 — 전화·이메일·비밀값 금지
+        # R3 4차 minor: 지역 이름도 사용자 입력 — 전화·이메일·비밀값 금지. 계약 .19: 빈 이름 = 스키마 pattern 과 같은 규칙
+        if not guard.ok or not has_visible(name):
             raise ApiError(
                 422, "validation_error", f"지역 이름에 공개할 수 없는 정보가 있다({', '.join(guard.kinds())})",
                 field_errors=[{"loc": ["body", "name"], "msg": "guard"}],
