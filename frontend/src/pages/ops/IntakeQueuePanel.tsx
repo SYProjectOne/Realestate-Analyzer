@@ -38,7 +38,8 @@ export function IntakeQueuePanel({
   snapshotId: string | null;
   asof: string | null;
 }) {
-  const query = useIntakeQueue(regionId, snapshotId, regionId !== null || snapshotId !== null);
+  const enabled = regionId !== null || snapshotId !== null;
+  const query = useIntakeQueue(regionId, snapshotId, enabled);
   const total = query.data?.total;
   return (
     <Section
@@ -53,18 +54,22 @@ export function IntakeQueuePanel({
       }
     >
       <p className="text-xs text-muted">{t('page.G7.iq.intro')}</p>
-      <QueryState
-        query={query}
-        empty={(q) =>
-          q.snapshot_id === null
-            ? t('page.G7.iq.noSnapshot')
-            : q.groups.length === 0
-              ? t('page.G7.iq.none')
-              : null
-        }
-      >
-        {(q) => <QueueBody queue={q} asof={asof ?? q.asof_date} />}
-      </QueryState>
+      {!enabled ? (
+        <p className="text-sm text-muted">{t('app.noSnapshot')}</p>
+      ) : (
+        <QueryState
+          query={query}
+          empty={(q) =>
+            q.snapshot_id === null
+              ? t('page.G7.iq.noSnapshot')
+              : q.groups.length === 0
+                ? t('page.G7.iq.none')
+                : null
+          }
+        >
+          {(q) => <QueueBody queue={q} asof={asof ?? q.asof_date} />}
+        </QueryState>
+      )}
     </Section>
   );
 }
