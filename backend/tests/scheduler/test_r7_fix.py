@@ -191,42 +191,49 @@ def test_human_check_row_is_still_carried_over(
 def test_copy_intake_today_observation_replaces_yesterday_collected_rows(
     factory: sessionmaker[Session], seeded: int
 ) -> None:
-    """``copy_intake`` 단위: 오늘 수집 행(headless_shot)이 있는 단지는 어제 수집 경로 행(official_popup '403' — 인천 7·8·22·37)을
-    복사하지 않고 사람 확인·비공식 참고 행은 복사한다. 오늘 수집 행이 없는 단지(수집 안 한 날·대상 아님)는 전부 복사(그대로)."""
+    """``copy_intake`` 단위: 오늘 수집 관측 행(headless_shot + 원문)이 있는 단지는 어제 수집 관측 행(official_popup '403' + 원문 —
+    인천 7·8·22·37)을 복사하지 않고 사람 확인·비공식 참고·원문 없는 적재 행은 복사한다. 오늘 수집 행이 없는 단지는 전부 복사."""
     from app.models import Snapshot
     from app.scheduler.persist import copy_intake
 
+    def raw(s: Session, key: str, status: int | None) -> int:
+        row = RawDocument(
+            source_kind="official_site", url=f"https://cx.example.test/{key}", fetched_at="2026-10-07T03:00:00+09:00",
+            http_status=status, sha256=key * 64, path=None, content_type=None, error_text=None if status == 200 else str(status),
+        )  # fmt: skip
+        s.add(row)
+        s.flush()
+        return row.id
+
     with factory() as s:
-        s.add_all(
-            [
-                IntakeStatus(complex_id=9, snapshot_id=seeded, status="가능", path="human_check", checked_at="2026-10-07"),
-                IntakeStatus(complex_id=9, snapshot_id=seeded, status="확인 불가", path="headless_shot", checked_at="2026-10-07", reason="문구로 판단 불가"),
-            ]
-        )  # fmt: skip
+        yesterday = Snapshot(region_id=1, asof_date="2026-10-06", status="published", degraded=False, created_at="2026-10-06T06:00:00+09:00")  # fmt: skip
         dst = Snapshot(region_id=1, asof_date="2026-10-08", status="building", degraded=False, created_at="2026-10-08T06:00:00+09:00")  # fmt: skip
-        s.add(dst)
+        s.add_all([yesterday, dst])
         s.flush()
         s.add_all(
             [
-                IntakeStatus(complex_id=cid, snapshot_id=dst.id, status="확인 불가", path="headless_shot", checked_at="2026-10-08T03:00:00+09:00", reason=UNCLASSIFIED, http_status=200)
-                for cid in (4, 9)
+                IntakeStatus(complex_id=7, snapshot_id=yesterday.id, status="확인 불가", path="official_popup", checked_at="2026-10-06T03:00:00+09:00", reason="403", http_status=403, raw_document_id=raw(s, "a", 403)),
+                IntakeStatus(complex_id=7, snapshot_id=yesterday.id, status="가능", path="human_check", checked_at="2026-10-06"),
+                IntakeStatus(complex_id=7, snapshot_id=yesterday.id, status="미정", path="unofficial_ref", checked_at="2026-10-06"),
+                IntakeStatus(complex_id=8, snapshot_id=yesterday.id, status="미정", path="official_popup", checked_at="2026-10-06"),  # 원문 없는 적재 행
+                IntakeStatus(complex_id=9, snapshot_id=yesterday.id, status="확인 불가", path="official_popup", checked_at="2026-10-06T03:00:00+09:00", reason="TLS", raw_document_id=raw(s, "b", None)),
+                IntakeStatus(complex_id=7, snapshot_id=dst.id, status="확인 불가", path="headless_shot", checked_at="2026-10-08T03:00:00+09:00", reason=UNCLASSIFIED, http_status=200, raw_document_id=raw(s, "c", 200)),
+                IntakeStatus(complex_id=8, snapshot_id=dst.id, status="확인 불가", path="headless_shot", checked_at="2026-10-08T03:00:00+09:00", reason=UNCLASSIFIED, http_status=200, raw_document_id=raw(s, "d", 200)),
             ]
         )  # fmt: skip
         s.flush()
-        copy_intake(s, seeded, dst.id)
+        copy_intake(s, yesterday.id, dst.id)
         s.commit()
         got = {
             (r.complex_id, r.path, r.reason)
-            for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == dst.id, IntakeStatus.complex_id.in_((4, 5, 9))))
+            for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == dst.id))
         }  # fmt: skip
-    assert (4, "official_popup", "403") not in got, (
+    assert (7, "official_popup", "403") not in got, (
         "어제 '403' 행이 오늘 성공 행 옆에 복사되면 표시 행이 된다"
     )
-    assert (4, "unofficial_ref", None) in got and (9, "human_check", None) in got
-    assert (9, "headless_shot", "문구로 판단 불가") not in got
-    assert {(5, "official_popup", None), (5, "unofficial_ref", None)} <= got, (
-        "오늘 수집 행이 없는 단지는 그대로 복사"
-    )
+    assert {(7, "human_check", None), (7, "unofficial_ref", None)} <= got
+    assert (8, "official_popup", None) in got, "원문 없는 적재 행(수집 관측 아님)은 그대로"
+    assert (9, "official_popup", "TLS") in got, "오늘 수집 행이 없는 단지는 그대로 복사"
 
 
 def test_identical_screenshot_on_other_url_keeps_own_evidence(
@@ -239,8 +246,7 @@ def test_identical_screenshot_on_other_url_keeps_own_evidence(
         day = _day(ctx, "2026-10-14")
     with factory() as s:
         for cid, url, title in ((A, SITE_B, "GI59 단지"), (B, SITE, "브랜드 공통")):
-            row = pick_intake(_rows(factory, day, cid))
-            assert row is not None and row.path == "headless_shot"
+            [row] = [r for r in _rows(factory, day, cid) if r.path == "headless_shot"]
             assert row.evidence_url == url
             ev = site_evidence(s, s.get(IntakeStatus, row.id))  # type: ignore[arg-type]
             assert (ev.url, ev.title) == (url, title)
