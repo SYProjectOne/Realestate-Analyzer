@@ -12,7 +12,7 @@
 | `runner.py` | `main(argv)`(`python -m app.worker [--once] [--interval 초] [--no-schedule]`), job_run polling, 잠금(`UPDATE … WHERE status='queued'` 1행일 때만 실행), done/failed + stats·error_text, 하트비트(`stats.heartbeat_at`)·멈춘 running 회수(`recover_stale`: 1회 재큐 후 failed), stats 오류 문구 마스킹 |
 | `handlers.py` | 잡 이름 → 처리 함수(collect.daily·weekly, rejudge, snapshot.publish, reference.refresh, region.bootstrap, report) |
 | `collect.py` | 수집기(WP1) → `normalize.store`(WP2) → intake_status 행(분류 없이 '확인 불가(사유)', 파서의 접수 문구 후보는 note) → 변경 감지 |
-| `intake.py` | 접수 상태 classify 입력 문구(`intake_text`)·**분류 복사**(`carry_classification`: 문구 sha256 이 직전 판정기 분류 행과 같으면 status·reason·note 복사, 판정 호출 없음 — D10-2)·복사 뒤에도 미분류인 단지(`pending_complexes` → collect 가 재판정 대상에 넣는다) |
+| `intake.py` | 접수 상태 classify 입력 문구(`intake_text` — 단지 이름 + 후보 앞뒤 줄, R6-INTAKE)·공식 홈페이지 동일성 항목(`site_item` — 단지 사실 + 주소·제목·설명 + 페이지 앞·뒤)·**분류 복사**(`carry_classification`: 문구 sha256 이 직전 판정기 분류 행과 같고 **그 판정의 입력 항목 텍스트가 지금 조립과 같으면** status·reason·note 복사, 판정 호출 없음 — D10-2·D22-2)·복사 뒤에도 미분류인 단지(`pending_complexes` → collect 가 재판정 대상에 넣는다) |
 | `detect.py` | 팝업 이미지 해시(기준일 전 마지막 해시와 비교) · 청약홈 목록 diff → change_event |
 | `pipeline.py` | P1 screen → P2 extract → P3 audit(→ `normalize.judged.apply_extracted`) → 접수 상태 classify('접수 문구 미분류' 행) → P4 classify(포함/제외 배치) → P5 compare(contradicts → `apply_compare`) → 접수 상태 변경 감지(D9-3 critical·알림) → P6 noul(판정 대상만) → P7 rerank(판정 대상·참고·보류, 이전 앵커는 캐시 행만) → 점수(`analysis`, score_total.judge_scope = `analysis.scope.judge_scope`) → P8 decide → P9 verify → 저장 |
 | `payloads.py` | 시나리오 → 판정 payload 목록 빌더 `scenario_payloads` + `cache_status`(미리보기 cache_hits, WP5) · 파이프라인과 공용 입력 조립(`score_base`·`rerank_pool`·`decide_plan`·`stored_scope`) |
