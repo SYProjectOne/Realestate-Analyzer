@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Any, Final
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -40,6 +40,7 @@ from app.models import (
 )
 
 __all__ = [
+    "COLLECTED_INTAKE_PATHS",
     "SeqResolver",
     "carry_forward",
     "copy_claims",
@@ -55,6 +56,8 @@ __all__ = [
 ]
 
 _Q4 = Decimal("0.0001")
+COLLECTED_INTAKE_PATHS: Final = frozenset({"official_popup", "headless_shot"})
+"""공식 홈페이지 수집(``collect.intake_rows``)이 만드는 접수 행 경로 — ``scheduler.intake.INTAKE_PATHS`` 와 같다."""
 
 
 def to_dec(v: float | Decimal | None, q: Decimal = _Q4) -> Decimal | None:
@@ -425,7 +428,14 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
     """dst 에 (단지, 경로) 행이 없으면 src 의 그 경로 표시 행을 복사(확인 시각 유지 — D±로 낡음이 보인다).
 
     경로 안에서 고르는 기준은 ``analysis.scope.pick_intake``(확인 날짜 → id)와 같다 — id 만 보면 src 에서 표시되던 행과
-    다른 행을 복사해 가짜 D9-3 접수 변경 이벤트가 생긴다(R3 재리뷰 F2)."""
+    다른 행을 복사해 가짜 D9-3 접수 변경 이벤트가 생긴다(R3 재리뷰 F2).
+
+    R7-FIX: dst 에 그 단지의 **수집 경로 행**(official_popup·headless_shot — 오늘 공식 홈페이지 수집이 만든 관측)이 이미 있으면
+    src 의 수집 경로 행은 어느 경로든 복사하지 않는다 — 오늘 관측이 어제 관측을 대신한다. 예전에는 (단지, 경로) 단위로만 보아,
+    어제 실패 행(경로 official_popup, 'TLS'·'403')이 오늘 성공 행(렌더 → headless_shot) 옆에 복사되고 표시 규칙(official_popup >
+    headless_shot)이 낡은 실패 행을 골랐다(인천 스냅샷 2 — 단지 7·8·22·37·38·72·75·87). 사람 확인(human_check)·비공식 참고
+    (unofficial_ref) 행은 수집이 대신하지 않으므로 그대로 복사한다. 새 리비전(``snapshots.new_revision`` — dst 가 빈 스냅샷)은 전부
+    복사(변화 없음)."""
     have = {
         (c, p)
         for c, p in session.execute(
@@ -434,6 +444,7 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
             )
         )
     }
+    observed = {c for c, p in have if p in COLLECTED_INTAKE_PATHS}
     grouped: dict[tuple[int, str], list[IntakeStatus]] = {}
     for r in session.scalars(
         select(IntakeStatus).where(IntakeStatus.snapshot_id == src_snapshot_id).order_by(IntakeStatus.id)
@@ -446,7 +457,7 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
             latest[key] = picked
     n = 0
     for (cid, path), r in sorted(latest.items()):
-        if (cid, path) in have:
+        if (cid, path) in have or (path in COLLECTED_INTAKE_PATHS and cid in observed):
             continue
         session.add(
             IntakeStatus(
