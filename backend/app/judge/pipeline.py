@@ -373,7 +373,9 @@ class SiteItem:
             f"시행: {self.developer}" if self.developer else "",
             # 청약홈 공급 세대수는 일반분양분이라 페이지의 '총 n세대'(조합원·임대 포함)와 다를 수 있다 — 그 뜻을 함께 적는다
             # (재생: 라벨 없이 '공급 세대: 50세대'만 주자 '총 126세대' 페이지가 review 로 남았다)
-            f"청약홈 공급 세대수: {self.units_total}세대(단지 총 세대수와 다를 수 있음)" if self.units_total else "",
+            f"청약홈 공급 세대수: {self.units_total}세대(단지 총 세대수와 다를 수 있음)"
+            if self.units_total
+            else "",
             f"홈페이지 주소: {self.url}" if self.url else "",
             f"최종 주소(이동 후): {self.final_url}" if self.final_url and self.final_url != self.url else "",
             f"페이지 제목: {self.title}" if self.title else "",
