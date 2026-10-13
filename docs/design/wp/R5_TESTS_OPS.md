@@ -36,8 +36,11 @@
 
 | 실행 | 환경 | 결과 |
 | --- | --- | --- |
-| 수정 전(1dec271 코드, 실행 도중 파일이 바뀐 구간 있음 — 참고용) | CI 흉내: `JUDGE_ADAPTER=mock`, 사용자 판정기 키 제거, `ENV_FILE`=없는 경로 (`run_ci_env.sh`) | (§4 참조) |
-| **수정 후** | **적대적**: `ENV=prod`·`DATABASE_URL`=가짜 Postgres·`JUDGE_ADAPTER=mock`·`API_TOKEN`·`DATA_GO_KR_KEY`·`NEWS_API_KEY`·`SHARE_TOKEN_TTL_DAYS=99`·`OPENROUTER_API_KEY` 를 프로세스 env 에, `ENV_FILE`=가짜 운영 `.env`(가짜 Postgres 주소·prod) (`run_hostile_env.sh`) — 격리가 하나라도 새면 Settings 생성부터 실패한다 | (§4 참조) |
+| 수정 전 코드(1dec271, 실행 도중 이 브랜치의 ci.yml 이 바뀐 구간 있음 — 참고용) | CI 흉내: `JUDGE_ADAPTER=mock`, 사용자 판정기 키 제거, `ENV_FILE`=없는 경로 (`run_ci_env.sh` → `before_full_ci_env.log`) | **4 실패** · 3954 통과 · 5 skip (50분): `test_f1b_render_prod_refuses_allow_private`(**CI 와 같은 실패 재현**) · `test_perf_r3c.py::test_cold_size1000_published_under_0_2s`(부하 — 중앙값 0.206s > 0.2s, 다른 에이전트 스위트와 동시) · `test_r3_f3.py::test_minor2_…`·`test_repo_layout.py::test_ci_workflow`(실행 중에 이 브랜치가 ci.yml 을 바꿔 옛 테스트가 새 ci.yml 을 읽음 — 오염, 수정 후 둘 다 갱신·통과). 그 밖의 `.env`·env 의존 실패 없음 |
+| **수정 후**(`8ac4b42`) | **적대적**: `ENV=prod`·`DATABASE_URL`=가짜 Postgres·`JUDGE_ADAPTER=mock`·`API_TOKEN`·`DATA_GO_KR_KEY`·`NEWS_API_KEY`·`HTTP_RATE_PER_HOST=7`·`SHARE_TOKEN_TTL_DAYS=99`·`OPENROUTER_API_KEY` 를 프로세스 env 에, `ENV_FILE`=가짜 운영 `.env`(가짜 Postgres 주소·prod) (`run_hostile_env.sh` → `after_full_hostile.log`) — 격리가 하나라도 새면 Settings 생성부터 실패한다 | 1 실패 · **4010 통과** · 5 skip (46분). 실패 1 = `test_r3f_perf_publish.py::test_d14_5_publish_job_1000x5_under_30s…`(`잡 34.4s > 30.0s` — 부하). **같은 적대적 환경에서 성능 테스트 2파일 단독 재실행 5/5 통과**(`after_perf_rerun.log`). → `.env`·사용자 환경 의존 0 |
+
+skip 5 는 두 실행이 같다: `rapidocr` 미설치 3(OCR 선택 의존성), `R4_REPLAY_MANIFEST` 없음 2(로컬 전체 재생 — 의도된 선택 실행).
+`-m live` 13 은 deselect(실제 외부 접속).
 
 ## 3. 백업 실기 확인 (D19 운영 DB, 읽기만)
 
@@ -53,6 +56,21 @@ with_PG_DUMP_PATH_pg17_bin -> OK kind=postgres size_bytes=147647 version=pg_dump
 **사람/CEO 할 일**: 운영 `.env` 에 `PG_DUMP_PATH=C:\Program Files\PostgreSQL\17\bin\pg_dump.exe`(따옴표 없이)를 넣고 worker 재시작
 (`.env` 는 이 라운드에서 건드리지 않았다). 큰따옴표로 감싸면 `\b` 가 백스페이스로 읽혀 경로가 깨진다 — 이제 설정 검증 오류로 바로 드러난다.
 
-## 4. 완료 기준 실행 기록
+## 4. 완료 기준 실행 기록 (브랜치 끝, scratchpad 로그)
 
-(최종 보고에 실제 숫자를 적는다.)
+| 명령 | 결과 |
+| --- | --- |
+| `uv run pytest -p no:randomly -m "not live"` (적대적 env, §2) | 4010 통과 · 실패 1(부하 성능 — 단독 재실행 통과) · skip 5 |
+| `uv run ruff check app tests` · `ruff format --check app tests` · `mypy app` | 통과 · 485 files already formatted · `Success: no issues found in 167 source files` |
+| `uv run python scripts/gen_contracts.py --check` · `scripts/fixture_manifest.py --check` | 0 · 0 |
+| `npm --prefix frontend run typecheck`(새 pre-commit 훅의 명령) | 0 |
+| `python scripts/tasks.py regress` | **통과** — T01~T18·모듈 analysis·fixtures_contract(608)·흐름 2 + e2e 흐름 3 전부 PASS, 단계 종료 코드 [0, 0] |
+| GitHub CI | 재실행은 CEO 푸시로 확인(이 브랜치는 푸시하지 않음) |
+
+## 5. 남은 것·제안
+
+- 운영 `.env` 에 `PG_DUMP_PATH` 한 줄(§3) — 사람/CEO. 넣기 전까지 운영 03:00 백업은 계속 '`pg_dump 없음(PATH)`' 로 실패한다(이제 사유가 설정 이름을 안내).
+- (WP3 제안) `judge/jev_mcp.normalize` 를 어댑터 모듈 밖(`judge/normalize.py`)으로 옮기면 API 의 지연 import 예외(§1 OPS-4)가 없어진다.
+- (WP6 제안) `frontend/src/charts/README.md` 의 "기준 이미지는 win32. 갱신은 `--update-snapshots`" 문구에 linux 기준 이미지(CI 비교, D25-9) 갱신 절차를 더한다.
+- `tests/reports/conftest.py` 의 세션 env 지우기는 이제 공용 격리와 겹친다(무해 — 지우지 않았다).
+- CI postgres 서비스는 `backend-tests` matrix 모든 모듈에서 뜬다(서비스는 조건부로 끌 수 없음 — 수 초 비용). Postgres 를 쓰는 것은 `tests/contracts` 뿐이다.
