@@ -12,8 +12,9 @@
   ``reset_stale_classification`` 이 다른 버전으로 분류(·복사)된 행을 미분류로 되돌려 판정기가 다시 분류한다.
 - R7-SITE(D26-1): 접수 항목에 스크린샷 행의 **팝업 그림 OCR 글자**(라벨 '추정(OCR)', ``OCR_HEADER`` 아래)를 붙인다 — 수집기가
   그림 해시로 캐시하므로 변경 없는 날 입력이 그대로다(분류 복사). (D26-3) 범위 경계·민간분양 아닌 단지(포함/제외 classify auto
-  제외 클래스)의 미분류 행은 판정기에 보내지 않고 사유 '판정 대상 아님(<구분>)'으로 둔다(``mark_not_target`` — 분류 복사
-  앞에서). 그 단지가 다시 대상이 되면 미분류로 되돌린다. 구분은 complex 행 값(판정기 classify·주소 매칭 결과)을 옮길 뿐이다.
+  제외 클래스)의 미분류·수집 실패 행은 판정기에 보내지 않고 사유 '판정 대상 아님(<구분>)'으로 둔다(``mark_not_target`` — 분류
+  복사 앞에서). 그 단지가 다시 대상이 되면 수집 때 사유로 되돌린다. 구분은 complex 행 값(판정기 classify·주소 매칭 결과)을
+  옮길 뿐이다.
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -117,7 +118,7 @@ def _collect_reason(session: Session, row: IntakeStatus) -> str | None:
 def mark_not_target(session: Session, snapshot_id: int) -> list[int]:
     """D26-3: 이 스냅샷의 접수 행 중 판정 대상이 아닌 단지(``not_target_reason``)의 '접수 문구 미분류' 행·수집 실패 행 → 상태
     '확인 불가' + 사유 '판정 대상 아님(<구분>)'(판정 호출 없음 — 사람 확인 대기열에도 '수집 실패'로 서지 않는다; 실패 원인은
-    원문 행·note 에 남는다). 반대로 '판정 대상 아님' 행인데 단지가 다시 대상이면(법정동 보정·재분류) 수집 때 사유(미분류 또는
+    원문 행 error_text·meta.fetch 에 남는다). 반대로 '판정 대상 아님' 행인데 단지가 다시 대상이면(법정동 보정·재분류) 수집 때 사유(미분류 또는
     실패 원인)로 되돌린다. 바꾼 행 id."""
     out: list[int] = []
     for row in session.scalars(

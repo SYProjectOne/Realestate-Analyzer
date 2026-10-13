@@ -378,9 +378,8 @@ class OfficialSiteCollector:
                 failure = Failure(None, "TLS" if is_tls_error(rendered.error) else "render")
                 detail = _short(rendered.error)
             elif rendered.status is not None and rendered.status >= 400:
-                failure = Failure(
-                    rendered.status, None
-                )  # 접근 거부·없음 — 받은 화면을 저장하지 않는다(D25-4)
+                # 접근 거부·없음 — 받은 화면을 저장하지 않는다(D25-4)
+                failure = Failure(rendered.status, None)
         if failure is not None or rendered is None:
             out.failure = failure or Failure(None, "TLS")
             info["result"] = out.failure.reason
