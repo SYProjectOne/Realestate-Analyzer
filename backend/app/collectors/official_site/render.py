@@ -15,6 +15,9 @@
      ``DHASH_THRESHOLD``) — 수집기가 직전 렌더와 비교해 넘으면 해시를 바꾸고, 안 넘으면 직전 스크린샷 행을
      재사용한다(같은 화면이면 raw_document 가 늘지 않는다).
 - 실패는 예외 대신 ``RenderResult.error`` 로 돌려준다(실패도 데이터).
+- R7-SITE: 팝업 요소 PNG 바이트(``PopupShot.png`` — 팝업 그림 OCR 입력, D26-1)와 렌더 후 HTML(``RenderResult.html``)을 같이
+  돌려준다. ``fetch(url)``(D26-4)은 robots.txt 같은 문서 하나를 같은 검사 아래 브라우저로 받는다. 브라우저 문맥은 인증서 검증을
+  끄지 않는다(``ignore_https_errors=False``) — 브라우저 검증기의 체인 보완(중간 인증서 AIA)만 쓴다.
 - **SSRF(R3b F1b → R3b 마무리)**: 브라우저도 ``core.http`` 와 같은 내부망 규칙을 따른다(``BrowserGuard``).
   1) ``page.goto`` 전에 URL 을 검사한다(http/https 만, localhost·내부망 IP·DNS 가 내부망으로 풀리는
      이름 차단). 막히면 브라우저를 띄우지 않는다.
@@ -54,7 +57,7 @@ import threading
 import unicodedata
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Final, Protocol
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpcore
@@ -74,6 +77,8 @@ from app.core.http import (
 __all__ = [
     "DHASH_THRESHOLD",
     "FREEZE_CSS",
+    "BrowserFetch",
+    "BrowserFetcher",
     "BrowserGuard",
     "PlaywrightRenderer",
     "PopupShot",
@@ -81,6 +86,7 @@ __all__ = [
     "Renderer",
     "dhash",
     "hamming",
+    "is_tls_error",
     "normalize_image_url",
     "normalize_popup_text",
     "popup_hash",
@@ -215,6 +221,8 @@ class PopupShot:
     images: tuple[str, ...] = ()
     text: str = ""  # normalize_popup_text 를 거친 팝업 글자
     dhash: str | None = None  # 요소 스크린샷의 perceptual hash
+    # R7-SITE(D26-1): 요소 스크린샷 PNG 바이트 — 팝업 그림 OCR 입력. 메타·서명·비교에 넣지 않는다(sha256·dhash 가 그 값)
+    png: bytes = field(default=b"", repr=False, compare=False)
 
     def as_meta(self) -> dict[str, Any]:
         text = normalize_popup_text(self.text)  # 이미 정규화된 글자면 그대로(멱등)
@@ -239,10 +247,35 @@ class RenderResult:
     dom_text: str = ""
     popups: tuple[PopupShot, ...] = field(default_factory=tuple)
     error: str | None = None
+    html: str = ""  # 렌더 후 문서 HTML(``page.content()``) — TLS 브라우저 경로(D26-4)의 HTML 원문 행
 
     @property
     def ok(self) -> bool:
         return self.error is None and bool(self.screenshot_png)
+
+
+@dataclass(frozen=True, slots=True)
+class BrowserFetch:
+    """브라우저로 받은 문서 1개(robots.txt — D26-4). 실패는 ``error``(예외 대신 데이터)."""
+
+    url: str
+    status: int | None = None
+    text: str = ""
+    final_url: str | None = None
+    error: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.error is None and self.status is not None
+
+
+_TLS_ERROR_MARKERS: Final = ("err_cert", "err_ssl", "ssl", "certificate", "tls")
+
+
+def is_tls_error(message: str | None) -> bool:
+    """오류 문구가 TLS·인증서 오류인가(httpx ``[SSL: …]``·chromium ``net::ERR_CERT_…``·``ERR_SSL_…``). 문자열 검사."""
+    low = (message or "").lower()
+    return any(m in low for m in _TLS_ERROR_MARKERS)
 
 
 def popup_signature(p: PopupShot) -> str:
@@ -283,6 +316,12 @@ def visual_change(
 
 class Renderer(Protocol):
     def render(self, url: str) -> RenderResult: ...
+
+
+class BrowserFetcher(Protocol):
+    """브라우저로 문서 하나를 받는다(robots.txt — D26-4). 인증서 검증은 켠 채(브라우저 기본 검증기 — 중간 인증서 AIA 보완)."""
+
+    def fetch(self, url: str) -> BrowserFetch: ...
 
 
 _PASS_SCHEMES = frozenset({"about", "data", "blob"})  # 네트워크로 나가지 않는 주소
@@ -553,6 +592,53 @@ class PlaywrightRenderer:
             first = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
             return RenderResult(url=url, error=f"render: {first[:200]}")
 
+    def fetch(self, url: str) -> BrowserFetch:
+        """문서 하나(robots.txt)를 브라우저로 받는다 — D26-4 TLS 경로. 렌더와 같은 검사(내부망·포트·출구 프록시)를 거치고
+        인증서 검증은 켠 채다. 상태 코드와 본문 글자를 돌려준다(robots 해석은 호출자 — RFC 9309)."""
+        guard = self.guard()
+        reason = guard.prepare(url)
+        if reason is not None:
+            return BrowserFetch(url=url, error=reason)
+
+        from playwright.sync_api import Error as PlaywrightError
+        from playwright.sync_api import sync_playwright
+
+        from app.core.settings import get_settings
+
+        ua = self.user_agent or get_settings().http_user_agent
+        try:
+            with sync_playwright() as p:
+                return self._fetch_with(p, url, guard, ua)
+        except PlaywrightError as exc:
+            if guard.violation is not None:
+                return BrowserFetch(url=url, error=guard.violation)
+            first = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
+            return BrowserFetch(url=url, error=f"browser: {first[:200]}")
+
+    def _fetch_with(self, p: Any, url: str, guard: BrowserGuard, ua: str) -> BrowserFetch:
+        with EgressProxy(
+            guard.connect_address, timeout_s=self.timeout_ms / 1000, allowed_ports=guard.allowed_ports
+        ) as proxy:
+            try:
+                browser = self._launch(p, guard, proxy)
+                try:
+                    page = self._page(browser, guard, ua)
+                    response = page.goto(url, wait_until="load", timeout=self.timeout_ms)
+                    final = str(page.url)
+                    if guard.violation is None and (final_reason := guard.url_reason(final)) is not None:
+                        guard.violation = f"{final_reason} (최종 URL {final})"
+                    if guard.violation is not None:
+                        return BrowserFetch(url=url, final_url=final, error=guard.violation)
+                    if response is None:
+                        return BrowserFetch(url=url, final_url=final, error="browser: 응답 없음")
+                    return BrowserFetch(
+                        url=url, status=int(response.status), text=str(response.text()), final_url=final
+                    )
+                finally:
+                    browser.close()
+            finally:
+                guard.blocked.extend(proxy.blocked)
+
     def _render_with(self, p: Any, url: str, guard: BrowserGuard, ua: str) -> RenderResult:
         """브라우저 1회(출구 프록시 안): 검사 훅을 goto 보다 먼저 걸고, 위반이 있으면 결과를 버린다."""
         with EgressProxy(
@@ -563,26 +649,35 @@ class PlaywrightRenderer:
             finally:
                 guard.blocked.extend(proxy.blocked)
 
-    def _browse(self, p: Any, url: str, guard: BrowserGuard, ua: str, proxy: EgressProxy) -> RenderResult:
-        from playwright.sync_api import Error as PlaywrightError
-
-        browser = p.chromium.launch(
+    def _launch(self, p: Any, guard: BrowserGuard, proxy: EgressProxy) -> Any:
+        return p.chromium.launch(
             headless=True,
             args=guard.launch_args(),
             proxy={"server": proxy.server, "bypass": "<-loopback>", **proxy.credentials},  # 렌더 1회용 토큰
         )
+
+    def _page(self, browser: Any, guard: BrowserGuard, ua: str) -> Any:
+        """검사 훅을 건 새 페이지. **인증서 검증은 끄지 않는다**(``ignore_https_errors=False`` — D26-4: 브라우저는 자기
+        검증기로 체인을 보완할 뿐, 오류를 무시하지 않는다)."""
+        context = browser.new_context(
+            viewport={"width": self.viewport[0], "height": self.viewport[1]},
+            user_agent=ua,
+            locale="ko-KR",
+            reduced_motion="reduce",
+            service_workers="block",
+            ignore_https_errors=False,
+        )
+        context.route("**/*", guard.on_route)
+        context.route_web_socket("**/*", guard.on_websocket)
+        context.on("request", guard.on_request)
+        return context.new_page()
+
+    def _browse(self, p: Any, url: str, guard: BrowserGuard, ua: str, proxy: EgressProxy) -> RenderResult:
+        from playwright.sync_api import Error as PlaywrightError
+
+        browser = self._launch(p, guard, proxy)
         try:
-            context = browser.new_context(
-                viewport={"width": self.viewport[0], "height": self.viewport[1]},
-                user_agent=ua,
-                locale="ko-KR",
-                reduced_motion="reduce",
-                service_workers="block",
-            )
-            context.route("**/*", guard.on_route)
-            context.route_web_socket("**/*", guard.on_websocket)
-            context.on("request", guard.on_request)
-            page = context.new_page()
+            page = self._page(browser, guard, ua)
             try:
                 response = page.goto(url, wait_until="load", timeout=self.timeout_ms)
             except PlaywrightError:
@@ -619,6 +714,9 @@ class PlaywrightRenderer:
 
         png = page.screenshot(full_page=self.full_page, animations="disabled", caret="hide")
         text = page.inner_text("body") if page.locator("body").count() else ""
+        html = ""
+        with contextlib.suppress(PlaywrightError):
+            html = str(page.content())  # 팝업 표식(data-wp1b-popup)을 달기 전
         infos: list[dict[str, Any]] = page.evaluate(_POPUP_JS)
         shots: list[PopupShot] = []
         for info in infos:
@@ -639,6 +737,7 @@ class PlaywrightRenderer:
                     images=tuple(str(s) for s in info.get("images", [])),
                     text=normalize_popup_text(str(info.get("text") or "")),
                     dhash=dhash(shot),
+                    png=shot,
                 )
             )
         lines = (" ".join(line.split()) for line in text.splitlines())
@@ -649,4 +748,5 @@ class PlaywrightRenderer:
             screenshot_png=png,
             dom_text="\n".join(line for line in lines if line),
             popups=tuple(shots),
+            html=html,
         )
