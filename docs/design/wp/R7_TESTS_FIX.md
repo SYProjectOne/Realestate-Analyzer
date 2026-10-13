@@ -40,9 +40,14 @@
 
 | 파일 | 내용 |
 | --- | --- |
-| `scheduler/persist.py` | `copy_intake`: dst 에 그 단지의 수집 경로 행(`COLLECTED_INTAKE_PATHS` = official_popup·headless_shot)이 있으면 src 의 수집 경로 행은 **어느 경로든** 복사하지 않는다(오늘 관측이 어제 관측을 대신). human_check·unofficial_ref 는 그대로 복사. 새 리비전(`new_revision`, dst 빈 스냅샷)·수집하지 않은 날·오늘 행이 없는 단지는 변화 없음 |
+| `scheduler/persist.py` | `copy_intake`: dst 에 그 단지의 **수집 관측 행**(`COLLECTED_INTAKE_PATHS` = official_popup·headless_shot 경로 + `raw_document_id` 있음 — `intake_rows` 가 만든 행)이 있으면 src 의 수집 관측 행은 **어느 경로든** 복사하지 않는다(오늘 관측이 어제 관측을 대신). 원문 없는 접수 행(적재·보고서 값)·human_check·unofficial_ref 는 그대로 복사. 새 리비전(`new_revision`, dst 빈 스냅샷)·수집하지 않은 날·오늘 행이 없는 단지는 변화 없음. 운영 DB 의 수집 경로 행은 스냅샷 1·2 모두 원문 id 가 있다(원문 없는 행 0) |
 | `scheduler/collect.py` | `intake_rows`: `evidence_url` = 이 단지가 받은 HTML 행 주소(없으면 대표 행 주소) |
 | `scheduler/intake.py` | `_html_row(doc, url)`: 스크린샷 행이면 접수 행 근거 주소(`evidence_url`)의 HTML 행 중 그 스크린샷을 가리키는 행 — 스크린샷 행 URL 로 찾지 않는다 |
+
+원문 조건을 둔 이유: 첫 수정(경로만 보고 대신)은 T8(`tests/scheduler/test_detect_t8.py` 2건·`tests/regress/test_t08_no_change_day.py`·
+`test_t18_judge_down.py`)을 깼다 — 픽스처 적재 접수 행(official_popup, 원문 없음 — 보고서 값)이 첫날 수집 headless_shot 행과 같은 스냅샷에
+있다가 다음 날 복사되지 않아, 변경 없는 날 표시 접수가 바뀌고 판정 호출(58 ≠ 52)·사다리 수(30 ≠ 33)가 달라졌다. 적재 값은 수집 관측이
+아니므로 수집이 대신하지 않는다.
 
 결정성·D10-2: 같은 화면이 이어지는 날은 경로·원문·근거가 그대로라 입력 텍스트가 같다 → 분류 복사(호출 0, 테스트로 고정). 복사 규칙은
 `pick_intake` 와 같은 결정적 비교(경로 집합 소속)만 — 판단 아님(규칙 3).
@@ -55,8 +60,8 @@
 | --- | --- | --- |
 | `test_shared_url_day1_tls_day2_browser_success_shows_today` | 같은 주소 두 단지, 1일차 TLS(배포 전)·2일차 브라우저 성공 → 2일차 표시 행이 어제 'TLS' | **실패** — 행 `[('headless_shot', None, 3), ('official_popup', 'TLS', 1), …]`, 표시 = official_popup TLS 원문 1 |
 | `test_unchanged_next_day_after_recovery_copies_without_judge` | 회복 다음 날 같은 화면 → 분류 복사·호출 0·표시 행 그대로 | **실패** — 표시 행이 복사된 낡은 official_popup(분류 복사 표식 없음) |
-| `test_copy_intake_today_observation_replaces_yesterday_collected_rows` | `copy_intake` 단위: 오늘 headless_shot 단지에 어제 '403' official_popup 복사(인천 7·8·22·37) | **실패** |
-| `test_identical_screenshot_on_other_url_keeps_own_evidence` | 다른 주소·같은 스크린샷 → 근거 주소·HTML 제목이 남의 페이지 | **실패** — (복사 수정만 적용해도) `evidence_url == …/s/GI59` (기대 `…/s/`) |
+| `test_copy_intake_today_observation_replaces_yesterday_collected_rows` | `copy_intake` 단위: 오늘 headless_shot 단지에 어제 '403' official_popup(원문 있음) 복사(인천 7·8·22·37). 원문 없는 적재 행·사람 확인·비공식 참고·오늘 행 없는 단지는 복사 | **실패** |
+| `test_identical_screenshot_on_other_url_keeps_own_evidence` | 다른 주소·같은 스크린샷 → 근거 주소·HTML 제목이 남의 페이지 | **실패** — `evidence_url == …/s/GI59` (기대 `…/s/`; 복사 수정만 적용한 상태에서도 실패 확인) |
 | `test_human_check_row_is_still_carried_over` | 오늘 수집 행이 있어도 사람 확인 행은 복사 | 통과(회귀 방지) |
 
 ## 5. 운영 반영
