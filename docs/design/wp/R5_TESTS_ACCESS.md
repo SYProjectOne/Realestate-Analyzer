@@ -14,7 +14,7 @@ R5-PIPE 보고 §4 요청(`/ops/sources` 처리 실패 표식). 근거 자료: `
 | # | 수정 | 테스트 | 수정 전 실제 결과 | 수정 후 |
 | --- | --- | --- | --- | --- |
 | **1** D25-11 A·C 접수 AND | `analysis/scenarios.py`: `_intake_part`(접수 부분 — 상태·화살표 없는 근거)·`_priority_supply`(A)·`_resale_before_exit`(C)를 (상태, 근거) 쌍으로 분리, `_and_intake` 가 A·C 결과를 접수 부분과 AND — 상태는 약한 쪽(`_PRE_ORDER`: 미충족 > 확인 불가 > 미입력 > 충족), 근거는 RA 예시 모양 **"접수 …; 상황 조건 … → 상태"**(화살표 1개). 비공식 경로만이면 어떤 상황이든 미충족(기존 공통 조건, 맨 앞 그대로). B·D·기본은 바뀌지 않음 | `tests/analysis/test_r5_access_d25_11.py` 31개 | **16 실패 / 15 통과**(통과 = 결과가 상황 조건과 같은 조합·B·D·기본 가드·비공식 가드). 대표 단언: C 접수 미정 `assert '충족' == '미충족'`(근거 `전매 종료 2028-09 (등기 시 해제) ≤ 매도 시작 2031-10(기준일 + 보유 5년) → 충족`) · A 접수 불가 `assert '충족' == '미충족'` · 접수 확인 불가 `assert '충족' == '확인 불가'` · RA 예시 모양 `'전매 종료 2028-0...+ 보유 5년) → 충족' == '접수 가능(공식 팝업,...+ 보유 5년) → 충족'` · 미입력 조합 `'미입력' == '확인 불가'` | 31 통과 |
-| **4** PIPE 요청 — `/ops/sources` 처리 실패 | `api/routers/ops.py::_ok`: `error_text` 가 `PROCESS_FAILURE_PREFIXES`(`store_failed:`·`parse_failed:`, `scheduler.collect` 상수 그대로 import)로 시작하면 실패. 같은 `_ok` 를 쓰는 `failing_targets`·`successes_7d`·`failures_7d`·`last_success_at` 이 함께 맞는다. 수집기 표식(`scan`·`scan_partial:<p>`)은 원문이 있으면 그대로 성공. 응답 모양 그대로(계약 변경 없음) | `tests/api/test_r5_access_ops_failure.py` 2개 | `test_process_failure_marks_are_failing_targets`: **`official_site: 'store_failed: RuntimeError: 정규화 실패(테스트)' 행이 failing_targets 에 없음`** / `test_collector_markers_without_failure_prefix_stay_success`: 통과(가드) | 2 통과 |
+| **4** PIPE 요청 — `/ops/sources` 처리 실패 | `api/routers/ops.py::_ok`: `error_text` 가 `PROCESS_FAILURE_PREFIXES`(`store_failed:`·`parse_failed:` — `scheduler.collect` 의 같은 이름 상수와 같은 값을 ops 에 둔다. collect 를 import 하면 API 프로세스에 `judge.base` 가 올라와 R5-OPS 경계 테스트가 깨진다; 두 값이 같은지는 새 테스트가 단언)로 시작하면 실패. 같은 `_ok` 를 쓰는 `failing_targets`·`successes_7d`·`failures_7d`·`last_success_at` 이 함께 맞는다. 수집기 표식(`scan`·`scan_partial:<p>`)은 원문이 있으면 그대로 성공. 응답 모양 그대로(계약 변경 없음) | `tests/api/test_r5_access_ops_failure.py` 2개 | `test_process_failure_marks_are_failing_targets`: **`official_site: 'store_failed: RuntimeError: 정규화 실패(테스트)' 행이 failing_targets 에 없음`** / `test_collector_markers_without_failure_prefix_stay_success`: 통과(가드) | 2 통과 |
 
 ### NORM 이 '깨진다'고 한 테스트 (새 코드 + 옛 녹화 → 재생성 뒤)
 
@@ -119,9 +119,15 @@ decide 후보 단지의 증거 줄 `요건 사전 계산: 접근 가능성=…`(
 
 ## 4. 완료 검사
 
-(아래 §4 표는 브랜치 끝 커밋 기준. 로그는 스크래치 디렉터리에 보관.)
+(브랜치 끝 커밋 `0b30982` 코드 기준. 이후 커밋은 이 문서뿐.)
 
-PLACEHOLDER_CHECKS
+| 검사 | 결과 |
+| --- | --- |
+| 전체 `pytest -p no:randomly -m "not live"` 1회차(`0b30982` 직전 코드) | 4,080 통과 · 7 skip · **1 실패** — `tests/api/test_r5_judge_boundary.py::test_api_process_does_not_load_adapter_modules` `API 프로세스에 어댑터 모듈이 올라왔다: LOADED=app.judge.base`. 원인: 항목 4 첫 구현이 `ops.py` 에서 `app.scheduler.collect` 를 import → 그 모듈이 `judge.base` 를 끌어온다(R5-OPS 판정기 경계). **고침**(`0b30982`): 접두 튜플을 `ops.PROCESS_FAILURE_PREFIXES` 값으로 두고, 테스트가 `scheduler.collect` 값과 같은지 단언 |
+| 전체 2회차(최종 코드) | **4,088 중 4,081 통과 · 7 skip · 실패 0 · 오류 0**(junit, 1,863 s). 성능 테스트(`test_r3f_perf_publish` 등)도 이번엔 통과 — 재실행 불필요 |
+| `ruff check app tests` · `ruff format --check app tests` · `mypy app` | 통과 · 495 files already formatted · no issues in 167 source files |
+| `gen_contracts.py --check` · `fixture_manifest.py --check` · `record_synth_judgments.py --check` | exit 0 · exit 0 · `judgments_synth 일치 (255개 봉투)` |
+| `python scripts/tasks.py regress` | 백엔드 회귀 **677 passed**(5분 7초, T1~T18 골든·`expected_scores*.json` 변경 없음) + e2e **3 passed**(G8 PDF · G7 사람 확인 재판정 · G0 bootstrap), exit 0 |
 
 ```bash
 cd backend
