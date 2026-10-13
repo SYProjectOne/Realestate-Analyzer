@@ -12,24 +12,30 @@ path = 렌더 스크린샷 행(image/png)이면 'headless_shot', 아니면 'offi
 실패 사유는 raw_document 행과 ``read_site``(``SiteTextResult.reason``)에 있다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·주석)
+
 from __future__ import annotations
 
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Final
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
 from app.normalize._text import CandidateBuilder, checked_on, line_span, read_raw_text
 
 __all__ = [
+    "GAP",
     "KEYWORDS",
     "OfficialSiteParser",
     "SiteTextHit",
     "SiteTextResult",
     "intake_candidates",
+    "intake_context",
     "read_site",
     "scan_text",
+    "unique_lines",
 ]
 
 ComplexKey = Callable[[int], str | None]
@@ -42,7 +48,12 @@ KEYWORDS: dict[str, str] = {
     r"분양\s*중": "분양 중",
     r"잔여\s*(?:세대|물량|호실)": "잔여 세대",
     r"마감\s*임박": "마감임박",
-    r"(?<!임박)마\s*감(?!\s*임박)": "마감",
+    # R6-INTAKE: 마감재(마감자재·마감재 리스트)·'기본 마감'(마감 자재)·운영시간 '마감 17:30' 은 접수 문구가 아니다 — 이 줄만
+    # 후보가 되면 접수 classify 입력이 '마감재리스트' 한 줄로 바뀌어 페이지 문구가 빠졌다(인천 첫 실행 9행). 파싱 규칙
+    (
+        r"(?<!임박)(?<!기본\s)(?<!기본)마\s*감"
+        r"(?!\s*(?:임박|재|자재|시간|\d))"
+    ): "마감",
     r"분양\s*완료|완\s*판": "분양완료",
     r"방문\s*예약": "방문예약",
     r"무순위": "무순위",
@@ -89,6 +100,43 @@ def scan_text(text: str) -> list[SiteTextHit]:
             hits.append(SiteTextHit(name, m.group(0), text[ls:le].strip(), m.start(), m.end()))
     hits.sort(key=lambda h: (h.start, h.keyword))
     return hits
+
+
+def unique_lines(text: str) -> list[str]:
+    """줄 정리(앞뒤 공백·빈 줄 제거) + 앞에 나온 줄과 같은 줄 제거(문서 순서). 회전 배너(carousel)가 같은 문구를 서너 번
+    되풀이해 판정기 입력 길이를 차지하던 것을 막는다(R6-INTAKE). 문구를 고르거나 해석하지 않는다."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in text.splitlines():
+        line = " ".join(raw.split())
+        if not line or line in seen:
+            continue
+        seen.add(line)
+        out.append(line)
+    return out
+
+
+GAP: Final = "…"
+"""``intake_context`` 에서 떨어진 발췌 사이에 두는 표지."""
+
+
+def intake_context(text: str, *, radius: int = 1) -> list[str]:
+    """접수 문구 후보 줄(``scan_text`` 키워드가 든 줄)과 그 앞뒤 ``radius`` 줄(``unique_lines`` 기준, 문서 순서). 떨어진
+    발췌 사이에는 ``GAP``. 후보가 없으면 [].
+
+    R6-INTAKE: 후보 줄만 따로 보내면 '분양중공사중'·'무순위 모집공고'처럼 어느 단지의 어떤 상태인지 모를 조각이 되어 판정기가
+    review 로 남겼다(인천 첫 실행). 앞뒤 줄(단지 이름·일정 줄 등)을 함께 넘긴다 — 분류는 판정기가 한다(규칙 3)."""
+    lines = unique_lines(text)
+    hits = [i for i, ln in enumerate(lines) if any(rx.search(ln) for rx, _ in _COMPILED)]
+    keep = sorted({j for i in hits for j in range(max(0, i - radius), min(len(lines), i + radius + 1))})
+    out: list[str] = []
+    prev: int | None = None
+    for j in keep:
+        if prev is not None and j != prev + 1:
+            out.append(GAP)
+        out.append(lines[j])
+        prev = j
+    return out
 
 
 def read_site(raw: RawDocument, *, raw_dir: Path | None = None) -> SiteTextResult:

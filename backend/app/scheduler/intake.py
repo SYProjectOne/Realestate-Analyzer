@@ -19,15 +19,21 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Final
+from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scope import pick_intake
-from app.models import ChangeEvent, IntakeStatus, JudgmentLog, RawDocument, Snapshot
+from app.collectors.official_site.extract import html_head
+from app.judge import payloads as P
+from app.judge import pipeline as jp
+from app.models import ChangeEvent, Complex, IntakeStatus, JudgmentLog, RawDocument, Snapshot
 from app.normalize._text import read_raw_text
-from app.normalize.store import parser_for, raw_dto
+from app.normalize.official_site_parser import intake_context, unique_lines
+from app.normalize.store import raw_dto
 
 __all__ = [
     "CLASSIFIED_MARK",
@@ -35,19 +41,24 @@ __all__ = [
     "INTAKE_PATHS",
     "NO_TEXT",
     "UNCLASSIFIED",
+    "SiteEvidence",
     "carry_classification",
     "classified_version",
+    "current_item_text",
+    "display_url",
+    "intake_body",
     "intake_change_events",
     "intake_text",
     "page_text",
     "pending_complexes",
     "reset_stale_classification",
+    "site_evidence",
+    "site_item",
     "text_sha256",
 ]
 
 UNCLASSIFIED: Final = "접수 문구 미분류"  # collect.intake_rows 가 남기는 사유(분류 대기)
 INTAKE_PATHS: Final = ("official_popup", "headless_shot")
-INTAKE_TEXT_MAX: Final = 2000
 CLASSIFIED_MARK: Final = "판정기 classify"
 """파이프라인 접수 classify 가 note 에 남기는 표식(``판정기 classify jl_<seq>``) — 판정기로 정한 행."""
 COPIED_MARK: Final = "문구 해시 동일 — 이전 분류 복사"
@@ -55,38 +66,167 @@ NO_TEXT: Final = "접수 문구 없음"
 """원문에 접수 문구가 없어 판정기 호출 없이 남긴 사유(파이프라인 접수 classify) — 문구가 그대로 없으면 그대로 복사."""
 
 
-def intake_text(session: Session, row: IntakeStatus) -> str:
-    """접수 상태 행의 원문 → classify 항목 텍스트(최대 2000자)."""
-    doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
-    if doc is None:
-        return ""
-    dto = raw_dto(doc)
-    parser = parser_for("official_site")
-    lines: list[str] = []
-    if parser is not None:
-        try:
-            lines = [str(c.value_text) for c in parser.parse(dto) if c.value_text]
-        except Exception:  # 원문 파일 없음 등 — 아래 DOM 텍스트로
-            lines = []
-    text = "\n".join(dict.fromkeys(lines))
-    if not text:
-        src = dto.model_copy(update={"path": None}) if row.path == "headless_shot" else dto
-        text = (read_raw_text(src) or "").strip()
-    return text[:INTAKE_TEXT_MAX]
-
-
-PAGE_TEXT_MAX: Final = 1500
-
-
-def page_text(session: Session, row: IntakeStatus) -> str:
-    """접수 행 원문의 페이지 텍스트 앞부분(렌더 DOM 텍스트·HTML 텍스트, 최대 1500자) — D21-5 공식 홈페이지 동일성 classify
-    입력(단지 이름·위치와 함께). 접수 문구 후보 줄만으로는 그 페이지가 어느 단지 것인지 알 수 없다."""
+def _row_text(session: Session, row: IntakeStatus) -> str:
+    """접수 행 원문의 페이지 문구 전체(렌더 행이면 렌더 후 DOM 텍스트, HTML 행이면 HTML 의 보이는 텍스트)."""
     doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
     if doc is None:
         return ""
     dto = raw_dto(doc)
     src = dto.model_copy(update={"path": None}) if row.path == "headless_shot" else dto
-    return (read_raw_text(src) or "").strip()[:PAGE_TEXT_MAX]
+    try:
+        return (read_raw_text(src) or "").strip()
+    except Exception:  # 원문 파일 없음 등 — 문구 없음
+        return ""
+
+
+INTAKE_BODY_BUDGET: Final = jp.SITE_ITEM_BUDGET - 100
+"""접수 항목 페이지 부분 목표 길이('단지: 이름' 줄 몫과 공개 텍스트 가림 여유를 뺀 값 — 2000자 자르기에 끝이 잘리지 않게)."""
+
+
+def intake_body(session: Session, row: IntakeStatus) -> str:
+    """접수 classify 의 페이지 부분: 접수 문구 후보 줄과 그 앞뒤 줄(``official_site_parser.intake_context``), 후보가 없으면
+    줄 중복을 뺀 페이지 문구(앞·뒤). 원문에 문구가 없으면 ''(→ '접수 문구 없음', 판정 호출 없음).
+
+    후보가 있을 때 페이지 문구 전체를 덧붙이지 않는다 — 실제 판정기 재생(인천 첫 실행 48행, R6_TESTS_INTAKE §4)에서 메뉴·광고
+    문구가 섞이면 '선착순 동·호지정' 같은 분명한 문구도 open·auto → review 로 흐려졌다(4행)."""
+    text = _row_text(session, row)
+    if not text:
+        return ""
+    ctx = intake_context(text)
+    body = "\n".join(ctx) if ctx else "\n".join(unique_lines(text))
+    return P.head_tail(body, INTAKE_BODY_BUDGET)
+
+
+def intake_text(session: Session, row: IntakeStatus) -> str:
+    """접수 상태 행 → classify 항목 텍스트: '단지: <이름>' + ``intake_body``. 문구가 없으면 ''.
+
+    R6-INTAKE(인천 첫 실행 — 접수 classify 43건 중 확인 불가 36): 예전에는 후보 줄만 따로 보냈다 — 후보가 '마감재리스트'
+    (마감재 = 마감 자재, 파서 거짓 후보)뿐이면 페이지 문구 대신 그 한 줄이 입력이 되었고, '분양중공사중'·'무순위 모집공고'
+    같은 조각은 어느 단지의 무엇인지 몰라 review 로 남았다. 이제 단지 이름·후보 앞뒤 줄·페이지 문구를 함께 보낸다(분류는
+    판정기만).
+    파이프라인 접수 classify 입력과 분류 복사의 문구 해시가 같은 함수를 쓴다."""
+    body = intake_body(session, row)
+    if not body:
+        return ""
+    cx = session.get(Complex, row.complex_id)
+    head = f"단지: {cx.name}\n" if cx is not None and cx.name else ""
+    return head + body
+
+
+@dataclass(frozen=True, slots=True)
+class SiteEvidence:
+    """공식 홈페이지 동일성 classify 의 페이지 쪽 근거(R6-INTAKE): 보이는 주소(IDN 한글 표기, 쿼리 제외)·이동 후 주소·HTML
+    제목·설명·페이지 문구(줄 중복 제거). 모두 공개 페이지에서 읽은 값이다."""
+
+    url: str | None
+    final_url: str | None
+    title: str | None
+    description: str | None
+    text: str
+
+
+def _unicode_host(host: str) -> str:
+    """퓨니코드 라벨(xn--)을 유니코드로(실패하면 그대로)."""
+    try:
+        return ".".join(
+            lbl.encode("ascii").decode("idna") if lbl.startswith("xn--") else lbl for lbl in host.split(".")
+        )
+    except UnicodeError:
+        return host
+
+
+def display_url(url: str | None) -> str | None:
+    """사람이 읽는 주소: 퓨니코드(xn--) 호스트를 한글로 풀고 쿼리·조각을 뗀다(공개 주소만 — 규칙 6). 실패하면 원문에서
+    쿼리만 뗀다."""
+    if not url:
+        return None
+    try:
+        parts = urlsplit(url)
+        host = _unicode_host(parts.hostname or "")
+        netloc = host + (f":{parts.port}" if parts.port else "")
+        return urlunsplit((parts.scheme, netloc, parts.path, "", "")) or None
+    except ValueError:
+        return url.split("?", 1)[0].split("#", 1)[0] or None
+
+
+def _html_row(session: Session, doc: RawDocument) -> RawDocument | None:
+    """접수 행 원문에 맞는 HTML 원문 행: HTML 행이면 그 행, 렌더 PNG 행이면 같은 URL 의 HTML 행 중 메타의
+    ``render.screenshot_sha256`` 이 그 PNG 인 가장 최근 행(없으면 같은 URL 의 가장 최근 성공 HTML 행). 원문 행은 sha256 로
+    하나라 같은 페이지면 같은 행이다(결정적)."""
+    if not (doc.content_type or "").startswith("image/"):
+        return doc
+    rows = [
+        r
+        for r in session.scalars(
+            select(RawDocument)
+            .where(
+                RawDocument.source_kind == "official_site",
+                RawDocument.url == doc.url,
+                RawDocument.http_status == 200,
+                RawDocument.path.is_not(None),
+            )
+            .order_by(RawDocument.id.desc())
+            .limit(50)
+        )
+        if not (r.content_type or "").startswith(("image/", "application/json"))
+    ]
+    for r in rows:
+        render = (r.meta or {}).get("render") if isinstance(r.meta, dict) else None
+        if isinstance(render, dict) and render.get("screenshot_sha256") == doc.sha256:
+            return r
+    return rows[0] if rows else None
+
+
+def site_evidence(session: Session, row: IntakeStatus) -> SiteEvidence:
+    """D21-5 동일성 classify 의 페이지 근거(R6-INTAKE). 원문이 없으면 빈 근거."""
+    doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
+    if doc is None:
+        return SiteEvidence(None, None, None, None, "")
+    html_row = _html_row(session, doc)
+    title = desc = final = None
+    if html_row is not None:
+        meta = html_row.meta if isinstance(html_row.meta, dict) else {}
+        final = display_url(str(meta.get("final_url") or "") or None)
+        try:
+            html = read_raw_text(raw_dto(html_row).model_copy(update={"text_path": None}))
+        except Exception:  # 원문 파일 없음 — 제목·설명 없이
+            html = None
+        if html:
+            title, desc = html_head(html)
+    return SiteEvidence(
+        url=display_url(row.evidence_url or doc.url),
+        final_url=final,
+        title=title,
+        description=desc,
+        text="\n".join(unique_lines(_row_text(session, row))),
+    )
+
+
+def site_item(session: Session, row: IntakeStatus, cx: Complex) -> jp.SiteItem:
+    """접수 행 → 동일성 classify 항목(단지 사실 + 페이지 근거). 파이프라인 동일성 classify 와 분류 복사의 입력 비교가 같은
+    함수를 쓴다."""
+    ev = site_evidence(session, row)
+    return jp.SiteItem(
+        row.complex_id,
+        row.path,
+        cx.name,
+        cx.address,
+        ev.text,
+        builder=cx.builder,
+        developer=cx.developer,
+        units_total=cx.units_total,
+        url=ev.url,
+        final_url=ev.final_url,
+        title=ev.title,
+        description=ev.description,
+    )
+
+
+def page_text(session: Session, row: IntakeStatus) -> str:
+    """접수 행 원문의 페이지 문구(줄 중복 제거, 전체) — 동일성 항목이 길이에 맞춰 앞·뒤를 남긴다(``SiteItem``).
+
+    예전(R4 재시험 N6)에는 앞 1500자만 넘겨 꼬리말(시행·현장 주소·세대수)이 빠졌다(R6-INTAKE)."""
+    return "\n".join(unique_lines(_row_text(session, row)))
 
 
 def text_sha256(text: str) -> str:
@@ -130,6 +270,51 @@ def classified_version(session: Session, row: IntakeStatus) -> str | None:
         return None
     log = session.get(JudgmentLog, int(found[-1]))
     return log.adapter_version if log is not None else None
+
+
+def _logged_item(session: Session, prev: IntakeStatus) -> tuple[str, str] | None:
+    """분류 행 note 의 ``판정기 classify jl_<seq>`` 판정 입력(judgment_log.input_json)에서 그 행의 항목 (종류, 텍스트).
+    종류 = 'site'(동일성 classify 에서 멈춘 행) | 'intake'(접수 classify 행). 표식·로그·항목이 없으면 None."""
+    found = _SEQ_RE.findall(prev.note or "")
+    if not found:
+        return None
+    log = session.get(JudgmentLog, int(found[-1]))
+    items = (log.input_json or {}).get("items") if log is not None else None
+    if not isinstance(items, list):
+        return None
+    for kind in ("site", "intake"):
+        key = f"{kind}:c{prev.complex_id}:{prev.path}"
+        hit = next((it for it in items if isinstance(it, dict) and it.get("id") == key), None)
+        if hit is not None and hit.get("text") is not None:
+            return kind, str(hit["text"])
+    return None
+
+
+def current_item_text(session: Session, row: IntakeStatus, kind: str) -> str | None:
+    """지금 원문·단지 사실로 만들 판정기 항목 텍스트(payload 빌더의 공개 텍스트 정리·길이 제한까지 — 로그와 같은 모양).
+    kind = 'site'(동일성) | 'intake'(접수). 단지가 없으면 None."""
+    if kind == "site":
+        cx = session.get(Complex, row.complex_id)
+        if cx is None:
+            return None
+        it = site_item(session, row, cx)
+        payload = P.classify_site_identity_payload([(it.key, it.item_text)])
+    else:
+        item = jp.IntakeItem(row.complex_id, row.path, intake_text(session, row))
+        payload = P.classify_intake_payload([(item.key, item.text)])
+    return str(payload["items"][0]["text"])
+
+
+def _same_input(session: Session, prev: IntakeStatus, row: IntakeStatus) -> bool | None:
+    """D22-2·D10-2(R6-INTAKE): 직전 분류를 낸 판정기 입력(그 행의 항목 텍스트)이 지금 이 행으로 만들 입력과 같은가.
+    모르면(표식·로그 없음 — 사람·옛 행) None. 원문이 같아도 **입력 조립이 바뀌면**(단지 사실 — 이름·주소·시공 등 — 이나
+    동일성 근거가 달라지면) False → 복사하지 않고 판정기가 다시 분류한다. 같으면 복사(호출 없음). 텍스트 비교(산술)."""
+    logged = _logged_item(session, prev)
+    if logged is None:
+        return None
+    kind, text = logged
+    now = current_item_text(session, row, kind)
+    return None if now is None else now == text
 
 
 def _strip_marks(note: str | None) -> str | None:
@@ -210,6 +395,8 @@ def carry_classification(
             now_text = intake_text(session, row).strip()
             if text_sha256(now_text) != text_sha256(intake_text(session, prev).strip()):
                 continue
+        if _same_input(session, prev, row) is False:
+            continue  # R6-INTAKE: 판정기 입력 조립(동일성 근거·접수 문구 문맥·단지 사실)이 바뀌었다 — 다시 분류
         row.status = prev.status
         row.reason = prev.reason
         # 복사 표식은 매일 쌓이지 않게 마지막 것만 둔다

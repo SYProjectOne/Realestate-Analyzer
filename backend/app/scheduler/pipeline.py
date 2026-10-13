@@ -112,8 +112,8 @@ from app.scheduler.intake import (
     carry_classification,
     intake_change_events,
     intake_text,
-    page_text,
     reset_stale_classification,
+    site_item,
 )
 from app.scheduler.judge_version import last_logged, record_version_change
 from app.scheduler.payloads import (
@@ -595,12 +595,13 @@ def _same_site_only(
     if not items:
         return items
     sites: list[tuple[str, jp.SiteItem]] = []
-    for key, (row, item) in sorted(items.items()):
+    for key, (row, _item) in sorted(items.items()):
         cx = session.get(Complex, row.complex_id)
         if cx is None:
             continue
-        text = page_text(session, row) or item.text
-        sites.append((key, jp.SiteItem(row.complex_id, row.path, cx.name, cx.address, text)))
+        # R6-INTAKE: 단지 사실(시공·시행·세대수 포함) + 페이지 주소·제목·설명 + 줄 중복을 뺀 페이지 문구(앞·뒤) — 분류 복사의
+        # 입력 비교(``intake.current_item_text``)와 같은 함수
+        sites.append((key, site_item(session, row, cx)))
     keep: dict[str, tuple[IntakeStatus, jp.IntakeItem]] = {}
     for b in range(0, len(sites), CLASSIFY_BATCH_MAX):
         chunk = sites[b : b + CLASSIFY_BATCH_MAX]
