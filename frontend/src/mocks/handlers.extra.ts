@@ -25,6 +25,8 @@
  *  - 계약 .14 F7: PATCH /catalysts 좌표는 소수 6자리 반올림으로 비교(같으면 200)
  *  - 계약 .15 F3: POST /regions 선택 필드 applyhome_query — 서버와 같은 'YYYY-MM' 패턴 검사(틀리면 422 validation_error +
  *    field_errors loc ['body','applyhome_query',<키>]), 맞으면 응답 region.applyhome_query 에 그대로
+ *  - 계약 .19 F2(D26-2): GET /ops/intake-queue 는 예시 그대로 + 접수 상태 사람 확인을 저장한 단지 항목에
+ *    `human_check_pending`(서버처럼 발행 리비전 대기열은 그대로, 반영 대기 표시만)
  *  - 계약 .8(리비전·사람 확인 field·PATCH /catalysts·PATCH /regions)은 생성 핸들러(계약 예시)를 그대로 쓴다 — 초안 목 없음.
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
@@ -45,6 +47,8 @@ import type {
   HumanCheckCreate,
   HumanCheckField,
   Intake,
+  IntakeQueue,
+  IntakeQueueItem,
   JobCreate,
   JobName,
   JobRun,
@@ -136,7 +140,11 @@ const state = {
   catalystPatches: new Map<number, string>(),
   /** PATCH /ops/checklist 로 바뀐 항목(항목 id → 상태·메모·기한) — 없으면 예시 목록 값(계약 .14 F5) */
   checklist: new Map<number, ChecklistState>(),
+  /** POST /ops/human-checks(접수 상태) 마지막 입력(단지 id → 요약) — 대기열 `human_check_pending`(계약 .19 F2) */
+  intakeChecks: new Map<number, PendingCheck>(),
 };
+
+type PendingCheck = NonNullable<IntakeQueueItem['human_check_pending']>;
 
 /** 계약 예시 PATCH /catalysts 202(보이는 값이 바뀜 — 계약 .13 D16-4) */
 const CATALYST_UPDATED = (catalystUpdatedExample as { value: CatalystUpdated }).value;
@@ -196,6 +204,7 @@ export function resetMockState(): void {
   state.intakeOverrides.clear();
   state.catalystPatches.clear();
   state.checklist.clear();
+  state.intakeChecks.clear();
 }
 
 type ChecklistState = Pick<ChecklistItem, 'status' | 'note' | 'due_date'>;
@@ -738,6 +747,12 @@ export const extraHandlers = [
       entered_by: body.entered_by,
     };
     if (body.field === 'intake_status') state.intakeOverrides.set(body.complex_id, intake);
+    state.intakeChecks.set(body.complex_id, {
+      id: example.id,
+      value_text: body.value_text,
+      checked_at: body.checked_at,
+      created_at: nowIso(),
+    });
     const created: HumanCheck = {
       ...example,
       ...body,
@@ -747,6 +762,23 @@ export const extraHandlers = [
       ...jobFields,
     };
     return HttpResponse.json(created, { status: 201 });
+  }),
+
+  // GET /ops/intake-queue(계약 .19) — 예시 그대로 + 사람 확인 입력 뒤 그 단지 항목에 반영 대기(서버처럼 발행 리비전 대기열은
+  // 새 리비전 발행 전까지 그대로이고 `human_check_pending` 만 붙는다)
+  http.get(mswPath('/ops/intake-queue'), async ({ request }) => {
+    const queue = await base<IntakeQueue>(request);
+    if (state.intakeChecks.size === 0) return HttpResponse.json(queue);
+    return HttpResponse.json({
+      ...queue,
+      groups: queue.groups.map((g) => ({
+        ...g,
+        items: g.items.map((it) => ({
+          ...it,
+          human_check_pending: state.intakeChecks.get(it.complex_id) ?? it.human_check_pending,
+        })),
+      })),
+    } satisfies IntakeQueue);
   }),
 
   // GET /raw/{id}?as=text — 원문 텍스트(목). 출처 예시의 발췌를 excerpt_start 위치에 둔다

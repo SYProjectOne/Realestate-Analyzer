@@ -37,7 +37,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.contract import check_body
+from app.api.contract import check_body, has_visible
 from app.api.deps import DB, default_snapshot, get_region, settings_of
 from app.api.errors import ApiError, not_found, validation_error
 from app.api.facts import FactMaker, ProvIndex
@@ -127,7 +127,7 @@ def create_catalyst(session: DB, request: Request, body: Annotated[Any, Body()] 
     url = normalize_url(str(body["url"]))
     title = str(body["title"]).strip()
     excerpt = (str(body.get("excerpt") or "").strip()) or None
-    if not title:
+    if not has_visible(title):  # 계약 .19: 스키마 pattern 과 같은 규칙
         raise validation_error("title 이 비었다", ("body", "title"))
     from app.judge.guard import check_payload
 

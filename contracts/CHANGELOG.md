@@ -2,6 +2,61 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.19
+
+인천 첫 실운영 수집(`docs/design/wp/R6_TESTS_INTAKE.md` §6 제안 4 — 계약 변경 요청) 후속 — 사람 결정 **D26-2**(`docs/design/DECISIONS.md`):
+'확인 불가' 접수 행을 G7 에서 사유별로 모아 한 번에 사람 확인하는 **접수 확인 대기열**. 계약 소유자 = **R7-QUEUE**(브랜치 `wp/r7-queue`).
+마이그레이션 없음(DB 모양 그대로 — head 0016). 필드 삭제·의미 변경 없음, **새 엔드포인트 1**(`GET /ops/intake-queue`)·**새 스키마 1**
+(`intake_queue.json` — `IntakeQueue`·`IntakeQueueCategory`·`IntakeQueueGroup`·`IntakeQueueItem`·`IntakeQueuePendingCheck`). 저장 모양 버전
+(`SHAPE_VERSION`) 그대로 1 — 대기열은 발행 저장본(D13-1)이 아니라 운영 GET 이다(`/ops/sources` 처럼 저장된 행을 그 자리에서 읽는다 — 저장된
+접수 행은 리비전마다 따로라 발행 리비전의 대기열도 바뀌지 않는다; `human_check_pending` 만 그 뒤 사람 입력을 보인다). 판정기 호출·DB 쓰기
+없음(AGENTS 규칙 4). 테스트 표(결함 · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R7_TESTS_QUEUE.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표. 이 브랜치가 FE 도 맞췄다(`npm run gen:api`·`gen:msw` 재생성, G7 `IntakeQueuePanel`).
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .18 | .19 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | **`GET /ops/intake-queue?region_id=&snapshot=`**(`getIntakeQueue`) → `IntakeQueue` | 없음 — '확인 불가' 접수는 단지 상세 배지로만 보였고(운영자가 인천 89행을 한 곳에서 처리할 수 없음), 운영자는 runbook §2 의 SQL(`GROUP BY reason`)로 사유를 셌다 | **새 엔드포인트**: 기본 = 그 지역의 최신 published(없으면 ready) 스냅샷. 단지마다 표시 접수 행(human_check > official_popup > headless_shot)이 '확인 불가'·'미정'인 단지를 `groups[]`(`category`·`reason`·`count`·`items[]`)로. 묶음은 **저장된 사유·http_status 로 정한다**(데이터 기준 — 사유가 새로 생겨도 계약·코드 그대로): HTTP 비 2xx·숫자 사유·수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·invalid_url·render …) → `collect_failed`(묶음 이름 = 그 낱말·코드, 'connect: …' → 'connect', 'TLS(…)' → 'TLS'), '공식 홈페이지 동일성 미확인'·'공식 홈페이지가 다른 단지' → `identity`, '문구로 판단 불가'·'접수 문구 없음' → `no_phrase`, '판정 미해결'·'접수 문구 미분류' → `unresolved`, '판정 대상 아님…'(D26-3 범위 경계·공공분양) → `not_judged`, 그 밖 → `other`('기타'), status '미정' → `undecided`. 순서 collect_failed → identity → no_phrase → unresolved → not_judged → other → undecided, 묶음은 건수 내림차순 | D26-2 |
+| F2 | `IntakeQueueItem` | — | 항목 = 단지 이름(`complex_name` → G3 링크)·`status`·`reason`·`path`·`evidence_url`(근거 페이지)·`raw_document_id`·**`screenshot_raw_document_id`**(스크린샷 원문 — `GET /raw/{id}` image/png, 없으면 null)·`checked_at`·`http_status`(메타)·`note`·**`judgment_ref`**(메모의 마지막 `jl_<seq>` — 동일성·접수 classify 판정 로그, runbook §2)·**`human_check_pending`**(이 스냅샷을 만든 뒤 들어와 아직 반영 안 된 접수 사람 확인 `{id, value_text, checked_at, created_at}` — 같은 단지를 두 번 입력하지 않게 '사람 확인 입력됨 — 재판정·발행 대기'). 화면의 '사람 확인 입력'은 기존 G7 HumanCheckForm 을 그 단지·field `intake_status` 로 미리 채운다(`?hc_complex=<id>&hc_field=intake_status#human-check`) → `POST /ops/human-checks`(접수 행 + 재판정 자동 등록, D12-5 — 응답·동작 그대로) | D26-2 · D12-5 |
+| F3 | 인증 | — | READONLY_TOKEN 은 GET 이라 200(D10-7 — 화면은 읽기 전용이면 '사람 확인 입력' 버튼을 끈다), 공유 링크 토큰은 `/ops/*` 라 403 | D10-7 |
+| F4 | 빈 대기열 | — | 지역이 없거나 published·ready 스냅샷이 없으면 200 + `snapshot_id` null · `groups` [] · `total` 0. 없는 지역·스냅샷(또는 다른 지역 스냅샷) 404 | D26-2 |
+| F5 | 자유 문장 입력 4곳 — `PATCH /claims/{id}` `text` · `POST /catalysts` `title` · `PATCH /regions/{id}` `name` · `PUT /regions/{id}/living-areas` `living_areas[].name` | 스키마는 `minLength 1` 만 — 공백·제어 문자만인 값(`"\u001e"`·`" \u3000"`)이 스키마를 통과한 뒤 서버가 `strip()` 으로 비워 422 '비었다'(schemathesis RejectedPositiveData), `"\x01"`·`"\ufeff"` 같은 값은 서버도 받았다(주장 재검증 잡·생활권 이름으로 들어감) | **보이는 글자 1자 이상**(스키마 `pattern` — S1). 어기면 스키마 단계 422 `validation_error`(field_errors loc `[body, text]`·`[body, title]`·`[body, name]`·`[body, living_areas, i, name]` — 응답 모양 그대로). 화면 변경 필요 없음(폼은 이미 앞뒤 공백을 지우고 빈 값을 막는다 — 제어 문자만 넣는 경우만 서버 422 문구로 보인다) | 조정자 요청(R7) |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.18) | 이후(.19) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | 사람이 넣는 자유 문장 4필드(F5) | 스키마 `minLength 1`, 서버는 `strip()` 후 비면 422(주장·호재·지역 이름), 생활권 이름은 정규화가 같은 규칙 — 둘이 다른 값을 거절 | 스키마 `pattern` = 서버 `app.api.contract.VISIBLE_TEXT_PATTERN`(같은 문자열, 테스트가 맞춘다): C0·C1 제어 문자, 파이썬 `str.isspace` 공백 전부(U+0020·U+00A0·U+1680·U+2000–200A·U+2028·U+2029·U+202F·U+205F·U+3000 …), BOM U+FEFF 가 **아닌** 글자가 1자 이상. 이 규칙을 지난 값은 `strip()` 해도 비지 않아 서버의 '비었다' 422 에 닿지 않는다(서버 검사도 같은 함수 `has_visible`). 다른 자유 문장 요청 필드(사람 확인 `value_text`·`note`, 시나리오·지역 생성 이름, 공유 링크 `label`, 체크리스트 `note`, 호재 `excerpt`)는 서버가 공백만인 값을 거절하지 않아(그대로 저장하거나 빈 값을 null 로) 어긋남이 없다 — 바꾸지 않았다 | 조정자 요청(R7) |
+
+`POST /ops/human-checks`·접수 행·발행 저장본은 그대로.
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `schemas/intake_queue.json`(새 파일) | `IntakeQueue`(region_id·snapshot_id·asof_date·revision·snapshot_status·total·groups) + `$defs` `IntakeQueueCategory`(enum 7)·`IntakeQueueGroup`·`IntakeQueueItem`·`IntakeQueuePendingCheck`. 맨 숫자(`total`·`count`·`revision`·`http_status`)는 `x-nonfact`(행 수·리비전·HTTP 메타 — 규칙 5 의 사실 아님) |
+| 2 | `openapi.yaml` | `paths./ops/intake-queue.get`(`getIntakeQueue` — 200·401·403·404·422·500, 예시 `intake_queue.json`·`intake_queue_empty.json`), components 5개, `info.version` 2026-10-09.19 |
+| 3 | `claim.json` `ClaimPatch.text` · `catalyst.json` `CatalystCreate.title` · `region.json` `RegionPatch.name` · `living_area.json` `LivingAreaInput.name` | `pattern`(보이는 글자 1자 이상 — S1) + description. 모양·필수 그대로 |
+
+### 마이그레이션·검증
+
+- DB 마이그레이션 없음(head 0016 그대로). 저장본 변환·backfill 불필요(발행 저장본 모양 그대로).
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.19`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`), 프론트 `src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 재생성.
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`). 새 예시는 `contracts/examples/`(MSW 데이터)뿐이다.
+
+### 알려진 한계
+
+- 접수 행이 하나도 없는 단지(청약홈에 공식 홈페이지 주소 없음 — 인천 5단지, 화면 '확인 불가(접수 행 없음)')는 대기열에 없다(행 기준 —
+  D26-2 '확인 불가 접수 행'). 이 단지들도 G7 사람 확인 폼(접수 상태)으로 입력할 수 있다.
+- `human_check_pending` 은 같은 확인 시각·경로 human_check 의 접수 행이 그 스냅샷에 없을 때다 — 사람 확인 뒤 재판정이 새 리비전을 발행하면
+  그 리비전이 기본이 되어 항목이 빠지거나(가능·미정·불가) '사람 확인' 사유로 남는다('확인 불가' 입력 → `other`).
+
 ## 2026-10-09.18
 
 R4 4차 재시험(`docs/design/wp/R4_RESULT4.md` §10 — N13·N14·N15) 후속 — CEO 결정 **D23**(`docs/design/DECISIONS.md`). 계약 소유자 =

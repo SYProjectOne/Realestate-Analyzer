@@ -1,0 +1,180 @@
+{
+  "summary": "G7 접수 확인 대기열(계약 .19, D26-2)",
+  "description": "사유별 묶음 — 수집 실패(403·DNS), 동일성 미확인, 문구로 판단 불가(스크린샷·반영 대기 사람 확인), 판정 대상 아님, 미정. .invalid 도메인은 예시용 자리표시자다.",
+  "value": {
+    "region_id": 1,
+    "snapshot_id": 12,
+    "asof_date": "2026-10-08",
+    "revision": 1,
+    "snapshot_status": "published",
+    "total": 7,
+    "groups": [
+      {
+        "category": "collect_failed",
+        "reason": "DNS",
+        "count": 2,
+        "items": [
+          {
+            "intake_id": 17,
+            "complex_id": 14,
+            "complex_name": "사우역 지엔하임",
+            "status": "확인 불가",
+            "reason": "DNS",
+            "path": "official_popup",
+            "evidence_url": "https://saewoo-gnheim.invalid/",
+            "raw_document_id": 9060,
+            "screenshot_path": null,
+            "screenshot_raw_document_id": null,
+            "checked_at": "2026-10-07T09:15:00+09:00",
+            "http_status": null,
+            "note": null,
+            "judgment_ref": null,
+            "human_check_pending": null
+          },
+          {
+            "intake_id": 15,
+            "complex_id": 13,
+            "complex_name": "해링턴플레이스 풍무 1BL",
+            "status": "확인 불가",
+            "reason": "DNS",
+            "path": "official_popup",
+            "evidence_url": "https://harringtonplace-pungmu.invalid/",
+            "raw_document_id": 9061,
+            "screenshot_path": null,
+            "screenshot_raw_document_id": null,
+            "checked_at": "2026-10-07T09:15:30+09:00",
+            "http_status": null,
+            "note": null,
+            "judgment_ref": null,
+            "human_check_pending": null
+          }
+        ]
+      },
+      {
+        "category": "collect_failed",
+        "reason": "403",
+        "count": 1,
+        "items": [
+          {
+            "intake_id": 4,
+            "complex_id": 4,
+            "complex_name": "오퍼스 한강 스위첸",
+            "status": "확인 불가",
+            "reason": "403",
+            "path": "official_popup",
+            "evidence_url": "https://opus-switzen.com/",
+            "raw_document_id": 9059,
+            "screenshot_path": null,
+            "screenshot_raw_document_id": null,
+            "checked_at": "2026-10-07T09:14:00+09:00",
+            "http_status": 403,
+            "note": null,
+            "judgment_ref": null,
+            "human_check_pending": null
+          }
+        ]
+      },
+      {
+        "category": "identity",
+        "reason": "공식 홈페이지 동일성 미확인",
+        "count": 1,
+        "items": [
+          {
+            "intake_id": 8,
+            "complex_id": 6,
+            "complex_name": "더샵 검단레이크파크 AB23",
+            "status": "확인 불가",
+            "reason": "공식 홈페이지 동일성 미확인",
+            "path": "official_popup",
+            "evidence_url": "https://brand-portal.invalid/",
+            "raw_document_id": 9064,
+            "screenshot_path": null,
+            "screenshot_raw_document_id": null,
+            "checked_at": "2026-10-08T06:09:05+09:00",
+            "http_status": 200,
+            "note": "판정기 classify jl_443",
+            "judgment_ref": "jl_443",
+            "human_check_pending": null
+          }
+        ]
+      },
+      {
+        "category": "no_phrase",
+        "reason": "문구로 판단 불가",
+        "count": 1,
+        "items": [
+          {
+            "intake_id": 31,
+            "complex_id": 5,
+            "complex_name": "검단 센트레빌 에듀시티",
+            "status": "확인 불가",
+            "reason": "문구로 판단 불가",
+            "path": "headless_shot",
+            "evidence_url": "https://centreville-educity.invalid/",
+            "raw_document_id": 9071,
+            "screenshot_path": "official_site/2026-10-08/5c1e.png",
+            "screenshot_raw_document_id": 9071,
+            "checked_at": "2026-10-08T06:09:12+09:00",
+            "http_status": 200,
+            "note": "판정기 classify jl_445",
+            "judgment_ref": "jl_445",
+            "human_check_pending": {
+              "id": 7,
+              "value_text": "가능",
+              "checked_at": "2026-10-09T10:20:00+09:00",
+              "created_at": "2026-10-09T10:21:03+09:00"
+            }
+          }
+        ]
+      },
+      {
+        "category": "not_judged",
+        "reason": "판정 대상 아님(범위 경계)",
+        "count": 1,
+        "items": [
+          {
+            "intake_id": 33,
+            "complex_id": 11,
+            "complex_name": "고촌센트럴자이",
+            "status": "확인 불가",
+            "reason": "판정 대상 아님(범위 경계)",
+            "path": "official_popup",
+            "evidence_url": "https://gochon-centralxi.invalid/",
+            "raw_document_id": 9072,
+            "screenshot_path": null,
+            "screenshot_raw_document_id": null,
+            "checked_at": "2026-10-08T06:09:20+09:00",
+            "http_status": 200,
+            "note": null,
+            "judgment_ref": null,
+            "human_check_pending": null
+          }
+        ]
+      },
+      {
+        "category": "undecided",
+        "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)",
+        "count": 1,
+        "items": [
+          {
+            "intake_id": 1,
+            "complex_id": 1,
+            "complex_name": "더샵 송도그란테르",
+            "status": "미정",
+            "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)",
+            "path": "official_popup",
+            "evidence_url": null,
+            "raw_document_id": null,
+            "screenshot_path": null,
+            "screenshot_raw_document_id": null,
+            "checked_at": "2026-10-07",
+            "http_status": null,
+            "note": null,
+            "judgment_ref": null,
+            "human_check_pending": null
+          }
+        ]
+      }
+    ]
+  }
+}

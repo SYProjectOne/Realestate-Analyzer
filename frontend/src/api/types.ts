@@ -298,6 +298,24 @@ export const CHECKLIST_KINDS = [
   '사실 재확인',
 ] as const satisfies readonly ChecklistKind[];
 export type ChecklistPatch = S['ChecklistPatch'];
+/**
+ * G7 접수 확인 대기열(GET /ops/intake-queue, 계약 2026-10-09.19 · D26-2) — '확인 불가'·'미정' 표시 접수 행을 서버가 저장된
+ * 사유·http_status 로 묶은 것. 분류(category)는 서버가 정한다(화면은 묶지 않는다). 표시 = ko.json `page.G7.iq.category`
+ */
+export type IntakeQueue = S['IntakeQueue'];
+export type IntakeQueueGroup = S['IntakeQueueGroup'];
+export type IntakeQueueItem = S['IntakeQueueItem'];
+export type IntakeQueueCategory = S['IntakeQueueCategory'];
+export type IntakeQueueParams = NonNullable<operations['getIntakeQueue']['parameters']['query']>;
+export const INTAKE_QUEUE_CATEGORIES = [
+  'collect_failed',
+  'identity',
+  'no_phrase',
+  'unresolved',
+  'not_judged',
+  'other',
+  'undecided',
+] as const satisfies readonly IntakeQueueCategory[];
 export type HumanCheck = S['HumanCheck'];
 export type HumanCheckCreate = S['HumanCheckCreate'];
 /**

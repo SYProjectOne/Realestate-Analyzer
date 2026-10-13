@@ -157,9 +157,8 @@ def test_all_operations_covered() -> None:
     from app.main import create_app
 
     ops = {(op.method.upper(), op.path) for op in (r.ok() for r in schema.get_all_operations())}
-    assert (
-        len(ops) == 39
-    )  # 31 + 계약 2026-10-09.4 의 6개 + 계약 .8 의 2개(PATCH /regions/{id}, PATCH /catalysts/{id})
+    # 31 + 계약 .4 의 6개 + 계약 .8 의 2개(PATCH /regions/{id}·/catalysts/{id}) + .19 GET /ops/intake-queue
+    assert len(ops) == 40
     app = create_app()
     routes = {
         (method.upper(), path.removeprefix("/api") if path != "/health" else path)

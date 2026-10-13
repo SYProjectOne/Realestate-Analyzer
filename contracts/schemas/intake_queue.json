@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intake_queue.json",
+  "title": "IntakeQueue",
+  "description": "GET /ops/intake-queue — G7 접수 확인 대기열(계약 2026-10-09.19, DECISIONS D26-2). 한 스냅샷(기본 = 그 지역의 최신 published, 없으면 최신 ready — 공통 규칙)에서 단지마다 **표시 접수 행**(우선순위 human_check > official_popup > headless_shot, unofficial_ref 는 근거 아님 — intake.json)의 status 가 '확인 불가' 또는 '미정'인 단지를 사유별로 묶는다. 저장된 접수 행만 읽는다(판정기 호출 없음 — AGENTS 규칙 4, DB 쓰기 없음). 접수 행이 하나도 없는 단지(공식 홈페이지 주소 없음 — 화면 '확인 불가(접수 행 없음)')는 대기열에 없다.\n묶음은 **저장된 사유 문자열·http_status 로 정한다(데이터 기준)** — 사유가 새로 생겨도 계약·코드를 바꾸지 않는다: (1) status '미정' → category undecided, 묶음 이름 = 사유(없으면 '미정'). (2) http_status 가 2xx 가 아니거나 사유가 숫자뿐('403') → collect_failed, 묶음 이름 = 사유 숫자(없으면 http_status). (3) 사유 앞 영문 낱말(':'·'('·공백 앞)이 수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·robots.txt·invalid_url·render·blocked_host·blocked_by_robots, 대소문자 무시)이거나 사유가 '접속 실패'·'수집 실패'·'타임아웃'·'원문 없음'으로 시작 → collect_failed, 묶음 이름 = 그 낱말(원래 표기 — 'connect: …' → 'connect', 'TLS(…)' → 'TLS'). (4) 사유 머리로 정하는 판정 사유: '공식 홈페이지 동일성 미확인'·'공식 홈페이지가 다른 단지' → identity, '문구로 판단 불가'·'접수 문구 없음' → no_phrase, '판정 미해결'·'접수 문구 미분류' → unresolved, '판정 대상 아님'으로 시작(예 '판정 대상 아님(공공분양)'·'판정 대상 아님(범위 경계)' — D26-3) → not_judged; 묶음 이름 = 저장 사유 그대로. (5) 그 밖(새 사유·'사람 확인' 등) → other('기타'), 묶음 이름 = 저장 사유 그대로. 같은 (category, reason) 이 한 묶음이다.\n순서: category 는 collect_failed → identity → no_phrase → unresolved → not_judged → other → undecided, 같은 category 안 묶음은 건수 내림차순·이름 순, 묶음 안 항목은 단지 이름·접수 행 id 순. total = 모든 묶음 count 합. 지역이 없거나 그 지역에 published·ready 스냅샷이 없으면 snapshot_id null · groups [] · total 0(200).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["region_id", "snapshot_id", "asof_date", "revision", "snapshot_status", "total", "groups"],
+  "properties": {
+    "region_id": { "type": ["integer", "null"] },
+    "snapshot_id": { "type": ["integer", "null"] },
+    "asof_date": { "description": "스냅샷 기준일 YYYY-MM-DD", "type": ["string", "null"], "maxLength": 10 },
+    "revision": { "x-nonfact": "스냅샷 리비전 번호(메타)", "type": ["integer", "null"], "minimum": 1 },
+    "snapshot_status": { "description": "그 스냅샷의 상태(published·ready·building — snapshot.json)", "type": ["string", "null"], "maxLength": 16 },
+    "total": { "x-nonfact": "대기열 항목 수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 0 },
+    "groups": { "type": "array", "items": { "$ref": "#/$defs/IntakeQueueGroup" } }
+  },
+  "$defs": {
+    "IntakeQueueCategory": {
+      "title": "IntakeQueueCategory",
+      "description": "대기열 사유 분류(계약 .19, D26-2): collect_failed 수집 실패(connect·TLS·403·404 …) · identity 공식 홈페이지 동일성(미확인·다른 단지) · no_phrase 문구로 판단 불가(접수 문구 없음 포함) · unresolved 판정 미해결(분류 대기 포함) · not_judged 판정 대상 아님(범위 경계·공공분양 — D26-3) · other 기타(정해진 머리가 없는 사유 — 새 사유는 여기로) · undecided 접수 '미정'.",
+      "type": "string",
+      "enum": ["collect_failed", "identity", "no_phrase", "unresolved", "not_judged", "other", "undecided"]
+    },
+    "IntakeQueueGroup": {
+      "title": "IntakeQueueGroup",
+      "description": "사유 묶음 하나 — 같은 (category, reason).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "reason", "count", "items"],
+      "properties": {
+        "category": { "$ref": "#/$defs/IntakeQueueCategory" },
+        "reason": { "description": "묶음 이름: 수집 실패면 실패 낱말·HTTP 코드('connect'·'TLS'·'403'), 그 밖은 저장 사유 그대로('문구로 판단 불가'), 미정은 사유 또는 '미정'", "type": "string", "minLength": 1, "maxLength": 120 },
+        "count": { "x-nonfact": "묶음 항목 수(행 수 메타 — 출처 데이터 아님)", "type": "integer", "minimum": 1 },
+        "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/IntakeQueueItem" } }
+      }
+    },
+    "IntakeQueueItem": {
+      "title": "IntakeQueueItem",
+      "description": "대기열 항목 = 단지 하나의 표시 접수 행(intake_status). 화면: 단지 이름 → G3, 근거 주소·스크린샷(GET /raw/{screenshot_raw_document_id})·확인 시각·HTTP 상태, '사람 확인 입력' → G7 HumanCheckForm(complex_id, field 'intake_status' 미리 채움) → POST /ops/human-checks(접수 행 + 재판정 자동 등록 — D12-5).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intake_id", "complex_id", "complex_name", "status", "reason", "path", "evidence_url", "raw_document_id", "screenshot_path", "screenshot_raw_document_id", "checked_at", "http_status", "note", "judgment_ref", "human_check_pending"],
+      "properties": {
+        "intake_id": { "description": "intake_status.id", "type": "integer" },
+        "complex_id": { "type": "integer" },
+        "complex_name": { "type": "string", "maxLength": 200 },
+        "status": { "description": "표시 접수 상태", "type": "string", "enum": ["확인 불가", "미정"] },
+        "reason": { "description": "접수 행 사유(Intake.reason 과 같은 규칙 — '확인 불가'인데 사유가 비면 http_status 또는 '사유 미기재'). '미정'은 null 일 수 있다", "type": ["string", "null"], "maxLength": 120 },
+        "path": { "description": "표시 접수 행 경로(intake.json path — unofficial_ref 는 오지 않는다)", "type": "string", "enum": ["human_check", "official_popup", "headless_shot"] },
+        "evidence_url": { "description": "근거 페이지 주소(공식 홈페이지) — 없으면 null", "type": ["string", "null"], "maxLength": 2048 },
+        "raw_document_id": { "description": "접수 행 원문(GET /raw/{id}; 실패 행이면 404)", "type": ["integer", "null"] },
+        "screenshot_path": { "description": "RAW_DIR 기준 상대 경로(intake.json)", "type": ["string", "null"] },
+        "screenshot_raw_document_id": { "description": "스크린샷 원문 id — screenshot_path 를 가진 원문 행(GET /raw/{id} image/png). 스크린샷이 없으면 null", "type": ["integer", "null"] },
+        "checked_at": { "description": "확인 시각 ISO 8601(날짜만도 허용 — intake.json)", "type": "string", "minLength": 10, "maxLength": 32 },
+        "http_status": { "x-nonfact": "HTTP 상태 코드(수집 결과 메타)", "description": "공식 홈페이지 응답 코드. DNS·TLS·연결 실패는 null + reason", "type": ["integer", "null"] },
+        "note": { "description": "접수 행 메모(문구 후보·판정 표식 'jl_<seq>' 등)", "type": ["string", "null"] },
+        "judgment_ref": { "description": "메모에 남은 마지막 판정 로그 표식(jl_<seq> — 동일성·접수 classify). runbook §2: 동일성 미확인은 이 판정 로그를 G7 에서 확인한다. 없으면 null", "type": ["string", "null"], "pattern": "^jl_[0-9]+$" },
+        "human_check_pending": {
+          "description": "이 스냅샷을 만든 뒤 들어온 접수 상태 사람 확인(human_check field 'intake_status')이 아직 이 스냅샷에 없으면 그 마지막 입력 — 재판정·새 리비전 발행 대기(같은 단지를 두 번 입력하지 않게). 이미 반영됐거나 없으면 null",
+          "anyOf": [{ "$ref": "#/$defs/IntakeQueuePendingCheck" }, { "type": "null" }]
+        }
+      }
+    },
+    "IntakeQueuePendingCheck": {
+      "title": "IntakeQueuePendingCheck",
+      "description": "반영 대기 중인 접수 상태 사람 확인 요약(human_check 행).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "value_text", "checked_at", "created_at"],
+      "properties": {
+        "id": { "description": "human_check.id", "type": "integer" },
+        "value_text": { "description": "입력한 접수 상태(가능·미정·확인 불가·불가)", "type": "string", "maxLength": 200 },
+        "checked_at": { "description": "입력한 확인 시각 그대로(HumanCheck.checked_at)", "type": "string", "maxLength": 32 },
+        "created_at": { "description": "저장 시각", "type": ["string", "null"], "maxLength": 32 }
+      }
+    }
+  },
+  "examples": [
+    {
+      "region_id": 1, "snapshot_id": 12, "asof_date": "2026-10-08", "revision": 1, "snapshot_status": "published", "total": 3,
+      "groups": [
+        {
+          "category": "collect_failed", "reason": "403", "count": 1,
+          "items": [
+            {
+              "intake_id": 4, "complex_id": 4, "complex_name": "오퍼스 한강 스위첸", "status": "확인 불가", "reason": "403", "path": "official_popup",
+              "evidence_url": "https://opus-switzen.com/", "raw_document_id": 9059, "screenshot_path": null, "screenshot_raw_document_id": null,
+              "checked_at": "2026-10-07T09:14:00+09:00", "http_status": 403, "note": null, "judgment_ref": null, "human_check_pending": null
+            }
+          ]
+        },
+        {
+          "category": "no_phrase", "reason": "문구로 판단 불가", "count": 1,
+          "items": [
+            {
+              "intake_id": 31, "complex_id": 5, "complex_name": "검단 센트레빌 에듀시티", "status": "확인 불가", "reason": "문구로 판단 불가", "path": "headless_shot",
+              "evidence_url": "https://centreville-educity.invalid/", "raw_document_id": 9071, "screenshot_path": "official_site/2026-10-08/5c1e.png", "screenshot_raw_document_id": 9071,
+              "checked_at": "2026-10-08T06:09:12+09:00", "http_status": 200, "note": "판정기 classify jl_445", "judgment_ref": "jl_445",
+              "human_check_pending": { "id": 7, "value_text": "가능", "checked_at": "2026-10-09T10:20:00+09:00", "created_at": "2026-10-09T10:21:03+09:00" }
+            }
+          ]
+        },
+        {
+          "category": "undecided", "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)", "count": 1,
+          "items": [
+            {
+              "intake_id": 1, "complex_id": 1, "complex_name": "더샵 송도그란테르", "status": "미정", "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)", "path": "official_popup",
+              "evidence_url": null, "raw_document_id": null, "screenshot_path": null, "screenshot_raw_document_id": null,
+              "checked_at": "2026-10-07", "http_status": null, "note": null, "judgment_ref": null, "human_check_pending": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

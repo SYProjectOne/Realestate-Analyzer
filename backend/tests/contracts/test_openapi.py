@@ -117,7 +117,7 @@ def test_contract_version(bundled: dict[str, Any], source_openapi: dict[str, Any
     changelog = (OPENAPI_SRC.parent / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)", changelog, re.M)
     assert top is not None
-    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.18"
+    assert CONTRACT_VERSION == top.group(1) == "2026-10-09.19"
     assert source_openapi["info"]["version"] == CONTRACT_VERSION
     assert bundled["info"]["version"] == CONTRACT_VERSION
 
@@ -256,6 +256,7 @@ FACT_EXEMPT = {
     ("SensitivityRank", "total"),  # 민감도 변형 점수: 가중치 가정의 산출물(C10 표·선 전용)
     ("ComplexRowPage", "total"),  # 목록 건수
     ("JudgmentOps", "total"),  # 목록 건수
+    ("IntakeQueue", "total"),  # 대기열 항목 수(계약 .19, x-nonfact)
     ("Components", "p10"),  # ComponentView(score: Fact …)를 감싼 객체
     ("ScenarioParams", "equity_won"),  # 사용자가 입력한 조건값(출처 데이터가 아님)
     ("ScenarioParams", "loan_limit_won"),

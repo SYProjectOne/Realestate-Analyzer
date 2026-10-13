@@ -425,6 +425,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ops/intake-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 접수 확인 대기열 — '확인 불가'·'미정' 접수 행을 사유별로 (G7, 계약 .19, D26-2)
+         * @description 한 스냅샷(기본 = 그 지역의 최신 published, 없으면 최신 ready)에서 단지마다 표시 접수 행(human_check > official_popup > headless_shot)이 '확인 불가' 또는 '미정'인 단지를 사유별로 묶는다(IntakeQueue 설명 — 저장된 사유·http_status 로 묶는 데이터 기준 규칙, 모르는 사유는 other '기타'). 저장된 행만 읽는다 — 판정기 호출·DB 쓰기 없음(AGENTS 규칙 4). 항목마다 단지·근거 주소·스크린샷 원문 id·확인 시각·HTTP 상태와, 이 스냅샷 뒤에 들어와 아직 반영 안 된 접수 사람 확인(human_check_pending)을 준다. 화면의 '사람 확인 입력'은 G7 HumanCheckForm(field intake_status) → POST /ops/human-checks(접수 행 + 재판정 자동 등록, D12-5).
+         *     region_id 생략 = 첫 지역(id 순, GET /ops/sources 와 같음). snapshot 을 주면 그 스냅샷(region_id 도 주면 같은 지역이어야 한다 — 아니면 404). 없는 지역·스냅샷 404. 지역이 없거나 published·ready 스냅샷이 없으면 200 + snapshot_id null · groups [].
+         *     인증: READONLY_TOKEN 은 GET 이라 열 수 있다(D10-7). 공유 링크 토큰은 /ops/* 라 403.
+         */
+        get: operations["getIntakeQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ops/checklist": {
         parameters: {
             query?: never;
@@ -784,6 +806,7 @@ export interface components {
         CatalystCreate: {
             region_id: number;
             url: string;
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙) */
             title: string;
             /** @description 기사·공고 발췌(사람이 붙여 넣은 공개 문장, 개인정보 금지 — guard 통과) */
             excerpt?: string | null;
@@ -1034,6 +1057,7 @@ export interface components {
          * @description PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict. 같은 대상만 허용한다(D10-3): 원자 주장마다 원 주장 field 의 용어(예 resale_months → '전매')가 있고 다른 사실 필드의 용어가 없어야 하며, 같은 지역의 다른 단지 이름만 가리키면 안 된다(문자열 대조, 판단 아님) — 어기면 422 validation_error(loc body.text). 원 주장이 DB 사실에서 생성됐으면 그 사실을 강등하고(FactDemotion: 값 비움·'확인 불가(검증 모순)'·체크리스트 '사실 재확인'·rejudge 잡) 사람 확인 또는 새 원문이 오면 복원한다(D10-3, 계약 2026-10-09.6).
          */
         ClaimPatch: {
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙) */
             text: string;
         };
         /**
@@ -3154,6 +3178,181 @@ export interface components {
             entered_by?: string | null;
         } & (unknown & unknown);
         /**
+         * IntakeQueue
+         * @description GET /ops/intake-queue — G7 접수 확인 대기열(계약 2026-10-09.19, DECISIONS D26-2). 한 스냅샷(기본 = 그 지역의 최신 published, 없으면 최신 ready — 공통 규칙)에서 단지마다 **표시 접수 행**(우선순위 human_check > official_popup > headless_shot, unofficial_ref 는 근거 아님 — intake.json)의 status 가 '확인 불가' 또는 '미정'인 단지를 사유별로 묶는다. 저장된 접수 행만 읽는다(판정기 호출 없음 — AGENTS 규칙 4, DB 쓰기 없음). 접수 행이 하나도 없는 단지(공식 홈페이지 주소 없음 — 화면 '확인 불가(접수 행 없음)')는 대기열에 없다.
+         *     묶음은 **저장된 사유 문자열·http_status 로 정한다(데이터 기준)** — 사유가 새로 생겨도 계약·코드를 바꾸지 않는다: (1) status '미정' → category undecided, 묶음 이름 = 사유(없으면 '미정'). (2) http_status 가 2xx 가 아니거나 사유가 숫자뿐('403') → collect_failed, 묶음 이름 = 사유 숫자(없으면 http_status). (3) 사유 앞 영문 낱말(':'·'('·공백 앞)이 수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·robots.txt·invalid_url·render·blocked_host·blocked_by_robots, 대소문자 무시)이거나 사유가 '접속 실패'·'수집 실패'·'타임아웃'·'원문 없음'으로 시작 → collect_failed, 묶음 이름 = 그 낱말(원래 표기 — 'connect: …' → 'connect', 'TLS(…)' → 'TLS'). (4) 사유 머리로 정하는 판정 사유: '공식 홈페이지 동일성 미확인'·'공식 홈페이지가 다른 단지' → identity, '문구로 판단 불가'·'접수 문구 없음' → no_phrase, '판정 미해결'·'접수 문구 미분류' → unresolved, '판정 대상 아님'으로 시작(예 '판정 대상 아님(공공분양)'·'판정 대상 아님(범위 경계)' — D26-3) → not_judged; 묶음 이름 = 저장 사유 그대로. (5) 그 밖(새 사유·'사람 확인' 등) → other('기타'), 묶음 이름 = 저장 사유 그대로. 같은 (category, reason) 이 한 묶음이다.
+         *     순서: category 는 collect_failed → identity → no_phrase → unresolved → not_judged → other → undecided, 같은 category 안 묶음은 건수 내림차순·이름 순, 묶음 안 항목은 단지 이름·접수 행 id 순. total = 모든 묶음 count 합. 지역이 없거나 그 지역에 published·ready 스냅샷이 없으면 snapshot_id null · groups [] · total 0(200).
+         * @example {
+         *       "region_id": 1,
+         *       "snapshot_id": 12,
+         *       "asof_date": "2026-10-08",
+         *       "revision": 1,
+         *       "snapshot_status": "published",
+         *       "total": 3,
+         *       "groups": [
+         *         {
+         *           "category": "collect_failed",
+         *           "reason": "403",
+         *           "count": 1,
+         *           "items": [
+         *             {
+         *               "intake_id": 4,
+         *               "complex_id": 4,
+         *               "complex_name": "오퍼스 한강 스위첸",
+         *               "status": "확인 불가",
+         *               "reason": "403",
+         *               "path": "official_popup",
+         *               "evidence_url": "https://opus-switzen.com/",
+         *               "raw_document_id": 9059,
+         *               "screenshot_path": null,
+         *               "screenshot_raw_document_id": null,
+         *               "checked_at": "2026-10-07T09:14:00+09:00",
+         *               "http_status": 403,
+         *               "note": null,
+         *               "judgment_ref": null,
+         *               "human_check_pending": null
+         *             }
+         *           ]
+         *         },
+         *         {
+         *           "category": "no_phrase",
+         *           "reason": "문구로 판단 불가",
+         *           "count": 1,
+         *           "items": [
+         *             {
+         *               "intake_id": 31,
+         *               "complex_id": 5,
+         *               "complex_name": "검단 센트레빌 에듀시티",
+         *               "status": "확인 불가",
+         *               "reason": "문구로 판단 불가",
+         *               "path": "headless_shot",
+         *               "evidence_url": "https://centreville-educity.invalid/",
+         *               "raw_document_id": 9071,
+         *               "screenshot_path": "official_site/2026-10-08/5c1e.png",
+         *               "screenshot_raw_document_id": 9071,
+         *               "checked_at": "2026-10-08T06:09:12+09:00",
+         *               "http_status": 200,
+         *               "note": "판정기 classify jl_445",
+         *               "judgment_ref": "jl_445",
+         *               "human_check_pending": {
+         *                 "id": 7,
+         *                 "value_text": "가능",
+         *                 "checked_at": "2026-10-09T10:20:00+09:00",
+         *                 "created_at": "2026-10-09T10:21:03+09:00"
+         *               }
+         *             }
+         *           ]
+         *         },
+         *         {
+         *           "category": "undecided",
+         *           "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)",
+         *           "count": 1,
+         *           "items": [
+         *             {
+         *               "intake_id": 1,
+         *               "complex_id": 1,
+         *               "complex_name": "더샵 송도그란테르",
+         *               "status": "미정",
+         *               "reason": "추가 공급 미정(무순위 2차 이후 공고 없음, 공고 이력 있음)",
+         *               "path": "official_popup",
+         *               "evidence_url": null,
+         *               "raw_document_id": null,
+         *               "screenshot_path": null,
+         *               "screenshot_raw_document_id": null,
+         *               "checked_at": "2026-10-07",
+         *               "http_status": null,
+         *               "note": null,
+         *               "judgment_ref": null,
+         *               "human_check_pending": null
+         *             }
+         *           ]
+         *         }
+         *       ]
+         *     }
+         */
+        IntakeQueue: {
+            region_id: number | null;
+            snapshot_id: number | null;
+            /** @description 스냅샷 기준일 YYYY-MM-DD */
+            asof_date: string | null;
+            revision: number | null;
+            /** @description 그 스냅샷의 상태(published·ready·building — snapshot.json) */
+            snapshot_status: string | null;
+            total: number;
+            groups: components["schemas"]["IntakeQueueGroup"][];
+        };
+        /**
+         * IntakeQueueCategory
+         * @description 대기열 사유 분류(계약 .19, D26-2): collect_failed 수집 실패(connect·TLS·403·404 …) · identity 공식 홈페이지 동일성(미확인·다른 단지) · no_phrase 문구로 판단 불가(접수 문구 없음 포함) · unresolved 판정 미해결(분류 대기 포함) · not_judged 판정 대상 아님(범위 경계·공공분양 — D26-3) · other 기타(정해진 머리가 없는 사유 — 새 사유는 여기로) · undecided 접수 '미정'.
+         * @enum {string}
+         */
+        IntakeQueueCategory: "collect_failed" | "identity" | "no_phrase" | "unresolved" | "not_judged" | "other" | "undecided";
+        /**
+         * IntakeQueueGroup
+         * @description 사유 묶음 하나 — 같은 (category, reason).
+         */
+        IntakeQueueGroup: {
+            category: components["schemas"]["IntakeQueueCategory"];
+            /** @description 묶음 이름: 수집 실패면 실패 낱말·HTTP 코드('connect'·'TLS'·'403'), 그 밖은 저장 사유 그대로('문구로 판단 불가'), 미정은 사유 또는 '미정' */
+            reason: string;
+            count: number;
+            items: components["schemas"]["IntakeQueueItem"][];
+        };
+        /**
+         * IntakeQueueItem
+         * @description 대기열 항목 = 단지 하나의 표시 접수 행(intake_status). 화면: 단지 이름 → G3, 근거 주소·스크린샷(GET /raw/{screenshot_raw_document_id})·확인 시각·HTTP 상태, '사람 확인 입력' → G7 HumanCheckForm(complex_id, field 'intake_status' 미리 채움) → POST /ops/human-checks(접수 행 + 재판정 자동 등록 — D12-5).
+         */
+        IntakeQueueItem: {
+            /** @description intake_status.id */
+            intake_id: number;
+            complex_id: number;
+            complex_name: string;
+            /**
+             * @description 표시 접수 상태
+             * @enum {string}
+             */
+            status: "확인 불가" | "미정";
+            /** @description 접수 행 사유(Intake.reason 과 같은 규칙 — '확인 불가'인데 사유가 비면 http_status 또는 '사유 미기재'). '미정'은 null 일 수 있다 */
+            reason: string | null;
+            /**
+             * @description 표시 접수 행 경로(intake.json path — unofficial_ref 는 오지 않는다)
+             * @enum {string}
+             */
+            path: "human_check" | "official_popup" | "headless_shot";
+            /** @description 근거 페이지 주소(공식 홈페이지) — 없으면 null */
+            evidence_url: string | null;
+            /** @description 접수 행 원문(GET /raw/{id}; 실패 행이면 404) */
+            raw_document_id: number | null;
+            /** @description RAW_DIR 기준 상대 경로(intake.json) */
+            screenshot_path: string | null;
+            /** @description 스크린샷 원문 id — screenshot_path 를 가진 원문 행(GET /raw/{id} image/png). 스크린샷이 없으면 null */
+            screenshot_raw_document_id: number | null;
+            /** @description 확인 시각 ISO 8601(날짜만도 허용 — intake.json) */
+            checked_at: string;
+            /** @description 공식 홈페이지 응답 코드. DNS·TLS·연결 실패는 null + reason */
+            http_status: number | null;
+            /** @description 접수 행 메모(문구 후보·판정 표식 'jl_<seq>' 등) */
+            note: string | null;
+            /** @description 메모에 남은 마지막 판정 로그 표식(jl_<seq> — 동일성·접수 classify). runbook §2: 동일성 미확인은 이 판정 로그를 G7 에서 확인한다. 없으면 null */
+            judgment_ref: string | null;
+            /** @description 이 스냅샷을 만든 뒤 들어온 접수 상태 사람 확인(human_check field 'intake_status')이 아직 이 스냅샷에 없으면 그 마지막 입력 — 재판정·새 리비전 발행 대기(같은 단지를 두 번 입력하지 않게). 이미 반영됐거나 없으면 null */
+            human_check_pending: components["schemas"]["IntakeQueuePendingCheck"] | null;
+        };
+        /**
+         * IntakeQueuePendingCheck
+         * @description 반영 대기 중인 접수 상태 사람 확인 요약(human_check 행).
+         */
+        IntakeQueuePendingCheck: {
+            /** @description human_check.id */
+            id: number;
+            /** @description 입력한 접수 상태(가능·미정·확인 불가·불가) */
+            value_text: string;
+            /** @description 입력한 확인 시각 그대로(HumanCheck.checked_at) */
+            checked_at: string;
+            /** @description 저장 시각 */
+            created_at: string | null;
+        };
+        /**
          * JobCreate
          * @description POST /jobs 본문. payload는 job_name별 스키마로 검증한다(불일치 422). kind는 서버가 manual(재판정이면 rejudge)로 채운다. job_name 은 JobCreateName — claim.reverify 는 PATCH /claims/{id} 로만 등록한다(같은 대상 검사·사실 강등을 건너뛰지 않게, R3 재리뷰 N-C3·계약 2026-10-09.6) → POST /jobs 로 넣으면 422.
          */
@@ -3651,6 +3850,7 @@ export interface components {
          */
         LivingAreaInput: {
             id?: string | null;
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙) */
             name: string;
             /** @description 법정동 코드 10자리 문자열 */
             legal_dong_codes: string[];
@@ -4429,6 +4629,7 @@ export interface components {
          */
         RegionPatch: {
             selections: components["schemas"]["RegionSelection"][];
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙). null·생략 = 이름 그대로 */
             name?: string | null;
         };
         /**
@@ -7452,6 +7653,35 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getIntakeQueue: {
+        parameters: {
+            query?: {
+                region_id?: number;
+                /** @description 기준일 스냅샷 id. 생략 시 최신 published. */
+                snapshot?: components["parameters"]["SnapshotQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사유별 대기열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeQueue"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalError"];
         };

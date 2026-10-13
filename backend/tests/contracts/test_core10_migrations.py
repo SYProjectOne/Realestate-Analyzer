@@ -203,12 +203,14 @@ def test_postgres_0016_merges_n13_duplicates_and_roundtrips(postgres_url: str) -
 
 def test_contract_version_is_18() -> None:
     """계약 .18(R4-CORE10): ``CONTRACT_VERSION`` = openapi ``info.version`` = DECISIONS 5행(버전 3곳 — CHANGELOG 맨 위는
-    ``test_protocols``·``test_openapi`` 가 맞춘다)."""
+    ``test_protocols``·``test_openapi`` 가 맞춘다). .19(R7-QUEUE) 이후에도 .18 항목은 CHANGELOG 에 남고 버전은 .18 이상이다
+    (현재 버전 단언은 ``test_r7_queue_contract``)."""
     from app.core.protocols import CONTRACT_VERSION
 
     from ._support import CONTRACTS, load_yaml
 
-    assert CONTRACT_VERSION == "2026-10-09.18"
+    assert "## 2026-10-09.18" in (CONTRACTS / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert CONTRACT_VERSION.startswith("2026-10-09.") and int(CONTRACT_VERSION.rsplit(".", 1)[1]) >= 18
     assert load_yaml(CONTRACTS / "openapi.yaml")["info"]["version"] == CONTRACT_VERSION
     decisions = (CONTRACTS.parent / "docs" / "design" / "DECISIONS.md").read_text(encoding="utf-8")
     assert f"계약 버전: `{CONTRACT_VERSION}`" in decisions
