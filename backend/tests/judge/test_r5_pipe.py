@@ -39,7 +39,11 @@ class ScreenTransport(FakeTransport):
         action = (self.by_task or {}).get(str(arguments.get("purpose")), "pass")
         raw = {
             "tool": tool_name,
-            "probabilities": {"injection": 0.01, "substance": 0.9, "relevance": 0.1 if action == "skip" else 0.9},
+            "probabilities": {
+                "injection": 0.01,
+                "substance": 0.9,
+                "relevance": 0.1 if action == "skip" else 0.9,
+            },
             "recommendation": {"action": action},
         }
         return ToolResponse(raw=raw, is_error=False, duration_ms=3)
@@ -103,6 +107,8 @@ def test_noul_payload_carries_benchmark_and_policy_context() -> None:
 
 
 def test_card_lines_benchmark_supply_catalysts() -> None:
-    card = P.EvidenceCard(complex_id=1, name="단지", benchmark="B", supply="S", catalysts=("C1", "C2"), notes="N")
+    card = P.EvidenceCard(
+        complex_id=1, name="단지", benchmark="B", supply="S", catalysts=("C1", "C2"), notes="N"
+    )
     lines = P.evidence_card_text(card).splitlines()
     assert lines == ["단지: 단지", "벤치마크: B", "공급: S", "호재: C1; C2", "비고: N"]

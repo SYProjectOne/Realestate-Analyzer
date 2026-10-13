@@ -40,19 +40,23 @@ from app.models import JudgmentLog, Region, Snapshot
 from app.scheduler.inputs import (
     ComplexFacts,
     JudgeScope,
+    RegionContext,
     age_coef,
     build_score_inputs,
     evidence_card,
     gap_of,
     load_facts,
+    region_context,
 )
 from app.scheduler.snapshots import snapshot_dto
 
 __all__ = [
+    "JudgeInputs",
     "PlannedCall",
     "ScenarioPlan",
     "cache_status",
     "decide_plan",
+    "judge_inputs",
     "rerank_pool",
     "scenario_payloads",
     "score_base",
@@ -76,10 +80,26 @@ def stored_scope(session: Session, snapshot_id: int, facts: Sequence[ComplexFact
     return {f.complex_id: f.scope for f in facts}
 
 
-def score_base(
+@dataclass(frozen=True)
+class JudgeInputs:
+    """P6 noul·P7 rerank·P8 decide 공용 입력(R5-PIPE): 앵커 없는 ScoreInputs + 단지별 증거 카드(가격 갭·벤치마크·공급·호재·
+    제도 비고) + 지역 맥락(noul 컨텍스트 ``benchmark``·``policy``). 파이프라인과 미리보기가 같은 함수로 만든다(같은 input_hash)."""
+
+    base: ScoreInputs
+    cards: dict[int, P.EvidenceCard]
+    ctx: RegionContext
+
+    def benchmark_text(self) -> str | None:
+        return self.ctx.benchmark_text()
+
+    def policy_text(self, f: ComplexFacts) -> str:
+        return self.ctx.policy_text(f)
+
+
+def judge_inputs(
     session: Session, snap: Snapshot, region: Region, facts: Sequence[ComplexFacts]
-) -> tuple[ScoreInputs, dict[int, P.EvidenceCard]]:
-    """앵커 없는 ScoreInputs + 단지별 증거 카드(가격 갭 포함) — rerank·decide 입력."""
+) -> JudgeInputs:
+    """``score_base`` 의 본체. 카드는 사다리와 무관하다(P6 앞뒤 같은 카드) — 사다리를 반영한 ScoreInputs 는 ``inputs.with_ladders``."""
     base = build_score_inputs(session, snap, region, facts, EMPTY_ANCHOR)
     coef = age_coef(region)
     gaps = {
@@ -87,8 +107,17 @@ def score_base(
         for f in facts
         if is_scored(f.scope)
     }
-    cards = {f.complex_id: evidence_card(f, gap=gaps.get(f.complex_id)) for f in facts}
-    return base, cards
+    ctx = region_context(session, region, base)
+    cards = {f.complex_id: evidence_card(f, gap=gaps.get(f.complex_id), ctx=ctx) for f in facts}
+    return JudgeInputs(base, cards, ctx)
+
+
+def score_base(
+    session: Session, snap: Snapshot, region: Region, facts: Sequence[ComplexFacts]
+) -> tuple[ScoreInputs, dict[int, P.EvidenceCard]]:
+    """앵커 없는 ScoreInputs + 단지별 증거 카드(가격 갭·지역 맥락 포함) — rerank·decide 입력."""
+    ji = judge_inputs(session, snap, region, facts)
+    return ji.base, ji.cards
 
 
 def rerank_pool(
@@ -282,6 +311,48 @@ def _anchor_from(row: JudgmentLog) -> RerankAnchor:
     return RerankAnchor(judgment_seq=row.seq, status=row.status, items=items)
 
 
+@dataclass(frozen=True, slots=True)
+class _Unknown:
+    """앞 단계(벤치마크 screen) 판정이 캐시에 없어 noul 입력을 정할 수 없다."""
+
+    why: str
+
+
+def _screen_verdict(row: JudgmentLog | None) -> str | None:
+    if row is None:
+        return None
+    result = row.result_json if isinstance(row.result_json, dict) else {}
+    v = result.get("verdict")
+    return str(v) if isinstance(v, str) else None
+
+
+def _planned_benchmark(
+    session: Session, version: str | None, text: str | None, region_id: int
+) -> tuple[list[PlannedCall], str | _Unknown | None]:
+    """파이프라인 ``jp.p1_screen_benchmark`` 와 같은 호출(screen → skip 이면 다른 목적·입력 재screen)을 계획하고, 캐시 행의
+    판정으로 noul 컨텍스트 ``benchmark`` 를 정한다(pass·ok = 텍스트, 그 밖 = 없음, 캐시 없음 = 모름)."""
+    from app.judge.pipeline import benchmark_screen_purpose
+
+    if not text:
+        return [], None
+    purpose = benchmark_screen_purpose(region_id)
+    first = PlannedCall("screen", purpose, P.screen_payload(text, task=P.BENCHMARK_SCREEN_TASK))
+    row = _final_row(session, first.input_hash(version)) if version else None
+    if row is None:
+        return [first], _Unknown("벤치마크 P1 screen 판정이 캐시에 없음")
+    verdict = _screen_verdict(row)
+    if verdict == "skip":
+        retry = PlannedCall(
+            "screen", f"{purpose}:retry"[:128],
+            P.screen_payload(P.benchmark_rescreen_text(text), task=P.BENCHMARK_RESCREEN_TASK),
+        )  # fmt: skip
+        rrow = _final_row(session, retry.input_hash(version)) if version else None
+        if rrow is None:
+            return [first, retry], _Unknown("벤치마크 P1 재screen 판정이 캐시에 없음")
+        return [first, retry], text if rrow.status == "ok" and _screen_verdict(rrow) == "pass" else None
+    return [first], text if row.status == "ok" and verdict == "pass" else None
+
+
 def scenario_payloads(
     session: Session,
     snapshot_id: int,
@@ -299,19 +370,28 @@ def scenario_payloads(
     version = adapter_version or latest_adapter_version(session)
     plan = ScenarioPlan(snapshot_id, scenario.id, version)
     facts = load_facts(session, snap, region)
-    # P6 noul — 판정 대상만(analysis.scope.runs_ladder, 파이프라인과 같은 규칙)
-    for f in facts:
-        if not runs_ladder(f.scope):
-            continue
-        card = evidence_card(f)
+    ji = judge_inputs(session, snap, region, facts)
+    base, cards = ji.base, ji.cards
+    # P6 noul — 판정 대상만(analysis.scope.runs_ladder, 파이프라인과 같은 규칙). 컨텍스트 = 카드 + 지역 벤치마크(P1 screen
+    # 통과분 — 그 screen 판정이 캐시에 없으면 noul 입력을 정할 수 없다) + 제도
+    ladder_facts = [f for f in facts if runs_ladder(f.scope)]
+    bench: str | _Unknown | None = None
+    if ladder_facts:
+        screens, bench = _planned_benchmark(session, version, ji.benchmark_text(), region.id)
+        plan.calls.extend(screens)
+    for f in ladder_facts:
+        card = cards[f.complex_id]
         text = P.evidence_card_text(card)
         for spec in P.ladder_specs(card, asof_date=snap.asof_date):
-            plan.calls.append(
-                PlannedCall("noul", spec.purpose, P.noul_payload(spec, card_text=text), f.complex_id)
+            if isinstance(bench, _Unknown):
+                plan.calls.append(PlannedCall("noul", spec.purpose, None, f.complex_id, note=bench.why))
+                continue
+            payload = P.noul_payload(
+                spec, card_text=text, benchmark_text=bench, policy_text=ji.policy_text(f)
             )
+            plan.calls.append(PlannedCall("noul", spec.purpose, payload, f.complex_id))
     noul_all_hit = version is not None and all(_final_row(session, c.input_hash(version)) for c in plan.calls)
     scope = {f.complex_id: f.scope for f in facts}
-    base, cards = score_base(session, snap, region, facts)
     pool = rerank_pool(facts, cards, scope)
     anchor: RerankAnchor | None = EMPTY_ANCHOR
     if pool:

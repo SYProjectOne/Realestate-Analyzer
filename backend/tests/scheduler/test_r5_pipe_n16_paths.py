@@ -4,7 +4,7 @@ CORE11 수정(``pipeline._sync_checklist``)은 판정 파이프라인이 **끝�
 
 | 테스트 | 경로 | 확인 |
 | --- | --- | --- |
-| ``test_degraded_bootstrap_then_same_day_daily`` | ``region.bootstrap`` 의 판정이 P6(noul)에서 판정기 장애(JudgeUnavailable) → degraded(발행 없음) | degraded 직후 체크리스트 = 그 시점 사실로 다시 맞춘 것(주간 단계 트랙 A 후보·P4 제외 반영) · 판정기 복구 뒤 같은 날 ``collect.daily`` 의 수집 조립 체크리스트 동기화가 바꾸는 행 0 · 그 뒤 같은 날 daily 한 번 더 → 체크리스트 행 그대로 |
+| ``test_degraded_bootstrap_then_same_day_daily`` | ``region.bootstrap`` 의 판정이 P6~P9(noul·rerank·decide·verify 중 첫 호출)에서 판정기 장애(JudgeUnavailable) → degraded(발행 없음) | degraded 직후 체크리스트 = 그 시점 사실로 다시 맞춘 것(주간 단계 트랙 A 후보·P4 제외 반영) · 판정기 복구 뒤 같은 날 ``collect.daily`` 의 수집 조립 체크리스트 동기화가 바꾸는 행 0 · 그 뒤 같은 날 daily 한 번 더 → 체크리스트 행 그대로 |
 | ``test_carry_publish_then_same_day_daily`` | bootstrap 성공·발행 → 같은 날 ``collect.weekly``(변경 없음 → 이월 carry 발행 또는 빈 리비전 정리) → 같은 날 ``collect.daily`` | 주간 잡 뒤 체크리스트 = 사실로 다시 맞춘 것 · daily 체크리스트 동기화가 바꾸는 행 0 · 체크리스트 행 그대로 · 사실 change_event 0 |
 
 재생 세트(CORE10·CORE11 과 같은 저장소 녹화 ``r4b``·``r4d``) + 녹화 뉴스 1건(주간 단계), 가짜 판정기(``BootJev``). 외부 호출 없음.
@@ -37,21 +37,23 @@ from .test_core11_bootstrap_idempotency import BootJev, _checklist_rows, _resync
 
 N16_SETS = ["r4b", "r4d"]
 MOVED = ("inserted", "updated", "closed", "reopened")
+AFTER_P5 = frozenset({"noul", "rerank", "decide", "verify"})
+"""P6~P9 도구 — 판정기가 여기서 죽으면 주간 단계·P4 포함 분류는 이미 커밋된 뒤 degraded 다."""
 
 
 @dataclass
 class FlakyJev(BootJev):
-    """``down_at`` 도구를 처음 받는 순간부터 장애(JudgeUnavailable) — 그 전 단계(P1~P5·주간 단계 판정)는 정상."""
+    """``down_at`` 도구 중 하나를 처음 받는 순간부터 장애(JudgeUnavailable) — 그 전 단계(주간 단계 판정·P1~P5)는 정상."""
 
-    down_at: str | None = None
+    down_at: frozenset[str] = frozenset()
 
     def call(self, tool_name: str, arguments: dict[str, Any]) -> ToolResponse:
-        if self.down_at is not None and tool_name == f"jev_{self.down_at}":
+        if tool_name.removeprefix("jev_") in self.down_at:
             self.down = True
         return super().call(tool_name, arguments)
 
     def recover(self) -> None:
-        self.down_at = None
+        self.down_at = frozenset()
         self.down = False
 
 
@@ -85,7 +87,10 @@ def _moved(stats: dict[str, Any]) -> dict[str, Any]:
 
 def _track_a(factory: sessionmaker[Session]) -> list[int]:
     with factory() as s:
-        return [c.id for c in s.scalars(select(Complex).where(Complex.track == "A", Complex.applyhome_id.is_(None)))]
+        return [
+            c.id
+            for c in s.scalars(select(Complex).where(Complex.track == "A", Complex.applyhome_id.is_(None)))
+        ]
 
 
 @pytest.mark.parametrize("name", N16_SETS)
@@ -93,10 +98,12 @@ def test_degraded_bootstrap_then_same_day_daily(
     name: str, tmp_path: Path, make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session],
     test_settings: Settings, clock: Clock, monkeypatch: pytest.MonkeyPatch,
 ) -> None:  # fmt: skip
-    jev = FlakyJev(extract_values={"balance_pct": "30%", "down_payment_pct": "10%"}, down_at="noul")
+    jev = FlakyJev(extract_values={"balance_pct": "30%", "down_payment_pct": "10%"}, down_at=AFTER_P5)
     rs, ctx = _setup(name, tmp_path, make_ctx, factory, test_settings, jev, clock, monkeypatch)
     boot = _run(factory, ctx, "region.bootstrap", {"region_id": 1})
-    assert boot.get("degraded") is True and not boot.get("published"), {k: boot.get(k) for k in ("degraded", "published")}
+    assert boot.get("degraded") is True and not boot.get("published"), {
+        k: boot.get(k) for k in ("degraded", "published")
+    }
     # 사전 조건: 주간 단계가 트랙 A 후보를 만들었다(N16 경로)
     assert _track_a(factory), boot["weekly"].get("assembled")
     with factory() as s:
@@ -106,7 +113,9 @@ def test_degraded_bootstrap_then_same_day_daily(
     problems: list[str] = []
     resync = _resync_changes(factory, rs.asof)
     if resync:
-        problems.append(f"[degraded bootstrap 직후] 체크리스트가 그 시점 사실과 어긋남 — 다시 맞추면 {resync}")
+        problems.append(
+            f"[degraded bootstrap 직후] 체크리스트가 그 시점 사실과 어긋남 — 다시 맞추면 {resync}"
+        )
 
     jev.recover()
     ctx.reset_adapter()
@@ -139,7 +148,9 @@ def test_carry_publish_then_same_day_daily(
     weekly = _run(factory, ctx, "collect.weekly", {"region_id": 1})
     resync = _resync_changes(factory, rs.asof)
     if resync:
-        problems.append(f"[같은 날 weekly({weekly.get('carry_forward') or weekly.get('rejudge_job_id')}) 뒤] 체크리스트가 사실과 어긋남 — 다시 맞추면 {resync}")
+        problems.append(
+            f"[같은 날 weekly({weekly.get('carry_forward') or weekly.get('rejudge_job_id')}) 뒤] 체크리스트가 사실과 어긋남 — 다시 맞추면 {resync}"
+        )
     cl0 = _checklist_rows(factory)
     out = _run(factory, ctx, "collect.daily", {"region_id": 1, "sources": DAILY})
     moved = _moved(out)
@@ -155,7 +166,7 @@ def test_carry_publish_then_same_day_daily(
 
 def test_flaky_jev_raises_unavailable() -> None:
     """테스트 도구 자체 확인: down_at 도구에서 JudgeUnavailable, recover 뒤 정상."""
-    j = FlakyJev(down_at="noul")
+    j = FlakyJev(down_at=frozenset({"noul"}))
     j.call("jev_screen", {"text": "a", "purpose": "b"})
     with pytest.raises(JudgeUnavailable):
         j.call("jev_noul", {"propositions": ["x"]})

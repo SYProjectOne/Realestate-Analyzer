@@ -66,7 +66,9 @@ class CaptureJev(SynthJev):
         return [p for t, p in self.sent if t == tool]
 
 
-def _ctx(make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], jev: SynthJev) -> SchedulerContext:
+def _ctx(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], jev: SynthJev
+) -> SchedulerContext:
     return make_ctx(adapter_factory=lambda: JevMcpAdapter(transport=jev, session_factory=factory, secrets=[]))
 
 
@@ -126,7 +128,9 @@ def test_noul_rerank_decide_payloads_carry_regional_context(
 
     # 벤치마크 텍스트는 P1 screen 을 거친다 — noul 보다 먼저
     order = [t for t, _ in jev.sent]
-    bench_screens = [i for i, (t, p) in enumerate(jev.sent) if t == "screen" and "벤치마크" in str(p.get("purpose", ""))]
+    bench_screens = [
+        i for i, (t, p) in enumerate(jev.sent) if t == "screen" and "벤치마크" in str(p.get("purpose", ""))
+    ]
     if not bench_screens or bench_screens[0] > order.index("noul"):
         problems.append("벤치마크 텍스트 P1 screen 이 noul 전에 없음")
 

@@ -54,7 +54,16 @@ stats 키 1(`collect.daily`·`region.bootstrap.daily` 의 `degraded_sources`). �
 
 ### fixtures
 
-- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`).
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`). (R4-CORE10 시점)
+- **R5-PIPE(D25, 계약 버전 `.18` 그대로 — 스키마·openapi 변경 없음)**: P6 noul 입력에 지역 벤치마크·제도 컨텍스트·가격 갭(meta §2-1 P6),
+  증거 카드 벤치마크·공급·호재·비고(제도) 줄이 채워져 noul·rerank·decide payload 가 바뀌었다 → 합성 판정 녹화(`judgments_synth/`)를
+  `record_synth_judgments.py` 로 다시 만들었다. 바뀐 것은 **input_hash 재매핑뿐**(noul 33·rerank 1·decide 5 = 39개, 봉투 내용은
+  `input_hash`·`input_len` 외 바이트 동일 — 결과·상태·확률·순위·선택 그대로) + 지역 벤치마크 P1 screen 봉투 1개 추가(SynthJev 기본 pass).
+  `judgments/`(보고서 재구성 녹화)·회귀 골든(`expected_scores*.json`)은 그대로. 픽스처 README 주의 7(생활권 세대수) 현행화.
+  매니페스트 사유: R5-PIPE P6 맥락(벤치마크·제도·갭) 반영으로 judgments_synth noul·rerank·decide input_hash 재매핑(봉투 내용 동일)·벤치마크 screen 1개 추가·README 주의 7 현행화
+- 매니페스트 과거 사유 보완(`fixture_manifest.py --check` 가 이력의 사유도 CHANGELOG 에서 찾는다 — R5): 이력에만 있고 CHANGELOG 에
+  문장 그대로 없던 사유 1건 — R3f CORE4: T3 사람 확인 checked_at 을 시간대 붙은 RFC3339 로(계약 .11 D14-6) — 계약 .11 'fixtures' 절의
+  'R3f-CORE4 T3 checked_at RFC3339 (contract .11 D14-6) fixture+builder' 와 같은 변경의 앞선 사유 문장이다.
 - 새 테스트 녹화(`contracts/fixtures` 밖, 테스트 전용): `backend/tests/normalize/fixtures/r4d_core10.zip`(R4 4차 bootstrap 일일 단계
   원문 중 단지 18개 — 청약홈 목록 12(일일 단계 전부) · 상세 201 · 원 공고 21 · 공고문 51(추출 텍스트·표, PDF 제외) · 공식 홈페이지
   26(DOM 텍스트, HTML 제외) + 지역·법정동 565행, 1.8MB, 키·토큰·`.env` 값 검사 0건), `backend/tests/collectors/applyhome/fixtures/r4d_empty_dataset.json`(R4

@@ -2,6 +2,8 @@
 
 픽스처를 바꾸면 이 스크립트로 매니페스트를 다시 만들고, 같은 사유 문장을 contracts/CHANGELOG.md 맨 위 항목에 적는다.
 ``tests/contracts/test_fixture_manifest.py`` 가 (1) 파일 해시 = 매니페스트, (2) 사유가 CHANGELOG 에 그대로 있음을 강제한다.
+``--check`` 는 파일 해시와 함께 **지금 사유와 이력(history)의 모든 과거 사유**가 CHANGELOG 에 문장 그대로 있는지도 본다(R5 — 과거
+변경의 사유가 기록 없이 사라지지 않게, ``tests/regress/test_r5_fixture_manifest.py``).
 
 사용법 (backend/ 에서)::
 
@@ -23,6 +25,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 CONTRACTS_DIR = BACKEND_DIR.parent / "contracts"
 FIXTURES_DIR = CONTRACTS_DIR / "fixtures"
 MANIFEST = CONTRACTS_DIR / "fixtures.sha256.json"
+CHANGELOG = CONTRACTS_DIR / "CHANGELOG.md"
 _SKIP_PARTS = {"__pycache__", ".pytest_cache", "node_modules"}
 
 
@@ -91,13 +94,27 @@ def diff(manifest: dict[str, Any]) -> list[str]:
     return out
 
 
+def missing_reasons(manifest: dict[str, Any], changelog: str | None = None) -> list[str]:
+    """CHANGELOG 에 문장 그대로 없는 사유(이력의 과거 사유 + 지금 사유, 이력 순). 빈 목록이면 전부 기록돼 있다."""
+    text = CHANGELOG.read_text(encoding="utf-8") if changelog is None else changelog
+    reasons = [str(h.get("reason") or "") for h in manifest.get("history") or []]
+    reasons.append(str(manifest.get("reason") or ""))
+    out: list[str] = []
+    for r in reasons:
+        if (not r.strip() or r not in text) and r not in out:
+            out.append(r)
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--reason", help="바꾼 사유(CHANGELOG 맨 위 항목에 같은 문장을 적는다)")
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args(argv)
     if args.check:
-        changes = diff(load_manifest())
+        manifest = load_manifest()
+        changes = diff(manifest)
+        changes += [f"! CHANGELOG 에 없는 사유: {r!r}" for r in missing_reasons(manifest)]
         for line in changes:
             sys.stdout.write(line + "\n")
         return 1 if changes else 0
