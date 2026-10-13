@@ -125,6 +125,14 @@ def test_pg_dump_path_setting(tmp_path: Path) -> None:
     assert Settings(_env_file=None, pg_dump_path="").pg_dump_path is None  # type: ignore[call-arg, attr-defined]
     exe = tmp_path / "pg_dump.exe"
     assert Settings(_env_file=None, pg_dump_path=str(exe)).pg_dump_path == exe  # type: ignore[call-arg, attr-defined]
+    # .env 에서 큰따옴표로 감싼 Windows 경로는 역슬래시+b 가 백스페이스로 읽힌다 — 깨진 경로를 조용히 쓰지 않는다
+    win_path = "\\".join(["C:", "Program Files", "PostgreSQL", "17", "bin", "pg_dump.exe"])
+    env = tmp_path / "pg.env"
+    env.write_text(f'PG_DUMP_PATH="{win_path}"\n', encoding="utf-8")
+    with pytest.raises(ValidationError, match="PG_DUMP_PATH"):
+        Settings(_env_file=env)  # type: ignore[call-arg]
+    env.write_text(f"PG_DUMP_PATH={win_path}\n", encoding="utf-8")
+    assert str(Settings(_env_file=env).pg_dump_path) == win_path  # type: ignore[call-arg, attr-defined]
 
 
 # ====================================================================== OPS-5 Collector Protocol 적합성
@@ -162,7 +170,9 @@ def test_collector_conforms_to_protocol(key: str, test_settings: Settings) -> No
     assert got_hints == want_hints, f"{cls.__name__}.fetch 타입: {got_hints} != {want_hints}"
     instance = cls()
     assert isinstance(instance, Collector)
-    kinds = set(getattr(cls, "source_kinds", ())) | ({cls.source_kind} if hasattr(cls, "source_kind") else set())
+    kinds = set(getattr(cls, "source_kinds", ())) | (
+        {cls.source_kind} if hasattr(cls, "source_kind") else set()
+    )
     assert kinds, f"{cls.__name__}: source_kind(s) 없음"
     assert kinds <= SOURCE_KINDS, f"{cls.__name__}: 계약 밖 source_kind {kinds - SOURCE_KINDS}"
     assert get_settings() is test_settings

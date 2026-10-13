@@ -77,7 +77,9 @@ def test_pg_dump_path_file_is_used_instead_of_path(
     assert "s3cret" not in str(stats), "비밀번호는 stats 에 없다"
 
 
-def test_pg_dump_path_directory(test_settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pg_dump_path_directory(
+    test_settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """``PG_DUMP_PATH=C:\\Program Files\\PostgreSQL\\17\\bin`` 처럼 폴더를 줘도 된다 — 그 안의 ``pg_dump.exe``/``pg_dump``."""
     bin_dir = tmp_path / "PostgreSQL" / "17" / "bin"
     bin_dir.mkdir(parents=True)

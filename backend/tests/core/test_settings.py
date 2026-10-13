@@ -165,7 +165,11 @@ def test_env_file_from_env_var(clean_env: pytest.MonkeyPatch, tmp_path: Path) ->
 
     env = tmp_path / "other.env"
     env.write_text("NEWS_API_PROVIDER=naver_developers\nHTTP_RATE_PER_HOST=3\n", encoding="utf-8")
+    import app.core.settings as settings_module
+
     clean_env.delenv("ENV_FILE", raising=False)
+    # 테스트 세션은 기본 경로를 '없는 경로'로 바꿔 둔다(tests/conftest.py 환경 격리) — 출하 기본값은 .env
+    clean_env.setattr(settings_module, "DEFAULT_ENV_FILE", ".env")
     assert env_file_path() == Path(".env")
     clean_env.setenv("ENV_FILE", str(env))
     assert env_file_path() == env

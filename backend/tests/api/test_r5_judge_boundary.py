@@ -52,7 +52,9 @@ def _resolve(module: str | None, level: int, current: str, is_pkg: bool) -> str:
     return ".".join([*base, module] if module else base)
 
 
-def violations_in_source(source: str, module: str = "app.api.synthetic", *, is_pkg: bool = False) -> list[str]:
+def violations_in_source(
+    source: str, module: str = "app.api.synthetic", *, is_pkg: bool = False
+) -> list[str]:
     """API 쪽 파일 1개의 경계 위반(사람이 읽는 문자열 목록)."""
     out: list[str] = []
     tree = ast.parse(source)
@@ -60,8 +62,11 @@ def violations_in_source(source: str, module: str = "app.api.synthetic", *, is_p
         if isinstance(node, ast.Import):
             for alias in node.names:
                 name = alias.name
-                if name in FORBIDDEN_MODULES or name.startswith("mcp.") or name == "app.judge.jev_mcp" or (
-                    name.startswith(("app.judge.mock.", "app.judge.base.", "app.judge.jev_mcp."))
+                if (
+                    name in FORBIDDEN_MODULES
+                    or name.startswith("mcp.")
+                    or name == "app.judge.jev_mcp"
+                    or (name.startswith(("app.judge.mock.", "app.judge.base.", "app.judge.jev_mcp.")))
                 ):
                     out.append(f"{node.lineno}: import {name}")
         elif isinstance(node, ast.ImportFrom):
@@ -79,10 +84,13 @@ def violations_in_source(source: str, module: str = "app.api.synthetic", *, is_p
             out.append(f"{node.lineno}: 이름 {node.id}")
         elif isinstance(node, ast.Attribute) and node.attr in ADAPTER_NAMES:
             out.append(f"{node.lineno}: 속성 .{node.attr}")
-        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-            # importlib.import_module("app.judge.mock") 같은 우회
-            if ADAPTER_MODULE_RE.search(node.value) and "import_module" in source:
-                out.append(f"{node.lineno}: 문자열 모듈 {node.value!r}")
+        elif (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and ADAPTER_MODULE_RE.search(node.value)
+            and "import_module" in source  # importlib.import_module("app.judge.mock") 같은 우회
+        ):
+            out.append(f"{node.lineno}: 문자열 모듈 {node.value!r}")
     return out
 
 
@@ -95,7 +103,9 @@ def _api_files() -> Iterator[Path]:
 def test_api_does_not_import_judge_adapters() -> None:
     found: dict[str, list[str]] = {}
     for path in _api_files():
-        v = violations_in_source(path.read_text(encoding="utf-8"), _module_of(path), is_pkg=path.name == "__init__.py")
+        v = violations_in_source(
+            path.read_text(encoding="utf-8"), _module_of(path), is_pkg=path.name == "__init__.py"
+        )
         if v:
             found[str(path.relative_to(BACKEND))] = v
     assert found == {}, f"API 가 판정기 어댑터에 닿는다(RA §1·규칙 4): {found}"
@@ -122,7 +132,13 @@ def construction_violations(source: str, rel: str) -> list[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             for base in node.bases:
-                bname = base.id if isinstance(base, ast.Name) else base.attr if isinstance(base, ast.Attribute) else ""
+                bname = (
+                    base.id
+                    if isinstance(base, ast.Name)
+                    else base.attr
+                    if isinstance(base, ast.Attribute)
+                    else ""
+                )
                 if bname in CONSTRUCTED_NAMES:
                     out.append(f"{rel}:{node.lineno}: class {node.name}({bname})")
     return out
@@ -151,7 +167,12 @@ def test_api_process_does_not_load_adapter_modules() -> None:
         "print('LOADED=' + ','.join(bad))\n"
     )
     proc = subprocess.run(
-        [sys.executable, "-c", code], cwd=BACKEND, capture_output=True, text=True, encoding="utf-8", timeout=180
+        [sys.executable, "-c", code],
+        cwd=BACKEND,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=180,
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
     line = next(x for x in proc.stdout.splitlines() if x.startswith("LOADED="))

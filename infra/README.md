@@ -1,5 +1,8 @@
 # infra — 배포·운영 파일
 
+- **주인**: WP0 (CEO)
+- **읽기 허용**: 전체 (운영 절차 변경은 `docs/runbook.md` 와 함께)
+
 단일 호스트 배포(RA §10, ADR-10). 운영 절차는 [`docs/runbook.md`](../docs/runbook.md), 설계 결정은
 [`docs/design/DECISIONS.md`](../docs/design/DECISIONS.md)(D11-8·D11-9·D12-6).
 

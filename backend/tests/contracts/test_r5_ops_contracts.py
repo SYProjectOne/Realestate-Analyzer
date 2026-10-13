@@ -45,7 +45,12 @@ def test_pgserver_database_url_tcp() -> None:
     from ._support import pgserver_database_url
 
     got = make_url(pgserver_database_url("postgresql://postgres:@localhost:54321/postgres", "contracts_test"))
-    assert (got.drivername, got.host, got.port, got.database) == ("postgresql+psycopg", "localhost", 54321, "contracts_test")
+    assert (got.drivername, got.host, got.port, got.database) == (
+        "postgresql+psycopg",
+        "localhost",
+        54321,
+        "contracts_test",
+    )
 
 
 # ====================================================================== OPS-5 마이그레이션 ↛ app (D14-9)
@@ -65,7 +70,11 @@ def app_imports(source: str) -> list[str]:
             name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""
             if name in {"import_module", "__import__"} and node.args:
                 arg = node.args[0]
-                if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value.split(".")[0] == "app":
+                if (
+                    isinstance(arg, ast.Constant)
+                    and isinstance(arg.value, str)
+                    and arg.value.split(".")[0] == "app"
+                ):
                     out.append(f"{node.lineno}: {name}({arg.value!r})")
     return out
 

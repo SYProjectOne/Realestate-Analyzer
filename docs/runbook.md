@@ -167,6 +167,29 @@ JEV MCP 는 `@latest` 를 따른다(D6). `initialize` 의 `serverInfo.version` �
   `pg_dump -Fc` 후 `pg_restore --list` 검증, 원문은 `rsync -a`(없으면 tgz).
 - 복구: 새 `db` 를 띄운 뒤 `pg_restore -U $POSTGRES_USER -d $POSTGRES_DB --clean <백업>/db.dump`, 원문은 볼륨에 풀기.
   복구 후 `alembic upgrade head`(코드가 더 새면), `/health` 와 G7 신선도를 확인한다.
+- pg_dump 위치(R5-OPS 3): 설정 `PG_DUMP_PATH`(실행 파일 또는 그 bin 폴더)가 있으면 그것만 쓴다 — 그 경로에 없으면 PATH 로
+  넘어가지 않고 잡이 `failed`(사유 'PG_DUMP_PATH 의 pg_dump 없음'). 비어 있으면 PATH 의 `pg_dump`. 성공한 잡의 `job_run.stats.db` 에
+  쓴 경로(`pg_dump`)와 `pg_dump --version` 첫 줄(`pg_dump_version`)이 남는다 — **서버와 같은(또는 더 새) 판**인지 여기서 본다
+  (더 낮은 판 pg_dump 는 'server version mismatch' 로 실패하고 그 stderr 가 사유로 남는다).
+
+### 8-1 Docker 없는 이 PC (D19 — 운영 DB PostgreSQL 17.9, 포트 5434)
+
+D19-1·D19-2: Docker 를 쓰지 않고 이 PC 의 PG17 에 운영 DB(`subscription_analyzer`)를 두었다. PG17 의 `pg_dump` 는 PATH 에 없어서
+(PATH 에는 다른 앱의 PG16 이 있거나 아무것도 없다) `PG_DUMP_PATH` 없이 매일 03:00 `backup` 잡이 'pg_dump 없음(PATH)' 으로 실패했다.
+
+1. 판 확인: `& "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" --version` → `pg_dump (PostgreSQL) 17.x`.
+2. 운영 `.env`(`backend/.env` 또는 `ENV_FILE`)에 한 줄 — **따옴표 없이**(또는 작은따옴표). 큰따옴표 안에서는 `\b` 같은 역슬래시가
+   이스케이프로 읽혀 경로가 깨진다:
+   `PG_DUMP_PATH=C:\Program Files\PostgreSQL\17\bin\pg_dump.exe` (폴더 `C:\Program Files\PostgreSQL\17\bin` 만 적어도 된다)
+3. 백업 위치도 정한다: `BACKUP_DIR=D:\sa-backup` 처럼 원문(`RAW_DIR`)과 다른 디스크·폴더(D12-6). 비우면 `RAW_DIR` 상위 폴더 아래 `backup`.
+4. worker 를 다시 띄운다(설정은 시작 때 읽는다). 바로 확인하려면 수동 잡 `POST /jobs {"job_name":"backup"}` 뒤
+   `python -m app.worker --once` → G7 잡 목록에서 `backup` 이 `succeeded`, stats `db.kind=postgres`, `db.pg_dump_version` 이 17.x,
+   `<BACKUP_DIR>\<날짜>\db.dump` 크기·sha256 을 본다.
+5. 복구(PG17 도구로): `& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" --list <BACKUP_DIR>\<날짜>\db.dump` 로 목록을 확인한 뒤
+   `& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" -h 127.0.0.1 -p 5434 -U sa -d subscription_analyzer --clean <BACKUP_DIR>\<날짜>\db.dump`
+   (비밀번호는 프롬프트 또는 그 셸에서만 `$env:PGPASSWORD` — 명령 기록·문서에 남기지 않는다). 뒤이어 `alembic upgrade head`, `/health`.
+- compose(Docker) 의 worker 는 이미지의 `postgresql-client-16`(PATH)을 쓴다 — `PG_DUMP_PATH` 를 비운다. 서버를 17 로 올리면
+  `infra/Dockerfile.worker` 의 `PG_MAJOR` 도 같이 올린다.
 
 ## 9. 비밀값
 

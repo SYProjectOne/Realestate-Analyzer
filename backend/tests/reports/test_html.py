@@ -90,7 +90,9 @@ def _require_echarts_bundle() -> None:
     CI 는 reports 잡에서 frontend ``npm ci`` 로 ``echarts.min.js`` 를 준비한다(.github/workflows/ci.yml)."""
     if find_echarts_bundle() is None:
         if os.environ.get("CI"):
-            pytest.fail("CI 에 echarts.min.js 없음 — reports 잡이 frontend npm ci 로 번들을 준비해야 한다(R5-OPS 6)")
+            pytest.fail(
+                "CI 에 echarts.min.js 없음 — reports 잡이 frontend npm ci 로 번들을 준비한다(R5-OPS 6)"
+            )
         pytest.skip("echarts.min.js 없음(frontend npm ci 전) — 표만 생성")
 
 

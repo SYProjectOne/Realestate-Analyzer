@@ -32,7 +32,8 @@ WP_PACKAGES = {
     "scheduler": "WP7",
     "reports": "WP8",
 }
-BACKEND_TEST_MODULES = {"core", "models", *WP_PACKAGES}
+# tests/models 는 없다(모델 검사는 tests/contracts) — R5 에서 CI matrix 의 빈 models 항목을 뺐다
+BACKEND_TEST_MODULES = {"core", "contracts", *WP_PACKAGES}
 
 
 def load_yaml(path: Path) -> Any:
@@ -204,7 +205,16 @@ def test_ci_workflow() -> None:
 def test_precommit_config() -> None:
     cfg = load_yaml(ROOT / ".pre-commit-config.yaml")
     hook_ids = {h["id"] for repo in cfg["repos"] for h in repo["hooks"]}
-    assert {"ruff", "mypy", "eslint", "check-added-large-files", "detect-private-key", "gitleaks"} <= hook_ids
+    want = {
+        "ruff",
+        "mypy",
+        "eslint",
+        "typecheck",
+        "check-added-large-files",
+        "detect-private-key",
+        "gitleaks",
+    }
+    assert want <= hook_ids
 
 
 # ---------------------------------------------------------------- 작업 러너

@@ -47,7 +47,9 @@ def test_ci_matrix_matches_backend_test_dirs() -> None:
     jobs = _ci()["jobs"]
     matrix = set(jobs["backend-tests"]["strategy"]["matrix"]["module"])
     assert "models" not in matrix, "tests/models 가 없다 — 빈 matrix 항목(매번 '없음'으로 통과)"
-    assert matrix == _test_dirs() - NOT_IN_MATRIX, f"matrix {sorted(matrix)} != tests/ {sorted(_test_dirs() - NOT_IN_MATRIX)}"
+    assert matrix == _test_dirs() - NOT_IN_MATRIX, (
+        f"matrix {sorted(matrix)} != tests/ {sorted(_test_dirs() - NOT_IN_MATRIX)}"
+    )
     outputs = set(jobs["changes"]["outputs"])
     assert "models" not in outputs, "changes 잡의 models 필터도 정리(app/models 는 shared 필터가 본다)"
     assert matrix <= outputs, "matrix 모듈마다 paths-filter 출력이 있어야 한다"
@@ -66,7 +68,7 @@ def test_ci_backend_tests_use_postgres_service() -> None:
     env_text = str(job.get("env", {})) + " ".join(str(s.get("env", "")) for s in job["steps"])
     assert "TEST_POSTGRES_URL" in env_text and "postgresql+psycopg://" in env_text
     text = CI.read_text(encoding="utf-8")
-    # 테스트 DB 비밀번호는 CI 전용 일회용 값(실제 비밀 아님) — 저장소 비밀값을 쓰지 않는다
+    # 일회용 CI DB(trust 인증, 비밀번호 없음) — 저장소 비밀값을 쓰지 않는다
     assert "secrets." not in text.split("backend-tests:", 1)[1].split("\n  infra:", 1)[0]
 
 
@@ -109,7 +111,9 @@ def test_linux_chart_baselines_committed() -> None:
     win = {p.name.removesuffix("-win32.png") for p in SNAPSHOTS.glob("*-chromium-win32.png")}
     linux = {p.name.removesuffix("-linux.png") for p in SNAPSHOTS.glob("*-chromium-linux.png")}
     assert win, "win32 기준 이미지 없음"
-    assert linux == win, f"linux 기준 이미지 누락: {sorted(win - linux)[:5]} / 여분: {sorted(linux - win)[:5]}"
+    assert linux == win, (
+        f"linux 기준 이미지 누락: {sorted(win - linux)[:5]} / 여분: {sorted(linux - win)[:5]}"
+    )
     for p in SNAPSHOTS.glob("*-chromium-linux.png"):
         assert p.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", p.name
 
