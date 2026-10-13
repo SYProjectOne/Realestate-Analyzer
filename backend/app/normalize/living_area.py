@@ -327,8 +327,11 @@ def rederive_region_dongs(
         if not cx.address:
             continue
         before = (cx.legal_dong_code, cx.living_area, cx.inclusion_class)
-        assign_complex_area(session, cx, ref=ref)
+        with session.no_autoflush:
+            assign_complex_area(session, cx, ref=ref)
         if cx.legal_dong_code == before[0]:
+            # 법정동이 그대로면 아무것도 바꾸지 않는다(생활권·분류는 그 단지를 마지막으로 배정·편집한 경로의 몫)
+            cx.living_area, cx.inclusion_class = before[1], before[2]
             continue
         out.append(
             make_event(

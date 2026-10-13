@@ -142,6 +142,10 @@ class DongRef:
             ]
         return self._sido_dongs[sido_code]
 
+    def has_active(self, sigungu_code: str) -> bool:
+        """그 시군구에 활성 읍면동이 있다(= 폐지된 시군구가 아니다)."""
+        return any(r.active and r.sigungu_code == sigungu_code for r in self.sido_dongs(sigungu_code[:2]))
+
     def successors(self, old_sigungu_code: str) -> frozenset[str]:
         """폐지된 시군구 G 의 후계 시군구(같은 시도의 활성 시군구 S). 참조 표에 이전 관계 열이 없어 이름 겹침으로 정한다:
         k = |S 활성 읍면동 이름 ∩ G 폐지 읍면동 이름| 이 S 의 과반(S 가 대부분 G 에서 왔다 — 분구·개칭) 이거나 G 의 과반(G 가
@@ -231,15 +235,29 @@ def match_address(address: str, ref: DongRef, *, scope: Collection[str] | None =
             t.endswith(_SIDO_TAILS) and _norm_sido(t) in sido_norm and _norm_sido(t) != t
         )
 
+    inactive = [r for r in ref.legal_named(toks) if not r.active]
+
     def olds_named(seg: _Segment) -> list[LegalRow]:
+        """구간에 이름이 나온 폐지 시군구. 시군구 단위 행이 없으면(작은 참조 표) 같은 이름 폐지 읍면동 행의 시군구로."""
         named = set(seg.tokens)
-        return [
-            a
-            for a in sgg_rows
-            if not a.active
-            and (seg.sido is None or _norm_sido(a.sido_name) == seg.sido)
-            and all(p in named for p in (a.sigungu_name or "").split())
-        ]
+
+        def hit(r: LegalRow) -> bool:
+            return (
+                bool(r.sigungu_name)
+                and (seg.sido is None or _norm_sido(r.sido_name) == seg.sido)
+                and all(p in named for p in (r.sigungu_name or "").split())
+            )
+
+        out = {a.sigungu_code: a for a in sgg_rows if not a.active and hit(a)}
+        for r in inactive:
+            if (
+                r.sigungu_code not in out
+                and r.sigungu_code not in sgg_of
+                and hit(r)
+                and not ref.has_active(r.sigungu_code)
+            ):
+                out[r.sigungu_code] = r
+        return list(out.values())
 
     legal = [r for r in ref.legal_named(toks) if r.active]
     legal_names = {str(r.eupmyeondong_name) for r in legal}
