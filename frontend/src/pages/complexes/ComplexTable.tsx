@@ -295,6 +295,8 @@ export function ComplexTable({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 2,
+    // 맨 끝까지 내린 상태에서 끝 행들이 추정(44px)보다 크게 재지면 끝에 붙어 있게(마지막 행이 창 밖으로 밀리지 않게)
+    anchorTo: 'end',
     initialRect: FALLBACK_RECT,
     observeElementRect: (instance: Virtualizer<HTMLDivElement, Element>, cb) =>
       observeElementRect(instance, (rect) => cb(rect.height > 0 ? rect : FALLBACK_RECT)),
