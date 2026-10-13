@@ -5,7 +5,7 @@
 | OPS-1 CI 의 Postgres 테스트는 postgres 서비스 컨테이너 + ``TEST_POSTGRES_URL``(D25-8) | ``test_ci_backend_tests_use_postgres_service`` |
 | OPS-5 CI matrix 의 빈 ``models`` 항목 정리 — matrix = 실제 ``tests/<모듈>`` | ``test_ci_matrix_matches_backend_test_dirs`` |
 | OPS-5 pre-commit 에 ``tsc --noEmit``(``npm run typecheck``) 훅 | ``test_precommit_has_typecheck_hook`` |
-| OPS-5 ``backend/app/models``·``contracts``·``infra`` README 주인 줄 | ``test_owner_lines`` |
+| OPS-5 ``backend/app/models``·``contracts``·``infra`` README 주인 줄 | ``tests/core/test_repo_layout.py::test_owner_lines`` |
 | OPS-6 차트 리눅스 기준 이미지 커밋 + CI 는 ``--update-snapshots`` 없이 비교(D25-9) | ``test_linux_chart_baselines_committed`` · ``test_ci_compares_chart_snapshots_without_update`` |
 | OPS-6 보고서 ECharts 인라인 테스트가 CI 에서 skip 되지 않게 번들 준비 | ``test_ci_reports_job_prepares_echarts_bundle`` |
 """
@@ -18,7 +18,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -85,25 +84,6 @@ def test_precommit_has_typecheck_hook() -> None:
     assert re.search(r'"typecheck"\s*:\s*"[^"]*tsc[^"]*--noEmit', pkg) or re.search(
         r'"typecheck"\s*:\s*"[^"]*tsc -b', pkg
     ), "package.json typecheck 가 tsc 가 아니다"
-
-
-@pytest.mark.parametrize(
-    ("rel", "owners"),
-    [
-        ("backend/app/models/README.md", ("WP0",)),
-        ("contracts/README.md", ("WP0", "WP9")),
-        ("infra/README.md", ("WP0",)),
-    ],
-)
-def test_owner_lines(rel: str, owners: tuple[str, ...]) -> None:
-    """패키지·디렉터리 README 에 '주인' 줄(AGENTS 디렉터리 소유권 표와 같은 값)."""
-    path = ROOT / rel
-    assert path.is_file(), f"{rel} 없음"
-    text = path.read_text(encoding="utf-8")
-    line = next((x for x in text.splitlines() if "주인" in x), None)
-    assert line is not None, f"{rel} 에 '주인' 줄 없음"
-    for owner in owners:
-        assert re.search(rf"\b{owner}\b", line), f"{rel} 주인 줄에 {owner} 없음: {line}"
 
 
 def test_linux_chart_baselines_committed() -> None:

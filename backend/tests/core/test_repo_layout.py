@@ -74,6 +74,25 @@ def test_frontend_and_e2e_readme_owners(rel: str, owners: tuple[str, ...]) -> No
         assert re.search(rf"\b{owner}\b", readme), f"{rel} 에 주인 {owner} 없음"
 
 
+@pytest.mark.parametrize(
+    ("rel", "owners"),
+    [
+        ("backend/app/models/README.md", ("WP0",)),
+        ("contracts/README.md", ("WP0", "WP9")),
+        ("infra/README.md", ("WP0",)),
+    ],
+)
+def test_owner_lines(rel: str, owners: tuple[str, ...]) -> None:
+    """R5-OPS 5: 패키지·디렉터리 README 에 '주인' 줄(AGENTS 디렉터리 소유권 표와 같은 값)."""
+    path = ROOT / rel
+    assert path.is_file(), f"{rel} 없음"
+    text = path.read_text(encoding="utf-8")
+    line = next((x for x in text.splitlines() if "주인" in x), None)
+    assert line is not None, f"{rel} 에 '주인' 줄 없음"
+    for owner in owners:
+        assert re.search(rf"\b{owner}\b", line), f"{rel} 주인 줄에 {owner} 없음: {line}"
+
+
 def test_empty_package_markers() -> None:
     for rel in ["app/__init__.py", "app/core/__init__.py"]:
         assert (BACKEND / rel).read_text(encoding="utf-8").strip() == ""
