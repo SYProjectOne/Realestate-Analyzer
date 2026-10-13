@@ -750,6 +750,17 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   범위 경계 단지 상당수를 미분류로 되돌리므로 '판정 대상 아님(범위 경계)'는 줄고, 포함/제외 classify 결과에 따라 '(공공분양)' 또는 일반 접수 판정으로 옮겨 간다. 브라우저 경로는
   `SELECT id, url, meta->'fetch' FROM raw_document WHERE source_kind='official_site' AND meta ? 'fetch';`.
 
+### 10-20 R7-FIX 배포 뒤 — 어제 실패 접수 행이 오늘 성공 행을 이기던 결함 (`docs/design/wp/R7_TESTS_FIX.md`)
+
+- 증상(스냅샷 2): 오늘 공식 홈페이지를 받았는데(TLS 브라우저 경로·403 → 성공) 표시 접수 행이 어제 실패('TLS'·'403') — `copy_intake` 가
+  경로가 다른 어제 행을 복사하고 표시 규칙(official_popup > headless_shot)이 그것을 골랐다. 이제 오늘 수집 행이 있는 단지는 어제 수집
+  경로 행을 복사하지 않는다(사람 확인·비공식 참고 행은 그대로 복사).
+- 첫 `collect.daily`: 인천 해당 9단지(7·8·22·28·37·38·72·75·87)의 표시 행이 오늘 관측으로 — status 는 모두 '확인 불가' 그대로라 change_event·
+  판정 범위 변화 없음, 사유만 실제 사유로. 72·75·87 은 근거 주소가 `/s/GI59` → `/s/` 로 바로잡혀 동일성 classify 1배치 ≈ `tools/call` 1.
+  같은 날 다시 돌리면 0. 발행된 스냅샷 2 는 그대로(D11-1).
+- 확인: `SELECT complex_id, path, reason, raw_document_id FROM intake_status WHERE snapshot_id = <새 스냅샷> AND complex_id IN
+  (7,8,22,28,37,38,72,75,87) ORDER BY 1, 2;` — 단지마다 수집 경로 행 1개(오늘 원문), 'TLS'·'403' 없음.
+
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
 **발행 스냅샷은 불변**(D11-1) — **발행 리비전 = 저장된 읽기 모델**(D13-1, 계약 .10). 발행하는 트랜잭션이 그 리비전의 화면 응답

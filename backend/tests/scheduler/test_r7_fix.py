@@ -158,7 +158,12 @@ def test_unchanged_next_day_after_recovery_copies_without_judge(
     for cid in (A, B):
         s2, s3 = pick_intake(_rows(factory, day2, cid)), pick_intake(_rows(factory, day3, cid))
         assert s2 is not None and s3 is not None
-        assert (s3.path, s3.status, s3.reason, s3.raw_document_id) == (s2.path, s2.status, s2.reason, s2.raw_document_id)
+        assert (s3.path, s3.status, s3.reason, s3.raw_document_id) == (
+            s2.path,
+            s2.status,
+            s2.reason,
+            s2.raw_document_id,
+        )
         assert "이전 분류 복사" in (s3.note or "")
 
 
@@ -214,10 +219,14 @@ def test_copy_intake_today_observation_replaces_yesterday_collected_rows(
             (r.complex_id, r.path, r.reason)
             for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == dst.id, IntakeStatus.complex_id.in_((4, 5, 9))))
         }  # fmt: skip
-    assert (4, "official_popup", "403") not in got, "어제 '403' 행이 오늘 성공 행 옆에 복사되면 표시 행이 된다"
+    assert (4, "official_popup", "403") not in got, (
+        "어제 '403' 행이 오늘 성공 행 옆에 복사되면 표시 행이 된다"
+    )
     assert (4, "unofficial_ref", None) in got and (9, "human_check", None) in got
     assert (9, "headless_shot", "문구로 판단 불가") not in got
-    assert {(5, "official_popup", None), (5, "unofficial_ref", None)} <= got, "오늘 수집 행이 없는 단지는 그대로 복사"
+    assert {(5, "official_popup", None), (5, "unofficial_ref", None)} <= got, (
+        "오늘 수집 행이 없는 단지는 그대로 복사"
+    )
 
 
 def test_identical_screenshot_on_other_url_keeps_own_evidence(
