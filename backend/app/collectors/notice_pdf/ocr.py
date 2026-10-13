@@ -8,20 +8,26 @@
   한 줄씩(왼쪽→오른쪽, 공백 구분) 텍스트를 만든다 — 가격표 한 행이 한 줄이 되도록.
 - OCR 로 얻은 값의 라벨은 '추정(OCR)'이고 판정기 extract/audit 를 거친다(D5-4, WP2·WP3).
 - 모델 파일은 처음 쓸 때 rapidocr 가 내려받는다(이후 site-packages 캐시).
+- R7-SITE(D26-1): 공식 홈페이지 팝업 그림(PNG 바이트)도 같은 엔진으로 읽는다(``load_image_ocr``).
+  결과 라벨 '추정(OCR)', 접수 분류는 판정기가 한다.
 """
 
 from __future__ import annotations
 
 import importlib
 import io
+from collections.abc import Callable
 from typing import Any
 
 from app.collectors.notice_pdf.extract import OcrFn
 
-__all__ = ["DPI", "lines_from_boxes", "load_ocr", "ocr_image"]
+__all__ = ["DPI", "ImageOcrFn", "lines_from_boxes", "load_image_ocr", "load_ocr", "ocr_image", "ocr_png"]
 
 DPI = 200
 _ENGINE: Any = None
+
+ImageOcrFn = Callable[[bytes], str]
+"""그림 바이트(PNG·JPEG) → 줄 단위 텍스트."""
 
 
 def _engine() -> Any:
@@ -94,3 +100,16 @@ def load_ocr() -> OcrFn | None:
     except ImportError:
         return None
     return _ocr_pdf_pages
+
+
+def ocr_png(data: bytes) -> str:
+    """그림 바이트(PNG 등) → 줄 단위 텍스트(RGB 로 바꿔 인식). 읽을 수 없는 그림이면 PIL 예외."""
+    from PIL import Image
+
+    with Image.open(io.BytesIO(data)) as im:
+        return ocr_image(im.convert("RGB"))
+
+
+def load_image_ocr() -> ImageOcrFn | None:
+    """그림 OCR 함수(``ocr_png``) — 엔진이 설치돼 있지 않으면 None(호출자가 '설치 안 됨' 사유를 남긴다)."""
+    return ocr_png if load_ocr() is not None else None

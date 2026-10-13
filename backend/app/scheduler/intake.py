@@ -10,6 +10,10 @@
 - 판단하지 않는다: 문자열 해시 비교(산술)만. 문구가 바뀌었으면 미분류로 두어 판정기가 다시 분류한다.
 - 판정기 버전(R3 3차 minor 3): ``adapter_version`` 을 주면 그 버전으로 분류한 행만 복사한다. 버전이 바뀐 전체 재판정(D6)에서는
   ``reset_stale_classification`` 이 다른 버전으로 분류(·복사)된 행을 미분류로 되돌려 판정기가 다시 분류한다.
+- R7-SITE(D26-1): 접수 항목에 스크린샷 행의 **팝업 그림 OCR 글자**(라벨 '추정(OCR)', ``OCR_HEADER`` 아래)를 붙인다 — 수집기가
+  그림 해시로 캐시하므로 변경 없는 날 입력이 그대로다(분류 복사). (D26-3) 범위 경계·민간분양 아닌 단지(포함/제외 classify auto
+  제외 클래스)의 미분류 행은 판정기에 보내지 않고 사유 '판정 대상 아님(<구분>)'으로 둔다(``mark_not_target`` — 분류 복사
+  앞에서). 그 단지가 다시 대상이 되면 미분류로 되돌린다. 구분은 complex 행 값(판정기 classify·주소 매칭 결과)을 옮길 뿐이다.
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -26,7 +30,8 @@ from urllib.parse import urlsplit, urlunsplit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.analysis.scope import pick_intake
+from app.analysis.scope import BOUNDARY_CLASS, EXCLUDED_CLASSES, pick_intake
+from app.collectors.official_site.collector import OCR_LABEL, popup_ocr_texts
 from app.collectors.official_site.extract import html_head
 from app.judge import payloads as P
 from app.judge import pipeline as jp
@@ -39,7 +44,9 @@ __all__ = [
     "CLASSIFIED_MARK",
     "COPIED_MARK",
     "INTAKE_PATHS",
+    "NOT_TARGET",
     "NO_TEXT",
+    "OCR_HEADER",
     "UNCLASSIFIED",
     "SiteEvidence",
     "carry_classification",
@@ -49,6 +56,9 @@ __all__ = [
     "intake_body",
     "intake_change_events",
     "intake_text",
+    "mark_not_target",
+    "not_target_reason",
+    "ocr_text",
     "page_text",
     "pending_complexes",
     "reset_stale_classification",
@@ -64,6 +74,73 @@ CLASSIFIED_MARK: Final = "판정기 classify"
 COPIED_MARK: Final = "문구 해시 동일 — 이전 분류 복사"
 NO_TEXT: Final = "접수 문구 없음"
 """원문에 접수 문구가 없어 판정기 호출 없이 남긴 사유(파이프라인 접수 classify) — 문구가 그대로 없으면 그대로 복사."""
+
+
+OCR_HEADER: Final = f"[팝업 그림 글자 — {OCR_LABEL}]"
+"""접수 항목에서 팝업 그림 OCR 글자 앞에 두는 줄(판정기가 추정 글자임을 본다)."""
+OCR_PART_MAX: Final = 800
+"""접수 항목의 OCR 부분 상한(나머지는 페이지 문구 몫)."""
+NOT_TARGET: Final = "판정 대상 아님"
+"""D26-3: 접수 판정에서 뺀 단지(범위 경계·민간분양 아님)의 사유 머리 — '판정 대상 아님(공공분양)'."""
+_CLASS_TEXT: Final = {
+    "public_sale": "공공분양",
+    "public_rental": "공공임대",
+    "private_rental": "민간임대",
+    "non_apartment": "비아파트",
+    "out_of_scope": "범위 밖",
+}
+
+
+def not_target_reason(cx: Complex) -> str | None:
+    """D26-3: 접수 판정(공식 홈페이지 동일성·접수 classify)에서 빼는 단지면 사유, 아니면 None. 범위 경계(주소 매칭, D2-6)이거나
+    포함/제외 classify 가 auto 로 제외 클래스(공공분양·임대·비아파트·범위 밖)라고 한 단지 — ``analysis.scope.judge_scope`` 의
+    '제외' 규칙과 같은 조건(미해결은 빼지 않는다)."""
+    cls = cx.inclusion_class
+    if cls == BOUNDARY_CLASS:
+        return f"{NOT_TARGET}({BOUNDARY_CLASS})"
+    if cls in EXCLUDED_CLASSES and cx.inclusion_decision == "auto":
+        return f"{NOT_TARGET}({_CLASS_TEXT.get(cls, cls)})"
+    return None
+
+
+def mark_not_target(session: Session, snapshot_id: int) -> list[int]:
+    """이 스냅샷의 '접수 문구 미분류' 행 중 판정 대상이 아닌 단지(``not_target_reason``) → 상태 '확인 불가' + 그 사유(판정 호출
+    없음). 반대로 '판정 대상 아님' 행인데 단지가 다시 대상이면(법정동 보정·재분류) 미분류로 되돌린다. 바꾼 행 id."""
+    out: list[int] = []
+    for row in session.scalars(
+        select(IntakeStatus)
+        .where(IntakeStatus.snapshot_id == snapshot_id, IntakeStatus.path.in_(INTAKE_PATHS))
+        .order_by(IntakeStatus.id)
+    ):
+        if row.reason != UNCLASSIFIED and not (row.reason or "").startswith(NOT_TARGET):
+            continue
+        cx = session.get(Complex, row.complex_id)
+        why = not_target_reason(cx) if cx is not None else None
+        if row.reason == UNCLASSIFIED and why is not None:
+            row.status, row.reason = "확인 불가", why
+        elif row.reason != UNCLASSIFIED and why is None:
+            row.status, row.reason = "확인 불가", UNCLASSIFIED
+        elif row.reason != UNCLASSIFIED and why != row.reason:
+            row.reason = why
+        else:
+            continue
+        out.append(row.id)
+    if out:
+        session.flush()
+    return out
+
+
+def ocr_text(session: Session, row: IntakeStatus) -> str:
+    """접수 행 원문(스크린샷 행)의 팝업 그림 OCR 글자(수집기 meta — 라벨 '추정(OCR)'). 없으면 ''."""
+    if row.path != "headless_shot" or row.raw_document_id is None:
+        return ""
+    doc = session.get(RawDocument, row.raw_document_id)
+    if doc is None or not (doc.content_type or "").startswith("image/"):
+        return ""
+    try:
+        return "\n".join(popup_ocr_texts(raw_dto(doc))).strip()
+    except Exception:  # 원문 파일 없음 등 — OCR 글자 없음
+        return ""
 
 
 def _row_text(session: Session, row: IntakeStatus) -> str:
@@ -87,14 +164,27 @@ def intake_body(session: Session, row: IntakeStatus) -> str:
     """접수 classify 의 페이지 부분: 접수 문구 후보 줄과 그 앞뒤 줄(``official_site_parser.intake_context``), 후보가 없으면
     줄 중복을 뺀 페이지 문구(앞·뒤). 원문에 문구가 없으면 ''(→ '접수 문구 없음', 판정 호출 없음).
 
+    R7-SITE(D26-1): 스크린샷 행에 팝업 그림 OCR 글자가 있으면 ``OCR_HEADER`` 아래에 붙인다(같은 규칙 — 페이지·OCR 어느 쪽이든
+    후보가 있으면 후보 문맥만, 둘 다 없으면 둘 다 문구). OCR 부분은 ``OCR_PART_MAX`` 자 안, 페이지 부분이 나머지.
+
     후보가 있을 때 페이지 문구 전체를 덧붙이지 않는다 — 실제 판정기 재생(인천 첫 실행 48행, R6_TESTS_INTAKE §4)에서 메뉴·광고
     문구가 섞이면 '선착순 동·호지정' 같은 분명한 문구도 open·auto → review 로 흐려졌다(4행)."""
     text = _row_text(session, row)
-    if not text:
+    ocr = ocr_text(session, row)
+    if not text and not ocr:
         return ""
-    ctx = intake_context(text)
-    body = "\n".join(ctx) if ctx else "\n".join(unique_lines(text))
-    return P.head_tail(body, INTAKE_BODY_BUDGET)
+    page_ctx = intake_context(text) if text else []
+    ocr_ctx = intake_context(ocr) if ocr else []
+    if page_ctx or ocr_ctx:  # 후보가 있으면 후보 문맥만(페이지·OCR 각각)
+        page, pop = "\n".join(page_ctx), "\n".join(ocr_ctx)
+    else:
+        page, pop = "\n".join(unique_lines(text)), "\n".join(unique_lines(ocr))
+    if not pop:  # OCR 글자가 없으면 R6-INTAKE 와 같은 입력(input_hash 그대로)
+        return P.head_tail(page, INTAKE_BODY_BUDGET)
+    block = OCR_HEADER + "\n" + P.head_tail(pop, OCR_PART_MAX)
+    if not page:
+        return block
+    return P.head_tail(page, INTAKE_BODY_BUDGET - len(block) - 1) + "\n" + block
 
 
 def intake_text(session: Session, row: IntakeStatus) -> str:
@@ -365,6 +455,7 @@ def carry_classification(
     snap = session.get(Snapshot, snapshot_id)
     if snap is None:
         return []
+    mark_not_target(session, snapshot_id)  # D26-3: 판정 대상 아닌 단지는 복사·판정 전에 사유를 정한다
     rows = list(
         session.scalars(
             select(IntakeStatus)

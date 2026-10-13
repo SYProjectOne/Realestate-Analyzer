@@ -108,6 +108,7 @@ from app.scheduler.intake import (
     CLASSIFIED_MARK,
     INTAKE_PATHS,
     NO_TEXT,
+    OCR_HEADER,
     UNCLASSIFIED,
     carry_classification,
     intake_change_events,
@@ -569,6 +570,8 @@ def _p4_intake(
             row.reason = o.reason
             s = seq(o.judgment_seq)
             mark = f"{CLASSIFIED_MARK} jl_{s}" if s is not None else CLASSIFIED_MARK
+            if OCR_HEADER in item.text:  # D26-1: 근거에 팝업 그림 OCR 글자(라벨 '추정(OCR)')가 있었다
+                mark += "(근거에 팝업 그림 글자 추정(OCR))"
             row.note = f"{row.note} · {mark}" if row.note else mark
             res.intake_classified += 1
     session.flush()
@@ -1100,6 +1103,9 @@ def run_pipeline(
             tset = set(targets)
             # P1~P5 (+ 접수 상태 classify)
             _p1_p3(session, caller, snap, targets, res, seq)
+            # R7-SITE(D26-3): 포함/제외를 접수 classify 보다 먼저 — 민간분양이 아닌 단지(첫 실행 포함)는 접수 판정에서 뺀다.
+            # 포함/제외 입력(단지 사실)은 접수 상태와 무관하다(``_p4`` 는 대상 집합을 쓰지 않는다)
+            _p4(session, caller, snap, region, facts, tset, seq)
             _p4_intake(session, caller, snap, seq, res)
             changed = _intake_changes(ctx, session, snap, prev, all_ids)
             if changed:
@@ -1108,7 +1114,6 @@ def run_pipeline(
                 res.targets = sorted(tset)
                 session.commit()
                 res.notified_event_ids += _notify(ctx, session, changed)
-            _p4(session, caller, snap, region, facts, tset, seq)
             _p4_catalysts(session, caller, snap, region, seq, res)
             res.carried["compare"] = _p5(session, caller, snap, tset, seq, res)
             session.commit()
