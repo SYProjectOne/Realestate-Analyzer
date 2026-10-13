@@ -259,10 +259,13 @@ def display_url(url: str | None) -> str | None:
         return url.split("?", 1)[0].split("#", 1)[0] or None
 
 
-def _html_row(session: Session, doc: RawDocument) -> RawDocument | None:
-    """접수 행 원문에 맞는 HTML 원문 행: HTML 행이면 그 행, 렌더 PNG 행이면 같은 URL 의 HTML 행 중 메타의
-    ``render.screenshot_sha256`` 이 그 PNG 인 가장 최근 행(없으면 같은 URL 의 가장 최근 성공 HTML 행). 원문 행은 sha256 로
-    하나라 같은 페이지면 같은 행이다(결정적)."""
+def _html_row(session: Session, doc: RawDocument, url: str | None = None) -> RawDocument | None:
+    """접수 행 원문에 맞는 HTML 원문 행: HTML 행이면 그 행, 렌더 PNG 행이면 ``url``(접수 행 근거 주소 — 없으면 PNG 행 URL)의
+    HTML 행 중 메타의 ``render.screenshot_sha256`` 이 그 PNG 인 가장 최근 행(없으면 그 URL 의 가장 최근 성공 HTML 행). 원문
+    행은 sha256 로 하나라 같은 페이지면 같은 행이다(결정적).
+
+    R7-FIX: PNG 행의 URL 로 찾지 않는다 — 같은 화면(바이트 동일 스크린샷)을 다른 주소 단지가 먼저 받았으면 PNG 행 URL 은 그
+    단지 것이라 동일성 근거(제목·설명·이동 후 주소)가 남의 페이지로 붙었다(인천 72·75·87 → /s/GI59)."""
     if not (doc.content_type or "").startswith("image/"):
         return doc
     rows = [
@@ -271,7 +274,7 @@ def _html_row(session: Session, doc: RawDocument) -> RawDocument | None:
             select(RawDocument)
             .where(
                 RawDocument.source_kind == "official_site",
-                RawDocument.url == doc.url,
+                RawDocument.url == (url or doc.url),
                 RawDocument.http_status == 200,
                 RawDocument.path.is_not(None),
             )
@@ -292,7 +295,7 @@ def site_evidence(session: Session, row: IntakeStatus) -> SiteEvidence:
     doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
     if doc is None:
         return SiteEvidence(None, None, None, None, "")
-    html_row = _html_row(session, doc)
+    html_row = _html_row(session, doc, row.evidence_url)
     title = desc = final = None
     if html_row is not None:
         meta = html_row.meta if isinstance(html_row.meta, dict) else {}

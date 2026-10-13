@@ -324,6 +324,7 @@ def intake_rows(
     for cid, ds in sorted(by_complex.items()):
         ok = [d for d in ds if d.http_status == 200 and not d.error_text and d.path]
         shot = next((d for d in ok if (d.content_type or "").startswith("image/")), None)
+        page = next((d for d in ok if not (d.content_type or "").startswith("image/")), None)
         if ok:
             main = shot or ok[0]
             path = "headless_shot" if shot is not None else "official_popup"
@@ -343,7 +344,9 @@ def intake_rows(
                 snapshot_id=snapshot_id,
                 status="확인 불가",
                 path=path,
-                evidence_url=main.url,
+                # R7-FIX: 스크린샷 행은 sha256 로 하나라 같은 화면을 먼저 받은 **다른 주소** 단지의 URL 일 수 있다(브랜드 공통
+                # 페이지 — 인천 72·75·87 이 /s/GI59 를 받았다). 근거 주소는 이 단지가 받은 페이지(HTML 행) 주소
+                evidence_url=(page or main).url,
                 screenshot_path=shot.path if shot is not None else None,
                 raw_document_id=main.id,
                 http_status=http,
