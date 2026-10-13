@@ -51,7 +51,6 @@ from app.models import (
     Snapshot,
 )
 from app.models.enums import JUDGE_TOOL, SOURCE_KIND
-from app.scheduler.collect import PROCESS_FAILURE_PREFIXES
 from app.scheduler.rejudge import enqueue_rejudge
 from app.scheduler.snapshots import latest_for_region, writable
 
@@ -59,6 +58,9 @@ router = APIRouter(tags=["ops"])
 
 _DAILY = frozenset({"applyhome_list", "applyhome_detail", "notice_pdf", "official_site"})
 _WEEKLY = frozenset({"rtms", "stats", "news"})
+# 원문 처리 실패 표식 = ``app.scheduler.collect.PROCESS_FAILURE_PREFIXES``(R5-PIPE). 값만 옮겨 둔다 — collect 를 import 하면 API
+# 프로세스에 판정기 어댑터 모듈(``judge.base``)이 올라온다(R5-OPS 경계 테스트). 같은 값인지는 테스트가 확인한다.
+PROCESS_FAILURE_PREFIXES: tuple[str, ...] = ("store_failed:", "parse_failed:")
 
 
 def _ok(d: RawDocument) -> bool:

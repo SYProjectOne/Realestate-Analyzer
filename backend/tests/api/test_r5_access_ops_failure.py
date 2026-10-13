@@ -19,6 +19,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.api.routers import ops
 from app.core.db import get_session
 from app.core.time import now_kst
 from app.models import RawDocument
@@ -46,7 +47,8 @@ def _source(client: TestClient, kind: str) -> dict[str, Any]:
 
 
 def test_process_failure_marks_are_failing_targets(client: TestClient) -> None:
-    assert PROCESS_FAILURE_PREFIXES == ("store_failed:", "parse_failed:")
+    # ops 는 collect 를 import 하지 않고(판정기 경계) 값만 옮겨 둔다 — 두 값이 같아야 한다
+    assert ops.PROCESS_FAILURE_PREFIXES == PROCESS_FAILURE_PREFIXES == ("store_failed:", "parse_failed:")
     before_site = _source(client, "official_site")
     before_pdf = _source(client, "notice_pdf")
     store = "store_failed: RuntimeError: 정규화 실패(테스트)"
