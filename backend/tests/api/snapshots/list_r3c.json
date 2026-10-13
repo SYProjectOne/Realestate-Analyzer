@@ -1,7 +1,7 @@
 {
  "plain:compare": {
-  "bytes": 83439,
-  "sha256": "65cb9a71758156761f16e036113d53dce710ddf036c86f02ebbaa3a053b33759"
+  "bytes": 83917,
+  "sha256": "98dd2aae1f85d48c0022c391a04c751fdff2b6e3aad03559c067b772a83df166"
  },
  "plain:csv": {
   "bytes": 9070,
@@ -100,8 +100,8 @@
   "sha256": "e445f26afac5d4f10da1516ac059643cd054459970404d277918c738ab68950e"
  },
  "rich:compare": {
-  "bytes": 83147,
-  "sha256": "57a4bee8dfaea8c4cbdbf3714cc8953edf422775baf096365aed9821f81bef36"
+  "bytes": 83625,
+  "sha256": "9acde324512f5a54a12500ffad501ddc1c29c53bc8026db4ed5db6e67a4db399"
  },
  "rich:csv": {
   "bytes": 9064,
@@ -200,8 +200,8 @@
   "sha256": "f5426e50a259f714e42711c25deb6a33afc8bbd9850fdfa27d76ae6406845a36"
  },
  "synth:compare": {
-  "bytes": 83147,
-  "sha256": "57a4bee8dfaea8c4cbdbf3714cc8953edf422775baf096365aed9821f81bef36"
+  "bytes": 83625,
+  "sha256": "9acde324512f5a54a12500ffad501ddc1c29c53bc8026db4ed5db6e67a4db399"
  },
  "synth:csv": {
   "bytes": 481546,
