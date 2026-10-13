@@ -28,6 +28,7 @@ SELECT 만 해서 원인을 나눴다.
 2. 법정동 이름: 같은 이름 활성 행 → 구간 시도 → 구간 시군구 이름 조각이 가장 많이 맞는 행 → (시군구가 폐지된 옛 구면) **후계 구** → 여럿이면 지역 법정동 → 하나일 때만.
    후계 구 = 같은 시도의 활성 시군구 S 중 `k = |S 활성 동 이름 ∩ 옛 구 G 폐지 동 이름|` 이 S 의 과반(분구·개칭) 또는 G 의 과반(통합)인 것. 인천 실제 표: 중구 → {제물포구, 영종구},
    동구 → {제물포구}, 서구 → {서해구, 검단구}(계양구는 1/23·1/22 라 아님 — R4 M6 '서구 오류동 → 검단구' 유지).
+   폐지 시군구는 시군구 단위 행으로 찾고, 그 행이 없는 작은 참조 표(기존 R4 M6 테스트)에서는 같은 이름 폐지 읍면동 행의 시군구(활성 읍면동이 없는 시군구)로 찾는다.
 3. 행정동 이름(법정동 이름이 아닌 토큰): 행정동(구간 시도·시군구로 좁혀 하나) → 매핑 활성 법정동이 하나면 그것. 여럿이면 **바로 뒤가 번지**('311-1번지')이고 행정동 이름에서
    숫자를 뗀 이름('간석동')의 법정동이 매핑 안에 하나일 때만(지번은 법정동 기준). 아니면 모호.
 4. 동이 여럿 정해지면 **지역 안 첫 동**, 지역 안 동이 없으면 처음 정해진 동(지역 밖 → 범위 경계). 지역 안 동이 있으면 지역 밖 동을 고르지 않는다.
@@ -43,7 +44,12 @@ SELECT 만 해서 원인을 나눴다.
 renormalize(같은 원문) = 주소 불변 → 재배정 없음 · `correct_dong` = 법정동 NULL 이고 다른 출처 주소가 있을 때만 · `region.expand` = 전체 재배정하지만 지역 선택 변경 때만(이벤트 없음) ·
 생활권 PUT = 법정동을 다시 매칭하지 않음(생활권 id 만). 그래서 **`living_area.rederive_region_dongs`** 를 더하고 `scheduler/collect.py` 수집 끝(잔여 공고 법정동 보정 다음)에서
 부른다: 지역 단지(주소 있는 것) 전체를 다시 맞추고 법정동이 바뀐 단지마다 change_event(complex·legal_dong_code, critical) → 재판정 대상(`detect.rejudge_targets`).
-첫 적재면 first_load 요약 수(D18-7). 바뀐 것이 없으면 쓰는 것 0 → 같은 날 재수집 이벤트 0(D23-1). 운영 절차는 runbook §10-17.
+첫 적재면 first_load 요약 수(D18-7). **법정동이 그대로인 단지는 아무것도 바꾸지 않는다**(생활권·분류 원상 복구) — 처음에는 전체 재배정 결과를 그대로 썼다가
+`tests/regress/test_t11_substitute.py` T11b·c(생활권 편집 변형: 단지 생활권만 직접 바꾼 상태)가 주간 수집 뒤 원래 생활권으로 되돌아가 실패해서 좁혔다.
+바뀐 것이 없으면 쓰는 것 0 → 같은 날 재수집 이벤트 0(D23-1). 운영 절차는 runbook §10-17.
+
+중간에 고친 회귀: 첫 구현은 폐지 시군구를 시군구 단위 행으로만 찾아, 그 행이 없는 작은 참조 표의 `test_r4_fix_m6_split::test_old_gu_address_maps_to_split_successor` 가
+실패했다(`(None, False, None)`) → 폐지 읍면동 행의 시군구로도 찾게 고쳤다(규칙 2 끝 줄).
 
 ## 테스트 (수정 전 = 테스트만 먼저 커밋한 `3e6ab93` 에서 `-rA`, 수정 뒤 = 브랜치 끝)
 
@@ -63,7 +69,10 @@ renormalize(같은 원문) = 주소 불변 → 재배정 없음 · `correct_dong
 | `…::test_first_load_folds_into_summary` | 2 · 24 | **실패** | `{None, '4119610600'} == {'2820010200', '2824511100'}` | 통과 |
 
 수정 전 실패 **8**, 가드 통과 8(파라미터 포함). 기존 테스트(`test_r4_fix_m6_split`·`test_r3f_m17_ambiguous_dong`·`test_core8_n7_no_dong`·`test_core9_n10_dong`·
-`test_living_area`)는 그대로 통과.
+`test_living_area`·T11 비교군 대체)는 그대로 통과.
+
+전체 스위트(`uv run pytest -p no:randomly -m "not live"`, 브랜치 끝): 4,103 중 실패 1 = `tests/api/test_r3f_perf_publish.py`(다른 worktree 테스트와 동시 실행 부하 —
+혼자 다시 돌려 2/2 통과), 건너뜀 8. ruff check·format --check·mypy app(168 파일) 통과, `gen_contracts.py --check`·`fixture_manifest.py --check` 통과. `python scripts/tasks.py regress` 통과(T01~T18·모듈·흐름 전부, e2e 3/3) — 회귀 골든 변경 없음.
 
 참조 표 픽스처 `backend/tests/normalize/fixtures/r6_dong/*.csv`: 운영 DB 의 실제 행을 읽기 전용으로 옮겼다 — legal_dong 1,014행(인천 28 전체 + 전국 시도·시군구 단위 행 +
 같은 이름 읍면동 19개 이름의 전국 행), admin_dong 인천 177행, admin_legal_map 인천 394행. 공공누리 1유형 공개 코드 자료.
