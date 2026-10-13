@@ -3,6 +3,7 @@ diff 표 · contradicted 거부 · 모든 수치에 라벨."""
 
 from __future__ import annotations
 
+import os
 import re
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -84,9 +85,28 @@ def test_html_has_zero_external_url_resources(
     assert not re.search(r"@import", css, re.I)
 
 
-def test_echarts_bundle_is_inlined(factory: sessionmaker[Session], out_dir: Path) -> None:
+def _require_echarts_bundle() -> None:
+    """번들이 없으면 로컬은 skip, CI(``CI`` 환경변수)는 실패 — CI 가 skip 으로 조용히 넘어가지 않게(R5-OPS 6).
+    CI 는 reports 잡에서 frontend ``npm ci`` 로 ``echarts.min.js`` 를 준비한다(.github/workflows/ci.yml)."""
     if find_echarts_bundle() is None:
+        if os.environ.get("CI"):
+            pytest.fail("CI 에 echarts.min.js 없음 — reports 잡이 frontend npm ci 로 번들을 준비해야 한다(R5-OPS 6)")
         pytest.skip("echarts.min.js 없음(frontend npm ci 전) — 표만 생성")
+
+
+def test_echarts_missing_bundle_fails_in_ci(monkeypatch: pytest.MonkeyPatch) -> None:
+    """R5-OPS 6: GitHub CI 에서 이 인라인 테스트가 번들 없음으로 skip 되던 것 — CI 에서는 실패로 바뀐다."""
+    monkeypatch.setitem(globals(), "find_echarts_bundle", lambda *a, **k: None)
+    monkeypatch.setenv("CI", "true")
+    with pytest.raises(pytest.fail.Exception, match="echarts"):
+        _require_echarts_bundle()
+    monkeypatch.delenv("CI")
+    with pytest.raises(pytest.skip.Exception):
+        _require_echarts_bundle()
+
+
+def test_echarts_bundle_is_inlined(factory: sessionmaker[Session], out_dir: Path) -> None:
+    _require_echarts_bundle()
     soup = _soup(_html(factory, out_dir, 12))
     scripts = [t.get_text() for t in soup.find_all("script") if not t.get("src")]
     assert any("echarts" in s and len(s) > 100_000 for s in scripts), "ECharts 번들 인라인 안 됨"
