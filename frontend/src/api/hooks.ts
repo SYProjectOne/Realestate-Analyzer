@@ -53,6 +53,7 @@ import type {
   Health,
   HumanCheck,
   HumanCheckCreate,
+  IntakeQueue,
   JobCreate,
   JobListParams,
   JobRun,
@@ -137,6 +138,8 @@ export const queryKeys = {
   opsSources: (regionId: IdLike | null) => ['ops', 'sources', key(regionId)] as const,
   opsJudgments: (params: JudgmentOpsParams) => ['ops', 'judgments', params] as const,
   checklist: (params: ChecklistParams) => ['ops', 'checklist', params] as const,
+  intakeQueue: (regionId: IdLike | null, snapshot: IdLike | null) =>
+    ['ops', 'intake-queue', key(regionId), key(snapshot)] as const,
   reports: (snapshotId: IdLike | null) => ['reports', key(snapshotId)] as const,
   claims: (sid: IdLike, params: ClaimListParams) =>
     ['snapshots', key(sid), 'claims', params] as const,
@@ -827,6 +830,26 @@ export function useChecklist(params: ChecklistParams = {}): Q<ChecklistItem[]> {
   });
 }
 
+/**
+ * GET /ops/intake-queue?region_id=&snapshot= (getIntakeQueue, 계약 .19 · D26-2) — 접수 확인 대기열. 스냅샷을 주면 그
+ * 스냅샷, 없으면 지역의 최신 published(서버 기본). 사람 확인 저장 뒤 `useCreateHumanCheck` 가 무효화한다(반영 대기 표시).
+ */
+export function useIntakeQueue(
+  regionId: IdLike | null,
+  snapshot: IdLike | null,
+  enabled = true,
+): Q<IntakeQueue> {
+  return useQuery({
+    queryKey: queryKeys.intakeQueue(regionId, snapshot),
+    queryFn: ({ signal }) =>
+      apiFetch<IntakeQueue>('/ops/intake-queue', {
+        query: { region_id: has(snapshot) ? null : regionId, snapshot },
+        signal,
+      }),
+    enabled,
+  });
+}
+
 /** PATCH /ops/checklist/{id} (updateChecklistItem) */
 export function usePatchChecklistItem(): M<{ id: IdLike; patch: ChecklistPatch }, ChecklistItem> {
   const qc = useQueryClient();
@@ -851,6 +874,8 @@ export function useCreateHumanCheck(): M<HumanCheckCreate, HumanCheck> {
       // 계약 .11 F6: 201 + job_id(rejudge) — 잡이 새 리비전을 판정·발행한다. 발행 대기 리비전이 목록에 보이게
       void qc.invalidateQueries({ queryKey: queryKeys.regions() });
       void qc.invalidateQueries({ queryKey: ['jobs', 'list'] });
+      // 계약 .19(D26-2): 접수 확인 대기열의 '사람 확인 입력됨 — 재판정·발행 대기' 표시
+      void qc.invalidateQueries({ queryKey: ['ops', 'intake-queue'] });
     },
   });
 }
