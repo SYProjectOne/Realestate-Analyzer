@@ -96,7 +96,7 @@ from app.normalize.fields import (
     with_mark,
 )
 from app.normalize.living_area import assign_complex_area, correct_dong
-from app.normalize.notice_parser import NoticeParser
+from app.normalize.notice_parser import NoticeParser, ScanTypes
 from app.normalize.official_site_parser import ComplexKey, OfficialSiteParser
 from app.normalize.provenance import upsert_provenance
 from app.normalize.resolver import resolve
@@ -147,16 +147,22 @@ class StoreResult:
 
 
 def parser_for(
-    source_kind: str, *, raw_dir: Path | None = None, complex_key: ComplexKey | None = None
+    source_kind: str,
+    *,
+    raw_dir: Path | None = None,
+    complex_key: ComplexKey | None = None,
+    scan_types: ScanTypes | None = None,
 ) -> _Parser | None:
     """source_kind → 파서.
 
     ``complex_key``(complex_id → 주택관리번호)는 공식 홈페이지 후보의 단지 키에 쓴다.
+    ``scan_types``(주택관리번호 → 이미 있는 단지의 타입 코드, 없으면 None)는 스캔 공고문의 '확인 불가(스캔)' 후보에 쓴다
+    (R5-NORM 2 — 저장 단계만 준다).
     """
     if source_kind == "official_site":
         return OfficialSiteParser(raw_dir=raw_dir, complex_key=complex_key)
     if source_kind == "notice_pdf":
-        return NoticeParser(raw_dir=raw_dir)
+        return NoticeParser(raw_dir=raw_dir, scan_types=scan_types)
     if source_kind in ("applyhome_list", "applyhome_detail"):
         return ApplyhomeParser(raw_dir=raw_dir)
     if source_kind == "rtms":
@@ -1535,8 +1541,18 @@ def store_raw_document(
         cx = session.get(Complex, complex_id)
         return cx.applyhome_id if cx is not None else None
 
+    def scan_types(key: str) -> list[str] | None:
+        """R5-NORM 2: 스캔 공고문의 단지(같은 지역·주택관리번호)가 이미 있으면 그 타입 코드들, 없으면 None."""
+        stmt = select(Complex.id).where(Complex.applyhome_id == key)
+        if raw.region_id is not None:
+            stmt = stmt.where(Complex.region_id == raw.region_id)
+        cid = session.scalars(stmt.order_by(Complex.id)).first()
+        if cid is None:
+            return None
+        return sorted(session.scalars(select(ComplexType.type_code).where(ComplexType.complex_id == cid)))
+
     def factory(kind: str) -> _Parser | None:
-        return parser_for(kind, raw_dir=raw_dir, complex_key=complex_key)
+        return parser_for(kind, raw_dir=raw_dir, complex_key=complex_key, scan_types=scan_types)
 
     with session.begin_nested():
         row = _ensure_raw_row(session, raw)

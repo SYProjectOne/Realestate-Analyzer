@@ -35,7 +35,15 @@
   OCR, 1부터 센 번호; 텍스트 파일은 페이지마다 ``\f`` 로 나뉜다)이면 OCR 로 읽은 구간에서 나온 값 후보를
   label '추정' + reason 'OCR'(표시 '추정(OCR)')로 내고, 수치·날짜 필드는 모두 needs_extract=True 로 표시한다
   (판정기 extract/audit 를 반드시 거친다 — 반영은 ``normalize.judged.apply_extracted``). 파서가 못 읽은
-  필드('확인 불가')는 그대로. ``scan``(전 페이지 텍스트 없음)은 후보가 없다(확인 불가(스캔)).
+  필드('확인 불가')는 그대로.
+- 스캔 원문(R5-NORM 2, raw.error_text ``scan`` — 전 페이지 텍스트 없음): 저장 단계가 단지 조회(``scan_types``)를 주면, 이미
+  있는 그 단지(주택관리번호)의 공고문 1순위 필드(RA §3 가격 군: 전매·거주의무·재당첨·상한제, 타입별 최고가·대표층가·발코니·
+  필수 옵션)마다 label '확인 불가' + reason ``SCAN_REASON``('스캔' — 화면 '확인 불가(스캔)') 후보를 낸다. 글자가 없으므로
+  needs_extract 는 거짓(판정기 요청 없음). 모르는 단지·조회 없음이면 후보 없음(글자가 없어 잔여 공고인지 알 수 없다 — 새 단지
+  행을 만들지 않는다). 값 있는 하위 출처(청약홈)가 있으면 resolver 규칙 1(값 있는 후보 우선)대로 그 값이 채택된다.
+- 선택품목(R5-NORM 2): '추가 선택품목 비용 미포함' 문장만 있으면 필수 옵션 0원. **필수 선택품목**('필수 선택품목'·'필수옵션'·
+  '선택품목(필수)') 줄이 있으면 그 문장으로 0원을 만들지 않는다 — 그 줄부터 몇 줄 안의 타입별 금액 행(행에 금액 하나, 단위 표기
+  환산)을 읽고, 못 읽은 타입은 '확인 불가' + needs_extract(판정기 extract).
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -43,6 +51,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, TypedDict
@@ -71,14 +80,34 @@ from app.normalize.fields import (
 )
 
 __all__ = [
+    "SCAN_COMPLEX_FIELDS",
+    "SCAN_REASON",
+    "SCAN_TYPE_FIELDS",
     "NoticeParser",
     "PriceRow",
+    "ScanTypes",
     "TypeSpec",
     "mark_ocr",
     "notice_numbers",
     "ocr_spans",
     "parse_notice_text",
+    "scan_candidates",
 ]
+
+ScanTypes = Callable[[str], Sequence[str] | None]
+"""주택관리번호 → 이미 있는 그 단지의 타입 코드들(단지가 없으면 None). 저장 단계(``normalize.store``)가 DB 로 만든다."""
+SCAN_REASON: Final = "스캔"
+SCAN_EXCERPT: Final = "스캔 공고문(텍스트 레이어 없음)"
+SCAN_COMPLEX_FIELDS: Final = (
+    "resale_months",
+    "resale_release_on_registration",
+    "residency_months",
+    "rewin_restriction_years",
+    "price_cap",
+)
+"""스캔 공고문이 '확인 불가(스캔)' 후보를 내는 단지 필드 — 공고문이 1순위인 단지 단위 가격 군(RA §3, ``fields._PRICE_FIELDS``)."""
+SCAN_TYPE_FIELDS: Final = ("max_price_won", "floor_sample_price_won", "balcony_won", "options_required_won")
+"""스캔 공고문이 타입마다 '확인 불가(스캔)' 후보를 내는 금액 필드(공고문 1순위)."""
 
 _TITLE_LINE_RE = re.compile(r"^.*입주자\s*모집\s*공고.*$", re.M)
 _KIND_WORD_RE = re.compile(r"임의\s*공급|무순위|선착순|계약\s*취소|재공급|잔여\s*세대")
@@ -226,12 +255,15 @@ class NoticeParser:
 
     source_kind = "notice_pdf"
 
-    def __init__(self, *, raw_dir: Path | None = None) -> None:
+    def __init__(self, *, raw_dir: Path | None = None, scan_types: ScanTypes | None = None) -> None:
         self._raw_dir = raw_dir
+        self._scan_types = scan_types
 
     def parse(self, raw: RawDocument) -> list[FieldCandidate]:
-        if raw.http_status not in (None, 200) or (raw.error_text or "").lower() == "scan":
+        if raw.http_status not in (None, 200):
             return _failed(raw)
+        if (raw.error_text or "").strip().lower() == "scan":
+            return scan_candidates(raw, self._scan_types) if self._scan_types is not None else _failed(raw)
         text = read_raw_text(raw, raw_dir=self._raw_dir)
         if text is None:
             return _failed(raw)
@@ -286,6 +318,26 @@ def mark_ocr(cands: list[FieldCandidate], spans: list[tuple[int, int]]) -> list[
             )
         )
     return out
+
+
+def scan_candidates(raw: RawDocument, scan_types: ScanTypes) -> list[FieldCandidate]:
+    """스캔 공고문(글자 없음) → 이미 있는 그 단지의 공고문 1순위 필드마다 '확인 불가(스캔)' 후보(R5-NORM 2).
+
+    단지 키 = 원문 주소의 주택관리번호(글자가 없어 본문 인용은 읽을 수 없다). 단지가 없으면 []."""
+    key = _house_no(raw, "")
+    if not key:
+        return []
+    codes = scan_types(key)
+    if codes is None:
+        return []
+    b = CandidateBuilder(raw, "")
+    targets = [("complex", key, f) for f in SCAN_COMPLEX_FIELDS]
+    targets += [("complex_type", f"{key}:{code}", f) for code in sorted(set(codes)) for f in SCAN_TYPE_FIELDS]
+    for entity, ekey, f in targets:
+        b.add(
+            entity, ekey, f, None, None, (0, 0), label="확인 불가", reason=SCAN_REASON, excerpt=SCAN_EXCERPT
+        )
+    return b.out
 
 
 def _failed(raw: RawDocument) -> list[FieldCandidate]:
@@ -1124,9 +1176,74 @@ def _balcony(ctx: _Ctx) -> None:
             )
 
 
+# 필수 선택품목(R5-NORM 2): '필수 선택품목'·'필수 추가선택품목'·'필수옵션'·'필수 유상옵션'·'선택품목(필수)'. '반드시 확인'·
+# '기본제공(의무)'·'선시공품목인 발코니 확장(유상옵션)을 반드시 계약'(발코니는 ``balcony_won``) 같은 녹화 공고문 보일러플레이트는 아니다
+_MANDATORY_OPT_RE: Final = re.compile(
+    r"필수\s*(?:추가\s*)?(?:선택\s*품목|선택\s*옵션|유상\s*옵션|옵션)|(?:선택\s*품목|옵션)\s*[(（]\s*필수\s*[)）]"
+)
+_MANDATORY_BLOCK_LINES: Final = 12
+_OPT_AMOUNT: Final = r"\d{1,3}(?:,\d{3})+|\d+"
+MANDATORY_OPT_MISSING: Final = "필수 선택품목 금액 해석 실패"
+
+
+def _mandatory_options(
+    ctx: _Ctx,
+) -> tuple[tuple[int, int], dict[str, tuple[int, str, tuple[int, int]]], _Unit] | None:
+    """필수 선택품목 줄이 있으면 (그 줄 span, 타입 → (원 금액, 원문 금액, 행 span), 단위). 없으면 None.
+
+    그 줄부터 ``_MANDATORY_BLOCK_LINES`` 줄 안에서 '타입[·, 타입…] 금액[단위]' 행(금액 하나로 끝나는 행)을 읽는다. 단위는 행 끝
+    표기 > 블록의 '(단위: …)' 표기 > 원(``UNIT_ASSUMED``). 파싱 규칙이다(판단 아님)."""
+    text = ctx.text
+    shorts = [t.short for t in ctx.types]
+    type_alt = "|".join(sorted((re.escape(x) for x in shorts), key=len, reverse=True))
+    row_re = re.compile(
+        rf"^\s*((?:{type_alt})(?:\s*[·,/]\s*(?:{type_alt}))*)\s+({_OPT_AMOUNT})\s*(백만원|천원|만원|원)?\s*$"
+    )
+    first: tuple[tuple[int, int], dict[str, tuple[int, str, tuple[int, int]]], _Unit] | None = None
+    for m in _MANDATORY_OPT_RE.finditer(text):
+        ls, le = line_span(text, m.start())
+        spans = _line_spans(text, ls, len(text))[:_MANDATORY_BLOCK_LINES]
+        block_end = spans[-1][1] if spans else le
+        unit = _price_unit(text, ls, block_end)
+        found: dict[str, tuple[int, str, tuple[int, int]]] = {}
+        for rs, re_ in spans:
+            rm = row_re.match(text[rs:re_]) if type_alt else None
+            if rm is None:
+                continue
+            scale = _UNIT_SCALE[rm.group(3)] if rm.group(3) else unit.scale
+            won = parse_won(rm.group(2)) * scale
+            for x in re.split(r"\s*[·,/]\s*", rm.group(1)):
+                found.setdefault(x, (won, rm.group(2) + (rm.group(3) or ""), (rs, re_)))
+        if first is None or (found and not first[1]):
+            first = ((ls, le), found, unit)
+        if found:
+            break
+    return first
+
+
 def _options(ctx: _Ctx) -> None:
-    """'상기 공급금액은 추가 선택품목 비용이 포함되지 아니한 가격' → 필수 옵션 0원(선택품목은 별도 계약)."""
+    """'상기 공급금액은 추가 선택품목 비용이 포함되지 아니한 가격' → 필수 옵션 0원(선택품목은 별도 계약).
+
+    필수 선택품목 줄이 있으면(R5-NORM 2) 그 보일러플레이트로 0원을 만들지 않는다 — 타입별 금액 행을 읽고, 못 읽은 타입은
+    '확인 불가' + needs_extract."""
     text, b = ctx.text, ctx.b
+    mand = _mandatory_options(ctx)
+    if mand is not None:
+        (ms, me), found, unit = mand
+        line = _BULLET_RE.sub("", text[ms:me]).strip()
+        for t in ctx.types:
+            tkey = f"{ctx.complex_key}:{t.short}"
+            if t.short in found:
+                won, vt, span = found[t.short]
+                inline = re.search(r"(?:백만원|천원|만원|원)\s*$", text[span[0] : span[1]])
+                reason = None if unit.found or inline else UNIT_ASSUMED
+                b.add("complex_type", tkey, "options_required_won", won, vt, span, reason=reason)
+            else:
+                b.missing(
+                    "complex_type", tkey, "options_required_won", (ms, me), reason=MANDATORY_OPT_MISSING
+                )
+            b.add("complex_type", tkey, "options_text", line[:500], line[:500], (ms, me))
+        return
     m = _OPTIONS_RE.search(text)
     for t in ctx.types:
         tkey = f"{ctx.complex_key}:{t.short}"
