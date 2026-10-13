@@ -46,7 +46,7 @@ from app.core.contracts_gen import Region as RegionDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, RawDocument, Region, Snapshot
-from app.normalize.living_area import correct_dong
+from app.normalize.living_area import correct_dong, rederive_region_dongs
 from app.normalize.notice_parser import notice_numbers
 from app.normalize.store import is_remainder_url, store_raw_document
 from app.scheduler import assemble, detect, snapshots
@@ -598,6 +598,16 @@ def collect(
                     session.flush()
                     events.append(ev)
             session.commit()
+    with ctx.session_factory() as session:
+        # R6-DONG: 이미 저장된 단지(주소 그대로)의 법정동을 지금 규칙으로 다시 맞춘다 — 바뀌면 change_event(재판정 대상)
+        for ev in rederive_region_dongs(session, region_id, snapshot_id=snap_dto.id, detected_at=detected_at):
+            if first_load:
+                res.first_load_folded += 1
+            else:
+                session.add(ev)
+                session.flush()
+                events.append(ev)
+        session.commit()
 
     with ctx.session_factory() as session:
         snap_row = session.get(Snapshot, snap_dto.id)
