@@ -98,11 +98,13 @@ G7 에서 그 잡을 다시 등록한다. 00:00~01:00 KST 에 지역을 만들�
 | 사유 | 뜻 | 사람 할 일 |
 | --- | --- | --- |
 | `connect` | 도메인이 풀리지 않음(분양 끝난 사이트 폐쇄가 대부분) | 시행·시공사 대표 페이지·견본주택 전화로 확인 → G7 사람 확인(field `intake_status`) |
-| `TLS` | robots.txt 부터 인증서 오류 → RFC 9309 '전부 불허'라 본문을 받지 않음 | 브라우저로 직접 보고 G7 입력(프로그램은 인증서 검증을 끄지 않는다) |
+| `TLS` | httpx·**헤드리스 브라우저 모두** 인증서 오류(만료·자체 서명·호스트 불일치 — R7-SITE: httpx 만 실패하면 브라우저가 robots.txt·본문을 다시 받는다, 검증은 끄지 않음). 경로·브라우저 오류는 원문 행 `meta.fetch` | 브라우저로 직접 보고 G7 입력(프로그램은 인증서 검증을 끄지 않는다) |
+| `robots` | robots.txt 가 우리 UA 를 막음(TLS 사이트면 브라우저로 받은 robots.txt — RFC 9309) | 우회 금지. 분양 문의처 전화 등으로 확인 → G7 입력 |
 | `403`·`404` | 접근 거부·페이지 없음 | 위와 같음 |
 | 공식 홈페이지가 다른 단지 | 판정기가 auto 로 다른 사업 페이지라고 함(도메인 재사용) | 단지의 새 공식 페이지를 찾으면 G7 입력 |
 | 공식 홈페이지 동일성 미확인 | 판정기 review·unclear(LH 청약 포털·브랜드 포털·주차 도메인 등) | note 의 `jl_<seq>` 로 G7 판정 로그 확인 → 사람 확인 |
-| 문구로 판단 불가 | 같은 단지 페이지지만 본문에 접수 문구가 없음(안내가 팝업 그림 안) | 스크린샷(`screenshot_path`)을 보고 G7 입력 |
+| 문구로 판단 불가 | 같은 단지 페이지지만 본문·팝업 그림 OCR 글자(R7-SITE, 라벨 '추정(OCR)')에 접수 문구가 없음 | 스크린샷(`screenshot_path`)을 보고 G7 입력. 팝업 그림을 OCR 했는지는 스크린샷 원문 행 `meta.kind='official_site.popup_ocr'`(`status`·`reason`) |
+| 판정 대상 아님(범위 경계·공공분양 …) | 범위 경계 또는 포함/제외 classify auto 제외 클래스 단지 — 동일성·접수 classify 를 하지 않는다(D26-3). 수집 실패 행도 이 사유(원인은 원문 행) | 할 일 없음(점수 대상 아님). 단지가 대상이 되면 다음 수집에서 다시 분류된다 |
 | 판정 미해결 | 접수 classify review | 위와 같음 |
 
 ## 3. 판정기 장애 (degraded 모드)
@@ -734,6 +736,19 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   다시 돌리면 0. 이미 발행된 스냅샷 1 의 행은 그대로(D11-1).
 - 확인: `SELECT reason, count(*) FROM intake_status WHERE snapshot_id = <새 스냅샷> GROUP BY reason;` — 재생 예상(R6_TESTS_INTAKE §4):
   동일성 미확인 19 → 약 12, 가능·미정 6 → 약 8. 남는 확인 불가는 §2 표대로 사람 확인.
+
+### 10-19 R7-SITE 배포 뒤 1회 — 팝업 그림 OCR·TLS 브라우저 경로·판정 대상 아님 (`docs/design/wp/R7_TESTS_SITE.md`)
+
+- 선택 의존성 `ocr`(rapidocr·onnxruntime, D5)이 깔려 있어야 팝업 그림을 읽는다(`uv sync --all-extras`). 한국어 인식 모델은 처음 쓸 때
+  rapidocr 가 내려받는다(이후 캐시). 없으면 스크린샷 원문 행 meta `status='unavailable'` 사유만 남고 동작은 예전과 같다.
+- 첫 `collect.daily`: 렌더한 팝업 그림을 OCR(인천 ≈ 32장, 장당 0.2~2.6초 — 페이지당 예산 30초), TLS 실패 사이트는 브라우저로
+  robots.txt·본문(인증서 검증 켬, robots 준수, `core.http` 호스트 간격). 접수 항목이 바뀐 행(DOM 에 접수 문구가 없고 그림 글자가 있음)과
+  브라우저로 새로 받은 행만 판정기로 간다 ≈ `tools/call` 2. 같은 날 다시 돌리면 0(같은 그림은 다시 읽지 않는다 — 그림 해시 캐시).
+- 포함/제외 classify 가 접수 classify 보다 먼저 돈다 — 범위 경계·민간분양 아닌 단지의 접수 행은 '판정 대상 아님(<구분>)'.
+- 확인: `SELECT reason, count(*) FROM intake_status WHERE snapshot_id = <새 스냅샷> GROUP BY reason;` — 재생 예상(R7_TESTS_SITE §4):
+  TLS 9 → 1, 문구로 판단 불가 33 → 약 26, 판정 대상 아님 15, 접수 확정(가능·미정·불가, 민간) 7 → 약 11. R6-DONG(§10-17)이
+  범위 경계 단지 상당수를 미분류로 되돌리므로 '판정 대상 아님(범위 경계)'는 줄고, 포함/제외 classify 결과에 따라 '(공공분양)' 또는 일반 접수 판정으로 옮겨 간다. 브라우저 경로는
+  `SELECT id, url, meta->'fetch' FROM raw_document WHERE source_kind='official_site' AND meta ? 'fetch';`.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
