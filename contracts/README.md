@@ -1,5 +1,8 @@
 # contracts/ — 계약 (WP0 소유, 나머지는 읽기 전용)
 
+- **주인**: WP0 (CEO) — `contracts/fixtures/` 만 WP9 (AGENTS 디렉터리 소유권)
+- **읽기 허용**: 전체 (다른 WP 는 읽기 전용 — 변경은 완료 보고의 '계약 변경 요청'으로)
+
 프론트↔백엔드(REST), 백엔드 모듈 사이(Python Protocol), 프로세스 사이(job_run.payload)의 접점을 파일로 고정한다
 (RA §4). 현재 버전은 [`CHANGELOG.md`](CHANGELOG.md)의 맨 위 항목 하나다.
 

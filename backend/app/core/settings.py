@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     # 매일 03:00 backup 잡 출력(D11-8). None 이면 RAW_DIR 상위 폴더 아래 backup/. R3 5차 minor: .env 의 BACKUP_DIR 도 읽는다
     # (예전에는 os.environ 만 — .env 에 적어도 무시됐다)
     backup_dir: Path | None = None
+    # backup 잡의 pg_dump(R5-OPS 3, D19-2): 실행 파일 또는 그 bin 폴더. None 이면 PATH 의 pg_dump.
+    # 서버와 같은(또는 더 새) 판이어야 한다 — 이 PC 운영 DB(PG17, D19)는 C:\Program Files\PostgreSQL\17\bin.
+    # 설정한 경로에 없으면 PATH 로 넘어가지 않고 잡이 실패한다(다른 판 pg_dump 로 조용히 덤프하지 않게)
+    pg_dump_path: Path | None = None
     # 보고서 HTML 에 인라인할 echarts.min.js(WP8). None 이면 저장소 frontend/node_modules 에서 찾는다
     report_echarts_js: Path | None = None
 
@@ -82,7 +86,8 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65535)
     api_token: SecretStr | None = None
     readonly_token: SecretStr | None = None
-    share_token_ttl_days: int = Field(default=30, ge=1)
+    # 공유 링크 만료(계약 ShareLink — 30일). 줄일 수는 있어도 30일을 넘길 수 없다(R5-OPS 5)
+    share_token_ttl_days: int = Field(default=30, ge=1, le=30)
     # 프록시 헤더(X-Forwarded-For·Proto)를 믿을 상대 주소(쉼표 구분 IP·CIDR — uvicorn forwarded_allow_ips).
     # 기본 루프백만. compose 는 web(nginx)이 있는 내부망 대역만 준다.
     # '*'(모두)는 ENV=prod 에서 거부(재리뷰 F3).
@@ -125,10 +130,18 @@ class Settings(BaseSettings):
     # --- worker
     worker_heartbeat_s: float = Field(default=60.0, gt=0)
 
-    @field_validator("report_echarts_js", mode="before")
+    @field_validator("report_echarts_js", "pg_dump_path", mode="before")
     @classmethod
     def _empty_path_is_none(cls, value: Any) -> Any:
         return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("pg_dump_path")
+    @classmethod
+    def _no_control_chars(cls, value: Path | None) -> Path | None:
+        # .env 큰따옴표 안의 Windows 경로는 역슬래시 이스케이프('\b' 등)로 제어 문자가 된다 — 깨진 경로로 실패를 미루지 않는다
+        if value is not None and any(ord(ch) < 32 for ch in str(value)):
+            raise ValueError("PG_DUMP_PATH 에 제어 문자 — .env 에서는 따옴표 없이(또는 작은따옴표로) 적는다")
+        return value
 
     @field_validator("http_robots_exempt_hosts", "judge_secret_env_names", mode="before")
     @classmethod

@@ -229,3 +229,52 @@ test.describe('모바일(≤768px)', () => {
 test('차트 갤러리 라우트(/__charts, dev)', async ({ page }) => {
   await ready(page, '/__charts', ko.chart.gallery.title);
 });
+
+test.describe('R5-FE(D25-1) 차트 지연 로딩 · 전역 쿼리 유지', () => {
+  // 낮은 창: G6 아래쪽 차트가 확실히 화면 밖(미리 받기 여백 200px 바깥)에 있게
+  test.use({ viewport: { width: 1280, height: 600 } });
+
+  test('G6: 화면 밖 차트는 플레이스홀더(SVG 없음) → 스크롤하면 그려진다', async ({ page }) => {
+    await ready(page, '/market', P.G6.title);
+    const charts = page.getByTestId('echart');
+    await expect.poll(() => charts.count()).toBeGreaterThanOrEqual(2);
+    await page.waitForLoadState('networkidle');
+    const last = charts.last();
+    const pos = await last.evaluate((el) => ({
+      top: el.getBoundingClientRect().top,
+      limit: window.innerHeight + 200,
+    }));
+    expect(pos.top).toBeGreaterThan(pos.limit);
+    // 위쪽 차트가 그려질 시간(지연 청크 도착)이 지나도 아래 차트는 그대로여야 한다
+    await expect(charts.first().locator('svg').first()).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(last.locator('svg')).toHaveCount(0);
+    await expect(last).toContainText(ko.chart.notRendered);
+
+    await last.scrollIntoViewIfNeeded();
+    await expect(last.locator('svg').first()).toBeVisible();
+    await expect(last).not.toContainText(ko.chart.notRendered);
+  });
+
+  test('?scenario=·?snapshot= 가 TOP 5 카드 → G3, 네비 → G2, 표 행 → G3 에서 유지', async ({
+    page,
+  }) => {
+    const keep = (url: URL) => {
+      expect(url.searchParams.get('scenario')).toBe('B');
+      expect(url.searchParams.get('snapshot')).toBe('11');
+    };
+    await ready(page, '/?snapshot=11&scenario=B', P.G1.title);
+    const card = page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem').first();
+    await card.getByRole('link').first().click();
+    await expect(page.getByRole('heading', { level: 1, name: P.G3.title })).toBeVisible();
+    keep(new URL(page.url()));
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G2 }).click();
+    await expect(page.getByRole('heading', { level: 1, name: P.G2.title })).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/complexes');
+    keep(new URL(page.url()));
+    await page.getByRole('table', { name: P.G2.table }).locator('tbody tr a').first().click();
+    await expect(page).toHaveURL(/\/complexes\/\d+\?/);
+    keep(new URL(page.url()));
+    await expect(page.getByRole('radio', { name: /^B / })).toHaveAttribute('aria-checked', 'true');
+  });
+});
