@@ -9,6 +9,8 @@ RA §3: "applyhome_id 유일; 개명은 former_names에 추가, 행은 유지". 
 실제 녹화 상세(``detail_2025000271.html``)의 이름 칸만 바꾼 원문으로 실제 파서(ApplyhomeParser)를 거친다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·공고문 문장)
+
 from __future__ import annotations
 
 from sqlalchemy import select
