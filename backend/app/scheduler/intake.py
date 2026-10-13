@@ -189,7 +189,8 @@ def intake_body(session: Session, row: IntakeStatus) -> str:
     if not text and not ocr:
         return ""
     page_ctx = intake_context(text) if text else []
-    if page_ctx or not ocr:  # 페이지에 후보가 있거나 OCR 글자가 없으면 R6-INTAKE 와 같은 입력(input_hash 그대로)
+    # 페이지에 후보가 있거나 OCR 글자가 없으면 R6-INTAKE 와 같은 입력(input_hash 그대로)
+    if page_ctx or not ocr:
         body = "\n".join(page_ctx) if page_ctx else "\n".join(unique_lines(text))
         return P.head_tail(body, INTAKE_BODY_BUDGET)
     ocr_ctx = intake_context(ocr)

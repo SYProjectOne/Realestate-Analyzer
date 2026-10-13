@@ -15,6 +15,9 @@
      ``DHASH_THRESHOLD``) — 수집기가 직전 렌더와 비교해 넘으면 해시를 바꾸고, 안 넘으면 직전 스크린샷 행을
      재사용한다(같은 화면이면 raw_document 가 늘지 않는다).
 - 실패는 예외 대신 ``RenderResult.error`` 로 돌려준다(실패도 데이터).
+- R7-SITE: 팝업 요소 PNG 바이트(``PopupShot.png`` — 팝업 그림 OCR 입력, D26-1)와 렌더 후 HTML(``RenderResult.html``)을 같이
+  돌려준다. ``fetch(url)``(D26-4)은 robots.txt 같은 문서 하나를 같은 검사 아래 브라우저로 받는다. 브라우저 문맥은 인증서 검증을
+  끄지 않는다(``ignore_https_errors=False``) — 브라우저 검증기의 체인 보완(중간 인증서 AIA)만 쓴다.
 - **SSRF(R3b F1b → R3b 마무리)**: 브라우저도 ``core.http`` 와 같은 내부망 규칙을 따른다(``BrowserGuard``).
   1) ``page.goto`` 전에 URL 을 검사한다(http/https 만, localhost·내부망 IP·DNS 가 내부망으로 풀리는
      이름 차단). 막히면 브라우저를 띄우지 않는다.

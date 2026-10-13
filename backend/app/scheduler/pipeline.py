@@ -11,6 +11,9 @@
    을 묻고 auto '그 단지'만 원문 DOM 텍스트의 접수 문구로 배치 classify(``judge.pipeline.p4_classify_intake``) → 가능/미정/
    불가/확인 불가. 미해결 = 확인 불가(판정 미해결). 동일성이 auto '다른 단지'면 '확인 불가(공식 홈페이지가 다른 단지)',
    review·unclear 면 '확인 불가(공식 홈페이지 동일성 미확인)'(D22-4).
+   R7-SITE(D26-3): 4의 포함/제외 classify 를 이 단계 **앞에서** 돌린다 — 범위 경계·민간분양 아닌 단지의 접수 행은 동일성·접수
+   classify 없이 '확인 불가(판정 대상 아님(<구분>))'(``intake.mark_not_target``). (D26-1) DOM 에 접수 문구가 없으면 팝업 그림
+   OCR 글자(라벨 '추정(OCR)')가 접수 항목에 들어간다(``intake.intake_body``).
    그다음 표시 접수 상태(``analysis.scope.pick_intake``)가 이전 스냅샷과 다르면 change_event(intake_status, critical,
    triggers_rejudge) + 그 단지를 이번 재판정 대상에 넣고 웹훅 알림(DECISIONS D9-3). 같은 변경 이벤트가 이미 있으면
    (사람 확인 입력 API·이전 실행) 다시 만들지 않는다.
