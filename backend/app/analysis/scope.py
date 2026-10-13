@@ -33,6 +33,7 @@ from app.core.time import kst_day
 __all__ = [
     "BOUNDARY_CLASS",
     "BOUNDARY_NO_DONG",
+    "COLLECTED_PATHS",
     "EXCLUDED_CLASSES",
     "INCLUDED_CLASS",
     "INTAKE_PRIORITY",
@@ -48,6 +49,7 @@ __all__ = [
     "has_dong_name",
     "in_rerank",
     "is_decide_candidate",
+    "is_fetch_failure",
     "is_scored",
     "judge_scope",
     "original_missing",
@@ -223,15 +225,51 @@ class IntakeRowLike(Protocol):
     def status(self) -> str: ...
 
 
+COLLECTED_PATHS: Final = frozenset({"official_popup", "headless_shot"})
+"""공식 홈페이지 수집(``scheduler.collect.intake_rows``)이 만드는 접수 행 경로."""
+
+
+def is_fetch_failure(row: IntakeRowLike) -> bool:
+    """수집 실패 접수 행(R7-FIX2): 수집 경로 · 상태 '확인 불가' · 응답 200 아님 · 수집 흔적(원문 행 또는 응답 코드)이 있다 —
+    403·404·TLS·접속 실패·robots 등. 판정기·사람이 정한 행(가능·미정·불가)과 흔적 없는 적재 행은 아니다. 열 비교(판단 아님)."""
+    if row.path not in COLLECTED_PATHS or row.status != "확인 불가":
+        return False
+    http = getattr(row, "http_status", None)
+    return http != 200 and (http is not None or getattr(row, "raw_document_id", None) is not None)
+
+
+def _is_fetch_success(row: IntakeRowLike) -> bool:
+    """수집 성공 관측 행: 수집 경로 · 응답 200 · 원문 행 있음."""
+    return (
+        row.path in COLLECTED_PATHS
+        and getattr(row, "http_status", None) == 200
+        and getattr(row, "raw_document_id", None) is not None
+    )
+
+
+def _when(row: IntakeRowLike) -> tuple[str, int]:
+    """기록 순서: KST 확인 날짜, 같은 날이면 id(나중 기록) — 표시 행 규칙과 같은 비교."""
+    return (kst_day(row.checked_at), row.id)
+
+
 def pick_intake[R: IntakeRowLike](rows: Iterable[R]) -> R | None:
     """표시 접수 행: 경로 human_check > official_popup > headless_shot, 같은 경로면 확인 **날짜**가 최근, 같은 날이면 id 가 큰 것.
 
     같은 날 '날짜만'(사람 입력)과 '시각 포함'(수집) 값은 문자열로 비교할 수 없으므로 KST 날짜(``kst_day``, D14-6)만 비교하고
     나중에 기록된 행(id)이 이긴다 — 파이프라인·API·보고서가 같은 행을 고른다(R3 minor 21).
+
+    R7-FIX2: **수집 실패 행**(``is_fetch_failure``)은 그보다 나중(KST 날짜, 같은 날이면 id)에 기록된 **수집 성공 행**(수집 경로·
+    200·원문)이 있으면 후보에서 빠진다 — 낡은 실패가 경로 우선(official_popup > headless_shot)만으로 새 관측을 가리지 않는다
+    (인천 스냅샷 2~4: 어제 '403'·'TLS' official_popup 이 오늘 headless_shot 을 가렸다). 나중 실패는 이른 성공을 그대로 이기고
+    (오늘 막힌 사이트), 사람 확인은 늘 먼저, 성공 행끼리·흔적 없는 적재 행은 예전 규칙 그대로(T8).
     """
     usable = [r for r in rows if r.path in INTAKE_PRIORITY]
     if not usable:
         return None
+    seen = [_when(r) for r in usable if _is_fetch_success(r)]
+    if seen:
+        newest = max(seen)
+        usable = [r for r in usable if not (is_fetch_failure(r) and _when(r) < newest)]
     return min(usable, key=lambda r: (INTAKE_PRIORITY[r.path], _neg_day(r.checked_at), -r.id))
 
 
