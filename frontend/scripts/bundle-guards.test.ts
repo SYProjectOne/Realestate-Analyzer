@@ -78,9 +78,9 @@ describe('entryViolations', () => {
     expect(entryViolations(chunks, 399)).toHaveLength(1);
   });
 
-  it('지연 전용 = echarts·zrender·msw, 예산 420kB', () => {
+  it('지연 전용 = echarts·zrender·msw, 예산 450kB(R5-FE2 실측 401kB + 여유, 이전 651kB)', () => {
     expect([...LAZY_ONLY_CHUNKS].sort()).toEqual(['echarts', 'msw', 'zrender']);
-    expect(ENTRY_CLOSURE_BUDGET_KB).toBe(420);
+    expect(ENTRY_CLOSURE_BUDGET_KB).toBe(450);
   });
 });
 

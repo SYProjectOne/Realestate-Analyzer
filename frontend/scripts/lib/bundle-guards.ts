@@ -21,7 +21,7 @@ export interface ChunkLike {
 export const LAZY_ONLY_CHUNKS = ['echarts', 'zrender', 'msw'] as const;
 
 /** 진입 정적 닫힘(진입 청크 + 정적 import 청크) 크기 예산(kB, 압축 전) */
-export const ENTRY_CLOSURE_BUDGET_KB = 420;
+export const ENTRY_CLOSURE_BUDGET_KB = 450;
 
 export function chunkKb(chunk: ChunkLike): number {
   return Buffer.byteLength(chunk.code) / 1000;
