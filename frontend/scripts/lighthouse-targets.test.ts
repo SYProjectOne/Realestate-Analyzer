@@ -6,7 +6,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { TARGETS, THRESHOLD } from './lib/lighthouse-targets';
+import {
+  DEFAULT_RUNS,
+  median,
+  medianRunIndex,
+  runsFromEnv,
+  TARGETS,
+  THRESHOLD,
+} from './lib/lighthouse-targets';
 import { FRONTEND_ROOT } from './lib/openapi-source';
 
 /** routeDefs 블록의 화면 경로(`/regions/:id/living-areas` …) */
@@ -47,5 +54,33 @@ describe('Lighthouse TARGETS', () => {
   it('같은 (경로, 폼 팩터)는 한 번만', () => {
     const keys = TARGETS.map((t) => `${t.formFactor} ${t.path}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('R5-FE2: 여러 번 재고 중앙값으로 판정', () => {
+  it('기본 3회, LH_RUNS 로 바꾼다(잘못된 값은 기본값)', () => {
+    expect(DEFAULT_RUNS).toBe(3);
+    expect(runsFromEnv(undefined)).toBe(3);
+    expect(runsFromEnv('')).toBe(3);
+    expect(runsFromEnv('5')).toBe(5);
+    expect(runsFromEnv('1')).toBe(1);
+    for (const bad of ['0', '-2', '2.5', 'abc']) expect(runsFromEnv(bad)).toBe(3);
+  });
+
+  it('중앙값: 홀수는 가운데, 짝수는 가운데 둘 중 낮은 값, 빈 목록은 오류', () => {
+    expect(median([78, 91, 88])).toBe(88);
+    expect(median([75])).toBe(75);
+    expect(median([90, 70, 80, 85])).toBe(80);
+    expect(() => median([])).toThrow();
+  });
+
+  it('한 번 튄 낮은 점수는 판정을 뒤집지 않는다(중앙값 ≥ 기준)', () => {
+    expect(median([88, 76, 90])).toBeGreaterThanOrEqual(THRESHOLD);
+    expect(median([79, 76, 90])).toBeLessThan(THRESHOLD);
+  });
+
+  it('지표는 중앙값 점수를 낸 실행 것', () => {
+    expect(medianRunIndex([78, 91, 88])).toBe(2);
+    expect(medianRunIndex([88, 88, 70])).toBe(0);
   });
 });

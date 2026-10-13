@@ -3,7 +3,6 @@
  * 화면 코드는 이걸 직접 부르지 않고 `hooks.ts`의 훅을, 파일은 `download.ts`를 쓴다.
  * 401 → 토큰 다이얼로그(`auth.requestToken`), 쓰기 요청 403 forbidden → 읽기 전용 표시(`auth.markReadOnly`).
  */
-import { z } from 'zod';
 import { getAuthToken, markReadOnly, requestToken, type TokenRole } from './auth';
 import { API_ERROR_CODES, type ApiErrorCode } from './types';
 
@@ -15,18 +14,51 @@ export { getAuthToken, TOKEN_STORAGE_KEY } from './auth';
  */
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? '/api';
 
-export const ErrorSchema = z.object({
-  code: z.enum(API_ERROR_CODES),
-  detail: z.string(),
-  field_errors: z
-    .array(z.object({ loc: z.array(z.union([z.string(), z.number()])), msg: z.string() }))
-    .nullish(),
-  request_id: z.string().nullish(),
-});
-
 export interface FieldError {
   loc: (string | number)[];
   msg: string;
+}
+
+/** 계약 `Error` 본문에서 쓰는 값 */
+export interface ErrorBody {
+  code: ApiErrorCode;
+  detail: string;
+  fieldErrors: FieldError[];
+}
+
+const ERROR_CODES: ReadonlySet<string> = new Set(API_ERROR_CODES);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFieldError(value: unknown): value is FieldError {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.loc) &&
+    value.loc.every((part) => typeof part === 'string' || typeof part === 'number') &&
+    typeof value.msg === 'string'
+  );
+}
+
+/**
+ * 응답 본문이 계약 `Error`(code ∈ 계약 code·detail 문자열·field_errors·request_id 는 nullish)면 그 값, 아니면 null.
+ * 손으로 판별한다(R5-FE2: zod 를 첫 화면 진입 청크에서 뺀다 — `errorBody.test.ts` 가 판정을 고정).
+ */
+export function parseErrorBody(payload: unknown): ErrorBody | null {
+  if (!isRecord(payload)) return null;
+  const { code, detail, field_errors: fieldErrors, request_id: requestId } = payload;
+  if (typeof code !== 'string' || !ERROR_CODES.has(code)) return null;
+  if (typeof detail !== 'string') return null;
+  if (requestId !== undefined && requestId !== null && typeof requestId !== 'string') return null;
+  let items: FieldError[] = [];
+  if (fieldErrors !== undefined && fieldErrors !== null) {
+    if (!Array.isArray(fieldErrors)) return null;
+    const list: unknown[] = fieldErrors;
+    if (!list.every(isFieldError)) return null;
+    items = list.map(({ loc, msg }) => ({ loc, msg }));
+  }
+  return { code: code as ApiErrorCode, detail, fieldErrors: items };
 }
 
 /** 계약 밖 오류(네트워크·5xx 본문 없음 등)는 code = 'http' | 'network'. */
@@ -139,13 +171,13 @@ export async function toApiError(response: Response): Promise<ApiError> {
     // 본문 없음
   }
   const retryAfterMs = parseRetryAfter(response.headers.get('Retry-After'));
-  const parsed = ErrorSchema.safeParse(payload);
-  if (parsed.success) {
+  const parsed = parseErrorBody(payload);
+  if (parsed) {
     return new ApiError(
-      parsed.data.code,
-      parsed.data.detail,
+      parsed.code,
+      parsed.detail,
       response.status,
-      parsed.data.field_errors ?? [],
+      parsed.fieldErrors,
       payload,
       retryAfterMs,
     );
