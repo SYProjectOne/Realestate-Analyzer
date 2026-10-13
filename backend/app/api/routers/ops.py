@@ -144,6 +144,33 @@ def list_source_status(session: DB, request: Request, region_id: int | None = No
     return JSONResponse(out)
 
 
+@router.get("/ops/intake-queue")
+def get_intake_queue(session: DB, region_id: int | None = None, snapshot: int | None = None) -> JSONResponse:
+    """G7 접수 확인 대기열(계약 .19, D26-2) — 저장된 접수 행만 읽는다(판정기 호출·DB 쓰기 없음, 규칙 4).
+
+    region_id 생략 = 첫 지역(``/ops/sources`` 와 같음). snapshot 을 주면 그 스냅샷(region_id 와 지역이 다르면 404).
+    생략하면 그 지역의 최신 published, 없으면 최신 ready(공통 규칙). 스냅샷이 없으면 빈 대기열(200)."""
+    from app.api.deps import default_snapshot
+    from app.api.intake_queue import build_queue, empty_queue
+
+    if not in_db_range(region_id) or not in_db_range(snapshot):
+        raise not_found(f"region {region_id}" if not in_db_range(region_id) else f"snapshot {snapshot}")
+    if region_id is not None and session.get(Region, region_id) is None:
+        raise not_found(f"region {region_id}")
+    if snapshot is not None:
+        snap = session.get(Snapshot, snapshot)
+        if snap is None or (region_id is not None and snap.region_id != region_id):
+            raise not_found(f"snapshot {snapshot}" + (f" (region {region_id})" if snap is not None else ""))
+        return JSONResponse(build_queue(session, snap))
+    rid = region_id
+    if rid is None:
+        rid = session.scalars(select(Region.id).order_by(Region.id).limit(1)).first()
+        if rid is None:
+            return JSONResponse(empty_queue(None))
+    snap = default_snapshot(session, rid)
+    return JSONResponse(build_queue(session, snap) if snap is not None else empty_queue(rid))
+
+
 def cache_hits(session: Any, since: str, tool: str | None = None) -> tuple[int, dict[str, int]]:
     """캐시 재생 수(R3 minor 23): 판정기를 다시 부르지 않은 호출은 judgment_log 에 행을 남기지 않으므로
     worker 잡 집계(``job_run.stats.cached`` — scheduler.pipeline.CountingCaller)를 더한다.

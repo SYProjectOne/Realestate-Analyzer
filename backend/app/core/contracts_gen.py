@@ -1930,6 +1930,152 @@ class Intake(BaseModel):
     """
 
 
+class IntakeQueue(BaseModel):
+    """
+    GET /ops/intake-queue — G7 접수 확인 대기열(계약 2026-10-09.19, DECISIONS D26-2). 한 스냅샷(기본 = 그 지역의 최신 published, 없으면 최신 ready — 공통 규칙)에서 단지마다 **표시 접수 행**(우선순위 human_check > official_popup > headless_shot, unofficial_ref 는 근거 아님 — intake.json)의 status 가 '확인 불가' 또는 '미정'인 단지를 사유별로 묶는다. 저장된 접수 행만 읽는다(판정기 호출 없음 — AGENTS 규칙 4, DB 쓰기 없음). 접수 행이 하나도 없는 단지(공식 홈페이지 주소 없음 — 화면 '확인 불가(접수 행 없음)')는 대기열에 없다.
+    묶음은 **저장된 사유 문자열·http_status 로 정한다(데이터 기준)** — 사유가 새로 생겨도 계약·코드를 바꾸지 않는다: (1) status '미정' → category undecided, 묶음 이름 = 사유(없으면 '미정'). (2) http_status 가 2xx 가 아니거나 사유가 숫자뿐('403') → collect_failed, 묶음 이름 = 사유 숫자(없으면 http_status). (3) 사유 앞 영문 낱말(':'·'('·공백 앞)이 수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·robots.txt·invalid_url·render·blocked_host·blocked_by_robots, 대소문자 무시)이거나 사유가 '접속 실패'·'수집 실패'·'타임아웃'·'원문 없음'으로 시작 → collect_failed, 묶음 이름 = 그 낱말(원래 표기 — 'connect: …' → 'connect', 'TLS(…)' → 'TLS'). (4) 사유 머리로 정하는 판정 사유: '공식 홈페이지 동일성 미확인'·'공식 홈페이지가 다른 단지' → identity, '문구로 판단 불가'·'접수 문구 없음' → no_phrase, '판정 미해결'·'접수 문구 미분류' → unresolved, '판정 대상 아님'으로 시작(예 '판정 대상 아님(공공분양)'·'판정 대상 아님(범위 경계)' — D26-3) → not_judged; 묶음 이름 = 저장 사유 그대로. (5) 그 밖(새 사유·'사람 확인' 등) → other('기타'), 묶음 이름 = 저장 사유 그대로. 같은 (category, reason) 이 한 묶음이다.
+    순서: category 는 collect_failed → identity → no_phrase → unresolved → not_judged → other → undecided, 같은 category 안 묶음은 건수 내림차순·이름 순, 묶음 안 항목은 단지 이름·접수 행 id 순. total = 모든 묶음 count 합. 지역이 없거나 그 지역에 published·ready 스냅샷이 없으면 snapshot_id null · groups [] · total 0(200).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    region_id: int | None
+    snapshot_id: int | None
+    asof_date: Annotated[str | None, Field(max_length=10)]
+    """
+    스냅샷 기준일 YYYY-MM-DD
+    """
+    revision: Annotated[int | None, Field(ge=1)]
+    snapshot_status: Annotated[str | None, Field(max_length=16)]
+    """
+    그 스냅샷의 상태(published·ready·building — snapshot.json)
+    """
+    total: Annotated[int, Field(ge=0)]
+    groups: list[IntakeQueueGroup]
+
+
+class IntakeQueueGroup(BaseModel):
+    """
+    사유 묶음 하나 — 같은 (category, reason).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    category: Annotated[
+        Literal[
+            "collect_failed",
+            "identity",
+            "no_phrase",
+            "unresolved",
+            "not_judged",
+            "other",
+            "undecided",
+        ],
+        Field(title="IntakeQueueCategory"),
+    ]
+    """
+    대기열 사유 분류(계약 .19, D26-2): collect_failed 수집 실패(connect·TLS·403·404 …) · identity 공식 홈페이지 동일성(미확인·다른 단지) · no_phrase 문구로 판단 불가(접수 문구 없음 포함) · unresolved 판정 미해결(분류 대기 포함) · not_judged 판정 대상 아님(범위 경계·공공분양 — D26-3) · other 기타(정해진 머리가 없는 사유 — 새 사유는 여기로) · undecided 접수 '미정'.
+    """
+    reason: Annotated[str, Field(max_length=120, min_length=1)]
+    """
+    묶음 이름: 수집 실패면 실패 낱말·HTTP 코드('connect'·'TLS'·'403'), 그 밖은 저장 사유 그대로('문구로 판단 불가'), 미정은 사유 또는 '미정'
+    """
+    count: Annotated[int, Field(ge=1)]
+    items: Annotated[list[IntakeQueueItem], Field(min_length=1)]
+
+
+class IntakeQueueItem(BaseModel):
+    """
+    대기열 항목 = 단지 하나의 표시 접수 행(intake_status). 화면: 단지 이름 → G3, 근거 주소·스크린샷(GET /raw/{screenshot_raw_document_id})·확인 시각·HTTP 상태, '사람 확인 입력' → G7 HumanCheckForm(complex_id, field 'intake_status' 미리 채움) → POST /ops/human-checks(접수 행 + 재판정 자동 등록 — D12-5).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    intake_id: int
+    """
+    intake_status.id
+    """
+    complex_id: int
+    complex_name: Annotated[str, Field(max_length=200)]
+    status: Literal["확인 불가", "미정"]
+    """
+    표시 접수 상태
+    """
+    reason: Annotated[str | None, Field(max_length=120)]
+    """
+    접수 행 사유(Intake.reason 과 같은 규칙 — '확인 불가'인데 사유가 비면 http_status 또는 '사유 미기재'). '미정'은 null 일 수 있다
+    """
+    path: Literal["human_check", "official_popup", "headless_shot"]
+    """
+    표시 접수 행 경로(intake.json path — unofficial_ref 는 오지 않는다)
+    """
+    evidence_url: Annotated[str | None, Field(max_length=2048)]
+    """
+    근거 페이지 주소(공식 홈페이지) — 없으면 null
+    """
+    raw_document_id: int | None
+    """
+    접수 행 원문(GET /raw/{id}; 실패 행이면 404)
+    """
+    screenshot_path: str | None
+    """
+    RAW_DIR 기준 상대 경로(intake.json)
+    """
+    screenshot_raw_document_id: int | None
+    """
+    스크린샷 원문 id — screenshot_path 를 가진 원문 행(GET /raw/{id} image/png). 스크린샷이 없으면 null
+    """
+    checked_at: Annotated[str, Field(max_length=32, min_length=10)]
+    """
+    확인 시각 ISO 8601(날짜만도 허용 — intake.json)
+    """
+    http_status: int | None
+    """
+    공식 홈페이지 응답 코드. DNS·TLS·연결 실패는 null + reason
+    """
+    note: str | None
+    """
+    접수 행 메모(문구 후보·판정 표식 'jl_<seq>' 등)
+    """
+    judgment_ref: Annotated[str | None, Field(pattern="^jl_[0-9]+$")]
+    """
+    메모에 남은 마지막 판정 로그 표식(jl_<seq> — 동일성·접수 classify). runbook §2: 동일성 미확인은 이 판정 로그를 G7 에서 확인한다. 없으면 null
+    """
+    human_check_pending: IntakeQueuePendingCheck | None
+    """
+    이 스냅샷을 만든 뒤 들어온 접수 상태 사람 확인(human_check field 'intake_status')이 아직 이 스냅샷에 없으면 그 마지막 입력 — 재판정·새 리비전 발행 대기(같은 단지를 두 번 입력하지 않게). 이미 반영됐거나 없으면 null
+    """
+
+
+class IntakeQueuePendingCheck(BaseModel):
+    """
+    반영 대기 중인 접수 상태 사람 확인 요약(human_check 행).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    id: int
+    """
+    human_check.id
+    """
+    value_text: Annotated[str, Field(max_length=200)]
+    """
+    입력한 접수 상태(가능·미정·확인 불가·불가)
+    """
+    checked_at: Annotated[str, Field(max_length=32)]
+    """
+    입력한 확인 시각 그대로(HumanCheck.checked_at)
+    """
+    created_at: Annotated[str | None, Field(max_length=32)]
+    """
+    저장 시각
+    """
+
+
 class InterimInstallment(BaseModel):
     model_config = ConfigDict(
         extra="forbid",

@@ -1,0 +1,12 @@
+{
+  "summary": "스냅샷 없음(지역 적재 중) — 빈 대기열",
+  "value": {
+    "region_id": 2,
+    "snapshot_id": null,
+    "asof_date": null,
+    "revision": null,
+    "snapshot_status": null,
+    "total": 0,
+    "groups": []
+  }
+}

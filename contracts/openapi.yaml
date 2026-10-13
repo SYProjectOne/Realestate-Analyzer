@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.18
+  version: 2026-10-09.19
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -718,6 +718,36 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalError' }
 
+  /ops/intake-queue:
+    get:
+      tags: [ops]
+      operationId: getIntakeQueue
+      summary: 접수 확인 대기열 — '확인 불가'·'미정' 접수 행을 사유별로 (G7, 계약 .19, D26-2)
+      description: |
+        한 스냅샷(기본 = 그 지역의 최신 published, 없으면 최신 ready)에서 단지마다 표시 접수 행(human_check > official_popup > headless_shot)이 '확인 불가' 또는 '미정'인 단지를 사유별로 묶는다(IntakeQueue 설명 — 저장된 사유·http_status 로 묶는 데이터 기준 규칙, 모르는 사유는 other '기타'). 저장된 행만 읽는다 — 판정기 호출·DB 쓰기 없음(AGENTS 규칙 4). 항목마다 단지·근거 주소·스크린샷 원문 id·확인 시각·HTTP 상태와, 이 스냅샷 뒤에 들어와 아직 반영 안 된 접수 사람 확인(human_check_pending)을 준다. 화면의 '사람 확인 입력'은 G7 HumanCheckForm(field intake_status) → POST /ops/human-checks(접수 행 + 재판정 자동 등록, D12-5).
+        region_id 생략 = 첫 지역(id 순, GET /ops/sources 와 같음). snapshot 을 주면 그 스냅샷(region_id 도 주면 같은 지역이어야 한다 — 아니면 404). 없는 지역·스냅샷 404. 지역이 없거나 published·ready 스냅샷이 없으면 200 + snapshot_id null · groups [].
+        인증: READONLY_TOKEN 은 GET 이라 열 수 있다(D10-7). 공유 링크 토큰은 /ops/* 라 403.
+      parameters:
+        - name: region_id
+          in: query
+          required: false
+          schema: { type: integer }
+        - $ref: '#/components/parameters/SnapshotQuery'
+      responses:
+        '200':
+          description: 사유별 대기열
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntakeQueue' }
+              examples:
+                fixture: { $ref: './examples/intake_queue.json' }
+                empty: { $ref: './examples/intake_queue_empty.json' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
   /ops/checklist:
     get:
       tags: [ops]
@@ -1330,3 +1360,9 @@ components:
     ShareLink: { $ref: './schemas/share_link.json' }
     ShareLinkCreate: { $ref: './schemas/share_link.json#/$defs/ShareLinkCreate' }
     ShareLinkCreated: { $ref: './schemas/share_link.json#/$defs/ShareLinkCreated' }
+    # 계약 2026-10-09.19 (D26-2 G7 접수 확인 대기열)
+    IntakeQueue: { $ref: './schemas/intake_queue.json' }
+    IntakeQueueCategory: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueueCategory' }
+    IntakeQueueGroup: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueueGroup' }
+    IntakeQueueItem: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueueItem' }
+    IntakeQueuePendingCheck: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueuePendingCheck' }
