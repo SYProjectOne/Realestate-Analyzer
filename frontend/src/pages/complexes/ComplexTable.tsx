@@ -28,6 +28,8 @@ import { nextSort, type SortKey } from './params';
 /** 열 선택 저장(브라우저별 편의 설정) */
 export const COLUMN_STORAGE_KEY = 'sa.g2.columns';
 const ROW_HEIGHT = 44;
+/** 이 행 수 이하면 가상 스크롤 창 밖 행도 전부 그린다(overscan = 행 수) */
+const SMALL_LIST = 50;
 /** jsdom·숨김 상태처럼 높이를 잴 수 없을 때 쓰는 뷰포트 */
 const FALLBACK_RECT = { width: 1200, height: 560 };
 
@@ -294,7 +296,8 @@ export function ComplexTable({
     count: tableRows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 2,
+    // R5-FE3: 긴 목록은 창 앞뒤 2행(실측 행 ~90px ≈ 180px). 짧은 목록(≤ SMALL_LIST)은 전부 그린다 — 예전처럼 모든 행이 DOM 에 있다
+    overscan: tableRows.length <= SMALL_LIST ? tableRows.length : 2,
     // 맨 끝까지 내린 상태에서 끝 행들이 추정(44px)보다 크게 재지면 끝에 붙어 있게(마지막 행이 창 밖으로 밀리지 않게)
     anchorTo: 'end',
     initialRect: FALLBACK_RECT,
