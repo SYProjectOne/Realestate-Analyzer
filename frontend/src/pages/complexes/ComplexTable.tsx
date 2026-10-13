@@ -319,13 +319,7 @@ export function ComplexTable({
           aria-label={t('page.G2.table')}
           aria-rowcount={total + 1}
           className="w-full border-collapse text-sm"
-          style={{ tableLayout: 'fixed', width: 1434 }}
         >
-          <colgroup>
-            {[29, 63, 67, 196, 124, 136, 158, 185, 145, 132, 199].map((w, i) => (
-              <col key={i} style={{ width: w }} />
-            ))}
-          </colgroup>
           <TableHead groups={table.getHeaderGroups()} sort={sort} onSort={onSort} />
           <tbody>
             {paddingTop > 0 ? (
