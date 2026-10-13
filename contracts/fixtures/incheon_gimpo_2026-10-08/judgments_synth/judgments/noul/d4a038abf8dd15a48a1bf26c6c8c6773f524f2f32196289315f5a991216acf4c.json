@@ -1,0 +1,91 @@
+{
+  "tool": "noul",
+  "purpose": "noul:ladder:move_in_plus_1y:2027-10:c12",
+  "input_hash": "sha256:d4a038abf8dd15a48a1bf26c6c8c6773f524f2f32196289315f5a991216acf4c",
+  "input_len": 2783,
+  "status": "ok",
+  "confidence": null,
+  "cached": false,
+  "result": {
+    "horizon": "move_in_plus_1y",
+    "target_ym": "2027-10",
+    "propositions": [
+      {
+        "key": "p5",
+        "text": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 +5% 이상이다",
+        "prob": 0.29,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p10",
+        "text": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 +10% 이상이다",
+        "prob": 0.21,
+        "verdict": "uncertain",
+        "decision": "review"
+      },
+      {
+        "key": "p20",
+        "text": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 +20% 이상이다",
+        "prob": 0.13,
+        "verdict": "unlikely",
+        "decision": "auto"
+      },
+      {
+        "key": "p_flat",
+        "text": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 이하(보합·하락)이다",
+        "prob": 0.69,
+        "verdict": "uncertain",
+        "decision": "review"
+      }
+    ]
+  },
+  "raw": {
+    "tool": "jev_noul",
+    "model": "jev-1.13.0",
+    "status": "ok",
+    "results": [
+      {
+        "id": "proposition0",
+        "proposition": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 +5% 이상이다",
+        "probability": 0.29,
+        "label": "uncertain",
+        "auto": false
+      },
+      {
+        "id": "proposition1",
+        "proposition": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 +10% 이상이다",
+        "probability": 0.21,
+        "label": "uncertain",
+        "auto": false
+      },
+      {
+        "id": "proposition2",
+        "proposition": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 +20% 이상이다",
+        "probability": 0.13,
+        "label": "unlikely",
+        "auto": true
+      },
+      {
+        "id": "proposition3",
+        "proposition": "더샵 송도마리나베이 전용 84C(84㎡)를 2026-10-08 현재 구매가(8.09억, 공급가+발코니+옵션)로 매수할 경우, 기준일+1년 시점인 2027 하반기 실거래가가 현재 구매가 대비 이하(보합·하락)이다",
+        "probability": 0.69,
+        "label": "uncertain",
+        "auto": false
+      }
+    ],
+    "synth": {
+      "label": "합성",
+      "basis": "보고서 #67 noul(입주 후 1년)"
+    }
+  },
+  "duration_ms": null,
+  "judgment_seq": null,
+  "created_at": "2026-10-09T06:00:00+09:00",
+  "adapter_version": "mock-fixture-2026-10-08",
+  "snapshot_id": 13,
+  "complex_id": 12,
+  "error_text": null,
+  "model": null,
+  "provider": null
+}

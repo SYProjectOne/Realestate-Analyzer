@@ -73,8 +73,12 @@ from app.judge.base import JudgeCaller
 from app.judge.claims import with_josa
 from app.judge.payloads import (
     CLASSIFY_BATCH_MAX,
+    EXTRACT_RESCREEN_TASK,
+    EXTRACT_SCREEN_TASK,
+    RERANK_MAX,
     AuditRecord,
     ExtractField,
+    extract_rescreen_text,
 )
 from app.models import (
     Catalyst,
@@ -97,9 +101,9 @@ from app.normalize.fields import is_price_amount, magnitude_apart
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
-from app.scheduler.collect import fold_into_first_load
+from app.scheduler.collect import clear_process_failure, fold_into_first_load, mark_process_failure
 from app.scheduler.degraded import clear_degraded, mark_degraded
-from app.scheduler.inputs import ComplexFacts, evidence_card, load_facts
+from app.scheduler.inputs import ComplexFacts, load_facts, with_ladders
 from app.scheduler.intake import (
     CLASSIFIED_MARK,
     INTAKE_PATHS,
@@ -115,8 +119,8 @@ from app.scheduler.judge_version import last_logged, record_version_change
 from app.scheduler.payloads import (
     _anchor_from,
     decide_plan,
+    judge_inputs,
     rerank_pool,
-    score_base,
     stored_scope,
     wait_new_evidence,
 )
@@ -374,9 +378,13 @@ def _p1_p3(
             continue
         try:
             cands = parser.parse(raw_dto(doc))
-        except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록
+        except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록(잡 stats + 원문 행, 규칙 7)
             res.skipped[f"parse:rd{doc.id}"] = type(exc).__name__
+            mark_process_failure(session, doc.id, "parse", exc)
+            session.commit()
             continue
+        if doc.error_text:
+            clear_process_failure(session, doc.id, "parse")
         for whole in build_extract_requests([c for c in cands if c.needs_extract]):
             if not whole.text.strip() or not whole.fields:
                 continue
@@ -423,9 +431,11 @@ def _extract_one(
 ) -> None:
     """요청 1개(필드 ≤32): screen → extract → audit → 반영. screen 거부·extract 실패면 반영 없음 — OCR 값은 chosen 출처가
     OCR 판독으로 남아 점수 입력에서 null(``inputs.ocr_pending_fields``, R3 C3)."""
-    screen = jp.p1_screen(
-        caller, req.text, task="청약 공고문 수치 추출 전 입력 검사", purpose=f"screen:extract:{tag}",
-        snapshot_id=snap.id, complex_id=cid,
+    # meta §2-1 P1: skip(관련도 낮음)이면 목적을 바꿔(추출 대상 항목) 다른 입력(항목 머리 + 같은 조각)으로 재screen
+    retry_text = extract_rescreen_text(req.text, [FIELD_DESCRIPTIONS.get(f, f) for f in req.fields])
+    screen = jp.p1_screen_retry(
+        caller, req.text, task=EXTRACT_SCREEN_TASK, purpose=f"screen:extract:{tag}",
+        retry_text=retry_text, retry_task=EXTRACT_RESCREEN_TASK, snapshot_id=snap.id, complex_id=cid,
     )  # fmt: skip
     if not screen.usable:
         res.skipped[f"screen:{tag}"] = (
@@ -1110,13 +1120,25 @@ def run_pipeline(
             facts = load_facts(session, snap, region)  # 포함 분류가 바뀌었을 수 있다
             scope = {f.complex_id: f.scope for f in facts}
 
-            # P6 사다리
-            rows = []
-            for f in facts:
-                if f.complex_id in tset and runs_ladder(f.scope):
-                    rows.extend(
-                        jp.p6_ladder(caller, evidence_card(f), asof_date=snap.asof_date, snapshot_id=snap.id)
+            # P6 사다리 — 카드(가격 갭·벤치마크·공급·호재·제도) + 지역 벤치마크(P1 screen 통과분) + 제도 컨텍스트(meta §2-1 P6)
+            ji = judge_inputs(session, snap, region, facts)
+            ladder_facts = [f for f in facts if f.complex_id in tset and runs_ladder(f.scope)]
+            bench = ji.benchmark_text() if ladder_facts else None
+            if bench:
+                bs = jp.p1_screen_benchmark(caller, bench, region_id=region.id, snapshot_id=snap.id)
+                if not bs.usable:
+                    res.skipped[f"screen:benchmark:region:{region.id}"] = (
+                        f"screen {bs.verdict or bs.envelope.status} — 지역 벤치마크를 noul 컨텍스트에서 뺌"
                     )
+                    bench = None
+            rows = []
+            for f in ladder_facts:
+                rows.extend(
+                    jp.p6_ladder(
+                        caller, ji.cards[f.complex_id], asof_date=snap.asof_date, snapshot_id=snap.id,
+                        benchmark_text=bench, policy_text=ji.policy_text(f),
+                    )
+                )  # fmt: skip
             res.ladders = persist.save_ladders(session, snap.id, rows, seq)
             if prev is not None:
                 res.carried["ladder"] = persist.copy_ladders(
@@ -1127,7 +1149,8 @@ def run_pipeline(
 
             # P7 rerank — 후보군 전체 1회
             empty = RerankAnchor(judgment_seq=None, status="review", items=[])
-            base, cards = score_base(session, snap, region, facts)
+            # 카드는 P6 앞과 같다(사다리와 무관) — ScoreInputs 의 단지 입력만 방금 저장한 사다리로 다시 만든다
+            base, cards = with_ladders(session, snap, ji.base, facts), ji.cards
             pool = rerank_pool(facts, cards, scope)
             anchor = empty
             if pool:
@@ -1136,6 +1159,10 @@ def run_pipeline(
                 anchor = jp.p7_rerank(
                     caller, pool, region_id=region.id, snapshot_id=snap.id, prev=prev_anchor
                 )
+                if len(pool) > RERANK_MAX:  # 실패 앵커(판정기 호출 없음) — 사유를 잡 stats 에 남긴다(규칙 7)
+                    res.skipped["rerank"] = (
+                        f"rerank 후보 {len(pool)}개 > JEV 상한 {RERANK_MAX} — 한 호출 앵커(§6-5)를 나누지 않아 rerank 미판정"
+                    )
             inputs = base.model_copy(update={"rerank": anchor})
 
             # 점수 + P8 decide (시나리오마다)
@@ -1222,6 +1249,12 @@ def run_pipeline(
             session.rollback()
             mark_degraded(session, snapshot_id)
             session.commit()
+            # R5-PIPE(D24-1 N16 degraded 경로): 판정이 중간에 멈춰도 그때까지의 사실(주간 단계 트랙 (A) 후보·커밋된 P4 포함
+            # 분류)로 체크리스트를 맞춘다 — 안 하면 같은 날 다음 daily 의 수집 조립이 이벤트 없이 체크리스트를 바꾼다
+            cur = session.get(Snapshot, snapshot_id)
+            if cur is not None:
+                res.checklist = _sync_checklist(session, cur)
+                session.commit()
             ctx.reset_adapter()
             res.degraded = True
             res.error = "judge_unavailable: " + redact_text(str(exc), get_settings().secret_values())[:200]

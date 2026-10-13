@@ -45,7 +45,7 @@ from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.contracts_gen import Region as RegionDTO
 from app.core.contracts_gen import Snapshot as SnapshotDTO
 from app.core.logging import get_logger
-from app.models import ChangeEvent, Complex, IntakeStatus, Region, Snapshot
+from app.models import ChangeEvent, Complex, IntakeStatus, RawDocument, Region, Snapshot
 from app.normalize.living_area import correct_dong
 from app.normalize.notice_parser import notice_numbers
 from app.normalize.store import is_remainder_url, store_raw_document
@@ -56,7 +56,15 @@ from app.scheduler.persist import copy_intake
 if TYPE_CHECKING:
     from app.scheduler.context import SchedulerContext
 
-__all__ = ["STEP_ORDER", "CollectResult", "collect", "intake_rows"]
+__all__ = [
+    "PROCESS_FAILURE_PREFIXES",
+    "STEP_ORDER",
+    "CollectResult",
+    "clear_process_failure",
+    "collect",
+    "intake_rows",
+    "mark_process_failure",
+]
 
 log = get_logger("app.scheduler.collect")
 
@@ -71,6 +79,29 @@ _SOURCE_TO_STEP: Final = {
     "news": "news",
 }
 STORE_KINDS: Final = frozenset({"applyhome_list", "applyhome_detail", "notice_pdf", "official_site"})
+PROCESS_FAILURE_PREFIXES: Final = ("store_failed:", "parse_failed:")
+"""원문 처리 실패 표식(AGENTS 규칙 7 — R5-PIPE): 받은 원문을 저장(정규화)·파싱하지 못하면 그 원문 행 ``error_text`` 에
+``<단계>_failed: <예외 종류>: <문구>`` 를 남긴다(잡 stats 와 함께). 수집기가 쓴 실패 사유(403·타임아웃·빈 데이터셋)는 덮지 않고, 같은
+단계가 다음에 성공하면 지운다. 문구는 ``assemble.safe_error``(비밀값·개인정보 가림, 시각 없음 — 같은 실패 = 같은 값)."""
+
+
+def mark_process_failure(
+    session: Session, raw_document_id: int | None, stage: str, exc: BaseException
+) -> None:
+    """원문 행에 처리 실패 표식(``PROCESS_FAILURE_PREFIXES``). 커밋은 호출자."""
+    row = session.get(RawDocument, raw_document_id) if raw_document_id is not None else None
+    if row is None or (row.error_text and not row.error_text.startswith(PROCESS_FAILURE_PREFIXES)):
+        return
+    text = f"{stage}_failed: {assemble.safe_error(exc)}"[:300]
+    if row.error_text != text:
+        row.error_text = text
+
+
+def clear_process_failure(session: Session, raw_document_id: int | None, stage: str) -> None:
+    """그 단계 처리가 성공하면 표식을 지운다(다른 단계·수집기 사유는 그대로). 커밋은 호출자."""
+    row = session.get(RawDocument, raw_document_id) if raw_document_id is not None else None
+    if row is not None and row.error_text and row.error_text.startswith(f"{stage}_failed:"):
+        row.error_text = None
 
 
 @dataclass
@@ -439,7 +470,9 @@ def collect(
                     )
                 except Exception as exc:  # 원문 1건 실패(SAVEPOINT 롤백) — 기록하고 다음 원문
                     res.store_errors.append(f"rd{doc.id}:{assemble.safe_error(exc)[:160]}")
+                    mark_process_failure(session, doc.id, "store", exc)  # 규칙 7: 원문 행에도(R5-PIPE)
                     continue
+                clear_process_failure(session, doc.id, "store")
                 res.stored += 1
                 res.first_load_folded += out.first_load_folded
                 for cid, addrs in out.alt_addresses.items():

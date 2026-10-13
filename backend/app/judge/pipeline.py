@@ -43,12 +43,15 @@ __all__ = [
     "IntakeItem",
     "IntakeOutcome",
     "ScreenOutcome",
+    "benchmark_screen_purpose",
     "catalyst_kind",
     "catalyst_stage",
     "has_contradiction",
     "is_not_catalyst",
     "p1_screen",
+    "p1_screen_benchmark",
     "p1_screen_catalyst",
+    "p1_screen_retry",
     "p1_screen_upcoming",
     "p2_extract",
     "p2_extract_upcoming",
@@ -124,6 +127,46 @@ def p1_screen(
     )
     verdict = env.result.get("verdict") if env.result else None
     return ScreenOutcome(env, verdict, env.status == "ok" and verdict == "pass")
+
+
+def p1_screen_retry(
+    adapter: JudgeCaller,
+    text: str,
+    *,
+    task: str,
+    purpose: str,
+    retry_text: str,
+    retry_task: str,
+    snapshot_id: int | None = None,
+    complex_id: int | None = None,
+) -> ScreenOutcome:
+    """P1 + meta §2-1 재screen 규칙: skip(관련도 낮음)이면 purpose 를 단계에 맞게 바꿔(``<purpose>:retry``, 검사 목적
+    ``retry_task``) **다른 입력**(``retry_text``)으로 한 번 더 screen 하고 그 결과를 쓴다. block·review 는 재screen 하지 않는다
+    (block = 사용 금지). 판단은 두 번 다 판정기다 — 코드는 verdict 로 분기만 한다(규칙 3)."""
+    first = p1_screen(
+        adapter, text, task=task, purpose=purpose, snapshot_id=snapshot_id, complex_id=complex_id
+    )
+    if first.verdict != "skip":
+        return first
+    return p1_screen(
+        adapter, retry_text, task=retry_task, purpose=f"{purpose}:retry"[:128],
+        snapshot_id=snapshot_id, complex_id=complex_id,
+    )  # fmt: skip
+
+
+def p1_screen_benchmark(
+    adapter: JudgeCaller, text: str, *, region_id: int, snapshot_id: int | None
+) -> ScreenOutcome:
+    """지역 벤치마크 텍스트 P1 screen(meta §2-1 P1 '벤치마크·호재 텍스트') — usable 일 때만 P6 noul 컨텍스트 ``benchmark``.
+    skip 이면 다른 목적·다른 입력으로 재screen(``p1_screen_retry``)."""
+    return p1_screen_retry(
+        adapter, text, task=P.BENCHMARK_SCREEN_TASK, purpose=benchmark_screen_purpose(region_id),
+        retry_text=P.benchmark_rescreen_text(text), retry_task=P.BENCHMARK_RESCREEN_TASK, snapshot_id=snapshot_id,
+    )  # fmt: skip
+
+
+def benchmark_screen_purpose(region_id: int) -> str:
+    return f"screen:benchmark:region:{region_id}"
 
 
 def p2_extract(
@@ -573,7 +616,12 @@ def p7_rerank(
     snapshot_id: int | None,
     prev: RerankPrev | None = None,
 ) -> RerankAnchor:
-    """P7 전체 후보 1회(§6-5 고정 앵커). 같은 집합이면 캐시, 바뀌면 전체 재호출(T7). prev 는 delta 용."""
+    """P7 전체 후보 1회(§6-5 고정 앵커). 같은 집합이면 캐시, 바뀌면 전체 재호출(T7). prev 는 delta 용.
+
+    후보가 JEV 상한(``RERANK_MAX`` 250)을 넘으면 나누지 않는다(나누면 한 호출 앵커가 깨진다) — 판정기를 부르지 않고 status
+    ``error``·items 없음 앵커를 돌려준다(rerank 성분 '미판정', 실패를 숨기지 않음 — 호출자가 사유를 잡 stats 에 남긴다)."""
+    if len({c.complex_id for c in cards}) > P.RERANK_MAX:
+        return RerankAnchor(judgment_seq=None, status="error", items=[], prev=prev)
     env = adapter.call(
         "rerank", P.rerank_payload(cards), P.rerank_purpose(region_id=region_id), snapshot_id=snapshot_id
     )
