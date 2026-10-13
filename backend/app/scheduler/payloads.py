@@ -311,13 +311,6 @@ def _anchor_from(row: JudgmentLog) -> RerankAnchor:
     return RerankAnchor(judgment_seq=row.seq, status=row.status, items=items)
 
 
-@dataclass(frozen=True, slots=True)
-class _Unknown:
-    """앞 단계(벤치마크 screen) 판정이 캐시에 없어 noul 입력을 정할 수 없다."""
-
-    why: str
-
-
 def _screen_verdict(row: JudgmentLog | None) -> str | None:
     if row is None:
         return None
@@ -328,9 +321,12 @@ def _screen_verdict(row: JudgmentLog | None) -> str | None:
 
 def _planned_benchmark(
     session: Session, version: str | None, text: str | None, region_id: int
-) -> tuple[list[PlannedCall], str | _Unknown | None]:
+) -> tuple[list[PlannedCall], str | None]:
     """파이프라인 ``jp.p1_screen_benchmark`` 와 같은 호출(screen → skip 이면 다른 목적·입력 재screen)을 계획하고, 캐시 행의
-    판정으로 noul 컨텍스트 ``benchmark`` 를 정한다(pass·ok = 텍스트, 그 밖 = 없음, 캐시 없음 = 모름)."""
+    판정으로 noul 컨텍스트 ``benchmark`` 를 정한다(pass·ok = 텍스트, 그 밖 = 없음).
+
+    screen 이 캐시에 없으면 텍스트를 넣은 payload 로 **추정**한다(통과 가정). 그 경우 이 벤치마크 텍스트로 판정한 noul 은 아직
+    없으므로(screen 이 먼저 돈다) 통과든 아니든 noul 은 전부 미스 — 히트·미스 수는 같다."""
     from app.judge.pipeline import benchmark_screen_purpose
 
     if not text:
@@ -339,7 +335,7 @@ def _planned_benchmark(
     first = PlannedCall("screen", purpose, P.screen_payload(text, task=P.BENCHMARK_SCREEN_TASK))
     row = _final_row(session, first.input_hash(version)) if version else None
     if row is None:
-        return [first], _Unknown("벤치마크 P1 screen 판정이 캐시에 없음")
+        return [first], text
     verdict = _screen_verdict(row)
     if verdict == "skip":
         retry = PlannedCall(
@@ -348,7 +344,7 @@ def _planned_benchmark(
         )  # fmt: skip
         rrow = _final_row(session, retry.input_hash(version)) if version else None
         if rrow is None:
-            return [first, retry], _Unknown("벤치마크 P1 재screen 판정이 캐시에 없음")
+            return [first, retry], text
         return [first, retry], text if rrow.status == "ok" and _screen_verdict(rrow) == "pass" else None
     return [first], text if row.status == "ok" and verdict == "pass" else None
 
@@ -373,9 +369,9 @@ def scenario_payloads(
     ji = judge_inputs(session, snap, region, facts)
     base, cards = ji.base, ji.cards
     # P6 noul — 판정 대상만(analysis.scope.runs_ladder, 파이프라인과 같은 규칙). 컨텍스트 = 카드 + 지역 벤치마크(P1 screen
-    # 통과분 — 그 screen 판정이 캐시에 없으면 noul 입력을 정할 수 없다) + 제도
+    # 통과분 — screen 이 캐시에 없으면 통과 가정, ``_planned_benchmark``) + 제도
     ladder_facts = [f for f in facts if runs_ladder(f.scope)]
-    bench: str | _Unknown | None = None
+    bench: str | None = None
     if ladder_facts:
         screens, bench = _planned_benchmark(session, version, ji.benchmark_text(), region.id)
         plan.calls.extend(screens)
@@ -383,9 +379,6 @@ def scenario_payloads(
         card = cards[f.complex_id]
         text = P.evidence_card_text(card)
         for spec in P.ladder_specs(card, asof_date=snap.asof_date):
-            if isinstance(bench, _Unknown):
-                plan.calls.append(PlannedCall("noul", spec.purpose, None, f.complex_id, note=bench.why))
-                continue
             payload = P.noul_payload(
                 spec, card_text=text, benchmark_text=bench, policy_text=ji.policy_text(f)
             )

@@ -654,6 +654,20 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   "tests/scheduler/test_core11_bootstrap_idempotency.py::test_full_bootstrap_then_same_day_daily_is_idempotent[r4d-full]"`.
 - 운영 문서 단서(10-14 '고치기 전에는 지역을 만든 날의 보고서 체크리스트가 불완전')는 이 수정으로 없어졌다. 이미 발행된 리비전(R4 5차 리비전 1~4)의 저장본은 그대로다(D11-1).
 
+### 10-16 R5-PIPE(D25) 배포 뒤 1회 — P6·P7·P8 전체 재판정 (`docs/design/wp/R5_TESTS_PIPE.md`)
+
+- R5-PIPE 로 P6 사다리(noul) 입력에 지역 벤치마크·제도 컨텍스트·가격 갭이 들어가고, 증거 카드의 벤치마크·공급·호재·비고(제도) 줄이
+  채워졌다(meta §2-1 P6). 카드는 rerank·decide 에도 들어가므로 **noul·rerank·decide 의 input_hash 가 전부 바뀐다**. 판정기 버전 변경(§4)이
+  아니므로 `change_event(judge·version)` 는 생기지 않고, 그냥 캐시 미스다.
+- 그래서 운영 DB(`subscription_analyzer`, D19)에서는 배포 뒤 **처음 도는 재판정 1회**에서 그 세 도구가 전부 다시 판정된다: noul =
+  판정 대상 단지 × 사다리 시점(최대 3), rerank 1, decide = 시나리오 수(내장 5 + 사용자 정의), 그리고 지역 벤치마크 P1 screen 1(skip 이면
+  재screen 1 더). P1~P5(screen·extract·audit·classify·compare)·P9 verify 는 입력이 그대로라 캐시다. 같은 스냅샷을 한 번 더 재판정하면
+  `tools/call` 0(§10-4 (a))으로 돌아온다.
+- 사실 변경이 없는 날의 `collect.daily` 는 이월(carry_forward — 이전 판정 복사)이라 이 재판정을 일으키지 않는다. 새 맥락으로 판정된 점수가
+  필요하면 배포 직후 지역마다 전체 재판정을 한 번 등록한다(§10-4 (a) 의 `rejudge` 잡, 사유 예 `"R5-PIPE P6 맥락 반영 1회 재판정"`). 이 잡의
+  stats `judge_calls`·`by_tool` 이 위 수와 맞는지 기록하고, 이어서 같은 잡을 한 번 더 돌려 `judge_calls` 0 을 확인한다.
+- 미리보기(G5 `/scenarios/{id}/preview`)의 `cache_misses` 는 이 재판정 전까지 noul·rerank·decide(+ screen 1)를 미스로 센다 — 정상이다.
+
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
 **발행 스냅샷은 불변**(D11-1) — **발행 리비전 = 저장된 읽기 모델**(D13-1, 계약 .10). 발행하는 트랜잭션이 그 리비전의 화면 응답
