@@ -25,12 +25,16 @@ def _tie_pair() -> tuple[int, int, int]:
     as_live()
     with get_session() as s:
         snap = s.scalars(
-            select(Snapshot).where(Snapshot.region_id == 1).order_by(Snapshot.asof_date.desc(), Snapshot.revision.desc())
+            select(Snapshot)
+            .where(Snapshot.region_id == 1)
+            .order_by(Snapshot.asof_date.desc(), Snapshot.revision.desc())
         ).first()
         assert snap is not None
         base = s.scalars(select(Scenario).where(Scenario.code == "base")).one()
         run = s.scalars(
-            select(ScoreRun).where(ScoreRun.snapshot_id == snap.id, ScoreRun.scenario_id == base.id).order_by(ScoreRun.id.desc())
+            select(ScoreRun)
+            .where(ScoreRun.snapshot_id == snap.id, ScoreRun.scenario_id == base.id)
+            .order_by(ScoreRun.id.desc())
         ).first()
         assert run is not None
         tail = sorted(
@@ -56,7 +60,9 @@ def test_complex_list_sort_rank_tie_group_ordered_by_total_then_id(client: TestC
     sid, lo, hi = _tie_pair()
     for sort in ("rank", "-rank"):
         body = client.get(
-            f"/api/snapshots/{sid}/complexes", params={"scenario": "base", "sort": sort, "size": 100}, headers=READ
+            f"/api/snapshots/{sid}/complexes",
+            params={"scenario": "base", "sort": sort, "size": 100},
+            headers=READ,
         ).json()
         tail = [r["complex_id"] for r in body["items"] if r.get("rank") == 5]
         assert tail == [hi, lo], (sort, [(r["complex_id"], r.get("rank")) for r in body["items"]])

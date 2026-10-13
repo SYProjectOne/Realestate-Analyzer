@@ -17,14 +17,24 @@ from app.core.contracts_gen import Weights
 
 
 def test_display_order_key_ties_by_total_then_id() -> None:
-    totals = {16: Decimal("4.6404"), 41: Decimal("4.6714"), 3: Decimal("5.3809"), 9: Decimal("3.4838"), 27: None}
+    totals = {
+        16: Decimal("4.6404"),
+        41: Decimal("4.6714"),
+        3: Decimal("5.3809"),
+        9: Decimal("3.4838"),
+        27: None,
+    }
     ranked = rank_totals(totals)
     assert (ranked[41].rank, ranked[16].rank, ranked[41].tie_group) == (2, 2, ranked[16].tie_group)
-    order = sorted(totals, key=lambda c: display_order_key(ranked[c].rank if c in ranked else None, totals[c], c))
+    order = sorted(
+        totals, key=lambda c: display_order_key(ranked[c].rank if c in ranked else None, totals[c], c)
+    )
     assert order == [3, 41, 16, 9, 27]  # 공동 2위 안은 점수 높은 41 먼저, 순위 없음은 뒤
     # 저장 정밀도(소수 4자리)로 같으면 complex_id
     assert tie_order_key(Decimal("4.61000"), 5) < tie_order_key(Decimal("4.6100"), 7)
-    assert sorted([7, 5], key=lambda c: tie_order_key(Decimal("4.61004") if c == 7 else Decimal("4.610049"), c)) == [5, 7]
+    assert sorted(
+        [7, 5], key=lambda c: tie_order_key(Decimal("4.61004") if c == 7 else Decimal("4.610049"), c)
+    ) == [5, 7]
     # 문자열(목록 저장 키)·float 도 같은 순서
     assert tie_order_key("4.6714", 41) < tie_order_key(4.6404, 16)
     assert tie_order_key(None, 1) > tie_order_key(Decimal("0"), 99)

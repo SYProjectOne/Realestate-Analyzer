@@ -35,7 +35,9 @@ def test_report_scores_tie_group_ordered_by_total_then_id(scratch: Session) -> N
 
     base = scratch.scalars(select(Scenario).where(Scenario.code == "base")).one()
     run = scratch.scalars(
-        select(ScoreRun).where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == base.id).order_by(ScoreRun.id.desc())
+        select(ScoreRun)
+        .where(ScoreRun.snapshot_id == SNAP, ScoreRun.scenario_id == base.id)
+        .order_by(ScoreRun.id.desc())
     ).first()
     assert run is not None
     tail = sorted(
