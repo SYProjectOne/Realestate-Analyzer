@@ -298,6 +298,7 @@ export function ComplexTable({
     initialRect: FALLBACK_RECT,
     observeElementRect: (instance: Virtualizer<HTMLDivElement, Element>, cb) =>
       observeElementRect(instance, (rect) => cb(rect.height > 0 ? rect : FALLBACK_RECT)),
+    measureElement: measureRow,
   });
   const items = virtualizer.getVirtualItems();
   const paddingTop = items[0]?.start ?? 0;
@@ -335,6 +336,7 @@ export function ComplexTable({
                   row={row}
                   index={item.index}
                   selected={selected.has(row.original.complex_id)}
+                  measureRef={virtualizer.measureElement}
                   columns={columns}
                   visibleColumns={visibleColumns}
                 />
@@ -403,10 +405,13 @@ const VirtualRow = memo(function VirtualRow({
   row,
   index,
   selected,
+  measureRef,
 }: {
   row: Row<ComplexRow>;
   index: number;
   selected: boolean;
+  /** 실제 행 높이를 가상 스크롤에 알린다(virtualizer.measureElement — 인스턴스 메서드라 렌더마다 같다) */
+  measureRef: (node: HTMLTableRowElement | null) => void;
   /** 셀 렌더러(선택 상태·기준일·링크를 닫아 둔다) — 바뀌면 행을 다시 그린다 */
   columns: readonly ColumnDef<ComplexRow>[];
   /** 열 선택 — 바뀌면 행을 다시 그린다 */
@@ -414,6 +419,7 @@ const VirtualRow = memo(function VirtualRow({
 }) {
   return (
     <tr
+      ref={measureRef}
       data-index={index}
       aria-rowindex={index + 2}
       aria-selected={selected || undefined}
@@ -428,6 +434,12 @@ const VirtualRow = memo(function VirtualRow({
     </tr>
   );
 });
+
+/** 행 실제 높이(ResizeObserver border-box, 없으면 getBoundingClientRect). jsdom·숨김처럼 0 이면 추정값 */
+function measureRow(el: Element, entry: ResizeObserverEntry | undefined): number {
+  const size = entry?.borderBoxSize[0]?.blockSize ?? el.getBoundingClientRect().height;
+  return size > 0 ? size : ROW_HEIGHT;
+}
 
 function sortState(sort: string, key: SortKey | undefined): 'ascending' | 'descending' | undefined {
   if (!key) return undefined;
