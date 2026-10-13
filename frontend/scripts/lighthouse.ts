@@ -7,7 +7,7 @@
  *     Chrome = CHROME_PATH, 없으면 Playwright chromium(`npx playwright install chromium`).
  *  4. 성능·접근성·권장 사항(best-practices) 점수표를 찍고, 하나라도 80 미만이면 exit 1.
  *
- * 폼 팩터: 데스크톱 프리셋(D7: 이 도구는 데스크톱 우선) 전 화면 + 모바일(Lighthouse 기본, 느린 4G·CPU 4배 감속)
+ * 폼 팩터: 데스크톱 프리셋(D7: 이 도구는 데스크톱 우선) 전 화면(G0·G0-2·G1~G8, 목록은 scripts/lib/lighthouse-targets.ts) + 모바일(Lighthouse 기본, 느린 4G·CPU 4배 감속)
  * 은 모바일을 지원하는 G1·G2·G3(읽기 전용)만.
  *
  * 측정이 MSW 응답으로 된 화면인지(사전 점검): preview 서버는 /api 를 프록시하지 않고(실 API 없음) 503 으로 세기만
@@ -25,34 +25,17 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { chromium } from '@playwright/test';
 import { build, preview } from 'vite';
+import {
+  CATEGORIES,
+  TARGETS,
+  THRESHOLD,
+  type Category,
+  type FormFactor,
+  type Target,
+} from './lib/lighthouse-targets';
 import { FRONTEND_ROOT } from './lib/openapi-source';
 
 const run = promisify(execFile);
-
-export const THRESHOLD = 80;
-export const CATEGORIES = ['performance', 'accessibility', 'best-practices'] as const;
-type Category = (typeof CATEGORIES)[number];
-type FormFactor = 'desktop' | 'mobile';
-
-interface Target {
-  path: string;
-  formFactor: FormFactor;
-}
-
-/** 화면 id ↔ 경로. 모바일은 D7 이 지원하는 G1·G2·G3 만 */
-export const TARGETS: Target[] = [
-  { path: '/', formFactor: 'desktop' },
-  { path: '/complexes', formFactor: 'desktop' },
-  { path: '/complexes/2', formFactor: 'desktop' },
-  { path: '/compare?ids=2,7,4', formFactor: 'desktop' },
-  { path: '/scenario', formFactor: 'desktop' },
-  { path: '/market', formFactor: 'desktop' },
-  { path: '/ops', formFactor: 'desktop' },
-  { path: '/reports', formFactor: 'desktop' },
-  { path: '/', formFactor: 'mobile' },
-  { path: '/complexes', formFactor: 'mobile' },
-  { path: '/complexes/2', formFactor: 'mobile' },
-];
 
 interface Result {
   target: Target;

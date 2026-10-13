@@ -5,6 +5,9 @@ worker 시간표가 매일 03:00 ``backup`` 잡을 넣고(``scheduler.jobs.CRON`
 - DB: Postgres 면 ``pg_dump -Fc``(사용자 지정 형식 — pg_restore 로 골라 복구) → ``<BACKUP_DIR>/<날짜>/db.dump``.
   SQLite(개발 모드)면 sqlite3 온라인 백업 API 로 ``db.sqlite3`` 파일 복사(쓰기 중이어도 일관된 사본).
   pg_dump 가 없거나 실패하면 잡은 failed(stats 에 사유) — 조용히 넘어가지 않는다(규칙 7).
+  pg_dump 위치(R5-OPS 3, D19-2): 설정 ``PG_DUMP_PATH``(실행 파일 또는 bin 폴더)가 있으면 그것만 쓰고(없으면 실패 —
+  PATH 의 다른 판으로 넘어가지 않는다), 없으면 PATH 의 ``pg_dump``. stats.db 에 쓴 경로(``pg_dump``)와
+  ``pg_dump --version`` 결과(``pg_dump_version``)를 남긴다 — 서버(운영 PG17)와 같은 판인지 G7 잡 목록에서 본다.
 - 원문: ``RAW_DIR`` → ``<BACKUP_DIR>/raw/`` 증분 복사(크기·수정 시각이 다른 파일만, 지우지 않는다 — 보존 무기한).
 - 보존: payload ``keep_days`` 가 있으면 그보다 오래된 날짜 폴더만 지운다(원문 사본은 지우지 않는다). 기본은 지우지 않는다.
 
@@ -28,7 +31,7 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 
 from app.core.settings import Settings
 
-__all__ = ["KEEP_DAYS_MAX", "backup_dir", "run_backup"]
+__all__ = ["KEEP_DAYS_MAX", "backup_dir", "resolve_pg_dump", "run_backup"]
 
 KEEP_DAYS_MAX = 3650
 """보존 일수 상한(계약 .9 ``job_payloads/backup.json`` maximum) — 넘으면 잡 실패(조용히 자르지 않는다)."""
@@ -67,10 +70,39 @@ def _dump_sqlite(src: Path, out: Path) -> dict[str, Any]:
     return {"kind": "sqlite", "file": dst.name, "size_bytes": dst.stat().st_size, "sha256": _sha256(dst)}
 
 
-def _dump_postgres(url: str, out: Path) -> dict[str, Any]:
+def resolve_pg_dump(settings: Settings) -> str:
+    """쓸 ``pg_dump`` 경로(모듈 설명). 찾지 못하면 ``RuntimeError``(사유에 ``PG_DUMP_PATH`` 안내)."""
+    configured = getattr(settings, "pg_dump_path", None)
+    if configured is not None and str(configured).strip():
+        path = Path(configured)
+        if path.is_dir():
+            for name in ("pg_dump.exe", "pg_dump") if os.name == "nt" else ("pg_dump",):
+                if (path / name).is_file():
+                    return str(path / name)
+            raise RuntimeError(f"PG_DUMP_PATH 폴더에 pg_dump 없음: {path}")
+        if path.is_file():
+            return str(path)
+        raise RuntimeError(f"PG_DUMP_PATH 의 pg_dump 없음: {path}")
     exe = shutil.which("pg_dump")
     if exe is None:
-        raise RuntimeError("pg_dump 없음(PATH) — Postgres 백업 불가")
+        raise RuntimeError(
+            "pg_dump 없음(PATH) — PG_DUMP_PATH 에 서버와 같은 판 pg_dump 를 적는다(runbook §8)"
+        )
+    return exe
+
+
+def _pg_dump_version(exe: str) -> str | None:
+    """``pg_dump --version`` 첫 줄(예 'pg_dump (PostgreSQL) 17.9'). 실패하면 None — 덤프 자체가 판단한다."""
+    try:
+        proc = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    lines = (proc.stdout or "").strip().splitlines()
+    return lines[0][:100] if proc.returncode == 0 and lines else None
+
+
+def _dump_postgres(url: str, out: Path, exe: str) -> dict[str, Any]:
+    version = _pg_dump_version(exe)
     parts = urlsplit(url.replace("postgresql+psycopg://", "postgresql://"))
     # URL 의 비밀번호는 퍼센트 인코딩(예 '%40' = '@') — PGPASSWORD 에는 원래 문자로(R3 4차 minor)
     password = unquote(parts.password or "")
@@ -87,7 +119,14 @@ def _dump_postgres(url: str, out: Path) -> dict[str, Any]:
     )
     if proc.returncode != 0:
         raise RuntimeError(f"pg_dump 실패(exit {proc.returncode}): {proc.stderr.strip()[:200]}")
-    return {"kind": "postgres", "file": dst.name, "size_bytes": dst.stat().st_size, "sha256": _sha256(dst)}
+    return {
+        "kind": "postgres",
+        "file": dst.name,
+        "size_bytes": dst.stat().st_size,
+        "sha256": _sha256(dst),
+        "pg_dump": exe,
+        "pg_dump_version": version,
+    }
 
 
 def _copy_raw(src: Path, mirror: Path) -> dict[str, int]:
@@ -144,7 +183,7 @@ def run_backup(settings: Settings, *, now: datetime, keep_days: int | None = Non
         if sqlite_file is not None:
             stats["db"] = _dump_sqlite(sqlite_file, out)
         elif url.startswith(("postgresql", "postgres")):
-            stats["db"] = _dump_postgres(url, out)
+            stats["db"] = _dump_postgres(url, out, resolve_pg_dump(settings))
         else:
             raise RuntimeError("알 수 없는 DATABASE_URL 형식 — 백업 불가")
     except Exception as exc:

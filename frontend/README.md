@@ -17,7 +17,7 @@ npm run dev:msw     # MSW 모드: API 없이 계약 예시 응답
 npm test | npm run lint | npm run typecheck | npm run build
 npm run e2e         # Playwright MSW 모드(스모크 tests/e2e + 화면 e2e/pages). 최초 1회 npx playwright install chromium
 npm run e2e:api     # Playwright 실 API 모드(e2e/api): devseed DB + uvicorn + vite 를 스스로 띄운다
-npm run lighthouse  # MSW 빌드 + preview → 주요 화면 Lighthouse(성능·접근성·권장 사항) 표, 80 미만이면 exit 1
+npm run lighthouse  # MSW 빌드 + preview → 화면 10개(G0·G0-2·G1~G8, 모바일 G1~G3) Lighthouse(성능·접근성·권장 사항) 표, 80 미만이면 exit 1
 ```
 
 ## 실 API 모드 ↔ MSW 모드
@@ -79,5 +79,5 @@ vite(MSW 끔)를 띄우고 G0~G8, Bearer 다운로드 3종, 원문 미리보기(
 
 ## 규칙
 
-- 화면 문자열은 `src/i18n/ko.json` + `t()`. 숫자는 `FactCell` 또는 `src/lib/format.ts` — ESLint `local/no-raw-number-render`가 강제.
+- 화면 문자열은 `src/i18n/ko.json` + `t()` — ESLint `local/no-hangul-literal`이 JSX·TS 한글 리터럴을 거부한다(예외는 `eslint-rules/hangul-allowlist.js`: 계약 enum 값·서버 표식·개발자 오류, 근거를 테스트가 확인). 숫자는 `FactCell` 또는 `src/lib/format.ts` — ESLint `local/no-raw-number-render`가 강제.
 - 지역명 하드코딩 금지(목 데이터·테스트 제외). 라벨은 텍스트 배지. 하단 고정 문구는 레이아웃이 붙인다.

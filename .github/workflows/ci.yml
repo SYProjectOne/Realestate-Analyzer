@@ -24,7 +24,6 @@ jobs:
       contracts: ${{ steps.filter.outputs.contracts }}
       shared: ${{ steps.filter.outputs.shared }}
       core: ${{ steps.filter.outputs.core }}
-      models: ${{ steps.filter.outputs.models }}
       collectors: ${{ steps.filter.outputs.collectors }}
       normalize: ${{ steps.filter.outputs.normalize }}
       judge: ${{ steps.filter.outputs.judge }}
@@ -60,8 +59,6 @@ jobs:
               - 'Makefile'
               - 'docs/**'
               - '.pre-commit-config.yaml'
-            models:
-              - 'backend/tests/models/**'
             collectors:
               - 'backend/app/collectors/**'
               - 'backend/tests/collectors/**'
@@ -120,13 +117,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [core, contracts, models, collectors, normalize, judge, analysis, api, scheduler, reports, fixtures_contract]
+        # = backend/tests/<모듈> 디렉터리(tests/regress 는 regress 잡). 빈 models 항목은 R5 에서 뺐다(app/models 는 shared 필터)
+        module: [core, contracts, collectors, normalize, judge, analysis, api, scheduler, reports, fixtures_contract]
     defaults:
       run:
         working-directory: backend
+    # D25-8: Postgres 테스트(tests/contracts 의 마이그레이션 왕복 등)는 서비스 컨테이너로 돈다 — 리눅스 러너에서 pgserver
+    # 내장 서버는 유닉스 소켓 경로 문제로 실패했다(run 38326346203). 로컬은 TEST_POSTGRES_URL 이 없으면 pgserver 그대로.
+    # 일회용 CI DB 라 비밀번호 없이 trust 인증(저장소 비밀값을 쓰지 않는다).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: contracts_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d contracts_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       MODULE: ${{ matrix.module }}
       JUDGE_ADAPTER: mock
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres@localhost:5432/contracts_test
     steps:
       - uses: actions/checkout@v4
       - name: decide
@@ -146,6 +162,18 @@ jobs:
       - if: steps.decide.outputs.run == 'true' && (matrix.module == 'reports' || matrix.module == 'collectors')
         name: playwright install chromium
         run: uv run playwright install --with-deps chromium
+      # 보고서 HTML 의 ECharts 인라인(tests/reports/test_html.py)은 frontend/node_modules/echarts 번들을 쓴다 —
+      # 없으면 CI 에서는 skip 이 아니라 실패한다(R5-OPS 6). frontend lock 그대로 설치.
+      - if: steps.decide.outputs.run == 'true' && matrix.module == 'reports'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - if: steps.decide.outputs.run == 'true' && matrix.module == 'reports'
+        name: npm ci (frontend — echarts 번들)
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: pytest tests/${{ matrix.module }}
         if: steps.decide.outputs.run == 'true'
         run: |
@@ -215,9 +243,9 @@ jobs:
 
   # R3 minor 2 · 재리뷰 m2: 프론트 e2e(MSW 스모크 + 화면 e2e). 차트 스크린샷 기준 이미지는 OS별
   # (Playwright 파일 이름 접미사 -chromium-<platform>.png): win32 는 개발 기기, linux 는 이 잡이 비교한다.
-  # linux 기준 이미지가 저장소에 없으면 이 잡이 만들어 아티팩트(chart-snapshots-linux)로 올리고 경고한다 —
-  # 내려받아 tests/e2e/charts-gallery.spec.ts-snapshots/ 에 커밋하면 다음부터 비교한다. 화면 e2e(e2e/pages)는
-  # 스크린샷이 없어 --ignore-snapshots 그대로.
+  # D25-9(R5): linux 기준 이미지는 run 38326346203 산출물(chart-snapshots-linux)을 커밋했다 — 이 잡은 비교만 한다
+  # (--update-snapshots 없음). 차트를 일부러 바꿨으면 실패한 실행의 frontend-e2e 아티팩트(test-results/*-actual.png)를
+  # 검토한 뒤 같은 이름의 -chromium-linux.png 로 커밋한다. 화면 e2e(e2e/pages)는 스크린샷이 없어 --ignore-snapshots 그대로.
   frontend-e2e:
     needs: changes
     if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
@@ -236,21 +264,13 @@ jobs:
       - run: npm ci
       - name: playwright install chromium
         run: npx playwright install --with-deps chromium
-      - name: e2e smoke (tests/e2e) + 차트 스냅샷 비교(linux 기준 이미지)
+      - name: e2e smoke (tests/e2e) + 차트 스냅샷 비교(linux 기준 이미지, D25-9)
         shell: bash
         run: |
-          if compgen -G "tests/e2e/charts-gallery.spec.ts-snapshots/*-chromium-linux.png" > /dev/null; then
-            npx playwright test
-          else
-            echo "::warning::linux 차트 기준 이미지가 없다 — 이번 실행에서 만들어 아티팩트 chart-snapshots-linux 로 올린다(커밋 필요)"
-            npx playwright test --update-snapshots
+          if ! compgen -G "tests/e2e/charts-gallery.spec.ts-snapshots/*-chromium-linux.png" > /dev/null; then
+            echo "::error::linux 차트 기준 이미지가 없다(tests/e2e/charts-gallery.spec.ts-snapshots/*-chromium-linux.png)"; exit 1
           fi
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chart-snapshots-linux
-          path: frontend/tests/e2e/charts-gallery.spec.ts-snapshots/*-chromium-linux.png
-          if-no-files-found: ignore
+          npx playwright test
       - name: e2e pages (e2e/pages, T16 프레임 측정 포함)
         run: npx playwright test -c e2e/pages --ignore-snapshots
       - if: always()

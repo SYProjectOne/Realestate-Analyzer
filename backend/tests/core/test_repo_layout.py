@@ -32,7 +32,8 @@ WP_PACKAGES = {
     "scheduler": "WP7",
     "reports": "WP8",
 }
-BACKEND_TEST_MODULES = {"core", "models", *WP_PACKAGES}
+# tests/models 는 없다(모델 검사는 tests/contracts) — R5 에서 CI matrix 의 빈 models 항목을 뺐다
+BACKEND_TEST_MODULES = {"core", "contracts", *WP_PACKAGES}
 
 
 def load_yaml(path: Path) -> Any:
@@ -71,6 +72,25 @@ def test_frontend_and_e2e_readme_owners(rel: str, owners: tuple[str, ...]) -> No
     assert "주인" in readme, f"{rel} 에 주인 없음"
     for owner in owners:
         assert re.search(rf"\b{owner}\b", readme), f"{rel} 에 주인 {owner} 없음"
+
+
+@pytest.mark.parametrize(
+    ("rel", "owners"),
+    [
+        ("backend/app/models/README.md", ("WP0",)),
+        ("contracts/README.md", ("WP0", "WP9")),
+        ("infra/README.md", ("WP0",)),
+    ],
+)
+def test_owner_lines(rel: str, owners: tuple[str, ...]) -> None:
+    """R5-OPS 5: 패키지·디렉터리 README 에 '주인' 줄(AGENTS 디렉터리 소유권 표와 같은 값)."""
+    path = ROOT / rel
+    assert path.is_file(), f"{rel} 없음"
+    text = path.read_text(encoding="utf-8")
+    line = next((x for x in text.splitlines() if "주인" in x), None)
+    assert line is not None, f"{rel} 에 '주인' 줄 없음"
+    for owner in owners:
+        assert re.search(rf"\b{owner}\b", line), f"{rel} 주인 줄에 {owner} 없음: {line}"
 
 
 def test_empty_package_markers() -> None:
@@ -204,7 +224,16 @@ def test_ci_workflow() -> None:
 def test_precommit_config() -> None:
     cfg = load_yaml(ROOT / ".pre-commit-config.yaml")
     hook_ids = {h["id"] for repo in cfg["repos"] for h in repo["hooks"]}
-    assert {"ruff", "mypy", "eslint", "check-added-large-files", "detect-private-key", "gitleaks"} <= hook_ids
+    want = {
+        "ruff",
+        "mypy",
+        "eslint",
+        "typecheck",
+        "check-added-large-files",
+        "detect-private-key",
+        "gitleaks",
+    }
+    assert want <= hook_ids
 
 
 # ---------------------------------------------------------------- 작업 러너

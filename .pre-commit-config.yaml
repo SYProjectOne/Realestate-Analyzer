@@ -44,6 +44,14 @@ repos:
         language: system
         pass_filenames: false
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
+      # 규칙 9: tsc --noEmit 통과가 PR 조건 — 커밋 전에도 본다(package.json "typecheck" = tsc -b --noEmit).
+      # 생성 타입(src/api/schema.d.ts)이 계약에서 오므로 contracts/openapi*.yaml 변경에도 돈다
+      - id: typecheck
+        name: tsc --noEmit (frontend)
+        entry: npm --prefix frontend run typecheck
+        language: system
+        pass_filenames: false
+        files: ^(frontend/.*\.(ts|tsx|mts|cts)|frontend/tsconfig.*\.json|contracts/openapi(\.bundled)?\.yaml)$
       - id: no-dotenv
         name: .env 커밋 금지 (.env.example 만)
         entry: ".env 파일은 커밋하지 않는다 — infra/.env.example 만 갱신"

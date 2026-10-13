@@ -22,6 +22,19 @@ OPENAPI_BUNDLED = CONTRACTS / "openapi.bundled.yaml"
 MIGRATION_0001 = CONTRACTS / "migrations" / "versions" / "0001_init.py"
 
 
+def pgserver_database_url(uri: str, database: str) -> str:
+    """pgserver ``get_uri()`` → 같은 서버의 ``database`` DB SQLAlchemy URL(psycopg 드라이버).
+
+    리눅스 pgserver 는 유닉스 소켓 URI(``postgresql://postgres:@/postgres?host=/tmp/.../pgdata0``)를,
+    Windows 는 TCP URI 를 준다. 문자열 자르기(``rpartition('/')``)로 DB 이름을 바꾸면 소켓 폴더 경로가
+    깨진다(R5-OPS 1, CI run 38326346203) — URL 로 다룬다.
+    """
+    from sqlalchemy.engine import make_url
+
+    url = make_url(uri).set(drivername="postgresql+psycopg", database=database)
+    return url.render_as_string(hide_password=False)
+
+
 def load_json(path: Path) -> Any:
     with path.open(encoding="utf-8") as f:
         return json.load(f)
