@@ -76,6 +76,9 @@ describe('R5-FE 1: ?scenario=·?snapshot= 가 화면 이동에서 유지된다',
       expect(link.getAttribute('href')).toMatch(new RegExp(`^/complexes/${id}\\?`));
       expectHrefGlobal(link);
     }
+    // 변경 피드 항목 → G3 해당 탭도 같은 쿼리
+    const feed = screen.getByRole('list', { name: t('page.G1.changes') });
+    for (const a of within(feed).getAllByRole('link')) expectHrefGlobal(a);
     const first = cards[0] as HTMLElement;
     await userEvent.click(within(first).getByText(t('page.G1.p10')));
     const loc = await waitPath(router, `/complexes/${first.dataset.complexId}`);
