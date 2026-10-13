@@ -98,6 +98,14 @@
 (2) 넣으면 `contracts/fixtures/.../judgments_synth`(decide A·C)·`tests/api` 응답 골든 재생성과 CHANGELOG 사유(WP9·WP5 소유).
 제안 패치(`scenarios.py` +47/−22)는 이 문서 끝 부록 — 결정 뒤 `git apply` 로 적용 가능(R5-NORM 브랜치 기준).
 
+## 완료 검증(브랜치 끝, 2026-10-13)
+
+| 명령 | 결과 |
+| --- | --- |
+| `uv run pytest -p no:randomly -m "not live"`(전체 3,986) | 3,980 통과 · 4 skip · 2 실패 — 둘 다 성능 시간 단언(`tests/api/test_r3f_perf_publish.py::test_d14_5_publish_job_1000x5_under_30s…` '잡 41.5s > 30.0s', `tests/collectors/notice_pdf/test_ocr.py::test_d5_adopted_engine_page_under_30_seconds`), 다른 에이전트 스위트와 동시 실행 부하. **단독 재실행 2/2·6/6 통과** → 실패 0 |
+| `uv run ruff check app tests` · `ruff format --check app tests` · `mypy app` | 통과 · 482 파일 정렬됨 · 167 파일 오류 0 |
+| `python scripts/tasks.py regress` | pytest -m regress 676 통과(T13 프론트 lint 포함) · e2e 3/3 통과, exit 0 |
+
 ## 하지 않은 것
 
 - 2a: 일부 스캔(`scan_partial:<p>`) 공고문은 기존대로(텍스트 쪽을 파싱, 못 읽은 필드는 '파싱 실패' 등 기존 사유). 어느 필드가 스캔 쪽에
