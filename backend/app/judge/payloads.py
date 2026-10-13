@@ -42,10 +42,12 @@ __all__ = [
     "EVIDENCE_CARD_ORDER",
     "EXTRACT_RESCREEN_TASK",
     "EXTRACT_SCREEN_TASK",
+    "HEAD_TAIL_GAP",
     "HORIZONS",
     "INCLUSION_CLASSES",
     "INTAKE_CLASSES",
     "INTAKE_STATUS_BY_CLASS",
+    "ITEM_TEXT_MAX",
     "NOT_CATALYST",
     "RERANK_MAX",
     "RERANK_QUERY",
@@ -83,6 +85,7 @@ __all__ = [
     "evidence_card_text",
     "extract_payload",
     "extract_rescreen_text",
+    "head_tail",
     "ladder_specs",
     "noul_payload",
     "public_text",
@@ -234,6 +237,29 @@ def public_text(text: str | None) -> str:
 
 def _cut(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: max(0, limit - 1)] + "…"
+
+
+ITEM_TEXT_MAX: Final = 2000
+"""classify 항목 텍스트 상한(``_classify_items`` 의 자르기와 같다)."""
+HEAD_TAIL_GAP: Final = "\n…\n"
+
+
+def head_tail(text: str, limit: int, *, tail_share: float = 0.4) -> str:
+    """``limit`` 자 안에 맞춘 페이지 문구: 넘치면 앞부분 + ``HEAD_TAIL_GAP`` + 뒷부분(뒤 ``tail_share`` 비율).
+
+    R6-INTAKE: 공식 홈페이지 문구는 앞이 메뉴·회전 배너이고 시행·시공·현장 주소·총 세대수는 맨 아래 꼬리말에 있다. 앞에서
+    1500자만 자르면 그 단지인지 가릴 근거(꼬리말)가 빠져 동일성 classify 가 review 로 남았다(인천 첫 실행 — 포레나더샵
+    인천시청역 등). 자르기 규칙(산술)일 뿐 문구를 고르지 않는다. 같은 입력이면 같은 출력(결정적)."""
+    if limit <= 0:
+        return ""
+    if len(text) <= limit:
+        return text
+    room = limit - len(HEAD_TAIL_GAP)
+    if room <= 0:
+        return text[:limit]
+    tail = int(room * tail_share)
+    head = room - tail
+    return text[:head].rstrip() + HEAD_TAIL_GAP + text[len(text) - tail :].lstrip()
 
 
 # ====================================================================== 증거 카드
@@ -653,7 +679,7 @@ def _classify_items(items: Sequence[tuple[str, str]]) -> list[dict[str, str]]:
     ids = [i for i, _ in items]
     if len(set(ids)) != len(ids):
         raise ValueError("classify 항목 id 중복")
-    return [{"id": i, "text": _cut(public_text(t), 2000)} for i, t in items]
+    return [{"id": i, "text": _cut(public_text(t), ITEM_TEXT_MAX)} for i, t in items]
 
 
 def classify_inclusion_payload(*, item_id: str, text: str) -> JudgePayload:

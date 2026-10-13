@@ -3,13 +3,15 @@
 접수 상태를 **판단하지 않는다**(WP2 파서·판정기 몫). 여기서는 키워드가 들어 있는 문장을 후보로 모을 뿐이다.
 """
 
+# ruff: noqa: E501  (한국어 docstring·주석)
+
 from __future__ import annotations
 
 import re
 
 from bs4 import BeautifulSoup
 
-__all__ = ["INTAKE_KEYWORDS", "html_to_text", "intake_candidates", "needs_render"]
+__all__ = ["INTAKE_KEYWORDS", "html_head", "html_to_text", "intake_candidates", "needs_render"]
 
 INTAKE_KEYWORDS: tuple[str, ...] = (
     "선착순",
@@ -46,6 +48,37 @@ def html_to_text(html: str) -> str:
         tag.decompose()
     lines = (" ".join(line.split()) for line in soup.get_text("\n").splitlines())
     return "\n".join(line for line in lines if line)
+
+
+_HEAD_MAX = 200
+
+
+def _clean(value: object) -> str:
+    return " ".join(str(value or "").split())[:_HEAD_MAX]
+
+
+def html_head(html: str | bytes) -> tuple[str | None, str | None]:
+    """HTML ``<title>`` 과 설명(``meta description`` → ``og:description`` → ``og:title`` 중 제목과 다른 첫 값). 없으면 None.
+
+    R6-INTAKE: 렌더 DOM 텍스트에는 없는 단지 이름이 제목·설명에만 있는 페이지가 많다(인천 첫 실행 — 본문 184자에 이름이 없고
+    제목이 '중앙하이츠 갈산역 센트럴 | …'). 공식 홈페이지 동일성 classify 근거로 넘긴다. 판단하지 않는다."""
+    soup = BeautifulSoup(html, "lxml")
+    title = _clean(soup.title.get_text(" ")) if soup.title is not None else ""
+    metas: dict[str, str] = {}
+    for m in soup.find_all("meta"):
+        key = str(m.get("name") or m.get("property") or "").strip().lower()
+        val = _clean(m.get("content"))
+        if key and val and key not in metas:
+            metas[key] = val
+    desc = next(
+        (
+            metas[k]
+            for k in ("description", "og:description", "og:title")
+            if metas.get(k) and metas[k] != title
+        ),
+        "",
+    )
+    return (title or None), (desc or None)
 
 
 def intake_candidates(text: str, *, source: str) -> list[dict[str, object]]:
