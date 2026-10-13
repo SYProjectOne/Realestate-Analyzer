@@ -120,13 +120,9 @@ def test_minor2_ci_installs_chromium_and_runs_e2e() -> None:
     e2e = _runs(jobs["frontend-e2e"])
     assert "playwright install" in e2e and "chromium" in e2e
     assert "playwright test" in e2e and "e2e/pages" in e2e
-    # 재리뷰 m2: 차트 스냅샷은 linux 기준 이미지로 비교(없으면 만들어 아티팩트)
+    # 재리뷰 m2 → D25-9(R5): 커밋된 linux 기준 이미지로 비교만 한다(없으면 실패, 새로 만들지 않음)
     # — 스크린샷 없는 화면 e2e 만 --ignore-snapshots
-    assert (
-        "-chromium-linux.png" in e2e
-        and "--update-snapshots" in e2e
-        and "chart-snapshots-linux" in str(jobs["frontend-e2e"])
-    )
+    assert "-chromium-linux.png" in e2e and "--update-snapshots" not in e2e
     steps = jobs["frontend-e2e"]["steps"]  # type: ignore[index]
     smoke = next(str(st.get("run", "")) for st in steps if "e2e smoke" in str(st.get("name", "")))
     lines = [ln.strip() for ln in smoke.splitlines()]
