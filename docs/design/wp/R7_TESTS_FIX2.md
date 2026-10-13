@@ -66,12 +66,43 @@
 
 ## 4. 테스트 (먼저 쓰고 main `91bf120` 코드에서 실패 확인)
 
-(아래 §4 표 — 완료 검사에서 채움)
+수정 전 실행: main `91bf120` 을 따로 worktree 로 꺼내 새 테스트 파일만 복사해 돌렸다.
+
+| 테스트 | 결함 | 수정 전(main) |
+| --- | --- | --- |
+| `scheduler/test_r7_fix2.py::test_live_pattern_same_asof_revisions_drop_inherited_failure_rows` | 운영 그대로: 1일차 TLS → 2일차 리비전 1(어제 실패 행 물려받음 — 스냅샷 2) → 같은 기준일 리비전 2·3 | **실패** — 리비전 2 단지 4 `[('headless_shot', …, 200), ('official_popup', 'TLS', 원문 1, None), …]`, 표시 = 어제 TLS |
+| `…::test_same_day_failed_revision_then_success_revision` | 같은 날 리비전 1 TLS → 리비전 2 성공 | **실패** — 리비전 2 에 리비전 1 의 TLS 행이 남아 표시 |
+| `…::test_same_day_success_then_failure_revision_shows_failure` | 리비전 1 성공 → 리비전 2 실패: 오늘 실패가 보여야 한다 | **실패** — 복사된 적재 행(official_popup '403', 원문 없음)이 자리를 차지해 오늘 TLS 행이 안 생김 |
+| `…::test_intake_rows_today_observation_replaces_copied_failure_rows` | `intake_rows` 단위 — 복사된 이른 실패·같은 경로 행 대체, 사람 확인·비공식·다른 경로 성공·적재 행·같은 원문 유지 | **실패** — (7, official_popup, '403') 남음 |
+| `…::test_copy_intake_into_revision_after_today_rows_skips_failures` | 지운 실패 행을 `copy_intake(앞 리비전)` 이 되살리지 않는다 | **실패** — `[('official_popup', '403'), ('headless_shot', …)]` |
+| `…::test_pick_intake_failed_fetch_does_not_outrank_newer_success` | 표시 규칙 방어(인천 스냅샷 2 행 모양 그대로) | **실패** — 어제 403 official_popup 이 오늘 headless_shot 을 이김 |
+| `api/test_r7_fix2_tie_order.py::test_dashboard_top5_tie_group_ordered_by_total_then_id` | 공동 5위(단지 5 4.6050 · 6 4.6400) | **실패** — `[5, 6]`(기대 `[6, 5]`) |
+| `api/…::test_complex_list_sort_rank_tie_group_ordered_by_total_then_id` | 목록 `sort=rank`·`-rank` | **실패** — `[5, 6]` |
+| `analysis/test_r7_fix2_tie_order.py` 2건 | 공용 키 · 민감도 base_top5·ranks | **실패**(ImportError — 키 없음). 같은 입력의 main 민감도: `base_top5 [1, 2, 3]`(기대 `[1, 3, 2]`) |
+| `reports/test_r7_fix2_tie_order.py` | 보고서 점수 행 순서 | 통과(보고서는 이미 점수 순 — 공용 키로 바꾼 뒤 고정용) |
+
+§12 순위 비교 표 정렬(순위만 → 공용 키)은 같은 순위가 있을 때만 다르고 회귀 골든에는 그 경우가 없다(전용 테스트 없음).
+
+골든 변경: **없음**. T1 공동 5위는 센트레빌(단지 5, 골든 4.61) · 더샵 AB23(단지 6, 원값 4.605)이라 점수 순 = id 순 — T1 순서 그대로(회귀 통과로 확인).
+T12 민감도·보고서 골든도 그대로.
 
 ## 5. 운영 반영
 
-runbook §10-21.
+runbook §10-21. 발행된 스냅샷 2·3·4 는 그대로(D11-1) — 저장본 화면은 다음 발행부터 바뀐다. G7 대기열은 행을 바로 읽어 배포 즉시 실제
+사유로 바뀐다. 다음 수집(새 기준일·같은 기준일 리비전 모두)에서 8단지의 'TLS'·'403' 행이 빠지고, status 가 같아 change_event·판정 범위
+변화 없음, 분류 복사라 접수 classify 호출 0.
 
 ## 6. 하지 않은 것
 
-- 발행된 스냅샷 2·3·4 는 그대로(D11-1). 저장본 화면은 다음 발행부터 바뀐다.
+- 발행된 스냅샷 2·3·4 를 고치지 않았다(D11-1).
+- 성공 관측끼리 경로가 바뀌는 날(어제 HTML 만 official_popup 성공, 오늘 렌더 headless_shot)의 경로 우선은 그대로(R7_TESTS_FIX §7-3, T8).
+- 원문 sha256 중복 제거 때문에 오늘 같은 화면을 다시 받으면 접수 행 확인 시각이 첫 수집 시각으로 남는다(스냅샷 3·4 의 02:39). 표시 규칙
+  방어는 KST 날짜·id 로 비교하므로 이 경우 이른 실패를 못 거를 수 있지만 수집 쪽 규칙(원문 id 비교)이 거른다.
+- `api/views.py`·`reports/policy.py` 의 `pick_intake` 는 `analysis.scope.pick_intake` 를 그대로 부른다 — 따로 고칠 것 없음.
+
+## 7. 완료 검사 (브랜치 끝)
+
+- `uv run pytest -p no:randomly -m "not live"` → 4245 수집, 실패 0(종료 코드 0). `ruff check`·`ruff format --check`·`mypy app` 통과.
+- `gen_contracts.py --check`·`fixture_manifest.py --check` 종료 코드 0. `python scripts/tasks.py regress` → T01~T18·모듈·흐름·e2e 3개 전부
+  통과(골든 변경 없음).
+- 프론트: 계약 예시·픽스처·골든이 바뀌지 않아 MSW 응답 순서가 그대로다(별도 vitest 실행 안 함). 회귀 e2e 3개(실제 API)는 통과.
