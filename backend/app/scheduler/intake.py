@@ -59,7 +59,6 @@ __all__ = [
 
 UNCLASSIFIED: Final = "접수 문구 미분류"  # collect.intake_rows 가 남기는 사유(분류 대기)
 INTAKE_PATHS: Final = ("official_popup", "headless_shot")
-INTAKE_TEXT_MAX: Final = 2000
 CLASSIFIED_MARK: Final = "판정기 classify"
 """파이프라인 접수 classify 가 note 에 남기는 표식(``판정기 classify jl_<seq>``) — 판정기로 정한 행."""
 COPIED_MARK: Final = "문구 해시 동일 — 이전 분류 복사"
@@ -80,15 +79,22 @@ def _row_text(session: Session, row: IntakeStatus) -> str:
         return ""
 
 
+INTAKE_BODY_BUDGET: Final = jp.SITE_ITEM_BUDGET - 100
+"""접수 항목 페이지 부분 목표 길이('단지: 이름' 줄 몫과 공개 텍스트 가림 여유를 뺀 값 — 2000자 자르기에 끝이 잘리지 않게)."""
+
+
 def intake_body(session: Session, row: IntakeStatus) -> str:
     """접수 classify 의 페이지 부분: 접수 문구 후보 줄과 그 앞뒤 줄(``official_site_parser.intake_context``), 후보가 없으면
-    줄 중복을 뺀 페이지 문구(앞·뒤). 원문에 문구가 없으면 ''(→ '접수 문구 없음', 판정 호출 없음)."""
+    줄 중복을 뺀 페이지 문구(앞·뒤). 원문에 문구가 없으면 ''(→ '접수 문구 없음', 판정 호출 없음).
+
+    후보가 있을 때 페이지 문구 전체를 덧붙이지 않는다 — 실제 판정기 재생(인천 첫 실행 48행, R6_TESTS_INTAKE §4)에서 메뉴·광고
+    문구가 섞이면 '선착순 동·호지정' 같은 분명한 문구도 open·auto → review 로 흐려졌다(4행)."""
     text = _row_text(session, row)
     if not text:
         return ""
     ctx = intake_context(text)
     body = "\n".join(ctx) if ctx else "\n".join(unique_lines(text))
-    return P.head_tail(body, INTAKE_TEXT_MAX)
+    return P.head_tail(body, INTAKE_BODY_BUDGET)
 
 
 def intake_text(session: Session, row: IntakeStatus) -> str:
@@ -96,7 +102,8 @@ def intake_text(session: Session, row: IntakeStatus) -> str:
 
     R6-INTAKE(인천 첫 실행 — 접수 classify 43건 중 확인 불가 36): 예전에는 후보 줄만 따로 보냈다 — 후보가 '마감재리스트'
     (마감재 = 마감 자재, 파서 거짓 후보)뿐이면 페이지 문구 대신 그 한 줄이 입력이 되었고, '분양중공사중'·'무순위 모집공고'
-    같은 조각은 어느 단지의 무엇인지 몰라 review 로 남았다. 이제 단지 이름과 후보 앞뒤 줄을 함께 보낸다(분류는 판정기만).
+    같은 조각은 어느 단지의 무엇인지 몰라 review 로 남았다. 이제 단지 이름·후보 앞뒤 줄·페이지 문구를 함께 보낸다(분류는
+    판정기만).
     파이프라인 접수 classify 입력과 분류 복사의 문구 해시가 같은 함수를 쓴다."""
     body = intake_body(session, row)
     if not body:
