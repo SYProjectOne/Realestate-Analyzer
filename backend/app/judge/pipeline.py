@@ -333,15 +333,32 @@ def p4_classify_intake(
     return out
 
 
+SITE_ITEM_BUDGET: Final = P.ITEM_TEXT_MAX - 150
+"""동일성 항목 텍스트 목표 길이 — payload 의 공개 텍스트 가림(전화 → '[REDACTED:phone]')이 길이를 조금 늘려도 2000자
+자르기(``payloads._classify_items``)에 꼬리말이 잘리지 않게 여유를 둔다."""
+
+
 @dataclass(frozen=True, slots=True)
 class SiteItem:
-    """D21-5 공식 홈페이지 동일성 항목: 단지 이름·위치 + 그 단지 접수 행의 페이지 문구."""
+    """D21-5 공식 홈페이지 동일성 항목: 단지 사실(이름·위치·시공·시행·세대수) + 그 페이지의 주소·제목·설명 + 페이지 문구.
+
+    R6-INTAKE(인천 첫 실행 — 동일성 review 11건): 판정기가 페이지를 단지에 묶을 근거가 입력에 없었다. 홈페이지 주소(도메인이
+    단지 이름인 경우가 많다)·HTML 제목·설명이 빠졌고, 페이지 문구는 앞 1500자(메뉴·회전 배너)만이라 시행·시공·현장 주소·총
+    세대수가 있는 꼬리말이 잘렸다. 근거를 더해 보낼 뿐 같은 단지인지는 판정기가 정한다(규칙 3 — 이름 문자열을 세지 않는다).
+    ``text`` 는 호출자가 줄 중복을 뺀 페이지 문구 — 넘치면 앞·뒤를 남긴다(``payloads.head_tail``)."""
 
     complex_id: int
     path: str
     name: str
     address: str | None
     text: str
+    builder: str | None = None
+    developer: str | None = None
+    units_total: int | None = None
+    url: str | None = None
+    final_url: str | None = None
+    title: str | None = None
+    description: str | None = None
 
     @property
     def key(self) -> str:
@@ -349,12 +366,20 @@ class SiteItem:
 
     @property
     def item_text(self) -> str:
-        parts = (
+        head = [
             f"단지: {self.name}",
             f"위치: {self.address}" if self.address else "",
-            f"페이지 문구:\n{self.text}",
-        )
-        return "\n".join(p for p in parts if p)
+            f"시공: {self.builder}" if self.builder else "",
+            f"시행: {self.developer}" if self.developer else "",
+            f"공급 세대: {self.units_total}세대" if self.units_total else "",
+            f"홈페이지 주소: {self.url}" if self.url else "",
+            f"최종 주소(이동 후): {self.final_url}" if self.final_url and self.final_url != self.url else "",
+            f"페이지 제목: {self.title}" if self.title else "",
+            f"페이지 설명: {self.description}" if self.description else "",
+        ]
+        top = "\n".join(p for p in head if p)
+        label = "\n페이지 문구:\n"
+        return top + label + P.head_tail(self.text, SITE_ITEM_BUDGET - len(top) - len(label))
 
 
 def p4_classify_site_identity(
