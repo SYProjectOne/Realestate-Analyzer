@@ -72,8 +72,8 @@
   "sha256": "7aecb133d109dd3bab4cbccfa2a29fee985ae6858588261a51b71880e6d0f39c"
  },
  "plain:preview": {
-  "bytes": 5985,
-  "sha256": "04d2d6466ca672cdf1db275a6d82757bef315d0bfd3d4398b9f8f7072d2d4221"
+  "bytes": 5996,
+  "sha256": "2a09e2f295ec649db62d180c5f6bec97e6b36ca15a0e2225feaee824f4714bf3"
  },
  "plain:scenario_a": {
   "bytes": 39174,
@@ -172,8 +172,8 @@
   "sha256": "abf260278424c4247dcfa6509e98140b2573c10849695f547bc69b7d65b7eb08"
  },
  "rich:preview": {
-  "bytes": 5985,
-  "sha256": "556feff04c4f9488004d87191bfe992e4fb46370f7ec6bcd94fa8a97c7fb0299"
+  "bytes": 5996,
+  "sha256": "447c9f45e4cdb0390e591569bae8ca881fcdd657e39450472c889add8c78118f"
  },
  "rich:scenario_a": {
   "bytes": 38988,

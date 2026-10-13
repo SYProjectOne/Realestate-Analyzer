@@ -31,6 +31,8 @@ from app.judge.claims import CompoundClaimError, is_atomic, with_josa
 from app.judge.guard import default_secrets
 
 __all__ = [
+    "BENCHMARK_RESCREEN_TASK",
+    "BENCHMARK_SCREEN_TASK",
     "CATALYST_CLASSES",
     "CATALYST_KIND_CLASSES",
     "CATALYST_SCREEN_TASK",
@@ -38,11 +40,14 @@ __all__ = [
     "CLASSIFY_BATCH_MAX",
     "EVIDENCE_CARD_MAX",
     "EVIDENCE_CARD_ORDER",
+    "EXTRACT_RESCREEN_TASK",
+    "EXTRACT_SCREEN_TASK",
     "HORIZONS",
     "INCLUSION_CLASSES",
     "INTAKE_CLASSES",
     "INTAKE_STATUS_BY_CLASS",
     "NOT_CATALYST",
+    "RERANK_MAX",
     "RERANK_QUERY",
     "SITE_IDENTITY_CLASSES",
     "SITE_OTHER_CLASS",
@@ -62,6 +67,7 @@ __all__ = [
     "LadderSpec",
     "annualized",
     "audit_payload",
+    "benchmark_rescreen_text",
     "catalyst_screen_payload",
     "classify_catalyst_kind_payload",
     "classify_catalyst_payload",
@@ -76,6 +82,7 @@ __all__ = [
     "decide_purpose",
     "evidence_card_text",
     "extract_payload",
+    "extract_rescreen_text",
     "ladder_specs",
     "noul_payload",
     "public_text",
@@ -118,6 +125,8 @@ RERANK_QUERY: Final = (
     "(가격 갭·벤치마크·공급·유동성 근거 기준)"
 )
 _RERANK_TOTAL_MAX: Final = 100_000
+RERANK_MAX: Final = 250
+"""JEV rerank 후보 상한. 넘으면 나누지 않는다(§6-5 고정 앵커 = 한 호출) — ``judge.pipeline.p7_rerank`` 가 실패 앵커(error)로 남긴다."""
 _DECIDE_EVIDENCE_MAX: Final = 12_000
 _SLUG_RE: Final = re.compile(r"^[a-z][a-z0-9_-]*$")
 _GAINS: Final = {"p5": 0.05, "p10": 0.10, "p20": 0.20}
@@ -419,8 +428,8 @@ def rerank_payload(cards: Sequence[EvidenceCard], *, query: str = RERANK_QUERY) 
     unique = {c.complex_id: c for c in cards}
     if not unique:
         raise ValueError("rerank 후보가 없다")
-    if len(unique) > 250:
-        raise ValueError("rerank 후보는 250개까지")
+    if len(unique) > RERANK_MAX:
+        raise ValueError(f"rerank 후보는 {RERANK_MAX}개까지")
     per = min(EVIDENCE_CARD_MAX, _RERANK_TOTAL_MAX // len(unique) - 50)
     candidates = [
         {"id": f"complex:{cid}", "text": evidence_card_text(unique[cid], limit=per)} for cid in sorted(unique)
@@ -557,6 +566,32 @@ def screen_payload(text: str, *, task: str) -> JudgePayload:
     if not body:
         raise ValueError("screen 텍스트가 비었다")
     return {"text": body, "purpose": public_text(task)}
+
+
+BENCHMARK_SCREEN_TASK: Final = "지역 아파트 벤치마크(같은 생활권 분양가 → 입주 후 실거래) 요약 — 상승 확률 판정(noul) 컨텍스트로 쓰기 전 입력 검사"
+"""P1 screen(meta §2-1 '벤치마크·호재 텍스트')의 purpose — P6 noul 컨텍스트 ``benchmark`` 로 넣기 전."""
+BENCHMARK_RESCREEN_TASK: Final = (
+    "부동산 시세 자료 — 아파트 단지별 분양가와 입주 후 실거래가 비교 표가 수치 근거로 쓸 만한 입력인가"
+)
+"""P1 재screen(skip 이면 purpose 를 단계에 맞게 바꿔 다른 입력으로, meta §2-1 P1)."""
+
+
+def benchmark_rescreen_text(text: str) -> str:
+    """벤치마크 재screen 입력(다른 입력): 머리 설명 + 사례 줄만(머리 요약 줄 제외)."""
+    rows = [line for line in text.splitlines()[1:] if line.strip()]
+    return "아파트 단지별 분양가와 입주 후 실거래가 비교(분양권 제외):\n" + "\n".join(rows or [text])
+
+
+EXTRACT_SCREEN_TASK: Final = "청약 공고문 수치 추출 전 입력 검사"
+EXTRACT_RESCREEN_TASK: Final = (
+    "청약 입주자모집공고 본문·표에서 아래 '추출 대상' 항목의 값을 찾기 전 입력 검사"
+)
+
+
+def extract_rescreen_text(text: str, field_descriptions: Sequence[str]) -> str:
+    """공고문 조각 재screen 입력(다른 입력): 추출 대상 항목 머리 + 같은 조각."""
+    head = ", ".join(dict.fromkeys(d for d in field_descriptions if d))
+    return f"추출 대상: {head}\n{text}" if head else f"추출 대상: 청약 공고 수치\n{text}"
 
 
 @dataclass(frozen=True, slots=True)

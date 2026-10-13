@@ -279,13 +279,19 @@ def test_t07_pipeline_candidates_8_to_16_one_call_delta_and_new_call_only(env: R
     by_cx: dict[int, dict[str, Any]] = {}
     for c in all_comps:
         by_cx.setdefault(c.complex_id, {})[c.component] = c.score_0_10
+    checked = 0
     for cid, t in totals.items():
         sc = by_cx.get(cid, {})
         if t.total is None or any(sc.get(k) is None for k in weights):
             continue
+        checked += 1
         want_t = sum((w * Decimal(str(sc[k])) for k, w in weights.items()), Decimal(0))
         if abs(Decimal(str(t.total)) - want_t) > Decimal("0.001"):
             bad.append(f"{cid}: total {t.total} != Σ w·s {want_t}")
+    # R5-PIPE 4: 종합이 전부 null(미계산)이면 위 검사가 공회전한다 — 최소 1행은 Σ w·s 를 실제로 맞춰 본다
+    if not weights or checked < 1:
+        n_total = sum(1 for t in totals.values() if t.total is not None)
+        bad.append(f"Σ w·s 검사 대상 0행(종합 값 {n_total}행, 가중치 {sorted(weights)})")
     assert not bad, "\n".join(bad)
 
     # API: score_row.delta_rerank 열(G4) — 인천 8 은 값, 김포 8 은 null; rerank raw prov = 새 호출

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import socket
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,8 @@ from .conftest import BACKEND, READ_TOKEN, SNAP, WRITE, WRITE_TOKEN, RegressEnv
 pytestmark = pytest.mark.regress
 
 LIMIT_S = 1.0
+G2_SAMPLES = 5
+"""G2 size 1000 첫 요청 측정 횟수(워밍업 뒤) — 판정은 중앙값."""
 
 
 def _free_port() -> int:
@@ -171,13 +174,16 @@ def test_t16_g2_first_request_size_1000_under_1s(server: str) -> None:
     with httpx.Client(headers=WRITE, timeout=60) as c:
         c.get(url, params={"size": 1000, "sort": "-total"})
         timings = []
-        for _ in range(3):
+        for _ in range(G2_SAMPLES):
             t0 = time.perf_counter()
             r = c.get(url, params={"size": 1000, "sort": "-total"})
             timings.append(round(time.perf_counter() - t0, 3))
             assert r.status_code == 200
     print("T16 G2 first request(size 1000) timings(s):", timings)
-    assert min(timings) < LIMIT_S, f"G2 첫 요청(size 1000) {timings}s — {LIMIT_S}s 초과"
+    # R5-PIPE 4: 가장 빠른 1회(min)가 아니라 중앙값 — 대부분의 요청이 1 s 안이어야 한다. 다른 스위트가 동시에 도는 부하에서 튀는
+    # 1~2회(중앙값에 영향 없음)는 견딘다
+    med = statistics.median(timings)
+    assert med < LIMIT_S, f"G2 첫 요청(size 1000) 중앙값 {med}s {timings} — {LIMIT_S}s 초과"
 
 
 def test_t16_virtualization_contract(server: str) -> None:

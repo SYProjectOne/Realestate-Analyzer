@@ -74,8 +74,10 @@ from app.normalize.living_area import living_area_of, region_household_facts
 __all__ = [
     "EXCLUDED_CLASSES",
     "INTAKE_PRIORITY",
+    "POLICY_FIELDS",
     "ComplexFacts",
     "JudgeScope",
+    "RegionContext",
     "age_coef",
     "build_score_inputs",
     "complex_input",
@@ -85,6 +87,8 @@ __all__ = [
     "gap_of",
     "load_facts",
     "ocr_pending_fields",
+    "region_context",
+    "with_ladders",
 ]
 
 LABELS: Final = ("확인됨", "추정", "비공식", "재가공", "확인 불가")
@@ -95,6 +99,9 @@ _PATH_TEXT: Final = {
 }
 TRADE_WINDOW_DAYS: Final = 730
 DEFAULT_COEF: Final = {"c_per_year": 0.015, "cap_years": 8, "label": "추정"}
+POLICY_FIELDS: Final = ("regulated", "price_cap", "land_type", "housing_type", "rewin_restriction_years")
+"""제도 컨텍스트(meta §2-1 P6)에 넣는 complex 필드 — 전매·거주의무는 카드 줄이 따로 있다."""
+_CONTEXT_MAX: Final = 2000
 
 
 def _label(value: str | None) -> Label | None:
@@ -130,6 +137,8 @@ class ComplexFacts:
     living_area_name: str | None = None
     scope: JudgeScope = "판정 대상"
     scope_reason: str = ""
+    policy_labels: dict[str, Label | None] = field(default_factory=dict)
+    """제도 필드(``POLICY_FIELDS`` — 규제지역·분양가상한제·택지·주택 유형·재당첨 제한) 출처 라벨. P6 제도 컨텍스트·카드 비고(R5-PIPE)."""
     evidence: list[tuple[str, str]] = field(default_factory=list)  # (fp_<id>, 발췌) — verify 근거
     ocr_fields: frozenset[str] = (
         frozenset()
@@ -280,6 +289,7 @@ def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[Com
             # 당첨일 라벨(R3 M2) → ComplexScoreInput.winner_label(계약 .7) — 유동성·전매 종료 라벨 합성
             "winner": lab(winner, cx.winner_date),
         }
+        f.policy_labels = {name: lab(cx_prov.get((cx.id, name)), getattr(cx, name)) for name in POLICY_FIELDS}
         price_fp = _prov_of(f.price.max_ref, type_prov, terms_prov) if f.price is not None else None
         for fp in (resale, residency, down, move_in, price_fp):
             if fp is None or not fp.excerpt or fp.label == "확인 불가":
@@ -438,13 +448,7 @@ def build_score_inputs(
     """ScoreInputs(계약 2026-10-09.2): 사다리는 이 스냅샷의 ladder 행에서, 벤치마크는 이 스냅샷이 인용하는 행만(C-1)."""
     from app.api.benchmarks import benchmarks_for
 
-    ids = [f.complex_id for f in facts]
-    ladders: dict[int, list[Ladder]] = defaultdict(list)
-    if ids:
-        for row in session.scalars(
-            select(Ladder).where(Ladder.snapshot_id == snapshot.id, Ladder.complex_id.in_(ids))
-        ):
-            ladders[row.complex_id].append(row)
+    ladders = _ladders_of(session, snapshot, facts)
     benchmarks = [
         BenchmarkInput(
             id=b.id,
@@ -501,6 +505,28 @@ def build_score_inputs(
     )
 
 
+def _ladders_of(
+    session: Session, snapshot: Snapshot, facts: Sequence[ComplexFacts]
+) -> dict[int, list[Ladder]]:
+    ids = [f.complex_id for f in facts]
+    ladders: dict[int, list[Ladder]] = defaultdict(list)
+    if ids:
+        for row in session.scalars(
+            select(Ladder).where(Ladder.snapshot_id == snapshot.id, Ladder.complex_id.in_(ids))
+        ):
+            ladders[row.complex_id].append(row)
+    return ladders
+
+
+def with_ladders(
+    session: Session, snapshot: Snapshot, inputs: ScoreInputs, facts: Sequence[ComplexFacts]
+) -> ScoreInputs:
+    """같은 ScoreInputs 의 단지 입력만 이 스냅샷의 지금 사다리 행으로 다시 만든다(P6 저장 뒤 — 시장 자료는 그대로)."""
+    ladders = _ladders_of(session, snapshot, facts)
+    complexes = [complex_input(f, snapshot.asof_date, ladders.get(f.complex_id, [])) for f in facts]
+    return inputs.model_copy(update={"complexes": complexes})
+
+
 def gap_of(
     f: ComplexFacts, trades: Sequence[TradeInput], *, asof_date: str, coef: AgePremiumCoef
 ) -> GapResult:
@@ -523,9 +549,211 @@ def _with_label(text: str, label: Label | None) -> str:
     return text if label in (None, "확인됨") else f"{text} ({label})"
 
 
-def evidence_card(f: ComplexFacts, *, gap: GapResult | None = None) -> EvidenceCard:
+def _cap(text: str, limit: int = _CONTEXT_MAX) -> str:
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _pct(sale: int, trade: int) -> str:
+    g = (Decimal(trade) - Decimal(sale)) / Decimal(sale) * 100
+    return f"{g.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP):+}%"
+
+
+@dataclass(frozen=True)
+class RegionContext:
+    """P6 noul·P7 rerank·P8 decide 공용 지역 맥락(R5-PIPE, meta §2-1 P6 '지역 벤치마크 + 제도 컨텍스트').
+
+    DB 사실(벤치마크·입주물량·미분양·호재 연결·제도 필드)을 출처 라벨과 함께 **문자열로 옮길 뿐** 판단하지 않는다(규칙 3) —
+    상승 여부·호재 단계·포함 여부는 판정기 결과(호재는 classify auto 만)를 그대로 쓴다. 분양가 대비 입주 후 실거래 증감률은
+    산술(§6 벤치마크 식과 같은 값)이다. 같은 사실이면 같은 문자열(같은 payload = 캐시)."""
+
+    asof_date: str
+    area_names: Mapping[str, str]
+    benchmarks: Sequence[BenchmarkInput]
+    supply: Sequence[SupplyInput]
+    unsold: Sequence[UnsoldInput]
+    unsold_scopes: Mapping[str, Sequence[str]]
+    catalysts: Mapping[int, tuple[str, ...]]
+
+    # ---- 벤치마크
+    def _cases(self, area: str | None) -> list[BenchmarkInput]:
+        rows = [
+            b
+            for b in self.benchmarks
+            if b.living_area == area
+            and not b.is_presale
+            and b.sale_price_84_won
+            and b.trade_median_won is not None
+        ]
+        return sorted(rows, key=lambda b: (b.name, b.sale_year or 0, b.id))
+
+    def _case(self, b: BenchmarkInput) -> str:
+        sale, trade = int(b.sale_price_84_won or 0), int(b.trade_median_won or 0)
+        year = f"{b.sale_year} 분양 " if b.sale_year else "분양 "
+        label = "" if b.label == "확인됨" else f" {b.label}"
+        sub = " 대체(지역 전체)" if b.substitute else ""
+        return f"{b.name}({year}{fmt_eok(sale)}→{fmt_eok(trade)}, {_pct(sale, trade)}{label}{sub})"
+
+    def _recent(self, b: BenchmarkInput) -> bool:
+        from app.analysis.score import RECENT_SALE_YEARS
+
+        return b.sale_year is not None and b.sale_year >= int(self.asof_date[:4]) - RECENT_SALE_YEARS
+
+    def benchmark_line(self, area: str | None) -> str | None:
+        """카드 '벤치마크' 줄: 그 단지 생활권의 분양가 → 입주 후 실거래 중앙 사례(분양권 제외)와 최근 3년 분양 사례 수."""
+        from app.analysis.score import RECENT_SALE_YEARS
+
+        if area is None:
+            return None
+        rows = self._cases(area)
+        if not rows:
+            return "생활권 분양 사례 없음(분양권 제외) — 확인 불가(표본 0)"
+        recent = sum(1 for b in rows if self._recent(b))
+        head = f"생활권 분양→입주 후 실거래 중앙 {len(rows)}건"
+        return (
+            f"{head}: "
+            + ", ".join(self._case(b) for b in rows)
+            + f"; 최근 {RECENT_SALE_YEARS}년 분양 사례 {recent}건"
+        )
+
+    def benchmark_text(self) -> str | None:
+        """P6 noul 컨텍스트 ``benchmark``(지역 벤치마크): 생활권마다 최근 3년 분양분과 그 이전 분양분을 나눠(meta §2-2)."""
+        from app.analysis.score import RECENT_SALE_YEARS
+
+        areas = sorted({b.living_area for b in self.benchmarks if b.living_area is not None})
+        lines: list[str] = []
+        for area in areas:
+            rows = self._cases(area)
+            if not rows:
+                continue
+            name = self.area_names.get(area) or area
+            new = [self._case(b) for b in rows if self._recent(b)]
+            old = [self._case(b) for b in rows if not self._recent(b)]
+            lines.append(
+                f"- {name}: 최근 {RECENT_SALE_YEARS}년 분양 {len(new)}건" + (f" {', '.join(new)}" if new else "")
+                + f"; 그 이전 분양 {len(old)}건" + (f" {', '.join(old)}" if old else "")
+            )  # fmt: skip
+        if not lines:
+            return None
+        head = (
+            f"지역 벤치마크(기준일 {self.asof_date}, 같은 생활권 분양가 → 입주 후 실거래 중앙, 분양권 제외)"
+        )
+        return _cap("\n".join([head, *lines]))
+
+    # ---- 공급·미분양
+    def supply_line(self, f: ComplexFacts) -> str | None:
+        """카드 '공급' 줄: 입주 후 1년 시점(사다리 목표) 해 전후 1년의 같은 생활권 입주 물량(연 합계)과 생활권 미분양 최근 값."""
+        from app.analysis.ladder import ladder_target
+
+        area = f.row.living_area
+        if area is None:
+            return None
+        t = ladder_target(
+            "move_in_plus_1y", self.asof_date, move_in_ym=f.fact_row.move_in_ym, immediate=False
+        )
+        if t is None:
+            return None
+        year = int(t.target_ym[:4])
+        parts: list[str] = []
+        for y in (year - 1, year, year + 1):
+            rows = [
+                s for s in self.supply if s.living_area == area and (int(s.ym[:4]) if s.ym else s.year) == y
+            ]
+            units = sum(s.units for s in rows)
+            lab = weakest_label(*(s.label for s in rows)) if rows else None
+            parts.append(f"{y} {units:,}세대" + (f"({lab})" if lab not in (None, "확인됨") else ""))
+        text = f"생활권 입주 물량 {' · '.join(parts)}"
+        codes = set(self.unsold_scopes.get(area, ()))
+        scoped = [u for u in self.unsold if u.scope_code in codes and u.ym <= self.asof_date[:7]]
+        if scoped:
+            ym = max(u.ym for u in scoped)
+            latest = [u for u in scoped if u.ym == ym]
+            total = sum(u.total for u in latest if u.total is not None)
+            post = [u.post_completion for u in latest if u.post_completion is not None]
+            lab = weakest_label(*(u.label for u in latest if u.label is not None)) if latest else None
+            text += f"; 미분양 {ym} {total:,}호" + (f"(준공 후 {sum(post):,})" if post else "")
+            text += f"({lab})" if lab not in (None, "확인됨") else ""
+        return text
+
+    # ---- 제도
+    def policy_items(self, f: ComplexFacts) -> list[str]:
+        cx = f.fact_row
+        lab = f.policy_labels
+        items: list[str] = []
+        if cx.regulated:
+            items.append(_with_label(f"규제지역 {cx.regulated}", lab.get("regulated")))
+        if cx.price_cap:
+            items.append(_with_label(f"분양가상한제 {cx.price_cap}", lab.get("price_cap")))
+        if cx.land_type:
+            items.append(_with_label(cx.land_type, lab.get("land_type")))
+        if cx.housing_type:
+            items.append(_with_label(f"{cx.housing_type}주택", lab.get("housing_type")))
+        if cx.rewin_restriction_years is not None:
+            items.append(
+                _with_label(f"재당첨 제한 {cx.rewin_restriction_years}년", lab.get("rewin_restriction_years"))
+            )
+        return items
+
+    def policy_note(self, f: ComplexFacts) -> str | None:
+        """카드 '비고' 줄 = 제도(규제지역·분양가상한제·택지·주택 유형·재당첨 제한). 전매·거주의무는 카드 줄이 따로 있다."""
+        items = self.policy_items(f)
+        return "제도: " + "; ".join(items) if items else None
+
+    def policy_text(self, f: ComplexFacts) -> str:
+        """P6 noul 컨텍스트 ``policy``(제도 컨텍스트): 제도 필드 + 전매·거주의무·계약금(출처 라벨 병기, 없으면 '확인 불가')."""
+        cx = f.fact_row
+        items = self.policy_items(f) or ["규제지역·분양가상한제 확인 불가(출처 없음)"]
+        if cx.resale_months is not None:
+            resale = f"전매제한 당첨 후 {cx.resale_months}개월" + (
+                " (등기 시 해제)" if cx.resale_release_on_registration else ""
+            )
+            items.append(_with_label(resale, f.labels.get("resale")))
+        else:
+            items.append("전매제한 확인 불가")
+        if cx.residency_months is not None:
+            items.append(_with_label(f"거주의무 {cx.residency_months}개월", f.labels.get("residency")))
+        else:
+            items.append("거주의무 확인 불가")
+        return _cap(f"제도 컨텍스트(기준일 {self.asof_date}): " + "; ".join(items))
+
+    def catalyst_lines(self, complex_id: int) -> tuple[str, ...]:
+        return self.catalysts.get(complex_id, ())
+
+
+def _catalysts_by_complex(session: Session, region: Region) -> dict[int, tuple[str, ...]]:
+    """단지 → 연결된 호재 문구. 판정기 단계 classify 가 auto 로 해결한 호재만(review·manual_review·미판정 = 미해결, 상승 근거로
+    쓰지 않는다 — meta §2-1 P4), '호재 아님'은 뺀다(``facts_view.region_catalysts``)."""
+    from app.facts_view import region_catalysts
+
+    out: dict[int, list[str]] = defaultdict(list)
+    for cat, links in region_catalysts(session, region.id):
+        if cat.decision != "auto":
+            continue
+        when = f", 예정 {cat.expected_ym}" if cat.expected_ym else ""
+        text = f"{cat.name}({cat.kind}·{cat.stage}{when})"
+        for lk in links:
+            if text not in out[lk.complex_id]:
+                out[lk.complex_id].append(text)
+    return {cid: tuple(v) for cid, v in out.items()}
+
+
+def region_context(session: Session, region: Region, inputs: ScoreInputs) -> RegionContext:
+    """``build_score_inputs`` 결과(이 스냅샷이 인용하는 벤치마크·입주물량·미분양·생활권) + 호재 연결 → ``RegionContext``."""
+    return RegionContext(
+        asof_date=inputs.asof_date,
+        area_names={str(a.get("id")): str(a.get("name") or "") for a in region.living_areas or []},
+        benchmarks=list(inputs.benchmarks),
+        supply=list(inputs.supply),
+        unsold=list(inputs.unsold),
+        unsold_scopes={la.id: list(la.unsold_scope_codes or []) for la in inputs.living_areas},
+        catalysts=_catalysts_by_complex(session, region),
+    )
+
+
+def evidence_card(
+    f: ComplexFacts, *, gap: GapResult | None = None, ctx: RegionContext | None = None
+) -> EvidenceCard:
     """판정기 증거 카드(문자열). 날짜에 따라 바뀌는 문구(D±)는 넣지 않는다 — 같은 사실이면 같은 카드.
-    강등 중인 사실(D11-3)은 카드에 없다(``fact_row``)."""
+    강등 중인 사실(D11-3)은 카드에 없다(``fact_row``). ``ctx``(R5-PIPE)면 벤치마크·공급·호재·비고(제도) 줄을 채운다."""
     cx = f.fact_row
     price = None
     if f.price_low is not None and f.price_high is not None:
@@ -574,7 +802,10 @@ def evidence_card(f: ComplexFacts, *, gap: GapResult | None = None) -> EvidenceC
         intake=intake,
         comparables=comparables,
         gap=gap_text,
-        notes=None,
+        benchmark=ctx.benchmark_line(f.row.living_area) if ctx is not None else None,
+        supply=ctx.supply_line(f) if ctx is not None else None,
+        catalysts=ctx.catalyst_lines(cx.id) if ctx is not None else (),
+        notes=ctx.policy_note(f) if ctx is not None else None,
     )
 
 
