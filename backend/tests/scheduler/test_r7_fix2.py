@@ -62,7 +62,9 @@ def _run(ctx: SchedulerContext, asof: str) -> int:
     return res.snapshot_id
 
 
-def _view(factory: sessionmaker[Session], sid: int, cid: int) -> list[tuple[str, str | None, int | None, int | None]]:
+def _view(
+    factory: sessionmaker[Session], sid: int, cid: int
+) -> list[tuple[str, str | None, int | None, int | None]]:
     return [(r.path, r.reason, r.raw_document_id, r.http_status) for r in _rows(factory, sid, cid)]
 
 
@@ -70,15 +72,24 @@ def _failure_raw_ids(factory: sessionmaker[Session], sid: int, cid: int) -> set[
     return {
         r.raw_document_id
         for r in _rows(factory, sid, cid)
-        if r.path in ("official_popup", "headless_shot") and r.raw_document_id is not None and r.http_status != 200
+        if r.path in ("official_popup", "headless_shot")
+        and r.raw_document_id is not None
+        and r.http_status != 200
     }
 
 
-def _inherit_like_before_r7_fix(factory: sessionmaker[Session], src: int, dst: int, cids: tuple[int, ...]) -> None:
+def _inherit_like_before_r7_fix(
+    factory: sessionmaker[Session], src: int, dst: int, cids: tuple[int, ...]
+) -> None:
     """R7-FIX 배포 전 ``copy_intake`` 가 한 일 그대로: dst 에 (단지, 경로)가 없으면 src 행을 복사(인천 스냅샷 2 의 193~202 행)."""
     with factory() as s:
-        have = {(r.complex_id, r.path) for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == dst))}
-        for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == src, IntakeStatus.complex_id.in_(cids))):
+        have = {
+            (r.complex_id, r.path)
+            for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == dst))
+        }
+        for r in s.scalars(
+            select(IntakeStatus).where(IntakeStatus.snapshot_id == src, IntakeStatus.complex_id.in_(cids))
+        ):
             if (r.complex_id, r.path) in have:
                 continue
             s.add(
@@ -116,7 +127,9 @@ def test_live_pattern_same_asof_revisions_drop_inherited_failure_rows(
         assert [(x.revision, x.revision_reason) for x in revs.values() if x is not None] == [
             (1, None), (2, "같은 기준일 재수집"), (3, "같은 기준일 재수집"),
         ]  # fmt: skip
-        shot = s.scalars(select(RawDocument).where(RawDocument.url == SITE, RawDocument.content_type == "image/png")).one()
+        shot = s.scalars(
+            select(RawDocument).where(RawDocument.url == SITE, RawDocument.content_type == "image/png")
+        ).one()
     for sid in (rev2, rev3):
         for cid in (A, B):
             view = _view(factory, sid, cid)
@@ -150,7 +163,11 @@ def test_same_day_failed_revision_then_success_revision(
             view = _view(factory, sid, cid)
             assert not _failure_raw_ids(factory, sid, cid), (sid, cid, view)
             shown = pick_intake(_rows(factory, sid, cid))
-            assert shown is not None and (shown.path, shown.http_status) == ("headless_shot", 200), (sid, cid, view)
+            assert shown is not None and (shown.path, shown.http_status) == ("headless_shot", 200), (
+                sid,
+                cid,
+                view,
+            )
 
 
 def test_same_day_success_then_failure_revision_shows_failure(
@@ -165,10 +182,14 @@ def test_same_day_success_then_failure_revision_shows_failure(
         rev2 = _run(ctx, "2026-10-14")
     for cid in (A, B):
         shown = pick_intake(_rows(factory, rev2, cid))
-        assert shown is not None and (shown.path, shown.reason) == ("official_popup", "TLS"), _view(factory, rev2, cid)
+        assert shown is not None and (shown.path, shown.reason) == ("official_popup", "TLS"), _view(
+            factory, rev2, cid
+        )
 
 
-def _raw(s: Session, key: str, status: int | None, *, image: bool = False, day: str = "2026-10-14") -> RawDocument:
+def _raw(
+    s: Session, key: str, status: int | None, *, image: bool = False, day: str = "2026-10-14"
+) -> RawDocument:
     row = RawDocument(
         source_kind="official_site", url=f"https://cx.example.test/{key}", fetched_at=f"{day}T03:00:00+09:00",
         http_status=status, sha256=key * 64, path=f"raw/{key}" if status == 200 else None,
@@ -186,7 +207,9 @@ def _dto(r: RawDocument, cid: int) -> RawDTO:
     return raw_dto(r).model_copy(update={"complex_id": cid})
 
 
-def test_intake_rows_today_observation_replaces_copied_failure_rows(factory: sessionmaker[Session], seeded: int) -> None:
+def test_intake_rows_today_observation_replaces_copied_failure_rows(
+    factory: sessionmaker[Session], seeded: int
+) -> None:
     """``intake_rows`` 단위(리비전 경로): 새 리비전에 복사된 행 중 오늘 관측이 있는 단지의 (1) **이른 수집 실패 행**(수집 경로·
     '확인 불가'·200 아님·원문 또는 응답 코드 — 오늘 받은 원문이 아님, 어느 경로든)과 (2) 오늘 행과 **같은 경로**의 이른 행은 지우고
     오늘 행을 만든다(새 기준일 스냅샷과 같은 결과). 사람 확인·비공식 참고·다른 경로의 성공 행·다른 경로의 원문 없는 적재 행·
@@ -202,7 +225,9 @@ def test_intake_rows_today_observation_replaces_copied_failure_rows(factory: ses
         same_fail = _raw(s, "e", 403)
         ok_old = _raw(s, "f", 200, image=True, day="2026-10-13")
 
-        def row(cid: int, path: str, raw: RawDocument | None, status: str = "확인 불가", reason: str | None = None) -> IntakeStatus:
+        def row(
+            cid: int, path: str, raw: RawDocument | None, status: str = "확인 불가", reason: str | None = None
+        ) -> IntakeStatus:
             return IntakeStatus(
                 complex_id=cid, snapshot_id=rev.id, status=status, path=path,
                 raw_document_id=raw.id if raw else None, http_status=raw.http_status if raw else None,
@@ -218,7 +243,9 @@ def test_intake_rows_today_observation_replaces_copied_failure_rows(factory: ses
                 row(7, "unofficial_ref", None, status="미정"),
                 # 단지 8: 어제 'TLS'(http 없음) — 오늘 HTML 만 성공(같은 경로 official_popup)
                 row(8, "official_popup", old_tls, reason="TLS"),
-                row(8, "headless_shot", ok_old, reason="판정 미해결"),  # 이른 성공 행 — 그대로(경로 우선은 기존 규칙)
+                row(
+                    8, "headless_shot", ok_old, reason="판정 미해결"
+                ),  # 이른 성공 행 — 그대로(경로 우선은 기존 규칙)
                 # 단지 9: 오늘도 같은 실패 원문(같은 날 재실행) — 그대로
                 row(9, "official_popup", same_fail, reason="403"),
                 # 단지 10: 원문 없는 적재 행 — 오늘 같은 경로(official_popup) 관측이 대신한다(새 기준일과 같음)
@@ -228,35 +255,74 @@ def test_intake_rows_today_observation_replaces_copied_failure_rows(factory: ses
                 # 단지 13: 다른 경로의 원문 없는 적재 행(회귀 픽스처 모양) — 그대로
                 row(13, "official_popup", None, status="미정"),
                 # 단지 14: 원문 없이 응답 코드만 남은 적재 실패 행(픽스처 '403') — 수집 실패 행
-                IntakeStatus(complex_id=14, snapshot_id=rev.id, status="확인 불가", path="official_popup", http_status=403, checked_at="2026-10-07", reason="403"),
+                IntakeStatus(
+                    complex_id=14,
+                    snapshot_id=rev.id,
+                    status="확인 불가",
+                    path="official_popup",
+                    http_status=403,
+                    checked_at="2026-10-07",
+                    reason="403",
+                ),
                 # 단지 11: 오늘 관측 없음 — 어제 실패 행 그대로
                 row(11, "official_popup", old403, reason="403"),
             ]
         )
         s.flush()
-        docs = [_dto(shot, 7), _dto(page, 8), _dto(same_fail, 9), _dto(page, 10), _dto(shot, 12), _dto(shot, 13), _dto(shot, 14)]
+        docs = [
+            _dto(shot, 7),
+            _dto(page, 8),
+            _dto(same_fail, 9),
+            _dto(page, 10),
+            _dto(shot, 12),
+            _dto(shot, 13),
+            _dto(shot, 14),
+        ]
         intake_rows(s, rev.id, docs)
         s.commit()
         got = {
             (r.complex_id, r.path, r.raw_document_id, r.reason)
             for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == rev.id))
         }
-        ids = {"old403": old403.id, "old_tls": old_tls.id, "shot": shot.id, "page": page.id, "same": same_fail.id, "ok_old": ok_old.id}
+        ids = {
+            "old403": old403.id,
+            "old_tls": old_tls.id,
+            "shot": shot.id,
+            "page": page.id,
+            "same": same_fail.id,
+            "ok_old": ok_old.id,
+        }
     assert (7, "official_popup", ids["old403"], "403") not in got
-    assert {(7, "headless_shot", ids["shot"], "판정 미해결"), (7, "human_check", None, None), (7, "unofficial_ref", None, None)} <= got
+    assert {
+        (7, "headless_shot", ids["shot"], "판정 미해결"),
+        (7, "human_check", None, None),
+        (7, "unofficial_ref", None, None),
+    } <= got
     assert (8, "official_popup", ids["old_tls"], "TLS") not in got
     assert (8, "official_popup", ids["page"], UNCLASSIFIED) in got, "오늘 HTML 성공 행이 새로 생긴다"
     assert (8, "headless_shot", ids["ok_old"], "판정 미해결") in got
     assert (9, "official_popup", ids["same"], "403") in got
-    assert (10, "official_popup", None, None) not in got and (10, "official_popup", ids["page"], UNCLASSIFIED) in got
+    assert (10, "official_popup", None, None) not in got and (
+        10,
+        "official_popup",
+        ids["page"],
+        UNCLASSIFIED,
+    ) in got
     assert [g for g in got if g[0] == 12] == [(12, "headless_shot", ids["shot"], UNCLASSIFIED)]
-    assert (13, "official_popup", None, None) in got and (13, "headless_shot", ids["shot"], UNCLASSIFIED) in got
+    assert (13, "official_popup", None, None) in got and (
+        13,
+        "headless_shot",
+        ids["shot"],
+        UNCLASSIFIED,
+    ) in got
     assert [g for g in got if g[0] == 14] == [(14, "headless_shot", ids["shot"], UNCLASSIFIED)]
     assert (11, "official_popup", ids["old403"], "403") in got
     assert len([g for g in got if g[0] == 8 and g[1] == "official_popup"]) == 1
 
 
-def test_copy_intake_into_revision_after_today_rows_skips_failures(factory: sessionmaker[Session], seeded: int) -> None:
+def test_copy_intake_into_revision_after_today_rows_skips_failures(
+    factory: sessionmaker[Session], seeded: int
+) -> None:
     """``intake_rows`` 가 리비전의 이른 실패 행을 지운 뒤 ``copy_intake(앞 리비전, 리비전)`` 이 그 행을 되살리지 않는다."""
     with factory() as s:
         r1 = Snapshot(region_id=1, asof_date="2026-10-14", status="published", degraded=False, created_at="2026-10-14T02:00:00+09:00", revision=1)  # fmt: skip
@@ -276,7 +342,12 @@ def test_copy_intake_into_revision_after_today_rows_skips_failures(factory: sess
         intake_rows(s, r2.id, [_dto(shot, 7)])
         copy_intake(s, r1.id, r2.id)
         s.commit()
-        got = [(r.path, r.reason) for r in s.scalars(select(IntakeStatus).where(IntakeStatus.snapshot_id == r2.id).order_by(IntakeStatus.id))]
+        got = [
+            (r.path, r.reason)
+            for r in s.scalars(
+                select(IntakeStatus).where(IntakeStatus.snapshot_id == r2.id).order_by(IntakeStatus.id)
+            )
+        ]
     assert got == [("headless_shot", "판정 미해결")]
 
 
