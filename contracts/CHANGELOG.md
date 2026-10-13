@@ -61,6 +61,11 @@ stats 키 1(`collect.daily`·`region.bootstrap.daily` 의 `degraded_sources`). �
   `input_hash`·`input_len` 외 바이트 동일 — 결과·상태·확률·순위·선택 그대로) + 지역 벤치마크 P1 screen 봉투 1개 추가(SynthJev 기본 pass).
   `judgments/`(보고서 재구성 녹화)·회귀 골든(`expected_scores*.json`)은 그대로. 픽스처 README 주의 7(생활권 세대수) 현행화.
   매니페스트 사유: R5-PIPE P6 맥락(벤치마크·제도·갭) 반영으로 judgments_synth noul·rerank·decide input_hash 재매핑(봉투 내용 동일)·벤치마크 screen 1개 추가·README 주의 7 현행화
+- **R5-ACCESS(D25-11, 계약 버전 `.18` 그대로 — 스키마·openapi 변경 없음)**: RA §6-7 접근 가능성의 `intake_status ∈ {가능}` 이 A(`priority_supply`)·
+  C(`resale_before_exit`)에도 AND 로 들어가 요건 사전 계산 근거(decide payload 증거의 '요건 사전 계산' 줄)가 바뀌었다 → `judgments_synth/` 를
+  `record_synth_judgments.py` 로 다시 만들었다. 바뀐 것은 **decide 2개(`decide:scenario_A`·`decide:scenario_C`) input_hash 재매핑뿐**(봉투 내용은
+  `input_hash`·`input_len` 외 바이트 동일 — 선택·확률·확신도·요건 판정 그대로, 나머지 253개 hash 그대로). `judgments/`·회귀 골든(`expected_scores*.json`) 그대로.
+  매니페스트 사유: R5-ACCESS D25-11 A·C 접근 요건에 접수 상태 AND(decide 증거의 요건 사전 계산 변경)로 judgments_synth decide A·C input_hash 재매핑(봉투 내용 동일)
 - 매니페스트 과거 사유 보완(`fixture_manifest.py --check` 가 이력의 사유도 CHANGELOG 에서 찾는다 — R5): 이력에만 있고 CHANGELOG 에
   문장 그대로 없던 사유 1건 — R3f CORE4: T3 사람 확인 checked_at 을 시간대 붙은 RFC3339 로(계약 .11 D14-6) — 계약 .11 'fixtures' 절의
   'R3f-CORE4 T3 checked_at RFC3339 (contract .11 D14-6) fixture+builder' 와 같은 변경의 앞선 사유 문장이다.

@@ -1,7 +1,7 @@
 {
  "description": "contracts/fixtures/** sha256. 픽스처를 바꾸면 backend/scripts/fixture_manifest.py --reason 으로 다시 만들고 같은 reason 문장을 contracts/CHANGELOG.md 에 적는다(R3 minor 6). 변경마다 새 사유(history).",
- "reason": "R5-PIPE P6 맥락(벤치마크·제도·갭) 반영으로 judgments_synth noul·rerank·decide input_hash 재매핑(봉투 내용 동일)·벤치마크 screen 1개 추가·README 주의 7 현행화",
- "files_digest": "fdb0bf1d13976a0fbd71d10bdfa9a9ad7a3d01fadb7b2d5cbe52eb5631286abc",
+ "reason": "R5-ACCESS D25-11 A·C 접근 요건에 접수 상태 AND(decide 증거의 요건 사전 계산 변경)로 judgments_synth decide A·C input_hash 재매핑(봉투 내용 동일)",
+ "files_digest": "b05cb46e30bcba05e01c241212cf25dee5a2efe85a06f10656df620ed66c9a63",
  "history": [
   {
    "reason": "R3b 마무리: 계약 .7 winner_label(당첨일 라벨이 전매 종료 요건 근거에 합쳐짐)로 상황 decide payload 1건 변경 — 합성 판정 녹화 재생성",
@@ -38,6 +38,10 @@
   {
    "reason": "R4-CORE8 D21-5 record_synth_judgments.py knows site identity classify (recordings unchanged)",
    "files_digest": "7d0fed5fcadf77241fc3f19698b45acd82ac78630f9e174a6e09b4975e50673f"
+  },
+  {
+   "reason": "R5-PIPE P6 맥락(벤치마크·제도·갭) 반영으로 judgments_synth noul·rerank·decide input_hash 재매핑(봉투 내용 동일)·벤치마크 screen 1개 추가·README 주의 7 현행화",
+   "files_digest": "fdb0bf1d13976a0fbd71d10bdfa9a9ad7a3d01fadb7b2d5cbe52eb5631286abc"
   }
  ],
  "files": {
@@ -178,7 +182,7 @@
   "incheon_gimpo_2026-10-08/judgments/verify/ad247f77164025ef3d3187ff868c343821f3bac1cfb808857446c9f0cd1b1e90.json": "8772b41ee3d6a1cd04ca54cb1c16cd72da8952894d5e36d17b482596958091ff",
   "incheon_gimpo_2026-10-08/judgments/verify/b822f948875f8f42865451bbe8de6314b709923c36898dc5c06c31fd666fca8b.json": "3f098ad3798374754a55d99d09cb72c9e76e93b9c327bd65180cf9465c7d8105",
   "incheon_gimpo_2026-10-08/judgments/verify/e9b240750fb14c8b516f806a92e7e00864c9301a0543935b83f4446c1b228747.json": "1f1abce0eefe4263068cbe5acb8b32f8b3b6481660f68a3af2a17208ceef90ea",
-  "incheon_gimpo_2026-10-08/judgments_synth/judgments/_index.json": "9264223f18ae47c913a75ef5e1cc8c3e92bda9a53879696f57f9119c6fce5fb4",
+  "incheon_gimpo_2026-10-08/judgments_synth/judgments/_index.json": "72d9c379930d09ef60d83a7588bafb98f0616a17d6ebf055e88afdc0e0827cc8",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/_meta.json": "30ae7804bbfb5cef51e281683acacd0f00d30ddc31ba1404eccac37d995ea7fe",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/01a1bdb0ee5dce9f4099ff0ad7f994320d81daeeeaf7ccd638add08f73023d9e.json": "8cdbae84ae3915df38552db2f1a1f998db993a22abeb817711fbee1dcb0920be",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/03f8acfd0ad4fcc277ec43efc2a56923ac6e423709c86ea0d7b03229604bf63e.json": "84583cb8e4c97350958a94d1ea4893ef6c68540285066e8aae8d4008ee0a5396",
@@ -267,8 +271,8 @@
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/fc2c6ca402dc5abda073c627f16d035b87be764f1e8f76ebe812401ec625125a.json": "660b50ad9f1da18c445be829e8441d061b6abb58a4eff44307ce5802d5e026a1",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/fde1f4c3c14e33f63c47e2b987505947f8f59a44c5e37d67860671cb3eec6dcc.json": "db125f07976455f3a237f09dcc68c6d63270c863835f3812846e779391ed3960",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/classify/ffd573d00ebb4dc04595f1be73d186769fc21afcb8203225a8f7de4d17765ed5.json": "d01bd78ca0b3a8080d1074e97110320f5b336e5ac3f0b44b099dcc032773ac44",
-  "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/1d1aca2dd744fe9f07d2e00f98e3f483caf3cb3835a62d35c8c504d4511cfeac.json": "607a63b6b9d27924e80a7c7704a21b40d5e13434b48bc53408fae3ae2c8a023d",
-  "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/2d4f54e3ada6278d5af5b07890c31445a1055e93891c40b29b828e9b44bc361f.json": "fdc8486023ba3043861e62f49ecf0531cbe2de51b912bba432803b79bc5d3aff",
+  "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/565e49d7bc9907df075ae916821211c40fb27e086a74d158b26fe547d64e6cdb.json": "1fd2187feaa17331f70df1d56b7f96db2905e6d6adf9004255e6c05c5dc60fc7",
+  "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/63f3b721b8915508ae950ccbbedff636e22f6f8a3ceb4e3efba40f88de78046f.json": "aa38c8971dc614e398a00b02453b3c7309f7beb95ee46270c3771a34c0dcf3b7",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/9ec0e7f9be1b905311572d9a926c35b053c1a9a2c86490be455ffc4d5926efdf.json": "94971037aeae9766623cf0e452e7614f09167f48d69840ed0f9f690bda36bc84",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/efbc8ef992603f28830f18231a9f8511d2cc9f74710d09c8002fda988f476015.json": "7975ba30aec7a15a8520bddc5f6519aa34a3bac2070aaa23cb097f91fe955969",
   "incheon_gimpo_2026-10-08/judgments_synth/judgments/decide/efe28ed05fdc3019d79d028014a1338937f52f685cd4dca879aaa65561bee2a7.json": "68e319af6cedb75335df5be0f2336e2a2c7f465ec68d7f997314150ebf15235e",

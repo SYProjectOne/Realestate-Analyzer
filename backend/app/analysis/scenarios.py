@@ -258,23 +258,73 @@ def _param(rule: RequirementRule, scenario: Scenario, key: str) -> Any:
     return getattr(scenario.params, key, None)
 
 
-def _access_intake(c: ComplexScoreInput, asof_date: str, prefix: str) -> RequirementPre:
+def _intake_part(c: ComplexScoreInput, asof_date: str, prefix: str) -> tuple[PreStatus, str]:
+    """접수 상태 부분(상태, 화살표 없는 근거). path ≠ unofficial_ref 는 ``_access`` 가 먼저 본다."""
     status, path = c.intake_status, c.intake_path
     where = _PATH_LABEL.get(path or "", "경로 미상") + _checked_note(c, asof_date)
     if status is None or status == "확인 불가":
-        return _pre("확인 불가", f"{prefix}접수 상태 확인 불가({where})")
+        return "확인 불가", f"{prefix}접수 상태 확인 불가({where})"
     if path == "unofficial_ref":
-        return _pre("미충족", f"{prefix}접수 {status}(비공식 경로만, 판정 미사용)")
+        return "미충족", f"{prefix}접수 {status}(비공식 경로만, 판정 미사용)"
     if status == "가능":
-        return _pre("충족", f"{prefix}접수 가능({where}, 기준일 {asof_date})")
-    return _pre("미충족", f"{prefix}접수 {status}({where})")
+        return "충족", f"{prefix}접수 가능({where}, 기준일 {asof_date})"
+    return "미충족", f"{prefix}접수 {status}({where})"
+
+
+def _access_intake(c: ComplexScoreInput, asof_date: str, prefix: str) -> RequirementPre:
+    return _pre(*_intake_part(c, asof_date, prefix))
 
 
 _REMAINDER_KINDS: Final = frozenset({"무순위", "임의", "선착순"})
 
 
+def _priority_supply(c: ComplexScoreInput) -> tuple[PreStatus, str]:
+    """A: 가점제 1순위 공급 존재."""
+    if c.has_priority_supply is None:
+        return "확인 불가", "가점제 1순위 공급 여부 확인 불가"
+    if c.has_priority_supply:
+        return "충족", "가점제 1순위 공급(본청약·예정 공고) 있음"
+    return "미충족", "가점제 1순위 공급 없음(무순위·임의·선착순 경로만)"
+
+
+def _resale_before_exit(
+    c: ComplexScoreInput, sc: Scenario, rule: RequirementRule, asof_date: str
+) -> tuple[PreStatus, str]:
+    """C: 전매 종료 ≤ 목표 매도 시점(기준일 + 보유기간)."""
+    holding = _param(rule, sc, "holding_years")
+    if holding is None:
+        return "미입력", "보유기간 미입력"
+    resale_months = _known(c.resale_months, c.resale_label)
+    if c.winner_date is None or resale_months is None:
+        return "확인 불가", "전매제한 기간 확인 불가"
+    end = add_months_date(parse_date(c.winner_date), resale_months)
+    months = int((dec(holding) * 12).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    exit_ = add_months_date(parse_date(asof_date), months)
+    reg = " (등기 시 해제)" if c.resale_release_on_registration else ""
+    # 전매 종료 = 당첨일 + 기간 → 라벨은 두 입력 중 약한 것(R3 M2; winner_label 은 계약 .7)
+    end_label = resale_input_label(c.resale_label, c.winner_label)
+    head = f"전매 종료 {ym_of(end)}{reg}{_label_note(end_label)}"
+    tail = f"매도 시작 {ym_of(exit_)}(기준일 + 보유 {num(dec(holding), 1)}년)"
+    if end <= exit_:
+        return "충족", f"{head} ≤ {tail}"
+    return "미충족", f"{head} > {tail}"
+
+
+_PRE_ORDER: Final[dict[PreStatus, int]] = {"미충족": 0, "확인 불가": 1, "미입력": 2, "충족": 3}
+
+
+def _and_intake(c: ComplexScoreInput, asof_date: str, own: tuple[PreStatus, str]) -> RequirementPre:
+    """D25-11(RA §6-7): A·C 접근 조건 = ``intake_status ∈ {가능}`` AND 상황 조건. 상태는 둘 중 약한 쪽(미충족 > 확인 불가 >
+    미입력 > 충족), 근거는 RA 예시처럼 접수 부분; 상황 조건 → 상태 ("접수 가능(공식 팝업 …); 전매 종료 … ≤ 매도 시작 … → 충족")."""
+    intake_status, intake_text = _intake_part(c, asof_date, "")
+    own_status, own_text = own
+    status = min(intake_status, own_status, key=_PRE_ORDER.__getitem__)
+    return _pre(status, f"{intake_text}; {own_text}")
+
+
 def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPre:
-    """§6-7 접근성. 공통 조건(R3 3차 RA 부분): 접수 경로가 비공식(unofficial_ref)뿐이면 어떤 상황이든 미충족(A·C 에도 AND).
+    """§6-7 접근성. 공통 조건(RA §6-7, D25-11): 접수 경로가 비공식(unofficial_ref)뿐이면 어떤 상황이든 미충족, 그 밖에는
+    ``intake_status ∈ {가능}`` 이 A·B·C·D 모두의 조건이다 — A(가점제 1순위 공급)·C(전매 종료 ≤ 매도 시점)는 상황 조건과 AND.
     B·D(통장 없이·지금 계약)는 공급 경로도 본다 — 현재 공고가 무순위·임의·선착순이어야 한다(본청약 접수는 통장·가점 경로)."""
     rule = sc.requirements.access
     if c.intake_path == "unofficial_ref":
@@ -286,29 +336,9 @@ def _access(c: ComplexScoreInput, sc: Scenario, asof_date: str) -> RequirementPr
         if kind not in _REMAINDER_KINDS:
             return _pre("미충족", f"현재 공고 {kind}(통장·가점 경로) — 무순위·임의·선착순 공고 아님")
     if rule.code == "priority_supply":
-        if c.has_priority_supply is None:
-            return _pre("확인 불가", "가점제 1순위 공급 여부 확인 불가")
-        if c.has_priority_supply:
-            return _pre("충족", "가점제 1순위 공급(본청약·예정 공고) 있음")
-        return _pre("미충족", "가점제 1순위 공급 없음(무순위·임의·선착순 경로만)")
+        return _and_intake(c, asof_date, _priority_supply(c))
     if rule.code == "resale_before_exit":
-        holding = _param(rule, sc, "holding_years")
-        if holding is None:
-            return _pre("미입력", "보유기간 미입력")
-        resale_months = _known(c.resale_months, c.resale_label)
-        if c.winner_date is None or resale_months is None:
-            return _pre("확인 불가", "전매제한 기간 확인 불가")
-        end = add_months_date(parse_date(c.winner_date), resale_months)
-        months = int((dec(holding) * 12).quantize(Decimal(1), rounding=ROUND_HALF_UP))
-        exit_ = add_months_date(parse_date(asof_date), months)
-        reg = " (등기 시 해제)" if c.resale_release_on_registration else ""
-        # 전매 종료 = 당첨일 + 기간 → 라벨은 두 입력 중 약한 것(R3 M2; winner_label 은 계약 .7)
-        end_label = resale_input_label(c.resale_label, c.winner_label)
-        head = f"전매 종료 {ym_of(end)}{reg}{_label_note(end_label)}"
-        tail = f"매도 시작 {ym_of(exit_)}(기준일 + 보유 {num(dec(holding), 1)}년)"
-        if end <= exit_:
-            return _pre("충족", f"{head} ≤ {tail}")
-        return _pre("미충족", f"{head} > {tail}")
+        return _and_intake(c, asof_date, _resale_before_exit(c, sc, rule, asof_date))
     prefix = (
         f"통장·가점 없이 공식 경로({c.current_supply_kind}): "
         if rule.code == "official_path_no_account"
