@@ -737,7 +737,7 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
 - 확인: `SELECT reason, count(*) FROM intake_status WHERE snapshot_id = <새 스냅샷> GROUP BY reason;` — 재생 예상(R6_TESTS_INTAKE §4):
   동일성 미확인 19 → 약 12, 가능·미정 6 → 약 8. 남는 확인 불가는 §2 표대로 사람 확인.
 
-### 10-18 R7-SITE 배포 뒤 1회 — 팝업 그림 OCR·TLS 브라우저 경로·판정 대상 아님 (`docs/design/wp/R7_TESTS_SITE.md`)
+### 10-19 R7-SITE 배포 뒤 1회 — 팝업 그림 OCR·TLS 브라우저 경로·판정 대상 아님 (`docs/design/wp/R7_TESTS_SITE.md`)
 
 - 선택 의존성 `ocr`(rapidocr·onnxruntime, D5)이 깔려 있어야 팝업 그림을 읽는다(`uv sync --all-extras`). 한국어 인식 모델은 처음 쓸 때
   rapidocr 가 내려받는다(이후 캐시). 없으면 스크린샷 원문 행 meta `status='unavailable'` 사유만 남고 동작은 예전과 같다.
@@ -746,7 +746,8 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   브라우저로 새로 받은 행만 판정기로 간다 ≈ `tools/call` 2. 같은 날 다시 돌리면 0(같은 그림은 다시 읽지 않는다 — 그림 해시 캐시).
 - 포함/제외 classify 가 접수 classify 보다 먼저 돈다 — 범위 경계·민간분양 아닌 단지의 접수 행은 '판정 대상 아님(<구분>)'.
 - 확인: `SELECT reason, count(*) FROM intake_status WHERE snapshot_id = <새 스냅샷> GROUP BY reason;` — 재생 예상(R7_TESTS_SITE §4):
-  TLS 9 → 1, 문구로 판단 불가 33 → 약 26, 판정 대상 아님 15, 접수 확정(가능·미정·불가, 민간) 7 → 약 11. 브라우저 경로는
+  TLS 9 → 1, 문구로 판단 불가 33 → 약 26, 판정 대상 아님 15, 접수 확정(가능·미정·불가, 민간) 7 → 약 11. R6-DONG(§10-17)이
+  범위 경계 단지 상당수를 미분류로 되돌리므로 '판정 대상 아님(범위 경계)'는 줄고, 포함/제외 classify 결과에 따라 '(공공분양)' 또는 일반 접수 판정으로 옮겨 간다. 브라우저 경로는
   `SELECT id, url, meta->'fetch' FROM raw_document WHERE source_kind='official_site' AND meta ? 'fetch';`.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
