@@ -703,7 +703,29 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   stats `judge_calls`·`by_tool` 이 위 수와 맞는지 기록하고, 이어서 같은 잡을 한 번 더 돌려 `judge_calls` 0 을 확인한다.
 - 미리보기(G5 `/scenarios/{id}/preview`)의 `cache_misses` 는 이 재판정 전까지 noul·rerank·decide(+ screen 1)를 미스로 센다 — 정상이다.
 
-### 10-17 R6-INTAKE 배포 뒤 1회 — 접수 동일성·접수 classify 다시 판정 (`docs/design/wp/R6_TESTS_INTAKE.md`)
+### 10-17 R6-DONG 배포 뒤 — 저장된 단지 법정동 다시 맞추기 (`docs/design/wp/R6_TESTS_DONG.md`)
+
+- 운영 첫 실행(인천, 스냅샷 1, 단지 101)에서 18 단지의 `complex.legal_dong_code` 가 틀리거나 비어 생활권 NULL·'범위 경계'였다. 원인: 2026-07 분구·통합 전
+  구 이름(중구·동구·서구) + 동 나열, 행정동 이름(간석1동), 여러 시도에 걸친 주소(계양구 … 경기도 부천시 대장동 → 지역 밖 동 선택), 동 없는 주소.
+  주소 → 법정동 규칙은 `normalize/dong_match.py` 로 바뀌었다(지명 하드코딩 없이 참조 표의 폐지 행·행정동 매핑으로).
+- **적용 경로**: 주소가 그대로면 저장 경로는 다시 배정하지 않으므로, 모든 `collect.daily`·`collect.weekly`(그리고 bootstrap·지역 확장의 수집) 끝에
+  `living_area.rederive_region_dongs` 가 지역 단지 전체(주소 있는 것)를 지금 규칙으로 다시 맞춘다. 법정동이 바뀐 단지마다
+  `change_event(complex·legal_dong_code, critical)` → 그 단지만 재판정(P4 포함 classify 등). 바뀐 것이 없으면 아무것도 쓰지 않는다(D23-1).
+- **운영 DB 에 적용하는 절차**(배포 = main 머지 + worker 재시작 뒤, 00:00~01:00 KST 피함 — D23-4):
+  1. (선택, 읽기 전용) 적용 전 상태 기록:
+     `SELECT id, name, legal_dong_code, living_area, inclusion_class FROM complex WHERE region_id=<id> AND (legal_dong_code IS NULL OR living_area IS NULL OR inclusion_class='범위 경계') ORDER BY id;`
+  2. 다음 정기 `collect.daily`(06:00)를 기다리거나 바로 한 번 등록한다(§10-4 (b) 와 같은 명령):
+     `curl -s -X POST localhost:8000/api/jobs -H "$H" -H 'Content-Type: application/json' -d '{"job_name":"collect.daily","payload":{"region_id":<id>}}'` → `uv run python -m app.worker --once`
+  3. 확인: `SELECT complex_id, old_text, new_text, severity FROM change_event WHERE entity='complex' AND field='legal_dong_code' ORDER BY id DESC;` —
+     R6-DONG 건식 실행(운영 DB 읽기 전용, `R6_TESTS_DONG.md` 표) 기준 **9 단지**(계양 테크노밸리 A17·A6·A9 `4119610600 → 2824511100`, 검암역세권 B-1BL,
+     가정2 B2, 간석1동, 영종 A24, 산곡1동, 학익2동)가 바뀌고 9 단지 모두 '범위 경계' → '미분류' → 그 잡의 재판정이 포함 classify 를 한다(판정 호출 > 0 이 정상).
+     나머지 92 단지는 (법정동·생활권·분류) 그대로여야 한다.
+  4. 같은 날 `collect.daily` 를 한 번 더 돌리면 새 `legal_dong_code` 이벤트 0.
+- 그대로 남는 것(추측하지 않음, D2-6·D21-6): 동·구가 복구되지 않는 주소 4건(옛 중구 + 도로명 '자연대로 667' — 옛 중구가 제물포구·영종구로 갈려 구도 못 정함,
+  '중구 영종국제도시 A26BL', '인천경제자유구역 영종지구 … A-42BL', '용현ㆍ학익 1블록 …' — 시군구 없음)은 '범위 경계'. 주소가 빈 5 단지(2018·2019 공고, 원 공고
+  주소 미수집)는 매칭할 주소가 없어 바뀌지 않는다(분류 '미분류' 유지 — 원 공고 미수집 경로, D18-4).
+
+### 10-18 R6-INTAKE 배포 뒤 1회 — 접수 동일성·접수 classify 다시 판정 (`docs/design/wp/R6_TESTS_INTAKE.md`)
 
 - 동일성 항목에 홈페이지 주소·HTML 제목·설명·시공·시행·청약홈 공급 세대수와 페이지 꼬리말이, 접수 항목에 단지 이름·후보 앞뒤 줄이
   들어가 **`classify:site_identity:*`·`classify:intake:*` 의 input_hash 가 모두 바뀐다**(판정기 버전 변경 아님 — change_event 없음).
