@@ -101,7 +101,7 @@ from app.normalize.fields import is_price_amount, magnitude_apart
 from app.normalize.judged import COMPARE_RESOLVED, AuditMark, ExtractedValue, apply_compare, apply_extracted
 from app.normalize.store import parser_for, raw_dto
 from app.scheduler import persist
-from app.scheduler.collect import fold_into_first_load
+from app.scheduler.collect import clear_process_failure, fold_into_first_load, mark_process_failure
 from app.scheduler.degraded import clear_degraded, mark_degraded
 from app.scheduler.inputs import ComplexFacts, load_facts, with_ladders
 from app.scheduler.intake import (
@@ -378,9 +378,13 @@ def _p1_p3(
             continue
         try:
             cands = parser.parse(raw_dto(doc))
-        except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록
+        except Exception as exc:  # 원문 파일 없음 등 — 파싱 실패도 기록(잡 stats + 원문 행, 규칙 7)
             res.skipped[f"parse:rd{doc.id}"] = type(exc).__name__
+            mark_process_failure(session, doc.id, "parse", exc)
+            session.commit()
             continue
+        if doc.error_text:
+            clear_process_failure(session, doc.id, "parse")
         for whole in build_extract_requests([c for c in cands if c.needs_extract]):
             if not whole.text.strip() or not whole.fields:
                 continue
