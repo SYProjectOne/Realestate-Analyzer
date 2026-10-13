@@ -3,8 +3,12 @@
 재생 세트(``ReplaySet``)는 매니페스트 하나다(``docs.json`` · 녹화 zip · CORE8/CORE9 그룹 녹화 · R4 1차 녹화를 같은 모양으로)::
 
     {"asof": "2026-10-13", "region": {...}, "legal_dong": [...],
-     "docs": {"applyhome": [...], "originals": {"<주택관리번호>": [...]}, "notice_pdf": [...], "official_site": [...]},
+     "docs": {"applyhome": [...], "originals": {"<주택관리번호>": [...]}, "notice_pdf": [...], "official_site": [...],
+              "news": [...]},
      "raw_root": "<선택 — 없으면 매니페스트 옆 raw/>"}
+
+``news``(R4-CORE11, D24-1)는 주간 단계 뉴스 원문이다 — 첫 수집 전체(일일·주간·판정) 속성 테스트가 쓴다. 매니페스트에 없으면
+``with_default_news`` 가 저장소 녹화(``fixtures/r4_news_2026-10-12.json`` — R4 1차 뉴스 검색 원문 4항목)를 붙인다.
 
 행은 ``raw_document`` 열(id 는 녹화 당시 값 — 넣을 때 버린다). 공식 홈페이지 행은 ``house_no``(그 단지 주택관리번호)로 재생 DB
 의 단지에 단다(녹화 당시 단지 id 는 재생 DB 와 다르다). 원문 파일은 ``raw_root`` 아래 상대 경로다.
@@ -102,6 +106,7 @@ class ReplaySet:
         yield from d.get("applyhome", [])
         yield from d.get("notice_pdf", [])
         yield from d.get("official_site", [])
+        yield from d.get("news", [])
         for rows in (d.get("originals") or {}).values():
             yield from rows
 
@@ -133,6 +138,35 @@ class ReplaySet:
             for ld in self.manifest.get("legal_dong", []):
                 s.add(LegalDong(**ld))
             s.commit()
+
+
+NEWS_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "r4_news_2026-10-12.json"
+NEWS_URL = "https://naverapihub.apigw.ntruss.com/search/v1/news?query=q"
+
+
+def with_default_news(rs: ReplaySet) -> ReplaySet:
+    """매니페스트에 주간 단계 뉴스 원문이 없으면 저장소 녹화 뉴스 1건을 붙인다(R4-CORE11). 원문 뿌리를 그 자리에서 읽는 세트
+    (``in_place`` — 로컬 전체 재생)는 바깥 폴더에 파일을 쓰지 않도록 붙이지 않는다(매니페스트 ``news`` 를 쓴다)."""
+    import hashlib
+
+    if rs.docs.get("news") or rs.in_place:
+        return rs
+    data = NEWS_FIXTURE.read_bytes()
+    sha = hashlib.sha256(data).hexdigest()
+    rel = f"news/{rs.asof}/{sha}.json"
+    row = {
+        "source_kind": "news", "url": NEWS_URL, "fetched_at": f"{rs.asof}T05:30:00+09:00", "http_status": 200,
+        "sha256": sha, "path": rel, "content_type": "application/json", "text_path": None, "table_path": None,
+        "error_text": None, "image_hash": None, "meta": None,
+    }  # fmt: skip
+    docs = {**rs.docs, "news": [row]}
+    return ReplaySet(
+        rs.name,
+        {**rs.manifest, "docs": docs},
+        rs.raw_root,
+        [*rs.extra_files, (NEWS_FIXTURE, rel)],
+        rs.in_place,
+    )
 
 
 def load_manifest(name: str, path: Path, *, in_place: bool = False) -> ReplaySet:
@@ -275,25 +309,33 @@ class Collectors:
     applyhome: Replay
     notice_pdf: NoticeReplay
     official_site: SiteReplay
+    news: Replay | None = None
+    """주간 단계 뉴스(R4-CORE11) — 있으면 ``as_ctx`` 가 ``news`` 수집기로 넘긴다(없으면 주간 단계는 원문 없음)."""
 
     def shuffle(self, seed: int | None) -> None:
-        for c in (self.applyhome, self.notice_pdf, self.official_site):
-            c.rng = random.Random(seed) if seed is not None else None
+        for c in (self.applyhome, self.notice_pdf, self.official_site, self.news):
+            if c is not None:
+                c.rng = random.Random(seed) if seed is not None else None
 
     def as_ctx(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "applyhome": lambda c: self.applyhome,
             "notice_pdf": lambda c: self.notice_pdf,
             "official_site": lambda c: self.official_site,
         }
+        if self.news is not None:
+            out["news"] = lambda c: self.news
+        return out
 
 
-def collectors(rs: ReplaySet, factory: sessionmaker[Session]) -> Collectors:
+def collectors(rs: ReplaySet, factory: sessionmaker[Session], *, weekly: bool = False) -> Collectors:
+    """재생 수집기. ``weekly`` 면 주간 단계 뉴스 원문(``docs.news``)도 재생한다(R4-CORE11)."""
     d = rs.docs
     return Collectors(
         applyhome=Replay(factory, list(d.get("applyhome", [])), dict(d.get("originals") or {})),
         notice_pdf=NoticeReplay(factory, list(d.get("notice_pdf", []))),
         official_site=SiteReplay(factory, list(d.get("official_site", []))),
+        news=Replay(factory, list(d.get("news", []))) if weekly else None,
     )
 
 

@@ -27,7 +27,12 @@
 9. P8 decide: 시나리오마다 상위 후보 ≤6(policy.include_wait_new 면 ≤5 + 가상 후보 '모집공고 대기', 계약 .5) + 요건 사전 계산(``analysis.scenarios``) → decision.
    chosen·tie 는 ``analysis.score.decide_outcome`` 이 원본. 입력 조립은 ``payloads.decide_plan``(미리보기 빌더와 공용)
 10. P9 verify: 대상 단지의 사실 문장을 원자 주장으로 나눠 검증 → claim. 대상이 아닌 단지는 이전 주장을 복사
-11. score_run/component/total/decision/claim 저장 → snapshot.status='ready' (publish 는 snapshot.publish 잡)
+11. 체크리스트 동기화(D24-1, R4 5차 N16): 판정 뒤·발행 전에 지역 체크리스트를 지금 사실(주간 단계가 만든 트랙 (A) 후보 단지,
+    P4 포함 분류의 제외 단지 등)로 다시 맞춘다(``normalize.checklist.sync_checklist`` — 수집 조립과 같은 함수·같은 기준일).
+    발행 리비전 보고서 체크리스트가 그 리비전의 최종 사실과 같고, 같은 날 같은 원문 재수집이 체크리스트를 바꾸지 않는다.
+    그 지역에 더 새 기준일 스냅샷이 있으면(옛 기준일 재판정) 하지 않는다 — 체크리스트는 지역 하나에 한 벌(지금 상태)이라
+    옛 기준일로 맞추면 지난 일정 항목이 다시 열린다
+12. score_run/component/total/decision/claim 저장 → snapshot.status='ready' (publish 는 snapshot.publish 잡)
 
 판정 호출은 전부 ``ctx.adapter()``(= ``judge.get_adapter()``) + ``judge.pipeline`` 단계 함수로만 한다.
 ``JudgeUnavailable`` → 그때까지 쓴 판정 행은 두고 degraded(점수 미계산, T18).
@@ -45,7 +50,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, Final
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.analysis.scenarios import RequirementPrecalculator
@@ -260,6 +265,8 @@ class PipelineResult:
     carried: dict[str, int] = field(default_factory=dict)
     skipped: dict[str, str] = field(default_factory=dict)
     version_event_id: int | None = None
+    # D24-1: 판정 뒤 체크리스트 동기화 결과(옛 기준일 재판정이면 None)
+    checklist: dict[str, Any] | None = None
     first_load_folded: int = 0  # D22-4: 첫 적재 요약에 접은 판정 단계 값 변경 수
     judged_events: list[ChangeEvent] = field(default_factory=list, repr=False)
     """판정 단계(추출 적용·compare 채택)가 남긴 사실 값 변경 이벤트 — 첫 적재면 요약으로 접는다(D22-4)."""
@@ -297,6 +304,7 @@ class PipelineResult:
             "carried": self.carried,
             "skipped": self.skipped,
             "version_event_id": self.version_event_id,
+            "checklist": self.checklist,
             "first_load_folded": self.first_load_folded,
             **({"error": self.error} if self.error else {}),
         }
@@ -1021,6 +1029,22 @@ def _claim_text(f: ComplexFacts) -> str:
 # ---------------------------------------------------------------- 본체
 
 
+def _sync_checklist(session: Session, snap: Snapshot) -> dict[str, Any] | None:
+    """D24-1(R4 5차 N16): 판정 뒤·발행 전 체크리스트 동기화(모듈 설명 11). 수집 조립(``assemble``)은 일일 단계에서만 맞추므로
+    주간 단계(트랙 (A) 후보 단지)·판정(P4 포함 분류 → 제외)이 바꾼 근거는 여기서 반영한다. 같은 사실이면 아무것도 바꾸지 않는다
+    (멱등). 그 지역에 더 새 기준일 스냅샷이 있으면 None(옛 기준일 재판정 — 체크리스트는 지금 상태 한 벌)."""
+    from app.normalize.checklist import sync_checklist
+
+    newer = session.scalar(
+        select(func.count())
+        .select_from(Snapshot)
+        .where(Snapshot.region_id == snap.region_id, Snapshot.asof_date > snap.asof_date)
+    )
+    if newer:
+        return None
+    return sync_checklist(session, snap.region_id, asof_date=snap.asof_date).stats()
+
+
 def _sync_demotions(session: Session, complex_ids: Sequence[int] | None) -> None:
     from app.api.demotion import sync_demotions
 
@@ -1189,6 +1213,7 @@ def run_pipeline(
                     session, prev.id, snap.id, [i for i in all_ids if i not in tset]
                 )
             res.contradicted = contradicted_count(session, snap.id)
+            res.checklist = _sync_checklist(session, snap)  # D24-1: 발행 전 — 주간 단계·판정 뒤 체크리스트
             if snap.status == "building":
                 snap.status = "ready"
             clear_degraded(session, snap.id)

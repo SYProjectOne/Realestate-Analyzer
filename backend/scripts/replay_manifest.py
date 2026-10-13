@@ -14,6 +14,9 @@ RAW_DIR 을 가리킨다.
 (done). 일일 단계 = 그 잡 시작부터 첫 실거래(rtms) 원문 전까지의 청약홈·공고문·공식 홈페이지 원문, 원 공고 다시 받기 = 그 구간에서 첫 공고문
 뒤·첫 공식 홈페이지 앞에 받은 청약홈 상세. 공식 홈페이지 원문은 단지 id 대신 ``house_no``(그 단지 주택관리번호)로 남긴다(재생 DB 의 단지 id 는
 다르다). 지역명 등 값은 DB 에서 그대로 읽는다(코드에 지역명 없음 — AGENTS 규칙 15).
+
+R4-CORE11(D24-1): 주간 단계 뉴스 원문(그 bootstrap 잡 구간의 ``source_kind='news'``)도 ``docs.news`` 로 남긴다 — 속성 테스트
+``test_full_bootstrap_then_same_day_daily_is_idempotent`` 가 주간 단계(뉴스 → 호재 후보·트랙 (A) 공고 예정 후보)까지 재생한다.
 """
 
 # ruff: noqa: E501  (한국어 docstring)
@@ -101,11 +104,14 @@ def main(argv: list[str] | None = None) -> int:
             applyhome.append(d)
     notice = [d for d in daily if d["source_kind"] == "notice_pdf"]
     site = [d for d in daily if d["source_kind"] == "official_site"]
+    news = [d for d in docs if d["source_kind"] == "news"]  # 주간 단계(D24-1) — 녹화 당시 단지와 무관
+    for d in news:
+        d["complex_id"] = None
     for d in site:
         d["house_no"] = houses.get(d["complex_id"])
     for d in daily:
         d["complex_id"] = None
-    bad = [d["id"] for d in daily if _SECRET.search(json.dumps(d, ensure_ascii=False, default=str))]
+    bad = [d["id"] for d in (*daily, *news) if _SECRET.search(json.dumps(d, ensure_ascii=False, default=str))]
     if bad:
         print(f"키·토큰 모양이 든 원문 행 {len(bad)}개 — 중단", file=sys.stderr)
         return 1
@@ -115,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
         "originals": originals,
         "notice_pdf": notice,
         "official_site": site,
+        "news": news,
     }
     manifest = {
         "source": f"bootstrap 일일 단계 원문(raw_document id {daily[0]['id'] if daily else '-'}~{daily[-1]['id'] if daily else '-'})",

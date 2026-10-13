@@ -736,7 +736,9 @@ def test_p9_claims_carry_fact_target_and_pipeline_syncs_demotions(
 
     monkeypatch.setattr(demotion, "sync_demotions", spy)
     run_pipeline(_ctx(make_ctx, factory, jev), seeded, complex_ids=[2])
-    assert synced == [{2}]  # load_facts 앞에서 강등 정리(D10-3)
+    assert synced[0] == {2}  # load_facts 앞에서 강등 정리(D10-3)
+    # D24-1(R4-CORE11 N16): 판정 뒤·ready 전 체크리스트 동기화(sync_checklist — 지역 단지 전체로 강등 정리 후 항목 맞춤)
+    assert len(synced) == 2 and synced[1] is not None and 2 in synced[1], synced
     with factory() as s:
         claims = list(s.scalars(select(Claim).where(Claim.snapshot_id == seeded, Claim.complex_id == 2)))
         assert claims

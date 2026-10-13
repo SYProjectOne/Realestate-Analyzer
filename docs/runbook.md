@@ -189,7 +189,7 @@ RA §9 통과 기준: 1회차 실제 호출 수 ≤ 132(캐시·원자 분할로
 했던 것과 결과 표는 **10-6** 에 있다 — 다시 돌릴 때는 10-6 을 먼저 읽는다. R4-FIX 뒤 재시험(같은 날, D19 로컬 PG17)의 결과 표는
 **10-8**(상세 `docs/design/wp/R4_RESULT2.md`), 재시험 절차는 10-7. R4-CORE8 뒤 3차 재시험 절차는 10-9, 결과 표는 **10-10**
 (상세 `docs/design/wp/R4_RESULT3.md`). R4-CORE9 뒤 4차 재시험 절차는 10-11, 결과 표는 **10-12**(상세 `docs/design/wp/R4_RESULT4.md`).
-R4-CORE10 뒤 5차 재시험 절차는 10-13, 결과 표는 **10-14**(상세 `docs/design/wp/R4_RESULT5.md`).
+R4-CORE10 뒤 5차 재시험 절차는 10-13, 결과 표는 **10-14**(상세 `docs/design/wp/R4_RESULT5.md`). 운영 전 정리(R4-CORE11, D24-1 — N16·m-e)는 **10-15**.
 
 ### 10-1 준비
 
@@ -572,11 +572,25 @@ daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 �
 `perPage=1` 로 한 번씩 불러 `totalCount` > 0 을 확인한다(키 출력 금지). 2회차는 4차와 같은 순서 — (a)(a2)(a3) 같은 스냅샷 재판정 → (b) 같은 날
 `collect.daily` → (b) 뒤 재판정 1회 이상. 확인 항목:
 
-1. **중복 경쟁률 0**(N13·D23-2, critical): (b) 뒤 `SELECT n.complex_id, n.round, n.type_code, o.type_code FROM competition n JOIN competition o
-   ON o.complex_id = n.complex_id AND o.kind = n.kind AND o.round = n.round AND o.supply IS NOT DISTINCT FROM n.supply AND o.applied IS NOT DISTINCT
-   FROM n.applied AND o.type_code <> n.type_code AND o.id < n.id;` → **0행**(4차 70). `competition.type_code` 는 원 면적 코드('84.9939' 등)이고 단지
-   상세 `competition[].type_code` 는 표시 주택형('84' · '확인 불가(타입 모호)')이다. (b) 전후 `SELECT count(*) FROM competition;` 이 바뀐 공고의
-   새 행만큼만 는다(바뀐 원문 없는 단지는 0).
+1. **중복 경쟁률 0**(N13·D23-2, critical): (b) 뒤 아래 SQL → **0행**(4차 70). 같은 경쟁률(단지·구분·회차·공급·접수·경쟁률 문구)이 **원 면적 코드**
+   ('84.9939')와 **그 정수부 표시 코드**('84'·'84A') 또는 '확인 불가(타입 모호)'로 두 번 저장된 짝만 센다(R4-CORE11 정정 — m-e, 아래 5차 주).
+
+   ```sql
+   SELECT n.id, n.complex_id, n.kind, n.round, o.type_code AS raw_code, n.type_code AS dup_code, n.supply, n.applied
+   FROM competition n JOIN competition o
+     ON o.complex_id = n.complex_id AND o.kind = n.kind AND o.round = n.round AND o.id <> n.id
+    AND o.supply IS NOT DISTINCT FROM n.supply AND o.applied IS NOT DISTINCT FROM n.applied
+    AND o.ratio_or_shortfall_text IS NOT DISTINCT FROM n.ratio_or_shortfall_text
+   WHERE o.type_code ~ '^[0-9]+\.[0-9]+$'
+     AND (n.type_code = '확인 불가(타입 모호)'
+          OR n.type_code ~ ('^0*' || ltrim(split_part(o.type_code, '.', 1), '0') || '[A-Za-z]*$'));
+   ```
+
+   `competition.type_code` 는 원문 코드(API 원 면적 코드 '84.9939' 등 · API·웹이 주는 '84A' 같은 주택형 코드)이고 단지 상세 `competition[].type_code` 는
+   표시 주택형('84' · '확인 불가(타입 모호)')이다 — 저장 행에 표시 코드가 원 면적 코드와 같은 숫자로 함께 있으면 N13 중복이다(웹 폴백 경쟁률 '84A' 행과 API
+   '84.9582' 행이 같은 회차에 함께 있으면 이 SQL 에 걸린다 — 그 행의 `raw_document_id` 원문이 웹이면 N13 이 아니라 R4_CORE10_TESTS §5 의 표시 겹침이다).
+   (b) 전후 `SELECT count(*) FROM competition;` 이 바뀐 공고의 새 행만큼만 는다(바뀐 원문 없는 단지는 0) — 판정에는 (b) 전후 `competition` 행 diff
+   (새 행·바뀐 칸)를 함께 본다.
 2. **발행 결과 불변**(D22-1·D11-1·D23-1): 4차 §6-3 과 같이 리비전 (a3) ↔ (b) ↔ (b) 뒤 재판정의 모든 Fact(`v`·`label`·`reason`) 비교 — 차이는 실제로 바뀐
    공고의 단지와 신선도 KPI 뿐, '경쟁률 Fact 생김'·'사유만 바뀜(compare 채택 근거 소실)' **0**.
 3. **compare 표식 보존·(b) 뒤 재판정 `tools/call` 0**(N14·D23-3, 게이트): `SELECT count(*) FROM field_provenance WHERE reason LIKE '판정기 compare 채택%';`
@@ -589,8 +603,10 @@ daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 �
    "tests/scheduler/test_core10_idempotency.py::test_renormalize_is_idempotent[r4d-full]"` → 통과(DB 스냅샷 동일·사실 이벤트 0·`tools/call` 0, 약 3분).
 6. 4차 확인 항목 1~8(§10-11)은 그대로 다시 본다(회귀 방지) — 특히 (a)(a2)(a3) `tools/call` 0, 판정기 추출 납부 조건 '확인됨' 유지, 46·47 법정동.
 
-(5차 주: ① 의 SQL 은 `o.type_code <> n.type_code` 만으로 짝을 지어 같은 회차에 공급·접수 수가 우연히 같은 **다른 주택형**(2순위 접수 0 등)도 센다 — 5차의
-깨끗한 데이터에서 87행. 판정에는 `AND n.id > <bootstrap 끝 competition id>` 를 붙이거나 (b) 전후 `competition` 행을 통째로 비교한다(새 행·바뀐 칸). 10-14 m-e.)
+(5차 주: 5차 때 ① 의 SQL 은 `o.type_code <> n.type_code` 만으로 짝을 지어 같은 회차에 공급·접수 수가 우연히 같은 **다른 주택형**(2순위 접수 0 등, 예 '100A'·'124H'
+27/0)도 셌다 — 5차의 깨끗한 데이터에서 87행(10-14 m-e). **R4-CORE11 에서 위 SQL 로 정정**했다: 5차 R4 DB(경쟁률 1,906행 — 원 면적 코드 163 · 주택형 코드 1,743)에서
+옛 SQL 87행 → 새 SQL **0행**, 4차 중복 모양 합성 행(원 면적 코드 ↔ '84'·'122'·'66A'·'확인 불가(타입 모호)' 4쌍 + 다른 주택형 우연 일치 3쌍 + '845' 함정, 읽기 전용
+CTE)에서 옛 9 → 새 **4**(중복 4쌍만). `docs/design/wp/R4_CORE11_TESTS.md` §3.)
 
 ### 10-14 R4 5차 재시험 결과 (2026-10-13 KST, main `7bb3e15`, 계약 `.18`) — 상세 `docs/design/wp/R4_RESULT5.md`
 
@@ -624,6 +640,19 @@ daily 뒤 판정기 추출 납부 조건 '확인됨' 유지. 그러나 같은 �
 API Fact 비교에 더해 **정규화 테이블 전체 행 비교**(`complex`·`complex_type`·`payment_terms`·`competition`·`remaining_event`·`field_provenance`·`checklist_item`·`catalyst`·
 `fact_demotion`, SELECT 만)와 **report 저장본 최상위 키 비교**(압축 본문을 풀어서)로 했다 — N16 은 이 비교로만 보인다(Fact 아님). ③ 중복 경쟁률은 ① 의 SQL 대신 (b) 전후 행
 diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차 주).
+
+### 10-15 R4-CORE11(D24-1) 뒤 바뀐 것 — 운영 전 정리 (`docs/design/wp/R4_CORE11_TESTS.md`)
+
+- **N16 수정**: 판정 파이프라인(`run_pipeline`)이 판정 뒤·`ready` 전에 지역 체크리스트를 다시 맞춘다(`normalize.checklist.sync_checklist`, 스냅샷 기준일). bootstrap
+  (일일 단계 → 주간 단계 → 판정 → 발행)의 발행 보고서 체크리스트에 주간 단계가 만든 트랙 A 후보의 '모집공고 예정'·법적 확인 항목이 있고, 판정이 제외한 단지의 자동
+  항목은 na(auto)다 — 같은 날 첫 `collect.daily` 가 체크리스트를 바꾸지 않는다(잡 stats `assembled.checklist` 의 inserted·updated·closed·reopened 0). 같은
+  규칙이 주간 수집·daily 뒤 재판정·지역 확장에도 적용된다(판정 결과 stats `pipeline.checklist`). 그 지역에 더 새 기준일 스냅샷이 있는 옛 기준일 재판정은 체크리스트를
+  건드리지 않는다(`pipeline.checklist` = null).
+- 다음 R4 재시험·운영 첫 지역에서 확인: bootstrap 잡 stats `pipeline.checklist`(트랙 A 후보·제외 단지가 있으면 inserted·closed > 0) → 같은 날 `collect.daily` 잡 stats
+  `assembled.checklist` 의 inserted·updated·closed·reopened **0**, 두 발행 리비전 report 저장본 `checklist` 같음.
+- 재생 속성 테스트(로컬, 선택): `scripts/replay_manifest.py` 가 주간 단계 뉴스 원문(`docs.news`)도 담는다. `R4_REPLAY_MANIFEST=<폴더>/docs.json uv run pytest -p no:randomly
+  "tests/scheduler/test_core11_bootstrap_idempotency.py::test_full_bootstrap_then_same_day_daily_is_idempotent[r4d-full]"`.
+- 운영 문서 단서(10-14 '고치기 전에는 지역을 만든 날의 보고서 체크리스트가 불완전')는 이 수정으로 없어졌다. 이미 발행된 리비전(R4 5차 리비전 1~4)의 저장본은 그대로다(D11-1).
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
