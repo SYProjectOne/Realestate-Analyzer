@@ -431,13 +431,14 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
     다른 행을 복사해 가짜 D9-3 접수 변경 이벤트가 생긴다(R3 재리뷰 F2).
 
     R7-FIX: dst 에 그 단지의 **수집 관측 행**(경로 official_popup·headless_shot + 원문 행 — 오늘 ``collect.intake_rows`` 가 만든
-    행)이 이미 있으면 src 의 수집 관측 행은 어느 경로든 복사하지 않는다 — 오늘 관측이 어제 관측을 대신한다. 예전에는 (단지, 경로)
-    단위로만 보아, 어제 실패 행(경로 official_popup, 'TLS'·'403')이 오늘 성공 행(렌더 → headless_shot) 옆에 복사되고 표시 규칙
-    (official_popup > headless_shot)이 낡은 실패 행을 골랐다(인천 스냅샷 2 — 단지 7·8·22·37·38·72·75·87). 원문 행이 없는 접수 행
-    (적재·보고서 값 — 수집 관측이 아님)·사람 확인(human_check)·비공식 참고(unofficial_ref) 행은 수집이 대신하지 않으므로 그대로
-    복사한다. 새 리비전(``snapshots.new_revision`` — dst 가 빈 스냅샷)은 전부 복사(변화 없음)."""
+    행)이 이미 있으면, src 의 **수집 실패 행**(원문 있음, 응답 200 아님 — 'TLS'·'403' 등) 중 오늘 관측에 없는 원문을 가리키는 행은
+    어느 경로든 복사하지 않는다 — 오늘 관측이 어제 실패를 대신한다. 예전에는 (단지, 경로) 단위로만 보아, 어제 실패 행(경로
+    official_popup)이 오늘 성공 행(렌더 → headless_shot) 옆에 복사되고 표시 규칙(official_popup > headless_shot)이 낡은 실패 행을
+    골랐다(인천 스냅샷 2 — 단지 7·8·22·37·38·72·75·87). 성공 행(분류된 팝업 근거 — 회귀 픽스처의 official_popup 행 등)·원문 없는
+    적재 행·사람 확인(human_check)·비공식 참고(unofficial_ref) 행은 예전처럼 복사한다(T8 — 변경 없는 날·팝업 변경일 이벤트 수
+    불변). 새 리비전(``snapshots.new_revision`` — dst 가 빈 스냅샷)은 전부 복사(변화 없음)."""
     have: set[tuple[int, str]] = set()
-    observed: set[int] = set()
+    observed: dict[int, set[int]] = {}
     for c, p, raw_id in session.execute(
         select(IntakeStatus.complex_id, IntakeStatus.path, IntakeStatus.raw_document_id).where(
             IntakeStatus.snapshot_id == dst_snapshot_id
@@ -445,7 +446,7 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
     ):
         have.add((c, p))
         if p in COLLECTED_INTAKE_PATHS and raw_id is not None:
-            observed.add(c)
+            observed.setdefault(c, set()).add(raw_id)
     grouped: dict[tuple[int, str], list[IntakeStatus]] = {}
     for r in session.scalars(
         select(IntakeStatus).where(IntakeStatus.snapshot_id == src_snapshot_id).order_by(IntakeStatus.id)
@@ -460,8 +461,15 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
     for (cid, path), r in sorted(latest.items()):
         if (cid, path) in have:
             continue
-        if path in COLLECTED_INTAKE_PATHS and r.raw_document_id is not None and cid in observed:
-            continue  # 오늘 수집 관측이 있다 — 어제 수집 관측(실패 행 포함)을 옆에 두지 않는다
+        today = observed.get(cid)
+        if (
+            path in COLLECTED_INTAKE_PATHS
+            and r.raw_document_id is not None
+            and r.http_status != 200
+            and today
+            and r.raw_document_id not in today
+        ):
+            continue  # 어제 수집 실패 — 오늘 다른 원문을 관측했다(실패 행을 오늘 관측 옆에 두지 않는다)
         session.add(
             IntakeStatus(
                 complex_id=cid,

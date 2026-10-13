@@ -221,6 +221,13 @@ def test_copy_intake_today_observation_replaces_yesterday_collected_rows(
                 IntakeStatus(complex_id=8, snapshot_id=dst.id, status="확인 불가", path="headless_shot", checked_at="2026-10-08T03:00:00+09:00", reason=UNCLASSIFIED, http_status=200, raw_document_id=raw(s, "d", 200)),
             ]
         )  # fmt: skip
+        same = raw(s, "e", 200)  # 어제·오늘 같은 원문(T8 — 변경 없는 날)
+        s.add_all(
+            [
+                IntakeStatus(complex_id=10, snapshot_id=yesterday.id, status="가능", path="official_popup", checked_at="2026-10-06", raw_document_id=same),
+                IntakeStatus(complex_id=10, snapshot_id=dst.id, status="확인 불가", path="headless_shot", checked_at="2026-10-08T03:00:00+09:00", reason=UNCLASSIFIED, http_status=200, raw_document_id=same),
+            ]
+        )  # fmt: skip
         s.flush()
         copy_intake(s, yesterday.id, dst.id)
         s.commit()
@@ -234,6 +241,9 @@ def test_copy_intake_today_observation_replaces_yesterday_collected_rows(
     assert {(7, "human_check", None), (7, "unofficial_ref", None)} <= got
     assert (8, "official_popup", None) in got, "원문 없는 적재 행(수집 관측 아님)은 그대로"
     assert (9, "official_popup", "TLS") in got, "오늘 수집 행이 없는 단지는 그대로 복사"
+    assert (10, "official_popup", None) in got, (
+        "오늘도 같은 원문을 본 어제 행은 오늘 내용과 같다 — 복사(T8 불변)"
+    )
 
 
 def test_identical_screenshot_on_other_url_keeps_own_evidence(
