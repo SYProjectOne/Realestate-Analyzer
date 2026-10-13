@@ -294,7 +294,7 @@ export function ComplexTable({
     count: tableRows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 4,
+    overscan: 2,
     initialRect: FALLBACK_RECT,
     observeElementRect: (instance: Virtualizer<HTMLDivElement, Element>, cb) =>
       observeElementRect(instance, (rect) => cb(rect.height > 0 ? rect : FALLBACK_RECT)),
