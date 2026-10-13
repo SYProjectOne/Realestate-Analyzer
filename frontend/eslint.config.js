@@ -33,6 +33,8 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       // RA WP6 완료 기준: FactCell 밖에서 숫자 렌더 금지 (예외 파일은 규칙 기본값)
       'local/no-raw-number-render': 'error',
+      // R5-FE(D25-1) AGENTS 규칙 12: 화면 문자열은 src/i18n/ko.json 한 곳 — 한글 리터럴 금지(예외는 eslint-rules/hangul-allowlist.js)
+      'local/no-hangul-literal': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
