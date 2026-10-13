@@ -103,3 +103,8 @@ headless_shot)은 기존 설계(T8 골든)이므로 그대로 두고, 이번 결
    않았다. 운영에서 문제가 되면 "수집 관측 행끼리는 확인 날짜 우선" 으로 `pick_intake`/`copy_intake` 를 바꾸는 결정과 T8 기대값 갱신이 필요.
 
 계약 변경 요청: 없음.
+
+## 8. 완료 검사 (브랜치 끝)
+
+- `uv run pytest -p no:randomly -m "not live"` → 4234 수집, 실패 0(종료 코드 0). `ruff check`·`ruff format --check`·`mypy app` 통과.
+- `gen_contracts.py --check`·`fixture_manifest.py --check` 종료 코드 0. `python scripts/tasks.py regress` → T01~T18·모듈·흐름·e2e 3개 전부 통과(골든 변경 없음).
