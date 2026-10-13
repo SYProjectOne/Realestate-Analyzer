@@ -20,11 +20,12 @@
  * Lighthouse 가 측정 뒤 페이지를 떠나며(bf-cache 감사) 재조회 요청이 진행 중이면 MSW 워커가 클라이언트를 잃고 네트워크로
  * 넘긴다 — 측정 구간 밖이다).
  *
- * 옵션: --no-build · --msw · --port <n>(기본 4391) · --only <path,...>(앞의 / 생략 가능: ops,complexes/2) ·
+ * 옵션: --no-build · --msw · --port <n>(기본 4391) · --only <path,...>(앞의 / 생략 가능: ops,complexes/2 — Git Bash 에서
+ * `/` 는 MSYS_NO_PATHCONV=1) · --form <desktop|mobile> · --keep <dir>(Lighthouse JSON 보고서를 지우지 않고 그 폴더에) ·
  * LH_RUNS(기본 3 — 화면당 측정 횟수, 중앙값으로 판정)
  */
 import { execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -289,6 +290,11 @@ async function main(): Promise<number> {
       ?.split(',')
       .filter(Boolean)
       .map((p) => `/${p.replace(/^\/+/, '')}`) ?? null;
+  const form = arg('--form');
+  if (form !== null && form !== 'desktop' && form !== 'mobile') {
+    throw new Error(`--form 은 desktop 또는 mobile: ${form}`);
+  }
+  const keep = arg('--keep');
   if (!process.argv.includes('--no-build') || !existsSync(join(outDir, 'index.html'))) {
     await buildApp(mock);
   }
@@ -324,11 +330,18 @@ async function main(): Promise<number> {
     `lighthouse: ${mock === 'server' ? '운영 빌드 + 서버 계약 예시 응답' : 'MSW 모드 빌드 + 서비스 워커'} · 화면당 ${runs}회(중앙값)`,
   );
   const base = `http://127.0.0.1:${port}`;
-  const dir = mkdtempSync(join(tmpdir(), 'lh-'));
+  const dir = keep ? resolve(keep) : mkdtempSync(join(tmpdir(), 'lh-'));
+  mkdirSync(dir, { recursive: true });
   const results: Result[] = [];
   try {
-    const targets = only ? TARGETS.filter((t) => only.includes(t.path)) : TARGETS;
-    if (targets.length === 0) throw new Error(`--only 에 맞는 화면이 없다: ${only?.join(',')}`);
+    const targets = TARGETS.filter(
+      (t) => (!only || only.includes(t.path)) && (!form || t.formFactor === form),
+    );
+    if (targets.length === 0) {
+      throw new Error(
+        `--only·--form 에 맞는 화면이 없다: ${only?.join(',') ?? '-'} ${form ?? '-'}`,
+      );
+    }
     const sanity = await sanityCheck(base, [...new Set(targets.map((t) => t.path))]);
     for (const [path, problems] of sanity) {
       console.log(
@@ -345,7 +358,8 @@ async function main(): Promise<number> {
     }
   } finally {
     await new Promise<void>((done) => server.httpServer.close(() => done()));
-    rmSync(dir, { recursive: true, force: true });
+    if (keep) console.log(`lighthouse: 보고서 → ${dir}`);
+    else rmSync(dir, { recursive: true, force: true });
   }
   console.log('');
   printTable(results);
