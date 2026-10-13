@@ -273,6 +273,19 @@ def test_load_image_ocr_is_none_without_engine(monkeypatch: pytest.MonkeyPatch) 
     assert ocr_mod.load_image_ocr() is ocr_mod.ocr_png
 
 
+def test_real_engine_reads_popup_image_text() -> None:
+    """채택 엔진(RapidOCR, D5)으로 실제 팝업 그림을 읽는다 — 인천 첫 실행 호반써밋Ⅲ 팝업(공개 분양 페이지, '100% 분양완료' 는
+    그림 안에만 있다; 원본의 오른쪽 1/3). 선택 의존성이 없으면 건너뛴다."""
+    pytest.importorskip("rapidocr")
+    pytest.importorskip("onnxruntime")
+    from app.collectors.notice_pdf import ocr as ocr_mod
+
+    fn = ocr_mod.load_image_ocr()
+    assert fn is not None
+    text = fn((Path(__file__).parent / "fixtures" / "r7_popup_soldout.png").read_bytes())
+    assert "분양완료" in text and "100%" in text
+
+
 # ====================================================================== D26-4 TLS → 브라우저
 
 
