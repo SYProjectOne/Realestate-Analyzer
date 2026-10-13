@@ -40,6 +40,7 @@ from typing import TYPE_CHECKING, Any, Final
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.analysis.scope import is_fetch_failure
 from app.collectors.stats.supply import SupplyInput, estimate_supply, load_supply, write_supply_provenance
 from app.core.contracts_gen import RawDocument as RawDTO
 from app.core.contracts_gen import Region as RegionDTO
@@ -309,19 +310,23 @@ def intake_rows(
     """공식 홈페이지 원문 → intake_status 행(단지·경로마다 1개, 이미 있으면 만들지 않음). 분류는 하지 않는다.
 
     ``phrases``: 단지별 접수 문구 후보(normalize official_site 파서의 intake_status 후보, 분류 전) → note 에 원문 그대로.
+
+    R7-FIX2(같은 기준일 리비전): 오늘 이 단지를 관측했으면 이 스냅샷에 이미 있는(``snapshots.new_revision`` 이 앞 리비전에서
+    복사한) 그 단지 행 중 **오늘 받은 원문이 아닌** (1) 수집 실패 행(``analysis.scope.is_fetch_failure`` — 403·404·TLS·접속 실패
+    등, 어느 수집 경로든)과 (2) 오늘 행과 같은 수집 경로의 행을 지우고 오늘 행을 만든다 — 새 기준일 스냅샷(오늘 행을 먼저 만들고
+    ``persist.copy_intake`` 가 같은 규칙으로 어제 행을 거른다)과 같은 결과. 예전에는 복사된 행이 (단지, 경로)를 차지해 오늘 행을
+    만들지 않았고 낡은 실패 행이 경로 우선으로 표시됐다(인천 스냅샷 3·4 — 어제 '403'·'TLS'). 같은 원문을 다시 받은 재실행은
+    아무것도 바꾸지 않는다(멱등 — 원문 행은 sha256 로 하나, 실패 행도 같은 날 1행). 사람 확인·비공식 참고·오늘 다른 경로의 성공
+    행은 그대로(성공 관측끼리의 경로 우선은 기존 규칙, T8).
     """
     by_complex: dict[int, list[RawDTO]] = defaultdict(list)
     for d in docs:
         if d.source_kind == "official_site" and d.complex_id is not None:
             by_complex[d.complex_id].append(d)
-    have = {
-        (c, p)
-        for c, p in session.execute(
-            select(IntakeStatus.complex_id, IntakeStatus.path).where(IntakeStatus.snapshot_id == snapshot_id)
-        )
-    }
-    n = 0
+    plan: dict[int, tuple[RawDTO, RawDTO | None, RawDTO | None, str, str, int | None]] = {}
     for cid, ds in sorted(by_complex.items()):
+        if session.get(Complex, cid) is None:
+            continue
         ok = [d for d in ds if d.http_status == 200 and not d.error_text and d.path]
         shot = next((d for d in ok if (d.content_type or "").startswith("image/")), None)
         page = next((d for d in ok if not (d.content_type or "").startswith("image/")), None)
@@ -336,7 +341,29 @@ def intake_rows(
             reason = (
                 str(main.http_status) if main.http_status is not None else (main.error_text or "수집 실패")
             )
-        if (cid, path) in have or session.get(Complex, cid) is None:
+        plan[cid] = (main, shot, page, path, reason, http)
+    if plan:
+        for row in session.scalars(
+            select(IntakeStatus)
+            .where(IntakeStatus.snapshot_id == snapshot_id, IntakeStatus.complex_id.in_(sorted(plan)))
+            .order_by(IntakeStatus.id)
+        ):
+            today_raw = {d.id for d in by_complex[row.complex_id]}
+            if row.raw_document_id in today_raw:
+                continue  # 오늘 받은 원문(같은 날 재실행·같은 화면) — 그대로
+            same_path = row.path == plan[row.complex_id][3]
+            if is_fetch_failure(row) or same_path:
+                session.delete(row)
+        session.flush()
+    have = {
+        (c, p)
+        for c, p in session.execute(
+            select(IntakeStatus.complex_id, IntakeStatus.path).where(IntakeStatus.snapshot_id == snapshot_id)
+        )
+    }
+    n = 0
+    for cid, (main, shot, page, path, reason, http) in sorted(plan.items()):
+        if (cid, path) in have:
             continue
         session.add(
             IntakeStatus(

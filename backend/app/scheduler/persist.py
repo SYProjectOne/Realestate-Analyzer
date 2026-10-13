@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.analysis.gap import is_unadjusted_tag, unadjusted_from_flags
 from app.analysis.scenarios import requirement_mismatch
-from app.analysis.scope import INTAKE_PRIORITY, pick_intake
+from app.analysis.scope import COLLECTED_PATHS, INTAKE_PRIORITY, is_fetch_failure, pick_intake
 from app.analysis.score import ScoreRunDetail, decide_outcome, weighted_total
 from app.analysis.sensitivity import weights_map
 from app.analysis.types import GapResult
@@ -56,7 +56,7 @@ __all__ = [
 ]
 
 _Q4 = Decimal("0.0001")
-COLLECTED_INTAKE_PATHS: Final = frozenset({"official_popup", "headless_shot"})
+COLLECTED_INTAKE_PATHS: Final = COLLECTED_PATHS
 """공식 홈페이지 수집(``collect.intake_rows``)이 만드는 접수 행 경로 — ``scheduler.intake.INTAKE_PATHS`` 와 같다."""
 
 
@@ -436,7 +436,11 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
     official_popup)이 오늘 성공 행(렌더 → headless_shot) 옆에 복사되고 표시 규칙(official_popup > headless_shot)이 낡은 실패 행을
     골랐다(인천 스냅샷 2 — 단지 7·8·22·37·38·72·75·87). 성공 행(분류된 팝업 근거 — 회귀 픽스처의 official_popup 행 등)·원문 없는
     적재 행·사람 확인(human_check)·비공식 참고(unofficial_ref) 행은 예전처럼 복사한다(T8 — 변경 없는 날·팝업 변경일 이벤트 수
-    불변). 새 리비전(``snapshots.new_revision`` — dst 가 빈 스냅샷)은 전부 복사(변화 없음)."""
+    불변). 새 리비전(``snapshots.new_revision`` — dst 가 빈 스냅샷)은 전부 복사(변화 없음).
+
+    R7-FIX2: 수집 실패 행 = ``analysis.scope.is_fetch_failure``(수집 경로 · '확인 불가' · 200 아님 · 원문 행 또는 응답 코드) —
+    원문 없이 응답 코드만 남은 적재 실패 행(픽스처 '403')도 포함. 같은 기준일 새 리비전은 여기서 전부 복사되고, 그 리비전을
+    수집하면 ``collect.intake_rows`` 가 오늘 관측이 있는 단지의 이른 실패 행을 지운다(같은 규칙)."""
     have: set[tuple[int, str]] = set()
     observed: dict[int, set[int]] = {}
     for c, p, raw_id in session.execute(
@@ -462,13 +466,7 @@ def copy_intake(session: Session, src_snapshot_id: int, dst_snapshot_id: int) ->
         if (cid, path) in have:
             continue
         today = observed.get(cid)
-        if (
-            path in COLLECTED_INTAKE_PATHS
-            and r.raw_document_id is not None
-            and r.http_status != 200
-            and today
-            and r.raw_document_id not in today
-        ):
+        if today and is_fetch_failure(r) and r.raw_document_id not in today:
             continue  # 어제 수집 실패 — 오늘 다른 원문을 관측했다(실패 행을 오늘 관측 옆에 두지 않는다)
         session.add(
             IntakeStatus(
