@@ -171,6 +171,41 @@ test.describe('R3 F3 화면(계약 2026-10-09.4)', () => {
   });
 });
 
+test.describe('R7-QUEUE 화면(계약 2026-10-09.19 · D26-2)', () => {
+  test('G7 접수 확인 대기열: 사유별 건수 → 사람 확인 입력(폼 미리 채움) → 저장 → 반영 대기', async ({
+    page,
+  }) => {
+    await ready(page, '/ops', P.G7.title);
+    const section = page.getByRole('region', { name: P.G7.iq.title });
+    await section.scrollIntoViewIfNeeded();
+    await expect(section.getByTestId('intake-queue-total')).toHaveText(
+      P.G7.iq.total.replace('{n}', '7'),
+    );
+    const failed = section.getByTestId('iq-category-collect_failed');
+    await expect(failed.locator('summary')).toContainText(P.G7.iq.category.collect_failed);
+    await expect(failed.getByTestId('iq-group').first()).toContainText('DNS');
+    // 판정 대상 아님·미정은 접혀 있다
+    await expect(section.getByTestId('iq-category-undecided')).not.toHaveAttribute('open');
+    await expect(failed).toHaveAttribute('open');
+    const opus = section.locator('[data-testid="iq-item"][data-complex-id="4"]');
+    await expect(opus.getByRole('link', { name: '오퍼스 한강 스위첸' })).toHaveAttribute(
+      'href',
+      /^\/complexes\/4/,
+    );
+    await opus.getByTestId('iq-human-check').click();
+    await expect(page).toHaveURL(/hc_complex=4/);
+    await expect(page).toHaveURL(/#human-check$/);
+    const form = page.getByRole('form', { name: P.G7.human });
+    await expect(form.getByLabel(P.G7.hc.complex)).toHaveValue('4');
+    await expect(form.getByLabel(P.G7.hc.field)).toHaveValue('intake_status');
+    await form.getByLabel(P.G7.hc.value).selectOption('가능');
+    await form.getByLabel(P.G7.hc.enteredBy).selectOption('운영자');
+    await form.getByRole('button', { name: P.G7.hc.submit }).click();
+    await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.path.human_check);
+    await expect(opus.getByTestId('iq-pending')).toContainText('가능');
+  });
+});
+
 test('숫자 셀 클릭 → 출처 패널', async ({ page }) => {
   await ready(page, '/', P.G1.title);
   const card = page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem').first();
