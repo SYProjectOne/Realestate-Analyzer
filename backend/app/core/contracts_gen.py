@@ -186,7 +186,17 @@ class CatalystCreate(BaseModel):
         str,
         Field(max_length=2000, min_length=10, pattern="^https?://[^\\s/]+(/[^\\s]*)?$"),
     ]
-    title: Annotated[str, Field(max_length=200, min_length=1)]
+    title: Annotated[
+        str,
+        Field(
+            max_length=200,
+            min_length=1,
+            pattern="[^\\u0000-\\u0020\\u007f-\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+        ),
+    ]
+    """
+    보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙)
+    """
     excerpt: Annotated[str | None, Field(max_length=2000)] = None
     """
     기사·공고 발췌(사람이 붙여 넣은 공개 문장, 개인정보 금지 — guard 통과)
@@ -472,7 +482,17 @@ class ClaimPatch(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    text: Annotated[str, Field(max_length=2000, min_length=1)]
+    text: Annotated[
+        str,
+        Field(
+            max_length=2000,
+            min_length=1,
+            pattern="[^\\u0000-\\u0020\\u007f-\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+        ),
+    ]
+    """
+    보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙)
+    """
 
 
 class ClaimReverifyPayload(BaseModel):
@@ -2478,7 +2498,17 @@ class LivingAreaInput(BaseModel):
         extra="forbid",
     )
     id: Annotated[str | None, Field(pattern="^la_[0-9A-Za-z_]+$")] = None
-    name: Annotated[str, Field(max_length=64, min_length=1)]
+    name: Annotated[
+        str,
+        Field(
+            max_length=64,
+            min_length=1,
+            pattern="[^\\u0000-\\u0020\\u007f-\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+        ),
+    ]
+    """
+    보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙)
+    """
     legal_dong_codes: Annotated[list[str], Field(min_length=1)]
     """
     법정동 코드 10자리 문자열
@@ -3084,7 +3114,17 @@ class RegionPatch(BaseModel):
         extra="forbid",
     )
     selections: Annotated[list[RegionSelection], Field(max_length=50, min_length=1)]
-    name: Annotated[str | None, Field(max_length=100, min_length=1)] = None
+    name: Annotated[
+        str | None,
+        Field(
+            max_length=100,
+            min_length=1,
+            pattern="[^\\u0000-\\u0020\\u007f-\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]",
+        ),
+    ] = None
+    """
+    보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙). null·생략 = 이름 그대로
+    """
 
 
 class RegionPatched(BaseModel):

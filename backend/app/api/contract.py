@@ -24,13 +24,29 @@ from app.api.errors import ApiError
 __all__ = [
     "CONTRACTS_DIR",
     "OPENAPI_BUNDLED",
+    "VISIBLE_TEXT_PATTERN",
     "allowed_methods",
     "bundled",
     "check_body",
     "check_schema",
     "documented_statuses",
+    "has_visible",
     "query_names",
 ]
+
+VISIBLE_TEXT_PATTERN = (
+    r"[^\u0000-\u0020\u007f-\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]"
+)
+"""계약 .19: 사람이 넣는 자유 문장(주장 수정 text·호재 title·지역 이름·생활권 이름)의 '보이는 글자 1자 이상' 규칙 — 스키마
+``pattern`` 과 같은 문자열(테스트가 맞춘다). 빼는 글자 = C0·C1 제어 문자 + 파이썬 ``str.isspace`` 공백 전부 + BOM. 이 규칙을
+지나면 ``str.strip()`` 결과가 비지 않는다(보이는 글자는 공백이 아니다) — 서버의 '비었다' 422 와 스키마가 같은 값을 거절한다."""
+_VISIBLE = re.compile(VISIBLE_TEXT_PATTERN)
+
+
+def has_visible(text: str) -> bool:
+    """보이는 글자가 1자 이상인가(스키마 ``pattern`` 과 같은 규칙 — 판단 아님, 문자 분류)."""
+    return _VISIBLE.search(text) is not None
+
 
 CONTRACTS_DIR = Path(__file__).resolve().parents[3] / "contracts"
 OPENAPI_BUNDLED = CONTRACTS_DIR / "openapi.bundled.yaml"

@@ -806,6 +806,7 @@ export interface components {
         CatalystCreate: {
             region_id: number;
             url: string;
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙) */
             title: string;
             /** @description 기사·공고 발췌(사람이 붙여 넣은 공개 문장, 개인정보 금지 — guard 통과) */
             excerpt?: string | null;
@@ -1056,6 +1057,7 @@ export interface components {
          * @description PATCH /claims/{id} 본문 — 사람이 고친 문장. 서버는 원 주장 행을 고치지 않고 claim.reverify 잡(payload = ClaimReverifyPayload)을 등록한다: worker 가 원자 주장으로 나눠 원 주장의 근거로 verify → parent_claim_id 로 연결된 새 주장 행. 원 주장이 contradicted 가 아니거나 이미 분할됐거나 같은 주장의 잡이 대기 중이면 409 conflict. 같은 대상만 허용한다(D10-3): 원자 주장마다 원 주장 field 의 용어(예 resale_months → '전매')가 있고 다른 사실 필드의 용어가 없어야 하며, 같은 지역의 다른 단지 이름만 가리키면 안 된다(문자열 대조, 판단 아님) — 어기면 422 validation_error(loc body.text). 원 주장이 DB 사실에서 생성됐으면 그 사실을 강등하고(FactDemotion: 값 비움·'확인 불가(검증 모순)'·체크리스트 '사실 재확인'·rejudge 잡) 사람 확인 또는 새 원문이 오면 복원한다(D10-3, 계약 2026-10-09.6).
          */
         ClaimPatch: {
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙) */
             text: string;
         };
         /**
@@ -3848,6 +3850,7 @@ export interface components {
          */
         LivingAreaInput: {
             id?: string | null;
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙) */
             name: string;
             /** @description 법정동 코드 10자리 문자열 */
             legal_dong_codes: string[];
@@ -4626,6 +4629,7 @@ export interface components {
          */
         RegionPatch: {
             selections: components["schemas"]["RegionSelection"][];
+            /** @description 보이는 글자 1자 이상(계약 .19 — 공백·제어 문자만으로 된 값은 422: 서버가 앞뒤 공백을 지운 값으로 쓰므로 스키마도 같은 규칙). null·생략 = 이름 그대로 */
             name?: string | null;
         };
         /**

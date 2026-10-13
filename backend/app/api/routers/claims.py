@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.contract import check_body
+from app.api.contract import check_body, has_visible
 from app.api.demotion import (
     FIELD_NAMES,
     ClaimTarget,
@@ -153,7 +153,7 @@ def revise_claim(session: DB, id: int, body: Annotated[Any, Body()] = None) -> J
         raise not_found(f"claim {id}")
     check_body("reviseClaim", body)
     text = str(body["text"]).strip()
-    if not text:
+    if not has_visible(text):  # 계약 .19: 스키마 pattern 과 같은 규칙(보이는 글자 1자 이상)
         raise validation_error("text 가 비었다", ("body", "text"))
     from app.judge.guard import check_payload
 
