@@ -103,25 +103,38 @@ def not_target_reason(cx: Complex) -> str | None:
     return None
 
 
+def _collect_reason(session: Session, row: IntakeStatus) -> str | None:
+    """수집 실패 접수 행이 수집 때 받은 사유(``collect.intake_rows`` 와 같은 규칙: 응답 코드 또는 원문 행 error_text). 성공 행이면
+    None."""
+    if row.http_status == 200:
+        return None
+    if row.http_status is not None:
+        return str(row.http_status)
+    doc = session.get(RawDocument, row.raw_document_id) if row.raw_document_id is not None else None
+    return ((doc.error_text if doc is not None else None) or "수집 실패")[:120]
+
+
 def mark_not_target(session: Session, snapshot_id: int) -> list[int]:
-    """이 스냅샷의 '접수 문구 미분류' 행 중 판정 대상이 아닌 단지(``not_target_reason``) → 상태 '확인 불가' + 그 사유(판정 호출
-    없음). 반대로 '판정 대상 아님' 행인데 단지가 다시 대상이면(법정동 보정·재분류) 미분류로 되돌린다. 바꾼 행 id."""
+    """D26-3: 이 스냅샷의 접수 행 중 판정 대상이 아닌 단지(``not_target_reason``)의 '접수 문구 미분류' 행·수집 실패 행 → 상태
+    '확인 불가' + 사유 '판정 대상 아님(<구분>)'(판정 호출 없음 — 사람 확인 대기열에도 '수집 실패'로 서지 않는다; 실패 원인은
+    원문 행·note 에 남는다). 반대로 '판정 대상 아님' 행인데 단지가 다시 대상이면(법정동 보정·재분류) 수집 때 사유(미분류 또는
+    실패 원인)로 되돌린다. 바꾼 행 id."""
     out: list[int] = []
     for row in session.scalars(
         select(IntakeStatus)
         .where(IntakeStatus.snapshot_id == snapshot_id, IntakeStatus.path.in_(INTAKE_PATHS))
         .order_by(IntakeStatus.id)
     ):
-        if row.reason != UNCLASSIFIED and not (row.reason or "").startswith(NOT_TARGET):
-            continue
+        failed = _collect_reason(session, row)
+        marked = (row.reason or "").startswith(NOT_TARGET)
+        if not marked and row.reason != UNCLASSIFIED and (failed is None or row.reason != failed):
+            continue  # 판정기·사람이 정한 행
         cx = session.get(Complex, row.complex_id)
         why = not_target_reason(cx) if cx is not None else None
-        if row.reason == UNCLASSIFIED and why is not None:
+        if why is not None and row.reason != why:
             row.status, row.reason = "확인 불가", why
-        elif row.reason != UNCLASSIFIED and why is None:
-            row.status, row.reason = "확인 불가", UNCLASSIFIED
-        elif row.reason != UNCLASSIFIED and why != row.reason:
-            row.reason = why
+        elif why is None and marked:
+            row.status, row.reason = "확인 불가", failed or UNCLASSIFIED
         else:
             continue
         out.append(row.id)
@@ -164,8 +177,10 @@ def intake_body(session: Session, row: IntakeStatus) -> str:
     """접수 classify 의 페이지 부분: 접수 문구 후보 줄과 그 앞뒤 줄(``official_site_parser.intake_context``), 후보가 없으면
     줄 중복을 뺀 페이지 문구(앞·뒤). 원문에 문구가 없으면 ''(→ '접수 문구 없음', 판정 호출 없음).
 
-    R7-SITE(D26-1): 스크린샷 행에 팝업 그림 OCR 글자가 있으면 ``OCR_HEADER`` 아래에 붙인다(같은 규칙 — 페이지·OCR 어느 쪽이든
-    후보가 있으면 후보 문맥만, 둘 다 없으면 둘 다 문구). OCR 부분은 ``OCR_PART_MAX`` 자 안, 페이지 부분이 나머지.
+    R7-SITE(D26-1): 페이지(DOM)에 접수 문구 후보가 **없을 때만** 스크린샷 행의 팝업 그림 OCR 글자를 ``OCR_HEADER`` 아래에 쓴다 —
+    OCR 에 후보가 있으면 그 문맥만, 없으면 페이지 문구 + OCR 글자. OCR 부분은 ``OCR_PART_MAX`` 자 안, 페이지 부분이 나머지.
+    페이지에 후보가 있으면 R6-INTAKE 입력 그대로다: 인천 첫 실행 실제 판정기 재생(R7_TESTS_SITE §4)에서 DOM 후보 문맥에 OCR
+    글자(인식 잡음·다른 안내)를 덧붙이자 '선착순 계약' open·auto 가 review 로 흐려졌다(시티오씨엘 8단지).
 
     후보가 있을 때 페이지 문구 전체를 덧붙이지 않는다 — 실제 판정기 재생(인천 첫 실행 48행, R6_TESTS_INTAKE §4)에서 메뉴·광고
     문구가 섞이면 '선착순 동·호지정' 같은 분명한 문구도 open·auto → review 로 흐려졌다(4행)."""
@@ -174,12 +189,15 @@ def intake_body(session: Session, row: IntakeStatus) -> str:
     if not text and not ocr:
         return ""
     page_ctx = intake_context(text) if text else []
-    ocr_ctx = intake_context(ocr) if ocr else []
-    if page_ctx or ocr_ctx:  # 후보가 있으면 후보 문맥만(페이지·OCR 각각)
-        page, pop = "\n".join(page_ctx), "\n".join(ocr_ctx)
+    if page_ctx or not ocr:  # 페이지에 후보가 있거나 OCR 글자가 없으면 R6-INTAKE 와 같은 입력(input_hash 그대로)
+        body = "\n".join(page_ctx) if page_ctx else "\n".join(unique_lines(text))
+        return P.head_tail(body, INTAKE_BODY_BUDGET)
+    ocr_ctx = intake_context(ocr)
+    if ocr_ctx:  # 접수 문구가 그림에만 있다 — OCR 후보 문맥만(메뉴·배너 문구를 섞지 않는다)
+        page, pop = "", "\n".join(ocr_ctx)
     else:
         page, pop = "\n".join(unique_lines(text)), "\n".join(unique_lines(ocr))
-    if not pop:  # OCR 글자가 없으면 R6-INTAKE 와 같은 입력(input_hash 그대로)
+    if not pop:
         return P.head_tail(page, INTAKE_BODY_BUDGET)
     block = OCR_HEADER + "\n" + P.head_tail(pop, OCR_PART_MAX)
     if not page:

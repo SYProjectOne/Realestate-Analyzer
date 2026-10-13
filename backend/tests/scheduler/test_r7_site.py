@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.collectors.official_site import OfficialSiteCollector, PopupShot, RenderResult, SiteTarget
 from app.core.http import HttpClient
-from app.models import Complex, IntakeStatus
+from app.models import Complex, IntakeStatus, RawDocument
 from app.scheduler.collect import collect
 from app.scheduler.context import SchedulerContext
 from app.scheduler.pipeline import run_pipeline
@@ -94,13 +94,14 @@ def _site_ctx(
     ocr: FakeOcr,
     *,
     popup_png: bytes = b"popup-image-1",
+    page_text: str = PAGE_TEXT,
 ) -> Iterator[SchedulerContext]:
     http = HttpClient(sleep=lambda _s: None, max_retries=0, jitter=0)
 
     class Renderer:
         def render(self, url: str) -> RenderResult:
             return RenderResult(
-                url=url, final_url=url, status=200, screenshot_png=b"\x89PNG-full-1", dom_text=PAGE_TEXT,
+                url=url, final_url=url, status=200, screenshot_png=b"\x89PNG-full-1", dom_text=page_text,
                 popups=(PopupShot(selector="#popup-wrap", sha256="d" * 64, width=800, height=600,
                                   images=("https://site.example.test/img/pop1.jpg",), png=popup_png),),
             )  # fmt: skip
@@ -187,6 +188,20 @@ def test_unchanged_popup_is_not_reocred_and_not_rejudged_next_day(
     )
 
 
+def test_page_intake_phrases_keep_r6_input_without_ocr(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], seeded: int, jev: SynthJev
+) -> None:
+    """DOM 에 접수 문구 후보가 있으면 R6-INTAKE 입력 그대로(OCR 글자를 덧붙이지 않는다 — 실제 재생에서 OCR 잡음이 open·auto 를
+    review 로 흐렸다, 시티오씨엘 8단지). 그림 OCR 은 DOM 에 접수 문구가 없을 때만 쓴다."""
+    assert isinstance(jev, RecordingJev)
+    page = "시티오씨엘 테스트\n분양안내\n무순위 입주자모집공고\n선착순 계약 안내문\n인지세 납부 안내문"
+    for ctx in _site_ctx(make_ctx, factory, FakeOcr(), page_text=page):
+        _run(ctx)
+    (item,) = _mine(jev.intake_items)
+    assert "추정(OCR)" not in item["text"]
+    assert "선착순 계약 안내문" in item["text"]
+
+
 # ---------------------------------------------------------------- D26-3 판정 대상 아닌 단지
 
 
@@ -247,13 +262,50 @@ def test_not_target_row_returns_to_unclassified_when_complex_becomes_target(
         cx.inclusion_class = "범위 경계"
         row = IntakeStatus(
             complex_id=CX, snapshot_id=seeded, status="확인 불가", path="headless_shot", evidence_url=SITE,
-            checked_at="2026-10-07T06:00:00+09:00", reason=UNCLASSIFIED,
+            http_status=200, checked_at="2026-10-07T06:00:00+09:00", reason=UNCLASSIFIED,
         )  # fmt: skip
         s.add(row)
         s.flush()
-        assert mark_not_target(s, seeded) == [row.id]
+        assert row.id in mark_not_target(s, seeded)
         assert row.reason == "판정 대상 아님(범위 경계)"
         cx.inclusion_class = "미분류"
-        assert mark_not_target(s, seeded) == [row.id]
+        assert row.id in mark_not_target(s, seeded)
         assert (row.status, row.reason) == ("확인 불가", UNCLASSIFIED)
         assert mark_not_target(s, seeded) == []
+
+
+def test_failed_fetch_row_of_not_target_complex_says_not_target(
+    factory: sessionmaker[Session], seeded: int
+) -> None:
+    """판정 대상 아닌 단지의 수집 실패 행(인천: 해링턴 스퀘어 산곡역 TLS·서한이다음 connect — 범위 경계)도 '판정 대상 아님'으로
+    선다(사람 확인 대기열에 '수집 실패'로 오르지 않게). 대상으로 돌아오면 수집 때 사유(TLS)로 되돌린다."""
+    from app.scheduler.intake import mark_not_target
+
+    with factory() as s:
+        cx = s.get(Complex, CX)
+        assert cx is not None
+        cx.inclusion_class, cx.inclusion_decision = "public_sale", "auto"
+        doc = RawDocument(
+            source_kind="official_site", url=SITE, fetched_at="2026-10-07T06:00:00+09:00", http_status=None,
+            sha256="f" * 64, path=None, error_text="TLS", complex_id=CX, region_id=1,
+        )  # fmt: skip
+        s.add(doc)
+        s.flush()
+        row = IntakeStatus(
+            complex_id=CX, snapshot_id=seeded, status="확인 불가", path="official_popup", evidence_url=SITE,
+            raw_document_id=doc.id, http_status=None, checked_at="2026-10-07T06:00:00+09:00", reason="TLS",
+        )  # fmt: skip
+        human = IntakeStatus(
+            complex_id=CX, snapshot_id=seeded, status="가능", path="headless_shot", evidence_url=SITE,
+            http_status=200, checked_at="2026-10-07T06:00:00+09:00", reason="판정 미해결",
+            note="판정기 classify jl_1",
+        )  # fmt: skip
+        s.add_all([row, human])
+        s.flush()
+        changed = mark_not_target(s, seeded)
+        assert row.id in changed and human.id not in changed, "판정기가 정한 행은 건드리지 않는다"
+        assert (row.status, row.reason) == ("확인 불가", "판정 대상 아님(공공분양)")
+        assert (human.status, human.reason) == ("가능", "판정 미해결")
+        cx.inclusion_class = "private_sale_apt"
+        assert row.id in mark_not_target(s, seeded)
+        assert row.reason == "TLS"
