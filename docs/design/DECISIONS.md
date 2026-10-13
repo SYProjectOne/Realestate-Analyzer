@@ -258,3 +258,5 @@
 - D25-8 CI의 Postgres 테스트는 postgres 서비스 컨테이너(`TEST_POSTGRES_URL`)로 돈다. pgserver 내장 경로는 로컬용으로 유지한다.
 - D25-9 차트 리눅스 기준 이미지는 CI 산출물에서 받아 커밋하고, CI는 그 이미지와 비교한다(D11-9 이연 해소, Docker 불필요).
 - D25-10 WP7 결정 테스트 일부가 `tests/api`·`tests/contracts`에 있는 것(교차 모듈 통합 테스트)은 그대로 둔다.
+- D25-11 RA §6-7 접근 가능성의 `intake_status ∈ {가능}` and path ≠ unofficial_ref는 A·B·C·D 모두의 공통 조건이다(RA 문언과 예시 "접수 가능(공식 팝업…); 전매 종료 … → 충족"). R3C의 좁은 해석(A·C는 path 조건만)을 바로잡는다. 영향: 골든 v2 점수 불변, A·C 요건 사전 계산·decide 입력이 바뀌어 합성 판정 녹화(WP9)와 `/compare` 응답 골든(WP5)을 다시 만든다(CHANGELOG fixture 사유). R5-PIPE 머지 뒤 적용(녹화 재생성 충돌 방지).
+- D25-12 RA §6-2 신축 거래 1–2건·대체 단지 없음 → 가격 갭 라벨 '추정', 사유 '표본 n'(점수·식 불변, 골든 영향 없음).
