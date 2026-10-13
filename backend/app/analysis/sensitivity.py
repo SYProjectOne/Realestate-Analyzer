@@ -14,8 +14,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
 from app.analysis._common import ZERO, clamp, to_float
-from app.analysis._ranking import rank_totals, top_set, weighted_total
-from app.analysis.types import COMPONENT_ORDER, ComponentKey
+from app.analysis._ranking import display_order_key, rank_totals, top_set, weighted_total
+from app.analysis.types import COMPONENT_ORDER, ComponentKey, RankedEntry
 from app.core.contracts_gen import Sensitivity, SensitivityCell, SensitivityRank, Weights
 
 DELTA: Final = Decimal("0.10")
@@ -58,8 +58,9 @@ def _weights_model(w: Mapping[ComponentKey, Decimal]) -> Weights:
     return Weights.model_validate({k: float(v.quantize(_Q6, rounding=ROUND_HALF_UP)) for k, v in w.items()})
 
 
-def _sorted_top(ranked: Mapping[int, object], top: frozenset[int]) -> list[int]:
-    return sorted(top, key=lambda cid: (getattr(ranked[cid], "rank", 0), cid))
+def _sorted_top(ranked: Mapping[int, RankedEntry], top: frozenset[int]) -> list[int]:
+    """TOP 5 표시 순서 = ``_ranking.display_order_key``(순위 → 같은 순위 안은 점수 높은 순 → complex_id, R7-FIX2)."""
+    return sorted(top, key=lambda cid: display_order_key(ranked[cid].rank, ranked[cid].total, cid))
 
 
 def compute_sensitivity(
@@ -89,7 +90,12 @@ def compute_sensitivity(
             changed = top != base_top
             unstable.update(entered, exited)
             changed_by_component[key] = changed_by_component.get(key, False) or changed
-            shown = sorted(base_top | top)
+            # 이 변형의 순위 순(같은 순위 안은 점수 높은 순 → complex_id, R7-FIX2 — C10 이 순위로 다시 정렬해도 같다)
+            order = {
+                cid: display_order_key(ranked[cid].rank if cid in ranked else None, totals.get(cid), cid)
+                for cid in base_top | top
+            }
+            shown = sorted(order, key=order.__getitem__)
             cells.append(
                 SensitivityCell(
                     variant=f"{key}{'+' if sign > 0 else '-'}0.10",

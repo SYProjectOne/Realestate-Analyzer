@@ -31,6 +31,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis._ranking import display_order_key
 from app.analysis.complex_input import masked
 from app.analysis.price_view import labels_from
 from app.core.contracts_gen import Fact
@@ -1226,7 +1227,8 @@ def _score_views_live(
                 note=_short(note, 90),
             )
         )
-    views.sort(key=lambda v: (v.rank is None, v.rank or 0, -(v.total_raw or 0), v.complex_id))
+    # 순위 → 같은 순위 안은 점수 높은 순 → complex_id(화면 TOP 5·목록·민감도와 같은 키, R7-FIX2)
+    views.sort(key=lambda v: display_order_key(v.rank, v.total_raw, v.complex_id))
     return views
 
 
@@ -2307,10 +2309,16 @@ def _extra(
         else "비교 기준 리비전에 이 시나리오가 없어 12-1 순위 비교와 TOP 5 진입·이탈은 생략했다"
         "(같은 시나리오끼리만 비교, D15-5)."
     )
-    for cid in sorted(
-        set(cur_scores) | set(prev) if same_scenario else (),
-        key=lambda i: (cur_scores[i].rank or 99) if i in cur_scores else 99,
-    ):
+
+    def _order(i: int) -> tuple[bool, int, tuple[bool, Decimal, int]]:
+        # 이번 순위 → 같은 순위 안은 점수 높은 순 → complex_id(``display_order_key``, R7-FIX2). 예전에는 순위만 — 같은 순위·순위
+        # 없는 단지는 집합 순회 순서였다
+        v = cur_scores.get(i)
+        return (
+            display_order_key(v.rank, v.total_raw, i) if v is not None else display_order_key(None, None, i)
+        )
+
+    for cid in sorted(set(cur_scores) | set(prev) if same_scenario else (), key=_order):
         a, b = prev.get(cid), cur_scores.get(cid)
         rank_rows.append(
             (

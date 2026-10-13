@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import snapshot_view as sv
+from app.analysis._ranking import display_order_key, tie_order_key
 from app.api import views
 from app.api.benchmarks import benchmark_absence, benchmarks_for
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
@@ -303,12 +304,19 @@ _SORT_GETTERS: dict[str, Callable[[Mapping[str, Any]], Any]] = {
 
 
 def sort_keyed[T](rows: list[tuple[dict[str, Any], T]], sort: str) -> list[tuple[dict[str, Any], T]]:
-    """정렬: 값이 있는 행(같은 값은 complex_id 오름차순 — 안정 정렬) 다음 값 없는 행(complex_id 순)."""
+    """정렬: 값이 있는 행(같은 값은 complex_id 오름차순 — 안정 정렬) 다음 값 없는 행(complex_id 순).
+
+    ``rank``·``-rank``: 같은 순위(공동 순위) 안은 종합 점수 높은 순 → complex_id(``_ranking.tie_order_key`` — 대시보드 TOP 5·
+    민감도·보고서와 같은 순서, R7-FIX2). 방향은 순위에만 걸린다."""
     desc = sort.startswith("-")
-    get = _SORT_GETTERS[sort.lstrip("-")]
+    name = sort.lstrip("-")
+    get = _SORT_GETTERS[name]
     present = [r for r in rows if get(r[0]) is not None]
     missing = [r for r in rows if get(r[0]) is None]
-    present.sort(key=lambda r: r[0]["cid"])
+    if name == "rank":
+        present.sort(key=lambda r: tie_order_key(r[0]["total"], r[0]["cid"]))
+    else:
+        present.sort(key=lambda r: r[0]["cid"])
     present.sort(key=lambda r: get(r[0]), reverse=desc)
     missing.sort(key=lambda r: r[0]["cid"])
     return present + missing
@@ -732,7 +740,7 @@ def dashboard_body(session: Session, settings: Settings, snap: Snapshot, sc: Sce
     fm = FactMaker(settings, ProvIndex())
     top_ids = sorted(
         (cid for cid, t in ctx.totals.items() if t.rank is not None and t.rank <= 5 and cid in bundles),
-        key=lambda cid: (ctx.totals[cid].rank or 0, cid),
+        key=lambda cid: display_order_key(ctx.totals[cid].rank, ctx.totals[cid].total, cid),  # R7-FIX2
     )
     days = ladder_days(session, [bundles[c] for c in top_ids])
     days.update(ctx.jl_days)

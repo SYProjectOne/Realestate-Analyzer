@@ -23,7 +23,10 @@ def judge_scope(*, inclusion_class: str | None, inclusion_decision: str | None,
                 has_price: bool, intake_status: str | None) -> ScopeResult
 # ScopeResult(scope: JudgeScope, reason: str) + .text .ladder .rerank .scored .decide
 
-def pick_intake(rows: Iterable[R]) -> R | None        # 표시 접수 행(R = id·path·checked_at·status 를 가진 행)
+def pick_intake(rows: Iterable[R]) -> R | None        # 표시 접수 행(R = id·path·checked_at·status 를 가진 행;
+                                                      # http_status·raw_document_id 가 있으면 R7-FIX2 — 수집 실패 행은
+                                                      # 나중의 수집 성공 행을 경로 우선으로 이기지 못한다)
+def is_fetch_failure(row) -> bool                     # 수집 실패 접수 행(수집 경로·'확인 불가'·200 아님·원문/응답 코드)
 def runs_ladder(scope) / in_rerank(scope) / is_scored(scope) / is_decide_candidate(scope) -> bool
 def contract_scope(scope: JudgeScope) -> ContractScope   # 계약 .3 Literal(미해결 없음) → '제외'로; .4 이후 그대로
 ```

@@ -1,9 +1,13 @@
-"""가중 합·동점 규칙 (RA §6-4, contracts/schemas/score_run.json) — score.py·sensitivity.py 공용."""
+"""가중 합·동점 규칙 (RA §6-4, contracts/schemas/score_run.json) — score.py·sensitivity.py 공용.
+
+순위 표시 순서(``display_order_key``)는 API(대시보드·단지 목록·민감도)·보고서가 같이 쓴다(R7-FIX2)."""
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
 from app.analysis._common import ZERO
@@ -56,3 +60,24 @@ def rank_totals(
 def top_set(ranked: Mapping[int, RankedEntry], n: int = TOP_N) -> frozenset[int]:
     """TOP n 집합 = rank ≤ n인 단지 전부(공동 n위 포함)."""
     return frozenset(cid for cid, r in ranked.items() if r.rank <= n)
+
+
+_Q4: Final = Decimal("0.0001")
+
+
+def tie_order_key(total: Decimal | float | str | None, complex_id: int) -> tuple[bool, Decimal, int]:
+    """같은 순위(공동 순위 묶음) 안의 표시 순서: 종합 점수 높은 순, 같으면 complex_id 오름차순(R7-FIX2 CEO 결정). 점수 없음은
+    뒤. 점수는 저장 정밀도(소수 4자리, ``scheduler.persist.to_dec`` 와 같은 반올림)로 비교한다 — 저장값(API·보고서)과 계산값
+    (민감도)이 같은 순서를 낸다. 순서만 정한다(순위·공동 순위는 ``rank_totals``)."""
+    if total is None:
+        return (True, ZERO, complex_id)
+    q = Decimal(str(total)).quantize(_Q4, rounding=ROUND_HALF_UP)
+    return (False, -q, complex_id)
+
+
+def display_order_key(
+    rank: int | None, total: Decimal | float | str | None, complex_id: int
+) -> tuple[bool, int, tuple[bool, Decimal, int]]:
+    """순위 표시 순서(대시보드 TOP 5·단지 목록 ``sort=rank``·민감도 top5·보고서 순위표 공용): rank 오름차순(순위 없음은
+    뒤), 같은 rank 안은 ``tie_order_key``. 계약의 정렬(total 내림차순, 동률이면 complex_id)과 같은 순서다."""
+    return (rank is None, rank or 0, tie_order_key(total, complex_id))
