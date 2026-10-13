@@ -51,6 +51,7 @@ from app.models import (
     Snapshot,
 )
 from app.models.enums import JUDGE_TOOL, SOURCE_KIND
+from app.scheduler.collect import PROCESS_FAILURE_PREFIXES
 from app.scheduler.rejudge import enqueue_rejudge
 from app.scheduler.snapshots import latest_for_region, writable
 
@@ -61,6 +62,10 @@ _WEEKLY = frozenset({"rtms", "stats", "news"})
 
 
 def _ok(d: RawDocument) -> bool:
+    """원문이 있고 HTTP 성공이며 처리 실패 표식(R5-PIPE ``store_failed:``·``parse_failed:`` — 원문 저장·파싱 실패)이 없으면 성공.
+    수집기 표식(OCR ``scan`` 등)은 원문이 있으면 성공이다."""
+    if d.error_text is not None and d.error_text.startswith(PROCESS_FAILURE_PREFIXES):
+        return False
     return d.path is not None and (d.http_status is None or 200 <= d.http_status < 300)
 
 
