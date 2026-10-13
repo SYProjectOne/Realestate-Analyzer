@@ -4,8 +4,10 @@
 - ``validate_living_areas`` / ``apply_living_area_edit``: 편집 검증 — region의 모든 법정동이
   정확히 한 생활권에 속해야 한다(중복·누락·지역 밖 코드·빈 생활권은 오류 → API 422).
   id는 생성 후 바뀌지 않는다.
-- ``assign_legal_dong`` / ``assign_complex_area``: 단지 주소의 읍면동·리 이름 → 법정동 코드 → 생활권 id.
-  지역 법정동에 매칭이 안 되면 단지를 버리지 않고 inclusion_class='범위 경계'(D2-6).
+- ``assign_complex_area``: 단지 주소 → 법정동 코드(``normalize.dong_match``, R6-DONG) → 생활권 id.
+  지역 법정동에 매칭이 안 되면 단지를 버리지 않고 inclusion_class='범위 경계'(D2-6). ``rederive_region_dongs`` 는 이미
+  저장된 지역 단지를 지금 규칙으로 다시 맞춘다(바뀌면 change_event). ``assign_legal_dong``(행 목록을 받는 순수 함수)은
+  벤치마크 경로(``normalize.benchmark``)가 쓴다.
 - ``aggregate_households``: 생활권 세대수 = 소속 법정동에 걸친 행정동 세대수 합.
   행정동 1:N 법정동은 균등 분할. 라벨 '추정', reason '주민등록 세대'(고정).
   공급 기준치 U_ref = 세대수 × supply_ref_pct(라벨 추정).
@@ -28,7 +30,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AdminLegalMap, ChangeEvent, Complex, FieldProvenance, HouseholdStat, LegalDong, Region
+from app.models import AdminLegalMap, ChangeEvent, Complex, FieldProvenance, HouseholdStat, Region
+from app.normalize.dong_match import DongRef, match_address
 from app.normalize.region_resolve import LegalRow, normalize_name
 
 __all__ = [
@@ -46,6 +49,7 @@ __all__ = [
     "default_living_areas",
     "household_facts",
     "living_area_of",
+    "rederive_region_dongs",
     "region_household_facts",
     "validate_living_areas",
 ]
@@ -227,18 +231,13 @@ class AssignResult:
     in_region: bool
 
 
-def _dong_rows(session: Session, address: str) -> list[LegalRow]:
-    names = sorted(_tokens(address))
-    return [
-        _legal_row(r)
-        for r in session.scalars(
-            select(LegalDong).where(LegalDong.active.is_(True), LegalDong.eupmyeondong_name.in_(names))
-        )
-    ]
-
-
-def assign_complex_area(session: Session, cx: Complex, *, alt_addresses: Sequence[str] = ()) -> AssignResult:
+def assign_complex_area(
+    session: Session, cx: Complex, *, alt_addresses: Sequence[str] = (), ref: DongRef | None = None
+) -> AssignResult:
     """단지 주소 → legal_dong_code·living_area. 못 맞추면 inclusion_class '범위 경계'(미분류일 때만).
+
+    주소 → 법정동 규칙은 ``normalize.dong_match.match_address``(R6-DONG): 구간별 시도·시군구, 옛 구의 후계 구(분구·통합),
+    행정동 이름, 여러 동 나열이면 지역 안 첫 동, 동 없는 주소의 지구 이름(시군구가 있을 때만).
 
     법정동이 정해졌는데 지역 법정동 밖이면(지역 선택에서 그 법정동·시군구를 뺐다 — R3 4차 M-4) 분류와 무관하게
     '범위 경계'(판정 범위 '제외') — 이전 분류('포함')로 계속 판정 대상이 되지 않는다. 다시 지역에 들어오면
@@ -247,11 +246,24 @@ def assign_complex_area(session: Session, cx: Complex, *, alt_addresses: Sequenc
     ``alt_addresses``(D21-6, R4 재시험 N7): 단지 주소에 동 이름이 없을 때(참조 표에 맞는 읍면동 토큰 없음 — 'RC3BL'·
     '396-11번지(…A17BL)') 같은 단지의 다른 출처 주소(원 번호를 인용한 잔여 공고문·청약홈 잔여 공고의 공급위치)로 법정동을
     찾는다. 단지 주소(``cx.address``)는 바꾸지 않는다(D11-4). 찾은 법정동은 이후 다시 배정해도 유지된다(아래 '이미 아는
-    법정동' 규칙)."""
+    법정동' 규칙). 지구 이름으로 찾은 법정동(rule 'district')은 다른 출처 주소·이미 아는 법정동보다 약하다.
+
+    ``ref``: 지역 단지 전체를 다시 맞출 때 참조 표 조회 캐시를 같이 쓴다."""
     region = session.get(Region, cx.region_id)
     if region is None:
         return AssignResult(cx.id, cx.legal_dong_code, cx.living_area, False)
-    if cx.address and cx.legal_dong_code is None and not _dong_rows(session, cx.address):
+    ref = ref or DongRef(session)
+    scope = set(region.legal_dong_codes or [])
+    if not cx.address:  # 주소 없이 법정동만 아는 단지(시드·옛 행): 그 법정동이 지역 밖이 됐으면 범위 경계
+        inside = cx.legal_dong_code is not None and cx.legal_dong_code in scope
+        if cx.legal_dong_code is not None and not inside:
+            cx.living_area = None
+            cx.inclusion_class = "범위 경계"
+        elif inside:
+            cx.living_area = living_area_of(cx.legal_dong_code, region.living_areas or []) or cx.living_area
+        return AssignResult(cx.id, cx.legal_dong_code, cx.living_area, inside)
+    m = match_address(cx.address, ref, scope=scope)
+    if cx.legal_dong_code is None and m.code is None and not m.candidates:
         # 같은 단지의 다른 출처 주소: 호출자가 준 것(원 단지에 묶인 잔여 공고의 공급위치) + 그 단지 주소의 다른 출처 행 값
         others = [
             v
@@ -266,44 +278,20 @@ def assign_complex_area(session: Session, cx: Complex, *, alt_addresses: Sequenc
             if v and v != cx.address
         ]
         for alt in dict.fromkeys([*alt_addresses, *others]):
-            alt_rows = _dong_rows(session, alt)
-            code = (
-                assign_legal_dong(alt, alt_rows, scope=set(region.legal_dong_codes or []))
-                if alt_rows
-                else None
-            )
-            if code is None and alt_rows:
-                code = split_successor(session, alt, alt_rows, scope=set(region.legal_dong_codes or []))
-            if code is not None:
-                cx.legal_dong_code = code
+            alt_code = match_address(alt, ref, scope=scope).code
+            if alt_code is not None:
+                cx.legal_dong_code = alt_code
                 break
-    scope = set(region.legal_dong_codes or [])
-    if not cx.address:  # 주소 없이 법정동만 아는 단지(시드·옛 행): 그 법정동이 지역 밖이 됐으면 범위 경계
-        inside = cx.legal_dong_code is not None and cx.legal_dong_code in scope
-        if cx.legal_dong_code is not None and not inside:
-            cx.living_area = None
-            cx.inclusion_class = "범위 경계"
-        elif inside:
-            cx.living_area = living_area_of(cx.legal_dong_code, region.living_areas or []) or cx.living_area
-        return AssignResult(cx.id, cx.legal_dong_code, cx.living_area, inside)
-    names = sorted(_tokens(cx.address))
-    rows = [
-        _legal_row(r)
-        for r in session.scalars(
-            select(LegalDong).where(LegalDong.active.is_(True), LegalDong.eupmyeondong_name.in_(names))
-        )
-    ]
-    code = assign_legal_dong(cx.address, rows, scope=scope)
-    if code is None and rows:
-        # R4 M6(D18-7): 신설 구 — 주소는 분구 전 구 이름('서구 … 오류동'), 참조 표는 새 구(검단구 오류동)
-        code = split_successor(session, cx.address, rows, scope=scope)
-    if code is None and cx.legal_dong_code is not None and not rows:
-        # 참조표에 그 읍면동이 없다(매칭 불가) — 이미 아는 법정동으로 지역 안팎만 다시 본다
+    code = m.code if m.rule != "district" else None
+    if code is None and cx.legal_dong_code is not None and not m.candidates:
+        # 주소에 읍면동 이름이 없다(매칭 불가) — 이미 아는 법정동(다른 출처 주소로 찾음)으로 지역 안팎만 다시 본다
         code = cx.legal_dong_code
+    if code is None and m.rule == "district":
+        code = m.code
     in_region = code is not None and code in scope
     # 법정동을 못 정했는데 같은 이름 읍면동 후보가 있었다(여러 시군구 — 모호): 분류와 무관하게 '범위 경계'(판정 범위 제외,
     # 법정동 확인 불가) — R3 5차 minor: 이전 분류('포함')로 판정 대상에 남았다
-    ambiguous = code is None and bool(rows)
+    ambiguous = code is None and m.candidates
     # R3 6차 minor 17: 모호하면 이미 아는 법정동 코드를 None 으로 지우지 않는다(분류만 '범위 경계')
     if not ambiguous:
         cx.legal_dong_code = code
@@ -315,6 +303,51 @@ def assign_complex_area(session: Session, cx: Complex, *, alt_addresses: Sequenc
         # D21-6) 미분류로 되돌려 다음 P4 classify 가 포함/제외를 정한다(지역 확장과 같은 규칙)
         cx.inclusion_class = "미분류"
     return AssignResult(cx.id, code, cx.living_area, in_region)
+
+
+def rederive_region_dongs(
+    session: Session, region_id: int, *, snapshot_id: int | None, detected_at: str
+) -> list[ChangeEvent]:
+    """R6-DONG: 이미 저장된 지역 단지(주소 있는 것)의 법정동·생활권·범위 경계를 지금 규칙으로 다시 맞춘다.
+
+    저장 경로는 주소가 바뀔 때만 다시 배정하므로(``store.write_chosen`` touched), 규칙이 고쳐져도 옛 규칙으로 틀린 법정동(여러
+    시도 주소 → 지역 밖 동, 옛 구·행정동 이름 → NULL)이 남는다. 수집 끝(``scheduler.collect``)에 부른다. 법정동이 바뀐 단지마다
+    change_event(complex·legal_dong_code, critical — 판정 범위가 바뀐다)를 돌려준다(세션에 넣지 않는다 — 호출자가 첫 적재면
+    요약 수로 접고 아니면 넣는다). 바뀐 것이 없으면 아무것도 쓰지 않는다 — 같은 입력이면 다시 불러도 결과가 같다(D23-1)."""
+    from app.normalize.changes import make_event
+
+    ref = DongRef(session)
+    out: list[ChangeEvent] = []
+    rows = session.scalars(
+        select(Complex)
+        .where(Complex.region_id == region_id, Complex.address.is_not(None))
+        .order_by(Complex.id)
+    )
+    for cx in list(rows):
+        if not cx.address:
+            continue
+        before = (cx.legal_dong_code, cx.living_area, cx.inclusion_class)
+        with session.no_autoflush:
+            assign_complex_area(session, cx, ref=ref)
+        if cx.legal_dong_code == before[0]:
+            # 법정동이 그대로면 아무것도 바꾸지 않는다(생활권·분류는 그 단지를 마지막으로 배정·편집한 경로의 몫)
+            cx.living_area, cx.inclusion_class = before[1], before[2]
+            continue
+        out.append(
+            make_event(
+                entity="complex",
+                entity_id=cx.id,
+                field="legal_dong_code",
+                old=before[0],
+                new=cx.legal_dong_code,
+                snapshot_id=snapshot_id,
+                complex_id=cx.id,
+                detected_at=detected_at,
+                severity="critical",
+            )
+        )
+    session.flush()
+    return out
 
 
 def correct_dong(
@@ -347,78 +380,6 @@ def correct_dong(
         complex_id=cx.id,
         detected_at=detected_at,
         severity="critical",
-    )
-
-
-def split_successor(
-    session: Session, address: str, rows: Sequence[LegalRow], *, scope: set[str] | None = None
-) -> str | None:
-    """분구(신설 구) 흡수 — R4 M6, DECISIONS D18-7. 지명을 코드에 두지 않고 참조 표만 쓴다(파싱 규칙).
-
-    주소의 시도·구 이름 + 읍면동(리)이 **폐지된** 법정동 X 와 맞고(분구 전 표기 '인천광역시 서구 … 오류동'), 같은 시도·같은
-    읍면동(리) 이름의 활성 후보 중 '그 구의 활성 읍면동 이름이 모두 X 의 옛 구 폐지 읍면동 이름에 있는' 구(= X 의 구에서
-    갈라져 나온 구)의 것만 남긴다. 여럿이면 지역 법정동(scope)으로 좁히고, 하나일 때만 그 코드. 아니면 None."""
-    toks = _tokens(address)
-    toks_norm = {normalize_name(t, sido=True) for t in toks} | toks
-    names = sorted({r.eupmyeondong_name for r in rows if r.eupmyeondong_name})
-    if not names:
-        return None
-    olds = [
-        o
-        for o in session.scalars(
-            select(LegalDong).where(LegalDong.active.is_(False), LegalDong.eupmyeondong_name.in_(names))
-        )
-        if o.sigungu_name
-        and all(p in toks for p in o.sigungu_name.split())
-        and (o.sido_name in toks or normalize_name(o.sido_name, sido=True) in toks_norm)
-        and (not o.ri_name or o.ri_name in toks)
-    ]
-    if not olds:
-        return None
-
-    def names_of(sigungu_code: str | None, *, active: bool) -> set[str]:
-        if not sigungu_code:
-            return set()
-        return {
-            str(n)
-            for n in session.scalars(
-                select(LegalDong.eupmyeondong_name).where(
-                    LegalDong.sigungu_code == sigungu_code, LegalDong.active.is_(active)
-                )
-            )
-            if n
-        }
-
-    out: set[str] = set()
-    for r in rows:
-        if not r.active:
-            continue
-        for o in olds:
-            same_place = (r.sido_name, r.eupmyeondong_name, r.ri_name or None) == (
-                o.sido_name,
-                o.eupmyeondong_name,
-                o.ri_name or None,
-            )
-            if not same_place or r.sigungu_code == o.sigungu_code:
-                continue
-            child = names_of(r.sigungu_code, active=True)
-            if child and child <= names_of(o.sigungu_code, active=False):
-                out.add(r.code)
-    if scope and len(out) > 1:
-        out = {c for c in out if c in scope} or out
-    return out.pop() if len(out) == 1 else None
-
-
-def _legal_row(r: LegalDong) -> LegalRow:
-    return LegalRow(
-        code=r.code,
-        sido_name=r.sido_name,
-        sigungu_name=r.sigungu_name,
-        eupmyeondong_name=r.eupmyeondong_name,
-        ri_name=r.ri_name,
-        full_name=r.full_name,
-        sigungu_code=r.sigungu_code,
-        active=bool(r.active),
     )
 
 
