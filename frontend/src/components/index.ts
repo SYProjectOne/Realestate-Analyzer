@@ -30,6 +30,7 @@ export {
   type MetaValueProps,
 } from './MetaValue';
 export { MismatchBadge, type MismatchBadgeProps } from './MismatchBadge';
+export { ProvenanceLegend } from './ProvenanceLegend';
 export { ProvenancePanel, ProvenanceProvider, type ProvenancePanelProps } from './ProvenancePanel';
 export { useOpenProvenance } from './provenanceContext';
 export { RawDocumentPreview, type RawDocumentPreviewProps } from './RawDocumentPreview';

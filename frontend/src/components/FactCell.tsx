@@ -27,6 +27,8 @@ export interface FactCellProps {
    * 넘긴다. 생략하면 연 순간 보고 있는 리비전.
    */
   provSnapshotId?: string | null;
+  /** 좁은 칸(카드·요약)에서 값과 라벨이 줄바꿈되게(P3 — 가로 넘침 방지). 표 셀은 기본(줄바꿈 없음) */
+  wrap?: boolean;
   className?: string;
 }
 
@@ -43,6 +45,7 @@ export function FactCell({
   emptyReason,
   onOpenProvenance,
   provSnapshotId,
+  wrap = false,
   className = '',
 }: FactCellProps) {
   const contextOpen = useOpenProvenance();
@@ -72,13 +75,14 @@ export function FactCell({
             human={fact.human}
             reason={fact.reason}
             checkedAt={fact.checked_at}
+            wrap={wrap}
           />
         ) : null}
       </>
     );
 
   const prov = fact?.prov ?? null;
-  const base = `inline-flex items-center gap-1 ${className}`;
+  const base = `inline-flex items-center gap-1 ${wrap ? 'max-w-full flex-wrap' : ''} ${className}`;
   if (prov && open) {
     return (
       <button

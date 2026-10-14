@@ -968,7 +968,19 @@
     "unknownWithReason": "확인 불가({reason})",
     "unknownWithReasonDate": "확인 불가({reason}, {date})",
     "withReason": "{label}({reason})",
-    "humanPrefix": "사람 {label}"
+    "humanPrefix": "사람 {label}",
+    "legend": "밑줄 친 숫자를 누르면 출처·확인일이 열립니다",
+    "legendHelp": "라벨 뜻",
+    "legendHelpTitle": "숫자 옆 라벨의 뜻",
+    "truncated": "{text}…(전체는 숫자를 눌러 보기)",
+    "help": {
+      "confirmed": "확인됨 — 공식 자료(공고문·청약홈 등)에서 확인한 값",
+      "estimated": "추정 — 계산이나 가정으로 만든 값(괄호 안이 계산 방법)",
+      "unofficial": "비공식 — 보도·블로그·홍보처럼 공식이 아닌 출처의 값",
+      "reprocessed": "재가공 — 원본이 아니라 가공된 자료에서 온 값",
+      "unknown": "확인 불가 — 찾지 못한 값(괄호 안이 이유)",
+      "human": "사람 확인됨 — 사람이 전화·방문으로 확인한 값"
+    }
   },
   "empty": {
     "unknown": "확인 불가",

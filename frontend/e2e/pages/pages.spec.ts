@@ -313,3 +313,21 @@ test.describe('R5-FE(D25-1) 차트 지연 로딩 · 전역 쿼리 유지', () =>
     await expect(page.getByRole('radio', { name: /^B / })).toHaveAttribute('aria-checked', 'true');
   });
 });
+
+test.describe('R9-UI P3 가로 넘침 없음(00-baseline 레이아웃 결함)', () => {
+  for (const [name, width] of [
+    ['데스크톱 1440', 1440],
+    ['모바일 420', 420],
+  ] as const) {
+    test(`G1 ${name}: 문서 가로 폭 ≤ 창 폭`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await ready(page, '/', P.G1.title);
+      await page.waitForLoadState('networkidle');
+      const { sw, iw } = await page.evaluate(() => ({
+        sw: document.scrollingElement?.scrollWidth ?? 0,
+        iw: window.innerWidth,
+      }));
+      expect(sw).toBeLessThanOrEqual(iw);
+    });
+  }
+});

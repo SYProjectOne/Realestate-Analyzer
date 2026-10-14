@@ -91,6 +91,7 @@ export function ComplexesPage() {
   return (
     <PageShell
       title={t('page.G2.title')}
+      legend
       actions={
         snapshotId ? (
           <span className="inline-flex flex-wrap items-center gap-2">

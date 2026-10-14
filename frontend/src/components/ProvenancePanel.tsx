@@ -98,7 +98,7 @@ function ConflictItem({
         <Badge tone={item.chosen ? 'strong' : 'muted'}>
           {item.chosen ? t('provenance.chosen') : t('provenance.notChosen')}
         </Badge>
-        <LabelBadge label={item.label} reason={item.reason} checkedAt={item.checked_at} />
+        <LabelBadge label={item.label} reason={item.reason} checkedAt={item.checked_at} full />
         <span className="text-xs text-muted">
           {item.source_kind ? `${item.source_kind} · ` : null}
           <MetaText kind="rank" k="provenance.sourceRank" params={{ rank: item.source_rank }} />
@@ -180,7 +180,7 @@ function ProvenanceBody({
       ) : null}
       <dt className="text-muted">{t('provenance.label')}</dt>
       <dd>
-        <LabelBadge label={data.label} reason={data.reason} checkedAt={data.checked_at} />
+        <LabelBadge label={data.label} reason={data.reason} checkedAt={data.checked_at} full />
       </dd>
       {isDemoted(data) ? (
         <dd className="col-span-2 flex flex-col gap-1 text-xs" data-testid="provenance-demoted">

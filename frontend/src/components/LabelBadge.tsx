@@ -1,7 +1,6 @@
 import { t, type TKey } from '@/i18n';
 import type { Label } from '@/lib/contract';
 import { formatUnknown } from '@/lib/format';
-import { Badge } from './Badge';
 
 export interface LabelBadgeProps {
   label: Label;
@@ -11,6 +10,12 @@ export interface LabelBadgeProps {
   reason?: string | null;
   /** 확인일 — '확인 불가(사유, 확인일)'에 쓴다 */
   checkedAt?: string | null;
+  /**
+   * 줄이지 않고 전문을 보인다(출처 패널의 '라벨' 줄). 기본은 사유가 40자를 넘으면 화면에서 줄이고 title 에 전문(P3).
+   */
+  full?: boolean;
+  /** 좁은 칸(카드)에서 줄바꿈 허용 — 긴 라벨이 칸 밖으로 넘치지 않게(P3) */
+  wrap?: boolean;
   className?: string;
 }
 
@@ -21,6 +26,9 @@ const LABEL_KEYS: Record<Label, TKey> = {
   재가공: 'label.reprocessed',
   '확인 불가': 'label.unknown',
 };
+
+/** 화면에서 줄이기 시작하는 사유 길이(P3 — 긴 사유가 카드 밖으로 넘쳐 가로 스크롤을 만들던 결함) */
+export const LABEL_REASON_MAX = 40;
 
 /**
  * 계약 fact.json 표시 문자열 규칙:
@@ -40,18 +48,46 @@ export function labelText(
   return reason ? t('label.withReason', { label: named, reason }) : named;
 }
 
-/** 수치 라벨을 텍스트 배지로(색이 아니라 글자가 의미를 나른다). 비공식·재가공·확인 불가는 회색. */
+/**
+ * 수치 라벨(D7 — 색이 아니라 글자가 의미를 나른다).
+ * D28-2(P3): '확인됨'은 작은 회색 글자(`data-tone="quiet"`, 테두리 없음) — 글자는 그대로 남는다.
+ * 추정·비공식·재가공·확인 불가·사람 확인은 테두리 배지(`data-tone="badge"`)로 눈에 띈다.
+ */
 export function LabelBadge({
   label,
   human = false,
   reason,
   checkedAt,
-  className,
+  full = false,
+  wrap = false,
+  className = '',
 }: LabelBadgeProps) {
-  const tone = label === '확인됨' || label === '추정' ? 'neutral' : 'muted';
+  const text = labelText(label, reason, human, checkedAt);
+  const long = !full && (reason?.length ?? 0) > LABEL_REASON_MAX;
+  const shown = long ? t('label.truncated', { text: text.slice(0, LABEL_REASON_MAX) }) : text;
+  const title = long ? text : undefined;
+  const space = long || wrap ? 'whitespace-normal' : 'whitespace-nowrap';
+  if (label === '확인됨' && !human) {
+    return (
+      <span
+        data-testid="label-badge"
+        data-tone="quiet"
+        title={title}
+        className={`inline-flex items-center text-[11px] leading-4 text-muted ${space} ${className}`}
+      >
+        {shown}
+      </span>
+    );
+  }
+  const tone = label === '추정' || human ? 'border-border text-fg' : 'border-border text-grayed';
   return (
-    <Badge tone={tone} className={className} data-testid="label-badge">
-      {labelText(label, reason, human, checkedAt)}
-    </Badge>
+    <span
+      data-testid="label-badge"
+      data-tone="badge"
+      title={title}
+      className={`inline-flex items-center rounded-sm border px-1.5 py-px text-[11px] leading-4 ${tone} ${space} ${className}`}
+    >
+      {shown}
+    </span>
   );
 }

@@ -51,7 +51,7 @@ export function DashboardPage() {
   if (isEmpty) return <Navigate to="/regions/new" replace />;
 
   return (
-    <PageShell title={t('page.G1.title')}>
+    <PageShell title={t('page.G1.title')} legend>
       {!snapshotId && !isLoading ? (
         <NoSnapshot />
       ) : (
@@ -172,34 +172,34 @@ function KpiTiles({ data }: { data: Dashboard }) {
     {
       key: 'judged',
       title: t('page.G1.kpi.judged'),
-      body: <FactCell fact={kpis.judged_count} unit="count" />,
+      body: <FactCell wrap fact={kpis.judged_count} unit="count" />,
     },
     {
       key: 'intakeOpen',
       title: t('page.G1.kpi.intakeOpen'),
-      body: <FactCell fact={kpis.intake_open_count} unit="count" />,
+      body: <FactCell wrap fact={kpis.intake_open_count} unit="count" />,
     },
     {
       key: 'unsold',
       title: t('page.G1.kpi.unsold'),
-      body: <FactCell fact={kpis.unsold.total} unit="households" />,
+      body: <FactCell wrap fact={kpis.unsold.total} unit="households" />,
       sub: (
         <>
           <span>{t('page.G1.kpi.unsoldSub', { ym: kpis.unsold.ym ?? t('empty.unknown') })}</span>{' '}
-          <FactCell fact={kpis.unsold.post_completion} unit="households" />
+          <FactCell wrap fact={kpis.unsold.post_completion} unit="households" />
         </>
       ),
     },
     {
       key: 'movePeak',
       title: t('page.G1.kpi.movePeak'),
-      body: <FactCell fact={kpis.move_in_peak.year} unit="text" />,
-      sub: <FactCell fact={kpis.move_in_peak.units} unit="households" />,
+      body: <FactCell wrap fact={kpis.move_in_peak.year} unit="text" />,
+      sub: <FactCell wrap fact={kpis.move_in_peak.units} unit="households" />,
     },
     {
       key: 'freshness',
       title: t('page.G1.kpi.freshness'),
-      body: <FactCell fact={kpis.data_freshness.last_success_at} unit="date" asof={asof} />,
+      body: <FactCell wrap fact={kpis.data_freshness.last_success_at} unit="date" asof={asof} />,
       // 수집 대상 개수 — 운영 메타(사실 아님)
       sub: (
         <MetaText
@@ -218,7 +218,7 @@ function KpiTiles({ data }: { data: Dashboard }) {
       {tiles.map((tile) => (
         <li
           key={tile.key}
-          className="flex flex-col gap-1 rounded-sm border border-border bg-surface p-3"
+          className="flex min-w-0 flex-col gap-1 rounded-sm border border-border bg-surface p-3"
           data-kpi={tile.key}
         >
           <span className="text-xs text-muted">{tile.title}</span>

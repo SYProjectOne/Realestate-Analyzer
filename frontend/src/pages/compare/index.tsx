@@ -57,7 +57,7 @@ export function ComparePage() {
   const search = useGlobalSearch();
 
   return (
-    <PageShell title={t('page.G4.title')}>
+    <PageShell title={t('page.G4.title')} legend>
       {!valid ? (
         <EmptyState message={metaText('page.G4.invalidIds', { n: ids.length })}>
           <Link to={`/complexes${search}`} className="underline">

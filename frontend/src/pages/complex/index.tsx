@@ -35,6 +35,7 @@ export function ComplexPage() {
   return (
     <PageShell
       title={t('page.G3.title')}
+      legend
       actions={
         <Link to={`/complexes${search}`} className="text-sm underline">
           {t('page.common.backToList')}
