@@ -61,6 +61,46 @@ async function sample(scroller: Locator): Promise<Sampled> {
   return { sigs, changesAfterSettle, distinct: new Set(sigs).size };
 }
 
+/** 스윕 간격(px) — 행 4~6개 */
+const SWEEP_STEP = 400;
+/** 스윕 자리마다 표본 프레임 수(앞 SWEEP_SETTLE 프레임은 정착 여유) */
+const SWEEP_FRAMES = 40;
+const SWEEP_SETTLE = 20;
+
+/**
+ * 맨 위에서 끝까지 SWEEP_STEP 씩 옮기고(자리마다 프로그램 스크롤 1회) 입력 없이 SWEEP_FRAMES 프레임을 본다.
+ * 정착 뒤에도 상태가 바뀐 자리를 '요청 위치→마지막 상태들' 로 돌려준다.
+ */
+async function sweep(scroller: Locator): Promise<string[]> {
+  return scroller.evaluate(
+    async (el, [step, frames, settle]) => {
+      const raf = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+      const sig = () => {
+        const rows = el.querySelectorAll('tbody tr[aria-rowindex]');
+        return [
+          Math.round(el.scrollTop),
+          el.scrollHeight,
+          rows[0]?.getAttribute('aria-rowindex'),
+          rows[rows.length - 1]?.getAttribute('aria-rowindex'),
+        ].join('|');
+      };
+      const bad: string[] = [];
+      for (let y = 0; y <= el.scrollHeight - el.clientHeight + step; y += step) {
+        el.scrollTop = y;
+        const sigs: string[] = [];
+        for (let i = 0; i < frames; i += 1) {
+          await raf();
+          sigs.push(sig());
+        }
+        const tail = sigs.slice(settle);
+        if (new Set(tail).size > 1) bad.push(`${y}→${[...new Set(tail)].join(',')}`);
+      }
+      return bad;
+    },
+    [SWEEP_STEP, SWEEP_FRAMES, SWEEP_SETTLE] as const,
+  );
+}
+
 function describe(s: Sampled): string {
   return `정착 뒤 변화 ${s.changesAfterSettle}/${FRAMES - SETTLE_FRAMES}, 서로 다른 상태 ${s.distinct} — ${s.sigs
     .slice(-6)
@@ -120,11 +160,22 @@ for (const c of CASES) {
       });
       check('가운데', await sample(scroller));
 
-      // 4) 끝으로 한 번 옮긴 뒤
+      // 4) 끝으로 한 번 옮긴 뒤 — 끝에 붙어 있어야 한다(anchorTo 'end')
       await scroller.evaluate((el) => {
         el.scrollTop = el.scrollHeight;
       });
       check('끝', await sample(scroller));
+      expect
+        .soft(
+          await scroller.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop),
+          '끝: 마지막까지 내려가 있다',
+        )
+        .toBeLessThanOrEqual(1);
+
+      // 5) 위에서 아래로 SWEEP_STEP 씩 옮겨 가며 멈춘 자리마다(기준 행이 맨 위 행·마지막 행인 모든 경우)
+      const unstable = await sweep(scroller);
+      report.push(`스윕: 안 멈춘 자리 ${unstable.length} ${unstable.join(' ; ')}`);
+      expect.soft(unstable, '스윕: 멈추지 않는 스크롤 위치').toEqual([]);
 
       testInfo.annotations.push({ type: 'R8-JITTER', description: report.join(' | ') });
       console.log(`[${c.name}] ${report.join('\n  ')}`);
