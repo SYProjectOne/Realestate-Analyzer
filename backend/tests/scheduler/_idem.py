@@ -421,3 +421,51 @@ def changed_cells(
         if n:
             out[name] = n
     return out
+
+
+# ---------------------------------------------------------------- 파서 변경 배포(R10-FIX — D23-1 확장)
+
+SUPERSEDED_HEAD = "옛 파싱"
+"""``normalize.fields.SUPERSEDED_REASON`` 의 머리(수정 전 트리에서도 import 오류 없이 돌도록 글자로)."""
+
+
+def old_apply_items(found: dict[str, tuple[str, str]]) -> list[dict[str, str]]:
+    """R9-PARSE 전 청약 일정 모양: 순위(구분 첫 낱말)마다 시작일 하나 ``{kind, date}`` — 거주지역 구분·마감일 없음."""
+    from app.normalize.applyhome_api_parser import APPLY_KINDS
+
+    order = {k: i for i, k in enumerate(APPLY_KINDS)}
+    firsts: dict[str, str] = {}
+    for k in sorted(found, key=lambda k: (order.get(k, len(order)), k)):
+        rank = k.split()[0]
+        if rank not in firsts or found[k][0] < firsts[rank]:
+            firsts[rank] = found[k][0]
+    return [{"kind": r, "date": d} for r, d in firsts.items()]
+
+
+def old_apply_text(items: list[dict[str, str]]) -> str:
+    return "; ".join(f"{a['kind']} {a.get('date') or a.get('start')}" for a in items)
+
+
+def use_old_apply_parser(mp: Any) -> None:
+    """청약홈 API·웹 상세 두 파서를 R9-PARSE 전 모양으로(``pytest.MonkeyPatch`` 문맥 안에서)."""
+    from app.normalize import applyhome_api_parser, applyhome_parser
+
+    for mod in (applyhome_api_parser, applyhome_parser):
+        mp.setattr(mod, "apply_items", old_apply_items)
+        mp.setattr(mod, "apply_text", old_apply_text)
+
+
+def untag_superseded(factory: sessionmaker[Session]) -> int:
+    """수정 전 배포가 남긴 DB 모양: 옛 파싱 행에 표식이 없다(수정 전 트리에서는 표식 행이 없어 아무것도 하지 않는다)."""
+    from app.models import FieldProvenance
+
+    n = 0
+    with factory() as s:
+        for fp in s.scalars(
+            select(FieldProvenance).where(FieldProvenance.reason.like(f"{SUPERSEDED_HEAD}%"))
+        ):
+            _, sep, rest = (fp.reason or "").partition("; ")
+            fp.reason = rest if sep and rest else None
+            n += 1
+        s.commit()
+    return n
