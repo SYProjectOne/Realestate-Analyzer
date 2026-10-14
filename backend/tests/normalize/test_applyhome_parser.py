@@ -9,6 +9,14 @@ from app.normalize.applyhome_parser import ApplyhomeParser, parse_applyhome_html
 
 from ._support import APPLYHOME, COMP_URL, DETAIL_URL, dto
 
+RANK_AREA_KINDS = [
+    "특별공급",
+    "1순위 해당지역",
+    "1순위 기타지역",
+    "2순위 해당지역",
+    "2순위 기타지역",
+]  # R9-PARSE Q3
+
 
 def _by(cands: list, entity: str, key: str, field: str):  # type: ignore[no-untyped-def,type-arg]
     return next(c for c in cands if c.entity == entity and c.entity_key == key and c.field == field)
@@ -34,7 +42,7 @@ def test_detail_harrington_1bl() -> None:
         {"from": "2025-08-04", "to": "2025-08-06"}
     ]
     applies = json.loads(str(_by(c, "complex", key, "apply_dates").value))
-    assert [a["kind"] for a in applies] == ["특별공급", "1순위", "2순위"]
+    assert [a["kind"] for a in applies] == RANK_AREA_KINDS  # R9-PARSE Q3
     assert _by(c, "complex", key, "developer").value == "우리자산신탁 주식회사"
     assert _by(c, "complex", key, "builder").value == "효성중공업 주식회사"
     p = _by(c, "complex_type", f"{key}:84A", "max_price_won")

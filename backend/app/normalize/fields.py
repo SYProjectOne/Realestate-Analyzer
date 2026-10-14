@@ -17,6 +17,7 @@ __all__ = [
     "CONFLICT_HOLD",
     "CRITICAL_FIELDS",
     "DECIMAL_FIELDS",
+    "EXPLICIT_NULL_FIELDS",
     "EXTRACT_REASON",
     "FIELD_GROUP",
     "INT_FIELDS",
@@ -28,8 +29,10 @@ __all__ = [
     "OCR_REASON",
     "PRICE_BY_TYPE_ITEMS",
     "PRIMARY_SOURCES",
+    "QUIET_FIRST_FIELDS",
     "RULE_TEXT",
     "UNIT_ASSUMED",
+    "WIN_SCORE_FIELDS",
     "SourceKind",
     "compare_mark",
     "discount_field",
@@ -166,6 +169,19 @@ NUMERIC_FIELDS: Final[dict[str, tuple[str, ...]]] = {
     "competition": ("supply", "applied"),
 }
 
+EXPLICIT_NULL_FIELDS: Final = frozenset({("complex_type", "options_text")})
+"""값 없음(None) + 라벨 확인됨 후보가 저장 값을 지우는 필드(R9-PARSE Q2).
+
+공고문의 '추가 선택품목 비용 미포함' 고지문은 필수 옵션 설명이 아니다 — 옛 파서가 넣은 고지문을
+재정규화가 비운다. 다른 필드의 값 없음 후보는 그대로 저장 값을 지우지 않는다."""
+
+WIN_SCORE_FIELDS: Final = ("win_score_min", "win_score_max", "win_score_avg")
+QUIET_FIRST_FIELDS: Final = frozenset(("competition", f) for f in WIN_SCORE_FIELDS)
+"""빈 값 → 값(처음 관측)을 change_event 로 남기지 않는 필드(R9-PARSE Q4).
+
+당첨가점은 발표 뒤 웹 팝업으로 처음 수집하는 지난 결과라 '바뀐 사실'이 아니다 — 배포 뒤 첫 수집이
+경쟁률 행마다 이벤트를 쏟지 않게. 값 → 다른 값은 그대로 이벤트(severity info — 점수 입력 아님)."""
+
 INT_FIELDS: Final = frozenset(
     {
         "units_total",
@@ -278,7 +294,16 @@ BOOL_FIELDS: Final = frozenset({"resale_release_on_registration", "cancelled", "
 _EXTRA_INT_FIELDS: Final = frozenset({"floor", "completed_year", "total", "post_completion", "price_won"})
 # 소수 필드(㎡·%·확률)
 DECIMAL_FIELDS: Final = frozenset(
-    {"area_m2", "down_payment_pct", "interim_pct", "balance_pct", "inclusion_prob"}
+    {
+        "area_m2",
+        "down_payment_pct",
+        "interim_pct",
+        "balance_pct",
+        "inclusion_prob",
+        "win_score_min",
+        "win_score_max",
+        "win_score_avg",
+    }
 )
 
 

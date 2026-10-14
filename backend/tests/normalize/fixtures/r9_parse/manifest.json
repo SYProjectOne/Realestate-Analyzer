@@ -1,0 +1,76 @@
+[
+ {
+  "file": "notice_2025000560_cityociel8.txt",
+  "source": "청약홈 첨부 입주자모집공고문 PDF(실제, 운영 수집 2026-10-13) → pdfplumber 텍스트 → 발췌",
+  "pdf_text_sha256": "92d39ce28d2ae4e5a4af394cc151ef37a63c955e4f4eef902cb0445ad2229a56",
+  "lines_kept": [
+   [
+    1,
+    25
+   ],
+   [
+    193,
+    340
+   ]
+  ],
+  "fixture_sha256": "05e266f566b499da10ea06b77b4166d9e8fd5444d02ad391298ae938dced8488"
+ },
+ {
+  "file": "notice_2025910275_cityociel8_muso.txt",
+  "source": "청약홈 첨부 입주자모집공고문 PDF(실제, 운영 수집 2026-10-13) → pdfplumber 텍스트 → 발췌",
+  "pdf_text_sha256": "f41749e50d8fa26f3954ca15f70cbb959dd5ecbcb473d118a3360da54097648e",
+  "lines_kept": [
+   [
+    1,
+    45
+   ],
+   [
+    66,
+    114
+   ]
+  ],
+  "fixture_sha256": "6b57b888db0eb7b1c6edb36122a28222cf885f063ebe967aa6f7c8dd00aa6e64"
+ },
+ {
+  "file": "notice_2025940268_dohwa_imui.txt",
+  "source": "청약홈 첨부 입주자모집공고문 PDF(실제, 운영 수집 2026-10-13) → pdfplumber 텍스트 → 발췌",
+  "pdf_text_sha256": "8e71e7d7952efd919bf5abb546fd30f338c00dbca2ce39bd2e0368376a579812",
+  "lines_kept": [
+   [
+    1,
+    122
+   ]
+  ],
+  "fixture_sha256": "ed53ecb3c427c3c13b7b1ff2cb95039e5caa22e825dbc62b6f57b4e4c9ded107"
+ },
+ {
+  "file": "api_APTDetail_2025000560.json",
+  "source": "청약홈 공식 API getAPTLttotPblancDetail 응답(운영 수집 2026-10-13, 키 없음) 원문 그대로",
+  "fixture_sha256": "b3f28532b68ada5aa02b70e7bcd32e284458c4cfcd7ec0e850a82a1368d95cf5"
+ },
+ {
+  "file": "api_APTCmpet_2025000560.json",
+  "source": "청약홈 공식 API getAPTLttotPblancCmpet 응답(운영 수집 2026-10-13) 원문 그대로",
+  "fixture_sha256": "e9c17982da8e226c57908443cc01acce520c496a437f3a9b01eeeb7dd269c08e"
+ },
+ {
+  "file": "api_OPTDetail_2025940268.json",
+  "source": "청약홈 공식 API getOPTLttotPblancDetail 응답(운영 수집 2026-10-13) 원문 그대로",
+  "fixture_sha256": "40f4e3e1003bdc026f08f5d576d76cb5e7838e370b56ad25acd8cc89dbb0865d"
+ },
+ {
+  "file": "api_OPTMdl_2025940268.json",
+  "source": "청약홈 공식 API getOPTLttotPblancMdl 응답(운영 수집 2026-10-13) 원문 그대로",
+  "fixture_sha256": "c27e5ca3b085dbd392c54ee753658360a749aac1f11317d730515271f86ec964"
+ },
+ {
+  "file": "api_OPTCmpet_2025940268.json",
+  "source": "청약홈 공식 API getOPTLttotPblancCmpet 응답(운영 수집 2026-10-13) 원문 그대로",
+  "fixture_sha256": "4c485f156d6e256ecae9974ae30f983f4a2ccbb51647db1a873b911996cc8806"
+ },
+ {
+  "file": "web_competition_2025000560.html",
+  "source": "청약홈 웹 경쟁률 팝업 selectAPTCompetitionPopup.do(2026-10-14 app.core.http 로 받음, 공개 페이지) — 줄바꿈 LF",
+  "fixture_sha256": "695ca237e10401fbc9e44d07b20cec28a64f9f02fec20844b5565f5f3c58b9db"
+ }
+]

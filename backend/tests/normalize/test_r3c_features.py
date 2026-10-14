@@ -205,7 +205,10 @@ def test_ra_trustee_officetel_options_text_parsers() -> None:
     assert got[("complex", "trustee")] == "한국자산신탁(주)"
     assert got[("complex", "officetel_units")] == 250
     opts = [c for c in cands if c.entity == "complex_type" and c.field == "options_text"]
-    assert opts and all("선택" in str(c.value) for c in opts)
+    # R9-PARSE Q2: '추가 선택품목 비용 미포함' 고지문은 옵션 설명이 아니다 — options_text 는 null, 고지문은 0원 후보의 발췌
+    assert opts and all(c.value is None for c in opts)
+    zero = [c for c in cands if c.entity == "complex_type" and c.field == "options_required_won"]
+    assert zero and all(c.value == 0 and "선택" in str(c.excerpt) for c in zero)
     plain = parse_notice_text(text + "\n발코니 확장 공사비 우리은행 1005 우리자산신탁 주식회사\n", raw(url))
     assert not [c for c in plain if c.field == "trustee"], (
         "이름표 없는 계좌 예금주는 신탁 관계로 단정하지 않는다"

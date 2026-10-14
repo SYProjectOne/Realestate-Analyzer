@@ -20,6 +20,8 @@
   고치지 않는다. 옛 버전이 남긴 같은 키의 열린 항목이 둘 이상이면 하나(제목이 같은 것, 없으면 가장 새 것)만 남기고
   나머지는 'na' 로 닫는다. note 는 처음 만들 때만 쓴다(사람이 PATCH 로 고치는 칸).
 - 단지 제외가 확정되면 그 단지의 열린 항목을 'na' 로 닫는다(미해결이면 닫지 않는다).
+- R9-PARSE: 다른 단지의 납부 조건 공고번호를 주택관리번호로 가진 행(잔여 공고 번호로 따로 생긴 같은 사업의 두 번째 행 —
+  ``absorbed_remnant_rows``)도 제외처럼 다룬다(같은 일정이 캘린더에 두 번 나오지 않게).
 - M-9(계약 .8 ``closed_by``): 자동 항목의 근거 사실이 사라지거나 강등(검증 모순 — ``app.facts_view`` 오버레이로 읽는다)되면
   열린 항목을 'na'(closed_by 'auto')로 닫는다(모순 날짜를 계속 보이지 않게). 근거가 돌아오거나 제외됐던 단지가 다시
   포함되면 동기화가 닫은 항목(closed_by 'auto')만 다시 연다. 사람이 처리한 항목(closed_by 'human', 또는 0008 이전 done·na)은
@@ -48,6 +50,7 @@ __all__ = [
     "EXCLUDED_CLASSES",
     "LEGAL_FIELDS",
     "ChecklistSync",
+    "absorbed_remnant_rows",
     "add_months_date",
     "excluded_for_checklist",
     "item_key",
@@ -106,6 +109,29 @@ def item_key(kind: str, title: str) -> str:
         if title.startswith(f"{label} 확인(추정 값"):
             return f"legal:{fname}"
     return f"title:{kind}:{title}"
+
+
+def absorbed_remnant_rows(session: Session, region_id: int) -> set[int]:
+    """같은 지역 **다른** 단지의 납부 조건 공고번호(``payment_terms.notice_no``)를 주택관리번호로 가진 단지 행 id — 잔여·임의
+    공고 인용(D18-4)을 못 읽던 때 잔여 공고 번호로 따로 생긴 같은 사업의 두 번째 행이다(R9-PARSE: G7 캘린더에 '두산위브 더센트럴
+    도화 · 중도금 3회차 납부일'이 두 번 — 원 단지 행 39(2025000397)와 임의공급 번호 행 99(2025940268)가 같은 중도금 일정을 냈다).
+    원 단지가 그 공고의 일정을 이미 가지므로 이 행의 자동 항목은 만들지 않고 열린 것은 닫는다. 표 조회뿐이다(판단 아님)."""
+    rows = session.execute(
+        select(Complex.id, Complex.applyhome_id).where(
+            Complex.region_id == region_id, Complex.applyhome_id.is_not(None)
+        )
+    ).all()
+    by_no = {str(no): cid for cid, no in rows}
+    out: set[int] = set()
+    for owner, no in session.execute(
+        select(PaymentTerms.complex_id, PaymentTerms.notice_no)
+        .join(Complex, Complex.id == PaymentTerms.complex_id)
+        .where(Complex.region_id == region_id)
+    ):
+        cid = by_no.get(str(no))
+        if cid is not None and cid != owner:
+            out.add(cid)
+    return out
 
 
 def excluded_for_checklist(cx: Complex) -> bool:
@@ -297,8 +323,9 @@ def sync_checklist(session: Session, region_id: int, *, asof_date: str) -> Check
     by_complex: dict[int | None, list[tuple[str, list[ChecklistItem]]]] = defaultdict(list)
     for (cid, key), group in existing.items():
         by_complex[cid].append((key, group))
+    absorbed = absorbed_remnant_rows(session, region_id)
     for cx in complexes:
-        if excluded_for_checklist(cx):
+        if excluded_for_checklist(cx) or cx.id in absorbed:
             for key, group in by_complex.get(cx.id, []):
                 if not _is_auto_key(key):
                     continue  # 사람이 만든 항목은 사람이 닫는다(R3 4차 minor — 단지 제외로 auto 로 닫히던 것)

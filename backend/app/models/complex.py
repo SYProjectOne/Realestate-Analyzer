@@ -159,6 +159,12 @@ class Competition(Base):
     supply: Mapped[int | None] = mapped_column(Integer)
     applied: Mapped[int | None] = mapped_column(Integer)
     ratio_or_shortfall_text: Mapped[str | None] = mapped_column(String(64))
+    # 당첨가점(청약홈 경쟁률 팝업 '당첨가점' 최저·최고·평균 — 가점제 당첨자만, 1순위 거주지역별.
+    # 마이그레이션 0017, R9-PARSE Q4). 행은 회차 '1순위 <거주지역>' 의 행.
+    # 원문 '-'(공개 전·가점 당첨자 없음)는 값 없음
+    win_score_min: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    win_score_max: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    win_score_avg: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     raw_document_id: Mapped[int | None] = mapped_column(ForeignKey("raw_document.id"))
 
 

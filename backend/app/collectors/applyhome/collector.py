@@ -51,6 +51,7 @@ from app.core.paths import resolve_raw_path
 from app.core.settings import get_settings
 from app.core.time import today_kst
 from app.models import Complex
+from app.models import RawDocument as RawRow
 
 __all__ = ["HISTORY_YEARS", "ApplyhomeCollector", "month_windows"]
 
@@ -309,7 +310,8 @@ class ApplyhomeCollector:
         경쟁률(``applyhome_detail``). 원 공고는 조회 창 밖(오래된 공고)이라 목록으로는 들어오지 않는다.
 
         - 공식 API 만(키 없으면 [] — 웹 목록은 조회 창이 있어 번호로 찾을 수 없다). 웹 상세는 받지 않는다(공고문 PDF
-          링크용인데, 원 공고 PDF 는 잔여 공고 값과 섞일 수 있다 — 원 공고 사실은 API 로 충분하다).
+          링크용인데, 원 공고 PDF 는 잔여 공고 값과 섞일 수 있다 — 원 공고 사실은 API 로 충분하다). 단 웹 경쟁률 팝업은
+          받는다(R9-PARSE Q4 — 당첨가점은 API 에 없다. 공개 페이지, ``core.http`` 속도 제한·robots).
         - 같은 URL 의 성공 원문이 있으면 다시 받지 않고 그 원문을 돌려준다(지난 공고는 바뀌지 않는다 — 멱등).
         - 실패(401·5xx 등)도 원문 행으로 돌려준다(규칙 7). 원 공고가 API 에 없으면(빈 data) 그대로 — 범위 사유는
           '원 공고 미수집'(``analysis.scope``)."""
@@ -322,24 +324,50 @@ class ApplyhomeCollector:
             for hm in sorted(set(house_manage_nos)):
                 params = ah_api.item_params(hm, hm)
                 complex_id = _complex_id(session, region.id, hm)
+                detail_found = False
                 for path in (ep.detail, ep.model, ep.competition):
                     known = run.store.latest_ok("applyhome_detail", ah_api.doc_url(path, params))
                     if known is not None:
                         run.emit(Stored(known, created=False))
+                        detail_found = detail_found or (path == ep.detail and known.error_text is None)
                         continue
-                    run.emit(
-                        run.store.save(
-                            api.get(path, params),
-                            source_kind="applyhome_detail",
-                            ext="json",
-                            region_id=region.id,
-                            complex_id=complex_id,
-                        )
+                    stored = run.store.save(
+                        api.get(path, params),
+                        source_kind="applyhome_detail",
+                        ext="json",
+                        region_id=region.id,
+                        complex_id=complex_id,
+                    )
+                    run.emit(stored)
+                    detail_found = detail_found or (
+                        path == ep.detail and stored.ok and stored.row.error_text is None
                     )
                     if own:
                         session.commit()
                     else:
                         session.flush()
+                # R9-PARSE Q4: 원 공고(지난 APT 공고)의 당첨가점 — 웹 경쟁률 팝업. API 상세가 그 공고를 돌려줬을 때만(빈 데이터셋·
+                # 실패면 받지 않는다). 받아 둔 성공 원문이 있으면 다시 받지 않는다
+                if not self._web_detail or not detail_found:
+                    continue
+                popup = site.competition_url(ep.web_kind, hm, hm)
+                known_popup = run.store.latest_ok("applyhome_detail", popup)
+                if known_popup is not None:
+                    run.emit(Stored(known_popup, created=False))
+                    continue
+                run.emit(
+                    run.store.save(
+                        http.get(popup),
+                        source_kind="applyhome_detail",
+                        ext="html",
+                        region_id=region.id,
+                        complex_id=complex_id,
+                    )
+                )
+                if own:
+                    session.commit()
+                else:
+                    session.flush()
             return run.out
 
     # --- 공식 API
@@ -402,6 +430,9 @@ class ApplyhomeCollector:
         web_urls = [site.detail_url(ep.web_kind, hm, pb), site.competition_url(ep.web_kind, hm, pb)]
         if since_day is not None and row.last_date is not None and row.last_date < since_day.isoformat():
             known = [run.store.latest_ok("applyhome_detail", u) for u in api_urls + web_urls]
+            if known[0] is not None and self._score_popup_due(row, known[-1]):
+                # R9-PARSE Q4: 당첨가점은 웹 경쟁률 팝업에만 있다 — 발표 뒤 팝업을 아직 받지 않았으면 한 번 받는다
+                known[-1] = self._save_popup(http, run, session, row, checkpoint)
             if known[0] is not None:  # 일정이 끝난 공고 — 받아 둔 원문을 그대로 돌려준다
                 # 경쟁률 2쪽 이후(있으면)도 — 1쪽 다음에 이어지는 page 의 성공 원문만
                 for page_no in range(2, ah_api.MAX_ITEM_PAGES + 1):
@@ -446,8 +477,42 @@ class ApplyhomeCollector:
         comp_ok = ah_api.parse_page(comp_pages[0]).ok
         if self._web_detail or not (detail_ok and model_ok):
             save(http.get(web_urls[0]), "html")  # 공고문 링크(notice_pdf) + API 상세 실패 폴백
-        if not comp_ok:
-            save(http.get(web_urls[1]), "html")  # 경쟁률 API 실패(401 등) → 웹 경쟁률
+        known_popup = run.store.latest_ok("applyhome_detail", web_urls[1])
+        if not comp_ok or self._score_popup_due(row, known_popup):
+            # 경쟁률 API 실패(401 등) → 웹 경쟁률. R9-PARSE Q4: 당첨가점(발표 뒤 웹 팝업에만)도 같은 팝업
+            save(http.get(web_urls[1]), "html")
+        elif known_popup is not None:
+            run.emit(Stored(known_popup, created=False))  # 받아 둔 팝업(당첨가점)도 다시 정규화 대상
+
+    # --- 당첨가점 팝업 (R9-PARSE Q4)
+    def _score_popup_due(self, row: ah_api.ApiRow, known: RawRow | None) -> bool:
+        """APT 공고의 웹 경쟁률 팝업(당첨가점 최저·최고·평균)을 받을 때인가: 당첨자 발표·접수 마감(``last_date``)이 지났고, 받아 둔
+        팝업이 없거나 그날까지 받은 것(발표 전 — 가점 칸이 '-')뿐일 때. 잔여세대·임의공급 팝업에는 가점이 없다(받지 않음).
+        ``web_detail``(API 경로에서도 웹 페이지를 받는가)이 꺼져 있으면 받지 않는다."""
+        if not self._web_detail or row.kind != "apt" or row.last_date is None:
+            return False
+        if self._today().isoformat() <= row.last_date:
+            return False
+        return known is None or known.fetched_at[:10] <= row.last_date
+
+    def _save_popup(
+        self,
+        http: HttpClient,
+        run: _Run,
+        session: Session,
+        row: ah_api.ApiRow,
+        checkpoint: Callable[[], None],
+    ) -> RawRow:
+        url = site.competition_url(ah_api.ENDPOINTS[row.kind].web_kind, row.house_manage_no, row.pblanc_no)
+        stored = run.store.save(
+            http.get(url),
+            source_kind="applyhome_detail",
+            ext="html",
+            region_id=run.region.id,
+            complex_id=_complex_id(session, run.region.id, row.house_manage_no),
+        )
+        checkpoint()
+        return stored.row
 
     # --- 목록
     def _windows(self, region: Region) -> list[tuple[str, str]]:
