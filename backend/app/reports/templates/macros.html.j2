@@ -25,8 +25,10 @@
   <figcaption>{{ spec.title }} <span class="small">{{ spec.subtitle }}</span></figcaption>
   <div class="chart" id="chart-{{ spec.id }}" data-option-id="opt-{{ spec.id }}" style="height: {{ spec.height }}px" role="img" aria-label="{{ spec.title }}">{% if not has_echarts %}차트 번들 없음 — 아래 표를 본다{% endif %}</div>
   <script type="application/json" id="opt-{{ spec.id }}">{{ spec.option | json_script }}</script>
+  <p class="chart-source">{{ spec.source or "자료: 기록 없음" }}</p>
+  {% if spec.note %}<p class="chart-note small">그림 읽는 법: {{ spec.note }} 그림의 값은 모두 아래 표에 있다.</p>{% endif %}
   <details open>
-    <summary>표로 보기</summary>
+    <summary>표로 보기(그림과 같은 숫자)</summary>
     <table class="chart-table">
       <thead><tr>{% for c in spec.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
       <tbody>

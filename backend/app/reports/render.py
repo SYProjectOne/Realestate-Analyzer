@@ -3,7 +3,12 @@
 ECharts 번들(`echarts.min.js`) 찾는 순서: 인자 → Settings ``report_echarts_js`` → 저장소
 ``frontend/node_modules/echarts/dist/echarts.min.js``. 없으면 차트 자리에 '차트 번들 없음' 문구와
 같은 데이터의 표만 남긴다(보고서는 계속 생성, ``RenderResult.charts_inlined=False``).
+
+R9-REPORT(D28-4): 첫 장 = 결론 요약 + 메타 상자(``cover.build_cover``), 용어 첫 등장 괄호 풀이(``cover.TermState``),
+부록 C 용어 풀이(``glossary``)·부록 D 전체 표. 쪽수는 PDF 인쇄 때 채운다(``pdf.html_to_pdf`` — ``data-pages`` 칸).
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -21,6 +26,7 @@ from markupsafe import Markup
 from app.core.contracts_gen import Fact
 from app.core.time import kst_day
 from app.reports.charts import build_charts
+from app.reports.cover import TermState, build_cover, delta_mark, diff_mark, intake_counts_text, rank_move
 from app.reports.data import COMPONENT_LABELS, ReportData
 from app.reports.diff import SnapshotDiff
 from app.reports.fmt import (
@@ -31,7 +37,14 @@ from app.reports.fmt import (
     fmt_score,
     unknown_fact,
 )
-from app.reports.sections import DISCLAIMER, EXTRA_TITLE, SECTION_TITLES
+from app.reports.glossary import CATEGORIES, GLOSSARY
+from app.reports.sections import (
+    APPENDIX_C_TITLE,
+    APPENDIX_D_TITLE,
+    DISCLAIMER,
+    EXTRA_TITLE,
+    SECTION_TITLES,
+)
 
 __all__ = ["RenderResult", "find_echarts_bundle", "render_html"]
 
@@ -127,11 +140,19 @@ def _env() -> Environment:
     env.filters["score"] = fmt_score
     env.filters["json_script"] = _json_script
     env.filters["kst_day"] = kst_day  # 시각 문자열 → KST 날짜(D14-6)
+    env.filters["delta"] = delta_mark  # 부호 있는 값 옆 ▲▼ + 글자(R9-REPORT)
+    env.filters["diff_mark"] = diff_mark
+    env.filters["intake_counts"] = intake_counts_text
     env.globals.update(
         COMPONENT_LABELS=COMPONENT_LABELS,
         DISCLAIMER=DISCLAIMER,
         SECTION_TITLES=SECTION_TITLES,
         EXTRA_TITLE=EXTRA_TITLE,
+        APPENDIX_C_TITLE=APPENDIX_C_TITLE,
+        APPENDIX_D_TITLE=APPENDIX_D_TITLE,
+        GLOSSARY=GLOSSARY,
+        GLOSSARY_CATEGORIES=CATEGORIES,
+        rank_move=rank_move,
     )
     return env
 
@@ -141,7 +162,10 @@ def render_html(
     *,
     diff: SnapshotDiff | None = None,
     echarts_js: Path | None = None,
+    revision: int | None = None,
+    compare_revision: int | None = None,
 ) -> RenderResult:
+    """``revision``·``compare_revision`` = 스냅샷 리비전 번호(첫 장 메타 상자, 없으면 '기록 없음')."""
     bundle_path = find_echarts_bundle(echarts_js)
     bundle = _read_bundle(bundle_path, bundle_path.stat().st_mtime) if bundle_path else ""
     data.charts = build_charts(data)
@@ -159,6 +183,8 @@ def render_html(
             has_echarts=bool(bundle),
             charts={c.id: c for c in data.charts},
             ea_rows=_extract_audit_rows(data),
+            cover=build_cover(data, diff, revision=revision, compare_revision=compare_revision),
+            term=TermState(),
         )
     )
     return RenderResult(html=html, charts=len(data.charts), charts_inlined=bool(bundle))

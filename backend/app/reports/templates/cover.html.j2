@@ -1,0 +1,60 @@
+{# 첫 장(R9-REPORT, D28-4, 30-proposal §11-2 (2)-1): 메타 상자 + 결론 요약 + 읽는 법 + 표기 규칙.
+   요약 문장은 이미 있는 값(판정기 결과·점수·접수 상태·라벨)과 개수만 끼운다 — 새 판단 문장을 만들지 않는다. #}
+{% from "macros.html.j2" import fact, intake, disclaimer %}
+<header id="cover" class="cover">
+  <h1>{{ data.region_name }} 민간분양 청약 분석 보고서</h1>
+  <p class="cover-sub">기준일 {{ data.asof_date }} · 리비전 {{ cover.revision or "기록 없음" }} · 시나리오 {{ data.scenario_name }}</p>
+  {{ disclaimer() }}
+  <table class="meta-box">
+    <tbody>
+      <tr><th>지역</th><td>{{ data.region_name }} <span class="small">(입력 지명: {{ data.region_query }})</span></td>
+          <th>기준일 · 리비전</th><td>{{ data.asof_date }} · 스냅샷 #{{ data.snapshot_id }} 리비전 {{ cover.revision or "기록 없음" }} ({{ data.snapshot_status }}{% if data.degraded %}, 미판정 모드{% endif %})</td></tr>
+      <tr><th>발행 · 생성</th><td>공개 {{ (data.published_at | kst_day) if data.published_at else "발행 전" }} · 생성 <time class="generated-at" datetime="{{ data.generated_at }}">{{ data.generated_at }}</time></td>
+          <th>보고서 시나리오</th><td>{{ data.scenario_name }} ({{ data.scenario_code }})</td></tr>
+      <tr><th>비교 기준일</th><td>{% if data.extra %}{{ data.extra.base_asof }} · 스냅샷 #{{ data.extra.base_snapshot_id }} 리비전 {{ cover.compare_revision or "기록 없음" }}{% else %}없음(비교하지 않음){% endif %}</td>
+          <th>쪽수</th><td class="pages">본문 <span data-pages="body">—</span>쪽 · 부록 <span data-pages="appendix">—</span>쪽 (전체 <span data-pages="total">—</span>쪽)<span class="small" data-pages-note> — HTML판은 쪽이 없어 PDF판에만 숫자가 들어간다</span></td></tr>
+      <tr><th>자료 출처 · 확인일</th><td>참고자료 {{ cover.ref_count }}건{% if cover.ref_days %} · 확인일 {{ cover.ref_days[0] }}{% if cover.ref_days[1] != cover.ref_days[0] %}~{{ cover.ref_days[1] }}{% endif %}{% endif %} · 접속 실패 {{ cover.failed_sources }}건 (URL 전문은 부록 B)</td>
+          <th>판정기 버전</th><td>{% for v in data.adapter_versions %}{{ v }}{% if not loop.last %}, {% endif %}{% else %}호출 기록 없음{% endfor %} · 호출 {{ data.total_calls }}회(부록 A)</td></tr>
+      <tr><th>계약 버전</th><td>{{ data.contract_version }}</td>
+          <th>고지</th><td>{{ DISCLAIMER }} — 판단은 판정기가 했고, 이 문서는 기록·점수·표시만 한다</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="cover-h">한눈에 보기 — 이 기준일의 결과 요약</h2>
+  <ol class="summary">
+    <li class="sum-open"><strong>지금 접수 가능 {{ cover.open_now | length }}곳</strong>{% if cover.open_now %}: {% for c in cover.open_now %}{{ c.name }} {{ intake(c.intake_shown) }}{% if not loop.last %} · {% endif %}{% endfor %}{% endif %}.
+      <span class="small">{{ term("intake_status") }} 집계(제외 단지 빼고): {{ cover.intake_counts | intake_counts }}.</span></li>
+    <li class="sum-top"><strong>{{ term("total") }} 상위 {{ cover.top | length }}곳</strong>({{ data.scenario_name }}){% if cover.top %}: {% for s in cover.top %}{{ s.rank }}위 {{ s.name }} {{ fact(s.total) }}{% if s.tie_group %} <span class="badge warn">공동 그룹 {{ s.tie_group }}</span>{% endif %}{% if s.unstable %} <span class="badge warn">가중치 ±10%p에 TOP 5 변동</span>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}{% else %}: 없음(점수 미계산){% endif %}.
+      <span class="small">상대 비교 값이다. 순위·성분·탈락 사유는 §6, 단지별 근거는 §7.</span></li>
+    <li class="sum-decide"><strong>상황별 {{ term("judge") }} 선택</strong> — {{ term("decide", "decide") }} 결과와 {{ term("confidence") }}. 동률이면 1순위를 하나로 말하지 않는다.
+      <table class="scenario-cover">
+        <thead><tr><th>상황</th><th>판정기 선택(확률)</th><th>confidence</th><th>비고</th></tr></thead>
+        <tbody>
+        {% for line in cover.scenarios %}
+          {% set b = line.block %}
+          <tr><td>{{ b.name if b.name.startswith(b.code ~ " ") else b.code ~ " — " ~ b.name }}</td>
+            <td>{% for d in line.chosen %}{{ d.option }}{% if d.virtual %} <span class="badge">가상 후보</span>{% endif %} {{ fact(d.prob) }}{% if not loop.last %} · {% endif %}{% else %}없음(미판정){% endfor %}</td>
+            <td>{% if b.decisions %}{{ fact(b.confidence) }}{% else %}—{% endif %}</td>
+            <td>{% if line.tie %}<span class="badge warn">동률</span> 1순위를 하나로 말하지 않음{% elif not b.decisions %}decide 기록 없음{% else %}—{% endif %}</td></tr>
+        {% else %}
+          <tr><td colspan="4">상황별 decide 기록 없음 — 미판정</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </li>
+    <li class="sum-unknown"><strong>확인 불가·미해결</strong> — {{ term("judge_scope") }}: {% for code, text, n in cover.scope_counts %}{{ text }} {{ n }}곳{% if not loop.last %} · {% endif %}{% endfor %}.
+      {% for text, cxs in cover.scope_groups %}<br><span class="scope-group">{{ text }}: {% for c in cxs[:5] %}{{ c.name }}({{ c.scope_reason or "사유 미기재" }}){% if not loop.last %} · {% endif %}{% endfor %}{% if cxs | length > 5 %} 외 {{ cxs | length - 5 }}곳(§3){% endif %}</span>{% endfor %}
+      <br>
+      미해결 판정 {{ cover.unresolved_calls }}건, 라벨 '확인 불가' 값 {{ cover.unknown_values }}건(§9).</li>
+    <li class="sum-diff"><strong>이전 기준일 대비</strong> — {% if data.extra and cover.diff_counts %}{{ data.extra.base_asof }}(스냅샷 #{{ data.extra.base_snapshot_id }}) 대비 바뀐 항목 {{ cover.diff_counts.total }}건: <span class="delta add">＋ 추가</span> {{ cover.diff_counts.added }} · <span class="delta remove">－ 제외</span> {{ cover.diff_counts.removed }} · 변경 {{ cover.diff_counts.changed }}(<span class="delta up">▲ 증가</span> {{ cover.diff_counts.up }} · <span class="delta down">▼ 감소</span> {{ cover.diff_counts.down }}) — §12.{% elif data.extra %}{{ data.extra.base_asof }}(스냅샷 #{{ data.extra.base_snapshot_id }})와 비교 — 바뀐 항목 표는 §12.{% else %}비교 기준일 없음.{% endif %}
+      이 리비전의 중요 변경(critical) {{ cover.critical_changes }}건.</li>
+  </ol>
+
+  <h2 class="cover-h">이 보고서 읽는 법</h2>
+  <ul class="howto">
+    <li>숫자 옆 작은 글자는 {{ term("label") }}이다. 확인됨 = 공식 자료에서 확인, 추정 = 계산·가정(괄호에 방법), 비공식 = 보도·홍보, 재가공 = 원본이 아닌 가공 데이터, 확인 불가 = 찾지 못함(괄호에 사유·확인일).</li>
+    <li>숫자마다 출처 번호가 있다(HTML판은 라벨에 마우스를 올리면 보임). 출처 URL·확인일 전체는 부록 B, 판정기 판정 기록은 부록 A, 용어 풀이는 부록 C, 본문에서 줄인 긴 표의 원본은 부록 D에 있다.</li>
+    <li>이 보고서는 판단을 새로 하지 않는다. {{ term("judge") }} 결과와 계산값을 옮겨 적었고, 보고서와 {{ term("notice", "입주자모집공고") }}가 다르면 공고문이 기준이다.</li>
+  </ul>
+  <p class="notation"><strong>표기 규칙</strong> — 금액: 1억 원 이상은 억 단위 소수 둘째 자리, 1억 원 미만은 만 원 단위(반올림, 화면 FactCell과 같은 규칙). 점수·확률: 소수 둘째 자리, %: 소수 첫째 자리(사사오입). {{ term("current_price") }}: {{ term("basis_type", "기준 타입") }}(전용 84㎡에 가장 가까운 타입) 기준이고, 공고문에 적힌 할인은 그 출처 라벨이 '확인됨'일 때만 뺀다. 증감: ▲ 늘어남·오름, ▼ 줄어듦·내림, ＋ 추가, － 제외 — 기호와 글자를 함께 쓰고, 평가가 아니라 방향만 뜻한다. 날짜는 한국 시간(KST).</p>
+</header>

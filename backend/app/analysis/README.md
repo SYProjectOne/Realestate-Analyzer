@@ -8,7 +8,8 @@
 
 §6 수식의 순수 함수: `price.py`, `gap.py`, `ladder.py`, `score.py`, `sensitivity.py`, `scenarios.py`, `types.py`.
 공용 규칙(R3, 파이프라인·API·보고서가 같은 함수를 부른다): `scope.py`(판정 범위 D9-1), `price_view.py`(현재 구매가 §6-1),
-`complex_input.py`(사실 행 → `ComplexScoreInput`).
+`complex_input.py`(사실 행 → `ComplexScoreInput`). 읽기 전용 보조(계약 .20 D28-5 — 식 변경 없음): `price.share_won`(P_mid × 비율, §6-7 산술),
+`competition_summary.py`(경쟁률 행 → 1순위 해당지역 최고 경쟁률·미달 행 수, 산술).
 DB 접근 없음(ORM 행·DTO 를 받기만 한다 — Protocol 속성), 같은 입력 = 같은 결과. 모든 component 에 `formula_text`.
 
 ## 공용 함수 — 보고서(F4)·API·파이프라인 공통 (시그니처 고정)

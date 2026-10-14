@@ -21,6 +21,8 @@
 | `deps.py` | Bearer 인증(쓰기 = API_TOKEN, 읽기 전용 = READONLY_TOKEN → GET 만, 그 밖 403), 계약에 없는 조회 파라미터 거부, 스냅샷(최신 published → ready)·시나리오(code 또는 id) 해석 |
 | `facts.py` | Fact 래핑(T13): field_provenance chosen 행 → `{v, label, prov, checked_at}`. 값은 있는데 출처 행이 없으면 ENV=dev `contract_violation`(500), prod `확인 불가(출처 누락)` + 경고 로그 |
 | `views.py` | DB 행 → 응답 모양. 목록은 관련 행을 한 번에 읽고 페이지 안만 Fact 로 만든다(T16: 1,000단지 첫 페이지 < 1초) |
+| `reason_codes.py` | 계약 .20(D28-5 Q5): '확인 불가'·접수 사유 문자열 → `ReasonCode`(머리말·낱말 규칙 — 판단 아님). `facts.unknown`·접수 행·대기열이 같은 함수 |
+| `change_text.py` | 계약 .20(D28-5 Q5): 변경 피드 `field_label`·`summary`·`value_kind`(필드 이름 표 + 값 모양 — 해시는 접는다, 원값 그대로) |
 | `contract.py` | `contracts/openapi.bundled.yaml` 로 요청 본문 검증(JSON Schema 2020-12 + 형식), 문서화된 상태 코드 조회 |
 | `errors.py` | 모든 오류 본문 = 계약 `Error`. 요청 검증 실패는 그 operation 이 422 를 문서화했으면 422, 아니고 404 만 있으면 404 |
 | `devseed.py` | 개발·e2e 픽스처 적재(아래) |

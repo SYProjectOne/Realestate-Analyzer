@@ -78,6 +78,7 @@ def market_body(
         session, complexes["every"], snap.id, scenario_id=sc.id if sc is not None else None
     )
     markers = []
+    la_names = {str(a["id"]): str(a["name"]) for a in body.get("living_areas") or []}
     for c in complexes["shown"]:
         if c.move_in_ym is None or judge_scope(bundles[c.id]) != "판정 대상":
             continue  # 강등된 입주월(검증 모순)은 마커를 그리지 않는다
@@ -86,6 +87,7 @@ def market_body(
                 "complex_id": c.id,
                 "name": c.name,
                 "living_area": c.living_area,
+                "living_area_name": la_names.get(c.living_area or ""),  # 계약 .20 Q5
                 "move_in_ym": fm.field("complex", c.id, "move_in_ym", c.move_in_ym, unit="ym"),
             }
         )
@@ -134,6 +136,7 @@ def _market_static(
                 "snapshot_id": b.snapshot_id,
                 "substitute": is_substitute(b),
                 "living_area": b.living_area,
+                "living_area_name": names.get(b.living_area or ""),  # 계약 .20 Q5
                 "name": b.name,
                 "completed_year": b.completed_year,
                 "sale_year": b.sale_year,
@@ -160,6 +163,7 @@ def _market_static(
         flags.append(
             {
                 "living_area": la_id,
+                "living_area_name": names.get(la_id),  # 계약 .20 Q5
                 "sample_n": own_sample_n(benches, la_id),
                 "no_recent_sale_case": not any((b.sale_year or 0) >= asof.year - 3 for b in own),
                 "substituted": not own and bool(subs),
@@ -198,6 +202,7 @@ def _market_static(
         supply_views.append(
             {
                 "living_area": area_id,
+                "living_area_name": names.get(area_id or ""),  # 계약 .20 Q5 — G6 범례가 la_n 대신 이름
                 "year": year,
                 "units": units,
                 "complexes": [cx_names[s.complex_id] for s in group if s.complex_id in cx_names] or None,

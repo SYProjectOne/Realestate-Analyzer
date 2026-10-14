@@ -15,22 +15,23 @@
   <p class="rank-note">{{ x.rank_note }}</p>
   {% else %}
   <table id="rank-table">
-    <thead><tr><th>단지</th><th>이전 순위</th><th>현재 순위</th><th>이전 종합</th><th>현재 종합</th></tr></thead>
+    <thead><tr><th>단지</th><th>이전 순위</th><th>현재 순위</th><th>이전 종합</th><th>현재 종합</th><th>변화(▲ 오름 · ▼ 내림)</th></tr></thead>
     <tbody>
     {% for name, r0, r1, t0, t1 in x.rank_rows %}
-      <tr><td>{{ name }}</td><td>{{ r0 }}</td><td>{{ r1 }}</td><td>{% if t0 %}{{ fact(t0) }}{% else %}—{% endif %}</td><td>{% if t1 %}{{ fact(t1) }}{% else %}—{% endif %}</td></tr>
+      <tr><td>{{ name }}</td><td>{{ r0 }}</td><td>{{ r1 }}</td><td>{% if t0 %}{{ fact(t0) }}{% else %}—{% endif %}</td><td>{% if t1 %}{{ fact(t1) }}{% else %}—{% endif %}</td><td>{{ rank_move(r0, r1, t0, t1) }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
   {% endif %}
   <h3>12-2. 파생 테이블 diff(이전 → 현재)</h3>
+  <p class="small">구분: ＋ 추가 · － 제외 · ▲ 증가 · ▼ 감소(숫자 값이 바뀐 방향) · 변경(글자 값). 이 표는 변경 기록이고 값의 출처·라벨은 해당 단지 표에서 본다(D25-2).</p>
   {% if diff and diff.note %}
   <p class="diff-note">{{ diff.note }}</p>
   {% elif diff %}
   <table id="diff-table">
     <thead><tr><th>테이블</th><th>단지</th><th>항목</th><th>이전</th><th>현재</th><th>구분</th><th>라벨</th></tr></thead>
     <tbody>
-    {% for r in diff.rows %}<tr data-kind="{{ r.kind }}"><td>{{ r.table }}</td><td>{{ r.complex_name }}</td><td>{{ r.field }}</td><td>{{ r.old }}</td><td>{{ r.new }}</td><td>{{ {"added": "추가", "removed": "제외", "changed": "변경"}[r.kind] }}</td><td>{{ r.label }}</td></tr>
+    {% for r in diff.rows %}<tr data-kind="{{ r.kind }}"><td>{{ r.table }}</td><td>{{ r.complex_name }}</td><td>{{ r.field }}</td><td>{{ r.old }}</td><td>{{ r.new }}</td><td>{{ r | diff_mark }}</td><td>{{ r.label }}</td></tr>
     {% endfor %}
     </tbody>
   </table>

@@ -2,7 +2,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.19
+  version: 2026-10-09.20
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -1210,10 +1210,14 @@ components:
       name: sort
       in: query
       required: false
-      description: 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id).
+      description: |
+        정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id).
+        `intake`(계약 2026-10-09.20, D28-5 Q9): 표시 접수 상태 순 가능 → 미정 → 확인 불가(접수 행 없음 포함) → 불가, 같은 상태 안은
+        접수 마감 임박순(단지 공고 접수 일정 `apply_dates` 중 기준일 이후 가장 이른 끝날짜(끝이 없으면 시작) — 없으면 뒤로) → complex_id.
+        `-intake` 는 상태 순서만 거꾸로(불가 → … → 가능), 같은 상태 안 순서(마감 임박 → complex_id)는 그대로. 판단 없음(저장된 접수 행·일정 정렬).
       schema:
         type: string
-        pattern: '^-?(total|rank|name|price_mid|price_low|move_in_ym|resale_end|gap_pct|p10|living_area|last_change)$'
+        pattern: '^-?(total|rank|name|price_mid|price_low|move_in_ym|resale_end|gap_pct|p10|living_area|last_change|intake)$'
         default: -total
     ComplexFilter:
       name: filter
@@ -1366,3 +1370,7 @@ components:
     IntakeQueueGroup: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueueGroup' }
     IntakeQueueItem: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueueItem' }
     IntakeQueuePendingCheck: { $ref: './schemas/intake_queue.json#/$defs/IntakeQueuePendingCheck' }
+    # 계약 2026-10-09.20 (D28-5 초보자 UI 데이터 요청 Q1·Q4·Q5·Q6·Q7·Q8·Q9)
+    ReasonCode: { $ref: './schemas/fact.json#/$defs/ReasonCode' }
+    CompetitionSummary: { $ref: './schemas/competition.json#/$defs/CompetitionSummary' }
+    PaymentAmounts: { $ref: './schemas/complex_detail.json#/$defs/PaymentAmounts' }

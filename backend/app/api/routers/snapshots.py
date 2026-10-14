@@ -9,7 +9,7 @@ import io
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import JSONResponse
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app import snapshot_view as sv
 from app.analysis._ranking import display_order_key, tie_order_key
-from app.api import views
+from app.api import change_text, views
 from app.api.benchmarks import benchmark_absence, benchmarks_for
 from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import ApiError, not_found
@@ -43,9 +43,7 @@ from app.models import ChangeEvent, Complex, RawDocument, Region, Scenario, Snap
 router = APIRouter(tags=["snapshots"])
 
 SCENARIO_PATTERN = r"^(base|A|B|C|D|[0-9]+)$"
-SORT_PATTERN = (
-    r"^-?(total|rank|name|price_mid|price_low|move_in_ym|resale_end|gap_pct|p10|living_area|last_change)$"
-)
+SORT_PATTERN = r"^-?(total|rank|name|price_mid|price_low|move_in_ym|resale_end|gap_pct|p10|living_area|last_change|intake)$"
 ScenarioQ = Annotated[str, Query(pattern=SCENARIO_PATTERN)]
 SortQ = Annotated[str, Query(pattern=SORT_PATTERN)]
 
@@ -78,6 +76,10 @@ def change_view(ev: ChangeEvent, names: Mapping[int, str]) -> dict[str, Any]:
         "complex_id": ev.complex_id,
         "complex_name": names.get(ev.complex_id) if ev.complex_id is not None else None,
         "tab": _TABS.get(ev.entity),
+        # 계약 .20(D28-5 Q5): 사람이 읽는 필드 이름·한 줄 요약·값 모양(해시는 화면에서 접는다) — 원값은 old/new 그대로
+        "field_label": change_text.field_label(ev.entity, ev.field),
+        "summary": change_text.change_summary(ev.entity, ev.field, ev.old_text, ev.new_text),
+        "value_kind": change_text.value_kind(ev.old_text, ev.new_text, field=ev.field),
     }
 
 
@@ -262,7 +264,26 @@ def row_keys(rd: RowData, last: Mapping[int, ChangeEvent]) -> dict[str, Any]:
         "gap_pct": _dec_s(rd.gap_pct),
         "p10": _dec_s(rd.p10),
         "last_change": ev.detected_at if ev is not None else None,
+        "intake_deadline": intake_deadline(cx.apply_dates, rd.b.asof_date),  # 계약 .20 Q9 정렬 키
     }
+
+
+INTAKE_ORDER: Final = {"가능": 0, "미정": 1, "확인 불가": 2, None: 2, "불가": 3}
+"""계약 .20(D28-5 Q9) 정렬 키 ``intake``: 가능 → 미정 → 확인 불가(접수 행 없음 포함) → 불가."""
+
+
+def intake_deadline(apply_dates: Any, asof: str | None) -> str | None:
+    """접수 마감 임박 키: 단지 공고 접수 일정(``complex.apply_dates`` — 저장값) 항목마다 끝날짜(없으면 시작) 중 기준일 이후 가장
+    이른 날짜. 일정이 없거나 모두 지났으면 None. 날짜 비교뿐(판단 아님)."""
+    days: list[str] = []
+    for it in apply_dates or []:
+        if not isinstance(it, Mapping):
+            continue
+        d = it.get("end") or it.get("to") or it.get("start") or it.get("date") or it.get("from")
+        text = str(d)[:10] if d else ""
+        if len(text) == 10 and text[4] == "-" and (asof is None or text >= asof):
+            days.append(text)
+    return min(days) if days else None
 
 
 def match_keys(k: Mapping[str, Any], f: Mapping[str, Any]) -> bool:
@@ -300,6 +321,7 @@ _SORT_GETTERS: dict[str, Callable[[Mapping[str, Any]], Any]] = {
     "p10": lambda k: _dec(k["p10"]),
     "living_area": lambda k: k["living_area"],
     "last_change": lambda k: k["last_change"],
+    "intake": lambda k: INTAKE_ORDER.get(k.get("intake_status"), 2),
 }
 
 
@@ -307,7 +329,10 @@ def sort_keyed[T](rows: list[tuple[dict[str, Any], T]], sort: str) -> list[tuple
     """정렬: 값이 있는 행(같은 값은 complex_id 오름차순 — 안정 정렬) 다음 값 없는 행(complex_id 순).
 
     ``rank``·``-rank``: 같은 순위(공동 순위) 안은 종합 점수 높은 순 → complex_id(``_ranking.tie_order_key`` — 대시보드 TOP 5·
-    민감도·보고서와 같은 순서, R7-FIX2). 방향은 순위에만 걸린다."""
+    민감도·보고서와 같은 순서, R7-FIX2). 방향은 순위에만 걸린다.
+
+    ``intake``·``-intake``(계약 .20 Q9): 접수 상태 순(``INTAKE_ORDER``) — 같은 상태 안은 마감 임박(``intake_deadline``, 없으면
+    뒤) → complex_id. 방향은 상태 순서에만 걸린다."""
     desc = sort.startswith("-")
     name = sort.lstrip("-")
     get = _SORT_GETTERS[name]
@@ -315,6 +340,15 @@ def sort_keyed[T](rows: list[tuple[dict[str, Any], T]], sort: str) -> list[tuple
     missing = [r for r in rows if get(r[0]) is None]
     if name == "rank":
         present.sort(key=lambda r: tie_order_key(r[0]["total"], r[0]["cid"]))
+    elif name == "intake":
+        # 같은 상태 안 = 마감 임박(없으면 뒤) → complex_id — 방향은 상태 순서에만(계약 .20 Q9). 옛 저장본 키에는 마감이 없다(None)
+        present.sort(
+            key=lambda r: (
+                r[0].get("intake_deadline") is None,
+                r[0].get("intake_deadline") or "",
+                r[0]["cid"],
+            )
+        )
     else:
         present.sort(key=lambda r: r[0]["cid"])
     present.sort(key=lambda r: get(r[0]), reverse=desc)
@@ -409,8 +443,19 @@ def build_rows(
     from app.api.views import judgment_days
 
     days.update(judgment_days(session, (b.cx.inclusion_judgment_seq for b in bundles)))
+    # 계약 .20 Q4: 경쟁률 요약 — 페이지 단지의 경쟁률 행·칸 출처만 한 번에 읽는다
+    comps = views.competition_rows_for(session, [b.cx.id for b in bundles])
+    views.load_competition_prov(session, fm, comps)
     return [
-        complex_row(fm, ctx, r, names, jl_days=days, last_change=_last_change_view(last.get(r.b.cx.id)))
+        complex_row(
+            fm,
+            ctx,
+            r,
+            names,
+            jl_days=days,
+            last_change=_last_change_view(last.get(r.b.cx.id)),
+            comps=comps.get(r.b.cx.id, ()),
+        )
         for r in rows
     ]
 
@@ -635,10 +680,9 @@ def _sum_fact(fm: FactMaker, rows: Sequence[Unsold], name: str) -> dict[str, Any
         return partial
     known = facts
     total = sum(f["v"] for f in known)
-    parts = "·".join(
-        f"{u.scope_name or u.scope_code} {getattr(u, name)}" for u in rows if getattr(u, name) is not None
-    )
-    reason = f"{parts} 합"[:120] if len(known) > 1 else known[0].get("reason")
+    # 계약 .20(D28-5 Q5): 짧은 사유 — 단위별 값은 KPI ``breakdown``·G6 시장 단위별 점(예전 '<이름> <값>·… 합' 나열은 라벨 칸을 넘쳤다)
+    scopes = len({u.scope_code or u.scope_name or str(u.id) for u in rows})
+    reason = f"지역 합계(시군구 {scopes}곳)" if len(known) > 1 else known[0].get("reason")
     label = weakest(f["label"] for f in known)
     checked = max((f["checked_at"] for f in known if f.get("checked_at")), default=None)
     return fact(total, label, known[0]["prov"], checked, reason=reason, unit="units")
@@ -744,7 +788,20 @@ def dashboard_body(session: Session, settings: Settings, snap: Snapshot, sc: Sce
     )
     days = ladder_days(session, [bundles[c] for c in top_ids])
     days.update(ctx.jl_days)
-    top5 = [score_row(ctx, bundles[cid], names, jl_days=days) for cid in top_ids]
+    # 계약 .20(D28-5 Q7·Q4): TOP 카드의 사실(가격·전매·입주·갭·경쟁률) — 목록 행과 같은 함수·같은 리비전 값(D10-1)
+    top_fm = FactMaker(settings, provenance_for(session, [bundles[c] for c in top_ids], list_rows=True))
+    top_comps = views.competition_rows_for(session, top_ids)
+    views.load_competition_prov(session, top_fm, top_comps)
+    top5 = [
+        score_row(
+            ctx,
+            bundles[cid],
+            names,
+            jl_days=days,
+            facts=views.score_row_facts(top_fm, ctx, bundles[cid], top_comps.get(cid, ())),
+        )
+        for cid in top_ids
+    ]
     # D10-1·출처 식(st_<run>): 판정 대상 수 = 이 점수 실행의 score_total.judge_scope='판정 대상'
     # 단지 수(저장값) — TOP 5·순위와 같은 실행이라 KPI 와 TOP 5 가 갈리지 않는다(현재 사실로 다시 세지 않는다)
     if any(t.judge_scope for t in ctx.totals.values()):
@@ -767,12 +824,19 @@ def dashboard_body(session: Session, settings: Settings, snap: Snapshot, sc: Sce
             "ym": latest_unsold["ym"],
             "total": latest_unsold["total"],
             "post_completion": latest_unsold["post_completion"],
+            # 계약 .20(D28-5 Q5): 합계의 단위(시군구)별 내역 — 원천 행 Fact 그대로
+            "breakdown": [
+                p
+                for p in unsold_points(session, region.id, fm, per_scope=True)
+                if p["ym"] == latest_unsold["ym"]
+            ],
         }
         if latest_unsold
         else {
             "ym": None,
             "total": unknown("미분양 자료 없음"),
             "post_completion": unknown("미분양 자료 없음"),
+            "breakdown": [],
         }
     )
     body = {

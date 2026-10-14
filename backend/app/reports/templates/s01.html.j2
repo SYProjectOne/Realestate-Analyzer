@@ -18,19 +18,17 @@
     {% endfor %}
     </tbody>
   </table>
-  <h3>1-2. 제도 요약 — 규제지역·분양가상한제·전매·거주의무·재당첨(단지 공고 기준)</h3>
-  <table>
-    <thead><tr><th>생활권</th><th>단지</th><th>규제지역</th><th>분양가상한제</th><th>택지</th><th>전매제한</th><th>전매 해제</th><th>거주의무</th><th>재당첨 제한</th></tr></thead>
+  <h3>1-2. 제도 요약 — 상위 5곳(단지 공고 기준)</h3>
+  <p class="small">제도 값은 단지마다 공고문 기준이다: {{ term("regulated") }}, {{ term("price_cap") }}, {{ term("resale_limit") }}, {{ term("residency", "거주의무") }}, {{ term("rewin") }}.
+    본문에는 종합 점수 상위 5곳의 세 항목만 둔다 — 단지 {{ data.regulation_rows | sum(attribute="complexes", start=[]) | length }}개 전체와 규제지역·분양가상한제·택지·전매 해제 열은 부록 D-1.</p>
+  <table class="body-summary">
+    <thead><tr><th>단지</th><th>전매제한</th><th>거주의무</th><th>재당첨 제한</th></tr></thead>
     <tbody>
-    {% for grp in data.regulation_rows %}
-      {% for c in grp.complexes %}
-      <tr>
-        <td>{{ grp.living_area }}</td><td>{{ c.name }}</td>
-        <td>{{ fact(c.facts.regulated) }}</td><td>{{ fact(c.facts.price_cap) }}</td><td>{{ fact(c.facts.land_type) }}</td>
-        <td>{{ fact(c.facts.resale_months) }}</td><td>{{ fact(c.facts.resale_release_on_registration) }}</td>
-        <td>{{ fact(c.facts.residency_months) }}</td><td>{{ fact(c.facts.rewin_restriction_years) }}</td>
-      </tr>
-      {% endfor %}
+    {% for s in data.top5 %}
+      {% set c = data.complex_by_id.get(s.complex_id) %}
+      {% if c %}<tr><td>{{ s.rank }}위 {{ c.name }}</td><td>{{ fact(c.facts.resale_months) }}</td><td>{{ fact(c.facts.residency_months) }}</td><td>{{ fact(c.facts.rewin_restriction_years) }}</td></tr>{% endif %}
+    {% else %}
+      <tr><td colspan="4">점수 행 없음 — 전체 표는 부록 D-1</td></tr>
     {% endfor %}
     </tbody>
   </table>

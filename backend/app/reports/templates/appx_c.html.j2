@@ -1,0 +1,17 @@
+{# 부록 C 용어 풀이(R9-REPORT, 30-proposal §7·§11-2 (2)-4): 문구 원본 = app/reports/glossary.py(key = ko.json glossary.items). #}
+<section id="appx-c" class="appendix">
+  <h2>{{ APPENDIX_C_TITLE }}</h2>
+  <p class="lead">본문에 나오는 말을 한 줄로 풀었다. 제도 수치(배점·기간·비율)는 바뀔 수 있어 넣지 않았다 — 입주자모집공고와 청약홈이 기준이다. 본문에서는 처음 나올 때 괄호로 한 번 풀었다.</p>
+  {% for cat, cat_name in GLOSSARY_CATEGORIES.items() %}
+  {% set items = GLOSSARY.values() | selectattr("cat", "equalto", cat) | list %}
+  {% if items %}
+  <h3>{{ cat_name }}</h3>
+  <table class="glossary">
+    <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+    <tbody>
+    {% for it in items %}<tr data-key="{{ it.key }}"><td>{{ it.term }}</td><td>{{ it.short }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% endfor %}
+</section>

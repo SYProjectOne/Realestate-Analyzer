@@ -1,0 +1,119 @@
+{% from "macros.html.j2" import fact, intake %}
+{# 부록 D(R9-REPORT, 30-proposal §11-2 (2)-2·K2): 본문에서 요약 표로 줄인 긴 표의 원본. 값·라벨·출처 id 는 바꾸지 않았다. #}
+{% macro complex_rows(rows) %}
+<table>
+  <thead><tr><th>단지</th><th>생활권</th><th>접수 상태</th><th>판정 타입</th><th>현재 구매가 하단</th><th>상단</th><th>계약금(현재)</th><th>전매제한</th><th>거주의무</th><th>입주</th><th>세대수</th></tr></thead>
+  <tbody>
+  {% for c in rows %}
+    {% set pay = c.current_payment %}
+    <tr>
+      <td>{{ c.name }}{% if c.former_names %}<br><span class="small">(구 {{ c.former_names | join(", ") }})</span>{% endif %}</td>
+      <td>{{ c.living_area_name }}</td>
+      <td>{{ intake(c.intake_shown) }}</td>
+      <td>{{ c.basis.type_code if c.basis else "확인 불가(타입 없음)" }}</td>
+      <td>{{ fact(c.price_low) }}</td><td>{{ fact(c.price_high) }}</td>
+      <td>{% if pay %}{{ fact(pay.down_payment_pct) }}{% else %}확인 불가(납부 조건 없음){% endif %}</td>
+      <td>{{ fact(c.facts.resale_months) }}</td><td>{{ fact(c.facts.residency_months) }}</td>
+      <td>{{ fact(c.facts.move_in_ym) }}</td><td>{{ fact(c.facts.units_total) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="11">해당 단지 없음</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+<section id="appx-d" class="appendix">
+  <h2>{{ APPENDIX_D_TITLE }}</h2>
+  <p class="lead">본문 §1·§4·§6의 요약 표가 줄인 전체 표다. 값·라벨·출처 번호는 본문과 같다.</p>
+
+  <h3 id="appx-d1">D-1. 제도 요약 전체(§1-2) — 규제지역·분양가상한제·전매·거주의무·재당첨(단지 공고 기준)</h3>
+  <table>
+    <thead><tr><th>생활권</th><th>단지</th><th>규제지역</th><th>분양가상한제</th><th>택지</th><th>전매제한</th><th>전매 해제</th><th>거주의무</th><th>재당첨 제한</th></tr></thead>
+    <tbody>
+    {% for grp in data.regulation_rows %}
+      {% for c in grp.complexes %}
+      <tr>
+        <td>{{ grp.living_area }}</td><td>{{ c.name }}</td>
+        <td>{{ fact(c.facts.regulated) }}</td><td>{{ fact(c.facts.price_cap) }}</td><td>{{ fact(c.facts.land_type) }}</td>
+        <td>{{ fact(c.facts.resale_months) }}</td><td>{{ fact(c.facts.resale_release_on_registration) }}</td>
+        <td>{{ fact(c.facts.residency_months) }}</td><td>{{ fact(c.facts.rewin_restriction_years) }}</td>
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% set track_a = data.complexes | selectattr("track", "equalto", "A") | list %}
+  {% set track_b = data.complexes | rejectattr("track", "equalto", "A") | list %}
+  <h3 id="appx-d2">D-2. 단지 전수 표(§4) — (A) 청약 진행·예정 {{ track_a | length }}개</h3>
+  {{ complex_rows(track_a) }}
+  <h3>D-2. 단지 전수 표(§4) — (B) 잔여물건 {{ track_b | length }}개</h3>
+  {{ complex_rows(track_b) }}
+
+  <h3 id="appx-d3">D-3. 잔여 이력 · 경쟁률(§4)</h3>
+  <table>
+    <thead><tr><th>단지</th><th>구분</th><th>공고번호</th><th>공고일</th><th>타입별 세대</th><th>경쟁률</th><th>결과</th></tr></thead>
+    <tbody>
+    {% for c in data.complexes %}
+      {% for e in c.events %}
+      <tr><td>{{ c.name }}</td><td>{{ e.kind }}</td><td>{{ e.notice_no or "—" }}</td><td>{{ fact(e.notice_date) }}</td><td>{{ e.units_text or "—" }}</td><td>{{ e.ratio_text or "—" }}</td><td>{{ e.result_text or "—" }}</td></tr>
+      {% endfor %}
+      {% for k in c.competition %}
+      <tr><td>{{ c.name }}</td><td>{{ k.kind }} {{ k.round }} 경쟁률</td><td>—</td><td>—</td><td>{{ k.type_code }} 공급 {{ fact(k.supply) }} · 접수 {{ fact(k.applied) }}</td><td>{{ k.ratio_text or "—" }}</td><td>청약홈 경쟁률 원문</td></tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h3 id="appx-d4">D-4. 접수 상태 경로별 전부(§4 — 표시값 = 사람 확인 &gt; 공식 팝업 &gt; 렌더 캡처, 비공식 참고는 판정 미사용)</h3>
+  <table>
+    <thead><tr><th>단지</th><th>경로</th><th>상태</th><th>확인일</th><th>근거</th><th>표시값</th></tr></thead>
+    <tbody>
+    {% for c in data.complexes %}{% for i in c.intake %}
+      <tr><td>{{ c.name }}</td><td>{{ i.path_label }}</td><td>{{ i.text }}</td><td>{{ i.checked_day }}</td><td>{{ i.note or "—" }}</td><td>{{ "채택" if i.used else "참고" }}</td></tr>
+    {% endfor %}{% endfor %}
+    </tbody>
+  </table>
+
+  <h3 id="appx-d5">D-5. 수치 추출·감사(extract / audit) 결과(§4)</h3>
+  <table>
+    <thead><tr><th>단지</th><th>입력 검사(screen)</th><th>추출(extract)</th><th>감사(audit)</th></tr></thead>
+    <tbody>
+    {% for r in ea_rows %}<tr><td>{{ r.name }}</td><td>{{ r.screen }}</td><td>{{ r.extract }}</td><td>{{ r.audit }}</td></tr>
+    {% else %}<tr><td colspan="4">호출 기록 없음</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% set keys = COMPONENT_LABELS.keys() | select("in", data.weights) | list %}
+  <h3 id="appx-d6">D-6. 종합 점수표 전체(§6-3) — 가중치 {% for k in keys %}{{ COMPONENT_LABELS[k] }} {{ "%.2f" | format(data.weights[k]) }}{% if not loop.last %} · {% endif %}{% endfor %}</h3>
+  <table>
+    <thead><tr><th>순위</th><th>단지</th><th>생활권</th>{% for k in keys %}<th>{{ COMPONENT_LABELS[k] }}</th>{% endfor %}<th>종합</th><th>동점</th><th>민감도</th></tr></thead>
+    <tbody>
+    {% for s in data.scores %}
+      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}</td><td>{{ s.living_area_name }}</td>
+        {% for k in keys %}<td>{% if k in s.components %}{{ fact(s.components[k].score) }}{% else %}—{% endif %}</td>{% endfor %}
+        <td>{{ fact(s.total) }}</td><td>{{ "공동 그룹 %d" | format(s.tie_group) if s.tie_group else "" }}</td>
+        <td>{% if s.unstable %}<span class="badge warn">가중치 ±10%p에 TOP 5 변동</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h4>TOP 5와 탈락 사유 — 전체(§6-4)</h4>
+  <table>
+    <thead><tr><th>순위</th><th>단지</th><th>종합</th><th>비고</th></tr></thead>
+    <tbody>
+    {% for s in data.scores %}
+      {% set c = data.complex_by_id.get(s.complex_id) %}
+      <tr><td>{{ "%d위" | format(s.rank) if s.rank else "—" }}</td><td>{{ s.name }}{% if c and c.rejudge_needed %} <span class="badge warn rejudge" title="{{ c.rejudge_text }}">재판정 필요</span>{% endif %}</td><td>{{ fact(s.total) }}</td><td>{% if s.rank and s.rank <= 5 %}TOP 5{% if s.note %} · {{ s.note }}{% endif %}{% else %}{{ s.note }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h4>구성 점수 산출식(formula_text)</h4>
+  <table>
+    <thead><tr><th>단지</th><th>성분</th><th>산출식</th></tr></thead>
+    <tbody>
+    {% for s in data.scores %}{% for k, c in s.components.items() %}
+      <tr><td>{{ s.name }}</td><td>{{ c.label }}</td><td class="formula">{{ c.formula_text }}</td></tr>
+    {% endfor %}{% endfor %}
+    </tbody>
+  </table>
+</section>
