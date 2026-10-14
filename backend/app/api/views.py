@@ -1736,10 +1736,12 @@ NO_WINNING_SCORE: Final = "가점 미수집"
 
 
 def winning_score_fact(fm: FactMaker, c: Any, name: str) -> dict[str, Any]:
-    """경쟁률 행 1개의 당첨 가점 Fact. 저장 컬럼이 없으면 '확인 불가(가점 미수집)'."""
-    if not hasattr(Competition, name):
+    """경쟁률 행 1개의 당첨 가점 Fact. 저장 값이 없으면(컬럼 없음·팝업 미수집·팝업 칸 '-' — R9-PARSE 는 '-' 칸에 후보를 내지 않는다)
+    '확인 불가(가점 미수집)'. 값이 있으면 그 출처 행의 Fact(0/0/0 도 원문 숫자 그대로 — 화면 문구는 D29-4)."""
+    value = getattr(c, name, None) if hasattr(Competition, name) else None
+    if value is None:
         return unknown(NO_WINNING_SCORE, None)
-    return fm.field("competition", c.id, name, getattr(c, name, None))
+    return fm.field("competition", c.id, name, value)
 
 
 def competition_rows_for(session: Session, complex_ids: Sequence[int]) -> dict[int, list[Competition]]:

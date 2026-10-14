@@ -136,3 +136,17 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
   읽어 '확인됨'으로 채택하던 잔금 5건이 '추정' 산술로 내려갔다(전체 스위트에서 발견). 산술 값을 OCR 판독처럼 '판정기 추출이 나오면 물러나는
   후보'로 바꿔 요청·캐시 키를 예전 그대로 두었다(테스트 `test_q2_derived_balance_keeps_extract_request_and_yields_to_judge`).
 - R9-API 조정: 당첨가점 열·출처 필드 이름을 `winning_score_min/max/avg` 로 맞췄다(R9-API 가 그 이름으로 읽는다 — API 변경 없이 연결).
+
+## 9. main 병합 뒤(계약 .20 · R9-API · R9-REPORT, `b2fa9b1`) 맞춘 것
+
+병합 직후 전체 스위트 3 실패를 하나씩 봤다.
+
+| 실패 | 원인 | 처리 |
+| --- | --- | --- |
+| `tests/api/test_perf_r3c.py::test_list_responses_match_golden`(상세 18응답) | 골든(R9-API 가 열 없이 만듦)의 경쟁률 행 `winning_score_*` 는 `확인 불가(가점 미수집)` 인데, 병합으로 `Competition.winning_score_*` 열이 생기자 `api/views.winning_score_fact` 가 `hasattr` 를 통과해 빈 값을 `확인 불가(값 없음)` 로 냈다. **파싱 변경 때문이 아니다** — devseed 응답은 공고문 파서를 거치지 않는다(options_text·잔금·중도금·apply_dates 는 골든에 영향 없음) | `winning_score_fact`: 저장 값이 없으면(열 없음·팝업 미수집·팝업 칸 '-') `확인 불가(가점 미수집)`, 값이 있으면 그 출처 행 Fact. **골든 재생성 없음**(UPDATE_GOLDEN 안 씀 — 그대로 일치). `api/views.py` 는 WP5(R9-API) 소유 — 조정자 지시로 한 함수만 고침 |
+| `tests/api/test_r9_api.py::test_q4_no_rows_and_winning_score_not_collected` | 같은 원인 | 그 테스트는 그대로(미수집 → '가점 미수집') 통과. 새 테스트 `test_q4_collected_winning_scores_light_up`: R9-PARSE 저장 모양(열 + 같은 이름 출처 행)이면 행 Fact(42/63/48.5)·요약(1순위 해당지역 최저의 최솟값 30·최고의 최댓값 63)이 켜지고, 0/0/0 은 숫자 그대로('가점제 당첨자 없음'은 화면 문구 — D29-4) |
+| `tests/api/test_r3f_perf_publish.py` | 부하 중 시간 | 단독 실행 2/2 통과 |
+
+`apply_dates` 호환: 계약 .20 소비자 `api/views._schedule`(start·end)과 `sort=intake` 의 `routers/snapshots.intake_deadline`(end → start 순)이
+새 모양을 그대로 읽는다 — 잔여·임의 '청약접수' 기간은 이제 마감일이 키다(예전 모양은 시작일). 테스트 `test_q3_apply_dates_shape_feeds_api_intake_deadline`.
+D29-1(첫 가점 수집 이벤트 없음)은 `QUIET_FIRST_FIELDS` 로 이미 구현. D29-2(도화 39/99 병합)·D29-3(체크리스트 kind)은 후속 작업.

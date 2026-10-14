@@ -660,3 +660,24 @@ def test_q4_first_scores_are_quiet_later_change_is_info_event(
         (e.field, e.old_text, e.new_text, e.severity) for e in events if e.field.startswith("winning_score")
     ]
     assert got == [("winning_score_avg", "48.5", "49.5", "info")]
+
+
+def test_q3_apply_dates_shape_feeds_api_intake_deadline() -> None:
+    """저장 모양 ``[{kind, start, end}]`` 를 계약 .20 소비자가 그대로 읽는다: 접수 마감 임박 키(``sort=intake``)는 항목의 **끝**날짜
+    (잔여·임의 '청약접수' 기간이면 마감일 — 예전 모양에서는 시작일뿐이었다)."""
+    from app.api.routers.snapshots import intake_deadline
+
+    apt = parse_applyhome_api_json(
+        _text("api_APTDetail_2025000560.json"),
+        dto(source_kind="applyhome_detail", url=_api_url("apt", "detail", "2025000560")),
+    )
+    items = json.loads(str(_vals(apt, "complex", "2025000560")["apply_dates"].value))
+    assert intake_deadline(items, "2025-11-30") == "2025-12-01"
+    assert intake_deadline(items, "2025-12-03") == "2025-12-03"
+    assert intake_deadline(items, "2025-12-04") is None
+    opt = parse_applyhome_api_json(
+        (APPLYHOME_API / "getOPTLttotPblancDetail_2026940173.json").read_text(encoding="utf-8"),
+        dto(source_kind="applyhome_detail", url=_api_url("opt", "detail", "2026940173")),
+    )
+    window = json.loads(str(_vals(opt, "complex", "2026940173")["apply_dates"].value))
+    assert intake_deadline(window, "2026-08-20") == "2026-08-24"

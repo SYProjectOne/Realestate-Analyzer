@@ -194,6 +194,55 @@ def test_q4_no_rows_and_winning_score_not_collected(client: TestClient) -> None:
             assert c[k]["reason_code"] == "not_collected"
 
 
+def _scores(comp_id: int, lo: str, hi: str, avg: str) -> dict[str, str]:
+    """R9-PARSE 저장 모양: Competition.winning_score_* + 같은 이름 출처 행(웹 경쟁률 팝업)."""
+    vals = {"winning_score_min": lo, "winning_score_max": hi, "winning_score_avg": avg}
+    with get_session() as s:
+        c = s.get(Competition, comp_id)
+        assert c is not None
+        for k, v in vals.items():
+            setattr(c, k, Decimal(v))
+    return {k: _prov("competition", comp_id, k, v) for k, v in vals.items()}
+
+
+def test_q4_collected_winning_scores_light_up(client: TestClient) -> None:
+    """R9-PARSE 가 저장한 당첨 가점(경쟁률 팝업)은 Fact 로 나온다 — 원문 숫자 그대로(0/0/0 도 숫자, '가점제 당첨자 없음'은 화면 문구
+    D29-4). 요약은 1순위 해당지역 행 모두에 값이 있을 때 최저의 최솟값·최고의 최댓값. 가점이 없는 행은 여전히 '가점 미수집'."""
+    as_live()
+    a = _competition(EL, "1순위 해당지역", "59.9801", 73, 454)
+    b = _competition(EL, "1순위 해당지역", "75.9096", 87, 185)
+    zero = _competition(EL, "1순위 기타지역", "59.9801", 73, 80)
+    pa = _scores(a, "42", "63", "48.5")
+    _scores(b, "30", "55", "37.54")
+    _scores(zero, "0", "0", "0")
+    d = _detail(client, EL)
+    rows = {c["id"]: c for c in d["competition"]}
+    assert (
+        rows[a]["winning_score_min"]["v"],
+        rows[a]["winning_score_max"]["v"],
+        rows[a]["winning_score_avg"]["v"],
+    ) == (
+        42,
+        63,
+        48.5,
+    )
+    assert (
+        rows[a]["winning_score_avg"]["label"] == "확인됨"
+        and rows[a]["winning_score_avg"]["prov"] == pa["winning_score_avg"]
+    )
+    assert [rows[zero][k]["v"] for k in ("winning_score_min", "winning_score_max", "winning_score_avg")] == [
+        0,
+        0,
+        0,
+    ]
+    assert all(rows[zero][k]["label"] == "확인됨" for k in ("winning_score_min", "winning_score_max"))
+    cs = d["competition_summary"]
+    assert (cs["winning_score_min"]["v"], cs["winning_score_max"]["v"]) == (30, 63)
+    assert cs["winning_score_min"]["label"] == "확인됨"
+    others = [c for c in d["competition"] if c["id"] not in (a, b, zero)]
+    assert others and all(c["winning_score_min"]["reason"] == "가점 미수집" for c in others)
+
+
 def test_q4_incomplete_basis_row_makes_shortfall_unknown(client: TestClient) -> None:
     as_live()
     _competition(EL, "1순위 해당지역", "84.9939", 100, 750)
