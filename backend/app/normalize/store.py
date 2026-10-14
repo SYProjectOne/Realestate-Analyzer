@@ -90,12 +90,14 @@ from app.normalize.fields import (
     QUIET_FIRST_FIELDS,
     compare_mark,
     is_price_amount,
+    is_superseded,
     norm_value,
     split_discount,
     split_price_by_type,
     strip_tags,
     value_from_norm,
     with_mark,
+    with_superseded,
 )
 from app.normalize.living_area import assign_complex_area, correct_dong
 from app.normalize.merge import find_duplicate, live, merge_duplicate
@@ -113,12 +115,14 @@ __all__ = [
     "address_key",
     "block_name_key",
     "candidate_from_row",
+    "current_rows",
     "human_superseded",
     "is_remainder_url",
     "is_zone_address",
     "parser_for",
     "raw_dto",
     "resolve_field_group",
+    "retire_superseded",
     "store_raw_document",
     "write_chosen",
 ]
@@ -1172,15 +1176,21 @@ def resolve_field_group(
         own_key = _own_key(session, entity, entity_id)
         cands: list[FieldCandidate] = []
         kinds: dict[int, str | None] = {}
-        for fp in session.scalars(
-            select(FieldProvenance)
-            .where(
-                FieldProvenance.entity == entity,
-                FieldProvenance.entity_id == entity_id,
-                FieldProvenance.field == field_name,
-            )
-            .order_by(FieldProvenance.id)
-        ):
+        group_rows = current_rows(
+            session,
+            list(
+                session.scalars(
+                    select(FieldProvenance)
+                    .where(
+                        FieldProvenance.entity == entity,
+                        FieldProvenance.entity_id == entity_id,
+                        FieldProvenance.field == field_name,
+                    )
+                    .order_by(FieldProvenance.id)
+                )
+            ),
+        )
+        for fp in group_rows:
             rid = fp.raw_document_id
             if rid is None:
                 if is_human(fp.reason):
@@ -1427,6 +1437,8 @@ def price_refs(
         ):
             rid = fp.raw_document_id
             assert rid is not None
+            if is_superseded(fp.reason):
+                continue  # R10-FIX: 옛 파싱 행은 비교 대상도 아니다
             if rid not in kinds:
                 raw_row = session.get(RawDocument, rid)
                 kinds[rid] = raw_row.source_kind if raw_row is not None else None
@@ -1522,6 +1534,126 @@ def _carry_compare_marks(session: Session, bound: list[FieldCandidate], raw_id: 
     return out
 
 
+_SourceId = tuple[str, str, str, str, int | None, str]
+
+
+def _source_id(
+    entity: str,
+    entity_key: str | None,
+    field_name: str,
+    value_text: str | None,
+    start: int | None,
+    label: str,
+) -> _SourceId:
+    """원문 안의 출처 자리(파싱 키·필드·값 표기·발췌 위치·라벨) — ``provenance._same_source`` 가 같은 행으로 보는 기준 + 파싱 키."""
+    return (entity, entity_key or "", field_name, (value_text or "").replace("\x00", " "), start, label)
+
+
+def _parser_row(fp: FieldProvenance) -> bool:
+    """원문 파서가 만든 출처 행(사람 확인·판정기 추출·감사 행이 아님)."""
+    return fp.raw_document_id is not None and not _is_judged_row(fp)
+
+
+def _mark_superseded(fp: FieldProvenance) -> None:
+    fp.reason = with_superseded(fp.reason)
+    fp.chosen = False
+    fp.conflict_group = None  # 상충 묶음에서 빠진다 — P5 compare 대상도 아니다
+
+
+def retire_superseded(session: Session, raw_id: int, bound: list[FieldCandidate], keep: set[int]) -> int:
+    """R10-FIX: 원문 ``raw_id`` 를 지금 파서로 정규화한 뒤 — 이번 후보와 같은 묶음(엔티티·행·필드)·같은 파싱 키의 그 원문 파서 행
+    중 이번 출처 행 갱신(``keep``)에 들지 않은 것 = 옛 파서가 낸 행. 표식(``SUPERSEDED_REASON``)·chosen false·상충 묶음 없음.
+
+    지우지 않는다(발행 리비전의 출처 근거). 빼지 않으면 다른 원문을 정규화할 때 ``_reparse_existing`` 이 이 행을 후보로 되살려,
+    같은 출처 종류에서 원문 번호가 큰 쪽의 옛 값이 이긴다(운영 인천 스냅샷 7 ``apply_dates`` 46 단지 × 2 이벤트)."""
+    keys = {(c.entity, c.entity_id, c.field, c.entity_key or "") for c in bound if c.entity_id is not None}
+    if not keys:
+        return 0
+    n = 0
+    for fp in session.scalars(
+        select(FieldProvenance).where(FieldProvenance.raw_document_id == raw_id).order_by(FieldProvenance.id)
+    ):
+        if fp.id in keep or not _parser_row(fp) or is_superseded(fp.reason):
+            continue
+        if (fp.entity, fp.entity_id, fp.field, fp.entity_key or "") not in keys:
+            continue
+        _mark_superseded(fp)
+        n += 1
+    if n:
+        session.flush()
+    return n
+
+
+def current_rows(
+    session: Session,
+    rows: list[FieldProvenance],
+    parser_factory: Callable[[str], _Parser | None] | None = None,
+) -> list[FieldProvenance]:
+    """후보로 되살릴 출처 행에서 옛 파싱 행을 뺀다(R10-FIX).
+
+    - 표식(``SUPERSEDED_REASON``)이 있는 행은 뺀다.
+    - 한 원문이 같은 묶음·같은 파싱 키에 파서 행을 둘 이상 남겼으면(파서가 바뀐 뒤 그 원문을 아직 다시 정규화하지 않음 — 배포 직후
+      첫 수집, 또는 한 원문이 같은 칸을 여러 자리에서 냄) 그 원문을 지금 파서로 다시 읽어, 지금 파싱이 같은 자리·같은 값으로 내는
+      행만 남기고 나머지는 표식한다. 원문을 못 읽거나 지금 파싱과 같은 행이 하나도 없으면 그대로 둔다(추측하지 않는다).
+    사람 확인·판정기 추출·감사 행은 건드리지 않는다."""
+    rows = [fp for fp in rows if not is_superseded(fp.reason)]
+    buckets: dict[tuple[int, str, int | None, str, str], list[FieldProvenance]] = {}
+    for fp in rows:
+        if _parser_row(fp) and fp.raw_document_id is not None:
+            k = (fp.raw_document_id, fp.entity, fp.entity_id, fp.field, fp.entity_key or "")
+            buckets.setdefault(k, []).append(fp)
+    mixed = sorted(
+        (k for k, v in buckets.items() if len(v) > 1), key=lambda k: (k[0], k[1], k[2] or 0, k[3], k[4])
+    )
+    if not mixed:
+        return rows
+    factory = parser_factory or (lambda kind: parser_for(kind))
+    parsed: dict[int, set[_SourceId] | None] = {}
+    stale: set[int] = set()
+    for k in mixed:
+        rid = k[0]
+        if rid not in parsed:
+            parsed[rid] = _parsed_sources(session, rid, factory)
+        now = parsed[rid]
+        if now is None:
+            continue
+        group = buckets[k]
+        same = [
+            fp
+            for fp in group
+            if _source_id(fp.entity, fp.entity_key, fp.field, fp.value_text, fp.excerpt_start, fp.label)
+            in now
+        ]
+        if not same:
+            continue
+        for fp in group:
+            if fp not in same:
+                _mark_superseded(fp)
+                stale.add(fp.id)
+    if stale:
+        session.flush()
+    return [fp for fp in rows if fp.id not in stale]
+
+
+def _parsed_sources(
+    session: Session, raw_id: int, factory: Callable[[str], _Parser | None]
+) -> set[_SourceId] | None:
+    """원문 하나를 지금 파서로 읽은 출처 자리들. 원문 행·파서가 없거나 읽지 못하면 None(판단 보류 — 행을 그대로 둔다)."""
+    row = session.get(RawDocument, raw_id)
+    p = factory(row.source_kind) if row is not None else None
+    if row is None or p is None:
+        return None
+    try:
+        cands = p.parse(raw_dto(row))
+    except Exception:  # 옛 행 정리는 보조 단계 — 못 읽으면 예전처럼 저장된 행을 그대로 후보로(원문 실패는 수집 단계가 행으로 남긴다)
+        return None
+    if not cands:
+        return None
+    return {
+        _source_id(c.entity, c.entity_key, c.field, c.value_text, c.excerpt_start, c.label) for c in cands
+    }
+
+
 def _is_legacy(fp: FieldProvenance) -> bool:
     """value_norm 없이 값이 있던 옛 행(0001 시절) — 값 형을 알 수 없어 원문을 다시 파싱한다."""
     return fp.value_norm is None and fp.value_text is not None and fp.label != "확인 불가"
@@ -1571,6 +1703,10 @@ def _reparse_existing(
                 continue  # 원 단지에 묶인 잔여 공고가 D11-4 이전에 쓴 단지 단위 행(후보 아님)
             rows.append(fp)
     legacy_raw = {fp.raw_document_id for fp in rows if _is_legacy(fp) and fp.raw_document_id is not None}
+    # R10-FIX: 옛 파싱 행(표식)은 후보가 아니고, 표식 전 행이 남은 다른 원문은 지금 파서로 다시 읽어 지금 파싱 행만 후보로 쓴다
+    rows = [fp for fp in rows if fp.raw_document_id in legacy_raw] + current_rows(
+        session, [fp for fp in rows if fp.raw_document_id not in legacy_raw], parser_factory
+    )
     kinds: dict[int, str | None] = {}
     out: list[FieldCandidate] = []
     for fp in sorted(rows, key=lambda r: (r.raw_document_id or 0, r.id)):
@@ -1648,6 +1784,8 @@ def store_raw_document(
         old += semantic_humans(session, groups, bound + old)
         resolved = resolve(bound + old, price_refs(session, groups))
         fps = upsert_provenance(session, resolved.provenance)
+        # R10-FIX: 이 원문의 옛 파서 행(이번 파싱이 다시 만들지 않음)은 표식 — 다른 원문의 정규화에서 후보로 되살아나지 않게
+        retire_superseded(session, row.id, bound, {fp.id for fp in fps})
         events = list(binder.events)
         written, touched_complex = write_chosen(
             session,

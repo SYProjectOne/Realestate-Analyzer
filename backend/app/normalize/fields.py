@@ -32,6 +32,7 @@ __all__ = [
     "PRIMARY_SOURCES",
     "QUIET_FIRST_FIELDS",
     "RULE_TEXT",
+    "SUPERSEDED_REASON",
     "UNIT_ASSUMED",
     "WINNING_SCORE_DASH_REASON",
     "WINNING_SCORE_FIELDS",
@@ -44,6 +45,7 @@ __all__ = [
     "is_ocr",
     "is_price_amount",
     "is_provisional",
+    "is_superseded",
     "magnitude_apart",
     "norm_value",
     "price_by_type_field",
@@ -54,6 +56,7 @@ __all__ = [
     "strip_tags",
     "value_from_norm",
     "with_mark",
+    "with_superseded",
     "with_tag",
 ]
 
@@ -431,6 +434,27 @@ def with_mark(reason: str | None, head: str) -> str:
     """``compare_mark`` 머리를 reason 앞에 다시 붙인다(``with_tag`` 와 같은 모양 — 같은 입력이면 같은 값)."""
     rest = strip_tags(reason)
     return (f"{head}{_TAG_SEP}{rest}" if rest else head)[:_REASON_MAX]
+
+
+SUPERSEDED_REASON: Final = "옛 파싱(같은 원문을 지금 파서로 다시 읽어 대체됨)"
+"""R10-FIX: 같은 원문을 지금 파서로 다시 읽었을 때 다시 만들어지지 않은 그 원문의 옛 파서 출처 행의
+reason 머리. 이 행은 어느 경로(저장·사람 확인·판정 결과 반영)에서도 후보가 아니다 — 지우지 않는다
+(옛 발행 리비전·출처 서랍의 근거). 지금 파싱이 같은 값·같은 자리를 다시 내면 출처 행 갱신
+(``upsert_provenance``)이 그 행을 다시 쓰며 표식이 사라진다."""
+
+
+def is_superseded(reason: str | None) -> bool:
+    """옛 파싱 표식(``SUPERSEDED_REASON``)이 붙은 출처 행인가."""
+    return (reason or "").startswith(SUPERSEDED_REASON)
+
+
+def with_superseded(reason: str | None) -> str:
+    """'<옛 파싱 표식>; <원래 reason>'(120자). compare·상충 보류 표식은 뗀다
+    (그 행은 더 이상 상충의 한쪽이 아니다)."""
+    if is_superseded(reason):
+        return str(reason)
+    rest = strip_tags(reason)
+    return (f"{SUPERSEDED_REASON}{_TAG_SEP}{rest}" if rest else SUPERSEDED_REASON)[:_REASON_MAX]
 
 
 BALANCE_DERIVED_REASON: Final = "산술(100-계약금-중도금)"

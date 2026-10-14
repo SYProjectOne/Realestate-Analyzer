@@ -218,3 +218,98 @@ def test_renormalize_is_idempotent(
         f"{rs.name}: 재정규화 멱등성 위반 {len(problems)}건 (bootstrap tools/call {calls0})\n"
         + "\n".join(problems)
     )
+
+
+def _apply_dates(factory: sessionmaker[Session]) -> dict[int, list[dict[str, Any]]]:
+    from app.models import Complex
+
+    with factory() as s:
+        return {c.id: list(c.apply_dates or []) for c in s.scalars(select(Complex).order_by(Complex.id))}
+
+
+@pytest.mark.parametrize("name", ["r4", "r4b", "r4c", "r4d", "r4d-full"])
+def test_parser_upgrade_then_same_day_renormalize_is_quiet(
+    name: str,
+    tmp_path: Path,
+    make_ctx: Callable[..., SchedulerContext],
+    factory: sessionmaker[Session],
+    test_settings: Settings,
+    jev: SynthJev,
+    clock: Clock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """R10-FIX — D23-1 를 **파서 변경 배포**까지 넓힌다(운영 인천 스냅샷 6·7 ``complex.apply_dates``).
+
+    1. 옛 파서(R9-PARSE 전 청약 일정 ``[{kind, date}]``)로 ``region.bootstrap`` — 단지 일정·출처 행이 옛 모양(운영 스냅샷 1~5).
+    2. 지금 파서로 같은 날 ``collect.daily``(배포 뒤 첫 수집 — 스냅샷 6): 단지마다 ``apply_dates`` 이벤트 ≤ 1(옛 → 새), 최종 값은
+       모두 새 모양, 다른 사실 이벤트 없음.
+    3. 수정 전 배포가 남긴 모양(옛 파싱 행 표식 없음)으로 되돌려 같은 날 다시(순서 그대로 · 섞어서 두 번 — 스냅샷 7): 사실 이벤트 0 ·
+       DB 스냅샷 = 2 의 끝 · ``tools/call`` 0. 수정 전: 두 원문(API·웹 상세)이 있는 단지마다 새 → 옛 → 새 2건."""
+    rs = _set(name, tmp_path)
+    if rs.in_place:
+        set_settings(test_settings.model_copy(update={"raw_dir": rs.raw_root}))
+    else:
+        rs.install(test_settings.raw_dir)
+    y, m, d = (int(x) for x in rs.asof.split("-"))
+    tick = TickClock(day=date(y, m, d))
+    monkeypatch.setattr(clock, "day", tick.day)
+    monkeypatch.setattr(clock, "now", tick.now)
+    monkeypatch.setattr("app.normalize.changes.now_kst", tick.now)
+    rs.seed(factory)
+    cols = _idem.collectors(rs, factory)
+    ctx = make_ctx(
+        collectors=cols.as_ctx(),
+        adapter_factory=lambda: JevMcpAdapter(transport=jev, session_factory=factory, secrets=[]),
+    )
+    with monkeypatch.context() as mp:
+        _idem.use_old_apply_parser(mp)
+        boot = _run(factory, ctx, "region.bootstrap", {"region_id": 1})
+    assert not boot["daily"].get("store_errors"), boot["daily"]["store_errors"]
+    before = _apply_dates(factory)
+    olds = {cid for cid, v in before.items() if v and all("date" in a for a in v)}
+    assert olds, "재생 세트에 옛 모양 청약 일정 단지가 있다"
+
+    ev0 = _max_event(factory)
+    daily = _run(factory, ctx, "collect.daily", {"region_id": 1, "sources": DAILY})
+    assert not daily.get("store_errors"), daily["store_errors"]
+    facts = _fact_events(factory, ev0)
+    per: dict[int | None, int] = {}
+    for e in facts:
+        if e[2] == "apply_dates":
+            per[e[1]] = per.get(e[1], 0) + 1
+    assert per and max(per.values()) == 1, {k: v for k, v in per.items() if v > 1}
+    assert {e[2] for e in facts} == {"apply_dates"}, sorted(
+        {(e[0], e[2]) for e in facts if e[2] != "apply_dates"}
+    )
+    assert all("start" in str(e[4]) for e in facts), [e for e in facts if "start" not in str(e[4])][:3]
+    after = _apply_dates(factory)
+    # 이벤트가 난 단지는 새 모양 하나로 끝난다. 일일 수집이 다시 받지 않는 원문(원 공고 다시 받기 응답 등 — 운영의 지난 공고 34
+    # 단지와 같은 모양)만 가진 단지는 옛 모양 그대로·이벤트 없음(그 원문을 다시 정규화할 때 바뀐다)
+    assert all(after[cid] and all("start" in a for a in after[cid]) for cid in per), (
+        "이벤트 난 단지 = 새 모양"
+    )
+    assert per.keys() <= olds
+    s1 = _idem.db_state(factory)
+
+    problems: list[str] = []
+    for step, seed in (("같은 날 다시", None), ("섞어서", 20261014), ("다시 섞어서", 7)):
+        _idem.untag_superseded(factory)  # 수정 전 배포가 남긴 모양(옛 파싱 행에 표식 없음)
+        cols.shuffle(seed)
+        ev = _max_event(factory)
+        sent = len(jev.calls)
+        _run(factory, ctx, "collect.daily", {"region_id": 1, "sources": DAILY})
+        again = _fact_events(factory, ev)
+        if again:
+            flips = sum(1 for e in again if e[2] == "apply_dates")
+            problems.append(f"[{step}] 사실 change_event {len(again)}건(apply_dates {flips}): {again[:4]}")
+        st = _idem.db_state(factory)
+        diff = _idem.state_diff(s1, st)
+        if diff:
+            problems.append(
+                f"[{step}] DB 스냅샷 차이 {_idem.changed_cells(s1, st)}:\n" + "\n".join(diff[:20])
+            )
+        if len(jev.calls) != sent:
+            problems.append(f"[{step}] tools/call {len(jev.calls) - sent}건")
+    assert not problems, f"{rs.name}: 파서 변경 뒤 같은 날 재정규화 위반 {len(problems)}건\n" + "\n".join(
+        problems
+    )
