@@ -807,8 +807,41 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   첫 수집은 이벤트 없음(지난 결과 — `QUIET_FIRST_FIELDS`). 잔금 산술은 판정기 extract 요청을 그대로 남겨(같은 요청 — 캐시) 새 요청은 도화
   임의공급 공고문 1건(단지 키가 원 단지로 바뀜) — 첫 수집 `tools/call`(extract) **≈ 1**, 같은 날 다시 돌리면 0. 판정기가 잔금을 읽어 둔
   단지는 그 '확인됨' 값이 그대로 채택된다. 발행된 리비전 저장본은 그대로(D11-1) — 다음 발행부터.
-- 그대로 남는 것: 도화 두 번째 단지 행 99 자체(목록에 같은 이름 두 줄 — 병합/숨김은 CEO 결정 대기), 원 번호 인용이 없는 잔여 공고 행
+- 그대로 남는 것: 도화 두 번째 단지 행 99 자체(목록에 같은 이름 두 줄 — D29-2 로 R10 이 병합한다, §10-23), 원 번호 인용이 없는 잔여 공고 행
   (연수 서해그랑블 5단지 1~4차 96~98·100, 9자리 오기 인용 101). '대표 층'은 정의대로 최저 공급금액 행(화면 이름 문제).
+
+### 10-23 R10-FOLLOW 배포 뒤 1회 — 청약 접수·당첨자 발표 일정, 도화 중복 단지 행 병합, 당첨 가점 '-' 사유 (`docs/design/wp/R10_TESTS_FOLLOW.md`)
+
+- 바뀐 것(계약 **.21**, 마이그레이션 **0018**): 체크리스트 kind '청약 접수'·'당첨자 발표'(단지 `apply_dates`·`winner_date` 에서, D29-3),
+  같은 사업 중복 단지 행 병합 표식 `complex.merged_into_id`(D29-2), 청약홈 경쟁률 팝업 당첨가점 칸 '-' 를 값 없는 '확인 불가' 출처 행
+  (사유 `가점 당첨자 없음(청약홈 '-')`)으로 저장 — 화면은 '가점 당첨자 없음(미달)'·'발표 전'·'가점 미수집'으로 나눈다.
+- **운영 DB 에 적용하는 절차**(배포 = main 머지 + worker 재시작 뒤, 00:00~01:00 KST 피함 — D23-4):
+  1. (선택, 읽기 전용) 적용 전 기록 — 병합 대상 확인(인천 2026-10-14: 단지 99 = 2025940268, 원 단지 39 = 2025000397)과 그 행에 사람이 넣은
+     자료(있으면 병합 뒤 옮기지 않는다 — 원 단지에 다시 입력):
+     `SELECT id, applyhome_id, name FROM complex WHERE id IN (39, 99);` ·
+     `SELECT 'human_check', count(*) FROM human_check WHERE complex_id = 99 UNION ALL SELECT 'catalyst_link', count(*) FROM catalyst_link WHERE complex_id = 99 UNION ALL SELECT 'checklist_human', count(*) FROM checklist_item WHERE complex_id = 99 AND closed_by = 'human';`
+     → 2026-10-14 읽기 전용 확인 0 · 0 · 0.
+  2. 마이그레이션: `ENV_FILE=… uv run alembic upgrade head` → **`0018 (head)`**(CHECK 값 추가 + 열 추가, 데이터 변경 없음 — 몇 초).
+  3. `collect.daily` 한 번(정기 06:00 을 기다리거나 §10-17 ② 명령 → `uv run python -m app.worker --once`). 받아 둔 원문을 모두 다시 정규화하므로
+     **별도 병합 명령은 없다** — 도화 임의공급 공고문(2025940268, '최초 입주자모집공고일 주택관리번호 2025-000397' 인용)을 다시 읽는 순간
+     자기 번호 행 99 가 원 단지 39 에 병합된다(change_event `complex`·`merged_into`·critical → 39 재판정 잡). 같은 잡의 체크리스트 동기화가
+     새 종류 항목을 만든다.
+  4. 확인(읽기 전용):
+     - 병합: `SELECT id, merged_into_id FROM complex WHERE id IN (39, 99);` → 99 만 39. `SELECT entity_id, complex_id, new_text, severity FROM change_event WHERE entity='complex' AND field='merged_into';`
+       → 1행(99 → 39, critical). 다른 잔여 번호 행(연수 서해그랑블 5단지 96~98·100, 부평 보류지 101)은 `merged_into_id` NULL 그대로(공고문에 원 번호 인용 없음·오기
+       — 추측하지 않음, D29-2).
+     - 목록: 재판정이 끝나 새 리비전이 발행되면 G2 에 '두산위브 더센트럴 도화' 한 줄(39). 이미 발행된 리비전(스냅샷 1~5)은 저장본 그대로(D11-1 — 그 리비전을 열면
+       두 줄이 보이는 것이 정상). `SELECT count(*) FROM score_total st JOIN score_run sr ON sr.id = st.score_run_id WHERE sr.snapshot_id = <새 스냅샷> AND st.complex_id = 99;` → 0.
+     - 체크리스트: `SELECT complex_id, kind, title, due_date FROM checklist_item WHERE kind IN ('청약 접수','당첨자 발표') AND status='open' ORDER BY due_date;`
+       → 건식 실행(기준일 2026-10-15, 읽기 전용) 기준 단지 1(산곡역자이힐스테이트앤하늘채) 4항목: 특별공급 청약 접수 10-19 · 1순위 청약 접수(해당지역·기타지역) 10-20 ·
+       2순위 청약 접수(해당지역·기타지역) 10-21 · 당첨자 발표 10-27. 단지 2·4(공공분양 — 제외 확정)는 없다. 이후 새 공고가 나오면 그 일정이 들어온다.
+     - 당첨 가점 '-': `SELECT count(*) FROM field_provenance WHERE entity='competition' AND field='winning_score_min' AND label='확인 불가' AND reason LIKE '가점 당첨자 없음%' AND chosen;`
+       → 받아 둔 팝업 58개 기준 '-' 묶음 약 350(읽기 전용 원문 집계 — 미달 행 222 · 미달 아님 128, 같은 행에 묶이는 칸은 1행). 화면 G3 경쟁률 탭 가점 칸이
+       '가점 미수집' 대신 '가점 당첨자 없음(미달)' 등으로 보인다(새로 발행하는 리비전부터).
+  5. 같은 날 `collect.daily` 를 한 번 더 돌리면 병합·체크리스트·가점 출처 행 그대로·새 change_event 0·판정 0(D23-1·D24-1).
+- 예상 이벤트·판정: 병합 change_event 1(critical → 단지 39 재판정 — 후보군에서 99 가 빠져 rerank 1회가 캐시 미스, P8 decide 도 후보가 바뀐 시나리오는 다시 판정 ≈
+  시나리오 수). 당첨 가점 '-' 출처 행은 값이 없어 사실 값·이벤트 변화 없음(첫 관측 — D29-1 과 같은 규칙). 체크리스트는 change_event 를 만들지 않는다.
+- 되돌리기: `alembic downgrade 0017` 은 새 kind 항목을 지우고 `merged_into_id` 를 뺀다 — 99 가 다시 목록·점수 대상이 된다(0017 동작). 병합 change_event 는 남는다.
 
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
