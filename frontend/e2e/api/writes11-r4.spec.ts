@@ -215,7 +215,12 @@ test.describe.serial('계약 .15 화면(실 API)', () => {
     await expect(first).not.toContainText('first_load');
     await expect(first).not.toContainText(`${P.common.none} →`);
     const track = feed.getByRole('listitem').filter({ hasText: 'A 공고 예정 후보 e2e' });
-    await expect(track.getByText(P.common.changeField.track, { exact: true })).toBeVisible();
+    // R9-UI P2: 필드 이름은 쉬운 문장 '{field} 변경' 안에
+    await expect(
+      track.getByText(P.G1.changeSentence.replace('{field}', P.common.changeField.track), {
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(track.getByRole('link')).toHaveAttribute(
       'href',
       new RegExp(`^/complexes/${CANDIDATE}`),

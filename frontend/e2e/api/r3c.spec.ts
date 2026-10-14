@@ -48,7 +48,9 @@ test.describe('T3 실데이터 문구: 공식 홈페이지 403', () => {
     const row = page
       .getByRole('table', { name: P.G2.table })
       .locator('tbody tr', { hasText: SWITZEN });
-    await expect(row.getByTestId('intake-badge')).toContainText(UNKNOWN_403);
+    // R9-UI P4: G2 접수 칸은 배지에 상태, 사유·확인일은 아래 작은 글씨
+    await expect(row.getByTestId('intake-badge')).toHaveText(ko.intake.status['확인 불가']);
+    await expect(row.getByTestId('intake-reason')).toHaveText(/^403 · \d{4}-\d{2}-\d{2}$/);
     expect(failed).toEqual([]);
   });
 });
