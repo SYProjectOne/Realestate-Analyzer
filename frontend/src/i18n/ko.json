@@ -125,6 +125,19 @@
         "freshnessSub": "수집 실패 {failing}곳 · 늦어진 곳 {stale}곳"
       },
       "top5Fewer": "점수가 있는 단지가 {n}곳뿐입니다. 점수가 없는 단지는 단지 리스트에서 사유를 볼 수 있습니다.",
+      "upcoming": {
+        "title": "다가오는 일정(4주)",
+        "all": "전체 일정 보기",
+        "noApply": "청약 접수일은 아직 일정에 없습니다(수집 전)",
+        "none": "4주 안의 일정이 없습니다",
+        "noAccess": "이 링크로는 일정을 볼 수 없습니다(운영 화면 권한 필요)"
+      },
+      "card": {
+        "price": "현재 구매가",
+        "resaleEnd": "전매 종료",
+        "gap": "가격 갭(주변 대비)"
+      },
+      "noListRow": "목록 행 없음",
       "changesMore": "변경 더 보기",
       "changesLess": "변경 접기",
       "changeShowValue": "바뀐 값 보기",
@@ -1026,6 +1039,16 @@
         "legal_dong_code": "법정동"
       },
       "charts": "차트",
+      "scheduleKind": {
+        "법적 확인": "확인할 것",
+        "중도금": "중도금 납부",
+        "만료": "기한 만료",
+        "공고 예상": "공고 예상",
+        "계약": "계약",
+        "사실 재확인": "사실 재확인",
+        "resaleOpen": "전매 가능 시작"
+      },
+      "scheduleBasis": "계산 기준: {basis}",
       "nameProv": {
         "open": "이름 출처 보기: {name} · {label}",
         "openNoLabel": "이름 출처 보기: {name}"

@@ -88,6 +88,8 @@ export const CONTRACT_MARKERS = {
   '값 없음': 'backend/app/api/facts.py',
   '공고 전': 'backend/app/analysis/scope.py',
   '분양가 미공개': 'backend/app/analysis/price_view.py',
+  // R9-UI 일정 표시: 체크리스트 '만료' 중 전매제한 종료 항목의 제목 표식(pages/_shared/schedule.ts)
+  전매제한: 'backend/app/normalize/checklist.py',
 };
 
 /** 개발자용 오류 메시지(throw new Error) → frontend/ 기준 파일 */

@@ -25,19 +25,11 @@ beforeEach(() => resetMockState());
 const top5 = (dashboardExample as unknown as { value: Dashboard }).value.top5 as ScoreRow[];
 
 describe('delta_rerank 표시 (3차 리뷰 하위 점검)', () => {
-  it('G1 TOP 5 카드: delta_rerank 가 있는 단지는 "rerank 변화" + 라벨 배지', async () => {
+  it('G1 TOP 5 카드에서는 빠진다(R9-UI P2 — G3 점수 줄·G4·G5 에 그대로)', async () => {
     renderRoute('/?scenario=B');
     const list = await screen.findByRole('list', { name: t('page.G1.top5') });
-    const cells = await within(list).findAllByTestId('top5-delta-rerank');
-    const withDelta = top5.filter((r) => r.delta_rerank);
-    expect(withDelta.length).toBeGreaterThan(0);
-    expect(cells.length).toBeGreaterThan(0);
-    for (const cell of cells) {
-      // FactCell = 값 + 라벨 배지(출처 버튼)
-      expect(cell.querySelector('[data-prov]')).not.toBeNull();
-      expect(within(cell).getByTestId('label-badge')).toBeInTheDocument();
-    }
-    expect(within(list).getAllByText(t('page.common.deltaRerank')).length).toBe(cells.length);
+    expect(within(list).queryAllByTestId('top5-delta-rerank')).toHaveLength(0);
+    expect(top5.filter((r) => r.delta_rerank).length).toBeGreaterThan(0);
   });
 
   it('G4 비교 표: rerank 변화 행(열 = 단지), 없으면 "확인 불가(이전 run 없음)"', async () => {

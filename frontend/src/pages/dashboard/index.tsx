@@ -2,8 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useCanWrite } from '@/api/auth';
-import { useCreateJob, useDashboard } from '@/api/hooks';
-import type { ChangeEvent, Dashboard, ScoreRow } from '@/api/types';
+import { ApiError } from '@/api/client';
+import { useChecklist, useComplexes, useCreateJob, useDashboard, useScenarios } from '@/api/hooks';
+import type { ChangeEvent, ChecklistItem, ComplexRow, Dashboard, ScoreRow } from '@/api/types';
 import { C05Unsold, C06ScoreBreakdown } from '@/charts';
 import {
   Badge,
@@ -22,6 +23,8 @@ import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import { useIsMobile } from '@/lib/useMediaQuery';
+import { DEFAULT_SORT, FIRST_PAGE_SIZE, toListParams } from '../complexes/params';
+import { scheduleBasis, scheduleKindText, withinDays } from '../_shared/schedule';
 import {
   changeEntityText,
   changeFieldText,
@@ -69,6 +72,18 @@ export function DashboardPage() {
 function DashboardBody({ data }: { data: Dashboard }) {
   const asof = data.asof_date;
   const top = data.top5.filter((row) => row.rank === null || row.rank <= 5);
+  const { snapshotId, scenarioKey } = usePageContext();
+  // TOP 카드 사실 줄: G2 첫 페이지와 같은 요청(같은 캐시) — 같은 리비전 목록 행을 complex_id 로 붙인다(결정 14(a))
+  const list = useComplexes(snapshotId, {
+    ...toListParams({}, DEFAULT_SORT, scenarioKey),
+    page: 1,
+    size: FIRST_PAGE_SIZE,
+  });
+  const listRows = new Map((list.data?.items ?? []).map((r) => [r.complex_id, r]));
+  // +10% 목표 시점 = 이 상황의 p10_horizon(상황 C 는 기준일+5년 — 고정 문구로 쓰지 않는다)
+  const { data: scenarios = [] } = useScenarios();
+  const horizon = scenarios.find((s) => s.id === data.scenario_id)?.policy.p10_horizon ?? null;
+  const target = horizon ? enumText('chart.C01.horizon', horizon) : null;
   /*
    * R9-UI P2(30-proposal §3): 1단 = 지금 할 수 있는 것(지금 접수 가능), 2단 = 상위 단지 카드, 3단 = 지역 현황·최근 변경·차트.
    * 값·라벨·출처는 그대로(FactCell) — 순서·묶음·접기만 바꾼다. 섹션 순서는 data-section 으로 테스트한다.
@@ -91,6 +106,7 @@ function DashboardBody({ data }: { data: Dashboard }) {
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
         <OpenNowCard data={data} />
+        <UpcomingCard asof={asof} />
       </div>
       <div data-section="top">
         <Section
@@ -121,7 +137,14 @@ function DashboardBody({ data }: { data: Dashboard }) {
           ) : null}
           <ul aria-label={t('page.G1.top5')} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {top.map((row) => (
-              <Top5Card key={row.complex_id} row={row} asof={asof} />
+              <Top5Card
+                key={row.complex_id}
+                row={row}
+                asof={asof}
+                listRow={listRows.get(row.complex_id) ?? null}
+                listReady={list.data !== undefined || list.error !== null}
+                target={target}
+              />
             ))}
           </ul>
         </Section>
@@ -313,15 +336,34 @@ function RegionStatus({ data }: { data: Dashboard }) {
   );
 }
 
-function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
+/**
+ * TOP 카드(R9-UI P2, D28-4 '사실 먼저·점수 아래'): 이름·생활권·접수 → 현재 구매가·전매 종료·가격 갭(같은 리비전 목록 행의
+ * Fact 를 complex_id 로 붙인 값 — 조인은 계산이 아니다, 결정 14(a)) → 종합 점수·+10% 상승 가능성(목표 시점·당첨 확률 아님).
+ * 계약 .20(요청 Q7)에서 ScoreRow 가 사실 Fact 를 직접 주면 그 값으로 바꾼다. rerank 변화는 G3 점수 줄·G4·G5 에 있다.
+ */
+function Top5Card({
+  row,
+  asof,
+  listRow,
+  listReady,
+  target,
+}: {
+  row: ScoreRow;
+  asof: string;
+  listRow: ComplexRow | null;
+  listReady: boolean;
+  target: string | null;
+}) {
   const navigate = useNavigate();
   const search = useGlobalSearch();
   const to = `/complexes/${row.complex_id}${search}`;
   // 카드 빈 곳 클릭 → G3. 안쪽 버튼(숫자 셀 = 출처 패널)·링크 클릭은 그대로 둔다.
   const onClick = (event: MouseEvent<HTMLLIElement>) => {
-    if ((event.target as HTMLElement).closest('button, a')) return;
+    if ((event.target as HTMLElement).closest('button, a, summary')) return;
     navigate(to);
   };
+  // 목록 행이 없으면(받는 중이 아니면) 확인 불가(목록 행 없음)
+  const missing = listReady ? t('page.G1.noListRow') : undefined;
   return (
     <li
       onClick={onClick}
@@ -345,24 +387,6 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
       {row.living_area_name ? (
         <span className="text-xs text-muted">{row.living_area_name}</span>
       ) : null}
-      <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm">
-        <dt className="text-muted">{t('page.G1.total')}</dt>
-        <dd>
-          <FactCell fact={row.total} unit="score" />
-        </dd>
-        <dt className="text-muted">{t('page.G1.p10')}</dt>
-        <dd>
-          <FactCell fact={row.p10} unit="prob" />
-        </dd>
-        {row.delta_rerank ? (
-          <>
-            <dt className="text-muted">{t('page.common.deltaRerank')}</dt>
-            <dd data-testid="top5-delta-rerank">
-              <FactCell fact={row.delta_rerank} unit="score" />
-            </dd>
-          </>
-        ) : null}
-      </dl>
       <div className="flex flex-wrap gap-1">
         <IntakeBadge intake={row.intake} asof={asof} />
         <TieBadge
@@ -373,7 +397,117 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
         <JudgeScopeBadge scope={row.judge_scope} hideTarget />
         <RejudgeNeededBadge needed={row.rejudge_needed} />
       </div>
+      <dl data-card="facts" className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm">
+        <dt className="text-muted">{t('page.G1.card.price')}</dt>
+        <dd className="flex flex-wrap items-center gap-1">
+          <FactCell wrap fact={listRow?.price_low} unit="eok" emptyReason={missing} />
+          <span aria-hidden>~</span>
+          <FactCell wrap fact={listRow?.price_high} unit="eok" emptyReason={missing} />
+        </dd>
+        <dt className="text-muted">{t('page.G1.card.resaleEnd')}</dt>
+        <dd>
+          <FactCell wrap fact={listRow?.resale_end} unit="date" asof={asof} emptyReason={missing} />
+        </dd>
+        <dt className="text-muted">{t('page.G1.card.gap')}</dt>
+        <dd>
+          <FactCell wrap fact={listRow?.gap_pct} unit="pct" emptyReason={missing} />
+        </dd>
+      </dl>
+      <dl
+        data-card="score"
+        className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 border-t border-border pt-2 text-sm"
+      >
+        <dt className="text-muted">{t('page.G1.total')}</dt>
+        <dd>
+          <FactCell wrap fact={row.total} unit="score" />
+        </dd>
+        <dt className="text-muted">{t('page.G1.p10')}</dt>
+        <dd className="flex flex-col">
+          <FactCell wrap fact={row.p10} unit="prob" />
+          {target ? (
+            <span className="text-xs text-muted">{t('page.G1.p10Target', { target })}</span>
+          ) : null}
+          <span className="text-xs text-muted">{t('page.G1.p10Note')}</span>
+        </dd>
+      </dl>
     </li>
+  );
+}
+
+/** 다가오는 일정 최대 건수·기간(일) */
+const UPCOMING_MAX = 5;
+const UPCOMING_DAYS = 28;
+
+/**
+ * 1단 다가오는 일정(4주, R9-UI P2·갭 #15): 체크리스트 기한(계약·중도금·전매 가능 시작·공고 예상)을 기준일부터 4주 안만 날짜순.
+ * 청약 접수일은 아직 일정에 없다(계약 .20 요청 Q3) — 정직하게 적는다. 공유 링크(읽기 전용 공유 토큰)는 /ops 가 403.
+ */
+function UpcomingCard({ asof }: { asof: string }) {
+  const query = useChecklist();
+  const search = useGlobalSearch();
+  const title = t('page.G1.upcoming.title');
+  const items = (query.data ?? [])
+    .filter(
+      (i): i is ChecklistItem & { due_date: string } =>
+        i.status === 'open' && !!i.due_date && withinDays(i.due_date, asof, UPCOMING_DAYS),
+    )
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+    .slice(0, UPCOMING_MAX);
+  const forbidden = query.error instanceof ApiError && query.error.status === 403;
+  return (
+    <section
+      aria-label={title}
+      data-section="upcoming"
+      className="flex flex-col gap-2 rounded-sm border border-border bg-surface p-3"
+    >
+      <h2 className="text-base font-semibold">{title}</h2>
+      {forbidden ? (
+        <p className="text-sm text-muted">{t('page.G1.upcoming.noAccess')}</p>
+      ) : query.error ? (
+        <EmptyState inline message={t('page.common.loadError', { detail: query.error.message })} />
+      ) : query.isLoading ? (
+        <p role="status" className="text-sm text-muted">
+          {t('app.loading')}
+        </p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted">{t('page.G1.upcoming.none')}</p>
+      ) : (
+        <ul aria-label={title} className="flex flex-col gap-1 text-sm">
+          {items.map((item) => {
+            const basis = scheduleBasis(item);
+            return (
+              <li
+                key={item.id}
+                data-due={item.due_date}
+                className="flex flex-wrap items-center gap-x-2"
+                title={item.title}
+              >
+                <span data-testid="schedule-kind">
+                  <Badge tone="neutral">{scheduleKindText(item)}</Badge>
+                </span>
+                <span className="tabular-nums">{formatDate(item.due_date, asof)}</span>
+                {item.complex_id ? (
+                  <Link to={`/complexes/${item.complex_id}${search}`} className="underline">
+                    {item.complex_name ?? item.title}
+                  </Link>
+                ) : (
+                  <span>{item.title}</span>
+                )}
+                {basis ? (
+                  <span className="w-full text-xs text-muted">
+                    {t('page.common.scheduleBasis', { basis })}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="text-xs text-muted">{t('page.G1.upcoming.noApply')}</p>
+      <Link to={`/ops${search}`} className="self-start text-sm underline">
+        {t('page.G1.upcoming.all')}
+      </Link>
+    </section>
   );
 }
 

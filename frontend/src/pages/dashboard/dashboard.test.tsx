@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
-import type { Dashboard } from '@/api/types';
+import type { ComplexRow, Dashboard } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { mswPath } from '@/mocks/mswPath';
@@ -22,13 +22,13 @@ async function exampleDashboard(): Promise<Dashboard> {
 }
 
 describe('R9-UI P2 G1 홈 첫 화면을 "지금 할 수 있는 것"부터(30-proposal §3)', () => {
-  it('섹션 순서: 지금 접수 가능 → 종합 점수 상위 단지 → 지역 현황 → 최근 변경', async () => {
+  it('섹션 순서: 지금 접수 가능 → 다가오는 일정 → 종합 점수 상위 단지 → 지역 현황 → 최근 변경', async () => {
     const { container } = renderRoute('/');
     await screen.findByRole('list', { name: t('page.G1.top5') });
     const order = [...container.querySelectorAll('[data-section]')].map((el) =>
       el.getAttribute('data-section'),
     );
-    expect(order).toEqual(['openNow', 'top', 'region', 'changes']);
+    expect(order).toEqual(['openNow', 'upcoming', 'top', 'region', 'changes']);
   });
 
   it('지금 접수 가능 N곳: 숫자는 FactCell(출처 유지), 링크 = G2 + 접수 가능 필터 + 전역 쿼리', async () => {
@@ -128,3 +128,97 @@ describe('G1 홈 대시보드', () => {
     rec.stop();
   });
 });
+
+describe('R9-UI P2 G1 다가오는 일정 · TOP 카드 사실 줄(30-proposal §3, 갭 #15·#16)', () => {
+  it('기준일부터 4주 안의 일정(최대 5건)만, 날짜순, D± · 종류 글자 · 접수일 미수집 안내', async () => {
+    renderRoute('/');
+    const box = await screen.findByRole('region', { name: t('page.G1.upcoming.title') });
+    const items = await within(box).findAllByRole('listitem');
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.length).toBeLessThanOrEqual(5);
+    const dates = items.map((li) => li.getAttribute('data-due') ?? '');
+    expect([...dates].sort()).toEqual(dates);
+    for (const d of dates) {
+      expect(d >= '2026-10-08' && d <= '2026-11-05').toBe(true);
+    }
+    for (const li of items) {
+      expect(li.textContent).toMatch(/\(D[+-]\d+\)|D-day/);
+      expect(within(li).getByTestId('schedule-kind').textContent?.length ?? 0).toBeGreaterThan(0);
+    }
+    expect(within(box).getByText(t('page.G1.upcoming.noApply'))).toBeInTheDocument();
+    expect(within(box).getByRole('link', { name: t('page.G1.upcoming.all') })).toBeInTheDocument();
+  });
+
+  it('공유 토큰(403)이면 사유 문구', async () => {
+    server.use(
+      http.get(mswPath('/ops/checklist'), () =>
+        HttpResponse.json({ code: 'forbidden', message: 'share token' }, { status: 403 }),
+      ),
+    );
+    renderRoute('/');
+    const box = await screen.findByRole('region', { name: t('page.G1.upcoming.title') });
+    expect(await within(box).findByText(t('page.G1.upcoming.noAccess'))).toBeInTheDocument();
+  });
+
+  it('4주 안 일정이 없으면 그렇게 말한다', async () => {
+    server.use(http.get(mswPath('/ops/checklist'), () => HttpResponse.json([])));
+    renderRoute('/');
+    const box = await screen.findByRole('region', { name: t('page.G1.upcoming.title') });
+    expect(await within(box).findByText(t('page.G1.upcoming.none'))).toBeInTheDocument();
+  });
+
+  it('TOP 카드: 구매가·전매 종료·가격 갭 = 같은 리비전 목록 행의 Fact(prov 일치), 점수·+10%는 아래 칸', async () => {
+    const rows = await exampleRows();
+    renderRoute('/');
+    const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
+    const card = within(top5).getAllByRole('listitem')[0] as HTMLElement;
+    const id = Number(card.dataset.complexId);
+    const row = rows.find((r) => r.complex_id === id);
+    expect(row).toBeDefined();
+    const facts = card.querySelector('[data-card="facts"]') as HTMLElement;
+    await waitFor(() =>
+      expect(facts.querySelector(`[data-prov="${row?.price_low.prov}"]`)).not.toBeNull(),
+    );
+    for (const fact of [row?.price_high, row?.resale_end, row?.gap_pct]) {
+      if (fact?.prov) expect(facts.querySelector(`[data-prov="${fact.prov}"]`)).not.toBeNull();
+    }
+    const score = card.querySelector('[data-card="score"]') as HTMLElement;
+    expect(facts.compareDocumentPosition(score) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(score).getByText(t('page.G1.p10Note'))).toBeInTheDocument();
+    // rerank 변화는 카드에서 빠지고 G3 점수 줄·G4·G5 에 그대로(30-proposal §3-5)
+    expect(within(card).queryByTestId('top5-delta-rerank')).toBeNull();
+  });
+
+  it('목록 행이 없으면 사실 줄은 확인 불가(사유)', async () => {
+    server.use(
+      http.get(mswPath('/snapshots/:sid/complexes'), () =>
+        HttpResponse.json({
+          items: [],
+          total: 0,
+          snapshot_id: 12,
+          asof_date: '2026-10-08',
+          page: 1,
+          size: 100,
+        }),
+      ),
+    );
+    renderRoute('/');
+    const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
+    const card = within(top5).getAllByRole('listitem')[0] as HTMLElement;
+    const facts = card.querySelector('[data-card="facts"]') as HTMLElement;
+    await waitFor(() =>
+      expect(
+        within(facts).getAllByText(t('empty.unknownWithReason', { reason: t('page.G1.noListRow') }))
+          .length,
+      ).toBeGreaterThan(0),
+    );
+  });
+});
+
+async function exampleRows(): Promise<ComplexRow[]> {
+  const res = await getResponse(
+    generatedHandlers as RequestHandler[],
+    new Request('http://localhost/api/snapshots/12/complexes'),
+  );
+  return ((await res?.json()) as { items: ComplexRow[] }).items;
+}
