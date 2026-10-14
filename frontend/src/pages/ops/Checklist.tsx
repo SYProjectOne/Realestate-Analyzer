@@ -3,10 +3,10 @@ import { useCanWrite } from '@/api/auth';
 import { useChecklist, usePatchChecklistItem } from '@/api/hooks';
 import type { ChecklistItem } from '@/api/types';
 import { Badge, EmptyState, PublishJobProgress } from '@/components';
-import { t, type TKey } from '@/i18n';
+import { t, tDynamic, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
-import { scheduleBasis, scheduleKindText } from '../_shared/schedule';
+import { isResaleEnd, scheduleBasis, scheduleKindText } from '../_shared/schedule';
 
 const STATUSES = ['open', 'done', 'na'] as const;
 const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
@@ -129,14 +129,22 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
   );
 }
 
-/** 캘린더 종류 범례(R9-UI 피드백) — 배지 글자의 뜻. 종류는 계약 enum 값 */
-const LEGEND: readonly { kind: ChecklistItem['kind'] | null; help: TKey }[] = [
-  { kind: null, help: 'page.G7.calendarLegend.resaleOpen' },
-  { kind: '중도금', help: 'page.G7.calendarLegend.interim' },
-  { kind: '계약', help: 'page.G7.calendarLegend.contract' },
-  { kind: '만료', help: 'page.G7.calendarLegend.expire' },
-  { kind: '공고 예상', help: 'page.G7.calendarLegend.notice' },
-];
+/**
+ * 캘린더 종류 범례 — 데이터에 나온 종류만, 처음 나온 순서로(계약 .21 의 새 종류 '청약 접수'·'당첨자 발표'도 코드 변경 없이).
+ * 글자는 scheduleKindText(모르는 종류는 서버 값 그대로), 뜻은 ko.json `page.G7.calendarLegend.kind.<종류>`(없으면 글자만).
+ */
+function legendEntries(items: readonly ChecklistItem[]): { label: string; help: string }[] {
+  const seen = new Map<string, string>();
+  for (const item of items) {
+    const label = scheduleKindText(item);
+    if (seen.has(label)) continue;
+    const help = isResaleEnd(item)
+      ? t('page.G7.calendarLegend.resaleOpen')
+      : tDynamic(`page.G7.calendarLegend.kind.${item.kind}`, '');
+    seen.set(label, help);
+  }
+  return [...seen.entries()].map(([label, help]) => ({ label, help }));
+}
 
 /**
  * 기한 있는 항목을 월별로(중도금일·전매 가능 시작·공고 예상). R9-UI 피드백: 종류 배지는 쉬운 말 — 전매제한 종료('만료')는
@@ -157,16 +165,12 @@ function Calendar({ items, asof }: { items: ChecklistItem[]; asof: string | null
       <details data-testid="calendar-legend" className="text-xs text-muted">
         <summary className="cursor-pointer">{t('page.G7.calendarLegend.title')}</summary>
         <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-          {LEGEND.map(({ kind, help }) => (
-            <div key={help} className="contents">
+          {legendEntries(dated).map(({ label, help }) => (
+            <div key={label} className="contents">
               <dt>
-                <Badge tone="neutral">
-                  {kind === null
-                    ? t('page.common.scheduleKind.resaleOpen')
-                    : scheduleKindText({ kind, title: '' })}
-                </Badge>
+                <Badge tone="neutral">{label}</Badge>
               </dt>
-              <dd>{t(help)}</dd>
+              <dd>{help}</dd>
             </div>
           ))}
         </dl>

@@ -27,7 +27,7 @@ export function intakeStatusText(intake: IntakeLike): string {
   if (!intake.reason || (intake.status !== '확인 불가' && intake.status !== '불가')) return status;
   const date = dayOf(intake.checked_at);
   // P7: 사유는 쉬운 말(원 사유는 배지 title)
-  const reason = plainReason(intake.reason).text;
+  const reason = plainReason(intake.reason, intake.reason_code).text;
   return date
     ? t('intake.withReasonDate', { status, reason, date })
     : t('intake.withReason', { status, reason });
@@ -61,17 +61,24 @@ export function IntakeBadge({
   const checked = intake.checked_at ? formatDate(intake.checked_at, asof) : null;
   const original =
     intake.status === '확인 불가' || intake.status === '불가'
-      ? unknownTitle(intake.reason)
+      ? unknownTitle(intake.reason, intake.reason_code)
       : undefined;
-  const title = [checked, original ?? null].filter(Boolean).join(' · ') || undefined;
+  // 계약 .20(F9): 공급 종류 근거 문구는 title
+  const title =
+    [checked, original ?? null, intake.supply_kind_basis ?? null].filter(Boolean).join(' · ') ||
+    undefined;
+  // 공급 종류(저장 문구 후보가 말한 것만, 서버 값 그대로) — 있으면 '접수 가능(선착순)'
+  const shownStatus = intake.supply_kind
+    ? t('intake.withSupply', { status, kind: intake.supply_kind })
+    : status;
   const badge = (
     <Badge tone={tone} className={className} title={title} data-testid="intake-badge">
-      {showPath ? `${status} · ${path}` : status}
+      {showPath ? `${shownStatus} · ${path}` : shownStatus}
     </Badge>
   );
   if (!below || !intake.reason) return badge;
   const date = dayOf(intake.checked_at);
-  const reason = plainReason(intake.reason).text;
+  const reason = plainReason(intake.reason, intake.reason_code).text;
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
       {badge}

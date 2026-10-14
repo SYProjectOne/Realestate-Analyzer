@@ -83,6 +83,7 @@ function Card({
       <span data-field="down_move_in" className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-xs text-muted">{t('page.G2.card.down')}</span>
         <FactCell wrap fact={row.down_payment_pct} unit="pct" digits={0} />
+        {row.down_payment_won ? <FactCell wrap fact={row.down_payment_won} unit="won" /> : null}
         <span className="text-xs text-muted">{t('page.G2.card.moveIn')}</span>
         <FactCell wrap fact={row.move_in_ym} unit="ym" />
       </span>

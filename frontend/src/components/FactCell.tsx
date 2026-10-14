@@ -64,6 +64,7 @@ export function FactCell({
       <EmptyState
         inline
         reason={fact?.reason ?? emptyReason}
+        reasonCode={fact?.reason ? (fact.reason_code ?? null) : null}
         checkedAt={fact ? fact.checked_at : null}
       />
     ) : (
@@ -74,6 +75,7 @@ export function FactCell({
             label={fact.label}
             human={fact.human}
             reason={fact.reason}
+            reasonCode={fact.reason_code ?? null}
             checkedAt={fact.checked_at}
             wrap={wrap}
           />

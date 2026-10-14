@@ -56,10 +56,12 @@ async function mock(path: string, init: RequestInit): Promise<Response> {
 }
 
 /** '확인 불가(공고 전' 으로 시작(확인일이 붙으면 '확인 불가(공고 전, 2026-10-07)') */
+// 계약 .20 reason_code(not_published)가 있는 Fact 는 쉬운 말, 코드 없는 Fact(옛 저장본·테스트 Fact)는 서버 사유 그대로
+const escRe = (x: string) => x.replace(/[()]/g, '\\$&');
 const preNotice = new RegExp(
-  `^${t('empty.unknownWithReason', { reason: t('empty.reasonPlain.pre_notice') })
-    .slice(0, -1)
-    .replace(/[()]/g, '\\$&')}`,
+  `^(${escRe(t('empty.unknownWithReason', { reason: '공고 전' }).slice(0, -1))}|${escRe(
+    t('empty.unknownWithReason', { reason: t('empty.reasonPlain.pre_notice') }).slice(0, -1),
+  )})`,
 );
 
 function envelope(

@@ -73,6 +73,8 @@ type ColumnId =
   | 'land_type'
   | 'units_total'
   | 'down_payment'
+  | 'down_payment_won'
+  | 'competition'
   | 'last_change';
 
 const SORT_OF: Partial<Record<ColumnId, SortKey>> = {
@@ -85,6 +87,7 @@ const SORT_OF: Partial<Record<ColumnId, SortKey>> = {
   total: 'total',
   p10: 'p10',
   last_change: 'last_change',
+  intake: 'intake',
 };
 
 /** 열 제목 옆 용어 ⓘ(R9-UI P6 — 표는 열 제목에만) */
@@ -111,6 +114,8 @@ export const DEFAULT_HIDDEN: VisibilityState = {
   land_type: false,
   units_total: false,
   last_change: false,
+  competition: false,
+  down_payment_won: false,
 };
 
 /** 저장 형식 버전 — 2 = R9-UI 기본 8열 */
@@ -372,6 +377,33 @@ export function ComplexTable({
         id: 'units_total',
         header: () => colTitle('units_total'),
         cell: ({ row }) => <FactCell fact={row.original.units_total} unit="households" />,
+      },
+      {
+        id: 'down_payment_won',
+        header: () => colTitle('down_payment_won'),
+        // 계약 .20 F1: 계약금 원 금액(서버 산술 Fact — P_mid × 계약금 %). 라벨이 길어 기본 숨김(열 선택 1클릭)
+        cell: ({ row }) => (
+          <span data-testid={`down-won-${row.original.complex_id}`}>
+            <FactCell fact={row.original.down_payment_won ?? null} unit="won" />
+          </span>
+        ),
+      },
+      {
+        id: 'competition',
+        header: () => colTitle('competition'),
+        // 계약 .20 F2: 1순위 해당지역 최고 경쟁률(서버 산술)·그 주택형
+        cell: ({ row }) => {
+          const summary = row.original.competition_summary;
+          if (!summary) return <FactCell fact={null} unit="ratio" />;
+          return (
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <FactCell fact={summary.max_ratio} unit="ratio" digits={2} />
+              {summary.max_ratio_type_code ? (
+                <span className="text-xs text-muted">{summary.max_ratio_type_code}</span>
+              ) : null}
+            </span>
+          );
+        },
       },
       {
         id: 'last_change',

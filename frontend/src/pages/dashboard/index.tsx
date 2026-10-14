@@ -3,8 +3,8 @@ import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { useChecklist, useComplexes, useCreateJob, useDashboard, useScenarios } from '@/api/hooks';
-import type { ChangeEvent, ChecklistItem, ComplexRow, Dashboard, ScoreRow } from '@/api/types';
+import { useChecklist, useCreateJob, useDashboard, useScenarios } from '@/api/hooks';
+import type { ChangeEvent, ChecklistItem, Dashboard, ScoreRow } from '@/api/types';
 import { C05Unsold, C06ScoreBreakdown } from '@/charts';
 import {
   Badge,
@@ -23,7 +23,6 @@ import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import { useIsMobile } from '@/lib/useMediaQuery';
-import { DEFAULT_SORT, FIRST_PAGE_SIZE, toListParams } from '../complexes/params';
 import { scheduleBasis, scheduleKindText, withinDays } from '../_shared/schedule';
 import {
   changeEntityText,
@@ -72,14 +71,6 @@ export function DashboardPage() {
 function DashboardBody({ data }: { data: Dashboard }) {
   const asof = data.asof_date;
   const top = data.top5.filter((row) => row.rank === null || row.rank <= 5);
-  const { snapshotId, scenarioKey } = usePageContext();
-  // TOP 카드 사실 줄: G2 첫 페이지와 같은 요청(같은 캐시) — 같은 리비전 목록 행을 complex_id 로 붙인다(결정 14(a))
-  const list = useComplexes(snapshotId, {
-    ...toListParams({}, DEFAULT_SORT, scenarioKey),
-    page: 1,
-    size: FIRST_PAGE_SIZE,
-  });
-  const listRows = new Map((list.data?.items ?? []).map((r) => [r.complex_id, r]));
   // +10% 목표 시점 = 이 상황의 p10_horizon(상황 C 는 기준일+5년 — 고정 문구로 쓰지 않는다)
   const { data: scenarios = [] } = useScenarios();
   const horizon = scenarios.find((s) => s.id === data.scenario_id)?.policy.p10_horizon ?? null;
@@ -137,14 +128,7 @@ function DashboardBody({ data }: { data: Dashboard }) {
           ) : null}
           <ul aria-label={t('page.G1.top5')} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {top.map((row) => (
-              <Top5Card
-                key={row.complex_id}
-                row={row}
-                asof={asof}
-                listRow={listRows.get(row.complex_id) ?? null}
-                listReady={list.data !== undefined || list.error !== null}
-                target={target}
-              />
+              <Top5Card key={row.complex_id} row={row} asof={asof} target={target} />
             ))}
           </ul>
         </Section>
@@ -295,6 +279,20 @@ function RegionStatus({ data }: { data: Dashboard }) {
         <>
           <span>{t('page.G1.kpi.unsoldSub', { ym: kpis.unsold.ym ?? t('empty.unknown') })}</span>{' '}
           <FactCell wrap fact={kpis.unsold.post_completion} unit="households" />
+          {kpis.unsold.breakdown && kpis.unsold.breakdown.length > 0 ? (
+            // 계약 .20 F4: 지역 합계 내역(시군구별 원천 Fact — 출처 1클릭)
+            <details className="mt-1">
+              <summary className="cursor-pointer">{t('page.G1.kpi.unsoldBreakdown')}</summary>
+              <span data-testid="unsold-breakdown" className="mt-1 flex flex-col gap-0.5">
+                {kpis.unsold.breakdown.map((part) => (
+                  <span key={part.scope_code ?? part.scope_name} className="flex flex-wrap gap-1">
+                    <span>{part.scope_name}</span>
+                    <FactCell wrap fact={part.total} unit="households" />
+                  </span>
+                ))}
+              </span>
+            </details>
+          ) : null}
         </>
       ),
     },
@@ -337,23 +335,11 @@ function RegionStatus({ data }: { data: Dashboard }) {
 }
 
 /**
- * TOP 카드(R9-UI P2, D28-4 '사실 먼저·점수 아래'): 이름·생활권·접수 → 현재 구매가·전매 종료·가격 갭(같은 리비전 목록 행의
- * Fact 를 complex_id 로 붙인 값 — 조인은 계산이 아니다, 결정 14(a)) → 종합 점수·+10% 상승 가능성(목표 시점·당첨 확률 아님).
- * 계약 .20(요청 Q7)에서 ScoreRow 가 사실 Fact 를 직접 주면 그 값으로 바꾼다. rerank 변화는 G3 점수 줄·G4·G5 에 있다.
+ * TOP 카드(R9-UI P2, D28-4 '사실 먼저·점수 아래'): 이름·생활권·접수 → 현재 구매가·전매 종료·가격 갭(계약 .20 F8 — ScoreRow 의
+ * 같은 리비전 목록 행 Fact, 결정 14(b)) → 종합 점수·+10% 상승 가능성(목표 시점·당첨 확률 아님). rerank 변화는 G3 점수 줄·G4·G5.
+ * .20 이전 발행 저장본(키 없음)은 '확인 불가(이 기준일 자료에 없음)'.
  */
-function Top5Card({
-  row,
-  asof,
-  listRow,
-  listReady,
-  target,
-}: {
-  row: ScoreRow;
-  asof: string;
-  listRow: ComplexRow | null;
-  listReady: boolean;
-  target: string | null;
-}) {
+function Top5Card({ row, asof, target }: { row: ScoreRow; asof: string; target: string | null }) {
   const navigate = useNavigate();
   const search = useGlobalSearch();
   const to = `/complexes/${row.complex_id}${search}`;
@@ -362,8 +348,7 @@ function Top5Card({
     if ((event.target as HTMLElement).closest('button, a, summary')) return;
     navigate(to);
   };
-  // 목록 행이 없으면(받는 중이 아니면) 확인 불가(목록 행 없음)
-  const missing = listReady ? t('page.G1.noListRow') : undefined;
+  const missing = t('page.G1.noListRow');
   return (
     <li
       onClick={onClick}
@@ -400,17 +385,23 @@ function Top5Card({
       <dl data-card="facts" className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm">
         <dt className="text-muted">{t('page.G1.card.price')}</dt>
         <dd className="flex flex-wrap items-center gap-1">
-          <FactCell wrap fact={listRow?.price_low} unit="eok" emptyReason={missing} />
+          <FactCell wrap fact={row.price_low ?? null} unit="eok" emptyReason={missing} />
           <span aria-hidden>~</span>
-          <FactCell wrap fact={listRow?.price_high} unit="eok" emptyReason={missing} />
+          <FactCell wrap fact={row.price_high ?? null} unit="eok" emptyReason={missing} />
         </dd>
         <dt className="text-muted">{t('page.G1.card.resaleEnd')}</dt>
         <dd>
-          <FactCell wrap fact={listRow?.resale_end} unit="date" asof={asof} emptyReason={missing} />
+          <FactCell
+            wrap
+            fact={row.resale_end ?? null}
+            unit="date"
+            asof={asof}
+            emptyReason={missing}
+          />
         </dd>
         <dt className="text-muted">{t('page.G1.card.gap')}</dt>
         <dd>
-          <FactCell wrap fact={listRow?.gap_pct} unit="pct" emptyReason={missing} />
+          <FactCell wrap fact={row.gap_pct ?? null} unit="pct" emptyReason={missing} />
         </dd>
       </dl>
       <dl
@@ -530,7 +521,12 @@ function ChangeFeed({ changes, asof }: { changes: ChangeEvent[]; asof: string })
         <div className="flex flex-col gap-1">
           <ul aria-label={t('page.G1.changes')} className="flex flex-col divide-y divide-border">
             {shown.map((change) => {
-              const summaryOnly = change.field === 'first_load' && change.old_text === null;
+              // 계약 .20 F5: 서버 summary 한 줄 — hash·json 이면 원값은 '바뀐 값 보기' 안, plain 은 summary 에 값이 있다
+              const serverSummary = change.summary ?? null;
+              const summaryOnly =
+                serverSummary !== null
+                  ? change.value_kind !== 'hash' && change.value_kind !== 'json'
+                  : change.field === 'first_load' && change.old_text === null;
               const head = (
                 <>
                   <span className="flex flex-wrap items-center gap-1">
@@ -545,7 +541,9 @@ function ChangeFeed({ changes, asof }: { changes: ChangeEvent[]; asof: string })
                     </span>
                   </span>
                   <span className="text-sm">
-                    {summaryOnly ? (
+                    {serverSummary !== null ? (
+                      <span title={change.field_label}>{serverSummary}</span>
+                    ) : summaryOnly ? (
                       <>
                         <span>{changeFieldText(change.field)}</span>{' '}
                         <span>{changeValueText(change)}</span>

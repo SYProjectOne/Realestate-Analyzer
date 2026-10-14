@@ -147,18 +147,24 @@ describe('R9-UI P3(D28-2): 라벨 무게 나누기 — 글자는 남고 무게�
   });
 });
 
-describe('R9-UI P7 원 사유는 title 에(EmptyState·LabelBadge·IntakeBadge)', () => {
-  it('쉬운 말을 보이고 원 사유는 같은 요소 title', () => {
+describe('R9-UI P7 원 사유는 title 에(EmptyState·LabelBadge·IntakeBadge, 계약 .20 reason_code)', () => {
+  it('코드로 쉬운 말을 보이고 원 사유는 같은 요소 title', () => {
     renderWithProviders(
       <>
-        <LabelBadge label="확인 불가" reason="발코니 표 해석 실패" checkedAt="2026-10-13" />
-        <EmptyState inline reason="미판정" checkedAt="2026-10-14" />
+        <LabelBadge
+          label="확인 불가"
+          reason="발코니 표 해석 실패"
+          reasonCode="parse_failed"
+          checkedAt="2026-10-13"
+        />
+        <EmptyState inline reason="미판정" reasonCode="unjudged" checkedAt="2026-10-14" />
         <IntakeBadge
           intake={{
             status: '확인 불가',
             path: 'headless_shot',
             checked_at: '2026-10-14',
             reason: '판정 미해결',
+            reason_code: 'unresolved',
           }}
           showPath={false}
         />
@@ -181,9 +187,48 @@ describe('R9-UI P7 원 사유는 title 에(EmptyState·LabelBadge·IntakeBadge)'
     );
   });
 
+  it('FactCell 은 fact.reason_code 를 넘긴다', () => {
+    renderWithProviders(
+      <FactCell
+        fact={{
+          v: null,
+          label: '확인 불가',
+          reason: '공고 전',
+          reason_code: 'not_published',
+          prov: null,
+          checked_at: null,
+        }}
+      />,
+    );
+    expect(screen.getByTestId('empty-state')).toHaveTextContent(
+      `확인 불가(${t('empty.reasonPlain.pre_notice')})`,
+    );
+  });
+
   it('출처 패널(full)은 원 사유 그대로', () => {
-    renderWithProviders(<LabelBadge label="확인 불가" reason="미판정" full />);
+    renderWithProviders(
+      <LabelBadge label="확인 불가" reason="미판정" reasonCode="unjudged" full />,
+    );
     expect(screen.getByTestId('label-badge')).toHaveTextContent('확인 불가(미판정)');
+  });
+
+  it('공급 종류(.20 supply_kind)가 있으면 접수 배지에 함께, 근거 문구는 title', () => {
+    renderWithProviders(
+      <IntakeBadge
+        intake={{
+          status: '가능',
+          path: 'official_popup',
+          checked_at: '2026-10-07',
+          supply_kind: '선착순',
+          supply_kind_basis: "팝업 '선착순 동·호지정 계약 중'",
+        }}
+      />,
+    );
+    const badge = screen.getByTestId('intake-badge');
+    expect(badge).toHaveTextContent(
+      t('intake.withSupply', { status: t('intake.status.가능'), kind: '선착순' }),
+    );
+    expect(badge.getAttribute('title')).toContain("팝업 '선착순 동·호지정 계약 중'");
   });
 });
 

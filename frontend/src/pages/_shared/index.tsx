@@ -438,19 +438,6 @@ export function isUnresolved(status: string | null | undefined): boolean {
   return status === 'review' || status === 'escaped' || status === 'blocked' || status === 'error';
 }
 
-/**
- * 아직 계약에 없는 **선택 Fact 필드**를 읽는다(R9-UI — 계약 .20 이 더할 필드: 계약금 원 금액 `down_payment_won` 등).
- * 필드가 없거나 Fact 모양(v·label)이 아니면 null → 화면은 "확인 불가(사유)". 값이 오면 칸이 그대로 켜진다.
- * 계약 .20 이 들어오면(`npm run gen:api`) 생성 타입의 필드로 바꾼다.
- */
-export function optionalFact(source: object | null | undefined, key: string): Fact | null {
-  if (!source) return null;
-  const value = (source as Record<string, unknown>)[key];
-  if (!value || typeof value !== 'object') return null;
-  const fact = value as Partial<Fact>;
-  return 'v' in fact && typeof fact.label === 'string' ? (value as Fact) : null;
-}
-
 export const thClass = 'border-b border-border px-2 py-1 text-left text-xs font-medium text-muted';
 export const tdClass = 'border-b border-border px-2 py-1 align-top';
 

@@ -315,46 +315,65 @@ export function formatFactValue(
   return formatValue(n, unit, options);
 }
 
-/**
- * 서버 사유(포함 문자열) → 쉬운 말 key (R9-UI P7, 30-proposal §8-2). 순서대로 처음 맞는 것.
- * 문자열 매칭은 임시다 — 계약 .20 `reason_code`(요청 Q5)가 오면 코드 기준으로 바꾼다. 서버 문자열은
- * eslint-rules/hangul-allowlist.js 의 서버 표식(CONTRACT_MARKERS·enum)으로 근거를 둔다.
- */
-const REASON_PLAIN: readonly (readonly [readonly string[], TKey])[] = [
-  [['해석 실패'], 'empty.reasonPlain.parse_failed'],
-  [['판정 미해결', '미해결'], 'empty.reasonPlain.unresolved'],
-  [['미판정'], 'empty.reasonPlain.unjudged'],
-  [['정액 표기 없음'], 'empty.reasonPlain.no_fixed_amount'],
-  [['값 없음'], 'empty.reasonPlain.no_value'],
-  [['미입력'], 'empty.reasonPlain.not_entered'],
-  [['공고 전', '분양가 미공개'], 'empty.reasonPlain.pre_notice'],
-];
+/** 계약 .20 사유 코드(fact.json ReasonCode — 서버 `app.api.reason_codes`) */
+export type ReasonCode = NonNullable<FactLike['reason_code']>;
 
-/** 사유 → 화면 문구. 모르는 사유는 그대로(mapped=false) */
-export function plainReason(reason: string): { text: string; mapped: boolean } {
-  for (const [needles, key] of REASON_PLAIN) {
-    if (needles.some((n) => reason.includes(n))) return { text: t(key), mapped: true };
-  }
-  return { text: reason, mapped: false };
+/**
+ * 사유 코드 → 쉬운 말 key(R9-UI P7, 계약 .20 F3). `no_value` 는 서버 사유가 이미 구체적인 말('1순위 해당지역 경쟁률 없음')이라
+ * 바꾸지 않는다(일반 문구로 바꾸면 뜻이 흐려진다). 코드가 'other'·없음(.20 이전 발행 저장본)이면 서버 사유 그대로 —
+ * 화면이 문자열로 사유를 추측하지 않는다. 원 사유(reason)는 title·출처 패널.
+ */
+const REASON_PLAIN: Partial<Record<ReasonCode, TKey>> = {
+  fetch_failed: 'empty.reasonPlain.fetch_failed',
+  not_collected: 'empty.reasonPlain.not_collected',
+  not_published: 'empty.reasonPlain.pre_notice',
+  parse_failed: 'empty.reasonPlain.parse_failed',
+  source_missing: 'empty.reasonPlain.source_missing',
+  demoted: 'empty.reasonPlain.demoted',
+  conflict_hold: 'empty.reasonPlain.conflict_hold',
+  partial_missing: 'empty.reasonPlain.partial_missing',
+  identity_unconfirmed: 'empty.reasonPlain.identity_unconfirmed',
+  other_complex_site: 'empty.reasonPlain.other_complex_site',
+  no_phrase: 'empty.reasonPlain.no_phrase',
+  phrase_inconclusive: 'empty.reasonPlain.phrase_inconclusive',
+  not_target: 'empty.reasonPlain.not_target',
+  input_blocked: 'empty.reasonPlain.input_blocked',
+  unresolved: 'empty.reasonPlain.unresolved',
+  unjudged: 'empty.reasonPlain.unjudged',
+  not_entered: 'empty.reasonPlain.not_entered',
+  no_sample: 'empty.reasonPlain.no_sample',
+  human_check: 'empty.reasonPlain.human_check',
+};
+
+/** 사유 → 화면 문구. 코드가 없거나 표에 없으면 서버 사유 그대로(mapped=false) */
+export function plainReason(
+  reason: string,
+  code?: ReasonCode | null,
+): { text: string; mapped: boolean } {
+  const key = code ? REASON_PLAIN[code] : undefined;
+  return key ? { text: t(key), mapped: true } : { text: reason, mapped: false };
 }
 
 /** 쉬운 말로 바꾼 사유면 "원래 사유: …"(같은 요소의 title — 0클릭, 마우스 올림). 아니면 undefined */
-export function unknownTitle(reason: string | null | undefined): string | undefined {
-  if (!reason || !plainReason(reason).mapped) return undefined;
+export function unknownTitle(
+  reason: string | null | undefined,
+  code?: ReasonCode | null,
+): string | undefined {
+  if (!reason || !plainReason(reason, code).mapped) return undefined;
   return t('empty.reasonOriginal', { reason });
 }
 
 /**
  * "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1.
- * 괄호 안 사유는 쉬운 말(P7). `raw` 면 서버 사유 그대로(출처 패널 '라벨' 줄).
+ * 괄호 안 사유는 사유 코드(`code`, 계약 .20)의 쉬운 말(P7). `raw` 면 서버 사유 그대로(출처 패널 '라벨' 줄).
  */
 export function formatUnknown(
   reason?: string | null,
   checkedAt?: string | null,
-  options: { raw?: boolean } = {},
+  options: { raw?: boolean; code?: ReasonCode | null } = {},
 ): string {
   if (!reason) return t('empty.unknown');
-  const shown = options.raw ? reason : plainReason(reason).text;
+  const shown = options.raw ? reason : plainReason(reason, options.code).text;
   const date = checkedAt ? (kstDay(checkedAt) ?? undefined) : undefined;
   return date
     ? t('empty.unknownWithReasonDate', { reason: shown, date })

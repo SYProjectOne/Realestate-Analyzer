@@ -130,39 +130,42 @@ describe('formatConfidence (R3 minor 27)', () => {
   });
 });
 
-describe('R9-UI P7 확인 불가 사유를 사용자 말로(30-proposal §8)', () => {
+describe('R9-UI P7 확인 불가 사유를 사용자 말로 — 계약 .20 reason_code 기준(30-proposal §8, F3)', () => {
   it.each([
-    ['발코니 표 해석 실패', 'empty.reasonPlain.parse_failed'],
-    ['잔금 비율 표기 해석 실패', 'empty.reasonPlain.parse_failed'],
-    ['판정 미해결', 'empty.reasonPlain.unresolved'],
-    ['포함/제외 classify 미해결(review, 미분류)', 'empty.reasonPlain.unresolved'],
-    ['미판정', 'empty.reasonPlain.unjudged'],
-    ['값 없음', 'empty.reasonPlain.no_value'],
-    ['정액 표기 없음', 'empty.reasonPlain.no_fixed_amount'],
-    ['미입력', 'empty.reasonPlain.not_entered'],
-    ['공고 전', 'empty.reasonPlain.pre_notice'],
-    ['분양가 미공개(공고 전)', 'empty.reasonPlain.pre_notice'],
-  ] as const)('%s → 쉬운 말', (reason, key) => {
-    expect(plainReason(reason)).toEqual({ text: t(key), mapped: true });
-    expect(unknownTitle(reason)).toBe(t('empty.reasonOriginal', { reason }));
+    ['parse_failed', '발코니 표 해석 실패', 'empty.reasonPlain.parse_failed'],
+    ['unresolved', '판정 미해결', 'empty.reasonPlain.unresolved'],
+    ['unjudged', '미판정', 'empty.reasonPlain.unjudged'],
+    ['not_entered', '미입력', 'empty.reasonPlain.not_entered'],
+    ['not_published', '공고 전', 'empty.reasonPlain.pre_notice'],
+    ['not_collected', '가점 미수집', 'empty.reasonPlain.not_collected'],
+    ['fetch_failed', '403', 'empty.reasonPlain.fetch_failed'],
+    [
+      'identity_unconfirmed',
+      '공식 홈페이지 동일성 미확인',
+      'empty.reasonPlain.identity_unconfirmed',
+    ],
+    ['no_sample', '비교군 없음', 'empty.reasonPlain.no_sample'],
+  ] as const)('%s(%s) → 쉬운 말, 원 사유는 title', (code, reason, key) => {
+    expect(plainReason(reason, code)).toEqual({ text: t(key), mapped: true });
+    expect(unknownTitle(reason, code)).toBe(t('empty.reasonOriginal', { reason }));
   });
 
-  it('모르는 사유는 그대로(title 없음)', () => {
-    expect(plainReason('403')).toEqual({ text: '403', mapped: false });
-    expect(unknownTitle('403')).toBeUndefined();
+  it("코드 'other'·코드 없음(옛 저장본)은 서버 사유 그대로 — 문자열로 추측하지 않는다", () => {
+    expect(plainReason('미판정', null)).toEqual({ text: '미판정', mapped: false });
+    expect(plainReason('알 수 없는 사유', 'other')).toEqual({
+      text: '알 수 없는 사유',
+      mapped: false,
+    });
+    expect(unknownTitle('미판정', null)).toBeUndefined();
     expect(formatUnknown('403', '2026-10-07')).toBe('확인 불가(403, 2026-10-07)');
   });
 
   it('D7 형식 "확인 불가(사유, 날짜)"는 그대로, 괄호 안 사유만 바뀐다', () => {
-    expect(formatUnknown('미판정', '2026-10-14')).toBe(
-      t('empty.unknownWithReasonDate', {
-        reason: t('empty.reasonPlain.unjudged'),
-        date: '2026-10-14',
-      }),
+    expect(formatUnknown('미판정', '2026-10-14', { code: 'unjudged' })).toBe(
+      '확인 불가(점수 계산 전, 2026-10-14)',
     );
-    expect(formatUnknown('미판정', '2026-10-14')).toBe('확인 불가(점수 계산 전, 2026-10-14)');
     // 원 사유 그대로(출처 패널 '라벨' 줄)
-    expect(formatUnknown('미판정', '2026-10-14', { raw: true })).toBe(
+    expect(formatUnknown('미판정', '2026-10-14', { raw: true, code: 'unjudged' })).toBe(
       '확인 불가(미판정, 2026-10-14)',
     );
     expect(formatUnknown(null)).toBe('확인 불가');

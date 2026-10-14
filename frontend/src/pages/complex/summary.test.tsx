@@ -121,40 +121,18 @@ describe('R9-UI P1 G3 머리 3단', () => {
     expect(panel.querySelector(`[data-prov="${prov}"]`)).not.toBeNull();
   });
 
-  it('계약금 원 금액: API 가 주기 전엔 "확인 불가(계산값 미제공)", 주면(계약 .20) 그 Fact 를 그대로', async () => {
+  it('계약금 원 금액: 옛 저장본(price.payment_amounts 없음)은 "확인 불가(계산값 미제공)"', async () => {
     const detail = await exampleDetail();
+    const { payment_amounts: _drop, ...price } = detail.price;
+    useDetail({ ...detail, price });
     renderRoute('/complexes/2');
     const head = await summary(detail.header.name);
     const money = within(head).getByRole('region', { name: t('page.G3.summary.money') });
     expect(
-      within(money).getByText(
+      within(money).getAllByText(
         t('empty.unknownWithReason', { reason: t('page.G3.summary.downWonMissing') }),
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('계약 .20 down_payment_won 이 오면 칸이 켜진다(선택 필드)', async () => {
-    const detail = await exampleDetail();
-    const payment = detail.payment.map((p) =>
-      p.is_current
-        ? {
-            ...p,
-            down_payment_won: {
-              v: 29_650_000,
-              label: '추정' as const,
-              reason: '산술',
-              prov: 'fp_q1_down_won',
-              checked_at: '2026-10-08',
-              unit: 'won' as const,
-            },
-          }
-        : p,
-    );
-    useDetail({ ...detail, payment });
-    renderRoute('/complexes/2');
-    const head = await summary(detail.header.name);
-    const money = within(head).getByRole('region', { name: t('page.G3.summary.money') });
-    expectLabelled(money, 'fp_q1_down_won');
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   it('예전 머리 값(가격·전매·입주·종합 점수·분류 확률·rerank 변화)이 모두 머리에 남는다', async () => {

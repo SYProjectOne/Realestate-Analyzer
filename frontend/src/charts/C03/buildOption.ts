@@ -18,6 +18,13 @@ export function emptyReason(data: C03Data): string | null {
  */
 export function sampleBadges(data: C03Data): string[] {
   const counts = new Map<string, number>();
+  // 계약 .20 F6: 서버 생활권 이름
+  const names = new Map<string, string>();
+  for (const f of data.flags ?? [])
+    if (f.living_area_name) names.set(f.living_area, f.living_area_name);
+  for (const b of data.benchmarks) {
+    if (b.living_area && b.living_area_name) names.set(b.living_area, b.living_area_name);
+  }
   if (data.flags && data.flags.length > 0) {
     for (const f of data.flags) counts.set(f.living_area, f.sample_n);
   } else {
@@ -30,7 +37,7 @@ export function sampleBadges(data: C03Data): string[] {
   const out: string[] = [];
   for (const [area, n] of counts) {
     if (n >= C03_MIN_SAMPLE) continue;
-    const name = livingAreaName(area, data.livingAreas);
+    const name = names.get(area) ?? livingAreaName(area, data.livingAreas);
     out.push(
       single || !name
         ? t('badge.sampleEstimated', { n: formatCount(n) })
@@ -218,7 +225,7 @@ export function toTable(data: C03Data): DataTable {
     ],
     rows: data.benchmarks.map((b) => ({
       name: `${b.is_presale ? `${b.name} · ${t('chart.C03.presale')}` : b.name}${substituteSuffix(b)}`,
-      living_area: livingAreaName(b.living_area, data.livingAreas),
+      living_area: b.living_area_name ?? livingAreaName(b.living_area, data.livingAreas),
       sale_year: b.sale_year === null ? null : String(b.sale_year),
       sale_price: b.sale_price_84_won,
       low: b.trade_low_won,

@@ -8,6 +8,7 @@ import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass, useGlobalSearch } from '../_shared';
 import { HC_PARAM, HUMAN_CHECK_ANCHOR } from '../ops/humanCheckRules';
+import { CompetitionSummaryLine } from './CompetitionSummaryLine';
 
 /** 할인 문구에 필요한 가격 범위 필드 */
 export type DiscountPrice = Pick<PriceRange, 'discount' | 'discount_applied'>;
@@ -458,12 +459,46 @@ export function shortfallUnits(text: string | null | undefined): string | null {
   return match?.[1] ?? null;
 }
 
+/** 당첨 가점 3칸(계약 .20 F2) 중 값이 있는가 */
+function hasPoints(row: ComplexDetail['competition'][number]): boolean {
+  return [row.winning_score_min, row.winning_score_max, row.winning_score_avg].some(
+    (f) => !!f && f.v !== null,
+  );
+}
+
+/** D29-4: 최저·최고·평균이 모두 0 → 가점제 당첨자 없음 */
+function noPointWinners(row: ComplexDetail['competition'][number]): boolean {
+  return [row.winning_score_min, row.winning_score_max, row.winning_score_avg].every(
+    (f) => !!f && f.v !== null && Number(f.v) === 0,
+  );
+}
+
+function PointsCell({ row }: { row: ComplexDetail['competition'][number] }) {
+  if (noPointWinners(row)) {
+    return <span data-testid="no-point-winners">{t('page.G3.competition.noPointWinners')}</span>;
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <FactCell fact={row.winning_score_min ?? null} unit="score" digits={0} />
+      <span aria-hidden>~</span>
+      <FactCell fact={row.winning_score_max ?? null} unit="score" digits={0} />
+      <span className="text-xs text-muted">{t('page.G3.competition.pointsAvg')}</span>
+      <FactCell fact={row.winning_score_avg ?? null} unit="score" digits={2} />
+    </span>
+  );
+}
+
 export function EventsTab({ detail }: { detail: ComplexDetail }) {
   const { events, competition, asof_date: asof } = detail;
+  // 당첨 가점은 수집 전이면 모두 '확인 불가(가점 미수집)' — 그동안은 청약홈 안내 줄(30-proposal §9-2)
+  const showPoints = competition.some(hasPoints);
   // R9-UI P8: 경쟁률 표를 맨 위로(초보 질문 Q5), 추가 모집 이력 차트는 그 아래
   return (
     <div className="flex flex-col gap-3">
       <Section title={t('page.G3.competition.title')}>
+        {detail.competition_summary ? (
+          <CompetitionSummaryLine summary={detail.competition_summary} />
+        ) : null}
         {competition.length === 0 ? (
           <EmptyState reason={t('page.common.none')} />
         ) : (
@@ -476,6 +511,11 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
                       {t(`page.G3.competition.${k}` as TKey)}
                     </th>
                   ))}
+                  {showPoints ? (
+                    <th scope="col" className={thClass}>
+                      {t('page.G3.competition.points')}
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -501,6 +541,11 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
                           (row.ratio_or_shortfall_text ?? t('empty.unknown'))
                         )}
                       </td>
+                      {showPoints ? (
+                        <td className={tdClass}>
+                          <PointsCell row={row} />
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -508,8 +553,10 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
             </table>
           </div>
         )}
-        {/* 계약 .20(요청 Q4) 전까지 당첨 가점은 없다 — 정직하게 표시 */}
-        <p className="text-xs text-muted">{t('page.G3.competition.pointsMissing')}</p>
+        {/* 당첨 가점 값이 아직 없으면(가점 미수집) 정직하게 표시 */}
+        {showPoints ? null : (
+          <p className="text-xs text-muted">{t('page.G3.competition.pointsMissing')}</p>
+        )}
       </Section>
       <C08Timeline data={{ events }} asof={asof} />
     </div>
@@ -577,7 +624,8 @@ export function GapTab({ detail }: { detail: ComplexDetail }) {
         ) : null}
         <dt className="text-muted">{t('page.G3.gap.score')}</dt>
         <dd>
-          <FactCell fact={gap.score} unit="score" />
+          {/* 계약 .20 F7: 점수 s_gap 은 gap_score(옛 이름 score) — 퍼센트(gap_pct, prov …raw)와 다른 출처 */}
+          <FactCell fact={gap.gap_score ?? gap.score} unit="score" />
         </dd>
       </dl>
       <p className="text-sm">{t('page.G3.gap.meaning')}</p>

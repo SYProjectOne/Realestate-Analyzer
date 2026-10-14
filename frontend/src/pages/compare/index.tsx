@@ -372,14 +372,17 @@ function TermsTable({ view, rows }: { view: CompareView; rows: ScoreRow[] }) {
                 {t('page.G4.term.price')}
               </th>
               {rows.map((row) => {
+                // 계약 .20 F8: 점수 행의 목록 Fact(없으면 옛 저장본 — 가격 갭 응답의 같은 Fact)
                 const gap = view.gaps[String(row.complex_id)] ?? null;
+                const low = row.price_low ?? gap?.price_low ?? null;
+                const high = row.price_high ?? gap?.price_high ?? null;
                 return (
                   <td key={row.complex_id} className={tdClass}>
-                    {gap ? (
+                    {low || high ? (
                       <span className="inline-flex flex-wrap items-center gap-1">
-                        <FactCell fact={gap.price_low} unit="won" />
+                        <FactCell fact={low} unit="won" />
                         <span aria-hidden>~</span>
-                        <FactCell fact={gap.price_high} unit="won" />
+                        <FactCell fact={high} unit="won" />
                       </span>
                     ) : (
                       <EmptyState inline />

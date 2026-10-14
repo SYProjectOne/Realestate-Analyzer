@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
-import type { ComplexRow, Dashboard } from '@/api/types';
+import type { Dashboard } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { mswPath } from '@/mocks/mswPath';
@@ -51,7 +51,7 @@ describe('R9-UI P2 G1 홈 첫 화면을 "지금 할 수 있는 것"부터(30-pro
 
   it('최근 변경: 쉬운 문장, 바뀐 값(해시 등)은 "바뀐 값 보기"를 펼쳐야 보인다', async () => {
     const dash = await exampleDashboard();
-    const change = dash.changes.find((c) => c.field !== 'first_load' && c.new_text);
+    const change = dash.changes.find((c) => c.value_kind === 'hash');
     expect(change).toBeDefined();
     renderRoute('/');
     const feed = await screen.findByRole('list', { name: t('page.G1.changes') });
@@ -167,58 +167,32 @@ describe('R9-UI P2 G1 다가오는 일정 · TOP 카드 사실 줄(30-proposal �
     expect(await within(box).findByText(t('page.G1.upcoming.none'))).toBeInTheDocument();
   });
 
-  it('TOP 카드: 구매가·전매 종료·가격 갭 = 같은 리비전 목록 행의 Fact(prov 일치), 점수·+10%는 아래 칸', async () => {
-    const rows = await exampleRows();
+  it('TOP 카드: 점수·+10%는 사실 줄 아래, rerank 변화는 카드에 없다', async () => {
     renderRoute('/');
     const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
     const card = within(top5).getAllByRole('listitem')[0] as HTMLElement;
-    const id = Number(card.dataset.complexId);
-    const row = rows.find((r) => r.complex_id === id);
-    expect(row).toBeDefined();
     const facts = card.querySelector('[data-card="facts"]') as HTMLElement;
-    await waitFor(() =>
-      expect(facts.querySelector(`[data-prov="${row?.price_low.prov}"]`)).not.toBeNull(),
-    );
-    for (const fact of [row?.price_high, row?.resale_end, row?.gap_pct]) {
-      if (fact?.prov) expect(facts.querySelector(`[data-prov="${fact.prov}"]`)).not.toBeNull();
-    }
     const score = card.querySelector('[data-card="score"]') as HTMLElement;
     expect(facts.compareDocumentPosition(score) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(score).getByText(t('page.G1.p10Note'))).toBeInTheDocument();
-    // rerank 변화는 카드에서 빠지고 G3 점수 줄·G4·G5 에 그대로(30-proposal §3-5)
     expect(within(card).queryByTestId('top5-delta-rerank')).toBeNull();
   });
 
-  it('목록 행이 없으면 사실 줄은 확인 불가(사유)', async () => {
+  it('옛 저장본(ScoreRow 에 사실 키 없음)은 확인 불가(이 기준일 자료에 없음)', async () => {
+    const dash = await exampleDashboard();
+    const top5 = dash.top5.map(
+      ({ price_low: _a, price_high: _b, resale_end: _c, gap_pct: _d, ...rest }) => rest,
+    );
     server.use(
-      http.get(mswPath('/snapshots/:sid/complexes'), () =>
-        HttpResponse.json({
-          items: [],
-          total: 0,
-          snapshot_id: 12,
-          asof_date: '2026-10-08',
-          page: 1,
-          size: 100,
-        }),
-      ),
+      http.get(mswPath('/snapshots/:sid/dashboard'), () => HttpResponse.json({ ...dash, top5 })),
     );
     renderRoute('/');
-    const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
-    const card = within(top5).getAllByRole('listitem')[0] as HTMLElement;
+    const list = await screen.findByRole('list', { name: t('page.G1.top5') });
+    const card = within(list).getAllByRole('listitem')[0] as HTMLElement;
     const facts = card.querySelector('[data-card="facts"]') as HTMLElement;
-    await waitFor(() =>
-      expect(
-        within(facts).getAllByText(t('empty.unknownWithReason', { reason: t('page.G1.noListRow') }))
-          .length,
-      ).toBeGreaterThan(0),
-    );
+    expect(
+      within(facts).getAllByText(t('empty.unknownWithReason', { reason: t('page.G1.noListRow') }))
+        .length,
+    ).toBeGreaterThan(0);
   });
 });
-
-async function exampleRows(): Promise<ComplexRow[]> {
-  const res = await getResponse(
-    generatedHandlers as RequestHandler[],
-    new Request('http://localhost/api/snapshots/12/complexes'),
-  );
-  return ((await res?.json()) as { items: ComplexRow[] }).items;
-}

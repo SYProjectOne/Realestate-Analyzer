@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ComplexDetail, ScheduleItem } from '@/api/types';
+import { CompetitionSummaryLine } from './CompetitionSummaryLine';
 import {
   Badge,
   EmptyState,
@@ -20,7 +21,6 @@ import {
   enumText,
   JudgeScopeBadge,
   NameWithProvenance,
-  optionalFact,
   RejudgeNeededBadge,
   ScopeReason,
   useGlobalSearch,
@@ -116,8 +116,10 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
   const intakeRaw = intake?.raw_document_id ?? null;
   const site = siteIssue(intake);
   const current = detail.payment.find((p) => p.is_current) ?? null;
-  // 계약 .20(요청 Q1): 계약금 원 금액 — 오기 전엔 확인 불가(계산값 미제공). 프론트에서 곱하지 않는다
-  const downWon = optionalFact(current, 'down_payment_won');
+  // 계약 .20 F1: 계약금·중도금·잔금 원 금액 = 서버 산술 Fact(추정(산술(P_mid × 비율))). 옛 저장본(키 없음)은
+  // 확인 불가(계산값 미제공). 프론트에서 곱하지 않는다
+  const amounts = price.payment_amounts ?? null;
+  const missingWon = t('page.G3.summary.downWonMissing');
   const noticeProv = header.notice_date.prov;
   const address = header.address ?? t('empty.unknown');
   const livingArea = header.living_area_name ?? header.living_area ?? t('empty.unknown');
@@ -213,6 +215,9 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
             </span>
           ) : null}
         </div>
+        {detail.competition_summary ? (
+          <CompetitionSummaryLine summary={detail.competition_summary} />
+        ) : null}
         {site !== null ? (
           <p
             className="text-xs text-muted"
@@ -314,14 +319,18 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 <Item label={t('page.G3.summary.down')} term="down">
                   <FactCell wrap fact={current.down_payment_pct} unit="pct" digits={0} />
                   <span className="text-xs text-muted">{t('page.G3.summary.downFirst')}</span>
-                  <FactCell wrap fact={current.down_payment_first_won} unit="won" />
+                  <FactCell
+                    wrap
+                    fact={amounts?.down_payment_first_won ?? current.down_payment_first_won}
+                    unit="won"
+                  />
                 </Item>
                 <Item label={t('page.G3.summary.downWon')}>
                   <FactCell
                     wrap
-                    fact={downWon}
+                    fact={amounts?.down_payment_won ?? null}
                     unit="won"
-                    emptyReason={t('page.G3.summary.downWonMissing')}
+                    emptyReason={missingWon}
                   />
                 </Item>
                 <Item
@@ -334,9 +343,21 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                   }
                 >
                   <FactCell wrap fact={current.interim_pct} unit="pct" digits={0} />
+                  <FactCell
+                    wrap
+                    fact={amounts?.interim_won ?? null}
+                    unit="won"
+                    emptyReason={missingWon}
+                  />
                 </Item>
                 <Item label={t('page.G3.summary.balance')} term="balance">
                   <FactCell wrap fact={current.balance_pct} unit="pct" digits={0} />
+                  <FactCell
+                    wrap
+                    fact={amounts?.balance_won ?? null}
+                    unit="won"
+                    emptyReason={missingWon}
+                  />
                 </Item>
               </>
             ) : (
@@ -345,6 +366,12 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
               </Item>
             )}
           </dl>
+          {amounts?.formula ? (
+            // 계산식(서버 문구) — 금액 칸을 누르면 출처(현재 구매가 가운데값)·라벨 '추정(산술(…))'
+            <p className="text-xs text-muted" data-testid="payment-formula" title={amounts.formula}>
+              {t('page.G3.summary.formula', { formula: amounts.formula })}
+            </p>
+          ) : null}
           <Link
             to={{ pathname: `/complexes/${header.id}`, search: globalSearch, hash: '#payment' }}
             replace

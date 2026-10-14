@@ -15,6 +15,8 @@ import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import { metaText } from '@/lib/meta';
 import {
+  changeEntityText,
+  changeFieldText,
   changeValueText,
   enumText,
   QueryState,
@@ -474,9 +476,21 @@ function DiffTable({ rows, asof }: { rows: ChangeEvent[]; asof: string | null })
           {rows.map((c) => (
             <tr key={c.id}>
               <td className={tdClass}>{c.complex_name ?? ''}</td>
-              <td className={tdClass}>{c.entity}</td>
-              <td className={tdClass}>{c.field}</td>
-              <td className={tdClass}>{changeValueText(c)}</td>
+              <td className={tdClass}>{changeEntityText(c.entity)}</td>
+              {/* 계약 .20 F5: 사람이 읽는 필드 이름(원래 field 는 title), 해시·JSON 원값은 펼침 안 */}
+              <td className={tdClass} title={c.field}>
+                {c.field_label ?? changeFieldText(c.field)}
+              </td>
+              <td className={tdClass}>
+                {c.summary && (c.value_kind === 'hash' || c.value_kind === 'json') ? (
+                  <details>
+                    <summary className="cursor-pointer">{c.summary}</summary>
+                    <span className="break-all text-xs">{changeValueText(c)}</span>
+                  </details>
+                ) : (
+                  changeValueText(c)
+                )}
+              </td>
               <td className={tdClass}>
                 <Badge tone={c.severity === 'critical' ? 'strong' : 'muted'}>
                   {enumText('page.common.severity', c.severity)}

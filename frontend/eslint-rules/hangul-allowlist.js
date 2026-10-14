@@ -80,14 +80,6 @@ export const CONTRACT_MARKERS = {
   '출처 상충 — compare 대기': 'backend/app/core/protocols.py',
   // 가격 출처 발췌의 단위 근거 줄 표식(계약 .16 F6)
   '[단위 근거] ': 'backend/app/normalize/notice_parser.py',
-  // R9-UI P7 확인 불가 사유 쉬운 말 매핑(lib/format.ts REASON_PLAIN) — 서버 사유 문자열의 일부. 계약 .20 reason_code 오면 교체
-  '해석 실패': 'backend/app/normalize/notice_parser.py',
-  '판정 미해결': 'backend/app/analysis/scope.py',
-  미판정: 'backend/app/analysis/score.py',
-  '정액 표기 없음': 'backend/app/normalize/notice_parser.py',
-  '값 없음': 'backend/app/api/facts.py',
-  '공고 전': 'backend/app/analysis/scope.py',
-  '분양가 미공개': 'backend/app/analysis/price_view.py',
   // R9-UI 일정 표시: 체크리스트 '만료' 중 전매제한 종료 항목의 제목 표식(pages/_shared/schedule.ts)
   전매제한: 'backend/app/normalize/checklist.py',
 };

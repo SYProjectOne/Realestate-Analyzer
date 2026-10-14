@@ -119,6 +119,7 @@
         "intakeOpen": "접수 가능",
         "unsold": "미분양",
         "unsoldSub": "{ym} 기준 · 준공 후",
+        "unsoldBreakdown": "시군구별 보기",
         "movePeak": "입주가 가장 많은 해",
         "movePeakSub": "세대",
         "freshness": "마지막 수집",
@@ -137,7 +138,7 @@
         "resaleEnd": "전매 종료",
         "gap": "가격 갭(주변 대비)"
       },
-      "noListRow": "목록 행 없음",
+      "noListRow": "이 기준일 자료에 없음",
       "changesMore": "변경 더 보기",
       "changesLess": "변경 접기",
       "changeShowValue": "바뀐 값 보기",
@@ -202,6 +203,8 @@
         "land_type": "택지 종류",
         "units_total": "총 세대",
         "down_payment": "계약금 비율",
+        "competition": "경쟁률(1순위 해당지역 최고)",
+        "down_payment_won": "계약금 금액",
         "last_change": "마지막 변경"
       },
       "sortAsc": "{col} 오름차순 정렬",
@@ -273,6 +276,7 @@
         "balance": "잔금",
         "noPayment": "납부 조건 미수집",
         "moreMoney": "내야 할 돈·일정 자세히",
+        "formula": "계산: {formula}",
         "conditions": "청약 전 꼭 볼 조건",
         "conditionsHint": "당첨 뒤 팔거나 다시 청약하는 데 걸리는 제한입니다. 공고문이 기준입니다.",
         "resaleEndPlain": "팔 수 있게 되는 날",
@@ -307,8 +311,8 @@
         "area": "전용면적",
         "units": "세대",
         "max": "최고가",
-        "floorSample": "대표 층 가격",
-        "floorText": "대표 층",
+        "floorSample": "최저가 층 가격",
+        "floorText": "최저가 층",
         "balcony": "발코니",
         "options": "필수 옵션",
         "basis": "판정 기준",
@@ -354,7 +358,12 @@
         "applied": "접수",
         "ratio": "경쟁률(미달이면 모자란 세대)",
         "shortfall": "미달 {n}세대",
-        "pointsMissing": "당첨 가점: 제공하지 않음 — 청약홈 경쟁률에서 확인"
+        "pointsMissing": "당첨 가점: 제공하지 않음 — 청약홈 경쟁률에서 확인",
+        "points": "당첨 가점(최저~최고 · 평균)",
+        "pointsAvg": "평균",
+        "noPointWinners": "가점제 당첨자 없음",
+        "maxRatio": "최고 경쟁률(1순위 해당지역)",
+        "shortfallTypes": "미달 주택형"
       },
       "gap": {
         "pct": "가격 갭(주변 대비)",
@@ -653,10 +662,16 @@
       "calendarLegend": {
         "title": "종류 뜻",
         "resaleOpen": "전매제한이 끝나 팔 수 있게 되는 날(당첨자 발표일 + 전매 제한 기간으로 계산, 추정)",
-        "interim": "중도금을 내는 날",
-        "contract": "계약 체결 마감일",
-        "expire": "그 밖의 기한이 끝나는 날(지정 만료 등)",
-        "notice": "공고가 나올 것으로 보는 날"
+        "kind": {
+          "중도금": "중도금을 내는 날",
+          "계약": "계약 체결 마감일",
+          "만료": "그 밖의 기한이 끝나는 날(지정 만료 등)",
+          "공고 예상": "공고가 나올 것으로 보는 날",
+          "법적 확인": "직접 확인할 것",
+          "사실 재확인": "다시 확인해야 하는 값",
+          "청약 접수": "청약 신청을 받는 날",
+          "당첨자 발표": "당첨자를 발표하는 날"
+        }
       },
       "check": {
         "kind": "종류",
@@ -736,7 +751,7 @@
         "noUnit": "없음",
         "badDiscountFormat": "할인 형식이 맞지 않습니다 — ASCII 숫자, 쉼표는 세 자리마다, 끝 '원'은 붙여서(띄우지 않음)",
         "discountFormat": "할인 형식·범위가 맞지 않습니다 — {detail}",
-        "discountNotBelowPrice": "할인이 기준 타입 차감 바탕(대표층가·최고가 중 낮은 값) 이상이라 구매가에서 뺄 수 없습니다 — {detail}",
+        "discountNotBelowPrice": "할인이 기준 타입 차감 바탕(최저가 층 가격·최고가 중 낮은 값) 이상이라 구매가에서 뺄 수 없습니다 — {detail}",
         "discountBasisSaved": "기준 타입 {type} 할인으로 반영",
         "decimals": "소수점 아래 {n}자리까지만 입력하세요",
         "min": "{min} 이상이어야 합니다",
@@ -1054,6 +1069,8 @@
         "공고 예상": "공고 예상",
         "계약": "계약",
         "사실 재확인": "사실 재확인",
+        "청약 접수": "청약 접수",
+        "당첨자 발표": "당첨자 발표",
         "resaleOpen": "전매 가능 시작"
       },
       "scheduleBasis": "계산 기준: {basis}",
@@ -1116,13 +1133,26 @@
     "noData": "데이터 없음",
     "reasonOriginal": "원래 사유: {reason}",
     "reasonPlain": {
+      "fetch_failed": "공식 페이지를 받지 못함",
+      "not_collected": "아직 수집하지 않음",
+      "pre_notice": "아직 공고 전(분양가 미공고)",
       "parse_failed": "공고문에서 자동으로 읽지 못함 — 원문에서 확인",
+      "source_missing": "출처 자료가 없음",
+      "demoted": "검증에서 모순이 나와 쓰지 않음",
+      "conflict_hold": "출처끼리 값이 달라 확인 중",
+      "partial_missing": "일부 값이 빠짐",
+      "identity_unconfirmed": "공식 홈페이지가 이 단지 것인지 확인 전",
+      "other_complex_site": "공식 홈페이지가 다른 단지 페이지",
+      "no_phrase": "접수 문구를 찾지 못함",
+      "phrase_inconclusive": "문구로는 판단할 수 없음",
+      "not_target": "점수 계산 대상 아님",
+      "input_blocked": "입력이 막혀 판정하지 않음",
       "unresolved": "자동 확인이 끝나지 않음",
       "unjudged": "점수 계산 전",
-      "no_value": "공고에 값이 없음",
-      "no_fixed_amount": "공고에 금액이 따로 적혀 있지 않음(비율만 있음)",
       "not_entered": "내 조건(시나리오)에 입력하지 않음",
-      "pre_notice": "아직 공고 전(분양가 미공고)"
+      "no_sample": "비교할 거래가 없음",
+      "human_check": "사람 확인 기다림",
+      "no_value": "공고에 값이 없음"
     }
   },
   "intake": {
@@ -1141,7 +1171,8 @@
     "none": "접수 상태 확인 불가",
     "withReason": "{status}({reason})",
     "withReasonDate": "{status}({reason}, {date})",
-    "reasonDate": "{reason} · {date}"
+    "reasonDate": "{reason} · {date}",
+    "withSupply": "{status}({kind})"
   },
   "picker": {
     "snapshotDegraded": "{date} · 일부 수집 실패",
@@ -1698,7 +1729,7 @@
       },
       "current_price": {
         "term": "현재 구매가",
-        "short": "대표 층 공급가~최고 공급가에 발코니 확장비와 필수 옵션을 더하고, 공고에 적힌 확인된 할인만 뺀 범위입니다.",
+        "short": "최저가 층 공급가~최고 공급가에 발코니 확장비와 필수 옵션을 더하고, 공고에 적힌 확인된 할인만 뺀 범위입니다.",
         "cat": "app"
       },
       "equity": {
