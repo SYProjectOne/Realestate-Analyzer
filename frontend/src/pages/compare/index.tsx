@@ -11,6 +11,7 @@ import {
   MetaText,
   MetaValue,
   MismatchBadge,
+  Term,
   TieBadge,
   UnstableBadge,
 } from '@/components';
@@ -391,6 +392,7 @@ function TermsTable({ view, rows }: { view: CompareView; rows: ScoreRow[] }) {
               <tr key={key}>
                 <th scope="row" className={thClass}>
                   {t(`page.G4.term.${key}` as TKey)}
+                  {key === 'required_equity_won' ? <Term k="equity" /> : null}
                 </th>
                 {rows.map((row) => {
                   const term = termOf(row.complex_id);

@@ -13,6 +13,7 @@ import {
   JobProgress,
   MetaText,
   MetaValue,
+  Term,
   TieBadge,
   UnstableBadge,
 } from '@/components';
@@ -102,6 +103,17 @@ function DashboardBody({ data }: { data: Dashboard }) {
             </span>
           }
         >
+          {/* 카드마다 반복하지 않고 구역 머리에 한 번(P6) */}
+          <p className="flex flex-wrap items-center gap-x-3 text-xs text-muted">
+            <span className="inline-flex items-center">
+              {t('page.G1.total')}
+              <Term k="total" />
+            </span>
+            <span className="inline-flex items-center">
+              {t('page.G1.p10')}
+              <Term k="p10" />
+            </span>
+          </p>
           {top.length < 5 ? (
             <p data-testid="top5-fewer" className="text-sm text-muted">
               <MetaText kind="count" k="page.G1.top5Fewer" params={{ n: top.length }} />
@@ -136,7 +148,10 @@ function OpenNowCard({ data }: { data: Dashboard }) {
       data-section="openNow"
       className="flex flex-col gap-2 rounded-sm border border-border bg-surface p-3"
     >
-      <h2 className="text-base font-semibold">{title}</h2>
+      <h2 className="text-base font-semibold">
+        {title}
+        <Term k="intake_status" className="ml-1 align-middle" />
+      </h2>
       <p className="flex flex-wrap items-baseline gap-1 text-2xl font-semibold">
         <FactCell wrap fact={data.kpis.intake_open_count} unit="count" />
         <span className="text-base font-normal">{t('page.G1.openNow.unit')}</span>
@@ -241,7 +256,12 @@ function RegionStatus({ data }: { data: Dashboard }) {
   const tiles = [
     {
       key: 'judged',
-      title: t('page.G1.kpi.judged'),
+      title: (
+        <>
+          {t('page.G1.kpi.judged')}
+          <Term k="judge_scope" />
+        </>
+      ),
       body: <FactCell wrap fact={kpis.judged_count} unit="count" />,
     },
     {

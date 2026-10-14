@@ -79,9 +79,7 @@ describe('G2 단지 리스트', () => {
   it('열 머리 클릭 → sort 쿼리(서버 정렬)', async () => {
     const { router } = renderRoute('/complexes');
     const table = await screen.findByRole('table', { name: t('page.G2.table') });
-    await userEvent.click(
-      within(table).getByRole('button', { name: new RegExp(t('page.G2.col.name')) }),
-    );
+    await userEvent.click(within(table).getByRole('button', { name: t('page.G2.col.name') }));
     await waitFor(() => expect(router.state.location.search).toContain('sort=-name'));
   });
 

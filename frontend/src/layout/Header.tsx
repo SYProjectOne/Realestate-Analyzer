@@ -82,6 +82,15 @@ export function Header() {
             {t(item.key)}
           </NavLink>
         ))}
+        {/* R9-UI P6: 용어 모음 */}
+        <NavLink
+          to={{ pathname: '/glossary', search: location.search }}
+          className={({ isActive }) =>
+            `ml-auto whitespace-nowrap rounded-sm px-2 py-1 ${isActive ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg'}`
+          }
+        >
+          {t('glossary.nav')}
+        </NavLink>
       </nav>
     </header>
   );

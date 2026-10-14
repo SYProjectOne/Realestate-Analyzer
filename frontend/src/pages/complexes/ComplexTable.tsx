@@ -26,7 +26,16 @@ import {
 } from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
-import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
+import {
+  Badge,
+  FactCell,
+  IntakeBadge,
+  MetaValue,
+  Term,
+  TieBadge,
+  UnstableBadge,
+  type GlossaryKey,
+} from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import {
@@ -76,6 +85,19 @@ const SORT_OF: Partial<Record<ColumnId, SortKey>> = {
   total: 'total',
   p10: 'p10',
   last_change: 'last_change',
+};
+
+/** 열 제목 옆 용어 ⓘ(R9-UI P6 — 표는 열 제목에만) */
+const TERM_OF: Partial<Record<ColumnId, GlossaryKey>> = {
+  living_area: 'living_area',
+  intake: 'intake_status',
+  price: 'current_price',
+  down_payment: 'down',
+  resale_end: 'resale_end',
+  gap: 'gap',
+  total: 'total',
+  p10: 'p10',
+  inclusion: 'inclusion',
 };
 
 /** 기본으로 숨기는 열(열 선택으로 켠다) */
@@ -432,6 +454,7 @@ const TableHead = memo(function TableHead({
         <tr key={group.id} aria-rowindex={1}>
           {group.headers.map((header) => {
             const sortKey = SORT_OF[header.column.id as ColumnId];
+            const term = TERM_OF[header.column.id as ColumnId];
             const title = flexRender(header.column.columnDef.header, header.getContext());
             return (
               <th
@@ -450,6 +473,7 @@ const TableHead = memo(function TableHead({
                 ) : (
                   title
                 )}
+                {term ? <Term k={term} className="ml-0.5 align-middle" /> : null}
               </th>
             );
           })}

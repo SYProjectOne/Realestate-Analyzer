@@ -37,5 +37,6 @@ export { RawDocumentPreview, type RawDocumentPreviewProps } from './RawDocumentP
 export { ADD_REGION_VALUE, RegionPicker, type RegionPickerProps } from './RegionPicker';
 export { ScenarioToggle, type ScenarioOption, type ScenarioToggleProps } from './ScenarioToggle';
 export { SnapshotPicker, type SnapshotPickerProps } from './SnapshotPicker';
+export { GLOSSARY_KEYS, glossaryItem, Term, type GlossaryKey, type TermProps } from './Term';
 export { TieBadge, type TieBadgeProps } from './TieBadge';
 export { UnstableBadge, type UnstableBadgeProps } from './UnstableBadge';

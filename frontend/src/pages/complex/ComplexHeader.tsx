@@ -7,9 +7,11 @@ import {
   FactCell,
   IntakeBadge,
   MetaValue,
+  Term,
   TieBadge,
   UnstableBadge,
   useOpenProvenance,
+  type GlossaryKey,
 } from '@/components';
 import { Link } from 'react-router';
 import { t } from '@/i18n';
@@ -51,18 +53,24 @@ function siteIssue(intake: ComplexDetail['intake_current']): 'other' | 'unconfir
 /** 정의 목록 한 칸(라벨 + 값) */
 function Item({
   label,
+  term,
   children,
   hint,
   className = '',
 }: {
   label: ReactNode;
+  /** 칸 제목 옆 용어 ⓘ(P6) — 화면에서 그 용어의 첫 등장에만 */
+  term?: GlossaryKey;
   children: ReactNode;
   hint?: ReactNode;
   className?: string;
 }) {
   return (
     <div className={`flex min-w-0 flex-col ${className}`}>
-      <dt className="text-xs text-muted">{label}</dt>
+      <dt className="text-xs text-muted">
+        {label}
+        {term ? <Term k={term} /> : null}
+      </dt>
       <dd className="flex flex-wrap items-center gap-1">{children}</dd>
       {hint ? <dd className="text-xs text-muted">{hint}</dd> : null}
     </div>
@@ -185,6 +193,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
       <Tier tier="status" title={t('page.G3.summary.status')}>
         <div className="flex flex-wrap items-center gap-2">
           <IntakeBadge intake={intake} asof={asof} />
+          <Term k="intake_status" />
           {intakeRaw !== null && openProvenance ? (
             <button
               type="button"
@@ -248,7 +257,10 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
         <Tier tier="money" title={t('page.G3.summary.money')}>
           <dl className="flex flex-col gap-2 text-sm">
             <div className="flex flex-col">
-              <dt className="text-xs text-muted">{t('page.G3.header.price')}</dt>
+              <dt className="text-xs text-muted">
+                {t('page.G3.header.price')}
+                <Term k="current_price" />
+              </dt>
               <dd className="flex flex-wrap items-center gap-1">
                 <FactCell wrap fact={price.price_low} unit="won" />
                 <span aria-hidden>~</span>
@@ -296,7 +308,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
             </div>
             {current ? (
               <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
-                <Item label={t('page.G3.summary.down')}>
+                <Item label={t('page.G3.summary.down')} term="down">
                   <FactCell wrap fact={current.down_payment_pct} unit="pct" digits={0} />
                   <span className="text-xs text-muted">{t('page.G3.summary.downFirst')}</span>
                   <FactCell wrap fact={current.down_payment_first_won} unit="won" />
@@ -311,6 +323,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 </Item>
                 <Item
                   label={t('page.G3.summary.interim')}
+                  term="interim"
                   hint={
                     current.interim_terms_text
                       ? t('page.G3.summary.interimTerms', { text: current.interim_terms_text })
@@ -319,7 +332,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 >
                   <FactCell wrap fact={current.interim_pct} unit="pct" digits={0} />
                 </Item>
-                <Item label={t('page.G3.summary.balance')}>
+                <Item label={t('page.G3.summary.balance')} term="balance">
                   <FactCell wrap fact={current.balance_pct} unit="pct" digits={0} />
                 </Item>
               </div>
@@ -343,6 +356,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
           <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
             <Item
               label={t('page.G3.header.resaleEnd')}
+              term="resale_end"
               hint={t('page.G3.summary.resaleEndPlain')}
               className="sm:col-span-2"
             >
@@ -354,20 +368,21 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 emptyReason={t('empty.unknown')}
               />
             </Item>
-            <Item label={t('page.G3.summary.residency')}>
+            <Item label={t('page.G3.summary.residency')} term="residency">
               <FactCell wrap fact={header.residency_months} unit="months" />
             </Item>
-            <Item label={t('page.G3.summary.rewin')}>
+            <Item label={t('page.G3.summary.rewin')} term="rewin">
               <FactCell wrap fact={header.rewin_restriction_years} unit="years" />
             </Item>
-            <Item label={t('page.G3.summary.regulated')}>
+            <Item label={t('page.G3.summary.regulated')} term="regulated">
               <FactCell wrap fact={header.regulated} unit="text" />
             </Item>
-            <Item label={t('page.G3.summary.priceCap')}>
+            <Item label={t('page.G3.summary.priceCap')} term="price_cap">
               <FactCell wrap fact={header.price_cap} unit="text" />
             </Item>
             <Item
               label={t('page.G3.summary.supply')}
+              term="special_supply"
               hint={t('page.G3.summary.specialHint')}
               className="sm:col-span-2"
             >
@@ -383,7 +398,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
       {/* 2단 — 점수·분류(사실 뒤, D28-4) */}
       <Tier tier="score" title={t('page.G3.summary.score')}>
         <dl className="grid gap-x-4 gap-y-2 text-sm md:grid-cols-3">
-          <Item label={t('page.G3.header.total')}>
+          <Item label={t('page.G3.header.total')} term="total">
             {score ? (
               <>
                 <FactCell wrap fact={score.total} unit="score" />
@@ -406,13 +421,17 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
               <FactCell wrap fact={score.delta_rerank} unit="score" />
             </Item>
           ) : null}
-          <Item label={t('page.G3.header.inclusion')}>
+          <Item label={t('page.G3.header.inclusion')} term="inclusion">
             {enumText('page.common.inclusion', header.inclusion_class)}
             <FactCell wrap fact={header.inclusion_prob} unit="prob" />
           </Item>
           {header.judge_scope_reason ? (
             // 계약 .17 F1(D22-5): 판정 범위 사유 — 서버 문자열 그대로(목록 행과 같은 값). 키 없음(.16 저장본)이면 칸 없음
-            <Item label={t('page.G3.header.scopeReason')} className="md:col-span-3">
+            <Item
+              label={t('page.G3.header.scopeReason')}
+              term="judge_scope"
+              className="md:col-span-3"
+            >
               <ScopeReason
                 reason={header.judge_scope_reason}
                 rejudgeNeeded={score?.rejudge_needed ?? false}
