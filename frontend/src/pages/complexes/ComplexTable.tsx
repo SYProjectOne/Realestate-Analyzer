@@ -8,8 +8,13 @@ import {
   type Row,
   type VisibilityState,
 } from '@tanstack/react-table';
-import { observeElementRect, useVirtualizer, type Virtualizer } from '@tanstack/react-virtual';
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  observeElementRect,
+  useVirtualizer,
+  type Range,
+  type Virtualizer,
+} from '@tanstack/react-virtual';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
 import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
@@ -32,6 +37,8 @@ const ROW_HEIGHT = 44;
 const SMALL_LIST = 50;
 /** jsdom·숨김 상태처럼 높이를 잴 수 없을 때 쓰는 뷰포트 */
 const FALLBACK_RECT = { width: 1200, height: 560 };
+/** R8-JITTER: 맨 위 행이 그대로인 동안 실측 때문에 줄어든 범위를 붙잡아 두는 최대 행 수(앞뒤 각각) */
+export const RANGE_HOLD = 2;
 
 type ColumnId =
   | 'select'
@@ -292,6 +299,7 @@ export function ComplexTable({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const tableRows = table.getRowModel().rows;
+  const rangeExtractor = useHeldRange();
   const virtualizer = useVirtualizer({
     count: tableRows.length,
     getScrollElement: () => scrollRef.current,
@@ -304,6 +312,8 @@ export function ComplexTable({
     observeElementRect: (instance: Virtualizer<HTMLDivElement, Element>, cb) =>
       observeElementRect(instance, (rect) => cb(rect.height > 0 ? rect : FALLBACK_RECT)),
     measureElement: measureRow,
+    // R8-JITTER: 실측 → 범위 → 열 너비 → 실측 되먹임 끊기(useHeldRange)
+    rangeExtractor,
   });
   const items = virtualizer.getVirtualItems();
   const paddingTop = items[0]?.start ?? 0;
@@ -439,6 +449,57 @@ const VirtualRow = memo(function VirtualRow({
     </tr>
   );
 });
+
+export interface HeldRange {
+  /** 창 맨 위 행(overscan 제외) */
+  top: number;
+  /** 창 맨 아래 행(overscan 제외) */
+  bottom: number;
+  count: number;
+  start: number;
+  end: number;
+}
+
+/**
+ * 그린 행 범위 고르기(rangeExtractor) — 기본(창 ± overscan)에 **히스테리시스**를 더한다.
+ *
+ * R8-JITTER 원인: 이 표는 열 너비를 그린 행들의 내용으로 정한다(auto table layout — 모양 유지를 위해 fixed 로 바꾸지 않는다).
+ * 그린 범위에 행 하나가 들고 나면 열 너비 → 줄바꿈 → 실측 행 높이가 바뀌고, 그 높이로 다시 계산한 범위가 다시 행 하나를
+ * 빼거나 넣어, 입력이 없어도 두 배치를 매 프레임 오갈 수 있다(실데이터 101단지 · 1800×980 에서 12행 ↔ 13행, 가운데에서는
+ * 위쪽 행 높이 보정으로 scrollTop 까지 흔들림). 고정점이 없는 되먹임이다.
+ *
+ * 끊는 법: **창의 기준 행과 행 수가 그대로인 동안** 실측 때문에 줄어든 범위는 앞뒤 각각 최대 RANGE_HOLD 행까지 이전 범위를
+ * 유지한다(넓어지는 건 바로 따른다). 범위가 줄지 않으니 되먹임이 한 방향으로만 움직여 몇 프레임 안에 멈춘다. 기준 행은 가상
+ * 스크롤의 자체 보정이 지키는 행이다 — 보통은 창 맨 위 행(위쪽 행 높이 보정이 맨 위 행 화면 위치를 지킨다), 마지막 행이 창에
+ * 있으면 마지막 행(anchorTo 'end' 가 끝에 붙여 두느라 전체 높이가 바뀌면 scrollTop·맨 위 행이 움직인다). 기준 행이 바뀌면
+ * (= 사용자 스크롤) 붙잡은 범위를 버린다 — 스크롤 중 DOM 행 수는 그대로.
+ */
+export function nextHeldRange(prev: HeldRange | null, range: Range): HeldRange {
+  const { startIndex, endIndex, overscan, count } = range;
+  let start = Math.max(startIndex - overscan, 0);
+  let end = Math.min(endIndex + overscan, count - 1);
+  const sameAnchor =
+    prev !== null &&
+    prev.count === count &&
+    (prev.top === startIndex || (prev.bottom === count - 1 && endIndex === count - 1));
+  if (prev && sameAnchor) {
+    start = Math.max(Math.min(start, prev.start), start - RANGE_HOLD, 0);
+    end = Math.min(Math.max(end, prev.end), end + RANGE_HOLD, count - 1);
+  }
+  return { top: startIndex, bottom: endIndex, count, start, end };
+}
+
+/** nextHeldRange 를 가상 스크롤 rangeExtractor 로(직전 범위는 ref — 렌더마다 같은 함수라 가상 스크롤 memo 유지) */
+function useHeldRange(): (range: Range) => number[] {
+  const held = useRef<HeldRange | null>(null);
+  return useCallback((range: Range) => {
+    const next = nextHeldRange(held.current, range);
+    held.current = next;
+    const indexes: number[] = [];
+    for (let i = next.start; i <= next.end; i += 1) indexes.push(i);
+    return indexes;
+  }, []);
+}
 
 /** 행 실제 높이(ResizeObserver border-box, 없으면 getBoundingClientRect). jsdom·숨김처럼 0 이면 추정값 */
 function measureRow(el: Element, entry: ResizeObserverEntry | undefined): number {
