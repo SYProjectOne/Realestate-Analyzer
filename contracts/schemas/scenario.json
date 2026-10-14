@@ -77,7 +77,7 @@
     },
     "RequirementRule": {
       "title": "RequirementRule",
-      "description": "요건 1개의 규칙. code별 의미(RA §6-7):\naccess — intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).\nregulation — no_conflict: 거주의무·재당첨 제한·규제지역 요건이 params와 충돌 없음 | no_residency_obligation: 거주의무 0개월.\nfunds — equity_and_loan: P_mid × 계약금% ≤ 자기자본 and P_mid − 대출한도 − 자기자본 ≤ 0 (중도금 무이자·이자후불제 문구는 근거에 표기); 자기자본·한도가 null이면 '미입력'.",
+      "description": "요건 1개의 규칙. code별 의미(RA §6-7):\naccess — 모든 code 의 공통 조건: 표시 접수 상태 '가능' and path≠unofficial_ref(D25-11 — A·B·C·D 모두, 계약 2026-10-09.20 설명·D25-13). intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: (공통 조건 and) 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: (공통 조건 and) 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).\nregulation — no_conflict: 거주의무·재당첨 제한·규제지역 요건이 params와 충돌 없음 | no_residency_obligation: 거주의무 0개월.\nfunds — equity_and_loan: P_mid × 계약금% ≤ 자기자본 and P_mid − 대출한도 − 자기자본 ≤ 0 (중도금 무이자·이자후불제 문구는 근거에 표기); 자기자본·한도가 null이면 '미입력'.",
       "type": "object",
       "additionalProperties": false,
       "required": ["code", "text"],

@@ -198,14 +198,16 @@ export const generatedHandlers = [
           "label": "확인 불가",
           "reason": "예시 미기재",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "no_value"
         },
         "units_special": {
           "v": null,
           "label": "확인 불가",
           "reason": "예시 미기재",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "no_value"
         },
         "officetel_units": {
           "v": 0,
@@ -348,6 +350,43 @@ export const generatedHandlers = [
           "checked_at": "2026-10-07",
           "reason": "84A 최고가 6.09억 → 6.05억, 산술",
           "unit": "pct"
+        },
+        "payment_amounts": {
+          "basis_type_code": "84A",
+          "payment_terms_id": 72,
+          "down_payment_won": {
+            "v": 29650000,
+            "label": "추정",
+            "prov": "fp_202",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "interim_won": {
+            "v": 355800000,
+            "label": "추정",
+            "prov": "fp_202",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 중도금 60%)",
+            "unit": "won"
+          },
+          "balance_won": {
+            "v": 207550000,
+            "label": "추정",
+            "prov": "fp_202",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 잔금 35%)",
+            "unit": "won"
+          },
+          "down_payment_first_won": {
+            "v": 5000000,
+            "label": "비공식",
+            "prov": "fp_256",
+            "checked_at": "2026-10-07",
+            "reason": "한국경제TV 2026-07-21",
+            "unit": "won"
+          },
+          "formula": "금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
         }
       },
       "intake_current": {
@@ -363,7 +402,10 @@ export const generatedHandlers = [
         "http_status": 200,
         "reason": null,
         "note": "팝업 '선착순 동·호지정 계약 중'",
-        "entered_by": null
+        "entered_by": null,
+        "reason_code": null,
+        "supply_kind": "선착순",
+        "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
       },
       "types": [
         {
@@ -500,7 +542,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "임의 3차 64A 층별가 예시 미기재",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "floor_sample_text": "저층",
           "balcony_won": {
@@ -508,7 +551,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "예시 미기재",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "options_required_won": {
             "v": 0,
@@ -546,7 +590,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "본공고 정액 표기 없음",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "interim_pct": {
             "v": 60,
@@ -617,7 +662,8 @@ export const generatedHandlers = [
                 "label": "확인 불가",
                 "reason": "임의 3차 공고 회차표 예시 미기재",
                 "prov": null,
-                "checked_at": "2026-10-07"
+                "checked_at": "2026-10-07",
+                "reason_code": "no_value"
               },
               "pct": {
                 "v": 10,
@@ -672,7 +718,31 @@ export const generatedHandlers = [
             "unit": "count"
           },
           "ratio_or_shortfall_text": "14.50",
-          "raw_document_id": 9006
+          "raw_document_id": 9006,
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_avg": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          }
         },
         {
           "id": 611,
@@ -696,7 +766,31 @@ export const generatedHandlers = [
             "unit": "count"
           },
           "ratio_or_shortfall_text": "7.50",
-          "raw_document_id": 9006
+          "raw_document_id": 9006,
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_avg": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          }
         },
         {
           "id": 612,
@@ -720,7 +814,31 @@ export const generatedHandlers = [
             "unit": "count"
           },
           "ratio_or_shortfall_text": "4.63",
-          "raw_document_id": 9006
+          "raw_document_id": 9006,
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_avg": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "가점 미수집",
+            "reason_code": "not_collected",
+            "prov": null,
+            "checked_at": null
+          }
         }
       ],
       "events": [
@@ -742,7 +860,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "일반공급 세대수 예시 미기재",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "units_by_type": {},
           "ratio_text": null,
@@ -794,7 +913,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "예시 미기재",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "units_by_type": {},
           "ratio_text": null,
@@ -866,7 +986,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "잔여 동·호수 미공개",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "units_by_type": {},
           "ratio_text": null,
@@ -888,7 +1009,10 @@ export const generatedHandlers = [
           "http_status": 200,
           "reason": null,
           "note": "팝업 '선착순 동·호지정 계약 중'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
         },
         {
           "id": 590,
@@ -903,7 +1027,10 @@ export const generatedHandlers = [
           "http_status": 200,
           "reason": null,
           "note": "한국경제TV(2026-07-21) '1차 계약금 500만 정액' — 참고 열, 판정 미사용",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": null,
+          "supply_kind_basis": null
         }
       ],
       "ladder": [
@@ -973,28 +1100,32 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -1023,28 +1154,32 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -1189,7 +1324,7 @@ export const generatedHandlers = [
         "gap_pct": {
           "v": -5.2,
           "label": "추정",
-          "prov": "sc_88_2_gap",
+          "prov": "sc_88_2_gap.raw",
           "checked_at": "2026-10-08",
           "reason": "보고서 (a)단계 등급 역산",
           "unit": "pct"
@@ -1202,7 +1337,14 @@ export const generatedHandlers = [
           "checked_at": "2026-10-08",
           "unit": "score"
         },
-        "empty_reason": null
+        "empty_reason": null,
+        "gap_score": {
+          "v": 6.3,
+          "label": "추정",
+          "prov": "sc_88_2_gap",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        }
       },
       "catalysts": [
         {
@@ -1233,7 +1375,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "역 거리 미측정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "weight": null,
           "linked_complex_ids": null,
@@ -1290,7 +1433,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "시점 미정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": false,
@@ -1320,7 +1464,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "2035 목표(언론)",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": false,
@@ -1350,7 +1495,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "시점 미정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": false,
@@ -1640,7 +1786,10 @@ export const generatedHandlers = [
           "http_status": 200,
           "reason": null,
           "note": "팝업 '선착순 동·호지정 계약 중'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
         },
         "decision": {
           "prob": {
@@ -1656,7 +1805,120 @@ export const generatedHandlers = [
           "mismatch": true,
           "confidence": 0.67
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 578000000,
+          "label": "확인됨",
+          "prov": "fp_201",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 608000000,
+          "label": "확인됨",
+          "prov": "fp_202",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2028-09-10",
+          "label": "추정",
+          "prov": "fp_203",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2028-03",
+          "label": "확인됨",
+          "prov": "fp_204",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": -5.2,
+          "label": "추정",
+          "prov": "sc_88_2_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
+      },
+      "competition_summary": {
+        "basis": "본청약 1순위 해당지역",
+        "rows": 0,
+        "max_ratio": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "1순위 해당지역 경쟁률 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null
+        },
+        "max_ratio_type_code": null,
+        "shortfall_types": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "1순위 해당지역 경쟁률 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null,
+          "unit": "count"
+        },
+        "winning_score_min": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "1순위 해당지역 경쟁률 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null
+        },
+        "winning_score_max": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "1순위 해당지역 경쟁률 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null
+        }
       }
     }, { status: 200 }),
   ),
@@ -2042,7 +2304,8 @@ export const generatedHandlers = [
               "http_status": null,
               "note": null,
               "judgment_ref": null,
-              "human_check_pending": null
+              "human_check_pending": null,
+              "reason_code": "fetch_failed"
             },
             {
               "intake_id": 15,
@@ -2059,7 +2322,8 @@ export const generatedHandlers = [
               "http_status": null,
               "note": null,
               "judgment_ref": null,
-              "human_check_pending": null
+              "human_check_pending": null,
+              "reason_code": "fetch_failed"
             }
           ]
         },
@@ -2083,7 +2347,8 @@ export const generatedHandlers = [
               "http_status": 403,
               "note": null,
               "judgment_ref": null,
-              "human_check_pending": null
+              "human_check_pending": null,
+              "reason_code": "fetch_failed"
             }
           ]
         },
@@ -2107,7 +2372,8 @@ export const generatedHandlers = [
               "http_status": 200,
               "note": "판정기 classify jl_443",
               "judgment_ref": "jl_443",
-              "human_check_pending": null
+              "human_check_pending": null,
+              "reason_code": "identity_unconfirmed"
             }
           ]
         },
@@ -2136,7 +2402,8 @@ export const generatedHandlers = [
                 "value_text": "가능",
                 "checked_at": "2026-10-09T10:20:00+09:00",
                 "created_at": "2026-10-09T10:21:03+09:00"
-              }
+              },
+              "reason_code": "phrase_inconclusive"
             }
           ]
         },
@@ -2160,7 +2427,8 @@ export const generatedHandlers = [
               "http_status": 200,
               "note": null,
               "judgment_ref": null,
-              "human_check_pending": null
+              "human_check_pending": null,
+              "reason_code": "not_target"
             }
           ]
         },
@@ -2184,7 +2452,8 @@ export const generatedHandlers = [
               "http_status": null,
               "note": null,
               "judgment_ref": null,
-              "human_check_pending": null
+              "human_check_pending": null,
+              "reason_code": "other"
             }
           ]
         }
@@ -4714,7 +4983,10 @@ export const generatedHandlers = [
         "triggers_rejudge": true,
         "complex_id": 7,
         "complex_name": "김포 칸타빌 에디션",
-        "tab": "payment"
+        "tab": "payment",
+        "field_label": "계약금 비율(%)",
+        "summary": "계약금 비율(%): 10 → 5",
+        "value_kind": "plain"
       },
       {
         "id": 3302,
@@ -4729,7 +5001,10 @@ export const generatedHandlers = [
         "triggers_rejudge": true,
         "complex_id": 2,
         "complex_name": "엘리프 검단 포레듀",
-        "tab": "events"
+        "tab": "events",
+        "field_label": "공식 홈페이지 팝업 그림",
+        "summary": "공식 홈페이지 팝업 그림이 바뀌었습니다",
+        "value_kind": "hash"
       },
       {
         "id": 3303,
@@ -4744,7 +5019,10 @@ export const generatedHandlers = [
         "triggers_rejudge": true,
         "complex_id": 8,
         "complex_name": "풍무역세권 수자인 그라센트 2차",
-        "tab": "events"
+        "tab": "events",
+        "field_label": "새 공고",
+        "summary": "새 공고: 임의공급 3차 2026940187 (잔여 8)",
+        "value_kind": "plain"
       },
       {
         "id": 3304,
@@ -4759,7 +5037,10 @@ export const generatedHandlers = [
         "triggers_rejudge": false,
         "complex_id": 3,
         "complex_name": "송도 한내들 센트럴리버",
-        "tab": "payment"
+        "tab": "payment",
+        "field_label": "중도금 1회차 납부일",
+        "summary": "중도금 1회차 납부일: 2026-10-18 → 2026-10-30",
+        "value_kind": "plain"
       },
       {
         "id": 3305,
@@ -4774,7 +5055,10 @@ export const generatedHandlers = [
         "triggers_rejudge": false,
         "complex_id": 4,
         "complex_name": "오퍼스 한강 스위첸",
-        "tab": "provenance"
+        "tab": "provenance",
+        "field_label": "공식 홈페이지 응답 코드",
+        "summary": "공식 홈페이지 응답 코드: 403 → 403",
+        "value_kind": "plain"
       },
       {
         "id": 3306,
@@ -4789,7 +5073,10 @@ export const generatedHandlers = [
         "triggers_rejudge": false,
         "complex_id": null,
         "complex_name": null,
-        "tab": null
+        "tab": null,
+        "field_label": "미분양 세대",
+        "summary": "미분양 세대: 830 → 787",
+        "value_kind": "plain"
       }
     ], { status: 200 }),
   ),
@@ -5005,7 +5292,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업 '선착순 동·호지정 계약 중'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
           },
           "decision": {
             "prob": {
@@ -5021,7 +5311,82 @@ export const generatedHandlers = [
             "mismatch": false,
             "confidence": 0.48
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 578000000,
+            "label": "확인됨",
+            "prov": "fp_201",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 608000000,
+            "label": "확인됨",
+            "prov": "fp_202",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2028-09-10",
+            "label": "추정",
+            "prov": "fp_203",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2028-03",
+            "label": "확인됨",
+            "prov": "fp_204",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": -5.2,
+            "label": "추정",
+            "prov": "sc_88_2_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 7,
@@ -5155,7 +5520,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업 '선착순 동·호지정 계약 중 / 전매제한 FREE / 거주의무 FREE'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중"
           },
           "decision": {
             "prob": {
@@ -5171,7 +5539,82 @@ export const generatedHandlers = [
             "mismatch": false,
             "confidence": 0.48
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 664000000,
+            "label": "확인됨",
+            "prov": "fp_701",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 697000000,
+            "label": "확인됨",
+            "prov": "fp_702",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2026-06-10",
+            "label": "추정",
+            "prov": "fp_703",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2029-12",
+            "label": "확인됨",
+            "prov": "fp_704",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": 7.6,
+            "label": "추정",
+            "prov": "sc_88_7_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 4,
@@ -5305,7 +5748,10 @@ export const generatedHandlers = [
             "http_status": 403,
             "reason": "403",
             "note": null,
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "fetch_failed",
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "decision": {
             "prob": {
@@ -5321,7 +5767,82 @@ export const generatedHandlers = [
             "mismatch": true,
             "confidence": 0.48
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 626000000,
+            "label": "확인됨",
+            "prov": "fp_401",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 699000000,
+            "label": "확인됨",
+            "prov": "fp_402",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2028-07-18",
+            "label": "추정",
+            "prov": "fp_403",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2028-08",
+            "label": "확인됨",
+            "prov": "fp_404",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": 0,
+            "label": "추정",
+            "prov": "sc_88_4_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         }
       ],
       "components": {
@@ -5410,28 +5931,32 @@ export const generatedHandlers = [
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p10": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p20": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p_flat": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "verdicts": {
               "p5": null,
@@ -5460,28 +5985,32 @@ export const generatedHandlers = [
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p10": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p20": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p_flat": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "verdicts": {
               "p5": null,
@@ -5566,28 +6095,32 @@ export const generatedHandlers = [
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p10": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p20": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p_flat": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "verdicts": {
               "p5": null,
@@ -5616,28 +6149,32 @@ export const generatedHandlers = [
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p10": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p20": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p_flat": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "verdicts": {
               "p5": null,
@@ -5722,28 +6259,32 @@ export const generatedHandlers = [
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p10": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p20": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p_flat": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "verdicts": {
               "p5": null,
@@ -5772,28 +6313,32 @@ export const generatedHandlers = [
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p10": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p20": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "p_flat": {
               "v": null,
               "label": "확인 불가",
               "reason": "미판정(보고서에 없는 시점)",
               "prov": null,
-              "checked_at": "2026-10-08"
+              "checked_at": "2026-10-08",
+              "reason_code": "unjudged"
             },
             "verdicts": {
               "p5": null,
@@ -5940,7 +6485,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": -5.2,
             "label": "추정",
-            "prov": "sc_88_2_gap",
+            "prov": "sc_88_2_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 (a)단계 등급 역산",
             "unit": "pct"
@@ -5953,7 +6498,14 @@ export const generatedHandlers = [
             "checked_at": "2026-10-08",
             "unit": "score"
           },
-          "empty_reason": null
+          "empty_reason": null,
+          "gap_score": {
+            "v": 6.3,
+            "label": "추정",
+            "prov": "sc_88_2_gap",
+            "checked_at": "2026-10-08",
+            "unit": "score"
+          }
         },
         "4": {
           "price_low": {
@@ -6103,7 +6655,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 0,
             "label": "추정",
-            "prov": "sc_88_4_gap",
+            "prov": "sc_88_4_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 (a)단계 등급 역산",
             "unit": "pct"
@@ -6111,7 +6663,7 @@ export const generatedHandlers = [
           "gap_pct_unadjusted": {
             "v": 11.3,
             "label": "추정",
-            "prov": "sc_88_4_gap",
+            "prov": "sc_88_4_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "미보정 중앙값 기준, 산술",
             "unit": "pct"
@@ -6124,7 +6676,15 @@ export const generatedHandlers = [
             "reason": "대체·보정 c=0.015",
             "unit": "score"
           },
-          "empty_reason": null
+          "empty_reason": null,
+          "gap_score": {
+            "v": 5,
+            "label": "추정",
+            "prov": "sc_88_4_gap",
+            "checked_at": "2026-10-08",
+            "reason": "대체·보정 c=0.015",
+            "unit": "score"
+          }
         },
         "7": {
           "price_low": {
@@ -6253,7 +6813,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 7.6,
             "label": "추정",
-            "prov": "sc_88_7_gap",
+            "prov": "sc_88_7_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 (a)단계 등급 역산",
             "unit": "pct"
@@ -6266,7 +6826,14 @@ export const generatedHandlers = [
             "checked_at": "2026-10-08",
             "unit": "score"
           },
-          "empty_reason": null
+          "empty_reason": null,
+          "gap_score": {
+            "v": 3.1,
+            "label": "추정",
+            "prov": "sc_88_7_gap",
+            "checked_at": "2026-10-08",
+            "unit": "score"
+          }
         }
       },
       "terms": [
@@ -7072,7 +7639,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": "마감",
             "note": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "other",
+            "supply_kind": "무순위",
+            "supply_kind_basis": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'"
           },
           "price_low": {
             "v": 1245000000,
@@ -7114,7 +7684,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": -2,
             "label": "추정",
-            "prov": "sc_88_1_gap",
+            "prov": "sc_88_1_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -7182,6 +7752,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 64075000,
+            "label": "추정",
+            "prov": "fp_102",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 1544,
             "label": "확인됨",
@@ -7211,7 +7827,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업 '선착순 동·호지정 계약 중'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
           },
           "price_low": {
             "v": 578000000,
@@ -7253,7 +7872,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": -5.2,
             "label": "추정",
-            "prov": "sc_88_2_gap",
+            "prov": "sc_88_2_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -7321,6 +7940,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 29650000,
+            "label": "추정",
+            "prov": "fp_202",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 669,
             "label": "확인됨",
@@ -7355,7 +8020,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "선착순 동·호 지정 계약 중",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "선착순 동·호 지정 계약 중"
           },
           "price_low": {
             "v": 813400000,
@@ -7397,7 +8065,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 2.4,
             "label": "추정",
-            "prov": "sc_88_3_gap",
+            "prov": "sc_88_3_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -7463,7 +8131,55 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "정액제 표기(1차 500만)",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
+          },
+          "down_payment_won": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "정액제 표기(1차 500만)",
+            "prov": null,
+            "checked_at": "2026-10-07",
+            "unit": "won",
+            "reason_code": "other"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
           },
           "units_total": {
             "v": 501,
@@ -7499,7 +8215,10 @@ export const generatedHandlers = [
             "http_status": 403,
             "reason": "403",
             "note": null,
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "fetch_failed",
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "price_low": {
             "v": 626000000,
@@ -7541,7 +8260,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 0,
             "label": "추정",
-            "prov": "sc_88_4_gap",
+            "prov": "sc_88_4_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -7609,6 +8328,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 66250000,
+            "label": "추정",
+            "prov": "fp_402",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 10%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 1029,
             "label": "확인됨",
@@ -7643,7 +8408,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "공식 홈페이지는 방문예약제(선착순 공지 없음)",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "공식 홈페이지는 방문예약제(선착순 공지 없음)"
           },
           "price_low": {
             "v": 607000000,
@@ -7685,7 +8453,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 1.6,
             "label": "추정",
-            "prov": "sc_88_5_gap",
+            "prov": "sc_88_5_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -7753,12 +8521,59 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 61450000,
+            "label": "추정",
+            "prov": "fp_502",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 10%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": null,
             "label": "확인 불가",
             "reason": "예시 미기재",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "last_change": null
         },
@@ -7782,7 +8597,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "배너 '전 타입 마감임박', 선착순 공지 미확인",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "배너 '전 타입 마감임박', 선착순 공지 미확인"
           },
           "price_low": {
             "v": 651000000,
@@ -7824,7 +8642,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": -8,
             "label": "추정",
-            "prov": "sc_88_6_gap",
+            "prov": "sc_88_6_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -7892,12 +8710,59 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 32975000,
+            "label": "추정",
+            "prov": "fp_602",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": null,
             "label": "확인 불가",
             "reason": "예시 미기재",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "last_change": null
         },
@@ -7921,7 +8786,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업 '선착순 동·호지정 계약 중 / 전매제한 FREE / 거주의무 FREE'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중"
           },
           "price_low": {
             "v": 664000000,
@@ -7963,7 +8831,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 7.6,
             "label": "추정",
-            "prov": "sc_88_7_gap",
+            "prov": "sc_88_7_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -8031,6 +8899,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 34025000,
+            "label": "추정",
+            "prov": "fp_702",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 612,
             "label": "확인됨",
@@ -8065,7 +8979,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업은 상가 입찰 안내뿐, 임의 4차 공고 미확인",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "price_low": {
             "v": 661000000,
@@ -8107,7 +9024,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 5,
             "label": "추정",
-            "prov": "sc_88_8_gap",
+            "prov": "sc_88_8_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -8175,6 +9092,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 68950000,
+            "label": "추정",
+            "prov": "fp_802",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 10%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 639,
             "label": "확인됨",
@@ -8209,7 +9172,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업 동적 로딩 — 렌더 스크린샷에 선착순 문구 없음, 무순위 미달 666",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": null,
+            "supply_kind_basis": "공급 종류 문구가 여럿(선착순·무순위)"
           },
           "price_low": {
             "v": 654000000,
@@ -8251,7 +9217,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 10.4,
             "label": "추정",
-            "prov": "sc_88_9_gap",
+            "prov": "sc_88_9_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -8319,6 +9285,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 71850000,
+            "label": "추정",
+            "prov": "fp_902",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 10%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 2432,
             "label": "확인됨",
@@ -8348,7 +9360,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "통합 홈페이지에 단지 팝업 미확인, 임의 4차 공고 없음",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "price_low": {
             "v": 797000000,
@@ -8389,7 +9404,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 6,
             "label": "추정",
-            "prov": "sc_88_10_gap",
+            "prov": "sc_88_10_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -8457,6 +9472,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 39850000,
+            "label": "추정",
+            "prov": "fp_1002",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 720,
             "label": "확인됨",
@@ -8486,7 +9547,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "임의 14차 공고 미확인(준공 단지, 즉시 입주)",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "price_low": {
             "v": 758400000,
@@ -8528,7 +9592,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 0,
             "label": "추정",
-            "prov": "sc_88_11_gap",
+            "prov": "sc_88_11_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -8596,6 +9660,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 37920000,
+            "label": "추정",
+            "prov": "fp_1102",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 1297,
             "label": "확인됨",
@@ -8625,7 +9735,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": "마감",
             "note": "무순위 3회차 1세대 계약 완료, 4회차 미정",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "other",
+            "supply_kind": "무순위",
+            "supply_kind_basis": "무순위 3회차 1세대 계약 완료, 4회차 미정"
           },
           "price_low": {
             "v": 808700000,
@@ -8653,7 +9766,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "도과(날짜 미기재)",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "move_in_ym": {
             "v": "2020-07",
@@ -8666,7 +9780,7 @@ export const generatedHandlers = [
           "gap_pct": {
             "v": 14,
             "label": "추정",
-            "prov": "sc_88_12_gap",
+            "prov": "sc_88_12_gap.raw",
             "checked_at": "2026-10-08",
             "reason": "보고서 등급 역산",
             "unit": "pct"
@@ -8734,6 +9848,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 80870000,
+            "label": "추정",
+            "prov": "fp_1202",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 10%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 3100,
             "label": "확인됨",
@@ -8763,7 +9923,10 @@ export const generatedHandlers = [
             "http_status": null,
             "reason": "DNS",
             "note": null,
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "fetch_failed",
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "price_low": {
             "v": 758000000,
@@ -8815,7 +9978,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "판정 보류(접수 확인 불가)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "other"
           },
           "rank": null,
           "tie_group": null,
@@ -8825,7 +9989,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "사다리 없음",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "inclusion_class": "private_sale_apt",
           "inclusion_decision": "auto",
@@ -8872,6 +10037,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 38850000,
+            "label": "추정",
+            "prov": "fp_1302",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 5%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 670,
             "label": "확인됨",
@@ -8901,7 +10112,10 @@ export const generatedHandlers = [
             "http_status": null,
             "reason": "DNS",
             "note": null,
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "fetch_failed",
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "price_low": {
             "v": 700200000,
@@ -8953,7 +10167,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "판정 보류(접수 확인 불가)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "other"
           },
           "rank": null,
           "tie_group": null,
@@ -8963,7 +10178,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "사다리 없음",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "no_value"
           },
           "inclusion_class": "private_sale_apt",
           "inclusion_decision": "review",
@@ -9010,6 +10226,52 @@ export const generatedHandlers = [
             "checked_at": "2026-10-07",
             "unit": "pct"
           },
+          "down_payment_won": {
+            "v": 70860000,
+            "label": "추정",
+            "prov": "fp_1402",
+            "checked_at": "2026-10-07",
+            "reason": "산술(P_mid × 계약금 10%)",
+            "unit": "won"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          },
           "units_total": {
             "v": 385,
             "label": "확인됨",
@@ -9032,49 +10294,56 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "price_high": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "price_mid": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "resale_end": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "move_in_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "gap_pct": {
             "v": null,
             "label": "확인 불가",
             "reason": "분양가 미공개",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "total": {
             "v": null,
             "label": "확인 불가",
             "reason": "보류(공고 후 재판정)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "other"
           },
           "rank": null,
           "tie_group": null,
@@ -9084,7 +10353,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "inclusion_class": "private_sale_apt",
           "inclusion_decision": "auto",
@@ -9122,14 +10392,62 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "down_payment_pct": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
+          },
+          "down_payment_won": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "공고 전",
+            "prov": null,
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
           },
           "units_total": {
             "v": 1110,
@@ -9153,49 +10471,56 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "price_high": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "price_mid": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "resale_end": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "move_in_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "gap_pct": {
             "v": null,
             "label": "확인 불가",
             "reason": "분양가 미공개",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "total": {
             "v": null,
             "label": "확인 불가",
             "reason": "보류(공고 후 재판정)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "other"
           },
           "rank": null,
           "tie_group": null,
@@ -9205,7 +10530,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "inclusion_class": "private_sale_apt",
           "inclusion_decision": "review",
@@ -9229,7 +10555,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "regulated": {
             "v": "비규제",
@@ -9243,14 +10570,62 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
           },
           "down_payment_pct": {
             "v": null,
             "label": "확인 불가",
             "reason": "공고 전",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
+          },
+          "down_payment_won": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "공고 전",
+            "prov": null,
+            "checked_at": "2026-10-07",
+            "reason_code": "not_published"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
           },
           "units_total": {
             "v": 843,
@@ -9318,7 +10693,7 @@ export const generatedHandlers = [
             "label": "재가공",
             "prov": "fp_6100",
             "checked_at": "2026-10-07",
-            "reason": "연수 505·검단 737·계양 0·김포 787 합",
+            "reason": "지역 합계(시군구 4곳)",
             "unit": "units"
           },
           "post_completion": {
@@ -9326,9 +10701,87 @@ export const generatedHandlers = [
             "label": "재가공",
             "prov": "fp_6100",
             "checked_at": "2026-10-07",
-            "reason": "연수 203·검단 737·김포 52 합",
+            "reason": "지역 합계(시군구 4곳)",
             "unit": "units"
-          }
+          },
+          "breakdown": [
+            {
+              "ym": "2026-08",
+              "scope_code": "41570",
+              "scope_name": "김포시",
+              "total": {
+                "v": 787,
+                "label": "재가공",
+                "prov": "fp_6123",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              },
+              "post_completion": {
+                "v": 52,
+                "label": "재가공",
+                "prov": "fp_6123",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              }
+            },
+            {
+              "ym": "2026-08",
+              "scope_code": "28185",
+              "scope_name": "연수구",
+              "total": {
+                "v": 505,
+                "label": "재가공",
+                "prov": "fp_6301",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              },
+              "post_completion": {
+                "v": 203,
+                "label": "재가공",
+                "prov": "fp_6301",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              }
+            },
+            {
+              "ym": "2026-08",
+              "scope_code": "28290",
+              "scope_name": "검단구",
+              "total": {
+                "v": 737,
+                "label": "재가공",
+                "prov": "fp_6302",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              },
+              "post_completion": {
+                "v": 737,
+                "label": "재가공",
+                "prov": "fp_6302",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              }
+            },
+            {
+              "ym": "2026-08",
+              "scope_code": "28245",
+              "scope_name": "계양구",
+              "total": {
+                "v": 0,
+                "label": "재가공",
+                "prov": "fp_6303",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              },
+              "post_completion": {
+                "v": 0,
+                "label": "재가공",
+                "prov": "fp_6303",
+                "checked_at": "2026-10-07",
+                "unit": "units"
+              }
+            }
+          ]
         },
         "move_in_peak": {
           "year": {
@@ -9500,7 +10953,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": "마감",
             "note": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "other",
+            "supply_kind": "무순위",
+            "supply_kind_basis": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'"
           },
           "decision": {
             "prob": {
@@ -9516,7 +10972,82 @@ export const generatedHandlers = [
             "mismatch": false,
             "confidence": 0.67
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 1245000000,
+            "label": "확인됨",
+            "prov": "fp_101",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 1318000000,
+            "label": "확인됨",
+            "prov": "fp_102",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2026-11-28",
+            "label": "추정",
+            "prov": "fp_103",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2029-08",
+            "label": "확인됨",
+            "prov": "fp_104",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": -2,
+            "label": "추정",
+            "prov": "sc_88_1_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 2,
@@ -9657,7 +11188,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "팝업 '선착순 동·호지정 계약 중'",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
           },
           "decision": {
             "prob": {
@@ -9673,7 +11207,82 @@ export const generatedHandlers = [
             "mismatch": true,
             "confidence": 0.67
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 578000000,
+            "label": "확인됨",
+            "prov": "fp_201",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 608000000,
+            "label": "확인됨",
+            "prov": "fp_202",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2028-09-10",
+            "label": "추정",
+            "prov": "fp_203",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2028-03",
+            "label": "확인됨",
+            "prov": "fp_204",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": -5.2,
+            "label": "추정",
+            "prov": "sc_88_2_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 3,
@@ -9814,7 +11423,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "선착순 동·호 지정 계약 중",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "선착순 동·호 지정 계약 중"
           },
           "decision": {
             "prob": {
@@ -9830,7 +11442,82 @@ export const generatedHandlers = [
             "mismatch": false,
             "confidence": 0.67
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 813400000,
+            "label": "확인됨",
+            "prov": "fp_301",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 898600000,
+            "label": "확인됨",
+            "prov": "fp_302",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2026-06-23",
+            "label": "추정",
+            "prov": "fp_303",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2029-03",
+            "label": "확인됨",
+            "prov": "fp_304",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": 2.4,
+            "label": "추정",
+            "prov": "sc_88_3_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 4,
@@ -9964,7 +11651,10 @@ export const generatedHandlers = [
             "http_status": 403,
             "reason": "403",
             "note": null,
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": "fetch_failed",
+            "supply_kind": null,
+            "supply_kind_basis": null
           },
           "decision": {
             "prob": {
@@ -9980,7 +11670,82 @@ export const generatedHandlers = [
             "mismatch": false,
             "confidence": 0.67
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 626000000,
+            "label": "확인됨",
+            "prov": "fp_401",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 699000000,
+            "label": "확인됨",
+            "prov": "fp_402",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2028-07-18",
+            "label": "추정",
+            "prov": "fp_403",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2028-08",
+            "label": "확인됨",
+            "prov": "fp_404",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": 0,
+            "label": "추정",
+            "prov": "sc_88_4_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 5,
@@ -10121,7 +11886,10 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "공식 홈페이지는 방문예약제(선착순 공지 없음)",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "공식 홈페이지는 방문예약제(선착순 공지 없음)"
           },
           "decision": {
             "prob": {
@@ -10137,7 +11905,82 @@ export const generatedHandlers = [
             "mismatch": true,
             "confidence": 0.67
           },
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 607000000,
+            "label": "확인됨",
+            "prov": "fp_501",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 622000000,
+            "label": "확인됨",
+            "prov": "fp_502",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2028-10-14",
+            "label": "추정",
+            "prov": "fp_503",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2028-08",
+            "label": "확인됨",
+            "prov": "fp_504",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": 1.6,
+            "label": "추정",
+            "prov": "sc_88_5_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         },
         {
           "complex_id": 6,
@@ -10278,10 +12121,88 @@ export const generatedHandlers = [
             "http_status": 200,
             "reason": null,
             "note": "배너 '전 타입 마감임박', 선착순 공지 미확인",
-            "entered_by": null
+            "entered_by": null,
+            "reason_code": null,
+            "supply_kind": "선착순",
+            "supply_kind_basis": "배너 '전 타입 마감임박', 선착순 공지 미확인"
           },
           "decision": null,
-          "judge_scope": "판정 대상"
+          "judge_scope": "판정 대상",
+          "price_low": {
+            "v": 651000000,
+            "label": "확인됨",
+            "prov": "fp_601",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "price_high": {
+            "v": 668000000,
+            "label": "확인됨",
+            "prov": "fp_602",
+            "checked_at": "2026-10-07",
+            "unit": "won"
+          },
+          "resale_end": {
+            "v": "2029-07-03",
+            "label": "추정",
+            "prov": "fp_603",
+            "checked_at": "2026-10-07",
+            "reason": "산술",
+            "unit": "date"
+          },
+          "move_in_ym": {
+            "v": "2029-12",
+            "label": "확인됨",
+            "prov": "fp_604",
+            "checked_at": "2026-10-07",
+            "unit": "ym"
+          },
+          "gap_pct": {
+            "v": -8,
+            "label": "추정",
+            "prov": "sc_88_6_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "보고서 등급 역산",
+            "unit": "pct"
+          },
+          "competition_summary": {
+            "basis": "본청약 1순위 해당지역",
+            "rows": 0,
+            "max_ratio": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "max_ratio_type_code": null,
+            "shortfall_types": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null,
+              "unit": "count"
+            },
+            "winning_score_min": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            },
+            "winning_score_max": {
+              "v": null,
+              "label": "확인 불가",
+              "reason": "1순위 해당지역 경쟁률 없음",
+              "reason_code": "no_value",
+              "prov": null,
+              "checked_at": null
+            }
+          }
         }
       ],
       "changes": [
@@ -10298,7 +12219,10 @@ export const generatedHandlers = [
           "triggers_rejudge": true,
           "complex_id": 7,
           "complex_name": "김포 칸타빌 에디션",
-          "tab": "payment"
+          "tab": "payment",
+          "field_label": "계약금 비율(%)",
+          "summary": "계약금 비율(%): 10 → 5",
+          "value_kind": "plain"
         },
         {
           "id": 3302,
@@ -10313,7 +12237,10 @@ export const generatedHandlers = [
           "triggers_rejudge": true,
           "complex_id": 2,
           "complex_name": "엘리프 검단 포레듀",
-          "tab": "events"
+          "tab": "events",
+          "field_label": "공식 홈페이지 팝업 그림",
+          "summary": "공식 홈페이지 팝업 그림이 바뀌었습니다",
+          "value_kind": "hash"
         },
         {
           "id": 3303,
@@ -10328,7 +12255,10 @@ export const generatedHandlers = [
           "triggers_rejudge": true,
           "complex_id": 8,
           "complex_name": "풍무역세권 수자인 그라센트 2차",
-          "tab": "events"
+          "tab": "events",
+          "field_label": "새 공고",
+          "summary": "새 공고: 임의공급 3차 2026940187 (잔여 8)",
+          "value_kind": "plain"
         },
         {
           "id": 3304,
@@ -10343,7 +12273,10 @@ export const generatedHandlers = [
           "triggers_rejudge": false,
           "complex_id": 3,
           "complex_name": "송도 한내들 센트럴리버",
-          "tab": "payment"
+          "tab": "payment",
+          "field_label": "중도금 1회차 납부일",
+          "summary": "중도금 1회차 납부일: 2026-10-18 → 2026-10-30",
+          "value_kind": "plain"
         },
         {
           "id": 3305,
@@ -10358,7 +12291,10 @@ export const generatedHandlers = [
           "triggers_rejudge": false,
           "complex_id": 4,
           "complex_name": "오퍼스 한강 스위첸",
-          "tab": "provenance"
+          "tab": "provenance",
+          "field_label": "공식 홈페이지 응답 코드",
+          "summary": "공식 홈페이지 응답 코드: 403 → 403",
+          "value_kind": "plain"
         }
       ],
       "unsold_series": [
@@ -10371,14 +12307,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10390,14 +12328,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10409,14 +12349,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10428,14 +12370,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10447,14 +12391,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10466,14 +12412,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10485,14 +12433,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10504,14 +12454,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10523,14 +12475,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10549,7 +12503,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10568,7 +12523,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10587,7 +12543,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10599,14 +12556,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10618,14 +12577,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10637,14 +12598,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10663,7 +12626,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10675,14 +12639,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10694,14 +12660,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10720,7 +12688,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10732,14 +12701,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10751,14 +12722,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10777,7 +12750,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10796,7 +12770,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -10850,6 +12825,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "힐스테이트 송도 더스카이",
           "completed_year": 2024,
           "sale_year": 2020,
@@ -10890,14 +12866,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -10931,6 +12909,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "더샵 송도 프라임뷰 F20",
           "completed_year": 2022,
           "sale_year": 2019,
@@ -10971,14 +12950,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -11012,6 +12993,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "송도자이 크리스탈오션",
           "completed_year": 2024,
           "sale_year": 2021,
@@ -11052,14 +13034,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -11093,6 +13077,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "송도자이 더 스타",
           "completed_year": 2024,
           "sale_year": 2021,
@@ -11174,6 +13159,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "힐스테이트 레이크 송도 4차",
           "completed_year": 2025,
           "sale_year": 2022,
@@ -11214,14 +13200,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -11255,6 +13243,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "송도 럭스오션 SK뷰",
           "completed_year": 2025,
           "sale_year": 2022,
@@ -11295,14 +13284,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -11336,6 +13327,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "name": "송도자이풍경채 그라노블(분양권)",
           "completed_year": null,
           "sale_year": 2024,
@@ -11376,14 +13368,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": true,
           "gain_low_pct": {
@@ -11417,6 +13411,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "name": "검단 금호어울림 센트럴(원당)",
           "completed_year": 2021,
           "sale_year": 2019,
@@ -11498,6 +13493,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "name": "힐스테이트 신검단 센트럴(불로)",
           "completed_year": 2025,
           "sale_year": 2022,
@@ -11538,14 +13534,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -11579,6 +13577,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "name": "롯데캐슬 넥스티엘 RC1(원당)",
           "completed_year": 2026,
           "sale_year": 2023,
@@ -11619,14 +13618,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": false,
           "gain_low_pct": {
@@ -11660,6 +13661,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "name": "한강메트로자이 2단지(걸포)",
           "completed_year": 2020,
           "sale_year": 2017,
@@ -11742,6 +13744,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "name": "힐스테이트 리버시티 1단지(고촌)",
           "completed_year": 2020,
           "sale_year": 2018,
@@ -11824,6 +13827,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "name": "고촌 센트럴자이(후분양)",
           "completed_year": 2024,
           "sale_year": 2023,
@@ -11905,6 +13909,7 @@ export const generatedHandlers = [
           "snapshot_id": 12,
           "substitute": false,
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "name": "김포 북변 우미린 파크리브(분양권)",
           "completed_year": null,
           "sale_year": 2024,
@@ -11945,14 +13950,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "peak_ym": {
             "v": null,
             "label": "확인 불가",
             "reason": "미표기",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "is_presale": true,
           "gain_low_pct": {
@@ -11986,24 +13993,28 @@ export const generatedHandlers = [
       "benchmark_flags": [
         {
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "sample_n": 6,
           "no_recent_sale_case": true,
           "substituted": false
         },
         {
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "sample_n": 3,
           "no_recent_sale_case": true,
           "substituted": false
         },
         {
           "living_area": "la_3",
+          "living_area_name": "계양구",
           "sample_n": 0,
           "no_recent_sale_case": true,
           "substituted": false
         },
         {
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "sample_n": 3,
           "no_recent_sale_case": false,
           "substituted": false
@@ -12012,6 +14023,7 @@ export const generatedHandlers = [
       "supply": [
         {
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "year": 2027,
           "units": {
             "v": 1200,
@@ -12027,6 +14039,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "year": 2028,
           "units": {
             "v": 8860,
@@ -12047,6 +14060,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "year": 2029,
           "units": {
             "v": 3367,
@@ -12065,6 +14079,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "year": 2030,
           "units": {
             "v": 961,
@@ -12080,6 +14095,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "year": 2031,
           "units": {
             "v": 2432,
@@ -12095,6 +14111,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "year": 2028,
           "units": {
             "v": 2433,
@@ -12108,6 +14125,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "year": 2028,
           "units": {
             "v": 3800,
@@ -12121,6 +14139,7 @@ export const generatedHandlers = [
         },
         {
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "year": 2029,
           "units": {
             "v": 2857,
@@ -12140,6 +14159,7 @@ export const generatedHandlers = [
           "complex_id": 1,
           "name": "더샵 송도그란테르",
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "move_in_ym": {
             "v": "2029-08",
             "label": "확인됨",
@@ -12152,6 +14172,7 @@ export const generatedHandlers = [
           "complex_id": 2,
           "name": "엘리프 검단 포레듀",
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "move_in_ym": {
             "v": "2028-03",
             "label": "확인됨",
@@ -12164,6 +14185,7 @@ export const generatedHandlers = [
           "complex_id": 3,
           "name": "송도 한내들 센트럴리버",
           "living_area": "la_1",
+          "living_area_name": "연수구",
           "move_in_ym": {
             "v": "2029-03",
             "label": "확인됨",
@@ -12176,6 +14198,7 @@ export const generatedHandlers = [
           "complex_id": 4,
           "name": "오퍼스 한강 스위첸",
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "move_in_ym": {
             "v": "2028-08",
             "label": "확인됨",
@@ -12188,6 +14211,7 @@ export const generatedHandlers = [
           "complex_id": 5,
           "name": "검단 센트레빌 에듀시티",
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "move_in_ym": {
             "v": "2028-08",
             "label": "확인됨",
@@ -12200,6 +14224,7 @@ export const generatedHandlers = [
           "complex_id": 6,
           "name": "더샵 검단레이크파크 AB23",
           "living_area": "la_2",
+          "living_area_name": "검단구",
           "move_in_ym": {
             "v": "2029-12",
             "label": "확인됨",
@@ -12212,6 +14237,7 @@ export const generatedHandlers = [
           "complex_id": 7,
           "name": "김포 칸타빌 에디션",
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "move_in_ym": {
             "v": "2029-12",
             "label": "확인됨",
@@ -12224,6 +14250,7 @@ export const generatedHandlers = [
           "complex_id": 8,
           "name": "풍무역세권 수자인 그라센트 2차",
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "move_in_ym": {
             "v": "2029-01",
             "label": "확인됨",
@@ -12236,6 +14263,7 @@ export const generatedHandlers = [
           "complex_id": 9,
           "name": "한강 푸르지오 리버프론트",
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "move_in_ym": {
             "v": "2031-01",
             "label": "확인됨",
@@ -12248,6 +14276,7 @@ export const generatedHandlers = [
           "complex_id": 10,
           "name": "풍무역 롯데캐슬 시그니처",
           "living_area": "la_4",
+          "living_area_name": "김포시",
           "move_in_ym": {
             "v": "2028-07",
             "label": "확인됨",
@@ -12267,14 +14296,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12286,14 +14317,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12305,14 +14338,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12324,14 +14359,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12343,14 +14380,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12362,14 +14401,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12381,14 +14422,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12400,14 +14443,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12419,14 +14464,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12445,7 +14492,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12464,7 +14512,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12483,7 +14532,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12495,14 +14545,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12514,14 +14566,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12533,14 +14587,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12559,7 +14615,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12571,14 +14628,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12590,14 +14649,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12616,7 +14677,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12628,14 +14690,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12647,14 +14711,16 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           },
           "post_completion": {
             "v": null,
             "label": "확인 불가",
             "reason": "미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12673,7 +14739,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12692,7 +14759,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "월별 준공 후 미분양 미수집",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "not_collected"
           }
         },
         {
@@ -12990,7 +15058,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "2035 목표(언론)",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": null,
@@ -13020,7 +15089,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "시점 미정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": null,
@@ -13050,7 +15120,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "시점 미정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": null,
@@ -13148,7 +15219,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "시점 미정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": null,
@@ -13178,7 +15250,8 @@ export const generatedHandlers = [
             "label": "확인 불가",
             "reason": "시점 미정",
             "prov": null,
-            "checked_at": "2026-10-07"
+            "checked_at": "2026-10-07",
+            "reason_code": "other"
           },
           "location_confirmed": false,
           "linked": null,
@@ -13353,7 +15426,8 @@ export const generatedHandlers = [
             "prov": "fp_9002",
             "checked_at": "2026-10-07",
             "reason": "건수 미상(보고서 원문에 거래 건수 없음)",
-            "unit": "count"
+            "unit": "count",
+            "reason_code": "other"
           },
           "trade_window": "2026-05~2026-06",
           "basis": "신검단 신축(힐스테이트 신검단 센트럴), 건수 미상 — 저가 거래 4.8~5.3억 혼재"
@@ -13389,7 +15463,8 @@ export const generatedHandlers = [
             "prov": "fp_9003",
             "checked_at": "2026-10-07",
             "reason": "실거래 원자료 미확보(언론 시세만)",
-            "unit": "count"
+            "unit": "count",
+            "reason_code": "other"
           },
           "trade_window": null,
           "basis": "힐스테이트자이 계양(데일리안 2026-09-07) — 실거래 원자료 미확보"

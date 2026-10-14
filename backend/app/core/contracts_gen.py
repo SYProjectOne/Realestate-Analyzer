@@ -100,6 +100,10 @@ class BenchmarkFlag(BaseModel):
         extra="forbid",
     )
     living_area: str
+    living_area_name: str | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다)
+    """
     sample_n: Annotated[int, Field(ge=0)]
     no_recent_sale_case: bool
     substituted: bool
@@ -154,6 +158,10 @@ class BenchmarkView(BaseModel):
     지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. 값 = DB benchmark.substitute 컬럼(계약 2026-10-09.7 — note 문자열 판별 대신).
     """
     living_area: str | None
+    living_area_name: str | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다)
+    """
     name: str
     completed_year: int | None
     sale_year: int | None
@@ -376,6 +384,18 @@ class ChangeEvent(BaseModel):
         ]
         | None
     ) = None
+    field_label: Annotated[str | None, Field(max_length=80)] = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): field 의 사람이 읽는 이름(예 official_popup_hash → '공식 홈페이지 팝업', move_in_ym → '입주 예정월', price_by_type.84A.max_price_won → '84A 최고 공급가'). 서버 표(``app.api.change_text``)에 없는 필드는 field 그대로. 원래 field 는 그대로 둔다
+    """
+    summary: Annotated[str | None, Field(max_length=200)] = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): 변경 한 줄 요약(사람이 읽는 문장 — 새 판단 없음, 서버 문구 표 + 값 형식만). value_kind 가 'plain' 이고 값이 짧으면 '<field_label>: <old> → <new>'(값 없음은 '없음'), 'hash'·'json' 이면 값 없이 '<field_label>이(가) 바뀌었습니다'(예 '공식 홈페이지 팝업이 바뀌었습니다'), 새 공고(entity notice)는 '새 공고: <new_text>'. 원값은 old_text·new_text 에 그대로 있다(D25-2 — 변경 기록, Fact 아님). .20 이전 발행 리비전 저장본(변경 원장)에는 키가 없다(= null — 화면은 field·old_text·new_text 로 대신한다)
+    """
+    value_kind: Literal["plain", "hash", "json"] | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): old_text·new_text 의 모양 — 'plain'(읽을 수 있는 짧은 값) | 'hash'(64자리 16진 해시 등 기계값 — 화면은 '바뀐 값 보기' 접힘 안에) | 'json'(목록·객체 JSON — 접힘 안에). 판단 아님(문자열 모양 검사)
+    """
 
 
 class ChecklistItem(BaseModel):
@@ -681,6 +701,42 @@ class Competition(BaseModel):
     applied: Fact
     ratio_or_shortfall_text: Annotated[str | None, Field(max_length=64)]
     raw_document_id: int | None = None
+    winning_score_min: Fact | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q4): 이 행(주택형·회차)의 당첨 가점 최저(가점제 당첨자만, 청약홈 경쟁률 페이지 원문 값 — 점, unit 없음). 수집 저장값(경쟁률 행의 가점 칸과 그 출처 행)이 있을 때만 값, 없으면 '확인 불가(가점 미수집)'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
+    winning_score_max: Fact | None = None
+    """
+    당첨 가점 최고(winning_score_min 과 같은 규칙)
+    """
+    winning_score_avg: Fact | None = None
+    """
+    당첨 가점 평균(원문 표기 값 그대로 — 서버가 평균을 내지 않는다, winning_score_min 과 같은 규칙)
+    """
+
+
+class CompetitionSummary(BaseModel):
+    """
+    계약 2026-10-09.20(D28-5 Q4): 목록·비교·상세 머리용 경쟁률 요약 — 저장된 경쟁률 행(같은 단지)에서 산술로만 만든다(``app.analysis.competition_summary`` — 판단 아님). 기준 행 = kind '본청약' 이고 회차(round)가 '1순위'로 시작하며 '해당'을 포함하는 행(1순위 해당지역). 기준 행이 없으면 rows 0 · 아래 Fact 는 '확인 불가(1순위 해당지역 경쟁률 없음)'.
+    - max_ratio: 기준 행마다 접수 ÷ 공급(공급 > 0, 둘 다 값 있음 — 소수 2자리 ROUND_HALF_UP)의 최댓값. label = 그 행 공급·접수 Fact 중 약한 쪽, reason '산술(접수 n ÷ 공급 m)', prov = 그 행 접수(applied) 출처. 같은 값이면 앞 행(id 순). 표시 '7.50 : 1'. 값을 낼 행이 없으면(공급·접수 확인 불가) 첫 기준 행의 사유로 '확인 불가'.
+    - max_ratio_type_code: 그 행의 표시 주택형(competition.type_code 와 같은 규칙). 없으면 null.
+    - shortfall_types: 기준 행 중 접수 < 공급인 행 수(unit count, label = 기준 행 공급·접수 Fact 중 가장 약한 것, reason '산술(접수 < 공급 행 수)'). 0 = 1순위 해당지역 미달 없음. 기준 행 하나라도 공급·접수가 확인 불가면 '확인 불가(일부 누락 n건)'.
+    - winning_score_min / winning_score_max: 기준 행 당첨 가점 최저의 최솟값 / 최고의 최댓값(Competition.winning_score_* 가 기준 행 모두에 있을 때만, 아니면 그 사유의 '확인 불가' — 지금은 '가점 미수집').
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    basis: str
+    """
+    기준 행 설명(표시용 고정 문구 '본청약 1순위 해당지역')
+    """
+    rows: Annotated[int, Field(ge=0)]
+    max_ratio: Fact
+    max_ratio_type_code: Annotated[str | None, Field(max_length=16)]
+    shortfall_types: Fact
+    winning_score_min: Fact
+    winning_score_max: Fact
 
 
 class Complex(BaseModel):
@@ -815,7 +871,7 @@ class ComplexBundle(BaseModel):
 class ComplexDetail(BaseModel):
     """
     GET /complexes/{id}?snapshot=&scenario= — G3 단지 상세 전체 (RA §4-2). 탭 8개의 데이터를 한 번에 준다: PriceTable(types), PaymentTerms(payment), C8(events·competition), C1(ladder 3 horizon), C2(gap), CatalystList(catalysts), ProvenanceTab(출처는 각 Fact.prov → /provenance), JudgmentLogTab(judgments).
-    - header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).
+    - header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot — 단 수집 실패 행은 그보다 나중에 기록된 수집 성공 행이 있으면 표시 후보가 아니다, D27-1·계약 .20 설명), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).
     - price: 판정 기준 타입의 현재 구매가 범위(§6-1).
     - score: 이 시나리오의 ScoreRow(점수 없으면 null).
     """
@@ -829,6 +885,9 @@ class ComplexDetail(BaseModel):
     header: Complex
     price: PriceRange
     intake_current: Intake | None
+    """
+    표시 접수 행 = ``analysis.scope.pick_intake``: 경로 우선 human_check > official_popup > headless_shot(unofficial_ref 는 표시값 아님). D27-1 예외(계약 2026-10-09.20 설명 — D27-3): 수집 실패 행(수집 경로 · '확인 불가' · http_status 200 아님 · 원문 또는 응답 코드 있음)은 그보다 나중에 기록된 수집 성공 행이 있으면 후보가 아니다(나중 실패는 이른 성공을 이긴다). 사람 확인은 늘 최우선. 접수 행이 없으면 null
+    """
     types: list[ComplexType]
     payment: list[PaymentTerms]
     competition: list[Competition]
@@ -839,6 +898,10 @@ class ComplexDetail(BaseModel):
     catalysts: list[CatalystView]
     judgments: list[JudgmentEnvelope]
     score: ScoreRow | None
+    competition_summary: CompetitionSummary | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q4): competition 행의 요약(competition.json CompetitionSummary — 목록·비교와 같은 함수). 경쟁률 행이 없으면 rows 0 · '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
 
 
 class ComplexRow(BaseModel):
@@ -889,6 +952,9 @@ class ComplexRow(BaseModel):
     resale_end: Fact
     move_in_ym: Fact
     gap_pct: Fact
+    """
+    가격 갭 퍼센트(unit pct — 성분 원값, prov 'sc_<실행>_<단지>_gap.raw', 계약 2026-10-09.20 Q6). 종합 점수 성분 s_gap(0~10)이 아니다
+    """
     total: Fact
     rank: Annotated[int | None, Field(ge=1)]
     tie_group: Annotated[int | None, Field(ge=1)]
@@ -918,6 +984,14 @@ class ComplexRow(BaseModel):
     regulated: Fact
     residency_months: Fact
     down_payment_pct: Fact
+    down_payment_won: Fact | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
+    competition_summary: CompetitionSummary | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약(competition.json CompetitionSummary — 1순위 해당지역 최고 경쟁률·미달 주택형 수·당첨 가점). 경쟁률 행이 없는 단지는 rows 0. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
     units_total: Fact
     last_change: LastChange | None
 
@@ -1569,7 +1643,7 @@ class Fact(BaseModel):
     """
     prov: Annotated[str | None, Field(pattern="^(fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+$")]
     """
-    출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용.
+    출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용. 점수 성분은 둘로 나뉜다(계약 2026-10-09.20, D28-5 Q6): 'sc_<실행>_<단지>_<성분>' = 성분 점수(0~10, 출처 서랍 field=<성분>·value_text=점수), 'sc_<실행>_<단지>_<성분>.raw' = 그 성분의 원값(예 gap → 가격 갭 %, 서랍 field='<성분>.raw'·value_text=원값). .20 이전 발행 리비전 저장본의 원값 Fact 는 '.raw' 없는 성분 id 를 가리킨다.
     """
     checked_at: str | None
     """
@@ -1601,6 +1675,35 @@ class Fact(BaseModel):
     human: bool | None = False
     """
     사람 확인(전화·방문) 값이면 true. label은 '확인됨'이어야 한다.
+    """
+    reason_code: (
+        Literal[
+            "fetch_failed",
+            "not_collected",
+            "not_published",
+            "parse_failed",
+            "source_missing",
+            "demoted",
+            "conflict_hold",
+            "partial_missing",
+            "identity_unconfirmed",
+            "other_complex_site",
+            "no_phrase",
+            "phrase_inconclusive",
+            "not_target",
+            "input_blocked",
+            "unresolved",
+            "unjudged",
+            "not_entered",
+            "no_sample",
+            "human_check",
+            "no_value",
+            "other",
+        ]
+        | None
+    ) = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): label='확인 불가'의 **사유 코드**(기계용) — reason 문자열과 같은 행에서 서버가 정한다(``app.api.reason_codes.reason_code`` 한 함수: 저장 사유 문자열·HTTP 상태의 머리말·낱말 규칙 — 판단 아님). 화면은 쉬운 말 매핑을 이 코드로 하고 원문 사유(reason)는 그대로 보존·표시한다(title·출처 패널). label≠'확인 불가'(reason 이 라벨 한정어 '산술'·'표본 2' 등)면 없다. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 reason 문자열로 대신한다).
     """
 
 
@@ -1754,6 +1857,7 @@ class FixedComponents(BaseModel):
 class Gap(BaseModel):
     """
     가격 갭 C2 데이터 (RA §7-2 C2, §6-2). comps가 비면 empty_reason('비교군 없음(사유)'). gap_pct는 보정 중앙값 기준, gap_pct_unadjusted는 미보정 기준(둘 다 표시).
+    **두 종류의 값이 있다(계약 2026-10-09.20, D28-5 Q6 — 같은 이름 '가격 갭'으로 8.1%와 2.98이 보이던 혼동)**: gap_pct·gap_pct_unadjusted = 가격 갭 **퍼센트**(현재 구매가 중앙 − 비교 실거래 중앙값)/중앙값 × 100 (unit pct, prov 'sc_<실행>_<단지>_gap.raw' — 성분 원값 서랍). gap_score = 그 퍼센트로 만든 **종합 점수 성분 s_gap**(0~10, RA §6-2 clamp(5 − gap%/4, 0, 10), unit score, prov 'sc_<실행>_<단지>_gap' — 성분 점수 서랍). score 는 gap_score 와 같은 값의 옛 이름(.20 에서 유지, 화면은 gap_score 를 '가격 갭 점수(0~10)'로 쓴다).
     """
 
     model_config = ConfigDict(
@@ -1766,6 +1870,13 @@ class Gap(BaseModel):
     gap_pct: Fact
     gap_pct_unadjusted: Fact | None
     score: Fact
+    """
+    **옛 이름**(deprecated, 계약 2026-10-09.20) — gap_score 와 같은 Fact(성분 점수 s_gap 0~10). 가격 갭 퍼센트가 아니다. 새 화면은 gap_score 를 읽는다
+    """
+    gap_score: Fact | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q6): 가격 갭 **점수** s_gap(0~10 — 종합 점수 성분, RA §6-2 clamp(5 − gap%/4, 0, 10)). prov = 'sc_<실행>_<단지>_gap'(서랍 kind score_component, field 'gap', value_text = 점수). 퍼센트는 gap_pct. .20 이전 발행 리비전 저장본에는 키가 없다(그때는 score 를 읽는다)
+    """
     empty_reason: str | None
 
 
@@ -1904,7 +2015,7 @@ class HumanCheckCreate(BaseModel):
 
 class Intake(BaseModel):
     """
-    접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.
+    접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다(``analysis.scope.pick_intake``). 예외(D27-1·계약 2026-10-09.20 설명 — D27-3): 수집 실패 행(수집 경로 · '확인 불가' · http_status 200 아님 · 원문 또는 응답 코드 있음)은 그보다 나중에 기록된 수집 성공 행이 있으면 표시 후보가 아니다(나중 실패는 이른 성공을 이긴다). 사람 확인은 늘 최우선. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.
     표시 문자열: status='확인 불가'이면 '확인 불가(<reason>, <checked_at 날짜>)' (예: '확인 불가(403, 2026-10-07)'). path=human_check이면 배지에 '사람' 접두어.
     """
 
@@ -1947,6 +2058,43 @@ class Intake(BaseModel):
     entered_by: Annotated[str | None, Field(max_length=32)] = None
     """
     human_check일 때 역할 문자열("운영자"). 사람 이름 금지(RA §10)
+    """
+    reason_code: (
+        Literal[
+            "fetch_failed",
+            "not_collected",
+            "not_published",
+            "parse_failed",
+            "source_missing",
+            "demoted",
+            "conflict_hold",
+            "partial_missing",
+            "identity_unconfirmed",
+            "other_complex_site",
+            "no_phrase",
+            "phrase_inconclusive",
+            "not_target",
+            "input_blocked",
+            "unresolved",
+            "unjudged",
+            "not_entered",
+            "no_sample",
+            "human_check",
+            "no_value",
+            "other",
+        ]
+        | None
+    ) = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): reason 의 사유 코드(fact.json ReasonCode — 같은 함수 ``app.api.reason_codes.reason_code``, http_status 비 2xx 면 fetch_failed). reason 이 없으면(가능·미정 등) 없음(= null). 원문 사유(reason)는 그대로 둔다. .20 이전 발행 리비전 저장본에는 키가 없다
+    """
+    supply_kind: Literal["본청약", "무순위", "임의", "선착순"] | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q8): 이 접수 행이 가리키는 공급 종류 — **저장된 문구 후보가 이미 말한 것만**(새 판단 없음, AGENTS 규칙 3). 값은 공급 구분 어휘(competition.kind·payment_terms.notice_kind 와 같은 SUPPLY_KIND: '본청약' | '무순위' | '임의' | '선착순') 또는 null. 규칙: path 가 official_popup·headless_shot 이고 status 가 판정기 분류 결과(가능·미정·불가)인 행의 메모(note)에서 판정 표식 조각('판정기 classify …'·'분류 복사 …')을 뺀 문구 후보 글을 공식 홈페이지 파서의 키워드 정규식(``normalize.official_site_parser.scan_text`` — 파싱 정규식, 판단 아님)으로 훑어 공급 종류 키워드(파서 키워드 이름 '무순위' → '무순위', '임의공급' → '임의', '선착순' → '선착순')가 **정확히 한 종류**면 그 값. 없거나 둘 이상이면 null(둘 이상이면 supply_kind_basis 에 후보를 적는다). '본청약'(일반·특별공급)은 접수 문구 키워드가 없고 판정기 classify 출력에도 공급 종류가 없어 지금은 내지 않는다(어휘만 맞춤 — 값은 null). human_check·unofficial_ref 행·'확인 불가' 행은 null. .20 이전 발행 리비전 저장본에는 키가 없다
+    """
+    supply_kind_basis: Annotated[str | None, Field(max_length=120)] = None
+    """
+    supply_kind 의 근거 문구(저장된 문구 후보 중 키워드가 든 줄 그대로, 최대 120자) 또는 후보가 여럿일 때 '공급 종류 문구가 여럿(무순위·선착순)'. supply_kind 를 정할 문구가 없으면 null
     """
 
 
@@ -2027,6 +2175,35 @@ class IntakeQueueItem(BaseModel):
     reason: Annotated[str | None, Field(max_length=120)]
     """
     접수 행 사유(Intake.reason 과 같은 규칙 — '확인 불가'인데 사유가 비면 http_status 또는 '사유 미기재'). '미정'은 null 일 수 있다
+    """
+    reason_code: (
+        Literal[
+            "fetch_failed",
+            "not_collected",
+            "not_published",
+            "parse_failed",
+            "source_missing",
+            "demoted",
+            "conflict_hold",
+            "partial_missing",
+            "identity_unconfirmed",
+            "other_complex_site",
+            "no_phrase",
+            "phrase_inconclusive",
+            "not_target",
+            "input_blocked",
+            "unresolved",
+            "unjudged",
+            "not_entered",
+            "no_sample",
+            "human_check",
+            "no_value",
+            "other",
+        ]
+        | None
+    ) = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): reason 의 사유 코드(Intake.reason_code 와 같은 함수·같은 값). reason 이 null 이면 null
     """
     path: Literal["human_check", "official_popup", "headless_shot"]
     """
@@ -2336,6 +2513,10 @@ class KpiUnsold(BaseModel):
     ym: str | None
     total: Fact
     post_completion: Fact
+    breakdown: list[UnsoldPoint] | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): 지역 합계의 내역 — 그 달(ym)의 통계 단위(시군구)별 미분양 행(market.json UnsoldPoint, scope_code·scope_name·total·post_completion — 원천 행 Fact, prov fp_). 합계 Fact 의 reason 은 짧게 '지역 합계(시군구 n곳)'이고 단위별 값은 여기에 있다(예전 '인천 검단구 737·…합' 나열 사유 대체). 통계 단위가 하나면 그 행 1개. 미분양 자료가 없으면 []. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
 
 
 class Kpis(BaseModel):
@@ -2614,6 +2795,10 @@ class MoveInMarker(BaseModel):
     complex_id: int
     name: str
     living_area: str | None
+    living_area_name: str | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다)
+    """
     move_in_ym: Fact
 
 
@@ -2657,6 +2842,32 @@ class NoulResult(BaseModel):
     horizon: Literal["move_in_plus_1y", "asof_plus_3y", "asof_plus_5y"]
     target_ym: Annotated[str, Field(pattern="^[0-9]{4}-[0-9]{2}$")]
     propositions: Annotated[list[NoulProposition], Field(max_length=4, min_length=4)]
+
+
+class PaymentAmounts(BaseModel):
+    """
+    계약 2026-10-09.20(D28-5 Q1): 판정 기준 타입(basis_type_code, 대표 타입 — 84㎡에 가장 가까운 타입)의 납부 금액(원). 현재 납부 조건(payment[].is_current)의 비율 × 현재 구매가 중앙값 P_mid(§6-1) — RA §6-7 자금 요건과 같은 산술(``app.analysis.price.share_won``: ROUND_HALF_UP(P_mid × 비율 ÷ 100), 비교 화면 TermsRow.down_payment_won 과 같은 함수·같은 값·같은 출처). 새 판단 없음.
+    - down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.
+    - interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(P_mid × 중도금 n%)').
+    - balance_won: P_mid × 잔금 %. 같은 규칙.
+    - down_payment_first_won: 공고에 적힌 1차 계약금 정액(공고 값 그대로 — payment[].down_payment_first_won 과 같은 Fact). 없으면 그 사유의 '확인 불가'.
+    - formula: 식 설명 문구(화면 툴팁).
+    공고가 원 금액을 따로 적지 않은 한 금액은 모두 '추정(산술)'이다 — 대표 타입이 아닌 타입·실제 동·호 금액과 다를 수 있다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    basis_type_code: str | None
+    payment_terms_id: int | None = None
+    """
+    비율을 읽은 현재 납부 조건 행 id(payment[].id). 납부 조건이 없으면 null
+    """
+    down_payment_won: Fact
+    interim_won: Fact
+    balance_won: Fact
+    down_payment_first_won: Fact
+    formula: Annotated[str, Field(min_length=1)]
 
 
 class PaymentChange(BaseModel):
@@ -2738,6 +2949,10 @@ class PriceRange(BaseModel):
     discount_applied: bool | None = False
     """
     계약 2026-10-09.10(R3 5차 minor): discount 를 low·high·mid 에서 **실제로 뺐는가**(서버 판정 — 라벨 확인됨 + 0 < 할인 < 대표층가·최고가). 화면의 '구매가에서 뺌' 문구는 이 값만 본다(0·음수·과대·추정 할인은 false). 할인이 없으면 false
+    """
+    payment_amounts: PaymentAmounts | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q1): 계약금·중도금·잔금 원 금액(PaymentAmounts — 대표 타입 P_mid × 현재 납부 조건 비율, 추정(산술)). 단지 상세(price)에만 있다(목록 ComplexRow 는 down_payment_won 하나). .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면 '확인 불가(계산값 미제공)')
     """
 
 
@@ -3344,7 +3559,7 @@ class RequirementPreSet(BaseModel):
 class RequirementRule(BaseModel):
     """
     요건 1개의 규칙. code별 의미(RA §6-7):
-    access — intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).
+    access — 모든 code 의 공통 조건: 표시 접수 상태 '가능' and path≠unofficial_ref(D25-11 — A·B·C·D 모두, 계약 2026-10-09.20 설명·D25-13). intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: (공통 조건 and) 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: (공통 조건 and) 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).
     regulation — no_conflict: 거주의무·재당첨 제한·규제지역 요건이 params와 충돌 없음 | no_residency_obligation: 거주의무 0개월.
     funds — equity_and_loan: P_mid × 계약금% ≤ 자기자본 and P_mid − 대출한도 − 자기자본 ≤ 0 (중도금 무이자·이자후불제 문구는 근거에 표기); 자기자본·한도가 null이면 '미입력'.
     """
@@ -3684,6 +3899,7 @@ class ScoreRow(BaseModel):
     - decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).
     - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).
     - rejudge_needed: 저장 범위 ≠ 현재 계산 범위면 true(D10-1, 계약 2026-10-09.6 — 선택, 기본 false). judge_scope·rank·total 은 항상 저장값.
+    - price_low·price_high·resale_end·move_in_ym·gap_pct·competition_summary(계약 2026-10-09.20, D28-5 Q7·Q4): G1 TOP 카드·G4 비교 행의 사실 — 같은 리비전 목록 행(ComplexRow)과 같은 Fact(새 계산 없음 — 같은 함수). 발행 리비전은 저장본 값(D10-1). 옛 저장본에는 키가 없다.
     """
 
     model_config = ConfigDict(
@@ -3714,6 +3930,30 @@ class ScoreRow(BaseModel):
     - 미해결: 포함/제외 classify 가 review·escaped·미분류 — 표시 '미해결(분류 판정 미해결)'. 판정 대상 아님, 사다리·점수 없음(계약 2026-10-09.4).
     - 참고: 포함 확정 + 가격 있음 + 접수 상태 '확인 불가' 또는 '불가' — 표시 '참고 후보(순위만)'. 사다리 미실행, rerank 후보에는 포함.
     - 판정 대상: 포함 확정 + 가격 있음 + 접수 '가능' 또는 '미정'.
+    """
+    price_low: Fact | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q7): 현재 구매가 아래(§6-1) — 같은 리비전 목록 행 ComplexRow.price_low 와 같은 Fact(같은 함수·같은 출처). 발행 리비전은 발행 때 값(저장본, D10-1·D13-1). .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
+    price_high: Fact | None = None
+    """
+    현재 구매가 위 — ComplexRow.price_high 와 같은 Fact(price_low 와 같은 규칙)
+    """
+    resale_end: Fact | None = None
+    """
+    전매 종료일 — ComplexRow.resale_end 와 같은 Fact(price_low 와 같은 규칙)
+    """
+    move_in_ym: Fact | None = None
+    """
+    입주 예정 연월 — ComplexRow.move_in_ym 과 같은 Fact(price_low 와 같은 규칙)
+    """
+    gap_pct: Fact | None = None
+    """
+    가격 갭 퍼센트 — ComplexRow.gap_pct 와 같은 Fact(성분 원값, prov 'sc_<실행>_<단지>_gap.raw'). 성분 점수 s_gap 은 components.gap.score
+    """
+    competition_summary: CompetitionSummary | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약 — ComplexRow.competition_summary 와 같은 값
     """
     rejudge_needed: bool | None = False
     """
@@ -4039,6 +4279,10 @@ class SupplyPoint(BaseModel):
         extra="forbid",
     )
     living_area: str | None
+    living_area_name: str | None = None
+    """
+    계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다)
+    """
     year: int
     units: Fact
     complexes: list[str] | None = None
@@ -4141,7 +4385,7 @@ class UnsoldInput(BaseModel):
 
 class UnsoldPoint(BaseModel):
     """
-    미분양 1개월(C5): 월말 기준. 결측 월은 total.v=null(label 확인 불가). scope는 통계 단위(시군구).
+    미분양 1개월(C5): 월말 기준. 결측 월은 total.v=null(label 확인 불가). scope는 통계 단위(시군구). 여러 통계 단위를 합한 점(G1 unsold_series·KPI)의 Fact reason 은 '지역 합계(시군구 n곳)'(계약 2026-10-09.20 — 예전 '<이름> <값>·… 합' 나열 대신; 단위별 값은 KPI breakdown·G6 시장 unsold 의 단위별 점).
     """
 
     model_config = ConfigDict(

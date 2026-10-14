@@ -2,6 +2,85 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.20
+
+초보자용 UI 개선(사람 답 + CEO **D28**, 원문 `docs/design/ui-benchmark/20-gap.md` §2-2 · `30-proposal.md`) 후속 — **D28-5** 데이터·API
+요청 중 API 쪽 **Q1·Q4(API)·Q5·Q6·Q7·Q8·Q9**. 계약 소유자 = **R9-API**(브랜치 `wp/r9-api`). 마이그레이션 없음(DB 모양 그대로 — head 0016).
+**필드 삭제 없음, 모든 새 필드는 선택**(옛 발행 저장본에 키가 없어도 계약 통과) → 저장 모양 버전(`SHAPE_VERSION`) **그대로 1**(D15-3: 모양이
+바뀔 때만 올림 — 선택 필드 추가는 .16 `name_prov`·.17 `judge_scope_reason` 과 같은 관례. 올리면 이미 발행된 리비전 저장본 전부가 500
+`stored_view_mismatch` 가 되고 backfill 은 모양이 다른 행을 다시 쓰지 않는다). 새 정렬 키 1(`sort=intake`), 새 스키마 정의 3(`ReasonCode`·
+`CompetitionSummary`·`PaymentAmounts`). 판정기 호출 없음 — 모두 저장값의 산술·문자열 규칙(AGENTS 규칙 3·4). 읽기 전용 토큰 의미 그대로.
+테스트 표(결함 · 테스트 · 수정 전 실패 확인)와 FE 연결 메모는 `docs/design/wp/R9_TESTS_API.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표. 이 브랜치는 FE 생성물(`src/api/schema.d.ts`·`src/mocks/handlers.gen.ts`)만 다시 만들었다(화면은
+R9-UI 가 맞춘다 — `frontend/src/pages` 는 고치지 않았다).
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .19 | .20 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | **Q1** 단지 상세 `price.payment_amounts`(`PaymentAmounts`) · 목록 `ComplexRow.down_payment_won` | 원 금액 없음 — 화면은 계약금 %·1차 정액만, 원 금액 칸 '확인 불가(계산값 미제공)'(D28-4) | 대표 타입(판정 기준 타입 = `basis_type_code`) **P_mid × 현재 납부 조건 비율**: `down_payment_won`·`interim_won`(중도금 비율 합계 — 회차별 아님)·`balance_won` + 공고의 `down_payment_first_won`(정액 그대로) + `formula`(툴팁). 라벨 '추정', reason '산술(P_mid × 계약금 5%)', prov = `price_mid` 의 prov. 비율·가격이 확인 불가면 그 사유의 '확인 불가'. 목록 `down_payment_won` · 비교 `TermsRow.down_payment_won` 과 **같은 함수·같은 값**(`analysis.price.share_won` — RA §6-7 자금 요건 산술). 화면은 곱하지 않는다 | D28-5 Q1 · D28-4 |
+| F2 | **Q4** `ComplexRow`·`ScoreRow`·`ComplexDetail` `competition_summary`(`CompetitionSummary`) · `Competition.winning_score_min/max/avg` | 경쟁률은 G3 경쟁률 탭에만, 가점 없음 | 요약 = 기준 행(kind '본청약' + 회차 '1순위…해당…') `rows`, `max_ratio`(접수 ÷ 공급 최댓값, 소수 2자리, reason '산술(접수 n ÷ 공급 m)', prov = 그 행 접수 출처), `max_ratio_type_code`, `shortfall_types`(접수 < 공급 행 수, unit count), `winning_score_min/max`. 기준 행이 없으면 rows 0 · '확인 불가(1순위 해당지역 경쟁률 없음)'. 당첨 가점은 **수집 전이라 지금은 모두 '확인 불가(가점 미수집)'**(reason_code `not_collected`) — 화면은 '제공하지 않음 — 청약홈 경쟁률에서 확인' 링크를 그대로 둔다(30-proposal §9-2) | D28-5 Q4 |
+| F3 | **Q5** `Fact.reason_code`(label '확인 불가'일 때) · `Intake.reason_code` · `IntakeQueueItem.reason_code` | 사유가 자유 문자열 — 화면이 문자열 비교로 쉬운 말 매핑(`formatUnknown`) | `ReasonCode` enum 21개(`fetch_failed`·`not_collected`·`not_published`·`parse_failed`·`source_missing`·`demoted`·`conflict_hold`·`partial_missing`·`identity_unconfirmed`·`other_complex_site`·`no_phrase`·`phrase_inconclusive`·`not_target`·`input_blocked`·`unresolved`·`unjudged`·`not_entered`·`no_sample`·`human_check`·`no_value`·`other`). 서버 한 함수(`app.api.reason_codes.reason_code` — 저장 사유 머리말·낱말 규칙, 계약 `fact.json` 설명 순서)가 정한다. **원문 reason 은 그대로**(title·출처 패널). 화면 매핑을 코드 기준으로 바꾸고, 코드가 없는 옛 저장본(.19 이전 발행 리비전)은 지금처럼 문자열로 | D28-5 Q5 · D28-4 |
+| F4 | **Q5** G1 대시보드 `kpis.unsold`(합계 Fact reason) · 새 `kpis.unsold.breakdown` · `unsold_series[].*.reason` | 사유 = '연수 505·검단 737·계양 0·김포 787 합'(라벨 칸이 넘쳐 페이지 폭 1,603px — 갭 #5) | 사유 = **'지역 합계(시군구 n곳)'**, 단위별 값은 `breakdown`(그 달 시군구별 `UnsoldPoint` — 원천 Fact·prov fp_). `unsold_series` 합계 점도 같은 짧은 사유(단위별 값은 G6 시장 `unsold` 단위별 점) | D28-5 Q5 |
+| F5 | **Q5** `ChangeEvent.field_label`·`summary`·`value_kind`(G1 변경 피드·`/changes`·G8 차이) | 화면이 `field`(예 `official_popup_hash`)와 64자리 해시 old/new 를 그대로 보였다 | `field_label` = 사람이 읽는 이름('공식 홈페이지 팝업'·'입주 예정월'·'84A 최고 공급가'·'중도금 1회차 납부일' …, 표에 없으면 field 그대로), `summary` = 한 줄('공식 홈페이지 팝업이 바뀌었습니다' · '계약금 비율(%): 10 → 5' · '새 공고: …'), `value_kind` = `plain`·`hash`(이름이 '…_hash' 이거나 16진 32자 이상)·`json`. 화면은 summary 를 보이고 `hash`·`json` 이면 old/new 를 '바뀐 값 보기' 접힘 안에 둔다(원값은 응답 그대로 — D25-2). 옛 저장본(변경 원장)에는 키가 없다 | D28-5 Q5 · D25-2 |
+| F6 | **Q5** G6 시장 `supply[]`·`benchmark_flags[]`·`benchmarks[]`·`move_in_markers[]` `living_area_name` | 범례가 내부 id `la_1~la_10` | 생활권 표시 이름(`living_areas[].name` 과 같은 값, 없으면 null). 범례·표는 이 값을 쓴다 | D28-5 Q5 |
+| F7 | **Q6** 단지 상세·비교 `Gap.gap_score`(새) · `Gap.score`(옛 이름) · `gap_pct`·`gap_pct_unadjusted`·`ScoreRow.components.*.raw` 의 prov | '가격 갭' 이름으로 8.1%(gap_pct)와 2.98(score — 성분 점수 s_gap)이 같이 보였다. 둘의 출처 id 가 같아(`sc_<실행>_<단지>_gap`) 퍼센트 칸을 눌러도 서랍 값이 2.98 | `gap_score` = **가격 갭 점수 s_gap(0~10)**(= `score` 와 같은 Fact — `score` 는 옛 이름으로 유지), 퍼센트는 `gap_pct`. 성분 **원값** Fact(gap% 등 — `gap_pct`·`gap_pct_unadjusted`·목록·점수 행 `gap_pct`·`components.gap/benchmark/supply/liquidity/move_in.raw`)의 prov = **`sc_<실행>_<단지>_<성분>.raw`**(서랍 kind `score_component`, field `<성분>.raw`, value_text = 원값). 점수 Fact 는 그대로 `sc_…_<성분>`. 화면: 점수 칸 이름 '가격 갭 점수(0~10)'(30-proposal §9-3) | D28-5 Q6 |
+| F8 | **Q7** `ScoreRow.price_low`·`price_high`·`resale_end`·`move_in_ym`·`gap_pct`·`competition_summary`(대시보드 `top5`·비교 `rows`·상세 `score`) | TOP 카드가 목록 API 행을 complex_id 로 붙여 썼다(30-proposal 결정 14 (a)) | 같은 리비전 목록 행(`ComplexRow`)과 **같은 함수·같은 Fact**(발행 리비전은 저장본 값 — D10-1·D13-1). 화면은 조인을 지우고 이 값을 쓴다(결정 14 (b)). 옛 저장본에는 키가 없다(그때는 지금처럼 조인) | D28-5 Q7 · D10-1 |
+| F9 | **Q8** `Intake.supply_kind`·`supply_kind_basis` | 접수 행에 공급 종류가 없다(32번 '접수 가능'이 무순위·선착순 안내문 기반인데 구분 없음) | **저장된 문구 후보가 이미 말한 것만**: 수집 경로(official_popup·headless_shot) + 상태 가능·미정·불가 행의 메모(판정 표식 조각 뺀 '문구 후보' 줄)에서 공식 홈페이지 파서 키워드(무순위·임의공급·선착순 — 파싱 정규식)가 정확히 한 종류면 SUPPLY_KIND 어휘('무순위'·'임의'·'선착순'), basis = 그 줄. 여럿이면 null + basis '공급 종류 문구가 여럿(…)', 없으면 null. '본청약'은 문구 키워드·판정기 출력에 공급 종류가 없어 지금은 내지 않는다. 사람 확인·비공식 참고·'확인 불가' 행은 null | D28-5 Q8 · 규칙 3 |
+| F10 | **Q9** `GET /snapshots/{sid}/complexes?sort=intake`(·`-intake`)·CSV 같은 키 | 정렬 키에 접수 상태 없음 | 표시 접수 상태 가능 → 미정 → 확인 불가(접수 행 없음 포함) → 불가, 같은 상태 안 **접수 마감 임박**(단지 `apply_dates` 항목의 끝날짜(없으면 시작) 중 기준일 이후 가장 이른 날, 없으면 뒤) → complex_id. `-intake` 는 상태 순서만 거꾸로. 기본 정렬은 그대로 `-total`(D28-4 결정 4 (a) — 이 키는 옵션) | D28-5 Q9 · D28-4 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.19) | 이후(.20) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | 성분 원값 Fact 의 prov(`gap_pct` 등 — F7) | `sc_<실행>_<단지>_<성분>`(점수와 같은 id — 서랍 value_text = 점수) | `sc_<실행>_<단지>_<성분>.raw`(서랍 value_text = 원값 — CSV `gap_pct_prov` 열도 같은 값). 발행 저장본 출처 서랍(D15-2)이 새 id 도 모은다. 옛 저장본의 원값 Fact 는 옛 id 그대로(그 서랍 = 점수) | D28-5 Q6 |
+| S2 | 지역 합계 미분양 Fact reason(F4) | 단위 나열 '<이름> <값>·… 합'(120자에서 잘림) | '지역 합계(시군구 n곳)' — 값·라벨·prov 그대로 | D28-5 Q5 |
+| S3 | 비교 `TermsRow.down_payment_won` reason | '산술' | '산술(P_mid × 계약금 n%)' — 값·라벨·prov 그대로(같은 함수로 합침) | D28-5 Q1 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `fact.json` | `reason_code`(선택, `$defs.ReasonCode` enum 21) + `prov` 설명(`.raw` 꼬리) + 예시 2 |
+| 2 | `intake.json` | `reason_code`·`supply_kind`(SUPPLY_KIND 어휘)·`supply_kind_basis`(선택) + 설명에 D27-1 예외(**D27-3** 설명만) |
+| 3 | `complex_detail.json` | `competition_summary`(선택) · `PriceRange.payment_amounts`(선택, 새 `$defs.PaymentAmounts`) · `Gap.gap_score`(선택) · `Gap.score` 설명(옛 이름) · `intake_current` 설명(D27-1 — D27-3) |
+| 4 | `complex_row.json` | `down_payment_won`·`competition_summary`(선택) · `gap_pct` 설명 |
+| 5 | `score_row.json` | `price_low`·`price_high`·`resale_end`·`move_in_ym`·`gap_pct`·`competition_summary`(선택) |
+| 6 | `competition.json` | `winning_score_min/max/avg`(선택) · 새 `$defs.CompetitionSummary` |
+| 7 | `change_event.json` | `field_label`·`summary`·`value_kind`(선택) + 예시 1(해시) |
+| 8 | `market.json` | `SupplyPoint`·`MoveInMarker`·`BenchmarkView`·`BenchmarkFlag` `living_area_name`(선택) · `UnsoldPoint` 설명 |
+| 9 | `dashboard.json` | `KpiUnsold.breakdown`(선택) |
+| 10 | `intake_queue.json` | `IntakeQueueItem.reason_code`(선택) |
+| 11 | `scenario.json` | `RequirementRule` 설명 — access 공통 조건(D25-11 — **D25-13** 설명만) |
+| 12 | `openapi.yaml` | `info.version` 2026-10-09.20 · `ComplexSort` 패턴 `…|intake` + 설명 · components `ReasonCode`·`CompetitionSummary`·`PaymentAmounts` |
+
+### 마이그레이션·검증
+
+- DB 마이그레이션 없음(head 0016). 저장본 변환·backfill 불필요 — `SHAPE_VERSION` 1 그대로(위 설명). 새 필드는 **새로 발행하는 리비전부터**
+  저장본에 들어간다(이미 발행된 리비전은 불변 — D11-1. 화면은 키가 없으면 지금 동작).
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.20`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`), 프론트 `src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 재생성.
+- 예시(`contracts/examples/` — MSW 데이터) 9개에 새 필드를 서버와 같은 함수로 채웠다(`tests/contracts/test_r9_api_contract.py` 가 맞춘다).
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`).
+
+### R9-PARSE 와 맞출 것(당첨 가점)
+
+- 서버는 경쟁률 행 모델 `Competition` 에 **`winning_score_min`·`winning_score_max`·`winning_score_avg`** 컬럼이 있으면(그리고 같은 이름 출처 행
+  — `field_provenance` entity `competition`, field 같은 이름) 그 값을 Fact 로 낸다(`app.api.views.winning_score_fact`). 컬럼이 없으면
+  '확인 불가(가점 미수집)'. R9-PARSE 가 다른 테이블·이름을 쓰면 `winning_score_fact`·`WINNING_SCORE_FIELDS` 한 곳만 바꾼다(계약 그대로).
+
+### 알려진 한계
+
+- 경쟁률 요약의 기준 행은 회차 원문이 '1순위 … 해당…'인 행이다(청약홈 API `RESIDE_SENM` '해당지역'). 회차가 '1순위'뿐인 옛 웹 행
+  (지역 구분 없음)은 기준 행이 아니다(rows 0) — 파서가 지역을 채우면 따라온다.
+- `supply_kind` 는 문구 후보 키워드뿐이다 — 본청약(일반·특별공급) 구분·여러 공급이 섞인 문구는 null(판정기 classify 가 공급 종류를 내면
+  그때 그 값을 쓴다 — 새 판단을 서버가 만들지 않는다).
+- 중도금 금액은 비율 합계 × P_mid 하나다(회차별 금액 없음 — 회차 비율·일정은 `payment[].interim_schedule`).
+
 ## 2026-10-09.19
 
 인천 첫 실운영 수집(`docs/design/wp/R6_TESTS_INTAKE.md` §6 제안 4 — 계약 변경 요청) 후속 — 사람 결정 **D26-2**(`docs/design/DECISIONS.md`):

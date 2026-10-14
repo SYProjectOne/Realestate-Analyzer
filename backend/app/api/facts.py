@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.errors import ContractViolation
+from app.api.reason_codes import reason_code
 from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings
 from app.models import FieldProvenance
@@ -110,6 +111,7 @@ def fact(
     }
     if label == LABEL_UNKNOWN:
         out["reason"] = (reason or "값 없음")[:120]
+        out["reason_code"] = reason_code(out["reason"])
     elif reason:
         out["reason"] = reason[:120]
     if unit:
@@ -133,6 +135,7 @@ def unknown(
         "v": None,
         "label": LABEL_UNKNOWN,
         "reason": reason[:120],
+        "reason_code": reason_code(reason[:120]),  # 계약 .20(D28-5 Q5) — 사유 문자열에서(판단 아님)
         "prov": prov,
         "checked_at": day(checked_at),
     }

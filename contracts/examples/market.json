@@ -29,6 +29,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "힐스테이트 송도 더스카이",
         "completed_year": 2024,
         "sale_year": 2020,
@@ -69,14 +70,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -110,6 +113,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "더샵 송도 프라임뷰 F20",
         "completed_year": 2022,
         "sale_year": 2019,
@@ -150,14 +154,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -191,6 +197,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "송도자이 크리스탈오션",
         "completed_year": 2024,
         "sale_year": 2021,
@@ -231,14 +238,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -272,6 +281,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "송도자이 더 스타",
         "completed_year": 2024,
         "sale_year": 2021,
@@ -353,6 +363,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "힐스테이트 레이크 송도 4차",
         "completed_year": 2025,
         "sale_year": 2022,
@@ -393,14 +404,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -434,6 +447,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "송도 럭스오션 SK뷰",
         "completed_year": 2025,
         "sale_year": 2022,
@@ -474,14 +488,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -515,6 +531,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "name": "송도자이풍경채 그라노블(분양권)",
         "completed_year": null,
         "sale_year": 2024,
@@ -555,14 +572,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": true,
         "gain_low_pct": {
@@ -596,6 +615,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "name": "검단 금호어울림 센트럴(원당)",
         "completed_year": 2021,
         "sale_year": 2019,
@@ -677,6 +697,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "name": "힐스테이트 신검단 센트럴(불로)",
         "completed_year": 2025,
         "sale_year": 2022,
@@ -717,14 +738,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -758,6 +781,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "name": "롯데캐슬 넥스티엘 RC1(원당)",
         "completed_year": 2026,
         "sale_year": 2023,
@@ -798,14 +822,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": false,
         "gain_low_pct": {
@@ -839,6 +865,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "name": "한강메트로자이 2단지(걸포)",
         "completed_year": 2020,
         "sale_year": 2017,
@@ -921,6 +948,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "name": "힐스테이트 리버시티 1단지(고촌)",
         "completed_year": 2020,
         "sale_year": 2018,
@@ -1003,6 +1031,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "name": "고촌 센트럴자이(후분양)",
         "completed_year": 2024,
         "sale_year": 2023,
@@ -1084,6 +1113,7 @@
         "snapshot_id": 12,
         "substitute": false,
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "name": "김포 북변 우미린 파크리브(분양권)",
         "completed_year": null,
         "sale_year": 2024,
@@ -1124,14 +1154,16 @@
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "peak_ym": {
           "v": null,
           "label": "확인 불가",
           "reason": "미표기",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "is_presale": true,
         "gain_low_pct": {
@@ -1165,24 +1197,28 @@
     "benchmark_flags": [
       {
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "sample_n": 6,
         "no_recent_sale_case": true,
         "substituted": false
       },
       {
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "sample_n": 3,
         "no_recent_sale_case": true,
         "substituted": false
       },
       {
         "living_area": "la_3",
+        "living_area_name": "계양구",
         "sample_n": 0,
         "no_recent_sale_case": true,
         "substituted": false
       },
       {
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "sample_n": 3,
         "no_recent_sale_case": false,
         "substituted": false
@@ -1191,6 +1227,7 @@
     "supply": [
       {
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "year": 2027,
         "units": {
           "v": 1200,
@@ -1206,6 +1243,7 @@
       },
       {
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "year": 2028,
         "units": {
           "v": 8860,
@@ -1226,6 +1264,7 @@
       },
       {
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "year": 2029,
         "units": {
           "v": 3367,
@@ -1244,6 +1283,7 @@
       },
       {
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "year": 2030,
         "units": {
           "v": 961,
@@ -1259,6 +1299,7 @@
       },
       {
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "year": 2031,
         "units": {
           "v": 2432,
@@ -1274,6 +1315,7 @@
       },
       {
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "year": 2028,
         "units": {
           "v": 2433,
@@ -1287,6 +1329,7 @@
       },
       {
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "year": 2028,
         "units": {
           "v": 3800,
@@ -1300,6 +1343,7 @@
       },
       {
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "year": 2029,
         "units": {
           "v": 2857,
@@ -1319,6 +1363,7 @@
         "complex_id": 1,
         "name": "더샵 송도그란테르",
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "move_in_ym": {
           "v": "2029-08",
           "label": "확인됨",
@@ -1331,6 +1376,7 @@
         "complex_id": 2,
         "name": "엘리프 검단 포레듀",
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "move_in_ym": {
           "v": "2028-03",
           "label": "확인됨",
@@ -1343,6 +1389,7 @@
         "complex_id": 3,
         "name": "송도 한내들 센트럴리버",
         "living_area": "la_1",
+        "living_area_name": "연수구",
         "move_in_ym": {
           "v": "2029-03",
           "label": "확인됨",
@@ -1355,6 +1402,7 @@
         "complex_id": 4,
         "name": "오퍼스 한강 스위첸",
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "move_in_ym": {
           "v": "2028-08",
           "label": "확인됨",
@@ -1367,6 +1415,7 @@
         "complex_id": 5,
         "name": "검단 센트레빌 에듀시티",
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "move_in_ym": {
           "v": "2028-08",
           "label": "확인됨",
@@ -1379,6 +1428,7 @@
         "complex_id": 6,
         "name": "더샵 검단레이크파크 AB23",
         "living_area": "la_2",
+        "living_area_name": "검단구",
         "move_in_ym": {
           "v": "2029-12",
           "label": "확인됨",
@@ -1391,6 +1441,7 @@
         "complex_id": 7,
         "name": "김포 칸타빌 에디션",
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "move_in_ym": {
           "v": "2029-12",
           "label": "확인됨",
@@ -1403,6 +1454,7 @@
         "complex_id": 8,
         "name": "풍무역세권 수자인 그라센트 2차",
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "move_in_ym": {
           "v": "2029-01",
           "label": "확인됨",
@@ -1415,6 +1467,7 @@
         "complex_id": 9,
         "name": "한강 푸르지오 리버프론트",
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "move_in_ym": {
           "v": "2031-01",
           "label": "확인됨",
@@ -1427,6 +1480,7 @@
         "complex_id": 10,
         "name": "풍무역 롯데캐슬 시그니처",
         "living_area": "la_4",
+        "living_area_name": "김포시",
         "move_in_ym": {
           "v": "2028-07",
           "label": "확인됨",
@@ -1446,14 +1500,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1465,14 +1521,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1484,14 +1542,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1503,14 +1563,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1522,14 +1584,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1541,14 +1605,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1560,14 +1626,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1579,14 +1647,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1598,14 +1668,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1624,7 +1696,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1643,7 +1716,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1662,7 +1736,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1674,14 +1749,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1693,14 +1770,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1712,14 +1791,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1738,7 +1819,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1750,14 +1832,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1769,14 +1853,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1795,7 +1881,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1807,14 +1894,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1826,14 +1915,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1852,7 +1943,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1871,7 +1963,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -2169,7 +2262,8 @@
           "label": "확인 불가",
           "reason": "2035 목표(언론)",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "location_confirmed": false,
         "linked": null,
@@ -2199,7 +2293,8 @@
           "label": "확인 불가",
           "reason": "시점 미정",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "location_confirmed": false,
         "linked": null,
@@ -2229,7 +2324,8 @@
           "label": "확인 불가",
           "reason": "시점 미정",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "location_confirmed": false,
         "linked": null,
@@ -2327,7 +2423,8 @@
           "label": "확인 불가",
           "reason": "시점 미정",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "location_confirmed": false,
         "linked": null,
@@ -2357,7 +2454,8 @@
           "label": "확인 불가",
           "reason": "시점 미정",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "other"
         },
         "location_confirmed": false,
         "linked": null,
@@ -2532,7 +2630,8 @@
           "prov": "fp_9002",
           "checked_at": "2026-10-07",
           "reason": "건수 미상(보고서 원문에 거래 건수 없음)",
-          "unit": "count"
+          "unit": "count",
+          "reason_code": "other"
         },
         "trade_window": "2026-05~2026-06",
         "basis": "신검단 신축(힐스테이트 신검단 센트럴), 건수 미상 — 저가 거래 4.8~5.3억 혼재"
@@ -2568,7 +2667,8 @@
           "prov": "fp_9003",
           "checked_at": "2026-10-07",
           "reason": "실거래 원자료 미확보(언론 시세만)",
-          "unit": "count"
+          "unit": "count",
+          "reason_code": "other"
         },
         "trade_window": null,
         "basis": "힐스테이트자이 계양(데일리안 2026-09-07) — 실거래 원자료 미확보"
