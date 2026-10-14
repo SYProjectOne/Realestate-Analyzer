@@ -250,7 +250,9 @@ def test_minor3_intake_view_text_uses_kst_day() -> None:
 
 
 def test_minor3_report_intake_dates_are_kst(scratch: Session) -> None:
-    """접수 상태 확인 시각 'Z'(UTC 20시) → 보고서 §4 표·배지·실패 출처·부록 B 날짜 = KST 다음 날."""
+    """접수 상태 확인 시각 'Z'(UTC 20시) → 보고서 접수 경로별 표·배지·실패 출처·부록 B 날짜 = KST 다음 날.
+
+    R9-REPORT: 접수 경로별 전부 표는 §4 본문에서 부록 D-4 로 옮겼다(본문은 4열 요약 표) — 그 표를 본다."""
     from app.reports.data import load_report
     from app.reports.render import render_html
 
@@ -270,9 +272,9 @@ def test_minor3_report_intake_dates_are_kst(scratch: Session) -> None:
     ref = next(r for r in data.references if r.url == row.evidence_url)
     assert ref.checked_at == "2026-10-10"
     soup = BeautifulSoup(render_html(data).html, "html.parser")
-    s04 = soup.find("section", id="s4")
-    assert s04 is not None
-    rows = [tr for tr in s04.find_all("tr") if "확인 불가(403, 2026-10-10)" in tr.get_text()]
+    appx = soup.find("section", id="appx-d")
+    assert appx is not None
+    rows = [tr for tr in appx.find_all("tr") if "확인 불가(403, 2026-10-10)" in tr.get_text()]
     assert rows
     for tr in rows:
         assert "2026-10-09" not in tr.get_text(), tr  # 표 칸·배지 모두 KST 날짜

@@ -5,10 +5,16 @@
 - 색은 의미만(확정 = strong, 미판정·미해결 = grayed), 계열 구분은 Okabe-Ito(프론트 ``palette.ts``와 같은 값).
 - 차트 데이터는 같은 자리의 표로 열어 볼 수 있다(D7) — 셀은 Fact 그대로(라벨 유지).
 - 점수는 WP4 결과(score_component·score_total)를 읽기만 한다(ADR-11): 기여 = w × s.
+- R9-REPORT(30-proposal §11-2 (3)·(5), K3·K4): 제목 = '지표 · 기간 · 단위', 범례에 단위, 아래에 '자료: 출처 · 라벨 ·
+  확인일' 한 줄(``source``)과 그림 읽는 법(``note``). 값은 모두 같은 자리 표에 있다(그림에만 있는 값 없음).
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Iterable
 from typing import Any, Final
 
 from app.core.contracts_gen import Fact
@@ -26,15 +32,39 @@ GRAYED: Final = "rgb(156 163 175)"
 VIRTUAL: Final = "가상 후보"
 
 
-def _base() -> dict[str, Any]:
+def _base(unit: str) -> dict[str, Any]:
+    """``unit`` = 범례 이름 뒤에 붙는 단위(R9-REPORT — 범례만 보고도 단위를 안다)."""
     return {
         "backgroundColor": "transparent",
         "textStyle": {"color": FG, "fontFamily": "sans-serif"},
         "aria": {"enabled": True},
         "animation": False,
-        "legend": {"top": 0, "textStyle": {"color": MUTED, "fontSize": 11}},
+        "legend": {
+            "top": 0,
+            "textStyle": {"color": MUTED, "fontSize": 11},
+            "formatter": f"{{name}} ({unit})",
+        },
         "tooltip": {"trigger": "item"},
     }
+
+
+def _facts(rows: Iterable[Iterable[Any]]) -> list[Fact]:
+    return [x for row in rows for x in row if isinstance(x, Fact)]
+
+
+def source_line(what: str, facts: Iterable[Fact]) -> str:
+    """'자료: <무엇> · 라벨 <라벨 n건 …> · 확인일 <처음~마지막>' — 표 칸 Fact 의 라벨·확인일을 센다(새 판단 없음)."""
+    fs = list(facts)
+    labels = Counter(f.label for f in fs)
+    days = sorted({str(f.checked_at)[:10] for f in fs if f.checked_at})
+    parts = [f"자료: {what}"]
+    if labels:
+        parts.append("라벨 " + " · ".join(f"{k} {n}건" for k, n in labels.most_common()))
+    if days:
+        parts.append("확인일 " + (days[0] if len(days) == 1 else f"{days[0]}~{days[-1]}"))
+    else:
+        parts.append("확인일 기록 없음(판정·계산 기록 — 기준일 기준)")
+    return " · ".join(parts)
 
 
 def _axis() -> dict[str, Any]:
@@ -108,7 +138,7 @@ def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
                 "data": values,
             }
         )
-    option = _base() | {
+    option = _base("가중 기여, 점") | {
         "grid": {"left": 40, "right": 16, "top": 48, "bottom": 96},
         "xAxis": {
             "type": "category",
@@ -116,7 +146,7 @@ def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
             **_axis(),
             "axisLabel": {"color": MUTED, "fontSize": 9, "interval": 0, "width": 70, "overflow": "break"},
         },
-        "yAxis": {"type": "value", "min": 0, **_axis()},
+        "yAxis": {"type": "value", "min": 0, "name": "점", **_axis()},
         "series": series,
     }
     subtitle = "가중치 " + " · ".join(f"{COMPONENT_LABELS[k]} {data.weights[k]:.2f}" for k in keys)
@@ -127,12 +157,19 @@ def c06_score_breakdown(data: ReportData) -> ChartSpec | None:
     ]
     return ChartSpec(
         id="c06",
-        title="종합 점수 분해(C6)",
+        title=f"종합 점수 분해(C6) · 기준일 {data.asof_date} · 단위 점(가중 기여)",
         subtitle=subtitle,
         option=option,
         columns=cols,
         rows=table,
         height=380,
+        source=source_line(
+            f"이 스냅샷 점수 실행(score_total·score_component, 시나리오 {data.scenario_name})", _facts(table)
+        ),
+        note=(
+            "막대 한 칸의 길이 = 그 성분의 가중치 × 성분 점수(위 가중치와 표의 성분 점수). "
+            "미판정 성분은 길이 0과 '미판정' 글자. 종합 점수 값은 표의 '종합' 열."
+        ),
     )
 
 
@@ -192,9 +229,9 @@ def c01_ladder(data: ReportData) -> ChartSpec | None:
                 "data": [_scope_item(label) for _ in cats],
             }
         )
-    option = _base() | {
+    option = _base("확률 0~1") | {
         "grid": {"left": 80, "right": 40, "top": 56, "bottom": 24},
-        "xAxis": {"type": "value", "min": 0, "max": 1, **_axis()},
+        "xAxis": {"type": "value", "min": 0, "max": 1, "name": "확률(0~1)", **_axis()},
         "yAxis": {"type": "category", "data": cats, "inverse": True, **_axis()},
         "series": series,
     }
@@ -203,14 +240,18 @@ def c01_ladder(data: ReportData) -> ChartSpec | None:
         [lad.name, lad.target_ym, lad.p5, lad.p10, lad.p20, lad.p_flat, lad.status] for lad in ladders
     ]
     table += [[cx.name, "—", cx.scope_note, "—", "—", "—", "사다리 미실행"] for cx in scoped]
+    seqs = sorted({lad.judgment_seq for lad in ladders if lad.judgment_seq is not None})
+    calls = ("호출 " + ", ".join(f"#{q}" for q in seqs)) if seqs else "호출 번호 기록 없음"
     return ChartSpec(
         id="c01",
-        title="상승 확률 사다리(C1) — 입주 후 1년",
+        title="상승 확률 사다리(C1) · 입주 후 1년 · 단위 확률(0~1)",
         subtitle="명제 시점 = 입주월 + 12개월",
         option=option,
         columns=cols,
         rows=table,
         height=420,
+        source=source_line(f"판정기 noul(사다리) {calls}, 부록 A", _facts(table)),
+        note="막대 끝 글자 = 표의 확률 값과 라벨. 점선 0.15·0.85 = 판정기 임계값(부록 A).",
     )
 
 
@@ -228,9 +269,9 @@ def c07_decision(data: ReportData, block: ScenarioBlock | None = None) -> ChartS
     items = [d for d in block.decisions if _num(d.prob) is not None]
     if not items:
         return None
-    option = _base() | {
+    option = _base("확률 0~1") | {
         "grid": {"left": 140, "right": 48, "top": 24, "bottom": 24},
-        "xAxis": {"type": "value", "min": 0, "max": 1, **_axis()},
+        "xAxis": {"type": "value", "min": 0, "max": 1, "name": "확률(0~1)", **_axis()},
         "yAxis": {"type": "category", "inverse": True, "data": [d.option for d in items], **_axis()},
         "series": [
             {
@@ -252,14 +293,17 @@ def c07_decision(data: ReportData, block: ScenarioBlock | None = None) -> ChartS
         [d.option, d.prob, "선택" if d.chosen else "", "동률" if d.tie else "", VIRTUAL if d.virtual else ""]
         for d in items
     ]
+    call = f"호출 #{block.judgment_seq}" if block.judgment_seq else "호출 번호 기록 없음"
     return ChartSpec(
         id="c07" if main else f"c07_{block.code}",
-        title=f"판정기 확률(C7) — {block.name}",
+        title=f"판정기 확률(C7) · {block.name} · 단위 확률(0~1)",
         subtitle=sub,
         option=option,
         columns=cols,
         rows=table,
         height=320,
+        source=source_line(f"판정기 decide(상황별 선택) {call}, 부록 A", _facts(table)),
+        note="막대 끝 글자 = 표의 확률 값과 라벨. 진한 막대 = 판정기가 고른 선택지(표의 '선택').",
     )
 
 
@@ -291,22 +335,25 @@ def c04_supply(data: ReportData) -> ChartSpec | None:
                 "itemStyle": {"color": CATEGORICAL[i % len(CATEGORICAL)]},
             }
         )
-    option = _base() | {
+    option = _base("세대") | {
         "grid": {"left": 56, "right": 16, "top": 48, "bottom": 32},
         "xAxis": {"type": "category", "data": [str(y) for y in years], **_axis()},
-        "yAxis": {"type": "value", "min": 0, **_axis()},
+        "yAxis": {"type": "value", "min": 0, "name": "세대", **_axis()},
         "series": series,
     }
     cols = ["생활권", "연도", "세대"]
     table = [[s.living_area_name, str(s.year), s.units] for s in data.supply]
+    span = f"{years[0]}~{years[-1]}년" if len(years) > 1 else f"{years[0]}년"
     return ChartSpec(
         id="c04",
-        title="입주 물량(C4)",
-        subtitle="세대 단위 · 라벨은 표 참조(추정 집계·비공식)",
+        title=f"입주 물량(C4) · {span} · 단위 세대",
+        subtitle="생활권별로 쌓은 막대 · 라벨은 표 참조(추정 집계·비공식)",
         option=option,
         columns=cols,
         rows=table,
         height=320,
+        source=source_line("입주 물량 행(supply, 생활권·연도별)", _facts(table)),
+        note="막대 한 칸 = 표에서 같은 생활권·연도 행의 세대 합(확인 불가 행은 빼고 더함). 행별 값은 표에 있다.",
     )
 
 

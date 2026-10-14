@@ -127,12 +127,18 @@ def generate(
         if compare_snapshot_id is not None
         else None
     )
-    rendered = render_html(data, diff=diff, echarts_js=echarts_js)
-    target_dir = out_dir if out_dir is not None else report_dir()
     from app.models import Snapshot
 
     snap_row = session.get(Snapshot, snapshot_id)
     cmp_row = session.get(Snapshot, compare_snapshot_id) if compare_snapshot_id is not None else None
+    rendered = render_html(
+        data,
+        diff=diff,
+        echarts_js=echarts_js,
+        revision=int(snap_row.revision or 1) if snap_row is not None else None,
+        compare_revision=int(cmp_row.revision or 1) if cmp_row is not None else None,
+    )
+    target_dir = out_dir if out_dir is not None else report_dir()
     name = report_filename(
         data.asof_date,
         fmt,
