@@ -21,6 +21,8 @@ import {
 
 const MAX_COMPARE = 6;
 const MIN_COMPARE = 2;
+/** 창 아래 비워 둘 높이: 고정 문구(약 30) + 트레이 bottom-10(40) + 트레이 한 줄(약 46) + 여유 */
+const TRAY_RESERVE = 124;
 
 /**
  * G2 단지 리스트 `/complexes` (RA §7-1)
@@ -91,6 +93,7 @@ export function ComplexesPage() {
   return (
     <PageShell
       title={t('page.G2.title')}
+      intro={t('page.G2.intro')}
       legend
       actions={
         snapshotId ? (
@@ -150,6 +153,7 @@ export function ComplexesPage() {
                   maxSelected={MAX_COMPARE}
                   readOnly={readOnly}
                   linkSearch={globalSearch}
+                  reserveBottom={readOnly ? 48 : TRAY_RESERVE}
                 />
               )}
             </>

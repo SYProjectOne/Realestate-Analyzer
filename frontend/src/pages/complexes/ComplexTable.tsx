@@ -14,7 +14,16 @@ import {
   type Range,
   type Virtualizer,
 } from '@tanstack/react-virtual';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
 import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
@@ -108,6 +117,41 @@ export interface ComplexTableProps {
   maxSelected: number;
   readOnly: boolean;
   linkSearch: string;
+  /**
+   * 창 아래에서 비워 둘 높이(px) — 하단 고정 문구 + 비교 트레이(R9-UI P4: 트레이가 표 마지막 보이는 행을 덮던 결함).
+   * 표 스크롤 영역 높이 = 창 높이 − 표 위치 − 이 값(최소 MIN_TABLE_HEIGHT).
+   */
+  reserveBottom?: number;
+}
+
+/** 표 스크롤 영역 최소 높이(px) */
+const MIN_TABLE_HEIGHT = 320;
+
+/**
+ * 표 스크롤 영역 높이를 창 안에 맞춘다(첫 화면에서 아래 끝이 트레이·고정 문구 위). 값은 표 위치·창 높이에만 기대므로
+ * 행 높이 실측과 되먹임이 없다(R8-JITTER). ResizeObserver 가 없으면(jsdom) 기존 70vh.
+ */
+function useFitHeight(ref: { current: HTMLElement | null }, reserve: number): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setHeight(Math.max(MIN_TABLE_HEIGHT, Math.round(window.innerHeight - top - reserve)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    // 위쪽(필터 펼침·안내)이 바뀌면 표 위치가 바뀐다 — 화면 구역을 본다
+    const host = el.closest('section') ?? document.body;
+    ro.observe(host);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [ref, reserve]);
+  return height;
 }
 
 /** G2 ComplexTable — TanStack Table + 가상 스크롤(react-virtual), 열 선택 저장 */
@@ -122,6 +166,7 @@ export function ComplexTable({
   maxSelected,
   readOnly,
   linkSearch,
+  reserveBottom = 48,
 }: ComplexTableProps) {
   const [visibility, setVisibility] = useState<VisibilityState>(loadVisibility);
   useEffect(() => saveVisibility(visibility), [visibility]);
@@ -298,6 +343,7 @@ export function ComplexTable({
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fitHeight = useFitHeight(scrollRef, reserveBottom);
   const tableRows = table.getRowModel().rows;
   const rangeExtractor = useHeldRange();
   const virtualizer = useVirtualizer({
@@ -329,6 +375,7 @@ export function ComplexTable({
         ref={scrollRef}
         data-testid="complex-table-scroll"
         className="max-h-[70vh] overflow-auto rounded-sm border border-border bg-surface"
+        style={fitHeight !== null ? { maxHeight: fitHeight } : undefined}
       >
         <table
           aria-label={t('page.G2.table')}

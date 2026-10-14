@@ -37,6 +37,8 @@ describe('C2 판정 범위 표시', () => {
     const { router } = renderRoute('/complexes');
     await screen.findByRole('table', { name: t('page.G2.table') });
     const filters = screen.getByRole('search', { name: t('page.G2.filters') });
+    // R9-UI P4: 점수 계산 범위는 '필터 더 보기' 안
+    await userEvent.click(within(filters).getByRole('button', { name: /^필터 더 보기/ }));
     const select = within(filters).getByLabelText(t('page.G2.filter.judge_scope'));
     const labels = Array.from(select.querySelectorAll('option')).map((o) => o.textContent);
     for (const scope of JUDGE_SCOPES) {

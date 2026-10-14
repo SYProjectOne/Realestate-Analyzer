@@ -136,7 +136,12 @@
     },
     "G2": {
       "title": "단지 리스트",
+      "intro": "공고가 확인된 단지 목록입니다. 단지 이름을 누르면 상세가 열립니다. 공고문이 기준입니다.",
       "filters": "필터",
+      "filtersMore": "필터 더 보기 (적용 {n})",
+      "filtersLess": "필터 접기",
+      "openNowChip": "지금 접수 가능만 보기",
+      "openNowChipOff": "전체 보기",
       "filter": {
         "living_area": "생활권",
         "intake_status": "접수",

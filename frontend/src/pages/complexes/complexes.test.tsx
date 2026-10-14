@@ -181,3 +181,70 @@ describe('G2 첫 화면·전체 행 (W8·W9)', () => {
     rec.stop();
   });
 });
+
+describe('R9-UI P4 G2 필터 접기 · 접수 가능 칩 · 목록 안내(30-proposal §5)', () => {
+  const MORE = [
+    'land_type',
+    'resale_end_before',
+    'price_min',
+    'price_max',
+    'move_in_year',
+    'inclusion_class',
+    'judge_scope',
+  ] as const;
+
+  it('기본: 핵심 필터 3칸(단지명·접수·생활권)만 보이고 나머지 7칸은 "필터 더 보기"(1클릭)', async () => {
+    renderRoute('/complexes');
+    await screen.findByRole('table', { name: t('page.G2.table') });
+    const filters = screen.getByRole('search', { name: t('page.G2.filters') });
+    for (const key of ['q', 'intake_status', 'living_area'] as const) {
+      expect(within(filters).getByLabelText(t(`page.G2.filter.${key}`))).toBeInTheDocument();
+    }
+    for (const key of MORE) {
+      expect(within(filters).queryByLabelText(t(`page.G2.filter.${key}`))).toBeNull();
+    }
+    const more = within(filters).getByRole('button', {
+      name: t('page.G2.filtersMore', { n: '0' }),
+    });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(more);
+    for (const key of MORE) {
+      expect(within(filters).getByLabelText(t(`page.G2.filter.${key}`))).toBeInTheDocument();
+    }
+    expect(within(filters).getByRole('button', { name: t('page.G2.filtersLess') })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('URL 에 숨은 필터 값이 있으면 펼친 채로 열고, 버튼에 적용 개수', async () => {
+    renderRoute('/complexes?land_type=공공택지&move_in_year=2028');
+    await screen.findByRole('table', { name: t('page.G2.table') });
+    const filters = screen.getByRole('search', { name: t('page.G2.filters') });
+    expect(within(filters).getByLabelText(t('page.G2.filter.land_type'))).toHaveValue('공공택지');
+    await userEvent.click(within(filters).getByRole('button', { name: t('page.G2.filtersLess') }));
+    expect(
+      within(filters).getByRole('button', { name: t('page.G2.filtersMore', { n: '2' }) }),
+    ).toBeInTheDocument();
+  });
+
+  it('"지금 접수 가능만 보기" 칩 = intake_status=가능 쿼리, 다시 누르면 전체', async () => {
+    const { router } = renderRoute('/complexes');
+    await screen.findByRole('table', { name: t('page.G2.table') });
+    const chip = screen.getByRole('button', { name: t('page.G2.openNowChip') });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(chip);
+    await waitFor(() =>
+      expect(router.state.location.search).toContain('intake_status=%EA%B0%80%EB%8A%A5'),
+    );
+    const off = screen.getByRole('button', { name: t('page.G2.openNowChipOff') });
+    expect(off).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(off);
+    await waitFor(() => expect(router.state.location.search).not.toContain('intake_status='));
+  });
+
+  it('목록 안내 한 줄', async () => {
+    renderRoute('/complexes');
+    expect(await screen.findByText(t('page.G2.intro'))).toBeInTheDocument();
+  });
+});

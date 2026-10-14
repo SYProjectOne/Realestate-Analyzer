@@ -314,6 +314,22 @@ test.describe('R5-FE(D25-1) 차트 지연 로딩 · 전역 쿼리 유지', () =>
   });
 });
 
+test.describe('R9-UI P4 G2 비교 트레이가 표를 가리지 않는다(00-baseline)', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('첫 화면: 표 스크롤 영역 아래 끝 ≤ 비교 트레이 위 끝', async ({ page }) => {
+    await ready(page, '/complexes', P.G2.title);
+    const scroll = page.getByTestId('complex-table-scroll');
+    await expect(scroll.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    const tray = page.getByRole('complementary', { name: P.G2.tray });
+    const s = await scroll.boundingBox();
+    const tb = await tray.boundingBox();
+    expect(s && tb).toBeTruthy();
+    expect((s?.y ?? 0) + (s?.height ?? 0)).toBeLessThanOrEqual((tb?.y ?? 0) + 1);
+  });
+});
+
 test.describe('R9-UI P3 가로 넘침 없음(00-baseline 레이아웃 결함)', () => {
   for (const [name, width] of [
     ['데스크톱 1440', 1440],
