@@ -306,8 +306,11 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 </dd>
               ) : null}
             </div>
+          </dl>
+          {/* 정의 목록은 dt·dd(또는 그것을 묶은 div)만 바로 안에 — 납부 항목은 별도 목록(접근성 definition-list) */}
+          <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
             {current ? (
-              <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+              <>
                 <Item label={t('page.G3.summary.down')} term="down">
                   <FactCell wrap fact={current.down_payment_pct} unit="pct" digits={0} />
                   <span className="text-xs text-muted">{t('page.G3.summary.downFirst')}</span>
@@ -335,7 +338,7 @@ export function ComplexHeader({ detail }: { detail: ComplexDetail }) {
                 <Item label={t('page.G3.summary.balance')} term="balance">
                   <FactCell wrap fact={current.balance_pct} unit="pct" digits={0} />
                 </Item>
-              </div>
+              </>
             ) : (
               <Item label={t('page.G3.summary.down')}>
                 <EmptyState inline reason={t('page.G3.summary.noPayment')} />

@@ -84,7 +84,7 @@ export function Term({ k, children, className = '' }: TermProps) {
         aria-controls={id}
         aria-label={t('glossary.open', { term: item.term })}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[11px] leading-none text-muted hover:text-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+        className="-my-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs leading-none text-muted hover:text-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span aria-hidden>ⓘ</span>
       </button>

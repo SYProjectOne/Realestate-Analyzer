@@ -82,7 +82,7 @@ export function Header() {
               aria-label={t('header.scenario')}
               value={selected}
               onChange={(e) => setScenario(e.target.value)}
-              className="max-w-56 rounded-sm border border-border bg-surface px-2 py-1 text-sm"
+              className="w-48 max-w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm"
             >
               {options.map((o) => (
                 <option key={o.id} value={String(o.id)}>
