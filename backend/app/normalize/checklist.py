@@ -7,6 +7,8 @@
 | 만료 | 거주의무 만료(입주예정월 + N개월, 추정) | move_in_ym 1일 + residency_months | complex (residency_months > 0) |
 | 계약 | 계약 체결 마감 | 계약일 마지막 날 | complex.contract_dates (계약 0004 kind '계약') |
 | 공고 예상 | 모집공고 예정 | 모집공고일(기준일 뒤) / 없음(공고 전 단지) | complex.notice_date · applyhome_id 없음 |
+| 청약 접수 | <순위·구분> 청약 접수[(<거주지역>·…)] · 청약 접수(잔여·임의 한 칸) | 접수 시작일 | complex.apply_dates(D29-3, 계약 .21) — 접수가 끝나지 않은 것(끝날짜 ≥ 기준일) |
+| 당첨자 발표 | 당첨자 발표 | 당첨자 발표일 | complex.winner_date(D29-3) |
 | 법적 확인 | 토지거래허가구역 여부·대지지분 기준 확인(확인 권고) · 비과세 거주요건 적용 여부 확인(확인 권고) | 없음 | meta §2-9: 코드가 확정할 수 없는 추정 항목 — 단지마다 |
 | 법적 확인 | <항목> 확인(추정 값 v) | 없음 | 법적 사실 필드의 채택 출처 라벨이 '추정' |
 
@@ -20,6 +22,11 @@
   고치지 않는다. 옛 버전이 남긴 같은 키의 열린 항목이 둘 이상이면 하나(제목이 같은 것, 없으면 가장 새 것)만 남기고
   나머지는 'na' 로 닫는다. note 는 처음 만들 때만 쓴다(사람이 PATCH 로 고치는 칸).
 - 단지 제외가 확정되면 그 단지의 열린 항목을 'na' 로 닫는다(미해결이면 닫지 않는다).
+- D29-3 청약 접수: ``apply_dates`` 항목(R9-PARSE ``{kind, start, end}`` · 옛 ``{kind, date}``)을 순위·구분(kind 의 첫 낱말 —
+  '1순위'·'특별공급'·'청약접수')과 같은 기간끼리 한 항목으로 묶는다 — 거주지역 구분은 제목 괄호('1순위 청약 접수(해당지역·
+  기타지역)'). 기한 = 접수 시작일(달력에 접수 날), 접수 중(시작 < 기준일 ≤ 끝)인 것도 만든다. 메모 = 접수 기간. 키 = 'apply:' +
+  제목의 구분 부분. 당첨자 발표 키 = 'winner'.
+- D29-2: 병합된 단지 행(``complex.merged_into_id`` — 같은 사업의 중복 행)도 제외처럼 다룬다.
 - R9-PARSE: 다른 단지의 납부 조건 공고번호를 주택관리번호로 가진 행(잔여 공고 번호로 따로 생긴 같은 사업의 두 번째 행 —
   ``absorbed_remnant_rows``)도 제외처럼 다룬다(같은 일정이 캘린더에 두 번 나오지 않게).
 - M-9(계약 .8 ``closed_by``): 자동 항목의 근거 사실이 사라지거나 강등(검증 모순 — ``app.facts_view`` 오버레이로 읽는다)되면
@@ -47,11 +54,14 @@ from app.analysis.scope import EXCLUDED_CLASSES as JUDGE_EXCLUDED
 from app.models import ChecklistItem, Complex, FieldProvenance, PaymentTerms
 
 __all__ = [
+    "APPLY_KIND",
     "EXCLUDED_CLASSES",
     "LEGAL_FIELDS",
+    "WINNER_KIND",
     "ChecklistSync",
     "absorbed_remnant_rows",
     "add_months_date",
+    "apply_groups",
     "excluded_for_checklist",
     "item_key",
     "sync_checklist",
@@ -91,6 +101,12 @@ PROTECTED_KINDS: Final = frozenset({"사실 재확인"})
 _INTERIM_RE: Final = re.compile(r"^중도금 (\d+)회차 납부일$")
 _PREFIX_KEYS: Final = (("전매제한 종료", "resale_end"), ("거주의무 만료", "residency_end"))
 _EXACT_KEYS: Final = {"계약 체결 마감": "contract_end", "모집공고 예정": "notice"}
+APPLY_KIND: Final = "청약 접수"
+WINNER_KIND: Final = "당첨자 발표"
+_APPLY_SUFFIX: Final = "청약 접수"
+_APPLY_WHOLE: Final = "청약접수"
+"""청약홈 잔여·임의 공고의 전체 접수 기간 한 칸(``applyhome_api_parser.APPLY_KINDS`` 끝) — 제목은 그냥 '청약 접수'."""
+_APPLY_TITLE_RE: Final = re.compile(r"^(?:(?P<rank>\S+) )?청약 접수(?:\((?P<areas>[^()]+)\))?$")
 
 
 def item_key(kind: str, title: str) -> str:
@@ -98,6 +114,13 @@ def item_key(kind: str, title: str) -> str:
     m = _INTERIM_RE.match(title)
     if m:
         return f"interim:{int(m.group(1))}"
+    if kind == APPLY_KIND:
+        a = _APPLY_TITLE_RE.match(title)
+        if a:
+            areas = a.group("areas")
+            return f"apply:{a.group('rank') or ''}" + (f"({areas})" if areas else "")
+    if kind == WINNER_KIND and title == WINNER_KIND:
+        return "winner"
     for prefix, key in _PREFIX_KEYS:
         if title.startswith(prefix):
             return key
@@ -122,7 +145,12 @@ def absorbed_remnant_rows(session: Session, region_id: int) -> set[int]:
         )
     ).all()
     by_no = {str(no): cid for cid, no in rows}
-    out: set[int] = set()
+    # D29-2: 원 단지에 병합된 행(``complex.merged_into_id``)도 같은 사업의 두 번째 행이다
+    out: set[int] = set(
+        session.scalars(
+            select(Complex.id).where(Complex.region_id == region_id, Complex.merged_into_id.is_not(None))
+        )
+    )
     for owner, no in session.execute(
         select(PaymentTerms.complex_id, PaymentTerms.notice_no)
         .join(Complex, Complex.id == PaymentTerms.complex_id)
@@ -205,6 +233,36 @@ def _contract_end(items: list[Any]) -> str | None:
     return max(days) if days else None
 
 
+def apply_groups(apply_dates: Any) -> list[tuple[str, str, str]]:
+    """``complex.apply_dates`` → [(제목, 시작일, 끝날짜)] (D29-3). 순위·구분(kind 첫 낱말)과 기간이 같은 항목을 묶고 거주지역 구분은
+    제목 괄호에. 옛 모양 ``{kind, date}`` 는 시작 = 끝 = date. 날짜를 못 읽는 항목은 뺀다. 같은 제목이 다시 나오면 앞의 것(표 순서
+    — ``APPLY_KINDS``)만. 문자열·날짜 정리뿐이다(판단 아님)."""
+    groups: dict[tuple[str, str, str], list[str]] = {}
+    for it in apply_dates or []:
+        if not isinstance(it, dict):
+            continue
+        kind = str(_v(it.get("kind")) or "").strip()
+        start = _day(it.get("start")) or _day(it.get("date"))
+        end = _day(it.get("end")) or start
+        if not kind or start is None or end is None:
+            continue
+        rank, _, area = ("", "", "") if kind == _APPLY_WHOLE else kind.partition(" ")
+        areas = groups.setdefault((rank, start, max(start, end)), [])
+        if area and area not in areas:
+            areas.append(area)
+    out: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for (rank, start, end), areas in groups.items():
+        title = f"{rank} {_APPLY_SUFFIX}" if rank else _APPLY_SUFFIX
+        if areas:
+            title += f"({'·'.join(areas)})"
+        if title in seen:
+            continue
+        seen.add(title)
+        out.append((title, start, end))
+    return out
+
+
 def _wants(
     cx: Complex, terms: list[PaymentTerms], estimated: dict[str, str | None], asof: str
 ) -> list[_Want]:
@@ -244,6 +302,11 @@ def _wants(
             end,
             "자동: 실제 기산일은 최초 입주가능일 — 입주예정월 1일로 추정",
         )
+    for title, start, end in apply_groups(cx.apply_dates):
+        if end >= asof:  # 접수가 끝나지 않았다(접수 중이면 기한 = 지난 시작일이어도 둔다)
+            period = start if start == end else f"{start}~{end}"
+            want(APPLY_KIND, title, start, f"자동: 청약홈 청약 일정 {period}")
+    dated(WINNER_KIND, WINNER_KIND, _day(cx.winner_date), "자동: 청약홈 당첨자 발표일")
     end_contract = _contract_end(cx.contract_dates)
     dated("계약", "계약 체결 마감", end_contract, "자동: 청약홈 계약일")
     if cx.applyhome_id is None:

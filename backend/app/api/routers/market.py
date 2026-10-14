@@ -209,7 +209,13 @@ def _market_static(
             }
         )
 
-    every = list(session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id)))
+    every = list(
+        session.scalars(
+            select(Complex)
+            .where(Complex.region_id == region.id, Complex.merged_into_id.is_(None))  # D29-2
+            .order_by(Complex.id)
+        )
+    )
     # 강등 오버레이가 적용된 단지 행(묶음의 cx — 원본 행이 아니다, R3 4차 minor). 단지 행은 시나리오와 무관하다
     cx_rows = views.load_bundles(session, every, snap.id)
     complexes = [cx_rows[c.id].cx for c in every if want is None or cx_rows[c.id].cx.living_area in want]

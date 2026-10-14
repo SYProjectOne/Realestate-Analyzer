@@ -86,6 +86,7 @@ FIELD_LABELS: Final[dict[str, str]] = {
     "new_notice": "새 공고",
     "price_change_pct": "최초 공고 대비 가격 변동(%)",
     "resale_end": "전매 종료일",
+    "merged_into": "같은 사업 단지 병합",
 }
 """필드 이름(change_event.field) → 화면 이름. 표에 없는 필드는 그대로(``field_label``)."""
 
@@ -173,6 +174,10 @@ def change_summary(entity: str, field: str, old_text: str | None, new_text: str 
         return f"새 공고: {new_text}"[:200] if new_text else "새 공고"
     if field == "first_load" and old_text is None and new_text:
         return new_text[:200]
+    if (
+        entity == "complex" and field == "merged_into" and new_text
+    ):  # D29-2: '<원 단지>에 병합 — 같은 사업(…)'
+        return f"중복 단지 행 병합: {new_text}"[:200]
     long_value = any(len(v or "") > _PLAIN_MAX for v in (old_text, new_text))
     if kind != "plain" or long_value:
         return f"{label}{_particle(label)} 바뀌었습니다"[:200]

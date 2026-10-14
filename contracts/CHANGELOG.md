@@ -2,6 +2,64 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.21
+
+R9 데이터 후속 결정(CEO **D29**, `docs/design/DECISIONS.md`) — **D29-3** 체크리스트 kind '청약 접수'·'당첨자 발표', **D29-2** 같은 사업
+중복 단지 행 병합(목록·점수에서 빠짐), 당첨 가점 '-' 사유 구별(R10 과제 3). 계약 소유자 = **R10-FOLLOW**(브랜치 `wp/r10-follow`).
+마이그레이션 **0018**(`checklist_item.kind` CHECK 값 2 추가 · `complex.merged_into_id` 열 — 데이터 채움 없음). 필드 삭제 없음, **enum 값 추가 2곳**
+(`ChecklistItem.kind` +2, `ReasonCode` +1 `no_winner`), 새 엔드포인트·새 필드 없음 → 저장 모양 버전(`SHAPE_VERSION`) **그대로 1**(.20 과 같은
+까닭 — 옛 발행 저장본은 새 값이 없을 뿐 계약을 통과한다. 올리면 발행 리비전 저장본 전부가 500 `stored_view_mismatch`). 판정기 호출 없음 —
+날짜 정리·문자열 대조·표 조회뿐(AGENTS 규칙 3·4). 테스트 표(결함 · 테스트 · 수정 전 실패 확인)는 `docs/design/wp/R10_TESTS_FOLLOW.md`.
+
+**프론트가 맞출 것** — 아래 'FE 차이' 표. 이 브랜치가 FE 도 맞췄다(`npm run gen:api`·`gen:msw` 재생성, G1 다가오는 일정·G7 캘린더·
+G3 경쟁률 당첨 가점 칸).
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .20 | .21 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | `ChecklistItem.kind` '청약 접수' (`GET /ops/checklist` — G1 다가오는 일정·G7 체크리스트·캘린더) | 없음 — 청약 접수일은 일정에 없었다(G1 '청약 접수일은 아직 일정에 없습니다(수집 전)' 안내) | 단지 청약 일정(`complex.apply_dates` — R9-PARSE `{kind, start, end}`, 옛 `{kind, date}`)에서 동기화가 만든다: 순위·구분(특별공급·1순위·2순위·일반공급)과 **기간이 같은** 항목을 하나로, 거주지역 구분은 제목 괄호 — title `'1순위 청약 접수(해당지역·기타지역)'`·`'특별공급 청약 접수'`, 잔여·임의 공고의 전체 접수 한 칸은 `'청약 접수'`. `due_date` = **접수 시작일**, note `'자동: 청약홈 청약 일정 <시작>[~<끝>]'`(여러 날이면 기간). 접수가 끝나지 않은 것(끝날짜 ≥ 기준일)만 — 접수 중이면 기한이 지난 시작일이어도 있다. 화면은 안내 문구를 지우고 종류 배지 '청약 접수' + 제목(어느 순위인지)을 보인다 | D29-3 |
+| F2 | `ChecklistItem.kind` '당첨자 발표' | 없음 | `complex.winner_date` 에서: title `'당첨자 발표'`, `due_date` = 발표일(기준일 이후만), note `'자동: 청약홈 당첨자 발표일'` | D29-3 |
+| F3 | 같은 사업 중복 단지 행(D29-2 — 인천 도화 39/99) — 목록 `GET /snapshots/{sid}/complexes`·대시보드·시장·민감도 | 같은 이름 두 줄(임의공급 번호 행 99 가 점수·순위 대상), G7 캘린더에 같은 일정 두 번(R9-PARSE 가 캘린더만 막음) | 잔여·임의 공고문이 원 공고 번호를 인용하면(R9-PARSE 정규식) 그 공고 자기 번호로 따로 생긴 행을 원 단지에 병합(`complex.merged_into_id` — 계약 응답 필드 아님). 병합된 행은 **새 리비전부터** 목록·대시보드·시장·점수·판정·체크리스트·수집 대상에서 빠진다. 이미 발행된 리비전은 저장본 그대로(D11-1 — 그 리비전 목록에는 남는다). 병합 change_event: entity `complex`, field `merged_into`, entity_id = 병합된 행, complex_id = 원 단지, critical(재판정) — `field_label` '같은 사업 단지 병합', `summary` '중복 단지 행 병합: <원 단지>에 병합 — 같은 사업(…)'. 화면 변경 없음(변경 피드가 summary 를 그대로 보인다). 병합된 행 상세(`GET /complexes/{id}`)는 여전히 200(옛 리비전 링크) | D29-2 · D11-1 |
+| F4 | `Competition.winning_score_min/max/avg` 가 '확인 불가'일 때 사유 · `ReasonCode` 새 값 `no_winner` | 값이 없으면 모두 '확인 불가(가점 미수집)'(`not_collected`) — 청약홈 팝업 칸 '-'(가점 당첨자 없음)도 같은 문구 | 셋으로 나눈다(날짜 비교·원문 대조): ① 당첨자 발표일 > 기준일 → `'발표 전(당첨자 발표 YYYY-MM-DD)'`(`not_published`), ② 팝업 칸 '-'(발표 뒤 관측) → 그 행 경쟁률 원문이 미달('△')이면 `'가점 당첨자 없음(미달)'`, 아니면 `"가점 당첨자 없음(청약홈 '-')"`(**`no_winner`**, prov = 팝업 출처 행 `fp_…` — 원문 1클릭), ③ 그 밖 `'가점 미수집'`(`not_collected`). 화면: 가점 칸에 `no_winner` → '가점 당첨자 없음(미달)'/'가점 당첨자 없음', `not_published` → '발표 전', `not_collected` → '가점 미수집'(원 사유는 title). 표에 가점 열을 보일지 = 값 또는 `no_winner`·`not_published` 행이 하나라도 있으면 | R10 과제 3 · D29-4 |
+| F5 | `CompetitionSummary.winning_score_min/max` | 기준 행(1순위 해당지역) 하나라도 '확인 불가'면 그 사유 | `no_winner` 행은 빼고 센다 — reason `'산술(1순위 해당지역 행 중 최저, 가점 당첨자 없는 n행 제외)'`. 모두 `no_winner` 면 그 사유 | R10 과제 3 |
+
+### 의미 변경(같은 필드, 다른 동작)
+
+| # | 대상 | 이전(.20) | 이후(.21) | 결정 |
+| --- | --- | --- | --- | --- |
+| S1 | `ReasonCode` 규칙 `not_published` | '공고 전'으로 시작·'분양가 미공개'·'공고 전' 포함 | + '발표 전'으로 시작(당첨 가점 F4 ①) | R10 |
+| S2 | 지역 단지 집합(목록·대시보드·시장·민감도·보고서·판정·점수·입주 물량·체크리스트·공식 홈페이지 수집·원 공고 다시 받기·법정동 재배정) | 지역의 모든 단지 행 | 병합되지 않은 단지 행(`merged_into_id IS NULL`) — 병합된 행이 없으면 같다(회귀 골든 불변) | D29-2 |
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `checklist_item.json` | `kind` enum + '청약 접수'·'당첨자 발표', 설명(만드는 규칙·병합된 행) |
+| 2 | `fact.json` | `$defs.ReasonCode` enum + `no_winner`(human_check 다음, no_value 앞 — 서버 규칙 순서), 설명(not_published '발표 전', no_winner) |
+| 3 | `competition.json` | `winning_score_min` · `CompetitionSummary` 설명(사유 셋 · no_winner 행 제외) — 모양 그대로 |
+| 4 | `openapi.yaml` | `info.version` 2026-10-09.21(번들 재생성). 경로·컴포넌트 변경 없음 |
+| 5 | `examples/checklist.json` | MSW 데이터에 새 종류 2항목(61 '1순위 청약 접수(해당지역·기타지역)', 62 '당첨자 발표') |
+
+### 마이그레이션·검증
+
+- **0018**(`contracts/migrations/versions/0018_r10_follow.py`): `checklist_item.kind` CHECK 에 두 값, `complex.merged_into_id`(NULL, FK complex.id).
+  데이터 채움 없음 — 새 항목은 다음 체크리스트 동기화(`collect.daily` 조립·판정 뒤 D24-1)가, 병합은 다음 `collect.daily`(받아 둔 원문 재정규화)가
+  change_event 와 함께 한다(runbook §10-23). downgrade: 새 kind 항목 삭제(자동 항목), 열 삭제.
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.21`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`), 프론트 `src/api/schema.d.ts`·`src/mocks/handlers.gen.ts` 재생성.
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`).
+
+### 알려진 한계
+
+- 청약 접수 항목은 단지(본청약) 일정만 — 원 단지에 묶인 잔여·임의 공고의 접수 기간(`remaining_event.apply_dates`)은 항목을 만들지 않는다(D29-3
+  '데이터는 complex.apply_dates·winner_date 에서').
+- 병합은 공고문 인용이 있을 때만 — 원 번호가 공고문에 없는 잔여 공고 행(연수 서해그랑블 5단지 1~4차)·9자리 오기 인용 행은 그대로(D29-2 후단).
+  병합된 행에 사람이 넣은 사람 확인·호재 연결이 있으면 옮기지 않는다(운영 DB 의 도화 99 는 0건 — runbook §10-23 확인 SQL).
+
 ## 2026-10-09.20
 
 초보자용 UI 개선(사람 답 + CEO **D28**, 원문 `docs/design/ui-benchmark/20-gap.md` §2-2 · `30-proposal.md`) 후속 — **D28-5** 데이터·API

@@ -98,6 +98,7 @@ from app.normalize.fields import (
     with_mark,
 )
 from app.normalize.living_area import assign_complex_area, correct_dong
+from app.normalize.merge import find_duplicate, live, merge_duplicate
 from app.normalize.notice_parser import NoticeParser, ScanTypes
 from app.normalize.official_site_parser import ComplexKey, OfficialSiteParser
 from app.normalize.provenance import upsert_provenance
@@ -271,6 +272,13 @@ class _Binder:
         if region_id is not None:
             stmt = stmt.where(Complex.region_id == region_id)
         cx = self.s.scalars(stmt).first()
+        if cx is not None and cx.merged_into_id is not None:
+            # D29-2: 원 단지에 병합된 같은 사업의 중복 행 번호 → 원 단지(잔여 공고처럼 — 단지 단위 값은 덮지 않는다, D11-4)
+            target = self.s.get(Complex, cx.merged_into_id)
+            if target is not None:
+                cx = target
+                self.merged.add(key)
+                self.links.setdefault(key, target.id)
         cites = create and _cites_original(raw, batch, key)
         if cx is not None and region_id is not None and not cites and _is_remainder_notice(raw, batch, key):
             # R9-PARSE(G7 캘린더 중복): 인용을 못 읽던 때 잔여 공고 번호로 생긴 단지 행(같은 사업의 두 번째 행)이 있어도, 지금
@@ -356,10 +364,31 @@ class _Binder:
         if cx is not None:
             self._complex[key] = cx
             if cites:  # 이 공고문(잔여 공고)의 공고번호 → 원 단지(뒤에 오는 그 공고의 청약홈 원문이 같은 단지에 묶이게)
-                for no in _own_notice_nos(batch, key) | _url_numbers(raw.url):
+                for no in sorted(_own_notice_nos(batch, key) | _url_numbers(raw.url)):
                     if no != key:
                         self.links.setdefault(no, cx.id)
+                        self._merge_duplicate(no, key, cx, region_id)
         return cx
+
+    def _merge_duplicate(self, own_no: str, cited_no: str, original: Complex, region_id: int | None) -> None:
+        """D29-2: 잔여 공고문이 원 공고(``cited_no`` — 이미 있던 원 단지 행)를 인용했고, 그 공고문의 자기 번호 ``own_no`` 로 따로 생긴
+        같은 지역 단지 행이 있으면 원 단지에 병합한다(``normalize.merge`` — 인용 없이는 하지 않는다). 이 원문이 원 단지 행을 새로
+        만든 경우(자리표시)는 병합하지 않는다."""
+        if region_id is None or ("complex", original.id) in self.created:
+            return
+        dup = find_duplicate(self.s, region_id, own_no, original)
+        if dup is None:
+            return
+        ev = merge_duplicate(
+            self.s,
+            dup,
+            original,
+            cited_no=cited_no,
+            snapshot_id=self.snapshot_id,
+            detected_at=self.detected_at,
+        )
+        if ev is not None:
+            self.events.append(ev)
 
     def _upcoming_row(self, key: str, region_id: int, batch: list[FieldCandidate]) -> Complex | None:
         """D20-2: 청약홈 새 공고 ``key`` 의 이름 키(``block_name_key``)가 트랙 (A) 공고 예정 후보 행(주택관리번호 없음)의 이름·옛
@@ -380,7 +409,10 @@ class _Binder:
             cx
             for cx in self.s.scalars(
                 select(Complex).where(
-                    Complex.region_id == region_id, Complex.applyhome_id.is_(None), Complex.track == "A"
+                    Complex.region_id == region_id,
+                    Complex.applyhome_id.is_(None),
+                    Complex.track == "A",
+                    live(),
                 )
             )
             if nk in {block_name_key(n) for n in (cx.name, *(cx.former_names or []))}
@@ -408,7 +440,12 @@ class _Binder:
         (연결 ``links`` 가 먼저). 표 조회뿐이다(판단 아님)."""
         cid = self.links.get(key)
         cand = self.s.get(Complex, cid) if cid is not None else None
-        if cand is not None and cand.region_id == region_id and cand.applyhome_id != key:
+        if (
+            cand is not None
+            and cand.region_id == region_id
+            and cand.applyhome_id != key
+            and cand.merged_into_id is None
+        ):
             return cand
         ids = set(
             self.s.scalars(
@@ -418,6 +455,7 @@ class _Binder:
                     PaymentTerms.notice_no == key,
                     Complex.region_id == region_id,
                     Complex.applyhome_id.is_distinct_from(key),
+                    live(),
                 )
             )
         )
@@ -434,7 +472,12 @@ class _Binder:
         for no in sorted(nos):
             cid = self.links.get(no)
             cand = self.s.get(Complex, cid) if cid is not None else None
-            if cand is not None and cand.region_id == region_id and cand.applyhome_id != key:
+            if (
+                cand is not None
+                and cand.region_id == region_id
+                and cand.applyhome_id != key
+                and cand.merged_into_id is None
+            ):
                 hit = cand
                 break
         if hit is None:
@@ -447,6 +490,7 @@ class _Binder:
                             model.notice_no.in_(sorted(nos)),
                             Complex.region_id == region_id,
                             Complex.applyhome_id.is_distinct_from(key),
+                            live(),
                         )
                     )
                 )
@@ -485,7 +529,7 @@ class _Binder:
         hits = [
             cx
             for cx in self.s.scalars(
-                select(Complex).where(Complex.region_id == region_id, Complex.address.is_not(None))
+                select(Complex).where(Complex.region_id == region_id, Complex.address.is_not(None), live())
             )
             if cx.applyhome_id != key
             and not is_zone_address(cx.address or "")

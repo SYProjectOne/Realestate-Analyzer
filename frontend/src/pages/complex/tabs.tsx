@@ -466,6 +466,23 @@ function hasPoints(row: ComplexDetail['competition'][number]): boolean {
   );
 }
 
+/** 가점 칸 사유 코드(계약 .21 F4) — 세 칸이 모두 같은 '확인 불가' 사유일 때만(서버가 행 단위로 정한다) */
+function pointsReason(row: ComplexDetail['competition'][number]): string | null {
+  const facts = [row.winning_score_min, row.winning_score_max, row.winning_score_avg];
+  const codes = new Set(facts.map((f) => (f && f.v === null ? (f.reason_code ?? null) : 'value')));
+  if (codes.size !== 1) return null;
+  const [code] = [...codes];
+  return code === 'value' ? null : (code ?? null);
+}
+
+/** 표에 가점 열을 보일까 — 값이 있거나, '가점 미수집'이 아닌 사유(가점 당첨자 없음·발표 전)가 있는 행이 하나라도 있으면 */
+function showPointsColumn(rows: ComplexDetail['competition']): boolean {
+  return rows.some((r) => {
+    const code = pointsReason(r);
+    return hasPoints(r) || code === 'no_winner' || code === 'not_published';
+  });
+}
+
 /** D29-4: 최저·최고·평균이 모두 0 → 가점제 당첨자 없음 */
 function noPointWinners(row: ComplexDetail['competition'][number]): boolean {
   return [row.winning_score_min, row.winning_score_max, row.winning_score_avg].every(
@@ -476,6 +493,33 @@ function noPointWinners(row: ComplexDetail['competition'][number]): boolean {
 function PointsCell({ row }: { row: ComplexDetail['competition'][number] }) {
   if (noPointWinners(row)) {
     return <span data-testid="no-point-winners">{t('page.G3.competition.noPointWinners')}</span>;
+  }
+  // 계약 .21 F4: 값 없는 이유를 쉬운 말로 — 팝업 '-'(가점 당첨자 없음, 미달이면 '(미달)')·발표 전·가점 미수집. 원 사유는 title
+  const code = pointsReason(row);
+  const reason = row.winning_score_min?.reason ?? undefined;
+  if (code === 'no_winner') {
+    const short = shortfallUnits(row.ratio_or_shortfall_text) !== null;
+    return (
+      <span data-testid="points-reason" data-reason-code={code} title={reason}>
+        {short
+          ? t('page.G3.competition.noPointWinnersShortfall')
+          : t('page.G3.competition.noPointWinners')}
+      </span>
+    );
+  }
+  if (code === 'not_published' || code === 'not_collected') {
+    return (
+      <span
+        data-testid="points-reason"
+        data-reason-code={code}
+        title={reason}
+        className="text-muted"
+      >
+        {code === 'not_published'
+          ? t('page.G3.competition.pointsBeforeAnnounce')
+          : t('page.G3.competition.pointsNotCollected')}
+      </span>
+    );
   }
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
@@ -490,8 +534,9 @@ function PointsCell({ row }: { row: ComplexDetail['competition'][number] }) {
 
 export function EventsTab({ detail }: { detail: ComplexDetail }) {
   const { events, competition, asof_date: asof } = detail;
-  // 당첨 가점은 수집 전이면 모두 '확인 불가(가점 미수집)' — 그동안은 청약홈 안내 줄(30-proposal §9-2)
-  const showPoints = competition.some(hasPoints);
+  // 당첨 가점은 수집 전이면 모두 '확인 불가(가점 미수집)' — 그동안은 청약홈 안내 줄(30-proposal §9-2).
+  // 계약 .21: '가점 당첨자 없음'·'발표 전' 행이 있어도 열을 보인다(미수집과 구별)
+  const showPoints = showPointsColumn(competition);
   // R9-UI P8: 경쟁률 표를 맨 위로(초보 질문 Q5), 추가 모집 이력 차트는 그 아래
   return (
     <div className="flex flex-col gap-3">

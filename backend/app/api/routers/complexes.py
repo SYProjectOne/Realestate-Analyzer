@@ -452,7 +452,7 @@ def detail_bodies(
                 for p in pays
             ],
             "competition": [
-                competition_view(fm, c, shown.get(c.id))
+                competition_view(fm, c, shown.get(c.id), winner_date=cx.winner_date, asof=snap.asof_date)
                 for shown in [display_type_codes(b.types, comps.get(cx.id, []))]
                 for c in comps.get(cx.id, [])
             ],

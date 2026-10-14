@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import functools
+import re
 from collections import defaultdict, namedtuple
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -367,12 +368,15 @@ def _region_scope(session: Session, snap: Snapshot | None, out: Mapping[int, Com
         return None
     if any(b.cx.region_id != snap.region_id for b in out.values()):
         return None
+    live = Complex.merged_into_id.is_(
+        None
+    )  # D29-2: 목록·대시보드 묶음은 병합된 행을 뺀다 — 같은 집합이어야 한다
     total = session.scalar(
-        select(func.count()).select_from(Complex).where(Complex.region_id == snap.region_id)
+        select(func.count()).select_from(Complex).where(Complex.region_id == snap.region_id, live)
     )
     if total != len(out):
         return None
-    return select(Complex.id).where(Complex.region_id == snap.region_id)
+    return select(Complex.id).where(Complex.region_id == snap.region_id, live)
 
 
 def latest_snapshot_id(session: Session, region_id: int) -> int | None:
@@ -1160,8 +1164,16 @@ def payment_view(
     }
 
 
-def competition_view(fm: FactMaker, c: Competition, type_code: str | None = None) -> dict[str, Any]:
-    """``type_code`` = 표시 주택형(``normalize.competition.display_type_codes`` — 저장 행은 원 면적 코드, D23-2)."""
+def competition_view(
+    fm: FactMaker,
+    c: Competition,
+    type_code: str | None = None,
+    *,
+    winner_date: str | None = None,
+    asof: str | None = None,
+) -> dict[str, Any]:
+    """``type_code`` = 표시 주택형(``normalize.competition.display_type_codes`` — 저장 행은 원 면적 코드, D23-2).
+    ``winner_date``·``asof`` = 단지 당첨자 발표일·스냅샷 기준일(당첨 가점 '발표 전' 사유 — ``winning_score_fact``)."""
     return {
         "id": c.id,
         "complex_id": c.complex_id,
@@ -1172,8 +1184,11 @@ def competition_view(fm: FactMaker, c: Competition, type_code: str | None = None
         "applied": fm.field("competition", c.id, "applied", c.applied, unit="count"),
         "ratio_or_shortfall_text": c.ratio_or_shortfall_text,
         "raw_document_id": c.raw_document_id,
-        # 계약 .20(D28-5 Q4): 당첨 가점(수집 저장값이 있을 때만 값 — 지금은 '확인 불가(가점 미수집)')
-        **{name: winning_score_fact(fm, c, name) for name in WINNING_SCORE_FIELDS},
+        # 계약 .20(D28-5 Q4): 당첨 가점. 값이 없으면 사유 — 발표 전·가점 당첨자 없음('-')·가점 미수집(계약 .21, R10)
+        **{
+            name: winning_score_fact(fm, c, name, winner_date=winner_date, asof=asof)
+            for name in WINNING_SCORE_FIELDS
+        },
     }
 
 
@@ -1733,15 +1748,49 @@ WINNING_SCORE_FIELDS: Final = ("winning_score_min", "winning_score_max", "winnin
 """경쟁률 행의 당첨 가점 칸(계약 .20 ``Competition.winning_score_*``). 수집 저장값(같은 이름 컬럼 + 출처 행)이 생기면 그 값을
 쓰고(R9-PARSE 와 컬럼 이름 맞춤), 컬럼이 없으면 '확인 불가(가점 미수집)'."""
 NO_WINNING_SCORE: Final = "가점 미수집"
+BEFORE_ANNOUNCE: Final = "발표 전"
+NO_WINNER_SHORTFALL: Final = "가점 당첨자 없음(미달)"
+_SHORTFALL_MARK: Final = re.compile(r"[△Δ]")
 
 
-def winning_score_fact(fm: FactMaker, c: Any, name: str) -> dict[str, Any]:
-    """경쟁률 행 1개의 당첨 가점 Fact. 저장 값이 없으면(컬럼 없음·팝업 미수집·팝업 칸 '-' — R9-PARSE 는 '-' 칸에 후보를 내지 않는다)
-    '확인 불가(가점 미수집)'. 값이 있으면 그 출처 행의 Fact(0/0/0 도 원문 숫자 그대로 — 화면 문구는 D29-4)."""
+def _observed_after(checked_at: str | None, winner_date: str | None) -> bool:
+    """팝업 관측일이 당첨자 발표일 **뒤**인가(발표일을 모르면 참) — 발표 전·당일에 받은 팝업의 '-' 는 결과가 아니다(수집기가 발표 뒤
+    다시 받는다 — ``collectors.applyhome`` ``_score_popup_due``)."""
+    if not winner_date:
+        return True
+    return bool(checked_at) and str(checked_at)[:10] > str(winner_date)[:10]
+
+
+def winning_score_fact(
+    fm: FactMaker, c: Any, name: str, *, winner_date: str | None = None, asof: str | None = None
+) -> dict[str, Any]:
+    """경쟁률 행 1개의 당첨 가점 Fact. 값이 있으면 그 출처 행의 Fact(0/0/0 도 원문 숫자 그대로 — 화면 문구는 D29-4).
+
+    값이 없으면 사유를 나눈다(R10 — 계약 .21, 날짜 비교·원문 문자 대조뿐, 판단 아님):
+    1. 당첨자 발표일이 기준일 뒤 → '발표 전(당첨자 발표 YYYY-MM-DD)'(reason_code ``not_published``).
+    2. 경쟁률 팝업 칸이 '-'(출처 행 사유 '가점 당첨자 없음…' — ``normalize.applyhome_parser``)이고 발표 뒤에 관측 →
+       그 행 경쟁률 원문이 미달('△')이면 '가점 당첨자 없음(미달)', 아니면 출처 행 사유 그대로('가점 당첨자 없음(청약홈 '-')')
+       (``no_winner``). 출처 행 id 를 prov 로 둔다(원문 1클릭).
+    3. 그 밖(컬럼 없음·팝업 미수집·발표 전 관측) → '가점 미수집'(``not_collected``)."""
+    from app.normalize.fields import WINNING_SCORE_DASH_REASON
+
     value = getattr(c, name, None) if hasattr(Competition, name) else None
-    if value is None:
-        return unknown(NO_WINNING_SCORE, None)
-    return fm.field("competition", c.id, name, value)
+    if value is not None:
+        return fm.field("competition", c.id, name, value)
+    if winner_date and asof and str(winner_date)[:10] > str(asof)[:10]:
+        return unknown(f"{BEFORE_ANNOUNCE}(당첨자 발표 {str(winner_date)[:10]})", None)
+    fp = fm.prov.get("competition", c.id, name)
+    dash_head = WINNING_SCORE_DASH_REASON.split("(", 1)[0]
+    if (
+        fp is not None
+        and fp.label == LABEL_UNKNOWN
+        and (fp.reason or "").startswith(dash_head)
+        and _observed_after(fp.checked_at, winner_date)
+    ):
+        shortfall = bool(_SHORTFALL_MARK.search(getattr(c, "ratio_or_shortfall_text", None) or ""))
+        keep = f"fp_{fp.id}" if (fp.url or fp.raw_document_id) else None
+        return unknown(NO_WINNER_SHORTFALL if shortfall else str(fp.reason), fp.checked_at, prov=keep)
+    return unknown(NO_WINNING_SCORE, None)
 
 
 def competition_rows_for(session: Session, complex_ids: Sequence[int]) -> dict[int, list[Competition]]:
@@ -1832,24 +1881,33 @@ def competition_summary_view(fm: FactMaker, b: ComplexBundle, comps: Sequence[An
         "max_ratio": max_ratio,
         "max_ratio_type_code": max_code,
         "shortfall_types": short,
-        "winning_score_min": _score_extreme(fm, basis, "winning_score_min", min),
-        "winning_score_max": _score_extreme(fm, basis, "winning_score_max", max),
+        "winning_score_min": _score_extreme(fm, b, basis, "winning_score_min", min),
+        "winning_score_max": _score_extreme(fm, b, basis, "winning_score_max", max),
     }
 
 
-def _score_extreme(fm: FactMaker, basis: Sequence[Any], name: str, pick: Any) -> dict[str, Any]:
-    """기준 행 당첨 가점 칸의 최솟값/최댓값 Fact — 기준 행 모두에 값이 있을 때만(하나라도 확인 불가면 그 사유)."""
-    facts = [winning_score_fact(fm, c, name) for c in basis]
+def _score_extreme(
+    fm: FactMaker, b: ComplexBundle, basis: Sequence[Any], name: str, pick: Any
+) -> dict[str, Any]:
+    """기준 행 당첨 가점 칸의 최솟값/최댓값 Fact — 기준 행 모두에 값이 있을 때만(하나라도 확인 불가면 그 사유).
+    R10: '가점 당첨자 없음'(팝업 '-' — ``no_winner``) 행은 값이 없는 것이 결과라 빼고 나머지로 센다(사유에 뺀 행 수). 모두
+    그렇다면 그 사유."""
+    facts = [winning_score_fact(fm, c, name, winner_date=b.cx.winner_date, asof=b.asof_date) for c in basis]
+    none = [f for f in facts if f.get("reason_code") == "no_winner"]
+    facts = [f for f in facts if f.get("reason_code") != "no_winner"]
+    if not facts:
+        return dict(none[0])
     bad = next((f for f in facts if f["label"] == LABEL_UNKNOWN), None)
     if bad is not None:
         return dict(bad)
     best = pick(facts, key=lambda f: f["v"])
+    skipped = f", 가점 당첨자 없는 {len(none)}행 제외" if none else ""
     return fact(
         best["v"],
         weakest(f["label"] for f in facts),
         best["prov"],
         max((f["checked_at"] for f in facts if f.get("checked_at")), default=None),
-        reason="산술(1순위 해당지역 행 중 " + ("최저" if pick is min else "최고") + ")",
+        reason="산술(1순위 해당지역 행 중 " + ("최저" if pick is min else "최고") + skipped + ")",
     )
 
 

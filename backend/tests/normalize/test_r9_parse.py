@@ -521,9 +521,10 @@ def test_q4_popup_winning_scores_per_type_and_area() -> None:
         0.0,
         0.0,
     )  # 원문 그대로(가점 당첨자 없음 표기)
-    # 미달 주택형('-')은 가점 후보가 없다(값 없음)
+    # 미달 주택형('-')은 값 없는 '확인 불가' 후보(R10: 사유 '가점 당첨자 없음' — '가점 미수집'과 구별, 예전에는 후보 없음)
     a84 = _vals(cands, "competition", "2025000560:본청약:1순위 해당지역:84A")
-    assert not {"winning_score_min", "winning_score_max", "winning_score_avg"} & set(a84)
+    dash = [a84[f] for f in ("winning_score_min", "winning_score_max", "winning_score_avg")]
+    assert all(c.value is None and c.label == "확인 불가" and c.value_text == "-" for c in dash), dash
     assert a84["ratio_or_shortfall_text"].value == "(△307)"
 
 

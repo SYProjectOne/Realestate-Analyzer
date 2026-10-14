@@ -820,7 +820,11 @@ def compute(
 
     out.followups = _visible_followups(session, snap)
     complexes = list(
-        session.scalars(select(Complex).where(Complex.region_id == snap.region_id).order_by(Complex.id))
+        session.scalars(
+            select(Complex)
+            .where(Complex.region_id == snap.region_id, Complex.merged_into_id.is_(None))  # D29-2
+            .order_by(Complex.id)
+        )
     )
     only = set(complex_ids) if complex_ids is not None else None
     if only is not None:

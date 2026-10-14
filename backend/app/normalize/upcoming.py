@@ -171,7 +171,9 @@ def upcoming_from_news(
                     continue
                 region_rows = list(
                     session.scalars(
-                        select(Complex).where(Complex.region_id == region_id).order_by(Complex.id)
+                        select(Complex)
+                        .where(Complex.region_id == region_id, Complex.merged_into_id.is_(None))  # D29-2
+                        .order_by(Complex.id)
                     )
                 )
                 hit = next((cx for cx in region_rows if nkey in _keys(cx)), None)

@@ -221,7 +221,11 @@ class OfficialSiteCollector:
     def _region_targets(self, session: Session, region: Region) -> list[SiteTarget]:
         rows = session.execute(
             select(Complex.id, Complex.official_site_url)
-            .where(Complex.region_id == region.id, Complex.official_site_url.is_not(None))
+            .where(
+                Complex.region_id == region.id,
+                Complex.official_site_url.is_not(None),
+                Complex.merged_into_id.is_(None),  # D29-2: 병합된 중복 행은 원 단지가 받는다
+            )
             .order_by(Complex.id)
         )
         return [SiteTarget(url, cid) for cid, url in rows if url]

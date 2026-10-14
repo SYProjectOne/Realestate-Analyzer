@@ -23,7 +23,7 @@ import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
 import { useIsMobile } from '@/lib/useMediaQuery';
-import { scheduleBasis, scheduleKindText, withinDays } from '../_shared/schedule';
+import { scheduleBasis, scheduleDetail, scheduleKindText, withinDays } from '../_shared/schedule';
 import {
   changeEntityText,
   changeFieldText,
@@ -430,8 +430,9 @@ const UPCOMING_MAX = 5;
 const UPCOMING_DAYS = 28;
 
 /**
- * 1단 다가오는 일정(4주, R9-UI P2·갭 #15): 체크리스트 기한(계약·중도금·전매 가능 시작·공고 예상)을 기준일부터 4주 안만 날짜순.
- * 청약 접수일은 아직 일정에 없다(계약 .20 요청 Q3) — 정직하게 적는다. 공유 링크(읽기 전용 공유 토큰)는 /ops 가 403.
+ * 1단 다가오는 일정(4주, R9-UI P2·갭 #15): 체크리스트 기한(청약 접수·당첨자 발표·계약·중도금·전매 가능 시작·공고 예상)을
+ * 기준일부터 4주 안만 날짜순. 청약 접수는 어느 순위·구분인지(서버 제목 '1순위 청약 접수(해당지역·기타지역)')를 둘째 줄에
+ * (계약 .21 D29-3). 공유 링크(읽기 전용 공유 토큰)는 /ops 가 403.
  */
 function UpcomingCard({ asof }: { asof: string }) {
   const query = useChecklist();
@@ -466,6 +467,7 @@ function UpcomingCard({ asof }: { asof: string }) {
         <ul aria-label={title} className="flex flex-col gap-1 text-sm">
           {items.map((item) => {
             const basis = scheduleBasis(item);
+            const what = scheduleDetail(item);
             return (
               <li
                 key={item.id}
@@ -489,12 +491,16 @@ function UpcomingCard({ asof }: { asof: string }) {
                     {t('page.common.scheduleBasis', { basis })}
                   </span>
                 ) : null}
+                {what ? (
+                  <span data-testid="schedule-detail" className="w-full text-xs text-muted">
+                    {what}
+                  </span>
+                ) : null}
               </li>
             );
           })}
         </ul>
       )}
-      <p className="text-xs text-muted">{t('page.G1.upcoming.noApply')}</p>
       <Link to={`/ops${search}`} className="self-start text-sm underline">
         {t('page.G1.upcoming.all')}
       </Link>

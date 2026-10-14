@@ -184,7 +184,12 @@ def build_queue(session: Session, snap: Snapshot) -> dict[str, Any]:
     for r in rows:
         by_complex[r.complex_id].append(r)
     shown: list[IntakeStatus] = []
-    for cid in sorted(by_complex):
+    merged = set(  # D29-2: 원 단지에 병합된 중복 행의 (복사된) 접수 행은 대기열에 내지 않는다
+        session.scalars(
+            select(Complex.id).where(Complex.id.in_(list(by_complex)), Complex.merged_into_id.is_not(None))
+        )
+    )
+    for cid in sorted(set(by_complex) - merged):
         picked = pick_intake(by_complex[cid])
         if picked is not None and picked.status in QUEUE_STATUSES:
             shown.append(picked)

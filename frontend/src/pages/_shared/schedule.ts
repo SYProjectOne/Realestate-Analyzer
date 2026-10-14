@@ -27,6 +27,15 @@ export function scheduleBasis(item: Pick<ChecklistItem, 'kind' | 'title'>): stri
   return match?.[1] ?? null;
 }
 
+/**
+ * 청약 접수 항목의 둘째 줄 — 서버 제목('1순위 청약 접수(해당지역·기타지역)')이 어느 순위·구분인지 말한다(계약 .21 D29-3).
+ * 종류 배지와 같은 글자뿐인 제목('청약 접수' — 잔여·임의 공고 전체 접수)·다른 종류는 null(배지로 충분).
+ */
+export function scheduleDetail(item: Pick<ChecklistItem, 'kind' | 'title'>): string | null {
+  if (item.kind !== '청약 접수') return null;
+  return item.title.trim() && item.title !== item.kind ? item.title : null;
+}
+
 function dayNumber(iso: string): number | null {
   const day = kstDay(iso);
   if (!day) return null;

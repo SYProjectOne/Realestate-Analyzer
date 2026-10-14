@@ -320,7 +320,7 @@ def rederive_region_dongs(
     out: list[ChangeEvent] = []
     rows = session.scalars(
         select(Complex)
-        .where(Complex.region_id == region_id, Complex.address.is_not(None))
+        .where(Complex.region_id == region_id, Complex.address.is_not(None), Complex.merged_into_id.is_(None))
         .order_by(Complex.id)
     )
     for cx in list(rows):

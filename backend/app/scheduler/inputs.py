@@ -215,9 +215,14 @@ def ocr_pending_fields(
 
 
 def load_facts(session: Session, snapshot: Snapshot, region: Region) -> list[ComplexFacts]:
-    """지역 단지 전부의 현재 사실(complex_id 순)."""
+    """지역 단지 전부의 현재 사실(complex_id 순). D29-2: 원 단지에 병합된 중복 행(``complex.merged_into_id``)은 뺀다 — 판정·점수
+    대상이 아니다(발행 리비전의 그 행 파생 행은 그대로)."""
     complexes = list(
-        session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id))
+        session.scalars(
+            select(Complex)
+            .where(Complex.region_id == region.id, Complex.merged_into_id.is_(None))
+            .order_by(Complex.id)
+        )
     )
     if not complexes:
         return []

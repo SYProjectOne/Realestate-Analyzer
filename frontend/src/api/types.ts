@@ -292,7 +292,10 @@ export type JudgmentOps = S['JudgmentOps'];
 export type JudgmentOpsParams = NonNullable<operations['getJudgmentOps']['parameters']['query']>;
 export type ChecklistItem = S['ChecklistItem'];
 export type ChecklistKind = ChecklistItem['kind'];
-/** 체크리스트 종류(계약 2026-10-09.4 '계약', 2026-10-09.6 '사실 재확인' — D10-3 강등 사실 재확인). 표시 = ko.json `page.G7.checkKind` */
+/**
+ * 체크리스트 종류(계약 2026-10-09.4 '계약', 2026-10-09.6 '사실 재확인' — D10-3 강등 사실 재확인, 2026-10-09.21 '청약 접수'·
+ * '당첨자 발표' — D29-3 단지 청약 일정·당첨자 발표일). 표시 = ko.json `page.G7.checkKind`
+ */
 export const CHECKLIST_KINDS = [
   '법적 확인',
   '중도금',
@@ -300,6 +303,8 @@ export const CHECKLIST_KINDS = [
   '공고 예상',
   '계약',
   '사실 재확인',
+  '청약 접수',
+  '당첨자 발표',
 ] as const satisfies readonly ChecklistKind[];
 export type ChecklistPatch = S['ChecklistPatch'];
 /**

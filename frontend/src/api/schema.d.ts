@@ -1000,7 +1000,7 @@ export interface components {
         };
         /**
          * ChecklistItem
-         * @description 체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·다른 값의 새 원문으로 복원되면 done(closed_by auto), 강등이 남았는데 사람이 닫으면 다시 열린다; 계약 2026-10-09.6·.8). 자동 항목의 근거 사실이 사라지거나 강등되면 동기화가 na(closed_by auto)로 닫고, 근거가 돌아오면 다시 연다(M-9).
+         * @description 체크리스트·캘린더 항목 (RA §3 checklist_item) — G7 Checklist+Calendar. 토허·대지지분·비과세 거주요건 같은 '확인 권고' 추정 항목을 상태 있는 항목으로 운영한다. kind: 법적 확인 / 중도금(납부일) / 만료(전매 도과·지정 만료) / 공고 예상 / 계약 / 사실 재확인(D10-3 — contradicted 주장 수정으로 강등된 사실 필드, title '사실 재확인: <필드 이름>(검증 모순)', 사람 확인·다른 값의 새 원문으로 복원되면 done(closed_by auto), 강등이 남았는데 사람이 닫으면 다시 열린다; 계약 2026-10-09.6·.8). 자동 항목의 근거 사실이 사라지거나 강등되면 동기화가 na(closed_by auto)로 닫고, 근거가 돌아오면 다시 연다(M-9). 청약 접수(계약 2026-10-09.21, D29-3 — 단지 청약 일정 apply_dates 에서: 순위·구분과 기간이 같은 항목을 하나로, title '<순위·구분> 청약 접수[(<거주지역>·…)]'(잔여·임의 공고의 전체 접수 기간 한 칸은 '청약 접수'), due_date = 접수 시작일, note '자동: 청약홈 청약 일정 <시작>[~<끝>]', 접수가 끝나지 않은 것만) / 당첨자 발표(계약 .21 — 단지 winner_date, title '당첨자 발표', due_date = 발표일, 기준일 이후만). 같은 사업 중복 단지 행이 원 단지에 병합되면(D29-2) 그 행의 자동 항목은 닫힌다.
          * @example {
          *       "id": 51,
          *       "complex_id": 7,
@@ -1017,7 +1017,7 @@ export interface components {
             complex_id: number | null;
             complex_name?: string | null;
             /** @enum {string} */
-            kind: "법적 확인" | "중도금" | "만료" | "공고 예상" | "계약" | "사실 재확인";
+            kind: "법적 확인" | "중도금" | "만료" | "공고 예상" | "계약" | "사실 재확인" | "청약 접수" | "당첨자 발표";
             title: string;
             /** Format: date */
             due_date: string | null;
@@ -1364,7 +1364,7 @@ export interface components {
             applied: components["schemas"]["Fact"];
             ratio_or_shortfall_text: string | null;
             raw_document_id?: number | null;
-            /** @description 계약 2026-10-09.20(D28-5 Q4): 이 행(주택형·회차)의 당첨 가점 최저(가점제 당첨자만, 청약홈 경쟁률 페이지 원문 값 — 점, unit 없음). 수집 저장값(경쟁률 행의 가점 칸과 그 출처 행)이 있을 때만 값, 없으면 '확인 불가(가점 미수집)'. .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+            /** @description 계약 2026-10-09.20(D28-5 Q4): 이 행(주택형·회차)의 당첨 가점 최저(가점제 당첨자만, 청약홈 경쟁률 페이지 원문 값 — 점, unit 없음). 수집 저장값(경쟁률 행의 가점 칸과 그 출처 행)이 있을 때만 값. 값이 없으면 사유(계약 .21, R10 — 날짜 비교·원문 대조): 당첨자 발표일이 기준일 뒤면 '발표 전(당첨자 발표 YYYY-MM-DD)'(reason_code not_published), 청약홈 경쟁률 팝업의 가점 칸이 '-'(그 지역 가점제 당첨자 없음 — 발표 뒤 관측)이면 행 경쟁률 원문이 미달('△')일 때 '가점 당첨자 없음(미달)', 아니면 "가점 당첨자 없음(청약홈 '-')"(no_winner, prov = 팝업 출처 행), 그 밖(팝업 미수집)은 '가점 미수집'(not_collected). .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
             winning_score_min?: components["schemas"]["Fact"] | null;
             /** @description 당첨 가점 최고(winning_score_min 과 같은 규칙) */
             winning_score_max?: components["schemas"]["Fact"] | null;
@@ -1377,7 +1377,7 @@ export interface components {
          *     - max_ratio: 기준 행마다 접수 ÷ 공급(공급 > 0, 둘 다 값 있음 — 소수 2자리 ROUND_HALF_UP)의 최댓값. label = 그 행 공급·접수 Fact 중 약한 쪽, reason '산술(접수 n ÷ 공급 m)', prov = 그 행 접수(applied) 출처. 같은 값이면 앞 행(id 순). 표시 '7.50 : 1'. 값을 낼 행이 없으면(공급·접수 확인 불가) 첫 기준 행의 사유로 '확인 불가'.
          *     - max_ratio_type_code: 그 행의 표시 주택형(competition.type_code 와 같은 규칙). 없으면 null.
          *     - shortfall_types: 기준 행 중 접수 < 공급인 행 수(unit count, label = 기준 행 공급·접수 Fact 중 가장 약한 것, reason '산술(접수 < 공급 행 수)'). 0 = 1순위 해당지역 미달 없음. 기준 행 하나라도 공급·접수가 확인 불가면 '확인 불가(일부 누락 n건)'.
-         *     - winning_score_min / winning_score_max: 기준 행 당첨 가점 최저의 최솟값 / 최고의 최댓값(Competition.winning_score_* 가 기준 행 모두에 있을 때만, 아니면 그 사유의 '확인 불가' — 지금은 '가점 미수집').
+         *     - winning_score_min / winning_score_max: 기준 행 당첨 가점 최저의 최솟값 / 최고의 최댓값(Competition.winning_score_* 가 기준 행 모두에 있을 때만, 아니면 그 사유의 '확인 불가'). 계약 .21(R10): '가점 당첨자 없음'(no_winner) 행은 빼고 센다(reason 에 '가점 당첨자 없는 n행 제외') — 모두 그렇다면 그 사유.
          */
         CompetitionSummary: {
             /** @description 기준 행 설명(표시용 고정 문구 '본청약 1순위 해당지역') */
@@ -4513,7 +4513,7 @@ export interface components {
          * @description '확인 불가'·접수 사유의 코드(계약 2026-10-09.20, D28-5 Q5). 서버가 저장 사유 문자열에서 정한다 — 순서대로 첫 규칙:
          *     - fetch_failed: 수집 실패 — HTTP 비 2xx(접수 행 http_status) 또는 사유가 숫자뿐('403'), 사유 앞 영문 낱말이 수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·robots.txt·invalid_url·render·blocked_host·blocked_by_robots·empty_dataset, 대소문자 무시), 사유가 '접속 실패'·'수집 실패'·'타임아웃'으로 시작.
          *     - not_collected: 자료 미수집 — '원문 없음'·'미수집'·'수집 기록 없음'·'자료 없음'·'물량 없음'·'수집기 없음'·'가점 미수집'·'출처 미조회'.
-         *     - not_published: 공고 전 — '공고 전'·'분양가 미공개'.
+         *     - not_published: 공고 전·발표 전 — '공고 전'·'발표 전'(계약 .21 — 당첨 가점: 당첨자 발표일이 기준일 뒤)으로 시작, '분양가 미공개'.
          *     - parse_failed: 공고문 등에서 자동으로 읽지 못함 — '해석 실패'·'표 없음'·'배정 실패'·'변환 실패'·'스캔'·'OCR 실패'.
          *     - source_missing: '출처 누락'(T13).
          *     - demoted: '검증 모순'(D10-3).
@@ -4530,11 +4530,12 @@ export interface components {
          *     - not_entered: 시나리오 조건 미입력 — '미입력'.
          *     - no_sample: 표본 없음 — '표본 0'·'비교군 없음'·'실거래 없음'·'사례 없음'.
          *     - human_check: '사람 확인'으로 시작(사람이 확인 불가라고 입력).
+         *     - no_winner: '가점 당첨자 없음'으로 시작(계약 .21 — 청약홈 경쟁률 팝업 당첨가점 칸 '-': 그 지역 가점제 당첨자 없음. 경쟁률 원문이 미달('△')이면 '가점 당첨자 없음(미달)'). 팝업을 못 받은 '가점 미수집'(not_collected)과 다르다.
          *     - no_value: 공고·원천에 값이 없음 — '값 없음'·'미기재'·'표기 없음'·'결측', 그 밖에 '없음'으로 끝나는 사유.
          *     - other: 그 밖(새 사유 — 코드·계약을 바꾸지 않고 reason 문자열 그대로 보인다).
          * @enum {string}
          */
-        ReasonCode: "fetch_failed" | "not_collected" | "not_published" | "parse_failed" | "source_missing" | "demoted" | "conflict_hold" | "partial_missing" | "identity_unconfirmed" | "other_complex_site" | "no_phrase" | "phrase_inconclusive" | "not_target" | "input_blocked" | "unresolved" | "unjudged" | "not_entered" | "no_sample" | "human_check" | "no_value" | "other";
+        ReasonCode: "fetch_failed" | "not_collected" | "not_published" | "parse_failed" | "source_missing" | "demoted" | "conflict_hold" | "partial_missing" | "identity_unconfirmed" | "other_complex_site" | "no_phrase" | "phrase_inconclusive" | "not_target" | "input_blocked" | "unresolved" | "unjudged" | "not_entered" | "no_sample" | "human_check" | "no_winner" | "no_value" | "other";
         /**
          * ReferenceRefreshPayload
          * @description job_name='reference.refresh' 페이로드 (DECISIONS D2-4). 최초 기동 시 1회 + 매월 1일 05:00. 법정동·행정동·매핑·세대 현황 파일을 받아 legal_dong·admin_dong·admin_legal_map·household_stat에 적재한다. 다운로드가 실패하면 contracts/fixtures/reference/ 사본으로 동작한다. 페이로드는 빈 객체.

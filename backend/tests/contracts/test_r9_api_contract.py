@@ -22,17 +22,20 @@ def _example(name: str) -> Any:
     return load_json(EXAMPLES / name)["value"]
 
 
-def test_contract_version_is_20_everywhere() -> None:
+def test_contract_version_is_20_or_later_everywhere() -> None:
+    """버전 표시(protocols·openapi 원본·번들·DECISIONS·CHANGELOG 맨 위)가 같고 .20 이상이다. .21(R10-FOLLOW) 이후에도 .20
+    항목은 CHANGELOG 에 남는다(현재 버전 단언은 ``test_r10_follow_contract``)."""
     from app.core.protocols import CONTRACT_VERSION
 
-    assert CONTRACT_VERSION == VERSION
-    assert load_yaml(CONTRACTS / "openapi.yaml")["info"]["version"] == VERSION
-    assert load_yaml(CONTRACTS / "openapi.bundled.yaml")["info"]["version"] == VERSION
+    assert CONTRACT_VERSION.startswith("2026-10-09.") and int(CONTRACT_VERSION.rsplit(".", 1)[1]) >= 20
+    assert load_yaml(CONTRACTS / "openapi.yaml")["info"]["version"] == CONTRACT_VERSION
+    assert load_yaml(CONTRACTS / "openapi.bundled.yaml")["info"]["version"] == CONTRACT_VERSION
     decisions = (CONTRACTS.parent / "docs" / "design" / "DECISIONS.md").read_text(encoding="utf-8")
-    assert f"계약 버전: `{VERSION}`" in decisions
+    assert f"계약 버전: `{CONTRACT_VERSION}`" in decisions
     changelog = (CONTRACTS / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)\b", changelog, re.M)
-    assert top is not None and top.group(1) == VERSION
+    assert top is not None and top.group(1) == CONTRACT_VERSION
+    assert f"## {VERSION}" in changelog
 
 
 def test_changelog_20_has_fe_difference_table() -> None:

@@ -100,6 +100,26 @@
       "due_date": null,
       "status": "open",
       "note": "claim 6991 수정 접수 — 사실 강등. 공고문 원문 확인 후 사람 확인(전화·방문)으로 입력하면 복원"
+    },
+    {
+      "id": 61,
+      "complex_id": 3,
+      "complex_name": "송도 한내들 센트럴리버",
+      "kind": "청약 접수",
+      "title": "1순위 청약 접수(해당지역·기타지역)",
+      "due_date": "2026-10-20",
+      "status": "open",
+      "note": "자동: 청약홈 청약 일정 2026-10-20"
+    },
+    {
+      "id": 62,
+      "complex_id": 3,
+      "complex_name": "송도 한내들 센트럴리버",
+      "kind": "당첨자 발표",
+      "title": "당첨자 발표",
+      "due_date": "2026-10-27",
+      "status": "open",
+      "note": "자동: 청약홈 당첨자 발표일"
     }
   ]
 }
