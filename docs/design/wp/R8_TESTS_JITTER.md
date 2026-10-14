@@ -105,8 +105,8 @@ T16(`npm run e2e` perf 프로젝트): **p50 16.7 · p95 16.8**, 회차마다 ≤
 | `npm run build` | exit 0 (entry-chunk-guard·max-chunk-guard 통과) |
 | `npm audit` | found 0 vulnerabilities |
 | `npm run e2e` | 46 통과 · 27 통과 (jitter 4 포함, T16 p50 16.7 · p95 16.8) |
-| `npm run e2e:api` | E2E_API_RESULT |
-| `npm run lighthouse` | LIGHTHOUSE_RESULT |
+| `npm run e2e:api` | 47 통과 (4.4분) |
+| `npm run lighthouse -- --port 6381` | 13건 전부 80 이상, 모바일 92 / 92 / 93, 데스크톱 98–100 |
 
 ## 7. DECISIONS 후보
 
