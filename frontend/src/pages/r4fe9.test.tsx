@@ -56,7 +56,7 @@ async function mock(path: string, init: RequestInit): Promise<Response> {
 
 /** '확인 불가(공고 전' 으로 시작(확인일이 붙으면 '확인 불가(공고 전, 2026-10-07)') */
 const preNotice = new RegExp(
-  `^${t('empty.unknownWithReason', { reason: '공고 전' }).slice(0, -1).replace(/[()]/g, '\\$&')}`,
+  `^${t('empty.unknownWithReason', { reason: t('empty.reasonPlain.pre_notice') }).slice(0, -1).replace(/[()]/g, '\\$&')}`,
 );
 
 function envelope(

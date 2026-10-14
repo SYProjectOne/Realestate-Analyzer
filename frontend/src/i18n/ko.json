@@ -995,7 +995,17 @@
     "unknown": "확인 불가",
     "unknownWithReason": "확인 불가({reason})",
     "unknownWithReasonDate": "확인 불가({reason}, {date})",
-    "noData": "데이터 없음"
+    "noData": "데이터 없음",
+    "reasonOriginal": "원래 사유: {reason}",
+    "reasonPlain": {
+      "parse_failed": "공고문에서 자동으로 읽지 못함 — 원문에서 확인",
+      "unresolved": "자동 확인이 끝나지 않음",
+      "unjudged": "점수 계산 전",
+      "no_value": "공고에 값이 없음",
+      "no_fixed_amount": "공고에 금액이 따로 적혀 있지 않음(비율만 있음)",
+      "not_entered": "내 조건(시나리오)에 입력하지 않음",
+      "pre_notice": "아직 공고 전(분양가 미공고)"
+    }
   },
   "intake": {
     "status": {

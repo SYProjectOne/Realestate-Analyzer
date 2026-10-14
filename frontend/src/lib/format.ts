@@ -3,7 +3,7 @@
  * 컴포넌트는 FactCell을 쓰고, 차트 축·툴팁·표 셀은 여기 함수를 쓴다.
  * 단위 문자열(억·만·원·㎡·세대·D-day)도 ko.json에서 온다.
  */
-import { t } from '@/i18n';
+import { t, type TKey } from '@/i18n';
 import type { FactLike } from './contract';
 
 /** ISO 날짜 `YYYY-MM-DD` */
@@ -315,13 +315,50 @@ export function formatFactValue(
   return formatValue(n, unit, options);
 }
 
-/** "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1 */
-export function formatUnknown(reason?: string | null, checkedAt?: string | null): string {
+/**
+ * 서버 사유(포함 문자열) → 쉬운 말 key (R9-UI P7, 30-proposal §8-2). 순서대로 처음 맞는 것.
+ * 문자열 매칭은 임시다 — 계약 .20 `reason_code`(요청 Q5)가 오면 코드 기준으로 바꾼다. 서버 문자열은
+ * eslint-rules/hangul-allowlist.js 의 서버 표식(CONTRACT_MARKERS·enum)으로 근거를 둔다.
+ */
+const REASON_PLAIN: readonly (readonly [readonly string[], TKey])[] = [
+  [['해석 실패'], 'empty.reasonPlain.parse_failed'],
+  [['판정 미해결', '미해결'], 'empty.reasonPlain.unresolved'],
+  [['미판정'], 'empty.reasonPlain.unjudged'],
+  [['정액 표기 없음'], 'empty.reasonPlain.no_fixed_amount'],
+  [['값 없음'], 'empty.reasonPlain.no_value'],
+  [['미입력'], 'empty.reasonPlain.not_entered'],
+  [['공고 전', '분양가 미공개'], 'empty.reasonPlain.pre_notice'],
+];
+
+/** 사유 → 화면 문구. 모르는 사유는 그대로(mapped=false) */
+export function plainReason(reason: string): { text: string; mapped: boolean } {
+  for (const [needles, key] of REASON_PLAIN) {
+    if (needles.some((n) => reason.includes(n))) return { text: t(key), mapped: true };
+  }
+  return { text: reason, mapped: false };
+}
+
+/** 쉬운 말로 바꾼 사유면 "원래 사유: …"(같은 요소의 title — 0클릭, 마우스 올림). 아니면 undefined */
+export function unknownTitle(reason: string | null | undefined): string | undefined {
+  if (!reason || !plainReason(reason).mapped) return undefined;
+  return t('empty.reasonOriginal', { reason });
+}
+
+/**
+ * "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1.
+ * 괄호 안 사유는 쉬운 말(P7). `raw` 면 서버 사유 그대로(출처 패널 '라벨' 줄).
+ */
+export function formatUnknown(
+  reason?: string | null,
+  checkedAt?: string | null,
+  options: { raw?: boolean } = {},
+): string {
   if (!reason) return t('empty.unknown');
+  const shown = options.raw ? reason : plainReason(reason).text;
   const date = checkedAt ? (kstDay(checkedAt) ?? undefined) : undefined;
   return date
-    ? t('empty.unknownWithReasonDate', { reason, date })
-    : t('empty.unknownWithReason', { reason });
+    ? t('empty.unknownWithReasonDate', { reason: shown, date })
+    : t('empty.unknownWithReason', { reason: shown });
 }
 
 /** 계약 Fact.unit 힌트 → FactUnit (FactCell에서 unit prop을 생략했을 때). 숫자면 'number', 아니면 'text' */

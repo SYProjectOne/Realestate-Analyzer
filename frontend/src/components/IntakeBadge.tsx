@@ -1,6 +1,6 @@
 import { t, tDynamic } from '@/i18n';
 import type { IntakeLike } from '@/lib/contract';
-import { formatDate, kstDay } from '@/lib/format';
+import { formatDate, kstDay, plainReason, unknownTitle } from '@/lib/format';
 import { Badge } from './Badge';
 
 export interface IntakeBadgeProps {
@@ -21,9 +21,11 @@ export function intakeStatusText(intake: IntakeLike): string {
   const status = tDynamic(`intake.status.${intake.status}`, intake.status);
   if (!intake.reason || (intake.status !== '확인 불가' && intake.status !== '불가')) return status;
   const date = dayOf(intake.checked_at);
+  // P7: 사유는 쉬운 말(원 사유는 배지 title)
+  const reason = plainReason(intake.reason).text;
   return date
-    ? t('intake.withReasonDate', { status, reason: intake.reason, date })
-    : t('intake.withReason', { status, reason: intake.reason });
+    ? t('intake.withReasonDate', { status, reason, date })
+    : t('intake.withReason', { status, reason });
 }
 
 /**
@@ -41,7 +43,12 @@ export function IntakeBadge({ intake, showPath = true, asof, className }: Intake
   const status = intakeStatusText(intake);
   const path = tDynamic(`intake.path.${intake.path}`, intake.path);
   const tone = intake.status === '가능' ? 'strong' : intake.status === '불가' ? 'neutral' : 'muted';
-  const title = intake.checked_at ? formatDate(intake.checked_at, asof) : undefined;
+  const checked = intake.checked_at ? formatDate(intake.checked_at, asof) : null;
+  const original =
+    intake.status === '확인 불가' || intake.status === '불가'
+      ? unknownTitle(intake.reason)
+      : undefined;
+  const title = [checked, original ?? null].filter(Boolean).join(' · ') || undefined;
   return (
     <Badge tone={tone} className={className} title={title} data-testid="intake-badge">
       {showPath ? `${status} · ${path}` : status}

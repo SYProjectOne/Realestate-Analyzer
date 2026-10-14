@@ -162,7 +162,9 @@ test.describe.serial('계약 .15 화면(실 API)', () => {
     await expect(link).toBeVisible();
     const row = page.locator('tr', { has: link });
     await expect(row.getByTestId('judge-scope')).toHaveText(P.common.judgeScope['보류']);
-    await expect(row.getByText(new RegExp(`^${ko.empty.unknown}\\(공고 전`)).first()).toBeVisible();
+    // R9-UI P7: 서버 사유 '공고 전'은 쉬운 말로 보인다(원 사유는 title)
+    const plain = `${ko.empty.unknown}(${ko.empty.reasonPlain.pre_notice}`.replace(/[()]/g, '\\$&');
+    await expect(row.getByText(new RegExp(`^${plain}`)).first()).toBeVisible();
 
     await ready(page, `/complexes/${CANDIDATE}?region=1&snapshot=${SNAPSHOT}`, P.G3.title);
     const badge = page.getByTestId('upcoming-badge');

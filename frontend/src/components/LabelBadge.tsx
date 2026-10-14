@@ -1,6 +1,6 @@
 import { t, type TKey } from '@/i18n';
 import type { Label } from '@/lib/contract';
-import { formatUnknown } from '@/lib/format';
+import { formatUnknown, unknownTitle } from '@/lib/format';
 
 export interface LabelBadgeProps {
   label: Label;
@@ -41,8 +41,9 @@ export function labelText(
   reason?: string | null,
   human?: boolean,
   checkedAt?: string | null,
+  raw = false,
 ): string {
-  if (label === '확인 불가') return formatUnknown(reason, checkedAt);
+  if (label === '확인 불가') return formatUnknown(reason, checkedAt, { raw });
   const base = t(LABEL_KEYS[label]);
   const named = human ? t('label.humanPrefix', { label: base }) : base;
   return reason ? t('label.withReason', { label: named, reason }) : named;
@@ -62,10 +63,13 @@ export function LabelBadge({
   wrap = false,
   className = '',
 }: LabelBadgeProps) {
-  const text = labelText(label, reason, human, checkedAt);
+  // 출처 패널(full)은 서버 사유 그대로(P7 — 원 사유가 1클릭 안에 있다)
+  const text = labelText(label, reason, human, checkedAt, full);
   const long = !full && (reason?.length ?? 0) > LABEL_REASON_MAX;
   const shown = long ? t('label.truncated', { text: text.slice(0, LABEL_REASON_MAX) }) : text;
-  const title = long ? text : undefined;
+  // title: 줄였으면 전문, 사유를 쉬운 말로 바꿨으면 원 사유(P3·P7)
+  const original = !full && label === '확인 불가' ? unknownTitle(reason) : undefined;
+  const title = [long ? text : null, original ?? null].filter(Boolean).join(' · ') || undefined;
   const space = long || wrap ? 'whitespace-normal' : 'whitespace-nowrap';
   if (label === '확인됨' && !human) {
     return (

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { formatUnknown } from '@/lib/format';
+import { formatUnknown, unknownTitle } from '@/lib/format';
 
 export interface EmptyStateProps {
   /** 사유. 있으면 "확인 불가(사유)", 없으면 "확인 불가" */
@@ -25,9 +25,11 @@ export function EmptyState({
   className = '',
 }: EmptyStateProps) {
   const text = message ?? formatUnknown(reason, checkedAt);
+  // P7: 사유를 쉬운 말로 바꿨으면 원 사유는 title(마우스 올림)
+  const title = message === undefined ? unknownTitle(reason) : undefined;
   if (inline) {
     return (
-      <span className={`text-grayed ${className}`} data-testid="empty-state">
+      <span className={`text-grayed ${className}`} data-testid="empty-state" title={title}>
         {text}
       </span>
     );
@@ -36,6 +38,7 @@ export function EmptyState({
     <div
       role="status"
       data-testid="empty-state"
+      title={title}
       className={`flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border p-6 text-sm text-grayed ${className}`}
     >
       <p>{text}</p>

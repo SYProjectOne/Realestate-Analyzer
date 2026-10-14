@@ -11,6 +11,7 @@ import { server } from '@/mocks/server';
 import { renderWithProviders } from '@/test/render';
 import { t } from '@/i18n';
 import {
+  EmptyState,
   FactCell,
   IntakeBadge,
   JobProgressView,
@@ -143,6 +144,46 @@ describe('R9-UI P3(D28-2): 라벨 무게 나누기 — 글자는 남고 무게�
     }
     await userEvent.keyboard('{Escape}');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+describe('R9-UI P7 원 사유는 title 에(EmptyState·LabelBadge·IntakeBadge)', () => {
+  it('쉬운 말을 보이고 원 사유는 같은 요소 title', () => {
+    renderWithProviders(
+      <>
+        <LabelBadge label="확인 불가" reason="발코니 표 해석 실패" checkedAt="2026-10-13" />
+        <EmptyState inline reason="미판정" checkedAt="2026-10-14" />
+        <IntakeBadge
+          intake={{
+            status: '확인 불가',
+            path: 'headless_shot',
+            checked_at: '2026-10-14',
+            reason: '판정 미해결',
+          }}
+          showPath={false}
+        />
+      </>,
+    );
+    const label = screen.getByTestId('label-badge');
+    expect(label).toHaveTextContent(
+      `확인 불가(${t('empty.reasonPlain.parse_failed')}, 2026-10-13)`,
+    );
+    expect(label.getAttribute('title')).toContain(
+      t('empty.reasonOriginal', { reason: '발코니 표 해석 실패' }),
+    );
+    const empty = screen.getByTestId('empty-state');
+    expect(empty).toHaveTextContent(`확인 불가(${t('empty.reasonPlain.unjudged')}, 2026-10-14)`);
+    expect(empty).toHaveAttribute('title', t('empty.reasonOriginal', { reason: '미판정' }));
+    const intake = screen.getByTestId('intake-badge');
+    expect(intake).toHaveTextContent(t('empty.reasonPlain.unresolved'));
+    expect(intake.getAttribute('title')).toContain(
+      t('empty.reasonOriginal', { reason: '판정 미해결' }),
+    );
+  });
+
+  it('출처 패널(full)은 원 사유 그대로', () => {
+    renderWithProviders(<LabelBadge label="확인 불가" reason="미판정" full />);
+    expect(screen.getByTestId('label-badge')).toHaveTextContent('확인 불가(미판정)');
   });
 });
 
