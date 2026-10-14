@@ -22,13 +22,24 @@
     "triggers_rejudge": { "type": "boolean" },
     "complex_id": { "type": ["integer", "null"] },
     "complex_name": { "type": ["string", "null"] },
-    "tab": { "type": ["string", "null"], "enum": ["price", "payment", "events", "ladder", "gap", "catalysts", "provenance", "judgments", null] }
+    "tab": { "type": ["string", "null"], "enum": ["price", "payment", "events", "ladder", "gap", "catalysts", "provenance", "judgments", null] },
+    "field_label": { "description": "계약 2026-10-09.20(D28-5 Q5): field 의 사람이 읽는 이름(예 official_popup_hash → '공식 홈페이지 팝업', move_in_ym → '입주 예정월', price_by_type.84A.max_price_won → '84A 최고 공급가'). 서버 표(``app.api.change_text``)에 없는 필드는 field 그대로. 원래 field 는 그대로 둔다", "type": "string", "maxLength": 80 },
+    "summary": { "description": "계약 2026-10-09.20(D28-5 Q5): 변경 한 줄 요약(사람이 읽는 문장 — 새 판단 없음, 서버 문구 표 + 값 형식만). value_kind 가 'plain' 이고 값이 짧으면 '<field_label>: <old> → <new>'(값 없음은 '없음'), 'hash'·'json' 이면 값 없이 '<field_label>이(가) 바뀌었습니다'(예 '공식 홈페이지 팝업이 바뀌었습니다'), 새 공고(entity notice)는 '새 공고: <new_text>'. 원값은 old_text·new_text 에 그대로 있다(D25-2 — 변경 기록, Fact 아님). .20 이전 발행 리비전 저장본(변경 원장)에는 키가 없다(= null — 화면은 field·old_text·new_text 로 대신한다)", "type": "string", "maxLength": 200 },
+    "value_kind": { "description": "계약 2026-10-09.20(D28-5 Q5): old_text·new_text 의 모양 — 'plain'(읽을 수 있는 짧은 값) | 'hash'(64자리 16진 해시 등 기계값 — 화면은 '바뀐 값 보기' 접힘 안에) | 'json'(목록·객체 JSON — 접힘 안에). 판단 아님(문자열 모양 검사)", "type": "string", "enum": ["plain", "hash", "json"] }
   },
   "examples": [
     {
       "id": 3301, "snapshot_id": 12, "entity": "payment_terms", "entity_id": 77, "field": "down_payment_pct",
       "old_text": "10", "new_text": "5", "detected_at": "2026-10-08T06:21:40+09:00", "severity": "critical",
-      "triggers_rejudge": true, "complex_id": 7, "complex_name": "김포 칸타빌 에디션", "tab": "payment"
+      "triggers_rejudge": true, "complex_id": 7, "complex_name": "김포 칸타빌 에디션", "tab": "payment",
+      "field_label": "계약금 비율(%)", "summary": "계약금 비율(%): 10 → 5", "value_kind": "plain"
+    },
+    {
+      "id": 3302, "snapshot_id": 12, "entity": "complex", "entity_id": 2, "field": "official_popup_hash",
+      "old_text": "4017a9c2e0b54d8f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f", "new_text": "59fd0b2c4e6a8c0e2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e8a0c2e4a6c8e",
+      "detected_at": "2026-10-08T06:22:10+09:00", "severity": "critical", "triggers_rejudge": true, "complex_id": 2,
+      "complex_name": "엘리프 검단 포레듀", "tab": null,
+      "field_label": "공식 홈페이지 팝업", "summary": "공식 홈페이지 팝업이 바뀌었습니다", "value_kind": "hash"
     }
   ]
 }

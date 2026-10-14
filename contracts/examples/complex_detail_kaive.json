@@ -23,7 +23,8 @@
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "land_type": {
         "v": "공공택지",
@@ -58,28 +59,32 @@
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "units_special": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "officetel_units": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "notice_date": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "apply_dates": [],
       "contract_dates": [],
@@ -88,42 +93,48 @@
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "move_in_ym": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "resale_months": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "resale_release_on_registration": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "residency_months": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "rewin_restriction_years": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "inclusion_class": "private_sale_apt",
       "inclusion_decision": "auto",
@@ -144,24 +155,68 @@
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "price_high": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "price_mid": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "composition": null,
-      "change_vs_first_pct": null
+      "change_vs_first_pct": null,
+      "payment_amounts": {
+        "basis_type_code": null,
+        "payment_terms_id": null,
+        "down_payment_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "납부 조건 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null,
+          "unit": "won"
+        },
+        "interim_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "납부 조건 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null,
+          "unit": "won"
+        },
+        "balance_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "납부 조건 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null,
+          "unit": "won"
+        },
+        "down_payment_first_won": {
+          "v": null,
+          "label": "확인 불가",
+          "reason": "납부 조건 없음",
+          "reason_code": "no_value",
+          "prov": null,
+          "checked_at": null,
+          "unit": "won"
+        },
+        "formula": "금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
+      }
     },
     "intake_current": null,
     "types": [],
@@ -176,21 +231,24 @@
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "price_high": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "price_mid": {
         "v": null,
         "label": "확인 불가",
         "reason": "공고 전",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "comps": [],
       "gap_pct": {
@@ -198,7 +256,8 @@
         "label": "확인 불가",
         "reason": "분양가 미공개",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "not_published"
       },
       "gap_pct_unadjusted": null,
       "score": {
@@ -206,12 +265,59 @@
         "label": "확인 불가",
         "reason": "미판정",
         "prov": null,
-        "checked_at": "2026-10-07"
+        "checked_at": "2026-10-07",
+        "reason_code": "unjudged"
       },
-      "empty_reason": "비교군 없음(분양가 미공개 — 공고 후 재판정)"
+      "empty_reason": "비교군 없음(분양가 미공개 — 공고 후 재판정)",
+      "gap_score": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "미판정",
+        "prov": null,
+        "checked_at": "2026-10-07",
+        "reason_code": "unjudged"
+      }
     },
     "catalysts": [],
     "judgments": [],
-    "score": null
+    "score": null,
+    "competition_summary": {
+      "basis": "본청약 1순위 해당지역",
+      "rows": 0,
+      "max_ratio": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "1순위 해당지역 경쟁률 없음",
+        "reason_code": "no_value",
+        "prov": null,
+        "checked_at": null
+      },
+      "max_ratio_type_code": null,
+      "shortfall_types": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "1순위 해당지역 경쟁률 없음",
+        "reason_code": "no_value",
+        "prov": null,
+        "checked_at": null,
+        "unit": "count"
+      },
+      "winning_score_min": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "1순위 해당지역 경쟁률 없음",
+        "reason_code": "no_value",
+        "prov": null,
+        "checked_at": null
+      },
+      "winning_score_max": {
+        "v": null,
+        "label": "확인 불가",
+        "reason": "1순위 해당지역 경쟁률 없음",
+        "reason_code": "no_value",
+        "prov": null,
+        "checked_at": null
+      }
+    }
   }
 }

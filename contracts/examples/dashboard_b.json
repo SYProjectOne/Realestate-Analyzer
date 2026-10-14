@@ -44,7 +44,7 @@
           "label": "재가공",
           "prov": "fp_6100",
           "checked_at": "2026-10-07",
-          "reason": "연수 505·검단 737·계양 0·김포 787 합",
+          "reason": "지역 합계(시군구 4곳)",
           "unit": "units"
         },
         "post_completion": {
@@ -52,9 +52,87 @@
           "label": "재가공",
           "prov": "fp_6100",
           "checked_at": "2026-10-07",
-          "reason": "연수 203·검단 737·김포 52 합",
+          "reason": "지역 합계(시군구 4곳)",
           "unit": "units"
-        }
+        },
+        "breakdown": [
+          {
+            "ym": "2026-08",
+            "scope_code": "41570",
+            "scope_name": "김포시",
+            "total": {
+              "v": 787,
+              "label": "재가공",
+              "prov": "fp_6123",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 52,
+              "label": "재가공",
+              "prov": "fp_6123",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          },
+          {
+            "ym": "2026-08",
+            "scope_code": "28185",
+            "scope_name": "연수구",
+            "total": {
+              "v": 505,
+              "label": "재가공",
+              "prov": "fp_6301",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 203,
+              "label": "재가공",
+              "prov": "fp_6301",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          },
+          {
+            "ym": "2026-08",
+            "scope_code": "28290",
+            "scope_name": "검단구",
+            "total": {
+              "v": 737,
+              "label": "재가공",
+              "prov": "fp_6302",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 737,
+              "label": "재가공",
+              "prov": "fp_6302",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          },
+          {
+            "ym": "2026-08",
+            "scope_code": "28245",
+            "scope_name": "계양구",
+            "total": {
+              "v": 0,
+              "label": "재가공",
+              "prov": "fp_6303",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 0,
+              "label": "재가공",
+              "prov": "fp_6303",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          }
+        ]
       },
       "move_in_peak": {
         "year": {
@@ -226,7 +304,10 @@
           "http_status": 200,
           "reason": "마감",
           "note": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": "other",
+          "supply_kind": "무순위",
+          "supply_kind_basis": "무순위 2차(2026-08-26) 후 공고 없음, 팝업 '세대 관람 종료'"
         },
         "decision": {
           "prob": {
@@ -242,7 +323,82 @@
           "mismatch": false,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 1245000000,
+          "label": "확인됨",
+          "prov": "fp_101",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 1318000000,
+          "label": "확인됨",
+          "prov": "fp_102",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2026-11-28",
+          "label": "추정",
+          "prov": "fp_103",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2029-08",
+          "label": "확인됨",
+          "prov": "fp_104",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": -2.0,
+          "label": "추정",
+          "prov": "sc_88_1_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 2,
@@ -383,7 +539,10 @@
           "http_status": 200,
           "reason": null,
           "note": "팝업 '선착순 동·호지정 계약 중'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
         },
         "decision": {
           "prob": {
@@ -399,7 +558,82 @@
           "mismatch": false,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 578000000,
+          "label": "확인됨",
+          "prov": "fp_201",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 608000000,
+          "label": "확인됨",
+          "prov": "fp_202",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2028-09-10",
+          "label": "추정",
+          "prov": "fp_203",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2028-03",
+          "label": "확인됨",
+          "prov": "fp_204",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": -5.2,
+          "label": "추정",
+          "prov": "sc_88_2_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 3,
@@ -540,7 +774,10 @@
           "http_status": 200,
           "reason": null,
           "note": "선착순 동·호 지정 계약 중",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "선착순 동·호 지정 계약 중"
         },
         "decision": {
           "prob": {
@@ -556,7 +793,82 @@
           "mismatch": false,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 813400000,
+          "label": "확인됨",
+          "prov": "fp_301",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 898600000,
+          "label": "확인됨",
+          "prov": "fp_302",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2026-06-23",
+          "label": "추정",
+          "prov": "fp_303",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2029-03",
+          "label": "확인됨",
+          "prov": "fp_304",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": 2.4,
+          "label": "추정",
+          "prov": "sc_88_3_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 4,
@@ -690,7 +1002,10 @@
           "http_status": 403,
           "reason": "403",
           "note": null,
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": "fetch_failed",
+          "supply_kind": null,
+          "supply_kind_basis": null
         },
         "decision": {
           "prob": {
@@ -706,7 +1021,82 @@
           "mismatch": true,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 626000000,
+          "label": "확인됨",
+          "prov": "fp_401",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 699000000,
+          "label": "확인됨",
+          "prov": "fp_402",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2028-07-18",
+          "label": "추정",
+          "prov": "fp_403",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2028-08",
+          "label": "확인됨",
+          "prov": "fp_404",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": 0.0,
+          "label": "추정",
+          "prov": "sc_88_4_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 5,
@@ -847,10 +1237,88 @@
           "http_status": 200,
           "reason": null,
           "note": "공식 홈페이지는 방문예약제(선착순 공지 없음)",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "공식 홈페이지는 방문예약제(선착순 공지 없음)"
         },
         "decision": null,
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 607000000,
+          "label": "확인됨",
+          "prov": "fp_501",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 622000000,
+          "label": "확인됨",
+          "prov": "fp_502",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2028-10-14",
+          "label": "추정",
+          "prov": "fp_503",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2028-08",
+          "label": "확인됨",
+          "prov": "fp_504",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": 1.6,
+          "label": "추정",
+          "prov": "sc_88_5_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 7,
@@ -984,7 +1452,10 @@
           "http_status": 200,
           "reason": null,
           "note": "팝업 '선착순 동·호지정 계약 중 / 전매제한 FREE / 거주의무 FREE'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중"
         },
         "decision": {
           "prob": {
@@ -1000,7 +1471,82 @@
           "mismatch": false,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 664000000,
+          "label": "확인됨",
+          "prov": "fp_701",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 697000000,
+          "label": "확인됨",
+          "prov": "fp_702",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2026-06-10",
+          "label": "추정",
+          "prov": "fp_703",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2029-12",
+          "label": "확인됨",
+          "prov": "fp_704",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": 7.6,
+          "label": "추정",
+          "prov": "sc_88_7_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       }
     ],
     "changes": [
@@ -1017,7 +1563,10 @@
         "triggers_rejudge": true,
         "complex_id": 7,
         "complex_name": "김포 칸타빌 에디션",
-        "tab": "payment"
+        "tab": "payment",
+        "field_label": "계약금 비율(%)",
+        "summary": "계약금 비율(%): 10 → 5",
+        "value_kind": "plain"
       },
       {
         "id": 3302,
@@ -1032,7 +1581,10 @@
         "triggers_rejudge": true,
         "complex_id": 2,
         "complex_name": "엘리프 검단 포레듀",
-        "tab": "events"
+        "tab": "events",
+        "field_label": "공식 홈페이지 팝업 그림",
+        "summary": "공식 홈페이지 팝업 그림이 바뀌었습니다",
+        "value_kind": "hash"
       },
       {
         "id": 3303,
@@ -1047,7 +1599,10 @@
         "triggers_rejudge": true,
         "complex_id": 8,
         "complex_name": "풍무역세권 수자인 그라센트 2차",
-        "tab": "events"
+        "tab": "events",
+        "field_label": "새 공고",
+        "summary": "새 공고: 임의공급 3차 2026940187 (잔여 8)",
+        "value_kind": "plain"
       },
       {
         "id": 3304,
@@ -1062,7 +1617,10 @@
         "triggers_rejudge": false,
         "complex_id": 3,
         "complex_name": "송도 한내들 센트럴리버",
-        "tab": "payment"
+        "tab": "payment",
+        "field_label": "중도금 1회차 납부일",
+        "summary": "중도금 1회차 납부일: 2026-10-18 → 2026-10-30",
+        "value_kind": "plain"
       },
       {
         "id": 3305,
@@ -1077,7 +1635,10 @@
         "triggers_rejudge": false,
         "complex_id": 4,
         "complex_name": "오퍼스 한강 스위첸",
-        "tab": "provenance"
+        "tab": "provenance",
+        "field_label": "공식 홈페이지 응답 코드",
+        "summary": "공식 홈페이지 응답 코드: 403 → 403",
+        "value_kind": "plain"
       }
     ],
     "unsold_series": [
@@ -1090,14 +1651,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1109,14 +1672,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1128,14 +1693,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1147,14 +1714,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1166,14 +1735,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1185,14 +1756,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1204,14 +1777,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1223,14 +1798,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1242,14 +1819,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1268,7 +1847,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1287,7 +1867,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1306,7 +1887,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1318,14 +1900,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1337,14 +1921,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1356,14 +1942,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1382,7 +1970,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1394,14 +1983,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1413,14 +2004,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1439,7 +2032,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1451,14 +2045,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1470,14 +2066,16 @@
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         },
         "post_completion": {
           "v": null,
           "label": "확인 불가",
           "reason": "미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1496,7 +2094,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {
@@ -1515,7 +2114,8 @@
           "label": "확인 불가",
           "reason": "월별 준공 후 미분양 미수집",
           "prov": null,
-          "checked_at": "2026-10-07"
+          "checked_at": "2026-10-07",
+          "reason_code": "not_collected"
         }
       },
       {

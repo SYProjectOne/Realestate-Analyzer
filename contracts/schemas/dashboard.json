@@ -38,7 +38,8 @@
           "properties": {
             "ym": { "type": ["string", "null"] },
             "total": { "$ref": "fact.json" },
-            "post_completion": { "$ref": "fact.json" }
+            "post_completion": { "$ref": "fact.json" },
+            "breakdown": { "description": "계약 2026-10-09.20(D28-5 Q5): 지역 합계의 내역 — 그 달(ym)의 통계 단위(시군구)별 미분양 행(market.json UnsoldPoint, scope_code·scope_name·total·post_completion — 원천 행 Fact, prov fp_). 합계 Fact 의 reason 은 짧게 '지역 합계(시군구 n곳)'이고 단위별 값은 여기에 있다(예전 '인천 검단구 737·…합' 나열 사유 대체). 통계 단위가 하나면 그 행 1개. 미분양 자료가 없으면 []. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "type": ["array", "null"], "items": { "$ref": "market.json#/$defs/UnsoldPoint" } }
           }
         },
         "move_in_peak": {

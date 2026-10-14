@@ -23,7 +23,7 @@
     "price_mid": { "$ref": "fact.json" },
     "resale_end": { "$ref": "fact.json" },
     "move_in_ym": { "$ref": "fact.json" },
-    "gap_pct": { "$ref": "fact.json" },
+    "gap_pct": { "description": "가격 갭 퍼센트(unit pct — 성분 원값, prov 'sc_<실행>_<단지>_gap.raw', 계약 2026-10-09.20 Q6). 종합 점수 성분 s_gap(0~10)이 아니다", "$ref": "fact.json" },
     "total": { "$ref": "fact.json" },
     "rank": { "x-nonfact": "§6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov", "type": ["integer", "null"], "minimum": 1 },
     "tie_group": { "x-nonfact": "§6-4 규칙으로 total(Fact, prov st_)에서 파생한 서수 메타 — 근거는 total.prov", "type": ["integer", "null"], "minimum": 1 },
@@ -37,6 +37,8 @@
     "regulated": { "$ref": "fact.json" },
     "residency_months": { "$ref": "fact.json" },
     "down_payment_pct": { "$ref": "fact.json" },
+    "down_payment_won": { "description": "계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "competition_summary": { "description": "계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약(competition.json CompetitionSummary — 1순위 해당지역 최고 경쟁률·미달 주택형 수·당첨 가점). 경쟁률 행이 없는 단지는 rows 0. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "competition.json#/$defs/CompetitionSummary" }, { "type": "null" }] },
     "units_total": { "$ref": "fact.json" },
     "last_change": {
       "anyOf": [
@@ -81,7 +83,7 @@
       "price_mid": { "v": 662500000, "label": "추정", "reason": "산술", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },
       "resale_end": { "v": "2028-07-18", "label": "추정", "reason": "산술", "prov": "fp_4103", "checked_at": "2026-10-07", "unit": "date" },
       "move_in_ym": { "v": "2028-08", "label": "확인됨", "prov": "fp_4104", "checked_at": "2026-10-07", "unit": "ym" },
-      "gap_pct": { "v": 0.0, "label": "추정", "reason": "대체·혼재 중앙", "prov": "sc_88_4_gap", "checked_at": "2026-10-08", "unit": "pct" },
+      "gap_pct": { "v": 0.0, "label": "추정", "reason": "대체·혼재 중앙", "prov": "sc_88_4_gap.raw", "checked_at": "2026-10-08", "unit": "pct" },
       "total": { "v": 4.995, "label": "추정", "prov": "st_88_4", "checked_at": "2026-10-08", "unit": "score" },
       "rank": 4, "tie_group": null, "unstable": false,
       "p10": { "v": 0.33, "label": "추정", "reason": "판정기 noul", "prov": "jl_123", "checked_at": "2026-10-07", "unit": "prob" },
@@ -92,6 +94,7 @@
       "regulated": { "v": "비규제", "label": "확인됨", "prov": "fp_4107", "checked_at": "2026-10-07", "unit": "text" },
       "residency_months": { "v": 0, "label": "확인됨", "prov": "fp_4108", "checked_at": "2026-10-07", "unit": "months" },
       "down_payment_pct": { "v": 10, "label": "확인됨", "prov": "fp_4109", "checked_at": "2026-10-07", "unit": "pct" },
+      "down_payment_won": { "v": 66250000, "label": "추정", "reason": "산술(P_mid × 계약금 10%)", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },
       "units_total": { "v": 1029, "label": "확인됨", "prov": "fp_4110", "checked_at": "2026-10-07", "unit": "units" },
       "last_change": null
     }

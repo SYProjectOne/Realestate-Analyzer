@@ -47,6 +47,7 @@
         "complex_name": { "type": "string", "maxLength": 200 },
         "status": { "description": "표시 접수 상태", "type": "string", "enum": ["확인 불가", "미정"] },
         "reason": { "description": "접수 행 사유(Intake.reason 과 같은 규칙 — '확인 불가'인데 사유가 비면 http_status 또는 '사유 미기재'). '미정'은 null 일 수 있다", "type": ["string", "null"], "maxLength": 120 },
+        "reason_code": { "description": "계약 2026-10-09.20(D28-5 Q5): reason 의 사유 코드(Intake.reason_code 와 같은 함수·같은 값). reason 이 null 이면 null", "anyOf": [{ "$ref": "fact.json#/$defs/ReasonCode" }, { "type": "null" }] },
         "path": { "description": "표시 접수 행 경로(intake.json path — unofficial_ref 는 오지 않는다)", "type": "string", "enum": ["human_check", "official_popup", "headless_shot"] },
         "evidence_url": { "description": "근거 페이지 주소(공식 홈페이지) — 없으면 null", "type": ["string", "null"], "maxLength": 2048 },
         "raw_document_id": { "description": "접수 행 원문(GET /raw/{id}; 실패 행이면 404)", "type": ["integer", "null"] },

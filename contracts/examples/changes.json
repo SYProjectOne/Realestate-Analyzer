@@ -14,7 +14,10 @@
       "triggers_rejudge": true,
       "complex_id": 7,
       "complex_name": "김포 칸타빌 에디션",
-      "tab": "payment"
+      "tab": "payment",
+      "field_label": "계약금 비율(%)",
+      "summary": "계약금 비율(%): 10 → 5",
+      "value_kind": "plain"
     },
     {
       "id": 3302,
@@ -29,7 +32,10 @@
       "triggers_rejudge": true,
       "complex_id": 2,
       "complex_name": "엘리프 검단 포레듀",
-      "tab": "events"
+      "tab": "events",
+      "field_label": "공식 홈페이지 팝업 그림",
+      "summary": "공식 홈페이지 팝업 그림이 바뀌었습니다",
+      "value_kind": "hash"
     },
     {
       "id": 3303,
@@ -44,7 +50,10 @@
       "triggers_rejudge": true,
       "complex_id": 8,
       "complex_name": "풍무역세권 수자인 그라센트 2차",
-      "tab": "events"
+      "tab": "events",
+      "field_label": "새 공고",
+      "summary": "새 공고: 임의공급 3차 2026940187 (잔여 8)",
+      "value_kind": "plain"
     },
     {
       "id": 3304,
@@ -59,7 +68,10 @@
       "triggers_rejudge": false,
       "complex_id": 3,
       "complex_name": "송도 한내들 센트럴리버",
-      "tab": "payment"
+      "tab": "payment",
+      "field_label": "중도금 1회차 납부일",
+      "summary": "중도금 1회차 납부일: 2026-10-18 → 2026-10-30",
+      "value_kind": "plain"
     },
     {
       "id": 3305,
@@ -74,7 +86,10 @@
       "triggers_rejudge": false,
       "complex_id": 4,
       "complex_name": "오퍼스 한강 스위첸",
-      "tab": "provenance"
+      "tab": "provenance",
+      "field_label": "공식 홈페이지 응답 코드",
+      "summary": "공식 홈페이지 응답 코드: 403 → 403",
+      "value_kind": "plain"
     },
     {
       "id": 3306,
@@ -89,7 +104,10 @@
       "triggers_rejudge": false,
       "complex_id": null,
       "complex_name": null,
-      "tab": null
+      "tab": null,
+      "field_label": "미분양 세대",
+      "summary": "미분양 세대: 830 → 787",
+      "value_kind": "plain"
     }
   ]
 }

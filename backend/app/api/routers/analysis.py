@@ -196,6 +196,10 @@ def compare_body(
     from app.api.views import _resale_end, notice_fact
 
     members = comparables_by_complex(session, snap.id, [c.id for c in complexes])
+    comps = views.competition_rows_for(
+        session, [c.id for c in complexes]
+    )  # 계약 .20 Q4 — 점수 행 경쟁률 요약
+    views.load_competition_prov(session, fm, comps)
     items: dict[str, Any] = {}
     for c in complexes:
         i = c.id
@@ -204,17 +208,14 @@ def compare_body(
         price = price_range(fm, b, notice)
         gap = gap_view(session, fm, ctx, b.cx, snap.id, price, members=members.get(i, []))
         pay = current_payment(b.payments)
-        down = (
-            fm.field("payment_terms", pay.id, "down_payment_pct", pay.down_payment_pct, unit="pct")
-            if pay is not None
-            else unknown("납부 조건 없음", None, unit="pct")
-        )
+        down = views.down_payment_pct_fact(fm, b)
         view = bundle_price(b)  # §6-1 현재 구매가(최신 공고 가격 우선, R3 M3)
         low, high = view.low_won, view.high_won
         mid = (Decimal(low) + Decimal(high)) / 2 if low is not None and high is not None else None
+        # 계약금 원 금액 = P_mid × D — 목록·상세와 같은 함수(views.down_payment_won_fact → price.share_won)
+        down_won = views.down_payment_won_fact(fm, b, price["price_mid"], down)
         if mid is not None and pay is not None and pay.down_payment_pct is not None:
             dp = mid * pay.down_payment_pct / 100
-            down_won = fm.derived(_won(dp), [price["price_mid"], down], unit="won")
             if loan is None:
                 equity = unknown("미입력", None, unit="won")
             else:
@@ -227,14 +228,15 @@ def compare_body(
                 )
         else:
             src = [price["price_mid"], down]
-            down_won = fm.derived(None, src, unit="won")
             equity = (
                 fm.derived(None, src, unit="won") if loan is not None else unknown("미입력", None, unit="won")
             )
         winner = fm.field("complex", i, "winner_date", b.cx.winner_date, unit="date")
         months = fm.field("complex", i, "resale_months", b.cx.resale_months, unit="months")
         items[str(i)] = {
-            "row": score_row(ctx, b, names, jl_days=days),
+            "row": score_row(
+                ctx, b, names, jl_days=days, facts=views.score_row_facts(fm, ctx, b, comps.get(i, ()))
+            ),  # 계약 .20 Q7·Q4
             "ladders": [ladder_view(lad, days.get(lad.judgment_seq or -1)) for lad in b.ladders],
             "gap": gap,
             "term": {
