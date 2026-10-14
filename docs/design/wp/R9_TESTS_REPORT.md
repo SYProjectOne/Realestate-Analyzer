@@ -54,7 +54,8 @@
 | --- | --- |
 | `uv run pytest tests/reports tests/regress/test_t15_report.py -p no:randomly` | 통과(skip 1 = 번들 없는 로컬의 echarts 인라인 검사 — CI 는 실패로 바뀜) |
 | `uv run pytest tests/reports/test_r9_report.py` | 14/14 |
-| 전체 `uv run pytest -p no:randomly -m "not live"` | §6 참고 |
+| 전체 `uv run pytest -p no:randomly -m "not live"` | 실패 0(종료 코드 0, skip 은 로컬 번들·환경 조건) |
+| `python scripts/tasks.py regress` | T01~T18 · 모듈 · 흐름 전부 PASS(T15 5/5), e2e 3/3(G8 보고서 PDF 포함) |
 | `ruff check` · `ruff format --check` · `mypy app`(strict) | 통과 |
 | `scripts/gen_contracts.py --check` · `scripts/fixture_manifest.py --check` | 통과(exit 0) |
 
