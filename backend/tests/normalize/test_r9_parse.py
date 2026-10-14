@@ -103,15 +103,66 @@ def test_q2_balance_pct_is_derived_and_labelled_estimate() -> None:
         _notice("notice_2025000560_cityociel8.txt", "2025000560"), "payment_terms", "2025000560:2025000560"
     )
     bal = p["balance_pct"]
+    # needs_extract 그대로: 판정기 extract 요청은 예전('확인 불가' 후보)과 같은 발췌(표 머리) — 같은 요청·같은 캐시 키
     assert (bal.value, bal.label, bal.reason, bal.needs_extract) == (
         35.0,
         "추정",
         BALANCE_DERIVED_REASON,
-        False,
+        True,
     )
-    assert (
-        bal.excerpt and "계약금" in bal.excerpt and "중도금" in bal.excerpt
-    )  # 근거 발췌 = 계약금·중도금 비율 표기
+    assert bal.excerpt and "계약금(5%)" in bal.excerpt and "(35%)" in bal.excerpt  # 근거 발췌 = 납부 표 머리
+
+
+def test_q2_derived_balance_keeps_extract_request_and_yields_to_judge(
+    db_session: Session, raw_dir: Path, add_raw: AddRaw, region: Region
+) -> None:
+    """산술 잔금은 판정기 추출이 나오면 물러난다(OCR 판독과 같은 규칙): extract 요청은 예전과 같은 필드·발췌로 남고, 판정기가
+    auto 로 읽은 값(감사 통과)이 '확인됨'으로 채택된다. review 면 산술 '추정' 값이 그대로 남는다."""
+    from app.normalize.extract_request import build_extract_requests
+    from app.normalize.judged import AuditMark, ExtractedValue, apply_extracted
+
+    d = add_raw(
+        _text("notice_2025000560_cityociel8.txt"),
+        source_kind="notice_pdf",
+        url=_notice_url("2025000560"),
+        region_id=region.id,
+    )
+    cands = store_raw_document(db_session, d, raw_dir=raw_dir).candidates
+    db_session.flush()
+    reqs = [r for r in build_extract_requests(cands) if r.entity == "payment_terms"]
+    assert [r.fields for r in reqs] == [["balance_pct"]] and "(35%)" in reqs[0].text
+    pt = db_session.scalars(select(PaymentTerms)).one()
+    assert pt.balance_pct == Decimal("35")
+
+    review = apply_extracted(
+        db_session, reqs[0], [ExtractedValue("balance_pct", "35%", "review")], judgment_seq=1
+    )
+    assert not review.applied and pt.balance_pct == Decimal("35")
+    out = apply_extracted(
+        db_session,
+        reqs[0],
+        [ExtractedValue("balance_pct", "35%", "auto")],
+        judgment_seq=2,
+        audit={"balance_pct": AuditMark(flagged=False, p_wrong=0.05)},
+        audit_seq=3,
+    )
+    assert set(out.applied) == {"balance_pct"}
+    chosen = db_session.scalars(
+        select(FieldProvenance).where(
+            FieldProvenance.field == "balance_pct", FieldProvenance.chosen.is_(True)
+        )
+    ).one()
+    assert chosen.label == "확인됨" and chosen.reason and chosen.reason.startswith("판정기 추출")
+    # 같은 원문 재정규화 — 판정기 추출 행이 그대로 채택(D22-1), 이벤트 0
+    again = store_raw_document(db_session, d, raw_dir=raw_dir).change_events
+    db_session.flush()
+    assert again == []
+    kept = db_session.scalars(
+        select(FieldProvenance).where(
+            FieldProvenance.field == "balance_pct", FieldProvenance.chosen.is_(True)
+        )
+    ).one()
+    assert kept.id == chosen.id and kept.label == "확인됨"
 
 
 def test_q2_balance_pct_read_directly_stays_confirmed() -> None:
@@ -440,29 +491,39 @@ def _popup() -> list[FieldCandidate]:
     )
 
 
-def test_q4_popup_win_scores_per_type_and_area() -> None:
+def test_q4_popup_winning_scores_per_type_and_area() -> None:
     cands = _popup()
     s59 = _vals(cands, "competition", "2025000560:본청약:1순위 해당지역:59.9801")
-    assert (s59["win_score_min"].value, s59["win_score_max"].value, s59["win_score_avg"].value) == (
+    assert (
+        s59["winning_score_min"].value,
+        s59["winning_score_max"].value,
+        s59["winning_score_avg"].value,
+    ) == (
         42.0,
         63.0,
         48.5,
     )
-    assert s59["win_score_avg"].label == "확인됨" and "당첨가점 해당지역" in str(s59["win_score_avg"].excerpt)
+    assert s59["winning_score_avg"].label == "확인됨" and "당첨가점 해당지역" in str(
+        s59["winning_score_avg"].excerpt
+    )
     s75 = _vals(cands, "competition", "2025000560:본청약:1순위 해당지역:75.9096")
-    assert (s75["win_score_min"].value, s75["win_score_max"].value, s75["win_score_avg"].value) == (
+    assert (
+        s75["winning_score_min"].value,
+        s75["winning_score_max"].value,
+        s75["winning_score_avg"].value,
+    ) == (
         30.0,
         55.0,
         37.54,
     )
     other = _vals(cands, "competition", "2025000560:본청약:1순위 기타지역:59.9801")
-    assert (other["win_score_min"].value, other["win_score_max"].value) == (
+    assert (other["winning_score_min"].value, other["winning_score_max"].value) == (
         0.0,
         0.0,
     )  # 원문 그대로(가점 당첨자 없음 표기)
     # 미달 주택형('-')은 가점 후보가 없다(값 없음)
     a84 = _vals(cands, "competition", "2025000560:본청약:1순위 해당지역:84A")
-    assert not {"win_score_min", "win_score_max", "win_score_avg"} & set(a84)
+    assert not {"winning_score_min", "winning_score_max", "winning_score_avg"} & set(a84)
     assert a84["ratio_or_shortfall_text"].value == "(△307)"
 
 
@@ -479,7 +540,7 @@ def test_q4_popup_and_api_agree_on_ratios() -> None:
     web = {
         (c.entity_key, c.field): c.value
         for c in _popup()
-        if c.entity == "competition" and not c.field.startswith("win_score")
+        if c.entity == "competition" and not c.field.startswith("winning_score")
     }
     assert api and api == web
 
@@ -516,7 +577,7 @@ def test_q4_scores_stored_with_provenance_and_idempotent(
     row = db_session.scalars(
         select(Competition).where(Competition.round == "1순위 해당지역", Competition.type_code == "59.9801")
     ).one()
-    assert (row.win_score_min, row.win_score_max, row.win_score_avg) == (
+    assert (row.winning_score_min, row.winning_score_max, row.winning_score_avg) == (
         Decimal("42"),
         Decimal("63"),
         Decimal("48.5"),
@@ -525,7 +586,7 @@ def test_q4_scores_stored_with_provenance_and_idempotent(
         select(FieldProvenance).where(
             FieldProvenance.entity == "competition",
             FieldProvenance.entity_id == row.id,
-            FieldProvenance.field == "win_score_avg",
+            FieldProvenance.field == "winning_score_avg",
         )
     ).all()
     assert [(p.label, p.chosen, p.raw_document_id) for p in prov] == [("확인됨", True, docs[2].id)]
@@ -541,9 +602,9 @@ def test_q4_scores_stored_with_provenance_and_idempotent(
                 c.supply,
                 c.applied,
                 c.ratio_or_shortfall_text,
-                c.win_score_min,
-                c.win_score_max,
-                c.win_score_avg,
+                c.winning_score_min,
+                c.winning_score_max,
+                c.winning_score_avg,
             )
             for c in db_session.scalars(select(Competition).order_by(Competition.id))
         ]
@@ -583,7 +644,7 @@ def test_q4_first_scores_are_quiet_later_change_is_info_event(
     url = COMP_URL.format(n="2025000560")
     popup = add_raw(html, source_kind="applyhome_detail", url=url, region_id=region.id, ext="html")
     events = store_raw_document(db_session, popup, raw_dir=raw_dir).change_events
-    assert not [e for e in events if e.field.startswith("win_score")]
+    assert not [e for e in events if e.field.startswith("winning_score")]
     changed = html.replace('<td rowspan="2">48.5</td>', '<td rowspan="2">49.5</td>', 1)
     assert changed != html
     later = add_raw(
@@ -595,5 +656,7 @@ def test_q4_first_scores_are_quiet_later_change_is_info_event(
         fetched_at="2026-10-15T06:00:00+09:00",
     )
     events = store_raw_document(db_session, later, raw_dir=raw_dir).change_events
-    got = [(e.field, e.old_text, e.new_text, e.severity) for e in events if e.field.startswith("win_score")]
-    assert got == [("win_score_avg", "48.5", "49.5", "info")]
+    got = [
+        (e.field, e.old_text, e.new_text, e.severity) for e in events if e.field.startswith("winning_score")
+    ]
+    assert got == [("winning_score_avg", "48.5", "49.5", "info")]

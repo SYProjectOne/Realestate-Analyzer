@@ -10,12 +10,12 @@ R9-PARSE(저장·파싱 담당)가 추가한다. **API·계약(openapi·schemas)
 
 | 변경 | 내용 | 결정 |
 | --- | --- | --- |
-| competition.win_score_min (새 열, NULL 가능, Numeric(5,2)) | 청약홈 경쟁률 팝업 '당첨가점' 최저(가점제 당첨자만). 회차 '1순위 <거주지역>' 행에 단다 | D28-5 Q4 |
-| competition.win_score_max (새 열) | 같은 묶음의 최고 | D28-5 Q4 |
-| competition.win_score_avg (새 열) | 같은 묶음의 평균(원문 소수 2자리까지) | D28-5 Q4 |
+| competition.winning_score_min (새 열, NULL 가능, Numeric(5,2)) | 청약홈 경쟁률 팝업 '당첨가점' 최저(가점제 당첨자만). 회차 '1순위 <거주지역>' 행에 단다 | D28-5 Q4 |
+| competition.winning_score_max (새 열) | 같은 묶음의 최고 | D28-5 Q4 |
+| competition.winning_score_avg (새 열) | 같은 묶음의 평균(원문 소수 2자리까지) | D28-5 Q4 |
 
 데이터 채움 없음 — 값은 수집(웹 경쟁률 팝업, ``collectors.applyhome``)과 정규화(``normalize.applyhome_parser``)가 출처 행(field_provenance,
-entity 'competition', field 'win_score_*')과 함께 쓴다. 원문 '-'(발표 전·가점 당첨자 없음)는 NULL.
+entity 'competition', field 'winning_score_*')과 함께 쓴다. 원문 '-'(발표 전·가점 당첨자 없음)는 NULL.
 
 downgrade: 세 열 삭제(출처 행은 남는다 — 다시 올리면 다음 수집·재정규화가 채운다).
 """
@@ -34,7 +34,7 @@ down_revision: str | None = "0016"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_COLUMNS = ("win_score_min", "win_score_max", "win_score_avg")
+_COLUMNS = ("winning_score_min", "winning_score_max", "winning_score_avg")
 
 
 def upgrade() -> None:

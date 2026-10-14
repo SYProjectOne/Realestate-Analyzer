@@ -58,6 +58,7 @@ from app.normalize.fields import (
     has_tag,
     is_ocr,
     is_price_amount,
+    is_provisional,
     magnitude_apart,
     norm_value,
     split_price_by_type,
@@ -382,7 +383,7 @@ def apply_extracted(
                 (
                     r
                     for r in rows
-                    if r is not judged and (r.label == "확인 불가" or is_ocr(r.label, r.reason))
+                    if r is not judged and (r.label == "확인 불가" or is_provisional(r.label, r.reason))
                 ),
                 None,
             )

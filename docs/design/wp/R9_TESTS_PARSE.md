@@ -48,14 +48,14 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
 
 | 파일 | 내용 |
 | --- | --- |
-| `normalize/notice_parser.py` | `_INSTALL_RE` 에 '계약금' 바로 뒤 회차 제외. `_split_installments`: 회차 머리 줄 `1회 … k회`(1부터 연속) + 그 뒤 '%' 가 정확히 k개인 줄(계약금·중도금·잔금 낱말 없는 줄), **비율 합 = 중도금 비율일 때만**. 잔금 비율을 바로 못 읽고 계약금·중도금 비율이 있으면 `100 − 계약금 − 중도금`, 라벨 **'추정'**·사유 `산술(100-계약금-중도금)`, 발췌 = 계약금·중도금 비율 표기. `options_text`: 고지문 0원 경로는 **null**(후보는 내서 옛 값을 지운다 — 0원 후보의 발췌에 고지문이 남는다). 원 공고 인용 `주택관리번호(?:는|은)?` |
+| `normalize/notice_parser.py` | `_INSTALL_RE` 에 '계약금' 바로 뒤 회차 제외. `_split_installments`: 회차 머리 줄 `1회 … k회`(1부터 연속) + 그 뒤 '%' 가 정확히 k개인 줄(계약금·중도금·잔금 낱말 없는 줄), **비율 합 = 중도금 비율일 때만**. 잔금 비율을 바로 못 읽고 계약금·중도금 비율이 있으면 `100 − 계약금 − 중도금`, 라벨 **'추정'**·사유 `산술(100-계약금-중도금)`, 발췌 = 납부 표 머리. **판정기 extract 요청은 그대로 남긴다**(needs_extract, 예전 '확인 불가' 후보와 같은 발췌 = 같은 요청·같은 캐시 키) — 판정기가 auto 로 읽으면 그 추출 행('확인됨')이 산술 값을 대신한다(OCR 판독 후보와 같은 규칙). `options_text`: 고지문 0원 경로는 **null**(후보는 내서 옛 값을 지운다 — 0원 후보의 발췌에 고지문이 남는다). 원 공고 인용 `주택관리번호(?:는|은)?` |
 | `normalize/applyhome_api_parser.py` | `APPLY_KINDS`·`apply_items`·`apply_text`: apply_dates = `[{kind, start, end}]`, kind ∈ 특별공급 / 1·2순위 × 해당지역·기타경기·기타지역 / 일반공급 / 청약접수(다른 구분이 있으면 전체 기간인 '청약접수'는 뺀다) |
-| `normalize/applyhome_parser.py` | 웹 상세 일정 표: 머리 행(구분·해당지역·[기타경기]·기타지역)으로 칸을 읽어 API 와 **같은 JSON**(운영 원문 259 공고 중 두 원문이 다 있는 226 공고 모두 일치 — 다른 값 0). 잔여·임의 '청약접수' 한 칸·'일반공급' 행. 경쟁률 팝업 `_win_scores`: `td.cpResideSenm` 뒤 세 칸 → `competition.win_score_min/max/avg`, 행 키 `<번호>:본청약:1순위 <거주지역>:<원 면적 코드>`(API 행과 같은 행). '-'(발표 전·가점 당첨자 없음)는 후보 없음, 숫자는 원문 그대로(0 포함) |
-| `normalize/fields.py` | `DECIMAL_FIELDS` 에 win_score_*; `QUIET_FIRST_FIELDS`: 당첨가점의 빈 값 → 값(처음 수집)은 change_event 없음(지난 결과 — 배포 뒤 첫 수집이 경쟁률 행마다 이벤트를 쏟지 않게), 값 → 다른 값은 info 이벤트 |
+| `normalize/applyhome_parser.py` | 웹 상세 일정 표: 머리 행(구분·해당지역·[기타경기]·기타지역)으로 칸을 읽어 API 와 **같은 JSON**(운영 원문 259 공고 중 두 원문이 다 있는 226 공고 모두 일치 — 다른 값 0). 잔여·임의 '청약접수' 한 칸·'일반공급' 행. 경쟁률 팝업 `_winning_scores`: `td.cpResideSenm` 뒤 세 칸 → `competition.winning_score_min/max/avg`, 행 키 `<번호>:본청약:1순위 <거주지역>:<원 면적 코드>`(API 행과 같은 행). '-'(발표 전·가점 당첨자 없음)는 후보 없음, 숫자는 원문 그대로(0 포함) |
+| `normalize/fields.py`·`resolver.py`·`judged.py` | `is_provisional`(OCR 판독 + 잔금 산술 — 같은 원문 판정기 추출 행이 생기면 물러남, 추출의 대상 행), `BALANCE_DERIVED_REASON`. `DECIMAL_FIELDS` 에 winning_score_*; `QUIET_FIRST_FIELDS`: 당첨가점의 빈 값 → 값(처음 수집)은 change_event 없음(지난 결과 — 배포 뒤 첫 수집이 경쟁률 행마다 이벤트를 쏟지 않게), 값 → 다른 값은 info 이벤트 |
 | `normalize/store.py` | `complex_for`: 잔여 공고 원문의 번호로 이미 단지 행이 있어도, 그 번호가 같은 지역 **다른** 단지의 납부 조건 공고번호면(D18-4 인용으로 붙은 원 단지) 그 원 단지에 쓴다(merged — 원 단지 값을 덮지 않음). `QUIET_FIRST_FIELDS` 적용 |
 | `normalize/checklist.py` | `absorbed_remnant_rows`: 다른 단지의 납부 조건 공고번호를 주택관리번호로 가진 행(인용을 못 읽던 때 생긴 같은 사업의 두 번째 행)은 체크리스트에서 제외처럼 — 열린 자동 항목을 na(closed_by auto)로 닫고 새로 만들지 않는다. 사람 항목은 그대로 |
 | `collectors/applyhome/collector.py` | API 경로: APT 공고는 `last_date`(당첨자 발표·접수 마감 중 늦은 날)가 지났고 받아 둔 팝업이 없거나 그날까지 받은 것뿐이면 **웹 경쟁률 팝업**을 받는다(끝난 공고 경로 포함 — 한 번). 받아 둔 발표 뒤 팝업은 다시 쓴다. `fetch_originals`(원 공고 다시 받기)도 API 상세가 있을 때 팝업 한 번. 잔여·임의 팝업은 가점이 없어 받지 않는다. `web_detail=False` 면 받지 않는다(테스트·운영 끄기). 공개 페이지·`core.http` 속도 제한·robots(청약홈 robots 404) |
-| `models/complex.py` + `0017` | `competition.win_score_min/max/avg` Numeric(5,2) NULL — **WP0 소유 파일**(마이그레이션과 models↔migration diff 0 때문에 함께 바꿈) |
+| `models/complex.py` + `0017` | `competition.winning_score_min/max/avg` Numeric(5,2) NULL — **WP0 소유 파일**(마이그레이션과 models↔migration diff 0 때문에 함께 바꿈) |
 | `tests/contracts/test_migrations.py` | head = 0017(**WP0 소유 테스트** — 마이그레이션 추가에 따른 한 줄) |
 
 판단은 늘지 않았다(규칙 3) — 표 읽기·산술(100 − a − b)·문자열 대조뿐. 잔금 산술 값은 '추정'.
@@ -69,6 +69,8 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
 | `…::test_q2_balance_pct_is_derived_and_labelled_estimate` | FAIL — '확인 불가'(잔금 비율 표기 해석 실패) | PASS |
 | `…::test_q2_balance_pct_read_directly_stays_confirmed` | FAIL — 키 `2025940268:2025940268`(인용 못 읽음) | PASS |
 | `…::test_q2_options_text_is_not_the_boilerplate` | FAIL — options_text = 고지문 | PASS |
+| `…::test_q2_renormalize_clears_stored_boilerplate_and_fills_schedule` | (수정 중 추가 — 옛 저장 상태에서 재정규화) | PASS |
+| `…::test_q2_derived_balance_keeps_extract_request_and_yields_to_judge` | (수정 중 추가 — §8) | PASS |
 | `…::test_q2_floor_sample_is_lowest_priced_row_by_definition` | PASS(정의 고정 — 바꾸지 않음) | PASS |
 | `…::test_dohwa_citation_without_particle_is_read` | FAIL — 납부 조건 키가 잔여 번호 | PASS |
 | `…::test_dohwa_notice_numbers` | FAIL — `('2025940268', None)` | PASS |
@@ -77,7 +79,7 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
 | `…::test_q3_api_apply_dates_by_rank_and_area_with_start_end` | FAIL — `[{kind:'1순위', date}]` | PASS |
 | `…::test_q3_remnant_apply_window_has_start_and_end` | FAIL — 시작일만 | PASS |
 | `…::test_q3_web_detail_and_api_give_the_same_apply_dates` | FAIL — 웹 잔여 화면 '청약접수' 미파싱 | PASS |
-| `…::test_q4_popup_win_scores_per_type_and_area` | FAIL — 가점 후보 없음 | PASS |
+| `…::test_q4_popup_winning_scores_per_type_and_area` | FAIL — 가점 후보 없음 | PASS |
 | `…::test_q4_popup_and_api_agree_on_ratios` | PASS(회귀 방지 — 팝업·API 경쟁률 같은 값) | PASS |
 | `…::test_q4_scores_stored_with_provenance_and_idempotent` | FAIL — 열 없음 | PASS |
 | `…::test_q4_first_scores_are_quiet_later_change_is_info_event` | (수정 중 추가) | PASS |
@@ -98,7 +100,7 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
 | `options_text` 고지문 → null | 376 후보(운영 276행) | info(값 → null, 재판정 없음) |
 | `apply_dates` 모양 | 청약홈 원문 있는 단지 전부(≈ 96) | notice(`severity_for` — 재판정 없음) |
 | 도화 임의공급 | 공고문 납부 조건·타입 가격이 단지 39 로(새 `payment_terms` 1행 — 새 공고 이벤트), API 경쟁률·잔여 이력도 39. 단지 99 의 열린 자동 항목 → na | 새 공고 1 + 99 체크리스트 닫힘 |
-| 판정기 extract 요청 | 공고문 34 묶음이 바뀜: 22 묶음은 요청이 사라짐, 12 묶음은 남은 필드만(잔금 빠짐 → 입력 해시 변경) + 도화 원 단지 1 | 첫 수집 `extract` `tools/call` **최대 ≈ 13**, 같은 날 다시 돌리면 0 |
+| 판정기 extract 요청 | 잔금 산술은 extract 요청을 그대로 남겨 요청이 같다(캐시 적중). 바뀌는 묶음은 도화 임의공급 공고문 1건(단지 키 2025940268 → 2025000397, `resale_months`) | 첫 수집 `extract` `tools/call` **≈ 1**, 같은 날 다시 돌리면 0 |
 | 당첨가점 팝업 | APT 92 단지 × 1회 GET(1 req/s ≈ 1.5분) | `QUIET_FIRST_FIELDS` — 이벤트 0 |
 
 발행된 리비전 저장본은 그대로(D11-1) — 다음 발행부터 반영.
@@ -112,7 +114,7 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
 | 중도금 회차(Q2) | `payment_terms.interim_schedule` (JSON) | `[{seq, due_date, pct}]` | entity 'payment_terms', field 'interim_schedule' |
 | 계약금·잔금 비율(Q2) | `payment_terms.down_payment_pct`·`down_payment_first_won`·`interim_pct`·`balance_pct` | balance_pct 는 산술이면 출처 행 라벨 **'추정'**·reason `산술(100-계약금-중도금)` — Fact 라벨을 출처 행에서 그대로 | entity 'payment_terms' |
 | 계약금 원 금액(Q1) | 저장 열 없음 — `analysis`(§6-7 `P_mid × D`, TermsRow.down_payment_won)와 같은 식으로 R9-API/WP4 가 계산 | — | — |
-| 당첨가점(Q4) | `competition.win_score_min`·`win_score_max`·`win_score_avg` (Numeric(5,2), NULL = 없음) | 행 = (단지, kind '본청약', round **'1순위 <거주지역>'**, type_code 원 면적 코드). 표시 주택형은 `normalize.competition.display_type_codes`. 0/0/0 은 청약홈 원문 그대로(그 지역 가점 당첨자 없음 표기 — 화면 문구로 풀 것) | entity 'competition', field 'win_score_*'(웹 팝업 원문, 확인됨) |
+| 당첨가점(Q4) | `competition.winning_score_min`·`winning_score_max`·`winning_score_avg` (Numeric(5,2), NULL = 없음) | 행 = (단지, kind '본청약', round **'1순위 <거주지역>'**, type_code 원 면적 코드). 표시 주택형은 `normalize.competition.display_type_codes`. 0/0/0 은 청약홈 원문 그대로(그 지역 가점 당첨자 없음 표기 — 화면 문구로 풀 것) | entity 'competition', field 'winning_score_*'(웹 팝업 원문, 확인됨) |
 | 경쟁률 요약(Q4 ②) | `competition.supply`·`applied`·`ratio_or_shortfall_text` | 요약 규칙은 WP4 | 그대로 |
 | 필수 옵션 설명(Q2) | `complex_type.options_text` | 필수 선택품목 줄이 있을 때만 값, 고지문 0원이면 null | 그대로 |
 
@@ -127,3 +129,10 @@ DECISIONS D28-5. 추가 요청(조정자): G7 캘린더에 '두산위브 더센�
   인용으로 붙일 수 없다(이름·주소 병합은 D10-4 규칙 밖).
 - **'대표 층' 이름(Q2)**: 값은 정의대로(최저 공급금액 행) — 화면 문구 '최저가 층'(WP6)으로. 정의를 바꾸려면 CEO 결정(골든 영향).
 - 당첨가점 0/0/0 표시 문구, `QUIET_FIRST_FIELDS`(첫 수집 이벤트 없음)의 DECISIONS 기록 — CEO.
+
+## 8. 수정 중 바로잡은 것
+
+- 처음 판에서는 잔금 산술 후보가 extract 요청을 없앴다 → R4 3차 녹화 재생(`tests/scheduler/test_core9_n9_reextract.py` 2건)에서 판정기가 원문으로
+  읽어 '확인됨'으로 채택하던 잔금 5건이 '추정' 산술로 내려갔다(전체 스위트에서 발견). 산술 값을 OCR 판독처럼 '판정기 추출이 나오면 물러나는
+  후보'로 바꿔 요청·캐시 키를 예전 그대로 두었다(테스트 `test_q2_derived_balance_keeps_extract_request_and_yields_to_judge`).
+- R9-API 조정: 당첨가점 열·출처 필드 이름을 `winning_score_min/max/avg` 로 맞췄다(R9-API 가 그 이름으로 읽는다 — API 변경 없이 연결).

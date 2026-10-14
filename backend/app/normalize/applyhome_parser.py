@@ -4,7 +4,7 @@
 - applyhome_detail(상세 팝업 ``selectAPTLttotPblancDetail``): 주요정보·청약일정·공급대상·
   공급금액(최고가, 만원)·입주예정월·시행사/시공사·홈페이지(당첨자 발표 칸 링크 → official_site_url)
 - applyhome_detail(경쟁률 팝업 ``selectAPTCompetitionPopup``): 주택형·공급세대수·순위·지역·
-  접수건수·경쟁률(미달), 당첨가점 최저·최고·평균(R9-PARSE Q4 — competition.win_score_*, 회차 '1순위 <거주지역>' 행)
+  접수건수·경쟁률(미달), 당첨가점 최저·최고·평균(R9-PARSE Q4 — competition.winning_score_*, 회차 '1순위 <거주지역>' 행)
 
 source_rank는 RA §3 표(app.normalize.fields): 세대수·면적·일정·경쟁률은 청약홈 1, 가격은 청약홈 2.
 청약홈 상세 화면에는 층별 가격이 없으므로 가격은 '최고가 기준' 하나만 낸다(max_price_won).
@@ -42,7 +42,7 @@ from app.normalize.applyhome_api_parser import (
     is_api_document,
     parse_applyhome_api_json,
 )
-from app.normalize.fields import WIN_SCORE_FIELDS
+from app.normalize.fields import WINNING_SCORE_FIELDS
 
 __all__ = ["ApplyhomeParser", "parse_applyhome_html"]
 
@@ -386,13 +386,13 @@ def _competition(soup: BeautifulSoup, b: CandidateBuilder, pos: _Pos, raw: RawDo
             b.add("competition", ckey, "applied", int(applied.replace(",", "")), applied, span, excerpt=ex)
         if ratio:
             b.add("competition", ckey, "ratio_or_shortfall_text", ratio, ratio, span, excerpt=ex)
-        _win_scores(tr, cells, b, pos, key, type_code, long_code)
+        _winning_scores(tr, cells, b, pos, key, type_code, long_code)
 
 
 _SCORE_RE = re.compile(r"^\d{1,2}(?:\.\d{1,2})?$")
 
 
-def _win_scores(
+def _winning_scores(
     tr: Tag, cells: list[Tag], b: CandidateBuilder, pos: _Pos, key: str, type_code: str, long_code: str
 ) -> None:
     """당첨가점 칸(R9-PARSE Q4): ``td.cpResideSenm``(거주지역) 뒤 세 칸 = 최저·최고·평균(가점제 당첨자만 — 1순위). 팝업은 이 묶음을
@@ -408,7 +408,7 @@ def _win_scores(
         ckey = f"{key}:본청약:1순위 {area}:{type_code}"
         ex = f"{long_code} 당첨가점 {area} 최저 {vals[0]} 최고 {vals[1]} 평균 {vals[2]}"
         span = pos.span(tr)
-        for fname, v in zip(WIN_SCORE_FIELDS, vals, strict=True):
+        for fname, v in zip(WINNING_SCORE_FIELDS, vals, strict=True):
             if _SCORE_RE.match(v):
                 b.add("competition", ckey, fname, float(v), v, span, excerpt=ex)
         return

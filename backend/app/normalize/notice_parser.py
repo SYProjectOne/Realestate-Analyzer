@@ -75,6 +75,7 @@ from app.normalize._text import (
     stamp_observed_on,
 )
 from app.normalize.fields import (
+    BALANCE_DERIVED_REASON,
     OCR_LABEL,
     OCR_REASON,
     UNIT_ASSUMED,
@@ -152,8 +153,7 @@ _INSTALL_RE = re.compile(r"(?<!계약금)(?<!계약금 )(\d)\s*(?:회|차)\s*\(\
 # 비율이 따로 줄에 있는 표(R9-PARSE Q2): 회차 머리 '1회 2회 … 6회' 줄 + 비율 줄 '10% 10% …'·'(10%) (10%) …'
 _SEQ_TOKEN_RE = re.compile(r"(?<!계약금)(?<!계약금 )(?<![\d가-힣])(\d{1,2})\s*(?:회|차)(?!\s*\(\s*\d)")
 _PCT_TOKEN_RE = re.compile(r"(?<![\d.])(\d+(?:\.\d+)?)\s*%")
-BALANCE_DERIVED_REASON: Final = "산술(100-계약금-중도금)"
-"""잔금 비율을 표 머리에서 바로 읽지 못해 계약금·중도금 비율로 계산한 값의 '추정' 사유(R9-PARSE Q2)."""
+
 _DATE_TOKEN_RE = re.compile(r"(?<![\d.])(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}|\d{2}\.\d{1,2}\.\d{1,2})\.?(?![\d])")
 _INTEREST_RE = re.compile(r"^.*중도금.*(?:이자후불|무이자|이자\s*대납|이자를\s*대납).*$", re.M)
 _OPTIONS_RE = re.compile(r"^.*선택\s*품목.*(?:미포함|포함되지|포함되어\s*있지).*$", re.M)
@@ -1070,11 +1070,12 @@ def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: 
         b.add("payment_terms", key, "balance_pct", float(blm.group(1)), blm.group(0), blm.span())
     elif rest is not None and itm is not None and 0 < rest < 100 and re.search("잔금", text[hs:he]):
         # R9-PARSE Q2: '잔금' 열 머리와 비율('(35%)')이 다른 줄로 갈라진 표 — 표 머리에서 잔금 비율을 바로 읽지 못하면
-        # 계약금·중도금 비율의 나머지(산술)로 낸다. 라벨 '추정'(사유 산술), 발췌 = 계약금·중도금 비율 표기
-        span = (min(dpm.start(), itm.start()), max(dpm.end(), itm.end()))
+        # 계약금·중도금 비율의 나머지(산술)를 '추정'(사유 산술) 값으로 낸다. 판정기 extract 요청은 그대로 남긴다(needs_extract,
+        # 발췌 = 표 머리 — 예전 '확인 불가' 후보와 같은 요청·같은 캐시 키): 판정기가 원문에서 읽어 '확인됨'으로 채택하면 그 행이
+        # 이 산술 값을 대신한다(OCR 판독 후보와 같은 규칙 — ``fields.is_provisional``·``resolver``·``judged.apply_extracted``)
         b.add(
-            "payment_terms", key, "balance_pct", round(rest, 2), f"{rest:g}%", span,
-            label="추정", reason=BALANCE_DERIVED_REASON,
+            "payment_terms", key, "balance_pct", round(rest, 2), f"{rest:g}%", head,
+            label="추정", reason=BALANCE_DERIVED_REASON, needs_extract=True,
         )  # fmt: skip
     else:
         b.missing("payment_terms", key, "balance_pct", head, reason="잔금 비율 표기 해석 실패")

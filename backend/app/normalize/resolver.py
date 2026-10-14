@@ -56,8 +56,8 @@ from app.normalize.fields import (
     CONFLICT_HOLD,
     EXTRACT_REASON,
     has_tag,
-    is_ocr,
     is_price_amount,
+    is_provisional,
     magnitude_apart,
     norm_value,
     rule_text,
@@ -148,7 +148,7 @@ def _demote_superseded_ocr(cands: list[tuple[int, FieldCandidate]]) -> list[tupl
         return cands
     out: list[tuple[int, FieldCandidate]] = []
     for i, c in cands:
-        if c.raw_document_id in judged_raw and is_ocr(c.label, c.reason) and not _is_judged(c):
+        if c.raw_document_id in judged_raw and is_provisional(c.label, c.reason) and not _is_judged(c):
             c = c.model_copy(update={"value": None, "label": "확인 불가"})
         out.append((i, c))
     return out
