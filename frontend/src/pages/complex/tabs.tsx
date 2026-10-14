@@ -8,6 +8,7 @@ import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
 import { enumText, isUnresolved, Section, tdClass, thClass, useGlobalSearch } from '../_shared';
 import { HC_PARAM, HUMAN_CHECK_ANCHOR } from '../ops/humanCheckRules';
+import { CompetitionSummaryLine } from './CompetitionSummaryLine';
 
 /** 할인 문구에 필요한 가격 범위 필드 */
 export type DiscountPrice = Pick<PriceRange, 'discount' | 'discount_applied'>;
@@ -223,8 +224,17 @@ function currentDiscounts(detail: ComplexDetail): Record<string, Fact> {
   return current?.discount_by_type ?? {};
 }
 
+/** 필수 옵션 칸의 고지문이 2행 이상 같으면 그 문구(각주로 한 번만 보인다). 아니면 null */
+export function sharedOptionsNote(types: ComplexDetail['types']): string | null {
+  const texts = types.map((r) => r.options_text).filter((x): x is string => !!x);
+  if (texts.length < 2) return null;
+  const first = texts[0] ?? null;
+  return texts.every((x) => x === first) ? first : null;
+}
+
 export function PriceTab({ detail }: { detail: ComplexDetail }) {
   const { price, types } = detail;
+  const footnote = sharedOptionsNote(types);
   const discounts = currentDiscounts(detail);
   const hasTypeDiscount = Object.keys(discounts).length > 0;
   const note = discountNote(price);
@@ -323,7 +333,15 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
                   </td>
                   <td className={tdClass}>
                     <FactCell fact={row.options_required_won} unit="won" />
-                    {row.options_text ? (
+                    {row.options_text && footnote !== null && row.options_text === footnote ? (
+                      <sup
+                        data-testid="options-ref"
+                        className="ml-0.5 text-xs text-muted"
+                        title={footnote}
+                      >
+                        {t('page.G3.price.noteRef')}
+                      </sup>
+                    ) : row.options_text ? (
                       <span className="block text-xs text-muted">{row.options_text}</span>
                     ) : null}
                   </td>
@@ -342,6 +360,11 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
               ))}
             </tbody>
           </table>
+          {footnote !== null ? (
+            <p data-testid="options-footnote" className="mt-1 text-xs text-muted">
+              <span className="font-medium">{t('page.G3.price.noteTitle')}</span> {footnote}
+            </p>
+          ) : null}
         </div>
       )}
     </div>
@@ -430,12 +453,52 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** 원문 경쟁률 표기 "(△307)" → 미달 세대 수 문자열(표기 변환 — 계산 아님). 아니면 null */
+export function shortfallUnits(text: string | null | undefined): string | null {
+  const match = /△\s*([\d,]+)/.exec(text ?? '');
+  return match?.[1] ?? null;
+}
+
+/** 당첨 가점 3칸(계약 .20 F2) 중 값이 있는가 */
+function hasPoints(row: ComplexDetail['competition'][number]): boolean {
+  return [row.winning_score_min, row.winning_score_max, row.winning_score_avg].some(
+    (f) => !!f && f.v !== null,
+  );
+}
+
+/** D29-4: 최저·최고·평균이 모두 0 → 가점제 당첨자 없음 */
+function noPointWinners(row: ComplexDetail['competition'][number]): boolean {
+  return [row.winning_score_min, row.winning_score_max, row.winning_score_avg].every(
+    (f) => !!f && f.v !== null && Number(f.v) === 0,
+  );
+}
+
+function PointsCell({ row }: { row: ComplexDetail['competition'][number] }) {
+  if (noPointWinners(row)) {
+    return <span data-testid="no-point-winners">{t('page.G3.competition.noPointWinners')}</span>;
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <FactCell fact={row.winning_score_min ?? null} unit="score" digits={0} />
+      <span aria-hidden>~</span>
+      <FactCell fact={row.winning_score_max ?? null} unit="score" digits={0} />
+      <span className="text-xs text-muted">{t('page.G3.competition.pointsAvg')}</span>
+      <FactCell fact={row.winning_score_avg ?? null} unit="score" digits={2} />
+    </span>
+  );
+}
+
 export function EventsTab({ detail }: { detail: ComplexDetail }) {
   const { events, competition, asof_date: asof } = detail;
+  // 당첨 가점은 수집 전이면 모두 '확인 불가(가점 미수집)' — 그동안은 청약홈 안내 줄(30-proposal §9-2)
+  const showPoints = competition.some(hasPoints);
+  // R9-UI P8: 경쟁률 표를 맨 위로(초보 질문 Q5), 추가 모집 이력 차트는 그 아래
   return (
     <div className="flex flex-col gap-3">
-      <C08Timeline data={{ events }} asof={asof} />
       <Section title={t('page.G3.competition.title')}>
+        {detail.competition_summary ? (
+          <CompetitionSummaryLine summary={detail.competition_summary} />
+        ) : null}
         {competition.length === 0 ? (
           <EmptyState reason={t('page.common.none')} />
         ) : (
@@ -448,28 +511,54 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
                       {t(`page.G3.competition.${k}` as TKey)}
                     </th>
                   ))}
+                  {showPoints ? (
+                    <th scope="col" className={thClass}>
+                      {t('page.G3.competition.points')}
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
-                {competition.map((row, i) => (
-                  <tr key={row.id ?? i}>
-                    <td className={tdClass}>{row.round}</td>
-                    <td className={tdClass}>{enumText('chart.C08.kind', row.kind)}</td>
-                    <td className={tdClass}>{row.type_code}</td>
-                    <td className={tdClass}>
-                      <FactCell fact={row.supply} unit="households" />
-                    </td>
-                    <td className={tdClass}>
-                      <FactCell fact={row.applied} unit="count" />
-                    </td>
-                    <td className={tdClass}>{row.ratio_or_shortfall_text ?? t('empty.unknown')}</td>
-                  </tr>
-                ))}
+                {competition.map((row, i) => {
+                  const shortfall = shortfallUnits(row.ratio_or_shortfall_text);
+                  return (
+                    <tr key={row.id ?? i}>
+                      <td className={tdClass}>{row.round}</td>
+                      <td className={tdClass}>{enumText('chart.C08.kind', row.kind)}</td>
+                      <td className={tdClass}>{row.type_code}</td>
+                      <td className={tdClass}>
+                        <FactCell fact={row.supply} unit="households" />
+                      </td>
+                      <td className={tdClass}>
+                        <FactCell fact={row.applied} unit="count" />
+                      </td>
+                      <td className={tdClass}>
+                        {shortfall !== null ? (
+                          <span title={row.ratio_or_shortfall_text ?? undefined}>
+                            {t('page.G3.competition.shortfall', { n: shortfall })}
+                          </span>
+                        ) : (
+                          (row.ratio_or_shortfall_text ?? t('empty.unknown'))
+                        )}
+                      </td>
+                      {showPoints ? (
+                        <td className={tdClass}>
+                          <PointsCell row={row} />
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
+        {/* 당첨 가점 값이 아직 없으면(가점 미수집) 정직하게 표시 */}
+        {showPoints ? null : (
+          <p className="text-xs text-muted">{t('page.G3.competition.pointsMissing')}</p>
+        )}
       </Section>
+      <C08Timeline data={{ events }} asof={asof} />
     </div>
   );
 }
@@ -481,6 +570,7 @@ export function LadderTab({ detail }: { detail: ComplexDetail }) {
   const row = detail.ladder.find((r) => r.horizon === horizon);
   return (
     <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted">{t('page.G3.ladder.note')}</p>
       <div role="radiogroup" aria-label={t('page.G3.ladder.horizons')} className="flex gap-1">
         {HORIZONS.map((h) => {
           const r = detail.ladder.find((x) => x.horizon === h);
@@ -515,27 +605,36 @@ export function LadderTab({ detail }: { detail: ComplexDetail }) {
 
 export function GapTab({ detail }: { detail: ComplexDetail }) {
   const { gap } = detail;
+  const substitute = gap.comps.some((c) => c.substitute);
+  // R9-UI P8(30-proposal §9-3): 부호를 문장으로 한 번만 풀고(높고 낮음을 좋고 나쁨으로 바꾸지 않는다), 같은 이름 두 값을 나눈다
   return (
     <div className="flex flex-col gap-3">
-      <C02Gap data={{ gap }} />
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-muted">{t('page.G2.col.gap')}</dt>
+        <dt className="text-muted">{t('page.G3.gap.pct')}</dt>
         <dd>
           <FactCell fact={gap.gap_pct} unit="pct" />
         </dd>
         {gap.gap_pct_unadjusted ? (
           <>
-            <dt className="text-muted">{t('chart.C02.comps')}</dt>
+            <dt className="text-muted">{t('page.G3.gap.unadjusted')}</dt>
             <dd>
               <FactCell fact={gap.gap_pct_unadjusted} unit="pct" />
             </dd>
           </>
         ) : null}
-        <dt className="text-muted">{t('chart.C06.component.gap')}</dt>
+        <dt className="text-muted">{t('page.G3.gap.score')}</dt>
         <dd>
-          <FactCell fact={gap.score} unit="score" />
+          {/* 계약 .20 F7: 점수 s_gap 은 gap_score(옛 이름 score) — 퍼센트(gap_pct, prov …raw)와 다른 출처 */}
+          <FactCell fact={gap.gap_score ?? gap.score} unit="score" />
         </dd>
       </dl>
+      <p className="text-sm">{t('page.G3.gap.meaning')}</p>
+      <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+        <span>{t('page.G3.gap.basis')}</span>
+        <MetaText kind="count" k="page.G3.gap.comps" params={{ n: gap.comps.length }} />
+        {substitute ? <Badge tone="muted">{t('page.G3.gap.substitute')}</Badge> : null}
+      </p>
+      <C02Gap data={{ gap }} />
     </div>
   );
 }

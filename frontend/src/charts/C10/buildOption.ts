@@ -1,7 +1,7 @@
 import type { DataTable } from '@/components/DataTableToggle';
 import { t } from '@/i18n';
 import type { ComponentKey, SensitivityCell } from '@/lib/contract';
-import { formatRank, formatScore } from '@/lib/format';
+import { formatNumber, formatRank } from '@/lib/format';
 import { componentLabel } from '../C06/buildOption';
 import { axisStyle, baseOption, DEFAULT_PALETTE, legendStyle, tooltipStyle } from '../palette';
 import type { BuildOptionContext, EChartsOption } from '../types';
@@ -18,12 +18,41 @@ export function nameOf(data: C10Data, id: number | string): string {
   return data.names?.[String(id)] ?? t('chart.C10.complex', { id: String(id) });
 }
 
-/** 변형 이름: "p10+0.10" → "+10% 확률 +0.10" */
+/**
+ * 변형 이름(쉬운 말): "p10+0.10" → "+10% 상승 가능성 비중 +10%p". 내부 키(p10·rerank…)는 화면에 내지 않는다(R9-UI 피드백).
+ * 비중 변화 0.10 → 10%p 는 표기 바꾸기(가중치 입력값 — 사실이 아님).
+ */
 export function variantLabel(
   cell: Pick<SensitivityCell, 'variant' | 'component' | 'delta'>,
 ): string {
-  const sign = cell.delta > 0 ? '+' : '−';
-  return `${componentLabel(cell.component as ComponentKey)} ${sign}${formatScore(Math.abs(cell.delta), 2)}`;
+  return t('chart.C10.variantLabel', {
+    component: componentLabel(cell.component as ComponentKey),
+    sign: cell.delta > 0 ? '+' : '−',
+    pp: formatNumber(Math.abs(cell.delta) * 100, 0),
+  });
+}
+
+/** 축용 짧은 이름: "+10% 상승 가능성 +10%p"(표·툴팁은 variantLabel 전체) */
+export function variantShortLabel(
+  cell: Pick<SensitivityCell, 'variant' | 'component' | 'delta'>,
+): string {
+  return t('chart.C10.variantShort', {
+    component: componentLabel(cell.component as ComponentKey),
+    sign: cell.delta > 0 ? '+' : '−',
+    pp: formatNumber(Math.abs(cell.delta) * 100, 0),
+  });
+}
+
+/** 순위 변동 칸 문구: 없음 / 있음(진입·이탈 단지) */
+export function changedText(row: Pick<C10VariantRow, 'changed' | 'entered' | 'exited'>): string {
+  if (!row.changed) return t('chart.C10.changedNo');
+  const moves = [
+    row.entered.length > 0 ? t('chart.C10.entered', { names: row.entered.join(', ') }) : null,
+    row.exited.length > 0 ? t('chart.C10.exited', { names: row.exited.join(', ') }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return moves ? t('chart.C10.changedWith', { moves }) : t('chart.C10.changedYes');
 }
 
 export interface C10VariantRow {
@@ -78,8 +107,9 @@ export function buildOption(
   const maxRank = Math.max(5, ...ranks);
   return {
     ...baseOption(palette),
-    grid: { left: 44, right: 16, top: 12, bottom: 88 },
-    legend: legendStyle(palette),
+    // 축 글자(쉬운 말)가 길어 범례는 위로, 축 아래 여백을 넓힌다
+    grid: { left: 44, right: 16, top: 56, bottom: 110 },
+    legend: { ...legendStyle(palette), bottom: undefined, top: 0 },
     tooltip: {
       trigger: 'axis',
       ...tooltipStyle(palette),
@@ -97,7 +127,7 @@ export function buildOption(
     },
     xAxis: {
       type: 'category',
-      data: cells.map((c) => c.variant),
+      data: cells.map((c) => variantShortLabel(c)),
       ...axis,
       axisLabel: { ...axis.axisLabel, rotate: 40, fontSize: 10 },
     },
@@ -127,13 +157,13 @@ export function toTable(data: C10Data): DataTable {
   return {
     columns: [
       { key: 'variant', header: t('chart.col.variant') },
-      { key: 'changed', header: t('chart.col.changed') },
+      { key: 'changed', header: t('chart.C10.changedCol') },
       { key: 'top5', header: t('chart.col.top5') },
       { key: 'moves', header: t('chart.col.flags') },
     ],
     rows: variantRows(data).map((row) => ({
       variant: row.label,
-      changed: row.changed ? t('chart.yes') : t('chart.no'),
+      changed: row.changed ? t('chart.C10.changedYes') : t('chart.C10.changedNo'),
       top5: row.top5
         .map((x) => (x.rank === null ? x.name : `${formatRank(x.rank)} ${x.name}`))
         .join(' · '),

@@ -3,6 +3,7 @@
  * C1~C10 option 빌더 완성 테스트 — 입력은 계약 예시(contracts/examples) 그대로.
  * RA §7-2 표의 "option 핵심"·"빈·특수 상태"가 차트마다 1개 이상 고정된다.
  */
+import { t } from '@/i18n';
 import * as C01 from './C01/buildOption';
 import * as C02 from './C02/buildOption';
 import * as C03 from './C03/buildOption';
@@ -268,7 +269,7 @@ describe('C06 종합 점수 분해', () => {
   });
 
   it('제목 부제 = 가중치', () => {
-    expect(C06.weightsSubtitle(d.weights)).toContain('+10% 확률 0.35');
+    expect(C06.weightsSubtitle(d.weights)).toContain('+10% 상승 가능성 0.35');
   });
 
   it('null component → 빗금(decal) + "미판정"', () => {
@@ -541,7 +542,7 @@ describe('C10 민감도', () => {
     const table = C10.toTable({ sensitivity: sensitivity(), names });
     expect(table.rows).toHaveLength(12);
     expect(String(table.rows[0]!.top5)).toContain('더샵 송도그란테르');
-    expect(table.rows.some((r) => r.changed === '예')).toBe(true);
+    expect(table.rows.some((r) => r.changed === t('chart.C10.changedYes'))).toBe(true);
   });
 
   it('작은 선: 기준 TOP 5 단지별 순위, y축 뒤집힘(1위 위)', () => {

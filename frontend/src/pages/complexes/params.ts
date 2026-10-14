@@ -29,6 +29,8 @@ export const SORT_KEYS = [
   'p10',
   'living_area',
   'last_change',
+  // 계약 .20 F10: 접수 상태(가능 → 미정 → 확인 불가 → 불가, 같은 상태 안 마감 임박)
+  'intake',
 ] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
 export const DEFAULT_SORT = '-total';
@@ -89,8 +91,12 @@ export function toListParams(
   };
 }
 
-/** 헤더 클릭: 같은 키면 방향을 뒤집고, 새 키면 내림차순부터 */
+/** 처음 누르면 오름차순인 키 — intake 는 오름차순이 '접수 가능 먼저'(서버 INTAKE_ORDER) */
+const ASC_FIRST: ReadonlySet<SortKey> = new Set(['intake']);
+
+/** 헤더 클릭: 같은 키면 방향을 뒤집고, 새 키면 내림차순부터(접수 상태는 가능 먼저) */
 export function nextSort(current: string, key: SortKey): string {
+  if (ASC_FIRST.has(key)) return current === key ? `-${key}` : key;
   if (current === `-${key}`) return key;
   return `-${key}`;
 }

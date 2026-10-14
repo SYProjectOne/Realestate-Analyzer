@@ -33,9 +33,13 @@ test.describe('화면 10개 핵심 요소', () => {
     await expect(page.getByRole('region', { name: P.G0_2.expand.title })).toBeVisible();
   });
 
-  test('G1 홈: KPI 5 · TOP 5 · 변경 피드 · C6 차트 SVG', async ({ page }) => {
+  test('G1 홈: 지금 접수 가능 · 지역 현황 4 · TOP 5 · 변경 피드 · C6 차트 SVG', async ({
+    page,
+  }) => {
     await ready(page, '/', P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.kpis }).getByRole('listitem')).toHaveCount(5);
+    await expect(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(
+      4,
+    );
     expect(
       await page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem').count(),
     ).toBeGreaterThanOrEqual(5);
@@ -62,10 +66,10 @@ test.describe('화면 10개 핵심 요소', () => {
     expect(download.suggestedFilename()).toMatch(/\.csv$/);
   });
 
-  test('G3 단지 상세: 탭 8개(해시) · 원문 하이라이트', async ({ page }) => {
+  test('G3 단지 상세: 탭 7개(해시, D28-3) · 원문 하이라이트', async ({ page }) => {
     await ready(page, '/complexes/2', P.G3.title);
     const tabs = page.getByRole('tablist', { name: P.G3.tabs }).getByRole('tab');
-    await expect(tabs).toHaveCount(8);
+    await expect(tabs).toHaveCount(7);
     await page.getByRole('tab', { name: P.G3.tab.provenance }).click();
     await expect(page).toHaveURL(/#provenance$/);
     await expect(page.getByTestId('raw-text').locator('mark')).toBeVisible();
@@ -249,12 +253,10 @@ test.describe('모바일(≤768px)', () => {
     await ready(page, '/', P.G1.title);
     await expect(page.getByText(ko.app.mobileReadOnly)).toBeVisible();
     await ready(page, '/complexes', P.G2.title);
-    await expect(
-      page.getByRole('table', { name: P.G2.table }).locator('tbody tr').first(),
-    ).toBeVisible();
-    await expect(page.getByRole('table', { name: P.G2.table }).getByRole('checkbox')).toHaveCount(
-      0,
-    );
+    // R9-UI P5: 모바일 G2 는 표 대신 카드(읽기 전용 — 비교 체크 없음)
+    const cards = page.getByRole('list', { name: P.G2.cards });
+    await expect(cards.getByRole('listitem').first()).toBeVisible();
+    await expect(cards.getByRole('checkbox')).toHaveCount(0);
     await expect(page.getByRole('complementary', { name: P.G2.tray })).toHaveCount(0);
     await ready(page, '/ops', P.G7.title);
     await expect(page.getByText(ko.app.mobileUnsupported)).toBeVisible();
@@ -312,4 +314,88 @@ test.describe('R5-FE(D25-1) 차트 지연 로딩 · 전역 쿼리 유지', () =>
     keep(new URL(page.url()));
     await expect(page.getByRole('radio', { name: /^B / })).toHaveAttribute('aria-checked', 'true');
   });
+});
+
+test.describe('R9-UI P4 G2 비교 트레이가 표를 가리지 않는다(00-baseline)', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('첫 화면: 표 스크롤 영역 아래 끝 ≤ 비교 트레이 위 끝', async ({ page }) => {
+    await ready(page, '/complexes', P.G2.title);
+    const scroll = page.getByTestId('complex-table-scroll');
+    await expect(scroll.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    const tray = page.getByRole('complementary', { name: P.G2.tray });
+    const s = await scroll.boundingBox();
+    const tb = await tray.boundingBox();
+    expect(s && tb).toBeTruthy();
+    expect((s?.y ?? 0) + (s?.height ?? 0)).toBeLessThanOrEqual((tb?.y ?? 0) + 1);
+  });
+});
+
+test.describe('R9-UI P4 G2 첫 화면 행 수(30-proposal §13-1 목표)', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('1440×900: 트레이 위까지 온전히 보이는 행 ≥ 6', async ({ page }) => {
+    await ready(page, '/complexes', P.G2.title);
+    const scroll = page.getByTestId('complex-table-scroll');
+    await expect(scroll.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    const n = await page.evaluate(() => {
+      const box = document
+        .querySelector('[data-testid="complex-table-scroll"]')!
+        .getBoundingClientRect();
+      const tray =
+        document.querySelector('aside')?.getBoundingClientRect().top ?? window.innerHeight;
+      const limit = Math.min(box.bottom, tray, window.innerHeight);
+      return [...document.querySelectorAll('tbody tr[aria-rowindex]')].filter((tr) => {
+        const r = tr.getBoundingClientRect();
+        return r.top >= box.top && r.bottom <= limit;
+      }).length;
+    });
+    expect(n).toBeGreaterThanOrEqual(6);
+  });
+});
+
+test.describe('R9-UI P5 G2 모바일 카드(30-proposal §13-1 목표)', () => {
+  test.use({ viewport: { width: 420, height: 900 }, isMobile: true, hasTouch: true });
+
+  test('420×900: 첫 화면에 카드 2장 이상이 보이기 시작하고, 카드마다 구매가·전매 종료 + 가로 넘침 없음', async ({
+    page,
+  }) => {
+    await ready(page, '/complexes', P.G2.title);
+    const cards = page.getByRole('list', { name: P.G2.cards }).getByRole('listitem');
+    await expect(cards.first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    const tops = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+    expect(tops.filter((top) => top < 900).length).toBeGreaterThanOrEqual(2);
+    for (const i of [0, 1]) {
+      await expect(cards.nth(i).locator('[data-field="price"] [data-prov]').first()).toBeVisible();
+      await expect(cards.nth(i).locator('[data-field="status"]')).toContainText(
+        ko.page.G2.card.resaleEnd,
+      );
+    }
+    const { sw, iw } = await page.evaluate(() => ({
+      sw: document.scrollingElement?.scrollWidth ?? 0,
+      iw: window.innerWidth,
+    }));
+    expect(sw).toBeLessThanOrEqual(iw);
+  });
+});
+
+test.describe('R9-UI P3 가로 넘침 없음(00-baseline 레이아웃 결함)', () => {
+  for (const [name, width] of [
+    ['데스크톱 1440', 1440],
+    ['모바일 420', 420],
+  ] as const) {
+    test(`G1 ${name}: 문서 가로 폭 ≤ 창 폭`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await ready(page, '/', P.G1.title);
+      await page.waitForLoadState('networkidle');
+      const { sw, iw } = await page.evaluate(() => ({
+        sw: document.scrollingElement?.scrollWidth ?? 0,
+        iw: window.innerWidth,
+      }));
+      expect(sw).toBeLessThanOrEqual(iw);
+    });
+  }
 });

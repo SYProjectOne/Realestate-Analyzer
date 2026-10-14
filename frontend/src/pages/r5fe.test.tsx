@@ -42,12 +42,12 @@ async function waitPath(router: { state: { location: Loc } }, pathname: string |
 }
 
 describe('R5-FE 1: ?scenario=·?snapshot= 가 화면 이동에서 유지된다', () => {
-  it('헤더 네비 링크 7개가 모두 scenario·snapshot 을 싣고, 클릭하면 그대로 이동한다', async () => {
+  it('헤더 네비 링크 8개(화면 7 + 용어 모음, R9-UI P6)가 모두 scenario·snapshot 을 싣고, 클릭하면 그대로 이동한다', async () => {
     const { router } = renderRoute(`/?${GLOBAL}`);
     await screen.findByRole('heading', { level: 1, name: t('page.G1.title') });
     const nav = screen.getByRole('navigation');
     const links = within(nav).getAllByRole('link');
-    expect(links.length).toBe(7);
+    expect(links.length).toBe(8);
     for (const link of links) expectHrefGlobal(link);
 
     // G1 → G2 → G6 → G1 차례로 눌러도 유지

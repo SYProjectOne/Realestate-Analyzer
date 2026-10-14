@@ -194,6 +194,10 @@ export type ComplexFilter = components['parameters']['ComplexFilter'];
 export type ComplexListParams = NonNullable<operations['listComplexes']['parameters']['query']>;
 
 export type LadderRow = S['LadderRow'];
+/** 계약 .20 F2 경쟁률 요약 */
+export type CompetitionSummary = S['CompetitionSummary'];
+/** 계약 .20 F1 납부 금액(산술) */
+export type PaymentAmounts = S['PaymentAmounts'];
 export type LadderHorizon = LadderRow['horizon'];
 export type LadderBar = keyof LadderRow['verdicts'];
 export type Verdict3 = S['Verdict3'];

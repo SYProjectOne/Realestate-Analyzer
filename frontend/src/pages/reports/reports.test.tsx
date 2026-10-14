@@ -22,6 +22,23 @@ async function exampleSnapshots(): Promise<Snapshot[]> {
   return (await res?.json()) as Snapshot[];
 }
 
+describe('R9-UI G8 빈 상태(30-proposal §11-1)', () => {
+  it('보고서가 없으면 무엇이 들어가는지·어떻게 만드는지·진행이 어디 보이는지 안내', async () => {
+    server.use(http.get(mswPath('/reports'), () => HttpResponse.json([])));
+    renderRoute('/reports');
+    const list = await screen.findByRole('region', { name: t('page.G8.list') });
+    expect(await within(list).findByText(t('page.G8.emptyTitle'))).toBeInTheDocument();
+    for (const key of ['page.G8.emptyBody', 'page.G8.emptyHow', 'page.G8.emptyProgress'] as const) {
+      expect(within(list).getByText(t(key))).toBeInTheDocument();
+    }
+    expect(t('page.G8.snapshot')).toBe('기준일(리비전)');
+    expect(t('page.G8.compareSnapshot')).toBe('이전 기준일과 비교(선택)');
+    expect(screen.getByRole('region', { name: t('page.G8.diff') })).toHaveTextContent(
+      t('page.G8.diffHint'),
+    );
+  });
+});
+
 describe('G8 보고서', () => {
   it('생성 → POST /reports(html|pdf, 비교 스냅샷) → JobProgress', async () => {
     const rec = recordRequests();
@@ -43,7 +60,19 @@ describe('G8 보고서', () => {
     expect(typeof body.snapshot_id).toBe('number');
     expect(await screen.findByText(t('job.title'))).toBeInTheDocument();
     // 비교 스냅샷을 고르면 diff 표(GET /changes?compare_snapshot=)
-    expect(await screen.findByRole('table', { name: t('page.G8.diff') })).toBeInTheDocument();
+    const diff = await screen.findByRole('table', { name: t('page.G8.diff') });
+    expect(diff).toBeInTheDocument();
+    // 계약 .20 F5: 필드는 사람이 읽는 이름(field_label), 해시 원값은 펼침 안
+    const changes = (await (
+      await getResponse(
+        generatedHandlers as RequestHandler[],
+        new Request('http://localhost/api/snapshots/12/changes'),
+      )
+    )?.json()) as { field: string; field_label?: string; value_kind?: string }[];
+    const labelled = changes.find((c) => c.field_label && c.field_label !== c.field);
+    if (labelled)
+      expect(within(diff).getAllByText(labelled.field_label!).length).toBeGreaterThan(0);
+    expect(diff.textContent ?? '').not.toMatch(/official_popup_hash|popup_image_hash/);
     expect(
       matching(rec.requests, 'GET', '/changes').some(
         (r) => r.url.searchParams.get('compare_snapshot') === value,

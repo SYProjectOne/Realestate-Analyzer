@@ -197,7 +197,10 @@ describe('F2(D21-8) 공고 예정 후보 가격 = 확인 불가(공고 전) — 
     const panel = await screen.findByRole('tabpanel');
     expect(
       within(panel).getAllByText(
-        t('empty.unknownWithReasonDate', { reason: '공고 전', date: '2026-10-07' }),
+        t('empty.unknownWithReasonDate', {
+          reason: '공고 전',
+          date: '2026-10-07',
+        }),
       ).length,
     ).toBe(2);
   });

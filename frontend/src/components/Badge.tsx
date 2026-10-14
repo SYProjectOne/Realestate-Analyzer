@@ -6,6 +6,8 @@ export interface BadgeProps {
   tone?: 'neutral' | 'muted' | 'strong';
   title?: string;
   className?: string;
+  /** 좁은 칸에서 줄바꿈 허용(긴 접수 사유가 카드 밖으로 넘치지 않게) */
+  wrap?: boolean;
   'data-testid'?: string;
 }
 
@@ -16,12 +18,19 @@ const TONES: Record<NonNullable<BadgeProps['tone']>, string> = {
 };
 
 /** 모든 배지의 바탕. 색이 아니라 텍스트가 의미를 나른다. */
-export function Badge({ children, tone = 'neutral', title, className = '', ...rest }: BadgeProps) {
+export function Badge({
+  children,
+  tone = 'neutral',
+  title,
+  className = '',
+  wrap = false,
+  ...rest
+}: BadgeProps) {
   return (
     <span
       title={title}
       data-testid={rest['data-testid']}
-      className={`inline-flex items-center whitespace-nowrap rounded-sm border px-1.5 py-px text-[11px] leading-4 ${TONES[tone]} ${className}`}
+      className={`inline-flex max-w-full items-center ${wrap ? 'whitespace-normal' : 'whitespace-nowrap'} rounded-sm border px-1.5 py-px text-[11px] leading-4 ${TONES[tone]} ${className}`}
     >
       {children}
     </span>

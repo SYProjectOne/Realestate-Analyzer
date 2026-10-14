@@ -3,7 +3,7 @@
  * 컴포넌트는 FactCell을 쓰고, 차트 축·툴팁·표 셀은 여기 함수를 쓴다.
  * 단위 문자열(억·만·원·㎡·세대·D-day)도 ko.json에서 온다.
  */
-import { t } from '@/i18n';
+import { t, type TKey } from '@/i18n';
 import type { FactLike } from './contract';
 
 /** ISO 날짜 `YYYY-MM-DD` */
@@ -315,13 +315,73 @@ export function formatFactValue(
   return formatValue(n, unit, options);
 }
 
-/** "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1 */
-export function formatUnknown(reason?: string | null, checkedAt?: string | null): string {
+/** 계약 .20 사유 코드(fact.json ReasonCode — 서버 `app.api.reason_codes`) */
+export type ReasonCode = NonNullable<FactLike['reason_code']>;
+
+/**
+ * 사유 코드 → 쉬운 말 key(R9-UI P7, 계약 .20 F3). `no_value` 는 서버 사유가 이미 구체적인 말('1순위 해당지역 경쟁률 없음')이라
+ * 바꾸지 않는다(일반 문구로 바꾸면 뜻이 흐려진다). 코드가 'other'·없음(.20 이전 발행 저장본)이면 서버 사유 그대로 —
+ * 화면이 문자열로 사유를 추측하지 않는다. 원 사유(reason)는 title·출처 패널.
+ */
+const REASON_PLAIN: Partial<Record<ReasonCode, TKey>> = {
+  fetch_failed: 'empty.reasonPlain.fetch_failed',
+  not_collected: 'empty.reasonPlain.not_collected',
+  not_published: 'empty.reasonPlain.pre_notice',
+  parse_failed: 'empty.reasonPlain.parse_failed',
+  source_missing: 'empty.reasonPlain.source_missing',
+  demoted: 'empty.reasonPlain.demoted',
+  conflict_hold: 'empty.reasonPlain.conflict_hold',
+  partial_missing: 'empty.reasonPlain.partial_missing',
+  identity_unconfirmed: 'empty.reasonPlain.identity_unconfirmed',
+  other_complex_site: 'empty.reasonPlain.other_complex_site',
+  no_phrase: 'empty.reasonPlain.no_phrase',
+  phrase_inconclusive: 'empty.reasonPlain.phrase_inconclusive',
+  not_target: 'empty.reasonPlain.not_target',
+  input_blocked: 'empty.reasonPlain.input_blocked',
+  unresolved: 'empty.reasonPlain.unresolved',
+  unjudged: 'empty.reasonPlain.unjudged',
+  not_entered: 'empty.reasonPlain.not_entered',
+  no_sample: 'empty.reasonPlain.no_sample',
+  human_check: 'empty.reasonPlain.human_check',
+};
+
+/** 사유 → 화면 문구. 코드가 없거나 표에 없으면 서버 사유 그대로(mapped=false) */
+export function plainReason(
+  reason: string,
+  code?: ReasonCode | null,
+): { text: string; mapped: boolean } {
+  // 수집 실패는 짧은 기술 사유(403·DNS·TLS)가 운영·사람 확인에 쓸모 있어 함께 둔다
+  if (code === 'fetch_failed') {
+    return { text: t('empty.reasonPlain.fetch_failedWith', { reason }), mapped: true };
+  }
+  const key = code ? REASON_PLAIN[code] : undefined;
+  return key ? { text: t(key), mapped: true } : { text: reason, mapped: false };
+}
+
+/** 쉬운 말로 바꾼 사유면 "원래 사유: …"(같은 요소의 title — 0클릭, 마우스 올림). 아니면 undefined */
+export function unknownTitle(
+  reason: string | null | undefined,
+  code?: ReasonCode | null,
+): string | undefined {
+  if (!reason || !plainReason(reason, code).mapped) return undefined;
+  return t('empty.reasonOriginal', { reason });
+}
+
+/**
+ * "확인 불가" / "확인 불가(사유)" / "확인 불가(사유, 확인일)" — 계약 fact.json 표시 규칙 1.
+ * 괄호 안 사유는 사유 코드(`code`, 계약 .20)의 쉬운 말(P7). `raw` 면 서버 사유 그대로(출처 패널 '라벨' 줄).
+ */
+export function formatUnknown(
+  reason?: string | null,
+  checkedAt?: string | null,
+  options: { raw?: boolean; code?: ReasonCode | null } = {},
+): string {
   if (!reason) return t('empty.unknown');
+  const shown = options.raw ? reason : plainReason(reason, options.code).text;
   const date = checkedAt ? (kstDay(checkedAt) ?? undefined) : undefined;
   return date
-    ? t('empty.unknownWithReasonDate', { reason, date })
-    : t('empty.unknownWithReason', { reason });
+    ? t('empty.unknownWithReasonDate', { reason: shown, date })
+    : t('empty.unknownWithReason', { reason: shown });
 }
 
 /** 계약 Fact.unit 힌트 → FactUnit (FactCell에서 unit prop을 생략했을 때). 숫자면 'number', 아니면 'text' */

@@ -3,9 +3,10 @@ import { useCanWrite } from '@/api/auth';
 import { useChecklist, usePatchChecklistItem } from '@/api/hooks';
 import type { ChecklistItem } from '@/api/types';
 import { Badge, EmptyState, PublishJobProgress } from '@/components';
-import { t, type TKey } from '@/i18n';
+import { t, tDynamic, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
+import { isResaleEnd, scheduleBasis, scheduleKindText } from '../_shared/schedule';
 
 const STATUSES = ['open', 'done', 'na'] as const;
 const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
@@ -128,7 +129,27 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
   );
 }
 
-/** 기한 있는 항목을 월별로(중도금일·만료·공고 예상) */
+/**
+ * 캘린더 종류 범례 — 데이터에 나온 종류만, 처음 나온 순서로(계약 .21 의 새 종류 '청약 접수'·'당첨자 발표'도 코드 변경 없이).
+ * 글자는 scheduleKindText(모르는 종류는 서버 값 그대로), 뜻은 ko.json `page.G7.calendarLegend.kind.<종류>`(없으면 글자만).
+ */
+function legendEntries(items: readonly ChecklistItem[]): { label: string; help: string }[] {
+  const seen = new Map<string, string>();
+  for (const item of items) {
+    const label = scheduleKindText(item);
+    if (seen.has(label)) continue;
+    const help = isResaleEnd(item)
+      ? t('page.G7.calendarLegend.resaleOpen')
+      : tDynamic(`page.G7.calendarLegend.kind.${item.kind}`, '');
+    seen.set(label, help);
+  }
+  return [...seen.entries()].map(([label, help]) => ({ label, help }));
+}
+
+/**
+ * 기한 있는 항목을 월별로(중도금일·전매 가능 시작·공고 예상). R9-UI 피드백: 종류 배지는 쉬운 말 — 전매제한 종료('만료')는
+ * '전매 가능 시작', 계산 근거는 둘째 줄, 서버 제목 전문은 title. 같은 날 같은 제목 행은 숨기지 않고 메모가 있으면 보인다.
+ */
 function Calendar({ items, asof }: { items: ChecklistItem[]; asof: string | null }) {
   const dated = items
     .filter((i): i is ChecklistItem & { due_date: string } => !!i.due_date)
@@ -140,24 +161,52 @@ function Calendar({ items, asof }: { items: ChecklistItem[]; asof: string | null
     months.set(ym, [...(months.get(ym) ?? []), item]);
   }
   return (
-    <ol aria-label={t('page.G7.calendar')} className="flex flex-col gap-3 text-sm">
-      {[...months.entries()].map(([ym, list]) => (
-        <li key={ym}>
-          <h3 className="text-xs font-semibold text-muted">{ym}</h3>
-          <ul className="flex flex-col gap-1">
-            {list.map((item) => (
-              <li key={item.id} className="flex flex-wrap items-center gap-1">
-                <span className="tabular-nums">{formatDate(item.due_date, asof)}</span>
-                <Badge tone="neutral">{enumText('page.G7.checkKind', item.kind)}</Badge>
-                <span>
-                  {item.complex_name ? `${item.complex_name} · ` : ''}
-                  {item.title}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </li>
-      ))}
-    </ol>
+    <div className="flex flex-col gap-3">
+      <details data-testid="calendar-legend" className="text-xs text-muted">
+        <summary className="cursor-pointer">{t('page.G7.calendarLegend.title')}</summary>
+        <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+          {legendEntries(dated).map(({ label, help }) => (
+            <div key={label} className="contents">
+              <dt>
+                <Badge tone="neutral">{label}</Badge>
+              </dt>
+              <dd>{help}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+      <ol aria-label={t('page.G7.calendar')} className="flex flex-col gap-3 text-sm">
+        {[...months.entries()].map(([ym, list]) => (
+          <li key={ym}>
+            <h3 className="text-xs font-semibold text-muted">{ym}</h3>
+            <ul className="flex flex-col gap-1">
+              {list.map((item) => {
+                const basis = scheduleBasis(item);
+                return (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center gap-1"
+                    title={item.title}
+                  >
+                    <span className="tabular-nums">{formatDate(item.due_date, asof)}</span>
+                    <Badge tone="neutral">{scheduleKindText(item)}</Badge>
+                    <span>
+                      {item.complex_name ? `${item.complex_name} · ` : ''}
+                      {basis ? t('page.common.scheduleKind.resaleOpen') : item.title}
+                    </span>
+                    {item.note ? <span className="text-xs text-muted">{item.note}</span> : null}
+                    {basis ? (
+                      <span className="w-full pl-4 text-xs text-muted">
+                        {t('page.common.scheduleBasis', { basis })}
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

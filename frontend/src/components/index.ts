@@ -30,11 +30,13 @@ export {
   type MetaValueProps,
 } from './MetaValue';
 export { MismatchBadge, type MismatchBadgeProps } from './MismatchBadge';
+export { ProvenanceLegend } from './ProvenanceLegend';
 export { ProvenancePanel, ProvenanceProvider, type ProvenancePanelProps } from './ProvenancePanel';
 export { useOpenProvenance } from './provenanceContext';
 export { RawDocumentPreview, type RawDocumentPreviewProps } from './RawDocumentPreview';
 export { ADD_REGION_VALUE, RegionPicker, type RegionPickerProps } from './RegionPicker';
 export { ScenarioToggle, type ScenarioOption, type ScenarioToggleProps } from './ScenarioToggle';
 export { SnapshotPicker, type SnapshotPickerProps } from './SnapshotPicker';
+export { GLOSSARY_KEYS, glossaryItem, Term, type GlossaryKey, type TermProps } from './Term';
 export { TieBadge, type TieBadgeProps } from './TieBadge';
 export { UnstableBadge, type UnstableBadgeProps } from './UnstableBadge';

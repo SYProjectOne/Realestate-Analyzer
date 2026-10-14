@@ -29,6 +29,7 @@ import { server } from '@/mocks/server';
 import { renderRoute, renderWithProviders } from '@/test/render';
 import { JudgmentTable } from './complex/JudgmentsTab';
 import { matching, recordRequests } from './_shared/testing';
+import { COLUMN_STORAGE_KEY } from './complexes/ComplexTable';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -55,8 +56,12 @@ async function mock(path: string, init: RequestInit): Promise<Response> {
 }
 
 /** '확인 불가(공고 전' 으로 시작(확인일이 붙으면 '확인 불가(공고 전, 2026-10-07)') */
+// 계약 .20 reason_code(not_published)가 있는 Fact 는 쉬운 말, 코드 없는 Fact(옛 저장본·테스트 Fact)는 서버 사유 그대로
+const escRe = (x: string) => x.replace(/[()]/g, '\\$&');
 const preNotice = new RegExp(
-  `^${t('empty.unknownWithReason', { reason: '공고 전' }).slice(0, -1).replace(/[()]/g, '\\$&')}`,
+  `^(${escRe(t('empty.unknownWithReason', { reason: '공고 전' }).slice(0, -1))}|${escRe(
+    t('empty.unknownWithReason', { reason: t('empty.reasonPlain.pre_notice') }).slice(0, -1),
+  )})`,
 );
 
 function envelope(
@@ -354,6 +359,8 @@ describe('F5(D20-2) 트랙 (A) 공고 예정 후보 — G1·G2·G3', () => {
   });
 
   it("G2 마지막 변경: field 'track' → '공고 예정 후보'", async () => {
+    // R9-UI P4: 마지막 변경 열은 기본 숨김 — 열 선택으로 켠 상태
+    window.localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify({ v: 2, last_change: true }));
     const page = await example<ComplexRowPage>('/snapshots/12/complexes');
     const first = page.items[0]!;
     server.use(
@@ -447,14 +454,21 @@ describe('F5·F7 G1 최근 변경 — 공고 예정 후보·합침·첫 적재 �
     renderRoute('/');
     const feed = await screen.findByRole('list', { name: t('page.G1.changes') });
     const [track, merged] = within(feed).getAllByRole('listitem') as HTMLElement[];
-    expect(within(track!).getByText(t('page.common.changeField.track'))).toBeInTheDocument();
+    // R9-UI P2: 필드 이름은 쉬운 문장 '{field} 변경' 안에
+    expect(
+      within(track!).getByText(
+        t('page.G1.changeSentence', { field: t('page.common.changeField.track') }),
+      ),
+    ).toBeInTheDocument();
     expect(track).not.toHaveTextContent(/\btrack\b/);
     expect(within(track!).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/complexes\/15/),
     );
     expect(
-      within(merged!).getByText(t('page.common.changeField.applyhome_id')),
+      within(merged!).getByText(
+        t('page.G1.changeSentence', { field: t('page.common.changeField.applyhome_id') }),
+      ),
     ).toBeInTheDocument();
     expect(within(merged!).getByText(t('page.common.severity.critical'))).toBeInTheDocument();
   });

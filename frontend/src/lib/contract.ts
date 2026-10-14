@@ -2,7 +2,7 @@
  * 계약 타입 별칭 (계약 2026-10-09.1) — 원본은 `src/api/types.ts`(생성물 `src/api/schema.d.ts`의 별칭)다.
  * 이 파일은 차트·공통 컴포넌트(WP6b)가 쓰던 이름을 그대로 re-export 하고, props용 `*Like` 구조 타입만 따로 둔다.
  */
-import type { IntakePath, IntakeStatus, Label, Market } from '@/api/types';
+import type { Fact, IntakePath, IntakeStatus, Label, Market } from '@/api/types';
 
 export type {
   BenchmarkView,
@@ -62,6 +62,8 @@ export interface FactLike {
   prov: string | null;
   checked_at: string | null;
   reason?: string | null;
+  /** 계약 .20(F3): '확인 불가' 사유 코드 */
+  reason_code?: Fact['reason_code'];
   human?: boolean;
   unit?: string;
 }
@@ -74,6 +76,11 @@ export interface IntakeLike {
   reason?: string | null;
   evidence_url?: string | null;
   http_status?: number | null;
+  /** 계약 .20(F3) 사유 코드 */
+  reason_code?: Fact['reason_code'];
+  /** 계약 .20(F9) 접수 공급 종류(저장 문구 후보가 말한 것만) · 근거 문구 */
+  supply_kind?: string | null;
+  supply_kind_basis?: string | null;
 }
 
 /** RegionPicker 옵션 */

@@ -30,7 +30,9 @@ async function ready(page: Page, path: string, title: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-const UNKNOWN_403 = /확인 불가\(403, \d{4}-\d{2}-\d{2}\)/;
+// 계약 .20 F3: 사유 코드 fetch_failed → '공식 페이지를 받지 못함 — 403'(원 사유는 title)
+const FETCH_403 = ko.empty.reasonPlain.fetch_failedWith.replace('{reason}', '403');
+const UNKNOWN_403 = new RegExp(`확인 불가\\(${FETCH_403}, \\d{4}-\\d{2}-\\d{2}\\)`);
 
 test.describe('T3 실데이터 문구: 공식 홈페이지 403', () => {
   test('G3 스위첸 헤더 접수 배지 = "확인 불가(403, 날짜)"', async ({ page }) => {
@@ -48,7 +50,11 @@ test.describe('T3 실데이터 문구: 공식 홈페이지 403', () => {
     const row = page
       .getByRole('table', { name: P.G2.table })
       .locator('tbody tr', { hasText: SWITZEN });
-    await expect(row.getByTestId('intake-badge')).toContainText(UNKNOWN_403);
+    // R9-UI P4: G2 접수 칸은 배지에 상태, 사유·확인일은 아래 작은 글씨
+    await expect(row.getByTestId('intake-badge')).toHaveText(ko.intake.status['확인 불가']);
+    await expect(row.getByTestId('intake-reason')).toHaveText(
+      new RegExp(`^${FETCH_403} · \\d{4}-\\d{2}-\\d{2}$`),
+    );
     expect(failed).toEqual([]);
   });
 });
@@ -61,7 +67,7 @@ test.describe.serial('T18 판정기 다운(degraded) 배너', () => {
 
   test('정상 데이터에서는 배너 없음', async ({ page }) => {
     await ready(page, '/', P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.kpis })).toBeVisible();
+    await expect(page.getByRole('list', { name: P.G1.region })).toBeVisible();
     await expect(page.getByTestId('degraded-banner')).toHaveCount(0);
   });
 
@@ -86,7 +92,7 @@ test.describe.serial('T18 판정기 다운(degraded) 배너', () => {
     await ready(page, `/ops?snapshot=${PAST}`, P.G7.title);
     await expect(page.getByTestId('degraded-banner')).toHaveText(ko.app.degradedSnapshot);
     await ready(page, `/?snapshot=${LATEST}`, P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.kpis })).toBeVisible();
+    await expect(page.getByRole('list', { name: P.G1.region })).toBeVisible();
     await expect(page.getByTestId('degraded-banner')).toHaveCount(0);
   });
 });

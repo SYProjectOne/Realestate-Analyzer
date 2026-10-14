@@ -36,8 +36,16 @@ export function buildOption(
     for (let y = Math.min(...allYears); y <= Math.max(...allYears); y += 1) years.push(y);
   }
   const areaIds = [...new Set(data.supply.map((s) => s.living_area ?? UNKNOWN_AREA))];
+  // 계약 .20 F6: 서버가 준 생활권 표시 이름(living_area_name) 먼저, 없으면(옛 저장본) living_areas[] 에서
+  const serverName = new Map(
+    data.supply
+      .filter((s) => s.living_area && s.living_area_name)
+      .map((s) => [s.living_area as string, s.living_area_name as string]),
+  );
   const areaName = (id: string) =>
-    id === UNKNOWN_AREA ? t('empty.unknown') : (livingAreaName(id, data.livingAreas) ?? id);
+    id === UNKNOWN_AREA
+      ? t('empty.unknown')
+      : (serverName.get(id) ?? livingAreaName(id, data.livingAreas) ?? id);
   const yearLabels = years.map(String);
   const totalOf = (year: number) =>
     data.supply.filter((s) => s.year === year).reduce((sum, s) => sum + (num(s.units) ?? 0), 0);
@@ -133,7 +141,7 @@ export function toTable(data: C04Data): DataTable {
       .sort((a, b) => a.year - b.year)
       .map((s) => ({
         year: String(s.year),
-        living_area: livingAreaName(s.living_area, data.livingAreas),
+        living_area: s.living_area_name ?? livingAreaName(s.living_area, data.livingAreas),
         units: s.units,
         complexes: (s.complexes ?? []).join(', '),
       })),
