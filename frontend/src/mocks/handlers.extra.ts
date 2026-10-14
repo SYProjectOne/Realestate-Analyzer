@@ -6,7 +6,8 @@
  *  - 잡: POST /jobs·/reports·/regions·PATCH /regions 가 만든 잡은 GET /jobs/{id} 폴링마다 queued → running → done
  *  - 사람 확인: POST /ops/human-checks 후 단지 목록·상세의 intake가 그 값으로 바뀐다(배지 즉시 갱신),
  *    자동 등록 재판정(rejudge_job_id, 계약 .9)도 상태 있는 잡
- *  - G2 대량 행: localStorage `msw.complexes.rows` = N 이면 예시 행을 N개로 복제(가상 스크롤 확인용)
+ *  - G2 대량 행: localStorage `msw.complexes.rows` = N 이면 예시 행을 N개로 복제(가상 스크롤 확인용).
+ *    R8-JITTER: `msw.complexes.moreDelayMs` = 이어 받기 지연(ms), `msw.complexes.nameSuffix` = 복제 행 이름 덧붙임(긴 이름)
  *  - 판정기 장애: localStorage `msw.degraded` = 1 이면 /health status=degraded
  *  - 원문 텍스트: GET /raw/{id}?as=text (생성기가 건너뜀), GET /reports/{id}
  *  - 주장 수정 PATCH /claims/{id}·호재 URL POST /catalysts 가 만든 잡도 상태 있는 잡(계약 2026-10-09.4)
@@ -31,7 +32,7 @@
  *    상태가 필요한 테스트는 server.use 로 개별 덮어쓴다.
  * 지역명은 목 데이터(계약 예시)에만 있다.
  */
-import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
+import { delay, getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type {
   CatalystCreate,
   CatalystCreated,
@@ -64,12 +65,23 @@ import catalystUpdatedExample from '../../../contracts/examples/catalyst_updated
 import complexSchema from '../../../contracts/schemas/complex.json';
 import complexDetailSchema from '../../../contracts/schemas/complex_detail.json';
 import complexRowSchema from '../../../contracts/schemas/complex_row.json';
+import { FIRST_PAGE_SIZE } from '@/pages/complexes/params';
 import { HUMAN_CHECK_RULES, parseStrictNumber } from '@/pages/ops/humanCheckRules';
 import { YM_PATTERN } from '@/pages/region-new/applyhomeWindow';
 import { generatedHandlers } from './handlers.gen';
 import { mswPath } from './mswPath';
 
 export const MOCK_ROWS_KEY = 'msw.complexes.rows';
+/**
+ * R8-JITTER: G2 이어 받기(첫 페이지 다음 요청 — page>1 이거나 size 가 첫 페이지보다 큼)를 이 ms 만큼 늦춘다
+ * (실데이터의 '100 / 101개 나머지 단지를 불러오는 중…' 구간 재현). 없으면 지연 없음.
+ */
+export const MOCK_ROWS_MORE_DELAY_KEY = 'msw.complexes.moreDelayMs';
+/**
+ * R8-JITTER: 복제 행 이름 뒤에 붙일 문자열(실데이터처럼 이름이 줄바꿈되는 긴 행 재현). 값은 테스트가 준다 —
+ * 지역명은 코드에 두지 않는다(규칙 15). 행마다 길이가 달라지게 행 번호만큼 반복 수를 바꾼다.
+ */
+export const MOCK_ROWS_NAME_SUFFIX_KEY = 'msw.complexes.nameSuffix';
 export const MOCK_DEGRADED_KEY = 'msw.degraded';
 /** GET /jobs/{id}를 이 횟수만큼 부르면 done */
 export const MOCK_JOB_POLLS_TO_DONE = 2;
@@ -349,16 +361,25 @@ function applyIntake<T extends { complex_id: number; intake: Intake | null }>(ro
 
 // ─── G2 목록 ───────────────────────────────────────────────
 
-function multiplyRows(rows: ComplexRow[], n: number): ComplexRow[] {
+function multiplyRows(rows: ComplexRow[], n: number, suffix: string | null = null): ComplexRow[] {
   if (rows.length === 0) return rows;
   const out: ComplexRow[] = [];
   for (let i = 0; i < n; i += 1) {
     const src = rows[i % rows.length] as ComplexRow;
     const copy = Math.floor(i / rows.length);
+    // 이름 덧붙임(R8-JITTER): 행마다 0~3번 반복 — 줄바꿈되는 행과 안 되는 행이 섞이게
+    const tail = suffix ? ` ${suffix}`.repeat(i % 4) : '';
     out.push(
       copy === 0
-        ? src
-        : { ...src, complex_id: 100_000 + i, name: `${src.name} #${copy + 1}`, rank: null },
+        ? tail
+          ? { ...src, name: `${src.name}${tail}` }
+          : src
+        : {
+            ...src,
+            complex_id: 100_000 + i,
+            name: `${src.name} #${copy + 1}${tail}`,
+            rank: null,
+          },
     );
   }
   return out;
@@ -411,11 +432,13 @@ export const extraHandlers = [
     const url = new URL(request.url);
     const n = Number(readFlag(MOCK_ROWS_KEY) ?? '0');
     const named = page.items.map((r) => withScopeReason(withNameSource(r.complex_id, r)));
-    const all = n > 0 ? multiplyRows(named, n) : named;
+    const all = n > 0 ? multiplyRows(named, n, readFlag(MOCK_ROWS_NAME_SUFFIX_KEY)) : named;
     const items = filterRows(all, url).map(applyIntake);
     const size = Number(url.searchParams.get('size') ?? page.size);
     const pageNo = Number(url.searchParams.get('page') ?? '1');
     const start = (pageNo - 1) * size;
+    const moreDelay = Number(readFlag(MOCK_ROWS_MORE_DELAY_KEY) ?? '0');
+    if (moreDelay > 0 && (pageNo > 1 || size > FIRST_PAGE_SIZE)) await delay(moreDelay);
     return HttpResponse.json({
       ...page,
       items: items.slice(start, start + size),
