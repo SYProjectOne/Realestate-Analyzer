@@ -7,7 +7,7 @@
 ## 범위 (RA §2·§5, DECISIONS D4)
 
 보고서 = **HTML + PDF** (md·docx·32KB 분할 없음).
-`templates/*.html.j2`(§1~§11 + 지역 추가 장 + 부록 A 판정 로그 · B 참고자료), `render.py`(자립 HTML: CSS·ECharts 인라인),
+`templates/*.html.j2`(첫 장 + §1~§11 + 지역 추가 장 + 부록 A 판정 로그 · B 참고자료 · C 용어 풀이 · D 전체 표), `render.py`(자립 HTML: CSS·ECharts 인라인),
 `pdf.py`(Playwright chromium `page.pdf()`), `diff.py`, `cli.py`(`python -m app.reports.cli --snapshot <id> --format pdf`).
 
 - 출력 디렉터리: `app.core.paths.report_dir()` (`REPORT_DIR`).
@@ -21,8 +21,11 @@
 | `data.py` | `load_report(session, snapshot_id, *, scenario_id=None, compare_snapshot_id=None) -> ReportData`. DB → 뷰 모델, 모든 수치 `Fact`(fp_/sc_/st_/jl_). 값이 있는데 출처 행 없음 = ENV=dev `ReportProvenanceMissing` / ENV=prod 경고 로그 + '확인 불가(출처 누락)'(API `FactMaker.missing` 과 같은 규칙) |
 | `policy.py` | **판정 범위·현재 구매가 = 공용 함수 호출만**(규칙 중복 없음) — `judge_scope(...)` = `analysis.scope.judge_scope`(→ `ScopeResult` 범위·사유), `current_price(types, payments)` = `analysis.price_view.current_price`, `current_terms`·`pick_intake`(공용 정렬), `complex_scope(cx, types, payments, intakes)`, `shows_ladder(scope)`(사다리 참여 = '판정 대상'만), `scope_note(result)`('판정 범위: <문구> — <사유>') |
 | `render.py` | `render_html(data, *, diff=None, echarts_js=None) -> RenderResult` — Jinja2 단일 자립 HTML(CSS·ECharts·option JSON 인라인) |
-| `charts.py` | C1 사다리·C4 입주 물량·C6 점수 분해·C7 decide option(프론트 `buildOption.ts` 규칙), 차트마다 같은 데이터 표 |
-| `pdf.py` | `html_to_pdf(html, pdf)` — chromium, file: 외 네트워크 차단, `window.__reportReady` 대기 |
+| `charts.py` | C1 사다리·C4 입주 물량·C6 점수 분해·C7 decide option(프론트 `buildOption.ts` 규칙), 차트마다 같은 데이터 표. 제목 '지표 · 기간 · 단위', 범례 단위(`legend.formatter`), `source`('자료: … · 라벨 … · 확인일 …')·`note`(그림 읽는 법) |
+| `cover.py` | 첫 장 `build_cover(data, diff, revision=…)`(접수 가능·상위 3곳·상황별 선택·판정 범위·비교 건수 — 기존 값과 개수만), `TermState`(용어 첫 등장 괄호 풀이), `delta_mark`·`diff_mark`·`rank_move`(▲▼ + 글자) |
+| `glossary.py` | 용어 원본(05-persona §7 + 30-proposal §7-3 고칠 것, key = 프론트 `ko.json glossary.items`) · `forbidden_hits`(30-proposal §1 금지어, '보장 아님'만 허용) |
+| `sections.py` | 장 제목(`SECTION_TITLES` 11개 — T15 기준, `ORIGINAL_TITLES` RA 원 이름), `EXTRA_TITLE`, 부록 C·D 제목, 본문·부록 묶음(`BODY_TITLES`·`APPENDIX_TITLES`) |
+| `pdf.py` | `html_to_pdf(html, pdf)` — chromium, file: 외 네트워크 차단, `window.__reportReady` 대기. 한 번 인쇄해 `count_pages`(쪽 첫 글 = 장 제목으로 본문·부록 쪽 수)를 센 뒤 첫 장 `data-pages` 칸을 채우고 다시 인쇄 |
 | `diff.py` | `diff_snapshots(session, base_id, snapshot_id, *, scenario_code="base") -> SnapshotDiff` |
 | `export.py` | `generate(session, snapshot_id, "html"\|"pdf", *, compare_snapshot_id, scenario_id, out_dir) -> GeneratedReport`, `ReportExporter`(Exporter Protocol) |
 | `job.py` | `report` 잡 처리 — 아래 '잡 규약' |
@@ -81,11 +84,17 @@ stats = run_report_job(job.payload, session=session)
 - ECharts 번들: 인자 → Settings `report_echarts_js`(환경변수 `REPORT_ECHARTS_JS`, worker 이미지는 `/opt/echarts/echarts.min.js`) → `frontend/node_modules/echarts/dist/echarts.min.js`.
   없으면 차트 자리에 문구 + 같은 데이터 표(`charts_inlined=False`, CLI 경고).
 
+- **첫 장·본문/부록(R9-REPORT, D28-4, 30-proposal §11-2)**: 첫 장 = 메타 상자(지역·기준일·리비전·발행·시나리오·비교 기준일·
+  본문/부록 쪽수·자료 출처 수와 확인일·판정기 버전·계약 버전·고지) + 요약 5줄(기존 값만) + 읽는 법 3줄 + 표기 규칙. 장 제목은 쉬운 말
+  + 원 용어 괄호('§8 종합 추천' → '§8 종합 정리(판정기 결과)'). 본문 §1-2·§4 는 4열 요약 표, §6-3·6-4 는 C6 그림·TOP 5 만 —
+  원래 표는 부록 D(값·라벨·출처 id 그대로, `tests/reports/golden/r9_fact_cells_before.json` 상위 집합). HTML판 쪽수 칸은 '—'(PDF판만 숫자).
+
 ## 테스트
 
 `uv run pytest tests/reports` — 픽스처 적재는 `app.api.devseed.seed` 하나(스냅샷 11·12 점수·decide·접수 상태·claim
 포함). `tests/reports/_seed.py` 는 시험이 쓰는 id 수집과 contradicted 주장 추가 함수만 둔다. 판정기 호출 없음.
-리뷰 항목별 테스트는 `test_r3_fix.py`, 판정 범위 정합(공용 함수·참여 규칙·wait_new)은 `test_scope_participation.py`.
+리뷰 항목별 테스트는 `test_r3_fix.py`, 판정 범위 정합(공용 함수·참여 규칙·wait_new)은 `test_scope_participation.py`,
+첫 장·부록·용어·증감 표식(R9-REPORT)은 `test_r9_report.py`.
 
 ## 규칙
 

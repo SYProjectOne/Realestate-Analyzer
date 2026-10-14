@@ -7,6 +7,7 @@
   {% set base = data.scenarios | selectattr("code", "equalto", data.scenario_code) | first | default(none) %}
   {% set picked = base.decisions | selectattr("chosen") | map(attribute="option") | list if base else [] %}
   <p class="lead">{{ data.scenario_name }} 기준 판정기 선택은 {{ picked | join(" · ") if picked else "없음(미판정)" }}{% if base and base.tie %} — 동률(confidence &lt; 0.6, 1순위를 하나로 말하지 않음){% endif %}. 상황별 결과와 요건 매트릭스를 아래에 둔다.</p>
+  <p class="small">이 장은 판정기 결과와 점수를 모아 정리한 것이다 — 새 판단이나 권유를 더하지 않는다. {{ term("scenario") }}마다 가중치와 판정기 선택이 다르다.</p>
   <h3>8-1. TOP 5 종합 비교표</h3>
   <table>
     <thead><tr><th>순위</th><th>단지</th><th>종합</th><th>+10% 확률(입주 후 1년)</th><th>가격 갭 점수</th><th>현재 구매가</th><th>계약금</th><th>전매제한</th><th>접수</th></tr></thead>
@@ -24,7 +25,7 @@
     {% endfor %}
     </tbody>
   </table>
-  <h3>8-2. 상황별 추천(판정기 decide) — 요건 3개(접근 가능성 / 규제 제약 / 자금)</h3>
+  <h3>8-2. 상황별 판정기 선택(decide) — 요건 3개(접근 가능성 / 규제 제약 / 자금)</h3>
   <table class="scenario-summary">
     <thead><tr><th>상황</th><th>판정기 선택</th><th>확률</th><th>confidence</th><th>차순위</th><th>decide</th></tr></thead>
     <tbody>

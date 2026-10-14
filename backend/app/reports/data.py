@@ -535,6 +535,8 @@ class ChartSpec:
     columns: list[str]
     rows: list[list[Any]]  # 셀 = Fact 또는 문자열
     height: int = 360
+    source: str = ""  # 차트 아래 '자료: 출처 · 확인일' 한 줄(R9-REPORT, 30-proposal §11-2 (3))
+    note: str = ""  # 그림 읽는 법(막대 길이 뜻 등) — 그림에만 있는 값이 없게(K4)
 
 
 @dataclass(slots=True)
