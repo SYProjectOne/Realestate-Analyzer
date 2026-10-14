@@ -334,6 +334,30 @@ test.describe('R9-UI P4 G2 비교 트레이가 표를 가리지 않는다(00-bas
   });
 });
 
+test.describe('R9-UI P4 G2 첫 화면 행 수(30-proposal §13-1 목표)', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('1440×900: 트레이 위까지 온전히 보이는 행 ≥ 6', async ({ page }) => {
+    await ready(page, '/complexes', P.G2.title);
+    const scroll = page.getByTestId('complex-table-scroll');
+    await expect(scroll.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    const n = await page.evaluate(() => {
+      const box = document
+        .querySelector('[data-testid="complex-table-scroll"]')!
+        .getBoundingClientRect();
+      const tray =
+        document.querySelector('aside')?.getBoundingClientRect().top ?? window.innerHeight;
+      const limit = Math.min(box.bottom, tray, window.innerHeight);
+      return [...document.querySelectorAll('tbody tr[aria-rowindex]')].filter((tr) => {
+        const r = tr.getBoundingClientRect();
+        return r.top >= box.top && r.bottom <= limit;
+      }).length;
+    });
+    expect(n).toBeGreaterThanOrEqual(6);
+  });
+});
+
 test.describe('R9-UI P3 가로 넘침 없음(00-baseline 레이아웃 결함)', () => {
   for (const [name, width] of [
     ['데스크톱 1440', 1440],

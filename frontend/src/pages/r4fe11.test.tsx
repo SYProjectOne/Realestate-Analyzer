@@ -29,6 +29,7 @@ import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from './_shared/testing';
+import { COLUMN_STORAGE_KEY } from './complexes/ComplexTable';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -189,6 +190,8 @@ describe('F1(D22-5) judge_scope_reason — 서버 analysis.scope 사유 그대�
   });
 
   it('G2 목록 행: 포함 분류 열에 서버 사유(행마다), 키 없는 행은 없음', async () => {
+    // R9-UI P4(D28-4 G2 8열): 단지 분류 열은 기본 숨김 — 열 선택으로 켠 상태
+    window.localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify({ v: 2, inclusion: true }));
     const rows = await useRows((row, i) =>
       i === 0
         ? { ...row, inclusion_class: '범위 경계', judge_scope_reason: NO_DONG }
@@ -207,6 +210,7 @@ describe('F1(D22-5) judge_scope_reason — 서버 analysis.scope 사유 그대�
   });
 
   it('G2 목록 행: rejudge_needed 행의 사유에는 현재 사실 기준 안내(title)', async () => {
+    window.localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify({ v: 2, inclusion: true }));
     const rows = await useRows((row, i) =>
       i === 0 ? { ...row, judge_scope_reason: '원 공고 미수집', rejudge_needed: true } : row,
     );

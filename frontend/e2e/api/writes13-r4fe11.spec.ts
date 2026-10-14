@@ -96,7 +96,10 @@ test.describe.serial('계약 .17 화면(실 API)', () => {
     await ready(page, `/complexes/${INTAKE_COMPLEX}${query}`, P.G3.title);
     await expect(page.getByTestId('scope-reason')).toContainText(otherReason!);
 
-    // G2 목록 행 — 포함 분류 열 둘째 줄
+    // G2 목록 행 — 포함 분류 열 둘째 줄(R9-UI P4: 단지 분류 열은 기본 숨김 → 열 선택으로 켠 상태)
+    await page.addInitScript(() =>
+      window.localStorage.setItem('sa.g2.columns', JSON.stringify({ v: 2, inclusion: true })),
+    );
     await ready(page, `/complexes${query}`, P.G2.title);
     await expect(page.getByTestId(`scope-reason-${BOUNDARY_COMPLEX}`)).toHaveText(NO_DONG);
     await expect(page.getByTestId(`scope-reason-${INTAKE_COMPLEX}`)).toHaveText(otherReason!);

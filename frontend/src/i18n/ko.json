@@ -1095,7 +1095,8 @@
     },
     "none": "접수 상태 확인 불가",
     "withReason": "{status}({reason})",
-    "withReasonDate": "{status}({reason}, {date})"
+    "withReasonDate": "{status}({reason}, {date})",
+    "reasonDate": "{reason} · {date}"
   },
   "picker": {
     "snapshotDegraded": "{date} · 일부 수집 실패",

@@ -100,27 +100,62 @@ const TERM_OF: Partial<Record<ColumnId, GlossaryKey>> = {
   inclusion: 'inclusion',
 };
 
-/** 기본으로 숨기는 열(열 선택으로 켠다) */
-const DEFAULT_HIDDEN: VisibilityState = {
+/**
+ * 기본으로 숨기는 열(열 선택으로 켠다) — R9-UI P4(D28-4): 기본 8열(단지·접수·구매가·계약금 비율·전매 종료·입주·가격 갭·종합 점수).
+ * 생활권은 단지 이름 아래 줄로 옮겼고(열은 열 선택으로 켜면 정렬 가능), +10%·단지 분류·택지·총 세대·마지막 변경은 열 선택 1클릭.
+ */
+export const DEFAULT_HIDDEN: VisibilityState = {
+  living_area: false,
+  p10: false,
+  inclusion: false,
+  land_type: false,
+  units_total: false,
+  last_change: false,
+};
+
+/** 저장 형식 버전 — 2 = R9-UI 기본 8열 */
+const STORAGE_VERSION = 2;
+/** 버전 없는 예전 저장값의 기본(그 값과 같은 항목은 사용자가 바꾼 것이 아니다) */
+const LEGACY_DEFAULT: VisibilityState = {
   p10: false,
   land_type: false,
   units_total: false,
   down_payment: false,
 };
 
+/**
+ * 저장된 열 선택 읽기. 예전 저장값(버전 없음)은 예전 기본과 다른 항목(= 사용자가 바꾼 열)만 남기고 새 기본을 따른다 —
+ * 예전 기본이 통째로 저장돼 있어 그대로 덮으면 새 기본(계약금 비율 표시·단지 분류 숨김)이 적용되지 않는다.
+ */
+export function readVisibility(raw: string | null): VisibilityState {
+  if (!raw) return DEFAULT_HIDDEN;
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  const out: VisibilityState = { ...DEFAULT_HIDDEN };
+  const legacy = parsed.v !== STORAGE_VERSION;
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key === 'v' || typeof value !== 'boolean') continue;
+    const legacyDefault = LEGACY_DEFAULT[key] ?? true;
+    if (legacy && value === legacyDefault) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
 function loadVisibility(): VisibilityState {
   try {
-    const raw = window.localStorage.getItem(COLUMN_STORAGE_KEY);
-    if (raw) return { ...DEFAULT_HIDDEN, ...(JSON.parse(raw) as VisibilityState) };
+    return readVisibility(window.localStorage.getItem(COLUMN_STORAGE_KEY));
   } catch {
-    // 저장소 없음 → 기본값
+    // 저장소 없음·깨진 값 → 기본값
+    return DEFAULT_HIDDEN;
   }
-  return DEFAULT_HIDDEN;
 }
 
 function saveVisibility(state: VisibilityState): void {
   try {
-    window.localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(
+      COLUMN_STORAGE_KEY,
+      JSON.stringify({ v: STORAGE_VERSION, ...state }),
+    );
   } catch {
     // 무시
   }
@@ -219,28 +254,32 @@ export function ComplexTable({
         enableHiding: false,
         header: () => colTitle('name'),
         cell: ({ row }) => (
-          <span className="inline-flex flex-wrap items-center gap-1">
-            <Link
-              to={`/complexes/${row.original.complex_id}${linkSearch}`}
-              className="font-medium hover:underline"
-            >
-              {row.original.name}
-            </Link>
-            {/* 계약 .16 F1(D21-8): 이름 출처 라벨(공고 예정 후보 '비공식') → 출처 서랍. 키가 없으면 그리지 않는다 */}
-            <NameLabelBadge source={row.original} testId={`name-prov-${row.original.complex_id}`} />
+          <span className="inline-flex min-w-36 flex-col">
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <Link
+                to={`/complexes/${row.original.complex_id}${linkSearch}`}
+                className="font-medium hover:underline"
+              >
+                {row.original.name}
+              </Link>
+              {/* 계약 .16 F1(D21-8): 이름 출처 라벨(공고 예정 후보 '비공식') → 출처 서랍. 키가 없으면 그리지 않는다 */}
+              <NameLabelBadge
+                source={row.original}
+                testId={`name-prov-${row.original.complex_id}`}
+              />
+            </span>
+            {/* R9-UI P4: 생활권은 이름 아래 줄(같은 행) */}
+            <span data-testid="name-living-area" className="text-xs text-muted">
+              {row.original.living_area_name ?? enumText('page.common', null)}
+            </span>
           </span>
         ),
-      },
-      {
-        id: 'living_area',
-        header: () => colTitle('living_area'),
-        cell: ({ row }) => row.original.living_area_name ?? enumText('page.common', null),
       },
       {
         id: 'intake',
         header: () => colTitle('intake'),
         cell: ({ row }) => (
-          <IntakeBadge intake={row.original.intake} asof={asof} showPath={false} />
+          <IntakeBadge intake={row.original.intake} asof={asof} showPath={false} reasonBelow />
         ),
       },
       {
@@ -253,6 +292,11 @@ export function ComplexTable({
             <FactCell fact={row.original.price_high} unit="eok" />
           </span>
         ),
+      },
+      {
+        id: 'down_payment',
+        header: () => colTitle('down_payment'),
+        cell: ({ row }) => <FactCell fact={row.original.down_payment_pct} unit="pct" digits={0} />,
       },
       {
         id: 'resale_end',
@@ -286,6 +330,11 @@ export function ComplexTable({
             <RejudgeNeededBadge needed={row.original.rejudge_needed} />
           </span>
         ),
+      },
+      {
+        id: 'living_area',
+        header: () => colTitle('living_area'),
+        cell: ({ row }) => row.original.living_area_name ?? enumText('page.common', null),
       },
       {
         id: 'p10',
@@ -323,11 +372,6 @@ export function ComplexTable({
         id: 'units_total',
         header: () => colTitle('units_total'),
         cell: ({ row }) => <FactCell fact={row.original.units_total} unit="households" />,
-      },
-      {
-        id: 'down_payment',
-        header: () => colTitle('down_payment'),
-        cell: ({ row }) => <FactCell fact={row.original.down_payment_pct} unit="pct" digits={0} />,
       },
       {
         id: 'last_change',
@@ -460,6 +504,7 @@ const TableHead = memo(function TableHead({
               <th
                 key={header.id}
                 scope="col"
+                data-col={header.column.id}
                 className="whitespace-nowrap border-b border-border px-2 py-1.5 text-left text-xs font-medium text-muted"
                 aria-sort={sortState(sort, sortKey)}
               >

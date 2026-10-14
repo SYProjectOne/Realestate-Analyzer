@@ -10,6 +10,11 @@ export interface IntakeBadgeProps {
   showPath?: boolean;
   /** 확인 시각 D± 기준일 */
   asof?: string | null;
+  /**
+   * 사유를 배지 밖 아래 작은 글씨로(R9-UI P4 G2 접수 칸 — 긴 사유가 배지 폭을 키우던 결함). 배지는 상태만,
+   * 사유·확인일은 아래 줄(쉬운 말, 원 사유 title).
+   */
+  reasonBelow?: boolean;
   className?: string;
 }
 
@@ -32,7 +37,13 @@ export function intakeStatusText(intake: IntakeLike): string {
  * 접수 상태 배지: "접수 가능 · 공식 팝업" / "접수 가능 · 사람 확인"(human_check = '사람' 접두).
  * 가능 = 강조, 불가 = 보통, 미정·확인 불가 = 회색. 의미는 항상 글자로.
  */
-export function IntakeBadge({ intake, showPath = true, asof, className }: IntakeBadgeProps) {
+export function IntakeBadge({
+  intake,
+  showPath = true,
+  asof,
+  reasonBelow = false,
+  className,
+}: IntakeBadgeProps) {
   if (!intake) {
     return (
       <Badge tone="muted" className={className} data-testid="intake-badge">
@@ -40,7 +51,11 @@ export function IntakeBadge({ intake, showPath = true, asof, className }: Intake
       </Badge>
     );
   }
-  const status = intakeStatusText(intake);
+  const below =
+    reasonBelow && !!intake.reason && (intake.status === '확인 불가' || intake.status === '불가');
+  const status = below
+    ? tDynamic(`intake.status.${intake.status}`, intake.status)
+    : intakeStatusText(intake);
   const path = tDynamic(`intake.path.${intake.path}`, intake.path);
   const tone = intake.status === '가능' ? 'strong' : intake.status === '불가' ? 'neutral' : 'muted';
   const checked = intake.checked_at ? formatDate(intake.checked_at, asof) : null;
@@ -49,9 +64,20 @@ export function IntakeBadge({ intake, showPath = true, asof, className }: Intake
       ? unknownTitle(intake.reason)
       : undefined;
   const title = [checked, original ?? null].filter(Boolean).join(' · ') || undefined;
-  return (
+  const badge = (
     <Badge tone={tone} className={className} title={title} data-testid="intake-badge">
       {showPath ? `${status} · ${path}` : status}
     </Badge>
+  );
+  if (!below || !intake.reason) return badge;
+  const date = dayOf(intake.checked_at);
+  const reason = plainReason(intake.reason).text;
+  return (
+    <span className="inline-flex flex-col items-start gap-0.5">
+      {badge}
+      <span data-testid="intake-reason" className="text-xs text-muted" title={original}>
+        {date ? t('intake.reasonDate', { reason, date }) : reason}
+      </span>
+    </span>
   );
 }

@@ -29,6 +29,7 @@ import { server } from '@/mocks/server';
 import { renderRoute, renderWithProviders } from '@/test/render';
 import { JudgmentTable } from './complex/JudgmentsTab';
 import { matching, recordRequests } from './_shared/testing';
+import { COLUMN_STORAGE_KEY } from './complexes/ComplexTable';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -356,6 +357,8 @@ describe('F5(D20-2) 트랙 (A) 공고 예정 후보 — G1·G2·G3', () => {
   });
 
   it("G2 마지막 변경: field 'track' → '공고 예정 후보'", async () => {
+    // R9-UI P4: 마지막 변경 열은 기본 숨김 — 열 선택으로 켠 상태
+    window.localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify({ v: 2, last_change: true }));
     const page = await example<ComplexRowPage>('/snapshots/12/complexes');
     const first = page.items[0]!;
     server.use(

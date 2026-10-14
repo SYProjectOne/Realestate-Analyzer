@@ -246,3 +246,95 @@ describe('R9-UI P4 G2 필터 접기 · 접수 가능 칩 · 목록 안내(30-pro
     expect(await screen.findByText(t('page.G2.intro'))).toBeInTheDocument();
   });
 });
+
+describe('R9-UI P4 G2 기본 열 8개(D28-4)', () => {
+  const headers = async () => {
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(2));
+    return within(table)
+      .getAllByRole('columnheader')
+      .map((th) => th.getAttribute('data-col'))
+      .filter((id) => id !== 'select');
+  };
+
+  it('기본: 단지 → 접수 → 현재 구매가 → 계약금 비율 → 전매 종료 → 입주 → 가격 갭 → 종합 점수', async () => {
+    renderRoute('/complexes');
+    expect(await headers()).toEqual([
+      'name',
+      'intake',
+      'price',
+      'down_payment',
+      'resale_end',
+      'move_in',
+      'gap',
+      'total',
+    ]);
+  });
+
+  it('생활권은 단지 이름 아래 줄(같은 행)', async () => {
+    renderRoute('/complexes');
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    const cell = (await within(table).findAllByTestId('name-living-area'))[0] as HTMLElement;
+    expect(cell.textContent?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('예전 저장값(버전 없음)은 사용자가 바꾼 열만 남기고 새 기본을 따른다', async () => {
+    // 예전 기본(p10·land_type·units_total·down_payment 숨김) 그대로 + 사용자가 p10 을 켬
+    window.localStorage.setItem(
+      COLUMN_STORAGE_KEY,
+      JSON.stringify({
+        p10: true,
+        land_type: false,
+        units_total: false,
+        down_payment: false,
+        inclusion: true,
+        last_change: true,
+        living_area: true,
+      }),
+    );
+    renderRoute('/complexes');
+    expect(await headers()).toEqual([
+      'name',
+      'intake',
+      'price',
+      'down_payment',
+      'resale_end',
+      'move_in',
+      'gap',
+      'total',
+      'p10',
+    ]);
+    await waitFor(() =>
+      expect(JSON.parse(window.localStorage.getItem(COLUMN_STORAGE_KEY) ?? '{}')).toMatchObject({
+        v: 2,
+        p10: true,
+      }),
+    );
+  });
+
+  it('숨긴 열(생활권·+10%·단지 분류·택지·총 세대·마지막 변경)은 열 선택 1클릭', async () => {
+    renderRoute('/complexes');
+    await headers();
+    await userEvent.click(screen.getByText(t('page.G2.columns'), { selector: 'summary' }));
+    for (const key of [
+      'living_area',
+      'p10',
+      'inclusion',
+      'land_type',
+      'units_total',
+      'last_change',
+    ] as const) {
+      expect(screen.getByRole('checkbox', { name: t(`page.G2.col.${key}`) })).not.toBeChecked();
+    }
+    await userEvent.click(screen.getByRole('checkbox', { name: t('page.G2.col.inclusion') }));
+    expect(await headers()).toContain('inclusion');
+  });
+
+  it('접수 칸: 상태 배지 + 아래 작은 사유(쉬운 말, 원 사유 title)', async () => {
+    renderRoute('/complexes');
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(2));
+    const reasons = within(table).queryAllByTestId('intake-reason');
+    for (const r of reasons) expect(r.textContent?.length ?? 0).toBeGreaterThan(0);
+  });
+});
