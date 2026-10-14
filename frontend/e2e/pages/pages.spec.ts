@@ -33,9 +33,13 @@ test.describe('화면 10개 핵심 요소', () => {
     await expect(page.getByRole('region', { name: P.G0_2.expand.title })).toBeVisible();
   });
 
-  test('G1 홈: KPI 5 · TOP 5 · 변경 피드 · C6 차트 SVG', async ({ page }) => {
+  test('G1 홈: 지금 접수 가능 · 지역 현황 4 · TOP 5 · 변경 피드 · C6 차트 SVG', async ({
+    page,
+  }) => {
     await ready(page, '/', P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.kpis }).getByRole('listitem')).toHaveCount(5);
+    await expect(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(
+      4,
+    );
     expect(
       await page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem').count(),
     ).toBeGreaterThanOrEqual(5);

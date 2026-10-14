@@ -314,7 +314,9 @@ test.describe('API 토큰', () => {
     await dialog.getByRole('button', { name: ko.auth.save }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByTestId('token-button')).toContainText(ko.auth.state.write);
-    await expect(page.getByRole('list', { name: P.G1.kpis }).getByRole('listitem')).toHaveCount(5);
+    await expect(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(
+      4,
+    );
     await expect(page.getByTestId('readonly-banner')).toHaveCount(0);
     expect(failed).toEqual([]);
   });

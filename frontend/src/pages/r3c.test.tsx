@@ -164,7 +164,7 @@ describe('비수치 메타(MetaValue·MetaText·metaText)', () => {
 
   it('G1 KPI 데이터 신선도 보조 문구(실패·지연 소스 수)는 비수치 메타', async () => {
     renderRoute('/');
-    const kpis = await screen.findByRole('list', { name: t('page.G1.kpis') });
+    const kpis = await screen.findByRole('list', { name: t('page.G1.region') });
     const freshness = kpis.querySelector('[data-kpi="freshness"]') as HTMLElement;
     expect(freshness.querySelector('[data-meta="count"]')).not.toBeNull();
   });

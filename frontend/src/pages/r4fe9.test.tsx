@@ -56,7 +56,9 @@ async function mock(path: string, init: RequestInit): Promise<Response> {
 
 /** '확인 불가(공고 전' 으로 시작(확인일이 붙으면 '확인 불가(공고 전, 2026-10-07)') */
 const preNotice = new RegExp(
-  `^${t('empty.unknownWithReason', { reason: t('empty.reasonPlain.pre_notice') }).slice(0, -1).replace(/[()]/g, '\\$&')}`,
+  `^${t('empty.unknownWithReason', { reason: t('empty.reasonPlain.pre_notice') })
+    .slice(0, -1)
+    .replace(/[()]/g, '\\$&')}`,
 );
 
 function envelope(
@@ -447,14 +449,21 @@ describe('F5·F7 G1 최근 변경 — 공고 예정 후보·합침·첫 적재 �
     renderRoute('/');
     const feed = await screen.findByRole('list', { name: t('page.G1.changes') });
     const [track, merged] = within(feed).getAllByRole('listitem') as HTMLElement[];
-    expect(within(track!).getByText(t('page.common.changeField.track'))).toBeInTheDocument();
+    // R9-UI P2: 필드 이름은 쉬운 문장 '{field} 변경' 안에
+    expect(
+      within(track!).getByText(
+        t('page.G1.changeSentence', { field: t('page.common.changeField.track') }),
+      ),
+    ).toBeInTheDocument();
     expect(track).not.toHaveTextContent(/\btrack\b/);
     expect(within(track!).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/complexes\/15/),
     );
     expect(
-      within(merged!).getByText(t('page.common.changeField.applyhome_id')),
+      within(merged!).getByText(
+        t('page.G1.changeSentence', { field: t('page.common.changeField.applyhome_id') }),
+      ),
     ).toBeInTheDocument();
     expect(within(merged!).getByText(t('page.common.severity.critical'))).toBeInTheDocument();
   });

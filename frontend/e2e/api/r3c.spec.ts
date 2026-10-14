@@ -61,7 +61,7 @@ test.describe.serial('T18 판정기 다운(degraded) 배너', () => {
 
   test('정상 데이터에서는 배너 없음', async ({ page }) => {
     await ready(page, '/', P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.kpis })).toBeVisible();
+    await expect(page.getByRole('list', { name: P.G1.region })).toBeVisible();
     await expect(page.getByTestId('degraded-banner')).toHaveCount(0);
   });
 
@@ -86,7 +86,7 @@ test.describe.serial('T18 판정기 다운(degraded) 배너', () => {
     await ready(page, `/ops?snapshot=${PAST}`, P.G7.title);
     await expect(page.getByTestId('degraded-banner')).toHaveText(ko.app.degradedSnapshot);
     await ready(page, `/?snapshot=${LATEST}`, P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.kpis })).toBeVisible();
+    await expect(page.getByRole('list', { name: P.G1.region })).toBeVisible();
     await expect(page.getByTestId('degraded-banner')).toHaveCount(0);
   });
 });

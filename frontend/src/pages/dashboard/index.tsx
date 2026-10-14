@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type MouseEvent } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useDashboard } from '@/api/hooks';
@@ -20,6 +20,7 @@ import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { formatDate } from '@/lib/format';
+import { useIsMobile } from '@/lib/useMediaQuery';
 import {
   changeEntityText,
   changeFieldText,
@@ -43,6 +44,9 @@ import {
  * 계약 .15: 피드의 대상·필드 이름은 ko.json(`changeEntity`·`changeField`), 지역 첫 적재(`first_load`, F7)는 요약 문장 한 줄,
  * 트랙 A 공고 예정 후보(`track`)·후보와 청약홈 공고 합침(`applyhome_id`, F5)은 그 이름으로.
  */
+/** 지금 접수 가능 링크가 거는 값(계약 IntakeStatus) */
+const OPEN_NOW = '가능';
+
 export function DashboardPage() {
   const { isEmpty } = useActiveRegion();
   const { snapshotId, scenarioKey, isLoading } = usePageContext();
@@ -64,6 +68,10 @@ export function DashboardPage() {
 function DashboardBody({ data }: { data: Dashboard }) {
   const asof = data.asof_date;
   const top = data.top5.filter((row) => row.rank === null || row.rank <= 5);
+  /*
+   * R9-UI P2(30-proposal §3): 1단 = 지금 할 수 있는 것(지금 접수 가능), 2단 = 상위 단지 카드, 3단 = 지역 현황·최근 변경·차트.
+   * 값·라벨·출처는 그대로(FactCell) — 순서·묶음·접기만 바꾼다. 섹션 순서는 data-section 으로 테스트한다.
+   */
   return (
     <div className="flex flex-col gap-4">
       {data.rejudge_needed ? <RejudgeNotice data={data} /> : null}
@@ -80,28 +88,89 @@ function DashboardBody({ data }: { data: Dashboard }) {
           <span className="text-xs text-muted">{t('page.G1.benchmarkAbsentHint')}</span>
         </p>
       ) : null}
-      <KpiTiles data={data} />
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+        <OpenNowCard data={data} />
+      </div>
+      <div data-section="top">
         <Section
           title={t('page.G1.top5')}
           actions={
-            <span className="text-xs text-muted">
-              {t('page.G1.top5Scenario', { name: data.scenario_name })}
+            <span className="flex flex-wrap gap-x-1 text-xs text-muted">
+              <span>{t('page.G1.top5Scenario', { name: data.scenario_name })}</span>
+              <span aria-hidden>·</span>
+              <span>{t('page.G1.top5Note')}</span>
             </span>
           }
         >
+          {top.length < 5 ? (
+            <p data-testid="top5-fewer" className="text-sm text-muted">
+              <MetaText kind="count" k="page.G1.top5Fewer" params={{ n: top.length }} />
+            </p>
+          ) : null}
           <ul aria-label={t('page.G1.top5')} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {top.map((row) => (
               <Top5Card key={row.complex_id} row={row} asof={asof} />
             ))}
           </ul>
         </Section>
-        <ChangeFeed changes={data.changes} asof={asof} />
       </div>
+      <RegionStatus data={data} />
+      <ChangeFeed changes={data.changes} asof={asof} />
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <C06ScoreBreakdown data={{ rows: top, weights: data.weights, orientation: 'vertical' }} />
         <C05Unsold data={{ unsold: data.unsold_series }} height={200} />
       </div>
+    </div>
+  );
+}
+
+/** 1단: 지금 접수 가능 N곳(FactCell — 출처 패널 그대로) + G2 접수 가능 목록 링크 */
+function OpenNowCard({ data }: { data: Dashboard }) {
+  const search = useGlobalSearch();
+  const params = new URLSearchParams(search);
+  params.set('intake_status', OPEN_NOW);
+  const title = t('page.G1.openNow.title');
+  return (
+    <section
+      aria-label={title}
+      data-section="openNow"
+      className="flex flex-col gap-2 rounded-sm border border-border bg-surface p-3"
+    >
+      <h2 className="text-base font-semibold">{title}</h2>
+      <p className="flex flex-wrap items-baseline gap-1 text-2xl font-semibold">
+        <FactCell wrap fact={data.kpis.intake_open_count} unit="count" />
+        <span className="text-base font-normal">{t('page.G1.openNow.unit')}</span>
+      </p>
+      <Link to={`/complexes?${params.toString()}`} className="self-start text-sm underline">
+        {t('page.G1.openNow.link')}
+      </Link>
+      <p className="text-xs text-muted">{t('page.G1.openNow.hint')}</p>
+    </section>
+  );
+}
+
+/** 모바일(≤768px)은 접어 둔다(펼침 1클릭), 데스크톱은 펼친 구역 */
+function Collapsible({
+  title,
+  section,
+  children,
+}: {
+  title: string;
+  section: string;
+  children: ReactNode;
+}) {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return (
+      <details data-section={section} className="rounded-sm border border-border bg-surface p-3">
+        <summary className="cursor-pointer text-base font-semibold">{title}</summary>
+        <div className="mt-2">{children}</div>
+      </details>
+    );
+  }
+  return (
+    <div data-section={section}>
+      <Section title={title}>{children}</Section>
     </div>
   );
 }
@@ -166,18 +235,14 @@ function RejudgeNotice({ data }: { data: Dashboard }) {
   );
 }
 
-function KpiTiles({ data }: { data: Dashboard }) {
+/** 3단 지역 현황(예전 핵심 지표 4칸): 판정 대상·미분양·입주가 가장 많은 해·마지막 수집 — 값·라벨 그대로 */
+function RegionStatus({ data }: { data: Dashboard }) {
   const { kpis, asof_date: asof } = data;
   const tiles = [
     {
       key: 'judged',
       title: t('page.G1.kpi.judged'),
       body: <FactCell wrap fact={kpis.judged_count} unit="count" />,
-    },
-    {
-      key: 'intakeOpen',
-      title: t('page.G1.kpi.intakeOpen'),
-      body: <FactCell wrap fact={kpis.intake_open_count} unit="count" />,
     },
     {
       key: 'unsold',
@@ -214,19 +279,17 @@ function KpiTiles({ data }: { data: Dashboard }) {
     },
   ];
   return (
-    <ul aria-label={t('page.G1.kpis')} className="grid grid-cols-2 gap-2 md:grid-cols-5">
-      {tiles.map((tile) => (
-        <li
-          key={tile.key}
-          className="flex min-w-0 flex-col gap-1 rounded-sm border border-border bg-surface p-3"
-          data-kpi={tile.key}
-        >
-          <span className="text-xs text-muted">{tile.title}</span>
-          <span className="text-lg font-semibold">{tile.body}</span>
-          {tile.sub ? <span className="text-xs text-muted">{tile.sub}</span> : null}
-        </li>
-      ))}
-    </ul>
+    <Collapsible title={t('page.G1.region')} section="region">
+      <ul aria-label={t('page.G1.region')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {tiles.map((tile) => (
+          <li key={tile.key} className="flex min-w-0 flex-col gap-0.5 text-sm" data-kpi={tile.key}>
+            <span className="text-xs text-muted">{tile.title}</span>
+            <span className="font-medium">{tile.body}</span>
+            {tile.sub ? <span className="text-xs text-muted">{tile.sub}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </Collapsible>
   );
 }
 
@@ -294,52 +357,90 @@ function Top5Card({ row, asof }: { row: ScoreRow; asof: string }) {
   );
 }
 
+/** 처음 보이는 변경 수 — 나머지는 '변경 더 보기'(1클릭) */
+const CHANGES_SHOWN = 3;
+
+/**
+ * 3단 최근 변경(D25-2: 변경 기록이지 사실이 아니다). 한 줄 = 중요도 · 단지 · "{필드} 변경" · 감지일, 바뀐 값(해시 등 원문)은
+ * '바뀐 값 보기' 펼침(1클릭). 지역 첫 적재(first_load)는 요약 문장 그대로.
+ */
 function ChangeFeed({ changes, asof }: { changes: ChangeEvent[]; asof: string }) {
   const search = useGlobalSearch();
+  const [all, setAll] = useState(false);
+  const shown = all ? changes : changes.slice(0, CHANGES_SHOWN);
   return (
-    <Section title={t('page.G1.changes')}>
+    <Collapsible title={t('page.G1.changes')} section="changes">
       {changes.length === 0 ? (
         <EmptyState message={t('page.G1.noChanges')} />
       ) : (
-        <ul aria-label={t('page.G1.changes')} className="flex flex-col divide-y divide-border">
-          {changes.map((change) => {
-            const body = (
-              <>
-                <span className="flex flex-wrap items-center gap-1">
-                  <Badge tone={change.severity === 'critical' ? 'strong' : 'muted'}>
-                    {enumText('page.common.severity', change.severity)}
-                  </Badge>
-                  {change.triggers_rejudge ? (
-                    <Badge tone="muted">{t('page.G1.rejudge')}</Badge>
-                  ) : null}
-                  <span className="font-medium">
-                    {change.complex_name ?? changeEntityText(change.entity)}
+        <div className="flex flex-col gap-1">
+          <ul aria-label={t('page.G1.changes')} className="flex flex-col divide-y divide-border">
+            {shown.map((change) => {
+              const summaryOnly = change.field === 'first_load' && change.old_text === null;
+              const head = (
+                <>
+                  <span className="flex flex-wrap items-center gap-1">
+                    <Badge tone={change.severity === 'critical' ? 'strong' : 'muted'}>
+                      {enumText('page.common.severity', change.severity)}
+                    </Badge>
+                    {change.triggers_rejudge ? (
+                      <Badge tone="muted">{t('page.G1.rejudge')}</Badge>
+                    ) : null}
+                    <span className="font-medium">
+                      {change.complex_name ?? changeEntityText(change.entity)}
+                    </span>
                   </span>
-                </span>
-                <span className="text-sm">
-                  <span>{changeFieldText(change.field)}</span>{' '}
-                  <span>{changeValueText(change)}</span>
-                </span>
-                <span className="text-xs text-muted">{formatDate(change.detected_at, asof)}</span>
-              </>
-            );
-            return (
-              <li key={change.id} className="py-2">
-                {change.complex_id ? (
-                  <Link
-                    to={`/complexes/${change.complex_id}${search}${change.tab ? `#${change.tab}` : ''}`}
-                    className="flex flex-col gap-0.5 hover:underline"
-                  >
-                    {body}
-                  </Link>
-                ) : (
-                  <div className="flex flex-col gap-0.5">{body}</div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  <span className="text-sm">
+                    {summaryOnly ? (
+                      <>
+                        <span>{changeFieldText(change.field)}</span>{' '}
+                        <span>{changeValueText(change)}</span>
+                      </>
+                    ) : (
+                      t('page.G1.changeSentence', { field: changeFieldText(change.field) })
+                    )}
+                  </span>
+                  <span className="text-xs text-muted">{formatDate(change.detected_at, asof)}</span>
+                </>
+              );
+              return (
+                <li key={change.id} className="flex flex-col gap-0.5 py-2">
+                  {change.complex_id ? (
+                    <Link
+                      to={`/complexes/${change.complex_id}${search}${change.tab ? `#${change.tab}` : ''}`}
+                      className="flex flex-col gap-0.5 hover:underline"
+                    >
+                      {head}
+                    </Link>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">{head}</div>
+                  )}
+                  {summaryOnly ? null : (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted">
+                        {t('page.G1.changeShowValue')}
+                      </summary>
+                      <span data-testid="change-value" className="break-all">
+                        {changeValueText(change)}
+                      </span>
+                    </details>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {changes.length > CHANGES_SHOWN ? (
+            <button
+              type="button"
+              aria-expanded={all}
+              onClick={() => setAll((x) => !x)}
+              className="self-start text-sm underline"
+            >
+              {all ? t('page.G1.changesLess') : t('page.G1.changesMore')}
+            </button>
+          ) : null}
+        </div>
       )}
-    </Section>
+    </Collapsible>
   );
 }

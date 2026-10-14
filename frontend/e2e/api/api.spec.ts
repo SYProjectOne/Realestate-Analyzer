@@ -20,10 +20,12 @@ async function ready(page: Page, path: string, title: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-test('G1 홈: 실제 API 대시보드 — KPI 5 · TOP 5(그란테르 1위) · 변경 피드', async ({ page }) => {
+test('G1 홈: 실제 API 대시보드 — 지역 현황 4 · TOP 5(그란테르 1위) · 변경 피드', async ({
+  page,
+}) => {
   const failed = watchApi(page);
   await ready(page, '/', P.G1.title);
-  await expect(page.getByRole('list', { name: P.G1.kpis }).getByRole('listitem')).toHaveCount(5);
+  await expect(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(4);
   const top5 = page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem');
   await expect(top5.first()).toContainText('더샵 송도그란테르');
   expect(await top5.count()).toBeGreaterThanOrEqual(5);

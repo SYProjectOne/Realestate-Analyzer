@@ -107,16 +107,28 @@
     "G1": {
       "title": "홈",
       "kpis": "핵심 지표",
+      "openNow": {
+        "title": "지금 접수 가능",
+        "unit": "곳",
+        "link": "접수 가능 단지 보기",
+        "hint": "공식 자료로 확인한 접수 상태 기준입니다. 접수 기간은 단지 상세에서 확인하세요."
+      },
+      "region": "지역 현황",
       "kpi": {
-        "judged": "판정 대상",
+        "judged": "판정 대상(점수 계산 대상)",
         "intakeOpen": "접수 가능",
         "unsold": "미분양",
         "unsoldSub": "{ym} 기준 · 준공 후",
-        "movePeak": "입주 피크",
+        "movePeak": "입주가 가장 많은 해",
         "movePeakSub": "세대",
-        "freshness": "데이터 신선도",
-        "freshnessSub": "실패 소스 {failing} · 지연 소스 {stale}"
+        "freshness": "마지막 수집",
+        "freshnessSub": "수집 실패 {failing}곳 · 늦어진 곳 {stale}곳"
       },
+      "top5Fewer": "점수가 있는 단지가 {n}곳뿐입니다. 점수가 없는 단지는 단지 리스트에서 사유를 볼 수 있습니다.",
+      "changesMore": "변경 더 보기",
+      "changesLess": "변경 접기",
+      "changeShowValue": "바뀐 값 보기",
+      "changeSentence": "{field} 변경",
       "top5": "종합 점수 상위 단지",
       "top5Note": "상대 비교 · 투자 권유 아님",
       "top5Scenario": "상황: {name}",
@@ -945,6 +957,8 @@
       },
       "changeField": {
         "first_load": "첫 적재",
+        "official_popup_hash": "공식 홈페이지 안내문",
+        "headless_shot_hash": "공식 홈페이지 화면",
         "track": "공고 예정 후보",
         "applyhome_id": "주택관리번호",
         "legal_dong_code": "법정동"

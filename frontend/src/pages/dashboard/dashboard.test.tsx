@@ -1,6 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
+import type { Dashboard } from '@/api/types';
 import { t } from '@/i18n';
+import { generatedHandlers } from '@/mocks/handlers.gen';
+import { mswPath } from '@/mocks/mswPath';
+import { server } from '@/mocks/server';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
@@ -8,12 +13,85 @@ import { matching, recordRequests } from '../_shared/testing';
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
 
-describe('G1 홈 대시보드', () => {
-  it('KPI 5개: 판정 대상·접수 가능·미분양·입주 피크·데이터 신선도', async () => {
+async function exampleDashboard(): Promise<Dashboard> {
+  const res = await getResponse(
+    generatedHandlers as RequestHandler[],
+    new Request('http://localhost/api/snapshots/12/dashboard'),
+  );
+  return (await res?.json()) as Dashboard;
+}
+
+describe('R9-UI P2 G1 홈 첫 화면을 "지금 할 수 있는 것"부터(30-proposal §3)', () => {
+  it('섹션 순서: 지금 접수 가능 → 종합 점수 상위 단지 → 지역 현황 → 최근 변경', async () => {
+    const { container } = renderRoute('/');
+    await screen.findByRole('list', { name: t('page.G1.top5') });
+    const order = [...container.querySelectorAll('[data-section]')].map((el) =>
+      el.getAttribute('data-section'),
+    );
+    expect(order).toEqual(['openNow', 'top', 'region', 'changes']);
+  });
+
+  it('지금 접수 가능 N곳: 숫자는 FactCell(출처 유지), 링크 = G2 + 접수 가능 필터 + 전역 쿼리', async () => {
+    const dash = await exampleDashboard();
+    renderRoute('/?snapshot=12&scenario=B');
+    const card = await screen.findByRole('region', { name: t('page.G1.openNow.title') });
+    const prov = dash.kpis.intake_open_count.prov;
+    expect(prov).toBeTruthy();
+    const cell = card.querySelector(`[data-prov="${prov ?? ''}"]`) as HTMLElement;
+    expect(cell).not.toBeNull();
+    expect(within(cell).getByTestId('label-badge')).toBeInTheDocument();
+    const link = within(card).getByRole('link', { name: t('page.G1.openNow.link') });
+    const href = new URL(link.getAttribute('href') ?? '', 'http://x');
+    expect(href.pathname).toBe('/complexes');
+    expect(href.searchParams.get('intake_status')).toBe('가능');
+    expect(href.searchParams.get('snapshot')).toBe('12');
+    expect(href.searchParams.get('scenario')).toBe('B');
+    expect(within(card).getByText(t('page.G1.openNow.hint'))).toBeInTheDocument();
+  });
+
+  it('최근 변경: 쉬운 문장, 바뀐 값(해시 등)은 "바뀐 값 보기"를 펼쳐야 보인다', async () => {
+    const dash = await exampleDashboard();
+    const change = dash.changes.find((c) => c.field !== 'first_load' && c.new_text);
+    expect(change).toBeDefined();
     renderRoute('/');
-    const kpis = await screen.findByRole('list', { name: t('page.G1.kpis') });
-    for (const key of ['judged', 'intakeOpen', 'unsold', 'movePeak', 'freshness'] as const) {
-      expect(within(kpis).getByText(t(`page.G1.kpi.${key}`))).toBeInTheDocument();
+    const feed = await screen.findByRole('list', { name: t('page.G1.changes') });
+    const value = within(feed).getAllByTestId('change-value')[0] as HTMLElement;
+    expect(value).not.toBeVisible();
+    await userEvent.click(
+      within(feed).getAllByText(t('page.G1.changeShowValue'))[0] as HTMLElement,
+    );
+    expect(value).toBeVisible();
+    expect(value).toHaveTextContent(change?.new_text ?? '');
+  });
+
+  it('상위 단지가 5곳보다 적으면 이유 문장(개수는 메타)', async () => {
+    const dash = await exampleDashboard();
+    server.use(
+      http.get(mswPath('/snapshots/:sid/dashboard'), () =>
+        HttpResponse.json({ ...dash, top5: dash.top5.slice(0, 3) }),
+      ),
+    );
+    renderRoute('/');
+    const note = await screen.findByTestId('top5-fewer');
+    expect(note).toHaveTextContent(t('page.G1.top5Fewer', { n: '3' }));
+    expect(note.querySelector('[data-meta="count"]') ?? note).toBeTruthy();
+    expect(screen.getByText(t('page.G1.top5Note'))).toBeInTheDocument();
+  });
+});
+
+describe('G1 홈 대시보드', () => {
+  it('지역 현황: 판정 대상·미분양·입주가 가장 많은 해·마지막 수집 — 값과 라벨 그대로(3단)', async () => {
+    renderRoute('/');
+    const region = await screen.findByRole('list', { name: t('page.G1.region') });
+    for (const key of ['judged', 'unsold', 'movePeak', 'freshness'] as const) {
+      const item = region.querySelector(`[data-kpi="${key}"]`) as HTMLElement;
+      expect(item).not.toBeNull();
+      expect(within(item).getByText(t(`page.G1.kpi.${key}`))).toBeInTheDocument();
+      for (const cell of item.querySelectorAll('[data-prov]')) {
+        expect(
+          cell.querySelector('[data-testid="label-badge"], [data-testid="empty-state"]'),
+        ).not.toBeNull();
+      }
     }
   });
 
