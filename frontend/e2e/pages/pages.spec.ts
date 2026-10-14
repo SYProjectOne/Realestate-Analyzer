@@ -253,12 +253,10 @@ test.describe('모바일(≤768px)', () => {
     await ready(page, '/', P.G1.title);
     await expect(page.getByText(ko.app.mobileReadOnly)).toBeVisible();
     await ready(page, '/complexes', P.G2.title);
-    await expect(
-      page.getByRole('table', { name: P.G2.table }).locator('tbody tr').first(),
-    ).toBeVisible();
-    await expect(page.getByRole('table', { name: P.G2.table }).getByRole('checkbox')).toHaveCount(
-      0,
-    );
+    // R9-UI P5: 모바일 G2 는 표 대신 카드(읽기 전용 — 비교 체크 없음)
+    const cards = page.getByRole('list', { name: P.G2.cards });
+    await expect(cards.getByRole('listitem').first()).toBeVisible();
+    await expect(cards.getByRole('checkbox')).toHaveCount(0);
     await expect(page.getByRole('complementary', { name: P.G2.tray })).toHaveCount(0);
     await ready(page, '/ops', P.G7.title);
     await expect(page.getByText(ko.app.mobileUnsupported)).toBeVisible();
@@ -355,6 +353,32 @@ test.describe('R9-UI P4 G2 첫 화면 행 수(30-proposal §13-1 목표)', () =>
       }).length;
     });
     expect(n).toBeGreaterThanOrEqual(6);
+  });
+});
+
+test.describe('R9-UI P5 G2 모바일 카드(30-proposal §13-1 목표)', () => {
+  test.use({ viewport: { width: 420, height: 900 }, isMobile: true, hasTouch: true });
+
+  test('420×900: 첫 화면에 카드 2장 이상이 보이기 시작하고, 카드마다 구매가·전매 종료 + 가로 넘침 없음', async ({
+    page,
+  }) => {
+    await ready(page, '/complexes', P.G2.title);
+    const cards = page.getByRole('list', { name: P.G2.cards }).getByRole('listitem');
+    await expect(cards.first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    const tops = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+    expect(tops.filter((top) => top < 900).length).toBeGreaterThanOrEqual(2);
+    for (const i of [0, 1]) {
+      await expect(cards.nth(i).locator('[data-field="price"] [data-prov]').first()).toBeVisible();
+      await expect(cards.nth(i).locator('[data-field="status"]')).toContainText(
+        ko.page.G2.card.resaleEnd,
+      );
+    }
+    const { sw, iw } = await page.evaluate(() => ({
+      sw: document.scrollingElement?.scrollWidth ?? 0,
+      iw: window.innerWidth,
+    }));
+    expect(sw).toBeLessThanOrEqual(iw);
   });
 });
 

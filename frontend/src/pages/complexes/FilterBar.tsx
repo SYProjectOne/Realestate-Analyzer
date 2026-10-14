@@ -3,7 +3,7 @@ import { INTAKE_STATUSES, JUDGE_SCOPES, type LivingArea } from '@/api/types';
 import { t, type TKey } from '@/i18n';
 import { MetaText } from '@/components';
 import { enumText } from '../_shared';
-import type { FilterKey, FilterValues } from './params';
+import { FILTER_KEYS, type FilterKey, type FilterValues } from './params';
 
 const INCLUSION = [
   'private_sale_apt',
@@ -85,6 +85,8 @@ export interface FilterBarProps {
   livingAreas: LivingArea[];
   onChange: (key: FilterKey, value: string) => void;
   onReset: () => void;
+  /** 모바일(≤768px): 단지명 + 칩 + '필터' 버튼 → 전체 화면 시트(R9-UI P5) */
+  mobile?: boolean;
 }
 
 /** R9-UI P4: 늘 보이는 핵심 필터(단지명·접수·생활권) */
@@ -107,7 +109,200 @@ const OPEN_NOW = '가능';
  * G2 FilterBar — 핵심 3칸 + '필터 더 보기'(택지·전매 종료일·가격대·입주연도·단지 분류·점수 계산 범위) + '지금 접수 가능만' 칩.
  * 값은 URL 쿼리. 접어도 적용 중인 필터 개수가 버튼에 보이고, 숨은 필터에 값이 있으면 펼친 채로 연다(30-proposal §5-4).
  */
-export function FilterBar({ values, livingAreas, onChange, onReset }: FilterBarProps) {
+export function FilterBar({
+  values,
+  livingAreas,
+  onChange,
+  onReset,
+  mobile = false,
+}: FilterBarProps) {
+  if (mobile) {
+    return (
+      <MobileFilterBar
+        values={values}
+        livingAreas={livingAreas}
+        onChange={onChange}
+        onReset={onReset}
+      />
+    );
+  }
+  return (
+    <DesktopFilterBar
+      values={values}
+      livingAreas={livingAreas}
+      onChange={onChange}
+      onReset={onReset}
+    />
+  );
+}
+
+/** 지금 접수 가능 칩(aria-pressed) */
+function OpenNowChip({ values, onChange }: Pick<FilterBarProps, 'values' | 'onChange'>) {
+  const openNow = values.intake_status === OPEN_NOW;
+  return (
+    <button
+      type="button"
+      aria-pressed={openNow}
+      onClick={() => onChange('intake_status', openNow ? '' : OPEN_NOW)}
+      className={`rounded-full border px-3 py-1 text-sm ${
+        openNow ? 'border-accent bg-accent text-accent-fg' : 'border-border'
+      }`}
+    >
+      {openNow ? t('page.G2.openNowChipOff') : t('page.G2.openNowChip')}
+    </button>
+  );
+}
+
+/**
+ * 모바일 필터(30-proposal §6-1): 단지명 + 지금 접수 가능 칩 + '필터 (적용 n)' → 전체 화면 시트(필터 10칸, Esc·적용으로 닫힘).
+ * 값은 바뀔 때마다 URL 쿼리(데스크톱과 같다) — '적용'은 시트를 닫는다.
+ */
+function MobileFilterBar({ values, livingAreas, onChange, onReset }: FilterBarProps) {
+  const v = (k: FilterKey) => values[k] ?? '';
+  const [open, setOpen] = useState(false);
+  const applied = FILTER_KEYS.filter((k) => k !== 'q' && !!values[k]).length;
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+  return (
+    <form
+      role="search"
+      aria-label={t('page.G2.filters')}
+      className="flex flex-col gap-2 rounded-sm border border-border bg-surface p-3"
+      onSubmit={(e) => e.preventDefault()}
+    >
+      <div className="flex flex-wrap items-end gap-2">
+        <Field name="q" value={v('q')} onChange={onChange} />
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+          className="rounded-sm border border-border px-2 py-1 text-sm"
+        >
+          <MetaText kind="count" k="page.G2.card.filterSheet" params={{ n: applied }} />
+        </button>
+      </div>
+      <OpenNowChip values={values} onChange={onChange} />
+      {open ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('page.G2.filters')}
+          className="fixed inset-0 z-50 flex flex-col gap-3 overflow-auto bg-bg p-4"
+        >
+          <h2 className="text-base font-semibold">{t('page.G2.filters')}</h2>
+          <div className="flex flex-col gap-3">
+            <Field name="q" value={v('q')} onChange={onChange} />
+            <PrimarySelects values={values} livingAreas={livingAreas} onChange={onChange} />
+            <MoreFields values={values} onChange={onChange} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg"
+            >
+              {t('page.G2.card.filterApply')}
+            </button>
+            <button
+              type="button"
+              onClick={onReset}
+              className="rounded-sm border border-border px-3 py-1.5 text-sm"
+            >
+              {t('page.G2.card.filterReset')}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </form>
+  );
+}
+
+/** 접수·생활권(핵심 필터 중 선택 2칸) */
+function PrimarySelects({
+  values,
+  livingAreas,
+  onChange,
+}: Pick<FilterBarProps, 'values' | 'livingAreas' | 'onChange'>) {
+  const v = (k: FilterKey) => values[k] ?? '';
+  return (
+    <>
+      <Field
+        name="intake_status"
+        value={v('intake_status')}
+        onChange={onChange}
+        options={INTAKE_STATUSES.map((s) => ({ value: s, label: enumText('intake.status', s) }))}
+      />
+      <Field
+        name="living_area"
+        value={v('living_area')}
+        onChange={onChange}
+        options={livingAreas.map((la) => ({ value: la.id, label: la.name }))}
+      />
+    </>
+  );
+}
+
+/** '필터 더 보기' 7칸 */
+function MoreFields({ values, onChange }: Pick<FilterBarProps, 'values' | 'onChange'>) {
+  const v = (k: FilterKey) => values[k] ?? '';
+  return (
+    <>
+      <Field
+        name="land_type"
+        value={v('land_type')}
+        onChange={onChange}
+        options={LAND_TYPES.map((s) => ({ value: s, label: enumText('page.G2.landType', s) }))}
+      />
+      <Field
+        name="resale_end_before"
+        type="date"
+        value={v('resale_end_before')}
+        onChange={onChange}
+      />
+      <Field
+        name="price_min"
+        type="number"
+        inputMode="decimal"
+        value={v('price_min')}
+        onChange={onChange}
+      />
+      <Field
+        name="price_max"
+        type="number"
+        inputMode="decimal"
+        value={v('price_max')}
+        onChange={onChange}
+      />
+      <Field
+        name="move_in_year"
+        type="number"
+        inputMode="numeric"
+        value={v('move_in_year')}
+        onChange={onChange}
+      />
+      <Field
+        name="inclusion_class"
+        value={v('inclusion_class')}
+        onChange={onChange}
+        options={INCLUSION.map((s) => ({ value: s, label: enumText('page.common.inclusion', s) }))}
+      />
+      <Field
+        name="judge_scope"
+        value={v('judge_scope')}
+        onChange={onChange}
+        options={SCOPES.map((s) => ({ value: s, label: enumText('page.common.judgeScope', s) }))}
+      />
+    </>
+  );
+}
+
+function DesktopFilterBar({ values, livingAreas, onChange, onReset }: FilterBarProps) {
   const v = (k: FilterKey) => values[k] ?? '';
   const applied = MORE_FILTERS.filter((k) => !!values[k]).length;
   const [open, setOpen] = useState(applied > 0);
@@ -116,7 +311,6 @@ export function FilterBar({ values, livingAreas, onChange, onReset }: FilterBarP
     if (applied > 0) setOpen(true);
   }, [applied]);
   const moreId = useId();
-  const openNow = values.intake_status === OPEN_NOW;
   return (
     <form
       role="search"
@@ -126,28 +320,8 @@ export function FilterBar({ values, livingAreas, onChange, onReset }: FilterBarP
     >
       <div className="flex flex-wrap items-end gap-3">
         <Field name="q" value={v('q')} onChange={onChange} />
-        <Field
-          name="intake_status"
-          value={v('intake_status')}
-          onChange={onChange}
-          options={INTAKE_STATUSES.map((s) => ({ value: s, label: enumText('intake.status', s) }))}
-        />
-        <Field
-          name="living_area"
-          value={v('living_area')}
-          onChange={onChange}
-          options={livingAreas.map((la) => ({ value: la.id, label: la.name }))}
-        />
-        <button
-          type="button"
-          aria-pressed={openNow}
-          onClick={() => onChange('intake_status', openNow ? '' : OPEN_NOW)}
-          className={`rounded-full border px-3 py-1 text-sm ${
-            openNow ? 'border-accent bg-accent text-accent-fg' : 'border-border'
-          }`}
-        >
-          {openNow ? t('page.G2.openNowChipOff') : t('page.G2.openNowChip')}
-        </button>
+        <PrimarySelects values={values} livingAreas={livingAreas} onChange={onChange} />
+        <OpenNowChip values={values} onChange={onChange} />
         <button
           type="button"
           aria-expanded={open}
@@ -171,57 +345,7 @@ export function FilterBar({ values, livingAreas, onChange, onReset }: FilterBarP
       </div>
       {open ? (
         <div id={moreId} className="flex flex-wrap items-end gap-3 border-t border-border pt-2">
-          <Field
-            name="land_type"
-            value={v('land_type')}
-            onChange={onChange}
-            options={LAND_TYPES.map((s) => ({ value: s, label: enumText('page.G2.landType', s) }))}
-          />
-          <Field
-            name="resale_end_before"
-            type="date"
-            value={v('resale_end_before')}
-            onChange={onChange}
-          />
-          <Field
-            name="price_min"
-            type="number"
-            inputMode="decimal"
-            value={v('price_min')}
-            onChange={onChange}
-          />
-          <Field
-            name="price_max"
-            type="number"
-            inputMode="decimal"
-            value={v('price_max')}
-            onChange={onChange}
-          />
-          <Field
-            name="move_in_year"
-            type="number"
-            inputMode="numeric"
-            value={v('move_in_year')}
-            onChange={onChange}
-          />
-          <Field
-            name="inclusion_class"
-            value={v('inclusion_class')}
-            onChange={onChange}
-            options={INCLUSION.map((s) => ({
-              value: s,
-              label: enumText('page.common.inclusion', s),
-            }))}
-          />
-          <Field
-            name="judge_scope"
-            value={v('judge_scope')}
-            onChange={onChange}
-            options={SCOPES.map((s) => ({
-              value: s,
-              label: enumText('page.common.judgeScope', s),
-            }))}
-          />
+          <MoreFields values={values} onChange={onChange} />
         </div>
       ) : null}
     </form>

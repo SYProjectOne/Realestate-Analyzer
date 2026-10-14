@@ -202,6 +202,19 @@
       "clearSelection": "선택 해제",
       "empty": "조건에 맞는 단지가 없습니다",
       "table": "단지 표",
+      "cards": "단지 카드",
+      "card": {
+        "resaleEnd": "전매 종료",
+        "down": "계약금",
+        "moveIn": "입주",
+        "total": "종합",
+        "relative": "상대 비교",
+        "more": "더 보기(가격 갭·+10% 상승 가능성)",
+        "showMore": "단지 더 보기 ({shown} / {total}곳)",
+        "filterSheet": "필터 (적용 {n})",
+        "filterApply": "적용",
+        "filterReset": "초기화"
+      },
       "loadingMore": "나머지 단지를 불러오는 중…"
     },
     "G3": {
@@ -1039,7 +1052,8 @@
     "scenario": "상황",
     "theme": "테마",
     "themeLight": "라이트",
-    "themeDark": "다크"
+    "themeDark": "다크",
+    "settings": "설정"
   },
   "label": {
     "confirmed": "확인됨",

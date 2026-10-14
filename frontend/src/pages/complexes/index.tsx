@@ -8,6 +8,7 @@ import { t } from '@/i18n';
 import { specialErrorText } from '@/lib/errorText';
 import { PageShell } from '@/layout/PageShell';
 import { NoSnapshot, QueryState, useGlobalSearch, usePageContext } from '../_shared';
+import { ComplexCards } from './ComplexCards';
 import { ComplexTable } from './ComplexTable';
 import { FilterBar } from './FilterBar';
 import {
@@ -120,6 +121,7 @@ export function ComplexesPage() {
         livingAreas={region?.living_areas ?? []}
         onChange={setFilter}
         onReset={resetFilters}
+        mobile={readOnly}
       />
       {!snapshotId && !isLoading ? (
         <NoSnapshot />
@@ -141,6 +143,14 @@ export function ComplexesPage() {
               </p>
               {page.items.length === 0 ? (
                 <EmptyState message={t('page.G2.empty')} />
+              ) : readOnly ? (
+                // R9-UI P5: 모바일(≤768px, 읽기 전용)은 표 대신 카드
+                <ComplexCards
+                  rows={page.items}
+                  total={page.total}
+                  asof={asof ?? page.asof_date}
+                  linkSearch={globalSearch}
+                />
               ) : (
                 <ComplexTable
                   rows={page.items}

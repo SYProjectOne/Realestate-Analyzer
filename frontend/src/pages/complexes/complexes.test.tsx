@@ -110,7 +110,7 @@ describe('G2 단지 리스트', () => {
     ).toBeInTheDocument();
   });
 
-  it('모바일(≤768px)은 읽기 전용: 비교 체크·트레이·열 선택이 없다', async () => {
+  it('모바일(≤768px)은 읽기 전용 카드: 비교 체크·트레이·열 선택이 없다', async () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) => ({
       ...original(query),
@@ -118,11 +118,142 @@ describe('G2 단지 리스트', () => {
     })) as typeof window.matchMedia;
     try {
       renderRoute('/complexes');
-      const table = await screen.findByRole('table', { name: t('page.G2.table') });
-      await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(2));
-      expect(within(table).queryAllByRole('checkbox')).toHaveLength(0);
+      const list = await screen.findByRole('list', { name: t('page.G2.cards') });
+      await waitFor(() => expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(1));
+      expect(screen.queryByRole('table', { name: t('page.G2.table') })).toBeNull();
+      expect(within(list).queryAllByRole('checkbox')).toHaveLength(0);
       expect(screen.queryByRole('complementary', { name: t('page.G2.tray') })).toBeNull();
       expect(screen.queryByText(t('page.G2.columns'))).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
+describe('R9-UI P5 G2 모바일 카드 · 필터 시트(30-proposal §6)', () => {
+  let original: typeof window.matchMedia;
+  beforeEach(() => {
+    original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: query === MOBILE_QUERY,
+    })) as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it('카드마다 생활권 → 이름 → 접수·전매 종료 → 구매가 → 계약금·입주 → 종합 점수, 값마다 라벨', async () => {
+    renderRoute('/complexes');
+    const list = await screen.findByRole('list', { name: t('page.G2.cards') });
+    const card = (await within(list).findAllByRole('listitem'))[0] as HTMLElement;
+    const order = [...card.querySelectorAll('[data-field]')].map((el) =>
+      el.getAttribute('data-field'),
+    );
+    expect(order).toEqual([
+      'living_area',
+      'name',
+      'status',
+      'price',
+      'down_move_in',
+      'total',
+      'more',
+    ]);
+    expect(within(card).getByTestId('intake-badge')).toBeInTheDocument();
+    // 구매가·전매 종료·계약금·입주·종합 = FactCell(값 + 라벨 또는 확인 불가)
+    const cells = card.querySelectorAll(
+      '[data-field="status"] [data-prov], [data-field="price"] [data-prov], [data-field="down_move_in"] [data-prov], [data-field="total"] [data-prov]',
+    );
+    expect(cells.length).toBeGreaterThanOrEqual(4);
+    for (const cell of cells) {
+      expect(
+        cell.querySelector('[data-testid="label-badge"], [data-testid="empty-state"]'),
+      ).not.toBeNull();
+    }
+  });
+
+  it('가격 갭·+10% 상승 가능성은 카드 "더 보기"(1클릭)', async () => {
+    renderRoute('/complexes');
+    const list = await screen.findByRole('list', { name: t('page.G2.cards') });
+    const card = (await within(list).findAllByRole('listitem'))[0] as HTMLElement;
+    const more = within(card).getByText(t('page.G2.card.more'));
+    const box = card.querySelector('[data-field="more"]') as HTMLElement;
+    expect(box).not.toBeVisible();
+    await userEvent.click(more);
+    expect(box).toBeVisible();
+    expect(within(box).getByText(t('page.G2.col.gap'))).toBeInTheDocument();
+    expect(within(box).getByText(t('page.G2.col.p10'))).toBeInTheDocument();
+  });
+
+  it('필터는 시트(1클릭) — 시트 안에 필터 10칸', async () => {
+    renderRoute('/complexes');
+    await screen.findByRole('list', { name: t('page.G2.cards') });
+    const open = screen.getByRole('button', { name: t('page.G2.card.filterSheet', { n: '0' }) });
+    await userEvent.click(open);
+    const sheet = screen.getByRole('dialog', { name: t('page.G2.filters') });
+    for (const key of [
+      'q',
+      'intake_status',
+      'living_area',
+      'land_type',
+      'resale_end_before',
+      'price_min',
+      'price_max',
+      'move_in_year',
+      'inclusion_class',
+      'judge_scope',
+    ] as const) {
+      expect(within(sheet).getByLabelText(t(`page.G2.filter.${key}`))).toBeInTheDocument();
+    }
+    await userEvent.click(
+      within(sheet).getByRole('button', { name: t('page.G2.card.filterApply') }),
+    );
+    expect(screen.queryByRole('dialog', { name: t('page.G2.filters') })).toBeNull();
+  });
+});
+
+describe('R9-UI P5 헤더(모바일·메뉴 정리 결정 12)', () => {
+  it('데스크톱 메뉴: 홈·단지 리스트·비교·지역 시장·보고서 │ 시나리오·데이터·운영(옆) · 용어', async () => {
+    renderRoute('/');
+    const nav = await screen.findByRole('navigation');
+    const names = within(nav)
+      .getAllByRole('link')
+      .map((a) => a.textContent);
+    expect(names).toEqual([
+      t('nav.G1'),
+      t('nav.G2'),
+      t('nav.G4'),
+      t('nav.G6'),
+      t('nav.G8'),
+      t('nav.G5'),
+      t('nav.G7'),
+      t('glossary.nav'),
+    ]);
+  });
+
+  it('모바일: 메뉴는 홈·단지 리스트(+용어), 상황은 전체 이름 select, 토큰·테마는 "설정" 안', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: query === MOBILE_QUERY,
+    })) as typeof window.matchMedia;
+    try {
+      const { router } = renderRoute('/');
+      const nav = await screen.findByRole('navigation');
+      expect(
+        within(nav)
+          .getAllByRole('link')
+          .map((a) => a.textContent),
+      ).toEqual([t('nav.G1'), t('nav.G2'), t('glossary.nav')]);
+      const select = await screen.findByRole('combobox', { name: t('header.scenario') });
+      const options = within(select).getAllByRole('option');
+      expect(options.length).toBeGreaterThan(1);
+      expect(options.some((o) => (o.textContent ?? '').length > 3)).toBe(true);
+      await userEvent.selectOptions(select, options[1] as HTMLOptionElement);
+      await waitFor(() => expect(router.state.location.search).toContain('scenario='));
+      const settings = screen.getByText(t('header.settings'), { selector: 'summary' });
+      expect(settings.closest('details')).not.toHaveAttribute('open');
+      expect(settings.closest('details')).toContainElement(screen.getByTestId('token-button'));
     } finally {
       window.matchMedia = original;
     }
