@@ -30,7 +30,9 @@ async function ready(page: Page, path: string, title: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-const UNKNOWN_403 = /확인 불가\(403, \d{4}-\d{2}-\d{2}\)/;
+// 계약 .20 F3: 사유 코드 fetch_failed → '공식 페이지를 받지 못함 — 403'(원 사유는 title)
+const FETCH_403 = ko.empty.reasonPlain.fetch_failedWith.replace('{reason}', '403');
+const UNKNOWN_403 = new RegExp(`확인 불가\\(${FETCH_403}, \\d{4}-\\d{2}-\\d{2}\\)`);
 
 test.describe('T3 실데이터 문구: 공식 홈페이지 403', () => {
   test('G3 스위첸 헤더 접수 배지 = "확인 불가(403, 날짜)"', async ({ page }) => {
@@ -50,7 +52,9 @@ test.describe('T3 실데이터 문구: 공식 홈페이지 403', () => {
       .locator('tbody tr', { hasText: SWITZEN });
     // R9-UI P4: G2 접수 칸은 배지에 상태, 사유·확인일은 아래 작은 글씨
     await expect(row.getByTestId('intake-badge')).toHaveText(ko.intake.status['확인 불가']);
-    await expect(row.getByTestId('intake-reason')).toHaveText(/^403 · \d{4}-\d{2}-\d{2}$/);
+    await expect(row.getByTestId('intake-reason')).toHaveText(
+      new RegExp(`^${FETCH_403} · \\d{4}-\\d{2}-\\d{2}$`),
+    );
     expect(failed).toEqual([]);
   });
 });

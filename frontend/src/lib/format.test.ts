@@ -138,7 +138,6 @@ describe('R9-UI P7 확인 불가 사유를 사용자 말로 — 계약 .20 reaso
     ['not_entered', '미입력', 'empty.reasonPlain.not_entered'],
     ['not_published', '공고 전', 'empty.reasonPlain.pre_notice'],
     ['not_collected', '가점 미수집', 'empty.reasonPlain.not_collected'],
-    ['fetch_failed', '403', 'empty.reasonPlain.fetch_failed'],
     [
       'identity_unconfirmed',
       '공식 홈페이지 동일성 미확인',
@@ -148,6 +147,13 @@ describe('R9-UI P7 확인 불가 사유를 사용자 말로 — 계약 .20 reaso
   ] as const)('%s(%s) → 쉬운 말, 원 사유는 title', (code, reason, key) => {
     expect(plainReason(reason, code)).toEqual({ text: t(key), mapped: true });
     expect(unknownTitle(reason, code)).toBe(t('empty.reasonOriginal', { reason }));
+  });
+
+  it('수집 실패(fetch_failed)는 짧은 기술 사유를 함께', () => {
+    expect(plainReason('403', 'fetch_failed')).toEqual({
+      text: t('empty.reasonPlain.fetch_failedWith', { reason: '403' }),
+      mapped: true,
+    });
   });
 
   it("코드 'other'·코드 없음(옛 저장본)은 서버 사유 그대로 — 문자열로 추측하지 않는다", () => {

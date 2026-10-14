@@ -350,6 +350,10 @@ export function plainReason(
   reason: string,
   code?: ReasonCode | null,
 ): { text: string; mapped: boolean } {
+  // 수집 실패는 짧은 기술 사유(403·DNS·TLS)가 운영·사람 확인에 쓸모 있어 함께 둔다
+  if (code === 'fetch_failed') {
+    return { text: t('empty.reasonPlain.fetch_failedWith', { reason }), mapped: true };
+  }
   const key = code ? REASON_PLAIN[code] : undefined;
   return key ? { text: t(key), mapped: true } : { text: reason, mapped: false };
 }

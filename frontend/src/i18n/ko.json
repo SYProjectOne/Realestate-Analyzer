@@ -1134,6 +1134,7 @@
     "reasonOriginal": "원래 사유: {reason}",
     "reasonPlain": {
       "fetch_failed": "공식 페이지를 받지 못함",
+      "fetch_failedWith": "공식 페이지를 받지 못함 — {reason}",
       "not_collected": "아직 수집하지 않음",
       "pre_notice": "아직 공고 전(분양가 미공고)",
       "parse_failed": "공고문에서 자동으로 읽지 못함 — 원문에서 확인",

@@ -143,7 +143,12 @@ test.describe.serial('계약 .17 화면(실 API)', () => {
 
     await ready(page, `/complexes/${HELD_COMPLEX}${query}`, P.G3.title);
     const head = page.getByRole('region', { name: held.header.name });
-    await expect(head.getByText(`${ko.empty.unknown}(${CONFLICT_HOLD}`).first()).toBeVisible();
+    // 계약 .20 F3: 사유 코드 conflict_hold 면 쉬운 말(원 사유는 title·출처 패널)
+    const shownReason =
+      held.price.price_low.reason_code === 'conflict_hold'
+        ? ko.empty.reasonPlain.conflict_hold
+        : CONFLICT_HOLD;
+    await expect(head.getByText(`${ko.empty.unknown}(${shownReason}`).first()).toBeVisible();
     const note = page.getByTestId('held-price-note');
     await expect(note).toContainText(fill(P.G3.price.heldBasis, { type: basis }));
     await expect(note).not.toContainText(fill(P.G3.price.held, { type: basis }));
@@ -176,7 +181,8 @@ test.describe.serial('계약 .17 화면(실 API)', () => {
     ).toBeGreaterThan(0);
     await ready(page, `/complexes/${INTAKE_COMPLEX}${query}`, P.G3.title);
     await expect(page.getByTestId('intake-badge').first()).toContainText(
-      `${ko.intake.status['확인 불가']}(공식 홈페이지 동일성 미확인`,
+      // 계약 .20 F3: 사유 코드 identity_unconfirmed → 쉬운 말(원 사유는 title)
+      `${ko.intake.status['확인 불가']}(${ko.empty.reasonPlain.identity_unconfirmed}`,
     );
     await expect(page.getByRole('button', { name: P.G3.header.siteOtherEvidence })).toHaveCount(0);
     await expect(page.getByTestId('site-other-note')).toHaveCount(0);

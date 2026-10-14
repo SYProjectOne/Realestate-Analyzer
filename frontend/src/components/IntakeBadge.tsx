@@ -72,7 +72,7 @@ export function IntakeBadge({
     ? t('intake.withSupply', { status, kind: intake.supply_kind })
     : status;
   const badge = (
-    <Badge tone={tone} className={className} title={title} data-testid="intake-badge">
+    <Badge tone={tone} className={className} title={title} wrap data-testid="intake-badge">
       {showPath ? `${shownStatus} · ${path}` : shownStatus}
     </Badge>
   );
