@@ -37,6 +37,7 @@ REASON_CODES: Final = (
     "not_entered",
     "no_sample",
     "human_check",
+    "no_winner",
     "no_value",
     "other",
 )
@@ -70,7 +71,7 @@ _RULES: Final[tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...]] = (
         (),
         ("원문 없음", "미수집", "수집 기록 없음", "자료 없음", "물량 없음", "수집기 없음", "출처 미조회"),
     ),
-    ("not_published", ("공고 전",), ("분양가 미공개", "공고 전")),
+    ("not_published", ("공고 전", "발표 전"), ("분양가 미공개", "공고 전")),
     ("parse_failed", (), ("해석 실패", "표 없음", "배정 실패", "변환 실패", "스캔", "OCR 실패")),
     ("source_missing", (), ("출처 누락",)),
     ("demoted", (), ("검증 모순",)),
@@ -87,6 +88,7 @@ _RULES: Final[tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...]] = (
     ("not_entered", (), ("미입력",)),
     ("no_sample", (), ("표본 0", "비교군 없음", "실거래 없음", "사례 없음")),
     ("human_check", ("사람 확인",), ()),
+    ("no_winner", ("가점 당첨자 없음",), ()),  # 계약 .21(R10): 경쟁률 팝업 당첨가점 '-' — 가점 미수집과 구별
     ("no_value", (), ("값 없음", "미기재", "표기 없음", "결측")),
 )
 

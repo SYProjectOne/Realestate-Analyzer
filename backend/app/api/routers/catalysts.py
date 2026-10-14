@@ -239,7 +239,11 @@ def update_catalyst(
         want[cx.id] = "사람 지정(단지 좌표 없음)"
     if area_ids:
         for cx in session.scalars(
-            select(Complex).where(Complex.region_id == region.id, Complex.living_area.in_(area_ids))
+            select(Complex).where(
+                Complex.region_id == region.id,
+                Complex.living_area.in_(area_ids),
+                Complex.merged_into_id.is_(None),  # D29-2: 병합된 중복 행에는 잇지 않는다
+            )
         ):
             want.setdefault(cx.id, f"같은 생활권({cx.living_area}, 단지 좌표 없음)")
     if confirmed and not want:

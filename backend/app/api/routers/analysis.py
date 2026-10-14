@@ -368,7 +368,12 @@ def preview_scenario(
     if sc is None:
         raise not_found(f"scenario {id}")
     snap = get_snapshot(session, snapshot)
-    complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
+    # D29-2: 병합된 중복 단지 행은 뺀다(새 리비전 후보가 아니다)
+    complexes = list(
+        session.scalars(
+            select(Complex).where(Complex.region_id == snap.region_id, Complex.merged_into_id.is_(None))
+        )
+    )
     bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     fm = FactMaker(settings_of(request), provenance_for(session, bundles.values()))
     inputs = []

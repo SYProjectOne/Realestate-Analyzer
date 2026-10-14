@@ -795,7 +795,13 @@ class _Loader:
             for c in s.scalars(select(JudgmentLog.complex_id).where(JudgmentLog.snapshot_id == sid))
             if c is not None
         }
-        region_ids = set(s.scalars(select(Complex.id).where(Complex.region_id == self.region.id)))
+        region_ids = set(
+            s.scalars(
+                select(Complex.id).where(
+                    Complex.region_id == self.region.id, Complex.merged_into_id.is_(None)
+                )
+            )
+        )
         return sorted(ids & region_ids) if ids else sorted(region_ids)
 
     def la_name(self, la: str | None) -> str:
@@ -1347,7 +1353,9 @@ def _used_in(
         _add_once(used, cl.judgment_seq, f"검증 {cl.section}")
     for cat in catalysts:
         _add_once(used, cat.judgment_seq, "§5 호재 단계")
-    for cx in ctx.session.scalars(select(Complex).where(Complex.region_id == ctx.region.id)):
+    for cx in ctx.session.scalars(
+        select(Complex).where(Complex.region_id == ctx.region.id, Complex.merged_into_id.is_(None))
+    ):
         _add_once(used, cx.inclusion_judgment_seq, "§3 포함 분류")
     for prov in ctx.loader.prov.all_rows:
         _add_once(used, prov.compare_judgment_seq, "§5 출처 충돌")

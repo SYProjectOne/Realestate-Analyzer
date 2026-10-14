@@ -317,7 +317,13 @@ def _anchors(
     scope = set(region.legal_dong_codes or [])
     remaining_hms = {n.hm for n in notices}
     complexes = list(
-        session.scalars(select(Complex).where(Complex.region_id == region.id).order_by(Complex.id))
+        session.scalars(
+            select(Complex)
+            .where(
+                Complex.region_id == region.id, Complex.merged_into_id.is_(None)
+            )  # D29-2: 병합된 행은 원 단지로
+            .order_by(Complex.id)
+        )
     )
     self_rows = {c.applyhome_id: c for c in complexes if c.applyhome_id in remaining_hms}
     originals = [c for c in complexes if c.applyhome_id not in remaining_hms]
@@ -374,7 +380,11 @@ def _store_links(session: Session, region_id: int, numbers: set[str]) -> dict[st
         for no, cid in session.execute(
             select(model.notice_no, model.complex_id)
             .join(Complex, Complex.id == model.complex_id)
-            .where(Complex.region_id == region_id, model.notice_no.in_(sorted(numbers)))
+            .where(
+                Complex.region_id == region_id,
+                model.notice_no.in_(sorted(numbers)),
+                Complex.merged_into_id.is_(None),  # D29-2
+            )
         ):
             pairs.setdefault(str(no), set()).add(int(cid))
         out.update({no: next(iter(ids)) for no, ids in pairs.items() if len(ids) == 1})

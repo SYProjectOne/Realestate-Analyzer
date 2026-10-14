@@ -384,7 +384,12 @@ class LiveRows:
         region = session.get(Region, snap.region_id)
         # 목록 행은 단지 열을 읽기만 한다 — ORM 객체 대신 같은 열 이름의 읽기 전용 행(R3c 성능).
         # 단지 OCR 표식은 점수 입력(미리보기)만 쓰므로 읽지 않는다(``load_bundles(complex_ocr=False)``)
-        complexes = light_rows(session, select(Complex).where(Complex.region_id == snap.region_id), Complex)
+        # D29-2: 병합된 중복 단지 행(complex.merged_into_id)은 목록에서 뺀다 — 발행 리비전은 저장본 그대로(D11-1)
+        complexes = light_rows(
+            session,
+            select(Complex).where(Complex.region_id == snap.region_id, Complex.merged_into_id.is_(None)),
+            Complex,
+        )
         bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id, complex_ocr=False)
         self.session, self.settings = session, settings
         self.ctx = views.score_ctx(session, snap.id, sc, with_flags=False)
@@ -777,7 +782,13 @@ def dashboard_body(session: Session, settings: Settings, snap: Snapshot, sc: Sce
     if region is None:
         raise not_found(f"region {snap.region_id}")
     names = area_names(region)
-    complexes = list(session.scalars(select(Complex).where(Complex.region_id == snap.region_id)))
+    complexes = list(
+        session.scalars(
+            select(Complex).where(
+                Complex.region_id == snap.region_id, Complex.merged_into_id.is_(None)
+            )  # D29-2
+        )
+    )
     bundles = views.load_bundles(session, complexes, snap.id, scenario_id=sc.id)
     ctx = views.score_ctx(session, snap.id, sc)
     rows = complex_rows_data(bundles, ctx)

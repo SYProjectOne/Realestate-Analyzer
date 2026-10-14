@@ -42,7 +42,7 @@ from app.normalize.applyhome_api_parser import (
     is_api_document,
     parse_applyhome_api_json,
 )
-from app.normalize.fields import WINNING_SCORE_FIELDS
+from app.normalize.fields import WINNING_SCORE_DASH_REASON, WINNING_SCORE_FIELDS
 
 __all__ = ["ApplyhomeParser", "parse_applyhome_html"]
 
@@ -396,8 +396,9 @@ def _winning_scores(
     tr: Tag, cells: list[Tag], b: CandidateBuilder, pos: _Pos, key: str, type_code: str, long_code: str
 ) -> None:
     """당첨가점 칸(R9-PARSE Q4): ``td.cpResideSenm``(거주지역) 뒤 세 칸 = 최저·최고·평균(가점제 당첨자만 — 1순위). 팝업은 이 묶음을
-    1·2순위 행 옆에 지역마다 rowspan 으로 붙인다 — 칸에 적힌 지역의 '1순위 <지역>' 경쟁률 행에 단다. '-'(발표 전·가점 당첨자
-    없음)·숫자 아닌 칸은 후보를 내지 않는다(값 없음). 숫자는 원문 그대로(0 포함)."""
+    1·2순위 행 옆에 지역마다 rowspan 으로 붙인다 — 칸에 적힌 지역의 '1순위 <지역>' 경쟁률 행에 단다. 숫자는 원문 그대로(0 포함).
+    R10: '-'(그 지역 가점제 당첨자 없음 — 미달·발표 전 …)는 값 없는 '확인 불가' 후보(사유 ``WINNING_SCORE_DASH_REASON``, 원문 '-')를
+    낸다 — 팝업을 못 받은 '가점 미수집'과 구별된다(값 있는 후보가 있으면 그쪽이 이긴다 — resolver 규칙 1). 그 밖의 칸은 후보 없음."""
     for i, c in enumerate(cells):
         if "cpResideSenm" not in (c.get("class") or []):
             continue
@@ -411,4 +412,9 @@ def _winning_scores(
         for fname, v in zip(WINNING_SCORE_FIELDS, vals, strict=True):
             if _SCORE_RE.match(v):
                 b.add("competition", ckey, fname, float(v), v, span, excerpt=ex)
+            elif v == "-":
+                b.add(
+                    "competition", ckey, fname, None, v, span, label="확인 불가",
+                    reason=WINNING_SCORE_DASH_REASON, excerpt=ex,
+                )  # fmt: skip
         return

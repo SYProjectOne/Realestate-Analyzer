@@ -167,7 +167,14 @@ def _steps(sources: Sequence[str]) -> list[str]:
 
 
 def _first_load_text(session: Session, region_id: int, folded: int) -> str:
-    n = session.scalar(select(func.count()).select_from(Complex).where(Complex.region_id == region_id)) or 0
+    n = (
+        session.scalar(
+            select(func.count())
+            .select_from(Complex)
+            .where(Complex.region_id == region_id, Complex.merged_into_id.is_(None))
+        )
+        or 0
+    )
     return f"첫 적재: 단지 {n}개, 값 {folded}건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)"
 
 
@@ -257,6 +264,7 @@ def _fetch_originals(
                     Complex.region_id == region.id,
                     Complex.applyhome_id.is_not(None),
                     Complex.notice_date.is_(None),
+                    Complex.merged_into_id.is_(None),  # D29-2
                 )
             )
         )
@@ -414,7 +422,15 @@ def _supply(session: Session, region_id: int) -> dict[str, int]:
     from app.analysis.complex_input import masked
     from app.facts_view import load_overlay
 
-    rows = list(session.scalars(select(Complex).where(Complex.region_id == region_id).order_by(Complex.id)))
+    rows = list(
+        session.scalars(
+            select(Complex)
+            .where(
+                Complex.region_id == region_id, Complex.merged_into_id.is_(None)
+            )  # D29-2: 같은 사업 두 번 세지 않게
+            .order_by(Complex.id)
+        )
+    )
     ov = load_overlay(session, complex_ids=[c.id for c in rows])
     views = [masked(c, ov.fields("complex", c.id)) for c in rows]
     inputs = [

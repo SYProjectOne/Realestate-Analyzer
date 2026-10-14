@@ -33,6 +33,7 @@ __all__ = [
     "QUIET_FIRST_FIELDS",
     "RULE_TEXT",
     "UNIT_ASSUMED",
+    "WINNING_SCORE_DASH_REASON",
     "WINNING_SCORE_FIELDS",
     "SourceKind",
     "compare_mark",
@@ -178,6 +179,11 @@ EXPLICIT_NULL_FIELDS: Final = frozenset({("complex_type", "options_text")})
 재정규화가 비운다. 다른 필드의 값 없음 후보는 그대로 저장 값을 지우지 않는다."""
 
 WINNING_SCORE_FIELDS: Final = ("winning_score_min", "winning_score_max", "winning_score_avg")
+WINNING_SCORE_DASH_REASON: Final = "가점 당첨자 없음(청약홈 '-')"
+"""청약홈 경쟁률 팝업 당첨가점 칸이 '-' — 값 없는 '확인 불가' 후보의 사유(R10).
+팝업을 못 받은 '가점 미수집'과 구별한다. '-' 는 그 지역 가점제 당첨자가 없다는 표기다
+(미달·추첨제·해당지역에서 마감 …) — 미달인지·발표 전인지는 읽을 때 경쟁률 행 원문('△')·
+당첨자 발표일로 나눈다(``app.api.views.winning_score_fact``)."""
 QUIET_FIRST_FIELDS: Final = frozenset(("competition", f) for f in WINNING_SCORE_FIELDS)
 """빈 값 → 값(처음 관측)을 change_event 로 남기지 않는 필드(R9-PARSE Q4).
 
