@@ -8,8 +8,10 @@ import {
   EmptyState,
   FactCell,
   IntakeBadge,
+  MetaText,
   MetaValue,
   MismatchBadge,
+  Term,
   TieBadge,
   UnstableBadge,
 } from '@/components';
@@ -57,7 +59,7 @@ export function ComparePage() {
   const search = useGlobalSearch();
 
   return (
-    <PageShell title={t('page.G4.title')}>
+    <PageShell title={t('page.G4.title')} legend>
       {!valid ? (
         <EmptyState message={metaText('page.G4.invalidIds', { n: ids.length })}>
           <Link to={`/complexes${search}`} className="underline">
@@ -78,33 +80,71 @@ export function ComparePage() {
 function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: string | null }) {
   const { snapshotId } = usePageContext();
   const sensitivity = useSensitivity(snapshotId, scenarioKey);
+  const { data: scenarios = [] } = useScenarios();
   const rows = orderRows(view);
   const names = Object.fromEntries(rows.map((r) => [String(r.complex_id), r.name]));
+  const scenarioName =
+    scenarios.find((s) => s.id === view.scenario_id)?.name ??
+    (scenarioKey ? (scenarios.find((s) => keyOf(s) === scenarioKey)?.name ?? scenarioKey) : '');
+  /*
+   * R9-UI P9(30-proposal §10): 사실 비교를 먼저 — 조건 비교(공고 값·산술) → 점수·판정기(+ 두 지표 차이 한 문장) →
+   * 가격 갭 → 점수 분해 → 가격 전망 → 상황별 판정 → 민감도. 블록은 순서만 바뀌고 빠지는 것이 없다(data-block).
+   */
   return (
     <div className="flex flex-col gap-4">
-      <CompareGrid view={view} rows={rows} scenarioKey={scenarioKey} />
+      <MetaText
+        kind="count"
+        className="text-sm text-muted"
+        k="page.G4.summary"
+        params={{ n: rows.length, name: scenarioName }}
+      />
+      <div data-block="terms">
+        <TermsTable view={view} rows={rows} />
+      </div>
+      <div data-block="grid">
+        <Section title={t('page.G4.scores')}>
+          <p className="text-sm text-muted">{t('page.G4.rankVsDecide')}</p>
+          <CompareGrid
+            view={view}
+            rows={rows}
+            scenarioKey={scenarioKey}
+            scenarioName={scenarioName}
+          />
+        </Section>
+      </div>
       {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
       <h2 className="sr-only">{t('page.common.charts')}</h2>
-      <C06ScoreBreakdown
-        data={{ rows, weights: view.components.weights, orientation: 'horizontal' }}
-        height={Math.max(180, rows.length * 48)}
-      />
-      <LadderOverlay view={view} rows={rows} />
-      <Section title={t('page.G4.gaps')}>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((row) => (
-            <C02Gap
-              key={row.complex_id}
-              title={row.name}
-              data={{ gap: view.gaps[String(row.complex_id)] ?? null }}
-              height={240}
-            />
-          ))}
+      <div data-block="C02">
+        <Section title={t('page.G4.gaps')}>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {rows.map((row) => (
+              <C02Gap
+                key={row.complex_id}
+                title={row.name}
+                data={{ gap: view.gaps[String(row.complex_id)] ?? null }}
+                height={240}
+              />
+            ))}
+          </div>
+        </Section>
+      </div>
+      <div data-block="C06">
+        <C06ScoreBreakdown
+          data={{ rows, weights: view.components.weights, orientation: 'horizontal' }}
+          height={Math.max(180, rows.length * 48)}
+        />
+      </div>
+      <div data-block="ladder">
+        <LadderOverlay view={view} rows={rows} />
+      </div>
+      <div data-block="decision">
+        <DecisionPanel view={view} scenarioKey={scenarioKey} />
+      </div>
+      {sensitivity.data ? (
+        <div data-block="C10">
+          <C10Sensitivity data={{ sensitivity: sensitivity.data, names }} />
         </div>
-      </Section>
-      <TermsTable view={view} rows={rows} />
-      <DecisionPanel view={view} scenarioKey={scenarioKey} />
-      {sensitivity.data ? <C10Sensitivity data={{ sensitivity: sensitivity.data, names }} /> : null}
+      ) : null}
     </div>
   );
 }
@@ -129,10 +169,12 @@ function CompareGrid({
   view,
   rows,
   scenarioKey,
+  scenarioName,
 }: {
   view: CompareView;
   rows: ScoreRow[];
   scenarioKey: string | null;
+  scenarioName: string;
 }) {
   const decision = currentDecision(view, scenarioKey);
   const decisionOf = (id: number) => decision?.items.find((i) => i.complex_id === id) ?? null;
@@ -220,7 +262,7 @@ function CompareGrid({
           </tr>
           <tr>
             <th scope="row" className={thClass}>
-              {t('page.G4.row.decision')}
+              {t('page.G4.row.decision', { name: scenarioName })}
             </th>
             {rows.map((row) => {
               const item = decisionOf(row.complex_id);
@@ -295,14 +337,15 @@ const TERM_KEYS = [
 
 function TermsTable({ view, rows }: { view: CompareView; rows: ScoreRow[] }) {
   const termOf = (id: number) => view.terms.find((x) => x.complex_id === id) ?? null;
+  const title = t('page.G4.termsFirst');
   return (
-    <Section title={t('page.G4.terms')}>
+    <Section title={title}>
       <div className="overflow-x-auto">
-        <table aria-label={t('page.G4.terms')} className="w-full border-collapse text-sm">
+        <table aria-label={title} className="w-full border-collapse text-sm">
           <thead>
             <tr>
               <th scope="col" className={thClass}>
-                <span className="sr-only">{t('page.G4.terms')}</span>
+                <span className="sr-only">{title}</span>
               </th>
               {rows.map((row) => (
                 <th key={row.complex_id} scope="col" className={`${thClass} text-fg`}>
@@ -312,10 +355,47 @@ function TermsTable({ view, rows }: { view: CompareView; rows: ScoreRow[] }) {
             </tr>
           </thead>
           <tbody>
+            {/* 접수 상태(점수 행의 Intake 그대로) */}
+            <tr>
+              <th scope="row" className={thClass}>
+                {t('page.G4.row.intake')}
+              </th>
+              {rows.map((row) => (
+                <td key={row.complex_id} className={tdClass}>
+                  <IntakeBadge intake={row.intake} asof={view.asof_date} />
+                </td>
+              ))}
+            </tr>
+            {/* 현재 구매가 — 가격 갭 응답(gaps[id].price_low·high)의 Fact 그대로(프론트 계산 없음) */}
+            <tr>
+              <th scope="row" className={thClass}>
+                {t('page.G4.term.price')}
+              </th>
+              {rows.map((row) => {
+                // 계약 .20 F8: 점수 행의 목록 Fact(없으면 옛 저장본 — 가격 갭 응답의 같은 Fact)
+                const gap = view.gaps[String(row.complex_id)] ?? null;
+                const low = row.price_low ?? gap?.price_low ?? null;
+                const high = row.price_high ?? gap?.price_high ?? null;
+                return (
+                  <td key={row.complex_id} className={tdClass}>
+                    {low || high ? (
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <FactCell fact={low} unit="won" />
+                        <span aria-hidden>~</span>
+                        <FactCell fact={high} unit="won" />
+                      </span>
+                    ) : (
+                      <EmptyState inline />
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
             {TERM_KEYS.map((key) => (
               <tr key={key}>
                 <th scope="row" className={thClass}>
                   {t(`page.G4.term.${key}` as TKey)}
+                  {key === 'required_equity_won' ? <Term k="equity" /> : null}
                 </th>
                 {rows.map((row) => {
                   const term = termOf(row.complex_id);

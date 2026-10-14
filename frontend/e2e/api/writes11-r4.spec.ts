@@ -162,7 +162,9 @@ test.describe.serial('계약 .15 화면(실 API)', () => {
     await expect(link).toBeVisible();
     const row = page.locator('tr', { has: link });
     await expect(row.getByTestId('judge-scope')).toHaveText(P.common.judgeScope['보류']);
-    await expect(row.getByText(new RegExp(`^${ko.empty.unknown}\\(공고 전`)).first()).toBeVisible();
+    // R9-UI P7: 서버 사유 '공고 전'은 쉬운 말로 보인다(원 사유는 title)
+    const plain = `${ko.empty.unknown}(${ko.empty.reasonPlain.pre_notice}`.replace(/[()]/g, '\\$&');
+    await expect(row.getByText(new RegExp(`^${plain}`)).first()).toBeVisible();
 
     await ready(page, `/complexes/${CANDIDATE}?region=1&snapshot=${SNAPSHOT}`, P.G3.title);
     const badge = page.getByTestId('upcoming-badge');
@@ -209,11 +211,13 @@ test.describe.serial('계약 .15 화면(실 API)', () => {
     const first = feed.getByRole('listitem').filter({ hasText: summary });
     await expect(first).toHaveCount(1);
     await expect(first.getByText(P.common.changeEntity.region, { exact: true })).toBeVisible();
-    await expect(first.getByText(P.common.changeField.first_load, { exact: true })).toBeVisible();
+    // 계약 .20 F5: 서버 summary 한 줄(필드 이름은 summary 안·title) — 내부 필드 이름·빈 값 화살표는 없다
     await expect(first).not.toContainText('first_load');
     await expect(first).not.toContainText(`${P.common.none} →`);
     const track = feed.getByRole('listitem').filter({ hasText: 'A 공고 예정 후보 e2e' });
-    await expect(track.getByText(P.common.changeField.track, { exact: true })).toBeVisible();
+    // 계약 .20 F5: 서버 summary 한 줄 — 내부 필드 이름(track)은 보이지 않는다
+    await expect(track).toHaveCount(1);
+    await expect(track).not.toContainText(/\btrack\b/);
     await expect(track.getByRole('link')).toHaveAttribute(
       'href',
       new RegExp(`^/complexes/${CANDIDATE}`),

@@ -37,6 +37,7 @@ const ScenarioPage = page(() => import('@/pages/scenario'), 'ScenarioPage');
 const MarketPage = page(() => import('@/pages/market'), 'MarketPage');
 const OpsPage = page(() => import('@/pages/ops'), 'OpsPage');
 const ReportsPage = page(() => import('@/pages/reports'), 'ReportsPage');
+const GlossaryPage = page(() => import('@/pages/glossary'), 'GlossaryPage');
 
 export interface RouteDef {
   /** 화면 id (RA §7-1, D2-5) */
@@ -152,6 +153,14 @@ export const appRoutes: RouteObject[] = [
         element: def.element,
         handle: { screen: def.id, mobile: def.mobile } satisfies RouteHandle,
       })),
+      /**
+       * 용어 모음(R9-UI P6, 30-proposal §7) — 화면 10개(routeDefs)가 아니라 도움 페이지. 모바일도 읽기 전용으로 연다.
+       */
+      {
+        path: '/glossary',
+        element: <GlossaryPage />,
+        handle: { screen: 'glossary', mobile: 'readonly' } satisfies RouteHandle,
+      },
       ...DEV_ROUTES,
       {
         path: '*',

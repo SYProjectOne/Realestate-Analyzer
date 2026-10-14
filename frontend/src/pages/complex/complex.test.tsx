@@ -9,6 +9,7 @@ import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
+import { G3_TABS } from './index';
 import { highlightExcerpt } from './ProvenanceTab';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
@@ -33,6 +34,21 @@ describe('highlightExcerpt', () => {
     expect(highlightExcerpt('abcXYZdef', 'XYZ', 0, 3)?.searched).toBe(true);
     expect(highlightExcerpt('abc', 'XYZ', 0, 3)).toBeNull();
     expect(highlightExcerpt('abc', null, 0, 3)).toBeNull();
+  });
+});
+
+describe('R9-UI G3 해시 키 불변(30-proposal §9-1)', () => {
+  it('URL 해시 키 8개는 그대로 — G1 변경 피드 링크·ChangeEvent.tab 호환', () => {
+    expect(G3_TABS).toEqual([
+      'price',
+      'payment',
+      'events',
+      'ladder',
+      'gap',
+      'catalysts',
+      'provenance',
+      'judgments',
+    ]);
   });
 });
 

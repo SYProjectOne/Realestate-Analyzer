@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { renderRoute } from '@/test/render';
@@ -33,8 +33,8 @@ describe('G4 비교', () => {
     renderRoute('/compare?ids=2,7,4&scenario=B');
     const grid = await screen.findByRole('table', { name: t('page.G4.grid') });
     expect(within(grid).getAllByRole('columnheader')).toHaveLength(4);
-    expect(within(grid).getByText(t('page.G4.row.decision'))).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: t('page.G4.terms') })).toBeInTheDocument();
+    expect(within(grid).getByText(/^판정기 선택 확률\(상황 /)).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t('page.G4.termsFirst') })).toBeInTheDocument();
     expect(screen.getByText(t('chart.C07.title'))).toBeInTheDocument();
     // 상황 B 예시: confidence 0.48 → 동률
     expect(screen.getAllByTestId('tie-badge').length).toBeGreaterThan(0);
@@ -63,5 +63,41 @@ describe('G4 비교', () => {
     renderRoute('/compare?ids=2,7,4&scenario=base');
     const panel = await screen.findByRole('region', { name: t('page.G4.decision') });
     expect(within(panel).queryByRole('list', { name: t('page.G4.virtual') })).toBeNull();
+  });
+});
+
+describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
+  it('블록 순서: 조건 비교 → 점수·판정기 → 가격 갭 → 점수 분해 → 가격 전망 → 상황별 판정 → 민감도', async () => {
+    const { container } = renderRoute('/compare?ids=2,7,4&scenario=B');
+    await screen.findByRole('table', { name: t('page.G4.grid') });
+    await waitFor(() => expect(container.querySelector('[data-block="C10"]')).not.toBeNull());
+    const order = [...container.querySelectorAll('[data-block]')].map((el) =>
+      el.getAttribute('data-block'),
+    );
+    expect(order).toEqual(['terms', 'grid', 'C02', 'C06', 'ladder', 'decision', 'C10']);
+  });
+
+  it('점수 순위와 판정기 선택 확률의 차이를 한 문장으로 설명한다', async () => {
+    renderRoute('/compare?ids=2,7,4');
+    const scores = await screen.findByRole('region', { name: t('page.G4.scores') });
+    expect(within(scores).getByText(t('page.G4.rankVsDecide'))).toBeInTheDocument();
+  });
+
+  it('조건 비교 표: 접수·현재 구매가(가격 갭 응답의 Fact 그대로)·전매·계약금 — 라벨·출처 유지', async () => {
+    renderRoute('/compare?ids=2,7,4');
+    const terms = await screen.findByRole('table', { name: t('page.G4.termsFirst') });
+    const rowOf = (name: string) =>
+      within(terms).getByRole('row', { name: new RegExp(`^${name}`) });
+    expect(within(rowOf(t('page.G4.row.intake'))).getAllByTestId('intake-badge')).toHaveLength(3);
+    const price = rowOf(t('page.G4.term.price'));
+    const provs = [...price.querySelectorAll('[data-prov]')];
+    expect(provs.length).toBeGreaterThan(0);
+    for (const cell of provs) {
+      expect(
+        cell.querySelector('[data-testid="label-badge"], [data-testid="empty-state"]'),
+      ).not.toBeNull();
+    }
+    expect(rowOf(t('page.G4.term.resale_end'))).toBeInTheDocument();
+    expect(rowOf(t('page.G4.term.down_payment_pct'))).toBeInTheDocument();
   });
 });

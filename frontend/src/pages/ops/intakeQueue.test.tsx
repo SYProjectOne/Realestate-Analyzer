@@ -77,7 +77,10 @@ describe('G7 접수 확인 대기열(계약 .19)', () => {
       'href',
       expect.stringMatching(/^\/complexes\/4(\?|$)/),
     );
-    expect(within(opus).getByTestId('intake-badge')).toHaveTextContent('403');
+    // 계약 .20 F3: 배지는 사유 코드(fetch_failed)의 쉬운 말, 원 사유 '403' 은 title·HTTP 칸
+    const badge = within(opus).getByTestId('intake-badge');
+    expect(badge).toHaveTextContent(t('empty.reasonPlain.fetch_failedWith', { reason: '403' }));
+    expect(badge.getAttribute('title')).toContain('403');
     expect(opus.querySelector('[data-meta="status"]')).toHaveTextContent('403');
     expect(within(opus).getByRole('link', { name: t('page.G7.iq.evidence') })).toHaveAttribute(
       'href',

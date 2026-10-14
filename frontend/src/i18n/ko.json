@@ -97,7 +97,7 @@
         "savedNameOnly": "지역 이름만 바꿨습니다 — 재판정 없음",
         "nameOnly": "선택이 그대로라 재판정이 없고, 발행할 리비전이 없어 발행 작업도 없습니다(이름만 바뀜)",
         "nameOnlyPublish": "선택이 그대로라 재판정은 없습니다 — 이름이 발행 리비전 보고서(표지·제목)에 들어가 발행 작업이 등록됐습니다",
-        "jobHint": "새 리비전에서 후보 전체 rerank 1회 + 보고서 '지역 추가' 장",
+        "jobHint": "새 리비전에서 후보 전체 판정기 순위 다시 매기기 1회 + 보고서 '지역 추가' 장",
         "name": "지역 이름",
         "result": "저장됨 — 추가 {added} · 제거 {removed}",
         "addedNames": "추가: {names}",
@@ -105,22 +105,51 @@
       }
     },
     "G1": {
-      "title": "홈 대시보드",
+      "title": "홈",
       "kpis": "핵심 지표",
+      "openNow": {
+        "title": "지금 접수 가능",
+        "unit": "곳",
+        "link": "접수 가능 단지 보기",
+        "hint": "공식 자료로 확인한 접수 상태 기준입니다. 접수 기간은 단지 상세에서 확인하세요."
+      },
+      "region": "지역 현황",
       "kpi": {
-        "judged": "판정 대상",
+        "judged": "판정 대상(점수 계산 대상)",
         "intakeOpen": "접수 가능",
         "unsold": "미분양",
         "unsoldSub": "{ym} 기준 · 준공 후",
-        "movePeak": "입주 피크",
+        "unsoldBreakdown": "시군구별 보기",
+        "movePeak": "입주가 가장 많은 해",
         "movePeakSub": "세대",
-        "freshness": "데이터 신선도",
-        "freshnessSub": "실패 소스 {failing} · 지연 소스 {stale}"
+        "freshness": "마지막 수집",
+        "freshnessSub": "수집 실패 {failing}곳 · 늦어진 곳 {stale}곳"
       },
-      "top5": "통합 TOP 5",
+      "top5Fewer": "점수가 있는 단지가 {n}곳뿐입니다. 점수가 없는 단지는 단지 리스트에서 사유를 볼 수 있습니다.",
+      "upcoming": {
+        "title": "다가오는 일정(4주)",
+        "all": "전체 일정 보기",
+        "noApply": "청약 접수일은 아직 일정에 없습니다(수집 전)",
+        "none": "4주 안의 일정이 없습니다",
+        "noAccess": "이 링크로는 일정을 볼 수 없습니다(운영 화면 권한 필요)"
+      },
+      "card": {
+        "price": "현재 구매가",
+        "resaleEnd": "전매 종료",
+        "gap": "가격 갭(주변 대비)"
+      },
+      "noListRow": "이 기준일 자료에 없음",
+      "changesMore": "변경 더 보기",
+      "changesLess": "변경 접기",
+      "changeShowValue": "바뀐 값 보기",
+      "changeSentence": "{field} 변경",
+      "top5": "종합 점수 상위 단지",
+      "top5Note": "상대 비교 · 투자 권유 아님",
       "top5Scenario": "상황: {name}",
       "total": "종합",
-      "p10": "+10% 확률",
+      "p10": "가격 +10% 상승 가능성(판정기)",
+      "p10Target": "목표 시점 {target}",
+      "p10Note": "당첨 확률이 아닙니다 · 보장 아님",
       "open": "{name} 상세 보기",
       "changes": "최근 변경",
       "noChanges": "최근 변경 없음",
@@ -133,17 +162,22 @@
     },
     "G2": {
       "title": "단지 리스트",
+      "intro": "공고가 확인된 단지 목록입니다. 단지 이름을 누르면 상세가 열립니다. 공고문이 기준입니다.",
       "filters": "필터",
+      "filtersMore": "필터 더 보기 (적용 {n})",
+      "filtersLess": "필터 접기",
+      "openNowChip": "지금 접수 가능만 보기",
+      "openNowChipOff": "전체 보기",
       "filter": {
         "living_area": "생활권",
         "intake_status": "접수",
-        "land_type": "택지유형",
-        "resale_end_before": "전매 종료일(이전)",
+        "land_type": "택지 종류(공공·민간)",
+        "resale_end_before": "이 날짜 전에 전매 종료",
         "price_min": "가격 하한(억)",
         "price_max": "가격 상한(억)",
         "move_in_year": "입주연도",
-        "inclusion_class": "포함 분류",
-        "judge_scope": "판정 범위",
+        "inclusion_class": "단지 분류",
+        "judge_scope": "점수 계산 범위",
         "q": "단지명"
       },
       "landType": {
@@ -151,7 +185,7 @@
         "민간택지": "민간택지"
       },
       "clearFilters": "필터 초기화",
-      "count": "{shown} / {total}개",
+      "count": "{shown} / {total}곳",
       "csv": "CSV 내려받기",
       "columns": "열 선택",
       "col": {
@@ -159,16 +193,18 @@
         "name": "단지",
         "living_area": "생활권",
         "intake": "접수",
-        "price": "현재 구매가 범위",
+        "price": "현재 구매가",
         "resale_end": "전매 종료",
         "move_in": "입주",
-        "gap": "가격 갭",
-        "total": "종합 점수",
-        "p10": "+10% 확률",
-        "inclusion": "포함 분류",
-        "land_type": "택지유형",
+        "gap": "가격 갭(주변 대비)",
+        "total": "종합 점수(상대 비교)",
+        "p10": "가격 +10% 상승 가능성(판정기)",
+        "inclusion": "단지 분류",
+        "land_type": "택지 종류",
         "units_total": "총 세대",
-        "down_payment": "계약금",
+        "down_payment": "계약금 비율",
+        "competition": "경쟁률(1순위 해당지역 최고)",
+        "down_payment_won": "계약금 금액",
         "last_change": "마지막 변경"
       },
       "sortAsc": "{col} 오름차순 정렬",
@@ -182,6 +218,19 @@
       "clearSelection": "선택 해제",
       "empty": "조건에 맞는 단지가 없습니다",
       "table": "단지 표",
+      "cards": "단지 카드",
+      "card": {
+        "resaleEnd": "전매 종료",
+        "down": "계약금",
+        "moveIn": "입주",
+        "total": "종합",
+        "relative": "상대 비교",
+        "more": "더 보기(가격 갭·+10% 상승 가능성)",
+        "showMore": "단지 더 보기 ({shown} / {total}곳)",
+        "filterSheet": "필터 (적용 {n})",
+        "filterApply": "적용",
+        "filterReset": "초기화"
+      },
       "loadingMore": "나머지 단지를 불러오는 중…"
     },
     "G3": {
@@ -194,7 +243,7 @@
         "discount": "할인",
         "resaleEnd": "전매 종료",
         "moveIn": "입주",
-        "inclusion": "포함 분류",
+        "inclusion": "단지 분류",
         "total": "종합 점수",
         "officialSite": "공식 홈페이지",
         "intakeEvidence": "접수 근거 원문",
@@ -206,30 +255,70 @@
         "siteOtherHumanCheck": "접수 상태 사람 확인하기",
         "siteUnconfirmedEvidence": "공식 홈페이지 원문(동일성 미확인 — 접수 근거 아님)",
         "siteUnconfirmedHint": "판정기가 청약홈에 등록된 공식 홈페이지가 이 단지의 페이지인지 확정하지 못했습니다(미해결·불명 — 다른 단지로 판정한 것은 아닙니다). 그 문구는 접수 판정에 쓰지 않습니다 — 접수 상태는 사람 확인(전화·방문)으로 정하세요.",
-        "scopeReason": "판정 범위 사유"
+        "scopeReason": "점수 계산 범위 사유"
+      },
+      "summary": {
+        "status": "지금 상태",
+        "currentNotice": "현재 적용 공고: {kind}",
+        "schedule": "일정",
+        "winnerDate": "당첨자 발표",
+        "contract": "계약",
+        "noScheduleReason": "공고 일정 미수집",
+        "noticeOriginal": "공고문 원문 보기",
+        "money": "내야 할 돈",
+        "priceComposition": "구성",
+        "down": "계약금",
+        "downFirst": "1차",
+        "downWon": "계약금 금액",
+        "downWonMissing": "계산값 미제공",
+        "interim": "중도금",
+        "interimTerms": "조건: {text}(공고 문구)",
+        "balance": "잔금",
+        "noPayment": "납부 조건 미수집",
+        "moreMoney": "내야 할 돈·일정 자세히",
+        "formula": "계산: {formula}",
+        "conditions": "청약 전 꼭 볼 조건",
+        "conditionsHint": "당첨 뒤 팔거나 다시 청약하는 데 걸리는 제한입니다. 공고문이 기준입니다.",
+        "resaleEndPlain": "팔 수 있게 되는 날",
+        "residency": "거주의무",
+        "rewin": "재당첨 제한",
+        "regulated": "규제지역",
+        "priceCap": "분양가 상한제",
+        "supply": "공급",
+        "unitsGeneral": "일반",
+        "unitsSpecial": "특별",
+        "unitsTotal": "총",
+        "specialHint": "특별공급 자격·소득 기준은 공고문에서 확인하세요",
+        "score": "점수·분류 (상대 비교 · 투자 권유 아님)",
+        "info": "단지 정보",
+        "notQualification": "이 화면은 개인 청약 자격을 판정하지 않습니다 · 공고문이 기준입니다"
       },
       "tabs": "단지 상세 탭",
+      "tabSelect": "보기",
       "tab": {
-        "price": "가격표",
-        "payment": "납부 조건",
-        "events": "잔여 이력",
-        "ladder": "사다리",
-        "gap": "시세 비교",
-        "catalysts": "호재",
-        "provenance": "출처 원문",
-        "judgments": "판정기 로그"
+        "price": "타입별 가격",
+        "payment": "내야 할 돈·일정",
+        "events": "경쟁률·추가 모집",
+        "ladder": "가격 전망(판정기)",
+        "gap": "주변 시세 비교",
+        "catalysts": "개발 소식(호재)",
+        "provenance": "근거 원문",
+        "judgments": "판정 기록(운영자용)",
+        "countZero": "{name} (0)"
       },
       "price": {
         "type": "타입",
         "area": "전용면적",
         "units": "세대",
         "max": "최고가",
-        "floorSample": "대표 층 가격",
-        "floorText": "대표 층",
+        "floorSample": "최저가 층 가격",
+        "floorText": "최저가 층",
         "balcony": "발코니",
         "options": "필수 옵션",
         "basis": "판정 기준",
         "composition": "구성",
+        "noteRef": "①",
+        "noteTitle": "① 공고문 고지",
         "change": "최초 대비",
         "discount": "할인(공고 명시)",
         "discountApplied": "구매가에서 뺐습니다(서버 차감)",
@@ -267,11 +356,28 @@
         "type": "타입",
         "supply": "공급",
         "applied": "접수",
-        "ratio": "경쟁률·미달"
+        "ratio": "경쟁률(미달이면 모자란 세대)",
+        "shortfall": "미달 {n}세대",
+        "pointsMissing": "당첨 가점: 제공하지 않음 — 청약홈 경쟁률에서 확인",
+        "points": "당첨 가점(최저~최고 · 평균)",
+        "pointsAvg": "평균",
+        "noPointWinners": "가점제 당첨자 없음",
+        "maxRatio": "최고 경쟁률(1순위 해당지역)",
+        "shortfallTypes": "미달 주택형"
+      },
+      "gap": {
+        "pct": "가격 갭(주변 대비)",
+        "meaning": "+ 는 현재 구매가가 비교 단지 실거래 중앙값보다 높다는 뜻입니다(− 는 낮다는 뜻).",
+        "basis": "비교 기준: 같은 생활권 · 2020년 이후 준공 · 전용 80~85㎡ · 기준일 전 6개월",
+        "comps": "비교 단지 {n}곳",
+        "substitute": "대체 단지 포함(거래 3건 미만)",
+        "unadjusted": "가격 갭(미보정 중앙값 기준)",
+        "score": "가격 갭 점수(0~10)"
       },
       "ladder": {
         "horizons": "목표 시점",
-        "proposition": "명제"
+        "proposition": "판정기에 물은 문장",
+        "note": "당첨 확률이 아닙니다 · 보장 아님 · 상대 비교"
       },
       "catalyst": {
         "list": "호재 목록",
@@ -337,18 +443,23 @@
       "title": "비교",
       "invalidIds": "비교할 단지를 2~6개 고르세요(지금 {n}개)",
       "grid": "비교 표",
+      "summary": "{n}곳 · 상황: {name} · 상대 비교 · 투자 권유 아님",
+      "termsFirst": "조건 비교(공고 값·산술)",
+      "scores": "점수·판정기",
+      "rankVsDecide": "종합 점수 순위는 여섯 가지 성분의 가중합으로 낸 상대 비교이고, 판정기 선택 확률은 이 상황의 조건(자금·규제·접수)을 넣어 판정기가 낸 값입니다. 둘이 다를 수 있습니다.",
       "row": {
         "total": "종합 점수",
         "rank": "순위",
-        "p10": "+10% 확률",
+        "p10": "가격 +10% 상승 가능성(판정기)",
         "intake": "접수",
-        "decision": "판정기 decide",
+        "decision": "판정기 선택 확률(상황 {name})",
         "prob": "선택 확률"
       },
-      "ladder": "사다리 겹쳐 보기",
+      "ladder": "가격 전망 겹쳐 보기",
       "gaps": "가격 갭 나란히",
       "terms": "조건 표",
       "term": {
+        "price": "현재 구매가",
         "resale_end": "전매 종료",
         "residency_months": "거주의무(개월)",
         "down_payment_pct": "계약금 비율",
@@ -427,7 +538,7 @@
         "rankAfter": "새 순위",
         "totalBefore": "이전 종합",
         "totalAfter": "새 종합",
-        "deltaRerank": "rerank 변화(새 run, 이전 run 대비)"
+        "deltaRerank": "판정기 순위 변화(새 실행, 이전 실행 대비)"
       },
       "noDiff": "순위 변동 없음",
       "escaped": "판정기가 질문을 남겼습니다",
@@ -548,6 +659,20 @@
       },
       "checklist": "체크리스트",
       "calendar": "캘린더",
+      "calendarLegend": {
+        "title": "종류 뜻",
+        "resaleOpen": "전매제한이 끝나 팔 수 있게 되는 날(당첨자 발표일 + 전매 제한 기간으로 계산, 추정)",
+        "kind": {
+          "중도금": "중도금을 내는 날",
+          "계약": "계약 체결 마감일",
+          "만료": "그 밖의 기한이 끝나는 날(지정 만료 등)",
+          "공고 예상": "공고가 나올 것으로 보는 날",
+          "법적 확인": "직접 확인할 것",
+          "사실 재확인": "다시 확인해야 하는 값",
+          "청약 접수": "청약 신청을 받는 날",
+          "당첨자 발표": "당첨자를 발표하는 날"
+        }
+      },
       "check": {
         "kind": "종류",
         "title": "항목",
@@ -626,7 +751,7 @@
         "noUnit": "없음",
         "badDiscountFormat": "할인 형식이 맞지 않습니다 — ASCII 숫자, 쉼표는 세 자리마다, 끝 '원'은 붙여서(띄우지 않음)",
         "discountFormat": "할인 형식·범위가 맞지 않습니다 — {detail}",
-        "discountNotBelowPrice": "할인이 기준 타입 차감 바탕(대표층가·최고가 중 낮은 값) 이상이라 구매가에서 뺄 수 없습니다 — {detail}",
+        "discountNotBelowPrice": "할인이 기준 타입 차감 바탕(최저가 층 가격·최고가 중 낮은 값) 이상이라 구매가에서 뺄 수 없습니다 — {detail}",
         "discountBasisSaved": "기준 타입 {type} 할인으로 반영",
         "decimals": "소수점 아래 {n}자리까지만 입력하세요",
         "min": "{min} 이상이어야 합니다",
@@ -785,8 +910,8 @@
     },
     "G8": {
       "title": "보고서",
-      "snapshot": "기준 스냅샷",
-      "compareSnapshot": "비교 스냅샷(diff)",
+      "snapshot": "기준일(리비전)",
+      "compareSnapshot": "이전 기준일과 비교(선택)",
       "noCompare": "비교 안 함",
       "format": "형식",
       "formats": {
@@ -820,8 +945,12 @@
       },
       "sizeKb": "{kb}KB",
       "none": "보고서 없음",
-      "diff": "스냅샷 diff",
-      "diffHint": "비교 스냅샷을 고르면 바뀐 항목을 보여 줍니다",
+      "emptyTitle": "아직 만든 보고서가 없습니다",
+      "emptyBody": "보고서에는 첫 장 요약, 단지별 표, 판정 근거, 판정기 호출 기록(부록)이 들어갑니다.",
+      "emptyHow": "위에서 기준일을 고르고 '보고서 생성'을 누르면 만들어집니다.",
+      "emptyProgress": "진행 상황은 버튼 아래 작업 진행 칸에 보입니다.",
+      "diff": "이전 기준일 대비 바뀐 항목",
+      "diffHint": "비교할 기준일을 고르면 바뀐 항목을 보여 줍니다",
       "diffCol": {
         "complex": "단지",
         "entity": "대상",
@@ -839,8 +968,8 @@
       "yes": "예",
       "no": "아니오",
       "none": "없음",
-      "deltaRerank": "rerank 변화(이전 run 대비)",
-      "deltaRerankNone": "이전 run 없음",
+      "deltaRerank": "판정기 순위 변화(이전 실행 대비)",
+      "deltaRerankNone": "이전 실행 없음",
       "all": "전체",
       "save": "저장",
       "cancel": "취소",
@@ -926,11 +1055,25 @@
       },
       "changeField": {
         "first_load": "첫 적재",
+        "official_popup_hash": "공식 홈페이지 안내문",
+        "headless_shot_hash": "공식 홈페이지 화면",
         "track": "공고 예정 후보",
         "applyhome_id": "주택관리번호",
         "legal_dong_code": "법정동"
       },
       "charts": "차트",
+      "scheduleKind": {
+        "법적 확인": "확인할 것",
+        "중도금": "중도금 납부",
+        "만료": "기한 만료",
+        "공고 예상": "공고 예상",
+        "계약": "계약",
+        "사실 재확인": "사실 재확인",
+        "청약 접수": "청약 접수",
+        "당첨자 발표": "당첨자 발표",
+        "resaleOpen": "전매 가능 시작"
+      },
+      "scheduleBasis": "계산 기준: {basis}",
       "nameProv": {
         "open": "이름 출처 보기: {name} · {label}",
         "openNoLabel": "이름 출처 보기: {name}"
@@ -957,7 +1100,8 @@
     "scenario": "상황",
     "theme": "테마",
     "themeLight": "라이트",
-    "themeDark": "다크"
+    "themeDark": "다크",
+    "settings": "설정"
   },
   "label": {
     "confirmed": "확인됨",
@@ -968,13 +1112,49 @@
     "unknownWithReason": "확인 불가({reason})",
     "unknownWithReasonDate": "확인 불가({reason}, {date})",
     "withReason": "{label}({reason})",
-    "humanPrefix": "사람 {label}"
+    "humanPrefix": "사람 {label}",
+    "legend": "밑줄 친 숫자를 누르면 출처·확인일이 열립니다",
+    "legendHelp": "라벨 뜻",
+    "legendHelpTitle": "숫자 옆 라벨의 뜻",
+    "truncated": "{text}…(전체는 숫자를 눌러 보기)",
+    "help": {
+      "confirmed": "확인됨 — 공식 자료(공고문·청약홈 등)에서 확인한 값",
+      "estimated": "추정 — 계산이나 가정으로 만든 값(괄호 안이 계산 방법)",
+      "unofficial": "비공식 — 보도·블로그·홍보처럼 공식이 아닌 출처의 값",
+      "reprocessed": "재가공 — 원본이 아니라 가공된 자료에서 온 값",
+      "unknown": "확인 불가 — 찾지 못한 값(괄호 안이 이유)",
+      "human": "사람 확인됨 — 사람이 전화·방문으로 확인한 값"
+    }
   },
   "empty": {
     "unknown": "확인 불가",
     "unknownWithReason": "확인 불가({reason})",
     "unknownWithReasonDate": "확인 불가({reason}, {date})",
-    "noData": "데이터 없음"
+    "noData": "데이터 없음",
+    "reasonOriginal": "원래 사유: {reason}",
+    "reasonPlain": {
+      "fetch_failed": "공식 페이지를 받지 못함",
+      "fetch_failedWith": "공식 페이지를 받지 못함 — {reason}",
+      "not_collected": "아직 수집하지 않음",
+      "pre_notice": "아직 공고 전(분양가 미공고)",
+      "parse_failed": "공고문에서 자동으로 읽지 못함 — 원문에서 확인",
+      "source_missing": "출처 자료가 없음",
+      "demoted": "검증에서 모순이 나와 쓰지 않음",
+      "conflict_hold": "출처끼리 값이 달라 확인 중",
+      "partial_missing": "일부 값이 빠짐",
+      "identity_unconfirmed": "공식 홈페이지가 이 단지 것인지 확인 전",
+      "other_complex_site": "공식 홈페이지가 다른 단지 페이지",
+      "no_phrase": "접수 문구를 찾지 못함",
+      "phrase_inconclusive": "문구로는 판단할 수 없음",
+      "not_target": "점수 계산 대상 아님",
+      "input_blocked": "입력이 막혀 판정하지 않음",
+      "unresolved": "자동 확인이 끝나지 않음",
+      "unjudged": "점수 계산 전",
+      "not_entered": "내 조건(시나리오)에 입력하지 않음",
+      "no_sample": "비교할 거래가 없음",
+      "human_check": "사람 확인 기다림",
+      "no_value": "공고에 값이 없음"
+    }
   },
   "intake": {
     "status": {
@@ -991,7 +1171,9 @@
     },
     "none": "접수 상태 확인 불가",
     "withReason": "{status}({reason})",
-    "withReasonDate": "{status}({reason}, {date})"
+    "withReasonDate": "{status}({reason}, {date})",
+    "reasonDate": "{reason} · {date}",
+    "withSupply": "{status}({kind})"
   },
   "picker": {
     "snapshotDegraded": "{date} · 일부 수집 실패",
@@ -1140,7 +1322,7 @@
         "asof_plus_3y": "기준일+3년",
         "asof_plus_5y": "기준일+5년"
       },
-      "threshold": { "likely": "likely 0.85", "unlikely": "unlikely 0.15" },
+      "threshold": { "likely": "가능성 높음 기준 0.85", "unlikely": "가능성 낮음 기준 0.15" },
       "verdict": { "likely": "가능성 높음", "uncertain": "불확실", "unlikely": "가능성 낮음" },
       "annualized": "필요 연율 {pct}",
       "empty": "사다리 판정 없음"
@@ -1184,7 +1366,7 @@
       "title": "종합 점수 분해",
       "weights": "가중치 {weights}",
       "component": {
-        "p10": "+10% 확률",
+        "p10": "+10% 상승 가능성",
         "rerank": "판정기 순위",
         "gap": "가격 갭",
         "benchmark": "벤치마크",
@@ -1234,12 +1416,19 @@
     },
     "C10": {
       "title": "가중치 민감도",
-      "variant": "변형",
+      "explain": "종합 점수는 6가지 항목 점수를 정해진 비중으로 더한 값입니다. 각 비중을 10%p 올리거나 내려 다시 계산해도 순위가 유지되는지 보여 줍니다. '순위 변동: 없음'이면 결과가 비중 설정에 덜 민감하다는 뜻입니다.",
+      "variantLabel": "{component} 비중 {sign}{pp}%p",
+      "variantShort": "{component} {sign}{pp}%p",
+      "changedCol": "순위 변동",
+      "changedNo": "순위 변동: 없음",
+      "changedYes": "순위 변동: 있음",
+      "changedWith": "순위 변동: 있음 — {moves}",
+      "variant": "비중 바꾼 항목",
       "baseline": "기준",
       "complex": "단지 {id}",
       "entered": "진입 {names}",
       "exited": "이탈 {names}",
-      "stable": "변동 없는 가중치 있음",
+      "stable": "비중을 바꿔도 순위가 그대로인 항목 있음",
       "empty": "민감도 없음"
     },
     "gallery": {
@@ -1285,8 +1474,8 @@
       "saleYear": "분양 연도",
       "salePrice": "분양가(84㎡)",
       "peak": "고점",
-      "variant": "변형",
-      "changed": "변동",
+      "variant": "비중 바꾼 항목",
+      "changed": "순위 변동",
       "top5": "TOP 5",
       "status": "상태",
       "verdict": "판정",
@@ -1337,5 +1526,268 @@
   "download": {
     "pending": "내려받는 중…",
     "error": "내려받지 못했습니다: {detail}"
+  },
+  "glossary": {
+    "title": "용어 모음",
+    "intro": "화면에 나오는 말을 한 줄로 풀었습니다. 제도 수치는 바뀔 수 있어 넣지 않았습니다 — 공고문과 청약홈이 기준입니다.",
+    "nav": "용어",
+    "search": "용어 찾기",
+    "searchPlaceholder": "예: 전매",
+    "more": "용어 모음에서 보기",
+    "open": "{term} 뜻 보기",
+    "close": "닫기",
+    "all": "전체",
+    "none": "찾는 용어가 없습니다",
+    "count": "{n}개",
+    "category": {
+      "basic": "청약 기본",
+      "who": "자격·순위",
+      "money": "돈",
+      "limits": "제한",
+      "app": "이 앱의 계산값",
+      "labels": "라벨"
+    },
+    "items": {
+      "cheongyak": {
+        "term": "청약",
+        "short": "새 아파트를 분양받으려고 정해진 기간에 신청하는 절차입니다. 당첨자를 뽑아 계약할 수 있게 합니다.",
+        "cat": "basic"
+      },
+      "notice": {
+        "term": "입주자모집공고(공고문)",
+        "short": "단지의 자격·가격·일정·제한을 적은 공식 문서입니다. 화면 내용과 다르면 공고문이 기준입니다.",
+        "cat": "basic"
+      },
+      "move_in": {
+        "term": "입주(예정월)",
+        "short": "공사가 끝나 들어가 살 수 있는 시기입니다. 공고문 기준이고 바뀔 수 있습니다.",
+        "cat": "basic"
+      },
+      "trade": {
+        "term": "실거래가",
+        "short": "국토부에 신고된 실제 매매 가격입니다. 호가(부르는 값)와 다릅니다.",
+        "cat": "basic"
+      },
+      "general_supply": {
+        "term": "일반공급",
+        "short": "특별공급을 뺀 나머지 물량입니다. 순위와 가점·추첨으로 당첨자를 정합니다.",
+        "cat": "who"
+      },
+      "special_supply": {
+        "term": "특별공급(특공)",
+        "short": "신혼부부·생애최초·신생아 가구 등 정해진 조건을 갖춘 사람에게 따로 떼어 둔 물량입니다. 자격·소득 기준은 공고문에서 확인하세요.",
+        "cat": "who"
+      },
+      "point_system": {
+        "term": "가점제",
+        "short": "무주택기간·부양가족 수·청약통장 가입기간 점수가 높은 순으로 뽑는 방식입니다. 배점은 청약홈에서 확인하세요.",
+        "cat": "who"
+      },
+      "lottery": {
+        "term": "추첨제",
+        "short": "자격을 갖춘 신청자 중에서 가점과 관계없이 무작위로 뽑는 방식입니다.",
+        "cat": "who"
+      },
+      "points": {
+        "term": "청약 가점",
+        "short": "가점제에서 쓰는 내 점수입니다. 가점 계산은 청약홈 가점 계산기에서 하세요. 이 앱은 가점을 계산하지 않습니다.",
+        "cat": "who"
+      },
+      "homeless_household": {
+        "term": "무주택 세대구성원",
+        "short": "나와 주민등록상 같은 세대의 가족 모두가 집을 갖고 있지 않은 상태입니다.",
+        "cat": "who"
+      },
+      "householder": {
+        "term": "세대주",
+        "short": "주민등록상 세대를 대표하는 사람입니다. 일부 지역·유형은 세대주만 1순위가 됩니다.",
+        "cat": "who"
+      },
+      "rank": {
+        "term": "1순위·2순위",
+        "short": "통장 가입기간·예치금 같은 요건을 채운 정도에 따른 신청 순서입니다. 1순위가 먼저 뽑힙니다.",
+        "cat": "who"
+      },
+      "local_priority": {
+        "term": "해당지역·기타지역",
+        "short": "단지가 있는 지역에 일정 기간 산 사람(해당지역)이 같은 순위에서 먼저 뽑힙니다.",
+        "cat": "who"
+      },
+      "account": {
+        "term": "청약통장",
+        "short": "청약 신청에 필요한 저축 통장(주택청약종합저축)입니다. 가입기간이 가점과 순위에 쓰입니다.",
+        "cat": "who"
+      },
+      "deposit": {
+        "term": "예치금",
+        "short": "민영주택 1순위가 되려면 통장에 들어 있어야 하는 최소 금액입니다. 지역·면적마다 다릅니다.",
+        "cat": "who"
+      },
+      "no_rank": {
+        "term": "무순위(줍줍)",
+        "short": "계약 포기나 부적격으로 남은 집을 다시 모집하는 청약입니다. 자격·지역 요건은 공고마다 다릅니다.",
+        "cat": "who"
+      },
+      "arbitrary": {
+        "term": "임의공급",
+        "short": "무순위 뒤에도 남은 집을 사업주체가 정한 방식으로 다시 모집하는 것입니다. 조건은 공고마다 다릅니다.",
+        "cat": "who"
+      },
+      "first_come": {
+        "term": "선착순",
+        "short": "남은 집을 먼저 신청한 순서대로 계약하는 방식입니다. 조건은 공고마다 다릅니다.",
+        "cat": "who"
+      },
+      "reserve": {
+        "term": "예비입주자",
+        "short": "당첨자가 계약하지 않거나 부적격일 때 순서대로 계약할 차례가 돌아오는 대기 명단입니다.",
+        "cat": "who"
+      },
+      "ineligible": {
+        "term": "부적격 당첨",
+        "short": "당첨됐지만 서류 검증에서 자격이 맞지 않아 취소되는 경우입니다. 이후 청약이 제한될 수 있습니다.",
+        "cat": "who"
+      },
+      "rewin": {
+        "term": "재당첨 제한",
+        "short": "한 번 당첨된 세대가 일정 기간 다른 청약에 당첨될 수 없게 하는 제한입니다.",
+        "cat": "limits"
+      },
+      "resale_limit": {
+        "term": "전매제한",
+        "short": "당첨 후 정해진 기간 동안 분양권이나 집을 다른 사람에게 팔 수 없는 제한입니다.",
+        "cat": "limits"
+      },
+      "resale_end": {
+        "term": "전매 종료(일)",
+        "short": "전매제한이 끝나 팔 수 있게 되는 날입니다. 이 앱은 당첨자 발표일 + 전매 제한 기간으로 계산합니다(라벨 추정(산술)).",
+        "cat": "limits"
+      },
+      "residency": {
+        "term": "실거주의무(거주의무)",
+        "short": "일부 주택은 입주 후 정해진 기간 동안 직접 살아야 합니다. 기간과 시작 시점은 공고문에서 확인하세요.",
+        "cat": "limits"
+      },
+      "price_cap": {
+        "term": "분양가 상한제",
+        "short": "분양가를 정해진 기준 이하로 묶는 제도입니다. 적용 단지에 붙는 전매·거주 제한은 공고문에서 확인하세요.",
+        "cat": "limits"
+      },
+      "regulated": {
+        "term": "규제지역",
+        "short": "투기과열지구·조정대상지역처럼 청약·대출·전매 규칙이 더 엄격한 지역입니다.",
+        "cat": "limits"
+      },
+      "supply_price": {
+        "term": "공급금액(분양가)",
+        "short": "공고문에 적힌 타입·층별 집값입니다. 발코니 확장비와 옵션은 보통 따로입니다.",
+        "cat": "money"
+      },
+      "basis_type": {
+        "term": "기준 타입",
+        "short": "가격·비교에 쓰는 대표 평형입니다(전용 84㎡에 가장 가까운 타입). 다른 타입은 타입별 가격 탭에 있습니다.",
+        "cat": "money"
+      },
+      "exclusive_area": {
+        "term": "전용면적",
+        "short": "현관 안쪽 우리 집만 쓰는 면적입니다. 84㎡는 흔히 말하는 30평대입니다.",
+        "cat": "money"
+      },
+      "down": {
+        "term": "계약금",
+        "short": "당첨 후 계약할 때 먼저 내는 돈입니다. 보통 분양가의 일정 비율입니다.",
+        "cat": "money"
+      },
+      "interim": {
+        "term": "중도금",
+        "short": "공사 기간에 나눠 내는 돈입니다. 대출로 내는 경우가 많고 조건은 공고문에 있습니다.",
+        "cat": "money"
+      },
+      "balance": {
+        "term": "잔금",
+        "short": "입주할 때 내는 나머지 돈입니다. 이때 대출 한도가 다시 적용돼 현금이 더 필요할 수 있습니다.",
+        "cat": "money"
+      },
+      "ltv": {
+        "term": "LTV",
+        "short": "집값 대비 최대 대출 비율입니다. 지역과 주택 수에 따라 다릅니다.",
+        "cat": "money"
+      },
+      "intake_status": {
+        "term": "접수 상태",
+        "short": "지금 이 단지에 신청할 수 있는지를 공식 자료로 판정기가 분류한 결과입니다(접수 가능·미정·불가·확인 불가).",
+        "cat": "app"
+      },
+      "intake_undecided": {
+        "term": "접수 미정",
+        "short": "공식 일정이 아직 확정되지 않았거나 공개되지 않은 상태입니다.",
+        "cat": "app"
+      },
+      "intake_unknown": {
+        "term": "접수 확인 불가",
+        "short": "공식 자료에서 상태를 찾지 못했다는 뜻입니다. 신청할 수 없다는 뜻이 아닙니다.",
+        "cat": "app"
+      },
+      "current_price": {
+        "term": "현재 구매가",
+        "short": "최저가 층 공급가~최고 공급가에 발코니 확장비와 필수 옵션을 더하고, 공고에 적힌 확인된 할인만 뺀 범위입니다.",
+        "cat": "app"
+      },
+      "equity": {
+        "term": "필요 자기자본",
+        "short": "계약금과 '구매가 − 대출한도' 중 큰 값입니다. 대출한도를 입력한 상황에서만 계산합니다(라벨 추정(산술)).",
+        "cat": "app"
+      },
+      "gap": {
+        "term": "가격 갭",
+        "short": "현재 구매가 가운데값이 같은 생활권 2020년 이후 준공·전용 80~85㎡ 단지의 기준일 전 6개월 실거래 중앙값보다 몇 % 높거나(+) 낮은지(−)입니다. 거래가 3건보다 적으면 대체 단지를 쓰고 라벨이 '추정'이 됩니다.",
+        "cat": "app"
+      },
+      "living_area": {
+        "term": "생활권",
+        "short": "비교 기준으로 묶은 인접 동네 범위입니다. 사용자가 편집할 수 있습니다.",
+        "cat": "app"
+      },
+      "p10": {
+        "term": "가격 +10% 상승 가능성",
+        "short": "목표 시점에 실거래가 현재 구매가보다 10% 이상일 가능성을 판정기가 매긴 값입니다. 목표 시점은 화면에 함께 적습니다. 당첨 확률이 아니고 보장도 아닙니다.",
+        "cat": "app"
+      },
+      "total": {
+        "term": "종합 점수",
+        "short": "여섯 가지 성분을 상황별 가중치로 더한 상대 비교 값입니다.",
+        "cat": "app"
+      },
+      "scenario": {
+        "term": "상황(시나리오)",
+        "short": "가중치를 내 상황(A~D)에 맞춰 바꾼 것입니다. 순위만 바뀌고 사실 값은 그대로입니다.",
+        "cat": "app"
+      },
+      "weight": {
+        "term": "가중치(비중)",
+        "short": "종합 점수를 만들 때 각 항목 점수에 곱하는 비율입니다. 상황마다 다르고 합은 1입니다.",
+        "cat": "app"
+      },
+      "sensitivity": {
+        "term": "민감도",
+        "short": "비중을 조금(10%p) 올리거나 내려 다시 계산해도 순위가 유지되는지 본 것입니다.",
+        "cat": "app"
+      },
+      "judge_scope": {
+        "term": "판정 범위(점수 계산 범위)",
+        "short": "점수를 계산하는 단지인지(판정 대상), 순위만 보는지(참고), 빠졌는지(제외)를 나눈 것입니다. 사유는 같은 줄에 있습니다.",
+        "cat": "app"
+      },
+      "inclusion": {
+        "term": "단지 분류",
+        "short": "민간분양 아파트인지 공공분양·임대·비아파트인지를 판정기가 분류한 결과입니다.",
+        "cat": "app"
+      },
+      "judge": {
+        "term": "판정기",
+        "short": "이 앱이 포함 여부·접수 상태·가격 전망을 분류할 때 쓰는 외부 판정 도구입니다. 판정 기록은 근거 원문 탭에 있습니다.",
+        "cat": "app"
+      }
+    }
   }
 }

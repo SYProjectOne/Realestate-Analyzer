@@ -14,10 +14,28 @@ import {
   type Range,
   type Virtualizer,
 } from '@tanstack/react-virtual';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Link } from 'react-router';
 import type { ComplexRow } from '@/api/types';
-import { Badge, FactCell, IntakeBadge, MetaValue, TieBadge, UnstableBadge } from '@/components';
+import {
+  Badge,
+  FactCell,
+  IntakeBadge,
+  MetaValue,
+  Term,
+  TieBadge,
+  UnstableBadge,
+  type GlossaryKey,
+} from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import {
@@ -55,6 +73,8 @@ type ColumnId =
   | 'land_type'
   | 'units_total'
   | 'down_payment'
+  | 'down_payment_won'
+  | 'competition'
   | 'last_change';
 
 const SORT_OF: Partial<Record<ColumnId, SortKey>> = {
@@ -67,29 +87,80 @@ const SORT_OF: Partial<Record<ColumnId, SortKey>> = {
   total: 'total',
   p10: 'p10',
   last_change: 'last_change',
+  intake: 'intake',
 };
 
-/** 기본으로 숨기는 열(열 선택으로 켠다) */
-const DEFAULT_HIDDEN: VisibilityState = {
+/** 열 제목 옆 용어 ⓘ(R9-UI P6 — 표는 열 제목에만) */
+const TERM_OF: Partial<Record<ColumnId, GlossaryKey>> = {
+  living_area: 'living_area',
+  intake: 'intake_status',
+  price: 'current_price',
+  down_payment: 'down',
+  resale_end: 'resale_end',
+  gap: 'gap',
+  total: 'total',
+  p10: 'p10',
+  inclusion: 'inclusion',
+};
+
+/**
+ * 기본으로 숨기는 열(열 선택으로 켠다) — R9-UI P4(D28-4): 기본 8열(단지·접수·구매가·계약금 비율·전매 종료·입주·가격 갭·종합 점수).
+ * 생활권은 단지 이름 아래 줄로 옮겼고(열은 열 선택으로 켜면 정렬 가능), +10%·단지 분류·택지·총 세대·마지막 변경은 열 선택 1클릭.
+ */
+export const DEFAULT_HIDDEN: VisibilityState = {
+  living_area: false,
+  p10: false,
+  inclusion: false,
+  land_type: false,
+  units_total: false,
+  last_change: false,
+  competition: false,
+  down_payment_won: false,
+};
+
+/** 저장 형식 버전 — 2 = R9-UI 기본 8열 */
+const STORAGE_VERSION = 2;
+/** 버전 없는 예전 저장값의 기본(그 값과 같은 항목은 사용자가 바꾼 것이 아니다) */
+const LEGACY_DEFAULT: VisibilityState = {
   p10: false,
   land_type: false,
   units_total: false,
   down_payment: false,
 };
 
+/**
+ * 저장된 열 선택 읽기. 예전 저장값(버전 없음)은 예전 기본과 다른 항목(= 사용자가 바꾼 열)만 남기고 새 기본을 따른다 —
+ * 예전 기본이 통째로 저장돼 있어 그대로 덮으면 새 기본(계약금 비율 표시·단지 분류 숨김)이 적용되지 않는다.
+ */
+export function readVisibility(raw: string | null): VisibilityState {
+  if (!raw) return DEFAULT_HIDDEN;
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  const out: VisibilityState = { ...DEFAULT_HIDDEN };
+  const legacy = parsed.v !== STORAGE_VERSION;
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key === 'v' || typeof value !== 'boolean') continue;
+    const legacyDefault = LEGACY_DEFAULT[key] ?? true;
+    if (legacy && value === legacyDefault) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
 function loadVisibility(): VisibilityState {
   try {
-    const raw = window.localStorage.getItem(COLUMN_STORAGE_KEY);
-    if (raw) return { ...DEFAULT_HIDDEN, ...(JSON.parse(raw) as VisibilityState) };
+    return readVisibility(window.localStorage.getItem(COLUMN_STORAGE_KEY));
   } catch {
-    // 저장소 없음 → 기본값
+    // 저장소 없음·깨진 값 → 기본값
+    return DEFAULT_HIDDEN;
   }
-  return DEFAULT_HIDDEN;
 }
 
 function saveVisibility(state: VisibilityState): void {
   try {
-    window.localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(
+      COLUMN_STORAGE_KEY,
+      JSON.stringify({ v: STORAGE_VERSION, ...state }),
+    );
   } catch {
     // 무시
   }
@@ -108,6 +179,41 @@ export interface ComplexTableProps {
   maxSelected: number;
   readOnly: boolean;
   linkSearch: string;
+  /**
+   * 창 아래에서 비워 둘 높이(px) — 하단 고정 문구 + 비교 트레이(R9-UI P4: 트레이가 표 마지막 보이는 행을 덮던 결함).
+   * 표 스크롤 영역 높이 = 창 높이 − 표 위치 − 이 값(최소 MIN_TABLE_HEIGHT).
+   */
+  reserveBottom?: number;
+}
+
+/** 표 스크롤 영역 최소 높이(px) */
+const MIN_TABLE_HEIGHT = 320;
+
+/**
+ * 표 스크롤 영역 높이를 창 안에 맞춘다(첫 화면에서 아래 끝이 트레이·고정 문구 위). 값은 표 위치·창 높이에만 기대므로
+ * 행 높이 실측과 되먹임이 없다(R8-JITTER). ResizeObserver 가 없으면(jsdom) 기존 70vh.
+ */
+function useFitHeight(ref: { current: HTMLElement | null }, reserve: number): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setHeight(Math.max(MIN_TABLE_HEIGHT, Math.round(window.innerHeight - top - reserve)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    // 위쪽(필터 펼침·안내)이 바뀌면 표 위치가 바뀐다 — 화면 구역을 본다
+    const host = el.closest('section') ?? document.body;
+    ro.observe(host);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [ref, reserve]);
+  return height;
 }
 
 /** G2 ComplexTable — TanStack Table + 가상 스크롤(react-virtual), 열 선택 저장 */
@@ -122,6 +228,7 @@ export function ComplexTable({
   maxSelected,
   readOnly,
   linkSearch,
+  reserveBottom = 48,
 }: ComplexTableProps) {
   const [visibility, setVisibility] = useState<VisibilityState>(loadVisibility);
   useEffect(() => saveVisibility(visibility), [visibility]);
@@ -152,28 +259,32 @@ export function ComplexTable({
         enableHiding: false,
         header: () => colTitle('name'),
         cell: ({ row }) => (
-          <span className="inline-flex flex-wrap items-center gap-1">
-            <Link
-              to={`/complexes/${row.original.complex_id}${linkSearch}`}
-              className="font-medium hover:underline"
-            >
-              {row.original.name}
-            </Link>
-            {/* 계약 .16 F1(D21-8): 이름 출처 라벨(공고 예정 후보 '비공식') → 출처 서랍. 키가 없으면 그리지 않는다 */}
-            <NameLabelBadge source={row.original} testId={`name-prov-${row.original.complex_id}`} />
+          <span className="inline-flex min-w-36 flex-col">
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <Link
+                to={`/complexes/${row.original.complex_id}${linkSearch}`}
+                className="font-medium hover:underline"
+              >
+                {row.original.name}
+              </Link>
+              {/* 계약 .16 F1(D21-8): 이름 출처 라벨(공고 예정 후보 '비공식') → 출처 서랍. 키가 없으면 그리지 않는다 */}
+              <NameLabelBadge
+                source={row.original}
+                testId={`name-prov-${row.original.complex_id}`}
+              />
+            </span>
+            {/* R9-UI P4: 생활권은 이름 아래 줄(같은 행) */}
+            <span data-testid="name-living-area" className="text-xs text-muted">
+              {row.original.living_area_name ?? enumText('page.common', null)}
+            </span>
           </span>
         ),
-      },
-      {
-        id: 'living_area',
-        header: () => colTitle('living_area'),
-        cell: ({ row }) => row.original.living_area_name ?? enumText('page.common', null),
       },
       {
         id: 'intake',
         header: () => colTitle('intake'),
         cell: ({ row }) => (
-          <IntakeBadge intake={row.original.intake} asof={asof} showPath={false} />
+          <IntakeBadge intake={row.original.intake} asof={asof} showPath={false} reasonBelow />
         ),
       },
       {
@@ -186,6 +297,11 @@ export function ComplexTable({
             <FactCell fact={row.original.price_high} unit="eok" />
           </span>
         ),
+      },
+      {
+        id: 'down_payment',
+        header: () => colTitle('down_payment'),
+        cell: ({ row }) => <FactCell fact={row.original.down_payment_pct} unit="pct" digits={0} />,
       },
       {
         id: 'resale_end',
@@ -219,6 +335,11 @@ export function ComplexTable({
             <RejudgeNeededBadge needed={row.original.rejudge_needed} />
           </span>
         ),
+      },
+      {
+        id: 'living_area',
+        header: () => colTitle('living_area'),
+        cell: ({ row }) => row.original.living_area_name ?? enumText('page.common', null),
       },
       {
         id: 'p10',
@@ -258,9 +379,31 @@ export function ComplexTable({
         cell: ({ row }) => <FactCell fact={row.original.units_total} unit="households" />,
       },
       {
-        id: 'down_payment',
-        header: () => colTitle('down_payment'),
-        cell: ({ row }) => <FactCell fact={row.original.down_payment_pct} unit="pct" digits={0} />,
+        id: 'down_payment_won',
+        header: () => colTitle('down_payment_won'),
+        // 계약 .20 F1: 계약금 원 금액(서버 산술 Fact — P_mid × 계약금 %). 라벨이 길어 기본 숨김(열 선택 1클릭)
+        cell: ({ row }) => (
+          <span data-testid={`down-won-${row.original.complex_id}`}>
+            <FactCell fact={row.original.down_payment_won ?? null} unit="won" />
+          </span>
+        ),
+      },
+      {
+        id: 'competition',
+        header: () => colTitle('competition'),
+        // 계약 .20 F2: 1순위 해당지역 최고 경쟁률(서버 산술)·그 주택형
+        cell: ({ row }) => {
+          const summary = row.original.competition_summary;
+          if (!summary) return <FactCell fact={null} unit="ratio" />;
+          return (
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <FactCell fact={summary.max_ratio} unit="ratio" digits={2} />
+              {summary.max_ratio_type_code ? (
+                <span className="text-xs text-muted">{summary.max_ratio_type_code}</span>
+              ) : null}
+            </span>
+          );
+        },
       },
       {
         id: 'last_change',
@@ -298,6 +441,7 @@ export function ComplexTable({
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fitHeight = useFitHeight(scrollRef, reserveBottom);
   const tableRows = table.getRowModel().rows;
   const rangeExtractor = useHeldRange();
   const virtualizer = useVirtualizer({
@@ -329,6 +473,7 @@ export function ComplexTable({
         ref={scrollRef}
         data-testid="complex-table-scroll"
         className="max-h-[70vh] overflow-auto rounded-sm border border-border bg-surface"
+        style={fitHeight !== null ? { maxHeight: fitHeight } : undefined}
       >
         <table
           aria-label={t('page.G2.table')}
@@ -385,11 +530,13 @@ const TableHead = memo(function TableHead({
         <tr key={group.id} aria-rowindex={1}>
           {group.headers.map((header) => {
             const sortKey = SORT_OF[header.column.id as ColumnId];
+            const term = TERM_OF[header.column.id as ColumnId];
             const title = flexRender(header.column.columnDef.header, header.getContext());
             return (
               <th
                 key={header.id}
                 scope="col"
+                data-col={header.column.id}
                 className="whitespace-nowrap border-b border-border px-2 py-1.5 text-left text-xs font-medium text-muted"
                 aria-sort={sortState(sort, sortKey)}
               >
@@ -403,6 +550,7 @@ const TableHead = memo(function TableHead({
                 ) : (
                   title
                 )}
+                {term ? <Term k={term} className="ml-0.5 align-middle" /> : null}
               </th>
             );
           })}

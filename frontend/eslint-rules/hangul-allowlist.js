@@ -80,6 +80,8 @@ export const CONTRACT_MARKERS = {
   '출처 상충 — compare 대기': 'backend/app/core/protocols.py',
   // 가격 출처 발췌의 단위 근거 줄 표식(계약 .16 F6)
   '[단위 근거] ': 'backend/app/normalize/notice_parser.py',
+  // R9-UI 일정 표시: 체크리스트 '만료' 중 전매제한 종료 항목의 제목 표식(pages/_shared/schedule.ts)
+  전매제한: 'backend/app/normalize/checklist.py',
 };
 
 /** 개발자용 오류 메시지(throw new Error) → frontend/ 기준 파일 */

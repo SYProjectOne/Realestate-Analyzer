@@ -132,7 +132,10 @@ function MarketBody({ market }: { market: Market }) {
                     <MetaText
                       kind="count"
                       k="page.G6.flag"
-                      params={{ name: areaName(flag.living_area), n: flag.sample_n }}
+                      params={{
+                        name: flag.living_area_name ?? areaName(flag.living_area),
+                        n: flag.sample_n,
+                      }}
                     />
                     {flag.no_recent_sale_case ? ` · ${t('page.G6.noRecentSale')}` : ''}
                   </Badge>

@@ -9,11 +9,14 @@ import { provenanceConflict, provenanceScore } from '@/charts/gallery/fixtures';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderWithProviders } from '@/test/render';
+import { t } from '@/i18n';
 import {
+  EmptyState,
   FactCell,
   IntakeBadge,
   JobProgressView,
   LabelBadge,
+  ProvenanceLegend,
   RegionPicker,
   SnapshotPicker,
 } from './index';
@@ -61,6 +64,171 @@ describe('라벨·배지 표시 문자열(계약 fact.json 규칙)', () => {
     );
     expect(screen.getByText('접수 확인 불가(403, 2026-10-07) · 공식 팝업')).toBeInTheDocument();
     expect(screen.getByText('접수 가능 · 사람 확인')).toBeInTheDocument();
+  });
+});
+
+describe('R9-UI P3(D28-2): 라벨 무게 나누기 — 글자는 남고 무게만 바뀐다', () => {
+  const LABEL_CASES = [
+    ['확인됨', false],
+    ['확인됨', true],
+    ['추정', false],
+    ['비공식', false],
+    ['재가공', false],
+    ['확인 불가', false],
+  ] as const;
+
+  it.each(LABEL_CASES)('라벨 %s(사람 확인 %s)는 비어 있지 않은 텍스트를 그린다', (label, human) => {
+    renderWithProviders(<LabelBadge label={label} human={human} reason={null} />);
+    const badge = screen.getByTestId('label-badge');
+    expect(badge.textContent?.trim().length ?? 0).toBeGreaterThan(0);
+  });
+
+  it("'확인됨'만 조용한 글자(data-tone=quiet, 테두리 없음), 나머지는 테두리 배지", () => {
+    renderWithProviders(
+      <>
+        <LabelBadge label="확인됨" />
+        <LabelBadge label="확인됨" human />
+        <LabelBadge label="추정" reason="산술" />
+        <LabelBadge label="비공식" />
+        <LabelBadge label="재가공" />
+        <LabelBadge label="확인 불가" reason="403" />
+      </>,
+    );
+    const badges = screen.getAllByTestId('label-badge');
+    const quiet = badges.filter((b) => b.dataset.tone === 'quiet');
+    expect(quiet).toHaveLength(1);
+    expect(quiet[0]).toHaveTextContent(t('label.confirmed'));
+    expect(quiet[0]?.className).not.toMatch(/\bborder\b/);
+    for (const b of badges.filter((x) => x.dataset.tone !== 'quiet')) {
+      expect(b.dataset.tone).toBe('badge');
+      expect(b.className).toMatch(/\bborder\b/);
+    }
+    // 사람 확인됨은 테두리 배지 그대로(D28-2)
+    expect(screen.getByText('사람 확인됨').dataset.tone).toBe('badge');
+  });
+
+  it('사유가 40자를 넘으면 화면은 줄여 보이고 title 에 전문을 둔다(라벨 글자는 그대로)', () => {
+    const reason = `연수 505·검단 737·계양 0·김포 787·${'가'.repeat(30)} 합`;
+    renderWithProviders(<LabelBadge label="재가공" reason={reason} />);
+    const badge = screen.getByTestId('label-badge');
+    const full = `재가공(${reason})`;
+    expect(badge).toHaveAttribute('title', full);
+    expect(badge.textContent).toBe(t('label.truncated', { text: full.slice(0, 40) }));
+    expect(badge.textContent?.startsWith('재가공(')).toBe(true);
+  });
+
+  it('full 이면(출처 패널) 줄이지 않는다', () => {
+    const reason = '가'.repeat(60);
+    renderWithProviders(<LabelBadge label="추정" reason={reason} full />);
+    expect(screen.getByTestId('label-badge')).toHaveTextContent(`추정(${reason})`);
+  });
+
+  it('출처 범례: 한 줄 안내 + 라벨 뜻(펼침) 6가지', async () => {
+    renderWithProviders(<ProvenanceLegend />);
+    expect(screen.getByText(t('label.legend'))).toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: t('label.legendHelp') });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const list = screen.getByRole('list', { name: t('label.legendHelp') });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(6);
+    for (const key of [
+      'confirmed',
+      'estimated',
+      'unofficial',
+      'reprocessed',
+      'unknown',
+      'human',
+    ] as const) {
+      expect(within(list).getByText(t(`label.help.${key}`))).toBeInTheDocument();
+    }
+    await userEvent.keyboard('{Escape}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+describe('R9-UI P7 원 사유는 title 에(EmptyState·LabelBadge·IntakeBadge, 계약 .20 reason_code)', () => {
+  it('코드로 쉬운 말을 보이고 원 사유는 같은 요소 title', () => {
+    renderWithProviders(
+      <>
+        <LabelBadge
+          label="확인 불가"
+          reason="발코니 표 해석 실패"
+          reasonCode="parse_failed"
+          checkedAt="2026-10-13"
+        />
+        <EmptyState inline reason="미판정" reasonCode="unjudged" checkedAt="2026-10-14" />
+        <IntakeBadge
+          intake={{
+            status: '확인 불가',
+            path: 'headless_shot',
+            checked_at: '2026-10-14',
+            reason: '판정 미해결',
+            reason_code: 'unresolved',
+          }}
+          showPath={false}
+        />
+      </>,
+    );
+    const label = screen.getByTestId('label-badge');
+    expect(label).toHaveTextContent(
+      `확인 불가(${t('empty.reasonPlain.parse_failed')}, 2026-10-13)`,
+    );
+    expect(label.getAttribute('title')).toContain(
+      t('empty.reasonOriginal', { reason: '발코니 표 해석 실패' }),
+    );
+    const empty = screen.getByTestId('empty-state');
+    expect(empty).toHaveTextContent(`확인 불가(${t('empty.reasonPlain.unjudged')}, 2026-10-14)`);
+    expect(empty).toHaveAttribute('title', t('empty.reasonOriginal', { reason: '미판정' }));
+    const intake = screen.getByTestId('intake-badge');
+    expect(intake).toHaveTextContent(t('empty.reasonPlain.unresolved'));
+    expect(intake.getAttribute('title')).toContain(
+      t('empty.reasonOriginal', { reason: '판정 미해결' }),
+    );
+  });
+
+  it('FactCell 은 fact.reason_code 를 넘긴다', () => {
+    renderWithProviders(
+      <FactCell
+        fact={{
+          v: null,
+          label: '확인 불가',
+          reason: '공고 전',
+          reason_code: 'not_published',
+          prov: null,
+          checked_at: null,
+        }}
+      />,
+    );
+    expect(screen.getByTestId('empty-state')).toHaveTextContent(
+      `확인 불가(${t('empty.reasonPlain.pre_notice')})`,
+    );
+  });
+
+  it('출처 패널(full)은 원 사유 그대로', () => {
+    renderWithProviders(
+      <LabelBadge label="확인 불가" reason="미판정" reasonCode="unjudged" full />,
+    );
+    expect(screen.getByTestId('label-badge')).toHaveTextContent('확인 불가(미판정)');
+  });
+
+  it('공급 종류(.20 supply_kind)가 있으면 접수 배지에 함께, 근거 문구는 title', () => {
+    renderWithProviders(
+      <IntakeBadge
+        intake={{
+          status: '가능',
+          path: 'official_popup',
+          checked_at: '2026-10-07',
+          supply_kind: '선착순',
+          supply_kind_basis: "팝업 '선착순 동·호지정 계약 중'",
+        }}
+      />,
+    );
+    const badge = screen.getByTestId('intake-badge');
+    expect(badge).toHaveTextContent(
+      t('intake.withSupply', { status: t('intake.status.가능'), kind: '선착순' }),
+    );
+    expect(badge.getAttribute('title')).toContain("팝업 '선착순 동·호지정 계약 중'");
   });
 });
 

@@ -14,8 +14,12 @@ import {
   formatRank,
   formatRatio,
   formatScore,
+  formatUnknown,
   formatWon,
+  plainReason,
+  unknownTitle,
 } from './format';
+import { t } from '@/i18n';
 
 describe('formatWon (억·만)', () => {
   it.each([
@@ -123,5 +127,53 @@ describe('formatConfidence (R3 minor 27)', () => {
   it('범위 밖·NaN → 확인 불가', () => {
     expect(formatConfidence(1.2)).toBe(formatConfidence(Number.NaN));
     expect(formatConfidence(-0.1)).not.toMatch(/\d/);
+  });
+});
+
+describe('R9-UI P7 확인 불가 사유를 사용자 말로 — 계약 .20 reason_code 기준(30-proposal §8, F3)', () => {
+  it.each([
+    ['parse_failed', '발코니 표 해석 실패', 'empty.reasonPlain.parse_failed'],
+    ['unresolved', '판정 미해결', 'empty.reasonPlain.unresolved'],
+    ['unjudged', '미판정', 'empty.reasonPlain.unjudged'],
+    ['not_entered', '미입력', 'empty.reasonPlain.not_entered'],
+    ['not_published', '공고 전', 'empty.reasonPlain.pre_notice'],
+    ['not_collected', '가점 미수집', 'empty.reasonPlain.not_collected'],
+    [
+      'identity_unconfirmed',
+      '공식 홈페이지 동일성 미확인',
+      'empty.reasonPlain.identity_unconfirmed',
+    ],
+    ['no_sample', '비교군 없음', 'empty.reasonPlain.no_sample'],
+  ] as const)('%s(%s) → 쉬운 말, 원 사유는 title', (code, reason, key) => {
+    expect(plainReason(reason, code)).toEqual({ text: t(key), mapped: true });
+    expect(unknownTitle(reason, code)).toBe(t('empty.reasonOriginal', { reason }));
+  });
+
+  it('수집 실패(fetch_failed)는 짧은 기술 사유를 함께', () => {
+    expect(plainReason('403', 'fetch_failed')).toEqual({
+      text: t('empty.reasonPlain.fetch_failedWith', { reason: '403' }),
+      mapped: true,
+    });
+  });
+
+  it("코드 'other'·코드 없음(옛 저장본)은 서버 사유 그대로 — 문자열로 추측하지 않는다", () => {
+    expect(plainReason('미판정', null)).toEqual({ text: '미판정', mapped: false });
+    expect(plainReason('알 수 없는 사유', 'other')).toEqual({
+      text: '알 수 없는 사유',
+      mapped: false,
+    });
+    expect(unknownTitle('미판정', null)).toBeUndefined();
+    expect(formatUnknown('403', '2026-10-07')).toBe('확인 불가(403, 2026-10-07)');
+  });
+
+  it('D7 형식 "확인 불가(사유, 날짜)"는 그대로, 괄호 안 사유만 바뀐다', () => {
+    expect(formatUnknown('미판정', '2026-10-14', { code: 'unjudged' })).toBe(
+      '확인 불가(점수 계산 전, 2026-10-14)',
+    );
+    // 원 사유 그대로(출처 패널 '라벨' 줄)
+    expect(formatUnknown('미판정', '2026-10-14', { raw: true, code: 'unjudged' })).toBe(
+      '확인 불가(미판정, 2026-10-14)',
+    );
+    expect(formatUnknown(null)).toBe('확인 불가');
   });
 });

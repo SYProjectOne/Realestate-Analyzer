@@ -59,10 +59,15 @@ export function labelItems(data: C08Data): C08LabelItem[] {
   return out;
 }
 
-/** 마커 라벨 = 잔여 세대 · 경쟁률 */
+/** 차트 라벨에 둘 경쟁률 표기의 최대 길이 — 긴 원문(여러 타입 나열)은 표·"표로 보기"에만 둔다(R9-UI P8) */
+const RATIO_LABEL_MAX = 12;
+
+/** 마커 라벨 = 잔여 세대 · 경쟁률(짧은 표기만) */
 export function eventLabel(event: RemainingEvent): string {
   const units = num(event.units);
-  return [units === null ? null : formatCount(units, 'households'), event.ratio_text ?? null]
+  const ratio = event.ratio_text ?? null;
+  const shortRatio = ratio !== null && ratio.length <= RATIO_LABEL_MAX ? ratio : null;
+  return [units === null ? null : formatCount(units, 'households'), shortRatio]
     .filter(Boolean)
     .join(' · ');
 }

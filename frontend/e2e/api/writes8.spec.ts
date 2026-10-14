@@ -71,7 +71,8 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     await expect(row).toContainText('1,000만');
     await expect(row).toContainText(P.G3.price.discountApplied);
     // 서버 composition 에 '− 할인' 표기(확인됨일 때만 low·high 에서 뺐다)
-    await expect(page.getByText(/할인 1,000만/)).toBeVisible();
+    // R9-UI P1: 구성 문구가 머리(내야 할 돈)와 가격 탭 두 곳에 보인다
+    await expect(page.getByTestId('price-composition')).toContainText('할인 1,000만');
     // 타입별 할인 열: 현재 공고 payment_terms.discount_by_type(서버 상세 응답) → 주택형마다 FactCell
     await expect(page.getByRole('columnheader', { name: P.G3.price.discount })).toBeVisible();
     const typeCells = page.locator('[data-testid^="type-discount-"]');
