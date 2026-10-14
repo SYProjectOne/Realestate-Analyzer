@@ -130,7 +130,7 @@ describe('G1 홈 대시보드', () => {
 });
 
 describe('R9-UI P2 G1 다가오는 일정 · TOP 카드 사실 줄(30-proposal §3, 갭 #15·#16)', () => {
-  it('기준일부터 4주 안의 일정(최대 5건)만, 날짜순, D± · 종류 글자 · 접수일 미수집 안내', async () => {
+  it('기준일부터 4주 안의 일정(최대 5건)만, 날짜순, D± · 종류 글자(접수일 미수집 안내 없음 — 계약 .21)', async () => {
     renderRoute('/');
     const box = await screen.findByRole('region', { name: t('page.G1.upcoming.title') });
     const items = await within(box).findAllByRole('listitem');
@@ -145,7 +145,8 @@ describe('R9-UI P2 G1 다가오는 일정 · TOP 카드 사실 줄(30-proposal �
       expect(li.textContent).toMatch(/\(D[+-]\d+\)|D-day/);
       expect(within(li).getByTestId('schedule-kind').textContent?.length ?? 0).toBeGreaterThan(0);
     }
-    expect(within(box).getByText(t('page.G1.upcoming.noApply'))).toBeInTheDocument();
+    // 계약 .21(D29-3): 청약 접수·당첨자 발표가 일정에 들어와 '접수일 미수집' 안내는 없다
+    expect(box).not.toHaveTextContent('청약 접수일은 아직');
     expect(within(box).getByRole('link', { name: t('page.G1.upcoming.all') })).toBeInTheDocument();
   });
 

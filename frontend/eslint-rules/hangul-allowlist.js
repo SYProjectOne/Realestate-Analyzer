@@ -39,6 +39,8 @@ export const CONTRACT_ENUM_VALUES = [
   '공고 예상',
   '계약',
   '사실 재확인',
+  '청약 접수', // 계약 .21(D29-3)
+  '당첨자 발표', // 계약 .21(D29-3)
   // HumanCheck.entered_by
   '운영자',
   '검토자',
