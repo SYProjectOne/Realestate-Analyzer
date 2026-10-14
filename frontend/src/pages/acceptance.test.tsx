@@ -35,7 +35,9 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
   it('G1 /: KPI 타일 5개 · TOP 5 카드 · 최근 변경', async () => {
     renderRoute('/');
     // R9-UI P2: 시스템 지표 5칸 → 지금 접수 가능 카드 + 지역 현황 4칸(3단)
-    expect(await screen.findByRole('region', { name: t('page.G1.openNow.title') })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('region', { name: t('page.G1.openNow.title') }),
+    ).toBeInTheDocument();
     const kpis = await screen.findByRole('list', { name: t('page.G1.region') });
     expect(within(kpis).getAllByRole('listitem')).toHaveLength(4);
     const top5 = screen.getByRole('list', { name: t('page.G1.top5') });
@@ -52,10 +54,10 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
     expect(screen.getByRole('button', { name: t('page.G2.csv') })).toBeEnabled();
   });
 
-  it('G3 /complexes/2: 헤더 접수 배지 + 탭 8개', async () => {
+  it('G3 /complexes/2: 헤더 접수 배지 + 탭 7개(D28-3 판정 기록은 근거 원문 안)', async () => {
     renderRoute('/complexes/2');
     const tablist = await screen.findByRole('tablist', { name: t('page.G3.tabs') });
-    expect(within(tablist).getAllByRole('tab')).toHaveLength(8);
+    expect(within(tablist).getAllByRole('tab')).toHaveLength(7);
     expect(screen.getAllByTestId('intake-badge').length).toBeGreaterThan(0);
   });
 

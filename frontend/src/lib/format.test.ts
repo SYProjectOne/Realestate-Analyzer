@@ -155,7 +155,10 @@ describe('R9-UI P7 확인 불가 사유를 사용자 말로(30-proposal §8)', (
 
   it('D7 형식 "확인 불가(사유, 날짜)"는 그대로, 괄호 안 사유만 바뀐다', () => {
     expect(formatUnknown('미판정', '2026-10-14')).toBe(
-      t('empty.unknownWithReasonDate', { reason: t('empty.reasonPlain.unjudged'), date: '2026-10-14' }),
+      t('empty.unknownWithReasonDate', {
+        reason: t('empty.reasonPlain.unjudged'),
+        date: '2026-10-14',
+      }),
     );
     expect(formatUnknown('미판정', '2026-10-14')).toBe('확인 불가(점수 계산 전, 2026-10-14)');
     // 원 사유 그대로(출처 패널 '라벨' 줄)

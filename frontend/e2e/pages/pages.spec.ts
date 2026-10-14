@@ -66,10 +66,10 @@ test.describe('화면 10개 핵심 요소', () => {
     expect(download.suggestedFilename()).toMatch(/\.csv$/);
   });
 
-  test('G3 단지 상세: 탭 8개(해시) · 원문 하이라이트', async ({ page }) => {
+  test('G3 단지 상세: 탭 7개(해시, D28-3) · 원문 하이라이트', async ({ page }) => {
     await ready(page, '/complexes/2', P.G3.title);
     const tabs = page.getByRole('tablist', { name: P.G3.tabs }).getByRole('tab');
-    await expect(tabs).toHaveCount(8);
+    await expect(tabs).toHaveCount(7);
     await page.getByRole('tab', { name: P.G3.tab.provenance }).click();
     await expect(page).toHaveURL(/#provenance$/);
     await expect(page.getByTestId('raw-text').locator('mark')).toBeVisible();

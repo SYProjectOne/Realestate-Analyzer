@@ -70,9 +70,7 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
   it('블록 순서: 조건 비교 → 점수·판정기 → 가격 갭 → 점수 분해 → 가격 전망 → 상황별 판정 → 민감도', async () => {
     const { container } = renderRoute('/compare?ids=2,7,4&scenario=B');
     await screen.findByRole('table', { name: t('page.G4.grid') });
-    await waitFor(() =>
-      expect(container.querySelector('[data-block="C10"]')).not.toBeNull(),
-    );
+    await waitFor(() => expect(container.querySelector('[data-block="C10"]')).not.toBeNull());
     const order = [...container.querySelectorAll('[data-block]')].map((el) =>
       el.getAttribute('data-block'),
     );
@@ -88,7 +86,8 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
   it('조건 비교 표: 접수·현재 구매가(가격 갭 응답의 Fact 그대로)·전매·계약금 — 라벨·출처 유지', async () => {
     renderRoute('/compare?ids=2,7,4');
     const terms = await screen.findByRole('table', { name: t('page.G4.termsFirst') });
-    const rowOf = (name: string) => within(terms).getByRole('row', { name: new RegExp(`^${name}`) });
+    const rowOf = (name: string) =>
+      within(terms).getByRole('row', { name: new RegExp(`^${name}`) });
     expect(within(rowOf(t('page.G4.row.intake'))).getAllByTestId('intake-badge')).toHaveLength(3);
     const price = rowOf(t('page.G4.term.price'));
     const provs = [...price.querySelectorAll('[data-prov]')];

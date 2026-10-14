@@ -48,12 +48,12 @@ test('G2 단지 리스트: 실제 API 16단지 · 접수 필터', async ({ page 
   expect(failed.map((r) => `${r.status()} ${r.url()}`)).toEqual([]);
 });
 
-test('G3 단지 상세: 실제 API — 탭 8개 · 원문 하이라이트', async ({ page }) => {
+test('G3 단지 상세: 실제 API — 탭 7개(D28-3) · 원문 하이라이트', async ({ page }) => {
   const failed = watchApi(page);
   await ready(page, '/complexes/2', P.G3.title);
   await expect(page.getByText('엘리프 검단 포레듀').first()).toBeVisible();
   const tabs = page.getByRole('tablist', { name: P.G3.tabs }).getByRole('tab');
-  await expect(tabs).toHaveCount(8);
+  await expect(tabs).toHaveCount(7);
   await page.getByRole('tab', { name: P.G3.tab.provenance }).click();
   await expect(page).toHaveURL(/#provenance$/);
   await expect(page.getByTestId('raw-text').locator('mark')).toBeVisible();
