@@ -3,6 +3,7 @@ import { useComplexDetail } from '@/api/hooks';
 import type { ComplexDetail } from '@/api/types';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
+import { useIsMobile } from '@/lib/useMediaQuery';
 import { QueryState, useGlobalSearch, usePageContext } from '../_shared';
 import { ComplexHeader } from './ComplexHeader';
 import { JudgmentsTab } from './JudgmentsTab';
@@ -49,12 +50,32 @@ export function ComplexPage() {
 
 function Detail({ detail }: { detail: ComplexDetail }) {
   const [tab, setTab] = useHashTab(G3_TABS);
+  const isMobile = useIsMobile();
   const panelId = (k: G3Tab) => `g3-panel-${k}`;
   const tabId = (k: G3Tab) => `g3-tab-${k}`;
   return (
     <div className="flex flex-col gap-3">
       <ComplexHeader detail={detail} />
+      {isMobile ? (
+        // R9-UI P1(30-proposal §2-2): 모바일은 잘리는 가로 탭 줄 대신 <select>(키보드·스크린리더 그대로)
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted">{t('page.G3.tabSelect')}</span>
+          <select
+            aria-label={t('page.G3.tabs')}
+            value={tab}
+            onChange={(e) => setTab(e.target.value as G3Tab)}
+            className="rounded-sm border border-border bg-surface px-2 py-1"
+          >
+            {G3_TABS.map((k) => (
+              <option key={k} value={k}>
+                {t(`page.G3.tab.${k}` as TKey)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <div
+        hidden={isMobile}
         role="tablist"
         aria-label={t('page.G3.tabs')}
         className="flex gap-1 overflow-x-auto border-b border-border"
@@ -90,7 +111,13 @@ function Detail({ detail }: { detail: ComplexDetail }) {
         ))}
       </div>
       {/* 활성 탭만 마운트 — 원문(provenance) 탭은 열 때 처음 로드된다(지연 로드) */}
-      <div role="tabpanel" id={panelId(tab)} aria-labelledby={tabId(tab)} tabIndex={0}>
+      <div
+        role="tabpanel"
+        id={panelId(tab)}
+        aria-labelledby={isMobile ? undefined : tabId(tab)}
+        aria-label={isMobile ? t(`page.G3.tab.${tab}` as TKey) : undefined}
+        tabIndex={0}
+      >
         {tab === 'price' ? <PriceTab detail={detail} /> : null}
         {tab === 'payment' ? <PaymentTab detail={detail} /> : null}
         {tab === 'events' ? <EventsTab detail={detail} /> : null}
