@@ -90,6 +90,11 @@ class Complex(Base):
     inclusion_prob: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     inclusion_judgment_seq: Mapped[int | None] = mapped_column(Integer)
     track: Mapped[str | None] = mapped_column(String(1))
+    # 0018(D29-2, R10): 같은 사업의 중복 단지 행(잔여·임의 공고 번호로 따로 생긴 행)이
+    # 병합된 원 단지. NULL = 현재 단지. 병합된 행은 발행 리비전 파생 행(점수·사다리·접수)이
+    # 가리키므로 지우지 않고(D11-1), 새 리비전·수집·체크리스트·목록에서 뺀다
+    # (``app.normalize.merge``)
+    merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("complex.id"))
 
 
 class ComplexType(Base):
