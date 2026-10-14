@@ -183,3 +183,66 @@ describe('D10-3 체크리스트 종류 "사실 재확인"(계약 2026-10-09.6)',
     expect(within(calendar).getByText(t('page.G7.checkKind.사실 재확인'))).toBeInTheDocument();
   });
 });
+
+describe('R9-UI 피드백: G7 캘린더 종류 글자를 쉬운 말로(근거는 둘째 줄·title)', () => {
+  const base: ChecklistItem = {
+    id: 9001,
+    complex_id: 12,
+    complex_name: '두산위브 더센트럴 도화',
+    kind: '만료',
+    title: '전매제한 종료(당첨자 발표일 + 12개월, 산술)',
+    due_date: '2026-12-09',
+    status: 'open',
+    note: null,
+  };
+
+  it("전매제한 종료 '만료' → '전매 가능 시작' + 계산 기준 줄, 다른 '만료'는 '기한 만료', 범례", async () => {
+    server.use(
+      http.get(mswPath('/ops/checklist'), () =>
+        HttpResponse.json([
+          base,
+          {
+            ...base,
+            id: 9002,
+            complex_id: null,
+            complex_name: null,
+            title: '토지거래허가구역 지정 만료',
+          },
+          {
+            ...base,
+            id: 9003,
+            kind: '중도금',
+            title: '중도금 3회차 납부일',
+            due_date: '2027-02-10',
+          },
+          {
+            ...base,
+            id: 9004,
+            kind: '중도금',
+            title: '중도금 3회차 납부일',
+            due_date: '2027-02-10',
+            note: '84B',
+          },
+        ]),
+      ),
+    );
+    renderRoute('/ops');
+    const calendar = await screen.findByRole('list', { name: t('page.G7.calendar') });
+    const resale = within(calendar).getByText(t('page.common.scheduleKind.resaleOpen'));
+    const item = resale.closest('li') as HTMLElement;
+    expect(item).toHaveAttribute('title', base.title);
+    expect(
+      within(item).getByText(
+        t('page.common.scheduleBasis', { basis: '당첨자 발표일 + 12개월, 산술' }),
+      ),
+    ).toBeInTheDocument();
+    expect(within(calendar).getByText(t('page.common.scheduleKind.만료'))).toBeInTheDocument();
+    expect(within(calendar).queryByText(t('page.G7.checkKind.만료'), { exact: true })).toBeNull();
+    // 같은 날 같은 제목 두 줄은 숨기지 않는다 — 구별되는 값(메모)이 있으면 보인다
+    expect(within(calendar).getAllByText(/중도금 3회차 납부일/)).toHaveLength(2);
+    expect(within(calendar).getByText('84B')).toBeInTheDocument();
+    const legend = screen.getByTestId('calendar-legend');
+    expect(legend).toHaveTextContent(t('page.common.scheduleKind.resaleOpen'));
+    expect(legend).toHaveTextContent(t('page.G7.calendarLegend.resaleOpen'));
+  });
+});
