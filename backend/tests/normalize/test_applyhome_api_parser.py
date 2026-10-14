@@ -35,6 +35,14 @@ CMPET_URL = (
     "?page=1&perPage=100&cond%5BHOUSE_MANAGE_NO%3A%3AEQ%5D=2026000367&cond%5BPBLANC_NO%3A%3AEQ%5D=2026000367"
 )
 
+RANK_AREA_KINDS = [
+    "특별공급",
+    "1순위 해당지역",
+    "1순위 기타지역",
+    "2순위 해당지역",
+    "2순위 기타지역",
+]  # R9-PARSE Q3
+
 
 def _parse(name: str, url: str | None = None, source_kind: str = "applyhome_detail") -> list[FieldCandidate]:
     text = (API / name).read_text(encoding="utf-8")
@@ -67,7 +75,9 @@ def test_apt_detail_and_model_fields() -> None:
     assert cx[(k, "move_in_ym")] == "2031-01"
     assert json.loads(str(cx[(k, "contract_dates")])) == [{"from": "2026-09-01", "to": "2026-09-04"}]
     applies = json.loads(str(cx[(k, "apply_dates")]))
-    assert [a["kind"] for a in applies] == ["특별공급", "1순위", "2순위"]
+    # R9-PARSE Q3: 순위 × 거주지역마다 시작·끝(예전 '1순위'·'2순위' 시작일만)
+    assert [a["kind"] for a in applies] == RANK_AREA_KINDS
+    assert applies[0] == {"kind": "특별공급", "start": "2026-08-10", "end": "2026-08-10"}
     assert (cx[(k, "builder")], cx[(k, "housing_type")]) == ("(주)대우건설", "민영")
     types = _vals(c, "complex_type")
     assert any(
@@ -95,8 +105,9 @@ def test_api_matches_web_detail_for_same_complex() -> None:
         )
         a = {(c.entity, str(c.entity_key), c.field): c.value for c in api}
         w = {(c.entity, str(c.entity_key), c.field): c.value for c in web}
-        # 웹 잔여세대 화면은 청약 일정 이름이 달라(파서가 안 냄) 비교에서 뺀다
-        common = (a.keys() & w.keys()) - {("complex", hm, "apply_dates")}
+        # R9-PARSE Q3: 청약 일정(apply_dates)도 같은 값 — 웹 잔여세대 화면의 '청약접수' 칸도 읽는다
+        common = a.keys() & w.keys()
+        assert ("complex", hm, "apply_dates") in common, hm
         diff = {k: (a[k], w[k]) for k in common if a[k] != w[k]}
         assert len(common) >= 5, (hm, sorted(w))
         assert not diff, (hm, diff)

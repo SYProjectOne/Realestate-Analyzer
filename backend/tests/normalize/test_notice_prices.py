@@ -123,6 +123,10 @@ def test_every_candidate_has_excerpt_offsets_inside_text() -> None:
             assert c.excerpt.strip(), (fname, c.field)
             assert c.excerpt_start is not None and c.excerpt_end is not None
             assert text[c.excerpt_start : c.excerpt_end].strip() == c.excerpt
+            # R9-PARSE Q2: 표 머리에서 바로 못 읽은 잔금 비율만 산술(100 − 계약금 − 중도금) '추정'
+            if c.label == "추정":
+                assert (c.field, c.reason) == ("balance_pct", "산술(100-계약금-중도금)"), (fname, c.field)
+                continue
             assert c.label in ("확인됨", "확인 불가")
             assert c.url and c.checked_at == "2026-10-09"
             if c.label == "확인 불가":

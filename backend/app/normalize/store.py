@@ -82,10 +82,12 @@ from app.normalize.fields import (
     AUDIT_FLAG_REASON,
     CONFLICT_HOLD,
     DECIMAL_FIELDS,
+    EXPLICIT_NULL_FIELDS,
     EXTRACT_REASON,
     INT_FIELDS,
     JSON_FIELDS,
     PRIMARY_SOURCES,
+    QUIET_FIRST_FIELDS,
     compare_mark,
     is_price_amount,
     norm_value,
@@ -270,6 +272,15 @@ class _Binder:
             stmt = stmt.where(Complex.region_id == region_id)
         cx = self.s.scalars(stmt).first()
         cites = create and _cites_original(raw, batch, key)
+        if cx is not None and region_id is not None and not cites and _is_remainder_notice(raw, batch, key):
+            # R9-PARSE(G7 캘린더 중복): 인용을 못 읽던 때 잔여 공고 번호로 생긴 단지 행(같은 사업의 두 번째 행)이 있어도, 지금
+            # 그 번호가 다른 단지(원 단지)의 납부 조건 공고번호로 묶여 있으면(D18-4 인용) 그 원 단지에 쓴다. 남은 옛 행은
+            # ``absorbed_remnant_rows`` 로 체크리스트에서 빠진다
+            owner = self._absorbing_original(key, region_id)
+            if owner is not None:
+                cx = owner
+                self.merged.add(key)
+                self.links.setdefault(key, owner.id)
         if cx is not None and cites:
             # R3 4차 M-8: 잔여 공고 PDF 가 '최초 주택관리번호'로 원 단지를 가리킨다 — 그 공고의 단지 단위 값(이름 '(임의공급
             # 4차)'·남은 세대수·전매·거주·규제)은 원 단지를 덮지 않는다(D11-4, payment_terms·competition 에만 기록).
@@ -391,6 +402,26 @@ class _Binder:
             )
         )
         return cx
+
+    def _absorbing_original(self, key: str, region_id: int) -> Complex | None:
+        """잔여 공고 번호 ``key`` 를 납부 조건 공고번호로 가진 같은 지역의 **다른** 단지(applyhome_id ≠ key)가 정확히 1개면 그 행
+        (연결 ``links`` 가 먼저). 표 조회뿐이다(판단 아님)."""
+        cid = self.links.get(key)
+        cand = self.s.get(Complex, cid) if cid is not None else None
+        if cand is not None and cand.region_id == region_id and cand.applyhome_id != key:
+            return cand
+        ids = set(
+            self.s.scalars(
+                select(Complex.id)
+                .join(PaymentTerms, PaymentTerms.complex_id == Complex.id)
+                .where(
+                    PaymentTerms.notice_no == key,
+                    Complex.region_id == region_id,
+                    Complex.applyhome_id.is_distinct_from(key),
+                )
+            )
+        )
+        return self.s.get(Complex, ids.pop()) if len(ids) == 1 else None
 
     def _remnant_target(
         self, key: str, region_id: int, batch: list[FieldCandidate], *, create: bool
@@ -956,7 +987,9 @@ def write_chosen(
         held = c.value is None and c.reason == CONFLICT_HOLD
         if model is None or c.entity_id is None:
             continue
-        if (c.value is None or c.label == "확인 불가") and not held:
+        # R9-PARSE Q2: 원문이 '설명 없음'을 확인한 텍스트 필드(값 없음 + 라벨 확인됨)는 옛 값을 지운다 — '확인 불가'(못 읽음)와 다르다
+        cleared = c.value is None and c.label != "확인 불가" and (c.entity, c.field) in EXPLICIT_NULL_FIELDS
+        if (c.value is None or c.label == "확인 불가") and not held and not cleared:
             continue
         obj = session.get(model, c.entity_id)
         if obj is None:
@@ -996,7 +1029,9 @@ def write_chosen(
         old_v = getattr(obj, c.field)
         if changes.fmt_value(old_v) == changes.fmt_value(new):
             continue
-        initial = (c.entity, c.entity_id) in created
+        initial = (c.entity, c.entity_id) in created or (
+            old_v is None and (c.entity, c.field) in QUIET_FIRST_FIELDS
+        )
         if c.entity == "complex" and c.field == "name" and old_v and not initial:
             names = list(obj.former_names or [])
             if old_v not in names:

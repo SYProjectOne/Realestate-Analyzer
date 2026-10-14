@@ -15,6 +15,10 @@
   원이 아닌 단위로 환산한 가격 후보는 출처 발췌에 그 단위 줄을 덧붙인다(단위 근거). 단위가 없으면 원으로 보고 reason
   ``UNIT_ASSUMED``('단위 표기 없음 — 원으로 봄') — 다른 1차 출처와 10배 이상 다르면 resolver 가 compare 로 보낸다
 - 발코니 확장 금액 표, 중도금 이자 조건 문장, 선택품목 문장, 입주시기, 공급위치·공급규모
+- 납부 표 머리가 줄로 갈라진 표(R9-PARSE Q2, 실제 공고 '계약금(5%) 중도금 (60%) / 잔금 / 분양가격 1회 … 6회 / 계약금1차 계약금2차
+  (35%) / 10% … 10%'): 회차 머리 줄 + 비율 줄로 중도금 회차를 읽고(비율 합 = 중도금 비율일 때만), '계약금2차 (35%)'는 회차가
+  아니다. 잔금 비율을 표 머리에서 바로 못 읽으면 100 − 계약금 − 중도금(라벨 '추정', 사유 ``BALANCE_DERIVED_REASON``).
+- '대표 층'(floor_sample_*) = 그 타입 공급금액 표의 **최저 공급금액 행**(구매가 범위 아래 끝 — RA §6-1). 1층이 많은 것은 정의대로다
 
 규칙(app.core.protocols.Parser)
 - 모든 후보에 원문 발췌(줄 단위)와 오프셋을 붙인다. 금액은 원 단위 정수, 면적 ㎡ 소수 2자리, 날짜 ISO.
@@ -71,6 +75,7 @@ from app.normalize._text import (
     stamp_observed_on,
 )
 from app.normalize.fields import (
+    BALANCE_DERIVED_REASON,
     OCR_LABEL,
     OCR_REASON,
     UNIT_ASSUMED,
@@ -115,7 +120,9 @@ _KIND_WORD_RE = re.compile(r"임의\s*공급|무순위|선착순|계약\s*취소
 _NO_PAT = r"(\d{4})\s*[-‐‑–—]?\s*(\d{6})(?!\d)"
 # 원 공고 인용: '최초 주택관리번호는 …' 과 변형 '최초 입주자모집공고일은 2023.09.25(월요일)이며, 주택관리번호는 …'(같은 줄 —
 # R4 3차 N12, D22-4). '최초' 가 없는 '… 입주자모집공고일은 …, 주택관리번호는 …' 은 이 공고 자기 번호다
-_ORIG_NO_RE = re.compile(r"최초\s*(?:입주자\s*모집\s*공고[^\n]{0,80}?)?주택관리번호는\s*" + _NO_PAT)
+# R9-PARSE(G7 캘린더 중복): 조사 없는 변형 '… 최초 입주자모집공고일 주택관리번호 2025-000397으로 각각 상이함으로 …'도 인용이다 —
+# 못 읽어 임의공급 번호(2025940268)로 같은 사업의 단지 행이 하나 더 생겼고 중도금 일정이 캘린더에 두 번 나왔다
+_ORIG_NO_RE = re.compile(r"최초\s*(?:입주자\s*모집\s*공고[^\n]{0,80}?)?주택관리번호(?:는|은)?\s*" + _NO_PAT)
 _THIS_NO_RE = re.compile(r"주택관리번호는\s*" + _NO_PAT)
 
 
@@ -140,7 +147,13 @@ _SPECIAL_RE = re.compile(r"\[\s*특별공급\s*([\d,]+)\s*세대")
 _DP_RE = re.compile(r"계약금\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?")
 _INTERIM_RE = re.compile(r"중도금\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?")
 _BALANCE_RE = re.compile(r"잔금\s*\(?\s*(\d+(?:\.\d+)?)\s*%\s*\)?")
-_INSTALL_RE = re.compile(r"(\d)\s*(?:회|차)\s*\(\s*(\d+(?:\.\d+)?)\s*%\s*\)")
+# 중도금 회차 '1회(10%)'·'1차(10%)'. '계약금2차 (35%)'(R9-PARSE Q2: 계약금 분납 열 머리 + 다음 열 머리 '잔금 (35%)'가 한 줄로
+# 붙은 표)는 중도금 회차가 아니다 — 계약금 바로 뒤 회차 표기는 읽지 않는다
+_INSTALL_RE = re.compile(r"(?<!계약금)(?<!계약금 )(\d)\s*(?:회|차)\s*\(\s*(\d+(?:\.\d+)?)\s*%\s*\)")
+# 비율이 따로 줄에 있는 표(R9-PARSE Q2): 회차 머리 '1회 2회 … 6회' 줄 + 비율 줄 '10% 10% …'·'(10%) (10%) …'
+_SEQ_TOKEN_RE = re.compile(r"(?<!계약금)(?<!계약금 )(?<![\d가-힣])(\d{1,2})\s*(?:회|차)(?!\s*\(\s*\d)")
+_PCT_TOKEN_RE = re.compile(r"(?<![\d.])(\d+(?:\.\d+)?)\s*%")
+
 _DATE_TOKEN_RE = re.compile(r"(?<![\d.])(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}|\d{2}\.\d{1,2}\.\d{1,2})\.?(?![\d])")
 _INTEREST_RE = re.compile(r"^.*중도금.*(?:이자후불|무이자|이자\s*대납|이자를\s*대납).*$", re.M)
 _OPTIONS_RE = re.compile(r"^.*선택\s*품목.*(?:미포함|포함되지|포함되어\s*있지).*$", re.M)
@@ -1052,8 +1065,18 @@ def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: 
         return
     dp = float(dpm.group(1))
     b.add("payment_terms", key, "down_payment_pct", dp, dpm.group(0), dpm.span())
+    rest = 100.0 - dp - float(itm.group(1)) if itm is not None else None
     if blm is not None:
         b.add("payment_terms", key, "balance_pct", float(blm.group(1)), blm.group(0), blm.span())
+    elif rest is not None and itm is not None and 0 < rest < 100 and re.search("잔금", text[hs:he]):
+        # R9-PARSE Q2: '잔금' 열 머리와 비율('(35%)')이 다른 줄로 갈라진 표 — 표 머리에서 잔금 비율을 바로 읽지 못하면
+        # 계약금·중도금 비율의 나머지(산술)를 '추정'(사유 산술) 값으로 낸다. 판정기 extract 요청은 그대로 남긴다(needs_extract,
+        # 발췌 = 표 머리 — 예전 '확인 불가' 후보와 같은 요청·같은 캐시 키): 판정기가 원문에서 읽어 '확인됨'으로 채택하면 그 행이
+        # 이 산술 값을 대신한다(OCR 판독 후보와 같은 규칙 — ``fields.is_provisional``·``resolver``·``judged.apply_extracted``)
+        b.add(
+            "payment_terms", key, "balance_pct", round(rest, 2), f"{rest:g}%", head,
+            label="추정", reason=BALANCE_DERIVED_REASON, needs_extract=True,
+        )  # fmt: skip
     else:
         b.missing("payment_terms", key, "balance_pct", head, reason="잔금 비율 표기 해석 실패")
     no_interim = itm is None and blm is not None and dp + float(blm.group(1)) == 100.0
@@ -1100,6 +1123,8 @@ def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: 
     # 중도금 회차·날짜
     installs = [(int(m.group(1)), float(m.group(2))) for m in _INSTALL_RE.finditer(text, hs, he)]
     installs = sorted(dict(installs).items())
+    if not installs and itm is not None:
+        installs = _split_installments(text, hs, he, float(itm.group(1)))
     dates = [m for m in _DATE_TOKEN_RE.finditer(text, hs, he)]
     if installs and len(dates) >= len(installs):
         use = dates[len(dates) - len(installs) :]
@@ -1126,6 +1151,31 @@ def _payment_terms(ctx: _Ctx, head: tuple[int, int], rows: list[PriceRow], key: 
     if im:
         line = _BULLET_RE.sub("", im.group(0)).strip()
         b.add("payment_terms", key, "interim_terms_text", line, line, im.span())
+
+
+def _split_installments(text: str, hs: int, he: int, interim_pct: float) -> list[tuple[int, float]]:
+    """회차 머리와 비율이 다른 줄에 있는 표(R9-PARSE Q2) → [(회차, 비율)]. 못 읽으면 [].
+
+    회차 머리 = 표 머리 안 '1회 2회 … k회'(1부터 연속, k ≥ 2 — 계약금 분납 '계약금1차'는 빼고) 줄. 비율 = 그 뒤 줄 중 '%' 표기가
+    정확히 k개이고 계약금·중도금·잔금 낱말이 없는 첫 줄. 비율 합이 중도금 비율과 같을 때만 낸다(표를 읽는 규칙 — 추측 아님)."""
+    lines = _line_spans(text, hs, he)
+    for i, (ls, le) in enumerate(lines):
+        seqs = [int(m.group(1)) for m in _SEQ_TOKEN_RE.finditer(text, ls, le)]
+        k = len(seqs)
+        if k < 2 or seqs != list(range(1, k + 1)):
+            continue
+        for ps, pe in lines[i + 1 :]:
+            row = text[ps:pe]
+            if re.search("계약금|중도금|잔금", row):
+                continue
+            pcts = [float(m.group(1)) for m in _PCT_TOKEN_RE.finditer(row)]
+            if len(pcts) != k:
+                continue
+            if abs(sum(pcts) - interim_pct) > 1e-6:
+                return []
+            return list(zip(seqs, pcts, strict=True))
+        return []
+    return []
 
 
 # ---------------------------------------------------------------- 발코니·옵션
@@ -1250,8 +1300,10 @@ def _options(ctx: _Ctx) -> None:
         if m:
             line = _BULLET_RE.sub("", m.group(0)).strip()
             b.add("complex_type", tkey, "options_required_won", 0, line, m.span())
-            # 옵션 설명 원문(RA complex_type.options_text — R3 3차 RA 부분): 선택품목 안내 문장 그대로
-            b.add("complex_type", tkey, "options_text", line[:500], line[:500], m.span())
+            # 옵션 설명(RA complex_type.options_text)은 **필수 옵션의 설명**이다. '추가 선택품목 비용 미포함' 고지문은 필수 옵션이
+            # 없다는 근거(위 0원 후보의 발췌)일 뿐 옵션 설명이 아니다 — R9-PARSE Q2: 가격표 '필수 옵션' 칸에 고지문 전문이 타입마다
+            # 반복됐다. 설명 없음(null)으로 낸다(옛 저장 값을 지우도록 후보는 낸다)
+            b.add("complex_type", tkey, "options_text", None, None, m.span())
         else:
             b.missing(
                 "complex_type", tkey, "options_required_won", ctx.head_span, reason="선택품목 문장 없음"

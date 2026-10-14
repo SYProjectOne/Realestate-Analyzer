@@ -7,7 +7,8 @@ source_kind 는 HTML 과 같다(``applyhome_list``·``applyhome_detail``) — �
   수집기가 공고 1건 조회(상세)로 다시 받아 그 원문이 후보를 낸다(목록에서 단지 행을 만들지 않기 위해).
 - ``…LttotPblancDetail``(APT·잔여세대·임의공급 상세): complex — name·address·units_total·housing_type·
   builder·developer·notice_date·winner_date·move_in_ym·contract_dates·apply_dates·official_site_url(HMPG_ADRES,
-  ``_text.normalize_site_url``).
+  ``_text.normalize_site_url``). apply_dates(R9-PARSE Q3) = ``[{kind, start, end}]`` — kind 는 ``APPLY_KINDS``(특별공급,
+  1·2순위 × 해당지역·기타경기·기타지역, 일반공급, 잔여·임의 '청약접수'), 웹 상세와 같은 값(``apply_items``).
 - ``…LttotPblancMdl``(주택형별): complex_type — area_m2·notice_type_code·units(일반+특별)·max_price_won(만원),
   complex — units_general·units_special(페이지에 모든 주택형이 있을 때만 합계).
 - ``…LttotPblancCmpet``(경쟁률): competition — supply·applied·ratio_or_shortfall_text.
@@ -19,13 +20,15 @@ observed_on = 모집공고일(상세 원문의 RCRIT_PBLANC_DE). 주택형·경�
 발췌 = 원문 JSON 의 ``"필드":값`` 조각, 오프셋은 원문 텍스트 위치.
 """
 
+# ruff: noqa: E501  (한국어 docstring)
+
 from __future__ import annotations
 
 import json
 import re
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 from urllib.parse import urlsplit
 
 from app.core.contracts_gen import FieldCandidate, RawDocument
@@ -40,7 +43,15 @@ from app.normalize._text import (
     stamp_observed_on,
 )
 
-__all__ = ["API_HOST", "ApplyhomeApiParser", "is_api_document", "parse_applyhome_api_json"]
+__all__ = [
+    "API_HOST",
+    "APPLY_KINDS",
+    "ApplyhomeApiParser",
+    "apply_items",
+    "apply_text",
+    "is_api_document",
+    "parse_applyhome_api_json",
+]
 
 API_HOST = "api.odcloud.kr"
 _YM_RE = re.compile(r"^(\d{4})(\d{2})$")
@@ -162,6 +173,52 @@ def _int(v: Any) -> int | None:
     return int(s) if s.isdigit() else None
 
 
+APPLY_KINDS: Final = (
+    "특별공급",
+    "1순위 해당지역",
+    "1순위 기타경기",
+    "1순위 기타지역",
+    "2순위 해당지역",
+    "2순위 기타경기",
+    "2순위 기타지역",
+    "일반공급",
+    "청약접수",
+)
+"""complex.apply_dates 의 접수 구분(kind) 순서(R9-PARSE Q3). 계약 ScheduleItem.kind = 원문 구분."""
+_APPLY_API_FIELDS: Final = (
+    ("특별공급", "SPSPLY_RCEPT_BGNDE", "SPSPLY_RCEPT_ENDDE"),
+    ("1순위 해당지역", "GNRL_RNK1_CRSPAREA_RCPTDE", "GNRL_RNK1_CRSPAREA_ENDDE"),
+    ("1순위 기타경기", "GNRL_RNK1_ETC_GG_RCPTDE", "GNRL_RNK1_ETC_GG_ENDDE"),
+    ("1순위 기타지역", "GNRL_RNK1_ETC_AREA_RCPTDE", "GNRL_RNK1_ETC_AREA_ENDDE"),
+    ("2순위 해당지역", "GNRL_RNK2_CRSPAREA_RCPTDE", "GNRL_RNK2_CRSPAREA_ENDDE"),
+    ("2순위 기타경기", "GNRL_RNK2_ETC_GG_RCPTDE", "GNRL_RNK2_ETC_GG_ENDDE"),
+    ("2순위 기타지역", "GNRL_RNK2_ETC_AREA_RCPTDE", "GNRL_RNK2_ETC_AREA_ENDDE"),
+    ("일반공급", "GNRL_RCEPT_BGNDE", "GNRL_RCEPT_ENDDE"),
+    ("청약접수", "SUBSCRPT_RCEPT_BGNDE", "SUBSCRPT_RCEPT_ENDDE"),
+)
+
+
+def apply_items(found: dict[str, tuple[str, str]]) -> list[dict[str, str]]:
+    """{접수 구분: (시작, 끝)} → apply_dates 저장 모양 ``[{kind, start, end}]``(``APPLY_KINDS`` 순서, ISO 날짜).
+
+    API 원문과 웹 상세 원문이 같은 일정이면 같은 값(JSON)을 내도록 순서·모양을 한곳에서 정한다."""
+    order = {k: i for i, k in enumerate(APPLY_KINDS)}
+    if len(found) > 1:
+        # '청약접수'(SUBSCRPT_RCEPT)는 전체 접수 기간 — 구분별 일정(특별공급·일반공급 등)이 있으면 겹치는 값이라 뺀다(웹 상세에 없는 행)
+        found = {k: v for k, v in found.items() if k != "청약접수"}
+    return [
+        {"kind": k, "start": found[k][0], "end": max(found[k])}
+        for k in sorted(found, key=lambda k: (order.get(k, len(order)), k))
+    ]
+
+
+def apply_text(items: list[dict[str, str]]) -> str:
+    """apply_dates 값 표기(value_text): '특별공급 2025-12-01; 1순위 해당지역 2025-12-02 ~ 2025-12-03'."""
+    return "; ".join(
+        f"{a['kind']} {a['start']}" + (f" ~ {a['end']}" if a["end"] != a["start"] else "") for a in items
+    )
+
+
 def _iso(v: Any) -> str | None:
     s = _str(v)
     if s is None:
@@ -267,27 +324,18 @@ def _detail_row(text: str, b: CandidateBuilder, row: dict[str, Any], span: tuple
     if c_from:
         val = [{"from": c_from, "to": c_to or c_from}]
         add("contract_dates", "CNTRCT_CNCLS_BGNDE", canonical_json(val), f"{c_from} ~ {c_to or c_from}")
-    # 청약 일정: 웹 상세와 같은 종류 이름(특별공급·1순위·2순위), 잔여세대·임의공급은 '청약접수'
-    applies: list[dict[str, str]] = []
+    # 청약 일정(R9-PARSE Q3): 접수 구분마다 시작·끝 — 특별공급, 1·2순위 × 해당지역·기타경기·기타지역, 잔여세대·임의공급은
+    # '청약접수'. 웹 상세(``applyhome_parser._schedule``)와 같은 종류 이름·같은 모양(``apply_items``)이라 두 원문이 같은 값을 낸다
+    found: dict[str, tuple[str, str]] = {}
     first_field: str | None = None
-    for kind, name in (
-        ("특별공급", "SPSPLY_RCEPT_BGNDE"),
-        ("1순위", "GNRL_RNK1_CRSPAREA_RCPTDE"),
-        ("2순위", "GNRL_RNK2_CRSPAREA_RCPTDE"),
-        ("일반공급", "GNRL_RCEPT_BGNDE"),
-        ("청약접수", "SUBSCRPT_RCEPT_BGNDE"),
-    ):
-        d = _iso(row.get(name))
+    for kind, start_name, end_name in _APPLY_API_FIELDS:
+        d = _iso(row.get(start_name))
         if d:
-            applies.append({"kind": kind, "date": d})
-            first_field = first_field or name
+            found[kind] = (d, _iso(row.get(end_name)) or d)
+            first_field = first_field or start_name
+    applies = apply_items(found)
     if applies and first_field:
-        add(
-            "apply_dates",
-            first_field,
-            canonical_json(applies),
-            "; ".join(f"{a['kind']} {a['date']}" for a in applies),
-        )
+        add("apply_dates", first_field, canonical_json(applies), apply_text(applies))
 
 
 def _model(text: str, b: CandidateBuilder) -> None:

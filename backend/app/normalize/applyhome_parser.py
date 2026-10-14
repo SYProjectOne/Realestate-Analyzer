@@ -4,7 +4,7 @@
 - applyhome_detail(상세 팝업 ``selectAPTLttotPblancDetail``): 주요정보·청약일정·공급대상·
   공급금액(최고가, 만원)·입주예정월·시행사/시공사·홈페이지(당첨자 발표 칸 링크 → official_site_url)
 - applyhome_detail(경쟁률 팝업 ``selectAPTCompetitionPopup``): 주택형·공급세대수·순위·지역·
-  접수건수·경쟁률(미달)
+  접수건수·경쟁률(미달), 당첨가점 최저·최고·평균(R9-PARSE Q4 — competition.winning_score_*, 회차 '1순위 <거주지역>' 행)
 
 source_rank는 RA §3 표(app.normalize.fields): 세대수·면적·일정·경쟁률은 청약홈 1, 가격은 청약홈 2.
 청약홈 상세 화면에는 층별 가격이 없으므로 가격은 '최고가 기준' 하나만 낸다(max_price_won).
@@ -13,6 +13,8 @@ observed_on = 그 단지의 모집공고일(계약 2026-10-09.2).
 
 같은 source_kind 의 청약홈 공식 API JSON(호스트 api.odcloud.kr)은 ``applyhome_api_parser`` 로 넘긴다.
 """
+
+# ruff: noqa: E501  (한국어 docstring)
 
 from __future__ import annotations
 
@@ -34,7 +36,13 @@ from app.normalize._text import (
     read_raw_text,
     stamp_observed_on,
 )
-from app.normalize.applyhome_api_parser import is_api_document, parse_applyhome_api_json
+from app.normalize.applyhome_api_parser import (
+    apply_items,
+    apply_text,
+    is_api_document,
+    parse_applyhome_api_json,
+)
+from app.normalize.fields import WINNING_SCORE_FIELDS
 
 __all__ = ["ApplyhomeParser", "parse_applyhome_html"]
 
@@ -240,17 +248,39 @@ def _detail(soup: BeautifulSoup, b: CandidateBuilder, pos: _Pos, raw: RawDocumen
                     b.add("complex", key, field, v, v, pos.span(row), excerpt=f"{h} {v}")
 
 
+_AREA_HEADS = ("해당지역", "기타경기", "기타지역")
+
+
 def _schedule(tbl: Tag, b: CandidateBuilder, pos: _Pos, key: str) -> None:
-    applies: list[dict[str, str]] = []
+    """청약일정 표. 접수 일정(R9-PARSE Q3)은 API 원문과 같은 모양(``apply_items``): 특별공급 = 지역 칸 전체의 처음~끝,
+    1·2순위 = 지역 칸(머리 '해당지역'·'기타경기'·'기타지역')마다 처음~끝, 잔여세대·임의공급 '청약접수' 한 칸 = 처음~끝."""
+    found: dict[str, tuple[str, str]] = {}
     apply_span: tuple[int, int] | None = None
     apply_ex: list[str] = []
+    areas: list[str] = []
     for tr in tbl.find_all("tr"):
         cells = _cells(tr)
         if not cells:
             continue
-        head = _txt(cells[0])
+        texts = [_txt(c) for c in cells]
+        if "구분" in texts:  # 접수 표 머리: '구분 해당지역 [기타경기] 기타지역 접수장소'
+            i = texts.index("구분")
+            areas = texts[i + 1 :]
+            continue
+        head = texts[0]
+        if head == "청약접수" and len(cells) == 2:  # 잔여세대·임의공급: 칸 하나에 기간
+            dates = _DATE_ISO_RE.findall(texts[1])
+            if dates:
+                found["청약접수"] = (dates[0], dates[-1])
+                apply_ex.append(" ".join(texts))
+                span = pos.span(tr)
+                apply_span = (apply_span[0], span[1]) if apply_span else span
+            continue
+        if head == "청약접수" and len(cells) > 2:
+            cells, texts = cells[1:], texts[1:]  # 첫 접수 행에 rowspan 머리가 붙은 경우
+            head = texts[0]
         span = pos.span(tr)
-        ex = " ".join(_txt(c) for c in cells)
+        ex = " ".join(texts)
         if head == "모집공고일" and len(cells) > 1:
             d = parse_date(_txt(cells[1]))
             if d:
@@ -274,19 +304,31 @@ def _schedule(tbl: Tag, b: CandidateBuilder, pos: _Pos, key: str) -> None:
             if dates:
                 val = [{"from": dates[0], "to": dates[-1]}]
                 b.add("complex", key, "contract_dates", canonical_json(val), _txt(cells[1]), span, excerpt=ex)
-        elif head in ("특별공급", "1순위", "2순위") and len(cells) > 1:
-            dates = _DATE_ISO_RE.findall(_txt(cells[1]))
-            if dates:
-                applies.append({"kind": head, "date": dates[0]})
+        elif head in ("특별공급", "일반공급", "1순위", "2순위") and len(cells) > 1:
+            per_area = [
+                (areas[i] if i < len(areas) else "", _DATE_ISO_RE.findall(t)) for i, t in enumerate(texts[1:])
+            ]
+            if head in ("특별공급", "일반공급"):
+                every = sorted(d for _, ds in per_area for d in ds)
+                if every:
+                    found[head] = (every[0], every[-1])
+            else:
+                for area, ds in per_area:
+                    if ds and area in _AREA_HEADS:
+                        found[f"{head} {area}"] = (ds[0], ds[-1])
+                    elif ds and not areas:  # 머리 행이 없는 옛 표: 첫 칸 = 해당지역
+                        found.setdefault(f"{head} 해당지역", (ds[0], ds[-1]))
+            if any(ds for _, ds in per_area):
                 apply_ex.append(ex)
                 apply_span = (apply_span[0], span[1]) if apply_span else span
+    applies = apply_items(found)
     if applies and apply_span:
         b.add(
             "complex",
             key,
             "apply_dates",
             canonical_json(applies),
-            "; ".join(f"{a['kind']} {a['date']}" for a in applies),
+            apply_text(applies),
             apply_span,
             excerpt=" / ".join(apply_ex),
         )
@@ -344,3 +386,29 @@ def _competition(soup: BeautifulSoup, b: CandidateBuilder, pos: _Pos, raw: RawDo
             b.add("competition", ckey, "applied", int(applied.replace(",", "")), applied, span, excerpt=ex)
         if ratio:
             b.add("competition", ckey, "ratio_or_shortfall_text", ratio, ratio, span, excerpt=ex)
+        _winning_scores(tr, cells, b, pos, key, type_code, long_code)
+
+
+_SCORE_RE = re.compile(r"^\d{1,2}(?:\.\d{1,2})?$")
+
+
+def _winning_scores(
+    tr: Tag, cells: list[Tag], b: CandidateBuilder, pos: _Pos, key: str, type_code: str, long_code: str
+) -> None:
+    """당첨가점 칸(R9-PARSE Q4): ``td.cpResideSenm``(거주지역) 뒤 세 칸 = 최저·최고·평균(가점제 당첨자만 — 1순위). 팝업은 이 묶음을
+    1·2순위 행 옆에 지역마다 rowspan 으로 붙인다 — 칸에 적힌 지역의 '1순위 <지역>' 경쟁률 행에 단다. '-'(발표 전·가점 당첨자
+    없음)·숫자 아닌 칸은 후보를 내지 않는다(값 없음). 숫자는 원문 그대로(0 포함)."""
+    for i, c in enumerate(cells):
+        if "cpResideSenm" not in (c.get("class") or []):
+            continue
+        area = _txt(c)
+        vals = [_txt(x) for x in cells[i + 1 : i + 4]]
+        if not area or len(vals) != 3:
+            return
+        ckey = f"{key}:본청약:1순위 {area}:{type_code}"
+        ex = f"{long_code} 당첨가점 {area} 최저 {vals[0]} 최고 {vals[1]} 평균 {vals[2]}"
+        span = pos.span(tr)
+        for fname, v in zip(WINNING_SCORE_FIELDS, vals, strict=True):
+            if _SCORE_RE.match(v):
+                b.add("competition", ckey, fname, float(v), v, span, excerpt=ex)
+        return

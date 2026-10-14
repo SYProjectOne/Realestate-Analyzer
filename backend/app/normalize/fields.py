@@ -11,12 +11,14 @@ from typing import Final, Literal
 
 __all__ = [
     "AUDIT_FLAG_REASON",
+    "BALANCE_DERIVED_REASON",
     "BOOL_FIELDS",
     "COMPARE_ADOPTED",
     "COMPARE_SIDE",
     "CONFLICT_HOLD",
     "CRITICAL_FIELDS",
     "DECIMAL_FIELDS",
+    "EXPLICIT_NULL_FIELDS",
     "EXTRACT_REASON",
     "FIELD_GROUP",
     "INT_FIELDS",
@@ -28,8 +30,10 @@ __all__ = [
     "OCR_REASON",
     "PRICE_BY_TYPE_ITEMS",
     "PRIMARY_SOURCES",
+    "QUIET_FIRST_FIELDS",
     "RULE_TEXT",
     "UNIT_ASSUMED",
+    "WINNING_SCORE_FIELDS",
     "SourceKind",
     "compare_mark",
     "discount_field",
@@ -38,6 +42,7 @@ __all__ = [
     "is_numeric_field",
     "is_ocr",
     "is_price_amount",
+    "is_provisional",
     "magnitude_apart",
     "norm_value",
     "price_by_type_field",
@@ -166,6 +171,19 @@ NUMERIC_FIELDS: Final[dict[str, tuple[str, ...]]] = {
     "competition": ("supply", "applied"),
 }
 
+EXPLICIT_NULL_FIELDS: Final = frozenset({("complex_type", "options_text")})
+"""값 없음(None) + 라벨 확인됨 후보가 저장 값을 지우는 필드(R9-PARSE Q2).
+
+공고문의 '추가 선택품목 비용 미포함' 고지문은 필수 옵션 설명이 아니다 — 옛 파서가 넣은 고지문을
+재정규화가 비운다. 다른 필드의 값 없음 후보는 그대로 저장 값을 지우지 않는다."""
+
+WINNING_SCORE_FIELDS: Final = ("winning_score_min", "winning_score_max", "winning_score_avg")
+QUIET_FIRST_FIELDS: Final = frozenset(("competition", f) for f in WINNING_SCORE_FIELDS)
+"""빈 값 → 값(처음 관측)을 change_event 로 남기지 않는 필드(R9-PARSE Q4).
+
+당첨가점은 발표 뒤 웹 팝업으로 처음 수집하는 지난 결과라 '바뀐 사실'이 아니다 — 배포 뒤 첫 수집이
+경쟁률 행마다 이벤트를 쏟지 않게. 값 → 다른 값은 그대로 이벤트(severity info — 점수 입력 아님)."""
+
 INT_FIELDS: Final = frozenset(
     {
         "units_total",
@@ -278,7 +296,16 @@ BOOL_FIELDS: Final = frozenset({"resale_release_on_registration", "cancelled", "
 _EXTRA_INT_FIELDS: Final = frozenset({"floor", "completed_year", "total", "post_completion", "price_won"})
 # 소수 필드(㎡·%·확률)
 DECIMAL_FIELDS: Final = frozenset(
-    {"area_m2", "down_payment_pct", "interim_pct", "balance_pct", "inclusion_prob"}
+    {
+        "area_m2",
+        "down_payment_pct",
+        "interim_pct",
+        "balance_pct",
+        "inclusion_prob",
+        "winning_score_min",
+        "winning_score_max",
+        "winning_score_avg",
+    }
 )
 
 
@@ -398,6 +425,18 @@ def with_mark(reason: str | None, head: str) -> str:
     """``compare_mark`` 머리를 reason 앞에 다시 붙인다(``with_tag`` 와 같은 모양 — 같은 입력이면 같은 값)."""
     rest = strip_tags(reason)
     return (f"{head}{_TAG_SEP}{rest}" if rest else head)[:_REASON_MAX]
+
+
+BALANCE_DERIVED_REASON: Final = "산술(100-계약금-중도금)"
+"""잔금 비율을 표 머리에서 바로 읽지 못해 계약금·중도금 비율로 계산한 값의 '추정' 사유(R9-PARSE Q2)."""
+
+
+def is_provisional(label: str | None, reason: str | None) -> bool:
+    """판정기 추출이 나오면 물러나는 파서 값 후보: OCR 판독(R3 C3) 또는 잔금 산술(R9-PARSE Q2).
+
+    둘 다 label '추정'이고 같은 원문의 판정기 extract 요청을 그대로 남긴다 — 판정기가 값을 확정하면
+    그 추출 행이 채택된다."""
+    return is_ocr(label, reason) or (label == "추정" and strip_tags(reason) == BALANCE_DERIVED_REASON)
 
 
 def is_ocr(label: str | None, reason: str | None) -> bool:

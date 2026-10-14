@@ -777,6 +777,39 @@ diff + '원 면적 코드 ↔ 정수부 표시 코드' 짝으로 셌다(위 5차
   같다(`analysis._ranking.display_order_key`). 단지 목록은 읽을 때 정렬해 배포 즉시 바뀐다(인천 공동 2위: 41 엘리프 4.6714 → 16 힐스테이트
   4.6404). 대시보드·민감도·보고서는 발행 때 저장본이라 다음 발행부터 같은 순서 — 그 사이 스냅샷 4 대시보드는 16 → 41 그대로다.
 
+### 10-22 R9-PARSE 배포 뒤 1회 — 납부 표·청약 일정·당첨가점·도화 캘린더 중복 (`docs/design/wp/R9_TESTS_PARSE.md`)
+
+- 바뀐 것(저장·파싱만, 판단 규칙 그대로): 공고문 중도금 회차(갈라진 표 머리 '1회 … 6회' + '10% …')·잔금 비율 산술('추정'), 필수 옵션 설명에서
+  고지문 제거(null), 청약 일정 `complex.apply_dates` = 순위 × 거주지역마다 `{kind, start, end}`, 웹 경쟁률 팝업의 **당첨가점**
+  (`competition.winning_score_*` — 새 열, 마이그레이션 **0017**), 원 공고 인용 변형('최초 입주자모집공고일 주택관리번호 2025-000397' — 조사 없음).
+- **운영 DB 에 적용하는 절차**(배포 = main 머지 + worker 재시작 뒤, 00:00~01:00 KST 피함 — D23-4):
+  1. (선택, 읽기 전용) 적용 전 기록:
+     `SELECT id, complex_id, notice_no, balance_pct, interim_schedule FROM payment_terms WHERE complex_id IN (32,39,99) ORDER BY id;` ·
+     `SELECT complex_id, title, due_date, status FROM checklist_item WHERE complex_id IN (39,99) AND kind='중도금' ORDER BY due_date, complex_id;`
+  2. 마이그레이션: `ENV_FILE=… uv run alembic upgrade head` → **`0017 (head)`**(열 추가만, 데이터 변경 없음 — 몇 초). R9-API 가 마이그레이션을
+     따로 냈으면 CEO 가 정한 순서로(이 마이그레이션은 0016 다음, 스키마 추가만이라 순서를 바꿔도 된다).
+  3. `collect.daily` 한 번(정기 06:00 을 기다리거나 §10-17 ② 명령으로 등록 → `uv run python -m app.worker --once`). 이 잡이 받아 둔 원문을 모두
+     다시 정규화한다(원문 재다운로드 없음) — 별도 재정규화 명령은 없다. 새로 받는 것은 **APT 공고의 웹 경쟁률 팝업**뿐(지역 APT 단지 수 × 1회,
+     인천 ≈ 92 GET, `core.http` 1 req/s ≈ 1.5분, 다음부터는 받아 둔 것을 쓴다).
+  4. 확인(읽기 전용):
+     - 단지 32: `SELECT notice_no, balance_pct, jsonb_array_length(interim_schedule::jsonb) FROM payment_terms WHERE complex_id=32;` → 두 행 모두
+       잔금 35·회차 6. `SELECT label, reason FROM field_provenance WHERE entity='payment_terms' AND field='balance_pct' AND chosen AND entity_id IN
+       (SELECT id FROM payment_terms WHERE complex_id=32);` → '추정' · '산술(100-계약금-중도금)'.
+     - 필수 옵션: `SELECT count(*) FROM complex_type WHERE options_text LIKE '%선택품목%미포함%';` → 0.
+     - 청약 일정: `SELECT apply_dates FROM complex WHERE id=32;` → `[{"kind":"특별공급","start":"2025-12-01","end":"2025-12-01"}, {"kind":"1순위 해당지역",…}, …]`.
+     - 당첨가점: `SELECT round, type_code, winning_score_min, winning_score_max, winning_score_avg FROM competition WHERE complex_id=32 AND winning_score_avg IS NOT NULL;`
+       → 예 '1순위 해당지역' 59.9801 = 42 / 63 / 48.5.
+     - 도화 캘린더: 1 의 두 번째 SQL → 단지 99 의 중도금 항목 status 'na'(closed_by 'auto'), 39 만 'open'. `SELECT notice_no FROM payment_terms
+       WHERE complex_id=39;` → 2025000397·2025940268.
+  5. 같은 날 `collect.daily` 를 한 번 더 돌리면 위 값 그대로·새 change_event 0·판정 0(D23-1).
+- 예상 이벤트·판정(R9_TESTS_PARSE §5): 잔금 비율 NULL → 산술 ≈ 32 공고(critical → 그 단지 재판정 잡, 점수 입력은 계약금%뿐이라 판정기 입력
+  그대로 = 캐시 적중 예상), 중도금 회차 4 공고(critical), apply_dates ≈ 96 단지(notice), options_text 276 행(info), 도화 새 공고 1. 당첨가점의
+  첫 수집은 이벤트 없음(지난 결과 — `QUIET_FIRST_FIELDS`). 잔금 산술은 판정기 extract 요청을 그대로 남겨(같은 요청 — 캐시) 새 요청은 도화
+  임의공급 공고문 1건(단지 키가 원 단지로 바뀜) — 첫 수집 `tools/call`(extract) **≈ 1**, 같은 날 다시 돌리면 0. 판정기가 잔금을 읽어 둔
+  단지는 그 '확인됨' 값이 그대로 채택된다. 발행된 리비전 저장본은 그대로(D11-1) — 다음 발행부터.
+- 그대로 남는 것: 도화 두 번째 단지 행 99 자체(목록에 같은 이름 두 줄 — 병합/숨김은 CEO 결정 대기), 원 번호 인용이 없는 잔여 공고 행
+  (연수 서해그랑블 5단지 1~4차 96~98·100, 9자리 오기 인용 101). '대표 층'은 정의대로 최저 공급금액 행(화면 이름 문제).
+
 ## 11. 발행 리비전·강등·사람 확인 (D11·D12 운영 규칙)
 
 **발행 스냅샷은 불변**(D11-1) — **발행 리비전 = 저장된 읽기 모델**(D13-1, 계약 .10). 발행하는 트랜잭션이 그 리비전의 화면 응답
