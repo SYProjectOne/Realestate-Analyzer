@@ -333,7 +333,12 @@ function ReportList({ asof, snapshots }: { asof: string | null; snapshots: Snaps
       <QueryState query={query}>
         {(reports) =>
           reports.length === 0 ? (
-            <EmptyState message={t('page.G8.none')} />
+            // R9-UI(30-proposal §11-1): 빈 상태가 보고서가 무엇을 담는지·어떻게 만드는지 말한다
+            <EmptyState message={t('page.G8.emptyTitle')}>
+              <p>{t('page.G8.emptyBody')}</p>
+              <p>{t('page.G8.emptyHow')}</p>
+              <p>{t('page.G8.emptyProgress')}</p>
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto">
               <table aria-label={t('page.G8.list')} className="w-full border-collapse text-sm">

@@ -105,7 +105,7 @@
       }
     },
     "G1": {
-      "title": "홈 대시보드",
+      "title": "홈",
       "kpis": "핵심 지표",
       "kpi": {
         "judged": "판정 대상",
@@ -117,10 +117,13 @@
         "freshness": "데이터 신선도",
         "freshnessSub": "실패 소스 {failing} · 지연 소스 {stale}"
       },
-      "top5": "통합 TOP 5",
+      "top5": "종합 점수 상위 단지",
+      "top5Note": "상대 비교 · 투자 권유 아님",
       "top5Scenario": "상황: {name}",
       "total": "종합",
-      "p10": "+10% 확률",
+      "p10": "가격 +10% 상승 가능성(판정기)",
+      "p10Target": "목표 시점 {target}",
+      "p10Note": "당첨 확률이 아닙니다 · 보장 아님",
       "open": "{name} 상세 보기",
       "changes": "최근 변경",
       "noChanges": "최근 변경 없음",
@@ -137,13 +140,13 @@
       "filter": {
         "living_area": "생활권",
         "intake_status": "접수",
-        "land_type": "택지유형",
-        "resale_end_before": "전매 종료일(이전)",
+        "land_type": "택지 종류(공공·민간)",
+        "resale_end_before": "이 날짜 전에 전매 종료",
         "price_min": "가격 하한(억)",
         "price_max": "가격 상한(억)",
         "move_in_year": "입주연도",
-        "inclusion_class": "포함 분류",
-        "judge_scope": "판정 범위",
+        "inclusion_class": "단지 분류",
+        "judge_scope": "점수 계산 범위",
         "q": "단지명"
       },
       "landType": {
@@ -151,7 +154,7 @@
         "민간택지": "민간택지"
       },
       "clearFilters": "필터 초기화",
-      "count": "{shown} / {total}개",
+      "count": "{shown} / {total}곳",
       "csv": "CSV 내려받기",
       "columns": "열 선택",
       "col": {
@@ -159,16 +162,16 @@
         "name": "단지",
         "living_area": "생활권",
         "intake": "접수",
-        "price": "현재 구매가 범위",
+        "price": "현재 구매가",
         "resale_end": "전매 종료",
         "move_in": "입주",
-        "gap": "가격 갭",
-        "total": "종합 점수",
-        "p10": "+10% 확률",
-        "inclusion": "포함 분류",
-        "land_type": "택지유형",
+        "gap": "가격 갭(주변 대비)",
+        "total": "종합 점수(상대 비교)",
+        "p10": "가격 +10% 상승 가능성(판정기)",
+        "inclusion": "단지 분류",
+        "land_type": "택지 종류",
         "units_total": "총 세대",
-        "down_payment": "계약금",
+        "down_payment": "계약금 비율",
         "last_change": "마지막 변경"
       },
       "sortAsc": "{col} 오름차순 정렬",
@@ -194,7 +197,7 @@
         "discount": "할인",
         "resaleEnd": "전매 종료",
         "moveIn": "입주",
-        "inclusion": "포함 분류",
+        "inclusion": "단지 분류",
         "total": "종합 점수",
         "officialSite": "공식 홈페이지",
         "intakeEvidence": "접수 근거 원문",
@@ -206,18 +209,19 @@
         "siteOtherHumanCheck": "접수 상태 사람 확인하기",
         "siteUnconfirmedEvidence": "공식 홈페이지 원문(동일성 미확인 — 접수 근거 아님)",
         "siteUnconfirmedHint": "판정기가 청약홈에 등록된 공식 홈페이지가 이 단지의 페이지인지 확정하지 못했습니다(미해결·불명 — 다른 단지로 판정한 것은 아닙니다). 그 문구는 접수 판정에 쓰지 않습니다 — 접수 상태는 사람 확인(전화·방문)으로 정하세요.",
-        "scopeReason": "판정 범위 사유"
+        "scopeReason": "점수 계산 범위 사유"
       },
       "tabs": "단지 상세 탭",
       "tab": {
-        "price": "가격표",
-        "payment": "납부 조건",
-        "events": "잔여 이력",
-        "ladder": "사다리",
-        "gap": "시세 비교",
-        "catalysts": "호재",
-        "provenance": "출처 원문",
-        "judgments": "판정기 로그"
+        "price": "타입별 가격",
+        "payment": "내야 할 돈·일정",
+        "events": "경쟁률·추가 모집",
+        "ladder": "가격 전망(판정기)",
+        "gap": "주변 시세 비교",
+        "catalysts": "개발 소식(호재)",
+        "provenance": "근거 원문",
+        "judgments": "판정 기록(운영자용)",
+        "countZero": "{name} (0)"
       },
       "price": {
         "type": "타입",
@@ -271,7 +275,8 @@
       },
       "ladder": {
         "horizons": "목표 시점",
-        "proposition": "명제"
+        "proposition": "판정기에 물은 문장",
+        "note": "당첨 확률이 아닙니다 · 보장 아님 · 상대 비교"
       },
       "catalyst": {
         "list": "호재 목록",
@@ -340,7 +345,7 @@
       "row": {
         "total": "종합 점수",
         "rank": "순위",
-        "p10": "+10% 확률",
+        "p10": "가격 +10% 상승 가능성(판정기)",
         "intake": "접수",
         "decision": "판정기 decide",
         "prob": "선택 확률"
@@ -785,8 +790,8 @@
     },
     "G8": {
       "title": "보고서",
-      "snapshot": "기준 스냅샷",
-      "compareSnapshot": "비교 스냅샷(diff)",
+      "snapshot": "기준일(리비전)",
+      "compareSnapshot": "이전 기준일과 비교(선택)",
       "noCompare": "비교 안 함",
       "format": "형식",
       "formats": {
@@ -820,8 +825,12 @@
       },
       "sizeKb": "{kb}KB",
       "none": "보고서 없음",
-      "diff": "스냅샷 diff",
-      "diffHint": "비교 스냅샷을 고르면 바뀐 항목을 보여 줍니다",
+      "emptyTitle": "아직 만든 보고서가 없습니다",
+      "emptyBody": "보고서에는 첫 장 요약, 단지별 표, 판정 근거, 판정기 호출 기록(부록)이 들어갑니다.",
+      "emptyHow": "위에서 기준일을 고르고 '보고서 생성'을 누르면 만들어집니다.",
+      "emptyProgress": "진행 상황은 버튼 아래 작업 진행 칸에 보입니다.",
+      "diff": "이전 기준일 대비 바뀐 항목",
+      "diffHint": "비교할 기준일을 고르면 바뀐 항목을 보여 줍니다",
       "diffCol": {
         "complex": "단지",
         "entity": "대상",
@@ -1152,7 +1161,7 @@
         "asof_plus_3y": "기준일+3년",
         "asof_plus_5y": "기준일+5년"
       },
-      "threshold": { "likely": "likely 0.85", "unlikely": "unlikely 0.15" },
+      "threshold": { "likely": "가능성 높음 기준 0.85", "unlikely": "가능성 낮음 기준 0.15" },
       "verdict": { "likely": "가능성 높음", "uncertain": "불확실", "unlikely": "가능성 낮음" },
       "annualized": "필요 연율 {pct}",
       "empty": "사다리 판정 없음"
@@ -1196,7 +1205,7 @@
       "title": "종합 점수 분해",
       "weights": "가중치 {weights}",
       "component": {
-        "p10": "+10% 확률",
+        "p10": "+10% 상승 가능성",
         "rerank": "판정기 순위",
         "gap": "가격 갭",
         "benchmark": "벤치마크",

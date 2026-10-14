@@ -268,7 +268,7 @@ describe('C06 종합 점수 분해', () => {
   });
 
   it('제목 부제 = 가중치', () => {
-    expect(C06.weightsSubtitle(d.weights)).toContain('+10% 확률 0.35');
+    expect(C06.weightsSubtitle(d.weights)).toContain('+10% 상승 가능성 0.35');
   });
 
   it('null component → 빗금(decal) + "미판정"', () => {
