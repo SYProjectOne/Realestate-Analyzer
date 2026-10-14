@@ -17,7 +17,7 @@
     <tbody><tr>{% for k in ("확인됨", "추정", "비공식", "재가공", "확인 불가") %}<td class="num">{{ data.label_counts.get(k, 0) }}건</td>{% endfor %}</tr></tbody>
   </table>
   <p class="note">추정 = 산술·가정, 비공식 = 언론·홍보, 재가공 = 원본이 아닌 가공 데이터(실거래 재가공 사이트 등). 재가공·비공식 값은 점수 근거로 쓸 때 라벨을 그대로 표기했다.</p>
-  <h3>9-3. 미해결 판정(review·escaped·blocked·error — 점수·추천 미사용)</h3>
+  <h3>9-3. 미해결 판정(review·escaped·blocked·error — 점수·상황별 선택 미사용)</h3>
   <table>
     <thead><tr><th>#</th><th>도구</th><th>목적</th><th>단지</th><th>상태</th></tr></thead>
     <tbody>

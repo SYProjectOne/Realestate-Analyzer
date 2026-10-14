@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "score_row.json",
   "title": "ScoreRow",
-  "description": "종합 점수 1행 (RA §4-2 ScoreRow) — G1 Top5Cards, G4 CompareGrid, C6 점수 분해의 데이터. 한 score_run(시나리오 1개) 기준.\n- total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.\n- components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').\n- p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).\n- delta_rerank: 이전 run 대비 rerank **점수(0~10) 차**(§6-5 — 고정 앵커의 이번 rerank 성분 점수 − 이전 호출 점수, unit 'score', R3 minor 25·계약 2026-10-09.4).\n- decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).\n- judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).\n- rejudge_needed: 저장 범위 ≠ 현재 계산 범위면 true(D10-1, 계약 2026-10-09.6 — 선택, 기본 false). judge_scope·rank·total 은 항상 저장값.",
+  "description": "종합 점수 1행 (RA §4-2 ScoreRow) — G1 Top5Cards, G4 CompareGrid, C6 점수 분해의 데이터. 한 score_run(시나리오 1개) 기준.\n- total: 종합 S (Fact, prov=st_<score_run_id>_<complex_id>). total.v = 반올림 전 원값(score_total.total)을 소수 2자리 ROUND_HALF_UP한 표시값(예 4.995 → 5.00, 4.605 → 4.61). 순위·동점은 원값으로 정한다. 미계산이면 label '확인 불가' reason '미판정'.\n- components: 성분별 ComponentView(점수 Fact + 원값 + formula_text + 가중치 + 기여 w×s). C6 막대 = contribution, 합 = total ± 0.01. null 성분은 score.v=null(빗금 + '미판정').\n- p10: +10% 확률(사다리 move_in_plus_1y 또는 시나리오 policy.p10_horizon).\n- delta_rerank: 이전 run 대비 rerank **점수(0~10) 차**(§6-5 — 고정 앵커의 이번 rerank 성분 점수 − 이전 호출 점수, unit 'score', R3 minor 25·계약 2026-10-09.4).\n- decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).\n- judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).\n- rejudge_needed: 저장 범위 ≠ 현재 계산 범위면 true(D10-1, 계약 2026-10-09.6 — 선택, 기본 false). judge_scope·rank·total 은 항상 저장값.\n- price_low·price_high·resale_end·move_in_ym·gap_pct·competition_summary(계약 2026-10-09.20, D28-5 Q7·Q4): G1 TOP 카드·G4 비교 행의 사실 — 같은 리비전 목록 행(ComplexRow)과 같은 Fact(새 계산 없음 — 같은 함수). 발행 리비전은 저장본 값(D10-1). 옛 저장본에는 키가 없다.",
   "type": "object",
   "additionalProperties": false,
   "required": ["complex_id", "name", "total", "rank", "tie_group", "unstable", "p10", "components", "intake", "judge_scope"],
@@ -22,6 +22,12 @@
     "intake": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
     "decision": { "anyOf": [{ "$ref": "#/$defs/DecisionBadge" }, { "type": "null" }] },
     "judge_scope": { "$ref": "#/$defs/JudgeScope" },
+    "price_low": { "description": "계약 2026-10-09.20(D28-5 Q7): 현재 구매가 아래(§6-1) — 같은 리비전 목록 행 ComplexRow.price_low 와 같은 Fact(같은 함수·같은 출처). 발행 리비전은 발행 때 값(저장본, D10-1·D13-1). .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "price_high": { "description": "현재 구매가 위 — ComplexRow.price_high 와 같은 Fact(price_low 와 같은 규칙)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "resale_end": { "description": "전매 종료일 — ComplexRow.resale_end 와 같은 Fact(price_low 와 같은 규칙)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "move_in_ym": { "description": "입주 예정 연월 — ComplexRow.move_in_ym 과 같은 Fact(price_low 와 같은 규칙)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "gap_pct": { "description": "가격 갭 퍼센트 — ComplexRow.gap_pct 와 같은 Fact(성분 원값, prov 'sc_<실행>_<단지>_gap.raw'). 성분 점수 s_gap 은 components.gap.score", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "competition_summary": { "description": "계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약 — ComplexRow.competition_summary 와 같은 값", "anyOf": [{ "$ref": "competition.json#/$defs/CompetitionSummary" }, { "type": "null" }] },
     "rejudge_needed": { "description": "D10-1(계약 2026-10-09.6): 이 행의 범위·순위·총점·성분은 그 스냅샷 score_run 의 **저장값**이다. 현재 사실로 계산한 판정 범위(analysis/scope.py)가 저장된 범위와 다르면 true — 화면은 '재판정 필요' 배지 + rejudge 잡 제안만 하고 저장값과 현재값을 한 행에 섞지 않는다. 없으면 false.", "type": "boolean", "default": false }
   },
   "$defs": {

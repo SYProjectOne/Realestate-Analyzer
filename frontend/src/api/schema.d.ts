@@ -780,6 +780,8 @@ export interface components {
             /** @description 지역 전체 표본을 이 생활권 대체로 복사한 행(D9-2, 라벨 추정, 표시 '대체(지역 전체)'). 자기 표본 sample_n 에 세지 않는다. 값 = DB benchmark.substitute 컬럼(계약 2026-10-09.7 — note 문자열 판별 대신). */
             substitute: boolean;
             living_area: string | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다) */
+            living_area_name?: string | null;
             name: string;
             completed_year: number | null;
             sale_year: number | null;
@@ -943,7 +945,28 @@ export interface components {
          *       "triggers_rejudge": true,
          *       "complex_id": 7,
          *       "complex_name": "김포 칸타빌 에디션",
-         *       "tab": "payment"
+         *       "tab": "payment",
+         *       "field_label": "계약금 비율(%)",
+         *       "summary": "계약금 비율(%): 10 → 5",
+         *       "value_kind": "plain"
+         *     }
+         * @example {
+         *       "id": 3302,
+         *       "snapshot_id": 12,
+         *       "entity": "complex",
+         *       "entity_id": 2,
+         *       "field": "official_popup_hash",
+         *       "old_text": "4017a9c2e0b54d8f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f",
+         *       "new_text": "59fd0b2c4e6a8c0e2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e8a0c2e4a6c8e",
+         *       "detected_at": "2026-10-08T06:22:10+09:00",
+         *       "severity": "critical",
+         *       "triggers_rejudge": true,
+         *       "complex_id": 2,
+         *       "complex_name": "엘리프 검단 포레듀",
+         *       "tab": null,
+         *       "field_label": "공식 홈페이지 팝업",
+         *       "summary": "공식 홈페이지 팝업이 바뀌었습니다",
+         *       "value_kind": "hash"
          *     }
          */
         ChangeEvent: {
@@ -965,6 +988,15 @@ export interface components {
             complex_name?: string | null;
             /** @enum {string|null} */
             tab?: "price" | "payment" | "events" | "ladder" | "gap" | "catalysts" | "provenance" | "judgments" | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): field 의 사람이 읽는 이름(예 official_popup_hash → '공식 홈페이지 팝업', move_in_ym → '입주 예정월', price_by_type.84A.max_price_won → '84A 최고 공급가'). 서버 표(``app.api.change_text``)에 없는 필드는 field 그대로. 원래 field 는 그대로 둔다 */
+            field_label?: string;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): 변경 한 줄 요약(사람이 읽는 문장 — 새 판단 없음, 서버 문구 표 + 값 형식만). value_kind 가 'plain' 이고 값이 짧으면 '<field_label>: <old> → <new>'(값 없음은 '없음'), 'hash'·'json' 이면 값 없이 '<field_label>이(가) 바뀌었습니다'(예 '공식 홈페이지 팝업이 바뀌었습니다'), 새 공고(entity notice)는 '새 공고: <new_text>'. 원값은 old_text·new_text 에 그대로 있다(D25-2 — 변경 기록, Fact 아님). .20 이전 발행 리비전 저장본(변경 원장)에는 키가 없다(= null — 화면은 field·old_text·new_text 로 대신한다) */
+            summary?: string;
+            /**
+             * @description 계약 2026-10-09.20(D28-5 Q5): old_text·new_text 의 모양 — 'plain'(읽을 수 있는 짧은 값) | 'hash'(64자리 16진 해시 등 기계값 — 화면은 '바뀐 값 보기' 접힘 안에) | 'json'(목록·객체 JSON — 접힘 안에). 판단 아님(문자열 모양 검사)
+             * @enum {string}
+             */
+            value_kind?: "plain" | "hash" | "json";
         };
         /**
          * ChecklistItem
@@ -1292,7 +1324,31 @@ export interface components {
          *         "unit": "count"
          *       },
          *       "ratio_or_shortfall_text": "7.50",
-         *       "raw_document_id": 9007
+         *       "raw_document_id": 9007,
+         *       "winning_score_min": {
+         *         "v": null,
+         *         "label": "확인 불가",
+         *         "reason": "가점 미수집",
+         *         "reason_code": "not_collected",
+         *         "prov": null,
+         *         "checked_at": null
+         *       },
+         *       "winning_score_max": {
+         *         "v": null,
+         *         "label": "확인 불가",
+         *         "reason": "가점 미수집",
+         *         "reason_code": "not_collected",
+         *         "prov": null,
+         *         "checked_at": null
+         *       },
+         *       "winning_score_avg": {
+         *         "v": null,
+         *         "label": "확인 불가",
+         *         "reason": "가점 미수집",
+         *         "reason_code": "not_collected",
+         *         "prov": null,
+         *         "checked_at": null
+         *       }
          *     }
          */
         Competition: {
@@ -1308,6 +1364,30 @@ export interface components {
             applied: components["schemas"]["Fact"];
             ratio_or_shortfall_text: string | null;
             raw_document_id?: number | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q4): 이 행(주택형·회차)의 당첨 가점 최저(가점제 당첨자만, 청약홈 경쟁률 페이지 원문 값 — 점, unit 없음). 수집 저장값(경쟁률 행의 가점 칸과 그 출처 행)이 있을 때만 값, 없으면 '확인 불가(가점 미수집)'. .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+            winning_score_min?: components["schemas"]["Fact"] | null;
+            /** @description 당첨 가점 최고(winning_score_min 과 같은 규칙) */
+            winning_score_max?: components["schemas"]["Fact"] | null;
+            /** @description 당첨 가점 평균(원문 표기 값 그대로 — 서버가 평균을 내지 않는다, winning_score_min 과 같은 규칙) */
+            winning_score_avg?: components["schemas"]["Fact"] | null;
+        };
+        /**
+         * CompetitionSummary
+         * @description 계약 2026-10-09.20(D28-5 Q4): 목록·비교·상세 머리용 경쟁률 요약 — 저장된 경쟁률 행(같은 단지)에서 산술로만 만든다(``app.analysis.competition_summary`` — 판단 아님). 기준 행 = kind '본청약' 이고 회차(round)가 '1순위'로 시작하며 '해당'을 포함하는 행(1순위 해당지역). 기준 행이 없으면 rows 0 · 아래 Fact 는 '확인 불가(1순위 해당지역 경쟁률 없음)'.
+         *     - max_ratio: 기준 행마다 접수 ÷ 공급(공급 > 0, 둘 다 값 있음 — 소수 2자리 ROUND_HALF_UP)의 최댓값. label = 그 행 공급·접수 Fact 중 약한 쪽, reason '산술(접수 n ÷ 공급 m)', prov = 그 행 접수(applied) 출처. 같은 값이면 앞 행(id 순). 표시 '7.50 : 1'. 값을 낼 행이 없으면(공급·접수 확인 불가) 첫 기준 행의 사유로 '확인 불가'.
+         *     - max_ratio_type_code: 그 행의 표시 주택형(competition.type_code 와 같은 규칙). 없으면 null.
+         *     - shortfall_types: 기준 행 중 접수 < 공급인 행 수(unit count, label = 기준 행 공급·접수 Fact 중 가장 약한 것, reason '산술(접수 < 공급 행 수)'). 0 = 1순위 해당지역 미달 없음. 기준 행 하나라도 공급·접수가 확인 불가면 '확인 불가(일부 누락 n건)'.
+         *     - winning_score_min / winning_score_max: 기준 행 당첨 가점 최저의 최솟값 / 최고의 최댓값(Competition.winning_score_* 가 기준 행 모두에 있을 때만, 아니면 그 사유의 '확인 불가' — 지금은 '가점 미수집').
+         */
+        CompetitionSummary: {
+            /** @description 기준 행 설명(표시용 고정 문구 '본청약 1순위 해당지역') */
+            basis: string;
+            rows: number;
+            max_ratio: components["schemas"]["Fact"];
+            max_ratio_type_code: string | null;
+            shortfall_types: components["schemas"]["Fact"];
+            winning_score_min: components["schemas"]["Fact"];
+            winning_score_max: components["schemas"]["Fact"];
         };
         /**
          * Complex
@@ -1535,7 +1615,7 @@ export interface components {
         /**
          * ComplexDetail
          * @description GET /complexes/{id}?snapshot=&scenario= — G3 단지 상세 전체 (RA §4-2). 탭 8개의 데이터를 한 번에 준다: PriceTable(types), PaymentTerms(payment), C8(events·competition), C1(ladder 3 horizon), C2(gap), CatalystList(catalysts), ProvenanceTab(출처는 각 Fact.prov → /provenance), JudgmentLogTab(judgments).
-         *     - header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).
+         *     - header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot — 단 수집 실패 행은 그보다 나중에 기록된 수집 성공 행이 있으면 표시 후보가 아니다, D27-1·계약 .20 설명), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).
          *     - price: 판정 기준 타입의 현재 구매가 범위(§6-1).
          *     - score: 이 시나리오의 ScoreRow(점수 없으면 null).
          * @example {
@@ -1762,6 +1842,7 @@ export interface components {
             scenario_id: number | null;
             header: components["schemas"]["Complex"];
             price: components["schemas"]["PriceRange"];
+            /** @description 표시 접수 행 = ``analysis.scope.pick_intake``: 경로 우선 human_check > official_popup > headless_shot(unofficial_ref 는 표시값 아님). D27-1 예외(계약 2026-10-09.20 설명 — D27-3): 수집 실패 행(수집 경로 · '확인 불가' · http_status 200 아님 · 원문 또는 응답 코드 있음)은 그보다 나중에 기록된 수집 성공 행이 있으면 후보가 아니다(나중 실패는 이른 성공을 이긴다). 사람 확인은 늘 최우선. 접수 행이 없으면 null */
             intake_current: components["schemas"]["Intake"] | null;
             types: components["schemas"]["ComplexType"][];
             payment: components["schemas"]["PaymentTerms"][];
@@ -1773,6 +1854,8 @@ export interface components {
             catalysts: components["schemas"]["CatalystView"][];
             judgments: components["schemas"]["JudgmentEnvelope"][];
             score: components["schemas"]["ScoreRow"] | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q4): competition 행의 요약(competition.json CompetitionSummary — 목록·비교와 같은 함수). 경쟁률 행이 없으면 rows 0 · '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+            competition_summary?: components["schemas"]["CompetitionSummary"] | null;
         };
         /**
          * ComplexRow
@@ -1836,7 +1919,7 @@ export interface components {
          *         "v": 0,
          *         "label": "추정",
          *         "reason": "대체·혼재 중앙",
-         *         "prov": "sc_88_4_gap",
+         *         "prov": "sc_88_4_gap.raw",
          *         "checked_at": "2026-10-08",
          *         "unit": "pct"
          *       },
@@ -1903,6 +1986,14 @@ export interface components {
          *         "checked_at": "2026-10-07",
          *         "unit": "pct"
          *       },
+         *       "down_payment_won": {
+         *         "v": 66250000,
+         *         "label": "추정",
+         *         "reason": "산술(P_mid × 계약금 10%)",
+         *         "prov": "fp_4102",
+         *         "checked_at": "2026-10-07",
+         *         "unit": "won"
+         *       },
          *       "units_total": {
          *         "v": 1029,
          *         "label": "확인됨",
@@ -1938,6 +2029,7 @@ export interface components {
             price_mid: components["schemas"]["Fact"];
             resale_end: components["schemas"]["Fact"];
             move_in_ym: components["schemas"]["Fact"];
+            /** @description 가격 갭 퍼센트(unit pct — 성분 원값, prov 'sc_<실행>_<단지>_gap.raw', 계약 2026-10-09.20 Q6). 종합 점수 성분 s_gap(0~10)이 아니다 */
             gap_pct: components["schemas"]["Fact"];
             total: components["schemas"]["Fact"];
             rank: number | null;
@@ -1953,6 +2045,10 @@ export interface components {
             regulated: components["schemas"]["Fact"];
             residency_months: components["schemas"]["Fact"];
             down_payment_pct: components["schemas"]["Fact"];
+            /** @description 계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+            down_payment_won?: components["schemas"]["Fact"] | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약(competition.json CompetitionSummary — 1순위 해당지역 최고 경쟁률·미달 주택형 수·당첨 가점). 경쟁률 행이 없는 단지는 rows 0. .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+            competition_summary?: components["schemas"]["CompetitionSummary"] | null;
             units_total: components["schemas"]["Fact"];
             last_change: {
                 /** Format: date-time */
@@ -2753,8 +2849,26 @@ export interface components {
          *       "v": null,
          *       "label": "확인 불가",
          *       "reason": "403",
+         *       "reason_code": "fetch_failed",
          *       "prov": null,
          *       "checked_at": "2026-10-07"
+         *     }
+         * @example {
+         *       "v": null,
+         *       "label": "확인 불가",
+         *       "reason": "발코니 표 해석 실패",
+         *       "reason_code": "parse_failed",
+         *       "prov": "fp_2060",
+         *       "checked_at": "2026-10-13",
+         *       "unit": "won"
+         *     }
+         * @example {
+         *       "v": -8.1,
+         *       "label": "추정",
+         *       "reason": "대체·보정 c=0.015",
+         *       "prov": "sc_88_4_gap.raw",
+         *       "checked_at": "2026-10-08",
+         *       "unit": "pct"
          *     }
          * @example {
          *       "v": "2028-03",
@@ -2778,7 +2892,7 @@ export interface components {
             label: components["schemas"]["Label"];
             /** @description '확인 불가' 사유 또는 라벨 한정어. label='확인 불가'이면 필수. */
             reason?: string | null;
-            /** @description 출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용. */
+            /** @description 출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용. 점수 성분은 둘로 나뉜다(계약 2026-10-09.20, D28-5 Q6): 'sc_<실행>_<단지>_<성분>' = 성분 점수(0~10, 출처 서랍 field=<성분>·value_text=점수), 'sc_<실행>_<단지>_<성분>.raw' = 그 성분의 원값(예 gap → 가격 갭 %, 서랍 field='<성분>.raw'·value_text=원값). .20 이전 발행 리비전 저장본의 원값 Fact 는 '.raw' 없는 성분 id 를 가리킨다. */
             prov: string | null;
             /**
              * Format: date
@@ -2795,6 +2909,8 @@ export interface components {
              * @default false
              */
             human?: boolean;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): label='확인 불가'의 **사유 코드**(기계용) — reason 문자열과 같은 행에서 서버가 정한다(``app.api.reason_codes.reason_code`` 한 함수: 저장 사유 문자열·HTTP 상태의 머리말·낱말 규칙 — 판단 아님). 화면은 쉬운 말 매핑을 이 코드로 하고 원문 사유(reason)는 그대로 보존·표시한다(title·출처 패널). label≠'확인 불가'(reason 이 라벨 한정어 '산술'·'표본 2' 등)면 없다. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 reason 문자열로 대신한다). */
+            reason_code?: components["schemas"]["ReasonCode"] | null;
         } & (unknown & unknown);
         /**
          * FactDemotion
@@ -2920,6 +3036,7 @@ export interface components {
         /**
          * Gap
          * @description 가격 갭 C2 데이터 (RA §7-2 C2, §6-2). comps가 비면 empty_reason('비교군 없음(사유)'). gap_pct는 보정 중앙값 기준, gap_pct_unadjusted는 미보정 기준(둘 다 표시).
+         *     **두 종류의 값이 있다(계약 2026-10-09.20, D28-5 Q6 — 같은 이름 '가격 갭'으로 8.1%와 2.98이 보이던 혼동)**: gap_pct·gap_pct_unadjusted = 가격 갭 **퍼센트**(현재 구매가 중앙 − 비교 실거래 중앙값)/중앙값 × 100 (unit pct, prov 'sc_<실행>_<단지>_gap.raw' — 성분 원값 서랍). gap_score = 그 퍼센트로 만든 **종합 점수 성분 s_gap**(0~10, RA §6-2 clamp(5 − gap%/4, 0, 10), unit score, prov 'sc_<실행>_<단지>_gap' — 성분 점수 서랍). score 는 gap_score 와 같은 값의 옛 이름(.20 에서 유지, 화면은 gap_score 를 '가격 갭 점수(0~10)'로 쓴다).
          */
         Gap: {
             price_low: components["schemas"]["Fact"];
@@ -2928,7 +3045,10 @@ export interface components {
             comps: components["schemas"]["GapComp"][];
             gap_pct: components["schemas"]["Fact"];
             gap_pct_unadjusted: components["schemas"]["Fact"] | null;
+            /** @description **옛 이름**(deprecated, 계약 2026-10-09.20) — gap_score 와 같은 Fact(성분 점수 s_gap 0~10). 가격 갭 퍼센트가 아니다. 새 화면은 gap_score 를 읽는다 */
             score: components["schemas"]["Fact"];
+            /** @description 계약 2026-10-09.20(D28-5 Q6): 가격 갭 **점수** s_gap(0~10 — 종합 점수 성분, RA §6-2 clamp(5 − gap%/4, 0, 10)). prov = 'sc_<실행>_<단지>_gap'(서랍 kind score_component, field 'gap', value_text = 점수). 퍼센트는 gap_pct. .20 이전 발행 리비전 저장본에는 키가 없다(그때는 score 를 읽는다) */
+            gap_score?: components["schemas"]["Fact"];
             empty_reason: string | null;
         };
         /**
@@ -3114,7 +3234,7 @@ export interface components {
         InclusionClass: "private_sale_apt" | "public_sale" | "public_rental" | "private_rental" | "non_apartment" | "out_of_scope" | "manual_review" | "범위 경계" | "미분류";
         /**
          * Intake
-         * @description 접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.
+         * @description 접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다(``analysis.scope.pick_intake``). 예외(D27-1·계약 2026-10-09.20 설명 — D27-3): 수집 실패 행(수집 경로 · '확인 불가' · http_status 200 아님 · 원문 또는 응답 코드 있음)은 그보다 나중에 기록된 수집 성공 행이 있으면 표시 후보가 아니다(나중 실패는 이른 성공을 이긴다). 사람 확인은 늘 최우선. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.
          *     표시 문자열: status='확인 불가'이면 '확인 불가(<reason>, <checked_at 날짜>)' (예: '확인 불가(403, 2026-10-07)'). path=human_check이면 배지에 '사람' 접두어.
          * @example {
          *       "id": 501,
@@ -3129,7 +3249,9 @@ export interface components {
          *       "http_status": 200,
          *       "reason": null,
          *       "note": "팝업 '선착순 동·호지정 계약 중'",
-         *       "entered_by": null
+         *       "entered_by": null,
+         *       "supply_kind": "선착순",
+         *       "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
          *     }
          * @example {
          *       "id": 504,
@@ -3143,6 +3265,7 @@ export interface components {
          *       "checked_at": "2026-10-07T09:14:00+09:00",
          *       "http_status": 403,
          *       "reason": "403",
+         *       "reason_code": "fetch_failed",
          *       "note": null,
          *       "entered_by": null
          *     }
@@ -3176,6 +3299,15 @@ export interface components {
             note?: string | null;
             /** @description human_check일 때 역할 문자열("운영자"). 사람 이름 금지(RA §10) */
             entered_by?: string | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): reason 의 사유 코드(fact.json ReasonCode — 같은 함수 ``app.api.reason_codes.reason_code``, http_status 비 2xx 면 fetch_failed). reason 이 없으면(가능·미정 등) 없음(= null). 원문 사유(reason)는 그대로 둔다. .20 이전 발행 리비전 저장본에는 키가 없다 */
+            reason_code?: components["schemas"]["ReasonCode"] | null;
+            /**
+             * @description 계약 2026-10-09.20(D28-5 Q8): 이 접수 행이 가리키는 공급 종류 — **저장된 문구 후보가 이미 말한 것만**(새 판단 없음, AGENTS 규칙 3). 값은 공급 구분 어휘(competition.kind·payment_terms.notice_kind 와 같은 SUPPLY_KIND: '본청약' | '무순위' | '임의' | '선착순') 또는 null. 규칙: path 가 official_popup·headless_shot 이고 status 가 판정기 분류 결과(가능·미정·불가)인 행의 메모(note)에서 판정 표식 조각('판정기 classify …'·'분류 복사 …')을 뺀 문구 후보 글을 공식 홈페이지 파서의 키워드 정규식(``normalize.official_site_parser.scan_text`` — 파싱 정규식, 판단 아님)으로 훑어 공급 종류 키워드(파서 키워드 이름 '무순위' → '무순위', '임의공급' → '임의', '선착순' → '선착순')가 **정확히 한 종류**면 그 값. 없거나 둘 이상이면 null(둘 이상이면 supply_kind_basis 에 후보를 적는다). '본청약'(일반·특별공급)은 접수 문구 키워드가 없고 판정기 classify 출력에도 공급 종류가 없어 지금은 내지 않는다(어휘만 맞춤 — 값은 null). human_check·unofficial_ref 행·'확인 불가' 행은 null. .20 이전 발행 리비전 저장본에는 키가 없다
+             * @enum {string|null}
+             */
+            supply_kind?: "본청약" | "무순위" | "임의" | "선착순" | null;
+            /** @description supply_kind 의 근거 문구(저장된 문구 후보 중 키워드가 든 줄 그대로, 최대 120자) 또는 후보가 여럿일 때 '공급 종류 문구가 여럿(무순위·선착순)'. supply_kind 를 정할 문구가 없으면 null */
+            supply_kind_basis?: string | null;
         } & (unknown & unknown);
         /**
          * IntakeQueue
@@ -3314,6 +3446,8 @@ export interface components {
             status: "확인 불가" | "미정";
             /** @description 접수 행 사유(Intake.reason 과 같은 규칙 — '확인 불가'인데 사유가 비면 http_status 또는 '사유 미기재'). '미정'은 null 일 수 있다 */
             reason: string | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): reason 의 사유 코드(Intake.reason_code 와 같은 함수·같은 값). reason 이 null 이면 null */
+            reason_code?: components["schemas"]["ReasonCode"] | null;
             /**
              * @description 표시 접수 행 경로(intake.json path — unofficial_ref 는 오지 않는다)
              * @enum {string}
@@ -3647,6 +3781,8 @@ export interface components {
                 ym: string | null;
                 total: components["schemas"]["Fact"];
                 post_completion: components["schemas"]["Fact"];
+                /** @description 계약 2026-10-09.20(D28-5 Q5): 지역 합계의 내역 — 그 달(ym)의 통계 단위(시군구)별 미분양 행(market.json UnsoldPoint, scope_code·scope_name·total·post_completion — 원천 행 Fact, prov fp_). 합계 Fact 의 reason 은 짧게 '지역 합계(시군구 n곳)'이고 단위별 값은 여기에 있다(예전 '인천 검단구 737·…합' 나열 사유 대체). 통계 단위가 하나면 그 행 1개. 미분양 자료가 없으면 []. .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+                breakdown?: components["schemas"]["UnsoldPoint"][] | null;
             };
             /** KpiMoveInPeak */
             move_in_peak: {
@@ -3940,6 +4076,8 @@ export interface components {
             benchmark_absence: components["schemas"]["BenchmarkAbsence"] | null;
             benchmark_flags: {
                 living_area: string;
+                /** @description 계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다) */
+                living_area_name?: string | null;
                 sample_n: number;
                 no_recent_sale_case: boolean;
                 substituted: boolean;
@@ -3949,6 +4087,8 @@ export interface components {
                 complex_id: number;
                 name: string;
                 living_area: string | null;
+                /** @description 계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다) */
+                living_area_name?: string | null;
                 move_in_ym: components["schemas"]["Fact"];
             }[];
             unsold: components["schemas"]["UnsoldPoint"][];
@@ -3997,6 +4137,26 @@ export interface components {
                 /** @enum {string|null} */
                 decision?: "auto" | "review" | null;
             }[];
+        };
+        /**
+         * PaymentAmounts
+         * @description 계약 2026-10-09.20(D28-5 Q1): 판정 기준 타입(basis_type_code, 대표 타입 — 84㎡에 가장 가까운 타입)의 납부 금액(원). 현재 납부 조건(payment[].is_current)의 비율 × 현재 구매가 중앙값 P_mid(§6-1) — RA §6-7 자금 요건과 같은 산술(``app.analysis.price.share_won``: ROUND_HALF_UP(P_mid × 비율 ÷ 100), 비교 화면 TermsRow.down_payment_won 과 같은 함수·같은 값·같은 출처). 새 판단 없음.
+         *     - down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.
+         *     - interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(P_mid × 중도금 n%)').
+         *     - balance_won: P_mid × 잔금 %. 같은 규칙.
+         *     - down_payment_first_won: 공고에 적힌 1차 계약금 정액(공고 값 그대로 — payment[].down_payment_first_won 과 같은 Fact). 없으면 그 사유의 '확인 불가'.
+         *     - formula: 식 설명 문구(화면 툴팁).
+         *     공고가 원 금액을 따로 적지 않은 한 금액은 모두 '추정(산술)'이다 — 대표 타입이 아닌 타입·실제 동·호 금액과 다를 수 있다.
+         */
+        PaymentAmounts: {
+            basis_type_code: string | null;
+            /** @description 비율을 읽은 현재 납부 조건 행 id(payment[].id). 납부 조건이 없으면 null */
+            payment_terms_id?: number | null;
+            down_payment_won: components["schemas"]["Fact"];
+            interim_won: components["schemas"]["Fact"];
+            balance_won: components["schemas"]["Fact"];
+            down_payment_first_won: components["schemas"]["Fact"];
+            formula: string;
         };
         /**
          * PaymentTerms
@@ -4163,6 +4323,8 @@ export interface components {
              * @default false
              */
             discount_applied?: boolean;
+            /** @description 계약 2026-10-09.20(D28-5 Q1): 계약금·중도금·잔금 원 금액(PaymentAmounts — 대표 타입 P_mid × 현재 납부 조건 비율, 추정(산술)). 단지 상세(price)에만 있다(목록 ComplexRow 는 down_payment_won 하나). .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면 '확인 불가(계산값 미제공)') */
+            payment_amounts?: components["schemas"]["PaymentAmounts"] | null;
         };
         /**
          * Provenance
@@ -4346,6 +4508,33 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /**
+         * ReasonCode
+         * @description '확인 불가'·접수 사유의 코드(계약 2026-10-09.20, D28-5 Q5). 서버가 저장 사유 문자열에서 정한다 — 순서대로 첫 규칙:
+         *     - fetch_failed: 수집 실패 — HTTP 비 2xx(접수 행 http_status) 또는 사유가 숫자뿐('403'), 사유 앞 영문 낱말이 수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·robots.txt·invalid_url·render·blocked_host·blocked_by_robots·empty_dataset, 대소문자 무시), 사유가 '접속 실패'·'수집 실패'·'타임아웃'으로 시작.
+         *     - not_collected: 자료 미수집 — '원문 없음'·'미수집'·'수집 기록 없음'·'자료 없음'·'물량 없음'·'수집기 없음'·'가점 미수집'·'출처 미조회'.
+         *     - not_published: 공고 전 — '공고 전'·'분양가 미공개'.
+         *     - parse_failed: 공고문 등에서 자동으로 읽지 못함 — '해석 실패'·'표 없음'·'배정 실패'·'변환 실패'·'스캔'·'OCR 실패'.
+         *     - source_missing: '출처 누락'(T13).
+         *     - demoted: '검증 모순'(D10-3).
+         *     - conflict_hold: 출처 상충·채택 보류 — '출처 상충'·'compare 대기'·'상충'·'모호'.
+         *     - partial_missing: 합계의 일부 원천 누락 — '일부 누락'.
+         *     - identity_unconfirmed: '공식 홈페이지 동일성 미확인'.
+         *     - other_complex_site: '공식 홈페이지가 다른 단지'.
+         *     - no_phrase: '접수 문구 없음'.
+         *     - phrase_inconclusive: '문구로 판단 불가'.
+         *     - not_target: '판정 대상 아님'(D26-3).
+         *     - input_blocked: '입력 차단'(guard).
+         *     - unresolved: 판정기 미해결 — '판정 미해결'·'미해결'·'미분류'.
+         *     - unjudged: 점수·판정 계산 전 — '미판정'·'판정 기록 없음'·'미계산'·'고정 입력'.
+         *     - not_entered: 시나리오 조건 미입력 — '미입력'.
+         *     - no_sample: 표본 없음 — '표본 0'·'비교군 없음'·'실거래 없음'·'사례 없음'.
+         *     - human_check: '사람 확인'으로 시작(사람이 확인 불가라고 입력).
+         *     - no_value: 공고·원천에 값이 없음 — '값 없음'·'미기재'·'표기 없음'·'결측', 그 밖에 '없음'으로 끝나는 사유.
+         *     - other: 그 밖(새 사유 — 코드·계약을 바꾸지 않고 reason 문자열 그대로 보인다).
+         * @enum {string}
+         */
+        ReasonCode: "fetch_failed" | "not_collected" | "not_published" | "parse_failed" | "source_missing" | "demoted" | "conflict_hold" | "partial_missing" | "identity_unconfirmed" | "other_complex_site" | "no_phrase" | "phrase_inconclusive" | "not_target" | "input_blocked" | "unresolved" | "unjudged" | "not_entered" | "no_sample" | "human_check" | "no_value" | "other";
         /**
          * ReferenceRefreshPayload
          * @description job_name='reference.refresh' 페이로드 (DECISIONS D2-4). 최초 기동 시 1회 + 매월 1일 05:00. 법정동·행정동·매핑·세대 현황 파일을 받아 legal_dong·admin_dong·admin_legal_map·household_stat에 적재한다. 다운로드가 실패하면 contracts/fixtures/reference/ 사본으로 동작한다. 페이로드는 빈 객체.
@@ -4838,7 +5027,7 @@ export interface components {
         /**
          * RequirementRule
          * @description 요건 1개의 규칙. code별 의미(RA §6-7):
-         *     access — intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).
+         *     access — 모든 code 의 공통 조건: 표시 접수 상태 '가능' and path≠unofficial_ref(D25-11 — A·B·C·D 모두, 계약 2026-10-09.20 설명·D25-13). intake_open: 접수 상태 '가능' and path≠unofficial_ref | priority_supply: (공통 조건 and) 가점제 1순위 공급(본청약·예정 공고) 존재 | official_path_no_account: 통장 없이 가능한 무순위·임의·선착순 공식 접수 경로 | official_path: 공식 접수 경로(가능) | resale_before_exit: (공통 조건 and) 전매 종료 ≤ 목표 매도 시점(기준일 + holding_years).
          *     regulation — no_conflict: 거주의무·재당첨 제한·규제지역 요건이 params와 충돌 없음 | no_residency_obligation: 거주의무 0개월.
          *     funds — equity_and_loan: P_mid × 계약금% ≤ 자기자본 and P_mid − 대출한도 − 자기자본 ≤ 0 (중도금 무이자·이자후불제 문구는 근거에 표기); 자기자본·한도가 null이면 '미입력'.
          */
@@ -5446,6 +5635,7 @@ export interface components {
          *     - decision: 이 시나리오 decide 결과 요약(후보가 아니면 null).
          *     - judge_scope: 판정 대상 / 보류(공고 후 재판정) / 참고(순위만) / 미해결(분류 판정 미해결) / 제외 (meta §1-3-4, D9-1).
          *     - rejudge_needed: 저장 범위 ≠ 현재 계산 범위면 true(D10-1, 계약 2026-10-09.6 — 선택, 기본 false). judge_scope·rank·total 은 항상 저장값.
+         *     - price_low·price_high·resale_end·move_in_ym·gap_pct·competition_summary(계약 2026-10-09.20, D28-5 Q7·Q4): G1 TOP 카드·G4 비교 행의 사실 — 같은 리비전 목록 행(ComplexRow)과 같은 Fact(새 계산 없음 — 같은 함수). 발행 리비전은 저장본 값(D10-1). 옛 저장본에는 키가 없다.
          * @example {
          *       "complex_id": 2,
          *       "name": "엘리프 검단 포레듀",
@@ -5612,6 +5802,18 @@ export interface components {
             intake: components["schemas"]["Intake"] | null;
             decision?: components["schemas"]["DecisionBadge"] | null;
             judge_scope: components["schemas"]["JudgeScope"];
+            /** @description 계약 2026-10-09.20(D28-5 Q7): 현재 구매가 아래(§6-1) — 같은 리비전 목록 행 ComplexRow.price_low 와 같은 Fact(같은 함수·같은 출처). 발행 리비전은 발행 때 값(저장본, D10-1·D13-1). .20 이전 발행 리비전 저장본에는 키가 없다(= null) */
+            price_low?: components["schemas"]["Fact"] | null;
+            /** @description 현재 구매가 위 — ComplexRow.price_high 와 같은 Fact(price_low 와 같은 규칙) */
+            price_high?: components["schemas"]["Fact"] | null;
+            /** @description 전매 종료일 — ComplexRow.resale_end 와 같은 Fact(price_low 와 같은 규칙) */
+            resale_end?: components["schemas"]["Fact"] | null;
+            /** @description 입주 예정 연월 — ComplexRow.move_in_ym 과 같은 Fact(price_low 와 같은 규칙) */
+            move_in_ym?: components["schemas"]["Fact"] | null;
+            /** @description 가격 갭 퍼센트 — ComplexRow.gap_pct 와 같은 Fact(성분 원값, prov 'sc_<실행>_<단지>_gap.raw'). 성분 점수 s_gap 은 components.gap.score */
+            gap_pct?: components["schemas"]["Fact"] | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약 — ComplexRow.competition_summary 와 같은 값 */
+            competition_summary?: components["schemas"]["CompetitionSummary"] | null;
             /**
              * @description D10-1(계약 2026-10-09.6): 이 행의 범위·순위·총점·성분은 그 스냅샷 score_run 의 **저장값**이다. 현재 사실로 계산한 판정 범위(analysis/scope.py)가 저장된 범위와 다르면 true — 화면은 '재판정 필요' 배지 + rejudge 잡 제안만 하고 저장값과 현재값을 한 행에 섞지 않는다. 없으면 false.
              * @default false
@@ -6683,6 +6885,8 @@ export interface components {
          */
         SupplyPoint: {
             living_area: string | null;
+            /** @description 계약 2026-10-09.20(D28-5 Q5): 생활권 표시 이름(region.living_areas[].name — living_areas[] 의 name 과 같은 값). 범례·표는 내부 id(la_n) 대신 이 이름을 쓴다. 생활권이 없거나 지역 설정에 없는 id 면 null. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 living_areas[] 로 찾는다) */
+            living_area_name?: string | null;
             year: number;
             units: components["schemas"]["Fact"];
             complexes?: string[] | null;
@@ -6726,7 +6930,7 @@ export interface components {
         };
         /**
          * UnsoldPoint
-         * @description 미분양 1개월(C5): 월말 기준. 결측 월은 total.v=null(label 확인 불가). scope는 통계 단위(시군구).
+         * @description 미분양 1개월(C5): 월말 기준. 결측 월은 total.v=null(label 확인 불가). scope는 통계 단위(시군구). 여러 통계 단위를 합한 점(G1 unsold_series·KPI)의 Fact reason 은 '지역 합계(시군구 n곳)'(계약 2026-10-09.20 — 예전 '<이름> <값>·… 합' 나열 대신; 단위별 값은 KPI breakdown·G6 시장 unsold 의 단위별 점).
          */
         UnsoldPoint: {
             ym: string;
@@ -6850,7 +7054,12 @@ export interface components {
         Size: number;
         /** @description ISO 날짜(YYYY-MM-DD) 또는 시각. 이 시점 이후. */
         Since: string;
-        /** @description 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id). */
+        /**
+         * @description 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id).
+         *     `intake`(계약 2026-10-09.20, D28-5 Q9): 표시 접수 상태 순 가능 → 미정 → 확인 불가(접수 행 없음 포함) → 불가, 같은 상태 안은
+         *     접수 마감 임박순(단지 공고 접수 일정 `apply_dates` 중 기준일 이후 가장 이른 끝날짜(끝이 없으면 시작) — 없으면 뒤로) → complex_id.
+         *     `-intake` 는 상태 순서만 거꾸로(불가 → … → 가능), 같은 상태 안 순서(마감 임박 → complex_id)는 그대로. 판단 없음(저장된 접수 행·일정 정렬).
+         */
         ComplexSort: string;
         /**
          * @description G2 FilterBar. deepObject: `filter[living_area]=la_2&filter[intake_status]=가능&filter[price_max]=700000000`.
@@ -7156,7 +7365,12 @@ export interface operations {
                 scenario?: components["parameters"]["Scenario"];
                 page?: components["parameters"]["Page"];
                 size?: components["parameters"]["Size"];
-                /** @description 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id). */
+                /**
+                 * @description 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id).
+                 *     `intake`(계약 2026-10-09.20, D28-5 Q9): 표시 접수 상태 순 가능 → 미정 → 확인 불가(접수 행 없음 포함) → 불가, 같은 상태 안은
+                 *     접수 마감 임박순(단지 공고 접수 일정 `apply_dates` 중 기준일 이후 가장 이른 끝날짜(끝이 없으면 시작) — 없으면 뒤로) → complex_id.
+                 *     `-intake` 는 상태 순서만 거꾸로(불가 → … → 가능), 같은 상태 안 순서(마감 임박 → complex_id)는 그대로. 판단 없음(저장된 접수 행·일정 정렬).
+                 */
                 sort?: components["parameters"]["ComplexSort"];
                 /**
                  * @description G2 FilterBar. deepObject: `filter[living_area]=la_2&filter[intake_status]=가능&filter[price_max]=700000000`.
@@ -7193,7 +7407,12 @@ export interface operations {
             query?: {
                 /** @description 내장 code(base|A|B|C|D) 또는 사용자 시나리오 id. 생략 시 base. */
                 scenario?: components["parameters"]["Scenario"];
-                /** @description 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id). */
+                /**
+                 * @description 정렬 키, 앞에 '-'면 내림차순. 기본 '-total'(동점은 complex_id).
+                 *     `intake`(계약 2026-10-09.20, D28-5 Q9): 표시 접수 상태 순 가능 → 미정 → 확인 불가(접수 행 없음 포함) → 불가, 같은 상태 안은
+                 *     접수 마감 임박순(단지 공고 접수 일정 `apply_dates` 중 기준일 이후 가장 이른 끝날짜(끝이 없으면 시작) — 없으면 뒤로) → complex_id.
+                 *     `-intake` 는 상태 순서만 거꾸로(불가 → … → 가능), 같은 상태 안 순서(마감 임박 → complex_id)는 그대로. 판단 없음(저장된 접수 행·일정 정렬).
+                 */
                 sort?: components["parameters"]["ComplexSort"];
                 /**
                  * @description G2 FilterBar. deepObject: `filter[living_area]=la_2&filter[intake_status]=가능&filter[price_max]=700000000`.

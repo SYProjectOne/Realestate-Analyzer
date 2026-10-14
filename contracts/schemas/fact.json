@@ -18,7 +18,7 @@
       "maxLength": 120
     },
     "prov": {
-      "description": "출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용.",
+      "description": "출처 id (fp_/sc_/st_/jl_/hc_/rd_/cs_ 접두어). label='확인 불가'일 때만 null 허용. 점수 성분은 둘로 나뉜다(계약 2026-10-09.20, D28-5 Q6): 'sc_<실행>_<단지>_<성분>' = 성분 점수(0~10, 출처 서랍 field=<성분>·value_text=점수), 'sc_<실행>_<단지>_<성분>.raw' = 그 성분의 원값(예 gap → 가격 갭 %, 서랍 field='<성분>.raw'·value_text=원값). .20 이전 발행 리비전 저장본의 원값 Fact 는 '.raw' 없는 성분 id 를 가리킨다.",
       "type": ["string", "null"],
       "pattern": "^(fp|sc|st|jl|hc|rd|cs)_[0-9A-Za-z_.:-]+$"
     },
@@ -36,6 +36,22 @@
       "description": "사람 확인(전화·방문) 값이면 true. label은 '확인됨'이어야 한다.",
       "type": "boolean",
       "default": false
+    },
+    "reason_code": {
+      "description": "계약 2026-10-09.20(D28-5 Q5): label='확인 불가'의 **사유 코드**(기계용) — reason 문자열과 같은 행에서 서버가 정한다(``app.api.reason_codes.reason_code`` 한 함수: 저장 사유 문자열·HTTP 상태의 머리말·낱말 규칙 — 판단 아님). 화면은 쉬운 말 매핑을 이 코드로 하고 원문 사유(reason)는 그대로 보존·표시한다(title·출처 패널). label≠'확인 불가'(reason 이 라벨 한정어 '산술'·'표본 2' 등)면 없다. .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면은 reason 문자열로 대신한다).",
+      "anyOf": [{ "$ref": "#/$defs/ReasonCode" }, { "type": "null" }]
+    }
+  },
+  "$defs": {
+    "ReasonCode": {
+      "title": "ReasonCode",
+      "description": "'확인 불가'·접수 사유의 코드(계약 2026-10-09.20, D28-5 Q5). 서버가 저장 사유 문자열에서 정한다 — 순서대로 첫 규칙:\n- fetch_failed: 수집 실패 — HTTP 비 2xx(접수 행 http_status) 또는 사유가 숫자뿐('403'), 사유 앞 영문 낱말이 수집 실패 낱말(DNS·timeout·connect·TLS·network·robots·robots.txt·invalid_url·render·blocked_host·blocked_by_robots·empty_dataset, 대소문자 무시), 사유가 '접속 실패'·'수집 실패'·'타임아웃'으로 시작.\n- not_collected: 자료 미수집 — '원문 없음'·'미수집'·'수집 기록 없음'·'자료 없음'·'물량 없음'·'수집기 없음'·'가점 미수집'·'출처 미조회'.\n- not_published: 공고 전 — '공고 전'·'분양가 미공개'.\n- parse_failed: 공고문 등에서 자동으로 읽지 못함 — '해석 실패'·'표 없음'·'배정 실패'·'변환 실패'·'스캔'·'OCR 실패'.\n- source_missing: '출처 누락'(T13).\n- demoted: '검증 모순'(D10-3).\n- conflict_hold: 출처 상충·채택 보류 — '출처 상충'·'compare 대기'·'상충'·'모호'.\n- partial_missing: 합계의 일부 원천 누락 — '일부 누락'.\n- identity_unconfirmed: '공식 홈페이지 동일성 미확인'.\n- other_complex_site: '공식 홈페이지가 다른 단지'.\n- no_phrase: '접수 문구 없음'.\n- phrase_inconclusive: '문구로 판단 불가'.\n- not_target: '판정 대상 아님'(D26-3).\n- input_blocked: '입력 차단'(guard).\n- unresolved: 판정기 미해결 — '판정 미해결'·'미해결'·'미분류'.\n- unjudged: 점수·판정 계산 전 — '미판정'·'판정 기록 없음'·'미계산'·'고정 입력'.\n- not_entered: 시나리오 조건 미입력 — '미입력'.\n- no_sample: 표본 없음 — '표본 0'·'비교군 없음'·'실거래 없음'·'사례 없음'.\n- human_check: '사람 확인'으로 시작(사람이 확인 불가라고 입력).\n- no_value: 공고·원천에 값이 없음 — '값 없음'·'미기재'·'표기 없음'·'결측', 그 밖에 '없음'으로 끝나는 사유.\n- other: 그 밖(새 사유 — 코드·계약을 바꾸지 않고 reason 문자열 그대로 보인다).",
+      "type": "string",
+      "enum": [
+        "fetch_failed", "not_collected", "not_published", "parse_failed", "source_missing", "demoted", "conflict_hold",
+        "partial_missing", "identity_unconfirmed", "other_complex_site", "no_phrase", "phrase_inconclusive", "not_target",
+        "input_blocked", "unresolved", "unjudged", "not_entered", "no_sample", "human_check", "no_value", "other"
+      ]
     }
   },
   "allOf": [
@@ -52,7 +68,9 @@
   "examples": [
     { "v": 578000000, "label": "확인됨", "prov": "fp_2041", "checked_at": "2026-10-07", "unit": "won" },
     { "v": 5.0, "label": "추정", "reason": "대체·보정 c=0.015", "prov": "sc_88_4_gap", "checked_at": "2026-10-08", "unit": "score" },
-    { "v": null, "label": "확인 불가", "reason": "403", "prov": null, "checked_at": "2026-10-07" },
+    { "v": null, "label": "확인 불가", "reason": "403", "reason_code": "fetch_failed", "prov": null, "checked_at": "2026-10-07" },
+    { "v": null, "label": "확인 불가", "reason": "발코니 표 해석 실패", "reason_code": "parse_failed", "prov": "fp_2060", "checked_at": "2026-10-13", "unit": "won" },
+    { "v": -8.1, "label": "추정", "reason": "대체·보정 c=0.015", "prov": "sc_88_4_gap.raw", "checked_at": "2026-10-08", "unit": "pct" },
     { "v": "2028-03", "label": "확인됨", "prov": "fp_2050", "checked_at": "2026-10-07", "unit": "ym" },
     { "v": "가능", "label": "확인됨", "prov": "hc_3", "checked_at": "2026-10-09", "unit": "text", "human": true }
   ]

@@ -15,14 +15,38 @@
     "supply": { "$ref": "fact.json" },
     "applied": { "$ref": "fact.json" },
     "ratio_or_shortfall_text": { "type": ["string", "null"], "maxLength": 64 },
-    "raw_document_id": { "type": ["integer", "null"] }
+    "raw_document_id": { "type": ["integer", "null"] },
+    "winning_score_min": { "description": "계약 2026-10-09.20(D28-5 Q4): 이 행(주택형·회차)의 당첨 가점 최저(가점제 당첨자만, 청약홈 경쟁률 페이지 원문 값 — 점, unit 없음). 수집 저장값(경쟁률 행의 가점 칸과 그 출처 행)이 있을 때만 값, 없으면 '확인 불가(가점 미수집)'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "winning_score_max": { "description": "당첨 가점 최고(winning_score_min 과 같은 규칙)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "winning_score_avg": { "description": "당첨 가점 평균(원문 표기 값 그대로 — 서버가 평균을 내지 않는다, winning_score_min 과 같은 규칙)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "CompetitionSummary": {
+      "title": "CompetitionSummary",
+      "description": "계약 2026-10-09.20(D28-5 Q4): 목록·비교·상세 머리용 경쟁률 요약 — 저장된 경쟁률 행(같은 단지)에서 산술로만 만든다(``app.analysis.competition_summary`` — 판단 아님). 기준 행 = kind '본청약' 이고 회차(round)가 '1순위'로 시작하며 '해당'을 포함하는 행(1순위 해당지역). 기준 행이 없으면 rows 0 · 아래 Fact 는 '확인 불가(1순위 해당지역 경쟁률 없음)'.\n- max_ratio: 기준 행마다 접수 ÷ 공급(공급 > 0, 둘 다 값 있음 — 소수 2자리 ROUND_HALF_UP)의 최댓값. label = 그 행 공급·접수 Fact 중 약한 쪽, reason '산술(접수 n ÷ 공급 m)', prov = 그 행 접수(applied) 출처. 같은 값이면 앞 행(id 순). 표시 '7.50 : 1'. 값을 낼 행이 없으면(공급·접수 확인 불가) 첫 기준 행의 사유로 '확인 불가'.\n- max_ratio_type_code: 그 행의 표시 주택형(competition.type_code 와 같은 규칙). 없으면 null.\n- shortfall_types: 기준 행 중 접수 < 공급인 행 수(unit count, label = 기준 행 공급·접수 Fact 중 가장 약한 것, reason '산술(접수 < 공급 행 수)'). 0 = 1순위 해당지역 미달 없음. 기준 행 하나라도 공급·접수가 확인 불가면 '확인 불가(일부 누락 n건)'.\n- winning_score_min / winning_score_max: 기준 행 당첨 가점 최저의 최솟값 / 최고의 최댓값(Competition.winning_score_* 가 기준 행 모두에 있을 때만, 아니면 그 사유의 '확인 불가' — 지금은 '가점 미수집').",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis", "rows", "max_ratio", "max_ratio_type_code", "shortfall_types", "winning_score_min", "winning_score_max"],
+      "properties": {
+        "basis": { "description": "기준 행 설명(표시용 고정 문구 '본청약 1순위 해당지역')", "type": "string" },
+        "rows": { "x-nonfact": "기준 행 수(집계 메타)", "type": "integer", "minimum": 0 },
+        "max_ratio": { "$ref": "fact.json" },
+        "max_ratio_type_code": { "type": ["string", "null"], "maxLength": 16 },
+        "shortfall_types": { "$ref": "fact.json" },
+        "winning_score_min": { "$ref": "fact.json" },
+        "winning_score_max": { "$ref": "fact.json" }
+      }
+    }
   },
   "examples": [
     {
       "id": 610, "complex_id": 2, "round": "임의 3차", "kind": "임의", "type_code": "84A",
       "supply": { "v": 2, "label": "확인됨", "prov": "fp_2210", "checked_at": "2026-10-07", "unit": "units" },
       "applied": { "v": 15, "label": "확인됨", "prov": "fp_2211", "checked_at": "2026-10-07", "unit": "count" },
-      "ratio_or_shortfall_text": "7.50", "raw_document_id": 9007
+      "ratio_or_shortfall_text": "7.50", "raw_document_id": 9007,
+      "winning_score_min": { "v": null, "label": "확인 불가", "reason": "가점 미수집", "reason_code": "not_collected", "prov": null, "checked_at": null },
+      "winning_score_max": { "v": null, "label": "확인 불가", "reason": "가점 미수집", "reason_code": "not_collected", "prov": null, "checked_at": null },
+      "winning_score_avg": { "v": null, "label": "확인 불가", "reason": "가점 미수집", "reason_code": "not_collected", "prov": null, "checked_at": null }
     }
   ]
 }

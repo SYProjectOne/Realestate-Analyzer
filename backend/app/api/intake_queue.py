@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.scope import pick_intake
+from app.api.reason_codes import reason_code
 from app.models import Complex, HumanCheck, IntakeStatus, RawDocument, Snapshot
 
 __all__ = ["CATEGORY_ORDER", "QUEUE_STATUSES", "build_queue", "empty_queue", "queue_key"]
@@ -204,6 +205,9 @@ def build_queue(session: Session, snap: Snapshot) -> dict[str, Any]:
                 "complex_name": names.get(r.complex_id, ""),
                 "status": r.status,
                 "reason": shown_reason(r.status, r.reason, r.http_status),
+                "reason_code": reason_code(shown_reason(r.status, r.reason, r.http_status), r.http_status)
+                if shown_reason(r.status, r.reason, r.http_status)
+                else None,  # 계약 .20(D28-5 Q5) — Intake.reason_code 와 같은 함수
                 "path": r.path,
                 "evidence_url": r.evidence_url,
                 "raw_document_id": r.raw_document_id,

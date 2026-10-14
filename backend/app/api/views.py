@@ -23,7 +23,8 @@ from app.analysis import price_view as pv
 from app.analysis import scope as scope_rules
 from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.ladder import target_label
-from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown
+from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown, weakest
+from app.api.reason_codes import reason_code
 from app.core.contracts_gen import Complex as ComplexDTO
 from app.core.contracts_gen import ComplexRow as ComplexRowDTO
 from app.core.contracts_gen import ComplexScoreInput
@@ -82,6 +83,8 @@ HATCH_LABELS = {
     "none": "해당 없음",
 }
 _RAW_UNITS = {"p10": "prob", "rerank": "prob", "gap": "pct"}
+RAW_SUFFIX: Final = ".raw"
+"""계약 .20(D28-5 Q6): 성분 원값 Fact 의 출처 id 꼬리 — ``sc_<실행>_<단지>_<성분>.raw``(성분 점수 ``sc_…_<성분>`` 와 나눈다)."""
 # D10-1 '재판정 필요'(저장 범위 ≠ 현재 범위): 계약에 필드가 생기면(.6, G3) 응답에 싣고, 그 전에는 내부 플래그
 # (``rejudge_needed``·``RowData.rejudge_needed``)만 — additionalProperties false 라 계약 밖 키를 내지 않는다.
 _EMIT_REJUDGE_SCORE = "rejudge_needed" in ScoreRowDTO.model_fields
@@ -254,10 +257,54 @@ def scenario_view(sc: Scenario) -> dict[str, Any]:
 # ====================================================================== 접수 상태
 
 
+_SUPPLY_KEYWORDS: Final = {"무순위": "무순위", "임의공급": "임의", "선착순": "선착순"}
+"""공식 홈페이지 파서 키워드 이름(``normalize.official_site_parser.KEYWORDS`` 값) → 공급 구분 어휘(SUPPLY_KIND, 계약 .20 Q8)."""
+_SUPPLY_PATHS: Final = frozenset({"official_popup", "headless_shot"})
+_SUPPLY_STATUSES: Final = frozenset({"가능", "미정", "불가"})
+_NOTE_HEAD: Final = "문구 후보:"
+
+
+@functools.lru_cache(maxsize=4096)
+def _note_supply_kind(note: str) -> tuple[str | None, str | None]:
+    """접수 행 메모의 문구 후보 → (supply_kind, supply_kind_basis). 판정 표식 조각('판정기 classify …'·'분류 복사 …')은
+    뺀다. 문구 조각(' / ' 로 나뉜 줄)마다 파서 키워드 정규식(``scan_text`` — 파싱 정규식, 판단 아님)으로 공급 종류 키워드를
+    찾아 **정확히 한 종류**면 그 값과 첫 근거 줄, 둘 이상이면 (None, '공급 종류 문구가 여럿(…)'), 없으면 (None, None)."""
+    from app.normalize.official_site_parser import scan_text
+    from app.scheduler.intake import CLASSIFIED_MARK, COPIED_MARK
+
+    parts = [p for p in note.split(" · ") if p and not p.startswith((CLASSIFIED_MARK, COPIED_MARK))]
+    text = " · ".join(parts).strip()
+    if text.startswith(_NOTE_HEAD):
+        text = text[len(_NOTE_HEAD) :].strip()
+    kinds: dict[str, str] = {}  # 종류 → 첫 근거 줄(문서 순서)
+    for piece in (p.strip() for p in text.split(" / ")):
+        if not piece:
+            continue
+        for hit in scan_text(piece):
+            kind = _SUPPLY_KEYWORDS.get(hit.keyword)
+            if kind is not None:
+                kinds.setdefault(kind, piece)
+    if not kinds:
+        return None, None
+    if len(kinds) == 1:
+        kind, basis = next(iter(kinds.items()))
+        return kind, basis[:120]
+    return None, f"공급 종류 문구가 여럿({'·'.join(kinds)})"[:120]
+
+
+def supply_kind(row: IntakeStatus) -> tuple[str | None, str | None]:
+    """계약 .20(D28-5 Q8) ``Intake.supply_kind``·``supply_kind_basis`` — 저장된 문구 후보가 이미 말한 공급 종류만(새 판단 없음).
+    수집 경로(official_popup·headless_shot)이고 판정기 분류 결과 상태(가능·미정·불가)인 행만. 그 밖은 (None, None)."""
+    if row.path not in _SUPPLY_PATHS or row.status not in _SUPPLY_STATUSES or not row.note:
+        return None, None
+    return _note_supply_kind(str(row.note))
+
+
 def intake_view(row: IntakeStatus) -> dict[str, Any]:
     reason = row.reason
     if row.status == "확인 불가" and not reason:
         reason = str(row.http_status) if row.http_status else "사유 미기재"
+    kind, basis = supply_kind(row)
     return {
         "id": row.id,
         "complex_id": row.complex_id,
@@ -272,6 +319,10 @@ def intake_view(row: IntakeStatus) -> dict[str, Any]:
         "reason": reason,
         "note": row.note,
         "entered_by": row.entered_by,
+        # 계약 .20(D28-5 Q5·Q8): 사유 코드(사유 문자열·HTTP 상태 — 판단 아님) · 공급 종류(저장 문구 후보 키워드만)
+        "reason_code": reason_code(reason, row.http_status) if reason else None,
+        "supply_kind": kind,
+        "supply_kind_basis": basis,
     }
 
 
@@ -1121,6 +1172,8 @@ def competition_view(fm: FactMaker, c: Competition, type_code: str | None = None
         "applied": fm.field("competition", c.id, "applied", c.applied, unit="count"),
         "ratio_or_shortfall_text": c.ratio_or_shortfall_text,
         "raw_document_id": c.raw_document_id,
+        # 계약 .20(D28-5 Q4): 당첨 가점(수집 저장값이 있을 때만 값 — 지금은 '확인 불가(가점 미수집)')
+        **{name: winning_score_fact(fm, c, name) for name in WINNING_SCORE_FIELDS},
     }
 
 
@@ -1417,7 +1470,15 @@ def _component_view(ctx: ScoreCtx, cid: int, key: str, ladder_p10: dict[str, Any
             )
         else:
             label = row.label if row.label != LABEL_UNKNOWN else "추정"
-            raw = fact(row.raw_value, label, prov, ctx.checked, reason=row.reason, unit=_RAW_UNITS.get(key))
+            # 원값(gap% 등)은 성분 점수와 다른 출처 id(``.raw`` — 서랍 value_text = 원값, 계약 .20 Q6)
+            raw = fact(
+                row.raw_value,
+                label,
+                f"{prov}{RAW_SUFFIX}",
+                ctx.checked,
+                reason=row.reason,
+                unit=_RAW_UNITS.get(key),
+            )
     contribution = None
     if row.score_0_10 is not None:
         contribution = float(
@@ -1468,7 +1529,9 @@ def score_row(
     area_name: Mapping[str, str],
     *,
     jl_days: Mapping[int, str | None],
+    facts: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """``facts``: 계약 .20(Q7·Q4) 사실 열(``score_row_facts`` — 목록 행과 같은 Fact). 주면 행에 싣는다(대시보드 TOP 5·비교·상세)."""
     cid = b.cx.id
     horizon = str((ctx.scenario.policy or {}).get("p10_horizon") or "move_in_plus_1y")
     p10 = p10_fact(b, horizon, jl_days)
@@ -1510,6 +1573,7 @@ def score_row(
         "decision": decision_badge(ctx, cid),
         "judge_scope": shown_scope(b, ctx),
         **({"rejudge_needed": rejudge_needed(b, ctx)} if _EMIT_REJUDGE_SCORE else {}),
+        **(dict(facts) if facts is not None else {}),
     }
 
 
@@ -1572,6 +1636,240 @@ def complex_rows_data(bundles: Mapping[int, ComplexBundle], ctx: ScoreCtx) -> li
     return out
 
 
+def gap_pct_fact(ctx: ScoreCtx, cid: int) -> dict[str, Any]:
+    """가격 갭 **퍼센트** Fact(목록 ``gap_pct``·점수 행 ``gap_pct`` — 같은 함수). 출처 = 성분 원값 서랍
+    ``sc_<실행>_<단지>_gap.raw``(계약 .20 Q6 — 성분 점수 s_gap 의 ``sc_…_gap`` 과 나눈다)."""
+    gap_row = (ctx.components.get(cid) or {}).get("gap")
+    if ctx.run is not None and gap_row is not None and gap_row.raw_value is not None:
+        return fact(
+            gap_row.raw_value,
+            gap_row.label if gap_row.label != LABEL_UNKNOWN else "추정",
+            f"sc_{ctx.run.id}_{cid}_gap{RAW_SUFFIX}",
+            ctx.checked,
+            reason=gap_row.reason,
+            unit="pct",
+        )
+    why = (gap_row.reason if gap_row is not None else None) or ("미판정" if gap_row is None else "고정 입력")
+    return unknown(why, ctx.checked, unit="pct")
+
+
+def down_payment_pct_fact(fm: FactMaker, b: ComplexBundle) -> dict[str, Any]:
+    """현재 납부 조건의 계약금 비율 Fact(목록·비교·상세 같은 규칙). 납부 조건이 없으면 '확인 불가(납부 조건 없음)'."""
+    cur_pay = current_payment(b.payments)
+    if cur_pay is None:
+        return unknown("납부 조건 없음", None, unit="pct")
+    return fm.field("payment_terms", cur_pay.id, "down_payment_pct", cur_pay.down_payment_pct, unit="pct")
+
+
+def share_fact(
+    fm: FactMaker, b: ComplexBundle, price_mid: dict[str, Any], pct_fact: dict[str, Any], pct: Any, what: str
+) -> dict[str, Any]:
+    """P_mid × 비율 원 금액 Fact(계약 .20 Q1 — ``analysis.price.share_won``, RA §6-7 산술). 비율·가격 Fact 중 하나라도 확인 불가면
+    그 사유. 라벨 '추정', reason '산술(P_mid × <what> n%)', prov = price_mid 의 prov(비교 TermsRow 와 같다)."""
+    from app.analysis.price import share_won
+
+    view = bundle_price(b)
+    low, high = view.low_won, view.high_won
+    src = [price_mid, pct_fact]
+    if low is None or high is None or pct is None:
+        return fm.derived(None, src, unit="won")
+    mid = (Decimal(low) + Decimal(high)) / 2
+    shown = num(pct if isinstance(pct, Decimal) else Decimal(str(pct)))
+    return fm.derived(share_won(mid, pct), src, unit="won", reason=f"산술(P_mid × {what} {shown}%)")
+
+
+def down_payment_won_fact(
+    fm: FactMaker, b: ComplexBundle, price_mid: dict[str, Any], down: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """계약금 원 금액 = P_mid × 계약금 %(목록 ``down_payment_won``·상세 ``payment_amounts``·비교 ``TermsRow`` 같은 함수)."""
+    cur_pay = current_payment(b.payments)
+    down = down if down is not None else down_payment_pct_fact(fm, b)
+    return share_fact(fm, b, price_mid, down, cur_pay.down_payment_pct if cur_pay else None, "계약금")
+
+
+PAYMENT_FORMULA: Final = (
+    "금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
+)
+
+
+def payment_amounts(fm: FactMaker, b: ComplexBundle, price: Mapping[str, Any]) -> dict[str, Any]:
+    """계약 .20(D28-5 Q1) ``PriceRange.payment_amounts`` — 대표 타입 P_mid × 현재 납부 조건 비율(계약금·중도금·잔금) +
+    공고의 1차 계약금 정액. 새 판단 없음(산술)."""
+    cur_pay = current_payment(b.payments)
+    mid = price["price_mid"]
+    if cur_pay is None:
+        none = unknown("납부 조건 없음", None, unit="won")
+        return {
+            "basis_type_code": price.get("basis_type_code"),
+            "payment_terms_id": None,
+            "down_payment_won": none,
+            "interim_won": dict(none),
+            "balance_won": dict(none),
+            "down_payment_first_won": dict(none),
+            "formula": PAYMENT_FORMULA,
+        }
+
+    def pct_of(name: str, what: str) -> dict[str, Any]:
+        value = getattr(cur_pay, name)
+        pf = fm.field("payment_terms", cur_pay.id, name, value, unit="pct")
+        return share_fact(fm, b, mid, pf, value, what)
+
+    return {
+        "basis_type_code": price.get("basis_type_code"),
+        "payment_terms_id": cur_pay.id,
+        "down_payment_won": pct_of("down_payment_pct", "계약금"),
+        "interim_won": pct_of("interim_pct", "중도금"),
+        "balance_won": pct_of("balance_pct", "잔금"),
+        "down_payment_first_won": fm.field(
+            "payment_terms", cur_pay.id, "down_payment_first_won", cur_pay.down_payment_first_won, unit="won"
+        ),
+        "formula": PAYMENT_FORMULA,
+    }
+
+
+# ---------------------------------------------------------------------- 경쟁률 요약 (계약 .20 Q4)
+
+WINNING_SCORE_FIELDS: Final = ("winning_score_min", "winning_score_max", "winning_score_avg")
+"""경쟁률 행의 당첨 가점 칸(계약 .20 ``Competition.winning_score_*``). 수집 저장값(같은 이름 컬럼 + 출처 행)이 생기면 그 값을
+쓰고(R9-PARSE 와 컬럼 이름 맞춤), 컬럼이 없으면 '확인 불가(가점 미수집)'."""
+NO_WINNING_SCORE: Final = "가점 미수집"
+
+
+def winning_score_fact(fm: FactMaker, c: Any, name: str) -> dict[str, Any]:
+    """경쟁률 행 1개의 당첨 가점 Fact. 저장 컬럼이 없으면 '확인 불가(가점 미수집)'."""
+    if not hasattr(Competition, name):
+        return unknown(NO_WINNING_SCORE, None)
+    return fm.field("competition", c.id, name, getattr(c, name, None))
+
+
+def competition_rows_for(session: Session, complex_ids: Sequence[int]) -> dict[int, list[Competition]]:
+    """단지들의 경쟁률 행(id 순) — 요약(목록·대시보드·비교)용 한 번 읽기."""
+    out: dict[int, list[Competition]] = defaultdict(list)
+    ids = sorted(set(complex_ids))
+    for chunk in _chunks(ids):
+        for c in session.scalars(
+            select(Competition).where(Competition.complex_id.in_(chunk)).order_by(Competition.id)
+        ):
+            out[c.complex_id].append(c)
+    return out
+
+
+COMPETITION_PROV_FIELDS: Final = frozenset({"supply", "applied", *WINNING_SCORE_FIELDS})
+
+
+def load_competition_prov(
+    session: Session, fm: FactMaker, comps: Mapping[int, Sequence[Competition]]
+) -> None:
+    """요약에 쓰는 경쟁률 칸의 출처 행만 읽는다(목록 성능 — 기준 행이 아닌 행도 같이 읽지만 칸은 셋뿐)."""
+    fm.prov.load(
+        session, "competition", (c.id for cs in comps.values() for c in cs), fields=COMPETITION_PROV_FIELDS
+    )
+
+
+def competition_summary_view(fm: FactMaker, b: ComplexBundle, comps: Sequence[Any]) -> dict[str, Any]:
+    """계약 .20(D28-5 Q4) ``CompetitionSummary`` — 1순위 해당지역 행의 최고 경쟁률·미달 행 수·당첨 가점 범위.
+    산술은 ``analysis.competition_summary.summarize``(판단 없음), Fact 라벨·출처는 그 행 공급·접수 Fact 에서."""
+    from app.analysis.competition_summary import BASIS, CompRow, is_basis_row, summarize
+    from app.normalize.competition import display_type_codes
+
+    rows = sorted(comps, key=lambda c: c.id)
+    basis = [c for c in rows if is_basis_row(c.kind, c.round)]
+    if not basis:
+        none = unknown("1순위 해당지역 경쟁률 없음", None)
+        return {
+            "basis": BASIS,
+            "rows": 0,
+            "max_ratio": none,
+            "max_ratio_type_code": None,
+            "shortfall_types": {**none, "unit": "count"},
+            "winning_score_min": dict(none),
+            "winning_score_max": dict(none),
+        }
+    sup = {c.id: fm.field("competition", c.id, "supply", c.supply, unit="units") for c in basis}
+    app_ = {c.id: fm.field("competition", c.id, "applied", c.applied, unit="count") for c in basis}
+
+    def known(f: dict[str, Any]) -> Any:
+        return None if f["label"] == LABEL_UNKNOWN else f["v"]
+
+    summary = summarize([CompRow(c.id, c.kind, c.round, known(sup[c.id]), known(app_[c.id])) for c in basis])
+    first_bad = next((f for c in basis for f in (sup[c.id], app_[c.id]) if f["label"] == LABEL_UNKNOWN), None)
+    if summary.max_idx is None or summary.max_ratio is None:
+        why = (first_bad or {}).get("reason") or "공급·접수 없음"
+        max_ratio = unknown(str(why), (first_bad or {}).get("checked_at"))
+        max_code = None
+    else:
+        c = basis[summary.max_idx]
+        s_f, a_f = sup[c.id], app_[c.id]
+        max_ratio = fact(
+            float(summary.max_ratio),
+            weakest([s_f["label"], a_f["label"]]),
+            a_f["prov"],
+            max((x for x in (s_f["checked_at"], a_f["checked_at"]) if x), default=None),
+            reason=f"산술(접수 {a_f['v']} ÷ 공급 {s_f['v']})",
+        )
+        max_code = display_type_codes(b.types, rows).get(c.id, c.type_code)
+    all_facts = [f for c in basis for f in (sup[c.id], app_[c.id])]
+    if summary.incomplete:
+        short = unknown(
+            f"일부 누락 {summary.incomplete}건",
+            max((f["checked_at"] for f in all_facts if f.get("checked_at")), default=None),
+            unit="count",
+        )
+    else:
+        short = fact(
+            summary.shortfall,
+            weakest(f["label"] for f in all_facts),
+            app_[basis[0].id]["prov"],
+            max((f["checked_at"] for f in all_facts if f.get("checked_at")), default=None),
+            reason="산술(접수 < 공급 행 수)",
+            unit="count",
+        )
+    return {
+        "basis": BASIS,
+        "rows": len(basis),
+        "max_ratio": max_ratio,
+        "max_ratio_type_code": max_code,
+        "shortfall_types": short,
+        "winning_score_min": _score_extreme(fm, basis, "winning_score_min", min),
+        "winning_score_max": _score_extreme(fm, basis, "winning_score_max", max),
+    }
+
+
+def _score_extreme(fm: FactMaker, basis: Sequence[Any], name: str, pick: Any) -> dict[str, Any]:
+    """기준 행 당첨 가점 칸의 최솟값/최댓값 Fact — 기준 행 모두에 값이 있을 때만(하나라도 확인 불가면 그 사유)."""
+    facts = [winning_score_fact(fm, c, name) for c in basis]
+    bad = next((f for f in facts if f["label"] == LABEL_UNKNOWN), None)
+    if bad is not None:
+        return dict(bad)
+    best = pick(facts, key=lambda f: f["v"])
+    return fact(
+        best["v"],
+        weakest(f["label"] for f in facts),
+        best["prov"],
+        max((f["checked_at"] for f in facts if f.get("checked_at")), default=None),
+        reason="산술(1순위 해당지역 행 중 " + ("최저" if pick is min else "최고") + ")",
+    )
+
+
+def score_row_facts(
+    fm: FactMaker, ctx: ScoreCtx, b: ComplexBundle, comps: Sequence[Any] | None
+) -> dict[str, Any]:
+    """계약 .20(D28-5 Q7·Q4) ScoreRow 의 사실 — 같은 리비전 목록 행(ComplexRow)과 같은 함수·같은 Fact(새 계산 없음)."""
+    cx = b.cx
+    notice = notice_fact(fm, cx)
+    price = price_range(fm, b, notice, full=False)
+    winner = fm.field("complex", cx.id, "winner_date", cx.winner_date, unit="date")
+    months = fm.field("complex", cx.id, "resale_months", cx.resale_months, unit="months")
+    return {
+        "price_low": price["price_low"],
+        "price_high": price["price_high"],
+        "resale_end": _resale_end(fm, cx, winner, months),
+        "move_in_ym": fm.field("complex", cx.id, "move_in_ym", cx.move_in_ym, unit="ym"),
+        "gap_pct": gap_pct_fact(ctx, cx.id),
+        "competition_summary": competition_summary_view(fm, b, comps or []),
+    }
+
+
 def complex_row(
     fm: FactMaker,
     ctx: ScoreCtx,
@@ -1580,32 +1878,15 @@ def complex_row(
     *,
     jl_days: Mapping[int, str | None],
     last_change: dict[str, Any] | None,
+    comps: Sequence[Any] = (),
 ) -> dict[str, Any]:
     b, cx = rd.b, rd.b.cx
     notice = notice_fact(fm, cx)
     price = price_range(fm, b, notice, full=False)
     winner = fm.field("complex", cx.id, "winner_date", cx.winner_date, unit="date")
     months = fm.field("complex", cx.id, "resale_months", cx.resale_months, unit="months")
-    cur_pay = current_payment(b.payments)
-    if cur_pay is not None:
-        down = fm.field("payment_terms", cur_pay.id, "down_payment_pct", cur_pay.down_payment_pct, unit="pct")
-    else:
-        down = unknown("납부 조건 없음", None, unit="pct")
-    gap_row = (ctx.components.get(cx.id) or {}).get("gap")
-    if ctx.run is not None and gap_row is not None and gap_row.raw_value is not None:
-        gap = fact(
-            gap_row.raw_value,
-            gap_row.label if gap_row.label != LABEL_UNKNOWN else "추정",
-            f"sc_{ctx.run.id}_{cx.id}_gap",
-            ctx.checked,
-            reason=gap_row.reason,
-            unit="pct",
-        )
-    else:
-        why = (gap_row.reason if gap_row is not None else None) or (
-            "미판정" if gap_row is None else "고정 입력"
-        )
-        gap = unknown(why, ctx.checked, unit="pct")
+    down = down_payment_pct_fact(fm, b)
+    gap = gap_pct_fact(ctx, cx.id)
     t = ctx.totals.get(cx.id)
     return {
         "complex_id": cx.id,
@@ -1643,6 +1924,8 @@ def complex_row(
             "complex", cx.id, "residency_months", cx.residency_months, unit="months"
         ),
         "down_payment_pct": down,
+        "down_payment_won": down_payment_won_fact(fm, b, price["price_mid"], down),  # 계약 .20 Q1
+        "competition_summary": competition_summary_view(fm, b, comps),  # 계약 .20 Q4
         "units_total": fm.field("complex", cx.id, "units_total", cx.units_total, unit="units"),
         "last_change": last_change,
         **({"rejudge_needed": rd.rejudge_needed} if _EMIT_REJUDGE_ROW else {}),

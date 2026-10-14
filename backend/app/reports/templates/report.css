@@ -61,8 +61,28 @@ div.chart { width: 100%; }
 details > summary { cursor: pointer; color: var(--muted); }
 .formula { font-family: ui-monospace, Consolas, monospace; font-size: 9.5px; white-space: pre-wrap; }
 footer { border-top: 1px solid var(--fg); margin-top: 24px; padding-top: 6px; color: var(--muted); }
+/* R9-REPORT 첫 장(메타 상자 + 결론 요약) · 용어 괄호 풀이 · 증감 표식 · 차트 자료 줄 */
+header.cover h1 { font-size: 22px; }
+.cover-sub { font-size: 13px; font-weight: 600; margin: 2px 0; }
+table.meta-box { font-size: 10.5px; margin: 8px 0 12px; }
+table.meta-box th { width: 13%; white-space: nowrap; }
+h2.cover-h { font-size: 14px; margin: 12px 0 4px; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+ol.summary { margin: 4px 0 8px; padding-left: 20px; }
+ol.summary > li { margin: 3px 0; }
+ol.summary table { margin: 4px 0; }
+ul.howto, ul.moved { margin: 4px 0 8px; padding-left: 20px; }
+p.notation { font-size: 10px; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 4px; }
+.term { font-weight: 600; }
+.gloss { color: var(--muted); font-size: 0.92em; }
+.delta { white-space: nowrap; font-weight: 600; }
+.delta.up { color: #b91c1c; }
+.delta.down { color: #1d4ed8; }
+.delta.add, .delta.remove, .delta.same, .delta.other { color: var(--fg); }
+p.chart-source { font-size: 10px; margin: 4px 0 2px; }
+table.glossary td:first-child { width: 22%; font-weight: 600; }
 @media print {
   body { max-width: none; padding: 0; }
+  header.cover { break-after: page; }
   nav#toc { break-after: page; }
   section { break-before: page; margin-top: 0; }
   details > summary { display: none; }

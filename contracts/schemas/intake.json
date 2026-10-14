@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "intake.json",
   "title": "Intake",
-  "description": "접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.\n표시 문자열: status='확인 불가'이면 '확인 불가(<reason>, <checked_at 날짜>)' (예: '확인 불가(403, 2026-10-07)'). path=human_check이면 배지에 '사람' 접두어.",
+  "description": "접수 가능 상태 1건 (intake_status 행의 API 모양, RA §4-1). 같은 스냅샷에 path별 행이 여러 개일 수 있고, 표시값은 우선순위 human_check > official_popup > headless_shot 으로 고른다(``analysis.scope.pick_intake``). 예외(D27-1·계약 2026-10-09.20 설명 — D27-3): 수집 실패 행(수집 경로 · '확인 불가' · http_status 200 아님 · 원문 또는 응답 코드 있음)은 그보다 나중에 기록된 수집 성공 행이 있으면 표시 후보가 아니다(나중 실패는 이른 성공을 이긴다). 사람 확인은 늘 최우선. unofficial_ref 는 참고 열에만 쓰고 판정(요건 사전 계산·후보 필터)에 쓰지 않는다 — unofficial_ref 는 status='가능'이 될 수 없다.\n표시 문자열: status='확인 불가'이면 '확인 불가(<reason>, <checked_at 날짜>)' (예: '확인 불가(403, 2026-10-07)'). path=human_check이면 배지에 '사람' 접두어.",
   "type": "object",
   "additionalProperties": false,
   "required": ["status", "path", "checked_at"],
@@ -27,7 +27,10 @@
     "http_status": { "x-nonfact": "HTTP 상태 코드(수집 결과 메타)", "description": "공식 홈페이지 응답 코드. DNS 실패·타임아웃은 null + reason", "type": ["integer", "null"] },
     "reason": { "description": "확인 불가·불가 사유 (\"403\", \"DNS\", \"동적 팝업\", \"마감\", \"공고 전\")", "type": ["string", "null"], "maxLength": 120 },
     "note": { "type": ["string", "null"] },
-    "entered_by": { "description": "human_check일 때 역할 문자열(\"운영자\"). 사람 이름 금지(RA §10)", "type": ["string", "null"], "maxLength": 32 }
+    "entered_by": { "description": "human_check일 때 역할 문자열(\"운영자\"). 사람 이름 금지(RA §10)", "type": ["string", "null"], "maxLength": 32 },
+    "reason_code": { "description": "계약 2026-10-09.20(D28-5 Q5): reason 의 사유 코드(fact.json ReasonCode — 같은 함수 ``app.api.reason_codes.reason_code``, http_status 비 2xx 면 fetch_failed). reason 이 없으면(가능·미정 등) 없음(= null). 원문 사유(reason)는 그대로 둔다. .20 이전 발행 리비전 저장본에는 키가 없다", "anyOf": [{ "$ref": "fact.json#/$defs/ReasonCode" }, { "type": "null" }] },
+    "supply_kind": { "description": "계약 2026-10-09.20(D28-5 Q8): 이 접수 행이 가리키는 공급 종류 — **저장된 문구 후보가 이미 말한 것만**(새 판단 없음, AGENTS 규칙 3). 값은 공급 구분 어휘(competition.kind·payment_terms.notice_kind 와 같은 SUPPLY_KIND: '본청약' | '무순위' | '임의' | '선착순') 또는 null. 규칙: path 가 official_popup·headless_shot 이고 status 가 판정기 분류 결과(가능·미정·불가)인 행의 메모(note)에서 판정 표식 조각('판정기 classify …'·'분류 복사 …')을 뺀 문구 후보 글을 공식 홈페이지 파서의 키워드 정규식(``normalize.official_site_parser.scan_text`` — 파싱 정규식, 판단 아님)으로 훑어 공급 종류 키워드(파서 키워드 이름 '무순위' → '무순위', '임의공급' → '임의', '선착순' → '선착순')가 **정확히 한 종류**면 그 값. 없거나 둘 이상이면 null(둘 이상이면 supply_kind_basis 에 후보를 적는다). '본청약'(일반·특별공급)은 접수 문구 키워드가 없고 판정기 classify 출력에도 공급 종류가 없어 지금은 내지 않는다(어휘만 맞춤 — 값은 null). human_check·unofficial_ref 행·'확인 불가' 행은 null. .20 이전 발행 리비전 저장본에는 키가 없다", "type": ["string", "null"], "enum": ["본청약", "무순위", "임의", "선착순", null] },
+    "supply_kind_basis": { "description": "supply_kind 의 근거 문구(저장된 문구 후보 중 키워드가 든 줄 그대로, 최대 120자) 또는 후보가 여럿일 때 '공급 종류 문구가 여럿(무순위·선착순)'. supply_kind 를 정할 문구가 없으면 null", "type": ["string", "null"], "maxLength": 120 }
   },
   "allOf": [
     {
@@ -44,12 +47,13 @@
       "id": 501, "complex_id": 2, "snapshot_id": 12, "status": "가능", "path": "official_popup",
       "evidence_url": "https://xn--c79an5jqrb8zf6rcfy4a5qw65b.com/", "screenshot_path": "official_site/2026-10-07/7f3a.png",
       "raw_document_id": 9012, "checked_at": "2026-10-07T09:12:00+09:00", "http_status": 200,
-      "reason": null, "note": "팝업 '선착순 동·호지정 계약 중'", "entered_by": null
+      "reason": null, "note": "팝업 '선착순 동·호지정 계약 중'", "entered_by": null,
+      "supply_kind": "선착순", "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
     },
     {
       "id": 504, "complex_id": 4, "snapshot_id": 12, "status": "확인 불가", "path": "official_popup",
       "evidence_url": "https://opus-switzen.com/", "screenshot_path": null, "raw_document_id": 9031,
-      "checked_at": "2026-10-07T09:14:00+09:00", "http_status": 403, "reason": "403", "note": null, "entered_by": null
+      "checked_at": "2026-10-07T09:14:00+09:00", "http_status": 403, "reason": "403", "reason_code": "fetch_failed", "note": null, "entered_by": null
     }
   ]
 }

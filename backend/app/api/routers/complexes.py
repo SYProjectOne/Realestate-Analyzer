@@ -21,6 +21,7 @@ from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, day, fact, unknown
 from app.api.routers.snapshots import SCENARIO_PATTERN
 from app.api.views import (
+    RAW_SUFFIX,
     ScoreCtx,
     area_names,
     basis_type,
@@ -155,8 +156,13 @@ def gap_view(
         )
     run_id = ctx.run.id if ctx.run is not None else None
     if gap_row is not None and run_id is not None and gap_row.raw_value is not None:
-        gap_pct = fact(
-            gap_row.raw_value, label, f"sc_{run_id}_{cx.id}_gap", checked, reason=gap_row.reason, unit="pct"
+        gap_pct = fact(  # 퍼센트 = 성분 원값 서랍(``.raw``, 계약 .20 Q6) — 점수 s_gap 의 ``sc_…_gap`` 과 다른 출처 id
+            gap_row.raw_value,
+            label,
+            f"sc_{run_id}_{cx.id}_gap{RAW_SUFFIX}",
+            checked,
+            reason=gap_row.reason,
+            unit="pct",
         )
     elif price["price_mid"]["label"] == LABEL_UNKNOWN:
         gap_pct = unknown("분양가 미공개", checked, unit="pct")
@@ -171,7 +177,12 @@ def gap_view(
     if raw_unadj is not None and run_id is not None and gap_pct["label"] != LABEL_UNKNOWN:
         # 미보정 중앙값 기준 gap%(R3 W7) — 점수 실행이 score_component 에 저장한 값. 없으면 null(옛 실행)
         gap_unadj = fact(
-            raw_unadj, label, f"sc_{run_id}_{cx.id}_gap", checked, reason="미보정 중앙값 기준", unit="pct"
+            raw_unadj,
+            label,
+            f"sc_{run_id}_{cx.id}_gap{RAW_SUFFIX}",
+            checked,
+            reason="미보정 중앙값 기준",
+            unit="pct",
         )
     if gap_row is not None and run_id is not None and gap_row.score_0_10 is not None:
         score = fact(
@@ -197,7 +208,10 @@ def gap_view(
         "comps": comps,
         "gap_pct": gap_pct,
         "gap_pct_unadjusted": gap_unadj,
-        "score": score,
+        "score": score,  # 옛 이름(deprecated) — gap_score 와 같은 Fact
+        "gap_score": dict(
+            score
+        ),  # 계약 .20 Q6: 가격 갭 **점수** s_gap(0~10) — 퍼센트(gap_pct)와 이름을 나눈다
         "empty_reason": empty,
     }
 
@@ -411,6 +425,7 @@ def detail_bodies(
         days.update(ctx.jl_days)
         header = complex_header(fm, b, names)
         price = price_range(fm, b, header["notice_date"])
+        price["payment_amounts"] = views.payment_amounts(fm, b, price)  # 계약 .20 Q1
         basis = basis_type(b.types)
         pays = sorted(b.payments, key=lambda p: (p.effective_from, p.id))
         cur_pay = current_payment(b.payments)
@@ -441,6 +456,7 @@ def detail_bodies(
                 for shown in [display_type_codes(b.types, comps.get(cx.id, []))]
                 for c in comps.get(cx.id, [])
             ],
+            "competition_summary": views.competition_summary_view(fm, b, comps.get(cx.id, [])),  # 계약 .20 Q4
             "events": [event_view(fm, e) for e in events.get(cx.id, [])],
             "intake": [intake_view(i) for i in b.intake],
             "ladder": [
@@ -466,7 +482,11 @@ def detail_bodies(
                 if lk.catalyst_id in cats
             ],
             "judgments": [envelope_view(j) for j in judgments],
-            "score": score_row(ctx, b, names, jl_days=days) if has_score else None,
+            "score": score_row(
+                ctx, b, names, jl_days=days, facts=views.score_row_facts(fm, ctx, b, comps.get(cx.id, []))
+            )
+            if has_score
+            else None,
         }
     return out
 
@@ -835,20 +855,11 @@ def _score_provs(session: Session, prov_ids: list[str]) -> dict[str, dict[str, A
     out: dict[str, dict[str, Any]] = {}
     for pid, (rid, cid, comp) in sc_keys.items():
         run = runs.get(rid)
-        row = next((c for c in comps.get((rid, cid), []) if c.component == comp), None)
-        if row is None or run is None:
+        base, raw = _component_key(comp)
+        row = next((c for c in comps.get((rid, cid), []) if c.component == base), None)
+        if row is None or run is None or (raw and row.raw_value is None):
             continue
-        body = _blank(pid, "score_component", row.label)
-        body.update(
-            entity="score_component",
-            entity_id=row.id,
-            field=row.component,
-            reason=row.reason,
-            value_text=None if row.score_0_10 is None else f"{float(row.score_0_10):g}",
-            checked_at=day(run.created_at),
-            formula_text=row.formula_text,
-        )
-        out[pid] = body
+        out[pid] = _component_body(pid, row, run, raw=raw)
     for pid, (rid, cid) in st_keys.items():
         run = runs.get(rid)
         tot = totals.get((rid, cid))
@@ -897,6 +908,34 @@ def _raw_body(prov_id: str, raw: RawDocument) -> dict[str, Any]:
     return out
 
 
+def _component_key(comp: str) -> tuple[str, bool]:
+    """``sc_`` 출처 id 의 성분 부분 → (성분 이름, 원값 서랍인가). ``gap.raw`` = gap 성분의 원값(계약 .20 Q6)."""
+    if comp.endswith(RAW_SUFFIX):
+        return comp[: -len(RAW_SUFFIX)], True
+    return comp, False
+
+
+def _component_body(prov_id: str, row: Any, run: ScoreRun, *, raw: bool) -> dict[str, Any]:
+    """성분 서랍 1건(한 건씩·여럿 경로 같은 함수). ``raw``: 원값 서랍 — field '<성분>.raw', value_text = 원값(예 gap% 8.1)."""
+    out = _blank(prov_id, "score_component", row.label)
+    if raw:
+        value = None if row.raw_value is None else f"{float(row.raw_value):g}"
+        field = f"{row.component}{RAW_SUFFIX}"
+    else:
+        value = None if row.score_0_10 is None else f"{float(row.score_0_10):g}"
+        field = row.component
+    out.update(
+        entity="score_component",
+        entity_id=row.id,
+        field=field,
+        reason=row.reason,
+        value_text=value,
+        checked_at=day(run.created_at),
+        formula_text=row.formula_text,
+    )
+    return out
+
+
 def _formula_of(run: ScoreRun, comps: Sequence[Any]) -> str:
     """``_score_total_formula`` 와 같은 식(성분 행을 이미 읽은 경우)."""
     terms = []
@@ -921,27 +960,18 @@ def provenance_body(session: Session, prov_id: str) -> dict[str, Any]:
         parts = rest.split("_", 2)
         if len(parts) != 3 or not parts[0].isdigit() or not parts[1].isdigit():
             raise not_found(f"provenance {prov_id}")
+        base, is_raw = _component_key(parts[2])
         row = session.scalars(
             select(ScoreComponent).where(
                 ScoreComponent.score_run_id == int(parts[0]),
                 ScoreComponent.complex_id == int(parts[1]),
-                ScoreComponent.component == parts[2],
+                ScoreComponent.component == base,
             )
         ).first()
         run = session.get(ScoreRun, int(parts[0]))
-        if row is None or run is None:
+        if row is None or run is None or (is_raw and row.raw_value is None):
             raise not_found(f"provenance {prov_id}")
-        out = _blank(prov_id, "score_component", row.label)
-        out.update(
-            entity="score_component",
-            entity_id=row.id,
-            field=row.component,
-            reason=row.reason,
-            value_text=None if row.score_0_10 is None else f"{float(row.score_0_10):g}",
-            checked_at=day(run.created_at),
-            formula_text=row.formula_text,
-        )
-        return out
+        return _component_body(prov_id, row, run, raw=is_raw)
     if prefix == "st" and rest.isdigit():
         return _score_run_prov(session, prov_id, int(rest))
     if prefix == "st":

@@ -90,3 +90,12 @@ def price_change_pct(initial_won: int, latest_won: int) -> Decimal:
     return ((Decimal(latest_won) - Decimal(initial_won)) / Decimal(initial_won) * 100).quantize(
         Q2, rounding=ROUND_HALF_UP
     )
+
+
+def share_won(mid_won: Decimal | int, pct: Decimal | float | int) -> int:
+    """P_mid × 비율(%) ÷ 100 — 원 단위 ROUND_HALF_UP(RA §6-7 자금 요건 계약금 ``P_mid × D`` 와 같은 산술).
+
+    계약 2026-10-09.20(D28-5 Q1): 비교 계약금 원 금액(TermsRow.down_payment_won)·
+    단지 상세 납부 금액(PaymentAmounts)·목록 계약금 원 금액이 이 함수 하나를 쓴다.
+    식은 ``scenarios._funds_pre`` 의 계약금과 같다(그 식은 바꾸지 않는다)."""
+    return int((Decimal(mid_won) * dec(pct) / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))

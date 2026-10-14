@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "complex_detail.json",
   "title": "ComplexDetail",
-  "description": "GET /complexes/{id}?snapshot=&scenario= — G3 단지 상세 전체 (RA §4-2). 탭 8개의 데이터를 한 번에 준다: PriceTable(types), PaymentTerms(payment), C8(events·competition), C1(ladder 3 horizon), C2(gap), CatalystList(catalysts), ProvenanceTab(출처는 각 Fact.prov → /provenance), JudgmentLogTab(judgments).\n- header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).\n- price: 판정 기준 타입의 현재 구매가 범위(§6-1).\n- score: 이 시나리오의 ScoreRow(점수 없으면 null).",
+  "description": "GET /complexes/{id}?snapshot=&scenario= — G3 단지 상세 전체 (RA §4-2). 탭 8개의 데이터를 한 번에 준다: PriceTable(types), PaymentTerms(payment), C8(events·competition), C1(ladder 3 horizon), C2(gap), CatalystList(catalysts), ProvenanceTab(출처는 각 Fact.prov → /provenance), JudgmentLogTab(judgments).\n- header: 단지 사실(Complex). intake_current: 표시값(human_check > official_popup > headless_shot — 단 수집 실패 행은 그보다 나중에 기록된 수집 성공 행이 있으면 표시 후보가 아니다, D27-1·계약 .20 설명), intake: 같은 스냅샷의 path별 전부(unofficial_ref 포함, 참고 열).\n- price: 판정 기준 타입의 현재 구매가 범위(§6-1).\n- score: 이 시나리오의 ScoreRow(점수 없으면 null).",
   "type": "object",
   "additionalProperties": false,
   "required": ["snapshot_id", "asof_date", "scenario_id", "header", "price", "intake_current", "types", "payment", "competition", "events", "intake", "ladder", "gap", "catalysts", "judgments", "score"],
@@ -12,7 +12,7 @@
     "scenario_id": { "type": ["integer", "null"] },
     "header": { "$ref": "complex.json" },
     "price": { "$ref": "#/$defs/PriceRange" },
-    "intake_current": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
+    "intake_current": { "description": "표시 접수 행 = ``analysis.scope.pick_intake``: 경로 우선 human_check > official_popup > headless_shot(unofficial_ref 는 표시값 아님). D27-1 예외(계약 2026-10-09.20 설명 — D27-3): 수집 실패 행(수집 경로 · '확인 불가' · http_status 200 아님 · 원문 또는 응답 코드 있음)은 그보다 나중에 기록된 수집 성공 행이 있으면 후보가 아니다(나중 실패는 이른 성공을 이긴다). 사람 확인은 늘 최우선. 접수 행이 없으면 null", "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
     "types": { "type": "array", "items": { "$ref": "complex_type.json" } },
     "payment": { "type": "array", "items": { "$ref": "payment_terms.json" } },
     "competition": { "type": "array", "items": { "$ref": "competition.json" } },
@@ -22,9 +22,26 @@
     "gap": { "$ref": "#/$defs/Gap" },
     "catalysts": { "type": "array", "items": { "$ref": "catalyst.json" } },
     "judgments": { "type": "array", "items": { "$ref": "judgment_envelope.json" } },
-    "score": { "anyOf": [{ "$ref": "score_row.json" }, { "type": "null" }] }
+    "score": { "anyOf": [{ "$ref": "score_row.json" }, { "type": "null" }] },
+    "competition_summary": { "description": "계약 2026-10-09.20(D28-5 Q4): competition 행의 요약(competition.json CompetitionSummary — 목록·비교와 같은 함수). 경쟁률 행이 없으면 rows 0 · '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "competition.json#/$defs/CompetitionSummary" }, { "type": "null" }] }
   },
   "$defs": {
+    "PaymentAmounts": {
+      "title": "PaymentAmounts",
+      "description": "계약 2026-10-09.20(D28-5 Q1): 판정 기준 타입(basis_type_code, 대표 타입 — 84㎡에 가장 가까운 타입)의 납부 금액(원). 현재 납부 조건(payment[].is_current)의 비율 × 현재 구매가 중앙값 P_mid(§6-1) — RA §6-7 자금 요건과 같은 산술(``app.analysis.price.share_won``: ROUND_HALF_UP(P_mid × 비율 ÷ 100), 비교 화면 TermsRow.down_payment_won 과 같은 함수·같은 값·같은 출처). 새 판단 없음.\n- down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.\n- interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(P_mid × 중도금 n%)').\n- balance_won: P_mid × 잔금 %. 같은 규칙.\n- down_payment_first_won: 공고에 적힌 1차 계약금 정액(공고 값 그대로 — payment[].down_payment_first_won 과 같은 Fact). 없으면 그 사유의 '확인 불가'.\n- formula: 식 설명 문구(화면 툴팁).\n공고가 원 금액을 따로 적지 않은 한 금액은 모두 '추정(산술)'이다 — 대표 타입이 아닌 타입·실제 동·호 금액과 다를 수 있다.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis_type_code", "down_payment_won", "interim_won", "balance_won", "down_payment_first_won", "formula"],
+      "properties": {
+        "basis_type_code": { "type": ["string", "null"] },
+        "payment_terms_id": { "description": "비율을 읽은 현재 납부 조건 행 id(payment[].id). 납부 조건이 없으면 null", "type": ["integer", "null"] },
+        "down_payment_won": { "$ref": "fact.json" },
+        "interim_won": { "$ref": "fact.json" },
+        "balance_won": { "$ref": "fact.json" },
+        "down_payment_first_won": { "$ref": "fact.json" },
+        "formula": { "type": "string", "minLength": 1 }
+      }
+    },
     "PriceRange": {
       "title": "PriceRange",
       "description": "현재 구매가 범위(§6-1): low = 대표층 공급금액 + 발코니 + 필수 옵션 − 할인(확인됨일 때만, D11-6), high = 최고가 + 발코니 + 필수 옵션 − 할인, mid = (low+high)/2. composition은 구성 설명 문자열(예 '공급가 + 발코니 314만 − 할인 1,000만').",
@@ -39,7 +56,8 @@
         "composition": { "type": ["string", "null"] },
         "change_vs_first_pct": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
         "discount": { "description": "공고에 명시된 할인(기준 타입, 계약 2026-10-09.8 — D11-6). 라벨 확인됨일 때만 low·high·mid 에서 이미 뺐다(composition 에 '할인' 표기). 확인됨이 아니면 표시만 하고 빼지 않는다. 할인이 없으면 null", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
-        "discount_applied": { "x-nonfact": "서버 계산 여부 플래그(값 아님)", "description": "계약 2026-10-09.10(R3 5차 minor): discount 를 low·high·mid 에서 **실제로 뺐는가**(서버 판정 — 라벨 확인됨 + 0 < 할인 < 대표층가·최고가). 화면의 '구매가에서 뺌' 문구는 이 값만 본다(0·음수·과대·추정 할인은 false). 할인이 없으면 false", "type": "boolean", "default": false }
+        "discount_applied": { "x-nonfact": "서버 계산 여부 플래그(값 아님)", "description": "계약 2026-10-09.10(R3 5차 minor): discount 를 low·high·mid 에서 **실제로 뺐는가**(서버 판정 — 라벨 확인됨 + 0 < 할인 < 대표층가·최고가). 화면의 '구매가에서 뺌' 문구는 이 값만 본다(0·음수·과대·추정 할인은 false). 할인이 없으면 false", "type": "boolean", "default": false },
+        "payment_amounts": { "description": "계약 2026-10-09.20(D28-5 Q1): 계약금·중도금·잔금 원 금액(PaymentAmounts — 대표 타입 P_mid × 현재 납부 조건 비율, 추정(산술)). 단지 상세(price)에만 있다(목록 ComplexRow 는 down_payment_won 하나). .20 이전 발행 리비전 저장본에는 키가 없다(= null — 화면 '확인 불가(계산값 미제공)')", "anyOf": [{ "$ref": "#/$defs/PaymentAmounts" }, { "type": "null" }] }
       }
     },
     "GapComp": {
@@ -65,7 +83,7 @@
     },
     "Gap": {
       "title": "Gap",
-      "description": "가격 갭 C2 데이터 (RA §7-2 C2, §6-2). comps가 비면 empty_reason('비교군 없음(사유)'). gap_pct는 보정 중앙값 기준, gap_pct_unadjusted는 미보정 기준(둘 다 표시).",
+      "description": "가격 갭 C2 데이터 (RA §7-2 C2, §6-2). comps가 비면 empty_reason('비교군 없음(사유)'). gap_pct는 보정 중앙값 기준, gap_pct_unadjusted는 미보정 기준(둘 다 표시).\n**두 종류의 값이 있다(계약 2026-10-09.20, D28-5 Q6 — 같은 이름 '가격 갭'으로 8.1%와 2.98이 보이던 혼동)**: gap_pct·gap_pct_unadjusted = 가격 갭 **퍼센트**(현재 구매가 중앙 − 비교 실거래 중앙값)/중앙값 × 100 (unit pct, prov 'sc_<실행>_<단지>_gap.raw' — 성분 원값 서랍). gap_score = 그 퍼센트로 만든 **종합 점수 성분 s_gap**(0~10, RA §6-2 clamp(5 − gap%/4, 0, 10), unit score, prov 'sc_<실행>_<단지>_gap' — 성분 점수 서랍). score 는 gap_score 와 같은 값의 옛 이름(.20 에서 유지, 화면은 gap_score 를 '가격 갭 점수(0~10)'로 쓴다).",
       "type": "object",
       "additionalProperties": false,
       "required": ["price_low", "price_high", "price_mid", "comps", "gap_pct", "gap_pct_unadjusted", "score", "empty_reason"],
@@ -76,7 +94,8 @@
         "comps": { "type": "array", "items": { "$ref": "#/$defs/GapComp" } },
         "gap_pct": { "$ref": "fact.json" },
         "gap_pct_unadjusted": { "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
-        "score": { "$ref": "fact.json" },
+        "score": { "description": "**옛 이름**(deprecated, 계약 2026-10-09.20) — gap_score 와 같은 Fact(성분 점수 s_gap 0~10). 가격 갭 퍼센트가 아니다. 새 화면은 gap_score 를 읽는다", "$ref": "fact.json" },
+        "gap_score": { "description": "계약 2026-10-09.20(D28-5 Q6): 가격 갭 **점수** s_gap(0~10 — 종합 점수 성분, RA §6-2 clamp(5 − gap%/4, 0, 10)). prov = 'sc_<실행>_<단지>_gap'(서랍 kind score_component, field 'gap', value_text = 점수). 퍼센트는 gap_pct. .20 이전 발행 리비전 저장본에는 키가 없다(그때는 score 를 읽는다)", "$ref": "fact.json" },
         "empty_reason": { "type": ["string", "null"] }
       }
     }

@@ -150,7 +150,10 @@
           "http_status": 200,
           "reason": null,
           "note": "팝업 '선착순 동·호지정 계약 중'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중'"
         },
         "decision": {
           "prob": {
@@ -166,7 +169,82 @@
           "mismatch": false,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 578000000,
+          "label": "확인됨",
+          "prov": "fp_201",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 608000000,
+          "label": "확인됨",
+          "prov": "fp_202",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2028-09-10",
+          "label": "추정",
+          "prov": "fp_203",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2028-03",
+          "label": "확인됨",
+          "prov": "fp_204",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": -5.2,
+          "label": "추정",
+          "prov": "sc_88_2_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 7,
@@ -300,7 +378,10 @@
           "http_status": 200,
           "reason": null,
           "note": "팝업 '선착순 동·호지정 계약 중 / 전매제한 FREE / 거주의무 FREE'",
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": null,
+          "supply_kind": "선착순",
+          "supply_kind_basis": "팝업 '선착순 동·호지정 계약 중"
         },
         "decision": {
           "prob": {
@@ -316,7 +397,82 @@
           "mismatch": false,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 664000000,
+          "label": "확인됨",
+          "prov": "fp_701",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 697000000,
+          "label": "확인됨",
+          "prov": "fp_702",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2026-06-10",
+          "label": "추정",
+          "prov": "fp_703",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2029-12",
+          "label": "확인됨",
+          "prov": "fp_704",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": 7.6,
+          "label": "추정",
+          "prov": "sc_88_7_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       },
       {
         "complex_id": 4,
@@ -450,7 +606,10 @@
           "http_status": 403,
           "reason": "403",
           "note": null,
-          "entered_by": null
+          "entered_by": null,
+          "reason_code": "fetch_failed",
+          "supply_kind": null,
+          "supply_kind_basis": null
         },
         "decision": {
           "prob": {
@@ -466,7 +625,82 @@
           "mismatch": true,
           "confidence": 0.48
         },
-        "judge_scope": "판정 대상"
+        "judge_scope": "판정 대상",
+        "price_low": {
+          "v": 626000000,
+          "label": "확인됨",
+          "prov": "fp_401",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "price_high": {
+          "v": 699000000,
+          "label": "확인됨",
+          "prov": "fp_402",
+          "checked_at": "2026-10-07",
+          "unit": "won"
+        },
+        "resale_end": {
+          "v": "2028-07-18",
+          "label": "추정",
+          "prov": "fp_403",
+          "checked_at": "2026-10-07",
+          "reason": "산술",
+          "unit": "date"
+        },
+        "move_in_ym": {
+          "v": "2028-08",
+          "label": "확인됨",
+          "prov": "fp_404",
+          "checked_at": "2026-10-07",
+          "unit": "ym"
+        },
+        "gap_pct": {
+          "v": 0.0,
+          "label": "추정",
+          "prov": "sc_88_4_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "보고서 등급 역산",
+          "unit": "pct"
+        },
+        "competition_summary": {
+          "basis": "본청약 1순위 해당지역",
+          "rows": 0,
+          "max_ratio": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "max_ratio_type_code": null,
+          "shortfall_types": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null,
+            "unit": "count"
+          },
+          "winning_score_min": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          },
+          "winning_score_max": {
+            "v": null,
+            "label": "확인 불가",
+            "reason": "1순위 해당지역 경쟁률 없음",
+            "reason_code": "no_value",
+            "prov": null,
+            "checked_at": null
+          }
+        }
       }
     ],
     "components": {
@@ -555,28 +789,32 @@
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -605,28 +843,32 @@
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -711,28 +953,32 @@
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -761,28 +1007,32 @@
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -867,28 +1117,32 @@
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -917,28 +1171,32 @@
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p10": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p20": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "p_flat": {
             "v": null,
             "label": "확인 불가",
             "reason": "미판정(보고서에 없는 시점)",
             "prov": null,
-            "checked_at": "2026-10-08"
+            "checked_at": "2026-10-08",
+            "reason_code": "unjudged"
           },
           "verdicts": {
             "p5": null,
@@ -1085,7 +1343,7 @@
         "gap_pct": {
           "v": -5.2,
           "label": "추정",
-          "prov": "sc_88_2_gap",
+          "prov": "sc_88_2_gap.raw",
           "checked_at": "2026-10-08",
           "reason": "보고서 (a)단계 등급 역산",
           "unit": "pct"
@@ -1098,7 +1356,14 @@
           "checked_at": "2026-10-08",
           "unit": "score"
         },
-        "empty_reason": null
+        "empty_reason": null,
+        "gap_score": {
+          "v": 6.3,
+          "label": "추정",
+          "prov": "sc_88_2_gap",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        }
       },
       "7": {
         "price_low": {
@@ -1227,7 +1492,7 @@
         "gap_pct": {
           "v": 7.6,
           "label": "추정",
-          "prov": "sc_88_7_gap",
+          "prov": "sc_88_7_gap.raw",
           "checked_at": "2026-10-08",
           "reason": "보고서 (a)단계 등급 역산",
           "unit": "pct"
@@ -1240,7 +1505,14 @@
           "checked_at": "2026-10-08",
           "unit": "score"
         },
-        "empty_reason": null
+        "empty_reason": null,
+        "gap_score": {
+          "v": 3.1,
+          "label": "추정",
+          "prov": "sc_88_7_gap",
+          "checked_at": "2026-10-08",
+          "unit": "score"
+        }
       },
       "4": {
         "price_low": {
@@ -1390,7 +1662,7 @@
         "gap_pct": {
           "v": 0.0,
           "label": "추정",
-          "prov": "sc_88_4_gap",
+          "prov": "sc_88_4_gap.raw",
           "checked_at": "2026-10-08",
           "reason": "보고서 (a)단계 등급 역산",
           "unit": "pct"
@@ -1398,7 +1670,7 @@
         "gap_pct_unadjusted": {
           "v": 11.3,
           "label": "추정",
-          "prov": "sc_88_4_gap",
+          "prov": "sc_88_4_gap.raw",
           "checked_at": "2026-10-08",
           "reason": "미보정 중앙값 기준, 산술",
           "unit": "pct"
@@ -1411,7 +1683,15 @@
           "reason": "대체·보정 c=0.015",
           "unit": "score"
         },
-        "empty_reason": null
+        "empty_reason": null,
+        "gap_score": {
+          "v": 5.0,
+          "label": "추정",
+          "prov": "sc_88_4_gap",
+          "checked_at": "2026-10-08",
+          "reason": "대체·보정 c=0.015",
+          "unit": "score"
+        }
       }
     },
     "terms": [

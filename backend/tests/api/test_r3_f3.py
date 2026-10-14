@@ -674,7 +674,7 @@ def test_w7_gap_pct_unadjusted_reads_stored_value(client: TestClient) -> None:
         cid, run_id = row.complex_id, run.id
     gap = client.get(f"/api/complexes/{cid}", headers=WRITE).json()["gap"]
     un = gap["gap_pct_unadjusted"]
-    assert un is not None and un["v"] == -7.25 and un["prov"] == f"sc_{run_id}_{cid}_gap"
+    assert un is not None and un["v"] == -7.25 and un["prov"] == f"sc_{run_id}_{cid}_gap.raw"  # .20 Q6
     assert un["reason"] == "미보정 중앙값 기준"
 
 

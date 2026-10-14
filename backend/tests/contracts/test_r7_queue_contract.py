@@ -12,18 +12,20 @@ from ._support import CONTRACTS, EXAMPLES, SCHEMAS, build_schema_registry, load_
 VERSION = "2026-10-09.19"
 
 
-def test_contract_version_is_19_everywhere() -> None:
-    """버전 표시 4곳: protocols·openapi(원본·번들)·DECISIONS 5행·CHANGELOG 맨 위."""
+def test_contract_version_is_19_or_later_everywhere() -> None:
+    """버전 표시 4곳(protocols·openapi 원본·번들·DECISIONS 5행·CHANGELOG 맨 위)이 같고 .19 이상이다.
+    .20(R9-API) 이후에도 .19 항목은 CHANGELOG 에 남는다(현재 버전 단언은 ``test_r9_api_contract``)."""
     from app.core.protocols import CONTRACT_VERSION
 
-    assert CONTRACT_VERSION == VERSION
-    assert load_yaml(CONTRACTS / "openapi.yaml")["info"]["version"] == VERSION
-    assert load_yaml(CONTRACTS / "openapi.bundled.yaml")["info"]["version"] == VERSION
+    assert CONTRACT_VERSION.startswith("2026-10-09.") and int(CONTRACT_VERSION.rsplit(".", 1)[1]) >= 19
+    assert load_yaml(CONTRACTS / "openapi.yaml")["info"]["version"] == CONTRACT_VERSION
+    assert load_yaml(CONTRACTS / "openapi.bundled.yaml")["info"]["version"] == CONTRACT_VERSION
     decisions = (CONTRACTS.parent / "docs" / "design" / "DECISIONS.md").read_text(encoding="utf-8")
-    assert f"계약 버전: `{VERSION}`" in decisions
+    assert f"계약 버전: `{CONTRACT_VERSION}`" in decisions
     changelog = (CONTRACTS / "CHANGELOG.md").read_text(encoding="utf-8")
     top = re.search(r"^## (\d{4}-\d{2}-\d{2}\.\d+)\b", changelog, re.M)
-    assert top is not None and top.group(1) == VERSION
+    assert top is not None and top.group(1) == CONTRACT_VERSION
+    assert f"## {VERSION}" in changelog
 
 
 def test_changelog_19_has_fe_difference_table() -> None:
