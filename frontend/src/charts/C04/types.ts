@@ -16,4 +16,7 @@ export interface C04Data {
   livingAreas?: LivingAreaName[];
 }
 
+/** 따로 색을 주는 큰 생활권 수 — 나머지는 '나머지 n곳'(목업 Market: 5곳 + 나머지) */
+export const C04_TOP_AREAS = 5;
+
 export const C04_EMPTY: C04Data = { supply: [], markers: [] };

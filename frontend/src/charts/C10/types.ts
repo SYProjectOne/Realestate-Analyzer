@@ -7,4 +7,7 @@ export interface C10Data {
   names?: Record<string, string>;
 }
 
+/** '상위 5곳'(TOP 5) — 서버 top5 의 뜻. 순위가 이보다 크면 상위 5곳 밖(주황 띠) */
+export const C10_TOP = 5;
+
 export const C10_EMPTY: C10Data = { sensitivity: null };

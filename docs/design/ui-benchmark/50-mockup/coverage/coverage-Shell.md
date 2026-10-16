@@ -5,8 +5,8 @@
 - 화면 하나에만 쓰는 차트 배지(`badge.substitute`·`newBuild`·`sampleEstimated*`)는 그 차트를 쓰는 화면 대응표(G3·G4·G6)에서 다룬다. `badge.unjudged`는 coverage-Main.md(C06)에 있다.
 - "동작"이라고 적은 줄은 화면에 그림이 없는 행동(URL 공유·포커스·폴링 등)이다. 목업에 표시가 없으면 정직하게 `빠짐`으로 적었다. 구현 때 지금 테스트로 지킨다.
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 1 | [틀] 스킵 링크 (`layout/AppLayout.tsx` · `app.skipToContent` "본문으로 건너뛰기", 평소 숨김·포커스 때 보임) | Shell · 맨 위 왼쪽 링크 | 같음 (목업은 늘 보이게 그림) | 있음 |
 | 2 | [틀] 본문 랜드마크 `main#main` (`layout/AppLayout.tsx`) | Shell · `<main id="main">` | 같음 | 있음 |
 | 3 | [틀] 화면 조각 불러오는 동안 (`layout/AppLayout.tsx` Suspense · `app.loading` "불러오는 중…") | Shell · §7 불러오는 중 · 오류 · 빈 상태 (첫 카드) | 같음 | 있음 |
@@ -282,22 +282,22 @@
 | 273 | [상태] 기준일 없음 `app.noSnapshot` (NoSnapshot) | Shell · §7 "아직 기준일이 없어요" | 같은 뜻 | 있음 |
 | 274 | [상태] 지역 첫 적재 중 `app.noSnapshotBootstrapping` | Shell · §7 "지역을 처음 분석 중이면 끝날 때까지 기다려 주세요." | 같은 뜻 | 있음 |
 | 275 | [상태] 카드 구역 Section (h2 + 본문) | 각 화면 보드 카드 | 같음 | 다른 보드(각 화면) |
-| 276 | [차트 틀] 제목 h3 (`charts/ChartFrame.tsx` figure/figcaption) | Shell · §8 모든 차트의 틀 "차트 제목 (무엇을 · 언제부터 언제까지)" | 같음 | 있음 |
-| 277 | [차트 틀] 데이터 라벨 배지(중복 제거) | Shell · §8 "추정" | 같음 | 있음 |
-| 278 | [차트 틀] 추가 배지 자리(불안정·동률 등) | Compare · 점수 비교 줄 "동률·순위가 흔들려요·근거와 달라요·다시 판정 필요 배지는 서버가 준 값 그대로" | 같음 | 다른 보드(Compare) |
-| 279 | [차트 틀] 부제 | Shell · §8 "한 줄 부제" | 같음 | 있음 |
-| 280 | [차트 틀] 빈 상태 emptyReason → EmptyState | Shell · §8 "값이 없으면 '자료가 없어요(이유)'" | 같은 뜻 | 있음(고침 SH-18) |
-| 281 | [차트 틀] 표로 보기 `table.show` (`components/DataTableToggle.tsx`, aria-expanded) | Shell · §8 "표로 보기" | 같음 | 있음 |
-| 282 | [차트 틀] 표 닫기 `table.hide` | DetailTabs · 표로 보기 — 가격 전망 사다리 "버튼 글자는 '표 닫기'로 바뀌어요" | 같음 | 다른 보드(DetailTabs) |
-| 283 | [차트 틀] 표 caption (sr-only `table.caption` "{title} 데이터") | — | — | 있음(고침 SH-18) |
-| 284 | [차트 틀] 표 빈 행 `empty.noData` | — | — | 있음(고침 SH-18) |
-| 285 | [차트 틀] 표 칸: Fact → FactCell(출처 열기) · 숫자 → 파생값 · 글자 · 빈 값 "확인 불가" | — | 펼친 표 모습은 Shell에 없음 (화면별 표 열은 각 화면 대응표) | 있음(고침 SH-18) |
-| 286 | [차트] 화면에 들어올 때 불러오기 + 자리표시 `chart.notRendered` "차트 준비 중" (`charts/EChart.tsx`) | Shell · §8 "차트 자리" (점선 상자) | 문구 "차트 준비 중" 없음 | 있음(고침 SH-18) |
-| 287 | [차트] 차트 role=img + aria-label(제목) | Main · 미분양 카드 svg role=img aria-label | 같음 | 다른 보드(Main) |
-| 288 | [차트] SVG 그리기·다크 색판 (`charts/palette.ts`, 동작) | — | — | 있음(고침 SH-20) |
+| 276 | [차트 틀] 제목 h3 (`charts/ChartFrame.tsx` figure/figcaption) | Shell · §8 모든 차트의 틀 "차트 제목 (무엇을 · 언제부터 언제까지)" | 같음 | 있음 | charts.r11 › ChartFrame · e2e charts-gallery › C01 normal … C10 normal |
+| 277 | [차트 틀] 데이터 라벨 배지(중복 제거) | Shell · §8 "추정" | 같음 | 있음 | charts.r11 › ChartFrame(라벨 배지 중복 제거) · ChartGallery.test › 정상 상태 카드는 라벨 배지 |
+| 278 | [차트 틀] 추가 배지 자리(불안정·동률 등) | Compare · 점수 비교 줄 "동률·순위가 흔들려요·근거와 달라요·다시 판정 필요 배지는 서버가 준 값 그대로" | 같음 | 다른 보드(Compare) | ChartGallery.test › 특수 상태 배지 · e2e charts-gallery › C06 normal |
+| 279 | [차트 틀] 부제 | Shell · §8 "한 줄 부제" | 같음 | 있음 | charts.r11 › ChartFrame(부제) |
+| 280 | [차트 틀] 빈 상태 emptyReason → EmptyState | Shell · §8 "값이 없으면 '자료가 없어요(이유)'" | 같은 뜻 | 있음(고침 SH-18) | charts.r11 › ChartFrame 빈 상태 · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 281 | [차트 틀] 표로 보기 `table.show` (`components/DataTableToggle.tsx`, aria-expanded) | Shell · §8 "표로 보기" | 같음 | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 282 | [차트 틀] 표 닫기 `table.hide` | DetailTabs · 표로 보기 — 가격 전망 사다리 "버튼 글자는 '표 닫기'로 바뀌어요" | 같음 | 다른 보드(DetailTabs) | charts.r11 › ChartFrame 표로 보기(표 닫기) |
+| 283 | [차트 틀] 표 caption (sr-only `table.caption` "{title} 데이터") | — | — | 있음(고침 SH-18) | charts.r11 › ChartFrame 표로 보기(캡션) |
+| 284 | [차트 틀] 표 빈 행 `empty.noData` | — | — | 있음(고침 SH-18) | charts.r11 › ChartFrame 표로 보기(데이터 없음 한 줄) |
+| 285 | [차트 틀] 표 칸: Fact → FactCell(출처 열기) · 숫자 → 파생값 · 글자 · 빈 값 "확인 불가" | — | 펼친 표 모습은 Shell에 없음 (화면별 표 열은 각 화면 대응표) | 있음(고침 SH-18) | ChartGallery.test › 표로 보기 → Fact 셀 클릭이 출처 패널로 · e2e charts-gallery › 표로 보기: … Fact 셀 → 출처 패널 |
+| 286 | [차트] 화면에 들어올 때 불러오기 + 자리표시 `chart.notRendered` "차트 준비 중" (`charts/EChart.tsx`) | Shell · §8 "차트 자리" (점선 상자) | 문구 "차트 준비 중" 없음 | 있음(고침 SH-18) | lazy.test › 화면 밖: 플레이스홀더만 … 진입하면 그린다 |
+| 287 | [차트] 차트 role=img + aria-label(제목) | Main · 미분양 카드 svg role=img aria-label | 같음 | 다른 보드(Main) | charts.r11 › 차트 이름(aria-label) = 제목 |
+| 288 | [차트] SVG 그리기·다크 색판 (`charts/palette.ts`, 동작) | — | — | 있음(고침 SH-20) | charts.r11 › 팔레트 · e2e charts-gallery › C01~C10 normal (다크) · e2e/pages perf › 운영 빌드: 모든 차트가 SVG |
 | 289 | [404] 없는 주소 h1 `page.notFound.title` "페이지를 찾을 수 없습니다" (`pages/not-found/index.tsx`) | Shell · §9 "찾는 화면이 없어요" | 바뀜 | 있음 |
 | 290 | [404] 모바일 읽기 전용 정책 handle | Shell · §2 휴대폰 칩 (화면 목록에 404 없음) | — | 있음(고침 SH-9) |
-| 291 | [/__charts] 개발 전용 차트 갤러리 (`app/ChartGalleryPage.tsx` · `chart.gallery.title` "차트 갤러리", `chart.gallery.note`, 상태 `chart.gallery.state.*`) | Coverage · 그림으로 그리지 않은 것 "차트 갤러리(/__charts)" | — | 문구로만(고침 SH-21) |
+| 291 | [/__charts] 개발 전용 차트 갤러리 (`app/ChartGalleryPage.tsx` · `chart.gallery.title` "차트 갤러리", `chart.gallery.note`, 상태 `chart.gallery.state.*`) | Coverage · 그림으로 그리지 않은 것 "차트 갤러리(/__charts)" | — | 문구로만(고침 SH-21) | ChartGallery.test › 차트마다 정상·빈·특수 상태가 하나 이상 · e2e/pages › 차트 갤러리 라우트(/__charts, dev) |
 | 292 | [/__charts] 갤러리 불러오는 동안 `app.loading` | — | — | 문구로만(고침 SH-21) |
 | 293 | [API] GET /health (판정기 상태 띠) | Shell · §2 첫 띠 | 호출 표시 없음 | 있음 |
 | 294 | [API] GET /regions (지역 고르기·열쇠 확인) | Shell · 머리줄 지역 select | 호출 표시 없음 | 있음 |

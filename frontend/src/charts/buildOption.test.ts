@@ -29,3 +29,16 @@ describe('차트 C01~C10 buildOption', () => {
     expect(table.rows).toEqual([]);
   });
 });
+
+describe('R11 범례(차트 위 HTML)', () => {
+  it.each(IDS)('%s: 빈 데이터면 범례 항목이 없다(빈 상태 문구만)', (id) => {
+    const entry = chartRegistry.find((c) => c.id === id)!;
+    expect(entry.legendItems(entry.empty)).toEqual([]);
+  });
+
+  it.each(IDS)('%s: ECharts 범례는 그리지 않는다(show:false — 범례는 차트 위 HTML)', (id) => {
+    const entry = chartRegistry.find((c) => c.id === id)!;
+    const legend = (entry.buildOption(entry.empty) as { legend?: { show?: boolean } }).legend;
+    expect(legend?.show ?? false).toBe(false);
+  });
+});

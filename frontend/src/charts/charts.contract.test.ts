@@ -34,6 +34,9 @@ const series = (o: unknown): any[] => {
   return Array.isArray(s) ? s : [s];
 };
 const seriesById = (o: unknown, id: string) => series(o).find((s) => s.id === id);
+/** C04 첫 계열 id(생활권) */
+const s0 = (data: Parameters<typeof C04.buildOption>[0]) =>
+  String(series(C04.buildOption(data))[0].id);
 
 describe('C01 상승 확률 사다리', () => {
   const ladder = elif().ladder;
@@ -53,7 +56,8 @@ describe('C01 상승 확률 사다리', () => {
     const bar = series(C01.buildOption(data))[0];
     const text = bar.label.formatter({ dataIndex: 1, value: 0.45 });
     expect(text).toContain('45%');
-    expect(text).toContain('불확실');
+    // 판정 문구 uncertain = '중간'(목업 고침 CP-7 — 불확실 → 중간)
+    expect(text).toContain('중간');
     expect(C01.subtitle(data)).toBe('목표 시점 2029 상반기');
   });
 
@@ -72,26 +76,32 @@ describe('C01 상승 확률 사다리', () => {
     );
   });
 
-  it('G4 overlay = 단지별 scatter(모양도 다름)', () => {
+  it('G4 overlay = 단지별 계열(목업: 막대 묶음 4개 × 단지), 범례는 색 + 모양이 단지마다 다름', () => {
     const c = compare();
     const overlay = c.rows.map((row) => ({
       complex_id: row.complex_id,
       name: row.name,
       ladder: c.ladders[String(row.complex_id)] ?? [],
     }));
-    const o = C01.buildOption({ ladder: [], horizon: 'move_in_plus_1y', overlay });
+    const data = { ladder: [], horizon: 'move_in_plus_1y' as const, overlay };
+    const o = C01.buildOption(data);
     const s = series(o);
     expect(s).toHaveLength(3);
-    expect(s.every((x) => x.type === 'scatter')).toBe(true);
-    expect(new Set(s.map((x) => x.symbol)).size).toBe(3);
+    // R11: 산점 → 묶음 막대(coverage-Compare #90)
+    expect(s.every((x) => x.type === 'bar')).toBe(true);
+    expect(s.map((x) => x.name)).toEqual(overlay.map((x) => x.name));
+    const legend = C01.legendItems(data);
+    expect(new Set(legend.map((x) => x.symbol)).size).toBe(3);
+    expect(new Set(legend.map((x) => x.color)).size).toBe(3);
   });
 });
 
 describe('C02 가격 갭', () => {
-  it('점+위스커(custom) + y축 억 단위', () => {
+  it('점+위스커(custom) + 값 축 억 단위', () => {
     const o = C02.buildOption({ gap: elif().gap });
     expect(seriesById(o, 'range').type).toBe('custom');
-    expect(opt(o).yAxis.axisLabel.formatter(593_000_000)).toBe('5.9억');
+    // R11: 가로 띠(목업 Compare·DetailTabs) — 값 축 = x축
+    expect(opt(o).xAxis.axisLabel.formatter(593_000_000)).toBe('5.9억');
   });
 
   it('T11 대체·보정: 보정 중앙값 = 점선 테두리 점, 배지 "대체(준공년)"', () => {
@@ -139,7 +149,7 @@ describe('C03 벤치마크', () => {
     const o = C03.buildOption(data);
     expect(opt(o).yAxis.data[0]).toContain('2020');
     const tip = seriesById(o, 'sale').tooltip.formatter({ dataIndex: 0 });
-    expect(tip).toContain('연율 8.8%');
+    expect(tip).toContain('(연율) 8.8%');
   });
 
   it('표본 < 3 → "표본 n, 추정" 배지(생활권별)', () => {
@@ -211,7 +221,12 @@ describe('C04 입주 물량', () => {
   });
 
   it('라벨 "추정 집계", 0개 → "입주 물량 없음"', () => {
-    expect(opt(C04.buildOption(data)).yAxis.name).toBe('추정 집계');
+    // R11: 축 이름은 단위('세대'), 라벨 '추정 집계'는 부제·말풍선 머리에(목업 Market)
+    const o = opt(C04.buildOption(data));
+    expect(o.yAxis.name).toBe('세대');
+    const head = o.tooltip.formatter([{ seriesId: s0(data), value: 1, axisValue: '2026' }]);
+    expect(head).toContain('추정 집계');
+    expect(t('chart.C04.subtitle')).toContain('추정 집계');
     expect(C04.emptyReason({ supply: [], markers: [] })).toBe('입주 물량 없음');
   });
 });
@@ -269,7 +284,8 @@ describe('C06 종합 점수 분해', () => {
   });
 
   it('제목 부제 = 가중치', () => {
-    expect(C06.weightsSubtitle(d.weights)).toContain('+10% 상승 가능성 0.35');
+    // R11: 비중은 '35%'로(목업 '비중 n%')
+    expect(C06.weightsSubtitle(d.weights)).toContain('+10% 상승 가능성 35%');
   });
 
   it('null component → 빗금(decal) + "미판정"', () => {
@@ -354,14 +370,14 @@ describe('C07 판정기 확률', () => {
     const bar = series(o)[0];
     expect(bar.type).toBe('bar');
     expect(opt(o).yAxis.data).toContain('사용자에게 질문');
-    expect(C07.confidenceText(data)).toMatch(/^신뢰도 /);
+    expect(C07.confidenceText(data)).toMatch(/^믿음 정도 /);
     expect(C07.hasMismatch(data)).toBe(true);
   });
 
   it('T2 상황 B: confidence 0.48 < 0.6 → 동률', () => {
     const data = { decision: c.decisions.B! };
     expect(C07.isTie(data)).toBe(true);
-    expect(C07.confidenceText(data)).toBe('신뢰도 0.48');
+    expect(C07.confidenceText(data)).toBe('믿음 정도 0.48');
   });
 
   it('minor 28: 동률은 서버 tie 만 — confidence 로 브라우저가 다시 계산하지 않는다', () => {
