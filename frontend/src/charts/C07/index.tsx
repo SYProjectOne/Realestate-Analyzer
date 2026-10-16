@@ -28,12 +28,14 @@ export interface C07DecisionProps {
   asof?: IsoDate | null;
   /** 바닥줄 출처 설명. 생략하면 ko `chart.C07.source` */
   source?: string;
+  /** 제목 뒤에 붙일 말(보통 상황 이름) — "판정기 확률 · {상황}" */
+  titleSuffix?: string | null;
 }
 
 /** C7 판정기 확률 — decide prob + escape, confidence, TieBadge(conf<0.6), MismatchBadge (G4, G5). escaped면 질문 텍스트 */
-export function C07Decision({ data, height, asof, source }: C07DecisionProps) {
+export function C07Decision({ data, height, asof, source, titleSuffix }: C07DecisionProps) {
   const palette = useChartPalette();
-  const title = t('chart.C07.title');
+  const title = titleSuffix ? `${t('chart.C07.title')} · ${titleSuffix}` : t('chart.C07.title');
   const d = data.decision;
   const items = d?.items ?? [];
   const h = height ?? Math.max(150, 56 + items.length * 34);

@@ -496,7 +496,7 @@ function ReportsBody() {
                 {blocked ?? createError}
                 {claimsBlocked ? (
                   <Link
-                    to={`/ops${globalSearch}`}
+                    to={`/ops${globalSearch}#claims`}
                     data-testid="g8-fix-claims"
                     className="ml-1.5 font-semibold text-accent underline-offset-2 hover:underline"
                   >

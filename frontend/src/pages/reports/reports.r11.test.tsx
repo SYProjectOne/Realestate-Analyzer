@@ -95,7 +95,8 @@ describe('R11 G8 보고서 — 목업 Reports', () => {
     expect(reason).toHaveAttribute('role', 'alert');
     expect(button).toHaveAttribute('aria-describedby', reason.id);
     const fix = within(reason).getByRole('link', { name: t('page.G8.blockedFix') });
-    expect(fix.getAttribute('href')).toMatch(/^\/ops/);
+    // 모순 주장 묶음으로 바로 간다(R11-MARKETOPS 앵커 #claims)
+    expect(fix.getAttribute('href')).toMatch(/^\/ops.*#claims$/);
     expect(screen.queryByTestId('g8-ready')).toBeNull();
   });
 

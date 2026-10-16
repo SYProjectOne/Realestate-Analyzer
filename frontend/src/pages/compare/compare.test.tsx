@@ -138,7 +138,9 @@ describe('G4 비교', () => {
     });
     expect(within(intakeRow).getAllByTestId('intake-badge')).toHaveLength(3);
     expect(screen.getByRole('table', { name: t('page.G4.termsFirst') })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t('chart.C07.title') })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: (n) => n.startsWith(`${t('chart.C07.title')} · `) }),
+    ).toBeInTheDocument();
     // 상황 B 예시: confidence 0.48 → 동률
     expect(screen.getAllByTestId('tie-badge').length).toBeGreaterThan(0);
   });

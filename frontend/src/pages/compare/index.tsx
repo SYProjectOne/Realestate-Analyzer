@@ -236,7 +236,11 @@ function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: st
               <p className="m-0 text-sm font-bold text-fg">{t('page.G4.weightWhat')}</p>
               <p className="m-0 text-sm leading-relaxed text-fg-2">{t('page.G4.weightWhatBody')}</p>
             </Card>
-            <C10Sensitivity data={{ sensitivity: sensitivity.data, names }} asof={asof} />
+            <C10Sensitivity
+              data={{ sensitivity: sensitivity.data, names }}
+              asof={asof}
+              hideQuestion
+            />
           </AnalyzeSection>
         </div>
       ) : null}
@@ -616,7 +620,11 @@ function DecisionPanel({ view, scenarioKey }: { view: CompareView; scenarioKey: 
         <EmptyState message={t('page.G4.noDecision')} />
       ) : (
         <div className="flex flex-col gap-4">
-          <C07Decision data={{ decision }} asof={view.asof_date} />
+          <C07Decision
+            data={{ decision }}
+            asof={view.asof_date}
+            titleSuffix={key ? nameOf(key) : null}
+          />
           <VirtualCandidates decision={decision} />
           {decision.warnings.length > 0 ? (
             <Banner tone="warn" role="note" title={t('page.G4.warnings')} data-testid="g4-warnings">

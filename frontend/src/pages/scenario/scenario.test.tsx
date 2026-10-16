@@ -488,7 +488,11 @@ describe('G5 시나리오 화면', () => {
     expect(judge).toHaveTextContent(
       t('page.G5.judgeEyebrow', { name: 'B 가점 낮음·소액 자기자본' }),
     );
-    expect(within(judge).getByRole('heading', { name: t('chart.C07.title') })).toBeInTheDocument();
+    expect(
+      within(judge).getByRole('heading', {
+        name: (n) => n.startsWith(`${t('chart.C07.title')} · `),
+      }),
+    ).toBeInTheDocument();
     const sens = screen.getByRole('region', { name: t('page.G4.sensitivityQ') });
     expect(sens).toHaveTextContent(t('page.G5.sensEyebrow', { name: 'B 가점 낮음·소액 자기자본' }));
     expect(within(sens).getByText(t('page.G5.sensHint'))).toBeInTheDocument();

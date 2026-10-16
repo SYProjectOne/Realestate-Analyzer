@@ -76,7 +76,9 @@ test('G4 비교: 실제 API 3단지 비교 표', async ({ page }) => {
   await expect(grid.getByRole('columnheader')).toHaveCount(4);
   await expect(grid).toContainText('엘리프 검단 포레듀');
   await expect(grid).toContainText('김포 칸타빌 에디션');
-  await expect(page.getByRole('heading', { name: ko.chart.C07.title, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: new RegExp(`^${ko.chart.C07.title} · `) }),
+  ).toBeVisible();
   expect(failed).toEqual([]);
 });
 

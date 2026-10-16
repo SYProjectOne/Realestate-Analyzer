@@ -33,9 +33,13 @@ describe('M9 /share 라우트 — 공유 링크로 들어오기', () => {
     const url = String(replace.mock.calls[0]?.[2] ?? '');
     expect(url).not.toContain('#');
     expect(url).not.toContain(SHARE_TOKEN);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: t('page.G1.title') }),
-    ).toBeInTheDocument();
+    // G1 h1 = 데이터 전 '홈' → 데이터 후 스크린리더용 '홈' + 첫 줄 문장(R11-HOME). h1 이 바뀌므로 찾은 요소가 아니라
+    // '지금 화면에 홈 h1 이 있다'를 기다린다.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { level: 1, name: (n) => n.startsWith(t('page.G1.title')) }),
+      ).toBeInTheDocument(),
+    );
     // 읽기 전용 안내 배너
     expect(await screen.findByTestId('readonly-banner')).toBeInTheDocument();
   });

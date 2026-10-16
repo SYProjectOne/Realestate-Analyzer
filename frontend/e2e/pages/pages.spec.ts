@@ -86,7 +86,7 @@ test.describe('화면 10개 핵심 요소', () => {
       page.getByRole('table', { name: P.G4.grid }).getByRole('columnheader'),
     ).toHaveCount(4);
     await expect(
-      page.getByRole('heading', { name: ko.chart.C07.title, exact: true }),
+      page.getByRole('heading', { name: new RegExp(`^${ko.chart.C07.title} · `) }),
     ).toBeVisible();
   });
 

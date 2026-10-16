@@ -137,7 +137,7 @@ function ScenarioBody({ scenarios, current }: { scenarios: Scenario[]; current: 
         title={t('page.G5.judgeQ')}
         data-testid="g5-judge"
       >
-        <C07Decision data={{ decision }} asof={asof} />
+        <C07Decision data={{ decision }} asof={asof} titleSuffix={name} />
       </AnalyzeSection>
       <AnalyzeSection
         eyebrow={t('page.G5.sensEyebrow', { name })}
@@ -145,7 +145,11 @@ function ScenarioBody({ scenarios, current }: { scenarios: Scenario[]; current: 
         hint={t('page.G5.sensHint')}
         data-testid="g5-sensitivity"
       >
-        <C10Sensitivity data={{ sensitivity: sensitivity.data ?? null, names }} asof={asof} />
+        <C10Sensitivity
+          data={{ sensitivity: sensitivity.data ?? null, names }}
+          asof={asof}
+          hideQuestion
+        />
       </AnalyzeSection>
     </div>
   );
