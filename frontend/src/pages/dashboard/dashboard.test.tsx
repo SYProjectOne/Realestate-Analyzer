@@ -22,24 +22,40 @@ async function exampleDashboard(): Promise<Dashboard> {
 }
 
 describe('R9-UI P2 G1 홈 첫 화면을 "지금 할 수 있는 것"부터(30-proposal §3)', () => {
-  it('섹션 순서: 지금 접수 가능 → 다가오는 일정 → 종합 점수 상위 단지 → 지역 현황 → 최근 변경', async () => {
+  it('섹션 순서(R11 Main 보드): 첫 줄 → 접수 가능 카드 → 곧 청약 접수 → 다가오는 일정 → 지역 시장 → 점수 순서 → 최근 변경', async () => {
     const { container } = renderRoute('/');
     await screen.findByRole('list', { name: t('page.G1.top5') });
-    const order = [...container.querySelectorAll('[data-section]')].map((el) =>
-      el.getAttribute('data-section'),
-    );
-    expect(order).toEqual(['openNow', 'upcoming', 'top', 'region', 'changes']);
+    await waitFor(() => {
+      const order = [...container.querySelectorAll('[data-section]')].map((el) =>
+        el.getAttribute('data-section'),
+      );
+      expect(order).toEqual([
+        'openNow',
+        'openCards',
+        'applySoon',
+        'upcoming',
+        'region',
+        'top',
+        'changes',
+      ]);
+    });
   });
 
   it('지금 접수 가능 N곳: 숫자는 FactCell(출처 유지), 링크 = G2 + 접수 가능 필터 + 전역 쿼리', async () => {
     const dash = await exampleDashboard();
     renderRoute('/?snapshot=12&scenario=B');
-    const card = await screen.findByRole('region', { name: t('page.G1.openNow.title') });
+    // R11: 첫 줄 h1 "지금 청약을 넣을 수 있는 단지는 N곳이에요"(N = 서버 KPI)
+    const h1 = (await screen.findByTestId('hero-count')).closest('h1') as HTMLElement;
+    expect(h1).toHaveAccessibleName(new RegExp(`^${t('page.G1.title')}`));
+    expect(h1).toHaveTextContent(t('page.G1.hero.before').trim());
+    expect(h1).toHaveTextContent(t('page.G1.hero.after'));
+    const card = h1.closest('section') as HTMLElement;
     const prov = dash.kpis.intake_open_count.prov;
     expect(prov).toBeTruthy();
     const cell = card.querySelector(`[data-prov="${prov ?? ''}"]`) as HTMLElement;
     expect(cell).not.toBeNull();
     expect(within(cell).getByTestId('label-badge')).toBeInTheDocument();
+    expect(h1.contains(cell)).toBe(true);
     const link = within(card).getByRole('link', { name: t('page.G1.openNow.link') });
     const href = new URL(link.getAttribute('href') ?? '', 'http://x');
     expect(href.pathname).toBe('/complexes');
@@ -95,15 +111,15 @@ describe('G1 홈 대시보드', () => {
     }
   });
 
-  it('TOP 5 카드: 종합·+10% 확률·접수 배지, 카드 클릭 → G3', async () => {
+  it('점수 줄: 종합·+10% 이상 오를 가능성·접수 배지, 줄 빈 곳 클릭 → G3', async () => {
     const { router } = renderRoute('/');
     const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
     const cards = within(top5).getAllByRole('listitem');
     const first = cards[0] as HTMLElement;
     expect(within(first).getByText(t('page.G1.total'))).toBeInTheDocument();
-    expect(within(first).getByText(t('page.G1.p10'))).toBeInTheDocument();
+    expect(within(first).getByText(t('page.G1.p10Line'))).toBeInTheDocument();
     expect(within(first).getByTestId('intake-badge')).toBeInTheDocument();
-    await userEvent.click(within(first).getByText(t('page.G1.p10')));
+    await userEvent.click(within(first).getByText(t('page.G1.p10Line')));
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/complexes/${first.dataset.complexId}`),
     );
@@ -142,7 +158,7 @@ describe('R9-UI P2 G1 다가오는 일정 · TOP 카드 사실 줄(30-proposal �
       expect(d >= '2026-10-08' && d <= '2026-11-05').toBe(true);
     }
     for (const li of items) {
-      expect(li.textContent).toMatch(/\(D[+-]\d+\)|D-day/);
+      expect(within(li).getByTestId('schedule-dday').textContent).toMatch(/^(D[+-]\d+|D-day)$/);
       expect(within(li).getByTestId('schedule-kind').textContent?.length ?? 0).toBeGreaterThan(0);
     }
     // 계약 .21(D29-3): 청약 접수·당첨자 발표가 일정에 들어와 '접수일 미수집' 안내는 없다
@@ -168,14 +184,21 @@ describe('R9-UI P2 G1 다가오는 일정 · TOP 카드 사실 줄(30-proposal �
     expect(await within(box).findByText(t('page.G1.upcoming.none'))).toBeInTheDocument();
   });
 
-  it('TOP 카드: 점수·+10%는 사실 줄 아래, rerank 변화는 카드에 없다', async () => {
+  it('점수 줄: +10%·막대·종합은 사실 줄 아래, rerank 변화는 줄에 없다', async () => {
     renderRoute('/');
     const top5 = await screen.findByRole('list', { name: t('page.G1.top5') });
     const card = within(top5).getAllByRole('listitem')[0] as HTMLElement;
     const facts = card.querySelector('[data-card="facts"]') as HTMLElement;
-    const score = card.querySelector('[data-card="score"]') as HTMLElement;
-    expect(facts.compareDocumentPosition(score) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(score).getByText(t('page.G1.p10Note'))).toBeInTheDocument();
+    for (const part of ['p10', 'bar', 'score']) {
+      const el = card.querySelector(`[data-card="${part}"]`) as HTMLElement;
+      expect(facts.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    const p10 = card.querySelector('[data-card="p10"]') as HTMLElement;
+    // CEO R11: '오를 가능성' 줄은 목표 시점을 말하고 "당첨 확률이 아니에요 · 보장 아님"
+    expect(within(p10).getByText(t('page.G1.p10Note'))).toBeInTheDocument();
+    expect(within(p10).getByTestId('p10-target')).toHaveTextContent(
+      t('page.G1.p10Target', { target: '' }).trim(),
+    );
     expect(within(card).queryByTestId('top5-delta-rerank')).toBeNull();
   });
 

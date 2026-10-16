@@ -80,7 +80,7 @@ describe('R5-FE 1: ?scenario=·?snapshot= 가 화면 이동에서 유지된다',
     const feed = screen.getByRole('list', { name: t('page.G1.changes') });
     for (const a of within(feed).getAllByRole('link')) expectHrefGlobal(a);
     const first = cards[0] as HTMLElement;
-    await userEvent.click(within(first).getByText(t('page.G1.p10')));
+    await userEvent.click(within(first).getByText(t('page.G1.p10Line')));
     const loc = await waitPath(router, `/complexes/${first.dataset.complexId}`);
     expectGlobal(loc.search);
   });
