@@ -54,7 +54,10 @@ export function Hero({ data, regionName }: { data: Dashboard; regionName: string
         >
           <span className="sr-only">{t('page.G1.title')} </span>
           {t('page.G1.hero.before')}
-          <span className="text-accent" data-testid="hero-count">
+          <span
+            className="text-accent [&_[data-testid=label-badge]]:whitespace-nowrap [&_[data-testid=label-badge]]:tracking-normal"
+            data-testid="hero-count"
+          >
             <FactCell wrap fact={data.kpis.intake_open_count} unit="count" />
           </span>
           {t('page.G1.hero.after')}
