@@ -80,4 +80,5 @@ vite(MSW 끔)를 띄우고 G0~G8, Bearer 다운로드 3종, 원문 미리보기(
 ## 규칙
 
 - 화면 문자열은 `src/i18n/ko.json` + `t()` — ESLint `local/no-hangul-literal`이 JSX·TS 한글 리터럴을 거부한다(예외는 `eslint-rules/hangul-allowlist.js`: 계약 enum 값·서버 표식·개발자 오류, 근거를 테스트가 확인). 숫자는 `FactCell` 또는 `src/lib/format.ts` — ESLint `local/no-raw-number-render`가 강제.
+- 문자열 지연 로드(R11-I18N): 원본은 ko.json 하나 그대로, 빌드 플러그인 `ko-split`(vite.config.ts)이 진입용 core 와 이름공간(`page/G0`…`page/G8`·`chart`, 청크 `ko-*`, 규칙 `src/i18n/namespaces.ts`)으로 나눈다. 플러그인이 `src/pages/<폴더>/index.tsx` 앞에 등록 import 를 넣어 그 화면의 이름공간을 합친 청크 하나(`ko-route-<폴더>`)를 화면 청크와 함께 받고 화면 모듈보다 먼저 등록한다(표는 `PAGE_NAMESPACES`). 화면이 다른 화면의 `page.Gx.*`·`chart.*`를 새로 쓰면 `PAGE_NAMESPACES[폴더]`에 이름공간을 더한다 — `src/i18n/routeNamespaces.test.ts`가 빠진 것을 이름으로 알려 준다. 화면 코드·`routes.tsx`는 고치지 않는다. 모듈 최상위(렌더 밖)에서 이름공간 키로 `t()`를 부르지 않는다(필요하면 `CORE_PINS`).
 - 지역명 하드코딩 금지(목 데이터·테스트 제외). 라벨은 텍스트 배지. 하단 고정 문구는 레이아웃이 붙인다.

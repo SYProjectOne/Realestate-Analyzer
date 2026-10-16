@@ -8,6 +8,7 @@ import config from '../vite.config';
 import {
   ENTRY_CLOSURE_BUDGET_KB,
   entryViolations,
+  isLazyOnly,
   LAZY_ONLY_CHUNKS,
   staticClosure,
   type ChunkLike,
@@ -78,6 +79,23 @@ describe('entryViolations', () => {
     expect(entryViolations(chunks, 399)).toHaveLength(1);
   });
 
+  it('R11-I18N: 문자열 이름공간 청크(ko-*)가 진입에서 정적으로 닿으면 위반, 동적이면 통과', () => {
+    const bad = [
+      chunk('index-a.js', { isEntry: true, imports: ['ko-page-G3-x.js'], kb: 100 }),
+      chunk('ko-page-G3-x.js', { name: 'ko-page-G3', kb: 10 }),
+    ];
+    expect(entryViolations(bad)).toHaveLength(1);
+    expect(entryViolations(bad)[0]).toContain('ko-page-G3-x.js');
+    const ok = [
+      chunk('index-a.js', { isEntry: true, kb: 100 }),
+      chunk('index-p.js', { imports: ['ko-chart-y.js'] }),
+      chunk('ko-chart-y.js', { name: 'ko-chart', kb: 10 }),
+    ];
+    expect(entryViolations(ok)).toEqual([]);
+    expect(isLazyOnly('ko-glossary')).toBe(true);
+    expect(isLazyOnly('index')).toBe(false);
+  });
+
   it('지연 전용 = echarts·zrender·msw, 예산 450kB(R5-FE2 실측 401kB + 여유, 이전 651kB)', () => {
     expect([...LAZY_ONLY_CHUNKS].sort()).toEqual(['echarts', 'msw', 'zrender']);
     expect(ENTRY_CLOSURE_BUDGET_KB).toBe(450);
@@ -92,5 +110,20 @@ describe('vite.config.ts', () => {
       .map((p) => (p && typeof p === 'object' && 'name' in p ? p.name : null));
     expect(names).toContain('entry-chunk-guard');
     expect(names).toContain('max-chunk-guard');
+    expect(names).toContain('ko-split');
+  });
+
+  it('R11-I18N: ko 가상 모듈 — 이름공간은 ko-* 청크, core 는 vendor 로 끌려가지 않는다', () => {
+    const resolved = config({ mode: 'production', command: 'build' });
+    const output = resolved.build?.rollupOptions?.output;
+    const manual = (Array.isArray(output) ? output[0] : output)?.manualChunks;
+    expect(typeof manual).toBe('function');
+    const fn = manual as (id: string) => string | undefined;
+    expect(fn('\0virtual:ko/ns/page/G3')).toBe('ko-page-G3');
+    expect(fn('\0virtual:ko/ns/chart')).toBe('ko-chart');
+    expect(fn('\0virtual:ko/core')).toBeUndefined();
+    // 화면 문자열 등록 모듈은 화면 청크 안으로(따로 요청하지 않는다)
+    expect(fn('\0virtual:ko/page/complex')).toBeUndefined();
+    expect(fn('\0vite/preload-helper.js')).toBe('vendor');
   });
 });
