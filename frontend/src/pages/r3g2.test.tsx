@@ -87,7 +87,7 @@ describe('F3 POST /catalysts 201 job_id → 발행까지 감시', () => {
     expect(within(publish).getByTestId('publish-pending')).toHaveTextContent(
       t('job.publishPending'),
     );
-    expect(await within(publish).findByText('rejudge')).toBeInTheDocument();
+    expect(await within(publish).findByText(t('job.name.rejudge'))).toBeInTheDocument();
   });
 });
 
@@ -246,7 +246,7 @@ describe('F15 발행 안내는 stats.publish_job_id 를 이어 감시해 닫는�
       </MemoryRouter>,
     );
     const box = await screen.findByTestId('publish-job');
-    expect(await within(box).findByText('snapshot.publish')).toBeInTheDocument();
+    expect(await within(box).findByText(t('job.name.snapshot_publish'))).toBeInTheDocument();
     expect(within(box).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
     publishStatus = 'done';
     expect(await within(box).findByTestId('publish-done', {}, { timeout: 8000 })).toHaveTextContent(

@@ -123,7 +123,7 @@ describe('D11-5 호재 위치 확인(계약 .8)', () => {
     // 계약 .11 F3: 202 + job_id(snapshot.publish) — 잡이 끝날 때까지 지금 발행 리비전이 기본이라는 안내 + 진행
     const job = within(await panel()).getByTestId('catalyst-job');
     expect(within(job).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
-    expect(await within(job).findByText('snapshot.publish')).toBeInTheDocument();
+    expect(await within(job).findByText(t('job.name.snapshot_publish'))).toBeInTheDocument();
     expect(within(await panel()).queryByTestId('catalyst-job-none')).toBeNull();
     rec.stop();
   });

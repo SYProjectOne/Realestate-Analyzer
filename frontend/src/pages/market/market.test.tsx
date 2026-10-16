@@ -177,7 +177,7 @@ describe('M6 G6 호재 URL 입력', () => {
     expect(done).toHaveTextContent(
       t('page.G6.catalyst.saved', { name: '골드라인 연장 기본계획 승인' }),
     );
-    expect(await within(done).findByText('rejudge')).toBeInTheDocument();
+    expect(await within(done).findByText(t('job.name.rejudge'))).toBeInTheDocument();
     rec.stop();
   });
 

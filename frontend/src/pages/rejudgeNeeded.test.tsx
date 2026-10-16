@@ -83,7 +83,7 @@ describe('D10-1 G1 재판정 필요', () => {
         reason: '재판정 필요(저장 범위 ≠ 현재 범위)',
       },
     });
-    expect(await within(notice).findByText('rejudge')).toBeInTheDocument();
+    expect(await within(notice).findByText(t('job.name.rejudge'))).toBeInTheDocument();
     rec.stop();
   });
 

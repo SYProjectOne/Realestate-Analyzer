@@ -33,7 +33,7 @@ describe('glossary.items 문구', () => {
     expect(all).not.toContain('만 30세');
     expect(all).not.toContain('기회');
     expect(ko.glossary.items.lottery.short).toContain('가점과 관계없이');
-    expect(ko.glossary.items.points.short).toContain('이 앱은 가점을 계산하지 않습니다');
+    expect(ko.glossary.items.points.short).toContain('이 앱은 가점을 계산하지 않아요');
     // 가격 갭 정의는 RA §6-2(중앙값·생활권·2020년 이후·80~85㎡·6개월)
     for (const word of ['중앙값', '생활권', '2020년', '80~85㎡', '6개월']) {
       expect(ko.glossary.items.gap.short).toContain(word);
@@ -79,10 +79,12 @@ describe('Term(ⓘ)', () => {
 describe('/glossary 용어 모음', () => {
   it('제목·안내·분류·검색 — 검색하면 맞는 항목만', async () => {
     renderRoute('/glossary');
+    // R11(목업 Glossary): h1 은 질문형 문장, 안내에 전체 개수(54)
     expect(
-      await screen.findByRole('heading', { level: 1, name: t('glossary.title') }),
+      await screen.findByRole('heading', { level: 1, name: t('glossary.heading') }),
     ).toBeInTheDocument();
-    expect(screen.getByText(t('glossary.intro'))).toBeInTheDocument();
+    const count = Object.keys(ko.glossary.items).length + Object.keys(ko.label.help).length;
+    expect(screen.getByText(t('glossary.intro', { n: count }))).toBeInTheDocument();
     const list = screen.getByRole('list', { name: t('glossary.title') });
     const total = within(list).getAllByRole('listitem').length;
     expect(total).toBeGreaterThanOrEqual(Object.keys(ko.glossary.items).length);
@@ -93,7 +95,10 @@ describe('/glossary 용어 모음', () => {
     for (const hit of hits) expect(hit).toHaveTextContent('전매');
     // 라벨 분류는 라벨 뜻(label.help) 그대로
     await userEvent.clear(screen.getByRole('searchbox', { name: t('glossary.search') }));
-    await userEvent.click(screen.getByRole('button', { name: t('glossary.category.labels') }));
+    // 분류 칩 이름에 개수가 붙는다("라벨 6")
+    await userEvent.click(
+      screen.getByRole('button', { name: new RegExp(`^${t('glossary.category.labels')} \\d+$`) }),
+    );
     expect(within(list).getByText(t('label.help.unknown'))).toBeInTheDocument();
   });
 
@@ -110,7 +115,7 @@ describe('/glossary 용어 모음', () => {
     try {
       renderRoute('/glossary');
       expect(
-        await screen.findByRole('heading', { level: 1, name: t('glossary.title') }),
+        await screen.findByRole('heading', { level: 1, name: t('glossary.heading') }),
       ).toBeInTheDocument();
       expect(screen.getByText(t('app.mobileReadOnly'))).toBeInTheDocument();
     } finally {

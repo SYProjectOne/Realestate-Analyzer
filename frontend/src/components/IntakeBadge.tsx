@@ -1,7 +1,7 @@
 import { t, tDynamic } from '@/i18n';
 import type { IntakeLike } from '@/lib/contract';
 import { formatDate, kstDay, plainReason, unknownTitle } from '@/lib/format';
-import { Badge } from './Badge';
+import { StatusPill, type StatusPillTone } from './StatusPill';
 
 export interface IntakeBadgeProps {
   /** 표시값 intake(우선순위 human_check > official_popup > headless_shot). null → "접수 상태 확인 불가" */
@@ -35,7 +35,8 @@ export function intakeStatusText(intake: IntakeLike): string {
 
 /**
  * 접수 상태 배지: "접수 가능 · 공식 팝업" / "접수 가능 · 사람 확인"(human_check = '사람' 접두).
- * 가능 = 강조, 불가 = 보통, 미정·확인 불가 = 회색. 의미는 항상 글자로.
+ * 목업 §4 알약: 가능 = 주색 바탕 + 점, 미정 = 테두리, 확인 불가 = 회색 바탕, 불가 = 회색 + 취소선(사유가 없을 때).
+ * 의미는 항상 글자로(D7) — 경로(어떻게 확인했나)는 같은 알약 안 옅은 글자.
  */
 export function IntakeBadge({
   intake,
@@ -46,9 +47,9 @@ export function IntakeBadge({
 }: IntakeBadgeProps) {
   if (!intake) {
     return (
-      <Badge tone="muted" className={className} data-testid="intake-badge">
+      <StatusPill tone="muted" className={className} data-testid="intake-badge">
         {t('intake.none')}
-      </Badge>
+      </StatusPill>
     );
   }
   const below =
@@ -57,7 +58,16 @@ export function IntakeBadge({
     ? tDynamic(`intake.status.${intake.status}`, intake.status)
     : intakeStatusText(intake);
   const path = tDynamic(`intake.path.${intake.path}`, intake.path);
-  const tone = intake.status === '가능' ? 'strong' : intake.status === '불가' ? 'neutral' : 'muted';
+  const struck =
+    intake.status === '불가' && status === tDynamic(`intake.status.${intake.status}`, '');
+  const tone: StatusPillTone =
+    intake.status === '가능'
+      ? 'accent'
+      : intake.status === '미정'
+        ? 'outline'
+        : intake.status === '불가'
+          ? 'neutral'
+          : 'muted';
   const checked = intake.checked_at ? formatDate(intake.checked_at, asof) : null;
   const original =
     intake.status === '확인 불가' || intake.status === '불가'
@@ -72,9 +82,25 @@ export function IntakeBadge({
     ? t('intake.withSupply', { status, kind: intake.supply_kind })
     : status;
   const badge = (
-    <Badge tone={tone} className={className} title={title} wrap data-testid="intake-badge">
-      {showPath ? `${shownStatus} · ${path}` : shownStatus}
-    </Badge>
+    <StatusPill
+      tone={tone}
+      dot={intake.status === '가능'}
+      className={className}
+      title={title}
+      wrap
+      data-testid="intake-badge"
+    >
+      {struck ? (
+        // 접수 불가(사유 없음)는 상태 글자만 취소선 — 경로 글자까지 긋지 않는다
+        <span>
+          <span className="line-through">{shownStatus}</span>
+          {showPath ? ` · ${path}` : null}
+        </span>
+      ) : (
+        // 글자는 한 덩어리("접수 가능 · 공식 팝업") — 화면 낭독기·검색이 한 번에 읽는다
+        <span>{showPath ? `${shownStatus} · ${path}` : shownStatus}</span>
+      )}
+    </StatusPill>
   );
   if (!below || !intake.reason) return badge;
   const date = dayOf(intake.checked_at);

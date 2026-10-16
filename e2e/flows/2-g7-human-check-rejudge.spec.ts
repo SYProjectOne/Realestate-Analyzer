@@ -59,7 +59,7 @@ test('G7 사람 확인 가능 → 재판정 잡 → G3 접수 배지(가능·사
   await expect(form.getByTestId('human-check-result')).toContainText(ko.intake.status['가능']);
 
   // 계약 .9: 재판정 잡은 자동 등록 — 화면은 그 잡 진행만 보이고 알림에 '재판정 잡 등록' 버튼이 없다(POST /jobs 없음)
-  await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
+  await expect(form.getByTestId('human-check-job')).toContainText(ko.job.name.rejudge);
   await expect(form.getByTestId('human-check-job').getByTestId('publish-pending')).toHaveText(ko.job.publishPending);
   await expect(
     page.getByRole('region', { name: ko.app.notifications }).getByRole('button', { name: P.G7.rejudge }),

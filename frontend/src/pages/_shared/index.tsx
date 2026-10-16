@@ -7,13 +7,21 @@ import { Link, useSearchParams } from 'react-router';
 import { ApiError, isMaterializePending } from '@/api/client';
 import { useScenarios } from '@/api/hooks';
 import type { Fact, JudgeScope, Label, Scenario, Snapshot } from '@/api/types';
-import { Badge, EmptyState, LabelBadge, labelText, useOpenProvenance } from '@/components';
+import {
+  Badge,
+  Card,
+  EmptyState,
+  LabelBadge,
+  labelText,
+  Skeleton,
+  useOpenProvenance,
+} from '@/components';
 import { useActiveRegion } from '@/hooks/useActiveRegion';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { useScenario } from '@/hooks/useScenario';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t, tDynamic } from '@/i18n';
-import { queryErrorText } from '@/lib/errorText';
+import { queryErrorText, specialErrorText } from '@/lib/errorText';
 import type { FactUnit } from '@/lib/format';
 
 export interface PageContext {
@@ -49,32 +57,43 @@ export function usePageContext(): PageContext {
   };
 }
 
-/** 카드형 구역: h2 + 본문 */
+/**
+ * 카드형 구역(목업 .card — 흰 바탕 · 둥근 16px): h2 + (선택) 한 줄 안내 + 본문. 질문형 제목은 화면 ko 키가 정한다.
+ * 새 화면 코드는 @/components 의 Card + SectionHeader 를 직접 써도 된다(같은 모양).
+ */
 export function Section({
   title,
   actions,
   children,
   className = '',
   id,
+  hint,
 }: {
   title: string;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
   id?: string;
+  /** 제목 아래 한 줄 안내 */
+  hint?: ReactNode;
 }) {
   return (
-    <section
+    <Card
+      as="section"
       id={id}
       aria-label={title}
-      className={`flex flex-col gap-3 rounded-sm border border-border bg-surface p-3 ${className}`}
+      padding="lg"
+      className={`flex flex-col gap-4 ${className}`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{title}</h2>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h2 className="text-lg font-bold leading-snug sm:text-xl">{title}</h2>
+          {hint ? <p className="text-sm text-muted">{hint}</p> : null}
+        </div>
         {actions}
       </div>
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -122,20 +141,40 @@ export function QueryState<T>({
   }
   if (query.error) return <QueryError error={query.error} refetch={query.refetch} />;
   if (isMaterializePending(query.failureReason)) return <MaterializePending />;
+  // 목업 §7 첫 카드: 뼈대 줄 + "불러오는 중…"(N9)
+  return <Skeleton />;
+}
+
+/** 상태 카드(목업 §7): 굵은 한 줄 + 설명 + (선택) 행동 */
+export function StateCard({
+  title,
+  children,
+  role = 'status',
+  testId,
+  tone = 'default',
+}: {
+  title: string;
+  children?: ReactNode;
+  role?: 'status' | 'alert';
+  testId?: string;
+  tone?: 'default' | 'warn';
+}) {
   return (
-    <p role="status" className="text-sm text-muted">
-      {t('app.loading')}
-    </p>
+    <Card
+      role={role}
+      data-testid={testId}
+      tone={tone === 'warn' ? 'warn' : 'default'}
+      className="flex flex-col items-start gap-2"
+    >
+      <b className="text-sm font-semibold">{title}</b>
+      {children}
+    </Card>
   );
 }
 
-/** 503 materialize_pending 재시도 중: '준비 중 — 자동으로 다시' */
+/** 503 materialize_pending 재시도 중: '이 기준일 결과를 만드는 중이에요 — 자동으로 다시' */
 export function MaterializePending() {
-  return (
-    <p role="status" data-testid="materialize-pending" className="text-sm text-muted">
-      {t('page.common.materializePending')}
-    </p>
-  );
+  return <StateCard testId="materialize-pending" title={t('page.common.materializePending')} />;
 }
 
 export { queryErrorText } from '@/lib/errorText';
@@ -193,25 +232,48 @@ function QueryError({ error, refetch }: { error: Error; refetch?: (() => unknown
   const search = useGlobalSearch();
   if (isScenarioMissing(error, scenarioId, snapshot, scenarios.data)) {
     return (
-      <div role="status" data-testid="scenario-missing" className="flex flex-col gap-1 text-sm">
-        <p>{t('page.common.scenarioMissing', { scenario: scenarioId ?? '' })}</p>
-        <Link to={`/scenario${search}`} className="underline">
+      <StateCard
+        testId="scenario-missing"
+        title={t('page.common.scenarioMissing', { scenario: scenarioId ?? '' })}
+      >
+        <Link to={`/scenario${search}`} className="text-[13px] font-medium text-accent underline">
           {t('page.common.scenarioMissingRun')}
         </Link>
-      </div>
+      </StateCard>
     );
   }
-  if (isMaterializePending(error) && refetch) {
+  const retry = refetch ? (
+    <button
+      type="button"
+      onClick={() => void refetch()}
+      className="min-h-10 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg hover:border-fg-2"
+    >
+      {t('app.retry')}
+    </button>
+  ) : null;
+  if (isMaterializePending(error)) {
     return (
-      <div role="status" data-testid="materialize-pending" className="flex flex-col gap-1 text-sm">
-        <p>{queryErrorText(error)}</p>
-        <button type="button" onClick={() => void refetch()} className="self-start underline">
-          {t('app.retry')}
-        </button>
-      </div>
+      <StateCard testId="materialize-pending" title={queryErrorText(error)}>
+        {retry}
+      </StateCard>
     );
   }
-  return <EmptyState message={queryErrorText(error)} />;
+  const special = specialErrorText(error);
+  if (special) {
+    // 저장본 검증 실패(SH-17) 등 서버 오류 — 주의 칸(role=alert)
+    return (
+      <StateCard testId="query-error" role="alert" tone="warn" title={special}>
+        {retry}
+      </StateCard>
+    );
+  }
+  // 일반 오류(목업 §7): "불러오지 못했어요: 자세한 내용" + 잠시 뒤 다시 + 다시 시도(N10)
+  return (
+    <StateCard testId="query-error" role="alert" title={queryErrorText(error)}>
+      <span className="text-[13px] text-muted">{t('page.common.loadErrorHint')}</span>
+      {retry}
+    </StateCard>
+  );
 }
 
 /** 스냅샷이 없을 때(지역 분석 전) 안내. 지역이 첫 적재 중(`bootstrapping`, 계약 .18 F3)이면 '적재 중' */
@@ -297,11 +359,11 @@ export function JudgeScopeBadge({
   hideTarget?: boolean;
 }) {
   if (!scope || (hideTarget && scope === '판정 대상')) return null;
+  // 목업 §4: 점수 대상·제외 = 회색 바탕, 보류·참고·미해결 = 실선 테두리. 의미는 글자로
+  const tone = scope === '판정 대상' || scope === '제외' ? 'muted' : 'neutral';
   return (
     <span data-testid="judge-scope" data-scope={scope}>
-      <Badge tone={scope === '판정 대상' ? 'neutral' : 'muted'}>
-        {enumText('page.common.judgeScope', scope)}
-      </Badge>
+      <Badge tone={tone}>{enumText('page.common.judgeScope', scope)}</Badge>
     </span>
   );
 }
@@ -314,7 +376,7 @@ export function RejudgeNeededBadge({ needed }: { needed: boolean | null | undefi
   if (!needed) return null;
   return (
     <span data-testid="rejudge-needed" title={t('page.common.rejudgeNeededHint')}>
-      <Badge tone="strong">{t('page.common.rejudgeNeeded')}</Badge>
+      <Badge tone="accent">{t('page.common.rejudgeNeeded')}</Badge>
     </span>
   );
 }
@@ -379,7 +441,7 @@ export function NameLabelBadge({ source, testId }: { source: NameSource; testId?
   const badge = label ? (
     <LabelBadge label={label} />
   ) : (
-    <Badge tone="muted">{t('provenance.title')}</Badge>
+    <Badge tone="muted">{t('provenance.short')}</Badge>
   );
   if (!prov || !open) return <span data-testid={testId}>{badge}</span>;
   const title = nameProvTitle(source);

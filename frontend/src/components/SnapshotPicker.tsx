@@ -60,8 +60,8 @@ export function SnapshotPicker({
   const id = useId();
   const selected = String(value ?? snapshots[0]?.id ?? '');
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm">
-      <label htmlFor={id} className="text-muted">
+    <span className="inline-flex items-center gap-2 text-sm">
+      <label htmlFor={id} className="text-[13px] text-muted">
         {label ?? t('header.snapshot')}
       </label>
       <select
@@ -69,7 +69,7 @@ export function SnapshotPicker({
         value={selected}
         disabled={disabled || snapshots.length === 0}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-sm border border-border bg-surface px-2 py-1 text-fg"
+        className="min-h-10 rounded-[10px] border border-border-strong bg-surface px-2.5 py-1.5 text-sm font-semibold text-fg disabled:bg-subtle disabled:text-grayed"
       >
         {snapshots.length === 0 ? <option value="">{t('header.snapshotNone')}</option> : null}
         {snapshots.map((snapshot) => (

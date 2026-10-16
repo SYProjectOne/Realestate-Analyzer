@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
@@ -52,13 +53,15 @@ describe('ChartGallery (차트 10개 × 정상/빈/특수)', () => {
       within(screen.getByTestId('gallery-C06-special')).getByText('미판정'),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByTestId('gallery-C07-special')).getByText('동률(신뢰도 0.48)'),
+      within(screen.getByTestId('gallery-C07-special')).getByText(
+        t('badge.tieWithConfidence', { confidence: '0.48' }),
+      ),
     ).toBeInTheDocument();
     expect(within(screen.getByTestId('gallery-C07-escaped')).getByRole('status')).toHaveTextContent(
       '질문 남김',
     );
     expect(
-      within(screen.getByTestId('gallery-C10-normal')).getByText('순위 불안정'),
+      within(screen.getByTestId('gallery-C10-normal')).getByText(t('badge.unstable')),
     ).toBeInTheDocument();
   });
 
@@ -75,7 +78,7 @@ describe('ChartGallery (차트 10개 × 정상/빈/특수)', () => {
     const table = within(card).getByRole('table');
     const cells = within(table).getAllByRole('button');
     await userEvent.click(cells[0]!);
-    expect(await screen.findByRole('dialog', { name: '출처' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: t('provenance.title') })).toBeInTheDocument();
   });
 });
 

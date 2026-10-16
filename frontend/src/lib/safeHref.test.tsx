@@ -1,6 +1,7 @@
 /**
  * minor 16 — 서버가 준 URL 을 href 에 넣기 전 scheme 화이트리스트(http·https·같은 출처 '/' 경로).
  */
+import { t } from '@/i18n';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -115,7 +116,7 @@ describe('ProvenancePanel — 서버 url 이 javascript:/data: 면 링크가 아
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: /1,573세대/ }));
-    const panel = await screen.findByRole('dialog', { name: '출처' });
+    const panel = await screen.findByRole('dialog', { name: t('provenance.title') });
     expect(
       (await within(panel).findAllByText('javascript:alert(document.cookie)')).length,
     ).toBeGreaterThan(0);

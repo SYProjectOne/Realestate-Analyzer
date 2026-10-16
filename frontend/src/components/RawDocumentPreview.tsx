@@ -31,12 +31,12 @@ export function RawDocumentPreview({
 
   return (
     <div className={`flex flex-col gap-2 ${className}`} data-testid="raw-document">
-      <div className="flex flex-wrap items-center gap-3 text-xs">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
         <button
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="underline"
+          className="min-h-9 rounded-[10px] border border-border-strong bg-surface px-3 text-[13px] font-medium text-fg hover:border-fg-2"
         >
           {open ? t('provenance.rawPreviewHide') : t('provenance.rawPreview')}
         </button>
@@ -44,7 +44,7 @@ export function RawDocumentPreview({
           type="button"
           disabled={pending}
           onClick={() => void download(rawDocumentRequest(rawId))}
-          className="underline disabled:opacity-50"
+          className="min-h-9 rounded-[10px] border border-border-strong bg-surface px-3 text-[13px] font-medium text-fg hover:border-fg-2 disabled:opacity-50"
         >
           {pending ? t('download.pending') : t('provenance.rawSave')}
         </button>
@@ -88,7 +88,7 @@ function ImagePreview({ file }: { file: FetchedFile }) {
       src={url}
       alt={t('provenance.rawImageAlt', { name: file.filename ?? '' })}
       data-testid="raw-preview-image"
-      className="max-h-[60vh] max-w-full self-start rounded-sm border border-border bg-bg object-contain"
+      className="max-h-[60vh] max-w-full self-start rounded-lg border border-border bg-subtle object-contain"
     />
   );
 }
@@ -131,7 +131,7 @@ function TextPreview({ blob }: { blob: Blob }) {
       ) : null}
       <pre
         data-testid="raw-preview-text"
-        className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-bg p-2 text-xs"
+        className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-subtle p-2 text-[13px] leading-relaxed"
       >
         {truncated ? text.slice(0, TEXT_PREVIEW_MAX) : text}
       </pre>

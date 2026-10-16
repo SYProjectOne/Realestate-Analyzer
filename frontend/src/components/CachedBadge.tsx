@@ -6,10 +6,10 @@ export interface CachedBadgeProps {
   cached: boolean;
 }
 
-/** "캐시" 배지. cached=false면 렌더하지 않는다. */
+/** "이전 결과 재사용"(캐시) 배지. cached=false면 렌더하지 않는다. */
 export function CachedBadge({ cached }: CachedBadgeProps) {
   return cached ? (
-    <Badge tone="muted" data-testid="cached-badge">
+    <Badge tone="dashed" data-testid="cached-badge">
       {t('badge.cached')}
     </Badge>
   ) : null;

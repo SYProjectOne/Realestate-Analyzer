@@ -6,10 +6,10 @@ export interface MismatchBadgeProps {
   mismatch: boolean;
 }
 
-/** "증거와 상이" 배지. mismatch=false면 렌더하지 않는다. */
+/** "근거와 달라요"(증거와 상이) 배지. mismatch=false면 렌더하지 않는다. */
 export function MismatchBadge({ mismatch }: MismatchBadgeProps) {
   return mismatch ? (
-    <Badge tone="strong" data-testid="mismatch-badge">
+    <Badge tone="caution" data-testid="mismatch-badge">
       {t('badge.mismatch')}
     </Badge>
   ) : null;

@@ -87,7 +87,7 @@ describe('M8 G7 contradicted 주장 목록·문장 수정', () => {
       text: '고친 문장이다.',
     });
     const progress = await within(item).findByTestId('claim-job');
-    expect(await within(progress).findByText('claim.reverify')).toBeInTheDocument();
+    expect(await within(progress).findByText(t('job.name.claim_reverify'))).toBeInTheDocument();
     rec.stop();
   });
 

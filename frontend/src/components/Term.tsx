@@ -8,8 +8,13 @@ import { useIsMobile } from '@/lib/useMediaQuery';
 export type GlossaryKey = keyof typeof ko.glossary.items;
 export const GLOSSARY_KEYS = Object.keys(ko.glossary.items) as GlossaryKey[];
 
-/** 용어 한 개의 표시 이름·한 줄 정의(ko.json 에서만) */
-export function glossaryItem(k: GlossaryKey): { term: string; short: string; cat: string } {
+/** 용어 한 개의 표시 이름·질문형 제목(q, 용어 사전 카드)·한 줄 정의(ko.json 에서만) */
+export function glossaryItem(k: GlossaryKey): {
+  term: string;
+  q: string;
+  short: string;
+  cat: string;
+} {
   return ko.glossary.items[k];
 }
 
@@ -25,7 +30,7 @@ export interface TermProps {
 function MoreLink({ k }: { k: GlossaryKey }) {
   const inRouter = useInRouterContext();
   if (!inRouter) return null;
-  return <RouterMoreLink k={k} className="underline" />;
+  return <RouterMoreLink k={k} className="self-start text-accent hover:underline" />;
 }
 
 function RouterMoreLink({ k, className }: { k: GlossaryKey; className: string }) {
@@ -48,7 +53,7 @@ function RouterMoreLink({ k, className }: { k: GlossaryKey; className: string })
 }
 
 /**
- * 용어 ⓘ(R9-UI P6, 30-proposal §7-1) — 열 제목·칸 제목 옆 버튼. 누르면 한 줄 정의 + '용어 모음에서 보기'.
+ * 용어 '?'(R9-UI P6, 30-proposal §7-1 · 목업 Shell §3) — 열 제목·칸 제목 옆 버튼. 누르면 한 줄 정의 + '용어 사전에서 보기'.
  * aria-expanded·aria-controls, Esc·바깥 클릭으로 닫힌다. 모바일은 아래 시트로 연다. 문구는 ko.json `glossary.items`.
  * 같은 화면에서 같은 용어는 첫 등장에 한 번만 단다(화면 테스트가 data-term 중복을 본다).
  */
@@ -74,7 +79,7 @@ export function Term({ k, children, className = '' }: TermProps) {
     };
   }, [open]);
   return (
-    <span ref={ref} className={`relative inline-flex items-center gap-0.5 ${className}`}>
+    <span ref={ref} className={`relative inline-flex items-center gap-1 ${className}`}>
       {children}
       <button
         type="button"
@@ -84,26 +89,50 @@ export function Term({ k, children, className = '' }: TermProps) {
         aria-controls={id}
         aria-label={t('glossary.open', { term: item.term })}
         onClick={() => setOpen((v) => !v)}
-        className="-my-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs leading-none text-muted hover:text-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+        // 목업 §3: 동그란 '?' 버튼(20px, 누르는 칸은 24px)
+        className="-my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <span aria-hidden>ⓘ</span>
+        <span
+          aria-hidden
+          className="inline-flex size-5 items-center justify-center rounded-full border border-grayed bg-surface text-xs font-bold leading-none text-fg-2 hover:border-fg-2 hover:text-fg"
+        >
+          ?
+        </span>
       </button>
+      {open && isMobile ? (
+        // 휴대폰(SH-19): 아래에서 올라오는 판 + 뒤 화면 어둡게 + 닫기
+        <span
+          aria-hidden
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-40 bg-overlay/45"
+        />
+      ) : null}
       {open ? (
         <span
           id={id}
           role="note"
+          data-term-sheet={isMobile ? 'bottom' : 'popover'}
           className={
             isMobile
-              ? 'fixed inset-x-0 bottom-0 z-40 flex flex-col gap-1 border-t border-border bg-surface p-4 text-sm font-normal text-fg shadow-lg'
-              : 'absolute left-0 top-full z-40 mt-1 flex w-72 flex-col gap-1 rounded-sm border border-border bg-surface p-2 text-left text-xs font-normal normal-case text-fg shadow-lg'
+              ? 'fixed inset-x-0 bottom-0 z-50 flex flex-col gap-2 rounded-t-[18px] bg-surface px-[18px] pb-5 pt-4 text-left text-sm font-normal normal-case text-fg shadow-2xl'
+              : 'absolute left-0 top-full z-40 mt-1.5 flex w-72 flex-col gap-1.5 rounded-xl border border-info-border bg-surface p-3.5 text-left text-sm font-normal normal-case text-fg shadow-lg'
           }
         >
-          <span className="font-semibold">{item.term}</span>
-          <span className="whitespace-normal">{item.short}</span>
-          <span className="flex items-center justify-between gap-2">
+          {isMobile ? (
+            <span aria-hidden className="h-1 w-10 self-center rounded-full bg-border-strong" />
+          ) : null}
+          <span className={isMobile ? 'text-base font-bold' : 'text-[15px] font-bold'}>
+            {item.term}
+          </span>
+          <span className="whitespace-normal text-fg-2">{item.short}</span>
+          <span className="flex flex-col gap-2 text-[13px]">
             <MoreLink k={k} />
             {isMobile ? (
-              <button type="button" onClick={() => setOpen(false)} className="underline">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg"
+              >
                 {t('glossary.close')}
               </button>
             ) : null}

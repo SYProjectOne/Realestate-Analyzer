@@ -76,35 +76,47 @@ export function DataTableToggle({
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((prev) => !prev)}
-        className="rounded-sm border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
+        className="inline-flex min-h-8 items-center rounded-lg border border-border-strong bg-surface px-2.5 py-1 text-xs font-medium text-fg-2 hover:border-fg-2 hover:text-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       >
         {open ? t('table.hide') : t('table.show')}
       </button>
       {open ? (
         <div id={regionId} className="mt-2 overflow-x-auto">
-          {table.rows.length === 0 ? (
-            <EmptyState message={t('empty.noData')} />
-          ) : (
-            <table className="w-full border-collapse text-left">
-              <caption className="sr-only">{t('table.caption', { title: caption })}</caption>
-              <thead>
+          <table className="w-full border-collapse text-left text-[13px]">
+            {/* 목업 §8(SH-18): 표 이름을 표 위에 작게 — 화면 낭독기도 같은 이름을 읽는다 */}
+            <caption className="caption-top pb-1 text-left text-xs text-muted">
+              {t('table.caption', { title: caption })}
+            </caption>
+            <thead>
+              <tr className="bg-subtle">
+                {table.columns.map((column) => (
+                  <th
+                    key={column.key}
+                    scope="col"
+                    className="border-b border-border px-2.5 py-2 font-medium text-muted"
+                  >
+                    {column.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              {table.rows.length === 0 ? (
+                // 줄이 하나도 없으면 머리는 두고 '데이터 없음' 한 줄(SH-18 #284)
                 <tr>
-                  {table.columns.map((column) => (
-                    <th
-                      key={column.key}
-                      scope="col"
-                      className="border-b border-border px-2 py-1 font-medium text-muted"
-                    >
-                      {column.header}
-                    </th>
-                  ))}
+                  <td
+                    colSpan={Math.max(1, table.columns.length)}
+                    className="px-2.5 py-3 text-center text-muted"
+                    data-testid="table-empty"
+                  >
+                    {t('empty.noData')}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {table.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="border-b border-border/50">
+              ) : (
+                table.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="border-b border-border last:border-b-0">
                     {table.columns.map((column) => (
-                      <td key={column.key} className="px-2 py-1">
+                      <td key={column.key} className="px-2.5 py-2 align-top">
                         <Cell
                           cell={row[column.key]}
                           column={column}
@@ -114,10 +126,10 @@ export function DataTableToggle({
                       </td>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       ) : null}
     </div>
