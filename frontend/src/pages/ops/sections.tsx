@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { t, type TKey } from '@/i18n';
 import { QuestionSection } from '../_shared/QuestionSection';
@@ -6,6 +6,9 @@ import { HUMAN_CHECK_ANCHOR } from './humanCheckRules';
 
 /** 대기열 구역 앵커(다른 화면에서 `/ops#intake-queue` 로 들어올 때) — 바꾸지 않는다(D30-2) */
 export const INTAKE_QUEUE_ANCHOR = 'intake-queue';
+
+/** 모순 주장 구역 앵커(G8 '모순 주장이 남아 막힘' 링크 → `/ops#claims`) — 바꾸지 않는다 */
+export const CLAIMS_ANCHOR = 'claims';
 
 export type OpsSectionKey =
   'checklist' | 'intake' | 'human' | 'sources' | 'jobs' | 'stats' | 'claims' | 'boundary' | 'share';
@@ -68,7 +71,7 @@ export const OPS_SECTIONS: readonly OpsSectionDef[] = [
   },
   {
     key: 'claims',
-    id: 'ops-claims',
+    id: CLAIMS_ANCHOR,
     no: '⑦',
     nameKey: 'page.G7.claims.title',
     whatKey: 'page.G7.claims.intro',
@@ -168,4 +171,20 @@ export function SectionLink({
       {children}
     </Link>
   );
+}
+
+/**
+ * 다른 화면에서 `/ops#<묶음 id>`(#intake-queue · #claims …)로 들어오면 그 묶음으로 한 번 스크롤한다(라우터는 해시로
+ * 스크롤하지 않는다). #human-check 는 사람 확인 폼이 따로 한다(미리 채움과 함께). 같은 해시는 한 번만.
+ */
+export function useSectionHashScroll(): void {
+  const { hash } = useLocation();
+  const done = useRef<string | null>(null);
+  useEffect(() => {
+    const id = hash.replace(/^#/, '');
+    if (!id || id === HUMAN_CHECK_ANCHOR || done.current === id) return;
+    if (!OPS_SECTIONS.some((s) => s.id === id)) return;
+    done.current = id;
+    scrollToSection(id);
+  }, [hash]);
 }

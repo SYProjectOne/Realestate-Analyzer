@@ -11,7 +11,7 @@ import { IntakeQueuePanel } from './IntakeQueuePanel';
 import { JudgmentStatsPanel } from './JudgmentStatsPanel';
 import { OpsMenu } from './OpsMenu';
 import { RejudgeQueue } from './RejudgeQueue';
-import { OpsSection } from './sections';
+import { OpsSection, useSectionHashScroll } from './sections';
 import { SharePanel } from './SharePanel';
 import { SOURCES_MIN_HEIGHT, SourceStatusTable } from './SourceStatusTable';
 import { TodayTiles } from './TodayTiles';
@@ -28,6 +28,8 @@ export function OpsPage() {
   const { regionId, snapshotId, asof, isLoading } = usePageContext();
   const { region } = useActiveRegion();
   const canWrite = useCanWrite();
+  // /ops#intake-queue · /ops#claims 등 다른 화면 링크로 들어오면 그 묶음으로(#human-check 는 폼이 한다)
+  useSectionHashScroll();
   const kicker = region
     ? asof
       ? t('page.G7.kicker', { region: region.name, asof })

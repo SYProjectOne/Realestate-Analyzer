@@ -292,8 +292,44 @@ describe('R11 G7 "구현할 때 지금 동작 그대로 유지"(OP-13)', () => {
     const { router } = renderRoute('/ops?region=1');
     const nav = await screen.findByRole('navigation', { name: t('page.G7.menu.title') });
     await userEvent.click(within(nav).getByTestId('ops-menu-claims'));
-    await waitFor(() => expect(router.state.location.hash).toBe('#ops-claims'));
+    await waitFor(() => expect(router.state.location.hash).toBe('#claims'));
     expect(router.state.location.search).toBe('?region=1');
     expect(within(nav).getByTestId('ops-menu-claims')).toHaveAttribute('aria-current', 'location');
+  });
+});
+
+describe('R11 G7 앵커 #claims(G8 "모순 주장이 남아 막힘" 링크)', () => {
+  it('모순 주장 묶음 id = claims, /ops#claims 로 들어오면 그 묶음으로 스크롤', async () => {
+    const calls: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      calls.push(this.id);
+    };
+    try {
+      renderRoute('/ops#claims');
+      const section = await screen.findByRole('region', { name: t('page.G7.claims.title') });
+      expect(section).toHaveAttribute('id', 'claims');
+      await waitFor(() => expect(calls).toContain('claims'));
+      // 다른 앵커는 그대로
+      expect(document.getElementById('intake-queue')).not.toBeNull();
+      expect(document.getElementById('human-check')).not.toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('/ops#intake-queue 도 같은 방식으로 그 묶음으로 스크롤', async () => {
+    const calls: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      calls.push(this.id);
+    };
+    try {
+      renderRoute('/ops#intake-queue');
+      await screen.findByRole('region', { name: t('page.G7.iq.title') });
+      await waitFor(() => expect(calls).toContain('intake-queue'));
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
   });
 });
