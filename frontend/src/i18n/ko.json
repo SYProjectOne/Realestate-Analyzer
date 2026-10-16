@@ -1111,8 +1111,7 @@
     "theme": "화면",
     "themeLight": "밝게",
     "themeDark": "어둡게",
-    "settings": "설정",
-    "selectors": "지역·기준일·상황 고르기"
+    "settings": "설정"
   },
   "label": {
     "confirmed": "확인됨",

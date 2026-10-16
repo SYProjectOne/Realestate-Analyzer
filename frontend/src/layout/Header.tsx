@@ -87,13 +87,13 @@ export function Header() {
       end={item.end}
       className={({ isActive }) => {
         if (variant === 'glossary') {
-          return `whitespace-nowrap rounded-[10px] border px-3 py-2 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${
+          return `whitespace-nowrap rounded-[10px] border px-3 py-1.5 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${
             isActive
               ? 'border-transparent bg-accent-soft font-semibold text-accent-ink'
               : 'border-border-strong text-fg-2 hover:text-fg'
           }`;
         }
-        const size = variant === 'side' ? 'px-2.5 py-1.5 text-[13px]' : 'px-3.5 py-2 text-[15px]';
+        const size = variant === 'side' ? 'px-2.5 py-1 text-[13px]' : 'px-3.5 py-1.5 text-[15px]';
         return `${linkBase} ${size} ${
           isActive
             ? 'bg-accent-soft font-semibold text-accent-ink'
@@ -112,13 +112,13 @@ export function Header() {
       className="sticky top-0 z-30 border-b border-border bg-surface mobile:static"
       data-testid="app-header"
     >
-      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-5 gap-y-2 px-4 py-1.5 sm:px-6">
         <Link
           to={{ pathname: '/', search: location.search }}
           className="flex items-center gap-2.5 text-lg font-bold text-fg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           data-testid="app-home"
         >
-          <LogoMark size={isMobile ? 26 : 32} />
+          <LogoMark size={isMobile ? 26 : 28} />
           {t('app.name')}
         </Link>
         {isMobile ? null : (
@@ -132,12 +132,20 @@ export function Header() {
             <span className="ml-auto">{link(GLOSSARY, 'glossary')}</span>
           </nav>
         )}
+        {isMobile ? null : (
+          // 접속 열쇠·화면 밝기는 윗줄 오른쪽 끝(목업은 아랫줄 — 상황 이름이 길어 아랫줄이 두 줄로 접히면 첫 화면 표 행이
+          // 줄어든다(G2 첫 화면 행 ≥ 6, 30-proposal §13-1). 머리줄을 두 줄로 유지한다)
+          <span className="flex items-center gap-2" data-testid="header-tools">
+            <TokenButton />
+            <ThemeToggle />
+          </span>
+        )}
       </div>
       <div className="border-t border-border bg-surface-2">
+        {/* 이름(aria-label)을 달지 않는다: '지역'이 든 이름이면 getByLabel('지역')이 이 묶음까지 잡는다 */}
         <div
-          role="group"
-          aria-label={t('header.selectors')}
-          className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-2.5 sm:px-6"
+          data-testid="header-selectors"
+          className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-4 gap-y-2 px-4 py-1.5 sm:px-6"
         >
           <RegionPicker
             regions={regions}
@@ -165,7 +173,7 @@ export function Header() {
             </label>
           ) : (
             /* 자리를 미리 잡아 둔다: 시나리오가 늦게 와도 본문이 밀리지 않게(CLS) */
-            <span className="inline-flex h-11 max-w-full items-center overflow-x-auto">
+            <span className="inline-flex h-10 max-w-full items-center overflow-x-auto">
               {scenarios.length > 0 ? (
                 <ScenarioToggle
                   options={options}
@@ -174,10 +182,7 @@ export function Header() {
                   showLabel
                 />
               ) : (
-                <span
-                  aria-hidden
-                  className="inline-block h-10 w-xl max-w-full rounded-xl bg-chip"
-                />
+                <span aria-hidden className="inline-block h-9 w-xl max-w-full rounded-xl bg-chip" />
               )}
             </span>
           )}
@@ -192,12 +197,7 @@ export function Header() {
                 <ThemeToggle />
               </span>
             </details>
-          ) : (
-            <span className="ml-auto flex items-center gap-2">
-              <TokenButton />
-              <ThemeToggle />
-            </span>
-          )}
+          ) : null}
         </div>
       </div>
       {watch.expired ? (
@@ -205,7 +205,7 @@ export function Header() {
           <p
             role="status"
             data-testid="publish-watch-expired"
-            className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 text-[13px] text-fg-2 sm:px-6"
+            className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 text-[13px] text-fg-2 sm:px-6"
           >
             <span className="flex-[1_1_320px]">{t('job.watchExpired')}</span>
             <button

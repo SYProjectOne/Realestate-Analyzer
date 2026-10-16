@@ -102,19 +102,22 @@ describe('R11 머리줄(D30-2)', () => {
     expect(current).toEqual([t('nav.G2')]);
   });
 
-  it('윗줄(표지·메뉴) 다음 아랫줄(지역·기준일·상황·접속 열쇠·화면)', async () => {
+  it('윗줄(표지·메뉴·접속 열쇠·화면) 다음 아랫줄(지역·기준일·상황)', async () => {
     renderRoute('/');
     const nav = await screen.findByRole('navigation', { name: t('nav.label') });
-    const group = screen.getByRole('group', { name: t('header.selectors') });
+    const group = screen.getByTestId('header-selectors');
     expect(nav.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(group).getByLabelText(t('header.region'))).toBeInTheDocument();
     expect(within(group).getByLabelText(t('header.snapshot'))).toBeInTheDocument();
     expect(
       await within(group).findByRole('radiogroup', { name: t('header.scenario') }),
     ).toBeInTheDocument();
-    expect(within(group).getByTestId('token-button')).toBeInTheDocument();
+    // 데스크톱: 열쇠·화면은 윗줄 오른쪽 끝(아랫줄이 두 줄로 접히지 않게 — G2 첫 화면 행 수)
+    const tools = screen.getByTestId('header-tools');
+    expect(tools.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(tools).getByTestId('token-button')).toBeInTheDocument();
     expect(
-      within(group).getByRole('button', { name: new RegExp(`^${t('header.theme')}: `) }),
+      within(tools).getByRole('button', { name: new RegExp(`^${t('header.theme')}: `) }),
     ).toBeInTheDocument();
   });
 

@@ -58,7 +58,7 @@ export function AppLayout() {
         {/* 알림 띠(목업 §2) — 순서: 판정기 장애 → 지역 처음 분석 → 다시 계산한 값 → 탭 고정 → 읽기 전용(#8) → 휴대폰 칩 */}
         <div
           data-testid="banner-stack"
-          className="mx-auto flex max-w-[1280px] flex-col gap-2 px-4 pt-4 empty:hidden sm:px-6"
+          className="mx-auto flex max-w-(--breakpoint-2xl) flex-col gap-2 px-4 pt-4 empty:hidden sm:px-6"
         >
           <DegradedBanner />
           <RegionLoadingBanner />
@@ -70,7 +70,7 @@ export function AppLayout() {
         </div>
         <main
           id="main"
-          className="mx-auto max-w-[1280px] px-4 pb-20 pt-5 sm:px-6 sm:pt-7 mobile:pb-36"
+          className="mx-auto max-w-(--breakpoint-2xl) px-4 pb-20 pt-4 sm:px-6 mobile:pb-36"
           data-readonly={readOnly || undefined}
         >
           <Suspense fallback={<Skeleton />}>

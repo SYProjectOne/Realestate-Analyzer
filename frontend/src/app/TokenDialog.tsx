@@ -29,7 +29,7 @@ export function TokenButton() {
     <button
       type="button"
       onClick={() => requestToken('manual')}
-      className="min-h-9 whitespace-nowrap rounded-[10px] border border-border-strong bg-surface px-3 py-1.5 text-[13px] font-semibold text-fg hover:border-fg-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+      className="min-h-8 whitespace-nowrap rounded-[10px] border border-border-strong bg-surface px-3 py-1 text-[13px] font-semibold text-fg hover:border-fg-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       data-testid="token-button"
       data-token-state={!auth.token ? 'none' : (auth.role ?? 'unknown')}
       aria-haspopup="dialog"

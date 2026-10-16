@@ -82,12 +82,12 @@ export function Section({
       as="section"
       id={id}
       aria-label={title}
-      padding="lg"
-      className={`flex flex-col gap-4 ${className}`}
+      padding="md"
+      className={`flex flex-col gap-3 ${className}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-lg font-bold leading-snug sm:text-xl">{title}</h2>
+          <h2 className="text-lg font-bold leading-snug">{title}</h2>
           {hint ? <p className="text-sm text-muted">{hint}</p> : null}
         </div>
         {actions}

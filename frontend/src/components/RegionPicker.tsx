@@ -38,7 +38,7 @@ export function RegionPicker({
           if (event.target.value === ADD_REGION_VALUE) onAddRegion();
           else onChange(event.target.value);
         }}
-        className="min-h-10 rounded-[10px] border border-border-strong bg-surface px-2.5 py-1.5 text-sm font-semibold text-fg disabled:bg-subtle disabled:text-grayed"
+        className="min-h-9 rounded-[10px] border border-border-strong bg-surface px-2.5 py-1 text-sm font-semibold text-fg disabled:bg-subtle disabled:text-grayed"
       >
         {regions.length === 0 ? <option value="">{t('header.regionNone')}</option> : null}
         {regions.map((region) => (

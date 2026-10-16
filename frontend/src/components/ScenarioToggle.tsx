@@ -73,7 +73,7 @@ export function ScenarioToggle({
             disabled={disabled}
             onClick={() => onChange(String(option.id))}
             onKeyDown={(event) => onKeyDown(event, index)}
-            className={`min-h-8 whitespace-nowrap rounded-[9px] px-2.5 py-1 text-[13px] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${
+            className={`min-h-7 whitespace-nowrap rounded-[9px] px-2.5 py-1 text-[13px] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${
               checked
                 ? 'bg-surface font-semibold text-fg shadow-sm'
                 : 'text-fg-2 hover:bg-surface/60 hover:text-fg'

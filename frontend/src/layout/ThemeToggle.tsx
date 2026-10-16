@@ -10,7 +10,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-pressed={theme === 'dark'}
-      className="min-h-9 whitespace-nowrap rounded-[10px] border border-border-strong bg-surface px-3 py-1.5 text-[13px] font-semibold text-fg hover:border-fg-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
+      className="min-h-8 whitespace-nowrap rounded-[10px] border border-border-strong bg-surface px-3 py-1 text-[13px] font-semibold text-fg hover:border-fg-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
     >
       {`${t('header.theme')}: ${current}`}
     </button>

@@ -120,6 +120,12 @@ async function open(page: Page, suffix: string | null): Promise<Locator> {
   await expect(page.getByRole('heading', { level: 1, name: P.G2.title })).toBeVisible();
   const table = page.getByRole('table', { name: P.G2.table });
   await expect(table.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
+  // R11(D30-3): 웹 글꼴(IBM Plex Sans KR, font-display: swap)이 붙으면 글자 폭이 한 번 바뀌어 행 높이가 다시 잰다 —
+  // 그 한 번은 떨림(입력 없이 계속 오가는 것)이 아니다. 글꼴 조각을 다 받은 뒤부터 표본을 모은다.
+  await page.waitForFunction(() =>
+    [...document.fonts].some((f) => f.family.includes('IBM Plex Sans KR')),
+  );
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
   return page.getByTestId('complex-table-scroll');
 }
 
