@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>데이터·운영</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle;white-space:nowrap}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.q{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid #C8CFD8;background:#FFFFFF;color:#5B6472;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle}
+.q:hover{border-color:#2350D8;color:#2350D8}
+.src{text-decoration:underline dotted #7A8391;text-underline-offset:3px;cursor:pointer}
+.sr{position:absolute;left:0;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 16px;border-radius:10px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px;white-space:nowrap}
+.btn:hover{border-color:#2350D8;color:#1A3FB0;text-decoration:none}
+.btn-p{background:#2350D8;border-color:#2350D8;color:#FFFFFF}
+.btn-p:hover{background:#1A3FB0;color:#FFFFFF}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.sel,.inp{font-family:inherit;font-size:15px;padding:9px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:44px;box-sizing:border-box;width:100%}
+.sel-s{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:44px}
+.bad{border-color:#C9864A;background:#FFF7EF}
+.lbl{font-size:14px;font-weight:600;color:#14181F}
+.hint{font-size:13px;color:#5B6472;line-height:1.5}
+.err{font-size:13px;color:#A3470A;font-weight:600;line-height:1.5;display:flex;gap:6px;align-items:flex-start}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{font-weight:500;color:#5B6472;font-size:13px;text-align:left;padding:10px 12px;border-bottom:1px solid #E3E7EC;white-space:nowrap}
+.tbl td,.tbl tbody th{padding:12px;border-bottom:1px solid #EEF1F4;vertical-align:top;text-align:left}
+.tbl tbody th{font-weight:600;color:#14181F;font-size:14px;white-space:normal}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:#EEF1F4;color:#3A4250;white-space:nowrap}
+.pill-b{background:#E8EEFF;color:#1A3FB0}
+.pill-w{background:#FFF1E6;color:#A3470A}
+.pill-d{background:#14181F;color:#FFFFFF}
+.warn{background:#FFF7EF;border:1px solid #F3D6B8;color:#A3470A;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.55}
+.soft{background:#F6F8FA;border-radius:12px;padding:12px 14px;font-size:14px;color:#3A4250;line-height:1.55}
+.what{margin:0;font-size:14px;color:#5B6472;line-height:1.6}
+.what b{display:inline-block;font-size:12px;font-weight:700;color:#1A3FB0;background:#E8EEFF;border-radius:6px;padding:1px 7px;margin-right:6px}
+.exm{display:inline-flex;align-items:center;font-size:11px;font-weight:700;color:#3A4250;border:1px solid #C8CFD8;border-radius:4px;padding:0 6px;line-height:18px;background:#FFFFFF;vertical-align:middle}
+.kick{margin:0;font-size:13px;font-weight:700;color:#2350D8}
+.h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-0.2px}
+.h3{margin:0;font-size:16px;font-weight:700}
+details>summary{cursor:pointer;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+.acc{border:1px solid #E3E7EC;border-radius:12px;background:#FFFFFF}
+.acc>summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;min-height:44px;box-sizing:border-box}
+.ops-grid{display:grid;grid-template-columns:232px minmax(0,1fr);gap:24px;align-items:start}
+.ops-nav{position:sticky;top:16px}
+.two{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:20px;align-items:start}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 18px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.stat7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.barrow{display:grid;grid-template-columns:minmax(150px,210px) minmax(0,1fr) minmax(170px,220px);align-items:center;gap:12px;font-size:13px}
+.calwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px 28px;align-items:start}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+@media (max-width:1100px){.two,.calwrap{grid-template-columns:minmax(0,1fr)}.stat7{grid-template-columns:repeat(4,minmax(0,1fr))}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.ops-grid{grid-template-columns:minmax(0,1fr)}.ops-nav{position:static;min-width:0}.navlist{flex-direction:row !important;overflow-x:auto}.navlist a{white-space:nowrap}}
+@media (max-width:640px){.barrow{grid-template-columns:minmax(0,1fr);gap:4px}.btn{white-space:normal}.fgrid{grid-template-columns:minmax(0,1fr)}.stat7{grid-template-columns:repeat(2,minmax(0,1fr))}.tiles{grid-template-columns:minmax(0,1fr)}main{padding-left:16px !important;padding-right:16px !important}}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="List.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">단지 찾기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="Reports.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+<label for="region" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="region" style="font-family: inherit; font-size: 15px; font-weight: 600; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; background: #FFFFFF; min-height: 40px;"><option>인천</option></select>
+<span class="num" style="font-size: 13px; color: #5B6472;">기준일 2026-10-15</span>
+<a href="#" style="font-size: 13px; color: #3A4250; padding: 8px 10px;">시나리오</a>
+<a href="#" aria-current="page" style="font-size: 13px; font-weight: 600; color: #1A3FB0; background: #E8EEFF; padding: 8px 10px; border-radius: 8px;">데이터·운영</a>
+<a href="#" style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"></path><path d="M4 19.5V21h16"></path></svg>
+용어 사전
+</a>
+</div>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 24px;">
+
+<section aria-labelledby="top" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px;">
+<div style="display: flex; flex-direction: column; gap: 8px; flex: 1 1 560px;">
+<p style="margin: 0; font-size: 14px; color: #5B6472;">운영자용 화면 · 인천 · 2026년 10월 15일 아침 수집분</p>
+<h1 id="top" style="margin: 0; font-size: 34px; line-height: 1.25; font-weight: 700; letter-spacing: -0.4px;">오늘 확인할 것부터 볼까요?</h1>
+<p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.6;">자료 모으기, 판정기 호출, 사람이 직접 확인한 기록을 여기서 관리해요. 숫자는 모두 운영 기록 그대로예요.</p>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+<span class="pill pill-b"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>판정기 연결 정상</span>
+<span class="num" style="font-size: 12px; color: #7A8391;">마지막 발행 2026-10-15 06:14 · 운영 기록 09:04 조회</span>
+</div>
+</section>
+
+<section aria-label="오늘 확인할 것" class="tiles">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+<a href="{{t.href}}" class="card" style="{{t.style}}">
+<span style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><span style="font-size: 14px; font-weight: 600; color: #3A4250;">{{t.label}}</span><span style="{{t.dotStyle}}"></span></span>
+<span class="num" style="font-size: 34px; font-weight: 700; letter-spacing: -0.4px; line-height: 1.1;">{{t.value}}<span style="font-size: 16px; font-weight: 600; margin-left: 2px;">{{t.unit}}</span></span>
+<span style="font-size: 13px; color: #5B6472; line-height: 1.5;">{{t.sub}}</span>
+<span style="font-size: 13px; font-weight: 600; color: #2350D8;">{{t.go}} →</span>
+</a>
+</sc-for>
+</section>
+
+<div class="ops-grid">
+
+<nav aria-label="운영 메뉴" class="ops-nav card" style="padding: 10px;">
+<p style="margin: 6px 10px 8px; font-size: 12px; font-weight: 700; color: #7A8391;">한 번에 한 묶음씩 보여요</p>
+<div class="navlist" style="display: flex; flex-direction: column; gap: 2px;">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+<a href="{{n.href}}" aria-current="{{n.current}}" style="{{n.style}}"><span style="{{n.numStyle}}">{{n.no}}</span><span style="flex: 1 1 auto;">{{n.label}}</span><span class="num" style="{{n.countStyle}}">{{n.count}}</span></a>
+</sc-for>
+</div>
+<p style="margin: 10px 10px 4px; font-size: 12px; color: #7A8391; line-height: 1.5;">휴대폰에서는 이 메뉴가 위로 쌓이고 옆으로 밀어 봐요. 목업에서는 모든 묶음을 아래로 펼쳐 그렸어요.</p>
+</nav>
+
+<div style="display: flex; flex-direction: column; gap: 24px; min-width: 0;">
+
+<!-- ① 일정·체크리스트 -->
+<section id="s1" aria-labelledby="s1h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px;">
+<p class="kick">① 일정·체크리스트</p>
+<h2 id="s1h" class="h2">언제, 무엇을 확인해야 하나요?</h2>
+<p class="what"><b>이게 뭐예요?</b>공고문·청약홈 일정에서 자동으로 뽑은 기한과 직접 확인할 일이에요. 상태를 바꾸면 그 기준일 보고서(체크리스트·달력)에도 반영돼요.</p>
+</div>
+<span class="pill num">전체 329건 · 열림 316 · 해당 없음 13</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<label for="ckind" class="sr">종류</label>
+<select id="ckind" class="sel-s"><option>종류 전체 329</option><option>직접 확인할 것 182</option><option>중도금 납부 112</option><option>전매 가능 시작·기한 만료 29</option><option>청약 접수 3</option><option>계약 2</option><option>당첨자 발표 1</option><option>공고 예상 0</option><option>값 다시 확인 0</option></select>
+<label for="cstat" class="sr">상태</label>
+<select id="cstat" class="sel-s"><option>상태 전체</option><option>열림 316</option><option>완료 0</option><option>해당 없음 13</option></select>
+<span style="font-size: 13px; color: #5B6472;">기한 가까운 순</span>
+</div>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 680px;">
+<caption class="sr">체크리스트</caption>
+<thead><tr><th scope="col">종류</th><th scope="col">할 일</th><th scope="col">단지</th><th scope="col">기한</th><th scope="col">상태</th><th scope="col">메모</th></tr></thead>
+<tbody class="num">
+<tr><td><span class="pill pill-w">전매 가능 시작</span> <span class="est">추정</span></td><th scope="row">되팔기 제한이 끝나는 날<br><span style="font-size: 12px; font-weight: 400; color: #5B6472;">계산 기준: 당첨자 발표일 + 12개월</span></th><td>숭의역 라온프라이빗 스카이브</td><td><span class="src">10.14</span><br><span style="font-size: 12px; font-weight: 600; color: #A3470A;">어제 지남</span></td><td><label for="c1" class="sr">상태 · 숭의역 라온프라이빗 스카이브 되팔기 제한</label><select id="c1" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 당첨자 발표일부터 셈</td></tr>
+<tr><td><span class="pill pill-w">전매 가능 시작</span> <span class="est">추정</span></td><th scope="row">되팔기 제한이 끝나는 날<br><span style="font-size: 12px; font-weight: 400; color: #5B6472;">계산 기준: 당첨자 발표일 + 12개월</span></th><td>석남역 센트럴파크 그랑베르</td><td><span class="src">10.15</span><br><span style="font-size: 12px; font-weight: 600; color: #A3470A;">오늘</span></td><td><label for="c2" class="sr">상태 · 석남역 센트럴파크 그랑베르</label><select id="c2" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 당첨자 발표일부터 셈</td></tr>
+<tr><td><span class="pill pill-w">전매 가능 시작</span> <span class="est">추정</span></td><th scope="row">되팔기 제한이 끝나는 날<br><span style="font-size: 12px; font-weight: 400; color: #5B6472;">계산 기준: 당첨자 발표일 + 12개월</span></th><td>두산위브앤수자인 부평 더퍼스트</td><td><span class="src">10.15</span><br><span style="font-size: 12px; font-weight: 600; color: #A3470A;">오늘</span></td><td><label for="c3" class="sr">상태 · 두산위브앤수자인 부평 더퍼스트</label><select id="c3" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 당첨자 발표일부터 셈</td></tr>
+<tr><td><span class="pill pill-b">청약 접수</span></td><th scope="row">특별공급 청약 접수</th><td>산곡역자이힐스테이트앤하늘채</td><td><span class="src">10.19</span><br><span style="font-size: 12px; color: #5B6472;">D-4</span></td><td><label for="c4" class="sr">상태 · 산곡역 특별공급 청약 접수</label><select id="c4" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 청약홈 청약 일정</td></tr>
+<tr><td><span class="pill">중도금 납부</span></td><th scope="row">중도금 3회차 납부일</th><td>송도역 한신더휴 프레스턴</td><td><span class="src">10.20</span><br><span style="font-size: 12px; color: #5B6472;">D-5</span></td><td><label for="c5" class="sr">상태 · 송도역 한신더휴 프레스턴 중도금</label><select id="c5" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 공고문 납부 조건 10.0%</td></tr>
+<tr><td><span class="pill">계약</span></td><th scope="row">계약 체결 마감</th><td>숭의역 노르웨이숲 더 스카이</td><td><span class="src">10.21</span><br><span style="font-size: 12px; color: #5B6472;">D-6</span></td><td><label for="c6" class="sr">상태 · 숭의역 노르웨이숲 더 스카이 계약</label><select id="c6" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 청약홈 계약일</td></tr>
+<tr><td><span class="pill pill-b">당첨자 발표</span></td><th scope="row">당첨자 발표</th><td>산곡역자이힐스테이트앤하늘채</td><td><span class="src">10.27</span><br><span style="font-size: 12px; color: #5B6472;">D-12</span></td><td><label for="c7" class="sr">상태 · 산곡역 당첨자 발표</label><select id="c7" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 청약홈 당첨자 발표일</td></tr>
+<tr><td><span class="pill">직접 확인할 것</span></td><th scope="row">토지거래허가구역 여부·대지지분 기준 확인</th><td>산곡역자이힐스테이트앤하늘채</td><td style="color: #5B6472;">기한 없음</td><td><label for="c8" class="sr">상태 · 토지거래허가구역 확인</label><select id="c8" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 프로그램이 정하지 않는 항목이라 직접 확인</td></tr>
+<tr style="color: #7A8391;"><td><span class="pill">중도금 납부</span></td><th scope="row" style="color: #7A8391;">중도금 3회차 납부일</th><td>두산위브 더센트럴 도화</td><td>2027.02.10</td><td><label for="c9" class="sr">상태 · 두산위브 더센트럴 도화 중도금</label><select id="c9" class="sel-s"><option>열림</option><option>완료</option><option selected="">해당 없음</option></select><br><span class="pill" style="margin-top: 6px;" title="근거 자료가 사라졌거나 값이 검증에서 빠져 자동으로 닫았어요 — 근거가 돌아오면 다시 열려요">자동으로 닫힘</span><span style="display: block; font-size: 11px; color: #7A8391; margin-top: 4px; max-width: 180px;">근거가 사라지거나 단지가 빠져 자동으로 닫았어요. 근거가 돌아오면 다시 열려요.</span></td><td style="font-size: 12px;">자동 · 공고문 납부 조건 10.0%</td></tr>
+</tbody>
+</table>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center;">
+<span style="font-size: 12px; color: #7A8391;">329건 중 9건 · 출처 입주자 모집 공고문·청약홈 일정(자동 생성) · 기한 숫자를 누르면 출처가 열려요</span>
+<button type="button" class="btn">320건 더 보기</button>
+</div>
+<div class="soft" style="display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700;">상태를 바꾸면 이렇게 알려 줘요 <span class="exm">예시</span></p>
+<p style="margin: 0; font-size: 13px;">체크리스트가 보고서(체크리스트·달력)에 들어가서, 보고서 반영 작업을 등록했어요.</p>
+<div style="height: 8px; background: #E3E7EC; border-radius: 999px; overflow: hidden;" role="progressbar" aria-label="보고서 반영 작업 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40"><div style="width: 40%; height: 100%; background: #2350D8;"></div></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">또는: 저장했어요 — 바뀐 것이 없거나 반영할 수정본이 없어 반영 작업은 없어요.</p>
+</div>
+</div>
+
+<div class="calwrap" style="border: 1px solid #E3E7EC; border-radius: 14px; padding: 16px; min-width: 0;">
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+<button type="button" class="btn" aria-label="이전 달 9월">‹ 9월</button>
+<h3 class="h3 num">2026년 10월 · 10건</h3>
+<button type="button" class="btn" aria-label="다음 달 11월">11월 7건 ›</button>
+</div>
+<div class="cal" role="grid" aria-label="2026년 10월 달력">
+<span style="font-size: 12px; color: #A3470A; text-align: center; padding: 4px 0;">일</span><span style="font-size: 12px; color: #5B6472; text-align: center; padding: 4px 0;">월</span><span style="font-size: 12px; color: #5B6472; text-align: center; padding: 4px 0;">화</span><span style="font-size: 12px; color: #5B6472; text-align: center; padding: 4px 0;">수</span><span style="font-size: 12px; color: #5B6472; text-align: center; padding: 4px 0;">목</span><span style="font-size: 12px; color: #5B6472; text-align: center; padding: 4px 0;">금</span><span style="font-size: 12px; color: #5B6472; text-align: center; padding: 4px 0;">토</span>
+<sc-for list="{{cal}}" as="d" hint-placeholder-count="35">
+<span role="gridcell" aria-label="{{d.aria}}" style="{{d.style}}"><span class="num">{{d.label}}</span><span style="display: flex; gap: 3px; justify-content: center; min-height: 6px;"><span style="{{d.dot1}}"></span><span style="{{d.dot2}}"></span></span></span>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: #3A4250;">
+<span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2350D8;"></span>청약 접수·발표</span>
+<span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #D9822B;"></span>전매 가능 시작</span>
+<span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B6472;"></span>중도금·계약</span>
+</div>
+<details>
+<summary style="font-size: 13px; font-weight: 600; color: #2350D8; min-height: 44px; display: flex; align-items: center;">종류 뜻 보기 (펼친 모습은 맨 아래)</summary>
+</details>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+<h3 class="h3" style="font-size: 15px;">10월 일정 <span style="font-weight: 400; color: #5B6472;">날짜순</span></h3>
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<sc-for list="{{calList}}" as="e" hint-placeholder-count="10">
+<li style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid #EEF1F4;" title="{{e.title}}">
+<span class="num" style="flex: 0 0 52px; font-size: 13px; font-weight: 700; color: #3A4250;">{{e.date}}</span>
+<span style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+<span style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span style="{{e.kindStyle}}">{{e.kind}}</span><span style="font-size: 14px; font-weight: 600;">{{e.name}}</span></span>
+<span style="font-size: 13px; color: #5B6472;">{{e.what}}</span>
+</span>
+</li>
+</sc-for>
+</ol>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">기한이 있는 항목만 달력에 나와요 · 전매 가능 시작은 계산값 <span class="est">추정</span> · 줄에 마우스를 올리면 원래 제목이 보여요</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ② 접수 확인 대기열 -->
+<section id="s2" aria-labelledby="s2h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px;">
+<p class="kick">② 접수 확인 대기열</p>
+<h2 id="s2h" class="h2">접수 상태를 사람이 확인해야 하는 단지</h2>
+<p class="what"><b>이게 뭐예요?</b>프로그램이 접수 상태를 '확인 불가'나 '미정'으로 남긴 단지를 이유별로 묶었어요. 분양사무소에 전화·방문해 확인하고 '사람 확인 입력'으로 남기면 다시 판정이 자동으로 걸려요. 새 수정본이 발행되면 목록에서 빠져요.</p>
+</div>
+<span class="pill pill-d num" style="font-size: 14px; padding: 6px 12px;">89건</span>
+</div>
+<p class="num" style="margin: 0; font-size: 13px; color: #5B6472;">기준: 2026-10-15 기준일 (1번째 수정본) · 운영 기록</p>
+
+<details class="acc" open="">
+<summary><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span style="font-size: 16px; font-weight: 700;">페이지를 못 받았어요 (수집 실패)</span><span class="pill pill-w num">14건</span><span class="num" style="font-size: 13px; color: #5B6472;">연결 안 됨 8 · 보안 연결 오류 4 · 페이지 없음 2</span></summary>
+<div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px;">
+<p class="hint" style="margin: 0;">주소가 닫혔거나 보안 인증서 오류·접근 거부로 페이지를 받지 못했어요. 시행·시공사 대표 페이지나 견본주택 전화로 확인하세요. 프로그램은 인증서 검사와 접근 거부를 우회하지 않아요.</p>
+<h3 class="h3" style="font-size: 15px;">연결 안 됨 <span style="font-weight: 400; color: #7A8391;">(connect)</span> · <span class="num">8건</span></h3>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 760px;">
+<caption class="sr">연결 안 됨</caption>
+<thead><tr><th scope="col">단지</th><th scope="col">지금 접수 상태</th><th scope="col">응답 코드 <button type="button" class="q" aria-label="응답 코드 설명">?</button></th><th scope="col">확인한 때</th><th scope="col">근거</th><th scope="col"><span class="sr">사람 확인</span></th></tr></thead>
+<tbody>
+<tr><th scope="row"><a href="Detail.dc.html">검단 스타힐스 가현숲</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:12</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">가현숲.com</span></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">검단신도시 금강펜테리움 3차 센트럴파크</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:09</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">검단신도시금강펜테리움3차.com</span></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">더샵 송도마리나베이(조합원 자격상실세대 3회차)</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:07</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">더샵송도마리나베이.com</span></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+</tbody>
+</table>
+</div>
+<button type="button" class="btn" style="align-self: flex-start;">이 묶음 5건 더 보기</button>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<button type="button" class="btn" aria-expanded="false">보안 연결 오류 (TLS) · <span class="num">4건</span> 펼치기</button>
+<button type="button" class="btn" aria-expanded="false">페이지 없음 (404) · <span class="num">2건</span> 펼치기</button>
+</div>
+</div>
+</details>
+
+<details class="acc" open="">
+<summary><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span style="font-size: 16px; font-weight: 700;">이 단지 홈페이지가 맞는지 모르겠어요 (공식 홈페이지 확인)</span><span class="pill pill-w num">18건</span><span class="num" style="font-size: 13px; color: #5B6472;">같은 단지인지 확인 못 함 11 · 다른 단지 페이지 7</span></summary>
+<div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px;">
+<p class="hint" style="margin: 0;">등록된 홈페이지가 이 단지 페이지인지 판정기가 확인하지 못했거나, 다른 사업 페이지예요. 판정 기록과 새 공식 페이지를 확인하세요.</p>
+<h3 class="h3" style="font-size: 15px;">같은 단지인지 확인 못 함 · <span class="num">11건</span></h3>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 760px;">
+<caption class="sr">같은 단지인지 확인 못 함</caption>
+<thead><tr><th scope="col">단지</th><th scope="col">지금 접수 상태</th><th scope="col">응답 코드</th><th scope="col">확인한 때</th><th scope="col">근거</th><th scope="col"><span class="sr">사람 확인</span></th></tr></thead>
+<tbody>
+<tr><th scope="row"><a href="Detail.dc.html">래미안 센트리폴(1BL)</a></th><td><span class="est">확인 불가(홈페이지 확인 전, 10.15)</span><span style="display: block; font-size: 12px; margin-top: 4px;"><a href="#">판정 기록 1328번 보기</a></span></td><td>200 <span style="font-size: 12px; color: #7A8391;">열림</span></td><td>10.15 06:08</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">raemian.co.kr</span><button type="button" class="btn" style="margin-top: 6px; font-size: 13px;">화면 캡처 미리보기</button></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">더샵 검단레이크파크(AB22BL)</a></th><td><span class="est">확인 불가(홈페이지 확인 전, 10.14)</span><span style="display: block; font-size: 12px; margin-top: 4px;"><a href="#">판정 기록 853번 보기</a></span></td><td>200 <span style="font-size: 12px; color: #7A8391;">열림</span></td><td>10.14 02:39</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">더샵검단레이크파크.kr</span><button type="button" class="btn" style="margin-top: 6px; font-size: 13px;">화면 캡처 미리보기</button></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+</tbody>
+</table>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<button type="button" class="btn">이 묶음 9건 더 보기</button>
+<button type="button" class="btn" aria-expanded="false">다른 단지 페이지 · <span class="num">7건</span> 펼치기</button>
+</div>
+</div>
+</details>
+
+<details class="acc">
+<summary><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg><span style="font-size: 16px; font-weight: 700;">페이지는 맞는데 접수 문구가 없어요 (문구로 판단 불가)</span><span class="pill pill-w num">30건</span><span class="num" style="font-size: 13px; color: #5B6472;">문구로 판단 불가 29 · 접수 문구 없음 1</span></summary>
+</details>
+<details class="acc">
+<summary><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg><span style="font-size: 16px; font-weight: 700;">판정기가 정하지 못했어요 (판정 미해결)</span><span class="pill pill-w num">11건</span><span style="font-size: 13px; color: #5B6472;">화면 캡처·근거 페이지를 보고 입력하세요</span></summary>
+</details>
+<details class="acc">
+<summary><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg><span style="font-size: 16px; font-weight: 700; color: #3A4250;">점수 대상이 아니에요 (판정 대상 아님)</span><span class="pill num">13건</span><span class="num" style="font-size: 13px; color: #5B6472;">공공분양 9 · 범위 경계 4 · 처음엔 접어 둬요 · 필요할 때만 확인</span></summary>
+</details>
+<details class="acc">
+<summary><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg><span style="font-size: 16px; font-weight: 700; color: #3A4250;">일정이 아직 안 정해졌어요 (접수 미정)</span><span class="pill num">3건</span><span style="font-size: 13px; color: #5B6472;">처음엔 접어 둬요 · 일정이 정해졌는지 확인</span></summary>
+</details>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">정해진 묶음에 없는 새 이유는 '기타' 묶음으로 따로 모여요(지금 0건). 화면 캡처 펼친 모습과 '입력 후 기다리는 중' 표시는 맨 아래 '펼친 모습'에 있어요.</p>
+</section>
+
+<!-- ③ 사람 확인 입력 -->
+<section id="s3" aria-labelledby="s3h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<p class="kick">③ 사람 확인 입력</p>
+<h2 id="s3h" class="h2">분양사무소에 확인한 내용을 남길까요?</h2>
+<p class="what"><b>이게 뭐예요?</b>전화·방문·이메일로 직접 확인한 값을 '사람 확인'으로 기록해요. 사람 확인 값은 가장 먼저 쓰는 출처가 되고, 저장하면 다시 판정이 자동으로 등록돼요.</p>
+</div>
+<p class="soft" style="margin: 0; display: flex; gap: 8px; align-items: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2350D8" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>② 대기열에서 '검단 스타힐스 가현숲 · 접수 상태'로 채웠어요.</p>
+<div class="two">
+<form aria-label="사람 확인 입력" novalidate="" class="fgrid" style="min-width: 0;">
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hc1" class="lbl">단지</label><select id="hc1" class="sel"><option>고르세요</option><option selected="">검단 스타힐스 가현숲</option><option>검단신도시 금강펜테리움 3차 센트럴파크</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hc2" class="lbl">무엇을 확인했나요?</label><select id="hc2" class="sel"><option selected="">접수 상태</option><option>최고 공급금액 (기준 타입 · 지금 공고)</option><option>입주 예정 시기</option><option>되팔기 제한 기간 (전매, 개월)</option><option>꼭 살아야 하는 기간 (거주의무, 개월)</option><option>계약금 비율 (%)</option><option>할인 (기준 타입, 원)</option><option>기타 (기록만)</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hc3" class="lbl">확인한 값</label><select id="hc3" class="sel"><option selected="">고르세요</option><option>접수 가능</option><option>접수 미정</option><option>접수 확인 불가</option><option>접수 불가</option></select><span class="hint">숫자 항목을 고르면 입력 칸과 규칙 안내로 바뀌어요(오른쪽 표).</span></div>
+<fieldset style="border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;"><legend class="lbl" style="padding: 0; margin-bottom: 6px;">어떻게 확인했나요?</legend>
+<div style="display: flex; gap: 6px;">
+<label style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border: 2px solid #2350D8; background: #E8EEFF; color: #1A3FB0; border-radius: 10px; font-size: 14px; font-weight: 600;"><input type="radio" name="hckind" checked="" style="accent-color: #2350D8;">전화</label>
+<label style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border: 1px solid #D5DAE1; border-radius: 10px; font-size: 14px;"><input type="radio" name="hckind">방문</label>
+<label style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border: 1px solid #D5DAE1; border-radius: 10px; font-size: 14px;"><input type="radio" name="hckind">이메일</label>
+</div></fieldset>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hc5" class="lbl">확인한 때</label><input id="hc5" class="inp num" type="datetime-local" value="2026-10-15T10:30"><span class="hint">이 브라우저 시간대(+09:00)로 보내요</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hc6" class="lbl">입력한 사람 (역할)</label><select id="hc6" class="sel"><option selected="">고르세요</option><option>운영자</option><option>검토자</option></select><span class="hint">이름 대신 역할만 남겨요</span></div>
+<div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px;"><label for="hc7" class="lbl">메모</label><textarea id="hc7" class="inp" rows="3" maxlength="500" style="resize: vertical;"></textarea><span class="hint" style="display: flex; justify-content: space-between; gap: 8px;"><span>통화·방문 내용 요약만 적어요. 전화번호·주민번호·이메일·비밀값은 서버가 거부해요.</span><span class="num">0/500</span></span></div>
+<div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="submit" class="btn btn-p">사람 확인 저장</button>
+<span class="hint">저장하면 다시 판정 작업이 자동으로 등록돼요.</span>
+</div>
+</form>
+<aside aria-labelledby="rules" style="border: 1px solid #E3E7EC; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+<h3 id="rules" class="h3" style="font-size: 15px;">값을 이렇게 넣어 주세요</h3>
+<dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 13px; line-height: 1.5;">
+<dt style="font-weight: 600;">접수 상태</dt><dd style="margin: 0; color: #3A4250;">목록에서 고르기 (접수 가능·미정·확인 불가·불가)</dd>
+<dt style="font-weight: 600;">최고 공급금액</dt><dd style="margin: 0; color: #3A4250;">원 단위 정수, 1,000만 ~ 1,000억 (예: 605000000)</dd>
+<dt style="font-weight: 600;">입주 예정</dt><dd style="margin: 0; color: #3A4250;">연-월 (2000-01 ~ 2100-12), 달력 칸</dd>
+<dt style="font-weight: 600;">되팔기 제한 · 꼭 살아야 하는 기간</dt><dd style="margin: 0; color: #3A4250;">개월 정수 0 ~ 240. '개월'·'년'을 붙여도 돼요('3년' = 36개월)</dd>
+<dt style="font-weight: 600;">계약금 비율</dt><dd style="margin: 0; color: #3A4250;">0 ~ 100, 소수 둘째 자리까지, '%' 붙여도 돼요</dd>
+<dt style="font-weight: 600;">할인</dt><dd style="margin: 0; color: #3A4250;">기준 타입 <span class="num">[타입]</span> 할인(원) — 원 단위 정수 0 ~ 1,000억(0 = 할인 없음 확인). 쉼표는 세 자리마다, 끝 '원'은 붙여서. 기준 타입 가격보다 작아야 구매가에서 빼요</dd>
+<dt style="font-weight: 600;">기타</dt><dd style="margin: 0; color: #3A4250;">기록만 남아요, 200자까지</dd>
+</dl>
+<p class="hint" style="margin: 0;">숫자는 고쳐 쓰지 않아요: 쉼표는 세 자리마다, 숫자 사이에 띄어쓰기 없이 넣어 주세요.</p>
+</aside>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px;">
+<div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<p style="margin: 0; font-size: 14px; font-weight: 700;">틀렸을 때 <span class="exm">예시</span></p>
+<p role="alert" class="warn" style="margin: 0;">단지·항목·값·입력자(역할)는 꼭 넣어야 해요.</p>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hce1" class="lbl">확인한 값 · 되팔기 제한 기간</label><input id="hce1" class="inp bad num" value="6.02" aria-invalid="true" aria-describedby="hce1e"><span id="hce1e" class="err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" style="flex: 0 0 auto; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>정수만 넣어 주세요(소수는 안 돼요)</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="hce2" class="lbl">확인한 때</label><input id="hce2" class="inp bad num" type="datetime-local" value="2026-10-16T09:00" aria-invalid="true" aria-describedby="hce2e"><span id="hce2e" class="err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" style="flex: 0 0 auto; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>확인 시각이 지금보다 10분 넘게 미래예요 — 실제로 확인한 시각을 넣어 주세요 ([서버 설명])</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><span class="lbl">메모</span><span class="err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true" style="flex: 0 0 auto; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>메모는 500자 이하로 넣어 주세요</span></div>
+<p role="alert" class="warn" style="margin: 0;">저장하지 못했어요: [서버 설명]</p>
+<p class="hint" style="margin: 0;">틀린 칸을 한꺼번에 모두 보여 줘요. 서버가 돌려준 칸별 오류도 같은 자리에 나와요.</p>
+</div>
+<div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 14px; font-weight: 700;">그 밖의 오류 안내 <span class="exm">문구 목록</span></p>
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #3A4250; line-height: 1.5;">
+<sc-for list="{{hcMsgs}}" as="m" hint-placeholder-count="14">
+<li>{{m.t}}</li>
+</sc-for>
+</ul>
+</div>
+<div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<p style="margin: 0; font-size: 14px; font-weight: 700;">저장한 뒤 <span class="exm">예시</span></p>
+<div role="status" style="background: #14181F; color: #FFFFFF; border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.55;">저장했어요 — 같은 기준일의 새 수정본에 기록했어요(다시 판정 뒤 발행되면 기본 화면에 보여요) · 다시 판정 작업 <span class="num">#[번호]</span>을 자동 등록했어요</div>
+<p style="margin: 0; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span style="color: #5B6472;">방금 저장한 접수 상태</span><span class="est" style="font-size: 12px; line-height: 20px;">접수 가능 · 사람 확인</span></p>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; font-weight: 600;">작업 진행 · 다시 판정 · 실행 중</span>
+<div style="height: 8px; background: #E3E7EC; border-radius: 999px; overflow: hidden;" role="progressbar" aria-label="다시 판정 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60"><div style="width: 60%; height: 100%; background: #2350D8;"></div></div>
+<span class="hint">작업이 끝나 새 수정본이 발행될 때까지 화면은 지금 발행본을 보여요.</span>
+</div>
+<hr style="border: none; border-top: 1px solid #EEF1F4; margin: 2px 0;">
+<p style="margin: 0; font-size: 13px; line-height: 1.6;">숫자 항목 저장: <b>되팔기 제한 기간 = [값]</b> <span class="est">사람 확인</span> 가장 먼저 쓰는 출처 · <span style="color: #5B6472;">대상: 납부 조건 <span class="num">[번호]</span></span></p>
+<p style="margin: 0; font-size: 13px;">할인 저장: 기준 타입 <span class="num">[타입]</span> 할인으로 반영했어요</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">⑦에서 '사람 확인으로 되돌리기'로 왔을 때: 검증에서 어긋난 값(주장의 대상)을 정해 두었어요.</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">'기타'를 저장하면: 다시 판정 없음(기타 항목)</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">숫자 항목 저장 알림: 저장했어요 — 같은 값의 검증 모순 표시를 사람 확인 값으로 되돌렸어요</p>
+</div>
+</div>
+</section>
+
+<!-- ④ 수집 상태 -->
+<section id="s4" aria-labelledby="s4h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px;">
+<p class="kick">④ 수집 상태</p>
+<h2 id="s4h" class="h2">자료를 잘 모으고 있나요?</h2>
+<p class="what"><b>이게 뭐예요?</b>프로그램이 자료를 가져오는 곳 8가지의 최근 7일 성적표예요. 실패한 곳은 이름 아래에서 펼쳐 볼 수 있고, '다시 모으기'로 바로 다시 시도해요.</p>
+</div>
+<span class="pill pill-w">실패가 있는 곳 1 / 8</span>
+</div>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 920px;">
+<caption style="text-align: left; font-size: 13px; color: #5B6472; padding-bottom: 8px;">최근 7일 · 시각은 한국 시간 · 운영 기록 그대로</caption>
+<thead><tr><th scope="col">자료</th><th scope="col">켜짐</th><th scope="col">마지막 성공</th><th scope="col">마지막 시도</th><th scope="col">성공</th><th scope="col">실패</th><th scope="col">응답 코드 <button type="button" class="q" aria-label="응답 코드 설명">?</button></th><th scope="col">마지막 오류</th><th scope="col"><span class="sr">다시 모으기</span></th></tr></thead>
+<tbody>
+<tr><th scope="row">청약홈 목록</th><td>예</td><td>10.15 06:00</td><td>10.15 06:00</td><td>8</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr><th scope="row">청약홈 단지 상세</th><td>예</td><td>10.15 06:00</td><td>10.15 06:00</td><td>1,307</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr><th scope="row">입주자 모집 공고문 (PDF)</th><td>예</td><td>10.13 19:22</td><td>10.13 19:22</td><td>220</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr style="background: #FFF7EF;"><th scope="row">단지 공식 홈페이지
+<details open="" style="margin-top: 8px; font-weight: 400;">
+<summary style="font-size: 13px; font-weight: 700; color: #A3470A; min-height: 32px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>열리지 않는 곳 16곳</summary>
+<ul style="margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #3A4250; max-width: 420px;">
+<li>e편한세상 부평 그랑힐스(보류지) · <span class="est">확인 불가(404, 10.15 06:12)</span> · <a href="#">hanwoorired.co.kr ↗</a></li>
+<li>월드메르디앙 송도 · <span class="est">확인 불가(404, 10.15 06:12)</span> · <a href="#">월드메르디앙송도.com ↗</a></li>
+<li>검단 스타힐스 가현숲 · <span class="est">확인 불가(연결 안 됨, 10.15 06:12)</span> · <a href="#">가현숲.com ↗</a></li>
+<li>힐스테이트 레이크 송도 3차 · <span class="est">확인 불가(연결 안 됨, 10.15 06:11)</span> · <a href="#">힐스테이트레이크송도3차.com ↗</a></li>
+<li>포레나 인천학익 · <span class="est">확인 불가(보안 연결 오류, 10.15 06:11)</span> · <a href="#">forena-hagik.com ↗</a></li>
+<li>인하대역 푸르지오 에듀포레 · <span class="est">확인 불가(보안 연결 오류, 10.15 06:08)</span> · <a href="#">인하대역푸르지오.com ↗</a></li>
+</ul>
+<button type="button" class="btn" style="margin-top: 8px; font-size: 13px;">10곳 더 보기</button>
+</details>
+</th><td>예</td><td>10.15 06:12</td><td>10.15 06:12</td><td>362</td><td style="font-weight: 700; color: #A3470A;">55</td><td>404</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn btn-p">다시 모으기</button></td></tr>
+<tr><th scope="row">실거래가 (국토교통부)</th><td>예</td><td>10.13 19:49</td><td>10.13 19:49</td><td>684</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr><th scope="row">통계 (미분양·입주 물량)</th><td>예</td><td>10.13 19:39</td><td>10.13 19:39</td><td>3</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr><th scope="row">뉴스</th><td>예</td><td>10.13 19:39</td><td>10.13 19:39</td><td>1</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr><th scope="row">참조 코드 (지역·동 이름표)</th><td>예</td><td>10.13 18:31</td><td>10.13 18:31</td><td>4</td><td>0</td><td>200</td><td style="color: #7A8391;">—</td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">'다시 모으기'를 누르면 "다시 모으기 작업을 등록했어요" 알림이 뜨고 ⑤ 작업 대기열에 새 줄이 생겨요. 실패 이유가 응답 코드가 아닌 경우(예: 빈 자료)는 이유를 글로 보여 줘요.</p>
+</section>
+
+<!-- ⑤ 작업 대기열 -->
+<section id="s5" aria-labelledby="s5h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px;">
+<p class="kick">⑤ 작업 대기열</p>
+<h2 id="s5h" class="h2">자동 작업이 잘 돌고 있나요?</h2>
+<p class="what"><b>이게 뭐예요?</b>수집·다시 판정·발행·백업 같은 자동 작업의 최근 기록이에요. 다시 기다리는 작업은 실패가 아니라는 안내가 상태 아래에 붙어요.</p>
+</div>
+<span class="pill num">최근 29건 · 모두 완료</span>
+</div>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 820px;">
+<caption class="sr">작업 대기열</caption>
+<thead><tr><th scope="col">작업</th><th scope="col">상태</th><th scope="col">예약</th><th scope="col">시작</th><th scope="col">끝</th><th scope="col">진행</th><th scope="col">오류</th></tr></thead>
+<tbody>
+<tr><th scope="row">새 수정본 발행<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#29 · snapshot.publish</span></th><td><span class="pill">완료</span></td><td>10.15 06:14</td><td>10.15 06:14</td><td>10.15 06:15</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">다시 판정<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#28 · rejudge</span></th><td><span class="pill">완료</span></td><td>10.15 06:12</td><td>10.15 06:12</td><td>10.15 06:14</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">매일 수집<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#27 · collect.daily</span></th><td><span class="pill">완료</span></td><td>10.15 06:00</td><td>10.15 06:00</td><td>10.15 06:12</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">백업<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#26 · backup</span></th><td><span class="pill">완료</span></td><td>10.15 03:00</td><td>10.15 03:00</td><td>10.15 03:00</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">새 수정본 발행<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#25 · snapshot.publish</span></th><td><span class="pill">완료</span></td><td>10.14 22:57</td><td>10.14 22:57</td><td>10.14 22:57</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">다시 판정<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#24 · rejudge</span></th><td><span class="pill">완료</span></td><td>10.14 22:55</td><td>10.14 22:55</td><td>10.14 22:57</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">매일 수집<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#23 · collect.daily</span></th><td><span class="pill">완료</span></td><td>10.14 22:42</td><td>10.14 22:42</td><td>10.14 22:55</td><td style="color: #7A8391;">—</td><td></td></tr>
+<tr><th scope="row">새 수정본 발행<span style="display: block; font-size: 12px; font-weight: 400; color: #7A8391;">#22 · snapshot.publish</span></th><td><span class="pill">완료</span></td><td>10.14 20:32</td><td>10.14 20:32</td><td>10.14 20:32</td><td style="color: #7A8391;">—</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center;">
+<span style="font-size: 12px; color: #7A8391;">작업 종류: 매일 수집 8 · 다시 판정 9 · 새 수정본 발행 8 · 백업 2 · 지역 첫 적재 1 · 참조 코드 갱신 1</span>
+<button type="button" class="btn">21건 더 보기</button>
+</div>
+</section>
+
+<!-- ⑥ 판정기 호출 통계 -->
+<section id="s6" aria-labelledby="s6h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px;">
+<p class="kick">⑥ 판정기 호출 통계</p>
+<h2 id="s6h" class="h2">최근 30일, 판정기를 얼마나 불렀나요?</h2>
+<p class="what"><b>이게 뭐예요?</b>상승 가능성·접수 상태·출처 비교 같은 판단은 판정기만 해요. 판정기를 몇 번 불렀고, 저장된 결과를 몇 번 다시 썼는지 보여 줘요.</p>
+</div>
+<span class="pill num">2026-09-15 ~ 2026-10-15</span>
+</div>
+<ul class="stat7" aria-label="판정기 호출 30일" style="list-style: none; margin: 0; padding: 0;">
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="7">
+<li style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 12px; color: #5B6472; line-height: 1.4;">{{s.label}}</span><span class="num" style="font-size: 22px; font-weight: 700;">{{s.value}}</span><span style="font-size: 11px; color: #7A8391;">{{s.sub}}</span></li>
+</sc-for>
+</ul>
+<p class="hint" style="margin: 0;">실제로 보낸 호출 = 판정기로 실제 보낸 호출 수(수집 단계 판정 포함, 저장된 결과를 다시 쓰면 0회). 전체 호출 = 실제로 보낸 호출 + 저장된 결과 다시 쓰기. 이 밖에 안전 검사에서 막힌 입력이 <span class="num">2</span>회 있어요.</p>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;">
+<h3 class="h3">판단 종류별 호출</h3>
+<span style="display: flex; gap: 14px; font-size: 12px; color: #3A4250;"><span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #2350D8;"></span>실제로 보냄</span><span style="display: inline-flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #9DB4F2;"></span>저장된 결과 다시 씀</span></span>
+</div>
+<div role="img" aria-label="판단 종류별 호출 수 막대. 가장 많은 것은 외부 글 안전 검사 1,072회와 원문에서 값 뽑기 1,031회" style="display: flex; flex-direction: column; gap: 8px;">
+<sc-for list="{{tools}}" as="b" hint-placeholder-count="9">
+<div class="barrow">
+<span><span style="font-weight: 600;">{{b.name}}</span> <span style="color: #7A8391;">{{b.code}}</span></span>
+<span style="display: flex; height: 14px; background: #EEF1F4; border-radius: 999px; overflow: hidden;"><span style="{{b.realStyle}}"></span><span style="{{b.cachedStyle}}"></span></span>
+<span class="num" style="color: #3A4250;">{{b.text}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center;">
+<span style="font-size: 12px; color: #7A8391;">자료: 판정 기록 · 2026-09-15 ~ 2026-10-15 · 실패 0회 · 판정기 연결 버전 0.2.0 (jev-mcp 0.14.3 · jev 1.13.0)</span>
+<button type="button" class="btn">표로 보기</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<h3 class="h3">최근 판정 기록</h3>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 860px;">
+<caption class="sr">최근 판정 기록</caption>
+<thead><tr><th scope="col">번호</th><th scope="col">판단 종류</th><th scope="col">무엇을 판단했나</th><th scope="col">결과</th><th scope="col">모델</th><th scope="col">확신 정도 <button type="button" class="q" aria-label="확신 정도 설명">?</button></th><th scope="col">걸린 시간</th><th scope="col">시각</th></tr></thead>
+<tbody>
+<tr><td>1342</td><td>상황별 판단</td><td>상황 D 판단<span style="display: block; font-size: 11px; color: #7A8391;">decide:scenario_D</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td>0.56</td><td>202ms</td><td>10.15 06:14</td></tr>
+<tr><td>1337</td><td>비슷한 단지들 사이 순위</td><td>지역 전체 순위 다시 매기기<span style="display: block; font-size: 11px; color: #7A8391;">rerank:region:1</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td style="color: #7A8391;">확인 불가</td><td>360ms</td><td>10.15 06:13</td></tr>
+<tr><td>1336</td><td>기간별 계산</td><td>단지 28 · 5년 뒤(2031-10)<span style="display: block; font-size: 11px; color: #7A8391;">noul:ladder:asof_plus_5y</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td style="color: #7A8391;">확인 불가</td><td>203ms</td><td>10.15 06:13</td></tr>
+<tr><td>1330</td><td>외부 글 안전 검사</td><td>근처 새 아파트 자료 검사<span style="display: block; font-size: 11px; color: #7A8391;">screen:benchmark:region:1</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td style="color: #7A8391;">확인 불가</td><td>187ms</td><td>10.15 06:13</td></tr>
+<tr><td>1329</td><td>분류</td><td>접수 상태 분류<span style="display: block; font-size: 11px; color: #7A8391;">classify:intake</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td>0.81</td><td>202ms</td><td>10.15 06:12</td></tr>
+<tr><td>1328</td><td>분류</td><td>홈페이지가 이 단지 것인지<span style="display: block; font-size: 11px; color: #7A8391;">classify:site_identity</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td>0.18</td><td>235ms</td><td>10.15 06:12</td></tr>
+<tr><td>1323</td><td>출처끼리 비교</td><td>단지 28 청약 일정 출처 비교<span style="display: block; font-size: 11px; color: #7A8391;">compare:complex:28:apply_dates</span></td><td><span class="pill">정상</span></td><td style="font-size: 13px;">jev-1.13.0 <span style="color: #7A8391;">(typesafe)</span></td><td>0.86</td><td>172ms</td><td>10.14 20:30</td></tr>
+<tr style="color: #7A8391;"><td>1319</td><td>출처끼리 비교</td><td>주택형 211 층별 가격 원문 비교<span style="display: block; font-size: 11px;">compare:complex_type:211:floor_sample_text</span></td><td><span class="pill pill-w">검토</span></td><td style="font-size: 13px;">jev-1.13.0 (typesafe)</td><td>0.23</td><td>187ms</td><td>10.14 18:02</td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">최근 20건 중 8건 · 저장된 결과를 다시 쓴 줄에는 '저장된 결과' 배지, 판정기가 부르지 않은 처리는 모델 칸에 '로컬(비용 없음)', 모델 기록이 없으면 '기록 없음', 오류가 있으면 결과 아래에 오류 글이 붙어요. 결과를 못 정한 줄(검토·질문 남김·차단·오류)은 흐리게 '미해결' 배지와 함께 보여요.</p>
+</div>
+</section>
+
+<!-- ⑦ 모순 주장 -->
+<section id="s7" aria-labelledby="s7h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<p class="kick">⑦ 모순 주장</p>
+<h2 id="s7h" class="h2">검증에서 어긋난 문장이 남아 있나요?</h2>
+<p class="what"><b>이게 뭐예요?</b>보고서 문장을 판정기가 원문과 맞춰 봤을 때 어긋난(모순) 문장이에요. 하나라도 남아 있으면 새 수정본을 발행할 수 없고 보고서도 만들 수 없어요. 문장을 고치면 작은 문장으로 나눠 원래 근거로 다시 검증해요.</p>
+</div>
+<div style="display: flex; align-items: center; gap: 14px; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px;">
+<span style="width: 40px; height: 40px; border-radius: 50%; background: #E8EEFF; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2350D8" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px; font-weight: 700;">남은 모순 주장이 없어요</span><span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14 (7번째 수정본) 검증 문장 24건: 맞음 19 · 사람 검토 5 · 모순 0 — 발행·보고서 만들기가 막히지 않아요</span></span>
+</div>
+<div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<p style="margin: 0; font-size: 14px; font-weight: 700;">모순 주장이 생기면 이렇게 보여요 <span class="exm">예시 · 자리표시</span></p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<a href="Detail.dc.html" style="font-size: 16px; font-weight: 700;">[단지 이름]</a>
+<span class="pill pill-d">모순 (검증 결과 어긋남)</span>
+<span class="pill pill-w">남아 있음 · 발행 막힘</span>
+<span class="pill">다시 검증 기다리는 중 #[작업 번호]</span>
+<span class="pill">나눠서 다시 검증함 (작은 문장 [n]건)</span>
+<span style="font-size: 12px; color: #5B6472;">대상 값: [항목 이름]</span>
+<span class="est">확인 불가(검증 모순)</span>
+<span class="pill">되돌림(사람 확인)</span>
+<a href="#s3" style="font-size: 13px; font-weight: 600;">사람 확인으로 되돌리기 →</a>
+<button type="button" class="btn" style="font-size: 13px;">판정 출처 보기</button>
+</div>
+<blockquote style="margin: 0; border-left: 3px solid #C8CFD8; padding: 4px 12px; font-size: 15px; line-height: 1.6;">[주장 문장 — 예: ○○의 되팔기 제한 기간은 [n]개월이다]</blockquote>
+<p style="margin: 0; font-size: 13px; color: #5B6472;"><b style="color: #3A4250;">근거</b> [공고문에서 뽑은 원문 조각]</p>
+<form style="display: flex; flex-direction: column; gap: 6px;">
+<label for="cl1" class="lbl">고친 문장</label>
+<p class="hint" style="margin: 0;">저장된 값에서 나온 문장이에요. 고쳐서 다시 검증을 맡기면 같은 단지·같은 항목만 바꿀 수 있고, 그 값은 '확인 불가(검증 모순)'로 내려가 점수·조건 계산에서 빠져요(사람 확인이나 새 원문으로 되돌릴 수 있어요).</p>
+<textarea id="cl1" class="inp" rows="2" style="resize: vertical;">[주장 문장]</textarea>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+<button type="submit" class="btn btn-p" disabled="">고쳐서 다시 검증</button>
+<span class="hint">문장을 바꿔야 버튼이 켜져요 · 다시 검증 중이거나 이미 나눠졌거나 읽기 전용이면 꺼져요</span>
+</div>
+<p role="alert" class="err" style="margin: 0;">고치지 못했어요: [서버 설명]</p>
+</form>
+<div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; font-weight: 600;">작업 진행 · 다시 검증 · 실행 중</span><div style="height: 8px; background: #E3E7EC; border-radius: 999px; overflow: hidden;" role="progressbar" aria-label="다시 검증 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="30"><div style="width: 30%; height: 100%; background: #2350D8;"></div></div><span class="hint">끝나면 내려간 값·되돌린 값을 다시 읽어 와요.</span></div>
+</div>
+</section>
+
+<!-- ⑧ 범위 경계 단지 -->
+<section id="s8" aria-labelledby="s8h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<p class="kick">⑧ 범위 경계 단지</p>
+<h2 id="s8h" class="h2">지역 경계에 걸친 단지가 있나요?</h2>
+<p class="what"><b>이게 뭐예요?</b>입력한 지역의 경계에 걸쳐 판정 대상에서 빠진 단지예요. 이 지역에 넣을지 사람이 확인하세요. 누르면 단지 화면으로 가요.</p>
+</div>
+<ul aria-label="범위 경계 단지" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px;">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="4">
+<li style="display: flex; flex-direction: column; gap: 3px; border: 1px solid #D5DAE1; border-radius: 12px; padding: 10px 14px; min-height: 44px; box-sizing: border-box;"><a href="Detail.dc.html" style="font-size: 15px; font-weight: 600;">{{c.name}}</a><span style="font-size: 12px; color: #5B6472;">판정 범위 이유: {{c.reason}}</span></li>
+</sc-for>
+</ul>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">기준일 2026-10-15 · 4곳 · 생활권 이름이 있으면 단지 이름 옆에 붙어요(지금 4곳 모두 없음)</p>
+</section>
+
+<!-- ⑨ 공유 링크 -->
+<section id="s9" aria-labelledby="s9h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<p class="kick">⑨ 공유 링크</p>
+<h2 id="s9h" class="h2">보기만 할 수 있는 링크를 만들까요?</h2>
+<p class="what"><b>이게 뭐예요?</b>링크를 받은 사람은 화면을 볼 수만 있어요(저장·실행 안 됨). 정해진 기간(기본 30일)이 지나면 만료되고, 언제든 회수할 수 있어요. 쓰기 권한이 있을 때만 이 묶음이 보여요.</p>
+</div>
+<form style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 0 1 360px;"><label for="sh1" class="lbl">메모 (누구에게·무슨 용도 — 사람 이름은 빼요)</label><input id="sh1" class="inp" maxlength="64" placeholder="예: 검토 요청"></div>
+<button type="submit" class="btn btn-p">공유 링크 만들기</button>
+</form>
+<div style="display: flex; align-items: center; gap: 12px; border: 1px solid #E3E7EC; border-radius: 14px; padding: 16px; color: #5B6472; font-size: 14px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7A8391" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"></path><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"></path></svg>
+아직 만든 공유 링크가 없어요
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px;">
+<div style="border: 2px solid #2350D8; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 700;">만든 직후 <span class="exm">예시 · 자리표시</span></p>
+<label for="sh2" class="lbl">새 공유 링크</label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<input id="sh2" class="inp" readonly="" value="[이 서버 주소]/share#[한 번만 보이는 열쇠]" style="flex: 1 1 220px; font-size: 13px; background: #F6F8FA;">
+<button type="button" class="btn btn-p">복사</button>
+<button type="button" class="btn">닫기</button>
+</div>
+<p role="status" style="margin: 0; font-size: 13px; color: #5B6472;">복사했어요 <span style="color: #7A8391;">· 실패하면: 복사하지 못했어요 — 주소를 직접 골라 복사하세요</span></p>
+<p class="warn" style="margin: 0; display: flex; gap: 8px; align-items: flex-start;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex: 0 0 auto; margin-top: 3px;"><path d="M12 3 2 21h20z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg><span><b>이 링크는 지금 한 번만 보여요.</b> 닫기 전에 복사해서 전달하세요.</span></p>
+<p class="num" style="margin: 0; font-size: 13px; color: #5B6472;">만료: [날짜]</p>
+</div>
+<div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+<p style="margin: 0; font-size: 14px; font-weight: 700;">링크가 생긴 뒤 목록 <span class="exm">예시 · 자리표시</span></p>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 420px;">
+<caption class="sr">공유 링크 목록</caption>
+<thead><tr><th scope="col">메모</th><th scope="col">상태</th><th scope="col">만든 날</th><th scope="col">만료일</th><th scope="col"><span class="sr">회수</span></th></tr></thead>
+<tbody>
+<tr><th scope="row">[메모]</th><td><span class="pill pill-b">사용 중</span></td><td>[날짜]</td><td>[날짜]</td><td><button type="button" class="btn">회수</button></td></tr>
+<tr style="color: #7A8391;"><th scope="row" style="color: #7A8391;">없음</th><td><span class="pill">만료</span></td><td>[날짜]</td><td>[날짜]</td><td></td></tr>
+<tr style="color: #7A8391;"><th scope="row" style="color: #7A8391;">[메모]</th><td><span class="pill">회수됨</span></td><td>[날짜]</td><td>회수: [날짜]</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<p role="alert" class="err" style="margin: 0;">불러오지 못했어요: [서버 설명] <span style="font-weight: 400; color: #5B6472;">(만들기·회수 실패 때)</span></p>
+</div>
+</div>
+</section>
+
+<!-- 펼친 모습·다른 상태 -->
+<section id="s10" aria-labelledby="s10h" style="display: flex; flex-direction: column; gap: 16px; border-top: 2px dashed #C8CFD8; padding-top: 24px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<p class="kick" style="color: #5B6472;">목업 전용 영역</p>
+<h2 id="s10h" class="h2">펼친 모습 · 다른 상태</h2>
+<p class="what"><b>이게 뭐예요?</b>위에서 접혀 있거나 지금 데이터로는 안 나타나는 모양을 모아 그렸어요. 대괄호 [ ] 는 실제 값이 들어갈 자리예요.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px;">
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">① 달력 '종류 뜻' 펼친 모습</p>
+<dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 13px; align-items: start;">
+<sc-for list="{{legend}}" as="g" hint-placeholder-count="9">
+<dt><span style="{{g.style}}">{{g.k}}</span></dt><dd style="margin: 0; color: #3A4250; line-height: 1.5;">{{g.v}}</dd>
+</sc-for>
+</dl>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">① 체크리스트 닫힘 표시</p>
+<p style="margin: 0; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pill">자동으로 닫힘</span><span style="color: #3A4250;">근거가 사라졌거나 값이 검증에서 빠졌거나 단지가 빠져 자동으로 닫았어요 — 근거가 돌아오면 다시 열려요</span></p>
+<p style="margin: 0; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pill">사람이 닫음</span><span style="color: #3A4250;">사람이 닫은 항목은 자동으로 다시 열지 않아요(검증 모순이 남은 '값 다시 확인'은 예외)</span></p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">항목이 하나도 없으면: 항목 없음 · 기한 있는 항목이 없으면 달력 자리에: 기한 없음</p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">② 화면 캡처 미리보기 펼친 모습</p>
+<div role="img" aria-label="공식 홈페이지 화면 캡처 자리" style="height: 140px; border-radius: 10px; background: repeating-linear-gradient(45deg, #EEF1F4, #EEF1F4 10px, #F6F8FA 10px, #F6F8FA 20px); display: flex; align-items: center; justify-content: center; color: #5B6472; font-size: 13px;">[공식 홈페이지 화면 캡처 이미지]</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;"><button type="button" class="btn">미리보기 닫기</button><button type="button" class="btn">원문 파일 저장</button></div>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">불러오는 동안: 원문 불러오는 중… · 실패: 원문을 불러오지 못했어요 · 미리보기 안 되는 형식: 이 형식([형식])은 미리보기가 안 돼요 — 저장해서 여세요 · 저장 중: 내려받는 중… · 저장 실패: 내려받지 못했어요: [설명]</p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">② 사람 확인을 넣고 기다리는 단지</p>
+<p style="margin: 0; font-size: 14px; font-weight: 600;">[단지 이름]</p>
+<span class="pill pill-b" style="align-self: flex-start; white-space: normal;">사람 확인 입력됨([값], [날짜]) — 다시 판정·발행 기다리는 중</span>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">대기열이 비면: 확인할 접수 줄이 없어요 · 발행된 기준일이 없으면: 아직 발행된 기준일이 없어요 — 지역 적재가 끝나면 대기열이 생겨요</p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">④ 수집 상태 다른 경우</p>
+<table class="tbl" style="font-size: 13px;"><caption class="sr">수집 상태 다른 경우</caption><tbody>
+<tr style="color: #7A8391;"><th scope="row" style="color: #7A8391;">[자료 이름]</th><td><span class="pill">꺼짐([사유])</span></td></tr>
+<tr><th scope="row">청약홈 단지 상세</th><td><span class="est" style="white-space: normal;">확인 불가(빈 자료 — 청약홈이 아직 올리는 중, [날짜])</span></td></tr>
+<tr><th scope="row">[자료 이름]</th><td>마지막 성공 <span class="est">확인 불가</span> (한 번도 성공 못 함)</td></tr>
+</tbody></table>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">⑤ 작업 대기열 다른 상태</p>
+<p style="margin: 0; font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"><span class="pill">대기</span><span class="pill pill-b">실행 중</span> <span class="num">[n]/[n]</span> · 단계 [단계 이름]</p>
+<p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.55;"><span class="pill">대기</span> 수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요(다시 대기 <span class="num">[n]/[n]</span>회, [시각] 이후 다시 시도) — 아직 실패가 아니에요. 지역 첫 적재 중이라 발행본은 아직 없어요 / 이전 발행본이 그대로 기본 화면이에요.</p>
+<p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.55;"><span class="pill">대기</span> 같은 수정본의 다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) — 실패가 아니에요 · 발행 중 오류가 나 다시 시도하는 중([n]/[n]회)</p>
+<p style="margin: 0; font-size: 13px; color: #A3470A; line-height: 1.55;"><span class="pill pill-d">실패</span> 수집 자료가 [n]회 다시 모아도 불완전해 멈췄어요 — 발행하지 않았어요: [사유]</p>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">작업이 없으면: 작업 없음</p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">⑥ 판정기 장애 때</p>
+<p role="alert" class="warn" style="margin: 0;"><b>판정기 장애 — 판정 쉬는 모드:</b> 새 판정 없이 저장된 결과·이전 결과만 보여요.</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">평균 걸린 시간 기록이 없으면 타일에 <span class="est">확인 불가</span></p>
+<p style="margin: 0; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pill">검토</span><span class="pill">미해결</span><span class="pill pill-b">저장된 결과</span><span style="color: #5B6472;">모델: 로컬 (비용 없음) · 기록 없음</span></p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">⑧ 범위 경계 다른 상태</p>
+<p style="margin: 0; font-size: 13px; color: #3A4250;">판정 범위 이유: [이유] — 지금 값 기준, 다시 판정 뒤 범위의 이유 <span class="pill pill-w">다시 판정 필요</span></p>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">없으면: 범위 경계 단지가 없어요</p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">모든 묶음 공통 상태</p>
+<p role="status" style="margin: 0; font-size: 13px; color: #5B6472;">불러오는 중…</p>
+<p role="alert" style="margin: 0; font-size: 13px; color: #A3470A; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">불러오지 못했어요: [설명] <button type="button" class="btn">다시 시도</button></p>
+<p role="status" style="margin: 0; font-size: 13px; color: #5B6472;">이 발행본의 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">기준일이 없을 때: 아직 기준일이 없어요. 지역 분석이 끝나면 나타나요.</p>
+<p class="warn" style="margin: 0; font-size: 13px;">읽기 전용 열쇠예요 — 저장·실행 버튼이 꺼져 있어요(버튼에 마우스를 올리면 "읽기 전용 열쇠로는 저장·실행할 수 없어요"). 공유 링크 묶음은 보이지 않아요.</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">휴대폰에서는 읽기 전용이에요(입력 칸·버튼이 꺼져요).</p>
+</div>
+
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">①③⑦ 작업 진행 칸의 다른 문구 (발행까지 따라가는 진행)</p>
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #3A4250; line-height: 1.5;">
+<li>새 수정본이 발행됐어요 — 화면 기본이 새 수정본으로 바뀌어요</li>
+<li>이 변경은 지금 판정 중인 새 수정본에 들어가, 그 수정본이 발행될 때 함께 반영돼요</li>
+<li>미뤄 둔 수정본의 발행이 끝내 실패해 이 변경을 새 발행 작업으로 다시 등록했어요 — 그 작업을 이어 봐요</li>
+<li style="color: #A3470A;">발행이 막혔어요(남은 모순 주장 등) — ⑦에서 주장을 고치면 다시 발행돼요: [설명] · 남은 모순 주장 [n]건 · 이유 확인 불가</li>
+<li style="color: #A3470A;">발행 작업이 실패했어요 — 화면은 지금 발행본을 계속 보여요: [설명]</li>
+<li>발행 작업을 [n]단계까지 따라갔지만 끝을 확인하지 못해 멈췄어요 — 기준일 목록에서 새 수정본을 확인하세요</li>
+<li>30분 동안 발행 완료를 확인하지 못해 멈췄어요 — 기준일 목록에서 새 수정본을 확인하세요</li>
+<li>발행을 기다리는 수정본 확인을 30분에서 멈췄어요 — 새 수정본이 발행됐는지 다시 확인하세요 <button type="button" class="btn" style="font-size: 13px; margin-left: 4px;">다시 확인</button></li>
+<li>상태를 받지 못해 다시 확인하는 중: [설명] · 오류: [설명] · 진행 중인 작업 없음</li>
+</ul>
+</div>
+
+</div>
+</section>
+
+</div>
+</div>
+
+<footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
+<span>운영자용 화면이에요. 판단(접수 상태·포함 여부·출처 상충)은 판정기만 하고, 이 화면은 기록·확인·재시도만 해요. 상대 비교 · 투자 권유 아님.</span>
+<span><span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산값 · <span class="est">사람 확인</span> 직접 확인한 값 · <span class="src">점선 숫자</span>를 누르면 출처가 열려요</span>
+</footer>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":12800}}'>
+class Component extends DCLogic {
+renderVals() {
+var tileBase = 'padding: 18px; display: flex; flex-direction: column; gap: 8px; color: #14181F; text-decoration: none;';
+var dot = function (c) { return 'width: 10px; height: 10px; border-radius: 50%; background: ' + c + ';'; };
+var tiles = [
+{ href: '#s2', label: '사람 확인이 필요한 단지', value: '89', unit: '건', sub: '급한 것 73 · 나중에 봐도 되는 것 16 (점수 대상 아님 13 · 일정 미정 3)', go: '접수 확인 대기열', style: tileBase + 'border-color: #F3D6B8; background: #FFF7EF;', dotStyle: dot('#D9822B') },
+{ href: '#s4', label: '수집이 실패한 자료', value: '1', unit: '종', sub: '단지 공식 홈페이지 · 7일 실패 55회 · 열리지 않는 곳 16곳', go: '수집 상태', style: tileBase + 'border-color: #F3D6B8; background: #FFF7EF;', dotStyle: dot('#D9822B') },
+{ href: '#s7', label: '모순 주장', value: '0', unit: '건', sub: '발행·보고서 만들기가 막히지 않아요', go: '모순 주장', style: tileBase, dotStyle: dot('#2350D8') },
+{ href: '#s1', label: '2주 안 다가오는 기한', value: '9', unit: '건', sub: '오늘 전매 가능 시작 2곳 · 10.19 특별공급 접수 · 어제 지난 것 1건 아직 열림', go: '일정·체크리스트', style: tileBase, dotStyle: dot('#2350D8') }
+];
+var navBase = 'display: flex; align-items: center; gap: 10px; padding: 10px 10px; min-height: 44px; box-sizing: border-box; border-radius: 10px; font-size: 14px; color: #3A4250; text-decoration: none;';
+var navOn = navBase + 'background: #E8EEFF; color: #1A3FB0; font-weight: 600;';
+var numBase = 'width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;';
+var navDefs = [
+['#s1', '1', '일정·체크리스트', '329', ''],
+['#s2', '2', '접수 확인 대기열', '89', 'w'],
+['#s3', '3', '사람 확인 입력', '', ''],
+['#s4', '4', '수집 상태', '실패 1', 'w'],
+['#s5', '5', '작업 대기열', '29', ''],
+['#s6', '6', '판정기 호출 통계', '3,019', ''],
+['#s7', '7', '모순 주장', '0', ''],
+['#s8', '8', '범위 경계 단지', '4', ''],
+['#s9', '9', '공유 링크', '0', ''],
+['#s10', '+', '펼친 모습·다른 상태', '', '']
+];
+var nav = navDefs.map(function (d, i) {
+var on = i === 0;
+return {
+href: d[0], no: d[1], label: d[2], count: d[3], current: on ? 'true' : 'false',
+style: on ? navOn : navBase,
+numStyle: numBase + (on ? 'background: #2350D8; color: #FFFFFF;' : 'background: #EEF1F4; color: #3A4250;'),
+countStyle: 'font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px;' + (d[4] === 'w' ? 'background: #FFF1E6; color: #A3470A;' : (d[3] ? 'background: #F3F5F7; color: #5B6472;' : 'display: none;'))
+};
+});
+var marks = { 14: ['o'], 15: ['o', 'o'], 19: ['b'], 20: ['g', 'b'], 21: ['g', 'b'], 22: ['g'], 27: ['b'] };
+var col = { o: '#D9822B', b: '#2350D8', g: '#5B6472' };
+var cal = [];
+var i;
+for (i = 0; i < 4; i++) { cal.push({ label: '', aria: '빈 칸', style: 'min-height: 44px;', dot1: 'display: none;', dot2: 'display: none;' }); }
+for (i = 1; i <= 31; i++) {
+var m = marks[i] || [];
+var isToday = i === 15;
+var dow = (i + 3) % 7;
+var st = 'min-height: 44px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 13px;';
+if (isToday) { st += 'border: 2px solid #2350D8; font-weight: 700; color: #1A3FB0;'; }
+else if (m.length) { st += 'background: #F6F8FA; font-weight: 600;'; }
+else { st += 'color: ' + (dow === 0 ? '#A3470A' : '#3A4250') + ';'; }
+cal.push({
+label: String(i),
+aria: '10월 ' + i + '일' + (isToday ? ' 오늘' : '') + (m.length ? ', 일정 ' + m.length + '건' : ''),
+style: st,
+dot1: m[0] ? 'width: 6px; height: 6px; border-radius: 50%; background: ' + col[m[0]] + ';' : 'display: none;',
+dot2: m[1] ? 'width: 6px; height: 6px; border-radius: 50%; background: ' + col[m[1]] + ';' : 'display: none;'
+});
+}
+var kb = 'display: inline-flex; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;';
+var kO = kb + 'background: #FFF1E6; color: #A3470A;';
+var kB = kb + 'background: #E8EEFF; color: #1A3FB0;';
+var kG = kb + 'background: #EEF1F4; color: #3A4250;';
+var calList = [
+{ date: '10.14', kind: '전매 가능 시작', kindStyle: kO, name: '숭의역 라온프라이빗 스카이브', what: '되팔 수 있게 되는 날 · 계산 기준: 당첨자 발표일 + 12개월', title: '전매제한 종료(당첨자 발표일 + 12개월, 산술)' },
+{ date: '10.15', kind: '전매 가능 시작', kindStyle: kO, name: '석남역 센트럴파크 그랑베르', what: '되팔 수 있게 되는 날 · 계산 기준: 당첨자 발표일 + 12개월', title: '전매제한 종료(당첨자 발표일 + 12개월, 산술)' },
+{ date: '10.15', kind: '전매 가능 시작', kindStyle: kO, name: '두산위브앤수자인 부평 더퍼스트', what: '되팔 수 있게 되는 날 · 계산 기준: 당첨자 발표일 + 12개월', title: '전매제한 종료(당첨자 발표일 + 12개월, 산술)' },
+{ date: '10.19', kind: '청약 접수', kindStyle: kB, name: '산곡역자이힐스테이트앤하늘채', what: '특별공급 청약 접수', title: '특별공급 청약 접수' },
+{ date: '10.20', kind: '중도금 납부', kindStyle: kG, name: '송도역 한신더휴 프레스턴', what: '중도금 3회차 납부일 · 공고문 납부 조건 10.0%', title: '중도금 3회차 납부일' },
+{ date: '10.20', kind: '청약 접수', kindStyle: kB, name: '산곡역자이힐스테이트앤하늘채', what: '1순위 청약 접수(해당지역·기타지역)', title: '1순위 청약 접수(해당지역·기타지역)' },
+{ date: '10.21', kind: '계약', kindStyle: kG, name: '숭의역 노르웨이숲 더 스카이', what: '계약 체결 마감', title: '계약 체결 마감' },
+{ date: '10.21', kind: '청약 접수', kindStyle: kB, name: '산곡역자이힐스테이트앤하늘채', what: '2순위 청약 접수(해당지역·기타지역)', title: '2순위 청약 접수(해당지역·기타지역)' },
+{ date: '10.22', kind: '중도금 납부', kindStyle: kG, name: '영종국제도시 신일 비아프 크레스트(2단지)', what: '중도금 2회차 납부일 · 공고문 납부 조건 10.0%', title: '중도금 2회차 납부일' },
+{ date: '10.27', kind: '당첨자 발표', kindStyle: kB, name: '산곡역자이힐스테이트앤하늘채', what: '당첨자 발표', title: '당첨자 발표' }
+];
+var hcMsgs = [
+'입주 예정은 연-월(YYYY-MM)로 넣어 주세요',
+'입주 예정은 2000-01 ~ 2100-12 사이여야 해요',
+'숫자 모양이 맞지 않아요 — 숫자만, 쉼표는 세 자리마다, 숫자 사이 띄어쓰기 없이, 단위는 [단위](앞 띄어쓰기 한 칸까지)',
+'할인 모양이 맞지 않아요 — 숫자만, 쉼표는 세 자리마다, 끝 \'원\'은 붙여서',
+'할인 모양·범위가 맞지 않아요 — [서버 설명]',
+'할인이 기준 타입 가격(가장 낮은 층 가격·최고가 중 낮은 값) 이상이라 구매가에서 뺄 수 없어요 — [서버 설명]',
+'소수점 아래 [n]자리까지만 넣어 주세요',
+'[최솟값] 이상이어야 해요 · [최댓값] 이하여야 해요',
+'값은 200자 이하로 넣어 주세요',
+'확인 시각(날짜와 시각)을 넣어 주세요',
+'확인 시각은 2000-01-01(한국 시간) 이후여야 해요',
+'확인 시각이 이미 모은 공식 공고(다른 값)보다 일러요 — 그 공고 뒤에 다시 확인해 넣어 주세요 ([서버 설명])',
+'확인 시각 모양·범위가 맞지 않아요(시간대가 붙은 날짜·시각, 2000-01-01 이후) — [서버 설명]',
+'확인 시각을 서버가 받지 않았어요 — [서버 설명]'
+];
+var stats = [
+{ label: '전체 호출', value: '3,019', sub: '회' },
+{ label: '실제로 보낸 호출', value: '1,340', sub: '회' },
+{ label: '저장된 결과 다시 씀 (캐시)', value: '1,679', sub: '회' },
+{ label: '실패', value: '0', sub: '회' },
+{ label: '사람 검토 필요', value: '218', sub: '회' },
+{ label: '질문으로 넘김', value: '0', sub: '회' },
+{ label: '평균 걸린 시간', value: '152.8', sub: 'ms (1,000ms = 1초)' }
+].map(function (s) { return { label: s.label, value: s.value, sub: s.sub }; });
+var toolDefs = [
+['외부 글 안전 검사', 'screen', 406, 666, '검토 0 · 막힘 2'],
+['원문에서 값 뽑기', 'extract', 410, 621, '검토 0'],
+['출처끼리 비교', 'compare', 322, 97, '검토 205'],
+['분류', 'classify', 72, 192, '검토 13'],
+['기간별 계산', 'noul', 60, 33, '검토 0'],
+['상황별 판단', 'decide', 26, 24, '검토 0'],
+['뽑은 값 다시 점검', 'audit', 24, 25, '검토 0'],
+['주장 검증', 'verify', 13, 18, '검토 0'],
+['비슷한 단지들 사이 순위', 'rerank', 7, 3, '검토 0']
+];
+var maxT = 1072;
+var tools = toolDefs.map(function (t) {
+var r = (t[2] / maxT * 100).toFixed(1);
+var c = (t[3] / maxT * 100).toFixed(1);
+return {
+name: t[0], code: t[1],
+realStyle: 'width: ' + r + '%; background: #2350D8; height: 100%;',
+cachedStyle: 'width: ' + c + '%; background: #9DB4F2; height: 100%;',
+text: '실제 ' + t[2].toLocaleString('en-US') + ' · 다시 씀 ' + t[3].toLocaleString('en-US') + ' · 실패 0 · ' + t[4]
+};
+});
+var chips = [
+{ name: '시티오씨엘 1단지', reason: '범위 경계(주소에 동 없음)' },
+{ name: '영종국제도시 A26BL 제일풍경채 디오션', reason: '범위 경계(주소에 동 없음)' },
+{ name: '영종국제도시 서한이다음', reason: '범위 경계(주소에 동 없음)' },
+{ name: '오션포레베네스트하우스(미단시티 공동8BL)', reason: '범위 경계(주소에 동 없음)' }
+];
+var legend = [
+{ k: '전매 가능 시작', style: kO, v: '되팔기 제한이 끝나 팔 수 있게 되는 날(당첨자 발표일 + 되팔기 제한 기간으로 계산, 추정)' },
+{ k: '중도금 납부', style: kG, v: '중도금을 내는 날' },
+{ k: '계약', style: kG, v: '계약 체결 마감일' },
+{ k: '기한 만료', style: kG, v: '그 밖의 기한이 끝나는 날(지정 만료 등)' },
+{ k: '공고 예상', style: kG, v: '공고가 나올 것으로 보는 날' },
+{ k: '확인할 것', style: kG, v: '직접 확인할 것' },
+{ k: '값 다시 확인', style: kG, v: '다시 확인해야 하는 값' },
+{ k: '청약 접수', style: kB, v: '청약 신청을 받는 날' },
+{ k: '당첨자 발표', style: kB, v: '당첨자를 발표하는 날' }
+];
+return { tiles: tiles, nav: nav, cal: cal, calList: calList, hcMsgs: hcMsgs.map(function (t) { return { t: t }; }), stats: stats, tools: tools, chips: chips, legend: legend };
+}
+}
+</script>
+</body>
+</html>

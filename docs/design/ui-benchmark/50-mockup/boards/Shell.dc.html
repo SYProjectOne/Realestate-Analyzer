@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>공통 부품</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.sel{font-family:inherit;font-size:14px;font-weight:600;padding:8px 10px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:40px}
+.btn{font-family:inherit;font-size:14px;font-weight:600;padding:10px 14px;border-radius:10px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px}
+.btnp{font-family:inherit;font-size:14px;font-weight:600;padding:10px 16px;border-radius:10px;border:none;background:#2350D8;color:#FFFFFF;cursor:pointer;min-height:44px}
+.sec{font-size:13px;font-weight:700;letter-spacing:0.5px;color:#5B6472;margin:0}
+.u{border-bottom:1px dashed #7A8391;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<a href="#main" style="position: absolute; left: 8px; top: 8px; background: #14181F; color: #FFFFFF; padding: 8px 12px; border-radius: 8px; font-size: 13px;">본문으로 건너뛰기</a>
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC; padding-top: 44px;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0; font-weight: 600; font-size: 15px;">홈</a>
+<a href="List.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">단지 찾기</a>
+<a href="Compare.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="Market.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="Reports.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+<span aria-hidden="true" style="width: 1px; height: 20px; background: #D5DAE1; margin: 0 6px;"></span>
+<a href="Scenario.dc.html" style="padding: 6px 10px; border-radius: 999px; color: #5B6472; font-size: 13px;">내 조건(시나리오)</a>
+<a href="Ops.dc.html" style="padding: 6px 10px; border-radius: 999px; color: #5B6472; font-size: 13px;">데이터·운영</a>
+</nav>
+<a href="Glossary.dc.html" style="font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">용어 사전</a>
+</div>
+<div style="border-top: 1px solid #EEF1F4; background: #FAFBFC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<label for="rg" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="rg" class="sel"><option>인천</option><option>+ 지역 추가</option></select>
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<label for="sn" style="font-size: 13px; color: #5B6472;">기준일</label>
+<select id="sn" class="sel" title="수정본이 왜 생겼는지 이유가 여기 떠요"><option>2026-10-14 (8번째 수정본)</option></select>
+</div>
+<div role="radiogroup" aria-label="상황" style="display: flex; align-items: center; gap: 4px; background: #EEF1F4; border-radius: 12px; padding: 4px;">
+<span style="font-size: 13px; color: #5B6472; padding: 0 6px;">상황</span>
+<button type="button" role="radio" aria-checked="true" style="font-family: inherit; font-size: 13px; font-weight: 600; border: none; border-radius: 9px; padding: 8px 12px; background: #FFFFFF; color: #14181F; box-shadow: 0 1px 2px rgba(20,24,31,0.12); cursor: pointer; min-height: 36px;">기본</button>
+<button type="button" role="radio" aria-checked="false" style="font-family: inherit; font-size: 13px; border: none; border-radius: 9px; padding: 8px 12px; background: transparent; color: #3A4250; cursor: pointer; min-height: 36px;">가점 높음·실거주</button>
+<button type="button" role="radio" aria-checked="false" style="font-family: inherit; font-size: 13px; border: none; border-radius: 9px; padding: 8px 12px; background: transparent; color: #3A4250; cursor: pointer; min-height: 36px;">가점 낮음·적은 자기자본</button>
+<button type="button" role="radio" aria-checked="false" style="font-family: inherit; font-size: 13px; border: none; border-radius: 9px; padding: 8px 12px; background: transparent; color: #3A4250; cursor: pointer; min-height: 36px;">시세차익 우선</button>
+<button type="button" role="radio" aria-checked="false" style="font-family: inherit; font-size: 13px; border: none; border-radius: 9px; padding: 8px 12px; background: transparent; color: #3A4250; cursor: pointer; min-height: 36px;">바로 살 집</button>
+</div>
+<span style="flex: 1 1 auto;"></span>
+<button type="button" class="btn" style="font-size: 13px; min-height: 36px; padding: 6px 12px;">접속 열쇠 · 쓰기 가능</button>
+<button type="button" class="btn" aria-pressed="false" style="font-size: 13px; min-height: 36px; padding: 6px 12px;">화면: 밝게</button>
+</div>
+</div>
+</header>
+
+<main id="main" style="max-width: 1280px; margin: 0 auto; padding: 28px 24px 56px; display: flex; flex-direction: column; gap: 28px;">
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<h1 style="margin: 0; font-size: 30px; font-weight: 700;">모든 화면에 공통으로 쓰는 부품</h1>
+<p style="margin: 0; font-size: 15px; color: #5B6472;">위 머리줄은 모든 화면 꼭대기에 붙어 있어요. 아래는 상황에 따라 나타나는 알림·창·배지 모음이에요.</p>
+</div>
+
+<section aria-labelledby="s1" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="s1" class="sec">1 · 기준일·상황 선택칸을 펼친 모습</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
+<p style="margin: 0 0 6px; font-size: 14px; font-weight: 600;">기준일 고르기</p>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">자료를 모은 날이에요. 같은 날 다시 고친 판은 '수정본'으로 나와요.</p>
+<ul style="list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid #E3E7EC; border-radius: 10px; overflow: hidden; font-size: 14px;">
+<li style="padding: 10px 12px; border-bottom: 1px solid #EEF1F4;">2026-10-15</li>
+<li style="padding: 10px 12px; border-bottom: 1px solid #EEF1F4; background: #E8EEFF; font-weight: 600;">2026-10-14 · 8번째 수정본</li>
+<li style="padding: 10px 12px; border-bottom: 1px solid #EEF1F4;">2026-10-14 · 7번째 수정본</li>
+<li style="padding: 10px 12px; border-bottom: 1px solid #EEF1F4;">2026-10-14 · 2번째 수정본 · <span style="color: #A3470A;">일부 수집 실패</span></li>
+<li style="padding: 10px 12px; color: #7A8391;">2026-10-15 · 3번째 수정본 · 만드는 중</li>
+</ul>
+<p style="margin: 6px 0 0; font-size: 12px; color: #7A8391;">자료가 하나도 없으면 "기준일 없음"으로 보여요.</p>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">지역 고르기</p>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">지역을 바꾸면 기준일은 그 지역의 가장 최근 날짜로 돌아가요.</p>
+<ul style="list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid #E3E7EC; border-radius: 10px; overflow: hidden; font-size: 14px;">
+<li style="padding: 10px 12px; border-bottom: 1px solid #EEF1F4; background: #E8EEFF; font-weight: 600;">인천</li>
+<li style="padding: 10px 12px; color: #2350D8; font-weight: 600;"><a href="RegionNew.dc.html">+ 지역 추가</a></li>
+</ul>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">지역이 없으면 "지역 없음"이 보이고 홈은 지역 추가 화면으로 넘어가요.</p>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">상황(시나리오) 고르기</p>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">상황에 따라 점수 기준의 비중이 달라져요. 화살표 키 ← → 로도 바꿀 수 있어요. 휴대폰에서는 고르기 칸 하나로 바뀌어요.</p>
+<label for="scm" style="font-size: 12px; color: #5B6472; margin-top: 4px;">휴대폰 모습</label>
+<select id="scm" class="sel"><option>기본</option><option>가점 높음·실거주</option><option>가점 낮음·적은 자기자본</option><option>시세차익 우선</option><option>바로 살 집</option><option>내 조건: 우리집 기준</option></select>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="s2" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="s2" class="sec">2 · 화면 위에 뜨는 알림 띠 (필요할 때만)</h2>
+<div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #FFF1E6; border: 1px solid #F3D6B8; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #6B3208;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3 2 21h20z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg>
+<b>일부 자료를 못 모았어요.</b> 이 기준일의 몇몇 값은 비어 있을 수 있어요. (서버나 판정기가 불안정할 때도 같은 띠가 떠요)
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #F2F6FF; border: 1px solid #D6E0FB; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #1F2A44;">
+<b>이 지역을 처음 분석하고 있어요.</b> 끝나면 화면이 채워져요. <a href="Ops.dc.html">데이터·운영에서 진행 보기</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #FFF1E6; border: 1px solid #F3D6B8; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #6B3208;">
+<b>지역 분석이 실패했어요.</b> <a href="Ops.dc.html">데이터·운영에서 이유 보기</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #F6F8FA; border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3A4250;">
+이 기준일은 나중에 채워 넣은 자료예요 (2026-10-13에 보충).
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #F6F8FA; border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3A4250;">
+<span style="flex: 1 1 360px;">공유받은 읽기 전용 열쇠로 보고 있어요. 저장·실행 버튼은 눌리지 않아요.</span>
+<button type="button" class="btn">열쇠 바꾸기</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #F6F8FA; border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3A4250;">
+<span style="flex: 1 1 360px;">이 탭은 공유받은 열쇠로 고정돼 있어요.</span>
+<button type="button" class="btn">새 열쇠 사용</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #F2F6FF; border: 1px solid #D6E0FB; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #1F2A44;">
+<span style="flex: 1 1 360px;"><b>새로 바뀐 사실이 있어 점수를 다시 매겨야 해요.</b> 상위 단지를 다시 판정할까요? (홈)</span>
+<button type="button" class="btnp">다시 판정하기</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #F6F8FA; border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3A4250;">
+<span class="est">근처 새 아파트 실적 없음(이 지역에 비교할 사례 없음)</span> 이 기준은 점수에서 빠져 있어요.
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #F6F8FA; border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3A4250;">
+<span style="flex: 1 1 360px;">새 기준일이 올라오는지 30분 동안 지켜봤지만 아직이에요.</span>
+<button type="button" class="btn">다시 확인</button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; color: #5B6472;">
+<span style="background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 10px; padding: 8px 12px;">휴대폰(홈·단지 찾기·상세·용어·공유): "휴대폰에서는 보기만 할 수 있어요"</span>
+<span style="background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 10px; padding: 8px 12px;">휴대폰(그 밖의 화면): "이 화면은 컴퓨터에서 써 주세요"</span>
+</div>
+</section>
+
+<section aria-labelledby="s3" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+<div style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+<h2 id="s3" class="sec">3 · 숫자를 누르면 열리는 '출처' 창</h2>
+<p style="margin: 0; font-size: 14px; color: #3A4250; line-height: 1.6;">밑줄 점선이 있는 숫자는 모두 누를 수 있어요. 예) 계약금 <span class="u num">3,124만원</span> <span class="est">추정</span></p>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">라벨 뜻 <button type="button" class="btn" style="min-height: 28px; padding: 2px 8px; font-size: 12px;" aria-expanded="true">접기</button></p>
+<ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #3A4250; line-height: 1.8;">
+<li><span class="ok">확인됨</span> 공식 자료(공고문·청약홈·국토부)에 적힌 그대로예요.</li>
+<li><span class="est">추정</span> 공식 값으로 계산했거나 판정기가 낸 값이에요.</li>
+<li><span class="est">비공식</span> 언론·분양 광고 등 공식이 아닌 곳에서 온 값이에요.</li>
+<li><span class="est">재가공</span> 다른 서비스가 가공한 값을 옮긴 거예요.</li>
+<li><span class="est">확인 불가(사유, 날짜)</span> 값을 못 구했어요. 이유를 함께 적어요.</li>
+<li><span class="est">사람 확인</span> 운영자가 전화·방문으로 직접 확인한 값이에요.</li>
+</ul>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">용어 '?' 를 눌렀을 때</p>
+<div style="border: 1px solid #D6E0FB; background: #FFFFFF; border-radius: 12px; padding: 14px; box-shadow: 0 6px 18px rgba(20,24,31,0.10); display: flex; flex-direction: column; gap: 6px;">
+<p style="margin: 0; font-size: 15px; font-weight: 700;">전매</p>
+<p style="margin: 0; font-size: 14px; color: #3A4250;">당첨된 집(분양권)을 다른 사람에게 파는 것. 정해진 날까지는 팔 수 없어요.</p>
+<a href="Glossary.dc.html" style="font-size: 13px;">용어 사전에서 보기</a>
+</div>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">Esc나 바깥을 누르면 닫혀요. 휴대폰에서는 아래에서 올라오는 판으로 보여요.</p>
+</div>
+</div>
+<aside aria-label="출처 창 예시" style="flex: 1 1 460px; background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 16px; box-shadow: 0 12px 32px rgba(20,24,31,0.14); overflow: hidden;">
+<div style="display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid #EEF1F4;">
+<h3 style="margin: 0; font-size: 18px; font-weight: 700; flex: 1 1 auto;">이 값은 어디서 왔나요?</h3>
+<span style="font-size: 12px; background: #EEF1F4; color: #3A4250; padding: 3px 8px; border-radius: 6px;">공고·수집 값</span>
+<button type="button" class="btn" style="min-height: 36px;">닫기</button>
+</div>
+<dl style="margin: 0; padding: 8px 18px 18px; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px 14px; font-size: 14px;">
+<dt style="color: #5B6472;">무엇</dt><dd style="margin: 0;">시티오씨엘 8단지 · 기준 타입(84C) 최고 공급금액</dd>
+<dt style="color: #5B6472;">값</dt><dd class="num" style="margin: 0; font-weight: 700;">631,400,000원</dd>
+<dt style="color: #5B6472;">라벨</dt><dd style="margin: 0;"><span class="ok">확인됨</span></dd>
+<dt style="color: #5B6472;">확인한 날</dt><dd class="num" style="margin: 0;">2026-10-13</dd>
+<dt style="color: #5B6472;">원문 주소</dt><dd style="margin: 0;"><a href="#">청약홈 입주자 모집 공고문 (PDF)</a></dd>
+<dt style="color: #5B6472;">출처 종류</dt><dd style="margin: 0;">공고문 PDF · 1순위 출처</dd>
+<dt style="color: #5B6472;">응답 상태</dt><dd style="margin: 0;">정상(200)</dd>
+<dt style="color: #5B6472;">계산식</dt><dd style="margin: 0; color: #5B6472;">없음(공고 값 그대로)</dd>
+<dt style="color: #5B6472;">판정 기록</dt><dd style="margin: 0;"><a href="#">#1298 출처 비교</a></dd>
+<dt style="color: #5B6472;">원문 발췌</dt>
+<dd style="margin: 0; display: flex; flex-direction: column; gap: 6px;">
+<p style="margin: 0; background: #F6F8FA; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.6;">… 84C 1층 579,000,000 … 최고층 <mark style="background: #FFE7A3; padding: 0 2px;">631,400,000</mark> …</p>
+<button type="button" class="btn" style="align-self: flex-start; min-height: 36px; font-size: 13px;">원문에서 앞뒤 보기</button>
+</dd>
+<dt style="color: #5B6472;">단위 근거</dt><dd style="margin: 0;">표 머리 "단위: 원"</dd>
+<dt style="color: #5B6472;">다른 출처</dt>
+<dd style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+<div style="border: 1px solid #E3E7EC; border-radius: 10px; padding: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 4px;">
+<span><span style="font-weight: 600; color: #1A3FB0;">채택</span> · 공고문 PDF · 1순위 · <span class="ok">확인됨</span></span>
+<span style="color: #5B6472;">"631,400,000"</span>
+</div>
+<div style="border: 1px solid #E3E7EC; border-radius: 10px; padding: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; color: #5B6472;">
+<span><span style="font-weight: 600;">미채택</span> · 청약홈 상세 · 2순위 · <span class="ok">확인됨</span></span>
+<span>"63,140 (만원)" · <a href="#">이 출처 열기</a></span>
+</div>
+<span style="font-size: 12px; color: #7A8391;">다른 출처가 없으면 "엇갈리는 출처 없음"</span>
+</dd>
+<dt style="color: #5B6472;">원문 파일</dt>
+<dd style="margin: 0; display: flex; gap: 8px; flex-wrap: wrap;"><button type="button" class="btn" style="min-height: 36px; font-size: 13px;">원문 미리보기</button><button type="button" class="btn" style="min-height: 36px; font-size: 13px;">원문 파일 저장</button></dd>
+</dl>
+<p style="margin: 0; padding: 12px 18px; background: #FFF7EF; border-top: 1px solid #F3D6B8; font-size: 12px; color: #6B3208;">검증에서 모순이 나온 값은 <span class="est">낮춤(검증 모순)</span> 표시와 이유가 함께 떠요. 출처 종류는 공고·수집 값 / 점수 성분 / 종합 점수 / 판정기 기록 / 사람 확인 / 원문 / 비교 단지 중 하나예요.</p>
+</aside>
+</section>
+
+<section aria-labelledby="s4" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="s4" class="sec">4 · 상태 표시(배지) 모음</h2>
+<div class="card" style="padding: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; font-size: 13px;">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-weight: 600;">접수 상태</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+<span style="background: #2350D8; color: #FFFFFF; font-weight: 600; padding: 4px 10px; border-radius: 999px;">접수 가능</span>
+<span style="border: 1px solid #C8CFD8; color: #3A4250; font-weight: 600; padding: 4px 10px; border-radius: 999px;">접수 일정 미정</span>
+<span style="background: #EEF1F4; color: #5B6472; font-weight: 600; padding: 4px 10px; border-radius: 999px;">확인 못 함</span>
+<span style="background: #EEF1F4; color: #3A4250; font-weight: 600; padding: 4px 10px; border-radius: 999px; text-decoration: line-through;">접수 불가</span>
+</div>
+<span style="color: #5B6472;">어떻게 확인했나: 사람 확인 · 공식 팝업 · 홈페이지 화면 캡처 · 비공식 참고 / 공급 종류(무순위 등) · 확인한 날</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-weight: 600;">점수 관련</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+<span style="border: 1px dashed #9AA6B6; padding: 2px 8px; border-radius: 6px;">동률</span>
+<span style="border: 1px dashed #9AA6B6; padding: 2px 8px; border-radius: 6px;">동률(믿음 정도 0.62)</span>
+<span style="border: 1px dashed #C9864A; color: #8A4B0F; padding: 2px 8px; border-radius: 6px;">순위가 흔들려요</span>
+<span style="border: 1px dashed #C9864A; color: #8A4B0F; padding: 2px 8px; border-radius: 6px;">근거와 달라요</span>
+<span style="border: 1px dashed #9AA6B6; padding: 2px 8px; border-radius: 6px;">이전 결과 재사용</span>
+<span style="background: #E8EEFF; color: #1A3FB0; font-weight: 600; padding: 2px 8px; border-radius: 6px;">다시 판정 필요</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-weight: 600;">점수 계산 범위</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+<span style="color: #5B6472;">점수 대상(보통 표시 안 함)</span>
+<span style="border: 1px solid #C8CFD8; padding: 2px 8px; border-radius: 6px;">보류 — 공고 뒤 다시 판정</span>
+<span style="border: 1px solid #C8CFD8; padding: 2px 8px; border-radius: 6px;">참고 후보(순위만)</span>
+<span style="border: 1px solid #C8CFD8; padding: 2px 8px; border-radius: 6px;">분류 미해결</span>
+<span style="background: #EEF1F4; padding: 2px 8px; border-radius: 6px;">제외</span>
+</div>
+<span style="color: #5B6472;">이유 한 줄이 옆에 붙어요. 다시 판정이 필요하면 "(지금 사실 기준 — 다시 판정한 뒤 바뀔 수 있음)"</span>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="s5" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+<div style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 12px;">
+<h2 id="s5" class="sec">5 · 접속 열쇠(토큰) 창</h2>
+<div role="dialog" aria-labelledby="tk" style="background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 16px; box-shadow: 0 12px 32px rgba(20,24,31,0.14); padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 id="tk" style="margin: 0; font-size: 18px; font-weight: 700;">접속 열쇠 넣기</h3>
+<p role="alert" style="margin: 0; font-size: 13px; color: #6B3208; background: #FFF1E6; border-radius: 8px; padding: 8px 10px;">열쇠가 맞지 않아요(401). 다시 넣어 주세요.</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">이 컴퓨터의 서버에 들어가는 열쇠예요. 지금: 쓰기 가능한 열쇠</p>
+<label for="tki" style="font-size: 13px; font-weight: 600;">열쇠</label>
+<input id="tki" type="password" value="••••••••••" style="font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #D5DAE1; border-radius: 10px; min-height: 24px;">
+<label style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><input type="checkbox"> 열쇠 보이기</label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" class="btnp">확인하고 저장</button>
+<button type="button" class="btn">저장한 열쇠 지우기</button>
+<button type="button" class="btn">닫기</button>
+</div>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">확인 중에는 "열쇠 확인 중…" · 비어 있음/틀림/확인 실패 오류가 이 자리에 떠요. 서버가 401을 주면 이 창이 자동으로 열려요.</p>
+</div>
+</div>
+<div style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 12px;">
+<h2 class="sec">6 · 작업 진행 · 알림</h2>
+<div role="status" class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 14px;"><b>지역 처음 분석</b><span style="color: #1A3FB0; font-weight: 600;">진행 중</span></div>
+<div style="height: 10px; background: #EEF1F4; border-radius: 999px;" aria-hidden="true"><div style="width: 62%; height: 100%; background: #2350D8; border-radius: 999px;"></div></div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #5B6472;"><span>단계: 공고문 읽기</span><span class="num">62 / 100</span></div>
+<p style="margin: 0; font-size: 12px; color: #7A8391; line-height: 1.6;">상태는 대기 · 진행 중 · 완료 · 실패. 서버가 바쁘면 "잠시 뒤 다시 시도(3/5)", 결과를 올리는 단계에서는 "결과 올리는 중 → 올렸어요 / 막혔어요(모순 주장 2건) / 30분 넘게 걸려요" 가 이어서 떠요.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;" role="region" aria-label="알림">
+<div style="display: flex; align-items: center; gap: 12px; background: #14181F; color: #FFFFFF; border-radius: 12px; padding: 12px 14px; font-size: 14px; min-width: 300px;">
+<span style="flex: 1 1 auto;">시나리오를 저장했어요</span>
+<button type="button" aria-label="알림 닫기" style="background: none; border: none; color: #FFFFFF; font-size: 18px; cursor: pointer; width: 32px; height: 32px;">×</button>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; background: #14181F; color: #FFFFFF; border-radius: 12px; padding: 12px 14px; font-size: 14px; min-width: 300px;">
+<span style="flex: 1 1 auto;">재시도 작업을 등록했어요</span>
+<button type="button" style="background: none; border: 1px solid #4A5568; color: #FFFFFF; border-radius: 8px; padding: 6px 10px; font-family: inherit; font-size: 13px; cursor: pointer;">보기</button>
+<button type="button" aria-label="알림 닫기" style="background: none; border: none; color: #FFFFFF; font-size: 18px; cursor: pointer; width: 32px; height: 32px;">×</button>
+</div>
+<span style="font-size: 12px; color: #7A8391;">화면 아래에 최대 4개, 8초 뒤 사라져요</span>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="s7" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="s7" class="sec">7 · 불러오는 중 · 오류 · 빈 상태</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;">
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<div style="height: 12px; width: 60%; background: #EEF1F4; border-radius: 6px;"></div>
+<div style="height: 12px; width: 90%; background: #EEF1F4; border-radius: 6px;"></div>
+<div style="height: 12px; width: 75%; background: #EEF1F4; border-radius: 6px;"></div>
+<span style="font-size: 13px; color: #5B6472;">불러오는 중…</span>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<b style="font-size: 14px;">불러오지 못했어요</b>
+<span style="font-size: 13px; color: #5B6472;">잠시 뒤 다시 해 주세요.</span>
+<button type="button" class="btn" style="align-self: flex-start;">다시 시도</button>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<b style="font-size: 14px;">이 기준일 결과를 만드는 중이에요</b>
+<span style="font-size: 13px; color: #5B6472;">자동으로 다시 불러와요. 오래 걸리면 다시 시도를 눌러 주세요.</span>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<b style="font-size: 14px;">이 상황의 결과가 아직 없어요</b>
+<a href="Scenario.dc.html" style="font-size: 13px;">내 조건 화면에서 실행하기</a>
+<span style="font-size: 12px; color: #7A8391;">보던 기준일과 저장된 화면이 다를 때도 안내가 떠요</span>
+</div>
+<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<b style="font-size: 14px;">아직 기준일이 없어요</b>
+<span style="font-size: 13px; color: #5B6472;">지역을 처음 분석 중이면 끝날 때까지 기다려 주세요.</span>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="s8" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 id="s8" class="sec">8 · 모든 차트의 틀</h2>
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;"><h3 style="margin: 0; font-size: 17px; font-weight: 700;">차트 제목 (무엇을 · 언제부터 언제까지)</h3><span class="est">추정</span><span style="font-size: 13px; color: #5B6472;">한 줄 부제</span></div>
+<div style="height: 120px; border: 1px dashed #C8CFD8; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #7A8391;">차트 자리 · 값이 없으면 "자료가 없어요(이유)"</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: #7A8391;"><span>자료: 출처 · 기준일</span><button type="button" class="btn" style="min-height: 32px; padding: 4px 10px; font-size: 12px;">표로 보기</button></div>
+</div>
+</section>
+
+<section aria-labelledby="s9" style="display: flex; flex-wrap: wrap; gap: 16px;">
+<h2 id="s9" class="sec" style="flex: 1 1 100%;">9 · 없는 주소 · 바닥 문구</h2>
+<div class="card" style="flex: 1 1 360px; padding: 22px; display: flex; flex-direction: column; gap: 8px;">
+<b style="font-size: 18px;">찾는 화면이 없어요</b>
+<a href="Main.dc.html" style="font-size: 14px;">홈으로</a>
+</div>
+<div style="flex: 1 1 360px; background: #FFFFFF; border-top: 1px solid #E3E7EC; padding: 14px 18px; font-size: 13px; color: #5B6472; border-radius: 12px;">화면 맨 아래 고정: 투자 권유가 아니에요 · 단지끼리의 상대 비교예요</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3100}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

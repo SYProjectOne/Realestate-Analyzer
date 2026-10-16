@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>내 조건으로 다시 보기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.u{border-bottom:1px dashed #7A8391;cursor:pointer}
+.q{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid #C8CFD8;background:#FFFFFF;color:#5B6472;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle}
+.sel{font-family:inherit;font-size:14px;font-weight:600;padding:8px 10px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:40px}
+.btn{font-family:inherit;font-size:14px;font-weight:600;padding:10px 14px;border-radius:10px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px}
+.btnp{font-family:inherit;font-size:15px;font-weight:600;padding:12px 20px;border-radius:12px;border:none;background:#2350D8;color:#FFFFFF;cursor:pointer;min-height:48px}
+.btns{font-family:inherit;font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;border:1px solid #D5DAE1;background:#FFFFFF;color:#3A4250;cursor:pointer;min-height:32px}
+.sec{font-size:13px;font-weight:700;letter-spacing:0.5px;color:#5B6472;margin:0}
+.h2{margin:0;font-size:22px;font-weight:700}
+.sub{margin:0;font-size:14px;color:#5B6472;line-height:1.6}
+.step{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#14181F;color:#FFFFFF;font-size:14px;font-weight:700;flex:0 0 auto}
+.lab{font-size:14px;font-weight:600;color:#14181F}
+.hint{font-size:12px;color:#5B6472}
+.inp{font-family:inherit;font-size:16px;padding:10px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:24px;width:100%;box-sizing:border-box}
+.inp-err{border-color:#B42318;box-shadow:0 0 0 3px #FDECEA}
+.err{margin:0;font-size:13px;font-weight:600;color:#B42318}
+.unit{display:flex;align-items:center;gap:8px}
+.unit span{font-size:14px;color:#5B6472;flex:0 0 auto}
+.t{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+.t th,.t td{padding:12px 12px;border-bottom:1px solid #EEF1F4;vertical-align:top;text-align:left}
+.t thead th{font-size:13px;font-weight:600;color:#14181F;border-bottom:1px solid #E3E7EC}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#7A8391}
+.b-tie{display:inline-flex;align-items:center;font-size:12px;color:#3A4250;border:1px dashed #9AA6B6;border-radius:6px;padding:1px 7px;line-height:18px}
+.b-warn{display:inline-flex;align-items:center;font-size:12px;color:#8A4B0F;border:1px dashed #C9864A;border-radius:6px;padding:1px 7px;line-height:18px}
+.b-pick{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#FFFFFF;background:#2350D8;border-radius:6px;padding:1px 8px;line-height:18px}
+.b-mute{display:inline-flex;align-items:center;font-size:12px;color:#5B6472;background:#EEF1F4;border-radius:6px;padding:1px 8px;line-height:18px}
+.s-Y{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#1A3FB0;background:#EEF4FF;border:1px solid #C9D6F7;border-radius:6px;padding:1px 8px;line-height:18px}
+.s-N{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#3A4250;background:#F3F4F6;border:1px solid #C8CFD8;border-radius:6px;padding:1px 8px;line-height:18px}
+.s-X{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:6px;padding:1px 8px;line-height:18px}
+input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="List.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">단지 찾기</a>
+<a href="Compare.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="Market.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="Reports.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+<span aria-hidden="true" style="width: 1px; height: 20px; background: #D5DAE1; margin: 0 6px;"></span>
+<a href="Scenario.dc.html" aria-current="page" style="padding: 6px 10px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0; font-weight: 600; font-size: 13px;">내 조건(시나리오)</a>
+<a href="Ops.dc.html" style="padding: 6px 10px; border-radius: 999px; color: #5B6472; font-size: 13px;">데이터·운영</a>
+</nav>
+<a href="Glossary.dc.html" style="font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">용어 사전</a>
+</div>
+<div style="border-top: 1px solid #EEF1F4; background: #FAFBFC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<label for="rg" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="rg" class="sel"><option>인천</option></select>
+</div>
+<span style="font-size: 13px; color: #5B6472;">기준일 <b class="num" style="color: #14181F;">2026-10-14</b> (8번째 수정본)</span>
+</div>
+</div>
+</header>
+
+<main id="main" style="max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 24px;">
+
+<section aria-labelledby="ttl" style="display: flex; flex-direction: column; gap: 10px; max-width: 900px;">
+<h1 id="ttl" style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.5px;">내 조건으로 다시 보기</h1>
+<p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.65;">내 돈, 청약통장, 사는 목적을 넣으면 그 조건으로 단지마다 요건을 따져 보고 판정기에게 다시 물어봐요. 같은 질문은 저장해 둔 답을 다시 써서 빨라요.</p>
+<ol style="list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: #3A4250;">
+<li style="display: flex; align-items: center; gap: 8px;"><span class="step">1</span>출발 조건 고르기</li>
+<li style="display: flex; align-items: center; gap: 8px;"><span class="step">2</span>내 조건 적기</li>
+<li style="display: flex; align-items: center; gap: 8px;"><span class="step">3</span>다시 판정하기</li>
+<li style="display: flex; align-items: center; gap: 8px;"><span class="step">4</span>요건·판정·순위 확인</li>
+</ol>
+</section>
+
+<section aria-labelledby="s1" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 20px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span class="step">1</span>
+<div>
+<h2 id="s1" class="h2">어떤 상황에서 시작할까요?</h2>
+<p class="sub">미리 만들어 둔 5가지 상황 중 나와 가까운 것을 고르고, 아래에서 고쳐 쓰면 돼요.</p>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<label for="base" style="font-size: 13px; color: #5B6472;">출발 조건 (저장한 조건 포함)</label>
+<select id="base" class="sel"><option>기본</option><option selected="selected">A 가점 높음(실거주)</option><option>B 가점 낮음·소액 자기자본</option><option>C 시세차익 우선</option><option>D 즉시 구매</option><option>[내가 저장한 조건 이름]</option></select>
+</div>
+</div>
+<div role="radiogroup" aria-label="출발 조건" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px;">
+<sc-for list="{{presets}}" as="p" hint-placeholder-count="5">
+<button type="button" role="radio" aria-checked="{{p.on}}" style="{{p.box}}">
+<span style="display: flex; justify-content: space-between; align-items: center; gap: 6px;"><span style="font-size: 12px; font-weight: 700; color: #5B6472;">{{p.code}}</span><span style="{{p.tag}}">지금 보는 조건</span></span>
+<span style="font-size: 16px; font-weight: 700; color: #14181F; line-height: 1.35;">{{p.name}}</span>
+<span style="font-size: 13px; color: #3A4250; line-height: 1.5;">{{p.who}}</span>
+<span class="num" style="font-size: 12px; color: #5B6472; line-height: 1.6; border-top: 1px solid #EEF1F4; padding-top: 8px;">{{p.facts}}</span>
+</button>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472; background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">기본 제공 조건은 바꿀 수 없어요. 아래에서 고친 뒤 <b style="color: #14181F;">새 이름으로 저장</b>하면 '내가 저장한 조건'으로 남아요.</p>
+</section>
+
+<section aria-labelledby="s2" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span class="step">2</span>
+<div>
+<h2 id="s2" class="h2">내 조건을 적어 주세요</h2>
+<p class="sub">비워 둔 칸은 '미입력'으로 두고 계산해요. 지금은 'A 가점 높음(실거주)' 값이 채워져 있어요.</p>
+</div>
+</div>
+<form aria-label="내 조건" novalidate="novalidate" style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start;">
+<div style="display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-name" class="lab">이 조건의 이름 <span style="color: #B42318;">*</span></label>
+<input id="f-name" class="inp inp-err" type="text" value="" placeholder="예: 우리 집 실거주 계획" aria-invalid="true" aria-describedby="f-name-e">
+<p id="f-name-e" class="err">이름을 적어 주세요 (꼭 필요한 칸이에요)</p>
+<p class="hint" style="margin: 0;">기본 제공 조건 'A 가점 높음(실거주)'는 새 이름으로 저장돼요.</p>
+</div>
+
+<fieldset style="border: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 10px;">나와 우리 집</legend>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-res" class="lab">사는 곳 <span class="hint">(거주지)</span></label>
+<input id="f-res" class="inp" type="text" value="" placeholder="예: 인천 연수구">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-hh" class="lab">함께 사는 가족 수 <span class="hint">(세대원 수)</span></label>
+<div class="unit"><input id="f-hh" class="inp" type="text" inputmode="decimal" value="" placeholder="예: 3"><span>명</span></div>
+</div>
+<label style="display: flex; align-items: center; gap: 10px; min-height: 44px; border: 1px solid #D5DAE1; border-radius: 10px; padding: 0 12px; font-size: 15px; font-weight: 600; cursor: pointer;"><input type="checkbox" checked="checked" style="width: 20px; height: 20px; accent-color: #2350D8;"> 집이 없어요 <span class="hint" style="font-weight: 400;">(무주택)</span></label>
+<label style="display: flex; align-items: center; gap: 10px; min-height: 44px; border: 1px solid #D5DAE1; border-radius: 10px; padding: 0 12px; font-size: 15px; font-weight: 600; cursor: pointer;"><input type="checkbox" checked="checked" style="width: 20px; height: 20px; accent-color: #2350D8;"> 청약통장이 있어요</label>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-score" class="lab">청약 가점 <button type="button" class="q" aria-label="청약 가점 설명">?</button></label>
+<div class="unit"><input id="f-score" class="inp num" type="text" inputmode="decimal" value="60"><span>점 / 84점</span></div>
+</div>
+</fieldset>
+
+<fieldset style="border: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 10px;">돈</legend>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-eq" class="lab">지금 가진 내 돈 <span class="hint">(자기자본)</span></label>
+<div class="unit"><input id="f-eq" class="inp num" type="text" inputmode="decimal" value="3"><span>억원</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-loan" class="lab">받을 수 있는 대출 모두 <span class="hint">(총 대출한도)</span></label>
+<div class="unit"><input id="f-loan" class="inp num" type="text" inputmode="decimal" value="6"><span>억원</span></div>
+</div>
+</fieldset>
+
+<fieldset style="border: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 0 10px;">계획</legend>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-pur" class="lab">왜 사려고 하나요 <span class="hint">(목적)</span></label>
+<select id="f-pur" class="sel" style="min-height: 46px; font-size: 15px;"><option>선택 안 함</option><option selected="selected">직접 살 집 (실거주)</option><option>되팔아 차익 (시세차익)</option><option>둘 다 (병행)</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-hold" class="lab">얼마나 가지고 있을 건가요 <span class="hint">(보유 기간)</span></label>
+<div class="unit"><input id="f-hold" class="inp num" type="text" inputmode="decimal" value="" placeholder="예: 5"><span>년</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-area" class="lab">원하는 집 크기 <span class="hint">(희망 평형)</span></label>
+<div class="unit"><input id="f-area" class="inp num" type="text" inputmode="decimal" value="84"><span>㎡ · 약 34평형</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-mv" class="lab">들어가 살고 싶은 때 <span class="hint">(입주 희망 시기)</span></label>
+<input id="f-mv" class="inp num" type="text" value="" placeholder="예: 2029-06 (연-월)">
+</div>
+</fieldset>
+</div>
+
+<fieldset style="margin: 0; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; background: #FAFBFC;">
+<legend style="font-size: 15px; font-weight: 700; padding: 0 6px;">어떤 기준을 얼마나 중요하게 볼까요? <span class="hint" style="font-weight: 400;">(비중 미리보기)</span></legend>
+<p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.6;">종합 점수는 6가지 기준 점수에 이 비중을 곱해 더해요. 하나를 움직이면 나머지가 원래 비율대로 맞춰져서 <b>합이 늘 100%</b>예요.</p>
+<sc-for list="{{weights}}" as="w" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px;">
+<label for="{{w.id}}" style="font-size: 14px; font-weight: 600;">{{w.name}}</label>
+<span class="num" style="font-size: 16px; font-weight: 700; color: #1A3FB0;">{{w.pct}} <span style="font-size: 12px; font-weight: 400; color: #7A8391;">({{w.dec}})</span></span>
+</div>
+<input id="{{w.id}}" type="range" min="0" max="1" step="0.01" value="{{w.v}}" aria-valuetext="{{w.pct}}" onInput="{{w.on}}">
+<span class="hint">{{w.why}}</span>
+</div>
+</sc-for>
+<p class="num" style="{{sumStyle}}" data-testid="weights-sum">합계 {{sumPct}} ({{sumDec}})</p>
+</fieldset>
+
+<div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-top: 1px solid #EEF1F4; padding-top: 18px;">
+<button type="submit" class="btnp">이 조건 저장</button>
+<span class="hint">저장하면 이 조건이 '지금 보는 조건'이 돼요. 판정은 3단계에서 다시 해요.</span>
+</div>
+</form>
+</section>
+
+<section aria-labelledby="s3" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px 20px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span class="step">3</span>
+<div>
+<h2 id="s3" class="h2">이 조건으로 다시 판정할까요?</h2>
+<p class="sub">판정기에게 'A 가점 높음(실거주)' 조건으로 다시 물어봐요. 바뀐 값은 같은 기준일의 새 수정본에 저장되고, 지금 보는 수정본은 그대로예요.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px;">
+<div class="num" style="display: flex; gap: 10px;">
+<div style="background: #F6F8FA; border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column;"><span class="hint">저장된 답 다시 씀</span><span style="font-size: 22px; font-weight: 700;">21<span style="font-size: 14px; font-weight: 600;">건</span></span></div>
+<div style="background: #F6F8FA; border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column;"><span class="hint">새로 물어볼 것</span><span style="font-size: 22px; font-weight: 700;">0<span style="font-size: 14px; font-weight: 600;">건</span></span></div>
+</div>
+<button type="button" class="btnp" style="display: inline-flex; align-items: center; gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg>다시 판정하기</button>
+</div>
+</div>
+
+<div role="status" style="border: 1px solid #D6E0FB; background: #F2F6FF; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 14px;">
+<span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #1A3FB0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>다시 판정 끝났어요</span>
+<span style="color: #3A4250;">작업 진행 · 다시 판정 · 완료</span>
+<span class="num" style="color: #5B6472;">[완료 수]/[전체 수]</span>
+</div>
+<div style="height: 6px; background: #DCE5FC; border-radius: 999px;"><div style="width: 100%; height: 100%; background: #2350D8; border-radius: 999px;"></div></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: #1F2A44;">
+<span>바뀐 값이 저장된 곳: <b class="num">기준일 2026-10-14 ([n]번째 수정본)</b></span>
+<button type="button" class="btn" style="min-height: 40px;">이 수정본으로 화면 보기</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">이전 결과와 비교하면 순위가 바뀌었나요?</h3>
+<p class="hint" style="margin: 0;">'이전'은 판정 전 수정본 값, '새'는 방금 만든 수정본 값이에요. 숫자를 누르면 그 값이 나온 수정본의 출처가 열려요. 새 값은 실행해야 생겨서 자리표시로 뒀어요.</p>
+<table class="t num" aria-label="이전 결과 대비">
+<colgroup><col style="width: 34%;"><col><col><col><col><col style="width: 22%;"></colgroup>
+<thead>
+<tr><th scope="col">단지</th><th scope="col">이전 순위</th><th scope="col">새 순위</th><th scope="col">이전 종합 점수</th><th scope="col">새 종합 점수</th><th scope="col">판정기 줄 세우기 변화 <span style="font-weight: 400; color: #7A8391;">(새 실행, 이전 실행 대비)</span></th></tr>
+</thead>
+<tbody>
+<sc-for list="{{diff}}" as="d" hint-placeholder-count="5">
+<tr>
+<th scope="row" style="font-weight: 600;">{{d.name}}</th>
+<td>{{d.rank}} <sc-if value="{{d.tie}}" hint-placeholder-val="{{ false }}"><span class="b-tie">동률</span></sc-if></td>
+<td style="color: #7A8391;">[새 순위]</td>
+<td><span class="u" style="font-weight: 700;">{{d.total}}</span> <span class="est">추정</span></td>
+<td style="color: #7A8391;">[새 점수]</td>
+<td style="color: #7A8391;">[값]</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+
+<section aria-labelledby="s4" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 20px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span class="step">4</span>
+<div>
+<h2 id="s4" class="h2">내 조건이면 단지마다 요건을 채우나요?</h2>
+<p class="sub">판정기를 부르지 않고 공고문·공식 홈페이지 값으로 미리 계산했어요(요건 사전 계산).</p>
+</div>
+</div>
+<div class="num" style="display: flex; flex-wrap: wrap; gap: 8px;">
+<span style="background: #EEF4FF; color: #1A3FB0; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 999px;">세 요건 모두 충족 3곳</span>
+<span style="background: #F3F4F6; color: #3A4250; font-weight: 600; font-size: 14px; padding: 6px 12px; border-radius: 999px;">하나라도 미충족 40곳</span>
+<span style="border: 1px dashed #C9864A; color: #8A4B0F; font-weight: 600; font-size: 14px; padding: 5px 12px; border-radius: 999px;">확인 불가 섞임 36곳</span>
+</div>
+</div>
+<table class="t" aria-label="요건 사전 계산">
+<colgroup><col style="width: 25%;"><col><col><col></colgroup>
+<thead>
+<tr>
+<th scope="col">단지 <span style="font-weight: 400; color: #7A8391;">(79곳 중 8곳)</span></th>
+<th scope="col">지금 신청할 수 있나 <span style="font-weight: 400; color: #7A8391;">(접근)</span><span style="display: block; font-weight: 400; color: #5B6472; margin-top: 4px;">가점제 1순위 공급(본청약·예정 공고)으로 접근 가능</span></th>
+<th scope="col">규제와 부딪히지 않나 <span style="font-weight: 400; color: #7A8391;">(규제)</span><span style="display: block; font-weight: 400; color: #5B6472; margin-top: 4px;">거주의무·전매제한이 실거주 계획과 충돌 없음</span></th>
+<th scope="col">내 돈으로 되나 <span style="font-weight: 400; color: #7A8391;">(자금)</span><span style="display: block; font-weight: 400; color: #5B6472; margin-top: 4px;">자기자본 3억 이하로 계약금·잔금 충당</span></th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{reqs}}" as="r" hint-placeholder-count="8">
+<tr>
+<th scope="row" style="font-weight: 600;"><a href="Detail.dc.html" style="color: #14181F;">{{r.name}}</a></th>
+<td><span class="{{r.a.c}}">{{r.a.t}}</span><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472; line-height: 1.5;">{{r.a.e}}</p></td>
+<td><span class="{{r.b.c}}">{{r.b.t}}</span><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472; line-height: 1.5;">{{r.b.e}}</p></td>
+<td><span class="{{r.c.c}}">{{r.c.t}}</span><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472; line-height: 1.5;">{{r.c.e}}</p></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+<div style="display: flex; justify-content: center;"><button type="button" class="btn">나머지 71곳 더 보기</button></div>
+<div class="foot" data-testid="cache-hits"><span>저장된 답 21건 다시 씀 · 새로 물어본 것 0건 (판정기 호출 없음) · 공고문·공식 홈페이지 확인 2026-10-13~14 · 개인의 청약 자격을 판정하지 않아요</span></div>
+</section>
+
+<section aria-labelledby="s5" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<p class="sec">판정기 결과 · A 가점 높음(실거주)</p>
+<h2 id="s5" class="h2">이 조건이면 판정기는 어디를 고르나요?</h2>
+</div>
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 12px;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">판정기가 고를 확률</h3>
+<span class="est">판정기 추정</span>
+<span class="num" style="font-size: 13px; color: #5B6472;">믿음 정도 0.89</span>
+<button type="button" class="q" aria-label="믿음 정도 설명: 0.6보다 낮으면 동률로 봐요">?</button>
+</figcaption>
+<div role="img" aria-label="판정기가 고를 확률: 엘리프 검단 포레듀 90%, 시티오씨엘 8단지 9%, 모집공고 대기 1%, 나머지 0%" style="display: flex; flex-direction: column; gap: 8px;">
+<sc-for list="{{c07}}" as="it" hint-placeholder-count="9">
+<div style="display: grid; grid-template-columns: 300px minmax(0, 1fr) 260px; gap: 12px; align-items: center; font-size: 14px;">
+<span style="{{it.ls}}">{{it.label}}</span>
+<div style="height: 18px; background: #F3F5F7; border-radius: 4px; overflow: hidden;"><span style="{{it.bar}}"></span></div>
+<span class="num" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;"><b class="u">{{it.pct}}</b><sc-if value="{{it.pick}}" hint-placeholder-val="{{ false }}"><span class="b-pick">판정기 선택</span></sc-if><sc-if value="{{it.virt}}" hint-placeholder-val="{{ false }}"><span class="b-mute">가상 후보</span></sc-if><sc-if value="{{it.esc}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #7A8391;">판정기 보류 선택지</span></sc-if></span>
+</div>
+</sc-for>
+</div>
+<div class="foot"><span>자료: 판정기 기록 · 2026-10-14 · 회색 막대 = 단지가 아닌 '더 묻기·더 조사·해당 없음' 선택지 · 가상 후보 '모집공고 대기' = 새 공고를 기다리는 선택지</span><button type="button" class="btns">표로 보기</button></div>
+</figure>
+</section>
+
+<section aria-labelledby="s6" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<p class="sec">가중치 민감도 · A 가점 높음(실거주)</p>
+<h2 id="s6" class="h2">어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?</h2>
+<p class="sub">비중은 2단계에서 정한 '얼마나 중요하게 볼지'예요. 사람이 정한 값이라, 조금 바꿔도 상위 5곳이 그대로인지 확인해요.</p>
+</div>
+<div style="border: 1px solid #F3D6B8; background: #FFF7EF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 13px; color: #A3470A; font-weight: 700;">한 줄 답</p>
+<p style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.4;">네, 4가지 기준은 비중을 바꾸면 상위 5곳에 드는 단지가 하나씩 바뀌어요.</p>
+<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #3A4250;">'비슷한 단지들 사이 순위'를 늘리거나, '주변 시세와 가격 차이'를 줄이거나, '같은 시기 입주 물량'을 늘리거나, '입주 시기'를 줄이면 힐스테이트 구월아트파크가 상위 5곳에 들어와요.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="b-warn">순위가 흔들려요 · 검암역자이르네, 힐스테이트 구월아트파크, 영종 신일 비아프 크레스트(1단지), 시티오씨엘 8단지</span><span class="b-mute">비중을 바꿔도 순위가 그대로인 기준: 오를 가능성, 근처 새 아파트</span><span class="est">추정 · 점수 다시 계산</span></div>
+</div>
+<table class="t" aria-label="기준별로 비중을 바꿨을 때 상위 5곳" style="font-size: 13px;">
+<colgroup><col style="width: 25%;"><col><col></colgroup>
+<thead>
+<tr><th scope="col">기준 (지금 비중) · 무엇을 보나요</th><th scope="col">비중을 10%p <b>줄이면</b> → 1~5위</th><th scope="col">비중을 10%p <b>늘리면</b> → 1~5위</th></tr>
+</thead>
+<tbody>
+<sc-for list="{{sens}}" as="s" hint-placeholder-count="6">
+<tr>
+<th scope="row">
+<span style="display: block; font-size: 15px; font-weight: 700; color: #14181F;">{{s.name}} <span class="num" style="font-weight: 500; color: #5B6472; font-size: 13px;">지금 {{s.w}}</span></span>
+<span style="display: block; font-size: 13px; font-weight: 400; color: #5B6472; line-height: 1.5; margin-top: 2px;">{{s.why}}</span>
+<span style="display: block; font-size: 11px; font-weight: 400; color: #7A8391; margin-top: 4px;">공식 용어: {{s.term}}</span>
+</th>
+<td style="{{s.dBg}}"><ol class="num" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px;"><li><span style="{{s.d0.m}}"></span>{{s.d0.t}}</li><li><span style="{{s.d1.m}}"></span>{{s.d1.t}}</li><li><span style="{{s.d2.m}}"></span>{{s.d2.t}}</li><li><span style="{{s.d3.m}}"></span>{{s.d3.t}}</li><li><span style="{{s.d4.m}}"></span>{{s.d4.t}}</li></ol><p style="{{s.dChS}}">{{s.dCh}}</p></td>
+<td style="{{s.uBg}}"><ol class="num" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px;"><li><span style="{{s.u0.m}}"></span>{{s.u0.t}}</li><li><span style="{{s.u1.m}}"></span>{{s.u1.t}}</li><li><span style="{{s.u2.m}}"></span>{{s.u2.t}}</li><li><span style="{{s.u3.m}}"></span>{{s.u3.t}}</li><li><span style="{{s.u4.m}}"></span>{{s.u4.t}}</li></ol><p style="{{s.uChS}}">{{s.uCh}}</p></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">지금 순서: 1위 엘리프 검단 포레듀 · 2위 검암역자이르네 · 3위 영종국제도시 신일 비아프 크레스트(2단지) · 공동 4위 시티오씨엘 8단지, 영종국제도시 신일 비아프 크레스트(1단지). 회색 칸 = 상위 5곳 변동 없음.</p>
+
+<figure style="margin: 0; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">기준별로 비중을 바꾸면 각 단지는 몇 위가 되나요?</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: #3A4250;">
+<span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2350D8; margin-right: 6px;"></span>엘리프 검단 포레듀</span>
+<span><span style="display: inline-block; width: 10px; height: 10px; background: #0E7C86; margin-right: 6px;"></span>검암역자이르네</span>
+<span><span style="display: inline-block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #6B4FC8; margin-right: 6px;"></span>영종 신일 비아프 크레스트(2단지)</span>
+<span><span style="display: inline-block; width: 9px; height: 9px; background: #B03A7E; transform: rotate(45deg); margin-right: 6px;"></span>시티오씨엘 8단지</span>
+<span><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 2.5px solid #5B6472; margin-right: 6px;"></span>영종 신일 비아프 크레스트(1단지)</span>
+</div>
+</figcaption>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">가로: 6가지 기준 × (줄이면 / 늘리면) · 세로: 순위(위가 1위). 6위로 내려가면 상위 5곳에서 빠진 거예요.</p>
+<svg role="img" aria-label="비중을 바꿨을 때 지금 상위 5곳의 순위 변화. 표와 같은 내용" viewBox="0 0 1180 330" width="100%" style="display: block; max-width: 1180px; font-family: inherit;">
+<rect x="120" y="237" width="1040" height="46" fill="#FFF7EF"></rect>
+<line x1="120" y1="30" x2="1160" y2="30" stroke="#EEF1F4" stroke-width="1"></line>
+<text x="112" y="34" text-anchor="end" font-size="13" fill="#5B6472">1위</text>
+<line x1="120" y1="76" x2="1160" y2="76" stroke="#EEF1F4" stroke-width="1"></line>
+<text x="112" y="80" text-anchor="end" font-size="13" fill="#5B6472">2위</text>
+<line x1="120" y1="122" x2="1160" y2="122" stroke="#EEF1F4" stroke-width="1"></line>
+<text x="112" y="126" text-anchor="end" font-size="13" fill="#5B6472">3위</text>
+<line x1="120" y1="168" x2="1160" y2="168" stroke="#EEF1F4" stroke-width="1"></line>
+<text x="112" y="172" text-anchor="end" font-size="13" fill="#5B6472">4위</text>
+<line x1="120" y1="214" x2="1160" y2="214" stroke="#EEF1F4" stroke-width="1"></line>
+<text x="112" y="218" text-anchor="end" font-size="13" fill="#5B6472">5위</text>
+<line x1="120" y1="260" x2="1160" y2="260" stroke="#F3D6B8" stroke-width="1"></line>
+<text x="112" y="264" text-anchor="end" font-size="13" fill="#A3470A">6위</text>
+<line x1="300" y1="16" x2="300" y2="322" stroke="#E3E7EC" stroke-dasharray="3 4"></line>
+<line x1="470" y1="16" x2="470" y2="322" stroke="#E3E7EC" stroke-dasharray="3 4"></line>
+<line x1="640" y1="16" x2="640" y2="322" stroke="#E3E7EC" stroke-dasharray="3 4"></line>
+<line x1="810" y1="16" x2="810" y2="322" stroke="#E3E7EC" stroke-dasharray="3 4"></line>
+<line x1="980" y1="16" x2="980" y2="322" stroke="#E3E7EC" stroke-dasharray="3 4"></line>
+<text x="172.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">줄이면</text>
+<text x="257.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">늘리면</text>
+<text x="342.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">줄이면</text>
+<text x="427.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">늘리면</text>
+<text x="512.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">줄이면</text>
+<text x="597.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">늘리면</text>
+<text x="682.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">줄이면</text>
+<text x="767.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">늘리면</text>
+<text x="852.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">줄이면</text>
+<text x="937.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">늘리면</text>
+<text x="1022.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">줄이면</text>
+<text x="1107.5" y="296" text-anchor="middle" font-size="12" fill="#5B6472">늘리면</text>
+<text x="215" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="#14181F">오를 가능성</text>
+<text x="385" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="#14181F">단지 사이 순위</text>
+<text x="555" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="#14181F">주변 시세 차이</text>
+<text x="725" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="#14181F">근처 새 아파트</text>
+<text x="895" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="#14181F">입주 물량</text>
+<text x="1065" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="#14181F">입주 시기</text>
+<polyline fill="none" stroke="#2350D8" stroke-width="2" stroke-opacity="0.35" stroke-linejoin="round" points="158.5,30 243.5,30 328.5,76 413.5,30 498.5,76 583.5,30 668.5,30 753.5,30 838.5,30 923.5,122 1008.5,30 1093.5,30"></polyline>
+<circle cx="158.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="243.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="328.5" cy="76" r="5.5" fill="#2350D8"></circle>
+<circle cx="413.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="498.5" cy="76" r="5.5" fill="#2350D8"></circle>
+<circle cx="583.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="668.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="753.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="838.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="923.5" cy="122" r="5.5" fill="#2350D8"></circle>
+<circle cx="1008.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<circle cx="1093.5" cy="30" r="5.5" fill="#2350D8"></circle>
+<polyline fill="none" stroke="#0E7C86" stroke-width="2" stroke-opacity="0.35" stroke-linejoin="round" points="165.5,76 250.5,76 335.5,30 420.5,260 505.5,260 590.5,76 675.5,30 760.5,122 845.5,214 930.5,30 1015.5,76 1100.5,76"></polyline>
+<rect x="160.5" y="71" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="245.5" y="71" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="330.5" y="25" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="415.5" y="255" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="500.5" y="255" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="585.5" y="71" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="670.5" y="25" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="755.5" y="117" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="840.5" y="209" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="925.5" y="25" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="1010.5" y="71" width="10" height="10" fill="#0E7C86"></rect>
+<rect x="1095.5" y="71" width="10" height="10" fill="#0E7C86"></rect>
+<polyline fill="none" stroke="#6B4FC8" stroke-width="2" stroke-opacity="0.35" stroke-linejoin="round" points="172.5,76 257.5,122 342.5,122 427.5,76 512.5,76 597.5,122 682.5,122 767.5,76 852.5,76 937.5,76 1022.5,214 1107.5,76"></polyline>
+<path d="M172.5 69.5 L178.5 80.5 L166.5 80.5 Z" fill="#6B4FC8"></path>
+<path d="M257.5 115.5 L263.5 126.5 L251.5 126.5 Z" fill="#6B4FC8"></path>
+<path d="M342.5 115.5 L348.5 126.5 L336.5 126.5 Z" fill="#6B4FC8"></path>
+<path d="M427.5 69.5 L433.5 80.5 L421.5 80.5 Z" fill="#6B4FC8"></path>
+<path d="M512.5 69.5 L518.5 80.5 L506.5 80.5 Z" fill="#6B4FC8"></path>
+<path d="M597.5 115.5 L603.5 126.5 L591.5 126.5 Z" fill="#6B4FC8"></path>
+<path d="M682.5 115.5 L688.5 126.5 L676.5 126.5 Z" fill="#6B4FC8"></path>
+<path d="M767.5 69.5 L773.5 80.5 L761.5 80.5 Z" fill="#6B4FC8"></path>
+<path d="M852.5 69.5 L858.5 80.5 L846.5 80.5 Z" fill="#6B4FC8"></path>
+<path d="M937.5 69.5 L943.5 80.5 L931.5 80.5 Z" fill="#6B4FC8"></path>
+<path d="M1022.5 207.5 L1028.5 218.5 L1016.5 218.5 Z" fill="#6B4FC8"></path>
+<path d="M1107.5 69.5 L1113.5 80.5 L1101.5 80.5 Z" fill="#6B4FC8"></path>
+<polyline fill="none" stroke="#B03A7E" stroke-width="2" stroke-opacity="0.35" stroke-linejoin="round" points="179.5,168 264.5,122 349.5,168 434.5,122 519.5,214 604.5,122 689.5,122 774.5,214 859.5,76 944.5,260 1029.5,122 1114.5,214"></polyline>
+<path d="M179.5 161.5 L186 168 L179.5 174.5 L173 168 Z" fill="#B03A7E"></path>
+<path d="M264.5 115.5 L271 122 L264.5 128.5 L258 122 Z" fill="#B03A7E"></path>
+<path d="M349.5 161.5 L356 168 L349.5 174.5 L343 168 Z" fill="#B03A7E"></path>
+<path d="M434.5 115.5 L441 122 L434.5 128.5 L428 122 Z" fill="#B03A7E"></path>
+<path d="M519.5 207.5 L526 214 L519.5 220.5 L513 214 Z" fill="#B03A7E"></path>
+<path d="M604.5 115.5 L611 122 L604.5 128.5 L598 122 Z" fill="#B03A7E"></path>
+<path d="M689.5 115.5 L696 122 L689.5 128.5 L683 122 Z" fill="#B03A7E"></path>
+<path d="M774.5 207.5 L781 214 L774.5 220.5 L768 214 Z" fill="#B03A7E"></path>
+<path d="M859.5 69.5 L866 76 L859.5 82.5 L853 76 Z" fill="#B03A7E"></path>
+<path d="M944.5 253.5 L951 260 L944.5 266.5 L938 260 Z" fill="#B03A7E"></path>
+<path d="M1029.5 115.5 L1036 122 L1029.5 128.5 L1023 122 Z" fill="#B03A7E"></path>
+<path d="M1114.5 207.5 L1121 214 L1114.5 220.5 L1108 214 Z" fill="#B03A7E"></path>
+<polyline fill="none" stroke="#5B6472" stroke-width="2" stroke-opacity="0.35" stroke-linejoin="round" points="186.5,168 271.5,214 356.5,214 441.5,122 526.5,30 611.5,214 696.5,214 781.5,122 866.5,168 951.5,214 1036.5,260 1121.5,168"></polyline>
+<circle cx="186.5" cy="168" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="271.5" cy="214" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="356.5" cy="214" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="441.5" cy="122" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="526.5" cy="30" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="611.5" cy="214" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="696.5" cy="214" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="781.5" cy="122" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="866.5" cy="168" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="951.5" cy="214" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="1036.5" cy="260" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+<circle cx="1121.5" cy="168" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
+</svg>
+<div class="foot"><span>자료: 점수 다시 계산(판정기 새 호출 없음) · 기준일 2026-10-14 · 상황 'A 가점 높음(실거주)' · 주황 띠 = 상위 5곳 밖</span><button type="button" class="btns">표로 보기</button></div>
+</figure>
+</section>
+
+<section aria-labelledby="more" style="display: flex; flex-direction: column; gap: 16px; border-top: 2px dashed #C8CFD8; padding-top: 24px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<p class="sec">펼친 모습 · 다른 상태</p>
+<h2 id="more" class="h2">가끔만 나오는 모습</h2>
+<p class="sub">실제 데이터에 없는 값은 [자리표시]로 뒀어요.</p>
+</div>
+
+<div role="alert" style="background: #FDECEA; border: 1px solid #F4B7B0; border-radius: 14px; padding: 16px 18px; display: flex; gap: 12px; align-items: flex-start;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<p style="margin: 0; font-size: 12px; font-weight: 700; color: #5B6472;">A · 맨 위에 뜨는 띠 (판정기가 답 대신 질문을 남겼을 때)</p>
+<p style="margin: 0; font-size: 16px; font-weight: 700; color: #B42318;">판정기가 질문을 남겼어요</p>
+<p style="margin: 0; font-size: 15px; color: #3A4250;">[판정기 질문 문장]</p>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px;">
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+<p class="sec">B · 입력이 맞지 않을 때 (저장을 누른 뒤)</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e1" class="lab">함께 사는 가족 수</label><div class="unit"><input id="e1" class="inp inp-err num" type="text" value="2.5" aria-invalid="true"><span>명</span></div><p class="err">숫자(정수)를 적어 주세요</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e2" class="lab">청약 가점</label><div class="unit"><input id="e2" class="inp inp-err num" type="text" value="90" aria-invalid="true"><span>점</span></div><p class="err">84 이하여야 해요</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e3" class="lab">지금 가진 내 돈</label><div class="unit"><input id="e3" class="inp inp-err num" type="text" value="-1" aria-invalid="true"><span>억원</span></div><p class="err">0 이상이어야 해요</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e4" class="lab">들어가 살고 싶은 때</label><input id="e4" class="inp inp-err num" type="text" value="2029/6" aria-invalid="true"><p class="err">2029-06처럼 연-월로 적어 주세요</p></div>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">칸마다 범위: 가족 수 1~20명 · 가점 0~84점 · 내 돈·대출 0~1,000억 · 보유 0~50년 · 크기 10~300㎡</p>
+<div style="border-top: 1px solid #EEF1F4; padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+<p class="num" style="margin: 0; font-size: 15px; font-weight: 700; color: #B42318;">합계 95% (0.95)</p>
+<p role="alert" class="err">비중 합이 100%여야 해요 (지금 95%)</p>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px;">
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+<p class="sec">C · 저장한 뒤</p>
+<div role="status" style="align-self: flex-start; background: #14181F; color: #FFFFFF; border-radius: 12px; padding: 12px 16px; font-size: 14px; display: flex; align-items: center; gap: 14px;"><span>조건을 저장했어요</span><button type="button" aria-label="알림 닫기" style="background: none; border: none; color: #B9C3D3; font-family: inherit; font-size: 13px; cursor: pointer; min-height: 32px;">닫기</button></div>
+<p role="alert" style="margin: 0; font-size: 14px; color: #B42318; background: #FDECEA; border-radius: 10px; padding: 10px 12px;">저장하지 못했어요: [오류 내용]</p>
+</div>
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+<p class="sec">D · 읽기 전용 열쇠일 때</p>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;"><button type="button" class="btnp" disabled="disabled" title="읽기 전용 열쇠로는 저장·실행할 수 없어요" style="opacity: 0.45; cursor: not-allowed;">이 조건 저장</button><button type="button" class="btnp" disabled="disabled" title="읽기 전용 열쇠로는 저장·실행할 수 없어요" style="opacity: 0.45; cursor: not-allowed;">다시 판정하기</button></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">버튼에 올리면: "읽기 전용 열쇠로는 저장·실행할 수 없어요". 저장·판정 요청을 보내는 중이거나 기준일이 없을 때도 버튼이 잠깐 꺼져요.</p>
+</div>
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+<p class="sec">E · 조건 목록을 불러오는 중</p>
+<p role="status" style="margin: 0; font-size: 14px; color: #5B6472;">불러오는 중…</p>
+</div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px;">
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+<p class="sec">F · 다시 판정하는 동안</p>
+<p style="margin: 0; font-size: 14px; color: #3A4250;">다시 판정하는 중이에요 — 2초마다 상태를 확인해요.</p>
+<div role="status" style="display: flex; flex-direction: column; gap: 8px;">
+<div class="num" style="display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 14px;"><b>작업 진행</b><span style="color: #5B6472;">다시 판정</span><span>실행 중</span><span style="color: #5B6472;">[완료 수]/[전체 수]</span><span style="color: #5B6472;">단계 [단계 이름]</span></div>
+<div style="height: 6px; background: #EEF1F4; border-radius: 999px;"><div style="width: 40%; height: 100%; background: #2350D8; border-radius: 999px;"></div></div>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">상태 이름: 대기 · 실행 중 · 완료 · 실패. 진행 수를 모르면 막대가 좌우로 움직여요.</p>
+<p style="margin: 0; font-size: 13px; color: #B42318;">오류: [오류 내용]</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">상태를 받지 못해 다시 확인하는 중: [내용]</p>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">새 수정본 발행 대기·완료·막힘 같은 안내는 '공통 부품' 보드의 작업 진행 표시와 같아요.</p>
+</div>
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+<p class="sec">G · 끝난 뒤 값을 받는 동안 · 못 받았을 때</p>
+<p class="num" style="margin: 0; font-size: 14px;">바뀐 값이 저장된 곳: <b>새 수정본(목록 새로 고치는 중)</b></p>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">실행 뒤 값을 받는 중…</p>
+<div role="alert" style="background: #FDECEA; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: #B42318; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;"><span>실행 뒤 값을 받지 못했어요: [오류 내용]</span><button type="button" class="btn" style="min-height: 36px; padding: 6px 12px;">다시 시도</button></div>
+<p style="margin: 0; font-size: 14px; background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">순위 변동 없음 <span class="hint">(이전 결과 표 위에 떠요)</span></p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">판정기 줄 세우기 변화가 없을 때: <span class="est">확인 불가(이전 실행 없음)</span></p>
+</div>
+</div>
+
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+<p class="sec">H · 요건 표에서 빠진 단지 ('D 즉시 구매'처럼 접수 안 되는 단지를 빼는 조건 · 79곳 중 76곳 제외)</p>
+<table class="t" style="font-size: 13px;">
+<colgroup><col style="width: 25%;"><col><col><col></colgroup>
+<tbody>
+<tr style="color: #7A8391;">
+<th scope="row" style="font-weight: 600;">산곡역자이힐스테이트앤하늘채 <span class="b-mute">제외</span></th>
+<td><span class="s-X">확인 불가</span><p style="margin: 6px 0 0; font-size: 12px;">공급 경로(지금 공고 종류) 확인 불가</p></td>
+<td><span class="s-Y" style="opacity: 0.6;">충족</span><p style="margin: 6px 0 0; font-size: 12px;">거주의무 0개월, 재당첨 제한 없음, 비규제</p></td>
+<td><span class="s-X">확인 불가</span><p style="margin: 6px 0 0; font-size: 12px;">계약금 비율 확인 불가(중간 가격 9.41억)</p></td>
+</tr>
+<tr style="color: #7A8391;">
+<th scope="row" style="font-weight: 600;">숭의역 노르웨이숲 더 스카이 <span class="b-mute">제외</span></th>
+<td><span class="s-N">미충족</span><p style="margin: 6px 0 0; font-size: 12px;">지금 공고는 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님</p></td>
+<td><span class="s-Y" style="opacity: 0.6;">충족</span><p style="margin: 6px 0 0; font-size: 12px;">거주의무 0개월, 재당첨 제한 없음, 비규제</p></td>
+<td><span class="s-Y" style="opacity: 0.6;">충족</span><p style="margin: 6px 0 0; font-size: 12px;">계약금 3,545만(5%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 무이자)</p></td>
+</tr>
+</tbody>
+</table>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px;"><span style="background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">요건 표를 못 불러왔을 때: 불러오지 못했어요: [오류 내용]</span><span style="background: #F6F8FA; border-radius: 10px; padding: 10px 12px; color: #5B6472;">불러오는 중…</span><span style="background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">판정 없음 · 민감도 없음 (차트가 빌 때)</span></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">요건 칸 상태는 4가지예요: <span class="s-Y">충족</span> <span class="s-N">미충족</span> <span style="display: inline-flex; font-size: 12px; color: #5B6472; border: 1px dashed #9AA6B6; border-radius: 6px; padding: 1px 8px;">미입력</span> <span class="s-X">확인 불가</span> · 판정기 차트 배지: <span class="b-tie">동률</span> <span class="b-warn">근거와 달라요</span> <span class="b-tie">이전 결과 재사용</span> <span style="font-size: 12px; font-weight: 600; color: #FFFFFF; background: #14181F; border-radius: 6px; padding: 1px 8px;">질문 남김</span> <span class="b-mute">판정 미해결</span></p>
+</div>
+</section>
+
+<footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
+<span>상대 비교 · 투자 권유 아님. 이 화면은 개인의 청약 자격을 판정하지 않아요. 최종 기준은 입주자 모집 공고문이에요.</span>
+<span><span class="ok">확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산하거나 판정기가 낸 값 · 숫자를 누르면 출처가 열려요</span>
+</footer>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":7300}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var st = this.state || {};
+
+var presetDefs = [
+{ code: '기본', name: '기본', who: '조건을 따로 넣지 않은 출발점이에요.', facts: '집 없음 · 목적 둘 다 · 84㎡ · 내 돈·대출 미입력' },
+{ code: 'A', name: '가점 높음(실거주)', who: '가점이 높고, 직접 들어가 살 사람', facts: '가점 60점 · 내 돈 3억 · 대출 6억 · 실거주 · 살아야 하는 의무 받아들임' },
+{ code: 'B', name: '가점 낮음·소액 자기자본', who: '가점이 낮아 통장 없이 들어갈 길(무순위 등)을 찾는 사람', facts: '가점 20점 · 내 돈 2억 · 대출 6억 · 2년 보유 · 살아야 하는 의무 없어야 함' },
+{ code: 'C', name: '시세차익 우선', who: '5년쯤 가지고 있다가 되팔 사람', facts: '내 돈 4억 · 대출 6억 · 5년 보유 · 기준일부터 5년 뒤 기준' },
+{ code: 'D', name: '즉시 구매', who: '지금 바로 계약할 수 있는 곳만 볼 사람', facts: '내 돈 3억 · 대출 6억 · 접수 안 되는 단지는 뺌' }
+];
+var presets = presetDefs.map(function (p, i) {
+var on = i === 1;
+return {
+code: p.code === '기본' ? '기본 제공' : '기본 제공 ' + p.code, name: p.name, who: p.who, facts: p.facts, on: on ? 'true' : 'false',
+box: 'font-family:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:14px;min-height:44px;' + (on ? 'background:#F2F6FF;border:2px solid #2350D8;' : 'background:#FFFFFF;border:1px solid #D5DAE1;'),
+tag: on ? 'font-size:11px;font-weight:700;color:#FFFFFF;background:#2350D8;border-radius:999px;padding:2px 8px;' : 'display:none;'
+};
+});
+
+var KEYS = ['p10', 'rerank', 'gap', 'benchmark', 'supply', 'move_in'];
+var NAMES = { p10: '입주 뒤 값이 오를 가능성', rerank: '비슷한 단지들 사이 순위', gap: '주변 시세와 가격 차이', benchmark: '근처 새 아파트가 입주 뒤 오른 정도', supply: '같은 시기 입주 물량', move_in: '입주 시기' };
+var WHY = {
+p10: '입주 1년 뒤 분양가보다 10% 넘게 오를 확률(판정기)',
+rerank: '이 지역 단지들을 판정기가 한 줄로 세운 순서',
+gap: '분양가가 주변 실거래보다 낮을수록 점수가 높아요',
+benchmark: '근처에서 먼저 입주한 새 아파트가 오른 정도',
+supply: '입주 앞뒤 2년 동안 주변 입주가 적을수록 점수가 높아요',
+move_in: '입주가 빠를수록 점수가 높아요 (이 조건의 6번째 기준)'
+};
+var w = st.w || { p10: 0.35, rerank: 0.2, gap: 0.15, benchmark: 0.1, supply: 0.1, move_in: 0.1 };
+var r4 = function (n) { return Math.round(n * 10000) / 10000; };
+var rebalance = function (cur, key, value) {
+var v = Math.min(1, Math.max(0, value));
+var others = KEYS.filter(function (k) { return k !== key; });
+var otherSum = others.reduce(function (s, k) { return s + (cur[k] || 0); }, 0);
+var next = {};
+next[key] = r4(v);
+others.forEach(function (k) { var share = otherSum > 0 ? (cur[k] || 0) / otherSum : 1 / others.length; next[k] = r4((1 - v) * share); });
+var drift = r4(1 - KEYS.reduce(function (s, k) { return s + next[k]; }, 0));
+if (drift !== 0) { var big = others.reduce(function (a, b) { return next[a] >= next[b] ? a : b; }); next[big] = r4(next[big] + drift); }
+return next;
+};
+var weights = KEYS.map(function (k) {
+var v = w[k] || 0;
+return {
+id: 'w-' + k, name: NAMES[k], why: WHY[k], v: String(v), pct: Math.round(v * 100) + '%', dec: v.toFixed(2),
+on: function (e) { var nv = Number(e && e.target ? e.target.value : v); self.setState({ w: rebalance(w, k, nv) }); }
+};
+});
+var sum = KEYS.reduce(function (s, k) { return s + (w[k] || 0); }, 0);
+var bad = Math.abs(sum - 1) > 0.001;
+var sumStyle = 'margin:0;font-size:15px;font-weight:700;border-top:1px solid #E3E7EC;padding-top:12px;color:' + (bad ? '#B42318' : '#3A4250') + ';';
+
+var diff = [
+{ name: '엘리프 검단 포레듀(AA32블록)', rank: '1위', tie: false, total: '4.86' },
+{ name: '검암역자이르네', rank: '2위', tie: false, total: '4.63' },
+{ name: '영종국제도시 신일 비아프 크레스트(2단지)', rank: '3위', tie: false, total: '4.52' },
+{ name: '시티오씨엘 8단지', rank: '4위', tie: true, total: '4.41' },
+{ name: '영종국제도시 신일 비아프 크레스트(1단지)', rank: '4위', tie: true, total: '4.39' }
+];
+
+var ST = { Y: ['충족', 's-Y'], N: ['미충족', 's-N'], X: ['확인 불가', 's-X'] };
+var cl = function (a) { return { t: ST[a[0]][0], c: ST[a[0]][1], e: a[1] }; };
+var row = function (name, a, b, c) { return { name: name, a: cl(a), b: cl(b), c: cl(c) }; };
+var RG3 = '거주의무 확인 불가, 재당첨 제한 3년(이력 없음), 비규제';
+var reqs = [
+row('엘리프 검단 포레듀(AA32블록)', ['Y', '접수 가능(10-14 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제'], ['Y', '계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
+row('시티오씨엘 8단지', ['Y', '접수 가능(10-13 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 0개월, 재당첨 제한 없음, 비규제'], ['Y', '계약금 3,124만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
+row('힐스테이트 구월아트파크', ['Y', '접수 가능(10-13 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 0개월, 재당첨 제한 없음, 비규제'], ['Y', '계약금 4,188만(5%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)']),
+row('검암역자이르네', ['N', '접수 미정(10-14 확인); 가점제 1순위 공급 없음(무순위·임의·선착순만)'], ['X', RG3], ['Y', '계약금 5,859만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
+row('영종국제도시 신일 비아프 크레스트(2단지)', ['N', '접수 미정(10-13 확인); 가점제 1순위 공급 없음(무순위·임의·선착순만)'], ['X', RG3], ['Y', '계약금 5,123만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
+row('영종국제도시 신일 비아프 크레스트(1단지)', ['N', '접수 미정(공식 팝업, 10-13 확인); 가점제 1순위 공급 여부 확인 불가'], ['X', RG3], ['X', '계약금 비율 확인 불가(중간 가격 5.468억)']),
+row('더샵 검단레이크파크(AB23BL)', ['X', '접수 상태 확인 불가(10-14 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 36개월(받아들임), 재당첨 제한 10년(이력 없음), 비규제'], ['Y', '계약금 6,243만(10%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)']),
+row('산곡역자이힐스테이트앤하늘채', ['X', '접수 상태 확인 불가(10-14 확인); 가점제 1순위 공급 여부 확인 불가'], ['Y', '거주의무 0개월, 재당첨 제한 없음, 비규제'], ['X', '계약금 비율 확인 불가(중간 가격 9.41억)'])
+];
+
+var c07def = [['엘리프 검단 포레듀(AA32블록)', 0.90, 'c', 1], ['검암역자이르네', 0, 'c'], ['영종국제도시 신일 비아프 크레스트(2단지)', 0, 'c'], ['영종국제도시 신일 비아프 크레스트(1단지)', 0, 'c'], ['시티오씨엘 8단지', 0.09, 'c'], ['모집공고 대기', 0.01, 'v'], ['사용자에게 질문', 0, 'e'], ['추가 조사', 0, 'e'], ['해당 없음', 0, 'e']];
+var c07 = c07def.map(function (x) {
+var kind = x[2];
+var color = kind === 'e' ? '#C8CFD8' : (x[3] ? '#2350D8' : '#9DB4F2');
+return {
+label: x[0], pct: Math.round(x[1] * 100) + '%',
+ls: kind === 'e' ? 'color:#7A8391;' : 'color:#14181F;font-weight:500;',
+bar: 'display:block;height:100%;border-radius:4px;width:' + (x[1] * 100).toFixed(1) + '%;background:' + color + ';',
+pick: !!x[3], virt: kind === 'v', esc: kind === 'e'
+};
+});
+
+var MK = {
+41: 'display:inline-block;width:10px;height:10px;border-radius:50%;background:#2350D8;margin-right:8px;',
+9: 'display:inline-block;width:10px;height:10px;background:#0E7C86;margin-right:8px;',
+27: 'display:inline-block;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid #6B4FC8;margin-right:8px;',
+32: 'display:inline-block;width:8px;height:8px;background:#B03A7E;transform:rotate(45deg);margin:0 9px 0 1px;',
+28: 'display:inline-block;width:6px;height:6px;border-radius:50%;border:2.5px solid #5B6472;margin-right:8px;',
+16: 'display:inline-block;width:8px;height:8px;border:2px dashed #A3470A;margin-right:8px;'
+};
+var NM = { 41: '엘리프 검단 포레듀', 9: '검암역자이르네', 27: '영종 신일 비아프 크레스트(2단지)', 32: '시티오씨엘 8단지', 28: '영종 신일 비아프 크레스트(1단지)', 16: '힐스테이트 구월아트파크' };
+var top = function (arr) {
+var seen = {};
+return arr.map(function (p) {
+var r = p[1]; var tie = seen[r]; seen[r] = true;
+return { t: r + '위 ' + NM[p[0]] + (tie ? ' (공동)' : '') + (p[0] === 16 ? ' · 새로 들어옴' : ''), m: MK[p[0]] };
+});
+};
+var noCh = 'margin:6px 0 0;font-size:12px;color:#5B6472;';
+var yesCh = 'margin:6px 0 0;font-size:12px;font-weight:700;color:#A3470A;';
+var BG = 'background:#FFF7EF;';
+var mk = function (name, wv, term, why, d, dCh, u, uCh) {
+var dd = top(d), uu = top(u);
+return {
+name: name, w: wv, term: term, why: why,
+d0: dd[0], d1: dd[1], d2: dd[2], d3: dd[3], d4: dd[4],
+u0: uu[0], u1: uu[1], u2: uu[2], u3: uu[3], u4: uu[4],
+dCh: dCh ? '순위 변동: 있음 — 새로 들어옴 ' + NM[16] + ' · 빠짐 ' + NM[dCh] : '순위 변동: 없음',
+uCh: uCh ? '순위 변동: 있음 — 새로 들어옴 ' + NM[16] + ' · 빠짐 ' + NM[uCh] : '순위 변동: 없음',
+dChS: dCh ? yesCh : noCh, uChS: uCh ? yesCh : noCh,
+dBg: dCh ? BG : 'color:#5B6472;', uBg: uCh ? BG : 'color:#5B6472;'
+};
+};
+var sens = [
+mk('입주 뒤 값이 오를 가능성', '35%', '가격 +10% 상승 가능성(p10)', '입주 1년 뒤 분양가보다 10% 넘게 오를 확률(판정기)', [[41,1],[9,2],[27,2],[32,4],[28,4]], 0, [[41,1],[9,2],[32,3],[27,3],[28,5]], 0),
+mk('비슷한 단지들 사이 순위', '20%', '판정기 순위(rerank)', '이 지역 단지들을 판정기가 한 줄로 세운 순서', [[9,1],[41,2],[27,3],[32,4],[28,5]], 0, [[41,1],[27,2],[28,3],[32,3],[16,5]], 9),
+mk('주변 시세와 가격 차이', '15%', '가격 갭(gap)', '분양가가 주변 실거래보다 낮을수록 점수가 높아요', [[28,1],[27,2],[41,2],[16,4],[32,5]], 9, [[41,1],[9,2],[32,3],[27,3],[28,5]], 0),
+mk('근처 새 아파트가 입주 뒤 오른 정도', '10%', '벤치마크(benchmark)', '근처에서 먼저 입주한 새 아파트가 분양가보다 오른 정도', [[9,1],[41,1],[32,3],[27,3],[28,5]], 0, [[41,1],[27,2],[9,3],[28,3],[32,5]], 0),
+mk('같은 시기 입주 물량', '10%', '공급(supply)', '입주 앞뒤 2년 동안 주변 입주가 적을수록 점수가 높아요', [[41,1],[27,2],[32,2],[28,4],[9,5]], 0, [[9,1],[27,2],[41,3],[16,3],[28,5]], 32),
+mk('입주 시기', '10%', '입주 시기(move_in)', '입주가 빠를수록 점수가 높아요', [[41,1],[9,2],[16,3],[32,3],[27,5]], 28, [[41,1],[9,2],[27,2],[28,4],[32,5]], 0)
+];
+
+return {
+presets: presets, weights: weights,
+sumPct: Math.round(sum * 100) + '%', sumDec: sum.toFixed(2), sumStyle: sumStyle,
+diff: diff, reqs: reqs, c07: c07, sens: sens
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생활권 나누기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle;white-space:nowrap}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.q{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid #C8CFD8;background:#FFFFFF;color:#5B6472;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle}
+.u{border-bottom:1px dashed #9AA6B6;cursor:pointer}
+.sel{font-family:inherit;font-size:15px;padding:9px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:44px}
+.inp{font-family:inherit;font-size:15px;padding:10px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:44px;box-sizing:border-box;width:100%}
+.btn{font-family:inherit;font-size:15px;font-weight:600;padding:11px 20px;border-radius:12px;border:none;background:#2350D8;color:#FFFFFF;cursor:pointer;min-height:44px}
+.btn[disabled]{background:#C8CFD8;cursor:not-allowed}
+.btn2{font-family:inherit;font-size:14px;font-weight:500;padding:9px 14px;border-radius:10px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px;white-space:nowrap;flex:0 0 auto}
+.btn2[disabled]{color:#9AA6B6;background:#F6F8FA;cursor:not-allowed}
+.lbl{font-size:13px;font-weight:600;color:#3A4250}
+.err{margin:0;font-size:14px;color:#B42318;background:#FEF3F2;border:1px solid #F5C2BC;border-radius:10px;padding:10px 12px}
+.area{display:flex;flex-direction:column;gap:10px;padding:16px}
+.dl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.dg{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:14px;cursor:grab;min-height:36px;box-sizing:border-box}
+.dg:hover{background:#F3F5F7}
+.code{font-size:11px;color:#7A8391;margin-left:auto}
+.more{font-family:inherit;font-size:13px;color:#2350D8;background:none;border:none;padding:6px 8px;text-align:left;cursor:pointer;min-height:32px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:#5B6472;margin:0}
+.meta dt{color:#5B6472}.meta dd{margin:0;color:#14181F;font-weight:600}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.chipx{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;padding:6px 6px 6px 12px;border-radius:999px;border:1px solid #C8CFD8;background:#FFFFFF;color:#14181F}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="List.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">단지 찾기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="Market.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+<label for="region" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="region" class="sel" style="font-weight: 600;"><option>인천</option><option>+ 새 지역 추가</option></select>
+<span class="num" style="font-size: 13px; color: #5B6472;">기준일 2026-10-14 (7번째 수정본)</span>
+<a href="#" style="font-size: 13px; color: #5B6472;">시나리오</a>
+<a href="#" style="font-size: 13px; color: #5B6472;">데이터·운영</a>
+<a href="#" style="font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">용어 사전</a>
+</div>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
+
+<nav aria-label="현재 위치" style="font-size: 14px; color: #5B6472;"><a href="Main.dc.html">홈</a> <span aria-hidden="true">›</span> 인천 <span aria-hidden="true">›</span> 생활권 나누기</nav>
+
+<section aria-labelledby="hero" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;">
+<div style="display: flex; flex-direction: column; gap: 10px; flex: 1 1 640px;">
+<h1 id="hero" style="margin: 0; font-size: 34px; line-height: 1.25; font-weight: 700; letter-spacing: -0.5px;">인천을 어떤 동네 묶음으로 볼까요?</h1>
+<p style="margin: 0; font-size: 17px; color: #14181F; line-height: 1.6; background: #F2F6FF; border: 1px solid #D6E0FB; border-radius: 12px; padding: 12px 16px;"><b>생활권</b>은 출퇴근·학교·장보기처럼 생활이 이어지는 동네 묶음이에요. 시세·입주 물량·근처 단지 비교를 이 묶음 단위로 계산해요.</p>
+<p style="margin: 0; font-size: 15px; color: #3A4250;">동(법정동)을 옮겨 묶음을 나누거나 합쳐요. 모든 동은 꼭 한 생활권에만 들어가야 해요.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: #5B6472;">
+<span class="num">생활권 <b style="color: #14181F;">11곳</b> · 법정동 <b style="color: #14181F;">278개</b></span>
+<a href="#range">지역 범위 넓히기 · 줄이기 ↓</a>
+</div>
+</section>
+
+<div class="card" style="padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; box-shadow: 0 6px 18px rgba(20, 24, 31, 0.06);">
+<span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; border-radius: 14px; background: #2350D8; color: #FFFFFF; font-weight: 700; font-size: 14px;" class="num">2</span>
+<span style="font-size: 15px; font-weight: 600;">개 동을 골랐어요</span>
+<label for="moveTo" class="lbl" style="margin-left: 8px;">옮길 생활권</label>
+<select id="moveTo" class="sel"><option>제물포구</option><option>영종구</option><option>미추홀구</option><option>연수구</option><option>남동구</option><option>부평구</option><option>계양구</option><option>서해구</option><option>검단구</option><option>강화군</option><option>옹진군</option><option selected>새 생활권 1</option></select>
+<button type="button" class="btn">이리로 옮기기</button>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #5B6472;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01"></path></svg>동을 끌어다 다른 카드에 놓아도 돼요</span>
+<button type="button" class="btn2" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>생활권 추가</button>
+</div>
+
+<section aria-label="생활권 카드" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start;">
+
+<section aria-label="제물포구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n1" class="sr">생활권 이름</label><input id="n1" class="inp" value="제물포구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">51,419</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>51개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="만석동 고르기">만석동<span class="code">2812510100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="화수동 고르기">화수동<span class="code">2812510200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="송현동 고르기">송현동<span class="code">2812510300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="화평동 고르기">화평동<span class="code">2812510400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="창영동 고르기">창영동<span class="code">2812510500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 46개 더 보기</button>
+</section>
+
+<section aria-label="영종구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n2" class="sr">생활권 이름</label><input id="n2" class="inp" value="영종구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">67,950</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>8개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="중산동 고르기">중산동<span class="code">2815510100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="운남동 고르기">운남동<span class="code">2815510200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="운서동 고르기">운서동<span class="code">2815510300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="운북동 고르기">운북동<span class="code">2815510400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="을왕동 고르기">을왕동<span class="code">2815510500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 3개 더 보기</button>
+</section>
+
+<section aria-label="미추홀구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n3" class="sr">생활권 이름</label><input id="n3" class="inp" value="미추홀구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">208,247</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>7개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="숭의동 고르기">숭의동<span class="code">2817710100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="용현동 고르기">용현동<span class="code">2817710200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="학익동 고르기">학익동<span class="code">2817710300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="도화동 고르기">도화동<span class="code">2817710400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="주안동 고르기">주안동<span class="code">2817710500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 2개 더 보기</button>
+</section>
+
+<section aria-label="연수구" class="card area" style="border: 2px solid #2350D8;">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n4" class="sr">생활권 이름</label><input id="n4" class="inp" value="연수구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">169,636</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>6개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="옥련동 고르기">옥련동<span class="code">2818510100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="선학동 고르기">선학동<span class="code">2818510200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="연수동 고르기">연수동<span class="code">2818510300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="청학동 고르기">청학동<span class="code">2818510400</span></label></li>
+<li draggable="true"><label class="dg" style="background: #E8EEFF; font-weight: 600;"><input type="checkbox" checked aria-label="동춘동 고르기">동춘동<span class="code">2818510500</span></label></li>
+<li draggable="true"><label class="dg" style="background: #E8EEFF; font-weight: 600;"><input type="checkbox" checked aria-label="송도동 고르기">송도동<span class="code">2818510600</span></label></li>
+</ul>
+</section>
+
+<section aria-label="남동구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n5" class="sr">생활권 이름</label><input id="n5" class="inp" value="남동구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">227,765</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>11개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="구월동 고르기">구월동<span class="code">2820010100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="간석동 고르기">간석동<span class="code">2820010200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="만수동 고르기">만수동<span class="code">2820010300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="장수동 고르기">장수동<span class="code">2820010400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="서창동 고르기">서창동<span class="code">2820010500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 6개 더 보기</button>
+</section>
+
+<section aria-label="부평구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n6" class="sr">생활권 이름</label><input id="n6" class="inp" value="부평구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">226,872</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>9개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="부평동 고르기">부평동<span class="code">2823710100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="십정동 고르기">십정동<span class="code">2823710200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="산곡동 고르기">산곡동<span class="code">2823710300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="청천동 고르기">청천동<span class="code">2823710400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="삼산동 고르기">삼산동<span class="code">2823710500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 4개 더 보기</button>
+</section>
+
+<section aria-label="계양구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n7" class="sr">생활권 이름</label><input id="n7" class="inp" value="계양구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">129,449</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>23개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="효성동 고르기">효성동<span class="code">2824510100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="계산동 고르기">계산동<span class="code">2824510200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="작전동 고르기">작전동<span class="code">2824510300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="서운동 고르기">서운동<span class="code">2824510400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="임학동 고르기">임학동<span class="code">2824510500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 18개 더 보기</button>
+</section>
+
+<section aria-label="서해구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n8" class="sr">생활권 이름</label><input id="n8" class="inp" value="서해구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">176,353</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>11개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="검암동 고르기">검암동<span class="code">2827510100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="경서동 고르기">경서동<span class="code">2827510200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="공촌동 고르기">공촌동<span class="code">2827510300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="연희동 고르기">연희동<span class="code">2827510400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="심곡동 고르기">심곡동<span class="code">2827510500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 6개 더 보기</button>
+</section>
+
+<section aria-label="검단구" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n9" class="sr">생활권 이름</label><input id="n9" class="inp" value="검단구" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">113,858</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>10개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="백석동 고르기">백석동<span class="code">2829010100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="시천동 고르기">시천동<span class="code">2829010200</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="마전동 고르기">마전동<span class="code">2829010300</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="당하동 고르기">당하동<span class="code">2829010400</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="원당동 고르기">원당동<span class="code">2829010500</span></label></li>
+</ul>
+<button type="button" class="more">나머지 5개 더 보기</button>
+</section>
+
+<section aria-label="강화군" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n10" class="sr">생활권 이름</label><input id="n10" class="inp" value="강화군" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">36,159</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>109개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="강화읍 고르기">강화읍<span class="code">2871025000</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="강화읍 신문리 고르기">강화읍 신문리<span class="code">2871025021</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="강화읍 관청리 고르기">강화읍 관청리<span class="code">2871025022</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="강화읍 국화리 고르기">강화읍 국화리<span class="code">2871025023</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="강화읍 남산리 고르기">강화읍 남산리<span class="code">2871025024</span></label></li>
+</ul>
+<button type="button" class="more">나머지 104개 더 보기</button>
+</section>
+
+<section aria-label="옹진군" class="card area">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n11" class="sr">생활권 이름</label><input id="n11" class="inp" value="옹진군" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2" disabled title="법정동이 남아 있으면 지울 수 없어요">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd><span class="u">11,439</span> <span class="est">추정</span></dd><dt>법정동</dt><dd>33개</dd></dl>
+<ul class="dl">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="북도면 고르기">북도면<span class="code">2872031000</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="북도면 시도리 고르기">북도면 시도리<span class="code">2872031021</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="북도면 신도리 고르기">북도면 신도리<span class="code">2872031022</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="북도면 모도리 고르기">북도면 모도리<span class="code">2872031023</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="북도면 장봉리 고르기">북도면 장봉리<span class="code">2872031024</span></label></li>
+</ul>
+<button type="button" class="more">나머지 28개 더 보기</button>
+</section>
+
+<section aria-label="새 생활권 1" class="card area" style="border: 2px dashed #7C98EA; background: #FAFBFF;">
+<div style="display: flex; gap: 8px; align-items: center;"><label for="n12" class="sr">생활권 이름</label><input id="n12" class="inp" value="새 생활권 1" style="font-weight: 700; font-size: 16px;"><button type="button" class="btn2">지우기</button></div>
+<dl class="meta num"><dt>세대수</dt><dd style="font-weight: 400; color: #5B6472;">없음</dd><dt>법정동</dt><dd>0개</dd></dl>
+<div style="border: 2px dashed #C8CFD8; border-radius: 12px; padding: 22px 14px; text-align: center; font-size: 14px; color: #5B6472; line-height: 1.6;">동을 여기로 끌어다 놓거나,<br>체크한 뒤 위에서 '이리로 옮기기'를 누르세요</div>
+</section>
+
+</section>
+
+<div class="card" style="padding: 16px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; box-shadow: 0 -6px 18px rgba(20, 24, 31, 0.06);">
+<button type="button" class="btn">생활권 저장</button>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #A3470A; background: #FFF1E6; padding: 6px 10px; border-radius: 8px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #C2560C;"></span>저장하지 않은 변경이 있어요</span>
+<span style="font-size: 13px; color: #5B6472;">저장하면 새 수정본에서 점수를 다시 매겨요. 끝날 때까지 지금 화면 그대로예요.</span>
+<span style="margin-left: auto; font-size: 12px; color: #7A8391;">이 줄은 스크롤해도 화면 아래에 붙어 있어요</span>
+</div>
+
+<section id="range" aria-labelledby="exph" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="exph" style="margin: 0; font-size: 22px; font-weight: 700;">지역 범위를 넓히거나 줄일까요? <button type="button" class="q" aria-label="지역 범위 확장 설명">?</button></h2>
+<p style="margin: 0; font-size: 14px; color: #5B6472; line-height: 1.6;">지금 고른 곳에 시도·시군구·동을 더하거나 빼요. 저장하면 같은 기준일의 새 수정본에서 모든 후보 단지의 순위를 다시 매기고, 보고서에 '지역 추가' 장(이전 수정본과 비교)이 생겨요. (공식 이름: 지역 범위 확장)</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+<div style="display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p class="lbl" style="margin: 0;">지금 고른 곳</p>
+<ul aria-label="지금 고른 곳" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px;">
+<li class="chipx">인천광역시 <span style="font-size: 12px; font-weight: 500; color: #5B6472;">시도</span><button type="button" class="btn2" disabled aria-label="인천광역시 빼기" title="마지막 하나는 뺄 수 없어요" style="min-height: 32px; padding: 2px 8px;">×</button></li>
+<li class="chipx" style="border-color: #2350D8; background: #E8EEFF; color: #1A3FB0;">경기도 김포시 <span style="font-size: 12px; font-weight: 500;">시군구 · 새로 추가</span><button type="button" class="btn2" aria-label="경기도 김포시 빼기" style="min-height: 32px; padding: 2px 8px;">×</button></li>
+</ul>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="rname" class="lbl">지역 이름</label>
+<input id="rname" class="inp" maxlength="100" value="인천">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<label for="rq" class="lbl">더할 곳 찾기</label>
+<input id="rq" class="inp" type="search" autocomplete="off" value="김포" placeholder="2글자 이상">
+<ul aria-label="더할 후보" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;">
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #E3E7EC; border-radius: 10px;"><span style="font-size: 14px; font-weight: 600; flex: 1 1 160px;">경기도 김포시</span><span style="font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #EEF1F4;">시군구</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 72개</span><button type="button" class="btn2" disabled>이미 있음</button></li>
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #E3E7EC; border-radius: 10px;"><span style="font-size: 14px; font-weight: 600; flex: 1 1 160px;">경기도 김포시</span><span style="font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #EEF1F4;">행정동</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 0개</span><button type="button" class="btn2">추가</button></li>
+<li style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #E3E7EC; border-radius: 10px;"><span style="font-size: 14px; font-weight: 600; flex: 1 1 160px;">경기도 김포시 김포본동</span><span style="font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #EEF1F4;">행정동</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 3개</span><button type="button" class="btn2">추가</button></li>
+</ul>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-top: 1px solid #EEF1F4; padding-top: 16px;">
+<span class="num" style="font-size: 14px; color: #3A4250; background: #F6F8FA; border-radius: 8px; padding: 8px 12px;">추가 <b>1</b> · 빼기 <b>0</b> — 아직 저장 안 함</span>
+<button type="button" class="btn">범위 저장하고 새 수정본에서 다시 판정</button>
+</div>
+</section>
+
+<footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
+<span>세대수는 주민등록 세대(2026-09-01)로 만든 <span class="est">추정</span> 값이에요. 밑줄 점선 숫자를 누르면 출처가 열려요.</span>
+<span>상대 비교 · 투자 권유 아님</span>
+</footer>
+
+<section aria-labelledby="exp" style="display: flex; flex-direction: column; gap: 20px; border-top: 3px dashed #C8CFD8; padding-top: 28px; margin-top: 12px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="exp" style="margin: 0; font-size: 24px; font-weight: 700; color: #3A4250;">펼친 모습 · 다른 상태</h2>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">저장 전에 막히는 경우, 저장한 뒤, 범위를 저장한 뒤 이렇게 보여요. 대괄호 [ ]는 실제 값이 아직 없는 자리예요.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">어느 생활권에도 없는 동이 있을 때</h3>
+<section aria-label="어느 생활권에도 없는 법정동 [n]개" style="border: 2px solid #D92D20; background: #FEF3F2; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 15px; font-weight: 700; color: #B42318;">어느 생활권에도 없는 동 [n]개 · 카드로 옮겨 주세요</p>
+<ul class="dl" style="flex-direction: row; flex-wrap: wrap; gap: 6px;">
+<li draggable="true"><label class="dg" style="background: #FFFFFF; border: 1px solid #F5C2BC;"><input type="checkbox">[동 이름]<span class="code" style="margin-left: 6px;">[동 코드]</span></label></li>
+<li draggable="true"><label class="dg" style="background: #FFFFFF; border: 1px solid #F5C2BC;"><input type="checkbox">[동 이름]<span class="code" style="margin-left: 6px;">[동 코드]</span></label></li>
+</ul>
+</section>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">이 블록은 첫 카드 위에 나와요. 남아 있는 동이 있으면 저장 버튼이 꺼져요.</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+<h3 style="margin: 0; font-size: 17px;">저장 전에 막힐 때 · 저장 오류</h3>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;"><button type="button" class="btn" disabled>생활권 저장</button><span style="font-size: 13px; color: #5B6472;">고칠 것이 있으면 꺼져요</span></div>
+<p role="alert" class="err">두 생활권 이상에 들어 있는 동 [n]개</p>
+<p role="alert" class="err">이름이 빈 생활권이 있어요</p>
+<div role="alert" class="err" style="display: flex; flex-direction: column; gap: 4px;"><span>저장하지 못했어요: [서버 오류 내용]</span><ul style="margin: 0; padding-left: 18px; font-size: 13px;"><li>[칸 위치]: [칸 오류 내용]</li></ul></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">읽기 전용 토큰이면 저장 버튼이 꺼지고 '읽기 전용 토큰으로는 저장·실행할 수 없어요'가 보여요. '이리로 옮기기'는 고른 동이 없으면 꺼져요.</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">카드 · 지우기 버튼</h3>
+<div style="display: flex; gap: 8px; align-items: center;"><span style="flex: 1 1 auto; font-weight: 700;">[동이 남은 생활권]</span><button type="button" class="btn2" disabled>지우기</button></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472; background: #F6F8FA; border-radius: 8px; padding: 8px 10px;">마우스를 올리면: 법정동이 남아 있으면 지울 수 없어요</p>
+<div style="display: flex; gap: 8px; align-items: center;"><span style="flex: 1 1 auto; font-weight: 700;">[빈 생활권]</span><button type="button" class="btn2">지우기</button></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">세대수를 모르는 새 생활권은 '없음'으로 보여요. 생활권을 추가하면 '새 생활권 2', '새 생활권 3' 이름으로 생겨요.</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+<h3 style="margin: 0; font-size: 17px;">생활권을 저장한 뒤</h3>
+<span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; background: #14181F; color: #FFFFFF; font-size: 14px; padding: 12px 16px; border-radius: 12px;">생활권을 저장했어요 — 다시 판정하는 작업을 등록했어요</span>
+<div role="status" style="background: #F6F8FA; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px;"><b>작업 진행</b><span style="color: #5B6472;">[작업 이름]</span><span>실행 중</span><span class="num" style="color: #5B6472;">[n]/[m] · 단계 [단계 이름]</span></div>
+<div style="height: 8px; background: #E3E7EC; border-radius: 4px;" aria-hidden="true"><div style="width: 45%; height: 100%; background: #2350D8; border-radius: 4px;"></div></div>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">새 수정본이 발행될 때까지 화면은 지금 수정본을 보여요 · 끝나면 '새 수정본이 발행됐어요'</p>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">발행이 막히거나 실패하면 이유가 이 칸에 나와요 (지역 시장 보드 '작업 진행 · 상태 모음'과 같아요).</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+<h3 style="margin: 0; font-size: 17px;">범위 찾기 · 다른 상태</h3>
+<p style="margin: 0; font-size: 14px; color: #3A4250; background: #F6F8FA; border-radius: 10px; padding: 12px;">일치하는 후보가 없어요</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><span class="chipx">인천광역시 <span style="font-size: 12px; font-weight: 500; color: #5B6472;">시도</span><button type="button" class="btn2" disabled style="min-height: 32px; padding: 2px 8px;" aria-label="인천광역시 빼기">×</button></span><span style="font-size: 13px; color: #5B6472;">하나만 남으면 뺄 수 없어요</span></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">읽기 전용이면 이름 칸·추가·빼기·저장 버튼이 꺼져요. 바뀐 것이 없으면 저장 버튼이 꺼져요.</p>
+<p role="alert" class="err">불러오지 못했어요: [서버 오류 내용]</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">범위를 저장한 뒤</h3>
+<span style="align-self: flex-start; background: #14181F; color: #FFFFFF; font-size: 14px; padding: 12px 16px; border-radius: 12px;">지역 범위를 저장했어요 — 새 수정본에서 다시 판정하는 작업을 등록했어요</span>
+<p class="num" style="margin: 0; font-size: 15px;"><b>저장됨 — 추가 [n] · 빼기 [n]</b> <span style="color: #5B6472;">추가: [추가한 곳 이름] · 빼기: [뺀 곳 이름]</span></p>
+<p style="margin: 0; font-size: 13px; color: #3A4250;"><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #FFF1E6; color: #A3470A;">중요</span> [바뀐 내용]</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">새 수정본에서 모든 후보의 판정기 순위를 한 번 다시 매기고, 보고서에 '지역 추가' 장을 만들어요</p>
+<div style="height: 8px; background: #E3E7EC; border-radius: 4px;" aria-hidden="true"><div style="width: 20%; height: 100%; background: #2350D8; border-radius: 4px;"></div></div>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">작업이 끝나면 기준일 목록과 화면 숫자를 새로 불러와요</p>
+</div>
+
+<div class="card" style="grid-column: 1 / -1; padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+<h3 style="margin: 0; font-size: 17px;">이름만 바꿨을 때</h3>
+<span style="align-self: flex-start; background: #14181F; color: #FFFFFF; font-size: 14px; padding: 12px 16px; border-radius: 12px;">지역 이름만 바꿨어요 — 다시 판정하지 않아요</span>
+<p style="margin: 0; font-size: 14px; color: #3A4250;">발행된 수정본이 있으면: 고른 곳이 그대로라 다시 판정은 없어요 — 이름이 보고서 표지·제목에 들어가 발행 작업을 등록했어요 (+ 진행 막대)</p>
+<p style="margin: 0; font-size: 14px; color: #3A4250;">발행된 수정본이 없으면: 고른 곳이 그대로라 다시 판정도, 발행 작업도 없어요 (이름만 바뀜)</p>
+</div>
+
+<div class="card" style="grid-column: 1 / -1; padding: 22px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 14px; color: #3A4250;">
+<h3 style="margin: 0; font-size: 17px; flex: 1 1 200px;">화면 전체</h3>
+<span style="border: 1px dashed #C8CFD8; border-radius: 10px; padding: 10px 12px;">불러오는 중…</span>
+<span style="border: 1px dashed #C8CFD8; border-radius: 10px; padding: 10px 12px;">준비 중 — 잠시 뒤 자동으로 다시 불러와요 <button type="button" class="btn2" style="min-height: 32px; padding: 2px 10px;">다시 시도</button></span>
+<span style="border: 1px dashed #F5C2BC; border-radius: 10px; padding: 10px 12px; color: #B42318;">불러오지 못했어요: [오류 내용]</span>
+</div>
+
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

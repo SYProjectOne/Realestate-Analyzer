@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>단지 찾기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.chip{font-family:inherit;font-size:15px;font-weight:500;padding:9px 16px;border-radius:999px;border:1px solid #D5DAE1;background:#FFFFFF;color:#3A4250;cursor:pointer;min-height:42px}
+.chip[aria-pressed="true"]{background:#14181F;border-color:#14181F;color:#FFFFFF}
+.sel{font-family:inherit;font-size:15px;padding:9px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:42px}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0; font-weight: 600; font-size: 15px;">단지 찾기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+</nav>
+<a href="#" style="font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">용어 사전</a>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.4px;">인천 분양 단지 100곳</h1>
+<p style="margin: 0; font-size: 15px; color: #5B6472;">접수할 수 있는 단지가 먼저 나와요. 카드를 누르면 돈·일정·조건을 볼 수 있어요.</p>
+</div>
+
+<div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+<label for="q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">단지 이름 검색</label>
+<div style="flex: 1 1 280px; display: flex; align-items: center; gap: 8px; border: 1px solid #D5DAE1; border-radius: 10px; padding: 0 12px; min-height: 42px;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input id="q" type="search" placeholder="단지 이름으로 찾기" style="border: none; outline: none; font-family: inherit; font-size: 15px; flex: 1 1 auto; min-width: 0; background: transparent;">
+</div>
+<label for="gu" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">구</label>
+<select id="gu" class="sel"><option>구 전체</option><option>미추홀구</option><option>연수구</option><option>남동구</option><option>검단구</option></select>
+<label for="pr" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">가격대</label>
+<select id="pr" class="sel"><option>가격 전체</option><option>5억 이하</option><option>5억 ~ 7억</option><option>7억 이상</option></select>
+<label for="so" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">정렬</label>
+<select id="so" class="sel"><option>접수 가능 먼저</option><option>점수 높은 순</option><option>되팔기 가까운 순</option><option>가격 낮은 순</option></select>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="4">
+<button type="button" class="chip" aria-pressed="{{c.pressed}}" onClick="{{c.pick}}">{{c.label}}</button>
+</sc-for>
+<span style="flex: 1 1 auto;"></span>
+<span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14</span>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px;">
+<sc-for list="{{cards}}" as="k" hint-placeholder-count="8">
+<a href="Detail.dc.html" class="card" style="display: flex; flex-direction: column; color: #14181F; overflow: hidden; text-decoration: none;">
+<div style="padding: 20px 20px 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span style="{{k.pillStyle}}">{{k.status}}</span>
+<span style="font-size: 12px; color: #5B6472;">{{k.statusNote}}</span>
+</div>
+<div>
+<p style="margin: 0 0 3px; font-size: 13px; color: #5B6472;">{{k.gu}}</p>
+<h2 style="margin: 0; font-size: 19px; font-weight: 700; line-height: 1.35;">{{k.name}}</h2>
+</div>
+<p class="num" style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.2px;">{{k.price}}<span style="font-size: 15px; font-weight: 600;">원</span></p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #EEF1F4; background: #FAFBFC; font-size: 12px;">
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; border-right: 1px solid #EEF1F4;">
+<span style="color: #5B6472;">계약금 <span class="est">추정</span></span>
+<span class="num" style="font-size: 15px; font-weight: 700;">{{k.down}}</span>
+</div>
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; border-right: 1px solid #EEF1F4;">
+<span style="color: #5B6472;">되팔기 가능</span>
+<span class="num" style="font-size: 15px; font-weight: 700;">{{k.resale}}</span>
+</div>
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 3px;">
+<span style="color: #5B6472;">작년 경쟁률</span>
+<span class="num" style="font-size: 15px; font-weight: 700;">{{k.comp}}</span>
+</div>
+</div>
+</a>
+</sc-for>
+</div>
+
+<div style="display: flex; justify-content: center;">
+<button type="button" style="font-family: inherit; font-size: 15px; font-weight: 600; padding: 12px 22px; border-radius: 12px; border: 1px solid #D5DAE1; background: #FFFFFF; color: #14181F; cursor: pointer; min-height: 44px;">92곳 더 보기</button>
+</div>
+
+<p style="margin: 0; font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 16px;">'접수 상태 확인 못 함'은 공식 홈페이지가 열리지 않거나 공고를 아직 못 읽은 단지예요. 단지를 누르면 이유를 볼 수 있어요. 이 화면은 개인의 청약 자격을 판정하지 않아요.</p>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1480}}'>
+class Component extends DCLogic {
+renderVals() {
+var picked = (this.state && this.state.chip) || 'all';
+var self = this;
+var chipDefs = [
+{ id: 'open', label: '지금 접수 가능 3' },
+{ id: 'all', label: '전체 100' },
+{ id: 'soon', label: '되팔기 제한 곧 끝남' },
+{ id: 'noresidency', label: '실거주 의무 없음' }
+];
+var chips = chipDefs.map(function (c) {
+return { label: c.label, pressed: c.id === picked ? 'true' : 'false', pick: function () { self.setState({ chip: c.id }); } };
+});
+var base = 'display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;';
+var open = base + 'background:#2350D8;color:#FFFFFF;';
+var unk = base + 'background:#FFFFFF;color:#3A4250;border:1px solid #C8CFD8;';
+var none = base + 'background:#EEF1F4;color:#5B6472;';
+var all = [
+{ open: true, status: '접수 가능', pillStyle: open, statusNote: '무순위 · 선착순', gu: '미추홀구 · 1,349세대', name: '시티오씨엘 8단지', price: '5억 9,850만 ~ 6억 5,090만', down: '3,124만', resale: 'D-56', comp: '6.22 : 1' },
+{ open: true, status: '접수 가능', pillStyle: open, statusNote: '공급 종류는 상세에서', gu: '남동구 · 496세대', name: '힐스테이트 구월아트파크', price: '7억 6,700만 ~ 9억 800만', down: '4,188만', resale: 'D-226', comp: '미달' },
+{ open: true, status: '접수 가능', pillStyle: open, statusNote: '공급 종류는 상세에서', gu: '검단구 · 669세대', name: '엘리프 검단 포레듀 (AA32블록)', price: '5억 7,814만 ~ 6억 814만', down: '2,966만', resale: 'D-697', comp: '미달' },
+{ open: false, status: '접수 일정 미정', pillStyle: unk, statusNote: '이유는 상세에서', gu: '서해구 · 601세대', name: '검암역자이르네', price: '5억 7,760만 ~ 5억 9,410만', down: '5,859만', resale: '2029.06', comp: '2.48 : 1' },
+{ open: false, status: '접수 일정 미정', pillStyle: unk, statusNote: '이유는 상세에서', gu: '영종구 · 516세대', name: '영종국제도시 신일 비아프 크레스트 2단지', price: '4억 9,370만 ~ 5억 3,090만', down: '5,123만', resale: '확인 못 함', comp: '미달' },
+{ open: false, status: '접수 상태 확인 못 함', pillStyle: none, statusNote: '이유는 상세에서', gu: '미추홀구 · 959세대', name: '인하대역 수자인 로이센트', price: '6억 9,250만 ~ 7억 630만', down: '3,497만', resale: 'D-29', comp: '3.18 : 1' },
+{ open: false, status: '접수 상태 확인 못 함', pillStyle: none, statusNote: '이유는 상세에서', gu: '남동구 · 735세대', name: '포레나더샵 인천시청역', price: '5억 8,073만 ~ 6억 6,880만', down: '3,124만', resale: '2027.02', comp: '2.96 : 1' },
+{ open: false, status: '접수 상태 확인 못 함', pillStyle: none, statusNote: '이유는 상세에서', gu: '검단구 · 1,403세대', name: '더샵 검단레이크파크 (AB23BL)', price: '5억 8,917만 ~ 6억 5,947만', down: '6,243만', resale: '2029.07', comp: '9.13 : 1' }
+];
+var cards = picked === 'open' ? all.filter(function (k) { return k.open; }) : all;
+return { chips: chips, cards: cards };
+}
+}
+</script>
+</body>
+</html>

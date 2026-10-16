@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>새 지역 추가</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.q{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid #C8CFD8;background:#FFFFFF;color:#5B6472;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle}
+.q:hover{border-color:#2350D8;color:#2350D8}
+.sel{font-family:inherit;font-size:15px;padding:9px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:44px}
+.inp{font-family:inherit;font-size:16px;padding:11px 14px;border:1px solid #D5DAE1;border-radius:12px;background:#FFFFFF;color:#14181F;min-height:48px;box-sizing:border-box;width:100%}
+.btn{font-family:inherit;font-size:16px;font-weight:600;padding:13px 22px;border-radius:12px;border:none;background:#2350D8;color:#FFFFFF;cursor:pointer;min-height:48px}
+.btn[disabled]{background:#C8CFD8;cursor:not-allowed}
+.btn2{font-family:inherit;font-size:14px;font-weight:500;padding:9px 14px;border-radius:10px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px}
+.lbl{font-size:14px;font-weight:600;color:#3A4250}
+.kind{font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;background:#EEF1F4;color:#3A4250;white-space:nowrap}
+.m1{font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;background:#E8EEFF;color:#1A3FB0;white-space:nowrap}
+.m2{font-size:12px;font-weight:500;padding:3px 8px;border-radius:6px;background:#FFFFFF;border:1px solid #C8CFD8;color:#5B6472;white-space:nowrap}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 14px;border-radius:12px;cursor:pointer;min-height:44px;box-sizing:border-box}
+.err{margin:0;font-size:14px;color:#B42318;background:#FEF3F2;border:1px solid #F5C2BC;border-radius:10px;padding:10px 12px}
+.stepn{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:0 0 auto}
+.chipx{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-size:15px;font-weight:600;padding:8px 8px 8px 14px;border-radius:999px;border:1px solid #2350D8;background:#E8EEFF;color:#1A3FB0;cursor:pointer;min-height:44px}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="List.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">단지 찾기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="Market.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+<label for="region" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="region" class="sel" style="font-weight: 600;"><option>+ 새 지역 추가</option><option>인천</option></select>
+<a href="#" style="font-size: 13px; color: #5B6472;">시나리오</a>
+<a href="#" style="font-size: 13px; color: #5B6472;">데이터·운영</a>
+<a href="#" style="font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">용어 사전</a>
+</div>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; display: flex; flex-direction: column; gap: 24px;">
+
+<nav aria-label="현재 위치" style="font-size: 14px; color: #5B6472;"><a href="Main.dc.html">홈</a> <span aria-hidden="true">›</span> 새 지역 추가</nav>
+
+<section aria-labelledby="hero" style="display: flex; flex-direction: column; gap: 10px;">
+<h1 id="hero" style="margin: 0; font-size: 34px; line-height: 1.25; font-weight: 700; letter-spacing: -0.5px;">어느 지역을 분석할까요?</h1>
+<p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.6; max-width: 820px;">동·구·시 이름을 넣고 나오는 후보에서 고르세요. 여러 곳을 골라 하나의 지역으로 묶을 수 있어요. 분석을 시작하면 그 지역의 분양 단지를 모으고 점수를 매겨요.</p>
+</section>
+
+<ol aria-label="진행 순서" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
+<li style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 2px solid #2350D8; border-radius: 14px; padding: 14px 16px;"><span class="stepn" style="background: #2350D8; color: #FFFFFF;">1</span><span style="display: flex; flex-direction: column;"><b style="font-size: 15px;">지역 찾기</b><span style="font-size: 12px; color: #5B6472;">이름으로 검색</span></span></li>
+<li style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 2px solid #2350D8; border-radius: 14px; padding: 14px 16px;"><span class="stepn" style="background: #2350D8; color: #FFFFFF;">2</span><span style="display: flex; flex-direction: column;"><b style="font-size: 15px;">고른 지역 확인 · 이름</b><span style="font-size: 12px; color: #5B6472;">1곳 골랐어요</span></span></li>
+<li style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 14px; padding: 14px 16px;"><span class="stepn" style="background: #E8EEFF; color: #1A3FB0;">3</span><span style="display: flex; flex-direction: column;"><b style="font-size: 15px;">분석 시작</b><span style="font-size: 12px; color: #5B6472;">버튼 한 번</span></span></li>
+<li style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 14px; padding: 14px 16px;"><span class="stepn" style="background: #EEF1F4; color: #5B6472;">4</span><span style="display: flex; flex-direction: column;"><b style="font-size: 15px; color: #3A4250;">진행 상황 보기</b><span style="font-size: 12px; color: #5B6472;">첫 수집은 시간이 걸려요</span></span></li>
+</ol>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+
+<section aria-labelledby="s1" class="card" style="flex: 1 1 560px; min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 16px;">
+<h2 id="s1" style="margin: 0; font-size: 21px; font-weight: 700; display: flex; align-items: center; gap: 10px;"><span class="stepn" style="background: #2350D8; color: #FFFFFF;">1</span>지역 찾기</h2>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="q" class="lbl">지역 이름 (동·구·시)</label>
+<div style="display: flex; align-items: center; gap: 10px; border: 2px solid #2350D8; border-radius: 12px; padding: 0 14px; min-height: 52px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input id="q" type="search" autocomplete="off" value="송도" placeholder="2글자 이상" style="border: none; outline: none; font-family: inherit; font-size: 17px; flex: 1 1 auto; min-width: 0; background: transparent;">
+</div>
+<span style="font-size: 13px; color: #5B6472;">2글자 이상 넣으면 후보를 보여 줘요 · 후보 9개</span>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+<p style="margin: 0; font-size: 15px; font-weight: 600;">후보에서 고르세요 <span style="font-weight: 400; color: #5B6472; font-size: 13px;">여러 개 골라도 돼요</span></p>
+<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #5B6472;">'법정동'과 '행정동'은 무엇이 다른가요? <button type="button" class="q" aria-label="법정동과 행정동 설명">?</button></span>
+</div>
+<ul aria-label="후보" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">경상북도 포항시 남구 송도동</span><span class="kind">행정동</span><span class="m1">이름이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">경상북도 포항시 남구 송도동</span><span class="kind">법정동</span><span class="m1">이름이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #F2F6FF; border: 2px solid #2350D8;"><input type="checkbox" checked style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 700; flex: 1 1 220px;">인천광역시 연수구 송도동</span><span class="kind">법정동</span><span class="m1">이름이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">인천광역시 연수구 송도1동</span><span class="kind">행정동</span><span class="m2">앞부분이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">인천광역시 연수구 송도2동</span><span class="kind">행정동</span><span class="m2">앞부분이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">인천광역시 연수구 송도3동</span><span class="kind">행정동</span><span class="m2">앞부분이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">인천광역시 연수구 송도4동</span><span class="kind">행정동</span><span class="m2">앞부분이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">인천광역시 연수구 송도5동</span><span class="kind">행정동</span><span class="m2">앞부분이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+<li><label class="row" style="background: #FFFFFF; border: 1px solid #E3E7EC;"><input type="checkbox" style="width: 20px; height: 20px;"><span style="font-size: 15px; font-weight: 600; flex: 1 1 220px;">강원특별자치도 고성군 현내면 송도진리</span><span class="kind">법정동</span><span class="m2">앞부분이 같아요</span><span class="num" style="font-size: 12px; color: #5B6472;">법정동 1개</span></label></li>
+</ul>
+<p style="margin: 0; font-size: 13px; color: #5B6472; background: #F6F8FA; border-radius: 10px; padding: 10px 12px; line-height: 1.6;">종류: 시도 · 시군구 · 행정동 · 법정동. 일치 정도: 이름이 같아요(정확 일치) · 앞부분이 같아요(앞부분 일치) · 일부가 같아요(부분 일치). '법정동 n개'는 그 후보에 들어 있는 동 수예요.</p>
+</section>
+
+<section aria-labelledby="s2" class="card" style="flex: 1 1 440px; min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<h2 id="s2" style="margin: 0; font-size: 21px; font-weight: 700; display: flex; align-items: center; gap: 10px;"><span class="stepn" style="background: #2350D8; color: #FFFFFF;">2</span>고른 지역 확인 · 이름</h2>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<p class="lbl" style="margin: 0;">고른 곳 <span class="num" style="font-weight: 400; color: #5B6472;">1곳</span></p>
+<ul aria-label="고른 곳" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px;">
+<li><button type="button" class="chipx" aria-label="인천광역시 연수구 송도동 빼기">인천광역시 연수구 송도동 <span style="width: 26px; height: 26px; border-radius: 50%; background: #FFFFFF; display: inline-flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A3FB0" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></span></button></li>
+</ul>
+<span style="font-size: 12px; color: #5B6472;">칩을 누르면 빠져요</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="nm" class="lbl">지역 이름 (화면에 보일 이름)</label>
+<input id="nm" class="inp" value="송도" placeholder="화면에 보일 이름">
+<span style="font-size: 12px; color: #5B6472;">홈 화면 위쪽 지역 고르기에 이 이름으로 나와요</span>
+</div>
+<details style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 0 14px;">
+<summary style="cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px 0; min-height: 20px;">청약홈에서 찾을 기간 (고급 · 선택)</summary>
+<p style="margin: 0 0 12px; font-size: 13px; color: #5B6472;">비워 두면 지난 24개월 + 앞으로 12개월을 찾아요.</p>
+</details>
+<div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #EEF1F4; padding-top: 18px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px;"><span class="stepn" style="background: #E8EEFF; color: #1A3FB0;">3</span>분석 시작</h3>
+<button type="button" class="btn" style="width: 100%; font-size: 17px;">'송도' 분석 시작</button>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">공고·실거래·통계 같은 공개 자료만 모아요. 처음에는 몇 분에서 수십 분 걸릴 수 있어요.</p>
+</div>
+</section>
+
+</div>
+
+<section aria-labelledby="s4" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 16px;">
+<h2 id="s4" style="margin: 0; font-size: 21px; font-weight: 700; display: flex; align-items: center; gap: 10px;"><span class="stepn" style="background: #EEF1F4; color: #5B6472;">4</span>분석 진행 상황 <span style="font-size: 13px; font-weight: 500; color: #5B6472;">(분석 시작을 누른 뒤의 모습)</span></h2>
+<div role="status" aria-live="polite" style="background: #F6F8FA; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+<span style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0;">실행 중</span>
+<b style="font-size: 16px;">'송도' 지역 자료를 모으고 있어요</b>
+<span class="num" style="font-size: 14px; color: #5B6472;">[n] / [m] 단계 · [단계 이름]</span>
+<span style="font-size: 12px; color: #7A8391;">작업: 지역 첫 수집</span>
+</div>
+<div style="height: 10px; background: #E3E7EC; border-radius: 5px;" role="progressbar" aria-label="실행 중" aria-valuemin="0" aria-valuemax="100" aria-valuenow="35"><div style="width: 35%; height: 100%; background: #2350D8; border-radius: 5px;"></div></div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">이 창을 닫아도 분석은 계속돼요. 끝나면 '분석이 끝났어요' 알림이 떠요.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<a href="LivingAreas.dc.html" style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #D5DAE1; color: #14181F; font-weight: 600; font-size: 15px; padding: 11px 16px; border-radius: 12px; background: #FFFFFF;">생활권 나누기 바꾸기 (생활권 편집)</a>
+<span style="display: inline-flex; align-items: center; font-size: 13px; color: #5B6472;">'홈으로' 버튼은 분석이 끝나면 나와요</span>
+</div>
+</section>
+
+<section aria-labelledby="exp" style="display: flex; flex-direction: column; gap: 20px; border-top: 3px dashed #C8CFD8; padding-top: 28px; margin-top: 12px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<h2 id="exp" style="margin: 0; font-size: 24px; font-weight: 700; color: #3A4250;">펼친 모습 · 다른 상태</h2>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">고급 칸을 펼쳤을 때, 검색·시작·진행이 다른 상태일 때 이렇게 보여요. 대괄호 [ ]는 실제 값이 아직 없는 자리예요.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">청약홈에서 찾을 기간 (고급) · 펼친 모습</h3>
+<details open style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 0 14px 14px;">
+<summary style="cursor: pointer; font-size: 15px; font-weight: 600; padding: 13px 0;">청약홈에서 찾을 기간 (고급 · 선택)</summary>
+<p style="margin: 0 0 12px; font-size: 13px; color: #5B6472; line-height: 1.6;">비워 두면 지난 24개월 + 앞으로 12개월을 찾아요. 기간이 길수록 첫 수집이 오래 걸리고 오래된 공고 단지가 더 나와요. 모양 YYYY-MM</p>
+<div style="display: flex; flex-wrap: wrap; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px; width: 150px;"><label for="f1" class="lbl" style="font-size: 13px;">찾기 시작하는 달</label><input id="f1" class="inp num" inputmode="numeric" maxlength="7" placeholder="YYYY-MM" value="2025-13" aria-invalid="true" style="border-color: #D92D20;"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; width: 150px;"><label for="f2" class="lbl" style="font-size: 13px;">찾기 끝나는 달</label><input id="f2" class="inp num" inputmode="numeric" maxlength="7" placeholder="YYYY-MM" value="2027-10"></div>
+</div>
+</details>
+<p role="alert" class="err">YYYY-MM 모양(월은 01~12)으로 넣어 주세요</p>
+<p role="alert" class="err">시작하는 달이 끝나는 달보다 늦어요</p>
+<p role="alert" class="err">찾을 기간을 서버가 받지 않았어요: [서버 메시지]</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">오류가 있으면 이 칸은 저절로 펼쳐지고, 분석 시작 버튼이 꺼져요.</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">지역 찾기 · 다른 상태</h3>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">한 글자만 넣었을 때</span>
+<div style="border: 1px solid #D5DAE1; border-radius: 12px; padding: 12px 14px; font-size: 16px;">송</div>
+<span style="font-size: 13px; color: #5B6472;">2글자 이상 넣으면 후보를 보여 줘요</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">찾는 동안</span>
+<p role="status" style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #3A4250;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2350D8" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg>찾는 중…</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">후보가 없을 때</span>
+<p style="margin: 0; font-size: 14px; color: #3A4250; background: #F6F8FA; border-radius: 10px; padding: 12px;">일치하는 후보가 없어요. 동·구·시 이름을 다르게 넣어 보세요.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">검색이 실패했을 때</span>
+<p role="alert" class="err">불러오지 못했어요: [오류 내용]</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">아직 아무것도 고르지 않았을 때 (2단계 칸)</span>
+<p style="margin: 0; font-size: 14px; color: #5B6472; border: 1px dashed #C8CFD8; border-radius: 10px; padding: 12px;">고른 곳이 없어요. 왼쪽 후보에서 골라 주세요.</p>
+</div>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">분석 시작 버튼이 꺼졌을 때</h3>
+<button type="button" class="btn" disabled style="width: 100%;">분석 시작</button>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">후보를 1개 이상 고르고 이름을 넣어 주세요</p>
+<button type="button" class="btn" disabled style="width: 100%;" title="읽기 전용 토큰으로는 저장·실행할 수 없어요">분석 시작</button>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">읽기 전용 토큰으로는 저장·실행할 수 없어요</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">이 밖에 꺼지는 때: 찾을 기간 칸에 오류가 있을 때 · 시작을 보내는 중일 때 · 이미 시작했을 때</p>
+<p role="alert" class="err">불러오지 못했어요: [시작 요청 오류 내용]</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px;">진행 상황 · 상태별 모습</h3>
+<div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #EEF1F4; color: #3A4250;">대기</span><span style="font-size: 14px;">순서를 기다리고 있어요</span></div>
+<div style="height: 8px; background: #E3E7EC; border-radius: 4px; overflow: hidden;" aria-hidden="true"><div style="width: 30%; height: 100%; background: #C8CFD8;"></div></div>
+</div>
+<div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0;">실행 중</span><span class="num" style="font-size: 14px;">[n]/[m] · 단계 [단계 이름]</span></div>
+<p style="margin: 0; font-size: 13px; color: #A3470A;">수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요 (다시 대기 [n]/[max]회, [시각] 이후) — 아직 실패가 아니에요. 지역 첫 수집 중이라 아직 발행된 수정본은 없어요.</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">상태를 받지 못해 다시 확인하는 중: [오류 내용]</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) · 발행 중 오류로 다시 시도하는 중([n]/[max]회) — 아직 실패가 아니에요</p>
+</div>
+<div style="border: 1px solid #B7DFC4; background: #F3FBF5; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #E7F4EC; color: #1F6B3A;">완료</span><b style="font-size: 15px;">분석이 끝났어요</b></div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<a href="Main.dc.html" style="display: inline-flex; align-items: center; background: #2350D8; color: #FFFFFF; font-weight: 600; font-size: 15px; padding: 11px 16px; border-radius: 12px;">홈으로 (이 지역 보기)</a>
+<a href="LivingAreas.dc.html" style="display: inline-flex; align-items: center; border: 1px solid #D5DAE1; color: #14181F; font-weight: 600; font-size: 15px; padding: 11px 16px; border-radius: 12px; background: #FFFFFF;">생활권 나누기 바꾸기</a>
+</div>
+</div>
+<div style="border: 1px solid #F5C2BC; background: #FEF3F2; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #FFFFFF; color: #B42318; border: 1px solid #F5C2BC;">실패</span><span style="font-size: 14px; color: #B42318;">오류: [오류 내용]</span></div>
+<p style="margin: 0; font-size: 13px; color: #3A4250;">수집 자료가 [max]번 다시 모아도 불완전해 멈췄을 때: '발행하지 않았어요: [사유]'</p>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">작업을 아직 못 받았으면 '진행 중인 작업 없음'</p>
+</div>
+
+<div class="card" style="grid-column: 1 / -1; padding: 22px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<h3 style="margin: 0; font-size: 17px; flex: 1 1 200px;">잠깐 뜨는 알림</h3>
+<span style="display: inline-flex; align-items: center; gap: 8px; background: #14181F; color: #FFFFFF; font-size: 14px; padding: 12px 16px; border-radius: 12px;">지역을 만들고 분석을 시작했어요</span>
+<span style="display: inline-flex; align-items: center; gap: 8px; background: #14181F; color: #FFFFFF; font-size: 14px; padding: 12px 16px; border-radius: 12px;">분석이 끝났어요</span>
+</div>
+
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2960}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

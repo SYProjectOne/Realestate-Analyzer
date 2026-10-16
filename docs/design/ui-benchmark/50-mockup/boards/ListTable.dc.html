@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>단지 찾기 표 보기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+.num{font-variant-numeric:tabular-nums}
+.ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle}
+.v{font-variant-numeric:tabular-nums;border-bottom:1px dotted #9AA6B6;cursor:pointer}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.q{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid #C8CFD8;background:#FFFFFF;color:#5B6472;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle}
+.q:hover{border-color:#2350D8;color:#2350D8}
+.lab{font-size:13px;font-weight:500;color:#5B6472}
+.inp{font-family:inherit;font-size:15px;padding:9px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:44px;box-sizing:border-box}
+.btn{font-family:inherit;font-size:15px;font-weight:500;padding:10px 16px;border-radius:12px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:8px;box-sizing:border-box}
+.btn:hover{border-color:#9AA6B6;text-decoration:none;color:#14181F}
+.btn-dark{background:#14181F;border-color:#14181F;color:#FFFFFF;font-weight:600}
+.btn-dark:hover{color:#FFFFFF}
+.btn-blue{background:#2350D8;border-color:#2350D8;color:#FFFFFF;font-weight:600}
+.btn-blue:hover{color:#FFFFFF}
+.btn-off{background:#C9D3EE;border-color:#C9D3EE;color:#FFFFFF;font-weight:600;cursor:not-allowed}
+.chip{font-family:inherit;font-size:15px;font-weight:500;padding:9px 16px;border-radius:999px;border:1px solid #D5DAE1;background:#FFFFFF;color:#3A4250;cursor:pointer;min-height:44px}
+.chip[aria-pressed="true"]{background:#14181F;border-color:#14181F;color:#FFFFFF}
+sc-for,sc-if{display:contents}
+.tr{display:table-row}
+.th{display:table-cell;vertical-align:middle;font-weight:500;font-size:13px;color:#5B6472;text-align:left;padding:0 10px;border-bottom:1px solid #E3E7EC;white-space:nowrap;background:#FFFFFF;height:48px;position:sticky;top:0;z-index:1}
+.td{display:table-cell;padding:12px 10px;border-bottom:1px solid #EEF1F4;vertical-align:top;font-size:14px}
+.sortb{font-family:inherit;font-size:13px;font-weight:500;color:#5B6472;background:none;border:none;padding:0 2px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;min-height:44px}
+.sortb:hover{color:#14181F}
+.b{display:inline-flex;align-items:center;font-size:12px;font-weight:500;line-height:18px;padding:1px 7px;border-radius:6px;background:#EEF1F4;color:#3A4250;white-space:nowrap}
+.bs{display:inline-flex;align-items:center;font-size:12px;font-weight:600;line-height:18px;padding:1px 7px;border-radius:6px;background:#E8EEFF;color:#1A3FB0;white-space:nowrap}
+.bw{display:inline-flex;align-items:center;font-size:12px;font-weight:600;line-height:18px;padding:0 7px;border-radius:6px;background:#FFF1E6;color:#A3470A;border:1px solid #F3D6B8;white-space:nowrap}
+.sub{font-size:12px;color:#5B6472}
+.mut{font-size:12px;color:#7A8391}
+.sec-h{margin:0;font-size:22px;font-weight:700}
+.note{font-size:13px;color:#5B6472;line-height:1.6;margin:0}
+.ck{width:20px;height:20px;accent-color:#2350D8;cursor:pointer;margin:0}
+.cklab{display:inline-flex;align-items:center;gap:8px;font-size:14px;min-height:40px;padding:0 12px;border:1px solid #E3E7EC;border-radius:10px;background:#FFFFFF;cursor:pointer}
+.phone{width:360px;flex:0 0 auto;background:#F3F5F7;border:8px solid #14181F;border-radius:36px;overflow:hidden;box-sizing:border-box}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="List.dc.html" aria-current="page" style="padding: 8px 14px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0; font-weight: 600; font-size: 15px;">단지 찾기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+<label for="region" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="region" style="font-family: inherit; font-size: 15px; font-weight: 600; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; background: #FFFFFF; min-height: 40px;"><option>인천</option></select>
+<span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14</span>
+<a href="#" style="font-size: 13px; color: #5B6472; padding: 8px 6px;">시나리오</a>
+<a href="#" style="font-size: 13px; color: #5B6472; padding: 8px 6px;">데이터·운영</a>
+<a href="#" style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"></path><path d="M4 19.5V21h16"></path></svg>
+용어 사전</a>
+</div>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 40px; display: flex; flex-direction: column; gap: 20px;">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 520px;">
+<h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.4px;">인천 분양 단지 100곳</h1>
+<p style="margin: 0; font-size: 15px; color: #5B6472;">표로 한눈에 비교해요. 단지 이름을 누르면 상세가 열리고, 체크해서 2~6곳을 나란히 비교할 수 있어요. 최종 기준은 공고문이에요.</p>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+<div role="group" aria-label="보기 방식" style="display: inline-flex; background: #EEF1F4; border-radius: 12px; padding: 4px; gap: 4px;">
+<a href="List.dc.html" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 9px; color: #3A4250; font-size: 14px; font-weight: 500; min-height: 28px;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+카드</a>
+<span aria-current="true" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 9px; background: #FFFFFF; color: #14181F; font-size: 14px; font-weight: 600; box-shadow: 0 1px 2px rgba(20,24,31,0.12); min-height: 28px;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18"></path><path d="M3 12h18"></path><path d="M3 19h18"></path></svg>
+표</span>
+</div>
+<button type="button" class="btn">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>
+엑셀용 파일(CSV) 내려받기</button>
+</div>
+</div>
+
+<form role="search" aria-label="필터" class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+<div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 260px;">
+<label for="f-q" class="lab">단지 이름</label>
+<div style="display: flex; align-items: center; gap: 8px; border: 1px solid #D5DAE1; border-radius: 10px; padding: 0 12px; min-height: 44px; background: #FFFFFF;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input id="f-q" type="search" placeholder="예: 시티오씨엘" style="border: none; outline: none; font-family: inherit; font-size: 15px; flex: 1 1 auto; min-width: 0; background: transparent;">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-intake" class="lab">접수 상태 <button type="button" class="q" aria-label="접수 상태 뜻 보기">?</button></label>
+<select id="f-intake" class="inp"><option>전체</option><option>접수 가능</option><option>접수 일정 미정</option><option>접수 상태 확인 못 함</option><option>지금은 접수 안 됨</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-la" class="lab">생활권(구) <button type="button" class="q" aria-label="생활권 뜻 보기">?</button></label>
+<select id="f-la" class="inp"><option>전체</option><option>제물포구</option><option>영종구</option><option>미추홀구</option><option>연수구</option><option>남동구</option><option>부평구</option><option>계양구</option><option>서해구</option><option>검단구</option><option>강화군</option><option>옹진군</option></select>
+</div>
+<button type="button" class="chip" aria-pressed="{{openPressed}}" onClick="{{toggleOpen}}">{{openLabel}}</button>
+<span style="flex: 1 1 auto;"></span>
+<button type="button" class="btn" aria-expanded="{{moreExpanded}}" aria-controls="more-filters" onClick="{{toggleMore}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+{{moreLabel}}</button>
+<button type="button" class="btn" style="color: #5B6472;">필터 초기화</button>
+</div>
+<sc-if value="{{moreOpen}}" hint-placeholder-val="{{ true }}">
+<div id="more-filters" style="border-top: 1px solid #EEF1F4; padding-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-land" class="lab">땅 종류 (공공·민간 택지)</label>
+<select id="f-land" class="inp"><option>전체</option><option>공공택지</option><option>민간택지</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-resale" class="lab">이 날짜 전에 되팔 수 있게 됨</label>
+<input id="f-resale" type="date" class="inp">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-pmin" class="lab">가격 최소 (억원)</label>
+<input id="f-pmin" type="number" inputmode="decimal" step="any" placeholder="예: 5" class="inp">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-pmax" class="lab">가격 최대 (억원)</label>
+<input id="f-pmax" type="number" inputmode="decimal" step="any" placeholder="예: 7.5" class="inp">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-move" class="lab">입주 연도</label>
+<input id="f-move" type="number" inputmode="numeric" placeholder="예: 2029" class="inp">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-incl" class="lab">단지 종류 (분류) <button type="button" class="q" aria-label="단지 분류 뜻 보기">?</button></label>
+<select id="f-incl" class="inp"><option>전체</option><option>민간분양 아파트</option><option>공공분양</option><option>공공임대</option><option>민간임대</option><option>아파트 아님</option><option>범위 밖</option><option>사람 검토</option><option>범위 경계</option><option>아직 분류 안 됨</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="f-scope" class="lab">점수 계산 범위 <button type="button" class="q" aria-label="점수 계산 범위 뜻 보기">?</button></label>
+<select id="f-scope" class="inp"><option>전체</option><option>점수 계산 대상</option><option>보류 — 공고 뒤 다시 계산</option><option>참고 후보 (순위만)</option><option>분류 확인 중 (미해결)</option><option>제외</option></select>
+</div>
+</div>
+</sc-if>
+</form>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;">
+<p aria-live="polite" style="margin: 0; font-size: 15px; color: #3A4250;"><b class="num">100곳</b> 중 <b class="num">{{shownCount}}곳</b>을 보여요 <span style="color: #7A8391; font-size: 13px;">· 정렬 {{sortLabel}}</span></p>
+</div>
+<details open class="card" style="padding: 12px 16px; font-size: 14px;">
+<summary style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #D5DAE1; border-radius: 12px; padding: 10px 16px; background: #FFFFFF; min-height: 24px; font-weight: 500;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path><path d="M15 4v16"></path></svg>
+보여 줄 열 고르기 ({{visCount}}개 켜짐)</summary>
+<fieldset style="margin: 12px 0 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 10px;">
+<legend style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">보여 줄 열 고르기</legend>
+<p class="note">기본 8열은 켜져 있어요. 나머지는 눌러서 켜요. 고른 열은 이 브라우저에 기억돼요. '단지'와 '비교 담기' 열은 늘 보여요.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<sc-for list="{{chooser}}" as="c" hint-placeholder-count="15">
+<label class="cklab" style="{{c.style}}">
+<sc-if value="{{c.on}}" hint-placeholder-val="{{ true }}"><input type="checkbox" class="ck" checked onClick="{{c.toggle}}"></sc-if>
+<sc-if value="{{c.off}}" hint-placeholder-val="{{ false }}"><input type="checkbox" class="ck" onClick="{{c.toggle}}"></sc-if>
+{{c.label}}<span class="mut">{{c.tag}}</span></label>
+</sc-for>
+</div>
+</fieldset>
+</details>
+
+<div class="card" style="overflow: hidden;">
+<div style="overflow-x: auto;">
+<div role="table" aria-label="단지 표" aria-rowcount="101" style="display: table; width: 100%; border-collapse: collapse; min-width: 1100px;">
+<div role="rowgroup" style="display: table-header-group;">
+<div role="row" class="tr">
+<div role="columnheader" class="th" style="width: 52px;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">비교 담기</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A8391" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></div>
+<sc-for list="{{heads}}" as="h" hint-placeholder-count="8">
+<div role="columnheader" class="th" aria-sort="{{h.ariaSort}}">
+<sc-if value="{{h.sortable}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="sortb" title="{{h.next}}" onClick="{{h.onSort}}" style="{{h.btnStyle}}">{{h.label}}
+<svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" style="{{h.upStyle}}"></path><path d="M6 13 2 8.5h8z" style="{{h.downStyle}}"></path></svg></button>
+</sc-if>
+<sc-if value="{{h.plain}}" hint-placeholder-val="{{ false }}"><span style="display: inline-flex; align-items: center; min-height: 44px;">{{h.label}}</span></sc-if>
+<sc-if value="{{h.term}}" hint-placeholder-val="{{ true }}"> <button type="button" class="q" aria-label="{{h.termLabel}}">?</button></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+<div role="rowgroup" style="display: table-row-group;">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+<div role="row" class="tr" aria-selected="{{r.ariaSel}}" style="{{r.trStyle}}">
+<div role="cell" class="td" style="vertical-align: middle;">
+<sc-if value="{{r.sel}}" hint-placeholder-val="{{ false }}"><input type="checkbox" class="ck" checked aria-label="{{r.ckLabel}}" onClick="{{r.toggle}}"></sc-if>
+<sc-if value="{{r.free}}" hint-placeholder-val="{{ true }}"><input type="checkbox" class="ck" aria-label="{{r.ckLabel}}" onClick="{{r.toggle}}"></sc-if>
+<sc-if value="{{r.blocked}}" hint-placeholder-val="{{ false }}"><input type="checkbox" class="ck" disabled aria-label="{{r.ckLabel}}" title="최대 6개까지 비교해요"></sc-if>
+</div>
+<div role="cell" class="td" style="min-width: 190px;">
+<div style="display: flex; flex-direction: column; gap: 3px;">
+<span style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-weight: 600; font-size: 15px; color: #14181F;">{{r.name}}</a><button type="button" class="ok" title="이름 출처 보기" style="background: none; border: none; padding: 0; font-family: inherit; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>{{r.nameLabel}}</button></span>
+<span class="sub">{{r.la}}</span>
+</div>
+</div>
+<sc-if value="{{r.show.intake}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td" style="min-width: 150px;"><div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;"><span style="{{r.intakeStyle}}">{{r.intakeText}}</span><span class="mut">{{r.intakeNote}}</span></div></div></sc-if>
+<sc-if value="{{r.show.price}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td num" style="white-space: nowrap; font-weight: 600;"><span class="v">{{r.price}}</span></div></sc-if>
+<sc-if value="{{r.show.down_payment}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td"><span class="{{r.dp.cls}}">{{r.dp.t}}</span></div></sc-if>
+<sc-if value="{{r.show.resale_end}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td" style="white-space: nowrap;"><div style="display: flex; flex-direction: column; gap: 3px;"><span class="{{r.resale.cls}}">{{r.resale.t}}</span><sc-if value="{{r.resale.known}}" hint-placeholder-val="{{ true }}"><span style="font-size: 12px; color: #A3470A; font-weight: 600;">{{r.resale.d}} <span class="est">추정</span></span></sc-if></div></div></sc-if>
+<sc-if value="{{r.show.move_in}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td" style="white-space: nowrap;"><span class="v">{{r.move}}</span></div></sc-if>
+<sc-if value="{{r.show.gap}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td" style="white-space: nowrap;"><span class="{{r.gap.cls}}">{{r.gap.t}}</span> <span class="sub">{{r.gap.w}}</span></div></sc-if>
+<sc-if value="{{r.show.total}}" hint-placeholder-val="{{ true }}"><div role="cell" class="td" style="min-width: 170px;"><div style="display: flex; flex-wrap: wrap; align-items: center; gap: 5px;"><span class="{{r.total.cls}}" style="font-weight: 700;">{{r.total.t}}</span>
+<sc-if value="{{r.hasRank}}" hint-placeholder-val="{{ true }}"><span class="b">{{r.rank}}</span></sc-if>
+<sc-if value="{{r.tie}}" hint-placeholder-val="{{ false }}"><span class="bs" title="점수가 같아 판정기도 순서를 정하지 못했어요">동률</span></sc-if>
+<sc-if value="{{r.unstable}}" hint-placeholder-val="{{ false }}"><span class="bs">순위 불안정</span></sc-if>
+<sc-if value="{{r.scopeShow}}" hint-placeholder-val="{{ false }}"><span class="b" style="color: #5B6472;">{{r.scope}}</span></sc-if>
+<sc-if value="{{r.rejudge}}" hint-placeholder-val="{{ false }}"><span class="bs">다시 계산 필요</span></sc-if>
+</div></div></sc-if>
+<sc-if value="{{r.show.living_area}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td">{{r.la}}</div></sc-if>
+<sc-if value="{{r.show.p10}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td"><span class="{{r.p10.cls}}">{{r.p10.t}}</span> <sc-if value="{{r.p10.known}}" hint-placeholder-val="{{ true }}"><span class="est">판정기 추정</span></sc-if></div></sc-if>
+<sc-if value="{{r.show.inclusion}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td" style="min-width: 160px;"><div style="display: flex; flex-direction: column; gap: 3px;"><span>{{r.incl}} <sc-if value="{{r.inclReview}}" hint-placeholder-val="{{ false }}"><span class="b">검토 중</span></sc-if></span><span class="mut">{{r.scopeReason}}</span></div></div></sc-if>
+<sc-if value="{{r.show.land_type}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td" style="min-width: 120px;"><span class="{{r.land.cls}}">{{r.land.t}}</span></div></sc-if>
+<sc-if value="{{r.show.units_total}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td" style="white-space: nowrap;"><span class="v">{{r.units}}</span></div></sc-if>
+<sc-if value="{{r.show.down_payment_won}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td" style="white-space: nowrap;"><span class="{{r.dpw.cls}}">{{r.dpw.t}}</span> <sc-if value="{{r.dpw.known}}" hint-placeholder-val="{{ true }}"><span class="est">추정 (계산)</span></sc-if></div></sc-if>
+<sc-if value="{{r.show.competition}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td" style="white-space: nowrap;"><span class="{{r.comp.cls}}">{{r.comp.t}}</span> <span class="sub">{{r.compType}}</span></div></sc-if>
+<sc-if value="{{r.show.last_change}}" hint-placeholder-val="{{ false }}"><div role="cell" class="td" style="white-space: nowrap;"><div style="display: flex; flex-direction: column; gap: 3px;"><span>{{r.lcField}}</span><span class="mut">{{r.lcAt}} · {{r.lcSev}}</span></div></div></sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<p style="margin: 0; padding: 12px 16px; font-size: 13px; color: #5B6472; border-top: 1px solid #EEF1F4; background: #FAFBFC;">아래로 내리면 나머지 단지가 이어서 나와요 · 가격 단위 억원 · 날짜 옆 D-숫자는 기준일(2026-10-14)부터 남은 날 · 점선 밑줄 숫자를 누르면 출처가 열려요</p>
+</div>
+
+<aside aria-label="비교 바구니" style="position: relative; background: #14181F; color: #FFFFFF; border-radius: 16px; padding: 14px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; box-shadow: 0 8px 24px rgba(20,24,31,0.18);">
+<span style="font-size: 15px; font-weight: 700;">비교 바구니 <span style="font-size: 12px; font-weight: 400; color: #9AA6B6;">(화면 아래에 붙어 따라와요)</span></span>
+<span class="num" style="font-size: 14px; color: #C8CFD8;">{{trayCount}}</span>
+<sc-for list="{{trayChips}}" as="t" hint-placeholder-count="2">
+<button type="button" onClick="{{t.remove}}" aria-label="{{t.aria}}" style="font-family: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; background: #2A303B; color: #FFFFFF; border: 1px solid #3A4250; border-radius: 999px; padding: 8px 12px; min-height: 40px; cursor: pointer;">{{t.name}}
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+</sc-for>
+<span style="font-size: 13px; color: #C8CFD8;">{{trayHint}}</span>
+<span style="flex: 1 1 auto;"></span>
+<sc-if value="{{trayAny}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{clearSel}}" style="font-family: inherit; font-size: 14px; background: none; color: #FFFFFF; border: 1px solid #5B6472; border-radius: 12px; padding: 10px 14px; min-height: 44px; cursor: pointer;">선택 해제</button></sc-if>
+<sc-if value="{{trayOk}}" hint-placeholder-val="{{ true }}"><a href="#" style="display: inline-flex; align-items: center; gap: 8px; background: #2350D8; color: #FFFFFF; font-weight: 600; font-size: 15px; padding: 11px 18px; border-radius: 12px; min-height: 22px;">나란히 비교하기
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></a></sc-if>
+<sc-if value="{{trayNotOk}}" hint-placeholder-val="{{ false }}"><button type="button" disabled style="font-family: inherit; font-size: 15px; font-weight: 600; background: #3A4250; color: #9AA6B6; border: none; border-radius: 12px; padding: 11px 18px; min-height: 44px; cursor: not-allowed;">나란히 비교하기</button></sc-if>
+</aside>
+
+<p style="margin: 0; font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 16px;">점수는 같은 지역 단지끼리의 상대 비교예요 · 투자 권유가 아니에요. 이 화면은 개인의 청약 자격을 판정하지 않아요. <span class="ok">확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산하거나 판정기가 낸 값 · <span class="est">확인 불가(이유)</span> 못 찾은 값 · 숫자를 누르면 출처가 열려요 <a href="#">라벨 뜻 보기</a></p>
+
+<section aria-labelledby="expanded" style="display: flex; flex-direction: column; gap: 18px; margin-top: 24px;">
+<div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;">
+<h2 id="expanded" style="margin: 0; font-size: 18px; font-weight: 700;">펼친 모습 · 다른 상태</h2>
+<span style="font-size: 14px; color: #C8CFD8;">위 화면에서 접혀 있거나 지금 데이터로는 안 보이는 것들이에요</span>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">숨김 열을 모두 켠 모습 <span class="sub" style="font-weight: 400;">· '보여 줄 열 고르기'에서 켜는 8열</span></h3>
+<div style="overflow-x: auto;">
+<div role="table" aria-label="숨김 열을 모두 켠 단지 표" style="display: table; width: 100%; border-collapse: collapse; min-width: 1100px;">
+<div role="rowgroup" style="display: table-header-group;"><div role="row" class="tr">
+<div role="columnheader" class="th">단지</div>
+<div role="columnheader" class="th"><span style="display: inline-flex; align-items: center; gap: 4px;">생활권(구) <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg></span></div>
+<div role="columnheader" class="th"><span style="display: inline-flex; align-items: center; gap: 4px;">입주 뒤 10% 넘게 오를 가능성 (판정기) <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg></span></div>
+<div role="columnheader" class="th">단지 종류 · 점수 계산 범위 이유</div>
+<div role="columnheader" class="th">땅 종류</div>
+<div role="columnheader" class="th">총 세대</div>
+<div role="columnheader" class="th">계약금 금액</div>
+<div role="columnheader" class="th">가장 높았던 경쟁률<br><span style="font-size: 11px;">(1순위 · 지역 거주자)</span></div>
+<div role="columnheader" class="th"><span style="display: inline-flex; align-items: center; gap: 4px;">마지막으로 바뀐 것 <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg></span></div>
+</div></div>
+<div role="rowgroup" style="display: table-row-group;">
+<sc-for list="{{allRows}}" as="r" hint-placeholder-count="8">
+<div role="row" class="tr">
+<div role="cell" class="td" style="font-weight: 600;">{{r.name}}</div>
+<div role="cell" class="td">{{r.la}}</div>
+<div role="cell" class="td"><span class="{{r.p10.cls}}">{{r.p10.t}}</span> <sc-if value="{{r.p10.known}}" hint-placeholder-val="{{ true }}"><span class="est">판정기 추정</span></sc-if></div>
+<div role="cell" class="td"><div style="display: flex; flex-direction: column; gap: 3px;"><span>{{r.incl}} <sc-if value="{{r.inclReview}}" hint-placeholder-val="{{ false }}"><span class="b">검토 중</span></sc-if></span><span class="mut">{{r.scopeReason}}</span></div></div>
+<div role="cell" class="td" style="min-width: 120px;"><span class="{{r.land.cls}}">{{r.land.t}}</span></div>
+<div role="cell" class="td" style="white-space: nowrap;"><span class="v">{{r.units}}</span></div>
+<div role="cell" class="td" style="white-space: nowrap;"><span class="{{r.dpw.cls}}">{{r.dpw.t}}</span> <sc-if value="{{r.dpw.known}}" hint-placeholder-val="{{ true }}"><span class="est">추정 (계산)</span></sc-if></div>
+<div role="cell" class="td" style="white-space: nowrap;"><span class="{{r.comp.cls}}">{{r.comp.t}}</span> <span class="sub">{{r.compType}}</span></div>
+<div role="cell" class="td" style="white-space: nowrap;"><div style="display: flex; flex-direction: column; gap: 3px;"><span>{{r.lcField}}</span><span class="mut">{{r.lcAt}} · {{r.lcSev}}</span></div></div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<p class="note">'단지 종류' 아래 작은 글씨는 점수 계산 범위를 정한 이유예요(서버가 준 문장을 쉬운 말로). '다시 계산 필요' 배지가 붙은 단지는 이 이유가 지금 사실 기준이라 저장된 범위와 다를 수 있어요.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px;">
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">정렬 · 머리 버튼</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; align-items: center;">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg>정렬 안 함</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#2350D8"></path><path d="M6 13 2 8.5h8z" fill="#E3E7EC"></path></svg>작은 값부터 (오름차순)</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#E3E7EC"></path><path d="M6 13 2 8.5h8z" fill="#2350D8"></path></svg>큰 값부터 (내림차순)</span>
+</div>
+<p class="note">처음 누르면 큰 값부터, 한 번 더 누르면 작은 값부터예요. '접수' 열만 처음 누를 때 <b>접수 가능 먼저</b>(가능 → 미정 → 확인 못 함 → 안 됨, 같은 상태 안에서는 마감이 가까운 순)예요. 마우스를 올리면 "종합 점수 작은 값부터 정렬"처럼 다음 동작을 알려 줘요.</p>
+<p class="note">정렬할 수 있는 열: 단지 이름 · 생활권 · 접수 · 현재 가격(가운데값 기준) · 되팔기 가능 날짜 · 입주 · 주변 시세와 가격 차이 · 종합 점수 · 오를 가능성 · 마지막으로 바뀐 것. 판정기 순위(점수 순위)로도 정렬할 수 있어요(주소창 sort=rank).</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">개수 줄 · 불러오기</h3>
+<p style="margin: 0; font-size: 15px; color: #3A4250;"><b class="num">[전체 수]곳</b> 중 <b class="num">100곳</b>을 보여요 <span role="status" style="font-size: 13px; color: #2350D8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="vertical-align: -2px;"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg> 나머지 단지를 불러오는 중…</span></p>
+<p class="note">단지가 많은 지역은 처음 100곳을 먼저 보여 주고 나머지를 이어 받아 같은 표 아래에 붙여요.</p>
+<div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EEF1F4; padding-top: 12px;">
+<p style="margin: 0; font-size: 14px; color: #5B6472;" role="status">불러오는 중…</p>
+<p style="margin: 0; font-size: 14px; color: #A3470A;">불러오지 못했어요: [사유] <button type="button" class="btn" style="min-height: 36px; padding: 6px 12px; font-size: 13px; margin-left: 6px;">다시 시도</button></p>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">이 기준일(n번째 수정본)의 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요</p>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">아직 기준일 자료가 없어요. 지역 분석이 끝나면 나타나요 <span class="mut">(첫 적재 중이면 "지역 첫 적재 중 — 첫 자료가 나오면 나타나요")</span></p>
+</div>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">조건에 맞는 단지가 없을 때</h3>
+<div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 28px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; background: #FAFBFC;">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#9AA6B6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path><path d="M8 11h6"></path></svg>
+<p style="margin: 0; font-size: 16px; font-weight: 600;">조건에 맞는 단지가 없어요</p>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">필터를 줄이거나 초기화해 보세요.</p>
+<button type="button" class="btn">필터 초기화</button>
+</div>
+<p class="note">'필터 더 보기' 안에 값이 있으면 접어 둔 채로 두지 않고 펼쳐서 보여 줘요. 접힌 버튼에도 "필터 더 보기 (적용 2)"처럼 적용 개수가 보여요.</p>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">내려받기 · 비교 바구니 상태</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+<button type="button" class="btn" disabled style="opacity: 0.6;">내려받는 중…</button>
+<span role="alert" style="font-size: 13px; color: #A3470A;">내려받지 못했어요: [사유]</span>
+</div>
+<p class="note">파일에는 지금 고른 필터·정렬이 그대로 들어가요.</p>
+<div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px;">
+<b>비교 바구니</b><span style="color: #C8CFD8;">6개 골랐어요</span><span style="color: #C8CFD8;">최대 6개까지 비교해요 — 다른 단지 체크 칸은 잠겨요</span>
+</div>
+<div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px;">
+<b>비교 바구니</b><span style="color: #C8CFD8;">1개 골랐어요 · 2~6개를 고르면 비교할 수 있어요</span><span style="flex: 1 1 auto;"></span><span style="background: #3A4250; color: #9AA6B6; border-radius: 10px; padding: 8px 12px; font-weight: 600;">나란히 비교하기 (잠김)</span>
+</div>
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">점수 칸에 붙는 배지</h3>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+<li><span class="b">1위</span> 점수 순위 (같은 지역 점수 매긴 단지 사이)</li>
+<li><span class="bs">동률</span> 점수가 같아 판정기도 순서를 정하지 못했어요</li>
+<li><span class="bs">순위 불안정</span> 점수 비중을 조금(±10%p) 바꾸면 상위 5곳이 달라져요</li>
+<li><span class="bs">다시 계산 필요</span> 이 기준일에 저장된 범위·순위·점수예요. 지금 사실로 계산한 범위가 달라 다시 판정해야 해요</li>
+<li style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="b">점수 계산 대상</span><span class="b" style="color: #5B6472;">보류 — 공고 뒤 다시 계산</span><span class="b" style="color: #5B6472;">참고 후보 (순위만)</span><span class="b" style="color: #5B6472;">분류 확인 중 (미해결)</span><span class="b" style="color: #5B6472;">제외</span></li>
+<li class="sub">표에서는 '점수 계산 대상'은 기본이라 배지를 생략해요.</li>
+</ul>
+</div>
+
+</div>
+
+<div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700;">휴대폰 (폭 768px 이하) <span class="sub" style="font-weight: 400;">· 표 대신 카드, 비교 담기 없음(읽기 전용), 필터는 전체 화면 시트</span></h3>
+<div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start;">
+
+<div class="phone">
+<div style="background: #FFFFFF; padding: 12px 14px; border-bottom: 1px solid #E3E7EC; font-weight: 700; font-size: 16px;">단지 찾기</div>
+<div style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+<div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; gap: 8px; align-items: flex-end;">
+<div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; min-width: 0;"><label for="m-q" class="lab">단지 이름</label><input id="m-q" type="search" class="inp" placeholder="단지 이름으로 찾기" style="width: 100%;"></div>
+<button type="button" class="btn" aria-haspopup="dialog" style="padding: 8px 12px; font-size: 14px; white-space: nowrap;">필터 (적용 2)</button>
+</div>
+<button type="button" class="chip" aria-pressed="false" style="align-self: flex-start; font-size: 14px;">지금 접수 가능만 보기</button>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">100곳 중 100곳</p>
+<article class="card" style="padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+<span class="sub">미추홀구</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-weight: 700; font-size: 16px; color: #14181F; text-decoration: underline;">시티오씨엘 8단지</a><span class="ok">확인됨</span></span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span style="display: inline-flex; align-items: center; background: #2350D8; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;">접수 가능</span><span class="sub">되팔기 가능</span><span class="num" style="font-weight: 600;">2026.12.09 · D-56</span><span class="est">추정</span></span>
+<span class="num" style="font-size: 17px; font-weight: 700;">5억 9,850만 ~ 6억 5,090만원</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span class="sub">계약금</span><span class="num">5% · 3,124만</span><span class="est">추정</span><span class="sub">입주</span><span class="num">2029.07</span></span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span class="sub">종합</span><b class="num">4.83</b><span class="b">1위</span><span class="sub">상대 비교</span></span>
+<details open style="font-size: 13px;">
+<summary style="cursor: pointer; color: #5B6472; min-height: 32px;">더 보기 (주변 시세와 가격 차이 · 오를 가능성)</summary>
+<dl style="margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px;">
+<dt class="sub">주변 시세와 가격 차이</dt><dd style="margin: 0;"><span class="v">+8.1%</span> 높아요</dd>
+<dt class="sub">입주 뒤 10% 넘게 오를 가능성</dt><dd style="margin: 0;"><span class="v">53%</span> <span class="est">판정기 추정</span></dd>
+</dl>
+</details>
+</article>
+<button type="button" class="btn" style="justify-content: center;">단지 더 보기 (30 / 100곳)</button>
+</div>
+</div>
+
+<div class="phone">
+<div role="dialog" aria-modal="true" aria-label="필터" style="background: #F3F5F7; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: center; justify-content: space-between;"><h4 style="margin: 0; font-size: 18px; font-weight: 700;">필터</h4><span class="sub">Esc로 닫기</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-q" class="lab">단지 이름</label><input id="s-q" type="search" class="inp"></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-in" class="lab">접수 상태</label><select id="s-in" class="inp"><option>접수 가능</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-la" class="lab">생활권(구)</label><select id="s-la" class="inp"><option>미추홀구</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-land" class="lab">땅 종류 (공공·민간 택지)</label><select id="s-land" class="inp"><option>전체</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-re" class="lab">이 날짜 전에 되팔 수 있게 됨</label><input id="s-re" type="date" class="inp"></div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-pmin" class="lab">가격 최소 (억)</label><input id="s-pmin" type="number" inputmode="decimal" class="inp" style="width: 100%;"></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-pmax" class="lab">가격 최대 (억)</label><input id="s-pmax" type="number" inputmode="decimal" class="inp" style="width: 100%;"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-mv" class="lab">입주 연도</label><input id="s-mv" type="number" inputmode="numeric" class="inp"></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-incl" class="lab">단지 종류 (분류)</label><select id="s-incl" class="inp"><option>전체</option></select></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-sc" class="lab">점수 계산 범위</label><select id="s-sc" class="inp"><option>전체</option></select></div>
+<div style="display: flex; gap: 8px; padding-top: 4px;">
+<button type="button" class="btn btn-blue" style="flex: 1 1 auto; justify-content: center;">적용</button>
+<button type="button" class="btn" style="flex: 0 0 auto;">초기화</button>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5400}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var st = this.state || {};
+var sel = st.sel || { 32: true, 16: true };
+var sort = st.sort || '-total';
+var moreOpen = st.moreOpen === undefined ? true : st.moreOpen;
+var openOnly = !!st.openOnly;
+var vis = st.vis || { intake: true, price: true, down_payment: true, resale_end: true, move_in: true, gap: true, total: true, living_area: false, p10: false, inclusion: false, land_type: false, units_total: false, down_payment_won: false, competition: false, last_change: false };
+var MAX = 6;
+var ASOF = Date.UTC(2026, 9, 14);
+function dday(s) { var p = s.split('-'); var t = Date.UTC(+p[0], +p[1] - 1, +p[2]); var d = Math.round((t - ASOF) / 86400000); return d >= 0 ? ('D-' + d) : ((-d) + '일 지남'); }
+function dot(s) { return s.replace(/-/g, '.'); }
+function comma(n) { var s = String(Math.round(n)); var out = ''; while (s.length > 3) { out = ',' + s.slice(-3) + out; s = s.slice(0, -3); } return s + out; }
+function known(t) { return { t: t, cls: 'v', known: true }; }
+function unk(why) { return { t: '확인 불가(' + why + ')', cls: 'est', known: false }; }
+var base = 'display:inline-flex;align-items:center;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px;';
+var PILL = {
+'가능': base + 'background:#2350D8;color:#FFFFFF;',
+'미정': base + 'background:#FFFFFF;color:#3A4250;border:1px solid #C8CFD8;',
+'확인 불가': base + 'background:#EEF1F4;color:#5B6472;',
+'불가': base + 'background:#FFFFFF;color:#5B6472;border:1px solid #D5DAE1;'
+};
+var INTAKE_ORDER = { '가능': 0, '미정': 1, '확인 불가': 2, '불가': 3 };
+var data = [
+{ id: 32, name: '시티오씨엘 8단지', la: '미추홀구', ik: '가능', it: '접수 가능', inote: '10.13 공식 홈페이지 확인', lo: 598500000, hi: 650900000, price: '5.99억 ~ 6.51억', dp: 5, resale: '2026-12-09', move: '2029-07', gap: 8.0796, total: 4.83, rank: 1, tie: false, scope: '판정 대상', p10: 0.53, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 가능', land: '민간택지', units: 1349, dpw: '3,124만', comp: '6.22 대 1', ct: '59타입', lcF: '중도금 일정', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 16, name: '힐스테이트 구월아트파크', la: '남동구', ik: '가능', it: '접수 가능 (선착순)', inote: '10.13 공식 홈페이지 확인', lo: 767000000, hi: 908000000, price: '7.67억 ~ 9.08억', dp: 5, resale: '2027-05-28', move: '2030-10', gap: 35.7374, total: 4.76, rank: 2, tie: true, scope: '판정 대상', p10: 0.53, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 가능', land: '민간택지', units: 496, dpw: '4,188만', comp: '0.64 대 1', ct: '84B타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 41, name: '엘리프 검단 포레듀(AA32블록)', la: '검단구', ik: '가능', it: '접수 가능 (선착순)', inote: '10.14 공식 홈페이지 확인', lo: 578140000, hi: 608140000, price: '5.78억 ~ 6.08억', dp: 5, resale: '2028-09-10', move: '2028-03', gap: -2.4441, total: 4.76, rank: 2, tie: true, scope: '판정 대상', p10: 0.51, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 가능', land: '공공택지', units: 669, dpw: '2,966만', comp: '0.50 대 1', ct: '64C타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 9, name: '검암역자이르네', la: '서해구', ik: '미정', it: '접수 일정 미정', inote: '10.14 확인', lo: 577600000, hi: 594100000, price: '5.78억 ~ 5.94억', dp: 10, resale: '2029-06-04', move: '2028-12', gap: -5.5081, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '판정 대상', p10: 0.54, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 미정', land: null, landWhy: '공고에 값이 없음', units: 601, dpw: '5,859만', comp: '2.48 대 1', ct: '84A타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 1, name: '산곡역자이힐스테이트앤하늘채', la: '부평구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.14', lo: 941000000, hi: 941000000, price: '9.41억', dp: null, dpWhy: '납부 조건 없음', resale: '2027-10-27', move: '2029-12', gap: 38.3824, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '민간택지', units: 1289, dpw: null, comp: null, ct: '', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 2, name: '인천계양 A17블록 신혼희망타운(공공분양)(본청약)', la: '계양구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 508440000, hi: 508440000, price: '5.08억', dp: null, dpWhy: '납부 조건 없음', resale: null, move: '2029-11', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '분류 결과 제외 대상(공공분양)', land: null, landWhy: '공고에 값이 없음', units: 309, dpw: null, comp: null, ct: '', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 3, name: '숭의역 노르웨이숲 더 스카이', la: '미추홀구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.13', lo: 660650000, hi: 757370000, price: '6.61억 ~ 7.57억', dp: 5, resale: '2027-10-07', move: '2030-05', gap: 22.6661, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '민간택지', units: 35, dpw: '3,545만', comp: '1.29 대 1', ct: '69타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 6, name: '시티오씨엘 9단지 오션파크뷰', la: '미추홀구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.13', lo: 695400000, hi: 695400000, price: '6.95억', dp: 5, resale: '2027-09-08', move: '2030-04', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '미해결', p10: null, incl: '아직 분류 안 됨', review: true, sr: '분류 판정이 끝나지 않음(검토 중)', land: '민간택지', units: 1949, dpw: '3,477만', comp: '4.20 대 1', ct: '59.9801타입', lcF: '중도금 일정', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 7, name: '더샵 검단레이크파크(AB23BL)', la: '검단구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.14', lo: 589170000, hi: 659470000, price: '5.89억 ~ 6.59억', dp: 10, resale: '2029-07-03', move: '2029-12', gap: 2.6842, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '공공택지', units: 1403, dpw: '6,243만', comp: '9.13 대 1', ct: '59A타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 8, name: '더샵 검단레이크파크(AB22BL)', la: '검단구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '공식 홈페이지가 이 단지 것인지 확인 전 · 10.14', lo: 605970000, hi: 650270000, price: '6.06억 ~ 6.50억', dp: 10, resale: '2029-07-02', move: '2029-12', gap: 3.3092, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '공공택지', units: 1454, dpw: '6,281만', comp: '10.64 대 1', ct: '59A타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 5, name: '검암역 푸르지오 프라베뉴 (B-1BL) 공공분양주택', la: '서해구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 629400000, hi: 629400000, price: '6.29억', dp: null, dpWhy: '납부 조건 없음', resale: '2029-09-08', move: '2029-07', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '분류 결과 제외 대상(공공분양)', land: '공공택지', units: 441, dpw: null, comp: '89.50 대 1', ct: '60A타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 4, name: '인천계양지구 A6블록 공공분양주택(본청약)', la: '계양구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 716540000, hi: 716540000, price: '7.17억', dp: null, dpWhy: '납부 조건 없음', resale: null, move: '2029-06', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '분류 결과 제외 대상(공공분양)', land: null, landWhy: '공고에 값이 없음', units: 663, dpw: null, comp: null, ct: '', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' }
+];
+var SCOPE_TEXT = { '판정 대상': '점수 계산 대상', '보류': '보류 — 공고 뒤 다시 계산', '참고': '참고 후보 (순위만)', '미해결': '분류 확인 중 (미해결)', '제외': '제외' };
+var COLS = [
+{ id: 'intake', label: '접수', key: 'intake', term: true, tag: '' },
+{ id: 'price', label: '현재 가격 (분양가)', key: 'price_mid', term: true, tag: '' },
+{ id: 'down_payment', label: '계약금 비율', key: null, term: true, tag: '' },
+{ id: 'resale_end', label: '되팔기 가능 날짜', key: 'resale_end', term: true, tag: '' },
+{ id: 'move_in', label: '입주', key: 'move_in_ym', term: false, tag: '' },
+{ id: 'gap', label: '주변 시세와 가격 차이', key: 'gap_pct', term: true, tag: '' },
+{ id: 'total', label: '종합 점수 (상대 비교)', key: 'total', term: true, tag: '' },
+{ id: 'living_area', label: '생활권(구)', key: 'living_area', term: true, tag: ' 숨김' },
+{ id: 'p10', label: '입주 뒤 10% 넘게 오를 가능성', key: 'p10', term: true, tag: ' 숨김' },
+{ id: 'inclusion', label: '단지 종류 (분류)', key: null, term: true, tag: ' 숨김' },
+{ id: 'land_type', label: '땅 종류 (택지)', key: null, term: false, tag: ' 숨김' },
+{ id: 'units_total', label: '총 세대', key: null, term: false, tag: ' 숨김' },
+{ id: 'down_payment_won', label: '계약금 금액', key: null, term: false, tag: ' 숨김' },
+{ id: 'competition', label: '가장 높았던 경쟁률', key: null, term: false, tag: ' 숨김' },
+{ id: 'last_change', label: '마지막으로 바뀐 것', key: 'last_change', term: false, tag: ' 숨김' }
+];
+function sortVal(r, key) {
+if (key === 'name') return r.name;
+if (key === 'living_area') return r.la;
+if (key === 'intake') return INTAKE_ORDER[r.ik];
+if (key === 'price_mid') return (r.lo + r.hi) / 2;
+if (key === 'resale_end') return r.resale;
+if (key === 'move_in_ym') return r.move;
+if (key === 'gap_pct') return r.gap;
+if (key === 'total') return r.total;
+if (key === 'p10') return r.p10;
+if (key === 'last_change') return r.lcAt + r.lcS;
+return null;
+}
+var desc = sort.charAt(0) === '-';
+var skey = desc ? sort.slice(1) : sort;
+var list = data.slice();
+if (openOnly) list = list.filter(function (r) { return r.ik === '가능'; });
+list.sort(function (a, b) {
+var x = sortVal(a, skey), y = sortVal(b, skey);
+if (x === null || x === undefined) return (y === null || y === undefined) ? 0 : 1;
+if (y === null || y === undefined) return -1;
+if (x < y) return desc ? 1 : -1;
+if (x > y) return desc ? -1 : 1;
+return 0;
+});
+var selCount = 0; for (var k in sel) { if (sel[k]) selCount++; }
+function setSel(id) {
+var next = {}; for (var k2 in sel) { if (sel[k2]) next[k2] = true; }
+if (next[id]) delete next[id]; else if (selCount < MAX) next[id] = true;
+self.setState({ sel: next });
+}
+var show = {}; COLS.forEach(function (c) { show[c.id] = !!vis[c.id]; });
+function build(r) {
+var isSel = !!sel[r.id];
+var g = r.gap;
+return {
+name: r.name, la: r.la, nameLabel: '확인됨',
+show: show,
+sel: isSel, free: !isSel && selCount < MAX, blocked: !isSel && selCount >= MAX,
+ariaSel: isSel ? 'true' : 'false',
+trStyle: isSel ? 'background:#F2F6FF;' : '',
+ckLabel: r.name + ' 비교에 담기',
+toggle: function () { setSel(r.id); },
+intakeStyle: PILL[r.ik], intakeText: r.it, intakeNote: r.inote,
+price: r.price,
+dp: r.dp === null ? unk(r.dpWhy) : known(r.dp + '%'),
+resale: r.resale ? { t: dot(r.resale), cls: 'v', known: true, d: dday(r.resale) } : { t: '확인 불가(공고에 값이 없음)', cls: 'est', known: false, d: '' },
+move: dot(r.move),
+gap: g === null ? { t: '확인 불가(점수 계산 전)', cls: 'est', w: '' } : { t: (g >= 0 ? '+' : '−') + Math.abs(g).toFixed(1) + '%', cls: 'v', w: g >= 0 ? '높아요' : '낮아요' },
+total: r.total === null ? { t: '확인 불가(' + r.totalWhy + ')', cls: 'est' } : { t: r.total.toFixed(2), cls: 'v num' },
+hasRank: r.rank !== null, rank: r.rank !== null ? r.rank + '위' : '',
+tie: r.tie, unstable: false, rejudge: false,
+scopeShow: r.scope !== '판정 대상', scope: SCOPE_TEXT[r.scope],
+p10: r.p10 === null ? { t: '확인 불가(점수 계산 전)', cls: 'est', known: false } : { t: Math.round(r.p10 * 100) + '%', cls: 'v', known: true },
+incl: r.incl, inclReview: r.review, scopeReason: r.sr,
+land: r.land === null ? unk(r.landWhy) : known(r.land),
+units: comma(r.units) + '세대',
+dpw: r.dpw === null ? unk('납부 조건 없음') : known(r.dpw),
+comp: r.comp === null ? unk('1순위 지역 경쟁률 없음') : known(r.comp), compType: r.ct,
+lcField: r.lcF, lcAt: dot(r.lcAt).slice(5), lcSev: r.lcS
+};
+}
+var rows = list.map(build);
+var allRows = data.slice(0, 8).map(build);
+var heads = COLS.filter(function (c) { return vis[c.id]; }).map(function (c) {
+var state = c.key && skey === c.key ? (desc ? 'descending' : 'ascending') : 'none';
+var on = '#2350D8', off = '#E3E7EC', idle = '#B7C0CC';
+return {
+label: c.label, sortable: !!c.key, plain: !c.key, term: c.term, termLabel: c.label + ' 뜻 보기',
+ariaSort: state,
+btnStyle: state === 'none' ? '' : 'color:#14181F;font-weight:600;',
+upStyle: 'fill:' + (state === 'none' ? idle : state === 'ascending' ? on : off),
+downStyle: 'fill:' + (state === 'none' ? idle : state === 'descending' ? on : off),
+next: state === 'descending' ? c.label + ' 작은 값부터 정렬' : c.label + ' 큰 값부터 정렬',
+onSort: function () {
+var next;
+if (c.key === 'intake') next = sort === 'intake' ? '-intake' : 'intake';
+else next = sort === '-' + c.key ? c.key : '-' + c.key;
+self.setState({ sort: next });
+}
+};
+});
+heads.unshift({
+label: '단지', sortable: true, plain: false, term: false, termLabel: '',
+ariaSort: skey === 'name' ? (desc ? 'descending' : 'ascending') : 'none',
+btnStyle: skey === 'name' ? 'color:#14181F;font-weight:600;' : '',
+upStyle: 'fill:' + (skey === 'name' ? (desc ? '#E3E7EC' : '#2350D8') : '#B7C0CC'),
+downStyle: 'fill:' + (skey === 'name' ? (desc ? '#2350D8' : '#E3E7EC') : '#B7C0CC'),
+next: '단지 이름 정렬',
+onSort: function () { self.setState({ sort: sort === '-name' ? 'name' : '-name' }); }
+});
+var chooser = COLS.map(function (c) {
+var on = !!vis[c.id];
+return {
+label: c.label, tag: c.tag, on: on, off: !on,
+style: on ? 'border-color:#9DB4F2;background:#F2F6FF;' : '',
+toggle: function () { var next = {}; for (var k3 in vis) next[k3] = vis[k3]; next[c.id] = !on; self.setState({ vis: next }); }
+};
+});
+var visCount = 2; COLS.forEach(function (c) { if (vis[c.id]) visCount++; });
+var trayChips = data.filter(function (r) { return sel[r.id]; }).map(function (r) {
+return { name: r.name, aria: r.name + ' 빼기', remove: function () { setSel(r.id); } };
+});
+var sortNames = { total: '종합 점수', name: '단지 이름', living_area: '생활권', intake: '접수 가능 먼저', price_mid: '현재 가격', resale_end: '되팔기 가능 날짜', move_in_ym: '입주', gap_pct: '주변 시세와 가격 차이', p10: '오를 가능성', last_change: '마지막으로 바뀐 것' };
+var sortLabel = skey === 'intake' && !desc ? '접수 가능 먼저' : (sortNames[skey] || skey) + (desc ? ' 큰 값부터' : ' 작은 값부터');
+return {
+openPressed: openOnly ? 'true' : 'false',
+openLabel: openOnly ? '전체 보기' : '지금 접수 가능만 보기',
+toggleOpen: function () { self.setState({ openOnly: !openOnly }); },
+moreOpen: moreOpen,
+moreExpanded: moreOpen ? 'true' : 'false',
+moreLabel: moreOpen ? '필터 접기' : '필터 더 보기 (적용 0)',
+toggleMore: function () { self.setState({ moreOpen: !moreOpen }); },
+shownCount: openOnly ? String(rows.length) : '100',
+sortLabel: sortLabel,
+visCount: String(visCount),
+chooser: chooser,
+heads: heads,
+rows: rows,
+allRows: allRows,
+trayCount: selCount + '개 골랐어요',
+trayChips: trayChips,
+trayHint: selCount >= MAX ? '최대 6개까지 비교해요' : '2~6개를 고르면 비교할 수 있어요',
+trayAny: selCount > 0,
+trayOk: selCount >= 2 && selCount <= MAX,
+trayNotOk: !(selCount >= 2 && selCount <= MAX),
+clearSel: function () { self.setState({ sel: {} }); }
+};
+}
+}
+</script>
+</body>
+</html>

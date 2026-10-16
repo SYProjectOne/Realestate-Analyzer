@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>단지 상세 탭 전체</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F7}
+a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
+sc-for,sc-if{display:contents}
+.num{font-variant-numeric:tabular-nums}
+.ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
+.est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle}
+.v{font-variant-numeric:tabular-nums;border-bottom:1px dotted #9AA6B6;cursor:pointer}
+.card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.q{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid #C8CFD8;background:#FFFFFF;color:#5B6472;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0;vertical-align:middle}
+.q:hover{border-color:#2350D8;color:#2350D8}
+.btn{font-family:inherit;font-size:15px;font-weight:500;padding:10px 16px;border-radius:12px;border:1px solid #D5DAE1;background:#FFFFFF;color:#14181F;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;gap:8px;box-sizing:border-box}
+.btn:hover{border-color:#9AA6B6;text-decoration:none;color:#14181F}
+.btn-sm{font-size:13px;min-height:36px;padding:6px 12px;border-radius:10px}
+.b{display:inline-flex;align-items:center;font-size:12px;font-weight:500;line-height:18px;padding:1px 8px;border-radius:6px;background:#EEF1F4;color:#3A4250;white-space:nowrap}
+.bs{display:inline-flex;align-items:center;font-size:12px;font-weight:600;line-height:18px;padding:1px 8px;border-radius:6px;background:#E8EEFF;color:#1A3FB0;white-space:nowrap}
+.bd{display:inline-flex;align-items:center;font-size:12px;font-weight:600;line-height:18px;padding:1px 8px;border-radius:6px;background:#14181F;color:#FFFFFF;white-space:nowrap}
+.sub{font-size:13px;color:#5B6472}
+.mut{font-size:12px;color:#7A8391}
+.note{font-size:13px;color:#5B6472;line-height:1.65;margin:0}
+.h2{margin:0;font-size:22px;font-weight:700}
+.h3{margin:0;font-size:17px;font-weight:700}
+.lead{margin:0;font-size:14px;color:#5B6472;line-height:1.6}
+.tabtag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#1A3FB0;background:#E8EEFF;border-radius:999px;padding:3px 10px;align-self:flex-start}
+.src{margin:0;font-size:12px;color:#7A8391}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{font-weight:500;font-size:13px;color:#5B6472;text-align:left;padding:10px 12px;border-bottom:1px solid #E3E7EC;white-space:nowrap}
+.tbl td{padding:11px 12px;border-bottom:1px solid #EEF1F4;vertical-align:top}
+.dt{display:table;width:100%;border-collapse:collapse;font-size:14px}
+.dr{display:table-row}
+.dh{display:table-cell;font-weight:500;font-size:13px;color:#5B6472;text-align:left;padding:10px 12px;border-bottom:1px solid #E3E7EC;white-space:nowrap}
+.dc{display:table-cell;padding:10px 12px;border-bottom:1px solid #EEF1F4;vertical-align:top}
+.hint{display:flex;gap:10px;align-items:flex-start;background:#FFF7EF;border:1px solid #F3D6B8;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.6;color:#3A2A1A}
+.info{display:flex;gap:10px;align-items:flex-start;background:#F2F6FF;border:1px solid #D6E0FB;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.6;color:#1F2A44}
+.tab{font-family:inherit;font-size:15px;color:#5B6472;background:none;border:none;border-bottom:3px solid transparent;padding:12px 14px;cursor:pointer;white-space:nowrap;min-height:44px}
+.tab[aria-selected="true"]{color:#1A3FB0;font-weight:600;border-bottom-color:#2350D8}
+.empty{border:1px dashed #C8CFD8;border-radius:12px;padding:18px;text-align:center;color:#5B6472;font-size:14px;background:#FAFBFC}
+.phone{width:360px;flex:0 0 auto;background:#F3F5F7;border:8px solid #14181F;border-radius:36px;overflow:hidden;box-sizing:border-box}
+pre.raw{margin:0;max-height:none;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.7;background:#F6F8FA;border:1px solid #E3E7EC;border-radius:10px;padding:14px;color:#3A4250}
+mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E3E7EC;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #14181F; font-weight: 700; font-size: 18px;">
+<span style="width: 32px; height: 32px; border-radius: 9px; background: #2350D8; display: inline-flex; align-items: center; justify-content: center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V9l7-5 7 5v12"></path><path d="M10 21v-6h4v6"></path></svg>
+</span>
+청약 한눈에
+</a>
+<nav aria-label="주 메뉴" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto;">
+<a href="Main.dc.html" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">홈</a>
+<a href="List.dc.html" aria-current="page" style="padding: 8px 14px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0; font-weight: 600; font-size: 15px;">단지 찾기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">비교하기</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">지역 시장</a>
+<a href="#" style="padding: 8px 14px; border-radius: 999px; color: #3A4250; font-weight: 500; font-size: 15px;">보고서</a>
+</nav>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+<label for="region" style="font-size: 13px; color: #5B6472;">지역</label>
+<select id="region" style="font-family: inherit; font-size: 15px; font-weight: 600; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; background: #FFFFFF; min-height: 40px;"><option>인천</option></select>
+<span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14</span>
+<a href="#" style="font-size: 13px; color: #5B6472; padding: 8px 6px;">시나리오</a>
+<a href="#" style="font-size: 13px; color: #5B6472; padding: 8px 6px;">데이터·운영</a>
+<a href="#" style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 8px 12px; border: 1px solid #D5DAE1; border-radius: 10px; color: #3A4250;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"></path><path d="M4 19.5V21h16"></path></svg>
+용어 사전</a>
+</div>
+</div>
+</header>
+
+<main style="max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+<nav aria-label="현재 위치" style="font-size: 14px; color: #5B6472;"><a href="ListTable.dc.html">단지 찾기</a> <span aria-hidden="true">›</span> <a href="Detail.dc.html">시티오씨엘 8단지</a> <span aria-hidden="true">›</span> 자세히 보기 전체</nav>
+<a href="ListTable.dc.html" class="btn btn-sm">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="m11 18-6-6 6-6"></path></svg>
+단지 목록으로</a>
+</div>
+
+<div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;">
+<h1 style="margin: 0; font-size: 18px; font-weight: 700;">단지 상세 · 기본 보드에 없는 부분 전부</h1>
+<span style="font-size: 14px; color: #C8CFD8;">'단지 상세' 보드의 머리·평형별 가격 아래에 이어지는 내용이에요 · 시티오씨엘 8단지 실제 값 (기준일 2026-10-14, 1번째 공개본)</span>
+</div>
+
+<section aria-labelledby="hx" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">머리 부분 · 더하는 것</span>
+<h2 id="hx" class="h2">이름·상태 줄에 더할 것</h2>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span style="display: inline-flex; align-items: center; gap: 6px; background: #2350D8; color: #FFFFFF; font-size: 14px; font-weight: 600; padding: 5px 12px; border-radius: 999px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #FFFFFF;"></span>지금 접수 가능</span>
+<button type="button" class="q" aria-label="접수 상태 뜻 보기">?</button>
+<span style="font-size: 13px; color: #5B6472;">공식 홈페이지 화면을 찍어 확인 · 10월 13일 19:28</span>
+<span class="b" title="공급 종류 문구가 여럿(무순위·선착순)">공급 종류 문구가 여럿이에요 (무순위·선착순)</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+<button type="button" title="이름 출처 보기: 시티오씨엘 8단지 · 확인됨" style="font-family: inherit; font-size: 32px; font-weight: 700; letter-spacing: -0.4px; background: none; border: none; padding: 0; color: #14181F; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: #9AA6B6; text-underline-offset: 6px;">시티오씨엘 8단지</button>
+<span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span>
+<span class="sub">← 이름을 누르면 이름의 출처(청약홈 공고)가 열려요</span>
+</div>
+<dl style="margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; font-size: 15px;">
+<dt class="sub" style="padding-top: 2px;">주소</dt><dd style="margin: 0;">인천광역시 미추홀구 학익동 인천 용현·학익 1블록 도시개발구역 공동2BL</dd>
+<dt class="sub" style="padding-top: 2px;">지금 적용 중인 공고</dt><dd style="margin: 0;"><b>무순위</b> 공고 <span class="sub">(2026.01.26부터 적용)</span></dd>
+<dt class="sub" style="padding-top: 2px;">접수 일정</dt>
+<dd style="margin: 0; display: flex; flex-wrap: wrap; gap: 6px 18px;">
+<span><span class="sub">특별공급</span> <span class="v">2025.12.01</span></span>
+<span><span class="sub">1순위 지역 거주자</span> <span class="v">2025.12.02</span></span>
+<span><span class="sub">1순위 다른 지역</span> <span class="v">2025.12.02</span></span>
+<span><span class="sub">2순위 지역 거주자</span> <span class="v">2025.12.03</span></span>
+<span><span class="sub">2순위 다른 지역</span> <span class="v">2025.12.03</span></span>
+<span class="ok">확인됨</span>
+</dd>
+<dt class="sub" style="padding-top: 2px;">당첨자 발표 · 계약</dt><dd style="margin: 0;"><span class="v">2025.12.09</span> · 계약 <span class="v">2025.12.21 ~ 2025.12.24</span> <span class="ok">확인됨</span></dd>
+</dl>
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+<a href="#" class="btn" style="background: #14181F; border-color: #14181F; color: #FFFFFF; font-weight: 600;">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg>
+공고문 원문 보기</a>
+<a href="#" class="btn">공식 홈페이지
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4 10 14"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></a>
+<button type="button" class="btn">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M3 9h18"></path></svg>
+접수 근거 원문 보기 (홈페이지 화면)</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; border-top: 1px solid #EEF1F4; padding-top: 18px;">
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">다른 단지일 때 · 공식 홈페이지가 다른 단지 페이지</p>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span style="display: inline-flex; align-items: center; background: #EEF1F4; color: #5B6472; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px;">접수 상태 확인 못 함</span>
+<button type="button" class="btn btn-sm">공식 홈페이지 원문 보기 (다른 단지 페이지 — 접수 근거 아님)</button>
+</div>
+<div class="hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3470A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto; margin-top: 3px;"><path d="M12 3 2 21h20z"></path><path d="M12 10v5"></path><path d="M12 18h.01"></path></svg>
+<span>청약홈에 등록된 공식 홈페이지가 지금 <b>다른 단지의 페이지</b>라서 판정기가 이 단지 페이지로 보지 않았어요. 그 문구는 접수 판단에 쓰지 않아요 — 접수 상태는 사람이 전화·방문으로 확인해야 해요. <a href="#">접수 상태 사람 확인하기 →</a></span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">다른 단지일 때 · 같은 단지 페이지인지 확인 전 <span class="mut" style="font-weight: 400;">예) 더샵 검단레이크파크(AB22BL), 10.14</span></p>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span style="display: inline-flex; align-items: center; background: #EEF1F4; color: #5B6472; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px;">접수 상태 확인 못 함</span>
+<button type="button" class="btn btn-sm">공식 홈페이지 원문 보기 (같은 단지인지 확인 전 — 접수 근거 아님)</button>
+</div>
+<div class="hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A3470A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto; margin-top: 3px;"><path d="M12 3 2 21h20z"></path><path d="M12 10v5"></path><path d="M12 18h.01"></path></svg>
+<span>판정기가 이 홈페이지가 <b>이 단지의 것인지 정하지 못했어요</b>(다른 단지라고 판정한 건 아니에요). 그 문구는 접수 판단에 쓰지 않아요 — 접수 상태는 사람이 전화·방문으로 확인해야 해요. <a href="#">접수 상태 사람 확인하기 →</a></span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">다른 단지일 때 · 아직 청약홈 공고 전</p>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span style="font-size: 20px; font-weight: 700;">[단지 이름]</span><span class="est">비공식</span>
+<span class="b" title="청약홈 공고 전 단지예요">공고 예정 후보 (청약홈에 아직 없음)</span>
+<span class="b">공고 전 (청약홈에 아직 없음)</span>
+</div>
+<p class="note">청약홈 공고가 나오기 전 단지예요. 공고가 나오면 같은 단지에 주택관리번호가 붙고 다시 판정해요. 홍보 자료에서 모은 후보라면 '공고 예정 후보', 아니면 '공고 전'으로 보여요. 이름도 공식이 아니라 '비공식' 라벨이 붙어요.</p>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 22px; align-items: stretch;">
+
+<section aria-labelledby="mx" class="card" style="flex: 1 1 560px; padding: 28px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">머리 부분 · 더하는 것</span>
+<h2 id="mx" class="h2">돈 카드에 더할 것</h2>
+</div>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div style="background: #F6F8FA; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">계약하는 날 먼저 내는 돈 (1차 계약금) <button type="button" class="q" aria-label="1차 계약금 뜻 보기">?</button></dt>
+<dd style="margin: 0; font-size: 22px; font-weight: 700;"><span class="v">1,000만원</span> <span class="ok">확인됨</span></dd>
+<dd class="mut" style="margin: 0;">계약금 5% 가운데 계약서 쓸 때 먼저 내는 금액</dd>
+</div>
+<div style="background: #F6F8FA; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">가격 구성</dt>
+<dd style="margin: 0; font-size: 17px; font-weight: 600;">공급가 + 발코니 1,950만</dd>
+<dd class="mut" style="margin: 0;">84C 타입 기준 (판정 기준 타입)</dd>
+</div>
+<div style="grid-column: 1 / -1; background: #F6F8FA; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">중도금 조건 (공고 문구 그대로)</dt>
+<dd style="margin: 0; font-size: 14px; line-height: 1.6;">지금 공고(무순위)에는 따로 적힌 조건이 없어요. 처음 공고(본청약): “사업주체가 알선하여 지정하는 대출금융기관에서 대출 진행시 본 아파트는 중도금 대출에 대한 이자는 ‘중도금 이자후불제’ 조건으로 전체 공급대금의 중도금 60% 범위 내에서”</dd>
+</div>
+<div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">특별공급 <button type="button" class="q" aria-label="특별공급 뜻 보기">?</button></dt>
+<dd style="margin: 0; font-size: 15px;">일반 <span class="v">674세대</span> · 특별 <span class="v">675세대</span> <span class="ok">확인됨</span> <span class="mut">— 특별공급 자격·소득 기준은 공고문에서 확인하세요</span></dd>
+</div>
+</dl>
+<p style="margin: 0; font-size: 13px; color: #5B6472; background: #F6F8FA; border-radius: 10px; padding: 10px 12px; line-height: 1.6;"><b style="color: #3A4250;">계산 방법</b> · 금액 = 이 단지 가격의 가운데값(84C, 6억 2,470만) × 지금 공고의 납부 비율 ÷ 100, 원 단위에서 반올림. 계약금·중도금·잔금 금액을 누르면 출처와 <span class="est">추정 (계산)</span> 라벨이 열려요.</p>
+<a href="#pay" style="font-size: 15px; font-weight: 600;">내야 할 돈·일정 자세히 →</a>
+<div style="border-top: 1px solid #EEF1F4; padding-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">다른 단지일 때 나오는 메모</p>
+<div class="hint" style="flex-direction: column; gap: 6px;">
+<span><b>[타입] 가격을 아직 정하지 못했어요</b> — 자료끼리 금액이 10배 넘게 달라(표의 단위가 다를 수 있어요) 판정기 비교를 기다리고 있어요. 풀리지 않으면 사람이 확인해서 정해요.</span>
+<span style="font-size: 13px;">보류된 자료 값 <span class="v">[값]</span> <span class="est">확인 불가(자료끼리 값이 달라 확인 중)</span> · <a href="#">최고 공급금액 사람 확인하기 →</a></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="ok">확인됨</span> · <b>가격에서 이미 뺐어요</b></span>
+<span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="ok">확인됨</span> · <b>표시만 했어요 (가격에서 빼지 않음)</b> <span class="mut">— 확인된 값이 아니거나 뺄 수 없는 금액이에요</span></span>
+<span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="est">추정</span> 공고문에서 찾은 할인이에요(조건 확인 필요) — 사람이 확인하면 가격에 반영해요 (기준 타입 [타입]) <a href="#">할인 사람 확인하기 →</a></span>
+<span><span class="sub">계약금 금액</span> <span class="est">확인 불가(계산값 없음)</span> <span class="mut">— 예전에 저장한 자료라 금액 계산이 없어요</span></span>
+<span><span class="sub">계약금</span> <span class="est">확인 불가(납부 조건을 아직 못 모음)</span></span>
+<span><span class="sub">접수 일정</span> <span class="est">확인 불가(공고 일정을 아직 못 모음)</span></span>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="sx" class="card" style="flex: 1 1 480px; padding: 28px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">머리 부분 · 더하는 것</span>
+<h2 id="sx" class="h2">점수 카드에 더할 것</h2>
+<p class="lead">상대 비교 · 투자 권유 아님</p>
+</div>
+<div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+<span class="num" style="font-size: 30px; font-weight: 700; color: #2350D8;">4.83</span><span class="sub">/ 10</span><span class="bd">1위</span><span class="est">추정</span>
+</div>
+<dl style="margin: 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">비슷한 단지들 사이 순위 점수 — 지난번 계산 대비 변화 <button type="button" class="q" aria-label="순위 변화 뜻 보기">?</button></dt>
+<dd style="margin: 0; font-size: 17px; font-weight: 600;"><span class="v">0.00점</span> 변화 없음 <span class="est">추정 (판정기)</span></dd>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">단지 종류 (분류) <button type="button" class="q" aria-label="단지 분류 뜻 보기">?</button></dt>
+<dd style="margin: 0; font-size: 17px; font-weight: 600;">민간분양 아파트 <span class="sub" style="font-weight: 400;">· 이렇게 분류될 확률</span> <span class="v">87%</span> <span class="est">추정 (판정기)</span></dd>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<dt class="sub">점수를 계산한 이유 (점수 계산 범위) <button type="button" class="q" aria-label="점수 계산 범위 뜻 보기">?</button></dt>
+<dd style="margin: 0; font-size: 15px;">민간분양 아파트로 확정됐고 지금 접수할 수 있어서 점수를 계산했어요 <span class="mut">(포함 확정 · 접수 가능)</span></dd>
+</div>
+</dl>
+<div style="border-top: 1px solid #EEF1F4; padding-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;">이럴 때 점수 옆에 붙는 배지 <span class="mut" style="font-weight: 400;">· 이 단지는 지금 해당 없음</span></p>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; font-size: 14px;">
+<li><span class="bs">동률</span> 점수가 같아 판정기도 순서를 정하지 못했어요 <span class="mut">(판정기 자신감이 있으면 "동률 (자신감 0.48)"처럼)</span></li>
+<li><span class="bs">순위 불안정</span> 점수 비중을 조금 바꾸면 상위 5곳이 달라져요</li>
+<li><span class="bs">다시 계산 필요</span> 지금 사실로 따진 범위가 저장된 범위와 달라요. 그때 아래 이유 줄에 "(지금 사실 기준 — 다시 판정한 뒤 범위의 이유)"가 붙어요</li>
+<li style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="b">점수 계산 대상</span><span class="b">보류 — 공고 뒤 다시 계산</span><span class="b">참고 후보 (순위만)</span><span class="b">분류 확인 중 (미해결)</span><span class="b">제외</span></li>
+</ul>
+</div>
+</section>
+
+</div>
+
+<section aria-labelledby="px" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 1 · 평형별 가격 · 기본 보드에 더할 열</span>
+<h2 id="px" class="h2">타입마다 가격이 어떻게 나뉘나요?</h2>
+<p class="lead">기본 보드 표에 없던 전용면적·가장 낮은 층·발코니·필수 옵션 열과 '판정 기준' 표시예요. 할인이 있는 공고면 맨 오른쪽에 '할인' 열이 생겨요.</p>
+</div>
+<dl style="margin: 0; display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 15px;">
+<div><dt class="sub" style="display: inline;">현재 가격</dt> <dd style="display: inline; margin: 0;"><span class="v">5억 9,850만</span> ~ <span class="v">6억 5,090만</span> <span class="ok">확인됨</span></dd></div>
+<div><dt class="sub" style="display: inline;">구성</dt> <dd style="display: inline; margin: 0;">공급가 + 발코니 1,950만</dd></div>
+<div><dt class="sub" style="display: inline;">처음 공고 대비 가격 변화</dt> <dd style="display: inline; margin: 0;" class="mut">값 없음 (공고가 바뀌어 가격이 달라지면 보여요)</dd></div>
+</dl>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 980px;">
+<caption style="text-align: left; font-size: 13px; color: #5B6472; padding-bottom: 8px;">단위 원 · 최고가와 가장 낮은 층 가격은 공급가 기준(발코니 별도) · 출처 입주자 모집 공고문 · 확인 2026-10-13</caption>
+<thead><tr><th scope="col">타입</th><th scope="col">전용면적</th><th scope="col" style="text-align: right;">세대</th><th scope="col" style="text-align: right;">최고가</th><th scope="col" style="text-align: right;">가장 낮은 층 가격</th><th scope="col">가장 낮은 층</th><th scope="col" style="text-align: right;">발코니</th><th scope="col" style="text-align: right;">필수 옵션</th></tr></thead>
+<tbody>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">59</th><td>59.98㎡</td><td style="text-align: right;">157</td><td style="text-align: right;"><span class="v">4억 7,770만</span></td><td style="text-align: right;"><span class="v">4억 3,810만</span></td><td>1층</td><td style="text-align: right;">1,400만</td><td style="text-align: right;">0</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">75</th><td>75.91㎡</td><td style="text-align: right;">153</td><td style="text-align: right;"><span class="v">5억 9,980만</span></td><td style="text-align: right;"><span class="v">5억 5,580만</span></td><td>2층</td><td style="text-align: right;">1,700만</td><td style="text-align: right;">0</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">84A</th><td>84.98㎡</td><td style="text-align: right;">569</td><td style="text-align: right;"><span class="v">6억 7,080만</span></td><td style="text-align: right;"><span class="v">6억 1,510만</span></td><td>1층</td><td style="text-align: right;">1,950만</td><td style="text-align: right;">0</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">84B</th><td>85㎡</td><td style="text-align: right;">251</td><td style="text-align: right;"><span class="v">6억 4,090만</span></td><td style="text-align: right;"><span class="v">5억 8,770만</span></td><td>1층</td><td style="text-align: right;">1,950만</td><td style="text-align: right;">0</td></tr>
+<tr style="background: #F2F6FF;"><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">84C <span class="bs" title="점수·가격 계산에 쓰는 대표 타입">판정 기준</span></th><td>84.85㎡</td><td style="text-align: right;">82</td><td style="text-align: right;"><span class="v">6억 3,140만</span></td><td style="text-align: right;"><span class="v">5억 7,900만</span></td><td>1층</td><td style="text-align: right;">1,950만</td><td style="text-align: right;">0</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">101</th><td>101.96㎡</td><td style="text-align: right;">92</td><td style="text-align: right;"><span class="v">7억 9,440만</span></td><td style="text-align: right;"><span class="v">7억 540만</span></td><td>1층</td><td style="text-align: right;">2,100만</td><td style="text-align: right;">0</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">110</th><td>110.71㎡</td><td style="text-align: right;">42</td><td style="text-align: right;"><span class="v">8억 7,640만</span></td><td style="text-align: right;"><span class="v">7억 7,830만</span></td><td>1층</td><td style="text-align: right;">2,300만</td><td style="text-align: right;">0</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">136P</th><td>136㎡</td><td style="text-align: right;">3</td><td style="text-align: right;"><span class="v">13억 3,750만</span></td><td style="text-align: right;"><span class="v">13억 3,750만</span></td><td>45-46층</td><td style="text-align: right;">3,000만</td><td style="text-align: right;">0</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">필수 옵션 칸의 공고문 안내 문구가 여러 타입에 똑같으면 숫자 옆에 ①을 달고 표 아래에 "① 공고문 안내: …"로 한 번만 적어요. 할인 열 안내: 기준 타입 줄의 '추정' 할인은 "사람이 확인하면 가격에 반영(기준 타입 84C)" + 할인 사람 확인하기 / 다른 타입 줄은 "기준 타입이 아니라 가격에 반영하지 않음" / 다른 타입의 확인된 할인은 "기준 타입이 아니라 빼지 않음(표시만)".</p>
+</section>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+<div role="tablist" aria-label="단지 상세 탭" style="display: flex; gap: 4px; padding: 12px 16px 0; border-bottom: 1px solid #E3E7EC; overflow-x: auto;">
+<button type="button" role="tab" class="tab" aria-selected="false">평형별 가격</button>
+<button type="button" role="tab" class="tab" aria-selected="true">납부 일정 전체</button>
+<button type="button" role="tab" class="tab" aria-selected="false">경쟁률 전체</button>
+<button type="button" role="tab" class="tab" aria-selected="false">주변 시세 비교</button>
+<button type="button" role="tab" class="tab" aria-selected="false">가격 전망 (판정기)</button>
+<button type="button" role="tab" class="tab" aria-selected="false">개발 소식 (0)</button>
+<button type="button" role="tab" class="tab" aria-selected="false">출처·원문</button>
+</div>
+<p style="margin: 0; padding: 12px 20px; font-size: 13px; color: #5B6472; background: #FAFBFC;">탭은 주소 끝(#payment 처럼)에 기억돼요. 홈의 '바뀐 것' 알림을 누르면 해당 탭이 바로 열려요. 키보드 ←→로 탭을 옮길 수 있어요. 이 보드에서는 탭 2~7을 아래로 이어서 보여 줘요.</p>
+</div>
+
+<section id="pay" aria-labelledby="t2" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 20px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 2 · 납부 일정 전체</span>
+<h2 id="t2" class="h2">언제, 몇 번에 나눠 내나요?</h2>
+<p class="lead">공고가 두 번 나왔어요(처음 본청약 → 남은 집 무순위). 지금은 무순위 공고 조건이 적용돼요. 비율만 보여 주고, 회차별 금액은 계산하지 않았어요.</p>
+</div>
+<ol aria-label="납부 순서" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px;">
+<sc-for list="{{payRounds}}" as="p" hint-placeholder-count="8">
+<li style="{{p.box}}">
+<span style="font-size: 12px; color: #5B6472;">{{p.k}}</span>
+<span class="num" style="font-size: 20px; font-weight: 700;">{{p.pct}}</span>
+<span class="num" style="font-size: 13px;">{{p.when}}</span>
+<span style="{{p.tagStyle}}">{{p.tag}}</span>
+</li>
+</sc-for>
+</ol>
+<div style="overflow-x: auto;">
+<table class="tbl" style="min-width: 760px;">
+<caption style="text-align: left; font-size: 13px; color: #5B6472; padding-bottom: 8px;">두 공고 나란히 보기 · 출처 입주자 모집 공고문 · 확인 2026-10-13</caption>
+<thead><tr><th scope="col" style="width: 22%;">항목</th><th scope="col">지금 적용 · 무순위 공고 <span class="mut">2025910275</span> <span class="bd">지금 적용</span></th><th scope="col">처음 공고 · 본청약 <span class="mut">2025000560</span></th></tr></thead>
+<tbody class="num">
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">적용 시작일</th><td><span class="v">2026.01.26</span> <span class="ok">확인됨</span></td><td><span class="v">2025.11.21</span> <span class="ok">확인됨</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">계약금</th><td><span class="v">5%</span></td><td><span class="v">5%</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">계약하는 날 먼저 내는 돈 (1차 계약금)</th><td><span class="v">1,000만원</span></td><td><span class="v">1,000만원</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">중도금</th><td><span class="v">60%</span> <span class="sub">(6번 × 10%)</span></td><td><span class="v">60%</span> <span class="sub">(6번 × 10%)</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">잔금</th><td><span class="v">35%</span> <span class="est">추정 (100 − 계약금 − 중도금)</span></td><td><span class="v">35%</span> <span class="est">추정 (100 − 계약금 − 중도금)</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">중도금 조건 (공고 문구)</th><td class="sub">없음</td><td style="font-size: 13px; line-height: 1.6;">사업주체가 알선하여 지정하는 대출금융기관에서 대출 진행시 본 아파트는 중도금 대출에 대한 이자는 “중도금 이자후불제” 조건으로 전체 공급대금의 중도금 60% 범위 내에서</td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; color: #5B6472; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">처음 공고 대비 계약금 변화</th><td><span class="v">0%p</span> 같아요 <span class="est">추정 (계산)</span></td><td class="sub">기준 공고</td></tr>
+</tbody>
+</table>
+</div>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 560px;">
+<caption style="text-align: left; font-size: 13px; color: #5B6472; padding-bottom: 8px;">중도금 일정 · 두 공고 모두 같아요 · 날짜 옆은 기준일 2026-10-14부터 남은 날</caption>
+<thead><tr><th scope="col">회차</th><th scope="col">낼 날짜</th><th scope="col" style="text-align: right;">비율</th></tr></thead>
+<tbody>
+<tr><th scope="row" style="text-align: left; font-weight: 500; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">1회차</th><td><span class="v">2026.05.07</span> <span class="mut">160일 지남</span></td><td style="text-align: right;"><span class="v">10%</span></td></tr>
+<tr style="background: #F2F6FF;"><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">2회차</th><td><span class="v">2026.12.07</span> <b style="color: #1A3FB0; font-size: 13px;">D-54 · 다음 납부</b></td><td style="text-align: right;"><span class="v">10%</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">3회차</th><td><span class="v">2027.07.07</span> <span class="mut">D-266</span></td><td style="text-align: right;"><span class="v">10%</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">4회차</th><td><span class="v">2028.03.07</span></td><td style="text-align: right;"><span class="v">10%</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">5회차</th><td><span class="v">2028.08.07</span></td><td style="text-align: right;"><span class="v">10%</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 500; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">6회차</th><td><span class="v">2028.12.07</span></td><td style="text-align: right;"><span class="v">10%</span></td></tr>
+</tbody>
+</table>
+</div>
+<p class="src">자료: 입주자 모집 공고문(본청약·무순위) · 확인 2026-10-13 · 모두 <span class="ok">확인됨</span> (잔금 비율만 계산)</p>
+</section>
+
+<section aria-labelledby="t3" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 3 · 경쟁률 전체</span>
+<h2 id="t3" class="h2">회차·타입별로 얼마나 몰렸나요?</h2>
+<p class="lead">본청약 34줄(타입 8개 × 순위·지역 4개)과 남은 집 무순위 2줄이에요. 경쟁률이 1보다 작으면 신청이 모자랐다는 뜻이고, 그때는 모자란 세대 수를 보여 줘요.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px;">
+<div style="background: #F6F8FA; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1 1 240px;">
+<span class="sub">가장 높았던 경쟁률 (1순위 · 지역 거주자)</span>
+<span style="font-size: 22px; font-weight: 700;"><span class="v">6.22 대 1</span> <span class="sub" style="font-weight: 500;">59타입</span></span>
+<span class="mut">접수 454 ÷ 공급 73 <span class="ok">확인됨</span></span>
+</div>
+<div style="background: #F6F8FA; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1 1 240px;">
+<span class="sub">신청이 모자랐던 타입</span>
+<span style="font-size: 22px; font-weight: 700;"><span class="v">5개</span></span>
+<span class="mut">접수가 공급보다 적은 타입 수 <span class="ok">확인됨</span></span>
+</div>
+</div>
+<div role="group" aria-label="보는 범위" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+<sc-for list="{{compFilters}}" as="f" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+</sc-for>
+<span class="sub">{{compCount}}</span>
+</div>
+<div style="overflow-x: auto;">
+<div role="table" aria-label="경쟁률" class="dt num" style="min-width: 920px;">
+<div role="rowgroup" style="display: table-header-group;"><div role="row" class="dr">
+<div role="columnheader" class="dh">회차</div><div role="columnheader" class="dh">구분</div><div role="columnheader" class="dh">타입</div><div role="columnheader" class="dh" style="text-align: right;">공급</div><div role="columnheader" class="dh" style="text-align: right;">접수</div><div role="columnheader" class="dh">경쟁률 (모자라면 미달 세대)</div><div role="columnheader" class="dh">당첨된 사람 가점 (최저~최고 · 평균) <button type="button" class="q" aria-label="가점 뜻 보기">?</button></div>
+</div></div>
+<div role="rowgroup" style="display: table-row-group;">
+<sc-for list="{{compRows}}" as="r" hint-placeholder-count="10">
+<div role="row" class="dr" style="{{r.rowStyle}}">
+<div role="cell" class="dc">{{r.round}}</div>
+<div role="cell" class="dc">{{r.kind}}</div>
+<div role="cell" class="dc" style="font-weight: 600;">{{r.type}}</div>
+<div role="cell" class="dc" style="text-align: right;"><span class="v">{{r.supply}}</span></div>
+<div role="cell" class="dc" style="text-align: right;"><span class="v">{{r.applied}}</span></div>
+<div role="cell" class="dc"><span style="{{r.ratioStyle}}">{{r.ratio}}</span></div>
+<div role="cell" class="dc"><span style="{{r.ptsStyle}}">{{r.pts}}</span></div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<p class="src">자료: 청약홈 경쟁률·당첨 가점 · 확인 2026-10-14 · 모두 <span class="ok">확인됨</span> · '가점 미수집'은 아직 모으지 않은 칸, '발표 전'은 당첨자 발표 전이에요</p>
+
+<figure style="margin: 0; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h3 class="h3" style="font-size: 16px;">남은 집을 다시 모집한 이력</h3>
+<span class="ok">확인됨</span>
+<span class="sub" style="width: 100%;">본청약 뒤 무순위·임의공급·선착순으로 다시 모집한 공고예요. 점 위 글씨는 다시 모집한 세대 수와 경쟁률이에요.</span>
+</figcaption>
+<svg role="img" aria-label="남은 집 추가 모집 이력: 2026년 1월 26일 무순위 공고 1건, 36세대, 75타입 6.11 대 1, 136P타입 10.00 대 1" viewBox="0 0 1180 270" style="width: 100%; height: auto;">
+<g font-family="IBM Plex Sans KR, sans-serif" font-size="13" fill="#5B6472">
+<text x="10" y="64">본청약</text><text x="10" y="114">무순위</text><text x="10" y="164">임의공급</text><text x="10" y="214">선착순</text>
+</g>
+<g stroke="#EEF1F4" stroke-width="1">
+<line x1="140" y1="60" x2="1160" y2="60"></line><line x1="140" y1="110" x2="1160" y2="110"></line><line x1="140" y1="160" x2="1160" y2="160"></line><line x1="140" y1="210" x2="1160" y2="210"></line>
+</g>
+<g stroke="#E3E7EC" stroke-width="1">
+<line x1="140" y1="36" x2="140" y2="232"></line><line x1="310" y1="36" x2="310" y2="232"></line><line x1="480" y1="36" x2="480" y2="232"></line><line x1="650" y1="36" x2="650" y2="232"></line><line x1="820" y1="36" x2="820" y2="232"></line><line x1="990" y1="36" x2="990" y2="232"></line><line x1="1160" y1="36" x2="1160" y2="232"></line>
+</g>
+<g font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#7A8391" text-anchor="middle">
+<text x="140" y="254">2025.11</text><text x="310" y="254">2026.01</text><text x="480" y="254">2026.03</text><text x="650" y="254">2026.05</text><text x="820" y="254">2026.07</text><text x="990" y="254">2026.09</text><text x="1160" y="254" text-anchor="end">2026.11</text>
+</g>
+<line x1="1112" y1="30" x2="1112" y2="232" stroke="#2350D8" stroke-width="1.5" stroke-dasharray="4 4"></line>
+<text x="1106" y="24" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#1A3FB0" text-anchor="end">기준일 10.14</text>
+<path d="M380 100 L390 110 L380 120 L370 110 Z" fill="#2350D8"></path>
+<rect x="290" y="72" width="292" height="22" rx="6" fill="#E8EEFF"></rect>
+<text x="300" y="88" font-family="IBM Plex Sans KR, sans-serif" font-size="12.5" fill="#1A3FB0" font-weight="600">01.26 · 36세대 · 75타입 6.11 대 1 · 136P 10.00 대 1</text>
+<text x="660" y="64" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#9AA6B6">본청약은 경쟁률 표에 있어요</text>
+<text x="660" y="164" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#9AA6B6">없음</text>
+<text x="660" y="214" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#9AA6B6">없음</text>
+</svg>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
+<p class="src">자료: 청약홈 무순위 공고 2025910275 · 확인 2026-10-13 · 축: 공고일(월), 줄: 모집 종류</p>
+</div>
+</figure>
+</section>
+
+<section aria-labelledby="t4" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 4 · 주변 시세 비교</span>
+<h2 id="t4" class="h2">주변 새 아파트 실거래와 비교하면 어떤가요?</h2>
+<p class="lead">이 단지 가격의 가운데값(6억 2,470만)과, 비교 단지들의 최근 실거래 가운데값을 비교했어요. 높다·낮다는 사실만 말할 뿐, 평가가 아니에요.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+<div style="border: 1px solid #E3E7EC; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="sub">주변 시세와 가격 차이 <button type="button" class="q" aria-label="가격 차이 뜻 보기">?</button></span>
+<span style="font-size: 28px; font-weight: 700;"><span class="v">+8.1%</span></span>
+<span style="font-size: 14px;">주변보다 <b style="color: #A3470A;">8.1% 높아요</b> <span class="ok">확인됨</span></span>
+</div>
+<div style="border: 1px solid #E3E7EC; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="sub">같은 계산 · 연식 보정 안 한 가운데값 기준</span>
+<span style="font-size: 28px; font-weight: 700;"><span class="v">+8.1%</span></span>
+<span class="mut">대체 단지가 없어 보정 전후가 같아요 <span class="ok">확인됨</span></span>
+</div>
+<div style="border: 1px solid #E3E7EC; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="sub">가격 차이 점수 (0~10)</span>
+<span style="font-size: 28px; font-weight: 700;"><span class="v">2.98</span><span class="sub" style="font-weight: 500;"> / 10</span></span>
+<span class="mut">주변보다 높을수록 점수가 낮아져요 <span class="ok">확인됨</span></span>
+</div>
+</div>
+<div class="info"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2350D8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto; margin-top: 3px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01"></path><path d="M11 12h1v4h1"></path></svg>
+<span><b>+</b>는 이 단지 가격이 비교 단지 실거래 가운데값보다 높다는 뜻이고, <b>−</b>는 낮다는 뜻이에요.</span></div>
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: #5B6472;">비교 기준: 같은 생활권 · 2020년 이후 준공 · 전용 80~85㎡ · 기준일 전 6개월 거래 <span class="b">비교 단지 17곳 · 거래 94건</span> <span class="mut">(이상한 값 11건 뺌)</span></p>
+<figure style="margin: 0; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h3 class="h3" style="font-size: 16px;">이 단지 가격 vs 주변 실거래</h3>
+<span class="est">재가공 (실거래 통계)</span><span class="ok">확인됨</span>
+<span class="sub" style="width: 100%;">가로 막대는 거래 가격 범위(가장 낮은 값~가장 높은 값), 점은 가운데값이에요. 세로 점선은 비교 단지 전체 가운데값 5억 7,800만이에요.</span>
+</figcaption>
+<div role="img" aria-label="이 단지 가격 5억 9,850만~6억 5,090만, 가운데값 6억 2,470만. 비교 단지 17곳 실거래 가운데값 3억~7억 250만, 전체 가운데값 5억 7,800만" style="display: flex; flex-direction: column; gap: 2px;">
+<sc-for list="{{comps}}" as="c" hint-placeholder-count="18">
+<div style="{{c.rowStyle}}">
+<span style="{{c.nameStyle}}">{{c.name}} <span class="mut">{{c.meta}}</span></span>
+<div style="position: relative; height: 22px;">
+<div style="position: absolute; top: 0; bottom: 0; left: 59.64%; border-left: 1.5px dashed #C2560C;"></div>
+<div style="{{c.whisker}}"></div>
+<div style="{{c.dot}}"></div>
+</div>
+<span class="num" style="{{c.valStyle}}">{{c.med}}</span>
+</div>
+</sc-for>
+<div style="display: grid; grid-template-columns: 260px minmax(0, 1fr) 96px; gap: 12px; margin-top: 6px;">
+<span class="mut">단위: 원 (가운데값)</span>
+<div style="position: relative; height: 18px; border-top: 1px solid #C8CFD8; font-size: 12px; color: #7A8391;">
+<span style="position: absolute; left: 9.09%; transform: translateX(-50%);">3억</span><span style="position: absolute; left: 27.27%; transform: translateX(-50%);">4억</span><span style="position: absolute; left: 45.45%; transform: translateX(-50%);">5억</span><span style="position: absolute; left: 63.64%; transform: translateX(-50%);">6억</span><span style="position: absolute; left: 81.82%; transform: translateX(-50%);">7억</span><span style="position: absolute; left: 100%; transform: translateX(-100%); white-space: nowrap;">8억</span>
+</div>
+<span></span>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 13px; color: #3A4250;">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 6px; background: #2350D8; border-radius: 3px;"></span>이 단지 (분양가)</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 6px; background: #9AA6B6; border-radius: 3px;"></span>비교 단지 실거래 범위</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 0; height: 14px; border-left: 2px dashed #C2560C;"></span>비교 단지 전체 가운데값 (보정 안 함)</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
+<p class="src">자료: 국토교통부 실거래가 · 기준일 전 6개월 · 확인 2026-10-14</p>
+</div>
+</figure>
+</section>
+
+<section aria-labelledby="t5" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 5 · 가격 전망 (판정기)</span>
+<h2 id="t5" class="h2">입주 뒤 값이 오를 가능성은 어느 정도인가요?</h2>
+<p class="lead">판정기가 공개 자료를 보고 낸 가능성이에요. <b>당첨 확률이 아니에요 · 보장 아님 · 상대 비교</b></p>
+</div>
+<div role="radiogroup" aria-label="목표 시점" style="display: flex; flex-wrap: wrap; gap: 8px;">
+<sc-for list="{{horizons}}" as="h" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{h.checked}}" onClick="{{h.pick}}" style="{{h.style}}"><span style="font-weight: 600;">{{h.label}}</span><span style="{{h.subStyle}}">{{h.sub}}</span></button>
+</sc-for>
+</div>
+<figure style="margin: 0; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h3 class="h3" style="font-size: 16px;">현재 가격보다 얼마나 오를까 — 가능성 사다리</h3>
+<span class="est">추정 (판정기)</span>
+<span class="sub" style="width: 100%;">{{ladderTarget}} · 84C 타입, 현재 가격(5.99~6.51억) 기준</span>
+</figcaption>
+<div role="img" aria-label="{{ladderAria}}" style="display: flex; flex-direction: column; gap: 14px;">
+<div style="display: grid; grid-template-columns: 220px minmax(0, 1fr) 200px; gap: 14px; font-size: 12px; color: #7A8391;">
+<span></span>
+<div style="position: relative; height: 16px;"><span style="position: absolute; left: 15%; transform: translateX(-50%); white-space: nowrap;">가능성 낮음 기준 15%</span><span style="position: absolute; left: 85%; transform: translateX(-50%); white-space: nowrap;">가능성 높음 기준 85%</span></div>
+<span>판정 · 필요한 연 상승률</span>
+</div>
+<sc-for list="{{ladder}}" as="b" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 220px minmax(0, 1fr) 200px; gap: 14px; align-items: center;">
+<span style="{{b.labelStyle}}">{{b.label}}</span>
+<div style="position: relative; height: 28px; background: #EEF1F4; border-radius: 6px;">
+<div style="{{b.bar}}"></div>
+<div style="position: absolute; top: -4px; bottom: -4px; left: 15%; border-left: 1.5px dashed #9AA6B6;"></div>
+<div style="position: absolute; top: -4px; bottom: -4px; left: 85%; border-left: 1.5px dashed #9AA6B6;"></div>
+<span class="num" style="{{b.valStyle}}">{{b.pct}}</span>
+</div>
+<span style="font-size: 13px; color: #3A4250;">{{b.verdict}} <span class="mut">{{b.annual}}</span></span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
+<p class="src">자료: 판정기 가능성 판정 (기록 번호 {{ladderSeq}}) · 2026-10-14</p>
+</div>
+</figure>
+<div style="background: #F6F8FA; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; font-weight: 600; color: #3A4250;">판정기에 물은 문장</span>
+<p style="margin: 0; font-size: 14px; line-height: 1.7;">“{{proposition}}”</p>
+</div>
+<p class="note">'필요한 연 상승률'은 그만큼 오르려면 해마다 평균 몇 %씩 올라야 하는지예요. 세 시점 모두 판단이 '중간'(가능성 낮음 기준과 높음 기준 사이)이에요.</p>
+</section>
+
+<section aria-labelledby="t6" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 6 · 개발 소식 (호재) · 0건</span>
+<h2 id="t6" class="h2">주변에 개발 소식이 있나요?</h2>
+<p class="lead">교통·학교·상업 시설 같은 개발 소식을 단계별로 모았어요. 언론 보도만 있거나 아직 정해지지 않은 소식은 회색이에요.</p>
+</div>
+<figure style="margin: 0; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><h3 class="h3" style="font-size: 16px;">개발 소식 단계</h3></figcaption>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;">
+<section aria-label="확정" style="display: flex; flex-direction: column; gap: 8px;"><span class="bd" style="align-self: flex-start;">확정</span><div class="empty" style="padding: 12px;">없음</div></section>
+<section aria-label="계획" style="display: flex; flex-direction: column; gap: 8px;"><span class="bs" style="align-self: flex-start;">계획</span><div class="empty" style="padding: 12px;">없음</div></section>
+<section aria-label="추진" style="display: flex; flex-direction: column; gap: 8px;"><span class="bs" style="align-self: flex-start;">추진</span><div class="empty" style="padding: 12px;">없음</div></section>
+<section aria-label="언론 보도만" style="display: flex; flex-direction: column; gap: 8px;"><span class="b" style="align-self: flex-start; color: #7A8391;">언론 보도만</span><div class="empty" style="padding: 12px;">없음</div></section>
+<section aria-label="미확정" style="display: flex; flex-direction: column; gap: 8px;"><span class="b" style="align-self: flex-start; color: #7A8391;">아직 정해지지 않음</span><div class="empty" style="padding: 12px;">없음</div></section>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
+<p class="src">자료: 지역 개발 소식 후보(판정기 분류) · 기준일 2026-10-14</p>
+</div>
+</figure>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<h3 class="h3" style="font-size: 16px;">개발 소식 목록</h3>
+<div class="empty">이 단지에 연결된 개발 소식이 없어요</div>
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 600;">소식이 있을 때 한 줄 모습 <span class="mut" style="font-weight: 400;">· 인천 지역 후보 실제 분류값, 이름·발췌는 자리표시</span></p>
+<ul style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #EEF1F4;">
+<li style="padding: 12px 0; border-bottom: 1px solid #EEF1F4; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #7A8391;">
+<span style="font-weight: 600; color: #5B6472;">[소식 이름 — 기사 제목]</span>
+<span class="b">생활 시설</span>
+<span class="b" style="color: #7A8391;">아직 정해지지 않음</span>
+<span class="sub">이 단계일 가능성</span> <span class="v">68%</span> <span class="est">추정 (판정기)</span>
+<span class="sub">예정</span> <span class="est">확인 불가(예정 시기가 안 적힘)</span>
+<span class="sub">거리</span> <span class="v">[거리]m</span>
+<span class="b">위치 미확정 · 단지 연결 없음</span>
+<span class="b">판정 미해결</span>
+<a href="#">출처 기사 열기</a>
+<span style="width: 100%; font-size: 12px;">[기사 발췌 한두 줄]</span>
+</li>
+</ul>
+<p class="note">판정기가 '개발 소식 아님'으로 뺀 것은 단계 보드에 넣지 않고 "개발 소식 아님(판정 제외) n건 — 보드에 넣지 않음" 한 줄로만 알려요. 탭 이름에는 건수가 붙어요 — 0건이면 "개발 소식 (0)".</p>
+</div>
+</section>
+
+<section aria-labelledby="t7" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span class="tabtag">탭 7 · 출처·원문</span>
+<h2 id="t7" class="h2">이 숫자는 어디에서 왔나요?</h2>
+<p class="lead">왼쪽에서 값을 고르면 오른쪽 원문에서 그 부분을 파랗게 칠해 보여 줘요. 원문은 이 탭을 열 때 처음 불러와요.</p>
+</div>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 22px; align-items: start;">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<h3 class="h3" style="font-size: 15px;">출처가 있는 값 <span class="mut" style="font-weight: 400;">23개</span></h3>
+<ul aria-label="출처가 있는 값" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;">
+<sc-for list="{{provItems}}" as="p" hint-placeholder-count="23">
+<li><button type="button" aria-pressed="{{p.pressed}}" style="{{p.style}}"><span style="flex: 1 1 auto; text-align: left;">{{p.title}}</span><span class="num" style="font-weight: 600;">{{p.val}}</span><span class="{{p.lcls}}">{{p.label}}</span></button></li>
+</sc-for>
+</ul>
+</div>
+<div aria-live="polite" style="display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3" style="font-size: 15px;">원문 · 현재 가격(낮은 값) 5억 9,850만</h3>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 13px;">
+<span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span>
+<span class="sub">확인일 2026-10-13</span>
+<span class="sub">입주자 모집 공고문 (PDF) · 1순위 자료 · 채택</span>
+<a href="#" style="word-break: break-all;">청약홈 공고 첨부파일 열기 ↗</a>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" class="btn btn-sm" aria-expanded="true">미리보기 닫기</button>
+<button type="button" class="btn btn-sm">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>
+원문 파일 저장</button>
+</div>
+<pre class="raw">… 084.9966B 84B 251
+3층 6 256,020,000 343,980,000 - 600,000,000 10,000,000 20,000,000 60,000,000 60,000,000 60,000,000 60,000,000 60,000,000 60,000,000 210,000,000
+… (중략)
+31-40층 51 270,741,150 363,758,850 - 634,500,000 10,000,000 21,725,000 63,450,000 63,450,000 63,450,000 63,450,000 63,450,000 63,450,000 222,075,000
+41층이상 20 273,472,030 367,427,970 - 640,900,000 10,000,000 22,045,000 64,090,000 64,090,000 64,090,000 64,090,000 64,090,000 64,090,000 224,315,000
+<mark class="hl" aria-label="발췌 위치">1층 2 247,059,300 331,940,700 - 579,000,000 10,000,000 18,950,000 57,900,000 57,900,000 57,900,000 57,900,000 57,900,000 57,900,000 202,650,000</mark>
+2층 2 249,619,500 335,380,500 - 585,000,000 10,000,000 19,250,000 58,500,000 58,500,000 58,500,000 58,500,000 58,500,000 58,500,000 204,750,000
+3층 2 252,222,370 338,877,630 - 591,100,000 … </pre>
+<p class="note">칠한 줄의 579,000,000원(공급가)에 발코니 1,950만원을 더한 값이 현재 가격 낮은 값이에요(가격 구성: 공급가 + 발코니). 원문 전체는 170,192자예요.</p>
+</div>
+</div>
+<details style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 0;">
+<summary style="cursor: pointer; padding: 14px 16px; font-size: 15px; font-weight: 600; min-height: 20px;">판정 기록 (운영자용) <span class="mut" style="font-weight: 400;">· 이 단지에 대해 판정기를 부른 기록 10건 — 펼친 모습은 아래</span></summary>
+</details>
+</section>
+
+<footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
+<span>이 화면은 개인의 청약 자격을 판정하지 않아요 · 최종 기준은 입주자 모집 공고문이에요.</span>
+<span><span class="ok">확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산·판정기 값 · <span class="est">재가공</span> 가공한 통계 · <span class="est">확인 불가(이유)</span> · 점선 밑줄 숫자를 누르면 출처가 열려요 <a href="#">라벨 뜻 보기</a></span>
+</footer>
+
+<section aria-labelledby="ex" style="display: flex; flex-direction: column; gap: 18px; margin-top: 18px;">
+<div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;">
+<h2 id="ex" style="margin: 0; font-size: 18px; font-weight: 700;">펼친 모습 · 다른 상태</h2>
+<span style="font-size: 14px; color: #C8CFD8;">위에서 접혀 있거나, 이 단지 데이터로는 안 보이는 것들이에요</span>
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3">판정 기록 (운영자용) — 펼친 모습</h3>
+<p class="note">운영자가 판정기 호출을 점검하는 표예요. 판정기에 보낸 내용 원문은 남기지 않아요. '미해결'(검토·질문 남김·차단·오류) 줄은 회색이고 점수에 쓰지 않아요.</p>
+<div style="overflow-x: auto;">
+<div role="table" aria-label="판정 기록" class="dt num" style="min-width: 1000px;">
+<div role="rowgroup" style="display: table-header-group;"><div role="row" class="dr">
+<div role="columnheader" class="dh">번호</div><div role="columnheader" class="dh">판정 종류</div><div role="columnheader" class="dh">무엇을 물었나</div><div role="columnheader" class="dh">상태</div><div role="columnheader" class="dh">모델</div><div role="columnheader" class="dh">자신감</div><div role="columnheader" class="dh">걸린 시간</div><div role="columnheader" class="dh">시각</div>
+</div></div>
+<div role="rowgroup" style="display: table-row-group;">
+<sc-for list="{{judgments}}" as="j" hint-placeholder-count="10">
+<div role="row" class="dr">
+<div role="cell" class="dc">{{j.seq}}</div>
+<div role="cell" class="dc">{{j.tool}}</div>
+<div role="cell" class="dc"><div style="display: flex; flex-direction: column; gap: 2px;"><span>{{j.what}}</span><code style="font-size: 11px; color: #7A8391; word-break: break-all;">{{j.purpose}}</code></div></div>
+<div role="cell" class="dc"><span class="b">정상</span></div>
+<div role="cell" class="dc">{{j.model}} <span class="mut">(typesafe)</span></div>
+<div role="cell" class="dc">{{j.conf}}</div>
+<div role="cell" class="dc">{{j.ms}}</div>
+<div role="cell" class="dc">{{j.at}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; color: #5B6472;">
+<span>다른 상태:</span>
+<span class="b" style="color: #7A8391;">검토</span><span class="b" style="color: #7A8391;">미해결</span>
+<span class="b" style="color: #7A8391;">질문 남김</span><span class="b" style="color: #7A8391;">차단</span><span class="b" style="color: #7A8391;">오류</span> <span class="mut">+ 오류 문구 한 줄</span>
+<span class="b">저장된 결과 재사용 (캐시)</span>
+<span class="b" title="판정기가 모델을 부르지 않은 로컬 처리(비용 없음)">로컬 처리</span>
+<span class="mut">모델 칸이 비면 '기록 없음' · 기록이 0건이면 "판정 기록 없음"</span>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 18px;">
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3">표로 보기 — 가격 전망 사다리</h3>
+<table class="tbl num">
+<thead><tr><th scope="col">목표 시점</th><th scope="col">시점</th><th scope="col" style="text-align: right;">+5%</th><th scope="col" style="text-align: right;">+10%</th><th scope="col" style="text-align: right;">+20%</th><th scope="col" style="text-align: right;">그대로·내림</th><th scope="col">상태</th></tr></thead>
+<tbody>
+<tr><td>입주 + 1년</td><td>2030 하반기</td><td style="text-align: right;"><span class="v">66%</span></td><td style="text-align: right;"><span class="v">53%</span></td><td style="text-align: right;"><span class="v">24%</span></td><td style="text-align: right;"><span class="v">27%</span></td><td>정상</td></tr>
+<tr><td>기준일 + 3년</td><td>2029 하반기</td><td style="text-align: right;"><span class="v">65%</span></td><td style="text-align: right;"><span class="v">49%</span></td><td style="text-align: right;"><span class="v">22%</span></td><td style="text-align: right;"><span class="v">29%</span></td><td>정상</td></tr>
+<tr><td>기준일 + 5년</td><td>2031 하반기</td><td style="text-align: right;"><span class="v">63%</span></td><td style="text-align: right;"><span class="v">53%</span></td><td style="text-align: right;"><span class="v">27%</span></td><td style="text-align: right;"><span class="v">31%</span></td><td>정상</td></tr>
+</tbody>
+</table>
+<p class="src">모두 <span class="est">추정 (판정기)</span> · 버튼 글자는 "표 닫기"로 바뀌어요</p>
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3">표로 보기 — 남은 집 다시 모집 이력</h3>
+<table class="tbl num">
+<thead><tr><th scope="col">종류</th><th scope="col">공고 번호</th><th scope="col">공고일</th><th scope="col" style="text-align: right;">세대</th><th scope="col">경쟁률 · 결과</th></tr></thead>
+<tbody>
+<tr><td>무순위</td><td>2025910275</td><td><span class="v">2026.01.26</span> <span class="mut">261일 지남</span></td><td style="text-align: right;"><span class="v">36</span> <span class="ok">확인됨</span></td><td style="font-size: 13px;">75타입 공급 35 · 접수 214 · 6.11 대 1<br>136P타입 공급 1 · 접수 10 · 10.00 대 1</td></tr>
+</tbody>
+</table>
+<p class="src">세대 = 타입별 공급 세대 수를 더한 값</p>
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px; grid-column: 1 / -1;">
+<h3 class="h3">표로 보기 — 주변 시세 비교</h3>
+<div style="overflow-x: auto;">
+<div role="table" aria-label="주변 시세 비교 데이터" class="dt num" style="min-width: 900px; font-size: 13px;">
+<div role="rowgroup" style="display: table-header-group;"><div role="row" class="dr">
+<div role="columnheader" class="dh">이름</div><div role="columnheader" class="dh">준공 · 구분</div><div role="columnheader" class="dh" style="text-align: right;">가장 낮은 값</div><div role="columnheader" class="dh" style="text-align: right;">가운데값</div><div role="columnheader" class="dh" style="text-align: right;">가장 높은 값</div><div role="columnheader" class="dh" style="text-align: right;">연식 보정 가운데값</div><div role="columnheader" class="dh">거래 수</div>
+</div></div>
+<div role="rowgroup" style="display: table-row-group;">
+<sc-for list="{{comps}}" as="c" hint-placeholder-count="18">
+<div role="row" class="dr">
+<div role="cell" class="dc" style="{{c.cellNameStyle}}">{{c.name}}</div>
+<div role="cell" class="dc" style="padding: 7px 12px;">{{c.kind}}</div>
+<div role="cell" class="dc" style="padding: 7px 12px; text-align: right;"><span class="v">{{c.lo}}</span></div>
+<div role="cell" class="dc" style="padding: 7px 12px; text-align: right;"><span class="v">{{c.med}}</span></div>
+<div role="cell" class="dc" style="padding: 7px 12px; text-align: right;"><span class="v">{{c.hi}}</span></div>
+<div role="cell" class="dc" style="padding: 7px 12px; text-align: right; color: #7A8391;">{{c.adj}}</div>
+<div role="cell" class="dc" style="padding: 7px 12px;">{{c.n}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<p class="src">비교 단지 값은 <span class="est">재가공 (실거래 n건 통계)</span>, 이 단지 값은 공고문 <span class="ok">확인됨</span>(가운데값은 계산)</p>
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3">경쟁률 표 — 다른 칸 모습</h3>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; font-size: 14px;">
+<li><b>42 ~ 63점</b> <span class="sub">평균 48.50점</span> — 가점 값이 있는 줄</li>
+<li><b>가점제 당첨자 없음</b> — 최저·최고·평균이 모두 0인 줄, 또는 청약홈 표시 '-'</li>
+<li><b>가점 당첨자 없음 (미달)</b> — 신청이 모자라 가점으로 뽑지 않은 줄</li>
+<li><span style="color: #7A8391;">발표 전</span> · <span style="color: #7A8391;">가점 미수집</span></li>
+<li class="sub">가점 값이 하나도 없으면 가점 열을 숨기고 "당첨 가점: 이 화면에서는 아직 제공하지 않아요 — 청약홈 경쟁률에서 확인하세요"를 표 아래에 적어요.</li>
+<li class="sub">경쟁률 줄이 없으면 "없음", 다시 모집 이력이 없으면 차트 자리에 "본청약만 있어요(다시 모집 없음)".</li>
+</ul>
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3">주변 시세 · 가격 전망 — 다른 상태</h3>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px;">
+<li><span class="b">대체 단지 포함 (거래 3건 미만)</span> 거래가 적어 다른 해·생활권 단지로 채웠을 때</li>
+<li><span class="est">추정 (대체·연식 보정)</span> 차트 제목 옆, 연식 보정 가운데값을 쓴 경우</li>
+<li><div class="empty" style="padding: 10px; text-align: left;">비교할 단지가 없어요 (사유)</div></li>
+<li style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><span style="font-family: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid #E3E7EC; border-radius: 10px; color: #9AA6B6;">기준일 + 5년 · [시점] · 미해결</span><span class="b" style="color: #7A8391;">미해결</span> 판정이 끝나지 않은 시점은 회색 + 차트 제목 옆 배지</li>
+<li><div class="empty" style="padding: 10px; text-align: left;">가능성 판정이 없어요</div></li>
+</ul>
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+<h3 class="h3">출처·원문 — 다른 상태</h3>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; font-size: 14px;">
+<li class="sub">원문에서 위치를 못 찾으면: "원문에서 발췌 위치를 찾지 못했어요 (발췌만 보여요)" + 발췌 인용</li>
+<li class="sub">원문 파일이 없으면: "원문 파일 없음" + 발췌 인용</li>
+<li class="sub">표의 단위를 바꿔 읽은 값이면: <b>단위 근거</b> 줄 (표 머리 문구)</li>
+<li class="sub">PDF·HTML처럼 미리 볼 수 없는 형식: "이 형식([형식])은 미리보기를 지원하지 않아요 — 저장해서 여세요"</li>
+<li class="sub">아주 긴 원문: "앞 200,000자만 보여요" · 그림 원문은 이미지로 보여요</li>
+<li class="sub">불러오는 중: "원문 불러오는 중…" · "원문을 불러오지 못했어요" · "내려받는 중…"</li>
+<li class="sub">공개본 자료를 준비 중이면: "이 기준일 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요"</li>
+<li class="sub">출처 있는 값이 없으면: "없음"</li>
+</ul>
+</div>
+
+</div>
+
+<div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<h3 class="h3">휴대폰 (폭 768px 이하) <span class="sub" style="font-weight: 400;">· 가로 탭 대신 고르기 상자, 주소는 '단지 정보'에 접힘</span></h3>
+<div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start;">
+<div class="phone">
+<div style="background: #FFFFFF; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+<span style="font-size: 20px; font-weight: 700; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 5px;">시티오씨엘 8단지</span>
+<span class="sub">미추홀구 · 총 1,349세대 · 입주 2029.07</span>
+<details open style="font-size: 14px;">
+<summary style="cursor: pointer; color: #5B6472; min-height: 32px;">단지 정보</summary>
+<p style="margin: 4px 0 0; line-height: 1.6;"><span class="sub">주소</span> 인천광역시 미추홀구 학익동 인천 용현·학익 1블록 도시개발구역 공동2BL</p>
+</details>
+</div>
+<div style="padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+<label style="display: flex; align-items: center; gap: 10px; font-size: 14px;"><span class="sub">보기</span>
+<select aria-label="단지 상세 탭" style="flex: 1 1 auto; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #D5DAE1; border-radius: 10px; background: #FFFFFF; min-height: 44px;">
+<option>평형별 가격</option><option selected>납부 일정 전체</option><option>경쟁률 전체</option><option>주변 시세 비교</option><option>가격 전망 (판정기)</option><option>개발 소식 (0)</option><option>출처·원문</option>
+</select></label>
+<div class="card" style="padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+<b>언제, 몇 번에 나눠 내나요?</b>
+<span><span class="sub">계약금</span> 5% · 1차 1,000만원</span>
+<span><span class="sub">중도금</span> 60% (6번)</span>
+<span><span class="sub">다음 납부</span> 2026.12.07 <b style="color: #1A3FB0;">D-54</b></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":12400}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var st = this.state || {};
+var hz = st.h || 'move_in_plus_1y';
+var compAll = !!st.compAll;
+function won(v) {
+var eok = Math.floor(v / 100000000);
+var man = Math.round((v - eok * 100000000) / 10000);
+function c(n) { var s = String(n); var o = ''; while (s.length > 3) { o = ',' + s.slice(-3) + o; s = s.slice(0, -3); } return s + o; }
+if (eok === 0) return c(man) + '만';
+return man === 0 ? eok + '억' : eok + '억 ' + c(man) + '만';
+}
+var LO = 250000000, SPAN = 550000000;
+function pos(v) { return ((v - LO) / SPAN * 100).toFixed(2); }
+
+var payRounds = [
+{ k: '계약금', pct: '5%', when: '계약할 때', tag: '1차 1,000만원', state: 'now' },
+{ k: '중도금 1회', pct: '10%', when: '2026.05.07', tag: '지난 날짜', state: 'past' },
+{ k: '중도금 2회', pct: '10%', when: '2026.12.07', tag: 'D-54 · 다음', state: 'next' },
+{ k: '중도금 3회', pct: '10%', when: '2027.07.07', tag: 'D-266', state: '' },
+{ k: '중도금 4회', pct: '10%', when: '2028.03.07', tag: '', state: '' },
+{ k: '중도금 5회', pct: '10%', when: '2028.08.07', tag: '', state: '' },
+{ k: '중도금 6회', pct: '10%', when: '2028.12.07', tag: '', state: '' },
+{ k: '잔금', pct: '35%', when: '입주 2029.07', tag: '추정', state: 'bal' }
+].map(function (p) {
+var box = 'display:flex;flex-direction:column;gap:4px;border-radius:12px;padding:12px;border:1px solid #E3E7EC;background:#FFFFFF;';
+if (p.state === 'past') box += 'background:#F6F8FA;color:#7A8391;';
+if (p.state === 'next') box += 'border:2px solid #2350D8;background:#F2F6FF;';
+if (p.state === 'now') box += 'background:#14181F;color:#FFFFFF;border-color:#14181F;';
+if (p.state === 'bal') box += 'background:#EEF3FF;';
+var tagStyle = 'font-size:12px;font-weight:600;';
+if (p.state === 'next') tagStyle += 'color:#1A3FB0;';
+else if (p.state === 'bal') tagStyle += 'color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;align-self:flex-start;';
+else if (p.state === 'now') tagStyle += 'color:#C8CFD8;';
+else tagStyle += 'color:#7A8391;';
+return { k: p.k, pct: p.pct, when: p.when, tag: p.tag, box: box, tagStyle: tagStyle };
+});
+
+var C = [
+['1순위 지역 거주자', '본청약', '59', 73, 454, '6.22', 'pts', '42 ~ 63점 · 평균 48.50'],
+['1순위 다른 지역', '본청약', '59', 73, 80, '-', 'zero', ''],
+['2순위 지역 거주자', '본청약', '59', 73, 0, '-', 'nc', ''],
+['2순위 다른 지역', '본청약', '59', 73, 0, '-', 'nc', ''],
+['1순위 지역 거주자', '본청약', '75', 87, 185, '2.13', 'pts', '30 ~ 55점 · 평균 37.54'],
+['1순위 다른 지역', '본청약', '75', 87, 26, '-', 'zero', ''],
+['2순위 지역 거주자', '본청약', '75', 87, 68, '-', 'nc', ''],
+['2순위 다른 지역', '본청약', '75', 87, 22, '-', 'nc', ''],
+['1순위 지역 거주자', '본청약', '84A', 507, 200, '△307', 'nwS', ''],
+['1순위 다른 지역', '본청약', '84A', 507, 40, '△267', 'nwS', ''],
+['2순위 지역 거주자', '본청약', '84A', 507, 43, '△224', 'nc', ''],
+['2순위 다른 지역', '본청약', '84A', 507, 18, '△206', 'nc', ''],
+['1순위 지역 거주자', '본청약', '84B', 247, 30, '△217', 'nwS', ''],
+['1순위 다른 지역', '본청약', '84B', 247, 8, '△209', 'nwS', ''],
+['2순위 지역 거주자', '본청약', '84B', 247, 13, '△196', 'nc', ''],
+['2순위 다른 지역', '본청약', '84B', 247, 1, '△195', 'nc', ''],
+['1순위 지역 거주자', '본청약', '84C', 75, 10, '△65', 'nwS', ''],
+['1순위 다른 지역', '본청약', '84C', 75, 2, '△63', 'nwS', ''],
+['2순위 지역 거주자', '본청약', '84C', 75, 8, '△55', 'nc', ''],
+['2순위 다른 지역', '본청약', '84C', 75, 1, '△54', 'nc', ''],
+['1순위 지역 거주자', '본청약', '101', 91, 29, '△62', 'nwS', ''],
+['1순위 다른 지역', '본청약', '101', 91, 1, '△61', 'nwS', ''],
+['2순위 지역 거주자', '본청약', '101', 91, 7, '△54', 'nc', ''],
+['2순위 다른 지역', '본청약', '101', 91, 4, '△50', 'nc', ''],
+['1순위 지역 거주자', '본청약', '110', 41, 9, '△32', 'nwS', ''],
+['1순위 다른 지역', '본청약', '110', 41, 2, '△30', 'nwS', ''],
+['2순위 지역 거주자', '본청약', '110', 41, 4, '△26', 'nc', ''],
+['2순위 다른 지역', '본청약', '110', 41, 0, '△26', 'nc', ''],
+['1순위 지역 거주자', '본청약', '136P', 3, 9, '3.00', 'nw', ''],
+['1순위 다른 지역', '본청약', '136P', 3, 2, '-', 'nw', ''],
+['2순위 지역 거주자', '본청약', '136P', 3, 4, '-', 'nc', ''],
+['2순위 다른 지역', '본청약', '136P', 3, 0, '-', 'nc', ''],
+['무순위 2025910275', '무순위', '75', 35, 214, '6.11', 'nc', ''],
+['무순위 2025910275', '무순위', '136P', 1, 10, '10.00', 'nc', '']
+];
+var PTS = { zero: '가점제 당첨자 없음', nw: '가점제 당첨자 없음', nwS: '가점 당첨자 없음 (미달)', nc: '가점 미수집' };
+var compSrc = compAll ? C : C.filter(function (r) { return r[0] === '1순위 지역 거주자' || r[1] === '무순위'; });
+var compRows = compSrc.map(function (r) {
+var short = r[5].charAt(0) === '△';
+var ratio = short ? '미달 ' + r[5].slice(1) + '세대' : (r[5] === '-' ? '-' : r[5] + ' 대 1');
+var muted = r[6] === 'nc';
+return {
+round: r[0], kind: r[1], type: r[2], supply: r[3] + '세대', applied: String(r[4]) + '명',
+ratio: ratio,
+ratioStyle: short ? 'color:#A3470A;font-weight:600;' : (r[5] === '-' ? 'color:#7A8391;' : 'font-weight:700;'),
+pts: r[6] === 'pts' ? r[7] : PTS[r[6]],
+ptsStyle: muted ? 'color:#7A8391;' : (r[6] === 'pts' ? 'font-weight:600;' : ''),
+rowStyle: r[1] === '무순위' ? 'background:#F2F6FF;' : ''
+};
+});
+function chip(on) { return 'font-family:inherit;font-size:14px;font-weight:500;padding:9px 16px;border-radius:999px;cursor:pointer;min-height:44px;' + (on ? 'background:#14181F;border:1px solid #14181F;color:#FFFFFF;' : 'background:#FFFFFF;border:1px solid #D5DAE1;color:#3A4250;'); }
+var compFilters = [
+{ label: '1순위 지역 거주자 + 무순위', pressed: compAll ? 'false' : 'true', style: chip(!compAll), pick: function () { self.setState({ compAll: false }); } },
+{ label: '전체 34줄', pressed: compAll ? 'true' : 'false', style: chip(compAll), pick: function () { self.setState({ compAll: true }); } }
+];
+
+var CO = [
+['이 단지 (84C 분양가)', 0, 598500000, 624700000, 650900000, 0, true],
+['더샵아르테', 2024, 647000000, 702500000, 734500000, 6],
+['더샵인천스카이타워1단지', 2020, 530000000, 556750000, 578000000, 14],
+['더샵인천스카이타워2단지', 2020, 490000000, 525000000, 555000000, 7],
+['도화역금강펜테리움센트럴파크', 2020, 432000000, 432000000, 432000000, 1],
+['두산위브더제니스센트럴여의', 2025, 578000000, 578000000, 578000000, 1],
+['스카이시티301동', 2020, 300000000, 300000000, 300000000, 1],
+['스타디움센트럴시티', 2022, 440000000, 485000000, 510000000, 12],
+['시티오씨엘1단지', 2024, 650000000, 665000000, 687000000, 7],
+['시티오씨엘4단지', 2025, 636000000, 636000000, 636000000, 1],
+['용현자이크레스트', 2023, 570000000, 580000000, 600000000, 7],
+['주안역센트레빌', 2021, 570000000, 575000000, 580000000, 5],
+['주안역신일해피트리', 2022, 410000000, 432500000, 455000000, 2],
+['주안파크자이더플래티넘', 2023, 565000000, 580000000, 600000000, 7],
+['포레나미추홀', 2022, 550000000, 581500000, 617000000, 6],
+['학익SKVIEW', 2025, 600000000, 605000000, 615000000, 4],
+['힐스테이트푸르지오주안', 2023, 650000000, 668000000, 686000000, 9],
+['힐스테이트학익', 2021, 610000000, 634000000, 655000000, 4]
+];
+var comps = CO.map(function (r) {
+var me = !!r[6];
+var l = pos(r[2]), m = pos(r[3]), h = pos(r[4]);
+var w = Math.max(0, h - l).toFixed(2);
+var col = me ? '#2350D8' : '#9AA6B6';
+return {
+name: r[0],
+meta: me ? '' : r[1] + '년 · ' + r[5] + '건',
+kind: me ? '공고문 가격' : r[1] + '년 준공',
+lo: won(r[2]), med: won(r[3]), hi: won(r[4]),
+adj: me ? '' : '없음',
+n: me ? '' : r[5] + '건',
+whisker: 'position:absolute;top:8px;height:6px;border-radius:3px;background:' + col + ';left:' + l + '%;width:' + w + '%;' + (me ? '' : 'opacity:0.55;'),
+dot: 'position:absolute;top:4px;width:14px;height:14px;border-radius:50%;margin-left:-7px;background:' + col + ';border:2px solid #FFFFFF;box-sizing:border-box;left:' + m + '%;',
+rowStyle: 'display:grid;grid-template-columns:260px minmax(0,1fr) 96px;gap:12px;align-items:center;min-height:30px;padding:0 6px;' + (me ? 'background:#F2F6FF;border-radius:8px;' : ''),
+nameStyle: 'font-size:13px;' + (me ? 'font-weight:700;color:#1A3FB0;' : 'color:#3A4250;'),
+valStyle: 'font-size:13px;text-align:right;' + (me ? 'font-weight:700;color:#1A3FB0;' : ''),
+cellNameStyle: 'padding:7px 12px;' + (me ? 'font-weight:700;color:#1A3FB0;' : '')
+};
+});
+
+var L = {
+move_in_plus_1y: { label: '입주 + 1년', target: '2030 하반기', seq: '#1277', p: [0.66, 0.53, 0.24, 0.27], a: [0.0131, 0.0257, 0.0498], prop: '시티오씨엘 8단지 전용 84C(84.85㎡)를 2026-10-14 현재 구매가(5.99~6.51억, 공급가+발코니)로 매수할 경우, 입주(2029-07) 후 1년 시점인 2030 하반기 실거래가가 현재 구매가 대비 +10% 이상이다' },
+asof_plus_3y: { label: '기준일 + 3년', target: '2029 하반기', seq: '#1278', p: [0.65, 0.49, 0.22, 0.29], a: [0.0164, 0.0323, 0.0627], prop: '시티오씨엘 8단지 전용 84C(84.85㎡)를 2026-10-14 현재 구매가(5.99~6.51억, 공급가+발코니)로 매수할 경우, 기준일+3년 시점인 2029 하반기 실거래가가 현재 구매가 대비 +10% 이상이다' },
+asof_plus_5y: { label: '기준일 + 5년', target: '2031 하반기', seq: '#1279', p: [0.63, 0.53, 0.27, 0.31], a: [0.0098, 0.0192, 0.0371], prop: '시티오씨엘 8단지 전용 84C(84.85㎡)를 2026-10-14 현재 구매가(5.99~6.51억, 공급가+발코니)로 매수할 경우, 기준일+5년 시점인 2031 하반기 실거래가가 현재 구매가 대비 +10% 이상이다' }
+};
+var order = ['move_in_plus_1y', 'asof_plus_3y', 'asof_plus_5y'];
+var horizons = order.map(function (k) {
+var on = k === hz;
+return {
+label: L[k].label, sub: ' · ' + L[k].target, checked: on ? 'true' : 'false',
+style: 'font-family:inherit;font-size:15px;padding:10px 16px;border-radius:12px;cursor:pointer;min-height:44px;' + (on ? 'background:#2350D8;border:1px solid #2350D8;color:#FFFFFF;' : 'background:#FFFFFF;border:1px solid #D5DAE1;color:#14181F;'),
+subStyle: on ? 'color:#DCE5FC;' : 'color:#5B6472;',
+pick: function () { self.setState({ h: k }); }
+};
+});
+var cur = L[hz];
+var names = ['5% 넘게 오를 가능성', '10% 넘게 오를 가능성', '20% 넘게 오를 가능성', '그대로이거나 내릴 가능성'];
+var ladder = cur.p.map(function (p, i) {
+var pct = Math.round(p * 100);
+var main = i === 1;
+var col = i === 3 ? '#9AA6B6' : (main ? '#2350D8' : '#7F9BE6');
+var verdict = p >= 0.85 ? '가능성 높음' : (p <= 0.15 ? '가능성 낮음' : '중간');
+return {
+label: names[i] + (main ? ' · 점수에 씀' : ''),
+labelStyle: 'font-size:14px;' + (main ? 'font-weight:700;' : 'color:#3A4250;'),
+pct: pct + '%',
+bar: 'position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:' + col + ';width:' + pct + '%;',
+valStyle: 'position:absolute;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;color:#14181F;left:calc(' + pct + '% + 8px);',
+verdict: verdict,
+annual: i < 3 ? '· 해마다 ' + (cur.a[i] * 100).toFixed(1) + '%' : ''
+};
+});
+var ladderAria = '목표 시점 ' + cur.target + ': ' + ladder.map(function (b, i) { return names[i] + ' ' + b.pct; }).join(', ');
+
+var P = [
+['현재 가격 (낮은 값)', '5억 9,850만', 'ok'], ['현재 가격 (높은 값)', '6억 5,090만', 'ok'], ['단지 이름', '시티오씨엘 8단지', 'ok'],
+['총 세대', '1,349세대', 'ok'], ['공고일', '2025.11.21', 'ok'], ['당첨자 발표', '2025.12.09', 'ok'], ['입주', '2029.07', 'ok'],
+['되팔기 제한 기간', '12개월', 'ok'], ['되팔기 가능 날짜', '2026.12.09', 'est'], ['꼭 살아야 하는 기간', '0개월', 'ok'],
+['다시 청약 제한', '0년', 'ok'], ['땅 종류', '민간택지', 'ok'], ['분양가 상한제', '미적용', 'ok'], ['규제지역', '비규제', 'ok'],
+['주택 구분', '민영', 'ok'],
+['최고가 59', '4억 7,770만', 'ok'], ['최고가 75', '5억 9,980만', 'ok'], ['최고가 84A', '6억 7,080만', 'ok'], ['최고가 84B', '6억 4,090만', 'ok'],
+['최고가 84C', '6억 3,140만', 'ok'], ['최고가 101', '7억 9,440만', 'ok'], ['최고가 110', '8억 7,640만', 'ok'], ['최고가 136P', '13억 3,750만', 'ok']
+];
+var provItems = P.map(function (p, i) {
+var on = i === 0;
+return {
+title: p[0], val: p[1], label: p[2] === 'ok' ? '확인됨' : '추정', lcls: p[2] === 'ok' ? 'ok' : 'est',
+pressed: on ? 'true' : 'false',
+style: 'width:100%;display:flex;align-items:center;gap:8px;font-family:inherit;font-size:14px;padding:8px 12px;border-radius:10px;cursor:pointer;min-height:40px;' + (on ? 'background:#F2F6FF;border:2px solid #2350D8;' : 'background:#FFFFFF;border:1px solid #E3E7EC;')
+};
+});
+
+var J = [
+['#851', '분류 (classify)', '단지 종류 분류 (묶음 0)', 'classify:inclusion:batch0', '0.73', '280ms', '10.14 06:21'],
+['#1277', '가능성 (noul)', '오를 가능성 · 입주 + 1년 (2030.07)', 'noul:ladder:move_in_plus_1y:2030-07:c32', '확인 불가', '203ms', '10.14 06:24'],
+['#1278', '가능성 (noul)', '오를 가능성 · 기준일 + 3년 (2029.10)', 'noul:ladder:asof_plus_3y:2029-10:c32', '확인 불가', '187ms', '10.14 06:24'],
+['#1279', '가능성 (noul)', '오를 가능성 · 기준일 + 5년 (2031.10)', 'noul:ladder:asof_plus_5y:2031-10:c32', '확인 불가', '171ms', '10.14 06:24'],
+['#1288', '고르기 (decide)', '내 상황별 비교 · 기본', 'decide:scenario_base', '0.61', '250ms', '10.14 08:31'],
+['#1290', '고르기 (decide)', '내 상황별 비교 · B', 'decide:scenario_B', '0.78', '218ms', '10.14 08:32'],
+['#1291', '고르기 (decide)', '내 상황별 비교 · C', 'decide:scenario_C', '0.31', '219ms', '10.14 08:32'],
+['#1292', '고르기 (decide)', '내 상황별 비교 · D', 'decide:scenario_D', '0.62', '219ms', '10.14 08:32'],
+['#1324', '순위 (rerank)', '지역 안 비슷한 단지 순위', 'rerank:region:1', '확인 불가', '375ms', '10.14 20:30'],
+['#1325', '고르기 (decide)', '내 상황별 비교 · A', 'decide:scenario_A', '0.89', '250ms', '10.14 20:31']
+];
+var judgments = J.map(function (j) { return { seq: j[0], tool: j[1], what: j[2], purpose: j[3], model: 'jev-1.13.0', conf: j[4], ms: j[5], at: j[6] }; });
+
+return {
+payRounds: payRounds,
+compFilters: compFilters,
+compRows: compRows,
+compCount: compAll ? '34줄 모두' : compRows.length + '줄 · 2순위·다른 지역 줄은 전체에서',
+comps: comps,
+horizons: horizons,
+ladder: ladder,
+ladderTarget: '목표 시점 ' + cur.target,
+ladderAria: ladderAria,
+ladderSeq: cur.seq,
+proposition: cur.prop,
+provItems: provItems,
+judgments: judgments
+};
+}
+}
+</script>
+</body>
+</html>
