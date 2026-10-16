@@ -277,8 +277,11 @@ function PriceCard({ detail }: { detail: ComplexDetail }) {
       >
         <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <FactCell wrap fact={price.price_low} unit="won" />
-          <span aria-hidden>~</span>
-          <FactCell wrap fact={price.price_high} unit="won" />
+          {/* 좁은 칸에서 '~ 높은 값'이 한 덩어리로 다음 줄에(목업 두 줄 표기) */}
+          <span className="inline-flex flex-wrap items-baseline gap-x-2">
+            <span aria-hidden>~</span>
+            <FactCell wrap fact={price.price_high} unit="won" />
+          </span>
         </span>
       </BigNumber>
       {price.composition ? (
