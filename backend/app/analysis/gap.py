@@ -52,23 +52,30 @@ PRICE_SOURCE_MISSING = "가격 출처 누락"
 SMALL_SAMPLE_REASON = "표본"
 UNADJUSTED_GAP_TAG = "unadjusted_gap_pct="
 UNADJUSTED_MEDIAN_TAG = "unadjusted_median_won="
+MEDIAN_TAG = "median_won="
+"""계약 .22(D30-5): gap% 기준 비교군 전체 중앙값(보정) 태그 — 저장 시 ``score_component.median_won``(0019)으로 옮긴다."""
 
 
 def unadjusted_tags(g: GapResult) -> tuple[str, ...]:
     """미보정 gap%·미보정 중앙값을 score_component.flags 에 싣는 태그(R3 W7 — 계약 컬럼이 생기기 전 영속 위치).
 
-    예: ``("unadjusted_gap_pct=-3.1234", "unadjusted_median_won=612000000")``. 갭 미계산이면 빈 튜플.
+    예: ``("unadjusted_gap_pct=-3.1234", "unadjusted_median_won=612000000", "median_won=598888889")``(마지막 = gap% 기준
+    보정 중앙값, 계약 .22). 갭 미계산이면 빈 튜플.
     API 는 ``unadjusted_from_flags`` 로 읽는다(score_component.flags 는 화면에 그대로 나가지 않는다).
     """
     if g.gap_pct_unadjusted is None or g.median_unadjusted is None:
         return ()
     median = int(g.median_unadjusted.quantize(Decimal(1), rounding=ROUND_HALF_UP))
-    return (f"{UNADJUSTED_GAP_TAG}{format(g.gap_pct_unadjusted, 'f')}", f"{UNADJUSTED_MEDIAN_TAG}{median}")
+    tags = (f"{UNADJUSTED_GAP_TAG}{format(g.gap_pct_unadjusted, 'f')}", f"{UNADJUSTED_MEDIAN_TAG}{median}")
+    if g.median_adjusted is None:
+        return tags
+    # 계약 .22(D30-5): gap% 기준 중앙값(보정) — 화면 '비교 단지 전체 가운데값'(gap.comps_median)
+    return (*tags, f"{MEDIAN_TAG}{_round_won(g.median_adjusted)}")
 
 
 def is_unadjusted_tag(flag: str) -> bool:
     """``unadjusted_tags`` 가 만든 태그인가(저장 시 컬럼으로 옮기고 flags 에서는 뺀다 — 계약 2026-10-09.4)."""
-    return flag.startswith((UNADJUSTED_GAP_TAG, UNADJUSTED_MEDIAN_TAG))
+    return flag.startswith((UNADJUSTED_GAP_TAG, UNADJUSTED_MEDIAN_TAG, MEDIAN_TAG))
 
 
 def unadjusted_from_flags(flags: Iterable[str] | None) -> tuple[Decimal | None, int | None]:
@@ -81,6 +88,14 @@ def unadjusted_from_flags(flags: Iterable[str] | None) -> tuple[Decimal | None, 
         elif f.startswith(UNADJUSTED_MEDIAN_TAG):
             median = int(f.removeprefix(UNADJUSTED_MEDIAN_TAG))
     return gap, median
+
+
+def median_from_flags(flags: Iterable[str] | None) -> int | None:
+    """``unadjusted_tags`` 의 gap% 기준 중앙값(보정, 원 — 계약 .22). 없으면 None."""
+    for f in flags or ():
+        if f.startswith(MEDIAN_TAG):
+            return int(f.removeprefix(MEDIAN_TAG))
+    return None
 
 
 def _as_trades(trades: Iterable[TradeInput | Trade]) -> list[Trade]:

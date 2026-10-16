@@ -4,7 +4,7 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: 지역 청약 리스트업·분석 도구 API (subscription-analyzer)
-  version: 2026-10-09.21
+  version: 2026-10-09.22
   summary: contract-first REST 계약 (RA §4-2 + DECISIONS D2-3)
   description: |
     원본 계약. 스키마 원본은 `contracts/schemas/**/*.json`(JSON Schema 2020-12)이고 이 파일의 components.schemas는 그 파일들을 `$ref`한다.
@@ -5359,7 +5359,7 @@ paths:
                         label: 추정
                         prov: fp_102
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -5523,7 +5523,7 @@ paths:
                         label: 추정
                         prov: fp_202
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -5861,7 +5861,7 @@ paths:
                         label: 추정
                         prov: fp_402
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 10%)
+                        reason: 산술(중간 가격 × 계약금 10%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -6029,7 +6029,7 @@ paths:
                         label: 추정
                         prov: fp_502
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 10%)
+                        reason: 산술(중간 가격 × 계약금 10%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -6194,7 +6194,7 @@ paths:
                         label: 추정
                         prov: fp_602
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -6359,7 +6359,7 @@ paths:
                         label: 추정
                         prov: fp_702
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -6527,7 +6527,7 @@ paths:
                         label: 추정
                         prov: fp_802
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 10%)
+                        reason: 산술(중간 가격 × 계약금 10%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -6695,7 +6695,7 @@ paths:
                         label: 추정
                         prov: fp_902
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 10%)
+                        reason: 산술(중간 가격 × 계약금 10%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -6858,7 +6858,7 @@ paths:
                         label: 추정
                         prov: fp_1002
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -7022,7 +7022,7 @@ paths:
                         label: 추정
                         prov: fp_1102
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -7186,7 +7186,7 @@ paths:
                         label: 추정
                         prov: fp_1202
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 10%)
+                        reason: 산술(중간 가격 × 계약금 10%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -7351,7 +7351,7 @@ paths:
                         label: 추정
                         prov: fp_1302
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 5%)
+                        reason: 산술(중간 가격 × 계약금 5%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -7516,7 +7516,7 @@ paths:
                         label: 추정
                         prov: fp_1402
                         checked_at: '2026-10-07'
-                        reason: 산술(P_mid × 계약금 10%)
+                        reason: 산술(중간 가격 × 계약금 10%)
                         unit: won
                       competition_summary:
                         basis: 본청약 1순위 해당지역
@@ -8126,21 +8126,21 @@ paths:
                           label: 추정
                           prov: fp_202
                           checked_at: '2026-10-07'
-                          reason: 산술(P_mid × 계약금 5%)
+                          reason: 산술(중간 가격 × 계약금 5%)
                           unit: won
                         interim_won:
                           v: 355800000
                           label: 추정
                           prov: fp_202
                           checked_at: '2026-10-07'
-                          reason: 산술(P_mid × 중도금 60%)
+                          reason: 산술(중간 가격 × 중도금 60%)
                           unit: won
                         balance_won:
                           v: 207550000
                           label: 추정
                           prov: fp_202
                           checked_at: '2026-10-07'
-                          reason: 산술(P_mid × 잔금 35%)
+                          reason: 산술(중간 가격 × 잔금 35%)
                           unit: won
                         down_payment_first_won:
                           v: 5000000
@@ -8149,7 +8149,7 @@ paths:
                           checked_at: '2026-10-07'
                           reason: 한국경제TV 2026-07-21
                           unit: won
-                        formula: 금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)
+                        formula: 금액 = 중간 가격(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)
                     intake_current:
                       id: 502
                       complex_id: 2
@@ -8943,6 +8943,14 @@ paths:
                         reason: 보고서 (a)단계 등급 역산
                         unit: pct
                       gap_pct_unadjusted: null
+                      comps_median:
+                        v: 625527426
+                        label: 재가공
+                        prov: sc_88_2_gap.raw
+                        checked_at: '2026-10-08'
+                        reason: 비교군 실거래 중앙값
+                        unit: won
+                      comps_median_unadjusted: null
                       score:
                         v: 6.3
                         label: 추정
@@ -9634,7 +9642,7 @@ paths:
                           prov: null
                           checked_at: null
                           unit: won
-                        formula: 금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)
+                        formula: 금액 = 중간 가격(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)
                     intake_current: null
                     types: []
                     payment: []
@@ -9673,6 +9681,14 @@ paths:
                         checked_at: '2026-10-07'
                         reason_code: not_published
                       gap_pct_unadjusted: null
+                      comps_median:
+                        v: null
+                        label: 확인 불가
+                        reason: 분양가 미공개
+                        prov: null
+                        checked_at: '2026-10-07'
+                        reason_code: not_published
+                      comps_median_unadjusted: null
                       score:
                         v: null
                         label: 확인 불가
@@ -11092,6 +11108,14 @@ paths:
                           reason: 보고서 (a)단계 등급 역산
                           unit: pct
                         gap_pct_unadjusted: null
+                        comps_median:
+                          v: 625527426
+                          label: 재가공
+                          prov: sc_88_2_gap.raw
+                          checked_at: '2026-10-08'
+                          reason: 비교군 실거래 중앙값
+                          unit: won
+                        comps_median_unadjusted: null
                         score:
                           v: 6.3
                           label: 추정
@@ -11218,6 +11242,14 @@ paths:
                           reason: 보고서 (a)단계 등급 역산
                           unit: pct
                         gap_pct_unadjusted: null
+                        comps_median:
+                          v: 632434944
+                          label: 재가공
+                          prov: sc_88_7_gap.raw
+                          checked_at: '2026-10-08'
+                          reason: 비교군 실거래 29건 중앙값
+                          unit: won
+                        comps_median_unadjusted: null
                         score:
                           v: 3.1
                           label: 추정
@@ -11368,6 +11400,20 @@ paths:
                           checked_at: '2026-10-08'
                           reason: 미보정 중앙값 기준, 산술
                           unit: pct
+                        comps_median:
+                          v: 662500000
+                          label: 추정
+                          prov: sc_88_4_gap.raw
+                          checked_at: '2026-10-08'
+                          reason: 비교군 실거래 24건 중앙값(대체 단지 연식 보정)
+                          unit: won
+                        comps_median_unadjusted:
+                          v: 595238095
+                          label: 재가공
+                          prov: sc_88_4_gap.raw
+                          checked_at: '2026-10-08'
+                          reason: 비교군 실거래 24건 중앙값(미보정)
+                          unit: won
                         score:
                           v: 5.0
                           label: 추정
@@ -11410,14 +11456,14 @@ paths:
                         label: 추정
                         prov: fp_210
                         checked_at: '2026-10-08'
-                        reason: P_mid × 계약금%, 산술
+                        reason: 중간 가격 × 계약금%, 산술
                         unit: won
                       required_equity_won:
                         v: 29650000
                         label: 추정
                         prov: fp_210
                         checked_at: '2026-10-08'
-                        reason: max(계약금, P_mid − 대출한도 6억), 산술
+                        reason: max(계약금, 중간 가격 − 대출한도 6억), 산술
                         unit: won
                       interim_terms_text: 중도금 60% 이자후불제
                     - complex_id: 7
@@ -11446,14 +11492,14 @@ paths:
                         label: 추정
                         prov: fp_710
                         checked_at: '2026-10-08'
-                        reason: P_mid × 계약금%, 산술
+                        reason: 중간 가격 × 계약금%, 산술
                         unit: won
                       required_equity_won:
                         v: 80500000
                         label: 추정
                         prov: fp_710
                         checked_at: '2026-10-08'
-                        reason: max(계약금, P_mid − 대출한도 6억), 산술
+                        reason: max(계약금, 중간 가격 − 대출한도 6억), 산술
                         unit: won
                       interim_terms_text: 중도금 60% 이자후불제
                     - complex_id: 4
@@ -11482,14 +11528,14 @@ paths:
                         label: 추정
                         prov: fp_410
                         checked_at: '2026-10-08'
-                        reason: P_mid × 계약금%, 산술
+                        reason: 중간 가격 × 계약금%, 산술
                         unit: won
                       required_equity_won:
                         v: 66250000
                         label: 추정
                         prov: fp_410
                         checked_at: '2026-10-08'
-                        reason: max(계약금, P_mid − 대출한도 6억), 산술
+                        reason: max(계약금, 중간 가격 − 대출한도 6억), 산술
                         unit: won
                       interim_terms_text: 중도금 60% 이자후불제
                     decisions:
@@ -15075,6 +15121,83 @@ paths:
                         prov: fp_6303
                         checked_at: '2026-10-07'
                         unit: units
+                    unsold_latest:
+                      ym: 2026-08
+                      total:
+                        v: 2029
+                        label: 재가공
+                        prov: fp_6123
+                        checked_at: '2026-10-07'
+                        reason: 지역 합계(시군구 4곳)
+                        unit: units
+                      post_completion:
+                        v: 992
+                        label: 재가공
+                        prov: fp_6123
+                        checked_at: '2026-10-07'
+                        reason: 지역 합계(시군구 4곳)
+                        unit: units
+                      breakdown:
+                      - ym: 2026-08
+                        scope_code: '41570'
+                        scope_name: 김포시
+                        total:
+                          v: 787
+                          label: 재가공
+                          prov: fp_6123
+                          checked_at: '2026-10-07'
+                          unit: units
+                        post_completion:
+                          v: 52
+                          label: 재가공
+                          prov: fp_6123
+                          checked_at: '2026-10-07'
+                          unit: units
+                      - ym: 2026-08
+                        scope_code: '28185'
+                        scope_name: 연수구
+                        total:
+                          v: 505
+                          label: 재가공
+                          prov: fp_6301
+                          checked_at: '2026-10-07'
+                          unit: units
+                        post_completion:
+                          v: 203
+                          label: 재가공
+                          prov: fp_6301
+                          checked_at: '2026-10-07'
+                          unit: units
+                      - ym: 2026-08
+                        scope_code: '28290'
+                        scope_name: 검단구
+                        total:
+                          v: 737
+                          label: 재가공
+                          prov: fp_6302
+                          checked_at: '2026-10-07'
+                          unit: units
+                        post_completion:
+                          v: 737
+                          label: 재가공
+                          prov: fp_6302
+                          checked_at: '2026-10-07'
+                          unit: units
+                      - ym: 2026-08
+                        scope_code: '28245'
+                        scope_name: 계양구
+                        total:
+                          v: 0
+                          label: 재가공
+                          prov: fp_6303
+                          checked_at: '2026-10-07'
+                          unit: units
+                        post_completion:
+                          v: 0
+                          label: 재가공
+                          prov: fp_6303
+                          checked_at: '2026-10-07'
+                          unit: units
                     catalysts:
                     - id: 41
                       name: 인천1호선 검단연장(아라·신검단중앙·검단호수공원역)
@@ -19389,7 +19512,7 @@ components:
           - B
           - null
         judge_scope_reason:
-          description: '판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: ''범위 경계(주소에 동 없음)''·''범위 경계(주소가 지역 법정동에 매칭 안 됨)''·''포함/제외 classify 미해결(review, 미분류)''·''포함/제외 classify 제외 클래스(public_sale)''·''분양가 미공개(공고 전)''·''원 공고 미수집''·''출처 상충 — compare 대기''(기준 타입 가격 채택 보류)·''포함 확정 · 접수 가능''·''접수 확인 불가''. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다. 단지 상세 머리(header)도 목록 행과 같은 값'
+          description: '판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: ''범위 경계(주소에 동 없음)''·''범위 경계(주소가 지역 법정동에 매칭 안 됨)''·''포함/제외 classify 미해결(검토, 미분류)''·''포함/제외 classify 제외 클래스(공공분양)''(계약 .22 D30-6 — 분류명·decision 은 한국어: 공공분양·공공임대·민간임대·비아파트·범위 밖, 검토·사람 검토·질문 남김)·''분양가 미공개(공고 전)''·''원 공고 미수집''·''출처 상충 — compare 대기''(기준 타입 가격 채택 보류)·''포함 확정 · 접수 가능''·''접수 확인 불가''. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다. 단지 상세 머리(header)도 목록 행과 같은 값'
           type:
           - string
           - 'null'
@@ -19905,7 +20028,7 @@ components:
         judge_scope:
           $ref: '#/components/schemas/JudgeScope'
         judge_scope_reason:
-          description: '판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: ''범위 경계(주소에 동 없음)''·''범위 경계(주소가 지역 법정동에 매칭 안 됨)''·''포함/제외 classify 미해결(review, 미분류)''·''포함/제외 classify 제외 클래스(public_sale)''·''분양가 미공개(공고 전)''·''원 공고 미수집''·''출처 상충 — compare 대기''(기준 타입 가격 채택 보류)·''포함 확정 · 접수 가능''·''접수 확인 불가''. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다'
+          description: '판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: ''범위 경계(주소에 동 없음)''·''범위 경계(주소가 지역 법정동에 매칭 안 됨)''·''포함/제외 classify 미해결(검토, 미분류)''·''포함/제외 classify 제외 클래스(공공분양)''(계약 .22 D30-6 — 분류명·decision 은 한국어: 공공분양·공공임대·민간임대·비아파트·범위 밖, 검토·사람 검토·질문 남김)·''분양가 미공개(공고 전)''·''원 공고 미수집''·''출처 상충 — compare 대기''(기준 타입 가격 채택 보류)·''포함 확정 · 접수 가능''·''접수 확인 불가''. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다'
           type:
           - string
           - 'null'
@@ -19973,7 +20096,7 @@ components:
         down_payment_pct:
           $ref: '#/components/schemas/Fact'
         down_payment_won:
-          description: '계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason ''산술(P_mid × 계약금 n%)'', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 ''확인 불가''. .20 이전 발행 리비전 저장본에는 키가 없다(= null)'
+          description: '계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason ''산술(중간 가격 × 계약금 n%)'', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 ''확인 불가''. .20 이전 발행 리비전 저장본에는 키가 없다(= null)'
           anyOf:
           - $ref: '#/components/schemas/Fact'
           - type: 'null'
@@ -20124,7 +20247,7 @@ components:
         down_payment_won:
           v: 66250000
           label: 추정
-          reason: 산술(P_mid × 계약금 10%)
+          reason: 산술(중간 가격 × 계약금 10%)
           prov: fp_4102
           checked_at: '2026-10-07'
           unit: won
@@ -22063,6 +22186,16 @@ components:
         gap_pct:
           $ref: '#/components/schemas/Fact'
         gap_pct_unadjusted:
+          anyOf:
+          - $ref: '#/components/schemas/Fact'
+          - type: 'null'
+        comps_median:
+          description: '계약 2026-10-09.22(D30-5 — G3 ''비교 단지 전체 가운데값''): gap_pct 의 기준인 **비교군 전체 중앙값**(원) — 비교군 단지들의 거래를 모두 합친 median(T_adj)(대체 단지 거래는 연식 보정값, RA §6-2). 점수 실행이 저장한 값(score_component.median_won, 마이그레이션 0019) 그대로 — 화면·API 가 comps[] 에서 다시 계산하지 않는다(단지별 중앙값의 중앙값이 아니다). label = 대체 단지가 섞이면 ''추정''(reason ''비교군 실거래 n건 중앙값(대체 단지 연식 보정)''), 아니면 ''재가공''(reason ''비교군 실거래 n건 중앙값'' — comps[] 시세와 같은 라벨 규칙), prov = gap_pct 와 같은 ''sc_<실행>_<단지>_gap.raw''(식에 ''비교군 중앙''). gap_pct 가 확인 불가면 그 사유의 ''확인 불가''. 0019 전 점수 실행: 대체 단지가 없던 실행은 미보정 중앙값과 같은 값, 대체가 있던 실행은 ''확인 불가(옛 점수 실행(재판정 뒤 표시))''. .22 이전 발행 리비전 저장본에는 키가 없다(= null)'
+          anyOf:
+          - $ref: '#/components/schemas/Fact'
+          - type: 'null'
+        comps_median_unadjusted:
+          description: '계약 2026-10-09.22: gap_pct_unadjusted 의 기준인 비교군 전체 **미보정** 중앙값(원, score_component.unadjusted_median_won — 0004). label ''재가공'', reason ''비교군 실거래 n건 중앙값(미보정)'', prov = comps_median 과 같다. gap_pct_unadjusted 가 null 이면 null'
           anyOf:
           - $ref: '#/components/schemas/Fact'
           - type: 'null'
@@ -24200,6 +24333,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UnsoldPoint'
+        unsold_latest:
+          description: '계약 2026-10-09.22(D30-5 — G6 요약 카드 ''미분양 지역 합계''): 값이 있는 가장 최근 달의 미분양 합계·준공 후 미분양 합계와 단위(시군구)별 내역 — 대시보드 kpis.unsold 와 **같은 함수·같은 값**(living_area 를 주지 않았을 때). living_area 를 주면 그 생활권의 통계 단위(unsold[] 와 같은 단위)만 합한다. 합계 규칙: 단위 하나라도 확인 불가면 ''확인 불가(일부 누락 n건)'', reason ''지역 합계(시군구 n곳)''. 화면은 unsold[] 를 더하지 않고 이 값을 보인다. .22 이전 발행 리비전 저장본에는 키가 없다(= null)'
+          anyOf:
+          - $ref: '#/components/schemas/UnsoldLatest'
+          - type: 'null'
         catalysts:
           type: array
           items:
@@ -24368,8 +24506,8 @@ components:
       title: PaymentAmounts
       description: |-
         계약 2026-10-09.20(D28-5 Q1): 판정 기준 타입(basis_type_code, 대표 타입 — 84㎡에 가장 가까운 타입)의 납부 금액(원). 현재 납부 조건(payment[].is_current)의 비율 × 현재 구매가 중앙값 P_mid(§6-1) — RA §6-7 자금 요건과 같은 산술(``app.analysis.price.share_won``: ROUND_HALF_UP(P_mid × 비율 ÷ 100), 비교 화면 TermsRow.down_payment_won 과 같은 함수·같은 값·같은 출처). 새 판단 없음.
-        - down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.
-        - interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(P_mid × 중도금 n%)').
+        - down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(중간 가격 × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.
+        - interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(중간 가격 × 중도금 n%)').
         - balance_won: P_mid × 잔금 %. 같은 규칙.
         - down_payment_first_won: 공고에 적힌 1차 계약금 정액(공고 값 그대로 — payment[].down_payment_first_won 과 같은 Fact). 없으면 그 사유의 '확인 불가'.
         - formula: 식 설명 문구(화면 툴팁).
@@ -28246,6 +28384,29 @@ components:
           description: 분양권 거래(벤치마크·비교군 아님, '현재 프리미엄 추정'에만)
           type: boolean
           default: false
+    UnsoldLatest:
+      title: UnsoldLatest
+      description: 미분양 가장 최근 달 합계(계약 2026-10-09.22) — dashboard.json Kpis.unsold(KpiUnsold)와 같은 모양. ym = 값이 있는 가장 최근 달(자료 없으면 null, total·post_completion '확인 불가(미분양 자료 없음)', breakdown []). breakdown = 그 달 단위(시군구)별 원천 행(UnsoldPoint).
+      type: object
+      additionalProperties: false
+      required:
+      - ym
+      - total
+      - post_completion
+      - breakdown
+      properties:
+        ym:
+          type:
+          - string
+          - 'null'
+        total:
+          $ref: '#/components/schemas/Fact'
+        post_completion:
+          $ref: '#/components/schemas/Fact'
+        breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnsoldPoint'
     UnsoldPoint:
       title: UnsoldPoint
       description: '미분양 1개월(C5): 월말 기준. 결측 월은 total.v=null(label 확인 불가). scope는 통계 단위(시군구). 여러 통계 단위를 합한 점(G1 unsold_series·KPI)의 Fact reason 은 ''지역 합계(시군구 n곳)''(계약 2026-10-09.20 — 예전 ''<이름> <값>·… 합'' 나열 대신; 단위별 값은 KPI breakdown·G6 시장 unsold 의 단위별 점).'

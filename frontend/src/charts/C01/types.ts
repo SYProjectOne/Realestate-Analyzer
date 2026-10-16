@@ -19,6 +19,8 @@ export interface C01Data {
 }
 
 export const C01_BARS: readonly LadderBar[] = ['p5', 'p10', 'p20', 'p_flat'];
+/** 종합 점수에 쓰는 막대(+10% 상승 가능성 — RA §6 성분 p10). 강조색 + "· 점수에 씀" */
+export const C01_SCORE_BAR: LadderBar = 'p10';
 export const C01_HORIZONS: readonly LadderHorizon[] = [
   'move_in_plus_1y',
   'asof_plus_3y',

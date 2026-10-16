@@ -24,6 +24,7 @@ from app.analysis import price_view as pv
 from app.analysis import scope as scope_rules
 from app.analysis.complex_input import build_complex_input, masked
 from app.analysis.ladder import target_label
+from app.analysis.price import MID_PRICE_TEXT
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, day, fact, num, round2, unknown, weakest
 from app.api.reason_codes import reason_code
 from app.core.contracts_gen import Complex as ComplexDTO
@@ -1680,7 +1681,7 @@ def share_fact(
     fm: FactMaker, b: ComplexBundle, price_mid: dict[str, Any], pct_fact: dict[str, Any], pct: Any, what: str
 ) -> dict[str, Any]:
     """P_mid × 비율 원 금액 Fact(계약 .20 Q1 — ``analysis.price.share_won``, RA §6-7 산술). 비율·가격 Fact 중 하나라도 확인 불가면
-    그 사유. 라벨 '추정', reason '산술(P_mid × <what> n%)', prov = price_mid 의 prov(비교 TermsRow 와 같다)."""
+    그 사유. 라벨 '추정', reason '산술(중간 가격 × <what> n%)'(D30-6 — 계약 .22 전 'P_mid'), prov = price_mid 의 prov(비교 TermsRow 와 같다)."""
     from app.analysis.price import share_won
 
     view = bundle_price(b)
@@ -1690,7 +1691,9 @@ def share_fact(
         return fm.derived(None, src, unit="won")
     mid = (Decimal(low) + Decimal(high)) / 2
     shown = num(pct if isinstance(pct, Decimal) else Decimal(str(pct)))
-    return fm.derived(share_won(mid, pct), src, unit="won", reason=f"산술(P_mid × {what} {shown}%)")
+    return fm.derived(
+        share_won(mid, pct), src, unit="won", reason=f"산술({MID_PRICE_TEXT} × {what} {shown}%)"
+    )
 
 
 def down_payment_won_fact(
@@ -1702,9 +1705,7 @@ def down_payment_won_fact(
     return share_fact(fm, b, price_mid, down, cur_pay.down_payment_pct if cur_pay else None, "계약금")
 
 
-PAYMENT_FORMULA: Final = (
-    "금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
-)
+PAYMENT_FORMULA: Final = f"금액 = {MID_PRICE_TEXT}(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
 
 
 def payment_amounts(fm: FactMaker, b: ComplexBundle, price: Mapping[str, Any]) -> dict[str, Any]:

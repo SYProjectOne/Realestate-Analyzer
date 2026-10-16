@@ -49,9 +49,10 @@ describe('ChartGallery (차트 10개 × 정상/빈/특수)', () => {
     expect(
       within(screen.getByTestId('gallery-C03-special')).getByText('표본 2, 추정'),
     ).toBeInTheDocument();
+    // 미판정 배지(범례에도 '미판정' 빗금 항목이 있다 — 배지는 testid 로)
     expect(
-      within(screen.getByTestId('gallery-C06-special')).getByText('미판정'),
-    ).toBeInTheDocument();
+      within(screen.getByTestId('gallery-C06-special')).getByTestId('unjudged-badge'),
+    ).toHaveTextContent('미판정');
     expect(
       within(screen.getByTestId('gallery-C07-special')).getByText(
         t('badge.tieWithConfidence', { confidence: '0.48' }),

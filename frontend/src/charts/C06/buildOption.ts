@@ -14,13 +14,34 @@ import {
   DEFAULT_PALETTE,
   hatchDecal,
   legendStyle,
+  seriesColor,
   tooltipStyle,
 } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type { BuildOptionContext, ChartLegendItem, EChartsOption } from '../types';
 import { escapeHtml, num } from '../util';
 import type { C06Data } from './types';
 
 export const componentLabel = (c: ComponentKey) => t(`chart.C06.component.${c}`);
+
+/**
+ * 성분 색 자리(색은 성분을 따른다 — 보이는 성분 수가 바뀌어도 다시 칠하지 않는다).
+ * liquidity(되팔기 쉬움)와 move_in(입주 시기)은 한 상황에 둘 중 하나만 있어(계약 Weights) 같은 자리를 쓴다.
+ */
+const COLOR_SLOT: Record<ComponentKey, number> = {
+  p10: 0,
+  rerank: 1,
+  gap: 2,
+  benchmark: 3,
+  supply: 4,
+  liquidity: 5,
+  move_in: 5,
+};
+export const componentColor = (palette: BuildOptionContext['palette'], key: ComponentKey) =>
+  seriesColor(palette, COLOR_SLOT[key]);
+
+/** 비중 0.35 → "비중 35%" (가중치 입력값의 표기만 바꾼다 — 사실이 아님) */
+export const weightText = (w: number | null | undefined) =>
+  t('chart.C06.weightPct', { pct: formatNumber((w ?? 0) * 100, 0) });
 
 /** 성분 최댓값(0~10) — 미판정 툴팁의 "최대 기여 w × 10" (막대 길이는 0) */
 const SCORE_MAX = 10;
@@ -75,20 +96,25 @@ export function contributions(
   return out;
 }
 
-/** 제목 아래 "가중치 +10% 확률 0.35 · 판정기 순위 0.20 · …" */
+/** 비중 한 줄 "비중: +10% 오를 가능성 35% · 비슷한 단지 사이 순위 20% · …" (범례 note와 같은 값) */
 export function weightsSubtitle(weights: Weights, keys?: readonly ComponentKey[]): string {
   const list =
     keys ?? COMPONENT_KEYS.filter((k) => weights[k] !== undefined && weights[k] !== null);
   return t('chart.C06.weights', {
     weights: list
-      .map((c) => `${componentLabel(c)} ${formatNumber(weights[c] ?? 0, 2)}`)
+      .map((c) =>
+        t('chart.C06.weightItem', {
+          name: componentLabel(c),
+          pct: formatNumber((weights[c] ?? 0) * 100, 0),
+        }),
+      )
       .join(' · '),
   });
 }
 
 function tooltipText(row: ScoreRow, key: ComponentKey, weights: Weights): string {
   const view = viewOf(row, key);
-  const head = `${escapeHtml(row.name)} · ${escapeHtml(componentLabel(key))}`;
+  const head = `<b>${escapeHtml(row.name)} · ${escapeHtml(componentLabel(key))}</b>`;
   if (!view) return `${head}<br/>${t('badge.unjudged')}`;
   const score = num(view.score);
   const lines = [head];
@@ -125,15 +151,26 @@ export function buildOption(
     type: 'category' as const,
     data: names,
     ...axis,
+    axisTick: { ...axis.axisTick, alignWithLabel: true },
+    // 단지명 + 종합 점수. 긴 이름은 줄바꿈 — 잘라 숨기지 않는다
     axisLabel: horizontal
-      ? { ...axis.axisLabel, fontSize: 10, width: 120, overflow: 'truncate' as const }
+      ? {
+          ...axis.axisLabel,
+          color: palette.fg,
+          fontSize: 12,
+          interval: 0,
+          width: 168,
+          overflow: 'break' as const,
+          lineHeight: 14,
+        }
       : {
           ...axis.axisLabel,
-          fontSize: 10,
+          color: palette.fg,
+          fontSize: 11,
           interval: 0,
-          width: 72,
+          width: 84,
           overflow: 'break' as const,
-          lineHeight: 12,
+          lineHeight: 13,
         },
     ...(horizontal ? { inverse: true } : {}),
   };
@@ -142,15 +179,17 @@ export function buildOption(
   const valueAxis = {
     type: 'value' as const,
     min: 0,
+    name: t('chart.axis.score'),
+    nameLocation: 'end' as const,
     ...axis,
-    axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatScore(v, 1) },
+    axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatScore(v, 0) },
   };
   return {
     ...baseOption(palette),
     grid: horizontal
-      ? { left: 132, right: 24, top: 16, bottom: 56 }
-      : { left: 40, right: 16, top: 16, bottom: 88 },
-    legend: legendStyle(palette),
+      ? { left: 184, right: 40, top: anyUnjudged ? 24 : 12, bottom: 32 }
+      : { left: 40, right: 16, top: anyUnjudged ? 32 : 24, bottom: 56 },
+    legend: { ...legendStyle(palette), data: keys.map(componentLabel) },
     tooltip: {
       trigger: 'item',
       ...tooltipStyle(palette),
@@ -178,13 +217,14 @@ export function buildOption(
           ],
         }
       : {}),
-    series: keys.map((key, index) => ({
+    series: keys.map((key) => ({
       type: 'bar' as const,
       id: key,
       name: componentLabel(key),
       stack: 'score',
-      barMaxWidth: 40,
-      itemStyle: { color: palette.categorical[index % palette.categorical.length] },
+      barMaxWidth: horizontal ? 28 : 40,
+      // 칸 사이 바탕색 틈 — 이웃 기준과 붙어 보이지 않게
+      itemStyle: { color: componentColor(palette, key), borderColor: palette.bg, borderWidth: 1 },
       emphasis: { focus: 'series' as const },
       // 한 행에 미판정 성분이 여럿이면 같은 자리에 "미판정" 라벨이 겹친다 → 하나만 남긴다
       labelLayout: { hideOverlap: true },
@@ -216,6 +256,26 @@ export function buildOption(
       }),
     })),
   };
+}
+
+/** 범례(차트 위): 기준 이름 + "비중 35%" — 목업 Compare 종합 점수 분해 */
+export function legendItems(
+  data: C06Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): ChartLegendItem[] {
+  if (data.rows.length === 0) return [];
+  const legend: ChartLegendItem[] = componentKeys(data).map((key) => ({
+    name: componentLabel(key),
+    color: componentColor(ctx.palette, key),
+    symbol: 'square',
+    note: weightText(data.weights[key]),
+  }));
+  const unjudged = data.rows.some((row) =>
+    componentKeys(data).some((k) => contribution(viewOf(row, k)) === null),
+  );
+  return unjudged
+    ? [...legend, { name: t('badge.unjudged'), color: ctx.palette.grayed, symbol: 'hatch' }]
+    : legend;
 }
 
 export function toTable(data: C06Data): DataTable {

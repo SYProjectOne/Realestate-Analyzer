@@ -20,6 +20,7 @@ import type {
   Provenance,
   ScoreRow,
   Sensitivity,
+  SupplyPoint,
 } from '@/lib/contract';
 
 // JSON 모듈은 리터럴이 string으로 넓어져 계약 유니온 타입과 맞지 않는다 → 계약 타입으로 단언(예시는 계약 테스트가 스키마로 검증함)
@@ -114,4 +115,36 @@ export function stableSensitivity(): Sensitivity {
     unstable_complex_ids: [],
     cells: s.cells.map((cell) => ({ ...cell, changed: false, entered: [], exited: [] })),
   };
+}
+
+/**
+ * C04 특수(R11 목업 Market '나머지 n곳'·고침 MK-5): 생활권 8곳 + 생활권을 모르는 줄 1개.
+ * 예시 행을 복사해 생활권 id·이름·세대만 바꾼다(생활권 이름은 예시 데이터 — 코드에 지역명 없음).
+ */
+export function supplyManyAreas(): SupplyPoint[] {
+  const base = market().supply[0];
+  if (!base) throw new Error('market 예시에 supply가 없다');
+  const letters = ['가', '나', '다', '라', '마', '바', '사', '아'];
+  const rows: SupplyPoint[] = [];
+  letters.forEach((letter, i) => {
+    for (const year of [2027, 2028, 2029]) {
+      rows.push({
+        ...base,
+        year,
+        living_area: `la_${letter}`,
+        living_area_name: `생활권 ${letter}`,
+        units: { ...base.units, v: (8 - i) * 400 + (year - 2027) * 150 },
+        complexes: [],
+      });
+    }
+  });
+  rows.push({
+    ...base,
+    year: 2028,
+    living_area: null,
+    living_area_name: null,
+    units: { ...base.units, v: 600 },
+    complexes: [],
+  });
+  return rows;
 }

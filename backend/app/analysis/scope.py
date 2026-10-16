@@ -33,7 +33,9 @@ from app.core.time import kst_day
 __all__ = [
     "BOUNDARY_CLASS",
     "BOUNDARY_NO_DONG",
+    "CLASS_TEXT",
     "COLLECTED_PATHS",
+    "DECISION_TEXT",
     "EXCLUDED_CLASSES",
     "INCLUDED_CLASS",
     "INTAKE_PRIORITY",
@@ -45,6 +47,7 @@ __all__ = [
     "IntakeRowLike",
     "JudgeScope",
     "ScopeResult",
+    "class_text",
     "contract_scope",
     "has_dong_name",
     "in_rerank",
@@ -78,6 +81,29 @@ EXCLUDED_CLASSES: Final = frozenset(
     {"public_sale", "public_rental", "private_rental", "non_apartment", "out_of_scope"}
 )
 """판정기 classify 의 제외 클래스(사업주체 명의 기준). '범위 경계'는 판정기가 아니라 주소 매칭(D2-6)."""
+CLASS_TEXT: Final[dict[str, str]] = {
+    "private_sale_apt": "민간분양 아파트",
+    "public_sale": "공공분양",
+    "public_rental": "공공임대",
+    "private_rental": "민간임대",
+    "non_apartment": "비아파트",
+    "out_of_scope": "범위 밖",
+    "manual_review": "사람 검토",
+}
+"""D30-6(계약 .22): 범위 사유에 쓰는 분류 클래스의 한국어 이름(화면 ko.json ``inclusion`` 과 같은 말). 표에 없는 값은 원문 그대로."""
+DECISION_TEXT: Final[dict[str, str]] = {
+    "review": "검토",
+    "manual_review": "사람 검토",
+    "escaped": "질문 남김",
+}
+"""D30-6(계약 .22): 미해결 사유의 classify decision 한국어 이름(화면 ko.json 판정 상태 표시 ``status`` 와 같은 말). 표에 없는 값은 원문 그대로."""
+
+
+def class_text(cls: str) -> str:
+    """분류 클래스 → 한국어 이름(``CLASS_TEXT``). '범위 경계'·'미분류' 같은 한국어 값과 모르는 값은 그대로."""
+    return CLASS_TEXT.get(cls, cls)
+
+
 INTAKE_JUDGED: Final = frozenset({"가능", "미정"})
 INTAKE_PRIORITY: Final[dict[str, int]] = {"human_check": 0, "official_popup": 1, "headless_shot": 2}
 """표시 접수 행 우선순위. unofficial_ref(보도자료·블로그)는 '비공식'이라 접수 근거가 아니다(meta §1-3-5)."""
@@ -144,10 +170,10 @@ def judge_scope(
             return ScopeResult("제외", BOUNDARY_NO_DONG)
         return ScopeResult("제외", "범위 경계(주소가 지역 법정동에 매칭 안 됨)")
     if inclusion_decision != "auto" or cls in ("미분류", "manual_review"):
-        why = inclusion_decision or "분류 전"
-        return ScopeResult("미해결", f"포함/제외 classify 미해결({why}, {cls})")
+        why = DECISION_TEXT.get(inclusion_decision or "", inclusion_decision or "분류 전")
+        return ScopeResult("미해결", f"포함/제외 classify 미해결({why}, {class_text(cls)})")
     if cls in EXCLUDED_CLASSES:
-        return ScopeResult("제외", f"포함/제외 classify 제외 클래스({cls})")
+        return ScopeResult("제외", f"포함/제외 classify 제외 클래스({class_text(cls)})")
     if cls != INCLUDED_CLASS:  # 계약 밖 값 — 판정 대상으로 넘기지 않는다
         return ScopeResult("미해결", f"알 수 없는 분류({cls})")
     if not has_price:

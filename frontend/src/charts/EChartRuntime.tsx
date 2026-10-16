@@ -1,7 +1,7 @@
 /**
  * ECharts 런타임 — 쓰는 차트·컴포넌트만 등록한다(트리 셰이킹, 최대 청크 ≤ 500kB — R3c).
  * C01~C10 buildOption 이 쓰는 것: bar·line·scatter·custom 계열, grid·tooltip(axisPointer)·legend·
- * markLine·markPoint·graphic·aria, labelLayout, SVG 렌더러. 새 계열·컴포넌트를 쓰면 여기에 등록한다
+ * markLine·markPoint·markArea(C10 '상위 5곳 밖' 띠)·graphic·aria, labelLayout, SVG 렌더러. 새 계열·컴포넌트를 쓰면 여기에 등록한다
  * (EChartRuntime.test.ts 가 buildOption 결과의 series.type 을 이 목록과 대조한다).
  * EChart.tsx 가 lazy 로 불러 첫 화면 번들에 들어가지 않는다.
  */
@@ -14,6 +14,7 @@ import {
   GraphicComponent,
   GridComponent,
   LegendComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   MarkPointComponent,
   TooltipComponent,
@@ -34,6 +35,7 @@ echarts.use([
   TooltipComponent,
   AxisPointerComponent,
   LegendComponent,
+  MarkAreaComponent,
   MarkLineComponent,
   MarkPointComponent,
   GraphicComponent,

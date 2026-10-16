@@ -2044,6 +2044,103 @@
         }
       }
     ],
+    "unsold_latest": {
+      "ym": "2026-08",
+      "total": {
+        "v": 2029,
+        "label": "재가공",
+        "prov": "fp_6123",
+        "checked_at": "2026-10-07",
+        "reason": "지역 합계(시군구 4곳)",
+        "unit": "units"
+      },
+      "post_completion": {
+        "v": 992,
+        "label": "재가공",
+        "prov": "fp_6123",
+        "checked_at": "2026-10-07",
+        "reason": "지역 합계(시군구 4곳)",
+        "unit": "units"
+      },
+      "breakdown": [
+        {
+          "ym": "2026-08",
+          "scope_code": "41570",
+          "scope_name": "김포시",
+          "total": {
+            "v": 787,
+            "label": "재가공",
+            "prov": "fp_6123",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          },
+          "post_completion": {
+            "v": 52,
+            "label": "재가공",
+            "prov": "fp_6123",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          }
+        },
+        {
+          "ym": "2026-08",
+          "scope_code": "28185",
+          "scope_name": "연수구",
+          "total": {
+            "v": 505,
+            "label": "재가공",
+            "prov": "fp_6301",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          },
+          "post_completion": {
+            "v": 203,
+            "label": "재가공",
+            "prov": "fp_6301",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          }
+        },
+        {
+          "ym": "2026-08",
+          "scope_code": "28290",
+          "scope_name": "검단구",
+          "total": {
+            "v": 737,
+            "label": "재가공",
+            "prov": "fp_6302",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          },
+          "post_completion": {
+            "v": 737,
+            "label": "재가공",
+            "prov": "fp_6302",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          }
+        },
+        {
+          "ym": "2026-08",
+          "scope_code": "28245",
+          "scope_name": "계양구",
+          "total": {
+            "v": 0,
+            "label": "재가공",
+            "prov": "fp_6303",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          },
+          "post_completion": {
+            "v": 0,
+            "label": "재가공",
+            "prov": "fp_6303",
+            "checked_at": "2026-10-07",
+            "unit": "units"
+          }
+        }
+      ]
+    },
     "catalysts": [
       {
         "id": 41,

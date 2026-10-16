@@ -359,7 +359,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_202",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "interim_won": {
@@ -367,7 +367,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_202",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 중도금 60%)",
+            "reason": "산술(중간 가격 × 중도금 60%)",
             "unit": "won"
           },
           "balance_won": {
@@ -375,7 +375,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_202",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 잔금 35%)",
+            "reason": "산술(중간 가격 × 잔금 35%)",
             "unit": "won"
           },
           "down_payment_first_won": {
@@ -386,7 +386,7 @@ export const generatedHandlers = [
             "reason": "한국경제TV 2026-07-21",
             "unit": "won"
           },
-          "formula": "금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
+          "formula": "금액 = 중간 가격(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
         }
       },
       "intake_current": {
@@ -1330,6 +1330,15 @@ export const generatedHandlers = [
           "unit": "pct"
         },
         "gap_pct_unadjusted": null,
+        "comps_median": {
+          "v": 625527426,
+          "label": "재가공",
+          "prov": "sc_88_2_gap.raw",
+          "checked_at": "2026-10-08",
+          "reason": "비교군 실거래 중앙값",
+          "unit": "won"
+        },
+        "comps_median_unadjusted": null,
         "score": {
           "v": 6.3,
           "label": "추정",
@@ -6511,6 +6520,15 @@ export const generatedHandlers = [
             "unit": "pct"
           },
           "gap_pct_unadjusted": null,
+          "comps_median": {
+            "v": 625527426,
+            "label": "재가공",
+            "prov": "sc_88_2_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "비교군 실거래 중앙값",
+            "unit": "won"
+          },
+          "comps_median_unadjusted": null,
           "score": {
             "v": 6.3,
             "label": "추정",
@@ -6688,6 +6706,22 @@ export const generatedHandlers = [
             "reason": "미보정 중앙값 기준, 산술",
             "unit": "pct"
           },
+          "comps_median": {
+            "v": 662500000,
+            "label": "추정",
+            "prov": "sc_88_4_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "비교군 실거래 24건 중앙값(대체 단지 연식 보정)",
+            "unit": "won"
+          },
+          "comps_median_unadjusted": {
+            "v": 595238095,
+            "label": "재가공",
+            "prov": "sc_88_4_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "비교군 실거래 24건 중앙값(미보정)",
+            "unit": "won"
+          },
           "score": {
             "v": 5,
             "label": "추정",
@@ -6839,6 +6873,15 @@ export const generatedHandlers = [
             "unit": "pct"
           },
           "gap_pct_unadjusted": null,
+          "comps_median": {
+            "v": 632434944,
+            "label": "재가공",
+            "prov": "sc_88_7_gap.raw",
+            "checked_at": "2026-10-08",
+            "reason": "비교군 실거래 29건 중앙값",
+            "unit": "won"
+          },
+          "comps_median_unadjusted": null,
           "score": {
             "v": 3.1,
             "label": "추정",
@@ -6887,7 +6930,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_210",
             "checked_at": "2026-10-08",
-            "reason": "P_mid × 계약금%, 산술",
+            "reason": "중간 가격 × 계약금%, 산술",
             "unit": "won"
           },
           "required_equity_won": {
@@ -6895,7 +6938,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_210",
             "checked_at": "2026-10-08",
-            "reason": "max(계약금, P_mid − 대출한도 6억), 산술",
+            "reason": "max(계약금, 중간 가격 − 대출한도 6억), 산술",
             "unit": "won"
           },
           "interim_terms_text": "중도금 60% 이자후불제"
@@ -6930,7 +6973,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_710",
             "checked_at": "2026-10-08",
-            "reason": "P_mid × 계약금%, 산술",
+            "reason": "중간 가격 × 계약금%, 산술",
             "unit": "won"
           },
           "required_equity_won": {
@@ -6938,7 +6981,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_710",
             "checked_at": "2026-10-08",
-            "reason": "max(계약금, P_mid − 대출한도 6억), 산술",
+            "reason": "max(계약금, 중간 가격 − 대출한도 6억), 산술",
             "unit": "won"
           },
           "interim_terms_text": "중도금 60% 이자후불제"
@@ -6973,7 +7016,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_410",
             "checked_at": "2026-10-08",
-            "reason": "P_mid × 계약금%, 산술",
+            "reason": "중간 가격 × 계약금%, 산술",
             "unit": "won"
           },
           "required_equity_won": {
@@ -6981,7 +7024,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_410",
             "checked_at": "2026-10-08",
-            "reason": "max(계약금, P_mid − 대출한도 6억), 산술",
+            "reason": "max(계약금, 중간 가격 − 대출한도 6억), 산술",
             "unit": "won"
           },
           "interim_terms_text": "중도금 60% 이자후불제"
@@ -7777,7 +7820,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_102",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -7965,7 +8008,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_202",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -8353,7 +8396,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_402",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 10%)",
+            "reason": "산술(중간 가격 × 계약금 10%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -8546,7 +8589,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_502",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 10%)",
+            "reason": "산술(중간 가격 × 계약금 10%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -8735,7 +8778,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_602",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -8924,7 +8967,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_702",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -9117,7 +9160,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_802",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 10%)",
+            "reason": "산술(중간 가격 × 계약금 10%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -9310,7 +9353,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_902",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 10%)",
+            "reason": "산술(중간 가격 × 계약금 10%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -9497,7 +9540,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_1002",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -9685,7 +9728,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_1102",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -9873,7 +9916,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_1202",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 10%)",
+            "reason": "산술(중간 가격 × 계약금 10%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -10062,7 +10105,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_1302",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 5%)",
+            "reason": "산술(중간 가격 × 계약금 5%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -10251,7 +10294,7 @@ export const generatedHandlers = [
             "label": "추정",
             "prov": "fp_1402",
             "checked_at": "2026-10-07",
-            "reason": "산술(P_mid × 계약금 10%)",
+            "reason": "산술(중간 가격 × 계약금 10%)",
             "unit": "won"
           },
           "competition_summary": {
@@ -14860,6 +14903,103 @@ export const generatedHandlers = [
           }
         }
       ],
+      "unsold_latest": {
+        "ym": "2026-08",
+        "total": {
+          "v": 2029,
+          "label": "재가공",
+          "prov": "fp_6123",
+          "checked_at": "2026-10-07",
+          "reason": "지역 합계(시군구 4곳)",
+          "unit": "units"
+        },
+        "post_completion": {
+          "v": 992,
+          "label": "재가공",
+          "prov": "fp_6123",
+          "checked_at": "2026-10-07",
+          "reason": "지역 합계(시군구 4곳)",
+          "unit": "units"
+        },
+        "breakdown": [
+          {
+            "ym": "2026-08",
+            "scope_code": "41570",
+            "scope_name": "김포시",
+            "total": {
+              "v": 787,
+              "label": "재가공",
+              "prov": "fp_6123",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 52,
+              "label": "재가공",
+              "prov": "fp_6123",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          },
+          {
+            "ym": "2026-08",
+            "scope_code": "28185",
+            "scope_name": "연수구",
+            "total": {
+              "v": 505,
+              "label": "재가공",
+              "prov": "fp_6301",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 203,
+              "label": "재가공",
+              "prov": "fp_6301",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          },
+          {
+            "ym": "2026-08",
+            "scope_code": "28290",
+            "scope_name": "검단구",
+            "total": {
+              "v": 737,
+              "label": "재가공",
+              "prov": "fp_6302",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 737,
+              "label": "재가공",
+              "prov": "fp_6302",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          },
+          {
+            "ym": "2026-08",
+            "scope_code": "28245",
+            "scope_name": "계양구",
+            "total": {
+              "v": 0,
+              "label": "재가공",
+              "prov": "fp_6303",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            },
+            "post_completion": {
+              "v": 0,
+              "label": "재가공",
+              "prov": "fp_6303",
+              "checked_at": "2026-10-07",
+              "unit": "units"
+            }
+          }
+        ]
+      },
       "catalysts": [
         {
           "id": 41,

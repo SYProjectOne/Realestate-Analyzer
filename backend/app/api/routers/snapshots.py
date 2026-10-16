@@ -663,6 +663,40 @@ def unsold_points(
     return out
 
 
+def latest_unsold(
+    session: Session,
+    region_id: int,
+    fm: FactMaker,
+    *,
+    scopes: set[str] | None = None,
+    points: Sequence[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """미분양 지역 합계 — 값이 있는 가장 최근 달의 합계·준공 후 합계 + 단위(시군구)별 내역(G1 KPI ``kpis.unsold``·
+    계약 .22 G6 시장 ``unsold_latest`` 가 같은 함수). ``scopes`` 가 있으면 그 통계 단위만 합한다(시장 생활권 필터와 같은 단위).
+    합계 규칙은 ``unsold_points``(일부 누락 → '확인 불가(일부 누락 n건)', 사유 '지역 합계(시군구 n곳)')."""
+    if points is None:  # ``points`` = 호출자가 이미 만든 같은 ``scopes`` 의 월별 합계(대시보드 unsold_series)
+        points = unsold_points(session, region_id, fm, scopes=scopes)
+    latest = next((p for p in reversed(points) if p["total"]["label"] != LABEL_UNKNOWN), None)
+    if latest is None:
+        return {
+            "ym": None,
+            "total": unknown("미분양 자료 없음"),
+            "post_completion": unknown("미분양 자료 없음"),
+            "breakdown": [],
+        }
+    return {
+        "ym": latest["ym"],
+        "total": latest["total"],
+        "post_completion": latest["post_completion"],
+        # 계약 .20(D28-5 Q5): 합계의 단위(시군구)별 내역 — 원천 행 Fact 그대로
+        "breakdown": [
+            p
+            for p in unsold_points(session, region_id, fm, scopes=scopes, per_scope=True)
+            if p["ym"] == latest["ym"]
+        ],
+    }
+
+
 def partial_missing(facts: Sequence[dict[str, Any]], unit: str) -> dict[str, Any] | None:
     """합계 규칙(R3 M4): 원천이 하나라도 확인 불가면 합계도 '확인 불가(일부 누락 n건)'.
 
@@ -829,27 +863,7 @@ def dashboard_body(session: Session, settings: Settings, snap: Snapshot, sc: Sce
     )
     first = top_ids[0] if top_ids else (min(ctx.totals) if ctx.totals else None)
     unsold_all = unsold_points(session, region.id, fm)
-    latest_unsold = next((p for p in reversed(unsold_all) if p["total"]["label"] != LABEL_UNKNOWN), None)
-    unsold_kpi = (
-        {
-            "ym": latest_unsold["ym"],
-            "total": latest_unsold["total"],
-            "post_completion": latest_unsold["post_completion"],
-            # 계약 .20(D28-5 Q5): 합계의 단위(시군구)별 내역 — 원천 행 Fact 그대로
-            "breakdown": [
-                p
-                for p in unsold_points(session, region.id, fm, per_scope=True)
-                if p["ym"] == latest_unsold["ym"]
-            ],
-        }
-        if latest_unsold
-        else {
-            "ym": None,
-            "total": unknown("미분양 자료 없음"),
-            "post_completion": unknown("미분양 자료 없음"),
-            "breakdown": [],
-        }
-    )
+    unsold_kpi = latest_unsold(session, region.id, fm, points=unsold_all)
     body = {
         "region_id": region.id,
         "snapshot_id": snap.id,

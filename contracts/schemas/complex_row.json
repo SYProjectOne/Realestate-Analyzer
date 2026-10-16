@@ -15,7 +15,7 @@
     "living_area_name": { "type": ["string", "null"] },
     "track": { "type": ["string", "null"], "enum": ["A", "B", null] },
     "judge_scope": { "$ref": "score_row.json#/$defs/JudgeScope" },
-    "judge_scope_reason": { "description": "판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다", "type": ["string", "null"], "maxLength": 200 },
+    "judge_scope_reason": { "description": "판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(검토, 미분류)'·'포함/제외 classify 제외 클래스(공공분양)'(계약 .22 D30-6 — 분류명·decision 은 한국어: 공공분양·공공임대·민간임대·비아파트·범위 밖, 검토·사람 검토·질문 남김)·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다", "type": ["string", "null"], "maxLength": 200 },
     "rejudge_needed": { "description": "D10-1(계약 2026-10-09.6): judge_scope·rank·total 은 스냅샷 score_run 저장값. 현재 계산 범위가 저장값과 다르면 true('재판정 필요' 배지). 없으면 false.", "type": "boolean", "default": false },
     "intake": { "anyOf": [{ "$ref": "intake.json" }, { "type": "null" }] },
     "price_low": { "$ref": "fact.json" },
@@ -37,7 +37,7 @@
     "regulated": { "$ref": "fact.json" },
     "residency_months": { "$ref": "fact.json" },
     "down_payment_pct": { "$ref": "fact.json" },
-    "down_payment_won": { "description": "계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
+    "down_payment_won": { "description": "계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(중간 가격 × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "fact.json" }, { "type": "null" }] },
     "competition_summary": { "description": "계약 2026-10-09.20(D28-5 Q4): 경쟁률 요약(competition.json CompetitionSummary — 1순위 해당지역 최고 경쟁률·미달 주택형 수·당첨 가점). 경쟁률 행이 없는 단지는 rows 0. .20 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "competition.json#/$defs/CompetitionSummary" }, { "type": "null" }] },
     "units_total": { "$ref": "fact.json" },
     "last_change": {
@@ -94,7 +94,7 @@
       "regulated": { "v": "비규제", "label": "확인됨", "prov": "fp_4107", "checked_at": "2026-10-07", "unit": "text" },
       "residency_months": { "v": 0, "label": "확인됨", "prov": "fp_4108", "checked_at": "2026-10-07", "unit": "months" },
       "down_payment_pct": { "v": 10, "label": "확인됨", "prov": "fp_4109", "checked_at": "2026-10-07", "unit": "pct" },
-      "down_payment_won": { "v": 66250000, "label": "추정", "reason": "산술(P_mid × 계약금 10%)", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },
+      "down_payment_won": { "v": 66250000, "label": "추정", "reason": "산술(중간 가격 × 계약금 10%)", "prov": "fp_4102", "checked_at": "2026-10-07", "unit": "won" },
       "units_total": { "v": 1029, "label": "확인됨", "prov": "fp_4110", "checked_at": "2026-10-07", "unit": "units" },
       "last_change": null
     }

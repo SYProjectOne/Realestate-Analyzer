@@ -49,6 +49,7 @@
       }
     },
     "unsold": { "type": "array", "items": { "$ref": "#/$defs/UnsoldPoint" } },
+    "unsold_latest": { "description": "계약 2026-10-09.22(D30-5 — G6 요약 카드 '미분양 지역 합계'): 값이 있는 가장 최근 달의 미분양 합계·준공 후 미분양 합계와 단위(시군구)별 내역 — 대시보드 kpis.unsold 와 **같은 함수·같은 값**(living_area 를 주지 않았을 때). living_area 를 주면 그 생활권의 통계 단위(unsold[] 와 같은 단위)만 합한다. 합계 규칙: 단위 하나라도 확인 불가면 '확인 불가(일부 누락 n건)', reason '지역 합계(시군구 n곳)'. 화면은 unsold[] 를 더하지 않고 이 값을 보인다. .22 이전 발행 리비전 저장본에는 키가 없다(= null)", "anyOf": [{ "$ref": "#/$defs/UnsoldLatest" }, { "type": "null" }] },
     "catalysts": { "type": "array", "items": { "$ref": "catalyst.json" } },
     "regulation": { "$ref": "#/$defs/RegulationSummary" },
     "living_area_prices": {
@@ -125,6 +126,19 @@
         "year": { "x-nonfact": "연도 분류·축 키(값의 근거는 같은 행의 Fact·출처)", "type": "integer" },
         "units": { "$ref": "fact.json" },
         "complexes": { "type": ["array", "null"], "items": { "type": "string" } }
+      }
+    },
+    "UnsoldLatest": {
+      "title": "UnsoldLatest",
+      "description": "미분양 가장 최근 달 합계(계약 2026-10-09.22) — dashboard.json Kpis.unsold(KpiUnsold)와 같은 모양. ym = 값이 있는 가장 최근 달(자료 없으면 null, total·post_completion '확인 불가(미분양 자료 없음)', breakdown []). breakdown = 그 달 단위(시군구)별 원천 행(UnsoldPoint).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ym", "total", "post_completion", "breakdown"],
+      "properties": {
+        "ym": { "type": ["string", "null"] },
+        "total": { "$ref": "fact.json" },
+        "post_completion": { "$ref": "fact.json" },
+        "breakdown": { "type": "array", "items": { "$ref": "#/$defs/UnsoldPoint" } }
       }
     },
     "UnsoldPoint": {
