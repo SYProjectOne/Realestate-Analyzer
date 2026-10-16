@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useCanWrite } from '@/api/auth';
 import { useChecklist, usePatchChecklistItem } from '@/api/hooks';
 import type { ChecklistItem } from '@/api/types';
-import { Badge, EmptyState, PublishJobProgress } from '@/components';
+import { Badge, EmptyState, MetaText, PublishJobProgress } from '@/components';
 import { t, tDynamic, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
+import { enumText, QueryState, tdClass, thClass } from '../_shared';
 import { isResaleEnd, scheduleBasis, scheduleKindText } from '../_shared/schedule';
+import { OpsSection } from './sections';
 
 const STATUSES = ['open', 'done', 'na'] as const;
 const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
@@ -19,21 +20,48 @@ const COLS = ['kind', 'title', 'complex', 'due', 'status', 'note'] as const;
  */
 export function ChecklistPanel({ asof }: { asof: string | null }) {
   const query = useChecklist();
+  const items = query.data;
   return (
-    <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
-      <Section title={t('page.G7.checklist')}>
-        <QueryState
-          query={query}
-          empty={(rows) => (rows.length === 0 ? t('page.G7.check.none') : null)}
-        >
-          {(items) => <ChecklistTable items={items} asof={asof} />}
-        </QueryState>
-      </Section>
-      <Section title={t('page.G7.calendar')}>
-        <QueryState query={query}>{(items) => <Calendar items={items} asof={asof} />}</QueryState>
-      </Section>
-    </div>
+    <OpsSection
+      k="checklist"
+      actions={
+        items && items.length > 0 ? (
+          <Badge tone="muted">
+            <MetaText kind="count" k="page.G7.checklistSummary" params={checklistCounts(items)} />
+          </Badge>
+        ) : null
+      }
+    >
+      <QueryState
+        query={query}
+        empty={(rows) => (rows.length === 0 ? t('page.G7.check.none') : null)}
+      >
+        {(rows) => <ChecklistTable items={rows} asof={asof} />}
+      </QueryState>
+      <section
+        aria-label={t('page.G7.calendar')}
+        className="flex flex-col gap-2 rounded-xl border border-border p-4"
+      >
+        <h3 className="text-base font-bold">{t('page.G7.calendar')}</h3>
+        <QueryState query={query}>{(rows) => <Calendar items={rows} asof={asof} />}</QueryState>
+      </section>
+    </OpsSection>
   );
+}
+
+/** 체크리스트 상태별 줄 수(개수 세기 — D25-3) */
+export function checklistCounts(items: readonly ChecklistItem[]): {
+  total: number;
+  open: number;
+  done: number;
+  na: number;
+} {
+  return {
+    total: items.length,
+    open: items.filter((i) => i.status === 'open').length,
+    done: items.filter((i) => i.status === 'done').length,
+    na: items.filter((i) => i.status === 'na').length,
+  };
 }
 
 function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string | null }) {
@@ -44,7 +72,10 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
   return (
     <div className="flex flex-col gap-2">
       <div className="overflow-x-auto">
-        <table aria-label={t('page.G7.checklist')} className="w-full border-collapse text-sm">
+        <table
+          aria-label={t('page.G7.checklist')}
+          className="w-full min-w-[44rem] border-collapse text-sm"
+        >
           <thead>
             <tr>
               {COLS.map((k) => (
@@ -56,7 +87,11 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className={item.status === 'open' ? '' : 'text-grayed'}>
+              <tr
+                key={item.id}
+                data-closed={item.status !== 'open'}
+                className={item.status === 'open' ? '' : 'bg-subtle text-grayed'}
+              >
                 <td className={tdClass}>
                   <Badge tone="neutral">{enumText('page.G7.checkKind', item.kind)}</Badge>
                 </td>
@@ -83,7 +118,7 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
                         { onSuccess: setSaved },
                       )
                     }
-                    className="rounded-sm border border-border bg-surface px-1 py-0.5 text-xs"
+                    className="min-h-10 rounded-[10px] border border-border-strong bg-surface px-2 text-[13px] disabled:cursor-not-allowed"
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -113,6 +148,7 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-muted">{t('page.G7.closedNote')}</p>
       {saved ? (
         saved.job_id !== null && saved.job_id !== undefined ? (
           <div className="flex flex-col gap-1" data-testid="checklist-job">

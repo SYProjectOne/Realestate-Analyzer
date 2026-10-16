@@ -80,7 +80,7 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
     expect(screen.getByText(t('chart.C04.title'))).toBeInTheDocument();
     expect(screen.getByText(t('chart.C05.title'))).toBeInTheDocument();
     expect(screen.getByText(t('chart.C09.title'))).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t('page.G6.regulation') })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t('page.G6.regulation') })).toBeInTheDocument();
   });
 
   it('G7 /ops: 소스 상태 표 + 사람 확인 입력 폼', async () => {

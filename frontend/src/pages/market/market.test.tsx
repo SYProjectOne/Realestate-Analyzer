@@ -37,7 +37,7 @@ describe('G6 지역 시장', () => {
   it('규제 요약 카드와 생활권별 실거래 시세 표', async () => {
     renderRoute('/market');
     expect(
-      await screen.findByRole('heading', { name: t('page.G6.regulation') }),
+      await screen.findByRole('region', { name: t('page.G6.regulation') }),
     ).toBeInTheDocument();
     expect(screen.getByRole('table', { name: t('page.G6.prices') })).toBeInTheDocument();
   });

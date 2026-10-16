@@ -1,8 +1,16 @@
 import { useJobs } from '@/api/hooks';
-import { Badge, degradedFailureText, JobRequeueNote, MetaText } from '@/components';
+import {
+  Badge,
+  degradedFailureText,
+  JobRequeueNote,
+  jobNameText,
+  jobStepText,
+  MetaText,
+} from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { enumText, idText, QueryState, Section, tdClass, thClass } from '../_shared';
+import { enumText, idText, QueryState, tdClass, thClass } from '../_shared';
+import { OpsSection } from './sections';
 
 const COLS = ['name', 'status', 'scheduled', 'started', 'finished', 'progress', 'error'] as const;
 
@@ -15,14 +23,26 @@ const COLS = ['name', 'status', 'scheduled', 'started', 'finished', 'progress', 
 export function RejudgeQueue({ asof }: { asof: string | null }) {
   const query = useJobs({ size: 50 });
   return (
-    <Section title={t('page.G7.queue')}>
+    <OpsSection
+      k="jobs"
+      actions={
+        query.data && query.data.length > 0 ? (
+          <Badge tone="muted">
+            <MetaText kind="count" k="page.G7.jobsSummary" params={{ n: query.data.length }} />
+          </Badge>
+        ) : null
+      }
+    >
       <QueryState
         query={query}
         empty={(rows) => (rows.length === 0 ? t('page.G7.job.none') : null)}
       >
         {(jobs) => (
           <div className="overflow-x-auto">
-            <table aria-label={t('page.G7.queue')} className="w-full border-collapse text-sm">
+            <table
+              aria-label={t('page.G7.queue')}
+              className="w-full min-w-[40rem] border-collapse text-sm"
+            >
               <thead>
                 <tr>
                   {COLS.map((k) => (
@@ -35,9 +55,12 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
               <tbody>
                 {jobs.map((job) => (
                   <tr key={job.id} data-status={job.status}>
-                    <th scope="row" className={`${tdClass} text-left font-normal`}>
-                      {job.job_name}
-                      <span className="block text-xs text-muted">{idText(job.id)}</span>
+                    <th scope="row" className={`${tdClass} text-left font-semibold`}>
+                      {/* D30-8: 쉬운 작업 이름 + 원래 이름(작은 글씨) */}
+                      {jobNameText(job.job_name)}
+                      <span className="block text-xs font-normal text-muted" data-testid="job-raw">
+                        {t('page.G7.job.id', { id: idText(job.id), name: job.job_name })}
+                      </span>
                     </th>
                     <td className={tdClass}>
                       <Badge
@@ -69,7 +92,9 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
                         />
                       ) : null}
                       {job.progress?.step ? (
-                        <span className="block text-xs text-muted">{job.progress.step}</span>
+                        <span className="block text-xs text-muted" title={job.progress.step}>
+                          {jobStepText(job.progress.step)}
+                        </span>
                       ) : null}
                     </td>
                     <td className={`${tdClass} max-w-xs break-all text-xs text-danger`}>
@@ -82,6 +107,6 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
           </div>
         )}
       </QueryState>
-    </Section>
+    </OpsSection>
   );
 }
