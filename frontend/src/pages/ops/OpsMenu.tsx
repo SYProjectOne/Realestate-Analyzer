@@ -31,10 +31,7 @@ export function OpsMenu({
       aria-label={t('page.G7.menu.title')}
       className="min-w-0 rounded-2xl border border-border bg-surface p-2 lg:sticky lg:top-4 lg:self-start"
     >
-      <p className="mx-2 mb-1 mt-1 text-xs font-bold text-muted">
-        <span className="hidden lg:inline">{t('page.G7.menu.hint')}</span>
-        <span className="lg:hidden">{t('page.G7.menu.mobileHint')}</span>
-      </p>
+      <p className="mx-2 mb-1 mt-1 text-xs font-bold text-muted">{t('page.G7.menu.hint')}</p>
       <ol className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
         {sections.map((s) => {
           const current = hash === `#${s.id}`;

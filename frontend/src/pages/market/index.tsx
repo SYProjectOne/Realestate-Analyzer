@@ -119,9 +119,6 @@ export function MarketPage() {
       )}
       {/* 지역이 바뀌면 등록 결과·잡 진행을 지운다(8차 m18) */}
       {isLoading ? null : <CatalystUrlForm key={regionId ?? 'none'} regionId={regionId} />}
-      <p className="text-xs leading-relaxed text-muted" data-testid="market-footnote">
-        {t('page.G6.footNote')}
-      </p>
     </PageShell>
   );
 }
@@ -148,7 +145,6 @@ function MarketBody({
       <QuestionSection
         name={t('chart.C03.title')}
         title={t('page.G6.benchmark.title')}
-        hint={t('page.G6.benchmark.hint')}
         data-testid="market-benchmark"
       >
         {market.benchmark_absence ? (
@@ -174,9 +170,6 @@ function MarketBody({
             asof={asof}
           />
         </div>
-        <p className="rounded-xl bg-subtle px-3 py-2 text-[13px] leading-relaxed text-fg-2">
-          {t('page.G6.benchmark.read')}
-        </p>
         {market.benchmark_flags.length > 0 ? (
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-bold text-fg">{t('page.G6.flags')}</h3>
@@ -209,7 +202,6 @@ function MarketBody({
       <QuestionSection
         name={t('chart.C04.title')}
         title={t('page.G6.supply.title')}
-        hint={t('page.G6.supply.hint')}
         data-testid="market-supply"
       >
         <div className={FLAT_CHART}>
@@ -226,7 +218,6 @@ function MarketBody({
       <QuestionSection
         name={t('chart.C09.title')}
         title={t('page.G6.catalystBoard.title')}
-        hint={t('page.G6.catalystBoard.hint')}
         data-testid="market-catalysts"
       >
         <div className={FLAT_CHART}>
@@ -306,7 +297,7 @@ function SummaryCards({
         ) : null}
       </Card>
       <Card className="flex flex-col gap-2" data-testid="summary-prices">
-        <BigNumber label={t('page.G6.summary.prices')} caption={t('page.G6.summary.pricesHint')}>
+        <BigNumber label={t('page.G6.summary.prices')}>
           <MetaText kind="count" k="page.G6.summary.pricesCount" params={{ n: prices.withValue }} />{' '}
           <MetaText
             kind="count"
@@ -368,7 +359,6 @@ function UnsoldSection({ market, asof }: { market: Market; asof: string }) {
     <QuestionSection
       name={t('chart.C05.title')}
       title={t('page.G6.unsold.title')}
-      hint={t('page.G6.unsold.hint')}
       data-testid="market-unsold"
     >
       {scopes.length > 1 ? (

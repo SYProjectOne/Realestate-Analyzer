@@ -119,7 +119,7 @@ function TilesBody({
       tone={q && q.total > 0 ? 'warn' : 'default'}
       value={
         q ? (
-          <MetaText kind="count" k="page.G7.today.countCases" params={{ n: q.total }} />
+          <MetaText kind="count" k="page.G7.iq.total" params={{ n: q.total }} />
         ) : queue.error || !hasScope ? (
           unknown
         ) : (
@@ -138,7 +138,7 @@ function TilesBody({
                   <MetaText
                     kind="count"
                     k="page.G7.today.part"
-                    params={{ name: t(`page.G7.iq.categoryShort.${p.category}` as TKey), n: p.n }}
+                    params={{ name: t(`page.G7.iq.category.${p.category}` as TKey), n: p.n }}
                   />
                 </span>
               ))}
@@ -190,7 +190,7 @@ function TilesBody({
       tone={contradicted !== null && contradicted > 0 ? 'warn' : 'default'}
       value={
         contradicted !== null ? (
-          <MetaText kind="count" k="page.G7.today.countCases" params={{ n: contradicted }} />
+          <MetaText kind="count" k="page.G7.iq.total" params={{ n: contradicted }} />
         ) : claims.error || snapshotId === null ? (
           unknown
         ) : (
@@ -210,7 +210,7 @@ function TilesBody({
       label={tileLabel('checklist')}
       value={
         due ? (
-          <MetaText kind="count" k="page.G7.today.countCases" params={{ n: due.soon }} />
+          <MetaText kind="count" k="page.G7.iq.total" params={{ n: due.soon }} />
         ) : checklist.error || (items && !asof) ? (
           unknown
         ) : (

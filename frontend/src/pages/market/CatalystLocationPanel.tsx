@@ -345,7 +345,6 @@ function LocationForm({
         <button type="submit" disabled={pending} className={buttonClass}>
           {t('page.G6.loc.submit')}
         </button>
-        <span className="text-xs text-muted">{t('page.G6.loc.submitHint')}</span>
         {(error ?? serverError) ? (
           <p role="alert" className="text-sm text-danger">
             {error ?? t('page.common.loadError', { detail: serverError ?? '' })}

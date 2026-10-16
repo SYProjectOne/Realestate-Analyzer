@@ -141,7 +141,6 @@ describe('R11 G6 화면', () => {
     const edit = await screen.findByRole('link', { name: t('page.G6.livingAreaEdit') });
     expect(edit.getAttribute('href')).toMatch(/^\/regions\/\d+\/living-areas/);
     expect(screen.getByText(t('page.G6.intro'))).toBeInTheDocument();
-    expect(screen.getByTestId('market-footnote')).toHaveTextContent(t('page.G6.footNote'));
   });
 
   it('한눈에 보기: 미분양 = 서버 unsold_latest 그대로(unsold[] 를 더하지 않는다)', async () => {
@@ -318,5 +317,45 @@ describe('R11 G6 화면', () => {
       within(table2).getByRole('columnheader', { name: t('page.G6.priceCol.window') }),
     ).toBeInTheDocument();
     expect(within(table2).getAllByText(t('empty.unknown')).length).toBeGreaterThan(0);
+  });
+});
+
+describe('R11 G6 "구현할 때 지금 동작 그대로 유지"(MK-17)', () => {
+  it('숨은 "차트" h2(제목 순서 h1 → h2 → h3)는 남는다', async () => {
+    renderRoute('/market');
+    const h2 = await screen.findByRole('heading', { level: 2, name: t('page.common.charts') });
+    expect(h2).toHaveClass('sr-only');
+  });
+
+  it('위치 확인 폼은 한 줄만 열리고, 연결된 단지가 처음 선택돼 있다', async () => {
+    renderRoute('/market');
+    const panel = await screen.findByRole('region', { name: t('page.G6.loc.title') });
+    const list = within(panel).getByRole('list', { name: t('page.G6.loc.title') });
+    const items = within(list).getAllByRole('listitem');
+    const linked = items.find((li) => li.getAttribute('data-catalyst-id') === '41') as HTMLElement;
+    const other = items.find((li) => li.getAttribute('data-catalyst-id') === '44') as HTMLElement;
+    await userEvent.click(within(linked).getByRole('button', { name: t('page.G6.loc.open') }));
+    const select = within(linked).getByLabelText(t('page.G6.loc.complexes')) as HTMLSelectElement;
+    await waitFor(() => expect(select.querySelectorAll('option').length).toBeGreaterThan(1));
+    expect([...select.selectedOptions].map((o) => o.value).sort()).toEqual(['2', '5', '6']);
+    expect(within(linked).getByRole('button', { name: t('page.G6.loc.close') })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await userEvent.click(within(other).getByRole('button', { name: t('page.G6.loc.open') }));
+    expect(within(linked).queryByRole('form')).toBeNull();
+    expect(within(other).getByRole('form')).toBeInTheDocument();
+  });
+
+  it('호재 URL 저장 뒤 입력 칸을 비운다', async () => {
+    renderRoute('/market');
+    const f = await screen.findByRole('form', { name: t('page.G6.catalyst.title') });
+    const url = within(f).getByLabelText(t('page.G6.catalyst.url'));
+    await userEvent.type(url, 'https://www.example-news.kr/a/1');
+    await userEvent.type(within(f).getByLabelText(t('page.G6.catalyst.titleField')), '새 소식');
+    await userEvent.click(within(f).getByRole('button', { name: t('page.G6.catalyst.submit') }));
+    await screen.findByTestId('catalyst-created');
+    expect(url).toHaveValue('');
+    expect(within(f).getByLabelText(t('page.G6.catalyst.titleField'))).toHaveValue('');
   });
 });

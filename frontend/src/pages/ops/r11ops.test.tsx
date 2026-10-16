@@ -4,6 +4,7 @@
  * 타일 값은 서버 수 또는 줄 개수만(D25-3) — 화면이 판단 이름을 붙이지 않는다.
  */
 import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import { ROLE_STORAGE_KEY, TOKEN_STORAGE_KEY } from '@/api/auth';
 import type { ChecklistItem, ClaimView, IntakeQueue, SourceStatus } from '@/api/types';
@@ -140,12 +141,12 @@ describe('R11 G7 화면', () => {
     const tile = (k: string) => within(tiles).getByTestId(`tile-${k}`);
     // 계약 예시 대기열 total 7, 수집 실패 3 · 공식 홈페이지 확인 1 · …
     await waitFor(() =>
-      expect(tile('intake')).toHaveTextContent(metaText('page.G7.today.countCases', { n: 7 })),
+      expect(tile('intake')).toHaveTextContent(metaText('page.G7.iq.total', { n: 7 })),
     );
     const intake = tile('intake');
     expect(within(intake).getByTestId('tile-intake-parts')).toHaveTextContent(
       metaText('page.G7.today.part', {
-        name: t('page.G7.iq.categoryShort.collect_failed'),
+        name: t('page.G7.iq.category.collect_failed'),
         n: 3,
       }),
     );
@@ -155,7 +156,7 @@ describe('R11 G7 화면', () => {
     );
     expect(tile('sources')).toHaveTextContent(t('page.G7.sourceKind.official_site'));
     await waitFor(() =>
-      expect(tile('claims')).toHaveTextContent(metaText('page.G7.today.countCases', { n: 2 })),
+      expect(tile('claims')).toHaveTextContent(metaText('page.G7.iq.total', { n: 2 })),
     );
     expect(tile('claims')).toHaveTextContent(t('page.G7.today.claimsSub'));
     await waitFor(() => expect(tile('checklist')).toHaveTextContent(/\d건/));
@@ -186,7 +187,7 @@ describe('R11 G7 화면', () => {
         within(section).getByRole('heading', { level: 2, name: t(`page.G7.q.${s.key}`) }),
       ).toBeInTheDocument();
       expect(within(section).getByText(t('page.G7.what'))).toBeInTheDocument();
-      expect(section).toHaveTextContent(`${s.no} ${t(`page.G7.menu.${s.key}`)}`);
+      expect(section).toHaveTextContent(`${s.no} ${t(s.nameKey)}`);
     }
   });
 
@@ -263,5 +264,36 @@ describe('R11 G7 화면', () => {
     expect(
       await within(section).findByRole('list', { name: t('page.G7.calendar') }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('R11 G7 "구현할 때 지금 동작 그대로 유지"(OP-13)', () => {
+  it('지역 로딩 동안에도 수집 상태 자리를 미리 잡는다(min-h-96, CLS)', async () => {
+    renderRoute('/ops');
+    const section = await screen.findByTestId('ops-section-sources');
+    expect(section.className).toMatch(/min-h-96/);
+  });
+
+  it('다른 화면에서 #human-check 로 들어오면 사람 확인 폼으로 한 번 스크롤', async () => {
+    const spy = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = spy;
+    try {
+      renderRoute('/ops?hc_complex=1&hc_field=discount#human-check');
+      await screen.findByRole('form', { name: t('page.G7.human') });
+      await waitFor(() => expect(spy).toHaveBeenCalled());
+      expect(document.getElementById('human-check')).not.toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('메뉴를 누르면 주소 해시가 그 묶음 id 가 되고 쿼리는 그대로', async () => {
+    const { router } = renderRoute('/ops?region=1');
+    const nav = await screen.findByRole('navigation', { name: t('page.G7.menu.title') });
+    await userEvent.click(within(nav).getByTestId('ops-menu-claims'));
+    await waitFor(() => expect(router.state.location.hash).toBe('#ops-claims'));
+    expect(router.state.location.search).toBe('?region=1');
+    expect(within(nav).getByTestId('ops-menu-claims')).toHaveAttribute('aria-current', 'location');
   });
 });
