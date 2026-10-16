@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
-import type { CompareView, LadderRow, Scenario } from '@/api/types';
+import type { CompareView, LadderRow, Region, Scenario } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
@@ -107,6 +107,12 @@ describe('G4 비교', () => {
       .slice(1)
       .map((th) => th.textContent);
     expect(heads).toEqual(['오퍼스 한강 스위첸', '엘리프 검단 포레듀', '김포 칸타빌 에디션']);
+    // 열 머리 = 단지 상세 링크(전역 쿼리 유지)
+    expect(
+      within(grid)
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href')),
+    ).toEqual(['/complexes/4', '/complexes/2', '/complexes/7']);
     const terms = screen.getByRole('table', { name: t('page.G4.termsFirst') });
     expect(
       within(terms)
@@ -119,9 +125,18 @@ describe('G4 비교', () => {
     renderRoute('/compare?ids=2,7,4&scenario=B');
     const grid = await screen.findByRole('table', { name: t('page.G4.grid') });
     expect(within(grid).getAllByRole('columnheader')).toHaveLength(4);
-    expect(within(grid).getByTestId('compare-decision')).toHaveTextContent(
+    const decisionRow = within(grid).getByTestId('compare-decision');
+    expect(decisionRow).toHaveTextContent(
       t('page.G4.row.decision', { name: 'B 가점 낮음·소액 자기자본' }),
     );
+    // 서버 값 그대로: 7·2 선택(동률, ok 봉투), 4 근거와 달라요
+    expect(within(decisionRow).getAllByText(t('chart.chosen'))).toHaveLength(2);
+    expect(within(decisionRow).getAllByTestId('tie-badge')).toHaveLength(2);
+    expect(within(decisionRow).getAllByText(t('badge.mismatch'))).toHaveLength(1);
+    const intakeRow = within(grid).getByRole('row', {
+      name: new RegExp(`^${t('page.G4.row.intake')}`),
+    });
+    expect(within(intakeRow).getAllByTestId('intake-badge')).toHaveLength(3);
     expect(screen.getByRole('table', { name: t('page.G4.termsFirst') })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: t('chart.C07.title') })).toBeInTheDocument();
     // 상황 B 예시: confidence 0.48 → 동률
@@ -258,6 +273,10 @@ describe('G4 비교', () => {
       expect(j.textContent).toBe(t('page.G4.reqJudge', { status: status[judge] }));
     }
     expect(req.textContent ?? '').not.toMatch(/supported|contradicted|unknown/);
+    // 근거 문장 = 서버 문장 그대로
+    const view = await example<CompareView>('/snapshots/12/compare?ids=2,7,4');
+    const evidence = view.decisions.B!.items[0]!.requirements!.funds.pre!.evidence;
+    expect(within(req).getByText(evidence)).toBeInTheDocument();
     expect(within(req).getAllByText(t('badge.mismatch')).length).toBeGreaterThan(0);
     expect(screen.getByText(new RegExp(t('page.G4.reqSource')))).toBeInTheDocument();
   });
@@ -468,6 +487,23 @@ describe('R11 G4 차트 구역(목업 Compare)', () => {
 });
 
 describe('G4 불러오기 상태(QueryState)', () => {
+  it.each([
+    ['ready', 'app.noSnapshot'],
+    ['bootstrapping', 'app.noSnapshotBootstrapping'],
+  ] as const)('기준일 자료 없음(지역 %s) → %s 안내, 비교 API 호출 없음', async (status, key) => {
+    const regions = await example<Region[]>('/regions');
+    const empty: Region = { ...regions[0]!, status, latest_snapshot: null };
+    server.use(
+      http.get(mswPath('/regions'), () => HttpResponse.json([empty])),
+      http.get(mswPath('/regions/:id/snapshots'), () => HttpResponse.json([])),
+    );
+    const rec = recordRequests();
+    renderRoute('/compare?ids=2,7,4');
+    expect(await screen.findByText(t(key))).toBeInTheDocument();
+    expect(matching(rec.requests, 'GET', '/compare')).toHaveLength(0);
+    rec.stop();
+  });
+
   it('불러오는 중 → 뼈대 + "불러오는 중…"', async () => {
     server.use(http.get(mswPath('/snapshots/:sid/compare'), () => new Promise(() => {})));
     renderRoute('/compare?ids=2,7,4');

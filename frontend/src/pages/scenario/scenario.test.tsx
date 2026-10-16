@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import { ROLE_STORAGE_KEY, TOKEN_STORAGE_KEY } from '@/api/auth';
 import { JOB_POLL_MS } from '@/api/hooks';
-import type { CompareView, Scenario, ScenarioPreview, Weights } from '@/api/types';
+import type { CompareView, Region, Scenario, ScenarioPreview, Weights } from '@/api/types';
 import { t } from '@/i18n';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
@@ -302,6 +302,30 @@ describe('G5 시나리오 화면', () => {
     expect(alert.textContent).toMatch(new RegExp(`^${t('page.G5.saveError', { detail: '' })}`));
   });
 
+  it('저장 요청을 보내는 동안 [이 조건 저장] 꺼짐(#49)', async () => {
+    server.use(http.post(mswPath('/scenarios'), () => new Promise(() => {})));
+    renderRoute('/scenario?scenario=B');
+    const form = await screen.findByRole('form', { name: t('page.G5.form') });
+    await userEvent.type(within(form).getByLabelText(t('page.G5.field.name')), '내 조건');
+    const save = within(form).getByRole('button', { name: t('page.G5.save') });
+    await userEvent.click(save);
+    await waitFor(() => expect(save).toBeDisabled());
+  });
+
+  it('기준일이 없으면 [다시 판정하기] 꺼짐(#53)', async () => {
+    const regions = await example<Region[]>('/regions');
+    server.use(
+      http.get(mswPath('/regions'), () =>
+        HttpResponse.json([{ ...regions[0]!, latest_snapshot: null }]),
+      ),
+      http.get(mswPath('/regions/:id/snapshots'), () => HttpResponse.json([])),
+    );
+    renderRoute('/scenario?scenario=B');
+    const run = await screen.findByRole('button', { name: t('page.G5.run') });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(run).toBeDisabled();
+  });
+
   it('읽기 전용 열쇠 → 저장·다시 판정 버튼 꺼짐 + 안내 title', async () => {
     window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-read');
     window.localStorage.setItem(ROLE_STORAGE_KEY, 'read');
@@ -325,6 +349,12 @@ describe('G5 시나리오 화면', () => {
       `${t('page.G5.req.access')} (${t('page.G5.reqTerm.access')})`,
     );
     expect(within(table).getAllByTestId('req-status')).toHaveLength(15);
+    // 열 머리 아래 요건 문장 · 칸 아래 근거 = 서버 문장 그대로
+    const preview = await example<ScenarioPreview>('/scenarios/3/preview');
+    expect(heads[1]).toHaveTextContent(preview.requirements.access.text);
+    expect(
+      within(table).getAllByText(preview.requirements_pre[0]!.funds.evidence).length,
+    ).toBeGreaterThan(0);
     const link = within(table).getByRole('link', { name: '엘리프 검단 포레듀' });
     expect(link.getAttribute('href')).toMatch(/^\/complexes\/2\?scenario=B/);
     expect(await within(region).findByTestId('cache-hits')).toHaveTextContent(/18/);

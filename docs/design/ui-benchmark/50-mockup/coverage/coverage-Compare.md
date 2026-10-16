@@ -4,53 +4,53 @@
 
 | # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
 |---|---|---|---|---|---|
-| 1 | [틀] 화면 제목 h1 (`pages/compare/index.tsx` PageShell · `page.G4.title` "비교") | Compare · 머리 h1 "세 단지를 나란히 놓고 볼게요" (위치 줄 "단지 찾기 › 비교하기") | 비교 → 세 단지를 나란히 놓고 볼게요 | 있음 |
-| 2 | [틀] 출처 범례 한 줄 + "라벨 뜻" 버튼 (`layout/PageShell.tsx` legend · `components/ProvenanceLegend.tsx` · `label.legend` "밑줄 친 숫자를 누르면 출처·확인일이 열립니다" · `label.legendHelp`) | Compare · 머리 오른쪽 "밑줄 친 숫자를 누르면 출처·확인일이 열려요 · [?] 라벨 뜻" (펼친 라벨 목록은 Shell · 3) | 라벨 뜻 → [?] 라벨 뜻 | 있음 |
-| 3 | [틀] 요약 줄 (`pages/compare/index.tsx` `page.G4.summary` "{n}곳 · 상황: {name} · 상대 비교 · 투자 권유 아님") | Compare · 머리 "3곳 · 상황: 기본 · 상대 비교 · 투자 권유 아님" | — | 있음 |
-| 4 | [상태] ids 2~6 검사, 벗어나면 빈 상태 (`pages/compare/index.tsx` parseIds·MIN_IDS·MAX_IDS · `page.G4.invalidIds` "비교할 단지를 2~6개 고르세요(지금 {n}개)") | Compare · 펼친 모습 A "비교할 단지가 1곳이거나 7곳 이상일 때" — "비교할 단지를 2~6개 골라 주세요 / 지금 1개를 골랐어요." | — | 있음 |
-| 5 | [상태] 링크 단지 리스트로 (/complexes + 전역 쿼리) (`pages/compare/index.tsx` `page.common.backToList` "단지 리스트로") | Compare · A "단지 찾기로 돌아가기" | 단지 리스트로 → 단지 찾기로 돌아가기 | 있음 |
-| 6 | [상태] 기준일 스냅샷 없음 (`pages/_shared/index.tsx` NoSnapshot · `app.noSnapshot`) | Compare · B "기준일 자료가 없을 때" | — | 있음 |
-| 7 | [상태] 지역 첫 적재 중 (`pages/_shared/index.tsx` NoSnapshot · `app.noSnapshotBootstrapping`) | Compare · B "첫 자료를 모으는 중일 때: …" | — | 있음 |
-| 8 | [상태] 불러오는 중 (`pages/_shared/index.tsx` QueryState · `app.loading` "불러오는 중…") | Compare · C "불러오는 중 · 못 불러왔을 때" role=status | — | 있음 |
-| 9 | [상태] 불러오기 오류 (`pages/_shared/index.tsx` QueryError → EmptyState queryErrorText) | Compare · C "불러오지 못했어요: [오류 내용] [다시 시도]" | 일반 오류에도 [다시 시도] 버튼이 붙음(기존은 준비 중 오류에만) | 있음 |
-| 10 | [상태] 준비 중(503 materialize_pending) 자동 재시도 (`pages/_shared/index.tsx` MaterializePending · `page.common.materializePending`) | Compare · C "이 기준일의 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요." | 발행 리비전 → 기준일 | 있음 |
-| 11 | [상태] 준비 중 오류 + 다시 시도 버튼 (`pages/_shared/index.tsx` QueryError · `app.retry`) | Compare · C 같은 줄 [다시 시도] | — | 있음 |
-| 12 | [상태] 이전 값을 두고 새 조건 준비 중 줄을 함께 표시 (`pages/_shared/index.tsx` QueryState isPlaceholderData) | Compare · 바닥 "구현할 때 지금 동작 그대로 유지" 상자 | — | 문구로만(고침 CP-22) |
-| 13 | [상태] 발행 리비전에 없는 시나리오 안내 (`pages/_shared/index.tsx` isScenarioMissing · `page.common.scenarioMissing`) | Compare · C "이 기준일에는 내 조건 #[번호] 결과가 없어요(…)" | 시나리오 → 내 조건 | 있음 |
-| 14 | [상태] 링크 시나리오 실행 화면으로 (`pages/_shared/index.tsx` `page.common.scenarioMissingRun`) | Compare · C [내 조건으로 다시 보기] | 시나리오 실행 화면으로 → 내 조건으로 다시 보기 | 있음 |
-| 15 | [틀] 블록 순서 조건 비교 → 점수·판정기 → 가격 갭 → 점수 분해 → 가격 전망 → 상황별 판정 → 민감도 (`pages/compare/index.tsx` data-block) | Compare · 본문 섹션 순서 같음 | — | 있음 |
-| 16 | [틀] 차트 구역 sr-only h2 (`pages/compare/index.tsx` `page.common.charts` "차트") | Compare · 바닥 "구현할 때 지금 동작 그대로 유지" 상자 | — | 문구로만(고침 CP-22) |
-| 17 | [조건 비교] 구역 제목 (`pages/compare/index.tsx` TermsTable · `page.G4.termsFirst` "조건 비교(공고 값·산술)") | Compare · "조건 비교 · 공고에 적힌 값과 단순 계산" / h2 "얼마를 내고, 언제까지 묶이나요?" | 조건 비교(공고 값·산술) → 얼마를 내고, 언제까지 묶이나요? | 있음 |
-| 18 | [조건 비교] 열 = 단지 이름(URL ids 순서) (`pages/compare/index.tsx` orderRows) | Compare · 조건 비교 표 머리 3단지 | — | 있음 |
-| 19 | [조건 비교] 행 접수 IntakeBadge (`pages/compare/index.tsx` · `page.G4.row.intake` "접수") | Compare · 조건 비교 "지금 청약·계약 받나요 (접수)" — 접수 가능 + 경로·확인일 | 접수 → 지금 청약·계약 받나요 (접수) | 있음 |
-| 20 | [조건 비교] 행 현재 구매가 하단~상단 Fact (`page.G4.term.price` "현재 구매가") | Compare · "지금 사는 값 (구매가, 84㎡ 최저~최고)" | 현재 구매가 → 지금 사는 값 | 있음 |
-| 21 | [조건 비교] 행 전매 종료 날짜 + D± (`page.G4.term.resale_end` "전매 종료") | Compare · "되팔 수 있는 날 (전매 제한 끝)" "2026.12.09 56일 남음" | 전매 종료 → 되팔 수 있는 날 | 있음 |
-| 22 | [조건 비교] 행 거주의무 (`page.G4.term.residency_months` "거주의무(개월)") | Compare · "꼭 들어가 살아야 하는 기간 (거주의무)" | — | 있음 |
-| 23 | [조건 비교] 행 계약금 비율 (`page.G4.term.down_payment_pct`) | Compare · "계약금은 집값의 몇 % (계약금 비율)" | — | 있음 |
-| 24 | [조건 비교] 행 계약금 (`page.G4.term.down_payment_won`) | Compare · "계약할 때 낼 돈 (계약금)" | — | 있음 |
-| 25 | [조건 비교] 행 필요 자기자본 + 용어 ⓘ (`page.G4.term.required_equity_won` · Term `equity`) | Compare · "내 돈이 얼마 있어야 하나 (필요 자기자본) [?]" | — | 있음 |
-| 26 | [조건 비교] 행 중도금 조건 텍스트, 없으면 "없음" (`page.G4.term.interim_terms_text` · `page.common.none`) | Compare · "중도금 조건" — "공고에 따로 적힌 조건 없음" | 없음 → 공고에 따로 적힌 조건 없음 | 있음 |
-| 27 | [조건 비교] 조건 행이 없는 칸 EmptyState inline "확인 불가" (`empty.unknown`) | Compare · "확인 불가(내 조건 미입력)" | — | 있음 |
-| 28 | [조건 비교] 숫자 칸 라벨 배지(확인됨·추정) — FactCell (`components/FactCell.tsx`) | Compare · 칸마다 "확인됨" / "추정 · 계산" | — | 있음 |
-| 29 | [점수·판정기] 구역 제목 (`pages/compare/index.tsx` CompareGrid · `page.G4.scores` "점수·판정기") | Compare · "점수·판정기" / h2 "점수와 판정기는 어떻게 봤나요?" | — | 있음 |
-| 30 | [점수·판정기] 두 지표 차이 설명 (`page.G4.rankVsDecide`) | Compare · 같은 구역 번호 1·2 설명 두 줄 | 한 문단 → 두 줄 | 있음 |
-| 31 | [점수·판정기] 표 이름 (`page.G4.grid` "비교 표") | Compare · 표 aria-label "비교 표" | — | 있음 |
-| 32 | [점수·판정기] 열 머리 = 단지 상세 링크 (/complexes/{id} + 전역 쿼리) | Compare · 비교 표 머리 링크 3개 | — | 있음 |
-| 33 | [점수·판정기] 행 종합 점수 (`page.G4.row.total` "종합 점수") | Compare · "종합 점수 (10점 만점)" | — | 있음 |
-| 34 | [점수·판정기] 행 순위 MetaValue (`page.G4.row.rank` "순위") | Compare · "순위 (점수 매긴 곳 중)" 1위·2위 | — | 있음 |
-| 35 | [점수·판정기] 순위가 없을 때 "확인 불가" (`empty.unknown`) | Compare · 펼친 모습 G "순위가 없을 때: 확인 불가 + 배지" | — | 있음(고침 CP-18) |
-| 36 | [점수·판정기] 순위 칸 동률 배지 (`components/TieBadge.tsx` · `badge.tie`) | Compare · 비교 표 "2위 동률" · G "[n]위 동률" | — | 있음 |
-| 37 | [점수·판정기] 순위 칸 순위 불안정 배지 (`components/UnstableBadge.tsx` · `badge.unstable` "순위 불안정") | Compare · G "순위가 흔들려요" | 순위 불안정 → 순위가 흔들려요 | 있음 |
-| 38 | [점수·판정기] 순위 칸 재판정 필요 배지 + 설명 title (`pages/_shared/index.tsx` RejudgeNeededBadge · `page.common.rejudgeNeeded` · `rejudgeNeededHint`) | Compare · G "다시 판정 필요" + 설명 문장 | 재판정 필요 → 다시 판정 필요 | 있음 |
-| 39 | [점수·판정기] 행 +10% 상승 가능성 (`page.G4.row.p10`) | Compare · 점수·판정기 "10% 넘게 오를 가능성 [?]" + "목표 시점: 입주 + 1년 (상황 '기본' 설정)" + "당첨 확률이 아니에요 · 보장 아님" | 가격 +10% 상승 가능성(판정기) → 입주 1년 뒤 10% 넘게 오를 가능성 | 있음(고침 CP-1) |
-| 40 | [점수·판정기] 행 판정기 순위 변화 (`page.common.deltaRerank`) | Compare · "판정기 줄 세우기가 지난번보다 바뀐 정도 (판정기 순위 변화)" | — | 있음 |
-| 41 | [점수·판정기] 순위 변화 없음 사유 (`page.common.deltaRerankNone` "이전 실행 없음") | Compare · G "확인 불가(이전 실행 없음)" | — | 있음 |
-| 42 | [점수·판정기] 행 접수 IntakeBadge (`page.G4.row.intake`) | Compare · 비교 표 "접수" | — | 있음 |
-| 43 | [점수·판정기] 행 판정기 선택 확률(상황) (`page.G4.row.decision` "판정기 선택 확률(상황 {name})") | Compare · "'기본' 상황에서 판정기가 고를 확률" | — | 있음 |
-| 44 | [점수·판정기] 확률 칸 선택 배지 (`chart.chosen` "선택") | Compare · "판정기 선택" | 선택 → 판정기 선택 | 있음 |
-| 45 | [점수·판정기] 확률 칸 동률 배지(확정 봉투일 때만) | Compare · 펼친 모습 G "'판정기가 고를 확률' 칸: [n]% · 판정기 선택 · 동률 · 근거와 달라요" (동률은 확정일 때만) | — | 있음(고침 CP-18) |
-| 46 | [점수·판정기] 확률 칸 증거와 상이 배지 (`components/MismatchBadge.tsx` · `badge.mismatch` "증거와 상이") | Compare · 같은 G 줄 [근거와 달라요] | 증거와 상이 → 근거와 달라요 | 있음(고침 CP-18) |
-| 47 | [C02 가격 갭] 구역 제목 (`pages/compare/index.tsx` `page.G4.gaps` "가격 갭 나란히") | Compare · "가격 갭 나란히" / h2 "주변 아파트 시세보다 높은가요, 낮은가요?" | — | 있음 | 화면 몫(R11-ANALYZE) |
+| 1 | [틀] 화면 제목 h1 (`pages/compare/index.tsx` PageShell · `page.G4.title` "비교") | Compare · 머리 h1 "세 단지를 나란히 놓고 볼게요" (위치 줄 "단지 찾기 › 비교하기") | 비교 → 세 단지를 나란히 놓고 볼게요 | 있음 | compare.test › 머리: 위치 줄 · h1 · 요약 줄 · 단지 더 담기 · 출처 범례 · routes.test › G4 → 제목 |
+| 2 | [틀] 출처 범례 한 줄 + "라벨 뜻" 버튼 (`layout/PageShell.tsx` legend · `components/ProvenanceLegend.tsx` · `label.legend` "밑줄 친 숫자를 누르면 출처·확인일이 열립니다" · `label.legendHelp`) | Compare · 머리 오른쪽 "밑줄 친 숫자를 누르면 출처·확인일이 열려요 · [?] 라벨 뜻" (펼친 라벨 목록은 Shell · 3) | 라벨 뜻 → [?] 라벨 뜻 | 있음 | compare.test › 머리(출처 범례) · shell-components.test(ProvenanceLegend) |
+| 3 | [틀] 요약 줄 (`pages/compare/index.tsx` `page.G4.summary` "{n}곳 · 상황: {name} · 상대 비교 · 투자 권유 아님") | Compare · 머리 "3곳 · 상황: 기본 · 상대 비교 · 투자 권유 아님" | — | 있음 | compare.test › 머리(요약 줄) |
+| 4 | [상태] ids 2~6 검사, 벗어나면 빈 상태 (`pages/compare/index.tsx` parseIds·MIN_IDS·MAX_IDS · `page.G4.invalidIds` "비교할 단지를 2~6개 고르세요(지금 {n}개)") | Compare · 펼친 모습 A "비교할 단지가 1곳이거나 7곳 이상일 때" — "비교할 단지를 2~6개 골라 주세요 / 지금 1개를 골랐어요." | — | 있음 | compare.test › %s → ids 2~6 검사 안내(지금 n개), API 호출 없음 · compare.test › parseIds |
+| 5 | [상태] 링크 단지 리스트로 (/complexes + 전역 쿼리) (`pages/compare/index.tsx` `page.common.backToList` "단지 리스트로") | Compare · A "단지 찾기로 돌아가기" | 단지 리스트로 → 단지 찾기로 돌아가기 | 있음 | compare.test › ids 2~6 검사 안내 + 단지 찾기로 돌아가기 |
+| 6 | [상태] 기준일 스냅샷 없음 (`pages/_shared/index.tsx` NoSnapshot · `app.noSnapshot`) | Compare · B "기준일 자료가 없을 때" | — | 있음 | compare.test › 기준일 자료 없음(지역 ready) → app.noSnapshot |
+| 7 | [상태] 지역 첫 적재 중 (`pages/_shared/index.tsx` NoSnapshot · `app.noSnapshotBootstrapping`) | Compare · B "첫 자료를 모으는 중일 때: …" | — | 있음 | compare.test › 기준일 자료 없음(지역 bootstrapping) → app.noSnapshotBootstrapping |
+| 8 | [상태] 불러오는 중 (`pages/_shared/index.tsx` QueryState · `app.loading` "불러오는 중…") | Compare · C "불러오는 중 · 못 불러왔을 때" role=status | — | 있음 | compare.test › 불러오는 중 → 뼈대 + "불러오는 중…" |
+| 9 | [상태] 불러오기 오류 (`pages/_shared/index.tsx` QueryError → EmptyState queryErrorText) | Compare · C "불러오지 못했어요: [오류 내용] [다시 시도]" | 일반 오류에도 [다시 시도] 버튼이 붙음(기존은 준비 중 오류에만) | 있음 | compare.test › 오류 → "불러오지 못했어요" + 다시 시도 |
+| 10 | [상태] 준비 중(503 materialize_pending) 자동 재시도 (`pages/_shared/index.tsx` MaterializePending · `page.common.materializePending`) | Compare · C "이 기준일의 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요." | 발행 리비전 → 기준일 | 있음 | compare.test › 503 materialize_pending → 준비 중 → 자동으로 다시 불러온다 |
+| 11 | [상태] 준비 중 오류 + 다시 시도 버튼 (`pages/_shared/index.tsx` QueryError · `app.retry`) | Compare · C 같은 줄 [다시 시도] | — | 있음 | compare.test › 오류 → 다시 시도 · r3f2 › F15 G1 대시보드 503(공용 QueryState) |
+| 12 | [상태] 이전 값을 두고 새 조건 준비 중 줄을 함께 표시 (`pages/_shared/index.tsx` QueryState isPlaceholderData) | Compare · 바닥 "구현할 때 지금 동작 그대로 유지" 상자 | — | 문구로만(고침 CP-22) | r3g › G2: 같은 리비전·시나리오에서 필터만 바꾸면 이전 행을 잠깐 둔다(공용 QueryState placeholder) |
+| 13 | [상태] 발행 리비전에 없는 시나리오 안내 (`pages/_shared/index.tsx` isScenarioMissing · `page.common.scenarioMissing`) | Compare · C "이 기준일에는 내 조건 #[번호] 결과가 없어요(…)" | 시나리오 → 내 조건 | 있음 | compare.test › 발행 뒤 만든 내 조건(404) → 안내 + 내 조건 화면 링크 |
+| 14 | [상태] 링크 시나리오 실행 화면으로 (`pages/_shared/index.tsx` `page.common.scenarioMissingRun`) | Compare · C [내 조건으로 다시 보기] | 시나리오 실행 화면으로 → 내 조건으로 다시 보기 | 있음 | compare.test › 발행 뒤 만든 내 조건(404) → 내 조건 화면 링크 |
+| 15 | [틀] 블록 순서 조건 비교 → 점수·판정기 → 가격 갭 → 점수 분해 → 가격 전망 → 상황별 판정 → 민감도 (`pages/compare/index.tsx` data-block) | Compare · 본문 섹션 순서 같음 | — | 있음 | compare.test › 블록 순서: 조건 비교 → … → 민감도 |
+| 16 | [틀] 차트 구역 sr-only h2 (`pages/compare/index.tsx` `page.common.charts` "차트") | Compare · 바닥 "구현할 때 지금 동작 그대로 유지" 상자 | — | 문구로만(고침 CP-22) | compare.test › 블록 순서(h2 목록 · '차트' sr-only) |
+| 17 | [조건 비교] 구역 제목 (`pages/compare/index.tsx` TermsTable · `page.G4.termsFirst` "조건 비교(공고 값·산술)") | Compare · "조건 비교 · 공고에 적힌 값과 단순 계산" / h2 "얼마를 내고, 언제까지 묶이나요?" | 조건 비교(공고 값·산술) → 얼마를 내고, 언제까지 묶이나요? | 있음 | compare.test › 블록 순서(질문형 h2) · compare.test › 조건 비교 표 |
+| 18 | [조건 비교] 열 = 단지 이름(URL ids 순서) (`pages/compare/index.tsx` orderRows) | Compare · 조건 비교 표 머리 3단지 | — | 있음 | compare.test › 표·차트 열 순서 = 주소 ids 순서(#18) |
+| 19 | [조건 비교] 행 접수 IntakeBadge (`pages/compare/index.tsx` · `page.G4.row.intake` "접수") | Compare · 조건 비교 "지금 청약·계약 받나요 (접수)" — 접수 가능 + 경로·확인일 | 접수 → 지금 청약·계약 받나요 (접수) | 있음 | compare.test › 조건 비교 표(접수 행 IntakeBadge 3) |
+| 20 | [조건 비교] 행 현재 구매가 하단~상단 Fact (`page.G4.term.price` "현재 구매가") | Compare · "지금 사는 값 (구매가, 84㎡ 최저~최고)" | 현재 구매가 → 지금 사는 값 | 있음 | compare.test › 조건 비교 표(지금 사는 값 = Fact 그대로, 라벨·출처) |
+| 21 | [조건 비교] 행 전매 종료 날짜 + D± (`page.G4.term.resale_end` "전매 종료") | Compare · "되팔 수 있는 날 (전매 제한 끝)" "2026.12.09 56일 남음" | 전매 종료 → 되팔 수 있는 날 | 있음 | compare.test › 조건 비교 표(되팔 수 있는 날 + 용어 '?') |
+| 22 | [조건 비교] 행 거주의무 (`page.G4.term.residency_months` "거주의무(개월)") | Compare · "꼭 들어가 살아야 하는 기간 (거주의무)" | — | 있음 | compare.test › 조건 비교 표(꼭 살아야 하는 기간) |
+| 23 | [조건 비교] 행 계약금 비율 (`page.G4.term.down_payment_pct`) | Compare · "계약금은 집값의 몇 % (계약금 비율)" | — | 있음 | compare.test › 조건 비교 표(계약금 비율) |
+| 24 | [조건 비교] 행 계약금 (`page.G4.term.down_payment_won`) | Compare · "계약할 때 낼 돈 (계약금)" | — | 있음 | compare.test › 조건 비교 표(계약할 때 낼 돈) |
+| 25 | [조건 비교] 행 필요 자기자본 + 용어 ⓘ (`page.G4.term.required_equity_won` · Term `equity`) | Compare · "내 돈이 얼마 있어야 하나 (필요 자기자본) [?]" | — | 있음 | compare.test › 조건 비교 표(필요 자기자본 용어 '?') · 조건 표 칸(자기자본 미입력 안내 → 내 조건) |
+| 26 | [조건 비교] 행 중도금 조건 텍스트, 없으면 "없음" (`page.G4.term.interim_terms_text` · `page.common.none`) | Compare · "중도금 조건" — "공고에 따로 적힌 조건 없음" | 없음 → 공고에 따로 적힌 조건 없음 | 있음 | compare.test › 조건 표 칸(중도금 없음 → '공고에 따로 적힌 조건 없음') |
+| 27 | [조건 비교] 조건 행이 없는 칸 EmptyState inline "확인 불가" (`empty.unknown`) | Compare · "확인 불가(내 조건 미입력)" | — | 있음 | compare.test › 조건 표 칸(조건 행 없음 → 확인 불가) |
+| 28 | [조건 비교] 숫자 칸 라벨 배지(확인됨·추정) — FactCell (`components/FactCell.tsx`) | Compare · 칸마다 "확인됨" / "추정 · 계산" | — | 있음 | compare.test › 조건 비교 표(라벨·출처) · provenancePreserved › G4 모든 값 칸에 라벨 |
+| 29 | [점수·판정기] 구역 제목 (`pages/compare/index.tsx` CompareGrid · `page.G4.scores` "점수·판정기") | Compare · "점수·판정기" / h2 "점수와 판정기는 어떻게 봤나요?" | — | 있음 | compare.test › 점수 순위와 판정기 고를 확률의 차이를 두 줄로 설명한다(구역 머리) |
+| 30 | [점수·판정기] 두 지표 차이 설명 (`page.G4.rankVsDecide`) | Compare · 같은 구역 번호 1·2 설명 두 줄 | 한 문단 → 두 줄 | 있음 | compare.test › 점수 순위와 판정기 고를 확률의 차이를 두 줄로 설명한다 |
+| 31 | [점수·판정기] 표 이름 (`page.G4.grid` "비교 표") | Compare · 표 aria-label "비교 표" | — | 있음 | compare.test › 비교 표(열 = 단지) · acceptance › G4 3열 비교 표 |
+| 32 | [점수·판정기] 열 머리 = 단지 상세 링크 (/complexes/{id} + 전역 쿼리) | Compare · 비교 표 머리 링크 3개 | — | 있음 | compare.test › 표·차트 열 순서(열 머리 = 상세 링크) |
+| 33 | [점수·판정기] 행 종합 점수 (`page.G4.row.total` "종합 점수") | Compare · "종합 점수 (10점 만점)" | — | 있음 | compare.test › 점수·판정기 행(종합 점수 + '10점 만점') |
+| 34 | [점수·판정기] 행 순위 MetaValue (`page.G4.row.rank` "순위") | Compare · "순위 (점수 매긴 곳 중)" 1위·2위 | — | 있음 | compare.test › 점수·판정기 행(순위 + '점수 매긴 곳 중') |
+| 35 | [점수·판정기] 순위가 없을 때 "확인 불가" (`empty.unknown`) | Compare · 펼친 모습 G "순위가 없을 때: 확인 불가 + 배지" | — | 있음(고침 CP-18) | compare.test › 순위 칸: 순위 없으면 확인 불가 + 배지 |
+| 36 | [점수·판정기] 순위 칸 동률 배지 (`components/TieBadge.tsx` · `badge.tie`) | Compare · 비교 표 "2위 동률" · G "[n]위 동률" | — | 있음 | compare.test › 비교 표 … 동률 배지 |
+| 37 | [점수·판정기] 순위 칸 순위 불안정 배지 (`components/UnstableBadge.tsx` · `badge.unstable` "순위 불안정") | Compare · G "순위가 흔들려요" | 순위 불안정 → 순위가 흔들려요 | 있음 | compare.test › 순위 칸(순위가 흔들려요) |
+| 38 | [점수·판정기] 순위 칸 재판정 필요 배지 + 설명 title (`pages/_shared/index.tsx` RejudgeNeededBadge · `page.common.rejudgeNeeded` · `rejudgeNeededHint`) | Compare · G "다시 판정 필요" + 설명 문장 | 재판정 필요 → 다시 판정 필요 | 있음 | compare.test › 순위 칸(다시 판정 필요) · rejudgeNeeded.test |
+| 39 | [점수·판정기] 행 +10% 상승 가능성 (`page.G4.row.p10`) | Compare · 점수·판정기 "10% 넘게 오를 가능성 [?]" + "목표 시점: 입주 + 1년 (상황 '기본' 설정)" + "당첨 확률이 아니에요 · 보장 아님" | 가격 +10% 상승 가능성(판정기) → 입주 1년 뒤 10% 넘게 오를 가능성 | 있음(고침 CP-1) | compare.test › 점수·판정기 행('오를 가능성' 목표 시점·당첨 확률 아님·보장 아님·용어 ?) · compare.test › p10 목표 시점은 시나리오 policy |
+| 40 | [점수·판정기] 행 판정기 순위 변화 (`page.common.deltaRerank`) | Compare · "판정기 줄 세우기가 지난번보다 바뀐 정도 (판정기 순위 변화)" | — | 있음 | r3c › G4 비교 표: rerank 변화 행 · e2e api r3c › G4 rerank 변화 |
+| 41 | [점수·판정기] 순위 변화 없음 사유 (`page.common.deltaRerankNone` "이전 실행 없음") | Compare · G "확인 불가(이전 실행 없음)" | — | 있음 | r3c › G4 비교 표: rerank 변화 행(확인 불가(이전 실행 없음)) |
+| 42 | [점수·판정기] 행 접수 IntakeBadge (`page.G4.row.intake`) | Compare · 비교 표 "접수" | — | 있음 | compare.test › 비교 표(접수 행 IntakeBadge 3) |
+| 43 | [점수·판정기] 행 판정기 선택 확률(상황) (`page.G4.row.decision` "판정기 선택 확률(상황 {name})") | Compare · "'기본' 상황에서 판정기가 고를 확률" | — | 있음 | compare.test › 비교 표(고를 확률 행 이름에 상황 이름) |
+| 44 | [점수·판정기] 확률 칸 선택 배지 (`chart.chosen` "선택") | Compare · "판정기 선택" | 선택 → 판정기 선택 | 있음 | compare.test › 비교 표(판정기 선택 배지 2) |
+| 45 | [점수·판정기] 확률 칸 동률 배지(확정 봉투일 때만) | Compare · 펼친 모습 G "'판정기가 고를 확률' 칸: [n]% · 판정기 선택 · 동률 · 근거와 달라요" (동률은 확정일 때만) | — | 있음(고침 CP-18) | compare.test › 비교 표(동률 배지 = ok 봉투일 때만) |
+| 46 | [점수·판정기] 확률 칸 증거와 상이 배지 (`components/MismatchBadge.tsx` · `badge.mismatch` "증거와 상이") | Compare · 같은 G 줄 [근거와 달라요] | 증거와 상이 → 근거와 달라요 | 있음(고침 CP-18) | compare.test › 비교 표(근거와 달라요 1) |
+| 47 | [C02 가격 갭] 구역 제목 (`pages/compare/index.tsx` `page.G4.gaps` "가격 갭 나란히") | Compare · "가격 갭 나란히" / h2 "주변 아파트 시세보다 높은가요, 낮은가요?" | — | 있음 | compare.test › 가격 갭: 단지마다 머리(서버 가격 갭 %) + C02 |
 | 48 | [C02 가격 갭] 단지마다 차트 1장, 제목 = 단지 이름 (`charts/C02` title) | Compare · 카드 3장 h3 단지 이름 | — | 있음 | charts.r11 › C02 제목 · charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C02 normal |
 | 49 | [C02 가격 갭] 그림: 현재 구매가 범위(강조색) + 비교 단지 실거래 점+위스커 (`charts/C02` buildOption) | Compare · 가로 띠 — 이 단지 분양가 띠 + 주변 단지별 거래 띠·중간값 눈금 | 점+위스커 → 가로 범위 띠 | 있음 | charts.contract › C02 점+위스커(custom) + 값 축 억 단위 · charts.r11 › C02 축 이름 · e2e charts-gallery › C02 normal |
 | 50 | [C02 가격 갭] 값 축 억 단위 (formatEok) | Compare · 띠 아래 "3억 5억 7억 9억" | — | 있음 | charts.contract › C02 점+위스커(custom) + 값 축 억 단위 |
@@ -88,8 +88,8 @@
 | 82 | [C06 점수 분해] 표 열 이름 (`chart.col.name`) | Compare · 펼친 표 열 머리 = 단지 이름 (행·열 뒤바뀜) | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
 | 83 | [C06 점수 분해] 표 열 종합 (`chart.col.total`) | Compare · 펼친 표 둘째 행 "종합 (10점 만점)" | — | 있음(고침 CP-6) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
 | 84 | [C06 점수 분해] 표 열 성분 6개 점수 | Compare · 펼친 표 행 6개(첫 행 '오를 가능성'에 목표 시점·당첨 확률 아님·보장 아님) | 성분 열 → 기준 행(원값 함께) | 있음(고침 CP-16) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
-| 85 | [C01 가격 전망] 구역 제목 (`pages/compare/index.tsx` LadderOverlay · `page.G4.ladder` "가격 전망 겹쳐 보기") | Compare · "가격 전망 겹쳐 보기" / h2 "값이 오를 가능성, 세 곳을 겹쳐 보면?" | — | 있음 | 화면 몫(R11-ANALYZE) |
-| 86 | [C01 가격 전망] 목표 시점 라디오 3개 role=radiogroup (`page.G3.ladder.horizons` · `chart.C01.horizon.*`) | Compare · "언제를 기준으로 볼까요? (목표 시점)" 라디오 3개 | 입주+1년 → 입주하고 1년 뒤 · 기준일+3년 → 기준일부터 3년 뒤 · 기준일+5년 → 기준일부터 5년 뒤 | 있음 | 화면 몫(R11-ANALYZE) |
+| 85 | [C01 가격 전망] 구역 제목 (`pages/compare/index.tsx` LadderOverlay · `page.G4.ladder` "가격 전망 겹쳐 보기") | Compare · "가격 전망 겹쳐 보기" / h2 "값이 오를 가능성, 세 곳을 겹쳐 보면?" | — | 있음 | compare.test › 가격 전망: 목표 시점 라디오 3개 · 판정 개수 줄 |
+| 86 | [C01 가격 전망] 목표 시점 라디오 3개 role=radiogroup (`page.G3.ladder.horizons` · `chart.C01.horizon.*`) | Compare · "언제를 기준으로 볼까요? (목표 시점)" 라디오 3개 | 입주+1년 → 입주하고 1년 뒤 · 기준일+3년 → 기준일부터 3년 뒤 · 기준일+5년 → 기준일부터 5년 뒤 | 있음 | compare.test › 가격 전망: 목표 시점 라디오 3개 · 고르면 바뀜 |
 | 87 | [C01 가격 전망] 차트 제목 (`charts/C01` · `chart.C01.title` "상승 확률 사다리") | Compare · 구역 h2만 있고 차트 자체 제목 없음 | 상승 확률 사다리 → 값이 오를 가능성 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C01 normal |
 | 88 | [C01 가격 전망] 부제 목표 시점 (`chart.C01.subtitle` "목표 시점 {target}") | Compare · 회색 상자 "목표 시점 · 단지별 2030 하반기 …" | — | 있음 | charts.r11 › C01 목표 시점 · charts.contract › C01 막대 라벨 = 확률 + verdict 텍스트, 부제 = 목표 시점 |
 | 89 | [C01 가격 전망] 라벨 배지 | Compare · 범례 옆 "판정기 추정" | — | 있음 | e2e charts-gallery › C01 normal · e2e charts-gallery › R11 C01 겹쳐 보기(G4) |
@@ -112,9 +112,9 @@
 | 106 | [C01 가격 전망] 표 열 +20% | Compare · I "20% 넘게" | — | 있음 | charts.r11 › C01 표 |
 | 107 | [C01 가격 전망] 표 열 보합·하락 | Compare · I "그대로·내림" | — | 있음 | charts.r11 › C01 표 |
 | 108 | [C01 가격 전망] 표 열 상태 (`chart.col.status` · `chart.status.*` 판정/미해결(검토·질문·차단·오류)) | Compare · I "판정" 열 — 값이 '중간'(판정 문구) | 상태 → 판정 (봉투 상태 대신 판정 문구) | 있음 | charts.r11 › C01 표 |
-| 109 | [상황별 판정] 구역 제목 (`pages/compare/index.tsx` DecisionPanel · `page.G4.decision` "상황별 판정") | Compare · "상황별 판정" / h2 "상황이 다르면 판정기는 어디를 고르나요?" | — | 있음 |
-| 110 | [상황별 판정] 상황 라디오(판정 키가 2개 이상일 때) (`page.G4.decisionScenario` "상황 {name}") | Compare · "상황 고르기" 라디오 5개 | — | 있음 |
-| 111 | [상황별 판정] 판정 없음 (`page.G4.noDecision` "이 상황의 판정이 없습니다") | Compare · F "이 상황의 판정이 없어요." | — | 있음 |
+| 109 | [상황별 판정] 구역 제목 (`pages/compare/index.tsx` DecisionPanel · `page.G4.decision` "상황별 판정") | Compare · "상황별 판정" / h2 "상황이 다르면 판정기는 어디를 고르나요?" | — | 있음 | compare.test › 상황 고르기 라디오(구역 = 질문형 h2) |
+| 110 | [상황별 판정] 상황 라디오(판정 키가 2개 이상일 때) (`page.G4.decisionScenario` "상황 {name}") | Compare · "상황 고르기" 라디오 5개 | — | 있음 | compare.test › 상황 고르기 라디오: 이름(서버) · 고르면 C7 이 그 상황으로 |
+| 111 | [상황별 판정] 판정 없음 (`page.G4.noDecision` "이 상황의 판정이 없습니다") | Compare · F "이 상황의 판정이 없어요." | — | 있음 | compare.test › 판정이 없으면 "이 상황의 판정이 없어요." |
 | 112 | [C07 판정기 확률] 차트 제목 (`charts/C07` · `chart.C07.title` "판정기 확률") | Compare · h3 "판정기가 고를 확률 · {상황}" | 판정기 확률 → 판정기가 고를 확률 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C07 normal · pages/compare/compare.test(C07 제목) |
 | 113 | [C07 판정기 확률] 부제 신뢰도 (`chart.C07.confidence` "신뢰도 {confidence}") | Compare · "믿음 정도 0.61" | 신뢰도 → 믿음 정도 | 있음 | charts.contract › C07 T2 상황 B: confidence 0.48 < 0.6 → 동률 |
 | 114 | [C07 판정기 확률] 라벨 배지 | Compare · "판정기 추정" | — | 있음 | e2e charts-gallery › C07 normal(라벨 배지) |
@@ -135,20 +135,20 @@
 | 129 | [C07 판정기 확률] 표 열 이름 (`chart.col.name`) | Compare · L "이름" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
 | 130 | [C07 판정기 확률] 표 열 확률 (`chart.col.prob`) | Compare · L "확률" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
 | 131 | [C07 판정기 확률] 표 열 표시 (`chart.col.flags`) | Compare · L "표시" (판정기 선택 · 판정기 보류 선택지) | 질문 남김 → 판정기 보류 선택지 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) · charts.r11 › C07 보류 선택지 |
-| 132 | [상황별 판정] 가상 후보 목록 (`pages/compare/index.tsx` VirtualCandidates · `page.G4.virtual` · `page.G4.virtualCandidate` · `page.G4.row.prob` "선택 확률") | Compare · "가상 후보: 모집공고 대기 … 고를 확률 1%" (E) | 선택 확률 → 고를 확률 | 있음 |
-| 133 | [상황별 판정] 가상 후보 줄의 선택·동률·상이 배지 | Compare · 가상 후보 상자에 선택·동률·근거와 달라요 배지 자리 + 펼친 모습 E 예시 줄 | — | 있음(고침 CP-11) |
-| 134 | [상황별 판정] 판정기 경고 목록 (`page.G4.warnings` "경고") | Compare · E role=note "판정기 경고" [문구 1·2] | — | 있음 |
-| 135 | [요건 표] 표 이름 (`pages/compare/index.tsx` RequirementsTable · `page.G4.requirements` "요건") | Compare · h3 "이 상황의 3가지 요건을 단지마다 채우나요?" | — | 있음 |
-| 136 | [요건 표] 열 단지 (`page.G5.req.complex`) | Compare · "단지" | — | 있음 |
-| 137 | [요건 표] 열 접근 (`page.G5.req.access`) | Compare · "지금 신청할 수 있나 (접근)" | — | 있음 |
-| 138 | [요건 표] 열 규제 (`page.G5.req.regulation`) | Compare · "규제와 부딪히지 않나 (규제)" | — | 있음 |
-| 139 | [요건 표] 열 자금 (`page.G5.req.funds`) | Compare · "내 돈으로 되나 (자금)" | — | 있음 |
-| 140 | [요건 표] 칸 사전 계산 상태 배지 (`page.G5.reqStatus.*` 충족·미충족·미입력·확인 불가) | Compare · 칸 배지 4종 | — | 있음 |
-| 141 | [요건 표] 칸 판정기 결론 배지 (check.judge) | Compare · "판정기도 충족으로 봄" · "판정기는 미충족으로 봄" · "판정기 판단 못 함" | 서버 값 그대로 → 문장 | 있음 |
-| 142 | [요건 표] 칸 증거와 상이 배지 | Compare · 칸 "근거와 달라요" | — | 있음 |
-| 143 | [요건 표] 칸 근거 문장 (pre.evidence) | Compare · 요건 표 배지 아래 근거(서버 문장 그대로 — 고친 문구 예시 위 안내) | — | 있음(고침 CP-12) |
-| 144 | [요건 표] 가상 후보 행 배지 (`chart.C07.virtual`) | Compare · E "모집공고 대기 가상 후보" | — | 있음 |
-| 145 | [요건 표] 사전 계산 없는 칸 EmptyState inline "확인 불가" | Compare · E "사전 계산 없음" | 확인 불가 → 사전 계산 없음 | 있음 |
+| 132 | [상황별 판정] 가상 후보 목록 (`pages/compare/index.tsx` VirtualCandidates · `page.G4.virtual` · `page.G4.virtualCandidate` · `page.G4.row.prob` "선택 확률") | Compare · "가상 후보: 모집공고 대기 … 고를 확률 1%" (E) | 선택 확률 → 고를 확률 | 있음 | compare.test › 가상 후보 wait_new → "가상 후보: <label>" + 고를 확률 |
+| 133 | [상황별 판정] 가상 후보 줄의 선택·동률·상이 배지 | Compare · 가상 후보 상자에 선택·동률·근거와 달라요 배지 자리 + 펼친 모습 E 예시 줄 | — | 있음(고침 CP-11) | compare.test › 가상 후보 wait_new(선택·동률·근거와 달라요 = 서버 값, VirtualCandidates) |
+| 134 | [상황별 판정] 판정기 경고 목록 (`page.G4.warnings` "경고") | Compare · E role=note "판정기 경고" [문구 1·2] | — | 있음 | compare.test › wait_new 가 없는 상황(base) → 판정기 경고(서버 문장 그대로) |
+| 135 | [요건 표] 표 이름 (`pages/compare/index.tsx` RequirementsTable · `page.G4.requirements` "요건") | Compare · h3 "이 상황의 3가지 요건을 단지마다 채우나요?" | — | 있음 | compare.test › 요건 표(이름 = 질문형 h3) |
+| 136 | [요건 표] 열 단지 (`page.G5.req.complex`) | Compare · "단지" | — | 있음 | compare.test › 요건 표(열 이름) |
+| 137 | [요건 표] 열 접근 (`page.G5.req.access`) | Compare · "지금 신청할 수 있나 (접근)" | — | 있음 | compare.test › 요건 표(쉬운 열 이름 + (접근)) |
+| 138 | [요건 표] 열 규제 (`page.G5.req.regulation`) | Compare · "규제와 부딪히지 않나 (규제)" | — | 있음 | compare.test › 요건 표(쉬운 열 이름 + (규제)) |
+| 139 | [요건 표] 열 자금 (`page.G5.req.funds`) | Compare · "내 돈으로 되나 (자금)" | — | 있음 | compare.test › 요건 표(쉬운 열 이름 + (자금)) |
+| 140 | [요건 표] 칸 사전 계산 상태 배지 (`page.G5.reqStatus.*` 충족·미충족·미입력·확인 불가) | Compare · 칸 배지 4종 | — | 있음 | compare.test › 요건 표(상태 배지 충족·미충족·확인 불가) |
+| 141 | [요건 표] 칸 판정기 결론 배지 (check.judge) | Compare · "판정기도 충족으로 봄" · "판정기는 미충족으로 봄" · "판정기 판단 못 함" | 서버 값 그대로 → 문장 | 있음 | compare.test › 요건 표(판정기 결론 = "판정기 + 상태 이름", 영문 값 없음) |
+| 142 | [요건 표] 칸 증거와 상이 배지 | Compare · 칸 "근거와 달라요" | — | 있음 | compare.test › 요건 표(근거와 달라요) |
+| 143 | [요건 표] 칸 근거 문장 (pre.evidence) | Compare · 요건 표 배지 아래 근거(서버 문장 그대로 — 고친 문구 예시 위 안내) | — | 있음(고침 CP-12) | compare.test › 요건 표(근거 문장 = 서버 문장 그대로) |
+| 144 | [요건 표] 가상 후보 행 배지 (`chart.C07.virtual`) | Compare · E "모집공고 대기 가상 후보" | — | 있음 | compare.test › 가상 후보 wait_new(요건 표 가상 후보 배지) |
+| 145 | [요건 표] 사전 계산 없는 칸 EmptyState inline "확인 불가" | Compare · E "사전 계산 없음" | 확인 불가 → 사전 계산 없음 | 있음 | compare.test › 가상 후보 wait_new(사전 계산 없음 3칸) |
 | 146 | [C10 민감도] 응답 있을 때만 블록 표시 · 빈 상태 (`chart.C10.empty` "민감도 없음") | Compare · H "민감도 없음" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 · charts.contract › C10 변동 없는 가중치 행 = stable(민감도 없음) |
 | 147 | [C10 민감도] 차트 제목 (`charts/C10` · `chart.C10.title` "가중치 민감도") | Compare · "가중치 민감도" / h2 "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?" | — | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C10 normal |
 | 148 | [C10 민감도] 용어 ⓘ 비중 (Term `weight`) | Compare · "'비중'이 뭔가요? [?]" + 설명 상자 | — | 있음 | rawKeys › C10 패널: 한 문장 설명 · 비중/민감도 ⓘ … |
@@ -172,14 +172,14 @@
 | 166 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol`) | Compare · 펼친 모습 M "순위 변동" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
 | 167 | [C10 민감도] 표 열 TOP 5 (`chart.col.top5`) | Compare · 펼친 모습 M "상위 5곳 (TOP 5)" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
 | 168 | [C10 민감도] 표 열 표시(진입·이탈) (`chart.col.flags`) | Compare · 펼친 모습 M "표시 (들어옴·빠짐)" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
-| 169 | [공통] 숫자 누르면 출처 서랍 (FactCell → `components/ProvenancePanel.tsx` · GET /provenance/{id}) | Shell · 3 "숫자를 누르면 열리는 '출처' 창" (Compare는 바닥 문구 "숫자를 누르면 출처가 열려요") | — | 다른 보드(Shell) |
-| 170 | [공통] 용어 ⓘ 팝오버 — Esc·바깥 클릭 닫기, 모바일 아래 시트 (`components/Term.tsx` · `glossary.more`) | Shell · 3 "용어 '?'를 눌렀을 때" | — | 다른 보드(Shell) |
-| 171 | [공통] 표로 보기 토글 aria-expanded · 표 닫기 (`components/DataTableToggle.tsx` · `table.hide`) | Compare · 접힌 버튼 + 펼친 모습 I·K·L (틀은 Shell · 8) | — | 있음 |
-| 172 | [공통] 상황 토글 공유(전역 ?scenario=) (`pages/_shared/index.tsx` usePageContext) | Compare · 머리줄 "상황 기본 · 머리줄에서 바꿔요" | — | 있음 |
-| 173 | [키보드] 라디오 버튼(role=radio) Tab·Enter/Space 선택 — 목표 시점·상황 | Compare · role=radiogroup / role=radio 버튼 | — | 있음 |
-| 174 | [API] GET /snapshots/{sid}/compare?ids=&scenario= (ids 2~6일 때만) (`api/hooks.ts` useCompare) | Compare · 본문 전체 | — | 있음 |
-| 175 | [API] GET /snapshots/{sid}/sensitivity?scenario= (`api/hooks.ts` useSensitivity) | Compare · 가중치 민감도 | — | 있음 |
-| 176 | [API] GET /scenarios (상황 이름) (`api/hooks.ts` useScenarios) | Compare · 요약 줄·상황 라디오 이름 | — | 있음 |
+| 169 | [공통] 숫자 누르면 출처 서랍 (FactCell → `components/ProvenancePanel.tsx` · GET /provenance/{id}) | Shell · 3 "숫자를 누르면 열리는 '출처' 창" (Compare는 바닥 문구 "숫자를 누르면 출처가 열려요") | — | 다른 보드(Shell) | provenancePreserved › G4 모든 값 칸에 라벨 · FactCell.test |
+| 170 | [공통] 용어 ⓘ 팝오버 — Esc·바깥 클릭 닫기, 모바일 아래 시트 (`components/Term.tsx` · `glossary.more`) | Shell · 3 "용어 '?'를 눌렀을 때" | — | 다른 보드(Shell) | shell-components.test(용어 '?' 창 · 모바일 아래 시트) |
+| 171 | [공통] 표로 보기 토글 aria-expanded · 표 닫기 (`components/DataTableToggle.tsx` · `table.hide`) | Compare · 접힌 버튼 + 펼친 모습 I·K·L (틀은 Shell · 8) | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 172 | [공통] 상황 토글 공유(전역 ?scenario=) (`pages/_shared/index.tsx` usePageContext) | Compare · 머리줄 "상황 기본 · 머리줄에서 바꿔요" | — | 있음 | compare.test › 머리(요약 줄 상황 = ?scenario=) · compare.test › 상황 고르기 라디오(처음 = ?scenario=) |
+| 173 | [키보드] 라디오 버튼(role=radio) Tab·Enter/Space 선택 — 목표 시점·상황 | Compare · role=radiogroup / role=radio 버튼 | — | 있음 | compare.test › 상황 고르기 라디오(Tab·Enter) · compare.test › 가격 전망: 목표 시점 라디오 |
+| 174 | [API] GET /snapshots/{sid}/compare?ids=&scenario= (ids 2~6일 때만) (`api/hooks.ts` useCompare) | Compare · 본문 전체 | — | 있음 | compare.test › ids 2~6 검사(API 호출 없음) · acceptance › G4 · e2e api screens › G4 |
+| 175 | [API] GET /snapshots/{sid}/sensitivity?scenario= (`api/hooks.ts` useSensitivity) | Compare · 가중치 민감도 | — | 있음 | compare.test › 민감도: 질문형 h2 + C10 |
+| 176 | [API] GET /scenarios (상황 이름) (`api/hooks.ts` useScenarios) | Compare · 요약 줄·상황 라디오 이름 | — | 있음 | compare.test › 머리(요약 줄 상황 이름 = GET /scenarios) |
 
 ## 요약
 
