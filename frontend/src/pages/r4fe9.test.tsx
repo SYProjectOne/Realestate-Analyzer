@@ -166,7 +166,9 @@ describe('F3·F4(D20-1) G0 청약홈 조회 기간(고급) → POST /regions app
     expect(within(group).getByText(t('page.G0.window.hint'))).toBeInTheDocument();
     expect(within(group).getByLabelText(t('page.G0.window.from'))).toHaveValue('');
     expect(within(group).getByLabelText(t('page.G0.window.to'))).toHaveValue('');
-    await userEvent.click(screen.getByRole('button', { name: t('page.G0.start') }));
+    await userEvent.click(
+      screen.getByRole('button', { name: t('page.G0.startNamed', { name: '내 지역' }) }),
+    );
     await waitFor(() => expect(matching(rec.requests, 'POST', '/regions')).toHaveLength(1));
     const body = (await matching(rec.requests, 'POST', '/regions')[0]?.body) as Record<
       string,
@@ -182,7 +184,9 @@ describe('F3·F4(D20-1) G0 청약홈 조회 기간(고급) → POST /regions app
     await pickAndName();
     const group = await openWindow();
     await userEvent.type(within(group).getByLabelText(t('page.G0.window.from')), '2024-10');
-    await userEvent.click(screen.getByRole('button', { name: t('page.G0.start') }));
+    await userEvent.click(
+      screen.getByRole('button', { name: t('page.G0.startNamed', { name: '내 지역' }) }),
+    );
     await waitFor(() => expect(matching(rec.requests, 'POST', '/regions')).toHaveLength(1));
     const first = (await matching(rec.requests, 'POST', '/regions')[0]?.body) as {
       applyhome_query?: Record<string, unknown>;
@@ -198,7 +202,9 @@ describe('F3·F4(D20-1) G0 청약홈 조회 기간(고급) → POST /regions app
     const group = await openWindow();
     await userEvent.type(within(group).getByLabelText(t('page.G0.window.from')), '2024-10');
     await userEvent.type(within(group).getByLabelText(t('page.G0.window.to')), '2027-03');
-    await userEvent.click(screen.getByRole('button', { name: t('page.G0.start') }));
+    await userEvent.click(
+      screen.getByRole('button', { name: t('page.G0.startNamed', { name: '내 지역' }) }),
+    );
     await waitFor(() => expect(matching(rec.requests, 'POST', '/regions')).toHaveLength(1));
     const body = (await matching(rec.requests, 'POST', '/regions')[0]?.body) as {
       applyhome_query?: Record<string, unknown>;
@@ -213,7 +219,9 @@ describe('F3·F4(D20-1) G0 청약홈 조회 기간(고급) → POST /regions app
     await pickAndName();
     const group = await openWindow();
     const from = within(group).getByLabelText(t('page.G0.window.from'));
-    const start = screen.getByRole('button', { name: t('page.G0.start') });
+    const start = screen.getByRole('button', {
+      name: t('page.G0.startNamed', { name: '내 지역' }),
+    });
     await userEvent.type(from, '2024-13');
     expect(within(group).getByText(t('page.G0.window.invalid'))).toBeInTheDocument();
     expect(start).toBeDisabled();
@@ -249,7 +257,9 @@ describe('F3·F4(D20-1) G0 청약홈 조회 기간(고급) → POST /regions app
     await pickAndName();
     const group = await openWindow();
     await userEvent.type(within(group).getByLabelText(t('page.G0.window.from')), '2024-10');
-    await userEvent.click(screen.getByRole('button', { name: t('page.G0.start') }));
+    await userEvent.click(
+      screen.getByRole('button', { name: t('page.G0.startNamed', { name: '내 지역' }) }),
+    );
     expect(
       await within(group).findByText(
         t('page.G0.window.server', { detail: 'does not match pattern' }),
