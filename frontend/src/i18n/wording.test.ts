@@ -79,12 +79,13 @@ describe('R9-UI 문구 일괄(P2·P8·P10 문구 부분)', () => {
     expect(t('page.G1.top5')).toBe('점수 순서');
     expect(t('page.G1.top5Note')).toContain('상대 비교');
     expect(t('page.G1.top5Note')).toContain('투자 권유가 아니에요');
-    expect(t('page.G2.filter.land_type')).toBe('택지 종류(공공·민간)');
-    expect(t('page.G2.filter.resale_end_before')).toBe('이 날짜 전에 전매 종료');
-    expect(t('page.G2.filter.inclusion_class')).toBe('단지 분류');
+    // R11 ListTable 보드 이름(CEO: 전매 종료 필터 이름은 List·ListTable 하나로)
+    expect(t('page.G2.filter.land_type')).toBe('땅 종류 (공공·민간 택지)');
+    expect(t('page.G2.filter.resale_end_before')).toBe('이 날짜 전에 되팔 수 있게 됨 (전매 종료)');
+    expect(t('page.G2.filter.inclusion_class')).toBe('단지 종류 (분류)');
     expect(t('page.G2.filter.judge_scope')).toBe('점수 계산 범위');
-    expect(t('page.G2.col.gap')).toBe('가격 갭(주변 대비)');
-    expect(t('page.G2.col.total')).toBe('종합 점수(상대 비교)');
+    expect(t('page.G2.col.gap')).toBe('주변 시세와 가격 차이');
+    expect(t('page.G2.col.total')).toBe('종합 점수 (상대 비교)');
     expect(t('page.G3.header.inclusion')).toBe('단지 분류');
     expect(t('page.G3.header.scopeReason')).toBe('점수 계산 범위 사유');
   });

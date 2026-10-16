@@ -233,7 +233,7 @@ test('G2 1,000행 넘는 목록: 첫 페이지 먼저, 나머지 이어 받아 �
   const table = page.getByRole('table', { name: P.G2.table });
   await expect(table).toHaveAttribute('aria-rowcount', '2501');
   await expect(table.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
-  await expect(page.getByText(/2,500 \/ 2,500/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/2,500곳 중 2,500곳/)).toBeVisible({ timeout: 30_000 });
   expect(await table.locator('tbody tr[aria-rowindex]').count()).toBeLessThan(100);
   await page.getByTestId('complex-table-scroll').evaluate((el) => {
     el.scrollTop = el.scrollHeight;
