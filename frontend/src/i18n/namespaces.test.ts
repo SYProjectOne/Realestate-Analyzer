@@ -47,8 +47,16 @@ describe('splitKo — 원본 하나를 빌드 때 나눈다', () => {
     }
   });
 
-  it('core 에 남는 것: page.common·notFound·share, 화면 제목, 셸의 용어 버튼 문구', () => {
-    for (const keep of ['page.common', 'page.notFound', 'page.share', 'app', 'nav', 'job']) {
+  it('core 에 남는 것: page.common·notFound·share, 화면 제목, 용어(glossary)', () => {
+    for (const keep of [
+      'page.common',
+      'page.notFound',
+      'page.share',
+      'app',
+      'nav',
+      'job',
+      'glossary',
+    ]) {
       expect(leafPaths(getPath(full, keep) as KoTree).length).toBeGreaterThan(0);
       expect(getPath(core, keep), keep).toEqual(getPath(full, keep));
     }
@@ -61,10 +69,9 @@ describe('splitKo — 원본 하나를 빌드 때 나눈다', () => {
     }
   });
 
-  it('core 에서 빠지는 것: 화면 본문·차트·용어 본문', () => {
+  it('core 에서 빠지는 것: 화면 본문·차트', () => {
     expect(getPath(core, 'page.G3.tabs')).toBeUndefined();
     expect(getPath(core, 'chart')).toBeUndefined();
-    expect(getPath(core, 'glossary.items')).toBeUndefined();
     expect(getPath(namespaces['page/G3'], 'page.G3.title')).toBeUndefined();
   });
 
@@ -88,9 +95,8 @@ describe('지연 등록 — core 만 실은 i18n 모듈', () => {
     expect(fresh.t(g3Leaf)).toBe(getPath(full, g3Leaf));
     // 같은 이름공간은 한 번만(같은 Promise)
     expect(fresh.loadNamespace('page/G3')).toBe(fresh.loadNamespace('page/G3'));
-    expect(fresh.t('glossary.items.total.term')).toBe('glossary.items.total.term');
+    expect(fresh.t('chart.C01.title')).toBe('chart.C01.title');
     await fresh.loadAllNamespaces();
-    expect(fresh.t('glossary.items.total.term')).toBe(ko.glossary.items.total.term);
     expect(fresh.t('chart.C01.title')).toBe(ko.chart.C01.title);
   });
 });

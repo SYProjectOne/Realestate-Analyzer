@@ -9,7 +9,6 @@ import {
   getPath,
   KO_NAMESPACES,
   PAGE_NAMESPACES,
-  PRELOAD_NAMESPACES,
   splitKo,
   type KoNamespace,
   type KoTree,
@@ -76,14 +75,10 @@ const KO_RESOLVED = `\0${KO_VIRTUAL}`;
  */
 function koSplit(): Plugin {
   const readKo = (): KoTree => JSON.parse(readFileSync(KO_JSON, 'utf8')) as KoTree;
-  let base = '/';
   const asModule = (value: unknown) =>
     `export default JSON.parse(${JSON.stringify(JSON.stringify(value))});\n`;
   return {
     name: 'ko-split',
-    configResolved(config) {
-      base = config.base;
-    },
     resolveId(id) {
       return id.startsWith(KO_VIRTUAL) ? `\0${id}` : null;
     },
@@ -100,7 +95,7 @@ function koSplit(): Plugin {
       }
       if (rest.startsWith('page/')) {
         // 이름공간마다 따로 된 ko-* 청크를 **정적** import 해 등록 — 화면 청크와 같이(병렬로) 받고, 화면 모듈보다 먼저
-        // 평가된다. 공용(chart·glossary)은 사본 없이 청크 하나(index.html modulepreload 로 첫 요청 묶음에서 받는다).
+        // 평가된다. 여러 화면이 쓰는 이름공간(chart·page/G3 …)도 사본 없이 청크 하나다.
         const folder = rest.slice('page/'.length);
         const list = PAGE_NAMESPACES[folder];
         if (!list) this.error(`ko-split: no PAGE_NAMESPACES entry ${folder}`);
@@ -122,22 +117,6 @@ function koSplit(): Plugin {
       const m = /\/src\/pages\/([^/]+)\/index\.tsx$/.exec(path);
       if (!m || !((m[1] as string) in PAGE_NAMESPACES)) return null;
       return { code: `import '${KO_VIRTUAL}page/${m[1]}';${code}`, map: null };
-    },
-    // 빌드: 거의 모든 화면이 쓰는 공용 이름공간 청크를 index.html 에서 modulepreload — vendor 와 같은 첫 요청 묶음에서
-    // 받는다(진입 정적 닫힘이 아니다 — 진입 실행을 막지 않는다). 화면 청크 묶음에서 받으면 모바일 LCP 가 늦었다(R11-I18N 실측).
-    transformIndexHtml: {
-      order: 'post',
-      handler(_html, ctx) {
-        if (!ctx.bundle) return undefined;
-        const names = new Set(PRELOAD_NAMESPACES.map((ns) => `ko-${ns.replace(/\//g, '-')}`));
-        return Object.values(ctx.bundle)
-          .filter((c) => c.type === 'chunk' && names.has(c.name))
-          .map((c) => ({
-            tag: 'link',
-            attrs: { rel: 'modulepreload', crossorigin: true, href: `${base}${c.fileName}` },
-            injectTo: 'head' as const,
-          }));
-      },
     },
     handleHotUpdate({ file, server }) {
       if (resolvePath(file) !== resolvePath(KO_JSON)) return undefined;

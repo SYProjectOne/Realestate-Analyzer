@@ -118,21 +118,7 @@ interface Missing {
   ns: KoNamespace | undefined;
 }
 
-/**
- * 진입 닫힘에 (barrel 로) 들어 있지만 그 이름공간 키는 화면 안에서만 그리는 모듈. 셸 파일이 이것을 그리지 않는지는
- * 아래 '셸은 용어 본문을 그리지 않는다' 가 본다.
- */
-const ROUTE_ONLY: Record<string, KoNamespace> = { '/src/components/Term.tsx': 'glossary' };
-
-/** 라우트 밖에서(이름공간 없이) 그려지는 셸 파일 */
-const SHELL =
-  /^\/src\/(layout\/|app\/(?!ChartGalleryPage)|pages\/(not-found|share)\/|main\.tsx|routes\.tsx|AppProviders\.tsx)/;
-
-function missingFor(
-  files: string[],
-  allowed: readonly KoNamespace[],
-  exempt: Record<string, KoNamespace> = {},
-): Missing[] {
+function missingFor(files: string[], allowed: readonly KoNamespace[]): Missing[] {
   const ok = new Set(allowed);
   const out: Missing[] = [];
   for (const file of files) {
@@ -140,7 +126,6 @@ function missingFor(
       if (CORE_LEAVES.has(leaf)) continue;
       const ns = NS_OF_LEAF.get(leaf);
       if (ns && ok.has(ns)) continue;
-      if (ns && exempt[file] === ns) continue;
       out.push({ file, leaf, ns });
     }
   }
@@ -196,16 +181,7 @@ describe('화면 이름공간 — 화면이 쓰는 키가 첫 렌더 전에 등�
     const files = closure('/src/main.tsx', false);
     expect(files).toContain('/src/routes.tsx');
     expect(files).toContain('/src/layout/Header.tsx');
-    expect(report(missingFor(files, [], ROUTE_ONLY))).toEqual([]);
-  });
-
-  it('셸(라우트 밖)은 용어 본문(Term·glossaryItem)을 그리지 않는다 — ROUTE_ONLY 의 전제', () => {
-    const shell = [...CODE.keys()].filter((f) => SHELL.test(f));
-    expect(shell).toContain('/src/layout/Header.tsx');
-    const offenders = shell.filter((f) =>
-      /<Term\b|glossaryItem\(|<KeepNote[^>]*\bterm=/.test(CODE.get(f) ?? ''),
-    );
-    expect(offenders).toEqual([]);
+    expect(report(missingFor(files, []))).toEqual([]);
   });
 
   it('검사가 실제로 키를 찾는다(자기 점검)', () => {
@@ -217,6 +193,8 @@ describe('화면 이름공간 — 화면이 쓰는 키가 첫 렌더 전에 등�
     expect([...leaves].some((l) => l.startsWith('chart.'))).toBe(true);
     expect([...leaves].some((l) => l.startsWith('glossary.items.'))).toBe(true);
     expect(missingFor(files, []).length).toBeGreaterThan(0);
+    // 빠진 이름공간을 실제로 잡는다
+    expect(report(missingFor(files, ['page/G3', 'page/G2'])).join('\n')).toContain("needs 'chart'");
   });
 
   it.each(routeTable().map((r) => [r.folder, r] as const))(
@@ -237,8 +215,10 @@ describe('화면 문자열 등록 — 빌드 플러그인(ko-split transform)', 
     expect(fresh.t(g7)).toBe(g7);
     await import('@/pages/ops');
     expect(fresh.t(g7)).toBe(getPath(full, g7));
-    expect(fresh.t('glossary.items.total.term')).toBe(ko.glossary.items.total.term);
-    expect(warn).toHaveBeenCalledTimes(1);
+    const g3 = leafPaths(namespaces['page/G3'])[0] as Parameters<typeof fresh.t>[0];
+    expect(fresh.t(g3)).toBe(getPath(full, g3));
+    expect(fresh.t('chart.C01.title')).toBe('chart.C01.title');
+    expect(warn).toHaveBeenCalledTimes(2);
   }, 60_000);
 });
 

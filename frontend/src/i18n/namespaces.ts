@@ -2,11 +2,12 @@
  * R11-I18N: ko.json 한 파일(AGENTS 규칙 12, 원본은 그대로)을 **빌드 때** 진입용 core 와 지연 로드 이름공간으로 나누는 규칙.
  * vite.config.ts 의 `ko-split` 플러그인(가상 모듈 `virtual:ko/*`)과 i18n/index.ts·테스트가 같이 쓴다 — 순수 함수만 둔다.
  *
- *  - core(진입 청크): 아래 이름공간을 뺀 전부 + CORE_PINS(이름공간 안이지만 셸·라우트 표가 쓰는 키)
- *  - 이름공간: page/G0 … page/G8 = `page.<G>`(title 은 core), chart = `chart.*`, glossary = `glossary.*`(셸이 쓰는 4개는 core)
- *    화면은 PAGE_NAMESPACES 대로 자기 청크 안에 싣는다(아래). 개발 화면(차트 갤러리)·MSW 모드는 이름공간 청크
- *    (`virtual:ko/ns/*`)를 loadAllNamespaces() 로 받는다.
- *  - `page.common`·`page.notFound`·`page.share`(공유 착지, 지연 로드 아님)는 core 다.
+ *  - core(진입 청크): 아래 이름공간을 뺀 전부 + CORE_PINS(이름공간 안이지만 core 에 두는 키)
+ *  - 이름공간(청크 `ko-*`): page/G0 … page/G8 = `page.<G>`(title 은 core), chart = `chart.*`
+ *    화면은 PAGE_NAMESPACES 대로 화면 청크와 함께 받는다(아래). 개발 화면(차트 갤러리)·MSW 모드는 loadAllNamespaces().
+ *  - core 에 남는 큰 덩어리: `page.common`·`page.notFound`·`page.share`(셸·지연 로드 아닌 화면), `glossary`(용어 '?' 는
+ *    거의 모든 화면이 쓴다 — 이름공간으로 떼면 화면 청크 묶음에 요청이 하나 늘어 모바일 LCP 가 0.1~0.3초 늦었다, R11-I18N
+ *    실측. 떼려면 KO_NAMESPACES·NAMESPACE_LOADERS 에 'glossary' 를 넣고 PAGE_NAMESPACES 에 더한다 — 진입 −11.7kB).
  *
  * 이름공간을 더할 때: KO_NAMESPACES 에 넣고 i18n/index.ts 의 NAMESPACE_LOADERS(동적 import 는 리터럴이어야 한다)에 한 줄.
  */
@@ -23,7 +24,6 @@ export const KO_NAMESPACES = [
   'page/G7',
   'page/G8',
   'chart',
-  'glossary',
 ] as const;
 
 export type KoNamespace = (typeof KO_NAMESPACES)[number];
@@ -32,32 +32,25 @@ export type KoNamespace = (typeof KO_NAMESPACES)[number];
  * 화면 폴더(`src/pages/<폴더>/index.tsx`, routes.tsx 가 lazy 로 여는 것) → 그 화면이 쓰는 이름공간.
  *
  * 빌드 플러그인 `ko-split` 이 화면 index 모듈 맨 앞에 `import 'virtual:ko/page/<폴더>'` 를 넣는다 — 그 모듈이 이 목록의
- * 이름공간 청크(`ko-*`)를 **정적으로** import 해 등록한다: 화면 청크와 함께 받고 화면 모듈보다 먼저 평가된다(첫 렌더에
- * 문자열이 있다, 깜빡임·CLS 없음). 화면 코드·routes.tsx 는 그대로다.
+ * 이름공간 청크(`ko-*`)를 **정적으로** import 해 등록한다: 화면 청크와 함께(병렬로) 받고 화면 모듈보다 먼저 평가된다
+ * (첫 렌더에 문자열이 있다 — 키 노출·깜빡임·CLS 없음). 화면 코드·routes.tsx 는 그대로다.
  *
- * 화면이 다른 화면의 `page.Gx.*`·`chart.*`·`<Term>` 을 새로 쓰면 여기에 이름공간을 더한다 —
- * src/i18n/routeNamespaces.test.ts 가 빠진 것을 이름으로 알려 준다. 화면 코드·routes.tsx 는 고치지 않는다.
+ * 화면이 다른 화면의 `page.Gx.*` 나 `chart.*` 를 새로 쓰면 여기에 이름공간을 더한다 —
+ * src/i18n/routeNamespaces.test.ts 가 빠진 것을 이름으로 알려 준다.
  */
 export const PAGE_NAMESPACES: Record<string, readonly KoNamespace[]> = {
-  'region-new': ['page/G0', 'glossary'],
-  'living-areas': ['page/G0_2', 'page/G0', 'glossary'],
-  dashboard: ['page/G1', 'chart', 'glossary'],
-  complexes: ['page/G2', 'glossary'],
-  complex: ['page/G3', 'page/G2', 'chart', 'glossary'],
-  compare: ['page/G4', 'page/G3', 'page/G5', 'chart', 'glossary'],
-  scenario: ['page/G5', 'chart', 'glossary'],
-  market: ['page/G6', 'chart', 'glossary'],
-  ops: ['page/G7', 'page/G3', 'glossary'],
-  reports: ['page/G8', 'glossary'],
-  glossary: ['glossary'],
+  'region-new': ['page/G0'],
+  'living-areas': ['page/G0_2', 'page/G0'],
+  dashboard: ['page/G1', 'chart'],
+  complexes: ['page/G2'],
+  complex: ['page/G3', 'page/G2', 'chart'],
+  compare: ['page/G4', 'page/G3', 'page/G5', 'chart'],
+  scenario: ['page/G5', 'chart'],
+  market: ['page/G6', 'chart'],
+  ops: ['page/G7', 'page/G3'],
+  reports: ['page/G8'],
+  glossary: [],
 };
-
-/**
- * 거의 모든 화면이 쓰는 공용 이름공간 — 빌드가 index.html 에 `<link rel="modulepreload">` 를 달아 vendor 와 같은 첫 요청
- * 묶음에서 받는다(진입 정적 닫힘·예산 밖 — 진입 실행을 막지 않는다). R11-I18N 실측(모바일, 느린 4G): 화면 청크 다음
- * 묶음에서 받거나 화면 청크에 사본으로 넣으면 LCP 가 0.1~0.3초 늦었다 — 그 묶음이 화면 청크·공용 청크로 이미 붐빈다.
- */
-export const PRELOAD_NAMESPACES: readonly KoNamespace[] = ['glossary', 'chart'];
 
 /** 이름공간 → ko.json 점 경로('page/G3' → 'page.G3') */
 export function namespacePath(ns: KoNamespace): string {
@@ -67,18 +60,11 @@ export function namespacePath(ns: KoNamespace): string {
 /**
  * 이름공간 안이지만 core 에 남기는 점 경로. `*` 는 한 단계 아무 키.
  *  - `page.*.title`: routes.tsx `titleKey`(라우트 표·셸) — 화면 청크 전에 필요할 수 있다
- *  - `glossary.nav|more|open|close`: 머리글 메뉴·용어 '?' 버튼 틀(Term 본문 `glossary.items` 는 이름공간)
- *  - `page.G5.error`: scenario/schema.ts 가 모듈 최상위(zod 스키마 메시지)에서 t() 를 부른다 — 화면 청크가 이름공간보다
- *    먼저 평가될 수 있다(routeNamespaces.test.ts '최상위' 검사). 화면 모듈 최상위 t() 키는 여기에 둔다.
+ *  - `page.G5.error`: scenario/schema.ts 가 모듈 최상위(zod 스키마 메시지)에서 t() 를 부른다 — 여러 화면이 쓰는 모듈은
+ *    공용 청크로 빠져 화면 문자열 등록보다 먼저 평가될 수 있다(routeNamespaces.test.ts '최상위' 검사). 모듈 최상위 t()
+ *    키는 여기에 둔다.
  */
-export const CORE_PINS: readonly string[] = [
-  'page.*.title',
-  'page.G5.error',
-  'glossary.nav',
-  'glossary.more',
-  'glossary.open',
-  'glossary.close',
-];
+export const CORE_PINS: readonly string[] = ['page.*.title', 'page.G5.error'];
 
 export type KoTree = { [key: string]: string | KoTree };
 

@@ -3,8 +3,8 @@
  * `t('page.G1.title')`, `t('empty.unknownWithReason', { reason: '스캔' })`.
  * 키는 ko.json에서 타입으로 추론되므로 오타는 typecheck에서 걸린다.
  *
- * R11-I18N: 진입 청크에는 core(`virtual:ko/core`)만 정적으로 싣는다. 화면별 문자열(`page.<G>`)·차트(`chart`)·용어 본문
- * (`glossary`)은 빌드 플러그인 `ko-split` 이 화면 청크 안에 싣고 화면 모듈보다 먼저 registerStrings() 한다
+ * R11-I18N: 진입 청크에는 core(`virtual:ko/core`)만 정적으로 싣는다. 화면별 문자열(`page.<G>`)·차트(`chart`)는 빌드
+ * 플러그인 `ko-split` 이 화면 청크와 함께 받게 하고(청크 `ko-*`) 화면 모듈보다 먼저 registerStrings() 한다
  * (화면 폴더 → 이름공간 표는 ./namespaces.ts PAGE_NAMESPACES). t() 는 병합된 사전 하나를 본다 — 키·API 는 그대로다.
  * 원본은 ko.json 하나다. 테스트(setup.ts)·MSW 모드(main.tsx)·차트 갤러리는 loadAllNamespaces() 로 전부 등록한다.
  */
@@ -39,7 +39,6 @@ const NAMESPACE_LOADERS: Record<KoNamespace, () => Promise<{ default: KoTree }>>
   'page/G7': () => import('virtual:ko/ns/page/G7'),
   'page/G8': () => import('virtual:ko/ns/page/G8'),
   chart: () => import('virtual:ko/ns/chart'),
-  glossary: () => import('virtual:ko/ns/glossary'),
 };
 
 const loading = new Map<KoNamespace, Promise<void>>();
