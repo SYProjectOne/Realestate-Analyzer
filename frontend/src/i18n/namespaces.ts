@@ -3,8 +3,9 @@
  * vite.config.ts 의 `ko-split` 플러그인(가상 모듈 `virtual:ko/*`)과 i18n/index.ts·테스트가 같이 쓴다 — 순수 함수만 둔다.
  *
  *  - core(진입 청크): 아래 이름공간을 뺀 전부 + CORE_PINS(이름공간 안이지만 셸·라우트 표가 쓰는 키)
- *  - 이름공간(라우트 청크와 함께 병렬로 받는다, routes.tsx `page(…, ns)`):
- *      page/G0 … page/G8 = `page.<G>`(title 은 core), chart = `chart.*`, glossary = `glossary.*`(셸이 쓰는 4개는 core)
+ *  - 이름공간: page/G0 … page/G8 = `page.<G>`(title 은 core), chart = `chart.*`, glossary = `glossary.*`(셸이 쓰는 4개는 core)
+ *    화면은 PAGE_NAMESPACES 대로 자기 청크 안에 싣는다(아래). 개발 화면(차트 갤러리)·MSW 모드는 이름공간 청크
+ *    (`virtual:ko/ns/*`)를 loadAllNamespaces() 로 받는다.
  *  - `page.common`·`page.notFound`·`page.share`(공유 착지, 지연 로드 아님)는 core 다.
  *
  * 이름공간을 더할 때: KO_NAMESPACES 에 넣고 i18n/index.ts 의 NAMESPACE_LOADERS(동적 import 는 리터럴이어야 한다)에 한 줄.
@@ -26,6 +27,40 @@ export const KO_NAMESPACES = [
 ] as const;
 
 export type KoNamespace = (typeof KO_NAMESPACES)[number];
+
+/**
+ * 화면 폴더(`src/pages/<폴더>/index.tsx`, routes.tsx 가 lazy 로 여는 것) → 그 화면이 쓰는 이름공간.
+ *
+ * 빌드 플러그인 `ko-split` 이 화면 index 모듈 맨 앞에 `import 'virtual:ko/page/<폴더>'` 를 넣는다 — 이 목록의 문자열을
+ * 합친 트리를 **화면 청크 안에** 싣고 화면 모듈보다 먼저 등록한다(추가 요청 0, 첫 렌더에 문자열이 있다). 공용
+ * 이름공간(chart·glossary)은 화면마다 사본이 들어간다 — 따로 받으면 모바일(HTTP/1.1 연결 6개)에서 요청 한 번이 늘어
+ * LCP 가 0.1~0.3초 늦었다(R11-I18N 실측).
+ *
+ * 화면이 다른 화면의 `page.Gx.*`·`chart.*`·`<Term>` 을 새로 쓰면 여기에 이름공간을 더한다 —
+ * src/i18n/routeNamespaces.test.ts 가 빠진 것을 이름으로 알려 준다. 화면 코드·routes.tsx 는 고치지 않는다.
+ */
+export const PAGE_NAMESPACES: Record<string, readonly KoNamespace[]> = {
+  'region-new': ['page/G0', 'glossary'],
+  'living-areas': ['page/G0_2', 'page/G0', 'glossary'],
+  dashboard: ['page/G1', 'chart', 'glossary'],
+  complexes: ['page/G2', 'glossary'],
+  complex: ['page/G3', 'page/G2', 'chart', 'glossary'],
+  compare: ['page/G4', 'page/G3', 'page/G5', 'chart', 'glossary'],
+  scenario: ['page/G5', 'chart', 'glossary'],
+  market: ['page/G6', 'chart', 'glossary'],
+  ops: ['page/G7', 'page/G3', 'glossary'],
+  reports: ['page/G8', 'glossary'],
+  glossary: ['glossary'],
+};
+
+/** 화면 폴더 이름공간을 합친 트리(빌드 플러그인이 화면 청크에 싣는다) */
+export function pageStrings(split: KoSplit, folder: string): KoTree {
+  const list = PAGE_NAMESPACES[folder];
+  if (!list) throw new Error(`no PAGE_NAMESPACES entry: ${folder}`);
+  const out: KoTree = {};
+  for (const ns of list) mergeInto(out, JSON.parse(JSON.stringify(split.namespaces[ns])) as KoTree);
+  return out;
+}
 
 /** 이름공간 → ko.json 점 경로('page/G3' → 'page.G3') */
 export function namespacePath(ns: KoNamespace): string {

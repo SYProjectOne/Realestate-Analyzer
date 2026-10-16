@@ -8,6 +8,8 @@ import { entryViolations, type ChunkLike } from './scripts/lib/bundle-guards';
 import {
   getPath,
   KO_NAMESPACES,
+  PAGE_NAMESPACES,
+  pageStrings,
   splitKo,
   type KoNamespace,
   type KoTree,
@@ -65,7 +67,9 @@ const KO_RESOLVED = `\0${KO_VIRTUAL}`;
 /**
  * R11-I18N: ko.json(원본 한 파일, AGENTS 규칙 12)을 가상 모듈로 나눠 낸다 — 빌드·dev·vitest 모두.
  *  - `virtual:ko/core`: 진입 청크에 들어가는 core 사전(src/i18n/index.ts 가 정적 import)
- *  - `virtual:ko/ns/<이름공간>`: 화면·차트·용어 문자열(라우트가 화면 청크와 함께 동적 import, 청크 이름 `ko-*`)
+ *  - `virtual:ko/page/<화면 폴더>`: 그 화면 이름공간(PAGE_NAMESPACES)을 합친 트리를 **등록하는** 모듈. transform 이
+ *    `src/pages/<폴더>/index.tsx` 맨 앞에 import 를 넣는다 → 화면 청크 안에 실리고, 화면 모듈보다 먼저 평가된다.
+ *  - `virtual:ko/ns/<이름공간>`: 이름공간 하나(loadNamespace — MSW 모드·차트 갤러리, 청크 이름 `ko-*`)
  *  - `virtual:ko/keys/<점 경로>`: 그 아래 키 이름 목록(본문 없이 — 예: 용어 키 목록)
  * 나누는 규칙은 src/i18n/namespaces.ts. 매 load 마다 원본을 다시 읽는다(dev 에서 ko.json 을 고치면 바로 반영).
  */
@@ -89,6 +93,13 @@ function koSplit(): Plugin {
         if (!KO_NAMESPACES.includes(ns)) this.error(`ko-split: unknown namespace ${ns}`);
         return asModule(splitKo(full).namespaces[ns]);
       }
+      if (rest.startsWith('page/')) {
+        const folder = rest.slice('page/'.length);
+        if (!(folder in PAGE_NAMESPACES))
+          this.error(`ko-split: no PAGE_NAMESPACES entry ${folder}`);
+        const tree = JSON.stringify(JSON.stringify(pageStrings(splitKo(full), folder)));
+        return `import { registerStrings } from '@/i18n';\nregisterStrings(JSON.parse(${tree}));\n`;
+      }
       if (rest.startsWith('keys/')) {
         const node = getPath(full, rest.slice('keys/'.length));
         if (node === undefined || typeof node === 'string')
@@ -96,6 +107,13 @@ function koSplit(): Plugin {
         return asModule(Object.keys(node));
       }
       this.error(`ko-split: unknown module ${id}`);
+    },
+    transform(code, id) {
+      // 화면 index 모듈 맨 앞(첫 줄, 줄 번호를 밀지 않는다 — 소스맵 그대로)에 화면 문자열 등록 import
+      const path = id.replace(/\\/g, '/').split('?')[0] ?? '';
+      const m = /\/src\/pages\/([^/]+)\/index\.tsx$/.exec(path);
+      if (!m || !((m[1] as string) in PAGE_NAMESPACES)) return null;
+      return { code: `import '${KO_VIRTUAL}page/${m[1]}';${code}`, map: null };
     },
     handleHotUpdate({ file, server }) {
       if (resolvePath(file) !== resolvePath(KO_JSON)) return undefined;

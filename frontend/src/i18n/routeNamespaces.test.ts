@@ -2,21 +2,22 @@
  * R11-I18N: 화면이 쓰는 키가 첫 렌더에 사전에 있는가 — 정적 검사.
  *
  *  1. 진입(main.tsx 에서 **정적** import 로 닿는 모듈)이 쓰는 키는 전부 core 에 있다.
- *  2. routes.tsx 의 `page(() => import('@/pages/x'), 'XPage', [ns…])` 마다: 그 화면 모듈에서 import(정적·동적 모두,
- *     barrel 포함 — 넉넉하게)로 닿는 모듈이 쓰는 키는 core ∪ 그 라우트의 이름공간에 있다.
- *  3. 화면 모듈 최상위(렌더 밖)에서 이름공간 키로 t() 를 부르지 않는다 — 화면 청크와 이름공간 청크는 동시에 받으므로
- *     평가 순서가 정해져 있지 않다. core 만 등록한 채 화면 모듈을 불러 '[i18n] missing key' 경고가 없는지 본다.
+ *  2. routes.tsx 가 lazy 로 여는 화면 폴더(`import('@/pages/x')`)마다: 그 index 에서 import(정적·동적 모두, barrel 포함 —
+ *     넉넉하게)로 닿는 모듈이 쓰는 키는 core ∪ PAGE_NAMESPACES[x](namespaces.ts — 빌드가 그 화면 청크에 싣는 문자열)에 있다.
+ *  3. 화면 폴더·차트·컴포넌트 모듈 최상위(렌더 밖)에서 이름공간 키로 t() 를 부르지 않는다 — 여러 화면이 같이 쓰는 모듈은
+ *     공용 청크로 빠져 화면 문자열 등록보다 먼저 평가될 수 있다. core 만 등록한 채 그 모듈들을 불러 경고가 없는지 본다.
  *
  * 키 찾기: 주석을 지운 소스의 문자열 리터럴 'a.b.c' 과 템플릿 접두 `a.b.${…}`(그 아래 잎 전부가 있어야 한다).
  * ko.json 에 없는 점 문자열은 무시한다(키 오타는 TKey 타입이 잡는다).
  *
- * 실패하면: 메시지가 말하는 이름공간을 routes.tsx 의 그 라우트 `page(…, [ … ])` 목록에 더한다.
+ * 실패하면: 메시지가 말하는 이름공간을 src/i18n/namespaces.ts 의 PAGE_NAMESPACES[화면 폴더]에 더한다(화면 코드는 그대로).
  */
 import ko from './ko.json';
 import {
   getPath,
   KO_NAMESPACES,
   leafPaths,
+  PAGE_NAMESPACES,
   splitKo,
   type KoNamespace,
   type KoTree,
@@ -160,39 +161,34 @@ function report(missing: Missing[]): string[] {
 
 interface RouteNs {
   module: string;
+  folder: string;
   file: string;
-  name: string;
   ns: readonly KoNamespace[];
 }
 
+/** routes.tsx 가 lazy 로 여는 화면 폴더 + 그 이름공간 */
 function routeTable(): RouteNs[] {
   const src = CODE.get('/src/routes.tsx') ?? '';
-  const out: RouteNs[] = [];
-  const re =
-    /page\(\s*\(\)\s*=>\s*import\(\s*'([^']+)'\s*\)\s*,\s*'(\w+)'\s*,\s*(\[[^\]]*\]|'all')\s*,?\s*\)/g;
-  for (const m of src.matchAll(re)) {
-    const list = m[3] as string;
-    const ns =
-      list === "'all'"
-        ? KO_NAMESPACES
-        : ([...list.matchAll(/'([^']+)'/g)].map((x) => x[1]) as KoNamespace[]);
-    const file = resolveSpec('/src/routes.tsx', m[1] as string);
-    out.push({ module: m[1] as string, file: file ?? '', name: m[2] as string, ns });
-  }
-  return out;
+  return [...src.matchAll(/import\(\s*'(@\/pages\/([^'/]+))'\s*\)/g)].map((m) => {
+    const folder = m[2] as string;
+    return {
+      module: m[1] as string,
+      folder,
+      file: resolveSpec('/src/routes.tsx', m[1] as string) ?? '',
+      ns: PAGE_NAMESPACES[folder] ?? [],
+    };
+  });
 }
 
-describe('라우트 이름공간 — 화면이 쓰는 키가 첫 렌더 전에 등록된다', () => {
+describe('화면 이름공간 — 화면이 쓰는 키가 첫 렌더 전에 등록된다', () => {
   const routes = routeTable();
 
-  it('routes.tsx 의 화면 lazy import 는 전부 page(…, ns) 를 거친다', () => {
-    const src = CODE.get('/src/routes.tsx') ?? '';
-    const dynamic = [...src.matchAll(/import\(\s*'([^']+)'\s*\)/g)].map((m) => m[1]);
-    expect(routes.map((r) => r.module).sort()).toEqual([...dynamic].sort());
+  it('routes.tsx 의 화면 폴더 = PAGE_NAMESPACES 의 폴더(빠진 것·남은 것 없음)', () => {
     expect(routes.length).toBeGreaterThanOrEqual(11);
+    expect(routes.map((r) => r.folder).sort()).toEqual(Object.keys(PAGE_NAMESPACES).sort());
     for (const r of routes) {
-      expect(r.file, r.module).not.toBe('');
-      for (const ns of r.ns) expect(KO_NAMESPACES, `${r.module} ${ns}`).toContain(ns);
+      expect(r.file, r.module).toBe(`/src/pages/${r.folder}/index.tsx`);
+      for (const ns of r.ns) expect(KO_NAMESPACES, `${r.folder} ${ns}`).toContain(ns);
     }
   });
 
@@ -213,7 +209,7 @@ describe('라우트 이름공간 — 화면이 쓰는 키가 첫 렌더 전에 �
   });
 
   it('검사가 실제로 키를 찾는다(자기 점검)', () => {
-    const complex = routes.find((r) => r.module === '@/pages/complex');
+    const complex = routes.find((r) => r.folder === 'complex');
     expect(complex).toBeDefined();
     const files = closure(complex?.file ?? '', true);
     const leaves = new Set(files.flatMap(keyLeavesOf));
@@ -223,26 +219,45 @@ describe('라우트 이름공간 — 화면이 쓰는 키가 첫 렌더 전에 �
     expect(missingFor(files, []).length).toBeGreaterThan(0);
   });
 
-  it.each(routeTable().map((r) => [r.module, r] as const))(
-    '%s — core ∪ 라우트 이름공간에 모든 키',
-    (_module, r) => {
+  it.each(routeTable().map((r) => [r.folder, r] as const))(
+    '%s — core ∪ PAGE_NAMESPACES 에 모든 키',
+    (folder, r) => {
       const files = closure(r.file, true);
-      expect(report(missingFor(files, r.ns)), `routes.tsx page(${r.module}) ns`).toEqual([]);
+      expect(report(missingFor(files, r.ns)), `PAGE_NAMESPACES['${folder}']`).toEqual([]);
     },
   );
 });
 
-describe('화면 모듈 최상위에서 이름공간 키를 쓰지 않는다', () => {
-  it('core 만 등록한 채 화면 모듈을 평가해도 missing key 경고가 없다', async () => {
+describe('화면 문자열 등록 — 빌드 플러그인(ko-split transform)', () => {
+  it('화면 index 를 불러오면 그 화면 이름공간이 등록돼 있다(core 만 있던 새 i18n 에서)', async () => {
     vi.resetModules();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const loaders = import.meta.glob(['/src/pages/*/index.tsx']);
-    expect(Object.keys(loaders).length).toBeGreaterThanOrEqual(10);
+    const fresh = await import('./index');
+    const g7 = leafPaths(namespaces['page/G7'])[0] as Parameters<typeof fresh.t>[0];
+    expect(fresh.t(g7)).toBe(g7);
+    await import('@/pages/ops');
+    expect(fresh.t(g7)).toBe(getPath(full, g7));
+    expect(fresh.t('glossary.items.total.term')).toBe(ko.glossary.items.total.term);
+    expect(warn).toHaveBeenCalledTimes(1);
+  }, 60_000);
+});
+
+describe('모듈 최상위에서 이름공간 키를 쓰지 않는다', () => {
+  it('core 만 등록한 채 화면 폴더(index 제외)·차트·컴포넌트 모듈을 평가해도 missing key 경고가 없다', async () => {
+    vi.resetModules();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const loaders = import.meta.glob([
+      '/src/pages/*/*.{ts,tsx}',
+      '!/src/pages/*/index.tsx',
+      '!/src/pages/**/*.test.{ts,tsx}',
+    ]);
+    expect(Object.keys(loaders).length).toBeGreaterThanOrEqual(20);
     // 새 레지스트리의 i18n(core 만 — setup.ts 의 전체 등록은 이전 인스턴스에 했다)
     const fresh = await import('./index');
     expect(fresh.t('page.G3.title')).toBe(ko.page.G3.title);
-    for (const load of Object.values(loaders)) await load();
     await import('@/charts');
+    await import('@/components');
+    for (const load of Object.values(loaders)) await load();
     const missing = warn.mock.calls
       .map((c) => String(c[0]))
       .filter((m) => m.startsWith('[i18n] missing key'));

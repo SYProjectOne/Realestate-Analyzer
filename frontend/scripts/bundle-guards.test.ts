@@ -122,6 +122,8 @@ describe('vite.config.ts', () => {
     expect(fn('\0virtual:ko/ns/page/G3')).toBe('ko-page-G3');
     expect(fn('\0virtual:ko/ns/chart')).toBe('ko-chart');
     expect(fn('\0virtual:ko/core')).toBeUndefined();
+    // 화면 문자열 등록 모듈은 화면 청크 안으로(따로 요청하지 않는다)
+    expect(fn('\0virtual:ko/page/complex')).toBeUndefined();
     expect(fn('\0vite/preload-helper.js')).toBe('vendor');
   });
 });

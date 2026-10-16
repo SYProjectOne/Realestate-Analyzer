@@ -11,7 +11,7 @@ const useMsw = import.meta.env.MODE === 'msw' || import.meta.env.VITE_MSW === 't
 
 async function enableMocking(): Promise<void> {
   if (!useMsw) return;
-  // R11-I18N: MSW 모드(dev:msw·e2e/pages)는 문자열 이름공간을 처음부터 전부 등록한다(운영은 라우트마다 지연 — routes.tsx)
+  // R11-I18N: MSW 모드(dev:msw·e2e/pages)는 문자열 이름공간을 처음부터 전부 등록한다(운영은 화면 청크가 자기 문자열을 싣는다 — i18n/namespaces.ts)
   const [{ worker }] = await Promise.all([import('./mocks/browser'), loadAllNamespaces()]);
   await worker.start({ onUnhandledRequest: 'bypass', quiet: true });
 }

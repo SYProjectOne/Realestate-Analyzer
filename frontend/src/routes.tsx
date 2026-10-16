@@ -1,7 +1,8 @@
 import { lazy, type ComponentType, type ReactElement } from 'react';
 import type { RouteObject } from 'react-router';
+import { ChartGalleryPage } from '@/app/ChartGalleryPage';
 import type { MobilePolicy, RouteHandle } from '@/hooks/useMobileLayout';
-import { loadAllNamespaces, loadNamespaces, type KoNamespace, type TKey } from '@/i18n';
+import type { TKey } from '@/i18n';
 import { AppLayout } from '@/layout/AppLayout';
 import { NotFoundPage } from '@/pages/not-found';
 import { SharePage } from '@/pages/share';
@@ -9,30 +10,13 @@ import { SharePage } from '@/pages/share';
 /** 화면 청크 불러오기 함수들(`preloadPages`) */
 const pageLoaders: (() => Promise<unknown>)[] = [];
 
-/**
- * 화면마다 별도 청크(첫 화면 번들을 줄인다 — Lighthouse 성능). AppLayout의 Suspense가 받는다.
- *
- * R11-I18N: `ns` = 그 화면이 쓰는 문자열 이름공간(src/i18n/namespaces.ts). 화면 청크와 **동시에** 받아 둘 다 끝난 뒤
- * 렌더한다 — 첫 렌더에 문자열이 이미 있다(키 노출·깜빡임·CLS 없음). 어떤 이름공간이 필요한지는
- * `src/i18n/routeNamespaces.test.ts`(화면 폴더에서 닿는 모듈의 키를 정적으로 훑는다)가 검사하고, 빠진 것을 이름으로 알려 준다.
- * 화면 모듈 최상위(렌더 밖)에서 이름공간 키로 t() 를 부르지 않는다 — 두 청크의 평가 순서는 정해져 있지 않다(같은 테스트가 본다).
- */
+/** 화면마다 별도 청크(첫 화면 번들을 줄인다 — Lighthouse 성능). AppLayout의 Suspense가 받는다. */
 function page<K extends string>(
   load: () => Promise<Record<K, ComponentType>>,
   name: K,
-  ns: readonly KoNamespace[] | 'all',
 ): ComponentType {
-  const loadWithStrings = async () => {
-    const [mod] = await Promise.all([
-      load(),
-      ns === 'all' ? loadAllNamespaces() : loadNamespaces(ns),
-    ]);
-    return mod;
-  };
-  pageLoaders.push(loadWithStrings);
-  return lazy(async (): Promise<{ default: ComponentType }> => ({
-    default: (await loadWithStrings())[name],
-  }));
+  pageLoaders.push(load);
+  return lazy(async (): Promise<{ default: ComponentType }> => ({ default: (await load())[name] }));
 }
 
 /**
@@ -43,50 +27,17 @@ export async function preloadPages(): Promise<void> {
   await Promise.all(pageLoaders.map((load) => load()));
 }
 
-const RegionNewPage = page(() => import('@/pages/region-new'), 'RegionNewPage', [
-  'page/G0',
-  'glossary',
-]);
-const LivingAreasPage = page(() => import('@/pages/living-areas'), 'LivingAreasPage', [
-  'page/G0_2',
-  'page/G0',
-  'glossary',
-]);
-const DashboardPage = page(() => import('@/pages/dashboard'), 'DashboardPage', [
-  'page/G1',
-  'chart',
-  'glossary',
-]);
-const ComplexesPage = page(() => import('@/pages/complexes'), 'ComplexesPage', [
-  'page/G2',
-  'glossary',
-]);
-const ComplexPage = page(() => import('@/pages/complex'), 'ComplexPage', [
-  'page/G3',
-  'page/G2',
-  'chart',
-  'glossary',
-]);
-const ComparePage = page(() => import('@/pages/compare'), 'ComparePage', [
-  'page/G4',
-  'page/G3',
-  'page/G5',
-  'chart',
-  'glossary',
-]);
-const ScenarioPage = page(() => import('@/pages/scenario'), 'ScenarioPage', [
-  'page/G5',
-  'chart',
-  'glossary',
-]);
-const MarketPage = page(() => import('@/pages/market'), 'MarketPage', [
-  'page/G6',
-  'chart',
-  'glossary',
-]);
-const OpsPage = page(() => import('@/pages/ops'), 'OpsPage', ['page/G7', 'page/G3', 'glossary']);
-const ReportsPage = page(() => import('@/pages/reports'), 'ReportsPage', ['page/G8', 'glossary']);
-const GlossaryPage = page(() => import('@/pages/glossary'), 'GlossaryPage', ['glossary']);
+const RegionNewPage = page(() => import('@/pages/region-new'), 'RegionNewPage');
+const LivingAreasPage = page(() => import('@/pages/living-areas'), 'LivingAreasPage');
+const DashboardPage = page(() => import('@/pages/dashboard'), 'DashboardPage');
+const ComplexesPage = page(() => import('@/pages/complexes'), 'ComplexesPage');
+const ComplexPage = page(() => import('@/pages/complex'), 'ComplexPage');
+const ComparePage = page(() => import('@/pages/compare'), 'ComparePage');
+const ScenarioPage = page(() => import('@/pages/scenario'), 'ScenarioPage');
+const MarketPage = page(() => import('@/pages/market'), 'MarketPage');
+const OpsPage = page(() => import('@/pages/ops'), 'OpsPage');
+const ReportsPage = page(() => import('@/pages/reports'), 'ReportsPage');
+const GlossaryPage = page(() => import('@/pages/glossary'), 'GlossaryPage');
 
 export interface RouteDef {
   /** 화면 id (RA §7-1, D2-5) */
@@ -172,21 +123,13 @@ export const routeDefs: RouteDef[] = [
   },
 ];
 
-/** dev(또는 MSW 모드)에서만 여는 차트 갤러리 — 프로덕션 번들에는 라우트가 없다(지연 청크도 없다) */
+/** dev(또는 MSW 모드)에서만 여는 차트 갤러리 — 프로덕션 번들에는 라우트가 없다 */
 const DEV_ROUTES: RouteObject[] =
   import.meta.env.DEV || import.meta.env.MODE === 'msw'
     ? [
         {
           path: '/__charts',
-          element: (() => {
-            // 개발 화면 — 이름공간을 전부 받는다(갤러리 예시가 화면 문구도 쓴다)
-            const ChartGalleryPage = page(
-              () => import('@/app/ChartGalleryPage'),
-              'ChartGalleryPage',
-              'all',
-            );
-            return <ChartGalleryPage />;
-          })(),
+          element: <ChartGalleryPage />,
           handle: { screen: 'charts', mobile: 'unsupported' } satisfies RouteHandle,
         },
       ]
