@@ -3,7 +3,12 @@ import { t } from '@/i18n';
 import type { RemainingEvent, RemainingKind } from '@/lib/contract';
 import { formatCount } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, legendStyle, tooltipStyle } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type {
+  BuildOptionContext,
+  ChartLegendItem,
+  ChartLegendSymbol,
+  EChartsOption,
+} from '../types';
 import { escapeHtml, num, str, toIsoDay } from '../util';
 import { C08_SYMBOLS, type C08Data } from './types';
 
@@ -82,9 +87,10 @@ export function buildOption(
     .map((event) => ({ event, date: eventDate(event) }))
     .filter((x): x is { event: RemainingEvent; date: string } => x.date !== null);
   const labels = labelItems(data);
+  const asofDay = toIsoDay(data.asof ?? null);
   return {
     ...baseOption(palette),
-    grid: { left: 72, right: 40, top: 28, bottom: 48 },
+    grid: { left: 80, right: 40, top: 32, bottom: 36 },
     // 범례는 kind 4종만(라벨 계열은 범례에 넣지 않는다)
     legend: { ...legendStyle(palette), data: KINDS.map(kindLabel) },
     tooltip: {
@@ -96,7 +102,7 @@ export function buildOption(
         if (!item) return '';
         const { event } = item;
         return [
-          `${escapeHtml(kindLabel(event.kind))} · ${escapeHtml(str(event.notice_date))}`,
+          `<b>${escapeHtml(kindLabel(event.kind))} · ${escapeHtml(str(event.notice_date))}</b>`,
           event.notice_no ? escapeHtml(event.notice_no) : null,
           escapeHtml(eventLabel(event)) || null,
           event.result_text ? escapeHtml(event.result_text) : null,
@@ -107,8 +113,11 @@ export function buildOption(
     },
     xAxis: {
       type: 'time',
+      name: t('chart.axis.noticeDate'),
+      nameLocation: 'end',
       ...axis,
-      axisLabel: { ...axis.axisLabel, fontSize: 10 },
+      splitLine: { show: true, lineStyle: { color: palette.grid } },
+      axisLabel: { ...axis.axisLabel, fontSize: 11, hideOverlap: false },
       // 양 끝 마커가 축선에 붙지 않게 한 달씩 여유
       min: (v: { min: number }) => v.min - PAD_MS,
       max: (v: { max: number }) => v.max + PAD_MS,
@@ -118,6 +127,9 @@ export function buildOption(
       data: KINDS.map(kindLabel),
       inverse: true,
       ...axis,
+      axisTick: { ...axis.axisTick, alignWithLabel: true },
+      axisLabel: { ...axis.axisLabel, color: palette.fg, fontSize: 12 },
+      splitLine: { show: true, lineStyle: { color: palette.grid } },
     },
     series: [
       ...KINDS.map((kind) => ({
@@ -125,11 +137,34 @@ export function buildOption(
         id: kind,
         name: kindLabel(kind),
         symbol: C08_SYMBOLS[kind],
-        symbolSize: 13,
-        itemStyle: { color: kind === '본청약' ? palette.strong : palette.fg },
+        symbolSize: 14,
+        // 본청약만 진한 글자색, 다시 모집(무순위·임의공급·선착순)은 강조색 — 모양으로도 나눈다(목업 DX-7)
+        itemStyle: {
+          color: kind === '본청약' ? palette.fg : palette.strong,
+          borderColor: palette.bg,
+          borderWidth: 1.5,
+        },
         data: dated
           .filter((x) => x.event.kind === kind)
           .map((x) => ({ value: [x.date, kindLabel(kind)] })),
+        // 기준일 세로 점선(서버 기준일 그대로 — 계산 아님)
+        ...(kind === KINDS[0] && asofDay
+          ? {
+              markLine: {
+                symbol: 'none',
+                silent: true,
+                lineStyle: { type: 'dashed' as const, color: palette.strong, width: 1.5 },
+                label: {
+                  formatter: t('chart.C08.asof', { date: asofDay }),
+                  color: palette.strong,
+                  fontSize: 11,
+                  // y축이 뒤집혀(inverse) 있어 'start'가 위쪽 — 공고일 눈금과 겹치지 않게 위에 단다
+                  position: 'start' as const,
+                },
+                data: [{ xAxis: asofDay }],
+              },
+            }
+          : {}),
       })),
       {
         // 라벨 = custom 계열(잔여 세대·경쟁률). 가까운 이웃은 위·아래로 엇갈려 겹치지 않는다
@@ -156,17 +191,39 @@ export function buildOption(
             style: {
               text: item.text,
               fill: palette.fg,
-              fontSize: 10,
+              fontSize: 11,
+              fontWeight: 600,
               align: 'center',
               verticalAlign: above ? 'bottom' : 'top',
-              width: 180,
-              overflow: 'truncate',
+              backgroundColor: palette.grid,
+              padding: [2, 6],
+              borderRadius: 6,
             },
           };
         },
       },
     ],
   };
+}
+
+const LEGEND_SYMBOL: Record<string, ChartLegendSymbol> = {
+  circle: 'circle',
+  rect: 'rect',
+  triangle: 'triangle',
+  diamond: 'diamond',
+};
+
+/** 범례(차트 위): 모집 종류 4가지 — 모양 + 색(본청약만 진한 색) */
+export function legendItems(
+  data: C08Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): ChartLegendItem[] {
+  if (data.events.length === 0) return [];
+  return KINDS.map((kind) => ({
+    name: kindLabel(kind),
+    color: kind === '본청약' ? ctx.palette.fg : ctx.palette.strong,
+    symbol: LEGEND_SYMBOL[C08_SYMBOLS[kind]] ?? 'circle',
+  }));
 }
 
 export function toTable(data: C08Data): DataTable {

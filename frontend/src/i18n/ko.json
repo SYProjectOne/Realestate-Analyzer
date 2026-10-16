@@ -1313,87 +1313,137 @@
   },
   "chart": {
     "C01": {
-      "title": "상승 확률 사다리",
+      "title": "현재 가격보다 얼마나 오를까 — 가능성 사다리",
       "subtitle": "목표 시점 {target}",
       "bar": {
-        "p5": "+5%",
-        "p10": "+10%",
-        "p20": "+20%",
-        "p_flat": "보합·하락"
+        "p5": "5% 넘게 오를 가능성",
+        "p10": "10% 넘게 오를 가능성",
+        "p20": "20% 넘게 오를 가능성",
+        "p_flat": "그대로이거나 내릴 가능성"
       },
       "horizon": {
         "move_in_plus_1y": "입주+1년",
         "asof_plus_3y": "기준일+3년",
         "asof_plus_5y": "기준일+5년"
       },
-      "threshold": { "likely": "가능성 높음 기준 0.85", "unlikely": "가능성 낮음 기준 0.15" },
-      "verdict": { "likely": "가능성 높음", "uncertain": "불확실", "unlikely": "가능성 낮음" },
-      "annualized": "필요 연율 {pct}",
-      "empty": "사다리 판정 없음"
+      "threshold": {
+        "likely": "가능성 높음 기준 0.85",
+        "unlikely": "가능성 낮음 기준 0.15"
+      },
+      "verdict": {
+        "likely": "가능성 높음",
+        "uncertain": "중간",
+        "unlikely": "가능성 낮음"
+      },
+      "annualized": "필요한 연 상승률 {pct}",
+      "empty": "사다리 판정 없음",
+      "barShort": {
+        "p5": "5% 넘게",
+        "p10": "10% 넘게",
+        "p20": "20% 넘게",
+        "p_flat": "그대로·내림"
+      },
+      "usedInScore": "{name}\n(점수에 씀)",
+      "subtitleOverlay": "목표 시점 · {targets}",
+      "overlayTarget": "{name} {target}",
+      "source": "판정기 가능성 판정"
     },
     "C02": {
-      "title": "가격 갭",
-      "current": "현재 구매가",
+      "title": "이 단지 가격 vs 주변 실거래",
+      "current": "이 단지 (현재 가격)",
       "comps": "비교 단지 실거래",
-      "range": "실거래 범위",
-      "adjusted": "연식 보정 중앙값",
-      "unadjusted": "미보정 중앙값",
+      "range": "비교 단지 실거래 범위",
+      "adjusted": "연식 보정 가운데값 (대체 단지만)",
+      "unadjusted": "가운데값 (보정 안 함)",
       "emptyPrefix": "비교군 없음",
-      "empty": "비교군 없음({reason})"
+      "empty": "비교군 없음({reason})",
+      "subtitle": "막대 = 거래 가격 범위(가장 낮은 값~가장 높은 값), 세로 눈금 = 가운데값",
+      "currentRange": "이 단지 가격 범위",
+      "median": "가운데값",
+      "lowHigh": "가장 낮은 값 {low} ~ 가장 높은 값 {high}",
+      "source": "국토교통부 실거래(비교 단지 값 재가공)",
+      "col": {
+        "kind": "준공 · 구분",
+        "low": "가장 낮은 값",
+        "median": "가운데값",
+        "high": "가장 높은 값",
+        "adjusted": "연식 보정 가운데값"
+      }
     },
     "C03": {
-      "title": "벤치마크 분양가 → 실거래",
+      "title": "근처 새 아파트 분양가 → 입주 뒤 실거래",
       "sale": "분양가",
       "trade": "최근 실거래",
-      "range": "분양가 → 실거래 범위",
-      "peak": "고점",
+      "range": "실거래 가장 낮은 값 ~ 가장 높은 값",
+      "peak": "입주 뒤 가장 높았던 거래 (고점)",
       "presale": "분양권",
-      "annualized": "연율 {pct}",
-      "empty": "벤치마크 없음"
+      "annualized": "한 해 평균 변화(연율) {pct}",
+      "empty": "벤치마크 없음",
+      "subtitle": "까만 점(분양가)에서 파란 점(지금 중간 값)까지 오른쪽으로 길수록 분양가보다 높게 거래돼요",
+      "median": "실거래 중간 값",
+      "peakShort": "고점",
+      "presaleLegend": "분양권 (입주 전 거래)",
+      "substituteLegend": "지역 전체 자료로 대신 채운 줄",
+      "source": "청약홈 공고 분양가 · 국토교통부 실거래"
     },
     "C04": {
-      "title": "입주 물량",
+      "title": "해마다 입주하는 세대 (생활권별)",
       "label": "추정 집계",
-      "marker": "판정 단지 입주",
+      "marker": "점수 매긴 단지 입주",
       "markerMore": "{name} 외 {n}",
-      "empty": "입주 물량 없음"
+      "empty": "입주 물량 없음",
+      "subtitle": "추정 집계 · 핀 = 점수 매긴 단지가 입주하는 해",
+      "rest": "나머지 {n}곳 ({names})",
+      "unknownArea": "확인 불가 (생활권을 모르는 입주 물량)",
+      "source": "입주 예정 단지 집계(청약홈 공고 입주 예정월) · 세대 단위"
     },
     "C05": {
-      "title": "미분양 추이",
-      "total": "합계",
-      "postCompletion": "준공 후",
+      "title": "안 팔린 집 (미분양) 추이",
+      "total": "전체 안 팔린 집 (합계)",
+      "postCompletion": "다 지은 뒤에도 안 팔린 집 (준공 후)",
       "basis": "월말 기준",
       "basisScope": "월말 기준 · {scope}",
-      "empty": "미분양 자료 없음"
+      "empty": "미분양 자료 없음",
+      "totalShort": "합계",
+      "postShort": "준공 후",
+      "source": "국토교통부 미분양 통계"
     },
     "C06": {
       "title": "종합 점수 분해",
-      "weights": "가중치 {weights}",
+      "weights": "비중: {weights}",
       "component": {
         "p10": "+10% 상승 가능성",
-        "rerank": "판정기 순위",
-        "gap": "가격 갭",
-        "benchmark": "벤치마크",
-        "supply": "공급",
-        "liquidity": "유동성",
+        "rerank": "비슷한 단지 사이 순위",
+        "gap": "주변 시세와 가격 차이",
+        "benchmark": "근처 새 아파트 실적",
+        "supply": "같은 시기 입주 물량",
+        "liquidity": "되팔기 쉬움",
         "move_in": "입주 시기"
       },
       "unjudgedTip": "미판정 — 판정되면 최대 기여 {max}",
       "unjudgedNote": "빗금 = 미판정(성분 점수 없음 · 기여 0, 점선 테두리)",
       "raw": "원값 {raw}",
       "contribution": "기여 {value}",
-      "empty": "점수 없음"
+      "empty": "점수 없음",
+      "subtitle": "막대 한 칸 = 기준 하나 · 칸 길이 = 점수 × 비중 (10점 만점 상대 비교)",
+      "weightItem": "{name} {pct}%",
+      "weightPct": "비중 {pct}%",
+      "source": "점수 계산"
     },
     "C07": {
-      "title": "판정기 확률",
+      "title": "판정기가 고를 확률",
       "escape": "질문 남김",
       "virtual": "가상 후보",
-      "confidence": "신뢰도 {confidence}",
+      "confidence": "믿음 정도 {confidence}",
       "unresolved": "판정 미해결",
-      "empty": "판정 없음"
+      "empty": "판정 없음",
+      "hold": "판정기 보류 선택지",
+      "holdLegend": "판정기 보류 선택지 (더 묻기·더 조사·해당 없음)",
+      "other": "다른 후보",
+      "source": "판정기 기록"
     },
     "C08": {
-      "title": "잔여 이력",
+      "title": "남은 집을 다시 모집한 이력",
       "kind": {
         "본청약": "본청약",
         "무순위": "무순위",
@@ -1401,26 +1451,34 @@
         "선착순": "선착순"
       },
       "labels": "잔여 세대·경쟁률",
-      "empty": "본청약만"
+      "empty": "본청약만",
+      "subtitle": "점 옆 글씨 = 다시 모집한 세대 수 · 경쟁률",
+      "asof": "기준일 {date}",
+      "source": "청약홈 무순위·임의공급·선착순 공고"
     },
     "C09": {
-      "title": "호재 단계",
+      "title": "개발 소식 단계",
       "stage": {
         "확정": "확정",
         "계획": "계획",
-        "추진": "추진",
-        "언론": "언론",
-        "미확정": "미확정",
-        "호재 아님": "호재 아님(제외)"
+        "추진": "추진 중",
+        "언론": "언론 보도만",
+        "미확정": "아직 정해지지 않음",
+        "호재 아님": "개발 소식 아님(제외)"
       },
-      "timeline": "확정 호재 타임라인",
+      "timeline": "확정된 소식 일정표",
       "noLink": "위치 미확정 · 단지 연결 없음",
-      "excluded": "호재 아님(판정 제외) {n}건 — 보드에 넣지 않음",
-      "empty": "호재 없음"
+      "excluded": "개발 소식 아님(판정 제외) {n}건 — 보드에 넣지 않음",
+      "empty": "호재 없음",
+      "subtitle": "판정기가 5단계로 나눴어요 · 언론 보도만·아직 정해지지 않음은 회색",
+      "count": "{n}건",
+      "none": "없음",
+      "timelineEmpty": "확정 단계이면서 예상 시기가 있는 소식이 아직 없어 일정표가 비어 있어요. 생기면 날짜순으로 여기 나와요.",
+      "source": "지역 개발 소식 후보(판정기 분류)"
     },
     "C10": {
       "title": "가중치 민감도",
-      "explain": "종합 점수는 6가지 항목 점수를 정해진 비중으로 더한 값입니다. 각 비중을 10%p 올리거나 내려 다시 계산해도 순위가 유지되는지 보여 줍니다. '순위 변동: 없음'이면 결과가 비중 설정에 덜 민감하다는 뜻입니다.",
+      "explain": "비중은 사람이 정한 값이라 정답이 없어요. 그래서 비중을 조금(10%p) 바꿔도 상위 5곳 순위가 그대로인지 확인해요. 그대로라면 결과가 비중 설정에 덜 흔들린다는 뜻이에요.",
       "variantLabel": "{component} 비중 {sign}{pp}%p",
       "variantShort": "{component} {sign}{pp}%p",
       "changedCol": "순위 변동",
@@ -1433,7 +1491,48 @@
       "entered": "진입 {names}",
       "exited": "이탈 {names}",
       "stable": "비중을 바꿔도 순위가 그대로인 항목 있음",
-      "empty": "민감도 없음"
+      "empty": "민감도 없음",
+      "question": "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?",
+      "summary": "순위 변동(상위 5곳 바뀜): 있음 {yes}개 · 없음 {no}개",
+      "criterionCol": "기준 (지금 비중) · 무엇을 보나요",
+      "downCol": "비중을 10%p 줄이면 → 1~5위",
+      "upCol": "비중을 10%p 늘리면 → 1~5위",
+      "now": "지금 {pct}%",
+      "termLine": "공식 용어: {term}",
+      "down": "줄이면",
+      "up": "늘리면",
+      "outside": "상위 5곳 밖",
+      "outsideBand": "주황 띠 = 상위 5곳 밖",
+      "lineTitle": "기준별로 비중을 바꾸면 각 단지는 몇 위가 되나요?",
+      "lineNote": "가로: 기준 × (줄이면 / 늘리면) · 세로: 순위(위가 1위). 점이 겹치면 공동 순위예요.",
+      "short": {
+        "p10": "오를 가능성",
+        "rerank": "단지 사이 순위",
+        "gap": "주변 시세 차이",
+        "benchmark": "근처 새 아파트",
+        "supply": "입주 물량",
+        "liquidity": "되팔기 쉬움",
+        "move_in": "입주 시기"
+      },
+      "why": {
+        "p10": "목표 시점에 지금 가격보다 10% 넘게 오를 가능성. 판정기가 매겨요. 당첨 확률 아님 · 보장 아님.",
+        "rerank": "이 지역 단지들을 판정기가 한 줄로 세운 순서. 앞일수록 점수가 높아요.",
+        "gap": "현재 가격이 주변 실거래보다 낮을수록 점수가 높아요.",
+        "benchmark": "근처에서 먼저 입주한 새 아파트가 분양가보다 얼마나 올랐는지. 많이 올랐을수록 점수가 높아요.",
+        "supply": "같은 생활권에 입주 앞뒤 1년 동안 들어오는 집이 적을수록 점수가 높아요. 미분양이 늘면 깎여요.",
+        "liquidity": "되팔기 제한이 빨리 끝나고, 꼭 살아야 하는 의무가 없고, 계약금 비율이 낮을수록 점수가 높아요.",
+        "move_in": "입주가 빠를수록 점수가 높아요."
+      },
+      "term": {
+        "p10": "+10% 상승 가능성",
+        "rerank": "판정기 순위",
+        "gap": "가격 갭",
+        "benchmark": "벤치마크",
+        "supply": "공급",
+        "liquidity": "유동성",
+        "move_in": "입주 시기"
+      },
+      "source": "점수 다시 계산(판정기 새 호출 없음)"
     },
     "gallery": {
       "title": "차트 갤러리",
@@ -1490,7 +1589,21 @@
     },
     "yes": "예",
     "no": "아니오",
-    "chosen": "선택"
+    "chosen": "판정기 선택",
+    "legend": "범례",
+    "source": "자료: {source}",
+    "sourceAsof": "자료: {source} · 기준일 {asof}",
+    "asofOnly": "기준일 {asof}",
+    "axis": {
+      "prob": "가능성",
+      "price": "가격",
+      "price84": "84㎡ 기준 가격",
+      "households": "세대",
+      "score": "점수",
+      "rank": "순위",
+      "noticeDate": "공고일",
+      "choiceProb": "고를 확률"
+    }
   },
   "auth": {
     "button": "API 토큰",

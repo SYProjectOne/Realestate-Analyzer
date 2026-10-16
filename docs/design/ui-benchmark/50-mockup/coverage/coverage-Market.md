@@ -26,39 +26,39 @@
 
 ## 근처 새 아파트 비교 (C03 벤치마크 + 표본 배지)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 16 | 벤치마크 없음 사유 배지 role=note (`index.tsx` · `page.common.benchmarkAbsent` "벤치마크 없음({reason})") | Market · 펼친 모습 "비교할 근처 새 아파트가 없을 때 비교할 단지 없음([사유])" | 벤치마크 없음 → 비교할 단지 없음 | 있음 |
-| 17 | C03 차트 틀 제목 (`chart.C03.title` "벤치마크 분양가 → 실거래") | Market · "근처 새 아파트는 입주 뒤 얼마에 거래되나요?" "(공식 이름: 벤치마크 분양가 → 실거래)" | 공식 이름은 괄호로 유지 | 있음 |
-| 18 | C03 라벨 배지(분양가·실거래 Fact 라벨 모음, `ChartFrame` LabelBadge) | Market · C03 머리 "확인됨" · "추정 (한 해 평균 변화 · 대신 채운 줄)" | — | 있음 |
-| 19 | C03 표본 배지 (`sampleBadges` · `badge.sampleEstimated` "표본 {n}, 추정" / `badge.sampleEstimatedArea` "{area} 표본 {n}, 추정", 표본 < 3) | Market · C03 "생활권마다 비교한 단지 수 (표본)" "영종구 2곳뿐 추정" + "3곳보다 적으면 '추정'으로 표시해요" | 표본 n, 추정 → n곳뿐 추정 | 있음 |
-| 20 | C03 대체 배지 (`substituteBadge` · `badge.substituteRegion` "대체(지역 전체)") | Market · C03 범례 "지역 전체 자료로 대신 채운 줄" + "(공식 이름: 대체(지역 전체))" | 대체(지역 전체) → 지역 전체 자료로 대신 채운 줄 | 있음 |
-| 21 | C03 빈 상태 (`chart.C03.empty` "벤치마크 없음") | Market · 펼친 모습 "그림마다 자료가 없으면 … '비교할 단지 없음'" | — | 있음 |
-| 22 | C03 y축 = 단지 이름(분양 연도) + 대체 접미 (`rowName`) | Market · C03 왼쪽 열 "단지 · 생활권 · 분양한 해" (예 "힐스테이트 송도 더스카이 / 연수구 · 2020년 분양") | 생활권 함께 표시 | 있음 |
-| 23 | C03 x축 = 원 값, 억 단위 눈금 (`formatEok`) | Market · C03 눈금 "2억 4억 … 14억원" | — | 있음 |
-| 24 | C03 분양가 → 실거래 중앙값 점선 (`dumbbell` custom) | Market · C03 회색 점선 | — | 있음 |
-| 25 | C03 실거래 하단~상단 범위 막대 | Market · C03 파란 막대 + 범례 "실거래 가장 낮은 값 ~ 가장 높은 값" | — | 있음 |
-| 26 | C03 실거래 중앙값 점 | Market · C03 파란 점 + 범례 "실거래 중간 값" | 중앙값 → 중간 값 | 있음 |
-| 27 | C03 분양가 점: 원(일반)·마름모(분양권)·속 빈 원(대체) — 색이 아니라 모양으로 구분 | Market · C03 까만 점·마름모·빈 원 + 범례 "분양가" · "분양권 (입주 전 거래)" · "지역 전체 자료로 대신 채운 줄" | — | 있음 |
-| 28 | C03 고점 삼각형 (`chart.C03.peak` "고점") | Market · C03 회색 삼각형 + 범례 "입주 뒤 가장 높았던 거래 (고점)" | — | 있음 |
-| 29 | C03 범례 (계열 이름 `chart.C03.range`·`sale`·`peak`) | Market · C03 범례 6항목 | 범례 항목 늘어남 | 있음 |
-| 30 | C03 툴팁: 이름·분양권, 분양가, 최근 실거래 하단~상단, 고점+연월, 연율 (`chart.C03.sale`·`trade`·`peak`·`presale`·`annualized` "연율 {pct}") | Market · C03 "줄에 마우스를 올리면 … 분양가 7억 7,380만원 최근 실거래 … 고점 … 한 해 평균 +7.0% 추정 · 거래 16건" | 연율 → 한 해 평균 | 있음(고침 MK-2 — 말풍선을 지금 툴팁 줄과 같게, 거래 수·출처 줄 뺌) |
-| 31 | C03 연율: 서버 `annualized_pct` 없을 때 화면에서 계산하는 폴백 (`annualizedPct`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 32 | C03 차트 aria-label = 제목 | Market · C03 role=img aria-label "근처 새 아파트 11줄의 분양가와 입주 뒤 실거래 범위. 표로 보기에서…" | 설명형으로 | 있음 |
-| 33 | C03 "표로 보기"/"표 닫기" 토글 (`DataTableToggle` · `table.show`·`table.hide`, aria-expanded) | Market · C03 "표로 보기" + 펼친 모습 "근처 새 아파트 비교 · 표로 보기 [표 닫기]" | — | 있음 |
-| 34 | C03 표 열: 이름(분양권·대체 접미) (`chart.col.name`) | Market · 펼친 모습 C03 표 "이름" ("시티오씨엘 6단지 · 분양권", "… · 대체(지역 전체)") | — | 있음 |
-| 35 | C03 표 열: 생활권 (`chart.col.livingArea`) | Market · 펼친 모습 C03 표 "생활권" | — | 있음 |
-| 36 | C03 표 열: 분양 연도 (`chart.col.saleYear`) | Market · 펼친 모습 C03 표 "분양한 해" | 분양 연도 → 분양한 해 | 있음 |
-| 37 | C03 표 열: 분양가(84㎡) (`chart.col.salePrice`) | Market · 펼친 모습 C03 표 "분양가 (84㎡)" | — | 있음 |
-| 38 | C03 표 열: 하단 (`chart.col.low`) | Market · 펼친 모습 C03 표 "실거래 가장 낮은" | 하단 → 실거래 가장 낮은 | 있음 |
-| 39 | C03 표 열: 중앙값 (`chart.col.median`) | Market · 펼친 모습 C03 표 "중간" | 중앙값 → 중간 | 있음 |
-| 40 | C03 표 열: 상단 (`chart.col.high`) | Market · 펼친 모습 C03 표 "가장 높은" | 상단 → 가장 높은 | 있음 |
-| 41 | C03 표 열: 고점 (`chart.col.peak`) | Market · 펼친 모습 C03 표 "고점" | — | 있음 |
-| 42 | C03 표 열: 연율 (`chart.col.annualized`, pct) | Market · 펼친 모습 C03 표 "한 해 평균 변화" ("+7.0% 추정") | 연율 → 한 해 평균 변화 | 있음 |
-| 43 | C03 표 열: 거래 기간 (`chart.col.window`) | Market · 펼친 모습 C03 표 "거래 기간" | — | 있음 |
-| 44 | 표 캡션 (`table.caption` "{title} 데이터", sr-only) | Market · 펼친 모습 C03 표 caption "121줄 중 5줄 · 84㎡ 기준 · 단위 원" | 보이는 캡션으로 | 있음 |
-| 45 | 표 Fact 셀 → 라벨·출처 창 (`FactCell`, 빈 칸 `EmptyState inline`) | Market · 표 셀 "추정" 배지 + 맨 아래 "밑줄 점선 숫자를 누르면 출처가 열려요" | — | 있음 |
-| 46 | 표가 비었을 때 (`DataTableToggle` · `empty.noData` "데이터 없음") | — | — | 있음(고침 MK-10 — 펼친 모습 "표로 보기 · 줄이 하나도 없을 때" "데이터 없음") |
+| 17 | C03 차트 틀 제목 (`chart.C03.title` "벤치마크 분양가 → 실거래") | Market · "근처 새 아파트는 입주 뒤 얼마에 거래되나요?" "(공식 이름: 벤치마크 분양가 → 실거래)" | 공식 이름은 괄호로 유지 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C03 normal · pages/market/market.test(C03 제목) |
+| 18 | C03 라벨 배지(분양가·실거래 Fact 라벨 모음, `ChartFrame` LabelBadge) | Market · C03 머리 "확인됨" · "추정 (한 해 평균 변화 · 대신 채운 줄)" | — | 있음 | ChartGallery.test › 정상 상태 카드는 라벨 배지 · e2e charts-gallery › C03 normal |
+| 19 | C03 표본 배지 (`sampleBadges` · `badge.sampleEstimated` "표본 {n}, 추정" / `badge.sampleEstimatedArea` "{area} 표본 {n}, 추정", 표본 < 3) | Market · C03 "생활권마다 비교한 단지 수 (표본)" "영종구 2곳뿐 추정" + "3곳보다 적으면 '추정'으로 표시해요" | 표본 n, 추정 → n곳뿐 추정 | 있음 | charts.contract › C03 표본 < 3 → "표본 n, 추정" 배지(생활권별) · ChartGallery.test › 특수 상태 배지(표본) |
+| 20 | C03 대체 배지 (`substituteBadge` · `badge.substituteRegion` "대체(지역 전체)") | Market · C03 범례 "지역 전체 자료로 대신 채운 줄" + "(공식 이름: 대체(지역 전체))" | 대체(지역 전체) → 지역 전체 자료로 대신 채운 줄 | 있음 | charts.contract › C03 N-M4 대체 행이 있으면 "대체(지역 전체)" 배지 문구 |
+| 21 | C03 빈 상태 (`chart.C03.empty` "벤치마크 없음") | Market · 펼친 모습 "그림마다 자료가 없으면 … '비교할 단지 없음'" | — | 있음 | charts.contract › C03 0개 → "벤치마크 없음" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 22 | C03 y축 = 단지 이름(분양 연도) + 대체 접미 (`rowName`) | Market · C03 왼쪽 열 "단지 · 생활권 · 분양한 해" (예 "힐스테이트 송도 더스카이 / 연수구 · 2020년 분양") | 생활권 함께 표시 | 있음 | charts.contract › C03 행 라벨에 분양 연도, 툴팁에 연율 · charts.r11 › 라벨 사라짐 없음 |
+| 23 | C03 x축 = 원 값, 억 단위 눈금 (`formatEok`) | Market · C03 눈금 "2억 4억 … 14억원" | — | 있음 | charts.r11 › C03 축 이름 |
+| 24 | C03 분양가 → 실거래 중앙값 점선 (`dumbbell` custom) | Market · C03 회색 점선 | — | 있음 | charts.contract › C03 dumbbell(custom) + 고점 triangle + 분양권 diamond |
+| 25 | C03 실거래 하단~상단 범위 막대 | Market · C03 파란 막대 + 범례 "실거래 가장 낮은 값 ~ 가장 높은 값" | — | 있음 | charts.contract › C03 dumbbell(custom) + 고점 triangle + 분양권 diamond · charts.r11 › C03 범례 |
+| 26 | C03 실거래 중앙값 점 | Market · C03 파란 점 + 범례 "실거래 중간 값" | 중앙값 → 중간 값 | 있음 | charts.contract › C03 dumbbell(custom) + 고점 triangle + 분양권 diamond · charts.r11 › C03 범례 |
+| 27 | C03 분양가 점: 원(일반)·마름모(분양권)·속 빈 원(대체) — 색이 아니라 모양으로 구분 | Market · C03 까만 점·마름모·빈 원 + 범례 "분양가" · "분양권 (입주 전 거래)" · "지역 전체 자료로 대신 채운 줄" | — | 있음 | charts.contract › C03 dumbbell(custom) + 고점 triangle + 분양권 diamond · charts.contract › C03 N-M4 표·축·툴팁에 "대체(지역 전체)" 표시, 마커는 속 빈 원 |
+| 28 | C03 고점 삼각형 (`chart.C03.peak` "고점") | Market · C03 회색 삼각형 + 범례 "입주 뒤 가장 높았던 거래 (고점)" | — | 있음 | charts.contract › C03 dumbbell(custom) + 고점 triangle + 분양권 diamond · charts.r11 › C03 범례 |
+| 29 | C03 범례 (계열 이름 `chart.C03.range`·`sale`·`peak`) | Market · C03 범례 6항목 | 범례 항목 늘어남 | 있음 | charts.r11 › C03 범례 |
+| 30 | C03 툴팁: 이름·분양권, 분양가, 최근 실거래 하단~상단, 고점+연월, 연율 (`chart.C03.sale`·`trade`·`peak`·`presale`·`annualized` "연율 {pct}") | Market · C03 "줄에 마우스를 올리면 … 분양가 7억 7,380만원 최근 실거래 … 고점 … 한 해 평균 +7.0% 추정 · 거래 16건" | 연율 → 한 해 평균 | 있음(고침 MK-2 — 말풍선을 지금 툴팁 줄과 같게, 거래 수·출처 줄 뺌) | charts.contract › C03 행 라벨에 분양 연도, 툴팁에 연율 |
+| 31 | C03 연율: 서버 `annualized_pct` 없을 때 화면에서 계산하는 폴백 (`annualizedPct`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | charts.contract › C03 행 라벨에 분양 연도, 툴팁에 연율(asofYear 폴백) |
+| 32 | C03 차트 aria-label = 제목 | Market · C03 role=img aria-label "근처 새 아파트 11줄의 분양가와 입주 뒤 실거래 범위. 표로 보기에서…" | 설명형으로 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 |
+| 33 | C03 "표로 보기"/"표 닫기" 토글 (`DataTableToggle` · `table.show`·`table.hide`, aria-expanded) | Market · C03 "표로 보기" + 펼친 모습 "근처 새 아파트 비교 · 표로 보기 [표 닫기]" | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 34 | C03 표 열: 이름(분양권·대체 접미) (`chart.col.name`) | Market · 펼친 모습 C03 표 "이름" ("시티오씨엘 6단지 · 분양권", "… · 대체(지역 전체)") | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 35 | C03 표 열: 생활권 (`chart.col.livingArea`) | Market · 펼친 모습 C03 표 "생활권" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 36 | C03 표 열: 분양 연도 (`chart.col.saleYear`) | Market · 펼친 모습 C03 표 "분양한 해" | 분양 연도 → 분양한 해 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 37 | C03 표 열: 분양가(84㎡) (`chart.col.salePrice`) | Market · 펼친 모습 C03 표 "분양가 (84㎡)" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 38 | C03 표 열: 하단 (`chart.col.low`) | Market · 펼친 모습 C03 표 "실거래 가장 낮은" | 하단 → 실거래 가장 낮은 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 39 | C03 표 열: 중앙값 (`chart.col.median`) | Market · 펼친 모습 C03 표 "중간" | 중앙값 → 중간 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 40 | C03 표 열: 상단 (`chart.col.high`) | Market · 펼친 모습 C03 표 "가장 높은" | 상단 → 가장 높은 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 41 | C03 표 열: 고점 (`chart.col.peak`) | Market · 펼친 모습 C03 표 "고점" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 42 | C03 표 열: 연율 (`chart.col.annualized`, pct) | Market · 펼친 모습 C03 표 "한 해 평균 변화" ("+7.0% 추정") | 연율 → 한 해 평균 변화 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 43 | C03 표 열: 거래 기간 (`chart.col.window`) | Market · 펼친 모습 C03 표 "거래 기간" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C03 N-M4 표·축·툴팁 … |
+| 44 | 표 캡션 (`table.caption` "{title} 데이터", sr-only) | Market · 펼친 모습 C03 표 caption "121줄 중 5줄 · 84㎡ 기준 · 단위 원" | 보이는 캡션으로 | 있음 | charts.r11 › ChartFrame 표로 보기(캡션 "{제목} 데이터") |
+| 45 | 표 Fact 셀 → 라벨·출처 창 (`FactCell`, 빈 칸 `EmptyState inline`) | Market · 표 셀 "추정" 배지 + 맨 아래 "밑줄 점선 숫자를 누르면 출처가 열려요" | — | 있음 | ChartGallery.test › 표로 보기 → Fact 셀 클릭이 출처 패널로 · e2e charts-gallery › 표로 보기: … Fact 셀 → 출처 패널 |
+| 46 | 표가 비었을 때 (`DataTableToggle` · `empty.noData` "데이터 없음") | — | — | 있음(고침 MK-10 — 펼친 모습 "표로 보기 · 줄이 하나도 없을 때" "데이터 없음") | charts.r11 › ChartFrame 표로 보기(데이터 없음 한 줄) |
 | 47 | 벤치마크 표본 목록 ul aria-label (`page.G6.flags` "벤치마크 표본") | Market · C03 아래 "생활권마다 비교한 단지 수 (표본)" | 벤치마크 표본 → 생활권마다 비교한 단지 수 (표본) | 있음 |
 | 48 | 표본 배지 (`page.G6.flag` "{name}: 표본 {n}", 표본 < 3 이면 흐리게) | Market · 표본 목록 "연수구 10곳" · "영종구 2곳뿐 추정" | 표본 n → n곳 | 있음 |
 | 49 | 최근 분양 사례 없음 (`page.G6.noRecentSale` "최근 분양 사례 없음") | Market · 표본 목록 "· 최근 분양 사례 없음" | — | 있음 |
@@ -66,49 +66,49 @@
 
 ## 입주 물량 (C04)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 51 | C04 제목 (`chart.C04.title` "입주 물량") | Market · "언제 입주가 몰리나요?" "(공식 이름: 입주 물량)" | — | 있음 |
-| 52 | C04 부제 (`chart.C04.label` "추정 집계") | Market · C04 "추정 (입주 예정 단지 집계)" | — | 있음 |
-| 53 | C04 라벨 배지(units Fact 라벨) | Market · C04 "추정" 배지 | — | 있음 |
-| 54 | C04 연도별 생활권 쌓은 막대(stack, 색 순서) | Market · C04 막대 7개(2024~2030) 생활권별 색 | — | 있음 |
-| 55 | C04 범례 = 생활권 계열 이름 (서버 `living_area_name` → `living_areas` 폴백) | Market · C04 범례 "연수구 · 검단구 · 미추홀구 · 영종구 · 계양구 · 나머지 5곳 (…)" | 6위 이하는 "나머지 n곳"으로 묶음 | 있음 |
-| 56 | C04 생활권 모름 계열 (`empty.unknown` "확인 불가") | — | — | 있음(고침 MK-5 — 범례 "확인 불가 (생활권을 모르는 입주 물량)" + 안내) |
-| 57 | C04 x축 연도(끊김 없이 채움) | Market · C04 "2024 … 2030" | — | 있음 |
-| 58 | C04 y축 이름 "추정 집계" + 개수 눈금 | Market · C04 y축 "세대 16,000 … 0" | 축 이름 추정 집계 → 세대 | 있음 |
-| 59 | C04 판정 단지 입주 핀(markPoint, 같은 해는 핀 하나, 라벨 "이름\nYYYY-MM") (`chart.C04.marker` "판정 단지 입주") | Market · C04 핀 + 범례 "점수 매긴 단지 입주" | 판정 단지 입주 → 점수 매긴 단지 입주 | 있음 |
-| 60 | C04 같은 해 여러 단지 핀 라벨 (`chart.C04.markerMore` "{name} 외 {n}") | Market · C04 2028 핀 "엘리프 검단 포레듀 외 3곳" | — | 있음 |
-| 61 | C04 툴팁: "연도 · 추정 집계", 계열별 세대, 그 해 판정 단지 입주 목록 | Market · C04 "막대에 마우스를 올리면 · 2026년 · 추정 집계 …" + "핀에 마우스를 올리면 · 2028년 …" | — | 있음(고침 MK-4 — 해마다 한 말풍선: 생활권별 세대 + 점수 매긴 단지 입주 줄) |
-| 62 | C04 aria-label = 제목 | Market · C04 role=img aria-label "연도별 입주 물량. 2024년 2,112 …세대(추정)." | 설명형으로 | 있음(고침 MK-3 — 설명에서 화면이 더한 연도 합계를 뺌, 막대 위 합계 숫자도 뺌) |
-| 63 | C04 표로 보기 | Market · C04 "표로 보기" + 펼친 모습 "입주 물량 · 표로 보기 [표 닫기]" | — | 있음 |
-| 64 | C04 표 열: 연도 (`chart.col.year`) | Market · 펼친 모습 C04 표 "연도" | — | 있음 |
-| 65 | C04 표 열: 생활권 (`chart.col.livingArea`) | Market · 펼친 모습 C04 표 "생활권" | — | 있음 |
-| 66 | C04 표 열: 세대 (`chart.col.units`, households) | Market · 펼친 모습 C04 표 "세대" | — | 있음 |
-| 67 | C04 표 열: 이름(단지 목록) (`chart.col.name`) | Market · 펼친 모습 C04 표 "단지" | 이름 → 단지 | 있음 |
-| 68 | C04 빈 상태 (`chart.C04.empty` "입주 물량 없음") | Market · 펼친 모습 "'입주 물량 자료 없음'" | — | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 51 | C04 제목 (`chart.C04.title` "입주 물량") | Market · "언제 입주가 몰리나요?" "(공식 이름: 입주 물량)" | — | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C04 normal |
+| 52 | C04 부제 (`chart.C04.label` "추정 집계") | Market · C04 "추정 (입주 예정 단지 집계)" | — | 있음 | charts.contract › C04 라벨 "추정 집계", 0개 → "입주 물량 없음" |
+| 53 | C04 라벨 배지(units Fact 라벨) | Market · C04 "추정" 배지 | — | 있음 | e2e charts-gallery › C04 normal(라벨 배지) |
+| 54 | C04 연도별 생활권 쌓은 막대(stack, 색 순서) | Market · C04 막대 7개(2024~2030) 생활권별 색 | — | 있음 | charts.contract › C04 연도 x, 생활권 stack(이름), 판정 단지 입주 markPoint · charts.r11 › C04 나머지 |
+| 55 | C04 범례 = 생활권 계열 이름 (서버 `living_area_name` → `living_areas` 폴백) | Market · C04 범례 "연수구 · 검단구 · 미추홀구 · 영종구 · 계양구 · 나머지 5곳 (…)" | 6위 이하는 "나머지 n곳"으로 묶음 | 있음 | charts.r11 › C04 범례(위) · charts.r11 › C04 생활권 묶기 · e2e charts-gallery › R11 C04 범례는 차트 위 · pages/wiring20.test(F6 C04 계열 이름) |
+| 56 | C04 생활권 모름 계열 (`empty.unknown` "확인 불가") | — | — | 있음(고침 MK-5 — 범례 "확인 불가 (생활권을 모르는 입주 물량)" + 안내) | charts.r11 › C04 나머지(확인 불가 계열) · charts.r11 › C04 표 · e2e charts-gallery › R11 C04 범례는 차트 위 |
+| 57 | C04 x축 연도(끊김 없이 채움) | Market · C04 "2024 … 2030" | — | 있음 | charts.contract › C04 연도 x(끊김 없이) |
+| 58 | C04 y축 이름 "추정 집계" + 개수 눈금 | Market · C04 y축 "세대 16,000 … 0" | 축 이름 추정 집계 → 세대 | 있음 | charts.contract › C04 라벨 "추정 집계"(축 이름 세대) · charts.r11 › 축 눈금 |
+| 59 | C04 판정 단지 입주 핀(markPoint, 같은 해는 핀 하나, 라벨 "이름\nYYYY-MM") (`chart.C04.marker` "판정 단지 입주") | Market · C04 핀 + 범례 "점수 매긴 단지 입주" | 판정 단지 입주 → 점수 매긴 단지 입주 | 있음 | charts.contract › C04 연도 x, … 판정 단지 입주 markPoint(같은 해 핀 하나) |
+| 60 | C04 같은 해 여러 단지 핀 라벨 (`chart.C04.markerMore` "{name} 외 {n}") | Market · C04 2028 핀 "엘리프 검단 포레듀 외 3곳" | — | 있음 | charts.contract › C04 연도 x, … 판정 단지 입주 markPoint(같은 해 핀 하나) |
+| 61 | C04 툴팁: "연도 · 추정 집계", 계열별 세대, 그 해 판정 단지 입주 목록 | Market · C04 "막대에 마우스를 올리면 · 2026년 · 추정 집계 …" + "핀에 마우스를 올리면 · 2028년 …" | — | 있음(고침 MK-4 — 해마다 한 말풍선: 생활권별 세대 + 점수 매긴 단지 입주 줄) | charts.r11 › C04 툴팁 · charts.contract › C04 라벨 "추정 집계"(말풍선 머리) |
+| 62 | C04 aria-label = 제목 | Market · C04 role=img aria-label "연도별 입주 물량. 2024년 2,112 …세대(추정)." | 설명형으로 | 있음(고침 MK-3 — 설명에서 화면이 더한 연도 합계를 뺌, 막대 위 합계 숫자도 뺌) | charts.r11 › 차트 이름(aria-label) = 제목 |
+| 63 | C04 표로 보기 | Market · C04 "표로 보기" + 펼친 모습 "입주 물량 · 표로 보기 [표 닫기]" | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 64 | C04 표 열: 연도 (`chart.col.year`) | Market · 펼친 모습 C04 표 "연도" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.r11 › C04 표 |
+| 65 | C04 표 열: 생활권 (`chart.col.livingArea`) | Market · 펼친 모습 C04 표 "생활권" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.r11 › C04 표 |
+| 66 | C04 표 열: 세대 (`chart.col.units`, households) | Market · 펼친 모습 C04 표 "세대" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.r11 › C04 표 |
+| 67 | C04 표 열: 이름(단지 목록) (`chart.col.name`) | Market · 펼친 모습 C04 표 "단지" | 이름 → 단지 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.r11 › C04 표 |
+| 68 | C04 빈 상태 (`chart.C04.empty` "입주 물량 없음") | Market · 펼친 모습 "'입주 물량 자료 없음'" | — | 있음 | charts.contract › C04 0개 → "입주 물량 없음" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
 
 ## 미분양 추이 (C05)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 69 | C05 제목 (`chart.C05.title` "미분양 추이") | Market · "안 팔린 집은 늘고 있나요?" "(공식 이름: 미분양 추이)" | — | 있음 |
-| 70 | C05 부제 (`chart.C05.basis` "월말 기준" / `basisScope` "월말 기준 · {scope}") | Market · C05 "월말 기준 · 인천 부평구" | — | 있음 |
-| 71 | C05 라벨 배지 | Market · C05 출처 줄 "확인됨" | — | 있음 |
-| 72 | C05 범위 자동 선택(값 있는 달이 가장 많은 범위, `selectScope`) | Market · C05 select 기본값 "부평구 (자료가 가장 긴 구)" | 고를 수 있는 select로 바뀜(새로 더한 것 N7) | 있음 |
-| 73 | C05 최근 24개월만 그림 (`C05_DEFAULT_MONTHS`) | — | — | 문구로만(고침 MK-6 — "가장 최근 24개월까지만 그려요" 안내) |
-| 74 | C05 월 축 끊김 없이, 빈 달은 선을 끊음 (`connectNulls: false`) | Market · C05 "(자료가 빈 달은 '확인 불가', 선이 끊겨요)" + 펼친 모습 "자료가 빈 달은 선을 끊고 '확인 불가'로 적어요." | — | 있음 |
-| 75 | C05 앞뒤가 빈 외톨이 달도 점으로 표시 (`showAllSymbol`) | — | — | 문구로만(고침 MK-6 — "혼자 남은 달도 점으로 보여요" 안내) |
-| 76 | C05 합계 실선 원 마커 (`chart.C05.total` "합계") | Market · C05 범례 "전체 안 팔린 집 (합계)" | 합계 → 전체 안 팔린 집 (합계) | 있음 |
-| 77 | C05 준공 후 점선 네모 마커 (`chart.C05.postCompletion` "준공 후") — 색 아닌 선 모양 구분 | Market · C05 범례 "다 지은 뒤에도 안 팔린 집 (준공 후)" | 준공 후 → 다 지은 뒤에도 안 팔린 집 (준공 후) | 있음 |
-| 78 | C05 y축 0부터, 개수 눈금 | Market · C05 "120 80 40 0" | — | 있음 |
-| 79 | C05 x축 월 | Market · C05 "2025.10 … 2026.8" | — | 있음 |
-| 80 | C05 툴팁(값 개수 포맷, 없으면 `empty.unknown`) | Market · C05 "점에 마우스를 올리면 · 2025-12 · 합계 103세대 · 준공 후 26세대" | — | 있음(고침 MK-7 — 말풍선 2개: 값 있는 달 · 빈 달 "확인 불가") |
-| 81 | C05 aria-label = 제목 | Market · C05 role=img aria-label "인천 부평구 미분양: 2025년 10월 32세대에서 …" | 설명형으로 | 있음 |
-| 82 | C05 표로 보기 | Market · C05 "표로 보기" + 펼친 모습 "안 팔린 집 · 표로 보기 (부평구) [표 닫기]" | — | 있음 |
-| 83 | C05 표 열: 월 (`chart.col.month`) | Market · 펼친 모습 C05 표 "월" | — | 있음 |
-| 84 | C05 표 열: 합계 | Market · 펼친 모습 C05 표 "합계" | — | 있음 |
-| 85 | C05 표 열: 준공 후 | Market · 펼친 모습 C05 표 "다 지은 뒤 (준공 후)" | — | 있음 |
-| 86 | C05 빈 상태 (`chart.C05.empty` "미분양 자료 없음") | Market · 펼친 모습 "'미분양 자료 없음'" | — | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 69 | C05 제목 (`chart.C05.title` "미분양 추이") | Market · "안 팔린 집은 늘고 있나요?" "(공식 이름: 미분양 추이)" | — | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C05 normal |
+| 70 | C05 부제 (`chart.C05.basis` "월말 기준" / `basisScope` "월말 기준 · {scope}") | Market · C05 "월말 기준 · 인천 부평구" | — | 있음 | charts.contract › C05 범위(scope)가 여럿이면 … 부제에 범위명 |
+| 71 | C05 라벨 배지 | Market · C05 출처 줄 "확인됨" | — | 있음 | e2e charts-gallery › C05 normal(라벨 배지) |
+| 72 | C05 범위 자동 선택(값 있는 달이 가장 많은 범위, `selectScope`) | Market · C05 select 기본값 "부평구 (자료가 가장 긴 구)" | 고를 수 있는 select로 바뀜(새로 더한 것 N7) | 있음 | charts.contract › C05 범위(scope)가 여럿이면 자료가 가장 많은 범위 하나 |
+| 73 | C05 최근 24개월만 그림 (`C05_DEFAULT_MONTHS`) | — | — | 문구로만(고침 MK-6 — "가장 최근 24개월까지만 그려요" 안내) | charts.contract › C05 결측 월은 null로 남긴다(월 축은 끊김 없음), 최근 24개월 |
+| 74 | C05 월 축 끊김 없이, 빈 달은 선을 끊음 (`connectNulls: false`) | Market · C05 "(자료가 빈 달은 '확인 불가', 선이 끊겨요)" + 펼친 모습 "자료가 빈 달은 선을 끊고 '확인 불가'로 적어요." | — | 있음 | charts.contract › C05 결측 월은 null로 남긴다 |
+| 75 | C05 앞뒤가 빈 외톨이 달도 점으로 표시 (`showAllSymbol`) | — | — | 문구로만(고침 MK-6 — "혼자 남은 달도 점으로 보여요" 안내) | e2e charts-gallery › C05 special(외톨이 달 점) |
+| 76 | C05 합계 실선 원 마커 (`chart.C05.total` "합계") | Market · C05 범례 "전체 안 팔린 집 (합계)" | 합계 → 전체 안 팔린 집 (합계) | 있음 | charts.r11 › C05 범례 |
+| 77 | C05 준공 후 점선 네모 마커 (`chart.C05.postCompletion` "준공 후") — 색 아닌 선 모양 구분 | Market · C05 범례 "다 지은 뒤에도 안 팔린 집 (준공 후)" | 준공 후 → 다 지은 뒤에도 안 팔린 집 (준공 후) | 있음 | charts.r11 › C05 범례 |
+| 78 | C05 y축 0부터, 개수 눈금 | Market · C05 "120 80 40 0" | — | 있음 | charts.r11 › C05 툴팁(축 이름 세대) · charts.r11 › 축 눈금 |
+| 79 | C05 x축 월 | Market · C05 "2025.10 … 2026.8" | — | 있음 | charts.contract › C05 결측 월은 null로 남긴다(월 축은 끊김 없음), 최근 24개월 |
+| 80 | C05 툴팁(값 개수 포맷, 없으면 `empty.unknown`) | Market · C05 "점에 마우스를 올리면 · 2025-12 · 합계 103세대 · 준공 후 26세대" | — | 있음(고침 MK-7 — 말풍선 2개: 값 있는 달 · 빈 달 "확인 불가") | charts.r11 › C05 툴팁 |
+| 81 | C05 aria-label = 제목 | Market · C05 role=img aria-label "인천 부평구 미분양: 2025년 10월 32세대에서 …" | 설명형으로 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 |
+| 82 | C05 표로 보기 | Market · C05 "표로 보기" + 펼친 모습 "안 팔린 집 · 표로 보기 (부평구) [표 닫기]" | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 83 | C05 표 열: 월 (`chart.col.month`) | Market · 펼친 모습 C05 표 "월" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 84 | C05 표 열: 합계 | Market · 펼친 모습 C05 표 "합계" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 85 | C05 표 열: 준공 후 | Market · 펼친 모습 C05 표 "다 지은 뒤 (준공 후)" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 86 | C05 빈 상태 (`chart.C05.empty` "미분양 자료 없음") | Market · 펼친 모습 "'미분양 자료 없음'" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
 
 ## 규제 요약 (RegulationCard)
 
@@ -124,30 +124,30 @@
 
 ## 개발 소식 단계 (C09)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 94 | C09 제목 (`chart.C09.title` "호재 단계") | Market · "개발 소식은 어디까지 왔나요?" "(공식 이름: 호재 단계)" | 호재 → 개발 소식 | 있음 |
-| 95 | C09 라벨 배지(stage_prob 라벨) | Market · C09 "단계 · 확신 정도 모두 판정기 추정" | — | 있음 |
-| 96 | 단계 보드 5열 고정 순서 + 단계 배지 (`C09_STAGES`, `chart.C09.stage.*` 확정·계획·추진·언론·미확정) | Market · C09 "1 확정 0건 · 2 계획 · 3 추진 중 · 4 언론 보도만 · 5 확인 안 됨 (미확정)" | 추진 → 추진 중, 언론 → 언론 보도만, 미확정 → 확인 안 됨 | 있음 |
-| 97 | 언론·미확정 열 회색 (`C09_GRAYED`) | Market · C09 "회색 단계(언론 보도만 · 확인 안 됨)는 아직 공식 계획으로 확인되지 않은 소식이에요" | — | 있음 |
-| 98 | 항목 이름 | Market · C09 "확인 안 됨 · 5건" 목록 이름 | — | 있음 |
-| 99 | 항목 종류 (`c.kind`) | Market · C09 항목 "개발" 등 | — | 있음 |
-| 100 | 항목 예상 시기 FactCell(ym, 없으면 사유) | Market · C09 항목 "예상 시기 확인 불가(예정 시기 미기재)" | — | 있음 |
-| 101 | 위치 미확정 표시 (`chart.C09.noLink` "위치 미확정 · 단지 연결 없음") | Market · C09 항목 "위치 확인 전 · 단지와 아직 연결 안 됨" | — | 있음 |
-| 102 | 보드 밖 '호재 아님' 건수 (`chart.C09.excluded` "호재 아님(판정 제외) {n}건 — 보드에 넣지 않음") | Market · C09 출처 줄 "'호재 아님'으로 빠진 소식 0건" + 펼친 모습 "'호재 아님'(판정 제외) [n]건 — 단계 보드에 넣지 않았어요" | — | 있음 |
-| 103 | 확정 호재 타임라인(확정 + 예정 연월 있는 것만, 날짜순, time 축) (`chart.C09.timeline` "확정 호재 타임라인") | Market · C09 "확정된 소식 일정표" + 펼친 모습 "확정된 소식이 있을 때 · 일정표" | 확정 호재 타임라인 → 확정된 소식 일정표 | 있음 |
-| 104 | 타임라인 4단 엇갈림 + 겹치는 이름 숨김(hideOverlap) | Market · 펼친 모습 "이름이 겹치면 높이를 엇갈려 놓고, 다 못 보이면 표에 모두 있어요" | — | 있음 |
-| 105 | 타임라인 툴팁(이름·종류·연월·메모) | Market · 펼친 모습 "점에 마우스를 올리면: [소식 이름] · [종류] · [YYYY-MM] · [메모]" | — | 있음(고침 MK-14 — 일정표 말풍선) |
-| 106 | 타임라인 항목 없으면 그리지 않음 | Market · C09 "확정 단계이면서 예상 시기가 있는 소식이 아직 없어 비어 있어요" | 숨김 → 빈 안내 문구 | 있음 |
-| 107 | 작게(compact) 모드 — 보드만, 타임라인 숨김 (G3에서 사용) | Market · 펼친 모습 "상세 화면에 들어가는 작은 보드는 일정표 없이 단계 칸만 보여요" (그림은 Detail 보드) | — | 다른 보드(Detail) |
-| 108 | C09 표로 보기 | Market · C09 "표로 보기" + 펼친 모습 "개발 소식 단계 · 표로 보기 [표 닫기]" | — | 있음 |
-| 109 | C09 표 열: 이름 (`chart.col.name`) | Market · 펼친 모습 C09 표 "이름" | — | 있음 |
-| 110 | C09 표 열: 구분 (`chart.col.kind`) | Market · 펼친 모습 C09 표 "종류" | 구분 → 종류 | 있음 |
-| 111 | C09 표 열: 단계 (`chart.col.stage`) | Market · 펼친 모습 C09 표 "단계" | — | 있음 |
-| 112 | C09 표 열: 확률 (`chart.col.prob`, prob) | Market · 펼친 모습 C09 표 "판정기 확신" ("53% 추정") | 확률 → 판정기 확신 | 있음 |
-| 113 | C09 표 열: 예정 (`chart.col.expected`, ym Fact) | Market · 펼친 모습 C09 표 "예상 시기" | 예정 → 예상 시기 | 있음 |
-| 114 | C09 표 열: 위치 확정 (`chart.col.location`, 값 `chart.yes` "예" / `chart.C09.noLink`) | Market · 펼친 모습 C09 표 "위치 확인" (값 "위치 미확정 · 단지 연결 없음"만 그림, "예"는 실데이터 0건) | 위치 확정 → 위치 확인 | 있음 |
-| 115 | C09 빈 상태 (`chart.C09.empty` "호재 없음") | Market · 펼친 모습 "'개발 소식 없음'" | — | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 94 | C09 제목 (`chart.C09.title` "호재 단계") | Market · "개발 소식은 어디까지 왔나요?" "(공식 이름: 호재 단계)" | 호재 → 개발 소식 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C09 normal |
+| 95 | C09 라벨 배지(stage_prob 라벨) | Market · C09 "단계 · 확신 정도 모두 판정기 추정" | — | 있음 | e2e charts-gallery › C09 normal(라벨 배지) |
+| 96 | 단계 보드 5열 고정 순서 + 단계 배지 (`C09_STAGES`, `chart.C09.stage.*` 확정·계획·추진·언론·미확정) | Market · C09 "1 확정 0건 · 2 계획 · 3 추진 중 · 4 언론 보도만 · 5 확인 안 됨 (미확정)" | 추진 → 추진 중, 언론 → 언론 보도만, 미확정 → 확인 안 됨 | 있음 | charts.contract › C09 보드 5열 묶음 + 언론·미확정 회색 + 위치 미확정 표시 · charts.r11 › C09 쉬운 단계 이름 · charts.r11 › C09 단계 보드 |
+| 97 | 언론·미확정 열 회색 (`C09_GRAYED`) | Market · C09 "회색 단계(언론 보도만 · 확인 안 됨)는 아직 공식 계획으로 확인되지 않은 소식이에요" | — | 있음 | charts.contract › C09 보드 5열 묶음 + 언론·미확정 회색 · e2e charts-gallery › C09 normal |
+| 98 | 항목 이름 | Market · C09 "확인 안 됨 · 5건" 목록 이름 | — | 있음 | charts.r11 › C09 단계 보드 · charts.contract › C09 보드 5열 …(위치 미확정) · e2e charts-gallery › C09 special |
+| 99 | 항목 종류 (`c.kind`) | Market · C09 항목 "개발" 등 | — | 있음 | charts.r11 › C09 단계 보드 · charts.contract › C09 보드 5열 …(위치 미확정) · e2e charts-gallery › C09 special |
+| 100 | 항목 예상 시기 FactCell(ym, 없으면 사유) | Market · C09 항목 "예상 시기 확인 불가(예정 시기 미기재)" | — | 있음 | charts.r11 › C09 단계 보드 · charts.contract › C09 보드 5열 …(위치 미확정) · e2e charts-gallery › C09 special |
+| 101 | 위치 미확정 표시 (`chart.C09.noLink` "위치 미확정 · 단지 연결 없음") | Market · C09 항목 "위치 확인 전 · 단지와 아직 연결 안 됨" | — | 있음 | charts.r11 › C09 단계 보드 · charts.contract › C09 보드 5열 …(위치 미확정) · e2e charts-gallery › C09 special |
+| 102 | 보드 밖 '호재 아님' 건수 (`chart.C09.excluded` "호재 아님(판정 제외) {n}건 — 보드에 넣지 않음") | Market · C09 출처 줄 "'호재 아님'으로 빠진 소식 0건" + 펼친 모습 "'호재 아님'(판정 제외) [n]건 — 단계 보드에 넣지 않았어요" | — | 있음 | charts.contract › C09 계약 .8 '호재 아님' 단계는 보드에 넣지 않고 따로 센다 |
+| 103 | 확정 호재 타임라인(확정 + 예정 연월 있는 것만, 날짜순, time 축) (`chart.C09.timeline` "확정 호재 타임라인") | Market · C09 "확정된 소식 일정표" + 펼친 모습 "확정된 소식이 있을 때 · 일정표" | 확정 호재 타임라인 → 확정된 소식 일정표 | 있음 | charts.contract › C09 타임라인은 확정 + 예정 연월 있는 것만 |
+| 104 | 타임라인 4단 엇갈림 + 겹치는 이름 숨김(hideOverlap) | Market · 펼친 모습 "이름이 겹치면 높이를 엇갈려 놓고, 다 못 보이면 표에 모두 있어요" | — | 있음 | charts.contract › C09 타임라인은 확정 + 예정 연월 있는 것만(4단 엇갈림) |
+| 105 | 타임라인 툴팁(이름·종류·연월·메모) | Market · 펼친 모습 "점에 마우스를 올리면: [소식 이름] · [종류] · [YYYY-MM] · [메모]" | — | 있음(고침 MK-14 — 일정표 말풍선) | e2e charts-gallery › C09 normal(일정표) |
+| 106 | 타임라인 항목 없으면 그리지 않음 | Market · C09 "확정 단계이면서 예상 시기가 있는 소식이 아직 없어 비어 있어요" | 숨김 → 빈 안내 문구 | 있음 | charts.r11 › C09 일정표 비었을 때 |
+| 107 | 작게(compact) 모드 — 보드만, 타임라인 숨김 (G3에서 사용) | Market · 펼친 모습 "상세 화면에 들어가는 작은 보드는 일정표 없이 단계 칸만 보여요" (그림은 Detail 보드) | — | 다른 보드(Detail) | charts.r11 › C09 일정표 비었을 때(compact는 없음) |
+| 108 | C09 표로 보기 | Market · C09 "표로 보기" + 펼친 모습 "개발 소식 단계 · 표로 보기 [표 닫기]" | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 109 | C09 표 열: 이름 (`chart.col.name`) | Market · 펼친 모습 C09 표 "이름" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 110 | C09 표 열: 구분 (`chart.col.kind`) | Market · 펼친 모습 C09 표 "종류" | 구분 → 종류 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 111 | C09 표 열: 단계 (`chart.col.stage`) | Market · 펼친 모습 C09 표 "단계" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 112 | C09 표 열: 확률 (`chart.col.prob`, prob) | Market · 펼친 모습 C09 표 "판정기 확신" ("53% 추정") | 확률 → 판정기 확신 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 113 | C09 표 열: 예정 (`chart.col.expected`, ym Fact) | Market · 펼친 모습 C09 표 "예상 시기" | 예정 → 예상 시기 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 114 | C09 표 열: 위치 확정 (`chart.col.location`, 값 `chart.yes` "예" / `chart.C09.noLink`) | Market · 펼친 모습 C09 표 "위치 확인" (값 "위치 미확정 · 단지 연결 없음"만 그림, "예"는 실데이터 0건) | 위치 확정 → 위치 확인 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 115 | C09 빈 상태 (`chart.C09.empty` "호재 없음") | Market · 펼친 모습 "'개발 소식 없음'" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
 
 ## 생활권별 실거래 시세 (LivingAreaCompare)
 

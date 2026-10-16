@@ -2,8 +2,8 @@
 
 입력: `frontend/src/pages/compare/index.tsx`, `pages/_shared/index.tsx`, `charts/C01·C02·C06·C07·C10`, `charts/ChartFrame.tsx`, `components/*Badge·FactCell·Term·DataTableToggle`, `layout/PageShell.tsx`, `i18n/ko.json` · 보드: `boards/Compare.dc.html` ("펼친 모습 · 다른 상태" A~L 포함)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 1 | [틀] 화면 제목 h1 (`pages/compare/index.tsx` PageShell · `page.G4.title` "비교") | Compare · 머리 h1 "세 단지를 나란히 놓고 볼게요" (위치 줄 "단지 찾기 › 비교하기") | 비교 → 세 단지를 나란히 놓고 볼게요 | 있음 |
 | 2 | [틀] 출처 범례 한 줄 + "라벨 뜻" 버튼 (`layout/PageShell.tsx` legend · `components/ProvenanceLegend.tsx` · `label.legend` "밑줄 친 숫자를 누르면 출처·확인일이 열립니다" · `label.legendHelp`) | Compare · 머리 오른쪽 "밑줄 친 숫자를 누르면 출처·확인일이 열려요 · [?] 라벨 뜻" (펼친 라벨 목록은 Shell · 3) | 라벨 뜻 → [?] 라벨 뜻 | 있음 |
 | 3 | [틀] 요약 줄 (`pages/compare/index.tsx` `page.G4.summary` "{n}곳 · 상황: {name} · 상대 비교 · 투자 권유 아님") | Compare · 머리 "3곳 · 상황: 기본 · 상대 비교 · 투자 권유 아님" | — | 있음 |
@@ -50,91 +50,91 @@
 | 44 | [점수·판정기] 확률 칸 선택 배지 (`chart.chosen` "선택") | Compare · "판정기 선택" | 선택 → 판정기 선택 | 있음 |
 | 45 | [점수·판정기] 확률 칸 동률 배지(확정 봉투일 때만) | Compare · 펼친 모습 G "'판정기가 고를 확률' 칸: [n]% · 판정기 선택 · 동률 · 근거와 달라요" (동률은 확정일 때만) | — | 있음(고침 CP-18) |
 | 46 | [점수·판정기] 확률 칸 증거와 상이 배지 (`components/MismatchBadge.tsx` · `badge.mismatch` "증거와 상이") | Compare · 같은 G 줄 [근거와 달라요] | 증거와 상이 → 근거와 달라요 | 있음(고침 CP-18) |
-| 47 | [C02 가격 갭] 구역 제목 (`pages/compare/index.tsx` `page.G4.gaps` "가격 갭 나란히") | Compare · "가격 갭 나란히" / h2 "주변 아파트 시세보다 높은가요, 낮은가요?" | — | 있음 |
-| 48 | [C02 가격 갭] 단지마다 차트 1장, 제목 = 단지 이름 (`charts/C02` title) | Compare · 카드 3장 h3 단지 이름 | — | 있음 |
-| 49 | [C02 가격 갭] 그림: 현재 구매가 범위(강조색) + 비교 단지 실거래 점+위스커 (`charts/C02` buildOption) | Compare · 가로 띠 — 이 단지 분양가 띠 + 주변 단지별 거래 띠·중간값 눈금 | 점+위스커 → 가로 범위 띠 | 있음 |
-| 50 | [C02 가격 갭] 값 축 억 단위 (formatEok) | Compare · 띠 아래 "3억 5억 7억 9억" | — | 있음 |
-| 51 | [C02 가격 갭] 범주 축 비교 단지 이름 + 신축/대체 배지 (`charts/C02` compBadge) | Compare · 가격 갭 "'주변 거래' 줄을 단지별로 펼친 모습" — 줄 이름 = 비교 단지 이름 + 신축(연도)/대체(연도) 배지 | — | 있음(고침 CP-3) |
-| 52 | [C02 가격 갭] 범례 (`chart.C02.range` "실거래 범위" · `chart.C02.adjusted` "연식 보정 중앙값") | Compare · 가격 갭 카드 범례 "분양가 최저~최고 · 단지별 거래 중간값 · 연식 보정 중앙값(대체 단지만)" | 범례 항목이 바뀜 | 있음(고침 CP-2) |
-| 53 | [C02 가격 갭] 연식 보정 중앙값 점(점선 빈 점) (`charts/C02` series adjusted) | Compare · 같은 펼친 모습 — 점선 빈 점 = 연식 보정 중앙값 + 범례 | — | 있음(고침 CP-3) |
-| 54 | [C02 가격 갭] 툴팁 하단~상단·중앙값·미보정/보정 중앙값 (`chart.C02.unadjusted`) | Compare · 같은 펼친 모습 — 툴팁 예시(이름·배지 / 하단~상단 / 미보정 중앙값 / 보정 중앙값 있으면 한 줄) | — | 있음(고침 CP-3) |
-| 55 | [C02 가격 갭] 라벨 배지 (`charts/C02` collectLabels) | Compare · 카드 머리 "확인됨" | — | 있음 |
-| 56 | [C02 가격 갭] 대체·보정 배지 "추정(대체·보정 c=…)" (`charts/C02` adjustedBadges) | Compare · H "추정(대체·보정 [계수]) 거래가 3건보다 적어 다른 단지로 대신했을 때" | — | 있음 |
-| 57 | [C02 가격 갭] 빈 상태 (`chart.C02.empty` "비교군 없음({reason})") | Compare · H "비교할 거래가 없어요([사유])" | 비교군 없음 → 비교할 거래가 없어요 | 있음 |
-| 58 | [C02 가격 갭] 표로 보기 버튼 (`components/DataTableToggle.tsx` · `table.show`) | Compare · 카드마다 [표로 보기] | — | 있음 |
-| 59 | [C02 가격 갭] 표 열 이름 (`chart.col.name`) | Compare · K "이름" | — | 있음 |
-| 60 | [C02 가격 갭] 표 열 구분 신축/대체 (`chart.col.kind` · `badge.newBuild` · `badge.substitute`) | Compare · K "구분" 신축(2024) · "대체([연도])" | — | 있음 |
-| 61 | [C02 가격 갭] 표 열 하단 (`chart.col.low`) | Compare · K "하단" | — | 있음 |
-| 62 | [C02 가격 갭] 표 열 중앙값 (`chart.col.median`) | Compare · K "중앙값" | — | 있음 |
-| 63 | [C02 가격 갭] 표 열 상단 (`chart.col.high`) | Compare · K "상단" | — | 있음 |
-| 64 | [C02 가격 갭] 표 열 보정 중앙값 (`chart.col.adjusted`) | Compare · K "보정 중앙값" | — | 있음 |
-| 65 | [C02 가격 갭] 표 열 거래 기간 (`chart.col.window`) | Compare · K "기간" | 거래 기간 → 기간 | 있음 |
-| 66 | [C02 가격 갭] 표 첫 줄 현재 구매가 (`chart.C02.current`) | Compare · K "이 단지 분양가" | 현재 구매가 → 이 단지 분양가 | 있음 |
-| 67 | [C06 점수 분해] 차트 제목 (`charts/C06` · `chart.C06.title` "종합 점수 분해") | Compare · "종합 점수 분해" / h2 "종합 점수는 무엇으로 이루어졌나요?" | — | 있음 |
-| 68 | [C06 점수 분해] 부제 가중치 (`chart.C06.weights` "가중치 {weights}") | Compare · 범례마다 "{기준} 비중 {w}" | 가중치 → 비중 | 있음 |
-| 69 | [C06 점수 분해] 라벨 배지 (total 라벨) | Compare · "추정 · 6가지 중 일부가 판정기 값" | — | 있음 |
-| 70 | [C06 점수 분해] 순위 불안정 배지(차트 머리) | Compare · 종합 점수 분해 머리 "붙을 때만: 순위가 흔들려요" | — | 있음(고침 CP-4) |
-| 71 | [C06 점수 분해] 동률 배지(차트 머리) | Compare · 종합 점수 분해 머리 [동률] 배지 | — | 있음(고침 CP-4) |
-| 72 | [C06 점수 분해] 미판정 배지 + 빗금·점선 0길이 막대 + 메모 (`badge.unjudged` · `chart.C06.unjudgedNote`) | Compare · H "빗금 = 아직 판정 안 한 기준(점수 0) 미판정" | — | 있음 |
-| 73 | [C06 점수 분해] 누적 가로 막대(성분 6개 가중 기여, orientation horizontal) | Compare · 막대 3줄 × 6칸 | — | 있음 |
-| 74 | [C06 점수 분해] 범주 축 단지 이름 + 종합 점수 | Compare · 막대 왼쪽 이름·합계 | — | 있음 |
-| 75 | [C06 점수 분해] 값 축 점수 (formatScore) | Compare · "0 1 2 3 4 5점" | — | 있음 |
-| 76 | [C06 점수 분해] 범례 성분 6개 (`chart.C06.component.*`) | Compare · 범례 6개 "입주 뒤 값이 오를 가능성 … 되팔기 쉬움" | +10% 상승 가능성 → 입주 뒤 값이 오를 가능성 · 판정기 순위 → 비슷한 단지들 사이 순위 · 가격 갭 → 주변 시세와 가격 차이 · 벤치마크 → 근처 새 아파트가 입주 뒤 오른 정도 · 공급 → 같은 시기 입주 물량 · 유동성 → 되팔기 쉬움 | 있음 |
-| 77 | [C06 점수 분해] 종합 점수 내림차순 정렬 (`charts/C06` sortedRows) | Compare · 1위부터 아래로 | — | 있음 |
-| 78 | [C06 점수 분해] 툴팁 점수×가중치·기여·원값·formula_text (`chart.C06.contribution` · `chart.C06.raw` · `chart.C06.unjudgedTip`) | Compare · 종합 점수 분해 툴팁 예시 2개(점수 × 비중 · 기여 · 원값 · 계산식 / 미판정 — 최대 기여) | — | 있음(고침 CP-5) |
-| 79 | [C06 점수 분해] 빈 상태 (`chart.C06.empty` "점수 없음") | Compare · H "점수 없음" | — | 있음 |
-| 80 | [C06 점수 분해] 표로 보기 버튼 | Compare · "기준별 점수와 원래 값 표로 보기" | — | 있음 |
-| 81 | [C06 점수 분해] 표 열 순위 (`chart.col.rank`) | Compare · 펼친 표 첫 행 "순위" (1위 · 2위 동률) | — | 있음(고침 CP-6) |
-| 82 | [C06 점수 분해] 표 열 이름 (`chart.col.name`) | Compare · 펼친 표 열 머리 = 단지 이름 (행·열 뒤바뀜) | — | 있음 |
-| 83 | [C06 점수 분해] 표 열 종합 (`chart.col.total`) | Compare · 펼친 표 둘째 행 "종합 (10점 만점)" | — | 있음(고침 CP-6) |
-| 84 | [C06 점수 분해] 표 열 성분 6개 점수 | Compare · 펼친 표 행 6개(첫 행 '오를 가능성'에 목표 시점·당첨 확률 아님·보장 아님) | 성분 열 → 기준 행(원값 함께) | 있음(고침 CP-16) |
-| 85 | [C01 가격 전망] 구역 제목 (`pages/compare/index.tsx` LadderOverlay · `page.G4.ladder` "가격 전망 겹쳐 보기") | Compare · "가격 전망 겹쳐 보기" / h2 "값이 오를 가능성, 세 곳을 겹쳐 보면?" | — | 있음 |
-| 86 | [C01 가격 전망] 목표 시점 라디오 3개 role=radiogroup (`page.G3.ladder.horizons` · `chart.C01.horizon.*`) | Compare · "언제를 기준으로 볼까요? (목표 시점)" 라디오 3개 | 입주+1년 → 입주하고 1년 뒤 · 기준일+3년 → 기준일부터 3년 뒤 · 기준일+5년 → 기준일부터 5년 뒤 | 있음 |
-| 87 | [C01 가격 전망] 차트 제목 (`charts/C01` · `chart.C01.title` "상승 확률 사다리") | Compare · 구역 h2만 있고 차트 자체 제목 없음 | 상승 확률 사다리 → 값이 오를 가능성 | 있음 |
-| 88 | [C01 가격 전망] 부제 목표 시점 (`chart.C01.subtitle` "목표 시점 {target}") | Compare · 회색 상자 "목표 시점 · 단지별 2030 하반기 …" | — | 있음 |
-| 89 | [C01 가격 전망] 라벨 배지 | Compare · 범례 옆 "판정기 추정" | — | 있음 |
-| 90 | [C01 가격 전망] 겹침 그림: 단지별 기호 산점 overlay (`charts/C01` buildOption overlay) | Compare · 단지별 색 막대 묶음(4묶음 × 3단지) | 산점 → 묶음 막대 | 있음 |
-| 91 | [C01 가격 전망] 확률 축 0~1 (formatProb) | Compare · "100% 50% 0%" | — | 있음 |
-| 92 | [C01 가격 전망] 범주 축 +5% · +10% · +20% · 보합·하락 (`chart.C01.bar.*`) | Compare · "5% 넘게 오를 가능성 · 10% … · 20% … · 그대로거나 내릴 가능성" | 보합·하락 → 그대로거나 내릴 가능성 | 있음 |
-| 93 | [C01 가격 전망] 범례 단지 이름·기호 | Compare · 범례 3단지 기호(원·네모·세모) | — | 있음 |
-| 94 | [C01 가격 전망] 기준선 0.85 · 0.15 (`chart.C01.threshold.likely` · `chart.C01.threshold.unlikely`) | Compare · 점선 2개 + 설명 "위 점선 85%… 아래 점선 15%…" | — | 있음 |
-| 95 | [C01 가격 전망] 판정 문구 (`chart.C01.verdict.*` 가능성 높음·불확실·가능성 낮음) | Compare · 가격 전망 "판정기 판정(막대마다 서버 값 그대로): 중간 12개 · …" + 막대 아래 판정 | 불확실 → 중간 | 있음(고침 CP-7) |
-| 96 | [C01 가격 전망] 필요 연율 (`chart.C01.annualized` "필요 연율 {pct}") | Compare · 막대 아래 "필요 연율 연 1.3% · 1.0% · 2.0%" | — | 있음 |
-| 97 | [C01 가격 전망] 툴팁 단지·막대·확률·판정·연율 | Compare · 가격 전망 툴팁 예시(단지 / 막대 · 확률 · 판정 / 필요 연율, 미해결이면 '미해결') | — | 있음(고침 CP-8) |
-| 98 | [C01 가격 전망] 미해결이면 회색 + "미해결" 배지 (`charts/C01` unresolvedBadge · `badge.unresolved`) | Compare · 펼친 모습 H "가격 전망이 미해결인 단지" 회색 바탕 막대 + 미해결 | — | 있음(고침 CP-19) |
-| 99 | [C01 가격 전망] 빈 상태 (`chart.C01.empty` "사다리 판정 없음") | Compare · H "사다리 판정 없음" | — | 있음 |
-| 100 | [C01 가격 전망] 표로 보기 버튼 | Compare · 꼬리말 [표로 보기] | — | 있음 |
-| 101 | [C01 가격 전망] 표 열 이름 (`chart.col.name`) | Compare · I "단지 · 목표 시점" | — | 있음 |
-| 102 | [C01 가격 전망] 표 열 시점 (`chart.col.horizon`) | Compare · 펼친 모습 I "시점" 열(입주 + 1년) | — | 있음(고침 CP-20) |
-| 103 | [C01 가격 전망] 표 열 목표 시점 (`chart.col.target`) | Compare · I "단지 · 목표 시점" 칸에 합침 | — | 있음 |
-| 104 | [C01 가격 전망] 표 열 +5% (`chart.C01.bar.p5`) | Compare · I "5% 넘게" | — | 있음 |
-| 105 | [C01 가격 전망] 표 열 +10% | Compare · I "10% 넘게" | — | 있음 |
-| 106 | [C01 가격 전망] 표 열 +20% | Compare · I "20% 넘게" | — | 있음 |
-| 107 | [C01 가격 전망] 표 열 보합·하락 | Compare · I "그대로·내림" | — | 있음 |
-| 108 | [C01 가격 전망] 표 열 상태 (`chart.col.status` · `chart.status.*` 판정/미해결(검토·질문·차단·오류)) | Compare · I "판정" 열 — 값이 '중간'(판정 문구) | 상태 → 판정 (봉투 상태 대신 판정 문구) | 있음 |
+| 47 | [C02 가격 갭] 구역 제목 (`pages/compare/index.tsx` `page.G4.gaps` "가격 갭 나란히") | Compare · "가격 갭 나란히" / h2 "주변 아파트 시세보다 높은가요, 낮은가요?" | — | 있음 | 화면 몫(R11-ANALYZE) |
+| 48 | [C02 가격 갭] 단지마다 차트 1장, 제목 = 단지 이름 (`charts/C02` title) | Compare · 카드 3장 h3 단지 이름 | — | 있음 | charts.r11 › C02 제목 · charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C02 normal |
+| 49 | [C02 가격 갭] 그림: 현재 구매가 범위(강조색) + 비교 단지 실거래 점+위스커 (`charts/C02` buildOption) | Compare · 가로 띠 — 이 단지 분양가 띠 + 주변 단지별 거래 띠·중간값 눈금 | 점+위스커 → 가로 범위 띠 | 있음 | charts.contract › C02 점+위스커(custom) + 값 축 억 단위 · charts.r11 › C02 축 이름 · e2e charts-gallery › C02 normal |
+| 50 | [C02 가격 갭] 값 축 억 단위 (formatEok) | Compare · 띠 아래 "3억 5억 7억 9억" | — | 있음 | charts.contract › C02 점+위스커(custom) + 값 축 억 단위 |
+| 51 | [C02 가격 갭] 범주 축 비교 단지 이름 + 신축/대체 배지 (`charts/C02` compBadge) | Compare · 가격 갭 "'주변 거래' 줄을 단지별로 펼친 모습" — 줄 이름 = 비교 단지 이름 + 신축(연도)/대체(연도) 배지 | — | 있음(고침 CP-3) | charts.r11 › C02 축 이름 |
+| 52 | [C02 가격 갭] 범례 (`chart.C02.range` "실거래 범위" · `chart.C02.adjusted` "연식 보정 중앙값") | Compare · 가격 갭 카드 범례 "분양가 최저~최고 · 단지별 거래 중간값 · 연식 보정 중앙값(대체 단지만)" | 범례 항목이 바뀜 | 있음(고침 CP-2) | charts.r11 › C02 보정 가운데값(범례) |
+| 53 | [C02 가격 갭] 연식 보정 중앙값 점(점선 빈 점) (`charts/C02` series adjusted) | Compare · 같은 펼친 모습 — 점선 빈 점 = 연식 보정 중앙값 + 범례 | — | 있음(고침 CP-3) | charts.contract › C02 T11 대체·보정: 보정 중앙값 = 점선 테두리 점 · e2e charts-gallery › C02 special |
+| 54 | [C02 가격 갭] 툴팁 하단~상단·중앙값·미보정/보정 중앙값 (`chart.C02.unadjusted`) | Compare · 같은 펼친 모습 — 툴팁 예시(이름·배지 / 하단~상단 / 미보정 중앙값 / 보정 중앙값 있으면 한 줄) | — | 있음(고침 CP-3) | charts.r11 › C02 툴팁 |
+| 55 | [C02 가격 갭] 라벨 배지 (`charts/C02` collectLabels) | Compare · 카드 머리 "확인됨" | — | 있음 | ChartGallery.test › 정상 상태 카드는 라벨 배지 |
+| 56 | [C02 가격 갭] 대체·보정 배지 "추정(대체·보정 c=…)" (`charts/C02` adjustedBadges) | Compare · H "추정(대체·보정 [계수]) 거래가 3건보다 적어 다른 단지로 대신했을 때" | — | 있음 | charts.r11 › C02 보정 배지 |
+| 57 | [C02 가격 갭] 빈 상태 (`chart.C02.empty` "비교군 없음({reason})") | Compare · H "비교할 거래가 없어요([사유])" | 비교군 없음 → 비교할 거래가 없어요 | 있음 | charts.contract › C02 비교군 0 → "비교군 없음(사유)" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 58 | [C02 가격 갭] 표로 보기 버튼 (`components/DataTableToggle.tsx` · `table.show`) | Compare · 카드마다 [표로 보기] | — | 있음 | charts.r11 › ChartFrame 표로 보기 · ChartGallery.test › 표로 보기 → Fact 셀 클릭이 출처 패널로 · e2e charts-gallery › 표로 보기: … Fact 셀 → 출처 패널 |
+| 59 | [C02 가격 갭] 표 열 이름 (`chart.col.name`) | Compare · K "이름" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 60 | [C02 가격 갭] 표 열 구분 신축/대체 (`chart.col.kind` · `badge.newBuild` · `badge.substitute`) | Compare · K "구분" 신축(2024) · "대체([연도])" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) · charts.r11 › C02 축 이름(배지) |
+| 61 | [C02 가격 갭] 표 열 하단 (`chart.col.low`) | Compare · K "하단" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 62 | [C02 가격 갭] 표 열 중앙값 (`chart.col.median`) | Compare · K "중앙값" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 63 | [C02 가격 갭] 표 열 상단 (`chart.col.high`) | Compare · K "상단" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 64 | [C02 가격 갭] 표 열 보정 중앙값 (`chart.col.adjusted`) | Compare · K "보정 중앙값" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 65 | [C02 가격 갭] 표 열 거래 기간 (`chart.col.window`) | Compare · K "기간" | 거래 기간 → 기간 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 66 | [C02 가격 갭] 표 첫 줄 현재 구매가 (`chart.C02.current`) | Compare · K "이 단지 분양가" | 현재 구매가 → 이 단지 분양가 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 67 | [C06 점수 분해] 차트 제목 (`charts/C06` · `chart.C06.title` "종합 점수 분해") | Compare · "종합 점수 분해" / h2 "종합 점수는 무엇으로 이루어졌나요?" | — | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C06 normal |
+| 68 | [C06 점수 분해] 부제 가중치 (`chart.C06.weights` "가중치 {weights}") | Compare · 범례마다 "{기준} 비중 {w}" | 가중치 → 비중 | 있음 | charts.r11 › C06 비중 · charts.contract › C06 제목 부제 = 가중치 |
+| 69 | [C06 점수 분해] 라벨 배지 (total 라벨) | Compare · "추정 · 6가지 중 일부가 판정기 값" | — | 있음 | ChartGallery.test › 정상 상태 카드는 라벨 배지 · e2e charts-gallery › C06 normal |
+| 70 | [C06 점수 분해] 순위 불안정 배지(차트 머리) | Compare · 종합 점수 분해 머리 "붙을 때만: 순위가 흔들려요" | — | 있음(고침 CP-4) | e2e charts-gallery › C06 normal(순위 불안정 배지) |
+| 71 | [C06 점수 분해] 동률 배지(차트 머리) | Compare · 종합 점수 분해 머리 [동률] 배지 | — | 있음(고침 CP-4) | e2e charts-gallery › C06 normal(동률 배지) |
+| 72 | [C06 점수 분해] 미판정 배지 + 빗금·점선 0길이 막대 + 메모 (`badge.unjudged` · `chart.C06.unjudgedNote`) | Compare · H "빗금 = 아직 판정 안 한 기준(점수 0) 미판정" | — | 있음 | charts.contract › C06 null component → 빗금 + "미판정" · charts.contract › C06 m26 … · charts.r11 › C06 미판정 범례 · ChartGallery.test › 특수 상태 배지 |
+| 73 | [C06 점수 분해] 누적 가로 막대(성분 6개 가중 기여, orientation horizontal) | Compare · 막대 3줄 × 6칸 | — | 있음 | e2e charts-gallery › C06 special(가로) · charts.contract › C06 minor 26 |
+| 74 | [C06 점수 분해] 범주 축 단지 이름 + 종합 점수 | Compare · 막대 왼쪽 이름·합계 | — | 있음 | charts.contract › C06 stacked 6 시리즈(이름 + 종합) |
+| 75 | [C06 점수 분해] 값 축 점수 (formatScore) | Compare · "0 1 2 3 4 5점" | — | 있음 | charts.r11 › C06 값 축 |
+| 76 | [C06 점수 분해] 범례 성분 6개 (`chart.C06.component.*`) | Compare · 범례 6개 "입주 뒤 값이 오를 가능성 … 되팔기 쉬움" | +10% 상승 가능성 → 입주 뒤 값이 오를 가능성 · 판정기 순위 → 비슷한 단지들 사이 순위 · 가격 갭 → 주변 시세와 가격 차이 · 벤치마크 → 근처 새 아파트가 입주 뒤 오른 정도 · 공급 → 같은 시기 입주 물량 · 유동성 → 되팔기 쉬움 | 있음 | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 77 | [C06 점수 분해] 종합 점수 내림차순 정렬 (`charts/C06` sortedRows) | Compare · 1위부터 아래로 | — | 있음 | charts.contract › C06 stacked 6 시리즈(정렬) |
+| 78 | [C06 점수 분해] 툴팁 점수×가중치·기여·원값·formula_text (`chart.C06.contribution` · `chart.C06.raw` · `chart.C06.unjudgedTip`) | Compare · 종합 점수 분해 툴팁 예시 2개(점수 × 비중 · 기여 · 원값 · 계산식 / 미판정 — 최대 기여) | — | 있음(고침 CP-5) | charts.contract › C06 stacked 6 시리즈(툴팁 = formula_text + 원값) |
+| 79 | [C06 점수 분해] 빈 상태 (`chart.C06.empty` "점수 없음") | Compare · H "점수 없음" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 80 | [C06 점수 분해] 표로 보기 버튼 | Compare · "기준별 점수와 원래 값 표로 보기" | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 81 | [C06 점수 분해] 표 열 순위 (`chart.col.rank`) | Compare · 펼친 표 첫 행 "순위" (1위 · 2위 동률) | — | 있음(고침 CP-6) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 82 | [C06 점수 분해] 표 열 이름 (`chart.col.name`) | Compare · 펼친 표 열 머리 = 단지 이름 (행·열 뒤바뀜) | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 83 | [C06 점수 분해] 표 열 종합 (`chart.col.total`) | Compare · 펼친 표 둘째 행 "종합 (10점 만점)" | — | 있음(고침 CP-6) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 84 | [C06 점수 분해] 표 열 성분 6개 점수 | Compare · 펼친 표 행 6개(첫 행 '오를 가능성'에 목표 시점·당첨 확률 아님·보장 아님) | 성분 열 → 기준 행(원값 함께) | 있음(고침 CP-16) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 85 | [C01 가격 전망] 구역 제목 (`pages/compare/index.tsx` LadderOverlay · `page.G4.ladder` "가격 전망 겹쳐 보기") | Compare · "가격 전망 겹쳐 보기" / h2 "값이 오를 가능성, 세 곳을 겹쳐 보면?" | — | 있음 | 화면 몫(R11-ANALYZE) |
+| 86 | [C01 가격 전망] 목표 시점 라디오 3개 role=radiogroup (`page.G3.ladder.horizons` · `chart.C01.horizon.*`) | Compare · "언제를 기준으로 볼까요? (목표 시점)" 라디오 3개 | 입주+1년 → 입주하고 1년 뒤 · 기준일+3년 → 기준일부터 3년 뒤 · 기준일+5년 → 기준일부터 5년 뒤 | 있음 | 화면 몫(R11-ANALYZE) |
+| 87 | [C01 가격 전망] 차트 제목 (`charts/C01` · `chart.C01.title` "상승 확률 사다리") | Compare · 구역 h2만 있고 차트 자체 제목 없음 | 상승 확률 사다리 → 값이 오를 가능성 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C01 normal |
+| 88 | [C01 가격 전망] 부제 목표 시점 (`chart.C01.subtitle` "목표 시점 {target}") | Compare · 회색 상자 "목표 시점 · 단지별 2030 하반기 …" | — | 있음 | charts.r11 › C01 목표 시점 · charts.contract › C01 막대 라벨 = 확률 + verdict 텍스트, 부제 = 목표 시점 |
+| 89 | [C01 가격 전망] 라벨 배지 | Compare · 범례 옆 "판정기 추정" | — | 있음 | e2e charts-gallery › C01 normal · e2e charts-gallery › R11 C01 겹쳐 보기(G4) |
+| 90 | [C01 가격 전망] 겹침 그림: 단지별 기호 산점 overlay (`charts/C01` buildOption overlay) | Compare · 단지별 색 막대 묶음(4묶음 × 3단지) | 산점 → 묶음 막대 | 있음 | charts.contract › C01 G4 overlay = 단지별 계열(막대 묶음) · charts.r11 › C01 겹쳐 보기 · e2e charts-gallery › R11 C01 겹쳐 보기(G4) |
+| 91 | [C01 가격 전망] 확률 축 0~1 (formatProb) | Compare · "100% 50% 0%" | — | 있음 | charts.r11 › C01 눈금 · charts.r11 › C01 겹쳐 보기(0·25·50·75·100%) |
+| 92 | [C01 가격 전망] 범주 축 +5% · +10% · +20% · 보합·하락 (`chart.C01.bar.*`) | Compare · "5% 넘게 오를 가능성 · 10% … · 20% … · 그대로거나 내릴 가능성" | 보합·하락 → 그대로거나 내릴 가능성 | 있음 | charts.r11 › C01 쉬운 말 |
+| 93 | [C01 가격 전망] 범례 단지 이름·기호 | Compare · 범례 3단지 기호(원·네모·세모) | — | 있음 | charts.contract › C01 G4 overlay(범례 색·모양) · e2e charts-gallery › R11 C01 겹쳐 보기(G4) |
+| 94 | [C01 가격 전망] 기준선 0.85 · 0.15 (`chart.C01.threshold.likely` · `chart.C01.threshold.unlikely`) | Compare · 점선 2개 + 설명 "위 점선 85%… 아래 점선 15%…" | — | 있음 | charts.contract › C01 markLine 0.15 / 0.85, xAxis 0~1 · charts.r11 › C01 겹쳐 보기 |
+| 95 | [C01 가격 전망] 판정 문구 (`chart.C01.verdict.*` 가능성 높음·불확실·가능성 낮음) | Compare · 가격 전망 "판정기 판정(막대마다 서버 값 그대로): 중간 12개 · …" + 막대 아래 판정 | 불확실 → 중간 | 있음(고침 CP-7) | charts.contract › C01 막대 라벨 = 확률 + verdict 텍스트 |
+| 96 | [C01 가격 전망] 필요 연율 (`chart.C01.annualized` "필요 연율 {pct}") | Compare · 막대 아래 "필요 연율 연 1.3% · 1.0% · 2.0%" | — | 있음 | charts.r11 › C01 툴팁 |
+| 97 | [C01 가격 전망] 툴팁 단지·막대·확률·판정·연율 | Compare · 가격 전망 툴팁 예시(단지 / 막대 · 확률 · 판정 / 필요 연율, 미해결이면 '미해결') | — | 있음(고침 CP-8) | charts.r11 › C01 툴팁 |
+| 98 | [C01 가격 전망] 미해결이면 회색 + "미해결" 배지 (`charts/C01` unresolvedBadge · `badge.unresolved`) | Compare · 펼친 모습 H "가격 전망이 미해결인 단지" 회색 바탕 막대 + 미해결 | — | 있음(고침 CP-19) | charts.contract › C01 review 봉투 → 회색 막대 + "미해결" · ChartGallery.test › 특수 상태 배지(미해결) · e2e charts-gallery › C01 special |
+| 99 | [C01 가격 전망] 빈 상태 (`chart.C01.empty` "사다리 판정 없음") | Compare · H "사다리 판정 없음" | — | 있음 | charts.contract › C01 horizon 행 없음 → "사다리 판정 없음" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 100 | [C01 가격 전망] 표로 보기 버튼 | Compare · 꼬리말 [표로 보기] | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 101 | [C01 가격 전망] 표 열 이름 (`chart.col.name`) | Compare · I "단지 · 목표 시점" | — | 있음 | charts.r11 › C01 표 |
+| 102 | [C01 가격 전망] 표 열 시점 (`chart.col.horizon`) | Compare · 펼친 모습 I "시점" 열(입주 + 1년) | — | 있음(고침 CP-20) | charts.r11 › C01 표 |
+| 103 | [C01 가격 전망] 표 열 목표 시점 (`chart.col.target`) | Compare · I "단지 · 목표 시점" 칸에 합침 | — | 있음 | charts.r11 › C01 표 |
+| 104 | [C01 가격 전망] 표 열 +5% (`chart.C01.bar.p5`) | Compare · I "5% 넘게" | — | 있음 | charts.r11 › C01 표 |
+| 105 | [C01 가격 전망] 표 열 +10% | Compare · I "10% 넘게" | — | 있음 | charts.r11 › C01 표 |
+| 106 | [C01 가격 전망] 표 열 +20% | Compare · I "20% 넘게" | — | 있음 | charts.r11 › C01 표 |
+| 107 | [C01 가격 전망] 표 열 보합·하락 | Compare · I "그대로·내림" | — | 있음 | charts.r11 › C01 표 |
+| 108 | [C01 가격 전망] 표 열 상태 (`chart.col.status` · `chart.status.*` 판정/미해결(검토·질문·차단·오류)) | Compare · I "판정" 열 — 값이 '중간'(판정 문구) | 상태 → 판정 (봉투 상태 대신 판정 문구) | 있음 | charts.r11 › C01 표 |
 | 109 | [상황별 판정] 구역 제목 (`pages/compare/index.tsx` DecisionPanel · `page.G4.decision` "상황별 판정") | Compare · "상황별 판정" / h2 "상황이 다르면 판정기는 어디를 고르나요?" | — | 있음 |
 | 110 | [상황별 판정] 상황 라디오(판정 키가 2개 이상일 때) (`page.G4.decisionScenario` "상황 {name}") | Compare · "상황 고르기" 라디오 5개 | — | 있음 |
 | 111 | [상황별 판정] 판정 없음 (`page.G4.noDecision` "이 상황의 판정이 없습니다") | Compare · F "이 상황의 판정이 없어요." | — | 있음 |
-| 112 | [C07 판정기 확률] 차트 제목 (`charts/C07` · `chart.C07.title` "판정기 확률") | Compare · h3 "판정기가 고를 확률 · {상황}" | 판정기 확률 → 판정기가 고를 확률 | 있음 |
-| 113 | [C07 판정기 확률] 부제 신뢰도 (`chart.C07.confidence` "신뢰도 {confidence}") | Compare · "믿음 정도 0.61" | 신뢰도 → 믿음 정도 | 있음 |
-| 114 | [C07 판정기 확률] 라벨 배지 | Compare · "판정기 추정" | — | 있음 |
-| 115 | [C07 판정기 확률] 동률 배지(신뢰도 포함) (`badge.tieWithConfidence`) | Compare · D "동률(믿음 정도 0.31)" | — | 있음 |
-| 116 | [C07 판정기 확률] 증거와 상이 배지 | Compare · D "근거와 달라요" + 설명 | 증거와 상이 → 근거와 달라요 | 있음 |
-| 117 | [C07 판정기 확률] 캐시 배지 (`components/CachedBadge.tsx` · `badge.cached` "캐시") | Compare · F "이전 결과 재사용" | 캐시 → 이전 결과 재사용 | 있음 |
-| 118 | [C07 판정기 확률] 질문 남김 배지 + 빈 상태 "질문 남김: {질문}" (`chart.C07.escape`) | Compare · F "질문 남김" + "질문 남김: [판정기 질문 문장]" | — | 있음 |
-| 119 | [C07 판정기 확률] 판정 미해결 배지 (`chart.C07.unresolved`) | Compare · F "판정 미해결" | — | 있음 |
-| 120 | [C07 판정기 확률] 미해결이면 막대 회색 + 값 옆 "미해결" | Compare · 펼친 모습 F 회색 막대 2줄 "[n]% · 미해결" | — | 있음(고침 CP-19) |
-| 121 | [C07 판정기 확률] 가로 막대(선택 = 강조, 후보 = 보통, 보류 선택지 = 회색) | Compare · 판정기가 고를 확률 막대 | — | 있음 |
-| 122 | [C07 판정기 확률] 막대 라벨 확률 · 선택 · 동률 · 상이 | Compare · 막대 오른쪽 % + "판정기 선택"·"동률"·"근거와 달라요" | — | 있음 |
-| 123 | [C07 판정기 확률] 가상 후보 표시 (`chart.C07.virtual` "가상 후보") | Compare · 막대 라벨 "가상 후보" | — | 있음 |
-| 124 | [C07 판정기 확률] 범주 축 후보 이름 | Compare · 막대 왼쪽 후보 이름 | — | 있음 |
-| 125 | [C07 판정기 확률] 확률 축 0~1 눈금 | Compare · 판정기가 고를 확률 막대 아래 확률 축 0% 25% 50% 75% 100% | — | 있음(고침 CP-9) |
-| 126 | [C07 판정기 확률] 툴팁 | Compare · 판정기가 고를 확률 툴팁 예시 2개(이름 / 확률 / 표시) | — | 있음(고침 CP-10) |
-| 127 | [C07 판정기 확률] 빈 상태 (`chart.C07.empty` "판정 없음") | Scenario · H "판정 없음" | — | 다른 보드(Scenario) |
-| 128 | [C07 판정기 확률] 표로 보기 버튼 | Compare · [표로 보기] | — | 있음 |
-| 129 | [C07 판정기 확률] 표 열 이름 (`chart.col.name`) | Compare · L "이름" | — | 있음 |
-| 130 | [C07 판정기 확률] 표 열 확률 (`chart.col.prob`) | Compare · L "확률" | — | 있음 |
-| 131 | [C07 판정기 확률] 표 열 표시 (`chart.col.flags`) | Compare · L "표시" (판정기 선택 · 판정기 보류 선택지) | 질문 남김 → 판정기 보류 선택지 | 있음 |
+| 112 | [C07 판정기 확률] 차트 제목 (`charts/C07` · `chart.C07.title` "판정기 확률") | Compare · h3 "판정기가 고를 확률 · {상황}" | 판정기 확률 → 판정기가 고를 확률 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C07 normal · pages/compare/compare.test(C07 제목) |
+| 113 | [C07 판정기 확률] 부제 신뢰도 (`chart.C07.confidence` "신뢰도 {confidence}") | Compare · "믿음 정도 0.61" | 신뢰도 → 믿음 정도 | 있음 | charts.contract › C07 T2 상황 B: confidence 0.48 < 0.6 → 동률 |
+| 114 | [C07 판정기 확률] 라벨 배지 | Compare · "판정기 추정" | — | 있음 | e2e charts-gallery › C07 normal(라벨 배지) |
+| 115 | [C07 판정기 확률] 동률 배지(신뢰도 포함) (`badge.tieWithConfidence`) | Compare · D "동률(믿음 정도 0.31)" | — | 있음 | ChartGallery.test › 특수 상태 배지(동률) · charts.contract › C07 minor 28 … |
+| 116 | [C07 판정기 확률] 증거와 상이 배지 | Compare · D "근거와 달라요" + 설명 | 증거와 상이 → 근거와 달라요 | 있음 | charts.contract › C07 decide prob per 후보 + escape 선택지(hasMismatch) |
+| 117 | [C07 판정기 확률] 캐시 배지 (`components/CachedBadge.tsx` · `badge.cached` "캐시") | Compare · F "이전 결과 재사용" | 캐시 → 이전 결과 재사용 | 있음 | e2e charts-gallery › C07 normal(캐시 배지) |
+| 118 | [C07 판정기 확률] 질문 남김 배지 + 빈 상태 "질문 남김: {질문}" (`chart.C07.escape`) | Compare · F "질문 남김" + "질문 남김: [판정기 질문 문장]" | — | 있음 | e2e charts-gallery › C07 escaped · charts.contract › C07 escaped → 막대 대신 질문 텍스트 · e2e charts-gallery › C07 escaped |
+| 119 | [C07 판정기 확률] 판정 미해결 배지 (`chart.C07.unresolved`) | Compare · F "판정 미해결" | — | 있음 | charts.r11 › C07 미해결 |
+| 120 | [C07 판정기 확률] 미해결이면 막대 회색 + 값 옆 "미해결" | Compare · 펼친 모습 F 회색 막대 2줄 "[n]% · 미해결" | — | 있음(고침 CP-19) | charts.r11 › C07 미해결 · charts.contract › C07 minor 28: 봉투 review·blocked·error·escaped |
+| 121 | [C07 판정기 확률] 가로 막대(선택 = 강조, 후보 = 보통, 보류 선택지 = 회색) | Compare · 판정기가 고를 확률 막대 | — | 있음 | charts.r11 › C07 보류 선택지 · charts.r11 › C07 범례 · charts.contract › C07 계약 .5 가상 후보 |
+| 122 | [C07 판정기 확률] 막대 라벨 확률 · 선택 · 동률 · 상이 | Compare · 막대 오른쪽 % + "판정기 선택"·"동률"·"근거와 달라요" | — | 있음 | charts.contract › C07 minor 28: ok 봉투의 항목 동률·선택은 서버 값 그대로 · charts.r11 › C07 보류 선택지 · charts.contract › C07 계약 .5 가상 후보 |
+| 123 | [C07 판정기 확률] 가상 후보 표시 (`chart.C07.virtual` "가상 후보") | Compare · 막대 라벨 "가상 후보" | — | 있음 | charts.contract › C07 계약 .5 가상 후보 모집공고 대기(wait_new) · pages/compare/compare.test(가상 후보) |
+| 124 | [C07 판정기 확률] 범주 축 후보 이름 | Compare · 막대 왼쪽 후보 이름 | — | 있음 | charts.contract › C07 decide prob per 후보 + escape 선택지 |
+| 125 | [C07 판정기 확률] 확률 축 0~1 눈금 | Compare · 판정기가 고를 확률 막대 아래 확률 축 0% 25% 50% 75% 100% | — | 있음(고침 CP-9) | charts.r11 › C07 눈금 |
+| 126 | [C07 판정기 확률] 툴팁 | Compare · 판정기가 고를 확률 툴팁 예시 2개(이름 / 확률 / 표시) | — | 있음(고침 CP-10) | charts.contract › C07 툴팁의 서버 문자열은 HTML 이스케이프 |
+| 127 | [C07 판정기 확률] 빈 상태 (`chart.C07.empty` "판정 없음") | Scenario · H "판정 없음" | — | 다른 보드(Scenario) | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 · charts.contract › C07 escaped → … / 판정 없음 |
+| 128 | [C07 판정기 확률] 표로 보기 버튼 | Compare · [표로 보기] | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 129 | [C07 판정기 확률] 표 열 이름 (`chart.col.name`) | Compare · L "이름" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
+| 130 | [C07 판정기 확률] 표 열 확률 (`chart.col.prob`) | Compare · L "확률" | — | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
+| 131 | [C07 판정기 확률] 표 열 표시 (`chart.col.flags`) | Compare · L "표시" (판정기 선택 · 판정기 보류 선택지) | 질문 남김 → 판정기 보류 선택지 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) · charts.r11 › C07 보류 선택지 |
 | 132 | [상황별 판정] 가상 후보 목록 (`pages/compare/index.tsx` VirtualCandidates · `page.G4.virtual` · `page.G4.virtualCandidate` · `page.G4.row.prob` "선택 확률") | Compare · "가상 후보: 모집공고 대기 … 고를 확률 1%" (E) | 선택 확률 → 고를 확률 | 있음 |
 | 133 | [상황별 판정] 가상 후보 줄의 선택·동률·상이 배지 | Compare · 가상 후보 상자에 선택·동률·근거와 달라요 배지 자리 + 펼친 모습 E 예시 줄 | — | 있음(고침 CP-11) |
 | 134 | [상황별 판정] 판정기 경고 목록 (`page.G4.warnings` "경고") | Compare · E role=note "판정기 경고" [문구 1·2] | — | 있음 |
@@ -149,29 +149,29 @@
 | 143 | [요건 표] 칸 근거 문장 (pre.evidence) | Compare · 요건 표 배지 아래 근거(서버 문장 그대로 — 고친 문구 예시 위 안내) | — | 있음(고침 CP-12) |
 | 144 | [요건 표] 가상 후보 행 배지 (`chart.C07.virtual`) | Compare · E "모집공고 대기 가상 후보" | — | 있음 |
 | 145 | [요건 표] 사전 계산 없는 칸 EmptyState inline "확인 불가" | Compare · E "사전 계산 없음" | 확인 불가 → 사전 계산 없음 | 있음 |
-| 146 | [C10 민감도] 응답 있을 때만 블록 표시 · 빈 상태 (`chart.C10.empty` "민감도 없음") | Compare · H "민감도 없음" | — | 있음 |
-| 147 | [C10 민감도] 차트 제목 (`charts/C10` · `chart.C10.title` "가중치 민감도") | Compare · "가중치 민감도" / h2 "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?" | — | 있음 |
-| 148 | [C10 민감도] 용어 ⓘ 비중 (Term `weight`) | Compare · "'비중'이 뭔가요? [?]" + 설명 상자 | — | 있음 |
-| 149 | [C10 민감도] 용어 ⓘ 민감도 (Term `sensitivity`) | Compare · 가중치 민감도 "'민감도'가 뭔가요? [?]" | — | 있음(고침 CP-15) |
-| 150 | [C10 민감도] 순위 불안정 배지(차트 머리) | Scenario · 가중치 민감도 "순위가 흔들려요 · {단지 이름}" (Compare 민감도 구역에는 없음) | 순위 불안정 → 순위가 흔들려요 | 다른 보드(Scenario) |
-| 151 | [C10 민감도] 변동 없는 성분 배지 (`chart.C10.stable`) | Compare · 가중치 민감도 결과 상자 [비중을 바꿔도 순위가 그대로인 기준 있음] | — | 있음(고침 CP-13) |
-| 152 | [C10 민감도] 설명 문단 (`chart.C10.explain`) | Compare · 설명 상자 두 문단 | — | 있음 |
-| 153 | [C10 민감도] HTML 표 행 = 변형 12개 (`chart.C10.variantLabel`) | Compare · 행 6개(기준) × 열 "줄이면" / "늘리면" | 12행 → 6행 × 2열 | 있음 |
-| 154 | [C10 민감도] 표 열 비중 바꾼 항목 (`chart.col.variant`) | Compare · "기준 (지금 비중) · 무엇을 보나요" | — | 있음 |
-| 155 | [C10 민감도] 표 열 1~5위(TOP 5, 실제 순위 괄호) | Compare · 기준별 표 "→ 1위·2위·3위"(서버 순위만, 화면이 비교해 쓴 '1위 그대로/바뀌어요' 줄은 뺌) | TOP 5(지역) → 비교 단지 순서 | 있음(고침 CP-14) |
-| 156 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol` · `changedNo` · `changedYes`) | Compare · 칸 아래 "순위 변동(상위 5곳 바뀜): 없음" | — | 있음 |
-| 157 | [C10 민감도] 진입·이탈 단지 + 굵게 (`chart.C10.entered` · `chart.C10.exited` · `changedWith`) | Compare · 펼친 모습 M "표시 (들어옴·빠짐)" 열 — 진입 이름 굵게 | — | 있음(고침 CP-21) |
-| 158 | [C10 민감도] 변동 없는 행 회색 (text-grayed) | Scenario · "회색 칸 = 상위 5곳 변동 없음" | — | 다른 보드(Scenario) |
-| 159 | [C10 민감도] 순위 선 차트 (`charts/C10` buildOption) | Compare · h3 "기준별로 비중을 바꾸면 각 단지는 몇 위가 되나요?" | — | 있음 |
-| 160 | [C10 민감도] 선 차트 x축 변형 짧은 이름 (`chart.C10.variantShort`) | Compare · "6가지 기준 × (줄이면 / 늘리면)" | — | 있음 |
-| 161 | [C10 민감도] 선 차트 y축 순위(위가 1위) | Compare · "1위 2위 3위" | — | 있음 |
-| 162 | [C10 민감도] 선 차트 범례 기준 TOP 5 단지 | Compare · 범례 3단지 | TOP 5 → 비교 단지 3곳 | 있음 |
-| 163 | [C10 민감도] 선 차트 툴팁 | Compare · 순위 선 차트 툴팁 예시(비중 바꾼 항목 / 단지별 순위, 없으면 확인 불가) | — | 있음(고침 CP-17) |
-| 164 | [C10 민감도] 표로 보기 버튼 | Compare · [표로 보기] | — | 있음 |
-| 165 | [C10 민감도] 표 열 비중 바꾼 항목 (`chart.col.variant`) | Compare · 펼친 모습 M "비중 바꾼 항목" 열 | — | 있음(고침 CP-21) |
-| 166 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol`) | Compare · 펼친 모습 M "순위 변동" 열 | — | 있음(고침 CP-21) |
-| 167 | [C10 민감도] 표 열 TOP 5 (`chart.col.top5`) | Compare · 펼친 모습 M "상위 5곳 (TOP 5)" 열 | — | 있음(고침 CP-21) |
-| 168 | [C10 민감도] 표 열 표시(진입·이탈) (`chart.col.flags`) | Compare · 펼친 모습 M "표시 (들어옴·빠짐)" 열 | — | 있음(고침 CP-21) |
+| 146 | [C10 민감도] 응답 있을 때만 블록 표시 · 빈 상태 (`chart.C10.empty` "민감도 없음") | Compare · H "민감도 없음" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 · charts.contract › C10 변동 없는 가중치 행 = stable(민감도 없음) |
+| 147 | [C10 민감도] 차트 제목 (`charts/C10` · `chart.C10.title` "가중치 민감도") | Compare · "가중치 민감도" / h2 "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?" | — | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C10 normal |
+| 148 | [C10 민감도] 용어 ⓘ 비중 (Term `weight`) | Compare · "'비중'이 뭔가요? [?]" + 설명 상자 | — | 있음 | rawKeys › C10 패널: 한 문장 설명 · 비중/민감도 ⓘ … |
+| 149 | [C10 민감도] 용어 ⓘ 민감도 (Term `sensitivity`) | Compare · 가중치 민감도 "'민감도'가 뭔가요? [?]" | — | 있음(고침 CP-15) | rawKeys › C10 패널: 한 문장 설명 · 비중/민감도 ⓘ … |
+| 150 | [C10 민감도] 순위 불안정 배지(차트 머리) | Scenario · 가중치 민감도 "순위가 흔들려요 · {단지 이름}" (Compare 민감도 구역에는 없음) | 순위 불안정 → 순위가 흔들려요 | 다른 보드(Scenario) | ChartGallery.test › 특수 상태 배지(순위 불안정) |
+| 151 | [C10 민감도] 변동 없는 성분 배지 (`chart.C10.stable`) | Compare · 가중치 민감도 결과 상자 [비중을 바꿔도 순위가 그대로인 기준 있음] | — | 있음(고침 CP-13) | rawKeys › C10 패널(stable-badge) |
+| 152 | [C10 민감도] 설명 문단 (`chart.C10.explain`) | Compare · 설명 상자 두 문단 | — | 있음 | rawKeys › C10 패널(설명) |
+| 153 | [C10 민감도] HTML 표 행 = 변형 12개 (`chart.C10.variantLabel`) | Compare · 행 6개(기준) × 열 "줄이면" / "늘리면" | 12행 → 6행 × 2열 | 있음 | charts.r11 › C10 재설계 표 |
+| 154 | [C10 민감도] 표 열 비중 바꾼 항목 (`chart.col.variant`) | Compare · "기준 (지금 비중) · 무엇을 보나요" | — | 있음 | charts.r11 › C10 패널 |
+| 155 | [C10 민감도] 표 열 1~5위(TOP 5, 실제 순위 괄호) | Compare · 기준별 표 "→ 1위·2위·3위"(서버 순위만, 화면이 비교해 쓴 '1위 그대로/바뀌어요' 줄은 뺌) | TOP 5(지역) → 비교 단지 순서 | 있음(고침 CP-14) | charts.r11 › C10 패널 · charts.r11 › C10 재설계 표 |
+| 156 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol` · `changedNo` · `changedYes`) | Compare · 칸 아래 "순위 변동(상위 5곳 바뀜): 없음" | — | 있음 | rawKeys › C10 패널(순위 변동 없음/있음) · charts.r11 › C10 패널 · charts.r11 › C10 결과 개수 |
+| 157 | [C10 민감도] 진입·이탈 단지 + 굵게 (`chart.C10.entered` · `chart.C10.exited` · `changedWith`) | Compare · 펼친 모습 M "표시 (들어옴·빠짐)" 열 — 진입 이름 굵게 | — | 있음(고침 CP-21) | charts.r11 › C10 진입 굵게 |
+| 158 | [C10 민감도] 변동 없는 행 회색 (text-grayed) | Scenario · "회색 칸 = 상위 5곳 변동 없음" | — | 다른 보드(Scenario) | charts.r11 › C10 패널(변동 없는 칸 회색 data-stable) |
+| 159 | [C10 민감도] 순위 선 차트 (`charts/C10` buildOption) | Compare · h3 "기준별로 비중을 바꾸면 각 단지는 몇 위가 되나요?" | — | 있음 | charts.contract › C10 작은 선: 기준 TOP 5 단지별 순위, y축 뒤집힘 |
+| 160 | [C10 민감도] 선 차트 x축 변형 짧은 이름 (`chart.C10.variantShort`) | Compare · "6가지 기준 × (줄이면 / 늘리면)" | — | 있음 | charts.r11 › C10 x축 · rawKeys › C10 민감도: x축·표 행 이름은 쉬운 말 |
+| 161 | [C10 민감도] 선 차트 y축 순위(위가 1위) | Compare · "1위 2위 3위" | — | 있음 | charts.contract › C10 작은 선(y축 뒤집힘) · charts.r11 › C10 상위 5곳 밖 띠 |
+| 162 | [C10 민감도] 선 차트 범례 기준 TOP 5 단지 | Compare · 범례 3단지 | TOP 5 → 비교 단지 3곳 | 있음 | charts.r11 › C10 범례 |
+| 163 | [C10 민감도] 선 차트 툴팁 | Compare · 순위 선 차트 툴팁 예시(비중 바꾼 항목 / 단지별 순위, 없으면 확인 불가) | — | 있음(고침 CP-17) | charts.r11 › C10 툴팁 |
+| 164 | [C10 민감도] 표로 보기 버튼 | Compare · [표로 보기] | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 165 | [C10 민감도] 표 열 비중 바꾼 항목 (`chart.col.variant`) | Compare · 펼친 모습 M "비중 바꾼 항목" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
+| 166 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol`) | Compare · 펼친 모습 M "순위 변동" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
+| 167 | [C10 민감도] 표 열 TOP 5 (`chart.col.top5`) | Compare · 펼친 모습 M "상위 5곳 (TOP 5)" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
+| 168 | [C10 민감도] 표 열 표시(진입·이탈) (`chart.col.flags`) | Compare · 펼친 모습 M "표시 (들어옴·빠짐)" 열 | — | 있음(고침 CP-21) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
 | 169 | [공통] 숫자 누르면 출처 서랍 (FactCell → `components/ProvenancePanel.tsx` · GET /provenance/{id}) | Shell · 3 "숫자를 누르면 열리는 '출처' 창" (Compare는 바닥 문구 "숫자를 누르면 출처가 열려요") | — | 다른 보드(Shell) |
 | 170 | [공통] 용어 ⓘ 팝오버 — Esc·바깥 클릭 닫기, 모바일 아래 시트 (`components/Term.tsx` · `glossary.more`) | Shell · 3 "용어 '?'를 눌렀을 때" | — | 다른 보드(Shell) |
 | 171 | [공통] 표로 보기 토글 aria-expanded · 표 닫기 (`components/DataTableToggle.tsx` · `table.hide`) | Compare · 접힌 버튼 + 펼친 모습 I·K·L (틀은 Shell · 8) | — | 있음 |

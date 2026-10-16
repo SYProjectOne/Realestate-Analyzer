@@ -2,7 +2,7 @@ import type { DataTable } from '@/components/DataTableToggle';
 import { t } from '@/i18n';
 import { formatEok, formatWon } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, legendStyle, tooltipStyle } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type { BuildOptionContext, ChartLegendItem, EChartsOption } from '../types';
 import { escapeHtml, num } from '../util';
 import type { C02Data } from './types';
 
@@ -22,7 +22,10 @@ export function emptyReason(data: C02Data): string | null {
 }
 
 interface Whisker {
+  /** 단지 이름(현재 행은 "이 단지 (현재 가격)") */
   name: string;
+  /** 신축(연도)/대체(연도) 배지 — 현재 행은 null */
+  badge: string | null;
   low: number | null;
   mid: number | null;
   high: number | null;
@@ -37,6 +40,7 @@ function whiskers(data: C02Data): Whisker[] {
   return [
     {
       name: t('chart.C02.current'),
+      badge: null,
       low: num(gap.price_low),
       mid: num(gap.price_mid),
       high: num(gap.price_high),
@@ -44,7 +48,8 @@ function whiskers(data: C02Data): Whisker[] {
       current: true,
     },
     ...gap.comps.map((c) => ({
-      name: `${c.name}\n${compBadge(c.substitute, c.completed_year)}`,
+      name: c.name,
+      badge: compBadge(c.substitute, c.completed_year),
       low: num(c.low),
       mid: num(c.median),
       high: num(c.high),
@@ -54,11 +59,20 @@ function whiskers(data: C02Data): Whisker[] {
   ];
 }
 
+/** 축 이름: "비교 단지 이름 · 신축(2024)" — 이름과 배지를 두 줄로 */
+const axisName = (w: Whisker) => (w.badge ? `${w.name}\n${w.badge}` : w.name);
+
+/** 행 수(현재 + 비교 단지) — 높이 계산용 */
+export function rowCount(data: C02Data): number {
+  return whiskers(data).length;
+}
+
 const fmt = (n: number | null) => (n === null ? t('empty.unknown') : formatWon(n));
 
 /**
- * 점(중앙)+위스커(하단~상단). 떠다니는 막대는 쓰지 않는다(meta §2-7).
- * 0번 = 현재 구매가 범위(강조색), 나머지 = 비교 단지 실거래 범위. 연식 보정 중앙값 = 점선 테두리 빈 점.
+ * 가로 띠(목업 Compare·DetailTabs): 줄마다 실거래 범위(하단~상단) 막대 + 중앙값 눈금.
+ * 0번 줄 = 이 단지 현재 가격 범위(강조색, 굵게), 나머지 = 비교 단지 실거래 범위(회색). 연식 보정 중앙값 = 점선 빈 점.
+ * '주변 전체 중간값' 선은 서버에 없는 값이라 그리지 않는다(고침 CP-2).
  */
 export function buildOption(
   data: C02Data,
@@ -70,37 +84,49 @@ export function buildOption(
   const tooltipFor = (index: number) => {
     const w = items[index];
     if (!w) return '';
+    const head = w.badge ? `${escapeHtml(w.name)} · ${escapeHtml(w.badge)}` : escapeHtml(w.name);
     const lines = [
-      escapeHtml(w.name).replace('\n', ' · '),
-      `${t('chart.col.low')} ${fmt(w.low)} ~ ${t('chart.col.high')} ${fmt(w.high)}`,
-      `${w.current ? t('chart.col.median') : t('chart.C02.unadjusted')} ${fmt(w.mid)}`,
+      `<b>${head}</b>`,
+      t('chart.C02.lowHigh', { low: fmt(w.low), high: fmt(w.high) }),
+      `${w.current ? t('chart.C02.median') : t('chart.C02.unadjusted')} ${fmt(w.mid)}`,
     ];
     if (w.adjusted !== null) lines.push(`${t('chart.C02.adjusted')} ${fmt(w.adjusted)}`);
     return lines.join('<br/>');
   };
+  const rowOf = (p: unknown) => {
+    const { value } = p as { value?: unknown };
+    return Array.isArray(value) ? Number(value[0]) : 0;
+  };
 
   return {
     ...baseOption(palette),
-    grid: { left: 64, right: 16, top: 16, bottom: 88 },
-    legend: { ...legendStyle(palette), data: [t('chart.C02.range'), t('chart.C02.adjusted')] },
+    grid: { left: 200, right: 24, top: 12, bottom: 40 },
+    legend: {
+      ...legendStyle(palette),
+      data: [t('chart.C02.range'), t('chart.C02.adjusted')],
+    },
     tooltip: { trigger: 'item', ...tooltipStyle(palette) },
-    xAxis: {
+    yAxis: {
       type: 'category',
-      data: items.map((w) => w.name),
+      data: items.map(axisName),
+      inverse: true,
       ...axis,
-      // 긴 단지명은 칸 폭에서 줄바꿈(최대 3줄) — 이웃 라벨과 겹치지 않게
+      axisTick: { ...axis.axisTick, alignWithLabel: true },
+      // 긴 단지명은 칸 폭에서 줄바꿈 — 잘라 숨기지 않는다
       axisLabel: {
         ...axis.axisLabel,
         interval: 0,
-        fontSize: 10,
-        width: 84,
+        color: palette.fg,
+        width: 188,
         overflow: 'break',
-        lineHeight: 12,
+        lineHeight: 14,
       },
     },
-    yAxis: {
+    xAxis: {
       type: 'value',
       scale: true,
+      name: t('chart.axis.price'),
+      nameLocation: 'end',
       ...axis,
       axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatEok(v, 1) },
     },
@@ -109,78 +135,90 @@ export function buildOption(
         type: 'custom',
         id: 'range',
         name: t('chart.C02.range'),
-        itemStyle: { color: palette.fg },
+        itemStyle: { color: palette.grayed },
         renderItem: (_params, api) => {
-          const x = api.value(0) as number;
-          const lowPt = api.coord([x, api.value(1)]) as number[];
-          const highPt = api.coord([x, api.value(2)]) as number[];
-          const midPt = api.coord([x, api.value(3)]) as number[];
-          const color = x === 0 ? palette.strong : palette.fg;
-          const cap = 6;
+          const y = api.value(0) as number;
+          const lowPt = api.coord([api.value(1), y]) as number[];
+          const highPt = api.coord([api.value(2), y]) as number[];
+          const midPt = api.coord([api.value(3), y]) as number[];
+          const current = y === 0;
+          const band = current ? 12 : 6;
+          const color = current ? palette.strong : palette.grayed;
+          const tick = current ? 20 : 14;
           return {
             type: 'group',
             children: [
               {
-                type: 'line',
-                shape: { x1: lowPt[0], y1: lowPt[1], x2: highPt[0], y2: highPt[1] },
-                style: { stroke: color, lineWidth: 2 },
-              },
-              {
-                type: 'line',
+                type: 'rect',
                 shape: {
-                  x1: (lowPt[0] ?? 0) - cap,
-                  y1: lowPt[1],
-                  x2: (lowPt[0] ?? 0) + cap,
-                  y2: lowPt[1],
+                  x: lowPt[0] ?? 0,
+                  y: (lowPt[1] ?? 0) - band / 2,
+                  width: Math.max(2, (highPt[0] ?? 0) - (lowPt[0] ?? 0)),
+                  height: band,
+                  r: band / 2,
                 },
-                style: { stroke: color, lineWidth: 2 },
+                style: { fill: color, opacity: current ? 0.9 : 0.8 },
               },
               {
-                type: 'line',
+                type: 'rect',
                 shape: {
-                  x1: (highPt[0] ?? 0) - cap,
-                  y1: highPt[1],
-                  x2: (highPt[0] ?? 0) + cap,
-                  y2: highPt[1],
+                  x: (midPt[0] ?? 0) - (current ? 2 : 1),
+                  y: (midPt[1] ?? 0) - tick / 2,
+                  width: current ? 4 : 2,
+                  height: tick,
+                  r: 1,
                 },
-                style: { stroke: color, lineWidth: 2 },
-              },
-              {
-                type: 'circle',
-                shape: { cx: midPt[0], cy: midPt[1], r: 5 },
-                style: { fill: color },
+                style: { fill: palette.fg },
               },
             ],
           };
         },
-        encode: { x: 0, y: [1, 2, 3] },
+        encode: { y: 0, x: [1, 2, 3] },
         data: items
           .map((w, i) => [i, w.low, w.high, w.mid ?? w.low ?? w.high])
           .filter((d) => d[1] !== null && d[2] !== null),
-        tooltip: {
-          formatter: (p: unknown) =>
-            tooltipFor(((p as { value: (number | null)[] }).value[0] ?? 0) as number),
-        },
+        tooltip: { formatter: (p: unknown) => tooltipFor(rowOf(p)) },
       },
       {
         type: 'scatter',
         id: 'adjusted',
         name: t('chart.C02.adjusted'),
-        symbolSize: 11,
+        symbolSize: 13,
+        z: 3,
         itemStyle: {
-          color: 'transparent',
+          color: palette.bg,
           borderColor: palette.fg,
           borderType: 'dashed',
           borderWidth: 1.5,
         },
-        data: items.map((w, i) => [i, w.adjusted]).filter((d) => d[1] !== null),
+        data: items.map((w, i) => [w.adjusted, i]).filter((d) => d[0] !== null),
         tooltip: {
-          formatter: (p: unknown) =>
-            tooltipFor(((p as { value: (number | null)[] }).value[0] ?? 0) as number),
+          formatter: (p: unknown) => {
+            const { value } = p as { value?: unknown };
+            return tooltipFor(Array.isArray(value) ? Number(value[1]) : 0);
+          },
         },
       },
     ],
   };
+}
+
+/** 범례(차트 위): 이 단지 가격 범위 · 비교 단지 실거래 범위 · 가운데값 눈금 · 연식 보정 가운데값(대체 단지가 있을 때만) */
+export function legendItems(
+  data: C02Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): ChartLegendItem[] {
+  const { palette } = ctx;
+  const items = whiskers(data);
+  if (items.length === 0) return [];
+  return [
+    { name: t('chart.C02.currentRange'), color: palette.strong, symbol: 'range' },
+    { name: t('chart.C02.range'), color: palette.grayed, symbol: 'range' },
+    { name: t('chart.C02.median'), color: palette.fg, symbol: 'tick' },
+    ...(items.some((w) => w.adjusted !== null)
+      ? [{ name: t('chart.C02.adjusted'), color: palette.fg, symbol: 'dashedRing' as const }]
+      : []),
+  ];
 }
 
 export function toTable(data: C02Data): DataTable {
@@ -188,11 +226,12 @@ export function toTable(data: C02Data): DataTable {
   return {
     columns: [
       { key: 'name', header: t('chart.col.name') },
-      { key: 'kind', header: t('chart.col.kind') },
-      { key: 'low', header: t('chart.col.low'), unit: 'won' },
-      { key: 'median', header: t('chart.col.median'), unit: 'won' },
-      { key: 'high', header: t('chart.col.high'), unit: 'won' },
-      { key: 'adjusted', header: t('chart.col.adjusted'), unit: 'won' },
+      // 열 이름은 목업 DetailTabs '표로 보기 — 주변 시세 비교'의 쉬운 말
+      { key: 'kind', header: t('chart.C02.col.kind') },
+      { key: 'low', header: t('chart.C02.col.low'), unit: 'won' },
+      { key: 'median', header: t('chart.C02.col.median'), unit: 'won' },
+      { key: 'high', header: t('chart.C02.col.high'), unit: 'won' },
+      { key: 'adjusted', header: t('chart.C02.col.adjusted'), unit: 'won' },
       { key: 'window', header: t('chart.col.window') },
     ],
     rows: gap

@@ -30,6 +30,7 @@ import {
   rowsWithUnjudged,
   sensitivity,
   stableSensitivity,
+  supplyManyAreas,
 } from './fixtures';
 
 export type GalleryState = 'normal' | 'empty' | 'special' | 'escaped';
@@ -165,6 +166,14 @@ export const GALLERY_CASES: GalleryCase[] = [
         />
       );
     },
+  },
+  {
+    chart: 'C04',
+    state: 'special',
+    note: '생활권 8곳 → 큰 5곳 + 나머지 3곳 + 확인 불가(생활권 모름)',
+    render: () => (
+      <C04Supply data={{ supply: supplyManyAreas(), markers: m.move_in_markers.slice(0, 1) }} />
+    ),
   },
   {
     chart: 'C05',

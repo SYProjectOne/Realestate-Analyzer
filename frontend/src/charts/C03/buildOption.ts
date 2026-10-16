@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import type { BenchmarkView } from '@/lib/contract';
 import { formatCount, formatEok, formatPercent, formatWon } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, legendStyle, tooltipStyle } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type { BuildOptionContext, ChartLegendItem, EChartsOption } from '../types';
 import { escapeHtml, livingAreaName, num, str } from '../util';
 import { C03_MIN_SAMPLE, type C03Data } from './types';
 
@@ -98,13 +98,13 @@ export function buildOption(
     const pct = annualizedOf(b, data.asofYear);
     const presale = b.is_presale ? ` · ${t('chart.C03.presale')}` : '';
     const lines = [
-      `${escapeHtml(rowName(b))}${presale}`,
+      `<b>${escapeHtml(rowName(b))}${presale}</b>`,
       `${t('chart.C03.sale')} ${fmt(num(b.sale_price_84_won))}`,
       `${t('chart.C03.trade')} ${fmt(num(b.trade_low_won))} ~ ${fmt(num(b.trade_high_won))}`,
     ];
     const peak = num(b.peak_won);
     if (peak !== null)
-      lines.push(`${t('chart.C03.peak')} ${fmt(peak)} ${escapeHtml(str(b.peak_ym))}`);
+      lines.push(`${t('chart.C03.peakShort')} ${fmt(peak)} ${escapeHtml(str(b.peak_ym))}`);
     if (pct !== null) lines.push(t('chart.C03.annualized', { pct: formatPercent(pct) }));
     return lines.join('<br/>');
   };
@@ -118,7 +118,7 @@ export function buildOption(
 
   return {
     ...baseOption(palette),
-    grid: { left: 168, right: 24, top: 16, bottom: 48 },
+    grid: { left: 200, right: 32, top: 12, bottom: 40 },
     legend: legendStyle(palette),
     tooltip: { trigger: 'item', ...tooltipStyle(palette), formatter: byIndex },
     yAxis: {
@@ -126,11 +126,22 @@ export function buildOption(
       data: rows.map(rowName),
       inverse: true,
       ...axis,
-      axisLabel: { ...axis.axisLabel, fontSize: 10, width: 156, overflow: 'truncate' },
+      axisTick: { ...axis.axisTick, alignWithLabel: true },
+      // 긴 단지명은 줄바꿈 — 잘라 숨기지 않는다(전체 이름은 툴팁·표에도)
+      axisLabel: {
+        ...axis.axisLabel,
+        interval: 0,
+        color: palette.fg,
+        width: 188,
+        overflow: 'break',
+        lineHeight: 13,
+      },
     },
     xAxis: {
       type: 'value',
       scale: true,
+      name: t('chart.axis.price84'),
+      nameLocation: 'end',
       ...axis,
       axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatEok(v, 1) },
     },
@@ -158,12 +169,12 @@ export function buildOption(
               {
                 type: 'line',
                 shape: { x1: low[0], y1: low[1], x2: high[0], y2: high[1] },
-                style: { stroke: palette.strong, lineWidth: 3 },
+                style: { stroke: palette.strong, lineWidth: 4, lineCap: 'round' },
               },
               {
                 type: 'circle',
-                shape: { cx: median[0], cy: median[1], r: 4 },
-                style: { fill: palette.strong },
+                shape: { cx: median[0], cy: median[1], r: 5 },
+                style: { fill: palette.strong, stroke: palette.bg, lineWidth: 2 },
               },
             ],
           };
@@ -196,9 +207,11 @@ export function buildOption(
         type: 'scatter',
         id: 'peak',
         name: t('chart.C03.peak'),
+        // 입주 뒤 가장 높았던 거래 — 아래를 가리키는 삼각형(목업 범례와 같은 모양)
         symbol: 'triangle',
+        symbolRotate: 180,
         symbolSize: 9,
-        itemStyle: { color: palette.grayed },
+        itemStyle: { color: palette.muted },
         data: rows.map((b, i) => [num(b.peak_won), i]).filter((d) => d[0] !== null),
         tooltip: {
           formatter: (p: unknown) =>
@@ -207,6 +220,29 @@ export function buildOption(
       },
     ],
   };
+}
+
+/** 범례(차트 위, 목업 '그림 읽는 법'): 분양가 · 실거래 범위 · 중간 값 · 고점 · 분양권 · 대신 채운 줄(있을 때만) */
+export function legendItems(
+  data: C03Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): ChartLegendItem[] {
+  const { palette } = ctx;
+  if (data.benchmarks.length === 0) return [];
+  return [
+    { name: t('chart.C03.sale'), color: palette.fg, symbol: 'circle' },
+    { name: t('chart.C03.range'), color: palette.strong, symbol: 'range' },
+    { name: t('chart.C03.median'), color: palette.strong, symbol: 'circle' },
+    ...(data.benchmarks.some((b) => num(b.peak_won) !== null)
+      ? [{ name: t('chart.C03.peak'), color: palette.muted, symbol: 'triangleDown' as const }]
+      : []),
+    ...(data.benchmarks.some((b) => b.is_presale)
+      ? [{ name: t('chart.C03.presaleLegend'), color: palette.fg, symbol: 'diamond' as const }]
+      : []),
+    ...(data.benchmarks.some((b) => b.substitute)
+      ? [{ name: t('chart.C03.substituteLegend'), color: palette.fg, symbol: 'ring' as const }]
+      : []),
+  ];
 }
 
 export function toTable(data: C03Data): DataTable {

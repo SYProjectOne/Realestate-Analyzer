@@ -223,30 +223,30 @@
 
 ## 12. 차트 C08 잔여 이력 (`charts/C08`)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 161 | 차트 틀 + 제목 (`C08/index.tsx` ChartFrame · `chart.C08.title` "잔여 이력") | DetailTabs · 탭 3 그림 "남은 집을 다시 모집한 이력" | 잔여 이력 → 남은 집을 다시 모집한 이력 | 있음 |
-| 162 | x축 시간(공고일, 앞뒤 한 달 여유) (`C08/buildOption.ts`) | DetailTabs · 같은 그림 눈금 2025.11 ~ 2026.11 + "축: 공고일(월)" | | 있음 |
-| 163 | y축 종류 4줄 (`chart.C08.kind.*`) | DetailTabs · 같은 그림 줄 "본청약 · 무순위 · 임의공급 · 선착순" | | 있음 |
-| 164 | 범례 종류 4개 (`legend data`) | DetailTabs · 탭 3 그림 아래 범례 "본청약 · 무순위 · 임의공급 · 선착순"(모양 4가지) |  | 있음(고침 DX-7) |
-| 165 | 종류별 마커 모양 · 본청약 강조색 (`C08/types.ts` C08_SYMBOLS) | DetailTabs · 같은 그림 무순위 네모 1개 + 범례 모양(본청약 원 · 무순위 네모 · 임의공급 세모 · 선착순 마름모) | 무순위 마름모 → 네모(지금 코드 모양) | 있음(고침 DX-7) |
-| 166 | 마커 라벨 잔여 세대 · 짧은 경쟁률, 가까우면 위아래 엇갈림 (`labelItems` · `chart.C08.labels`) | DetailTabs · 같은 그림 "01.26 · 36세대 · 75타입 6.11 대 1 · 136P 10.00 대 1" | 지금은 12자 넘는 경쟁률은 라벨에서 뺌 — 목업은 긴 표기도 라벨 | 있음 |
-| 167 | 툴팁(종류 · 공고일 · 공고 번호 · 라벨 · 결과) | DetailTabs · 같은 곳 "툴팁 예시" (종류 · 공고일 · 공고 번호 · 라벨 · 결과) |  | 있음(고침 DX-7) |
-| 168 | 라벨 배지(공고일 · 세대 라벨) (`ChartFrame` labels) | DetailTabs · 같은 그림 "확인됨" | | 있음 |
-| 169 | 빈 상태 (`chart.C08.empty` "본청약만") | DetailTabs · "경쟁률 표 — 다른 칸 모습" "다시 모집 이력이 없으면 차트 자리에 '본청약만 있어요(다시 모집 없음)'" | 본청약만 → 본청약만 있어요(다시 모집 없음) | 문구로만 |
-| 170 | 표로 보기 / 표 닫기 (`components/DataTableToggle.tsx` · `table.show` / `table.hide`) | DetailTabs · 그림 아래 "표로 보기" + "버튼 글자는 '표 닫기'로 바뀌어요" | | 있음 |
-| 171 | 표 열 구분 (`chart.col.kind`) | DetailTabs · "표로 보기 — 남은 집 다시 모집 이력" "종류" | 구분 → 종류 | 있음 |
-| 172 | 표 열 공고 번호 (`chart.col.noticeNo`) | DetailTabs · 같은 표 "공고 번호" | | 있음 |
-| 173 | 표 열 공고일(D±) (`chart.col.noticeDate`) | DetailTabs · 같은 표 "공고일 2026.01.26 · 261일 지남" | | 있음 |
-| 174 | 표 열 세대 (`chart.col.units`) | DetailTabs · 같은 표 "세대" | | 있음 |
-| 175 | 표 열 경쟁률 (`chart.col.ratio`) | DetailTabs · 같은 표 "경쟁률 · 결과" | 경쟁률 + 표시 두 열 → 한 열 | 있음 |
-| 176 | 표 열 표시(결과) (`chart.col.flags` "표시") | DetailTabs · 같은 표 "경쟁률 · 결과" | | 있음 |
-| 177 | 차트 aria-label (`EChart` ariaLabel) | DetailTabs · 그림 aria-label "남은 집 추가 모집 이력: …" | | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 161 | 차트 틀 + 제목 (`C08/index.tsx` ChartFrame · `chart.C08.title` "잔여 이력") | DetailTabs · 탭 3 그림 "남은 집을 다시 모집한 이력" | 잔여 이력 → 남은 집을 다시 모집한 이력 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C08 normal · pages/complex/tabs8.test(C08 제목) |
+| 162 | x축 시간(공고일, 앞뒤 한 달 여유) (`C08/buildOption.ts`) | DetailTabs · 같은 그림 눈금 2025.11 ~ 2026.11 + "축: 공고일(월)" | | 있음 | charts.contract › C08 시간축 scatter, 마커 모양 = kind 4종 |
+| 163 | y축 종류 4줄 (`chart.C08.kind.*`) | DetailTabs · 같은 그림 줄 "본청약 · 무순위 · 임의공급 · 선착순" | | 있음 | charts.contract › C08 시간축 scatter, 마커 모양 = kind 4종 |
+| 164 | 범례 종류 4개 (`legend data`) | DetailTabs · 탭 3 그림 아래 범례 "본청약 · 무순위 · 임의공급 · 선착순"(모양 4가지) |  | 있음(고침 DX-7) | charts.r11 › C08 범례 · charts.contract › C08 월만 확인된 공고일 …(범례는 kind 4종만) |
+| 165 | 종류별 마커 모양 · 본청약 강조색 (`C08/types.ts` C08_SYMBOLS) | DetailTabs · 같은 그림 무순위 네모 1개 + 범례 모양(본청약 원 · 무순위 네모 · 임의공급 세모 · 선착순 마름모) | 무순위 마름모 → 네모(지금 코드 모양) | 있음(고침 DX-7) | charts.contract › C08 시간축 scatter, 마커 모양 = kind 4종 · charts.r11 › C08 범례(본청약만 진한 색) |
+| 166 | 마커 라벨 잔여 세대 · 짧은 경쟁률, 가까우면 위아래 엇갈림 (`labelItems` · `chart.C08.labels`) | DetailTabs · 같은 그림 "01.26 · 36세대 · 75타입 6.11 대 1 · 136P 10.00 대 1" | 지금은 12자 넘는 경쟁률은 라벨에서 뺌 — 목업은 긴 표기도 라벨 | 있음 | charts.contract › C08 월만 확인된 공고일(YYYY-MM)도 그린다, 라벨 = 잔여 세대·경쟁률 · charts.contract › C08 custom 라벨: … 엇갈리고 |
+| 167 | 툴팁(종류 · 공고일 · 공고 번호 · 라벨 · 결과) | DetailTabs · 같은 곳 "툴팁 예시" (종류 · 공고일 · 공고 번호 · 라벨 · 결과) |  | 있음(고침 DX-7) | charts.r11 › C08 툴팁 |
+| 168 | 라벨 배지(공고일 · 세대 라벨) (`ChartFrame` labels) | DetailTabs · 같은 그림 "확인됨" | | 있음 | e2e charts-gallery › C08 normal(라벨 배지) |
+| 169 | 빈 상태 (`chart.C08.empty` "본청약만") | DetailTabs · "경쟁률 표 — 다른 칸 모습" "다시 모집 이력이 없으면 차트 자리에 '본청약만 있어요(다시 모집 없음)'" | 본청약만 → 본청약만 있어요(다시 모집 없음) | 문구로만 | charts.contract › C08 이벤트 0 → "본청약만" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 170 | 표로 보기 / 표 닫기 (`components/DataTableToggle.tsx` · `table.show` / `table.hide`) | DetailTabs · 그림 아래 "표로 보기" + "버튼 글자는 '표 닫기'로 바뀌어요" | | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 171 | 표 열 구분 (`chart.col.kind`) | DetailTabs · "표로 보기 — 남은 집 다시 모집 이력" "종류" | 구분 → 종류 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 172 | 표 열 공고 번호 (`chart.col.noticeNo`) | DetailTabs · 같은 표 "공고 번호" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 173 | 표 열 공고일(D±) (`chart.col.noticeDate`) | DetailTabs · 같은 표 "공고일 2026.01.26 · 261일 지남" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 174 | 표 열 세대 (`chart.col.units`) | DetailTabs · 같은 표 "세대" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 175 | 표 열 경쟁률 (`chart.col.ratio`) | DetailTabs · 같은 표 "경쟁률 · 결과" | 경쟁률 + 표시 두 열 → 한 열 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 176 | 표 열 표시(결과) (`chart.col.flags` "표시") | DetailTabs · 같은 표 "경쟁률 · 결과" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 177 | 차트 aria-label (`EChart` ariaLabel) | DetailTabs · 그림 aria-label "남은 집 추가 모집 이력: …" | | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 |
 
 ## 13. 탭 4 주변 시세 비교 (`tabs.tsx` GapTab · `charts/C02`)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 178 | 가격 갭 (`page.G3.gap.pct` "가격 갭(주변 대비)") | DetailTabs · 탭 4 "주변 새 아파트 실거래와 비교하면 어떤가요?" "주변 시세와 가격 차이 ? +8.1%" / Detail · 머리 카드 "주변보다 8.1% 높아요" / Mobile | 가격 갭(주변 대비) → 주변 시세와 가격 차이 | 있음 |
 | 179 | 미보정 가격 갭 (`page.G3.gap.unadjusted`) | DetailTabs · 탭 4 "같은 계산 · 연식 보정 안 한 가운데값 기준 +8.1%" | | 있음 |
 | 180 | 가격 갭 점수 0~10 (`page.G3.gap.score`) | DetailTabs · 탭 4 "가격 차이 점수 (0~10) 2.98 / 10" | | 있음 |
@@ -254,72 +254,72 @@
 | 182 | 비교 기준 (`page.G3.gap.basis`) | DetailTabs · 탭 4 "비교 기준: 같은 생활권 · 2020년 이후 준공 · …" | | 있음 |
 | 183 | 비교 단지 수 (`page.G3.gap.comps` "비교 단지 {n}곳") | DetailTabs · 탭 4 "비교 단지 17곳" | | 있음 |
 | 184 | 대체 단지 배지 (`page.G3.gap.substitute` "대체 단지 포함(거래 3건 미만)") | DetailTabs · "주변 시세 · 가격 전망 — 다른 상태" | | 있음 |
-| 185 | 차트 틀 + 제목 (`C02/index.tsx` · `chart.C02.title` "가격 갭") | DetailTabs · 탭 4 그림 "이 단지 가격 vs 주변 실거래" | 가격 갭 → 이 단지 가격 vs 주변 실거래 | 있음 |
-| 186 | 점 + 위스커(하단~상단, 가운데 점) 모양 (`C02/buildOption.ts` custom) | DetailTabs · 같은 그림 가로 막대(범위) + 점(가운데값) | 세로 위스커 → 가로 막대 | 있음 |
-| 187 | 값 축 억 단위 (`formatEok`) | DetailTabs · 같은 그림 "3억 4억 5억 6억 7억 8억" + "단위: 원 (가운데값)" | | 있음 |
-| 188 | 단지 축 라벨 + 신축(연도) (`compBadge` · `badge.newBuild`) | DetailTabs · 같은 그림 줄 이름 옆 "2024년 · 6건" | 신축(2024) → 2024년 · n건 | 있음 |
-| 189 | 단지 축 라벨 대체(연도) (`badge.substitute`) | DetailTabs · 탭 4 그림 "[대체 단지] 대체([준공년]) · 모양 예시" 줄 |  | 있음(고침 DX-8) |
-| 190 | 현재 구매가 범위 강조 (`chart.C02.current` "현재 구매가") | DetailTabs · 같은 그림 "이 단지 (84C 분양가)" 강조 줄 | 현재 구매가 → 이 단지 (분양가) | 있음 |
-| 191 | 연식 보정 중앙값 점(점선 빈 점) + 범례 (`chart.C02.adjusted`) | DetailTabs · 같은 줄 점선 빈 점 + 범례 "연식 보정 가운데값 (대체 단지만)" |  | 있음(고침 DX-8) |
-| 192 | 범례 실거래 범위 (`chart.C02.range`) | DetailTabs · 같은 그림 범례 "비교 단지 실거래 범위" | | 있음 |
-| 193 | 툴팁(하단~상단 · 중앙/미보정 · 보정) | DetailTabs · 같은 그림 "툴팁 예시" (가장 낮은 값~가장 높은 값 · 가운데값(보정 안 함) · 보정 줄) |  | 있음(고침 DX-8) |
-| 194 | 보정 배지 "추정(대체·보정 c=…)" (`adjustedBadges`) | DetailTabs · "주변 시세 · 가격 전망 — 다른 상태" "추정 (대체·연식 보정) 차트 제목 옆" | | 있음 |
-| 195 | 라벨 배지 (`ChartFrame` labels) | DetailTabs · 같은 그림 "재가공 (실거래 통계) · 확인됨" | | 있음 |
-| 196 | 빈 상태 (`chart.C02.empty` "비교군 없음({reason})") | DetailTabs · 다른 상태 "비교할 단지가 없어요 (사유)" | | 있음 |
-| 197 | 표로 보기 (`table.show`) | DetailTabs · 그림 아래 "표로 보기" | | 있음 |
-| 198 | 표 열 이름 (`chart.col.name`) | DetailTabs · "표로 보기 — 주변 시세 비교" "이름" | | 있음 |
-| 199 | 표 열 구분 (`chart.col.kind`) | DetailTabs · 같은 표 "준공 · 구분" | | 있음 |
-| 200 | 표 열 하단 (`chart.col.low`) | DetailTabs · 같은 표 "가장 낮은 값" | | 있음 |
-| 201 | 표 열 중앙값 (`chart.col.median`) | DetailTabs · 같은 표 "가운데값" | 중앙값 → 가운데값 | 있음 |
-| 202 | 표 열 상단 (`chart.col.high`) | DetailTabs · 같은 표 "가장 높은 값" | | 있음 |
-| 203 | 표 열 보정 중앙값(대체 아니면 빈 칸) (`chart.col.adjusted`) | DetailTabs · "표로 보기 — 주변 시세 비교" "연식 보정 가운데값"(대체 아니면 빈 칸) | 대체 아니면 빈 칸(고침 DX-9) | 있음(고침 DX-9) |
-| 204 | 표 열 거래 기간 (`chart.col.window`) | DetailTabs · 같은 표 "거래 기간" 열 |  | 있음(고침 DX-9) |
+| 185 | 차트 틀 + 제목 (`C02/index.tsx` · `chart.C02.title` "가격 갭") | DetailTabs · 탭 4 그림 "이 단지 가격 vs 주변 실거래" | 가격 갭 → 이 단지 가격 vs 주변 실거래 | 있음 | charts.r11 › C02 제목 · charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C02 normal |
+| 186 | 점 + 위스커(하단~상단, 가운데 점) 모양 (`C02/buildOption.ts` custom) | DetailTabs · 같은 그림 가로 막대(범위) + 점(가운데값) | 세로 위스커 → 가로 막대 | 있음 | charts.contract › C02 점+위스커(custom) + 값 축 억 단위 · charts.r11 › C02 축 이름 · e2e charts-gallery › C02 normal |
+| 187 | 값 축 억 단위 (`formatEok`) | DetailTabs · 같은 그림 "3억 4억 5억 6억 7억 8억" + "단위: 원 (가운데값)" | | 있음 | charts.contract › C02 점+위스커(custom) + 값 축 억 단위 |
+| 188 | 단지 축 라벨 + 신축(연도) (`compBadge` · `badge.newBuild`) | DetailTabs · 같은 그림 줄 이름 옆 "2024년 · 6건" | 신축(2024) → 2024년 · n건 | 있음 | charts.r11 › C02 축 이름 |
+| 189 | 단지 축 라벨 대체(연도) (`badge.substitute`) | DetailTabs · 탭 4 그림 "[대체 단지] 대체([준공년]) · 모양 예시" 줄 |  | 있음(고침 DX-8) | charts.r11 › C02 축 이름 |
+| 190 | 현재 구매가 범위 강조 (`chart.C02.current` "현재 구매가") | DetailTabs · 같은 그림 "이 단지 (84C 분양가)" 강조 줄 | 현재 구매가 → 이 단지 (분양가) | 있음 | charts.r11 › C02 축 이름 · e2e charts-gallery › C02 normal(이 단지 줄 강조) |
+| 191 | 연식 보정 중앙값 점(점선 빈 점) + 범례 (`chart.C02.adjusted`) | DetailTabs · 같은 줄 점선 빈 점 + 범례 "연식 보정 가운데값 (대체 단지만)" |  | 있음(고침 DX-8) | charts.contract › C02 T11 대체·보정: 보정 중앙값 = 점선 테두리 점 · e2e charts-gallery › C02 special · charts.r11 › C02 보정 가운데값(범례) |
+| 192 | 범례 실거래 범위 (`chart.C02.range`) | DetailTabs · 같은 그림 범례 "비교 단지 실거래 범위" | | 있음 | charts.r11 › C02 보정 가운데값(범례) |
+| 193 | 툴팁(하단~상단 · 중앙/미보정 · 보정) | DetailTabs · 같은 그림 "툴팁 예시" (가장 낮은 값~가장 높은 값 · 가운데값(보정 안 함) · 보정 줄) |  | 있음(고침 DX-8) | charts.r11 › C02 툴팁 |
+| 194 | 보정 배지 "추정(대체·보정 c=…)" (`adjustedBadges`) | DetailTabs · "주변 시세 · 가격 전망 — 다른 상태" "추정 (대체·연식 보정) 차트 제목 옆" | | 있음 | charts.r11 › C02 보정 배지 |
+| 195 | 라벨 배지 (`ChartFrame` labels) | DetailTabs · 같은 그림 "재가공 (실거래 통계) · 확인됨" | | 있음 | ChartGallery.test › 정상 상태 카드는 라벨 배지 |
+| 196 | 빈 상태 (`chart.C02.empty` "비교군 없음({reason})") | DetailTabs · 다른 상태 "비교할 단지가 없어요 (사유)" | | 있음 | charts.contract › C02 비교군 0 → "비교군 없음(사유)" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 197 | 표로 보기 (`table.show`) | DetailTabs · 그림 아래 "표로 보기" | | 있음 | charts.r11 › ChartFrame 표로 보기 · ChartGallery.test › 표로 보기 → Fact 셀 클릭이 출처 패널로 · e2e charts-gallery › 표로 보기: … Fact 셀 → 출처 패널 |
+| 198 | 표 열 이름 (`chart.col.name`) | DetailTabs · "표로 보기 — 주변 시세 비교" "이름" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 199 | 표 열 구분 (`chart.col.kind`) | DetailTabs · 같은 표 "준공 · 구분" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 200 | 표 열 하단 (`chart.col.low`) | DetailTabs · 같은 표 "가장 낮은 값" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 201 | 표 열 중앙값 (`chart.col.median`) | DetailTabs · 같은 표 "가운데값" | 중앙값 → 가운데값 | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 202 | 표 열 상단 (`chart.col.high`) | DetailTabs · 같은 표 "가장 높은 값" | | 있음 | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 203 | 표 열 보정 중앙값(대체 아니면 빈 칸) (`chart.col.adjusted`) | DetailTabs · "표로 보기 — 주변 시세 비교" "연식 보정 가운데값"(대체 아니면 빈 칸) | 대체 아니면 빈 칸(고침 DX-9) | 있음(고침 DX-9) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
+| 204 | 표 열 거래 기간 (`chart.col.window`) | DetailTabs · 같은 표 "거래 기간" 열 |  | 있음(고침 DX-9) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C02 T11(표 열 median·adjusted) |
 
 ## 14. 탭 5 가격 전망 (`tabs.tsx` LadderTab · `charts/C01`)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 205 | 안내 (`page.G3.ladder.note` "당첨 확률이 아닙니다 · 보장 아님 · 상대 비교") | DetailTabs · 탭 5 "목표 시점에 값이 오를 가능성은 어느 정도인가요?" 설명 | 제목 '입주 뒤' → '목표 시점에'(목표 시점이 기준일 + 3·5년일 수도 있음) | 있음(고침 DX-10) |
 | 206 | 목표 시점 고르기 radiogroup 3개 + 대상 반기 (`page.G3.ladder.horizons`, `chart.C01.horizon.*`) | DetailTabs · 탭 5 radiogroup "입주 + 1년 · 2030 하반기" … | 입주+1년 → 입주 + 1년 | 있음 |
 | 207 | 미해결 시점 회색 + "· 미해결" (`page.common.unresolved`) | DetailTabs · "주변 시세 · 가격 전망 — 다른 상태" "기준일 + 5년 · [시점] · 미해결" | | 있음 |
 | 208 | 판정기에 물은 문장 (`page.G3.ladder.proposition`) | DetailTabs · 탭 5 "판정기에 물은 문장 “…”" | | 있음 |
-| 209 | 차트 틀 + 제목 (`C01/index.tsx` · `chart.C01.title` "상승 확률 사다리") | DetailTabs · 탭 5 그림 "현재 가격보다 얼마나 오를까 — 가능성 사다리" | → 가능성 사다리 | 있음 |
-| 210 | 막대 4개 (`chart.C01.bar.*` "+5% · +10% · +20% · 보합·하락") | DetailTabs · 같은 그림 "5% 넘게 오를 가능성 … 그대로이거나 내릴 가능성" | | 있음 |
-| 211 | x축 0~1 확률 눈금 (`buildOption` xAxis) | DetailTabs · 탭 5 그림 "가능성 눈금" 0% ~ 100% |  | 있음(고침 DX-10) |
-| 212 | 기준선 0.15 · 0.85 (`chart.C01.threshold.*`) | DetailTabs · 같은 그림 "가능성 낮음 기준 15% · 가능성 높음 기준 85%" | 0.15 → 15% | 있음 |
-| 213 | 막대 라벨 값 · 판정 (`chart.C01.verdict.*`) | DetailTabs · 같은 그림 막대 옆 "53% 중간" | 불확실 → 중간 | 있음 |
-| 214 | 필요 연율(툴팁 안) (`chart.C01.annualized` "필요 연율 {pct}") | DetailTabs · 같은 그림 "· 해마다 2.6%" + 머리 "판정 · 필요한 연 상승률" | 툴팁 → 보이는 글 | 있음 |
-| 215 | 툴팁 | DetailTabs · 같은 그림 "툴팁 예시" (항목 · 값 · 판정 · 필요한 연 상승률) |  | 있음(고침 DX-10) |
-| 216 | 부제 (`chart.C01.subtitle` "목표 시점 {target}") | DetailTabs · 같은 그림 "목표 시점 2030 하반기 · 84C 타입 …" | | 있음 |
-| 217 | 라벨 배지 (`ChartFrame` labels) | DetailTabs · 같은 그림 "추정 (판정기)" | | 있음 |
-| 218 | 미해결 배지 + 회색 바탕 막대 + "미해결" 라벨 (`unresolvedBadge` · `badge.unresolved`) | DetailTabs · 다른 상태 "판정이 끝나지 않은 시점은 회색 + 차트 제목 옆 배지" | | 있음 |
-| 219 | 빈 상태 (`chart.C01.empty` "사다리 판정 없음") | DetailTabs · 다른 상태 "가능성 판정이 없어요" | | 있음 |
-| 220 | 표로 보기 (`table.show`) | DetailTabs · 그림 아래 "표로 보기" | | 있음 |
-| 221 | 표 열 시점 (`chart.col.horizon`) | DetailTabs · "표로 보기 — 가격 전망 사다리" "목표 시점"(입주 + 1년) | 시점 ↔ 목표 시점 머리 이름이 서로 바뀜 | 있음 |
-| 222 | 표 열 목표 시점 (`chart.col.target`) | DetailTabs · 같은 표 "시점"(2030 하반기) | | 있음 |
-| 223 | 표 열 +5% (`chart.C01.bar.p5`) | DetailTabs · 같은 표 "+5%" | | 있음 |
-| 224 | 표 열 +10% (`chart.C01.bar.p10`) | DetailTabs · 같은 표 "+10%" | | 있음 |
-| 225 | 표 열 +20% (`chart.C01.bar.p20`) | DetailTabs · 같은 표 "+20%" | | 있음 |
-| 226 | 표 열 보합·하락 (`chart.C01.bar.p_flat`) | DetailTabs · 같은 표 "그대로·내림" | 보합·하락 → 그대로·내림 | 있음 |
-| 227 | 표 열 상태 (`chart.col.status`, `chart.status.*`) | DetailTabs · 같은 표 "상태 · 정상" | 판정 → 정상 | 있음 |
+| 209 | 차트 틀 + 제목 (`C01/index.tsx` · `chart.C01.title` "상승 확률 사다리") | DetailTabs · 탭 5 그림 "현재 가격보다 얼마나 오를까 — 가능성 사다리" | → 가능성 사다리 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C01 normal |
+| 210 | 막대 4개 (`chart.C01.bar.*` "+5% · +10% · +20% · 보합·하락") | DetailTabs · 같은 그림 "5% 넘게 오를 가능성 … 그대로이거나 내릴 가능성" | | 있음 | charts.r11 › C01 쉬운 말 |
+| 211 | x축 0~1 확률 눈금 (`buildOption` xAxis) | DetailTabs · 탭 5 그림 "가능성 눈금" 0% ~ 100% |  | 있음(고침 DX-10) | charts.r11 › C01 눈금 · charts.r11 › C01 겹쳐 보기(0·25·50·75·100%) |
+| 212 | 기준선 0.15 · 0.85 (`chart.C01.threshold.*`) | DetailTabs · 같은 그림 "가능성 낮음 기준 15% · 가능성 높음 기준 85%" | 0.15 → 15% | 있음 | charts.contract › C01 markLine 0.15 / 0.85, xAxis 0~1 · charts.r11 › C01 겹쳐 보기 |
+| 213 | 막대 라벨 값 · 판정 (`chart.C01.verdict.*`) | DetailTabs · 같은 그림 막대 옆 "53% 중간" | 불확실 → 중간 | 있음 | charts.contract › C01 막대 라벨 = 확률 + verdict 텍스트 |
+| 214 | 필요 연율(툴팁 안) (`chart.C01.annualized` "필요 연율 {pct}") | DetailTabs · 같은 그림 "· 해마다 2.6%" + 머리 "판정 · 필요한 연 상승률" | 툴팁 → 보이는 글 | 있음 | charts.r11 › C01 툴팁 |
+| 215 | 툴팁 | DetailTabs · 같은 그림 "툴팁 예시" (항목 · 값 · 판정 · 필요한 연 상승률) |  | 있음(고침 DX-10) | charts.r11 › C01 툴팁 |
+| 216 | 부제 (`chart.C01.subtitle` "목표 시점 {target}") | DetailTabs · 같은 그림 "목표 시점 2030 하반기 · 84C 타입 …" | | 있음 | charts.r11 › C01 목표 시점 · charts.contract › C01 막대 라벨 = 확률 + verdict 텍스트, 부제 = 목표 시점 |
+| 217 | 라벨 배지 (`ChartFrame` labels) | DetailTabs · 같은 그림 "추정 (판정기)" | | 있음 | e2e charts-gallery › C01 normal · e2e charts-gallery › R11 C01 겹쳐 보기(G4) |
+| 218 | 미해결 배지 + 회색 바탕 막대 + "미해결" 라벨 (`unresolvedBadge` · `badge.unresolved`) | DetailTabs · 다른 상태 "판정이 끝나지 않은 시점은 회색 + 차트 제목 옆 배지" | | 있음 | charts.contract › C01 review 봉투 → 회색 막대 + "미해결" · ChartGallery.test › 특수 상태 배지(미해결) · e2e charts-gallery › C01 special |
+| 219 | 빈 상태 (`chart.C01.empty` "사다리 판정 없음") | DetailTabs · 다른 상태 "가능성 판정이 없어요" | | 있음 | charts.contract › C01 horizon 행 없음 → "사다리 판정 없음" · ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 220 | 표로 보기 (`table.show`) | DetailTabs · 그림 아래 "표로 보기" | | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 221 | 표 열 시점 (`chart.col.horizon`) | DetailTabs · "표로 보기 — 가격 전망 사다리" "목표 시점"(입주 + 1년) | 시점 ↔ 목표 시점 머리 이름이 서로 바뀜 | 있음 | charts.r11 › C01 표 |
+| 222 | 표 열 목표 시점 (`chart.col.target`) | DetailTabs · 같은 표 "시점"(2030 하반기) | | 있음 | charts.r11 › C01 표 |
+| 223 | 표 열 +5% (`chart.C01.bar.p5`) | DetailTabs · 같은 표 "+5%" | | 있음 | charts.r11 › C01 표 |
+| 224 | 표 열 +10% (`chart.C01.bar.p10`) | DetailTabs · 같은 표 "+10%" | | 있음 | charts.r11 › C01 표 |
+| 225 | 표 열 +20% (`chart.C01.bar.p20`) | DetailTabs · 같은 표 "+20%" | | 있음 | charts.r11 › C01 표 |
+| 226 | 표 열 보합·하락 (`chart.C01.bar.p_flat`) | DetailTabs · 같은 표 "그대로·내림" | 보합·하락 → 그대로·내림 | 있음 | charts.r11 › C01 표 |
+| 227 | 표 열 상태 (`chart.col.status`, `chart.status.*`) | DetailTabs · 같은 표 "상태 · 정상" | 판정 → 정상 | 있음 | charts.r11 › C01 표 |
 
 ## 15. 탭 6 개발 소식 (`tabs.tsx` CatalystsTab · `charts/C09` compact)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 228 | 차트 틀 + 제목 (`C09/index.tsx` · `chart.C09.title` "호재 단계") | DetailTabs · 탭 6 "주변에 개발 소식이 있나요?" 그림 "개발 소식 단계" | 호재 단계 → 개발 소식 단계 | 있음 |
-| 229 | 단계 보드 5칸 (`chart.C09.stage.*`) | DetailTabs · 같은 그림 "확정 · 계획 · 추진 · 언론 보도만 · 아직 정해지지 않음" | 언론 → 언론 보도만, 미확정 → 아직 정해지지 않음 | 있음 |
-| 230 | 단계 배지 색(확정 강조 · 언론/미확정 회색) | DetailTabs · 탭 6 설명 "언론 보도만 있거나 아직 정해지지 않은 소식은 회색이에요" | | 문구로만 |
-| 231 | 보드 칸 안 항목(이름 · 종류 · 예정 연월 · 위치 미확정) + 라벨 배지 | DetailTabs · 탭 6 "소식이 있을 때 단계 칸 안 모습" |  | 있음(고침 DX-11) |
-| 232 | 판정 제외 한 줄 (`chart.C09.excluded` "호재 아님(판정 제외) {n}건 — 보드에 넣지 않음") | DetailTabs · 같은 곳 "개발 소식 아님(판정 제외) [n]건 — 보드에 넣지 않음" | 호재 아님 → 개발 소식 아님 | 있음(고침 DX-11) |
-| 233 | 빈 상태 그림 대신 한 줄 (`chart.C09.empty` "호재 없음") | DetailTabs · 같은 그림 단계 칸마다 "없음" | 한 줄 → 다섯 칸 '없음' | 있음 |
-| 234 | 표로 보기 (`table.show`) | DetailTabs · 그림 아래 "표로 보기" | | 있음 |
-| 235 | 표 열 이름 (`chart.col.name`) | DetailTabs · 탭 6 "표로 보기 — 개발 소식 단계" "이름" |  | 있음(고침 DX-11) |
-| 236 | 표 열 구분 (`chart.col.kind`) | DetailTabs · 같은 표 "구분" |  | 있음(고침 DX-11) |
-| 237 | 표 열 단계 (`chart.col.stage`) | DetailTabs · 같은 표 "단계" |  | 있음(고침 DX-11) |
-| 238 | 표 열 확률 (`chart.col.prob`) | DetailTabs · 같은 표 "확률" |  | 있음(고침 DX-11) |
-| 239 | 표 열 예정 (`chart.col.expected`) | DetailTabs · 같은 표 "예정" |  | 있음(고침 DX-11) |
-| 240 | 표 열 위치 확정 (`chart.col.location`) | DetailTabs · 같은 표 "위치 확정" |  | 있음(고침 DX-11) |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 228 | 차트 틀 + 제목 (`C09/index.tsx` · `chart.C09.title` "호재 단계") | DetailTabs · 탭 6 "주변에 개발 소식이 있나요?" 그림 "개발 소식 단계" | 호재 단계 → 개발 소식 단계 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C09 normal |
+| 229 | 단계 보드 5칸 (`chart.C09.stage.*`) | DetailTabs · 같은 그림 "확정 · 계획 · 추진 · 언론 보도만 · 아직 정해지지 않음" | 언론 → 언론 보도만, 미확정 → 아직 정해지지 않음 | 있음 | charts.contract › C09 보드 5열 묶음 + 언론·미확정 회색 + 위치 미확정 표시 · charts.r11 › C09 쉬운 단계 이름 · charts.r11 › C09 단계 보드 |
+| 230 | 단계 배지 색(확정 강조 · 언론/미확정 회색) | DetailTabs · 탭 6 설명 "언론 보도만 있거나 아직 정해지지 않은 소식은 회색이에요" | | 문구로만 | charts.contract › C09 보드 5열 묶음 + 언론·미확정 회색 · e2e charts-gallery › C09 normal |
+| 231 | 보드 칸 안 항목(이름 · 종류 · 예정 연월 · 위치 미확정) + 라벨 배지 | DetailTabs · 탭 6 "소식이 있을 때 단계 칸 안 모습" |  | 있음(고침 DX-11) | charts.r11 › C09 단계 보드 · charts.contract › C09 보드 5열 …(위치 미확정) · e2e charts-gallery › C09 special |
+| 232 | 판정 제외 한 줄 (`chart.C09.excluded` "호재 아님(판정 제외) {n}건 — 보드에 넣지 않음") | DetailTabs · 같은 곳 "개발 소식 아님(판정 제외) [n]건 — 보드에 넣지 않음" | 호재 아님 → 개발 소식 아님 | 있음(고침 DX-11) | charts.contract › C09 계약 .8 '호재 아님' 단계는 보드에 넣지 않고 따로 센다 |
+| 233 | 빈 상태 그림 대신 한 줄 (`chart.C09.empty` "호재 없음") | DetailTabs · 같은 그림 단계 칸마다 "없음" | 한 줄 → 다섯 칸 '없음' | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 234 | 표로 보기 (`table.show`) | DetailTabs · 그림 아래 "표로 보기" | | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 235 | 표 열 이름 (`chart.col.name`) | DetailTabs · 탭 6 "표로 보기 — 개발 소식 단계" "이름" |  | 있음(고침 DX-11) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 236 | 표 열 구분 (`chart.col.kind`) | DetailTabs · 같은 표 "구분" |  | 있음(고침 DX-11) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 237 | 표 열 단계 (`chart.col.stage`) | DetailTabs · 같은 표 "단계" |  | 있음(고침 DX-11) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 238 | 표 열 확률 (`chart.col.prob`) | DetailTabs · 같은 표 "확률" |  | 있음(고침 DX-11) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 239 | 표 열 예정 (`chart.col.expected`) | DetailTabs · 같은 표 "예정" |  | 있음(고침 DX-11) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
+| 240 | 표 열 위치 확정 (`chart.col.location`) | DetailTabs · 같은 표 "위치 확정" |  | 있음(고침 DX-11) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C09 보드 5열 …(toTable 위치 확정) |
 | 241 | 목록 구획 (`page.G3.catalyst.list` "호재 목록") | DetailTabs · 탭 6 "개발 소식 목록" | | 있음 |
 | 242 | 목록 없음 (`chart.C09.empty`) | DetailTabs · 같은 곳 "이 단지에 연결된 개발 소식이 없어요" | | 있음 |
 | 243 | 항목 이름 | DetailTabs · "소식이 있을 때 한 줄 모습" "[소식 이름 — 기사 제목]" | | 있음 |

@@ -22,7 +22,13 @@ import * as C09 from './C09/buildOption';
 import { C09_EMPTY, type C09Data } from './C09/types';
 import * as C10 from './C10/buildOption';
 import { C10_EMPTY, type C10Data } from './C10/types';
-import type { BuildOptionContext, ChartId, ChartModule, EChartsOption } from './types';
+import type {
+  BuildOptionContext,
+  ChartId,
+  ChartLegendItem,
+  ChartModule,
+  EChartsOption,
+} from './types';
 import type { DataTable } from '@/components/DataTableToggle';
 import type { TKey } from '@/i18n';
 
@@ -47,6 +53,7 @@ export interface ChartRegistryEntry {
   buildOption: (data: unknown, ctx?: BuildOptionContext) => EChartsOption;
   emptyReason: (data: unknown) => string | null;
   toTable: (data: unknown) => DataTable;
+  legendItems: (data: unknown, ctx?: BuildOptionContext) => ChartLegendItem[];
 }
 
 function entry<K extends ChartId>(
@@ -59,6 +66,7 @@ function entry<K extends ChartId>(
     buildOption: (data, ctx) => module.buildOption(data as ChartDataMap[K], ctx),
     emptyReason: (data) => module.emptyReason(data as ChartDataMap[K]),
     toTable: (data) => module.toTable(data as ChartDataMap[K]),
+    legendItems: (data, ctx) => module.legendItems(data as ChartDataMap[K], ctx),
   };
 }
 

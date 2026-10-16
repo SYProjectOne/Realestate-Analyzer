@@ -56,6 +56,30 @@ for (const id of CHARTS) {
   }
 }
 
+test('R11 C04 범례는 차트 위(연도 축과 겹치지 않음) · 나머지 n곳 · 확인 불가', async ({ page }) => {
+  await openGallery(page);
+  const card = page.getByTestId('gallery-C04-special-2');
+  await settle(card);
+  const legend = card.getByTestId('chart-legend');
+  await expect(legend).toContainText('나머지 3곳');
+  await expect(legend).toContainText(ko.chart.C04.unknownArea);
+  const legendBox = await legend.boundingBox();
+  const chartBox = await card.getByTestId('echart').boundingBox();
+  expect(legendBox && chartBox && legendBox.y + legendBox.height <= chartBox.y).toBe(true);
+  await expect(card).toHaveScreenshot('C04-special-2.png', SHOT);
+});
+
+test('R11 C01 겹쳐 보기(G4): 막대 묶음 · 단지 범례 위 · 목표 시점 부제', async ({ page }) => {
+  await openGallery(page);
+  const card = page.getByTestId('gallery-C01-special-2');
+  await settle(card);
+  await expect(card.getByTestId('chart-legend').getByRole('listitem')).toHaveCount(3);
+  await expect(card.getByTestId('chart-subtitle')).toContainText(
+    ko.chart.C01.subtitle.split(' ')[0]!,
+  );
+  await expect(card).toHaveScreenshot('C01-special-2.png', SHOT);
+});
+
 test('C07 escaped: 막대 대신 판정기 질문 텍스트(HTML 이스케이프)', async ({ page }) => {
   await openGallery(page);
   const card = page.getByTestId('gallery-C07-escaped');

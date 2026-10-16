@@ -1,11 +1,15 @@
 /** 차트 공개 API — 계약은 ./README.md. 화면(WP6a)은 여기서만 import 한다. */
 export { ChartFrame, type ChartFrameProps } from './ChartFrame';
+export { ChartLegend } from './ChartLegend';
+export { ChartFooter, type ChartFooterProps } from './ChartTable';
 export { EChart, type EChartProps } from './EChart';
 export { DEFAULT_PALETTE, useChartPalette } from './palette';
 export { chartModules, chartRegistry, type ChartDataMap } from './registry';
 export type {
   BuildOptionContext,
   ChartId,
+  ChartLegendItem,
+  ChartLegendSymbol,
   ChartModule,
   ChartPalette,
   EChartsOption,
