@@ -139,7 +139,7 @@ export function RegionNewPage() {
     {
       n: '3',
       state: created ? 'done' : canStart ? 'current' : 'todo',
-      title: 'page.G0.steps.start',
+      title: 'page.G0.start',
       hint: t('page.G0.steps.startHint'),
     },
     {
@@ -471,7 +471,7 @@ export function RegionNewPage() {
             <div className="flex flex-col gap-2.5 border-t border-subtle pt-[18px]">
               <h3 className="flex items-center gap-2.5 text-[17px] font-bold">
                 <StepNo n="3" state={canStart || created ? 'current' : 'todo'} />
-                {t('page.G0.steps.start')}
+                {t('page.G0.start')}
               </h3>
               <button
                 type="button"

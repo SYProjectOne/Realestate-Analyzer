@@ -37,7 +37,7 @@ describe('R11 G0 지역 입력 — 목업 RegionNew', () => {
     expect(steps.map((s) => s.querySelector('b')?.textContent)).toEqual([
       t('page.G0.steps.find'),
       t('page.G0.steps.confirm'),
-      t('page.G0.steps.start'),
+      t('page.G0.start'),
       t('page.G0.steps.progress'),
     ]);
     expect(steps[0]).toHaveAttribute('aria-current', 'step');

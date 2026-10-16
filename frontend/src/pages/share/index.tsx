@@ -3,6 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { hasStoredWriteToken, setAuth, setTabAuth } from '@/api/auth';
 import { t } from '@/i18n';
 
+/** 목업 보조 버튼(흰 바탕 · 테두리) */
+const BTN =
+  'min-h-11 rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent';
+
 /**
  * `#<token>` → token. 비었거나 퍼센트 인코딩이 깨졌으면(decodeURIComponent URIError) null — 토큰 없음으로 안내한다.
  */
@@ -77,27 +81,9 @@ export function SharePage() {
               onCancel={done}
             />
           ) : token ? (
-            <>
-              <p role="status" className="flex items-center gap-2 text-sm text-muted">
-                <svg
-                  aria-hidden
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  className="shrink-0 animate-spin text-accent motion-reduce:animate-none"
-                >
-                  <path d="M21 12a9 9 0 1 1-6.2-8.6" />
-                </svg>
-                {t('page.share.applying')}
-              </p>
-              <p className="text-[13px] leading-normal text-muted">
-                {t('page.share.applyingHint')}
-              </p>
-            </>
+            <p role="status" className="text-sm text-muted">
+              {t('page.share.applying')}
+            </p>
           ) : (
             <>
               <p
@@ -106,10 +92,7 @@ export function SharePage() {
               >
                 {t('page.share.missing')}
               </p>
-              <Link
-                to="/"
-                className="inline-flex min-h-11 items-center self-start rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent hover:text-accent-ink"
-              >
+              <Link to="/" className={`inline-flex items-center self-start ${BTN}`}>
                 {t('page.share.home')}
               </Link>
             </>
@@ -159,22 +142,14 @@ function ConfirmDialog({
             ref={defaultRef}
             type="button"
             onClick={onTabOnly}
-            className="min-h-11 rounded-[10px] bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-ink focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2"
+            className="min-h-11 rounded-[10px] bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-ink"
           >
             {t('page.share.tabOnly')}
           </button>
-          <button
-            type="button"
-            onClick={onReplace}
-            className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent"
-          >
+          <button type="button" onClick={onReplace} className={BTN}>
             {t('page.share.replace')}
           </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent"
-          >
+          <button type="button" onClick={onCancel} className={BTN}>
             {t('page.share.cancel')}
           </button>
         </div>

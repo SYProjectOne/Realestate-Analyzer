@@ -24,7 +24,6 @@ import {
   useGlobalSearch,
   usePageContext,
 } from '../_shared';
-import { HelpToggle } from '../region-new/HelpToggle';
 
 const FORMATS: readonly ReportFormat[] = ['html', 'pdf'];
 
@@ -298,9 +297,9 @@ function ReportsBody() {
         >
           <SectionHead
             id={`${formId}-h`}
-            kicker={t('page.G8.createKicker')}
+            kicker={t('page.G8.generate')}
             title={t('page.G8.createTitle')}
-            what={t('page.G8.createWhat')}
+            what={`${t('page.G8.emptyBody')} ${t('page.G8.publishedOnly')}`}
           />
           <div className="grid gap-x-6 gap-y-5 lg:grid-cols-2">
             {/* 1 기준일 */}
@@ -310,9 +309,6 @@ function ReportsBody() {
                 <label htmlFor={baseSelectId} className="text-[15px] font-bold">
                   {t('page.G8.snapshot')}
                 </label>
-                <HelpToggle label={t('page.G8.snapshotHelp')}>
-                  {t('page.G8.snapshotHelpBody')}
-                </HelpToggle>
               </span>
               <select
                 id={baseSelectId}
@@ -541,7 +537,6 @@ function ReportsBody() {
               data-testid="g8-progress-slot"
             >
               <p className="text-sm font-bold">{t('page.G8.progressSlot')}</p>
-              <p className="text-[13px] text-muted">{t('page.G8.progressSlotHint')}</p>
             </div>
           )}
         </Card>
@@ -557,7 +552,6 @@ function ReportsBody() {
         <footer className="flex flex-col gap-2 border-t border-border pt-4 text-[13px] leading-relaxed text-muted">
           <p>{t('page.G8.footnote')}</p>
           <ProvenanceLegend />
-          <p>{t('page.G8.legendNote')}</p>
         </footer>
       </PageShell>
     </div>

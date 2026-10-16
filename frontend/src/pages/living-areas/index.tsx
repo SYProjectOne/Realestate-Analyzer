@@ -317,11 +317,7 @@ function Editor({ region }: { region: Region }) {
           aria-label={metaText('page.G0_2.unassigned', { n: unassigned.length })}
         >
           <p className="text-[15px] font-bold text-danger">
-            <MetaText
-              kind="count"
-              k="page.G0_2.unassignedTitle"
-              params={{ n: unassigned.length }}
-            />
+            <MetaText kind="count" k="page.G0_2.unassigned" params={{ n: unassigned.length }} />
           </p>
           <ul className="flex flex-wrap gap-1.5">{unassigned.map(dong)}</ul>
         </section>

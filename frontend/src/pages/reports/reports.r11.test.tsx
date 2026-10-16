@@ -69,8 +69,8 @@ describe('R11 G8 보고서 — 목업 Reports', () => {
     // 형식 라디오: 이름은 형식만, 설명은 aria-describedby
     const pdf = screen.getByRole('radio', { name: t('page.G8.formats.pdf') });
     expect(pdf).toHaveAccessibleDescription(t('page.G8.formatHint.pdf'));
-    await userEvent.click(screen.getByRole('button', { name: t('page.G8.snapshotHelp') }));
-    expect(screen.getByRole('note')).toHaveTextContent(t('page.G8.snapshotHelpBody'));
+    expect(screen.getByText(t('page.G8.snapshotHint'))).toBeInTheDocument();
+    expect(screen.getByText(t('page.G8.emptyBody'), { exact: false })).toBeInTheDocument();
     expect(screen.getByTestId('g8-ready')).toHaveTextContent(t('page.G8.ready', { n: '0' }));
     const selection = screen.getByTestId('g8-selection');
     expect(selection).toHaveTextContent(t('page.G8.scenarioDefault'));
