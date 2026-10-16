@@ -27,7 +27,7 @@ from app.api.deps import DB, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found
 from app.api.facts import LABEL_UNKNOWN, FactMaker, ProvIndex, fact, weakest
 from app.api.routers.complexes import catalyst_view
-from app.api.routers.snapshots import ScenarioQ, partial_missing, unsold_points
+from app.api.routers.snapshots import ScenarioQ, latest_unsold, partial_missing, unsold_points
 from app.api.views import area_names, judge_scope, judgment_days
 from app.core.settings import Settings
 from app.facts_view import region_catalysts
@@ -327,6 +327,8 @@ def _market_static(
         "supply": supply_views,
         "move_in_markers": [],  # 시나리오별(market_body)
         "unsold": unsold,
+        # 계약 .22(D30-5): 미분양 지역 합계(가장 최근 달) — 대시보드 KPI ``kpis.unsold`` 와 같은 함수. 생활권을 고르면 그 생활권 단위만
+        "unsold_latest": latest_unsold(session, region.id, fm, scopes=scopes),
         "catalysts": cat_views,
         "regulation": {"items": reg_items},
         "living_area_prices": prices,

@@ -116,10 +116,10 @@ def test_q1_detail_payment_amounts_are_pmid_times_ratio(client: TestClient) -> N
         assert r["label"] != "확인 불가", (key, r)
         assert f["v"] == share_won(mid, Decimal(str(r["v"]))), (key, f, r)
         assert f["label"] == "추정" and f["unit"] == "won", f
-        assert f["reason"].startswith(f"산술(P_mid × {what} "), f
+        assert f["reason"].startswith(f"산술(중간 가격 × {what} "), f  # D30-6(계약 .22): 'P_mid' → '중간 가격'
         assert f["prov"] == d["price"]["price_mid"]["prov"], f
     assert pa["down_payment_first_won"] == cur["down_payment_first_won"]
-    assert "P_mid" in pa["formula"]
+    assert pa["formula"].startswith("금액 = 중간 가격(") and "P_mid" not in pa["formula"]  # D30-6
 
 
 def test_q1_same_value_in_list_row_and_compare_terms(client: TestClient) -> None:

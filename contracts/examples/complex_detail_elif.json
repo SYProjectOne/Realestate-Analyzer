@@ -220,7 +220,7 @@
           "label": "추정",
           "prov": "fp_202",
           "checked_at": "2026-10-07",
-          "reason": "산술(P_mid × 계약금 5%)",
+          "reason": "산술(중간 가격 × 계약금 5%)",
           "unit": "won"
         },
         "interim_won": {
@@ -228,7 +228,7 @@
           "label": "추정",
           "prov": "fp_202",
           "checked_at": "2026-10-07",
-          "reason": "산술(P_mid × 중도금 60%)",
+          "reason": "산술(중간 가격 × 중도금 60%)",
           "unit": "won"
         },
         "balance_won": {
@@ -236,7 +236,7 @@
           "label": "추정",
           "prov": "fp_202",
           "checked_at": "2026-10-07",
-          "reason": "산술(P_mid × 잔금 35%)",
+          "reason": "산술(중간 가격 × 잔금 35%)",
           "unit": "won"
         },
         "down_payment_first_won": {
@@ -247,7 +247,7 @@
           "reason": "한국경제TV 2026-07-21",
           "unit": "won"
         },
-        "formula": "금액 = P_mid(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
+        "formula": "금액 = 중간 가격(현재 구매가 중앙, 대표 타입) × 현재 납부 조건 비율 ÷ 100, 원 단위 반올림(RA §6-7 산술)"
       }
     },
     "intake_current": {
@@ -1191,6 +1191,15 @@
         "unit": "pct"
       },
       "gap_pct_unadjusted": null,
+      "comps_median": {
+        "v": 625527426,
+        "label": "재가공",
+        "prov": "sc_88_2_gap.raw",
+        "checked_at": "2026-10-08",
+        "reason": "비교군 실거래 중앙값",
+        "unit": "won"
+      },
+      "comps_median_unadjusted": null,
       "score": {
         "v": 6.3,
         "label": "추정",
