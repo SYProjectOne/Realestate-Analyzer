@@ -40,7 +40,7 @@ export function ComplexPage() {
     <div className="flex min-w-0 flex-col gap-2">
       {/* 현재 위치 줄(목업 Detail): 단지 찾기 › 단지 이름 — 이름은 받은 뒤에만 */}
       <nav aria-label={t('page.G3.crumb.label')} className="text-sm text-muted">
-        <Link to={`/complexes${search}`} className="text-accent hover:underline">
+        <Link to={`/complexes${search}`} className="text-accent underline underline-offset-2">
           {t('page.G3.crumb.list')}
         </Link>
         {name ? (

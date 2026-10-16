@@ -127,14 +127,15 @@ export function ScoreCard({ detail }: { detail: ComplexDetail }) {
               ) : null}
               {key === 'p10' ? (
                 <span className="flex flex-col text-xs text-muted" data-testid="score-p10-note">
-                  {horizon && target ? (
-                    <span>
-                      {t('page.G3.scoreWhy.p10Target', {
-                        horizon: enumText('chart.C01.horizon', horizon),
-                        target,
-                      })}
-                    </span>
-                  ) : null}
+                  {/* 상황 목록을 받은 뒤 채운다 — 줄 높이를 미리 잡아 둬 레이아웃이 밀리지 않게(CLS) */}
+                  <span className="min-h-4">
+                    {horizon && target
+                      ? t('page.G3.scoreWhy.p10Target', {
+                          horizon: enumText('chart.C01.horizon', horizon),
+                          target,
+                        })
+                      : null}
+                  </span>
                   <span>{t('page.G3.ladder.note')}</span>
                 </span>
               ) : null}

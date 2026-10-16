@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import type { ComplexDetail } from '@/api/types';
 import { t } from '@/i18n';
+import ko from '@/i18n/ko.json';
 import { MOBILE_QUERY } from '@/lib/useMediaQuery';
 import { generatedHandlers } from '@/mocks/handlers.gen';
 import { resetMockState } from '@/mocks/handlers.extra';
@@ -419,5 +420,286 @@ describe('R11 G3 모바일(D7 읽기 전용)', () => {
       const main = screen.getByRole('main');
       expect(within(main).getAllByRole('navigation')).toHaveLength(1);
     });
+  });
+});
+
+/** 용어 '?' 버튼 이름(glossary.open) */
+function termButton(root: HTMLElement, k: keyof typeof ko.glossary.items): HTMLElement {
+  return within(root).getByRole('button', {
+    name: t('glossary.open', { term: ko.glossary.items[k].term }),
+  });
+}
+
+describe('R11 G3 대응표 보강(coverage-Detail 테스트 칸)', () => {
+  it('머리 용어 ? — 접수 상태·현재 구매가·가격 갭·계약금·중도금·잔금·조건 5·종합 점수·분류·범위', async () => {
+    const detail = await exampleDetail();
+    renderRoute('/complexes/2');
+    const h = await head(detail);
+    for (const k of [
+      'intake_status',
+      'current_price',
+      'gap',
+      'special_supply',
+      'down',
+      'interim',
+      'balance',
+      'resale_end',
+      'residency',
+      'rewin',
+      'regulated',
+      'price_cap',
+      'total',
+      'inclusion',
+      'judge_scope',
+      'points',
+    ] as const) {
+      expect(termButton(h, k)).toBeInTheDocument();
+    }
+  });
+
+  it('가격 카드: 기준 타입 · 가격 구성 · 주변 시세 비교 링크(#gap) · 공고문 원문 → 출처 서랍 · 공식 홈페이지', async () => {
+    const detail = await exampleDetail();
+    const { router } = renderRoute('/complexes/2');
+    const h = await head(detail);
+    const card = h.querySelector('[data-tier="price"]') as HTMLElement;
+    expect(card).toHaveTextContent(
+      t('page.G3.header.priceBasis', { type: detail.price.basis_type_code ?? '' }),
+    );
+    expect(within(card).getByTestId('price-composition')).toHaveTextContent(
+      detail.price.composition ?? '',
+    );
+    if (detail.header.official_site_url) {
+      expect(
+        within(h).getByRole('link', { name: new RegExp(t('page.G3.header.officialSite')) }),
+      ).toHaveAttribute('href', detail.header.official_site_url);
+    }
+    await userEvent.click(within(h).getByTestId('notice-original'));
+    expect(await screen.findByRole('dialog', { name: t('provenance.title') })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(within(card).getByRole('link', { name: t('page.G3.tab.gap') }));
+    await waitFor(() => expect(router.state.location.hash).toBe('#gap'));
+  });
+
+  it('돈 카드: 중도금 조건(공고 문구) · 납부 일정 전체 링크(#payment)', async () => {
+    const detail = await exampleDetail();
+    const current = detail.payment.find((p) => p.is_current)!;
+    const { router } = renderRoute('/complexes/2');
+    const h = await head(detail);
+    const money = within(h).getByRole('region', { name: t('page.G3.summary.money') });
+    expect(money).toHaveTextContent(
+      t('page.G3.summary.interimTerms', { text: current.interim_terms_text ?? '' }),
+    );
+    await userEvent.click(within(money).getByRole('link', { name: t('page.G3.tab.payment') }));
+    await waitFor(() => expect(router.state.location.hash).toBe('#payment'));
+  });
+
+  it('조건 카드: 특별공급 안내 · 점수 카드: 순위 배지(메타) · 상대 비교 안내', async () => {
+    const detail = await exampleDetail();
+    renderRoute('/complexes/2');
+    const h = await head(detail);
+    const cond = within(h).getByRole('region', { name: t('page.G3.summary.conditions') });
+    expect(cond).toHaveTextContent(t('page.G3.summary.specialHint'));
+    const score = within(h).getByRole('region', { name: t('page.G3.summary.score') });
+    expect(score.querySelector('[data-meta="rank"]')).not.toBeNull();
+    expect(score).toHaveTextContent(t('page.G3.summary.scoreHint'));
+  });
+
+  it("공고 전(트랙 A 아님 · applyhome_id null) → '공고 전 (청약홈에 아직 없음)' + title 안내", async () => {
+    const detail = await exampleDetail();
+    useDetail({ ...detail, header: { ...detail.header, applyhome_id: null, track: 'B' } });
+    renderRoute('/complexes/2');
+    const h = await head(detail);
+    const badge = within(h).getByTestId('upcoming-badge');
+    expect(badge).toHaveTextContent(t('page.G3.header.preNotice'));
+    expect(badge).toHaveAttribute('title', t('page.G3.header.upcomingHint'));
+  });
+
+  it('평형별 가격 탭: 구성 · 처음 공고 대비 · 표 열 · 타입마다 다른 옵션 고지는 칸 안 · 그 타입 할인 없음', async () => {
+    const detail = await exampleDetail();
+    const [a, b, ...rest] = detail.types;
+    const current = detail.payment.find((p) => p.is_current)!;
+    const basis = detail.price.basis_type_code!;
+    const disc = {
+      v: 1000000,
+      label: '확인됨' as const,
+      prov: 'fp_disc',
+      checked_at: '2026-10-07',
+      unit: 'won' as const,
+    };
+    useDetail({
+      ...detail,
+      types: [{ ...a!, options_text: '고지 A' }, { ...b!, options_text: '고지 B' }, ...rest],
+      payment: detail.payment.map((p) =>
+        p === current ? { ...p, discount_by_type: { [basis]: disc } } : p,
+      ),
+    });
+    renderRoute('/complexes/2#price');
+    const panel = await screen.findByRole('tabpanel');
+    expect(panel).toHaveTextContent(detail.price.composition ?? '');
+    expect(within(panel).getByText(t('page.G3.price.change'))).toBeInTheDocument();
+    expect(prov(panel, detail.price.change_vs_first_pct?.prov)).not.toBeNull();
+    for (const k of [
+      'type',
+      'area',
+      'units',
+      'max',
+      'floorSample',
+      'floorText',
+      'balcony',
+      'options',
+      'discount',
+    ] as const) {
+      expect(
+        within(panel).getByRole('columnheader', { name: t(`page.G3.price.${k}`) }),
+      ).toBeInTheDocument();
+    }
+    expect(within(panel).getByText('고지 A')).toBeInTheDocument();
+    expect(within(panel).getByText('고지 B')).toBeInTheDocument();
+    expect(within(panel).queryByTestId('options-footnote')).toBeNull();
+    const other = detail.types.find((r) => r.type_code !== basis)!;
+    expect(within(panel).getByTestId(`type-discount-${other.type_code}`)).toHaveTextContent(
+      t('page.common.none'),
+    );
+  });
+
+  it('평형별 가격 탭: 타입이 하나도 없으면 "없음"', async () => {
+    const detail = await exampleDetail();
+    useDetail({ ...detail, types: [] });
+    renderRoute('/complexes/2#price');
+    const panel = await screen.findByRole('tabpanel');
+    expect(
+      within(panel).getByText(t('empty.unknownWithReason', { reason: t('page.common.none') })),
+    ).toBeInTheDocument();
+  });
+
+  it('납부 일정 전체: 공고마다 중도금 일정 표(회차 · 낼 날짜 D± · 비율)', async () => {
+    const detail = await exampleDetail();
+    const current = detail.payment.find((p) => p.is_current)!;
+    renderRoute('/complexes/2#payment');
+    const panel = await screen.findByRole('tabpanel');
+    const table = within(panel).getByRole('table', {
+      name: t('page.G3.payment.scheduleOf', { no: current.notice_no }),
+    });
+    expect(table).toHaveTextContent(t('page.G3.payment.seq', { n: '1' }));
+    expect(prov(table, current.interim_schedule[0]?.pct.prov)).not.toBeNull();
+  });
+
+  it('경쟁률 전체: 표 열 6개', async () => {
+    renderRoute('/complexes/2#events');
+    const section = await screen.findByRole('region', { name: t('page.G3.competition.title') });
+    for (const k of ['round', 'kind', 'type', 'supply', 'applied', 'ratio'] as const) {
+      expect(
+        within(section).getByRole('columnheader', { name: t(`page.G3.competition.${k}`) }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it('경쟁률 전체: 경쟁률 줄이 없으면 "없음"', async () => {
+    const detail = await exampleDetail();
+    useDetail({ ...detail, competition: [] });
+    renderRoute('/complexes/2#events');
+    const section = await screen.findByRole('region', { name: t('page.G3.competition.title') });
+    expect(
+      within(section).getByText(t('empty.unknownWithReason', { reason: t('page.common.none') })),
+    ).toBeInTheDocument();
+  });
+
+  it('주변 시세 비교 탭: 미보정 갭 · 비교 단지 수 · 대체 단지 배지', async () => {
+    const detail = await exampleDetail();
+    const unadjusted = {
+      v: 7.1,
+      label: '재가공' as const,
+      prov: 'fp_unadj',
+      checked_at: '2026-10-08',
+      unit: 'pct' as const,
+    };
+    useDetail({
+      ...detail,
+      gap: {
+        ...detail.gap,
+        gap_pct_unadjusted: unadjusted,
+        comps: detail.gap.comps.map((c, i) => (i === 0 ? { ...c, substitute: true } : c)),
+      },
+    });
+    renderRoute('/complexes/2#gap');
+    const panel = await screen.findByRole('tabpanel');
+    expect(within(panel).getByText(t('page.G3.gap.unadjusted'))).toBeInTheDocument();
+    expect(prov(panel, 'fp_unadj')).not.toBeNull();
+    expect(panel).toHaveTextContent(t('page.G3.gap.comps', { n: String(detail.gap.comps.length) }));
+    expect(within(panel).getByText(t('page.G3.gap.substitute'))).toBeInTheDocument();
+  });
+
+  it('가격 전망 탭: 미해결 시점은 "· 미해결", 고른 시점의 판정기에 물은 문장', async () => {
+    const detail = await exampleDetail();
+    renderRoute('/complexes/2#ladder');
+    const group = await screen.findByRole('radiogroup', { name: t('page.G3.ladder.horizons') });
+    const radios = within(group).getAllByRole('radio');
+    const unresolved = detail.ladder.filter((r) => r.status !== 'ok').length;
+    expect(radios.filter((r) => r.textContent?.includes(t('page.common.unresolved')))).toHaveLength(
+      unresolved,
+    );
+    const row = detail.ladder.find((r) => r.horizon === 'move_in_plus_1y');
+    expect(screen.getByText(t('page.G3.ladder.proposition'))).toBeInTheDocument();
+    expect(screen.getByText(row?.proposition_text ?? '')).toBeInTheDocument();
+  });
+
+  it('개발 소식 목록: 이름 · 단계 확률 · 메모 · 위치 미확정 · 미해결 · 출처 링크, 언론·미확정 줄 회색', async () => {
+    const detail = await exampleDetail();
+    const withSource = detail.catalysts.map((c, i) =>
+      i === 0 ? { ...c, source_url: 'https://example.com/news' } : c,
+    );
+    useDetail({ ...detail, catalysts: withSource });
+    renderRoute('/complexes/2#catalysts');
+    const list = await screen.findByRole('region', { name: t('page.G3.catalyst.list') });
+    const items = within(list).getAllByRole('listitem');
+    expect(items).toHaveLength(detail.catalysts.length);
+    detail.catalysts.forEach((c, i) => {
+      const li = items[i] as HTMLElement;
+      expect(li).toHaveTextContent(c.name);
+      expect(prov(li, c.stage_prob.prov)).not.toBeNull();
+      if (c.note) expect(li).toHaveTextContent(c.note);
+      if (c.stage === '언론' || c.stage === '미확정') expect(li).toHaveClass('text-grayed');
+      if (c.decision && c.decision !== 'auto') {
+        expect(li).toHaveTextContent(t('page.common.unresolved'));
+      }
+      if (!c.location_confirmed) expect(li).toHaveTextContent(t('chart.C09.noLink'));
+    });
+    const link = within(items[0] as HTMLElement).getByRole('link', {
+      name: new RegExp(t('page.G3.catalyst.source')),
+    });
+    expect(link).toHaveAttribute('href', 'https://example.com/news');
+  });
+
+  it('출처·원문: 발췌 위치로 가운데 스크롤(scrollIntoView block center)', async () => {
+    const spy = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = spy;
+    try {
+      renderRoute('/complexes/2#provenance');
+      await screen.findByTestId('raw-text');
+      await waitFor(() => expect(spy).toHaveBeenCalledWith({ block: 'center' }));
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('판정 기록: 0건이면 "판정 기록 없음"', async () => {
+    const detail = await exampleDetail();
+    useDetail({ ...detail, judgments: [] });
+    renderRoute('/complexes/2#judgments');
+    const block = await screen.findByTestId('judgments-block');
+    expect(within(block).getByText(t('page.G3.judgment.none'))).toBeInTheDocument();
+  });
+
+  it('판정 기록: 오류 봉투는 오류 문구 한 줄', async () => {
+    const detail = await exampleDetail();
+    const base = detail.judgments[0]!;
+    useDetail({
+      ...detail,
+      judgments: [{ ...base, status: 'error', error_text: 'timeout 30s', judgment_seq: 990 }],
+    });
+    renderRoute('/complexes/2#judgments');
+    const block = await screen.findByTestId('judgments-block');
+    expect(within(block).getByText('timeout 30s')).toBeInTheDocument();
   });
 });
