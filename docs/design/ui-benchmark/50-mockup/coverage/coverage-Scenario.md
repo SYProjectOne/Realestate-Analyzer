@@ -2,8 +2,8 @@
 
 입력: `frontend/src/pages/scenario/index.tsx`, `schema.ts`, `pages/_shared/index.tsx`, `charts/C07·C10`, `components/JobProgress.tsx·FactCell·Term`, `app/toast.tsx`, `i18n/ko.json` · 보드: `boards/Scenario.dc.html` ("펼친 모습 · 다른 상태" A~H 포함)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 1 | [틀] 화면 제목 h1 (`pages/scenario/index.tsx` PageShell · `page.G5.title` "시나리오(내 조건)") | Scenario · h1 "내 조건으로 다시 보기" + 소개 문단 | 시나리오(내 조건) → 내 조건으로 다시 보기 | 있음 |
 | 2 | [상태] 시나리오 목록 불러오는 중 (`pages/scenario/index.tsx` ScenarioPage · `app.loading`) | Scenario · E "조건 목록을 불러오는 중" role=status | — | 있음 |
 | 3 | [상태] 판정기 질문 남김 배너 role=alert + 질문 텍스트 (`pages/scenario/index.tsx` ScenarioBody · `page.G5.escaped` "판정기가 질문을 남겼습니다") | Scenario · A "맨 위에 뜨는 띠" "판정기가 질문을 남겼어요 / [판정기 질문 문장]" | — | 있음 |
@@ -94,49 +94,49 @@
 | 88 | [요건 사전 계산] 칸 근거 문장 (evidence) | Scenario · 4 배지 아래 근거(서버 문장 그대로 — 고친 문구 예시 위 안내) | — | 있음(고침 SC-3) |
 | 89 | [요건 사전 계산] 제외 배지 + 회색 행 (`page.G5.req.excluded` "제외") | Scenario · H "요건 표에서 빠진 단지" 회색 행 + "제외" | — | 있음 |
 | 90 | [요건 사전 계산] 표 아래 캐시 수 (`page.G5.cache`) | Scenario · 4 꼬리 "저장된 답 21건 다시 씀 · 새로 물어본 것 0건 (판정기 호출 없음)" | 캐시 히트 → 저장된 답 다시 씀 | 있음 |
-| 91 | [C07 판정기 확률] 차트 제목 (`charts/C07` · `chart.C07.title` "판정기 확률") | Scenario · "판정기 결과 · A 가점 높음(실거주)" h2 "이 조건이면 판정기는 어디를 고르나요?" / h3 "판정기가 고를 확률" | 판정기 확률 → 판정기가 고를 확률 | 있음 |
-| 92 | [C07 판정기 확률] 부제 신뢰도 (`chart.C07.confidence`) | Scenario · "믿음 정도 0.89 [?]" | 신뢰도 → 믿음 정도 | 있음 |
-| 93 | [C07 판정기 확률] 라벨 배지 | Scenario · "판정기 추정" | — | 있음 |
-| 94 | [C07 판정기 확률] 동률 배지 (`badge.tie`) | Scenario · H 꼬리 "판정기 차트 배지: 동률 …" | — | 있음 |
-| 95 | [C07 판정기 확률] 증거와 상이 배지 (`badge.mismatch`) | Scenario · H 꼬리 "근거와 달라요" | 증거와 상이 → 근거와 달라요 | 있음 |
-| 96 | [C07 판정기 확률] 캐시 배지 (`badge.cached`) | Scenario · H 꼬리 "이전 결과 재사용" | 캐시 → 이전 결과 재사용 | 있음 |
-| 97 | [C07 판정기 확률] 질문 남김 배지 (`chart.C07.escape`) | Scenario · H 꼬리 "질문 남김" | — | 있음 |
-| 98 | [C07 판정기 확률] 질문 남김이면 막대 대신 "질문 남김: {질문}" (`charts/C07` emptyReason) | Compare · F "질문을 남기면 막대 대신 '질문 남김: [판정기 질문 문장]'" | — | 다른 보드(Compare) |
-| 99 | [C07 판정기 확률] 판정 미해결 배지 (`chart.C07.unresolved`) | Scenario · H 꼬리 "판정 미해결" | — | 있음 |
-| 100 | [C07 판정기 확률] 미해결이면 막대 회색 + "미해결" | Compare · F 설명 "미해결이면 막대가 회색이 되고 …" | — | 다른 보드(Compare) |
-| 101 | [C07 판정기 확률] 가로 막대(선택 강조, 보류 선택지 회색) | Scenario · 판정기가 고를 확률 막대 | — | 있음 |
-| 102 | [C07 판정기 확률] 막대 라벨 확률 · 선택 · 가상 후보 · 보류 | Scenario · "{%} 판정기 선택 · 가상 후보 · 판정기 보류 선택지" | 선택 → 판정기 선택 | 있음 |
-| 103 | [C07 판정기 확률] 범주 축 후보 이름 | Scenario · 막대 왼쪽 후보 이름 | — | 있음 |
-| 104 | [C07 판정기 확률] 확률 축 0~1 눈금 | Scenario · 판정기 결과 막대 아래 확률 축 0% 25% 50% 75% 100% | — | 있음(고침 SC-4) |
-| 105 | [C07 판정기 확률] 툴팁 | Scenario · 판정기 결과 툴팁 예시 2개(이름 / 확률 / 표시) | — | 있음(고침 SC-5) |
-| 106 | [C07 판정기 확률] 빈 상태 (`chart.C07.empty` "판정 없음") | Scenario · H 꼬리 "판정 없음 (차트가 빌 때)" | — | 있음 |
-| 107 | [C07 판정기 확률] 표로 보기 버튼 (`table.show`) | Scenario · 꼬리말 [표로 보기] | — | 있음 |
-| 108 | [C07 판정기 확률] 표 열 이름 (`chart.col.name`) | Compare · L "이름" | — | 다른 보드(Compare) |
-| 109 | [C07 판정기 확률] 표 열 확률 (`chart.col.prob`) | Compare · L "확률" | — | 다른 보드(Compare) |
-| 110 | [C07 판정기 확률] 표 열 표시 (`chart.col.flags`) | Compare · L "표시" | — | 다른 보드(Compare) |
-| 111 | [C10 민감도] 차트 제목 (`charts/C10` · `chart.C10.title` "가중치 민감도") | Scenario · "가중치 민감도 · A 가점 높음(실거주)" h2 "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?" | — | 있음 |
-| 112 | [C10 민감도] 용어 ⓘ 비중 (Term `weight`) | Scenario · 가중치 민감도 "용어: '비중' [?]" | — | 있음(고침 SC-7) |
-| 113 | [C10 민감도] 용어 ⓘ 민감도 (Term `sensitivity`) | Scenario · 같은 줄 "'민감도' [?]" | — | 있음(고침 SC-7) |
-| 114 | [C10 민감도] 순위 불안정 배지 (`badge.unstable`) | Scenario · 가중치 민감도 결과 상자 [순위가 흔들려요] (단지 이름 나열은 뺌) | 순위 불안정 → 순위가 흔들려요(+단지 이름) | 있음(고침 SC-6) |
-| 115 | [C10 민감도] 변동 없는 성분 배지 (`chart.C10.stable`) | Scenario · 같은 상자 [비중을 바꿔도 순위가 그대로인 기준 있음] | 있음 → 기준 이름까지 | 있음(고침 SC-6) |
-| 116 | [C10 민감도] 설명 문단 (`chart.C10.explain`) | Scenario · 구역 설명 + '한 줄 답' | — | 있음 |
-| 117 | [C10 민감도] HTML 표 행 = 변형 12개 (`chart.C10.variantLabel`) | Scenario · 행 6개(기준) × 열 "줄이면 → 1~5위" / "늘리면 → 1~5위" | 12행 → 6행 × 2열 | 있음 |
-| 118 | [C10 민감도] 표 열 비중 바꾼 항목 (`chart.col.variant`) | Scenario · "기준 (지금 비중) · 무엇을 보나요" | — | 있음 |
-| 119 | [C10 민감도] 표 열 1~5위(TOP 5) + 실제 순위 괄호 | Scenario · 칸 안 "1위 … 5위" + "(공동)" | 괄호 실제 순위 → (공동) | 있음 |
-| 120 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol` · `changedNo` · `changedWith`) | Scenario · 칸 아래 "순위 변동: 있음 — 새로 들어옴 … · 빠짐 …" / "순위 변동: 없음" | — | 있음 |
-| 121 | [C10 민감도] 진입·이탈 단지 + 굵게 (`chart.C10.entered` · `chart.C10.exited`) | Scenario · 칸 안 "· 새로 들어옴" 표시 + 변동 문장 | 진입 → 새로 들어옴 · 이탈 → 빠짐 | 있음 |
-| 122 | [C10 민감도] 변동 없는 행 회색 (text-grayed) | Scenario · "회색 칸 = 상위 5곳 변동 없음" (변동 칸은 주황 바탕) | — | 있음 |
-| 123 | [C10 민감도] 순위 선 차트 | Scenario · h3 "기준별로 비중을 바꾸면 각 단지는 몇 위가 되나요?" | — | 있음 |
-| 124 | [C10 민감도] 선 차트 x축 변형 짧은 이름 (`chart.C10.variantShort`) | Scenario · "6가지 기준 × (줄이면 / 늘리면)" | — | 있음 |
-| 125 | [C10 민감도] 선 차트 y축 순위(위가 1위, 최대 순위까지) | Scenario · "1위 … 6위" + "6위로 내려가면 상위 5곳에서 빠진 거예요" | — | 있음 |
-| 126 | [C10 민감도] 선 차트 범례 기준 TOP 5 단지 | Scenario · 범례 5단지 | — | 있음 |
-| 127 | [C10 민감도] 선 차트 툴팁 | Scenario · 순위 선 차트 툴팁 예시(비중 바꾼 항목 / 단지별 순위, 없으면 확인 불가) | — | 있음(고침 SC-8) |
-| 128 | [C10 민감도] 빈 상태 (`chart.C10.empty` "민감도 없음") | Scenario · H 꼬리 "민감도 없음" | — | 있음 |
-| 129 | [C10 민감도] 표로 보기 버튼 | Scenario · 꼬리말 [표로 보기] | — | 있음 |
-| 130 | [C10 민감도] 표 열 비중 바꾼 항목 | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) |
-| 131 | [C10 민감도] 표 열 순위 변동 | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) |
-| 132 | [C10 민감도] 표 열 TOP 5 (`chart.col.top5`) | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) |
-| 133 | [C10 민감도] 표 열 표시(진입·이탈) | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) |
+| 91 | [C07 판정기 확률] 차트 제목 (`charts/C07` · `chart.C07.title` "판정기 확률") | Scenario · "판정기 결과 · A 가점 높음(실거주)" h2 "이 조건이면 판정기는 어디를 고르나요?" / h3 "판정기가 고를 확률" | 판정기 확률 → 판정기가 고를 확률 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C07 normal |
+| 92 | [C07 판정기 확률] 부제 신뢰도 (`chart.C07.confidence`) | Scenario · "믿음 정도 0.89 [?]" | 신뢰도 → 믿음 정도 | 있음 | charts.contract › C07 T2 상황 B: confidence 0.48 < 0.6 → 동률 |
+| 93 | [C07 판정기 확률] 라벨 배지 | Scenario · "판정기 추정" | — | 있음 | e2e charts-gallery › C07 normal(라벨 배지) |
+| 94 | [C07 판정기 확률] 동률 배지 (`badge.tie`) | Scenario · H 꼬리 "판정기 차트 배지: 동률 …" | — | 있음 | ChartGallery.test › 특수 상태 배지(동률) · charts.contract › C07 minor 28 … |
+| 95 | [C07 판정기 확률] 증거와 상이 배지 (`badge.mismatch`) | Scenario · H 꼬리 "근거와 달라요" | 증거와 상이 → 근거와 달라요 | 있음 | charts.contract › C07 decide prob per 후보 + escape 선택지(hasMismatch) |
+| 96 | [C07 판정기 확률] 캐시 배지 (`badge.cached`) | Scenario · H 꼬리 "이전 결과 재사용" | 캐시 → 이전 결과 재사용 | 있음 | e2e charts-gallery › C07 normal(캐시 배지) |
+| 97 | [C07 판정기 확률] 질문 남김 배지 (`chart.C07.escape`) | Scenario · H 꼬리 "질문 남김" | — | 있음 | e2e charts-gallery › C07 escaped |
+| 98 | [C07 판정기 확률] 질문 남김이면 막대 대신 "질문 남김: {질문}" (`charts/C07` emptyReason) | Compare · F "질문을 남기면 막대 대신 '질문 남김: [판정기 질문 문장]'" | — | 다른 보드(Compare) | charts.contract › C07 escaped → 막대 대신 질문 텍스트 · e2e charts-gallery › C07 escaped |
+| 99 | [C07 판정기 확률] 판정 미해결 배지 (`chart.C07.unresolved`) | Scenario · H 꼬리 "판정 미해결" | — | 있음 | charts.r11 › C07 미해결 |
+| 100 | [C07 판정기 확률] 미해결이면 막대 회색 + "미해결" | Compare · F 설명 "미해결이면 막대가 회색이 되고 …" | — | 다른 보드(Compare) | charts.r11 › C07 미해결 · charts.contract › C07 minor 28: 봉투 review·blocked·error·escaped |
+| 101 | [C07 판정기 확률] 가로 막대(선택 강조, 보류 선택지 회색) | Scenario · 판정기가 고를 확률 막대 | — | 있음 | charts.r11 › C07 보류 선택지 · charts.r11 › C07 범례 · charts.contract › C07 계약 .5 가상 후보 |
+| 102 | [C07 판정기 확률] 막대 라벨 확률 · 선택 · 가상 후보 · 보류 | Scenario · "{%} 판정기 선택 · 가상 후보 · 판정기 보류 선택지" | 선택 → 판정기 선택 | 있음 | charts.contract › C07 minor 28: ok 봉투의 항목 동률·선택은 서버 값 그대로 · charts.r11 › C07 보류 선택지 · charts.contract › C07 계약 .5 가상 후보 |
+| 103 | [C07 판정기 확률] 범주 축 후보 이름 | Scenario · 막대 왼쪽 후보 이름 | — | 있음 | charts.contract › C07 decide prob per 후보 + escape 선택지 |
+| 104 | [C07 판정기 확률] 확률 축 0~1 눈금 | Scenario · 판정기 결과 막대 아래 확률 축 0% 25% 50% 75% 100% | — | 있음(고침 SC-4) | charts.r11 › C07 눈금 |
+| 105 | [C07 판정기 확률] 툴팁 | Scenario · 판정기 결과 툴팁 예시 2개(이름 / 확률 / 표시) | — | 있음(고침 SC-5) | charts.contract › C07 툴팁의 서버 문자열은 HTML 이스케이프 |
+| 106 | [C07 판정기 확률] 빈 상태 (`chart.C07.empty` "판정 없음") | Scenario · H 꼬리 "판정 없음 (차트가 빌 때)" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 · charts.contract › C07 escaped → … / 판정 없음 |
+| 107 | [C07 판정기 확률] 표로 보기 버튼 (`table.show`) | Scenario · 꼬리말 [표로 보기] | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 108 | [C07 판정기 확률] 표 열 이름 (`chart.col.name`) | Compare · L "이름" | — | 다른 보드(Compare) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
+| 109 | [C07 판정기 확률] 표 열 확률 (`chart.col.prob`) | Compare · L "확률" | — | 다른 보드(Compare) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
+| 110 | [C07 판정기 확률] 표 열 표시 (`chart.col.flags`) | Compare · L "표시" | — | 다른 보드(Compare) | buildOption.test › toTable(빈 데이터) 열 정의 · charts.contract › C07 계약 .5 가상 후보(toTable) |
+| 111 | [C10 민감도] 차트 제목 (`charts/C10` · `chart.C10.title` "가중치 민감도") | Scenario · "가중치 민감도 · A 가점 높음(실거주)" h2 "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?" | — | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C10 normal |
+| 112 | [C10 민감도] 용어 ⓘ 비중 (Term `weight`) | Scenario · 가중치 민감도 "용어: '비중' [?]" | — | 있음(고침 SC-7) | rawKeys › C10 패널: 한 문장 설명 · 비중/민감도 ⓘ … |
+| 113 | [C10 민감도] 용어 ⓘ 민감도 (Term `sensitivity`) | Scenario · 같은 줄 "'민감도' [?]" | — | 있음(고침 SC-7) | rawKeys › C10 패널: 한 문장 설명 · 비중/민감도 ⓘ … |
+| 114 | [C10 민감도] 순위 불안정 배지 (`badge.unstable`) | Scenario · 가중치 민감도 결과 상자 [순위가 흔들려요] (단지 이름 나열은 뺌) | 순위 불안정 → 순위가 흔들려요(+단지 이름) | 있음(고침 SC-6) | ChartGallery.test › 특수 상태 배지(순위 불안정) |
+| 115 | [C10 민감도] 변동 없는 성분 배지 (`chart.C10.stable`) | Scenario · 같은 상자 [비중을 바꿔도 순위가 그대로인 기준 있음] | 있음 → 기준 이름까지 | 있음(고침 SC-6) | rawKeys › C10 패널(stable-badge) |
+| 116 | [C10 민감도] 설명 문단 (`chart.C10.explain`) | Scenario · 구역 설명 + '한 줄 답' | — | 있음 | rawKeys › C10 패널(설명) |
+| 117 | [C10 민감도] HTML 표 행 = 변형 12개 (`chart.C10.variantLabel`) | Scenario · 행 6개(기준) × 열 "줄이면 → 1~5위" / "늘리면 → 1~5위" | 12행 → 6행 × 2열 | 있음 | charts.r11 › C10 재설계 표 |
+| 118 | [C10 민감도] 표 열 비중 바꾼 항목 (`chart.col.variant`) | Scenario · "기준 (지금 비중) · 무엇을 보나요" | — | 있음 | charts.r11 › C10 패널 |
+| 119 | [C10 민감도] 표 열 1~5위(TOP 5) + 실제 순위 괄호 | Scenario · 칸 안 "1위 … 5위" + "(공동)" | 괄호 실제 순위 → (공동) | 있음 | charts.r11 › C10 패널 · charts.r11 › C10 재설계 표 |
+| 120 | [C10 민감도] 표 열 순위 변동 (`chart.C10.changedCol` · `changedNo` · `changedWith`) | Scenario · 칸 아래 "순위 변동: 있음 — 새로 들어옴 … · 빠짐 …" / "순위 변동: 없음" | — | 있음 | rawKeys › C10 패널(순위 변동 없음/있음) · charts.r11 › C10 패널 · charts.r11 › C10 결과 개수 |
+| 121 | [C10 민감도] 진입·이탈 단지 + 굵게 (`chart.C10.entered` · `chart.C10.exited`) | Scenario · 칸 안 "· 새로 들어옴" 표시 + 변동 문장 | 진입 → 새로 들어옴 · 이탈 → 빠짐 | 있음 | charts.r11 › C10 진입 굵게 |
+| 122 | [C10 민감도] 변동 없는 행 회색 (text-grayed) | Scenario · "회색 칸 = 상위 5곳 변동 없음" (변동 칸은 주황 바탕) | — | 있음 | charts.r11 › C10 패널(변동 없는 칸 회색 data-stable) |
+| 123 | [C10 민감도] 순위 선 차트 | Scenario · h3 "기준별로 비중을 바꾸면 각 단지는 몇 위가 되나요?" | — | 있음 | charts.contract › C10 작은 선: 기준 TOP 5 단지별 순위, y축 뒤집힘 |
+| 124 | [C10 민감도] 선 차트 x축 변형 짧은 이름 (`chart.C10.variantShort`) | Scenario · "6가지 기준 × (줄이면 / 늘리면)" | — | 있음 | charts.r11 › C10 x축 · rawKeys › C10 민감도: x축·표 행 이름은 쉬운 말 |
+| 125 | [C10 민감도] 선 차트 y축 순위(위가 1위, 최대 순위까지) | Scenario · "1위 … 6위" + "6위로 내려가면 상위 5곳에서 빠진 거예요" | — | 있음 | charts.contract › C10 작은 선(y축 뒤집힘) · charts.r11 › C10 상위 5곳 밖 띠 |
+| 126 | [C10 민감도] 선 차트 범례 기준 TOP 5 단지 | Scenario · 범례 5단지 | — | 있음 | charts.r11 › C10 범례 |
+| 127 | [C10 민감도] 선 차트 툴팁 | Scenario · 순위 선 차트 툴팁 예시(비중 바꾼 항목 / 단지별 순위, 없으면 확인 불가) | — | 있음(고침 SC-8) | charts.r11 › C10 툴팁 |
+| 128 | [C10 민감도] 빈 상태 (`chart.C10.empty` "민감도 없음") | Scenario · H 꼬리 "민감도 없음" | — | 있음 | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 · charts.contract › C10 변동 없는 가중치 행 = stable(민감도 없음) |
+| 129 | [C10 민감도] 표로 보기 버튼 | Scenario · 꼬리말 [표로 보기] | — | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 130 | [C10 민감도] 표 열 비중 바꾼 항목 | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
+| 131 | [C10 민감도] 표 열 순위 변동 | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
+| 132 | [C10 민감도] 표 열 TOP 5 (`chart.col.top5`) | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
+| 133 | [C10 민감도] 표 열 표시(진입·이탈) | Compare · L 꼬리말(문구로만) | — | 다른 보드(Compare) | charts.contract › C10 표 = 12 변형 × TOP 5(이름), 변동 표시 |
 | 134 | [공통] 숫자 누르면 출처 서랍 (FactCell → GET /provenance/{id}) | Shell · 3 (Scenario는 바닥 문구 "숫자를 누르면 출처가 열려요") | — | 다른 보드(Shell) |
 | 135 | [키보드] 폼 Enter 제출(form onSubmit) · 슬라이더 화살표 키(range) | Scenario · form + input type=range (기본 키보드 동작) | — | 있음 |
 | 136 | [API] GET /scenarios (`api/hooks.ts` useScenarios) | Scenario · 1 출발 조건 목록 | — | 있음 |

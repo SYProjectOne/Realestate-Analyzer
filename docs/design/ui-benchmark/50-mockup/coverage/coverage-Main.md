@@ -4,8 +4,8 @@
 - Main 보드 섹션 이름(제목이 없는 곳은 aria-label·첫 글자로 부름): "첫 줄(hero)", "지금 접수 가능한 단지"(카드 3장), "곧 청약 접수가 시작돼요" 띠, "다가오는 일정", "인천 시장 한눈에", "점수 순서 · 상황: 기본", "최근에 바뀐 것", "바닥 글".
 - Main 보드의 머리줄에는 기준일·상황·열쇠·화면 칸이 없다. 그 칸들은 coverage-Shell.md 에 있다.
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
 | 1 | [화면] 지역이 하나도 없으면 /regions/new 로 보냄 (`dashboard` Navigate) | Shell · §1 기준일·상황 선택칸을 펼친 모습 "지역이 없으면 … 홈은 지역 추가 화면으로 넘어가요" | 같음 | 다른 보드(Shell, 문구로만) |
 | 2 | [화면] h1 `page.G1.title` "홈" | Main · 첫 줄 h1 "지금 청약을 넣을 수 있는 단지는 3곳이에요" | h1이 문장으로 ("홈"은 메뉴에만) | 있음 |
 | 3 | [화면] 출처 범례 한 줄 `label.legend` (PageShell legend) | Main · 바닥 글 "… 숫자를 누르면 출처가 열려요" | 위치 맨 위 → 맨 아래 | 있음(고침 HM-16) |
@@ -119,48 +119,48 @@
 | 111 | [변경] 처음 3건만 | Main · 최근에 바뀐 것 3줄 | 같음 | 있음 |
 | 112 | [변경] 더 보기 `page.G1.changesMore` (aria-expanded) | Main · "변경 2건 더 보기" | 남은 개수가 붙음 | 있음 |
 | 113 | [변경] 접기 `page.G1.changesLess` "변경 접기" | — | — | 있음(고침 HM-14) |
-| 114 | [C06] 종합 점수 분해 차트 (세로 쌓은 막대, `charts/C06`) | Main · 점수 순서 줄마다 가로 막대 | 차트 하나 → 줄별 막대, 점수 순서 구역에 합침 | 있음 |
-| 115 | [C06] 제목 `chart.C06.title` "종합 점수 분해" | Main · 점수 순서 (제목 합침), 막대 aria-label "{이름} 점수 구성" | 종합 점수 분해 → 점수 구성 | 있음 |
-| 116 | [C06] 부제 가중치 `chart.C06.weights` "가중치 {weights}" | — | — | 있음(고침 HM-6) |
-| 117 | [C06] 라벨 배지(종합 점수 라벨) | Main · 점수 순서 바닥 "점수 모두 추정" | 같음 | 있음 |
-| 118 | [C06] 순위 불안정 배지 | Shell · §4 "순위가 흔들려요" | — | 다른 보드(Shell) |
-| 119 | [C06] 동률 배지 | Main · 점수 순서 줄마다 "동률" | 차트 머리 → 줄마다 | 있음 |
-| 120 | [C06] 미판정 `badge.unjudged` + 빗금 + 메모 `chart.C06.unjudgedNote` + 툴팁 `chart.C06.unjudgedTip` | Compare · 위 화면에서 접혀 있거나 가끔만 나오는 모습 "빗금 = 아직 판정 안 한 기준(점수 0)" | 미판정 → 아직 판정 안 한 기준 | 다른 보드(Compare) |
-| 121 | [C06] 범례 `chart.C06.component.p10` "+10% 상승 가능성" | Main · 점수 순서 색 범례 "입주 뒤 오를 가능성" | 바뀜 · 고침 후: '+10% 오를 가능성'(입주 뒤 뺌 — 목표 시점은 상황마다 다름) | 있음(고침 HM-5) |
-| 122 | [C06] 범례 `chart.C06.component.rerank` "판정기 순위" | Main · 색 범례 "비슷한 단지 사이 순위" | 바뀜 | 있음 |
-| 123 | [C06] 범례 `chart.C06.component.gap` "가격 갭" | Main · 색 범례 "주변 시세와 차이" | 바뀜 | 있음 |
-| 124 | [C06] 범례 `chart.C06.component.benchmark` "벤치마크" | Main · 색 범례 "근처 새 아파트 실적" | 바뀜 | 있음 |
-| 125 | [C06] 범례 `chart.C06.component.supply` "공급" | Main · 색 범례 "같은 시기 입주 물량" | 바뀜 | 있음 |
-| 126 | [C06] 범례 `chart.C06.component.liquidity` "유동성" | Main · 색 범례 "되팔기 쉬움" | 바뀜 | 있음 |
-| 127 | [C06] 범례 `chart.C06.component.move_in` "입주 시기" (가중치 있을 때만 그림) | — | — | 있음(고침 HM-6) |
-| 128 | [C06] 이름 축(이름 + 종합 점수) | Main · 점수 순서 왼쪽 이름 · 오른쪽 점수 | 같음 | 있음 |
-| 129 | [C06] 점수 축(0부터, 눈금) | — | 10점 만점 길이 막대만 | 있음(고침 HM-8) |
-| 130 | [C06] 툴팁: 기여 `chart.C06.contribution` "기여 {value}" | Main · 막대 title "입주 뒤 오를 가능성 1.85점" | 기여 → n점 | 있음 |
-| 131 | [C06] 툴팁: 점수 × 가중치, 원값 `chart.C06.raw`, 산출식 formula_text | — | — | 있음(고침 HM-8) |
-| 132 | [C06] 종합 점수 큰 순 정렬(같으면 이름) | Main · 점수 순서 4.83 → 4.76 → 4.76 | 같음 | 있음 |
-| 133 | [C06] 표로 보기 | Main · 점수 순서 바닥 "표로 보기" | 같음 | 있음 |
-| 134 | [C06] 표 열 `chart.col.rank` "순위" | — | — | 있음(고침 HM-9) |
-| 135 | [C06] 표 열 `chart.col.name` "이름" | — | — | 있음(고침 HM-9) |
-| 136 | [C06] 표 열 `chart.col.total` "종합" | — | — | 있음(고침 HM-9) |
-| 137 | [C06] 표 열 성분별 점수 (`chart.C06.component.*`) | — | — | 있음(고침 HM-9) |
-| 138 | [C06] 빈 상태 `chart.C06.empty` "점수 없음" | Shell · §8 모든 차트의 틀 "자료가 없어요(이유)" | — | 다른 보드(Shell) |
-| 139 | [C05] 미분양 추이 차트 (선 2개, 높이 200 작게, `charts/C05`) | Main · 인천 시장 한눈에 미분양 카드 작은 선 그래프 | 카드 안으로 줄어듦 | 있음 |
-| 140 | [C05] 제목 `chart.C05.title` "미분양 추이" | Main · 미분양 카드 svg aria-label "미분양 추이: …" | 보이는 제목은 카드 이름 | 있음 |
-| 141 | [C05] 부제 `chart.C05.basis`/`basisScope` "월말 기준 · {scope}" | Main · 미분양 카드 "국토교통부 · 월말 기준" | 범위 이름 빠짐, 출처 이름 더함 | 있음 |
-| 142 | [C05] 라벨 배지 | — | — | 있음(고침 HM-10) |
-| 143 | [C05] 선 `chart.C05.total` "합계" (실선·동그라미) | Main · 미분양 카드 "실선 전체" | 합계 → 전체 | 있음(고침 HM-12) |
-| 144 | [C05] 선 `chart.C05.postCompletion` "준공 후" (점선·네모 표시) | Main · 미분양 카드 "점선 다 지은 뒤" | 준공 후 → 다 지은 뒤 (네모 표시 없음) | 있음(고침 HM-12) |
-| 145 | [C05] 월 축 | Main · 미분양 카드 범위 글 "2025.10 ~ 2026.08" | 눈금 → 범위 글 | 있음 |
-| 146 | [C05] 세대 수 축 | — | — | 있음(고침 HM-12) |
-| 147 | [C05] 툴팁(월별 값) | — | — | 있음(고침 HM-12) |
-| 148 | [C05] 자료 없는 달은 끊어 그림 | — | — | 문구로만(고침 HM-17) |
-| 149 | [C05] 최근 24개월 | — | — | 문구로만(고침 HM-17) |
-| 150 | [C05] 범위(시군구) 여럿이면 값 많은 범위 고르기 (동작) | — | — | 문구로만(고침 HM-17) |
-| 151 | [C05] 표로 보기 | Main · 미분양 카드 "표로 보기" 링크 | 버튼 → 링크 모양 | 있음 |
-| 152 | [C05] 표 열 `chart.col.month` "월" | — | — | 있음(고침 HM-13) |
-| 153 | [C05] 표 열 `chart.C05.total` "합계" | — | — | 있음(고침 HM-13) |
-| 154 | [C05] 표 열 `chart.C05.postCompletion` "준공 후" | — | — | 있음(고침 HM-13) |
-| 155 | [C05] 빈 상태 `chart.C05.empty` "미분양 자료 없음" | Shell · §8 "자료가 없어요(이유)" | — | 다른 보드(Shell) |
+| 114 | [C06] 종합 점수 분해 차트 (세로 쌓은 막대, `charts/C06`) | Main · 점수 순서 줄마다 가로 막대 | 차트 하나 → 줄별 막대, 점수 순서 구역에 합침 | 있음 | charts.contract › C06 stacked 6 시리즈, 정렬 = 종합 내림차순 · e2e charts-gallery › C06 normal |
+| 115 | [C06] 제목 `chart.C06.title` "종합 점수 분해" | Main · 점수 순서 (제목 합침), 막대 aria-label "{이름} 점수 구성" | 종합 점수 분해 → 점수 구성 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C06 normal |
+| 116 | [C06] 부제 가중치 `chart.C06.weights` "가중치 {weights}" | — | — | 있음(고침 HM-6) | charts.r11 › C06 비중 · charts.contract › C06 제목 부제 = 가중치 |
+| 117 | [C06] 라벨 배지(종합 점수 라벨) | Main · 점수 순서 바닥 "점수 모두 추정" | 같음 | 있음 | ChartGallery.test › 정상 상태 카드는 라벨 배지 · e2e charts-gallery › C06 normal |
+| 118 | [C06] 순위 불안정 배지 | Shell · §4 "순위가 흔들려요" | — | 다른 보드(Shell) | e2e charts-gallery › C06 normal(순위 불안정 배지) |
+| 119 | [C06] 동률 배지 | Main · 점수 순서 줄마다 "동률" | 차트 머리 → 줄마다 | 있음 | e2e charts-gallery › C06 normal(동률 배지) |
+| 120 | [C06] 미판정 `badge.unjudged` + 빗금 + 메모 `chart.C06.unjudgedNote` + 툴팁 `chart.C06.unjudgedTip` | Compare · 위 화면에서 접혀 있거나 가끔만 나오는 모습 "빗금 = 아직 판정 안 한 기준(점수 0)" | 미판정 → 아직 판정 안 한 기준 | 다른 보드(Compare) | charts.contract › C06 null component → 빗금 + "미판정" · charts.contract › C06 m26 … · charts.r11 › C06 미판정 범례 · ChartGallery.test › 특수 상태 배지 |
+| 121 | [C06] 범례 `chart.C06.component.p10` "+10% 상승 가능성" | Main · 점수 순서 색 범례 "입주 뒤 오를 가능성" | 바뀜 · 고침 후: '+10% 오를 가능성'(입주 뒤 뺌 — 목표 시점은 상황마다 다름) | 있음(고침 HM-5) | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 122 | [C06] 범례 `chart.C06.component.rerank` "판정기 순위" | Main · 색 범례 "비슷한 단지 사이 순위" | 바뀜 | 있음 | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 123 | [C06] 범례 `chart.C06.component.gap` "가격 갭" | Main · 색 범례 "주변 시세와 차이" | 바뀜 | 있음 | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 124 | [C06] 범례 `chart.C06.component.benchmark` "벤치마크" | Main · 색 범례 "근처 새 아파트 실적" | 바뀜 | 있음 | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 125 | [C06] 범례 `chart.C06.component.supply` "공급" | Main · 색 범례 "같은 시기 입주 물량" | 바뀜 | 있음 | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 126 | [C06] 범례 `chart.C06.component.liquidity` "유동성" | Main · 색 범례 "되팔기 쉬움" | 바뀜 | 있음 | charts.r11 › C06 비중 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 127 | [C06] 범례 `chart.C06.component.move_in` "입주 시기" (가중치 있을 때만 그림) | — | — | 있음(고침 HM-6) | charts.r11 › C06 색은 기준을 따른다 · charts.contract › C06 상황 A·D의 move_in 성분도 키로 받는다 |
+| 128 | [C06] 이름 축(이름 + 종합 점수) | Main · 점수 순서 왼쪽 이름 · 오른쪽 점수 | 같음 | 있음 | charts.contract › C06 stacked 6 시리즈(이름 + 종합) |
+| 129 | [C06] 점수 축(0부터, 눈금) | — | 10점 만점 길이 막대만 | 있음(고침 HM-8) | charts.r11 › C06 값 축 |
+| 130 | [C06] 툴팁: 기여 `chart.C06.contribution` "기여 {value}" | Main · 막대 title "입주 뒤 오를 가능성 1.85점" | 기여 → n점 | 있음 | charts.contract › C06 stacked 6 시리즈(툴팁 = formula_text + 원값) |
+| 131 | [C06] 툴팁: 점수 × 가중치, 원값 `chart.C06.raw`, 산출식 formula_text | — | — | 있음(고침 HM-8) | charts.contract › C06 stacked 6 시리즈(툴팁 = formula_text + 원값) |
+| 132 | [C06] 종합 점수 큰 순 정렬(같으면 이름) | Main · 점수 순서 4.83 → 4.76 → 4.76 | 같음 | 있음 | charts.contract › C06 stacked 6 시리즈(정렬) |
+| 133 | [C06] 표로 보기 | Main · 점수 순서 바닥 "표로 보기" | 같음 | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 134 | [C06] 표 열 `chart.col.rank` "순위" | — | — | 있음(고침 HM-9) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 135 | [C06] 표 열 `chart.col.name` "이름" | — | — | 있음(고침 HM-9) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 136 | [C06] 표 열 `chart.col.total` "종합" | — | — | 있음(고침 HM-9) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 137 | [C06] 표 열 성분별 점수 (`chart.C06.component.*`) | — | — | 있음(고침 HM-9) | buildOption.test › toTable(빈 데이터) 열 정의 · rawKeys › C06 점수 분해: 축·범례·표 |
+| 138 | [C06] 빈 상태 `chart.C06.empty` "점수 없음" | Shell · §8 모든 차트의 틀 "자료가 없어요(이유)" | — | 다른 보드(Shell) | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
+| 139 | [C05] 미분양 추이 차트 (선 2개, 높이 200 작게, `charts/C05`) | Main · 인천 시장 한눈에 미분양 카드 작은 선 그래프 | 카드 안으로 줄어듦 | 있음 | charts.contract › C05 line 2개(합계·준공 후), connectNulls=false · e2e charts-gallery › C05 normal |
+| 140 | [C05] 제목 `chart.C05.title` "미분양 추이" | Main · 미분양 카드 svg aria-label "미분양 추이: …" | 보이는 제목은 카드 이름 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C05 normal |
+| 141 | [C05] 부제 `chart.C05.basis`/`basisScope` "월말 기준 · {scope}" | Main · 미분양 카드 "국토교통부 · 월말 기준" | 범위 이름 빠짐, 출처 이름 더함 | 있음 | charts.contract › C05 범위(scope)가 여럿이면 … 부제에 범위명 |
+| 142 | [C05] 라벨 배지 | — | — | 있음(고침 HM-10) | e2e charts-gallery › C05 normal(라벨 배지) |
+| 143 | [C05] 선 `chart.C05.total` "합계" (실선·동그라미) | Main · 미분양 카드 "실선 전체" | 합계 → 전체 | 있음(고침 HM-12) | charts.r11 › C05 범례 |
+| 144 | [C05] 선 `chart.C05.postCompletion` "준공 후" (점선·네모 표시) | Main · 미분양 카드 "점선 다 지은 뒤" | 준공 후 → 다 지은 뒤 (네모 표시 없음) | 있음(고침 HM-12) | charts.r11 › C05 범례 |
+| 145 | [C05] 월 축 | Main · 미분양 카드 범위 글 "2025.10 ~ 2026.08" | 눈금 → 범위 글 | 있음 | charts.contract › C05 결측 월은 null로 남긴다(월 축은 끊김 없음), 최근 24개월 |
+| 146 | [C05] 세대 수 축 | — | — | 있음(고침 HM-12) | charts.r11 › C05 툴팁(축 이름 세대) · charts.r11 › 축 눈금 |
+| 147 | [C05] 툴팁(월별 값) | — | — | 있음(고침 HM-12) | charts.r11 › C05 툴팁 |
+| 148 | [C05] 자료 없는 달은 끊어 그림 | — | — | 문구로만(고침 HM-17) | charts.contract › C05 결측 월은 null로 남긴다 |
+| 149 | [C05] 최근 24개월 | — | — | 문구로만(고침 HM-17) | charts.contract › C05 결측 월은 null로 남긴다(월 축은 끊김 없음), 최근 24개월 |
+| 150 | [C05] 범위(시군구) 여럿이면 값 많은 범위 고르기 (동작) | — | — | 문구로만(고침 HM-17) | charts.contract › C05 범위(scope)가 여럿이면 … |
+| 151 | [C05] 표로 보기 | Main · 미분양 카드 "표로 보기" 링크 | 버튼 → 링크 모양 | 있음 | charts.r11 › ChartFrame 표로 보기 |
+| 152 | [C05] 표 열 `chart.col.month` "월" | — | — | 있음(고침 HM-13) | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 153 | [C05] 표 열 `chart.C05.total` "합계" | — | — | 있음(고침 HM-13) | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 154 | [C05] 표 열 `chart.C05.postCompletion` "준공 후" | — | — | 있음(고침 HM-13) | buildOption.test › toTable(빈 데이터) 열 정의 |
+| 155 | [C05] 빈 상태 `chart.C05.empty` "미분양 자료 없음" | Shell · §8 "자료가 없어요(이유)" | — | 다른 보드(Shell) | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
 | 156 | [틀] 하단 고정 문구 `app.disclaimer` | Shell · §9 없는 주소 · 바닥 문구 | — | 다른 보드(Shell) |
 
 ## 요약
