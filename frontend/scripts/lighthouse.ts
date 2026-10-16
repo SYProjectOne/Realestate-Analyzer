@@ -16,7 +16,7 @@
  *
  * 측정이 계약 예시 응답으로 된 화면인지(사전 점검): Lighthouse 전에 Playwright 로 화면마다 한 번 열어 h1 이 보이고 네트워크가
  * 잠잠해질 때까지 계약 예시 핸들러가 못 답한 /api(`--msw` 면 서비스 워커를 지나쳐 서버에 온 /api)가 하나도 없는지,
- * "불러오지 못했습니다" 오류가 없는지 본다 — 어기면 실패. Lighthouse 실행 중의 누수는 참고로만 적는다(`--msw` 에서는
+ * "불러오지 못했…"(습니다·어요) 오류가 없는지 본다 — 어기면 실패. Lighthouse 실행 중의 누수는 참고로만 적는다(`--msw` 에서는
  * Lighthouse 가 측정 뒤 페이지를 떠나며(bf-cache 감사) 재조회 요청이 진행 중이면 MSW 워커가 클라이언트를 잃고 네트워크로
  * 넘긴다 — 측정 구간 밖이다).
  *
@@ -246,7 +246,8 @@ function passed(r: Result): boolean {
   return r.apiLeaks.length === 0 && CATEGORIES.every((c) => r.scores[c] >= THRESHOLD);
 }
 
-const LOAD_ERROR_PREFIX = '불러오지 못했습니다';
+/** 화면 오류 문구 머리 — '불러오지 못했습니다'(옛 말투)·'불러오지 못했어요'(R11 해요체) 둘 다 잡는다 */
+const LOAD_ERROR_PREFIX = '불러오지 못했';
 
 /** 사전 점검: 화면마다 새 컨텍스트로 열어 MSW 가 모든 /api 를 가로챘는지·오류 문구가 없는지 */
 async function sanityCheck(base: string, paths: string[]): Promise<Map<string, string[]>> {

@@ -147,7 +147,7 @@ test.describe('R3 F3 화면(계약 2026-10-09.4)', () => {
     await expect(item.getByText(P.G7.claims.remaining)).toBeVisible();
     await item.getByLabel(P.G7.claims.revise).fill('고친 문장이다.');
     await item.getByRole('button', { name: P.G7.claims.submit }).click();
-    await expect(item.getByTestId('claim-job')).toContainText('claim.reverify');
+    await expect(item.getByTestId('claim-job')).toContainText(ko.job.name.claim_reverify);
   });
 
   test('G7 공유 링크 발급 → /share#토큰 으로 들어오면 읽기 전용', async ({ page }) => {

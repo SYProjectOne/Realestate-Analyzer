@@ -294,7 +294,7 @@ describe('F3(D16-4) 호재 PATCH: 200 바뀐 것 없음 → 감시·다시 읽�
     const panel = await saveGtx();
     const jobBox = await within(panel).findByTestId('catalyst-job');
     expect(within(jobBox).getByText(t('page.G6.loc.jobHint'))).toBeInTheDocument();
-    expect(await within(jobBox).findByText('snapshot.publish')).toBeInTheDocument();
+    expect(await within(jobBox).findByText(t('job.name.snapshot_publish'))).toBeInTheDocument();
     await saveGtx();
     expect(await within(panel).findByTestId('catalyst-job-none')).toHaveTextContent(
       t('page.G6.loc.unchanged'),

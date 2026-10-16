@@ -317,7 +317,7 @@ describe('F4·F5·F6 발행 유발 쓰기는 job_id 를 감시하고 발행까�
     );
     const job = await within(panel).findByTestId('publish-job');
     expect(within(job).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
-    expect(await within(job).findByText('region.expand')).toBeInTheDocument();
+    expect(await within(job).findByText(t('job.name.region_expand'))).toBeInTheDocument();
   });
 
   it('F6 humanCheckJobId: job_id 우선, 옛 응답은 rejudge_job_id', () => {
@@ -346,7 +346,7 @@ describe('F4·F5·F6 발행 유발 쓰기는 job_id 를 감시하고 발행까�
     expect(body.checked_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
     const job = await within(form).findByTestId('human-check-job');
     expect(within(job).getByTestId('publish-pending')).toHaveTextContent(t('job.publishPending'));
-    expect(await within(job).findByText('rejudge')).toBeInTheDocument();
+    expect(await within(job).findByText(t('job.name.rejudge'))).toBeInTheDocument();
     rec.stop();
   });
 });

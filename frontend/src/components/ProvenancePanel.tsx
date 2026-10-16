@@ -69,7 +69,7 @@ function RawExcerpt({ rawId, start, end }: { rawId: number; start: number; end: 
   const to = Math.min(data.length, end + RAW_CONTEXT);
   return (
     <pre
-      className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-sm border border-border p-2 text-xs"
+      className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-subtle p-2 text-[13px] leading-relaxed"
       data-testid="raw-excerpt"
     >
       {from > 0 ? '…' : ''}
@@ -92,12 +92,15 @@ function ConflictItem({
 }) {
   const excerpt = splitUnitBasis(item.excerpt);
   return (
-    <li className="flex flex-col gap-1 border-b border-border/60 pb-2" data-prov={item.id}>
+    <li
+      className={`flex flex-col gap-1 rounded-[10px] border border-border p-2.5 text-[13px] ${current ? '' : 'text-fg-2'}`}
+      data-prov={item.id}
+    >
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="font-medium">{item.value_text ?? t('empty.unknown')}</span>
-        <Badge tone={item.chosen ? 'strong' : 'muted'}>
+        <Badge tone={item.chosen ? 'accent' : 'muted'}>
           {item.chosen ? t('provenance.chosen') : t('provenance.notChosen')}
         </Badge>
+        <span className="font-semibold text-fg">{item.value_text ?? t('empty.unknown')}</span>
         <LabelBadge label={item.label} reason={item.reason} checkedAt={item.checked_at} full />
         <span className="text-xs text-muted">
           {item.source_kind ? `${item.source_kind} · ` : null}
@@ -105,19 +108,21 @@ function ConflictItem({
         </span>
       </div>
       {excerpt.body ? (
-        <blockquote className="whitespace-pre-wrap border-l-2 border-border pl-2 text-xs">
+        <blockquote className="whitespace-pre-wrap text-muted">
           <Highlighted text={excerpt.body} needle={item.value_text} />
         </blockquote>
       ) : null}
       {excerpt.unitBasis ? (
-        <span className="text-xs" data-testid="conflict-unit-basis">
+        <span className="text-muted" data-testid="conflict-unit-basis">
           <span className="text-muted">{t('provenance.unitBasis')}</span> {excerpt.unitBasis}
         </span>
       ) : null}
-      <div className="flex flex-wrap gap-2 text-xs">
-        {item.url ? <ExternalLink href={item.url} /> : null}
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {item.url ? (
+          <ExternalLink href={item.url} className="break-all text-accent underline" />
+        ) : null}
         {!current && onOpen ? (
-          <button type="button" className="underline" onClick={() => onOpen(item.id)}>
+          <button type="button" className="text-accent underline" onClick={() => onOpen(item.id)}>
             {t('provenance.openConflict')}
           </button>
         ) : null}
@@ -163,42 +168,50 @@ function ProvenanceBody({
     : data.conflicts;
 
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+    <dl className="grid grid-cols-[minmax(84px,120px)_minmax(0,1fr)] gap-x-3.5 gap-y-2.5 text-sm [&>dt]:text-muted">
       {data.entity || data.field ? (
         <>
-          <dt className="sr-only">{t('chart.col.kind')}</dt>
-          <dd className="col-span-2 text-xs text-muted">
+          {/* 목업 §3 '무엇' 줄(N5) — 예전에는 이름 없는 작은 글씨 */}
+          <dt>{t('provenance.what')}</dt>
+          <dd data-testid="provenance-what">
             {[data.entity, data.field].filter(Boolean).join(' · ')}
           </dd>
         </>
       ) : null}
       {data.value_text ? (
         <>
-          <dt className="text-muted">{t('provenance.value')}</dt>
-          <dd className="font-medium">{data.value_text}</dd>
+          <dt>{t('provenance.value')}</dt>
+          <dd className="font-bold tabular-nums">{data.value_text}</dd>
         </>
       ) : null}
-      <dt className="text-muted">{t('provenance.label')}</dt>
+      <dt>{t('provenance.label')}</dt>
       <dd>
         <LabelBadge label={data.label} reason={data.reason} checkedAt={data.checked_at} full />
       </dd>
       {isDemoted(data) ? (
-        <dd className="col-span-2 flex flex-col gap-1 text-xs" data-testid="provenance-demoted">
+        <dd
+          className="col-span-2 flex flex-col gap-1.5 rounded-[10px] border border-warn-border bg-warn-soft px-3 py-2.5 text-[13px] text-warn-ink"
+          data-testid="provenance-demoted"
+        >
           <span>
-            <Badge tone="strong">{t('provenance.demoted')}</Badge>
+            <Badge tone="cautionSolid">{t('provenance.demoted')}</Badge>
           </span>
-          <span className="text-muted">{t('provenance.demotedHint')}</span>
+          <span>{t('provenance.demotedHint')}</span>
         </dd>
       ) : null}
-      <dt className="text-muted">{t('provenance.checkedAt')}</dt>
+      <dt>{t('provenance.checkedAt')}</dt>
       <dd>{data.checked_at ? formatDate(data.checked_at) : <EmptyState inline />}</dd>
-      <dt className="text-muted">{t('provenance.url')}</dt>
+      <dt>{t('provenance.url')}</dt>
       <dd className="break-all">
-        {data.url ? <ExternalLink href={data.url} /> : <EmptyState inline />}
+        {data.url ? (
+          <ExternalLink href={data.url} className="text-accent underline" />
+        ) : (
+          <EmptyState inline />
+        )}
       </dd>
       {data.source_kind ? (
         <>
-          <dt className="text-muted">{t('provenance.source')}</dt>
+          <dt>{t('provenance.source')}</dt>
           <dd>
             {data.source_kind}
             {data.source_rank !== null && data.source_rank !== undefined ? (
@@ -216,7 +229,7 @@ function ProvenanceBody({
       ) : null}
       {data.http_status !== null && data.http_status !== undefined ? (
         <>
-          <dt className="text-muted">{t('provenance.httpStatus')}</dt>
+          <dt>{t('provenance.httpStatus')}</dt>
           <dd>
             <MetaValue kind="status" value={data.http_status} as="plain" />
           </dd>
@@ -224,24 +237,24 @@ function ProvenanceBody({
       ) : null}
       {data.formula_text ? (
         <>
-          <dt className="text-muted">{t('provenance.formula')}</dt>
+          <dt>{t('provenance.formula')}</dt>
           <dd className="whitespace-pre-wrap">{data.formula_text}</dd>
         </>
       ) : null}
       {data.judgment_seq !== null && data.judgment_seq !== undefined ? (
         <>
-          <dt className="text-muted">{t('provenance.judgment')}</dt>
+          <dt>{t('provenance.judgment')}</dt>
           <dd>
             {'#'}
             <MetaValue kind="seq" value={data.judgment_seq} as="plain" />
           </dd>
         </>
       ) : null}
-      <dt className="text-muted">{t('provenance.excerpt')}</dt>
+      <dt>{t('provenance.excerpt')}</dt>
       <dd className="flex flex-col gap-1">
         {excerpt.body ? (
           <blockquote
-            className="whitespace-pre-wrap border-l-2 border-border pl-2"
+            className="whitespace-pre-wrap rounded-lg bg-subtle p-2.5 text-[13px] leading-relaxed"
             data-testid="provenance-excerpt"
           >
             <Highlighted text={excerpt.body} needle={data.value_text} />
@@ -255,7 +268,7 @@ function ProvenanceBody({
               type="button"
               aria-expanded={showRaw}
               onClick={() => setShowRaw((prev) => !prev)}
-              className="self-start rounded-sm border border-border px-2 py-0.5 text-xs text-muted hover:text-fg"
+              className="min-h-8 self-start rounded-lg border border-border-strong bg-surface px-2.5 py-1 text-[13px] font-medium text-fg-2 hover:text-fg"
             >
               {showRaw ? t('provenance.rawTextHide') : t('provenance.rawText')}
             </button>
@@ -272,13 +285,13 @@ function ProvenanceBody({
       {excerpt.unitBasis ? (
         // 계약 .16 F6(D21-1): 공고문 금액 표 단위 환산 근거(표 머리 줄) — 발췌 끝 '[단위 근거]' 줄을 따로
         <>
-          <dt className="text-muted">{t('provenance.unitBasis')}</dt>
+          <dt>{t('provenance.unitBasis')}</dt>
           <dd className="whitespace-pre-wrap" data-testid="provenance-unit-basis">
             {excerpt.unitBasis}
           </dd>
         </>
       ) : null}
-      <dt className="text-muted">{t('provenance.conflicts')}</dt>
+      <dt>{t('provenance.conflicts')}</dt>
       <dd>
         {data.conflicts.length === 0 ? (
           t('provenance.noConflicts')
@@ -297,8 +310,9 @@ function ProvenanceBody({
       </dd>
       {data.raw_document_id !== null ? (
         <>
-          <dt className="sr-only">{t('provenance.rawDocument')}</dt>
-          <dd className="col-span-2">
+          {/* 목업 §3: '원문 파일' 줄 이름을 보이게(예전 숨김 제목) */}
+          <dt>{t('provenance.rawDocument')}</dt>
+          <dd>
             <RawDocumentPreview rawId={data.raw_document_id as unknown as number} />
           </dd>
         </>
@@ -338,12 +352,15 @@ export function ProvenancePanel({ provId, onClose, snapshotId = null }: Provenan
       aria-modal="false"
       aria-label={t('provenance.title')}
       data-prov={active ?? undefined}
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col gap-3 overflow-y-auto border-l border-border bg-surface p-4 text-fg shadow-xl"
+      className="fixed inset-y-0 right-0 z-40 flex w-full flex-col overflow-y-auto border-l border-border-strong bg-surface text-fg shadow-2xl sm:max-w-[460px] sm:rounded-l-2xl"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{t('provenance.title')}</h2>
+      <div className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-border bg-surface px-[18px] py-4">
+        <h2 className="min-w-0 flex-1 text-lg font-bold">{t('provenance.title')}</h2>
         {data ? (
-          <span className="mr-auto text-xs text-muted">
+          <span
+            className="rounded-md bg-chip px-2 py-0.5 text-xs text-fg-2"
+            data-testid="provenance-kind"
+          >
             {tDynamic(`provenance.kind.${data.kind}`, data.id)}
           </span>
         ) : null}
@@ -351,35 +368,40 @@ export function ProvenancePanel({ provId, onClose, snapshotId = null }: Provenan
           ref={closeRef}
           type="button"
           onClick={onClose}
-          className="rounded-sm border border-border px-2 py-0.5 text-sm"
+          className="min-h-9 rounded-[10px] border border-border-strong bg-surface px-3 text-sm font-semibold text-fg"
         >
           {t('provenance.close')}
         </button>
       </div>
-      {query.isLoading ? (
-        <p role="status" className="text-sm text-muted">
-          {isMaterializePending(query.failureReason)
-            ? t('page.common.materializePending')
-            : t('app.loading')}
-        </p>
-      ) : null}
-      {query.error ? (
-        <EmptyState
-          message={
-            isMaterializePending(query.error) ||
-            (query.error as { code?: string }).code === 'stored_view_mismatch'
-              ? queryErrorText(query.error)
-              : t('provenance.error', { detail: query.error.message })
-          }
-        />
-      ) : null}
-      {data ? (
-        <ProvenanceBody
-          key={data.id}
-          data={data}
-          onOpenConflict={(id) => setShown({ from: provId, id })}
-        />
-      ) : null}
+      <div className="flex flex-1 flex-col gap-3 px-[18px] pb-4 pt-3">
+        {query.isLoading ? (
+          <p role="status" className="text-sm text-muted">
+            {isMaterializePending(query.failureReason)
+              ? t('page.common.materializePending')
+              : t('app.loading')}
+          </p>
+        ) : null}
+        {query.error ? (
+          <EmptyState
+            message={
+              isMaterializePending(query.error) ||
+              (query.error as { code?: string }).code === 'stored_view_mismatch'
+                ? queryErrorText(query.error)
+                : t('provenance.error', { detail: query.error.message })
+            }
+          />
+        ) : null}
+        {data ? (
+          <ProvenanceBody
+            key={data.id}
+            data={data}
+            onOpenConflict={(id) => setShown({ from: provId, id })}
+          />
+        ) : null}
+      </div>
+      <p className="border-t border-warn-border bg-warn-soft px-[18px] py-3 text-xs text-warn-ink">
+        {t('provenance.kindsNote')}
+      </p>
     </aside>
   );
 }

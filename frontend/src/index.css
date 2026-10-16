@@ -1,3 +1,4 @@
+/* 글꼴(D30-3) IBM Plex Sans KR 은 src/layout/fonts.ts 가 따로 불러온다(첫 화면을 막지 않게). */
 @import 'tailwindcss';
 
 @config '../tailwind.config.ts';
@@ -14,33 +15,79 @@
 }
 
 /*
- * 디자인 토큰 — 색은 여기서만 정의하고 tailwind.config.ts가 rgb(var(--color-*))로 참조한다.
- * 색은 의미만 싣는다(meta §2-7): accent = 확정·강조 1색, grayed = 비공식·미확정·미해결.
- * 차트도 같은 토큰을 읽는다(src/charts/theme.ts).
+ * 디자인 토큰(D30-3) — 색은 여기서만 정의하고 tailwind.config.ts 가 rgb(var(--color-*)) 로 참조한다.
+ * 라이트 값은 50-mockup 보드 팔레트(배경 #F3F5F7 · 카드 #FFFFFF · 주색 #2350D8 · 주의 #A3470A/#FFF1E6 …).
+ * 다크 값은 기존 다크 토큰(바탕 #0D1117 · 카드 #161B22 · 글자 #E6EDF3 · 강조 #60A5FA)에 맞춰 늘렸다.
+ * 글자색 토큰은 모두 자기 바탕(bg·surface·subtle·chip·*-soft) 위에서 4.5:1 이상이다(tokens.test.ts 가 잰다).
+ * 색은 의미만 싣는다(meta §2-7): 의미는 늘 글자로도 보인다(D7). 차트도 같은 토큰을 읽는다(src/charts/palette.ts).
+ *
+ *  bg 바탕 · surface 카드 · surface-2 머리 아랫줄 · subtle 안내 칸 · chip 칩·세그먼트 바탕
+ *  fg 본문 · fg-2 보조 본문 · muted 설명 · grayed 비공식·미확정 · border 카드 선 · border-strong 입력칸 선
+ *  accent 주색 · accent-soft/accent-ink 지금 메뉴 · warn* 주의 띠 · info* 안내 띠 · est* 추정 배지 · danger 오류
  */
 :root {
-  --color-bg: 248 249 251;
+  --color-bg: 243 245 247;
   --color-surface: 255 255 255;
-  --color-fg: 17 24 39;
-  --color-muted: 75 85 99;
-  --color-border: 209 213 219;
-  --color-accent: 29 78 216;
+  --color-surface-2: 250 251 252;
+  --color-subtle: 246 248 250;
+  --color-chip: 238 241 244;
+  --color-fg: 20 24 31;
+  --color-fg-2: 58 66 80;
+  --color-muted: 91 100 114;
+  --color-grayed: 98 107 121;
+  --color-border: 227 231 236;
+  --color-border-strong: 213 218 225;
+  --color-accent: 35 80 216;
   --color-accent-fg: 255 255 255;
-  --color-danger: 185 28 28;
-  --color-grayed: 107 114 128;
+  --color-accent-soft: 232 238 255;
+  --color-accent-ink: 26 63 176;
+  --color-warn: 163 71 10;
+  --color-warn-soft: 255 241 230;
+  --color-warn-ink: 107 50 8;
+  --color-warn-border: 243 214 184;
+  --color-info-soft: 242 246 255;
+  --color-info-ink: 31 42 68;
+  --color-info-border: 214 224 251;
+  --color-est: 138 75 15;
+  --color-est-border: 201 134 74;
+  --color-danger: 180 35 24;
+  --color-mark: 255 231 163;
+  --color-toast: 20 24 31;
+  --color-toast-fg: 255 255 255;
+  --color-overlay: 20 24 31;
   color-scheme: light;
 }
 
 :root.dark {
   --color-bg: 13 17 23;
   --color-surface: 22 27 34;
+  --color-surface-2: 27 33 41;
+  --color-subtle: 28 34 43;
+  --color-chip: 33 40 50;
   --color-fg: 230 237 243;
+  --color-fg-2: 201 209 217;
   --color-muted: 156 163 175;
+  --color-grayed: 139 148 158;
   --color-border: 55 65 81;
+  --color-border-strong: 75 85 99;
   --color-accent: 96 165 250;
   --color-accent-fg: 13 17 23;
+  --color-accent-soft: 30 48 84;
+  --color-accent-ink: 147 197 253;
+  --color-warn: 240 176 122;
+  --color-warn-soft: 58 36 20;
+  --color-warn-ink: 251 211 175;
+  --color-warn-border: 120 72 36;
+  --color-info-soft: 23 34 56;
+  --color-info-ink: 200 216 245;
+  --color-info-border: 44 62 99;
+  --color-est: 240 176 122;
+  --color-est-border: 201 134 74;
   --color-danger: 248 113 113;
-  --color-grayed: 139 148 158;
+  --color-mark: 113 85 20;
+  --color-toast: 48 54 61;
+  --color-toast-fg: 230 237 243;
+  --color-overlay: 0 0 0;
   color-scheme: dark;
 }
 
@@ -49,13 +96,48 @@ body {
   background-color: rgb(var(--color-bg));
   color: rgb(var(--color-fg));
   font-family:
-    'Pretendard',
+    'IBM Plex Sans KR',
     'Apple SD Gothic Neo',
     'Malgun Gothic',
     system-ui,
     -apple-system,
     'Segoe UI',
     sans-serif;
+}
+
+/* 원문 발췌 강조(<mark>) — 다크에서도 읽히게 토큰으로 */
+mark {
+  background-color: rgb(var(--color-mark));
+  color: rgb(var(--color-fg));
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* 진행 수를 모를 때 끝을 모르는 줄무늬 막대(SH-16) — 움직임을 줄이는 설정이면 멈춘다 */
+@keyframes sa-stripes {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 36px 0;
+  }
+}
+.sa-indeterminate {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgb(var(--color-accent)) 0 18px,
+    rgb(var(--color-accent-soft)) 18px 36px
+  );
+  animation: sa-stripes 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sa-indeterminate {
+    animation: none;
+  }
 }
 
 /* 모바일 읽기 전용(D7): 화면이 data-write 표시한 쓰기 UI를 숨긴다 */

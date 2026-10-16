@@ -69,7 +69,7 @@ describe('D11-7 지역 범위 확장', () => {
     );
     expect(within(job).getByTestId('expand-result')).toHaveTextContent('경기도 김포시');
     expect(job).toHaveTextContent('선택 4개(추가: 경기도 김포시)');
-    expect(await within(job).findByText('region.expand')).toBeInTheDocument();
+    expect(await within(job).findByText(t('job.name.region_expand'))).toBeInTheDocument();
     await waitFor(() =>
       expect(matching(rec.requests, 'GET', /\/jobs\/961$/).length).toBeGreaterThan(0),
     );

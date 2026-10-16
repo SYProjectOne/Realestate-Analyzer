@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type {
@@ -69,10 +70,12 @@ describe('배지', () => {
         <UnstableBadge unstable />
       </>,
     );
-    expect(screen.getByText('캐시')).toBeInTheDocument();
-    expect(screen.getByText('동률(신뢰도 0.48)')).toBeInTheDocument();
-    expect(screen.getByText('증거와 상이')).toBeInTheDocument();
-    expect(screen.getByText('순위 불안정')).toBeInTheDocument();
+    expect(screen.getByText(t('badge.cached'))).toBeInTheDocument();
+    expect(
+      screen.getByText(t('badge.tieWithConfidence', { confidence: '0.48' })),
+    ).toBeInTheDocument();
+    expect(screen.getByText(t('badge.mismatch'))).toBeInTheDocument();
+    expect(screen.getByText(t('badge.unstable'))).toBeInTheDocument();
   });
 
   it('EmptyState: 확인 불가(사유)', () => {
@@ -164,6 +167,6 @@ describe('DataTableToggle · JobProgressView', () => {
         }}
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent('실행 중');
+    expect(screen.getByRole('status')).toHaveTextContent(t('job.status.running'));
   });
 });

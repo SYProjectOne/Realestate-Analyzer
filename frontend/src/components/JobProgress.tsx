@@ -24,7 +24,25 @@ export interface JobProgressViewProps {
   error?: Error | null;
 }
 
-/** 표시 전용(테스트·갤러리용). 계약 `progress{done,total,step}`가 있으면 결정 진행 막대, 없으면 미정 막대. */
+/**
+ * D30-8: 작업 이름(job_name)을 쉬운 말로(ko.json `job.name.*`, 키는 '.' → '_'). 모르는 값은 서버 원문 그대로.
+ * 화면 G7 잡 목록도 같은 함수를 쓴다.
+ */
+export function jobNameText(name: string | null | undefined): string {
+  if (!name) return '';
+  return tDynamic(`job.name.${name.replace(/\./g, '_')}`, name);
+}
+
+/** D30-8: 진행 단계 이름(progress.step)을 쉬운 말로(ko.json `job.stepName.*`). 모르는 값은 원문 그대로 */
+export function jobStepText(step: string | null | undefined): string {
+  if (!step) return '';
+  return tDynamic(`job.stepName.${step.replace(/\./g, '_')}`, step);
+}
+
+/**
+ * 표시 전용(테스트·갤러리용). 계약 `progress{done,total,step}`가 있으면 결정 진행 막대, 없으면 끝을 모르는 줄무늬 막대(SH-16).
+ * 목업 §6 카드: 작업 이름(쉬운 말) · 상태 / 막대 / 단계 · 진행 수.
+ */
 export function JobProgressView({ job, error }: JobProgressViewProps) {
   // 잡을 한 번이라도 받았으면 일시 오류 동안(다시 조회 중 — 6차 minor 22) 마지막 상태를 두고 오류 줄만 더한다
   if (error && !job) {
@@ -44,6 +62,13 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
   const status = tDynamic(`job.status.${job.status}`, job.status);
   const active = job.status === 'queued' || job.status === 'running';
   const progress = job.progress && job.progress.total > 0 ? job.progress : null;
+  const name = jobNameText(job.job_name);
+  const statusTone =
+    job.status === 'failed'
+      ? 'text-danger'
+      : job.status === 'done'
+        ? 'text-fg-2'
+        : 'text-accent-ink';
   // 계약 .13 F4(D16-3): 발행 busy → 다시 queued(지연 재큐잉) — 실패가 아니라 기다리는 중이라고 보인다.
   // 계약 .14 F8(D17-3): 발행 예외 뒤 재시도(publish_error, error_retries 1~5)도 진행 중 — 다른 문구로
   // 계약 .18 F3(D23-4): 빈 데이터셋 수집(degraded_source)도 진행 중 — 발행하지 않고 다시 수집(JobRequeueNote)
@@ -51,36 +76,53 @@ export function JobProgressView({ job, error }: JobProgressViewProps) {
     <div
       role="status"
       aria-live="polite"
-      className="flex flex-col gap-1 text-sm"
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 text-sm"
       data-status={job.status}
+      data-testid="job-progress"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{t('job.title')}</span>
-        <span className="text-muted">{job.job_name}</span>
-        <span>{status}</span>
-        {progress ? (
-          <MetaText
-            kind="progress"
-            className="tabular-nums text-muted"
-            k="job.progress"
-            params={{ done: progress.done, total: progress.total }}
-          />
-        ) : null}
-        {progress?.step ? (
-          <span className="text-muted">{t('job.step', { step: progress.step })}</span>
-        ) : null}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="text-xs text-muted">{t('job.title')}</span>
+          <b className="font-semibold text-fg" title={job.job_name} data-testid="job-name">
+            {name}
+          </b>
+        </span>
+        <span className={`font-semibold ${statusTone}`}>{status}</span>
       </div>
       {active ? (
         progress ? (
           <progress
-            className="h-1 w-full"
+            className="h-2.5 w-full appearance-none overflow-hidden rounded-full bg-chip [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-accent [&::-webkit-progress-bar]:bg-chip [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-accent"
             aria-label={status}
             max={progress.total}
             value={progress.done}
           />
         ) : (
-          <progress className="h-1 w-full" aria-label={status} />
+          // 진행 수를 모르면 끝을 모르는 줄무늬 막대(SH-16) — role=progressbar(값 없음 = 미정)
+          <div
+            role="progressbar"
+            aria-label={status}
+            data-testid="job-indeterminate"
+            className="sa-indeterminate h-2.5 w-full rounded-full"
+          />
         )
+      ) : null}
+      {progress ? (
+        <div className="flex flex-wrap justify-between gap-x-3 text-[13px] text-muted">
+          <span>
+            {progress.step ? (
+              <span title={progress.step}>
+                {t('job.step', { step: jobStepText(progress.step) })}
+              </span>
+            ) : null}
+          </span>
+          <MetaText
+            kind="progress"
+            className="tabular-nums"
+            k="job.progress"
+            params={{ done: progress.done, total: progress.total }}
+          />
+        </div>
       ) : null}
       <JobRequeueNote job={job} className="text-muted" />
       {job.error_text ? (

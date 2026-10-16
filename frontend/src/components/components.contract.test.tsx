@@ -244,7 +244,7 @@ describe('FactCell 클릭 → ProvenancePanel', () => {
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: /1,573세대/ }));
-    const panel = await screen.findByRole('dialog', { name: '출처' });
+    const panel = await screen.findByRole('dialog', { name: t('provenance.title') });
     // 원문 주소(본 출처 + 상충 후보 각각)
     expect(
       (await within(panel).findAllByText('https://www.applyhome.co.kr/', { selector: 'a' })).length,
@@ -255,7 +255,7 @@ describe('FactCell 클릭 → ProvenancePanel', () => {
     expect(marks.length).toBeGreaterThan(0);
 
     // 상충 그룹: 두 후보 모두, 채택 표시
-    const group = within(panel).getByRole('list', { name: '상충 출처' });
+    const group = within(panel).getByRole('list', { name: t('provenance.conflicts') });
     // 미채택 후보의 값 + 그 후보 발췌 안의 하이라이트
     expect(within(group).getAllByText('1,769').length).toBeGreaterThan(0);
     expect(within(group).getByText('1,769', { selector: 'mark' })).toBeInTheDocument();
@@ -275,8 +275,10 @@ describe('FactCell 클릭 → ProvenancePanel', () => {
       />,
     );
     await userEvent.click(screen.getByRole('button'));
-    const panel = await screen.findByRole('dialog', { name: '출처' });
-    await userEvent.click(await within(panel).findByRole('button', { name: '원문에서 보기' }));
+    const panel = await screen.findByRole('dialog', { name: t('provenance.title') });
+    await userEvent.click(
+      await within(panel).findByRole('button', { name: t('provenance.rawText') }),
+    );
     await waitFor(() =>
       expect(within(panel).getByText('공급세대수 1,573세대', { selector: 'mark' })).toBeVisible(),
     );
@@ -299,7 +301,7 @@ describe('FactCell 클릭 → ProvenancePanel', () => {
       />,
     );
     await userEvent.click(screen.getByRole('button'));
-    const panel = await screen.findByRole('dialog', { name: '출처' });
+    const panel = await screen.findByRole('dialog', { name: t('provenance.title') });
     expect(await within(panel).findByText(/혼재 중앙 0 → 5.0/)).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -352,7 +354,9 @@ describe('계약 응답 모양을 그대로 받는 선택기·진행', () => {
     );
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('18/19');
-    expect(status).toHaveTextContent('decide');
+    // D30-8: 단계 이름은 쉬운 말(job.stepName), 서버 원문(decide)은 title
+    expect(status).toHaveTextContent(t('job.stepName.decide'));
+    expect(within(status).getByTitle('decide')).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('max', '19');
   });
 });

@@ -11,6 +11,7 @@ import {
 } from '@/api/auth';
 import { probeToken } from '@/api/client';
 import { useToast } from '@/app/toast';
+import { Banner } from '@/components/Banner';
 import { t, type TKey } from '@/i18n';
 
 /** 지금 토큰 상태 문구(헤더 버튼·다이얼로그) */
@@ -21,15 +22,16 @@ export function tokenStateText(auth: AuthSnapshot): string {
   return t('auth.state.unknown');
 }
 
-/** 헤더의 "API 토큰" 버튼 — 지금 상태를 보이고 누르면 다이얼로그를 연다. */
+/** 머리줄의 "접속 열쇠 · 상태" 버튼(SH-14: 없음·쓰기 가능·읽기 전용·설정됨) — 누르면 열쇠 창을 연다. */
 export function TokenButton() {
   const auth = useAuth();
   return (
     <button
       type="button"
       onClick={() => requestToken('manual')}
-      className="rounded-sm border border-border px-2 py-1 text-xs"
+      className="min-h-8 whitespace-nowrap rounded-[10px] border border-border-strong bg-surface px-3 py-1 text-[13px] font-semibold text-fg hover:border-fg-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
       data-testid="token-button"
+      data-token-state={!auth.token ? 'none' : (auth.role ?? 'unknown')}
       aria-haspopup="dialog"
     >
       {t('auth.button')} · {tokenStateText(auth)}
@@ -42,16 +44,22 @@ export function ReadOnlyBanner() {
   const auth = useAuth();
   if (auth.canWrite) return null;
   return (
-    <div
+    <Banner
       role="note"
+      tone="note"
       data-testid="readonly-banner"
-      className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-1.5 text-sm"
+      actions={
+        <button
+          type="button"
+          onClick={() => requestToken('manual')}
+          className="min-h-10 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg hover:border-fg-2"
+        >
+          {t('auth.change')}
+        </button>
+      }
     >
-      <span>{t('auth.readOnlyBanner')}</span>
-      <button type="button" onClick={() => requestToken('manual')} className="text-xs underline">
-        {t('auth.change')}
-      </button>
-    </div>
+      {t('auth.readOnlyBanner')}
+    </Banner>
   );
 }
 
@@ -64,23 +72,25 @@ export function TokenPinnedBanner() {
   const qc = useQueryClient();
   if (!auth.externalChange) return null;
   return (
-    <div
+    <Banner
       role="note"
+      tone="note"
       data-testid="token-pinned-banner"
-      className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-4 py-1.5 text-sm"
+      actions={
+        <button
+          type="button"
+          onClick={() => {
+            releaseTabPin();
+            void qc.invalidateQueries();
+          }}
+          className="min-h-10 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg hover:border-fg-2"
+        >
+          {t('auth.useNewToken')}
+        </button>
+      }
     >
-      <span>{t('auth.pinnedBanner')}</span>
-      <button
-        type="button"
-        onClick={() => {
-          releaseTabPin();
-          void qc.invalidateQueries();
-        }}
-        className="text-xs underline"
-      >
-        {t('auth.useNewToken')}
-      </button>
-    </div>
+      {t('auth.pinnedBanner')}
+    </Banner>
   );
 }
 
@@ -147,24 +157,31 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/45 p-4"
+      data-testid="token-backdrop"
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-md flex-col gap-3 rounded-sm border border-border bg-surface p-4 text-fg shadow-xl"
+        className="flex max-h-full w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl border border-border-strong bg-surface p-[22px] text-fg shadow-2xl"
       >
-        <h2 id={titleId} className="text-base font-semibold">
+        <h2 id={titleId} className="text-lg font-bold">
           {t('auth.title')}
         </h2>
+        {/* 열린 이유(SH-13): 401·토큰 필요 = 주의 칸(role=alert), 머리줄 버튼 = 회색 안내 */}
         <p
           role={reason === 'manual' ? undefined : 'alert'}
-          className={`text-sm ${reason === 'manual' ? 'text-muted' : 'font-medium text-danger'}`}
+          data-reason={reason}
+          className={`rounded-lg px-2.5 py-2 text-[13px] ${
+            reason === 'manual' ? 'bg-subtle text-fg-2' : 'bg-warn-soft font-medium text-warn-ink'
+          }`}
         >
           {t(`auth.reason.${reason}` as TKey)}
         </p>
-        <p className="text-xs text-muted">{t('auth.intro')}</p>
-        <p className="text-xs" data-testid="token-current">
+        <p className="text-[13px] leading-relaxed text-fg-2">{t('auth.intro')}</p>
+        <p className="text-[13px] text-muted" data-testid="token-current">
           {t('auth.current', { state: tokenStateText(auth) })}
         </p>
         <form
@@ -175,7 +192,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             void save();
           }}
         >
-          <label htmlFor={inputId} className="text-sm font-medium">
+          <label htmlFor={inputId} className="text-[13px] font-semibold">
             {t('auth.label')}
           </label>
           <input
@@ -186,14 +203,14 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             autoComplete="off"
             spellCheck={false}
             onChange={(e) => setValue(e.target.value)}
-            className="rounded-sm border border-border bg-bg px-2 py-1.5 font-mono text-sm"
+            className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-3 py-2 font-mono text-[15px] text-fg"
           />
-          <label className="inline-flex items-center gap-1 text-xs text-muted">
+          <label className="inline-flex items-center gap-2 text-[13px] text-fg-2">
             <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
             {t('auth.show')}
           </label>
           {error ? (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-[13px] text-danger">
               {error}
             </p>
           ) : null}
@@ -201,7 +218,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             <button
               type="submit"
               disabled={checking}
-              className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+              className="min-h-11 rounded-[10px] bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-60"
             >
               {checking ? t('auth.checking') : t('auth.save')}
             </button>
@@ -209,7 +226,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
               <button
                 type="button"
                 onClick={clear}
-                className="rounded-sm border border-border px-3 py-1.5 text-sm"
+                className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg"
               >
                 {t('auth.clear')}
               </button>
@@ -217,7 +234,7 @@ function TokenDialogBody({ auth }: { auth: AuthSnapshot }) {
             <button
               type="button"
               onClick={dismissTokenPrompt}
-              className="ml-auto rounded-sm border border-border px-3 py-1.5 text-sm"
+              className="ml-auto min-h-11 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-semibold text-fg"
             >
               {t('auth.close')}
             </button>

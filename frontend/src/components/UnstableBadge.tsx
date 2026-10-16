@@ -6,10 +6,10 @@ export interface UnstableBadgeProps {
   unstable: boolean;
 }
 
-/** "순위 불안정" 배지. unstable=false면 렌더하지 않는다. */
+/** "순위가 흔들려요"(순위 불안정) 배지. unstable=false면 렌더하지 않는다. */
 export function UnstableBadge({ unstable }: UnstableBadgeProps) {
   return unstable ? (
-    <Badge tone="strong" data-testid="unstable-badge">
+    <Badge tone="caution" data-testid="unstable-badge">
       {t('badge.unstable')}
     </Badge>
   ) : null;

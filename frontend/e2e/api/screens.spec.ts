@@ -183,7 +183,7 @@ test('G7 사람 확인 입력 → 결과 배지 · 재판정 → 새 리비전�
   await expect(result).toContainText(ko.intake.status['미정']);
   // 계약 .9 D12-5: 서버가 재판정 잡을 자동 등록 — 화면은 그 잡 진행만(POST /jobs 없음)
   expect(created.rejudge_job_id).not.toBeNull();
-  await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
+  await expect(form.getByTestId('human-check-job')).toContainText(ko.job.name.rejudge);
   // worker 1회 → 새 리비전 발행(화면 기본 = 최신 published 리비전)
   runWorkerOnce();
   await expect(form.getByTestId('human-check-job')).toContainText(ko.job.status.done);

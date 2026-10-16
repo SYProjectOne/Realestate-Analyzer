@@ -32,7 +32,13 @@ export function EmptyState({
   const title = message === undefined ? unknownTitle(reason, reasonCode) : undefined;
   if (inline) {
     return (
-      <span className={`text-grayed ${className}`} data-testid="empty-state" title={title}>
+      // 목업 §4(SH-12): 빈 값의 '확인 불가(사유)'도 라벨처럼 점선 배지로 — 글자는 그대로
+      <span
+        className={`inline-flex max-w-full items-center whitespace-normal rounded border border-dashed border-est-border px-1.5 py-px align-middle text-[11px] font-medium leading-4 text-est ${className}`}
+        data-testid="empty-state"
+        data-tone="badge"
+        title={title}
+      >
         {text}
       </span>
     );
@@ -42,7 +48,7 @@ export function EmptyState({
       role="status"
       data-testid="empty-state"
       title={title}
-      className={`flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border p-6 text-sm text-grayed ${className}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-strong bg-surface-2 p-6 text-center text-sm text-muted ${className}`}
     >
       <p>{text}</p>
       {children}

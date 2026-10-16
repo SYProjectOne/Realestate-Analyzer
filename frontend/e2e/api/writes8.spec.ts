@@ -151,7 +151,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     // 잡이 끝날 때까지 이전 발행 리비전이 기본 — 안내 + 진행, 시장의 위치 상태는 아직 그대로
     const job = panel.getByTestId('catalyst-job');
     await expect(job.getByTestId('publish-pending')).toHaveText(ko.job.publishPending);
-    await expect(job).toContainText('snapshot.publish');
+    await expect(job).toContainText(ko.job.name.snapshot_publish);
     await expect(item.getByTestId('loc-status')).toHaveText(P.G6.loc.unconfirmed);
     runWorkerOnce();
     // 잡 done → 지역·리비전·시장 무효화 → 새 발행 리비전에서 위치 확인됨
@@ -247,7 +247,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     expect(posts()).toBe(1);
 
     // 계약 .9: 재판정 자동 등록(rejudge_job_id) → worker 1회 → 같은 기준일 새 리비전(D11-1: 발행 스냅샷 불변)
-    await expect(form.getByTestId('human-check-job')).toContainText('rejudge');
+    await expect(form.getByTestId('human-check-job')).toContainText(ko.job.name.rejudge);
     runWorkerOnce();
 
     const snapshots = await api<
@@ -335,7 +335,7 @@ test.describe.serial('계약 .8 화면(실 API)', () => {
     await expect(result).toContainText(fill(P.G0_2.expand.result, { added: '1', removed: '0' }));
     await expect(result).toContainText('경기도 부천시 소사구');
     const job = panel.getByTestId('expand-job');
-    await expect(job).toContainText('region.expand');
+    await expect(job).toContainText(ko.job.name.region_expand);
     await expect(job).toContainText(ko.job.status.queued);
     await expect(job.getByTestId('publish-pending')).toHaveText(ko.job.publishPending);
     await expect(current.getByRole('listitem')).toHaveCount(before + 1);

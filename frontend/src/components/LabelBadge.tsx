@@ -81,19 +81,20 @@ export function LabelBadge({
         data-testid="label-badge"
         data-tone="quiet"
         title={title}
-        className={`inline-flex items-center text-[11px] leading-4 text-muted ${space} ${className}`}
+        className={`inline-flex items-center align-middle text-[11px] font-medium leading-4 text-muted ${space} ${className}`}
       >
         {shown}
       </span>
     );
   }
-  const tone = label === '추정' || human ? 'border-border text-fg' : 'border-border text-grayed';
+  // 목업 §3: 추정·비공식·재가공·확인 불가·사람 확인됨 = 점선 테두리 배지(주의 색). 추정이 아닌 것은 글자를 조금 낮춘다
+  const tone = label === '추정' || human ? 'font-semibold' : 'font-medium';
   return (
     <span
       data-testid="label-badge"
       data-tone="badge"
       title={title}
-      className={`inline-flex items-center rounded-sm border px-1.5 py-px text-[11px] leading-4 ${tone} ${space} ${className}`}
+      className={`inline-flex max-w-full items-center rounded border border-dashed border-est-border px-1.5 py-px align-middle text-[11px] leading-4 text-est ${tone} ${space} ${className}`}
     >
       {shown}
     </span>
