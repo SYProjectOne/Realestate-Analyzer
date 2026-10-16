@@ -72,11 +72,10 @@ export function TodayTiles({
           <TilesBody regionId={regionId} snapshotId={snapshotId} asof={asof} />
         ) : (
           (['intake', 'sources', 'claims', 'checklist'] as const).map((k) => (
-            <Tile key={k} k={k} label={tileLabel(k)} value={t('page.G7.today.loading')} />
+            <Tile key={k} k={k} label={tileLabel(k)} value={t('app.loading')} />
           ))
         )}
       </div>
-      <p className="text-xs text-muted">{t('page.G7.today.rule')}</p>
     </section>
   );
 }
@@ -106,8 +105,8 @@ function TilesBody({
   const sources = useOpsSources(regionId);
   const claims = useClaims(snapshotId);
   const checklist = useChecklist();
-  const loading = t('page.G7.today.loading');
-  const unknown = t('page.G7.today.unknown');
+  const loading = t('app.loading');
+  const unknown = t('empty.unknown');
 
   // ① 사람 확인이 필요한 단지 — 서버 total + 분류별 줄 수
   const q = queue.data;
@@ -129,7 +128,7 @@ function TilesBody({
       sub={
         q ? (
           intakeParts.length === 0 ? (
-            t('page.G7.today.intakeNone')
+            t('page.G7.iq.none')
           ) : (
             <span data-testid="tile-intake-parts">
               {intakeParts.map((p, i) => (
@@ -169,12 +168,8 @@ function TilesBody({
       sub={
         rows
           ? failing.length === 0
-            ? t('page.G7.today.sourcesNone')
-            : t('page.G7.today.sourcesSub', {
-                names: failing
-                  .map((r) => enumText('page.G7.sourceKind', r.source_kind))
-                  .join(' · '),
-              })
+            ? t('page.common.none')
+            : failing.map((r) => enumText('page.G7.sourceKind', r.source_kind)).join(' · ')
           : null
       }
     />
@@ -197,7 +192,6 @@ function TilesBody({
           loading
         )
       }
-      sub={contradicted !== null ? t('page.G7.today.claimsSub') : null}
     />
   );
 
@@ -276,9 +270,7 @@ function Tile({
         {value}
       </span>
       {sub ? <span className="text-[13px] leading-snug text-fg-2">{sub}</span> : null}
-      <span className="mt-auto text-[13px] font-semibold text-accent">
-        {t('page.G7.today.go', { name: opsMenuText(k) })}
-      </span>
+      <span className="mt-auto text-[13px] font-semibold text-accent">{`${opsMenuText(k)} →`}</span>
     </SectionLink>
   );
 }

@@ -158,9 +158,7 @@ describe('R11 G7 화면', () => {
     await waitFor(() =>
       expect(tile('claims')).toHaveTextContent(metaText('page.G7.iq.total', { n: 2 })),
     );
-    expect(tile('claims')).toHaveTextContent(t('page.G7.today.claimsSub'));
     await waitFor(() => expect(tile('checklist')).toHaveTextContent(/\d건/));
-    expect(screen.getByText(t('page.G7.today.rule'))).toBeInTheDocument();
     // 판단 이름(급한 것·나중에)을 붙이지 않는다
     expect(tiles).not.toHaveTextContent(/급한|나중에/);
   });
@@ -249,7 +247,6 @@ describe('R11 G7 화면', () => {
       .filter((r) => r.getAttribute('data-closed') === 'true');
     expect(closed.length).toBeGreaterThan(0);
     for (const r of closed) expect(r.className).toMatch(/text-grayed/);
-    expect(screen.getByText(t('page.G7.closedNote'))).toBeInTheDocument();
     const sources = await screen.findByRole('table', { name: t('page.G7.sources') });
     const off = within(sources)
       .getAllByRole('row')

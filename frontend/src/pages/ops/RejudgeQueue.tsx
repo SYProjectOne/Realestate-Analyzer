@@ -59,7 +59,7 @@ export function RejudgeQueue({ asof }: { asof: string | null }) {
                       {/* D30-8: 쉬운 작업 이름 + 원래 이름(작은 글씨) */}
                       {jobNameText(job.job_name)}
                       <span className="block text-xs font-normal text-muted" data-testid="job-raw">
-                        {t('page.G7.job.id', { id: idText(job.id), name: job.job_name })}
+                        {`${idText(job.id)} · ${job.job_name}`}
                       </span>
                     </th>
                     <td className={tdClass}>

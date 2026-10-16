@@ -59,7 +59,7 @@ export function MarketPage() {
   }, [regionId]);
   return (
     <PageShell
-      title={region ? t('page.G6.heading', { region: region.name }) : t('page.G6.headingNoRegion')}
+      title={region ? t('page.G6.heading', { region: region.name }) : t('nav.G6')}
       intro={t('page.G6.intro')}
       legend
       actions={
@@ -100,11 +100,7 @@ export function MarketPage() {
         <QueryState query={query}>
           {(market) => (
             <>
-              <MarketBody
-                market={market}
-                asof={asof ?? market.asof_date}
-                areaSelected={!!livingArea}
-              />
+              <MarketBody market={market} asof={asof ?? market.asof_date} />
               <CatalystLocationPanel
                 // 지역이 바뀌면 열린 폼·입력도 지운다(8차 m18)
                 key={regionId ?? 'none'}
@@ -123,15 +119,7 @@ export function MarketPage() {
   );
 }
 
-function MarketBody({
-  market,
-  asof,
-  areaSelected,
-}: {
-  market: Market;
-  asof: string;
-  areaSelected: boolean;
-}) {
+function MarketBody({ market, asof }: { market: Market; asof: string }) {
   const asofYear = Number(market.asof_date.slice(0, 4)) || null;
   const markers = market.move_in_markers
     .filter((m) => typeof m.move_in_ym.v === 'string')
@@ -139,7 +127,7 @@ function MarketBody({
   const areaName = (id: string) => market.living_areas.find((la) => la.id === id)?.name ?? id;
   return (
     <div className="flex flex-col gap-6">
-      <SummaryCards market={market} asof={asof} areaSelected={areaSelected} markers={markers} />
+      <SummaryCards market={market} asof={asof} markers={markers} />
       {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
       <h2 className="sr-only">{t('page.common.charts')}</h2>
       <QuestionSection
@@ -236,12 +224,10 @@ function MarketBody({
 function SummaryCards({
   market,
   asof,
-  areaSelected,
   markers,
 }: {
   market: Market;
   asof: string;
-  areaSelected: boolean;
   markers: { complex_id: number; name: string; move_in_ym: string }[];
 }) {
   const unsold = market.unsold_latest ?? null;
@@ -257,7 +243,7 @@ function SummaryCards({
     >
       <Card className="flex flex-col gap-2" data-testid="summary-unsold">
         <BigNumber
-          label={areaSelected ? t('page.G6.summary.unsoldArea') : t('page.G6.summary.unsold')}
+          label={t('page.G6.summary.unsold')}
           caption={unsold?.ym ? t('page.G6.summary.unsoldYm', { ym: unsold.ym }) : undefined}
         >
           <FactCell
@@ -278,7 +264,7 @@ function SummaryCards({
         </p>
       </Card>
       <Card className="flex flex-col gap-2" data-testid="summary-movein">
-        <BigNumber label={t('page.G6.summary.moveIn')} caption={t('page.G6.summary.moveInHint')}>
+        <BigNumber label={t('page.G6.summary.moveIn')}>
           <MetaText kind="count" k="page.G6.summary.moveInCount" params={{ n: markers.length }} />
         </BigNumber>
         {years.length > 0 ? (
@@ -308,14 +294,14 @@ function SummaryCards({
         </BigNumber>
         {prices.window ? (
           <p className="text-[13px] text-fg-2">
-            {t('page.G6.summary.pricesWindow', { window: prices.window })}
+            {t('page.G6.pricesWindowAll', { window: prices.window })}
           </p>
         ) : null}
       </Card>
       <Card className="flex flex-col gap-2" data-testid="summary-regulation">
         <span className="text-[13px] text-muted">{t('page.G6.summary.regulation')}</span>
         {regulated.length === 0 ? (
-          <EmptyState inline reason={t('page.G6.summary.regNone')} />
+          <EmptyState inline reason={t('page.common.none')} />
         ) : (
           <ul className="flex flex-col gap-0.5">
             {regulated.map((g) => (
@@ -399,7 +385,6 @@ function RegulationCard({ market }: { market: Market }) {
     <QuestionSection
       name={t('page.G6.regulation')}
       title={t('page.G6.regulationQ')}
-      hint={t('page.G6.regulationHint')}
       data-testid="market-regulation"
     >
       {items.length === 0 ? <EmptyState reason={t('page.common.none')} /> : null}
@@ -414,7 +399,7 @@ function RegulationCard({ market }: { market: Market }) {
             >
               <h3 className="text-sm font-bold text-fg">{t(`page.G6.regKind.${kind}` as TKey)}</h3>
               {rows.length === 0 ? (
-                <p className="text-xs text-muted">{t('page.G6.regKindNone')}</p>
+                <p className="text-xs text-muted">{t('page.common.none')}</p>
               ) : (
                 <dl className="flex flex-col gap-1.5 text-sm">
                   {rows.map((item, i) => (
@@ -458,7 +443,6 @@ function LivingAreaCompare({ market }: { market: Market }) {
     <QuestionSection
       name={t('page.G6.prices')}
       title={t('page.G6.pricesQ')}
-      hint={t('page.G6.pricesHint')}
       data-testid="market-prices"
     >
       {rows.length === 0 ? (

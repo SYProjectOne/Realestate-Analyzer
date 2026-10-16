@@ -135,7 +135,7 @@ describe('R11 G6 화면', () => {
       level: 1,
       name: new RegExp(t('page.G6.title')),
     });
-    await waitFor(() => expect(h1.textContent).not.toBe(t('page.G6.headingNoRegion')));
+    await waitFor(() => expect(h1.textContent).not.toBe(t('nav.G6')));
     expect(screen.getByLabelText(t('page.G6.livingArea'))).toBeInTheDocument();
     expect(screen.getByText(t('page.G6.livingAreaHint'), { exact: false })).toBeInTheDocument();
     const edit = await screen.findByRole('link', { name: t('page.G6.livingAreaEdit') });
@@ -198,7 +198,7 @@ describe('R11 G6 화면', () => {
     }));
     renderRoute('/market');
     const movein = await screen.findByTestId('summary-movein');
-    expect(movein).toHaveTextContent(t('page.G6.summary.moveInHint'));
+    expect(movein).toHaveTextContent(t('page.G6.summary.moveIn'));
     const reg = await screen.findByTestId('summary-regulation');
     expect(reg).toHaveTextContent(metaText('page.G6.summary.regValue', { value: '비규제', n: 2 }));
     expect(reg).toHaveTextContent(metaText('page.G6.summary.regValue', { value: '적용', n: 1 }));
@@ -227,7 +227,7 @@ describe('R11 G6 화면', () => {
         expect(block).toHaveTextContent('잔금대출');
         expect(block).toHaveTextContent('메모');
       } else {
-        expect(block).toHaveTextContent(t('page.G6.regKindNone'));
+        expect(block).toHaveTextContent(t('page.common.none'));
       }
     }
   });

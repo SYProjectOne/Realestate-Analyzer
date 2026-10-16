@@ -148,7 +148,6 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted">{t('page.G7.closedNote')}</p>
       {saved ? (
         saved.job_id !== null && saved.job_id !== undefined ? (
           <div className="flex flex-col gap-1" data-testid="checklist-job">
