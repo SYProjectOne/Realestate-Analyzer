@@ -255,7 +255,7 @@ function Tile({
     <SectionLink
       id={def.id}
       data-testid={`tile-${k}`}
-      className={`flex min-h-36 flex-col gap-2 rounded-2xl border p-4 text-fg no-underline hover:border-accent ${
+      className={`flex min-h-44 flex-col gap-2 rounded-2xl border p-4 text-fg no-underline hover:border-accent ${
         tone === 'warn' ? 'border-warn-border bg-warn-soft' : 'border-border bg-surface'
       }`}
     >

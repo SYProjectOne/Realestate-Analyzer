@@ -24,6 +24,8 @@ export function ChecklistPanel({ asof }: { asof: string | null }) {
   return (
     <OpsSection
       k="checklist"
+      // 목록·달력이 늦게 채워져도 아래 묶음이 덜 밀리게 자리를 잡아 둔다(CLS)
+      className="min-h-[36rem]"
       actions={
         items && items.length > 0 ? (
           <Badge tone="muted">

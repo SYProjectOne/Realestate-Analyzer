@@ -35,11 +35,10 @@ export function OpsPage() {
       title={t('page.G7.title')}
       intro={
         <>
-          {kicker ? (
-            <span className="mb-1 block text-sm text-muted" data-testid="ops-kicker">
-              {kicker}
-            </span>
-          ) : null}
+          {/* 지역을 받기 전에도 줄 높이를 잡아 둔다(CLS) */}
+          <span className="mb-1 block min-h-5 text-sm text-muted" data-testid="ops-kicker">
+            {kicker ?? ''}
+          </span>
           {t('page.G7.intro')}
         </>
       }
