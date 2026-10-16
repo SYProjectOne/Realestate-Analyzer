@@ -85,7 +85,9 @@ test.describe('화면 10개 핵심 요소', () => {
     await expect(
       page.getByRole('table', { name: P.G4.grid }).getByRole('columnheader'),
     ).toHaveCount(4);
-    await expect(page.getByText(ko.chart.C07.title)).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: ko.chart.C07.title, exact: true }),
+    ).toBeVisible();
   });
 
   test('G5 시나리오: 폼 · 슬라이더 6개(합 1) · 요건 표', async ({ page }) => {

@@ -39,7 +39,7 @@ describe('R9-UI 문구 일괄(P2·P8·P10 문구 부분)', () => {
       t('page.G1.p10'),
       t('page.G1.p10Line'),
       t('page.G2.col.p10'),
-      t('page.G4.row.p10'),
+      // G4 은 R11 목업 이름 '10% 넘게 오를 가능성'(+ 목표 시점·당첨 확률 아님) — pages/compare/compare.test 가 지킨다
       t('chart.C06.component.p10'),
     ]) {
       // R11(Main 보드 HM-5): G1 은 쉬운 말 '오를 가능성'
