@@ -112,7 +112,7 @@ function ComplexCard({
       className="flex flex-col overflow-hidden text-sm"
       data-complex-id={row.complex_id}
     >
-      <div className={`flex flex-col ${grid ? 'gap-2.5 p-5 pb-4' : 'gap-1.5 p-3.5'}`}>
+      <div className={`flex flex-col ${grid ? 'gap-2.5 p-5 pb-4' : 'gap-1 p-3'}`}>
         {grid ? status : null}
         <span
           data-field="living_area"

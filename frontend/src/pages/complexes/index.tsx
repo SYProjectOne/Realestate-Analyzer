@@ -171,7 +171,7 @@ export function ComplexesPage() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
         <div className="flex min-w-0 flex-[1_1_480px] flex-col">
-          <h1 className="text-2xl font-bold leading-tight tracking-tight text-fg sm:text-[30px]">
+          <h1 className="text-xl font-bold leading-tight tracking-tight text-fg sm:text-[30px]">
             {total !== undefined && regionName ? (
               <>
                 <span className="sr-only">{t('page.G2.title')} </span>
@@ -222,7 +222,10 @@ export function ComplexesPage() {
             </span>
           ) : null}
         </span>
-        <p className="w-full text-[15px] leading-relaxed text-muted">{t('page.G2.intro')}</p>
+        {/* 휴대폰은 안내를 접는다(ListTable 보드 휴대폰 — 첫 화면에 카드 2장) */}
+        <p className="w-full text-[15px] leading-relaxed text-muted mobile:hidden">
+          {t('page.G2.intro')}
+        </p>
       </div>
       <FilterBar
         values={filters}
@@ -248,7 +251,7 @@ export function ComplexesPage() {
                 />
                 <span className="text-muted">
                   {' · '}
-                  {sortLabel(sort)}
+                  <span data-testid="count-sort">{sortLabel(sort)}</span>
                 </span>
                 {query.loadingMore ? (
                   <span role="status" className="ml-2 text-accent">
