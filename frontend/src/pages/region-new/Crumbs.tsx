@@ -8,7 +8,7 @@ import { t } from '@/i18n';
 export function Crumbs({ items }: { items: readonly string[] }) {
   return (
     <nav aria-label={t('page.G0.crumbLabel')} className="text-sm text-muted">
-      <Link to="/" className="text-accent hover:underline">
+      <Link to="/" className="text-accent underline underline-offset-2">
         {t('page.G0.crumbHome')}
       </Link>
       {items.map((item, i) => (

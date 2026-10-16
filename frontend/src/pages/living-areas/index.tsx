@@ -108,7 +108,7 @@ export function LivingAreasPage() {
                       dongs: region.legal_dong_codes.length,
                     }}
                   />
-                  <a href="#range" className="text-accent hover:underline">
+                  <a href="#range" className="text-accent underline underline-offset-2">
                     {t('page.G0_2.toRange')}
                   </a>
                 </div>
