@@ -152,6 +152,8 @@ describe('/glossary 화면(R11)', () => {
   });
 
   it('카드: h2 질문형 제목 + 분류 칩 + 풀이, id=term-{key}; #key 로 열면 그 카드 강조', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
     renderRoute('/glossary#resale_limit');
     const card = await screen.findByRole('heading', {
       level: 2,
@@ -160,6 +162,9 @@ describe('/glossary 화면(R11)', () => {
     const article = card.closest('article') as HTMLElement;
     expect(article).toHaveAttribute('id', 'term-resale_limit');
     expect(article).toHaveAttribute('data-target', 'true');
+    // #24: 그 카드를 화면 가운데로 스크롤
+    expect(scroll).toHaveBeenCalledWith({ block: 'center' });
+    expect(scroll.mock.contexts[0]).toBe(article);
     expect(article).toHaveTextContent(t('glossary.category.limits'));
     expect(article).toHaveTextContent(ko.glossary.items.resale_limit.short);
     const other = screen

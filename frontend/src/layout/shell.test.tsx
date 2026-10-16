@@ -56,6 +56,11 @@ describe('R11 머리줄(D30-2)', () => {
     expect(home).toHaveTextContent(t('app.name'));
     expect(home.getAttribute('href')).toBe(`/?${GLOBAL}`);
     expect(home.querySelector('svg')).not.toBeNull();
+    // 머리줄은 화면 꼭대기에 붙는다(데스크톱 sticky, 휴대폰은 하단 메뉴가 대신)
+    expect(screen.getByTestId('app-header').className).toContain('sticky');
+    // 주 메뉴와 작은 메뉴 사이 세로 구분선(장식)
+    const nav = screen.getByRole('navigation', { name: t('nav.label') });
+    expect(nav.querySelector('span[aria-hidden].w-px')).not.toBeNull();
   });
 
   it('메뉴 이름(D30-2): 홈·단지 찾기·비교하기·지역 시장·보고서 │ 내 조건(시나리오)·데이터·운영 · 용어 사전', async () => {
@@ -182,6 +187,76 @@ describe('R11 머리줄(D30-2)', () => {
     await screen.findByRole('heading', { level: 1 });
     expect(screen.getByRole('contentinfo')).toHaveTextContent('투자 권유 아님 · 상대 비교');
   });
+});
+
+describe('R11 선택칸(목업 §1, SH-10)', () => {
+  it('지역이 없으면 "지역 없음" + 지역 추가, 기준일이 없으면 "기준일 없음"으로 칸이 꺼진다', async () => {
+    server.use(
+      http.get(mswPath('/regions'), () => HttpResponse.json([])),
+      http.get(mswPath('/regions/:id/snapshots'), () => HttpResponse.json([])),
+    );
+    renderRoute('/glossary');
+    const region = await screen.findByLabelText(t('header.region'));
+    expect(
+      within(region).getByRole('option', { name: t('header.regionNone') }),
+    ).toBeInTheDocument();
+    expect(within(region).getByRole('option', { name: t('header.regionAdd') })).toBeInTheDocument();
+    const snapshot = screen.getByLabelText(t('header.snapshot'));
+    expect(
+      within(snapshot).getByRole('option', { name: t('header.snapshotNone') }),
+    ).toBeInTheDocument();
+    expect(snapshot).toBeDisabled();
+    expect(t('header.snapshotNone')).toBe('기준일 없음');
+  });
+
+  it('지역을 바꾸면 ?region= 이 바뀌고 기준일은 그 지역 최신으로(?snapshot= 을 뺀다, #29)', async () => {
+    const regions = await example<Region[]>('/regions');
+    const first = regions[0] as Region;
+    const second = { ...first, id: 999, name: `${first.name}-2` };
+    server.use(http.get(mswPath('/regions'), () => HttpResponse.json([first, second])));
+    const { router } = renderRoute(`/glossary?region=${String(first.id)}&snapshot=1`);
+    const region = await screen.findByLabelText(t('header.region'));
+    await within(region).findByRole('option', { name: second.name });
+    await userEvent.selectOptions(region, String(second.id));
+    await waitFor(() => expect(router.state.location.search).toContain('region=999'));
+    expect(router.state.location.search).not.toContain('snapshot=');
+  });
+
+  it('상황 목록이 늦게 와도 자리를 미리 잡는다(CLS, #42)', async () => {
+    let release: () => void = () => {};
+    const scenarios = await example<unknown[]>('/scenarios');
+    server.use(
+      http.get(
+        mswPath('/scenarios'),
+        () =>
+          new Promise<Response>((resolve) => {
+            release = () => resolve(HttpResponse.json(scenarios));
+          }),
+      ),
+    );
+    renderRoute('/glossary');
+    await screen.findByRole('heading', { level: 1 });
+    const bar = screen.getByTestId('header-selectors');
+    expect(within(bar).queryByRole('radiogroup')).toBeNull();
+    expect(bar.querySelector('span[aria-hidden].bg-chip')).not.toBeNull();
+    release();
+    expect(
+      await within(bar).findByRole('radiogroup', { name: t('header.scenario') }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('R11 개발 전용 차트 갤러리(/__charts, #291·#292)', () => {
+  it('머리줄 안에서 갤러리 제목을 그린다(목업에 그리지 않음 — 지금 그대로)', async () => {
+    renderRoute('/__charts');
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: t('chart.gallery.title') },
+        { timeout: 15_000 },
+      ),
+    ).toBeInTheDocument();
+  }, 30_000);
 });
 
 describe('R11 휴대폰 머리줄·하단 메뉴(D30-4, SH-19)', () => {
@@ -428,6 +503,45 @@ describe('R11 열쇠 창(SH-13·SH-15)', () => {
     expect(t('auth.savedRead')).toContain('저장·실행 버튼은 꺼져요');
     expect(t('auth.cleared')).toBe('저장한 열쇠를 지웠어요');
     expect(t('auth.notPersisted')).toContain('이 탭에서만');
+  });
+});
+
+describe('R11 열쇠 창 덧붙임(SH-13)', () => {
+  it('"열쇠 보이기"를 켜면 입력칸이 글자로 보인다', async () => {
+    renderRoute('/glossary');
+    await userEvent.click(await screen.findByTestId('token-button'));
+    const dialog = await screen.findByRole('dialog', { name: t('auth.title') });
+    const input = within(dialog).getByLabelText(t('auth.label'));
+    expect(input).toHaveAttribute('type', 'password');
+    expect(input).toHaveAttribute('autocomplete', 'off');
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: t('auth.show') }));
+    expect(input).toHaveAttribute('type', 'text');
+  });
+
+  it('확인 요청이 실패하면 "열쇠를 확인하지 못했어요: …"(role=alert)', async () => {
+    server.use(http.get(mswPath('/regions'), () => HttpResponse.error()));
+    renderRoute('/glossary');
+    await userEvent.click(await screen.findByTestId('token-button'));
+    const dialog = await screen.findByRole('dialog', { name: t('auth.title') });
+    await userEvent.type(within(dialog).getByLabelText(t('auth.label')), 'tok-x');
+    await userEvent.click(within(dialog).getByRole('button', { name: t('auth.save') }));
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent ?? '').toContain(t('auth.checkError', { detail: '' }));
+  });
+});
+
+describe('R11 기준일 없음(§7)', () => {
+  it('발행 기준일이 없으면 "아직 기준일이 없어요"', async () => {
+    const regions = await example<Region[]>('/regions');
+    server.use(
+      http.get(mswPath('/regions'), () =>
+        HttpResponse.json(regions.map((r) => ({ ...r, status: 'ready', latest_snapshot: null }))),
+      ),
+      http.get(mswPath('/regions/:id/snapshots'), () => HttpResponse.json([])),
+    );
+    renderRoute('/');
+    expect(await screen.findByText(t('app.noSnapshot'))).toBeInTheDocument();
+    expect(t('app.noSnapshot')).toContain('아직 기준일이 없어요');
   });
 });
 

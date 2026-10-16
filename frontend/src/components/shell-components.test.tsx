@@ -17,7 +17,8 @@ import type { Provenance } from '@/lib/contract';
 import { MOBILE_QUERY } from '@/lib/useMediaQuery';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
-import { QueryState } from '@/pages/_shared';
+import { QueryState, Section } from '@/pages/_shared';
+import { snapshotText } from './SnapshotPicker';
 import { renderWithProviders } from '@/test/render';
 import {
   Badge,
@@ -38,6 +39,8 @@ import {
   LabelBadge,
   MismatchBadge,
   ProvenanceLegend,
+  RawDocumentPreview,
+  ScenarioToggle,
   SectionHeader,
   Skeleton,
   StatusPill,
@@ -592,5 +595,180 @@ describe('알림(목업 §6, toast)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('선택칸·좁은 칸(SH-10·#203)', () => {
+  it('상황 고르기 꺼짐(disabled): 묶음 aria-disabled + 버튼 모두 꺼짐', () => {
+    renderWithProviders(
+      <ScenarioToggle
+        options={[
+          { id: 'base', name: 'A' },
+          { id: 'B', name: 'B' },
+        ]}
+        value={null}
+        onChange={() => undefined}
+        disabled
+        showLabel
+      />,
+    );
+    const group = screen.getByRole('radiogroup', { name: t('header.scenario') });
+    expect(group).toHaveAttribute('aria-disabled', 'true');
+    for (const radio of within(group).getAllByRole('radio')) expect(radio).toBeDisabled();
+  });
+
+  it('좁은 칸(wrap)에서는 라벨이 다음 줄로 내려간다(whitespace-normal)', () => {
+    renderWithProviders(
+      <>
+        <LabelBadge label="추정" reason="대체" wrap />
+        <LabelBadge label="추정" reason="대체" />
+      </>,
+    );
+    const [wrapped, plain] = screen.getAllByTestId('label-badge');
+    expect(wrapped?.className).toContain('whitespace-normal');
+    expect(plain?.className).toContain('whitespace-nowrap');
+  });
+});
+
+describe('R11 덧붙인 행 가드(대응표 빈 칸 채움)', () => {
+  it('값이 빈 사유 코드는 쉬운 말 배지(no_value 는 서버 사유 그대로, 원 사유는 title)', () => {
+    const keys = Object.keys(ko.empty.reasonPlain).filter((c) => !c.endsWith('With'));
+    const codeOf = (key: string) => (key === 'pre_notice' ? 'not_published' : key);
+    renderWithProviders(
+      <>
+        {keys.map((key) => (
+          <EmptyState key={key} inline reason="원문 사유" reasonCode={codeOf(key) as never} />
+        ))}
+      </>,
+    );
+    const items = screen.getAllByTestId('empty-state');
+    expect(items).toHaveLength(keys.length);
+    keys.forEach((key, i) => {
+      const expected =
+        key === 'no_value'
+          ? '원문 사유'
+          : t(`empty.reasonPlain.${key}` as 'empty.reasonPlain.no_value');
+      expect({ key, ok: (items[i]?.textContent ?? '').includes(expected) }).toEqual({
+        key,
+        ok: true,
+      });
+    });
+  });
+
+  it('기준일 옵션 문구: n번째 수정본 · 일부 수집 실패 · 만드는 중', () => {
+    const base = { id: 1, asof_date: '2026-10-14', status: 'published' as const, degraded: false };
+    expect(snapshotText({ ...base, revision: 8 })).toBe(
+      t('picker.revision', { date: '2026-10-14', n: 8 }),
+    );
+    expect(t('picker.revision', { date: 'D', n: 8 })).toBe('D · 8번째 수정본');
+    expect(snapshotText({ ...base, degraded: true })).toBe(
+      t('picker.snapshotDegraded', { date: '2026-10-14' }),
+    );
+    expect(snapshotText({ ...base, status: 'building' })).toBe(
+      t('picker.snapshotBuilding', { date: '2026-10-14' }),
+    );
+    expect(t('picker.snapshotBuilding', { date: 'D' })).toBe('D · 만드는 중');
+  });
+
+  it('작업 없음 · 오류 문구', () => {
+    renderWithProviders(
+      <>
+        <JobProgressView job={undefined} />
+        <JobProgressView
+          job={{ id: 3, job_name: 'rejudge', status: 'failed', error_text: 'boom' }}
+        />
+      </>,
+    );
+    expect(screen.getByText(t('job.none'))).toBeInTheDocument();
+    expect(screen.getByText(t('job.error', { detail: 'boom' }))).toBeInTheDocument();
+  });
+
+  it('QueryState 빈 데이터 = 호출 측 문구 상자, Section = 카드 + h2 + 한 줄 안내', () => {
+    renderWithProviders(
+      <MemoryRouter>
+        <QueryState
+          query={{ data: [] as string[], error: null, isLoading: false }}
+          empty={(d) => (d.length === 0 ? t('empty.noData') : null)}
+        >
+          {() => <p>rows</p>}
+        </QueryState>
+        <Section title="일정은 어디쯤 왔나요?" hint="공고문 날짜 그대로예요.">
+          <p>본문</p>
+        </Section>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(t('empty.noData'));
+    const section = screen.getByRole('region', { name: '일정은 어디쯤 왔나요?' });
+    expect(section).toHaveAttribute('data-card-tone', 'default');
+    expect(within(section).getByRole('heading', { level: 2 })).toBeInTheDocument();
+    expect(within(section).getByText('공고문 날짜 그대로예요.')).toBeInTheDocument();
+  });
+
+  it('출처 창: 응답 상태·판정 기록 번호 · 원문 앞뒤 보기 ↔ 원문 닫기 · 다른 출처의 단위 근거', async () => {
+    const base = provenanceConflict();
+    const p = {
+      ...base,
+      http_status: 200,
+      judgment_seq: 1298,
+      conflicts: base.conflicts.map((c, i) =>
+        i === 0
+          ? {
+              ...c,
+              excerpt: `${c.excerpt ?? ''}
+[단위 근거] 단위: 원`,
+            }
+          : c,
+      ),
+    } as Provenance;
+    server.use(
+      http.get(mswPath('/provenance/:id'), () => HttpResponse.json(p)),
+      http.get(mswPath('/raw/:id'), () => HttpResponse.text('x'.repeat(2000))),
+    );
+    renderWithProviders(
+      <FactCell fact={{ v: 1, label: '확인됨', prov: p.id, checked_at: null }} unit="count" />,
+    );
+    await userEvent.click(screen.getByRole('button'));
+    const panel = await screen.findByRole('dialog', { name: t('provenance.title') });
+    expect(within(panel).getByText(t('provenance.httpStatus'))).toBeInTheDocument();
+    expect(within(panel).getByText(t('provenance.judgment'))).toBeInTheDocument();
+    expect(within(panel).getByText('1298')).toBeInTheDocument();
+    if (p.conflicts.length > 0) {
+      expect(within(panel).getByTestId('conflict-unit-basis')).toHaveTextContent('단위: 원');
+    }
+    const raw = within(panel).queryByRole('button', { name: t('provenance.rawText') });
+    if (raw) {
+      await userEvent.click(raw);
+      expect(
+        within(panel).getByRole('button', { name: t('provenance.rawTextHide') }),
+      ).toHaveAttribute('aria-expanded', 'true');
+    }
+  });
+
+  it('출처를 못 불러오면 "출처를 불러오지 못했어요(…)"', async () => {
+    server.use(
+      http.get(mswPath('/provenance/:id'), () =>
+        HttpResponse.json({ code: 'not_found', detail: 'no' }, { status: 404 }),
+      ),
+    );
+    renderWithProviders(
+      <FactCell fact={{ v: 1, label: '확인됨', prov: 'fp_404', checked_at: null }} unit="count" />,
+    );
+    await userEvent.click(screen.getByRole('button'));
+    const panel = await screen.findByRole('dialog', { name: t('provenance.title') });
+    expect(await within(panel).findByRole('status')).toHaveTextContent(
+      t('provenance.error', { detail: '' }).replace(/\(\)$/, ''),
+    );
+  });
+
+  it('긴 원문 텍스트는 앞부분만 보이고 그렇다고 알린다', async () => {
+    server.use(http.get(mswPath('/raw/:id'), () => HttpResponse.text('가'.repeat(200_001))));
+    renderWithProviders(<RawDocumentPreview rawId={7} />);
+    await userEvent.click(screen.getByRole('button', { name: t('provenance.rawPreview') }));
+    expect(
+      await screen.findByText(t('provenance.rawTruncated', { n: '200,000' })),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t('provenance.rawPreviewHide') }),
+    ).toBeInTheDocument();
   });
 });
