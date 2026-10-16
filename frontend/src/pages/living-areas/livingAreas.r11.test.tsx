@@ -182,11 +182,12 @@ describe('R11 G0-2 생활권 — 목업 LivingAreas', () => {
     rec.stop();
   });
 
-  it('지역 범위: 안내 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구', async () => {
+  it('지역 범위: ? 설명 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구', async () => {
     window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
     renderRoute('/regions/1/living-areas');
     const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
-    expect(panel).toHaveTextContent(t('page.G0_2.expand.intro'));
+    await userEvent.click(within(panel).getByRole('button', { name: t('page.G0_2.expand.help') }));
+    expect(within(panel).getByRole('note')).toHaveTextContent(t('page.G0_2.expand.helpBody'));
     const current = within(panel).getByRole('list', { name: t('page.G0_2.expand.current') });
     let items = within(current).getAllByRole('listitem');
     while (items.length > 1) {

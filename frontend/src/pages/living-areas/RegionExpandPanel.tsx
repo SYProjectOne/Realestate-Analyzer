@@ -19,6 +19,7 @@ import { useToast } from '@/app/toast';
 import { Card, MetaText, PublishJobProgress, StatusPill } from '@/components';
 import { t } from '@/i18n';
 import { enumText, useDebounced } from '../_shared';
+import { HelpToggle } from '../region-new/HelpToggle';
 import { ERROR_BOX } from '../region-new/ui';
 
 const DEBOUNCE_MS = 300;
@@ -118,6 +119,9 @@ export function RegionExpandPanel({ region }: { region: Region }) {
       <div className="flex flex-col gap-1">
         <h2 id={headingId} className="flex items-center gap-2 text-lg font-bold sm:text-[22px]">
           {t('page.G0_2.expand.title')}
+          <HelpToggle label={t('page.G0_2.expand.help')}>
+            {t('page.G0_2.expand.helpBody')}
+          </HelpToggle>
         </h2>
         <p className="text-sm leading-relaxed text-muted">{t('page.G0_2.expand.intro')}</p>
       </div>

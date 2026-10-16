@@ -47,18 +47,18 @@
 | 39 | 발행 대기 안내 (`job.publishPending` "작업이 끝나 새 리비전이 발행될 때까지 화면은 지금 발행 리비전을 보입니다") | LivingAreas · 펼친 모습 "새 수정본이 발행될 때까지 화면은 지금 수정본을 보여요" + 저장 줄 "끝날 때까지 지금 화면 그대로예요" | 리비전 → 수정본 | 있음 | `R3F2` F4 생활권 PUT 202 → 발행 대기 안내 + 잡 진행 |
 | 40 | 발행 완료 (`job.publishDone`) | LivingAreas · 펼친 모습 "끝나면 '새 수정본이 발행됐어요'" | — | 있음 | `R3D` G1 재판정 잡 done → 리비전 목록 갱신 → ready 폴링 → published → 헤더·대시보드가 리비전 2 |
 | 41 | 발행 막힘·실패·멈춤·미룸·재등록 등 결과 문구 (`job.publishBlocked*`·`publishFailed`·`publishExpired`·`publishChainCapped`·`publishDeferred`·`publishRedeferred`) | Market · "작업 진행 · 상태 모음" (LivingAreas 보드: "발행이 막히거나 실패하면 이유가 이 칸에 나와요 (지역 시장 보드 … 와 같아요)") | — | 다른 보드(Market) | coverage-Market.md 행의 테스트(PublishJobProgress 결과 문구) |
-| 42 | 지역 범위 확장 Section (`RegionExpandPanel` · `page.G0_2.expand.title` "지역 범위 확장(지역 추가)") | LivingAreas · "지역 범위를 넓히거나 줄일까요?" (id=range) "(공식 이름: 지역 범위 확장)" | 지역 범위 확장(지역 추가) → 지역 범위를 넓히거나 줄일까요? | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행<br>`E2P` G0-2 생활권 편집: 생활권 카드 · 세대수 · 저장<br>`LA11` 지역 범위: 안내 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
-| 43 | 범위 확장 안내 (`page.G0_2.expand.intro` "지금 지역 선택에 시도·시군구·동을 더하거나 뺍니다. 저장하면…'지역 추가' 장…") | LivingAreas · "지역 범위를 …" 안내 문단 | 리비전 → 수정본 | 있음 | `LA11` 지역 범위: 안내 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
+| 42 | 지역 범위 확장 Section (`RegionExpandPanel` · `page.G0_2.expand.title` "지역 범위 확장(지역 추가)") | LivingAreas · "지역 범위를 넓히거나 줄일까요?" (id=range) "(공식 이름: 지역 범위 확장)" | 지역 범위 확장(지역 추가) → 지역 범위를 넓히거나 줄일까요? | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행<br>`E2P` G0-2 생활권 편집: 생활권 카드 · 세대수 · 저장<br>`LA11` 지역 범위: ? 설명 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
+| 43 | 범위 확장 안내 (`page.G0_2.expand.intro` "지금 지역 선택에 시도·시군구·동을 더하거나 뺍니다. 저장하면…'지역 추가' 장…") | LivingAreas · "지역 범위를 …" 안내 문단 | 리비전 → 수정본 | 있음 | `LA11` 지역 범위: ? 설명 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
 | 44 | 현재 선택 목록 ul aria-label (`page.G0_2.expand.current` "현재 지역 선택") | LivingAreas · "지역 범위를 …" "지금 고른 곳" | 현재 지역 선택 → 지금 고른 곳 | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행<br>`RX` 선택이 하나뿐이면 뺄 수 없다 |
 | 45 | 선택 배지 "{이름} · {종류}" (`page.common.candidateKind.*`) | LivingAreas · "지금 고른 곳" "인천광역시 시도" | — | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행 |
 | 46 | 새로 더한 선택 강조 (`data-added`, Badge strong) | LivingAreas · "지금 고른 곳" "경기도 김포시 시군구 · 새로 추가" | 색 강조 → "새로 추가" 글자 | 있음 | `LA11` 지역 범위 저장 → 토스트 · 새로 추가 표시 · 잡 안내 · 끝나면 다시 읽는다는 안내 |
 | 47 | 선택 빼기 × 버튼 (aria-label `page.G0_2.expand.remove` "{name} 빼기") | LivingAreas · "지금 고른 곳" × 버튼 aria-label "경기도 김포시 빼기" | — | 있음 | `RX` 선택이 하나뿐이면 뺄 수 없다 |
-| 48 | 마지막 하나는 뺄 수 없음(버튼 꺼짐) | LivingAreas · "지금 고른 곳" 꺼진 × title "마지막 하나는 뺄 수 없어요" + 펼친 모습 "하나만 남으면 뺄 수 없어요" | — | 있음 | `RX` 선택이 하나뿐이면 뺄 수 없다<br>`LA11` 지역 범위: 안내 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
+| 48 | 마지막 하나는 뺄 수 없음(버튼 꺼짐) | LivingAreas · "지금 고른 곳" 꺼진 × title "마지막 하나는 뺄 수 없어요" + 펼친 모습 "하나만 남으면 뺄 수 없어요" | — | 있음 | `RX` 선택이 하나뿐이면 뺄 수 없다<br>`LA11` 지역 범위: ? 설명 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
 | 49 | 지역 이름 입력칸 (`page.G0_2.expand.name` "지역 이름", 읽기 전용이면 꺼짐) | LivingAreas · "지역 범위를 …" "지역 이름" 입력칸 | — | 있음 | `RX` 이름만 바꿔도 저장할 수 있고 본문에 name 이 실린다 |
 | 50 | 지역 이름 최대 100자 (`maxLength={100}`) | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자, 입력칸 maxlength=100) | `RX` 이름만 바꿔도 저장할 수 있고 본문에 name 이 실린다 (maxLength=100 속성) |
 | 51 | 추가할 지역 검색칸 (`page.G0_2.expand.search` "추가할 지역 검색", placeholder `page.G0.searchPlaceholder`) | LivingAreas · "더할 곳 찾기" 입력칸 placeholder "2글자 이상" | 추가할 지역 검색 → 더할 곳 찾기 | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행<br>`R3F2` F5 지역 선택 PATCH 202 → 발행 대기 안내 + region.expand 진행 |
 | 52 | 검색 2자 이상 + 300ms 디바운스 | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자) | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행 |
-| 53 | 후보 없음 (`page.G0.noCandidates`) | LivingAreas · 펼친 모습 "범위 찾기 · 다른 상태" "일치하는 후보가 없어요" | — | 있음 | `LA11` 지역 범위: 안내 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
+| 53 | 후보 없음 (`page.G0.noCandidates`) | LivingAreas · 펼친 모습 "범위 찾기 · 다른 상태" "일치하는 후보가 없어요" | — | 있음 | `LA11` 지역 범위: ? 설명 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
 | 54 | 추가 후보 목록 ul aria-label (`page.G0_2.expand.candidates` "추가 후보") — 이름·종류 배지·법정동 수 | LivingAreas · "더할 곳 찾기" 아래 후보 3줄 "경기도 김포시 시군구 법정동 72개" | — | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행 |
 | 55 | 후보 추가 버튼 (`page.G0_2.expand.add` "추가") | LivingAreas · 후보 줄 "추가" | — | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행 |
 | 56 | 이미 있는 후보 (`page.G0_2.expand.have` "이미 있음", 꺼짐) | LivingAreas · 후보 줄 꺼진 "이미 있음" | — | 있음 | `RX` 후보 검색 → 추가 → 변경 요약 → 저장 = PATCH selections → 응답 added·change_event·job_id 잡 진행 |
@@ -101,7 +101,7 @@
 | N4 | 고른 동 수 "2개 동을 골랐어요" | 옮기기 도구줄 | | `LA11` 도구줄: 고른 동 수 · 고른 동이 없으면 "이리로 옮기기" 꺼짐 · 고른 동이 있는 카드는 강조 |
 | N5 | 카드 동 목록 5개만 보이고 "나머지 n개 더 보기" | 생활권 카드 | 접기 | `LA11` 카드: 법정동은 처음 5개 + "나머지 n개 더 보기"(누르면 모두 · 접기) |
 | N6 | 저장 줄 화면 아래 고정("스크롤해도 화면 아래에 붙어 있어요") + 안내 "저장하면 새 수정본에서 점수를 다시 매겨요" | 저장 줄 | | `LA11` 저장 → 저장 줄 아래 발행 진행(쓰기 토큰) |
-| N7 | 범위 확장 `?` 설명 버튼 | "지역 범위를 넓히거나 줄일까요?" | | 안 그림 — 진입 청크 예산(450kB) 때문에 설명 문구를 뺐다. 범위 안내 문단은 그대로(`LA11` 지역 범위: 안내 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구) |
+| N7 | 범위 확장 `?` 설명 버튼 | "지역 범위를 넓히거나 줄일까요?" | | `LA11` 지역 범위: ? 설명 · 마지막 하나는 뺄 수 없다는 title · 후보 없음 문구 |
 | N8 | 세대수 출처 안내 줄 "세대수는 주민등록 세대(2026-09-01)로 만든 추정 값이에요…" + "상대 비교 · 투자 권유 아님" | 범위 확장 아래 | | `LA11` 머리: '생활권이 뭐예요?' 한 줄 답이 맨 위(지역을 받기 전부터) · 현재 위치 줄 · 생활권·법정동 개수 · #range 링크 (바닥 안내 — 날짜는 서버 라벨·출처 창이 보임) |
 
 ## 테스트 열(R11-SETUP, 2026-10-16)
