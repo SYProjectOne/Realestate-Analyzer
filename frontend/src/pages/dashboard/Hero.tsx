@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { Link } from 'react-router';
 import { useChecklist, useComplexes } from '@/api/hooks';
 import type { ChecklistItem, ComplexRow, Dashboard } from '@/api/types';
-import { Card, FactCell, IntakeBadge, MetaText, Skeleton, StatusPill, Term } from '@/components';
+import { Card, FactCell, IntakeBadge, Skeleton, StatusPill, Term } from '@/components';
 import { t } from '@/i18n';
 import { formatDday, kstDay } from '@/lib/format';
 import { useGlobalSearch } from '../_shared';
@@ -60,7 +60,7 @@ export function Hero({ data, regionName }: { data: Dashboard; regionName: string
           {t('page.G1.hero.after')}
         </h1>
         <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
-          {t('page.G1.hero.note')}
+          {t('label.legend')} ·
           <Term k="intake_status" />
         </p>
         <p className="text-base leading-relaxed text-fg-2">{t('page.G1.openNow.hint')}</p>
@@ -120,7 +120,6 @@ export function OpenNowCards({
       </p>
     );
   }
-  const rest = page.total - page.items.length;
   return (
     <div className="flex flex-col gap-2" data-section="openCards">
       <ul aria-label={title} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -128,11 +127,6 @@ export function OpenNowCards({
           <OpenNowCard key={row.complex_id} row={row} asof={asof} />
         ))}
       </ul>
-      {rest > 0 ? (
-        <p className="text-sm text-muted">
-          <MetaText kind="count" k="page.G1.openNow.more" params={{ n: rest }} />
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -247,7 +241,7 @@ export function ApplySoonBand({ asof }: { asof: string }) {
         <p className="text-xl font-bold">{pick.name}</p>
       </div>
       <ul
-        aria-label={t('page.G1.applySoon.items', { name: pick.name })}
+        aria-label={`${t('page.G1.applySoon.title')}: ${pick.name}`}
         className="flex flex-wrap gap-2.5"
       >
         {pick.items.map((item, i) => (

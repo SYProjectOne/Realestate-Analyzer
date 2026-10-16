@@ -78,7 +78,7 @@ describe('R9-UI 문구 일괄(P2·P8·P10 문구 부분)', () => {
     // R11 Main 보드: '점수 순서', 안내 문장에 상대 비교·투자 권유 아님
     expect(t('page.G1.top5')).toBe('점수 순서');
     expect(t('page.G1.top5Note')).toContain('상대 비교');
-    expect(t('page.G1.top5Note')).toContain('투자 권유가 아니에요');
+    expect(t('page.G1.top5Note')).toContain('투자 권유 아님');
     // R11 ListTable 보드 이름(CEO: 전매 종료 필터 이름은 List·ListTable 하나로)
     expect(t('page.G2.filter.land_type')).toBe('땅 종류 (공공·민간 택지)');
     expect(t('page.G2.filter.resale_end_before')).toBe('이 날짜 전에 되팔 수 있게 됨 (전매 종료)');

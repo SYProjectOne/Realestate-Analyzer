@@ -126,7 +126,6 @@ export function ChangeFeed({ changes, asof }: { changes: ChangeEvent[]; asof: st
                 )}
               </button>
             ) : null}
-            <p className="text-xs text-muted">{t('page.G1.changesHint')}</p>
           </>
         )}
       </Card>

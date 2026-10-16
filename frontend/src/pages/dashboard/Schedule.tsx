@@ -121,9 +121,6 @@ export function UpcomingCard({ asof }: { asof: string }) {
           })}
         </ul>
       )}
-      <p className="rounded-xl bg-subtle px-3 py-2 text-xs leading-relaxed text-muted">
-        {t('page.G1.upcoming.note')}
-      </p>
     </Card>
   );
 }

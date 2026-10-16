@@ -180,7 +180,8 @@ function ComplexCard({
             <dd className="flex flex-col gap-0.5">
               <FactCell wrap fact={row.p10} unit="prob" />
               <span className="text-xs text-muted">
-                {t('page.G2.col.p10Note', { target: p10Target ?? t('empty.unknown') })}
+                {t('page.G1.p10Target', { target: p10Target ?? t('empty.unknown') })} ·{' '}
+                {t('page.G1.p10Note')}
               </span>
             </dd>
           </dl>
@@ -189,7 +190,7 @@ function ComplexCard({
       {grid ? (
         <dl className="mt-auto grid grid-cols-3 border-t border-border bg-subtle text-xs">
           <div className="flex min-w-0 flex-col gap-1 border-r border-border px-3.5 py-3">
-            <dt className="text-muted">{t('page.G2.card.downEst')}</dt>
+            <dt className="text-muted">{t('page.G2.card.down')}</dt>
             <dd className="text-[15px] font-bold" data-field="down">
               <FactCell wrap fact={row.down_payment_won ?? null} unit="won" />
             </dd>

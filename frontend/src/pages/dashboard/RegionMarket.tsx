@@ -121,7 +121,6 @@ export function RegionMarket({ data, regionName }: { data: Dashboard; regionName
           <span className={big}>
             <FactCell wrap fact={kpis.judged_count} unit="count" />
           </span>
-          <span className="text-[13px] text-muted">{t('page.G1.kpi.judgedSub')}</span>
         </Card>
         <Card as="li" data-kpi="freshness" className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
           <span className={kpiLabel}>{t('page.G1.kpi.freshness')}</span>
@@ -138,9 +137,6 @@ export function RegionMarket({ data, regionName }: { data: Dashboard; regionName
                 stale: kpis.data_freshness.stale_sources,
               }}
             />
-            <Link to={`/ops${search}`} className="text-accent hover:underline">
-              {t('page.G1.regionOps')}
-            </Link>
           </span>
         </Card>
       </ul>

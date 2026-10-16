@@ -49,7 +49,6 @@ const TABLE_TERMS: ReadonlySet<FilterKey> = new Set([
 
 /** 입력칸 예시(지역 이름·단지 이름을 박지 않는다 — 규칙 15) */
 const PLACEHOLDER: Partial<Record<FilterKey, TKey>> = {
-  q: 'page.G2.placeholder.q',
   price_min: 'page.G2.placeholder.price_min',
   price_max: 'page.G2.placeholder.price_max',
   move_in_year: 'page.G2.placeholder.move_in_year',
