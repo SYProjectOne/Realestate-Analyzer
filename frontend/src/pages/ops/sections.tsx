@@ -95,7 +95,7 @@ export function opsSection(key: OpsSectionKey): OpsSectionDef {
 
 /** 메뉴 이름(목업 메뉴 9칸) */
 export function opsMenuText(key: OpsSectionKey): string {
-  return t(opsSection(key).nameKey);
+  return t(`page.G7.menu.${key}`);
 }
 
 /**

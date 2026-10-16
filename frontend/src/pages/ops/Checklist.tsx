@@ -24,7 +24,6 @@ export function ChecklistPanel({ asof }: { asof: string | null }) {
   return (
     <OpsSection
       k="checklist"
-      // 목록·달력이 늦게 채워져도 아래 묶음이 덜 밀리게 자리를 잡아 둔다(CLS)
       className="min-h-[36rem]"
       actions={
         items && items.length > 0 ? (
@@ -150,6 +149,7 @@ function ChecklistTable({ items, asof }: { items: ChecklistItem[]; asof: string 
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-muted">{t('page.G7.closedNote')}</p>
       {saved ? (
         saved.job_id !== null && saved.job_id !== undefined ? (
           <div className="flex flex-col gap-1" data-testid="checklist-job">

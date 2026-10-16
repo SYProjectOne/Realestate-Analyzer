@@ -72,10 +72,11 @@ export function TodayTiles({
           <TilesBody regionId={regionId} snapshotId={snapshotId} asof={asof} />
         ) : (
           (['intake', 'sources', 'claims', 'checklist'] as const).map((k) => (
-            <Tile key={k} k={k} label={tileLabel(k)} value={t('app.loading')} />
+            <Tile key={k} k={k} label={tileLabel(k)} value={t('page.G7.today.loading')} />
           ))
         )}
       </div>
+      <p className="text-xs text-muted">{t('page.G7.today.rule')}</p>
     </section>
   );
 }
@@ -105,8 +106,8 @@ function TilesBody({
   const sources = useOpsSources(regionId);
   const claims = useClaims(snapshotId);
   const checklist = useChecklist();
-  const loading = t('app.loading');
-  const unknown = t('empty.unknown');
+  const loading = t('page.G7.today.loading');
+  const unknown = t('page.G7.today.unknown');
 
   // ① 사람 확인이 필요한 단지 — 서버 total + 분류별 줄 수
   const q = queue.data;
@@ -118,7 +119,7 @@ function TilesBody({
       tone={q && q.total > 0 ? 'warn' : 'default'}
       value={
         q ? (
-          <MetaText kind="count" k="page.G7.iq.total" params={{ n: q.total }} />
+          <MetaText kind="count" k="page.G7.today.countCases" params={{ n: q.total }} />
         ) : queue.error || !hasScope ? (
           unknown
         ) : (
@@ -128,7 +129,7 @@ function TilesBody({
       sub={
         q ? (
           intakeParts.length === 0 ? (
-            t('page.G7.iq.none')
+            t('page.G7.today.intakeNone')
           ) : (
             <span data-testid="tile-intake-parts">
               {intakeParts.map((p, i) => (
@@ -137,7 +138,7 @@ function TilesBody({
                   <MetaText
                     kind="count"
                     k="page.G7.today.part"
-                    params={{ name: t(`page.G7.iq.category.${p.category}` as TKey), n: p.n }}
+                    params={{ name: t(`page.G7.iq.categoryShort.${p.category}` as TKey), n: p.n }}
                   />
                 </span>
               ))}
@@ -168,8 +169,12 @@ function TilesBody({
       sub={
         rows
           ? failing.length === 0
-            ? t('page.common.none')
-            : failing.map((r) => enumText('page.G7.sourceKind', r.source_kind)).join(' · ')
+            ? t('page.G7.today.sourcesNone')
+            : t('page.G7.today.sourcesSub', {
+                names: failing
+                  .map((r) => enumText('page.G7.sourceKind', r.source_kind))
+                  .join(' · '),
+              })
           : null
       }
     />
@@ -185,13 +190,14 @@ function TilesBody({
       tone={contradicted !== null && contradicted > 0 ? 'warn' : 'default'}
       value={
         contradicted !== null ? (
-          <MetaText kind="count" k="page.G7.iq.total" params={{ n: contradicted }} />
+          <MetaText kind="count" k="page.G7.today.countCases" params={{ n: contradicted }} />
         ) : claims.error || snapshotId === null ? (
           unknown
         ) : (
           loading
         )
       }
+      sub={contradicted !== null ? t('page.G7.today.claimsSub') : null}
     />
   );
 
@@ -204,7 +210,7 @@ function TilesBody({
       label={tileLabel('checklist')}
       value={
         due ? (
-          <MetaText kind="count" k="page.G7.iq.total" params={{ n: due.soon }} />
+          <MetaText kind="count" k="page.G7.today.countCases" params={{ n: due.soon }} />
         ) : checklist.error || (items && !asof) ? (
           unknown
         ) : (
@@ -270,7 +276,9 @@ function Tile({
         {value}
       </span>
       {sub ? <span className="text-[13px] leading-snug text-fg-2">{sub}</span> : null}
-      <span className="mt-auto text-[13px] font-semibold text-accent">{`${opsMenuText(k)} →`}</span>
+      <span className="mt-auto text-[13px] font-semibold text-accent">
+        {t('page.G7.today.go', { name: opsMenuText(k) })}
+      </span>
     </SectionLink>
   );
 }

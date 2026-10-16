@@ -27,7 +27,7 @@ export function JudgmentStatsPanel({ asof }: { asof: string | null }) {
       actions={
         range ? (
           <Badge tone="muted">
-            <span data-testid="stats-range">{`${range.from} ~ ${range.to}`}</span>
+            <span data-testid="stats-range">{t('page.G7.statsRange', range)}</span>
           </Badge>
         ) : null
       }
@@ -109,6 +109,12 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
                     className="whitespace-nowrap text-muted"
                     k="page.G7.stat.bar"
                     params={params}
+                  />
+                  <MetaText
+                    kind="count"
+                    className="whitespace-nowrap text-muted"
+                    k="page.G7.stat.barMore"
+                    params={{ cached: b.cached, review: b.review, blocked: b.blocked }}
                   />
                 </span>
               </li>

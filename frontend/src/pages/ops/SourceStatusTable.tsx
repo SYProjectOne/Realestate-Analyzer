@@ -71,6 +71,9 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
         aria-label={t('page.G7.sources')}
         className="w-full min-w-[52rem] border-collapse text-sm"
       >
+        <caption className="pb-2 text-left text-xs text-muted">
+          {t('page.G7.sourcesCaption')}
+        </caption>
         <thead>
           <tr>
             {COLS.map((k) => (

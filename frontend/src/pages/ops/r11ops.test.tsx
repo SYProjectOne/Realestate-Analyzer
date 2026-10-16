@@ -141,12 +141,12 @@ describe('R11 G7 화면', () => {
     const tile = (k: string) => within(tiles).getByTestId(`tile-${k}`);
     // 계약 예시 대기열 total 7, 수집 실패 3 · 공식 홈페이지 확인 1 · …
     await waitFor(() =>
-      expect(tile('intake')).toHaveTextContent(metaText('page.G7.iq.total', { n: 7 })),
+      expect(tile('intake')).toHaveTextContent(metaText('page.G7.today.countCases', { n: 7 })),
     );
     const intake = tile('intake');
     expect(within(intake).getByTestId('tile-intake-parts')).toHaveTextContent(
       metaText('page.G7.today.part', {
-        name: t('page.G7.iq.category.collect_failed'),
+        name: t('page.G7.iq.categoryShort.collect_failed'),
         n: 3,
       }),
     );
@@ -156,9 +156,11 @@ describe('R11 G7 화면', () => {
     );
     expect(tile('sources')).toHaveTextContent(t('page.G7.sourceKind.official_site'));
     await waitFor(() =>
-      expect(tile('claims')).toHaveTextContent(metaText('page.G7.iq.total', { n: 2 })),
+      expect(tile('claims')).toHaveTextContent(metaText('page.G7.today.countCases', { n: 2 })),
     );
+    expect(tile('claims')).toHaveTextContent(t('page.G7.today.claimsSub'));
     await waitFor(() => expect(tile('checklist')).toHaveTextContent(/\d건/));
+    expect(screen.getByText(t('page.G7.today.rule'))).toBeInTheDocument();
     // 판단 이름(급한 것·나중에)을 붙이지 않는다
     expect(tiles).not.toHaveTextContent(/급한|나중에/);
   });
@@ -185,7 +187,7 @@ describe('R11 G7 화면', () => {
         within(section).getByRole('heading', { level: 2, name: t(`page.G7.q.${s.key}`) }),
       ).toBeInTheDocument();
       expect(within(section).getByText(t('page.G7.what'))).toBeInTheDocument();
-      expect(section).toHaveTextContent(`${s.no} ${t(s.nameKey)}`);
+      expect(section).toHaveTextContent(`${s.no} ${t(`page.G7.menu.${s.key}`)}`);
     }
   });
 
@@ -247,6 +249,7 @@ describe('R11 G7 화면', () => {
       .filter((r) => r.getAttribute('data-closed') === 'true');
     expect(closed.length).toBeGreaterThan(0);
     for (const r of closed) expect(r.className).toMatch(/text-grayed/);
+    expect(screen.getByText(t('page.G7.closedNote'))).toBeInTheDocument();
     const sources = await screen.findByRole('table', { name: t('page.G7.sources') });
     const off = within(sources)
       .getAllByRole('row')

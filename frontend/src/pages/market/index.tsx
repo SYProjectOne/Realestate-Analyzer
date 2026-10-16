@@ -59,7 +59,7 @@ export function MarketPage() {
   }, [regionId]);
   return (
     <PageShell
-      title={region ? t('page.G6.heading', { region: region.name }) : t('nav.G6')}
+      title={region ? t('page.G6.heading', { region: region.name }) : t('page.G6.headingNoRegion')}
       intro={t('page.G6.intro')}
       legend
       actions={
@@ -100,7 +100,11 @@ export function MarketPage() {
         <QueryState query={query}>
           {(market) => (
             <>
-              <MarketBody market={market} asof={asof ?? market.asof_date} />
+              <MarketBody
+                market={market}
+                asof={asof ?? market.asof_date}
+                areaSelected={!!livingArea}
+              />
               <CatalystLocationPanel
                 // 지역이 바뀌면 열린 폼·입력도 지운다(8차 m18)
                 key={regionId ?? 'none'}
@@ -115,11 +119,22 @@ export function MarketPage() {
       )}
       {/* 지역이 바뀌면 등록 결과·잡 진행을 지운다(8차 m18) */}
       {isLoading ? null : <CatalystUrlForm key={regionId ?? 'none'} regionId={regionId} />}
+      <p className="text-xs leading-relaxed text-muted" data-testid="market-footnote">
+        {t('page.G6.footNote')}
+      </p>
     </PageShell>
   );
 }
 
-function MarketBody({ market, asof }: { market: Market; asof: string }) {
+function MarketBody({
+  market,
+  asof,
+  areaSelected,
+}: {
+  market: Market;
+  asof: string;
+  areaSelected: boolean;
+}) {
   const asofYear = Number(market.asof_date.slice(0, 4)) || null;
   const markers = market.move_in_markers
     .filter((m) => typeof m.move_in_ym.v === 'string')
@@ -127,12 +142,13 @@ function MarketBody({ market, asof }: { market: Market; asof: string }) {
   const areaName = (id: string) => market.living_areas.find((la) => la.id === id)?.name ?? id;
   return (
     <div className="flex flex-col gap-6">
-      <SummaryCards market={market} asof={asof} markers={markers} />
+      <SummaryCards market={market} asof={asof} areaSelected={areaSelected} markers={markers} />
       {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
       <h2 className="sr-only">{t('page.common.charts')}</h2>
       <QuestionSection
         name={t('chart.C03.title')}
         title={t('page.G6.benchmark.title')}
+        hint={t('page.G6.benchmark.hint')}
         data-testid="market-benchmark"
       >
         {market.benchmark_absence ? (
@@ -158,6 +174,9 @@ function MarketBody({ market, asof }: { market: Market; asof: string }) {
             asof={asof}
           />
         </div>
+        <p className="rounded-xl bg-subtle px-3 py-2 text-[13px] leading-relaxed text-fg-2">
+          {t('page.G6.benchmark.read')}
+        </p>
         {market.benchmark_flags.length > 0 ? (
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-bold text-fg">{t('page.G6.flags')}</h3>
@@ -190,6 +209,7 @@ function MarketBody({ market, asof }: { market: Market; asof: string }) {
       <QuestionSection
         name={t('chart.C04.title')}
         title={t('page.G6.supply.title')}
+        hint={t('page.G6.supply.hint')}
         data-testid="market-supply"
       >
         <div className={FLAT_CHART}>
@@ -206,6 +226,7 @@ function MarketBody({ market, asof }: { market: Market; asof: string }) {
       <QuestionSection
         name={t('chart.C09.title')}
         title={t('page.G6.catalystBoard.title')}
+        hint={t('page.G6.catalystBoard.hint')}
         data-testid="market-catalysts"
       >
         <div className={FLAT_CHART}>
@@ -224,10 +245,12 @@ function MarketBody({ market, asof }: { market: Market; asof: string }) {
 function SummaryCards({
   market,
   asof,
+  areaSelected,
   markers,
 }: {
   market: Market;
   asof: string;
+  areaSelected: boolean;
   markers: { complex_id: number; name: string; move_in_ym: string }[];
 }) {
   const unsold = market.unsold_latest ?? null;
@@ -243,7 +266,7 @@ function SummaryCards({
     >
       <Card className="flex flex-col gap-2" data-testid="summary-unsold">
         <BigNumber
-          label={t('page.G6.summary.unsold')}
+          label={areaSelected ? t('page.G6.summary.unsoldArea') : t('page.G6.summary.unsold')}
           caption={unsold?.ym ? t('page.G6.summary.unsoldYm', { ym: unsold.ym }) : undefined}
         >
           <FactCell
@@ -264,7 +287,7 @@ function SummaryCards({
         </p>
       </Card>
       <Card className="flex flex-col gap-2" data-testid="summary-movein">
-        <BigNumber label={t('page.G6.summary.moveIn')}>
+        <BigNumber label={t('page.G6.summary.moveIn')} caption={t('page.G6.summary.moveInHint')}>
           <MetaText kind="count" k="page.G6.summary.moveInCount" params={{ n: markers.length }} />
         </BigNumber>
         {years.length > 0 ? (
@@ -283,7 +306,7 @@ function SummaryCards({
         ) : null}
       </Card>
       <Card className="flex flex-col gap-2" data-testid="summary-prices">
-        <BigNumber label={t('page.G6.summary.prices')}>
+        <BigNumber label={t('page.G6.summary.prices')} caption={t('page.G6.summary.pricesHint')}>
           <MetaText kind="count" k="page.G6.summary.pricesCount" params={{ n: prices.withValue }} />{' '}
           <MetaText
             kind="count"
@@ -294,14 +317,14 @@ function SummaryCards({
         </BigNumber>
         {prices.window ? (
           <p className="text-[13px] text-fg-2">
-            {t('page.G6.pricesWindowAll', { window: prices.window })}
+            {t('page.G6.summary.pricesWindow', { window: prices.window })}
           </p>
         ) : null}
       </Card>
       <Card className="flex flex-col gap-2" data-testid="summary-regulation">
         <span className="text-[13px] text-muted">{t('page.G6.summary.regulation')}</span>
         {regulated.length === 0 ? (
-          <EmptyState inline reason={t('page.common.none')} />
+          <EmptyState inline reason={t('page.G6.summary.regNone')} />
         ) : (
           <ul className="flex flex-col gap-0.5">
             {regulated.map((g) => (
@@ -345,6 +368,7 @@ function UnsoldSection({ market, asof }: { market: Market; asof: string }) {
     <QuestionSection
       name={t('chart.C05.title')}
       title={t('page.G6.unsold.title')}
+      hint={t('page.G6.unsold.hint')}
       data-testid="market-unsold"
     >
       {scopes.length > 1 ? (
@@ -385,6 +409,7 @@ function RegulationCard({ market }: { market: Market }) {
     <QuestionSection
       name={t('page.G6.regulation')}
       title={t('page.G6.regulationQ')}
+      hint={t('page.G6.regulationHint')}
       data-testid="market-regulation"
     >
       {items.length === 0 ? <EmptyState reason={t('page.common.none')} /> : null}
@@ -399,7 +424,7 @@ function RegulationCard({ market }: { market: Market }) {
             >
               <h3 className="text-sm font-bold text-fg">{t(`page.G6.regKind.${kind}` as TKey)}</h3>
               {rows.length === 0 ? (
-                <p className="text-xs text-muted">{t('page.common.none')}</p>
+                <p className="text-xs text-muted">{t('page.G6.regKindNone')}</p>
               ) : (
                 <dl className="flex flex-col gap-1.5 text-sm">
                   {rows.map((item, i) => (
@@ -443,6 +468,7 @@ function LivingAreaCompare({ market }: { market: Market }) {
     <QuestionSection
       name={t('page.G6.prices')}
       title={t('page.G6.pricesQ')}
+      hint={t('page.G6.pricesHint')}
       data-testid="market-prices"
     >
       {rows.length === 0 ? (

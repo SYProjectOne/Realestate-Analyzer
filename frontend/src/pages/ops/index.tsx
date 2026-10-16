@@ -28,8 +28,11 @@ export function OpsPage() {
   const { regionId, snapshotId, asof, isLoading } = usePageContext();
   const { region } = useActiveRegion();
   const canWrite = useCanWrite();
-  // 기준일은 머리줄(헤더)이 보인다 — 머리말은 지역 이름만
-  const kicker = region ? t('page.G7.kicker', { region: region.name }) : null;
+  const kicker = region
+    ? asof
+      ? t('page.G7.kicker', { region: region.name, asof })
+      : t('page.G7.kickerNoAsof', { region: region.name })
+    : null;
   return (
     <PageShell
       title={t('page.G7.title')}

@@ -277,6 +277,7 @@ function LocationForm({
         <input
           id={`${baseId}-lat`}
           inputMode="decimal"
+          placeholder={t('page.G6.loc.latPlaceholder')}
           value={lat}
           onChange={(e) => setLat(e.target.value)}
           className={inputClass}
@@ -287,6 +288,7 @@ function LocationForm({
         <input
           id={`${baseId}-lon`}
           inputMode="decimal"
+          placeholder={t('page.G6.loc.lonPlaceholder')}
           value={lon}
           onChange={(e) => setLon(e.target.value)}
           className={inputClass}
@@ -337,11 +339,13 @@ function LocationForm({
             </option>
           ))}
         </select>
+        <span className="text-xs text-muted">{t('page.G6.loc.complexesHint')}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
         <button type="submit" disabled={pending} className={buttonClass}>
           {t('page.G6.loc.submit')}
         </button>
+        <span className="text-xs text-muted">{t('page.G6.loc.submitHint')}</span>
         {(error ?? serverError) ? (
           <p role="alert" className="text-sm text-danger">
             {error ?? t('page.common.loadError', { detail: serverError ?? '' })}

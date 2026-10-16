@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router';
 import { useChecklist, useClaims, useIntakeQueue, useOpsSources } from '@/api/hooks';
-import { MetaText, MetaValue } from '@/components';
+import { MetaText } from '@/components';
 import { t } from '@/i18n';
 import { contradictedClaims } from './ClaimsPanel';
 import { OPS_SECTIONS, opsMenuText, SectionLink, type OpsSectionKey } from './sections';
@@ -31,6 +31,10 @@ export function OpsMenu({
       aria-label={t('page.G7.menu.title')}
       className="min-w-0 rounded-2xl border border-border bg-surface p-2 lg:sticky lg:top-4 lg:self-start"
     >
+      <p className="mx-2 mb-1 mt-1 text-xs font-bold text-muted">
+        <span className="hidden lg:inline">{t('page.G7.menu.hint')}</span>
+        <span className="lg:hidden">{t('page.G7.menu.mobileHint')}</span>
+      </p>
       <ol className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
         {sections.map((s) => {
           const current = hash === `#${s.id}`;
@@ -90,20 +94,20 @@ function useMenuCounts(
   const out: MenuCounts = {};
   if (checklist.data) {
     out.checklist = {
-      node: <MetaValue kind="count" value={checklist.data.length} />,
+      node: <MetaText kind="count" k="page.G7.menu.count" params={{ n: checklist.data.length }} />,
       warn: false,
     };
   }
   if (queue.data) {
     out.intake = {
-      node: <MetaValue kind="count" value={queue.data.total} />,
+      node: <MetaText kind="count" k="page.G7.menu.count" params={{ n: queue.data.total }} />,
       warn: queue.data.total > 0,
     };
   }
   if (claims.data) {
     const n = contradictedClaims(claims.data).length;
     out.claims = {
-      node: <MetaValue kind="count" value={n} />,
+      node: <MetaText kind="count" k="page.G7.menu.count" params={{ n }} />,
       warn: n > 0,
     };
   }
