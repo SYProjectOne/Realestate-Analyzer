@@ -4,7 +4,7 @@
 
 | # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
 |---|---|---|---|---|---|
-| 1 | [틀] 화면 제목 h1 (`pages/scenario/index.tsx` PageShell · `page.G5.title` "시나리오(내 조건)") | Scenario · h1 "내 조건으로 다시 보기" + 소개 문단 | 시나리오(내 조건) → 내 조건으로 다시 보기 | 있음 | scenario.test › 머리: h1(내 조건(시나리오)) · 단계 번호 구역 1~4 · routes.test › G5 |
+| 1 | [틀] 화면 제목 h1 (`pages/scenario/index.tsx` PageShell · `page.G5.title` "시나리오(내 조건)") | Scenario · h1 "내 조건으로 다시 보기" + 소개 문단 | 시나리오(내 조건) → 내 조건으로 다시 보기 | 있음 | scenario.test › 머리: h1 · 소개 · 4단계 진행 표시 · routes.test › G5 |
 | 2 | [상태] 시나리오 목록 불러오는 중 (`pages/scenario/index.tsx` ScenarioPage · `app.loading`) | Scenario · E "조건 목록을 불러오는 중" role=status | — | 있음 | scenario.test › 조건 목록을 불러오는 중 → 뼈대 |
 | 3 | [상태] 판정기 질문 남김 배너 role=alert + 질문 텍스트 (`pages/scenario/index.tsx` ScenarioBody · `page.G5.escaped` "판정기가 질문을 남겼습니다") | Scenario · A "맨 위에 뜨는 띠" "판정기가 질문을 남겼어요 / [판정기 질문 문장]" | — | 있음 | scenario.test › escaped 봉투 → 맨 위 띠 + 질문 텍스트 |
 | 4 | [틀] 현재 시나리오 = URL ?scenario= → 없으면 base → 첫째 (`pages/scenario/index.tsx` ScenarioPage current) | Scenario · 1 카드 "지금 보는 조건" 표시 | — | 있음 | scenario.test › 출발 조건: 기본 제공 카드 5개 · 지금 보는 조건 = ?scenario= → 없으면 기본 |
@@ -15,7 +15,7 @@
 | 9 | [폼] 이름 칸 (`page.G5.field.name` "시나리오 이름") | Scenario · 2 "이 조건의 이름 *" | 시나리오 이름 → 이 조건의 이름 | 있음 | scenario.test › 폼(이 조건의 이름) |
 | 10 | [폼] 이름 필수 오류 (`pages/scenario/schema.ts` · `page.G5.error.required` "필수 항목입니다") | Scenario · 2 이름 칸 아래 "이름을 적어 주세요 (꼭 필요한 칸이에요)" | 필수 항목입니다 → 이름을 적어 주세요 | 있음 | scenario.test › zod 검증(이름 필수) · 잘못된 입력은 필드 오류 |
 | 11 | [폼] 내장 시나리오면 이름 비워 두고 새로 저장 (`pages/scenario/index.tsx` fromScenario) | Scenario · 2 "기본 제공 조건 'A 가점 높음(실거주)'는 새 이름으로 저장돼요." | — | 있음 | scenario.test › 폼(기본 제공이면 이름 비움 + 새 이름 안내) |
-| 12 | [폼] 거주지 (`page.G5.field.residence`) | Scenario · 2 "사는 곳 (거주지)" | — | 있음 | scenario.test › 폼(칸 이름 = 쉬운 말) |
+| 12 | [폼] 거주지 (`page.G5.field.residence`) | Scenario · 2 "사는 곳 (거주지)" | — | 있음 | scenario.test › 폼(칸 이름 = 쉬운 말 (공식 이름)) |
 | 13 | [폼] 무주택 체크 (`page.G5.field.homeless`) | Scenario · 2 "집이 없어요 (무주택)" | — | 있음 | scenario.test › 폼(집이 없어요 체크) |
 | 14 | [폼] 세대원 수 (`page.G5.field.household_size`) | Scenario · 2 "함께 사는 가족 수 (세대원 수) 명" | — | 있음 | scenario.test › 폼(칸 이름·단위) |
 | 15 | [폼] 세대원 수 정수·1~20 오류 (`pages/scenario/schema.ts` optionalNumber int · `page.G5.error.number`) | Scenario · B "숫자(정수)를 적어 주세요" + 범위 줄 "가족 수 1~20명" | 숫자를 입력하세요 → 숫자(정수)를 적어 주세요 | 있음 | scenario.test › zod 칸별 범위(가족 수 정수) |
@@ -31,7 +31,7 @@
 | 25 | [폼] 보유 기간 정수 0~50 오류 | Scenario · B 오류 칸 "얼마나 가지고 있을 건가요 60 → 50 이하여야 해요" | — | 있음(고침 SC-9) | scenario.test › zod 칸별 범위(보유 50 이하) |
 | 26 | [폼] 희망 평형(㎡) (`page.G5.field.preferred_area_m2`) | Scenario · 2 "원하는 집 크기 (희망 평형) ㎡" | — | 있음 | scenario.test › 폼(칸 이름·단위) |
 | 27 | [폼] 희망 평형 10~300 오류 | Scenario · B 오류 칸 "원하는 집 크기 5 → 10 이상이어야 해요" | — | 있음(고침 SC-9) | scenario.test › zod 칸별 범위(크기 10 이상) |
-| 28 | [폼] 입주 희망 시기 YYYY-MM (`page.G5.field.move_in_by`) | Scenario · 2 "들어가 살고 싶은 때 (입주 희망 시기)" 자리표시 "예: 2029-06 (연-월)" | — | 있음 | scenario.test › 폼(입주 희망 시기 자리표시 예: 2029-06) |
+| 28 | [폼] 입주 희망 시기 YYYY-MM (`page.G5.field.move_in_by`) | Scenario · 2 "들어가 살고 싶은 때 (입주 희망 시기)" 자리표시 "예: 2029-06 (연-월)" | — | 있음 | scenario.test › 폼(칸 이름·자리표시) |
 | 29 | [폼] 입주 시기 형식 오류 (`page.G5.error.ym` "YYYY-MM 형식으로 입력하세요") | Scenario · B "2029-06처럼 연-월로 적어 주세요" | — | 있음 | scenario.test › zod 검증(입주 시기 형식) |
 | 30 | [폼] 숫자 칸 inputMode=decimal | Scenario · 숫자 칸 inputmode="decimal" 6개 | — | 있음 | scenario.test › 폼(inputMode=decimal 6개) |
 | 31 | [폼] 오류 칸 aria-invalid · aria-describedby 연결 | Scenario · B 오류 칸 aria-invalid, 이름 칸 aria-describedby | — | 있음 | scenario.test › 잘못된 입력(aria-invalid·describedby) |
@@ -57,7 +57,7 @@
 | 51 | [재판정] 실행 버튼 → POST /jobs {job_name: rejudge} (`page.G5.run` · `page.G5.runReason`) | Scenario · 3 [다시 판정하기] | 재판정 실행 → 다시 판정하기 | 있음 | scenario.test › 재판정 실행 → POST /jobs(rejudge) · r3d › G5 재판정 |
 | 52 | [재판정] 버튼 꺼짐: 읽기 전용 + title | Scenario · D [다시 판정하기] title | — | 있음 | scenario.test › 읽기 전용 열쇠 |
 | 53 | [재판정] 버튼 꺼짐: 시나리오·기준일 없음·요청 중 | Scenario · 바닥 "구현할 때 지금 동작 그대로 유지" 상자 | — | 문구로만(고침 SC-10) | scenario.test › 기준일이 없으면 [다시 판정하기] 꺼짐(#53) |
-| 54 | [재판정] 캐시 히트·새 호출 수 (`page.G5.cache` "캐시 히트 {hits} · 새 호출 {misses}") | Scenario · 3 "저장된 답 다시 씀 21건 · 새로 물어볼 것 0건" 두 칸 | 캐시 히트 → 저장된 답 다시 씀 · 새 호출 → 새로 물어볼 것 | 있음 | scenario.test › 재판정 실행(캐시 줄 저장된 답 18건 · 새로 물어볼 것 1건) |
+| 54 | [재판정] 캐시 히트·새 호출 수 (`page.G5.cache` "캐시 히트 {hits} · 새 호출 {misses}") | Scenario · 3 "저장된 답 다시 씀 21건 · 새로 물어볼 것 0건" 두 칸 | 캐시 히트 → 저장된 답 다시 씀 · 새 호출 → 새로 물어볼 것 | 있음 | scenario.test › 재판정 실행(캐시 두 칸: 저장된 답 다시 씀 · 새로 물어볼 것 1건) |
 | 55 | [재판정] 실행 중 안내 (`page.G5.running` "재판정 중 — 2초마다 상태를 확인합니다") | Scenario · F "다시 판정하는 중이에요 — 2초마다 상태를 확인해요." | — | 있음 | scenario.test › 재판정 실행(다시 판정하는 중) |
 | 56 | [작업 진행] 제목·잡 이름·상태 (`components/JobProgress.tsx` JobProgressView · `job.title` · `job.status.*` 대기·실행 중·완료·실패) | Scenario · F "작업 진행 다시 판정 실행 중" + "상태 이름: 대기 · 실행 중 · 완료 · 실패" | — | 있음 | scenario.test › 재판정 실행(JobProgress 2초 폴링) · shell-components.test › 작업 이름·단계는 쉬운 말 |
 | 57 | [작업 진행] 진행 수 done/total + progress 막대(모르면 미정 막대) (`job.progress`) | Scenario · F "[완료 수]/[전체 수]" + "진행 수를 모르면 막대가 좌우로 움직여요" | — | 있음 | r3f › JobProgressView: 받아 둔 잡이 있으면 … · shell-components.test(진행 막대) |

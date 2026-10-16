@@ -119,19 +119,12 @@ export function ReqStatusBadge({ status }: { status: string }) {
   );
 }
 
-/** 판정기 결론(supported·contradicted·unknown) → 요건 상태 이름으로 "판정기 충족"(ko `page.G4.reqJudge` + `page.G5.reqStatus`) */
-const JUDGE_STATUS: Record<NonNullable<RequirementCheck['judge']>, string> = {
-  supported: '충족',
-  contradicted: '미충족',
-  unknown: '확인 불가',
-};
-
-/** 판정기 결론 한 줄. 없으면 그리지 않는다 */
+/** 판정기 결론(supported·contradicted·unknown) → 쉬운 문장(ko `page.G4.reqJudge`). 없으면 그리지 않는다 */
 export function ReqJudgeText({ judge }: { judge: RequirementCheck['judge'] }) {
   if (!judge) return null;
   return (
     <span className="text-xs text-muted" data-testid="req-judge" data-judge={judge}>
-      {t('page.G4.reqJudge', { status: enumText('page.G5.reqStatus', JUDGE_STATUS[judge]) })}
+      {enumText('page.G4.reqJudge', judge)}
     </span>
   );
 }
@@ -172,9 +165,9 @@ export function P10Note({ target }: { target: string }) {
   );
 }
 
-/** 서버 목표 시점(p10_horizon·사다리 horizon) → 짧은 이름 "입주+1년"(ko `chart.C01.horizon`) */
+/** 서버 목표 시점(p10_horizon·사다리 horizon) → 짧은 이름 "입주 + 1년" */
 export function targetText(horizon: LadderHorizon | null | undefined): string | null {
-  return horizon ? tDynamic(`chart.C01.horizon.${horizon}`, horizon) : null;
+  return horizon ? tDynamic(`page.G4.target.${horizon}`, horizon) : null;
 }
 
 /** 지금 상황의 '오를 가능성' 목표 시점 줄 — 시나리오 policy.p10_horizon(서버 값) */
@@ -182,5 +175,5 @@ export function p10TargetLine(scenario: Pick<Scenario, 'name' | 'policy'> | null
   const target = targetText(scenario?.policy?.p10_horizon);
   return scenario && target
     ? t('page.G4.row.p10Target', { target, name: scenario.name })
-    : t('page.G4.row.p10TargetAny');
+    : t('page.G4.row.p10TargetUnknown');
 }

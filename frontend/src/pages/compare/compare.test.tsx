@@ -64,11 +64,11 @@ describe('G4 비교', () => {
       await screen.findByRole('heading', { level: 1, name: t('page.G4.title') }),
     ).toBeInTheDocument();
     const crumb = screen.getByRole('navigation', { name: t('page.G4.crumb') });
-    expect(within(crumb).getByRole('link', { name: t('nav.G2') })).toHaveAttribute(
+    expect(within(crumb).getByRole('link', { name: t('page.G4.crumbList') })).toHaveAttribute(
       'href',
       '/complexes?scenario=B',
     );
-    expect(within(crumb).getByText(t('nav.G4'))).toHaveAttribute('aria-current', 'page');
+    expect(within(crumb).getByText(t('page.G4.crumbHere'))).toHaveAttribute('aria-current', 'page');
     expect(
       screen.getByRole('link', { name: new RegExp(t('page.G4.addMore').replace(/[()]/g, '.')) }),
     ).toHaveAttribute('href', '/complexes?scenario=B');
@@ -82,7 +82,7 @@ describe('G4 비교', () => {
   it('비교 단지 카드 줄(N1): 단지마다 접수·생활권·이름 링크·입주·종합·순위, 순서 = 주소 ids', async () => {
     useCompareResponse((v) => ({ ...v, ids: [7, 2, 4] }));
     renderRoute('/compare?ids=7,2,4');
-    const list = await screen.findByRole('list', { name: t('nav.G4') });
+    const list = await screen.findByRole('list', { name: t('page.G4.cards') });
     const cards = within(list).getAllByTestId('compare-card');
     expect(cards.map((c) => within(c).getByRole('link').textContent)).toEqual([
       '김포 칸타빌 에디션',
@@ -93,9 +93,9 @@ describe('G4 비교', () => {
     expect(within(first).getByRole('link').getAttribute('href')).toMatch(/^\/complexes\/7/);
     expect(within(first).getByTestId('intake-badge')).toBeInTheDocument();
     expect(first).toHaveTextContent(t('page.G4.card.moveIn'));
-    expect(first).toHaveTextContent(t('page.G4.row.total'));
-    expect(first).toHaveTextContent(t('page.G4.row.rank'));
+    expect(first).toHaveTextContent(t('page.G4.card.total'));
     expect(within(first).getAllByTestId('label-badge').length).toBeGreaterThan(0);
+    expect(screen.getByText(t('page.G4.cardsNote'))).toBeInTheDocument();
   });
 
   it('표·차트 열 순서 = 주소 ids 순서(#18)', async () => {
@@ -155,7 +155,7 @@ describe('G4 비교', () => {
     // 상황 B 의 policy.p10_horizon = move_in_plus_1y (서버 시나리오 값)
     expect(head).toHaveTextContent(
       t('page.G4.row.p10Target', {
-        target: t('chart.C01.horizon.move_in_plus_1y'),
+        target: t('page.G4.target.move_in_plus_1y'),
         name: 'B 가점 낮음·소액 자기자본',
       }),
     );
@@ -165,6 +165,7 @@ describe('G4 비교', () => {
     for (const cell of within(p10).getAllByRole('cell')) {
       expect(within(cell).getByTestId('label-badge')).toBeInTheDocument();
     }
+    expect(screen.getByText(t('page.G4.scoresFoot'))).toBeInTheDocument();
   });
 
   it('p10 목표 시점은 시나리오 policy 를 따른다(C = 기준일 + 5년), 모르면 일반 문구', () => {
@@ -173,9 +174,9 @@ describe('G4 비교', () => {
       policy: { p10_horizon: 'asof_plus_5y' },
     } as unknown as Pick<Scenario, 'name' | 'policy'>;
     expect(p10TargetLine(c)).toBe(
-      t('page.G4.row.p10Target', { target: t('chart.C01.horizon.asof_plus_5y'), name: c.name }),
+      t('page.G4.row.p10Target', { target: t('page.G4.target.asof_plus_5y'), name: c.name }),
     );
-    expect(p10TargetLine(null)).toBe(t('page.G4.row.p10TargetAny'));
+    expect(p10TargetLine(null)).toBe(t('page.G4.row.p10TargetUnknown'));
     expect(targetText(null)).toBeNull();
     expect(t('page.G4.row.p10')).toContain('오를 가능성');
     expect(t('page.G4.row.p10Note')).toContain('당첨 확률이 아니에요');
@@ -211,6 +212,7 @@ describe('G4 비교', () => {
     expect(item).toHaveTextContent(
       t('page.G4.virtualCandidate', { label: '모집공고 대기 후 1순위 청약' }),
     );
+    expect(item).toHaveTextContent(t('page.G4.virtualNote'));
     expect(item).toHaveTextContent(t('page.G4.row.prob'));
     expect(item).toHaveTextContent('0%');
     // 요건 표에서도 가상 후보임을 표시, 사전 계산이 없는 칸 = '사전 계산 없음'
@@ -267,10 +269,10 @@ describe('G4 비교', () => {
     expect(new Set(statuses)).toEqual(new Set(['충족', '미충족', '확인 불가']));
     const judges = within(req).getAllByTestId('req-judge');
     expect(judges.length).toBeGreaterThan(0);
-    const status = { supported: '충족', contradicted: '미충족', unknown: '확인 불가' } as const;
     for (const j of judges) {
-      const judge = j.getAttribute('data-judge') as keyof typeof status;
-      expect(j.textContent).toBe(t('page.G4.reqJudge', { status: status[judge] }));
+      expect(j.textContent).toBe(
+        t(`page.G4.reqJudge.${j.getAttribute('data-judge') as 'supported'}`),
+      );
     }
     expect(req.textContent ?? '').not.toMatch(/supported|contradicted|unknown/);
     // 근거 문장 = 서버 문장 그대로
@@ -301,7 +303,7 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
       t('page.G4.breakdownQ'),
       t('page.G4.ladderQ'),
       t('page.G4.decisionQ'),
-      t('chart.C10.question'),
+      t('page.G4.sensitivityQ'),
     ]);
     expect(screen.getByText(t('page.common.charts'))).toHaveClass('sr-only');
   });
@@ -321,7 +323,7 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
       within(terms).getByRole('row', { name: new RegExp(`^${name}`) });
     expect(within(rowOf(t('page.G4.term.intake'))).getAllByTestId('intake-badge')).toHaveLength(3);
     const price = rowOf(t('page.G4.term.price'));
-    expect(price).toHaveTextContent(`(${t('glossary.items.current_price.term')})`);
+    expect(price).toHaveTextContent(t('page.G4.termOfficial.price'));
     const provs = [...price.querySelectorAll('[data-prov]')];
     expect(provs.length).toBeGreaterThan(0);
     for (const cell of provs) {
@@ -330,7 +332,7 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
       ).not.toBeNull();
     }
     const resale = rowOf(t('page.G4.term.resale_end'));
-    expect(resale).toHaveTextContent(`(${t('glossary.items.resale_limit.term')})`);
+    expect(resale).toHaveTextContent(t('page.G4.termOfficial.resale_end'));
     expect(within(resale).getByTestId('term')).toHaveAttribute('data-term', 'resale_end');
     expect(rowOf(t('page.G4.term.residency_months'))).toBeInTheDocument();
     expect(rowOf(t('page.G4.term.down_payment_pct'))).toBeInTheDocument();
@@ -339,11 +341,7 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
     expect(within(equity).getByTestId('term')).toHaveAttribute('data-term', 'equity');
     expect(rowOf(t('page.G4.term.interim_terms_text'))).toHaveTextContent('중도금 60% 이자후불제');
     expect(
-      screen.getByText(
-        new RegExp(
-          `^${t('page.G4.termsSourceNoAsof')} · ${t('chart.asofOnly', { asof: '2026-10-08' })}`,
-        ),
-      ),
+      screen.getByText(t('page.G4.termsSource', { asof: '2026-10-08' }), { exact: false }),
     ).toBeInTheDocument();
   });
 
@@ -385,7 +383,7 @@ describe('R9-UI P9 G4 사실 비교를 먼저(30-proposal §10)', () => {
     expect(within(cells[2] as HTMLElement).getByTestId('empty-state')).toBeInTheDocument();
     const note = screen.getByTestId('equity-note');
     expect(note).toHaveTextContent(t('page.G4.equityNote'));
-    expect(within(note).getByRole('link', { name: t('nav.G5') })).toHaveAttribute(
+    expect(within(note).getByRole('link', { name: t('page.G4.equityLink') })).toHaveAttribute(
       'href',
       '/scenario?scenario=B',
     );
@@ -424,22 +422,20 @@ describe('R11 G4 차트 구역(목업 Compare)', () => {
   it('점수 분해: 질문형 구역 + C06', async () => {
     renderRoute('/compare?ids=2,7,4');
     const region = await screen.findByRole('region', { name: t('page.G4.breakdownQ') });
-    expect(within(region).getByText(t('chart.C06.title'), { selector: 'p' })).toBeInTheDocument();
+    expect(within(region).getByText(t('page.G4.breakdownHint'))).toBeInTheDocument();
     expect(within(region).getByRole('heading', { name: t('chart.C06.title') })).toBeInTheDocument();
   });
 
   it('가격 전망: 목표 시점 라디오 3개(쉬운 이름) · 고르면 바뀜 · 판정 개수 줄(서버 verdict 세기)', async () => {
     renderRoute('/compare?ids=2,7,4');
     const region = await screen.findByRole('region', { name: t('page.G4.ladderQ') });
-    expect(
-      within(region).getByText(`${t('page.G4.ladderHint')} · ${t('page.G4.row.p10Note')}`),
-    ).toBeInTheDocument();
+    expect(within(region).getByText(t('page.G4.ladderHint'))).toBeInTheDocument();
     const group = within(region).getByRole('radiogroup', { name: t('page.G4.ladderHorizons') });
     const radios = within(group).getAllByRole('radio');
     expect(radios.map((r) => r.textContent)).toEqual([
-      t('chart.C01.horizon.move_in_plus_1y'),
-      t('chart.C01.horizon.asof_plus_3y'),
-      t('chart.C01.horizon.asof_plus_5y'),
+      t('page.G4.horizon.move_in_plus_1y'),
+      t('page.G4.horizon.asof_plus_3y'),
+      t('page.G4.horizon.asof_plus_5y'),
     ]);
     expect(radios[0]).toHaveAttribute('aria-checked', 'true');
     expect(within(region).getByTestId('ladder-verdict-count')).toHaveTextContent(
@@ -451,7 +447,7 @@ describe('R11 G4 차트 구역(목업 Compare)', () => {
     expect(within(region).getByTestId('ladder-verdict-count')).toHaveTextContent(
       t('page.G4.ladderCount', { uncertain: '0', likely: '0', unlikely: '0', total: '12' }),
     );
-    expect(region).toHaveTextContent(t('page.G4.row.p10Note'));
+    expect(within(region).getByText(t('page.G4.ladderThreshold'))).toBeInTheDocument();
   });
 
   it('verdictCounts: 막대마다 서버 verdict 를 센다(null 은 어느 쪽에도 넣지 않는다)', () => {
@@ -462,10 +458,11 @@ describe('R11 G4 차트 구역(목업 Compare)', () => {
     ).toEqual({ likely: 1, uncertain: 1, unlikely: 1, total: 8 });
   });
 
-  it('민감도: 질문형 h2 + C10(서버 changed 세기 줄)', async () => {
+  it('민감도: 질문형 h2 + 비중 풀이 + C10(서버 changed 세기 줄)', async () => {
     renderRoute('/compare?ids=2,7,4');
-    const region = await screen.findByRole('region', { name: t('chart.C10.question') });
-    expect(within(region).getByText(t('chart.C10.title'), { selector: 'p' })).toBeInTheDocument();
+    const region = await screen.findByRole('region', { name: t('page.G4.sensitivityQ') });
+    expect(within(region).getByText(t('page.G4.weightWhat'))).toBeInTheDocument();
+    expect(within(region).getByText(t('page.G4.weightWhatBody'))).toBeInTheDocument();
     expect(within(region).getByTestId('c10-summary')).toBeInTheDocument();
     // 같은 화면에서 같은 용어 '?'는 한 번만
     const terms = [...document.querySelectorAll('[data-testid="term"]')].map((el) =>
