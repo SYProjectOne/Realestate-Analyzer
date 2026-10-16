@@ -8,6 +8,7 @@ import { entryViolations, type ChunkLike } from './scripts/lib/bundle-guards';
 import {
   getPath,
   KO_NAMESPACES,
+  mergeInto,
   PAGE_NAMESPACES,
   splitKo,
   type KoNamespace,
@@ -68,8 +69,8 @@ const KO_RESOLVED = `\0${KO_VIRTUAL}`;
  *  - `virtual:ko/core`: 진입 청크에 들어가는 core 사전(src/i18n/index.ts 가 정적 import)
  *  - `virtual:ko/page/<화면 폴더>`: 그 화면 이름공간(PAGE_NAMESPACES)을 **등록하는** 모듈. transform 이
  *    `src/pages/<폴더>/index.tsx` 맨 앞에 import 를 넣는다 → 화면 청크와 함께 받고, 화면 모듈보다 먼저 평가된다.
- *  - `virtual:ko/ns/<이름공간>`: 이름공간 하나(청크 이름 `ko-*`). 화면 등록 모듈이 정적으로, loadNamespace(MSW 모드·
- *    차트 갤러리)가 동적으로 import 한다
+ *  - `virtual:ko/bundle/<화면 폴더>`: 그 화면 이름공간을 합친 트리(청크 `ko-route-<폴더>`, 위 등록 모듈이 정적 import)
+ *  - `virtual:ko/ns/<이름공간>`: 이름공간 하나(청크 `ko-page-G3`·`ko-chart` …) — loadNamespace(MSW 모드·차트 갤러리)
  *  - `virtual:ko/keys/<점 경로>`: 그 아래 키 이름 목록(본문 없이 — 예: 용어 키 목록)
  * 나누는 규칙은 src/i18n/namespaces.ts. 매 load 마다 원본을 다시 읽는다(dev 에서 ko.json 을 고치면 바로 반영).
  */
@@ -94,14 +95,21 @@ function koSplit(): Plugin {
         return asModule(splitKo(full).namespaces[ns]);
       }
       if (rest.startsWith('page/')) {
-        // 이름공간마다 따로 된 ko-* 청크를 **정적** import 해 등록 — 화면 청크와 같이(병렬로) 받고, 화면 모듈보다 먼저
-        // 평가된다. 여러 화면이 쓰는 이름공간(chart·page/G3 …)도 사본 없이 청크 하나다.
+        // 그 화면 이름공간을 합친 청크 하나(`ko-route-<폴더>`)를 **정적** import 해 등록 — 화면 청크와 같이(병렬로) 받고
+        // 화면 모듈보다 먼저 평가된다. 요청은 화면당 하나(이름공간마다 따로 받으면 모바일 G3 가 −2점 — R11-I18N A/B 실측).
+        // 여러 화면이 쓰는 이름공간(chart·page/G3)은 화면 묶음마다 사본이 들어간다(이동할 때 몇 kB).
         const folder = rest.slice('page/'.length);
         const list = PAGE_NAMESPACES[folder];
         if (!list) this.error(`ko-split: no PAGE_NAMESPACES entry ${folder}`);
-        const lines = list.map((ns, i) => `import s${i} from '${KO_VIRTUAL}ns/${ns}';`);
-        const calls = list.map((_ns, i) => `registerStrings(s${i});`);
-        return [`import { registerStrings } from '@/i18n';`, ...lines, ...calls, ''].join('\n');
+        if (list.length === 0) return `export {};\n`;
+        return `import { registerStrings } from '@/i18n';\nimport s from '${KO_VIRTUAL}bundle/${folder}';\nregisterStrings(s);\n`;
+      }
+      if (rest.startsWith('bundle/')) {
+        const folder = rest.slice('bundle/'.length);
+        const split = splitKo(full);
+        const out: KoTree = {};
+        for (const ns of PAGE_NAMESPACES[folder] ?? []) mergeInto(out, split.namespaces[ns]);
+        return asModule(out);
       }
       if (rest.startsWith('keys/')) {
         const node = getPath(full, rest.slice('keys/'.length));
@@ -160,9 +168,10 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           const path = id.replace(/\\/g, '/');
           // R11-I18N: ko 가상 모듈은 vendor('\0' 도우미 규칙)로 끌려가면 안 된다 — core 는 진입 청크(i18n 과 같이),
-          // 이름공간은 저마다 지연 청크 `ko-page-G3` 등
+          // 화면 묶음은 `ko-route-<폴더>`, 이름공간 하나는 `ko-page-G3` 등(MSW 모드·갤러리의 loadAllNamespaces)
           if (id.startsWith(KO_RESOLVED)) {
             const ns = id.slice(KO_RESOLVED.length);
+            if (ns.startsWith('bundle/')) return `ko-route-${ns.slice('bundle/'.length)}`;
             return ns.startsWith('ns/')
               ? `ko-${ns.slice('ns/'.length).replace(/\//g, '-')}`
               : undefined;

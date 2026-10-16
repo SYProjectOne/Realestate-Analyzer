@@ -6,8 +6,8 @@
  *  - 이름공간(청크 `ko-*`): page/G0 … page/G8 = `page.<G>`(title 은 core), chart = `chart.*`
  *    화면은 PAGE_NAMESPACES 대로 화면 청크와 함께 받는다(아래). 개발 화면(차트 갤러리)·MSW 모드는 loadAllNamespaces().
  *  - core 에 남는 큰 덩어리: `page.common`·`page.notFound`·`page.share`(셸·지연 로드 아닌 화면), `glossary`(용어 '?' 는
- *    거의 모든 화면이 쓴다 — 이름공간으로 떼면 화면 청크 묶음에 요청이 하나 늘어 모바일 LCP 가 0.1~0.3초 늦었다, R11-I18N
- *    실측. 떼려면 KO_NAMESPACES·NAMESPACE_LOADERS 에 'glossary' 를 넣고 PAGE_NAMESPACES 에 더한다 — 진입 −11.7kB).
+ *    모든 화면이 쓴다 — 따로 받으면 요청이 하나 늘어 모바일 LCP 가 0.1~0.3초 늦었고(R11-I18N 실측), 화면 묶음에 넣으면
+ *    묶음마다 12kB 사본이다. 떼려면 KO_NAMESPACES·NAMESPACE_LOADERS 에 'glossary' 를 넣고 PAGE_NAMESPACES 에 더한다).
  *
  * 이름공간을 더할 때: KO_NAMESPACES 에 넣고 i18n/index.ts 의 NAMESPACE_LOADERS(동적 import 는 리터럴이어야 한다)에 한 줄.
  */
@@ -32,7 +32,8 @@ export type KoNamespace = (typeof KO_NAMESPACES)[number];
  * 화면 폴더(`src/pages/<폴더>/index.tsx`, routes.tsx 가 lazy 로 여는 것) → 그 화면이 쓰는 이름공간.
  *
  * 빌드 플러그인 `ko-split` 이 화면 index 모듈 맨 앞에 `import 'virtual:ko/page/<폴더>'` 를 넣는다 — 그 모듈이 이 목록의
- * 이름공간 청크(`ko-*`)를 **정적으로** import 해 등록한다: 화면 청크와 함께(병렬로) 받고 화면 모듈보다 먼저 평가된다
+ * 이름공간을 합친 청크 하나(`ko-route-<폴더>`)를 **정적으로** import 해 등록한다: 화면 청크와 함께(병렬로) 받고 화면
+ * 모듈보다 먼저 평가된다
  * (첫 렌더에 문자열이 있다 — 키 노출·깜빡임·CLS 없음). 화면 코드·routes.tsx 는 그대로다.
  *
  * 화면이 다른 화면의 `page.Gx.*` 나 `chart.*` 를 새로 쓰면 여기에 이름공간을 더한다 —
