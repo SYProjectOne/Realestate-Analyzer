@@ -136,12 +136,12 @@ describe('F2 경쟁률 요약·당첨 가점(D29-4)', () => {
     expect(within(section).queryByText(t('page.G3.competition.pointsMissing'))).toBeNull();
   });
 
-  it('G3 지금 상태에 경쟁률 요약 한 줄', async () => {
+  it('G3 머리에 경쟁률 요약(R11: "청약 때 얼마나 몰렸나요?" 구역)', async () => {
     const detail = await example<ComplexDetail>('/complexes/2');
     renderRoute('/complexes/2');
     const head = await screen.findByRole('region', { name: detail.header.name });
-    const status = within(head).getByRole('region', { name: t('page.G3.summary.status') });
-    expect(within(status).getByTestId('competition-summary')).toBeInTheDocument();
+    const card = within(head).getByRole('region', { name: t('page.G3.compSummary.title') });
+    expect(within(card).getByTestId('competition-summary')).toBeInTheDocument();
   });
 });
 
@@ -238,10 +238,10 @@ describe('F10 G2 접수 상태 정렬(sort=intake)', () => {
   });
 });
 
-describe('D29-4 "대표 층" → "최저가 층"', () => {
-  it('ko.json 어디에도 "대표 층"·"대표층" 이 없고 가격표 열은 "최저가 층"', () => {
+describe('D29-4 "대표 층" → "최저가 층"(R11 보드 문구 "가장 낮은 층")', () => {
+  it('ko.json 어디에도 "대표 층"·"대표층" 이 없고 가격표 열은 "가장 낮은 층"', () => {
     expect(JSON.stringify(ko)).not.toMatch(/대표 ?층/);
-    expect(t('page.G3.price.floorText')).toBe('최저가 층');
+    expect(t('page.G3.price.floorText')).toBe('가장 낮은 층');
   });
 });
 

@@ -3,10 +3,18 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ComplexDetail, Fact, HumanCheckField, LadderHorizon, PriceRange } from '@/api/types';
 import { C01Ladder, C02Gap, C08Timeline, C09Catalyst } from '@/charts';
-import { Badge, EmptyState, ExternalLink, FactCell, MetaText } from '@/components';
+import {
+  Badge,
+  EmptyState,
+  ExternalLink,
+  FactCell,
+  MetaText,
+  SectionHeader,
+  Term,
+} from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatHalfYear } from '@/lib/format';
-import { enumText, isUnresolved, Section, tdClass, thClass, useGlobalSearch } from '../_shared';
+import { enumText, isUnresolved, tdClass, thClass, useGlobalSearch } from '../_shared';
 import { HC_PARAM, HUMAN_CHECK_ANCHOR } from '../ops/humanCheckRules';
 import { CompetitionSummaryLine } from './CompetitionSummaryLine';
 
@@ -242,8 +250,8 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
   // 기준 타입 할인(price.discount)이 '추정'이면 그 줄에 안내 + 사람 확인 링크(D16-1)
   const estimatedPrice = isEstimatedDiscount(price.discount);
   return (
-    <div className="flex flex-col gap-3">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+    <TabSection id="g3-price-title" title={t('page.G3.price.title')} hint={t('page.G3.price.hint')}>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-muted">{t('page.G3.header.price')}</dt>
         <dd className="flex flex-wrap items-center gap-1">
           <FactCell fact={price.price_low} unit="won" />
@@ -287,6 +295,9 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
+            <caption className="pb-1 text-left text-xs text-muted">
+              {t('page.G3.price.caption')}
+            </caption>
             <thead>
               <tr>
                 {(
@@ -367,89 +378,185 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
           ) : null}
         </div>
       )}
-    </div>
+    </TabSection>
+  );
+}
+/** 탭 안 구역: 질문형 h3 + 안내 + 본문(구역 이름 = 제목 — `getByRole('region', { name })`) */
+function TabSection({
+  id,
+  title,
+  hint,
+  actions,
+  children,
+}: {
+  id: string;
+  title: string;
+  hint?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className="flex min-w-0 flex-col gap-4">
+      <SectionHeader id={id} level={3} title={title} hint={hint} actions={actions} />
+      {children}
+    </section>
   );
 }
 
+type Payment = ComplexDetail['payment'][number];
+
+/** 두 공고 나란히 보기 표의 행 — 항목 이름 + 공고마다 칸 */
+const PAYMENT_ROWS: readonly {
+  key: string;
+  label: TKey;
+  cell: (term: Payment, asof: string) => ReactNode;
+}[] = [
+  {
+    key: 'effective',
+    label: 'page.G3.payment.effective',
+    cell: (term, asof) => <FactCell wrap fact={term.effective_from} unit="date" asof={asof} />,
+  },
+  {
+    key: 'down',
+    label: 'page.G3.payment.down',
+    cell: (term) => <FactCell wrap fact={term.down_payment_pct} unit="pct" digits={0} />,
+  },
+  {
+    key: 'downFirst',
+    label: 'page.G3.payment.downFirst',
+    cell: (term) => <FactCell wrap fact={term.down_payment_first_won} unit="won" />,
+  },
+  {
+    key: 'interim',
+    label: 'page.G3.payment.interim',
+    cell: (term) => <FactCell wrap fact={term.interim_pct} unit="pct" digits={0} />,
+  },
+  {
+    key: 'balance',
+    label: 'page.G3.payment.balance',
+    cell: (term) => <FactCell wrap fact={term.balance_pct} unit="pct" digits={0} />,
+  },
+  {
+    key: 'interimTerms',
+    label: 'page.G3.payment.interimTerms',
+    cell: (term) =>
+      term.interim_terms_text ?? <span className="text-muted">{t('page.common.none')}</span>,
+  },
+  {
+    key: 'changeVsFirst',
+    label: 'page.G3.payment.changeVsFirst',
+    cell: (term) =>
+      term.change_vs_first?.down_payment_pct_delta ? (
+        <FactCell wrap fact={term.change_vs_first.down_payment_pct_delta} unit="pct" digits={0} />
+      ) : (
+        <span className="text-muted">{t('page.common.none')}</span>
+      ),
+  },
+];
+
+/**
+ * 탭 2 납부 일정 전체(목업 DetailTabs 탭 2): 공고마다 열 하나로 나란히(현재 적용 열 배지) + 공고마다 중도금 일정 표.
+ * 비율만 보인다 — 회차별 금액은 계산하지 않는다.
+ */
 export function PaymentTab({ detail }: { detail: ComplexDetail }) {
   const { payment, asof_date: asof } = detail;
-  if (payment.length === 0) return <EmptyState reason={t('page.common.none')} />;
   return (
-    <div className="flex flex-col gap-3">
-      {payment.map((term) => (
-        <Section
-          key={`${term.notice_no}-${term.id ?? ''}`}
-          title={`${t('page.G3.payment.notice')} ${term.notice_no}`}
-          actions={
-            <span className="flex gap-1">
-              {term.notice_kind ? <Badge tone="neutral">{term.notice_kind}</Badge> : null}
-              {term.is_current ? <Badge tone="strong">{t('page.G3.payment.current')}</Badge> : null}
-            </span>
-          }
-        >
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-3">
-            <Item label={t('page.G3.payment.effective')}>
-              <FactCell fact={term.effective_from} unit="date" asof={asof} />
-            </Item>
-            <Item label={t('page.G3.payment.down')}>
-              <FactCell fact={term.down_payment_pct} unit="pct" digits={0} />
-            </Item>
-            <Item label={t('page.G3.payment.downFirst')}>
-              <FactCell fact={term.down_payment_first_won} unit="won" />
-            </Item>
-            <Item label={t('page.G3.payment.interim')}>
-              <FactCell fact={term.interim_pct} unit="pct" digits={0} />
-            </Item>
-            <Item label={t('page.G3.payment.balance')}>
-              <FactCell fact={term.balance_pct} unit="pct" digits={0} />
-            </Item>
-            <Item label={t('page.G3.payment.interimTerms')}>
-              {term.interim_terms_text ?? t('page.common.none')}
-            </Item>
-            {term.change_vs_first?.down_payment_pct_delta ? (
-              <Item label={t('page.G3.payment.changeVsFirst')}>
-                <FactCell
-                  fact={term.change_vs_first.down_payment_pct_delta}
-                  unit="pct"
-                  digits={0}
-                />
-              </Item>
-            ) : null}
-          </dl>
-          {term.interim_schedule.length > 0 ? (
-            <table className="w-full border-collapse text-sm">
-              <caption className="text-left text-xs text-muted">
-                {t('page.G3.payment.schedule')}
-              </caption>
-              <tbody>
-                {term.interim_schedule.map((item) => (
-                  <tr key={item.seq}>
-                    <th scope="row" className={`${tdClass} text-left font-normal`}>
-                      <MetaText kind="seq" k="page.G3.payment.seq" params={{ n: item.seq }} />
+    <TabSection
+      id="g3-payment-title"
+      title={t('page.G3.payment.title')}
+      hint={t('page.G3.payment.hint')}
+    >
+      {payment.length === 0 ? (
+        <EmptyState reason={t('page.common.none')} />
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm" data-testid="payment-compare">
+              <thead>
+                <tr>
+                  <th scope="col" className={thClass}>
+                    {t('page.G3.payment.item')}
+                  </th>
+                  {payment.map((term) => (
+                    <th
+                      key={`${term.notice_no}-${term.id ?? ''}`}
+                      scope="col"
+                      className={`${thClass} ${term.is_current ? 'bg-accent-soft' : ''}`}
+                    >
+                      <span className="flex flex-wrap items-center gap-1">
+                        {term.notice_kind ? <Badge tone="neutral">{term.notice_kind}</Badge> : null}
+                        <span>
+                          {t('page.G3.payment.notice')} {term.notice_no}
+                        </span>
+                        {term.is_current ? (
+                          <Badge tone="strong">{t('page.G3.payment.current')}</Badge>
+                        ) : null}
+                      </span>
                     </th>
-                    <td className={tdClass}>
-                      <FactCell fact={item.due_date} unit="date" asof={asof} />
-                    </td>
-                    <td className={tdClass}>
-                      <FactCell fact={item.pct} unit="pct" digits={0} />
-                    </td>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PAYMENT_ROWS.map((row) => (
+                  <tr key={row.key}>
+                    <th scope="row" className={`${tdClass} text-left font-normal text-fg-2`}>
+                      {t(row.label)}
+                    </th>
+                    {payment.map((term) => (
+                      <td
+                        key={`${term.notice_no}-${term.id ?? ''}`}
+                        className={`${tdClass} ${term.is_current ? 'bg-accent-soft/40' : ''}`}
+                      >
+                        {row.cell(term, asof)}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : null}
-        </Section>
-      ))}
-    </div>
-  );
-}
-
-function Item({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd>{children}</dd>
-    </div>
+          </div>
+          {payment
+            .filter((term) => term.interim_schedule.length > 0)
+            .map((term) => (
+              <div key={`${term.notice_no}-${term.id ?? ''}-schedule`} className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <caption className="pb-1 text-left text-[13px] font-medium text-fg-2">
+                    {t('page.G3.payment.scheduleOf', { no: term.notice_no })}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" className={thClass}>
+                        {t('page.G3.payment.schedule')}
+                      </th>
+                      <th scope="col" className={thClass}>
+                        {t('page.G3.payment.dueDate')}
+                      </th>
+                      <th scope="col" className={thClass}>
+                        {t('page.G3.payment.pct')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {term.interim_schedule.map((item) => (
+                      <tr key={item.seq}>
+                        <th scope="row" className={`${tdClass} text-left font-normal`}>
+                          <MetaText kind="seq" k="page.G3.payment.seq" params={{ n: item.seq }} />
+                        </th>
+                        <td className={tdClass}>
+                          <FactCell fact={item.due_date} unit="date" asof={asof} />
+                        </td>
+                        <td className={tdClass}>
+                          <FactCell fact={item.pct} unit="pct" digits={0} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+        </>
+      )}
+    </TabSection>
   );
 }
 
@@ -539,8 +646,12 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
   const showPoints = showPointsColumn(competition);
   // R9-UI P8: 경쟁률 표를 맨 위로(초보 질문 Q5), 추가 모집 이력 차트는 그 아래
   return (
-    <div className="flex flex-col gap-3">
-      <Section title={t('page.G3.competition.title')}>
+    <div className="flex flex-col gap-6">
+      <TabSection
+        id="g3-competition-title"
+        title={t('page.G3.competition.title')}
+        hint={t('page.G3.competition.hint')}
+      >
         {detail.competition_summary ? (
           <CompetitionSummaryLine summary={detail.competition_summary} />
         ) : null}
@@ -558,7 +669,10 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
                   ))}
                   {showPoints ? (
                     <th scope="col" className={thClass}>
-                      {t('page.G3.competition.points')}
+                      <span className="inline-flex items-center gap-1">
+                        {t('page.G3.competition.points')}
+                        <Term k="points" />
+                      </span>
                     </th>
                   ) : null}
                 </tr>
@@ -579,7 +693,10 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
                       </td>
                       <td className={tdClass}>
                         {shortfall !== null ? (
-                          <span title={row.ratio_or_shortfall_text ?? undefined}>
+                          <span
+                            title={row.ratio_or_shortfall_text ?? undefined}
+                            className="font-semibold text-warn-ink"
+                          >
                             {t('page.G3.competition.shortfall', { n: shortfall })}
                           </span>
                         ) : (
@@ -602,7 +719,7 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
         {showPoints ? null : (
           <p className="text-xs text-muted">{t('page.G3.competition.pointsMissing')}</p>
         )}
-      </Section>
+      </TabSection>
       <C08Timeline data={{ events }} asof={asof} />
     </div>
   );
@@ -614,11 +731,19 @@ export function LadderTab({ detail }: { detail: ComplexDetail }) {
   const [horizon, setHorizon] = useState<LadderHorizon>('move_in_plus_1y');
   const row = detail.ladder.find((r) => r.horizon === horizon);
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted">{t('page.G3.ladder.note')}</p>
-      <div role="radiogroup" aria-label={t('page.G3.ladder.horizons')} className="flex gap-1">
+    <TabSection
+      id="g3-ladder-title"
+      title={t('page.G3.ladder.title')}
+      hint={t('page.G3.ladder.note')}
+    >
+      <div
+        role="radiogroup"
+        aria-label={t('page.G3.ladder.horizons')}
+        className="flex flex-wrap gap-2"
+      >
         {HORIZONS.map((h) => {
           const r = detail.ladder.find((x) => x.horizon === h);
+          const unresolved = !!r && isUnresolved(r.status);
           return (
             <button
               key={h}
@@ -626,25 +751,29 @@ export function LadderTab({ detail }: { detail: ComplexDetail }) {
               role="radio"
               aria-checked={h === horizon}
               onClick={() => setHorizon(h)}
-              className={`rounded border border-border px-2 py-1 text-sm ${
-                h === horizon ? 'bg-accent text-accent-fg' : ''
-              } ${r && isUnresolved(r.status) ? 'text-grayed' : ''}`}
+              className={`min-h-11 rounded-xl border px-4 text-[15px] ${
+                h === horizon
+                  ? 'border-accent bg-accent text-accent-fg'
+                  : 'border-border-strong bg-surface text-fg hover:border-accent'
+              } ${unresolved && h !== horizon ? 'text-grayed' : ''}`}
             >
               {enumText('chart.C01.horizon', h)}
               {r ? ` · ${r.target_label ?? formatHalfYear(r.target_ym)}` : ''}
-              {r && isUnresolved(r.status) ? ` · ${t('page.common.unresolved')}` : ''}
+              {unresolved ? ` · ${t('page.common.unresolved')}` : ''}
             </button>
           );
         })}
       </div>
-      <C01Ladder data={{ ladder: detail.ladder, horizon }} height={240} />
+      <C01Ladder data={{ ladder: detail.ladder, horizon }} height={240} asof={detail.asof_date} />
       {row?.proposition_text ? (
-        <p className="text-sm text-muted">
-          <span className="font-medium">{t('page.G3.ladder.proposition')}: </span>
-          {row.proposition_text}
-        </p>
+        <div className="flex flex-col gap-1 rounded-xl bg-subtle px-4 py-3 text-sm">
+          <span className="text-[13px] font-medium text-muted">
+            {t('page.G3.ladder.proposition')}
+          </span>
+          <p className="text-fg-2">{row.proposition_text}</p>
+        </div>
       ) : null}
-    </div>
+    </TabSection>
   );
 }
 
@@ -653,45 +782,84 @@ export function GapTab({ detail }: { detail: ComplexDetail }) {
   const substitute = gap.comps.some((c) => c.substitute);
   // R9-UI P8(30-proposal §9-3): 부호를 문장으로 한 번만 풀고(높고 낮음을 좋고 나쁨으로 바꾸지 않는다), 같은 이름 두 값을 나눈다
   return (
-    <div className="flex flex-col gap-3">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-muted">{t('page.G3.gap.pct')}</dt>
-        <dd>
-          <FactCell fact={gap.gap_pct} unit="pct" />
-        </dd>
+    <TabSection id="g3-gap-title" title={t('page.G3.gap.title')} hint={t('page.G3.gap.hint')}>
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-1 rounded-[14px] bg-subtle p-4">
+          <dt className="inline-flex items-center gap-1 text-[13px] text-muted">
+            {t('page.G3.gap.pct')}
+            <Term k="gap" />
+          </dt>
+          <dd className="text-xl font-bold">
+            <FactCell wrap fact={gap.gap_pct} unit="pct" />
+          </dd>
+        </div>
         {gap.gap_pct_unadjusted ? (
-          <>
-            <dt className="text-muted">{t('page.G3.gap.unadjusted')}</dt>
-            <dd>
-              <FactCell fact={gap.gap_pct_unadjusted} unit="pct" />
+          <div className="flex min-w-0 flex-col gap-1 rounded-[14px] bg-subtle p-4">
+            <dt className="text-[13px] text-muted">{t('page.G3.gap.unadjusted')}</dt>
+            <dd className="text-xl font-bold">
+              <FactCell wrap fact={gap.gap_pct_unadjusted} unit="pct" />
             </dd>
-          </>
+          </div>
         ) : null}
-        <dt className="text-muted">{t('page.G3.gap.score')}</dt>
-        <dd>
-          {/* 계약 .20 F7: 점수 s_gap 은 gap_score(옛 이름 score) — 퍼센트(gap_pct, prov …raw)와 다른 출처 */}
-          <FactCell fact={gap.gap_score ?? gap.score} unit="score" />
-        </dd>
+        <div className="flex min-w-0 flex-col gap-1 rounded-[14px] bg-subtle p-4">
+          <dt className="text-[13px] text-muted">{t('page.G3.gap.score')}</dt>
+          <dd className="text-xl font-bold">
+            {/* 계약 .20 F7: 점수 s_gap 은 gap_score(옛 이름 score) — 퍼센트(gap_pct, prov …raw)와 다른 출처 */}
+            <FactCell wrap fact={gap.gap_score ?? gap.score} unit="score" />
+          </dd>
+        </div>
       </dl>
-      <p className="text-sm">{t('page.G3.gap.meaning')}</p>
+      <p className="rounded-xl border border-info-border bg-info-soft px-4 py-3 text-sm text-info-ink">
+        {t('page.G3.gap.meaning')}
+      </p>
+      {/* 계약 .22 F2·F3(D30-5): 비교군 전체 중앙값(보정·미보정) — 서버 저장값 그대로. 키 없음 = .22 전 저장본 → 줄 없음 */}
+      {gap.comps_median !== undefined || gap.comps_median_unadjusted ? (
+        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm" data-testid="gap-comps-median">
+          {gap.comps_median !== undefined ? (
+            <div className="flex flex-wrap items-center gap-1">
+              <dt className="text-muted">{t('page.G3.gap.compsMedian')}</dt>
+              <dd>
+                <FactCell wrap fact={gap.comps_median} unit="won" />
+              </dd>
+            </div>
+          ) : null}
+          {gap.comps_median_unadjusted ? (
+            <div className="flex flex-wrap items-center gap-1">
+              <dt className="text-muted">{t('page.G3.gap.compsMedianUnadjusted')}</dt>
+              <dd>
+                <FactCell wrap fact={gap.comps_median_unadjusted} unit="won" />
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
       <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <span>{t('page.G3.gap.basis')}</span>
-        <MetaText kind="count" k="page.G3.gap.comps" params={{ n: gap.comps.length }} />
+        <Badge tone="neutral">
+          <MetaText kind="count" k="page.G3.gap.comps" params={{ n: gap.comps.length }} />
+        </Badge>
         {substitute ? <Badge tone="muted">{t('page.G3.gap.substitute')}</Badge> : null}
       </p>
-      <C02Gap data={{ gap }} />
-    </div>
+      <C02Gap data={{ gap }} asof={detail.asof_date} />
+    </TabSection>
   );
 }
 
 export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
   const { catalysts } = detail;
   return (
-    <div className="flex flex-col gap-3">
-      <C09Catalyst data={{ catalysts, compact: true }} />
-      <Section title={t('page.G3.catalyst.list')}>
+    <TabSection
+      id="g3-catalyst-title"
+      title={t('page.G3.catalyst.title')}
+      hint={t('page.G3.catalyst.hint')}
+    >
+      <C09Catalyst data={{ catalysts, compact: true }} asof={detail.asof_date} />
+      <section aria-labelledby="g3-catalyst-list" className="flex flex-col gap-2">
+        <h4 id="g3-catalyst-list" className="text-[15px] font-bold">
+          {t('page.G3.catalyst.list')}
+        </h4>
         {catalysts.length === 0 ? (
-          <EmptyState message={t('chart.C09.empty')} />
+          <EmptyState message={t('page.G3.catalyst.empty')} />
         ) : (
           <ul className="flex flex-col divide-y divide-border text-sm">
             {catalysts.map((c) => {
@@ -699,13 +867,14 @@ export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
               return (
                 <li
                   key={c.id}
-                  className={`flex flex-wrap items-center gap-2 py-1.5 ${grayed ? 'text-grayed' : ''}`}
+                  className={`flex flex-wrap items-center gap-2 py-2.5 ${grayed ? 'text-grayed' : ''}`}
                 >
-                  <span className="font-medium">{c.name}</span>
+                  <span className="font-semibold">{c.name}</span>
                   <Badge tone="neutral">{enumText('page.G3.catalystKind', c.kind)}</Badge>
                   <Badge tone={grayed ? 'muted' : 'strong'}>
                     {enumText('chart.C09.stage', c.stage)}
                   </Badge>
+                  <span className="text-xs text-muted">{t('page.G3.catalyst.stageProb')}</span>
                   <FactCell fact={c.stage_prob} unit="prob" />
                   <span className="text-xs text-muted">{t('page.G3.catalyst.expected')}</span>
                   <FactCell fact={c.expected_ym} unit="ym" />
@@ -722,7 +891,11 @@ export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
                     <Badge tone="muted">{t('page.common.unresolved')}</Badge>
                   ) : null}
                   {c.source_url ? (
-                    <ExternalLink href={c.source_url} fallback={c.source_url}>
+                    <ExternalLink
+                      href={c.source_url}
+                      fallback={c.source_url}
+                      className="text-accent hover:underline"
+                    >
                       {t('page.G3.catalyst.source')}
                     </ExternalLink>
                   ) : null}
@@ -732,7 +905,7 @@ export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
             })}
           </ul>
         )}
-      </Section>
-    </div>
+      </section>
+    </TabSection>
   );
 }

@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router';
 import { useComplexDetail } from '@/api/hooks';
 import type { ComplexDetail } from '@/api/types';
+import { Card, SectionHeader } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { useIsMobile } from '@/lib/useMediaQuery';
@@ -34,18 +35,36 @@ export function ComplexPage() {
   const { snapshotId, scenarioKey } = usePageContext();
   const query = useComplexDetail(id, snapshotId, scenarioKey);
   const search = useGlobalSearch();
+  const name = query.data?.header.name ?? null;
   return (
-    <PageShell
-      title={t('page.G3.title')}
-      legend
-      actions={
-        <Link to={`/complexes${search}`} className="text-sm underline">
-          {t('page.common.backToList')}
+    <div className="flex min-w-0 flex-col gap-2">
+      {/* 현재 위치 줄(목업 Detail): 단지 찾기 › 단지 이름 — 이름은 받은 뒤에만 */}
+      <nav aria-label={t('page.G3.crumb.label')} className="text-sm text-muted">
+        <Link to={`/complexes${search}`} className="text-accent hover:underline">
+          {t('page.G3.crumb.list')}
         </Link>
-      }
-    >
-      <QueryState query={query}>{(detail) => <Detail detail={detail} />}</QueryState>
-    </PageShell>
+        {name ? (
+          <>
+            <span aria-hidden> › </span>
+            <span aria-current="page">{name}</span>
+          </>
+        ) : null}
+      </nav>
+      <PageShell
+        title={t('page.G3.title')}
+        legend
+        actions={
+          <Link
+            to={`/complexes${search}`}
+            className="inline-flex min-h-9 items-center rounded-xl border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-accent"
+          >
+            {t('page.G3.backToList')}
+          </Link>
+        }
+      >
+        <QueryState query={query}>{(detail) => <Detail detail={detail} />}</QueryState>
+      </PageShell>
+    </div>
   );
 }
 
@@ -79,96 +98,108 @@ function Detail({ detail }: { detail: ComplexDetail }) {
       : name;
   };
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-4">
       <ComplexHeader detail={detail} />
-      {isMobile ? (
-        // R9-UI P1(30-proposal §2-2): 모바일은 잘리는 가로 탭 줄 대신 <select>(키보드·스크린리더 그대로)
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted">{t('page.G3.tabSelect')}</span>
-          <select
+      <Card
+        as="section"
+        aria-labelledby="g3-more"
+        padding="lg"
+        className="flex min-w-0 flex-col gap-4"
+      >
+        <SectionHeader id="g3-more" title={t('page.G3.more')} />
+        {isMobile ? (
+          // R9-UI P1(30-proposal §2-2): 모바일은 잘리는 가로 탭 줄 대신 <select>(키보드·스크린리더 그대로)
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium text-fg-2">{t('page.G3.tabSelect')}</span>
+            <select
+              aria-label={t('page.G3.tabs')}
+              value={active}
+              onChange={(e) => setTab(e.target.value as VisibleTab)}
+              className="min-h-11 rounded-xl border border-border-strong bg-surface px-3 text-[15px]"
+            >
+              {G3_VISIBLE_TABS.map((k) => (
+                <option key={k} value={k}>
+                  {tabName(k)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <div className={isMobile ? 'hidden' : 'flex flex-col gap-1'}>
+          <div
+            hidden={isMobile}
+            role="tablist"
             aria-label={t('page.G3.tabs')}
-            value={active}
-            onChange={(e) => setTab(e.target.value as VisibleTab)}
-            className="rounded-sm border border-border bg-surface px-2 py-1"
+            className="flex gap-1 overflow-x-auto border-b border-border"
           >
             {G3_VISIBLE_TABS.map((k) => (
-              <option key={k} value={k}>
+              <button
+                key={k}
+                id={tabId(k)}
+                type="button"
+                role="tab"
+                aria-selected={active === k}
+                aria-controls={panelId(k)}
+                tabIndex={active === k ? 0 : -1}
+                onClick={() => setTab(k)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+                  const i = G3_VISIBLE_TABS.indexOf(k);
+                  const step = event.key === 'ArrowRight' ? 1 : -1;
+                  const next =
+                    G3_VISIBLE_TABS[(i + step + G3_VISIBLE_TABS.length) % G3_VISIBLE_TABS.length];
+                  if (next) {
+                    setTab(next);
+                    document.getElementById(tabId(next))?.focus();
+                  }
+                }}
+                className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-[15px] ${
+                  active === k
+                    ? 'border-accent font-semibold text-accent-ink'
+                    : 'border-transparent text-fg-2 hover:text-fg'
+                }`}
+              >
                 {tabName(k)}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
-      ) : null}
-      <div
-        hidden={isMobile}
-        role="tablist"
-        aria-label={t('page.G3.tabs')}
-        className="flex gap-1 overflow-x-auto border-b border-border"
-      >
-        {G3_VISIBLE_TABS.map((k) => (
-          <button
-            key={k}
-            id={tabId(k)}
-            type="button"
-            role="tab"
-            aria-selected={active === k}
-            aria-controls={panelId(k)}
-            tabIndex={active === k ? 0 : -1}
-            onClick={() => setTab(k)}
-            onKeyDown={(event) => {
-              if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-              const i = G3_VISIBLE_TABS.indexOf(k);
-              const step = event.key === 'ArrowRight' ? 1 : -1;
-              const next =
-                G3_VISIBLE_TABS[(i + step + G3_VISIBLE_TABS.length) % G3_VISIBLE_TABS.length];
-              if (next) {
-                setTab(next);
-                document.getElementById(tabId(next))?.focus();
-              }
-            }}
-            className={`whitespace-nowrap border-b-2 px-3 py-1.5 text-sm ${
-              active === k
-                ? 'border-accent font-medium'
-                : 'border-transparent text-muted hover:text-fg'
-            }`}
-          >
-            {tabName(k)}
-          </button>
-        ))}
-      </div>
-      {/* 활성 탭만 마운트 — 원문(provenance) 탭은 열 때 처음 로드된다(지연 로드) */}
-      <div
-        role="tabpanel"
-        id={panelId(active)}
-        aria-labelledby={isMobile ? undefined : tabId(active)}
-        aria-label={isMobile ? tabName(active) : undefined}
-        tabIndex={0}
-      >
-        {active === 'price' ? <PriceTab detail={detail} /> : null}
-        {active === 'payment' ? <PaymentTab detail={detail} /> : null}
-        {active === 'events' ? <EventsTab detail={detail} /> : null}
-        {active === 'gap' ? <GapTab detail={detail} /> : null}
-        {active === 'ladder' ? <LadderTab detail={detail} /> : null}
-        {active === 'catalysts' ? <CatalystsTab detail={detail} /> : null}
-        {active === 'provenance' ? (
-          <div className="flex flex-col gap-3">
-            <ProvenanceTab detail={detail} />
-            <details
-              key={tab}
-              open={tab === 'judgments'}
-              data-testid="judgments-block"
-              className="rounded-sm border border-border p-2"
-            >
-              <summary className="cursor-pointer text-sm font-medium">
-                {t('page.G3.tab.judgments')}
-              </summary>
-              <div className="mt-2">
-                <JudgmentsTab judgments={detail.judgments} asof={detail.asof_date} />
-              </div>
-            </details>
           </div>
-        ) : null}
-      </div>
+          <p className="text-xs text-muted">{t('page.G3.tabHint')}</p>
+        </div>
+        {/* 활성 탭만 마운트 — 원문(provenance) 탭은 열 때 처음 로드된다(지연 로드) */}
+        <div
+          role="tabpanel"
+          id={panelId(active)}
+          aria-labelledby={isMobile ? undefined : tabId(active)}
+          aria-label={isMobile ? tabName(active) : undefined}
+          tabIndex={0}
+          className="min-w-0"
+        >
+          {active === 'price' ? <PriceTab detail={detail} /> : null}
+          {active === 'payment' ? <PaymentTab detail={detail} /> : null}
+          {active === 'events' ? <EventsTab detail={detail} /> : null}
+          {active === 'gap' ? <GapTab detail={detail} /> : null}
+          {active === 'ladder' ? <LadderTab detail={detail} /> : null}
+          {active === 'catalysts' ? <CatalystsTab detail={detail} /> : null}
+          {active === 'provenance' ? (
+            <div className="flex flex-col gap-4">
+              <ProvenanceTab detail={detail} />
+              <details
+                key={tab}
+                open={tab === 'judgments'}
+                data-testid="judgments-block"
+                className="rounded-xl border border-border px-4 py-3"
+              >
+                <summary className="cursor-pointer text-[15px] font-semibold">
+                  {t('page.G3.tab.judgments')}
+                </summary>
+                <div className="mt-3">
+                  <JudgmentsTab judgments={detail.judgments} asof={detail.asof_date} />
+                </div>
+              </details>
+            </div>
+          ) : null}
+        </div>
+      </Card>
     </div>
   );
 }

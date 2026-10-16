@@ -13,9 +13,12 @@ describe('가격 범위 하단(price_low) 라벨이 보인다', () => {
   it('G3 헤더·가격 탭: 현재 구매가 범위 = 하단·상단 각각 라벨 배지', async () => {
     renderRoute('/complexes/2#price');
     await screen.findByRole('tabpanel');
+    // R11: 헤더는 큰 값(BigNumber) — 하단·상단 각각 라벨 배지
+    const header = await screen.findByTestId('header-price');
+    expect(within(header).getAllByTestId('label-badge')).toHaveLength(2);
+    // 가격 탭(정의 목록)
     const terms = await screen.findAllByText(t('page.G3.header.price'), { selector: 'dt' });
-    // 헤더 + 가격 탭
-    expect(terms.length).toBe(2);
+    expect(terms.length).toBe(1);
     for (const term of terms) {
       const dd = term.nextElementSibling as HTMLElement;
       expect(dd.tagName).toBe('DD');
