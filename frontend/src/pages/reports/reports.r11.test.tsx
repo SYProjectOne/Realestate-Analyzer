@@ -4,7 +4,7 @@
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
+import { delay, getResponse, http, HttpResponse, type RequestHandler } from 'msw';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import type { ChangeEvent, Report, Snapshot } from '@/api/types';
 import { t } from '@/i18n';
@@ -13,6 +13,7 @@ import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
+import { captureDownloads, matching, recordRequests } from '../_shared/testing';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => resetMockState());
@@ -166,5 +167,78 @@ describe('R11 G8 보고서 — 목업 Reports', () => {
     await ready();
     expect(screen.getByText(t('page.G8.footnote'))).toBeInTheDocument();
     expect(screen.getAllByTestId('provenance-legend').length).toBeGreaterThan(0);
+  });
+
+  it('다운로드: 파일 이름이 없으면 "다운로드" · 받는 동안 "내려받는 중…"(꺼짐) · 실패는 버튼 아래 role=alert · 409 면 목록 다시 받기(#51~#54)', async () => {
+    const reports = await example<Report[]>('/reports');
+    const done = reports.find((r) => r.status === 'done')!;
+    server.use(
+      http.get(mswPath('/reports'), () =>
+        HttpResponse.json([
+          { ...done, id: 9001, filename: null },
+          { ...done, id: 9002 },
+        ]),
+      ),
+      http.get(mswPath('/reports/:id'), async ({ params }) => {
+        if (params.id === '9001') {
+          await delay(300);
+          return HttpResponse.json(
+            { code: 'conflict', detail: '아직 완료되지 않음' },
+            { status: 409 },
+          );
+        }
+        return HttpResponse.json({ code: 'internal', detail: '저장소 오류' }, { status: 500 });
+      }),
+    );
+    captureDownloads();
+    const rec = recordRequests();
+    await ready();
+    const table = await screen.findByRole('table', { name: t('page.G8.list') });
+    const plain = within(table).getByRole('button', { name: t('page.common.download') });
+    const listCalls = () => matching(rec.requests, 'GET', /\/reports$/).length;
+    const before = listCalls();
+    await userEvent.click(plain);
+    expect(
+      await within(table).findByRole('button', { name: t('download.pending') }),
+    ).toBeDisabled();
+    const alert = await within(table).findByRole('alert');
+    expect(alert).toHaveTextContent('아직 완료되지 않음');
+    await waitFor(() => expect(listCalls()).toBeGreaterThan(before));
+    rec.stop();
+  });
+
+  it('첫 적재(first_load) 줄은 화살표 없이 서버 문장 한 줄(RP-5)', async () => {
+    const summary = '첫 적재: 단지 3개, 값 40건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)';
+    const rows = await example<ChangeEvent[]>('/snapshots/12/changes');
+    server.use(
+      http.get(mswPath('/snapshots/:sid/changes'), () =>
+        HttpResponse.json([
+          {
+            ...rows[0]!,
+            id: 77001,
+            entity: 'region',
+            field: 'first_load',
+            field_label: undefined,
+            summary: undefined,
+            value_kind: 'plain',
+            old_text: null,
+            new_text: summary,
+            severity: 'info',
+            complex_id: null,
+            complex_name: null,
+          },
+        ]),
+      ),
+    );
+    await ready();
+    const compare = screen.getByLabelText(t('page.G8.compareSnapshot'));
+    await userEvent.selectOptions(
+      compare,
+      (compare.querySelectorAll('option')[1] as HTMLOptionElement).value,
+    );
+    const table = await screen.findByRole('table', { name: t('page.G8.diff') });
+    const cell = within(table).getByText(summary);
+    expect(cell.textContent).not.toContain('→');
+    expect(within(table).getByText(t('page.common.changeField.first_load'))).toBeInTheDocument();
   });
 });

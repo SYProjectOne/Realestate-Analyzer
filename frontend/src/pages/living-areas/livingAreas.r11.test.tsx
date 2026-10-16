@@ -86,6 +86,11 @@ describe('R11 G0-2 생활권 — 목업 LivingAreas', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(more);
     expect(within(big).getAllByRole('checkbox')).toHaveLength(total);
+    // 이름을 모르는 동(지역 선택에 없는 코드)은 코드만, 고르기 이름도 '코드 고르기'(LA-2)
+    const codeOnly = within(big).getByRole('checkbox', {
+      name: t('page.G0_2.selectDong', { name: extra[0]! }),
+    });
+    expect((codeOnly.closest('label') as HTMLElement).textContent).toBe(extra[0]);
     await userEvent.click(within(big).getByRole('button', { name: t('page.G0_2.less') }));
     expect(within(big).getAllByRole('checkbox')).toHaveLength(DONG_PREVIEW);
   });
@@ -172,6 +177,7 @@ describe('R11 G0-2 생활권 — 목업 LivingAreas', () => {
     await userEvent.click(within(bar).getByRole('button', { name: t('page.G0_2.save') }));
     await waitFor(() => expect(matching(rec.requests, 'PUT', '/living-areas')).toHaveLength(1));
     expect(await screen.findByTestId('publish-job')).toBeInTheDocument();
+    expect(await screen.findByText(t('page.G0_2.saved'))).toBeInTheDocument();
     expect(within(bar).queryByText(t('page.G0_2.dirty'))).toBeNull();
     rec.stop();
   });
@@ -195,5 +201,29 @@ describe('R11 G0-2 생활권 — 목업 LivingAreas', () => {
     server.use(http.get(mswPath('/regions/resolve'), () => HttpResponse.json([])));
     await userEvent.type(within(panel).getByLabelText(t('page.G0_2.expand.search')), '없는곳');
     expect(await within(panel).findByText(t('page.G0_2.expand.noCandidates'))).toBeInTheDocument();
+  });
+
+  it('지역 범위 저장 → 토스트 · 새로 추가 표시 · 잡 안내 · 끝나면 다시 읽는다는 안내', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    renderRoute('/regions/1/living-areas');
+    const panel = await screen.findByRole('region', { name: t('page.G0_2.expand.title') });
+    await userEvent.type(within(panel).getByLabelText(t('page.G0_2.expand.search')), '검단');
+    const list = await within(panel).findByRole('list', {
+      name: t('page.G0_2.expand.candidates'),
+    });
+    const addable = within(list)
+      .getAllByRole('button', { name: t('page.G0_2.expand.add') })
+      .find((b) => !(b as HTMLButtonElement).disabled)!;
+    await userEvent.click(addable);
+    const current = within(panel).getByRole('list', { name: t('page.G0_2.expand.current') });
+    const added = current.querySelector('[data-added]') as HTMLElement;
+    expect(added).toHaveTextContent(t('page.G0_2.expand.added'));
+    await userEvent.click(
+      within(panel).getByRole('button', { name: t('page.G0_2.expand.submit') }),
+    );
+    expect(await screen.findByText(t('page.G0_2.expand.saved'))).toBeInTheDocument();
+    const job = await within(panel).findByTestId('expand-job');
+    expect(job).toHaveTextContent(t('page.G0_2.expand.jobHint'));
+    expect(job).toHaveTextContent(t('page.G0_2.expand.jobDoneHint'));
   });
 });

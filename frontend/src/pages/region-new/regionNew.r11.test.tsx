@@ -4,7 +4,7 @@
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import { t } from '@/i18n';
 import { resetMockState } from '@/mocks/handlers.extra';
@@ -99,6 +99,8 @@ describe('R11 G0 지역 입력 — 목업 RegionNew', () => {
       screen.getByRole('button', { name: t('page.G0.startNamed', { name: '내 지역' }) }),
     );
     const progress = await screen.findByTestId('g0-progress');
+    // 잠깐 뜨는 알림: 시작
+    expect(await screen.findByText(t('page.G0.started'))).toBeInTheDocument();
     expect(within(progress).getByRole('heading', { level: 2 })).toHaveTextContent(
       t('page.G0.progressTitle'),
     );
@@ -108,6 +110,8 @@ describe('R11 G0 지역 입력 — 목업 RegionNew', () => {
     const home = await within(progress).findByRole('link', { name: t('page.G0.goDashboard') });
     expect(home.getAttribute('href')).toMatch(/^\/\?region=/);
     expect(within(progress).getByTestId('g0-progress-head')).toHaveTextContent(t('page.G0.done'));
+    // 잠깐 뜨는 알림: 끝(머리말 + 토스트)
+    await waitFor(() => expect(screen.getAllByText(t('page.G0.done')).length).toBeGreaterThan(1));
     const steps = within(screen.getByRole('list', { name: t('page.G0.stepsLabel') })).getAllByRole(
       'listitem',
     );
@@ -132,6 +136,22 @@ describe('R11 G0 지역 입력 — 목업 RegionNew', () => {
     server.use(http.get(mswPath('/regions/resolve'), () => HttpResponse.json([])));
     await userEvent.clear(screen.getByRole('searchbox', { name: t('page.G0.search') }));
     await userEvent.type(screen.getByRole('searchbox', { name: t('page.G0.search') }), '없는곳');
+    expect(await screen.findByText(t('page.G0.noCandidates'))).toBeInTheDocument();
+  });
+
+  it("찾는 동안 '찾는 중…'(role=status)", async () => {
+    server.use(
+      http.get(mswPath('/regions/resolve'), async () => {
+        await delay(400);
+        return HttpResponse.json([]);
+      }),
+    );
+    renderRoute('/regions/new');
+    await userEvent.type(
+      await screen.findByRole('searchbox', { name: t('page.G0.search') }),
+      '검단',
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(t('page.G0.searching'));
     expect(await screen.findByText(t('page.G0.noCandidates'))).toBeInTheDocument();
   });
 
