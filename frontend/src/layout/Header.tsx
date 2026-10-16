@@ -143,11 +143,12 @@ export function Header() {
       </div>
       <div className="border-t border-border bg-surface-2">
         {/* 이름(aria-label)을 달지 않는다: '지역'이 든 이름이면 getByLabel('지역')이 이 묶음까지 잡는다.
-            휴대폰은 칸마다 한 줄(세로) — 줄바꿈이 고르기 칸 글자 폭(지역 이름·기준일이 늦게 옴)에 따라 바뀌면 본문이
-            한 줄만큼 밀린다(CLS 0.11, R11 Lighthouse 모바일). 데스크톱은 그대로 한 줄 */}
+            휴대폰은 2열 격자(지역|기준일 / 상황|설정) — 칸 폭이 격자로 고정이라 고르기 칸 글자(지역 이름·기준일이 늦게 옴)가
+            와도 줄바꿈이 바뀌지 않는다(CLS 0, R11). 한 줄씩 세로로 쌓으면 첫 화면 G2 카드가 1장만 보였다(e2e R9-UI P5).
+            데스크톱은 그대로 한 줄 */}
         <div
           data-testid="header-selectors"
-          className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-4 gap-y-2 px-4 py-1.5 sm:px-6 mobile:flex-col mobile:items-start"
+          className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-4 gap-y-2 px-4 py-1.5 sm:px-6 mobile:grid mobile:grid-cols-2 mobile:items-center mobile:gap-x-3 mobile:[&>*]:min-w-0 mobile:[&>*]:flex mobile:[&_select]:min-w-0 mobile:[&_select]:flex-1"
         >
           <RegionPicker
             regions={regions}
