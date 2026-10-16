@@ -381,8 +381,8 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
     </TabSection>
   );
 }
-/** 탭 안 구역: 질문형 h3 + 안내 + 본문(구역 이름 = 제목 — `getByRole('region', { name })`) */
-function TabSection({
+/** 탭 안 구역(출처 탭도 쓴다): 질문형 h3 + 안내 + 본문(구역 이름 = 제목 — `getByRole('region', { name })`) */
+export function TabSection({
   id,
   title,
   hint,
