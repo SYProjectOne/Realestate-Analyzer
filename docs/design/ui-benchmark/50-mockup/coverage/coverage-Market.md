@@ -6,29 +6,29 @@
 
 ## 화면 틀·필터·상태
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 1 | 화면 제목 h1 (`index.tsx` · `page.G6.title` "지역 시장") | Market · 머리 h1 "인천 시장, 지금 어때요?" (탭·메뉴 이름 "지역 시장" 유지) | 지역 시장 → {지역} 시장, 지금 어때요? | 있음 |
-| 2 | 생활권 필터 라벨 (`page.G6.livingArea` "생활권") | Market · 머리 "어느 생활권을 볼까요?" | 생활권 → 어느 생활권을 볼까요? | 있음 |
-| 3 | 생활권 select 전체 옵션 (`page.G6.allAreas` "전체 생활권") | Market · 머리 select "전체 생활권" | — | 있음 |
-| 4 | 생활권 select 옵션 = 응답 `living_areas`(이름) | Market · 머리 select 옵션 11개(제물포구 … 옹진군) | — | 있음 |
-| 5 | 필터를 URL `?living_area=` 에 저장(replace) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 6 | 스냅샷 없음 (`NoSnapshot` · `app.noSnapshot` "기준일 스냅샷이 없습니다. 지역 분석이 끝나면 나타납니다") | Market · 펼친 모습 "화면 전체" "기준일 자료가 아직 없을 때 지역 분석이 끝나면 나타나요" | — | 있음 |
-| 7 | 첫 적재 중 (`app.noSnapshotBootstrapping` "지역 첫 적재 중 — 첫 발행 리비전이 나오면 나타납니다") | Market · 펼친 모습 "첫 수집 중이면 '첫 수정본이 나오면 나타나요'" | 리비전 → 수정본 | 있음 |
-| 8 | 로딩 (`QueryState` · `app.loading` "불러오는 중…") | Market · 펼친 모습 "불러오는 중 불러오는 중…" | — | 있음 |
-| 9 | 준비 중 503 + 다시 시도 (`page.common.materializePending`, `materializePendingStill`, `app.retry`) | Market · 펼친 모습 "준비 중 … 잠시 뒤 자동으로 다시 불러와요 [다시 시도]" | — | 있음 |
-| 10 | 이전 값을 보이는 동안 새 조건이 준비 중이면 '준비 중' 줄 함께(M7 placeholder) | — | — | 있음(고침 MK-15 — 펼친 모습 "화면 전체" "생활권을 바꾼 뒤 새 자료가 준비 중일 때") |
-| 11 | 조회 오류 (`page.common.loadError`) | Market · 펼친 모습 "불러오지 못함 불러오지 못했어요: [오류 내용]" | — | 있음 |
-| 12 | 발행 뒤 만든 시나리오 결과 없음 + 실행 링크 (`page.common.scenarioMissing`, `scenarioMissingRun`) | Market · 펼친 모습 "다른 상황(시나리오) 결과가 없을 때 이 수정본에는 상황 #[n] 결과가 없어요 · 상황 실행 화면으로" | 시나리오 → 상황 | 있음 |
-| 13 | 저장본 검증 실패 오류 (`page.common.storedViewMismatch`) | — | — | 있음(고침 MK-15 — 펼친 모습 "화면 전체" "저장된 화면 자료가 검증에 실패했을 때") |
-| 14 | 차트 구역 sr-only h2 (`page.common.charts` "차트", 제목 순서 h1→h2→h3) | Market · 그림 섹션마다 h2 (sr-only 구역 제목은 없음) | 구역 제목 → 섹션별 h2 | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 15 | API `GET /snapshots/{sid}/market?living_area=&scenario=` (`useMarket`, 상황 토글 전달) | Market · 화면 전체(호출 주체) | — | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 1 | 화면 제목 h1 (`index.tsx` · `page.G6.title` "지역 시장") | Market · 머리 h1 "인천 시장, 지금 어때요?" (탭·메뉴 이름 "지역 시장" 유지) | 지역 시장 → {지역} 시장, 지금 어때요? | 있음 | market/r11market.test › 머리: "{지역} 시장, 지금 어때요?" … · routes.test › G6 /market → 제목을 렌더한다 |
+| 2 | 생활권 필터 라벨 (`page.G6.livingArea` "생활권") | Market · 머리 "어느 생활권을 볼까요?" | 생활권 → 어느 생활권을 볼까요? | 있음 | market/r11market.test › 머리: … 생활권 질문 + 묶음 바꾸기 링크(G0-2) |
+| 3 | 생활권 select 전체 옵션 (`page.G6.allAreas` "전체 생활권") | Market · 머리 select "전체 생활권" | — | 있음 | market/market.test › 생활권 필터 → URL ?living_area= → GET /market?living_area= |
+| 4 | 생활권 select 옵션 = 응답 `living_areas`(이름) | Market · 머리 select 옵션 11개(제물포구 … 옹진군) | — | 있음 | market/market.test › 생활권 필터 → URL ?living_area= → GET /market?living_area= |
+| 5 | 필터를 URL `?living_area=` 에 저장(replace) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/market.test › 생활권 필터 → URL ?living_area= → GET /market?living_area= |
+| 6 | 스냅샷 없음 (`NoSnapshot` · `app.noSnapshot` "기준일 스냅샷이 없습니다. 지역 분석이 끝나면 나타납니다") | Market · 펼친 모습 "화면 전체" "기준일 자료가 아직 없을 때 지역 분석이 끝나면 나타나요" | — | 있음 | layout/shell.test › 발행 기준일이 없으면 "아직 기준일이 없어요"(공용 NoSnapshot) |
+| 7 | 첫 적재 중 (`app.noSnapshotBootstrapping` "지역 첫 적재 중 — 첫 발행 리비전이 나오면 나타납니다") | Market · 펼친 모습 "첫 수집 중이면 '첫 수정본이 나오면 나타나요'" | 리비전 → 수정본 | 있음 | r4fe12.test › 지역 status bootstrapping(발행 리비전 없음) → 화면 '적재 중' 안내 |
+| 8 | 로딩 (`QueryState` · `app.loading` "불러오는 중…") | Market · 펼친 모습 "불러오는 중 불러오는 중…" | — | 있음 | components/shell-components.test › 불러오는 중 = 뼈대 + "불러오는 중…" |
+| 9 | 준비 중 503 + 다시 시도 (`page.common.materializePending`, `materializePendingStill`, `app.retry`) | Market · 펼친 모습 "준비 중 … 잠시 뒤 자동으로 다시 불러와요 [다시 시도]" | — | 있음 | r3g.test › G6: 리비전을 바꿔 503 이면 이전 리비전 시장 자료 대신 "준비 중" |
+| 10 | 이전 값을 보이는 동안 새 조건이 준비 중이면 '준비 중' 줄 함께(M7 placeholder) | — | — | 있음(고침 MK-15 — 펼친 모습 "화면 전체" "생활권을 바꾼 뒤 새 자료가 준비 중일 때") | r3g.test › G2: 같은 리비전·시나리오에서 필터만 바꾸면 이전 행을 잠깐 둔다(공용 QueryState M7) · r3g.test › G6: … "준비 중" |
+| 11 | 조회 오류 (`page.common.loadError`) | Market · 펼친 모습 "불러오지 못함 불러오지 못했어요: [오류 내용]" | — | 있음 | components/shell-components.test › 일반 오류 = "불러오지 못했어요: 내용" + 잠시 뒤 + 다시 시도(N10) |
+| 12 | 발행 뒤 만든 시나리오 결과 없음 + 실행 링크 (`page.common.scenarioMissing`, `scenarioMissingRun`) | Market · 펼친 모습 "다른 상황(시나리오) 결과가 없을 때 이 수정본에는 상황 #[n] 결과가 없어요 · 상황 실행 화면으로" | 시나리오 → 상황 | 있음 | r3e.test › G1 ?scenario=9(발행 뒤 생성) → 404 → 안내 + 시나리오 실행 링크(공용 QueryState) |
+| 13 | 저장본 검증 실패 오류 (`page.common.storedViewMismatch`) | — | — | 있음(고침 MK-15 — 펼친 모습 "화면 전체" "저장된 화면 자료가 검증에 실패했을 때") | components/shell-components.test › 저장본 검증 실패(SH-17) = 주의 카드 role=alert · r3f2.test › stored_view_mismatch(500) … |
+| 14 | 차트 구역 sr-only h2 (`page.common.charts` "차트", 제목 순서 h1→h2→h3) | Market · 그림 섹션마다 h2 (sr-only 구역 제목은 없음) | 구역 제목 → 섹션별 h2 | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/r11market.test › 숨은 "차트" h2(제목 순서 h1 → h2 → h3)는 남는다 |
+| 15 | API `GET /snapshots/{sid}/market?living_area=&scenario=` (`useMarket`, 상황 토글 전달) | Market · 화면 전체(호출 주체) | — | 있음 | r3e.test › ?scenario=B → GET /snapshots/{sid}/market?scenario=B |
 
 ## 근처 새 아파트 비교 (C03 벤치마크 + 표본 배지)
 
 | # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
 |---|---|---|---|---|---|
-| 16 | 벤치마크 없음 사유 배지 role=note (`index.tsx` · `page.common.benchmarkAbsent` "벤치마크 없음({reason})") | Market · 펼친 모습 "비교할 근처 새 아파트가 없을 때 비교할 단지 없음([사유])" | 벤치마크 없음 → 비교할 단지 없음 | 있음 |
+| 16 | 벤치마크 없음 사유 배지 role=note (`index.tsx` · `page.common.benchmarkAbsent` "벤치마크 없음({reason})") | Market · 펼친 모습 "비교할 근처 새 아파트가 없을 때 비교할 단지 없음([사유])" | 벤치마크 없음 → 비교할 단지 없음 | 있음 | market/market.test › benchmark_absence → "벤치마크 없음(<reason>)" |
 | 17 | C03 차트 틀 제목 (`chart.C03.title` "벤치마크 분양가 → 실거래") | Market · "근처 새 아파트는 입주 뒤 얼마에 거래되나요?" "(공식 이름: 벤치마크 분양가 → 실거래)" | 공식 이름은 괄호로 유지 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C03 normal · pages/market/market.test(C03 제목) |
 | 18 | C03 라벨 배지(분양가·실거래 Fact 라벨 모음, `ChartFrame` LabelBadge) | Market · C03 머리 "확인됨" · "추정 (한 해 평균 변화 · 대신 채운 줄)" | — | 있음 | ChartGallery.test › 정상 상태 카드는 라벨 배지 · e2e charts-gallery › C03 normal |
 | 19 | C03 표본 배지 (`sampleBadges` · `badge.sampleEstimated` "표본 {n}, 추정" / `badge.sampleEstimatedArea` "{area} 표본 {n}, 추정", 표본 < 3) | Market · C03 "생활권마다 비교한 단지 수 (표본)" "영종구 2곳뿐 추정" + "3곳보다 적으면 '추정'으로 표시해요" | 표본 n, 추정 → n곳뿐 추정 | 있음 | charts.contract › C03 표본 < 3 → "표본 n, 추정" 배지(생활권별) · ChartGallery.test › 특수 상태 배지(표본) |
@@ -59,10 +59,10 @@
 | 44 | 표 캡션 (`table.caption` "{title} 데이터", sr-only) | Market · 펼친 모습 C03 표 caption "121줄 중 5줄 · 84㎡ 기준 · 단위 원" | 보이는 캡션으로 | 있음 | charts.r11 › ChartFrame 표로 보기(캡션 "{제목} 데이터") |
 | 45 | 표 Fact 셀 → 라벨·출처 창 (`FactCell`, 빈 칸 `EmptyState inline`) | Market · 표 셀 "추정" 배지 + 맨 아래 "밑줄 점선 숫자를 누르면 출처가 열려요" | — | 있음 | ChartGallery.test › 표로 보기 → Fact 셀 클릭이 출처 패널로 · e2e charts-gallery › 표로 보기: … Fact 셀 → 출처 패널 |
 | 46 | 표가 비었을 때 (`DataTableToggle` · `empty.noData` "데이터 없음") | — | — | 있음(고침 MK-10 — 펼친 모습 "표로 보기 · 줄이 하나도 없을 때" "데이터 없음") | charts.r11 › ChartFrame 표로 보기(데이터 없음 한 줄) |
-| 47 | 벤치마크 표본 목록 ul aria-label (`page.G6.flags` "벤치마크 표본") | Market · C03 아래 "생활권마다 비교한 단지 수 (표본)" | 벤치마크 표본 → 생활권마다 비교한 단지 수 (표본) | 있음 |
-| 48 | 표본 배지 (`page.G6.flag` "{name}: 표본 {n}", 표본 < 3 이면 흐리게) | Market · 표본 목록 "연수구 10곳" · "영종구 2곳뿐 추정" | 표본 n → n곳 | 있음 |
-| 49 | 최근 분양 사례 없음 (`page.G6.noRecentSale` "최근 분양 사례 없음") | Market · 표본 목록 "· 최근 분양 사례 없음" | — | 있음 |
-| 50 | 표본 줄 대체 배지 (`badge.substituteRegion`, data-testid flag-substituted) | Market · 표본 목록 "제물포구 0곳 지역 전체로 대신 채움" | 대체(지역 전체) → 지역 전체로 대신 채움 | 있음 |
+| 47 | 벤치마크 표본 목록 ul aria-label (`page.G6.flags` "벤치마크 표본") | Market · C03 아래 "생활권마다 비교한 단지 수 (표본)" | 벤치마크 표본 → 생활권마다 비교한 단지 수 (표본) | 있음 | market/market.test › substituted 플래그 → "대체(지역 전체)" 배지, 표본 n … · market/r11market.test › 질문형 구역 제목(h2)과 차트 공식 이름 |
+| 48 | 표본 배지 (`page.G6.flag` "{name}: 표본 {n}", 표본 < 3 이면 흐리게) | Market · 표본 목록 "연수구 10곳" · "영종구 2곳뿐 추정" | 표본 n → n곳 | 있음 | market/market.test › substituted 플래그 → "대체(지역 전체)" 배지, 표본 n(자기 생활권만) < 3 → "표본 n, 추정" |
+| 49 | 최근 분양 사례 없음 (`page.G6.noRecentSale` "최근 분양 사례 없음") | Market · 표본 목록 "· 최근 분양 사례 없음" | — | 있음 | acceptance.test › G6 /market: 벤치마크·입주 물량·미분양·호재 + 규제 카드(no_recent_sale_case 예시) |
+| 50 | 표본 줄 대체 배지 (`badge.substituteRegion`, data-testid flag-substituted) | Market · 표본 목록 "제물포구 0곳 지역 전체로 대신 채움" | 대체(지역 전체) → 지역 전체로 대신 채움 | 있음 | market/market.test › substituted 플래그 → "대체(지역 전체)" 배지 … |
 
 ## 입주 물량 (C04)
 
@@ -112,15 +112,15 @@
 
 ## 규제 요약 (RegulationCard)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 87 | 규제 Section (`page.G6.regulation` "규제 요약") | Market · "어떤 규제가 걸려 있나요?" "(공식 이름: 규제 요약)" | — | 있음 |
-| 88 | 규제 없음 (`EmptyState` `page.common.none` "없음") | Market · 펼친 모습 "규제·실거래 표는 '없음'" | — | 있음 |
-| 89 | 항목 제목 dt (`item.title`) | Market · 규제 표 열 머리 "규제지역" · "분양가 상한제" | 항목 목록 → 생활권별 표(열) | 있음 |
-| 90 | 항목 값 FactCell(라벨·출처·asof) | Market · 규제 표 칸 "비규제/적용/미적용" + "확인됨" | — | 있음 |
-| 91 | 적용 범위 (`page.G6.regulationScope` "범위: {scope}") | Market · 규제 표 행 머리 "생활권 (범위)" | 범위: → 행 머리 | 있음 |
-| 92 | 항목 메모 (`item.note`) | Market · 규제 표 열 "근거 단지" (메모 = 근거 단지로 가정) | 메모 → 근거 단지 | 있음 |
-| 93 | 그 밖의 규제 항목 key: 전매(resale)·거주의무(residency)·대출(loan)·세제(tax)·토지거래허가(land_permit)·기타(other) | — | — | 있음(고침 MK-8 — "그 밖의 규제 항목" 전매제한·거주의무·대출·세제·토지거래허가·기타 [ ] 자리 줄) |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 87 | 규제 Section (`page.G6.regulation` "규제 요약") | Market · "어떤 규제가 걸려 있나요?" "(공식 이름: 규제 요약)" | — | 있음 | market/r11market.test › 규제 구역: 계약 항목 8종을 모두 보이고, 없는 종류는 "자료 없어요" · market/market.test › 규제 요약 카드와 생활권별 실거래 시세 표 |
+| 88 | 규제 없음 (`EmptyState` `page.common.none` "없음") | Market · 펼친 모습 "규제·실거래 표는 '없음'" | — | 있음 | market/r11market.test › 규제 구역: 계약 항목 8종을 모두 보이고, 없는 종류는 "자료 없어요" |
+| 89 | 항목 제목 dt (`item.title`) | Market · 규제 표 열 머리 "규제지역" · "분양가 상한제" | 항목 목록 → 생활권별 표(열) | 있음 | market/r11market.test › 규제 구역: 계약 항목 8종 … |
+| 90 | 항목 값 FactCell(라벨·출처·asof) | Market · 규제 표 칸 "비규제/적용/미적용" + "확인됨" | — | 있음 | market/r11market.test › 규제 구역: 계약 항목 8종 … (FactCell) |
+| 91 | 적용 범위 (`page.G6.regulationScope` "범위: {scope}") | Market · 규제 표 행 머리 "생활권 (범위)" | 범위: → 행 머리 | 있음 | acceptance.test › G6 /market: … 규제 카드(범위: 계약 예시) |
+| 92 | 항목 메모 (`item.note`) | Market · 규제 표 열 "근거 단지" (메모 = 근거 단지로 가정) | 메모 → 근거 단지 | 있음 | market/r11market.test › 규제 구역: 계약 항목 8종 …(메모) |
+| 93 | 그 밖의 규제 항목 key: 전매(resale)·거주의무(residency)·대출(loan)·세제(tax)·토지거래허가(land_permit)·기타(other) | — | — | 있음(고침 MK-8 — "그 밖의 규제 항목" 전매제한·거주의무·대출·세제·토지거래허가·기타 [ ] 자리 줄) | market/r11market.test › 규제 구역: 계약 항목 8종을 모두 보이고 … · market/r11market.test › 규제 종류는 계약 enum 8종 그대로 |
 
 ## 개발 소식 단계 (C09)
 
@@ -151,124 +151,124 @@
 
 ## 생활권별 실거래 시세 (LivingAreaCompare)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 116 | Section·표 aria-label (`page.G6.prices` "생활권별 실거래 시세") | Market · "생활권마다 실거래 값은 얼마인가요?" "(공식 이름: 생활권별 실거래 시세)" | — | 있음 |
-| 117 | 시세 없음 (`page.common.none`) | Market · 펼친 모습 "규제·실거래 표는 '없음'" | — | 있음 |
-| 118 | 표 열: 생활권 (`page.G6.priceCol.name`, 행 머리) | Market · 시세 표 "생활권" | — | 있음 |
-| 119 | 표 열: 하단 (`priceCol.low`, FactCell 억) | Market · 시세 표 "가장 낮은 값 (하단)" | 하단 → 가장 낮은 값 (하단) | 있음 |
-| 120 | 표 열: 중앙값 (`priceCol.median`) | Market · 시세 표 "중간 값" | 중앙값 → 중간 값 | 있음 |
-| 121 | 표 열: 상단 (`priceCol.high`) | Market · 시세 표 "가장 높은 값 (상단)" | — | 있음 |
-| 122 | 표 열: 거래 수 (`priceCol.n`, `n_trades` Fact count) | Market · 시세 표 "거래 수" | — | 있음 |
-| 123 | 표 열: 기간 (`priceCol.window`, `trade_window`) | Market · 시세 표 caption "기준일 전 6개월 (2026-04~2026-10)" + "거래 기간·기준이 생활권마다 다르면 표에 '기간'·'기준' 열이 따로 생겨요" | 열 → 같으면 캡션, 다르면 열 | 있음(고침 MK-9 — 펼친 모습 "기간이나 기준이 다를 때" 표의 "기간" 열) |
-| 124 | 표 열: 기준 (`priceCol.basis`, `basis`) | Market · 시세 표 caption "분양권·해제 거래 빼고" + 위 안내 | 열 → 같으면 캡션, 다르면 열 | 있음(고침 MK-9 — 같은 표의 "기준" 열) |
-| 125 | 기간 없음 (`empty.unknown` "확인 불가") | — | — | 있음(고침 MK-9 — 같은 표 둘째 줄 기간 "확인 불가") |
-| 126 | 칸 FactCell 라벨·출처 | Market · 시세 표 아래 "모두 확인됨 · 국토교통부 실거래 · 확인 2026-10-13" | — | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 116 | Section·표 aria-label (`page.G6.prices` "생활권별 실거래 시세") | Market · "생활권마다 실거래 값은 얼마인가요?" "(공식 이름: 생활권별 실거래 시세)" | — | 있음 | market/market.test › 규제 요약 카드와 생활권별 실거래 시세 표 · r3c.test › 생활권 시세 표의 건수 열은 라벨 배지를 가진다 |
+| 117 | 시세 없음 (`page.common.none`) | Market · 펼친 모습 "규제·실거래 표는 '없음'" | — | 있음 | market/r11market.test › 생활권 실거래: 거래 기간이 모두 같으면 위 한 줄, 다르면 "기간" 열(빈 표는 공용 EmptyState) |
+| 118 | 표 열: 생활권 (`page.G6.priceCol.name`, 행 머리) | Market · 시세 표 "생활권" | — | 있음 | market/market.test › 규제 요약 카드와 생활권별 실거래 시세 표 |
+| 119 | 표 열: 하단 (`priceCol.low`, FactCell 억) | Market · 시세 표 "가장 낮은 값 (하단)" | 하단 → 가장 낮은 값 (하단) | 있음 | r3c.test › 생활권 시세 표의 건수 열은 라벨 배지를 가진다 (같은 표 FactCell) |
+| 120 | 표 열: 중앙값 (`priceCol.median`) | Market · 시세 표 "중간 값" | 중앙값 → 중간 값 | 있음 | r3c.test › 생활권 시세 표의 건수 열은 라벨 배지를 가진다 (같은 표 FactCell) |
+| 121 | 표 열: 상단 (`priceCol.high`) | Market · 시세 표 "가장 높은 값 (상단)" | — | 있음 | r3c.test › 생활권 시세 표의 건수 열은 라벨 배지를 가진다 (같은 표 FactCell) |
+| 122 | 표 열: 거래 수 (`priceCol.n`, `n_trades` Fact count) | Market · 시세 표 "거래 수" | — | 있음 | r3c.test › 생활권 시세 표의 건수 열은 라벨 배지를 가진다 |
+| 123 | 표 열: 기간 (`priceCol.window`, `trade_window`) | Market · 시세 표 caption "기준일 전 6개월 (2026-04~2026-10)" + "거래 기간·기준이 생활권마다 다르면 표에 '기간'·'기준' 열이 따로 생겨요" | 열 → 같으면 캡션, 다르면 열 | 있음(고침 MK-9 — 펼친 모습 "기간이나 기준이 다를 때" 표의 "기간" 열) | market/r11market.test › 생활권 실거래: 거래 기간이 모두 같으면 위 한 줄, 다르면 "기간" 열 |
+| 124 | 표 열: 기준 (`priceCol.basis`, `basis`) | Market · 시세 표 caption "분양권·해제 거래 빼고" + 위 안내 | 열 → 같으면 캡션, 다르면 열 | 있음(고침 MK-9 — 같은 표의 "기준" 열) | market/r11market.test › 생활권 실거래: … (기준 열은 늘 보인다) |
+| 125 | 기간 없음 (`empty.unknown` "확인 불가") | — | — | 있음(고침 MK-9 — 같은 표 둘째 줄 기간 "확인 불가") | market/r11market.test › 생활권 실거래: … 다르면 "기간" 열(빈 기간 = 확인 불가) |
+| 126 | 칸 FactCell 라벨·출처 | Market · 시세 표 아래 "모두 확인됨 · 국토교통부 실거래 · 확인 2026-10-13" | — | 있음 | r3c.test › 생활권 시세 표의 건수 열은 라벨 배지를 가진다 (FactCell 공통) |
 
 ## 개발 소식 위치 확인 (CatalystLocationPanel)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 127 | Section·목록 aria-label (`page.G6.loc.title` "호재 위치 확인") | Market · "편집하는 사람용 · 개발 소식이 어느 동네에 해당하나요?" "(공식 이름: 호재 위치 확인)" | — | 있음 |
-| 128 | 안내 (`page.G6.loc.intro` "호재 위치를 사람이 확인해야 단지와 연결됩니다…") | Market · 같은 섹션 안내 문단 | 가중치 1 → 계산 계수 1 | 있음 |
-| 129 | 호재 없음 (`page.G6.loc.none` "호재가 없습니다") | Market · 펼친 모습 "개발 소식이 하나도 없으면: '개발 소식이 없어요'" | — | 있음 |
-| 130 | 줄: 호재 이름 | Market · 위치 확인 목록 이름 5줄 | — | 있음 |
-| 131 | 줄: 단계 배지 (`chart.C09.stage.*`, '호재 아님'은 흐리게 `chart.C09.stage.호재 아님` "호재 아님(제외)") | Market · 목록 "확인 안 됨" + 펼친 모습 "[호재 아님으로 빠진 소식] 호재 아님 (제외)" | — | 있음 |
-| 132 | 줄: 위치 상태 배지 (`page.G6.loc.confirmed` "위치 확인됨" / `unconfirmed` "위치 미확정") | Market · 목록 "위치 확인 전" + 펼친 모습 "위치 확인됨" | 위치 미확정 → 위치 확인 전 | 있음 |
-| 133 | 위치 확인 버튼 (`page.G6.loc.open` "위치 확인", aria-expanded) | Market · 목록 "위치 확인" / 열린 줄 "위치 확인 닫기" | 열렸을 때 "위치 확인 닫기" | 있음 |
-| 134 | 한 번에 한 줄만 열림 (`openId`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 135 | 위치 확인 취소 버튼 (`page.G6.loc.unconfirm` "위치 확인 취소", 확인된 줄만) | Market · 펼친 모습 "[위치를 확인한 소식] … [위치 확인] [위치 확인 취소]" + "위치를 확인한 소식에는 '위치 확인 취소' 버튼이 함께 나오고" | — | 있음 |
-| 136 | 취소 버튼 저장 중 꺼짐 (`update.isPending`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 137 | '호재 아님' 줄은 버튼 없음 | Market · 펼친 모습 "연결 대상이 아니라 버튼 없음" | — | 있음 |
-| 138 | 읽기 전용: 버튼 꺼짐 + title (`auth.readOnlyHint`) | Market · 펼친 모습 "[읽기 전용으로 볼 때] [위치 확인](꺼짐, title) 읽기 전용 토큰으로는 저장·실행할 수 없어요" | — | 있음 |
-| 139 | 위치 폼 aria-label (`page.G6.loc.formFor` "{name} 위치 확인") | — | — | 있음(재확인 — 열린 폼에 aria-label "… 위치 확인"이 이미 있음, 고침 아님) |
-| 140 | 위도 입력칸 (`page.G6.loc.lat` "위도(선택)", inputMode decimal) | Market · 열린 폼 "위도 (선택)" placeholder "예: 37.123456" | — | 있음 |
-| 141 | 경도 입력칸 (`page.G6.loc.lon` "경도(선택)") | Market · 열린 폼 "경도 (선택)" | — | 있음 |
-| 142 | 예상 시기 month 입력 (`page.G6.loc.expectedYm` "예상 시기(선택, 사람 확인)") | Market · 열린 폼 "예상 시기 (선택 · 사람 확인)" type=month | — | 있음 |
-| 143 | 영향 생활권 fieldset·체크박스 (`page.G6.loc.areas` "영향 생활권") | Market · 열린 폼 fieldset "영향 받는 생활권" 11개 | 영향 생활권 → 영향 받는 생활권 | 있음 |
-| 144 | 영향 단지 다중 select size 4 (`page.G6.loc.complexes` "영향 단지(여러 개 선택)") | Market · 열린 폼 "영향 받는 단지 (여러 개 고르기)" + "Ctrl(맥은 ⌘)을 누른 채 여러 개 고르기" | — | 있음 |
-| 145 | 영향 단지 초깃값 = 이미 연결된 단지 (`linked_complex_ids`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 146 | 제출 버튼 (`page.G6.loc.submit` "위치 확인 → 단지 연결") | Market · 열린 폼 "위치 확인하고 단지와 연결" | — | 있음 |
-| 147 | 저장 중 제출 꺼짐 | Market · 펼친 모습 "위치 확인 폼 · 오류" "저장 중에는 버튼이 꺼져요." | — | 문구로만 |
-| 148 | 좌표 오류 (`page.G6.loc.badCoord` "위도는 -90~90, 경도는 -180~180 사이 숫자여야 합니다") | Market · 펼친 모습 "위도는 -90~90, 경도는 -180~180 사이 숫자여야 해요" | — | 있음 |
-| 149 | 좌표 한쪽만 (`page.G6.loc.bothCoord` "위도와 경도는 함께 입력하세요") | Market · 펼친 모습 "위도와 경도는 함께 넣어 주세요" | — | 있음 |
-| 150 | 예상 시기 형식 (`page.G6.loc.badYm`) | Market · 펼친 모습 "예상 시기는 YYYY-MM 모양으로 넣어 주세요" | — | 있음 |
-| 151 | 영향 범위 필수 (`page.G6.loc.needTarget` "영향 생활권·단지를 하나 이상 고르세요(좌표만으로는 연결하지 않습니다)") | Market · 펼친 모습 "영향 받는 생활권이나 단지를 하나 이상 골라 주세요 (좌표만으로는 연결하지 않아요)" | — | 있음 |
-| 152 | 서버 오류 (`page.common.loadError`) | Market · 펼친 모습 "불러오지 못했어요: [서버 오류 내용]" | — | 있음 |
-| 153 | 저장 뒤 폼 닫힘 (`setOpenId(null)`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 154 | 연결 결과 표 caption (`page.G6.loc.links` "{name} 단지 연결") | Market · 펼친 모습 "위치 확인 저장 뒤 · 단지 연결 결과" caption "[소식 이름] 단지 연결" | — | 있음 |
-| 155 | 결과 표 열: 단지 (`page.G6.loc.col.complex`) + 목록에 없으면 (`page.G6.loc.unknownComplex` "(목록에 없는 단지)") | Market · 펼친 모습 결과 표 "단지" · "(목록에 없는 단지)" | — | 있음 |
-| 156 | 결과 표 열: 거리 FactCell m (`page.G6.loc.col.distance`; 좌표 없으면 '확인 불가(<서버 근거>)') | Market · 펼친 모습 결과 표 "거리" "[n]m 추정" · "확인 불가(같은 생활권(계양구, 단지 좌표 없음))" | — | 있음 |
-| 157 | 거리 사유가 서버에 없을 때 폴백 (`page.G6.loc.noCoord` "단지 좌표 없음 — 같은 생활권 가중치 1") | — | — | 있음(고침 MK-16 — 결과 표 마지막 줄 "확인 불가(단지 좌표 없음 — 같은 생활권 가중치 1)") |
-| 158 | 결과 표 열: 가중치 (`page.G6.loc.col.weight`, 소수 2자리, null → `page.common.none` "없음") | Market · 펼친 모습 결과 표 "계산 계수 (가중치)" "[0.00]" · "1.00" · "없음" | 가중치 → 계산 계수 (가중치) | 있음 |
-| 159 | 결과 표 열: 연결 근거 (`page.G6.loc.col.reason`) — 생활권 id를 이름으로 바꿈 (`livingAreaReason`) | Market · 펼친 모습 결과 표 "연결 근거" "같은 생활권(계양구, 단지 좌표 없음)" | — | 있음 |
-| 160 | 연결 0곳 (`page.G6.loc.noLinks` "위치를 확인했지만 연결된 단지가 없습니다") | Market · 펼친 모습 "연결 단지가 0곳이면: '위치를 확인했지만 연결된 단지가 없어요'" | — | 있음 |
-| 161 | 취소 뒤 (`page.G6.loc.cleared` "위치 확인을 취소했습니다 — 단지 연결을 지웠습니다") | Market · 펼친 모습 "취소하면: '위치 확인을 취소했어요 — 단지 연결을 지웠어요'" | — | 있음 |
-| 162 | 발행 잡 안내 (`page.G6.loc.jobHint` "위치·좌표·예정월·연결 중 바뀐 값이 있어 새 리비전 발행 잡이 등록됐습니다") | Market · 펼친 모습 "바뀐 값이 있어 새 수정본 발행 작업을 등록했어요" + 폼 "저장하면 새 수정본을 만들어 발행해요" | — | 있음 |
-| 163 | 바뀐 것 없음 (`page.G6.loc.unchanged` "발행할 변경이 없습니다…") | Market · 펼친 모습 "바뀐 것이 없으면: '발행할 변경이 없어요 — 지금 화면 그대로예요'" | 좌표 6자리 비교 설명 생략 | 있음 |
-| 164 | 결과·진행이 리비전 전환으로 패널이 다시 그려져도 남음 (MarketPage가 보관) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 165 | 다른 지역으로 바꾸면 결과·진행·열린 폼 지움 (8차 m18) | Market · 펼친 모습 "다른 지역으로 바꾸면 이 결과와 진행 상태는 사라져요" | — | 문구로만 |
-| 166 | API `GET /snapshots/{sid}/complexes?page=1&size=1000&sort=name` (단지 이름·선택지) | Market · 열린 폼 "영향 받는 단지" 선택지(호출 주체) | — | 있음 |
-| 167 | API `PATCH /catalysts/{id}` {location_confirmed, lat?, lon?, expected_ym?, living_area_ids, complex_ids} (`useUpdateCatalystLocation`) | Market · "위치 확인하고 단지와 연결" · "위치 확인 취소"(호출 주체) | — | 있음 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 127 | Section·목록 aria-label (`page.G6.loc.title` "호재 위치 확인") | Market · "편집하는 사람용 · 개발 소식이 어느 동네에 해당하나요?" "(공식 이름: 호재 위치 확인)" | — | 있음 | market/catalystLocation.test › (panel = region "호재 위치 확인") · market/r11market.test › 질문형 구역 제목(h2)과 차트 공식 이름 |
+| 128 | 안내 (`page.G6.loc.intro` "호재 위치를 사람이 확인해야 단지와 연결됩니다…") | Market · 같은 섹션 안내 문단 | 가중치 1 → 계산 계수 1 | 있음 | market/r11market.test › 질문형 구역 제목(h2)과 차트 공식 이름(안내 hint) |
+| 129 | 호재 없음 (`page.G6.loc.none` "호재가 없습니다") | Market · 펼친 모습 "개발 소식이 하나도 없으면: '개발 소식이 없어요'" | — | 있음 | r3g.test › G6: 호재 위치 저장 뒤 리비전이 바뀌어 …(같은 패널, 0건 문구 loc.none — 코드) |
+| 130 | 줄: 호재 이름 | Market · 위치 확인 목록 이름 5줄 | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 → 응답 links 표 … |
+| 131 | 줄: 단계 배지 (`chart.C09.stage.*`, '호재 아님'은 흐리게 `chart.C09.stage.호재 아님` "호재 아님(제외)") | Market · 목록 "확인 안 됨" + 펼친 모습 "[호재 아님으로 빠진 소식] 호재 아님 (제외)" | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 …(단계 배지) |
+| 132 | 줄: 위치 상태 배지 (`page.G6.loc.confirmed` "위치 확인됨" / `unconfirmed` "위치 미확정") | Market · 목록 "위치 확인 전" + 펼친 모습 "위치 확인됨" | 위치 미확정 → 위치 확인 전 | 있음 | market/catalystLocation.test › 연결이 바뀌면 202 + job_id … → "위치 확인됨" |
+| 133 | 위치 확인 버튼 (`page.G6.loc.open` "위치 확인", aria-expanded) | Market · 목록 "위치 확인" / 열린 줄 "위치 확인 닫기" | 열렸을 때 "위치 확인 닫기" | 있음 | market/r11market.test › 위치 확인 폼은 한 줄만 열리고, 연결된 단지가 처음 선택돼 있다(aria-expanded · 닫기 글자) |
+| 134 | 한 번에 한 줄만 열림 (`openId`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/r11market.test › 위치 확인 폼은 한 줄만 열리고 … |
+| 135 | 위치 확인 취소 버튼 (`page.G6.loc.unconfirm` "위치 확인 취소", 확인된 줄만) | Market · 펼친 모습 "[위치를 확인한 소식] … [위치 확인] [위치 확인 취소]" + "위치를 확인한 소식에는 '위치 확인 취소' 버튼이 함께 나오고" | — | 있음 | market/catalystLocation.test › 위치 확인된 호재 → "위치 확인 취소" → PATCH location_confirmed=false → 링크 지움 안내 |
+| 136 | 취소 버튼 저장 중 꺼짐 (`update.isPending`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/catalystLocation.test › 위치 확인된 호재 → "위치 확인 취소" …(update.isPending 동안 disabled — 코드) |
+| 137 | '호재 아님' 줄은 버튼 없음 | Market · 펼친 모습 "연결 대상이 아니라 버튼 없음" | — | 있음 | catalystLocation.test › D11-5 호재 위치 확인(호재 아님 줄은 버튼 없음 — 계약 예시에 없는 상태, 코드 notCatalyst) |
+| 138 | 읽기 전용: 버튼 꺼짐 + title (`auth.readOnlyHint`) | Market · 펼친 모습 "[읽기 전용으로 볼 때] [위치 확인](꺼짐, title) 읽기 전용 토큰으로는 저장·실행할 수 없어요" | — | 있음 | market/market.test › 읽기 전용 토큰이면 입력·저장이 꺼진다(같은 useCanWrite·title 규칙) |
+| 139 | 위치 폼 aria-label (`page.G6.loc.formFor` "{name} 위치 확인") | — | — | 있음(재확인 — 열린 폼에 aria-label "… 위치 확인"이 이미 있음, 고침 아님) | market/catalystLocation.test › openForm(form name "{name} 위치 확인") |
+| 140 | 위도 입력칸 (`page.G6.loc.lat` "위도(선택)", inputMode decimal) | Market · 열린 폼 "위도 (선택)" placeholder "예: 37.123456" | — | 있음 | market/catalystLocation.test › 대상 없이 저장·위도만·범위 밖·좌표만 → 오류, PATCH 없음 |
+| 141 | 경도 입력칸 (`page.G6.loc.lon` "경도(선택)") | Market · 열린 폼 "경도 (선택)" | — | 있음 | market/catalystLocation.test › 대상 없이 저장·위도만·범위 밖·좌표만 → 오류, PATCH 없음 |
+| 142 | 예상 시기 month 입력 (`page.G6.loc.expectedYm` "예상 시기(선택, 사람 확인)") | Market · 열린 폼 "예상 시기 (선택 · 사람 확인)" type=month | — | 있음 | market/catalystLocation.test › 좌표·예상 시기 검사: 범위·형식, 빈 값 허용 |
+| 143 | 영향 생활권 fieldset·체크박스 (`page.G6.loc.areas` "영향 생활권") | Market · 열린 폼 fieldset "영향 받는 생활권" 11개 | 영향 생활권 → 영향 받는 생활권 | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 …(living_area_ids) |
+| 144 | 영향 단지 다중 select size 4 (`page.G6.loc.complexes` "영향 단지(여러 개 선택)") | Market · 열린 폼 "영향 받는 단지 (여러 개 고르기)" + "Ctrl(맥은 ⌘)을 누른 채 여러 개 고르기" | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 …(pickFirstComplex 라벨) |
+| 145 | 영향 단지 초깃값 = 이미 연결된 단지 (`linked_complex_ids`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/r11market.test › 위치 확인 폼은 한 줄만 열리고, 연결된 단지가 처음 선택돼 있다 |
+| 146 | 제출 버튼 (`page.G6.loc.submit` "위치 확인 → 단지 연결") | Market · 열린 폼 "위치 확인하고 단지와 연결" | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 … |
+| 147 | 저장 중 제출 꺼짐 | Market · 펼친 모습 "위치 확인 폼 · 오류" "저장 중에는 버튼이 꺼져요." | — | 문구로만 | market/catalystLocation.test › 단지 선택 → PATCH 202 …(pending 동안 disabled — 코드) |
+| 148 | 좌표 오류 (`page.G6.loc.badCoord` "위도는 -90~90, 경도는 -180~180 사이 숫자여야 합니다") | Market · 펼친 모습 "위도는 -90~90, 경도는 -180~180 사이 숫자여야 해요" | — | 있음 | market/catalystLocation.test › 대상 없이 저장·위도만·범위 밖·좌표만 → 오류 |
+| 149 | 좌표 한쪽만 (`page.G6.loc.bothCoord` "위도와 경도는 함께 입력하세요") | Market · 펼친 모습 "위도와 경도는 함께 넣어 주세요" | — | 있음 | market/catalystLocation.test › 대상 없이 저장·위도만·범위 밖·좌표만 → 오류 |
+| 150 | 예상 시기 형식 (`page.G6.loc.badYm`) | Market · 펼친 모습 "예상 시기는 YYYY-MM 모양으로 넣어 주세요" | — | 있음 | market/catalystLocation.test › 좌표·예상 시기 검사: 범위·형식, 빈 값 허용 |
+| 151 | 영향 범위 필수 (`page.G6.loc.needTarget` "영향 생활권·단지를 하나 이상 고르세요(좌표만으로는 연결하지 않습니다)") | Market · 펼친 모습 "영향 받는 생활권이나 단지를 하나 이상 골라 주세요 (좌표만으로는 연결하지 않아요)" | — | 있음 | market/catalystLocation.test › 대상 없이 저장 … → 오류, PATCH 없음 |
+| 152 | 서버 오류 (`page.common.loadError`) | Market · 펼친 모습 "불러오지 못했어요: [서버 오류 내용]" | — | 있음 | market/catalystLocation.test › 서버 422(영향 범위·지역 밖 단지) → 서버 detail 을 폼에 보인다 |
+| 153 | 저장 뒤 폼 닫힘 (`setOpenId(null)`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/catalystLocation.test › 단지 선택 → PATCH 202 → 응답 links 표 …(폼 닫힘) |
+| 154 | 연결 결과 표 caption (`page.G6.loc.links` "{name} 단지 연결") | Market · 펼친 모습 "위치 확인 저장 뒤 · 단지 연결 결과" caption "[소식 이름] 단지 연결" | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 → 응답 links 표 … |
+| 155 | 결과 표 열: 단지 (`page.G6.loc.col.complex`) + 목록에 없으면 (`page.G6.loc.unknownComplex` "(목록에 없는 단지)") | Market · 펼친 모습 결과 표 "단지" · "(목록에 없는 단지)" | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 → 응답 links 표 … |
+| 156 | 결과 표 열: 거리 FactCell m (`page.G6.loc.col.distance`; 좌표 없으면 '확인 불가(<서버 근거>)') | Market · 펼친 모습 결과 표 "거리" "[n]m 추정" · "확인 불가(같은 생활권(계양구, 단지 좌표 없음))" | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 → 응답 links 표(거리 확인 불가 + 서버 reason …) |
+| 157 | 거리 사유가 서버에 없을 때 폴백 (`page.G6.loc.noCoord` "단지 좌표 없음 — 같은 생활권 가중치 1") | — | — | 있음(고침 MK-16 — 결과 표 마지막 줄 "확인 불가(단지 좌표 없음 — 같은 생활권 가중치 1)") | market/catalystLocation.test › 단지 선택 → PATCH 202 …(distanceFact 폴백) |
+| 158 | 결과 표 열: 가중치 (`page.G6.loc.col.weight`, 소수 2자리, null → `page.common.none` "없음") | Market · 펼친 모습 결과 표 "계산 계수 (가중치)" "[0.00]" · "1.00" · "없음" | 가중치 → 계산 계수 (가중치) | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 → 응답 links 표(… 가중치 …) |
+| 159 | 결과 표 열: 연결 근거 (`page.G6.loc.col.reason`) — 생활권 id를 이름으로 바꿈 (`livingAreaReason`) | Market · 펼친 모습 결과 표 "연결 근거" "같은 생활권(계양구, 단지 좌표 없음)" | — | 있음 | market/catalystLocation.test › livingAreaReason: 생활권 id 토큰만 이름으로 |
+| 160 | 연결 0곳 (`page.G6.loc.noLinks` "위치를 확인했지만 연결된 단지가 없습니다") | Market · 펼친 모습 "연결 단지가 0곳이면: '위치를 확인했지만 연결된 단지가 없어요'" | — | 있음 | market/catalystLocation.test › 200 + job_id null(바뀐 것 없음) … (연결 0곳 문구는 같은 LinksBody) |
+| 161 | 취소 뒤 (`page.G6.loc.cleared` "위치 확인을 취소했습니다 — 단지 연결을 지웠습니다") | Market · 펼친 모습 "취소하면: '위치 확인을 취소했어요 — 단지 연결을 지웠어요'" | — | 있음 | market/catalystLocation.test › 위치 확인된 호재 → "위치 확인 취소" → … 링크 지움 안내 |
+| 162 | 발행 잡 안내 (`page.G6.loc.jobHint` "위치·좌표·예정월·연결 중 바뀐 값이 있어 새 리비전 발행 잡이 등록됐습니다") | Market · 펼친 모습 "바뀐 값이 있어 새 수정본 발행 작업을 등록했어요" + 폼 "저장하면 새 수정본을 만들어 발행해요" | — | 있음 | market/catalystLocation.test › 연결이 바뀌면 202 + job_id(snapshot.publish) … |
+| 163 | 바뀐 것 없음 (`page.G6.loc.unchanged` "발행할 변경이 없습니다…") | Market · 펼친 모습 "바뀐 것이 없으면: '발행할 변경이 없어요 — 지금 화면 그대로예요'" | 좌표 6자리 비교 설명 생략 | 있음 | market/catalystLocation.test › 200 + job_id null(바뀐 것 없음, 계약 .13 F3) → "바뀐 것 없음" 안내 · r3i2.test › 200 안내 문구는 '발행할 리비전 없음'도 말한다 |
+| 164 | 결과·진행이 리비전 전환으로 패널이 다시 그려져도 남음 (MarketPage가 보관) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | r3g.test › G6: 호재 위치 저장 뒤 리비전이 바뀌어 시장을 새로 받아도 저장 결과·발행 잡 진행은 남는다 |
+| 165 | 다른 지역으로 바꾸면 결과·진행·열린 폼 지움 (8차 m18) | Market · 펼친 모습 "다른 지역으로 바꾸면 이 결과와 진행 상태는 사라져요" | — | 문구로만 | r3h.test › 위치 저장 결과(links·잡) · 호재 URL 등록 결과가 다른 지역에 남지 않는다 |
+| 166 | API `GET /snapshots/{sid}/complexes?page=1&size=1000&sort=name` (단지 이름·선택지) | Market · 열린 폼 "영향 받는 단지" 선택지(호출 주체) | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 …(complexes 선택지) |
+| 167 | API `PATCH /catalysts/{id}` {location_confirmed, lat?, lon?, expected_ym?, living_area_ids, complex_ids} (`useUpdateCatalystLocation`) | Market · "위치 확인하고 단지와 연결" · "위치 확인 취소"(호출 주체) | — | 있음 | market/catalystLocation.test › 단지 선택 → PATCH 202 … |
 
 ## 새 개발 소식 주소 넣기 (CatalystUrlForm)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 168 | Section·폼 aria-label (`page.G6.catalyst.title` "호재 URL 입력") | Market · "편집하는 사람용 · 새 개발 소식을 알고 있나요?" "(공식 이름: 호재 URL 입력)" | — | 있음 |
-| 169 | 안내 (`page.G6.catalyst.intro` "공개 기사·공고 주소를 넣으면…개인정보는 넣지 마세요.") | Market · 같은 섹션 안내 | 호재 후보 → 개발 소식 후보 | 있음 |
-| 170 | 주소 입력칸 type=url placeholder "https://" (`page.G6.catalyst.url` "주소(http:// 또는 https://)") | Market · "주소 (http:// 또는 https://)" | — | 있음 |
-| 171 | 제목 입력칸 maxLength 200 (`page.G6.catalyst.titleField` "제목(필수, 200자 이내)") | Market · "제목 (꼭 넣기 · 200자 이내)" | 필수 → 꼭 넣기 | 있음 |
-| 172 | 발췌 textarea maxLength 2000 (`page.G6.catalyst.excerpt` "발췌(선택, 2000자 이내)") | Market · "발췌 (선택 · 2,000자 이내)" | — | 있음 |
-| 173 | 저장 버튼 (`page.G6.catalyst.submit` "호재 후보 저장") | Market · "후보로 저장" | 호재 후보 저장 → 후보로 저장 | 있음 |
-| 174 | 읽기 전용: 입력칸·버튼 꺼짐 + title | Market · "읽기 전용으로 들어오면 입력칸과 버튼이 꺼져요." | — | 문구로만 |
-| 175 | 지역이 없으면(regionId null) 꺼짐 | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 176 | 저장 중 버튼 꺼짐 (`create.isPending`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 177 | 주소 오류 (`page.G6.catalyst.badUrl` "주소는 http:// 또는 https:// 로 시작하는 공개 페이지여야 합니다") | Market · 펼친 모습 "개발 소식 주소 넣기 · 오류와 저장 뒤" 같은 문구 | — | 있음 |
-| 178 | 제목 없음 (`page.G6.catalyst.titleRequired` "제목을 입력하세요") | Market · 펼친 모습 "제목을 넣어 주세요" | — | 있음 |
-| 179 | 서버 오류 (`page.common.loadError`) | Market · 펼친 모습 "불러오지 못했어요: [서버 오류 내용]" | — | 있음 |
-| 180 | 저장 완료 role=status (`page.G6.catalyst.saved` "호재 후보를 저장했습니다: {name}") | Market · 펼친 모습 "개발 소식 후보를 저장했어요: [제목]" | — | 있음 |
-| 181 | 분류 잡 → 발행까지 진행 PublishJobProgress (`job_id`) | Market · 펼친 모습 "작업 진행 [분류 작업] 대기" | — | 있음 |
-| 182 | 잡 없음 (`page.G6.catalyst.noJob` "이 지역에 스냅샷이 없어 분류 잡을 등록하지 않았습니다…") | Market · 펼친 모습 "이 지역에 기준일 자료가 없으면: '분류 작업을 등록하지 않았어요 — 다음 자동 수집 때 분류해요'" | — | 있음 |
-| 183 | 저장 뒤 입력칸 비움 | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 184 | 화면 로딩 중에는 폼을 그리지 않음 (`isLoading`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 185 | 지역이 바뀌면 폼·결과·진행 지움 (`key={regionId}`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 168 | Section·폼 aria-label (`page.G6.catalyst.title` "호재 URL 입력") | Market · "편집하는 사람용 · 새 개발 소식을 알고 있나요?" "(공식 이름: 호재 URL 입력)" | — | 있음 | market/market.test › http(s)가 아닌 주소 …(form name) · market/r11market.test › 질문형 구역 제목(h2)과 차트 공식 이름 |
+| 169 | 안내 (`page.G6.catalyst.intro` "공개 기사·공고 주소를 넣으면…개인정보는 넣지 마세요.") | Market · 같은 섹션 안내 | 호재 후보 → 개발 소식 후보 | 있음 | market/r11market.test › 질문형 구역 제목(h2)과 차트 공식 이름(안내 hint) |
+| 170 | 주소 입력칸 type=url placeholder "https://" (`page.G6.catalyst.url` "주소(http:// 또는 https://)") | Market · "주소 (http:// 또는 https://)" | — | 있음 | market/market.test › http(s)가 아닌 주소(javascript:·ftp:)는 막고 보내지 않는다 |
+| 171 | 제목 입력칸 maxLength 200 (`page.G6.catalyst.titleField` "제목(필수, 200자 이내)") | Market · "제목 (꼭 넣기 · 200자 이내)" | 필수 → 꼭 넣기 | 있음 | market/market.test › 제목은 필수, 제목 200자·발췌 2000자 제한 |
+| 172 | 발췌 textarea maxLength 2000 (`page.G6.catalyst.excerpt` "발췌(선택, 2000자 이내)") | Market · "발췌 (선택 · 2,000자 이내)" | — | 있음 | market/market.test › 제목은 필수, 제목 200자·발췌 2000자 제한 |
+| 173 | 저장 버튼 (`page.G6.catalyst.submit` "호재 후보 저장") | Market · "후보로 저장" | 호재 후보 저장 → 후보로 저장 | 있음 | market/market.test › 입력 → POST /catalysts {region_id,url,title,excerpt} → 성공 안내 + 분류 잡 진행 |
+| 174 | 읽기 전용: 입력칸·버튼 꺼짐 + title | Market · "읽기 전용으로 들어오면 입력칸과 버튼이 꺼져요." | — | 문구로만 | market/market.test › 읽기 전용 토큰이면 입력·저장이 꺼진다 |
+| 175 | 지역이 없으면(regionId null) 꺼짐 | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/market.test › 읽기 전용 토큰이면 입력·저장이 꺼진다(regionId null 도 같은 disabled — 코드) |
+| 176 | 저장 중 버튼 꺼짐 (`create.isPending`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/market.test › 입력 → POST /catalysts …(pending 동안 disabled — 코드) |
+| 177 | 주소 오류 (`page.G6.catalyst.badUrl` "주소는 http:// 또는 https:// 로 시작하는 공개 페이지여야 합니다") | Market · 펼친 모습 "개발 소식 주소 넣기 · 오류와 저장 뒤" 같은 문구 | — | 있음 | market/market.test › http(s)가 아닌 주소(javascript:·ftp:)는 막고 보내지 않는다 |
+| 178 | 제목 없음 (`page.G6.catalyst.titleRequired` "제목을 입력하세요") | Market · 펼친 모습 "제목을 넣어 주세요" | — | 있음 | market/market.test › 제목은 필수, 제목 200자·발췌 2000자 제한 |
+| 179 | 서버 오류 (`page.common.loadError`) | Market · 펼친 모습 "불러오지 못했어요: [서버 오류 내용]" | — | 있음 | r3g2.test › 호재 URL 저장 → job_id(rejudge) …(서버 오류 줄 = 공용 loadError) |
+| 180 | 저장 완료 role=status (`page.G6.catalyst.saved` "호재 후보를 저장했습니다: {name}") | Market · 펼친 모습 "개발 소식 후보를 저장했어요: [제목]" | — | 있음 | market/market.test › 입력 → POST /catalysts … → 성공 안내 + 분류 잡 진행 |
+| 181 | 분류 잡 → 발행까지 진행 PublishJobProgress (`job_id`) | Market · 펼친 모습 "작업 진행 [분류 작업] 대기" | — | 있음 | r3g2.test › 호재 URL 저장 → job_id(rejudge) 를 발행 대기 안내와 함께 감시 |
+| 182 | 잡 없음 (`page.G6.catalyst.noJob` "이 지역에 스냅샷이 없어 분류 잡을 등록하지 않았습니다…") | Market · 펼친 모습 "이 지역에 기준일 자료가 없으면: '분류 작업을 등록하지 않았어요 — 다음 자동 수집 때 분류해요'" | — | 있음 | market/market.test › job=null(스냅샷 없음) → 다음 파이프라인에서 분류한다는 안내 |
+| 183 | 저장 뒤 입력칸 비움 | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/r11market.test › 호재 URL 저장 뒤 입력 칸을 비운다 |
+| 184 | 화면 로딩 중에는 폼을 그리지 않음 (`isLoading`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | market/market.test › M6 G6 호재 URL 입력(폼은 isLoading 뒤에만 — form 을 findByRole 로 기다림) |
+| 185 | 지역이 바뀌면 폼·결과·진행 지움 (`key={regionId}`) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | r3h.test › 위치 저장 결과(links·잡) · 호재 URL 등록 결과가 다른 지역에 남지 않는다 |
 | 186 | API `POST /catalysts` {region_id, url, title(≤200), excerpt(≤2000)\|null} (`useCreateCatalyst`) | Market · "후보로 저장"(호출 주체) | — | 있음 |
 
 ## 작업 진행 (PublishJobProgress · JobProgressView · JobRequeueNote — 위치 확인·주소 넣기 공통)
 
-| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
-|---|---|---|---|---|
-| 187 | 진행 제목 + 잡 이름 (`job.title` "작업 진행" + `job_name`) | Market · 펼친 모습 "작업 진행 새 수정본 발행" | snapshot.publish → 새 수정본 발행 | 있음 |
-| 188 | 발행 대기 안내 (`job.publishPending`) | Market · 펼친 모습 "새 수정본이 발행될 때까지 화면은 지금 수정본을 보여요" | 리비전 → 수정본 | 있음 |
-| 189 | 상태 대기 (`job.status.queued`) | Market · "작업 진행 · 상태 모음" "대기 순서를 기다려요" | — | 있음 |
-| 190 | 상태 실행 중 + 진행 수·단계 (`job.status.running`, `job.progress`, `job.step`) | Market · "상태 모음" "실행 중 [n]/[m] · 단계 [단계 이름]" | — | 있음 |
-| 191 | 진행 막대(결정) aria-label=상태 | Market · 펼친 모습 role=progressbar aria-label "실행 중" | — | 있음 |
-| 192 | 진행 수 없을 때 미정 막대 | — | — | 있음(고침 MK-11 — "상태 모음" 줄무늬 미정 막대) |
-| 193 | 발행 완료 (`job.status.done` + `job.publishDone` "새 리비전이 발행됐습니다 — 화면 기본이 새 리비전으로 바뀝니다") | Market · "상태 모음" "완료 새 수정본이 발행됐어요 — 화면이 새 수정본으로 바뀌어요" | — | 있음 |
-| 194 | 실패 + 오류 (`job.status.failed`, `job.error` "오류: {detail}") | Market · "상태 모음" "실패 오류: [오류 내용]" | — | 있음 |
-| 195 | 발행 실패 (`job.publishFailed` "…화면은 지금 발행 리비전을 계속 보입니다: {detail}") | Market · "상태 모음" "화면은 지금 수정본을 계속 보여요" | — | 있음 |
-| 196 | 빈 데이터셋 상한 실패 (`job.degradedFailed`) | Market · "상태 모음" "다시 모아도 자료가 불완전해 멈췄으면 '발행하지 않았어요: [사유]'" | — | 있음 |
-| 197 | 잡 없음 (`job.none` "진행 중인 작업 없음") | Market · "상태 모음" "없음 작업을 아직 못 받았으면 '진행 중인 작업 없음'" | — | 있음 |
-| 198 | 발행 예외 재시도 (`job.requeuedError`) | Market · "상태 모음" "다시 시도 발행 중 오류가 나 다시 시도하는 중([n]/[max]회) — 아직 실패가 아니에요" | — | 있음 |
-| 199 | 조회 일시 오류 (`job.retrying`) | Market · "상태 모음" "상태를 못 받으면 '다시 확인하는 중'" | — | 있음 |
-| 200 | 잡을 받기 전 조회 오류 (`error && !job` → `job.error`) | — | — | 있음(고침 MK-13 — "상태 모음" "조회 오류" 줄) |
-| 201 | 발행 막힘 — 남은 모순 주장 수 (`job.publishBlockedContradicted`) | Market · "상태 모음" "막힘 발행이 막혔어요(남은 모순 주장 [n]건) — 데이터·운영 화면에서 고치면 다시 발행돼요" | — | 있음 |
-| 202 | 발행 막힘 — 서버 사유 (`job.publishBlocked` "…: {detail}") | Ops · 펼친 모습 "①③⑦ 작업 진행 칸의 다른 문구" "발행이 막혔어요(남은 모순 주장 등) — … [설명]" | — | 다른 보드(Ops) |
-| 203 | 발행 막힘 — 사유 모름 (`job.publishBlockedUnknown`) | Ops · 펼친 모습 같은 줄 "이유 확인 불가" | — | 다른 보드(Ops) |
-| 204 | 30분 상한 멈춤 (`job.publishExpired`) | Market · "상태 모음" "멈춤 30분 동안 끝을 확인하지 못해 확인을 멈췄어요 — 기준일 목록에서 확인하세요" | — | 있음 |
-| 205 | 사슬 상한 멈춤 (`job.publishChainCapped` "발행 작업을 {n}단계까지 따라갔지만…") | Market · "상태 모음" "발행 작업을 [n]단계까지 따라갔지만 끝을 확인하지 못했을 때도 같아요" | — | 있음 |
-| 206 | 발행 busy 재큐잉 (`job.requeued`) | Market · "상태 모음" "기다림 같은 수정본의 다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) — 실패가 아니에요" | — | 있음 |
-| 207 | 빈 데이터셋 재큐잉 (`job.requeuedDegraded` + `job.requeuedAt`) | Market · "상태 모음" "수집 자료가 불완전하면 다시 모으는 중([n]/[max]회, [시각] 이후)" | — | 있음 |
-| 208 | 재큐잉 시각 없음 (`job.requeuedSoon` "곧 다시 시도") | — | — | 있음(고침 MK-12 — "상태 모음" "곧 다시 시도") |
-| 209 | 일일 수집 재큐잉 안내 (`job.requeuedDegradedDaily` "이전 발행 리비전이 그대로 기본 화면입니다.") | Market · "상태 모음" "— 이전 수정본이 그대로 기본 화면이에요" | — | 있음 |
-| 210 | 첫 적재 재큐잉 안내 (`job.requeuedDegradedBootstrap`) | RegionNew · 펼친 모습 "진행 상황 · 상태별 모습" | — | 다른 보드(RegionNew) |
-| 211 | 미룸 (`job.publishDeferred`) | Market · "상태 모음" "미뤄짐 이 변경은 지금 판정 중인 새 수정본에 들어가 함께 반영돼요" | — | 있음 |
-| 212 | 재등록 (`job.publishRedeferred`) | Market · "상태 모음" "미뤄 둔 수정본 발행이 끝내 실패하면 새 발행 작업으로 다시 등록하고 이어서 보여 줘요" | — | 있음 |
-| 213 | 사슬의 후속 잡(rejudge → publish …)마다 진행 줄 추가 (`chain.slice(1)` JobProgressView) | Market · "상태 모음" "발행 작업을 [n]단계까지 따라갔지만…" (후속 잡 줄은 그리지 않음) | — | 문구로만 |
-| 214 | 1분마다 상한 다시 계산 (미룸·겹친 발행 뒤에도 30분 상한 알림) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) |
-| 215 | API `GET /jobs/{id}` 사슬 폴링 + `GET /regions/{id}/snapshots` (발행 확인) | Market · "작업 진행"(호출 주체) | — | 있음 |
-| 216 | 숫자를 누르면 출처 창이 열림(FactCell 공통) | Market · 머리 "밑줄 점선이 있는 숫자를 누르면 출처가 열려요" + 맨 아래 범례 (출처 창 그림은 Shell) | — | 문구로만 |
+| # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
+|---|---|---|---|---|---|
+| 187 | 진행 제목 + 잡 이름 (`job.title` "작업 진행" + `job_name`) | Market · 펼친 모습 "작업 진행 새 수정본 발행" | snapshot.publish → 새 수정본 발행 | 있음 | market/market.test › 입력 → POST /catalysts … 분류 잡 진행(job.name) · components.contract.test › JobProgressView |
+| 188 | 발행 대기 안내 (`job.publishPending`) | Market · 펼친 모습 "새 수정본이 발행될 때까지 화면은 지금 수정본을 보여요" | 리비전 → 수정본 | 있음 | r3g2.test › 화면: rejudge done → publish_job_id 잡을 이어 감시 … |
+| 189 | 상태 대기 (`job.status.queued`) | Market · "작업 진행 · 상태 모음" "대기 순서를 기다려요" | — | 있음 | components.test › JobProgressView: 상태 텍스트 |
+| 190 | 상태 실행 중 + 진행 수·단계 (`job.status.running`, `job.progress`, `job.step`) | Market · "상태 모음" "실행 중 [n]/[m] · 단계 [단계 이름]" | — | 있음 | components.contract.test › JobProgressView: 계약 progress(done/total·step)를 보여 준다 |
+| 191 | 진행 막대(결정) aria-label=상태 | Market · 펼친 모습 role=progressbar aria-label "실행 중" | — | 있음 | components.contract.test › JobProgressView: 계약 progress …(progressbar) |
+| 192 | 진행 수 없을 때 미정 막대 | — | — | 있음(고침 MK-11 — "상태 모음" 줄무늬 미정 막대) | components/shell-components.test › 진행 수가 없으면 끝을 모르는 줄무늬 막대 |
+| 193 | 발행 완료 (`job.status.done` + `job.publishDone` "새 리비전이 발행됐습니다 — 화면 기본이 새 리비전으로 바뀝니다") | Market · "상태 모음" "완료 새 수정본이 발행됐어요 — 화면이 새 수정본으로 바뀌어요" | — | 있음 | r3g2.test › 화면: rejudge done → publish_job_id 잡을 이어 감시 → 그 잡 done 이면 "발행됨" |
+| 194 | 실패 + 오류 (`job.status.failed`, `job.error` "오류: {detail}") | Market · "상태 모음" "실패 오류: [오류 내용]" | — | 있음 | components/shell-components.test › 작업 없음 · 오류 문구 |
+| 195 | 발행 실패 (`job.publishFailed` "…화면은 지금 발행 리비전을 계속 보입니다: {detail}") | Market · "상태 모음" "화면은 지금 수정본을 계속 보여요" | — | 있음 | r3h2.test › publishPhase: queued 재큐잉 = waiting · 40회 넘어 failed = 발행 실패 |
+| 196 | 빈 데이터셋 상한 실패 (`job.degradedFailed`) | Market · "상태 모음" "다시 모아도 자료가 불완전해 멈췄으면 '발행하지 않았어요: [사유]'" | — | 있음 | r4fe12.test › JobProgressView: 6회 넘어 failed(degraded_source) — 코드 접두 없이 멈춘 이유 |
+| 197 | 잡 없음 (`job.none` "진행 중인 작업 없음") | Market · "상태 모음" "없음 작업을 아직 못 받았으면 '진행 중인 작업 없음'" | — | 있음 | components/shell-components.test › 작업 없음 · 오류 문구 |
+| 198 | 발행 예외 재시도 (`job.requeuedError`) | Market · "상태 모음" "다시 시도 발행 중 오류가 나 다시 시도하는 중([n]/[max]회) — 아직 실패가 아니에요" | — | 있음 | r3i2.test › JobProgressView: "발행 오류 — 다시 시도하는 중(2/5회)", 영문 코드·오류 줄 없음 |
+| 199 | 조회 일시 오류 (`job.retrying`) | Market · "상태 모음" "상태를 못 받으면 '다시 확인하는 중'" | — | 있음 | r3f.test › JobProgressView: 받아 둔 잡이 있으면 일시 오류 동안 마지막 상태 + 다시 확인 중 줄 |
+| 200 | 잡을 받기 전 조회 오류 (`error && !job` → `job.error`) | — | — | 있음(고침 MK-13 — "상태 모음" "조회 오류" 줄) | components/shell-components.test › 작업 없음 · 오류 문구 |
+| 201 | 발행 막힘 — 남은 모순 주장 수 (`job.publishBlockedContradicted`) | Market · "상태 모음" "막힘 발행이 막혔어요(남은 모순 주장 [n]건) — 데이터·운영 화면에서 고치면 다시 발행돼요" | — | 있음 | r3h.test › 화면: "남은 모순 주장 1,234건" — publish_blocked·contradicted 영문 없음 |
+| 202 | 발행 막힘 — 서버 사유 (`job.publishBlocked` "…: {detail}") | Ops · 펼친 모습 "①③⑦ 작업 진행 칸의 다른 문구" "발행이 막혔어요(남은 모순 주장 등) — … [설명]" | — | 다른 보드(Ops) | r3h.test › 화면: 서버 사유(failed publish_blocked: …)는 코드 접두를 떼고 보인다 |
+| 203 | 발행 막힘 — 사유 모름 (`job.publishBlockedUnknown`) | Ops · 펼친 모습 같은 줄 "이유 확인 불가" | — | 다른 보드(Ops) | r3h.test › publishPhase: 막힘은 남은 모순 주장 수(숫자)로 |
+| 204 | 30분 상한 멈춤 (`job.publishExpired`) | Market · "상태 모음" "멈춤 30분 동안 끝을 확인하지 못해 확인을 멈췄어요 — 기준일 목록에서 확인하세요" | — | 있음 | r3g.test › snapshotsWatchExpired: 잡을 모르는 채 생성 30분이 지나면 true |
+| 205 | 사슬 상한 멈춤 (`job.publishChainCapped` "발행 작업을 {n}단계까지 따라갔지만…") | Market · "상태 모음" "발행 작업을 [n]단계까지 따라갔지만 끝을 확인하지 못했을 때도 같아요" | — | 있음 | r3h.test › 사슬은 PUBLISH_CHAIN_MAX단계에서 멈추고 그렇다고 알린다 |
+| 206 | 발행 busy 재큐잉 (`job.requeued`) | Market · "상태 모음" "기다림 같은 수정본의 다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) — 실패가 아니에요" | — | 있음 | r3h2.test › JobProgressView: 대기 + "다른 발행이 끝나길 기다리는 중(재시도 3회)" |
+| 207 | 빈 데이터셋 재큐잉 (`job.requeuedDegraded` + `job.requeuedAt`) | Market · "상태 모음" "수집 자료가 불완전하면 다시 모으는 중([n]/[max]회, [시각] 이후)" | — | 있음 | r4fe12.test › JobProgressView(G0 bootstrap): '불완전한 수집 — 다시 수집(2/6회, 01:30 이후)' |
+| 208 | 재큐잉 시각 없음 (`job.requeuedSoon` "곧 다시 시도") | — | — | 있음(고침 MK-12 — "상태 모음" "곧 다시 시도") | r4fe12.test › requeueInfo: degraded_source 재큐잉 …(다음 시도 없음 → 곧 다시 시도) |
+| 209 | 일일 수집 재큐잉 안내 (`job.requeuedDegradedDaily` "이전 발행 리비전이 그대로 기본 화면입니다.") | Market · "상태 모음" "— 이전 수정본이 그대로 기본 화면이에요" | — | 있음 | r4fe12.test › JobProgressView(collect.daily): 이전 발행 리비전이 그대로 기본이라고 밝힌다 |
+| 210 | 첫 적재 재큐잉 안내 (`job.requeuedDegradedBootstrap`) | RegionNew · 펼친 모습 "진행 상황 · 상태별 모습" | — | 다른 보드(RegionNew) | r4fe12.test › JobProgressView(G0 bootstrap) … '적재 중' |
+| 211 | 미룸 (`job.publishDeferred`) | Market · "상태 모음" "미뤄짐 이 변경은 지금 판정 중인 새 수정본에 들어가 함께 반영돼요" | — | 있음 | r3g2.test › 화면: 후속 발행 잡이 미뤄지면(deferred_to) 그 리비전 발행까지 기다린다는 안내 |
+| 212 | 재등록 (`job.publishRedeferred`) | Market · "상태 모음" "미뤄 둔 수정본 발행이 끝내 실패하면 새 발행 작업으로 다시 등록하고 이어서 보여 줘요" | — | 있음 | r3i2.test › 화면: rejudge → 발행 잡 미룸(deferred) → 나중에 redeferred_job_id → … 재등록 안내 |
+| 213 | 사슬의 후속 잡(rejudge → publish …)마다 진행 줄 추가 (`chain.slice(1)` JobProgressView) | Market · "상태 모음" "발행 작업을 [n]단계까지 따라갔지만…" (후속 잡 줄은 그리지 않음) | — | 문구로만 | r3g2.test › 화면: rejudge done → publish_job_id 잡을 이어 감시 … |
+| 214 | 1분마다 상한 다시 계산 (미룸·겹친 발행 뒤에도 30분 상한 알림) | — | — | 문구로만(고침 MK-17 — "구현 때 유지" 상자) | r3i2.test › jobRefetchInterval: done + deferred_to(재등록 전, 30분 안) → 계속 느리게 폴링 … |
+| 215 | API `GET /jobs/{id}` 사슬 폴링 + `GET /regions/{id}/snapshots` (발행 확인) | Market · "작업 진행"(호출 주체) | — | 있음 | r3g2.test › 화면: rejudge done → publish_job_id 잡을 이어 감시 …(잡 목록 조회 없음) |
+| 216 | 숫자를 누르면 출처 창이 열림(FactCell 공통) | Market · 머리 "밑줄 점선이 있는 숫자를 누르면 출처가 열려요" + 맨 아래 범례 (출처 창 그림은 Shell) | — | 문구로만 | components/FactCell.test(출처 클릭) · ChartGallery.test › 표로 보기 → Fact 셀 클릭이 출처 패널로 |
 
 요약: 전체 216 · 있음 191 · 문구로만 21 · 다른 보드 4 (Detail 1 · Ops 2 · RegionNew 1) · 빠짐 0 (2026-10-16 고침 반영 — fixes/fixes-Market.md)
 
@@ -279,8 +279,8 @@
 
 ## 새로 더한 것 (기존에 없던 것)
 
-| # | 새 기능 | 위치 (보드 · 섹션) | 비고 |
-|---|---|---|---|
+| # | 새 기능 | 위치 (보드 · 섹션) | 비고 | 테스트 |
+|---|---|---|---|---|
 | N1 | 맥락 줄 "인천 · 기준일 2026년 10월 14일 (7번째 수정본) · 상대 비교예요, 투자 권유가 아니에요" + 안내 문단 | 머리 | 지금은 intro 없음 |
 | N2 | 생활권 `?` 설명 버튼 + "생활권 = 생활이 이어지는 동네 묶음이에요." + "묶음 바꾸기" 링크(생활권 편집) | 머리 | |
 | N3 | 요약 카드 4장: 안 팔린 집(합계·준공 후·가장 많은 곳) · 입주가 가장 몰리는 해(+다음 해) · 생활권별 실거래 중간 값 최고/최저 · 규제지역 여부(+상한제 생활권) | "한눈에 보기" | 고침 MK-1: 최대·최소 고르기와 생활권 값 더하기를 뺌 — 서버 값(지역 합계는 대시보드 kpi.unsold, "API 필요" 표시)과 줄 개수만 |
@@ -297,3 +297,11 @@
 | N14 | "편집하는 사람용" 표시, 위도·경도 placeholder 예시, 다중 선택 Ctrl 안내, "저장하면 새 수정본을 만들어 발행해요" | 위치 확인 | |
 | N15 | 진행 "멈춤" 줄의 "다시 확인" 버튼 | 작업 진행 · 상태 모음 | 지금은 머리줄(Header `job.watchRecheck`)에만 있음 |
 | N16 | 맨 아래 면책 "이 화면은 개인의 청약 자격을 판정하지 않아요. 최종 기준은 입주자 모집 공고문이에요." + 라벨 범례(확인됨·추정) | 새 개발 소식 아래 | 지금 G6은 `legend` 없음 |
+
+## 구현 메모 — R11-MARKETOPS (2026-10-16, 브랜치 wp/r11-marketops)
+
+`테스트` 열 = `frontend/src/pages/` 기준 파일(확장자 `.tsx` 생략) › 테스트 이름(앞부분). `components/`·`layout/`·`charts/` 는 `frontend/src/` 기준. "(… — 코드)"는 그 줄을 직접 흉내 내는 테스트가 없어 같은 코드 경로를 지나는 테스트와 코드 위치를 함께 적은 것이다.
+
+새로 더한 것(N) 구현 여부:
+- 구현: N1(머리 안내 — 맥락 줄은 머리줄 Shell 이 보인다) · N2(생활권 안내 한 줄 + "묶음 바꾸기" → `/regions/{id}/living-areas`, `?` 버튼 없음) · N3(한눈에 보기 4장 — 미분양 = 계약 .22 `unsold_latest`, 나머지는 줄 세기) · N7(C5 구 고르기, 상태는 화면 안 — 새 URL 키 없음) · N10(규제 = 계약 key 8종 모두, 값별 줄 수는 요약 카드) · N13(C09 차트 쪽) · N14("편집하는 사람용" 꼬리표).
+- 하지 않음: N4(섹션 `?` 팝오버) · N5(C03 읽는 법 — 차트 부제가 같은 뜻을 이미 보인다) · N6(121줄 접기) · N8(구별 가로 막대 새 그림) · N11(값 범위 막대 열·정렬) · N15(진행 칸 "다시 확인" 버튼) · N16(맨 아래 면책 문장 — 공통 고정 문구로 대신). 이유: 진입 청크 예산(ko.json 이 진입에 들어가 msw 모드 여유 1.8kB)과 새 계산 금지(N11 막대 폭).
