@@ -5,11 +5,12 @@ import { useCanWrite } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { invalidateFactViews, useClaims, useReviseClaim } from '@/api/hooks';
 import type { ClaimView } from '@/api/types';
-import { Badge, JobProgress, MetaText, useOpenProvenance } from '@/components';
+import { Badge, JobProgress, MetaText, MetaValue, useOpenProvenance } from '@/components';
 import { t } from '@/i18n';
-import { enumText, idText, QueryState, Section, useGlobalSearch } from '../_shared';
+import { enumText, idText, QueryState, useGlobalSearch } from '../_shared';
 import { HUMAN_CHECK_ANCHOR, humanCheckSearch } from './HumanCheckForm';
 import { humanCheckFieldOf } from './humanCheckRules';
+import { OpsSection } from './sections';
 
 /**
  * G7 ClaimsPanel (M8, 계약 2026-10-09.4) — 지금 스냅샷의 contradicted 주장 목록.
@@ -18,27 +19,82 @@ import { humanCheckFieldOf } from './humanCheckRules';
  * 읽기 전용 토큰·재검증 대기 중(pending_job_id)·이미 분할됨(child_count>0)이면 수정을 끈다.
  */
 export function ClaimsPanel({ snapshotId }: { snapshotId: string | null }) {
-  const query = useClaims(snapshotId, { status: 'contradicted' });
+  // 계약 .22 A5(D30-5): 상태 필터 없이 전체 목록을 받아 상태별 줄 수를 세고(D25-3), 모순 줄만 아래에 보인다
+  const query = useClaims(snapshotId);
   return (
-    <Section title={t('page.G7.claims.title')}>
-      <p className="text-xs text-muted">{t('page.G7.claims.intro')}</p>
+    <OpsSection k="claims">
       {snapshotId === null ? (
         <p className="text-sm text-muted">{t('app.noSnapshot')}</p>
       ) : (
-        <QueryState
-          query={query}
-          empty={(rows) => (rows.length === 0 ? t('page.G7.claims.none') : null)}
-        >
-          {(rows) => (
-            <ul aria-label={t('page.G7.claims.title')} className="flex flex-col gap-3">
-              {rows.map((claim) => (
-                <ClaimItem key={claim.id} claim={claim} />
-              ))}
-            </ul>
-          )}
+        <QueryState query={query}>
+          {(all) => {
+            const rows = contradictedClaims(all);
+            return (
+              <div className="flex flex-col gap-3">
+                <ClaimSummary all={all} contradicted={rows.length} />
+                {rows.length === 0 ? null : (
+                  <ul aria-label={t('page.G7.claims.title')} className="flex flex-col gap-3">
+                    {rows.map((claim) => (
+                      <ClaimItem key={claim.id} claim={claim} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          }}
         </QueryState>
       )}
-    </Section>
+    </OpsSection>
+  );
+}
+
+/** 모순(contradicted) 줄만 — 서버 verify_status 그대로(판단하지 않는다) */
+export function contradictedClaims(rows: readonly ClaimView[]): ClaimView[] {
+  return rows.filter((c) => c.verify_status === 'contradicted');
+}
+
+/** 검증 상태 표시 순서(계약 verify_status enum + 검증 전 null) */
+const CLAIM_STATUSES = ['verified', 'contradicted', 'unsupported', 'review'] as const;
+
+/** 상태별 줄 수(검증 전 = null 포함) — 개수 세기만(D25-3) */
+export function claimStatusCounts(rows: readonly ClaimView[]): { key: string; n: number }[] {
+  const counts = CLAIM_STATUSES.map((key) => ({
+    key,
+    n: rows.filter((c) => c.verify_status === key).length,
+  }));
+  const none = rows.filter((c) => c.verify_status === null).length;
+  return none > 0 ? [...counts, { key: 'none', n: none }] : counts;
+}
+
+/** 목업 OP-9: "모순 주장 n건(목록 줄 수)" + 상태별 줄 수. 남은 주장이 없으면 "남은 모순 주장이 없어요" */
+function ClaimSummary({ all, contradicted }: { all: readonly ClaimView[]; contradicted: number }) {
+  return (
+    <div
+      className="flex flex-col gap-1 rounded-xl border border-border bg-subtle px-4 py-3 text-sm"
+      data-testid="claims-summary"
+    >
+      <b className="font-semibold text-fg">
+        {contradicted === 0 ? (
+          t('page.G7.claims.none')
+        ) : (
+          <MetaText kind="count" k="page.G7.claims.summary" params={{ n: contradicted }} />
+        )}
+      </b>
+      {all.length > 0 ? (
+        <p className="text-xs text-muted" data-testid="claims-breakdown">
+          {t('page.G7.claims.breakdown')}:{' '}
+          {claimStatusCounts(all).map((s, i) => (
+            <span key={s.key} data-status={s.key}>
+              {i > 0 ? ' · ' : ''}
+              {s.key === 'none'
+                ? t('page.G7.claims.statusNone')
+                : enumText('page.G7.claims.status', s.key)}{' '}
+              <MetaValue kind="count" value={s.n} />
+            </span>
+          ))}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -68,7 +124,7 @@ function ClaimItem({ claim }: { claim: ClaimView }) {
   return (
     <li
       data-testid={`claim-${claim.id}`}
-      className="flex flex-col gap-2 rounded-sm border border-border p-2 text-sm"
+      className="flex flex-col gap-2 rounded-xl border border-border p-4 text-sm"
     >
       <div className="flex flex-wrap items-center gap-2">
         {claim.complex_id !== null ? (

@@ -2,10 +2,11 @@ import { useCanWrite } from '@/api/auth';
 import { useCreateJob, useOpsSources } from '@/api/hooks';
 import type { JobCreateName, SourceStatus } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState, ExternalLink, MetaValue } from '@/components';
+import { Badge, EmptyState, ExternalLink, MetaText, MetaValue } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate, formatUnknown } from '@/lib/format';
-import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
+import { enumText, QueryState, tdClass, thClass } from '../_shared';
+import { OpsSection } from './sections';
 
 const COLS = [
   'kind',
@@ -31,15 +32,30 @@ export function SourceStatusTable({
   asof: string | null;
 }) {
   const query = useOpsSources(regionId);
+  const rows = query.data;
   return (
-    <Section title={t('page.G7.sources')} className={SOURCES_MIN_HEIGHT}>
+    <OpsSection
+      k="sources"
+      className={SOURCES_MIN_HEIGHT}
+      actions={
+        rows && rows.length > 0 ? (
+          <Badge tone={failingSources(rows).length > 0 ? 'caution' : 'muted'}>
+            <MetaText
+              kind="count"
+              k="page.G7.sourcesSummary"
+              params={{ n: failingSources(rows).length, total: rows.length }}
+            />
+          </Badge>
+        ) : null
+      }
+    >
       <QueryState
         query={query}
         empty={(rows) => (rows.length === 0 ? t('page.common.none') : null)}
       >
-        {(rows) => <SourceTable rows={rows} asof={asof} />}
+        {(list) => <SourceTable rows={list} asof={asof} />}
       </QueryState>
-    </Section>
+    </OpsSection>
   );
 }
 
@@ -51,7 +67,13 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
     createJob.mutate(job, { onSuccess: () => toast({ message: t('page.G7.src.retried') }) });
   return (
     <div className="overflow-x-auto">
-      <table aria-label={t('page.G7.sources')} className="w-full border-collapse text-sm">
+      <table
+        aria-label={t('page.G7.sources')}
+        className="w-full min-w-[52rem] border-collapse text-sm"
+      >
+        <caption className="pb-2 text-left text-xs text-muted">
+          {t('page.G7.sourcesCaption')}
+        </caption>
         <thead>
           <tr>
             {COLS.map((k) => (
@@ -63,9 +85,15 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
         </thead>
         <tbody>
           {rows.map((row) => {
-            const failing = row.failures_7d > 0 || row.failing_targets.length > 0;
+            const failing = isFailing(row);
             return (
-              <tr key={row.source_kind} className={row.enabled ? '' : 'text-grayed'}>
+              <tr
+                key={row.source_kind}
+                data-enabled={row.enabled}
+                className={
+                  row.enabled ? (failing ? 'bg-warn-soft/50' : '') : 'bg-subtle text-grayed'
+                }
+              >
                 <th scope="row" className={`${tdClass} text-left font-medium`}>
                   {enumText('page.G7.sourceKind', row.source_kind)}
                   {row.failing_targets.length > 0 ? (
@@ -140,7 +168,7 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
                       disabled={!canWrite || createJob.isPending}
                       title={canWrite ? undefined : t('auth.readOnlyHint')}
                       onClick={() => row.retry && retry(row.retry)}
-                      className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+                      className="min-h-10 whitespace-nowrap rounded-[10px] border border-border-strong bg-surface px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {t('page.G7.src.retry')}
                     </button>
@@ -153,6 +181,16 @@ function SourceTable({ rows, asof }: { rows: SourceStatus[]; asof: string | null
       </table>
     </div>
   );
+}
+
+/** 최근 7일 실패가 있거나 열리지 않는 대상이 있는 자료(줄 세기 — D25-3) */
+export function isFailing(row: SourceStatus): boolean {
+  return row.failures_7d > 0 || row.failing_targets.length > 0;
+}
+
+/** 실패가 있는 자료 줄 */
+export function failingSources(rows: readonly SourceStatus[]): SourceStatus[] {
+  return rows.filter(isFailing);
 }
 
 /** 청약홈 공식 API 빈 데이터셋 실패(계약 .18 F2·D23-4 — `empty_dataset: totalCount 0`, http_status 200) */

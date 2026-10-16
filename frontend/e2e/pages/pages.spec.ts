@@ -108,7 +108,7 @@ test.describe('화면 10개 핵심 요소', () => {
     ]) {
       await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
     }
-    await expect(page.getByRole('heading', { name: P.G6.regulation })).toBeVisible();
+    await expect(page.getByRole('region', { name: P.G6.regulation })).toBeVisible();
   });
 
   test('G7 데이터·운영: 소스 상태 · 사람 확인 → 배지 갱신 + 자동 등록 재판정 진행', async ({

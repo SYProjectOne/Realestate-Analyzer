@@ -15,10 +15,13 @@ const CASES = [
   ['G3', '/complexes/cx_1', 'page.G3.title'],
   ['G4', '/compare?ids=cx_1,cx_2', 'page.G4.title'],
   ['G5', '/scenario', 'page.G5.title'],
-  ['G6', '/market', 'page.G6.title'],
+  ['G6', '/market', 'page.G6.heading'],
   ['G7', '/ops', 'page.G7.title'],
   ['G8', '/reports', 'page.G8.title'],
 ] as const;
+
+/** R11(D30): G6 제목에 지역 이름이 들어간다("{region} 시장, 지금 어때요?") — 계약 예시(MSW) 지역 이름 */
+const FIXTURE_REGION = '인천 송도·검단·계양 + 김포';
 
 describe('라우트 10개', () => {
   it('routeDefs에 화면 10개가 정의돼 있다', () => {
@@ -27,7 +30,12 @@ describe('라우트 10개', () => {
 
   it.each(CASES)('%s %s → 제목을 렌더한다', async (_id, path, titleKey) => {
     renderRoute(path);
-    expect(await screen.findByRole('heading', { level: 1, name: t(titleKey) })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: t(titleKey, { region: FIXTURE_REGION }),
+      }),
+    ).toBeInTheDocument();
   });
 
   it('모든 화면 하단에 "투자 권유 아님 · 상대 비교" 고정 문구', async () => {

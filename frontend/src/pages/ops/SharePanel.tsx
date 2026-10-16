@@ -5,7 +5,8 @@ import type { ShareLinkCreated } from '@/api/types';
 import { Badge } from '@/components';
 import { t } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { enumText, QueryState, Section, tdClass, thClass } from '../_shared';
+import { enumText, QueryState, tdClass, thClass } from '../_shared';
+import { OpsSection } from './sections';
 
 /** 공유 링크 메모 최대 길이(계약 ShareLinkCreate.label, 서버 64자) */
 export const SHARE_LABEL_MAX = 64;
@@ -35,8 +36,7 @@ function SharePanelBody() {
   const [created, setCreated] = useState<ShareLinkCreated | null>(null);
 
   return (
-    <Section title={t('page.G7.share.title')}>
-      <p className="text-xs text-muted">{t('page.G7.share.intro')}</p>
+    <OpsSection k="share">
       <form
         className="flex flex-wrap items-end gap-2"
         data-write
@@ -55,7 +55,7 @@ function SharePanelBody() {
         }}
       >
         <div className="flex flex-col gap-0.5">
-          <label htmlFor={labelId} className="text-xs text-muted">
+          <label htmlFor={labelId} className="text-[13px] font-semibold text-fg-2">
             {t('page.G7.share.label')}
           </label>
           <input
@@ -64,13 +64,13 @@ function SharePanelBody() {
             maxLength={SHARE_LABEL_MAX}
             onChange={(e) => setLabel(e.target.value)}
             placeholder={t('page.G7.share.labelHint')}
-            className="w-64 rounded-sm border border-border bg-surface px-2 py-1 text-sm"
+            className="min-h-11 w-72 max-w-full rounded-[10px] border border-border-strong bg-surface px-3 text-[15px]"
           />
         </div>
         <button
           type="submit"
           disabled={create.isPending}
-          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="min-h-11 rounded-xl bg-accent px-4 text-[15px] font-semibold text-accent-fg disabled:opacity-50"
         >
           {t('page.G7.share.create')}
         </button>
@@ -148,7 +148,7 @@ function SharePanelBody() {
           {t('page.common.loadError', { detail: revoke.error.message })}
         </p>
       ) : null}
-    </Section>
+    </OpsSection>
   );
 }
 

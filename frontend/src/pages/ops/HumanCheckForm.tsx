@@ -15,7 +15,7 @@ import { useToast } from '@/app/toast';
 import { IntakeBadge, PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { metaText } from '@/lib/meta';
-import { enumText, idText, Section } from '../_shared';
+import { enumText, idText } from '../_shared';
 import {
   HC_PARAM,
   HUMAN_CHECK_ANCHOR,
@@ -25,6 +25,7 @@ import {
   HUMAN_NUMBER_UNITS,
   parseStrictNumber,
 } from './humanCheckRules';
+import { OpsSection } from './sections';
 
 const KINDS = ['phone', 'visit', 'email'] as const;
 const INTAKE_VALUES = ['가능', '미정', '확인 불가', '불가'] as const;
@@ -382,8 +383,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
   const invalidOf = (name: FormField): true | undefined => (errorOf(name) ? true : undefined);
 
   return (
-    <Section title={t('page.G7.human')} id={HUMAN_CHECK_ANCHOR}>
-      <p className="text-xs text-muted">{t('page.G7.humanIntro')}</p>
+    <OpsSection k="human">
       <form
         aria-label={t('page.G7.human')}
         noValidate
@@ -628,7 +628,7 @@ export function HumanCheckForm({ snapshotId }: { snapshotId: string | null }) {
           ) : null}
         </div>
       </form>
-    </Section>
+    </OpsSection>
   );
 }
 

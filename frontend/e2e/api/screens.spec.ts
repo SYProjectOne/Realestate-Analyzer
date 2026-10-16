@@ -107,7 +107,7 @@ test('G6 지역 시장: 실제 API 차트 4종 · 규제 카드', async ({ page 
   ]) {
     await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
   }
-  await expect(page.getByRole('heading', { name: P.G6.regulation })).toBeVisible();
+  await expect(page.getByRole('region', { name: P.G6.regulation })).toBeVisible();
   expect(failed).toEqual([]);
 });
 

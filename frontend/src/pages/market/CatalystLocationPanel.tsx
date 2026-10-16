@@ -12,7 +12,9 @@ import type {
 } from '@/api/types';
 import { Badge, FactCell, MetaValue, PublishJobProgress } from '@/components';
 import { t } from '@/i18n';
-import { enumText, Section, tdClass, thClass } from '../_shared';
+import { enumText, tdClass, thClass } from '../_shared';
+import { QuestionSection } from '../_shared/QuestionSection';
+import { buttonClass, EditorTag } from './CatalystUrlForm';
 
 /** 위도·경도 문자열 검사(빈 값 허용). 범위 밖·숫자 아님이면 오류 문구 */
 export function parseCoord(raw: string, kind: 'lat' | 'lon'): number | null | 'invalid' {
@@ -97,12 +99,16 @@ export function CatalystLocationPanel({
   const names = new Map((complexes.data?.items ?? []).map((c) => [c.complex_id, c.name]));
   const catalysts = market.catalysts;
   return (
-    <Section title={t('page.G6.loc.title')}>
-      <p className="text-xs text-muted">{t('page.G6.loc.intro')}</p>
+    <QuestionSection
+      name={t('page.G6.loc.title')}
+      title={t('page.G6.loc.titleQ')}
+      kicker={<EditorTag />}
+      hint={t('page.G6.loc.intro')}
+    >
       {catalysts.length === 0 ? (
         <p className="text-sm text-muted">{t('page.G6.loc.none')}</p>
       ) : (
-        <ul aria-label={t('page.G6.loc.title')} className="flex flex-col gap-2">
+        <ul aria-label={t('page.G6.loc.title')} className="flex flex-col">
           {catalysts.map((c) => (
             <CatalystRow
               key={c.id}
@@ -120,7 +126,7 @@ export function CatalystLocationPanel({
         </ul>
       )}
       {result ? <LinksTable result={result} names={names} areas={market.living_areas} /> : null}
-    </Section>
+    </QuestionSection>
   );
 }
 
@@ -148,9 +154,12 @@ function CatalystRow({
       { onSuccess: onSaved },
     );
   return (
-    <li className="flex flex-col gap-1 border-b border-border pb-2" data-catalyst-id={catalyst.id}>
+    <li
+      className="flex flex-col gap-2 border-b border-border py-3 last:border-b-0"
+      data-catalyst-id={catalyst.id}
+    >
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">{catalyst.name}</span>
+        <span className="min-w-0 flex-1 basis-64 font-semibold text-fg">{catalyst.name}</span>
         <Badge tone={notCatalyst ? 'muted' : 'neutral'}>
           {enumText('chart.C09.stage', catalyst.stage)}
         </Badge>
@@ -158,23 +167,23 @@ function CatalystRow({
           {catalyst.location_confirmed ? t('page.G6.loc.confirmed') : t('page.G6.loc.unconfirmed')}
         </Badge>
         {!notCatalyst ? (
-          <span className="ml-auto flex gap-2" data-write>
+          <span className="flex gap-2" data-write>
             <button
               type="button"
               onClick={onToggle}
               disabled={!canWrite}
               title={canWrite ? undefined : t('auth.readOnlyHint')}
               aria-expanded={open}
-              className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+              className={open ? `${secondaryClass} border-accent text-accent-ink` : secondaryClass}
             >
-              {t('page.G6.loc.open')}
+              {open ? t('page.G6.loc.close') : t('page.G6.loc.open')}
             </button>
             {catalyst.location_confirmed ? (
               <button
                 type="button"
                 onClick={unconfirm}
                 disabled={!canWrite || update.isPending}
-                className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+                className={secondaryClass}
               >
                 {t('page.G6.loc.unconfirm')}
               </button>
@@ -261,30 +270,32 @@ function LocationForm({
         e.preventDefault();
         submit();
       }}
-      className="grid gap-2 rounded-sm border border-border p-2 text-sm sm:grid-cols-2"
+      className="grid gap-3 rounded-xl border border-border bg-subtle p-4 text-sm sm:grid-cols-2"
     >
       <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-lat`}>
-        <span className="text-xs text-muted">{t('page.G6.loc.lat')}</span>
+        <span className={labelClass}>{t('page.G6.loc.lat')}</span>
         <input
           id={`${baseId}-lat`}
           inputMode="decimal"
+          placeholder={t('page.G6.loc.latPlaceholder')}
           value={lat}
           onChange={(e) => setLat(e.target.value)}
           className={inputClass}
         />
       </label>
       <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-lon`}>
-        <span className="text-xs text-muted">{t('page.G6.loc.lon')}</span>
+        <span className={labelClass}>{t('page.G6.loc.lon')}</span>
         <input
           id={`${baseId}-lon`}
           inputMode="decimal"
+          placeholder={t('page.G6.loc.lonPlaceholder')}
           value={lon}
           onChange={(e) => setLon(e.target.value)}
           className={inputClass}
         />
       </label>
       <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-ym`}>
-        <span className="text-xs text-muted">{t('page.G6.loc.expectedYm')}</span>
+        <span className={labelClass}>{t('page.G6.loc.expectedYm')}</span>
         <input
           id={`${baseId}-ym`}
           type="month"
@@ -294,7 +305,7 @@ function LocationForm({
         />
       </label>
       <fieldset className="flex flex-col gap-0.5">
-        <legend className="text-xs text-muted">{t('page.G6.loc.areas')}</legend>
+        <legend className={labelClass}>{t('page.G6.loc.areas')}</legend>
         <div className="flex flex-wrap gap-2">
           {market.living_areas.map((la) => (
             <label key={la.id} className="inline-flex items-center gap-1 text-xs">
@@ -310,8 +321,10 @@ function LocationForm({
           ))}
         </div>
       </fieldset>
-      <label className="flex flex-col gap-0.5" htmlFor={`${baseId}-cx`}>
-        <span className="text-xs text-muted">{t('page.G6.loc.complexes')}</span>
+      <div className="flex flex-col gap-0.5">
+        <label className={labelClass} htmlFor={`${baseId}-cx`}>
+          {t('page.G6.loc.complexes')}
+        </label>
         <select
           id={`${baseId}-cx`}
           multiple
@@ -326,15 +339,13 @@ function LocationForm({
             </option>
           ))}
         </select>
-      </label>
+        <span className="text-xs text-muted">{t('page.G6.loc.complexesHint')}</span>
+      </div>
       <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-sm bg-accent px-3 py-1 text-sm text-accent-fg disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className={buttonClass}>
           {t('page.G6.loc.submit')}
         </button>
+        <span className="text-xs text-muted">{t('page.G6.loc.submitHint')}</span>
         {(error ?? serverError) ? (
           <p role="alert" className="text-sm text-danger">
             {error ?? t('page.common.loadError', { detail: serverError ?? '' })}
@@ -449,4 +460,9 @@ function LinksBody({
   );
 }
 
-const inputClass = 'w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm';
+const inputClass =
+  'min-h-11 w-full rounded-[10px] border border-border-strong bg-surface px-3 py-2 text-[15px]';
+const labelClass = 'text-[13px] font-semibold text-fg-2';
+/** 목업 보조 버튼(.btn2) */
+const secondaryClass =
+  'min-h-11 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-medium text-fg disabled:cursor-not-allowed disabled:opacity-50';

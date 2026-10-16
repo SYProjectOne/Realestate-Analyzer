@@ -1,7 +1,9 @@
 import { Link } from 'react-router';
 import { useComplexes } from '@/api/hooks';
 import { t } from '@/i18n';
-import { QueryState, ScopeReason, Section, useGlobalSearch } from '../_shared';
+import { Badge, MetaText } from '@/components';
+import { QueryState, ScopeReason, useGlobalSearch } from '../_shared';
+import { OpsSection } from './sections';
 
 /** 목록 조회 크기(listComplexes 최대 1000) — 범위 경계는 보통 몇 건이다 */
 const BOUNDARY_PAGE_SIZE = 200;
@@ -19,9 +21,18 @@ export function BoundaryList({ snapshotId }: { snapshotId: string | null }) {
     sort: 'name',
     filter: { inclusion_class: '범위 경계' },
   });
+  const total = query.data?.items.length;
   return (
-    <Section title={t('page.G7.boundary.title')}>
-      <p className="text-xs text-muted">{t('page.G7.boundary.intro')}</p>
+    <OpsSection
+      k="boundary"
+      actions={
+        total !== undefined && total > 0 ? (
+          <Badge tone="muted">
+            <MetaText kind="count" k="page.G7.boundarySummary" params={{ n: total }} />
+          </Badge>
+        ) : null
+      }
+    >
       {snapshotId === null ? (
         <p className="text-sm text-muted">{t('app.noSnapshot')}</p>
       ) : (
@@ -32,10 +43,13 @@ export function BoundaryList({ snapshotId }: { snapshotId: string | null }) {
           {(page) => (
             <ul aria-label={t('page.G7.boundary.title')} className="flex flex-wrap gap-2 text-sm">
               {page.items.map((row) => (
-                <li key={row.complex_id}>
+                <li
+                  key={row.complex_id}
+                  className="flex max-w-full flex-col gap-0.5 rounded-xl border border-border px-3 py-2"
+                >
                   <Link
                     to={`/complexes/${row.complex_id}${search}`}
-                    className="rounded-sm border border-border px-2 py-0.5 hover:underline"
+                    className="font-semibold text-accent hover:underline"
                   >
                     {row.name}
                   </Link>
@@ -55,6 +69,6 @@ export function BoundaryList({ snapshotId }: { snapshotId: string | null }) {
           )}
         </QueryState>
       )}
-    </Section>
+    </OpsSection>
   );
 }

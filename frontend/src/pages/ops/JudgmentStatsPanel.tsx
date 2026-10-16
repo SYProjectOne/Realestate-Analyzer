@@ -1,9 +1,10 @@
 import { useOpsJudgments } from '@/api/hooks';
 import type { JudgmentOps } from '@/api/types';
 import { Badge, MetaText, MetaValue } from '@/components';
-import { t, type TKey } from '@/i18n';
+import { t, tDynamic, type TKey } from '@/i18n';
 import { JudgmentTable } from '../complex/JudgmentsTab';
-import { QueryState, Section } from '../_shared';
+import { QueryState } from '../_shared';
+import { OpsSection } from './sections';
 
 const DAY_MS = 86_400_000;
 
@@ -15,11 +16,24 @@ export function since30(asof: string | null): string {
 
 /** G7 JudgmentStats — 30일 호출 수·실패·캐시·도구별 막대(+ 최근 봉투) */
 export function JudgmentStatsPanel({ asof }: { asof: string | null }) {
-  const query = useOpsJudgments({ since: since30(asof), size: 20 });
+  const since = since30(asof);
+  const query = useOpsJudgments({ since, size: 20 });
+  const range = query.data?.stats
+    ? { from: query.data.stats.since.slice(0, 10), to: query.data.stats.until.slice(0, 10) }
+    : null;
   return (
-    <Section title={t('page.G7.stats')}>
+    <OpsSection
+      k="stats"
+      actions={
+        range ? (
+          <Badge tone="muted">
+            <span data-testid="stats-range">{t('page.G7.statsRange', range)}</span>
+          </Badge>
+        ) : null
+      }
+    >
       <QueryState query={query}>{(ops) => <StatsBody ops={ops} asof={asof} />}</QueryState>
-    </Section>
+    </OpsSection>
   );
 }
 
@@ -41,16 +55,19 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
           {t('app.degraded')}
         </p>
       ) : null}
-      <ul className="grid grid-cols-3 gap-2 md:grid-cols-7" aria-label={t('page.G7.stats')}>
+      <ul
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7"
+        aria-label={t('page.G7.stats')}
+      >
         {tiles.map((tile) => (
-          <li key={tile.key} className="flex flex-col rounded-sm border border-border p-2">
+          <li key={tile.key} className="flex flex-col gap-1 rounded-xl border border-border p-3">
             <span className="text-xs text-muted">{t(`page.G7.stat.${tile.key}` as TKey)}</span>
-            <MetaValue kind="count" value={tile.value} className="text-lg font-semibold" />
+            <MetaValue kind="count" value={tile.value} className="text-xl font-bold" />
           </li>
         ))}
-        <li className="flex flex-col rounded-sm border border-border p-2">
+        <li className="flex flex-col gap-1 rounded-xl border border-border p-3">
           <span className="text-xs text-muted">{t('page.G7.stat.avg')}</span>
-          <span className="text-lg font-semibold tabular-nums">
+          <span className="text-xl font-bold tabular-nums">
             {stats.avg_duration_ms === null ? (
               t('empty.unknown')
             ) : (
@@ -68,14 +85,20 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
         {t('page.G7.stat.realHint')}
       </p>
       <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-medium">{t('page.G7.stat.byTool')}</h3>
-        <ul aria-label={t('page.G7.stat.byTool')} className="flex flex-col gap-1 text-xs">
+        <h3 className="text-base font-bold">{t('page.G7.stat.byTool')}</h3>
+        <ul aria-label={t('page.G7.stat.byTool')} className="flex flex-col gap-2 text-xs">
           {stats.by_tool.map((b) => {
             const params = { tool: b.tool, calls: b.calls, failures: b.failures };
             return (
-              <li key={b.tool} className="grid grid-cols-[6rem_1fr] items-center gap-2">
-                <span>{b.tool}</span>
-                <span className="flex items-center gap-2">
+              <li
+                key={b.tool}
+                className="grid grid-cols-1 items-center gap-1 sm:grid-cols-[13rem_1fr] sm:gap-3"
+              >
+                <span className="text-sm">
+                  <b className="font-semibold">{tDynamic(`page.G7.toolName.${b.tool}`, b.tool)}</b>{' '}
+                  <span className="text-muted">{b.tool}</span>
+                </span>
+                <span className="flex flex-wrap items-center gap-2">
                   <span
                     aria-hidden
                     className="h-3 rounded-sm bg-accent"
@@ -87,15 +110,23 @@ function StatsBody({ ops, asof }: { ops: JudgmentOps; asof: string | null }) {
                     k="page.G7.stat.bar"
                     params={params}
                   />
+                  <MetaText
+                    kind="count"
+                    className="whitespace-nowrap text-muted"
+                    k="page.G7.stat.barMore"
+                    params={{ cached: b.cached, review: b.review, blocked: b.blocked }}
+                  />
                 </span>
               </li>
             );
           })}
         </ul>
         {stats.adapter_version ? (
-          <Badge tone="muted">
-            {t('page.G7.stat.adapter', { version: stats.adapter_version })}
-          </Badge>
+          <span className="self-start">
+            <Badge tone="muted">
+              {t('page.G7.stat.adapter', { version: stats.adapter_version })}
+            </Badge>
+          </span>
         ) : null}
       </div>
       <JudgmentTable judgments={ops.items} asof={asof} caption={t('page.G7.stats')} />
