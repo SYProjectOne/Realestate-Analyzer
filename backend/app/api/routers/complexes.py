@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import snapshot_view as sv
-from app.analysis.gap import unadjusted_from_flags
+from app.analysis.gap import median_from_flags, unadjusted_from_flags
 from app.api import views
 from app.api.deps import DB, default_snapshot, get_complex, get_snapshot, resolve_scenario, settings_of
 from app.api.errors import not_found
@@ -184,6 +184,9 @@ def gap_view(
             reason="미보정 중앙값 기준",
             unit="pct",
         )
+    comps_median, comps_median_unadj = _comps_medians(
+        gap_row, run_id, cx.id, checked, gap_pct, gap_unadj, n_trades=sum(m.n_trades or 0 for m in members)
+    )
     if gap_row is not None and run_id is not None and gap_row.score_0_10 is not None:
         score = fact(
             gap_row.score_0_10,
@@ -208,12 +211,57 @@ def gap_view(
         "comps": comps,
         "gap_pct": gap_pct,
         "gap_pct_unadjusted": gap_unadj,
+        "comps_median": comps_median,  # 계약 .22(D30-5): gap% 기준 비교군 전체 중앙값
+        "comps_median_unadjusted": comps_median_unadj,  # 계약 .22: gap_pct_unadjusted 기준(미보정)
         "score": score,  # 옛 이름(deprecated) — gap_score 와 같은 Fact
         "gap_score": dict(
             score
         ),  # 계약 .20 Q6: 가격 갭 **점수** s_gap(0~10) — 퍼센트(gap_pct)와 이름을 나눈다
         "empty_reason": empty,
     }
+
+
+def _comps_medians(
+    gap_row: Any,
+    run_id: int | None,
+    complex_id: int,
+    checked: str | None,
+    gap_pct: dict[str, Any],
+    gap_unadj: dict[str, Any] | None,
+    *,
+    n_trades: int,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """계약 .22(D30-5) ``Gap.comps_median``·``comps_median_unadjusted`` — 점수 실행이 저장한 비교군 전체 중앙값(새로 계산하지 않는다).
+
+    - comps_median = gap% 의 기준 median(T_adj)(``score_component.median_won``, 0019). 0019 전 실행이면 대체 단지가 없던
+      실행만 ``unadjusted_median_won``(대체가 없으면 보정·미보정 거래 목록이 같다), 대체가 있던 옛 실행은 '확인 불가'.
+    - comps_median_unadjusted = gap_pct_unadjusted 의 기준(``unadjusted_median_won``) — gap_pct_unadjusted 가 null 이면 null.
+    - 라벨: 대체 단지(연식 보정)가 섞이면 '추정', 아니면 비교군 시세와 같은 '재가공'(실거래를 묶은 통계 — R3 minor 22).
+      출처 = gap% 와 같은 성분 원값 서랍(``sc_<실행>_<단지>_gap.raw`` — 식에 '비교군 중앙'이 있다). gap% 가 확인 불가면 그 사유.
+    """
+    if gap_row is None or run_id is None or gap_pct["label"] == LABEL_UNKNOWN:
+        return unknown(gap_pct.get("reason") or "미판정", checked, unit="won"), None
+    prov = f"sc_{run_id}_{complex_id}_gap{RAW_SUFFIX}"
+    substitute = "substitute" in (gap_row.flags or [])
+    unadj = gap_row.unadjusted_median_won
+    if unadj is None:  # 0004 전 실행·devseed 는 flags 태그
+        unadj = unadjusted_from_flags(gap_row.flags)[1]
+    med = gap_row.median_won if gap_row.median_won is not None else median_from_flags(gap_row.flags)
+    if med is None and not substitute:
+        med = unadj
+    sample = f"비교군 실거래 {n_trades}건" if n_trades else "비교군 실거래"
+    if med is None:
+        median_fact = unknown("옛 점수 실행(재판정 뒤 표시)", checked, unit="won")
+    elif substitute:
+        median_fact = fact(
+            med, "추정", prov, checked, reason=f"{sample} 중앙값(대체 단지 연식 보정)", unit="won"
+        )
+    else:
+        median_fact = fact(med, "재가공", prov, checked, reason=f"{sample} 중앙값", unit="won")
+    unadj_fact = None
+    if gap_unadj is not None and unadj is not None:
+        unadj_fact = fact(unadj, "재가공", prov, checked, reason=f"{sample} 중앙값(미보정)", unit="won")
+    return median_fact, unadj_fact
 
 
 def catalyst_view(

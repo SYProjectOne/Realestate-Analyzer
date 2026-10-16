@@ -140,7 +140,7 @@ def test_examples_carry_new_fields_with_server_rules() -> None:
     elif_ = _example("complex_detail_elif.json")
     pa = elif_["price"]["payment_amounts"]
     assert pa["down_payment_won"]["label"] == "추정" and pa["down_payment_won"]["reason"].startswith(
-        "산술(P_mid × 계약금"
+        "산술(중간 가격 × 계약금"
     )
     assert elif_["gap"]["gap_score"] == elif_["gap"]["score"]
     assert elif_["intake_current"]["supply_kind"] in (None, "본청약", "무순위", "임의", "선착순")

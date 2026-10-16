@@ -92,6 +92,9 @@ class ScoreComponent(Base):
     # 0004 — R3 W7(쓰기 = 점수 실행 persist, 읽기 = API C2)
     unadjusted_gap_pct: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
     unadjusted_median_won: Mapped[int | None] = mapped_column(BigInteger)
+    # gap 성분만: gap% 의 기준인 비교군 전체 중앙값(원, 대체 단지는 연식 보정 — median(T_adj)).
+    # 0019 — D30-5(계약 .22, 쓰기 = 점수 실행 persist, 읽기 = API gap.comps_median). 옛 실행은 NULL
+    median_won: Mapped[int | None] = mapped_column(BigInteger)
     score_0_10: Mapped[Decimal | None] = mapped_column(Numeric(7, 4))  # 0004: (6,3)→(7,4) W12b
     formula_text: Mapped[str] = mapped_column(Text)
     label: Mapped[str] = mapped_column(String(8))

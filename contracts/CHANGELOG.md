@@ -2,6 +2,77 @@
 
 버전 = `날짜.연번`. 에이전트는 **맨 위 항목 하나만** 가정한다(AGENTS.md). 계약을 바꾸는 쪽은 오케스트레이터뿐이다.
 
+## 2026-10-09.22
+
+R11 목업 구현 결정(CEO **D30**, `docs/design/DECISIONS.md`) — **D30-5** 목업의 "API 필요" 값 4종 확인(없는 것만 추가), **D30-6** 서버
+문구(요건 이유의 `P_mid` → '중간 가격', 판정 범위 사유의 영어 분류명 → 한국어). 계약 소유자 = **R11-BE**(브랜치 `wp/r11-be`, CEO 위임).
+마이그레이션 **0019**(`score_component.median_won` 열 — 데이터 채움 없음). **필드 삭제 없음, 새 필드는 모두 선택**(옛 발행 저장본에 키가
+없어도 계약 통과) → 저장 모양 버전(`SHAPE_VERSION`) **그대로 1**(.20·.21 과 같은 까닭 — 올리면 발행 리비전 저장본 전부가 500
+`stored_view_mismatch`). 새 엔드포인트 없음, 새 스키마 정의 1(`UnsoldLatest`). 판정기 호출 없음 — 저장값 그대로·같은 함수 재사용·문자열
+표(AGENTS 규칙 3·4).
+
+### "API 필요" 값 4종 — 지금 응답에 있는가(D30-5)
+
+| # | 화면 · 목업 표시 | 결과 | 어디서 |
+| --- | --- | --- | --- |
+| A1 | G6 지역 시장 요약 카드 '미분양 지역 합계'·'다 지은 뒤에도 안 팔린 집'(Market MK-1) | **추가** — 대시보드 `kpis.unsold` 에만 있었다(시장 응답 `unsold[]` 는 단위별 점이라 화면이 더하면 규칙 3·5 위반) | `GET /snapshots/{sid}/market` → **`unsold_latest`**(`UnsoldLatest`: `ym`·`total`·`post_completion`·`breakdown`) — `kpis.unsold` 와 같은 함수(`app.api.routers.snapshots.latest_unsold`), `living_area` 를 주면 그 생활권 단위만 |
+| A2 | G3 상세 가격 갭 '비교 단지 전체 가운데값'(Detail C2 옆) | **추가** — 점수 실행이 계산만 하고 저장·응답하지 않았다(`comps[]` 는 단지별 중앙값이라 묶으면 계산) | `GET /complexes/{id}` `gap.`**`comps_median`**·**`comps_median_unadjusted`**(비교 `GET /snapshots/{sid}/compare` `gaps[]` 도 같은 `Gap`) — `score_component.median_won`(0019)·`unadjusted_median_won`(0004) 저장값 |
+| A3 | G3 상세 '당첨된 사람 가점' 최저~최고(Detail DT-6) | **이미 있음** | `GET /complexes/{id}` `competition_summary.winning_score_min`·`winning_score_max`(계약 .20 Q4·.21 no_winner 제외 규칙) — 타입별 가점을 화면이 묶지 않는다 |
+| A4 | G1 '공식 자료 n곳 확인'·'점수를 매긴 단지 n곳 / 전체 n곳'(Main HM-2) | **이미 있음**(개수 세기, D25-3) | `GET /snapshots/{sid}/complexes` `total`(필터 없이 — 병합되지 않은 지역 단지 전체, `size=1` 이면 충분) |
+| A5 | G7 '모순 주장' 상태별 수 '맞음 n · 사람 검토 n'(Ops OP-9) | **이미 있음**(개수 세기, D25-3) | `GET /snapshots/{sid}/claims`(`status` 없이 = 전체) 행의 `verify_status` 별 세기(`verified`·`contradicted`·`unsupported`·`review`·null), 막는 주장 = `remaining=true` 행 수 |
+
+### FE 차이(화면이 맞출 것)
+
+| # | 대상 | .21 | .22 | 결정 |
+| --- | --- | --- | --- | --- |
+| F1 | G6 `Market.unsold_latest` | 없음 — 목업 '[값] API 필요' | `ym`(값이 있는 가장 최근 달) · `total`·`post_completion`(Fact, reason '지역 합계(시군구 n곳)', 단위 하나라도 확인 불가면 '확인 불가(일부 누락 n건)') · `breakdown`(그 달 단위별 `UnsoldPoint`). 자료 없으면 `ym` null · '확인 불가(미분양 자료 없음)' · `[]`. 화면은 `unsold[]` 를 더하지 않는다 | D30-5 |
+| F2 | G3·G4 `Gap.comps_median` | 없음 — 목업 '[값] API 필요' | gap_pct 기준 비교군 전체 중앙값(원). 대체 단지 섞이면 '추정'(reason '비교군 실거래 n건 중앙값(대체 단지 연식 보정)'), 아니면 '재가공'(reason '비교군 실거래 n건 중앙값'), prov `sc_<실행>_<단지>_gap.raw`. gap_pct 확인 불가면 그 사유. 0019 전 실행 중 대체가 있던 것은 '확인 불가(옛 점수 실행(재판정 뒤 표시))' | D30-5 |
+| F3 | `Gap.comps_median_unadjusted` | 없음 | gap_pct_unadjusted 의 기준(미보정 중앙값, '재가공', reason '…중앙값(미보정)'). gap_pct_unadjusted 가 null 이면 null | D30-5 |
+| F4 | G1 전체 단지 수 · G7 모순 주장 상태별 수 · G3 가점 범위 | — | 위 A3·A4·A5 필드를 쓴다(새 필드 없음) | D30-5 · D25-3 |
+
+### 문구 변경(같은 필드, 다른 문자열 — 모양 그대로, D30-6)
+
+| # | 대상 | .21 | .22 |
+| --- | --- | --- | --- |
+| W1 | 자금 요건 사전 계산 근거(`RequirementPre.evidence` — `GET /scenarios/{id}/preview` `requirements_pre[].funds`, 비교 요건 칸, decide 입력 근거) | `'계약금 비율 확인 불가(P_mid 5.468억) → 확인 불가'` | `'계약금 비율 확인 불가(중간 가격 5.468억) → 확인 불가'` |
+| W2 | 원 금액 Fact reason(목록 `ComplexRow.down_payment_won`·상세 `price.payment_amounts.*`·비교 `TermsRow.down_payment_won`) | `'산술(P_mid × 계약금 5%)'`·`'산술(P_mid × 중도금 60%)'`·`'산술(P_mid × 잔금 35%)'` | `'산술(중간 가격 × 계약금 5%)'`·`'산술(중간 가격 × 중도금 60%)'`·`'산술(중간 가격 × 잔금 35%)'` |
+| W3 | `PaymentAmounts.formula`(툴팁) | `'금액 = P_mid(현재 구매가 중앙, 대표 타입) × …'` | `'금액 = 중간 가격(현재 구매가 중앙, 대표 타입) × …'` |
+| W4 | `judge_scope_reason`(목록 행·상세 머리)·보고서 범위 사유 — 제외 클래스 | `'포함/제외 classify 제외 클래스(public_sale)'` | `'포함/제외 classify 제외 클래스(공공분양)'` — 공공임대·민간임대·비아파트·범위 밖(ko.json `inclusion` 과 같은 말, `app.analysis.scope.CLASS_TEXT`) |
+| W5 | 같은 사유 — 미해결 | `'포함/제외 classify 미해결(review, 미분류)'`·`'…(manual_review, public_sale)'` | `'포함/제외 classify 미해결(검토, 미분류)'`·`'…(사람 검토, 공공분양)'`(decision review→검토, manual_review→사람 검토, escaped→질문 남김 — `DECISION_TEXT`. 모르는 값·'auto'·'분류 전'은 그대로) |
+
+점수 성분 식(`ScoreComponent.formula_text` — 'clamp(5 − gap%/4, 0, 10) = … (gap …%: P_mid 7.584억, 비교군 중앙 …)')의 식 기호
+`P_mid` 는 바꾸지 않는다(RA §6 식 표기, 회귀 골든 `expected_scores_v2.json` 불변 — '요건 이유'가 아니다). 화면은 서버 문자열을 그대로 보인다.
+
+### 스키마 변경
+
+| # | 대상 | 변경 |
+| --- | --- | --- |
+| 1 | `market.json` | 선택 `unsold_latest`(anyOf `UnsoldLatest` · null), `$defs.UnsoldLatest`(KpiUnsold 와 같은 모양, `breakdown` 필수 배열) |
+| 2 | `complex_detail.json` | `$defs.Gap` 선택 `comps_median`·`comps_median_unadjusted`(anyOf Fact · null) |
+| 3 | `openapi.yaml` | `info.version` 2026-10-09.22, 컴포넌트 `UnsoldLatest`(번들 재생성). 경로 변경 없음 |
+| 4 | `examples/market.json`·`complex_detail_elif.json`·`complex_detail_kaive.json`·`compare_b.json`·`complexes_page.json` | 새 필드 예시 · 문구 W1~W3 |
+| 5 | `complex.json`·`complex_row.json`(`judge_scope_reason`·`down_payment_won`)·`complex_detail.json`(`PaymentAmounts`) | 설명 속 예시 문자열만 W2·W4·W5 로(모양 그대로). 식 설명('P_mid × 비율')은 식 표기라 그대로 |
+
+### 마이그레이션·검증
+
+- **0019**(`contracts/migrations/versions/0019_r11_be_gap_median.py`): `score_component.median_won`(BIGINT NULL — gap 성분만). 쓰기 = 점수
+  실행 persist(엔진이 `analysis.gap.unadjusted_tags` 태그 `median_won=` 로 싣고 저장 때 열로 옮긴다 — flags 에는 남기지 않는다). 데이터
+  채움 없음 — 다음 재판정부터 채워진다. downgrade: 열 삭제.
+- `CONTRACT_VERSION`(`app/core/protocols.py`)·`info.version`·`docs/design/DECISIONS.md` = `2026-10-09.22`. 생성물(`openapi.bundled.yaml`,
+  `contracts_gen.py`) 재생성(`gen_contracts.py --check`), 프론트 `src/api/schema.d.ts` 재생성. **`src/mocks/handlers.gen.ts`(`npm run
+  gen:msw`)는 이 브랜치가 다시 만들지 않았다**(R11-BE 는 프론트 파일 중 `schema.d.ts` 만 쓴다 — 페이지 에이전트·CEO 가 재생성).
+
+### fixtures
+
+- `contracts/fixtures/**` 녹화·매니페스트 변경 없음(`fixture_manifest.py --check`). 픽스처 원문의 'P_mid'(보고서 문장 녹화)는 원문이라 그대로.
+
+### 알려진 한계
+
+- 운영 DB 의 옛 점수 실행 중 대체 단지가 있던 단지는 다음 재판정 전까지 `comps_median` 이 '확인 불가'(0019 전에는 보정 중앙값을 저장하지
+  않았다 — 역산하지 않는다).
+- W1 은 decide 입력 근거 문자열이라, 계약금 비율이 확인 불가이고 자기자본·대출한도가 입력된 상황의 decide 는 운영 첫 재판정에서 캐시
+  미스로 다시 판정된다(같은 입력 재호출 아님 — 입력이 바뀌었다).
+
 ## 2026-10-09.21
 
 R9 데이터 후속 결정(CEO **D29**, `docs/design/DECISIONS.md`) — **D29-3** 체크리스트 kind '청약 접수'·'당첨자 발표', **D29-2** 같은 사업

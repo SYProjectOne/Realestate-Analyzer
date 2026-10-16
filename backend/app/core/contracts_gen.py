@@ -853,7 +853,7 @@ class Complex(BaseModel):
     track: Literal["A", "B"] | None = None
     judge_scope_reason: Annotated[str | None, Field(max_length=200)] = None
     """
-    판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다. 단지 상세 머리(header)도 목록 행과 같은 값
+    판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(검토, 미분류)'·'포함/제외 classify 제외 클래스(공공분양)'(계약 .22 D30-6 — 분류명·decision 은 한국어: 공공분양·공공임대·민간임대·비아파트·범위 밖, 검토·사람 검토·질문 남김)·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다. 단지 상세 머리(header)도 목록 행과 같은 값
     """
 
 
@@ -948,7 +948,7 @@ class ComplexRow(BaseModel):
     """
     judge_scope_reason: Annotated[str | None, Field(max_length=200)] = None
     """
-    판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(review, 미분류)'·'포함/제외 classify 제외 클래스(public_sale)'·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다
+    판정 범위 사유 문자열(계약 2026-10-09.17·D22-5) — 서버 analysis.scope.judge_scope 의 reason 그대로(파이프라인·보고서와 같은 함수). 예: '범위 경계(주소에 동 없음)'·'범위 경계(주소가 지역 법정동에 매칭 안 됨)'·'포함/제외 classify 미해결(검토, 미분류)'·'포함/제외 classify 제외 클래스(공공분양)'(계약 .22 D30-6 — 분류명·decision 은 한국어: 공공분양·공공임대·민간임대·비아파트·범위 밖, 검토·사람 검토·질문 남김)·'분양가 미공개(공고 전)'·'원 공고 미수집'·'출처 상충 — compare 대기'(기준 타입 가격 채택 보류)·'포함 확정 · 접수 가능'·'접수 확인 불가'. **현재 사실로 계산한** 범위의 사유다 — judge_scope(점수 실행 저장값, D10-1)와 다르면 rejudge_needed=true 이고 이 사유는 재판정 뒤 범위의 사유다(발행 리비전은 발행 때 계산한 값). .16 이전 발행 리비전 저장본에는 키가 없다(= null). 표시 문구는 화면이 정하고 판단에 쓰지 않는다
     """
     rejudge_needed: bool | None = False
     """
@@ -995,7 +995,7 @@ class ComplexRow(BaseModel):
     down_payment_pct: Fact
     down_payment_won: Fact | None = None
     """
-    계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
+    계약 2026-10-09.20(D28-5 Q1): 계약금 원 금액 = 판정 기준 타입 P_mid × 현재 납부 조건 계약금 %(추정, reason '산술(중간 가격 × 계약금 n%)', prov = price_mid 의 prov) — 단지 상세 price.payment_amounts.down_payment_won·비교 TermsRow.down_payment_won 과 같은 함수·같은 값. 가격·비율 중 하나라도 확인 불가면 그 사유의 '확인 불가'. .20 이전 발행 리비전 저장본에는 키가 없다(= null)
     """
     competition_summary: CompetitionSummary | None = None
     """
@@ -1879,6 +1879,14 @@ class Gap(BaseModel):
     comps: list[GapComp]
     gap_pct: Fact
     gap_pct_unadjusted: Fact | None
+    comps_median: Fact | None = None
+    """
+    계약 2026-10-09.22(D30-5 — G3 '비교 단지 전체 가운데값'): gap_pct 의 기준인 **비교군 전체 중앙값**(원) — 비교군 단지들의 거래를 모두 합친 median(T_adj)(대체 단지 거래는 연식 보정값, RA §6-2). 점수 실행이 저장한 값(score_component.median_won, 마이그레이션 0019) 그대로 — 화면·API 가 comps[] 에서 다시 계산하지 않는다(단지별 중앙값의 중앙값이 아니다). label = 대체 단지가 섞이면 '추정'(reason '비교군 실거래 n건 중앙값(대체 단지 연식 보정)'), 아니면 '재가공'(reason '비교군 실거래 n건 중앙값' — comps[] 시세와 같은 라벨 규칙), prov = gap_pct 와 같은 'sc_<실행>_<단지>_gap.raw'(식에 '비교군 중앙'). gap_pct 가 확인 불가면 그 사유의 '확인 불가'. 0019 전 점수 실행: 대체 단지가 없던 실행은 미보정 중앙값과 같은 값, 대체가 있던 실행은 '확인 불가(옛 점수 실행(재판정 뒤 표시))'. .22 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
+    comps_median_unadjusted: Fact | None = None
+    """
+    계약 2026-10-09.22: gap_pct_unadjusted 의 기준인 비교군 전체 **미보정** 중앙값(원, score_component.unadjusted_median_won — 0004). label '재가공', reason '비교군 실거래 n건 중앙값(미보정)', prov = comps_median 과 같다. gap_pct_unadjusted 가 null 이면 null
+    """
     score: Fact
     """
     **옛 이름**(deprecated, 계약 2026-10-09.20) — gap_score 와 같은 Fact(성분 점수 s_gap 0~10). 가격 갭 퍼센트가 아니다. 새 화면은 gap_score 를 읽는다
@@ -2795,6 +2803,10 @@ class Market(BaseModel):
     supply: list[SupplyPoint]
     move_in_markers: list[MoveInMarker]
     unsold: list[UnsoldPoint]
+    unsold_latest: UnsoldLatest | None = None
+    """
+    계약 2026-10-09.22(D30-5 — G6 요약 카드 '미분양 지역 합계'): 값이 있는 가장 최근 달의 미분양 합계·준공 후 미분양 합계와 단위(시군구)별 내역 — 대시보드 kpis.unsold 와 **같은 함수·같은 값**(living_area 를 주지 않았을 때). living_area 를 주면 그 생활권의 통계 단위(unsold[] 와 같은 단위)만 합한다. 합계 규칙: 단위 하나라도 확인 불가면 '확인 불가(일부 누락 n건)', reason '지역 합계(시군구 n곳)'. 화면은 unsold[] 를 더하지 않고 이 값을 보인다. .22 이전 발행 리비전 저장본에는 키가 없다(= null)
+    """
     catalysts: list[CatalystView]
     regulation: RegulationSummary
     living_area_prices: list[LivingAreaPrice]
@@ -2859,8 +2871,8 @@ class NoulResult(BaseModel):
 class PaymentAmounts(BaseModel):
     """
     계약 2026-10-09.20(D28-5 Q1): 판정 기준 타입(basis_type_code, 대표 타입 — 84㎡에 가장 가까운 타입)의 납부 금액(원). 현재 납부 조건(payment[].is_current)의 비율 × 현재 구매가 중앙값 P_mid(§6-1) — RA §6-7 자금 요건과 같은 산술(``app.analysis.price.share_won``: ROUND_HALF_UP(P_mid × 비율 ÷ 100), 비교 화면 TermsRow.down_payment_won 과 같은 함수·같은 값·같은 출처). 새 판단 없음.
-    - down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(P_mid × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.
-    - interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(P_mid × 중도금 n%)').
+    - down_payment_won: P_mid × 계약금 %. label 추정, reason '산술(중간 가격 × 계약금 n%)', prov = price_mid 의 prov. 비율·가격 중 하나라도 확인 불가면 그 사유의 '확인 불가'.
+    - interim_won: P_mid × 중도금 % (중도금 비율 합계 — 회차별 금액이 아니다). 규칙은 down_payment_won 과 같다(reason '산술(중간 가격 × 중도금 n%)').
     - balance_won: P_mid × 잔금 %. 같은 규칙.
     - down_payment_first_won: 공고에 적힌 1차 계약금 정액(공고 값 그대로 — payment[].down_payment_first_won 과 같은 Fact). 없으면 그 사유의 '확인 불가'.
     - formula: 식 설명 문구(화면 툴팁).
@@ -4393,6 +4405,20 @@ class UnsoldInput(BaseModel):
     total: int | None
     post_completion: int | None
     label: Literal["확인됨", "추정", "비공식", "재가공", "확인 불가"] | None = None
+
+
+class UnsoldLatest(BaseModel):
+    """
+    미분양 가장 최근 달 합계(계약 2026-10-09.22) — dashboard.json Kpis.unsold(KpiUnsold)와 같은 모양. ym = 값이 있는 가장 최근 달(자료 없으면 null, total·post_completion '확인 불가(미분양 자료 없음)', breakdown []). breakdown = 그 달 단위(시군구)별 원천 행(UnsoldPoint).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    ym: str | None
+    total: Fact
+    post_completion: Fact
+    breakdown: list[UnsoldPoint]
 
 
 class UnsoldPoint(BaseModel):

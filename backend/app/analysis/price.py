@@ -16,6 +16,10 @@ from app.analysis.types import Label, PurchasePrice
 from app.core.contracts_gen import ComplexScoreInput
 
 TARGET_AREA_M2 = Decimal("84")
+MID_PRICE_TEXT = "중간 가격"
+"""D30-6(계약 .22): 화면에 나가는 사유·근거 문장에서 현재 구매가 중앙값(P_mid)을 부르는 말.
+
+식 기호 ``P_mid`` 는 점수 성분 식(``formula_text``)·코드 주석에만 남는다."""
 
 
 def judge_type(types: Iterable[tuple[str, float | Decimal | None]]) -> str | None:

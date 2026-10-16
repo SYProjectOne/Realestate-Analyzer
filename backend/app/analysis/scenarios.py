@@ -15,7 +15,7 @@ from typing import Any, Final, Literal
 
 from app.analysis._common import add_months_date, dec, fmt_won, num, parse_date, ym_of
 from app.analysis.complex_input import resale_input_label
-from app.analysis.price import price_of
+from app.analysis.price import MID_PRICE_TEXT, price_of
 from app.core.contracts_gen import (
     ComplexScoreInput,
     RequirementPre,
@@ -431,7 +431,7 @@ def _funds_pre(c: ComplexScoreInput, sc: Scenario) -> RequirementPre:
         return _pre("확인 불가", "현재 구매가 확인 불가(분양가 미공개)")
     down_pct = _known(c.down_payment_pct, c.down_payment_label)
     if down_pct is None:
-        return _pre("확인 불가", f"계약금 비율 확인 불가(P_mid {fmt_won(price.mid_won)})")
+        return _pre("확인 불가", f"계약금 비율 확인 불가({MID_PRICE_TEXT} {fmt_won(price.mid_won)})")
     d = dec(down_pct)
     down = (price.mid_won * d / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP)
     shortfall = price.mid_won - Decimal(loan) - Decimal(equity)

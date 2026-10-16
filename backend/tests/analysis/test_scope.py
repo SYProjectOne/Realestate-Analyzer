@@ -77,7 +77,8 @@ def test_scope_text_and_reason_are_never_empty() -> None:
     r = judge_scope(
         inclusion_class="private_sale_apt", inclusion_decision="review", has_price=True, intake_status="가능"
     )
-    assert r.text == "미해결(분류 판정 미해결)" and "review" in r.reason
+    # D30-6(계약 .22): decision·클래스는 한국어 이름(화면이 서버 문자열을 그대로 보인다)
+    assert r.text == "미해결(분류 판정 미해결)" and r.reason == "포함/제외 classify 미해결(검토, 민간분양 아파트)"
     for s in JUDGE_SCOPES:
         assert SCOPE_TEXT[s].strip()
 
@@ -179,3 +180,53 @@ def test_d9_scope_on_fixture_facts_vs_golden_inputs_documented_diff() -> None:
         14: ("참고", "미해결"),  # 사우역 지엔하임: classify review
         16: ("보류", "미해결"),  # 검단 센트레빌 그랑포레: classify review
     }
+
+
+@pytest.mark.parametrize(
+    ("cls", "decision", "want"),
+    [
+        ("public_sale", "auto", "포함/제외 classify 제외 클래스(공공분양)"),
+        ("public_rental", "auto", "포함/제외 classify 제외 클래스(공공임대)"),
+        ("private_rental", "auto", "포함/제외 classify 제외 클래스(민간임대)"),
+        ("non_apartment", "auto", "포함/제외 classify 제외 클래스(비아파트)"),
+        ("out_of_scope", "auto", "포함/제외 classify 제외 클래스(범위 밖)"),
+        (None, "review", "포함/제외 classify 미해결(검토, 미분류)"),
+        ("manual_review", "auto", "포함/제외 classify 미해결(auto, 사람 검토)"),
+        ("public_sale", "manual_review", "포함/제외 classify 미해결(사람 검토, 공공분양)"),
+        ("public_sale", "escaped", "포함/제외 classify 미해결(질문 남김, 공공분양)"),
+        (None, None, "포함/제외 classify 미해결(분류 전, 미분류)"),
+    ],
+)
+def test_d30_6_scope_reason_uses_korean_class_names(cls: str | None, decision: str | None, want: str) -> None:
+    """D30-6(계약 .22): 판정 범위 사유에 영어 분류명(public_sale 등)·decision(review 등)이 나가지 않는다."""
+    r = judge_scope(inclusion_class=cls, inclusion_decision=decision, has_price=True, intake_status="가능")
+    assert r.reason == want
+    for english in ("public_sale", "public_rental", "private_rental", "non_apartment", "out_of_scope", "review"):
+        assert english not in r.reason
+
+
+def test_d30_6_class_text_matches_frontend_inclusion_labels() -> None:
+    """서버 한국어 분류명 = 화면 ko.json ``inclusion`` 표시(같은 말 — 두 곳이 다르게 부르지 않는다)."""
+    import json
+    from pathlib import Path
+
+    from app.analysis.scope import CLASS_TEXT, EXCLUDED_CLASSES, INCLUDED_CLASS
+
+    ko = json.loads((Path(__file__).resolve().parents[3] / "frontend" / "src" / "i18n" / "ko.json").read_text(encoding="utf-8"))
+
+    def find(node: object) -> dict[str, str] | None:
+        if isinstance(node, dict):
+            inc = node.get("inclusion")
+            if isinstance(inc, dict) and "public_sale" in inc:
+                return {str(k): str(v) for k, v in inc.items()}
+            for v in node.values():
+                got = find(v)
+                if got is not None:
+                    return got
+        return None
+
+    labels = find(ko)
+    assert labels is not None
+    assert set(EXCLUDED_CLASSES) | {INCLUDED_CLASS, "manual_review"} == set(CLASS_TEXT)
+    for k, v in CLASS_TEXT.items():
+        assert labels[k] == v, k

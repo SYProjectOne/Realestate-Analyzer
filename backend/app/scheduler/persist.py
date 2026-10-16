@@ -19,7 +19,7 @@ from typing import Any, Final
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.analysis.gap import is_unadjusted_tag, unadjusted_from_flags
+from app.analysis.gap import is_unadjusted_tag, median_from_flags, unadjusted_from_flags
 from app.analysis.scenarios import requirement_mismatch
 from app.analysis.scope import COLLECTED_PATHS, INTAKE_PRIORITY, is_fetch_failure, pick_intake
 from app.analysis.score import ScoreRunDetail, decide_outcome, weighted_total
@@ -222,6 +222,7 @@ def save_score_run(
                 flags=[f for f in c.flags or [] if not is_unadjusted_tag(f)],
                 unadjusted_gap_pct=to_dec(un_gap, Decimal("0.000001")) if un_gap is not None else None,
                 unadjusted_median_won=un_median,
+                median_won=median_from_flags(c.flags),  # 계약 .22(D30-5, 0019) — gap% 기준 중앙값
             )
         )
     weights = weights_map(res.weights)
