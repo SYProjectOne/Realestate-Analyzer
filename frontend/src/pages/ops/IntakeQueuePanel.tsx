@@ -11,16 +11,17 @@ import {
 } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { QueryState, Section, tdClass, thClass, useGlobalSearch } from '../_shared';
+import { QueryState, tdClass, thClass, useGlobalSearch } from '../_shared';
 import { HUMAN_CHECK_ANCHOR, humanCheckSearch } from './HumanCheckForm';
+import { OpsSection } from './sections';
 
 /** 처음에 접어 두는 분류 — 점수 대상이 아닌 단지·'미정'(확인 불가보다 급하지 않다) */
 const COLLAPSED: ReadonlySet<IntakeQueueCategory> = new Set(['not_judged', 'undecided']);
 
 const COLS = ['complex', 'status', 'http', 'checkedAt', 'evidence', 'action'] as const;
 
-/** 대기열 구역 앵커(다른 화면에서 `/ops#intake-queue` 로 들어올 때) */
-export const INTAKE_QUEUE_ANCHOR = 'intake-queue';
+/** 대기열 구역 앵커(다른 화면에서 `/ops#intake-queue` 로 들어올 때) — 정의는 묶음 표(sections) */
+export { INTAKE_QUEUE_ANCHOR } from './sections';
 
 /**
  * G7 접수 확인 대기열 (계약 2026-10-09.19 · D26-2) — GET /ops/intake-queue.
@@ -42,9 +43,8 @@ export function IntakeQueuePanel({
   const query = useIntakeQueue(regionId, snapshotId, enabled);
   const total = query.data?.total;
   return (
-    <Section
-      title={t('page.G7.iq.title')}
-      id={INTAKE_QUEUE_ANCHOR}
+    <OpsSection
+      k="intake"
       actions={
         total !== undefined && total > 0 ? (
           <Badge tone="strong" data-testid="intake-queue-total">
@@ -53,7 +53,6 @@ export function IntakeQueuePanel({
         ) : null
       }
     >
-      <p className="text-xs text-muted">{t('page.G7.iq.intro')}</p>
       {!enabled ? (
         <p className="text-sm text-muted">{t('app.noSnapshot')}</p>
       ) : (
@@ -70,7 +69,7 @@ export function IntakeQueuePanel({
           {(q) => <QueueBody queue={q} asof={asof ?? q.asof_date} />}
         </QueryState>
       )}
-    </Section>
+    </OpsSection>
   );
 }
 
@@ -81,7 +80,7 @@ function QueueBody({ queue, asof }: { queue: IntakeQueue; asof: string | null })
     byCategory.set(g.category, [...(byCategory.get(g.category) ?? []), g]);
   }
   return (
-    <div className="flex flex-col gap-2" data-testid="intake-queue">
+    <div className="flex flex-col gap-3" data-testid="intake-queue">
       {queue.asof_date ? (
         <p className="text-xs text-muted">
           <MetaText
@@ -95,18 +94,30 @@ function QueueBody({ queue, asof }: { queue: IntakeQueue; asof: string | null })
         <details
           key={category}
           open={!COLLAPSED.has(category)}
-          className="rounded-sm border border-border"
+          className="rounded-xl border border-border"
           data-testid={`iq-category-${category}`}
         >
-          <summary className="cursor-pointer px-2 py-1 text-sm font-semibold">
-            {t(`page.G7.iq.category.${category}` as TKey)} ·{' '}
-            <MetaValue kind="count" value={groups.reduce((n, g) => n + g.count, 0)} />
+          <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-2 px-4 py-2.5 text-[15px] font-bold">
+            {t(`page.G7.iq.category.${category}` as TKey)}
+            <Badge tone="caution">
+              <MetaValue kind="count" value={groups.reduce((n, g) => n + g.items.length, 0)} />
+            </Badge>
+            <span className="text-xs font-normal text-muted">
+              {groups.map((g, i) => (
+                <span key={g.reason}>
+                  {i > 0 ? ' · ' : ''}
+                  {g.reason} <MetaValue kind="count" value={g.count} />
+                </span>
+              ))}
+            </span>
           </summary>
-          <div className="flex flex-col gap-3 px-2 pb-2">
-            <p className="text-xs text-muted">{t(`page.G7.iq.categoryHint.${category}` as TKey)}</p>
+          <div className="flex flex-col gap-4 px-4 pb-4">
+            <p className="text-[13px] text-fg-2">
+              {t(`page.G7.iq.categoryHint.${category}` as TKey)}
+            </p>
             {groups.map((g) => (
               <div key={`${g.category}:${g.reason}`} className="flex flex-col gap-1">
-                <h3 className="text-sm font-medium" data-testid="iq-group">
+                <h3 className="text-sm font-bold" data-testid="iq-group">
                   <span data-reason={g.reason}>{g.reason}</span> ·{' '}
                   <MetaText kind="count" k="page.G7.iq.groupCount" params={{ n: g.count }} />
                 </h3>
@@ -133,7 +144,7 @@ function ItemTable({
   const [params] = useSearchParams();
   return (
     <div className="overflow-x-auto">
-      <table aria-label={label} className="w-full border-collapse text-sm">
+      <table aria-label={label} className="w-full min-w-[40rem] border-collapse text-sm">
         <thead>
           <tr>
             {COLS.map((k) => (
@@ -199,7 +210,7 @@ function ItemTable({
                   }}
                   title={t('page.G7.iq.actHint')}
                   data-testid="iq-human-check"
-                  className="whitespace-nowrap rounded-sm border border-border px-2 py-0.5 text-xs hover:underline"
+                  className="inline-flex min-h-10 items-center whitespace-nowrap rounded-[10px] border border-border-strong px-3 text-[13px] font-semibold hover:border-fg-2"
                   onClick={() => {
                     // 라우터는 해시로 스크롤하지 않는다 — 폼으로 직접 옮긴다
                     requestAnimationFrame(() => {

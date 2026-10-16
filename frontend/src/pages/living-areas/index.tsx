@@ -5,11 +5,13 @@ import { ApiError } from '@/api/client';
 import { useRegion, useUpdateLivingAreas } from '@/api/hooks';
 import type { LivingAreasUpdated, Region } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { EmptyState, FactCell, MetaText, PublishJobProgress } from '@/components';
+import { Card, FactCell, MetaText, PublishJobProgress } from '@/components';
 import { t } from '@/i18n';
 import { PageShell } from '@/layout/PageShell';
 import { metaText } from '@/lib/meta';
 import { QueryState } from '../_shared';
+import { Crumbs } from '../region-new/Crumbs';
+import { ERROR_BOX } from '../region-new/ui';
 import { RegionExpandPanel } from './RegionExpandPanel';
 
 export interface DraftArea {
@@ -67,25 +69,60 @@ function fromRegion(region: Region): DraftArea[] {
   }));
 }
 
+/** 카드 안에서 처음 보이는 법정동 수(목업: 5개 + '나머지 n개 더 보기') */
+export const DONG_PREVIEW = 5;
+
 /**
- * G0-2 생활권 편집 `/regions/:id/living-areas` (D2-5)
- * 생활권 카드 + 법정동 목록(끌어다 놓기 또는 선택 후 이동) · 추가·이름 변경·삭제(빈 경우만) · 세대수(Fact) · 저장 → PUT
+ * G0-2 생활권 편집 `/regions/:id/living-areas` (D2-5, 목업 LivingAreas)
+ * 머리 '생활권이 뭐예요?' 한 줄 답 · 옮기기 도구줄 · 생활권 카드(법정동 끌어다 놓기 또는 선택 후 이동) · 추가·이름 변경·
+ * 삭제(빈 경우만) · 세대수(Fact) · 저장(화면 아래 붙는 줄) → PUT · 지역 범위 확장(#range)
  */
 export function LivingAreasPage() {
   const { id } = useParams<{ id: string }>();
   const query = useRegion(id);
   return (
-    <PageShell title={t('page.G0_2.title')}>
-      <p className="text-sm text-muted">{t('page.G0_2.intro')}</p>
-      <QueryState query={query}>
-        {(region) => (
-          <>
-            <Editor key={region.id} region={region} />
-            <RegionExpandPanel key={`expand-${region.id}`} region={region} />
-          </>
-        )}
-      </QueryState>
-    </PageShell>
+    <div className="flex flex-col gap-4">
+      <Crumbs
+        items={query.data ? [query.data.name, t('page.G0_2.crumb')] : [t('page.G0_2.crumb')]}
+      />
+      <PageShell title={t('page.G0_2.title')}>
+        <p
+          data-testid="living-area-answer"
+          className="rounded-xl border border-info-border bg-info-soft px-4 py-3 text-base leading-relaxed text-fg sm:text-[17px]"
+        >
+          <b className="mr-1.5">{t('page.G0_2.whatIs')}</b>
+          {t('page.G0_2.answer')}
+        </p>
+        <QueryState query={query}>
+          {(region) => (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                <p className="text-[15px] text-fg-2">{t('page.G0_2.intro')}</p>
+                <div className="flex flex-col gap-1 text-sm text-muted">
+                  <MetaText
+                    kind="count"
+                    className="tabular-nums"
+                    k="page.G0_2.summary"
+                    params={{
+                      areas: region.living_areas.length,
+                      dongs: region.legal_dong_codes.length,
+                    }}
+                  />
+                  <a href="#range" className="text-accent underline underline-offset-2">
+                    {t('page.G0_2.toRange')}
+                  </a>
+                </div>
+              </div>
+              <Editor key={region.id} region={region} />
+              <RegionExpandPanel key={`expand-${region.id}`} region={region} />
+              <p className="border-t border-border pt-4 text-[13px] text-muted">
+                {t('page.G0_2.footnote')}
+              </p>
+            </>
+          )}
+        </QueryState>
+      </PageShell>
+    </div>
   );
 }
 
@@ -162,37 +199,54 @@ function Editor({ region }: { region: Region }) {
 
   const fieldErrors = update.error instanceof ApiError ? update.error.fieldErrors : [];
 
-  const dong = (code: string) => (
-    <li
-      key={code}
-      draggable
-      onDragStart={(e) => e.dataTransfer.setData('text/plain', code)}
-      className="flex items-center gap-2 rounded-sm px-1 py-0.5 hover:bg-bg"
-    >
-      <label className="inline-flex cursor-grab items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={selected.has(code)}
-          onChange={() => toggle(code)}
-          aria-label={t('page.G0_2.selectDong', { name: dongName(code) })}
-        />
-        <span>{dongName(code)}</span>
-        {dongName(code) !== code ? <span className="text-xs text-muted">{code}</span> : null}
-      </label>
-    </li>
-  );
+  const dong = (code: string) => {
+    const label = dongName(code);
+    const on = selected.has(code);
+    return (
+      <li key={code} draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', code)}>
+        <label
+          data-selected={on || undefined}
+          className={`flex min-h-9 cursor-grab items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+            on ? 'bg-accent-soft font-semibold' : 'hover:bg-bg'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={on}
+            onChange={() => toggle(code)}
+            aria-label={t('page.G0_2.selectDong', { name: label })}
+            className="size-4 accent-accent"
+          />
+          <span className={label === code ? 'tabular-nums' : undefined}>{label}</span>
+          {label !== code ? (
+            <span className="ml-auto text-[11px] tabular-nums text-muted">{code}</span>
+          ) : null}
+        </label>
+      </li>
+    );
+  };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-sm border border-border bg-surface p-2 text-sm">
-        <label htmlFor={moveId} className="text-muted">
+    <div className="flex flex-col gap-4">
+      <Card
+        padding="sm"
+        className="flex flex-wrap items-center gap-x-3 gap-y-2.5 shadow-[0_6px_18px_rgb(20_24_31/0.06)]"
+        data-testid="move-toolbar"
+      >
+        <MetaText
+          kind="count"
+          className="text-[15px] font-semibold"
+          k="page.G0_2.selectedCount"
+          params={{ n: selected.size }}
+        />
+        <label htmlFor={moveId} className="ml-1 text-sm font-semibold text-fg-2">
           {t('page.G0_2.moveTo')}
         </label>
         <select
           id={moveId}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
-          className="rounded-sm border border-border bg-surface px-2 py-1"
+          className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-3 py-2 text-[15px]"
         >
           {areas.map((a) => (
             <option key={a.key} value={a.key}>
@@ -204,11 +258,25 @@ function Editor({ region }: { region: Region }) {
           type="button"
           onClick={() => move([...selected], target)}
           disabled={selected.size === 0}
-          className="rounded-sm border border-border px-2 py-1 disabled:opacity-50"
+          className="min-h-11 rounded-xl bg-accent px-4 text-[15px] font-semibold text-accent-fg hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-grayed/40 disabled:text-surface"
         >
           {t('page.G0_2.move')}
         </button>
-        <span className="text-xs text-muted">{t('page.G0_2.dropHint')}</span>
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+          <svg
+            aria-hidden
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" />
+          </svg>
+          {t('page.G0_2.dropHint')}
+        </span>
         <button
           type="button"
           onClick={() => {
@@ -224,56 +292,86 @@ function Editor({ region }: { region: Region }) {
             ]);
             setNextNo((n) => n + 1);
           }}
-          className="ml-auto rounded-sm border border-border px-2 py-1"
+          className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-[10px] border border-border-strong bg-surface px-3.5 text-sm font-medium text-fg hover:border-fg-2"
         >
+          <svg
+            aria-hidden
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
           {t('page.G0_2.add')}
         </button>
-      </div>
+      </Card>
 
       {unassigned.length > 0 ? (
         <section
-          className="rounded-sm border border-danger p-2"
+          className="flex flex-col gap-2 rounded-[14px] border-2 border-danger bg-danger/5 p-3.5"
           aria-label={metaText('page.G0_2.unassigned', { n: unassigned.length })}
         >
-          <p className="text-sm text-danger">
-            <MetaText kind="count" k="page.G0_2.unassigned" params={{ n: unassigned.length }} />
+          <p className="text-[15px] font-bold text-danger">
+            <MetaText
+              kind="count"
+              k="page.G0_2.unassignedTitle"
+              params={{ n: unassigned.length }}
+            />
           </p>
-          <ul className="flex flex-wrap gap-2">{unassigned.map(dong)}</ul>
+          <ul className="flex flex-wrap gap-1.5">{unassigned.map(dong)}</ul>
         </section>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section
+        aria-label={t('page.G0_2.cards')}
+        className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
+      >
         {areas.map((area) => (
           <AreaCard
             key={area.key}
             area={area}
+            active={area.codes.some((c) => selected.has(c))}
             households={area.id ? (households.get(area.id) ?? null) : null}
             onRename={(name) => change(areas.map((a) => (a.key === area.key ? { ...a, name } : a)))}
             onDelete={() => change(areas.filter((a) => a.key !== area.key))}
             onDrop={onDrop(area.key)}
-          >
-            {area.codes.length === 0 ? (
-              <EmptyState message={t('page.G0_2.dropHint')} />
-            ) : (
-              <ul className="flex flex-col gap-0.5">{area.codes.map(dong)}</ul>
-            )}
-          </AreaCard>
+            renderDong={dong}
+          />
         ))}
-      </div>
+      </section>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <Card
+        padding="sm"
+        data-testid="save-bar"
+        className="sticky bottom-11 z-20 flex flex-wrap items-center gap-3 px-4 shadow-[0_-6px_18px_rgb(20_24_31/0.08)]"
+      >
         <button
           type="button"
           onClick={save}
           disabled={!canWrite || !check.ok || update.isPending}
           title={canWrite ? undefined : t('auth.readOnlyHint')}
-          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="min-h-11 rounded-xl bg-accent px-5 text-[15px] font-semibold text-accent-fg hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-grayed/40 disabled:text-surface"
         >
           {t('page.G0_2.save')}
         </button>
-        {dirty ? <span className="text-xs text-muted">{t('page.G0_2.dirty')}</span> : null}
+        {dirty ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-warn-soft px-2.5 py-1.5 text-sm font-semibold text-warn-ink">
+            <span aria-hidden className="size-2 rounded-full bg-warn" />
+            {t('page.G0_2.dirty')}
+          </span>
+        ) : null}
+        {!canWrite ? (
+          <span className="text-[13px] text-muted">{t('auth.readOnlyHint')}</span>
+        ) : (
+          <span className="text-[13px] text-muted">{t('page.G0_2.saveNote')}</span>
+        )}
         {check.duplicated.length > 0 ? (
-          <span role="alert" className="text-sm text-danger">
+          <span role="alert" className={ERROR_BOX}>
             <MetaText
               kind="count"
               k="page.G0_2.duplicated"
@@ -282,12 +380,12 @@ function Editor({ region }: { region: Region }) {
           </span>
         ) : null}
         {check.emptyName ? (
-          <span role="alert" className="text-sm text-danger">
+          <span role="alert" className={ERROR_BOX}>
             {t('page.G0_2.emptyName')}
           </span>
         ) : null}
         {update.error ? (
-          <div role="alert" className="text-sm text-danger">
+          <div role="alert" className={`flex w-full flex-col gap-1 ${ERROR_BOX}`}>
             <p>
               {t('page.G0_2.saveError', {
                 detail:
@@ -295,7 +393,7 @@ function Editor({ region }: { region: Region }) {
               })}
             </p>
             {fieldErrors.length > 0 ? (
-              <ul className="list-disc pl-5 text-xs">
+              <ul className="list-disc pl-5 text-[13px]">
                 {fieldErrors.map((fe) => (
                   <li key={`${fe.loc.join('.')}-${fe.msg}`}>{`${fe.loc.join('.')}: ${fe.msg}`}</li>
                 ))}
@@ -303,35 +401,54 @@ function Editor({ region }: { region: Region }) {
             ) : null}
           </div>
         ) : null}
-      </div>
-      {saved ? <PublishJobProgress jobId={saved.job_id} /> : null}
+      </Card>
+      {saved ? (
+        <div className="rounded-xl bg-subtle p-3.5">
+          <PublishJobProgress jobId={saved.job_id} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function AreaCard({
   area,
+  active,
   households,
   onRename,
   onDelete,
   onDrop,
-  children,
+  renderDong,
 }: {
   area: DraftArea;
+  /** 고른 동이 이 카드에 있다(목업: 주색 테두리) */
+  active: boolean;
   households: Region['living_areas'][number]['households'] | null;
   onRename: (name: string) => void;
   onDelete: () => void;
   onDrop: (event: DragEvent<HTMLElement>) => void;
-  children: ReactNode;
+  renderDong: (code: string) => ReactNode;
 }) {
   const nameId = useId();
+  const [all, setAll] = useState(false);
   const empty = area.codes.length === 0;
+  const fresh = area.id === null;
+  const shown = all ? area.codes : area.codes.slice(0, DONG_PREVIEW);
+  const rest = area.codes.length - DONG_PREVIEW;
   return (
     <section
       aria-label={area.name || area.key}
+      data-new={fresh || undefined}
+      data-active={active || undefined}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
-      className="flex flex-col gap-2 rounded-sm border border-border bg-surface p-3"
+      className={`flex flex-col gap-2.5 rounded-2xl p-4 ${
+        active
+          ? 'border-2 border-accent bg-surface'
+          : fresh
+            ? 'border-2 border-dashed border-accent/60 bg-accent-soft/20'
+            : 'border border-border bg-surface'
+      }`}
     >
       <div className="flex items-center gap-2">
         <label htmlFor={nameId} className="sr-only">
@@ -341,29 +458,51 @@ function AreaCard({
           id={nameId}
           value={area.name}
           onChange={(e) => onRename(e.target.value)}
-          className="flex-1 rounded-sm border border-border bg-surface px-2 py-1 font-medium"
+          className="min-h-11 min-w-0 flex-1 rounded-xl border border-border-strong bg-surface px-3 py-2 text-base font-bold"
         />
         <button
           type="button"
           onClick={onDelete}
           disabled={!empty}
           title={empty ? undefined : t('page.G0_2.deleteDisabled')}
-          className="rounded-sm border border-border px-2 py-1 text-xs disabled:opacity-50"
+          className="min-h-11 shrink-0 rounded-[10px] border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-fg-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t('page.G0_2.delete')}
         </button>
       </div>
-      <dl className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <dl className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px]">
         <dt className="text-muted">{t('page.G0_2.households')}</dt>
-        <dd>
+        <dd className="font-semibold text-fg">
           <FactCell fact={households} unit="households" emptyReason={t('page.common.none')} />
         </dd>
         <dt className="text-muted">{t('page.G0_2.dongs')}</dt>
-        <dd>
+        <dd className="font-semibold text-fg">
           <MetaText kind="count" k="page.G0_2.dongCount" params={{ n: area.codes.length }} />
         </dd>
       </dl>
-      {children}
+      {empty ? (
+        <p className="rounded-xl border-2 border-dashed border-grayed px-3.5 py-5 text-center text-sm leading-relaxed text-muted">
+          {t('page.G0_2.dropEmpty')}
+        </p>
+      ) : (
+        <>
+          <ul className="flex flex-col gap-0.5">{shown.map(renderDong)}</ul>
+          {rest > 0 ? (
+            <button
+              type="button"
+              aria-expanded={all}
+              onClick={() => setAll((v) => !v)}
+              className="min-h-8 self-start px-2 py-1.5 text-left text-[13px] text-accent hover:underline"
+            >
+              {all ? (
+                t('page.G0_2.less')
+              ) : (
+                <MetaText kind="count" k="page.G0_2.more" params={{ n: rest }} />
+              )}
+            </button>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }

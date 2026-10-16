@@ -98,7 +98,10 @@ describe('G2 단지 리스트', () => {
   it('열 선택은 저장된다(localStorage)', async () => {
     renderRoute('/complexes');
     await screen.findByRole('table', { name: t('page.G2.table') });
-    await userEvent.click(screen.getByText(t('page.G2.columns'), { selector: 'summary' }));
+    // R11: '보여 줄 열 고르기 (n개 켜짐)'(켜진 개수는 메타)
+    await userEvent.click(
+      screen.getByText(t('page.G2.columns', { n: '7' }), { selector: 'summary span' }),
+    );
     await userEvent.click(screen.getByRole('checkbox', { name: t('page.G2.col.p10') }));
     await waitFor(() =>
       expect(JSON.parse(window.localStorage.getItem(COLUMN_STORAGE_KEY) ?? '{}')).toMatchObject({
@@ -312,9 +315,9 @@ describe('G2 첫 화면·전체 행 (W8·W9)', () => {
 });
 
 describe('R9-UI P4 G2 필터 접기 · 접수 가능 칩 · 목록 안내(30-proposal §5)', () => {
+  // R11(List 보드 LS-1·CEO): '이 날짜 전에 되팔 수 있게 됨 (전매 종료)'는 칩 줄(늘 보임)로 — 더 보기는 6칸
   const MORE = [
     'land_type',
-    'resale_end_before',
     'price_min',
     'price_max',
     'move_in_year',
@@ -322,11 +325,11 @@ describe('R9-UI P4 G2 필터 접기 · 접수 가능 칩 · 목록 안내(30-pro
     'judge_scope',
   ] as const;
 
-  it('기본: 핵심 필터 3칸(단지명·접수·생활권)만 보이고 나머지 7칸은 "필터 더 보기"(1클릭)', async () => {
+  it('기본: 핵심 필터 3칸(단지명·접수·생활권) + 전매 종료 날짜 칸만 보이고 나머지 6칸은 "필터 더 보기"(1클릭)', async () => {
     renderRoute('/complexes');
     await screen.findByRole('table', { name: t('page.G2.table') });
     const filters = screen.getByRole('search', { name: t('page.G2.filters') });
-    for (const key of ['q', 'intake_status', 'living_area'] as const) {
+    for (const key of ['q', 'intake_status', 'living_area', 'resale_end_before'] as const) {
       expect(within(filters).getByLabelText(t(`page.G2.filter.${key}`))).toBeInTheDocument();
     }
     for (const key of MORE) {
@@ -446,7 +449,10 @@ describe('R9-UI P4 G2 기본 열 8개(D28-4)', () => {
   it('숨긴 열(생활권·+10%·단지 분류·택지·총 세대·마지막 변경)은 열 선택 1클릭', async () => {
     renderRoute('/complexes');
     await headers();
-    await userEvent.click(screen.getByText(t('page.G2.columns'), { selector: 'summary' }));
+    // R11: '보여 줄 열 고르기 (n개 켜짐)'(켜진 개수는 메타)
+    await userEvent.click(
+      screen.getByText(t('page.G2.columns', { n: '7' }), { selector: 'summary span' }),
+    );
     for (const key of [
       'living_area',
       'p10',

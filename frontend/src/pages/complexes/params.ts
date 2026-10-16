@@ -91,6 +91,32 @@ export function toListParams(
   };
 }
 
+/**
+ * 카드 보기 정렬 상자(List 보드 고침 LS-2·LS-3): 값 = 지금 정렬 키 그대로. 기본(-total)이 첫 값, '접수 가능 먼저'는 선택지로만.
+ * 표 머리에서 고른 다른 정렬은 상자에 '표에서 고른 정렬'로 보인다(값은 바꾸지 않는다).
+ */
+export const SORT_PRESETS = ['-total', 'intake', 'resale_end', 'price_low'] as const;
+export type SortPreset = (typeof SORT_PRESETS)[number];
+
+export function isSortPreset(sort: string): sort is SortPreset {
+  return (SORT_PRESETS as readonly string[]).includes(sort);
+}
+
+/** 보기 방식(R11 List·ListTable 보드 '카드 · 표'): URL `?view=` 가 먼저, 없으면 이 브라우저에 기억한 값, 없으면 표 */
+export const VIEW_KEY = 'view';
+export const VIEW_STORAGE_KEY = 'sa.g2.view';
+export type ViewMode = 'table' | 'cards';
+
+export function isView(v: string | null | undefined): v is ViewMode {
+  return v === 'table' || v === 'cards';
+}
+
+export function readView(params: URLSearchParams, stored: string | null): ViewMode {
+  const fromUrl = params.get(VIEW_KEY);
+  if (isView(fromUrl)) return fromUrl;
+  return isView(stored) ? stored : 'table';
+}
+
 /** 처음 누르면 오름차순인 키 — intake 는 오름차순이 '접수 가능 먼저'(서버 INTAKE_ORDER) */
 const ASC_FIRST: ReadonlySet<SortKey> = new Set(['intake']);
 

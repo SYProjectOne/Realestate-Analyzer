@@ -6,119 +6,119 @@
 
 | # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 | 테스트 |
 |---|---|---|---|---|---|
-| 1 | [화면] 지역이 하나도 없으면 /regions/new 로 보냄 (`dashboard` Navigate) | Shell · §1 기준일·상황 선택칸을 펼친 모습 "지역이 없으면 … 홈은 지역 추가 화면으로 넘어가요" | 같음 | 다른 보드(Shell, 문구로만) |
-| 2 | [화면] h1 `page.G1.title` "홈" | Main · 첫 줄 h1 "지금 청약을 넣을 수 있는 단지는 3곳이에요" | h1이 문장으로 ("홈"은 메뉴에만) | 있음 |
-| 3 | [화면] 출처 범례 한 줄 `label.legend` (PageShell legend) | Main · 바닥 글 "… 숫자를 누르면 출처가 열려요" | 위치 맨 위 → 맨 아래 | 있음(고침 HM-16) |
-| 4 | [화면] 라벨 뜻 ⓘ 펼침 `label.legendHelp` | Shell · §3 "라벨 뜻 [접기]" (Main 바닥 글은 확인됨·추정 두 개만) | — | 다른 보드(Shell) |
-| 5 | [화면] 기준일 없음 NoSnapshot `app.noSnapshot`/`app.noSnapshotBootstrapping` | Shell · §7 불러오는 중 · 오류 · 빈 상태 | — | 다른 보드(Shell) |
-| 6 | [화면] 대시보드 불러오는 중 `app.loading` | Shell · §7 | — | 다른 보드(Shell) |
-| 7 | [화면] 대시보드 오류 `page.common.loadError` | Shell · §7 | — | 다른 보드(Shell) |
-| 8 | [화면] 준비 중(503) `page.common.materializePending` | Shell · §7 | — | 다른 보드(Shell) |
-| 9 | [화면] 발행 뒤 만든 시나리오 결과 없음 `page.common.scenarioMissing` | Shell · §7 | — | 다른 보드(Shell) |
-| 10 | [화면] 헤더 상황 토글 → 대시보드 다시 부름 (`?scenario=`) | Shell · 머리줄 상황 토글 (Main 머리줄엔 없음) | — | 다른 보드(Shell) |
-| 11 | [화면] 헤더 기준일 → 대시보드 다시 부름 (`?snapshot=`) | Shell · 머리줄 기준일 (Main 머리줄엔 없음, 첫 줄 글에 "기준일 2026년 10월 14일") | — | 다른 보드(Shell) |
-| 12 | [API] GET /snapshots/{id}/dashboard?scenario= (`api/hooks` useDashboard) | Main · 화면 전체 | 호출 표시 없음 | 있음 |
-| 13 | [화면] 구역 순서 (data-section: openNow·upcoming → top → region → changes → C06·C05) | Main · 첫 줄 → 접수 가능 카드 → 곧 접수 띠 → 다가오는 일정 + 시장 → 점수 순서 → 최근에 바뀐 것 | 지역 현황이 점수 위로, 차트는 점수 순서·시장 카드에 합침 | 있음 |
-| 14 | [재판정] 안내 `page.G1.rejudgeNotice` "재판정 필요 — 이 화면의 판정 범위·순위·점수는 스냅샷에 저장된 값입니다 …" (role=note) | Shell · §2 화면 위에 뜨는 알림 띠 "새로 바뀐 사실이 있어 점수를 다시 매겨야 해요. 상위 단지를 다시 판정할까요? (홈)" | "저장된 값"이라는 설명 빠짐 · 고침 후: (Shell SH-7) '저장된 값' 설명 되살림 | 다른 보드(Shell · 고침 SH-7) |
-| 15 | [재판정] 버튼 `page.G1.rejudgeRun` "재판정 잡 등록" | Shell · §2 "다시 판정하기" | 재판정 잡 등록 → 다시 판정하기 | 다른 보드(Shell) |
-| 16 | [API] POST /jobs `rejudge` (대상 = 재판정 필요 단지, 없으면 null · 사유 `page.G1.rejudgeReason`) | Shell · §2 "다시 판정하기" | 호출 표시 없음 | 다른 보드(Shell) |
-| 17 | [재판정] 읽기 전용 열쇠면 꺼짐 + title `auth.readOnlyHint` | Scenario · 가끔만 나오는 모습 "D · 읽기 전용 열쇠일 때" · Ops · 모든 묶음 공통 상태 | — | 다른 보드(Scenario·Ops, 문구로만) |
-| 18 | [재판정] 보내는 중·등록한 뒤 꺼짐 | Scenario · "D · 읽기 전용 열쇠일 때" "저장·판정 요청을 보내는 중이거나 … 버튼이 잠깐 꺼져요" | — | 다른 보드(Scenario, 문구로만) |
-| 19 | [재판정] 모바일 읽기 전용이면 숨김 (`data-write`) | Shell · §2 "휴대폰에서는 보기만 할 수 있어요" | — | 다른 보드(Shell, 문구로만) |
-| 20 | [재판정] 등록 실패 `page.common.loadError` (role=alert) | — | — | 다른 보드(Shell · 고침 SH-7) |
-| 21 | [재판정] 등록 뒤 작업 진행 JobProgress | Shell · §6 작업 진행 · 알림 | — | 다른 보드(Shell) |
-| 22 | [재판정] 끝나면 그 기준일 화면 새로 고침 (invalidate, 동작) | — | — | 문구로만(고침 HM-17) |
-| 23 | [벤치마크] 배지 `page.common.benchmarkAbsent` "벤치마크 없음({reason})" (role=note) | Shell · §2 "근처 새 아파트 실적 없음(이 지역에 비교할 사례 없음)" | 벤치마크 → 근처 새 아파트 실적 | 다른 보드(Shell · 고침 SH-8) |
-| 24 | [벤치마크] 안내 `page.G1.benchmarkAbsentHint` "벤치마크 성분이 없어 종합 점수를 계산하지 않았습니다" | Shell · §2 "이 기준은 점수에서 빠져 있어요." | 뜻 바뀜 주의: '종합 점수 계산 안 함' → '이 기준만 빠짐' · 고침 후: (Shell SH-8) '근처 새 아파트 실적이 없어 종합 점수를 계산하지 않았어요' | 다른 보드(Shell · 고침 SH-8) |
-| 25 | [접수 가능] 제목 `page.G1.openNow.title` "지금 접수 가능" (h2) | Main · 첫 줄 h1 "지금 청약을 넣을 수 있는 단지는 …" | 문장으로 | 있음 |
-| 26 | [접수 가능] 용어 ⓘ `intake_status` (Term) | — | — | 있음(고침 HM-1) |
-| 27 | [접수 가능] 값 FactCell `kpis.intake_open_count` (count) | Main · 첫 줄 "3곳" | 같음 | 있음(고침 HM-1) |
-| 28 | [접수 가능] 그 값의 라벨 배지 | — | — | 있음(고침 HM-1) |
-| 29 | [접수 가능] 그 값 누르면 출처 창(점선 밑줄 버튼) | — | — | 있음(고침 HM-1) |
-| 30 | [접수 가능] 단위 `page.G1.openNow.unit` "곳" | Main · 첫 줄 "3곳" | 같음 | 있음 |
-| 31 | [접수 가능] 링크 `page.G1.openNow.link` "접수 가능 단지 보기" → /complexes?intake_status=가능 (전역 쿼리 유지) | Main · 첫 줄 파란 버튼 "접수 가능 단지 모두 보기" | 보기 → 모두 보기 | 있음 |
-| 32 | [접수 가능] 안내 `page.G1.openNow.hint` "공식 자료로 확인한 접수 상태 기준입니다. 접수 기간은 단지 상세에서 확인하세요." | Main · 첫 줄 설명 "각 단지 공식 홈페이지와 청약홈에서 확인한 접수 상태예요. 카드를 누르면 …" | "접수 기간은 단지 상세에서" → "카드를 누르면 … 한 화면에서" | 있음 |
-| 33 | [일정] 제목 `page.G1.upcoming.title` "다가오는 일정(4주)" | Main · 다가오는 일정 | "(4주)" 빠짐 · 고침 후: '다가오는 일정(4주)' | 있음(고침 HM-3) |
-| 34 | [API] GET /ops/checklist (`useChecklist`) | Main · 다가오는 일정 | 호출 표시 없음 | 있음 |
-| 35 | [일정] 열린 항목 + 기준일부터 28일 안만 거르기 | — | 기간 표시 없음 | 있음(고침 HM-3) |
-| 36 | [일정] 최대 5건 | — | 목업은 7건 그림 · 고침 후: 5건으로 줄임 | 있음(고침 HM-3) |
-| 37 | [일정] 날짜순 정렬 | Main · 다가오는 일정 아래 안내 "… 날짜순으로 보여 줘요" | 같음 | 있음 |
-| 38 | [일정] 종류 배지 `page.common.scheduleKind.*` (청약 접수·당첨자 발표·계약·중도금 납부·전매 가능 시작·공고 예상·기한 만료·확인할 것·사실 재확인) | Main · 다가오는 일정 오른쪽 칩 "전매 제한 끝 · 청약 접수 · 중도금 · 계약 · 당첨자 발표" | 전매 가능 시작 → 전매 제한 끝, 중도금 납부 → 중도금 (공고 예상·기한 만료·확인할 것·사실 재확인 예는 없음) · 고침 후: '전매 가능 시작'·'중도금 납부' | 있음(고침 HM-3) |
-| 39 | [일정] 날짜 + D± (formatDate) | Main · 다가오는 일정 왼쪽 상자 "오늘 / D-1 / D-5" + "10월 14일" | D± 상자 크게 | 있음 |
-| 40 | [일정] 단지 이름 링크 → 단지 상세 | Main · 다가오는 일정 (이름이 글자일 뿐 링크 아님) | — | 있음(고침 HM-3) |
-| 41 | [일정] 단지 없는 항목은 제목 글자 | — | — | 있음(고침 HM-4) |
-| 42 | [일정] 항목 title(마우스 올림) = 원래 제목 | — | — | 문구로만(고침 HM-17) |
-| 43 | [일정] 계산 기준 `page.common.scheduleBasis` "계산 기준: {basis}" | — | — | 있음(고침 HM-3) |
-| 44 | [일정] 순위·구분 둘째 줄 (scheduleDetail) | Main · 다가오는 일정 "1순위 청약 접수 (인천·기타지역)" | 문장형 | 있음 |
-| 45 | [일정] 403 `page.G1.upcoming.noAccess` "이 링크로는 일정을 볼 수 없습니다(운영 화면 권한 필요)" | — | — | 있음(고침 HM-4) |
-| 46 | [일정] 오류 `page.common.loadError` (inline) | Shell · §7 | — | 다른 보드(Shell) |
-| 47 | [일정] 불러오는 중 `app.loading` | Shell · §7 | — | 다른 보드(Shell) |
-| 48 | [일정] 없음 `page.G1.upcoming.none` "4주 안의 일정이 없습니다" | — | — | 있음(고침 HM-4) |
-| 49 | [일정] 전체 링크 `page.G1.upcoming.all` "전체 일정 보기" → /ops | Main · 다가오는 일정 "달력으로 보기" (href="#") | 이름 바뀜, 이동할 곳 미정 (Ops "2026년 10월 · 10건" 달력으로 보임) · 고침 후: '전체 일정 보기' → Ops | 있음(고침 HM-3) |
-| 50 | [점수] 구역 제목 `page.G1.top5` "종합 점수 상위 단지" | Main · 점수 순서 · 상황: 기본 | 종합 점수 상위 단지 → 점수 순서 | 있음 |
-| 51 | [점수] `page.G1.top5Scenario` "상황: {name}" | Main · 점수 순서 제목 "· 상황: 기본" | 같음 | 있음 |
-| 52 | [점수] `page.G1.top5Note` "상대 비교 · 투자 권유 아님" | Main · 점수 순서 설명 "… 10점 만점 상대 비교예요 … 투자 권유가 아니에요." | 같은 뜻 | 있음 |
-| 53 | [점수] 머리 "종합" `page.G1.total` + 용어 ⓘ `total` | Main · 점수 순서 "점수는 어떻게 매기나요?" 링크 (href="#") | ⓘ 팝오버 → 링크 (대상 미정) · 고침 후: 링크 대신 '종합 ?' 용어 버튼 | 있음(고침 HM-6) |
-| 54 | [점수] 머리 `page.G1.p10` "가격 +10% 상승 가능성(판정기)" + 용어 ⓘ `p10` | — | — | 있음(고침 HM-6) |
-| 55 | [점수] 5곳 미만 `page.G1.top5Fewer` | Main · 점수 순서 아래 "점수가 있는 단지가 3곳뿐이에요. 나머지는 단지 찾기에서 …" | 같은 뜻 | 있음 |
-| 56 | [점수] 순위 5 이하(순위 없는 행 포함)만 | Main · 점수 순서 3줄 | 같음 | 있음 |
-| 57 | [점수] 목록 ul (aria-label = 구역 제목), 카드 격자 | Main · 점수 순서 ol 줄 목록 | 카드 → 한 줄씩 | 있음 |
-| 58 | [점수] 카드 빈 곳 누르면 단지 상세 (안쪽 버튼·링크는 제외) | — | 목업은 이름만 링크 | 문구로만(고침 HM-17) |
-| 59 | [점수] 이름 링크 + aria-label `page.G1.open` "{name} 상세 보기" | Main · 점수 순서 이름 링크 | aria-label 없음 | 있음 |
-| 60 | [점수] 순위 배지 (MetaValue rank) | Main · 점수 순서 동그라미 숫자 | 배지 → 동그라미 | 있음 |
-| 61 | [점수] 생활권 이름 | Main · 점수 순서 둘째 줄 "미추홀구" | 같음 | 있음 |
-| 62 | [점수] 접수 배지 IntakeBadge | — | 접수 가능 카드에만 있음 | 있음(고침 HM-7) |
-| 63 | [점수] 동률 배지 TieBadge | Main · 점수 순서 "동률" | 같음 | 있음 |
-| 64 | [점수] 동률(신뢰도) | Shell · §4 "동률(믿음 정도 0.62)" | 신뢰도 → 믿음 정도 | 다른 보드(Shell) |
-| 65 | [점수] 순위 불안정 UnstableBadge | Shell · §4 "순위가 흔들려요" | — | 다른 보드(Shell) |
-| 66 | [점수] 판정 범위 배지 JudgeScopeBadge (판정 대상은 숨김) | Shell · §4 점수 계산 범위 | — | 다른 보드(Shell) |
-| 67 | [점수] 재판정 필요 배지 RejudgeNeededBadge | Shell · §4 "다시 판정 필요" | — | 다른 보드(Shell) |
-| 68 | [점수] 현재 구매가 `page.G1.card.price` FactCell price_low ~ price_high (eok) | Main · 점수 순서 둘째 줄 "5억 9,850만~6억 5,090만" | 칸 이름 없이 줄 안 글, 7.49억 → 억·만 표기 | 있음(고침 HM-7) |
-| 69 | [점수] 전매 종료 `page.G1.card.resaleEnd` FactCell (date, D±) | Main · 점수 순서 둘째 줄 "되팔기 2026.12.09" | 전매 종료 → 되팔기, D± 빠짐 · 고침 후: '전매 종료 2026.12.09 D-56' + 라벨 | 있음(고침 HM-7) |
-| 70 | [점수] 가격 갭 `page.G1.card.gap` FactCell (pct) | Main · 점수 순서 둘째 줄 "주변보다 8.1% 높음" | 가격 갭 → 주변보다 n% 높음/낮음 | 있음 |
-| 71 | [점수] 사실 칸(가격·전매·갭) 라벨 배지 + 출처 창 버튼 | — | — | 있음(고침 HM-7) |
-| 72 | [점수] 빈 사유 `page.G1.noListRow` "이 기준일 자료에 없음" | — | — | 있음(고침 HM-7) |
-| 73 | [점수] 종합 FactCell total (score) | Main · 점수 순서 오른쪽 "4.83" | 라벨은 바닥 "점수 모두 추정" 한 번 | 있음 |
-| 74 | [점수] +10% 상승 가능성 FactCell p10 (prob) | Main · 점수 순서 "… 10% 넘게 오를 가능성 53% 판정기 추정" | 가격 +10% 상승 가능성 → 10% 넘게 오를 가능성 · 고침 후: '+10% 이상 오를 가능성' | 있음(고침 HM-5) |
-| 75 | [점수] 목표 시점 `page.G1.p10Target` "목표 시점 {target}" (상황의 p10_horizon) | Main · 점수 순서 "입주 1년 뒤 …" | 문장 안으로 · 고침 후: '목표 시점: 입주+1년'을 따로 적음 | 있음(고침 HM-5) |
-| 76 | [점수] `page.G1.p10Note` "당첨 확률이 아닙니다 · 보장 아님" | Main · 점수 순서 "당첨 확률이 아니에요" | "보장 아님" 빠짐 — 주의 · 고침 후: '보장 아님' 되살림 | 있음(고침 HM-5) |
-| 77 | [API] GET /scenarios (목표 시점 p10_horizon 찾기) | Main · 점수 순서 "입주 1년 뒤" | 호출 표시 없음 | 있음 |
-| 78 | [지역 현황] 구역 제목 `page.G1.region` "지역 현황" | Main · 인천 시장 한눈에 | 지역 현황 → {지역} 시장 한눈에 (지역 이름은 서버 값) | 있음 |
-| 79 | [지역 현황] 모바일이면 접기(details) | — | — | 있음(고침 HM-15) |
-| 80 | [지역 현황] 판정 대상 `page.G1.kpi.judged` "판정 대상(점수 계산 대상)" | Main · 시장 카드 "점수를 매긴 단지" + "점수 계산 대상(판정 대상)이에요" | 바뀜 | 있음 |
-| 81 | [지역 현황] 판정 대상 용어 ⓘ `judge_scope` | — | — | 있음(고침 HM-10) |
-| 82 | [지역 현황] FactCell `kpis.judged_count` (count) | Main · 시장 카드 "6곳 추정" | 같음 ("/ 100곳" 새로) · 고침 후: '/ [값]곳'(지금 응답에 없음 — API 필요) | 있음(고침 HM-10) |
-| 83 | [지역 현황] 미분양 제목 `page.G1.kpi.unsold` "미분양" | Main · 시장 카드 "안 팔린 집 (미분양)" | 쉬운 말 더함 | 있음 |
-| 84 | [지역 현황] FactCell `kpis.unsold.total` (households) | Main · 시장 카드 "3,729세대" | 라벨 없음 | 있음 |
-| 85 | [지역 현황] 부제 `page.G1.kpi.unsoldSub` "{ym} 기준 · 준공 후" | Main · 시장 카드 "다 지었는데 안 팔린 집" | "{ym} 기준" 빠짐(그래프 범위 글로만) · 고침 후: '2026년 8월 기준' 되살림 | 있음(고침 HM-10) |
-| 86 | [지역 현황] FactCell `kpis.unsold.post_completion` | Main · 시장 카드 "1,401세대" | 라벨 없음 | 있음 |
-| 87 | [지역 현황] 시군구별 펼침 `page.G1.kpi.unsoldBreakdown` "시군구별 보기" | Main · 시장 카드 "구별로 보기" 링크 | 시군구별 → 구별로, 펼침 → 링크 모양 | 있음 |
-| 88 | [지역 현황] 시군구별 내역 (이름 + FactCell, 출처 1클릭) | — | — | 있음(고침 HM-11) |
-| 89 | [지역 현황] 입주 많은 해 `page.G1.kpi.movePeak` "입주가 가장 많은 해" | Main · 시장 카드 "입주가 가장 몰리는 해" | 많은 → 몰리는 | 있음 |
-| 90 | [지역 현황] FactCell `kpis.move_in_peak.year` (text) | Main · 시장 카드 "2026년" | 같음 | 있음 |
-| 91 | [지역 현황] FactCell `kpis.move_in_peak.units` (households) | Main · 시장 카드 "이 해에 14,710세대 입주 추정" | 문장형 | 있음 |
-| 92 | [지역 현황] 마지막 수집 `page.G1.kpi.freshness` "마지막 수집" | Main · 시장 카드 "마지막으로 모은 때" | 바뀜 | 있음 |
-| 93 | [지역 현황] FactCell `kpis.data_freshness.last_success_at` (date, D±) | Main · 시장 카드 "10.13 19:39" | D± → 시각 | 있음 |
-| 94 | [지역 현황] `page.G1.kpi.freshnessSub` "수집 실패 {failing}곳 · 늦어진 곳 {stale}곳" (MetaText) | Main · 시장 카드 "수집 실패 0곳 · 늦어진 곳 1곳" | 같음 | 있음 |
-| 95 | [지역 현황] 칸 값들의 라벨 배지·출처 창 버튼 (미분양·준공 후·마지막 수집) | — | 판정 대상·입주 세대만 "추정" 보임 | 있음(고침 HM-10) |
-| 96 | [변경] 구역 제목 `page.G1.changes` "최근 변경" | Main · 최근에 바뀐 것 | 바뀜 | 있음 |
-| 97 | [변경] 모바일이면 접기(details) | — | — | 있음(고침 HM-15) |
-| 98 | [변경] 없음 `page.G1.noChanges` "최근 변경 없음" | Main · 최근에 바뀐 것 아래 "변경이 없으면 '최근 변경 없음'이 나와요" | 같음 | 문구로만 |
-| 99 | [변경] 중요도 배지 `page.common.severity.*` 정보·알림·중요 | Main · 최근에 바뀐 것 "중요" + 아래 "정보 · 알림 · 중요 세 단계" | 같음 | 있음 |
-| 100 | [변경] 재판정 대상 배지 `page.G1.rejudge` "재판정 대상" | Main · 최근에 바뀐 것 "다시 판정해요" | 재판정 대상 → 다시 판정해요 | 있음 |
-| 101 | [변경] 단지 이름 | Main · 최근에 바뀐 것 단지 이름 | 같음 | 있음 |
-| 102 | [변경] 단지 없는 변경의 대상 이름 `page.common.changeEntity.*` | — | — | 있음(고침 HM-14) |
-| 103 | [변경] 서버 한 줄 요약(summary), title = 필드 이름 | Main · 최근에 바뀐 것 "공식 홈페이지 안내 팝업이 바뀌었어요" | title 없음 | 있음(고침 HM-14) |
-| 104 | [변경] 요약 없을 때 `page.G1.changeSentence` "{field} 변경" + `page.common.changeField.*` | — | — | 있음(고침 HM-14) |
-| 105 | [변경] 지역 첫 적재(first_load) 요약 문장 한 줄 | — | — | 있음(고침 HM-14) |
-| 106 | [변경] 바로 보이는 값(plain): 필드 + "이전 → 이후" | — | — | 있음(고침 HM-14) |
-| 107 | [변경] 감지 시각 detected_at (D±) | Main · 최근에 바뀐 것 "10.14 22:42" | D± → 시각 | 있음 |
-| 108 | [변경] 줄 누르면 단지 상세 해당 탭(#tab) | Main · 최근에 바뀐 것 단지 이름 링크 | 탭 지정은 목업에서 확인 안 됨 | 있음 |
-| 109 | [변경] 바뀐 값 펼침 `page.G1.changeShowValue` "바뀐 값 보기" | Main · 최근에 바뀐 것 첫 줄 details "바뀐 값 보기" | 같음 | 있음 |
-| 110 | [변경] 바뀐 값 `page.common.arrow` "{old} → {new}" | Main · 펼친 글 "이전 식별값 90b9b7… → 새 식별값 ed830f…" | 문장형 설명 더함 | 있음 |
-| 111 | [변경] 처음 3건만 | Main · 최근에 바뀐 것 3줄 | 같음 | 있음 |
-| 112 | [변경] 더 보기 `page.G1.changesMore` (aria-expanded) | Main · "변경 2건 더 보기" | 남은 개수가 붙음 | 있음 |
-| 113 | [변경] 접기 `page.G1.changesLess` "변경 접기" | — | — | 있음(고침 HM-14) |
+| 1 | [화면] 지역이 하나도 없으면 /regions/new 로 보냄 (`dashboard` Navigate) | Shell · §1 기준일·상황 선택칸을 펼친 모습 "지역이 없으면 … 홈은 지역 추가 화면으로 넘어가요" | 같음 | 다른 보드(Shell, 문구로만) | routes.test › 지역이 하나도 없으면 / → /regions/new |
+| 2 | [화면] h1 `page.G1.title` "홈" | Main · 첫 줄 h1 "지금 청약을 넣을 수 있는 단지는 3곳이에요" | h1이 문장으로 ("홈"은 메뉴에만) | 있음 | r11home › h1 = "지금 청약을 넣을 수 있는 단지는 N곳이에요" · 데이터 전에는 h1 = 화면 이름 "홈" |
+| 3 | [화면] 출처 범례 한 줄 `label.legend` (PageShell legend) | Main · 바닥 글 "… 숫자를 누르면 출처가 열려요" | 위치 맨 위 → 맨 아래 | 있음(고침 HM-16) | r11home › 바닥: 자격 판정 아님 + 출처 범례(라벨 뜻) |
+| 4 | [화면] 라벨 뜻 ⓘ 펼침 `label.legendHelp` | Shell · §3 "라벨 뜻 [접기]" (Main 바닥 글은 확인됨·추정 두 개만) | — | 다른 보드(Shell) | shell-components › 여섯 줄 = 라벨 이름 + label.help 한 문장, Esc 로 접힘 |
+| 5 | [화면] 기준일 없음 NoSnapshot `app.noSnapshot`/`app.noSnapshotBootstrapping` | Shell · §7 불러오는 중 · 오류 · 빈 상태 | — | 다른 보드(Shell) | shell.test › 발행 기준일이 없으면 "아직 기준일이 없어요" · r4fe12 › 지역 status bootstrapping → 적재 중 안내(G1 빈 화면 문구도) |
+| 6 | [화면] 대시보드 불러오는 중 `app.loading` | Shell · §7 | — | 다른 보드(Shell) | shell-components › 불러오는 중 = 뼈대 + "불러오는 중…" |
+| 7 | [화면] 대시보드 오류 `page.common.loadError` | Shell · §7 | — | 다른 보드(Shell) | shell-components › 일반 오류 = "불러오지 못했어요: 내용" + 다시 시도 |
+| 8 | [화면] 준비 중(503) `page.common.materializePending` | Shell · §7 | — | 다른 보드(Shell) | r3f2 › G1 대시보드: 503 동안 "준비 중", Retry-After 뒤 다시 불러 화면이 뜬다 |
+| 9 | [화면] 발행 뒤 만든 시나리오 결과 없음 `page.common.scenarioMissing` | Shell · §7 | — | 다른 보드(Shell) | r3e › G1 ?scenario=9(발행 뒤 생성) → 404 → 안내 + 시나리오 실행 링크 |
+| 10 | [화면] 헤더 상황 토글 → 대시보드 다시 부름 (`?scenario=`) | Shell · 머리줄 상황 토글 (Main 머리줄엔 없음) | — | 다른 보드(Shell) | dashboard.test › 상황 토글 → ?scenario= 로 dashboard 재조회 |
+| 11 | [화면] 헤더 기준일 → 대시보드 다시 부름 (`?snapshot=`) | Shell · 머리줄 기준일 (Main 머리줄엔 없음, 첫 줄 글에 "기준일 2026년 10월 14일") | — | 다른 보드(Shell) | r3d › G1 재판정 잡 done → … 헤더·대시보드가 리비전 2 · r3g › G1: 리비전을 바꿔 새 리비전이 503 이면 … |
+| 12 | [API] GET /snapshots/{id}/dashboard?scenario= (`api/hooks` useDashboard) | Main · 화면 전체 | 호출 표시 없음 | 있음 | dashboard.test › 상황 토글 → ?scenario= 로 dashboard 재조회 · acceptance › G1 / |
+| 13 | [화면] 구역 순서 (data-section: openNow·upcoming → top → region → changes → C06·C05) | Main · 첫 줄 → 접수 가능 카드 → 곧 접수 띠 → 다가오는 일정 + 시장 → 점수 순서 → 최근에 바뀐 것 | 지역 현황이 점수 위로, 차트는 점수 순서·시장 카드에 합침 | 있음 | dashboard.test › 섹션 순서(R11 Main 보드) |
+| 14 | [재판정] 안내 `page.G1.rejudgeNotice` "재판정 필요 — 이 화면의 판정 범위·순위·점수는 스냅샷에 저장된 값입니다 …" (role=note) | Shell · §2 화면 위에 뜨는 알림 띠 "새로 바뀐 사실이 있어 점수를 다시 매겨야 해요. 상위 단지를 다시 판정할까요? (홈)" | "저장된 값"이라는 설명 빠짐 · 고침 후: (Shell SH-7) '저장된 값' 설명 되살림 | 다른 보드(Shell · 고침 SH-7) | r11home › SH-7: 다시 판정이 필요해요 + 저장된 값 · 발행 순간 값과 다를 수 있음 + 다시 판정하기 |
+| 15 | [재판정] 버튼 `page.G1.rejudgeRun` "재판정 잡 등록" | Shell · §2 "다시 판정하기" | 재판정 잡 등록 → 다시 판정하기 | 다른 보드(Shell) | rejudgeNeeded › 전역 안내 + 재판정 잡 등록 → POST /jobs rejudge … → 진행 |
+| 16 | [API] POST /jobs `rejudge` (대상 = 재판정 필요 단지, 없으면 null · 사유 `page.G1.rejudgeReason`) | Shell · §2 "다시 판정하기" | 호출 표시 없음 | 다른 보드(Shell) | rejudgeNeeded › 전역 안내 + 재판정 잡 등록 → POST /jobs rejudge … · 대시보드만 true → complex_ids=null |
+| 17 | [재판정] 읽기 전용 열쇠면 꺼짐 + title `auth.readOnlyHint` | Scenario · 가끔만 나오는 모습 "D · 읽기 전용 열쇠일 때" · Ops · 모든 묶음 공통 상태 | — | 다른 보드(Scenario·Ops, 문구로만) | rejudgeNeeded › 읽기 전용 토큰이면 재판정 버튼이 꺼진다(안내는 보인다) |
+| 18 | [재판정] 보내는 중·등록한 뒤 꺼짐 | Scenario · "D · 읽기 전용 열쇠일 때" "저장·판정 요청을 보내는 중이거나 … 버튼이 잠깐 꺼져요" | — | 다른 보드(Scenario, 문구로만) | rejudgeNeeded › 전역 안내 + 재판정 잡 등록 → … → 진행(등록 뒤 버튼 꺼짐) |
+| 19 | [재판정] 모바일 읽기 전용이면 숨김 (`data-write`) | Shell · §2 "휴대폰에서는 보기만 할 수 있어요" | — | 다른 보드(Shell, 문구로만) | r11home › SH-7 …(버튼 data-write) · e2e pages › 모바일 G1·G2·G3 읽기 전용 |
+| 20 | [재판정] 등록 실패 `page.common.loadError` (role=alert) | — | — | 다른 보드(Shell · 고침 SH-7) | r11home › 다시 판정 등록 실패 → 띠 아래 role=alert "불러오지 못했어요: …" |
+| 21 | [재판정] 등록 뒤 작업 진행 JobProgress | Shell · §6 작업 진행 · 알림 | — | 다른 보드(Shell) | rejudgeNeeded › 전역 안내 + 재판정 잡 등록 → … → 진행 |
+| 22 | [재판정] 끝나면 그 기준일 화면 새로 고침 (invalidate, 동작) | — | — | 문구로만(고침 HM-17) | r3d › G1 재판정 잡 done → 리비전 목록 갱신 → … 대시보드가 리비전 2 |
+| 23 | [벤치마크] 배지 `page.common.benchmarkAbsent` "벤치마크 없음({reason})" (role=note) | Shell · §2 "근처 새 아파트 실적 없음(이 지역에 비교할 사례 없음)" | 벤치마크 → 근처 새 아파트 실적 | 다른 보드(Shell · 고침 SH-8) | rejudgeNeeded › benchmark_absence → 근처 새 아파트 실적 없음(<reason>) · r11home › SH-8 |
+| 24 | [벤치마크] 안내 `page.G1.benchmarkAbsentHint` "벤치마크 성분이 없어 종합 점수를 계산하지 않았습니다" | Shell · §2 "이 기준은 점수에서 빠져 있어요." | 뜻 바뀜 주의: '종합 점수 계산 안 함' → '이 기준만 빠짐' · 고침 후: (Shell SH-8) '근처 새 아파트 실적이 없어 종합 점수를 계산하지 않았어요' | 다른 보드(Shell · 고침 SH-8) | r11home › SH-8: "근처 새 아파트 실적이 없어 종합 점수를 계산하지 않았어요" |
+| 25 | [접수 가능] 제목 `page.G1.openNow.title` "지금 접수 가능" (h2) | Main · 첫 줄 h1 "지금 청약을 넣을 수 있는 단지는 …" | 문장으로 | 있음 | r11home › h1 = "지금 청약을 넣을 수 있는 단지는 N곳이에요" … |
+| 26 | [접수 가능] 용어 ⓘ `intake_status` (Term) | — | — | 있음(고침 HM-1) | glossary.test › 같은 화면에서 같은 용어 ⓘ 는 한 번 › / · r11home › h1 … |
+| 27 | [접수 가능] 값 FactCell `kpis.intake_open_count` (count) | Main · 첫 줄 "3곳" | 같음 | 있음(고침 HM-1) | dashboard.test › 지금 접수 가능 N곳: 숫자는 FactCell(출처 유지) … |
+| 28 | [접수 가능] 그 값의 라벨 배지 | — | — | 있음(고침 HM-1) | dashboard.test › 지금 접수 가능 N곳 …(label-badge) · r11home › h1 … |
+| 29 | [접수 가능] 그 값 누르면 출처 창(점선 밑줄 버튼) | — | — | 있음(고침 HM-1) | dashboard.test › 지금 접수 가능 N곳 …(data-prov) · e2e pages › 숫자 셀 클릭 → 출처 패널 |
+| 30 | [접수 가능] 단위 `page.G1.openNow.unit` "곳" | Main · 첫 줄 "3곳" | 같음 | 있음 | dashboard.test › 지금 접수 가능 N곳 …(h1 문장 '곳이에요') |
+| 31 | [접수 가능] 링크 `page.G1.openNow.link` "접수 가능 단지 보기" → /complexes?intake_status=가능 (전역 쿼리 유지) | Main · 첫 줄 파란 버튼 "접수 가능 단지 모두 보기" | 보기 → 모두 보기 | 있음 | dashboard.test › 지금 접수 가능 N곳 …, 링크 = G2 + 접수 가능 필터 + 전역 쿼리 |
+| 32 | [접수 가능] 안내 `page.G1.openNow.hint` "공식 자료로 확인한 접수 상태 기준입니다. 접수 기간은 단지 상세에서 확인하세요." | Main · 첫 줄 설명 "각 단지 공식 홈페이지와 청약홈에서 확인한 접수 상태예요. 카드를 누르면 …" | "접수 기간은 단지 상세에서" → "카드를 누르면 … 한 화면에서" | 있음 | dashboard.test › 지금 접수 가능 N곳 …(openNow.hint) |
+| 33 | [일정] 제목 `page.G1.upcoming.title` "다가오는 일정(4주)" | Main · 다가오는 일정 | "(4주)" 빠짐 · 고침 후: '다가오는 일정(4주)' | 있음(고침 HM-3) | dashboard.test › 기준일부터 4주 안의 일정(최대 5건)만 … |
+| 34 | [API] GET /ops/checklist (`useChecklist`) | Main · 다가오는 일정 | 호출 표시 없음 | 있음 | dashboard.test › 기준일부터 4주 안의 일정(최대 5건)만 … |
+| 35 | [일정] 열린 항목 + 기준일부터 28일 안만 거르기 | — | 기간 표시 없음 | 있음(고침 HM-3) | r11home › upcomingItems: 열린 항목 · 기준일부터 28일 · 날짜순 · 최대 5건 |
+| 36 | [일정] 최대 5건 | — | 목업은 7건 그림 · 고침 후: 5건으로 줄임 | 있음(고침 HM-3) | r11home › upcomingItems … 최대 5건 · dashboard.test › 기준일부터 4주 안의 일정(최대 5건)만 |
+| 37 | [일정] 날짜순 정렬 | Main · 다가오는 일정 아래 안내 "… 날짜순으로 보여 줘요" | 같음 | 있음 | r11home › upcomingItems … 날짜순 · dashboard.test › … 날짜순 |
+| 38 | [일정] 종류 배지 `page.common.scheduleKind.*` (청약 접수·당첨자 발표·계약·중도금 납부·전매 가능 시작·공고 예상·기한 만료·확인할 것·사실 재확인) | Main · 다가오는 일정 오른쪽 칩 "전매 제한 끝 · 청약 접수 · 중도금 · 계약 · 당첨자 발표" | 전매 가능 시작 → 전매 제한 끝, 중도금 납부 → 중도금 (공고 예상·기한 만료·확인할 것·사실 재확인 예는 없음) · 고침 후: '전매 가능 시작'·'중도금 납부' | 있음(고침 HM-3) | dashboard.test › … 종류 글자 · wiring20 › 모르는 종류도 그 글자로 보이고 범례에 나온다 |
+| 39 | [일정] 날짜 + D± (formatDate) | Main · 다가오는 일정 왼쪽 상자 "오늘 / D-1 / D-5" + "10월 14일" | D± 상자 크게 | 있음 | dashboard.test › … D± · r11home › 왼쪽 D± 상자 … |
+| 40 | [일정] 단지 이름 링크 → 단지 상세 | Main · 다가오는 일정 (이름이 글자일 뿐 링크 아님) | — | 있음(고침 HM-3) | r11home › 왼쪽 D± 상자 · 단지 없는 항목은 제목 글자(단지 있는 항목은 링크) |
+| 41 | [일정] 단지 없는 항목은 제목 글자 | — | — | 있음(고침 HM-4) | r11home › 왼쪽 D± 상자 · 단지 없는 항목은 제목 글자 … |
+| 42 | [일정] 항목 title(마우스 올림) = 원래 제목 | — | — | 문구로만(고침 HM-17) | r11home › … title = 서버 원래 제목 |
+| 43 | [일정] 계산 기준 `page.common.scheduleBasis` "계산 기준: {basis}" | — | — | 있음(고침 HM-3) | r11home › 전매 가능 시작 줄은 "계산 기준: …" |
+| 44 | [일정] 순위·구분 둘째 줄 (scheduleDetail) | Main · 다가오는 일정 "1순위 청약 접수 (인천·기타지역)" | 문장형 | 있음 | dashboard.test › 기준일부터 4주 안의 일정 …(schedule-detail) |
+| 45 | [일정] 403 `page.G1.upcoming.noAccess` "이 링크로는 일정을 볼 수 없습니다(운영 화면 권한 필요)" | — | — | 있음(고침 HM-4) | dashboard.test › 공유 토큰(403)이면 사유 문구 |
+| 46 | [일정] 오류 `page.common.loadError` (inline) | Shell · §7 | — | 다른 보드(Shell) | shell-components › 일반 오류 = "불러오지 못했어요: 내용" … |
+| 47 | [일정] 불러오는 중 `app.loading` | Shell · §7 | — | 다른 보드(Shell) | shell-components › 불러오는 중 = 뼈대 + "불러오는 중…" |
+| 48 | [일정] 없음 `page.G1.upcoming.none` "4주 안의 일정이 없습니다" | — | — | 있음(고침 HM-4) | dashboard.test › 4주 안 일정이 없으면 그렇게 말한다 |
+| 49 | [일정] 전체 링크 `page.G1.upcoming.all` "전체 일정 보기" → /ops | Main · 다가오는 일정 "달력으로 보기" (href="#") | 이름 바뀜, 이동할 곳 미정 (Ops "2026년 10월 · 10건" 달력으로 보임) · 고침 후: '전체 일정 보기' → Ops | 있음(고침 HM-3) | dashboard.test › 기준일부터 4주 안의 일정 …(전체 일정 보기 링크) |
+| 50 | [점수] 구역 제목 `page.G1.top5` "종합 점수 상위 단지" | Main · 점수 순서 · 상황: 기본 | 종합 점수 상위 단지 → 점수 순서 | 있음 | wording.test › 홈·TOP·G2 필터·열 이름(점수 순서) · dashboard.test 전체(list name top5) |
+| 51 | [점수] `page.G1.top5Scenario` "상황: {name}" | Main · 점수 순서 제목 "· 상황: 기본" | 같음 | 있음 | r11home › 줄마다 "{이름} 점수 구성" 막대 …(구역 머리) · dashboard.test › 상위 단지가 5곳보다 적으면 … |
+| 52 | [점수] `page.G1.top5Note` "상대 비교 · 투자 권유 아님" | Main · 점수 순서 설명 "… 10점 만점 상대 비교예요 … 투자 권유가 아니에요." | 같은 뜻 | 있음 | dashboard.test › 상위 단지가 5곳보다 적으면 이유 문장(top5Note) |
+| 53 | [점수] 머리 "종합" `page.G1.total` + 용어 ⓘ `total` | Main · 점수 순서 "점수는 어떻게 매기나요?" 링크 (href="#") | ⓘ 팝오버 → 링크 (대상 미정) · 고침 후: 링크 대신 '종합 ?' 용어 버튼 | 있음(고침 HM-6) | glossary.test › 같은 화면에서 같은 용어 ⓘ 는 한 번 › / |
+| 54 | [점수] 머리 `page.G1.p10` "가격 +10% 상승 가능성(판정기)" + 용어 ⓘ `p10` | — | — | 있음(고침 HM-6) | glossary.test › 같은 화면에서 같은 용어 ⓘ 는 한 번 › / |
+| 55 | [점수] 5곳 미만 `page.G1.top5Fewer` | Main · 점수 순서 아래 "점수가 있는 단지가 3곳뿐이에요. 나머지는 단지 찾기에서 …" | 같은 뜻 | 있음 | dashboard.test › 상위 단지가 5곳보다 적으면 이유 문장(개수는 메타) |
+| 56 | [점수] 순위 5 이하(순위 없는 행 포함)만 | Main · 점수 순서 3줄 | 같음 | 있음 | acceptance › G1 /: … TOP 5 카드 ≥ 5 · e2e pages › G1 홈 |
+| 57 | [점수] 목록 ul (aria-label = 구역 제목), 카드 격자 | Main · 점수 순서 ol 줄 목록 | 카드 → 한 줄씩 | 있음 | acceptance › G1 / · e2e pages › G1 홈(점수 순서 목록) |
+| 58 | [점수] 카드 빈 곳 누르면 단지 상세 (안쪽 버튼·링크는 제외) | — | 목업은 이름만 링크 | 문구로만(고침 HM-17) | dashboard.test › 점수 줄: … 줄 빈 곳 클릭 → G3 · r5fe › G1 TOP 5 카드: 이름 링크 href 와 카드 빈 곳 클릭 이동 모두 유지 |
+| 59 | [점수] 이름 링크 + aria-label `page.G1.open` "{name} 상세 보기" | Main · 점수 순서 이름 링크 | aria-label 없음 | 있음 | r5fe › G1 TOP 5 카드 이름 링크 클릭 → G3 에서도 유지 |
+| 60 | [점수] 순위 배지 (MetaValue rank) | Main · 점수 순서 동그라미 숫자 | 배지 → 동그라미 | 있음 | dashboard.test › 점수 줄 …(순위 MetaValue) · r3c › 비수치 메타 |
+| 61 | [점수] 생활권 이름 | Main · 점수 순서 둘째 줄 "미추홀구" | 같음 | 있음 | dashboard.test › 점수 줄 …(data-field living_area) |
+| 62 | [점수] 접수 배지 IntakeBadge | — | 접수 가능 카드에만 있음 | 있음(고침 HM-7) | dashboard.test › 점수 줄: 종합·+10% 이상 오를 가능성·접수 배지 … |
+| 63 | [점수] 동률 배지 TieBadge | Main · 점수 순서 "동률" | 같음 | 있음 | shell-components › 점수 배지 톤: 동률 … · e2e pages › G1 홈 |
+| 64 | [점수] 동률(신뢰도) | Shell · §4 "동률(믿음 정도 0.62)" | 신뢰도 → 믿음 정도 | 다른 보드(Shell) | shell-components › 점수 배지 톤 … |
+| 65 | [점수] 순위 불안정 UnstableBadge | Shell · §4 "순위가 흔들려요" | — | 다른 보드(Shell) | shell-components › 점수 배지 톤: 흔들림 … |
+| 66 | [점수] 판정 범위 배지 JudgeScopeBadge (판정 대상은 숨김) | Shell · §4 점수 계산 범위 | — | 다른 보드(Shell) | judgeScope › G2 표: 판정 대상이 아닌 행에 범위 배지(같은 부품) |
+| 67 | [점수] 재판정 필요 배지 RejudgeNeededBadge | Shell · §4 "다시 판정 필요" | — | 다른 보드(Shell) | rejudgeNeeded › rejudge_needed 행의 TOP 5 카드에 "재판정 필요" 배지 |
+| 68 | [점수] 현재 구매가 `page.G1.card.price` FactCell price_low ~ price_high (eok) | Main · 점수 순서 둘째 줄 "5억 9,850만~6억 5,090만" | 칸 이름 없이 줄 안 글, 7.49억 → 억·만 표기 | 있음(고침 HM-7) | wiring20 › 카드의 구매가·전매 종료·가격 갭 prov = top5 행 Fact … |
+| 69 | [점수] 전매 종료 `page.G1.card.resaleEnd` FactCell (date, D±) | Main · 점수 순서 둘째 줄 "되팔기 2026.12.09" | 전매 종료 → 되팔기, D± 빠짐 · 고침 후: '전매 종료 2026.12.09 D-56' + 라벨 | 있음(고침 HM-7) | wiring20 › 카드의 구매가·전매 종료·가격 갭 prov = top5 행 Fact … |
+| 70 | [점수] 가격 갭 `page.G1.card.gap` FactCell (pct) | Main · 점수 순서 둘째 줄 "주변보다 8.1% 높음" | 가격 갭 → 주변보다 n% 높음/낮음 | 있음 | wiring20 › 카드의 구매가·전매 종료·가격 갭 prov = top5 행 Fact … |
+| 71 | [점수] 사실 칸(가격·전매·갭) 라벨 배지 + 출처 창 버튼 | — | — | 있음(고침 HM-7) | provenancePreserved › 라벨·출처가 사라지지 않는다 › G1 |
+| 72 | [점수] 빈 사유 `page.G1.noListRow` "이 기준일 자료에 없음" | — | — | 있음(고침 HM-7) | dashboard.test › 옛 저장본(ScoreRow 에 사실 키 없음)은 확인 불가(이 기준일 자료에 없음) |
+| 73 | [점수] 종합 FactCell total (score) | Main · 점수 순서 오른쪽 "4.83" | 라벨은 바닥 "점수 모두 추정" 한 번 | 있음 | acceptance › G1 TOP 5 카드의 종합 점수를 누르면 출처 패널(dialog)이 열린다 |
+| 74 | [점수] +10% 상승 가능성 FactCell p10 (prob) | Main · 점수 순서 "… 10% 넘게 오를 가능성 53% 판정기 추정" | 가격 +10% 상승 가능성 → 10% 넘게 오를 가능성 · 고침 후: '+10% 이상 오를 가능성' | 있음(고침 HM-5) | r11home › '+10% 이상 오를 가능성' 줄 … |
+| 75 | [점수] 목표 시점 `page.G1.p10Target` "목표 시점 {target}" (상황의 p10_horizon) | Main · 점수 순서 "입주 1년 뒤 …" | 문장 안으로 · 고침 후: '목표 시점: 입주+1년'을 따로 적음 | 있음(고침 HM-5) | r11home › '+10% 이상 오를 가능성' 줄: 목표 시점(상황 p10_horizon) … |
+| 76 | [점수] `page.G1.p10Note` "당첨 확률이 아닙니다 · 보장 아님" | Main · 점수 순서 "당첨 확률이 아니에요" | "보장 아님" 빠짐 — 주의 · 고침 후: '보장 아님' 되살림 | 있음(고침 HM-5) | dashboard.test › 점수 줄: +10%·막대·종합은 사실 줄 아래 …(p10Note) · wording.test › +10% 값 이름 |
+| 77 | [API] GET /scenarios (목표 시점 p10_horizon 찾기) | Main · 점수 순서 "입주 1년 뒤" | 호출 표시 없음 | 있음 | r11home › '+10% 이상 오를 가능성' 줄: 목표 시점 …(GET /scenarios) |
+| 78 | [지역 현황] 구역 제목 `page.G1.region` "지역 현황" | Main · 인천 시장 한눈에 | 지역 현황 → {지역} 시장 한눈에 (지역 이름은 서버 값) | 있음 | dashboard.test › 지역 현황 … · r11home › {지역} 시장 한눈에 |
+| 79 | [지역 현황] 모바일이면 접기(details) | — | — | 있음(고침 HM-15) | r11home › 휴대폰: 지역 시장 · 최근에 바뀐 것은 접힌 details |
+| 80 | [지역 현황] 판정 대상 `page.G1.kpi.judged` "판정 대상(점수 계산 대상)" | Main · 시장 카드 "점수를 매긴 단지" + "점수 계산 대상(판정 대상)이에요" | 바뀜 | 있음 | dashboard.test › 지역 현황: 판정 대상·미분양·입주가 가장 많은 해·마지막 수집 — 값과 라벨 그대로 |
+| 81 | [지역 현황] 판정 대상 용어 ⓘ `judge_scope` | — | — | 있음(고침 HM-10) | glossary.test › 같은 화면에서 같은 용어 ⓘ 는 한 번 › / |
+| 82 | [지역 현황] FactCell `kpis.judged_count` (count) | Main · 시장 카드 "6곳 추정" | 같음 ("/ 100곳" 새로) · 고침 후: '/ [값]곳'(지금 응답에 없음 — API 필요) | 있음(고침 HM-10) | dashboard.test › 지역 현황 …(data-prov → label-badge) |
+| 83 | [지역 현황] 미분양 제목 `page.G1.kpi.unsold` "미분양" | Main · 시장 카드 "안 팔린 집 (미분양)" | 쉬운 말 더함 | 있음 | dashboard.test › 지역 현황 … |
+| 84 | [지역 현황] FactCell `kpis.unsold.total` (households) | Main · 시장 카드 "3,729세대" | 라벨 없음 | 있음 | dashboard.test › 지역 현황 … |
+| 85 | [지역 현황] 부제 `page.G1.kpi.unsoldSub` "{ym} 기준 · 준공 후" | Main · 시장 카드 "다 지었는데 안 팔린 집" | "{ym} 기준" 빠짐(그래프 범위 글로만) · 고침 후: '2026년 8월 기준' 되살림 | 있음(고침 HM-10) | dashboard.test › 지역 현황 …(unsoldSub) |
+| 86 | [지역 현황] FactCell `kpis.unsold.post_completion` | Main · 시장 카드 "1,401세대" | 라벨 없음 | 있음 | dashboard.test › 지역 현황 … |
+| 87 | [지역 현황] 시군구별 펼침 `page.G1.kpi.unsoldBreakdown` "시군구별 보기" | Main · 시장 카드 "구별로 보기" 링크 | 시군구별 → 구별로, 펼침 → 링크 모양 | 있음 | wiring20 › 지역 현황 미분양 칸에 시군구별 내역(FactCell — 출처 1클릭) |
+| 88 | [지역 현황] 시군구별 내역 (이름 + FactCell, 출처 1클릭) | — | — | 있음(고침 HM-11) | wiring20 › 지역 현황 미분양 칸에 시군구별 내역(FactCell — 출처 1클릭) |
+| 89 | [지역 현황] 입주 많은 해 `page.G1.kpi.movePeak` "입주가 가장 많은 해" | Main · 시장 카드 "입주가 가장 몰리는 해" | 많은 → 몰리는 | 있음 | dashboard.test › 지역 현황 … |
+| 90 | [지역 현황] FactCell `kpis.move_in_peak.year` (text) | Main · 시장 카드 "2026년" | 같음 | 있음 | dashboard.test › 지역 현황 … |
+| 91 | [지역 현황] FactCell `kpis.move_in_peak.units` (households) | Main · 시장 카드 "이 해에 14,710세대 입주 추정" | 문장형 | 있음 | dashboard.test › 지역 현황 … |
+| 92 | [지역 현황] 마지막 수집 `page.G1.kpi.freshness` "마지막 수집" | Main · 시장 카드 "마지막으로 모은 때" | 바뀜 | 있음 | dashboard.test › 지역 현황 … |
+| 93 | [지역 현황] FactCell `kpis.data_freshness.last_success_at` (date, D±) | Main · 시장 카드 "10.13 19:39" | D± → 시각 | 있음 | dashboard.test › 지역 현황 … |
+| 94 | [지역 현황] `page.G1.kpi.freshnessSub` "수집 실패 {failing}곳 · 늦어진 곳 {stale}곳" (MetaText) | Main · 시장 카드 "수집 실패 0곳 · 늦어진 곳 1곳" | 같음 | 있음 | r3c › G1 KPI 데이터 신선도 보조 문구(실패·지연 소스 수)는 비수치 메타 |
+| 95 | [지역 현황] 칸 값들의 라벨 배지·출처 창 버튼 (미분양·준공 후·마지막 수집) | — | 판정 대상·입주 세대만 "추정" 보임 | 있음(고침 HM-10) | dashboard.test › 지역 현황 …(칸마다 data-prov → 라벨) · provenancePreserved › G1 |
+| 96 | [변경] 구역 제목 `page.G1.changes` "최근 변경" | Main · 최근에 바뀐 것 | 바뀜 | 있음 | acceptance › G1 / … 최근 변경 · wiring20 › summary 한 줄 … |
+| 97 | [변경] 모바일이면 접기(details) | — | — | 있음(고침 HM-15) | r11home › 휴대폰: 지역 시장 · 최근에 바뀐 것은 접힌 details |
+| 98 | [변경] 없음 `page.G1.noChanges` "최근 변경 없음" | Main · 최근에 바뀐 것 아래 "변경이 없으면 '최근 변경 없음'이 나와요" | 같음 | 문구로만 | r11home › 변경이 없으면 "최근 변경 없음" |
+| 99 | [변경] 중요도 배지 `page.common.severity.*` 정보·알림·중요 | Main · 최근에 바뀐 것 "중요" + 아래 "정보 · 알림 · 중요 세 단계" | 같음 | 있음 | dashboard.test › 최근 변경: 쉬운 문장 … · r4fe11 › F6 complex·legal_dong_code(critical) 변경 행 |
+| 100 | [변경] 재판정 대상 배지 `page.G1.rejudge` "재판정 대상" | Main · 최근에 바뀐 것 "다시 판정해요" | 재판정 대상 → 다시 판정해요 | 있음 | r4fe11 › F6 … 변경 행 · dashboard.test › 최근 변경 |
+| 101 | [변경] 단지 이름 | Main · 최근에 바뀐 것 단지 이름 | 같음 | 있음 | dashboard.test › 변경 피드 항목 → G3 해당 탭(URL 해시) |
+| 102 | [변경] 단지 없는 변경의 대상 이름 `page.common.changeEntity.*` | — | — | 있음(고침 HM-14) | r4fe11 › F6 complex·legal_dong_code(critical) 변경 행 — '법정동' 필드 문구 + 새 값 |
+| 103 | [변경] 서버 한 줄 요약(summary), title = 필드 이름 | Main · 최근에 바뀐 것 "공식 홈페이지 안내 팝업이 바뀌었어요" | title 없음 | 있음(고침 HM-14) | wiring20 › summary 한 줄, plain 은 펼침 없음, hash 는 "바뀐 값 보기" 안에 원값, field_label 은 title |
+| 104 | [변경] 요약 없을 때 `page.G1.changeSentence` "{field} 변경" + `page.common.changeField.*` | — | — | 있음(고침 HM-14) | r4fe11 › F5 첫 적재 요약은 한 줄 그대로 · r4fe10 › G1 첫 적재 요약 새 문구 … |
+| 105 | [변경] 지역 첫 적재(first_load) 요약 문장 한 줄 | — | — | 있음(고침 HM-14) | r4fe10 › G1 첫 적재 요약 새 문구('첫 적재 중 기록·덮어쓰기')를 그대로 한 줄 |
+| 106 | [변경] 바로 보이는 값(plain): 필드 + "이전 → 이후" | — | — | 있음(고침 HM-14) | wiring20 › summary 한 줄, plain 은 펼침 없음 … |
+| 107 | [변경] 감지 시각 detected_at (D±) | Main · 최근에 바뀐 것 "10.14 22:42" | D± → 시각 | 있음 | dashboard.test › 최근 변경 …(감지일 D±) |
+| 108 | [변경] 줄 누르면 단지 상세 해당 탭(#tab) | Main · 최근에 바뀐 것 단지 이름 링크 | 탭 지정은 목업에서 확인 안 됨 | 있음 | dashboard.test › 변경 피드 항목 → G3 해당 탭(URL 해시) |
+| 109 | [변경] 바뀐 값 펼침 `page.G1.changeShowValue` "바뀐 값 보기" | Main · 최근에 바뀐 것 첫 줄 details "바뀐 값 보기" | 같음 | 있음 | dashboard.test › 최근 변경: 쉬운 문장, 바뀐 값(해시 등)은 "바뀐 값 보기"를 펼쳐야 보인다 |
+| 110 | [변경] 바뀐 값 `page.common.arrow` "{old} → {new}" | Main · 펼친 글 "이전 식별값 90b9b7… → 새 식별값 ed830f…" | 문장형 설명 더함 | 있음 | dashboard.test › 최근 변경 … · wiring20 › hash 는 "바뀐 값 보기" 안에 원값 |
+| 111 | [변경] 처음 3건만 | Main · 최근에 바뀐 것 3줄 | 같음 | 있음 | r11home › 처음 3건 · "변경 n건 더 보기"(aria-expanded) → 모두 → "변경 접기" |
+| 112 | [변경] 더 보기 `page.G1.changesMore` (aria-expanded) | Main · "변경 2건 더 보기" | 남은 개수가 붙음 | 있음 | r11home › 처음 3건 · "변경 n건 더 보기"(aria-expanded) … |
+| 113 | [변경] 접기 `page.G1.changesLess` "변경 접기" | — | — | 있음(고침 HM-14) | r11home › … → 모두 → "변경 접기" |
 | 114 | [C06] 종합 점수 분해 차트 (세로 쌓은 막대, `charts/C06`) | Main · 점수 순서 줄마다 가로 막대 | 차트 하나 → 줄별 막대, 점수 순서 구역에 합침 | 있음 | charts.contract › C06 stacked 6 시리즈, 정렬 = 종합 내림차순 · e2e charts-gallery › C06 normal |
 | 115 | [C06] 제목 `chart.C06.title` "종합 점수 분해" | Main · 점수 순서 (제목 합침), 막대 aria-label "{이름} 점수 구성" | 종합 점수 분해 → 점수 구성 | 있음 | charts.r11 › 차트 이름(aria-label) = 제목 · e2e charts-gallery › C06 normal |
 | 116 | [C06] 부제 가중치 `chart.C06.weights` "가중치 {weights}" | — | — | 있음(고침 HM-6) | charts.r11 › C06 비중 · charts.contract › C06 제목 부제 = 가중치 |
@@ -161,7 +161,7 @@
 | 153 | [C05] 표 열 `chart.C05.total` "합계" | — | — | 있음(고침 HM-13) | buildOption.test › toTable(빈 데이터) 열 정의 |
 | 154 | [C05] 표 열 `chart.C05.postCompletion` "준공 후" | — | — | 있음(고침 HM-13) | buildOption.test › toTable(빈 데이터) 열 정의 |
 | 155 | [C05] 빈 상태 `chart.C05.empty` "미분양 자료 없음" | Shell · §8 "자료가 없어요(이유)" | — | 다른 보드(Shell) | ChartGallery.test › 빈 상태 카드는 차트 대신 빈 상태 문구 |
-| 156 | [틀] 하단 고정 문구 `app.disclaimer` | Shell · §9 없는 주소 · 바닥 문구 | — | 다른 보드(Shell) |
+| 156 | [틀] 하단 고정 문구 `app.disclaimer` | Shell · §9 없는 주소 · 바닥 문구 | — | 다른 보드(Shell) | shell.test › 바닥 문구는 D7 원문 그대로(투자 권유 아님 · 상대 비교) |
 
 ## 요약
 

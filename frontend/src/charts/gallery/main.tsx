@@ -9,6 +9,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppProviders, createQueryClient } from '@/AppProviders';
+import { loadAllNamespaces } from '@/i18n';
 import { ChartGallery } from './ChartGallery';
 import '@/index.css';
 
@@ -25,14 +26,17 @@ async function enableMocking(): Promise<void> {
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root 없음');
-createRoot(root).render(
-  <StrictMode>
-    <AppProviders queryClient={createQueryClient()}>
-      <main className="min-h-screen bg-bg text-fg">
-        <ChartGallery />
-      </main>
-    </AppProviders>
-  </StrictMode>,
+// R11-I18N: 차트·용어·화면 문자열은 이름공간 청크 — 테스트 전용 엔트리라 전부 받은 뒤 그린다
+void loadAllNamespaces().then(() =>
+  createRoot(root).render(
+    <StrictMode>
+      <AppProviders queryClient={createQueryClient()}>
+        <main className="min-h-screen bg-bg text-fg">
+          <ChartGallery />
+        </main>
+      </AppProviders>
+    </StrictMode>,
+  ),
 );
 
 if (useMsw) {

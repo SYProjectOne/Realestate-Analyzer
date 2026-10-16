@@ -35,11 +35,16 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
   it('G1 /: KPI 타일 5개 · TOP 5 카드 · 최근 변경', async () => {
     renderRoute('/');
     // R9-UI P2: 시스템 지표 5칸 → 지금 접수 가능 카드 + 지역 현황 4칸(3단)
+    // R11: 첫 줄 h1(접수 가능 N곳) + 지금 접수 가능한 단지 카드
     expect(
-      await screen.findByRole('region', { name: t('page.G1.openNow.title') }),
+      await screen.findByRole('heading', { level: 1, name: new RegExp(`^${t('page.G1.title')}`) }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('list', { name: t('page.G1.openNow.title') }),
     ).toBeInTheDocument();
     const kpis = await screen.findByRole('list', { name: t('page.G1.region') });
-    expect(within(kpis).getAllByRole('listitem')).toHaveLength(4);
+    // R11: 미분양 칸 안의 C05 범례(목록)는 빼고 칸 4개만
+    expect(kpis.querySelectorAll(':scope > li')).toHaveLength(4);
     const top5 = screen.getByRole('list', { name: t('page.G1.top5') });
     expect(within(top5).getAllByRole('listitem').length).toBeGreaterThanOrEqual(5);
     expect(screen.getByRole('list', { name: t('page.G1.changes') })).toBeInTheDocument();
@@ -80,7 +85,7 @@ describe('화면 10개 핵심 요소 (MSW)', () => {
     expect(screen.getByText(t('chart.C04.title'))).toBeInTheDocument();
     expect(screen.getByText(t('chart.C05.title'))).toBeInTheDocument();
     expect(screen.getByText(t('chart.C09.title'))).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t('page.G6.regulation') })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: t('page.G6.regulation') })).toBeInTheDocument();
   });
 
   it('G7 /ops: 소스 상태 표 + 사람 확인 입력 폼', async () => {
@@ -108,7 +113,9 @@ describe('숫자 셀 클릭 → 출처 패널', () => {
     // 출처 패널이 GET /provenance/{id}를 받아 라벨·원문 주소를 보인다
     expect(await within(dialog).findByText(t('provenance.url'))).toBeInTheDocument();
     // 카드 클릭으로 G3로 넘어가지 않았다
-    expect(screen.getByRole('heading', { level: 1, name: t('page.G1.title') })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: new RegExp(`^${t('page.G1.title')}`) }),
+    ).toBeInTheDocument();
   });
 });
 

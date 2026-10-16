@@ -157,7 +157,7 @@ for (const c of CASES) {
       await expect(page.getByText(P.G2.loadingMore)).toBeVisible();
 
       // 2) 맨 위, 다 받은 뒤(101 / 101)
-      await expect(page.getByText(/101 \/ 101/)).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(/101곳 중 101곳/)).toBeVisible({ timeout: 30_000 });
       check('맨 위·다 받은 뒤', await sample(scroller));
 
       // 3) 가운데로 한 번 옮긴 뒤(프로그램 스크롤 1회 — 이후 입력 없음)

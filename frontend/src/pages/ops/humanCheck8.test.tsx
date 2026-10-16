@@ -251,7 +251,7 @@ describe('M-5 강등 사실 → 사람 확인으로 복원(D11-3)', () => {
     });
     // 저장 → 사실 화면 무효화(minor 15) → 주장 목록 다시 읽기 → 복원됨
     await waitFor(() =>
-      expect(within(section).getByTestId('claim-demotion')).toHaveTextContent('복원됨(사람 확인)'),
+      expect(within(section).getByTestId('claim-demotion')).toHaveTextContent('되돌림(사람 확인)'),
     );
     expect(within(section).queryByTestId('claim-restore-human')).toBeNull();
     rec.stop();

@@ -69,7 +69,7 @@ test('G0 송도 → 후보 선택 → POST /regions → bootstrap(재생) → G1
   await expect(page.getByRole('heading', { level: 1, name: P.G1.title })).toBeVisible();
   // soft: 실패해도 아래(G2·기존 지역 불변) 검사까지 본다
   // R9-UI(D28 P2): G1 KPI 5칸 → '지역 현황' 4칸(frontend/e2e/api/api.spec.ts 와 같은 기대)
-  await expect.soft(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(4);
+  await expect.soft(page.getByRole('list', { name: P.G1.region }).locator(':scope > li')).toHaveCount(4);
   // 새 지역의 단지가 G2 에 나온다
   await ready(page, `/complexes?region=${regionId}`, P.G2.title);
   await expect

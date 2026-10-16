@@ -5,7 +5,7 @@ import { useCreateCatalyst } from '@/api/hooks';
 import type { CatalystCreated } from '@/api/types';
 import { PublishJobProgress } from '@/components';
 import { t, type TKey } from '@/i18n';
-import { Section } from '../_shared';
+import { QuestionSection } from '../_shared/QuestionSection';
 
 export const CATALYST_TITLE_MAX = 200;
 export const CATALYST_EXCERPT_MAX = 2000;
@@ -76,8 +76,12 @@ export function CatalystUrlForm({ regionId }: { regionId: number | null }) {
         : null;
 
   return (
-    <Section title={t('page.G6.catalyst.title')}>
-      <p className="text-xs text-muted">{t('page.G6.catalyst.intro')}</p>
+    <QuestionSection
+      name={t('page.G6.catalyst.title')}
+      title={t('page.G6.catalyst.titleQ')}
+      kicker={<EditorTag />}
+      hint={t('page.G6.catalyst.intro')}
+    >
       <form
         aria-label={t('page.G6.catalyst.title')}
         noValidate
@@ -132,7 +136,7 @@ export function CatalystUrlForm({ regionId }: { regionId: number | null }) {
             type="submit"
             disabled={disabled || create.isPending}
             title={canWrite ? undefined : t('auth.readOnlyHint')}
-            className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+            className={buttonClass}
           >
             {t('page.G6.catalyst.submit')}
           </button>
@@ -159,12 +163,25 @@ export function CatalystUrlForm({ regionId }: { regionId: number | null }) {
           )}
         </div>
       ) : null}
-    </Section>
+    </QuestionSection>
+  );
+}
+
+/** '편집하는 사람용' 꼬리표(목업 N14) — 위치 확인 구역과 같은 모양 */
+export function EditorTag() {
+  return (
+    <span className="inline-flex rounded-md bg-chip px-2 py-0.5 text-xs font-semibold text-fg-2">
+      {t('page.G6.editor')}
+    </span>
   );
 }
 
 const inputClass =
-  'w-full rounded-sm border border-border bg-surface px-2 py-1 text-sm disabled:opacity-60';
+  'min-h-11 w-full rounded-[10px] border border-border-strong bg-surface px-3 py-2 text-[15px] disabled:opacity-60';
+
+/** 목업 주 버튼(.btn): 주색 바탕 · 12px 둥글게 · 44px 높이 */
+export const buttonClass =
+  'min-h-11 rounded-xl bg-accent px-4 text-[15px] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-50';
 
 function Field({
   label,
@@ -178,7 +195,7 @@ function Field({
   const id = useId();
   return (
     <div className={`flex flex-col gap-0.5 ${wide ? 'sm:col-span-2' : ''}`}>
-      <label htmlFor={id} className="text-xs text-muted">
+      <label htmlFor={id} className="text-[13px] font-semibold text-fg-2">
         {t(label)}
       </label>
       {children(id)}

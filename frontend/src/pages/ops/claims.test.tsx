@@ -45,7 +45,7 @@ async function claimsSection() {
 }
 
 describe('M8 G7 contradicted 주장 목록·문장 수정', () => {
-  it('GET /snapshots/{sid}/claims?status=contradicted → 문장·단지·근거·상태·남음 배지', async () => {
+  it('GET /snapshots/{sid}/claims(상태 필터 없음 — 계약 .22 A5) → 모순 줄의 문장·단지·근거·상태·남음 배지', async () => {
     const rec = recordRequests();
     renderRoute('/ops');
     const section = await claimsSection();
@@ -60,7 +60,7 @@ describe('M8 G7 contradicted 주장 목록·문장 수정', () => {
     await waitFor(() => expect(matching(rec.requests, 'GET', /\/claims$/)).toHaveLength(1));
     const req = matching(rec.requests, 'GET', /\/claims$/)[0];
     expect(req?.url.pathname).toMatch(/\/snapshots\/\d+\/claims$/);
-    expect(req?.url.searchParams.get('status')).toBe('contradicted');
+    expect(req?.url.searchParams.get('status')).toBeNull();
     rec.stop();
   });
 
@@ -244,9 +244,9 @@ describe('D10-3 사실 주장 — 대상 필드 · 강등 상태', () => {
   });
 
   it.each([
-    ['human_check', '복원됨(사람 확인)'],
-    ['new_source', '복원됨(새 원문)'],
-    [null, '복원됨'],
+    ['human_check', '되돌림(사람 확인)'],
+    ['new_source', '되돌림(새 원문)'],
+    [null, '되돌림'],
   ] as const)('복원됨(restored_by=%s) → "%s"', async (by, text) => {
     useClaims([
       {

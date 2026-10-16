@@ -283,7 +283,7 @@ describe('G6 시장: 상황 토글을 서버에 보낸다 (계약 .10)', () => {
   it('?scenario=B → GET /snapshots/{sid}/market?scenario=B', async () => {
     const rec = recordRequests();
     renderRoute('/market?scenario=B');
-    await screen.findByRole('heading', { name: t('page.G6.title') });
+    await screen.findByRole('heading', { level: 1, name: new RegExp(t('page.G6.title')) });
     await waitFor(() =>
       expect(
         matching(rec.requests, 'GET', /\/snapshots\/\d+\/market$/).some(

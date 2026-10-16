@@ -29,6 +29,7 @@ import type { ComplexRow } from '@/api/types';
 import {
   Badge,
   FactCell,
+  MetaText,
   IntakeBadge,
   MetaValue,
   Term,
@@ -38,6 +39,7 @@ import {
 } from '@/components';
 import { t, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
+import { metaText } from '@/lib/meta';
 import {
   changeFieldText,
   enumText,
@@ -179,6 +181,10 @@ export interface ComplexTableProps {
   maxSelected: number;
   readOnly: boolean;
   linkSearch: string;
+  /** 개수 줄(표 위 왼쪽) — 오른쪽에는 '보여 줄 열 고르기' */
+  toolbar?: ReactNode;
+  /** '10% 넘게 오를 가능성' 열 머리 둘째 줄의 목표 시점(상황 p10_horizon, LT-7) */
+  p10Target?: string | null;
   /**
    * 창 아래에서 비워 둘 높이(px) — 하단 고정 문구 + 비교 트레이(R9-UI P4: 트레이가 표 마지막 보이는 행을 덮던 결함).
    * 표 스크롤 영역 높이 = 창 높이 − 표 위치 − 이 값(최소 MIN_TABLE_HEIGHT).
@@ -228,6 +234,8 @@ export function ComplexTable({
   maxSelected,
   readOnly,
   linkSearch,
+  toolbar,
+  p10Target = null,
   reserveBottom = 48,
 }: ComplexTableProps) {
   const [visibility, setVisibility] = useState<VisibilityState>(loadVisibility);
@@ -343,7 +351,16 @@ export function ComplexTable({
       },
       {
         id: 'p10',
-        header: () => colTitle('p10'),
+        // LT-7: 목표 시점 · 당첨 확률 아님 · 보장 아님(둘째 줄)
+        header: () => (
+          <span className="inline-flex flex-col items-start">
+            <span>{colTitle('p10')}</span>
+            <span className="text-[11px] font-normal">
+              {t('page.G1.p10Target', { target: p10Target ?? t('empty.unknown') })} ·{' '}
+              {t('page.G1.p10Note')}
+            </span>
+          </span>
+        ),
         cell: ({ row }) => <FactCell fact={row.original.p10} unit="prob" />,
       },
       {
@@ -422,7 +439,7 @@ export function ComplexTable({
         },
       },
     ],
-    [asof, linkSearch, maxSelected, onToggle, selected],
+    [asof, linkSearch, maxSelected, onToggle, selected, p10Target],
   );
 
   // 상태 객체를 렌더마다 새로 만들지 않는다 — 표 내부 memo(보이는 열·행 셀)가 참조로 비교한다(T16 행 memo 유지)
@@ -468,11 +485,14 @@ export function ComplexTable({
 
   return (
     <div className="flex flex-col gap-2">
-      {!readOnly ? <ColumnChooser table={table} visibility={columnVisibility} /> : null}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {toolbar ?? <span />}
+        {!readOnly ? <ColumnChooser table={table} visibility={columnVisibility} /> : null}
+      </div>
       <div
         ref={scrollRef}
         data-testid="complex-table-scroll"
-        className="max-h-[70vh] overflow-auto rounded-sm border border-border bg-surface"
+        className="max-h-[70vh] overflow-auto rounded-2xl border border-border bg-surface"
         style={fitHeight !== null ? { maxHeight: fitHeight } : undefined}
       >
         <table
@@ -525,7 +545,7 @@ const TableHead = memo(function TableHead({
   onSort: (sort: string) => void;
 }) {
   return (
-    <thead className="sticky top-0 z-10 bg-surface">
+    <thead className="sticky top-0 z-10 bg-surface-2">
       {groups.map((group) => (
         <tr key={group.id} aria-rowindex={1}>
           {group.headers.map((header) => {
@@ -537,7 +557,7 @@ const TableHead = memo(function TableHead({
                 key={header.id}
                 scope="col"
                 data-col={header.column.id}
-                className="whitespace-nowrap border-b border-border px-2 py-1.5 text-left text-xs font-medium text-muted"
+                className="whitespace-nowrap border-b border-border px-2.5 py-2 text-left align-bottom text-xs font-semibold text-fg-2"
                 aria-sort={sortState(sort, sortKey)}
               >
                 {sortKey ? (
@@ -587,10 +607,10 @@ const VirtualRow = memo(function VirtualRow({
       aria-rowindex={index + 2}
       aria-selected={selected || undefined}
       style={{ height: ROW_HEIGHT }}
-      className="hover:bg-bg"
+      className={selected ? 'bg-accent-soft' : 'hover:bg-subtle'}
     >
       {row.getVisibleCells().map((cell) => (
-        <td key={cell.id} className="border-b border-border px-2 py-1 align-middle">
+        <td key={cell.id} className="border-b border-border px-2.5 py-1 align-middle">
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}
@@ -682,10 +702,22 @@ function SortButton({
       type="button"
       onClick={onClick}
       title={next}
-      className="inline-flex items-center gap-1 hover:text-fg"
+      className="inline-flex items-center gap-1 text-left hover:text-fg"
     >
       {title}
-      <span aria-hidden>{state === 'ascending' ? '▲' : state === 'descending' ? '▼' : '↕'}</span>
+      {/* 정렬 안 함(둘 다 흐림) · 작은 값부터(위 삼각형) · 큰 값부터(아래 삼각형) */}
+      <svg width="10" height="12" viewBox="0 0 12 14" aria-hidden className="shrink-0">
+        <path
+          d="M6 1 10 5.5H2z"
+          className={state === 'ascending' ? 'fill-accent' : 'fill-grayed'}
+          data-sort-up={state === 'ascending' || undefined}
+        />
+        <path
+          d="M6 13 2 8.5h8z"
+          className={state === 'descending' ? 'fill-accent' : 'fill-grayed'}
+          data-sort-down={state === 'descending' || undefined}
+        />
+      </svg>
     </button>
   );
 }
@@ -697,27 +729,39 @@ const ColumnChooser = memo(function ColumnChooser({
   table: ReturnType<typeof useReactTable<ComplexRow>>;
   visibility: VisibilityState;
 }) {
+  const hideable = table.getAllLeafColumns().filter((column) => column.getCanHide());
+  const on = hideable.filter((column) => column.getIsVisible()).length;
   return (
-    <details className="self-end text-sm" data-write>
-      <summary className="cursor-pointer rounded-sm border border-border px-2 py-1">
-        {t('page.G2.columns')}
+    <details className="relative text-sm" data-write>
+      <summary className="inline-flex min-h-9 cursor-pointer items-center rounded-[10px] border border-border-strong bg-surface px-3 py-1 font-semibold text-fg-2">
+        <MetaText kind="count" k="page.G2.columns" params={{ n: on }} />
       </summary>
-      <fieldset className="mt-1 flex flex-wrap gap-3 rounded-sm border border-border bg-surface p-2">
-        <legend className="sr-only">{t('page.G2.columns')}</legend>
-        {table
-          .getAllLeafColumns()
-          .filter((column) => column.getCanHide())
-          .map((column) => (
-            <label key={column.id} className="inline-flex items-center gap-1">
+      <div className="absolute right-0 z-20 mt-1 flex w-[min(640px,90vw)] flex-col gap-2 rounded-xl border border-border bg-surface p-3 shadow-lg">
+        <p className="text-xs text-muted">{t('page.G2.columnsHint')}</p>
+        <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
+          <legend className="sr-only">{metaColumnsLegend(on)}</legend>
+          {hideable.map((column) => (
+            <label key={column.id} className="inline-flex items-center gap-1.5">
               <input
                 type="checkbox"
                 checked={column.getIsVisible()}
                 onChange={column.getToggleVisibilityHandler()}
               />
               {colTitle(column.id as ColumnId)}
+              {column.getIsVisible() ? null : (
+                <span aria-hidden className="text-[11px] text-muted">
+                  {t('page.G2.columnHidden')}
+                </span>
+              )}
             </label>
           ))}
-      </fieldset>
+        </fieldset>
+      </div>
     </details>
   );
 });
+
+/** 열 고르기 묶음 이름(스크린리더) — 켜진 열 개수는 메타 */
+function metaColumnsLegend(n: number): string {
+  return metaText('page.G2.columns', { n });
+}

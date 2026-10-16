@@ -76,7 +76,9 @@ test('G4 비교: 실제 API 3단지 비교 표', async ({ page }) => {
   await expect(grid.getByRole('columnheader')).toHaveCount(4);
   await expect(grid).toContainText('엘리프 검단 포레듀');
   await expect(grid).toContainText('김포 칸타빌 에디션');
-  await expect(page.getByText(ko.chart.C07.title)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: new RegExp(`^${ko.chart.C07.title} · `) }),
+  ).toBeVisible();
   expect(failed).toEqual([]);
 });
 
@@ -107,7 +109,7 @@ test('G6 지역 시장: 실제 API 차트 4종 · 규제 카드', async ({ page 
   ]) {
     await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
   }
-  await expect(page.getByRole('heading', { name: P.G6.regulation })).toBeVisible();
+  await expect(page.getByRole('region', { name: P.G6.regulation })).toBeVisible();
   expect(failed).toEqual([]);
 });
 
@@ -269,7 +271,7 @@ test.describe('API 토큰', () => {
     await expect(page.getByTestId('token-button')).toContainText(ko.auth.state.read);
     expect(await page.evaluate(() => window.localStorage.getItem('sa.token.role'))).toBe('read');
 
-    await page.getByRole('link', { name: ko.nav.G7 }).click();
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G7 }).click();
     await expect(page.getByRole('heading', { level: 1, name: P.G7.title })).toBeVisible();
     const submit = page
       .getByRole('form', { name: P.G7.human })
@@ -277,11 +279,11 @@ test.describe('API 토큰', () => {
     await expect(submit).toBeDisabled();
     await expect(submit).toHaveAttribute('title', ko.auth.readOnlyHint);
 
-    await page.getByRole('link', { name: ko.nav.G8 }).click();
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G8 }).click();
     await expect(page.getByRole('heading', { level: 1, name: P.G8.title })).toBeVisible();
     await expect(page.getByRole('button', { name: P.G8.generate })).toBeDisabled();
 
-    await page.getByRole('link', { name: ko.nav.G2 }).click();
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G2 }).click();
     const csvReq = page.waitForRequest((r) => r.url().includes('/complexes.csv'));
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -314,7 +316,7 @@ test.describe('API 토큰', () => {
     await dialog.getByRole('button', { name: ko.auth.save }).click();
     await expect(dialog).toBeHidden();
     await expect(page.getByTestId('token-button')).toContainText(ko.auth.state.write);
-    await expect(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(
+    await expect(page.getByRole('list', { name: P.G1.region }).locator(':scope > li')).toHaveCount(
       4,
     );
     await expect(page.getByTestId('readonly-banner')).toHaveCount(0);

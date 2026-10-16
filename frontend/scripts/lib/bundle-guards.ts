@@ -20,6 +20,18 @@ export interface ChunkLike {
 /** 첫 화면에 정적으로 붙으면 안 되는 수동 청크 이름(vite.config.ts manualChunks) */
 export const LAZY_ONLY_CHUNKS = ['echarts', 'zrender', 'msw'] as const;
 
+/**
+ * R11-I18N: 문자열 이름공간 청크(vite.config.ts `ko-split` → manualChunks `ko-page-G3`·`ko-chart`·`ko-glossary` …) —
+ * 라우트가 동적으로만 받는다. 진입이 정적으로 import 하면 나눈 의미가 없다.
+ */
+export const LAZY_ONLY_PREFIX = 'ko-';
+
+export function isLazyOnly(name: string): boolean {
+  return (
+    (LAZY_ONLY_CHUNKS as readonly string[]).includes(name) || name.startsWith(LAZY_ONLY_PREFIX)
+  );
+}
+
 /** 진입 정적 닫힘(진입 청크 + 정적 import 청크) 크기 예산(kB, 압축 전) */
 export const ENTRY_CLOSURE_BUDGET_KB = 450;
 
@@ -53,9 +65,7 @@ export function entryViolations(
   const problems: string[] = [];
   for (const entry of chunks.filter((c) => c.isEntry)) {
     const closure = staticClosure(chunks, entry);
-    const lazyOnly = closure.filter((c) =>
-      (LAZY_ONLY_CHUNKS as readonly string[]).includes(c.name),
-    );
+    const lazyOnly = closure.filter((c) => isLazyOnly(c.name));
     if (lazyOnly.length > 0) {
       problems.push(
         `진입 ${entry.fileName} 가 지연 로드 전용 청크를 정적으로 import 한다: ${lazyOnly.map((c) => c.fileName).join(', ')}`,

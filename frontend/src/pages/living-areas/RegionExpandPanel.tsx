@@ -16,9 +16,11 @@ import type {
   RegionSelection,
 } from '@/api/types';
 import { useToast } from '@/app/toast';
-import { Badge, EmptyState, MetaText, PublishJobProgress } from '@/components';
+import { Card, MetaText, PublishJobProgress, StatusPill } from '@/components';
 import { t } from '@/i18n';
-import { enumText, Section, useDebounced } from '../_shared';
+import { enumText, useDebounced } from '../_shared';
+import { HelpToggle } from '../region-new/HelpToggle';
+import { ERROR_BOX } from '../region-new/ui';
 
 const DEBOUNCE_MS = 300;
 
@@ -42,8 +44,14 @@ function nameOnly(result: RegionPatched): boolean {
   return result.added.length === 0 && result.removed.length === 0 && result.change_event === null;
 }
 
+const INPUT =
+  'min-h-11 w-full rounded-xl border border-border-strong bg-surface px-3.5 py-2.5 text-base disabled:bg-subtle disabled:text-grayed';
+const SMALL_BUTTON =
+  'min-h-9 rounded-[10px] border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-fg-2 disabled:cursor-not-allowed disabled:opacity-50';
+
 /**
- * G0-2 지역 범위 확장 (D11-7·D11-10, 계약 .8 PATCH /regions/{id} {selections, name?}) = RA "지역 추가".
+ * G0-2 지역 범위 확장 (D11-7·D11-10, 계약 .8 PATCH /regions/{id} {selections, name?}) = RA "지역 추가". 목업 LivingAreas
+ * "지역 범위를 넓히거나 줄일까요?"(#range).
  * 지금 선택(시도·시군구·읍면동)에 후보를 더하거나 빼고(이름도 바꿀 수 있다) 저장하면, 서버가 change_event(critical)와
  * region.expand 잡(job_id)을 만들고 그 잡이 새 리비전에서 후보 전체 rerank 를 1회 돌려 보고서 §12 "지역 추가" 장
  * (이전 리비전과 비교)을 만든다. 응답의 added·removed(서버가 센 추가·제거)를 보여 주고, 잡이 끝나면 기준일 목록
@@ -62,6 +70,7 @@ export function RegionExpandPanel({ region }: { region: Region }) {
   const [saved, setSaved] = useState<RegionPatched | null>(null);
   const searchId = useId();
   const nameId = useId();
+  const headingId = useId();
   const diff = selectionDiff(region.selections, selections);
   const renamed = name.trim() !== '' && name.trim() !== region.name;
   const dirty = diff.added.length + diff.removed.length > 0 || renamed;
@@ -97,136 +106,182 @@ export function RegionExpandPanel({ region }: { region: Region }) {
 
   const serverError =
     update.error instanceof ApiError ? update.error.detail : (update.error?.message ?? null);
+  const last = selections.length <= 1;
 
   return (
-    <Section title={t('page.G0_2.expand.title')}>
-      <p className="text-xs text-muted">{t('page.G0_2.expand.intro')}</p>
-      <ul aria-label={t('page.G0_2.expand.current')} className="flex flex-wrap gap-1.5">
-        {selections.map((s) => {
-          const added = diff.added.some((a) => key(a) === key(s));
-          return (
-            <li
-              key={key(s)}
-              className="inline-flex items-center gap-1 text-sm"
-              data-added={added || undefined}
-            >
-              <Badge tone={added ? 'strong' : 'neutral'}>
-                {s.full_name} · {enumText('page.common.candidateKind', s.kind)}
-              </Badge>
-              <button
-                type="button"
-                data-write
-                disabled={!canWrite || selections.length <= 1}
-                onClick={() => remove(s)}
-                aria-label={t('page.G0_2.expand.remove', { name: s.full_name })}
-                className="rounded-sm border border-border px-1 text-xs disabled:opacity-50"
-              >
-                ×
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="flex flex-col gap-1" data-write>
-        <label htmlFor={nameId} className="text-sm font-medium">
-          {t('page.G0_2.expand.name')}
-        </label>
-        <input
-          id={nameId}
-          type="text"
-          value={name}
-          maxLength={100}
-          disabled={!canWrite}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm"
-        />
+    <Card
+      as="section"
+      id="range"
+      aria-label={t('page.G0_2.expand.title')}
+      padding="lg"
+      className="flex scroll-mt-24 flex-col gap-[18px]"
+    >
+      <div className="flex flex-col gap-1">
+        <h2 id={headingId} className="flex items-center gap-2 text-lg font-bold sm:text-[22px]">
+          {t('page.G0_2.expand.title')}
+          <HelpToggle label={t('page.G0_2.expand.help')}>
+            {t('page.G0_2.expand.helpBody')}
+          </HelpToggle>
+        </h2>
+        <p className="text-sm leading-relaxed text-muted">{t('page.G0_2.expand.intro')}</p>
       </div>
-      <div className="flex flex-col gap-1" data-write>
-        <label htmlFor={searchId} className="text-sm font-medium">
-          {t('page.G0_2.expand.search')}
-        </label>
-        <input
-          id={searchId}
-          type="search"
-          value={query}
-          autoComplete="off"
-          placeholder={t('page.G0.searchPlaceholder')}
-          onChange={(e) => setQuery(e.target.value)}
-          className="rounded-sm border border-border bg-surface px-2 py-1.5 text-sm"
-        />
-        {debounced.trim().length >= 2 && resolve.data && candidates.length === 0 ? (
-          <EmptyState message={t('page.G0.noCandidates')} />
-        ) : null}
-        {candidates.length > 0 ? (
-          <ul aria-label={t('page.G0_2.expand.candidates')} className="flex flex-col gap-1">
-            {candidates.map((c) => {
-              const have = selections.some((s) => key(s) === key(c));
-              return (
-                <li key={key(c)} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span>{c.full_name}</span>
-                  <Badge tone="neutral">{enumText('page.common.candidateKind', c.kind)}</Badge>
-                  <MetaText
-                    kind="count"
-                    className="text-xs text-muted"
-                    k="page.G0.dongCount"
-                    params={{ n: c.legal_dong_codes.length }}
-                  />
-                  <button
-                    type="button"
-                    disabled={have || !canWrite}
-                    onClick={() => add(c)}
-                    className="rounded-sm border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold text-fg-2">{t('page.G0_2.expand.current')}</p>
+            <ul aria-label={t('page.G0_2.expand.current')} className="flex flex-wrap gap-2">
+              {selections.map((s) => {
+                const added = diff.added.some((a) => key(a) === key(s));
+                return (
+                  <li
+                    key={key(s)}
+                    data-added={added || undefined}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-full border py-1.5 pl-3.5 pr-1.5 text-[15px] font-semibold ${
+                      added
+                        ? 'border-accent bg-accent-soft text-accent-ink'
+                        : 'border-border-strong bg-surface text-fg'
+                    }`}
                   >
-                    {have ? t('page.G0_2.expand.have') : t('page.G0_2.expand.add')}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-      </div>
-      {diff.added.length + diff.removed.length > 0 ? (
-        <p className="text-xs text-muted" data-testid="expand-diff">
-          <MetaText
-            kind="count"
-            k="page.G0_2.expand.diff"
-            params={{ added: diff.added.length, removed: diff.removed.length }}
+                    {s.full_name}
+                    <span className={`text-xs font-medium ${added ? '' : 'text-muted'}`}>
+                      {enumText('page.common.candidateKind', s.kind)}
+                      {added ? ` · ${t('page.G0_2.expand.added')}` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      data-write
+                      disabled={!canWrite || last}
+                      title={last ? t('page.G0_2.expand.removeLast') : undefined}
+                      onClick={() => remove(s)}
+                      aria-label={t('page.G0_2.expand.remove', { name: s.full_name })}
+                      className="min-h-8 rounded-full border border-border-strong bg-surface px-2 text-sm font-medium text-fg hover:border-fg-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <div className="flex flex-col gap-1.5" data-write>
+            <label htmlFor={nameId} className="text-sm font-semibold text-fg-2">
+              {t('page.G0_2.expand.name')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              value={name}
+              maxLength={100}
+              disabled={!canWrite}
+              onChange={(e) => setName(e.target.value)}
+              className={INPUT}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2" data-write>
+          <label htmlFor={searchId} className="text-sm font-semibold text-fg-2">
+            {t('page.G0_2.expand.search')}
+          </label>
+          <input
+            id={searchId}
+            type="search"
+            value={query}
+            autoComplete="off"
+            placeholder={t('page.G0.searchPlaceholder')}
+            onChange={(e) => setQuery(e.target.value)}
+            className={INPUT}
           />
-        </p>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-2" data-write>
+          {debounced.trim().length >= 2 && resolve.data && candidates.length === 0 ? (
+            <p className="rounded-[10px] bg-subtle p-3 text-sm text-fg-2">
+              {t('page.G0_2.expand.noCandidates')}
+            </p>
+          ) : null}
+          {candidates.length > 0 ? (
+            <ul aria-label={t('page.G0_2.expand.candidates')} className="flex flex-col gap-1.5">
+              {candidates.map((c) => {
+                const have = selections.some((s) => key(s) === key(c));
+                return (
+                  <li
+                    key={key(c)}
+                    className="flex flex-wrap items-center gap-2 rounded-[10px] border border-border px-2.5 py-2"
+                  >
+                    <span className="min-w-0 flex-[1_1_160px] text-sm font-semibold">
+                      {c.full_name}
+                    </span>
+                    <span className="rounded-md bg-chip px-2 py-0.5 text-xs text-fg-2">
+                      {enumText('page.common.candidateKind', c.kind)}
+                    </span>
+                    <MetaText
+                      kind="count"
+                      className="text-xs tabular-nums text-muted"
+                      k="page.G0.dongCount"
+                      params={{ n: c.legal_dong_codes.length }}
+                    />
+                    <button
+                      type="button"
+                      disabled={have || !canWrite}
+                      onClick={() => add(c)}
+                      className={SMALL_BUTTON}
+                    >
+                      {have ? t('page.G0_2.expand.have') : t('page.G0_2.expand.add')}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-subtle pt-4" data-write>
+        {diff.added.length + diff.removed.length > 0 ? (
+          <span
+            className="rounded-lg bg-subtle px-3 py-2 text-sm tabular-nums text-fg-2"
+            data-testid="expand-diff"
+          >
+            <MetaText
+              kind="count"
+              k="page.G0_2.expand.diff"
+              params={{ added: diff.added.length, removed: diff.removed.length }}
+            />
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={save}
           disabled={!dirty || !canWrite || update.isPending}
           title={canWrite ? undefined : t('auth.readOnlyHint')}
-          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
+          className="min-h-11 rounded-xl bg-accent px-5 text-[15px] font-semibold text-accent-fg hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-grayed/40 disabled:text-surface"
         >
           {t('page.G0_2.expand.submit')}
         </button>
         {serverError ? (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className={ERROR_BOX}>
             {t('page.common.loadError', { detail: serverError })}
           </p>
         ) : null}
       </div>
+
       {saved ? (
-        <div data-testid="expand-job" className="flex flex-col gap-1">
-          <p className="text-sm" data-testid="expand-result">
+        <div data-testid="expand-job" className="flex flex-col gap-2 rounded-xl bg-subtle p-3.5">
+          <p className="text-[15px]" data-testid="expand-result">
             <MetaText
               kind="count"
+              className="font-bold"
               k="page.G0_2.expand.result"
               params={{ added: saved.added.length, removed: saved.removed.length }}
             />
             {saved.added.length > 0 ? (
-              <span className="ml-1 text-muted">
+              <span className="ml-1.5 text-muted">
                 {t('page.G0_2.expand.addedNames', {
                   names: saved.added.map((s) => s.full_name).join(', '),
                 })}
               </span>
             ) : null}
             {saved.removed.length > 0 ? (
-              <span className="ml-1 text-muted">
+              <span className="ml-1.5 text-muted">
                 {t('page.G0_2.expand.removedNames', {
                   names: saved.removed.map((s) => s.full_name).join(', '),
                 })}
@@ -234,21 +289,21 @@ export function RegionExpandPanel({ region }: { region: Region }) {
             ) : null}
           </p>
           {saved.change_event ? (
-            <p className="text-xs text-muted">
-              <Badge tone="strong">
+            <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-fg-2">
+              <StatusPill tone={saved.change_event.severity === 'critical' ? 'warn' : 'neutral'}>
                 {enumText('page.common.severity', saved.change_event.severity)}
-              </Badge>{' '}
+              </StatusPill>
               {saved.change_event.new_text ?? ''}
             </p>
           ) : null}
           {saved.job_id !== null ? (
             <>
               {nameOnly(saved) ? (
-                <p className="text-xs text-muted" data-testid="expand-name-publish">
+                <p className="text-[13px] text-fg-2" data-testid="expand-name-publish">
                   {t('page.G0_2.expand.nameOnlyPublish')}
                 </p>
               ) : (
-                <p className="text-xs text-muted">{t('page.G0_2.expand.jobHint')}</p>
+                <p className="text-[13px] text-fg-2">{t('page.G0_2.expand.jobHint')}</p>
               )}
               <PublishJobProgress
                 jobId={saved.job_id}
@@ -257,14 +312,15 @@ export function RegionExpandPanel({ region }: { region: Region }) {
                   invalidateFactViews(qc);
                 }}
               />
+              <p className="text-xs text-muted">{t('page.G0_2.expand.jobDoneHint')}</p>
             </>
           ) : (
-            <p className="text-xs text-muted" data-testid="expand-name-only">
+            <p className="text-[13px] text-fg-2" data-testid="expand-name-only">
               {t('page.G0_2.expand.nameOnly')}
             </p>
           )}
         </div>
       ) : null}
-    </Section>
+    </Card>
   );
 }

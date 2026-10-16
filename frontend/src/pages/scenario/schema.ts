@@ -26,7 +26,9 @@ export interface ScenarioFormValues {
 const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
 
 function optionalNumber(min: number, max: number, int = false) {
-  let n = z.coerce.number({ invalid_type_error: t('page.G5.error.number') });
+  let n = z.coerce.number({
+    invalid_type_error: int ? t('page.G5.error.number') : t('page.G5.error.numberAny'),
+  });
   if (int) n = n.int(t('page.G5.error.number'));
   return z.preprocess(
     blankToUndefined,
@@ -85,7 +87,7 @@ export function toScenarioCreate(
   }
   if (!weightsSchema.safeParse(weights).success) {
     errors.weights = metaText('page.G5.error.weightsSum', {
-      sum: { n: weightsSum(weights), as: 'number', digits: 2 },
+      sum: { n: weightsSum(weights), as: 'prob', digits: 0 },
     });
   }
   if (!parsed.success || errors.weights) return { ok: false, errors };

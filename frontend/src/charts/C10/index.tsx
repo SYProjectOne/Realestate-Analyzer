@@ -26,6 +26,8 @@ export interface C10SensitivityProps {
   asof?: IsoDate | null;
   /** 바닥줄 출처 설명. 생략하면 ko `chart.C10.source` */
   source?: string;
+  /** 부제(질문 문장)를 숨긴다 — 화면 구역 제목이 이미 같은 질문일 때(G4·G5) */
+  hideQuestion?: boolean;
 }
 
 const thClass =
@@ -65,7 +67,13 @@ function VariantCell({ row }: { row: C10VariantRow | null }) {
  * C10 민감도 — "어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?" (G4, G5).
  * 결과 개수 줄(서버 changed 세기) → 표(기준 6줄 × 줄이면/늘리면, 1~5위) → 순위 선(기준 × 줄이면/늘리면).
  */
-export function C10Sensitivity({ data, height = 300, asof, source }: C10SensitivityProps) {
+export function C10Sensitivity({
+  data,
+  height = 300,
+  asof,
+  source,
+  hideQuestion = false,
+}: C10SensitivityProps) {
   const palette = useChartPalette();
   const title = t('chart.C10.title');
   const s = data.sensitivity;
@@ -74,7 +82,7 @@ export function C10Sensitivity({ data, height = 300, asof, source }: C10Sensitiv
   return (
     <ChartFrame
       title={title}
-      subtitle={t('chart.C10.question')}
+      subtitle={hideQuestion ? undefined : t('chart.C10.question')}
       badges={
         <>
           {/* R9-UI 피드백: 비중·민감도 용어 풀이 */}

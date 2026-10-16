@@ -1,7 +1,13 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
 import { resetAuthForTests } from '@/api/auth';
+import { registerStrings } from '@/i18n';
+import ko from '@/i18n/ko.json';
 import { server } from '@/mocks/server';
+
+// R11-I18N: 앱은 core 만 정적으로 싣고 이름공간은 라우트가 받는다 — 테스트는 ko.json 전체를 처음부터 등록한다
+// (지연 로드 경로 자체는 src/i18n/namespaces.test.ts·routeNamespaces.test.ts 가 본다)
+registerStrings(ko);
 
 // 화면은 라우트별 지연 로드 청크다 — 병렬 실행 부하에서도 첫 findBy 가 1초 기본값에 걸리지 않게(모든 테스트 파일)
 configure({ asyncUtilTimeout: 5000 });

@@ -12,3 +12,20 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** R11-I18N: ko.json 에서 빌드 때 나눈 문자열(vite.config.ts `ko-split`, 규칙은 src/i18n/namespaces.ts) */
+declare module 'virtual:ko/core' {
+  import type { KoTree } from '@/i18n/namespaces';
+  const tree: KoTree;
+  export default tree;
+}
+declare module 'virtual:ko/ns/*' {
+  import type { KoTree } from '@/i18n/namespaces';
+  const tree: KoTree;
+  export default tree;
+}
+/** 점 경로 아래 키 목록(예: `virtual:ko/keys/glossary.items`) — 본문 없이 키 이름만 */
+declare module 'virtual:ko/keys/*' {
+  const keys: string[];
+  export default keys;
+}
