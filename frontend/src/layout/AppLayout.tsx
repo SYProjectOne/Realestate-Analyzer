@@ -10,6 +10,7 @@ import { useProvenanceSnapshot } from '@/components/provenanceContext';
 import { useMobileLayout } from '@/hooks/useMobileLayout';
 import { useSnapshot } from '@/hooks/useSnapshot';
 import { t } from '@/i18n';
+import { MOBILE_QUERY } from '@/lib/useMediaQuery';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
 
@@ -37,14 +38,42 @@ function MobileNote({ text }: { text: string }) {
   );
 }
 
+/** 휴대폰에서 글꼴 조각 내려받기를 미루는 시간(ms) — 첫 화면 자료(API·화면 청크)와 대역을 다투지 않게 */
+export const MOBILE_FONT_DELAY_MS = 4000;
+
+/**
+ * 글꼴 불러오기 시점. 데스크톱은 첫 렌더 직후, 휴대폰(≤768px, 느린 망)은 페이지 load 뒤 MOBILE_FONT_DELAY_MS 가 지나
+ * 브라우저가 한가할 때 — 한글 글꼴 조각(굵기 4종 × 수십 개)이 첫 화면 자료와 대역을 다투면 휴대폰 LCP 가 두 배가 됐다
+ * (Lighthouse 모바일 / 3.1초 → 6.3초). 그 전에는 시스템 한글 글꼴로 보인다(font-display: swap).
+ */
+function loadFontsWhenIdle(): () => void {
+  const load = () => void import('./fonts');
+  const mobile = window.matchMedia?.(MOBILE_QUERY).matches ?? false;
+  if (!mobile) {
+    load();
+    return () => {};
+  }
+  let timer: number | undefined;
+  const schedule = () => {
+    timer = window.setTimeout(() => {
+      if ('requestIdleCallback' in window) window.requestIdleCallback(load, { timeout: 2000 });
+      else load();
+    }, MOBILE_FONT_DELAY_MS);
+  };
+  if (document.readyState === 'complete') schedule();
+  else window.addEventListener('load', schedule, { once: true });
+  return () => {
+    window.removeEventListener('load', schedule);
+    if (timer !== undefined) window.clearTimeout(timer);
+  };
+}
+
 export function AppLayout() {
   const { isMobile, readOnly, unsupported } = useMobileLayout();
   // 계약 .11 F1: 출처 서랍(앱 루트)은 지금 보고 있는 리비전의 출처를 본다
   useProvenanceSnapshot(useSnapshot().snapshotId);
   // D30-3: 글꼴 @font-face(약 230kB)는 첫 렌더 뒤 따로 붙인다(첫 화면을 막지 않게, layout/fonts.ts)
-  useEffect(() => {
-    void import('./fonts');
-  }, []);
+  useEffect(() => loadFontsWhenIdle(), []);
   return (
     <ToastProvider>
       <div className="min-h-screen bg-bg font-sans text-fg">
