@@ -2,7 +2,7 @@ import type { DataTable } from '@/components/DataTableToggle';
 import { t } from '@/i18n';
 import type { CatalystStage, CatalystView } from '@/lib/contract';
 import { axisStyle, baseOption, DEFAULT_PALETTE, tooltipStyle } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type { BuildOptionContext, ChartLegendItem, EChartsOption } from '../types';
 import { escapeHtml, str, toIsoDay } from '../util';
 import { C09_STAGES, type C09Data } from './types';
 
@@ -55,7 +55,7 @@ export function buildOption(
         const item = items[(p as { dataIndex: number }).dataIndex];
         if (!item) return '';
         return [
-          escapeHtml(item.c.name),
+          `<b>${escapeHtml(item.c.name)}</b>`,
           `${escapeHtml(item.c.kind)} · ${escapeHtml(str(item.c.expected_ym))}`,
           item.c.note ? escapeHtml(item.c.note) : null,
         ]
@@ -63,7 +63,12 @@ export function buildOption(
           .join('<br/>');
       },
     },
-    xAxis: { type: 'time', ...axis, axisLabel: { ...axis.axisLabel, fontSize: 10 } },
+    xAxis: {
+      type: 'time',
+      ...axis,
+      splitLine: { show: true, lineStyle: { color: palette.grid } },
+      axisLabel: { ...axis.axisLabel, fontSize: 11 },
+    },
     yAxis: { type: 'value', show: false, min: -0.6, max: 3.8 },
     series: [
       {
@@ -90,6 +95,11 @@ export function buildOption(
       },
     ],
   };
+}
+
+/** 범례 없음 — 단계 보드는 칸 이름이 곧 범례이고, 일정표는 계열이 하나(확정)뿐이다 */
+export function legendItems(_data: C09Data, _ctx?: BuildOptionContext): ChartLegendItem[] {
+  return [];
 }
 
 export function toTable(data: C09Data): DataTable {

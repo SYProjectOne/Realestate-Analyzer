@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import type { Decision } from '@/lib/contract';
 import { formatConfidence, formatProb } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, tooltipStyle } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type { BuildOptionContext, ChartLegendItem, EChartsOption } from '../types';
 import { escapeHtml, num } from '../util';
 import type { C07Data } from './types';
 
@@ -66,7 +66,8 @@ function flagsOf(item: Decision, showTie: boolean): string[] {
     item.chosen ? t('chart.chosen') : null,
     showTie && item.tie ? t('badge.tie') : null,
     item.mismatch ? t('badge.mismatch') : null,
-    isVirtual(item) ? t('chart.C07.virtual') : isOption(item) ? null : t('chart.C07.escape'),
+    // 단지가 아닌 판정기 선택지(질문·추가 조사·해당 없음) = '판정기 보류 선택지'(목업 CP-10). 봉투 escaped(질문 남김)와 다르다
+    isVirtual(item) ? t('chart.C07.virtual') : isOption(item) ? null : t('chart.C07.hold'),
   ].filter((x): x is string => x !== null);
 }
 
@@ -82,7 +83,7 @@ export function buildOption(
   const showTie = tieShown(data);
   return {
     ...baseOption(palette),
-    grid: { left: 148, right: 96, top: 16, bottom: 28 },
+    grid: { left: 212, right: 168, top: 12, bottom: 36 },
     tooltip: {
       trigger: 'item',
       ...tooltipStyle(palette),
@@ -91,7 +92,7 @@ export function buildOption(
         if (!item) return '';
         const prob = num(item.prob);
         const lines = [
-          escapeHtml(item.label),
+          `<b>${escapeHtml(item.label)}</b>`,
           prob === null ? t('empty.unknown') : formatProb(prob),
           ...flagsOf(item, showTie).map(escapeHtml),
         ];
@@ -102,6 +103,10 @@ export function buildOption(
       type: 'value',
       min: 0,
       max: 1,
+      interval: 0.25,
+      name: t('chart.axis.choiceProb'),
+      nameLocation: 'middle',
+      nameGap: 24,
       ...axis,
       axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatProb(v) },
     },
@@ -110,14 +115,26 @@ export function buildOption(
       data: items.map((item) => item.label),
       inverse: true,
       ...axis,
-      axisLabel: { ...axis.axisLabel, fontSize: 10, width: 136, overflow: 'truncate' },
+      axisTick: { ...axis.axisTick, alignWithLabel: true },
+      // 후보 이름은 줄바꿈 — 잘라 숨기지 않는다
+      axisLabel: {
+        ...axis.axisLabel,
+        color: palette.fg,
+        fontSize: 12,
+        interval: 0,
+        width: 200,
+        overflow: 'break',
+        lineHeight: 14,
+      },
     },
     series: [
       {
         type: 'bar',
         id: 'decide',
         name: t('chart.C07.title'),
-        barMaxWidth: 16,
+        barMaxWidth: 18,
+        showBackground: true,
+        backgroundStyle: { color: palette.grid, borderRadius: 4 },
         label: {
           show: true,
           position: 'right',
@@ -126,9 +143,7 @@ export function buildOption(
             const item = items[p.dataIndex];
             const v = typeof p.value === 'number' ? formatProb(p.value) : t('empty.unknown');
             if (gray) return `${v} · ${t('badge.unresolved')}`;
-            const flags = item
-              ? flagsOf(item, showTie).filter((f) => f !== t('chart.C07.escape'))
-              : [];
+            const flags = item ? flagsOf(item, showTie) : [];
             return [v, ...flags].join(' · ');
           },
         },
@@ -140,12 +155,36 @@ export function buildOption(
                 ? palette.grayed
                 : item.chosen
                   ? palette.strong
-                  : palette.muted,
+                  : palette.strongSoft,
+            borderRadius: [0, 4, 4, 0],
           },
         })),
       },
     ],
   };
+}
+
+/** 범례(차트 위): 막대 색의 뜻 — 판정기 선택 · 다른 후보 · 보류 선택지(있을 때). 미해결이면 회색 한 가지 */
+export function legendItems(
+  data: C07Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): ChartLegendItem[] {
+  const { palette } = ctx;
+  const items = data.decision?.items ?? [];
+  if (items.length === 0 || isEscaped(data)) return [];
+  if (isUnresolved(data))
+    return [{ name: t('chart.C07.unresolved'), color: palette.grayed, symbol: 'square' }];
+  return [
+    ...(items.some((i) => isOption(i) && i.chosen)
+      ? [{ name: t('chart.chosen'), color: palette.strong, symbol: 'square' as const }]
+      : []),
+    ...(items.some((i) => isOption(i) && !i.chosen)
+      ? [{ name: t('chart.C07.other'), color: palette.strongSoft, symbol: 'square' as const }]
+      : []),
+    ...(items.some((i) => !isOption(i))
+      ? [{ name: t('chart.C07.holdLegend'), color: palette.grayed, symbol: 'square' as const }]
+      : []),
+  ];
 }
 
 export function toTable(data: C07Data): DataTable {

@@ -31,6 +31,42 @@ export interface ChartPalette {
   grayed: string;
   /** 계열 구분(C04 생활권 스택, C06 6요소 등). 색만으로 의미를 전하지 않는다 — 범례·라벨 병기 */
   categorical: string[];
+  /** 두 번째 계열(주황 — 파랑 strong과 밝기가 다르다. C05 준공 후 등) */
+  secondary: string;
+  /** 강조색의 옅은 단계(C07 선택 안 된 후보, C01 점수에 안 쓰는 막대) */
+  strongSoft: string;
+  /** '나머지 n곳'처럼 묶은 계열 */
+  rest: string;
+  /** 옅은 격자선 */
+  grid: string;
+  /** 띠 영역(C10 '상위 5곳 밖') */
+  band: string;
+}
+
+/** 차트 위 HTML 범례 한 줄(ChartLegend). 색 + 모양 + 글자 — 색만으로 구분하지 않는다 */
+export type ChartLegendSymbol =
+  | 'square'
+  | 'circle'
+  | 'ring'
+  | 'dashedRing'
+  | 'rect'
+  | 'triangle'
+  | 'triangleDown'
+  | 'diamond'
+  | 'pin'
+  | 'line'
+  | 'dashedLine'
+  | 'range'
+  | 'tick'
+  | 'hatch';
+
+export interface ChartLegendItem {
+  /** 보이는 이름(ko.json에서 온 문자열 또는 서버 이름) */
+  name: string;
+  color: string;
+  symbol: ChartLegendSymbol;
+  /** 이름 옆 작은 회색 글자(예: '비중 35%') */
+  note?: string;
 }
 
 export interface BuildOptionContext {
@@ -51,4 +87,6 @@ export interface ChartModule<D> {
   buildOption: (data: D, ctx?: BuildOptionContext) => EChartsOption;
   emptyReason: (data: D) => string | null;
   toTable: (data: D) => DataTable;
+  /** 차트 위 범례(HTML). 계열이 하나뿐이면 빈 배열 */
+  legendItems: (data: D, ctx?: BuildOptionContext) => ChartLegendItem[];
 }

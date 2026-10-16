@@ -2,7 +2,7 @@
  * R9-UI 사용자 피드백(민감도 C10): 성분 내부 키(p10·rerank·gap·benchmark·supply·liquidity·move_in)가 화면 글자로
  * 나오지 않는다 — 차트 축·범례·계열 이름·표·문구 어디에도. 쉬운 말(ko.json 성분 이름)로만 보인다.
  */
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import ko from '@/i18n/ko.json';
 import { t } from '@/i18n';
 import { renderRoute, renderWithProviders } from '@/test/render';
@@ -92,10 +92,11 @@ describe('성분 내부 키가 화면 글자로 나오지 않는다', () => {
     expect(terms).toEqual(expect.arrayContaining(['weight', 'sensitivity']));
     expect(screen.getByTestId('stable-badge')).toHaveTextContent(t('chart.C10.stable'));
     const table = container.querySelector('table') as HTMLElement;
-    expect(within(table).getByText(t('chart.C10.changedCol'))).toBeInTheDocument();
-    const values = [...table.querySelectorAll('tbody tr td:last-child')].map(
-      (td) => td.textContent,
+    // R11: 표는 기준 6줄 × (줄이면/늘리면) — 칸마다 '순위 변동: 없음/있음' 줄(목업 Compare CP-14)
+    const values = [...table.querySelectorAll('[data-testid="c10-changed"]')].map(
+      (p) => p.textContent,
     );
+    expect(values.length).toBe(stableSensitivity().cells.length);
     for (const v of values)
       expect(v).toMatch(new RegExp(`^(${t('chart.C10.changedNo')}|${t('chart.C10.changedYes')})`));
     for (const th of table.querySelectorAll('thead th')) {

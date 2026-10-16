@@ -3,6 +3,7 @@ import { CachedBadge } from '@/components/CachedBadge';
 import { MismatchBadge } from '@/components/MismatchBadge';
 import { TieBadge } from '@/components/TieBadge';
 import { t } from '@/i18n';
+import type { IsoDate } from '@/lib/format';
 import { ChartFrame } from '../ChartFrame';
 import { EChart } from '../EChart';
 import { useChartPalette } from '../palette';
@@ -16,6 +17,7 @@ import {
   isEscaped,
   isTie,
   isUnresolved,
+  legendItems,
   toTable,
 } from './buildOption';
 import type { C07Data } from './types';
@@ -23,15 +25,18 @@ import type { C07Data } from './types';
 export interface C07DecisionProps {
   data: C07Data;
   height?: number;
+  asof?: IsoDate | null;
+  /** 바닥줄 출처 설명. 생략하면 ko `chart.C07.source` */
+  source?: string;
 }
 
 /** C7 판정기 확률 — decide prob + escape, confidence, TieBadge(conf<0.6), MismatchBadge (G4, G5). escaped면 질문 텍스트 */
-export function C07Decision({ data, height }: C07DecisionProps) {
+export function C07Decision({ data, height, asof, source }: C07DecisionProps) {
   const palette = useChartPalette();
   const title = t('chart.C07.title');
   const d = data.decision;
   const items = d?.items ?? [];
-  const h = height ?? Math.max(140, 48 + items.length * 28);
+  const h = height ?? Math.max(150, 56 + items.length * 34);
   return (
     <ChartFrame
       title={title}
@@ -54,8 +59,11 @@ export function C07Decision({ data, height }: C07DecisionProps) {
           ) : null}
         </>
       }
+      legend={legendItems(data, { palette })}
       table={toTable(data)}
       emptyReason={emptyReason(data)}
+      asof={asof}
+      source={source ?? t('chart.C07.source')}
     >
       <EChart option={buildOption(data, { palette })} height={h} ariaLabel={title} />
     </ChartFrame>

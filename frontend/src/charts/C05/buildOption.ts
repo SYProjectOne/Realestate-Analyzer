@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import type { FactLike, UnsoldPoint } from '@/lib/contract';
 import { formatCount } from '@/lib/format';
 import { axisStyle, baseOption, DEFAULT_PALETTE, legendStyle, tooltipStyle } from '../palette';
-import type { BuildOptionContext, EChartsOption } from '../types';
+import type { BuildOptionContext, ChartLegendItem, EChartsOption } from '../types';
 import { monthRange, num } from '../util';
 import { C05_DEFAULT_MONTHS, type C05Data } from './types';
 
@@ -71,22 +71,39 @@ export function buildOption(
   const rows = recentRows(data);
   return {
     ...baseOption(palette),
-    grid: { left: 56, right: 16, top: 16, bottom: 56 },
-    legend: legendStyle(palette),
+    grid: { left: 56, right: 16, top: 28, bottom: 32 },
+    legend: {
+      ...legendStyle(palette),
+      data: [t('chart.C05.total'), t('chart.C05.postCompletion')],
+    },
     tooltip: {
       trigger: 'axis',
       ...tooltipStyle(palette),
-      valueFormatter: (v) => (typeof v === 'number' ? formatCount(v) : t('empty.unknown')),
+      // 그 달의 두 값(목업 MK-7). 자료가 빈 달은 '확인 불가'
+      formatter: (params: unknown) => {
+        const list = params as { seriesId: string; value: unknown; axisValue: string }[];
+        const value = (id: string) => {
+          const v = list.find((p) => p.seriesId === id)?.value;
+          return typeof v === 'number' ? formatCount(v) : t('empty.unknown');
+        };
+        return [
+          `<b>${list[0]?.axisValue ?? ''}</b>`,
+          `${t('chart.C05.totalShort')} ${value('total')}`,
+          `${t('chart.C05.postShort')} ${value('post')}`,
+        ].join('<br/>');
+      },
     },
     xAxis: {
       type: 'category',
       data: rows.map((r) => r.ym),
       ...axis,
-      axisLabel: { ...axis.axisLabel, fontSize: 10 },
+      axisTick: { ...axis.axisTick, alignWithLabel: true },
+      axisLabel: { ...axis.axisLabel, fontSize: 11 },
     },
     yAxis: {
       type: 'value',
       min: 0,
+      name: t('chart.axis.households'),
       ...axis,
       axisLabel: { ...axis.axisLabel, formatter: (v: number) => formatCount(v) },
     },
@@ -100,8 +117,9 @@ export function buildOption(
         showSymbol: true,
         showAllSymbol: true,
         symbol: 'circle',
-        itemStyle: { color: palette.strong },
-        lineStyle: { color: palette.strong, width: 2 },
+        symbolSize: 7,
+        itemStyle: { color: palette.strong, borderColor: palette.bg, borderWidth: 1.5 },
+        lineStyle: { color: palette.strong, width: 2.5 },
         data: rows.map((r) => num(r.total)),
       },
       {
@@ -113,19 +131,32 @@ export function buildOption(
         showAllSymbol: true,
         // 색이 아니라 선 모양(점선)·마커로도 구분
         symbol: 'rect',
-        lineStyle: { type: 'dashed', color: palette.fg },
-        itemStyle: { color: palette.fg },
+        symbolSize: 7,
+        lineStyle: { type: 'dashed', color: palette.secondary, width: 2 },
+        itemStyle: { color: palette.secondary },
         data: rows.map((r) => num(r.post_completion)),
       },
     ],
   };
 }
 
+/** 범례(차트 위): 실선 ● 합계 · 점선 ■ 준공 후 */
+export function legendItems(
+  data: C05Data,
+  ctx: BuildOptionContext = { palette: DEFAULT_PALETTE },
+): ChartLegendItem[] {
+  if (data.unsold.length === 0) return [];
+  return [
+    { name: t('chart.C05.total'), color: ctx.palette.strong, symbol: 'line' },
+    { name: t('chart.C05.postCompletion'), color: ctx.palette.secondary, symbol: 'dashedLine' },
+  ];
+}
+
 export function toTable(data: C05Data): DataTable {
   return {
     columns: [
       { key: 'ym', header: t('chart.col.month'), unit: 'ym' },
-      { key: 'total', header: t('chart.C05.total'), unit: 'count' },
+      { key: 'total', header: t('chart.C05.totalShort'), unit: 'count' },
       { key: 'post_completion', header: t('chart.C05.postCompletion'), unit: 'count' },
     ],
     rows: recentRows(data).map((r) => ({
