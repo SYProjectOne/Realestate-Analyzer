@@ -11,7 +11,7 @@ import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { matching, recordRequests } from '../_shared/testing';
-import { presetFacts, REQ_FIRST_ROWS, reqSummary } from './index';
+import { presetFacts, REQ_FIRST_ROWS } from './index';
 import { fromScenario, rebalance, toScenarioCreate, weightsSum } from './schema';
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
@@ -122,40 +122,25 @@ describe('G5 조각 함수', () => {
     expect(text).toContain(t('page.G5.fact.equity', { won: '' }).trim());
     expect(text).toContain(t('page.G5.purpose.실거주'));
     expect(text).toContain(t('page.G5.fact.area', { n: '84' }));
-    expect(text).toContain(t('page.G5.fact.residencyYes'));
     expect(text).toContain(
-      t('page.G5.fact.horizon', { target: t('page.G4.target.move_in_plus_1y') }),
+      t('page.G5.fact.horizon', { target: t('chart.C01.horizon.move_in_plus_1y') }),
     );
     const c = scenarios.find((s) => s.code === 'C')!;
     expect(presetFacts(c)).toContain(
-      t('page.G5.fact.horizon', { target: t('page.G4.target.asof_plus_5y') }),
+      t('page.G5.fact.horizon', { target: t('chart.C01.horizon.asof_plus_5y') }),
     );
-  });
-
-  it('reqSummary: 세 요건 모두 충족 · 하나라도 미충족 · 그 밖(확인 불가·미입력) — 행 세기', async () => {
-    const preview = await example<ScenarioPreview>('/scenarios/3/preview');
-    expect(reqSummary(preview.requirements_pre)).toEqual({ all: 2, anyNo: 2, mixed: 1 });
   });
 });
 
 describe('G5 시나리오 화면', () => {
-  it('머리: h1 · 소개 · 4단계 진행 표시', async () => {
-    renderRoute('/scenario');
+  it('머리: h1(내 조건(시나리오)) · 단계 번호가 붙은 질문형 구역 1~4', async () => {
+    renderRoute('/scenario?scenario=B');
     expect(
       await screen.findByRole('heading', { level: 1, name: t('page.G5.title') }),
     ).toBeInTheDocument();
-    expect(screen.getByText(t('page.G5.intro'))).toBeInTheDocument();
-    const steps = screen.getByRole('list', { name: t('page.G5.steps') });
-    expect(
-      within(steps)
-        .getAllByRole('listitem')
-        .map((li) => li.textContent),
-    ).toEqual([
-      `1${t('page.G5.step.s1')}`,
-      `2${t('page.G5.step.s2')}`,
-      `3${t('page.G5.step.s3')}`,
-      `4${t('page.G5.step.s4')}`,
-    ]);
+    for (const q of ['startQ', 'formQ', 'runQ', 'requirementsQ'] as const) {
+      expect(await screen.findByRole('region', { name: t(`page.G5.${q}`) })).toBeInTheDocument();
+    }
   });
 
   it('조건 목록을 불러오는 중 → 뼈대 + "불러오는 중…"', async () => {
@@ -174,7 +159,7 @@ describe('G5 시나리오 화면', () => {
     expect(on).toHaveLength(1);
     expect(on[0]).toHaveTextContent('기본');
     expect(on[0]).toHaveTextContent(t('page.G5.current'));
-    expect(on[0]).toHaveTextContent(t('page.G5.who.base'));
+    expect(on[0]).toHaveTextContent(t('page.G5.presetCodeBase'));
     expect(screen.getByText(t('page.G5.readOnlyBuiltin'))).toBeInTheDocument();
     // 카드를 누르면 전역 ?scenario= 가 바뀐다
     await userEvent.click(cards.find((c) => c.textContent?.includes('A 가점 높음'))!);
@@ -196,29 +181,23 @@ describe('G5 시나리오 화면', () => {
     await waitFor(() => expect(router.state.location.search).toContain('scenario=C'));
   });
 
-  it('폼: 칸 이름 = 쉬운 말 (공식 이름) · 단위 · 숫자 칸 inputMode=decimal · 기본 제공이면 이름 비우고 새 이름 안내', async () => {
+  it('폼: 칸 이름 = 쉬운 말 · 단위 · 숫자 칸 inputMode=decimal · 기본 제공이면 이름 비움 + 새 이름 안내', async () => {
     renderRoute('/scenario?scenario=A');
     const form = await screen.findByRole('form', { name: t('page.G5.form') });
     expect(within(form).getByLabelText(t('page.G5.field.name'))).toHaveValue('');
-    expect(
-      within(form).getByText(t('page.G5.builtinSaveNote', { name: 'A 가점 높음(실거주)' })),
-    ).toBeInTheDocument();
-    const equity = within(form).getByLabelText(
-      `${t('page.G5.field.equity_won')} (${t('page.G5.fieldTerm.equity_won')})`,
-    );
+    expect(screen.getByText(t('page.G5.readOnlyBuiltin'))).toBeInTheDocument();
+    const equity = within(form).getByLabelText(t('page.G5.field.equity_won'));
     expect(equity).toHaveValue('3');
     expect(equity).toHaveAttribute('inputmode', 'decimal');
     expect(form.querySelectorAll('input[inputmode="decimal"]')).toHaveLength(6);
     expect(within(form).getAllByText(t('page.G5.unit.equity_won')).length).toBeGreaterThan(0);
     expect(within(form).getByText(t('page.G5.unit.score'))).toBeInTheDocument();
-    expect(
-      within(form).getByLabelText(
-        `${t('page.G5.field.homeless')} (${t('page.G5.fieldTerm.homeless')})`,
-      ),
-    ).toBeChecked();
-    const purpose = within(form).getByLabelText(
-      `${t('page.G5.field.purpose')} (${t('page.G5.fieldTerm.purpose')})`,
+    expect(within(form).getByLabelText(t('page.G5.field.homeless'))).toBeChecked();
+    expect(within(form).getByLabelText(t('page.G5.field.move_in_by'))).toHaveAttribute(
+      'placeholder',
+      t('page.G5.placeholderYm'),
     );
+    const purpose = within(form).getByLabelText(t('page.G5.field.purpose'));
     expect(
       within(purpose)
         .getAllByRole('option')
@@ -238,7 +217,7 @@ describe('G5 시나리오 화면', () => {
     }
   });
 
-  it('잘못된 입력은 필드 오류(aria-invalid·describedby)와 범위 줄을 보이고 POST 하지 않는다', async () => {
+  it('잘못된 입력은 필드 오류(aria-invalid·describedby)를 보이고 POST 하지 않는다', async () => {
     const rec = recordRequests();
     renderRoute('/scenario');
     const form = await screen.findByRole('form', { name: t('page.G5.form') });
@@ -252,7 +231,6 @@ describe('G5 시나리오 화면', () => {
       t('page.G5.error.max', { max: 84 }),
     );
     expect(within(form).getByText(t('page.G5.error.required'))).toBeInTheDocument();
-    expect(within(form).getByTestId('range-note')).toHaveTextContent(t('page.G5.rangeNote'));
     expect(matching(rec.requests, 'POST', '/scenarios')).toHaveLength(0);
     rec.stop();
   });
@@ -261,23 +239,27 @@ describe('G5 시나리오 화면', () => {
     renderRoute('/scenario?scenario=A');
     const form = await screen.findByRole('form', { name: t('page.G5.form') });
     const group = within(form).getByRole('group', { name: t('page.G5.weights') });
-    expect(within(group).getByText(t('page.G5.weightsQ'))).toBeInTheDocument();
     expect(within(group).getByText(t('page.G5.weightsHint'))).toBeInTheDocument();
     const sliders = within(group).getAllByRole('slider');
     expect(sliders.map((s) => s.getAttribute('aria-label'))).toEqual([
-      t('page.G5.weightName.p10'),
-      t('page.G5.weightName.rerank'),
-      t('page.G5.weightName.gap'),
-      t('page.G5.weightName.benchmark'),
-      t('page.G5.weightName.supply'),
-      t('page.G5.weightName.move_in'),
+      t('chart.C06.component.p10'),
+      t('chart.C06.component.rerank'),
+      t('chart.C06.component.gap'),
+      t('chart.C06.component.benchmark'),
+      t('chart.C06.component.supply'),
+      t('chart.C06.component.move_in'),
     ]);
     expect(sliders[0]).toHaveAttribute('aria-valuetext', '35%');
     const p10 = group.querySelector('[data-weight="p10"]') as HTMLElement;
     expect(p10).toHaveTextContent(t('page.G5.weightValue', { pct: '35%', dec: '0.35' }));
     expect(p10).toHaveTextContent(
-      t('page.G5.p10Why', { target: t('page.G4.target.move_in_plus_1y') }),
+      t('page.G4.row.p10Target', {
+        target: t('chart.C01.horizon.move_in_plus_1y'),
+        name: 'A 가점 높음(실거주)',
+      }),
     );
+    expect(p10).toHaveTextContent(t('chart.C10.why.p10'));
+    expect(t('chart.C10.why.p10')).toContain('당첨 확률 아님');
     expect(within(group).getByTestId('weights-sum')).toHaveTextContent(
       t('page.G5.weightsSum', { pct: '100%', sum: '1.00' }),
     );
@@ -288,7 +270,7 @@ describe('G5 시나리오 화면', () => {
     const { router } = renderRoute('/scenario?scenario=B');
     const form = await screen.findByRole('form', { name: t('page.G5.form') });
     const group = within(form).getByRole('group', { name: t('page.G5.weights') });
-    const slider = within(group).getByRole('slider', { name: t('page.G5.weightName.p10') });
+    const slider = within(group).getByRole('slider', { name: t('chart.C06.component.p10') });
     fireEvent.change(slider, { target: { value: '0.6' } });
     expect(within(group).getByTestId('weights-sum')).toHaveTextContent('1.00');
     await userEvent.type(within(form).getByLabelText(t('page.G5.field.name')), '내 조건');
@@ -332,14 +314,11 @@ describe('G5 시나리오 화면', () => {
     }
   });
 
-  it('요건 사전 계산: 요약 칩(행 세기) · 쉬운 열 이름 + 요건 문장 · 상태 배지·근거 · 단지 링크 · 캐시 줄', async () => {
+  it('요건 사전 계산: 쉬운 열 이름 + 요건 문장 · 상태 배지·근거 · 단지 링크 · 캐시 줄', async () => {
     renderRoute('/scenario?scenario=B');
     const region = await screen.findByRole('region', { name: t('page.G5.requirementsQ') });
     const table = await within(region).findByRole('table', { name: t('page.G5.requirements') });
-    const summary = within(region).getByTestId('req-summary');
-    expect(summary).toHaveTextContent(t('page.G5.reqSummary.all', { n: '2' }));
-    expect(summary).toHaveTextContent(t('page.G5.reqSummary.anyNo', { n: '2' }));
-    expect(summary).toHaveTextContent(t('page.G5.reqSummary.mixed', { n: '1' }));
+    expect(region).toHaveTextContent(t('page.G5.requirementsHint'));
     const heads = within(table).getAllByRole('columnheader');
     expect(heads[0]).toHaveTextContent(t('page.G5.req.complexCount', { total: '5', shown: '5' }));
     expect(heads[1]).toHaveTextContent(
@@ -394,12 +373,9 @@ describe('G5 시나리오 화면', () => {
     const rec = recordRequests();
     renderRoute('/scenario?scenario=B');
     const region = await screen.findByRole('region', { name: t('page.G5.runQ') });
-    expect(region).toHaveTextContent(t('page.G5.runHint', { name: 'B 가점 낮음·소액 자기자본' }));
-    expect(await within(region).findByTestId('run-cache-hits')).toHaveTextContent(
-      t('page.G5.cacheHits'),
-    );
-    expect(within(region).getByTestId('run-cache-misses')).toHaveTextContent(
-      t('page.G5.cacheCount', { n: '1' }),
+    expect(region).toHaveTextContent(t('page.G5.runHint'));
+    expect(await within(region).findByTestId('run-cache')).toHaveTextContent(
+      t('page.G5.cache', { hits: '18', misses: '1' }),
     );
     const run = within(region).getByRole('button', { name: t('page.G5.run') });
     await waitFor(() => expect(run).toBeEnabled());
@@ -417,8 +393,7 @@ describe('G5 시나리오 화면', () => {
       await screen.findByRole('table', { name: t('page.G5.diff') }, { timeout: JOB_POLL_MS * 3 }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('g5-done')).toHaveTextContent(t('page.G5.runDone'));
-    expect(screen.getByRole('heading', { name: t('page.G5.diffQ') })).toBeInTheDocument();
-    expect(screen.getByText(t('page.G5.diffHint'))).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t('page.G5.diff') })).toBeInTheDocument();
     const polls = matching(rec.requests, 'GET', /\/jobs\/\d+$/);
     expect(polls.length).toBeGreaterThanOrEqual(2);
     rec.stop();
@@ -456,12 +431,13 @@ describe('G5 시나리오 화면', () => {
     renderRoute('/scenario?scenario=B');
     const judge = await screen.findByRole('region', { name: t('page.G5.judgeQ') });
     expect(judge).toHaveTextContent(
-      t('page.G5.judgeEyebrow', { name: 'B 가점 낮음·소액 자기자본' }),
+      t('page.G5.sensEyebrow', { title: t('chart.C07.title'), name: 'B 가점 낮음·소액 자기자본' }),
     );
     expect(within(judge).getByRole('heading', { name: t('chart.C07.title') })).toBeInTheDocument();
-    const sens = screen.getByRole('region', { name: t('page.G4.sensitivityQ') });
-    expect(sens).toHaveTextContent(t('page.G5.sensEyebrow', { name: 'B 가점 낮음·소액 자기자본' }));
-    expect(within(sens).getByText(t('page.G5.sensHint'))).toBeInTheDocument();
+    const sens = screen.getByRole('region', { name: t('chart.C10.question') });
+    expect(sens).toHaveTextContent(
+      t('page.G5.sensEyebrow', { title: t('chart.C10.title'), name: 'B 가점 낮음·소액 자기자본' }),
+    );
     expect(within(sens).getByRole('heading', { name: t('chart.C10.title') })).toBeInTheDocument();
     await waitFor(() => {
       for (const f of document.querySelectorAll('figure'))

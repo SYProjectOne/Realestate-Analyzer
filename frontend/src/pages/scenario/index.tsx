@@ -45,9 +45,10 @@ import {
   PlainName,
   primaryButtonClass,
   ReqStatusBadge,
+  p10TargetLine,
   SourceLine,
-  wideTableClass,
   targetText,
+  wideTableClass,
 } from '../compare/parts';
 import {
   fromScenario,
@@ -73,38 +74,13 @@ export function ScenarioPage() {
     scenarios[0] ??
     null;
   return (
-    <PageShell title={t('page.G5.title')} intro={t('page.G5.intro')}>
-      <Steps />
+    <PageShell title={t('page.G5.title')}>
       {isLoading ? (
         <Skeleton />
       ) : (
         <ScenarioBody key={current?.id ?? 'none'} scenarios={scenarios} current={current} />
       )}
     </PageShell>
-  );
-}
-
-const STEP_KEYS = ['s1', 's2', 's3', 's4'] as const;
-
-/** N1 4단계 진행 표시 */
-function Steps() {
-  return (
-    <ol
-      aria-label={t('page.G5.steps')}
-      className="m-0 flex list-none flex-wrap gap-x-5 gap-y-2 p-0 text-sm text-fg-2"
-    >
-      {STEP_KEYS.map((k, i) => (
-        <li key={k} className="inline-flex items-center gap-2">
-          <span
-            aria-hidden
-            className="inline-flex size-6 items-center justify-center rounded-full bg-fg text-xs font-bold text-surface"
-          >
-            <MetaValue kind="seq" value={i + 1} as="plain" />
-          </span>
-          {t(`page.G5.step.${k}`)}
-        </li>
-      ))}
-    </ol>
   );
 }
 
@@ -133,16 +109,15 @@ function ScenarioBody({ scenarios, current }: { scenarios: Scenario[]; current: 
       <RunPanel current={current} before={dashboard.data?.top5 ?? null} />
       <RequirementPreview scenario={current} />
       <AnalyzeSection
-        eyebrow={t('page.G5.judgeEyebrow', { name })}
+        eyebrow={t('page.G5.sensEyebrow', { title: t('chart.C07.title'), name })}
         title={t('page.G5.judgeQ')}
         data-testid="g5-judge"
       >
         <C07Decision data={{ decision }} asof={asof} />
       </AnalyzeSection>
       <AnalyzeSection
-        eyebrow={t('page.G5.sensEyebrow', { name })}
-        title={t('page.G4.sensitivityQ')}
-        hint={t('page.G5.sensHint')}
+        eyebrow={t('page.G5.sensEyebrow', { title: t('chart.C10.title'), name })}
+        title={t('chart.C10.question')}
         data-testid="g5-sensitivity"
       >
         <C10Sensitivity data={{ sensitivity: sensitivity.data ?? null, names }} asof={asof} />
@@ -173,8 +148,6 @@ export function presetFacts(s: Pick<Scenario, 'params' | 'policy'>): string {
   if (p.preferred_area_m2 !== null && p.preferred_area_m2 !== undefined) {
     parts.push(metaText('page.G5.fact.area', { n: p.preferred_area_m2 }));
   }
-  if (p.accepts_residency_obligation === true) parts.push(t('page.G5.fact.residencyYes'));
-  if (p.accepts_residency_obligation === false) parts.push(t('page.G5.fact.residencyNo'));
   const target = targetText(s.policy?.p10_horizon);
   if (target) parts.push(t('page.G5.fact.horizon', { target }));
   if (s.policy?.exclude_intake_not_open) parts.push(t('page.G5.fact.excludeNotOpen'));
@@ -191,7 +164,6 @@ function StartPicker({ scenarios, current }: { scenarios: Scenario[]; current: S
     <AnalyzeSection
       step={1}
       title={t('page.G5.startQ')}
-      hint={t('page.G5.startHint')}
       actions={
         <span className="flex items-center gap-2">
           <label htmlFor={id} className="text-[13px] text-muted">
@@ -220,7 +192,6 @@ function StartPicker({ scenarios, current }: { scenarios: Scenario[]; current: S
         >
           {builtins.map((s) => {
             const on = keyOf(s) === currentKey;
-            const who = s.code ? tDynamic(`page.G5.who.${s.code}`, '') : '';
             return (
               <button
                 key={s.id}
@@ -248,7 +219,6 @@ function StartPicker({ scenarios, current }: { scenarios: Scenario[]; current: S
                   ) : null}
                 </span>
                 <span className="text-[15px] font-bold text-fg">{s.name}</span>
-                {who ? <span className="text-xs leading-snug text-fg-2">{who}</span> : null}
                 <span data-meta="input" className="text-xs leading-snug text-muted">
                   {presetFacts(s)}
                 </span>
@@ -350,14 +320,9 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
       />
     );
   };
-  const hasFieldError = Object.keys(errors).some((k) => k !== 'weights');
 
   return (
-    <AnalyzeSection
-      step={2}
-      title={t('page.G5.formQ')}
-      hint={current ? t('page.G5.formHint', { name: current.name }) : t('page.G5.formHintEmpty')}
-    >
+    <AnalyzeSection step={2} title={t('page.G5.formQ')}>
       <form
         aria-label={t('page.G5.form')}
         noValidate
@@ -383,7 +348,6 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
                 id={nameId}
                 name="name"
                 value={values.name}
-                placeholder={t('page.G5.placeholder.name')}
                 aria-required="true"
                 aria-invalid={errors.name ? true : undefined}
                 aria-describedby={errors.name ? `${nameId}-error` : undefined}
@@ -395,11 +359,6 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
                   {errors.name}
                 </p>
               ) : null}
-              {current?.is_builtin ? (
-                <p className="m-0 text-xs text-muted">
-                  {t('page.G5.builtinSaveNote', { name: current.name })}
-                </p>
-              ) : null}
             </div>
             {GROUPS.map((g) => (
               <fieldset key={g.key} className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0">
@@ -409,11 +368,6 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
                 <div className="grid gap-3 sm:grid-cols-2">{g.fields.map(field)}</div>
               </fieldset>
             ))}
-            {hasFieldError ? (
-              <p className="m-0 text-xs text-muted" data-testid="range-note">
-                {t('page.G5.rangeNote')}
-              </p>
-            ) : null}
           </div>
           <WeightPreview
             weights={weights}
@@ -436,7 +390,6 @@ function ScenarioEditor({ current }: { current: Scenario | null }) {
           >
             {t('page.G5.save')}
           </button>
-          <span className="text-xs text-muted">{t('page.G5.saveNote')}</span>
         </div>
       </form>
     </AnalyzeSection>
@@ -447,12 +400,6 @@ function inputClass(error: boolean): string {
   return `min-h-11 w-full rounded-[10px] border bg-surface px-3 text-[15px] ${
     error ? 'border-danger' : 'border-border-strong'
   }`;
-}
-
-/** 칸 이름 = 쉬운 말 + (공식 이름). 공식 이름이 없으면 쉬운 말만 */
-function fieldTerm(name: string): string | null {
-  const v = tDynamic(`page.G5.fieldTerm.${name}`, '');
-  return v || null;
 }
 
 function TextField({
@@ -472,12 +419,12 @@ function TextField({
 }) {
   const id = useId();
   const unit = tDynamic(`page.G5.unit.${name}`, '');
-  const placeholder = tDynamic(`page.G5.placeholder.${name}`, '');
+  const placeholder = name === 'move_in_by' ? t('page.G5.placeholderYm') : '';
   return (
     <div className="flex min-w-0 flex-col gap-1 text-sm">
       <span className="flex items-center gap-1">
         <label htmlFor={id} className="font-medium text-fg-2">
-          <PlainName name={t(`page.G5.field.${name}` as TKey)} official={fieldTerm(name)} />
+          {t(`page.G5.field.${name}` as TKey)}
         </label>
         {glossary ? <Term k={glossary} /> : null}
       </span>
@@ -522,7 +469,7 @@ function CheckField({
         onChange={(e) => onChange(e.target.checked)}
         className="size-5 accent-[var(--color-accent,currentColor)]"
       />
-      <PlainName name={t(`page.G5.field.${name}`)} official={fieldTerm(name)} />
+      {t(`page.G5.field.${name}`)}
     </label>
   );
 }
@@ -542,7 +489,7 @@ function SelectField({
   return (
     <div className="flex min-w-0 flex-col gap-1 text-sm">
       <label htmlFor={id} className="font-medium text-fg-2">
-        <PlainName name={t(`page.G5.field.${name}`)} official={fieldTerm(name)} />
+        {t(`page.G5.field.${name}`)}
       </label>
       <select
         id={id}
@@ -561,13 +508,13 @@ function SelectField({
   );
 }
 
-/** 비중 한 줄 설명 — '오를 가능성'은 이 조건의 목표 시점(policy.p10_horizon) + 당첨 확률 아님 · 보장 아님 */
+/**
+ * 비중 한 줄 설명(ko `chart.C10.why` — 차트와 같은 문장). '오를 가능성'은 앞에 이 조건의 목표 시점(policy.p10_horizon)을
+ * 붙인다(설명 문장에 당첨 확률 아님 · 보장 아님이 있다).
+ */
 function weightWhy(k: ComponentKey, scenario: Scenario | null): string {
-  if (k === 'p10') {
-    const target = targetText(scenario?.policy?.p10_horizon);
-    return target ? t('page.G5.p10Why', { target }) : t('page.G5.p10WhyUnknown');
-  }
-  return tDynamic(`chart.C10.why.${k}`, '');
+  const why = tDynamic(`chart.C10.why.${k}`, '');
+  return k === 'p10' ? `${p10TargetLine(scenario)} · ${why}` : why;
 }
 
 function WeightPreview({
@@ -589,14 +536,11 @@ function WeightPreview({
       aria-label={t('page.G5.weights')}
       className="m-0 flex min-w-0 flex-col gap-4 self-start rounded-2xl border border-border bg-subtle p-4"
     >
-      <legend className="px-1 text-[15px] font-bold text-fg">
-        {t('page.G5.weightsQ')}{' '}
-        <span className="text-xs font-normal text-muted">({t('page.G5.weights')})</span>
-      </legend>
+      <legend className="px-1 text-[15px] font-bold text-fg">{t('page.G5.weights')}</legend>
       <p className="m-0 text-xs leading-relaxed text-fg-2">{t('page.G5.weightsHint')}</p>
       {keys.map((k) => {
         const v = weights[k] ?? 0;
-        const label = tDynamic(`page.G5.weightName.${k}`, k);
+        const label = tDynamic(`chart.C06.component.${k}`, k);
         const pct = metaNumber({ n: v, as: 'prob', digits: 0 });
         return (
           <label key={k} className="flex flex-col gap-1.5 text-sm" data-weight={k}>
@@ -646,22 +590,6 @@ function WeightPreview({
   );
 }
 
-/** N14 요건 요약 — 행 세기(D25-3): 세 요건 모두 충족 · 하나라도 미충족 · 그 밖(확인 불가·미입력 섞임) */
-export function reqSummary(rows: ScenarioPreview['requirements_pre']): {
-  all: number;
-  anyNo: number;
-  mixed: number;
-} {
-  const out = { all: 0, anyNo: 0, mixed: 0 };
-  for (const row of rows) {
-    const statuses = REQ_COLS.map((c) => row[c].status);
-    if (statuses.every((s) => s === '충족')) out.all += 1;
-    else if (statuses.some((s) => s === '미충족')) out.anyNo += 1;
-    else out.mixed += 1;
-  }
-  return out;
-}
-
 const REQ_COLS = ['access', 'regulation', 'funds'] as const;
 /** N15 처음 보이는 요건 표 줄 수 — 나머지는 [나머지 n곳 더 보기] */
 export const REQ_FIRST_ROWS = 8;
@@ -669,21 +597,11 @@ export const REQ_FIRST_ROWS = 8;
 function RequirementPreview({ scenario }: { scenario: Scenario | null }) {
   const { snapshotId } = usePageContext();
   const preview = useScenarioPreview(scenario?.id ?? null, snapshotId);
-  const summary = preview.data ? reqSummary(preview.data.requirements_pre) : null;
   return (
     <AnalyzeSection
       step={4}
       title={t('page.G5.requirementsQ')}
       hint={t('page.G5.requirementsHint')}
-      actions={
-        summary ? (
-          <span className="flex flex-wrap gap-1.5" data-testid="req-summary">
-            <SummaryChip tone="accent" k="page.G5.reqSummary.all" n={summary.all} />
-            <SummaryChip tone="neutral" k="page.G5.reqSummary.anyNo" n={summary.anyNo} />
-            <SummaryChip tone="caution" k="page.G5.reqSummary.mixed" n={summary.mixed} />
-          </span>
-        ) : null
-      }
     >
       {preview.data ? (
         <RequirementTable preview={preview.data} />
@@ -693,28 +611,6 @@ function RequirementPreview({ scenario }: { scenario: Scenario | null }) {
         <Skeleton lines={2} />
       )}
     </AnalyzeSection>
-  );
-}
-
-function SummaryChip({
-  tone,
-  k,
-  n,
-}: {
-  tone: 'accent' | 'neutral' | 'caution';
-  k: TKey;
-  n: number;
-}) {
-  const cls =
-    tone === 'accent'
-      ? 'bg-accent-soft text-accent-ink border-transparent'
-      : tone === 'neutral'
-        ? 'bg-chip text-fg-2 border-transparent'
-        : 'border-dashed border-est-border text-est';
-  return (
-    <span className={`rounded-full border px-3 py-1 text-[13px] font-semibold ${cls}`}>
-      <MetaText kind="count" k={k} params={{ n }} />
-    </span>
   );
 }
 
@@ -801,23 +697,6 @@ function RequirementTable({ preview }: { preview: ScenarioPreview }) {
   );
 }
 
-function CacheBox({ label, n, testId }: { label: string; n: number; testId: string }) {
-  return (
-    <span
-      className="flex min-w-[96px] flex-col rounded-xl bg-subtle px-3 py-2"
-      data-testid={testId}
-    >
-      <span className="text-xs text-muted">{label}</span>
-      <MetaText
-        kind="count"
-        k="page.G5.cacheCount"
-        params={{ n }}
-        className="text-lg font-bold text-fg"
-      />
-    </span>
-  );
-}
-
 function RunPanel({ current, before }: { current: Scenario | null; before: ScoreRow[] | null }) {
   const { snapshotId } = usePageContext();
   const { snapshots, setSnapshot } = useSnapshot();
@@ -882,22 +761,20 @@ function RunPanel({ current, before }: { current: Scenario | null; before: Score
     <AnalyzeSection
       step={3}
       title={t('page.G5.runQ')}
-      hint={t('page.G5.runHint', { name: current?.name ?? '' })}
+      hint={t('page.G5.runHint')}
       actions={
         <>
           {preview.data ? (
-            <>
-              <CacheBox
-                label={t('page.G5.cacheHits')}
-                n={preview.data.cache_hits}
-                testId="run-cache-hits"
+            <span
+              className="rounded-xl bg-subtle px-3 py-2 text-[13px] text-fg-2"
+              data-testid="run-cache"
+            >
+              <MetaText
+                kind="count"
+                k="page.G5.cache"
+                params={{ hits: preview.data.cache_hits, misses: preview.data.cache_misses }}
               />
-              <CacheBox
-                label={t('page.G5.cacheMisses')}
-                n={preview.data.cache_misses}
-                testId="run-cache-misses"
-              />
-            </>
+            </span>
           ) : null}
           <button
             type="button"
@@ -1021,10 +898,7 @@ export function DiffTable({
   );
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-1">
-        <h3 className="m-0 text-base font-bold text-fg sm:text-[17px]">{t('page.G5.diffQ')}</h3>
-        <p className="m-0 text-[13px] text-muted">{t('page.G5.diffHint')}</p>
-      </div>
+      <h3 className="m-0 text-base font-bold text-fg sm:text-[17px]">{t('page.G5.diff')}</h3>
       {!changed ? (
         <p className="m-0 text-sm font-semibold text-fg-2">{t('page.G5.noDiff')}</p>
       ) : null}

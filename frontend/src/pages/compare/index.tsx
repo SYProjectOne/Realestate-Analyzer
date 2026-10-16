@@ -29,6 +29,7 @@ import {
   MetaText,
   MetaValue,
   MismatchBadge,
+  glossaryItem,
   Term,
   TieBadge,
   UnstableBadge,
@@ -94,10 +95,10 @@ export function ComparePage() {
     <div className="flex flex-col gap-2">
       <nav aria-label={t('page.G4.crumb')} className="text-[13px] text-muted">
         <Link to={`/complexes${search}`} className="text-accent hover:underline">
-          {t('page.G4.crumbList')}
+          {t('nav.G2')}
         </Link>
         <span aria-hidden> › </span>
-        <span aria-current="page">{t('page.G4.crumbHere')}</span>
+        <span aria-current="page">{t('nav.G4')}</span>
       </nav>
       <PageShell
         title={t('page.G4.title')}
@@ -187,17 +188,12 @@ function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: st
             scenario={scenario}
             scenarioName={scenarioName}
           />
-          <SourceLine>{t('page.G4.scoresFoot')}</SourceLine>
         </AnalyzeSection>
       </div>
       {/* 차트 제목(h3) 앞의 구역 제목 — 제목 순서(h1 → h2 → h3, Lighthouse heading-order) */}
       <h2 className="sr-only">{t('page.common.charts')}</h2>
       <div data-block="C02">
-        <AnalyzeSection
-          eyebrow={t('page.G4.gaps')}
-          title={t('page.G4.gapsQ')}
-          hint={t('page.G4.gapsHint')}
-        >
+        <AnalyzeSection eyebrow={t('page.G4.gaps')} title={t('page.G4.gapsQ')}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rows.map((row, i) => (
               <GapCell key={row.complex_id} view={view} row={row} color={colorOf(i)} />
@@ -206,11 +202,7 @@ function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: st
         </AnalyzeSection>
       </div>
       <div data-block="C06">
-        <AnalyzeSection
-          eyebrow={t('page.G4.breakdown')}
-          title={t('page.G4.breakdownQ')}
-          hint={t('page.G4.breakdownHint')}
-        >
+        <AnalyzeSection eyebrow={t('chart.C06.title')} title={t('page.G4.breakdownQ')}>
           <C06ScoreBreakdown
             data={{
               rows,
@@ -231,11 +223,7 @@ function CompareBody({ view, scenarioKey }: { view: CompareView; scenarioKey: st
       </div>
       {sensitivity.data ? (
         <div data-block="C10">
-          <AnalyzeSection eyebrow={t('page.G4.sensitivity')} title={t('page.G4.sensitivityQ')}>
-            <Card tone="subtle" padding="md" className="flex flex-col gap-1.5">
-              <p className="m-0 text-sm font-bold text-fg">{t('page.G4.weightWhat')}</p>
-              <p className="m-0 text-sm leading-relaxed text-fg-2">{t('page.G4.weightWhatBody')}</p>
-            </Card>
+          <AnalyzeSection eyebrow={t('chart.C10.title')} title={t('chart.C10.question')}>
             <C10Sensitivity data={{ sensitivity: sensitivity.data, names }} asof={asof} />
           </AnalyzeSection>
         </div>
@@ -283,9 +271,8 @@ function ComplexCards({
   const search = useGlobalSearch();
   return (
     <div className="flex flex-col gap-2">
-      <p className="m-0 text-[13px] text-muted">{t('page.G4.cardsNote')}</p>
       <ul
-        aria-label={t('page.G4.cards')}
+        aria-label={t('nav.G4')}
         className="m-0 grid list-none gap-3 p-0 md:grid-cols-2 xl:grid-cols-3"
       >
         {rows.map((row, i) => (
@@ -316,11 +303,11 @@ function ComplexCards({
                 <FactCell fact={row.move_in_ym ?? null} unit="ym" />
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="text-muted">{t('page.G4.card.total')}</span>
+                <span className="text-muted">{t('page.G4.row.total')}</span>
                 <FactCell fact={row.total} unit="score" />
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="text-muted">{t('page.G4.card.rank')}</span>
+                <span className="text-muted">{t('page.G4.row.rank')}</span>
                 {row.rank !== null ? (
                   <MetaValue kind="rank" value={row.rank} as="rank" />
                 ) : (
@@ -531,7 +518,7 @@ function LadderOverlay({ view, rows }: { view: CompareView; rows: ScoreRow[] }) 
     <AnalyzeSection
       eyebrow={t('page.G4.ladder')}
       title={t('page.G4.ladderQ')}
-      hint={t('page.G4.ladderHint')}
+      hint={`${t('page.G4.ladderHint')} · ${t('page.G4.row.p10Note')}`}
       actions={
         <div className="flex flex-col items-start gap-1.5">
           <span className="text-[13px] text-muted" aria-hidden>
@@ -547,7 +534,7 @@ function LadderOverlay({ view, rows }: { view: CompareView; rows: ScoreRow[] }) 
                 onClick={() => setHorizon(h)}
                 className={radioClass(h === horizon)}
               >
-                {enumText('page.G4.horizon', h)}
+                {enumText('chart.C01.horizon', h)}
               </button>
             ))}
           </div>
@@ -559,7 +546,6 @@ function LadderOverlay({ view, rows }: { view: CompareView; rows: ScoreRow[] }) 
         height={280}
         asof={view.asof_date}
       />
-      <SourceLine>{t('page.G4.ladderThreshold')}</SourceLine>
       {counts.total > 0 ? (
         <p className="m-0 text-sm text-fg-2" data-testid="ladder-verdict-count">
           <MetaText
@@ -587,11 +573,7 @@ function DecisionPanel({ view, scenarioKey }: { view: CompareView; scenarioKey: 
   const decision = key ? (view.decisions[key] ?? null) : null;
   const nameOf = (k: string) => scenarios.find((s) => keyOf(s) === k)?.name ?? k;
   return (
-    <AnalyzeSection
-      eyebrow={t('page.G4.decision')}
-      title={t('page.G4.decisionQ')}
-      hint={t('page.G4.decisionHint')}
-    >
+    <AnalyzeSection eyebrow={t('page.G4.decision')} title={t('page.G4.decisionQ')}>
       {keys.length > 1 ? (
         <div
           role="radiogroup"
@@ -652,11 +634,8 @@ function VirtualCandidates({ decision }: { decision: DecisionSet }) {
           data-option={item.option_key}
           className="flex flex-col gap-1 rounded-xl border border-dashed border-border-strong px-4 py-3 text-sm"
         >
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-fg">
-              {t('page.G4.virtualCandidate', { label: item.label })}
-            </span>
-            <span className="text-xs text-muted">{t('page.G4.virtualNote')}</span>
+          <span className="font-semibold text-fg">
+            {t('page.G4.virtualCandidate', { label: item.label })}
           </span>
           <span className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted">{t('page.G4.row.prob')}</span>
@@ -679,10 +658,7 @@ function RequirementsTable({ decision, asof }: { decision: DecisionSet; asof: st
   const title = t('page.G4.requirements');
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="m-0 text-base font-bold text-fg sm:text-[17px]">{title}</h3>
-        <p className="m-0 text-[13px] text-muted">{t('page.G4.requirementsHint')}</p>
-      </div>
+      <h3 className="m-0 text-base font-bold text-fg sm:text-[17px]">{title}</h3>
       <div className="overflow-x-auto">
         <table aria-label={title} className={wideTableClass}>
           <thead>
@@ -737,7 +713,7 @@ function RequirementsTable({ decision, asof }: { decision: DecisionSet; asof: st
         </table>
       </div>
       <SourceLine>
-        {t('page.G4.reqSource')} · {t('chart.asofOnly', { asof })}
+        {t('page.G4.reqSource')} · {t('page.G5.reqDisclaimer')} · {t('chart.asofOnly', { asof })}
       </SourceLine>
     </div>
   );
@@ -757,6 +733,16 @@ const TERM_GLOSSARY: Partial<Record<(typeof TERM_KEYS)[number], GlossaryKey>> = 
   required_equity_won: 'equity',
 };
 
+/** 행 머리의 (공식 이름) — 용어 사전의 용어 이름을 그대로 쓴다(ko `glossary.items.*.term`) */
+const TERM_OFFICIAL: Partial<Record<(typeof TERM_KEYS)[number] | 'intake' | 'price', GlossaryKey>> =
+  {
+    intake: 'intake_status',
+    price: 'current_price',
+    resale_end: 'resale_limit',
+    down_payment_won: 'down',
+    required_equity_won: 'equity',
+  };
+
 /** 표 행 머리: 쉬운 이름 + (공식 이름) + 용어 '?' */
 function TermHead({
   k,
@@ -765,7 +751,8 @@ function TermHead({
   k: (typeof TERM_KEYS)[number] | 'intake' | 'price';
   glossary?: GlossaryKey | undefined;
 }) {
-  const official = k === 'interim_terms_text' ? null : t(`page.G4.termOfficial.${k}` as TKey);
+  const officialKey = TERM_OFFICIAL[k];
+  const official = officialKey ? glossaryItem(officialKey).term : null;
   return (
     <>
       <PlainName name={t(`page.G4.term.${k}` as TKey)} official={official} />
@@ -830,7 +817,7 @@ function TermsTable({
     </tr>
   );
   return (
-    <AnalyzeSection eyebrow={title} title={t('page.G4.termsQ')} hint={t('page.G4.termsHint')}>
+    <AnalyzeSection eyebrow={title} title={t('page.G4.termsQ')}>
       <div className="overflow-x-auto">
         <table aria-label={title} className={wideTableClass}>
           <thead>
@@ -899,7 +886,7 @@ function TermsTable({
               to={`/scenario${search}`}
               className="text-sm font-semibold text-accent hover:underline"
             >
-              {t('page.G4.equityLink')}
+              {t('nav.G5')}
             </Link>
           }
         >
@@ -907,9 +894,8 @@ function TermsTable({
         </Banner>
       ) : null}
       <SourceLine>
-        {view.asof_date
-          ? t('page.G4.termsSource', { asof: view.asof_date })
-          : t('page.G4.termsSourceNoAsof')}
+        {t('page.G4.termsSourceNoAsof')}
+        {view.asof_date ? ` · ${t('chart.asofOnly', { asof: view.asof_date })}` : null}
       </SourceLine>
     </AnalyzeSection>
   );
