@@ -52,6 +52,33 @@ props 이름·의미는 그대로, 타입만 넓혔다(임시 `@/api/types`와 �
 
 - `RawDocumentPreview` — props `rawId: number | string`, `defaultOpen?`, `className?`. "원문 미리보기"(GET /raw/{id}를 Bearer fetch → Blob: 텍스트는 `<pre>`, PNG 등 이미지는 object URL `<img>`, HTML·PDF는 저장 안내) · "원문 파일 저장"(`@/api/download`의 `useDownload`). 열 때만 받는다. `ProvenancePanel`·G3 출처 탭이 쓴다.
 
+## R11 — 목업 공용 부품(D30, 보드 `docs/design/ui-benchmark/50-mockup/boards/Shell.dc.html`)
+
+화면 에이전트(R11-HOME·DETAIL·ANALYZE·MARKETOPS·SETUP)가 같은 모양을 쓰도록 둔 부품. 전부 `@/components` 에서 import 한다.
+**숫자는 만들지 않는다** — 값 자리는 `FactCell`(사실·라벨·출처) 또는 `MetaValue`/`MetaText`(개수 등)를 children 으로 넘긴다. 문구는 ko.json.
+
+| 부품                                      | props                                                                                                                                                                                                                                             | 모양·동작                                                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Card`                                    | `children`, `tone?: 'default'\|'subtle'\|'accent'\|'warn'\|'info'`, `padding?: 'none'\|'sm'\|'md'\|'lg'`(기본 md), `as?: 'div'\|'section'\|'article'\|'li'\|'aside'`, `interactive?`, `className?`, 그 밖 HTML 속성(`aria-label`·`role`·`data-*`) | 흰 카드 · 1px 테두리 · 둥근 16px(목업 `.card`). `data-card-tone`                                                |
+| `StatusPill`                              | `children`, `tone?: 'accent'\|'outline'\|'muted'\|'strike'\|'neutral'\|'warn'`, `dot?`, `size?: 'sm'\|'md'`, `title?`, `wrap?`, `className?`, `data-testid?`                                                                                      | 둥근 상태 알약(접수 가능 = accent + 점). `data-pill-tone`                                                       |
+| `SectionHeader`                           | `title`(질문형 문장), `hint?`, `level?: 2\|3`, `id?`(구역 `aria-labelledby`), `actions?`, `className?`                                                                                                                                            | h2 22px 굵게 + 한 줄 안내 14px                                                                                  |
+| `FactList` / `FactRow`                    | `FactList`: `children`, `divided?`(기본 true), `aria-label?` · `FactRow`: `label`, `children`(값), `hint?`, `layout?: 'inline'\|'stack'`, `data-testid?`                                                                                          | `<dl>` 안 `dt`(이름)·`dd`(값) 한 줄                                                                             |
+| `BigNumber`                               | `label`, `children`(FactCell), `caption?`, `size?: 'md'\|'lg'\|'xl'`, `data-testid?`                                                                                                                                                              | 카드 대표 값(28px)·화면 머리 값(38px)                                                                           |
+| `KeepNote`                                | `label`, `term?: GlossaryKey`, `value`, `detail?`, `tone?: 'neutral'\|'warn'`, `data-testid?`                                                                                                                                                     | "꼭 확인할 조건" 칸: 이름 + '?' · 큰 값 · 근거 줄. warn 은 화면이 서버 값으로 정할 때만(부품은 판단하지 않는다) |
+| `Banner`                                  | `tone?: 'warn'\|'info'\|'note'`, `title?`(굵은 첫 문장), `icon?`(경고 삼각형, 장식), `actions?`, `children`, `role`·`data-*` 등 HTML 속성                                                                                                         | 화면 위 알림 띠(목업 §2). role(alert·status·note)은 쓰는 쪽이 정한다                                            |
+| `Skeleton`                                | `lines?`(기본 3), `label?`(기본 `app.loading`), `card?`, `className?`                                                                                                                                                                             | 불러오는 중 뼈대 줄 + 글(role=status)                                                                           |
+| `Badge`                                   | 기존 + `tone`: `dashed`(동률·재사용) · `caution`(흔들림·근거와 달라요) · `cautionSolid`(낮춤) · `accent`(다시 판정 필요)                                                                                                                          | `data-badge-tone`. 의미는 글자                                                                                  |
+| `jobNameText(name)` / `jobStepText(step)` | 서버 job_name·progress.step                                                                                                                                                                                                                       | D30-8: ko.json `job.name.*`·`job.stepName.*`('.' → '_'), 모르는 값은 원문                                       |
+| `LABEL_HELP`                              | —                                                                                                                                                                                                                                                 | 라벨 6종(이름·`label.help.*`) — 출처 범례와 용어 사전 라벨 카드의 한 원본(SH-1·GL-1)                            |
+
+다시 그린 것(props 그대로): `LabelBadge`(확인됨 = 조용한 글자, 나머지·사람 확인됨 = 주의 점선 배지), `EmptyState`(inline = 점선 배지, 블록 = 점선 상자),
+`IntakeBadge`(StatusPill: 가능·미정·확인 불가·불가), `JobProgressView`(카드 · 쉬운 작업 이름 · 끝을 모르는 줄무늬 막대),
+`DataTableToggle`(표 이름 보임 · 빈 표 = 머리 + '데이터 없음' 한 줄), `Term`('?' 버튼 · 휴대폰 아래 판), `ProvenanceLegend`(라벨 이름 + 뜻),
+`ProvenancePanel`('이 값은 어디서 왔나요?' · 무엇 · 원문 파일 줄 · 출처 종류 안내), `RegionPicker`·`SnapshotPicker`·`ScenarioToggle`(`showLabel?` 추가).
+화면 공용 조각(`pages/_shared`): `Section`(Card + h2, `hint?` 추가), `QueryState`(뼈대 · 오류 카드 + 다시 시도 · 만드는 중 카드), `StateCard`.
+
+디자인 토큰(D30-3)은 `src/index.css`(:root·:root.dark)와 `tailwind.config.ts` `COLOR_TOKENS` — `bg surface surface-2 subtle chip fg fg-2 muted grayed border border-strong accent accent-fg accent-soft accent-ink warn warn-soft warn-ink warn-border info-soft info-ink info-border est est-border danger mark toast toast-fg overlay`. 글자색은 자기 바탕 위 4.5:1 이상(`src/layout/tokens.test.ts`).
+
 ## 테스트
 
-`FactCell.test.tsx`(계약 핵심), `components.test.tsx`(배지·선택기·표 토글). 새 동작은 테스트를 먼저.
+`FactCell.test.tsx`(계약 핵심), `components.test.tsx`(배지·선택기·표 토글), `shell-components.test.tsx`(R11 부품·배지·출처 창·알림). 새 동작은 테스트를 먼저.

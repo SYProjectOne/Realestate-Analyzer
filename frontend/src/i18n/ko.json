@@ -19,9 +19,7 @@
     "regionFailed": "지역 분석이 실패했어요.",
     "regionBootstrappingDetail": "끝나면 화면이 채워져요. 아직 발행된 수정본이 없어 화면이 비어 있어요.",
     "regionBootstrappingLink": "데이터·운영에서 진행 보기",
-    "regionFailedLink": "데이터·운영에서 이유 보기",
-    "home": "{name} 홈",
-    "loadingSkeleton": "불러오는 중…"
+    "regionFailedLink": "데이터·운영에서 이유 보기"
   },
   "nav": {
     "G1": "홈",
@@ -1041,7 +1039,6 @@
       "scopeReasonCurrent": "지금 사실 기준 — 다시 판정한 뒤 바뀔 수 있음",
       "benchmarkAbsent": "벤치마크 없음({reason})",
       "loadError": "불러오지 못했어요: {detail}",
-      "loadErrorTitle": "불러오지 못했어요",
       "loadErrorHint": "잠시 뒤 다시 해 주세요.",
       "materializePending": "이 기준일 결과를 만드는 중이에요. 자동으로 다시 불러와요",
       "materializePendingStill": "아직 만드는 중이에요. 오래 걸리면 다시 시도를 눌러 주세요",
@@ -1129,7 +1126,6 @@
     "humanPrefix": "사람 {label}",
     "legend": "밑줄 점선이 있는 숫자를 누르면 출처·확인한 날이 열려요",
     "legendHelp": "라벨 뜻",
-    "legendHide": "접기",
     "legendHelpTitle": "숫자 옆 라벨의 뜻",
     "truncated": "{text}…(전체는 숫자를 눌러 보기)",
     "help": {
@@ -1188,8 +1184,7 @@
     "withReason": "{status}({reason})",
     "withReasonDate": "{status}({reason}, {date})",
     "reasonDate": "{reason} · {date}",
-    "withSupply": "{status}({kind})",
-    "howChecked": "어떻게 확인했나: {path}"
+    "withSupply": "{status}({kind})"
   },
   "picker": {
     "snapshotDegraded": "{date} · 일부 수집 실패",
@@ -1535,7 +1530,6 @@
   },
   "auth": {
     "button": "접속 열쇠",
-    "buttonState": "{button} · {state}",
     "state": {
       "none": "없음",
       "write": "쓰기 가능",
@@ -1549,7 +1543,6 @@
       "invalid": "지금 열쇠가 서버와 맞지 않아요(401). 다시 넣어 주세요.",
       "manual": "열쇠를 바꾸거나 지울 수 있어요"
     },
-    "autoOpen": "'저장한 열쇠 지우기'는 저장된 열쇠가 있을 때만 보여요. 서버가 401을 주면 이 창이 자동으로 열려요.",
     "label": "열쇠",
     "show": "열쇠 보이기",
     "save": "확인하고 저장",
