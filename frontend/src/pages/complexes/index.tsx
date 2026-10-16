@@ -328,12 +328,15 @@ export function ComplexesPage() {
           search={globalSearch}
         />
       ) : null}
-      <footer className="flex flex-col gap-1.5 border-t border-border pt-3 text-[13px] text-muted">
-        {view === 'table' ? <p>{t('page.G2.tableNote')}</p> : null}
-        <p>{t('page.G2.foot')}</p>
-        <p>{t('page.G1.footNote')}</p>
-        <ProvenanceLegend />
-      </footer>
+      {/* 바닥 글은 목록이 온 뒤에 — 불러오는 동안 첫 화면에 있다가 카드에 밀려 내려가면 CLS(Lighthouse 모바일) */}
+      {query.data ? (
+        <footer className="flex flex-col gap-1.5 border-t border-border pt-3 text-[13px] text-muted">
+          {view === 'table' ? <p>{t('page.G2.tableNote')}</p> : null}
+          <p>{t('page.G2.foot')}</p>
+          <p>{t('page.G1.footNote')}</p>
+          <ProvenanceLegend />
+        </footer>
+      ) : null}
     </section>
   );
 }
