@@ -737,6 +737,7 @@ const ColumnChooser = memo(function ColumnChooser({
         <MetaText kind="count" k="page.G2.columns" params={{ n: on }} />
       </summary>
       <div className="absolute right-0 z-20 mt-1 flex w-[min(640px,90vw)] flex-col gap-2 rounded-xl border border-border bg-surface p-3 shadow-lg">
+        <p className="text-xs text-muted">{t('page.G2.columnsHint')}</p>
         <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
           <legend className="sr-only">{metaColumnsLegend(on)}</legend>
           {hideable.map((column) => (

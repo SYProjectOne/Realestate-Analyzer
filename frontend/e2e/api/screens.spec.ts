@@ -269,7 +269,7 @@ test.describe('API 토큰', () => {
     await expect(page.getByTestId('token-button')).toContainText(ko.auth.state.read);
     expect(await page.evaluate(() => window.localStorage.getItem('sa.token.role'))).toBe('read');
 
-    await page.getByRole('link', { name: ko.nav.G7 }).click();
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G7 }).click();
     await expect(page.getByRole('heading', { level: 1, name: P.G7.title })).toBeVisible();
     const submit = page
       .getByRole('form', { name: P.G7.human })
@@ -277,11 +277,11 @@ test.describe('API 토큰', () => {
     await expect(submit).toBeDisabled();
     await expect(submit).toHaveAttribute('title', ko.auth.readOnlyHint);
 
-    await page.getByRole('link', { name: ko.nav.G8 }).click();
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G8 }).click();
     await expect(page.getByRole('heading', { level: 1, name: P.G8.title })).toBeVisible();
     await expect(page.getByRole('button', { name: P.G8.generate })).toBeDisabled();
 
-    await page.getByRole('link', { name: ko.nav.G2 }).click();
+    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G2 }).click();
     const csvReq = page.waitForRequest((r) => r.url().includes('/complexes.csv'));
     const [download] = await Promise.all([
       page.waitForEvent('download'),

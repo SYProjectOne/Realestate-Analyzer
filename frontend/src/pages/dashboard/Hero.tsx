@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { Link } from 'react-router';
 import { useChecklist, useComplexes } from '@/api/hooks';
 import type { ChecklistItem, ComplexRow, Dashboard } from '@/api/types';
-import { Card, FactCell, IntakeBadge, Skeleton, StatusPill, Term } from '@/components';
+import { Card, FactCell, IntakeBadge, MetaText, Skeleton, StatusPill, Term } from '@/components';
 import { t } from '@/i18n';
 import { formatDday, kstDay } from '@/lib/format';
 import { useGlobalSearch } from '../_shared';
@@ -60,7 +60,7 @@ export function Hero({ data, regionName }: { data: Dashboard; regionName: string
           {t('page.G1.hero.after')}
         </h1>
         <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
-          {t('label.legend')} · {t('page.G2.filter.intake_status')}
+          {t('page.G1.hero.note')}
           <Term k="intake_status" />
         </p>
         <p className="text-base leading-relaxed text-fg-2">{t('page.G1.openNow.hint')}</p>
@@ -127,6 +127,15 @@ export function OpenNowCards({
           <OpenNowCard key={row.complex_id} row={row} asof={asof} />
         ))}
       </ul>
+      {page.total > page.items.length ? (
+        <p className="text-sm text-muted">
+          <MetaText
+            kind="count"
+            k="page.G1.openNow.more"
+            params={{ n: page.total - page.items.length }}
+          />
+        </p>
+      ) : null}
     </div>
   );
 }

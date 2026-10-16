@@ -224,7 +224,7 @@ export function ComplexesPage() {
         </span>
         {/* 휴대폰은 안내를 접는다(ListTable 보드 휴대폰 — 첫 화면에 카드 2장) */}
         <p className="w-full text-[15px] leading-relaxed text-muted mobile:hidden">
-          {t('page.G2.intro')}
+          {view === 'cards' ? t('page.G2.introCards') : t('page.G2.intro')}
         </p>
       </div>
       <FilterBar
@@ -271,6 +271,7 @@ export function ComplexesPage() {
                     <p role="status" className="text-base font-semibold">
                       {t('page.G2.empty')}
                     </p>
+                    <p className="text-sm text-muted">{t('page.G2.emptyHint')}</p>
                     <button
                       type="button"
                       onClick={resetFilters}
@@ -328,6 +329,8 @@ export function ComplexesPage() {
         />
       ) : null}
       <footer className="flex flex-col gap-1.5 border-t border-border pt-3 text-[13px] text-muted">
+        {view === 'table' ? <p>{t('page.G2.tableNote')}</p> : null}
+        <p>{t('page.G2.foot')}</p>
         <p>{t('page.G1.footNote')}</p>
         <ProvenanceLegend />
       </footer>
