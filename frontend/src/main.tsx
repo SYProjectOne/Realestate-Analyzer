@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { AppProviders, createQueryClient } from './AppProviders';
+import { loadAllNamespaces } from './i18n';
 import { appRoutes } from './routes';
 import './index.css';
 
@@ -10,7 +11,8 @@ const useMsw = import.meta.env.MODE === 'msw' || import.meta.env.VITE_MSW === 't
 
 async function enableMocking(): Promise<void> {
   if (!useMsw) return;
-  const { worker } = await import('./mocks/browser');
+  // R11-I18N: MSW 모드(dev:msw·e2e/pages)는 문자열 이름공간을 처음부터 전부 등록한다(운영은 라우트마다 지연 — routes.tsx)
+  const [{ worker }] = await Promise.all([import('./mocks/browser'), loadAllNamespaces()]);
   await worker.start({ onUnhandledRequest: 'bypass', quiet: true });
 }
 

@@ -44,6 +44,7 @@ import {
   type Target,
 } from './lib/lighthouse-targets';
 import { mockApiMiddleware } from './lib/mock-api';
+import { rawKeysIn } from './lib/raw-keys';
 import { FRONTEND_ROOT } from './lib/openapi-source';
 
 const run = promisify(execFile);
@@ -267,6 +268,9 @@ async function sanityCheck(base: string, paths: string[]): Promise<Map<string, s
         const text = await page.locator('body').innerText();
         if (text.includes(LOAD_ERROR_PREFIX))
           problems.push(`화면 오류 문구 '${LOAD_ERROR_PREFIX}'`);
+        // R11-I18N: 문자열 이름공간이 라우트와 함께 오지 않으면 t() 가 키를 그대로 그린다
+        const raw = rawKeysIn(text);
+        if (raw.length > 0) problems.push(`ko 키 노출 ${raw.slice(0, 5).join(', ')}`);
       } catch (err) {
         problems.push(err instanceof Error ? (err.message.split('\n')[0] ?? '') : String(err));
       }

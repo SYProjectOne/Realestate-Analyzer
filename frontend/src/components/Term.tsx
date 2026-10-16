@@ -1,12 +1,14 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useInRouterContext, useLocation } from 'react-router';
-import { t } from '@/i18n';
-import ko from '@/i18n/ko.json';
+import glossaryKeys from 'virtual:ko/keys/glossary.items';
+import { t, type TKey } from '@/i18n';
+import type ko from '@/i18n/ko.json';
 import { useIsMobile } from '@/lib/useMediaQuery';
 
 /** 용어 모음 항목 키(ko.json `glossary.items`) — 화면이 쓰는 key 는 타입으로 검사된다 */
 export type GlossaryKey = keyof typeof ko.glossary.items;
-export const GLOSSARY_KEYS = Object.keys(ko.glossary.items) as GlossaryKey[];
+/** 키 이름만(ko.json 순서). 본문은 `glossary` 이름공간 — R11-I18N, 라우트가 화면 청크와 함께 받는다 */
+export const GLOSSARY_KEYS = glossaryKeys as GlossaryKey[];
 
 /** 용어 한 개의 표시 이름·질문형 제목(q, 용어 사전 카드)·한 줄 정의(ko.json 에서만) */
 export function glossaryItem(k: GlossaryKey): {
@@ -15,7 +17,8 @@ export function glossaryItem(k: GlossaryKey): {
   short: string;
   cat: string;
 } {
-  return ko.glossary.items[k];
+  const field = (f: 'term' | 'q' | 'short' | 'cat') => t(`glossary.items.${k}.${f}` as TKey);
+  return { term: field('term'), q: field('q'), short: field('short'), cat: field('cat') };
 }
 
 export interface TermProps {
