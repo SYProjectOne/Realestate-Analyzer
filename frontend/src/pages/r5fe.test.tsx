@@ -94,7 +94,7 @@ describe('R5-FE 1: ?scenario=·?snapshot= 가 화면 이동에서 유지된다',
     expectGlobal(loc.search);
     // G3 의 "목록으로" 링크도 유지
     await screen.findByRole('heading', { level: 1, name: t('page.G3.title') });
-    const back = await screen.findByRole('link', { name: t('page.common.backToList') });
+    const back = await screen.findByRole('link', { name: t('page.G3.backToList') });
     expectHrefGlobal(back);
   });
 

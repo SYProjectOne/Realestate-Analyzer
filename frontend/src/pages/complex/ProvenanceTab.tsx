@@ -8,6 +8,7 @@ import { t, tDynamic } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { splitUnitBasis } from '@/lib/unitBasis';
 import { unitOf } from '../_shared';
+import { TabSection } from './tabs';
 
 interface ProvItem {
   key: string;
@@ -120,103 +121,118 @@ export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
       : null;
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-semibold">{t('page.G3.provenance.fields')}</h3>
-        <p className="text-xs text-muted">{t('page.G3.provenance.pick')}</p>
-        {items.length === 0 ? (
-          <EmptyState reason={t('page.common.none')} />
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm" aria-label={t('page.G3.provenance.fields')}>
-            {items.map((item) => (
-              <li key={item.key} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-pressed={selected === item.fact.prov}
-                  onClick={() => setSelected(item.fact.prov)}
-                  className={`rounded border px-2 py-0.5 text-left ${
-                    selected === item.fact.prov ? 'border-accent' : 'border-border'
+    <TabSection
+      id="g3-provenance-title"
+      title={t('page.G3.provenance.title')}
+      hint={t('page.G3.provenance.pick')}
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+        <div className="flex flex-col gap-2">
+          <h4 className="text-[15px] font-bold">{t('page.G3.provenance.fields')}</h4>
+          {items.length === 0 ? (
+            <EmptyState reason={t('page.common.none')} />
+          ) : (
+            <ul
+              className="flex flex-col gap-1.5 text-sm"
+              aria-label={t('page.G3.provenance.fields')}
+            >
+              {items.map((item) => (
+                <li
+                  key={item.key}
+                  className={`flex min-h-10 flex-wrap items-center justify-between gap-2 rounded-[10px] border px-3 py-1.5 ${
+                    selected === item.fact.prov
+                      ? 'border-2 border-accent bg-accent-soft'
+                      : 'border-border bg-surface'
                   }`}
                 >
-                  {item.title}
-                </button>
-                <FactCell
-                  fact={item.fact}
-                  unit={unitOf(item.fact, 'text')}
-                  asof={detail.asof_date}
-                  onOpenProvenance={(p) => setSelected(p)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="flex flex-col gap-2" aria-live="polite">
-        <h3 className="text-sm font-semibold">{t('page.G3.provenance.raw')}</h3>
-        {prov.data ? (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <LabelBadge label={prov.data.label} reason={prov.data.reason} />
-            {prov.data.checked_at ? <span>{formatDate(prov.data.checked_at)}</span> : null}
-            {prov.data.url ? (
-              <ExternalLink href={prov.data.url} className="break-all underline" />
-            ) : null}
-            {unitBasis ? (
-              // 계약 .16 F6(D21-1): 금액 표 단위 환산 근거(표 머리 줄)
-              <span data-testid="provenance-tab-unit-basis">
-                <span className="text-muted">{t('provenance.unitBasis')}</span> {unitBasis}
-              </span>
-            ) : null}
-          </div>
-        ) : prov.isLoading ? (
-          <p role="status" className="text-sm text-muted">
-            {isMaterializePending(prov.failureReason)
-              ? t('page.common.materializePending')
-              : t('app.loading')}
-          </p>
-        ) : prov.error ? (
-          <EmptyState message={queryErrorText(prov.error)} />
-        ) : null}
-        {rawId !== null ? <RawDocumentPreview key={rawId} rawId={rawId} /> : null}
-        {prov.data && rawId === null ? (
-          <EmptyState message={t('page.G3.provenance.noRaw')}>
-            {excerptBody ? <blockquote className="text-fg">{excerptBody}</blockquote> : null}
-          </EmptyState>
-        ) : null}
-        {raw.data !== undefined ? (
-          parts ? (
-            <>
-              {parts.searched ? (
-                <p className="text-xs text-muted">{t('page.G3.provenance.excerptNotFound')}</p>
+                  <button
+                    type="button"
+                    aria-pressed={selected === item.fact.prov}
+                    onClick={() => setSelected(item.fact.prov)}
+                    className="min-h-8 flex-1 text-left font-medium text-fg hover:text-accent"
+                  >
+                    {item.title}
+                  </button>
+                  <FactCell
+                    fact={item.fact}
+                    unit={unitOf(item.fact, 'text')}
+                    asof={detail.asof_date}
+                    onOpenProvenance={(p) => setSelected(p)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-col gap-2" aria-live="polite">
+          <h4 className="text-[15px] font-bold">{t('page.G3.provenance.raw')}</h4>
+          {prov.data ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <LabelBadge label={prov.data.label} reason={prov.data.reason} />
+              {prov.data.checked_at ? (
+                <span className="text-muted">{formatDate(prov.data.checked_at)}</span>
               ) : null}
-              <pre
-                data-testid="raw-text"
-                className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-sm border border-border bg-bg p-2 text-xs"
-              >
-                {parts.before}
-                <mark
-                  aria-label={t('page.G3.provenance.highlight')}
-                  className="rounded-sm bg-accent px-0.5 text-accent-fg"
-                  ref={(el) => el?.scrollIntoView?.({ block: 'center' })}
+              {prov.data.url ? (
+                <ExternalLink href={prov.data.url} className="break-all underline" />
+              ) : null}
+              {unitBasis ? (
+                // 계약 .16 F6(D21-1): 금액 표 단위 환산 근거(표 머리 줄)
+                <span data-testid="provenance-tab-unit-basis">
+                  <span className="text-muted">{t('provenance.unitBasis')}</span> {unitBasis}
+                </span>
+              ) : null}
+            </div>
+          ) : prov.isLoading ? (
+            <p role="status" className="text-sm text-muted">
+              {isMaterializePending(prov.failureReason)
+                ? t('page.common.materializePending')
+                : t('app.loading')}
+            </p>
+          ) : prov.error ? (
+            <EmptyState message={queryErrorText(prov.error)} />
+          ) : null}
+          {rawId !== null ? <RawDocumentPreview key={rawId} rawId={rawId} /> : null}
+          {prov.data && rawId === null ? (
+            <EmptyState message={t('page.G3.provenance.noRaw')}>
+              {excerptBody ? <blockquote className="text-fg">{excerptBody}</blockquote> : null}
+            </EmptyState>
+          ) : null}
+          {raw.data !== undefined ? (
+            parts ? (
+              <>
+                {parts.searched ? (
+                  <p className="text-xs text-muted">{t('page.G3.provenance.excerptNotFound')}</p>
+                ) : null}
+                <pre
+                  data-testid="raw-text"
+                  className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-subtle p-3 text-xs leading-relaxed"
                 >
-                  {parts.mark}
-                </mark>
-                {parts.after}
-              </pre>
-            </>
-          ) : (
-            <>
-              <p className="text-xs text-muted">{t('page.G3.provenance.excerptNotFound')}</p>
-              {excerptBody ? (
-                <blockquote className="border-l-2 border-border pl-2 text-sm">
-                  {excerptBody}
-                </blockquote>
-              ) : null}
-            </>
-          )
-        ) : raw.isLoading ? (
-          <p className="text-sm text-muted">{t('app.loading')}</p>
-        ) : null}
+                  {parts.before}
+                  <mark
+                    aria-label={t('page.G3.provenance.highlight')}
+                    className="rounded-sm bg-accent px-0.5 text-accent-fg"
+                    ref={(el) => el?.scrollIntoView?.({ block: 'center' })}
+                  >
+                    {parts.mark}
+                  </mark>
+                  {parts.after}
+                </pre>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-muted">{t('page.G3.provenance.excerptNotFound')}</p>
+                {excerptBody ? (
+                  <blockquote className="border-l-2 border-border pl-2 text-sm">
+                    {excerptBody}
+                  </blockquote>
+                ) : null}
+              </>
+            )
+          ) : raw.isLoading ? (
+            <p className="text-sm text-muted">{t('app.loading')}</p>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </TabSection>
   );
 }

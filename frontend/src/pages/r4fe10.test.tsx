@@ -127,7 +127,8 @@ describe('F1(D21-8) 단지 이름 name_prov·name_label', () => {
     const rec = recordRequests();
     renderRoute(`/complexes/${CANDIDATE}`);
     const head = await screen.findByRole('region', { name: CANDIDATE_NAME });
-    const heading = within(head).getByRole('heading', { level: 2 });
+    // R11: 머리 안 질문형 구역도 h2 — 이름 제목은 testid 로 찾는다
+    const heading = within(head).getByTestId('complex-name');
     const name = within(heading).getByRole('button', {
       name: t('page.common.nameProv.open', { name: CANDIDATE_NAME, label: t('label.unofficial') }),
     });
@@ -150,7 +151,7 @@ describe('F1(D21-8) 단지 이름 name_prov·name_label', () => {
     );
     renderRoute('/complexes/2');
     const head = await screen.findByRole('region', { name: detail.header.name });
-    const heading = within(head).getByRole('heading', { level: 2 });
+    const heading = within(head).getByTestId('complex-name');
     expect(heading).toHaveTextContent(detail.header.name);
     expect(within(heading).queryByRole('button')).toBeNull();
     expect(within(heading).queryByTestId('label-badge')).toBeNull();
