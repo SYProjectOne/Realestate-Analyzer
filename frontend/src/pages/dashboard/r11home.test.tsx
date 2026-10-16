@@ -5,6 +5,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getResponse, http, HttpResponse, type RequestHandler } from 'msw';
+import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import type { ChecklistItem, ComplexRowPage, Dashboard } from '@/api/types';
 import { chartModules, DEFAULT_PALETTE } from '@/charts';
 import { t } from '@/i18n';
@@ -292,6 +293,71 @@ describe('알림 띠(Shell SH-7·SH-8)', () => {
     const notice = await screen.findByTestId('benchmark-absence');
     expect(notice).toHaveAttribute('data-banner-tone', 'note');
     expect(notice).toHaveTextContent('근처 새 아파트 실적이 없어 종합 점수를 계산하지 않았어요');
+  });
+});
+
+describe('최근에 바뀐 것(HM-14) · 일정 계산 기준 · 다시 판정 등록 실패', () => {
+  it('처음 3건 · "변경 n건 더 보기"(aria-expanded) → 모두 → "변경 접기"', async () => {
+    const dash = await example<Dashboard>('/snapshots/12/dashboard');
+    expect(dash.changes.length).toBeGreaterThan(3);
+    renderRoute('/');
+    const feed = await screen.findByRole('list', { name: t('page.G1.changes') });
+    expect(within(feed).getAllByRole('listitem')).toHaveLength(3);
+    const more = screen.getByRole('button', {
+      name: t('page.G1.changesMore', { n: String(dash.changes.length - 3) }),
+    });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(more);
+    expect(within(feed).getAllByRole('listitem')).toHaveLength(dash.changes.length);
+    expect(screen.getByRole('button', { name: t('page.G1.changesLess') })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('변경이 없으면 "최근 변경 없음"', async () => {
+    patchDashboard((d) => ({ ...d, changes: [] }));
+    renderRoute('/');
+    expect(await screen.findByText(t('page.G1.noChanges'))).toBeInTheDocument();
+  });
+
+  it('전매 가능 시작 줄은 "계산 기준: …"', async () => {
+    server.use(
+      http.get(mswPath('/ops/checklist'), () =>
+        HttpResponse.json([
+          item({
+            id: 3,
+            kind: '만료',
+            title: '전매제한 종료(당첨자 발표일 + 12개월, 산술)',
+            due_date: '2026-10-10',
+          }),
+        ]),
+      ),
+    );
+    renderRoute('/');
+    const box = await screen.findByRole('region', { name: t('page.G1.upcoming.title') });
+    expect(
+      await within(box).findByText(
+        t('page.common.scheduleBasis', { basis: '당첨자 발표일 + 12개월, 산술' }),
+      ),
+    ).toBeInTheDocument();
+    expect(within(box).getByTestId('schedule-kind')).toHaveTextContent(
+      t('page.common.scheduleKind.resaleOpen'),
+    );
+  });
+
+  it('다시 판정 등록 실패 → 띠 아래 role=alert "불러오지 못했어요: …"', async () => {
+    patchDashboard((d) => ({ ...d, rejudge_needed: true }));
+    server.use(
+      http.post(mswPath('/jobs'), () =>
+        HttpResponse.json({ code: 'internal', message: 'boom' }, { status: 500 }),
+      ),
+    );
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    renderRoute('/');
+    const notice = await screen.findByTestId('rejudge-notice');
+    await userEvent.click(within(notice).getByRole('button', { name: t('page.G1.rejudgeRun') }));
+    expect(await within(notice).findByRole('alert')).toBeInTheDocument();
   });
 });
 

@@ -6,13 +6,91 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { TOKEN_STORAGE_KEY } from '@/api/auth';
 import { t } from '@/i18n';
+import { MOBILE_QUERY } from '@/lib/useMediaQuery';
 import { resetMockState } from '@/mocks/handlers.extra';
 import { mswPath } from '@/mocks/mswPath';
 import { server } from '@/mocks/server';
 import { renderRoute } from '@/test/render';
 import { sortLabel } from '.';
-import { readView, SORT_PRESETS, VIEW_STORAGE_KEY } from './params';
+import { readSort, readView, SORT_PRESETS, toApiFilter, VIEW_STORAGE_KEY } from './params';
+
+describe('지금 동작 그대로(LT-8 · LS-3 상자)', () => {
+  it('readSort: 모르는 정렬 키 → -total, URL 전용 키 rank · price_low 는 그대로', () => {
+    expect(readSort(new URLSearchParams('sort=-bogus'))).toBe('-total');
+    expect(readSort(new URLSearchParams(''))).toBe('-total');
+    expect(readSort(new URLSearchParams('sort=rank'))).toBe('rank');
+    expect(readSort(new URLSearchParams('sort=price_low'))).toBe('price_low');
+  });
+
+  it('숫자 칸 잘못된 값은 조용히 무시(가격·입주 연도)', () => {
+    expect(toApiFilter({ price_min: 'abc', price_max: '7.5', move_in_year: '2028.5' })).toEqual({
+      price_max: 750_000_000,
+    });
+  });
+
+  it('표: 고른 행 aria-selected, 정렬 머리 aria-sort + 다음 동작 title, 열 머리 용어 ?', async () => {
+    renderRoute('/complexes');
+    const table = await screen.findByRole('table', { name: t('page.G2.table') });
+    await waitFor(() => expect(within(table).getAllByRole('checkbox').length).toBeGreaterThan(2));
+    await userEvent.click(within(table).getAllByRole('checkbox')[0] as HTMLElement);
+    expect(within(table).getAllByRole('checkbox')[0]?.closest('tr')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const total = table.querySelector('th[data-col="total"]') as HTMLElement;
+    expect(total).toHaveAttribute('aria-sort', 'descending');
+    expect(within(total).getAllByRole('button')[0]).toHaveAttribute(
+      'title',
+      t('page.G2.sortAsc', { col: t('page.G2.col.total') }),
+    );
+    const terms = [...table.querySelectorAll('thead [data-testid="term"]')].map((el) =>
+      el.getAttribute('data-term'),
+    );
+    expect(terms).toEqual(
+      expect.arrayContaining(['intake_status', 'current_price', 'resale_end', 'gap', 'total']),
+    );
+  });
+
+  it('CSV: 저장본 검증 실패(500)는 특수 문구(role=alert)', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, 'tok-write');
+    server.use(
+      http.get(mswPath('/snapshots/:sid/complexes.csv'), () =>
+        HttpResponse.json(
+          { code: 'stored_view_mismatch', message: 'x', detail: 'hash' },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderRoute('/complexes');
+    await screen.findByRole('table', { name: t('page.G2.table') });
+    await userEvent.click(screen.getByRole('button', { name: t('page.G2.csv') }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      t('page.common.storedViewMismatch', { detail: 'hash' }),
+    );
+  });
+
+  it('휴대폰 필터 시트는 Esc 로 닫힌다', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: query === MOBILE_QUERY,
+    })) as typeof window.matchMedia;
+    try {
+      renderRoute('/complexes');
+      await screen.findByRole('list', { name: t('page.G2.cards') });
+      await userEvent.click(
+        screen.getByRole('button', { name: t('page.G2.card.filterSheet', { n: '0' }) }),
+      );
+      expect(screen.getByRole('dialog', { name: t('page.G2.filters') })).toBeInTheDocument();
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: t('page.G2.filters') })).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
 
 vi.mock('@/charts/EChartRuntime', () => ({ default: () => null }));
 beforeEach(() => {
