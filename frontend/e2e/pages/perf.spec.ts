@@ -83,7 +83,7 @@ test('T16(D10-8): G2 2,500행 스크롤 — 프레임 간격(rAF) 3회 중앙값
   await expect(page.getByRole('heading', { level: 1, name: P.G2.title })).toBeVisible();
   const table = page.getByRole('table', { name: P.G2.table });
   await expect(table).toHaveAttribute('aria-rowcount', '2501');
-  await expect(page.getByText(/2,500 \/ 2,500/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/2,500곳 중 2,500곳/)).toBeVisible({ timeout: 30_000 });
   const scroller = page.getByTestId('complex-table-scroll');
   await scroller.scrollIntoViewIfNeeded();
 

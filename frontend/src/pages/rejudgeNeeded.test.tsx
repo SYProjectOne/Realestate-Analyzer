@@ -126,7 +126,8 @@ describe('N-M3 G1 벤치마크 없음', () => {
     patchDashboard((d) => ({ ...d, benchmark_absence: { code: 'no_sample', reason } }));
     renderRoute('/');
     const notice = await screen.findByTestId('benchmark-absence');
-    expect(notice).toHaveTextContent(`벤치마크 없음(${reason})`);
+    // R11 SH-8: '근처 새 아파트 실적 없음(<서버 사유>)' + 종합 점수 미계산 설명
+    expect(notice).toHaveTextContent(t('page.G1.benchmarkAbsentBadge', { reason }));
     expect(notice).toHaveTextContent(t('page.G1.benchmarkAbsentHint'));
     expect(notice).toHaveAttribute('data-code', 'no_sample');
   });

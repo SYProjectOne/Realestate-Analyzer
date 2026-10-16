@@ -160,7 +160,9 @@ describe('F8 G1 TOP 카드 = ScoreRow 사실(목록 조인 없음)', () => {
     await waitFor(() =>
       expect(matching(rec.requests, 'GET', '/dashboard').length).toBeGreaterThan(0),
     );
-    expect(matching(rec.requests, 'GET', /\/snapshots\/\d+\/complexes$/)).toHaveLength(0);
+    // R11: 목록 API 는 '지금 접수 가능한 단지' 카드(filter[intake_status]=가능)만 부른다 — TOP 줄 사실을 목록에서 조인하지 않는다
+    const lists = matching(rec.requests, 'GET', /\/snapshots\/\d+\/complexes$/);
+    for (const r of lists) expect(r.url.searchParams.get('filter[intake_status]')).toBe('가능');
     rec.stop();
   });
 });

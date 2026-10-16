@@ -142,10 +142,12 @@ export function Header() {
         )}
       </div>
       <div className="border-t border-border bg-surface-2">
-        {/* 이름(aria-label)을 달지 않는다: '지역'이 든 이름이면 getByLabel('지역')이 이 묶음까지 잡는다 */}
+        {/* 이름(aria-label)을 달지 않는다: '지역'이 든 이름이면 getByLabel('지역')이 이 묶음까지 잡는다.
+            휴대폰은 칸마다 한 줄(세로) — 줄바꿈이 고르기 칸 글자 폭(지역 이름·기준일이 늦게 옴)에 따라 바뀌면 본문이
+            한 줄만큼 밀린다(CLS 0.11, R11 Lighthouse 모바일). 데스크톱은 그대로 한 줄 */}
         <div
           data-testid="header-selectors"
-          className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-4 gap-y-2 px-4 py-1.5 sm:px-6"
+          className="mx-auto flex max-w-(--breakpoint-2xl) flex-wrap items-center gap-x-4 gap-y-2 px-4 py-1.5 sm:px-6 mobile:flex-col mobile:items-start"
         >
           <RegionPicker
             regions={regions}

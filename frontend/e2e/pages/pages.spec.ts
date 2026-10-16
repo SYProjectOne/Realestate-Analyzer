@@ -37,16 +37,21 @@ test.describe('화면 10개 핵심 요소', () => {
     page,
   }) => {
     await ready(page, '/', P.G1.title);
-    await expect(page.getByRole('list', { name: P.G1.region }).getByRole('listitem')).toHaveCount(
+    // R11: 미분양 칸 안의 C05 범례(목록)는 빼고 칸 4개만
+    await expect(page.getByRole('list', { name: P.G1.region }).locator(':scope > li')).toHaveCount(
       4,
     );
     expect(
       await page.getByRole('list', { name: P.G1.top5 }).getByRole('listitem').count(),
     ).toBeGreaterThanOrEqual(5);
     await expect(page.getByRole('list', { name: P.G1.changes })).toBeVisible();
-    const chart = page.getByRole('img', { name: ko.chart.C06.title });
-    await chart.scrollIntoViewIfNeeded();
-    await expect(chart.locator('svg').first()).toBeVisible();
+    // R11 Main 보드: C06 은 점수 줄마다 막대(이름 "{단지} 점수 구성") + 아래 '표로 보기'
+    const bar = page
+      .getByRole('list', { name: P.G1.top5 })
+      .getByRole('img', { name: P.G1.rankBar.replace('{name}', '') })
+      .first();
+    await bar.scrollIntoViewIfNeeded();
+    await expect(bar.locator('svg').first()).toBeVisible();
   });
 
   test('G2 단지 리스트: 표 · 필터(URL) · CSV', async ({ page }) => {
@@ -228,7 +233,7 @@ test('G2 1,000행 넘는 목록: 첫 페이지 먼저, 나머지 이어 받아 �
   const table = page.getByRole('table', { name: P.G2.table });
   await expect(table).toHaveAttribute('aria-rowcount', '2501');
   await expect(table.locator('tbody tr[aria-rowindex]').first()).toBeVisible();
-  await expect(page.getByText(/2,500 \/ 2,500/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/2,500곳 중 2,500곳/)).toBeVisible({ timeout: 30_000 });
   expect(await table.locator('tbody tr[aria-rowindex]').count()).toBeLessThan(100);
   await page.getByTestId('complex-table-scroll').evaluate((el) => {
     el.scrollTop = el.scrollHeight;
