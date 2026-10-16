@@ -225,10 +225,10 @@ describe('R11 G3 청약 때 얼마나 몰렸나요?', () => {
     const { router } = renderRoute('/complexes/2');
     const h = await head(detail);
     const card = within(h).getByRole('region', { name: t('page.G3.compSummary.title') });
-    expect(card).toHaveTextContent(t('page.G3.compSummary.basis', { basis: summary.basis }));
+    expect(card).toHaveTextContent(summary.basis);
     expect(prov(card, 'fp_ws_min')).not.toBeNull();
     expect(prov(card, 'fp_ws_max')).not.toBeNull();
-    await userEvent.click(within(card).getByRole('link', { name: t('page.G3.compSummary.more') }));
+    await userEvent.click(within(card).getByRole('link', { name: t('page.G3.tab.events') }));
     await waitFor(() => expect(router.state.location.hash).toBe('#events'));
   });
 
@@ -240,9 +240,7 @@ describe('R11 G3 청약 때 얼마나 몰렸나요?', () => {
     const h = await head(detail);
     const card = within(h).getByRole('region', { name: t('page.G3.compSummary.title') });
     expect(
-      within(card).getByText(
-        t('empty.unknownWithReason', { reason: t('page.G3.compSummary.none') }),
-      ),
+      within(card).getByText(t('empty.unknownWithReason', { reason: t('page.common.none') })),
     ).toBeInTheDocument();
   });
 });
@@ -253,17 +251,17 @@ describe('R11 G3 점수는 왜 이렇게 나왔나요?', () => {
     renderRoute('/complexes/2');
     const h = await head(detail);
     const card = within(h).getByRole('region', { name: t('page.G3.summary.score') });
-    const list = within(card).getByRole('list', { name: t('page.G3.scoreWhy.list') });
+    const list = within(card).getByRole('list', { name: t('page.G3.summary.score') });
     const rows = within(list).getAllByRole('listitem');
     const keys = Object.keys(detail.score!.components);
     expect(rows).toHaveLength(keys.length);
     const p10 = rows.find((r) => r.dataset.component === 'p10')!;
-    expect(p10).toHaveTextContent(t('page.G3.scoreWhy.component.p10'));
+    expect(p10).toHaveTextContent(t('chart.C06.component.p10'));
     expect(p10).toHaveTextContent(t('page.G3.scoreWhy.weight', { w: '35%' }));
     expect(prov(p10, detail.score!.components.p10.score.prov)).not.toBeNull();
     expect(p10).toHaveAttribute('title', detail.score!.components.p10.formula_text);
     const note = await within(p10).findByTestId('score-p10-note');
-    expect(note).toHaveTextContent(t('page.G3.scoreWhy.p10Note'));
+    expect(note).toHaveTextContent(t('page.G3.ladder.note'));
     const row = detail.ladder.find((r) => r.horizon === 'move_in_plus_1y');
     await waitFor(() => expect(note).toHaveTextContent(row?.target_label ?? ''));
     expect(prov(card, detail.score!.total.prov)).not.toBeNull();
@@ -278,7 +276,7 @@ describe('R11 G3 점수는 왜 이렇게 나왔나요?', () => {
     expect(
       within(card).getByText(t('empty.unknownWithReason', { reason: t('page.G3.scoreWhy.none') })),
     ).toBeInTheDocument();
-    expect(within(card).queryByRole('list', { name: t('page.G3.scoreWhy.list') })).toBeNull();
+    expect(within(card).queryByRole('list', { name: t('page.G3.summary.score') })).toBeNull();
   });
 
   it('판정 범위 사유는 서버 문자열 그대로(D30-6 한국어 분류명)', async () => {
@@ -315,7 +313,7 @@ describe('R11 G3 가격 카드 — 주변 거래 비교(계약 .22 comps_median)
     renderRoute('/complexes/2');
     const h = await head(detail);
     expect(within(h).getByTestId('gap-mini-comps-median')).toHaveTextContent(
-      t('empty.unknownWithReason', { reason: t('page.G3.gapMini.compsMedianOld') }),
+      t('empty.unknownWithReason', { reason: t('page.G3.summary.downWonMissing') }),
     );
   });
 

@@ -250,7 +250,7 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
   // 기준 타입 할인(price.discount)이 '추정'이면 그 줄에 안내 + 사람 확인 링크(D16-1)
   const estimatedPrice = isEstimatedDiscount(price.discount);
   return (
-    <TabSection id="g3-price-title" title={t('page.G3.price.title')} hint={t('page.G3.price.hint')}>
+    <TabSection id="g3-price-title" title={t('page.G3.price.title')}>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-muted">{t('page.G3.header.price')}</dt>
         <dd className="flex flex-wrap items-center gap-1">
@@ -295,9 +295,6 @@ export function PriceTab({ detail }: { detail: ComplexDetail }) {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
-            <caption className="pb-1 text-left text-xs text-muted">
-              {t('page.G3.price.caption')}
-            </caption>
             <thead>
               <tr>
                 {(
@@ -461,11 +458,7 @@ const PAYMENT_ROWS: readonly {
 export function PaymentTab({ detail }: { detail: ComplexDetail }) {
   const { payment, asof_date: asof } = detail;
   return (
-    <TabSection
-      id="g3-payment-title"
-      title={t('page.G3.payment.title')}
-      hint={t('page.G3.payment.hint')}
-    >
+    <TabSection id="g3-payment-title" title={t('page.G3.payment.title')}>
       {payment.length === 0 ? (
         <EmptyState reason={t('page.common.none')} />
       ) : (
@@ -647,11 +640,7 @@ export function EventsTab({ detail }: { detail: ComplexDetail }) {
   // R9-UI P8: 경쟁률 표를 맨 위로(초보 질문 Q5), 추가 모집 이력 차트는 그 아래
   return (
     <div className="flex flex-col gap-6">
-      <TabSection
-        id="g3-competition-title"
-        title={t('page.G3.competition.title')}
-        hint={t('page.G3.competition.hint')}
-      >
+      <TabSection id="g3-competition-title" title={t('page.G3.competition.title')}>
         {detail.competition_summary ? (
           <CompetitionSummaryLine summary={detail.competition_summary} />
         ) : null}
@@ -782,7 +771,7 @@ export function GapTab({ detail }: { detail: ComplexDetail }) {
   const substitute = gap.comps.some((c) => c.substitute);
   // R9-UI P8(30-proposal §9-3): 부호를 문장으로 한 번만 풀고(높고 낮음을 좋고 나쁨으로 바꾸지 않는다), 같은 이름 두 값을 나눈다
   return (
-    <TabSection id="g3-gap-title" title={t('page.G3.gap.title')} hint={t('page.G3.gap.hint')}>
+    <TabSection id="g3-gap-title" title={t('page.G3.gap.title')}>
       <dl className="grid gap-3 sm:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-1 rounded-[14px] bg-subtle p-4">
           <dt className="inline-flex items-center gap-1 text-[13px] text-muted">
@@ -812,25 +801,13 @@ export function GapTab({ detail }: { detail: ComplexDetail }) {
       <p className="rounded-xl border border-info-border bg-info-soft px-4 py-3 text-sm text-info-ink">
         {t('page.G3.gap.meaning')}
       </p>
-      {/* 계약 .22 F2·F3(D30-5): 비교군 전체 중앙값(보정·미보정) — 서버 저장값 그대로. 키 없음 = .22 전 저장본 → 줄 없음 */}
-      {gap.comps_median !== undefined || gap.comps_median_unadjusted ? (
-        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm" data-testid="gap-comps-median">
-          {gap.comps_median !== undefined ? (
-            <div className="flex flex-wrap items-center gap-1">
-              <dt className="text-muted">{t('page.G3.gap.compsMedian')}</dt>
-              <dd>
-                <FactCell wrap fact={gap.comps_median} unit="won" />
-              </dd>
-            </div>
-          ) : null}
-          {gap.comps_median_unadjusted ? (
-            <div className="flex flex-wrap items-center gap-1">
-              <dt className="text-muted">{t('page.G3.gap.compsMedianUnadjusted')}</dt>
-              <dd>
-                <FactCell wrap fact={gap.comps_median_unadjusted} unit="won" />
-              </dd>
-            </div>
-          ) : null}
+      {/* 계약 .22 F2(D30-5): 비교군 전체 중앙값 — 서버 저장값 그대로. 키 없음 = .22 전 저장본 → 줄 없음 */}
+      {gap.comps_median !== undefined ? (
+        <dl className="flex flex-wrap items-center gap-1 text-sm" data-testid="gap-comps-median">
+          <dt className="text-muted">{t('page.G3.gap.compsMedian')}</dt>
+          <dd>
+            <FactCell wrap fact={gap.comps_median} unit="won" />
+          </dd>
         </dl>
       ) : null}
       <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -848,11 +825,7 @@ export function GapTab({ detail }: { detail: ComplexDetail }) {
 export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
   const { catalysts } = detail;
   return (
-    <TabSection
-      id="g3-catalyst-title"
-      title={t('page.G3.catalyst.title')}
-      hint={t('page.G3.catalyst.hint')}
-    >
+    <TabSection id="g3-catalyst-title" title={t('page.G3.catalyst.title')}>
       <C09Catalyst data={{ catalysts, compact: true }} asof={detail.asof_date} />
       <section aria-labelledby="g3-catalyst-list" className="flex flex-col gap-2">
         <h4 id="g3-catalyst-list" className="text-[15px] font-bold">
@@ -874,7 +847,6 @@ export function CatalystsTab({ detail }: { detail: ComplexDetail }) {
                   <Badge tone={grayed ? 'muted' : 'strong'}>
                     {enumText('chart.C09.stage', c.stage)}
                   </Badge>
-                  <span className="text-xs text-muted">{t('page.G3.catalyst.stageProb')}</span>
                   <FactCell fact={c.stage_prob} unit="prob" />
                   <span className="text-xs text-muted">{t('page.G3.catalyst.expected')}</span>
                   <FactCell fact={c.expected_ym} unit="ym" />

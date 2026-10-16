@@ -54,22 +54,18 @@ export function CompetitionCard({ detail }: { detail: ComplexDetail }) {
   const globalSearch = useGlobalSearch();
   const summary = detail.competition_summary ?? null;
   return (
-    <Tier
-      tier="competition"
-      title={t('page.G3.compSummary.title')}
-      hint={summary ? t('page.G3.compSummary.basis', { basis: summary.basis }) : undefined}
-    >
+    <Tier tier="competition" title={t('page.G3.compSummary.title')} hint={summary?.basis}>
       {summary ? (
         <CompetitionSummaryLine summary={summary} />
       ) : (
-        <EmptyState inline reason={t('page.G3.compSummary.none')} />
+        <EmptyState inline reason={t('page.common.none')} />
       )}
       <Link
         to={{ pathname: `/complexes/${detail.header.id}`, search: globalSearch, hash: '#events' }}
         replace
         className="self-start text-sm font-medium text-accent hover:underline"
       >
-        {t('page.G3.compSummary.more')}
+        {t('page.G3.tab.events')}
       </Link>
     </Tier>
   );

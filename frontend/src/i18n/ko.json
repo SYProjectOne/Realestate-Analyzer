@@ -243,7 +243,7 @@
         "livingArea": "생활권",
         "price": "현재 구매가",
         "priceBasis": "기준 타입 {type}",
-        "discount": "할인 (공고에 적힌 것)",
+        "discount": "할인",
         "resaleEnd": "되팔기 (전매)",
         "moveIn": "입주",
         "inclusion": "단지 분류",
@@ -256,14 +256,13 @@
         "siteOtherEvidence": "공식 홈페이지 원문 보기 (다른 단지 페이지 — 접수 근거 아님)",
         "siteOtherHint": "청약홈에 등록된 공식 홈페이지가 지금 다른 단지의 페이지라서 판정기가 이 단지 페이지로 보지 않았어요. 그 문구는 접수 판단에 쓰지 않아요 — 접수 상태는 사람이 전화·방문으로 확인해야 해요.",
         "siteOtherHumanCheck": "접수 상태 사람 확인하기",
-        "siteUnconfirmedEvidence": "공식 홈페이지 원문 보기 (같은 단지인지 확인 전 — 접수 근거 아님)",
+        "siteUnconfirmedEvidence": "공식 홈페이지 원문(동일성 미확인 — 접수 근거 아님)",
         "siteUnconfirmedHint": "판정기가 이 홈페이지가 이 단지의 것인지 정하지 못했어요(다른 단지라고 판정한 건 아니에요). 그 문구는 접수 판단에 쓰지 않아요 — 접수 상태는 사람이 전화·방문으로 확인해야 해요.",
         "scopeReason": "점수 계산 범위 사유"
       },
       "summary": {
         "status": "지금 상태",
         "currentNotice": "현재 적용 공고: {kind}",
-        "schedule": "일정",
         "winnerDate": "당첨자 발표",
         "contract": "계약",
         "noScheduleReason": "공고 일정을 아직 못 모음",
@@ -275,10 +274,9 @@
         "downWon": "계약금 금액",
         "downWonMissing": "계산값 없음",
         "interim": "중도금",
-        "interimTerms": "중도금 조건 (공고 문구 그대로): {text}",
+        "interimTerms": "조건: {text}(공고 문구)",
         "balance": "잔금",
         "noPayment": "납부 조건을 아직 못 모음",
-        "moreMoney": "납부 일정 전체 보기",
         "formula": "계산 방법 · {formula}",
         "conditions": "청약 전에 꼭 확인할 조건",
         "conditionsHint": "당첨된 뒤 팔거나 다시 청약할 때 걸리는 제한이에요. 최종 기준은 공고문이에요.",
@@ -287,26 +285,22 @@
         "rewin": "다시 청약 제한 (재당첨)",
         "regulated": "규제지역",
         "priceCap": "분양가 상한제",
-        "supply": "공급",
         "unitsGeneral": "일반",
         "unitsSpecial": "특별공급",
         "unitsTotal": "총",
         "specialHint": "특별공급 자격·소득 기준은 공고문에서 확인하세요",
         "score": "점수는 왜 이렇게 나왔나요?",
         "info": "단지 정보",
-        "notQualification": "이 화면은 개인의 청약 자격을 판정하지 않아요. 최종 기준은 입주자 모집 공고문이에요.",
-        "effectiveFrom": "적용 시작",
-        "intake": "접수 상태:",
+        "notQualification": "이 화면은 개인 청약 자격을 판정하지 않습니다 · 공고문이 기준입니다",
         "intakeVia": "{path} · {date} 확인",
-        "moneyHint": "중간 가격을 공고문 비율대로 나눈 값이에요. 대출·세금·이자는 넣지 않았어요.",
+        "moneyHint": "중간 가격 × 공고 비율이에요(대출·세금·이자 제외).",
         "moneyLabel": "추정(산술)",
-        "downWhen": "계약서를 쓸 때 한 번에",
-        "interimWhen": "공사하는 동안 여러 번 나눠서",
+        "downWhen": "계약서 쓸 때",
+        "interimWhen": "공사 중 나눠서",
         "balanceWhen": "입주할 때",
         "residencyNone": "의무 없음",
         "rewinNone": "제한 없음",
-        "termTip": "'?'를 누르면 그 말이 무슨 뜻인지 한 줄로 알려 줘요",
-        "scoreHint": "상대 비교예요. 투자 권유가 아니에요."
+        "scoreHint": "상대 비교 · 투자 권유 아님"
       },
       "tabs": "단지 상세 탭",
       "tabSelect": "더 자세히",
@@ -334,7 +328,7 @@
         "composition": "구성",
         "noteRef": "①",
         "noteTitle": "① 공고문 안내:",
-        "change": "처음 공고 대비 가격 변화",
+        "change": "최초 대비",
         "discount": "할인 (공고에 적힌 것)",
         "discountApplied": "가격에서 이미 뺐어요 (서버가 뺌)",
         "discountNotApplied": "표시만 했어요 (가격에서 빼지 않음 — 확인됨이 아니거나 뺄 수 없는 금액)",
@@ -349,16 +343,13 @@
         "heldValue": "보류된 자료 값",
         "heldBasis": "기준 타입 {type}",
         "heldHumanCheck": "최고 공급금액 사람 확인하기",
-        "title": "타입마다 가격이 어떻게 나뉘나요?",
-        "hint": "층마다 가격이 달라 최고가와 가장 낮은 층 가격을 보여 줘요. 할인이 있는 공고면 맨 오른쪽에 '할인' 열이 생겨요.",
-        "caption": "단위 원 · 최고가와 가장 낮은 층 가격은 공급가 기준(발코니 별도)"
+        "title": "타입마다 가격이 어떻게 나뉘나요?"
       },
       "payment": {
         "notice": "공고",
-        "kind": "구분",
         "effective": "적용 시작일",
         "down": "계약금",
-        "downFirst": "계약하는 날 먼저 내는 돈 (1차 계약금)",
+        "downFirst": "1차 계약금",
         "interim": "중도금",
         "interimTerms": "중도금 조건 (공고 문구)",
         "balance": "잔금",
@@ -367,7 +358,6 @@
         "current": "지금 적용",
         "changeVsFirst": "처음 공고 대비 계약금 변화",
         "title": "언제, 몇 번에 나눠 내나요?",
-        "hint": "공고마다 납부 비율을 나란히 보여 줘요. 비율만 보여 주고 회차별 금액은 계산하지 않았어요.",
         "item": "항목",
         "scheduleOf": "중도금 일정 · 공고 {no}",
         "dueDate": "낼 날짜",
@@ -382,7 +372,7 @@
         "applied": "접수",
         "ratio": "경쟁률 (모자라면 미달 세대)",
         "shortfall": "미달 {n}세대",
-        "pointsMissing": "당첨 가점: 이 화면에서는 아직 제공하지 않아요 — 청약홈 경쟁률에서 확인하세요",
+        "pointsMissing": "당첨 가점: 제공하지 않음 — 청약홈 경쟁률에서 확인",
         "points": "당첨된 사람 가점 (최저~최고 · 평균)",
         "pointsAvg": "평균",
         "noPointWinners": "가점제 당첨자 없음",
@@ -390,8 +380,7 @@
         "pointsBeforeAnnounce": "발표 전",
         "pointsNotCollected": "가점 미수집",
         "maxRatio": "가장 높았던 경쟁률",
-        "shortfallTypes": "신청이 모자랐던 타입",
-        "hint": "경쟁률이 1보다 작으면 신청이 모자랐다는 뜻이고, 그때는 모자란 세대 수를 보여 줘요."
+        "shortfallTypes": "신청이 모자랐던 타입"
       },
       "gap": {
         "pct": "주변 시세와 가격 차이",
@@ -402,9 +391,7 @@
         "unadjusted": "같은 계산 · 연식 보정 안 한 가운데값 기준",
         "score": "가격 차이 점수 (0~10)",
         "title": "주변 새 아파트 실거래와 비교하면 어떤가요?",
-        "hint": "높다·낮다는 사실만 보여 줄 뿐, 평가가 아니에요.",
-        "compsMedian": "비교 단지 전체 가운데값",
-        "compsMedianUnadjusted": "비교 단지 전체 가운데값 (연식 보정 안 함)"
+        "compsMedian": "비교 단지 전체 가운데값"
       },
       "ladder": {
         "horizons": "목표 시점",
@@ -414,29 +401,23 @@
       },
       "catalyst": {
         "list": "개발 소식 목록",
-        "kind": "종류",
         "stage": "단계",
         "expected": "예정",
         "distance": "거리",
-        "noLink": "단지 연결 없음",
         "source": "출처 기사 열기",
         "title": "주변에 개발 소식이 있나요?",
-        "hint": "교통·학교·상업 시설 같은 개발 소식을 단계별로 모았어요. 언론 보도만 있거나 아직 정해지지 않은 소식은 회색이에요.",
-        "empty": "이 단지에 연결된 개발 소식이 없어요",
-        "stageProb": "이 단계일 가능성"
+        "empty": "이 단지에 연결된 개발 소식이 없어요"
       },
       "provenance": {
         "fields": "출처가 있는 값",
         "field": "{field}",
-        "pick": "왼쪽에서 값을 고르면 오른쪽 원문에서 그 부분을 칠해 보여 줘요. 원문은 이 탭을 열 때 처음 불러와요.",
+        "pick": "값을 고르면 원문에서 그 부분을 칠해 보여 줘요.",
         "raw": "원문",
         "noRaw": "원문 파일 없음",
         "highlight": "발췌 위치",
         "excerptNotFound": "원문에서 발췌 위치를 찾지 못했어요 (발췌만 보여요)",
-        "openFile": "원문 파일 열기",
         "name": "단지 이름",
-        "title": "이 숫자는 어디에서 왔나요?",
-        "checkedAt": "확인일"
+        "title": "이 숫자는 어디에서 왔나요?"
       },
       "judgment": {
         "tool": "판정 종류",
@@ -484,47 +465,26 @@
       },
       "schedule": {
         "title": "일정은 어디쯤 왔나요?",
-        "hint": "공고문 날짜 그대로예요. 기준일에 이미 지난 날은 채운 점으로 보여 줘요.",
         "resale": "되팔기 가능",
-        "moveIn": "입주",
-        "past": "지난 일정",
-        "upcoming": "다가오는 일정"
+        "moveIn": "입주"
       },
       "gapMini": {
-        "title": "주변 새 아파트 실거래와 비교",
         "mid": "이 단지 가운데값",
-        "compsMedianOld": "예전 저장본이라 값 없음",
-        "more": "주변 시세 비교 자세히",
         "comps": "비교 단지",
         "compsCount": "{n}곳"
       },
       "compSummary": {
         "title": "청약 때 얼마나 몰렸나요?",
-        "basis": "기준: {basis} · 청약홈",
         "type": "{type}타입",
-        "points": "당첨된 사람 가점 (최저~최고)",
-        "more": "경쟁률 전체 보기",
-        "none": "경쟁률 요약이 없어요 (예전 저장본)"
+        "points": "당첨된 사람 가점 (최저~최고)"
       },
       "scoreWhy": {
-        "list": "점수 기준",
         "none": "점수 계산 전",
         "weight": "비중 {w}",
         "raw": "원값",
-        "p10Target": "목표 시점: {horizon} ({target})",
-        "p10Note": "당첨 확률이 아니에요 · 보장 아님 · 상대 비교",
-        "component": {
-          "p10": "목표 시점에 값이 오를 가능성 (+10% 상승 가능성)",
-          "rerank": "비슷한 단지들 사이 순위",
-          "gap": "주변 시세와 가격 차이",
-          "benchmark": "근처 새 아파트가 입주 뒤 오른 정도",
-          "supply": "같은 시기 입주 물량",
-          "liquidity": "되팔기 쉬움",
-          "move_in": "입주 시기"
-        }
+        "p10Target": "목표 시점: {horizon} ({target})"
       },
-      "more": "자세히 보기",
-      "tabHint": "탭은 주소 끝(#payment 처럼)에 기억돼요 · 키보드 ←→로 탭을 옮길 수 있어요"
+      "more": "자세히 보기"
     },
     "G4": {
       "title": "비교",

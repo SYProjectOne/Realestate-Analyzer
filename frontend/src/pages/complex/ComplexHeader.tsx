@@ -228,12 +228,12 @@ function StatusFacts({ detail }: { detail: ComplexDetail }) {
           <span className="font-semibold" data-testid="current-notice">
             {t('page.G3.summary.currentNotice', { kind: current.notice_kind })}
           </span>
-          <span className="text-xs text-muted">{t('page.G3.summary.effectiveFrom')}</span>
+          <span className="text-xs text-muted">{t('page.G3.payment.effective')}</span>
           <FactCell wrap fact={current.effective_from} unit="date" />
         </p>
       ) : null}
       <p className="flex flex-wrap items-center gap-1" data-testid="status-intake">
-        <span className="text-muted">{t('page.G3.summary.intake')}</span>
+        <span className="text-muted">{t('glossary.items.intake_status.term')}</span>
         {intake ? (
           <>
             <span className="font-semibold">
@@ -312,8 +312,8 @@ function PriceCard({ detail }: { detail: ComplexDetail }) {
         </p>
       ) : null}
       <div className="mt-1 flex flex-col gap-2 rounded-xl border border-border px-4 py-3">
-        <h3 className="text-sm font-semibold text-fg">{t('page.G3.gapMini.title')}</h3>
-        <FactList aria-label={t('page.G3.gapMini.title')}>
+        <h3 className="text-sm font-semibold text-fg">{t('page.G3.gap.title')}</h3>
+        <FactList aria-label={t('page.G3.gap.title')}>
           <FactRow
             label={
               <span className="inline-flex items-center gap-1">
@@ -333,7 +333,7 @@ function PriceCard({ detail }: { detail: ComplexDetail }) {
               wrap
               fact={gap.comps_median ?? null}
               unit="won"
-              emptyReason={t('page.G3.gapMini.compsMedianOld')}
+              emptyReason={t('page.G3.summary.downWonMissing')}
             />
           </FactRow>
           <FactRow label={t('page.G3.gapMini.comps')}>
@@ -349,7 +349,7 @@ function PriceCard({ detail }: { detail: ComplexDetail }) {
           replace
           className="self-start text-sm font-medium text-accent hover:underline"
         >
-          {t('page.G3.gapMini.more')}
+          {t('page.G3.tab.gap')}
         </Link>
       </div>
     </Card>
@@ -469,7 +469,7 @@ function MoneyCard({ detail }: { detail: ComplexDetail }) {
           replace
           className="text-sm font-medium text-accent hover:underline"
         >
-          {t('page.G3.summary.moreMoney')}
+          {t('page.G3.tab.payment')}
         </Link>
       </div>
     </Tier>
@@ -580,7 +580,7 @@ function ConditionsCard({ detail }: { detail: ComplexDetail }) {
         />
       </div>
       <p className="rounded-xl bg-subtle px-4 py-2.5 text-[13px] text-fg-2">
-        {t('page.G3.summary.termTip')} · {t('page.G3.summary.specialHint')}
+        {t('page.G3.summary.specialHint')}
       </p>
     </Tier>
   );

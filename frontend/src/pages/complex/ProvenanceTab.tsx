@@ -170,9 +170,7 @@ export function ProvenanceTab({ detail }: { detail: ComplexDetail }) {
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <LabelBadge label={prov.data.label} reason={prov.data.reason} />
               {prov.data.checked_at ? (
-                <span className="text-muted">
-                  {t('page.G3.provenance.checkedAt')} {formatDate(prov.data.checked_at)}
-                </span>
+                <span className="text-muted">{formatDate(prov.data.checked_at)}</span>
               ) : null}
               {prov.data.url ? (
                 <ExternalLink href={prov.data.url} className="break-all underline" />

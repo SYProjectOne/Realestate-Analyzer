@@ -163,7 +163,6 @@ function Detail({ detail }: { detail: ComplexDetail }) {
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted">{t('page.G3.tabHint')}</p>
         </div>
         {/* 활성 탭만 마운트 — 원문(provenance) 탭은 열 때 처음 로드된다(지연 로드) */}
         <div

@@ -70,7 +70,7 @@ export function ScheduleCard({ detail }: { detail: ComplexDetail }) {
   };
   const nextIndex = steps.findIndex((s) => !past(s) && dayText(s.day) !== null);
   return (
-    <Tier tier="schedule" title={t('page.G3.schedule.title')} hint={t('page.G3.schedule.hint')}>
+    <Tier tier="schedule" title={t('page.G3.schedule.title')}>
       {header.apply_dates.length === 0 ? (
         <p className="text-sm" data-testid="apply-dates">
           <EmptyState inline reason={t('page.G3.summary.noScheduleReason')} />
@@ -115,9 +115,6 @@ export function ScheduleCard({ detail }: { detail: ComplexDetail }) {
                 <span
                   className={`text-sm ${next ? 'font-semibold text-accent-ink' : done ? 'text-fg-2' : 'font-medium text-fg'}`}
                 >
-                  <span className="sr-only">
-                    {done ? t('page.G3.schedule.past') : t('page.G3.schedule.upcoming')}
-                  </span>
                   {s.label}
                 </span>
                 <span className="text-[13px] text-fg-2">{s.value}</span>

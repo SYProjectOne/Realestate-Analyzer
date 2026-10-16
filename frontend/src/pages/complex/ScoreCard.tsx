@@ -89,7 +89,7 @@ export function ScoreCard({ detail }: { detail: ComplexDetail }) {
       </div>
 
       {views.length > 0 ? (
-        <ul aria-label={t('page.G3.scoreWhy.list')} className="flex flex-col gap-3">
+        <ul aria-label={t('page.G3.summary.score')} className="flex flex-col gap-3">
           {views.map(({ key, view }) => (
             <li
               key={key}
@@ -100,7 +100,7 @@ export function ScoreCard({ detail }: { detail: ComplexDetail }) {
               <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <span className="flex flex-wrap items-baseline gap-2">
                   <span className="text-sm font-semibold text-fg">
-                    {t(`page.G3.scoreWhy.component.${key}`)}
+                    {t(`chart.C06.component.${key}`)}
                   </span>
                   <MetaText
                     kind="input"
@@ -135,7 +135,7 @@ export function ScoreCard({ detail }: { detail: ComplexDetail }) {
                       })}
                     </span>
                   ) : null}
-                  <span>{t('page.G3.scoreWhy.p10Note')}</span>
+                  <span>{t('page.G3.ladder.note')}</span>
                 </span>
               ) : null}
             </li>
