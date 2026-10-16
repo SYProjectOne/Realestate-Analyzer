@@ -44,15 +44,24 @@ function expectLabelled(root: HTMLElement, prov: string) {
   });
 }
 
-describe('R9-UI P1 G3 머리 3단', () => {
-  it('정보 계층 순서: 단지 → 지금 상태 → 내야 할 돈 → 청약 전 꼭 볼 조건 → 점수·분류, 그 뒤 탭', async () => {
+describe('R9-UI P1 · R11 G3 머리(질문형 구역)', () => {
+  it('정보 계층 순서: 단지 → 지금 상태 → 가격 → 내야 할 돈 → 꼭 확인할 조건 → 일정 → 경쟁률 → 점수, 그 뒤 탭', async () => {
     const detail = await exampleDetail();
     const { container } = renderRoute('/complexes/2');
     await summary(detail.header.name);
     const tiers = [...container.querySelectorAll('[data-tier]')].map((el) =>
       el.getAttribute('data-tier'),
     );
-    expect(tiers).toEqual(['identity', 'status', 'money', 'conditions', 'score']);
+    expect(tiers).toEqual([
+      'identity',
+      'status',
+      'price',
+      'money',
+      'conditions',
+      'schedule',
+      'competition',
+      'score',
+    ]);
     const scoreTier = container.querySelector('[data-tier="score"]') as HTMLElement;
     const tablist = screen.getByRole('tablist', { name: t('page.G3.tabs') });
     expect(
@@ -80,10 +89,11 @@ describe('R9-UI P1 G3 머리 3단', () => {
     for (const fact of [current?.down_payment_pct, current?.interim_pct, current?.balance_pct]) {
       expectLabelled(money, fact?.prov ?? '');
     }
-    const status = within(head).getByRole('region', { name: t('page.G3.summary.status') });
-    expectLabelled(status, detail.header.winner_date.prov ?? '');
+    // R11: 당첨 발표는 '일정은 어디쯤 왔나요?' 진행 줄로
+    const schedule = within(head).getByRole('region', { name: t('page.G3.schedule.title') });
+    expectLabelled(schedule, detail.header.winner_date.prov ?? '');
     // 날짜는 기준일 대비 D±
-    const winner = status.querySelector(`[data-prov="${detail.header.winner_date.prov}"]`);
+    const winner = schedule.querySelector(`[data-prov="${detail.header.winner_date.prov}"]`);
     expect(winner?.textContent).toMatch(/\(D[+-]\d+\)|D-day/);
   });
 
@@ -102,9 +112,9 @@ describe('R9-UI P1 G3 머리 3단', () => {
     useDetail({ ...detail, header: { ...detail.header, apply_dates: [] } });
     renderRoute('/complexes/2');
     const head = await summary(detail.header.name);
-    const status = within(head).getByRole('region', { name: t('page.G3.summary.status') });
+    const schedule = within(head).getByRole('region', { name: t('page.G3.schedule.title') });
     expect(
-      within(status).getByText(
+      within(schedule).getByText(
         t('empty.unknownWithReason', { reason: t('page.G3.summary.noScheduleReason') }),
       ),
     ).toBeInTheDocument();

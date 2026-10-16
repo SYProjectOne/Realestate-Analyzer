@@ -307,7 +307,11 @@ test.describe('R5-FE(D25-1) 차트 지연 로딩 · 전역 쿼리 유지', () =>
     await card.getByRole('link').first().click();
     await expect(page.getByRole('heading', { level: 1, name: P.G3.title })).toBeVisible();
     keep(new URL(page.url()));
-    await page.getByRole('navigation').getByRole('link', { name: ko.nav.G2 }).click();
+    // R11: G3 현재 위치 줄에도 '단지 찾기' 링크가 있다 — 주 메뉴로 좁힌다
+    await page
+      .getByRole('navigation', { name: ko.nav.label })
+      .getByRole('link', { name: ko.nav.G2 })
+      .click();
     await expect(page.getByRole('heading', { level: 1, name: P.G2.title })).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/complexes');
     keep(new URL(page.url()));

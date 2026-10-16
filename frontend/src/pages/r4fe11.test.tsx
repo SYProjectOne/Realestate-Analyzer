@@ -280,11 +280,12 @@ describe("F3(D22-5) 현재 구매가 사유 '출처 상충 — compare 대기' �
     const basis = detail.price.basis_type_code!;
     renderRoute('/complexes/2');
     const head = await screen.findByRole('region', { name: detail.header.name });
+    // 현재 구매가 하단·상단 + (R11) 주변 거래 비교의 '이 단지 가운데값'(price_mid)도 같은 사유
     expect(
       within(head).getAllByText(
         t('empty.unknownWithReasonDate', { reason: CONFLICT_HOLD, date: '2026-10-07' }),
       ).length,
-    ).toBe(2);
+    ).toBe(3);
     const note = within(head).getByTestId('held-price-note');
     expect(note).not.toHaveTextContent(t('page.G3.price.held', { type: basis }));
     expect(note).toHaveTextContent(t('page.G3.price.heldBasis', { type: basis }));
