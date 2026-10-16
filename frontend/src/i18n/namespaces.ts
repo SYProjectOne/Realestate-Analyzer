@@ -31,10 +31,9 @@ export type KoNamespace = (typeof KO_NAMESPACES)[number];
 /**
  * 화면 폴더(`src/pages/<폴더>/index.tsx`, routes.tsx 가 lazy 로 여는 것) → 그 화면이 쓰는 이름공간.
  *
- * 빌드 플러그인 `ko-split` 이 화면 index 모듈 맨 앞에 `import 'virtual:ko/page/<폴더>'` 를 넣는다 — 이 목록의 문자열을
- * 합친 트리를 **화면 청크 안에** 싣고 화면 모듈보다 먼저 등록한다(추가 요청 0, 첫 렌더에 문자열이 있다). 공용
- * 이름공간(chart·glossary)은 화면마다 사본이 들어간다 — 따로 받으면 모바일(HTTP/1.1 연결 6개)에서 요청 한 번이 늘어
- * LCP 가 0.1~0.3초 늦었다(R11-I18N 실측).
+ * 빌드 플러그인 `ko-split` 이 화면 index 모듈 맨 앞에 `import 'virtual:ko/page/<폴더>'` 를 넣는다 — 그 모듈이 이 목록의
+ * 이름공간 청크(`ko-*`)를 **정적으로** import 해 등록한다: 화면 청크와 함께 받고 화면 모듈보다 먼저 평가된다(첫 렌더에
+ * 문자열이 있다, 깜빡임·CLS 없음). 화면 코드·routes.tsx 는 그대로다.
  *
  * 화면이 다른 화면의 `page.Gx.*`·`chart.*`·`<Term>` 을 새로 쓰면 여기에 이름공간을 더한다 —
  * src/i18n/routeNamespaces.test.ts 가 빠진 것을 이름으로 알려 준다. 화면 코드·routes.tsx 는 고치지 않는다.
@@ -53,14 +52,12 @@ export const PAGE_NAMESPACES: Record<string, readonly KoNamespace[]> = {
   glossary: ['glossary'],
 };
 
-/** 화면 폴더 이름공간을 합친 트리(빌드 플러그인이 화면 청크에 싣는다) */
-export function pageStrings(split: KoSplit, folder: string): KoTree {
-  const list = PAGE_NAMESPACES[folder];
-  if (!list) throw new Error(`no PAGE_NAMESPACES entry: ${folder}`);
-  const out: KoTree = {};
-  for (const ns of list) mergeInto(out, JSON.parse(JSON.stringify(split.namespaces[ns])) as KoTree);
-  return out;
-}
+/**
+ * 거의 모든 화면이 쓰는 공용 이름공간 — 빌드가 index.html 에 `<link rel="modulepreload">` 를 달아 vendor 와 같은 첫 요청
+ * 묶음에서 받는다(진입 정적 닫힘·예산 밖 — 진입 실행을 막지 않는다). R11-I18N 실측(모바일, 느린 4G): 화면 청크 다음
+ * 묶음에서 받거나 화면 청크에 사본으로 넣으면 LCP 가 0.1~0.3초 늦었다 — 그 묶음이 화면 청크·공용 청크로 이미 붐빈다.
+ */
+export const PRELOAD_NAMESPACES: readonly KoNamespace[] = ['glossary', 'chart'];
 
 /** 이름공간 → ko.json 점 경로('page/G3' → 'page.G3') */
 export function namespacePath(ns: KoNamespace): string {

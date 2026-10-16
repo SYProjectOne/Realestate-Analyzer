@@ -9,7 +9,7 @@ import {
   getPath,
   KO_NAMESPACES,
   PAGE_NAMESPACES,
-  pageStrings,
+  PRELOAD_NAMESPACES,
   splitKo,
   type KoNamespace,
   type KoTree,
@@ -67,18 +67,23 @@ const KO_RESOLVED = `\0${KO_VIRTUAL}`;
 /**
  * R11-I18N: ko.json(원본 한 파일, AGENTS 규칙 12)을 가상 모듈로 나눠 낸다 — 빌드·dev·vitest 모두.
  *  - `virtual:ko/core`: 진입 청크에 들어가는 core 사전(src/i18n/index.ts 가 정적 import)
- *  - `virtual:ko/page/<화면 폴더>`: 그 화면 이름공간(PAGE_NAMESPACES)을 합친 트리를 **등록하는** 모듈. transform 이
- *    `src/pages/<폴더>/index.tsx` 맨 앞에 import 를 넣는다 → 화면 청크 안에 실리고, 화면 모듈보다 먼저 평가된다.
- *  - `virtual:ko/ns/<이름공간>`: 이름공간 하나(loadNamespace — MSW 모드·차트 갤러리, 청크 이름 `ko-*`)
+ *  - `virtual:ko/page/<화면 폴더>`: 그 화면 이름공간(PAGE_NAMESPACES)을 **등록하는** 모듈. transform 이
+ *    `src/pages/<폴더>/index.tsx` 맨 앞에 import 를 넣는다 → 화면 청크와 함께 받고, 화면 모듈보다 먼저 평가된다.
+ *  - `virtual:ko/ns/<이름공간>`: 이름공간 하나(청크 이름 `ko-*`). 화면 등록 모듈이 정적으로, loadNamespace(MSW 모드·
+ *    차트 갤러리)가 동적으로 import 한다
  *  - `virtual:ko/keys/<점 경로>`: 그 아래 키 이름 목록(본문 없이 — 예: 용어 키 목록)
  * 나누는 규칙은 src/i18n/namespaces.ts. 매 load 마다 원본을 다시 읽는다(dev 에서 ko.json 을 고치면 바로 반영).
  */
 function koSplit(): Plugin {
   const readKo = (): KoTree => JSON.parse(readFileSync(KO_JSON, 'utf8')) as KoTree;
+  let base = '/';
   const asModule = (value: unknown) =>
     `export default JSON.parse(${JSON.stringify(JSON.stringify(value))});\n`;
   return {
     name: 'ko-split',
+    configResolved(config) {
+      base = config.base;
+    },
     resolveId(id) {
       return id.startsWith(KO_VIRTUAL) ? `\0${id}` : null;
     },
@@ -94,11 +99,14 @@ function koSplit(): Plugin {
         return asModule(splitKo(full).namespaces[ns]);
       }
       if (rest.startsWith('page/')) {
+        // 이름공간마다 따로 된 ko-* 청크를 **정적** import 해 등록 — 화면 청크와 같이(병렬로) 받고, 화면 모듈보다 먼저
+        // 평가된다. 공용(chart·glossary)은 사본 없이 청크 하나(index.html modulepreload 로 첫 요청 묶음에서 받는다).
         const folder = rest.slice('page/'.length);
-        if (!(folder in PAGE_NAMESPACES))
-          this.error(`ko-split: no PAGE_NAMESPACES entry ${folder}`);
-        const tree = JSON.stringify(JSON.stringify(pageStrings(splitKo(full), folder)));
-        return `import { registerStrings } from '@/i18n';\nregisterStrings(JSON.parse(${tree}));\n`;
+        const list = PAGE_NAMESPACES[folder];
+        if (!list) this.error(`ko-split: no PAGE_NAMESPACES entry ${folder}`);
+        const lines = list.map((ns, i) => `import s${i} from '${KO_VIRTUAL}ns/${ns}';`);
+        const calls = list.map((_ns, i) => `registerStrings(s${i});`);
+        return [`import { registerStrings } from '@/i18n';`, ...lines, ...calls, ''].join('\n');
       }
       if (rest.startsWith('keys/')) {
         const node = getPath(full, rest.slice('keys/'.length));
@@ -114,6 +122,22 @@ function koSplit(): Plugin {
       const m = /\/src\/pages\/([^/]+)\/index\.tsx$/.exec(path);
       if (!m || !((m[1] as string) in PAGE_NAMESPACES)) return null;
       return { code: `import '${KO_VIRTUAL}page/${m[1]}';${code}`, map: null };
+    },
+    // 빌드: 거의 모든 화면이 쓰는 공용 이름공간 청크를 index.html 에서 modulepreload — vendor 와 같은 첫 요청 묶음에서
+    // 받는다(진입 정적 닫힘이 아니다 — 진입 실행을 막지 않는다). 화면 청크 묶음에서 받으면 모바일 LCP 가 늦었다(R11-I18N 실측).
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        if (!ctx.bundle) return undefined;
+        const names = new Set(PRELOAD_NAMESPACES.map((ns) => `ko-${ns.replace(/\//g, '-')}`));
+        return Object.values(ctx.bundle)
+          .filter((c) => c.type === 'chunk' && names.has(c.name))
+          .map((c) => ({
+            tag: 'link',
+            attrs: { rel: 'modulepreload', crossorigin: true, href: `${base}${c.fileName}` },
+            injectTo: 'head' as const,
+          }));
+      },
     },
     handleHotUpdate({ file, server }) {
       if (resolvePath(file) !== resolvePath(KO_JSON)) return undefined;
