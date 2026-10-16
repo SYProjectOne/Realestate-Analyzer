@@ -50,6 +50,8 @@ details>summary::-webkit-details-marker{display:none}
 .half{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 @media (max-width:1000px){.three{grid-template-columns:minmax(0,1fr)}}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 @media (max-width:760px){.btn{white-space:normal}.steps,.half{grid-template-columns:minmax(0,1fr)}main{padding-left:16px !important;padding-right:16px !important}}
 </style>
 </helmet>
@@ -85,6 +87,8 @@ details>summary::-webkit-details-marker{display:none}
 </header>
 
 <main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 24px;">
+
+<div class="fix" role="note" style="background: #FFF8DB; border: 1px solid #F2D675; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 7개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Reports.md</div>
 
 <section aria-labelledby="top" style="display: flex; flex-direction: column; gap: 8px;">
 <p style="margin: 0; font-size: 14px; color: #5B6472;">인천 · 발행된 기준일 9개 · 만든 보고서 0개</p>
@@ -160,6 +164,11 @@ details>summary::-webkit-details-marker{display:none}
 <p role="status" style="margin: 0; font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><b>작업 진행</b><span style="color: #5B6472;">보고서 만들기 (report)</span><span class="pill pill-b">실행 중</span><span class="num" style="color: #5B6472;">[n]/[n] · 단계 [단계 이름]</span></p>
 <div style="height: 8px; background: #E3E7EC; border-radius: 999px; overflow: hidden;" role="progressbar" aria-label="보고서 만들기 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="45"><div style="width: 45%; height: 100%; background: #2350D8;"></div></div>
 <p class="hint" style="margin: 0;">끝나면 아래 '만든 보고서' 목록이 저절로 새로 고쳐져요. 상태를 못 받으면 "상태를 받지 못해 다시 확인하는 중: [설명]", 실패하면 "오류: [설명]"이 여기에 나와요.</p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #EEF1F4; padding-top: 10px;">
+<span class="fixtag" style="align-self: flex-start;">고침 RP-1</span>
+<p role="status" style="margin: 0; font-size: 14px; color: #5B6472;">상태를 받지 못해 다시 확인하는 중: [설명]</p>
+<p role="alert" style="margin: 0; font-size: 14px; color: #A3470A;">오류: [설명]</p>
+</div>
 </div>
 </section>
 
@@ -193,6 +202,19 @@ details>summary::-webkit-details-marker{display:none}
 <p class="hint" style="margin: 0;">기준일이나 상황을 다시 고르면 오류 안내는 지워져요. 지역을 바꾸면 고른 기준일·비교·상황·진행 상황이 모두 처음으로 돌아가요.</p>
 </div>
 </div>
+<div class="fix" style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<h3 style="margin: 0; font-size: 16px; font-weight: 700;"><span class="fixtag">고침 RP-2</span> '보고서 만들기' 버튼이 꺼진 모습과 꺼지는 조건</h3>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px;">
+<button type="button" class="btn btn-p" disabled="" title="읽기 전용 열쇠로는 저장·실행할 수 없어요" style="font-size: 16px; padding: 12px 24px; min-height: 48px;">보고서 만들기</button>
+<span class="hint">마우스를 올리면(읽기 전용 열쇠일 때만): "읽기 전용 열쇠로는 저장·실행할 수 없어요"</span>
+</div>
+<ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #3A4250; line-height: 1.75;">
+<li>읽기 전용 열쇠일 때</li>
+<li>1번에서 기준일을 아직 고르지 않았을 때</li>
+<li>위 '막힘 4가지' 중 하나가 떠 있을 때</li>
+<li>만들기 요청을 보내는 중일 때(잠깐)</li>
+</ul>
+</div>
 </section>
 
 <!-- 만든 보고서 -->
@@ -218,7 +240,10 @@ details>summary::-webkit-details-marker{display:none}
 <caption class="sr">만든 보고서 목록 예시</caption>
 <thead><tr><th scope="col">만든 때</th><th scope="col">기준일</th><th scope="col">비교한 기준일</th><th scope="col">형식</th><th scope="col">상태</th><th scope="col">크기</th><th scope="col">파일</th></tr></thead>
 <tbody>
-<tr><td>[날짜 시각]</td><td>2026.10.14 · 7번째 수정본</td><td>2026.10.14 · 6번째 수정본</td><td>HTML</td><td><span class="pill">완료</span></td><td>[n]KB</td><td><button type="button" class="btn" style="font-size: 13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>[파일 이름].html 받기</button></td></tr>
+<tr><td>[날짜 시각]</td><td>2026.10.14 · 7번째 수정본</td><td>2026.10.14 · 6번째 수정본</td><td>HTML</td><td><span class="pill">완료</span></td><td>[n]KB</td><td><button type="button" class="btn" style="font-size: 13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>[파일 이름].html</button></td></tr>
+<tr class="fix"><td><span class="fixtag">고침 RP-3</span> [날짜 시각]</td><td>2026.10.14 · 7번째 수정본</td><td style="color: #7A8391;">—</td><td>PDF</td><td><span class="pill">완료</span></td><td>[n]KB</td><td><button type="button" class="btn" style="font-size: 13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>다운로드</button><span style="display: block; font-size: 12px; color: #5B6472; margin-top: 4px;">파일 이름이 없을 때</span></td></tr>
+<tr class="fix"><td>[날짜 시각]</td><td>2026.10.14 · 6번째 수정본</td><td style="color: #7A8391;">—</td><td>HTML</td><td><span class="pill">완료</span></td><td>[n]KB</td><td><button type="button" class="btn" disabled="" style="font-size: 13px;">내려받는 중…</button><span style="display: block; font-size: 12px; color: #5B6472; margin-top: 4px;">받는 동안 꺼짐</span></td></tr>
+<tr class="fix"><td>[날짜 시각]</td><td>2026.10.13</td><td style="color: #7A8391;">—</td><td>HTML</td><td><span class="pill">완료</span></td><td>[n]KB</td><td><button type="button" class="btn" style="font-size: 13px;">[파일 이름].html</button><span role="alert" style="display: block; font-size: 12px; color: #A3470A; margin-top: 4px;">내려받지 못했어요: [설명]</span></td></tr>
 <tr><td>[날짜 시각]</td><td>2026.10.15</td><td style="color: #7A8391;">—</td><td>PDF</td><td><span class="pill pill-b">실행 중</span></td><td></td><td></td></tr>
 <tr><td>[날짜 시각]</td><td>기준일 #[번호]</td><td style="color: #7A8391;">—</td><td>PDF</td><td><span class="pill pill-d">실패</span><span style="display: block; font-size: 12px; color: #A3470A; margin-top: 4px;">[막힌 이유]</span></td><td></td><td></td></tr>
 </tbody>
@@ -242,7 +267,7 @@ details>summary::-webkit-details-marker{display:none}
 <div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #5B6472;">바뀐 항목</span><span class="num" style="font-size: 26px; font-weight: 700;">5<span style="font-size: 15px; font-weight: 600;">건</span></span><span style="font-size: 12px; color: #5B6472;">단지 5곳</span></div>
 <div style="border: 1px solid #F3D6B8; background: #FFF7EF; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #A3470A;">중요</span><span class="num" style="font-size: 26px; font-weight: 700;">5<span style="font-size: 15px; font-weight: 600;">건</span></span><span style="font-size: 12px; color: #5B6472;">알림 0 · 정보 0</span></div>
 <div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #5B6472;">무엇이 바뀌었나</span><span style="font-size: 17px; font-weight: 700; line-height: 1.35;">공식 홈페이지 팝업</span><span style="font-size: 12px; color: #5B6472;">5건 모두 같은 항목</span></div>
-<div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #5B6472;">알아챈 때</span><span class="num" style="font-size: 26px; font-weight: 700;">10.14 <span style="font-size: 15px; font-weight: 600;">22:42</span></span><span style="font-size: 12px; color: #5B6472;">같은 날 다시 모을 때</span></div>
+<div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #5B6472;">알아챈 때</span><span class="num" style="font-size: 26px; font-weight: 700;">10.14 <span style="font-size: 15px; font-weight: 600;">22:42</span></span><span class="fix" style="font-size: 12px; color: #5B6472;"><span class="fixtag">고침 RP-4</span> 5건 모두 이 시각에 감지</span></div>
 </div>
 <div style="overflow-x: auto;">
 <table class="tbl num" style="min-width: 900px;">
@@ -266,6 +291,7 @@ details>summary::-webkit-details-marker{display:none}
 <div style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1 1 360px;">
 <p style="margin: 0; font-size: 13px; font-weight: 700;">글자로 된 값이 바뀌면 <span class="exm">예시 · 자리표시</span></p>
 <p style="margin: 0; font-size: 14px;"><b>[단지 이름]</b> · 납부 조건 · 계약금 비율 · <span class="num">[이전 값] → [새 값]</span> <span class="pill">알림</span></p>
+<p class="fix" style="margin: 0; font-size: 14px;"><span class="fixtag">고침 RP-5</span> <b>[지역 이름]</b> · 지역 · 첫 적재 · <span class="num">첫 적재: 단지 [n]개, 값 [n]건(첫 적재 중 기록·덮어쓰기 — 변경 이벤트 대신 요약)</span> <span class="pill">정보</span> <span class="hint">(지역을 처음 모았을 때 — 화살표 없이 한 문장)</span></p>
 <p class="hint" style="margin: 0;">'무엇'에는 단지·주택형·납부 조건·경쟁률·잔여 공고·접수 상태·지역·판정기·호재(개발 소식)·근처 새 아파트 비교·입주 물량·미분양·실거래·체크리스트·공고 중 하나가 와요. 중요도는 정보 · 알림 · 중요.</p>
 </div>
 <div style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1 1 300px;">
@@ -312,6 +338,18 @@ details>summary::-webkit-details-marker{display:none}
 </div>
 </div>
 </div>
+<div class="card fix" style="padding: 20px; display: flex; flex-direction: column; gap: 8px; background: #FFFDF2;">
+<h3 style="margin: 0; font-size: 16px; font-weight: 700;"><span class="fixtag">고침 RP-6</span> 공유 링크 받는 곳 · 동작 메모 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">(그림으로 못 그리는 것 · 대응표 번호)</span></h3>
+<ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #3A4250; line-height: 1.75;">
+<li>#78 이 브라우저에 쓰기 열쇠가 없으면 묻지 않고 보기 전용 열쇠를 이 브라우저에 저장한 뒤 홈으로 가요.</li>
+<li>#79 열쇠를 적용하면 주소창에서 # 뒷부분을 지우고(방문 기록에도 남기지 않음) 홈(/)으로 가요.</li>
+<li>#86 3번 창이 열리면 처음 선택은 '이 탭에서만 보기 전용으로 보기'예요.</li>
+<li>#87 3번 창에서 Esc를 누르면 '취소'와 같아요 — 아무것도 바꾸지 않고 홈으로 가요.</li>
+<li>#88 권한을 모르는 저장 열쇠, 빌드할 때 넣은 열쇠도 '쓰기 열쇠가 있을 때'로 보고 3번 창을 띄워요.</li>
+<li>#89 링크를 처음 열 때 한 번만 판단해요. 적용한 뒤에는 창이 다시 뜨지 않아요.</li>
+<li>#90 열쇠를 정하기 전에는 서버 자료를 부르지 않아요(앱 틀 밖 화면이라 열쇠 입력 창이 뜨지 않아요).</li>
+</ul>
+</div>
 </section>
 
 <!-- 공통 상태 -->
@@ -325,6 +363,20 @@ details>summary::-webkit-details-marker{display:none}
 </div>
 </section>
 
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFDF2;">
+<h2 id="keep" style="margin: 0; font-size: 17px; font-weight: 700;"><span class="fixtag">고침 RP-7</span> 구현할 때 지금 동작 그대로 유지 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">(그림으로 못 그리는 것 · 대응표 번호)</span></h2>
+<ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #3A4250; line-height: 1.75;">
+<li>#2 지역을 바꾸면 고른 기준일·비교·상황, 만들기 오류, 작업 진행이 모두 처음으로 돌아가요.</li>
+<li>#9 비교로 고른 수정본을 1번(대상)에서 고르면 비교는 '비교 안 함'으로 돌아가요.</li>
+<li>#11 3번 상황을 고르지 않으면 머리줄의 상황(?scenario=)을 따라요.</li>
+<li>#17 기준일을 고르지 않았거나 만들기 요청을 보내는 중이면 '보고서 만들기'가 꺼져요(모습은 위 '버튼이 꺼진 모습').</li>
+<li>#29 기준일이나 상황을 다시 고르면 만들기 오류 안내를 지워요.</li>
+<li>#34 작업이 끝나면 '만든 보고서' 목록을 다시 받아요.</li>
+<li>#54 아직 다 안 만들어진 보고서를 받으려 하면(409) 목록을 다시 받아요.</li>
+<li>#55 읽기 전용 열쇠여도 만든 보고서 받기는 돼요.</li>
+</ul>
+</section>
+
 <footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
 <span>보고서는 개인의 청약 자격을 판정하지 않아요. 최종 기준은 입주자 모집 공고문이에요. 상대 비교 · 투자 권유 아님.</span>
 <span><span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산하거나 판정기가 낸 값 · 보고서 안 숫자에도 같은 표시가 붙어요</span>
@@ -333,7 +385,7 @@ details>summary::-webkit-details-marker{display:none}
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4300}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5600}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

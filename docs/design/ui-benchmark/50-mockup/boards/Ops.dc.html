@@ -64,6 +64,12 @@ details>summary::-webkit-details-marker{display:none}
 @media (max-width:1100px){.two,.calwrap{grid-template-columns:minmax(0,1fr)}.stat7{grid-template-columns:repeat(4,minmax(0,1fr))}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:900px){.ops-grid{grid-template-columns:minmax(0,1fr)}.ops-nav{position:static;min-width:0}.navlist{flex-direction:row !important;overflow-x:auto}.navlist a{white-space:nowrap}}
 @media (max-width:640px){.barrow{grid-template-columns:minmax(0,1fr);gap:4px}.btn{white-space:normal}.fgrid{grid-template-columns:minmax(0,1fr)}.stat7{grid-template-columns:repeat(2,minmax(0,1fr))}.tiles{grid-template-columns:minmax(0,1fr)}main{padding-left:16px !important;padding-right:16px !important}}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.indet{height:8px;border-radius:999px;background:repeating-linear-gradient(90deg,#9AA6B6 0,#9AA6B6 14px,#E3E7EC 14px,#E3E7EC 28px)}
+.apin{font-size:11px;font-weight:600;color:#8A4B0F;background:#FFF1E6;border-radius:4px;padding:0 5px}
+.dim{opacity:.55}
+.keep li{margin:0;font-size:14px;color:#3A4250;line-height:1.6}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -97,6 +103,10 @@ details>summary::-webkit-details-marker{display:none}
 </div>
 </header>
 
+<div style="max-width: 1280px; margin: 0 auto; padding: 16px 24px 0; box-sizing: border-box;">
+<div class="fix" role="note" style="background: #FFF8DB; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 14개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Ops.md</div>
+</div>
+
 <main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 24px;">
 
 <section aria-labelledby="top" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px;">
@@ -111,6 +121,7 @@ details>summary::-webkit-details-marker{display:none}
 </div>
 </section>
 
+<p class="fix" style="margin: 0; font-size: 13px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 OP-10</span>'오늘 확인할 것' 타일은 서버 수를 그대로 쓰거나 줄 개수만 세요. '급한 것·나중에 봐도 되는 것' 같은 화면이 붙인 판단 이름은 뺐고, 대기열 분류 이름과 건수를 그대로 적어요. 모순 주장 타일은 OP-9와 같아요.</p>
 <section aria-label="오늘 확인할 것" class="tiles">
 <sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
 <a href="{{t.href}}" class="card" style="{{t.style}}">
@@ -169,12 +180,13 @@ details>summary::-webkit-details-marker{display:none}
 <tr><td><span class="pill">계약</span></td><th scope="row">계약 체결 마감</th><td>숭의역 노르웨이숲 더 스카이</td><td><span class="src">10.21</span><br><span style="font-size: 12px; color: #5B6472;">D-6</span></td><td><label for="c6" class="sr">상태 · 숭의역 노르웨이숲 더 스카이 계약</label><select id="c6" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 청약홈 계약일</td></tr>
 <tr><td><span class="pill pill-b">당첨자 발표</span></td><th scope="row">당첨자 발표</th><td>산곡역자이힐스테이트앤하늘채</td><td><span class="src">10.27</span><br><span style="font-size: 12px; color: #5B6472;">D-12</span></td><td><label for="c7" class="sr">상태 · 산곡역 당첨자 발표</label><select id="c7" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 청약홈 당첨자 발표일</td></tr>
 <tr><td><span class="pill">직접 확인할 것</span></td><th scope="row">토지거래허가구역 여부·대지지분 기준 확인</th><td>산곡역자이힐스테이트앤하늘채</td><td style="color: #5B6472;">기한 없음</td><td><label for="c8" class="sr">상태 · 토지거래허가구역 확인</label><select id="c8" class="sel-s"><option selected="">열림</option><option>완료</option><option>해당 없음</option></select></td><td style="font-size: 12px; color: #5B6472;">자동 · 프로그램이 정하지 않는 항목이라 직접 확인</td></tr>
-<tr style="color: #7A8391;"><td><span class="pill">중도금 납부</span></td><th scope="row" style="color: #7A8391;">중도금 3회차 납부일</th><td>두산위브 더센트럴 도화</td><td>2027.02.10</td><td><label for="c9" class="sr">상태 · 두산위브 더센트럴 도화 중도금</label><select id="c9" class="sel-s"><option>열림</option><option>완료</option><option selected="">해당 없음</option></select><br><span class="pill" style="margin-top: 6px;" title="근거 자료가 사라졌거나 값이 검증에서 빠져 자동으로 닫았어요 — 근거가 돌아오면 다시 열려요">자동으로 닫힘</span><span style="display: block; font-size: 11px; color: #7A8391; margin-top: 4px; max-width: 180px;">근거가 사라지거나 단지가 빠져 자동으로 닫았어요. 근거가 돌아오면 다시 열려요.</span></td><td style="font-size: 12px;">자동 · 공고문 납부 조건 10.0%</td></tr>
+<tr class="dim fix" style="color: #7A8391;"><td><span class="pill">중도금 납부</span> <span class="fixtag">고침 OP-2</span></td><th scope="row" style="color: #7A8391;">중도금 3회차 납부일</th><td>두산위브 더센트럴 도화</td><td>2027.02.10</td><td><label for="c9" class="sr">상태 · 두산위브 더센트럴 도화 중도금</label><select id="c9" class="sel-s"><option>열림</option><option>완료</option><option selected="">해당 없음</option></select><br><span class="pill" style="margin-top: 6px;" title="근거 자료가 사라졌거나 값이 검증에서 빠져 자동으로 닫았어요 — 근거가 돌아오면 다시 열려요">자동으로 닫힘</span><span style="display: block; font-size: 11px; color: #7A8391; margin-top: 4px; max-width: 180px;">근거가 사라지거나 단지가 빠져 자동으로 닫았어요. 근거가 돌아오면 다시 열려요.</span></td><td style="font-size: 12px;">자동 · 공고문 납부 조건 10.0%</td></tr>
+<tr class="dim fix" style="color: #7A8391;"><td><span class="pill">[종류]</span></td><th scope="row" style="color: #7A8391;">[할 일]</th><td>[단지 이름]</td><td>[기한]</td><td><label for="c10" class="sr">상태 · [단지 이름] [할 일]</label><select id="c10" class="sel-s"><option>열림</option><option selected="">완료</option><option>해당 없음</option></select><br><span class="pill" style="margin-top: 6px;" title="사람이 닫은 항목은 자동으로 다시 열지 않아요">사람이 닫음</span></td><td style="font-size: 12px;">[메모]</td></tr>
 </tbody>
 </table>
 </div>
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center;">
-<span style="font-size: 12px; color: #7A8391;">329건 중 9건 · 출처 입주자 모집 공고문·청약홈 일정(자동 생성) · 기한 숫자를 누르면 출처가 열려요</span>
+<span style="font-size: 12px; color: #7A8391;">329건 중 9건 · 출처 입주자 모집 공고문·청약홈 일정(자동 생성) · 기한 숫자를 누르면 출처가 열려요 <span class="fix" style="color: #3D2E00;">· 닫힌 줄(완료·해당 없음)은 흐리게 보여요 — 마지막 두 줄 <span class="fixtag">고침 OP-2</span></span></span>
 <button type="button" class="btn">320건 더 보기</button>
 </div>
 <div class="soft" style="display: flex; flex-direction: column; gap: 8px;">
@@ -227,10 +239,10 @@ details>summary::-webkit-details-marker{display:none}
 </section>
 
 <!-- ② 접수 확인 대기열 -->
-<section id="s2" aria-labelledby="s2h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<section id="intake-queue" aria-labelledby="s2h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
 <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
 <div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 420px;">
-<p class="kick">② 접수 확인 대기열</p>
+<p class="kick" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">② 접수 확인 대기열 <span class="fix" style="font-size: 11px; font-weight: 600; color: #3A4250; background: #EEF1F4; border-radius: 6px; padding: 1px 7px;">주소 앵커 #intake-queue 유지 — 다른 화면이 /ops#intake-queue 로 들어와요</span> <span class="fixtag">고침 OP-1</span></p>
 <h2 id="s2h" class="h2">접수 상태를 사람이 확인해야 하는 단지</h2>
 <p class="what"><b>이게 뭐예요?</b>프로그램이 접수 상태를 '확인 불가'나 '미정'으로 남긴 단지를 이유별로 묶었어요. 분양사무소에 전화·방문해 확인하고 '사람 확인 입력'으로 남기면 다시 판정이 자동으로 걸려요. 새 수정본이 발행되면 목록에서 빠져요.</p>
 </div>
@@ -248,9 +260,9 @@ details>summary::-webkit-details-marker{display:none}
 <caption class="sr">연결 안 됨</caption>
 <thead><tr><th scope="col">단지</th><th scope="col">지금 접수 상태</th><th scope="col">응답 코드 <button type="button" class="q" aria-label="응답 코드 설명">?</button></th><th scope="col">확인한 때</th><th scope="col">근거</th><th scope="col"><span class="sr">사람 확인</span></th></tr></thead>
 <tbody>
-<tr><th scope="row"><a href="Detail.dc.html">검단 스타힐스 가현숲</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:12</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">가현숲.com</span></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
-<tr><th scope="row"><a href="Detail.dc.html">검단신도시 금강펜테리움 3차 센트럴파크</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:09</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">검단신도시금강펜테리움3차.com</span></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
-<tr><th scope="row"><a href="Detail.dc.html">더샵 송도마리나베이(조합원 자격상실세대 3회차)</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:07</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">더샵송도마리나베이.com</span></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">검단 스타힐스 가현숲</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:12</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">가현숲.com</span></td><td><a href="#human-check" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">검단신도시 금강펜테리움 3차 센트럴파크</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:09</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">검단신도시금강펜테리움3차.com</span></td><td><a href="#human-check" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">더샵 송도마리나베이(조합원 자격상실세대 3회차)</a></th><td><span class="est">확인 불가(연결 안 됨, 10.15)</span><span style="display: block; font-size: 12px; color: #7A8391; margin-top: 4px;">경로: 공식 팝업</span></td><td style="color: #5B6472;">응답 없음</td><td>10.15 06:07</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">더샵송도마리나베이.com</span></td><td><a href="#human-check" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
 </tbody>
 </table>
 </div>
@@ -272,8 +284,8 @@ details>summary::-webkit-details-marker{display:none}
 <caption class="sr">같은 단지인지 확인 못 함</caption>
 <thead><tr><th scope="col">단지</th><th scope="col">지금 접수 상태</th><th scope="col">응답 코드</th><th scope="col">확인한 때</th><th scope="col">근거</th><th scope="col"><span class="sr">사람 확인</span></th></tr></thead>
 <tbody>
-<tr><th scope="row"><a href="Detail.dc.html">래미안 센트리폴(1BL)</a></th><td><span class="est">확인 불가(홈페이지 확인 전, 10.15)</span><span style="display: block; font-size: 12px; margin-top: 4px;"><a href="#">판정 기록 1328번 보기</a></span></td><td>200 <span style="font-size: 12px; color: #7A8391;">열림</span></td><td>10.15 06:08</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">raemian.co.kr</span><button type="button" class="btn" style="margin-top: 6px; font-size: 13px;">화면 캡처 미리보기</button></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
-<tr><th scope="row"><a href="Detail.dc.html">더샵 검단레이크파크(AB22BL)</a></th><td><span class="est">확인 불가(홈페이지 확인 전, 10.14)</span><span style="display: block; font-size: 12px; margin-top: 4px;"><a href="#">판정 기록 853번 보기</a></span></td><td>200 <span style="font-size: 12px; color: #7A8391;">열림</span></td><td>10.14 02:39</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">더샵검단레이크파크.kr</span><button type="button" class="btn" style="margin-top: 6px; font-size: 13px;">화면 캡처 미리보기</button></td><td><a href="#s3" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">래미안 센트리폴(1BL)</a></th><td><span class="est">확인 불가(홈페이지 확인 전, 10.15)</span><span style="display: block; font-size: 12px; margin-top: 4px;"><a href="#">판정 기록 1328번 보기</a></span></td><td>200 <span style="font-size: 12px; color: #7A8391;">열림</span></td><td>10.15 06:08</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">raemian.co.kr</span><button type="button" class="btn" style="margin-top: 6px; font-size: 13px;">화면 캡처 미리보기</button></td><td><a href="#human-check" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
+<tr><th scope="row"><a href="Detail.dc.html">더샵 검단레이크파크(AB22BL)</a></th><td><span class="est">확인 불가(홈페이지 확인 전, 10.14)</span><span style="display: block; font-size: 12px; margin-top: 4px;"><a href="#">판정 기록 853번 보기</a></span></td><td>200 <span style="font-size: 12px; color: #7A8391;">열림</span></td><td>10.14 02:39</td><td style="font-size: 13px;"><a href="#">근거 페이지 ↗</a><span style="display: block; color: #7A8391;">더샵검단레이크파크.kr</span><button type="button" class="btn" style="margin-top: 6px; font-size: 13px;">화면 캡처 미리보기</button></td><td><a href="#human-check" class="btn" title="③ 사람 확인 입력 칸을 이 단지·접수 상태로 채워요">사람 확인 입력</a></td></tr>
 </tbody>
 </table>
 </div>
@@ -300,9 +312,9 @@ details>summary::-webkit-details-marker{display:none}
 </section>
 
 <!-- ③ 사람 확인 입력 -->
-<section id="s3" aria-labelledby="s3h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+<section id="human-check" aria-labelledby="s3h" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 18px;">
 <div style="display: flex; flex-direction: column; gap: 6px;">
-<p class="kick">③ 사람 확인 입력</p>
+<p class="kick" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">③ 사람 확인 입력 <span class="fix" style="font-size: 11px; font-weight: 600; color: #3A4250; background: #EEF1F4; border-radius: 6px; padding: 1px 7px;">주소 앵커 #human-check 유지 — 대기열·모순 주장·단지 상세가 이 주소로 들어와요</span> <span class="fixtag">고침 OP-1</span></p>
 <h2 id="s3h" class="h2">분양사무소에 확인한 내용을 남길까요?</h2>
 <p class="what"><b>이게 뭐예요?</b>전화·방문·이메일로 직접 확인한 값을 '사람 확인'으로 기록해요. 사람 확인 값은 가장 먼저 쓰는 출처가 되고, 저장하면 다시 판정이 자동으로 등록돼요.</p>
 </div>
@@ -518,7 +530,7 @@ details>summary::-webkit-details-marker{display:none}
 </div>
 <div style="display: flex; align-items: center; gap: 14px; border: 1px solid #E3E7EC; border-radius: 14px; padding: 18px;">
 <span style="width: 40px; height: 40px; border-radius: 50%; background: #E8EEFF; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2350D8" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span>
-<span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 16px; font-weight: 700;">남은 모순 주장이 없어요</span><span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14 (7번째 수정본) 검증 문장 24건: 맞음 19 · 사람 검토 5 · 모순 0 — 발행·보고서 만들기가 막히지 않아요</span></span>
+<span class="fix" style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 16px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">남은 모순 주장이 없어요 <span class="fixtag">고침 OP-9</span></span><span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14 (7번째 수정본) · 모순 주장 0건 (모순 주장 목록의 줄 수)</span><span class="apin" style="align-self: flex-start;">맞음 [n] · 사람 검토 [n] — API 필요: 지금 API는 모순 주장 목록만 돌려줘 이 수는 보여 줄 수 없어요</span></span>
 </div>
 <div style="border: 1px dashed #C8CFD8; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
 <p style="margin: 0; font-size: 14px; font-weight: 700;">모순 주장이 생기면 이렇게 보여요 <span class="exm">예시 · 자리표시</span></p>
@@ -531,9 +543,11 @@ details>summary::-webkit-details-marker{display:none}
 <span style="font-size: 12px; color: #5B6472;">대상 값: [항목 이름]</span>
 <span class="est">확인 불가(검증 모순)</span>
 <span class="pill">되돌림(사람 확인)</span>
-<a href="#s3" style="font-size: 13px; font-weight: 600;">사람 확인으로 되돌리기 →</a>
+<span class="fix" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span class="pill">되돌림(새 원문)</span><span class="pill">되돌림</span><span class="fixtag">고침 OP-8</span></span>
+<a href="#human-check" style="font-size: 13px; font-weight: 600;">사람 확인으로 되돌리기 →</a>
 <button type="button" class="btn" style="font-size: 13px;">판정 출처 보기</button>
 </div>
+<p class="fix" style="margin: 0; font-size: 12px; color: #5B6472;">되돌림 배지는 누가 되돌렸는지에 따라 세 가지예요: '되돌림(사람 확인)' · '되돌림(새 원문)'(새로 모은 원문 값이 같아서) · 누가 되돌렸는지 기록이 없으면 괄호 없이 '되돌림'. <span class="fixtag">고침 OP-8</span></p>
 <blockquote style="margin: 0; border-left: 3px solid #C8CFD8; padding: 4px 12px; font-size: 15px; line-height: 1.6;">[주장 문장 — 예: ○○의 되팔기 제한 기간은 [n]개월이다]</blockquote>
 <p style="margin: 0; font-size: 13px; color: #5B6472;"><b style="color: #3A4250;">근거</b> [공고문에서 뽑은 원문 조각]</p>
 <form style="display: flex; flex-direction: column; gap: 6px;">
@@ -650,19 +664,43 @@ details>summary::-webkit-details-marker{display:none}
 <p style="margin: 0; font-size: 12px; color: #5B6472;">대기열이 비면: 확인할 접수 줄이 없어요 · 발행된 기준일이 없으면: 아직 발행된 기준일이 없어요 — 지역 적재가 끝나면 대기열이 생겨요</p>
 </div>
 
-<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
-<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">④ 수집 상태 다른 경우</p>
-<table class="tbl" style="font-size: 13px;"><caption class="sr">수집 상태 다른 경우</caption><tbody>
-<tr style="color: #7A8391;"><th scope="row" style="color: #7A8391;">[자료 이름]</th><td><span class="pill">꺼짐([사유])</span></td></tr>
-<tr><th scope="row">청약홈 단지 상세</th><td><span class="est" style="white-space: normal;">확인 불가(빈 자료 — 청약홈이 아직 올리는 중, [날짜])</span></td></tr>
-<tr><th scope="row">[자료 이름]</th><td>마지막 성공 <span class="est">확인 불가</span> (한 번도 성공 못 함)</td></tr>
-</tbody></table>
+<div class="card fix" style="padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">② 근거 주소가 없는 줄 <span class="fixtag">고침 OP-6</span></p>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="font-size: 13px; min-width: 300px;">
+<caption class="sr">근거 주소가 없는 줄</caption>
+<thead><tr><th scope="col">단지</th><th scope="col">응답 코드</th><th scope="col">근거</th></tr></thead>
+<tbody><tr><th scope="row"><a href="Detail.dc.html">[단지 이름]</a></th><td style="color: #5B6472;">응답 없음</td><td style="color: #5B6472;">근거 주소 없음</td></tr></tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">근거 페이지 주소가 없으면 링크 대신 '근거 주소 없음'. 화면 캡처가 있으면 '화면 캡처 미리보기' 버튼은 그대로 나와요.</p>
+</div>
+
+<div class="card fix" style="grid-column: 1 / -1; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+<p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">④ 수집 상태 다른 경우 <span class="fixtag">고침 OP-3</span><span class="fixtag">고침 OP-4</span><span class="fixtag">고침 OP-5</span></p>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 860px; font-size: 13px;">
+<caption class="sr">수집 상태 다른 경우</caption>
+<thead><tr><th scope="col">자료</th><th scope="col">켜짐</th><th scope="col">마지막 성공</th><th scope="col">마지막 시도</th><th scope="col">성공</th><th scope="col">실패</th><th scope="col">응답 코드</th><th scope="col">마지막 오류</th><th scope="col"><span class="sr">다시 모으기</span></th></tr></thead>
+<tbody>
+<tr class="dim" style="color: #7A8391;"><th scope="row" style="color: #7A8391;">[자료 이름]</th><td><span class="pill">꺼짐([사유])</span></td><td>[날짜]</td><td>[날짜]</td><td>[n]</td><td>[n]</td><td>[코드]</td><td>[오류]</td><td></td></tr>
+<tr><th scope="row">[자료 이름]</th><td>예</td><td><span class="est">확인 불가</span></td><td><span class="est">확인 불가</span></td><td>0</td><td>0</td><td></td><td></td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+<tr><th scope="row">청약홈 단지 상세</th><td>예</td><td>[날짜]</td><td>[날짜]</td><td>[n]</td><td style="font-weight: 700; color: #A3470A;">[n]</td><td>200</td><td><span class="est" style="white-space: normal;">확인 불가(빈 자료 — 청약홈이 아직 올리는 중, [날짜])</span></td><td><button type="button" class="btn">다시 모으기</button></td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.6;">첫 줄: 꺼진 자료는 줄 전체가 흐리고 '켜짐' 칸에 '꺼짐([사유])'이 나와요 (OP-3). 둘째 줄: 한 번도 모으지 않아 마지막 성공·마지막 시도 시각이 없으면 두 칸 모두 '확인 불가' (OP-4). 셋째 줄: 응답이 200인데 자료가 비면 코드 대신 이유를 글로.</p>
+<div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #EEF1F4; padding-top: 10px;">
+<span style="font-size: 13px; color: #5B6472;">자료 목록이 아예 비면 표 대신 (OP-5)</span>
+<p role="status" style="margin: 0; font-size: 14px; color: #5B6472; border: 1px dashed #C8CFD8; border-radius: 10px; padding: 10px 12px;">없음</p>
+</div>
 </div>
 
 <div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
 <p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">⑤ 작업 대기열 다른 상태</p>
 <p style="margin: 0; font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"><span class="pill">대기</span><span class="pill pill-b">실행 중</span> <span class="num">[n]/[n]</span> · 단계 [단계 이름]</p>
 <p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.55;"><span class="pill">대기</span> 수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요(다시 대기 <span class="num">[n]/[n]</span>회, [시각] 이후 다시 시도) — 아직 실패가 아니에요. 지역 첫 적재 중이라 발행본은 아직 없어요 / 이전 발행본이 그대로 기본 화면이에요.</p>
+<p class="fix" style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.55;"><span class="fixtag">고침 OP-12</span> 다시 시도할 시각이 없으면 같은 줄에서 '[시각] 이후 다시 시도' 대신 <b>곧 다시 시도</b>: … (다시 대기 <span class="num">[n]/[n]</span>회, 곧 다시 시도) — 아직 실패가 아니에요.</p>
 <p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.55;"><span class="pill">대기</span> 같은 수정본의 다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) — 실패가 아니에요 · 발행 중 오류가 나 다시 시도하는 중([n]/[n]회)</p>
 <p style="margin: 0; font-size: 13px; color: #A3470A; line-height: 1.55;"><span class="pill pill-d">실패</span> 수집 자료가 [n]회 다시 모아도 불완전해 멈췄어요 — 발행하지 않았어요: [사유]</p>
 <p style="margin: 0; font-size: 12px; color: #5B6472;">작업이 없으면: 작업 없음</p>
@@ -670,9 +708,19 @@ details>summary::-webkit-details-marker{display:none}
 
 <div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
 <p style="margin: 0; font-size: 13px; font-weight: 700; color: #2350D8;">⑥ 판정기 장애 때</p>
-<p role="alert" class="warn" style="margin: 0;"><b>판정기 장애 — 판정 쉬는 모드:</b> 새 판정 없이 저장된 결과·이전 결과만 보여요.</p>
+<p role="alert" class="warn fix" style="margin: 0;"><span class="fixtag">고침 OP-14</span> <b>판정기 장애 — 미판정 모드:</b> 판정기를 쓸 수 없어 새 판정을 하지 않아요. 저장된 결과(캐시)·이전 결과만 보여요.</p>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">평균 걸린 시간 기록이 없으면 타일에 <span class="est">확인 불가</span></p>
 <p style="margin: 0; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="pill">검토</span><span class="pill">미해결</span><span class="pill pill-b">저장된 결과</span><span style="color: #5B6472;">모델: 로컬 (비용 없음) · 기록 없음</span></p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px;">
+<p style="margin: 0; font-size: 13px; color: #3A4250; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">판정 표 한 줄에 걸린 시간 기록이 없을 때 <span class="fixtag">고침 OP-7</span></p>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="font-size: 13px; min-width: 300px;">
+<caption class="sr">걸린 시간이 없는 판정 줄</caption>
+<thead><tr><th scope="col">번호</th><th scope="col">판단 종류</th><th scope="col">확신 정도</th><th scope="col">걸린 시간</th></tr></thead>
+<tbody><tr><td>[번호]</td><td>[판단 종류]</td><td style="color: #7A8391;">확인 불가</td><td style="color: #7A8391;">확인 불가</td></tr></tbody>
+</table>
+</div>
+</div>
 </div>
 
 <div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
@@ -704,6 +752,11 @@ details>summary::-webkit-details-marker{display:none}
 <li>발행을 기다리는 수정본 확인을 30분에서 멈췄어요 — 새 수정본이 발행됐는지 다시 확인하세요 <button type="button" class="btn" style="font-size: 13px; margin-left: 4px;">다시 확인</button></li>
 <li>상태를 받지 못해 다시 확인하는 중: [설명] · 오류: [설명] · 진행 중인 작업 없음</li>
 </ul>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #EEF1F4; padding-top: 8px;">
+<span style="font-size: 13px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">작업 진행 · [작업 이름] · 대기 <span class="fixtag">고침 OP-11</span></span>
+<div class="indet" role="progressbar" aria-label="대기"></div>
+<span class="hint">진행 수([n]/[n])가 아직 없으면 줄무늬 막대예요 — 얼마나 남았는지 모른다는 뜻. 진행 수가 오면 ①③⑦처럼 채워지는 막대로 바뀌어요.</span>
+</div>
 </div>
 
 </div>
@@ -711,6 +764,24 @@ details>summary::-webkit-details-marker{display:none}
 
 </div>
 </div>
+
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFCEB; border-color: #F0D875;">
+<h2 id="keep" style="margin: 0; font-size: 19px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">구현할 때 지금 동작 그대로 유지 <span class="fixtag">고침 OP-13</span></h2>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">그림으로 못 그리는 동작이에요. # 번호는 coverage-Ops.md 의 줄 번호예요. 기존 테스트가 지키는 동작은 그대로 둬요.</p>
+<ul class="keep" style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+<li><b>#8</b> 지역을 불러오는 동안 ④ 수집 상태 표 자리를 미리 잡아 둬요(화면이 밀리지 않게, 지금 최소 높이 그대로).</li>
+<li><b>#15</b> ① 상태 고르기는 읽기 전용이거나 저장하는 동안 꺼져요.</li>
+<li><b>#65</b> ②의 '사람 확인 입력'을 누르면 ③ 폼으로 스크롤해요.</li>
+<li><b>#115</b> 같은 화면에서 주소의 미리 채우기 값(hc_complex·hc_field·hc_entity)이 바뀌면 ③ 폼을 다시 채우고 값·오류를 지워요.</li>
+<li><b>#116</b> 다른 화면에서 /ops#human-check 로 들어오면 ③ 폼으로 한 번 스크롤해요.</li>
+<li><b>#117</b> ③에서 단지를 바꾸면 지정한 사실 행을 지우고, 항목을 바꾸면 값·오류를 지워요.</li>
+<li><b>#138</b> ④ '다시 모으기'는 읽기 전용이거나 등록하는 동안 꺼져요.</li>
+<li><b>#223</b> ⑨ 공유 링크 메모는 64자까지만 들어가요.</li>
+<li><b>#225</b> ⑨ '공유 링크 만들기'는 만드는 동안 꺼져요.</li>
+<li><b>#229</b> ⑨ 새 링크 주소 칸에 들어가면 주소 전체가 골라져요.</li>
+<li><b>#242</b> ⑨ '회수'는 회수하는 동안 꺼져요.</li>
+</ul>
+</section>
 
 <footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
 <span>운영자용 화면이에요. 판단(접수 상태·포함 여부·출처 상충)은 판정기만 하고, 이 화면은 기록·확인·재시도만 해요. 상대 비교 · 투자 권유 아님.</span>
@@ -720,15 +791,15 @@ details>summary::-webkit-details-marker{display:none}
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":12800}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":15000}}'>
 class Component extends DCLogic {
 renderVals() {
 var tileBase = 'padding: 18px; display: flex; flex-direction: column; gap: 8px; color: #14181F; text-decoration: none;';
 var dot = function (c) { return 'width: 10px; height: 10px; border-radius: 50%; background: ' + c + ';'; };
 var tiles = [
-{ href: '#s2', label: '사람 확인이 필요한 단지', value: '89', unit: '건', sub: '급한 것 73 · 나중에 봐도 되는 것 16 (점수 대상 아님 13 · 일정 미정 3)', go: '접수 확인 대기열', style: tileBase + 'border-color: #F3D6B8; background: #FFF7EF;', dotStyle: dot('#D9822B') },
+{ href: '#intake-queue', label: '사람 확인이 필요한 단지', value: '89', unit: '건', sub: '수집 실패 14 · 공식 홈페이지 확인 18 · 문구로 판단 불가 30 · 판정 미해결 11 · 판정 대상 아님 13 · 접수 미정 3 (분류별 건수, 서버 순서)', go: '접수 확인 대기열', style: tileBase + 'border-color: #F3D6B8; background: #FFF7EF;', dotStyle: dot('#D9822B') },
 { href: '#s4', label: '수집이 실패한 자료', value: '1', unit: '종', sub: '단지 공식 홈페이지 · 7일 실패 55회 · 열리지 않는 곳 16곳', go: '수집 상태', style: tileBase + 'border-color: #F3D6B8; background: #FFF7EF;', dotStyle: dot('#D9822B') },
-{ href: '#s7', label: '모순 주장', value: '0', unit: '건', sub: '발행·보고서 만들기가 막히지 않아요', go: '모순 주장', style: tileBase, dotStyle: dot('#2350D8') },
+{ href: '#s7', label: '모순 주장', value: '0', unit: '건', sub: '모순 주장 목록 줄 수 · 남은 모순 주장 없음', go: '모순 주장', style: tileBase, dotStyle: dot('#2350D8') },
 { href: '#s1', label: '2주 안 다가오는 기한', value: '9', unit: '건', sub: '오늘 전매 가능 시작 2곳 · 10.19 특별공급 접수 · 어제 지난 것 1건 아직 열림', go: '일정·체크리스트', style: tileBase, dotStyle: dot('#2350D8') }
 ];
 var navBase = 'display: flex; align-items: center; gap: 10px; padding: 10px 10px; min-height: 44px; box-sizing: border-box; border-radius: 10px; font-size: 14px; color: #3A4250; text-decoration: none;';
@@ -736,8 +807,8 @@ var navOn = navBase + 'background: #E8EEFF; color: #1A3FB0; font-weight: 600;';
 var numBase = 'width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;';
 var navDefs = [
 ['#s1', '1', '일정·체크리스트', '329', ''],
-['#s2', '2', '접수 확인 대기열', '89', 'w'],
-['#s3', '3', '사람 확인 입력', '', ''],
+['#intake-queue', '2', '접수 확인 대기열', '89', 'w'],
+['#human-check', '3', '사람 확인 입력', '', ''],
 ['#s4', '4', '수집 상태', '실패 1', 'w'],
 ['#s5', '5', '작업 대기열', '29', ''],
 ['#s6', '6', '판정기 호출 통계', '3,019', ''],

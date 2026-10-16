@@ -40,6 +40,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .b-need{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#1A3FB0;background:#E8EEFF;border-radius:6px;padding:1px 8px;line-height:18px}
 .open{display:inline-flex;align-items:center;gap:6px;background:#2350D8;color:#FFFFFF;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
 .dot{width:7px;height:7px;border-radius:50%;background:#FFFFFF;display:inline-block}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.tip{display:inline-flex;flex-direction:column;gap:2px;background:#FFFFFF;border:1px solid #C8CFD8;border-radius:8px;box-shadow:0 6px 18px rgba(20,24,31,0.16);padding:8px 10px;font-size:12px;line-height:1.5;color:#14181F;white-space:nowrap}
+.tiphead{font-size:11px;font-weight:700;color:#7A8391}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -77,6 +81,8 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </header>
 
 <main id="main" style="max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 24px;">
+
+<div class="fix" role="note" style="background: #FFF8DB; border: 1px solid #F2D675; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 22개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Compare.md</div>
 
 <section aria-labelledby="ttl" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px;">
 <div style="display: flex; flex-direction: column; gap: 8px; flex: 1 1 560px;">
@@ -225,8 +231,8 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <td><span style="font-size: 17px; font-weight: 700;">2위</span> <span class="b-tie">동률</span></td>
 <td><span style="font-size: 17px; font-weight: 700;">2위</span> <span class="b-tie">동률</span></td>
 </tr>
-<tr>
-<th scope="row">입주 1년 뒤 10% 넘게 오를 가능성 <button type="button" class="q" aria-label="오를 가능성 설명">?</button></th>
+<tr class="fix">
+<th scope="row"><span class="fixtag">고침 CP-1</span> 10% 넘게 오를 가능성 <button type="button" class="q" aria-label="오를 가능성 설명">?</button><span style="display: block; margin-top: 4px; font-size: 12px; color: #5B6472; line-height: 1.5;">목표 시점: 입주 + 1년 (상황 '기본' 설정)</span><span style="display: block; font-size: 12px; color: #8A4B0F; line-height: 1.5;">당첨 확률이 아니에요 · 보장 아님</span></th>
 <td><span class="u" style="font-size: 17px; font-weight: 700;">53%</span> <span class="est">판정기 추정</span></td>
 <td><span class="u" style="font-size: 17px; font-weight: 700;">53%</span> <span class="est">판정기 추정</span></td>
 <td><span class="u" style="font-size: 17px; font-weight: 700;">51%</span> <span class="est">판정기 추정</span></td>
@@ -251,7 +257,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </tr>
 </tbody>
 </table>
-<div class="foot"><span>점수 계산·판정기 기록 2026-10-14 · 동률·순위가 흔들려요·근거와 달라요·다시 판정 필요 배지는 서버가 준 값 그대로 보여요(펼친 모습 참고)</span></div>
+<div class="foot"><span>점수 계산·판정기 기록 2026-10-14 · 동률·순위가 흔들려요·근거와 달라요·다시 판정 필요 배지는 서버가 준 값 그대로 보여요(펼친 모습 G 참고) · 상황을 바꾸면 '오를 가능성'의 목표 시점도 그 상황 설정을 따라요(예: 'C 시세차익 우선' = 기준일 + 5년)</span></div>
 </section>
 
 <section aria-labelledby="gaps" style="display: flex; flex-direction: column; gap: 14px;">
@@ -262,7 +268,8 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 <p class="sub">주변에서 2020년 이후 지은 비슷한 크기(84㎡ 안팎) 아파트의 최근 6개월 거래와 견줘요.</p>
 </div>
-<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+<p class="fix" style="margin: 0; font-size: 13px; color: #3A4250; background: #FFFDF2; border-radius: 10px; padding: 8px 12px;"><span class="fixtag">고침 CP-2</span> 서버에 없는 '주변 전체 중간값' 점선과 "주변 거래 중간 ○억" 글을 뺐어요(화면이 계산한 값). 퍼센트는 서버 값(가격 갭 %)을 그대로 써요. 대신 범례에 서버 값인 '연식 보정 중앙값(대체 단지만)'을 넣었어요.</p>
+<div class="fix" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
 <figure class="card" style="{{g0.box}}">
 <figcaption style="display: flex; flex-direction: column; gap: 4px;">
 <h3 style="margin: 0; font-size: 16px; font-weight: 700;">{{g0.name}}</h3>
@@ -270,16 +277,16 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </figcaption>
 <div role="img" aria-label="{{g0.aria}}" style="display: grid; grid-template-columns: 68px minmax(0, 1fr); row-gap: 10px; column-gap: 8px; align-items: center; font-size: 12px; color: #5B6472;">
 <span>이 단지</span>
-<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="{{g0.band}}"></span><span style="{{g0.mid}}"></span><span style="{{g0.medLine}}"></span></div>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="{{g0.band}}"></span><span style="{{g0.mid}}"></span></div>
 <span>주변 거래</span>
 <div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;">
 <sc-for list="{{cm0}}" as="t" hint-placeholder-count="6"><span style="{{t.r}}"></span><span style="{{t.m}}"></span></sc-for>
-<span style="{{g0.medLine}}"></span>
+
 </div>
 <span></span>
 <div style="position: relative; height: 14px; font-size: 11px; color: #7A8391;"><span style="position: absolute; left: 0%;">3억</span><span style="position: absolute; left: 30.77%; transform: translateX(-50%);">5억</span><span style="position: absolute; left: 61.54%; transform: translateX(-50%);">7억</span><span style="position: absolute; left: 92.31%; transform: translateX(-50%);">9억</span></div>
 </div>
-<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 8px; background: #2350D8; border-radius: 2px; margin-right: 4px;"></span>분양가 최저~최고</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #5B6472; margin-right: 4px;"></span>단지별 거래 중간값</span><span><span style="display: inline-block; width: 0; height: 10px; border-left: 2px dashed #14181F; margin-right: 4px;"></span>주변 전체 중간값</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 8px; background: #2350D8; border-radius: 2px; margin-right: 4px;"></span>분양가 최저~최고</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #5B6472; margin-right: 4px;"></span>단지별 거래 중간값</span><span><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px dashed #14181F; background: #FFFFFF; margin-right: 4px; vertical-align: middle;"></span>연식 보정 중앙값(대체 단지만)</span></div>
 <p class="num" style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.6;">{{g0.note}}</p>
 <div class="foot"><span>{{g0.src}}</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
@@ -290,16 +297,16 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </figcaption>
 <div role="img" aria-label="{{g1.aria}}" style="display: grid; grid-template-columns: 68px minmax(0, 1fr); row-gap: 10px; column-gap: 8px; align-items: center; font-size: 12px; color: #5B6472;">
 <span>이 단지</span>
-<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="{{g1.band}}"></span><span style="{{g1.mid}}"></span><span style="{{g1.medLine}}"></span></div>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="{{g1.band}}"></span><span style="{{g1.mid}}"></span></div>
 <span>주변 거래</span>
 <div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;">
 <sc-for list="{{cm1}}" as="t" hint-placeholder-count="1"><span style="{{t.r}}"></span><span style="{{t.m}}"></span></sc-for>
-<span style="{{g1.medLine}}"></span>
+
 </div>
 <span></span>
 <div style="position: relative; height: 14px; font-size: 11px; color: #7A8391;"><span style="position: absolute; left: 0%;">3억</span><span style="position: absolute; left: 30.77%; transform: translateX(-50%);">5억</span><span style="position: absolute; left: 61.54%; transform: translateX(-50%);">7억</span><span style="position: absolute; left: 92.31%; transform: translateX(-50%);">9억</span></div>
 </div>
-<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 8px; background: #0E7C86; border-radius: 2px; margin-right: 4px;"></span>분양가 최저~최고</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #5B6472; margin-right: 4px;"></span>단지별 거래 중간값</span><span><span style="display: inline-block; width: 0; height: 10px; border-left: 2px dashed #14181F; margin-right: 4px;"></span>주변 전체 중간값</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 8px; background: #0E7C86; border-radius: 2px; margin-right: 4px;"></span>분양가 최저~최고</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #5B6472; margin-right: 4px;"></span>단지별 거래 중간값</span><span><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px dashed #14181F; background: #FFFFFF; margin-right: 4px; vertical-align: middle;"></span>연식 보정 중앙값(대체 단지만)</span></div>
 <p class="num" style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.6;">{{g1.note}}</p>
 <div class="foot"><span>{{g1.src}}</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
@@ -310,20 +317,44 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </figcaption>
 <div role="img" aria-label="{{g2.aria}}" style="display: grid; grid-template-columns: 68px minmax(0, 1fr); row-gap: 10px; column-gap: 8px; align-items: center; font-size: 12px; color: #5B6472;">
 <span>이 단지</span>
-<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="{{g2.band}}"></span><span style="{{g2.mid}}"></span><span style="{{g2.medLine}}"></span></div>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="{{g2.band}}"></span><span style="{{g2.mid}}"></span></div>
 <span>주변 거래</span>
 <div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;">
 <sc-for list="{{cm2}}" as="t" hint-placeholder-count="8"><span style="{{t.r}}"></span><span style="{{t.m}}"></span></sc-for>
-<span style="{{g2.medLine}}"></span>
+
 </div>
 <span></span>
 <div style="position: relative; height: 14px; font-size: 11px; color: #7A8391;"><span style="position: absolute; left: 0%;">3억</span><span style="position: absolute; left: 30.77%; transform: translateX(-50%);">5억</span><span style="position: absolute; left: 61.54%; transform: translateX(-50%);">7억</span><span style="position: absolute; left: 92.31%; transform: translateX(-50%);">9억</span></div>
 </div>
-<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 8px; background: #6B4FC8; border-radius: 2px; margin-right: 4px;"></span>분양가 최저~최고</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #5B6472; margin-right: 4px;"></span>단지별 거래 중간값</span><span><span style="display: inline-block; width: 0; height: 10px; border-left: 2px dashed #14181F; margin-right: 4px;"></span>주변 전체 중간값</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 8px; background: #6B4FC8; border-radius: 2px; margin-right: 4px;"></span>분양가 최저~최고</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #5B6472; margin-right: 4px;"></span>단지별 거래 중간값</span><span><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px dashed #14181F; background: #FFFFFF; margin-right: 4px; vertical-align: middle;"></span>연식 보정 중앙값(대체 단지만)</span></div>
 <p class="num" style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.6;">{{g2.note}}</p>
 <div class="foot"><span>{{g2.src}}</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
 </div>
+<figure class="card fix" style="margin: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px; border-top: 4px solid #2350D8;">
+<figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<span class="fixtag">고침 CP-3</span>
+<h3 style="margin: 0; font-size: 16px; font-weight: 700;">'주변 거래' 줄을 단지별로 펼친 모습 · 시티오씨엘 8단지 (앞 3곳 + 대체 단지 예)</h3>
+<span style="font-size: 12px; color: #5B6472;">축 이름 = 비교 단지 이름 + 신축/대체 배지 · 점선 빈 점 = 연식 보정 중앙값</span>
+</figcaption>
+<div role="img" aria-label="가격 갭 비교 단지별 줄: 이 단지 분양가 5억 9,850만~6억 5,090만, 더샵아르테 신축(2024) 6억 4,700만~7억 3,450만, 더샵인천스카이타워1단지 신축(2020) 5억 3,000만~5억 7,800만, 더샵인천스카이타워2단지 신축(2020) 4억 9,000만~5억 5,500만" style="position: relative; display: grid; grid-template-columns: 300px minmax(0, 1fr); row-gap: 12px; column-gap: 12px; align-items: center; font-size: 13px; color: #3A4250;">
+<span style="font-weight: 700; color: #14181F;">이 단지 분양가</span>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="position: absolute; top: 0; height: 16px; border-radius: 4px; background: #2350D8; opacity: 0.85; left: 45.92%; width: 8.06%;"></span><span style="position: absolute; top: -3px; width: 4px; height: 22px; border-radius: 2px; background: #14181F; left: calc(49.95% - 2px);"></span></div>
+<span>더샵아르테 <span class="b-mute">신축(2024)</span></span>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="position: absolute; top: 6px; height: 4px; border-radius: 2px; background: #5B6472; left: 53.38%; width: 13.46%;"></span><span style="position: absolute; top: 1px; width: 2px; height: 14px; background: #14181F; left: 61.92%;"></span>
+<span class="tip" style="position: absolute; left: 68.5%; top: -30px; z-index: 2;"><span class="tiphead">툴팁 예시 (마우스를 올리면)</span><b>더샵아르테 · 신축(2024)</b><span class="num">하단 6억 4,700만원 ~ 상단 7억 3,450만원</span><span class="num">미보정 중앙값 7억 250만원</span><span style="color: #7A8391;">보정 중앙값이 있으면 한 줄 더: 연식 보정 중앙값 [값]</span></span></div>
+<span>더샵인천스카이타워1단지 <span class="b-mute">신축(2020)</span></span>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="position: absolute; top: 6px; height: 4px; border-radius: 2px; background: #5B6472; left: 35.38%; width: 7.38%;"></span><span style="position: absolute; top: 1px; width: 2px; height: 14px; background: #14181F; left: 39.38%;"></span></div>
+<span>더샵인천스카이타워2단지 <span class="b-mute">신축(2020)</span></span>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="position: absolute; top: 6px; height: 4px; border-radius: 2px; background: #5B6472; left: 29.23%; width: 10%;"></span><span style="position: absolute; top: 1px; width: 2px; height: 14px; background: #14181F; left: 34.62%;"></span></div>
+<span style="color: #5B6472;">[대체 단지 이름] <span class="b-tie">대체([연도])</span> <span class="est">추정(대체·보정 [계수])</span></span>
+<div style="position: relative; height: 16px; background: #F3F5F7; border-radius: 4px;"><span style="position: absolute; top: 6px; height: 4px; border-radius: 2px; background: #9AA6B6; left: 40%; width: 12%;"></span><span style="position: absolute; top: 1px; width: 2px; height: 14px; background: #5B6472; left: 45%;"></span><span style="position: absolute; top: 2px; width: 12px; height: 12px; border-radius: 50%; border: 2px dashed #14181F; background: #FFFFFF; box-sizing: border-box; left: calc(49% - 6px);"></span></div>
+<span></span>
+<div style="position: relative; height: 14px; font-size: 11px; color: #7A8391;"><span style="position: absolute; left: 0%;">3억</span><span style="position: absolute; left: 30.77%; transform: translateX(-50%);">5억</span><span style="position: absolute; left: 61.54%; transform: translateX(-50%);">7억</span><span style="position: absolute; left: 92.31%; transform: translateX(-50%);">9억</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: #3A4250;"><span><span style="display: inline-block; width: 14px; height: 4px; background: #5B6472; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>실거래 범위(하단~상단)</span><span><span style="display: inline-block; width: 2px; height: 10px; background: #14181F; margin-right: 4px;"></span>중앙값</span><span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px dashed #14181F; box-sizing: border-box; margin-right: 4px; vertical-align: middle;"></span>연식 보정 중앙값</span></div>
+<div class="foot"><span>외 14개 단지 · 대체 단지 줄은 자리표시예요(위 3곳은 신축이라 보정 중앙값이 '—', 펼친 표 K와 같음) · 자리표시 줄의 위치는 예시</span></div>
+</figure>
 </section>
 
 <section aria-labelledby="brk" class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
@@ -331,9 +362,14 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="display: flex; flex-direction: column; gap: 4px;">
 <p class="sec">종합 점수 분해</p>
 <h2 id="brk" class="h2">종합 점수는 무엇으로 이루어졌나요?</h2>
-<p class="sub">막대 한 칸이 기준 하나예요. 칸이 길수록 그 기준에서 점수를 많이 받았어요. <span class="b-tie">동률</span> 힐스테이트·엘리프는 합계가 같아요.</p>
+<p class="sub">막대 한 칸이 기준 하나예요. 칸이 길수록 그 기준에서 점수를 많이 받았어요.</p>
 </div>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px;">
+<span class="fixtag">고침 CP-4</span>
 <span class="est">추정 · 6가지 중 일부가 판정기 값</span>
+<span class="b-tie">동률</span>
+<span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #7A8391;">붙을 때만: <span class="b-warn">순위가 흔들려요</span></span>
+</div>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: #3A4250;">
 <sc-for list="{{legend6}}" as="l" hint-placeholder-count="6">
@@ -358,13 +394,20 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <span></span>
 </div>
 </div>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; padding-left: 234px;">
+<span class="fixtag">고침 CP-5</span>
+<span class="tip"><span class="tiphead">툴팁 예시 · 시티오씨엘 8단지 막대의 마지막 칸에 올렸을 때</span><b>시티오씨엘 8단지 · 되팔기 쉬움</b><span class="num">8.69 × 0.10</span><span class="num">기여 0.87</span><span class="num">원값 0.15년</span><span style="color: #5B6472;">[계산식 문장(서버 formula_text 그대로)]</span></span>
+<span class="tip"><span class="tiphead">아직 판정 안 한 칸이면</span><b>[단지 이름] · [기준 이름]</b><span>미판정 — 판정되면 최대 기여 [값]</span></span>
+</div>
 <details open="open" style="border-top: 1px solid #EEF1F4; padding-top: 12px;">
 <summary style="cursor: pointer; font-size: 14px; font-weight: 600; color: #1A3FB0; min-height: 32px;">기준별 점수와 원래 값 표로 보기</summary>
 <table class="t" style="font-size: 14px; margin-top: 8px;" aria-label="기준별 점수">
 <colgroup><col style="width: 260px;"><col><col><col></colgroup>
 <thead><tr><th scope="col">기준 (10점 만점 점수 · 원래 값)</th><th scope="col">시티오씨엘 8단지</th><th scope="col">힐스테이트 구월아트파크</th><th scope="col">엘리프 검단 포레듀</th></tr></thead>
 <tbody class="num">
-<tr><th scope="row">입주 뒤 값이 오를 가능성</th><td>5.3점 · 확률 53% <span class="est">판정기</span></td><td>5.3점 · 확률 53% <span class="est">판정기</span></td><td>5.1점 · 확률 51% <span class="est">판정기</span></td></tr>
+<tr class="fix"><th scope="row"><span class="fixtag">고침 CP-6</span> 순위</th><td>1위</td><td>2위 <span class="b-tie">동률</span></td><td>2위 <span class="b-tie">동률</span></td></tr>
+<tr class="fix"><th scope="row">종합 <span style="font-weight: 400; color: #7A8391;">(10점 만점)</span></th><td><b>4.83</b> <span class="est">추정</span></td><td><b>4.76</b> <span class="est">추정</span></td><td><b>4.76</b> <span class="est">추정</span></td></tr>
+<tr class="fix"><th scope="row"><span class="fixtag">고침 CP-16</span> 입주 뒤 값이 오를 가능성<span style="display: block; font-size: 12px; font-weight: 400; color: #5B6472;">목표 시점: 입주 + 1년 · 당첨 확률 아님 · 보장 아님</span></th><td>5.3점 · 확률 53% <span class="est">판정기</span></td><td>5.3점 · 확률 53% <span class="est">판정기</span></td><td>5.1점 · 확률 51% <span class="est">판정기</span></td></tr>
 <tr><th scope="row">비슷한 단지들 사이 순위</th><td>5.13점 · 79곳 중 39위 <span class="est">판정기</span></td><td>6.03점 · 79곳 중 32위 <span class="est">판정기</span></td><td>4.62점 · 79곳 중 43위 <span class="est">판정기</span></td></tr>
 <tr><th scope="row">주변 시세와 가격 차이</th><td>2.98점 · 주변보다 8.1% 높음 <span class="ok">확인됨</span></td><td>0점 · 주변보다 35.7% 높음 <span class="ok">확인됨</span></td><td>5.61점 · 주변보다 2.4% 낮음 <span class="ok">확인됨</span></td></tr>
 <tr><th scope="row">근처 새 아파트가 입주 뒤 오른 정도</th><td>1.29점 · 4곳 중간 +6.5% <span class="ok">확인됨</span></td><td>1.50점 · 1곳 +7.5% <span class="est">추정 · 표본 1</span></td><td>3.13점 · 3곳 중간 +15.7% <span class="ok">확인됨</span></td></tr>
@@ -425,7 +468,12 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </div>
 <p style="margin: 0; font-size: 13px; color: #5B6472;"><span style="display: inline-block; width: 22px; border-top: 1px dashed #9AA6B6; vertical-align: middle; margin-right: 6px;"></span>위 점선 85%를 넘으면 '가능성 높음', 아래 점선 15%가 안 되면 '가능성 낮음'으로 판정기가 표시해요.</p>
-<p style="margin: 0; font-size: 13px; color: #3A4250;">판정기 판단: 세 곳 모든 막대가 <b>중간</b>(15%~85% 사이 · 높다 낮다 말하기 어려움)이에요. 아래 줄은 그 수준이 되려면 해마다 몇 %씩 올라야 하는지예요(필요 연율).</p>
+<p class="fix num" style="margin: 0; font-size: 13px; color: #3A4250;"><span class="fixtag">고침 CP-7</span> 판정기 판정(막대마다 서버 값 그대로): 중간 12개 · 가능성 높음 0개 · 가능성 낮음 0개 (막대 12개). 막대 아래 '필요 연율'은 그 수준이 되려면 해마다 몇 %씩 올라야 하는지예요.</p>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px;">
+<span class="fixtag">고침 CP-8</span>
+<span class="tip"><span class="tiphead">툴팁 예시 · '10% 넘게' 묶음의 시티오씨엘 8단지 막대에 올렸을 때</span><b>시티오씨엘 8단지</b><span class="num">10% 넘게 오를 가능성 · 53% · 중간</span><span class="num">필요 연율 2.6%</span></span>
+<span class="tip"><span class="tiphead">판정이 끝나지 않은 단지면</span><b>[단지 이름]</b><span>[막대 이름] · 미해결</span></span>
+</div>
 <div class="foot"><span>자료: 판정기 기록 · 2026-10-14 · 판정기에 물은 문장은 숫자를 누르면 보여요</span><button type="button" class="btns">표로 보기</button></div>
 </section>
 
@@ -459,15 +507,28 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <span class="num" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;"><b class="u">{{it.pct}}</b><sc-if value="{{it.pick}}" hint-placeholder-val="{{ false }}"><span class="b-pick">판정기 선택</span></sc-if><sc-if value="{{it.tie}}" hint-placeholder-val="{{ false }}"><span class="b-tie">동률</span></sc-if><sc-if value="{{it.mm}}" hint-placeholder-val="{{ false }}"><span class="b-warn">근거와 달라요</span></sc-if><sc-if value="{{it.virt}}" hint-placeholder-val="{{ false }}"><span class="b-mute">가상 후보</span></sc-if><sc-if value="{{it.esc}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #7A8391;">판정기 보류 선택지</span></sc-if></span>
 </div>
 </sc-for>
+<div class="fix" style="display: grid; grid-template-columns: 260px minmax(0, 1fr) 300px; gap: 12px; font-size: 11px; color: #7A8391;">
+<span class="fixtag" style="justify-self: start;">고침 CP-9</span>
+<div class="num" style="position: relative; height: 16px; border-top: 1px solid #C8CFD8;"><span style="position: absolute; left: 0; top: 2px;">0%</span><span style="position: absolute; left: 25%; top: 2px; transform: translateX(-50%);">25%</span><span style="position: absolute; left: 50%; top: 2px; transform: translateX(-50%);">50%</span><span style="position: absolute; left: 75%; top: 2px; transform: translateX(-50%);">75%</span><span style="position: absolute; right: 0; top: 2px;">100%</span></div>
+<span>확률 축 (0~100%)</span>
+</div>
+</div>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; padding-left: 272px;">
+<span class="fixtag">고침 CP-10</span>
+<span class="tip"><span class="tiphead">툴팁 예시 · '기본' 상황의 엘리프 막대에 올렸을 때</span><b>엘리프 검단 포레듀(AA32블록)</b><span class="num">65%</span><span>판정기 선택</span></span>
+<span class="tip"><span class="tiphead">보류 선택지 막대면</span><b>추가 조사</b><span class="num">2%</span><span>판정기 보류 선택지</span></span>
 </div>
 <div class="foot"><span>자료: 판정기 기록 · 2026-10-14 · 회색 막대 = 단지가 아닌 '더 묻기·더 조사·해당 없음' 선택지</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
 
 <sc-if value="{{dec.hasVirt}}" hint-placeholder-val="{{ false }}">
-<div aria-label="가상 후보(단지 아님)" style="border: 1px dashed #9AA6B6; border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px;">
+<div class="fix" aria-label="가상 후보(단지 아님)" style="border: 1px dashed #9AA6B6; border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px;">
+<span class="fixtag">고침 CP-11</span>
 <span style="font-weight: 600;">가상 후보: 모집공고 대기</span>
 <span style="color: #5B6472;">단지가 아니라 '새 공고가 나올 때까지 기다리기'라는 선택지예요.</span>
 <span style="font-size: 13px; color: #5B6472;">고를 확률</span><b class="u num">{{dec.virtPct}}</b><span class="est">판정기 추정</span>
+<sc-if value="{{dec.virtPick}}" hint-placeholder-val="{{ false }}"><span class="b-pick">판정기 선택</span></sc-if><sc-if value="{{dec.virtTie}}" hint-placeholder-val="{{ false }}"><span class="b-tie">동률</span></sc-if><sc-if value="{{dec.virtMm}}" hint-placeholder-val="{{ false }}"><span class="b-warn">근거와 달라요</span></sc-if>
+<span style="font-size: 12px; color: #7A8391;">선택·동률·근거와 달라요 표시는 서버 값이 있을 때만 붙어요(펼친 모습 E)</span>
 </div>
 </sc-if>
 
@@ -480,7 +541,8 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <h3 style="margin: 0; font-size: 17px; font-weight: 700;">이 상황의 3가지 요건을 단지마다 채우나요?</h3>
 <span style="font-size: 13px; color: #5B6472;">먼저 공식 자료로 계산하고(왼쪽 표시), 판정기가 같은 결론인지 함께 적어요.</span>
 </div>
-<table class="t" aria-label="요건" style="font-size: 14px;">
+<p class="fix" style="margin: 0; font-size: 13px; color: #3A4250;"><span class="fixtag">고침 CP-12</span> 칸 아래 근거 문장은 서버가 준 문장 그대로예요(화면이 고쳐 쓰지 않아요). 예: "현재 공고 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님", "전매 종료 … ≤ 매도 시작 …(기준일 + 보유 5년)".</p>
+<table class="t fix" aria-label="요건" style="font-size: 14px;">
 <colgroup><col style="width: 250px;"><col><col><col></colgroup>
 <thead>
 <tr>
@@ -515,13 +577,14 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="background: #F6F8FA; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px;">
 <p style="margin: 0; font-size: 15px; font-weight: 700;">'비중'이 뭔가요? <button type="button" class="q" aria-label="비중 설명">?</button></p>
 <p style="margin: 0; font-size: 14px; line-height: 1.65; color: #3A4250;">종합 점수는 아래 6가지 기준 점수를 더해서 만들어요. 이때 기준마다 <b>얼마나 중요하게 볼지</b>를 정한 몫이 비중이에요. 6개를 합치면 100%예요. 예를 들어 '오를 가능성' 비중 35%는 종합 점수의 35%를 그 기준이 정한다는 뜻이에요.</p>
+<p class="fix" style="margin: 0; font-size: 15px; font-weight: 700;"><span class="fixtag">고침 CP-15</span> '민감도'가 뭔가요? <button type="button" class="q" aria-label="민감도 설명">?</button></p>
 <p style="margin: 0; font-size: 14px; line-height: 1.65; color: #3A4250;">비중은 사람이 정한 값이라 정답이 없어요. 그래서 <b>비중을 조금(10%p) 바꿔도 순위가 그대로인지</b> 확인해요. 그대로라면 결과가 비중 설정에 덜 흔들린다는 뜻이에요.</p>
 </div>
-<div style="border: 1px solid #D6E0FB; background: #F2F6FF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
-<p style="margin: 0; font-size: 13px; color: #1A3FB0; font-weight: 600;">한 줄 답</p>
-<p style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.4;">점수를 매긴 3곳은 어느 기준을 바꿔도 모두 상위권에 남아요.</p>
-<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1F2A44;">다만 <b>세 곳 사이의 순서</b>는 기준에 따라 바뀌어요. 예를 들어 '비슷한 단지들 사이 순위' 비중을 늘리면 힐스테이트 구월아트파크가 1위가 돼요.</p>
-<div style="display: flex; flex-wrap: wrap; gap: 6px;"><span class="b-mute">6가지 기준 모두, 비중을 바꿔도 상위 5곳은 그대로</span><span class="est">추정 · 점수 다시 계산</span></div>
+<div class="fix" style="border: 1px solid #D6E0FB; background: #F2F6FF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 13px; color: #1A3FB0; font-weight: 600;"><span class="fixtag">고침 CP-13</span> 결과 (서버 값 그대로 · 개수만 셈)</p>
+<p class="num" style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.4;">순위 변동(상위 5곳 바뀜): 있음 0개 · 없음 12개</p>
+<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1F2A44;">6가지 기준 × (10%p 줄이면 / 늘리면) = 비중을 바꾼 12가지 경우를 셌어요. 경우마다 순서는 아래 표에 있어요.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px;"><span class="b-mute">비중을 바꿔도 순위가 그대로인 기준 있음</span><span class="est">추정 · 점수 다시 계산</span></div>
 </div>
 </div>
 
@@ -530,20 +593,20 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <thead>
 <tr>
 <th scope="col">기준 (지금 비중) · 무엇을 보나요</th>
-<th scope="col">비중을 10%p <b>줄이면</b> → 1위·2위·3위</th>
+<th scope="col" class="fix"><span class="fixtag">고침 CP-14</span> 비중을 10%p <b>줄이면</b> → 1위·2위·3위</th>
 <th scope="col">비중을 10%p <b>늘리면</b> → 1위·2위·3위</th>
 </tr>
 </thead>
 <tbody>
 <sc-for list="{{sensRows}}" as="s" hint-placeholder-count="6">
 <tr>
-<th scope="row" style="background: #FFFFFF;">
-<span style="display: block; font-size: 15px; font-weight: 700; color: #14181F;">{{s.name}} <span class="num" style="font-weight: 500; color: #5B6472; font-size: 13px;">지금 {{s.w}}</span></span>
+<th scope="row" class="{{s.cls}}" style="background: #FFFFFF;">
+<span style="display: block; font-size: 15px; font-weight: 700; color: #14181F;"><sc-if value="{{s.fx}}" hint-placeholder-val="{{ false }}"><span class="fixtag">고침 CP-16</span> </sc-if>{{s.name}} <span class="num" style="font-weight: 500; color: #5B6472; font-size: 13px;">지금 {{s.w}}</span></span>
 <span style="display: block; font-size: 13px; color: #5B6472; line-height: 1.5; margin-top: 2px;">{{s.why}}</span>
 <span style="display: block; font-size: 11px; color: #7A8391; margin-top: 4px;">공식 용어: {{s.term}}</span>
 </th>
-<td><p style="{{s.dTop.s}}">{{s.dTop.t}}</p><ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;" class="num"><li><span style="{{s.d1.m}}"></span>{{s.d1.t}}</li><li><span style="{{s.d2.m}}"></span>{{s.d2.t}}</li><li><span style="{{s.d3.m}}"></span>{{s.d3.t}}</li></ol><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472;">순위 변동(상위 5곳 바뀜): 없음</p></td>
-<td><p style="{{s.uTop.s}}">{{s.uTop.t}}</p><ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;" class="num"><li><span style="{{s.u1.m}}"></span>{{s.u1.t}}</li><li><span style="{{s.u2.m}}"></span>{{s.u2.t}}</li><li><span style="{{s.u3.m}}"></span>{{s.u3.t}}</li></ol><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472;">순위 변동(상위 5곳 바뀜): 없음</p></td>
+<td><ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;" class="num"><li><span style="{{s.d1.m}}"></span>{{s.d1.t}}</li><li><span style="{{s.d2.m}}"></span>{{s.d2.t}}</li><li><span style="{{s.d3.m}}"></span>{{s.d3.t}}</li></ol><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472;">순위 변동(상위 5곳 바뀜): 없음</p></td>
+<td><ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px;" class="num"><li><span style="{{s.u1.m}}"></span>{{s.u1.t}}</li><li><span style="{{s.u2.m}}"></span>{{s.u2.t}}</li><li><span style="{{s.u3.m}}"></span>{{s.u3.t}}</li></ol><p style="margin: 6px 0 0; font-size: 12px; color: #5B6472;">순위 변동(상위 5곳 바뀜): 없음</p></td>
 </tr>
 </sc-for>
 </tbody>
@@ -630,6 +693,11 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <path d="M1029.5 23.5 L1035.5 34.5 L1023.5 34.5 Z" fill="#6B4FC8"></path>
 <path d="M1114.5 115.5 L1120.5 126.5 L1108.5 126.5 Z" fill="#6B4FC8"></path>
 </svg>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; padding-left: 120px;">
+<span class="fixtag">고침 CP-17</span>
+<span class="tip"><span class="tiphead">툴팁 예시 · '오를 가능성 · 줄이면' 세로줄에 올렸을 때 (세 단지 함께)</span><b>입주 뒤 값이 오를 가능성 비중 −10%p</b><span class="num">시티오씨엘 8단지 1위</span><span class="num">힐스테이트 구월아트파크 3위</span><span class="num">엘리프 검단 포레듀 1위</span></span>
+<span class="tip"><span class="tiphead">순위가 없는 단지면</span><b>[기준 이름] 비중 +10%p</b><span>[단지 이름] 확인 불가</span></span>
+</div>
 <div class="foot"><span>자료: 점수 다시 계산(판정기 새 호출 없음) · 기준일 2026-10-14 · 상황 '기본'</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
 </section>
@@ -680,6 +748,11 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="border: 1px dashed #9AA6B6; border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px;">
 <span style="font-weight: 600;">가상 후보: 모집공고 대기</span><span style="font-size: 13px; color: #5B6472;">고를 확률</span><b class="u num">1%</b><span class="est">판정기 추정</span>
 </div>
+<div class="fix" style="border: 1px dashed #9AA6B6; border-radius: 12px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; color: #5B6472;">
+<span class="fixtag">고침 CP-11</span>
+<span style="font-weight: 600; color: #14181F;">가상 후보: [이름]</span><span style="font-size: 13px;">고를 확률</span><b class="u num" style="color: #14181F;">[값]</b><span class="est">판정기 추정</span><span class="b-pick">판정기 선택</span><span class="b-tie">동률</span><span class="b-warn">근거와 달라요</span>
+<span style="font-size: 12px; flex-basis: 100%;">판정기가 가상 후보를 골랐거나(선택), 동률이거나, 근거와 다를 때 이 줄에 붙는 모습이에요. 동률은 판정이 끝난 경우에만 붙어요.</span>
+</div>
 <table class="t" style="font-size: 13px;"><colgroup><col style="width: 170px;"><col><col><col></colgroup>
 <tbody><tr><th scope="row" style="background: #FFFFFF;">모집공고 대기 <span class="b-mute">가상 후보</span></th><td style="color: #5B6472;">사전 계산 없음</td><td style="color: #5B6472;">사전 계산 없음</td><td style="color: #5B6472;">사전 계산 없음</td></tr></tbody></table>
 <div role="note" style="background: #FFF7EF; border: 1px solid #F3D6B8; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: #6B3208;"><b>판정기 경고</b><ul style="margin: 6px 0 0; padding-left: 18px;"><li>[판정기 경고 문구 1]</li><li>[판정기 경고 문구 2]</li></ul><span style="font-size: 12px;">(지금 데이터에는 경고가 없어 자리표시예요)</span></div>
@@ -692,12 +765,22 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <p style="margin: 0; font-size: 14px; background: #F6F8FA; border-radius: 8px; padding: 10px 12px;">이 상황의 판정이 없어요.</p>
 <div style="display: flex; flex-wrap: wrap; gap: 6px;"><span style="font-size: 12px; font-weight: 600; color: #FFFFFF; background: #14181F; border-radius: 6px; padding: 1px 8px;">질문 남김</span><span class="b-mute">판정 미해결</span><span class="b-tie">이전 결과 재사용</span></div>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">질문을 남기면 막대 대신 "질문 남김: [판정기 질문 문장]"이 떠요. 미해결이면 막대가 회색이 되고 값 옆에 '미해결'이 붙어요.</p>
+<div class="fix num" style="display: grid; grid-template-columns: 110px minmax(0, 1fr) 90px; gap: 6px 8px; align-items: center; font-size: 12px; border-top: 1px solid #EEF1F4; padding-top: 10px;">
+<span class="fixtag" style="grid-column: 1 / -1; justify-self: start;">고침 CP-19 · 판정기가 고를 확률이 미해결일 때</span>
+<span>[단지 이름]</span><div style="height: 12px; background: #F3F5F7; border-radius: 4px;"><div style="width: 40%; height: 100%; background: #C8CFD8; border-radius: 4px;"></div></div><span>[n]% · <span class="b-mute">미해결</span></span>
+<span>[단지 이름]</span><div style="height: 12px; background: #F3F5F7; border-radius: 4px;"><div style="width: 20%; height: 100%; background: #C8CFD8; border-radius: 4px;"></div></div><span>[n]% · <span class="b-mute">미해결</span></span>
+</div>
 </div>
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
 <p class="sec">G · 순위 칸에 붙을 수 있는 표시</p>
 <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span style="font-weight: 700;">[n]위</span><span class="b-tie">동률</span><span class="b-warn">순위가 흔들려요</span><span class="b-need">다시 판정 필요</span></div>
 <p style="margin: 0; font-size: 13px; color: #5B6472; line-height: 1.6;">'다시 판정 필요': 이 기준일에 저장된 순위·점수예요. 지금 사실로 계산한 범위가 저장값과 달라 다시 판정해야 해요.</p>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">판정기 순위 변화가 없을 때: <span class="est">확인 불가(이전 실행 없음)</span></p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EEF1F4; padding-top: 10px;">
+<p style="margin: 0; font-size: 13px; color: #3A4250; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="fixtag">고침 CP-18</span> 순위가 없을 때: <span style="font-weight: 700;">확인 불가</span> <span class="b-warn">순위가 흔들려요</span> <span style="color: #7A8391;">(배지는 그대로 붙어요)</span></p>
+<p class="num" style="margin: 0; font-size: 13px; color: #3A4250; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">'판정기가 고를 확률' 칸: <b class="u">[n]%</b> <span class="est">판정기 추정</span> <span class="b-pick">판정기 선택</span> <span class="b-tie">동률</span> <span class="b-warn">근거와 달라요</span></p>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">동률은 판정이 끝난(확정) 경우에만 붙어요.</p>
+</div>
 </div>
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
 <p class="sec">H · 가격 갭 · 점수 분해 · 민감도가 빌 때</p>
@@ -705,18 +788,22 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <p style="margin: 0; font-size: 13px;"><span class="est">추정(대체·보정 [계수])</span> 거래가 3건보다 적어 다른 단지로 대신했을 때</p>
 <p style="margin: 0; font-size: 13px;"><span style="display: inline-block; width: 28px; height: 10px; border: 1px dashed #9AA6B6; background: repeating-linear-gradient(45deg, #FFFFFF 0, #FFFFFF 3px, #E3E7EC 3px, #E3E7EC 6px); vertical-align: middle;"></span> 빗금 = 아직 판정 안 한 기준(점수 0) <span class="b-mute">미판정</span></p>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">점수 없음 · 민감도 없음 · 사다리 판정 없음 · <span class="b-mute">미해결</span></p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #EEF1F4; padding-top: 10px; font-size: 12px; color: #3A4250;">
+<span class="fixtag" style="align-self: flex-start;">고침 CP-19 · 가격 전망이 미해결인 단지</span>
+<div style="display: flex; align-items: flex-end; gap: 6px; height: 46px;"><span style="display: block; width: 18px; height: 100%; background: #E3E7EC; border-radius: 4px 4px 0 0;"></span><span style="display: block; width: 18px; height: 100%; background: #E3E7EC; border-radius: 4px 4px 0 0;"></span><span style="display: block; width: 18px; height: 100%; background: #E3E7EC; border-radius: 4px 4px 0 0;"></span><span style="display: block; width: 18px; height: 100%; background: #E3E7EC; border-radius: 4px 4px 0 0;"></span><span style="margin-left: 6px;">[단지 이름] — 회색 바탕 막대 + 값 대신 <span class="b-mute">미해결</span></span></div>
+</div>
 </div>
 </div>
 
 <div style="display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px;">
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
 <p class="sec">I · 가격 전망 '표로 보기'를 펼친 모습 (입주하고 1년 뒤)</p>
-<table class="t num" style="font-size: 13px;"><colgroup><col style="width: 270px;"><col><col><col><col><col style="width: 70px;"></colgroup>
-<thead><tr><th scope="col">단지 · 목표 시점</th><th scope="col">5% 넘게</th><th scope="col">10% 넘게</th><th scope="col">20% 넘게</th><th scope="col">그대로·내림</th><th scope="col">판정</th></tr></thead>
+<table class="t num fix" style="font-size: 13px;"><colgroup><col style="width: 250px;"><col style="width: 110px;"><col><col><col><col><col style="width: 60px;"></colgroup>
+<thead><tr><th scope="col">단지 · 목표 시점</th><th scope="col"><span class="fixtag">고침 CP-20</span> 시점</th><th scope="col">5% 넘게</th><th scope="col">10% 넘게</th><th scope="col">20% 넘게</th><th scope="col">그대로·내림</th><th scope="col">판정</th></tr></thead>
 <tbody>
-<tr><th scope="row">시티오씨엘 8단지 · 2030 하반기</th><td>66% <span style="color: #7A8391;">연 1.3%</span></td><td>53% <span style="color: #7A8391;">연 2.6%</span></td><td>24% <span style="color: #7A8391;">연 5.0%</span></td><td>27%</td><td>중간</td></tr>
-<tr><th scope="row">힐스테이트 구월아트파크 · 2031 하반기</th><td>64% <span style="color: #7A8391;">연 1.0%</span></td><td>53% <span style="color: #7A8391;">연 1.9%</span></td><td>37% <span style="color: #7A8391;">연 3.7%</span></td><td>32%</td><td>중간</td></tr>
-<tr><th scope="row">엘리프 검단 포레듀 · 2029 상반기</th><td>65% <span style="color: #7A8391;">연 2.0%</span></td><td>51% <span style="color: #7A8391;">연 4.0%</span></td><td>26% <span style="color: #7A8391;">연 7.8%</span></td><td>29%</td><td>중간</td></tr>
+<tr><th scope="row">시티오씨엘 8단지 · 2030 하반기</th><td>입주 + 1년</td><td>66% <span style="color: #7A8391;">연 1.3%</span></td><td>53% <span style="color: #7A8391;">연 2.6%</span></td><td>24% <span style="color: #7A8391;">연 5.0%</span></td><td>27%</td><td>중간</td></tr>
+<tr><th scope="row">힐스테이트 구월아트파크 · 2031 하반기</th><td>입주 + 1년</td><td>64% <span style="color: #7A8391;">연 1.0%</span></td><td>53% <span style="color: #7A8391;">연 1.9%</span></td><td>37% <span style="color: #7A8391;">연 3.7%</span></td><td>32%</td><td>중간</td></tr>
+<tr><th scope="row">엘리프 검단 포레듀 · 2029 상반기</th><td>입주 + 1년</td><td>65% <span style="color: #7A8391;">연 2.0%</span></td><td>51% <span style="color: #7A8391;">연 4.0%</span></td><td>26% <span style="color: #7A8391;">연 7.8%</span></td><td>29%</td><td>중간</td></tr>
 </tbody>
 </table>
 <p style="margin: 0; font-size: 12px; color: #7A8391;">모든 값 <span class="est">추정 · 판정기</span> · '연 n%'는 그 수준이 되려면 해마다 올라야 하는 비율</p>
@@ -755,9 +842,38 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <tr><th scope="row">추가 조사</th><td>2%</td><td>판정기 보류 선택지</td></tr>
 </tbody>
 </table>
-<p style="margin: 0; font-size: 12px; color: #7A8391;">외 5줄 · 민감도 '표로 보기'는 위 기준별 표와 같은 내용(비중 바꾼 기준 · 순위 변동 · 상위 5곳 · 들어옴/빠짐)</p>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">외 5줄 · 민감도 '표로 보기'는 아래 M</p>
 </div>
 </div>
+
+<div class="card fix" style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+<p class="sec"><span class="fixtag">고침 CP-21</span> M · 가중치 민감도 '표로 보기'를 펼친 모습 (기본)</p>
+<table class="t num" style="font-size: 13px;">
+<colgroup><col style="width: 300px;"><col style="width: 170px;"><col><col style="width: 220px;"></colgroup>
+<thead><tr><th scope="col">비중 바꾼 항목</th><th scope="col">순위 변동</th><th scope="col">상위 5곳 (TOP 5)</th><th scope="col">표시 (들어옴·빠짐)</th></tr></thead>
+<tbody>
+<tr><th scope="row">입주 뒤 값이 오를 가능성 비중 −10%p</th><td>순위 변동: 없음</td><td>1위 시티오씨엘 8단지 · 1위 엘리프 검단 포레듀(AA32블록) · 3위 힐스테이트 구월아트파크 · [n]위 [단지 이름] · [n]위 [단지 이름]</td><td style="color: #7A8391;">—</td></tr>
+<tr><th scope="row">입주 뒤 값이 오를 가능성 비중 +10%p</th><td>순위 변동: 없음</td><td>1위 시티오씨엘 8단지 · 2위 힐스테이트 구월아트파크 · 2위 엘리프 검단 포레듀(AA32블록) · [n]위 [단지 이름] · [n]위 [단지 이름]</td><td style="color: #7A8391;">—</td></tr>
+<tr style="color: #5B6472;"><th scope="row">[기준 이름] 비중 +10%p <span class="exm" style="font-size: 11px; border: 1px solid #C8CFD8; border-radius: 4px; padding: 0 6px;">자리표시</span></th><td>순위 변동: 있음</td><td>[n]위 [단지 이름] · …</td><td><b>진입 [단지 이름]</b> · 이탈 [단지 이름]</td></tr>
+</tbody>
+</table>
+<p style="margin: 0; font-size: 12px; color: #7A8391;">외 10줄(6가지 기준 × 줄이면/늘리면) · 4·5위 단지 이름은 이 비교에 없는 단지라 자리표시 · '기본' 상황은 12줄 모두 '순위 변동: 없음'이라 셋째 줄은 바뀐 경우의 모습 예시예요(새로 들어온 단지는 굵게)</p>
+</div>
+</section>
+
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFDF2;">
+<h2 id="keep" style="margin: 0; font-size: 17px; font-weight: 700;"><span class="fixtag">고침 CP-22</span> 구현할 때 지금 동작 그대로 유지 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">(그림으로 못 그리는 것 · 대응표 번호)</span></h2>
+<ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #3A4250; line-height: 1.75;">
+<li>#4 · #174 주소의 단지(ids)가 2~6개일 때만 비교 자료를 불러요. 벗어나면 펼친 모습 A.</li>
+<li>#10 화면 자료를 준비하는 중(503)이면 잠시 뒤 저절로 다시 불러와요.</li>
+<li>#12 새 조건을 준비하는 동안 이전 값을 그대로 두고, 그 위에 '준비 중' 줄을 함께 보여요.</li>
+<li>#16 차트 구역의 화면 낭독기용 제목("차트", 눈에는 안 보임)을 둬요.</li>
+<li>#18 표·차트의 열 순서는 주소에 적힌 단지 순서 그대로예요.</li>
+<li>#170 용어 [?] 창은 Esc·바깥 누르기로 닫히고, 모바일에서는 아래에서 올라오는 시트예요.</li>
+<li>#171 '표로 보기'는 펼침 상태(aria-expanded)를 알리고, 펼치면 '표 닫기'로 바뀌어요.</li>
+<li>#172 상황(?scenario=)은 다른 화면과 함께 써요. 머리줄에서 바꾸면 이 화면도 바뀌어요.</li>
+<li>#173 목표 시점·상황 라디오는 Tab으로 옮기고 Enter·Space로 골라요.</li>
+</ul>
 </section>
 
 <footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
@@ -768,7 +884,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":8800}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":11200}}'>
 class Component extends DCLogic {
 renderVals() {
 var self = this;
@@ -812,9 +928,9 @@ var c32 = [[6.47,7.025,7.345],[5.30,5.56,5.78],[4.90,5.25,5.55],[4.32,4.32,4.32]
 var c16 = [[5.88,6.17,6.30]];
 var c41 = [[5.4345,5.4345,5.4345],[7.30,7.65,7.94],[4.20,4.20,4.20],[4.80,4.80,4.80],[5.93,6.325,6.80],[5.00,5.225,5.57],[5.94,6.00,6.15],[5.60,5.94,6.28],[4.80,5.10,5.37],[5.00,5.40,5.89],[6.83,6.845,6.85],[5.83,6.00,6.20],[5.47,5.75,6.08],[6.95,7.20,7.47],[6.28,6.35,6.48],[4.78,5.065,5.40],[5.05,5.15,5.27],[6.00,6.40,6.70],[5.90,6.39,6.95],[5.9944,6.10,6.14],[4.80,5.105,5.41],[5.67,5.79,5.90],[8.00,8.415,8.60],[7.25,7.25,7.25],[7.00,7.00,7.20],[5.16,5.16,5.16],[5.21,5.30,5.30],[4.65,4.65,4.65],[7.40,7.91,8.25],[6.17,6.36,6.55],[5.90,5.935,5.97],[5.70,5.95,6.15],[6.20,6.60,6.90],[6.82,7.23,7.69],[5.70,5.895,6.00],[4.50,4.975,5.20],[8.30,8.675,8.95]];
 var gapCards = [
-gap(0, '시티오씨엘 8단지', 5.985, 6.509, 6.247, 5.78, '8.1% 높아요', true, c32, '이 단지 중간 6억 2,470만 · 주변 거래 중간 5억 7,800만. 근처 17개 단지 거래 95건(크게 벗어난 11건 뺌).', '국토교통부 실거래(비교 단지 값 재가공) · 2026-10-14', '시티오씨엘 8단지 분양가 5억 9,850만~6억 5,090만, 주변 거래 중간 5억 7,800만'),
-gap(1, '힐스테이트 구월아트파크', 7.67, 9.08, 8.375, 6.17, '35.7% 높아요', true, c16, '이 단지 중간 8억 3,750만 · 주변 거래 중간 6억 1,700만. 비교할 단지가 1곳(거래 9건)뿐이에요.', '국토교통부 실거래(비교 단지 값 재가공) · 2026-10-14', '힐스테이트 구월아트파크 분양가 7억 6,700만~9억 800만, 주변 거래 중간 6억 1,700만'),
-gap(2, '엘리프 검단 포레듀(AA32블록)', 5.7814, 6.0814, 5.931, 6.08, '2.4% 낮아요', false, c41, '이 단지 중간 5억 9,314만 · 주변 거래 중간 6억 800만. 근처 37개 단지 거래 455건(크게 벗어난 41건 뺌).', '국토교통부 실거래(비교 단지 값 재가공) · 2026-10-14', '엘리프 검단 포레듀 분양가 5억 7,814만~6억 814만, 주변 거래 중간 6억 800만')
+gap(0, '시티오씨엘 8단지', 5.985, 6.509, 6.247, 5.78, '8.1% 높아요', true, c32, '이 단지 중간 6억 2,470만 · 비교 단지 17곳 · 거래 95건(크게 벗어난 11건 뺌).', '국토교통부 실거래(비교 단지 값 재가공) · 2026-10-14', '시티오씨엘 8단지 분양가 5억 9,850만~6억 5,090만, 주변보다 8.1% 높음'),
+gap(1, '힐스테이트 구월아트파크', 7.67, 9.08, 8.375, 6.17, '35.7% 높아요', true, c16, '이 단지 중간 8억 3,750만 · 비교 단지 1곳 · 거래 9건.', '국토교통부 실거래(비교 단지 값 재가공) · 2026-10-14', '힐스테이트 구월아트파크 분양가 7억 6,700만~9억 800만, 주변보다 35.7% 높음'),
+gap(2, '엘리프 검단 포레듀(AA32블록)', 5.7814, 6.0814, 5.931, 6.08, '2.4% 낮아요', false, c41, '이 단지 중간 5억 9,314만 · 비교 단지 37곳 · 거래 455건(크게 벗어난 41건 뺌).', '국토교통부 실거래(비교 단지 값 재가공) · 2026-10-14', '엘리프 검단 포레듀 분양가 5억 7,814만~6억 814만, 주변보다 2.4% 낮음')
 ];
 
 var CC = ['#1A3FB0', '#5B7FE6', '#A9BDF4', '#0E7C86', '#56B4BA', '#A7DADC'];
@@ -854,8 +970,8 @@ var J = { s: '판정기도 충족으로 봄', c: '판정기는 미충족으로 �
 var cell = function (a) { return { t: S[a[0]][0], s: S[a[0]][1], j: J[a[1]], mm: !!a[2], e: a[3] }; };
 var req = function (label, virt, a, b, c) { return { label: label, virt: virt, a: cell(a), b: cell(b), c: cell(c) }; };
 var RG0 = '거주의무 0개월, 재당첨 제한 없음, 비규제';
-var RG10 = '거주의무 0개월, 재당첨 제한 10년(내 이력 미입력), 비규제';
-var RG3 = '거주의무 확인 불가, 재당첨 제한 3년(내 이력 미입력), 비규제';
+var RG10 = '거주의무 0개월, 재당첨 제한 10년(이력 미입력), 비규제';
+var RG3 = '거주의무 확인 불가, 재당첨 제한 3년(이력 미입력), 비규제';
 var NOIN = '자기자본·대출한도 미입력';
 var D = {
 base: { name: '기본', conf: '0.61', tie: false,
@@ -871,11 +987,11 @@ req('영종국제도시 신일 비아프 크레스트(1단지)', false, ['N', 'c
 A: { name: 'A 가점 높음(실거주)', conf: '0.89', tie: false,
 items: [['엘리프 검단 포레듀(AA32블록)', 0.90, 'c', 1], ['검암역자이르네', 0, 'c'], ['영종국제도시 신일 비아프 크레스트(2단지)', 0, 'c'], ['영종국제도시 신일 비아프 크레스트(1단지)', 0, 'c'], ['시티오씨엘 8단지', 0.09, 'c'], ['모집공고 대기', 0.01, 'v'], ['사용자에게 질문', 0, 'e'], ['추가 조사', 0, 'e'], ['해당 없음', 0, 'e']],
 reqs: [
-req('엘리프 검단 포레듀(AA32블록)', false, ['Y', 's', 0, '접수 가능(10-14 확인); 가점제 1순위 공급 있음'], ['Y', 's', 0, '거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제'], ['Y', 's', 0, '계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
-req('검암역자이르네', false, ['N', 'c', 0, '접수 미정(10-14 확인); 가점제 1순위 공급 없음(무순위·임의·선착순만)'], ['X', 'u', 0, '거주의무 확인 불가, 재당첨 제한 3년(이력 없음), 비규제'], ['Y', 's', 0, '계약금 5,859만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
-req('영종국제도시 신일 비아프 크레스트(2단지)', false, ['N', 'c', 0, '접수 미정(10-13 확인); 가점제 1순위 공급 없음(무순위·임의·선착순만)'], ['X', 'u', 0, '거주의무 확인 불가, 재당첨 제한 3년(이력 없음), 비규제'], ['Y', 's', 0, '계약금 5,123만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
+req('엘리프 검단 포레듀(AA32블록)', false, ['Y', 's', 0, '접수 가능(10-14 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', 's', 0, '거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제'], ['Y', 's', 0, '계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
+req('검암역자이르네', false, ['N', 'c', 0, '접수 미정(10-14 확인); 가점제 1순위 공급 없음(무순위·임의·선착순 경로만)'], ['X', 'u', 0, '거주의무 확인 불가, 재당첨 제한 3년(이력 없음), 비규제'], ['Y', 's', 0, '계약금 5,859만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
+req('영종국제도시 신일 비아프 크레스트(2단지)', false, ['N', 'c', 0, '접수 미정(10-13 확인); 가점제 1순위 공급 없음(무순위·임의·선착순 경로만)'], ['X', 'u', 0, '거주의무 확인 불가, 재당첨 제한 3년(이력 없음), 비규제'], ['Y', 's', 0, '계약금 5,123만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
 req('영종국제도시 신일 비아프 크레스트(1단지)', false, ['N', 'c', 0, '접수 미정(공식 팝업, 10-13 확인); 가점제 1순위 공급 여부 확인 불가'], ['X', 'u', 0, '거주의무 확인 불가, 재당첨 제한 3년(이력 없음), 비규제'], ['X', 'u', 0, '계약금 비율 확인 불가(중간 가격 5.468억)']),
-req('시티오씨엘 8단지', false, ['Y', 's', 0, '접수 가능(10-13 확인); 가점제 1순위 공급 있음'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 3,124만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
+req('시티오씨엘 8단지', false, ['Y', 's', 0, '접수 가능(10-13 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 3,124만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
 req('모집공고 대기', true, ['Z', '', 0, ''], ['Z', '', 0, ''], ['Z', '', 0, ''])
 ] },
 B: { name: 'B 가점 낮음·소액 자기자본', conf: '0.78', tie: false,
@@ -883,27 +999,27 @@ items: [['시티오씨엘 8단지', 0.20, 'c'], ['엘리프 검단 포레듀(AA3
 reqs: [
 req('시티오씨엘 8단지', false, ['Y', 's', 0, '통장·가점 없이 공식 경로(무순위): 접수 가능(10-13 확인)'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 3,124만(5%) ≤ 자기자본 2억; 잔금 부족 0']),
 req('엘리프 검단 포레듀(AA32블록)', false, ['Y', 's', 0, '통장·가점 없이 공식 경로(임의): 접수 가능(10-14 확인)'], ['Y', 's', 0, RG10], ['Y', 's', 0, '계약금 2,966만(5%) ≤ 자기자본 2억; 잔금 부족 0']),
-req('힐스테이트 구월아트파크', false, ['N', 'c', 0, '지금 공고는 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님'], ['Y', 's', 0, RG0], ['N', 'c', 0, '계약금 4,188만(5%) ≤ 자기자본 2억; 잔금 부족 3,750만 (중도금 이자후불제)']),
+req('힐스테이트 구월아트파크', false, ['N', 'c', 0, '현재 공고 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님'], ['Y', 's', 0, RG0], ['N', 'c', 0, '계약금 4,188만(5%) ≤ 자기자본 2억; 잔금 부족 3,750만 (중도금 이자후불제)']),
 req('검암역자이르네', false, ['N', 'c', 0, '통장·가점 없이 공식 경로(임의): 접수 미정(10-14 확인)'], ['X', 'u', 0, RG3], ['Y', 's', 0, '계약금 5,859만(10%) ≤ 자기자본 2억; 잔금 부족 0']),
 req('영종국제도시 신일 비아프 크레스트(2단지)', false, ['N', 'c', 0, '통장·가점 없이 공식 경로(임의): 접수 미정(10-13 확인)'], ['X', 'u', 0, RG3], ['Y', 's', 0, '계약금 5,123만(10%) ≤ 자기자본 2억; 잔금 부족 0']),
-req('영종국제도시 신일 비아프 크레스트(1단지)', false, ['X', 'u', 0, '공급 경로(지금 공고 종류) 확인 불가'], ['X', 'u', 0, RG3], ['X', 'u', 0, '계약금 비율 확인 불가(중간 가격 5.468억)'])
+req('영종국제도시 신일 비아프 크레스트(1단지)', false, ['X', 'u', 0, '공급 경로(현재 공고 종류) 확인 불가'], ['X', 'u', 0, RG3], ['X', 'u', 0, '계약금 비율 확인 불가(중간 가격 5.468억)'])
 ] },
 C: { name: 'C 시세차익 우선', conf: '0.31', tie: true,
 items: [['엘리프 검단 포레듀(AA32블록)', 0.39, 'c', 1, 1], ['시티오씨엘 8단지', 0.35, 'c', 1, 1], ['힐스테이트 구월아트파크', 0.25, 'c'], ['검암역자이르네', 0, 'c', 0, 0, 1], ['영종국제도시 신일 비아프 크레스트(2단지)', 0, 'c'], ['영종국제도시 신일 비아프 크레스트(1단지)', 0, 'c'], ['사용자에게 질문', 0, 'e'], ['추가 조사', 0.01, 'e'], ['해당 없음', 0, 'e']],
 reqs: [
-req('엘리프 검단 포레듀(AA32블록)', false, ['Y', 's', 0, '접수 가능(10-14 확인); 전매 종료 2028-09(등기 시 해제) ≤ 팔기 시작 2031-10(기준일 + 보유 5년)'], ['Y', 's', 0, RG10], ['Y', 's', 0, '계약금 2,966만(5%) ≤ 자기자본 4억; 잔금 부족 0']),
-req('시티오씨엘 8단지', false, ['Y', 's', 0, '접수 가능(10-13 확인); 전매 종료 2026-12 ≤ 팔기 시작 2031-10'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 3,124만(5%) ≤ 자기자본 4억; 잔금 부족 0']),
-req('힐스테이트 구월아트파크', false, ['Y', 's', 0, '접수 가능(10-13 확인); 전매 종료 2027-05 ≤ 팔기 시작 2031-10'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 4,188만(5%) ≤ 자기자본 4억; 잔금 부족 0 (중도금 이자후불제)']),
-req('검암역자이르네', false, ['N', 's', 1, '접수 미정(10-14 확인); 전매 종료 2029-06(등기 시 해제) ≤ 팔기 시작 2031-10'], ['X', 'u', 0, RG3], ['Y', 's', 0, '계약금 5,859만(10%) ≤ 자기자본 4억; 잔금 부족 0']),
-req('영종국제도시 신일 비아프 크레스트(2단지)', false, ['N', 'u', 0, '접수 미정(10-13 확인); 전매 제한 기간 확인 불가'], ['X', 'u', 0, RG3], ['Y', 's', 0, '계약금 5,123만(10%) ≤ 자기자본 4억; 잔금 부족 0']),
-req('영종국제도시 신일 비아프 크레스트(1단지)', false, ['N', 'u', 0, '접수 미정(공식 팝업, 10-13 확인); 전매 제한 기간 확인 불가'], ['X', 'u', 0, RG3], ['X', 'u', 0, '계약금 비율 확인 불가(중간 가격 5.468억)'])
+req('엘리프 검단 포레듀(AA32블록)', false, ['Y', 's', 0, '접수 가능(10-14 확인); 전매 종료 2028-09(등기 시 해제) ≤ 매도 시작 2031-10(기준일 + 보유 5년)'], ['Y', 's', 0, RG10], ['Y', 's', 0, '계약금 2,966만(5%) ≤ 자기자본 4억; 잔금 부족 0']),
+req('시티오씨엘 8단지', false, ['Y', 's', 0, '접수 가능(10-13 확인); 전매 종료 2026-12 ≤ 매도 시작 2031-10'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 3,124만(5%) ≤ 자기자본 4억; 잔금 부족 0']),
+req('힐스테이트 구월아트파크', false, ['Y', 's', 0, '접수 가능(10-13 확인); 전매 종료 2027-05 ≤ 매도 시작 2031-10'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 4,188만(5%) ≤ 자기자본 4억; 잔금 부족 0 (중도금 이자후불제)']),
+req('검암역자이르네', false, ['N', 's', 1, '접수 미정(10-14 확인); 전매 종료 2029-06(등기 시 해제) ≤ 매도 시작 2031-10'], ['X', 'u', 0, RG3], ['Y', 's', 0, '계약금 5,859만(10%) ≤ 자기자본 4억; 잔금 부족 0']),
+req('영종국제도시 신일 비아프 크레스트(2단지)', false, ['N', 'u', 0, '접수 미정(10-13 확인); 전매제한 기간 확인 불가'], ['X', 'u', 0, RG3], ['Y', 's', 0, '계약금 5,123만(10%) ≤ 자기자본 4억; 잔금 부족 0']),
+req('영종국제도시 신일 비아프 크레스트(1단지)', false, ['N', 'u', 0, '접수 미정(공식 팝업, 10-13 확인); 전매제한 기간 확인 불가'], ['X', 'u', 0, RG3], ['X', 'u', 0, '계약금 비율 확인 불가(중간 가격 5.468억)'])
 ] },
 D: { name: 'D 즉시 구매', conf: '0.62', tie: false,
 items: [['엘리프 검단 포레듀(AA32블록)', 0.68, 'c', 1], ['시티오씨엘 8단지', 0.29, 'c'], ['힐스테이트 구월아트파크', 0, 'c'], ['사용자에게 질문', 0.01, 'e'], ['추가 조사', 0.01, 'e'], ['해당 없음', 0.01, 'e']],
 reqs: [
 req('엘리프 검단 포레듀(AA32블록)', false, ['Y', 's', 0, '임의 공고: 접수 가능(10-14 확인)'], ['Y', 's', 0, RG10], ['Y', 's', 0, '계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
 req('시티오씨엘 8단지', false, ['Y', 's', 0, '무순위 공고: 접수 가능(10-13 확인)'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 3,124만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
-req('힐스테이트 구월아트파크', false, ['N', 'c', 0, '지금 공고는 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 4,188만(5%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)'])
+req('힐스테이트 구월아트파크', false, ['N', 'c', 0, '현재 공고 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님'], ['Y', 's', 0, RG0], ['Y', 's', 0, '계약금 4,188만(5%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)'])
 ] }
 };
 var cur = D[sc];
@@ -924,6 +1040,7 @@ name: cur.name, conf: cur.conf, tie: cur.tie,
 mm: cur.items.some(function (x) { return !!x[5]; }),
 items: items, reqs: cur.reqs,
 hasVirt: virt.length > 0, virtPct: virt.length ? Math.round(virt[0][1] * 100) + '%' : '',
+virtPick: virt.length ? !!virt[0][3] : false, virtTie: virt.length ? (showTie && !!virt[0][4]) : false, virtMm: virt.length ? !!virt[0][5] : false,
 hasWarn: false,
 aria: '판정기가 고를 확률, 상황 ' + cur.name + ': ' + cur.items.map(function (x) { return x[0] + ' ' + Math.round(x[1] * 100) + '%'; }).join(', ')
 };
@@ -941,7 +1058,7 @@ var TOPC = 'margin:0 0 6px;font-size:13px;font-weight:700;color:#1A3FB0;';
 var same = { t: '1위 그대로', s: TOPS };
 var chg = function (txt) { return { t: '1위가 바뀌어요 → ' + txt, s: TOPC }; };
 var sensRows = [
-{ name: '입주 뒤 값이 오를 가능성', w: '35%', term: '가격 +10% 상승 가능성(p10)', why: '입주 1년 뒤 분양가보다 10% 넘게 오를 확률. 판정기가 매겨요.', dTop: chg('공동 1위 2곳'), d1: rk(1, 0), d2: rk(1, 2, 1), d3: rk(3, 1), uTop: same, u1: rk(1, 0), u2: rk(2, 1), u3: rk(2, 2, 1) },
+{ fx: true, name: '입주 뒤 값이 오를 가능성', w: '35%', term: '가격 +10% 상승 가능성(p10)', why: '목표 시점(입주 + 1년)에 분양가보다 10% 넘게 오를 가능성. 판정기가 매겨요. 당첨 확률 아님 · 보장 아님.', dTop: chg('공동 1위 2곳'), d1: rk(1, 0), d2: rk(1, 2, 1), d3: rk(3, 1), uTop: same, u1: rk(1, 0), u2: rk(2, 1), u3: rk(2, 2, 1) },
 { name: '비슷한 단지들 사이 순위', w: '20%', term: '판정기 순위(rerank)', why: '이 지역 단지들을 판정기가 한 줄로 세운 순서. 앞일수록 점수가 높아요.', dTop: chg('공동 1위 2곳'), d1: rk(1, 0), d2: rk(1, 2, 1), d3: rk(3, 1), uTop: chg(NN[1]), u1: rk(1, 1), u2: rk(2, 0), u3: rk(3, 2) },
 { name: '주변 시세와 가격 차이', w: '15%', term: '가격 갭(gap)', why: '분양가가 주변 실거래보다 낮을수록 점수가 높아요.', dTop: chg(NN[1]), d1: rk(1, 1), d2: rk(2, 0), d3: rk(3, 2), uTop: chg(NN[2]), u1: rk(1, 2), u2: rk(2, 0), u3: rk(3, 1) },
 { name: '근처 새 아파트가 입주 뒤 오른 정도', w: '10%', term: '벤치마크(benchmark)', why: '근처에서 먼저 입주한 새 아파트가 분양가보다 얼마나 올랐는지.', dTop: same, d1: rk(1, 0), d2: rk(2, 1), d3: rk(3, 2), uTop: chg(NN[2]), u1: rk(1, 2), u2: rk(2, 0), u3: rk(2, 1, 1) },
@@ -949,6 +1066,7 @@ var sensRows = [
 { name: '되팔기 쉬움', w: '10%', term: '유동성(liquidity)', why: '되팔기 제한이 빨리 끝나고 꼭 살아야 하는 의무가 없을수록 점수가 높아요.', dTop: chg(NN[2]), d1: rk(1, 2), d2: rk(2, 1), d3: rk(2, 0, 1), uTop: same, u1: rk(1, 0), u2: rk(2, 1), u3: rk(3, 2) }
 ];
 
+sensRows.forEach(function (r) { r.cls = r.fx ? 'fix' : ''; r.fx = !!r.fx; });
 return {
 heads: heads, g0: gapCards[0], g1: gapCards[1], g2: gapCards[2], cm0: gapCards[0].comps, cm1: gapCards[1].comps, cm2: gapCards[2].comps, legend6: legend6, brk: brk,
 hzRadios: hzRadios, ladGroups: ladGroups, ladNote: L.note, ladAria: ladAria,

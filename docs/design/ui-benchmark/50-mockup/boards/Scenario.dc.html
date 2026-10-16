@@ -46,6 +46,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .s-N{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#3A4250;background:#F3F4F6;border:1px solid #C8CFD8;border-radius:6px;padding:1px 8px;line-height:18px}
 .s-X{display:inline-flex;align-items:center;font-size:12px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:6px;padding:1px 8px;line-height:18px}
 input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.tip{display:inline-flex;flex-direction:column;gap:2px;background:#FFFFFF;border:1px solid #C8CFD8;border-radius:8px;box-shadow:0 6px 18px rgba(20,24,31,0.16);padding:8px 10px;font-size:12px;line-height:1.5;color:#14181F;white-space:nowrap}
+.tiphead{font-size:11px;font-weight:700;color:#7A8391}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -82,6 +86,8 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 </header>
 
 <main id="main" style="max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 24px;">
+
+<div class="fix" role="note" style="background: #FFF8DB; border: 1px solid #F2D675; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 10개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Scenario.md</div>
 
 <section aria-labelledby="ttl" style="display: flex; flex-direction: column; gap: 10px; max-width: 900px;">
 <h1 id="ttl" style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.5px;">내 조건으로 다시 보기</h1>
@@ -193,9 +199,9 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <legend style="font-size: 15px; font-weight: 700; padding: 0 6px;">어떤 기준을 얼마나 중요하게 볼까요? <span class="hint" style="font-weight: 400;">(비중 미리보기)</span></legend>
 <p style="margin: 0; font-size: 13px; color: #3A4250; line-height: 1.6;">종합 점수는 6가지 기준 점수에 이 비중을 곱해 더해요. 하나를 움직이면 나머지가 원래 비율대로 맞춰져서 <b>합이 늘 100%</b>예요.</p>
 <sc-for list="{{weights}}" as="w" hint-placeholder-count="6">
-<div style="display: flex; flex-direction: column; gap: 4px;">
+<div class="{{w.cls}}" style="display: flex; flex-direction: column; gap: 4px;">
 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px;">
-<label for="{{w.id}}" style="font-size: 14px; font-weight: 600;">{{w.name}}</label>
+<label for="{{w.id}}" style="font-size: 14px; font-weight: 600;"><sc-if value="{{w.fx}}" hint-placeholder-val="{{ false }}"><span class="fixtag">고침 SC-1</span> </sc-if>{{w.name}}</label>
 <span class="num" style="font-size: 16px; font-weight: 700; color: #1A3FB0;">{{w.pct}} <span style="font-size: 12px; font-weight: 400; color: #7A8391;">({{w.dec}})</span></span>
 </div>
 <input id="{{w.id}}" type="range" min="0" max="1" step="0.01" value="{{w.v}}" aria-valuetext="{{w.pct}}" onInput="{{w.on}}">
@@ -262,6 +268,14 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <td style="color: #7A8391;">[값]</td>
 </tr>
 </sc-for>
+<tr class="fix" style="color: #5B6472;">
+<th scope="row" style="font-weight: 600;"><span class="fixtag">고침 SC-2</span> [순위가 없는 단지] <span style="font-weight: 400; font-size: 12px;">(예시 줄)</span></th>
+<td>없음</td>
+<td>없음</td>
+<td><span class="u">[점수]</span> <span class="est">추정</span></td>
+<td>[새 점수]</td>
+<td><span class="est">확인 불가(이전 실행 없음)</span></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -282,7 +296,8 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <span style="border: 1px dashed #C9864A; color: #8A4B0F; font-weight: 600; font-size: 14px; padding: 5px 12px; border-radius: 999px;">확인 불가 섞임 36곳</span>
 </div>
 </div>
-<table class="t" aria-label="요건 사전 계산">
+<p class="fix" style="margin: 0; font-size: 13px; color: #3A4250;"><span class="fixtag">고침 SC-3</span> 칸 아래 근거 문장은 서버가 준 문장 그대로예요(화면이 고쳐 쓰지 않아요). 예: "가점제 1순위 공급 없음(무순위·임의·선착순 경로만)", "현재 공고 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님", "거주의무 36개월(수용)".</p>
+<table class="t fix" aria-label="요건 사전 계산">
 <colgroup><col style="width: 25%;"><col><col><col></colgroup>
 <thead>
 <tr>
@@ -327,6 +342,16 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <span class="num" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;"><b class="u">{{it.pct}}</b><sc-if value="{{it.pick}}" hint-placeholder-val="{{ false }}"><span class="b-pick">판정기 선택</span></sc-if><sc-if value="{{it.virt}}" hint-placeholder-val="{{ false }}"><span class="b-mute">가상 후보</span></sc-if><sc-if value="{{it.esc}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #7A8391;">판정기 보류 선택지</span></sc-if></span>
 </div>
 </sc-for>
+<div class="fix" style="display: grid; grid-template-columns: 300px minmax(0, 1fr) 260px; gap: 12px; font-size: 11px; color: #7A8391;">
+<span class="fixtag" style="justify-self: start;">고침 SC-4</span>
+<div class="num" style="position: relative; height: 16px; border-top: 1px solid #C8CFD8;"><span style="position: absolute; left: 0; top: 2px;">0%</span><span style="position: absolute; left: 25%; top: 2px; transform: translateX(-50%);">25%</span><span style="position: absolute; left: 50%; top: 2px; transform: translateX(-50%);">50%</span><span style="position: absolute; left: 75%; top: 2px; transform: translateX(-50%);">75%</span><span style="position: absolute; right: 0; top: 2px;">100%</span></div>
+<span>확률 축 (0~100%)</span>
+</div>
+</div>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; padding-left: 312px;">
+<span class="fixtag">고침 SC-5</span>
+<span class="tip"><span class="tiphead">툴팁 예시 · 엘리프 막대에 올렸을 때</span><b>엘리프 검단 포레듀(AA32블록)</b><span class="num">90%</span><span>판정기 선택</span></span>
+<span class="tip"><span class="tiphead">가상 후보 막대면</span><b>모집공고 대기</b><span class="num">1%</span><span>가상 후보</span></span>
 </div>
 <div class="foot"><span>자료: 판정기 기록 · 2026-10-14 · 회색 막대 = 단지가 아닌 '더 묻기·더 조사·해당 없음' 선택지 · 가상 후보 '모집공고 대기' = 새 공고를 기다리는 선택지</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
@@ -337,12 +362,13 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <p class="sec">가중치 민감도 · A 가점 높음(실거주)</p>
 <h2 id="s6" class="h2">어떤 기준의 비중을 10%p 늘리거나 줄이면 순위가 바뀌나요?</h2>
 <p class="sub">비중은 2단계에서 정한 '얼마나 중요하게 볼지'예요. 사람이 정한 값이라, 조금 바꿔도 상위 5곳이 그대로인지 확인해요.</p>
+<p class="fix" style="margin: 4px 0 0; font-size: 14px; color: #3A4250; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 SC-7</span> 용어: '비중' <button type="button" class="q" aria-label="비중 설명">?</button> · '민감도' <button type="button" class="q" aria-label="민감도 설명">?</button></p>
 </div>
-<div style="border: 1px solid #F3D6B8; background: #FFF7EF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
-<p style="margin: 0; font-size: 13px; color: #A3470A; font-weight: 700;">한 줄 답</p>
-<p style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.4;">네, 4가지 기준은 비중을 바꾸면 상위 5곳에 드는 단지가 하나씩 바뀌어요.</p>
-<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #3A4250;">'비슷한 단지들 사이 순위'를 늘리거나, '주변 시세와 가격 차이'를 줄이거나, '같은 시기 입주 물량'을 늘리거나, '입주 시기'를 줄이면 힐스테이트 구월아트파크가 상위 5곳에 들어와요.</p>
-<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="b-warn">순위가 흔들려요 · 검암역자이르네, 힐스테이트 구월아트파크, 영종 신일 비아프 크레스트(1단지), 시티오씨엘 8단지</span><span class="b-mute">비중을 바꿔도 순위가 그대로인 기준: 오를 가능성, 근처 새 아파트</span><span class="est">추정 · 점수 다시 계산</span></div>
+<div class="fix" style="border: 1px solid #F3D6B8; background: #FFF7EF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 13px; color: #A3470A; font-weight: 700;"><span class="fixtag">고침 SC-6</span> 결과 (서버 값 그대로 · 개수만 셈)</p>
+<p class="num" style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.4;">순위 변동(상위 5곳 바뀜): 있음 4개 · 없음 8개</p>
+<p style="margin: 0; font-size: 14px; line-height: 1.6; color: #3A4250;">6가지 기준 × (10%p 줄이면 / 늘리면) = 비중을 바꾼 12가지 경우를 셌어요. 어느 경우에 어떤 단지가 들어오고 빠지는지는 아래 표의 '순위 변동' 줄에 서버 값 그대로 있어요.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span class="b-warn">순위가 흔들려요</span><span class="b-mute">비중을 바꿔도 순위가 그대로인 기준 있음</span><span class="est">추정 · 점수 다시 계산</span></div>
 </div>
 <table class="t" aria-label="기준별로 비중을 바꿨을 때 상위 5곳" style="font-size: 13px;">
 <colgroup><col style="width: 25%;"><col><col></colgroup>
@@ -352,8 +378,8 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <tbody>
 <sc-for list="{{sens}}" as="s" hint-placeholder-count="6">
 <tr>
-<th scope="row">
-<span style="display: block; font-size: 15px; font-weight: 700; color: #14181F;">{{s.name}} <span class="num" style="font-weight: 500; color: #5B6472; font-size: 13px;">지금 {{s.w}}</span></span>
+<th scope="row" class="{{s.cls}}">
+<span style="display: block; font-size: 15px; font-weight: 700; color: #14181F;"><sc-if value="{{s.fx}}" hint-placeholder-val="{{ false }}"><span class="fixtag">고침 SC-1</span> </sc-if>{{s.name}} <span class="num" style="font-weight: 500; color: #5B6472; font-size: 13px;">지금 {{s.w}}</span></span>
 <span style="display: block; font-size: 13px; font-weight: 400; color: #5B6472; line-height: 1.5; margin-top: 2px;">{{s.why}}</span>
 <span style="display: block; font-size: 11px; font-weight: 400; color: #7A8391; margin-top: 4px;">공식 용어: {{s.term}}</span>
 </th>
@@ -480,6 +506,11 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <circle cx="1036.5" cy="260" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
 <circle cx="1121.5" cy="168" r="5" fill="#FFFFFF" stroke="#5B6472" stroke-width="2.5"></circle>
 </svg>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; padding-left: 120px;">
+<span class="fixtag">고침 SC-8</span>
+<span class="tip"><span class="tiphead">툴팁 예시 · '단지 사이 순위 · 늘리면' 세로줄에 올렸을 때 (지금 상위 5곳 함께)</span><b>비슷한 단지들 사이 순위 비중 +10%p</b><span class="num">엘리프 검단 포레듀 1위</span><span class="num">검암역자이르네 [n]위 (상위 5곳 밖)</span><span class="num">영종 신일 비아프 크레스트(2단지) 2위</span><span class="num">시티오씨엘 8단지 3위</span><span class="num">영종 신일 비아프 크레스트(1단지) 3위</span></span>
+<span class="tip"><span class="tiphead">순위가 없는 단지면</span><b>[기준 이름] 비중 −10%p</b><span>[단지 이름] 확인 불가</span></span>
+</div>
 <div class="foot"><span>자료: 점수 다시 계산(판정기 새 호출 없음) · 기준일 2026-10-14 · 상황 'A 가점 높음(실거주)' · 주황 띠 = 상위 5곳 밖</span><button type="button" class="btns">표로 보기</button></div>
 </figure>
 </section>
@@ -508,6 +539,12 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <div style="display: flex; flex-direction: column; gap: 6px;"><label for="e2" class="lab">청약 가점</label><div class="unit"><input id="e2" class="inp inp-err num" type="text" value="90" aria-invalid="true"><span>점</span></div><p class="err">84 이하여야 해요</p></div>
 <div style="display: flex; flex-direction: column; gap: 6px;"><label for="e3" class="lab">지금 가진 내 돈</label><div class="unit"><input id="e3" class="inp inp-err num" type="text" value="-1" aria-invalid="true"><span>억원</span></div><p class="err">0 이상이어야 해요</p></div>
 <div style="display: flex; flex-direction: column; gap: 6px;"><label for="e4" class="lab">들어가 살고 싶은 때</label><input id="e4" class="inp inp-err num" type="text" value="2029/6" aria-invalid="true"><p class="err">2029-06처럼 연-월로 적어 주세요</p></div>
+</div>
+<div class="fix" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+<span class="fixtag" style="grid-column: 1 / -1; justify-self: start;">고침 SC-9</span>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e5" class="lab">받을 수 있는 대출 모두</label><div class="unit"><input id="e5" class="inp inp-err num" type="text" value="1200" aria-invalid="true"><span>억원</span></div><p class="err">1000 이하여야 해요</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e6" class="lab">얼마나 가지고 있을 건가요</label><div class="unit"><input id="e6" class="inp inp-err num" type="text" value="60" aria-invalid="true"><span>년</span></div><p class="err">50 이하여야 해요</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="e7" class="lab">원하는 집 크기</label><div class="unit"><input id="e7" class="inp inp-err num" type="text" value="5" aria-invalid="true"><span>㎡</span></div><p class="err">10 이상이어야 해요</p></div>
 </div>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">칸마다 범위: 가족 수 1~20명 · 가점 0~84점 · 내 돈·대출 0~1,000억 · 보유 0~50년 · 크기 10~300㎡</p>
 <div style="border-top: 1px solid #EEF1F4; padding-top: 12px; display: flex; flex-direction: column; gap: 6px;">
@@ -564,13 +601,13 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 <tbody>
 <tr style="color: #7A8391;">
 <th scope="row" style="font-weight: 600;">산곡역자이힐스테이트앤하늘채 <span class="b-mute">제외</span></th>
-<td><span class="s-X">확인 불가</span><p style="margin: 6px 0 0; font-size: 12px;">공급 경로(지금 공고 종류) 확인 불가</p></td>
+<td><span class="s-X">확인 불가</span><p style="margin: 6px 0 0; font-size: 12px;">공급 경로(현재 공고 종류) 확인 불가</p></td>
 <td><span class="s-Y" style="opacity: 0.6;">충족</span><p style="margin: 6px 0 0; font-size: 12px;">거주의무 0개월, 재당첨 제한 없음, 비규제</p></td>
 <td><span class="s-X">확인 불가</span><p style="margin: 6px 0 0; font-size: 12px;">계약금 비율 확인 불가(중간 가격 9.41억)</p></td>
 </tr>
 <tr style="color: #7A8391;">
 <th scope="row" style="font-weight: 600;">숭의역 노르웨이숲 더 스카이 <span class="b-mute">제외</span></th>
-<td><span class="s-N">미충족</span><p style="margin: 6px 0 0; font-size: 12px;">지금 공고는 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님</p></td>
+<td><span class="s-N">미충족</span><p style="margin: 6px 0 0; font-size: 12px;">현재 공고 본청약(통장·가점 경로) — 무순위·임의·선착순 공고 아님</p></td>
 <td><span class="s-Y" style="opacity: 0.6;">충족</span><p style="margin: 6px 0 0; font-size: 12px;">거주의무 0개월, 재당첨 제한 없음, 비규제</p></td>
 <td><span class="s-Y" style="opacity: 0.6;">충족</span><p style="margin: 6px 0 0; font-size: 12px;">계약금 3,545만(5%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 무이자)</p></td>
 </tr>
@@ -581,6 +618,18 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 </div>
 </section>
 
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFDF2;">
+<h2 id="keep" style="margin: 0; font-size: 17px; font-weight: 700;"><span class="fixtag">고침 SC-10</span> 구현할 때 지금 동작 그대로 유지 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">(그림으로 못 그리는 것 · 대응표 번호)</span></h2>
+<ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #3A4250; line-height: 1.75;">
+<li>#4 지금 보는 조건 = 주소의 ?scenario= → 없으면 '기본' → 그것도 없으면 목록 첫째.</li>
+<li>#49 저장 요청을 보내는 동안 '이 조건 저장' 버튼이 잠깐 꺼져요.</li>
+<li>#53 '다시 판정하기'는 조건이 없거나, 기준일이 없거나, 요청을 보내는 중이면 꺼져요(읽기 전용 열쇠일 때는 펼친 모습 D).</li>
+<li>#78 이전 대비 표에서 숫자를 누르면 그 값이 나온 수정본(이전/새)의 출처가 열려요.</li>
+<li>#135 폼은 Enter로 저장하고, 비중 슬라이더는 화살표 키로 움직여요.</li>
+<li>#143 다시 판정하는 동안 작업 상태를 2초마다 확인해요.</li>
+</ul>
+</section>
+
 <footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
 <span>상대 비교 · 투자 권유 아님. 이 화면은 개인의 청약 자격을 판정하지 않아요. 최종 기준은 입주자 모집 공고문이에요.</span>
 <span><span class="ok">확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산하거나 판정기가 낸 값 · 숫자를 누르면 출처가 열려요</span>
@@ -589,7 +638,7 @@ input[type="range"]{accent-color:#2350D8;width:100%;height:28px;margin:0}
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":7300}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":8600}}'>
 class Component extends DCLogic {
 renderVals() {
 var self = this;
@@ -614,7 +663,7 @@ tag: on ? 'font-size:11px;font-weight:700;color:#FFFFFF;background:#2350D8;borde
 var KEYS = ['p10', 'rerank', 'gap', 'benchmark', 'supply', 'move_in'];
 var NAMES = { p10: '입주 뒤 값이 오를 가능성', rerank: '비슷한 단지들 사이 순위', gap: '주변 시세와 가격 차이', benchmark: '근처 새 아파트가 입주 뒤 오른 정도', supply: '같은 시기 입주 물량', move_in: '입주 시기' };
 var WHY = {
-p10: '입주 1년 뒤 분양가보다 10% 넘게 오를 확률(판정기)',
+p10: '목표 시점(입주 + 1년, 이 조건 설정)에 분양가보다 10% 넘게 오를 가능성(판정기) · 당첨 확률 아님 · 보장 아님',
 rerank: '이 지역 단지들을 판정기가 한 줄로 세운 순서',
 gap: '분양가가 주변 실거래보다 낮을수록 점수가 높아요',
 benchmark: '근처에서 먼저 입주한 새 아파트가 오른 정도',
@@ -637,7 +686,7 @@ return next;
 var weights = KEYS.map(function (k) {
 var v = w[k] || 0;
 return {
-id: 'w-' + k, name: NAMES[k], why: WHY[k], v: String(v), pct: Math.round(v * 100) + '%', dec: v.toFixed(2),
+id: 'w-' + k, fx: k === 'p10', cls: k === 'p10' ? 'fix' : '', name: NAMES[k], why: WHY[k], v: String(v), pct: Math.round(v * 100) + '%', dec: v.toFixed(2),
 on: function (e) { var nv = Number(e && e.target ? e.target.value : v); self.setState({ w: rebalance(w, k, nv) }); }
 };
 });
@@ -661,10 +710,10 @@ var reqs = [
 row('엘리프 검단 포레듀(AA32블록)', ['Y', '접수 가능(10-14 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 0개월, 재당첨 제한 10년(이력 없음), 비규제'], ['Y', '계약금 2,966만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
 row('시티오씨엘 8단지', ['Y', '접수 가능(10-13 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 0개월, 재당첨 제한 없음, 비규제'], ['Y', '계약금 3,124만(5%) ≤ 자기자본 3억; 잔금 부족 0']),
 row('힐스테이트 구월아트파크', ['Y', '접수 가능(10-13 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 0개월, 재당첨 제한 없음, 비규제'], ['Y', '계약금 4,188만(5%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)']),
-row('검암역자이르네', ['N', '접수 미정(10-14 확인); 가점제 1순위 공급 없음(무순위·임의·선착순만)'], ['X', RG3], ['Y', '계약금 5,859만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
-row('영종국제도시 신일 비아프 크레스트(2단지)', ['N', '접수 미정(10-13 확인); 가점제 1순위 공급 없음(무순위·임의·선착순만)'], ['X', RG3], ['Y', '계약금 5,123만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
+row('검암역자이르네', ['N', '접수 미정(10-14 확인); 가점제 1순위 공급 없음(무순위·임의·선착순 경로만)'], ['X', RG3], ['Y', '계약금 5,859만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
+row('영종국제도시 신일 비아프 크레스트(2단지)', ['N', '접수 미정(10-13 확인); 가점제 1순위 공급 없음(무순위·임의·선착순 경로만)'], ['X', RG3], ['Y', '계약금 5,123만(10%) ≤ 자기자본 3억; 잔금 부족 0']),
 row('영종국제도시 신일 비아프 크레스트(1단지)', ['N', '접수 미정(공식 팝업, 10-13 확인); 가점제 1순위 공급 여부 확인 불가'], ['X', RG3], ['X', '계약금 비율 확인 불가(중간 가격 5.468억)']),
-row('더샵 검단레이크파크(AB23BL)', ['X', '접수 상태 확인 불가(10-14 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 36개월(받아들임), 재당첨 제한 10년(이력 없음), 비규제'], ['Y', '계약금 6,243만(10%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)']),
+row('더샵 검단레이크파크(AB23BL)', ['X', '접수 상태 확인 불가(10-14 확인); 가점제 1순위 공급(본청약·예정 공고) 있음'], ['Y', '거주의무 36개월(수용), 재당첨 제한 10년(이력 없음), 비규제'], ['Y', '계약금 6,243만(10%) ≤ 자기자본 3억; 잔금 부족 0 (중도금 이자후불제)']),
 row('산곡역자이힐스테이트앤하늘채', ['X', '접수 상태 확인 불가(10-14 확인); 가점제 1순위 공급 여부 확인 불가'], ['Y', '거주의무 0개월, 재당첨 제한 없음, 비규제'], ['X', '계약금 비율 확인 불가(중간 가격 9.41억)'])
 ];
 
@@ -702,7 +751,7 @@ var BG = 'background:#FFF7EF;';
 var mk = function (name, wv, term, why, d, dCh, u, uCh) {
 var dd = top(d), uu = top(u);
 return {
-name: name, w: wv, term: term, why: why,
+fx: name === '입주 뒤 값이 오를 가능성', cls: name === '입주 뒤 값이 오를 가능성' ? 'fix' : '', name: name, w: wv, term: term, why: why,
 d0: dd[0], d1: dd[1], d2: dd[2], d3: dd[3], d4: dd[4],
 u0: uu[0], u1: uu[1], u2: uu[2], u3: uu[3], u4: uu[4],
 dCh: dCh ? '순위 변동: 있음 — 새로 들어옴 ' + NM[16] + ' · 빠짐 ' + NM[dCh] : '순위 변동: 없음',
@@ -712,7 +761,7 @@ dBg: dCh ? BG : 'color:#5B6472;', uBg: uCh ? BG : 'color:#5B6472;'
 };
 };
 var sens = [
-mk('입주 뒤 값이 오를 가능성', '35%', '가격 +10% 상승 가능성(p10)', '입주 1년 뒤 분양가보다 10% 넘게 오를 확률(판정기)', [[41,1],[9,2],[27,2],[32,4],[28,4]], 0, [[41,1],[9,2],[32,3],[27,3],[28,5]], 0),
+mk('입주 뒤 값이 오를 가능성', '35%', '가격 +10% 상승 가능성(p10)', '목표 시점(입주 + 1년)에 분양가보다 10% 넘게 오를 가능성(판정기) · 당첨 확률 아님 · 보장 아님', [[41,1],[9,2],[27,2],[32,4],[28,4]], 0, [[41,1],[9,2],[32,3],[27,3],[28,5]], 0),
 mk('비슷한 단지들 사이 순위', '20%', '판정기 순위(rerank)', '이 지역 단지들을 판정기가 한 줄로 세운 순서', [[9,1],[41,2],[27,3],[32,4],[28,5]], 0, [[41,1],[27,2],[28,3],[32,3],[16,5]], 9),
 mk('주변 시세와 가격 차이', '15%', '가격 갭(gap)', '분양가가 주변 실거래보다 낮을수록 점수가 높아요', [[28,1],[27,2],[41,2],[16,4],[32,5]], 9, [[41,1],[9,2],[32,3],[27,3],[28,5]], 0),
 mk('근처 새 아파트가 입주 뒤 오른 정도', '10%', '벤치마크(benchmark)', '근처에서 먼저 입주한 새 아파트가 분양가보다 오른 정도', [[9,1],[41,1],[32,3],[27,3],[28,5]], 0, [[41,1],[27,2],[9,3],[28,3],[32,5]], 0),

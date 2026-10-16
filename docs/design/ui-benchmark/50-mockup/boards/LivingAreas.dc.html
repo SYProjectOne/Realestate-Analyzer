@@ -37,6 +37,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .meta dt{color:#5B6472}.meta dd{margin:0;color:#14181F;font-weight:600}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .chipx{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;padding:6px 6px 6px 12px;border-radius:999px;border:1px solid #C8CFD8;background:#FFFFFF;color:#14181F}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.indet{height:8px;border-radius:4px;background:repeating-linear-gradient(90deg,#9AA6B6 0,#9AA6B6 14px,#E3E7EC 14px,#E3E7EC 28px)}
+.keep li{margin:0;font-size:14px;color:#3A4250;line-height:1.6}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -66,6 +70,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </div>
 </header>
+
+<div style="max-width: 1280px; margin: 0 auto; padding: 16px 24px 0; box-sizing: border-box;">
+<div class="fix" role="note" style="background: #FFF8DB; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 3개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-LivingAreas.md</div>
+</div>
 
 <main style="max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
 
@@ -332,6 +340,15 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <p style="margin: 0; font-size: 13px; color: #5B6472;">세대수를 모르는 새 생활권은 '없음'으로 보여요. 생활권을 추가하면 '새 생활권 2', '새 생활권 3' 이름으로 생겨요.</p>
 </div>
 
+<div class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+<h3 style="margin: 0; font-size: 17px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">동 이름을 모를 때 <span class="fixtag">고침 LA-2</span></h3>
+<ul class="dl" style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 6px;">
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="만석동 고르기">만석동<span class="code">2812510100</span></label></li>
+<li draggable="true"><label class="dg"><input type="checkbox" aria-label="[동 코드] 고르기"><span class="num">[동 코드]</span></label></li>
+</ul>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">지역 선택에 그 동의 이름이 없으면 이름 자리에 동 코드(10자리)만 보여요. 오른쪽 작은 코드는 따로 붙지 않고, 고르기 칸 이름도 '[동 코드] 고르기'가 돼요.</p>
+</div>
+
 <div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 10px;">
 <h3 style="margin: 0; font-size: 17px;">생활권을 저장한 뒤</h3>
 <span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; background: #14181F; color: #FFFFFF; font-size: 14px; padding: 12px 16px; border-radius: 12px;">생활권을 저장했어요 — 다시 판정하는 작업을 등록했어요</span>
@@ -339,6 +356,11 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px;"><b>작업 진행</b><span style="color: #5B6472;">[작업 이름]</span><span>실행 중</span><span class="num" style="color: #5B6472;">[n]/[m] · 단계 [단계 이름]</span></div>
 <div style="height: 8px; background: #E3E7EC; border-radius: 4px;" aria-hidden="true"><div style="width: 45%; height: 100%; background: #2350D8; border-radius: 4px;"></div></div>
 <p style="margin: 0; font-size: 12px; color: #5B6472;">새 수정본이 발행될 때까지 화면은 지금 수정본을 보여요 · 끝나면 '새 수정본이 발행됐어요'</p>
+</div>
+<div class="fix" role="status" style="background: #F6F8FA; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14px;"><b>작업 진행</b><span style="color: #5B6472;">[작업 이름]</span><span>대기</span><span class="fixtag">고침 LA-1</span></div>
+<div class="indet" role="progressbar" aria-label="대기"></div>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">진행 수([n]/[m])가 아직 없으면 줄무늬 막대예요 — 얼마나 남았는지 모른다는 뜻이에요. 진행 수가 오면 위처럼 채워지는 막대로 바뀌어요. 범위를 저장한 뒤의 진행 칸도 같아요.</p>
 </div>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">발행이 막히거나 실패하면 이유가 이 칸에 나와요 (지역 시장 보드 '작업 진행 · 상태 모음'과 같아요).</p>
 </div>
@@ -378,10 +400,23 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </section>
 
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFCEB; border-color: #F0D875;">
+<h2 id="keep" style="margin: 0; font-size: 19px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">구현할 때 지금 동작 그대로 유지 <span class="fixtag">고침 LA-3</span></h2>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">그림으로 못 그리는 동작이에요. # 번호는 coverage-LivingAreas.md 의 줄 번호예요. 기존 테스트가 지키는 동작은 그대로 둬요.</p>
+<ul class="keep" style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+<li><b>#26</b> 동을 끌어다 다른 카드(또는 빈 카드)에 놓으면 그 생활권으로 옮겨져요.</li>
+<li><b>#27</b> 고른 동 가운데 하나를 끌면 고른 동 전부를 함께 옮겨요. 고르지 않은 동을 끌면 그 동 하나만 옮겨요.</li>
+<li><b>#28</b> 옮긴 뒤에는 고른 표시(체크)를 모두 지워요.</li>
+<li><b>#50</b> 지역 범위의 '지역 이름' 칸은 100자까지만 들어가요.</li>
+<li><b>#52</b> '더할 곳 찾기'는 2글자 이상일 때, 입력을 멈추고 300ms 뒤에 후보를 불러요(디바운스).</li>
+<li><b>#71</b> 범위를 저장하면 '지금 고른 곳'과 이름을 서버가 돌려준 값으로 다시 맞춰요.</li>
+</ul>
+</section>
+
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4040}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4700}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

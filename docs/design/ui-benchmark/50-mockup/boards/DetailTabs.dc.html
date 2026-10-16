@@ -50,6 +50,9 @@ sc-for,sc-if{display:contents}
 .phone{width:360px;flex:0 0 auto;background:#F3F5F7;border:8px solid #14181F;border-radius:36px;overflow:hidden;box-sizing:border-box}
 pre.raw{margin:0;max-height:none;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.7;background:#F6F8FA;border:1px solid #E3E7EC;border-radius:10px;padding:14px;color:#3A4250}
 mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
+.tip{position:relative;display:inline-flex;flex-direction:column;gap:2px;background:#14181F;color:#FFFFFF;font-size:12px;line-height:1.5;border-radius:8px;padding:8px 10px;box-shadow:0 6px 18px rgba(20,24,31,0.22);align-self:flex-start}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -81,6 +84,8 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 </div>
 </div>
 </header>
+
+<div class="fix" role="note" style="max-width: 1232px; margin: 16px auto 0; background: #FFF8DB; border: 1px solid #F0D36B; border-radius: 12px; padding: 10px 16px; font-size: 14px; color: #3D2E00; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 13개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-DetailTabs.md</div>
 
 <main style="max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
 
@@ -165,6 +170,14 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 </div>
 <p class="note">청약홈 공고가 나오기 전 단지예요. 공고가 나오면 같은 단지에 주택관리번호가 붙고 다시 판정해요. 홍보 자료에서 모은 후보라면 '공고 예정 후보', 아니면 '공고 전'으로 보여요. 이름도 공식이 아니라 '비공식' 라벨이 붙어요.</p>
 </div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;"><span class="fixtag">고침 DX-1</span> 다른 단지일 때 · 접수 상태를 확인 못 함 <span class="mut" style="font-weight: 400;">예) 산곡역자이힐스테이트앤하늘채, 10.14</span></p>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+<span title="원래 사유: [수집 원문 사유] · 2026-10-14 확인" style="display: inline-flex; align-items: center; background: #EEF1F4; color: #5B6472; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px;">접수 상태 확인 못 함(자동 확인이 끝나지 않음, 2026-10-14) · 공식 홈페이지 화면</span>
+<button type="button" class="q" aria-label="접수 상태 뜻 보기">?</button>
+</div>
+<p class="note">이유는 쉬운 말로, 확인한 날짜와 함께 배지 안에 적어요. 원래 사유는 배지에 마우스를 올리면 보여요. '지금은 접수 안 됨'도 같은 모양이에요.</p>
+</div>
 </div>
 </section>
 
@@ -207,6 +220,9 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="ok">확인됨</span> · <b>가격에서 이미 뺐어요</b></span>
 <span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="ok">확인됨</span> · <b>표시만 했어요 (가격에서 빼지 않음)</b> <span class="mut">— 확인된 값이 아니거나 뺄 수 없는 금액이에요</span></span>
 <span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="est">추정</span> 공고문에서 찾은 할인이에요(조건 확인 필요) — 사람이 확인하면 가격에 반영해요 (기준 타입 [타입]) <a href="#">할인 사람 확인하기 →</a></span>
+<span class="fix" style="display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #FFFDF2;"><span><span class="fixtag">고침 DX-2</span> <span class="sub">서버가 이미 보류 사유를 준 경우 (짧은 메모)</span></span>
+<span>기준 타입 [타입] · <span class="sub">보류된 자료 값</span> <span class="v">[값]</span> <span class="est">확인 불가(출처끼리 값이 달라 확인 중)</span> · <a href="#">최고 공급금액 사람 확인하기 →</a></span>
+<span><span class="sub">할인 (공고에 적힌 것)</span> <span class="v">[값]</span> <span class="est">추정</span> 공고문에서 찾은 할인이에요(조건 확인 필요) — 사람이 확인하면 가격에 반영해요 <span class="mut">(기준 타입을 모를 때 · 타입 표기 없음)</span> <a href="#">할인 사람 확인하기 →</a></span></span>
 <span><span class="sub">계약금 금액</span> <span class="est">확인 불가(계산값 없음)</span> <span class="mut">— 예전에 저장한 자료라 금액 계산이 없어요</span></span>
 <span><span class="sub">계약금</span> <span class="est">확인 불가(납부 조건을 아직 못 모음)</span></span>
 <span><span class="sub">접수 일정</span> <span class="est">확인 불가(공고 일정을 아직 못 모음)</span></span>
@@ -234,7 +250,8 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 </div>
 <div style="display: flex; flex-direction: column; gap: 4px;">
 <dt class="sub">점수를 계산한 이유 (점수 계산 범위) <button type="button" class="q" aria-label="점수 계산 범위 뜻 보기">?</button></dt>
-<dd style="margin: 0; font-size: 15px;">민간분양 아파트로 확정됐고 지금 접수할 수 있어서 점수를 계산했어요 <span class="mut">(포함 확정 · 접수 가능)</span></dd>
+<dd class="fix" style="margin: 0; font-size: 15px; display: flex; flex-direction: column; gap: 4px;"><span><span class="fixtag">고침 DX-3</span> 포함 확정 · 접수 가능 <span class="mut">(서버가 준 사유 그대로 — 화면이 바꿔 쓰지 않아요)</span></span>
+<span class="mut">'다시 계산 필요'일 때: 접수 확인 불가 · 지금 사실 기준 — 다시 판정한 뒤 범위의 이유</span></dd>
 </div>
 </dl>
 <div style="border-top: 1px solid #EEF1F4; padding-top: 14px; display: flex; flex-direction: column; gap: 10px;">
@@ -276,6 +293,28 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">136P</th><td>136㎡</td><td style="text-align: right;">3</td><td style="text-align: right;"><span class="v">13억 3,750만</span></td><td style="text-align: right;"><span class="v">13억 3,750만</span></td><td>45-46층</td><td style="text-align: right;">3,000만</td><td style="text-align: right;">0</td></tr>
 </tbody>
 </table>
+</div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #EEF1F4; padding-top: 14px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;"><span class="fixtag">고침 DX-4</span> 다른 단지일 때 탭 1 모습 <span class="mut" style="font-weight: 400;">· 이 단지는 할인·옵션 고지·보류가 없어 값은 자리표시</span></p>
+<div class="hint" style="flex-direction: column; gap: 4px;"><span><b>[타입] 가격을 아직 정하지 못했어요</b> — 머리 돈 카드와 같은 메모가 탭 1 맨 위에도 붙어요</span><span style="font-size: 13px;">보류된 자료 값 <span class="v">[값]</span> <span class="est">확인 불가(출처끼리 값이 달라 확인 중)</span> · <a href="#">최고 공급금액 사람 확인하기 →</a></span></div>
+<dl style="margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px;">
+<div><dt class="sub" style="display: inline;">할인 (공고에 적힌 것)</dt> <dd style="display: inline; margin: 0;"><span class="v">[값]</span> <span class="ok">확인됨</span> · 가격에서 뺐어요 (서버가 뺌)</dd></div>
+<div><dt class="sub" style="display: inline;">할인 (공고에 적힌 것)</dt> <dd style="display: inline; margin: 0;"><span class="v">[값]</span> <span class="est">추정</span> · 가격에서 빼지 않았어요 (표시만 — 확인됨이 아니거나 뺄 수 없는 금액)</dd></div>
+</dl>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 760px;">
+<caption style="text-align: left; font-size: 13px; color: #5B6472; padding-bottom: 8px;">할인이 있는 공고 · 맨 오른쪽 '할인' 열 (그 밖 열은 위 표와 같음)</caption>
+<thead><tr><th scope="col">타입</th><th scope="col" style="text-align: right;">최고가</th><th scope="col">필수 옵션</th><th scope="col">할인</th></tr></thead>
+<tbody>
+<tr style="background: #F2F6FF;"><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">[기준 타입] <span class="bs">판정 기준</span></th><td style="text-align: right;"><span class="v">[값]</span></td><td><span class="v">[금액]</span> ①</td><td><span class="v">[값]</span> <span class="est">추정</span><span class="mut" style="display: block;">공고문에서 찾은 할인이에요(조건 확인 필요) — 사람이 확인하면 가격에 반영해요(기준 타입 [기준 타입]) <a href="#">할인 사람 확인하기 →</a></span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">[타입 B]</th><td style="text-align: right;"><span class="v">[값]</span></td><td><span class="v">[금액]</span> ①</td><td><span class="v">[값]</span> <span class="est">추정</span><span class="mut" style="display: block;">공고문에서 찾은 할인이에요(조건 확인 필요) — 기준 타입([기준 타입])이 아니라 가격에 반영하지 않아요(사람 확인은 기준 타입 할인만)</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">[타입 C]</th><td style="text-align: right;"><span class="v">[값]</span></td><td style="font-size: 13px;">[옵션 고지 글 — 타입마다 다르면 칸 안에 그대로]</td><td><span class="v">[값]</span> <span class="ok">확인됨</span><span class="mut" style="display: block;">기준 타입([기준 타입])이 아니라 가격에서 빼지 않아요(표시만)</span></td></tr>
+<tr><th scope="row" style="text-align: left; font-weight: 600; padding: 11px 12px; border-bottom: 1px solid #EEF1F4;">[타입 D]</th><td style="text-align: right;"><span class="v">[값]</span></td><td>0</td><td style="color: #7A8391;">없음</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">① 공고문 고지: [여러 타입에 똑같은 필수 옵션 안내 문구 — 표 아래에 한 번만]</p>
+<div class="empty" style="padding: 10px; text-align: left;">타입 정보가 하나도 없는 단지: 없음</div>
 </div>
 <p class="note">필수 옵션 칸의 공고문 안내 문구가 여러 타입에 똑같으면 숫자 옆에 ①을 달고 표 아래에 "① 공고문 안내: …"로 한 번만 적어요. 할인 열 안내: 기준 타입 줄의 '추정' 할인은 "사람이 확인하면 가격에 반영(기준 타입 84C)" + 할인 사람 확인하기 / 다른 타입 줄은 "기준 타입이 아니라 가격에 반영하지 않음" / 다른 타입의 확인된 할인은 "기준 타입이 아니라 빼지 않음(표시만)".</p>
 </section>
@@ -339,6 +378,7 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 </table>
 </div>
 <p class="src">자료: 입주자 모집 공고문(본청약·무순위) · 확인 2026-10-13 · 모두 <span class="ok">확인됨</span> (잔금 비율만 계산)</p>
+<div class="fix empty" style="padding: 10px; text-align: left;"><span class="fixtag">고침 DX-5</span> 납부 조건이 하나도 없는 단지: 없음</div>
 </section>
 
 <section aria-labelledby="t3" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
@@ -351,7 +391,7 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <div style="background: #F6F8FA; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1 1 240px;">
 <span class="sub">가장 높았던 경쟁률 (1순위 · 지역 거주자)</span>
 <span style="font-size: 22px; font-weight: 700;"><span class="v">6.22 대 1</span> <span class="sub" style="font-weight: 500;">59타입</span></span>
-<span class="mut">접수 454 ÷ 공급 73 <span class="ok">확인됨</span></span>
+<span class="mut fix"><span class="fixtag">고침 DX-6</span> 기준: 본청약 1순위 · 지역 거주자 (서버 요약 값) <span class="ok">확인됨</span></span>
 </div>
 <div style="background: #F6F8FA; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1 1 240px;">
 <span class="sub">신청이 모자랐던 타입</span>
@@ -408,13 +448,23 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 </g>
 <line x1="1112" y1="30" x2="1112" y2="232" stroke="#2350D8" stroke-width="1.5" stroke-dasharray="4 4"></line>
 <text x="1106" y="24" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#1A3FB0" text-anchor="end">기준일 10.14</text>
-<path d="M380 100 L390 110 L380 120 L370 110 Z" fill="#2350D8"></path>
+<rect x="371" y="101" width="18" height="18" rx="2" fill="#2350D8"></rect>
 <rect x="290" y="72" width="292" height="22" rx="6" fill="#E8EEFF"></rect>
 <text x="300" y="88" font-family="IBM Plex Sans KR, sans-serif" font-size="12.5" fill="#1A3FB0" font-weight="600">01.26 · 36세대 · 75타입 6.11 대 1 · 136P 10.00 대 1</text>
 <text x="660" y="64" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#9AA6B6">본청약은 경쟁률 표에 있어요</text>
 <text x="660" y="164" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#9AA6B6">없음</text>
 <text x="660" y="214" font-family="IBM Plex Sans KR, sans-serif" font-size="12" fill="#9AA6B6">없음</text>
 </svg>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 28px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 13px; color: #3A4250;"><span class="fixtag">고침 DX-7</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6" fill="#14181F"></circle></svg>본청약</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="1" fill="#2350D8"></rect></svg>무순위</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1 13 13H1z" fill="#2350D8"></path></svg>임의공급</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 0 14 7 7 14 0 7z" fill="#2350D8"></path></svg>선착순</span>
+<span class="mut">범례 · 모양으로도 종류를 나눠요 (본청약만 진한 색)</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><span class="mut">툴팁 예시 · 점에 마우스를 올리면</span>
+<div class="tip"><b>무순위 · 2026-01-26</b><span>2025910275</span><span>36세대 · [경쟁률 — 12자 이하 표기일 때만]</span><span>[결과 문구]</span></div></div>
+</div>
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
 <button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
 <p class="src">자료: 청약홈 무순위 공고 2025910275 · 확인 2026-10-13 · 축: 공고일(월), 줄: 모집 종류</p>
@@ -452,20 +502,28 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <figcaption style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
 <h3 class="h3" style="font-size: 16px;">이 단지 가격 vs 주변 실거래</h3>
 <span class="est">재가공 (실거래 통계)</span><span class="ok">확인됨</span>
-<span class="sub" style="width: 100%;">가로 막대는 거래 가격 범위(가장 낮은 값~가장 높은 값), 점은 가운데값이에요. 세로 점선은 비교 단지 전체 가운데값 5억 7,800만이에요.</span>
+<span class="sub" style="width: 100%;">가로 막대는 거래 가격 범위(가장 낮은 값~가장 높은 값), 점은 가운데값이에요.</span>
 </figcaption>
-<div role="img" aria-label="이 단지 가격 5억 9,850만~6억 5,090만, 가운데값 6억 2,470만. 비교 단지 17곳 실거래 가운데값 3억~7억 250만, 전체 가운데값 5억 7,800만" style="display: flex; flex-direction: column; gap: 2px;">
+<div role="img" aria-label="이 단지 가격 5억 9,850만~6억 5,090만, 가운데값 6억 2,470만. 비교 단지 17곳 실거래 가운데값 3억~7억 250만" style="display: flex; flex-direction: column; gap: 2px;">
 <sc-for list="{{comps}}" as="c" hint-placeholder-count="18">
 <div style="{{c.rowStyle}}">
 <span style="{{c.nameStyle}}">{{c.name}} <span class="mut">{{c.meta}}</span></span>
 <div style="position: relative; height: 22px;">
-<div style="position: absolute; top: 0; bottom: 0; left: 59.64%; border-left: 1.5px dashed #C2560C;"></div>
 <div style="{{c.whisker}}"></div>
 <div style="{{c.dot}}"></div>
 </div>
 <span class="num" style="{{c.valStyle}}">{{c.med}}</span>
 </div>
 </sc-for>
+<div class="fix" style="display: grid; grid-template-columns: 260px minmax(0, 1fr) 96px; gap: 12px; align-items: center; min-height: 30px; padding: 0 6px;">
+<span style="font-size: 13px; color: #3A4250;"><span class="fixtag">고침 DX-8</span> [대체 단지] <span class="mut">대체([준공년]) · 모양 예시</span></span>
+<div style="position: relative; height: 22px;">
+<div style="position: absolute; top: 8px; height: 6px; border-radius: 3px; background: #9AA6B6; opacity: 0.55; left: 40%; width: 22%;"></div>
+<div style="position: absolute; top: 4px; width: 14px; height: 14px; border-radius: 50%; margin-left: -7px; background: #9AA6B6; border: 2px solid #FFFFFF; box-sizing: border-box; left: 50%;"></div>
+<div style="position: absolute; top: 3px; width: 16px; height: 16px; border-radius: 50%; margin-left: -8px; background: transparent; border: 1.5px dashed #3A4250; box-sizing: border-box; left: 56%;"></div>
+</div>
+<span class="num" style="font-size: 13px; text-align: right;">[값]</span>
+</div>
 <div style="display: grid; grid-template-columns: 260px minmax(0, 1fr) 96px; gap: 12px; margin-top: 6px;">
 <span class="mut">단위: 원 (가운데값)</span>
 <div style="position: relative; height: 18px; border-top: 1px solid #C8CFD8; font-size: 12px; color: #7A8391;">
@@ -477,8 +535,10 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 13px; color: #3A4250;">
 <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 6px; background: #2350D8; border-radius: 3px;"></span>이 단지 (분양가)</span>
 <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 6px; background: #9AA6B6; border-radius: 3px;"></span>비교 단지 실거래 범위</span>
-<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 0; height: 14px; border-left: 2px dashed #C2560C;"></span>비교 단지 전체 가운데값 (보정 안 함)</span>
+<span class="fix" style="display: inline-flex; align-items: center; gap: 6px;"><span class="fixtag">고침 DX-8</span><span style="width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed #3A4250; box-sizing: border-box;"></span>연식 보정 가운데값 (대체 단지만)</span>
 </div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 4px;"><span class="mut"><span class="fixtag">고침 DX-8</span> 툴팁 예시 · 줄에 마우스를 올리면</span>
+<div class="tip"><b>더샵아르테 · 신축(2024)</b><span>가장 낮은 값 6억 4,700만 ~ 가장 높은 값 7억 3,450만</span><span>가운데값 (보정 안 함) 7억 250만</span><span style="color: #C8CFD8;">대체 단지면 '연식 보정 가운데값 [값]' 줄이 하나 더 붙어요</span></div></div>
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
 <button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
 <p class="src">자료: 국토교통부 실거래가 · 기준일 전 6개월 · 확인 2026-10-14</p>
@@ -489,7 +549,7 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <section aria-labelledby="t5" class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 18px;">
 <div style="display: flex; flex-direction: column; gap: 4px;">
 <span class="tabtag">탭 5 · 가격 전망 (판정기)</span>
-<h2 id="t5" class="h2">입주 뒤 값이 오를 가능성은 어느 정도인가요?</h2>
+<h2 id="t5" class="h2 fix"><span class="fixtag">고침 DX-10</span> 목표 시점에 값이 오를 가능성은 어느 정도인가요?</h2>
 <p class="lead">판정기가 공개 자료를 보고 낸 가능성이에요. <b>당첨 확률이 아니에요 · 보장 아님 · 상대 비교</b></p>
 </div>
 <div role="radiogroup" aria-label="목표 시점" style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -521,7 +581,14 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <span style="font-size: 13px; color: #3A4250;">{{b.verdict}} <span class="mut">{{b.annual}}</span></span>
 </div>
 </sc-for>
+<div class="fix" style="display: grid; grid-template-columns: 220px minmax(0, 1fr) 200px; gap: 14px;">
+<span class="mut"><span class="fixtag">고침 DX-10</span> 가능성 눈금</span>
+<div style="position: relative; height: 18px; border-top: 1px solid #C8CFD8; font-size: 12px; color: #7A8391;"><span style="position: absolute; left: 0;">0%</span><span style="position: absolute; left: 20%; transform: translateX(-50%);">20%</span><span style="position: absolute; left: 40%; transform: translateX(-50%);">40%</span><span style="position: absolute; left: 60%; transform: translateX(-50%);">60%</span><span style="position: absolute; left: 80%; transform: translateX(-50%);">80%</span><span style="position: absolute; left: 100%; transform: translateX(-100%);">100%</span></div>
+<span></span>
 </div>
+</div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 4px;"><span class="mut"><span class="fixtag">고침 DX-10</span> 툴팁 예시 · 막대에 마우스를 올리면</span>
+<div class="tip"><b>{{tipHead}}</b><span>{{tipAnnual}}</span></div></div>
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
 <button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
 <p class="src">자료: 판정기 가능성 판정 (기록 번호 {{ladderSeq}}) · 2026-10-14</p>
@@ -552,6 +619,27 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
 <button type="button" class="btn btn-sm" aria-expanded="false">표로 보기</button>
 <p class="src">자료: 지역 개발 소식 후보(판정기 분류) · 기준일 2026-10-14</p>
+</div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #EEF1F4; padding-top: 12px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600;"><span class="fixtag">고침 DX-11</span> 소식이 있을 때 단계 칸 안 모습 <span class="mut" style="font-weight: 400;">· 이름·날짜는 자리표시</span></p>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; font-size: 12px;">
+<section aria-label="확정 예시" style="display: flex; flex-direction: column; gap: 6px;"><span class="bd" style="align-self: flex-start;">확정</span><span style="color: #14181F; font-size: 13px;">[소식 이름]</span><span class="mut" style="font-size: 11px;">교통 · <span class="v">[예정 연월]</span> <span class="ok">확인됨</span></span></section>
+<section aria-label="계획 예시" style="display: flex; flex-direction: column; gap: 6px;"><span class="bs" style="align-self: flex-start;">계획</span><span style="color: #14181F; font-size: 13px;">[소식 이름]</span><span class="mut" style="font-size: 11px;">학교</span></section>
+<section aria-label="추진 예시" style="display: flex; flex-direction: column; gap: 6px;"><span class="bs" style="align-self: flex-start;">추진</span><span class="mut">없음</span></section>
+<section aria-label="언론 보도만 예시" style="display: flex; flex-direction: column; gap: 6px; color: #9AA6B6;"><span class="b" style="align-self: flex-start; color: #7A8391;">언론 보도만</span><span style="font-size: 13px;">[소식 이름]</span><span style="font-size: 11px;">상업</span><span style="font-size: 11px;">위치 미확정 · 단지 연결 없음</span></section>
+<section aria-label="미확정 예시" style="display: flex; flex-direction: column; gap: 6px; color: #9AA6B6;"><span class="b" style="align-self: flex-start; color: #7A8391;">아직 정해지지 않음</span><span style="font-size: 13px;">[소식 이름]</span><span style="font-size: 11px;">생활 시설</span></section>
+</div>
+<p style="margin: 0; font-size: 12px; color: #9AA6B6;">개발 소식 아님(판정 제외) [n]건 — 보드에 넣지 않음</p>
+<div style="overflow-x: auto;">
+<table class="tbl num" style="min-width: 760px;">
+<caption style="text-align: left; font-size: 13px; color: #5B6472; padding-bottom: 8px;">표로 보기 — 개발 소식 단계 (버튼을 누르면 펼쳐져요 · 이 단지는 0건이라 실제로는 '개발 소식 없음')</caption>
+<thead><tr><th scope="col">이름</th><th scope="col">구분</th><th scope="col">단계</th><th scope="col" style="text-align: right;">확률</th><th scope="col">예정</th><th scope="col">위치 확정</th></tr></thead>
+<tbody>
+<tr><td>[소식 이름]</td><td>생활 시설</td><td>아직 정해지지 않음</td><td style="text-align: right;"><span class="v">68%</span> <span class="est">추정 (판정기)</span></td><td><span class="est">확인 불가(예정 시기가 안 적힘)</span></td><td>위치 미확정 · 단지 연결 없음</td></tr>
+<tr><td>[소식 이름]</td><td>교통</td><td>확정</td><td style="text-align: right;"><span class="v">[값]</span> <span class="est">추정 (판정기)</span></td><td><span class="v">[예정 연월]</span></td><td>예</td></tr>
+</tbody>
+</table>
+</div>
 </div>
 </figure>
 <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -626,6 +714,16 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <span><span class="ok">확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산·판정기 값 · <span class="est">재가공</span> 가공한 통계 · <span class="est">확인 불가(이유)</span> · 점선 밑줄 숫자를 누르면 출처가 열려요 <a href="#">라벨 뜻 보기</a></span>
 </footer>
 
+<section class="fix card" aria-labelledby="keep" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; border-color: #F0D36B; background: #FFFDF2;">
+<h2 id="keep" style="margin: 0; font-size: 17px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 DX-13</span>구현할 때 지금 동작 그대로 유지 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">· 그림으로 못 그리는 것 (coverage-Detail 번호)</span></h2>
+<ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: #3A4250;">
+<li>#291 원문에서 칠한 발췌 위치로 자동 스크롤(가운데)해요</li>
+<li>#22 · #23 탭은 주소 끝 해시(#payment 등, replace)로 기억하고, 홈 '바뀐 것' 알림의 탭 해시로 바로 열려요 — 다른 화면이 거는 해시 이름은 바꾸지 않아요</li>
+<li>#26 키보드 ← → 로 탭 이동(끝에서 돌아감, 포커스도 이동)</li>
+<li>#27 보이는 탭만 그려요 · 출처·원문은 탭을 열 때 처음 불러와요</li>
+</ul>
+</section>
+
 <section aria-labelledby="ex" style="display: flex; flex-direction: column; gap: 18px; margin-top: 18px;">
 <div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;">
 <h2 id="ex" style="margin: 0; font-size: 18px; font-weight: 700;">펼친 모습 · 다른 상태</h2>
@@ -697,7 +795,7 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <div style="overflow-x: auto;">
 <div role="table" aria-label="주변 시세 비교 데이터" class="dt num" style="min-width: 900px; font-size: 13px;">
 <div role="rowgroup" style="display: table-header-group;"><div role="row" class="dr">
-<div role="columnheader" class="dh">이름</div><div role="columnheader" class="dh">준공 · 구분</div><div role="columnheader" class="dh" style="text-align: right;">가장 낮은 값</div><div role="columnheader" class="dh" style="text-align: right;">가운데값</div><div role="columnheader" class="dh" style="text-align: right;">가장 높은 값</div><div role="columnheader" class="dh" style="text-align: right;">연식 보정 가운데값</div><div role="columnheader" class="dh">거래 수</div>
+<div role="columnheader" class="dh">이름</div><div role="columnheader" class="dh">준공 · 구분</div><div role="columnheader" class="dh" style="text-align: right;">가장 낮은 값</div><div role="columnheader" class="dh" style="text-align: right;">가운데값</div><div role="columnheader" class="dh" style="text-align: right;">가장 높은 값</div><div role="columnheader" class="dh" style="text-align: right;">연식 보정 가운데값</div><div role="columnheader" class="dh">거래 수</div><div role="columnheader" class="dh fix"><span class="fixtag">고침 DX-9</span> 거래 기간</div>
 </div></div>
 <div role="rowgroup" style="display: table-row-group;">
 <sc-for list="{{comps}}" as="c" hint-placeholder-count="18">
@@ -709,12 +807,13 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <div role="cell" class="dc" style="padding: 7px 12px; text-align: right;"><span class="v">{{c.hi}}</span></div>
 <div role="cell" class="dc" style="padding: 7px 12px; text-align: right; color: #7A8391;">{{c.adj}}</div>
 <div role="cell" class="dc" style="padding: 7px 12px;">{{c.n}}</div>
+<div role="cell" class="dc" style="padding: 7px 12px; color: #7A8391;">{{c.win}}</div>
 </div>
 </sc-for>
 </div>
 </div>
 </div>
-<p class="src">비교 단지 값은 <span class="est">재가공 (실거래 n건 통계)</span>, 이 단지 값은 공고문 <span class="ok">확인됨</span>(가운데값은 계산)</p>
+<p class="src">비교 단지 값은 <span class="est">재가공 (실거래 n건 통계)</span>, 이 단지 값은 공고문 <span class="ok">확인됨</span>(가운데값은 계산) · '연식 보정 가운데값'은 대체·보정 단지만 값이 있고 나머지는 빈 칸 · '거래 기간'은 서버 값 그대로(예: 2026-04~2026-09)</p>
 </div>
 
 <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
@@ -752,6 +851,11 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 <li class="sub">공개본 자료를 준비 중이면: "이 기준일 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요"</li>
 <li class="sub">출처 있는 값이 없으면: "없음"</li>
 </ul>
+<div class="fix" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EEF1F4; padding-top: 10px;">
+<span class="sub"><span class="fixtag">고침 DX-12</span> 오류 모습</span>
+<div class="empty" style="padding: 10px; text-align: left; color: #A3470A;">불러오지 못했어요: [사유] <span class="mut" style="display: block;">값 출처를 못 불러올 때 · 준비 중이면 "아직 준비 중이에요 — 잠시 뒤 다시 시도하세요", 저장본 검증 실패면 "서버 오류: 저장된 화면 자료가 검증에 실패했어요(관리자 확인 필요) — [사유]"</span></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><button type="button" class="btn btn-sm">원문 파일 저장</button><span role="alert" style="font-size: 13px; color: #A3470A;">내려받지 못했어요: [사유]</span></div>
+</div>
 </div>
 
 </div>
@@ -789,7 +893,7 @@ mark.hl{background:#2350D8;color:#FFFFFF;border-radius:3px;padding:1px 2px}
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":12400}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":14600}}'>
 class Component extends DCLogic {
 renderVals() {
 var self = this;
@@ -916,7 +1020,8 @@ name: r[0],
 meta: me ? '' : r[1] + '년 · ' + r[5] + '건',
 kind: me ? '공고문 가격' : r[1] + '년 준공',
 lo: won(r[2]), med: won(r[3]), hi: won(r[4]),
-adj: me ? '' : '없음',
+adj: '',
+win: me ? '' : '[기간]',
 n: me ? '' : r[5] + '건',
 whisker: 'position:absolute;top:8px;height:6px;border-radius:3px;background:' + col + ';left:' + l + '%;width:' + w + '%;' + (me ? '' : 'opacity:0.55;'),
 dot: 'position:absolute;top:4px;width:14px;height:14px;border-radius:50%;margin-left:-7px;background:' + col + ';border:2px solid #FFFFFF;box-sizing:border-box;left:' + m + '%;',
@@ -959,6 +1064,8 @@ verdict: verdict,
 annual: i < 3 ? '· 해마다 ' + (cur.a[i] * 100).toFixed(1) + '%' : ''
 };
 });
+var tipHead = names[1] + ' · ' + ladder[1].pct + ' · ' + ladder[1].verdict;
+var tipAnnual = '필요한 연 상승률 ' + (cur.a[1] * 100).toFixed(1) + '%';
 var ladderAria = '목표 시점 ' + cur.target + ': ' + ladder.map(function (b, i) { return names[i] + ' ' + b.pct; }).join(', ');
 
 var P = [
@@ -1003,6 +1110,8 @@ horizons: horizons,
 ladder: ladder,
 ladderTarget: '목표 시점 ' + cur.target,
 ladderAria: ladderAria,
+tipHead: tipHead,
+tipAnnual: tipAnnual,
 ladderSeq: cur.seq,
 proposition: cur.prop,
 provItems: provItems,

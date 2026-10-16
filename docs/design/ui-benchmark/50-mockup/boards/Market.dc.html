@@ -35,6 +35,13 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .r{text-align:right}
 .src{margin:0;font-size:12px;color:#7A8391}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.indet{height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,#9AA6B6 0,#9AA6B6 14px,#E3E7EC 14px,#E3E7EC 28px)}
+.tip{background:#14181F;color:#FFFFFF;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6;display:flex;flex-direction:column;gap:1px;box-shadow:0 6px 18px rgba(20,24,31,0.18);position:relative}
+.tip .tl{font-size:11px;color:#C8CFD8}
+.apin{font-size:11px;font-weight:600;color:#8A4B0F;background:#FFF1E6;border-radius:4px;padding:0 5px}
+.keep li{margin:0;font-size:14px;color:#3A4250;line-height:1.6}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -65,6 +72,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </header>
 
+<div style="max-width: 1280px; margin: 0 auto; padding: 16px 24px 0; box-sizing: border-box;">
+<div class="fix" role="note" style="background: #FFF8DB; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 17개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Market.md</div>
+</div>
+
 <main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 24px;">
 
 <section aria-labelledby="hero" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
@@ -83,34 +94,38 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </section>
 
-<section aria-label="한눈에 보기" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+<section aria-label="한눈에 보기" class="fix" style="display: flex; flex-direction: column; gap: 10px;">
+<p style="margin: 0; font-size: 13px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 MK-1</span>요약 카드는 서버 값을 그대로 쓰거나 줄 개수만 세요. 가장 큰 곳·가장 몰리는 해 고르기, 생활권 값 더하기는 화면이 하지 않아요(규칙 3·5, D25-3).</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 14px; color: #5B6472;">안 팔린 집 (미분양)</span>
+<span style="font-size: 14px; color: #5B6472;">안 팔린 집 (미분양) · 지역 합계</span>
 <span class="num" style="font-size: 30px; font-weight: 700;"><span class="u">3,729</span><span style="font-size: 16px; font-weight: 600;">세대</span></span>
 <span style="font-size: 13px; color: #3A4250;">다 지은 뒤에도 안 팔린 집 <b class="num u">1,401</b>세대</span>
-<span style="font-size: 13px; color: #3A4250;">가장 많은 곳: 영종구 1,578세대</span>
+<span style="font-size: 12px; color: #5B6472;">서버 합계 그대로 · 라벨 사유 '지역 합계(시군구 [n]곳)' · 구별 값은 아래 '구마다' 막대</span>
 <span style="font-size: 11px; color: #7A8391;">국토교통부 · 2026년 8월 말 <span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span></span>
+<span class="apin" style="align-self: flex-start;">API 필요 — 이 합계는 홈 대시보드 응답(kpi.unsold)에만 있어요. 시장 응답에 없으면 그 값을 함께 받거나 WP5에 필드 요청</span>
 </div>
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 14px; color: #5B6472;">입주가 가장 몰리는 해</span>
-<span class="num" style="font-size: 30px; font-weight: 700;">2026<span style="font-size: 16px; font-weight: 600;">년</span></span>
-<span style="font-size: 13px; color: #3A4250;">이 해에 <b class="num u">14,710</b>세대 입주 <span class="est">추정</span></span>
-<span style="font-size: 13px; color: #3A4250;">다음으로 많은 해: 2028년 12,992세대</span>
+<span style="font-size: 14px; color: #5B6472;">입주 시기가 나온, 점수 매긴 단지</span>
+<span class="num" style="font-size: 30px; font-weight: 700;">6<span style="font-size: 16px; font-weight: 600;">곳</span></span>
+<span class="num" style="font-size: 13px; color: #3A4250;">2028년 4곳 · 2029년 1곳 · 2030년 1곳 (그림의 핀 개수)</span>
+<span class="num" style="font-size: 13px; color: #3A4250;">입주 물량 자료가 있는 해: 2024~2030년 <span class="est">추정 집계</span></span>
 <span style="font-size: 11px; color: #7A8391;">입주 예정 단지 집계 · 기준일 2026-10-14</span>
 </div>
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 14px; color: #5B6472;">생활권별 실거래 중간 값 (약 34평)</span>
-<span class="num" style="font-size: 30px; font-weight: 700;"><span class="u">6억 7,000만</span><span style="font-size: 16px; font-weight: 600;">원까지</span></span>
-<span style="font-size: 13px; color: #3A4250;">가장 높은 곳 연수구 6억 7,000만원</span>
-<span style="font-size: 13px; color: #3A4250;">가장 낮은 곳 강화군 <b class="num u">1억 5,750만</b>원</span>
-<span style="font-size: 11px; color: #7A8391;">국토교통부 실거래 · 2026년 4~10월 <span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span></span>
+<span style="font-size: 14px; color: #5B6472;">실거래 값이 있는 생활권 (약 34평)</span>
+<span class="num" style="font-size: 30px; font-weight: 700;">10<span style="font-size: 16px; font-weight: 600;">곳</span> <span style="font-size: 16px; font-weight: 500; color: #5B6472;">/ 11곳</span></span>
+<span style="font-size: 13px; color: #3A4250;">옹진군은 자료 없음 · 생활권별 값은 아래 표</span>
+<span class="num" style="font-size: 13px; color: #3A4250;">거래 기간: 2026-04~2026-10 (서버 값 그대로)</span>
+<span style="font-size: 11px; color: #7A8391;">국토교통부 실거래 <span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span></span>
 </div>
 <div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 14px; color: #5B6472;">규제지역인가요?</span>
-<span style="font-size: 30px; font-weight: 700;">아니에요</span>
-<span style="font-size: 13px; color: #3A4250;">확인한 생활권 9곳 모두 비규제</span>
-<span style="font-size: 13px; color: #3A4250;">분양가 상한제 적용: 영종구 · 서해구 · 검단구</span>
-<span style="font-size: 11px; color: #7A8391;">공고문 · 계양구·옹진군은 근거 단지 없음 <span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span></span>
+<span style="font-size: 14px; color: #5B6472;">규제지역 항목 (규제 요약)</span>
+<span class="num" style="font-size: 30px; font-weight: 700;">'비규제' 9<span style="font-size: 16px; font-weight: 600;">곳</span></span>
+<span style="font-size: 13px; color: #3A4250;">분양가 상한제 '적용' 3곳: 영종구 · 서해구 · 검단구 · '미적용' 6곳</span>
+<span style="font-size: 13px; color: #3A4250;">계양구·옹진군은 규제 항목 없음 · 그 밖의 규제 항목은 아래 규제 칸</span>
+<span style="font-size: 11px; color: #7A8391;">입주자 모집 공고문 <span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span></span>
+</div>
 </div>
 </section>
 
@@ -172,14 +187,16 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 
 <aside aria-label="그림 읽는 법 예시" style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 12px;">
-<div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.6; box-shadow: 0 4px 14px rgba(20, 24, 31, 0.08);">
-<span style="font-size: 12px; color: #5B6472;">줄에 마우스를 올리면</span>
-<b style="font-size: 14px;">힐스테이트 송도 더스카이 (2020)</b>
-<span>분양가 <span class="num u">7억 7,380만원</span></span>
-<span>최근 실거래 <span class="num u">10억 9,000만 ~ 13억 6,000만원</span></span>
-<span>고점 <span class="num">13억 6,000만원</span> (2026-04)</span>
-<span>한 해 평균 <span class="num">+7.0%</span> <span class="est">추정</span></span>
-<span style="font-size: 12px; color: #7A8391;">2025-11~2026-10 거래 16건 · 청약홈 · 국토교통부</span>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 12px; color: #5B6472; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">줄에 마우스를 올리면 (말풍선) <span class="fixtag">고침 MK-2</span></span>
+<div class="tip" role="tooltip">
+<b>힐스테이트 송도 더스카이 (2020)</b>
+<span>분양가 <span class="num">7억 7,380만원</span></span>
+<span>최근 실거래 <span class="num">10억 9,000만 ~ 13억 6,000만원</span></span>
+<span>고점 <span class="num">13억 6,000만원 2026-04</span></span>
+<span>한 해 평균 변화(연율) <span class="num">+7.0%</span></span>
+</div>
+<span style="font-size: 12px; color: #5B6472;">말풍선 줄은 지금 그림과 같아요: 이름(분양한 해, 분양권이면 '· 분양권'), 분양가, 최근 실거래 낮은~높은, 고점과 그 달, 연율. 거래 수·출처는 말풍선에 넣지 않고 표·출처 창에서 봐요.</span>
 </div>
 <p style="margin: 0; font-size: 13px; color: #3A4250; background: #F6F8FA; border-radius: 10px; padding: 10px 12px; line-height: 1.6;">까만 점(분양가)에서 파란 점(지금 중간 값)까지 오른쪽으로 길수록 분양가보다 높게 거래돼요. 왼쪽이면 분양가보다 낮게 거래돼요.</p>
 </aside>
@@ -226,9 +243,12 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <li style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #D4508A;"></span>계양구</li>
 <li style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #B8C0CC;"></span>나머지 5곳 (부평구·제물포구·서해구·남동구·강화군)</li>
 <li style="display: inline-flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#1A3FB0" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13z"></path></svg>점수 매긴 단지 입주</li>
+<li class="fix" style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: repeating-linear-gradient(45deg, #9AA6B6 0, #9AA6B6 2px, #FFFFFF 2px, #FFFFFF 4px); border: 1px solid #9AA6B6; box-sizing: border-box;"></span>확인 불가 (생활권을 모르는 입주 물량) <span class="fixtag">고침 MK-5</span></li>
 </ul>
+<p class="fix" style="margin: 0; font-size: 12px; color: #5B6472;">생활권이 비어 있는 입주 물량 줄이 있으면 '확인 불가'라는 계열로 따로 쌓여요(범례·말풍선·표의 생활권 칸 모두 '확인 불가'). 이 수정본의 인천 자료에는 그런 줄이 없어 막대에는 안 보여요. <span class="fixtag">고침 MK-5</span></p>
 
-<div role="img" aria-label="연도별 입주 물량. 2024년 2,112, 2025년 5,258, 2026년 14,710, 2027년 5,721, 2028년 12,992, 2029년 9,326, 2030년 2,853세대(추정)." style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px;">
+<p class="fix" style="margin: 0; font-size: 12px; color: #3D2E00;"><span class="fixtag">고침 MK-3</span> 막대 위 연도 합계 숫자를 뺐어요 — 화면이 생활권 값을 더한 수라서요(규칙 3·5). 해마다·생활권마다 세대 수는 말풍선과 표로 보기에서 서버 값 그대로 봐요.</p>
+<div role="img" class="fix" aria-label="입주 물량, 2024년부터 2030년까지 해마다 생활권별 세대 수를 쌓은 막대(추정 집계). 값은 표로 보기에서 볼 수 있어요." style="display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px;">
 <div class="num" style="position: relative; height: 330px; font-size: 12px; color: #5B6472;">
 <span style="position: absolute; top: 46px; right: 0;">세대</span>
 <span style="position: absolute; bottom: 254px; right: 0;">16,000</span>
@@ -249,7 +269,6 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <sc-if value="{{y.hasMarker}}" hint-placeholder-val="{{ true }}">
 <span style="display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 11px; line-height: 1.35; color: #1A3FB0; background: #E8EEFF; border-radius: 8px; padding: 4px 6px; margin-bottom: 6px; text-align: center; width: 100%; box-sizing: border-box;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#1A3FB0" aria-hidden="true"><path d="M12 22s7-7.5 7-13a7 7 0 1 0-14 0c0 5.5 7 13 7 13z"></path></svg><b style="font-weight: 600;">{{y.marker}}</b><span class="num">{{y.markerSub}}</span></span>
 </sc-if>
-<span class="num" style="font-size: 13px; font-weight: 700; margin-bottom: 4px;">{{y.total}}</span>
 <div style="width: 56%; max-width: 64px; display: flex; flex-direction: column;">
 <span style="{{y.s5}}"></span>
 <span style="{{y.s4}}"></span>
@@ -268,15 +287,24 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </div>
 
-<div style="display: flex; flex-wrap: wrap; gap: 12px;">
-<div style="flex: 1 1 360px; background: #F6F8FA; border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.6; color: #3A4250;">
-<b>막대에 마우스를 올리면</b> · 2026년 · 추정 집계<br>
-<span class="num">검단구 4,748 · 연수구 4,615 · 미추홀구 2,701 · 영종구 2,094 · 계양구 340 · 남동구 162 · 부평구 50세대</span>
+<div class="fix" style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 12px; color: #5B6472; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">막대에 마우스를 올리면 (말풍선 — 그 해 전체가 한 말풍선) <span class="fixtag">고침 MK-4</span></span>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;">
+<div class="tip num" role="tooltip" style="flex: 0 1 300px;">
+<b>2026 · 추정 집계</b>
+<span>검단구 4,748세대</span><span>연수구 4,615세대</span><span>미추홀구 2,701세대</span><span>영종구 2,094세대</span><span>계양구 340세대</span><span>남동구 162세대</span><span>부평구 50세대</span>
 </div>
-<div style="flex: 1 1 360px; background: #F2F6FF; border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.6; color: #1F2A44;">
-<b>핀에 마우스를 올리면</b> · 2028년 점수 매긴 단지 입주<br>
-엘리프 검단 포레듀(AA32블록) 2028-03 · 영종국제도시 신일 비아프 크레스트(1단지)·(2단지) 2028-08 · 검암역자이르네 2028-12
+<div class="tip num" role="tooltip" style="flex: 0 1 420px;">
+<b>2028 · 추정 집계</b>
+<span>연수구 1,733세대 · 검단구 3,782세대 · 미추홀구 4,357세대 · 영종구 960세대 · [그 밖의 생활권 세대]</span>
+<span class="tl">핀이 있는 해는 같은 말풍선 아래에 이어서</span>
+<span>점수 매긴 단지 입주: 엘리프 검단 포레듀(AA32블록) (2028-03)</span>
+<span>점수 매긴 단지 입주: 영종국제도시 신일 비아프 크레스트(1단지) (2028-08)</span>
+<span>점수 매긴 단지 입주: 영종국제도시 신일 비아프 크레스트(2단지) (2028-08)</span>
+<span>점수 매긴 단지 입주: 검암역자이르네 (2028-12)</span>
 </div>
+</div>
+<span style="font-size: 12px; color: #5B6472;">말풍선 줄은 지금 그림과 같아요: '연도 · 추정 집계', 생활권마다 세대, 그 해 입주하는 점수 매긴 단지(이름·입주 연월). 합계 줄은 없어요.</span>
 </div>
 
 <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid #EEF1F4; padding-top: 14px;">
@@ -297,6 +325,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <select id="scope" class="sel" style="font-size: 14px;"><option>부평구 (자료가 가장 긴 구)</option><option>계양구</option><option>강화군</option><option>미추홀구</option><option>옹진군</option><option>남동구</option><option>연수구</option></select>
 <span style="font-size: 12px; color: #5B6472;">월말 기준 · 인천 부평구</span>
 </div>
+<p class="fix" style="margin: 0; font-size: 13px; color: #3A4250; background: #F6F8FA; border-radius: 8px; padding: 8px 10px; line-height: 1.6;"><span class="fixtag">고침 MK-6</span> 가장 최근 24개월까지만 그려요(이 구는 자료가 11달이라 모두 보여요). 달 축은 빠짐없이 이어지고, 자료가 빈 달은 선이 끊겨요. 앞뒤 달이 비어 혼자 남은 달도 점으로 보여요.</p>
 <ul aria-label="범례" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: #3A4250;">
 <li style="display: inline-flex; align-items: center; gap: 6px;"><svg width="26" height="10" aria-hidden="true"><line x1="0" y1="5" x2="26" y2="5" stroke="#2350D8" stroke-width="2.5"></line><circle cx="13" cy="5" r="3.5" fill="#2350D8"></circle></svg>전체 안 팔린 집 (합계)</li>
 <li style="display: inline-flex; align-items: center; gap: 6px;"><svg width="26" height="10" aria-hidden="true"><line x1="0" y1="5" x2="26" y2="5" stroke="#14181F" stroke-width="2" stroke-dasharray="4 3"></line><rect x="10" y="2" width="6" height="6" fill="#14181F"></rect></svg>다 지은 뒤에도 안 팔린 집 (준공 후)</li>
@@ -329,7 +358,19 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <text x="87" y="24" font-size="12" font-weight="700" fill="#14181F" text-anchor="middle" class="num">103</text>
 <text x="500" y="156" font-size="12" font-weight="700" fill="#14181F" text-anchor="end" class="num">4</text>
 </svg>
-<p class="num" style="margin: 0; font-size: 12px; color: #5B6472; background: #F6F8FA; border-radius: 8px; padding: 8px 10px;">점에 마우스를 올리면 · 2025-12 · 합계 103세대 · 준공 후 26세대 (자료가 빈 달은 '확인 불가', 선이 끊겨요)</p>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px;">
+<span style="font-size: 12px; color: #5B6472; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 200px;">점에 마우스를 올리면 (말풍선 — 그 달의 두 값) <span class="fixtag">고침 MK-7</span><br>자료가 빈 달이면 값 자리에 '확인 불가'가 나와요.</span>
+<div class="tip num" role="tooltip" style="flex: 0 1 200px;">
+<b>2025-12</b>
+<span>합계 103</span>
+<span>준공 후 26</span>
+</div>
+<div class="tip num" role="tooltip" style="flex: 0 1 200px;">
+<b>[자료가 빈 달]</b>
+<span>합계 확인 불가</span>
+<span>준공 후 확인 불가</span>
+</div>
+</div>
 
 <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EEF1F4; padding-top: 14px;">
 <p style="margin: 0; font-size: 15px; font-weight: 600;">2026년 8월, 구마다 몇 세대가 안 팔렸나요?</p>
@@ -360,7 +401,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
 <div style="background: #F6F8FA; border: 1px solid #E3E7EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
 <span style="font-size: 13px; color: #5B6472;">규제지역 <button type="button" class="q" aria-label="규제지역 설명">?</button></span>
-<span style="font-size: 18px; font-weight: 700;">9곳 모두 아님</span>
+<span style="font-size: 18px; font-weight: 700;">'비규제' 9곳</span>
 <span style="font-size: 12px; color: #5B6472;">비규제 <span class="ok">확인됨</span></span>
 </div>
 <div style="background: #FFF7EF; border: 1px solid #F3D6B8; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px;">
@@ -387,6 +428,19 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </table>
 </div>
 <p class="src">계양구·옹진군은 근거 단지가 없어 이 표에 없어요 · 모두 <span class="ok">확인됨</span> · 입주자 모집 공고문 · 확인 2026-10-13</p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #EEF1F4; padding-top: 14px;">
+<p style="margin: 0; font-size: 15px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">그 밖의 규제 항목 <span class="fixtag">고침 MK-8</span></p>
+<p style="margin: 0; font-size: 12px; color: #5B6472; line-height: 1.6;">서버가 주는 규제 항목은 8종이에요: 규제지역 · 분양가 상한제(위 표) · 전매제한 · 거주의무 · 대출 · 세제 · 토지거래허가 · 기타. 항목마다 '이름 — 값(라벨·출처) · 범위 · 메모' 한 줄이고, 같은 종류가 여러 줄일 수 있어요(예: 전매제한 민간택지·공공택지). 이름은 서버 글 그대로예요. 이 수정본의 인천 자료에는 위 두 종류만 있어 아래는 [ ] 자리로 그렸어요.</p>
+<dl style="margin: 0; display: flex; flex-direction: column; gap: 0; font-size: 14px;">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid #F3F5F7;"><dt style="font-weight: 600;">전매제한 <span style="font-weight: 400; font-size: 12px; color: #7A8391;">[항목 이름 — 예: 전매제한(민간택지)]</span></dt><dd style="margin: 0;"><span class="u">[값]</span> <span class="est">[라벨]</span> <span style="font-size: 12px; color: #5B6472;">범위: [범위]</span></dd><dd style="margin: 0; font-size: 12px; color: #5B6472;">[메모]</dd></div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid #F3F5F7;"><dt style="font-weight: 600;">거주의무 <span style="font-weight: 400; font-size: 12px; color: #7A8391;">[항목 이름]</span></dt><dd style="margin: 0;"><span class="u">[값]</span> <span class="est">[라벨]</span> <span style="font-size: 12px; color: #5B6472;">범위: [범위]</span></dd><dd style="margin: 0; font-size: 12px; color: #5B6472;">[메모]</dd></div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid #F3F5F7;"><dt style="font-weight: 600;">대출 <span style="font-weight: 400; font-size: 12px; color: #7A8391;">[항목 이름 — 예: 잔금대출]</span></dt><dd style="margin: 0;"><span class="u">[값]</span> <span class="est">[라벨]</span></dd><dd style="margin: 0; font-size: 12px; color: #5B6472;">[메모]</dd></div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid #F3F5F7;"><dt style="font-weight: 600;">세제 <span style="font-weight: 400; font-size: 12px; color: #7A8391;">[항목 이름 — 예: 1주택 비과세]</span></dt><dd style="margin: 0;"><span class="u">[값]</span> <span class="est">[라벨]</span></dd><dd style="margin: 0; font-size: 12px; color: #5B6472;">[메모]</dd></div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid #F3F5F7;"><dt style="font-weight: 600;">토지거래허가 <span style="font-weight: 400; font-size: 12px; color: #7A8391;">[항목 이름 — 예: 토지거래허가구역]</span></dt><dd style="margin: 0;"><span class="u">[값]</span> <span class="est">[라벨]</span> <span style="font-size: 12px; color: #5B6472;">범위: [범위]</span></dd><dd style="margin: 0; font-size: 12px; color: #5B6472;">[메모]</dd></div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0;"><dt style="font-weight: 600;">기타 <span style="font-weight: 400; font-size: 12px; color: #7A8391;">[항목 이름]</span></dt><dd style="margin: 0;"><span class="u">[값]</span> <span class="est">[라벨]</span></dd><dd style="margin: 0; font-size: 12px; color: #5B6472;">[메모]</dd></div>
+</dl>
+<p class="src">범위·메모가 없는 항목은 그 자리를 비워요. 값은 누르면 출처가 열리는 사실 칸이에요(라벨 확인됨·추정·비공식·확인 불가 그대로).</p>
+</div>
 </section>
 
 </div>
@@ -618,6 +672,29 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <p class="src">자료가 빈 달은 선을 끊고 '확인 불가'로 적어요.</p>
 </div>
 
+<div class="card fix" style="grid-column: 1 / -1; padding: 22px; display: flex; flex-direction: column; gap: 10px; overflow-x: auto;">
+<h3 style="margin: 0; font-size: 17px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">생활권마다 실거래 값 · 거래 기간이나 기준이 다를 때 <span class="fixtag">고침 MK-9</span></h3>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">위 표는 모든 생활권의 기간·기준이 같아 캡션에 한 번만 적었어요. 다르면 '기간'·'기준' 열이 생기고, 기간이 없는 생활권은 '확인 불가'로 보여요(기준이 없으면 빈 칸).</p>
+<table style="width: 100%; border-collapse: collapse; min-width: 820px;">
+<caption class="sr">생활권별 실거래 시세 — 기간·기준 열이 있는 모양</caption>
+<thead><tr><th scope="col" class="th">생활권</th><th scope="col" class="th r">가장 낮은 값 (하단)</th><th scope="col" class="th r">중간 값</th><th scope="col" class="th r">가장 높은 값 (상단)</th><th scope="col" class="th r">거래 수</th><th scope="col" class="th">기간</th><th scope="col" class="th">기준</th></tr></thead>
+<tbody class="num">
+<tr><th scope="row" class="td nw" style="text-align: left; font-weight: 600;">연수구</th><td class="td r"><span class="u">2억 2,500만</span></td><td class="td r"><span class="u">6억 7,000만</span></td><td class="td r"><span class="u">14억 1,000만</span></td><td class="td r"><span class="u">1,155건</span></td><td class="td">2026-04~2026-10</td><td class="td" style="font-size: 12px; color: #5B6472;">[기준]</td></tr>
+<tr><th scope="row" class="td nw" style="text-align: left; font-weight: 600;">[생활권]</th><td class="td r"><span class="u">[값]</span></td><td class="td r"><span class="u">[값]</span></td><td class="td r"><span class="u">[값]</span></td><td class="td r"><span class="u">[n]건</span></td><td class="td" style="color: #5B6472;">확인 불가</td><td class="td"></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;"><h3 style="margin: 0; font-size: 17px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">표로 보기 · 줄이 하나도 없을 때 <span class="fixtag">고침 MK-10</span></h3><button type="button" class="btn2" aria-expanded="true">표 닫기</button></div>
+<table style="width: 100%; border-collapse: collapse;">
+<caption class="sr">[그림 이름] 데이터</caption>
+<thead><tr><th scope="col" class="th">[열 이름]</th><th scope="col" class="th">[열 이름]</th><th scope="col" class="th">[열 이름]</th></tr></thead>
+<tbody><tr><td class="td" colspan="3" style="text-align: center; color: #5B6472;">데이터 없음</td></tr></tbody>
+</table>
+<p class="src">네 그림(근처 새 아파트 · 입주 물량 · 안 팔린 집 · 개발 소식 단계)의 '표로 보기'에 모두 같아요. 표 이름(캡션)은 '[그림 이름] 데이터'로 화면 읽기 도구에만 읽혀요.</p>
+</div>
+
 <div class="card" style="grid-column: 1 / -1; padding: 22px; display: flex; flex-direction: column; gap: 10px; overflow-x: auto;">
 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;"><h3 style="margin: 0; font-size: 17px;">개발 소식 단계 · 표로 보기</h3><button type="button" class="btn2" aria-expanded="true">표 닫기</button></div>
 <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
@@ -642,7 +719,15 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <span style="position: absolute; left: 78%; bottom: -7px; width: 12px; height: 12px; border-radius: 50%; background: #2350D8;"></span>
 <span style="position: absolute; left: 70%; bottom: 62px; font-size: 12px; white-space: nowrap;">[소식 이름] ([YYYY-MM])</span>
 </div>
-<p class="src">이름이 겹치면 높이를 엇갈려 놓고, 다 못 보이면 표에 모두 있어요. 점에 마우스를 올리면: [소식 이름] · [종류] · [YYYY-MM] · [메모]</p>
+<p class="src">이름이 겹치면 높이를 엇갈려 놓고, 다 못 보이면 표에 모두 있어요.</p>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px;">
+<span style="font-size: 12px; color: #5B6472; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 160px;">점에 마우스를 올리면 (말풍선) <span class="fixtag">고침 MK-14</span><br>메모가 없으면 셋째 줄은 없어요.</span>
+<div class="tip" role="tooltip" style="flex: 0 1 240px;">
+<b>[소식 이름]</b>
+<span>[종류] · [YYYY-MM]</span>
+<span>[메모]</span>
+</div>
+</div>
 <p style="margin: 0; font-size: 13px; color: #7A8391; background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">'호재 아님'(판정 제외) [n]건 — 단계 보드에 넣지 않았어요</p>
 <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #EEF1F4; padding-top: 10px;">
 <span style="font-size: 13px; color: #5B6472;">상세 화면에 들어가는 작은 보드는 일정표 없이 단계 칸만 보여요.</span>
@@ -688,6 +773,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <tr><td class="td">[단지 이름]</td><td class="td r"><span class="u">[n]m</span> <span class="est">추정</span></td><td class="td r">[0.00]</td><td class="td" style="font-size: 13px;">[거리 기준]</td></tr>
 <tr><td class="td">[단지 이름]</td><td class="td r"><span class="est">확인 불가(같은 생활권(계양구, 단지 좌표 없음))</span></td><td class="td r">1.00</td><td class="td" style="font-size: 13px;">같은 생활권(계양구, 단지 좌표 없음)</td></tr>
 <tr><td class="td">(목록에 없는 단지)</td><td class="td r"><span class="est">확인 불가(사람 지정(단지 좌표 없음))</span></td><td class="td r">없음</td><td class="td" style="font-size: 13px;">사람 지정(단지 좌표 없음)</td></tr>
+<tr class="fix"><td class="td">[단지 이름] <span class="fixtag">고침 MK-16</span></td><td class="td r"><span class="est">확인 불가(단지 좌표 없음 — 같은 생활권 가중치 1)</span></td><td class="td r">[0.00]</td><td class="td" style="font-size: 13px; color: #7A8391;">(서버 근거 없음 — 빈 칸)</td></tr>
 </tbody>
 </table>
 <div style="display: flex; flex-direction: column; gap: 6px; background: #F6F8FA; border-radius: 12px; padding: 12px 14px;">
@@ -701,6 +787,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <li>연결 단지가 0곳이면: '위치를 확인했지만 연결된 단지가 없어요'</li>
 <li>취소하면: '위치 확인을 취소했어요 — 단지 연결을 지웠어요'</li>
 <li>다른 지역으로 바꾸면 이 결과와 진행 상태는 사라져요</li>
+<li class="fix">거리 칸의 '확인 불가(…)' 괄호는 서버가 준 연결 근거예요. 서버 근거가 없을 때만 '단지 좌표 없음 — 같은 생활권 가중치 1'을 넣어요(위 마지막 줄). <span class="fixtag">고침 MK-16</span></li>
 </ul>
 </div>
 
@@ -722,13 +809,15 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
 <li style="display: flex; gap: 8px; align-items: center;"><span class="chipm">대기</span>순서를 기다려요</li>
 <li style="display: flex; gap: 8px; align-items: center;"><span class="chipm" style="background: #E8EEFF; color: #1A3FB0;">실행 중</span><span class="num">[n]/[m] · 단계 [단계 이름]</span></li>
+<li class="fix" style="display: flex; flex-direction: column; gap: 6px;"><span style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><span class="chipm">진행 수 모름</span>대기·실행 중인데 진행 수([n]/[m])가 아직 없으면 줄무늬 막대 <span class="fixtag">고침 MK-11</span></span><span class="indet" role="progressbar" aria-label="실행 중" style="display: block;"></span><span style="font-size: 12px; color: #5B6472;">진행 수가 오면 채워지는 막대로 바뀌어요. 완료·실패면 막대가 없어요.</span></li>
 <li style="display: flex; gap: 8px; align-items: center;"><span class="chipm" style="background: #E7F4EC; color: #1F6B3A;">완료</span>새 수정본이 발행됐어요 — 화면이 새 수정본으로 바뀌어요</li>
 <li style="display: flex; gap: 8px; align-items: center;"><span class="chipm" style="background: #FEF3F2; color: #B42318;">실패</span><span>오류: [오류 내용] · 화면은 지금 수정본을 계속 보여요 · 다시 모아도 자료가 불완전해 멈췄으면 '발행하지 않았어요: [사유]'</span></li>
 <li style="display: flex; gap: 8px; align-items: center;"><span class="chipm">없음</span>작업을 아직 못 받았으면 '진행 중인 작업 없음'</li>
+<li class="fix" style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm" style="background: #FEF3F2; color: #B42318;">조회 오류</span><span>작업을 한 번도 받기 전에 상태 조회가 실패하면 상태·막대 없이 <b style="color: #B42318;">오류: [오류 내용]</b> 한 줄만 <span class="fixtag">고침 MK-13</span> · 한 번이라도 받은 뒤의 일시 오류는 마지막 상태를 둔 채 '상태를 받지 못해 다시 확인하는 중' 줄을 더해요</span></li>
 <li style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm">다시 시도</span><span>발행 중 오류가 나 다시 시도하는 중([n]/[max]회) — 아직 실패가 아니에요 · 상태를 못 받으면 '다시 확인하는 중'</span></li>
 <li style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm" style="background: #FFF1E6; color: #A3470A;">막힘</span><span>발행이 막혔어요(남은 모순 주장 [n]건) — 데이터·운영 화면에서 고치면 다시 발행돼요</span></li>
 <li style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm">멈춤</span><span>30분 동안 끝을 확인하지 못해 확인을 멈췄어요 — 기준일 목록에서 확인하세요 · 발행 작업을 [n]단계까지 따라갔지만 끝을 확인하지 못했을 때도 같아요 <button type="button" class="btn2" style="min-height: 32px; padding: 4px 10px;">다시 확인</button></span></li>
-<li style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm">기다림</span><span>같은 수정본의 다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) — 실패가 아니에요 · 수집 자료가 불완전하면 다시 모으는 중([n]/[max]회, [시각] 이후) — 이전 수정본이 그대로 기본 화면이에요</span></li>
+<li style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm">기다림</span><span>같은 수정본의 다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) — 실패가 아니에요 · 수집 자료가 불완전하면 다시 모으는 중([n]/[max]회, [시각] 이후 다시 시도) — 이전 수정본이 그대로 기본 화면이에요 <span class="fix" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span class="fixtag">고침 MK-12</span>다시 시도할 시각이 없으면 '[시각] 이후 다시 시도' 대신 '곧 다시 시도'</span></span></li>
 <li style="display: flex; gap: 8px; align-items: flex-start;"><span class="chipm">미뤄짐</span><span>이 변경은 지금 판정 중인 새 수정본에 들어가 함께 반영돼요 · 미뤄 둔 수정본 발행이 끝내 실패하면 새 발행 작업으로 다시 등록하고 이어서 보여 줘요</span></li>
 </ul>
 </div>
@@ -742,6 +831,8 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="border: 1px dashed #F5C2BC; border-radius: 12px; padding: 14px; color: #B42318;"><b>불러오지 못함</b><br>불러오지 못했어요: [오류 내용]</div>
 <div style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 14px; color: #3A4250;"><b>다른 상황(시나리오) 결과가 없을 때</b><br><span style="color: #5B6472;">이 수정본에는 상황 #[n] 결과가 없어요 · <a href="#">상황 실행 화면으로</a></span></div>
 <div style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 14px; color: #3A4250;"><b>비교할 근처 새 아파트가 없을 때</b><br><span class="chipm" style="margin-top: 6px;">비교할 단지 없음([사유])</span></div>
+<div class="fix" style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 14px; color: #3A4250; display: flex; flex-direction: column; gap: 6px;"><b>생활권을 바꾼 뒤 새 자료가 준비 중일 때 <span class="fixtag">고침 MK-15</span></b><span role="status" style="color: #5B6472;">이 수정본의 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요</span><span style="font-size: 12px; color: #7A8391; border-top: 1px solid #EEF1F4; padding-top: 6px;">이 줄 아래에는 바꾸기 전 조건의 그림·표가 그대로 남아 있어요(같은 수정본·같은 상황일 때만).</span></div>
+<div class="fix" style="border: 1px dashed #F5C2BC; border-radius: 12px; padding: 14px; color: #B42318; display: flex; flex-direction: column; gap: 6px;"><b>저장된 화면 자료가 검증에 실패했을 때 <span class="fixtag">고침 MK-15</span></b><span>서버 오류: 저장된 화면 자료가 검증에 실패했어요(관리자 확인 필요) — [설명]</span></div>
 </div>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">그림마다 자료가 없으면 그 자리에: '비교할 단지 없음' · '입주 물량 자료 없음' · '미분양 자료 없음' · '개발 소식 없음' · 규제·실거래 표는 '없음'</p>
 </div>
@@ -749,10 +840,31 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </section>
 
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFCEB; border-color: #F0D875;">
+<h2 id="keep" style="margin: 0; font-size: 19px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">구현할 때 지금 동작 그대로 유지 <span class="fixtag">고침 MK-17</span></h2>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">그림으로 못 그리는 동작이에요. # 번호는 coverage-Market.md 의 줄 번호예요. 기존 테스트가 지키는 동작은 그대로 둬요.</p>
+<ul class="keep" style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+<li><b>#5</b> 생활권 고르기는 주소 <code>?living_area=</code> 에 저장해요(뒤로 가기 기록을 쌓지 않고 바꿈).</li>
+<li><b>#14</b> 그림 구역 앞에 화면 읽기 도구용 숨은 제목 '차트'(h2)를 둬요 — 제목 순서 h1 → h2 → h3 유지.</li>
+<li><b>#31</b> 근처 새 아파트의 연율이 서버에 없을 때 쓰는 지금의 대체 계산은 그대로 둬요(새 계산을 더하지 않음).</li>
+<li><b>#134</b> 위치 확인 폼은 한 번에 한 줄만 열려요(다른 줄을 열면 먼저 연 줄이 닫혀요).</li>
+<li><b>#136</b> '위치 확인 취소'는 저장하는 동안 꺼져요.</li>
+<li><b>#145</b> '영향 받는 단지'는 처음에 이미 연결된 단지가 골라진 채로 열려요.</li>
+<li><b>#153</b> 위치 확인을 저장하면 폼이 닫혀요.</li>
+<li><b>#164</b> 위치 확인 결과 표·진행 칸은 수정본이 바뀌어 화면이 다시 그려져도 남아요(같은 지역일 때만).</li>
+<li><b>#175</b> 지역이 없으면 '새 개발 소식' 입력칸·버튼이 꺼져요.</li>
+<li><b>#176</b> '후보로 저장'은 저장하는 동안 꺼져요.</li>
+<li><b>#183</b> 후보를 저장하면 입력칸을 비워요.</li>
+<li><b>#184</b> 화면을 처음 불러오는 동안에는 '새 개발 소식' 폼을 그리지 않아요.</li>
+<li><b>#185</b> 다른 지역으로 바꾸면 '새 개발 소식' 폼·결과·진행을 지워요(위치 확인 쪽과 같음, #165).</li>
+<li><b>#214</b> 발행 확인이 멈춘 뒤에도 1분마다 시각만 다시 봐서 30분 상한을 알려요.</li>
+</ul>
+</section>
+
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":9360}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":12000}}'>
 class Component extends DCLogic {
 renderVals() {
 var lo = 2, span = 12;

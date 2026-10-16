@@ -18,7 +18,7 @@
 | 5 | CSV 내려받기 버튼(스냅샷 있을 때만) (`index.tsx` · `page.G2.csv` "CSV 내려받기") | ListTable · 머리 "엑셀용 파일(CSV) 내려받기" | → 엑셀용 파일(CSV) 내려받기 | 있음 |
 | 6 | CSV 내려받는 중 · 버튼 잠김 (`api/download.ts` useDownload · `download.pending`) | ListTable · "내려받기 · 비교 바구니 상태" "내려받는 중…" | | 있음 |
 | 7 | CSV 오류 role=alert (`download.error` "내려받지 못했습니다: {detail}") | ListTable · 같은 곳 "내려받지 못했어요: [사유]" | | 있음 |
-| 8 | CSV 특수 오류 문구(준비 중 · 저장본 검증 실패) (`lib/errorText.ts` specialErrorText · `page.common.materializePendingStill` / `storedViewMismatch`) | — | | 빠짐(목업에 없음) |
+| 8 | CSV 특수 오류 문구(준비 중 · 저장본 검증 실패) (`lib/errorText.ts` specialErrorText · `page.common.materializePendingStill` / `storedViewMismatch`) | ListTable · "내려받기 · 비교 바구니 상태" "CSV 특수 오류" (아직 준비 중이에요 · 서버 오류: 저장된 화면 자료가 검증에 실패했어요) |  | 있음(고침 LT-5) |
 | 9 | CSV 에 지금 필터 · 정렬 그대로 (`complexesCsvRequest(snapshotId, listParams)`) | ListTable · 같은 곳 "파일에는 지금 고른 필터·정렬이 그대로 들어가요" | | 문구로만 |
 | 10 | API `GET /snapshots/{sid}/complexes.csv` (`api/hooks.ts` complexesCsvRequest) | ListTable · CSV 버튼 | | 있음 |
 | 11 | API `GET /snapshots/{sid}/complexes` filter[...] · sort · scenario (`useComplexesProgressive`) | ListTable · 단지 표 / List · 카드 / ListTable · 휴대폰 카드 | | 있음 |
@@ -28,7 +28,7 @@
 | 15 | 불러오는 중 (`_shared` QueryState · `app.loading`) | ListTable · 같은 곳 "불러오는 중…" | | 있음 |
 | 16 | 불러오기 오류 (`page.common.loadError`) | ListTable · 같은 곳 "불러오지 못했어요: [사유] · 다시 시도" | 지금 일반 오류엔 다시 시도 버튼 없음(목업은 있음) | 있음 |
 | 17 | 리비전 준비 중 · 자동 재시도 · 다시 시도 (`page.common.materializePending` / `app.retry`) | ListTable · 같은 곳 "이 기준일(n번째 수정본)의 화면 자료를 준비하는 중이에요 — …" | | 있음 |
-| 18 | 필터 바꾸는 동안 이전 목록 + 준비 중 줄 (`QueryState` isPlaceholderData, M7) | — | | 빠짐(목업에 없음) |
+| 18 | 필터 바꾸는 동안 이전 목록 + 준비 중 줄 (`QueryState` isPlaceholderData, M7) | ListTable · "개수 줄 · 불러오기" "필터를 바꾼 직후" 준비 중 줄 + 바꾸기 전 목록 |  | 있음(고침 LT-4) |
 | 19 | 발행 뒤 만든 시나리오 결과 없음 + 실행 링크 (`page.common.scenarioMissing` / `scenarioMissingRun`) | Shell · 7 "이 상황의 결과가 아직 없어요" | | 다른 보드(Shell) |
 | 20 | 저장본 검증 실패(목록) (`page.common.storedViewMismatch`) | Shell · 7 "보던 기준일과 저장된 화면이 다를 때도 안내가 떠요" | | 다른 보드(Shell) |
 | 21 | 개수 줄 aria-live (`page.G2.count` "{shown} / {total}곳") | ListTable · 표 위 "100곳 중 {n}곳을 보여요 · 정렬 …" / 휴대폰 "100곳 중 100곳" | → {total}곳 중 {shown}곳을 보여요 | 있음 |
@@ -43,7 +43,7 @@
 | 25 | 트레이 aside (`page.G2.tray` "비교 트레이") | ListTable · aside "비교 바구니" | 비교 트레이 → 비교 바구니 | 있음 |
 | 26 | 선택 수 (`page.G2.trayCount` "{n}개 선택") | ListTable · 같은 곳 "{n}개 골랐어요" | → {n}개 골랐어요 | 있음 |
 | 27 | 고른 단지 칩 × 빼기 (`page.common.remove` "{name} 빼기") | ListTable · 같은 곳 칩(aria "… 빼기") | | 있음 |
-| 28 | 이름 모르면 "#id" (`names.get(id) ?? #id`) | — | | 빠짐(목업에 없음) |
+| 28 | 이름 모르면 "#id" (`names.get(id) ?? #id`) | ListTable · "내려받기 · 비교 바구니 상태" 바구니 칩 "#[번호] ×" |  | 있음(고침 LT-3) |
 | 29 | 안내 (`page.G2.trayHint` "2~6개를 고르면 비교할 수 있습니다") | ListTable · 같은 곳 + 다른 상태 "1개 골랐어요 · 2~6개를 고르면 비교할 수 있어요" | | 있음 |
 | 30 | 최대 안내 (`page.G2.trayMax` "최대 6개까지 비교합니다") | ListTable · 다른 상태 "6개 골랐어요 · 최대 6개까지 비교해요 — 다른 단지 체크 칸은 잠겨요" | | 있음 |
 | 31 | 선택 해제(1개 이상일 때) (`page.G2.clearSelection`) | ListTable · 같은 곳 "선택 해제" | | 있음 |
@@ -56,14 +56,14 @@
 
 | # | 기존 기능 (현재 소스 위치 · ko 키/문구) | 새 목업 위치 (보드 · 섹션 제목) | 바뀐 이름 | 상태 |
 |---|---|---|---|---|
-| 36 | 필터 값 = URL 쿼리, 바꿀 때 replace (`readFilters` · `setFilter`) | — | | 빠짐(목업에 없음 — 동작) |
+| 36 | 필터 값 = URL 쿼리, 바꿀 때 replace (`readFilters` · `setFilter`) | ListTable · "구현할 때 지금 동작 그대로 유지" 상자 |  | 문구로만(고침 LT-8) |
 | 37 | 가격 억 입력 → API 원 변환 (`toApiFilter` EOK) | ListTable · 필터 이름 "가격 최소 (억원)" | | 문구로만 |
-| 38 | 기본 정렬 종합 점수 내림차순 (`DEFAULT_SORT` "-total") | ListTable · 개수 줄 "정렬 종합 점수 큰 값부터"(기본) | List 보드 정렬 상자 첫 값은 '접수 가능 먼저'(다름) | 있음 |
-| 39 | 모르는 정렬 키 → 기본 정렬 (`readSort`) | — | | 빠짐(목업에 없음 — 동작) |
+| 38 | 기본 정렬 종합 점수 내림차순 (`DEFAULT_SORT` "-total") | ListTable · 개수 줄 "정렬 종합 점수 큰 값부터"(기본) / List · 정렬 상자 첫 값 "종합 점수 높은 순 (기본)" + 머리 안내 | List 정렬 상자 첫 값을 '종합 점수 높은 순 (기본)'으로 맞춤, '접수 가능 먼저'는 선택지로만(D28-4) | 있음(고침 LS-2) |
+| 39 | 모르는 정렬 키 → 기본 정렬 (`readSort`) | ListTable · "구현할 때 지금 동작 그대로 유지" 상자 |  | 문구로만(고침 LT-8) |
 | 40 | URL 전용 정렬 키 rank (`SORT_KEYS`) | ListTable · "정렬 · 머리 버튼" "판정기 순위(점수 순위)로도 정렬할 수 있어요(주소창 sort=rank)" | | 문구로만 |
-| 41 | URL 전용 정렬 키 price_low (`SORT_KEYS`) | — (List 정렬 상자 "가격 낮은 순"이 어느 키인지 목업에 없음) | | 빠짐(목업에 키 표기 없음) |
+| 41 | URL 전용 정렬 키 price_low (`SORT_KEYS`) | List · "구현할 때 지금 동작 그대로 유지" 상자 (정렬 상자 값 ↔ 키: 가격 낮은 순 = price_low) |  | 문구로만(고침 LS-3) |
 | 42 | 머리 누름 순서: 새 열은 큰 값부터 · 같은 열은 뒤집기 · 접수는 가능 먼저 (`nextSort` · `ASC_FIRST`) | ListTable · "정렬 · 머리 버튼" 설명 + 목업 동작 | | 있음 |
-| 43 | 필터 초기화가 정렬도 지움 (`resetFilters` sort 삭제) | — | | 빠짐(목업에 없음) |
+| 43 | 필터 초기화가 정렬도 지움 (`resetFilters` sort 삭제) | ListTable · "구현할 때 지금 동작 그대로 유지" 상자 |  | 문구로만(고침 LT-8) |
 
 ## 4. 필터 — 데스크톱 (`FilterBar.tsx` DesktopFilterBar)
 
@@ -85,7 +85,7 @@
 | 57 | 입주연도 number · numeric (`page.G2.filter.move_in_year`) | ListTable · 더 보기 "입주 연도" (예: 2029) | | 있음 |
 | 58 | 단지 분류 고르기 상자 9개 (`page.G2.filter.inclusion_class`, `page.common.inclusion.*`) | ListTable · 더 보기 "단지 종류 (분류) ?" | 비아파트 → 아파트 아님, 미분류 → 아직 분류 안 됨 | 있음 |
 | 59 | 점수 계산 범위 고르기 상자 5개 (`page.G2.filter.judge_scope`, `page.common.judgeScope.*`) | ListTable · 더 보기 "점수 계산 범위 ?" | 판정 대상 → 점수 계산 대상 | 있음 |
-| 60 | 숫자 칸 잘못된 값은 조용히 무시(오류 문구 없음) (`toApiFilter` Number.isFinite / isInteger) | — | | 빠짐(목업에 입력 검증 모습 없음 — 지금도 화면 오류 문구는 없음) |
+| 60 | 숫자 칸 잘못된 값은 조용히 무시(오류 문구 없음) (`toApiFilter` Number.isFinite / isInteger) | ListTable · "구현할 때 지금 동작 그대로 유지" 상자 |  | 문구로만(고침 LT-8) |
 
 ## 5. 필터 — 휴대폰 (`FilterBar.tsx` MobileFilterBar)
 
@@ -130,16 +130,16 @@
 | 92 | 점수 칸 판정 범위 배지('판정 대상'은 생략) (`JudgeScopeBadge hideTarget`) | ListTable · 점수 칸 + "표에서는 '점수 계산 대상'은 기본이라 배지를 생략해요" | | 있음 |
 | 93 | 점수 칸 재판정 필요 (`RejudgeNeededBadge`) | ListTable · "점수 칸에 붙는 배지" "다시 계산 필요" | 재판정 필요 → 다시 계산 필요 | 있음 |
 | 94 | 열 생활권(기본 숨김) (`page.G2.col.living_area`) | ListTable · "숨김 열을 모두 켠 모습" "생활권(구)" | | 있음 |
-| 95 | 열 +10% 상승 가능성(기본 숨김) (`page.G2.col.p10`) | ListTable · 같은 표 "입주 뒤 10% 넘게 오를 가능성 (판정기)" | | 있음 |
+| 95 | 열 +10% 상승 가능성(기본 숨김) (`page.G2.col.p10`) | ListTable · "숨김 열을 모두 켠 모습" "10% 넘게 오를 가능성 (판정기) · 목표 시점: 입주 + 1년 · 당첨 확률 아님 · 보장 아님" / 휴대폰 카드 더 보기 | → 10% 넘게 오를 가능성 (목표 시점 표기) | 있음(고침 LT-7) |
 | 96 | 열 단지 분류 + 검토 배지(decision ≠ auto) (`page.G2.col.inclusion`, `page.common.status.review`) | ListTable · 같은 표 "단지 종류 · 점수 계산 범위 이유" + "검토 중" | 단지 분류 → 단지 종류, 검토 → 검토 중 | 있음 |
-| 97 | 단지 분류 칸 점수 계산 범위 사유(서버 문자열, 잘림 · title) (`ScopeReason compact`) | ListTable · 같은 칸 아래 작은 글씨 | 목업 설명은 '서버가 준 문장을 쉬운 말로' — 지금은 서버 문자열 그대로(규칙 3) | 있음 |
+| 97 | 단지 분류 칸 점수 계산 범위 사유(서버 문자열, 잘림 · title) (`ScopeReason compact`) | ListTable · 같은 칸 아래 작은 글씨 | 서버 문자열 그대로(고침 LT-6 — 목업 쉬운 말 문장을 서버 사유 문자열로 바꿈) | 있음(고침 LT-6) |
 | 98 | 사유 재판정 덧붙임(title) (`page.common.scopeReasonCurrent`) | ListTable · 같은 표 아래 "'다시 계산 필요' 배지가 붙은 단지는 이 이유가 지금 사실 기준이라 …" | | 문구로만 |
 | 99 | 열 택지 종류(기본 숨김) (`page.G2.col.land_type`) | ListTable · 같은 표 "땅 종류" | 택지 종류 → 땅 종류 | 있음 |
 | 100 | 열 총 세대(기본 숨김) (`page.G2.col.units_total`) | ListTable · 같은 표 "총 세대" | | 있음 |
 | 101 | 열 계약금 금액(기본 숨김) (`page.G2.col.down_payment_won`) | ListTable · 같은 표 "계약금 금액 · 추정 (계산)" | | 있음 |
 | 102 | 열 경쟁률(기본 숨김) 최고 + 주택형, 없으면 확인 불가 (`page.G2.col.competition`) | ListTable · 같은 표 "가장 높았던 경쟁률 (1순위 · 지역 거주자)" | | 있음 |
 | 103 | 열 마지막 변경(기본 숨김) 필드 · 날짜 · 중요도 (`page.G2.col.last_change`, `page.common.changeField.*` / `severity.*`) | ListTable · 같은 표 "마지막으로 바뀐 것" | | 있음 |
-| 104 | 마지막 변경 없음 "없음" (`page.common.none`) | — | | 빠짐(목업에 없음 — 예시 줄 모두 값 있음) |
+| 104 | 마지막 변경 없음 "없음" (`page.common.none`) | ListTable · "숨김 열을 모두 켠 모습" 아래 "바뀐 기록이 없는 단지: 없음"(흐린 글씨) |  | 있음(고침 LT-2) |
 | 105 | 값 없는 칸 확인 불가(사유) (`FactCell`) | ListTable · 예 "확인 불가(공고에 값이 없음)" · "확인 불가(점수 계산 전)" | | 있음 |
 
 ## 7. 카드 — 휴대폰 (`ComplexCards.tsx`)
@@ -155,7 +155,7 @@
 | 112 | 카드 계약금 비율 + 금액 (`page.G2.card.down`) | ListTable · 휴대폰 "계약금 5% · 3,124만 추정" / List "계약금 추정 3,124만" | | 있음 |
 | 113 | 카드 입주 (`page.G2.card.moveIn`) | ListTable · 휴대폰 "입주 2029.07" | | 있음(List 카드에는 없음) |
 | 114 | 카드 종합 + 순위 (`page.G2.card.total` "종합") | ListTable · 휴대폰 "종합 4.83 1위" | | 있음(List 카드에는 없음) |
-| 115 | 카드 동률 · 판정 범위 · 재판정 배지 | — | | 빠짐(휴대폰 카드에 배지 모습 없음 — 배지 모음은 표 칸 기준) |
+| 115 | 카드 동률 · 판정 범위 · 재판정 배지 | ListTable · 휴대폰 카드 "힐스테이트 구월아트파크 … 동률" · "산곡역자이힐스테이트앤하늘채 … 참고 후보 (순위만)" + 다시 계산 필요 안내 |  | 있음(고침 LT-1) |
 | 116 | 카드 상대 비교 (`page.G2.card.relative`) | ListTable · 휴대폰 "상대 비교" | | 있음 |
 | 117 | 카드 더 보기 details 가격 갭 · +10% (`page.G2.card.more`) | ListTable · 휴대폰 "더 보기 (주변 시세와 가격 차이 · 오를 가능성)" | | 있음 |
 | 118 | 단지 더 보기 30개씩 (`page.G2.card.showMore` "단지 더 보기 ({shown} / {total}곳)") | ListTable · 휴대폰 "단지 더 보기 (30 / 100곳)" / List "92곳 더 보기" | | 있음 |
@@ -169,21 +169,29 @@
 
 ## 요약
 
-전체 120 · 있음 96 · 문구로만 10 · 다른 보드 4 · 빠짐 10
+전체 120 · 있음 101 · 문구로만 15 · 다른 보드 4 · 빠짐 0
+
+(2026-10-16 목업 고침 뒤 다시 셈. 고치기 전: 있음 96 · 문구로만 10 · 다른 보드 4 · 빠짐 10. 고친 곳 목록은 `../fixes/fixes-List.md` · `fixes-ListTable.md`)
 
 보드별 있음 위치: 표 · 필터 · 비교 바구니 · 다른 상태 · 휴대폰은 ListTable, 데스크톱 카드 보기는 List(지금 기능 중 List 에만 있는 것은 없음 — List 칸은 ListTable 위치에 덧붙여 적음).
 
-빠짐 목록:
-- #8 CSV 특수 오류 문구(준비 중 · 저장본 검증 실패) — 목업에 없음
-- #18 필터 바꾸는 동안 이전 목록 + 준비 중 줄 — 목업에 없음
-- #28 트레이 이름 모르면 "#id" — 목업에 없음
-- #36 필터 값 = URL 쿼리 — 목업에 없음(동작)
-- #39 모르는 정렬 키 → 기본 정렬 — 목업에 없음(동작)
-- #41 URL 전용 정렬 키 price_low — 목업에 키 표기 없음(List '가격 낮은 순'의 키 불명)
-- #43 필터 초기화가 정렬도 지움 — 목업에 없음
-- #60 숫자 칸 잘못된 값 처리(입력 검증) — 목업에 없음(지금도 오류 문구 없음)
-- #104 마지막 변경 없음 "없음" — 목업에 없음
-- #115 휴대폰 카드 동률 · 판정 범위 · 재판정 배지 — 휴대폰 카드에 없음
+빠짐 목록: 없음
+
+고침으로 빠짐 → 문구로만이 된 것(그림으로 못 그리는 동작 — 보드 맨 아래 "구현할 때 지금 동작 그대로 유지" 상자):
+- #36 필터 값 = URL 쿼리 · #39 모르는 정렬 키 → 기본 정렬 · #43 필터 초기화가 정렬도 지움 · #60 숫자 칸 잘못된 값 무시 — ListTable 상자(고침 LT-8)
+- #41 정렬 키 price_low(정렬 상자 '가격 낮은 순') — List 상자(고침 LS-3)
+
+고치기 전 빠짐 목록(기록용, 모두 고침):
+- ~~#8 CSV 특수 오류 문구(준비 중 · 저장본 검증 실패) — 목업에 없음~~
+- ~~#18 필터 바꾸는 동안 이전 목록 + 준비 중 줄 — 목업에 없음~~
+- ~~#28 트레이 이름 모르면 "#id" — 목업에 없음~~
+- ~~#36 필터 값 = URL 쿼리 — 목업에 없음(동작)~~
+- ~~#39 모르는 정렬 키 → 기본 정렬 — 목업에 없음(동작)~~
+- ~~#41 URL 전용 정렬 키 price_low — 목업에 키 표기 없음(List '가격 낮은 순'의 키 불명)~~
+- ~~#43 필터 초기화가 정렬도 지움 — 목업에 없음~~
+- ~~#60 숫자 칸 잘못된 값 처리(입력 검증) — 목업에 없음(지금도 오류 문구 없음)~~
+- ~~#104 마지막 변경 없음 "없음" — 목업에 없음~~
+- ~~#115 휴대폰 카드 동률 · 판정 범위 · 재판정 배지 — 휴대폰 카드에 없음~~
 
 다른 보드(Shell): #19 시나리오 결과 없음 · #20 저장본 검증 실패 · #119 출처 서랍 · #120 용어 팝오버
 
@@ -193,8 +201,8 @@
 |---|---|---|---|
 | 1 | 카드 / 표 보기 전환(보기 방식 group) | ListTable · 머리 "카드 · 표" / List | 지금은 화면 폭으로만 갈림 |
 | 2 | 데스크톱 카드 보기 | List 전체 | 지금 카드는 휴대폰 전용 |
-| 3 | 정렬 고르기 상자(접수 가능 먼저 · 점수 높은 순 · 되팔기 가까운 순 · 가격 낮은 순) | List · 필터 줄 "정렬" | 키는 기존 intake · -total · resale_end · price_low/price_mid 로 맞춰야 함 |
-| 4 | 빠른 칩 "되팔기 제한 곧 끝남" · "실거주 의무 없음" | List · 칩 줄 | 지금 API 필터 키에 없음 — 계약 변경 필요(residency 필터) 또는 resale_end_before 로 대신 |
+| 3 | 정렬 고르기 상자(접수 가능 먼저 · 점수 높은 순 · 되팔기 가까운 순 · 가격 낮은 순) | List · 필터 줄 "정렬" | 고침 LS-2: 기본 = 종합 점수 높은 순(-total, D28-4), '접수 가능 먼저'(intake)는 선택지로만 · 키 대응은 LS-3 상자(되팔기 가까운 순 = resale_end · 가격 낮은 순 = price_low) |
+| 4 | 빠른 칩 "되팔기 제한 곧 끝남" · "실거주 의무 없음" | List · 칩 줄 | 고침 LS-1: '실거주 의무 없음' 삭제(필터 키 없음), '되팔기 제한 곧 끝남' → 기존 필터 '이 날짜 전에 전매 종료'(resale_end_before) 날짜 칸으로 바꿈 |
 | 5 | 칩에 개수 표시("지금 접수 가능 3" · "전체 100") | List · 칩 줄 | 개수는 서버 total 필요 |
 | 6 | 가격대 구간 고르기(5억 이하 · 5억~7억 · 7억 이상) | List · "가격대" | price_min · price_max 로 풀기 |
 | 7 | 생활권 대신 '구' 이름 고르기 | List · "구" | 생활권은 사용자가 편집하는 단위 — 구와 같지 않음, 이름 확정 필요 |

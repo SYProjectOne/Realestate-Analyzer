@@ -17,73 +17,79 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
 th,td{padding:12px 14px;border-bottom:1px solid #EEF1F4;text-align:left;vertical-align:top}
 th{font-size:13px;font-weight:600;color:#5B6472;background:#FAFBFC}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
 <main style="max-width: 1280px; margin: 0 auto; padding: 48px 24px 64px; display: flex; flex-direction: column; gap: 28px;">
 
 <div style="display: flex; flex-direction: column; gap: 10px;">
-<p style="margin: 0; font-size: 14px; color: #5B6472;">새 화면 목업 · 기존 기능 대응 점검</p>
-<h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: -0.5px;">기존 기능 <span style="color: #2350D8;">789개</span>를 새 화면 어디로 옮겼는지</h1>
-<p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.6;">현재 프론트엔드 소스(화면 12개 + 공통 틀)에서 블록·버튼·입력칸·필터·정렬·탭·내려받기·표 열·차트·빈/오류 상태·배지를 하나씩 뽑아, 새 목업의 위치와 짝지었어요. 모양·순서·이름·접기만 바꾸고 기능은 빼지 않는 것이 원칙이에요.</p>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">새 화면 목업 · 기존 기능 대응 점검 · 2026-10-16 고침 반영</p>
+<h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: -0.5px;">기존 기능 <span style="color: #2350D8;">1,996개</span>를 새 화면 어디로 옮겼는지</h1>
+<p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.6;">현재 프론트엔드 소스(화면 12개 + 공통 틀)에서 블록·버튼·입력칸·필터·정렬·탭·내려받기·표 열·차트·빈/오류 상태·배지·동작을 한 줄씩 뽑아 새 목업의 위치와 짝지었어요. 모양·순서·이름·접기만 바꾸고 기능은 빼지 않는 것이 원칙이에요.</p>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
-<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">짝지은 기능</span><span class="num" style="font-size: 32px; font-weight: 700;">789</span><span style="font-size: 13px; color: #5B6472;">13개 보드 + 공통 부품</span></div>
-<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">기능이 빠진 것</span><span class="num" style="font-size: 32px; font-weight: 700;">0</span><span style="font-size: 13px; color: #5B6472;">그림만 생략한 것 5개(아래)</span></div>
-<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">새로 더한 것</span><span class="num" style="font-size: 32px; font-weight: 700;">약 30</span><span style="font-size: 13px; color: #5B6472;">요약 카드·쉬운 설명 등</span></div>
-<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">값 자리표시 [값]</span><span class="num" style="font-size: 32px; font-weight: 700;">실데이터 0건인 곳만</span><span style="font-size: 13px; color: #5B6472;">숫자를 지어내지 않음</span></div>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #FFF8DB; border: 1px solid #F0D27A; border-radius: 14px; padding: 14px 18px; font-size: 15px; color: #3D2E00;">
+<span class="fixtag">고침 안내</span>
+<span style="flex: 1 1 520px;">점검에서 나온 225곳을 고쳤어요(보드 15장, 고친 곳 157개). 고친 곳은 모든 보드에서 <b>노란 점선 테두리</b>와 <b>'고침 XX-n' 표</b>로 보여요. 그림으로 못 그리는 동작은 각 보드 맨 아래 "구현할 때 지금 동작 그대로 유지" 상자에 있어요.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">짝지은 기능</span><span class="num" style="font-size: 32px; font-weight: 700;">1,996</span><span style="font-size: 13px; color: #5B6472;">그려 있음 1,713 · 문구 163 · 다른 보드 119</span></div>
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">빠진 것</span><span class="num" style="font-size: 32px; font-weight: 700;">225 → 1</span><span style="font-size: 13px; color: #5B6472;">남은 1개: 코드가 안 쓰는 문구</span></div>
+<div class="card fix" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">고친 곳 <span class="fixtag">고침</span></span><span class="num" style="font-size: 32px; font-weight: 700;">157</span><span style="font-size: 13px; color: #5B6472;">뜻 되돌림 · 화면 계산값 제거 · 빠진 그림</span></div>
+<div class="card" style="padding: 20px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 13px; color: #5B6472;">값 자리표시 [값]</span><span class="num" style="font-size: 22px; font-weight: 700;">실데이터 없음 · API 필요</span><span style="font-size: 13px; color: #5B6472;">숫자를 지어내지 않음</span></div>
 </div>
 
 <section aria-labelledby="t1" class="card" style="padding: 0; overflow: hidden;">
 <h2 id="t1" style="margin: 0; padding: 20px 22px 12px; font-size: 20px; font-weight: 700;">화면별 대응</h2>
 <div style="overflow-x: auto;">
-<table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 860px;">
-<thead><tr><th scope="col">기존 화면</th><th scope="col">새 목업 보드</th><th scope="col" style="text-align: right;">기능 수</th><th scope="col">크게 바뀐 점</th></tr></thead>
-<tbody>
-<tr><td>공통 틀(머리줄·띠·출처 창·토큰·진행·배지·상태)</td><td><a href="Shell.dc.html">공통 부품</a></td><td class="num" style="text-align: right;">40</td><td>지역·기준일·상황을 머리 아래 한 줄에 · 출처 창 제목 "이 값은 어디서 왔나요?" · API 토큰 → 접속 열쇠</td></tr>
-<tr><td>G1 홈 대시보드</td><td><a href="Main.dc.html">홈</a></td><td class="num" style="text-align: right;">16</td><td>"지금 넣을 수 있는 단지 3곳" 첫 줄 · 곧 접수 띠 · 점수 분해를 색 막대로</td></tr>
-<tr><td>G2 단지 리스트</td><td><a href="List.dc.html">단지 찾기(카드)</a> · <a href="ListTable.dc.html">표 보기</a></td><td class="num" style="text-align: right;">59</td><td>카드/표 전환 · 핵심 필터 4개 + '필터 더 보기' · 비교 바구니</td></tr>
-<tr><td>G3 단지 상세</td><td><a href="Detail.dc.html">단지 상세</a> · <a href="DetailTabs.dc.html">나머지 탭</a> · <a href="Mobile.dc.html">모바일</a></td><td class="num" style="text-align: right;">127</td><td>질문형 섹션("얼마를 내나요?") · 납부 띠 그래프 · 일정 진행 막대 · 점수 이유를 쉬운 이름으로</td></tr>
-<tr><td>G4 비교</td><td><a href="Compare.dc.html">비교하기</a></td><td class="num" style="text-align: right;">84</td><td>민감도: "비중을 10%p 바꾸면 순위가 바뀌나요?" · 영어 축 이름 없앰</td></tr>
-<tr><td>G5 시나리오</td><td><a href="Scenario.dc.html">내 조건(시나리오)</a></td><td class="num" style="text-align: right;">59</td><td>상황 5개를 고르기 카드로 · 비중 막대 쉬운 이름</td></tr>
-<tr><td>G6 지역 시장</td><td><a href="Market.dc.html">지역 시장</a></td><td class="num" style="text-align: right;">117</td><td>요약 카드 4장으로 시작 · 입주 물량 범례 겹침 버그 해소</td></tr>
-<tr><td>G7 데이터·운영</td><td><a href="Ops.dc.html">데이터·운영</a></td><td class="num" style="text-align: right;">137</td><td>"오늘 확인할 것" 타일 · 패널 10개를 메뉴 9칸으로 묶음 · 섹션마다 "이게 뭐예요?"</td></tr>
-<tr><td>G8 보고서 + 공유 링크 받기</td><td><a href="Reports.dc.html">보고서</a></td><td class="num" style="text-align: right;">54</td><td>만들기 4단계 · 막힘 안내에서 해결 화면으로 바로 가기</td></tr>
-<tr><td>G0 지역 입력</td><td><a href="RegionNew.dc.html">지역 추가</a></td><td class="num" style="text-align: right;">46</td><td>1 찾기 → 2 확인 → 3 시작 → 진행 단계 흐름</td></tr>
-<tr><td>G0-2 생활권 편집</td><td><a href="LivingAreas.dc.html">생활권 편집</a></td><td class="num" style="text-align: right;">47</td><td>"생활권이 뭐예요?" 첫 줄 · 카드 사이 끌어 옮기기</td></tr>
-<tr><td>용어 모음</td><td><a href="Glossary.dc.html">용어 사전</a></td><td class="num" style="text-align: right;">6</td><td>질문형 카드("전매제한이란?") · 분류별 개수</td></tr>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 980px;">
+<thead><tr><th scope="col">기존 화면</th><th scope="col">새 목업 보드</th><th scope="col" style="text-align: right;">기능 수</th><th scope="col" style="text-align: right;">빠짐(전→후)</th><th scope="col" style="text-align: right;">고친 곳</th><th scope="col">크게 바뀐 점</th></tr></thead>
+<tbody class="num">
+<tr><td>공통 틀</td><td><a href="Shell.dc.html">공통 부품</a> (SH)</td><td style="text-align: right;">299</td><td style="text-align: right;">54 → 0</td><td style="text-align: right;">21</td><td>띠 문구 뜻 되돌림 · 라벨 뜻 한 문장으로 통일 · 어두운 화면·휴대폰 판</td></tr>
+<tr><td>G1 홈</td><td><a href="Main.dc.html">홈</a> (HM)</td><td style="text-align: right;">156</td><td style="text-align: right;">46 → 0</td><td style="text-align: right;">17</td><td>오를 가능성에 목표 시점·보장 아님 · 일정 4주·5건 · 라벨·출처 밑줄</td></tr>
+<tr><td>G2 단지 리스트</td><td><a href="List.dc.html">카드</a> (LS) · <a href="ListTable.dc.html">표</a> (LT)</td><td style="text-align: right;">120</td><td style="text-align: right;">10 → 0</td><td style="text-align: right;">11</td><td>계약에 없는 칩 제거 · 기본 정렬 종합 점수순(D28-4)</td></tr>
+<tr><td>G3 단지 상세</td><td><a href="Detail.dc.html">상세</a> (DT) · <a href="DetailTabs.dc.html">탭</a> (DX) · <a href="Mobile.dc.html">모바일</a> (MB)</td><td style="text-align: right;">312</td><td style="text-align: right;">35 → 0</td><td style="text-align: right;">25</td><td>판단 문장 → 서버 사실 줄 · 화면 계산식 제거 · 모바일 메뉴 3개</td></tr>
+<tr><td>G4 비교</td><td><a href="Compare.dc.html">비교하기</a> (CP)</td><td style="text-align: right;">176</td><td style="text-align: right;">12 → 0</td><td style="text-align: right;">22</td><td>판단 요약 → 개수 줄 · 차트 눈금·툴팁·보정 중앙값</td></tr>
+<tr><td>G5 시나리오</td><td><a href="Scenario.dc.html">내 조건</a> (SC)</td><td style="text-align: right;">145</td><td style="text-align: right;">4 → 0</td><td style="text-align: right;">10</td><td>목표 시점 · 툴팁 · 입력 오류 예시</td></tr>
+<tr><td>G6 지역 시장</td><td><a href="Market.dc.html">지역 시장</a> (MK)</td><td style="text-align: right;">216</td><td style="text-align: right;">27 → 0</td><td style="text-align: right;">17</td><td>요약 카드는 서버 값만 · 규제 8종 · 생활권 모름 계열</td></tr>
+<tr><td>G7 데이터·운영</td><td><a href="Ops.dc.html">데이터·운영</a> (OP)</td><td style="text-align: right;">258</td><td style="text-align: right;">18 → 0</td><td style="text-align: right;">14</td><td>흐린 줄 · API 없는 수 제거 · 앵커 유지</td></tr>
+<tr><td>G8 보고서</td><td><a href="Reports.dc.html">보고서</a> (RP)</td><td style="text-align: right;">90</td><td style="text-align: right;">6 → 0</td><td style="text-align: right;">7</td><td>생성 버튼 꺼짐 조건 · 첫 적재 줄</td></tr>
+<tr><td>G0 지역 입력</td><td><a href="RegionNew.dc.html">지역 추가</a> (RN)</td><td style="text-align: right;">64</td><td style="text-align: right;">5 → 0</td><td style="text-align: right;">4</td><td>미정 진행 막대 · 다시 시도 안내</td></tr>
+<tr><td>G0-2 생활권 편집</td><td><a href="LivingAreas.dc.html">생활권 편집</a> (LA)</td><td style="text-align: right;">78</td><td style="text-align: right;">7 → 1</td><td style="text-align: right;">3</td><td>동 이름 없을 때 코드만 · 동작 상자</td></tr>
+<tr><td>용어 모음</td><td><a href="Glossary.dc.html">용어 사전</a> (GL)</td><td style="text-align: right;">82</td><td style="text-align: right;">1 → 0</td><td style="text-align: right;">6</td><td>분류+검색 함께 거르기 · 빠진 문장 되살림</td></tr>
 </tbody>
 </table>
 </div>
 </section>
 
 <section aria-labelledby="t2" class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
-<h2 id="t2" style="margin: 0; font-size: 20px; font-weight: 700;">그림으로 그리지 않은 것 (기능은 유지)</h2>
+<h2 id="t2" style="margin: 0; font-size: 20px; font-weight: 700;">아직 정할 것 (구현 때)</h2>
 <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.9; color: #3A4250;">
-<li>차트 갤러리(/__charts) — 개발할 때만 쓰는 화면이라 사용자 목업에서 뺐어요. 그대로 남겨요.</li>
-<li>타입별 가격의 '할인' 열 4가지 모양 — 이 단지(시티오씨엘 8단지)에 할인이 없어 문구로만 적었어요.</li>
-<li>타입별 가격 · 납부 일정 탭이 비었을 때 — 다른 "없음" 상태와 모양이 같아 따로 그리지 않았어요.</li>
-<li>생활권 편집 '공급 기준치' 문구 — 문구 파일에만 있고 지금 화면 코드에서 쓰지 않아요.</li>
-<li>키보드 ← → 탭 이동, 긴 표의 부드러운 스크롤 — 동작이라 문구로만 적었어요.</li>
+<li><b>API에 값이 없는 곳</b> — 지역 시장 미분양 지역 합계, 상세 머리의 주변 거래 중간값·가점 범위, 홈 "공식 자료 n곳", 운영 모순 주장 내역. 목업에는 [값] + "API 필요".</li>
+<li><b>서버 문구</b> — 요건 이유의 "P_mid", 점수 계산 범위 사유의 영어 분류명. 화면은 서버 문자열을 그대로 보여야 해서 서버 쪽 문구를 고쳐야 해요.</li>
+<li><b>작은 것</b> — 작업 이름 쉬운 말 표, '접수 일정 미정'/'접수 미정' 이름 통일, 카드 보기에도 점수 표시, 휴대폰 메뉴 위치(위/아래).</li>
+<li><b>남은 빠짐 1개</b> — 생활권 편집 '공급 기준치' 문구: 지금 코드가 쓰지 않아 그리지 않았어요.</li>
 </ul>
 </section>
 
 <section aria-labelledby="t3" class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
 <h2 id="t3" style="margin: 0; font-size: 20px; font-weight: 700;">실제로 옮길 때 지킬 것</h2>
 <ol style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.9; color: #3A4250;">
-<li>지금 있는 자동 테스트(화면 수락·출처 보존·라벨·e2e 흐름 7개·접근성·성능)를 그대로 통과해야 합쳐요. 기능이 빠지면 테스트가 먼저 실패해요.</li>
-<li>이 대응표 789줄을 구현 체크리스트로 써요. 줄마다 새 화면 테스트 이름을 붙여요.</li>
-<li>숫자·라벨·출처는 서버 값 그대로예요. 화면이 새 숫자를 계산하거나 평가 말(추천·유리 등)을 만들지 않아요.</li>
+<li>지금 있는 자동 테스트(화면 수락·출처 보존·라벨·e2e 흐름 7개·접근성·성능)를 그대로 통과해야 합쳐요.</li>
+<li>대응표 1,996줄을 구현 체크리스트로 써요. 줄마다 새 화면 테스트 이름을 붙여요.</li>
+<li>숫자·라벨·출처는 서버 값 그대로예요. 화면이 새 숫자를 계산하거나 판단 문장을 만들지 않아요(개수 세기만 허용).</li>
 <li>문구는 지금처럼 한 파일(ko.json)에서만 바꿔요.</li>
 </ol>
 </section>
 
-<p style="margin: 0; font-size: 13px; color: #7A8391;">대응표 원본(줄 단위): 화면별 coverage 파일 10개 · 기준일 2026-10-14(인천, 8번째 수정본) 실데이터</p>
+<p style="margin: 0; font-size: 13px; color: #7A8391;">원본: 저장소 docs/design/ui-benchmark/50-mockup/ — coverage/(대응표 12개) · fixes/(고친 곳 목록 15개) · boards/(이 캔버스 파일)</p>
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2100}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

@@ -30,6 +30,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .err{margin:0;font-size:14px;color:#B42318;background:#FEF3F2;border:1px solid #F5C2BC;border-radius:10px;padding:10px 12px}
 .stepn{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:0 0 auto}
 .chipx{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-size:15px;font-weight:600;padding:8px 8px 8px 14px;border-radius:999px;border:1px solid #2350D8;background:#E8EEFF;color:#1A3FB0;cursor:pointer;min-height:44px}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+.indet{height:8px;border-radius:4px;background:repeating-linear-gradient(90deg,#9AA6B6 0,#9AA6B6 14px,#E3E7EC 14px,#E3E7EC 28px)}
+.keep li{margin:0;font-size:14px;color:#3A4250;line-height:1.6}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -58,6 +62,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </div>
 </header>
+
+<div style="max-width: 1280px; margin: 0 auto; padding: 16px 24px 0; box-sizing: border-box;">
+<div class="fix" role="note" style="background: #FFF8DB; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 4개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-RegionNew.md</div>
+</div>
 
 <main style="max-width: 1280px; margin: 0 auto; padding: 24px 24px 56px; display: flex; flex-direction: column; gap: 24px;">
 
@@ -212,13 +220,18 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 
 <div class="card" style="padding: 22px; display: flex; flex-direction: column; gap: 12px;">
 <h3 style="margin: 0; font-size: 17px;">진행 상황 · 상태별 모습</h3>
-<div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
-<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #EEF1F4; color: #3A4250;">대기</span><span style="font-size: 14px;">순서를 기다리고 있어요</span></div>
-<div style="height: 8px; background: #E3E7EC; border-radius: 4px; overflow: hidden;" aria-hidden="true"><div style="width: 30%; height: 100%; background: #C8CFD8;"></div></div>
+<div class="fix" style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #EEF1F4; color: #3A4250;">대기</span><span style="font-size: 14px;">순서를 기다리고 있어요</span><span class="fixtag">고침 RN-1</span></div>
+<div class="indet" role="progressbar" aria-label="대기"></div>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">진행 수([n]/[m])를 아직 모르면 줄무늬 막대예요 — 얼마나 남았는지 모른다는 뜻이에요(대기·실행 중 모두). 진행 수가 오면 아래처럼 채워지는 막대로 바뀌어요.</p>
+<div style="height: 8px; background: #E3E7EC; border-radius: 4px; overflow: hidden;" role="progressbar" aria-label="실행 중" aria-valuemin="0" aria-valuemax="100" aria-valuenow="35"><div style="width: 35%; height: 100%; background: #2350D8;"></div></div>
 </div>
 <div style="border: 1px solid #E3E7EC; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
 <div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #E8EEFF; color: #1A3FB0;">실행 중</span><span class="num" style="font-size: 14px;">[n]/[m] · 단계 [단계 이름]</span></div>
-<p style="margin: 0; font-size: 13px; color: #A3470A;">수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요 (다시 대기 [n]/[max]회, [시각] 이후) — 아직 실패가 아니에요. 지역 첫 수집 중이라 아직 발행된 수정본은 없어요.</p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 4px;">
+<p style="margin: 0; font-size: 13px; color: #A3470A;"><span class="fixtag">고침 RN-2</span> 수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요 (다시 대기 [n]/[max]회, [시각] 이후 다시 시도) — 아직 실패가 아니에요. 지역 첫 수집 중이라 아직 발행된 수정본은 없어요.</p>
+<p style="margin: 0; font-size: 13px; color: #A3470A;">다시 시도할 시각이 없으면: … (다시 대기 [n]/[max]회, 곧 다시 시도) — 아직 실패가 아니에요. 지역 첫 수집 중이라 아직 발행된 수정본은 없어요.</p>
+</div>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">상태를 받지 못해 다시 확인하는 중: [오류 내용]</p>
 <p style="margin: 0; font-size: 13px; color: #5B6472;">다른 발행이 끝나길 기다리는 중(다시 대기 [n]회) · 발행 중 오류로 다시 시도하는 중([n]/[max]회) — 아직 실패가 아니에요</p>
 </div>
@@ -233,7 +246,12 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: #FFFFFF; color: #B42318; border: 1px solid #F5C2BC;">실패</span><span style="font-size: 14px; color: #B42318;">오류: [오류 내용]</span></div>
 <p style="margin: 0; font-size: 13px; color: #3A4250;">수집 자료가 [max]번 다시 모아도 불완전해 멈췄을 때: '발행하지 않았어요: [사유]'</p>
 </div>
-<p style="margin: 0; font-size: 13px; color: #5B6472;">작업을 아직 못 받았으면 '진행 중인 작업 없음'</p>
+<div class="fix" style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+<p style="margin: 0; font-size: 13px; font-weight: 600; color: #3A4250;">작업 정보를 아직 못 받았을 때 <span class="fixtag">고침 RN-3</span></p>
+<p role="status" style="margin: 0; font-size: 14px; color: #5B6472;">진행 중인 작업 없음</p>
+<p role="status" style="margin: 0; font-size: 14px; color: #B42318;">오류: [오류 내용]</p>
+<p style="margin: 0; font-size: 12px; color: #5B6472;">위: 작업 번호가 없을 때. 아래: 작업을 한 번도 받기 전에 상태 조회가 실패했을 때(상태 표시·막대 없이 오류 한 줄만). 한 번이라도 받은 뒤의 일시 오류는 마지막 상태를 둔 채 '상태를 받지 못해 다시 확인하는 중' 줄만 더해요.</p>
+</div>
 </div>
 
 <div class="card" style="grid-column: 1 / -1; padding: 22px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
@@ -245,10 +263,22 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </section>
 
+<section aria-labelledby="keep" class="card fix" style="padding: 22px; display: flex; flex-direction: column; gap: 10px; background: #FFFCEB; border-color: #F0D875;">
+<h2 id="keep" style="margin: 0; font-size: 19px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">구현할 때 지금 동작 그대로 유지 <span class="fixtag">고침 RN-4</span></h2>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">그림으로 못 그리는 동작이에요. # 번호는 coverage-RegionNew.md 의 줄 번호예요. 기존 테스트가 지키는 동작은 그대로 둬요.</p>
+<ul class="keep" style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+<li><b>#9</b> 지역 검색은 입력을 멈춘 뒤 300ms 지나서 후보를 불러요(디바운스). 2글자 미만이면 부르지 않아요(#7).</li>
+<li><b>#30</b> 찾을 기간 칸에 오류가 있으면(형식·순서·서버 422) 고급 칸이 저절로 펼쳐져요.</li>
+<li><b>#31</b> 찾을 기간을 비우면 요청에 기간 키를 넣지 않고, 넣은 칸만 보내요.</li>
+<li><b>#35</b> '분석 시작'은 기간 오류·보내는 중·이미 시작한 뒤에도 꺼져요.</li>
+<li><b>#61</b> 작업 상태는 대기·실행 중인 동안 2초마다 다시 불러요(끝나면 멈춤).</li>
+</ul>
+</section>
+
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2960}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3700}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

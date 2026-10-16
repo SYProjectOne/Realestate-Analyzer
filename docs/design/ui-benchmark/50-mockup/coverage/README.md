@@ -4,21 +4,23 @@ Every feature in the current frontend source (`frontend/src`) was extracted line
 
 A feature counts as **있음** (present) only if the mockup actually draws it. A feature the mockup describes in words but does not draw is counted as **문구로만** (described only).
 
-| File | Current screen | Total | Present | Described only | On another board | Missing |
-|---|---|---|---|---|---|---|
-| coverage-Shell.md | App shell (layout, components, _shared) | 299 | 157 | 34 | 54 | 54 |
-| coverage-Main.md | G1 home | 156 | 80 | 1 | 29 | 46 |
-| coverage-List.md | G2 complex list | 120 | 96 | 10 | 4 | 10 |
-| coverage-Detail.md | G3 complex detail | 312 | 245 | 25 | 7 | 35 |
-| coverage-Compare.md | G4 compare | 176 | 144 | 15 | 5 | 12 |
-| coverage-Scenario.md | G5 scenario | 145 | 121 | 8 | 12 | 4 |
-| coverage-Market.md | G6 regional market | 216 | 178 | 7 | 4 | 27 |
-| coverage-Ops.md | G7 data and operations | 258 | 231 | 9 | 0 | 18 |
-| coverage-Reports.md | G8 reports + share-link landing | 90 | 66 | 17 | 1 | 6 |
-| coverage-RegionNew.md | G0 region input | 64 | 55 | 4 | 0 | 5 |
-| coverage-LivingAreas.md | G0-2 living areas | 78 | 66 | 4 | 1 | 7 |
-| coverage-Glossary.md | Glossary | 82 | 77 | 3 | 1 | 1 |
-| **Total** | | **1,996** | **1,516** | **137** | **118** | **225** |
+| File | Current screen | Total | Present | Described only | On another board | Missing | Fixes |
+|---|---|---|---|---|---|---|---|
+| coverage-Shell.md | App shell (layout, components, _shared) | 299 | 202 | 43 | 54 | 0 | 21 |
+| coverage-Main.md | G1 home | 156 | 119 | 7 | 30 | 0 | 17 |
+| coverage-List.md | G2 complex list | 120 | 101 | 15 | 4 | 0 | 11 |
+| coverage-Detail.md | G3 complex detail | 312 | 280 | 25 | 7 | 0 | 25 |
+| coverage-Compare.md | G4 compare | 176 | 169 | 2 | 5 | 0 | 22 |
+| coverage-Scenario.md | G5 scenario | 145 | 130 | 3 | 12 | 0 | 10 |
+| coverage-Market.md | G6 regional market | 216 | 191 | 21 | 4 | 0 | 17 |
+| coverage-Ops.md | G7 data and operations | 258 | 241 | 17 | 0 | 0 | 14 |
+| coverage-Reports.md | G8 reports + share-link landing | 90 | 74 | 15 | 1 | 0 | 7 |
+| coverage-RegionNew.md | G0 region input | 64 | 59 | 5 | 0 | 0 | 4 |
+| coverage-LivingAreas.md | G0-2 living areas | 78 | 67 | 9 | 1 | 1 | 3 |
+| coverage-Glossary.md | Glossary | 82 | 80 | 1 | 1 | 0 | 6 |
+| **Total** | | **1,996** | **1,713** | **163** | **119** | **1** | **157** |
+
+**Updated 2026-10-16 after the mockup fixes.** Before the fixes, 225 items were missing; now 1 is (LivingAreas #73 "공급 기준치", an i18n key the current code does not use). The "Fixes" column counts places changed in the mockup. The fix logs are in `../fixes/`, and every fix is marked on its board with a yellow dashed outline and a "고침 XX-n" tag. The sections below describe the 225 items as they stood **before** the fixes and how each one was handled.
 
 ## What the 225 missing items are
 

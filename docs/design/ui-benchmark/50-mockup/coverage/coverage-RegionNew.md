@@ -14,7 +14,7 @@
 | 6 | 검색 안내 줄 (`index.tsx` · `page.G0.searchHint` "2자 이상 입력하면 후보를 보여 줍니다") | RegionNew · "1 지역 찾기" 칸 아래 "2글자 이상 넣으면 후보를 보여 줘요" | 문구 쉬운 말로 | 있음 |
 | 7 | 1글자일 때 후보를 부르지 않음(2자 이상만 표시, `debounced.trim().length >= 2`) | RegionNew · 펼친 모습 "지역 찾기 · 다른 상태" → "한 글자만 넣었을 때" | — | 있음 |
 | 8 | 찾는 중 표시 (`resolve.isFetching` · `page.G0.searching` "찾는 중…") | RegionNew · 펼친 모습 "찾는 동안 · 찾는 중…" | — | 있음 |
-| 9 | 300ms 디바운스 자동완성 (`DEBOUNCE_MS`, `useDebounced`) | — | — | 빠짐(목업에 없음 — 입력 지연 동작은 그리거나 적지 않음) |
+| 9 | 300ms 디바운스 자동완성 (`DEBOUNCE_MS`, `useDebounced`) | — | — | 문구로만(고침 RN-4 — "구현 때 유지" 상자) |
 | 10 | 후보 없음 빈 상태 (`EmptyState` · `page.G0.noCandidates` "일치하는 후보가 없습니다") | RegionNew · 펼친 모습 "후보가 없을 때" "일치하는 후보가 없어요. 동·구·시 이름을 다르게 넣어 보세요." | 안내 한 줄 더함 | 있음 |
 | 11 | 검색 오류 (`resolve.error` · `page.common.loadError` "불러오지 못했습니다: {detail}") | RegionNew · 펼친 모습 "검색이 실패했을 때" "불러오지 못했어요: [오류 내용]" | — | 있음 |
 | 12 | 후보 목록 ul aria-label "후보" (`index.tsx`) | RegionNew · "1 지역 찾기" "후보에서 고르세요 여러 개 골라도 돼요" 목록 | 후보 → 후보에서 고르세요 | 있음 |
@@ -35,12 +35,12 @@
 | 27 | 형식 오류 role=alert + aria-invalid (`checkWindow` invalid · `page.G0.window.invalid` "YYYY-MM 형식(월 01~12)으로 입력하세요") | RegionNew · 펼친 모습 "YYYY-MM 모양(월은 01~12)으로 넣어 주세요" (값 2025-13 예시) | — | 있음 |
 | 28 | 순서 오류 role=alert (`reversed` · `page.G0.window.order` "조회 시작월이 끝월보다 늦습니다") | RegionNew · 펼친 모습 "시작하는 달이 끝나는 달보다 늦어요" | — | 있음 |
 | 29 | 서버 422 조회 기간 오류 (`isApplyhomeQueryLoc` · `page.G0.window.server` "조회 기간을 서버가 받지 않았습니다: {detail}") | RegionNew · 펼친 모습 "찾을 기간을 서버가 받지 않았어요: [서버 메시지]" | — | 있음 |
-| 30 | 오류가 있으면 details 자동 펼침 (`open={windowOpen \|\| windowBlocked \|\| serverErrors}`) | RegionNew · 펼친 모습 "오류가 있으면 이 칸은 저절로 펼쳐지고, 분석 시작 버튼이 꺼져요." | — | 문구로만 |
-| 31 | 비우면 `applyhome_query` 키를 보내지 않음 / 입력한 칸만 보냄 (`checkWindow().query`) | RegionNew · "2 …" details "비워 두면 지난 24개월 + 앞으로 12개월을 찾아요." | — | 문구로만 |
+| 30 | 오류가 있으면 details 자동 펼침 (`open={windowOpen \|\| windowBlocked \|\| serverErrors}`) | RegionNew · 펼친 모습 "오류가 있으면 이 칸은 저절로 펼쳐지고, 분석 시작 버튼이 꺼져요." | — | 문구로만(고침 RN-4 — "구현 때 유지" 상자에도 적음) |
+| 31 | 비우면 `applyhome_query` 키를 보내지 않음 / 입력한 칸만 보냄 (`checkWindow().query`) | RegionNew · "2 …" details "비워 두면 지난 24개월 + 앞으로 12개월을 찾아요." | — | 문구로만(고침 RN-4 — "구현 때 유지" 상자에도 적음) |
 | 32 | 분석 시작 버튼 (`page.G0.start` "분석 시작") | RegionNew · "3 분석 시작" 버튼 "'송도' 분석 시작" | 분석 시작 → '{이름}' 분석 시작 | 있음 |
 | 33 | 시작 꺼짐 안내 (`page.G0.startDisabled` "후보를 1개 이상 고르고 이름을 입력하세요") | RegionNew · 펼친 모습 "분석 시작 버튼이 꺼졌을 때" "후보를 1개 이상 고르고 이름을 넣어 주세요" | — | 있음 |
 | 34 | 읽기 전용: 버튼 꺼짐 + title·안내 (`useCanWrite` · `auth.readOnlyHint` "읽기 전용 토큰으로는 저장·실행할 수 없습니다") | RegionNew · 펼친 모습 버튼 title + "읽기 전용 토큰으로는 저장·실행할 수 없어요" | — | 있음 |
-| 35 | 그 밖의 꺼짐 조건(기간 오류·보내는 중 `isPending`·이미 시작 `created`) | RegionNew · 펼친 모습 "이 밖에 꺼지는 때: 찾을 기간 칸에 오류가 있을 때 · 시작을 보내는 중일 때 · 이미 시작했을 때" | — | 문구로만 |
+| 35 | 그 밖의 꺼짐 조건(기간 오류·보내는 중 `isPending`·이미 시작 `created`) | RegionNew · 펼친 모습 "이 밖에 꺼지는 때: 찾을 기간 칸에 오류가 있을 때 · 시작을 보내는 중일 때 · 이미 시작했을 때" | — | 문구로만(고침 RN-4 — "구현 때 유지" 상자에도 적음) |
 | 36 | 시작 요청 오류 role=alert (`create.error` · `page.common.loadError`) | RegionNew · 펼친 모습 "불러오지 못했어요: [시작 요청 오류 내용]" | — | 있음 |
 | 37 | 시작 성공 토스트 (`page.G0.started` "지역을 만들고 분석을 시작했습니다") | RegionNew · 펼친 모습 "잠깐 뜨는 알림" "지역을 만들고 분석을 시작했어요" | — | 있음 |
 | 38 | 진행 표시 JobProgress (region.bootstrap 잡, `created.job_id`) | RegionNew · "4 분석 진행 상황 (분석 시작을 누른 뒤의 모습)" role=status | — | 있음 |
@@ -50,35 +50,31 @@
 | 42 | 진행 수 (`job.progress` "{done}/{total}") | RegionNew · "4 …" "[n] / [m] 단계" | — | 있음 |
 | 43 | 진행 단계 (`job.step` "단계 {step}") | RegionNew · "4 …" "[단계 이름]" | — | 있음 |
 | 44 | 진행 막대(진행 수 있으면 결정 막대) `<progress>` aria-label=상태 | RegionNew · "4 …" role=progressbar aria-label "실행 중" | — | 있음 |
-| 45 | 진행 수가 없을 때 미정(indeterminate) 막대 | — | — | 빠짐(목업에 없음 — 결정 막대 한 모양만 그림) |
+| 45 | 진행 수가 없을 때 미정(indeterminate) 막대 | — | — | 있음(고침 RN-1 — 펼친 모습 "진행 상황 · 상태별 모습" 대기 칸에 줄무늬 미정 막대) |
 | 46 | 상태 '완료' (`job.status.done`) + 완료 콜백 | RegionNew · 펼친 모습 "완료 분석이 끝났어요" | — | 있음 |
 | 47 | 완료 토스트 (`page.G0.done` "분석이 끝났습니다") | RegionNew · 펼친 모습 "잠깐 뜨는 알림" "분석이 끝났어요" | — | 있음 |
 | 48 | 상태 '실패' + 오류 (`job.status.failed`, `job.error` "오류: {detail}") | RegionNew · 펼친 모습 "실패 오류: [오류 내용]" | — | 있음 |
 | 49 | 빈 데이터셋 재시도 상한 실패 문구 (`degradedFailureText` · `job.degradedFailed`) | RegionNew · 펼친 모습 "수집 자료가 [max]번 다시 모아도 불완전해 멈췄을 때: '발행하지 않았어요: [사유]'" | — | 있음 |
-| 50 | 빈 데이터셋 재큐잉 안내 (`JobRequeueNote` · `job.requeuedDegraded` + `job.requeuedAt`) | RegionNew · 펼친 모습 "수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요 (다시 대기 [n]/[max]회, [시각] 이후) — 아직 실패가 아니에요." | — | 있음 |
-| 51 | 재큐잉 시각 없을 때 (`job.requeuedSoon` "곧 다시 시도") | — | — | 빠짐(목업에 없음 — "[시각] 이후" 모양만 있음) |
+| 50 | 빈 데이터셋 재큐잉 안내 (`JobRequeueNote` · `job.requeuedDegraded` + `job.requeuedAt`) | RegionNew · 펼친 모습 "수집 자료가 불완전해([사유]) 발행하지 않고 다시 모아요 (다시 대기 [n]/[max]회, [시각] 이후) — 아직 실패가 아니에요." | — | 있음(고침 RN-2 — 문구를 "[시각] 이후 다시 시도"로 맞춤) |
+| 51 | 재큐잉 시각 없을 때 (`job.requeuedSoon` "곧 다시 시도") | — | — | 있음(고침 RN-2 — "곧 다시 시도" 줄) |
 | 52 | 첫 적재 안내 (`job.requeuedDegradedBootstrap` "지역 첫 적재 중 — 발행 리비전은 아직 없습니다.") | RegionNew · 펼친 모습 "지역 첫 수집 중이라 아직 발행된 수정본은 없어요." | 리비전 → 수정본 | 있음 |
 | 53 | 발행 busy 재큐잉 (`job.requeued` "같은 리비전의 다른 발행이 끝나길 기다리는 중(다시 대기 {n}회)…") | RegionNew · 펼친 모습 "다른 발행이 끝나길 기다리는 중(다시 대기 [n]회)" | — | 있음 |
 | 54 | 발행 예외 재시도 (`job.requeuedError` "({n}/{max}회) — 아직 실패가 아닙니다") | RegionNew · 펼친 모습 "발행 중 오류로 다시 시도하는 중([n]/[max]회) — 아직 실패가 아니에요" | — | 있음 |
 | 55 | 일시 조회 오류 동안 마지막 상태 유지 + 다시 확인 줄 (`job.retrying` "상태를 받지 못해 다시 확인하는 중: {detail}") | RegionNew · 펼친 모습 "상태를 받지 못해 다시 확인하는 중: [오류 내용]" | — | 있음 |
-| 56 | 잡을 받기 전 조회 오류 (`error && !job` → `job.error`) | — | — | 빠짐(목업에 없음 — '실패' 상태의 오류 줄만 그림) |
-| 57 | 잡 없음 (`job.none` "진행 중인 작업 없음") | RegionNew · 펼친 모습 "작업을 아직 못 받았으면 '진행 중인 작업 없음'" | — | 문구로만 |
+| 56 | 잡을 받기 전 조회 오류 (`error && !job` → `job.error`) | — | — | 있음(고침 RN-3 — "작업 정보를 아직 못 받았을 때" 칸의 "오류: [오류 내용]") |
+| 57 | 잡 없음 (`job.none` "진행 중인 작업 없음") | RegionNew · 펼친 모습 "작업을 아직 못 받았으면 '진행 중인 작업 없음'" | — | 있음(고침 RN-3 — 같은 칸의 "진행 중인 작업 없음") |
 | 58 | 진행 aria-live=polite 알림 | RegionNew · "4 …" role=status | — | 있음 |
 | 59 | 완료 뒤 홈 링크 (`page.G0.goDashboard` "홈 대시보드로", `/?region={id}`, done일 때만) | RegionNew · 펼친 모습 "완료" 링크 "홈으로 (이 지역 보기)" + "4 …" "'홈으로' 버튼은 분석이 끝나면 나와요" | 홈 대시보드로 → 홈으로 (이 지역 보기) | 있음 |
 | 60 | 생활권 편집 링크 (`page.G0.goLivingAreas` "생활권 편집", `/regions/{id}/living-areas`, 시작 직후부터) | RegionNew · "4 …" 링크 "생활권 나누기 바꾸기 (생활권 편집)" | 생활권 편집 → 생활권 나누기 바꾸기 | 있음 |
-| 61 | 폴링 2초(queued/running 동안 GET /jobs/{id}) | — | — | 빠짐(목업에 없음 — 동작) |
+| 61 | 폴링 2초(queued/running 동안 GET /jobs/{id}) | — | — | 문구로만(고침 RN-4 — "구현 때 유지" 상자) |
 | 62 | API `GET /regions/resolve?q=` (`useResolveRegion`) | RegionNew · "1 지역 찾기" 검색칸(호출 주체) | — | 있음 |
 | 63 | API `POST /regions` {name, query_text, selections, applyhome_query?} (`useCreateRegion`) | RegionNew · "3 분석 시작" 버튼(호출 주체) | — | 있음 |
 | 64 | API `GET /jobs/{id}` (`useJob`) | RegionNew · "4 분석 진행 상황"(호출 주체) | — | 있음 |
 
-요약: 전체 64 · 있음 55 · 문구로만 4 · 다른 보드 0 · 빠짐 5
+요약: 전체 64 · 있음 59 · 문구로만 5 · 다른 보드 0 · 빠짐 0 (2026-10-16 고침 반영 — fixes/fixes-RegionNew.md)
 
-빠짐 목록:
-- #9 300ms 디바운스 자동완성 — 목업에 없음(동작)
-- #45 진행 수가 없을 때 미정 진행 막대 — 목업에 없음
-- #51 재큐잉 시각 없을 때 "곧 다시 시도" — 목업에 없음
-- #56 잡을 받기 전 조회 오류(`job.error`) — 목업에 없음
-- #61 잡 폴링 2초 — 목업에 없음(동작)
+빠짐 목록: 없음 (2026-10-16 고침 반영)
+- 고침 전 빠짐 5개: #45·#51·#56 → 있음(고침 RN-1·RN-2·RN-3), #9·#61 → 문구로만(고침 RN-4 "구현 때 유지" 상자)
 - (참고) `job.requeuedDegradedDaily`는 G0(region.bootstrap 잡)에서 나오지 않아 이 표에 넣지 않음 — Ops·Market 표에서 다룸
 
 ## 새로 더한 것 (기존에 없던 것)

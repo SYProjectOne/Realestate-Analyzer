@@ -19,6 +19,8 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .chip{font-family:inherit;font-size:15px;font-weight:500;padding:9px 16px;border-radius:999px;border:1px solid #D5DAE1;background:#FFFFFF;color:#3A4250;cursor:pointer;min-height:42px}
 .chip[aria-pressed="true"]{background:#14181F;border-color:#14181F;color:#FFFFFF}
 .sel{font-family:inherit;font-size:15px;padding:9px 12px;border:1px solid #D5DAE1;border-radius:10px;background:#FFFFFF;color:#14181F;min-height:42px}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -42,11 +44,13 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </header>
 
+<div class="fix" role="note" style="max-width: 1232px; margin: 16px auto 0; background: #FFF8DB; border: 1px solid #F0D36B; border-radius: 12px; padding: 10px 16px; font-size: 14px; color: #3D2E00; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 3개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-List.md</div>
+
 <main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
 
 <div style="display: flex; flex-direction: column; gap: 6px;">
 <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.4px;">인천 분양 단지 100곳</h1>
-<p style="margin: 0; font-size: 15px; color: #5B6472;">접수할 수 있는 단지가 먼저 나와요. 카드를 누르면 돈·일정·조건을 볼 수 있어요.</p>
+<p class="fix" style="margin: 0; font-size: 15px; color: #5B6472;"><span class="fixtag">고침 LS-2</span> 종합 점수가 높은 순으로 나와요 (같은 지역 단지끼리 상대 비교 · 투자 권유 아님). 접수 가능한 단지를 먼저 보려면 정렬에서 '접수 가능 먼저'를 고르세요. 카드를 누르면 돈·일정·조건을 볼 수 있어요.</p>
 </div>
 
 <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
@@ -61,12 +65,17 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <label for="pr" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">가격대</label>
 <select id="pr" class="sel"><option>가격 전체</option><option>5억 이하</option><option>5억 ~ 7억</option><option>7억 이상</option></select>
 <label for="so" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">정렬</label>
-<select id="so" class="sel"><option>접수 가능 먼저</option><option>점수 높은 순</option><option>되팔기 가까운 순</option><option>가격 낮은 순</option></select>
+<span class="fix" style="display: inline-flex; align-items: center; gap: 6px;"><span class="fixtag">고침 LS-2</span><select id="so" class="sel"><option selected>종합 점수 높은 순 (기본)</option><option>접수 가능 먼저</option><option>되팔기 가까운 순</option><option>가격 낮은 순</option></select></span>
 </div>
-<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-<sc-for list="{{chips}}" as="c" hint-placeholder-count="4">
+<div class="fix" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<span class="fixtag">고침 LS-1</span>
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="2">
 <button type="button" class="chip" aria-pressed="{{c.pressed}}" onClick="{{c.pick}}">{{c.label}}</button>
 </sc-for>
+<span class="fix" style="display: inline-flex; align-items: center; gap: 8px; padding: 0 4px;">
+<label for="resale-before" style="font-size: 14px; color: #3A4250;">이 날짜 전에 되팔 수 있게 됨 (전매 종료)</label>
+<input id="resale-before" type="date" class="sel">
+</span>
 <span style="flex: 1 1 auto;"></span>
 <span style="font-size: 13px; color: #5B6472;">기준일 2026-10-14</span>
 </div>
@@ -108,21 +117,28 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <button type="button" style="font-family: inherit; font-size: 15px; font-weight: 600; padding: 12px 22px; border-radius: 12px; border: 1px solid #D5DAE1; background: #FFFFFF; color: #14181F; cursor: pointer; min-height: 44px;">92곳 더 보기</button>
 </div>
 
+<section class="fix card" aria-labelledby="keep" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; border-color: #F0D36B; background: #FFFDF2;">
+<h2 id="keep" style="margin: 0; font-size: 17px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 LS-3</span>구현할 때 지금 동작 그대로 유지 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">· 그림으로 못 그리는 것 (coverage-List 번호)</span></h2>
+<ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: #3A4250;">
+<li>#41 정렬 상자의 값은 지금 정렬 키 그대로: 종합 점수 높은 순 = -total(기본) · 접수 가능 먼저 = intake · 되팔기 가까운 순 = resale_end · 가격 낮은 순 = price_low</li>
+<li>칩 줄에는 지금 있는 필터만 둬요: 지금 접수 가능 = intake_status · 이 날짜 전에 되팔 수 있게 됨 (전매 종료) = resale_end_before. '실거주 의무 없음'은 필터 키가 없어 뺐어요(필요하면 WP5 계약 변경 요청)</li>
+<li>필터·정렬 값의 주소 기억 · 모르는 정렬 키 처리 · 초기화가 정렬도 지우는 것은 '표 보기' 보드 상자에 적었어요</li>
+</ul>
+</section>
+
 <p style="margin: 0; font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 16px;">'접수 상태 확인 못 함'은 공식 홈페이지가 열리지 않거나 공고를 아직 못 읽은 단지예요. 단지를 누르면 이유를 볼 수 있어요. 이 화면은 개인의 청약 자격을 판정하지 않아요.</p>
 
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1480}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1800}}'>
 class Component extends DCLogic {
 renderVals() {
 var picked = (this.state && this.state.chip) || 'all';
 var self = this;
 var chipDefs = [
 { id: 'open', label: '지금 접수 가능 3' },
-{ id: 'all', label: '전체 100' },
-{ id: 'soon', label: '되팔기 제한 곧 끝남' },
-{ id: 'noresidency', label: '실거주 의무 없음' }
+{ id: 'all', label: '전체 100' }
 ];
 var chips = chipDefs.map(function (c) {
 return { label: c.label, pressed: c.id === picked ? 'true' : 'false', pick: function () { self.setState({ chip: c.id }); } };

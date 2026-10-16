@@ -17,6 +17,10 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 .ok{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#4B6B57;vertical-align:middle}
 .est{display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#8A4B0F;border:1px dashed #C9864A;border-radius:4px;padding:0 5px;line-height:16px;vertical-align:middle}
 .card{background:#FFFFFF;border:1px solid #E3E7EC;border-radius:16px}
+.u{border-bottom:1px dashed #7A8391;cursor:pointer}
+.q{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid #9AA6B6;background:#FFFFFF;color:#3A4250;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;vertical-align:middle;padding:0}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -49,12 +53,19 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </header>
 
+<div style="max-width: 1280px; margin: 0 auto; padding: 18px 24px 0;">
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #FFF8DB; border: 1px solid #E5B800; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00;"><span class="fixtag">고침 안내</span> 이 보드에서 고친 곳 17개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Main.md</div>
+</div>
+
 <main style="max-width: 1280px; margin: 0 auto; padding: 36px 24px 56px; display: flex; flex-direction: column; gap: 28px;">
 
 <section aria-labelledby="hero" style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
 <div style="display: flex; flex-direction: column; gap: 10px; flex: 1 1 520px;">
-<p style="margin: 0; font-size: 14px; color: #5B6472;">인천 · 기준일 2026년 10월 14일 · 공식 자료 100곳 확인</p>
-<h1 id="hero" style="margin: 0; font-size: 38px; line-height: 1.25; font-weight: 700; letter-spacing: -0.5px;">지금 청약을 넣을 수 있는 단지는 <span style="color: #2350D8;">3곳</span>이에요</h1>
+<p style="margin: 0; font-size: 14px; color: #5B6472;">인천 · 기준일 2026년 10월 14일 · <span class="fix">공식 자료 [값]곳 확인 <span style="font-size: 11px; color: #8A4B0F; border: 1px solid #C9864A; border-radius: 4px; padding: 0 4px;">API 필요</span> <span class="fixtag">고침 HM-2</span></span></p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px;">
+<h1 id="hero" style="margin: 0; font-size: 38px; line-height: 1.25; font-weight: 700; letter-spacing: -0.5px;">지금 청약을 넣을 수 있는 단지는 <span class="u" style="color: #2350D8;">3곳</span>이에요</h1>
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: #5B6472;"><span class="fixtag">고침 HM-1</span> '3곳' <span class="est">추정(집계)</span> · 숫자를 누르면 출처가 열려요 · 접수 상태 <button type="button" class="q" aria-label="접수 상태 뜻 보기">?</button></p>
+</div>
 <p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.6;">각 단지 공식 홈페이지와 청약홈에서 확인한 접수 상태예요. 카드를 누르면 필요한 돈, 일정, 조건을 한 화면에서 볼 수 있어요.</p>
 </div>
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -185,104 +196,140 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <a href="Detail.dc.html" style="color: #FFFFFF; font-weight: 600; font-size: 15px; border: 1px solid #4A5568; border-radius: 12px; padding: 11px 16px;">일정·필요한 돈 보기</a>
 </section>
 
-<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch;">
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
 
-<section aria-labelledby="sched" class="card" style="flex: 1 1 520px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<section aria-labelledby="sched" class="card fix" style="flex: 1 1 520px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
 <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-<h2 id="sched" style="margin: 0; font-size: 20px; font-weight: 700;">다가오는 일정</h2>
-<a href="#" style="font-size: 14px; font-weight: 500;">달력으로 보기</a>
+<h2 id="sched" style="margin: 0; font-size: 20px; font-weight: 700;">다가오는 일정(4주) <span class="fixtag">고침 HM-3</span></h2>
+<a href="Ops.dc.html" style="font-size: 14px; font-weight: 500;">전체 일정 보기</a>
 </div>
-<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
+<ol aria-label="다가오는 일정(4주)" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+<li title="[원래 제목]" style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
 <span class="num" style="flex: 0 0 64px; text-align: center; background: #FFF1E6; color: #A3470A; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">오늘</span>
 <div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">숭의역 라온프라이빗 스카이브</p>
+<p style="margin: 0; font-size: 16px; font-weight: 600;"><a href="Detail.dc.html" style="color: #14181F; text-decoration: underline;">숭의역 라온프라이빗 스카이브</a></p>
 <p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 14일 · 되팔기 제한이 끝나요</p>
+<p style="margin: 2px 0 0; font-size: 12px; color: #7A8391;">계산 기준: [계산 기준]</p>
 </div>
-<span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">전매 제한 끝</span>
+<span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">전매 가능 시작</span>
 </li>
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
+<li title="[원래 제목]" style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
 <span class="num" style="flex: 0 0 64px; text-align: center; background: #FFF1E6; color: #A3470A; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">D-1</span>
 <div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">석남역 센트럴파크 그랑베르</p>
+<p style="margin: 0; font-size: 16px; font-weight: 600;"><a href="Detail.dc.html" style="color: #14181F; text-decoration: underline;">석남역 센트럴파크 그랑베르</a></p>
 <p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 15일 · 되팔기 제한이 끝나요</p>
+<p style="margin: 2px 0 0; font-size: 12px; color: #7A8391;">계산 기준: [계산 기준]</p>
 </div>
-<span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">전매 제한 끝</span>
+<span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">전매 가능 시작</span>
 </li>
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
+<li title="[원래 제목]" style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
 <span class="num" style="flex: 0 0 64px; text-align: center; background: #EEF1F4; color: #3A4250; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">D-5</span>
 <div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">산곡역자이힐스테이트앤하늘채</p>
+<p style="margin: 0; font-size: 16px; font-weight: 600;"><a href="Detail.dc.html" style="color: #14181F; text-decoration: underline;">산곡역자이힐스테이트앤하늘채</a></p>
 <p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 19일 · 특별공급 청약 접수가 시작돼요</p>
 </div>
 <span style="font-size: 12px; font-weight: 600; background: #E8EEFF; color: #1A3FB0; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">청약 접수</span>
 </li>
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
+<li title="[원래 제목]" style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
 <span class="num" style="flex: 0 0 64px; text-align: center; background: #EEF1F4; color: #3A4250; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">D-6</span>
 <div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">산곡역자이힐스테이트앤하늘채</p>
+<p style="margin: 0; font-size: 16px; font-weight: 600;"><a href="Detail.dc.html" style="color: #14181F; text-decoration: underline;">산곡역자이힐스테이트앤하늘채</a></p>
 <p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 20일 · 1순위 청약 접수 (인천·기타지역)</p>
 </div>
 <span style="font-size: 12px; font-weight: 600; background: #E8EEFF; color: #1A3FB0; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">청약 접수</span>
 </li>
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
+<li title="[원래 제목]" style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
 <span class="num" style="flex: 0 0 64px; text-align: center; background: #EEF1F4; color: #3A4250; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">D-6</span>
 <div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">송도역 한신더휴 프레스턴</p>
+<p style="margin: 0; font-size: 16px; font-weight: 600;"><a href="Detail.dc.html" style="color: #14181F; text-decoration: underline;">송도역 한신더휴 프레스턴</a></p>
 <p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 20일 · 중도금 3회차를 내는 날</p>
 </div>
-<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">중도금</span>
-</li>
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EEF1F4;">
-<span class="num" style="flex: 0 0 64px; text-align: center; background: #EEF1F4; color: #3A4250; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">D-7</span>
-<div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">숭의역 노르웨이숲 더 스카이</p>
-<p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 21일 · 계약 마감</p>
-</div>
-<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">계약</span>
-</li>
-<li style="display: flex; align-items: center; gap: 16px; padding: 12px 0;">
-<span class="num" style="flex: 0 0 64px; text-align: center; background: #EEF1F4; color: #3A4250; font-weight: 700; font-size: 15px; padding: 8px 0; border-radius: 10px;">D-13</span>
-<div style="flex: 1 1 auto; min-width: 0;">
-<p style="margin: 0; font-size: 16px; font-weight: 600;">산곡역자이힐스테이트앤하늘채</p>
-<p style="margin: 2px 0 0; font-size: 14px; color: #5B6472;">10월 27일 · 당첨자 발표</p>
-</div>
-<span style="font-size: 12px; font-weight: 600; background: #E8EEFF; color: #1A3FB0; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">당첨자 발표</span>
+<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">중도금 납부</span>
 </li>
 </ol>
-<p style="margin: 0; font-size: 13px; color: #5B6472; background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">청약 접수·당첨자 발표·계약·중도금·되팔기 제한 끝나는 날을 공고문에서 모아 날짜순으로 보여 줘요.</p>
+<p style="margin: 0; font-size: 13px; color: #5B6472; background: #F6F8FA; border-radius: 10px; padding: 10px 12px;">기준일(10월 14일)부터 4주(28일) 안의 열린 일정만 날짜순으로, 많아야 5건 보여 줘요. 청약 접수·당첨자 발표·계약·중도금 납부·전매 가능 시작·공고 예상 등은 공고문과 체크리스트에서 모아요. 더 보려면 '전체 일정 보기'.</p>
+<div class="fix" style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #3A4250;">
+<span style="font-weight: 600;">다른 모습 <span class="fixtag">고침 HM-4</span></span>
+<div style="display: flex; align-items: center; gap: 12px;">
+<span class="num" style="flex: 0 0 64px; text-align: center; background: #EEF1F4; color: #3A4250; font-weight: 700; padding: 6px 0; border-radius: 10px;">D-[n]</span>
+<span style="flex: 1 1 auto;">[체크리스트 제목] <span style="color: #7A8391;">(단지가 없는 일정 — 링크 없이 제목 글자만)</span></span>
+<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 4px 8px; border-radius: 6px; white-space: nowrap;">확인할 것</span>
+</div>
+<p style="margin: 0; color: #5B6472;">일정이 하나도 없으면: "4주 안의 일정이 없어요"</p>
+<p style="margin: 0; color: #5B6472;">공유 링크(읽기 전용)로 열었을 때: "이 링크로는 일정을 볼 수 없어요(운영 화면 권한 필요)"</p>
+</div>
 </section>
 
 <section aria-labelledby="market" style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 16px;">
 <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
 <h2 id="market" style="margin: 0; font-size: 20px; font-weight: 700;">인천 시장 한눈에</h2>
-<a href="#" style="font-size: 14px; font-weight: 500;">지역 시장 자세히</a>
+<a href="Market.dc.html" style="font-size: 14px; font-weight: 500;">지역 시장 자세히</a>
 </div>
-<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; flex: 1 1 auto;">
-<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 13px; color: #5B6472;">안 팔린 집 (미분양)</span>
-<span class="num" style="font-size: 26px; font-weight: 700;">3,729<span style="font-size: 15px; font-weight: 600;">세대</span></span>
-<span style="font-size: 12px; color: #5B6472;">다 지었는데 안 팔린 집 1,401세대</span>
-<svg viewBox="0 0 200 62" style="width: 100%; height: 56px;" role="img" aria-label="미분양 추이: 2025년 10월 868세대에서 2026년 8월 3,729세대"><polyline points="0,48.1 20,47.3 40,48.0 60,42.3 80,42.7 100,37.5 120,36.3 140,33.0 160,35.4 180,4.0 200,8.7" fill="none" stroke="#2350D8" stroke-width="2.5"></polyline><polyline points="0,55.9 20,55.9 40,56.1 60,56.2 80,56.0 100,56.3 120,54.5 140,54.5 160,54.5 180,40.5 200,40.7" fill="none" stroke="#C2560C" stroke-width="2" stroke-dasharray="4 3"></polyline></svg>
-<span style="font-size: 11px; color: #5B6472;"><span style="color: #2350D8; font-weight: 600;">실선 전체</span> · <span style="color: #A3470A; font-weight: 600;">점선 다 지은 뒤</span> · 2025.10 ~ 2026.08</span>
-<span style="font-size: 11px; color: #7A8391;">국토교통부 · 월말 기준 · <a href="#">구별로 보기</a> · <a href="#">표로 보기</a></span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div class="card fix" style="grid-column: 1 / -1; padding: 18px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">안 팔린 집 (미분양) <span class="fixtag">고침 HM-10</span> <span class="fixtag">고침 HM-12</span></span>
+<span class="num" style="font-size: 26px; font-weight: 700;"><span class="u">3,729</span><span style="font-size: 15px; font-weight: 600;">세대</span> <span class="ok">확인됨</span></span>
+<span style="font-size: 12px; color: #5B6472;">2026년 8월 기준 · 다 지었는데 안 팔린 집(준공 후) <b class="u num">1,401</b>세대 <span class="ok">확인됨</span></span>
+<div style="display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 6px; margin-top: 4px;">
+<div style="position: relative; height: 96px; font-size: 10px; color: #7A8391;" class="num" aria-hidden="true">
+<span style="position: absolute; right: 0; top: 8%; transform: translateY(-50%);">4,000</span>
+<span style="position: absolute; right: 0; top: 52.4%; transform: translateY(-50%);">2,000</span>
+<span style="position: absolute; right: 0; top: 96.9%; transform: translateY(-50%);">0</span>
 </div>
-<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 13px; color: #5B6472;">입주가 가장 몰리는 해</span>
-<span class="num" style="font-size: 26px; font-weight: 700;">2026<span style="font-size: 15px; font-weight: 600;">년</span></span>
-<span style="font-size: 12px; color: #5B6472;">이 해에 14,710세대 입주 <span class="est">추정</span></span>
+<div style="position: relative;">
+<svg viewBox="0 0 200 62" preserveAspectRatio="none" style="width: 100%; height: 96px; display: block;" role="img" aria-label="미분양 추이: 2025년 10월 868세대에서 2026년 8월 3,729세대"><line x1="0" y1="4.97" x2="200" y2="4.97" stroke="#EEF1F4" vector-effect="non-scaling-stroke"></line><line x1="0" y1="32.5" x2="200" y2="32.5" stroke="#EEF1F4" vector-effect="non-scaling-stroke"></line><line x1="0" y1="60.05" x2="200" y2="60.05" stroke="#9AA6B6" vector-effect="non-scaling-stroke"></line><polyline points="0,48.1 20,47.3 40,48.0 60,42.3 80,42.7 100,37.5 120,36.3 140,33.0 160,35.4 180,4.0 200,8.7" fill="none" stroke="#2350D8" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline><polyline points="0,55.9 20,55.9 40,56.1 60,56.2 80,56.0 100,56.3 120,54.5 140,54.5 160,54.5 180,40.5 200,40.7" fill="none" stroke="#C2560C" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"></polyline><line x1="200" y1="0" x2="200" y2="62" stroke="#9AA6B6" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"></line></svg>
+<div role="tooltip" style="position: absolute; left: 6px; top: -2px; background: #14181F; color: #FFFFFF; border-radius: 8px; padding: 6px 10px; font-size: 11px; line-height: 1.5; box-shadow: 0 4px 12px rgba(20,24,31,0.2);" class="num">
+<b>2026.08</b>
+<span style="display: block;">● 합계 3,729</span>
+<span style="display: block;">■ 준공 후 1,401</span>
+</div>
+<div class="num" style="display: flex; justify-content: space-between; font-size: 10px; color: #7A8391; margin-top: 2px;"><span>2025.10</span><span>2026.02</span><span>2026.06</span><span>2026.08</span></div>
+</div>
+</div>
+<span style="font-size: 11px; color: #5B6472; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;"><span style="display: inline-flex; align-items: center; gap: 4px;"><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#2350D8" stroke-width="2.5"></line><circle cx="11" cy="5" r="3" fill="#2350D8"></circle></svg><b style="color: #2350D8;">실선 ● 합계</b></span><span style="display: inline-flex; align-items: center; gap: 4px;"><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#C2560C" stroke-width="2" stroke-dasharray="4 3"></line><rect x="8" y="2" width="6" height="6" fill="#C2560C"></rect></svg><b style="color: #A3470A;">점선 ■ 준공 후(다 지은 뒤)</b></span><span>최근 24개월까지 · 자료 없는 달은 선이 끊겨요</span></span>
+<span style="font-size: 11px; color: #7A8391;">국토교통부 · 월말 기준 · 그림의 말풍선은 마우스를 올렸을 때 모습</span>
+<details open="open" class="fix" style="font-size: 12px; border-top: 1px solid #EEF1F4; padding-top: 8px;">
+<summary style="cursor: pointer; color: #2350D8; font-weight: 600;">구별로 보기 <span class="fixtag">고침 HM-11</span></summary>
+<ul aria-label="2026년 8월 구별 미분양" class="num" style="list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 14px;">
+<li>영종구 <span class="u">1,578</span> · 준공 후 <span class="u">280</span></li>
+<li>검단구 <span class="u">737</span> · 준공 후 <span class="u">737</span></li>
+<li>연수구 <span class="u">505</span> · 준공 후 <span class="u">203</span></li>
+<li>미추홀구 <span class="u">466</span> · 준공 후 <span class="u">169</span></li>
+<li>남동구 <span class="u">405</span> · 준공 후 <span class="u">2</span></li>
+<li>제물포구 <span class="u">34</span> · 준공 후 <span class="u">8</span></li>
+<li>부평구 <span class="u">4</span> · 준공 후 <span class="u">2</span></li>
+</ul>
+<span style="color: #7A8391;">값마다 <span class="ok">확인됨</span> · 숫자를 한 번 누르면 그 구의 출처가 열려요</span>
+</details>
+<div class="fix" style="font-size: 12px; border-top: 1px solid #EEF1F4; padding-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+<span style="display: flex; justify-content: space-between; align-items: center;"><b>미분양 추이 데이터 <span class="fixtag">고침 HM-13</span></b><button type="button" aria-expanded="true" style="font-family: inherit; font-size: 12px; color: #2350D8; background: none; border: none; padding: 0; cursor: pointer;">표 닫기</button></span>
+<table class="num" style="border-collapse: collapse; width: 100%;">
+<thead><tr style="background: #F6F8FA; text-align: left;"><th scope="col" style="padding: 6px 8px;">월</th><th scope="col" style="padding: 6px 8px; text-align: right;">합계</th><th scope="col" style="padding: 6px 8px; text-align: right;">준공 후</th></tr></thead>
+<tbody>
+<tr><td style="padding: 6px 8px; border-bottom: 1px solid #EEF1F4;">2025-10</td><td style="padding: 6px 8px; border-bottom: 1px solid #EEF1F4; text-align: right;"><span class="u">868</span></td><td style="padding: 6px 8px; border-bottom: 1px solid #EEF1F4; text-align: right;"><span class="u">[값]</span></td></tr>
+<tr><td style="padding: 6px 8px; border-bottom: 1px solid #EEF1F4; color: #7A8391;">… (달마다 한 줄)</td><td style="padding: 6px 8px; border-bottom: 1px solid #EEF1F4; text-align: right; color: #7A8391;">…</td><td style="padding: 6px 8px; border-bottom: 1px solid #EEF1F4; text-align: right; color: #7A8391;">…</td></tr>
+<tr><td style="padding: 6px 8px;">2026-08</td><td style="padding: 6px 8px; text-align: right;"><span class="u">3,729</span></td><td style="padding: 6px 8px; text-align: right;"><span class="u">1,401</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="card fix" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">입주가 가장 몰리는 해 <span class="fixtag">고침 HM-10</span></span>
+<span class="num" style="font-size: 26px; font-weight: 700;"><span class="u">2026</span><span style="font-size: 15px; font-weight: 600;">년</span> <span class="est">[라벨]</span></span>
+<span style="font-size: 12px; color: #5B6472;">이 해에 <span class="u num">14,710</span>세대 입주 <span class="est">추정</span></span>
 <span style="font-size: 11px; color: #7A8391;">입주 예정 집계</span>
 </div>
-<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 13px; color: #5B6472;">점수를 매긴 단지</span>
-<span class="num" style="font-size: 26px; font-weight: 700;">6<span style="font-size: 15px; font-weight: 600;">곳</span> <span style="font-size: 15px; font-weight: 500; color: #5B6472;">/ 100곳</span></span>
-<span style="font-size: 12px; color: #5B6472;">점수 계산 대상(판정 대상)이에요 <span class="est">추정</span></span>
+<div class="card fix" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">점수를 매긴 단지 <button type="button" class="q" aria-label="점수 계산 범위 뜻 보기">?</button> <span class="fixtag">고침 HM-10</span></span>
+<span class="num" style="font-size: 26px; font-weight: 700;"><span class="u">6</span><span style="font-size: 15px; font-weight: 600;">곳</span> <span style="font-size: 15px; font-weight: 500; color: #5B6472;">/ [값]곳</span></span>
+<span style="font-size: 12px; color: #5B6472;">점수 계산 대상(판정 대상)이에요 <span class="est">추정(집계)</span></span>
+<span style="font-size: 11px; color: #8A4B0F;"><span class="fixtag">고침 HM-2</span> '/ 전체 몇 곳'은 지금 응답에 없어요 — API 필요</span>
 </div>
-<div class="card" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
-<span style="font-size: 13px; color: #5B6472;">마지막으로 모은 때</span>
-<span class="num" style="font-size: 26px; font-weight: 700;">10.13 <span style="font-size: 15px; font-weight: 600;">19:39</span></span>
+<div class="card fix" style="padding: 18px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 13px; color: #5B6472;">마지막으로 모은 때 <span class="fixtag">고침 HM-10</span></span>
+<span class="num" style="font-size: 26px; font-weight: 700;"><span class="u">10.13 <span style="font-size: 15px; font-weight: 600;">19:39</span></span> <span class="est">[라벨]</span></span>
 <span style="font-size: 12px; color: #5B6472;">수집 실패 0곳 · 늦어진 곳 1곳</span>
-<a href="#" style="font-size: 12px;">데이터·운영에서 보기</a>
+<a href="Ops.dc.html" style="font-size: 12px;">데이터·운영에서 보기</a>
 </div>
 </div>
 </section>
@@ -295,44 +342,84 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <h2 id="rank" style="margin: 0; font-size: 20px; font-weight: 700;">점수 순서 · 상황: 기본</h2>
 <p style="margin: 0; font-size: 14px; color: #5B6472;">6가지 기준을 합친 10점 만점 상대 비교예요. 막대 색은 점수가 어디서 나왔는지 보여 줘요. 투자 권유가 아니에요.</p>
 </div>
-<a href="#" style="font-size: 14px; font-weight: 500;">점수는 어떻게 매기나요?</a>
 </div>
-<div style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: #3A4250;"><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #1A3FB0;"></span>입주 뒤 오를 가능성</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #4F74E3;"></span>비슷한 단지 사이 순위</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #9DB4F2;"></span>주변 시세와 차이</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #14181F;"></span>근처 새 아파트 실적</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #C2560C;"></span>같은 시기 입주 물량</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #F0B07A;"></span>되팔기 쉬움</span></div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px;">
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 13px; color: #3A4250;"><span class="fixtag">고침 HM-6</span><span style="display: inline-flex; align-items: center; gap: 4px;">종합 <button type="button" class="q" aria-label="종합 점수 뜻 보기">?</button></span><span style="display: inline-flex; align-items: center; gap: 4px;">+10% 오를 가능성(판정기) <button type="button" class="q" aria-label="+10% 오를 가능성 뜻 보기">?</button></span></p>
+<p class="num" style="margin: 0; font-size: 12px; color: #5B6472;">비중: +10% 오를 가능성 0.35 · 비슷한 단지 사이 순위 0.20 · 주변 시세와 차이 0.15 · 근처 새 아파트 실적 0.10 · 같은 시기 입주 물량 0.10 · 되팔기 쉬움 0.10</p>
+</div>
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 12px; color: #3A4250;"><span class="fixtag">고침 HM-5</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #1A3FB0;"></span>+10% 오를 가능성</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #4F74E3;"></span>비슷한 단지 사이 순위</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #9DB4F2;"></span>주변 시세와 차이</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #14181F;"></span>근처 새 아파트 실적</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #C2560C;"></span>같은 시기 입주 물량</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 3px; background: #F0B07A;"></span>되팔기 쉬움</span><span style="color: #7A8391;"><span class="fixtag">고침 HM-6</span> 입주 시기: 이 상황(기본)은 비중이 없어 그리지 않아요</span></div>
 <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
-<li style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; align-items: center; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #EEF1F4;">
+<li class="fix" style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; align-items: start; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #EEF1F4;">
 <span style="width: 32px; height: 32px; border-radius: 50%; background: #2350D8; color: #FFFFFF; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">1</span>
 <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
-<a href="Detail.dc.html" style="font-size: 16px; font-weight: 600; color: #14181F;">시티오씨엘 8단지</a>
-<span style="font-size: 12px; color: #5B6472;">미추홀구 · 5억 9,850만~6억 5,090만 · 주변보다 8.1% 높음 · 되팔기 2026.12.09</span>
-<span style="font-size: 12px; color: #5B6472;">입주 1년 뒤 10% 넘게 오를 가능성 <b class="num" style="color: #14181F;">53%</b> <span class="est">판정기 추정</span> · 당첨 확률이 아니에요</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-size: 16px; font-weight: 600; color: #14181F;">시티오씨엘 8단지</a><span style="background: #2350D8; color: #FFFFFF; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;">접수 가능</span><span class="fixtag">고침 HM-7</span></span>
+<span style="font-size: 12px; color: #5B6472;">미추홀구 · 현재 구매가 <span class="u num" style="color: #14181F;">5억 9,850만~6억 5,090만</span> <span class="ok">확인됨</span> · 주변보다 <span class="u num" style="color: #14181F;">8.1%</span> 높음 <span class="ok">확인됨</span> · 전매 종료 <span class="u num" style="color: #14181F;">2026.12.09</span> D-56 <span class="est">추정</span></span>
+<span style="font-size: 12px; color: #5B6472;"><span class="fixtag">고침 HM-5</span> +10% 이상 오를 가능성 <b class="num u" style="color: #14181F;">53%</b> <span class="est">판정기 추정</span> · 목표 시점: 입주+1년 · 당첨 확률이 아니에요 · 보장 아님</span>
 </div>
-<div style="display: flex; height: 16px; background: #EEF1F4; border-radius: 4px; overflow: hidden;" role="img" aria-label="시티오씨엘 8단지 점수 구성"><div title="입주 뒤 오를 가능성 1.85점" style="width: 18.55%; background: #1A3FB0;"></div><div title="비슷한 단지 사이 순위 1.03점" style="width: 10.26%; background: #4F74E3;"></div><div title="주변 시세와 차이 0.45점" style="width: 4.47%; background: #9DB4F2;"></div><div title="근처 새 아파트 실적 0.13점" style="width: 1.29%; background: #14181F;"></div><div title="같은 시기 입주 물량 0.50점" style="width: 5.00%; background: #C2560C;"></div><div title="되팔기 쉬움 0.87점" style="width: 8.69%; background: #F0B07A;"></div></div>
-<span class="num" style="font-size: 20px; font-weight: 700; text-align: right;">4.83</span>
+<div style="display: flex; flex-direction: column; gap: 6px; padding-top: 8px;">
+<div style="display: flex; height: 16px; background: #EEF1F4; border-radius: 4px; overflow: hidden;" role="img" aria-label="시티오씨엘 8단지 점수 구성"><div title="+10% 오를 가능성 1.85점" style="width: 18.55%; background: #1A3FB0; outline: 2px solid #14181F; outline-offset: -2px;"></div><div title="비슷한 단지 사이 순위 1.03점" style="width: 10.26%; background: #4F74E3;"></div><div title="주변 시세와 차이 0.45점" style="width: 4.47%; background: #9DB4F2;"></div><div title="근처 새 아파트 실적 0.13점" style="width: 1.29%; background: #14181F;"></div><div title="같은 시기 입주 물량 0.50점" style="width: 5.00%; background: #C2560C;"></div><div title="되팔기 쉬움 0.87점" style="width: 8.69%; background: #F0B07A;"></div></div>
+<div role="tooltip" class="fix num" style="align-self: flex-start; position: relative; background: #14181F; color: #FFFFFF; border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.6; box-shadow: 0 4px 12px rgba(20,24,31,0.2);">
+<span aria-hidden="true" style="position: absolute; left: 24px; top: -6px; width: 12px; height: 12px; background: #14181F; transform: rotate(45deg);"></span>
+<span style="display: block; position: relative;"><span class="fixtag">고침 HM-8</span> 마우스를 올렸을 때</span>
+<b style="display: block; position: relative;">시티오씨엘 8단지 · +10% 오를 가능성</b>
+<span style="display: block;">5.30 × 0.35</span>
+<span style="display: block;">기여 1.85</span>
+<span style="display: block;">원값 53%</span>
+<span style="display: block; color: #B9C3D3;">[산출식]</span>
+</div>
+</div>
+<span class="num u" style="font-size: 20px; font-weight: 700; text-align: right; justify-self: end;">4.83</span>
 </li>
-<li style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; align-items: center; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #EEF1F4;">
+<li class="fix" style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; align-items: center; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #EEF1F4;">
 <span style="width: 32px; height: 32px; border-radius: 50%; background: #E8EEFF; color: #1A3FB0; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">2</span>
 <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
-<a href="Detail.dc.html" style="font-size: 16px; font-weight: 600; color: #14181F;">힐스테이트 구월아트파크<span style="font-size: 12px; font-weight: 600; color: #3A4250; border: 1px dashed #9AA6B6; border-radius: 4px; padding: 0 6px; margin-left: 6px;">동률</span></a>
-<span style="font-size: 12px; color: #5B6472;">남동구 · 7억 6,700만~9억 800만 · 주변보다 35.7% 높음 · 되팔기 2027.05.28</span>
-<span style="font-size: 12px; color: #5B6472;">입주 1년 뒤 10% 넘게 오를 가능성 <b class="num" style="color: #14181F;">53%</b> <span class="est">판정기 추정</span> · 당첨 확률이 아니에요</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-size: 16px; font-weight: 600; color: #14181F;">힐스테이트 구월아트파크</a><span style="font-size: 12px; font-weight: 600; color: #3A4250; border: 1px dashed #9AA6B6; border-radius: 4px; padding: 0 6px;">동률</span><span style="background: #2350D8; color: #FFFFFF; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;">접수 가능</span><span class="fixtag">고침 HM-7</span></span>
+<span style="font-size: 12px; color: #5B6472;">남동구 · 현재 구매가 <span class="u num" style="color: #14181F;">7억 6,700만~9억 800만</span> <span class="ok">확인됨</span> · 주변보다 <span class="u num" style="color: #14181F;">35.7%</span> 높음 <span class="ok">확인됨</span> · 전매 종료 <span class="u num" style="color: #14181F;">2027.05.28</span> D-226 <span class="est">추정</span></span>
+<span style="font-size: 12px; color: #5B6472;"><span class="fixtag">고침 HM-5</span> +10% 이상 오를 가능성 <b class="num u" style="color: #14181F;">53%</b> <span class="est">판정기 추정</span> · 목표 시점: 입주+1년 · 당첨 확률이 아니에요 · 보장 아님</span>
 </div>
-<div style="display: flex; height: 16px; background: #EEF1F4; border-radius: 4px; overflow: hidden;" role="img" aria-label="힐스테이트 구월아트파크 점수 구성"><div title="입주 뒤 오를 가능성 1.85점" style="width: 18.55%; background: #1A3FB0;"></div><div title="비슷한 단지 사이 순위 1.21점" style="width: 12.05%; background: #4F74E3;"></div><div title="주변 시세와 차이 0.00점" style="width: 0.00%; background: #9DB4F2;"></div><div title="근처 새 아파트 실적 0.15점" style="width: 1.50%; background: #14181F;"></div><div title="같은 시기 입주 물량 0.77점" style="width: 7.73%; background: #C2560C;"></div><div title="되팔기 쉬움 0.78점" style="width: 7.76%; background: #F0B07A;"></div></div>
-<span class="num" style="font-size: 20px; font-weight: 700; text-align: right;">4.76</span>
+<div style="display: flex; height: 16px; background: #EEF1F4; border-radius: 4px; overflow: hidden;" role="img" aria-label="힐스테이트 구월아트파크 점수 구성"><div title="+10% 오를 가능성 1.85점" style="width: 18.55%; background: #1A3FB0;"></div><div title="비슷한 단지 사이 순위 1.21점" style="width: 12.05%; background: #4F74E3;"></div><div title="주변 시세와 차이 0.00점" style="width: 0.00%; background: #9DB4F2;"></div><div title="근처 새 아파트 실적 0.15점" style="width: 1.50%; background: #14181F;"></div><div title="같은 시기 입주 물량 0.77점" style="width: 7.73%; background: #C2560C;"></div><div title="되팔기 쉬움 0.78점" style="width: 7.76%; background: #F0B07A;"></div></div>
+<span class="num u" style="font-size: 20px; font-weight: 700; text-align: right; justify-self: end;">4.76</span>
 </li>
-<li style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; align-items: center; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #EEF1F4;">
+<li class="fix" style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; align-items: center; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #EEF1F4;">
 <span style="width: 32px; height: 32px; border-radius: 50%; background: #E8EEFF; color: #1A3FB0; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">2</span>
 <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
-<a href="Detail.dc.html" style="font-size: 16px; font-weight: 600; color: #14181F;">엘리프 검단 포레듀 (AA32블록)<span style="font-size: 12px; font-weight: 600; color: #3A4250; border: 1px dashed #9AA6B6; border-radius: 4px; padding: 0 6px; margin-left: 6px;">동률</span></a>
-<span style="font-size: 12px; color: #5B6472;">검단구 · 5억 7,814만~6억 814만 · 주변보다 2.4% 낮음 · 되팔기 2028.09.10</span>
-<span style="font-size: 12px; color: #5B6472;">입주 1년 뒤 10% 넘게 오를 가능성 <b class="num" style="color: #14181F;">51%</b> <span class="est">판정기 추정</span> · 당첨 확률이 아니에요</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-size: 16px; font-weight: 600; color: #14181F;">엘리프 검단 포레듀 (AA32블록)</a><span style="font-size: 12px; font-weight: 600; color: #3A4250; border: 1px dashed #9AA6B6; border-radius: 4px; padding: 0 6px;">동률</span><span style="background: #2350D8; color: #FFFFFF; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;">접수 가능</span><span class="fixtag">고침 HM-7</span></span>
+<span style="font-size: 12px; color: #5B6472;">검단구 · 현재 구매가 <span class="u num" style="color: #14181F;">5억 7,814만~6억 814만</span> <span class="ok">확인됨</span> · 주변보다 <span class="u num" style="color: #14181F;">2.4%</span> 낮음 <span class="ok">확인됨</span> · 전매 종료 <span class="u num" style="color: #14181F;">2028.09.10</span> D-697 <span class="est">추정</span></span>
+<span style="font-size: 12px; color: #5B6472;"><span class="fixtag">고침 HM-5</span> +10% 이상 오를 가능성 <b class="num u" style="color: #14181F;">51%</b> <span class="est">판정기 추정</span> · 목표 시점: 입주+1년 · 당첨 확률이 아니에요 · 보장 아님</span>
 </div>
-<div style="display: flex; height: 16px; background: #EEF1F4; border-radius: 4px; overflow: hidden;" role="img" aria-label="엘리프 검단 포레듀 (AA32블록) 점수 구성"><div title="입주 뒤 오를 가능성 1.78점" style="width: 17.85%; background: #1A3FB0;"></div><div title="비슷한 단지 사이 순위 0.92점" style="width: 9.23%; background: #4F74E3;"></div><div title="주변 시세와 차이 0.84점" style="width: 8.42%; background: #9DB4F2;"></div><div title="근처 새 아파트 실적 0.31점" style="width: 3.13%; background: #14181F;"></div><div title="같은 시기 입주 물량 0.27점" style="width: 2.71%; background: #C2560C;"></div><div title="되팔기 쉬움 0.62점" style="width: 6.24%; background: #F0B07A;"></div></div>
-<span class="num" style="font-size: 20px; font-weight: 700; text-align: right;">4.76</span>
+<div style="display: flex; height: 16px; background: #EEF1F4; border-radius: 4px; overflow: hidden;" role="img" aria-label="엘리프 검단 포레듀 (AA32블록) 점수 구성"><div title="+10% 오를 가능성 1.78점" style="width: 17.85%; background: #1A3FB0;"></div><div title="비슷한 단지 사이 순위 0.92점" style="width: 9.23%; background: #4F74E3;"></div><div title="주변 시세와 차이 0.84점" style="width: 8.42%; background: #9DB4F2;"></div><div title="근처 새 아파트 실적 0.31점" style="width: 3.13%; background: #14181F;"></div><div title="같은 시기 입주 물량 0.27점" style="width: 2.71%; background: #C2560C;"></div><div title="되팔기 쉬움 0.62점" style="width: 6.24%; background: #F0B07A;"></div></div>
+<span class="num u" style="font-size: 20px; font-weight: 700; text-align: right; justify-self: end;">4.76</span>
 </li>
 </ol>
+<div class="fix" aria-hidden="true" style="display: grid; grid-template-columns: 36px minmax(220px, 340px) minmax(0, 1fr) 64px; gap: 8px 16px; margin-top: -10px;">
+<span></span>
+<span style="font-size: 11px; color: #7A8391; text-align: right;"><span class="fixtag">고침 HM-8</span> 점수 축(0부터)</span>
+<div class="num" style="position: relative; height: 22px; border-top: 1px solid #9AA6B6; font-size: 11px; color: #5B6472;">
+<span style="position: absolute; left: 0%; top: 2px; transform: translateX(0);">0</span>
+<span style="position: absolute; left: 20%; top: 2px; transform: translateX(-50%);">2</span>
+<span style="position: absolute; left: 40%; top: 2px; transform: translateX(-50%);">4</span>
+<span style="position: absolute; left: 60%; top: 2px; transform: translateX(-50%);">6</span>
+<span style="position: absolute; left: 80%; top: 2px; transform: translateX(-50%);">8</span>
+<span style="position: absolute; left: 100%; top: 2px; transform: translateX(-100%);">10</span>
+</div>
+<span></span>
+</div>
+<p class="fix" style="margin: 0; font-size: 12px; color: #5B6472;"><span class="fixtag">고침 HM-7</span> 값이 없는 칸은 <span class="est">확인 불가(이 기준일 자료에 없음)</span>으로 보여요. 사실 값(구매가·가격 차이·전매 종료)마다 라벨이 붙고, 밑줄 숫자를 누르면 출처가 열려요.</p>
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: #7A8391;">
 <span>점수가 있는 단지가 3곳뿐이에요. 나머지는 단지 찾기에서 점수가 없는 이유를 볼 수 있어요.</span>
-<span>점수 모두 <span class="est">추정</span> · 판정기 계산 2026-10-14 · <button type="button" style="font-family: inherit; font-size: 12px; color: #2350D8; background: none; border: none; padding: 0; cursor: pointer;">표로 보기</button></span>
+<span>점수 모두 <span class="est">추정</span> · 판정기 계산 2026-10-14 · <button type="button" aria-expanded="true" style="font-family: inherit; font-size: 12px; color: #2350D8; background: none; border: none; padding: 0; cursor: pointer;">표 닫기</button></span>
+</div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px; overflow-x: auto;">
+<span style="font-size: 13px; font-weight: 600;">종합 점수 분해 데이터 <span class="fixtag">고침 HM-9</span> <span style="font-weight: 400; color: #7A8391;">('표로 보기'를 눌렀을 때 · 기준별 10점 만점 점수)</span></span>
+<table class="num" style="border-collapse: collapse; width: 100%; font-size: 13px; min-width: 760px;">
+<thead><tr style="background: #F6F8FA; text-align: left;"><th scope="col" style="padding: 8px;">순위</th><th scope="col" style="padding: 8px;">이름</th><th scope="col" style="padding: 8px; text-align: right;">종합</th><th scope="col" style="padding: 8px; text-align: right;">+10% 오를 가능성</th><th scope="col" style="padding: 8px; text-align: right;">비슷한 단지 사이 순위</th><th scope="col" style="padding: 8px; text-align: right;">주변 시세와 차이</th><th scope="col" style="padding: 8px; text-align: right;">근처 새 아파트 실적</th><th scope="col" style="padding: 8px; text-align: right;">같은 시기 입주 물량</th><th scope="col" style="padding: 8px; text-align: right;">되팔기 쉬움</th></tr></thead>
+<tbody>
+<tr><td style="padding: 8px; border-bottom: 1px solid #EEF1F4;">1</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4;">시티오씨엘 8단지</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;"><span class="u">4.83</span></td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">5.30</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">5.13</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">2.98</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">1.29</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">5.00</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">8.69</td></tr>
+<tr><td style="padding: 8px; border-bottom: 1px solid #EEF1F4;">2</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4;">힐스테이트 구월아트파크</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;"><span class="u">4.76</span></td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">5.30</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">6.03</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">0.00</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">1.50</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">7.73</td><td style="padding: 8px; border-bottom: 1px solid #EEF1F4; text-align: right;">7.76</td></tr>
+<tr><td style="padding: 8px;">2</td><td style="padding: 8px;">엘리프 검단 포레듀 (AA32블록)</td><td style="padding: 8px; text-align: right;"><span class="u">4.76</span></td><td style="padding: 8px; text-align: right;">5.10</td><td style="padding: 8px; text-align: right;">4.62</td><td style="padding: 8px; text-align: right;">5.61</td><td style="padding: 8px; text-align: right;">3.13</td><td style="padding: 8px; text-align: right;">2.71</td><td style="padding: 8px; text-align: right;">6.24</td></tr>
+</tbody>
+</table>
+<span style="font-size: 11px; color: #7A8391;">기준별 점수는 비교하기 화면의 '기준별 점수' 표와 같은 값이에요. 막대 길이 = 점수 × 비중.</span>
 </div>
 </section>
 
@@ -346,7 +433,7 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 3px 8px; border-radius: 6px;">중요</span>
 <span style="font-size: 12px; font-weight: 600; background: #E8EEFF; color: #1A3FB0; padding: 3px 8px; border-radius: 6px;">다시 판정해요</span>
 <a href="Detail.dc.html" style="font-size: 15px; font-weight: 600; color: #14181F;">송도 한내들 센트럴리버</a>
-<span style="font-size: 14px; color: #3A4250; flex: 1 1 200px;">공식 홈페이지 안내 팝업이 바뀌었어요</span>
+<span title="공식 홈페이지 안내문" style="font-size: 14px; color: #3A4250; flex: 1 1 200px;">공식 홈페이지 안내 팝업이 바뀌었어요</span>
 <span class="num" style="font-size: 13px; color: #7A8391;">10.14 22:42</span>
 <details style="flex: 1 1 100%; font-size: 13px; color: #5B6472;"><summary style="cursor: pointer; color: #2350D8;">바뀐 값 보기</summary><p style="margin: 6px 0 0;">팝업 내용이 달라졌어요(이전 식별값 90b9b7… → 새 식별값 ed830f…). 원문은 단지 상세의 '출처·원문'에서 볼 수 있어요.</p></details>
 </li>
@@ -354,32 +441,87 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 <span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 3px 8px; border-radius: 6px;">중요</span>
 <span style="font-size: 12px; font-weight: 600; background: #E8EEFF; color: #1A3FB0; padding: 3px 8px; border-radius: 6px;">다시 판정해요</span>
 <a href="Detail.dc.html" style="font-size: 15px; font-weight: 600; color: #14181F;">인천영종국제도시 디에트르 라 메르Ⅰ</a>
-<span style="font-size: 14px; color: #3A4250; flex: 1 1 200px;">공식 홈페이지 안내 팝업이 바뀌었어요</span>
+<span title="공식 홈페이지 안내문" style="font-size: 14px; color: #3A4250; flex: 1 1 200px;">공식 홈페이지 안내 팝업이 바뀌었어요</span>
 <span class="num" style="font-size: 13px; color: #7A8391;">10.14 22:42</span>
-
 </li>
 <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0;">
 <span style="font-size: 12px; font-weight: 600; background: #FFF1E6; color: #A3470A; padding: 3px 8px; border-radius: 6px;">중요</span>
 <span style="font-size: 12px; font-weight: 600; background: #E8EEFF; color: #1A3FB0; padding: 3px 8px; border-radius: 6px;">다시 판정해요</span>
 <a href="Detail.dc.html" style="font-size: 15px; font-weight: 600; color: #14181F;">검암역자이르네</a>
-<span style="font-size: 14px; color: #3A4250; flex: 1 1 200px;">공식 홈페이지 안내 팝업이 바뀌었어요</span>
+<span title="공식 홈페이지 안내문" style="font-size: 14px; color: #3A4250; flex: 1 1 200px;">공식 홈페이지 안내 팝업이 바뀌었어요</span>
 <span class="num" style="font-size: 13px; color: #7A8391;">10.14 22:42</span>
-
 </li>
 </ul>
-<button type="button" style="align-self: flex-start; font-family: inherit; font-size: 14px; font-weight: 600; color: #2350D8; background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 10px; padding: 10px 14px; cursor: pointer; min-height: 44px;">변경 2건 더 보기</button>
+<button type="button" aria-expanded="false" style="align-self: flex-start; font-family: inherit; font-size: 14px; font-weight: 600; color: #2350D8; background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 10px; padding: 10px 14px; cursor: pointer; min-height: 44px;">변경 2건 더 보기</button>
 <p style="margin: 0; font-size: 12px; color: #7A8391;">중요도는 정보 · 알림 · 중요 세 단계예요. 변경이 없으면 "최근 변경 없음"이 나와요.</p>
+<div class="fix" style="border: 1px dashed #C8CFD8; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 0;">
+<span style="font-size: 13px; font-weight: 600; padding-bottom: 6px;">다른 모양의 변경 줄 <span class="fixtag">고침 HM-14</span></span>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid #EEF1F4; font-size: 14px;">
+<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 3px 8px; border-radius: 6px;">알림</span>
+<span style="font-weight: 600;">미분양</span>
+<span style="flex: 1 1 200px; color: #3A4250;">[서버 요약 한 줄]</span>
+<span class="num" style="font-size: 13px; color: #7A8391;">[감지 시각]</span>
+<span style="flex: 1 1 100%; font-size: 12px; color: #7A8391;">단지가 없는 변경 — 대상 이름(미분양·지역·판정기·호재 등)을 글자로, 줄은 링크 아님</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid #EEF1F4; font-size: 14px;">
+<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 3px 8px; border-radius: 6px;">정보</span>
+<span style="font-weight: 600;">지역</span>
+<span style="flex: 1 1 200px; color: #3A4250;">첫 적재 [서버 요약 문장 한 줄]</span>
+<span class="num" style="font-size: 13px; color: #7A8391;">[감지 시각]</span>
+<span style="flex: 1 1 100%; font-size: 12px; color: #7A8391;">지역을 처음 모았을 때 — 요약 문장만, '바뀐 값 보기' 없음</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid #EEF1F4; font-size: 14px;">
+<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 3px 8px; border-radius: 6px;">알림</span>
+<a href="Detail.dc.html" style="font-weight: 600; color: #14181F;">[단지 이름]</a>
+<span style="flex: 1 1 200px; color: #3A4250;">[필드 이름] <span class="num">[이전 값] → [새 값]</span></span>
+<span class="num" style="font-size: 13px; color: #7A8391;">[감지 시각]</span>
+<span style="flex: 1 1 100%; font-size: 12px; color: #7A8391;">값이 짧은 글자일 때 — 이전 → 이후를 바로 보여 줘요(펼침 없음)</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid #EEF1F4; font-size: 14px;">
+<span style="font-size: 12px; font-weight: 600; background: #EEF1F4; color: #3A4250; padding: 3px 8px; border-radius: 6px;">정보</span>
+<a href="Detail.dc.html" style="font-weight: 600; color: #14181F;">[단지 이름]</a>
+<span style="flex: 1 1 200px; color: #3A4250;">공식 홈페이지 안내문 변경</span>
+<span class="num" style="font-size: 13px; color: #7A8391;">[감지 시각]</span>
+<details style="flex: 1 1 100%; font-size: 13px; color: #5B6472;"><summary style="cursor: pointer; color: #2350D8;">바뀐 값 보기</summary><p style="margin: 6px 0 0;">[이전 값] → [새 값]</p></details>
+<span style="flex: 1 1 100%; font-size: 12px; color: #7A8391;">서버 요약이 없을 때 — "[필드 이름] 변경"</span>
+</div>
+<div style="padding: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+<button type="button" aria-expanded="true" style="font-family: inherit; font-size: 14px; font-weight: 600; color: #2350D8; background: #FFFFFF; border: 1px solid #D5DAE1; border-radius: 10px; padding: 10px 14px; cursor: pointer; min-height: 44px;">변경 접기</button>
+<span style="font-size: 12px; color: #7A8391;">'더 보기'로 모두 펼친 뒤 버튼 글자</span>
+</div>
+</div>
 </section>
 
-<footer style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
+<section aria-label="휴대폰에서 접히는 구역" class="fix" style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px;">
+<div style="width: 340px; max-width: 100%; border: 8px solid #14181F; border-radius: 24px; background: #F3F5F7; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 12px; color: #5B6472;"><span class="fixtag">고침 HM-15</span> 휴대폰 홈(아래쪽)</span>
+<details style="background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 10px; padding: 10px 12px;"><summary style="cursor: pointer; font-size: 15px; font-weight: 600;">인천 시장 한눈에(지역 현황)</summary><p style="margin: 6px 0 0; font-size: 13px; color: #5B6472;">누르면 미분양·입주·점수 매긴 단지·마지막 수집이 펼쳐져요</p></details>
+<details style="background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 10px; padding: 10px 12px;"><summary style="cursor: pointer; font-size: 15px; font-weight: 600;">최근에 바뀐 것</summary><p style="margin: 6px 0 0; font-size: 13px; color: #5B6472;">누르면 변경 줄이 펼쳐져요</p></details>
+</div>
+<p style="margin: 0; flex: 1 1 300px; font-size: 13px; color: #5B6472; line-height: 1.6;">휴대폰(폭 768px 이하)에서는 '지역 현황'과 '최근 변경' 두 구역이 처음에 접혀 있고, 한 번 누르면 펼쳐져요. 컴퓨터에서는 늘 펼쳐져 있어요.</p>
+</section>
+
+<footer class="fix" style="font-size: 13px; color: #5B6472; line-height: 1.7; border-top: 1px solid #E3E7EC; padding-top: 18px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;">
 <span>이 화면은 개인의 청약 자격을 판정하지 않아요. 최종 기준은 입주자 모집 공고문이에요.</span>
-<span><span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span> 공식 자료 그대로 · <span class="est">추정</span> 계산하거나 판정기가 낸 값 · 숫자를 누르면 출처가 열려요</span>
+<span><span class="fixtag">고침 HM-16</span> <span class="ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>확인됨</span> 공식 자료(공고문·청약홈 등)에서 확인한 값이에요. · <span class="est">추정</span> 계산하거나 가정을 세워 만든 값이에요. 괄호 안이 계산 방법이에요. · 숫자를 누르면 출처가 열려요 · 라벨 뜻 전체는 용어 사전 '라벨'</span>
 </footer>
+
+<section aria-labelledby="keep" class="fix" style="display: flex; flex-direction: column; gap: 10px; background: #FFFFFF; border: 2px dashed #9AA6B6; border-radius: 16px; padding: 20px;">
+<h2 id="keep" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: #5B6472;">구현할 때 지금 동작 그대로 유지 (그림으로 못 그리는 것) <span class="fixtag">고침 HM-17</span></h2>
+<ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #3A4250; line-height: 1.8;">
+<li>#22 다시 판정 작업이 끝나면 그 기준일 화면을 새로 불러와요.</li>
+<li>#42 일정 줄에 마우스를 올리면 서버의 원래 제목이 보여요(title).</li>
+<li>#58 점수 줄(카드)의 빈 곳을 눌러도 단지 상세로 가요. 안쪽 버튼·링크는 각자 동작해요.</li>
+<li>#148 미분양 자료가 없는 달은 선을 잇지 않고 끊어 그려요.</li>
+<li>#149 미분양 추이는 최근 24개월까지만 그려요.</li>
+<li>#150 범위(시군구)가 여럿이면 값이 가장 많은 범위를 골라 그려요.</li>
+</ul>
+</section>
 
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2300}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4600}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

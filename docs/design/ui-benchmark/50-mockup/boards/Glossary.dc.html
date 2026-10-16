@@ -15,6 +15,8 @@ body{margin:0;background:#F3F5F7}
 a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:underline}
 .chip{font-family:inherit;font-size:15px;font-weight:500;padding:9px 16px;border-radius:999px;border:1px solid #D5DAE1;background:#FFFFFF;color:#3A4250;cursor:pointer;min-height:42px}
 .chip[aria-pressed="true"]{background:#14181F;border-color:#14181F;color:#FFFFFF}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -38,48 +40,71 @@ a{color:#2350D8;text-decoration:none}a:hover{color:#163BA8;text-decoration:under
 </div>
 </header>
 
+<div style="max-width: 1080px; margin: 0 auto; padding: 18px 24px 0;">
+<div class="fix" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #FFF8DB; border: 1px solid #E5B800; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #3D2E00;"><span class="fixtag">고침 안내</span> 이 보드에서 고친 곳 6개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-Glossary.md</div>
+</div>
+
 <main style="max-width: 1080px; margin: 0 auto; padding: 36px 24px 56px; display: flex; flex-direction: column; gap: 22px;">
 <div style="display: flex; flex-direction: column; gap: 8px;">
 <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.4px;">처음 보는 말, 한 줄로 풀어 드려요</h1>
 <p style="margin: 0; font-size: 16px; color: #3A4250; line-height: 1.6;">화면에 나오는 말 54개를 모았어요. 제도 숫자(기간·비율)는 바뀔 수 있어 넣지 않았어요. 공고문과 청약홈이 기준이에요.</p>
 </div>
 
-<div style="display: flex; flex-direction: column; gap: 12px; background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 16px; padding: 16px;">
-<label for="gq" style="font-size: 13px; color: #5B6472;">용어 찾기</label>
+<div class="fix" style="display: flex; flex-direction: column; gap: 12px; background: #FFFFFF; border: 1px solid #E3E7EC; border-radius: 16px; padding: 16px;">
+<label for="gq" style="font-size: 13px; color: #5B6472;">용어 찾기 <span class="fixtag">고침 GL-4</span></label>
 <div style="display: flex; align-items: center; gap: 8px; border: 1px solid #D5DAE1; border-radius: 12px; padding: 0 14px; min-height: 48px;">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-<input id="gq" type="search" placeholder="예: 전매, 중도금, 특공" style="border: none; outline: none; font-family: inherit; font-size: 16px; flex: 1 1 auto; min-width: 0; background: transparent;">
+<input id="gq" type="search" value="{{q}}" onInput="{{onQ}}" placeholder="예: 전매, 중도금, 특공" style="border: none; outline: none; font-family: inherit; font-size: 16px; flex: 1 1 auto; min-width: 0; background: transparent;">
 </div>
-<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<div role="group" aria-label="용어 분류" style="display: flex; flex-wrap: wrap; gap: 8px;">
 <sc-for list="{{cats}}" as="c" hint-placeholder-count="7">
 <button type="button" class="chip" aria-pressed="{{c.pressed}}" onClick="{{c.pick}}">{{c.label}}</button>
 </sc-for>
 </div>
+<p style="margin: 0; font-size: 13px; color: #5B6472;">분류와 찾는 말은 함께 걸러요(둘 다 맞는 말만 남아요). 찾는 말은 앞뒤 빈칸을 빼고 용어 이름이나 풀이에 들어 있으면 남겨요. {{example}}</p>
 </div>
 
-<p style="margin: 0; font-size: 14px; color: #5B6472;">{{countText}}</p>
+<p role="status" style="margin: 0; font-size: 14px; color: #5B6472;">{{countText}}</p>
+
+<sc-if value="{{none}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="background: #FFFFFF; border: 1px dashed #C8CFD8; border-radius: 14px; padding: 22px; font-size: 15px; color: #3A4250; text-align: center;">찾는 용어가 없어요</div>
+</sc-if>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px;">
 <sc-for list="{{items}}" as="it" hint-placeholder-count="12">
-<article style="{{it.style}}">
+<article id="{{it.id}}" class="{{it.cls}}" style="{{it.style}}">
 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px;">
 <h2 style="margin: 0; font-size: 17px; font-weight: 700;">{{it.q}}</h2>
 <span style="font-size: 11px; color: #5B6472; background: #EEF1F4; padding: 2px 8px; border-radius: 999px; white-space: nowrap;">{{it.catLabel}}</span>
 </div>
+<sc-if value="{{it.fixed}}" hint-placeholder-val="{{ false }}">
+<span class="fixtag" style="align-self: flex-start;">{{it.tag}}</span>
+</sc-if>
 <p style="margin: 0; font-size: 14px; line-height: 1.65; color: #3A4250;">{{it.short}}</p>
 </article>
 </sc-for>
 </div>
 
-<div style="background: #FFFFFF; border: 1px dashed #C8CFD8; border-radius: 14px; padding: 18px; font-size: 14px; color: #5B6472;">찾는 말이 없으면 "찾는 용어가 없어요"가 나와요. 다른 화면의 '?'에서 '용어 사전에서 보기'를 누르면 이 화면으로 와서 그 말이 노랗게 표시돼요(위 '전매제한' 카드처럼).</div>
+<div style="background: #FFFFFF; border: 1px dashed #C8CFD8; border-radius: 14px; padding: 18px; font-size: 14px; color: #5B6472;">다른 화면의 '?'에서 '용어 사전에서 보기'를 누르면 이 화면으로 와서 그 말이 노랗게 표시돼요(위 '전매제한' 카드처럼).</div>
+
+<section aria-labelledby="keep" class="fix" style="display: flex; flex-direction: column; gap: 10px; background: #FFFFFF; border: 2px dashed #9AA6B6; border-radius: 16px; padding: 20px;">
+<h2 id="keep" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: #5B6472;">구현할 때 지금 동작 그대로 유지 (그림으로 못 그리는 것) <span class="fixtag">고침 GL-6</span></h2>
+<ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #3A4250; line-height: 1.8;">
+<li>#24 주소 끝에 #용어키를 붙여 열면 그 카드(id term-용어키)가 화면 가운데로 오도록 스크롤해요.</li>
+<li>#26 다른 화면 '?'의 '용어 사전에서 보기' 링크는 지역·기준일·상황(주소 뒤 ?region·snapshot·scenario)을 그대로 들고 와요.</li>
+<li>#28 이 화면은 서버를 부르지 않아요. 글자는 모두 ko.json(glossary.items.*·label.help.*)에서 읽어요.</li>
+</ul>
+</section>
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3200}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4100}}'>
 class Component extends DCLogic {
 renderVals() {
 var self = this;
-var picked = (this.state && this.state.cat) || 'all';
+var st = this.state || {};
+var picked = st.cat || 'all';
+var q = (st.q || '').trim();
 var CAT = { basic: '청약 기본', who: '자격·순위', money: '돈', limits: '제한', app: '이 앱의 계산값', labels: '라벨' };
 var D = [
 ['basic','청약이란?','새 아파트를 분양받으려고 정해진 기간에 신청하는 절차예요. 당첨자를 뽑아 계약할 수 있게 해요.'],
@@ -88,7 +113,7 @@ var D = [
 ['basic','실거래가란?','국토부에 신고된 실제 매매 가격이에요. 부르는 값(호가)과 달라요.'],
 ['who','일반공급이란?','특별공급을 뺀 나머지 물량이에요. 순위와 가점·추첨으로 당첨자를 정해요.'],
 ['who','특별공급(특공)이란?','신혼부부·생애최초·신생아 가구 등 조건을 갖춘 사람에게 따로 떼어 둔 물량이에요. 자격·소득 기준은 공고문에서 확인하세요.'],
-['who','가점제란?','무주택기간·부양가족 수·통장 가입기간 점수가 높은 순으로 뽑는 방식이에요.'],
+['who','가점제란?','무주택기간·부양가족 수·통장 가입기간 점수가 높은 순으로 뽑는 방식이에요. 배점은 청약홈에서 확인하세요.','GL-5'],
 ['who','추첨제란?','자격을 갖춘 사람 중에서 가점과 관계없이 무작위로 뽑는 방식이에요.'],
 ['who','청약 가점이란?','가점제에서 쓰는 내 점수예요. 청약홈 가점 계산기에서 계산해요. 이 앱은 가점을 계산하지 않아요.'],
 ['who','무주택 세대구성원이란?','나와 주민등록상 같은 세대 가족 모두가 집이 없는 상태예요.'],
@@ -97,19 +122,19 @@ var D = [
 ['who','해당지역·기타지역이란?','단지가 있는 지역에 일정 기간 산 사람(해당지역)이 같은 순위에서 먼저 뽑혀요.'],
 ['who','청약통장이란?','청약 신청에 필요한 저축 통장(주택청약종합저축)이에요. 가입기간이 가점과 순위에 쓰여요.'],
 ['who','예치금이란?','민영주택 1순위가 되려면 통장에 있어야 하는 최소 금액이에요. 지역·면적마다 달라요.'],
-['who','무순위(줍줍)란?','계약 포기나 부적격으로 남은 집을 다시 모집하는 청약이에요. 조건은 공고마다 달라요.'],
-['who','임의공급이란?','무순위 뒤에도 남은 집을 사업주체가 정한 방식으로 다시 모집하는 거예요.'],
-['who','선착순이란?','남은 집을 먼저 신청한 순서대로 계약하는 방식이에요.'],
-['who','예비입주자란?','당첨자가 계약하지 않거나 부적격일 때 차례가 돌아오는 대기 명단이에요.'],
+['who','무순위(줍줍)란?','계약 포기나 부적격으로 남은 집을 다시 모집하는 청약이에요. 자격·지역 요건은 공고마다 달라요.','GL-5'],
+['who','임의공급이란?','무순위 뒤에도 남은 집을 사업주체가 정한 방식으로 다시 모집하는 거예요. 조건은 공고마다 달라요.','GL-5'],
+['who','선착순이란?','남은 집을 먼저 신청한 순서대로 계약하는 방식이에요. 조건은 공고마다 달라요.','GL-5'],
+['who','예비입주자란?','당첨자가 계약하지 않거나 부적격일 때 순서대로 계약할 차례가 돌아오는 대기 명단이에요.','GL-5'],
 ['who','부적격 당첨이란?','당첨됐지만 서류 검증에서 자격이 맞지 않아 취소되는 경우예요. 이후 청약이 제한될 수 있어요.'],
 ['limits','재당첨 제한이란?','한 번 당첨된 세대가 일정 기간 다른 청약에 당첨될 수 없게 하는 제한이에요.'],
 ['limits','전매제한이란?','당첨 후 정해진 기간 동안 분양권이나 집을 다른 사람에게 팔 수 없는 제한이에요.'],
 ['limits','전매 종료(일)란?','전매제한이 끝나 팔 수 있게 되는 날이에요. 이 앱은 당첨자 발표일 + 제한 기간으로 계산해요(추정).'],
-['limits','실거주 의무란?','일부 주택은 입주 후 정해진 기간 동안 직접 살아야 해요. 기간과 시작 시점은 공고문에서 확인하세요.'],
+['limits','실거주 의무(거주의무)란?','일부 주택은 입주 후 정해진 기간 동안 직접 살아야 해요. 기간과 시작 시점은 공고문에서 확인하세요.','GL-5'],
 ['limits','분양가 상한제란?','분양가를 정해진 기준 이하로 묶는 제도예요. 함께 붙는 전매·거주 제한은 공고문에서 확인하세요.'],
 ['limits','규제지역이란?','투기과열지구·조정대상지역처럼 청약·대출·전매 규칙이 더 엄격한 지역이에요.'],
 ['money','공급금액(분양가)이란?','공고문에 적힌 타입·층별 집값이에요. 발코니 확장비와 옵션은 보통 따로예요.'],
-['money','기준 타입이란?','가격·비교에 쓰는 대표 평형이에요(전용 84㎡에 가장 가까운 타입).'],
+['money','기준 타입이란?','가격·비교에 쓰는 대표 평형이에요(전용 84㎡에 가장 가까운 타입). 다른 타입은 타입별 가격 탭에 있어요.','GL-5'],
 ['money','전용면적이란?','현관 안쪽 우리 집만 쓰는 면적이에요. 84㎡는 흔히 말하는 30평대예요.'],
 ['money','계약금이란?','당첨 후 계약할 때 먼저 내는 돈이에요. 보통 분양가의 일정 비율이에요.'],
 ['money','중도금이란?','공사 기간에 나눠 내는 돈이에요. 대출로 내는 경우가 많고 조건은 공고문에 있어요.'],
@@ -118,35 +143,57 @@ var D = [
 ['app','접수 상태란?','지금 이 단지에 신청할 수 있는지 공식 자료로 판정기가 나눈 결과예요(접수 가능·미정·불가·확인 못 함).'],
 ['app','접수 미정이란?','공식 일정이 아직 정해지지 않았거나 공개되지 않은 상태예요.'],
 ['app','접수 확인 못 함이란?','공식 자료에서 상태를 찾지 못했다는 뜻이에요. 신청할 수 없다는 뜻이 아니에요.'],
-['app','현재 구매가란?','가장 낮은 층 가격~가장 높은 가격에 발코니 확장비와 필수 옵션을 더하고, 공고에 적힌 할인만 뺀 범위예요.'],
+['app','현재 구매가란?','최저가 층 공급가~최고 공급가에 발코니 확장비와 필수 옵션을 더하고, 공고에 적힌 확인된 할인만 뺀 범위예요.','GL-2'],
 ['app','필요 자기자본이란?','계약금과 "구매가 − 대출한도" 중 큰 값이에요. 대출한도를 넣은 상황에서만 계산해요(추정).'],
-['app','주변 시세와 가격 차이(가격 갭)란?','이 단지 중간 가격이 같은 생활권 새 아파트(2020년 이후·84㎡ 안팎)의 최근 6개월 실거래 중간값보다 몇 % 높거나 낮은지예요.'],
+['app','주변 시세와 가격 차이(가격 갭)란?','현재 구매가 가운데값이 같은 생활권의 2020년 이후 준공·전용 80~85㎡ 단지 실거래 중앙값(기준일 전 6개월)보다 몇 % 높거나(+) 낮은지(−)예요. 거래가 3건보다 적으면 대체 단지를 쓰고 라벨이 \'추정\'이 돼요.','GL-5'],
 ['app','생활권이란?','비교 기준으로 묶은 이웃 동네 범위예요. 직접 고칠 수 있어요.'],
-['app','입주 뒤 값이 오를 가능성이란?','목표 시점에 실거래가가 지금 구매가보다 10% 넘게 높을 가능성을 판정기가 매긴 값이에요. 당첨 확률이 아니고 보장도 아니에요.'],
+['app','가격 +10% 오를 가능성이란?','목표 시점에 실거래가가 지금 구매가보다 10% 이상일 가능성을 판정기가 매긴 값이에요. 목표 시점(입주+1년·기준일+3년·기준일+5년 중 상황마다 하나)은 화면에 함께 적어요. 당첨 확률이 아니고 보장도 아니에요.','GL-3'],
 ['app','종합 점수란?','여섯 가지 기준 점수를 상황별 비중으로 더한 상대 비교 값이에요.'],
 ['app','상황(시나리오)이란?','점수 비중을 내 상황에 맞춰 바꾼 거예요. 순위만 바뀌고 사실 값은 그대로예요.'],
 ['app','비중(가중치)이란?','종합 점수를 만들 때 각 기준 점수에 곱하는 비율이에요. 합은 100%예요.'],
 ['app','민감도란?','비중을 조금(10%p) 올리거나 내려 다시 계산해도 순위가 그대로인지 본 거예요.'],
-['app','점수 계산 범위란?','점수를 매기는 단지인지(대상), 순위만 보는지(참고), 빠졌는지(제외) 나눈 거예요.'],
+['app','점수 계산 범위(판정 범위)란?','점수를 계산하는 단지인지(판정 대상), 순위만 보는지(참고), 빠졌는지(제외) 나눈 거예요. 이유는 같은 줄에 있어요.','GL-5'],
 ['app','단지 분류란?','민간분양 아파트인지 공공분양·임대·비아파트인지 판정기가 나눈 결과예요.'],
 ['app','판정기란?','포함 여부·접수 상태·가격 전망을 분류할 때 쓰는 외부 판정 도구예요. 기록은 단지 상세의 출처·원문에 있어요.'],
-['labels','확인됨이란?','공식 자료에 적힌 그대로인 값이에요.'],
-['labels','추정이란?','공식 값으로 계산했거나 판정기가 낸 값이에요.'],
-['labels','비공식이란?','공식이 아닌 곳(언론·광고 등)에서 온 값이에요.'],
-['labels','재가공이란?','다른 서비스가 가공한 값을 옮긴 거예요.'],
-['labels','확인 불가란?','값을 못 구했어요. 이유와 날짜를 함께 적어요.'],
-['labels','사람 확인이란?','운영자가 전화·방문 등으로 직접 확인한 값이에요.']
+['labels','확인됨이란?','공식 자료(공고문·청약홈 등)에서 확인한 값이에요.','GL-1'],
+['labels','추정이란?','계산하거나 가정을 세워 만든 값이에요. 괄호 안이 계산 방법이에요.','GL-1'],
+['labels','비공식이란?','보도·블로그·홍보처럼 공식이 아닌 출처에서 온 값이에요.','GL-1'],
+['labels','재가공이란?','원본이 아니라 한 번 가공된 자료에서 온 값이에요.','GL-1'],
+['labels','확인 불가란?','찾지 못한 값이에요. 괄호 안이 이유예요.','GL-1'],
+['labels','사람 확인됨이란?','사람이 전화·방문으로 직접 확인한 값이에요.','GL-1']
 ];
 var base = 'background:#FFFFFF;border:1px solid #E3E7EC;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;';
 var hi = 'background:#FFF8DB;border:2px solid #E5B800;border-radius:14px;padding:17px;display:flex;flex-direction:column;gap:8px;';
-var all = D.map(function (d) { return { cat: d[0], catLabel: CAT[d[0]], q: d[1], short: d[2], style: d[1] === '전매제한이란?' ? hi : base }; });
-var items = picked === 'all' ? all : all.filter(function (x) { return x.cat === picked; });
+var all = D.map(function (d, i) {
+var fx = d[3] || '';
+return { id: 'term-' + i, cat: d[0], catLabel: CAT[d[0]], q: d[1], short: d[2], style: d[1] === '전매제한이란?' ? hi : base, cls: fx ? 'fix' : '', fixed: !!fx, tag: fx ? '고침 ' + fx : '' };
+});
+function match(x, cat, word) {
+if (cat !== 'all' && x.cat !== cat) return false;
+if (!word) return true;
+return x.q.indexOf(word) >= 0 || x.short.indexOf(word) >= 0;
+}
+var items = all.filter(function (x) { return match(x, picked, q); });
+var ex = all.filter(function (x) { return match(x, 'limits', '전매'); });
+var example = '예) 분류 \'제한\' + 찾는 말 \'전매\' → ' + ex.map(function (x) { return x.q.replace(/(이란|란)\?$/, ''); }).join(' · ') + ' (' + ex.length + '개)';
 var keys = ['all', 'basic', 'who', 'money', 'limits', 'app', 'labels'];
 var cats = keys.map(function (k) {
 var n = k === 'all' ? all.length : all.filter(function (x) { return x.cat === k; }).length;
 return { label: (k === 'all' ? '전체' : CAT[k]) + ' ' + n, pressed: k === picked ? 'true' : 'false', pick: function () { self.setState({ cat: k }); } };
 });
-return { cats: cats, items: items, countText: items.length + '개' };
+var cond = [];
+if (picked !== 'all') cond.push('분류: ' + CAT[picked]);
+if (q) cond.push('찾는 말: \'' + q + '\'');
+var countText = items.length + '개' + (cond.length ? ' (' + cond.join(' · ') + ')' : '');
+return {
+cats: cats,
+items: items,
+countText: countText,
+none: items.length === 0,
+example: example,
+q: st.q || '',
+onQ: function (e) { self.setState({ q: e && e.target ? e.target.value : '' }); }
+};
 }
 }
 </script>

@@ -14,8 +14,8 @@
 | 5 | [틀] 모바일 읽기 전용 안내 (`layout/AppLayout.tsx` · `app.mobileReadOnly` "모바일에서는 읽기 전용입니다") | Shell · §2 알림 띠 (맨 아래 회색 칩) | "휴대폰에서는 보기만 할 수 있어요" | 있음 |
 | 6 | [틀] 모바일 미지원 화면 안내 (`layout/AppLayout.tsx` · `app.mobileUnsupported`) | Shell · §2 알림 띠 (맨 아래 회색 칩) | "이 화면은 컴퓨터에서 써 주세요" | 있음 |
 | 7 | [틀] 모바일 읽기 전용이면 쓰기 UI 숨김 (`data-readonly`·`data-write`, `hooks/useMobileLayout.ts`) | Ops · 펼친 모습 · 다른 상태 — 모든 묶음 공통 상태 ("입력 칸·버튼이 꺼져요") | 숨김 → "꺼져요"로 적힘 (뜻 차이 주의) | 다른 보드(Ops, 문구로만) |
-| 8 | [틀] 띠 순서: 판정기 장애 → 지역 적재 → 재계산 → 탭 고정 → 읽기 전용 (`layout/AppLayout.tsx`) | Shell · §2 알림 띠 | 목업 순서는 읽기 전용이 탭 고정보다 위 | 있음 |
-| 9 | [틀] 출처 서랍에 지금 보는 리비전 알리기 (`useProvenanceSnapshot`, 동작) | — | — | 빠짐(동작 — 화면에 안 보임, 목업 표시 없음) |
+| 8 | [틀] 띠 순서: 판정기 장애 → 지역 적재 → 재계산 → 탭 고정 → 읽기 전용 (`layout/AppLayout.tsx`) | Shell · §2 알림 띠 | 목업 순서는 읽기 전용이 탭 고정보다 위 · 고침 후: 탭 고정이 읽기 전용보다 위(지금 순서) | 있음(고침 SH-5) |
+| 9 | [틀] 출처 서랍에 지금 보는 리비전 알리기 (`useProvenanceSnapshot`, 동작) | — | — | 문구로만(고침 SH-21) |
 | 10 | [머리줄] 머리줄 위에 붙음 sticky (`layout/Header.tsx`) | Shell · 머리줄 + 첫 문단 "모든 화면 꼭대기에 붙어 있어요" | 같음 | 있음 |
 | 11 | [머리줄] 앱 이름 (`layout/Header.tsx` · `app.name` "청약 분석", 글자만) | Shell · 머리줄 왼쪽 로고 "청약 한눈에" (홈 링크) | 청약 분석 → 청약 한눈에 | 있음 |
 | 12 | [머리줄] 메뉴 `nav.G1` "홈" (NavLink end) | Shell · 머리줄 주 메뉴 "홈" | 같음 | 있음 |
@@ -28,13 +28,13 @@
 | 19 | [머리줄] 메뉴 구분선 | Shell · 머리줄 (세로선) | 같음 | 있음 |
 | 20 | [머리줄] 용어 링크 오른쪽 끝 (`glossary.nav` "용어" → /glossary) | Shell · 머리줄 오른쪽 "용어 사전" 버튼 | 용어 → 용어 사전 | 있음 |
 | 21 | [머리줄] 지금 화면 메뉴 강조 (NavLink isActive) | Shell · 머리줄 "홈" 파란 바탕 | 같음 | 있음 |
-| 22 | [머리줄] 메뉴 이동 때 `?region·snapshot·scenario` 유지 (location.search, 동작) | — | — | 빠짐(동작 — 목업 표시 없음) |
-| 23 | [머리줄] 모바일 메뉴 = 홈·단지 리스트 + 용어만 (`NAV_MOBILE`) | Mobile · 아래 탭 줄 "홈 · 단지 찾기 · 비교 · 지역 시장" | 항목이 다름: 비교·지역 시장(모바일 미지원 화면)이 들어가고 용어가 빠짐 — 주의 | 다른 보드(Mobile) |
+| 22 | [머리줄] 메뉴 이동 때 `?region·snapshot·scenario` 유지 (location.search, 동작) | — | — | 문구로만(고침 SH-21) |
+| 23 | [머리줄] 모바일 메뉴 = 홈·단지 리스트 + 용어만 (`NAV_MOBILE`) | Mobile · 아래 탭 줄 "홈 · 단지 찾기 · 비교 · 지역 시장" | 항목이 다름: 비교·지역 시장(모바일 미지원 화면)이 들어가고 용어가 빠짐 — 주의 | 다른 보드(Mobile · Shell §10에 지금 메뉴 3개로 그림, 고침 SH-19) |
 | 24 | [머리줄] 메뉴 줄과 선택 줄 배치 (현재: 위=선택칸, 아래=메뉴) | Shell · 머리줄 (위=로고·메뉴, 아래=지역·기준일·상황·열쇠·화면) | 위아래 바뀜 | 있음 |
 | 25 | [지역] 라벨 (`components/RegionPicker.tsx` · `header.region` "지역") | Shell · 머리줄 둘째 줄 "지역" | 같음 | 있음 |
 | 26 | [지역] 지역 고르기 select (서버 지역 이름, GET /regions) | Shell · 머리줄 select + §1 기준일·상황 선택칸을 펼친 모습 "지역 고르기" | 같음 | 있음 |
 | 27 | [지역] 마지막 항목 `header.regionAdd` "+ 지역 추가" → /regions/new | Shell · §1 "지역 고르기" 목록 끝 링크(RegionNew) | 같음 | 있음 |
-| 28 | [지역] 지역 0개 `header.regionNone` "지역 없음" | Shell · §1 "지역 고르기" 아래 문구 | 같음 | 문구로만 |
+| 28 | [지역] 지역 0개 `header.regionNone` "지역 없음" | Shell · §1 "지역 고르기" 아래 문구 | 같음 | 있음(고침 SH-10) |
 | 29 | [지역] 지역 바꾸면 URL `?region=`·기준일은 그 지역 최신으로 (`hooks/useActiveRegion`·`useSnapshot`) | Shell · §1 "지역 고르기" 문구 "기준일은 그 지역의 가장 최근 날짜로 돌아가요" | 같음 | 문구로만 |
 | 30 | [기준일] 라벨 (`components/SnapshotPicker.tsx` · `header.snapshot` "기준일") | Shell · 머리줄 "기준일" | 같음 | 있음 |
 | 31 | [기준일] 기준일 select (GET /regions/{id}/snapshots, 옵션 = asof_date) | Shell · 머리줄 select + §1 "기준일 고르기" 목록 | 같음 | 있음 |
@@ -42,70 +42,70 @@
 | 33 | [기준일] 옵션 title `picker.revisionReason` "리비전 {n}: {reason}" | Shell · 머리줄 select title "수정본이 왜 생겼는지 이유가 여기 떠요" | 리비전 → 수정본 | 문구로만 |
 | 34 | [기준일] degraded `picker.snapshotDegraded` "{date} · 일부 수집 실패" | Shell · §1 "2번째 수정본 · 일부 수집 실패" | 같음 | 있음 |
 | 35 | [기준일] building `picker.snapshotBuilding` "{date} · 생성 중" | Shell · §1 "3번째 수정본 · 만드는 중" | 생성 중 → 만드는 중 | 있음 |
-| 36 | [기준일] 목록 비면 `header.snapshotNone` "스냅샷 없음" + select 꺼짐 | Shell · §1 "기준일 고르기" 아래 문구 "기준일 없음" | 스냅샷 없음 → 기준일 없음 (꺼짐 표시는 없음) | 문구로만 |
-| 37 | [기준일] 기본 선택 = 최신 기준일의 최신 발행 리비전 (`defaultSnapshot`, 동작) | Shell · §1 (8번째 수정본이 골라진 모습) | 규칙 설명은 없음 | 빠짐(동작 — 규칙이 목업에 적혀 있지 않음) |
+| 36 | [기준일] 목록 비면 `header.snapshotNone` "스냅샷 없음" + select 꺼짐 | Shell · §1 "기준일 고르기" 아래 문구 "기준일 없음" | 스냅샷 없음 → 기준일 없음 (꺼짐 표시는 없음) | 있음(고침 SH-10) |
+| 37 | [기준일] 기본 선택 = 최신 기준일의 최신 발행 리비전 (`defaultSnapshot`, 동작) | Shell · §1 (8번째 수정본이 골라진 모습) | 규칙 설명은 없음 | 문구로만(고침 SH-21) |
 | 38 | [상황] radiogroup 라벨 (`components/ScenarioToggle.tsx` · `header.scenario` "상황") | Shell · 머리줄 "상황" 토글 | 같음 | 있음 |
 | 39 | [상황] 옵션 = 서버 시나리오 목록(내장 5 + 사용자, GET /scenarios), 값 없으면 첫 항목 선택 | Shell · 머리줄 5개 버튼 (기본 선택) + §1 휴대폰 select 의 "내 조건: 우리집 기준" | 같음 | 있음 |
 | 40 | [상황] ←/→ 키로 이동 (roving tabindex) | Shell · §1 "상황(시나리오) 고르기" 문구 "화살표 키 ← → 로도" | 같음 | 문구로만 |
-| 41 | [상황] 꺼짐 disabled prop | — | — | 빠짐(목업에 없음) |
-| 42 | [상황] 시나리오 늦게 와도 자리 미리 잡기 (CLS, 동작) | — | — | 빠짐(동작) |
+| 41 | [상황] 꺼짐 disabled prop | — | — | 있음(고침 SH-10) |
+| 42 | [상황] 시나리오 늦게 와도 자리 미리 잡기 (CLS, 동작) | — | — | 문구로만(고침 SH-21) |
 | 43 | [상황] 모바일 = select (`layout/Header.tsx` · `header.scenario`) | Shell · §1 "휴대폰 모습" select | 같음 | 있음 |
-| 44 | [상황] 선택은 URL `?scenario=`로 공유 (`hooks/useScenario`, 동작) | — | — | 빠짐(동작 — 목업 표시 없음) |
+| 44 | [상황] 선택은 URL `?scenario=`로 공유 (`hooks/useScenario`, 동작) | — | — | 문구로만(고침 SH-21) |
 | 45 | [열쇠] 헤더 버튼 (`app/TokenDialog.tsx` TokenButton · `auth.button` "API 토큰" · 상태, aria-haspopup=dialog) | Shell · 머리줄 "접속 열쇠 · 쓰기 가능" | API 토큰 → 접속 열쇠 | 있음 |
-| 46 | [열쇠] 상태 `auth.state.none` "토큰 없음" | — | — | 빠짐(목업에 없음) |
-| 47 | [열쇠] 상태 `auth.state.write` "쓰기 토큰" | Shell · 머리줄 버튼 "쓰기 가능" · §5 "지금: 쓰기 가능한 열쇠" | 쓰기 토큰 → 쓰기 가능(한 열쇠) | 있음 |
-| 48 | [열쇠] 상태 `auth.state.read` "읽기 전용 토큰" | Shell · §2 읽기 전용 띠 (버튼 글자 모습은 없음) | 읽기 전용 열쇠 | 문구로만 |
-| 49 | [열쇠] 상태 `auth.state.unknown` "토큰 설정됨" | — | — | 빠짐(목업에 없음) |
+| 46 | [열쇠] 상태 `auth.state.none` "토큰 없음" | — | — | 있음(고침 SH-14) |
+| 47 | [열쇠] 상태 `auth.state.write` "쓰기 토큰" | Shell · 머리줄 버튼 "쓰기 가능" · §5 "지금: 쓰기 가능한 열쇠" | 쓰기 토큰 → 쓰기 가능(한 열쇠) | 있음(고침 SH-14) |
+| 48 | [열쇠] 상태 `auth.state.read` "읽기 전용 토큰" | Shell · §2 읽기 전용 띠 (버튼 글자 모습은 없음) | 읽기 전용 열쇠 | 있음(고침 SH-14) |
+| 49 | [열쇠] 상태 `auth.state.unknown` "토큰 설정됨" | — | — | 있음(고침 SH-14) |
 | 50 | [화면] 테마 버튼 (`layout/ThemeToggle.tsx` · `header.theme` "테마" + `header.themeLight` "라이트", aria-pressed) | Shell · 머리줄 "화면: 밝게" (aria-pressed) | 테마: 라이트 → 화면: 밝게 | 있음 |
-| 51 | [화면] 다크 상태 문구 `header.themeDark` "다크" | — | — | 빠짐(목업에 '어둡게' 없음) |
-| 52 | [화면] 다크 모드 자체 (`lib/theme.tsx` html.dark + CSS 토큰) | — | — | 빠짐(목업은 밝은 화면만) |
-| 53 | [화면] 테마 기억 localStorage `sa.theme`·시스템 설정 따르기 (동작) | — | — | 빠짐(동작) |
-| 54 | [머리줄] 모바일 '설정' 접기 안에 열쇠·테마 (`header.settings` "설정") | — | — | 빠짐(목업에 없음) |
+| 51 | [화면] 다크 상태 문구 `header.themeDark` "다크" | — | — | 있음(고침 SH-20) |
+| 52 | [화면] 다크 모드 자체 (`lib/theme.tsx` html.dark + CSS 토큰) | — | — | 있음(고침 SH-20) |
+| 53 | [화면] 테마 기억 localStorage `sa.theme`·시스템 설정 따르기 (동작) | — | — | 문구로만(고침 SH-21) |
+| 54 | [머리줄] 모바일 '설정' 접기 안에 열쇠·테마 (`header.settings` "설정") | — | — | 있음(고침 SH-19) |
 | 55 | [머리줄] 발행 감시 30분 멈춤 안내 (`layout/Header.tsx` · `job.watchExpired`, role=status) | Shell · §2 "새 기준일이 올라오는지 30분 동안 지켜봤지만 아직이에요." · Ops · ①③⑦ 작업 진행 칸의 다른 문구 | 문구 쉬워짐 | 있음 |
 | 56 | [머리줄] 감시 멈춤 다시 확인 버튼 (`job.watchRecheck` "다시 확인", 기준일 목록 refetch) | Shell · §2 "다시 확인" 버튼 | 같음 | 있음 |
-| 57 | [띠] 판정기 장애 띠 (`app/DegradedBanner.tsx` · `app.degraded`, GET /health status/judge=degraded, role=alert) | Shell · §2 첫 띠 "(서버나 판정기가 불안정할 때도 같은 띠가 떠요)" · Ops · ⑥ 판정기 장애 때 "판정기 장애 — 판정 쉬는 모드: …" | 미판정 모드 → 판정 쉬는 모드 | 있음 |
-| 58 | [띠] 기준일 스냅샷 degraded 띠 (`app.degradedSnapshot` "이 기준일 스냅샷은 미판정 모드(degraded)로 만들어졌습니다") | Shell · §2 첫 띠 "일부 자료를 못 모았어요. 이 기준일의 몇몇 값은 비어 있을 수 있어요." | 뜻 바뀜 주의: 미판정 모드 → 자료 못 모음 | 있음 |
+| 57 | [띠] 판정기 장애 띠 (`app/DegradedBanner.tsx` · `app.degraded`, GET /health status/judge=degraded, role=alert) | Shell · §2 첫 띠 "(서버나 판정기가 불안정할 때도 같은 띠가 떠요)" · Ops · ⑥ 판정기 장애 때 "판정기 장애 — 판정 쉬는 모드: …" | 미판정 모드 → 판정 쉬는 모드 · 고침 후: '판정기를 지금 쓸 수 없어요(미판정 모드)' — 기준일 띠와 둘로 나눔 | 있음(고침 SH-2) |
+| 58 | [띠] 기준일 스냅샷 degraded 띠 (`app.degradedSnapshot` "이 기준일 스냅샷은 미판정 모드(degraded)로 만들어졌습니다") | Shell · §2 첫 띠 "일부 자료를 못 모았어요. 이 기준일의 몇몇 값은 비어 있을 수 있어요." | 뜻 바뀜 주의: 미판정 모드 → 자료 못 모음 · 고침 후: '이 기준일 자료는 판정기를 못 쓰는 상태(미판정 모드)에서 만들어졌어요' | 있음(고침 SH-3) |
 | 59 | [띠] 지역 첫 적재 중 (`app/RegionLoadingBanner.tsx` · `app.regionBootstrapping`, role=status) | Shell · §2 "이 지역을 처음 분석하고 있어요. 끝나면 화면이 채워져요." | 문구 쉬워짐 | 있음 |
 | 60 | [띠] 지역 첫 적재 실패 (`app.regionFailed`, 빨강 글자) | Shell · §2 "지역 분석이 실패했어요." | 같은 뜻 | 있음 |
 | 61 | [띠] 띠 안 링크 /ops?region= (`nav.G7` "데이터·운영") | Shell · §2 "데이터·운영에서 진행 보기" / "데이터·운영에서 이유 보기" | 링크 글자 늘어남 | 있음 |
-| 62 | [띠] 재계산 값 포함 (`app/BackfilledBanner.tsx` · `app.backfilled` "업그레이드 때 다시 계산한 값이 포함(발행 순간 값이 아닐 수 있음) — 다시 계산한 날 {date}", KST) | Shell · §2 "이 기준일은 나중에 채워 넣은 자료예요 (2026-10-13에 보충)." | "발행 순간 값이 아닐 수 있음" 빠짐 — 주의 | 있음 |
-| 63 | [띠] 탭 고정 띠 (`app/TokenDialog.tsx` TokenPinnedBanner · `auth.pinnedBanner` "다른 탭에서 저장된 토큰이 바뀌었습니다 — 이 탭은 기존 토큰을 유지합니다") | Shell · §2 "이 탭은 공유받은 열쇠로 고정돼 있어요." | 뜻 바뀜 주의: '다른 탭이 바꿈'이 '공유받은 열쇠로 고정'으로 | 있음 |
+| 62 | [띠] 재계산 값 포함 (`app/BackfilledBanner.tsx` · `app.backfilled` "업그레이드 때 다시 계산한 값이 포함(발행 순간 값이 아닐 수 있음) — 다시 계산한 날 {date}", KST) | Shell · §2 "이 기준일은 나중에 채워 넣은 자료예요 (2026-10-13에 보충)." | "발행 순간 값이 아닐 수 있음" 빠짐 — 주의 · 고침 후: '발행 순간 값과 다를 수 있음' 되살림 | 있음(고침 SH-4) |
+| 63 | [띠] 탭 고정 띠 (`app/TokenDialog.tsx` TokenPinnedBanner · `auth.pinnedBanner` "다른 탭에서 저장된 토큰이 바뀌었습니다 — 이 탭은 기존 토큰을 유지합니다") | Shell · §2 "이 탭은 공유받은 열쇠로 고정돼 있어요." | 뜻 바뀜 주의: '다른 탭이 바꿈'이 '공유받은 열쇠로 고정'으로 · 고침 후: '다른 탭에서 저장한 열쇠가 바뀌었어요. 이 탭은 원래 열쇠를 그대로 써요' | 있음(고침 SH-5) |
 | 64 | [띠] 탭 고정 풀기 버튼 (`auth.useNewToken` "새 토큰 사용", 고정 풀고 모든 쿼리 다시) | Shell · §2 "새 열쇠 사용" | 토큰 → 열쇠 | 있음 |
-| 65 | [띠] 읽기 전용 토큰 띠 (ReadOnlyBanner · `auth.readOnlyBanner`) | Shell · §2 "공유받은 읽기 전용 열쇠로 보고 있어요. 저장·실행 버튼은 눌리지 않아요." | "공유받은"이 더해짐, "쓰기 토큰(API_TOKEN)으로 바꾸세요" 빠짐 | 있음 |
+| 65 | [띠] 읽기 전용 토큰 띠 (ReadOnlyBanner · `auth.readOnlyBanner`) | Shell · §2 "공유받은 읽기 전용 열쇠로 보고 있어요. 저장·실행 버튼은 눌리지 않아요." | "공유받은"이 더해짐, "쓰기 토큰(API_TOKEN)으로 바꾸세요" 빠짐 · 고침 후: '공유받은' 뺌, '쓰기 열쇠(API_TOKEN)로 바꿔 주세요' 되살림 | 있음(고침 SH-6) |
 | 66 | [띠] 읽기 전용 띠의 바꾸기 버튼 (`auth.change` "토큰 바꾸기") | Shell · §2 "열쇠 바꾸기" | 토큰 → 열쇠 | 있음 |
 | 67 | [쓰기] 쓰기 버튼 꺼짐 + title `auth.readOnlyHint` (`api/auth` useCanWrite) | Ops · 모든 묶음 공통 상태 · Scenario · 가끔만 나오는 모습 "D · 읽기 전용 열쇠일 때" | "읽기 전용 열쇠로는 저장·실행할 수 없어요" | 다른 보드(Ops·Scenario, 문구로만) |
-| 68 | [쓰기] 쓰기 요청 403 → 읽기 전용으로 표시 (`markReadOnly`, 동작) | — | — | 빠짐(동작) |
+| 68 | [쓰기] 쓰기 요청 403 → 읽기 전용으로 표시 (`markReadOnly`, 동작) | — | — | 문구로만(고침 SH-21) |
 | 69 | [알림] 알림 구역 aria-label (`app/toast.tsx` · `app.notifications` "알림") | Shell · §6 작업 진행 · 알림 (role=region "알림") | 같음 | 있음 |
 | 70 | [알림] 알림 한 줄 (role=status, aria-live=polite) | Shell · §6 "시나리오를 저장했어요" | 같음 | 있음 |
 | 71 | [알림] 알림 행동 버튼 (누르면 실행 후 닫힘) | Shell · §6 "재시도 작업을 등록했어요 [보기]" | 같음 | 있음 |
 | 72 | [알림] 닫기 × (`app.toastClose` "알림 닫기") | Shell · §6 × (aria-label "알림 닫기") | 같음 | 있음 |
 | 73 | [알림] 최대 4개 | Shell · §6 "화면 아래에 최대 4개" | 같음 | 문구로만 |
 | 74 | [알림] 8초 뒤 자동 닫힘 | Shell · §6 "8초 뒤 사라져요" | 같음 | 문구로만 |
-| 75 | [알림] duration 0 = 직접 닫을 때까지 | — | — | 빠짐(목업에 없음) |
+| 75 | [알림] duration 0 = 직접 닫을 때까지 | — | — | 문구로만(고침 SH-21) |
 | 76 | [열쇠 창] 열리는 때: 401 자동 / 헤더 버튼 (`api/client.ts` requestToken) | Shell · §5 문구 "서버가 401을 주면 이 창이 자동으로 열려요" | 같음 | 문구로만 |
-| 77 | [열쇠 창] 모달 (배경 어둡게, aria-modal=true) | Shell · §5 창만 그림 (role=dialog) | 배경·모달 표시 없음 | 빠짐(목업은 창만 — 배경 없음) |
+| 77 | [열쇠 창] 모달 (배경 어둡게, aria-modal=true) | Shell · §5 창만 그림 (role=dialog) | 배경·모달 표시 없음 | 있음(고침 SH-13) |
 | 78 | [열쇠 창] 제목 `auth.title` "API 토큰 설정" | Shell · §5 접속 열쇠(토큰) 창 "접속 열쇠 넣기" | 바뀜 | 있음 |
-| 79 | [열쇠 창] 사유 `auth.reason.invalid` (role=alert, 빨강) | Shell · §5 "열쇠가 맞지 않아요(401). 다시 넣어 주세요." | 토큰 → 열쇠 | 있음 |
-| 80 | [열쇠 창] 사유 `auth.reason.missing` "이 서버는 API 토큰이 필요합니다" | — | — | 빠짐(목업에 없음) |
-| 81 | [열쇠 창] 사유 `auth.reason.manual` "토큰을 바꾸거나 지울 수 있습니다" | — | — | 빠짐(목업에 없음) |
-| 82 | [열쇠 창] 안내 `auth.intro` "서버의 API_TOKEN(쓰기) 또는 READONLY_TOKEN(읽기 전용)… 이 브라우저에만 저장됩니다." | Shell · §5 "이 컴퓨터의 서버에 들어가는 열쇠예요." | 환경변수 이름·"이 브라우저에만 저장" 빠짐 — 주의 | 있음 |
+| 79 | [열쇠 창] 사유 `auth.reason.invalid` (role=alert, 빨강) | Shell · §5 "열쇠가 맞지 않아요(401). 다시 넣어 주세요." | 토큰 → 열쇠 | 있음(고침 SH-13) |
+| 80 | [열쇠 창] 사유 `auth.reason.missing` "이 서버는 API 토큰이 필요합니다" | — | — | 있음(고침 SH-13) |
+| 81 | [열쇠 창] 사유 `auth.reason.manual` "토큰을 바꾸거나 지울 수 있습니다" | — | — | 있음(고침 SH-13) |
+| 82 | [열쇠 창] 안내 `auth.intro` "서버의 API_TOKEN(쓰기) 또는 READONLY_TOKEN(읽기 전용)… 이 브라우저에만 저장됩니다." | Shell · §5 "이 컴퓨터의 서버에 들어가는 열쇠예요." | 환경변수 이름·"이 브라우저에만 저장" 빠짐 — 주의 · 고침 후: 환경변수 이름·'이 브라우저에만 저장돼요' 되살림 | 있음(고침 SH-13) |
 | 83 | [열쇠 창] 지금 상태 `auth.current` "현재: {state}" | Shell · §5 "지금: 쓰기 가능한 열쇠" | 현재 → 지금 | 있음 |
 | 84 | [열쇠 창] 입력 라벨 `auth.label` "토큰" | Shell · §5 "열쇠" | 토큰 → 열쇠 | 있음 |
 | 85 | [열쇠 창] 입력칸 password·autocomplete off·열 때 포커스 | Shell · §5 password 입력칸 | 포커스는 표시 없음 | 있음 |
 | 86 | [열쇠 창] 보이기 체크 `auth.show` "토큰 보이기" | Shell · §5 "열쇠 보이기" | 토큰 → 열쇠 | 있음 |
 | 87 | [열쇠 창] 저장 `auth.save` "확인 후 저장" (확인 = GET /regions + POST /jobs `{}` 로 읽기/쓰기 판별) | Shell · §5 "확인하고 저장" | 확인 후 → 확인하고 | 있음 |
-| 88 | [열쇠 창] 확인 중 `auth.checking` "토큰 확인 중…" (버튼 꺼짐) | Shell · §5 아래 문구 "확인 중에는 '열쇠 확인 중…'" | 토큰 → 열쇠 | 문구로만 |
-| 89 | [열쇠 창] 검증 오류: 비어 있음 `auth.empty` "토큰을 입력하세요" | Shell · §5 아래 문구 "비어 있음" | — | 문구로만 |
-| 90 | [열쇠 창] 검증 오류: 틀림 `auth.invalid` "토큰이 맞지 않습니다(401)" | Shell · §5 아래 문구 "틀림" | — | 문구로만 |
-| 91 | [열쇠 창] 검증 오류: 확인 실패 `auth.checkError` "{detail}" | Shell · §5 아래 문구 "확인 실패" | — | 문구로만 |
-| 92 | [열쇠 창] 지우기 `auth.clear` "저장한 토큰 지우기" (저장돼 있을 때만) | Shell · §5 "저장한 열쇠 지우기" | 조건부 표시는 안 적힘 | 있음 |
+| 88 | [열쇠 창] 확인 중 `auth.checking` "토큰 확인 중…" (버튼 꺼짐) | Shell · §5 아래 문구 "확인 중에는 '열쇠 확인 중…'" | 토큰 → 열쇠 | 있음(고침 SH-13) |
+| 89 | [열쇠 창] 검증 오류: 비어 있음 `auth.empty` "토큰을 입력하세요" | Shell · §5 아래 문구 "비어 있음" | — | 있음(고침 SH-13) |
+| 90 | [열쇠 창] 검증 오류: 틀림 `auth.invalid` "토큰이 맞지 않습니다(401)" | Shell · §5 아래 문구 "틀림" | — | 있음(고침 SH-13) |
+| 91 | [열쇠 창] 검증 오류: 확인 실패 `auth.checkError` "{detail}" | Shell · §5 아래 문구 "확인 실패" | — | 있음(고침 SH-13) |
+| 92 | [열쇠 창] 지우기 `auth.clear` "저장한 토큰 지우기" (저장돼 있을 때만) | Shell · §5 "저장한 열쇠 지우기" | 조건부 표시는 안 적힘 | 있음(고침 SH-13) |
 | 93 | [열쇠 창] 닫기 `auth.close` | Shell · §5 "닫기" | 같음 | 있음 |
-| 94 | [열쇠 창] Esc로 닫기 | — | — | 빠짐(목업에 안내 없음) |
-| 95 | [열쇠 창] 저장 알림 `auth.savedWrite` "쓰기 토큰을 저장했습니다" | — | — | 빠짐(목업 알림 예에 없음) |
-| 96 | [열쇠 창] 저장 알림 `auth.savedRead` "…저장·실행 버튼은 꺼집니다" | — | — | 빠짐(목업 알림 예에 없음) |
-| 97 | [열쇠 창] 저장소 못 씀 `auth.notPersisted` "… 이 탭에서만 유지됩니다" | — | — | 빠짐(목업에 없음) |
-| 98 | [열쇠 창] 지움 알림 `auth.cleared` | — | — | 빠짐(목업에 없음) |
-| 99 | [열쇠 창] 저장·지움 뒤 모든 쿼리 다시 (동작) | — | — | 빠짐(동작) |
+| 94 | [열쇠 창] Esc로 닫기 | — | — | 문구로만(고침 SH-21) |
+| 95 | [열쇠 창] 저장 알림 `auth.savedWrite` "쓰기 토큰을 저장했습니다" | — | — | 있음(고침 SH-15) |
+| 96 | [열쇠 창] 저장 알림 `auth.savedRead` "…저장·실행 버튼은 꺼집니다" | — | — | 있음(고침 SH-15) |
+| 97 | [열쇠 창] 저장소 못 씀 `auth.notPersisted` "… 이 탭에서만 유지됩니다" | — | — | 있음(고침 SH-15) |
+| 98 | [열쇠 창] 지움 알림 `auth.cleared` | — | — | 있음(고침 SH-15) |
+| 99 | [열쇠 창] 저장·지움 뒤 모든 쿼리 다시 (동작) | — | — | 문구로만(고침 SH-21) |
 | 100 | [출처] 숫자 누르면 출처 창 (`components/FactCell.tsx` 점선 밑줄 버튼 → ProvenanceProvider) | Shell · §3 숫자를 누르면 열리는 '출처' 창 "밑줄 점선이 있는 숫자는 모두 누를 수 있어요" | 같음 | 있음 |
 | 101 | [출처] 오른쪽 서랍 role=dialog aria-modal=false (`components/ProvenancePanel.tsx`) | Shell · §3 aside "출처 창 예시" | 오른쪽 붙음 여부는 안 그림 | 있음 |
 | 102 | [출처] 제목 `provenance.title` "출처" | Shell · §3 "이 값은 어디서 왔나요?" | 출처 → 이 값은 어디서 왔나요? | 있음 |
@@ -117,15 +117,15 @@
 | 108 | [출처] 종류 `provenance.kind.raw_document` "원문" | Shell · §3 아래 안내 | 같음 | 문구로만 |
 | 109 | [출처] 종류 `provenance.kind.comparable_set` "비교군" | Shell · §3 아래 안내 | 비교군 → 비교 단지 | 문구로만 |
 | 110 | [출처] 닫기 `provenance.close` (열 때 닫기에 포커스) | Shell · §3 "닫기" | 포커스 표시 없음 | 있음 |
-| 111 | [출처] Esc로 닫기 | — | — | 빠짐(출처 창 Esc 안내 없음 — §3 Esc 문구는 용어 팝오버 것) |
+| 111 | [출처] Esc로 닫기 | — | — | 문구로만(고침 SH-21) |
 | 112 | [출처] 불러오는 중 `app.loading` / 준비 중 `page.common.materializePending` | Shell · §7 (공통 모양) | 같음 | 다른 보드(Shell §7 공통 상태) |
 | 113 | [출처] 오류 `provenance.error` "출처를 불러오지 못했습니다({detail})" | Shell · §7 "불러오지 못했어요" (공통 모양) | 공통 문구로 | 다른 보드(Shell §7 공통 상태) |
-| 114 | [출처] 저장본 검증 실패 `page.common.storedViewMismatch` | — | — | 빠짐(목업 어디에도 없음) |
+| 114 | [출처] 저장본 검증 실패 `page.common.storedViewMismatch` | — | — | 있음(고침 SH-17) |
 | 115 | [출처] 대상·필드 줄 (entity · field) | Shell · §3 dt "무엇" "시티오씨엘 8단지 · 기준 타입(84C) 최고 공급금액" | 줄 이름 "무엇" 새로 | 있음 |
 | 116 | [출처] 값 `provenance.value` "값" | Shell · §3 "값 631,400,000원" | 같음 | 있음 |
 | 117 | [출처] 라벨 `provenance.label` "라벨" + 라벨 전문(full) | Shell · §3 "라벨 확인됨" | 같음 | 있음 |
-| 118 | [출처] 강등 배지 `provenance.demoted` "강등됨(검증 모순)" | Shell · §3 아래 안내 "낮춤(검증 모순) 표시" | 강등됨 → 낮춤 | 문구로만 |
-| 119 | [출처] 강등 해제 조건 `provenance.demotedHint` | Shell · §3 아래 안내 "이유가 함께 떠요" (해제 조건 문장 없음) | 해제 조건(사람 확인·새 원문) 빠짐 | 문구로만 |
+| 118 | [출처] 강등 배지 `provenance.demoted` "강등됨(검증 모순)" | Shell · §3 아래 안내 "낮춤(검증 모순) 표시" | 강등됨 → 낮춤 | 있음(고침 SH-11) |
+| 119 | [출처] 강등 해제 조건 `provenance.demotedHint` | Shell · §3 아래 안내 "이유가 함께 떠요" (해제 조건 문장 없음) | 해제 조건(사람 확인·새 원문) 빠짐 | 있음(고침 SH-11) |
 | 120 | [출처] 확인일 `provenance.checkedAt` "확인일" | Shell · §3 "확인한 날" | 확인일 → 확인한 날 | 있음 |
 | 121 | [출처] 원문 주소 `provenance.url` (ExternalLink 새 탭, safeHref) | Shell · §3 "원문 주소" 링크 | 같음 | 있음 |
 | 122 | [출처] 출처 종류·순위 `provenance.source` + `provenance.sourceRank` "{rank}순위 출처" | Shell · §3 "출처 종류 · 공고문 PDF · 1순위 출처" | 같음 | 있음 |
@@ -134,7 +134,7 @@
 | 125 | [출처] 판정 로그 번호 `provenance.judgment` "#n" | Shell · §3 "판정 기록 #1298 출처 비교" (링크) | 판정 로그 → 판정 기록, 링크로 | 있음 |
 | 126 | [출처] 원문 발췌 `provenance.excerpt` + 값 `<mark>` | Shell · §3 "원문 발췌" + 노란 표시 | 같음 | 있음 |
 | 127 | [출처] 원문에서 보기 `provenance.rawText` (GET /raw/{id}?as=text, 발췌 위치 앞뒤 160자) | Shell · §3 "원문에서 앞뒤 보기" | 원문에서 보기 → 원문에서 앞뒤 보기 | 있음 |
-| 128 | [출처] 원문 닫기 `provenance.rawTextHide` | — | — | 빠짐(목업에 없음) |
+| 128 | [출처] 원문 닫기 `provenance.rawTextHide` | — | — | 있음(고침 SH-11) |
 | 129 | [출처] 원문 텍스트 불러오는 중·실패 `provenance.rawLoading`/`rawError` | Ops · ② 화면 캡처 미리보기 펼친 모습 · DetailTabs · 출처·원문 — 다른 상태 | 같은 뜻 | 다른 보드(Ops·DetailTabs) |
 | 130 | [출처] 단위 근거 `provenance.unitBasis` | Shell · §3 "단위 근거 표 머리 '단위: 원'" | 같음 | 있음 |
 | 131 | [출처] 상충 출처 `provenance.conflicts` | Shell · §3 "다른 출처" | 상충 출처 → 다른 출처 | 있음 |
@@ -143,12 +143,12 @@
 | 134 | [출처] 채택/미채택 배지 `provenance.chosen`/`notChosen` | Shell · §3 "채택" / "미채택" | 같음 | 있음 |
 | 135 | [출처] 상충 항목 라벨 | Shell · §3 상충 칸 "확인됨" | 같음 | 있음 |
 | 136 | [출처] 상충 항목 출처 종류 · 순위 | Shell · §3 "공고문 PDF · 1순위" / "청약홈 상세 · 2순위" | 같음 | 있음 |
-| 137 | [출처] 상충 항목 발췌 (값 강조) | Shell · §3 따옴표 발췌 | 강조 표시 없음 | 있음 |
-| 138 | [출처] 상충 항목 단위 근거 | — | — | 빠짐(목업 상충 칸에 없음) |
-| 139 | [출처] 상충 항목 원문 주소 링크 | — | — | 빠짐(목업 상충 칸에 없음) |
+| 137 | [출처] 상충 항목 발췌 (값 강조) | Shell · §3 따옴표 발췌 | 강조 표시 없음 | 있음(고침 SH-11) |
+| 138 | [출처] 상충 항목 단위 근거 | — | — | 있음(고침 SH-11) |
+| 139 | [출처] 상충 항목 원문 주소 링크 | — | — | 있음(고침 SH-11) |
 | 140 | [출처] 이 출처 열기 `provenance.openConflict` (같은 창 안 이동) | Shell · §3 "이 출처 열기" | 같음 | 있음 |
 | 141 | [출처] 원문 파일 줄 (sr-only `provenance.rawDocument`) + RawDocumentPreview | Shell · §3 dt "원문 파일" | 숨김 제목 → 보이는 줄 이름 | 있음 |
-| 142 | [출처] 연 순간 리비전으로 고정 (화면 리비전 바뀌어도 안 따라감, 동작) | — | — | 빠짐(동작) |
+| 142 | [출처] 연 순간 리비전으로 고정 (화면 리비전 바뀌어도 안 따라감, 동작) | — | — | 문구로만(고침 SH-21) |
 | 143 | [출처] API GET /provenance/{id}?snapshot_id= | Shell · §3 출처 창 | 호출 표시는 없음 | 있음 |
 | 144 | [원문] 미리보기 `provenance.rawPreview` (`components/RawDocumentPreview.tsx`, 열 때만 GET /raw/{id} Bearer) | Shell · §3 "원문 미리보기" | 같음 | 있음 |
 | 145 | [원문] 미리보기 닫기 `provenance.rawPreviewHide` | Ops · ② 화면 캡처 미리보기 펼친 모습 "미리보기 닫기" · DetailTabs · 출처·원문 | 같음 | 다른 보드(Ops·DetailTabs) |
@@ -167,7 +167,7 @@
 | 158 | [작업] 진행 수 `job.progress` "{done}/{total}" | Shell · §6 "62 / 100" | 같음 | 있음 |
 | 159 | [작업] 단계 `job.step` "단계 {step}" | Shell · §6 "단계: 공고문 읽기" | 같음 | 있음 |
 | 160 | [작업] 진행 막대 (진행 수 있으면 결정 막대) | Shell · §6 파란 막대 | 같음 | 있음 |
-| 161 | [작업] 진행 수 없을 때 미정 막대 | — | — | 빠짐(목업에 없음) |
+| 161 | [작업] 진행 수 없을 때 미정 막대 | — | — | 있음(고침 SH-16) |
 | 162 | [작업] 작업 없음 `job.none` "진행 중인 작업 없음" | Market · 작업 진행 · 상태 모음 "없음" · Ops · ①③⑦ · RegionNew | 같음 | 다른 보드(Market·Ops·RegionNew) |
 | 163 | [작업] 오류 `job.error` "오류: {detail}" | Market · 작업 진행 · 상태 모음 "실패 오류: [오류 내용]" · Ops · ①③⑦ | 같음 | 다른 보드(Market·Ops) |
 | 164 | [작업] 상태 못 받음 `job.retrying` (마지막 상태 유지) | Ops · ①③⑦ · RegionNew · Reports | 같음 | 다른 보드(Ops·RegionNew·Reports) |
@@ -176,7 +176,7 @@
 | 167 | [작업] 빈 데이터셋 재수집 `job.requeuedDegraded` + `requeuedAt`/`requeuedSoon` | Ops · ⑤ 작업 대기열 다른 상태 · RegionNew · Market | 같은 뜻 | 다른 보드(Ops·RegionNew·Market) |
 | 168 | [작업] 재수집 덧붙임 `job.requeuedDegradedBootstrap` / `requeuedDegradedDaily` | Ops · ⑤ "지역 첫 적재 중이라 발행본은 아직 없어요 / 이전 발행본이 그대로 기본 화면이에요" | 리비전 → 발행본 | 다른 보드(Ops) |
 | 169 | [작업] 재수집 상한 실패 `job.degradedFailed` (degradedFailureText) | Ops · ⑤ "실패 … 발행하지 않았어요: [사유]" | 같음 | 다른 보드(Ops) |
-| 170 | [작업] 2초 폴링 GET /jobs/{id}, done/failed에서 멈춤, onDone/onFailed 1회 (동작) | — | — | 빠짐(동작) |
+| 170 | [작업] 2초 폴링 GET /jobs/{id}, done/failed에서 멈춤, onDone/onFailed 1회 (동작) | — | — | 문구로만(고침 SH-21) |
 | 171 | [발행] 발행 기다림 `job.publishPending` (`PublishJobProgress`) | Shell · §6 문구 "결과 올리는 중" · Ops · 작업 진행 칸 "작업이 끝나 새 수정본이 발행될 때까지 …" | 리비전 → 수정본 | 문구로만 |
 | 172 | [발행] 발행 완료 `job.publishDone` | Shell · §6 문구 "올렸어요" · Ops · ①③⑦ "새 수정본이 발행됐어요 …" | 같은 뜻 | 문구로만 |
 | 173 | [발행] 막힘(사유) `job.publishBlocked` | Ops · ①③⑦ "발행이 막혔어요(남은 모순 주장 등) — …: [설명]" | 같음 | 다른 보드(Ops) |
@@ -193,44 +193,44 @@
 | 184 | [틀] 제목 아래 한 줄 안내 (PageShell intro) | Shell · h1 아래 p | 같음 | 있음 |
 | 185 | [범례] 출처 범례 한 줄 `label.legend` "밑줄 친 숫자를 누르면 출처·확인일이 열립니다" (`components/ProvenanceLegend.tsx`) | Shell · §3 "밑줄 점선이 있는 숫자는 모두 누를 수 있어요" | 같은 뜻 | 있음 |
 | 186 | [범례] 라벨 뜻 펼침 `label.legendHelp` "라벨 뜻 ⓘ" (aria-expanded) | Shell · §3 "라벨 뜻 [접기]" (aria-expanded=true) | ⓘ → 접기 버튼 | 있음 |
-| 187 | [범례] Esc로 접기 | — | — | 빠짐(목업에 안내 없음) |
-| 188 | [범례] `label.help.confirmed` "확인됨 — 공식 자료(공고문·청약홈 등)에서 확인한 값" | Shell · §3 라벨 뜻 목록 "확인됨 공식 자료(공고문·청약홈·국토부)에 적힌 그대로예요." | 같은 뜻 | 있음 |
-| 189 | [범례] `label.help.estimated` "추정 — 계산이나 가정으로 만든 값(괄호 안이 계산 방법)" | Shell · §3 "추정 공식 값으로 계산했거나 판정기가 낸 값이에요." | "괄호 안이 계산 방법" 빠짐 | 있음 |
-| 190 | [범례] `label.help.unofficial` | Shell · §3 "비공식 언론·분양 광고 등 …" | 보도·블로그·홍보 → 언론·분양 광고 | 있음 |
-| 191 | [범례] `label.help.reprocessed` | Shell · §3 "재가공 다른 서비스가 가공한 값을 옮긴 거예요." | 같은 뜻 | 있음 |
-| 192 | [범례] `label.help.unknown` "확인 불가 — 찾지 못한 값(괄호 안이 이유)" | Shell · §3 "확인 불가(사유, 날짜) 값을 못 구했어요. 이유를 함께 적어요." | 같은 뜻 | 있음 |
-| 193 | [범례] `label.help.human` "사람 확인됨 — 사람이 전화·방문으로 확인한 값" | Shell · §3 "사람 확인 운영자가 전화·방문으로 직접 확인한 값이에요." | 사람 확인됨 → 사람 확인 | 있음 |
+| 187 | [범례] Esc로 접기 | — | — | 문구로만(고침 SH-21) |
+| 188 | [범례] `label.help.confirmed` "확인됨 — 공식 자료(공고문·청약홈 등)에서 확인한 값" | Shell · §3 라벨 뜻 목록 "확인됨 공식 자료(공고문·청약홈·국토부)에 적힌 그대로예요." | 같은 뜻 · 고침 후: label.help.* 원문을 쉬운 말로 한 번 정한 문장(Glossary 라벨 카드와 같음) | 있음(고침 SH-1) |
+| 189 | [범례] `label.help.estimated` "추정 — 계산이나 가정으로 만든 값(괄호 안이 계산 방법)" | Shell · §3 "추정 공식 값으로 계산했거나 판정기가 낸 값이에요." | "괄호 안이 계산 방법" 빠짐 · 고침 후: label.help.* 원문을 쉬운 말로 한 번 정한 문장(Glossary 라벨 카드와 같음) | 있음(고침 SH-1) |
+| 190 | [범례] `label.help.unofficial` | Shell · §3 "비공식 언론·분양 광고 등 …" | 보도·블로그·홍보 → 언론·분양 광고 · 고침 후: label.help.* 원문을 쉬운 말로 한 번 정한 문장(Glossary 라벨 카드와 같음) | 있음(고침 SH-1) |
+| 191 | [범례] `label.help.reprocessed` | Shell · §3 "재가공 다른 서비스가 가공한 값을 옮긴 거예요." | 같은 뜻 · 고침 후: label.help.* 원문을 쉬운 말로 한 번 정한 문장(Glossary 라벨 카드와 같음) | 있음(고침 SH-1) |
+| 192 | [범례] `label.help.unknown` "확인 불가 — 찾지 못한 값(괄호 안이 이유)" | Shell · §3 "확인 불가(사유, 날짜) 값을 못 구했어요. 이유를 함께 적어요." | 같은 뜻 · 고침 후: label.help.* 원문을 쉬운 말로 한 번 정한 문장(Glossary 라벨 카드와 같음) | 있음(고침 SH-1) |
+| 193 | [범례] `label.help.human` "사람 확인됨 — 사람이 전화·방문으로 확인한 값" | Shell · §3 "사람 확인 운영자가 전화·방문으로 직접 확인한 값이에요." | 사람 확인됨 → 사람 확인 · 고침 후: label.help.* 원문을 쉬운 말로 한 번 정한 문장(Glossary 라벨 카드와 같음) | 있음(고침 SH-1) |
 | 194 | [라벨] 확인됨 = 작은 회색 글자 (`components/LabelBadge.tsx` data-tone=quiet, `label.confirmed`) | Shell · §3 "확인됨" (작은 초록 글자) | 회색 → 초록 | 있음 |
 | 195 | [라벨] 추정 테두리 배지 `label.estimated` | Shell · §3 점선 배지 "추정" | 같음 | 있음 |
 | 196 | [라벨] 비공식 `label.unofficial` | Shell · §3 "비공식" 배지 | 같음 | 있음 |
 | 197 | [라벨] 재가공 `label.reprocessed` | Shell · §3 "재가공" 배지 | 같음 | 있음 |
 | 198 | [라벨] 확인 불가(사유, 확인일) `empty.unknownWithReasonDate` / `empty.unknownWithReason` / `empty.unknown` | Shell · §3 "확인 불가(사유, 날짜)" 배지 | 같음 | 있음 |
-| 199 | [라벨] 사람 접두 `label.humanPrefix` "사람 {label}" → "사람 확인됨" | Shell · §3 "사람 확인" 배지 | 사람 확인됨 → 사람 확인 | 있음 |
+| 199 | [라벨] 사람 접두 `label.humanPrefix` "사람 {label}" → "사람 확인됨" | Shell · §3 "사람 확인" 배지 | 사람 확인됨 → 사람 확인 · 고침 후: '사람 확인됨' | 있음(고침 SH-1) |
 | 200 | [라벨] 한정어 `label.withReason` "{label}({reason})" 예: 추정(대체·보정 c=0.015) | Compare · 위 화면에서 접혀 있거나 가끔만 나오는 모습 "추정(대체·보정 [계수])" | 같음 | 다른 보드(Compare) |
-| 201 | [라벨] 사유 40자 넘으면 줄임 `label.truncated` "{text}…(전체는 숫자를 눌러 보기)" + title 전문 | — | — | 빠짐(목업 어디에도 없음) |
-| 202 | [라벨] 쉬운 말 사유 + 원 사유 title `empty.reasonOriginal` "원래 사유: {reason}" | — | — | 빠짐(목업 어디에도 없음) |
-| 203 | [라벨] 좁은 칸 줄바꿈 wrap (동작) | — | — | 빠짐(동작) |
+| 201 | [라벨] 사유 40자 넘으면 줄임 `label.truncated` "{text}…(전체는 숫자를 눌러 보기)" + title 전문 | — | — | 있음(고침 SH-12) |
+| 202 | [라벨] 쉬운 말 사유 + 원 사유 title `empty.reasonOriginal` "원래 사유: {reason}" | — | — | 있음(고침 SH-12) |
+| 203 | [라벨] 좁은 칸 줄바꿈 wrap (동작) | — | — | 문구로만(고침 SH-21) |
 | 204 | [빈 값] EmptyState 블록 (점선 상자, role=status) (`components/EmptyState.tsx`) | Shell · §7 카드들 | 상자 모양 | 있음 |
-| 205 | [빈 값] 표 데이터 없음 `empty.noData` "데이터 없음" | Shell · §8 "값이 없으면 '자료가 없어요(이유)'" | 데이터 없음 → 자료가 없어요 | 문구로만 |
+| 205 | [빈 값] 표 데이터 없음 `empty.noData` "데이터 없음" | Shell · §8 "값이 없으면 '자료가 없어요(이유)'" | 데이터 없음 → 자료가 없어요 | 있음(고침 SH-18) |
 | 206 | [사유] `empty.reasonPlain.fetch_failed` "공식 페이지를 받지 못함" (+ `fetch_failedWith`) | List · 카드 목록 아래 "공식 홈페이지가 열리지 않거나 …" | 같은 뜻 | 다른 보드(List, 문구로만) |
-| 207 | [사유] `empty.reasonPlain.not_collected` "아직 수집하지 않음" | — | — | 빠짐(목업 어디에도 없음) |
+| 207 | [사유] `empty.reasonPlain.not_collected` "아직 수집하지 않음" | — | — | 있음(고침 SH-12) |
 | 208 | [사유] `empty.reasonPlain.pre_notice` "아직 공고 전(분양가 미공고)" | DetailTabs · 이름·상태 줄에 더할 것 "'공고 전'으로 보여요" | 같은 뜻 | 다른 보드(DetailTabs) |
 | 209 | [사유] `empty.reasonPlain.parse_failed` "공고문에서 자동으로 읽지 못함 — 원문에서 확인" | List · 카드 목록 아래 "공고를 아직 못 읽은 단지" | 같은 뜻 | 다른 보드(List, 문구로만) |
-| 210 | [사유] `empty.reasonPlain.source_missing` "출처 자료가 없음" | — | — | 빠짐(목업 어디에도 없음) |
+| 210 | [사유] `empty.reasonPlain.source_missing` "출처 자료가 없음" | — | — | 있음(고침 SH-12) |
 | 211 | [사유] `empty.reasonPlain.demoted` "검증에서 모순이 나와 쓰지 않음" | Shell · §3 아래 안내 "검증에서 모순이 나온 값은 …" | 같은 뜻 | 문구로만 |
 | 212 | [사유] `empty.reasonPlain.conflict_hold` "출처끼리 값이 달라 확인 중" | DetailTabs · 돈 카드에 더할 것 "확인 불가(자료끼리 값이 달라 확인 중)" | 출처끼리 → 자료끼리 | 다른 보드(DetailTabs) |
-| 213 | [사유] `empty.reasonPlain.partial_missing` "일부 값이 빠짐" | — | — | 빠짐(목업 어디에도 없음) |
+| 213 | [사유] `empty.reasonPlain.partial_missing` "일부 값이 빠짐" | — | — | 있음(고침 SH-12) |
 | 214 | [사유] `empty.reasonPlain.identity_unconfirmed` | ListTable · 표 단지 줄 "공식 홈페이지가 이 단지 것인지 확인 전" · DetailTabs · 이름·상태 줄에 더할 것 | 같음 | 다른 보드(ListTable·DetailTabs) |
 | 215 | [사유] `empty.reasonPlain.other_complex_site` | DetailTabs · 이름·상태 줄에 더할 것 "다른 단지의 페이지" | 같은 뜻 | 다른 보드(DetailTabs) |
 | 216 | [사유] `empty.reasonPlain.no_phrase` "접수 문구를 찾지 못함" | Ops · 접수 상태를 사람이 확인해야 하는 단지 "접수 문구 없음" | 같은 뜻 | 다른 보드(Ops) |
 | 217 | [사유] `empty.reasonPlain.phrase_inconclusive` "문구로는 판단할 수 없음" | Ops · 접수 상태를 사람이 확인해야 하는 단지 "문구로 판단 불가" | 같은 뜻 | 다른 보드(Ops) |
 | 218 | [사유] `empty.reasonPlain.not_target` "점수 계산 대상 아님" | ListTable · 표 단지 줄 "점수 계산 대상 아님(공공분양)" | 같음 | 다른 보드(ListTable) |
-| 219 | [사유] `empty.reasonPlain.input_blocked` "입력이 막혀 판정하지 않음" | — | — | 빠짐(목업 어디에도 없음) |
+| 219 | [사유] `empty.reasonPlain.input_blocked` "입력이 막혀 판정하지 않음" | — | — | 있음(고침 SH-12) |
 | 220 | [사유] `empty.reasonPlain.unresolved` "자동 확인이 끝나지 않음" | ListTable · 표 단지 줄 | 같음 | 다른 보드(ListTable) |
 | 221 | [사유] `empty.reasonPlain.unjudged` "점수 계산 전" | ListTable · 표 단지 줄 | 같음 | 다른 보드(ListTable) |
-| 222 | [사유] `empty.reasonPlain.not_entered` "내 조건(시나리오)에 입력하지 않음" | — | (Scenario의 요건 칸 "미입력"은 다른 표시) | 빠짐(목업 어디에도 같은 문구 없음) |
+| 222 | [사유] `empty.reasonPlain.not_entered` "내 조건(시나리오)에 입력하지 않음" | — | (Scenario의 요건 칸 "미입력"은 다른 표시) | 있음(고침 SH-12) |
 | 223 | [사유] `empty.reasonPlain.no_sample` "비교할 거래가 없음" | Compare · 위 화면에서 접혀 있거나 가끔만 나오는 모습 "비교할 거래가 없어요([사유])" | 같은 뜻 | 다른 보드(Compare) |
-| 224 | [사유] `empty.reasonPlain.human_check` "사람 확인 기다림" | — | (Ops "다시 판정·발행 기다리는 중"은 다른 뜻) | 빠짐(목업 어디에도 없음) |
+| 224 | [사유] `empty.reasonPlain.human_check` "사람 확인 기다림" | — | (Ops "다시 판정·발행 기다리는 중"은 다른 뜻) | 있음(고침 SH-12) |
 | 225 | [사유] `empty.reasonPlain.no_value` "공고에 값이 없음" | ListTable · 표 단지 줄 | 같음 | 다른 보드(ListTable) |
 | 226 | [접수 배지] 접수 가능 = 강조 (`components/IntakeBadge.tsx` · `intake.status.가능` "접수 가능") | Shell · §4 상태 표시(배지) 모음 "접수 가능" (파란 바탕) | 같음 | 있음 |
 | 227 | [접수 배지] `intake.status.미정` "접수 미정" (회색) | Shell · §4 "접수 일정 미정" | 접수 미정 → 접수 일정 미정 | 있음 |
@@ -262,22 +262,22 @@
 | 253 | [이름 출처] 이름 옆 라벨 배지/이름 버튼 (NameLabelBadge·NameWithProvenance · `page.common.nameProv.open`/`openNoLabel`) | DetailTabs · 이름·상태 줄에 더할 것 · ListTable · 표 "이름 출처" | 같음 | 다른 보드(DetailTabs·ListTable) |
 | 254 | [배지] 의미는 색이 아니라 글자 (`components/Badge.tsx` tone neutral/muted/strong) | Shell · §4 (모든 배지에 글자) | 색이 더 많이 쓰임 — 글자는 유지 | 있음 |
 | 255 | [숫자] FactCell 포맷(억·만·%·㎡·D±) + 값 없으면 "확인 불가(사유, 확인일)" | Shell · §3 예 "계약금 3,124만원 추정" | 같음 | 있음 |
-| 256 | [숫자] 사실 아닌 숫자 표시 `data-meta` (MetaValue/MetaText, 동작·테스트 속성) | — | — | 빠짐(동작 — 화면에 안 보이는 속성) |
-| 257 | [링크] 외부 링크 안전 검사 safeHref, 위험 URL은 글자만 (`components/ExternalLink.tsx`) | Shell · §3 "원문 주소" 링크 (검사는 표시 없음) | — | 빠짐(동작 — 목업 표시 없음) |
+| 256 | [숫자] 사실 아닌 숫자 표시 `data-meta` (MetaValue/MetaText, 동작·테스트 속성) | — | — | 문구로만(고침 SH-21) |
+| 257 | [링크] 외부 링크 안전 검사 safeHref, 위험 URL은 글자만 (`components/ExternalLink.tsx`) | Shell · §3 "원문 주소" 링크 (검사는 표시 없음) | — | 문구로만(고침 SH-21) |
 | 258 | [용어] ⓘ 버튼 + aria-label `glossary.open` "{term} 뜻 보기" (`components/Term.tsx`) | Shell · §3 "용어 '?' 를 눌렀을 때" | ⓘ → ? | 있음 |
 | 259 | [용어] 팝오버: 용어 이름 + 한 줄 정의 (`glossary.items.*`) | Shell · §3 팝오버 "전매 …" | 같음 | 있음 |
 | 260 | [용어] `glossary.more` "용어 모음에서 보기" → /glossary#key (지역·기준일·상황 쿼리 유지) | Shell · §3 "용어 사전에서 보기" | 용어 모음 → 용어 사전 (쿼리 유지는 표시 없음) | 있음 |
 | 261 | [용어] Esc·바깥 누르면 닫힘 | Shell · §3 "Esc나 바깥을 누르면 닫혀요" | 같음 | 문구로만 |
-| 262 | [용어] 모바일 아래 시트 | Shell · §3 "휴대폰에서는 아래에서 올라오는 판으로" | 같음 | 문구로만 |
-| 263 | [용어] 모바일 시트 닫기 `glossary.close` "닫기" | — | — | 빠짐(목업에 없음) |
-| 264 | [용어] 라우터 밖이면 링크 없음 (동작) | — | — | 빠짐(동작) |
+| 262 | [용어] 모바일 아래 시트 | Shell · §3 "휴대폰에서는 아래에서 올라오는 판으로" | 같음 | 있음(고침 SH-19) |
+| 263 | [용어] 모바일 시트 닫기 `glossary.close` "닫기" | — | — | 있음(고침 SH-19) |
+| 264 | [용어] 라우터 밖이면 링크 없음 (동작) | — | — | 문구로만(고침 SH-21) |
 | 265 | [상태] QueryState 로딩 `app.loading` (`pages/_shared/index.tsx`, role=status) | Shell · §7 첫 카드 "불러오는 중…" (뼈대 줄 3개) | 뼈대 줄 새로 | 있음 |
 | 266 | [상태] 일반 오류 `page.common.loadError` "불러오지 못했습니다: {detail}" (EmptyState) | Shell · §7 "불러오지 못했어요 / 잠시 뒤 다시 해 주세요 / [다시 시도]" | 일반 오류에 다시 시도 버튼이 새로 생김 (현재는 준비 중일 때만) | 있음 |
 | 267 | [상태] 준비 중 `page.common.materializePending` (503 재시도 중) | Shell · §7 "이 기준일 결과를 만드는 중이에요 / 자동으로 다시 불러와요" | 같은 뜻 | 있음 |
 | 268 | [상태] 아직 준비 중 `page.common.materializePendingStill` + 다시 시도 `app.retry` | Shell · §7 "오래 걸리면 다시 시도를 눌러 주세요" | 같은 뜻 | 문구로만 |
 | 269 | [상태] 발행 뒤 만든 시나리오 결과 없음 `page.common.scenarioMissing` | Shell · §7 "이 상황의 결과가 아직 없어요" | 시나리오 #n → 이 상황 | 있음 |
 | 270 | [상태] 시나리오 실행 링크 `page.common.scenarioMissingRun` "시나리오 실행 화면으로" | Shell · §7 "내 조건 화면에서 실행하기" | 같은 뜻 | 있음 |
-| 271 | [상태] 이전 값 보이는 동안 새 조건 준비 중 (isPlaceholderData + 준비 중, M7) | Shell · §7 "보던 기준일과 저장된 화면이 다를 때도 안내가 떠요" | 뜻이 같은지 불분명 | 빠짐(목업 문구가 이 상태를 가리키는지 확인 안 됨) |
+| 271 | [상태] 이전 값 보이는 동안 새 조건 준비 중 (isPlaceholderData + 준비 중, M7) | Shell · §7 "보던 기준일과 저장된 화면이 다를 때도 안내가 떠요" | 뜻이 같은지 불분명 | 문구로만(고침 SH-21) |
 | 272 | [상태] 데이터 빈 경우 문구 (QueryState empty) | 각 화면 보드 빈 상태 | 화면마다 | 다른 보드(각 화면) |
 | 273 | [상태] 기준일 없음 `app.noSnapshot` (NoSnapshot) | Shell · §7 "아직 기준일이 없어요" | 같은 뜻 | 있음 |
 | 274 | [상태] 지역 첫 적재 중 `app.noSnapshotBootstrapping` | Shell · §7 "지역을 처음 분석 중이면 끝날 때까지 기다려 주세요." | 같은 뜻 | 있음 |
@@ -286,19 +286,19 @@
 | 277 | [차트 틀] 데이터 라벨 배지(중복 제거) | Shell · §8 "추정" | 같음 | 있음 |
 | 278 | [차트 틀] 추가 배지 자리(불안정·동률 등) | Compare · 점수 비교 줄 "동률·순위가 흔들려요·근거와 달라요·다시 판정 필요 배지는 서버가 준 값 그대로" | 같음 | 다른 보드(Compare) |
 | 279 | [차트 틀] 부제 | Shell · §8 "한 줄 부제" | 같음 | 있음 |
-| 280 | [차트 틀] 빈 상태 emptyReason → EmptyState | Shell · §8 "값이 없으면 '자료가 없어요(이유)'" | 같은 뜻 | 문구로만 |
+| 280 | [차트 틀] 빈 상태 emptyReason → EmptyState | Shell · §8 "값이 없으면 '자료가 없어요(이유)'" | 같은 뜻 | 있음(고침 SH-18) |
 | 281 | [차트 틀] 표로 보기 `table.show` (`components/DataTableToggle.tsx`, aria-expanded) | Shell · §8 "표로 보기" | 같음 | 있음 |
 | 282 | [차트 틀] 표 닫기 `table.hide` | DetailTabs · 표로 보기 — 가격 전망 사다리 "버튼 글자는 '표 닫기'로 바뀌어요" | 같음 | 다른 보드(DetailTabs) |
-| 283 | [차트 틀] 표 caption (sr-only `table.caption` "{title} 데이터") | — | — | 빠짐(목업에 없음 — 화면 낭독용) |
-| 284 | [차트 틀] 표 빈 행 `empty.noData` | — | — | 빠짐(목업에 없음) |
-| 285 | [차트 틀] 표 칸: Fact → FactCell(출처 열기) · 숫자 → 파생값 · 글자 · 빈 값 "확인 불가" | — | 펼친 표 모습은 Shell에 없음 (화면별 표 열은 각 화면 대응표) | 빠짐(Shell엔 펼친 표 그림 없음) |
-| 286 | [차트] 화면에 들어올 때 불러오기 + 자리표시 `chart.notRendered` "차트 준비 중" (`charts/EChart.tsx`) | Shell · §8 "차트 자리" (점선 상자) | 문구 "차트 준비 중" 없음 | 빠짐(목업에 '차트 준비 중' 문구·늦은 불러오기 표시 없음) |
+| 283 | [차트 틀] 표 caption (sr-only `table.caption` "{title} 데이터") | — | — | 있음(고침 SH-18) |
+| 284 | [차트 틀] 표 빈 행 `empty.noData` | — | — | 있음(고침 SH-18) |
+| 285 | [차트 틀] 표 칸: Fact → FactCell(출처 열기) · 숫자 → 파생값 · 글자 · 빈 값 "확인 불가" | — | 펼친 표 모습은 Shell에 없음 (화면별 표 열은 각 화면 대응표) | 있음(고침 SH-18) |
+| 286 | [차트] 화면에 들어올 때 불러오기 + 자리표시 `chart.notRendered` "차트 준비 중" (`charts/EChart.tsx`) | Shell · §8 "차트 자리" (점선 상자) | 문구 "차트 준비 중" 없음 | 있음(고침 SH-18) |
 | 287 | [차트] 차트 role=img + aria-label(제목) | Main · 미분양 카드 svg role=img aria-label | 같음 | 다른 보드(Main) |
-| 288 | [차트] SVG 그리기·다크 색판 (`charts/palette.ts`, 동작) | — | — | 빠짐(목업은 밝은 색만) |
+| 288 | [차트] SVG 그리기·다크 색판 (`charts/palette.ts`, 동작) | — | — | 있음(고침 SH-20) |
 | 289 | [404] 없는 주소 h1 `page.notFound.title` "페이지를 찾을 수 없습니다" (`pages/not-found/index.tsx`) | Shell · §9 "찾는 화면이 없어요" | 바뀜 | 있음 |
-| 290 | [404] 모바일 읽기 전용 정책 handle | Shell · §2 휴대폰 칩 (화면 목록에 404 없음) | — | 빠짐(목업에 없음) |
-| 291 | [/__charts] 개발 전용 차트 갤러리 (`app/ChartGalleryPage.tsx` · `chart.gallery.title` "차트 갤러리", `chart.gallery.note`, 상태 `chart.gallery.state.*`) | Coverage · 그림으로 그리지 않은 것 "차트 갤러리(/__charts)" | — | 빠짐(사유: 개발 전용 화면이라 목업에서 뺌 — Coverage 보드가 명시, 기능은 그대로 둠) |
-| 292 | [/__charts] 갤러리 불러오는 동안 `app.loading` | — | — | 빠짐(사유: 위와 같음) |
+| 290 | [404] 모바일 읽기 전용 정책 handle | Shell · §2 휴대폰 칩 (화면 목록에 404 없음) | — | 있음(고침 SH-9) |
+| 291 | [/__charts] 개발 전용 차트 갤러리 (`app/ChartGalleryPage.tsx` · `chart.gallery.title` "차트 갤러리", `chart.gallery.note`, 상태 `chart.gallery.state.*`) | Coverage · 그림으로 그리지 않은 것 "차트 갤러리(/__charts)" | — | 문구로만(고침 SH-21) |
+| 292 | [/__charts] 갤러리 불러오는 동안 `app.loading` | — | — | 문구로만(고침 SH-21) |
 | 293 | [API] GET /health (판정기 상태 띠) | Shell · §2 첫 띠 | 호출 표시 없음 | 있음 |
 | 294 | [API] GET /regions (지역 고르기·열쇠 확인) | Shell · 머리줄 지역 select | 호출 표시 없음 | 있음 |
 | 295 | [API] GET /regions/{id}/snapshots (기준일·감시 멈춤 다시 확인) | Shell · 머리줄 기준일 select · §2 "다시 확인" | 호출 표시 없음 | 있음 |
@@ -309,64 +309,14 @@
 
 ## 요약
 
-전체 299 · 있음 157 · 문구로만 34 · 다른 보드 54 · 빠짐 54
+전체 299 · 있음 202 · 문구로만 43 · 다른 보드 54 · 빠짐 0
+
+(2026-10-16 목업 고침 반영 — 상태 칸에 '고침 SH-n'이 붙은 줄 85개. 고친 내용은 `../fixes/fixes-Shell.md`)
 
 ### 빠짐 목록
 
-- #9 [틀] 출처 서랍에 지금 보는 리비전 알리기 — 동작 — 화면에 안 보임, 목업 표시 없음
-- #22 [머리줄] 메뉴 이동 때 `?region·snapshot·scenario` 유지 (location.search, 동작) — 동작 — 목업 표시 없음
-- #37 [기준일] 기본 선택 = 최신 기준일의 최신 발행 리비전 — 동작 — 규칙이 목업에 적혀 있지 않음
-- #41 [상황] 꺼짐 disabled prop — 목업에 없음
-- #42 [상황] 시나리오 늦게 와도 자리 미리 잡기 (CLS, 동작) — 동작
-- #44 [상황] 선택은 URL `?scenario=`로 공유 — 동작 — 목업 표시 없음
-- #46 [열쇠] 상태 `auth.state.none` "토큰 없음" — 목업에 없음
-- #49 [열쇠] 상태 `auth.state.unknown` "토큰 설정됨" — 목업에 없음
-- #51 [화면] 다크 상태 문구 `header.themeDark` "다크" — 목업에 '어둡게' 없음
-- #52 [화면] 다크 모드 자체 — 목업은 밝은 화면만
-- #53 [화면] 테마 기억 localStorage `sa.theme`·시스템 설정 따르기 (동작) — 동작
-- #54 [머리줄] 모바일 '설정' 접기 안에 열쇠·테마 — 목업에 없음
-- #68 [쓰기] 쓰기 요청 403 → 읽기 전용으로 표시 — 동작
-- #75 [알림] duration 0 = 직접 닫을 때까지 — 목업에 없음
-- #77 [열쇠 창] 모달 (배경 어둡게, aria-modal=true) — 목업은 창만 — 배경 없음
-- #80 [열쇠 창] 사유 `auth.reason.missing` "이 서버는 API 토큰이 필요합니다" — 목업에 없음
-- #81 [열쇠 창] 사유 `auth.reason.manual` "토큰을 바꾸거나 지울 수 있습니다" — 목업에 없음
-- #94 [열쇠 창] Esc로 닫기 — 목업에 안내 없음
-- #95 [열쇠 창] 저장 알림 `auth.savedWrite` "쓰기 토큰을 저장했습니다" — 목업 알림 예에 없음
-- #96 [열쇠 창] 저장 알림 `auth.savedRead` "…저장·실행 버튼은 꺼집니다" — 목업 알림 예에 없음
-- #97 [열쇠 창] 저장소 못 씀 `auth.notPersisted` "… 이 탭에서만 유지됩니다" — 목업에 없음
-- #98 [열쇠 창] 지움 알림 `auth.cleared` — 목업에 없음
-- #99 [열쇠 창] 저장·지움 뒤 모든 쿼리 다시 (동작) — 동작
-- #111 [출처] Esc로 닫기 — 출처 창 Esc 안내 없음 — §3 Esc 문구는 용어 팝오버 것
-- #114 [출처] 저장본 검증 실패 `page.common.storedViewMismatch` — 목업 어디에도 없음
-- #128 [출처] 원문 닫기 `provenance.rawTextHide` — 목업에 없음
-- #138 [출처] 상충 항목 단위 근거 — 목업 상충 칸에 없음
-- #139 [출처] 상충 항목 원문 주소 링크 — 목업 상충 칸에 없음
-- #142 [출처] 연 순간 리비전으로 고정 (화면 리비전 바뀌어도 안 따라감, 동작) — 동작
-- #161 [작업] 진행 수 없을 때 미정 막대 — 목업에 없음
-- #170 [작업] 2초 폴링 GET /jobs/{id}, done/failed에서 멈춤, onDone/onFailed 1회 (동작) — 동작
-- #187 [범례] Esc로 접기 — 목업에 안내 없음
-- #201 [라벨] 사유 40자 넘으면 줄임 `label.truncated` "{text}…(전체는 숫자를 눌러 보기)" + title 전문 — 목업 어디에도 없음
-- #202 [라벨] 쉬운 말 사유 + 원 사유 title `empty.reasonOriginal` "원래 사유: {reason}" — 목업 어디에도 없음
-- #203 [라벨] 좁은 칸 줄바꿈 wrap (동작) — 동작
-- #207 [사유] `empty.reasonPlain.not_collected` "아직 수집하지 않음" — 목업 어디에도 없음
-- #210 [사유] `empty.reasonPlain.source_missing` "출처 자료가 없음" — 목업 어디에도 없음
-- #213 [사유] `empty.reasonPlain.partial_missing` "일부 값이 빠짐" — 목업 어디에도 없음
-- #219 [사유] `empty.reasonPlain.input_blocked` "입력이 막혀 판정하지 않음" — 목업 어디에도 없음
-- #222 [사유] `empty.reasonPlain.not_entered` "내 조건(시나리오)에 입력하지 않음" — 목업 어디에도 같은 문구 없음
-- #224 [사유] `empty.reasonPlain.human_check` "사람 확인 기다림" — 목업 어디에도 없음
-- #256 [숫자] 사실 아닌 숫자 표시 `data-meta` (MetaValue/MetaText, 동작·테스트 속성) — 동작 — 화면에 안 보이는 속성
-- #257 [링크] 외부 링크 안전 검사 safeHref, 위험 URL은 글자만 — 동작 — 목업 표시 없음
-- #263 [용어] 모바일 시트 닫기 `glossary.close` "닫기" — 목업에 없음
-- #264 [용어] 라우터 밖이면 링크 없음 (동작) — 동작
-- #271 [상태] 이전 값 보이는 동안 새 조건 준비 중 (isPlaceholderData + 준비 중, M7) — 목업 문구가 이 상태를 가리키는지 확인 안 됨
-- #283 [차트 틀] 표 caption (sr-only `table.caption` "{title} 데이터") — 목업에 없음 — 화면 낭독용
-- #284 [차트 틀] 표 빈 행 `empty.noData` — 목업에 없음
-- #285 [차트 틀] 표 칸: Fact → FactCell(출처 열기) · 숫자 → 파생값 · 글자 · 빈 값 "확인 불가" — Shell엔 펼친 표 그림 없음
-- #286 [차트] 화면에 들어올 때 불러오기 + 자리표시 `chart.notRendered` "차트 준비 중" — 목업에 '차트 준비 중' 문구·늦은 불러오기 표시 없음
-- #288 [차트] SVG 그리기·다크 색판 — 목업은 밝은 색만
-- #290 [404] 모바일 읽기 전용 정책 handle — 목업에 없음
-- #291 [/__charts] 개발 전용 차트 갤러리 — 사유: 개발 전용 화면이라 목업에서 뺌 — Coverage 보드가 명시, 기능은 그대로 둠
-- #292 [/__charts] 갤러리 불러오는 동안 `app.loading` — 사유: 위와 같음
+- 없음 — 2026-10-16 목업 고침으로 모두 그렸거나(있음) 보드 맨 아래 '구현할 때 지금 동작 그대로 유지' 상자에 적었어요(문구로만). 목록: `../fixes/fixes-Shell.md`
+
 
 
 ## 새로 더한 것 (기존에 없던 것)

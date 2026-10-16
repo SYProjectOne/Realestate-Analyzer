@@ -29,11 +29,11 @@
 | 21 | 카드 안 동 목록 (모든 동을 다 보임) | LivingAreas · 카드 동 5개 + "나머지 46개 더 보기" 버튼 | 처음 5개만 보이고 더 보기로 접음 | 있음 |
 | 22 | 동 체크박스 aria-label (`page.G0_2.selectDong` "{name} 선택") | LivingAreas · 카드 동 체크박스 aria-label "만석동 고르기" | 선택 → 고르기 | 있음 |
 | 23 | 동 이름 + 코드(이름이 코드와 다를 때만 코드 표시) | LivingAreas · 카드 동 줄 "만석동 2812510100" | — | 있음 |
-| 24 | 이름을 모를 때 코드만 표시 (`dongName` 폴백) | — | — | 빠짐(목업에 없음) |
+| 24 | 이름을 모를 때 코드만 표시 (`dongName` 폴백) | — | — | 있음(고침 LA-2 — 펼친 모습 "동 이름을 모를 때" 코드만 보이는 줄) |
 | 25 | 빈 카드 안내 (`EmptyState` · `page.G0_2.dropHint`) | LivingAreas · "새 생활권 1" 카드 "동을 여기로 끌어다 놓거나, 체크한 뒤 위에서 '이리로 옮기기'를 누르세요" | 문구 길게 | 있음 |
-| 26 | 동 끌어다 다른 카드에 놓기 (draggable·onDrop) | LivingAreas · 도구줄 "동을 끌어다 다른 카드에 놓아도 돼요" | — | 문구로만 |
-| 27 | 고른 동을 끌면 고른 동 전부를 옮김 (`selected.has(code) ? [...selected]`) | — | — | 빠짐(목업에 없음 — 여러 개 끌기 동작) |
-| 28 | 옮긴 뒤 고른 표시 지움 (`setSelected(new Set())`) | — | — | 빠짐(목업에 없음 — 동작) |
+| 26 | 동 끌어다 다른 카드에 놓기 (draggable·onDrop) | LivingAreas · 도구줄 "동을 끌어다 다른 카드에 놓아도 돼요" | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자에도 적음) |
+| 27 | 고른 동을 끌면 고른 동 전부를 옮김 (`selected.has(code) ? [...selected]`) | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자) |
+| 28 | 옮긴 뒤 고른 표시 지움 (`setSelected(new Set())`) | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자) |
 | 29 | 저장 전 검사: 모든 동은 정확히 한 생활권 (`validate` — 미배정·중복·빈 이름) | LivingAreas · 펼친 모습 "저장 전에 막힐 때 · 저장 오류" "고칠 것이 있으면 꺼져요" | — | 있음 |
 | 30 | 저장 버튼 (`page.G0_2.save` "저장") | LivingAreas · 저장 줄 "생활권 저장" | 저장 → 생활권 저장 | 있음 |
 | 31 | 저장 꺼짐: 읽기 전용·검사 실패·저장 중 (+ title `auth.readOnlyHint`) | LivingAreas · 펼친 모습 "읽기 전용 토큰이면 저장 버튼이 꺼지고 '읽기 전용 토큰으로는 저장·실행할 수 없어요'가 보여요" + 꺼진 버튼 | — | 있음 |
@@ -43,7 +43,7 @@
 | 35 | 저장 오류 role=alert (`page.G0_2.saveError` "저장하지 못했습니다: {detail}") | LivingAreas · 펼친 모습 role=alert "저장하지 못했어요: [서버 오류 내용]" | — | 있음 |
 | 36 | 서버 422 칸별 오류 목록 (`fieldErrors` "loc: msg") | LivingAreas · 펼친 모습 "- [칸 위치]: [칸 오류 내용]" | — | 있음 |
 | 37 | 저장 성공 토스트 (`page.G0_2.saved` "생활권을 저장했습니다 — 재판정 잡이 등록됐습니다") | LivingAreas · 펼친 모습 "생활권을 저장한 뒤" "생활권을 저장했어요 — 다시 판정하는 작업을 등록했어요" | 재판정 잡 → 다시 판정하는 작업 | 있음 |
-| 38 | 저장 뒤 발행 진행 PublishJobProgress (job_id) — 작업 이름·상태·진행 | LivingAreas · 펼친 모습 "생활권을 저장한 뒤" role=status "작업 진행 [작업 이름] 실행 중 [n]/[m] · 단계 [단계 이름]" | — | 있음 |
+| 38 | 저장 뒤 발행 진행 PublishJobProgress (job_id) — 작업 이름·상태·진행 | LivingAreas · 펼친 모습 "생활권을 저장한 뒤" role=status "작업 진행 [작업 이름] 실행 중 [n]/[m] · 단계 [단계 이름]" | — | 있음(고침 LA-1 — 진행 수가 없을 때 줄무늬 미정 막대 추가) |
 | 39 | 발행 대기 안내 (`job.publishPending` "작업이 끝나 새 리비전이 발행될 때까지 화면은 지금 발행 리비전을 보입니다") | LivingAreas · 펼친 모습 "새 수정본이 발행될 때까지 화면은 지금 수정본을 보여요" + 저장 줄 "끝날 때까지 지금 화면 그대로예요" | 리비전 → 수정본 | 있음 |
 | 40 | 발행 완료 (`job.publishDone`) | LivingAreas · 펼친 모습 "끝나면 '새 수정본이 발행됐어요'" | — | 있음 |
 | 41 | 발행 막힘·실패·멈춤·미룸·재등록 등 결과 문구 (`job.publishBlocked*`·`publishFailed`·`publishExpired`·`publishChainCapped`·`publishDeferred`·`publishRedeferred`) | Market · "작업 진행 · 상태 모음" (LivingAreas 보드: "발행이 막히거나 실패하면 이유가 이 칸에 나와요 (지역 시장 보드 … 와 같아요)") | — | 다른 보드(Market) |
@@ -55,9 +55,9 @@
 | 47 | 선택 빼기 × 버튼 (aria-label `page.G0_2.expand.remove` "{name} 빼기") | LivingAreas · "지금 고른 곳" × 버튼 aria-label "경기도 김포시 빼기" | — | 있음 |
 | 48 | 마지막 하나는 뺄 수 없음(버튼 꺼짐) | LivingAreas · "지금 고른 곳" 꺼진 × title "마지막 하나는 뺄 수 없어요" + 펼친 모습 "하나만 남으면 뺄 수 없어요" | — | 있음 |
 | 49 | 지역 이름 입력칸 (`page.G0_2.expand.name` "지역 이름", 읽기 전용이면 꺼짐) | LivingAreas · "지역 범위를 …" "지역 이름" 입력칸 | — | 있음 |
-| 50 | 지역 이름 최대 100자 (`maxLength={100}`) | — | — | 빠짐(목업에 없음) |
+| 50 | 지역 이름 최대 100자 (`maxLength={100}`) | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자, 입력칸 maxlength=100) |
 | 51 | 추가할 지역 검색칸 (`page.G0_2.expand.search` "추가할 지역 검색", placeholder `page.G0.searchPlaceholder`) | LivingAreas · "더할 곳 찾기" 입력칸 placeholder "2글자 이상" | 추가할 지역 검색 → 더할 곳 찾기 | 있음 |
-| 52 | 검색 2자 이상 + 300ms 디바운스 | — | — | 빠짐(목업에 없음 — 동작) |
+| 52 | 검색 2자 이상 + 300ms 디바운스 | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자) |
 | 53 | 후보 없음 (`page.G0.noCandidates`) | LivingAreas · 펼친 모습 "범위 찾기 · 다른 상태" "일치하는 후보가 없어요" | — | 있음 |
 | 54 | 추가 후보 목록 ul aria-label (`page.G0_2.expand.candidates` "추가 후보") — 이름·종류 배지·법정동 수 | LivingAreas · "더할 곳 찾기" 아래 후보 3줄 "경기도 김포시 시군구 법정동 72개" | — | 있음 |
 | 55 | 후보 추가 버튼 (`page.G0_2.expand.add` "추가") | LivingAreas · 후보 줄 "추가" | — | 있음 |
@@ -76,7 +76,7 @@
 | 68 | 잡 끝나면 기준일 목록·사실 화면 다시 읽기 (`invalidateQueries(snapshots)`, `invalidateFactViews`) | LivingAreas · 펼친 모습 "작업이 끝나면 기준일 목록과 화면 숫자를 새로 불러와요" | — | 문구로만 |
 | 69 | 이름만 + 발행 리비전 있음 (`page.G0_2.expand.nameOnlyPublish` "…이름이 발행 리비전 보고서(표지·제목)에 들어가 발행 작업이 등록됐습니다") | LivingAreas · 펼친 모습 "발행된 수정본이 있으면: … 발행 작업을 등록했어요 (+ 진행 막대)" | — | 있음 |
 | 70 | 이름만 + 발행 리비전 없음 (`page.G0_2.expand.nameOnly` "…재판정이 없고, 발행할 리비전이 없어 발행 작업도 없습니다(이름만 바뀜)") | LivingAreas · 펼친 모습 "발행된 수정본이 없으면: … 다시 판정도, 발행 작업도 없어요 (이름만 바뀜)" | — | 있음 |
-| 71 | 저장 뒤 선택·이름을 서버 응답 값으로 맞춤 | — | — | 빠짐(목업에 없음 — 동작) |
+| 71 | 저장 뒤 선택·이름을 서버 응답 값으로 맞춤 | — | — | 문구로만(고침 LA-3 — "구현 때 유지" 상자) |
 | 72 | 화면의 지역명은 서버 값만 사용(하드코딩 없음) | LivingAreas · 모든 이름이 실데이터 | — | 있음 |
 | 73 | 미사용 문구 `page.G0_2.supplyRef` "공급 기준치" | — | — | 빠짐(현재 코드에서 쓰지 않는 문구 — Coverage 보드 "그림으로 그리지 않은 것"에 명시) |
 | 74 | API `GET /regions/{id}` (`useRegion`) | LivingAreas · 화면 전체(호출 주체) | — | 있음 |
@@ -85,16 +85,11 @@
 | 77 | API `PATCH /regions/{id}` {selections, name?} (`useUpdateRegionSelections`) | LivingAreas · "범위 저장하고 새 수정본에서 다시 판정"(호출 주체) | — | 있음 |
 | 78 | API `GET /jobs/{id}` 사슬 + `GET /regions/{id}/snapshots` (PublishJobProgress·useSnapshot) | LivingAreas · 펼친 모습 "생활권을 저장한 뒤" 진행 칸(호출 주체) | — | 있음 |
 
-요약: 전체 78 · 있음 66 · 문구로만 4 · 다른 보드 1 (Market) · 빠짐 7
+요약: 전체 78 · 있음 67 · 문구로만 9 · 다른 보드 1 (Market) · 빠짐 1 (2026-10-16 고침 반영 — fixes/fixes-LivingAreas.md)
 
 빠짐 목록:
-- #24 이름을 모를 때 코드만 보이는 동 — 목업에 없음
-- #27 고른 동을 끌면 고른 것 전부를 옮김 — 목업에 없음(여러 개 끌기 동작)
-- #28 옮긴 뒤 고른 표시 지움 — 목업에 없음(동작)
-- #50 지역 이름 100자 제한 — 목업에 없음
-- #52 범위 검색 2자 이상·300ms 디바운스 — 목업에 없음(동작)
-- #71 저장 뒤 선택·이름을 서버 응답으로 맞춤 — 목업에 없음(동작)
-- #73 `page.G0_2.supplyRef` "공급 기준치" — 코드에서 쓰지 않는 문구(의도적 생략)
+- #73 `page.G0_2.supplyRef` "공급 기준치" — 코드에서 쓰지 않는 문구(의도적 생략, 고치지 않음)
+- 고침 전 빠짐 7개 중 #24 → 있음(고침 LA-2), #27·#28·#50·#52·#71 → 문구로만(고침 LA-3 "구현 때 유지" 상자)
 
 ## 새로 더한 것 (기존에 없던 것)
 

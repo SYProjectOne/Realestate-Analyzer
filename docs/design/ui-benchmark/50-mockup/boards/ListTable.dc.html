@@ -47,6 +47,8 @@ sc-for,sc-if{display:contents}
 .ck{width:20px;height:20px;accent-color:#2350D8;cursor:pointer;margin:0}
 .cklab{display:inline-flex;align-items:center;gap:8px;font-size:14px;min-height:40px;padding:0 12px;border:1px solid #E3E7EC;border-radius:10px;background:#FFFFFF;cursor:pointer}
 .phone{width:360px;flex:0 0 auto;background:#F3F5F7;border:8px solid #14181F;border-radius:36px;overflow:hidden;box-sizing:border-box}
+.fix{outline:3px dashed #E0A800;outline-offset:4px}
+.fixtag{display:inline-flex;align-items:center;gap:4px;background:#FFD43B;color:#3D2E00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;vertical-align:middle;white-space:nowrap}
 </style>
 </helmet>
 <div style="font-family: 'IBM Plex Sans KR', sans-serif; color: #14181F; background: #F3F5F7; min-height: 100%;">
@@ -78,6 +80,8 @@ sc-for,sc-if{display:contents}
 </div>
 </div>
 </header>
+
+<div class="fix" role="note" style="max-width: 1232px; margin: 16px auto 0; background: #FFF8DB; border: 1px solid #F0D36B; border-radius: 12px; padding: 10px 16px; font-size: 14px; color: #3D2E00; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;"><span class="fixtag">고침 안내</span>이 보드에서 고친 곳 8개 — 노란 점선과 '고침' 표가 붙은 곳이에요. 목록: fixes-ListTable.md</div>
 
 <main style="max-width: 1280px; margin: 0 auto; padding: 32px 24px 40px; display: flex; flex-direction: column; gap: 20px;">
 
@@ -132,7 +136,7 @@ sc-for,sc-if{display:contents}
 <select id="f-land" class="inp"><option>전체</option><option>공공택지</option><option>민간택지</option></select>
 </div>
 <div style="display: flex; flex-direction: column; gap: 6px;">
-<label for="f-resale" class="lab">이 날짜 전에 되팔 수 있게 됨</label>
+<label for="f-resale" class="lab">이 날짜 전에 되팔 수 있게 됨 (전매 종료)</label>
 <input id="f-resale" type="date" class="inp">
 </div>
 <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -272,8 +276,8 @@ sc-for,sc-if{display:contents}
 <div role="rowgroup" style="display: table-header-group;"><div role="row" class="tr">
 <div role="columnheader" class="th">단지</div>
 <div role="columnheader" class="th"><span style="display: inline-flex; align-items: center; gap: 4px;">생활권(구) <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg></span></div>
-<div role="columnheader" class="th"><span style="display: inline-flex; align-items: center; gap: 4px;">입주 뒤 10% 넘게 오를 가능성 (판정기) <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg></span></div>
-<div role="columnheader" class="th">단지 종류 · 점수 계산 범위 이유</div>
+<div role="columnheader" class="th fix"><span style="display: inline-flex; align-items: center; gap: 4px;"><span class="fixtag">고침 LT-7</span> 10% 넘게 오를 가능성 (판정기)<br><span style="font-size: 11px;">목표 시점: 입주 + 1년 · 당첨 확률 아님 · 보장 아님</span> <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1 10 5.5H2z" fill="#B7C0CC"></path><path d="M6 13 2 8.5h8z" fill="#B7C0CC"></path></svg></span></div>
+<div role="columnheader" class="th fix"><span class="fixtag">고침 LT-6</span> 단지 종류 · 점수 계산 범위 이유</div>
 <div role="columnheader" class="th">땅 종류</div>
 <div role="columnheader" class="th">총 세대</div>
 <div role="columnheader" class="th">계약금 금액</div>
@@ -297,7 +301,8 @@ sc-for,sc-if{display:contents}
 </div>
 </div>
 </div>
-<p class="note">'단지 종류' 아래 작은 글씨는 점수 계산 범위를 정한 이유예요(서버가 준 문장을 쉬운 말로). '다시 계산 필요' 배지가 붙은 단지는 이 이유가 지금 사실 기준이라 저장된 범위와 다를 수 있어요.</p>
+<p class="fix" style="margin: 0; font-size: 14px; color: #3A4250;"><span class="fixtag">고침 LT-2</span> '마지막으로 바뀐 것' 칸에 바뀐 기록이 없는 단지: <span style="color: #9AA6B6;">없음</span> <span class="mut">(흐린 글씨)</span></p>
+<p class="note fix"><span class="fixtag">고침 LT-6</span> '단지 종류' 아래 작은 글씨는 점수 계산 범위를 정한 이유예요 — <b>서버가 준 문장 그대로</b>(화면이 바꿔 쓰지 않아요). 길면 잘리고 마우스를 올리면 전체가 보여요. '다시 계산 필요' 배지가 붙은 단지는 이 이유가 지금 사실 기준이라 저장된 범위와 다를 수 있어요.</p>
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px;">
@@ -317,6 +322,11 @@ sc-for,sc-if{display:contents}
 <h3 style="margin: 0; font-size: 17px; font-weight: 700;">개수 줄 · 불러오기</h3>
 <p style="margin: 0; font-size: 15px; color: #3A4250;"><b class="num">[전체 수]곳</b> 중 <b class="num">100곳</b>을 보여요 <span role="status" style="font-size: 13px; color: #2350D8;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="vertical-align: -2px;"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg> 나머지 단지를 불러오는 중…</span></p>
 <p class="note">단지가 많은 지역은 처음 100곳을 먼저 보여 주고 나머지를 이어 받아 같은 표 아래에 붙여요.</p>
+<div class="fix" style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EEF1F4; padding-top: 12px;">
+<span class="sub"><span class="fixtag">고침 LT-4</span> 필터를 바꾼 직후 · 새 조건의 화면 자료가 아직 준비 중일 때</span>
+<p role="status" style="margin: 0; font-size: 14px; color: #5B6472; background: #F2F6FF; border-radius: 10px; padding: 8px 12px;">이 기준일(n번째 수정본)의 화면 자료를 준비하는 중이에요 — 잠시 뒤 자동으로 다시 불러와요</p>
+<div style="border: 1px solid #E3E7EC; border-radius: 10px; padding: 8px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px;"><span class="mut">그 아래에는 바꾸기 전 목록이 그대로 보여요</span><span>시티오씨엘 8단지 · 힐스테이트 구월아트파크 · 엘리프 검단 포레듀(AA32블록) …</span></div>
+</div>
 <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EEF1F4; padding-top: 12px;">
 <p style="margin: 0; font-size: 14px; color: #5B6472;" role="status">불러오는 중…</p>
 <p style="margin: 0; font-size: 14px; color: #A3470A;">불러오지 못했어요: [사유] <button type="button" class="btn" style="min-height: 36px; padding: 6px 12px; font-size: 13px; margin-left: 6px;">다시 시도</button></p>
@@ -342,7 +352,18 @@ sc-for,sc-if{display:contents}
 <button type="button" class="btn" disabled style="opacity: 0.6;">내려받는 중…</button>
 <span role="alert" style="font-size: 13px; color: #A3470A;">내려받지 못했어요: [사유]</span>
 </div>
+<div class="fix" style="display: flex; flex-direction: column; gap: 6px;">
+<span class="sub"><span class="fixtag">고침 LT-5</span> CSV 특수 오류</span>
+<span role="alert" style="font-size: 13px; color: #A3470A;">아직 준비 중이에요 — 잠시 뒤 다시 시도하세요 <span class="mut">(화면 자료 준비가 끝나지 않았을 때)</span></span>
+<span role="alert" style="font-size: 13px; color: #A3470A;">서버 오류: 저장된 화면 자료가 검증에 실패했어요(관리자 확인 필요) — [사유]</span>
+</div>
 <p class="note">파일에는 지금 고른 필터·정렬이 그대로 들어가요.</p>
+<div class="fix" style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px;">
+<span class="fixtag">고침 LT-3</span><b>비교 바구니</b><span style="color: #C8CFD8;">2개 골랐어요</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; background: #2A303B; border: 1px solid #3A4250; border-radius: 999px; padding: 6px 10px;">시티오씨엘 8단지 ×</span>
+<span aria-label="#[번호] 빼기" style="display: inline-flex; align-items: center; gap: 6px; background: #2A303B; border: 1px solid #3A4250; border-radius: 999px; padding: 6px 10px;">#[번호] ×</span>
+<span style="color: #C8CFD8;">이름을 아직 못 받은 단지는 '#번호'로 보여요</span>
+</div>
 <div style="background: #14181F; color: #FFFFFF; border-radius: 14px; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px;">
 <b>비교 바구니</b><span style="color: #C8CFD8;">6개 골랐어요</span><span style="color: #C8CFD8;">최대 6개까지 비교해요 — 다른 단지 체크 칸은 잠겨요</span>
 </div>
@@ -391,9 +412,24 @@ sc-for,sc-if{display:contents}
 <summary style="cursor: pointer; color: #5B6472; min-height: 32px;">더 보기 (주변 시세와 가격 차이 · 오를 가능성)</summary>
 <dl style="margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px;">
 <dt class="sub">주변 시세와 가격 차이</dt><dd style="margin: 0;"><span class="v">+8.1%</span> 높아요</dd>
-<dt class="sub">입주 뒤 10% 넘게 오를 가능성</dt><dd style="margin: 0;"><span class="v">53%</span> <span class="est">판정기 추정</span></dd>
+<dt class="sub fix"><span class="fixtag">고침 LT-7</span> 10% 넘게 오를 가능성 (목표 시점: 입주 + 1년)</dt><dd style="margin: 0;"><span class="v">53%</span> <span class="est">판정기 추정</span> <span class="mut">당첨 확률 아님 · 보장 아님</span></dd>
 </dl>
 </details>
+</article>
+<article class="card fix" style="padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+<span><span class="fixtag">고침 LT-1</span> <span class="sub">남동구</span></span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-weight: 700; font-size: 16px; color: #14181F; text-decoration: underline;">힐스테이트 구월아트파크</a><span class="ok">확인됨</span></span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span style="display: inline-flex; align-items: center; background: #2350D8; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;">접수 가능 (선착순)</span></span>
+<span class="num" style="font-size: 17px; font-weight: 700;">7억 6,700만 ~ 9억 800만원</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span class="sub">종합</span><b class="num">4.76</b><span class="b">2위</span><span class="bs" title="점수가 같아 판정기도 순서를 정하지 못했어요">동률</span><span class="sub">상대 비교</span></span>
+</article>
+<article class="card fix" style="padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+<span><span class="fixtag">고침 LT-1</span> <span class="sub">부평구</span></span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><a href="Detail.dc.html" style="font-weight: 700; font-size: 16px; color: #14181F; text-decoration: underline;">산곡역자이힐스테이트앤하늘채</a><span class="ok">확인됨</span></span>
+<span style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;"><span style="display: inline-flex; align-items: center; background: #EEF1F4; color: #5B6472; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px;">접수 상태 확인 못 함</span><span class="mut">자동 확인이 끝나지 않음 · 10.14</span></span>
+<span class="num" style="font-size: 17px; font-weight: 700;">9억 4,100만원</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span class="sub">종합</span><span class="est">확인 불가(점수 계산 전)</span><span class="b" style="color: #5B6472;">참고 후보 (순위만)</span></span>
+<span class="mut">재판정이 필요한 단지는 같은 자리에 <span class="bs">다시 계산 필요</span> 배지가 붙어요 · '점수 계산 대상'은 배지를 생략해요</span>
 </article>
 <button type="button" class="btn" style="justify-content: center;">단지 더 보기 (30 / 100곳)</button>
 </div>
@@ -406,7 +442,7 @@ sc-for,sc-if{display:contents}
 <div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-in" class="lab">접수 상태</label><select id="s-in" class="inp"><option>접수 가능</option></select></div>
 <div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-la" class="lab">생활권(구)</label><select id="s-la" class="inp"><option>미추홀구</option></select></div>
 <div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-land" class="lab">땅 종류 (공공·민간 택지)</label><select id="s-land" class="inp"><option>전체</option></select></div>
-<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-re" class="lab">이 날짜 전에 되팔 수 있게 됨</label><input id="s-re" type="date" class="inp"></div>
+<div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-re" class="lab">이 날짜 전에 되팔 수 있게 됨 (전매 종료)</label><input id="s-re" type="date" class="inp"></div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
 <div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-pmin" class="lab">가격 최소 (억)</label><input id="s-pmin" type="number" inputmode="decimal" class="inp" style="width: 100%;"></div>
 <div style="display: flex; flex-direction: column; gap: 4px;"><label for="s-pmax" class="lab">가격 최대 (억)</label><input id="s-pmax" type="number" inputmode="decimal" class="inp" style="width: 100%;"></div>
@@ -423,12 +459,22 @@ sc-for,sc-if{display:contents}
 
 </div>
 </div>
+
+<div class="fix card" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; border-color: #F0D36B; background: #FFFDF2;">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="fixtag">고침 LT-8</span>구현할 때 지금 동작 그대로 유지 <span style="font-size: 13px; font-weight: 400; color: #5B6472;">· 그림으로 못 그리는 것 (coverage-List 번호)</span></h3>
+<ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: #3A4250;">
+<li>#36 필터 값은 주소 뒤 쿼리에 기억하고, 바꿀 때는 기록을 쌓지 않고 바꿔 끼워요(replace)</li>
+<li>#39 주소의 정렬 키가 모르는 값이면 기본 정렬(종합 점수 큰 값부터, -total)로 돌아가요</li>
+<li>#43 '필터 초기화'는 정렬도 지워 기본 정렬로 돌아가요</li>
+<li>#60 가격·입주 연도 칸에 숫자가 아닌 값이 들어오면 오류 문구 없이 그 필터만 무시해요</li>
+</ul>
+</div>
 </section>
 
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5400}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":6600}}'>
 class Component extends DCLogic {
 renderVals() {
 var self = this;
@@ -458,14 +504,14 @@ var data = [
 { id: 16, name: '힐스테이트 구월아트파크', la: '남동구', ik: '가능', it: '접수 가능 (선착순)', inote: '10.13 공식 홈페이지 확인', lo: 767000000, hi: 908000000, price: '7.67억 ~ 9.08억', dp: 5, resale: '2027-05-28', move: '2030-10', gap: 35.7374, total: 4.76, rank: 2, tie: true, scope: '판정 대상', p10: 0.53, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 가능', land: '민간택지', units: 496, dpw: '4,188만', comp: '0.64 대 1', ct: '84B타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
 { id: 41, name: '엘리프 검단 포레듀(AA32블록)', la: '검단구', ik: '가능', it: '접수 가능 (선착순)', inote: '10.14 공식 홈페이지 확인', lo: 578140000, hi: 608140000, price: '5.78억 ~ 6.08억', dp: 5, resale: '2028-09-10', move: '2028-03', gap: -2.4441, total: 4.76, rank: 2, tie: true, scope: '판정 대상', p10: 0.51, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 가능', land: '공공택지', units: 669, dpw: '2,966만', comp: '0.50 대 1', ct: '64C타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
 { id: 9, name: '검암역자이르네', la: '서해구', ik: '미정', it: '접수 일정 미정', inote: '10.14 확인', lo: 577600000, hi: 594100000, price: '5.78억 ~ 5.94억', dp: 10, resale: '2029-06-04', move: '2028-12', gap: -5.5081, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '판정 대상', p10: 0.54, incl: '민간분양 아파트', review: false, sr: '포함 확정 · 접수 미정', land: null, landWhy: '공고에 값이 없음', units: 601, dpw: '5,859만', comp: '2.48 대 1', ct: '84A타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
-{ id: 1, name: '산곡역자이힐스테이트앤하늘채', la: '부평구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.14', lo: 941000000, hi: 941000000, price: '9.41억', dp: null, dpWhy: '납부 조건 없음', resale: '2027-10-27', move: '2029-12', gap: 38.3824, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '민간택지', units: 1289, dpw: null, comp: null, ct: '', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
-{ id: 2, name: '인천계양 A17블록 신혼희망타운(공공분양)(본청약)', la: '계양구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 508440000, hi: 508440000, price: '5.08억', dp: null, dpWhy: '납부 조건 없음', resale: null, move: '2029-11', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '분류 결과 제외 대상(공공분양)', land: null, landWhy: '공고에 값이 없음', units: 309, dpw: null, comp: null, ct: '', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
-{ id: 3, name: '숭의역 노르웨이숲 더 스카이', la: '미추홀구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.13', lo: 660650000, hi: 757370000, price: '6.61억 ~ 7.57억', dp: 5, resale: '2027-10-07', move: '2030-05', gap: 22.6661, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '민간택지', units: 35, dpw: '3,545만', comp: '1.29 대 1', ct: '69타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
-{ id: 6, name: '시티오씨엘 9단지 오션파크뷰', la: '미추홀구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.13', lo: 695400000, hi: 695400000, price: '6.95억', dp: 5, resale: '2027-09-08', move: '2030-04', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '미해결', p10: null, incl: '아직 분류 안 됨', review: true, sr: '분류 판정이 끝나지 않음(검토 중)', land: '민간택지', units: 1949, dpw: '3,477만', comp: '4.20 대 1', ct: '59.9801타입', lcF: '중도금 일정', lcAt: '2026-10-14', lcS: '중요' },
-{ id: 7, name: '더샵 검단레이크파크(AB23BL)', la: '검단구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.14', lo: 589170000, hi: 659470000, price: '5.89억 ~ 6.59억', dp: 10, resale: '2029-07-03', move: '2029-12', gap: 2.6842, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '공공택지', units: 1403, dpw: '6,243만', comp: '9.13 대 1', ct: '59A타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
-{ id: 8, name: '더샵 검단레이크파크(AB22BL)', la: '검단구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '공식 홈페이지가 이 단지 것인지 확인 전 · 10.14', lo: 605970000, hi: 650270000, price: '6.06억 ~ 6.50억', dp: 10, resale: '2029-07-02', move: '2029-12', gap: 3.3092, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 상태를 확인 못 함', land: '공공택지', units: 1454, dpw: '6,281만', comp: '10.64 대 1', ct: '59A타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
-{ id: 5, name: '검암역 푸르지오 프라베뉴 (B-1BL) 공공분양주택', la: '서해구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 629400000, hi: 629400000, price: '6.29억', dp: null, dpWhy: '납부 조건 없음', resale: '2029-09-08', move: '2029-07', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '분류 결과 제외 대상(공공분양)', land: '공공택지', units: 441, dpw: null, comp: '89.50 대 1', ct: '60A타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
-{ id: 4, name: '인천계양지구 A6블록 공공분양주택(본청약)', la: '계양구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 716540000, hi: 716540000, price: '7.17억', dp: null, dpWhy: '납부 조건 없음', resale: null, move: '2029-06', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '분류 결과 제외 대상(공공분양)', land: null, landWhy: '공고에 값이 없음', units: 663, dpw: null, comp: null, ct: '', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' }
+{ id: 1, name: '산곡역자이힐스테이트앤하늘채', la: '부평구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.14', lo: 941000000, hi: 941000000, price: '9.41억', dp: null, dpWhy: '납부 조건 없음', resale: '2027-10-27', move: '2029-12', gap: 38.3824, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 확인 불가', land: '민간택지', units: 1289, dpw: null, comp: null, ct: '', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 2, name: '인천계양 A17블록 신혼희망타운(공공분양)(본청약)', la: '계양구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 508440000, hi: 508440000, price: '5.08억', dp: null, dpWhy: '납부 조건 없음', resale: null, move: '2029-11', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '포함/제외 classify 제외 클래스(public_sale)', land: null, landWhy: '공고에 값이 없음', units: 309, dpw: null, comp: null, ct: '', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 3, name: '숭의역 노르웨이숲 더 스카이', la: '미추홀구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.13', lo: 660650000, hi: 757370000, price: '6.61억 ~ 7.57억', dp: 5, resale: '2027-10-07', move: '2030-05', gap: 22.6661, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 확인 불가', land: '민간택지', units: 35, dpw: '3,545만', comp: '1.29 대 1', ct: '69타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 6, name: '시티오씨엘 9단지 오션파크뷰', la: '미추홀구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.13', lo: 695400000, hi: 695400000, price: '6.95억', dp: 5, resale: '2027-09-08', move: '2030-04', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '미해결', p10: null, incl: '아직 분류 안 됨', review: true, sr: '포함/제외 classify 미해결(review, 미분류)', land: '민간택지', units: 1949, dpw: '3,477만', comp: '4.20 대 1', ct: '59.9801타입', lcF: '중도금 일정', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 7, name: '더샵 검단레이크파크(AB23BL)', la: '검단구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '자동 확인이 끝나지 않음 · 10.14', lo: 589170000, hi: 659470000, price: '5.89억 ~ 6.59억', dp: 10, resale: '2029-07-03', move: '2029-12', gap: 2.6842, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 확인 불가', land: '공공택지', units: 1403, dpw: '6,243만', comp: '9.13 대 1', ct: '59A타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 8, name: '더샵 검단레이크파크(AB22BL)', la: '검단구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '공식 홈페이지가 이 단지 것인지 확인 전 · 10.14', lo: 605970000, hi: 650270000, price: '6.06억 ~ 6.50억', dp: 10, resale: '2029-07-02', move: '2029-12', gap: 3.3092, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '참고', p10: null, incl: '민간분양 아파트', review: false, sr: '접수 확인 불가', land: '공공택지', units: 1454, dpw: '6,281만', comp: '10.64 대 1', ct: '59A타입', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' },
+{ id: 5, name: '검암역 푸르지오 프라베뉴 (B-1BL) 공공분양주택', la: '서해구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 629400000, hi: 629400000, price: '6.29억', dp: null, dpWhy: '납부 조건 없음', resale: '2029-09-08', move: '2029-07', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '포함/제외 classify 제외 클래스(public_sale)', land: '공공택지', units: 441, dpw: null, comp: '89.50 대 1', ct: '60A타입', lcF: '공식 홈페이지 안내문', lcAt: '2026-10-14', lcS: '중요' },
+{ id: 4, name: '인천계양지구 A6블록 공공분양주택(본청약)', la: '계양구', ik: '확인 불가', it: '접수 상태 확인 못 함', inote: '점수 계산 대상 아님(공공분양) · 10.14', lo: 716540000, hi: 716540000, price: '7.17억', dp: null, dpWhy: '납부 조건 없음', resale: null, move: '2029-06', gap: null, total: null, totalWhy: '점수 계산 전', rank: null, tie: false, scope: '제외', p10: null, incl: '공공분양', review: false, sr: '포함/제외 classify 제외 클래스(public_sale)', land: null, landWhy: '공고에 값이 없음', units: 663, dpw: null, comp: null, ct: '', lcF: '접수 일정', lcAt: '2026-10-14', lcS: '알림' }
 ];
 var SCOPE_TEXT = { '판정 대상': '점수 계산 대상', '보류': '보류 — 공고 뒤 다시 계산', '참고': '참고 후보 (순위만)', '미해결': '분류 확인 중 (미해결)', '제외': '제외' };
 var COLS = [
@@ -477,7 +523,7 @@ var COLS = [
 { id: 'gap', label: '주변 시세와 가격 차이', key: 'gap_pct', term: true, tag: '' },
 { id: 'total', label: '종합 점수 (상대 비교)', key: 'total', term: true, tag: '' },
 { id: 'living_area', label: '생활권(구)', key: 'living_area', term: true, tag: ' 숨김' },
-{ id: 'p10', label: '입주 뒤 10% 넘게 오를 가능성', key: 'p10', term: true, tag: ' 숨김' },
+{ id: 'p10', label: '10% 넘게 오를 가능성 (목표 시점: 입주 + 1년)', key: 'p10', term: true, tag: ' 숨김' },
 { id: 'inclusion', label: '단지 종류 (분류)', key: null, term: true, tag: ' 숨김' },
 { id: 'land_type', label: '땅 종류 (택지)', key: null, term: false, tag: ' 숨김' },
 { id: 'units_total', label: '총 세대', key: null, term: false, tag: ' 숨김' },
