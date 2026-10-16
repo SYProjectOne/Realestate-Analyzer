@@ -59,34 +59,63 @@ export function SharePage() {
   const done = () => navigate('/', { replace: true });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col gap-3 bg-bg p-6 text-fg">
-      <h1 className="text-xl font-semibold">{t('page.share.title')}</h1>
-      {token && confirm ? (
-        <ConfirmDialog
-          onTabOnly={() => {
-            setTabAuth(token, 'read');
-            done();
-          }}
-          onReplace={() => {
-            setAuth(token, 'read');
-            done();
-          }}
-          onCancel={done}
-        />
-      ) : token ? (
-        <p role="status" className="text-sm text-muted">
-          {t('page.share.applying')}
-        </p>
-      ) : (
-        <>
-          <p role="alert" className="text-sm text-danger">
-            {t('page.share.missing')}
-          </p>
-          <Link to="/" className="text-sm underline">
-            {t('page.share.home')}
-          </Link>
-        </>
-      )}
+    <main className="min-h-screen bg-bg px-4 py-10 text-fg sm:py-16">
+      <div className="mx-auto flex max-w-lg flex-col gap-4">
+        <p className="text-sm font-bold text-fg-2">{t('app.name')}</p>
+        <section className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-[22px]">
+          <h1 className="text-xl font-bold">{t('page.share.title')}</h1>
+          {token && confirm ? (
+            <ConfirmDialog
+              onTabOnly={() => {
+                setTabAuth(token, 'read');
+                done();
+              }}
+              onReplace={() => {
+                setAuth(token, 'read');
+                done();
+              }}
+              onCancel={done}
+            />
+          ) : token ? (
+            <>
+              <p role="status" className="flex items-center gap-2 text-sm text-muted">
+                <svg
+                  aria-hidden
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  className="shrink-0 animate-spin text-accent motion-reduce:animate-none"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+                </svg>
+                {t('page.share.applying')}
+              </p>
+              <p className="text-[13px] leading-normal text-muted">
+                {t('page.share.applyingHint')}
+              </p>
+            </>
+          ) : (
+            <>
+              <p
+                role="alert"
+                className="rounded-xl border border-warn-border bg-warn-soft px-3.5 py-3 text-sm leading-relaxed text-warn-ink"
+              >
+                {t('page.share.missing')}
+              </p>
+              <Link
+                to="/"
+                className="inline-flex min-h-11 items-center self-start rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent hover:text-accent-ink"
+              >
+                {t('page.share.home')}
+              </Link>
+            </>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
@@ -108,45 +137,48 @@ function ConfirmDialog({
     defaultRef.current?.focus();
   }, []);
   return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      aria-describedby={bodyId}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onCancel();
-      }}
-      className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-4 shadow-xl"
-    >
-      <h2 id={titleId} className="text-base font-semibold">
-        {t('page.share.confirmTitle')}
-      </h2>
-      <p id={bodyId} className="text-sm text-muted">
-        {t('page.share.confirmBody')}
-      </p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <button
-          ref={defaultRef}
-          type="button"
-          onClick={onTabOnly}
-          className="rounded-sm bg-accent px-3 py-1.5 text-sm text-accent-fg"
-        >
-          {t('page.share.tabOnly')}
-        </button>
-        <button
-          type="button"
-          onClick={onReplace}
-          className="rounded-sm border border-border px-3 py-1.5 text-sm"
-        >
-          {t('page.share.replace')}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-sm border border-border px-3 py-1.5 text-sm"
-        >
-          {t('page.share.cancel')}
-        </button>
+    <div className="rounded-[14px] bg-overlay/55 px-4 py-6">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={bodyId}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onCancel();
+        }}
+        className="mx-auto flex max-w-sm flex-col gap-3 rounded-2xl bg-surface p-5 shadow-xl"
+      >
+        <h2 id={titleId} className="text-[17px] font-bold leading-snug">
+          {t('page.share.confirmTitle')}
+        </h2>
+        <p id={bodyId} className="text-sm leading-relaxed text-fg-2">
+          {t('page.share.confirmBody')}
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            ref={defaultRef}
+            type="button"
+            onClick={onTabOnly}
+            className="min-h-11 rounded-[10px] bg-accent px-4 text-sm font-semibold text-accent-fg hover:bg-accent-ink focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2"
+          >
+            {t('page.share.tabOnly')}
+          </button>
+          <button
+            type="button"
+            onClick={onReplace}
+            className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent"
+          >
+            {t('page.share.replace')}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-11 rounded-[10px] border border-border-strong bg-surface px-4 text-sm font-semibold text-fg hover:border-accent"
+          >
+            {t('page.share.cancel')}
+          </button>
+        </div>
+        <p className="text-xs leading-normal text-muted">{t('page.share.confirmHint')}</p>
       </div>
     </div>
   );

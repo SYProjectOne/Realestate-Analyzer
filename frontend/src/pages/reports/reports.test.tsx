@@ -31,8 +31,8 @@ describe('R9-UI G8 빈 상태(30-proposal §11-1)', () => {
     for (const key of ['page.G8.emptyBody', 'page.G8.emptyHow', 'page.G8.emptyProgress'] as const) {
       expect(within(list).getByText(t(key))).toBeInTheDocument();
     }
-    expect(t('page.G8.snapshot')).toBe('기준일(리비전)');
-    expect(t('page.G8.compareSnapshot')).toBe('이전 기준일과 비교(선택)');
+    expect(t('page.G8.snapshot')).toBe('어느 기준일 자료로 만들까요?');
+    expect(t('page.G8.compareSnapshot')).toBe('이전 기준일과 비교할까요?');
     expect(screen.getByRole('region', { name: t('page.G8.diff') })).toHaveTextContent(
       t('page.G8.diffHint'),
     );
