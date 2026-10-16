@@ -94,7 +94,7 @@ export function ComparePage() {
   return (
     <div className="flex flex-col gap-2">
       <nav aria-label={t('page.G4.crumb')} className="text-[13px] text-muted">
-        <Link to={`/complexes${search}`} className="text-accent hover:underline">
+        <Link to={`/complexes${search}`} className="text-accent underline underline-offset-2">
           {t('nav.G2')}
         </Link>
         <span aria-hidden> › </span>
