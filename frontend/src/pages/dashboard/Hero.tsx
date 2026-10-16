@@ -60,7 +60,7 @@ export function Hero({ data, regionName }: { data: Dashboard; regionName: string
           {t('page.G1.hero.after')}
         </h1>
         <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
-          {t('label.legend')} ·
+          {t('label.legend')} · {t('page.G2.filter.intake_status')}
           <Term k="intake_status" />
         </p>
         <p className="text-base leading-relaxed text-fg-2">{t('page.G1.openNow.hint')}</p>
