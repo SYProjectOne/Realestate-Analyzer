@@ -42,16 +42,28 @@ def _test_dirs() -> set[str]:
     }
 
 
+def plan_modules(ci: dict[str, Any]) -> set[str]:
+    """D32: 백엔드 테스트 행렬은 changes 잡의 plan 단계가 만든다 — 그 스크립트의 모듈 목록('for m in …')."""
+    step = next(s for s in ci["jobs"]["changes"]["steps"] if s.get("id") == "plan")
+    return {m for line in re.findall(r"for m in ([a-z_ ]+); do", step["run"]) for m in line.split()}
+
+
 def test_ci_matrix_matches_backend_test_dirs() -> None:
-    jobs = _ci()["jobs"]
-    matrix = set(jobs["backend-tests"]["strategy"]["matrix"]["module"])
+    ci = _ci()
+    jobs = ci["jobs"]
+    matrix = plan_modules(ci)
     assert "models" not in matrix, "tests/models 가 없다 — 빈 matrix 항목(매번 '없음'으로 통과)"
     assert matrix == _test_dirs() - NOT_IN_MATRIX, (
         f"matrix {sorted(matrix)} != tests/ {sorted(_test_dirs() - NOT_IN_MATRIX)}"
     )
-    outputs = set(jobs["changes"]["outputs"])
-    assert "models" not in outputs, "changes 잡의 models 필터도 정리(app/models 는 shared 필터가 본다)"
-    assert matrix <= outputs, "matrix 모듈마다 paths-filter 출력이 있어야 한다"
+    assert "fromJSON(needs.changes.outputs.backend_matrix)" in str(
+        jobs["backend-tests"]["strategy"]["matrix"]
+    )
+    step = next(s for s in jobs["changes"]["steps"] if "paths-filter" in str(s.get("uses", "")))
+    filters = set(yaml.safe_load(step["with"]["filters"]))
+    assert "models" not in filters, "changes 잡의 models 필터도 정리(app/models 는 shared 필터가 본다)"
+    keys = {"contracts_tests" if m == "contracts" else m for m in matrix}
+    assert keys <= filters, f"matrix 모듈마다 paths-filter 키가 있어야 한다: {sorted(keys - filters)}"
 
 
 def test_ci_backend_tests_use_postgres_service() -> None:
@@ -110,7 +122,7 @@ def test_ci_reports_job_prepares_echarts_bundle() -> None:
     job = _ci()["jobs"]["backend-tests"]
     steps = job["steps"]
     text = "\n".join(f"{s.get('if', '')} || {s.get('uses', '')} || {s.get('run', '')}" for s in steps)
-    assert re.search(r"matrix\.module == 'reports'.*\|\| .*setup-node", text), "reports 에 Node 준비 없음"
-    assert re.search(r"matrix\.module == 'reports'.*npm ci", text), "reports 에 frontend npm ci(echarts) 없음"
+    assert re.search(r"matrix\.name == 'reports'.*\|\| .*setup-node", text), "reports 에 Node 준비 없음"
+    assert re.search(r"matrix\.name == 'reports'.*npm ci", text), "reports 에 frontend npm ci(echarts) 없음"
     html_test = (BACKEND / "tests" / "reports" / "test_html.py").read_text(encoding="utf-8")
     assert 'os.environ.get("CI")' in html_test, "CI 에서는 번들 없음이 skip 이 아니라 실패여야 한다"

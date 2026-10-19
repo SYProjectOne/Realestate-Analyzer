@@ -49,6 +49,7 @@ from app.core.logging import get_logger
 from app.models import ChangeEvent, Complex, IntakeStatus, RawDocument, Region, Snapshot
 from app.normalize.living_area import correct_dong, rederive_region_dongs
 from app.normalize.notice_parser import notice_numbers
+from app.normalize.schedule_legacy import reparse_legacy_apply_dates
 from app.normalize.store import is_remainder_url, store_raw_document
 from app.scheduler import assemble, detect, snapshots
 from app.scheduler.intake import UNCLASSIFIED, carry_classification, intake_change_events, pending_complexes
@@ -618,6 +619,14 @@ def collect(
 
     if deferred or (ran_applyhome and "originals" not in res.loaded):
         flush_deferred()
+    if ran_applyhome:
+        # D33-1: 옛 파서 모양({kind, date}) 접수 일정이 남은 단지 — 채택된 출처 원문을 지금 파서로 다시 읽는다. 값 모양만 바뀌므로
+        # 이벤트·재판정 없이 요약 수(첫 적재와 같은 규칙). 한 번 바뀌면 다음 날부터 대상이 없다
+        with ctx.session_factory() as session:
+            legacy = reparse_legacy_apply_dates(session, region_id)
+            session.commit()
+        if legacy.complexes or legacy.errors:
+            res.loaded["legacy_apply_dates"] = legacy.stats()
     asm = assemble.assemble(
         ctx, region_dto, snap_dto, steps=ran, docs=step_docs, detected_at=detected_at, links=links,
         first_load=first_load,
