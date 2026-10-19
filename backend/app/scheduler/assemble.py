@@ -6,6 +6,8 @@
 | applyhome · notice_pdf | ``normalize.checklist.sync_checklist`` | checklist_item |
 | rtms (= collect.weekly) | 청약홈 과거 공고(``fetch_history``, 기본 10년) + rtms 과거 월(``backfill``, 36개월) 수집 →
   ``normalize.benchmark.build_benchmarks`` | benchmark + 출처(+ 바뀌면 notice change_event → 주간 rejudge) |
+| rtms (+ news 수집기) | 2020년 이전 분양 단지(준공 10년 안, 공고와 안 이어짐)마다 뉴스 '<이름> 분양가' 1회 검색(받은 원문 재사용) →
+  판정기 P2 extract(그 단지 84㎡ 분양가) → ``build_benchmarks(news_prices=…)`` | 언론 기사 분양가 사례(D31-3, 라벨 비공식·추정) — stats ``benchmark_news`` |
 | news | 판정기 P1 screen(호재 관련성, ``judge.pipeline.p1_screen_catalyst``) 통과 항목만 → ``normalize.catalyst.catalysts_from_news`` | catalyst 후보(단계·종류는 판정기 P4, D10-6) — 거른 수는 stats ``rejected`` |
 | news | 판정기 screen(공고 예정 신호)·extract(단지 이름)·classify(지역·민간분양)·compare(같은 단지) → ``normalize.upcoming.upcoming_from_news`` | 트랙 (A) 공고 예정 단지 후보(D20-2) — stats ``upcoming`` |
 
@@ -35,6 +37,7 @@ from app.core.settings import get_settings
 from app.judge import pipeline as jp
 from app.models import ChangeEvent
 from app.normalize.benchmark import build_benchmarks
+from app.normalize.benchmark_news import NewsPrice
 from app.normalize.catalyst import catalysts_from_news
 from app.normalize.checklist import sync_checklist
 from app.normalize.remaining import sync_remaining_events
@@ -44,6 +47,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BENCHMARK_HISTORY_YEARS",
+    "BENCHMARK_NEWS_MAX",
     "RTMS_BACKFILL_MONTHS",
     "AssembleResult",
     "assemble",
@@ -55,6 +59,7 @@ log = get_logger("app.scheduler.assemble")
 
 BENCHMARK_HISTORY_YEARS: Final = 10  # D9-2 기본 N년 (청약홈 API 자료는 2020년부터 — 2026-10-09 확인)
 RTMS_BACKFILL_MONTHS: Final = 36  # 입주 후 실거래(고점 포함)를 볼 과거 월 수
+BENCHMARK_NEWS_MAX: Final = 300  # D31-3 한 번에 새로 검색할 단지 수(나머지는 다음 주간 수집)
 
 
 @dataclass
@@ -149,10 +154,70 @@ def assemble(
         if callable(legal):  # D18-3 법정동 매칭률
             res.stats["rtms_backfill"]["legal_dong"] = legal()
 
+    news_prices: dict[
+        str, list[NewsPrice]
+    ] = {}  # 'prices' 가 없으면 이번에 언론 분양가를 못 받음 → 지난 행 유지
+
+    def benchmark_news() -> None:
+        """D31-3 2020년 이전 분양 단지 분양가 — 뉴스 검색(단지마다 1회, 받은 원문 재사용) → 판정기 P2 extract."""
+        from app.collectors.news.collector import parse_news_json
+        from app.normalize.benchmark import latest_by_urls, read_raw_row
+        from app.normalize.benchmark_news import news_document, news_price, news_query, news_targets
+
+        factory = ctx.collectors.get("news")
+        collector = factory(ctx) if factory is not None else None
+        search, url_of = getattr(collector, "search", None), getattr(collector, "search_url", None)
+        if not callable(search) or not callable(url_of) or getattr(collector, "enabled", True) is False:
+            res.stats["benchmark_news"] = {"skipped": "뉴스 수집기에 검색 없음(또는 키 없음)"}
+            return
+        with ctx.session_factory() as s:
+            targets = news_targets(s, region.id, snapshot.asof_date)
+            urls = {t.key: str(url_of(news_query(t.name))) for t in targets}
+            have = latest_by_urls(s, urls.values())
+        missing = [t for t in targets if urls[t.key] not in have][:BENCHMARK_NEWS_MAX]
+        if missing:
+            search(region, [news_query(t.name) for t in missing])
+        skipped: dict[str, int] = {}
+        prices: list[NewsPrice] = []
+        with ctx.session_factory() as s:
+            docs = latest_by_urls(s, urls.values())
+            for t in targets:
+                doc = docs.get(urls[t.key])
+                text = read_raw_row(doc) if doc is not None else None
+                document, spans = news_document(t, parse_news_json(text.encode()) if text else [])
+                if doc is None or not spans:
+                    why = "기사 원문 없음" if doc is None else "기사 없음"
+                    skipped[why] = skipped.get(why, 0) + 1
+                    continue
+                s.commit()  # 어댑터는 자기 세션으로 judgment_log 를 쓴다 — 읽기 잠금(SQLite)을 먼저 푼다
+                try:
+                    fields = jp.p2_extract_benchmark_price(
+                        ctx.adapter(),
+                        target_key=t.key,
+                        name=t.name,
+                        document=document,
+                        snapshot_id=snapshot.id,
+                    )
+                except JudgeUnavailable:
+                    res.stats["benchmark_news"] = {"skipped": "판정기 연결 실패 — 지난 언론 분양가 행 유지"}
+                    return
+                price, why = news_price(t, document, spans, fields, raw_document_id=doc.id)
+                if price is None:
+                    skipped[why] = skipped.get(why, 0) + 1
+                else:
+                    prices.append(price)
+        news_prices["prices"] = prices
+        res.stats["benchmark_news"] = {
+            "targets": len(targets), "searched": len(missing), "prices": len(prices), "skipped": skipped,
+        }  # fmt: skip
+
     def benchmark() -> None:
         with ctx.session_factory() as s:
             # 조립한 스냅샷을 남긴다(계약 .6 benchmark.snapshot_id — 발행 스냅샷이 인용한 행 보존, G1)
-            out = build_benchmarks(s, region.id, asof_date=snapshot.asof_date, snapshot_id=snapshot.id)
+            out = build_benchmarks(
+                s, region.id, asof_date=snapshot.asof_date, snapshot_id=snapshot.id,
+                news_prices=news_prices.get("prices"),
+            )  # fmt: skip
             if out.changed:
                 res.events.append(_event(s, snapshot.id, out.inserted, out.updated, out.removed, detected_at))
             s.commit()
@@ -189,6 +254,7 @@ def assemble(
     if "rtms" in steps:
         run("benchmark_history", history)
         run("rtms_backfill", backfill)
+        run("benchmark_news", benchmark_news)
         run("benchmark", benchmark)
 
     def upcoming() -> None:

@@ -97,6 +97,10 @@ def _clean(text: str) -> str:
     return " ".join(html.unescape(_TAG_RE.sub("", text)).split())
 
 
+def _params(query: str, sort: str, display: int) -> dict[str, str]:
+    return {"query": query, "display": str(display), "start": "1", "sort": sort}
+
+
 def parse_credentials(key: str | None) -> tuple[str, str] | None:
     if not key or ":" not in key:
         return None
@@ -177,6 +181,19 @@ class NewsCollector:
         return self._queries if self._queries is not None else [f"{region.name} 분양"]
 
     def fetch(self, region: Region, snapshot: Snapshot, since: str | None) -> list[RawDocument]:
+        return self._run(region, self.queries_for(region), sort="date", display=self._display)
+
+    def search_url(self, query: str, *, sort: str = "sim", display: int = 10) -> str:
+        """``search`` 가 남기는 raw_document.url(같은 질의 = 같은 URL — 받은 원문을 다시 쓸 때 찾는 키)."""
+        return f"{self.provider.url}?{urlencode(_params(query, sort, display))}"
+
+    def search(
+        self, region: Region, queries: Sequence[str], *, sort: str = "sim", display: int = 10
+    ) -> list[RawDocument]:
+        """질의 목록을 한 번씩 검색(D31-3 벤치마크 분양가 — 관련도순). 키가 없으면 []."""
+        return self._run(region, list(queries), sort=sort, display=max(1, min(100, display)))
+
+    def _run(self, region: Region, queries: Sequence[str], *, sort: str, display: int) -> list[RawDocument]:
         self.items = []
         self.blocked_queries = 0
         if self._credentials is None:
@@ -190,7 +207,7 @@ class NewsCollector:
         try:
             with self._session_factory() as session:
                 store = RawStore(session, raw_dir=self._raw_dir)
-                for i, q in enumerate(self.queries_for(region)):
+                for i, q in enumerate(queries):
                     checked = check_payload({"query": q}, secrets=secrets)
                     if not checked.ok:
                         self.blocked_queries += 1
@@ -204,7 +221,7 @@ class NewsCollector:
                             )
                         )
                         continue
-                    params = {"query": q, "display": str(self._display), "start": "1", "sort": "date"}
+                    params = _params(q, sort, display)
                     shown = f"{prov.url}?{urlencode(params)}"
                     r = scrub_result(
                         http.get(prov.url, params=params, headers=headers), (cid, secret), url=shown

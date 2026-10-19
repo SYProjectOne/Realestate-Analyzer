@@ -2,7 +2,7 @@
 
 - 분양가 = 같은 공고의 84㎡에 가장 가까운 주택형 최고가(청약홈 공식 API, 라벨 확인됨)
 - 실거래 = 입주월 이후 · 기준일 전 12개월 · 전용 80~85㎡ · 해제 제외 (low/median/high·건수), 고점 = 입주 후 전체
-- 단지 매칭 = 정규화 단지명 완전 일치 + 법정동(D10-5: 포함·준공연도 근사 없음, 차수·단지·블록 유지)
+- 단지 매칭 = 정규화 단지명 완전 일치 + 법정동(D10-5: 준공연도 근사 없음, 차수·단지·블록 유지). 이름 끝부분 일치는 D31-2(test_benchmark_d31)
 - sale_period = 분양 연도 ≥ 기준연도−3 → 고가 분양기, 그 전 → 저가 분양기
 - 생활권 표본 0 → 지역 전체로 대체(라벨 추정, '추정(대체: 지역 전체)'), 그래도 0 → 행 없음
 """
@@ -245,7 +245,9 @@ def test_build_benchmarks_from_history_and_trades(
         _la(region, "41570"): 1,
     }
     reasons = {u["name"]: u["reason"] for u in res.unmatched}
-    assert reasons["푸르지오 작전"] == "실거래 없음(매칭 단지 없음)"  # D10-5: 포함 매칭 금지
+    assert (
+        reasons["푸르지오 작전"] == "실거래 없음(매칭 단지 없음)"
+    )  # D10-5·D31-2: 뒤에 단지 번호가 붙은 이름은 잇지 않는다
 
 
 def test_every_numeric_field_has_provenance(db_session: Session, add_raw: AddRaw, region: Region) -> None:

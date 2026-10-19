@@ -31,6 +31,8 @@ from app.judge.claims import CompoundClaimError, is_atomic, with_josa
 from app.judge.guard import default_secrets
 
 __all__ = [
+    "BENCHMARK_PRICE_FIELDS",
+    "BENCHMARK_PRICE_PURPOSE",
     "BENCHMARK_RESCREEN_TASK",
     "BENCHMARK_SCREEN_TASK",
     "CATALYST_CLASSES",
@@ -69,6 +71,7 @@ __all__ = [
     "LadderSpec",
     "annualized",
     "audit_payload",
+    "benchmark_price_extract_fields",
     "benchmark_rescreen_text",
     "catalyst_screen_payload",
     "classify_catalyst_kind_payload",
@@ -746,6 +749,42 @@ def upcoming_extract_fields() -> list[ExtractField]:
             description=f"기사가 앞으로 분양(공급) 예정이라고 알린 {n}번째 아파트 단지 이름. 없으면 찾지 못함",
         )
         for n, f in enumerate(UPCOMING_NAME_FIELDS, start=1)
+    ]
+
+
+BENCHMARK_PRICE_FIELDS: Final = ("price_84", "price_per_3_3", "public_sale")
+"""D31-3 P2 extract: 2020년 이전 분양 단지의 언론 기사 분양가(전용 84㎡ 값 · 3.3㎡당 평균 · 공공분양 표현)."""
+BENCHMARK_PRICE_PURPOSE: Final = "아파트 단지 분양가 기사 발췌에서 그 단지의 최초 분양가 추출"
+
+
+def benchmark_price_extract_fields(name: str) -> list[ExtractField]:
+    """D31-3 P2 extract 필드(단지 이름을 설명에 넣는다 — 다른 단지 값과 가르는 것은 판정기). 정규식은 후보 위치만 준다."""
+    who = f"'{name}' 단지"
+    return [
+        ExtractField(
+            id="price_84",
+            pattern=r"\d+\s?억(?:\s?\d+\s?천)?(?:\s?\d[\d,]*)?\s?만?\s?원",
+            description=(
+                f"{who}의 전용 84㎡ 주택형 최초 분양가(분양 때 공급가격). 범위로 나오면 가장 높은 값. 다른 단지의 가격, "
+                "분양권 시세·프리미엄, 입주 뒤 실거래가·호가는 아님. 없으면 찾지 못함"
+            ),
+        ),
+        ExtractField(
+            id="price_per_3_3",
+            pattern=r"\d[\d,]{2,5}\s?만\s?원",
+            description=(
+                f"{who}의 3.3㎡(평)당 평균 분양가(최초 분양). 다른 단지의 값, 주변 시세, 입주 뒤 실거래 평당가는 아님. "
+                "없으면 찾지 못함"
+            ),
+        ),
+        ExtractField(
+            id="public_sale",
+            pattern="공공분양",
+            description=(
+                f"{who}가 공공분양(LH·지방공사 등 공공 사업주체가 공급하는 분양) 단지라고 밝힌 표현. 민간분양이거나 다른 "
+                "단지 이야기면 찾지 못함"
+            ),
+        ),
     ]
 
 

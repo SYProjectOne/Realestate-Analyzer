@@ -54,6 +54,7 @@ __all__ = [
     "p1_screen_retry",
     "p1_screen_upcoming",
     "p2_extract",
+    "p2_extract_benchmark_price",
     "p2_extract_upcoming",
     "p3_audit",
     "p4_classify_catalyst",
@@ -177,9 +178,10 @@ def p2_extract(
     purpose: str,
     snapshot_id: int | None = None,
     complex_id: int | None = None,
+    payload_purpose: str = "청약 공고문 수치 추출",
 ) -> JudgmentEnvelope:
     """P2 수치 추출. 필드별 decision=review 면 호출자가 공고문 원문값을 쓰고 'review' 표기."""
-    payload = P.extract_payload(document, fields, purpose="청약 공고문 수치 추출")
+    payload = P.extract_payload(document, fields, purpose=payload_purpose)
     return adapter.call("extract", payload, purpose, snapshot_id=snapshot_id, complex_id=complex_id)
 
 
@@ -450,6 +452,24 @@ def p2_extract_upcoming(
         v = f.get("value_text") if isinstance(f, dict) else None
         if f.get("decision") == "auto" and isinstance(v, str) and v.strip() and v.strip() not in out:
             out.append(v.strip())
+    return out
+
+
+def p2_extract_benchmark_price(
+    adapter: JudgeCaller, *, target_key: str, name: str, document: str, snapshot_id: int | None
+) -> dict[str, str]:
+    """D31-3 P2 기사 발췌 → 그 단지의 분양가 문자열(필드 → 원문 문자열, 판정기 auto 값만). 봉투가 ok 가 아니면 {}.
+    숫자로 바꾸는 것·출처 기사 줄 찾기는 ``normalize.benchmark_news.news_price``(문자열 처리)."""
+    env = p2_extract(adapter, document, P.benchmark_price_extract_fields(name),
+                     purpose=f"extract:bm_price:{target_key}"[:128], snapshot_id=snapshot_id,
+                     payload_purpose=P.BENCHMARK_PRICE_PURPOSE)  # fmt: skip
+    if env.status != "ok":
+        return {}
+    out: dict[str, str] = {}
+    for f in (env.result or {}).get("fields") or []:
+        v = f.get("value_text") if isinstance(f, dict) else None
+        if f.get("decision") == "auto" and isinstance(v, str) and v.strip():
+            out[str(f.get("name"))] = v.strip()
     return out
 
 
