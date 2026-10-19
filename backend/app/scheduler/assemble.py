@@ -6,6 +6,8 @@
 | applyhome · notice_pdf | ``normalize.checklist.sync_checklist`` | checklist_item |
 | rtms (= collect.weekly) | 청약홈 과거 공고(``fetch_history``, 기본 10년) + rtms 과거 월(``backfill``, 36개월) 수집 →
   ``normalize.benchmark.build_benchmarks`` | benchmark + 출처(+ 바뀌면 notice change_event → 주간 rejudge) |
+| rtms | 문자열로 못 이은 공고마다 같은 동·준공 ±1년 실거래 후보 → 판정기 classify(같은 단지, auto 만) →
+  ``build_benchmarks(links=…)`` | 이름이 바뀐 단지 매칭(D31-6) — stats ``benchmark_links`` |
 | rtms (+ news 수집기) | 2020년 이전 분양 단지(준공 10년 안, 공고와 안 이어짐)마다 뉴스 '<이름> 분양가' 1회 검색(받은 원문 재사용) →
   판정기 P2 extract(그 단지 84㎡ 분양가) → ``build_benchmarks(news_prices=…)`` | 언론 기사 분양가 사례(D31-3, 라벨 비공식·추정) — stats ``benchmark_news`` |
 | news | 판정기 P1 screen(호재 관련성, ``judge.pipeline.p1_screen_catalyst``) 통과 항목만 → ``normalize.catalyst.catalysts_from_news`` | catalyst 후보(단계·종류는 판정기 P4, D10-6) — 거른 수는 stats ``rejected`` |
@@ -154,9 +156,38 @@ def assemble(
         if callable(legal):  # D18-3 법정동 매칭률
             res.stats["rtms_backfill"]["legal_dong"] = legal()
 
-    news_prices: dict[
-        str, list[NewsPrice]
-    ] = {}  # 'prices' 가 없으면 이번에 언론 분양가를 못 받음 → 지난 행 유지
+    judge_links: dict[
+        str, dict[str, tuple[str, str]]
+    ] = {}  # 'map' 이 없으면 판정기 매칭을 못 함 → 지난 행 유지
+
+    def benchmark_links() -> None:
+        """D31-6 이름으로 못 이은 공고 → 같은 동 실거래 후보 중 같은 단지(판정기 classify, auto 만)."""
+        from app.judge.payloads import BENCHMARK_LINK_NONE
+        from app.normalize.benchmark_link import link_requests
+
+        with ctx.session_factory() as s:
+            reqs = link_requests(s, region.id, snapshot.asof_date)
+        out: dict[str, tuple[str, str]] = {}
+        skipped: dict[str, int] = {}
+        for rq in reqs:
+            try:
+                o = jp.p4_classify_benchmark_link(
+                    ctx.adapter(), notice_key=rq.key, text=rq.text,
+                    candidates=[(c.cid, c.text) for c in rq.candidates], snapshot_id=snapshot.id,
+                )  # fmt: skip
+            except JudgeUnavailable:
+                res.stats["benchmark_links"] = {"skipped": "판정기 연결 실패 — 판정기로 이은 지난 행 유지"}
+                return
+            chosen = next((c for c in rq.candidates if o.resolved and c.cid == o.label), None)
+            if chosen is not None and o.label != BENCHMARK_LINK_NONE:
+                out[rq.key] = (chosen.name, chosen.dong)
+            else:
+                why = "후보 중 없음" if o.resolved else "판정 미해결"
+                skipped[why] = skipped.get(why, 0) + 1
+        judge_links["map"] = out
+        res.stats["benchmark_links"] = {"requests": len(reqs), "linked": len(out), "skipped": skipped}
+
+    news_prices: dict[str, list[NewsPrice]] = {}  # 'prices' 가 없으면 언론 분양가를 못 받음 → 지난 행 유지
 
     def benchmark_news() -> None:
         """D31-3 2020년 이전 분양 단지 분양가 — 뉴스 검색(단지마다 1회, 받은 원문 재사용) → 판정기 P2 extract."""
@@ -171,7 +202,7 @@ def assemble(
             res.stats["benchmark_news"] = {"skipped": "뉴스 수집기에 검색 없음(또는 키 없음)"}
             return
         with ctx.session_factory() as s:
-            targets = news_targets(s, region.id, snapshot.asof_date)
+            targets = news_targets(s, region.id, snapshot.asof_date, judge_links.get("map"))
             urls = {t.key: str(url_of(news_query(t.name, t.place))) for t in targets}
             have = latest_by_urls(s, urls.values())
         missing = [t for t in targets if urls[t.key] not in have][:BENCHMARK_NEWS_MAX]
@@ -217,7 +248,7 @@ def assemble(
             # 조립한 스냅샷을 남긴다(계약 .6 benchmark.snapshot_id — 발행 스냅샷이 인용한 행 보존, G1)
             out = build_benchmarks(
                 s, region.id, asof_date=snapshot.asof_date, snapshot_id=snapshot.id,
-                news_prices=news_prices.get("prices"),
+                news_prices=news_prices.get("prices"), links=judge_links.get("map"),
             )  # fmt: skip
             if out.changed:
                 res.events.append(_event(s, snapshot.id, out.inserted, out.updated, out.removed, detected_at))
@@ -255,6 +286,7 @@ def assemble(
     if "rtms" in steps:
         run("benchmark_history", history)
         run("rtms_backfill", backfill)
+        run("benchmark_links", benchmark_links)
         run("benchmark_news", benchmark_news)
         run("benchmark", benchmark)
 

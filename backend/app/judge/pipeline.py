@@ -57,6 +57,7 @@ __all__ = [
     "p2_extract_benchmark_price",
     "p2_extract_upcoming",
     "p3_audit",
+    "p4_classify_benchmark_link",
     "p4_classify_catalyst",
     "p4_classify_catalyst_kind",
     "p4_classify_inclusion",
@@ -477,6 +478,20 @@ def p2_extract_benchmark_price(
         if f.get("decision") == "auto" and isinstance(v, str) and v.strip():
             out[str(f.get("name"))] = v.strip()
     return out
+
+
+def p4_classify_benchmark_link(
+    adapter: JudgeCaller,
+    *,
+    notice_key: str,
+    text: str,
+    candidates: Sequence[tuple[str, str]],
+    snapshot_id: int | None,
+) -> ClassifyOutcome:
+    """D31-6 이름으로 못 이은 공고 → 같은 동 실거래 후보 중 같은 단지(1회). 해결 = auto 만, 'none' 은 잇지 않음."""
+    env = adapter.call("classify", P.classify_benchmark_link_payload(text, candidates),
+                       f"classify:bm_link:{notice_key}"[:128], snapshot_id=snapshot_id)  # fmt: skip
+    return _batch_items(env, ["n"])["n"]
 
 
 def p4_classify_upcoming(

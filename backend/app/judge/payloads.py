@@ -31,6 +31,7 @@ from app.judge.claims import CompoundClaimError, is_atomic, with_josa
 from app.judge.guard import default_secrets
 
 __all__ = [
+    "BENCHMARK_LINK_NONE",
     "BENCHMARK_PRICE_FIELDS",
     "BENCHMARK_PRICE_PURPOSE",
     "BENCHMARK_RESCREEN_TASK",
@@ -74,6 +75,7 @@ __all__ = [
     "benchmark_price_extract_fields",
     "benchmark_rescreen_text",
     "catalyst_screen_payload",
+    "classify_benchmark_link_payload",
     "classify_catalyst_kind_payload",
     "classify_catalyst_payload",
     "classify_inclusion_batch_payload",
@@ -786,6 +788,30 @@ def benchmark_price_extract_fields(name: str, place: str = "") -> list[ExtractFi
             ),
         ),
     ]
+
+
+BENCHMARK_LINK_NONE: Final = "none"
+"""D31-6 같은 단지 classify 의 '후보 중 같은 단지 없음' 클래스(맨 앞 — auto 로 나와도 잇지 않는다)."""
+
+
+def classify_benchmark_link_payload(text: str, candidates: Sequence[tuple[str, str]]) -> JudgePayload:
+    """D31-6 이름으로 못 이은 청약 공고 단지 1개 → 같은 법정동 실거래 단지 후보 중 같은 단지(클래스 = 후보 + 없음)."""
+    if not 1 <= len(candidates) <= 249:
+        raise ValueError("후보는 1~249개")
+    ids = [c for c, _ in candidates]
+    if BENCHMARK_LINK_NONE in ids or len(set(ids)) != len(ids):
+        raise ValueError("후보 id 중복 또는 예약어")
+    classes = [
+        {
+            "id": BENCHMARK_LINK_NONE,
+            "description": "위 후보 중 이 공고와 같은 아파트 단지가 없다(다른 단지이거나 정할 수 없음)",
+        }
+    ] + [{"id": c, "description": _cut(public_text(d), 500)} for c, d in candidates]
+    return {
+        "items": _classify_items([("n", text)]),
+        "classes": classes,
+        "purpose": "청약 공고 단지가 같은 동 실거래 자료의 어느 아파트 단지와 같은 단지인지 고르기(분양 뒤 이름이 바뀌었을 수 있음)",
+    }
 
 
 def classify_upcoming_payload(items: Sequence[tuple[str, str]]) -> JudgePayload:

@@ -11,6 +11,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 from urllib.parse import urlencode
 
 from sqlalchemy import select
@@ -145,3 +146,59 @@ def test_without_news_search_benchmark_is_built_as_before(
     res = collect(ctx, 1, ["rtms"], asof_date="2026-10-08")
     assert res.stats()["assembled"]["benchmark_news"] == {"skipped": "뉴스 수집기에 검색 없음(또는 키 없음)"}
     assert res.stats()["assembled"]["benchmark"]["samples"]["la_1"] == 1
+
+
+@dataclass
+class FakeRtmsRenamed(FakeRtms):
+    """공고 '송도 테스트 1차' 의 실거래가 다른 이름('송도신역센트럴뷰')으로만 있다."""
+
+    def backfill(self, region: RegionDTO, snapshot: SnapshotDTO, *, months: int) -> list[RawDTO]:
+        with self.factory() as s:
+            if s.scalars(select(RtmsTrade)).first() is None:
+                doc = _save(
+                    s,
+                    "<response>renamed</response>",
+                    source_kind="rtms",
+                    url="https://apis.example/rtms?LAWD_CD=28185&r=1",
+                    region_id=region.id,
+                    ext="xml",
+                )
+                for price, day in ((80000, "2026-01-10"), (90000, "2026-05-10")):
+                    s.add(
+                        RtmsTrade(
+                            region_id=region.id, apt_name="송도신역센트럴뷰", legal_dong_code=SONGDO, completed_year=2024,
+                            area_m2=Decimal("84.90"), floor=5, price_won=price * 10_000, deal_date=day,
+                            cancelled=False, is_presale=False, source="openapi", raw_document_id=doc.id,
+                        )
+                    )  # fmt: skip
+            s.commit()
+        return []
+
+
+def test_weekly_collect_links_renamed_complex_by_judge(
+    make_ctx: Callable[..., SchedulerContext], factory: sessionmaker[Session], clock: Clock, jev: SynthJev
+) -> None:
+    """D31-6: 이름으로 못 이은 공고 → 판정기 classify 가 고른 같은 동 실거래 단지(auto)로 벤치마크 행."""
+    _seed(factory)
+    plain = jev._classify
+
+    def pick_candidate(a: dict[str, Any]) -> dict[str, Any]:
+        if a["classes"][0]["id"] != "none":
+            return plain(a)
+        g1 = a["classes"][1]["id"]
+        return {"results": [{"id": "n", "classification": g1, "probabilities": {g1: 0.97}, "top_probability": 0.97,
+                             "confidence": 0.95, "decision": "auto"}]}  # fmt: skip
+
+    jev._classify = pick_candidate  # type: ignore[method-assign]
+    ctx = make_ctx(
+        collectors={"applyhome": lambda c: FakeApplyhome(factory), "rtms": lambda c: FakeRtmsRenamed(factory)}
+    )
+    res = collect(ctx, 1, ["rtms"], asof_date="2026-10-08")
+    assert res.errors == {}
+    assert res.stats()["assembled"]["benchmark_links"] == {"requests": 1, "linked": 1, "skipped": {}}
+    with factory() as s:
+        row = s.scalars(
+            select(Benchmark).where(Benchmark.name == "송도 테스트 1차", Benchmark.living_area == "la_1")
+        ).one()
+        assert (row.sale_price_84_won, row.n_trades) == (700_000_000, 2)
+        assert row.note is not None and "판정기 같은 단지" in row.note

@@ -44,7 +44,7 @@ import re
 import statistics
 import unicodedata
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Final
@@ -71,9 +71,11 @@ log = get_logger("app.normalize.benchmark")
 __all__ = [
     "BENCHMARK_FIELDS",
     "BENCHMARK_TAG",
+    "JUDGE_LINK",
     "RECENT_SALE_YEARS",
     "TRADE_WINDOW_MONTHS",
     "BenchmarkBuild",
+    "Links",
     "add_months_ym",
     "build_benchmarks",
     "json_object_at",
@@ -716,7 +718,15 @@ def _peak(trades: Sequence[RtmsTrade]) -> RtmsTrade:
     return best
 
 
-def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild) -> list[_Case]:
+JUDGE_LINK: Final = "판정기 같은 단지"
+"""D31-6 판정기 classify 로 이은 단지 매칭의 note 표식(판정기를 못 부른 실행에서는 이 행을 지우지 않는다)."""
+Links = Mapping[str, tuple[str, str]]
+"""D31-6 '<주택관리번호>:<공고번호>' → 판정기가 고른 실거래 묶음(정규화 이름, 법정동)."""
+
+
+def _cases(
+    session: Session, region: Region, asof_date: str, res: BenchmarkBuild, links: Links | None = None
+) -> list[_Case]:
     scope = set(region.legal_dong_codes or [])
     asof_ym = asof_date[:7]
     win_start = add_months_ym(asof_ym, -(TRADE_WINDOW_MONTHS - 1))
@@ -782,6 +792,10 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
             if key is not None:
                 match = f"이름 끝부분 일치('{key}')"
         presale = n.move_in_ym > asof_ym
+        linked_key = (links or {}).get(f"{n.hm}:{n.pb}")
+        linked = next((g for g in groups if (g.name, g.dong) == linked_key), None) if linked_key else None
+        if linked is not None and not cands:  # D31-6: 이름으로 못 이은 공고 — 판정기가 고른 같은 단지
+            cands, match = [linked], f"{JUDGE_LINK}('{linked.name}', 판정기 classify)"
         res.matched_groups.update((g.name, g.dong) for g in cands)
         if not cands:
             skip(n, "입주 전(분양권 거래 없음)" if presale else "실거래 없음(매칭 단지 없음)")
@@ -790,9 +804,14 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
             skip(n, AMBIGUOUS)
             continue
         aliases = _aliases(cands[0], n.name, sgg, groups)
-        res.matched_groups.update((g.name, g.dong) for g in aliases)
         if aliases:
             match += " + 같은 동 다른 표기 " + "·".join(f"'{g.name}'" for g in aliases)
+        if linked is not None and linked is not cands[0] and linked not in aliases:
+            aliases.append(
+                linked
+            )  # 이름으로 이은 묶음에 일반 거래가 없을 때 — 판정기가 고른 바뀐 이름의 묶음을 합친다
+            match += f" + {JUDGE_LINK}('{linked.name}', 판정기 classify)"
+        res.matched_groups.update((g.name, g.dong) for g in aliases)
         merged = sorted(
             (t for g in (cands[0], *aliases) for t in g.trades), key=lambda t: (t.deal_date, t.id)
         )
@@ -1112,6 +1131,7 @@ def build_benchmarks(
     asof_date: str,
     snapshot_id: int | None = None,
     news_prices: Sequence[NewsPrice] | None = None,
+    links: Links | None = None,
 ) -> BenchmarkBuild:
     """지역의 벤치마크 행을 다시 조립한다(멱등). commit 은 호출자.
 
@@ -1122,6 +1142,9 @@ def build_benchmarks(
 
     ``news_prices`` (D31-3) = 언론 기사 분양가(호출자가 판정기로 고른 값). None 이면(판정기·뉴스 키 없음) 이 스냅샷의
     기존 언론 사례 행(머리표 ``[bm:news:``)을 지우지 않고 그대로 둔다.
+
+    ``links`` (D31-6) = 판정기가 고른 '공고 → 실거래 묶음'. None 이면(판정기 없음) 판정기로 이은 지난 행(note 표식
+    ``JUDGE_LINK``)을 지우지 않는다.
     """
     region = session.get(Region, region_id)
     if region is None:
@@ -1129,7 +1152,7 @@ def build_benchmarks(
     sid = snapshot_id if snapshot_id is not None else _snapshot_for(session, region_id, asof_date)
     res = BenchmarkBuild()
     asof_year = int(asof_date[:4])
-    cases = _cases(session, region, asof_date, res)
+    cases = _cases(session, region, asof_date, res, links)
     cases += _news_cases(session, region, asof_date, news_prices or (), res)
     docs = _trade_docs(session, cases)
     area_ids = [str(a["id"]) for a in region.living_areas or []]
@@ -1190,6 +1213,8 @@ def build_benchmarks(
     for tag, row in existing.items():
         if news_prices is None and tag.startswith(NEWS_TAG):
             continue  # 이번에 언론 분양가를 못 받았다 — 지난 행을 지우지 않는다
+        if links is None and JUDGE_LINK in (row.note or ""):
+            continue  # 이번에 판정기 매칭을 못 했다 — 판정기로 이은 지난 행을 지우지 않는다
         if tag not in seen:
             unchoose_provenance(session, "benchmark", row.id)
             session.delete(row)
