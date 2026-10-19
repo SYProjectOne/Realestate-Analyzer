@@ -224,3 +224,60 @@ def test_minor4_image_only_popup_change_is_not_carried(
         assert shot.reason == UNCLASSIFIED, (shot.reason, shot.note)
         job = s.get(JobRun, jid)
         assert job is not None and 2 in job.stats["intake_pending_classify"], job.stats
+
+
+def test_d33_2_seen_popup_hash_is_not_a_change(factory: sessionmaker[Session], seeded: int) -> None:
+    """D33-2: 같은 홈페이지를 쓰는 두 단지(스크린샷 행은 처음 찍은 단지에 묶인다)·번갈아 바뀌는 팝업 — 전에 본 해시는 변경이 아니다."""
+    import hashlib
+
+    from app.core.contracts_gen import RawDocument as RawDTO
+    from app.models import RawDocument
+    from app.normalize.store import raw_dto
+    from app.scheduler.detect import POPUP_FIELD, popup_changes
+
+    url = "https://shared-site.example/"
+    with factory() as s:
+
+        def row(cid: int, h: str, day: str) -> RawDocument:
+            r = RawDocument(
+                source_kind="official_site", url=url, fetched_at=f"{day}T06:00:00+09:00", http_status=200,
+                sha256=hashlib.sha256(f"{cid}{h}{day}".encode()).hexdigest(), path=f"official_site/{day}/{cid}{h}.png", content_type="image/png",
+                region_id=1, complex_id=cid, image_hash=h,
+            )  # fmt: skip
+            s.add(r)
+            s.flush()
+            return r
+
+        a = row(1, "a" * 40, "2026-10-01")  # 1번 단지가 먼저 찍은 화면(2번 단지도 이 행을 다시 쓴다)
+        row(2, "b" * 40, "2026-10-02")  # 2번 단지의 옛 화면
+        today: RawDTO = raw_dto(a).model_copy(update={"complex_id": 2})
+        assert (
+            popup_changes(
+                s,
+                [today],
+                asof_date="2026-10-08",
+                snapshot_id=seeded,
+                detected_at="2026-10-08T06:00:00+09:00",
+            )
+            == []
+        )
+        new = row(2, "c" * 40, "2026-10-08")
+        evs = popup_changes(
+            s,
+            [raw_dto(new)],
+            asof_date="2026-10-08",
+            snapshot_id=seeded,
+            detected_at="2026-10-08T06:00:00+09:00",
+        )
+        assert [(e.field, e.old_text, e.new_text) for e in evs] == [(POPUP_FIELD, "b" * 40, "c" * 40)]
+        # 다음 날 다시 예전 화면(b)으로 돌아와도 본 값이라 변경이 아니다(번갈아 바뀌는 팝업)
+        back = raw_dto(new).model_copy(
+            update={"image_hash": "b" * 40, "fetched_at": "2026-10-09T06:00:00+09:00"}
+        )
+        assert (
+            popup_changes(
+                s, [back], asof_date="2026-10-09", snapshot_id=seeded, detected_at="2026-10-09T06:00:00+09:00"
+            )
+            == []
+        )
+        s.rollback()

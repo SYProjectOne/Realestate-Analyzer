@@ -284,7 +284,7 @@ def test_parser_upgrade_then_same_day_renormalize_is_quiet(
     assert all("start" in str(e[4]) for e in facts), [e for e in facts if "start" not in str(e[4])][:3]
     after = _apply_dates(factory)
     # 이벤트가 난 단지는 새 모양 하나로 끝난다. 일일 수집이 다시 받지 않는 원문(원 공고 다시 받기 응답 등 — 운영의 지난 공고 34
-    # 단지와 같은 모양)만 가진 단지는 옛 모양 그대로·이벤트 없음(그 원문을 다시 정규화할 때 바뀐다)
+    # 단지와 같은 모양)만 가진 단지는 이벤트 없이 D33-1(``normalize.schedule_legacy``)이 그 단지 값·채택 출처 행만 새 모양으로 고친다
     assert all(after[cid] and all("start" in a for a in after[cid]) for cid in per), (
         "이벤트 난 단지 = 새 모양"
     )

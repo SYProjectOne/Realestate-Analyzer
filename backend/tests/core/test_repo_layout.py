@@ -208,11 +208,12 @@ def test_ci_workflow() -> None:
     filters = yaml.safe_load(step["with"]["filters"])
     assert "contracts/**" in str(filters["contracts"])
 
-    matrix = jobs["backend-tests"]["strategy"]["matrix"]["module"]
-    assert set(matrix) >= BACKEND_TEST_MODULES
+    plan = next(s for s in jobs["changes"]["steps"] if s.get("id") == "plan")
+    matrix = {m for line in re.findall(r"for m in ([a-z_ ]+); do", plan["run"]) for m in line.split()}
+    assert matrix >= BACKEND_TEST_MODULES
     text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert "tests/${{ matrix.module }}" in text or "tests/$MODULE" in text
-    assert "needs.changes.outputs.contracts" in text  # contracts 변경 → 전체
+    assert "uv run pytest $TEST_PATHS" in text and "matrix.paths" in text
+    assert "steps.filter.outputs.contracts == 'true'" in str(plan["env"]["FULL"])  # contracts 변경 → 전체
 
     lint_steps = " ".join(str(s.get("run", "")) for s in jobs["backend-lint"]["steps"])
     assert "ruff check" in lint_steps and "mypy" in lint_steps
