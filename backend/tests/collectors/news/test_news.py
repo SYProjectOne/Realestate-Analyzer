@@ -217,3 +217,26 @@ def test_live_news_with_real_key(region_ctx: tuple[Region, Snapshot]) -> None:
     assert collector.items and all(i.url.startswith("http") for i in collector.items)
     secret = key.split(":", 1)
     assert all(part not in (d.url or "") for d in docs for part in secret)
+
+
+def test_search_uses_relevance_sort_and_records_query_url(
+    region_ctx: tuple[Region, Snapshot], fixtures_dir: Path, http: HttpClient
+) -> None:
+    """D31-3: 벤치마크 분양가 검색 — 관련도순(sim)·질의마다 1회.
+
+    raw_document.url = ``search_url`` (다시 쓸 때 찾는 키)."""
+    region, _snapshot = region_ctx
+    body = (fixtures_dir / "ncp_news_20261009.json").read_bytes()
+    with respx.mock(assert_all_called=False) as router:
+        route = router.get(NCP_NEWS_URL).respond(200, content=body)
+        collector = NewsCollector(api_key=KEY, provider="ncp", http=http)
+        docs = collector.search(region, ["테스트단지 분양가"])
+        req = route.calls[0].request
+        assert req.url.params["sort"] == "sim" and req.url.params["display"] == "10"
+        assert req.url.params["query"] == "테스트단지 분양가"
+    assert [d.url for d in docs] == [collector.search_url("테스트단지 분양가")]
+
+
+def test_search_without_key_returns_nothing(region_ctx: tuple[Region, Snapshot]) -> None:
+    region, _snapshot = region_ctx
+    assert NewsCollector(api_key=None).search(region, ["x 분양가"]) == []

@@ -4,13 +4,18 @@
 
 (a) 분양가: 청약홈 공식 API 과거 공고(``collectors/applyhome`` ``fetch_history`` 가 받은 APT 상세 목록 +
     주택형별 원문)의 **84㎡에 가장 가까운 주택형 최고가**(``analysis.price.judge_type`` 과 같은 규칙, 라벨 확인됨).
-    언론 역산 분양가(추정)는 아직 원천이 없다(보고 '하지 않은 것').
+    2020년 이전 분양 단지(공고 없음)는 언론 기사 분양가(D31-3, ``normalize.benchmark_news`` — 판정기 P2 추출, 라벨 비공식·추정).
 (b) 입주 후 실거래: ``rtms_trade`` 중 전용 80~85㎡ · 해제 제외 · 입주월 이후. 범위(low·median·high)·건수는
     기준월까지 최근 12개월 창(입주월이 더 늦으면 입주월부터), 고점(peak)은 입주월 이후 받은 전체 거래.
     같은 단지에 Open API 행이 있으면 재가공 행은 쓰지 않는다(rtms_trade 규칙).
 
-단지 매칭(D10-5) = 정규화한 단지명 **완전 일치** + 법정동 일치(문자열 처리 — 판단 아님). 정규화는 공백·대소문자·
-문장부호와 잔여 공고 회차 괄호만 지우고 차수·단지·블록 번호는 남긴다. 포함(contains)·준공연도 근사 매칭은 하지 않는다.
+단지 매칭(D10-5 → D31-2) = 법정동 일치 + 정규화한 단지명 **완전 일치**, 완전 일치가 없을 때만 **이름 끝부분 일치**
+(문자열 처리 — 판단 아님). 정규화는 공백·대소문자·문장부호와 잔여 공고 회차 괄호만 지우고 차수·단지·블록 번호는 남긴다.
+끝부분 일치 = 공고 이름에서 블록 번호·'(민영주택)'·'본청약' 낱말을 떼고 뒤쪽 낱말들을 이은 키(``LOOSE_MIN_CHARS`` 글자
+이상, 긴 것부터)로 실거래 이름이 **끝나는** 것(키 뒤에 다른 말·차수가 더 붙은 이름은 다른 단지일 수 있어 잇지 않는다 —
+'더샵 송도 퍼스트' ≠ '더샵송도퍼스트파크2단지'). 둘 다 블록 번호가 있으면 같아야 한다. 후보가 둘 이상이면 매칭 모호.
+같은 동에서 한 실거래 이름이 다른 이름의 끝부분이면(같은 단지의 다른 표기) 거래를 합친다(``_aliases``). 매칭 방식은 note 에.
+준공연도 근사 매칭은 하지 않는다.
 공고 주소 → 법정동(``living_area.assign_legal_dong``), 실거래 → 법정동 코드(있으면) 또는 원문 조회 주소의 LAWD_CD +
 동 이름(umdNm). 후보가 둘 이상이면 매칭하지 않고 '확인 불가(매칭 모호)'로 기록한다(``BenchmarkBuild.unmatched``).
 지역 시군구 안 주소인데 법정동으로 못 바꾸면 '확인 불가(법정동 변환 실패)'로 기록한다.
@@ -20,7 +25,8 @@
 원문은 같은 URL 의 최신 원문만 읽는다(매일 다시 받은 옛 원문을 다시 읽지 않는다). 법정동·원문 행은 한 번에 읽는다.
 
 sale_period = 분양(모집공고) 연도 ≥ 기준연도 − 3 → '고가 분양기', 그 전 → '저가 분양기' (라벨 추정, 식은 note).
-분양권 거래(입주 전, ``rtms_trade.is_presale``)만 있는 단지는 ``is_presale=true`` 행(점수 제외).
+분양권 거래(입주 전, ``rtms_trade.is_presale``)만 있는 단지는 ``is_presale=true`` 행(점수 제외). 입주는 했지만 입주 뒤
+일반 거래가 아직 없고 분양권 거래만 있는 단지도 ``is_presale=true`` 행이다(D31-1, note '입주 뒤 일반 거래 아직 없음').
 생활권 자체 표본(분양권 제외)이 0이면 지역 전체 표본을 그 생활권 행으로 복사한다(라벨 추정,
 ``benchmark.substitute=true`` — 계약 2026-10-09.7; note '추정(대체: 지역 전체)'는 사람이 읽는 설명일 뿐 판별에 쓰지 않는다). 지역 전체도 0이면 행이 없다 → RA §6-4대로 benchmark 성분 미계산(종합 미계산).
 
@@ -54,6 +60,7 @@ from app.core.paths import resolve_raw_path
 from app.models import Benchmark, FieldProvenance, LegalDong, RawDocument, Region, RtmsTrade, Snapshot
 from app.normalize._text import area_from_long_code, strip_supply_round
 from app.normalize.archive import archived_notices_many
+from app.normalize.benchmark_news import NEWS_TAG, NewsPrice
 from app.normalize.fields import norm_value
 from app.normalize.living_area import assign_legal_dong, living_area_of
 from app.normalize.provenance import upsert_provenance
@@ -269,6 +276,7 @@ def prov_row(
     excerpt: str | None = None,
     span: tuple[int, int] | None = None,
     observed_on: str | None = None,
+    url: str | None = None,
 ) -> ProvenanceRow:
     return ProvenanceRow(
         entity=entity,
@@ -278,7 +286,7 @@ def prov_row(
         value_text=value_text,
         value_norm=norm_value(value),
         raw_document_id=doc.id,
-        url=doc.url,
+        url=url or doc.url,
         checked_at=doc.fetched_at[:10],
         observed_on=observed_on,
         label=label,
@@ -550,13 +558,87 @@ def _trade_groups(session: Session, region_id: int) -> list[_Group]:
     return list(groups.values())
 
 
+def _same_place(g: _Group, dong: str, sgg: str | None) -> bool:
+    return g.dong == dong and (sgg is None or sgg in g.sggs or g.sggs <= {None})
+
+
 def _match(name: str, dong: str, sgg: str | None, groups: Sequence[_Group]) -> list[_Group]:
-    """정규화 이름 완전 일치 + 법정동 → 후보 묶음(0·1·여럿). 포함·준공연도 근사 매칭 없음(D10-5)."""
-    return [
-        g
-        for g in groups
-        if g.name == name and g.dong == dong and (sgg is None or sgg in g.sggs or g.sggs <= {None})
-    ]
+    """정규화 이름 완전 일치 + 법정동 → 후보 묶음(0·1·여럿)."""
+    return [g for g in groups if g.name == name and _same_place(g, dong, sgg)]
+
+
+# D31-2: 완전 일치가 없을 때만 쓰는 '이름 끝부분' 매칭(문자열 처리 — 판단 아님). 공고 이름 앞에 붙는 지역 머리말·블록 번호
+# ('인천 검단신도시 AB17BL 우미린 클래스원')와 실거래 이름의 다른 머리말('신검단중앙역우미린클래스원')을 잇는다.
+LOOSE_MIN_CHARS: Final = 5
+"""끝부분 키 최소 글자 수(정규화 뒤) — '더샵'·'자이'·'푸르지오' 같은 브랜드 한 낱말만으로는 잇지 않는다."""
+ALIAS_MIN_CHARS: Final = 6
+"""같은 동 실거래 표기 합치기(한 이름이 다른 이름의 끝부분)의 짧은 쪽 최소 글자 수."""
+_BLOCK_PAREN: Final = re.compile(r"\([^)]*(?:\d\s*(?:블록|블럭|bl)|민영주택|본청약)[^)]*\)", re.IGNORECASE)
+_BLOCK_TOKEN: Final = re.compile(r"^(?:[a-z]{1,3}-?\d+(?:-\d+)?(?:블록|bl)?|\d+(?:-\d+)?(?:블록|bl))$")
+_GENERIC_TOKENS: Final = frozenset({"민영주택", "본청약"})
+_BLOCK_IN_NAME: Final = re.compile(r"[a-z]{0,3}\d+(?:-\d+)?블록")
+_PHASE_TAIL: Final = re.compile(r"(?:\d+(?:차|단지)?|(?<![a-z])[ivx]+)$")
+
+
+def name_tail_keys(name: str) -> list[str]:
+    """공고 이름 → 끝부분 키(긴 것부터). 블록 번호·'(민영주택)'·'본청약' 낱말을 떼고, 남은 낱말의 뒤쪽 n개를 이어
+    정규화한다. 차수·단지 번호는 남는다(D10-5). 키는 낱말 **두 개 이상**이다 — '호반베르디움'·'대성베르힐' 같은 낱말
+    하나(브랜드 이름)만으로는 잇지 않는다. '인천 검단신도시 AB17BL 우미린 클래스원' → ['인천검단신도시우미린클래스원',
+    '검단신도시우미린클래스원', '우미린클래스원']."""
+    s = unicodedata.normalize("NFKC", strip_supply_round(name)).lower().replace("블럭", "블록")
+    s = _BLOCK_PAREN.sub(" ", s)
+    toks = [t for t in _TOKEN_SPLIT.split(s) if t and not _BLOCK_TOKEN.match(t) and t not in _GENERIC_TOKENS]
+    out: list[str] = []
+    for i in range(len(toks) - 1):
+        key = normalize_apt_name(" ".join(toks[i:]))
+        # 끝의 차수·단지 번호는 글자 수에 세지 않는다('검단iii' 은 '검단' 두 글자 — 키가 아니다)
+        if len(_PHASE_TAIL.sub("", key)) >= LOOSE_MIN_CHARS and key not in out:
+            out.append(key)
+    return out
+
+
+def block_codes(name: str) -> set[str]:
+    """이름 안 블록 번호('aa13-1블록'·'ab17블록') — 정규화 뒤 문자열에서."""
+    return set(_BLOCK_IN_NAME.findall(normalize_apt_name(name)))
+
+
+def _block_conflict(notice_name: str, trade_name: str) -> bool:
+    """둘 다 블록 번호가 있는데 겹치는 것이 없다('AA13-1블록' ≠ 'AA13-2블록')."""
+    mine, theirs = block_codes(notice_name), block_codes(trade_name)
+    return bool(mine and theirs and not mine & theirs)
+
+
+def tail_matches(trade_name: str, key: str) -> bool:
+    """실거래 이름(정규화)이 끝부분 키로 **끝난다**. 키 뒤에 다른 말이 더 붙은 이름('더샵송도퍼스트' →
+    '더샵송도퍼스트파크2단지')·차수가 다른 이름('제일풍경채검단i' → '제일풍경채검단ii')은 다른 단지일 수 있어 잇지 않는다."""
+    return trade_name.endswith(key)
+
+
+def _match_tail(
+    name: str, dong: str, sgg: str | None, groups: Sequence[_Group]
+) -> tuple[list[_Group], str | None]:
+    """같은 법정동 실거래 묶음 중 이름이 끝부분 키(긴 것부터)로 끝나는 묶음. 처음 걸린 키의 후보를 돌려준다.
+    공고와 실거래 이름 둘 다 블록 번호가 있는데 서로 다르면 후보가 아니다('AA13-1블록' ≠ 'AA13-2블록')."""
+    pool = [g for g in groups if _same_place(g, dong, sgg)]
+    for key in name_tail_keys(name):
+        hits = [g for g in pool if tail_matches(g.name, key) and not _block_conflict(name, g.name)]
+        if hits:
+            return hits, key
+    return [], None
+
+
+def _aliases(primary: _Group, notice_name: str, sgg: str | None, groups: Sequence[_Group]) -> list[_Group]:
+    """같은 법정동에서 한 이름이 다른 이름의 끝부분인 실거래 묶음(같은 단지의 다른 표기 — '검단신도시롯데캐슬넥스티엘'
+    분양권 거래와 '롯데캐슬넥스티엘' 입주 뒤 거래). 짧은 쪽이 ``ALIAS_MIN_CHARS`` 글자 이상이고, 공고와 블록 번호가
+    어긋나지 않을 때만('청라29블록호반베르디움' 은 A-3블록 공고와 합치지 않는다)."""
+    out: list[_Group] = []
+    for g in groups:
+        if g is primary or not _same_place(g, primary.dong, sgg) or _block_conflict(notice_name, g.name):
+            continue
+        short, long_ = sorted((g.name, primary.name), key=len)
+        if len(short) >= ALIAS_MIN_CHARS and short != long_ and long_.endswith(short):
+            out.append(g)
+    return out
 
 
 # ---------------------------------------------------------------- 조립
@@ -575,6 +657,9 @@ class _Case:
     trade_label: (
         Label  # 창 안 실거래 라벨(Open API 만 = 확인됨, 재가공 섞임 = 재가공) — 분양가 라벨과 섞지 않는다
     )
+    match: str = "이름 완전 일치"  # 단지 매칭 방식(note 에 남긴다 — D31-2)
+    moved_in_presale: bool = False  # 입주는 했지만 일반 거래 없이 분양권 거래만(D31-1)
+    news: NewsPrice | None = None  # 분양가가 언론 기사에서 온 사례(D31-3) — 공고가 없다
 
 
 @dataclass
@@ -586,6 +671,11 @@ class BenchmarkBuild:
     presale: int = 0
     unmatched: list[dict[str, str]] = field(default_factory=list)  # [{notice_no, name, reason}]
     notices: int = 0  # 지역 안 민영 공고(입주 여부 무관)
+    matched_groups: set[tuple[str, str]] = field(
+        default_factory=set
+    )  # 공고와 이어진 실거래 묶음(이름, 동) — D31-3 대상 제외
+    news: int = 0  # 언론 기사 분양가 사례(D31-3)
+    news_skipped: dict[str, int] = field(default_factory=dict)  # 사유 → 수
     inserted: int = 0
     updated: int = 0
     unchanged: int = 0
@@ -601,6 +691,8 @@ class BenchmarkBuild:
             "substituted": list(self.substituted),
             "presale": self.presale,
             "notices": self.notices,
+            "news": self.news,
+            "news_skipped": dict(self.news_skipped),
             "unmatched_n": len(self.unmatched),
             "unmatched_reasons": dict(Counter(u["reason"] for u in self.unmatched)),
             "unmatched": self.unmatched[:50],
@@ -682,17 +774,32 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
         if lrow is None:
             skip(n, "확인 불가(법정동 표 없음)")
             continue
-        cands = _match(normalize_apt_name(n.name), _dong_name(lrow), lrow.sigungu_code, groups)
+        dong, sgg = _dong_name(lrow), lrow.sigungu_code
+        cands = _match(normalize_apt_name(n.name), dong, sgg, groups)
+        match = "이름 완전 일치"
+        if not cands:  # D31-2: 완전 일치가 없을 때만 이름 끝부분
+            cands, key = _match_tail(n.name, dong, sgg, groups)
+            if key is not None:
+                match = f"이름 끝부분 일치('{key}')"
         presale = n.move_in_ym > asof_ym
+        res.matched_groups.update((g.name, g.dong) for g in cands)
         if not cands:
             skip(n, "입주 전(분양권 거래 없음)" if presale else "실거래 없음(매칭 단지 없음)")
             continue
         if len(cands) > 1:
             skip(n, AMBIGUOUS)
             continue
-        pool = [t for t in cands[0].trades if t.deal_date[:10] <= asof_date]
+        aliases = _aliases(cands[0], n.name, sgg, groups)
+        res.matched_groups.update((g.name, g.dong) for g in aliases)
+        if aliases:
+            match += " + 같은 동 다른 표기 " + "·".join(f"'{g.name}'" for g in aliases)
+        merged = sorted(
+            (t for g in (cands[0], *aliases) for t in g.trades), key=lambda t: (t.deal_date, t.id)
+        )
+        pool = [t for t in merged if t.deal_date[:10] <= asof_date]
         if any(t.source == "openapi" for t in pool):
             pool = [t for t in pool if t.source == "openapi"]
+        moved_in_presale = False
         if presale:
             post = [t for t in pool if t.is_presale]
             start = win_start
@@ -702,12 +809,19 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
             start = max(win_start, n.move_in_ym)
             empty_reason = "실거래 없음(입주 후 거래 없음)"
         window = [t for t in post if t.deal_date[:7] >= start]
+        if not window and not presale:
+            # D31-1: 입주는 했지만 입주 뒤 일반 거래가 아직 없고 분양권 거래만 있으면 분양권 행(점수 제외)
+            pre_post = [t for t in pool if t.is_presale]
+            pre_window = [t for t in pre_post if t.deal_date[:7] >= win_start]
+            if pre_window:
+                presale, moved_in_presale = True, True
+                post, window, start = pre_post, pre_window, win_start
         if not window:
             skip(n, empty_reason if not post else f"실거래 없음(최근 {TRADE_WINDOW_MONTHS}개월 거래 없음)")
             continue
         trade_label: Label = "확인됨" if all(t.source == "openapi" for t in window) else "재가공"
-        group_key = (cands[0].name, cands[0].dong)
-        prev = taken.get(group_key)
+        keys = [(g.name, g.dong) for g in (cands[0], *aliases)]
+        prev = next((taken[k] for k in keys if k in taken), None)
         if prev is not None:
             skip(n, f"중복(같은 실거래 단지 — 앞선 공고 {prev.notice.pb})")
             continue
@@ -722,16 +836,84 @@ def _cases(session: Session, region: Region, asof_date: str, res: BenchmarkBuild
                 window=f"{start}~{asof_ym}",
                 presale=presale,
                 trade_label=trade_label,
+                match=match,
+                moved_in_presale=moved_in_presale,
             )
         )
-        taken[group_key] = out[-1]
+        for k in keys:
+            taken[k] = out[-1]
+    return out
+
+
+def _news_cases(
+    session: Session, region: Region, asof_date: str, prices: Sequence[NewsPrice], res: BenchmarkBuild
+) -> list[_Case]:
+    """D31-3 언론 기사 분양가 → 사례. 실거래 = 같은 묶음(정규화 이름 + 법정동)의 일반 거래 중 준공 연도 이후·최근 12개월."""
+    if not prices:
+        return []
+    asof_ym = asof_date[:7]
+    win_start = add_months_ym(asof_ym, -(TRADE_WINDOW_MONTHS - 1))
+    by_key = {(g.name, g.dong): g for g in _trade_groups(session, region.id)}
+    docs = {
+        d.id: d
+        for d in session.scalars(
+            select(RawDocument).where(RawDocument.id.in_(sorted({p.raw_document_id for p in prices})))
+        )
+    }
+    out: list[_Case] = []
+
+    def skip(reason: str) -> None:
+        res.news_skipped[reason] = res.news_skipped.get(reason, 0) + 1
+
+    for p in sorted(prices, key=lambda x: x.target.key):
+        t, doc = p.target, docs.get(p.raw_document_id)
+        g = by_key.get((t.norm, t.dong))
+        if doc is None or g is None:
+            skip("실거래 묶음·기사 원문 없음")
+            continue
+        if (g.name, g.dong) in res.matched_groups:
+            skip("공고와 이어진 단지")
+            continue
+        pool = [x for x in g.trades if x.deal_date[:10] <= asof_date and not x.is_presale]
+        if any(x.source == "openapi" for x in pool):
+            pool = [x for x in pool if x.source == "openapi"]
+        post = [x for x in pool if int(x.deal_date[:4]) >= t.completed_year]
+        start = max(win_start, f"{t.completed_year}-01")
+        window = [x for x in post if x.deal_date[:7] >= start]
+        if not window:
+            skip(f"실거래 없음(최근 {TRADE_WINDOW_MONTHS}개월 거래 없음)")
+            continue
+        notice = _Notice(
+            hm="news", pb=t.key, name=t.name, address=None, notice_date=p.article_date,
+            move_in_ym=f"{t.completed_year}-01", housing="민영", secd=None, doc=doc, text=p.excerpt,
+        )  # fmt: skip
+        out.append(
+            _Case(
+                tag=f"{NEWS_TAG}{t.key}]",
+                notice=notice,
+                living_area=t.living_area,
+                sale=_SalePrice("기사", p.won, doc, p.excerpt, None),
+                trades=window,
+                post=post,
+                window=f"{start}~{asof_ym}",
+                presale=False,
+                trade_label="확인됨" if all(x.source == "openapi" for x in window) else "재가공",
+                match=f"언론 기사 분양가 대상 = 실거래 이름 '{g.name}'(공고 없음)",
+                news=p,
+            )
+        )
+    res.news = len(out)
     return out
 
 
 def _values(case: _Case, asof_year: int) -> dict[str, Any]:
     prices = [t.price_won for t in case.trades]
     peak = _peak(case.post)
-    sale_year = int(case.notice.notice_date[:4]) if case.notice.notice_date else None
+    news = case.news
+    if news is not None:
+        sale_year: int | None = news.sale_year
+    else:
+        sale_year = int(case.notice.notice_date[:4]) if case.notice.notice_date else None
     period = sale_period(sale_year, asof_year) if sale_year is not None else None
     return {
         "living_area": case.living_area,
@@ -740,7 +922,7 @@ def _values(case: _Case, asof_year: int) -> dict[str, Any]:
         "sale_year": sale_year,
         "sale_period": period[0] if period else None,
         "sale_price_84_won": case.sale.won,
-        "sale_price_label": SALE_LABEL,
+        "sale_price_label": news.label if news is not None else SALE_LABEL,
         "trade_low_won": min(prices),
         "trade_median_won": _median_won(prices),
         "trade_high_won": max(prices),
@@ -755,18 +937,28 @@ def _values(case: _Case, asof_year: int) -> dict[str, Any]:
 
 
 def _note(case: _Case, vals: dict[str, Any], tag: str, substitute_for: str | None) -> str:
-    kind = "분양권 거래(입주 전)" if case.presale else "입주 후 실거래"
+    kind = (
+        "분양권 거래(입주 뒤 일반 거래 아직 없음)"
+        if case.moved_in_presale
+        else "분양권 거래(입주 전)"
+        if case.presale
+        else "입주 후 실거래"
+    )
     parts = [
         tag,
         f"{SUBSTITUTE_NOTE} — 생활권 {substitute_for} 자체 표본 0, 원 생활권 {case.living_area}"
         if substitute_for
         else "",
-        f"분양가 = {'자체 아카이브 공고문' if case.sale.doc.source_kind == 'notice_pdf' else '청약홈 공식 API'} "
+        f"분양가 = 언론 기사 {case.news.article_date or '날짜 없음'} {case.news.article_url} — {case.news.basis} "
+        f"'{case.news.value_text}'(판정기 P2 추출, 라벨 {vals['sale_price_label']}) · {case.news.sale_year_formula}"
+        if case.news is not None
+        else f"분양가 = {'자체 아카이브 공고문' if case.sale.doc.source_kind == 'notice_pdf' else '청약홈 공식 API'} "
         f"공고 {case.notice.pb} 주택형 {case.sale.type_code} 최고가"
         f"(84㎡ 최근접, 라벨 {vals['sale_price_label']})",
         f"{kind} = rtms 전용 80~85㎡·해제 제외 {case.window} {vals['n_trades']}건(고점 = 입주 후 받은 전체, "
         f"라벨 {'추정' if substitute_for else case.trade_label})",
         f"sale_period: {vals['_period_formula']}(라벨 추정)",
+        f"단지 매칭: {case.match} + 법정동",
     ]
     return " · ".join(p for p in parts if p)
 
@@ -802,25 +994,57 @@ def _write_prov(
     high = max(case.trades, key=lambda t: (t.price_won, t.deal_date))
     span = json_object_at(n.text, "HOUSE_MANAGE_NO", n.hm)
     notice_ex = n.text[span[0] : span[1]] if span else n.name
-    rows = [
-        prov_row(
-            entity="benchmark", entity_id=row.id, key=tag, field_name="sale_price_84_won", value=sale.won,
-            value_text=f"{_fmt_won(sale.won)} ({sale.type_code} 최고가)", doc=sale.doc,
-            label="추정" if sub else "확인됨", reason=sub_reason or "84㎡ 최근접 주택형 최고가",
-            excerpt=sale.excerpt, span=sale.span, observed_on=n.notice_date,
-        ),
-        prov_row(
-            entity="benchmark", entity_id=row.id, key=tag, field_name="sale_year", value=vals["sale_year"],
-            value_text=n.notice_date or "", doc=n.doc, label=label, reason=sub_reason or "모집공고일 연도",
-            excerpt=notice_ex, span=span, observed_on=n.notice_date,
-        ),
-        prov_row(
-            entity="benchmark", entity_id=row.id, key=tag, field_name="completed_year", value=vals["completed_year"],
-            value_text=n.move_in_ym or "", doc=n.doc, label="추정",
-            reason=sub_reason or "입주예정월 연도(준공 연도 대용)", excerpt=notice_ex, span=span,
-            observed_on=n.notice_date,
-        ),
-    ]  # fmt: skip
+    news = case.news
+    if (
+        news is not None
+    ):  # D31-3 분양가 = 언론 기사(판정기 추출), 분양 연도 = 식(추정), 준공 연도 = rtms 건축년도
+        built = next((t for t in case.post if t.completed_year == vals["completed_year"]), case.post[0])
+        built_doc = by_id.get(built.raw_document_id) if built.raw_document_id is not None else None
+        rows = [
+            prov_row(
+                entity="benchmark", entity_id=row.id, key=tag, field_name="sale_price_84_won", value=sale.won,
+                value_text=f"{_fmt_won(sale.won)} (기사 '{news.value_text}')", doc=sale.doc,
+                label="추정" if sub else news.label, reason=sub_reason or news.basis, excerpt=news.excerpt,
+                observed_on=news.article_date, url=news.article_url,
+            ),
+            prov_row(
+                entity="benchmark", entity_id=row.id, key=tag, field_name="sale_year", value=vals["sale_year"],
+                value_text=str(vals["sale_year"]), doc=sale.doc, label="추정",
+                reason=sub_reason or news.sale_year_formula, excerpt=news.excerpt, observed_on=news.article_date,
+                url=news.article_url,
+            ),
+        ]  # fmt: skip
+        if built_doc is not None:
+            rows.append(
+                prov_row(
+                    entity="benchmark", entity_id=row.id, key=tag, field_name="completed_year",
+                    value=vals["completed_year"], value_text=f"건축년도 {vals['completed_year']}", doc=built_doc,
+                    label="추정" if sub else ("확인됨" if built.source == "openapi" else "재가공"),
+                    reason=sub_reason or "rtms 건축년도(준공 연도)",
+                    excerpt=f"{built.apt_name} 건축년도 {built.completed_year} {built.deal_date}",
+                    observed_on=built.deal_date,
+                )
+            )  # fmt: skip
+    else:
+        rows = [
+            prov_row(
+                entity="benchmark", entity_id=row.id, key=tag, field_name="sale_price_84_won", value=sale.won,
+                value_text=f"{_fmt_won(sale.won)} ({sale.type_code} 최고가)", doc=sale.doc,
+                label="추정" if sub else "확인됨", reason=sub_reason or "84㎡ 최근접 주택형 최고가",
+                excerpt=sale.excerpt, span=sale.span, observed_on=n.notice_date,
+            ),
+            prov_row(
+                entity="benchmark", entity_id=row.id, key=tag, field_name="sale_year", value=vals["sale_year"],
+                value_text=n.notice_date or "", doc=n.doc, label=label, reason=sub_reason or "모집공고일 연도",
+                excerpt=notice_ex, span=span, observed_on=n.notice_date,
+            ),
+            prov_row(
+                entity="benchmark", entity_id=row.id, key=tag, field_name="completed_year", value=vals["completed_year"],
+                value_text=n.move_in_ym or "", doc=n.doc, label="추정",
+                reason=sub_reason or "입주예정월 연도(준공 연도 대용)", excerpt=notice_ex, span=span,
+                observed_on=n.notice_date,
+            ),
+        ]  # fmt: skip
 
     def trade_prov(field_name: str, value: Any, t: RtmsTrade, text: str, reason: str) -> None:
         doc = by_id.get(t.raw_document_id) if t.raw_document_id is not None else None
@@ -882,7 +1106,12 @@ def _snapshot_for(session: Session, region_id: int, asof_date: str) -> int | Non
 
 
 def build_benchmarks(
-    session: Session, region_id: int, *, asof_date: str, snapshot_id: int | None = None
+    session: Session,
+    region_id: int,
+    *,
+    asof_date: str,
+    snapshot_id: int | None = None,
+    news_prices: Sequence[NewsPrice] | None = None,
 ) -> BenchmarkBuild:
     """지역의 벤치마크 행을 다시 조립한다(멱등). commit 은 호출자.
 
@@ -890,6 +1119,9 @@ def build_benchmarks(
     다른 스냅샷(발행본이 인용한 행)은 건드리지 않는다. ``snapshot_id`` 를 안 주면 이 지역·기준일의 가장 새 스냅샷.
     스냅샷 없이 만든 옛 자동 행(머리표 있음, snapshot_id NULL — 0006 이전)은 건드리지 않는다(minor 25: 넘겨받으면 0006
     이전 발행 스냅샷이 인용한 벤치마크가 사라진다). snapshot_id NULL 이고 머리표 없는 행은 수동·시드 행이라 건드리지 않는다.
+
+    ``news_prices`` (D31-3) = 언론 기사 분양가(호출자가 판정기로 고른 값). None 이면(판정기·뉴스 키 없음) 이 스냅샷의
+    기존 언론 사례 행(머리표 ``[bm:news:``)을 지우지 않고 그대로 둔다.
     """
     region = session.get(Region, region_id)
     if region is None:
@@ -898,6 +1130,7 @@ def build_benchmarks(
     res = BenchmarkBuild()
     asof_year = int(asof_date[:4])
     cases = _cases(session, region, asof_date, res)
+    cases += _news_cases(session, region, asof_date, news_prices or (), res)
     docs = _trade_docs(session, cases)
     area_ids = [str(a["id"]) for a in region.living_areas or []]
     own = [c for c in cases if not c.presale]
@@ -915,7 +1148,11 @@ def build_benchmarks(
                 continue
             res.substituted.append(la)
             for c in own:
-                tag = f"{BENCHMARK_TAG}{c.notice.hm}:{c.notice.pb}:{la}]"
+                tag = (
+                    f"{c.tag[:-1]}:{la}]"
+                    if c.news is not None
+                    else f"{BENCHMARK_TAG}{c.notice.hm}:{c.notice.pb}:{la}]"
+                )
                 vals = _values(c, asof_year)
                 vals.update(living_area=la, sale_price_label="추정", substitute=True)
                 vals["note"] = _note(c, vals, tag, la)
@@ -951,6 +1188,8 @@ def build_benchmarks(
             res.unchanged += 1
         _write_prov(session, row, case, vals, tag, sub is not None, docs)
     for tag, row in existing.items():
+        if news_prices is None and tag.startswith(NEWS_TAG):
+            continue  # 이번에 언론 분양가를 못 받았다 — 지난 행을 지우지 않는다
         if tag not in seen:
             unchoose_provenance(session, "benchmark", row.id)
             session.delete(row)
