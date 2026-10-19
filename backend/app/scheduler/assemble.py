@@ -193,7 +193,13 @@ def assemble(
         """D31-3 2020년 이전 분양 단지 분양가 — 뉴스 검색(단지마다 1회, 받은 원문 재사용) → 판정기 P2 extract."""
         from app.collectors.news.collector import parse_news_json
         from app.normalize.benchmark import latest_by_urls, read_raw_row
-        from app.normalize.benchmark_news import news_document, news_price, news_query, news_targets
+        from app.normalize.benchmark_news import (
+            NEWS_DISPLAY,
+            news_document,
+            news_price,
+            news_queries,
+            news_targets,
+        )
 
         factory = ctx.collectors.get("news")
         collector = factory(ctx) if factory is not None else None
@@ -203,19 +209,27 @@ def assemble(
             return
         with ctx.session_factory() as s:
             targets = news_targets(s, region.id, snapshot.asof_date, judge_links.get("map"))
-            urls = {t.key: str(url_of(news_query(t.name, t.place))) for t in targets}
-            have = latest_by_urls(s, urls.values())
-        missing = [t for t in targets if urls[t.key] not in have][:BENCHMARK_NEWS_MAX]
+            queries = {t.key: news_queries(t) for t in targets}
+            urls = {k: [str(url_of(q, display=NEWS_DISPLAY)) for q in qs] for k, qs in queries.items()}
+            have = latest_by_urls(s, [u for us in urls.values() for u in us])
+        missing = [
+            q for t in targets for q, u in zip(queries[t.key], urls[t.key], strict=True) if u not in have
+        ][:BENCHMARK_NEWS_MAX]
         if missing:
-            search(region, [news_query(t.name, t.place) for t in missing])
+            search(region, missing, display=NEWS_DISPLAY)
         skipped: dict[str, int] = {}
         prices: list[NewsPrice] = []
         with ctx.session_factory() as s:
-            docs = latest_by_urls(s, urls.values())
+            docs = latest_by_urls(s, [u for us in urls.values() for u in us])
             for t in targets:
-                doc = docs.get(urls[t.key])
-                text = read_raw_row(doc) if doc is not None else None
-                document, spans = news_document(t, parse_news_json(text.encode()) if text else [])
+                got = [docs[u] for u in urls[t.key] if u in docs]
+                items = []
+                for d in got:
+                    text = read_raw_row(d)
+                    if text:
+                        items.extend(parse_news_json(text.encode(), raw_document_id=d.id))
+                doc = got[0] if got else None
+                document, spans = news_document(t, items)
                 if doc is None or not spans:
                     why = "기사 원문 없음" if doc is None else "기사 없음"
                     skipped[why] = skipped.get(why, 0) + 1

@@ -18,10 +18,12 @@ from app.normalize.benchmark import build_benchmarks
 from app.normalize.benchmark_news import (
     NewsPrice,
     NewsTarget,
+    core_name,
     line_conflict,
     money_won,
     news_document,
     news_price,
+    news_queries,
     news_query,
     news_targets,
     place_short,
@@ -72,7 +74,18 @@ def test_money_won_parses_korean_amounts(text: str, won: int | None) -> None:
 
 def test_news_query_drops_parenthesis() -> None:
     assert news_query("송도더휴캐널파크(THEHUECANALPARK)") == "송도더휴캐널파크 분양가"
-    assert news_query("송도더휴캐널파크", "인천광역시 연수구 송도동") == "인천 송도더휴캐널파크 분양가"
+
+    t = NewsTarget("k", "검단신도시푸르지오더베뉴", "검단신도시푸르지오더베뉴", "원당동", "la_9", 2021,
+                   core=core_name("검단신도시푸르지오더베뉴", {"인천", "검단", "원당"}))  # fmt: skip
+    assert t.core == "푸르지오더베뉴"
+    assert news_queries(t) == ["검단신도시푸르지오더베뉴 분양가", "푸르지오더베뉴 분양가"]
+
+
+def test_core_name_keeps_at_least_five_chars_and_uses_given_places_only() -> None:
+    assert core_name("검단2차우방아이유쉘", {"검단"}) == "2차우방아이유쉘"
+    assert core_name("검단SKVIEW", {"검단"}) == "검단SKVIEW"  # 떼면 5자 미만
+    assert core_name("영종국제도시동원로얄듀크", {"영종"}) == "동원로얄듀크"  # 지역 말 → 일반 낱말 순서로
+    assert core_name("유승한내들 에듀파크", {"검단"}) == "유승한내들에듀파크"
 
 
 def test_news_document_numbers_articles_and_keeps_line_spans() -> None:
