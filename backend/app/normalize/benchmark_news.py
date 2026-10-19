@@ -26,10 +26,11 @@ from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Final
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.analysis.types import Label
-from app.models import Region
+from app.models import LegalDong, Region
 from app.normalize.living_area import living_area_of
 
 if TYPE_CHECKING:
@@ -41,6 +42,7 @@ __all__ = [
     "PYEONG_PER_84",
     "NewsPrice",
     "NewsTarget",
+    "line_conflict",
     "money_won",
     "news_document",
     "news_price",
@@ -56,6 +58,27 @@ MAX_SALE_WON: Final = 5_000_000_000
 MIN_PER_PYEONG_WON: Final = 3_000_000
 MAX_PER_PYEONG_WON: Final = 100_000_000
 _PAREN: Final = re.compile(r"\([^)]*\)")
+_SIDO_SUFFIX: Final = re.compile(r"(특별자치시|특별자치도|광역시|특별시|도)$")
+_SIDO_NS: Final = re.compile(r"^(.).(남|북)도$")  # '충청북도' → '충북' (남·북도 줄임 규칙)
+NAME_MIN_CHARS: Final = 5
+"""D31-4 뉴스 분양가를 찾는 단지 이름 최소 글자 수(정규화 뒤)."""
+NAME_TAIL_CHARS: Final = 6
+"""D31-4 값이 든 기사 줄에 있어야 하는 단지 이름 끝 글자 수(정규화 뒤)."""
+
+
+def place_short(name: str) -> str:
+    """시군구·읍면동 이름의 짧은 꼴('미추홀구' → '미추홀', '주안동' → '주안'). 남는 글자가 2자 미만이면 그대로('서구')."""
+    last = name.split()[-1] if name.split() else ""
+    cut = re.sub(r"(구|군|시|동|읍|면|리|가)$", "", last)
+    return cut if len(cut) >= 2 else last
+
+
+def sido_short(name: str) -> str:
+    """시도 이름 → 기사에서 쓰는 짧은 이름('인천광역시' → '인천', '경기도' → '경기', '충청북도' → '충북')."""
+    m = _SIDO_NS.match(name)
+    return f"{m.group(1)}{m.group(2)}" if m else _SIDO_SUFFIX.sub("", name)
+
+
 PRICE_PATTERNS: Final = (
     r"\d+\s?억(?:\s?\d+\s?천)?(?:\s?\d[\d,]*)?\s?만?\s?원",  # price_84
     r"\d[\d,]{2,5}\s?만\s?원",  # price_per_3_3
@@ -74,6 +97,10 @@ class NewsTarget:
     dong: str
     living_area: str
     completed_year: int
+    place: str = ""  # 법정동 전체 이름 — 판정기 입력·검색어
+    foreign: tuple[str, ...] = ()  # 다른 시도 짧은 이름(법정동 표에서) — D31-4 기사 줄 거르기
+    own: tuple[str, ...] = ()  # 자기 시군구·읍면동 짧은 이름('미추홀'·'주안')
+    neighbors: tuple[str, ...] = ()  # 같은 시도의 다른 시군구 짧은 이름('부평'·'계양' …)
 
 
 @dataclass(frozen=True)
@@ -95,9 +122,10 @@ def target_key(norm: str, dong: str) -> str:
     return "nt" + hashlib.sha256(f"{norm}|{dong}".encode()).hexdigest()[:12]
 
 
-def news_query(name: str) -> str:
-    """검색어 — 괄호(영문 표기·블록) 뺀 실거래 이름 + ' 분양가'."""
-    return f"{' '.join(_PAREN.sub(' ', name).split())} 분양가"
+def news_query(name: str, place: str = "") -> str:
+    """검색어 — 시도 짧은 이름 + 괄호(영문 표기·블록) 뺀 실거래 이름 + ' 분양가'. 시도 이름은 법정동 표(자료)에서 온다."""
+    sido = sido_short(place.split()[0]) if place.split() else ""
+    return " ".join(p for p in (sido, " ".join(_PAREN.sub(" ", name).split()), "분양가") if p)
 
 
 def news_targets(session: Session, region_id: int, asof_date: str) -> list[NewsTarget]:
@@ -114,12 +142,22 @@ def news_targets(session: Session, region_id: int, asof_date: str) -> list[NewsT
     win_start = bm.add_months_ym(asof_ym, -(bm.TRADE_WINDOW_MONTHS - 1))
     min_year = int(asof_date[:4]) - NEWS_YEARS
     groups = bm._trade_groups(session, region_id)
+    sidos = {sido_short(n) for n in session.scalars(select(LegalDong.sido_name).distinct()) if n}
+    sgg_by_sido: dict[str, set[str]] = {}
+    for sido_name, sgg_name in session.execute(
+        select(LegalDong.sido_name, LegalDong.sigungu_name)
+        .where(LegalDong.sigungu_name.is_not(None))
+        .distinct()
+    ):
+        sgg_by_sido.setdefault(sido_name, set()).add(place_short(sgg_name or ""))
     out: list[NewsTarget] = []
     for g in groups:
         if (g.name, g.dong) in used or any(
             d == g.dong and _alias(n, g.name) for n, d in used
         ):  # 같은 동 다른 표기도 공고 쪽
             continue
+        if len(g.name) < NAME_MIN_CHARS:
+            continue  # '아르누보' 같은 짧은 이름은 기사 속 다른 단지('아르누보씨티')와 가를 수 없다
         general = [t for t in g.trades if not t.is_presale and t.deal_date[:10] <= asof_date]
         if not any(t.deal_date[:7] >= win_start for t in general):
             continue
@@ -134,7 +172,27 @@ def news_targets(session: Session, region_id: int, asof_date: str) -> list[NewsT
         if la is None:
             continue
         name = Counter(t.apt_name for t in general).most_common(1)[0][0]
-        out.append(NewsTarget(target_key(g.name, g.dong), name, g.name, g.dong, la, year))
+        legal = session.get(LegalDong, codes.most_common(1)[0][0])
+        place = legal.full_name if legal is not None and legal.full_name else g.dong
+        own_sido = sido_short(legal.sido_name) if legal is not None and legal.sido_name else ""
+        foreign = tuple(sorted(x for x in sidos if x and x != own_sido))
+        own = tuple(
+            dict.fromkeys(
+                place_short(x)
+                for x in ((legal.sigungu_name, legal.eupmyeondong_name) if legal is not None else ())
+                if x
+            )
+        )
+        neighbors = tuple(
+            sorted(x for x in sgg_by_sido.get(legal.sido_name, set()) if x not in own)
+            if legal is not None
+            else ()
+        )
+        out.append(
+            NewsTarget(
+                target_key(g.name, g.dong), name, g.name, g.dong, la, year, place, foreign, own, neighbors
+            )
+        )
     return sorted(out, key=lambda t: (t.living_area, t.name))
 
 
@@ -171,7 +229,7 @@ def news_document(target: NewsTarget, items: list[NewsItem]) -> tuple[str, list[
             seen |= found
     if not kept:
         return "", []
-    lines = [f"단지: {target.name} (법정동 {target.dong}, 준공 {target.completed_year}년)"]
+    lines = [f"단지: {target.name} (위치 {target.place or target.dong}, 준공 {target.completed_year}년)"]
     pos = len(lines[0]) + 1
     spans: list[tuple[int, int, NewsItem]] = []
     for i, it in kept:
@@ -190,6 +248,23 @@ def money_won(text: str) -> int | None:
     eok, cheon, baek, digits, man = m.groups()
     small = int(cheon or 0) * 1000 + int(baek or 0) * 100 + int(digits or 0)
     return int(eok or 0) * 100_000_000 + small * (10_000 if man else 1) or None
+
+
+def line_conflict(target: NewsTarget, line: str) -> str | None:
+    """D31-4 판정기가 고른 값이 든 기사 줄 거르기(문자열 처리 — 버리기만 하고 고르지 않는다).
+    줄에 단지 이름 끝 ``NAME_TAIL_CHARS`` 글자(정규화 뒤)가 없거나, 다른 시도 짧은 이름이 있거나, 같은 시도의 다른
+    시군구 이름은 있는데 자기 시군구·읍면동 이름이 없으면 그 값을 쓰지 않는다
+    (이름이 비슷한 다른 단지·다른 지역의 같은 이름 단지 값을 막는다)."""
+    from app.normalize.benchmark import normalize_apt_name
+
+    tail = normalize_apt_name(target.name)[-NAME_TAIL_CHARS:]
+    if tail and tail not in normalize_apt_name(line):
+        return "기사 줄에 단지 이름 없음(다른 단지 값일 수 있음)"
+    if any(x in line for x in target.foreign):
+        return "기사 줄에 다른 시도 이름(다른 지역 단지일 수 있음)"
+    if any(x in line for x in target.neighbors) and not any(x in line for x in target.own):
+        return "기사 줄에 다른 시군구 이름만(다른 지역 단지일 수 있음)"
+    return None
 
 
 def news_price(
@@ -229,6 +304,9 @@ def news_price(
     if hit is None:
         return None, "분양가가 든 기사 줄을 찾지 못함"
     start, end, item = hit
+    why = line_conflict(target, document[start:end])
+    if why:
+        return None, why
     day = _day(item.published_at)
     pub_year = int(day[:4]) if day else target.completed_year
     sale_year = min(pub_year, target.completed_year - 2)

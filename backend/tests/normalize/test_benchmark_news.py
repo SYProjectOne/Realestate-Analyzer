@@ -18,11 +18,14 @@ from app.normalize.benchmark import build_benchmarks
 from app.normalize.benchmark_news import (
     NewsPrice,
     NewsTarget,
+    line_conflict,
     money_won,
     news_document,
     news_price,
     news_query,
     news_targets,
+    place_short,
+    sido_short,
 )
 
 from ._assemble_support import ASOF, add_list, add_model, add_trade, notice_row, rtms_url
@@ -33,7 +36,10 @@ ARTICLE = "https://news.example.com/a/1"
 
 
 def _target(name: str = "송도더베뉴", completed: int = 2021) -> NewsTarget:
-    return NewsTarget("ntabc", name, name, "송도동", "la_1", completed)
+    return NewsTarget(
+        "ntabc", name, name, "송도동", "la_1", completed, "인천광역시 연수구 송도동",
+        foreign=("서울", "울산"), own=("연수", "송도"), neighbors=("부평", "계양"),
+    )  # fmt: skip
 
 
 def _items() -> list[NewsItem]:
@@ -65,11 +71,12 @@ def test_money_won_parses_korean_amounts(text: str, won: int | None) -> None:
 
 def test_news_query_drops_parenthesis() -> None:
     assert news_query("송도더휴캐널파크(THEHUECANALPARK)") == "송도더휴캐널파크 분양가"
+    assert news_query("송도더휴캐널파크", "인천광역시 연수구 송도동") == "인천 송도더휴캐널파크 분양가"
 
 
 def test_news_document_numbers_articles_and_keeps_line_spans() -> None:
     doc, spans = news_document(_target(), _items())
-    assert doc.splitlines()[0] == "단지: 송도더베뉴 (법정동 송도동, 준공 2021년)"
+    assert doc.splitlines()[0] == "단지: 송도더베뉴 (위치 인천광역시 연수구 송도동, 준공 2021년)"
     assert doc.splitlines()[2].startswith("[2] 2019-12-06 '송도 더 베뉴' 견본주택 — ")
     assert [doc[a:b] for a, b, _ in spans] == doc.splitlines()[1:]
     assert news_document(_target(), []) == ("", [])
@@ -92,7 +99,7 @@ def test_price_per_pyeong_is_estimated_times_34() -> None:
 
 
 def test_sale_year_is_capped_two_years_before_completion() -> None:
-    items = [NewsItem("t", ARTICLE, "84㎡ 4억원", "Mon, 06 Apr 2026 10:00:00 +0900")]
+    items = [NewsItem("송도 더베뉴 입주", ARTICLE, "84㎡ 분양가 4억원", "Mon, 06 Apr 2026 10:00:00 +0900")]
     doc, spans = news_document(_target(), items)
     p, _ = news_price(_target(), doc, spans, {"price_84": "4억원"}, raw_document_id=7)
     assert p is not None and p.sale_year == 2019
@@ -161,6 +168,7 @@ def test_targets_are_recent_unmatched_complexes_in_living_areas(
     add_model(add_raw, region.id, "2021000101", [("084.9500A", 70000, 300)])
     got = news_targets(db_session, region.id, ASOF)
     assert [(t.name, t.completed_year) for t in got] == [("송도더베뉴", 2021)]
+    assert got[0].place.endswith("송도동") and "송도" in got[0].own and "인천" not in got[0].foreign
     assert got[0].key.startswith("nt") and got[0].living_area
 
 
@@ -247,3 +255,40 @@ def test_candidate_patterns_match_the_judge_fields() -> None:
     from app.normalize.benchmark_news import PRICE_PATTERNS
 
     assert tuple(f.pattern for f in benchmark_price_extract_fields("x")) == PRICE_PATTERNS
+
+
+def test_sido_and_place_short_names() -> None:
+    assert [sido_short(x) for x in ("인천광역시", "경기도", "충청북도", "서울특별시", "세종특별자치시")] == [
+        "인천", "경기", "충북", "서울", "세종",
+    ]  # fmt: skip
+    assert [place_short(x) for x in ("미추홀구", "주안동", "서구", "김포시", "강화군")] == [
+        "미추홀",
+        "주안",
+        "서구",
+        "김포",
+        "강화",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("line", "reason"),
+    [
+        ("[1] 2019-12-06 '송도 더베뉴' 84㎡ 4억원", None),
+        (
+            "[1] 2025-11-24 '울주 송도더베뉴' 울산 첫 분양 4억원",
+            "기사 줄에 다른 시도 이름(다른 지역 단지일 수 있음)",
+        ),
+        ("[1] 2026-10-11 '산곡역 하늘채' 84㎡ 10억원", "기사 줄에 단지 이름 없음(다른 단지 값일 수 있음)"),
+        ("[1] 2021-01-12 연수구 '송도더베뉴' 옆 부평 단지보다 싸다 4억원", None),  # 자기 시군구 이름도 있다
+    ],
+)
+def test_line_conflict_drops_values_from_other_complexes(line: str, reason: str | None) -> None:
+    assert line_conflict(_target(), line) == reason
+
+
+def test_line_conflict_drops_same_name_complex_of_another_district() -> None:
+    t = NewsTarget("k", "캐슬앤더샵", "캐슬앤더샵", "주안동", "la_3", 2022, "인천광역시 미추홀구 주안동",
+                   own=("미추홀", "주안"), neighbors=("부평", "계양"))  # fmt: skip
+    line = "[10] 2021-01-12 '부평 캐슬앤더샵 퍼스트' 분양가는 84㎡ 5억6900만원"
+    assert line_conflict(t, line) == "기사 줄에 다른 시군구 이름만(다른 지역 단지일 수 있음)"
+    assert line_conflict(t, "[1] 2020-05-01 주안동 '캐슬앤더샵' 84㎡ 4억원") is None
