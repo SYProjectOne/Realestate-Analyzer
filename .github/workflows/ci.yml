@@ -1,7 +1,9 @@
 # CI (RA §2 공통 도구, §8-4 규칙 9·17)
 # - 백엔드: WP 디렉터리별 테스트 잡(tests/<모듈>) + ruff + mypy --strict
 # - 프론트: lint / typecheck / test
-# - contracts/** 또는 공통(core·models·pyproject·CI) 이 바뀌면 전체를 돌린다. main push 도 전체.
+# - contracts/** 또는 공통(core·models·pyproject·CI) 이 바뀌면 전체를 돌린다. 수동 실행·주간 예약 실행도 전체.
+# - D32(2026-10-19, Actions 무료 2,000분 소진): main push 도 PR 처럼 바뀐 모듈만 돌린다. 작은 백엔드 모듈 6개는 한 잡,
+#   Lighthouse 는 프론트가 바뀔 때·주간 예약·수동만, 회귀는 코드가 바뀌면 항상. 매주 월 09:00(KST) 전체 실행이 안전망.
 name: ci
 
 on:
@@ -9,6 +11,8 @@ on:
     branches: [main, "wp/**"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 1"  # 매주 월 00:00 UTC(09:00 KST) — 전체 실행(D32 안전망)
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -35,6 +39,10 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       infra: ${{ steps.filter.outputs.infra }}
       regress: ${{ steps.filter.outputs.regress }}
+      backend: ${{ steps.filter.outputs.backend }}
+      full: ${{ steps.plan.outputs.full }}
+      code: ${{ steps.plan.outputs.code }}
+      backend_matrix: ${{ steps.plan.outputs.backend_matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -91,9 +99,38 @@ jobs:
               - 'backend/tests/regress/**'
               - 'e2e/**'
               - 'scripts/tasks.py'
+            backend:
+              - 'backend/**'
+            contracts_tests:
+              - 'backend/tests/contracts/**'
+              - 'backend/scripts/**'
+      # D32: 무엇을 돌릴지 한곳에서 정한다 — full(수동·예약·contracts/공통), 백엔드 테스트 행렬(바뀐 모듈만, 작은 모듈 6개는
+      # 한 잡 'small'), code(문서·infra 만 바뀐 게 아니면 true → 회귀)
+      - name: plan
+        id: plan
+        env:
+          FULL: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || steps.filter.outputs.contracts == 'true' || steps.filter.outputs.shared == 'true' }}
+          OUT: ${{ toJSON(steps.filter.outputs) }}
+        run: |
+          hit() { [ "$FULL" = "true" ] || [ "$(jq -r --arg k "$1" '.[$k] // "false"' <<<"$OUT")" = "true" ]; }
+          small=""
+          for m in core contracts analysis judge normalize fixtures_contract; do
+            key=$m; [ "$m" = contracts ] && key=contracts_tests
+            if hit "$key"; then small="$small tests/$m"; fi
+          done
+          items='[]'
+          if [ -n "$small" ]; then items=$(jq -c --arg p "${small# }" '. + [{"name":"small","paths":$p}]' <<<"$items"); fi
+          for m in collectors api scheduler reports; do
+            if hit "$m"; then items=$(jq -c --arg m "$m" '. + [{"name":$m,"paths":("tests/"+$m)}]' <<<"$items"); fi
+          done
+          code=false
+          for k in backend frontend regress fixtures_contract contracts shared; do if hit "$k"; then code=true; fi; done
+          { echo "full=$FULL"; echo "code=$code"; echo "backend_matrix=$items"; } >> "$GITHUB_OUTPUT"
+          echo "full=$FULL code=$code backend=$items"
 
   backend-lint:
     needs: changes
+    if: needs.changes.outputs.full == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -113,12 +150,15 @@ jobs:
 
   backend-tests:
     needs: changes
+    if: needs.changes.outputs.backend_matrix != '[]'
+    name: backend-tests (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # = backend/tests/<모듈> 디렉터리(tests/regress 는 regress 잡). 빈 models 항목은 R5 에서 뺐다(app/models 는 shared 필터)
-        module: [core, contracts, collectors, normalize, judge, analysis, api, scheduler, reports, fixtures_contract]
+        # D32: changes 잡이 정한 행렬 {name, paths}. small = core·contracts·analysis·judge·normalize·fixtures_contract 중
+        # 바뀐 것(한 잡), 나머지는 모듈마다 한 잡. tests/regress 는 regress 잡.
+        include: ${{ fromJSON(needs.changes.outputs.backend_matrix) }}
     defaults:
       run:
         working-directory: backend
@@ -140,56 +180,43 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      MODULE: ${{ matrix.module }}
+      TEST_PATHS: ${{ matrix.paths }}
       JUDGE_ADAPTER: mock
       TEST_POSTGRES_URL: postgresql+psycopg://postgres@localhost:5432/contracts_test
     steps:
       - uses: actions/checkout@v4
-      - name: decide
-        id: decide
-        working-directory: .
-        env:
-          # 수동 실행·main push·contracts/공통 변경 → 전체, 아니면 바뀐 모듈만
-          RUN: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || needs.changes.outputs.contracts == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs[matrix.module] == 'true' }}
-        run: echo "run=$RUN" >> "$GITHUB_OUTPUT"
-      - if: steps.decide.outputs.run == 'true'
-        uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - if: steps.decide.outputs.run == 'true'
-        run: uv sync --all-extras --frozen
+      - run: uv sync --all-extras --frozen
       # 보고서 PDF(D4)·공식 홈페이지 렌더(수집)는 Playwright chromium 이 필요하다(R3 minor 2)
-      - if: steps.decide.outputs.run == 'true' && (matrix.module == 'reports' || matrix.module == 'collectors')
+      - if: matrix.name == 'reports' || matrix.name == 'collectors'
         name: playwright install chromium
         run: uv run playwright install --with-deps chromium
       # 보고서 HTML 의 ECharts 인라인(tests/reports/test_html.py)은 frontend/node_modules/echarts 번들을 쓴다 —
       # 없으면 CI 에서는 skip 이 아니라 실패한다(R5-OPS 6). frontend lock 그대로 설치.
-      - if: steps.decide.outputs.run == 'true' && matrix.module == 'reports'
+      - if: matrix.name == 'reports'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - if: steps.decide.outputs.run == 'true' && matrix.module == 'reports'
+      - if: matrix.name == 'reports'
         name: npm ci (frontend — echarts 번들)
         working-directory: frontend
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: pytest tests/${{ matrix.module }}
-        if: steps.decide.outputs.run == 'true'
+      - name: pytest ${{ matrix.paths }}
         run: |
-          if [ ! -d "tests/$MODULE" ]; then
-            echo "tests/$MODULE 없음 — 아직 구현 전"; exit 0
-          fi
           set +e
-          uv run pytest "tests/$MODULE"
+          uv run pytest $TEST_PATHS
           code=$?
-          # 5 = 수집된 테스트 0개(뼈대만 있는 WP)
-          if [ "$code" -eq 5 ]; then echo "tests/$MODULE: 테스트 0개"; exit 0; fi
+          # 5 = 수집된 테스트 0개
+          if [ "$code" -eq 5 ]; then echo "$TEST_PATHS: 테스트 0개"; exit 0; fi
           exit $code
 
   infra:
     needs: changes
-    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.contracts == 'true' || github.event_name != 'pull_request'
+    if: needs.changes.outputs.full == 'true' || needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -206,6 +233,7 @@ jobs:
 
   frontend:
     needs: changes
+    if: needs.changes.outputs.full == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -216,7 +244,7 @@ jobs:
         id: decide
         working-directory: .
         env:
-          RUN: ${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true' }}
+          RUN: "true"
         run: |
           if [ ! -f frontend/package.json ]; then echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
@@ -248,7 +276,7 @@ jobs:
   # 검토한 뒤 같은 이름의 -chromium-linux.png 로 커밋한다. 화면 e2e(e2e/pages)는 스크린샷이 없어 --ignore-snapshots 그대로.
   frontend-e2e:
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
+    if: needs.changes.outputs.full == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -283,9 +311,10 @@ jobs:
           if-no-files-found: ignore
 
   # R3 M15: Lighthouse 80 이상(성능·접근성·권장 사항) — npm run lighthouse 가 점수 미달이면 exit 1
+  # D32: 프론트가 바뀔 때·주간 예약·수동 실행만(contracts·공통 변경만으로는 돌리지 않는다)
   frontend-lighthouse:
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.contracts == 'true'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -308,10 +337,8 @@ jobs:
   # 실패해도 다른 잡과 독립 — 결과 요약은 로그 '회귀 요약' 절과 아티팩트(junit·Playwright json·trace).
   regress:
     needs: changes
-    if: >-
-      github.event_name != 'pull_request' || needs.changes.outputs.contracts == 'true' ||
-      needs.changes.outputs.shared == 'true' || needs.changes.outputs.fixtures_contract == 'true' ||
-      needs.changes.outputs.regress == 'true'
+    # D32: 코드(백엔드·프론트·e2e·contracts·공통·픽스처)가 바뀌면 항상 — 모듈만 돌리는 대신 모듈을 가로지르는 안전망
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
