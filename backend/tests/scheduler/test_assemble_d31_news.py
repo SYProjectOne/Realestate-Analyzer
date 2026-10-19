@@ -87,7 +87,7 @@ class FakeNews:
                     s,
                     json.dumps({**body, "query": q}, ensure_ascii=False),
                     source_kind="news",
-                    url=self.search_url(q),
+                    url=self.search_url(q, sort=sort, display=display),
                     region_id=region.id,
                 )
                 for q in queries
@@ -111,8 +111,8 @@ def test_weekly_collect_adds_news_priced_benchmark_once(
     res = collect(ctx, 1, ["rtms"], asof_date="2026-10-08")
     assert res.errors == {}
     st = res.stats()["assembled"]["benchmark_news"]
-    assert (st["targets"], st["searched"], st["prices"]) == (1, 1, 1)
-    assert news.queries == [f"인천 {OLD} 분양가"]
+    assert (st["targets"], st["searched"], st["prices"]) == (1, 2, 1)  # 검색어 2개(이름·핵심 이름)
+    assert news.queries == [f"{OLD} 분양가", "옛단지더베뉴 분양가"]
     with factory() as s:
         row = s.scalars(select(Benchmark).where(Benchmark.name == OLD, Benchmark.living_area == "la_1")).one()
         assert (row.sale_price_84_won, row.sale_price_label, row.sale_year, row.completed_year) == (
@@ -132,7 +132,7 @@ def test_weekly_collect_adds_news_priced_benchmark_once(
     assert res.stats()["assembled"]["benchmark"]["news"] == 1
 
     again = collect(ctx, 1, ["rtms"], asof_date="2026-10-08")
-    assert news.queries == [f"인천 {OLD} 분양가"]  # 받은 원문을 다시 쓴다(검색 1회)
+    assert news.queries == [f"{OLD} 분양가", "옛단지더베뉴 분양가"]  # 받은 원문을 다시 쓴다(검색 1회)
     assert again.stats()["assembled"]["benchmark"]["inserted"] == 0
 
 

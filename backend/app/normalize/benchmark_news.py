@@ -22,7 +22,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Final
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from app.collectors.news.collector import NewsItem
 
 __all__ = [
+    "NEWS_DISPLAY",
     "NEWS_TAG",
     "NEWS_YEARS",
     "PYEONG_PER_84",
@@ -47,13 +48,15 @@ __all__ = [
     "money_won",
     "news_document",
     "news_price",
+    "news_queries",
     "news_query",
     "news_targets",
     "wide_range_top",
 ]
 
 NEWS_TAG: Final = "[bm:news:"
-NEWS_YEARS: Final = 10  # D9-2 과거 N년(청약홈 과거 공고 창과 같은 수)
+NEWS_YEARS: Final = 10
+NEWS_DISPLAY: Final = 50  # D31-7 검색어마다 받는 기사 수(10건이면 옛 분양 때 기사가 밀려난다)  # D9-2 과거 N년(청약홈 과거 공고 창과 같은 수)
 PYEONG_PER_84: Final = 34  # 전용 84㎡ 공급면적 약 112㎡ ÷ 3.3㎡ (가정 — note 에 식)
 MIN_SALE_WON: Final = 100_000_000
 MAX_SALE_WON: Final = 5_000_000_000
@@ -103,6 +106,9 @@ class NewsTarget:
     foreign: tuple[str, ...] = ()  # 다른 시도 짧은 이름(법정동 표에서) — D31-4 기사 줄 거르기
     own: tuple[str, ...] = ()  # 자기 시군구·읍면동 짧은 이름('미추홀'·'주안')
     neighbors: tuple[str, ...] = ()  # 같은 시도의 다른 시군구 짧은 이름('부평'·'계양' …)
+    core: str = (
+        ""  # D31-7 앞의 지역 말·일반 낱말을 뗀 핵심 이름('검단신도시푸르지오더베뉴' → '푸르지오더베뉴')
+    )
 
 
 @dataclass(frozen=True)
@@ -124,10 +130,37 @@ def target_key(norm: str, dong: str) -> str:
     return "nt" + hashlib.sha256(f"{norm}|{dong}".encode()).hexdigest()[:12]
 
 
-def news_query(name: str, place: str = "") -> str:
-    """검색어 — 시도 짧은 이름 + 괄호(영문 표기·블록) 뺀 실거래 이름 + ' 분양가'. 시도 이름은 법정동 표(자료)에서 온다."""
-    sido = sido_short(place.split()[0]) if place.split() else ""
-    return " ".join(p for p in (sido, " ".join(_PAREN.sub(" ", name).split()), "분양가") if p)
+def news_query(name: str) -> str:
+    """검색어 — 괄호(영문 표기·블록) 뺀 실거래 이름 + ' 분양가'. D31-7: 앞에 시도 이름을 붙이면 옛 기사가 덜 잡혀 뺐다."""
+    return f"{' '.join(_PAREN.sub(' ', name).split())} 분양가"
+
+
+def news_queries(target: NewsTarget) -> list[str]:
+    """D31-7 단지마다 검색어(겹치지 않게): 이름 그대로 + 핵심 이름(앞의 지역 말·일반 낱말 뗌)."""
+    out = [news_query(target.name)]
+    if target.core and target.core != _PAREN.sub("", target.name).replace(" ", ""):
+        out.append(news_query(target.core))
+    return list(dict.fromkeys(out))
+
+
+GENERIC_PREFIXES: Final = ("신도시", "국제도시", "지구", "택지")
+"""D31-7 핵심 이름에서 떼는 일반 낱말(지역 이름 아님 — 지역 말은 법정동 표에서 온다, 규칙 15)."""
+
+
+def _enough(rest: str) -> bool:
+    """뗀 뒤 남는 이름이 ``NAME_MIN_CHARS`` 자 이상이고 한글이 2자 이상('SKVIEW' 같은 브랜드 영문만 남으면 떼지 않는다)."""
+    return len(rest) >= NAME_MIN_CHARS and len(re.findall(r"[가-힣]", rest)) >= 2
+
+
+def core_name(name: str, places: Iterable[str]) -> str:
+    """이름 앞의 지역 말(시도·시군구·읍면동 짧은 이름)과 일반 낱말을 남는 글자가 ``NAME_MIN_CHARS`` 이상인 동안 뗀다."""
+    words = sorted({w for w in (*places, *GENERIC_PREFIXES) if len(w) >= 2}, key=len, reverse=True)
+    n = _PAREN.sub("", name).replace(" ", "")
+    while True:
+        w = next((w for w in words if n.startswith(w) and _enough(n[len(w) :])), None)
+        if w is None:
+            return n
+        n = n[len(w) :]
 
 
 def news_targets(
@@ -156,6 +189,12 @@ def news_targets(
         .distinct()
     ):
         sgg_by_sido.setdefault(sido_name, set()).add(place_short(sgg_name or ""))
+    places_by_sido: dict[str, set[str]] = {}  # D31-7 핵심 이름에서 뗄 지역 말(시도·시군구·읍면동 짧은 이름)
+    for sido_name, sgg_name, emd_name in session.execute(
+        select(LegalDong.sido_name, LegalDong.sigungu_name, LegalDong.eupmyeondong_name).distinct()
+    ):
+        got = places_by_sido.setdefault(sido_name, {sido_short(sido_name)})
+        got.update(place_short(x) for x in (sgg_name, emd_name) if x)
     out: list[NewsTarget] = []
     for g in groups:
         if (g.name, g.dong) in used or any(
@@ -194,9 +233,20 @@ def news_targets(
             if legal is not None
             else ()
         )
+        core = core_name(name, places_by_sido.get(legal.sido_name, set()) if legal is not None else ())
         out.append(
             NewsTarget(
-                target_key(g.name, g.dong), name, g.name, g.dong, la, year, place, foreign, own, neighbors
+                target_key(g.name, g.dong),
+                name,
+                g.name,
+                g.dong,
+                la,
+                year,
+                place,
+                foreign,
+                own,
+                neighbors,
+                core,
             )
         )
     return sorted(out, key=lambda t: (t.living_area, t.name))
@@ -228,7 +278,11 @@ def news_document(target: NewsTarget, items: list[NewsItem]) -> tuple[str, list[
     seen: set[str] = set()
     kept: list[tuple[int, NewsItem]] = []
     last_year = target.completed_year - 1
+    urls: set[str] = set()
     for i, it in enumerate(items, start=1):
+        if it.url in urls:
+            continue  # 검색어 둘이 같은 기사를 받았다
+        urls.add(it.url)
         day = _day(it.published_at)
         if day is None or int(day[:4]) > last_year:
             continue
@@ -334,6 +388,7 @@ def news_price(
     if hit is None:
         return None, "분양가가 든 기사 줄을 찾지 못함"
     start, end, item = hit
+    raw_document_id = item.raw_document_id or raw_document_id  # 검색어가 둘이면 그 기사가 든 원문
     why = line_conflict(target, document[start:end])
     if why:
         return None, why
