@@ -48,6 +48,7 @@ __all__ = [
     "news_price",
     "news_query",
     "news_targets",
+    "wide_range_top",
 ]
 
 NEWS_TAG: Final = "[bm:news:"
@@ -216,10 +217,16 @@ def news_document(target: NewsTarget, items: list[NewsItem]) -> tuple[str, list[
     """판정기 입력 문서와 기사 줄 위치 [(시작, 끝, 기사)]. 남는 기사가 없으면 ('', []).
 
     추출 후보(필드 정규식에 맞는 문자열)가 없는 기사, 앞 기사에 이미 나온 후보(공백·쉼표 뺀 문자열)만 되풀이하는 기사는
-    넣지 않는다 — 같은 값이 여러 번 나오면 판정기 확률이 나뉘어 auto 가 안 된다(문자열 중복 제거 — 판단 아님)."""
+    넣지 않는다 — 같은 값이 여러 번 나오면 판정기 확률이 나뉘어 auto 가 안 된다(문자열 중복 제거 — 판단 아님).
+    D31-5: 날짜가 없거나 준공 연도 − 1 보다 늦은 기사도 넣지 않는다 — 입주 뒤 기사는 옛 단지를 비교로 들며 실거래가·
+    신고가를 적는다(분양 때 기사만)."""
     seen: set[str] = set()
     kept: list[tuple[int, NewsItem]] = []
+    last_year = target.completed_year - 1
     for i, it in enumerate(items, start=1):
+        day = _day(it.published_at)
+        if day is None or int(day[:4]) > last_year:
+            continue
         found = {
             m.group(0).replace(" ", "").replace(",", "")
             for m in _CANDIDATE.finditer(f"{it.title} {it.excerpt}")
@@ -248,6 +255,24 @@ def money_won(text: str) -> int | None:
     eok, cheon, baek, digits, man = m.groups()
     small = int(cheon or 0) * 1000 + int(baek or 0) * 100 + int(digits or 0)
     return int(eok or 0) * 100_000_000 + small * (10_000 if man else 1) or None
+
+
+RANGE_LOW_RATIO: Final = 0.7
+"""D31-5 '아래 끝 ~ 위 끝' 범위에서 아래 끝이 위 끝의 이 비율보다 낮으면 여러 주택형을 묶은 범위로 본다."""
+_RANGE_LOW: Final = re.compile(r"(\d+\s?억(?:\s?\d+\s?천)?(?:\s?\d[\d,]*)?\s?만?\s?원?)\s?[~∼〜-]\s?$")
+
+
+def wide_range_top(line: str, value_text: str, won: int) -> bool:
+    """값이 '아래 끝 ~ 값' 범위의 위 끝이고 아래 끝이 ``RANGE_LOW_RATIO`` 배보다 낮다('3억1910만~8억9000만원' —
+    59㎡~대형을 묶은 범위). 문자열 처리 — 판단 아님."""
+    at = line.find(value_text)
+    while at >= 0:
+        m = _RANGE_LOW.search(line[:at])
+        low = money_won(m.group(1)) if m else None
+        if low is not None and low < won * RANGE_LOW_RATIO:
+            return True
+        at = line.find(value_text, at + 1)
+    return False
 
 
 def line_conflict(target: NewsTarget, line: str) -> str | None:
@@ -307,6 +332,8 @@ def news_price(
     why = line_conflict(target, document[start:end])
     if why:
         return None, why
+    if label == "비공식" and wide_range_top(document[start:end], value_text, won):
+        return None, "여러 주택형 가격 범위의 위 끝(84㎡ 값 아님)"
     day = _day(item.published_at)
     pub_year = int(day[:4]) if day else target.completed_year
     sale_year = min(pub_year, target.completed_year - 2)

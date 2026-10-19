@@ -26,6 +26,7 @@ from app.normalize.benchmark_news import (
     news_targets,
     place_short,
     sido_short,
+    wide_range_top,
 )
 
 from ._assemble_support import ASOF, add_list, add_model, add_trade, notice_row, rtms_url
@@ -99,10 +100,10 @@ def test_price_per_pyeong_is_estimated_times_34() -> None:
 
 
 def test_sale_year_is_capped_two_years_before_completion() -> None:
-    items = [NewsItem("송도 더베뉴 입주", ARTICLE, "84㎡ 분양가 4억원", "Mon, 06 Apr 2026 10:00:00 +0900")]
+    items = [NewsItem("송도 더베뉴 입주", ARTICLE, "84㎡ 분양가 4억원", "Mon, 07 Dec 2020 10:00:00 +0900")]
     doc, spans = news_document(_target(), items)
     p, _ = news_price(_target(), doc, spans, {"price_84": "4억원"}, raw_document_id=7)
-    assert p is not None and p.sale_year == 2019
+    assert p is not None and p.sale_year == 2019  # min(2020, 2021 − 2)
 
 
 @pytest.mark.parametrize(
@@ -240,10 +241,12 @@ def test_news_rows_are_kept_when_prices_are_unavailable_and_removed_when_gone(
 def test_document_drops_articles_that_only_repeat_earlier_amounts() -> None:
     """같은 값이 여러 기사에 되풀이되면 판정기 확률이 나뉜다 — 새 후보가 없는 기사는 넣지 않는다(문자열 중복 제거)."""
     items = [
-        NewsItem("a", "u1", "분양가는 3.3㎡당 평균 1150만원대", None),
-        NewsItem("b", "u2", "평균 분양가는 3.3㎡당 1,150만원이다", None),  # 쉼표만 다른 같은 값
-        NewsItem("c", "u3", "견본주택 개관, 가격 언급 없음", None),  # 후보 없음
-        NewsItem("d", "u4", "옆 단지는 3.3㎡당 1201만원", None),
+        NewsItem("a", "u1", "분양가는 3.3㎡당 평균 1150만원대", "Fri, 06 Dec 2019 10:00:00 +0900"),
+        NewsItem(
+            "b", "u2", "평균 분양가는 3.3㎡당 1,150만원이다", "Fri, 06 Dec 2019 10:00:00 +0900"
+        ),  # 쉼표만 다른 같은 값
+        NewsItem("c", "u3", "견본주택 개관, 가격 언급 없음", "Fri, 06 Dec 2019 10:00:00 +0900"),  # 후보 없음
+        NewsItem("d", "u4", "옆 단지는 3.3㎡당 1201만원", "Fri, 06 Dec 2019 10:00:00 +0900"),
     ]
     doc, spans = news_document(_target(), items)
     assert [it.url for _, _, it in spans] == ["u1", "u4"]
@@ -292,3 +295,42 @@ def test_line_conflict_drops_same_name_complex_of_another_district() -> None:
     line = "[10] 2021-01-12 '부평 캐슬앤더샵 퍼스트' 분양가는 84㎡ 5억6900만원"
     assert line_conflict(t, line) == "기사 줄에 다른 시군구 이름만(다른 지역 단지일 수 있음)"
     assert line_conflict(t, "[1] 2020-05-01 주안동 '캐슬앤더샵' 84㎡ 4억원") is None
+
+
+def test_document_keeps_only_articles_from_before_completion() -> None:
+    """D31-5: 입주 무렵 뒤(준공 연도 − 1 보다 늦은) 기사·날짜 없는 기사는 넣지 않는다 — 실거래가·신고가 비교 기사."""
+    items = [
+        NewsItem("송도더베뉴 분양", "u1", "84㎡ 4억원", "Fri, 06 Dec 2019 10:00:00 +0900"),
+        NewsItem("송도더베뉴 신고가", "u2", "84㎡ 9억원에 거래", "Mon, 06 Apr 2026 10:00:00 +0900"),
+        NewsItem("송도더베뉴", "u3", "84㎡ 5억원", None),
+    ]
+    _doc, spans = news_document(_target(), items)
+    assert [it.url for _, _, it in spans] == ["u1"]
+
+
+@pytest.mark.parametrize(
+    ("line", "value", "won", "wide"),
+    [
+        ("단지 분양가는 3억1910만~8억9000만원, 인근", "8억9000만원", 890_000_000, True),
+        ("같은 면적 분양가는 3억9237만~4억3919만원 사이", "4억3919만원", 439_190_000, False),
+        ("84㎡ 4억1320만원", "4억1320만원", 413_200_000, False),
+    ],
+)
+def test_wide_range_top_marks_multi_type_ranges(line: str, value: str, won: int, wide: bool) -> None:
+    assert wide_range_top(line, value, won) is wide
+
+
+def test_top_of_wide_range_is_not_used_as_84_price() -> None:
+    items = [
+        NewsItem(
+            "'송도 더베뉴' 정당계약",
+            ARTICLE,
+            "단지 분양가는 3억1910만~8억9000만원",
+            "Mon, 09 Dec 2019 10:00:00 +0900",
+        )
+    ]
+    doc, spans = news_document(_target(), items)
+    assert news_price(_target(), doc, spans, {"price_84": "8억9000만원"}, raw_document_id=7) == (
+        None,
+        "여러 주택형 가격 범위의 위 끝(84㎡ 값 아님)",
+    )
