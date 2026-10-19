@@ -68,3 +68,31 @@ def test_descriptions_carry_the_place_to_tell_same_name_complexes_apart() -> Non
     fields = P.benchmark_price_extract_fields("유승한내들 에듀파크", "인천광역시 서구 당하동")
     assert all("인천광역시 서구 당하동에 있는 '유승한내들 에듀파크' 단지" in f.description for f in fields)
     assert "다른 지역의 같은 이름 단지" in fields[0].description
+
+
+def test_link_payload_puts_none_first_and_rejects_reserved_ids() -> None:
+    import pytest
+
+    p = P.classify_benchmark_link_payload(
+        "청약 공고 단지: 송도 미래 1차", [("g1", "실거래 단지 '신송도역센트럴뷰'")]
+    )
+    assert [c["id"] for c in p["classes"]] == [P.BENCHMARK_LINK_NONE, "g1"]
+    assert p["items"][0]["id"] == "n"
+    with pytest.raises(ValueError):
+        P.classify_benchmark_link_payload("x", [("none", "y")])
+
+
+def test_p4_classify_benchmark_link_returns_the_single_item() -> None:
+    class _One:
+        def call(self, tool: str, payload: dict[str, Any], purpose: str, **_kw: Any) -> Any:
+            assert tool == "classify" and purpose == "classify:bm_link:2021000101:2021000101"
+            return SimpleNamespace(status="ok", result={"label": "g1", "prob": 0.97, "decision": "auto"})
+
+    o = pipeline.p4_classify_benchmark_link(
+        _One(),  # type: ignore[arg-type]
+        notice_key="2021000101:2021000101",
+        text="t",
+        candidates=[("g1", "d")],
+        snapshot_id=None,
+    )
+    assert (o.label, o.resolved) == ("g1", True)

@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Final
@@ -129,7 +130,9 @@ def news_query(name: str, place: str = "") -> str:
     return " ".join(p for p in (sido, " ".join(_PAREN.sub(" ", name).split()), "분양가") if p)
 
 
-def news_targets(session: Session, region_id: int, asof_date: str) -> list[NewsTarget]:
+def news_targets(
+    session: Session, region_id: int, asof_date: str, links: Mapping[str, tuple[str, str]] | None = None
+) -> list[NewsTarget]:
     """뉴스 분양가를 찾을 실거래 단지(생활권 안, 준공 10년 안, 최근 12개월 일반 거래, 공고와 안 이어짐)."""
     from app.normalize import benchmark as bm
 
@@ -137,7 +140,9 @@ def news_targets(session: Session, region_id: int, asof_date: str) -> list[NewsT
     if region is None:
         raise LookupError(f"region {region_id} 없음")
     res = bm.BenchmarkBuild()
-    bm._cases(session, region, asof_date, res)  # 공고와 이어진 묶음(성공·실패 모두) = res.matched_groups
+    bm._cases(
+        session, region, asof_date, res, links
+    )  # 공고와 이어진 묶음(성공·실패 모두) = res.matched_groups
     used = res.matched_groups
     asof_ym = asof_date[:7]
     win_start = bm.add_months_ym(asof_ym, -(bm.TRADE_WINDOW_MONTHS - 1))
