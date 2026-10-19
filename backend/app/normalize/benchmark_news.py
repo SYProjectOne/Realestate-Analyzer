@@ -46,6 +46,7 @@ __all__ = [
     "NewsTarget",
     "line_conflict",
     "money_won",
+    "name_before",
     "news_document",
     "news_price",
     "news_queries",
@@ -334,6 +335,18 @@ def wide_range_top(line: str, value_text: str, won: int) -> bool:
     return False
 
 
+def name_before(target: NewsTarget, prefix: str) -> bool:
+    """D31-8 값 앞(기사 줄의 제목·발췌 중 값 위치 전)에 단지 이름 끝 ``NAME_TAIL_CHARS`` 글자 또는 핵심 이름 앞
+    ``NAME_TAIL_CHARS`` 글자(정규화 뒤 — 잘린 제목)가 있다.
+    '이 단지는 … 3억2370만원 … 'OO'도' 처럼 값이 이름보다 먼저 나오면 앞 문장의 다른 단지 값이다(문자열 처리 — 버리기만)."""
+    from app.normalize.benchmark import normalize_apt_name
+
+    name = normalize_apt_name(target.name)
+    head = normalize_apt_name(target.core or target.name)[:NAME_TAIL_CHARS]  # 제목이 '…'로 잘려 끝이 없을 때
+    text = normalize_apt_name(prefix)
+    return any(k and k in text for k in (name[-NAME_TAIL_CHARS:], head))
+
+
 def line_conflict(target: NewsTarget, line: str) -> str | None:
     """D31-4 판정기가 고른 값이 든 기사 줄 거르기(문자열 처리 — 버리기만 하고 고르지 않는다).
     줄에 단지 이름 끝 ``NAME_TAIL_CHARS`` 글자(정규화 뒤)가 없거나, 다른 시도 짧은 이름이 있거나, 같은 시도의 다른
@@ -392,6 +405,8 @@ def news_price(
     why = line_conflict(target, document[start:end])
     if why:
         return None, why
+    if not name_before(target, document[start:at]):
+        return None, "기사 줄에서 단지 이름이 값보다 뒤에만 나옴(다른 단지 값일 수 있음)"
     if label == "비공식" and wide_range_top(document[start:end], value_text, won):
         return None, "여러 주택형 가격 범위의 위 끝(84㎡ 값 아님)"
     day = _day(item.published_at)

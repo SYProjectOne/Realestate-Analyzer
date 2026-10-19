@@ -21,6 +21,7 @@ from app.normalize.benchmark_news import (
     core_name,
     line_conflict,
     money_won,
+    name_before,
     news_document,
     news_price,
     news_queries,
@@ -347,3 +348,37 @@ def test_top_of_wide_range_is_not_used_as_84_price() -> None:
         None,
         "여러 주택형 가격 범위의 위 끝(84㎡ 값 아님)",
     )
+
+
+def test_value_before_the_complex_name_is_another_complexs_value() -> None:
+    """D31-8: '이 단지는 … 3억2370만원 … '송도더베뉴'도 …' — 값이 이름보다 먼저 나오면 앞 문장의 다른 단지 값이다."""
+    items = [
+        NewsItem(
+            "'착한 분양가' 3억원대 신규 아파트", ARTICLE,
+            "이 단지는 총 분양가가 2억4240만~3억2370만원 선이다. 8월에 분양한 '송도 더베뉴'도 인기",
+            "Fri, 07 Oct 2016 10:00:00 +0900",
+        )
+    ]  # fmt: skip
+    doc, spans = news_document(_target(completed=2019), items)
+    assert news_price(
+        _target(completed=2019), doc, spans, {"price_84": "3억2370만원"}, raw_document_id=7
+    ) == (
+        None,
+        "기사 줄에서 단지 이름이 값보다 뒤에만 나옴(다른 단지 값일 수 있음)",
+    )
+
+
+def test_truncated_title_still_counts_by_the_head_of_the_core_name() -> None:
+    t = NewsTarget(
+        "k",
+        "e편한세상 계양 더프리미어",
+        "e편한세상계양더프리미어",
+        "",
+        "la_7",
+        2021,
+        core="e편한세상계양더프리미어",
+    )
+    assert name_before(
+        t, "[14] 2019-01-27 [줌인 분양현장] 브랜드타운의 시작 'e편한세상 계양 더프리미... — 84㎡ 분양가는 "
+    )
+    assert not name_before(t, "[3] 2019-01-27 이 단지는 총 분양가가 ")
