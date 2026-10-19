@@ -757,24 +757,24 @@ BENCHMARK_PRICE_FIELDS: Final = ("price_84", "price_per_3_3", "public_sale")
 BENCHMARK_PRICE_PURPOSE: Final = "아파트 단지 분양가 기사 발췌에서 그 단지의 최초 분양가 추출"
 
 
-def benchmark_price_extract_fields(name: str) -> list[ExtractField]:
-    """D31-3 P2 extract 필드(단지 이름을 설명에 넣는다 — 다른 단지 값과 가르는 것은 판정기). 정규식은 후보 위치만 준다."""
-    who = f"'{name}' 단지"
+def benchmark_price_extract_fields(name: str, place: str = "") -> list[ExtractField]:
+    """D31-3 P2 extract 필드(단지 이름·위치를 설명에 넣는다 — 다른 단지 값과 가르는 것은 판정기). 정규식은 후보 위치만 준다."""
+    who = f"{place}에 있는 '{name}' 단지" if place else f"'{name}' 단지"
     return [
         ExtractField(
             id="price_84",
             pattern=r"\d+\s?억(?:\s?\d+\s?천)?(?:\s?\d[\d,]*)?\s?만?\s?원",
             description=(
-                f"{who}의 전용 84㎡ 주택형 최초 분양가(분양 때 공급가격). 범위로 나오면 가장 높은 값. 다른 단지의 가격, "
-                "분양권 시세·프리미엄, 입주 뒤 실거래가·호가는 아님. 없으면 찾지 못함"
+                f"{who}의 전용 84㎡ 주택형 최초 분양가(분양 때 공급가격). 범위로 나오면 가장 높은 값. 다른 단지(다른 지역의 "
+                "같은 이름 단지, 이름이 비슷한 단지 포함)의 가격, 분양권 시세·프리미엄, 입주 뒤 실거래가·호가는 아님. 없으면 찾지 못함"
             ),
         ),
         ExtractField(
             id="price_per_3_3",
             pattern=r"\d[\d,]{2,5}\s?만\s?원",
             description=(
-                f"{who}의 3.3㎡(평)당 평균 분양가(최초 분양). 다른 단지의 값, 주변 시세, 입주 뒤 실거래 평당가는 아님. "
-                "없으면 찾지 못함"
+                f"{who}의 3.3㎡(평)당 평균 분양가(최초 분양). 다른 단지(다른 지역의 같은 이름 단지 포함)의 값, 주변 시세, "
+                "입주 뒤 실거래 평당가는 아님. 없으면 찾지 못함"
             ),
         ),
         ExtractField(

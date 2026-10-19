@@ -172,11 +172,11 @@ def assemble(
             return
         with ctx.session_factory() as s:
             targets = news_targets(s, region.id, snapshot.asof_date)
-            urls = {t.key: str(url_of(news_query(t.name))) for t in targets}
+            urls = {t.key: str(url_of(news_query(t.name, t.place))) for t in targets}
             have = latest_by_urls(s, urls.values())
         missing = [t for t in targets if urls[t.key] not in have][:BENCHMARK_NEWS_MAX]
         if missing:
-            search(region, [news_query(t.name) for t in missing])
+            search(region, [news_query(t.name, t.place) for t in missing])
         skipped: dict[str, int] = {}
         prices: list[NewsPrice] = []
         with ctx.session_factory() as s:
@@ -197,6 +197,7 @@ def assemble(
                         name=t.name,
                         document=document,
                         snapshot_id=snapshot.id,
+                        place=t.place,
                     )
                 except JudgeUnavailable:
                     res.stats["benchmark_news"] = {"skipped": "판정기 연결 실패 — 지난 언론 분양가 행 유지"}

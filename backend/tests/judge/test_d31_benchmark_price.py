@@ -62,3 +62,9 @@ def test_not_ok_envelope_gives_nothing() -> None:
         snapshot_id=None,
     )
     assert got == {}
+
+
+def test_descriptions_carry_the_place_to_tell_same_name_complexes_apart() -> None:
+    fields = P.benchmark_price_extract_fields("유승한내들 에듀파크", "인천광역시 서구 당하동")
+    assert all("인천광역시 서구 당하동에 있는 '유승한내들 에듀파크' 단지" in f.description for f in fields)
+    assert "다른 지역의 같은 이름 단지" in fields[0].description

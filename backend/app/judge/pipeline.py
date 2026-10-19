@@ -456,11 +456,17 @@ def p2_extract_upcoming(
 
 
 def p2_extract_benchmark_price(
-    adapter: JudgeCaller, *, target_key: str, name: str, document: str, snapshot_id: int | None
+    adapter: JudgeCaller,
+    *,
+    target_key: str,
+    name: str,
+    document: str,
+    snapshot_id: int | None,
+    place: str = "",
 ) -> dict[str, str]:
     """D31-3 P2 기사 발췌 → 그 단지의 분양가 문자열(필드 → 원문 문자열, 판정기 auto 값만). 봉투가 ok 가 아니면 {}.
     숫자로 바꾸는 것·출처 기사 줄 찾기는 ``normalize.benchmark_news.news_price``(문자열 처리)."""
-    env = p2_extract(adapter, document, P.benchmark_price_extract_fields(name),
+    env = p2_extract(adapter, document, P.benchmark_price_extract_fields(name, place),
                      purpose=f"extract:bm_price:{target_key}"[:128], snapshot_id=snapshot_id,
                      payload_purpose=P.BENCHMARK_PRICE_PURPOSE)  # fmt: skip
     if env.status != "ok":
